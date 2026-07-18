@@ -90,3 +90,60 @@ export const BookingsListQuerySchema = z.object({
 });
 
 export type BookingsListQuery = z.output<typeof BookingsListQuerySchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Admin surface (spec P2 §3, W3) — refund ledger + management list
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * One append-only Refund ledger row (audit H1 upgrade — replaces Nexora's four
+ * nullable refund columns). `adminId` null = automatic refund (overbook /
+ * orphaned capture); `providerRefundId` null only for legacy/unknown rows.
+ */
+export const RefundSchema = z.object({
+  id: z.uuid(),
+  amount: DecimalStringSchema,
+  currency: z.string().length(3),
+  providerRefundId: z.string().max(255).nullable(),
+  adminId: z.uuid().nullable(),
+  createdAt: z.iso.datetime(),
+});
+
+export type Refund = z.output<typeof RefundSchema>;
+
+/**
+ * Input for `admin.bookings.refund`. `amount` omitted → refund the remainder
+ * (total − SUM(refunds)); it is currency-less on purpose — the booking's
+ * currency is implied, so a refund/booking currency mismatch (invariant #6) is
+ * unrepresentable on this path. `reason` is stored in the refund email outbox
+ * payload only (the Refund model deliberately has no reason column — audit).
+ */
+export const AdminRefundInputSchema = z.object({
+  code: BookingCodeSchema,
+  amount: DecimalStringSchema.optional(),
+  reason: z.string().min(1).max(500).optional(),
+});
+
+export type AdminRefundInput = z.output<typeof AdminRefundInputSchema>;
+
+/** Output of `admin.bookings.refund`: the re-derived booking + full ledger. */
+export const AdminRefundResultSchema = z.object({
+  booking: BookingSchema,
+  refunds: z.array(RefundSchema),
+});
+
+export type AdminRefundResult = z.output<typeof AdminRefundResultSchema>;
+
+/**
+ * Query for `admin.bookings.list` (ported lightly from Nexora's admin list
+ * DTO): pagination + `status` filter + free-text `search` matched
+ * case-insensitively against booking code, contact email and contact name.
+ */
+export const AdminBookingsListQuerySchema = z.object({
+  page: z.int().min(1).default(1),
+  limit: z.int().min(1).max(100).default(20),
+  status: BookingStatusSchema.optional(),
+  search: z.string().min(1).max(120).optional(),
+});
+
+export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchema>;

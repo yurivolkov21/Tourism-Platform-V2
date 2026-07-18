@@ -1,5 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import type { Booking, BookingsListQuery, CreateBookingInput, Paged } from '@tourism/contract';
+import type {
+  AdminBookingsListQuery,
+  Booking,
+  BookingsListQuery,
+  CreateBookingInput,
+  Paged,
+} from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -31,8 +37,9 @@ const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 type BookingRow = Prisma.BookingModel;
 
-/** Row → contract shape. `checkoutUrl` is non-null only right after create. */
-function toBooking(row: BookingRow, checkoutUrl: string | null): Booking {
+/** Row → contract shape. `checkoutUrl` is non-null only right after create.
+ * Exported for the admin surface (RefundsService returns the same shape). */
+export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking {
   return {
     id: row.id,
     code: row.code,
@@ -230,6 +237,53 @@ export class BookingsService {
     const booking = await prisma.booking.findUnique({ where: { code } });
     if (!booking || booking.userId !== userId) return null;
     return toBooking(booking, null);
+  }
+
+  /**
+   * Admin management list (spec P2 W3, ported lightly from Nexora's admin
+   * list): ALL bookings, newest first, optional status filter + free-text
+   * `search` matched case-insensitively against code / contact email /
+   * contact name. Guarded by @Roles('ADMIN') at the controller.
+   */
+  async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {
+    const { page, limit, status, search } = query;
+    const term = search?.trim();
+    const where: Prisma.BookingWhereInput = {
+      ...(status ? { status } : {}),
+      ...(term
+        ? {
+            OR: [
+              { code: { contains: term, mode: 'insensitive' } },
+              { contactEmail: { contains: term, mode: 'insensitive' } },
+              { contactName: { contains: term, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
+
+    const [total, rows] = await Promise.all([
+      prisma.booking.count({ where }),
+      prisma.booking.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+    ]);
+
+    return {
+      items: rows.map((row) => toBooking(row, null)),
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  /** Any booking by code — admin surface, deliberately NOT owner-scoped. */
+  async adminByCode(code: string): Promise<Booking | null> {
+    const booking = await prisma.booking.findUnique({ where: { code } });
+    return booking ? toBooking(booking, null) : null;
   }
 
   /**

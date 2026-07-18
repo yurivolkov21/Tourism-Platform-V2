@@ -277,7 +277,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     });
   });
 
-  it('orphaned capture: completed AFTER cancel → auto-refund, booking stays CANCELLED (invariant #4, W3 finalizes)', async () => {
+  it('orphaned capture: completed AFTER cancel → auto-refund + ledger-derived REFUNDED (invariant #4)', async () => {
     const cookie = await signUpUser('orphan@example.com');
     const booking = await createBooking(cookie);
     const cancelledAt = new Date();
@@ -290,16 +290,26 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: 'processed', outcome: 'cancelled' });
 
-    // W2 minimal: money refunded + ledgered; status stays CANCELLED — W3's
-    // RefundsService derives REFUNDED from the ledger.
+    // W3 finalized: money refunded + ledgered, then status DERIVED from the
+    // ledger — SUM(refunds) == totalAmount ⇒ REFUNDED (no longer CANCELLED;
+    // contrast the overbook path above, which never counted as revenue).
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
-    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds).toHaveLength(1);
     const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
     expect(refunds).toHaveLength(1);
     expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
+    expect(refunds[0]?.adminId).toBeNull(); // automatic, not admin-issued
     expect(await seatsOf(depMain.id)).toBe(3); // never claimed
-    expect(await prisma.outbox.count()).toBe(0); // no email in W2 for this path
+
+    // W3 owns the refund email for this path: once per booking.
+    const outbox = await prisma.outbox.findMany();
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]).toMatchObject({
+      type: EmailType.BOOKING_REFUNDED,
+      dedupeKey: `orphan-refund:${booking.id}`,
+    });
+    expect(outbox[0]?.payload).toMatchObject({ amount: '117.00', reason: 'orphaned capture' });
   });
 
   it('bad signature → 400, NO PaymentEvent row, nothing processed', async () => {

@@ -3,6 +3,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import type { PaymentProvider } from '../../generated/prisma/enums.js';
 import { BookingsService, type ClaimOutcome } from '../bookings/bookings.service.js';
+import { deriveStatusAfterRefund } from '../bookings/refund-math.js';
 import {
   PAYMENT_GATEWAYS,
   type PaymentGateway,
@@ -165,6 +166,12 @@ export class PaymentsService {
    * an overbook refund is legitimate exactly once per booking (convention
    * `<event>:<entityId>`). EmailType: the schema has no REFUND_ISSUED;
    * BOOKING_REFUNDED is the refund email type (Nexora parity).
+   *
+   * Terminal state stays CANCELLED (NOT re-derived to REFUNDED, W3 decision):
+   * an overbooked booking never delivered seats and never counted as revenue —
+   * it never left PENDING — so full refund + CANCELLED is its correct terminal
+   * state. Contrast {@link refundOrphanedCapture}, where PAID-money was
+   * captured on a cancelled booking and the ledger derivation lands REFUNDED.
    */
   private async refundOverbooked(
     provider: PaymentProvider,
@@ -214,13 +221,22 @@ export class PaymentsService {
 
   /**
    * Invariant #4 — orphaned capture: the payment completed AFTER the booking
-   * was already CANCELLED (Nexora paid for this lesson in bug 7e51a24). W2
-   * MINIMAL behavior: refund the capture in full + record the Refund ledger
-   * row, and LEAVE the booking CANCELLED — we deliberately do NOT set
-   * REFUNDED here, because W3's RefundsService owns status derivation from
-   * SUM(refunds) vs totalAmount (the ledger is the source of truth, status a
-   * projection — spec §3). W3 will re-derive this booking to REFUNDED and own
-   * the refund email; W2 enqueues nothing for this path.
+   * was already CANCELLED (Nexora paid for this lesson in bug 7e51a24).
+   * Refund the capture in full + record the Refund ledger row, then finalize
+   * per W3 ledger semantics: derive Booking.status from SUM(refunds) vs
+   * totalAmount (a full auto-refund sums to the total → REFUNDED) + enqueue
+   * the refund email, atomically, gated on status='CANCELLED'.
+   *
+   * Terminal-state distinction vs {@link refundOverbooked}: an orphaned
+   * capture is PAID-money captured on a cancelled booking — real revenue came
+   * in and went back out, so the ledger-derived REFUNDED is the honest
+   * terminal state. An overbooked booking never delivered seats and never
+   * counted as revenue (it never left PENDING); full refund + CANCELLED is
+   * its correct terminal state, so it does NOT re-derive here.
+   *
+   * `already-refunded` (a provider retry re-entering after a crash between
+   * the Refund insert and this flip) still runs the finalize CTE — same
+   * crash-window closure as the overbook path; the CTE is idempotent.
    */
   private async refundOrphanedCapture(
     provider: PaymentProvider,
@@ -230,11 +246,54 @@ export class PaymentsService {
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
       cause: 'orphaned capture',
     });
-    if (refund === 'refunded') {
-      this.logger.warn(
-        `Auto-refunded orphaned capture on cancelled booking ${bookingId} (${provider}) — status derivation deferred to W3 RefundsService`,
-      );
-    }
+    if (refund === 'failed') return;
+
+    // Ledger → projection, the W3 rule (spec §3): never hardcode the target
+    // status; derive it from what the ledger actually sums to.
+    const [booking, ledger] = await Promise.all([
+      prisma.booking.findUniqueOrThrow({
+        where: { id: bookingId },
+        select: { totalAmount: true },
+      }),
+      prisma.refund.aggregate({ where: { bookingId }, _sum: { amount: true } }),
+    ]);
+    const status = deriveStatusAfterRefund(
+      ledger._sum.amount ?? new Prisma.Decimal(0),
+      booking.totalAmount,
+    );
+
+    // dedupeKey `orphan-refund:<bookingId>` — an orphaned-capture refund is
+    // legitimate exactly once per booking (convention `<event>:<entityId>`).
+    await prisma.$queryRaw(Prisma.sql`
+      WITH refunded AS (
+        UPDATE bookings b
+        SET status = ${status}::"BookingStatus",
+            updated_at = now()
+        WHERE b.id = ${bookingId}::uuid AND b.status = 'CANCELLED'::"BookingStatus"
+        RETURNING b.id, b.code, b.contact_email, b.contact_name, b.tour_title, b.total_amount, b.currency
+      ),
+      outbox_insert AS (
+        INSERT INTO outbox (type, payload, dedupe_key)
+        SELECT 'BOOKING_REFUNDED'::"EmailType",
+               jsonb_build_object(
+                 'bookingId', c.id,
+                 'code', c.code,
+                 'email', c.contact_email,
+                 'name', c.contact_name,
+                 'title', c.tour_title,
+                 'amount', c.total_amount::text,
+                 'currency', c.currency,
+                 'reason', 'orphaned capture'
+               ),
+               'orphan-refund:' || c.id::text
+        FROM refunded c
+        ON CONFLICT (dedupe_key) DO NOTHING
+      )
+      SELECT id FROM refunded
+    `);
+    this.logger.warn(
+      `Auto-refunded orphaned capture on cancelled booking ${bookingId} (${provider}) — ${status}`,
+    );
   }
 
   /**
@@ -243,9 +302,11 @@ export class PaymentsService {
    * Idempotency: a crash after the gateway call but before `finishEvent` makes
    * the provider retry re-enter here (the claim then reports `cancelled` for a
    * booking WE cancelled) — the existing-Refund guard turns that replay into
-   * `already-refunded`. Safe in W2 because auto-full-refunds are the ONLY
-   * Refund writers until W3; W3's RefundsService replaces this guard with
-   * ledger math (SUM(refunds) vs totalAmount).
+   * `already-refunded`. The guard stays valid alongside W3's RefundsService:
+   * both auto-refund paths run on bookings that were never admin-refundable
+   * (PENDING-overbook / CANCELLED-orphan, both outside the PAID/
+   * PARTIALLY_REFUNDED admin gate), so ANY existing Refund row here can only
+   * be a prior attempt of this same full auto-refund.
    */
   private async issueFullAutoRefund(
     provider: PaymentProvider,

@@ -1,6 +1,9 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
+  AdminBookingsListQuerySchema,
+  AdminRefundInputSchema,
+  AdminRefundResultSchema,
   BookingCodeSchema,
   BookingSchema,
   BookingsListQuerySchema,
@@ -125,6 +128,69 @@ export const contract = {
         NOT_FOUND: { message: 'Booking not found' },
       })
       .output(BookingSchema),
+  },
+  /**
+   * Admin surface (spec P2 §3, W3). Same guard model as `bookings`: the
+   * contract carries no auth metadata; the implementing controller stacks
+   * `AuthGuard` + `@Roles('ADMIN')` (anonymous → 401, non-admin → 403) before
+   * oRPC parses anything.
+   */
+  admin: {
+    bookings: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/bookings',
+          summary: 'List ALL bookings (admin, paged, status/search filters)',
+        })
+        .input(AdminBookingsListQuerySchema)
+        .output(PagedSchema(BookingSchema)),
+      byCode: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/bookings/{code}',
+          summary: 'Any booking by code (admin — not owner-scoped)',
+        })
+        .input(z.object({ code: BookingCodeSchema }))
+        .errors({
+          NOT_FOUND: { message: 'Booking not found' },
+        })
+        .output(BookingSchema),
+      refund: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/bookings/{code}/refund',
+          summary: 'Issue a (partial) refund — appends a Refund ledger row',
+        })
+        .input(AdminRefundInputSchema)
+        .errors({
+          NOT_FOUND: { message: 'Booking not found' },
+          // 422s below: the request parsed fine but the ledger/state refuses it.
+          NOT_REFUNDABLE: {
+            status: 422,
+            message:
+              'Only a PAID or PARTIALLY_REFUNDED booking with a captured payment is refundable',
+          },
+          OVER_TOTAL: {
+            status: 422,
+            message: 'Refund amount plus prior refunds would exceed the booking total',
+          },
+          ZERO_OR_NEGATIVE: {
+            status: 422,
+            message: 'Refund amount must be greater than zero',
+          },
+          NOTHING_LEFT: {
+            status: 422,
+            message: 'Booking is already fully refunded',
+          },
+          // The provider refused/failed the refund call — nothing was ledgered.
+          REFUND_FAILED: {
+            status: 502,
+            message: 'Provider refund failed',
+          },
+        })
+        .output(AdminRefundResultSchema),
+    },
   },
 };
 
