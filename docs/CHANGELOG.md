@@ -2,6 +2,35 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-18 — P2: Money-path (branch `feat/p2-money-path`)
+
+- **W1** Contract `bookings.{create,mine,byCode}` (procedure authed đầu tiên —
+  `@UseGuards` ghép class-level với `@Implement`); **`PaymentGateway`
+  interface** + FakeGateway (mô phỏng duplicate/orphaned); create PENDING với
+  snapshot, soft seats check (bất biến #1: PENDING không giữ ghế); P2002-retry
+  thay pre-flight SELECT của Nexora (đóng TOCTOU).
+- **W2** Webhook raw-body + PaymentEvent idempotency (ghi amount/currency/
+  bookingId — audit H4). **Atomic claim thiết kế lại sau khi lead review phát
+  hiện race EPQ thật** (Nexora miễn nhiễm nhờ connection_limit=1; pool 10 của
+  v2 làm race sống dậy): bookings-first claim, trừ ghế vô điều kiện + CHECK
+  abort (23514), phân loại follow-up SELECT. Test concurrency ×10 vòng ổn định
+  qua 3 lần chạy suite. Review findings: 1 (race — fixed).
+- **W3** `refund-math` TDD + RefundsService: partial refund CỘNG DỒN
+  (PAID → PARTIALLY_REFUNDED → REFUNDED theo SUM ledger); currency mismatch
+  bất khả biểu diễn by construction; orphaned → REFUNDED, overbook → CANCELLED;
+  admin refund không nhả ghế (thuộc approve W4). `admin.bookings.{list,byCode,refund}`.
+- **W4** Cancellation D1-B: partial unique `WHERE status='REQUESTED'`, lịch sử
+  DENIED append-only (đóng audit M7); approve = gateway refund → một CTE
+  [Refund row + CANCELLED + nhả ghế + flip request + outbox];
+  `booking-states.md` chuẩn hóa 4 terminal states; 23505 adapter-normalized
+  (verify thực nghiệm). EmailType += CANCELLATION_APPROVED.
+- **W5** Stripe + PayPal test-mode **raw, zero SDK mới** (seam HttpPost
+  injectable): HMAC t=/v1= timingSafeEqual + tolerance 5′, PayPal OAuth cache +
+  verify-webhook-signature; `money.ts` minor-units Decimal (zero-decimal set).
+  Idempotency key 4 flow refund. ResendDeliverer 9 EmailTypes (bind theo env).
+- **W6** ADR-0002 (gateway interface + ledger + claim gen-2 + D1-B), docs sweep.
+- Tests after: **186** (unit 128 · integration 58 trên PG thật).
+
 ## 2026-07-18 — P1: API lõi (branch `feat/p1-api-core`)
 
 - **W1** NestJS 11 **ESM-first** + Fastify (D1 thắng — zero friction, không cần
