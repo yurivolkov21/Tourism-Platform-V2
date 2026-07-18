@@ -1,14 +1,41 @@
 import { z } from 'zod';
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  PORT: z.coerce.number().int().positive().default(3001),
-  // Mặc định trỏ compose Postgres local — prod PHẢI override qua env thật.
-  DATABASE_URL: z
-    .string()
-    .startsWith('postgres')
-    .default('postgresql://tourism:tourism@localhost:5432/tourism'),
-});
+/**
+ * Dev-only Better Auth secret. `superRefine` dưới đây chặn giá trị này ở
+ * production — prod PHẢI set BETTER_AUTH_SECRET thật qua env.
+ */
+const DEV_BETTER_AUTH_SECRET = 'dev-secret-change-me';
+
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    PORT: z.coerce.number().int().positive().default(3001),
+    // Mặc định trỏ compose Postgres local — prod PHẢI override qua env thật.
+    DATABASE_URL: z
+      .string()
+      .startsWith('postgres')
+      .default('postgresql://tourism:tourism@localhost:5432/tourism'),
+    // Better Auth — secret ký session token + baseURL public của API.
+    BETTER_AUTH_SECRET: z.string().min(1).default(DEV_BETTER_AUTH_SECRET),
+    BETTER_AUTH_URL: z.url().default('http://localhost:3001'),
+    // Bootstrap admin dual-grant (comma list, case-insensitive) — hook
+    // user.create.after promote lên ADMIN; không bao giờ demote.
+    ADMIN_EMAILS: z.string().default('admin@tourism.test'),
+    // Origin được phép gọi Better Auth (CSRF) — mặc định web (3000) + admin (3002).
+    TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002'),
+    // Google OAuth — optional; auth.config chỉ bật socialProviders.google khi có ĐỦ cặp.
+    GOOGLE_CLIENT_ID: z.string().min(1).optional(),
+    GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+  })
+  .superRefine((cfg, ctx) => {
+    if (cfg.NODE_ENV === 'production' && cfg.BETTER_AUTH_SECRET === DEV_BETTER_AUTH_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['BETTER_AUTH_SECRET'],
+        message: 'BETTER_AUTH_SECRET must be set explicitly in production',
+      });
+    }
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 
@@ -21,4 +48,20 @@ export function parseEnv(raw: NodeJS.ProcessEnv): Env {
   return result.data;
 }
 
+/** Tách chuỗi comma-separated thành mảng đã trim, bỏ phần tử rỗng. */
+export function parseCommaList(raw: string): string[] {
+  return raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+}
+
 export const env: Env = parseEnv(process.env);
+
+/** ADMIN_EMAILS đã parse — lowercase để so khớp case-insensitive. */
+export const adminEmails: readonly string[] = parseCommaList(env.ADMIN_EMAILS).map((e) =>
+  e.toLowerCase(),
+);
+
+/** TRUSTED_ORIGINS đã parse cho Better Auth. */
+export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIGINS);
