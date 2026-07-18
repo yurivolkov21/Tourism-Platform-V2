@@ -338,11 +338,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(body.booking.status).toBe('CANCELLED');
     expect(body.booking.cancelledAt).not.toBeNull();
 
-    // (a) Gateway refund of the FULL remainder, in the booking's currency.
+    // (a) Gateway refund of the FULL remainder, in the booking's currency,
+    // keyed by the request id (W5 provider idempotency: one approve per request).
     expect(fake.refunds).toHaveLength(1);
     expect(fake.refunds[0]).toMatchObject({
       amount: '117.00',
       currency: 'USD',
+      idempotencyKey: `cancel-refund:${request.id}`,
     });
 
     // (b) Ledger row: full amount, adminId = the deciding admin.

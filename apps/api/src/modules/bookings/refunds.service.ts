@@ -123,9 +123,14 @@ export class RefundsService {
 
     // Provider refund FIRST (see doc above). A failure surfaces as a typed
     // error and leaves booking + ledger untouched — the admin just retries.
+    // Provider idempotency key: the Refund row id doesn't exist yet (we ledger
+    // AFTER the provider call), so the ledger sum identifies the ATTEMPT STATE
+    // — a retry of the same attempt reuses the key (provider dedupes), while
+    // the next legitimate refund sees a different sum and mints a new key.
     const providerRefundId = await this.executeGatewayRefund(
       { ...booking, providerPaymentId: booking.providerPaymentId },
       amount,
+      `refund:${booking.id}:${alreadyRefunded.toFixed(2)}`,
     );
 
     const nextStatus = deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
@@ -180,6 +185,11 @@ export class RefundsService {
    * latency never holds a DB connection; we never ledger a refund that did
    * not happen — callers ledger AFTER this returns). Failures wrap into
    * {@link ProviderRefundFailedError} (→ 502), nothing has been written.
+   *
+   * `idempotencyKey` (W5): deterministic per refund ATTEMPT, forwarded by the
+   * real gateways as the provider idempotency header (Stripe `Idempotency-Key`
+   * / `PayPal-Request-Id`) — a crash-retry of the same attempt can never
+   * double-refund at the provider. See RefundInput for the per-flow keys.
    */
   async executeGatewayRefund(
     booking: {
@@ -189,6 +199,7 @@ export class RefundsService {
       providerPaymentId: string;
     },
     amount: Prisma.Decimal,
+    idempotencyKey: string,
   ): Promise<string> {
     try {
       const gateway = resolveGateway(this.gateways, booking.paymentProvider);
@@ -196,6 +207,7 @@ export class RefundsService {
         providerPaymentId: booking.providerPaymentId,
         amount: amount.toFixed(2),
         currency: booking.currency,
+        idempotencyKey,
       });
       return providerRefundId;
     } catch (err) {

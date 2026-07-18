@@ -82,6 +82,8 @@ export class FakeGateway implements PaymentGateway {
     return { ...(event as VerifiedEvent), raw: parsed };
   }
 
+  /** Records the full {@link RefundInput} — INCLUDING the caller's provider
+   * `idempotencyKey` (W5), so int tests can assert the key each flow passes. */
   async refund(input: RefundInput): Promise<{ providerRefundId: string }> {
     const providerRefundId = `fake_re_${++this.seq}`;
     this.refunds.push({ ...input, providerRefundId });

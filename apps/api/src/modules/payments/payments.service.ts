@@ -180,6 +180,9 @@ export class PaymentsService {
   ): Promise<void> {
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
       cause: 'overbooked',
+      // Legitimate exactly once per booking → the booking id names the attempt
+      // (same convention as the outbox dedupeKey below, provider-side).
+      idempotencyKey: `overbook-refund:${bookingId}`,
     });
     // 'failed' (no payment id / provider error) leaves the booking PENDING for
     // an operator. 'already-refunded' still runs the cancel CTE below — it
@@ -245,6 +248,9 @@ export class PaymentsService {
   ): Promise<void> {
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
       cause: 'orphaned capture',
+      // Legitimate exactly once per booking → the booking id names the attempt
+      // (same convention as the outbox dedupeKey below, provider-side).
+      idempotencyKey: `orphan-refund:${bookingId}`,
     });
     if (refund === 'failed') return;
 
@@ -312,7 +318,7 @@ export class PaymentsService {
     provider: PaymentProvider,
     bookingId: string,
     providerPaymentId: string | undefined,
-    opts: { cause: string },
+    opts: { cause: string; idempotencyKey: string },
   ): Promise<'refunded' | 'already-refunded' | 'failed'> {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
@@ -343,6 +349,10 @@ export class PaymentsService {
         providerPaymentId,
         amount: booking.totalAmount.toFixed(2),
         currency: booking.currency,
+        // W5: provider-side idempotency — a crash between this call and
+        // finishEvent makes the provider retry re-enter; the same key makes
+        // the provider dedupe instead of double-refunding.
+        idempotencyKey: opts.idempotencyKey,
       }));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown';

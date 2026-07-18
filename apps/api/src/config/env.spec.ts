@@ -36,12 +36,57 @@ describe('parseEnv', () => {
       parseEnv({ NODE_ENV: 'production', BETTER_AUTH_SECRET: 'dev-secret-change-me' }),
     ).toThrow(/BETTER_AUTH_SECRET/);
     expect(
-      parseEnv({ NODE_ENV: 'production', BETTER_AUTH_SECRET: 'real-secret' }).BETTER_AUTH_SECRET,
+      parseEnv({
+        NODE_ENV: 'production',
+        BETTER_AUTH_SECRET: 'real-secret',
+        // P2: prod also requires a payment provider — satisfy it to isolate
+        // the assertion on BETTER_AUTH_SECRET.
+        STRIPE_SECRET_KEY: 'sk_test_x',
+        STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
   });
 
   it('rejects invalid BETTER_AUTH_URL', () => {
     expect(() => parseEnv({ BETTER_AUTH_URL: 'not a url' })).toThrow(/BETTER_AUTH_URL/);
+  });
+
+  it('defaults P2 provider vars to unset (dev boots with no payment/email keys)', () => {
+    const env = parseEnv({});
+    expect(env.STRIPE_SECRET_KEY).toBeUndefined();
+    expect(env.STRIPE_WEBHOOK_SECRET).toBeUndefined();
+    expect(env.PAYPAL_CLIENT_ID).toBeUndefined();
+    expect(env.PAYPAL_CLIENT_SECRET).toBeUndefined();
+    expect(env.PAYPAL_WEBHOOK_ID).toBeUndefined();
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.EMAIL_FROM).toBe('Tourism <noreply@tourism.test>');
+  });
+
+  it('requires at least one FULL payment provider config in production', () => {
+    const base = { NODE_ENV: 'production', BETTER_AUTH_SECRET: 'real-secret' };
+    // None configured → rejected.
+    expect(() => parseEnv(base)).toThrow(/payment provider/i);
+    // Half a pair does not count.
+    expect(() => parseEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_x' })).toThrow(
+      /payment provider/i,
+    );
+    expect(() =>
+      parseEnv({ ...base, PAYPAL_CLIENT_ID: 'id', PAYPAL_CLIENT_SECRET: 'secret' }),
+    ).toThrow(/payment provider/i);
+    // A full Stripe pair suffices.
+    expect(
+      parseEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x' })
+        .STRIPE_SECRET_KEY,
+    ).toBe('sk_test_x');
+    // A full PayPal trio suffices.
+    expect(
+      parseEnv({
+        ...base,
+        PAYPAL_CLIENT_ID: 'id',
+        PAYPAL_CLIENT_SECRET: 'secret',
+        PAYPAL_WEBHOOK_ID: 'wh-1',
+      }).PAYPAL_WEBHOOK_ID,
+    ).toBe('wh-1');
   });
 
   it('accepts Google OAuth pair when provided', () => {

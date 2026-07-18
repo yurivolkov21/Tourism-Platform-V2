@@ -61,6 +61,16 @@ export interface RefundInput {
   /** 2dp decimal string — supports partial refunds (Refund ledger, W3). */
   amount: string;
   currency: string;
+  /**
+   * Deterministic caller-supplied key the real gateways forward as the
+   * provider idempotency header (`Idempotency-Key` / `PayPal-Request-Id`) so a
+   * crash-retry of the same refund attempt can never double-refund (W4 flag).
+   * Keys per flow: admin `refund:<bookingId>:<alreadyRefundedTotal>` (the
+   * ledger sum identifies the ATTEMPT STATE — a Refund row id doesn't exist
+   * before the provider call), approve `cancel-refund:<requestId>`, auto
+   * `orphan-refund:<bookingId>` / `overbook-refund:<bookingId>`.
+   */
+  idempotencyKey?: string;
 }
 
 /**
@@ -89,6 +99,19 @@ export interface VerifiedEvent {
  * {@link resolveGateway}. Interfaces don't exist at runtime, hence a Symbol.
  */
 export const PAYMENT_GATEWAYS = Symbol('PAYMENT_GATEWAYS');
+
+/**
+ * First value of a (possibly multi-valued) incoming webhook header — Fastify
+ * lower-cases names, so look up with the lowercase form. Shared by the real
+ * gateways' `verifyWebhook` implementations.
+ */
+export function headerValue(
+  headers: Record<string, string | string[] | undefined>,
+  name: string,
+): string | undefined {
+  const value = headers[name];
+  return Array.isArray(value) ? value[0] : value;
+}
 
 /** Picks the gateway for a booking's provider; throws if it isn't configured. */
 export function resolveGateway(

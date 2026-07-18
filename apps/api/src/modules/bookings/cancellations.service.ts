@@ -373,9 +373,13 @@ export class CancellationsService {
       alreadyRefunded: ledger._sum.amount ?? new Prisma.Decimal(0),
     });
 
+    // Provider idempotency key `cancel-refund:<requestId>`: a request is
+    // approved at most once (append-only, flip gated on REQUESTED), so the
+    // request id names this refund attempt deterministically (W5).
     const providerRefundId = await this.refunds.executeGatewayRefund(
       { ...booking, providerPaymentId: booking.providerPaymentId },
       amount,
+      `cancel-refund:${request.id}`,
     );
 
     const flipped = await prisma.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`

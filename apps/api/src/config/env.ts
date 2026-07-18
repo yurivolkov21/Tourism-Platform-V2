@@ -29,13 +29,43 @@ const EnvSchema = z
     // Google OAuth — optional; auth.config chỉ bật socialProviders.google khi có ĐỦ cặp.
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
+    // Payment providers (P2 W5) — đều optional ở dev/test; payments.module chỉ
+    // đăng ký gateway khi ĐỦ bộ (Stripe: cặp key+webhook secret; PayPal: trio
+    // client id/secret + webhook id). Thiếu bộ → webhook/create của provider
+    // đó 404 (behavior sẵn có của resolveGateway).
+    STRIPE_SECRET_KEY: z.string().min(1).optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().min(1).optional(),
+    PAYPAL_CLIENT_ID: z.string().min(1).optional(),
+    PAYPAL_CLIENT_SECRET: z.string().min(1).optional(),
+    PAYPAL_WEBHOOK_ID: z.string().min(1).optional(),
+    // Email (P2 W5) — RESEND_API_KEY set → worker bind ResendDeliverer, không
+    // set → giữ ConsoleDeliverer (dev boots không cần email, pattern Nexora).
+    RESEND_API_KEY: z.string().min(1).optional(),
+    EMAIL_FROM: z.string().min(1).default('Tourism <noreply@tourism.test>'),
   })
   .superRefine((cfg, ctx) => {
-    if (cfg.NODE_ENV === 'production' && cfg.BETTER_AUTH_SECRET === DEV_BETTER_AUTH_SECRET) {
+    if (cfg.NODE_ENV !== 'production') return;
+    if (cfg.BETTER_AUTH_SECRET === DEV_BETTER_AUTH_SECRET) {
       ctx.addIssue({
         code: 'custom',
         path: ['BETTER_AUTH_SECRET'],
         message: 'BETTER_AUTH_SECRET must be set explicitly in production',
+      });
+    }
+    // Money-path không thể chạy prod mà không có provider nào: yêu cầu ÍT NHẤT
+    // một bộ ĐẦY ĐỦ (nửa bộ không tính — gateway sẽ không được đăng ký).
+    const stripeReady = Boolean(cfg.STRIPE_SECRET_KEY && cfg.STRIPE_WEBHOOK_SECRET);
+    const paypalReady = Boolean(
+      cfg.PAYPAL_CLIENT_ID && cfg.PAYPAL_CLIENT_SECRET && cfg.PAYPAL_WEBHOOK_ID,
+    );
+    if (!stripeReady && !paypalReady) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['STRIPE_SECRET_KEY'],
+        message:
+          'production requires at least one fully configured payment provider: ' +
+          'STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET, or ' +
+          'PAYPAL_CLIENT_ID + PAYPAL_CLIENT_SECRET + PAYPAL_WEBHOOK_ID',
       });
     }
   });

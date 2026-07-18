@@ -181,9 +181,15 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(refunds[0]?.amount.toFixed(2)).toBe('30.00');
     expect(refunds[0]?.adminId).toBe(admins.id);
 
-    // Gateway refunded FIRST, in the booking's currency (invariant #6).
+    // Gateway refunded FIRST, in the booking's currency (invariant #6), with
+    // the W5 provider idempotency key (attempt state = ledger sum BEFORE this
+    // refund: nothing refunded yet → 0.00).
     expect(fake.refunds).toHaveLength(1);
-    expect(fake.refunds[0]).toMatchObject({ amount: '30.00', currency: 'USD' });
+    expect(fake.refunds[0]).toMatchObject({
+      amount: '30.00',
+      currency: 'USD',
+      idempotencyKey: `refund:${booking.id}:0.00`,
+    });
 
     // Outbox row keyed per refund row (refunds legitimately repeat per booking).
     const outbox = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } });
@@ -211,6 +217,13 @@ describe('refunds integration (admin refund ledger)', () => {
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds.map((r) => r.amount)).toEqual(['30.00', '87.00']);
+    // W5 provider idempotency: each ATTEMPT mints a distinct key — the second
+    // refund sees the accumulated ledger (30.00), so a crash-retry of either
+    // attempt dedupes at the provider without blocking the next refund.
+    expect(fake.refunds.map((r) => r.idempotencyKey)).toEqual([
+      `refund:${booking.id}:0.00`,
+      `refund:${booking.id}:30.00`,
+    ]);
     // Two refund emails with DISTINCT per-row keys (repeat-event convention).
     const keys = (
       await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } })

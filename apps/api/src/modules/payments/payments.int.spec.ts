@@ -261,6 +261,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       providerPaymentId: event.providerPaymentId,
       amount: '234.00', // 39.00 × 6
       currency: 'USD',
+      idempotencyKey: `overbook-refund:${booking.id}`, // W5 provider idempotency
     });
     const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
     expect(refunds).toHaveLength(1);
@@ -296,6 +297,8 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds).toHaveLength(1);
+    // W5 provider idempotency key for the orphan auto-refund flow.
+    expect(fake.refunds[0]?.idempotencyKey).toBe(`orphan-refund:${booking.id}`);
     const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
     expect(refunds).toHaveLength(1);
     expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
