@@ -1,0 +1,75 @@
+import type { ContractRouterClient } from '@orpc/contract';
+import { isContractProcedure } from '@orpc/contract';
+import { contract } from './contract.js';
+import type { ContractInputs, ContractOutputs } from './index.js';
+import type {
+  Destination,
+  Paged,
+  TourCard,
+  TourCategory,
+  TourDetail,
+  ToursListQuery,
+} from './schemas/catalog.js';
+
+/** Route metadata drives the @orpc/nest mount points — pin it. */
+describe('contract routes', () => {
+  const routes: Array<[{ '~orpc': { route?: { method?: string; path?: string } } }, string]> = [
+    [contract.health.check, 'GET /api/health'],
+    [contract.catalog.tours.list, 'GET /api/tours'],
+    [contract.catalog.tours.bySlug, 'GET /api/tours/{slug}'],
+    [contract.catalog.destinations.list, 'GET /api/destinations'],
+    [contract.catalog.categories.list, 'GET /api/categories'],
+  ];
+
+  it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
+    expect(isContractProcedure(procedure)).toBe(true);
+    const route = procedure['~orpc'].route;
+    expect(`${route?.method} ${route?.path}`).toBe(expected);
+  });
+
+  it('bySlug declares a typed NOT_FOUND error', () => {
+    expect(contract.catalog.tours.bySlug['~orpc'].errorMap).toHaveProperty('NOT_FOUND');
+  });
+});
+
+/**
+ * Type-level proof that the end-to-end type chain flows: a hypothetical
+ * P3 client built from this contract infers catalog types automatically.
+ */
+describe('contract type inference', () => {
+  type Client = ContractRouterClient<typeof contract>;
+
+  it('tours.list output infers as Paged<TourCard>', () => {
+    expectTypeOf<Awaited<ReturnType<Client['catalog']['tours']['list']>>>().toEqualTypeOf<
+      Paged<TourCard>
+    >();
+    expectTypeOf<ContractOutputs['catalog']['tours']['list']>().toEqualTypeOf<Paged<TourCard>>();
+  });
+
+  it('tours.list input stays honest (numbers/booleans, all optional)', () => {
+    type ListInput = ContractInputs['catalog']['tours']['list'];
+    expectTypeOf<ListInput['page']>().toEqualTypeOf<number | undefined>();
+    expectTypeOf<ListInput['featured']>().toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<ListInput['sort']>().toEqualTypeOf<
+      'createdAt' | 'basePrice' | 'durationDays' | 'title' | undefined
+    >();
+    // Parsed (server-side) query has defaults applied.
+    expectTypeOf<ToursListQuery['page']>().toEqualTypeOf<number>();
+  });
+
+  it('bySlug output infers as TourDetail', () => {
+    expectTypeOf<
+      Awaited<ReturnType<Client['catalog']['tours']['bySlug']>>
+    >().toEqualTypeOf<TourDetail>();
+    expectTypeOf<ContractInputs['catalog']['tours']['bySlug']>().toEqualTypeOf<{ slug: string }>();
+  });
+
+  it('destinations/categories lists infer as arrays', () => {
+    expectTypeOf<ContractOutputs['catalog']['destinations']['list']>().toEqualTypeOf<
+      Destination[]
+    >();
+    expectTypeOf<ContractOutputs['catalog']['categories']['list']>().toEqualTypeOf<
+      TourCategory[]
+    >();
+  });
+});
