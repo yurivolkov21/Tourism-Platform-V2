@@ -1,7 +1,10 @@
-import { Module, type Provider } from '@nestjs/common';
+import { forwardRef, Module, type Provider } from '@nestjs/common';
 import { env } from '../../config/env.js';
+import { BookingsModule } from '../bookings/bookings.module.js';
 import { FakeGateway } from './fake.gateway.js';
 import { PAYMENT_GATEWAYS } from './gateway.js';
+import { PaymentsService } from './payments.service.js';
+import { WebhooksController } from './webhooks.controller.js';
 
 /**
  * Payment gateway wiring (spec P2 §3, W1).
@@ -30,8 +33,18 @@ const gatewayProviders: Provider[] =
       ]
     : [{ provide: PAYMENT_GATEWAYS, useValue: [] }];
 
+/**
+ * W2 additions: {@link WebhooksController} (raw-body provider webhooks) +
+ * {@link PaymentsService} (PaymentEvent idempotency + dispatch). The module
+ * cycle with BookingsModule is real and intentional — BookingsService needs
+ * `PAYMENT_GATEWAYS` (checkout at create), PaymentsService needs
+ * `BookingsService.claimSeatsForPaid` (PAID claim on webhook) — hence
+ * `forwardRef` on BOTH imports.
+ */
 @Module({
-  providers: gatewayProviders,
+  imports: [forwardRef(() => BookingsModule)],
+  controllers: [WebhooksController],
+  providers: [...gatewayProviders, PaymentsService],
   exports: [PAYMENT_GATEWAYS],
 })
 export class PaymentsModule {}

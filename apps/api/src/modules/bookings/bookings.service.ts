@@ -57,6 +57,20 @@ function toBooking(row: BookingRow, checkoutUrl: string | null): Booking {
   };
 }
 
+/**
+ * Outcome of {@link BookingsService.claimSeatsForPaid} (spec P2 §4, ADR-0009):
+ * - `claimed`       — seats incremented, booking flipped PAID, outbox enqueued.
+ * - `overbooked`    — booking still PENDING but the party no longer fits →
+ *                     caller auto-refunds + cancels (invariant #3).
+ * - `cancelled`     — booking was already CANCELLED when the capture landed
+ *                     (orphaned capture, invariant #4) → caller auto-refunds.
+ * - `already-paid`  — PAID / REFUNDED / PARTIALLY_REFUNDED: a retry or a second
+ *                     provider event for a booking already settled → no-op.
+ * - `not-found`     — no such booking id (webhook references something we
+ *                     never minted) → log-and-skip.
+ */
+export type ClaimOutcome = 'claimed' | 'overbooked' | 'cancelled' | 'already-paid' | 'not-found';
+
 /** UNIQUE violation on bookings.code (the mint collided) — retryable. */
 function isCodeCollision(error: unknown): boolean {
   return (
@@ -217,4 +231,132 @@ export class BookingsService {
     if (!booking || booking.userId !== userId) return null;
     return toBooking(booking, null);
   }
+
+  /**
+   * THE atomic PAID claim (ADR-0009, v2-hardened). ONE data-modifying
+   * statement, layered so every race-deciding qual sits on an UPDATE-target
+   * table (re-evaluated fresh under READ COMMITTED EvalPlanQual — CTE rows are
+   * NOT re-fetched after a lock wait, so quals routed through a joined CTE are
+   * snapshot-stale and unsound for concurrency control):
+   *
+   *   (a) `claim` — flip the BOOKING first: `UPDATE bookings … WHERE
+   *       status = 'PENDING'`. The contended row for a duplicate-delivery race
+   *       (same booking, two distinct eventIds — beginEvent cannot dedupe
+   *       those) is the booking row itself; the loser blocks on it, EPQ
+   *       re-checks `status` against the winner's committed tuple, matches
+   *       zero rows, and the whole rest of the statement is a no-op.
+   *   (b) `seat_claim` — seats increment UNCONDITIONAL, driven FROM `claim`.
+   *       Overbook protection is the DB CHECK `departures_seats_within_total`
+   *       (hardening migration): an overfilling increment aborts the ENTIRE
+   *       statement — including the PAID flip in (a) — atomically. The caller
+   *       maps SQLSTATE 23514 on that constraint → 'overbooked' (booking is
+   *       then still PENDING, exactly what the refund path expects).
+   *   (c) `outbox_insert` — BOOKING_CONFIRMATION enqueued in the SAME
+   *       statement (invariant #7), `ON CONFLICT (dedupe_key) DO NOTHING`,
+   *       dedupeKey `booking-confirmed:<bookingId>` (once per booking,
+   *       docs/conventions/outbox-dedupe-key.md).
+   *
+   * The final `SELECT id FROM claim` is the success marker — the happy path
+   * needs no second round-trip. Zero rows ⇒ nothing changed; classification
+   * then runs as a separate follow-up SELECT on a fresh snapshot (Nexora's
+   * original shape — it is classification-only, no effects, so it needs no
+   * atomicity with the claim).
+   *
+   * Single-statement is still the point: atomic on ANY pool (no transaction
+   * pooler contortions), idempotent at booking level. `updated_at` set
+   * manually — Prisma's `@updatedAt` is client-side and raw SQL bypasses it.
+   */
+  async claimSeatsForPaid(
+    bookingId: string,
+    providerPaymentId: string | null,
+  ): Promise<ClaimOutcome> {
+    let claimed: { id: string }[];
+    try {
+      claimed = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+        WITH claim AS (
+          UPDATE bookings b
+          SET status = 'PAID'::"BookingStatus",
+              paid_at = now(),
+              provider_payment_id = ${providerPaymentId},
+              updated_at = now()
+          WHERE b.id = ${bookingId}::uuid AND b.status = 'PENDING'::"BookingStatus"
+          RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
+                    b.code, b.contact_email, b.contact_name, b.tour_title,
+                    b.departure_start_date, b.departure_end_date, b.total_amount, b.currency
+        ),
+        seat_claim AS (
+          UPDATE tour_departures d
+          SET seats_booked = d.seats_booked + c.seats,
+              updated_at = now()
+          FROM claim c
+          WHERE d.id = c.departure_id
+          RETURNING d.id
+        ),
+        outbox_insert AS (
+          INSERT INTO outbox (type, payload, dedupe_key)
+          SELECT 'BOOKING_CONFIRMATION'::"EmailType",
+                 jsonb_build_object(
+                   'bookingId', c.id,
+                   'code', c.code,
+                   'email', c.contact_email,
+                   'name', c.contact_name,
+                   'title', c.tour_title,
+                   'startDate', c.departure_start_date::text,
+                   'endDate', c.departure_end_date::text,
+                   'amount', c.total_amount::text,
+                   'currency', c.currency
+                 ),
+                 'booking-confirmed:' || c.id::text
+          FROM claim c
+          ON CONFLICT (dedupe_key) DO NOTHING
+        )
+        SELECT id FROM claim
+      `);
+    } catch (err) {
+      if (isSeatsCheckViolation(err)) {
+        // The CHECK aborted the whole statement: no PAID flip, no seats, no
+        // outbox — the booking is provably still PENDING and did not fit.
+        this.logger.warn(`PAID claim for booking ${bookingId}: overbooked (CHECK abort)`);
+        return 'overbooked';
+      }
+      throw err;
+    }
+    if (claimed.length === 1) {
+      this.logger.log(`PAID claim for booking ${bookingId}: claimed`);
+      return 'claimed';
+    }
+
+    // Nothing changed — classify on a fresh snapshot (follow-up SELECT).
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      select: { status: true },
+    });
+    let outcome: ClaimOutcome;
+    if (!booking) outcome = 'not-found';
+    else if (booking.status === BookingStatus.CANCELLED) outcome = 'cancelled';
+    else if (booking.status === BookingStatus.PENDING) {
+      // Theoretically unreachable: no exception + zero claim rows + still
+      // PENDING. Defensive mapping: treat as overbooked — its handler path is
+      // the safe one for a PENDING booking holding real money.
+      outcome = 'overbooked';
+    } else outcome = 'already-paid'; // PAID / REFUNDED / PARTIALLY_REFUNDED
+    this.logger.log(`PAID claim for booking ${bookingId}: ${outcome}`);
+    return outcome;
+  }
+}
+
+/**
+ * Statement abort caused by the `departures_seats_within_total` CHECK — the
+ * overbook signal from {@link BookingsService.claimSeatsForPaid}. Shape
+ * verified empirically against Prisma 7.8.0 + @prisma/adapter-pg on a live
+ * violation: `PrismaClientKnownRequestError` with `code: 'P2010'` and the
+ * Postgres SQLSTATE nested at `meta.driverAdapterError.cause.code = '23514'`
+ * (check_violation), constraint name only inside the cause message.
+ */
+function isSeatsCheckViolation(err: unknown): boolean {
+  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2010') return false;
+  const cause = (
+    err.meta as { driverAdapterError?: { cause?: { code?: string; message?: string } } } | undefined
+  )?.driverAdapterError?.cause;
+  return cause?.code === '23514' && (cause.message ?? '').includes('departures_seats_within_total');
 }
