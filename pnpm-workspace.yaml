@@ -4,4 +4,6 @@ packages:
   - 'libs/web/*'
   - 'libs/mobile/*'
 allowBuilds:
+  '@prisma/engines': true
   '@swc/core': true
+  prisma: true

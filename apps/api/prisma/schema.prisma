@@ -1,0 +1,915 @@
+// Tourism v2 — Prisma schema (ported from Nexora, all audit deltas applied).
+// Sources: docs/specs/2026-07-18-schema-audit-nexora.md (H1-H6, H5b, M1-M8, LOW)
+// and docs/specs/2026-07-18-p1-api-core.md §4.
+// Hardening that Prisma can't express (CHECK constraints, RLS) lives in
+// `prisma/hardening-v2.sql` — apply it as a migration right after the schema
+// migrations. Connection URLs live in `prisma.config.ts` (Prisma 7).
+
+generator client {
+  provider               = "prisma-client"
+  previewFeatures        = ["postgresqlExtensions"]
+  output                 = "../src/generated/prisma"
+  runtime                = "nodejs"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "js"
+}
+
+datasource db {
+  provider   = "postgresql"
+  extensions = [citext]
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum UserRole {
+  CUSTOMER
+  ADMIN
+}
+
+enum DepartureStatus {
+  OPEN
+  CLOSED
+  CANCELLED
+}
+
+enum BookingStatus {
+  PENDING
+  PAID
+  CANCELLED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+/// Payment rail for a booking (ADR-0006, amended). Stripe = cards/wallets,
+/// PayPal = international travellers.
+enum PaymentProvider {
+  STRIPE
+  PAYPAL
+}
+
+/// Lead lifecycle for "Inquire Now" (ADR-0003 — CRM).
+enum EnquiryStatus {
+  NEW
+  CONTACTED
+  QUOTED
+  WON
+  LOST
+}
+
+/// Support lifecycle for a PAID-booking cancellation request.
+enum CancellationRequestStatus {
+  REQUESTED
+  REFUNDED
+  DENIED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+enum MediaOwnerType {
+  TOUR
+  DESTINATION
+  USER
+  POST
+  SITE
+}
+
+/// Slot a media asset occupies within its owner. Closed enum (security-first).
+/// Values stay lowercase on purpose — renaming enum values silently breaks
+/// ported code (same class of hazard as the ReviewSource ordering note below).
+enum MediaRole {
+  hero
+  gallery
+  avatar
+  body
+}
+
+/// Kind of a tour policy (TourPolicy is its own model).
+enum PolicyKind {
+  CANCELLATION
+  BOOKING
+  GENERAL
+}
+
+/// Traveller types a tour suits (merchandising).
+enum TravellerType {
+  FAMILY
+  COUPLE
+  FRIENDS
+  SOLO
+  BUSINESS
+}
+
+/// Tour difficulty (audit M4 — was a free String, DTO only checked length).
+enum TourDifficulty {
+  EASY
+  MODERATE
+  CHALLENGING
+}
+
+/// VERIFIED = earned from a real booking; CURATED = admin-authored testimonial.
+/// ⚠️ Alphabetical order (CURATED < VERIFIED) carries testimonial sort logic —
+/// renaming values requires fixing the queries with them (audit keep-list).
+enum ReviewSource {
+  VERIFIED
+  CURATED
+}
+
+/// Merchandising badge on a tour card.
+enum TourBadge {
+  BEST_VALUE
+  LIMITED_OFFER
+  EXCLUSIVE
+  NEW
+  POPULAR
+}
+
+/// Transactional email kind for the outbox (ADR-0007).
+enum EmailType {
+  BOOKING_CONFIRMATION
+  BOOKING_REFUNDED
+  REVIEW_APPROVED
+  ENQUIRY_RECEIVED
+  CANCELLATION_REQUESTED
+  CANCELLATION_DENIED
+  NEWSLETTER_WELCOME
+  EMAIL_CHANGED
+}
+
+/// Outbox row lifecycle (ADR-0007). PENDING → SENT, or → FAILED after retries.
+enum OutboxStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+/// Editorial blog post lifecycle. DRAFT → PUBLISHED.
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+}
+
+enum ChatRole {
+  USER
+  ASSISTANT
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Identity — Better Auth v1.6 core schema (audit H5/H5b). Replaces the old
+// Supabase-mirror User: no supabaseId, no locale; fullName → name. Domain
+// additionalFields: phone + role. `deletedAt` is the tombstone marker (H5b) —
+// the ONLY soft delete in the schema. BA `beforeDelete` hook sets it, scrubs
+// name/phone → null and email → deleted+<uuid>@tombstone.local, hard-deletes
+// sessions/accounts, and flips Review.authorDeleted. FKs stay Restrict — the
+// user row is never hard-deleted.
+// NOTE: BA core declares `name` required; it is nullable here because the
+// tombstone scrub nulls it (spec §5). BA always writes it on signup.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  // Case-insensitive unique email via Postgres citext (ADR-0008).
+  email         String    @unique @db.Citext
+  name          String?   @db.VarChar(120)
+  emailVerified Boolean   @default(false) @map("email_verified")
+  image         String?   @db.VarChar(500)
+  phone         String?   @db.VarChar(30)
+  role          UserRole  @default(CUSTOMER)
+  deletedAt     DateTime? @map("deleted_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  sessions              Session[]
+  accounts              Account[]
+  bookings              Booking[]             @relation("BookingCustomer")
+  refunds               Refund[]              @relation("RefundAdmin")
+  reviews               Review[]
+  moderatedReviews      Review[]              @relation("ModeratedReviews")
+  wishlist              Wishlist[]
+  posts                 Post[]
+  cancellationRequests  CancellationRequest[] @relation("CancellationRequester")
+  cancellationDecisions CancellationRequest[] @relation("CancellationDecider")
+  enquiryNotes          EnquiryNote[]
+  chatConversations     ChatConversation[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique @db.VarChar(255)
+  expiresAt DateTime @map("expires_at")
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(uuid()) @db.Uuid
+  userId                String    @map("user_id") @db.Uuid
+  accountId             String    @map("account_id") @db.VarChar(255)
+  providerId            String    @map("provider_id") @db.VarChar(64)
+  accessToken           String?   @map("access_token")
+  refreshToken          String?   @map("refresh_token")
+  idToken               String?   @map("id_token")
+  accessTokenExpiresAt  DateTime? @map("access_token_expires_at")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+  scope                 String?   @db.VarChar(500)
+  password              String?   @db.VarChar(255)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Verification {
+  id         String   @id @default(uuid()) @db.Uuid
+  identifier String   @db.VarChar(255)
+  value      String
+  expiresAt  DateTime @map("expires_at")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([identifier])
+  @@map("verifications")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourCategory — lookup table
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourCategory {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(60)
+  name        String   @db.VarChar(120)
+  description String?  @db.VarChar(500)
+  order       Int      @default(0)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tours Tour[]
+
+  @@index([isActive, order])
+  @@map("tour_categories")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Destination
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Destination {
+  id          String   @id @default(uuid()) @db.Uuid
+  slug        String   @unique @db.VarChar(80)
+  name        String   @db.VarChar(120)
+  country     String   @default("Vietnam") @db.VarChar(60)
+  region      String?  @db.VarChar(80)
+  description String?  @db.VarChar(2000)
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tours TourDestination[]
+
+  @@index([isActive])
+  @@map("destinations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tour
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Tour {
+  id             String          @id @default(uuid()) @db.Uuid
+  slug           String          @unique @db.VarChar(120)
+  title          String          @db.VarChar(200)
+  summary        String?         @db.VarChar(500)
+  categoryId     String          @map("category_id") @db.Uuid
+  durationDays   Int             @map("duration_days")
+  maxGroupSize   Int             @default(20) @map("max_group_size")
+  basePrice      Decimal         @map("base_price") @db.Decimal(14, 2)
+  // Per-traveller cost in the tour's currency (margin analytics).
+  // Null = unknown → contributes 0 cost (margin reads as an upper bound).
+  costPrice      Decimal?        @map("cost_price") @db.Decimal(14, 2)
+  // Price anchoring — optional "compare at" / strike-through price.
+  compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
+  currency       String          @default("USD") @db.VarChar(3)
+  difficulty     TourDifficulty?
+  isPublished    Boolean         @default(false) @map("is_published")
+  isFeatured     Boolean         @default(false) @map("is_featured")
+  // Merchandising — who the tour suits + card badges.
+  suitableFor    TravellerType[] @default([]) @map("suitable_for")
+  badges         TourBadge[]     @default([])
+  // EN-only arrays (ADR-0005) → Postgres text[].
+  included       String[]        @default([])
+  excluded       String[]        @default([])
+  highlights     String[]        @default([])
+  meetingPoint   String?         @map("meeting_point") @db.VarChar(300)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  category     TourCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  destinations TourDestination[]
+  itinerary    TourItineraryDay[]
+  departures   TourDeparture[]
+  faqs         TourFaq[]
+  policies     TourPolicy[]
+  bookings     Booking[]
+  reviews      Review[]
+  wishlist     Wishlist[]
+  enquiries    Enquiry[]
+  posts        PostTour[]
+
+  @@index([isPublished, categoryId])
+  @@index([isFeatured, isPublished])
+  @@index([categoryId])
+  @@map("tours")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourDestination — M:N join (ADR-0002), with primary-destination flag
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourDestination {
+  tourId        String  @map("tour_id") @db.Uuid
+  destinationId String  @map("destination_id") @db.Uuid
+  isPrimary     Boolean @default(false) @map("is_primary")
+
+  tour        Tour        @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+
+  @@id([tourId, destinationId])
+  @@index([destinationId, isPrimary])
+  @@map("tour_destinations")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourItineraryDay — one row per day
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourItineraryDay {
+  id          String  @id @default(uuid()) @db.Uuid
+  tourId      String  @map("tour_id") @db.Uuid
+  dayNumber   Int     @map("day_number")
+  title       String  @db.VarChar(200)
+  description String? @db.VarChar(2000)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@unique([tourId, dayNumber])
+  @@map("tour_itinerary_days")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourDeparture — concrete dates
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourDeparture {
+  id             String          @id @default(uuid()) @db.Uuid
+  tourId         String          @map("tour_id") @db.Uuid
+  startDate      DateTime        @map("start_date") @db.Date
+  endDate        DateTime        @map("end_date") @db.Date
+  priceOverride  Decimal?        @map("price_override") @db.Decimal(14, 2)
+  // Departure-level price anchor.
+  compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
+  seatsTotal     Int             @map("seats_total")
+  seatsBooked    Int             @default(0) @map("seats_booked")
+  status         DepartureStatus @default(OPEN)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  bookings Booking[]
+
+  @@index([tourId, startDate])
+  @@map("tour_departures")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourFaq
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourFaq {
+  id       String @id @default(uuid()) @db.Uuid
+  tourId   String @map("tour_id") @db.Uuid
+  question String @db.VarChar(300)
+  answer   String @db.VarChar(2000)
+  order    Int    @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, order])
+  @@map("tour_faqs")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TourPolicy — structured policy
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TourPolicy {
+  id     String     @id @default(uuid()) @db.Uuid
+  tourId String     @map("tour_id") @db.Uuid
+  kind   PolicyKind
+  title  String     @db.VarChar(200)
+  body   String     @db.VarChar(4000)
+  order  Int        @default(0)
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, order])
+  @@map("tour_policies")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Booking — multi-gateway (ADR-0006) + integrity hardening (ADR-0008).
+// v2 (audit H1/H3): the 4 nullable `refunded*` audit columns are GONE — refund
+// money lives in the `Refund` ledger; booking status is derived from
+// SUM(refunds). New immutable snapshots taken at create time (tourTitle,
+// departure dates, unitPrice) so historical bookings don't re-render when the
+// tour is edited (price+currency were already snapshotted).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Booking {
+  id                 String          @id @default(uuid()) @db.Uuid
+  code               String          @unique @db.VarChar(20)
+  userId             String          @map("user_id") @db.Uuid
+  tourId             String          @map("tour_id") @db.Uuid
+  departureId        String          @map("departure_id") @db.Uuid
+  numAdults          Int             @map("num_adults")
+  numChildren        Int             @default(0) @map("num_children")
+  totalAmount        Decimal         @map("total_amount") @db.Decimal(14, 2)
+  currency           String          @default("USD") @db.VarChar(3)
+  status             BookingStatus   @default(PENDING)
+  // Snapshots at create (audit H3) — live joins stay for convenience, these
+  // freeze what the customer actually bought.
+  tourTitle          String          @map("tour_title") @db.VarChar(160)
+  departureStartDate DateTime        @map("departure_start_date") @db.Date
+  departureEndDate   DateTime        @map("departure_end_date") @db.Date
+  unitPrice          Decimal         @map("unit_price") @db.Decimal(14, 2)
+  contactName        String          @map("contact_name") @db.VarChar(120)
+  contactEmail       String          @map("contact_email") @db.VarChar(200)
+  contactPhone       String?         @map("contact_phone") @db.VarChar(30)
+  specialRequests    String?         @map("special_requests") @db.VarChar(1000)
+  // Provider-neutral payment refs (ADR-0006). `providerSessionId` is the
+  // Checkout session id; `providerPaymentId` the captured payment.
+  paymentProvider    PaymentProvider @map("payment_provider")
+  providerSessionId  String?         @unique @map("provider_session_id") @db.VarChar(255)
+  providerPaymentId  String?         @map("provider_payment_id") @db.VarChar(255)
+  paidAt             DateTime?       @map("paid_at")
+  cancelledAt        DateTime?       @map("cancelled_at")
+  createdAt          DateTime        @default(now()) @map("created_at")
+  updatedAt          DateTime        @updatedAt @map("updated_at")
+
+  user                User                 @relation("BookingCustomer", fields: [userId], references: [id], onDelete: Restrict)
+  tour                Tour                 @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  departure           TourDeparture        @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  refunds             Refund[]
+  reviews             Review[]
+  cancellationRequest CancellationRequest?
+
+  @@index([userId, status])
+  @@index([userId, createdAt])
+  @@index([departureId])
+  @@index([status, createdAt])
+  @@index([tourId])
+  @@map("bookings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Refund — append-only refund ledger (audit H1). Replaces Booking.refunded*.
+// Partial refunds accumulate; booking status (REFUNDED/PARTIALLY_REFUNDED) is
+// derived from SUM(amount) vs totalAmount. `adminId` null = automatic path
+// (e.g. departure-cancelled auto-refund); set = admin-issued.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Refund {
+  id               String   @id @default(uuid()) @db.Uuid
+  bookingId        String   @map("booking_id") @db.Uuid
+  amount           Decimal  @db.Decimal(14, 2)
+  currency         String   @db.VarChar(3)
+  // Provider-side refund id (Stripe re_…, PayPal capture refund id). Unique so
+  // a webhook retry can't double-insert the same provider refund.
+  providerRefundId String?  @unique @map("provider_refund_id") @db.VarChar(255)
+  adminId          String?  @map("admin_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  booking Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  admin   User?   @relation("RefundAdmin", fields: [adminId], references: [id], onDelete: SetNull)
+
+  @@index([bookingId])
+  @@map("refunds")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CancellationRequest — a PAID customer's request to cancel/refund a booking.
+// One live row per booking (unique bookingId); a DENIED row is reused on
+// re-request. ⚠️ Audit M7 (preserving the DENIED audit trail on re-request via
+// a child decision table or a partial unique) is intentionally NOT implemented
+// here — the design choice is still open; decide before P2 money-path.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CancellationRequest {
+  id           String                    @id @default(uuid()) @db.Uuid
+  bookingId    String                    @unique @map("booking_id") @db.Uuid
+  userId       String                    @map("user_id") @db.Uuid
+  reason       String                    @db.VarChar(1000)
+  status       CancellationRequestStatus @default(REQUESTED)
+  decisionNote String?                   @map("decision_note") @db.VarChar(500)
+  decidedById  String?                   @map("decided_by") @db.Uuid
+  decidedAt    DateTime?                 @map("decided_at")
+  createdAt    DateTime                  @default(now()) @map("created_at")
+  updatedAt    DateTime                  @updatedAt @map("updated_at")
+
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  user      User    @relation("CancellationRequester", fields: [userId], references: [id], onDelete: Restrict)
+  decidedBy User?   @relation("CancellationDecider", fields: [decidedById], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@map("cancellation_requests")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Review — one per booking (rating 1..5 enforced by CHECK in hardening-v2.sql).
+// v2 (audit M1): `authorDeleted` is a denormalized tombstone flag flipped by
+// the Better Auth beforeDelete hook (updateMany) — public sort
+// [authorDeleted asc, createdAt desc] runs on the composite index, no User join.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Review {
+  id             String       @id @default(uuid(7)) @db.Uuid
+  // FKs are nullable so a CURATED testimonial can exist without a real
+  // booking/user/tour. VERIFIED reviews keep all three set.
+  tourId         String?      @map("tour_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  bookingId      String?      @unique @map("booking_id") @db.Uuid
+  rating         Int
+  title          String?      @db.VarChar(120)
+  body           String       @db.VarChar(2000)
+  // Snapshot display name (verified: copied from user.name at create;
+  // curated: admin-entered). When authorDeleted, render "Deleted account".
+  authorName     String       @map("author_name") @db.VarChar(120)
+  authorDeleted  Boolean      @default(false) @map("author_deleted")
+  // Free-text "City, Country" — curated only.
+  authorLocation String?      @map("author_location") @db.VarChar(120)
+  source         ReviewSource @default(VERIFIED)
+  isFeatured     Boolean      @default(false) @map("is_featured")
+  // Free-text trip name for curated rows with no tourId.
+  tripLabel      String?      @map("trip_label") @db.VarChar(160)
+  isApproved     Boolean      @default(false) @map("is_approved")
+  // Moderation audit: who decided last + when. Overwritten on re-moderation —
+  // latest decision wins. SetNull keeps the review if the admin is deleted.
+  moderatedById  String?      @map("moderated_by") @db.Uuid
+  moderatedAt    DateTime?    @map("moderated_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  tour        Tour?    @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  moderatedBy User?    @relation("ModeratedReviews", fields: [moderatedById], references: [id], onDelete: SetNull)
+
+  @@index([tourId, isApproved, authorDeleted, createdAt(sort: Desc)])
+  @@index([userId])
+  @@index([isApproved, isFeatured])
+  @@map("reviews")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wishlist — composite PK (user, tour)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Wishlist {
+  userId    String   @map("user_id") @db.Uuid
+  tourId    String   @map("tour_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@id([userId, tourId])
+  @@index([tourId])
+  @@map("wishlist")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PaymentEvent — webhook idempotency log, per provider (ADR-0006).
+// v2 (audit H4): denormalized `amount`/`currency`/`bookingId` so money
+// forensics stop parsing the JSON payload per request. `bookingId` is a plain
+// pointer (NO FK) — a webhook may reference a booking we can't resolve, and
+// the log row must land regardless. Idempotency = @@unique([provider, eventId])
+// with `processedAt NULL` ⇒ handler must re-run (port unchanged, keep-list).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PaymentEvent {
+  id          String          @id @default(uuid()) @db.Uuid
+  provider    PaymentProvider
+  eventId     String          @map("event_id") @db.VarChar(255)
+  type        String          @db.VarChar(100)
+  payload     Json
+  amount      Decimal?        @db.Decimal(14, 2)
+  currency    String?         @db.VarChar(3)
+  bookingId   String?         @map("booking_id") @db.Uuid
+  // NULL = received but processing not finished → a provider retry must RE-RUN
+  // the handler (handlers are idempotent at booking level).
+  processedAt DateTime?       @map("processed_at")
+  receivedAt  DateTime        @default(now()) @map("received_at")
+
+  @@unique([provider, eventId])
+  @@index([bookingId])
+  @@index([provider, receivedAt])
+  @@map("payment_events")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Enquiry — "Inquire Now" lead (ADR-0003)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Enquiry {
+  id          String        @id @default(uuid(7)) @db.Uuid
+  name        String        @db.VarChar(120)
+  email       String        @db.VarChar(200)
+  phone       String?       @db.VarChar(30)
+  message     String        @db.VarChar(2000)
+  tourId      String?       @map("tour_id") @db.Uuid
+  // Structured lead fields — all optional (a general enquiry omits them);
+  // EN-only (ADR-0005). `interests` is a free multi-select.
+  nationality String?       @db.VarChar(80)
+  travelDate  DateTime?     @map("travel_date") @db.Date
+  groupSize   Int?          @map("group_size")
+  budgetTier  String?       @map("budget_tier") @db.VarChar(40)
+  interests   String[]      @default([])
+  status      EnquiryStatus @default(NEW)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  tour  Tour?         @relation(fields: [tourId], references: [id], onDelete: SetNull)
+  notes EnquiryNote[]
+
+  @@index([status, createdAt])
+  @@index([tourId])
+  @@index([email])
+  @@map("enquiries")
+}
+
+/// Internal CRM note on an enquiry (admin-only, append-only thread).
+/// `authorName` is a snapshot so the thread stays readable if the admin
+/// account is deleted (`authorId` then goes null via SetNull).
+model EnquiryNote {
+  id         String   @id @default(uuid(7)) @db.Uuid
+  enquiryId  String   @map("enquiry_id") @db.Uuid
+  authorId   String?  @map("author_id") @db.Uuid
+  authorName String   @map("author_name") @db.VarChar(200)
+  body       String   @db.VarChar(2000)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  author  User?   @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([enquiryId, createdAt])
+  @@map("enquiry_notes")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subscriber — newsletter lead capture. DB-backed only (no ESP); the public
+// subscribe endpoint upserts by email — citext makes the dedupe DB-enforced
+// (audit M2), the service lowercase-normalization is no longer load-bearing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Subscriber {
+  id        String   @id @default(uuid(7)) @db.Uuid
+  email     String   @unique @db.Citext
+  source    String?  @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("subscribers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MediaAsset — Cloudinary-backed, polymorphic by (ownerType, ownerId).
+// No hard FK (pragmatic) — integrity via a reconcile job + same-tx cleanup.
+// Stores Cloudinary public_id; delivery URLs derived at read time.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MediaAsset {
+  id          String         @id @default(uuid()) @db.Uuid
+  publicId    String         @map("public_id") @db.VarChar(300)
+  type        MediaType
+  ownerType   MediaOwnerType @map("owner_type")
+  ownerId     String         @map("owner_id") @db.Uuid
+  role        MediaRole
+  format      String?        @db.VarChar(10)
+  width       Int?
+  height      Int?
+  durationSec Float?         @map("duration_sec")
+  posterId    String?        @map("poster_id") @db.VarChar(300)
+  bytes       Int?
+  // Editable alt text (admin media library) — web falls back to owner-derived
+  // text when null.
+  alt         String?        @db.VarChar(300)
+  sortOrder   Int            @default(0) @map("sort_order")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  // One row per owner+publicId — lets registerAsset upsert instead of racing
+  // findFirst-then-create. Per-owner (NOT global) on purpose — reuse picker.
+  @@unique([ownerType, ownerId, publicId])
+  @@index([ownerType, ownerId, role])
+  @@index([publicId])
+  @@index([posterId])
+  @@index([ownerType, createdAt])
+  @@map("media_assets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SiteMediaSlot — one row per brand-chrome image slot on the public web. The
+// catalog of keys/kinds lives in API code; this table only gives each slot a
+// stable uuid so its images live in media_assets (ownerType=SITE).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SiteMediaSlot {
+  id        String   @id @default(uuid()) @db.Uuid
+  key       String   @unique @db.VarChar(60)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("site_media_slots")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Post — editorial blog article (agency-authored). Cover/inline media via
+// MediaAsset(ownerType=POST). Content is markdown, rendered sanitized
+// client-side — NOT Json blocks (deliberate blog-v2 decision, keep-list).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Post {
+  id              String     @id @default(uuid(7)) @db.Uuid
+  slug            String     @unique @db.VarChar(80)
+  title           String     @db.VarChar(160)
+  excerpt         String?    @db.VarChar(300)
+  content         String
+  // SEO overrides for <title>/meta description (fall back to title/excerpt).
+  metaTitle       String?    @map("meta_title") @db.VarChar(70)
+  metaDescription String?    @map("meta_description") @db.VarChar(160)
+  status          PostStatus @default(DRAFT)
+  publishedAt     DateTime?  @map("published_at")
+  authorId        String     @map("author_id") @db.Uuid
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  author       User          @relation(fields: [authorId], references: [id], onDelete: Restrict)
+  tags         PostTagLink[]
+  relatedTours PostTour[]
+
+  @@index([status, publishedAt])
+  @@index([authorId])
+  @@map("posts")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PostTag — free-form blog taxonomy (created inline from the admin post form).
+// Slug is the identity (upsert target); display name = first writer's casing.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PostTag {
+  id        String   @id @default(uuid()) @db.Uuid
+  slug      String   @unique @db.VarChar(60)
+  name      String   @db.VarChar(60)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  posts PostTagLink[]
+
+  @@map("post_tags")
+}
+
+model PostTagLink {
+  postId String @map("post_id") @db.Uuid
+  tagId  String @map("tag_id") @db.Uuid
+
+  post Post    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag  PostTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@index([tagId])
+  @@map("post_tag_links")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PostTour — admin-curated "tours in this story" (max 3 enforced at the DTO).
+// `order` = pick order. Tour deletion silently drops the link (post survives).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model PostTour {
+  postId String @map("post_id") @db.Uuid
+  tourId String @map("tour_id") @db.Uuid
+  order  Int    @default(0)
+
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tourId])
+  @@index([tourId])
+  @@map("post_tours")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Outbox — transactional email outbox (ADR-0007).
+//
+// A row is written ATOMICALLY with the state change it announces (raw-SQL CTE
+// or short $transaction). A pg-boss worker drains PENDING rows oldest-first.
+// `dedupeKey` makes the pipeline idempotent under webhook/handler retries
+// (`ON CONFLICT DO NOTHING`); convention `<event>:<entityId>[:<state>]`, uuid
+// suffix only for legitimately repeating events (audit M5). `id` is
+// DB-generated (`gen_random_uuid()`) so the raw-SQL CTE insert needs no
+// client-side id. Retention (audit M5): worker cron deletes SENT > 30 days,
+// keeps FAILED for triage.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Outbox {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  type        EmailType
+  payload     Json
+  status      OutboxStatus @default(PENDING)
+  attempts    Int          @default(0)
+  dedupeKey   String       @unique @map("dedupe_key") @db.VarChar(200)
+  lastError   String?      @map("last_error") @db.VarChar(1000)
+  createdAt   DateTime     @default(now()) @map("created_at")
+  processedAt DateTime?    @map("processed_at")
+
+  @@index([status, createdAt])
+  @@map("outbox")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MediaGarbage — orphaned Cloudinary assets awaiting destruction.
+// `publicId` is UNIQUE so duplicate pending entries collapse. `id` is
+// DB-generated for raw-SQL inserts (same rationale as Outbox).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model MediaGarbage {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  publicId     String   @unique @map("public_id") @db.VarChar(300)
+  // Cloudinary resource_type ('image' | 'video') — destroy needs it.
+  resourceType String   @default("image") @map("resource_type") @db.VarChar(10)
+  attempts     Int      @default(0)
+  lastError    String?  @map("last_error") @db.VarChar(1000)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("media_garbage")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// AI Concierge Chat. Guest identity = knowledge of the conversation uuid
+// (capstone-accepted risk); a conversation created by a logged-in user binds to
+// userId and then REQUIRES a matching Better Auth session to read/continue
+// (audit H6 — ownership gate moved off Supabase JWT). Retention (H6): worker
+// cron purges stale conversations (guest `userId IS NULL` first) using the
+// [updatedAt] index below.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ChatConversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user     User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  messages ChatMessage[]
+
+  @@index([userId])
+  @@index([updatedAt])
+  @@map("chat_conversations")
+}
+
+model ChatMessage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  // Insertion order within the conversation (createdAt can collide in-batch).
+  seq            Int
+  role           ChatRole
+  // The AI SDK UIMessage stored verbatim ({id, role, parts}) — lossless and
+  // directly replayable into useChat on the web.
+  payload        Json
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  conversation ChatConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, seq])
+  @@map("chat_messages")
+}
