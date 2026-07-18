@@ -3,3 +3,5 @@ packages:
   - 'libs/shared/*'
   - 'libs/web/*'
   - 'libs/mobile/*'
+allowBuilds:
+  '@swc/core': true
