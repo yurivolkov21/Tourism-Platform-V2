@@ -1,0 +1,31 @@
+{
+  "name": "@tourism/tokens",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./package.json": "./package.json",
+    "./tokens.css": "./generated/tokens.css",
+    "./theme": {
+      "types": "./generated/theme.d.ts",
+      "import": "./generated/theme.js",
+      "default": "./generated/theme.js"
+    },
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node style-dictionary/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "culori": "4.0.2",
+    "style-dictionary": "5.5.0",
+    "typescript": "7.0.2",
+    "vitest": "4.1.10"
+  }
+}

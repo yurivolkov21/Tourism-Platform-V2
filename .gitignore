@@ -1,0 +1,33 @@
+# deps
+node_modules/
+
+# build outputs
+dist/
+build/
+out/
+.next/
+.expo/
+generated/
+
+# turbo
+.turbo/
+
+# env — không bao giờ commit secrets
+.env
+.env.*
+!.env.example
+
+# test / coverage
+coverage/
+
+# editor & OS
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea/
+.DS_Store
+
+# logs
+*.log
+npm-debug.log*
+pnpm-debug.log*

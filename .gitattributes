@@ -1,0 +1,15 @@
+# Normalize mọi file text về LF trong repo VÀ trong working tree.
+# Bài học từ Nexora: repo nằm ngoài WSL + không có .gitattributes → 797 file CRLF churn.
+* text=auto eol=lf
+
+# Binary — không đụng line ending
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
