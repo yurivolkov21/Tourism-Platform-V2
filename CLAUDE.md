@@ -21,6 +21,9 @@ P5 mobile → P6 AI concierge → freeze 15/10.
 
 1. **One feature = one branch.** Branch → implement → user review → merge →
    xóa branch. Docs/meta nhỏ được vào thẳng `main`.
+   **Merge kiểu rebase + fast-forward** (quy ước 18/07): trước khi merge, rebase
+   branch lên `main` mới nhất rồi `git merge --ff-only` — lịch sử tuyến tính,
+   không merge commit.
 2. **Hỏi trước khi bắt đầu feature/phase mới; xác nhận trước mọi merge/push.**
 3. **Spec → plan → execute** cho feature nhiều bước; spec đặt trong `docs/`.
 4. **TDD trên logic thuần** — test trước, ≥80% trên logic mới.
