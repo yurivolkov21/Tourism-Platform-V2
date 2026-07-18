@@ -1,5 +1,5 @@
-# Local dev stack (WSL). W6 sẽ bổ sung service api + worker.
-# Chạy: docker compose up -d postgres
+# Boot cả hệ một lệnh: docker compose up -d --build
+# (dev hằng ngày chỉ cần: docker compose up -d postgres)
 services:
   postgres:
     image: postgres:17-alpine
@@ -16,6 +16,49 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # One-shot: migrate + seed (idempotent) rồi thoát — api/worker chờ nó xong.
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: build
+    # Gọi thẳng bin (né deps-status-check của pnpm 11 trong container).
+    command: sh -c "cd apps/api && ./node_modules/.bin/prisma migrate deploy && ./node_modules/.bin/swc src prisma -d dist-seed --ignore '**/*.spec.ts' && node dist-seed/prisma/seed.js"
+    environment:
+      DATABASE_URL: postgresql://tourism:tourism@postgres:5432/tourism
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://tourism:tourism@postgres:5432/tourism
+      # Secret demo cho compose local — deploy thật dùng secret thật qua env.
+      BETTER_AUTH_SECRET: compose-local-demo-secret-0123456789abcdef
+      BETTER_AUTH_URL: http://localhost:3001
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ['node', 'dist/worker.js']
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://tourism:tourism@postgres:5432/tourism
+      BETTER_AUTH_SECRET: compose-local-demo-secret-0123456789abcdef
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   pgdata:

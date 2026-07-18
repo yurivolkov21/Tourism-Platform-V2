@@ -2,6 +2,39 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-18 — P1: API lõi (branch `feat/p1-api-core`)
+
+- **W1** NestJS 11 **ESM-first** + Fastify (D1 thắng — zero friction, không cần
+  fallback CJS): SWC emit + tsc/TS7 typecheck, Vitest qua unplugin-swc, Zod env
+  validation fail-fast, `/health`, compose Postgres 17.
+- **W2** Prisma schema v2: 30 model (27 port + 4 Better Auth + `Refund` ledger),
+  toàn bộ delta audit áp xong (snapshots Booking, PaymentEvent forensics,
+  `authorDeleted`, 8 chỉnh index, Decimal 14,2, uuidv7, TourDifficulty enum,
+  citext Subscriber). `hardening-v2.sql` = migration thứ hai (CHECK + citext +
+  RLS **31/31 bảng**, vá `cancellation_requests` Nexora sót). Seed 177 catalog
+  rows + booking PAID có snapshot. Verify sống: CHECK chống oversell nổ đúng,
+  citext khớp case-insensitive.
+- **W3** Better Auth 1.6.23 tại `/api/auth/*`: `generateId:false` (id base62
+  mặc định của BA sẽ vỡ cột uuid — phát hiện quan trọng), `role input:false`,
+  ADMIN_EMAILS bootstrap promote-only, AuthGuard chặn session user tombstone.
+  `DELETE /api/account` = tombstone MỘT transaction (scrub PII, email
+  `deleted+uuid@tombstone.local` giải phóng email gốc, xóa sessions/accounts,
+  flip `Review.authorDeleted`) — chủ đích không dùng BA deleteUser (hard-delete
+  vs FK Restrict).
+- **W4** `@tourism/contract` (Zod 4 + oRPC) + CatalogModule qua `@orpc/nest`
+  `@Implement`: `/api/tours` (+filters/pagination), `/api/tours/{slug}` (404
+  typed), `/api/destinations`, `/api/categories`, `/api/health`.
+  ZodSmartCoercionPlugin giữ schema thuần cho client types. expectTypeOf chứng
+  minh `ContractRouterClient` suy `Paged<TourCard>` — **zero codegen**.
+- **W5** Worker pg-boss 12 process riêng (`dist/worker.js`, ESM thuần — hết
+  dynamic-import): cron `outbox-drain` 1′ (batch 50, MAX_ATTEMPTS 5, updateMany
+  guard chống resurrect) + `outbox-purge` SENT >30d (giữ FAILED). Deliverer
+  console sau token EMAIL_DELIVERER (P2 thay Resend). Smoke bắt tick cron thật.
+- **W6** Docker: multi-stage Dockerfile (kiêm artifact deploy) + compose trọn hệ
+  (postgres + migrate one-shot idempotent + api + worker). Quy ước dedupeKey
+  văn bản hóa (`docs/conventions/outbox-dedupe-key.md`).
+- Tests after: **63** (unit 22 api + 22 libs · integration 19 trên PG thật).
+
 ## 2026-07-18 — P0: khung xương monorepo
 
 - Khởi tạo repo trong WSL: pnpm 11 + Turborepo 2.10 · TypeScript 7.0 (tsgo) ·

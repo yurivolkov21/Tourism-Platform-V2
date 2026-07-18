@@ -8,13 +8,14 @@ Nền tảng đặt tour du lịch — **capstone project**, rebuild nâng cấp
 
 | Project | Đường dẫn | Stack | Trạng thái |
 | --- | --- | --- | --- |
-| `@tourism/api` | `apps/api` | NestJS 11→12 · Prisma 7 · oRPC · Better Auth · pg-boss | ⬜ P1 |
+| `@tourism/api` | `apps/api` | NestJS 11→12 · Prisma 7 · oRPC · Better Auth · pg-boss | ✅ P1 |
 | `@tourism/web` | `apps/web` | Next.js 16 (Cache Components) · React 19 · Tailwind 4 | ⬜ P3 |
 | `@tourism/admin` | `apps/admin` | Vite · TanStack Router/Query SPA | ⬜ P4 |
 | `@tourism/mobile` | `apps/mobile` | Expo SDK 56 · RN 0.85 (New Arch) | ⬜ P5 |
 | `@tourism/tokens` | `libs/shared/tokens` | Style Dictionary · oklch → CSS vars + RN hex theme | ✅ ported |
 | `@tourism/i18n` | `libs/shared/i18n` | EN copy + legal docs | ✅ ported |
-| `@tourism/core` | `libs/shared/core` | domain logic + contract types | ⬜ P1 |
+| `@tourism/contract` | `libs/shared/contract` | Zod 4 schemas + oRPC contract (types end-to-end) | ✅ P1 |
+| `@tourism/core` | `libs/shared/core` | domain logic thuần (khi cần ở P2+) | ⬜ |
 
 ## Yêu cầu
 
