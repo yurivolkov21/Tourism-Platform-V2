@@ -23,6 +23,9 @@ const EnvSchema = z
     ADMIN_EMAILS: z.string().default('admin@tourism.test'),
     // Origin được phép gọi Better Auth (CSRF) — mặc định web (3000) + admin (3002).
     TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002'),
+    // Base URL của web app (P3) — đích redirect success/cancel cho checkout
+    // session (P2 W1). Prod PHẢI set domain thật.
+    FRONTEND_URL: z.url().default('http://localhost:3000'),
     // Google OAuth — optional; auth.config chỉ bật socialProviders.google khi có ĐỦ cặp.
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),

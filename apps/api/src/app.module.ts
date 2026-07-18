@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ORPCModule, onError } from '@orpc/nest';
 import { experimental_ZodSmartCoercionPlugin as ZodSmartCoercionPlugin } from '@orpc/zod/zod4';
 import { AuthModule } from './auth/auth.module.js';
+import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 
@@ -26,6 +27,7 @@ import { HealthModule } from './modules/health/health.module.js';
     HealthModule,
     AuthModule,
     CatalogModule,
+    BookingsModule,
   ],
 })
 export class AppModule {}

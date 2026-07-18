@@ -19,6 +19,9 @@ describe('contract routes', () => {
     [contract.catalog.tours.bySlug, 'GET /api/tours/{slug}'],
     [contract.catalog.destinations.list, 'GET /api/destinations'],
     [contract.catalog.categories.list, 'GET /api/categories'],
+    [contract.bookings.create, 'POST /api/bookings'],
+    [contract.bookings.mine, 'GET /api/bookings'],
+    [contract.bookings.byCode, 'GET /api/bookings/{code}'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
@@ -29,6 +32,16 @@ describe('contract routes', () => {
 
   it('bySlug declares a typed NOT_FOUND error', () => {
     expect(contract.catalog.tours.bySlug['~orpc'].errorMap).toHaveProperty('NOT_FOUND');
+  });
+
+  it('bookings.create declares its typed business errors with explicit statuses', () => {
+    const errorMap = contract.bookings.create['~orpc'].errorMap as Record<
+      string,
+      { status?: number } | undefined
+    >;
+    expect(errorMap.DEPARTURE_NOT_AVAILABLE?.status).toBe(400);
+    expect(errorMap.SEATS_UNAVAILABLE?.status).toBe(409);
+    expect(contract.bookings.byCode['~orpc'].errorMap).toHaveProperty('NOT_FOUND');
   });
 });
 
