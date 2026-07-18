@@ -7,6 +7,7 @@ import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { BookingsService } from './bookings.service.js';
+import { CancellationsService } from './cancellations.service.js';
 import {
   RefundNothingLeftError,
   RefundOverTotalError,
@@ -32,6 +33,7 @@ export class AdminBookingsController {
   constructor(
     private readonly bookings: BookingsService,
     private readonly refunds: RefundsService,
+    private readonly cancellations: CancellationsService,
   ) {}
 
   @Implement(contract.admin.bookings.list)
@@ -46,7 +48,12 @@ export class AdminBookingsController {
     return implement(contract.admin.bookings.byCode).handler(async ({ input, errors }) => {
       const booking = await this.bookings.adminByCode(input.code);
       if (!booking) throw errors.NOT_FOUND();
-      return booking;
+      // W4: the admin detail carries the full D1-B cancellation trail (DENIED
+      // history rows survive re-requests), oldest first.
+      return {
+        ...booking,
+        cancellationRequests: await this.cancellations.historyForBooking(booking.id, booking.code),
+      };
     });
   }
 

@@ -1,13 +1,20 @@
 import { oc } from '@orpc/contract';
 import { z } from 'zod';
 import {
+  AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
+  AdminCancellationRequestSchema,
+  AdminCancellationsListQuerySchema,
   AdminRefundInputSchema,
   AdminRefundResultSchema,
   BookingCodeSchema,
   BookingSchema,
   BookingsListQuerySchema,
+  CancelBookingInputSchema,
+  CancellationRequestSchema,
   CreateBookingInputSchema,
+  DecideCancellationInputSchema,
+  DecideCancellationResultSchema,
 } from './schemas/bookings.js';
 import {
   DestinationSchema,
@@ -128,6 +135,29 @@ export const contract = {
         NOT_FOUND: { message: 'Booking not found' },
       })
       .output(BookingSchema),
+    cancel: oc
+      .route({
+        method: 'POST',
+        path: '/api/bookings/{code}/cancel',
+        summary: 'Request cancellation of an own PAID booking (authed, owner-only)',
+      })
+      .input(CancelBookingInputSchema)
+      .errors({
+        // Owner-or-404, same policy as byCode.
+        NOT_FOUND: { message: 'Booking not found' },
+        // The partial unique index fired — a live REQUESTED row already exists.
+        ALREADY_REQUESTED: {
+          status: 409,
+          message: 'A cancellation request is already open for this booking',
+        },
+        // Booking not PAID, or the departure has already started — one code:
+        // either way this booking cannot enter the cancellation flow.
+        NOT_CANCELLABLE: {
+          status: 422,
+          message: 'Only a PAID booking with a future departure can be cancelled',
+        },
+      })
+      .output(CancellationRequestSchema),
   },
   /**
    * Admin surface (spec P2 §3, W3). Same guard model as `bookings`: the
@@ -149,13 +179,13 @@ export const contract = {
         .route({
           method: 'GET',
           path: '/api/admin/bookings/{code}',
-          summary: 'Any booking by code (admin — not owner-scoped)',
+          summary: 'Any booking by code + cancellation history (admin — not owner-scoped)',
         })
         .input(z.object({ code: BookingCodeSchema }))
         .errors({
           NOT_FOUND: { message: 'Booking not found' },
         })
-        .output(BookingSchema),
+        .output(AdminBookingDetailSchema),
       refund: oc
         .route({
           method: 'POST',
@@ -190,6 +220,50 @@ export const contract = {
           },
         })
         .output(AdminRefundResultSchema),
+    },
+    /**
+     * Cancellation queue (spec P2 W4, D1-B). `decide` is one endpoint for both
+     * verdicts: deny flips the request only; approve orchestrates the
+     * full-remainder refund + booking CANCELLED + seat release.
+     */
+    cancellations: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/cancellations',
+          summary: 'List cancellation requests (admin, paged, status filter)',
+        })
+        .input(AdminCancellationsListQuerySchema)
+        .output(PagedSchema(AdminCancellationRequestSchema)),
+      decide: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/cancellations/{id}/decide',
+          summary: 'Approve (refund + cancel + release seats) or deny a request',
+        })
+        .input(DecideCancellationInputSchema)
+        .errors({
+          NOT_FOUND: { message: 'Cancellation request not found' },
+          // The request is DENIED/REFUNDED already — decisions are final
+          // (append-only history: the customer re-requests instead).
+          ALREADY_DECIDED: {
+            status: 409,
+            message: 'This cancellation request has already been decided',
+          },
+          // Approve only: the booking has no refundable remainder / captured
+          // payment (same gate class as admin.bookings.refund).
+          NOT_REFUNDABLE: {
+            status: 422,
+            message: 'Booking has no refundable remainder to approve against',
+          },
+          // Approve only: the provider refused/failed the refund call —
+          // nothing was ledgered and the request stays REQUESTED.
+          REFUND_FAILED: {
+            status: 502,
+            message: 'Provider refund failed',
+          },
+        })
+        .output(DecideCancellationResultSchema),
     },
   },
 };

@@ -32,8 +32,9 @@ export class SeatsUnavailableError extends Error {
 /** Prisma Decimal → lossless string ("39.00"). Money NEVER becomes a float. */
 const money = (value: { toString(): string }): string => value.toString();
 
-/** Prisma `@db.Date` (UTC midnight Date) → calendar date "YYYY-MM-DD". */
-const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
+/** Prisma `@db.Date` (UTC midnight Date) → calendar date "YYYY-MM-DD".
+ * Exported for the cancellation surface (same serialization convention). */
+export const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 type BookingRow = Prisma.BookingModel;
 
@@ -120,7 +121,13 @@ export class BookingsService {
       where: { id: input.departureId },
       include: {
         tour: {
-          select: { id: true, title: true, currency: true, basePrice: true, isPublished: true },
+          select: {
+            id: true,
+            title: true,
+            currency: true,
+            basePrice: true,
+            isPublished: true,
+          },
         },
       },
     });
@@ -207,7 +214,10 @@ export class BookingsService {
   /** Own bookings, newest first (stable id tiebreak), optional status filter. */
   async mine(userId: string, query: BookingsListQuery): Promise<Paged<Booking>> {
     const { page, limit, status } = query;
-    const where: Prisma.BookingWhereInput = { userId, ...(status ? { status } : {}) };
+    const where: Prisma.BookingWhereInput = {
+      userId,
+      ...(status ? { status } : {}),
+    };
 
     const [total, rows] = await Promise.all([
       prisma.booking.count({ where }),

@@ -9,6 +9,12 @@ import {
   DepartureNotAvailableError,
   SeatsUnavailableError,
 } from './bookings.service.js';
+import {
+  BookingNotCancellableError,
+  CancellationAlreadyRequestedError,
+  CancellationsService,
+} from './cancellations.service.js';
+import { BookingNotFoundError } from './refunds.service.js';
 
 /**
  * Authed booking procedures (spec P2 W1), same @Implement pattern as catalog.
@@ -25,7 +31,10 @@ import {
 @Controller()
 @UseGuards(AuthGuard)
 export class BookingsController {
-  constructor(private readonly bookings: BookingsService) {}
+  constructor(
+    private readonly bookings: BookingsService,
+    private readonly cancellations: CancellationsService,
+  ) {}
 
   @Implement(contract.bookings.create)
   create(@CurrentUser() user: SessionUser) {
@@ -57,6 +66,25 @@ export class BookingsController {
       const booking = await this.bookings.byCode(user.id, input.code);
       if (!booking) throw errors.NOT_FOUND();
       return booking;
+    });
+  }
+
+  @Implement(contract.bookings.cancel)
+  cancel(@CurrentUser() user: SessionUser) {
+    return implement(contract.bookings.cancel).handler(async ({ input, errors }) => {
+      try {
+        return await this.cancellations.request(user.id, input.code, input.reason);
+      } catch (error) {
+        // Owner-or-404, same policy as byCode (no existence leak).
+        if (error instanceof BookingNotFoundError) throw errors.NOT_FOUND();
+        if (error instanceof BookingNotCancellableError) {
+          throw errors.NOT_CANCELLABLE({ message: error.message });
+        }
+        if (error instanceof CancellationAlreadyRequestedError) {
+          throw errors.ALREADY_REQUESTED({ message: error.message });
+        }
+        throw error;
+      }
     });
   }
 }

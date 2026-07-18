@@ -2,7 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { AdminRefundResult, Refund as RefundView } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, EmailType } from '../../generated/prisma/enums.js';
+import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
 import { toBooking } from './bookings.service.js';
 import {
@@ -123,19 +123,10 @@ export class RefundsService {
 
     // Provider refund FIRST (see doc above). A failure surfaces as a typed
     // error and leaves booking + ledger untouched — the admin just retries.
-    let providerRefundId: string;
-    try {
-      const gateway = resolveGateway(this.gateways, booking.paymentProvider);
-      ({ providerRefundId } = await gateway.refund({
-        providerPaymentId: booking.providerPaymentId,
-        amount: amount.toFixed(2),
-        currency: booking.currency, // invariant #6 by construction: always the booking's currency
-      }));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown';
-      this.logger.error(`Admin refund failed for booking ${booking.code}: ${message}`);
-      throw new ProviderRefundFailedError(message);
-    }
+    const providerRefundId = await this.executeGatewayRefund(
+      { ...booking, providerPaymentId: booking.providerPaymentId },
+      amount,
+    );
 
     const nextStatus = deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
     const updated = await prisma.$transaction(async (tx) => {
@@ -178,6 +169,40 @@ export class RefundsService {
       booking: toBooking(updated, null),
       refunds: await this.historyForBooking(bookingCode),
     };
+  }
+
+  /**
+   * The provider-refund step SHARED by the admin refund above and the W4
+   * cancellation-approve flow (spec: reuse, don't duplicate gateway logic):
+   * resolve the booking's gateway and refund `amount` in the BOOKING's
+   * currency — invariant #6 by construction, a currency mismatch is
+   * unrepresentable. Runs OUTSIDE any transaction on purpose (provider HTTP
+   * latency never holds a DB connection; we never ledger a refund that did
+   * not happen — callers ledger AFTER this returns). Failures wrap into
+   * {@link ProviderRefundFailedError} (→ 502), nothing has been written.
+   */
+  async executeGatewayRefund(
+    booking: {
+      code: string;
+      currency: string;
+      paymentProvider: PaymentProvider;
+      providerPaymentId: string;
+    },
+    amount: Prisma.Decimal,
+  ): Promise<string> {
+    try {
+      const gateway = resolveGateway(this.gateways, booking.paymentProvider);
+      const { providerRefundId } = await gateway.refund({
+        providerPaymentId: booking.providerPaymentId,
+        amount: amount.toFixed(2),
+        currency: booking.currency,
+      });
+      return providerRefundId;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'unknown';
+      this.logger.error(`Provider refund failed for booking ${booking.code}: ${message}`);
+      throw new ProviderRefundFailedError(message);
+    }
   }
 
   /**

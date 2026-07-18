@@ -85,7 +85,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     });
     await prisma.tourDeparture.createMany({ data: departures });
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -159,7 +161,11 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     const session = fake.sessionFor(body.id);
     expect(session).toBeDefined();
     expect(body.checkoutUrl).toBe(session?.checkoutUrl);
-    expect(session?.input).toMatchObject({ code: body.code, amount: '117.00', currency: 'USD' });
+    expect(session?.input).toMatchObject({
+      code: body.code,
+      amount: '117.00',
+      currency: 'USD',
+    });
 
     // DB row: PENDING, snapshots frozen, provider session persisted.
     const row = await prisma.booking.findUnique({ where: { code: body.code } });
@@ -175,7 +181,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(row?.totalAmount.toFixed(2)).toBe('117.00');
 
     // Invariant #1 (spec §4): PENDING holds NO seats.
-    const after = await prisma.tourDeparture.findUnique({ where: { id: depOpen.id } });
+    const after = await prisma.tourDeparture.findUnique({
+      where: { id: depOpen.id },
+    });
     expect(after?.seatsBooked).toBe(3);
   });
 
@@ -200,7 +208,10 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       depUnpublished.id,
       'e9100001-dead-4000-8000-000000000000', // does not exist
     ]) {
-      const res = await createBooking(cookie, { ...createPayload, departureId });
+      const res = await createBooking(cookie, {
+        ...createPayload,
+        departureId,
+      });
       expect(res.statusCode).toBe(400);
       expect(res.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
     }
@@ -210,7 +221,11 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
 
   it('party larger than seats left → 409 SEATS_UNAVAILABLE (soft check)', async () => {
     const cookie = await signUpUser('greedy@example.com');
-    const res = await createBooking(cookie, { ...createPayload, numAdults: 5, numChildren: 1 });
+    const res = await createBooking(cookie, {
+      ...createPayload,
+      numAdults: 5,
+      numChildren: 1,
+    });
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ code: 'SEATS_UNAVAILABLE' });
     expect(await prisma.booking.count()).toBe(0);
@@ -220,7 +235,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     const cookie = await signUpUser('invalid@example.com');
     expect((await createBooking(cookie, { ...createPayload, numAdults: 0 })).statusCode).toBe(400);
     expect(
-      (await createBooking(cookie, { ...createPayload, paymentProvider: 'BITCOIN' })).statusCode,
+      (
+        await createBooking(cookie, {
+          ...createPayload,
+          paymentProvider: 'BITCOIN',
+        })
+      ).statusCode,
     ).toBe(400);
     expect(fake.sessions).toHaveLength(0);
   });
@@ -244,7 +264,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     const bob = await signUpUser('bob@example.com', 'Bob');
     const first = BookingSchema.parse((await createBooking(alice)).json());
     const second = BookingSchema.parse(
-      (await createBooking(alice, { ...createPayload, departureId: depOverride.id })).json(),
+      (
+        await createBooking(alice, {
+          ...createPayload,
+          departureId: depOverride.id,
+        })
+      ).json(),
     );
     BookingSchema.parse((await createBooking(bob)).json());
 
@@ -255,7 +280,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     });
     expect(res.statusCode).toBe(200);
     const paged = PagedSchema(BookingSchema).parse(res.json());
-    expect(paged).toMatchObject({ page: 1, limit: 12, total: 2, totalPages: 1 });
+    expect(paged).toMatchObject({
+      page: 1,
+      limit: 12,
+      total: 2,
+      totalPages: 1,
+    });
     expect(paged.items.map((b) => b.code).sort()).toEqual([first.code, second.code].sort());
     // Reads never re-expose a checkout redirect.
     expect(paged.items.every((b) => b.checkoutUrl === null)).toBe(true);
@@ -298,7 +328,10 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         headers: { cookie },
       });
       expect(res.statusCode).toBe(404);
-      expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Booking not found' });
+      expect(res.json()).toMatchObject({
+        code: 'NOT_FOUND',
+        message: 'Booking not found',
+      });
     }
   });
 });

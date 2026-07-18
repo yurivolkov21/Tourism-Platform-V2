@@ -147,3 +147,98 @@ export const AdminBookingsListQuerySchema = z.object({
 });
 
 export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchema>;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Cancellations (spec P2 §3, W4 — D1-B append-only history)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Mirrors Prisma enum CancellationRequestStatus. REQUESTED = live (at most one
+ * per booking — partial unique index), DENIED = admin refused (booking stays
+ * PAID), REFUNDED = approved → full-remainder refund issued + booking
+ * CANCELLED (docs/conventions/booking-states.md).
+ */
+export const CancellationRequestStatusSchema = z.enum(['REQUESTED', 'REFUNDED', 'DENIED']);
+export type CancellationRequestStatusValue = z.output<typeof CancellationRequestStatusSchema>;
+
+/** Input for `bookings.cancel` — the customer's reason travels to the admin queue. */
+export const CancelBookingInputSchema = z.object({
+  code: BookingCodeSchema,
+  reason: z.string().min(1).max(1000),
+});
+
+export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;
+
+/**
+ * One cancellation request row (append-only history per D1-B — a booking can
+ * carry several: DENIED history + at most one live REQUESTED). Decision fields
+ * are null until an admin decides.
+ */
+export const CancellationRequestSchema = z.object({
+  id: z.uuid(),
+  bookingCode: BookingCodeSchema,
+  reason: z.string().min(1).max(1000),
+  status: CancellationRequestStatusSchema,
+  decisionNote: z.string().max(500).nullable(),
+  decidedAt: z.iso.datetime().nullable(),
+  createdAt: z.iso.datetime(),
+});
+
+export type CancellationRequest = z.output<typeof CancellationRequestSchema>;
+
+/**
+ * Admin-queue row: the request plus enough booking context to decide without a
+ * second lookup (ported from Nexora's admin cancellation DTO).
+ */
+export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
+  tourTitle: z.string().min(1).max(160),
+  departureStartDate: z.iso.date(),
+  contactName: z.string().min(1).max(120),
+  contactEmail: z.email().max(200),
+});
+
+export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestSchema>;
+
+/**
+ * Query for `admin.cancellations.list`. `status` omitted → ALL requests
+ * (consistent with `admin.bookings.list`; the open queue is `?status=REQUESTED`).
+ */
+export const AdminCancellationsListQuerySchema = z.object({
+  page: z.int().min(1).default(1),
+  limit: z.int().min(1).max(100).default(20),
+  status: CancellationRequestStatusSchema.optional(),
+});
+
+export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsListQuerySchema>;
+
+/**
+ * Input for `admin.cancellations.decide` — one endpoint for both verdicts.
+ * `approve: true` → full-remainder refund + booking CANCELLED + seats released
+ * + request REFUNDED; `approve: false` → request DENIED, booking untouched.
+ */
+export const DecideCancellationInputSchema = z.object({
+  id: z.uuid(),
+  approve: z.boolean(),
+  decisionNote: z.string().min(1).max(500).optional(),
+});
+
+export type DecideCancellationInput = z.output<typeof DecideCancellationInputSchema>;
+
+/** Output of `admin.cancellations.decide`: the decided request + the booking after it. */
+export const DecideCancellationResultSchema = z.object({
+  request: AdminCancellationRequestSchema,
+  booking: BookingSchema,
+});
+
+export type DecideCancellationResult = z.output<typeof DecideCancellationResultSchema>;
+
+/**
+ * Output of `admin.bookings.byCode` (W4 upgrade): the booking plus its full
+ * cancellation history, oldest first — the D1-B append-only trail (DENIED rows
+ * survive re-requests) is part of the admin detail view.
+ */
+export const AdminBookingDetailSchema = BookingSchema.extend({
+  cancellationRequests: z.array(CancellationRequestSchema),
+});
+
+export type AdminBookingDetail = z.output<typeof AdminBookingDetailSchema>;
