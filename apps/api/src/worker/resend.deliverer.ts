@@ -34,7 +34,21 @@ export class ResendDeliverer implements EmailDeliverer {
 
   async deliver(type: EmailType, payload: unknown): Promise<void> {
     const fields = asRecord(payload);
-    const to = typeof fields.email === 'string' ? fields.email : undefined;
+    /**
+     * Người nhận: `to` (nếu có) THẮNG `email`.
+     *
+     * Vì sao cần tách: hầu hết email gửi cho chính chủ nhân của `email`
+     * trong payload, nhưng ENQUIRY_ADMIN_ALERT thì ngược lại — `email` ở
+     * đó là địa chỉ KHÁCH (để admin đọc), còn người nhận phải là admin.
+     * Không tách thì alert bay thẳng về hộp thư khách và không admin nào
+     * biết có lead mới — đúng thứ tính năng này sinh ra để sửa.
+     */
+    const to =
+      typeof fields.to === 'string' && fields.to.length > 0
+        ? fields.to
+        : typeof fields.email === 'string'
+          ? fields.email
+          : undefined;
     if (!to) {
       // Bug ở producer, không phải lỗi tạm thời — vẫn throw: drain retry rồi
       // park row FAILED kèm message này cho operator triage.

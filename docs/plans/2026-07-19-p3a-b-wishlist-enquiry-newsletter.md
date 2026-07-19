@@ -622,6 +622,7 @@ export const EnquiryResultSchema = z.object({ id: z.uuid().nullable() });
 
 1. Tạo enquiry hợp lệ → 201, DB có 1 row `status: NEW`, response trả `id` khác null
 2. **Cùng transaction sinh ĐÚNG 2 outbox**: `ENQUIRY_RECEIVED` (dedupeKey `enquiry-received:<id>`) và `ENQUIRY_ADMIN_ALERT` (`enquiry-admin-alert:<id>`)
+3. **Alert đi tới ADMIN, không tới khách**: payload của `ENQUIRY_ADMIN_ALERT` phải có `to` = `adminEmails[0]`, và `to` ≠ email khách. Đây là lỗi đã suýt lọt: `deliver()` mặc định lấy người nhận từ `payload.email`
 3. **Honeypot**: gửi kèm `website: 'http://spam'` → **201**, `id: null`, và DB **không có row nào mới** (đếm trước/sau)
 4. `message` 9 ký tự → lỗi validate
 5. `tourId` trỏ tour chưa publish → `TOUR_NOT_FOUND`, và **không** ghi enquiry lẫn outbox nào
@@ -673,7 +674,7 @@ Run: `cd apps/api && pnpm vitest run --config vitest.int.config.ts src/modules/e
       // dedupeKey chứa id vừa sinh nên duy nhất theo cấu tạo. Dùng
       // `createMany` cho gọn; `skipDuplicates` ở đây không bao giờ skip gì
       // — xem docs/conventions/outbox-dedupe-key.md.
-      const payload = {
+      const shared = {
         name: input.name,
         email: input.email,
         message: input.message,
@@ -683,12 +684,18 @@ Run: `cd apps/api && pnpm vitest run --config vitest.int.config.ts src/modules/e
         data: [
           {
             type: EmailType.ENQUIRY_RECEIVED,
-            payload,
+            // Ack gửi cho khách → người nhận là `email` trong payload.
+            payload: shared,
             dedupeKey: `enquiry-received:${enquiry.id}`,
           },
           {
             type: EmailType.ENQUIRY_ADMIN_ALERT,
-            payload,
+            // ⚠️ Alert gửi cho ADMIN, KHÔNG phải khách. `deliver()` mặc định
+            // lấy người nhận từ `payload.email` — mà ở đây `email` là địa chỉ
+            // KHÁCH (để admin đọc trong nội dung). Thiếu `to` thì alert bay
+            // thẳng về hộp thư khách và không admin nào biết có lead mới,
+            // đúng thứ A13 sinh ra để sửa. `to` THẮNG `email` trong deliver().
+            payload: { ...shared, to: adminEmails[0] },
             dedupeKey: `enquiry-admin-alert:${enquiry.id}`,
           },
         ],

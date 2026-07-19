@@ -127,6 +127,33 @@ describe('ResendDeliverer.deliver', () => {
     expect(calls).toHaveLength(0); // never calls the API with a broken payload
   });
 
+  it('gửi tới `to` khi payload có, thay vì `email`', async () => {
+    // ENQUIRY_ADMIN_ALERT: `email` là địa chỉ KHÁCH (để admin đọc trong
+    // nội dung), người nhận phải là admin. Không tách hai vai trò này thì
+    // alert bay về hộp thư khách và không admin nào biết có lead mới.
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.ENQUIRY_ADMIN_ALERT, {
+      to: 'admin@tourism.test',
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: 'hi',
+      tourTitle: null,
+    });
+
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.to).toEqual(['admin@tourism.test']);
+    expect(body.to).not.toContain('jane@example.com');
+    // Email khách vẫn phải hiện trong NỘI DUNG để admin liên hệ lại.
+    expect(body.html).toContain('jane@example.com');
+  });
+
+  it('vẫn dùng `email` làm người nhận khi payload không có `to`', async () => {
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.to).toEqual([BOOKING_PAYLOAD.email]);
+  });
+
   it('subject KHÔNG escape HTML nhưng body thì CÓ', () => {
     // Subject là plain text: escape ở đó khiến khách tên O'Brien hiện thành
     // `O&#39;Brien` trong hộp thư admin. Body là HTML nên bắt buộc escape.
