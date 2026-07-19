@@ -126,4 +126,35 @@ describe('ResendDeliverer.deliver', () => {
     ).rejects.toThrow(/email/i);
     expect(calls).toHaveLength(0); // never calls the API with a broken payload
   });
+
+  it('subject KHÔNG escape HTML nhưng body thì CÓ', () => {
+    // Subject là plain text: escape ở đó khiến khách tên O'Brien hiện thành
+    // `O&#39;Brien` trong hộp thư admin. Body là HTML nên bắt buộc escape.
+    const { subject, html } = renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+      name: "O'Brien & <Sons>",
+      email: 'obrien@example.com',
+      message: '<script>alert(1)</script>',
+      tourTitle: null,
+    });
+
+    expect(subject).toBe("New enquiry from O'Brien & <Sons>");
+    expect(subject).not.toContain('&#39;');
+
+    // Body: thẻ script phải bị vô hiệu hoá, không lọt nguyên văn.
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+    expect(html).toContain('&#39;');
+  });
+
+  it('cắt CR/LF khỏi subject — chặn header injection', () => {
+    // Xuống dòng trong header là đường chèn thêm Bcc/To vào email.
+    const { subject } = renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+      name: 'Jane\r\nBcc: attacker@evil.com',
+      email: 'jane@example.com',
+      message: 'hi',
+      tourTitle: null,
+    });
+    expect(subject).not.toMatch(/[\r\n]/);
+    expect(subject).toBe('New enquiry from Jane Bcc: attacker@evil.com');
+  });
 });

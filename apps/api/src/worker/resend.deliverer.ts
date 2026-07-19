@@ -76,6 +76,22 @@ export function renderEmail(
     const value = payload[key];
     return typeof value === 'string' && value.length > 0 ? escapeHtml(value) : undefined;
   };
+  /**
+   * Giá trị cho SUBJECT — subject là plain text, KHÔNG phải HTML.
+   *
+   * Dùng `f()` ở subject là sai: khách tên `O'Brien` sẽ hiện thành
+   * `O&#39;Brien` trong hộp thư. Các subject cũ không lộ ra vì chúng chỉ
+   * dùng chuỗi cố định hoặc mã booking (`BK-XXXX`, escape là no-op) —
+   * ENQUIRY_ADMIN_ALERT là case đầu tiên nhét field tự do vào subject.
+   *
+   * Vẫn phải cắt CR/LF: ký tự xuống dòng trong header là đường header
+   * injection (chèn thêm Bcc/To vào email).
+   */
+  const subjectText = (key: string): string | undefined => {
+    const value = payload[key];
+    if (typeof value !== 'string' || value.length === 0) return undefined;
+    return value.replaceAll(/[\r\n]+/g, ' ').trim();
+  };
   const code = f('code') ?? 'your booking';
   const greeting = `<p>Hi ${f('name') ?? 'there'},</p>`;
   const title = f('title');
@@ -127,7 +143,7 @@ export function renderEmail(
     // sẵn mọi thứ admin cần để phân loại lead mà không phải mở CRM.
     case EmailType.ENQUIRY_ADMIN_ALERT:
       return {
-        subject: `New enquiry from ${f('name')}`,
+        subject: `New enquiry from ${subjectText('name') ?? 'a visitor'}`,
         html: `<p>New enquiry received.</p>
 <p><strong>Name:</strong> ${f('name')}<br/>
 <strong>Email:</strong> ${f('email')}<br/>
