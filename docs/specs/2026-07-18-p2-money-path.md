@@ -1,7 +1,7 @@
 # Spec P2 — Money-path
 
 - **Ngày:** 2026-07-18 · **Branch:** `feat/p2-money-path` · **Trạng thái:** đã triển khai (W1–W6) — xem [ADR-0002](../adr/0002-payment-gateway-refund-ledger.md); D1=B, D2=hoãn P3
-- **Phụ lục:** [Spec P1](2026-07-18-p1-api-core.md) · [Schema audit](2026-07-18-schema-audit-nexora.md) (H1/H2/B-findings/M7) · Nexora ADR-0006/0009 (tham chiếu chỉ đọc)
+- **Phụ lục:** [Spec P1](2026-07-18-p1-api-core.md) · [Schema audit](../analysis/2026-07-18-schema-audit-nexora.md) (H1/H2/B-findings/M7) · Nexora ADR-0006/0009 (tham chiếu chỉ đọc)
 
 ## 1. Mục tiêu
 

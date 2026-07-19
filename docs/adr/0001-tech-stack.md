@@ -36,7 +36,7 @@ JS-based, chuỗi OpenAPI codegen thủ công, và **transaction pooler**
 
 Lộ trình ban đầu ghi "P3 = web, P4 = admin" nhưng **không phân bổ ~64 endpoint API
 còn lại cho phase nào** — nhãn "web" che giấu một khối lượng API lớn (chi tiết:
-[API parity map](../specs/2026-07-19-api-parity-upgrade-map.md)). Sửa thành
+[API parity map](../analysis/2026-07-19-api-parity-upgrade-map.md)). Sửa thành
 **mỗi phase một lát cắt dọc, API + UI đi chung**:
 
 | Phase | Nội dung |
