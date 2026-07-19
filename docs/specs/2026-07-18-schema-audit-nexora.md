@@ -21,7 +21,7 @@ V2: port hardening.sql thành migration đầu tiên sau schema, bổ sung RLS c
 ### HIGH — sửa trước khi port
 
 | # | Thay đổi | Lý do (bằng chứng) |
-|---|---|---|
+| --- | --- | --- |
 | H1 | **Bảng `Refund` ledger mới** (bookingId · amount · currency · providerRefundId · adminId · createdAt), thay cụm 4 column nullable `refunded*` trên Booking | Auto-refund paths hiện set `REFUNDED` mà bỏ trống `refundedAmount/refundedAt` → admin hiển thị lệch (cùng lớp bug "38-vs-37" 17/07); partial refund hiện one-shot không cộng dồn; ledger sửa cả hai + thành audit trail thật |
 | H2 | **CHECK ràng buộc status↔audit** trong hardening v2: `REFUNDED ⇒ refunded_at NOT NULL` (qua ledger: status suy từ SUM(refunds)) | Chặn tận DB lớp drift trên |
 | H3 | **Booking snapshot thêm** `tourTitle`, `departureStartDate/EndDate`, `unitPrice` lúc create | Hiện title/ngày join LIVE → sửa tour là booking lịch sử đổi hiển thị hồi tố (giá+currency đã snapshot, title/ngày thì chưa) |
@@ -33,7 +33,7 @@ V2: port hardening.sql thành migration đầu tiên sau schema, bổ sung RLS c
 ### MED — đáng làm trong P1
 
 | # | Thay đổi | Lý do |
-|---|---|---|
+| --- | --- | --- |
 | M1 | `Review` theo tombstone User (thay thế đề xuất SetNull cũ): giữ `userId` FK nguyên; thêm **`authorDeleted Boolean @default(false)`** (denormalized, bật qua `updateMany` lúc soft-delete user) + index `[tourId, isApproved, authorDeleted, createdAt desc]`; hiển thị `authorDeleted ? "Deleted account" : authorName`; sort công khai `[authorDeleted asc, createdAt desc]` — review khuyết danh tự đẩy xuống dưới, chạy trên index không cần join User | Review + rating giữ cho aggregate; danh tính ẩn đúng ý định người xóa (hơn phương án giữ authorName snapshot); UX ưu tiên review có danh tính |
 | M2 | `Subscriber.email` → `@db.Citext`; `subscribedAt` → `createdAt` | Dedupe hiện chỉ nhờ service lowercase — lệch chuẩn ADR-0008 (User.email đã citext); thống nhất naming |
 | M3 | **Bộ sửa index** (theo query thật): Tour +`[categoryId]`; TourDestination −`[tourId]` (trùng PK); TourDeparture −`[status]` (không ai dùng); TourPolicy `[tourId,kind]`→`[tourId,order]` (kind chưa từng là predicate); Review +`[tourId,isApproved,createdAt desc]`; Booking +`[userId,createdAt]`; MediaAsset +`[publicId]` +`[posterId]` (hot-path GC ADR-0011 đang seq-scan!) +`[ownerType,createdAt]` (admin library) | Mỗi mục đều có bằng chứng where/orderBy trong code |
@@ -63,7 +63,7 @@ V2: port hardening.sql thành migration đầu tiên sau schema, bổ sung RLS c
 ## Verdict từng model (tóm tắt)
 
 | Nhóm | PORT AS-IS | OPTIMIZE | Đặc biệt |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | Catalog | TourCategory · Destination · TourItineraryDay · TourFaq | Tour · TourDestination · TourDeparture · TourPolicy | — |
 | Money | CancellationRequest | Booking · PaymentEvent | + bảng `Refund` mới |
 | CRM/Content | Wishlist · Enquiry · EnquiryNote · Post · PostTag · PostTagLink · PostTour | Review · Subscriber | — |

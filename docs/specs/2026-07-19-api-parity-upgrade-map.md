@@ -78,16 +78,16 @@ Nguyên tắc: **API và UI của cùng một lát cắt đi chung phase** — c
 Phát hiện trong đợt audit API này, chưa có trong `2026-07-18-schema-audit-nexora.md`:
 
 | # | Thay đổi | Nguồn |
-|---|---|---|
+| --- | --- | --- |
 | S1 | `Enquiry.email` → `@db.Citext` | A2 |
 | S2 | `MediaGarbage`: `@@unique([publicId, resourceType])` + `resourceType` → enum | A3 |
-| S3 | `MediaAsset.bytes` là **column chết thứ hai** (audit cũ khẳng định chỉ có `User.locale` — sai). Quyết: ghi thật (Cloudinary trả `bytes`, admin library hiện dung lượng là hữu ích) |
+| S3 | `MediaAsset.bytes` là **column chết thứ hai** (audit cũ khẳng định chỉ có `User.locale` — sai). Quyết: ghi thật (Cloudinary trả `bytes`, admin library hiện dung lượng là hữu ích) | |
 | S4 | Partial unique `tour_destinations(tour_id) WHERE is_primary` — "đúng 1 primary" hiện chỉ do app đảm bảo | M7 |
 | S5 | `Review`: CHECK bất biến VERIFIED (đủ 3 FK) / CURATED (null cả 3) + `featuredRank Int?` | A14 |
 | S6 | `Tour`: `ratingAvg`/`ratingCount` denormalized | A9 |
 | S7 | `Subscriber`: `unsubscribedAt` + `updatedAt` | A1 |
-| S8 | `Post`: CHECK `status <> 'PUBLISHED' OR publishedAt IS NOT NULL` (hiện có thể tạo row PUBLISHED + publishedAt null = "publish nhưng vô hình") |
-| S9 | `MediaAsset`: CHECK `type = 'VIDEO' OR poster_id IS NULL` |
+| S8 | `Post`: CHECK `status <> 'PUBLISHED' OR publishedAt IS NOT NULL` (hiện có thể tạo row PUBLISHED + publishedAt null = "publish nhưng vô hình") | |
+| S9 | `MediaAsset`: CHECK `type = 'VIDEO' OR poster_id IS NULL` | |
 | S10 | **Wishlist sống sót tombstone**: FK `Cascade` không bao giờ kích hoạt vì row user không bị xoá → phải hard-delete wishlist trong `beforeDelete` hook |
 
 ⚠️ **Cảnh báo index (A3 kèm theo)**: audit cũ đề xuất `[publicId]` + `[posterId]`
@@ -100,7 +100,7 @@ nên đổi thành `ownerType IN (...)`.
 ## 5. Endpoint gộp/bỏ (không port 1-1)
 
 | Nexora | v2 |
-|---|---|
+| --- | --- |
 | `DELETE /admin/media/:id` + `POST bulk-delete` | Một `media.delete({ids})` trả `{deleted, skipped}` |
 | `POST /admin/media/garbage/reconcile` | `admin.jobs.trigger({job})` chung cho mọi cron |
 | `GET /admin/posts/tags` + `GET /posts/tags` | Một procedure `posts.tags.list({includeDrafts})` |

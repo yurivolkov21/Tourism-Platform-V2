@@ -16,10 +16,11 @@ template đẹp bằng react-email (P3 trở đi — P2 dùng HTML/text đơn gi
 ## 2. Quyết định cần chốt cùng spec
 
 **D1 — M7 audit trail cho CancellationRequest (khuyến nghị ✅ phương án B):**
+
 - (A) Giữ nguyên Nexora: `@unique(bookingId)`, row DENIED bị ghi đè khi
   re-request — mất lịch sử lần từ chối.
 - **(B — khuyến nghị)** Bỏ `@unique(bookingId)`, mỗi request một row append-only
-  + **partial unique index** `WHERE status = 'REQUESTED'` (một request "sống"
+  - **partial unique index** `WHERE status = 'REQUESTED'` (một request "sống"
   mỗi booking, lịch sử DENIED giữ nguyên vẹn). Migration nhỏ, không cần bảng
   con, đọc lịch sử = `findMany orderBy createdAt`.
 
@@ -31,7 +32,7 @@ hoặc hoãn smoke sang lúc P3 dựng UI checkout (code vẫn xong từ P2).
 
 ## 3. Kiến trúc
 
-```
+```text
 libs/shared/contract/src/schemas/bookings.ts   # Zod: CreateBookingInput, BookingSchema,
                                                # CancellationSchema, RefundSchema, admin queries
 libs/shared/contract/src/contract.ts           # + bookings.{create,mine,byCode,cancel}
@@ -86,7 +87,7 @@ apps/api/src/modules/bookings/
 ## 5. Workstream & nghiệm thu
 
 | W | Nội dung | Nghiệm thu |
-|---|---|---|
+| --- | --- | --- |
 | W1 | Contract bookings/cancellations/admin + gateway interface + FakeGateway + create booking PENDING (snapshot, validate departure OPEN/còn hạn) | int test: create qua API thật, snapshot đúng, chưa trừ ghế |
 | W2 | Webhook infra (raw body) + PaymentEvent idempotency + **PAID atomic claim CTE** + outbox emails | int test: duplicate webhook 1 hiệu lực; claim trừ ghế đúng; overbook → refund; outbox row đúng dedupeKey |
 | W3 | RefundsService ledger + admin refund (partial/full) + orphaned capture | int test: partial cộng dồn → PARTIALLY → REFUNDED; quá tổng → 422; orphaned → auto-refund |
