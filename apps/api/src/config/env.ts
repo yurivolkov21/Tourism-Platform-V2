@@ -6,15 +6,20 @@ import { z } from 'zod';
  */
 const DEV_BETTER_AUTH_SECRET = 'dev-secret-change-me';
 
+/**
+ * Postgres compose local. Là default để `pnpm dev`/seed/test chạy được ngay
+ * không cần `.env`; `superRefine` dưới đây chặn nó ở production — deploy mà
+ * quên set DATABASE_URL thì phải chết ở tầng config với thông điệp rõ ràng,
+ * chứ không phải im lặng đi quay số localhost rồi chết ở tầng kết nối.
+ */
+const LOCAL_COMPOSE_DATABASE_URL = 'postgresql://tourism:tourism@localhost:5432/tourism';
+
 const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     PORT: z.coerce.number().int().positive().default(3001),
     // Mặc định trỏ compose Postgres local — prod PHẢI override qua env thật.
-    DATABASE_URL: z
-      .string()
-      .startsWith('postgres')
-      .default('postgresql://tourism:tourism@localhost:5432/tourism'),
+    DATABASE_URL: z.string().startsWith('postgres').default(LOCAL_COMPOSE_DATABASE_URL),
     // Better Auth — secret ký session token + baseURL public của API.
     BETTER_AUTH_SECRET: z.string().min(1).default(DEV_BETTER_AUTH_SECRET),
     BETTER_AUTH_URL: z.url().default('http://localhost:3001'),
@@ -45,6 +50,14 @@ const EnvSchema = z
   })
   .superRefine((cfg, ctx) => {
     if (cfg.NODE_ENV !== 'production') return;
+    if (cfg.DATABASE_URL === LOCAL_COMPOSE_DATABASE_URL) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['DATABASE_URL'],
+        message:
+          'DATABASE_URL must be set explicitly in production (not the local compose default)',
+      });
+    }
     if (cfg.BETTER_AUTH_SECRET === DEV_BETTER_AUTH_SECRET) {
       ctx.addIssue({
         code: 'custom',

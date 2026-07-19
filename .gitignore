@@ -16,6 +16,8 @@ generated/
 # env — không bao giờ commit secrets
 .env
 .env.*
+# Mẫu không chứa secret — phải commit để người clone biết cần khai gì.
+!.env.example
 !.env.example
 
 # test / coverage

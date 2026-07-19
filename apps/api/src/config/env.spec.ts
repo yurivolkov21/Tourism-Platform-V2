@@ -39,12 +39,33 @@ describe('parseEnv', () => {
       parseEnv({
         NODE_ENV: 'production',
         BETTER_AUTH_SECRET: 'real-secret',
-        // P2: prod cũng cần một payment provider — thoả điều kiện đó để cô lập
-        // assertion về BETTER_AUTH_SECRET.
+        // P2: prod cũng cần một payment provider, và DATABASE_URL tường minh —
+        // thoả cả hai để cô lập assertion về BETTER_AUTH_SECRET.
+        DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
+  });
+
+  it('requires an explicit DATABASE_URL in production', () => {
+    // Prod đầy đủ mọi thứ KHÁC, chỉ thiếu DATABASE_URL → phải chết ở config,
+    // không được im lặng nhận default localhost rồi chết ở tầng kết nối.
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+    };
+    expect(() => parseEnv(base)).toThrow(/DATABASE_URL/);
+    // Khai tường minh trùng chuỗi compose cũng bị chặn — đó vẫn là localhost.
+    expect(() =>
+      parseEnv({ ...base, DATABASE_URL: 'postgresql://tourism:tourism@localhost:5432/tourism' }),
+    ).toThrow(/DATABASE_URL/);
+    // Có URL thật → qua.
+    expect(
+      parseEnv({ ...base, DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app' }).DATABASE_URL,
+    ).toBe('postgresql://u:p@db.example.com:5432/app');
   });
 
   it('rejects invalid BETTER_AUTH_URL', () => {
@@ -63,7 +84,11 @@ describe('parseEnv', () => {
   });
 
   it('requires at least one FULL payment provider config in production', () => {
-    const base = { NODE_ENV: 'production', BETTER_AUTH_SECRET: 'real-secret' };
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+    };
     // None configured → rejected.
     expect(() => parseEnv(base)).toThrow(/payment provider/i);
     // Half a pair does not count.
