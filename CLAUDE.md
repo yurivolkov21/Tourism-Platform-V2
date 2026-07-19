@@ -36,12 +36,10 @@ P5 mobile → P6 AI concierge → freeze 15/10.
    `//` và JSDoc `/** */` viết bằng tiếng Việt, kể cả code do subagent sinh ra
    (brief subagent phải dặn điều này). Tên biến/hàm/identifier vẫn tiếng Anh.
 9. **Ưu tiên skill có sẵn hơn tự chế.** Trước khi bắt tay, rà danh sách skill
-   xem có cái nào phủ đúng việc này không — `superpowers` (brainstorming,
-   writing-plans, TDD, systematic-debugging, verification-before-completion),
-   `vercel` (nextjs, next-cache-components, shadcn, ai-sdk), `frontend-design`,
-   `supabase`, `expo`, `commit-commands`, `context7` (tra docs thư viện). Có thì
-   gọi qua Skill tool; đừng dựng lại thứ đã có. Brief cho subagent cũng phải
-   nhắc điều này (hook nhắc-skill chỉ chạy khi user gửi tin, không áp subagent).
+   xem có cái nào phủ đúng việc này không (xem [docs/skills.md](docs/skills.md)
+   để biết có gì và dùng khi nào). Có thì gọi qua Skill tool; đừng dựng lại thứ
+   đã có. Brief cho subagent cũng phải nhắc điều này — hook nhắc-skill chỉ chạy
+   khi user gửi tin, KHÔNG áp cho subagent.
 10. **`pnpm gate` trước khi khai xanh** (build + typecheck + test + lint).
 11. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
 12. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
