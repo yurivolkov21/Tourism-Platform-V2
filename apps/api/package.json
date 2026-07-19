@@ -22,6 +22,7 @@
     "@nestjs/common": "11.1.28",
     "@nestjs/core": "11.1.28",
     "@nestjs/platform-fastify": "11.1.28",
+    "@nestjs/throttler": "6.5.0",
     "@orpc/nest": "1.14.8",
     "@orpc/server": "1.14.8",
     "@orpc/zod": "1.14.8",

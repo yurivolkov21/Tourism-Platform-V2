@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { ORPCModule, onError } from '@orpc/nest';
 import { experimental_ZodSmartCoercionPlugin as ZodSmartCoercionPlugin } from '@orpc/zod/zod4';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
+import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -27,6 +29,15 @@ import { ReviewsModule } from './modules/reviews/reviews.module.js';
         }),
       ],
     }),
+    /**
+     * Rate limiting (lỗ #5 trong infra-parity). Đăng ký module ở đây nhưng
+     * KHÔNG gắn ThrottlerGuard toàn cục — từng controller công khai tự gắn
+     * `@UseGuards(ThrottlerGuard)`, xem `config/throttle.ts`.
+     *
+     * Đếm theo `req.ip`, mà `trustProxy: true` đã bật ở `main.ts` — thiếu nó
+     * thì mọi client dùng chung IP của proxy và trần này khoá sạch cả site.
+     */
+    ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE]),
     HealthModule,
     AuthModule,
     CatalogModule,
