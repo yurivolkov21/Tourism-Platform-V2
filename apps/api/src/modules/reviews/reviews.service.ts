@@ -1,5 +1,10 @@
 import { Injectable } from '@nestjs/common';
-import type { AdminReview, CreateReviewInputSchema, PublicReview } from '@tourism/contract';
+import type {
+  AdminReview,
+  CreateReviewInputSchema,
+  MyReview,
+  PublicReview,
+} from '@tourism/contract';
 import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -63,6 +68,17 @@ export function toAdminReview(row: {
     tourSlug: row.tour?.slug ?? null,
     moderatedAt: row.moderatedAt?.toISOString() ?? null,
   };
+}
+
+/** Row → shape trả về ở `mine()`: chỉ thêm `isApproved` lên trên
+ * `toPublicReview` (không cần source/tourSlug/moderatedAt như admin) — tách
+ * hàm riêng thay vì mở rộng `toAdminReview` để khỏi kéo theo `tour.slug`
+ * (query của `mine()` không include quan hệ `tour`, ít trùng lặp hơn phải
+ * thêm include chỉ để phục vụ một field không dùng tới). */
+export function toMyReview(
+  row: Parameters<typeof toPublicReview>[0] & { isApproved: boolean },
+): MyReview {
+  return { ...toPublicReview(row), isApproved: row.isApproved };
 }
 
 @Injectable()
@@ -132,8 +148,13 @@ export class ReviewsService {
    * ③ nằm trong transaction nên rating không bao giờ lệch với trạng thái
    * duyệt — Nexora tính live mỗi page load (scan toàn bảng reviews).
    *
-   * Review CURATED có tourId null (testimonial admin viết) nên BỎ QUA ③:
-   * nó là social proof, không phải đánh giá chuyến đi.
+   * Review CURATED (testimonial admin viết) BỎ QUA ③ dù CHECK constraint
+   * `reviews_source_shape` cho phép nó có `tourId` — CURATED vẫn hiện trong
+   * danh sách review của tour đó (cùng `featuredRank`, đó là mục đích của
+   * nó), nhưng KHÔNG được tính vào `ratingAvg`/`ratingCount`: rating phải đại
+   * diện đánh giá của khách đã thật sự đi tour, trộn nội dung marketing vào
+   * là thổi phồng điểm. Vì vậy gate ③ kiểm CẢ `tourId` LẪN `source ===
+   * VERIFIED`, không chỉ `tourId`.
    *
    * Hai điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
@@ -153,6 +174,9 @@ export class ReviewsService {
       select: {
         id: true,
         tourId: true,
+        // Cần cho gate ③ — CURATED được PHÉP có tourId (reviews_source_shape)
+        // nên phải kiểm thêm source mới biết có tính vào rating hay không.
+        source: true,
         // Cần cho payload email ở bước ④ — ResendDeliverer throw nếu payload
         // thiếu `email` (xem resend.deliverer.ts). Review CURATED không có
         // user thật (userId null) nên không email được — bước ④ tự bỏ qua.
@@ -198,7 +222,15 @@ export class ReviewsService {
         },
       });
 
-      // ③ recompute rating của ĐÚNG tour đó (bỏ qua nếu là CURATED).
+      // ③ recompute rating của ĐÚNG tour đó — CHỈ khi review này là VERIFIED.
+      // CURATED được PHÉP có tourId (reviews_source_shape) nên riêng
+      // `existing.tourId` KHÔNG đủ để gate: phải kiểm cả `source`, nếu không
+      // testimonial CURATED đã duyệt sẽ đội rating tour lên (xem doc-comment
+      // ở đầu hàm). Subquery aggregate bên dưới cũng lọc `source = 'VERIFIED'`
+      // cùng lý do — nếu chỉ gate ở ngoài mà quên lọc trong subquery thì
+      // những review CURATED ĐÃ duyệt từ trước (trước khi có fix này) vẫn lọt
+      // vào phép tính mỗi lần một review VERIFIED khác của cùng tour được
+      // duyệt lại.
       //
       // Race đã tránh (ADR-0009 "single-statement atomic claims", áp dụng
       // TINH THẦN chứ không thể gộp mù một câu): trước đây đọc-rồi-ghi qua
@@ -221,7 +253,7 @@ export class ReviewsService {
       // xong. Statement UPDATE...FROM theo sau là statement MỚI nên có
       // snapshot MỚI, thấy đủ mọi thay đổi đã commit trước đó (kể cả của
       // transaction vừa nhả lock) → aggregate luôn đúng, không mất update.
-      if (existing.tourId) {
+      if (existing.tourId && existing.source === ReviewSource.VERIFIED) {
         const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
           SELECT id FROM tours WHERE id = ${existing.tourId}::uuid FOR UPDATE
         `);
@@ -234,7 +266,9 @@ export class ReviewsService {
             FROM (
               SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
               FROM reviews
-              WHERE tour_id = ${existing.tourId}::uuid AND is_approved = true
+              WHERE tour_id = ${existing.tourId}::uuid
+                AND is_approved = true
+                AND source = 'VERIFIED'::"ReviewSource"
             ) s
             WHERE t.id = ${existing.tourId}::uuid
           `);
@@ -276,6 +310,11 @@ export class ReviewsService {
    * Review đã duyệt của một tour. Sort [authorDeleted asc, createdAt desc]
    * chạy thẳng trên index [tourId, isApproved, authorDeleted, createdAt desc]
    * — review khuyết danh tự trôi xuống dưới, review có danh tính lên trước.
+   * Thêm `id desc` làm tie-breaker cuối: `createdAt` là `timestamp(3)` (độ
+   * phân giải millisecond) nên hai review trùng millisecond thì thứ tự giữa
+   * chúng không ổn định qua các lần query — phân trang có thể lặp một item ở
+   * hai trang hoặc bỏ sót một item. `id` (UUID) là duy nhất nên chốt được thứ
+   * tự tuyệt đối.
    */
   async listByTour(
     tourSlug: string,
@@ -299,7 +338,7 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        orderBy: [{ authorDeleted: 'asc' }, { createdAt: 'desc' }],
+        orderBy: [{ authorDeleted: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -320,21 +359,24 @@ export class ReviewsService {
   /**
    * Review của CHÍNH user gọi API — khác `listByTour` ở chỗ KHÔNG lọc
    * `isApproved`: đây là review của chính họ nên họ có quyền thấy cả review
-   * đang chờ duyệt. Output vẫn dùng `PublicReviewSchema`/`toPublicReview`
-   * (không thêm field `isApproved`) — quyết định có chủ đích: caller đã biết
-   * mọi review trả về ở đây là CỦA MÌNH, và tại thời điểm này chưa có yêu cầu
-   * UI hiển thị badge "đang chờ duyệt". Muốn thêm thì mở rộng schema kiểu
-   * `AdminReviewSchema` sau, không cần đổi shape ở đây.
+   * đang chờ duyệt. Output dùng `MyReviewSchema`/`toMyReview` (có thêm
+   * `isApproved` so với `PublicReviewSchema`) để FE hiện badge "đang chờ
+   * duyệt" — thiếu field này khách không phân biệt được review nào đã lên
+   * trang tour, dễ tưởng gửi thất bại rồi gửi lại và ăn
+   * `REVIEW_ALREADY_EXISTS`.
    *
    * Sort createdAt desc — mới nhất trước, không cần đẩy authorDeleted xuống
    * cuối như `listByTour` (review của chính mình thì tác giả luôn là mình).
+   * Tie-breaker `id desc` cùng lý do đã ghi ở `listByTour`: `createdAt` chỉ
+   * chính xác tới millisecond nên cần `id` (UUID, duy nhất) để thứ tự ổn định
+   * qua các trang.
    */
   async mine(
     userId: string,
     page: number,
     pageSize: number,
   ): Promise<{
-    items: PublicReview[];
+    items: MyReview[];
     page: number;
     limit: number;
     total: number;
@@ -344,7 +386,7 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -352,7 +394,7 @@ export class ReviewsService {
     ]);
 
     return {
-      items: rows.map(toPublicReview),
+      items: rows.map(toMyReview),
       page,
       // Output contract dùng `limit` (PagedSchema chung), không phải
       // `pageSize` — cùng gotcha đã ghi ở listByTour()/adminList() bên dưới.

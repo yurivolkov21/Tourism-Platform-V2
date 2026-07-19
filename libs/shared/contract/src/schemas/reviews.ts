@@ -29,6 +29,16 @@ export const ReviewsByTourQuerySchema = PageQuerySchema.extend({
 
 export type PublicReview = z.infer<typeof PublicReviewSchema>;
 
+/** Review nhìn từ phía chính khách gọi `reviews.mine` — thêm `isApproved` so
+ * với `PublicReviewSchema` để khách phân biệt được review nào đang chờ duyệt
+ * (đang hiện với khách nhưng CHƯA lên trang tour), tránh gửi lại và ăn
+ * `REVIEW_ALREADY_EXISTS` vì tưởng nhầm là gửi chưa thành công. */
+export const MyReviewSchema = PublicReviewSchema.extend({
+  isApproved: z.boolean(),
+});
+
+export type MyReview = z.infer<typeof MyReviewSchema>;
+
 /** Input duyệt/bỏ duyệt một review (admin). */
 export const ModerateReviewInputSchema = z.object({
   id: z.uuid(),

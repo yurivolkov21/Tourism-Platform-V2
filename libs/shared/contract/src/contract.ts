@@ -31,6 +31,7 @@ import {
   AdminReviewsQuerySchema,
   CreateReviewInputSchema,
   ModerateReviewInputSchema,
+  MyReviewSchema,
   PublicReviewSchema,
   ReviewsByTourQuerySchema,
 } from './schemas/reviews.js';
@@ -117,8 +118,10 @@ export const contract = {
      * Review của chính user gọi API — path riêng `/api/reviews/mine`
      * (KHÔNG đụng `POST /api/reviews` của `create`, khác method lẫn path).
      * Trả CẢ review chưa duyệt: đây là review của chính họ, họ có quyền thấy
-     * nó tồn tại/đang chờ duyệt. Output vẫn dùng `PublicReviewSchema` (không
-     * thêm field `isApproved`) — xem giải thích ở `ReviewsService.mine`.
+     * nó tồn tại/đang chờ duyệt. Output dùng `MyReviewSchema` (có thêm
+     * `isApproved` so với `PublicReviewSchema`) để FE hiện badge "đang chờ
+     * duyệt" — không thì khách tưởng review đã gửi thất bại rồi gửi lại,
+     * ăn `REVIEW_ALREADY_EXISTS`.
      */
     mine: oc
       .route({
@@ -127,7 +130,7 @@ export const contract = {
         summary: "List caller's own reviews, newest first (authed, paged, includes unapproved)",
       })
       .input(PageQuerySchema)
-      .output(PagedSchema(PublicReviewSchema)),
+      .output(PagedSchema(MyReviewSchema)),
 
     create: oc
       .route({

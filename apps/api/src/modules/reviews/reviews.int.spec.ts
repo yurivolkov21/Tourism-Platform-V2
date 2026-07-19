@@ -271,7 +271,7 @@ describe('reviews (int)', () => {
   });
 
   it('duyệt review: đúng 1 ReviewModerationEvent + đúng 1 outbox', async () => {
-    const { reviewId, adminCookie } = await createAndApprove(app);
+    const { reviewId } = await createAndApprove(app);
 
     expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(1);
     const event = await prisma.reviewModerationEvent.findFirstOrThrow({ where: { reviewId } });
@@ -281,7 +281,6 @@ describe('reviews (int)', () => {
     expect(await prisma.outbox.count({ where: { dedupeKey: `review-approved:${reviewId}` } })).toBe(
       1,
     );
-    expect(adminCookie).toBeTruthy();
   });
 
   it('unapprove rồi approve lại → KHÔNG gửi mail lần hai', async () => {
@@ -304,14 +303,39 @@ describe('reviews (int)', () => {
     expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(3);
   });
 
-  it('review CURATED không ảnh hưởng rating của tour nào', async () => {
+  it('review CURATED CÓ tourId vẫn KHÔNG ảnh hưởng rating của tour đó', async () => {
+    // Regression đúng nghĩa: CHECK constraint reviews_source_shape CHO PHÉP
+    // CURATED có tourId (chỉ cấm userId/bookingId) — nếu gate ③ chỉ kiểm
+    // `existing.tourId` (không kiểm thêm `source === VERIFIED`) thì duyệt
+    // testimonial này sẽ đội rating tour lên dù comment nói ngược lại. Test
+    // cũ dựng CURATED KHÔNG tourId nên nhánh ③ vốn dĩ không bao giờ chạy —
+    // không thể fail vì lý do tên nó ghi.
     const admin = await signUpAdmin(app, ADMIN_EMAIL);
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'walking', name: 'Walking', order: 1 },
+    });
+    const destination = await prisma.destination.create({
+      data: { slug: 'hoi-an', name: 'Hội An' },
+    });
+    const tour = await prisma.tour.create({
+      data: {
+        slug: 'hoi-an-walking-tour',
+        title: 'Hội An Walking Tour',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '39.00',
+        currency: 'USD',
+        isPublished: true,
+        destinations: { create: { destinationId: destination.id, isPrimary: true } },
+      },
+    });
     const curated = await prisma.review.create({
       data: {
+        tourId: tour.id,
         source: ReviewSource.CURATED,
         authorName: 'Marketing Team',
         rating: 5,
-        body: 'Testimonial do admin viết, không gắn tour nào',
+        body: 'Testimonial do admin viết, gắn vào tour để hiện trong trang tour',
         isApproved: false,
       },
     });
@@ -324,9 +348,10 @@ describe('reviews (int)', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    // Không tour nào bị đụng rating.
-    const tours = await prisma.tour.findMany({ where: { ratingCount: { gt: 0 } } });
-    expect(tours).toHaveLength(0);
+    // Rating của ĐÚNG tour đó không đổi — không chỉ "không tour nào bị đụng".
+    const fresh = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
+    expect(fresh.ratingAvg).toBeNull();
+    expect(fresh.ratingCount).toBe(0);
   });
 
   it('list công khai: review khuyết danh xếp SAU review có danh tính', async () => {
@@ -531,6 +556,8 @@ describe('reviews (int)', () => {
       const items = res.json().items;
       expect(items).toHaveLength(1);
       expect(items[0].id).toBe(myReviewId);
+      // Review vừa tạo chưa được admin duyệt.
+      expect(items[0].isApproved).toBe(false);
     });
 
     it('có cả review CHƯA duyệt của chính mình (mới nhất trước)', async () => {
@@ -560,6 +587,10 @@ describe('reviews (int)', () => {
       // Mới nhất trước → review thứ hai (đã duyệt) lên đầu.
       expect(items[0].id).toBe(secondId);
       expect(items[1].id).toBe(firstId);
+      // isApproved đúng cho cả hai — mine() KHÔNG lọc theo isApproved nhưng
+      // output PHẢI phân biệt được review nào đã lên trang tour.
+      expect(items[0].isApproved).toBe(true);
+      expect(items[1].isApproved).toBe(false);
     });
 
     it('gọi ẩn danh → 401', async () => {
@@ -587,6 +618,9 @@ describe('reviews (int)', () => {
       expect(body1.total).toBe(3);
       expect(body1.totalPages).toBe(2);
       expect(body1.pageSize).toBeUndefined();
+      // Chưa admin nào duyệt trong test này → cả trang đều isApproved false.
+      expect(body1.items[0].isApproved).toBe(false);
+      expect(body1.items[1].isApproved).toBe(false);
 
       const page2 = await app.inject({
         method: 'GET',
