@@ -10,6 +10,7 @@ import {
   Req,
 } from '@nestjs/common';
 import type { FastifyRequest } from 'fastify';
+import { Public } from '../../auth/public.decorator.js';
 import { PaymentProvider } from '../../generated/prisma/enums.js';
 import {
   PAYMENT_GATEWAYS,
@@ -38,6 +39,10 @@ import { PaymentsService } from './payments.service.js';
  * - đã xử lý VÀ trùng lặp → 200 nhanh (với provider, duplicate là thành công;
  *   bất kỳ response non-2xx nào cũng kích hoạt redeliver).
  */
+// Stripe/PayPal gọi vào — xác thực bằng CHỮ KÝ HMAC, không phải session.
+// Quên @Public() ở đây = provider nhận 401, webhook retry rồi bỏ cuộc,
+// booking kẹt PENDING dù tiền đã trừ. Có int test canh nhánh này.
+@Public()
 @Controller('api/webhooks')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);

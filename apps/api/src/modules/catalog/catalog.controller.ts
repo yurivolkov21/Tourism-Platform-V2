@@ -1,6 +1,7 @@
 import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
+import { Public } from '../../auth/public.decorator.js';
 import { CatalogService } from './catalog.service.js';
 
 /**
@@ -12,6 +13,8 @@ import { CatalogService } from './catalog.service.js';
  *
  * Mọi procedure catalog đều PUBLIC — cố ý không gắn AuthGuard.
  */
+// Catalogue là nội dung marketing — khách chưa đăng nhập PHẢI xem được.
+@Public()
 @Controller()
 export class CatalogController {
   private readonly startedAt = Date.now();

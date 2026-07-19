@@ -2,6 +2,7 @@ import { All, Controller, Req, Res } from '@nestjs/common';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { auth } from './auth.config.js';
+import { Public } from './public.decorator.js';
 
 /**
  * Mount Better Auth handler tại /api/auth/* (pattern Fastify chính chủ của BA
@@ -9,6 +10,8 @@ import { auth } from './auth.config.js';
  * Test.createTestingModule): Fastify request → Web `Request` → `auth.handler`
  * → chép Response về Fastify reply.
  */
+// Mount Better Auth — chính là nơi đăng nhập, không thể đòi đã đăng nhập.
+@Public()
 @Controller()
 export class AuthController {
   // NB: adapter Fastify (find-my-way) chỉ nhận wildcard `*` cuối route —

@@ -4,6 +4,7 @@ import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
+import { Public } from '../../auth/public.decorator.js';
 import {
   BookingForbiddenError,
   BookingNotFoundError,
@@ -19,6 +20,10 @@ export class ReviewsController {
   constructor(private readonly reviews: ReviewsService) {}
 
   /** Public — review đã duyệt của một tour, không cần đăng nhập. */
+  // Review đã duyệt hiển thị công khai trên trang tour. `mine`/`create`
+  // ngay bên dưới KHÔNG có @Public() nên vẫn cần auth — decorator ở method
+  // thắng class, đó là lý do đánh dấu từng method thay vì cả controller.
+  @Public()
   @Implement(contract.reviews.listByTour)
   listByTour() {
     return implement(contract.reviews.listByTour).handler(async ({ input, errors }) => {

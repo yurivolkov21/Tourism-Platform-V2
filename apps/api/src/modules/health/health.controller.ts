@@ -1,6 +1,7 @@
 import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
 import type { FastifyReply } from 'fastify';
 import { prisma } from '../../auth/auth.config.js';
+import { Public } from '../../auth/public.decorator.js';
 
 /**
  * Probe hạ tầng (`GET /health`) — đây là URL nền tảng deploy gọi để quyết
@@ -15,6 +16,8 @@ import { prisma } from '../../auth/auth.config.js';
  * probe vẫn xanh — nền tảng không restart, không cảnh báo, trong khi mọi
  * request thật đều 5xx. Nexora có `SELECT 1` ở đây từ đầu; v2 bỏ sót.
  */
+// Probe hạ tầng: nền tảng deploy gọi, không bao giờ có session.
+@Public()
 @Controller('health')
 export class HealthController {
   private readonly startedAt = Date.now();

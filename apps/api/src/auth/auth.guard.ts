@@ -12,6 +12,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import type { FastifyRequest } from 'fastify';
 import type { UserRole } from '../generated/prisma/enums.js';
 import { auth, type SessionUser } from './auth.config.js';
+import { IS_PUBLIC_KEY } from './public.decorator.js';
 import { ROLES_KEY } from './roles.decorator.js';
 
 /** Request đã qua AuthGuard mang user của session BA. */
@@ -29,6 +30,15 @@ export class AuthGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    // Guard này chạy TOÀN CỤC (ADR-0003) nên phải thoát sớm cho route
+    // public — trước khi gọi getSession(), để route public không tốn thêm
+    // một lượt đọc session.
+    const isPublic = this.reflector.getAllAndOverride<boolean | undefined>(IS_PUBLIC_KEY, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (isPublic) return true;
+
     const request = context.switchToHttp().getRequest<FastifyRequest>();
 
     const session = await auth.api.getSession({
