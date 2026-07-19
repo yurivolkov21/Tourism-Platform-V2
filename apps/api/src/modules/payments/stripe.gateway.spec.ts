@@ -94,7 +94,9 @@ describe('StripeGateway.verifyWebhook', () => {
     const { gateway } = makeGateway();
     const body = JSON.stringify(completedSessionEvent());
     await expect(
-      gateway.verifyWebhook(body, { 'stripe-signature': sign(body, 'whsec_wrong') }),
+      gateway.verifyWebhook(body, {
+        'stripe-signature': sign(body, 'whsec_wrong'),
+      }),
     ).rejects.toThrow(/signature/i);
   });
 
@@ -103,7 +105,9 @@ describe('StripeGateway.verifyWebhook', () => {
     const body = JSON.stringify(completedSessionEvent());
     const stale = Math.floor(Date.now() / 1000) - 6 * 60;
     await expect(
-      gateway.verifyWebhook(body, { 'stripe-signature': sign(body, WEBHOOK_SECRET, stale) }),
+      gateway.verifyWebhook(body, {
+        'stripe-signature': sign(body, WEBHOOK_SECRET, stale),
+      }),
     ).rejects.toThrow(/tolerance/i);
   });
 
@@ -126,7 +130,11 @@ describe('StripeGateway.verifyWebhook', () => {
     const event = await gateway.verifyWebhook(body, {
       'stripe-signature': sign(body, WEBHOOK_SECRET),
     });
-    expect(event).toMatchObject({ eventId: 'evt_2', type: 'payment.failed', bookingId: 'b-1' });
+    expect(event).toMatchObject({
+      eventId: 'evt_2',
+      type: 'payment.failed',
+      bookingId: 'b-1',
+    });
   });
 
   it('maps payment_intent.payment_failed to payment.failed (bookingId optional)', async () => {
@@ -134,7 +142,9 @@ describe('StripeGateway.verifyWebhook', () => {
     const body = JSON.stringify({
       id: 'evt_3',
       type: 'payment_intent.payment_failed',
-      data: { object: { id: 'pi_123', object: 'payment_intent', metadata: {} } },
+      data: {
+        object: { id: 'pi_123', object: 'payment_intent', metadata: {} },
+      },
     });
     const event = await gateway.verifyWebhook(body, {
       'stripe-signature': sign(body, WEBHOOK_SECRET),
@@ -145,7 +155,11 @@ describe('StripeGateway.verifyWebhook', () => {
 
   it("maps anything else to 'other'", async () => {
     const { gateway } = makeGateway();
-    const body = JSON.stringify({ id: 'evt_4', type: 'charge.updated', data: { object: {} } });
+    const body = JSON.stringify({
+      id: 'evt_4',
+      type: 'charge.updated',
+      data: { object: {} },
+    });
     const event = await gateway.verifyWebhook(body, {
       'stripe-signature': sign(body, WEBHOOK_SECRET),
     });
@@ -167,7 +181,10 @@ describe('StripeGateway.createCheckoutSession', () => {
   it('POSTs a form-encoded Checkout Session with minor units + metadata', async () => {
     const { gateway, calls } = makeGateway({
       status: 200,
-      body: JSON.stringify({ id: 'cs_test_9', url: 'https://checkout.stripe.com/c/pay/cs_test_9' }),
+      body: JSON.stringify({
+        id: 'cs_test_9',
+        url: 'https://checkout.stripe.com/c/pay/cs_test_9',
+      }),
     });
 
     const session = await gateway.createCheckoutSession(input);
@@ -197,9 +214,16 @@ describe('StripeGateway.createCheckoutSession', () => {
   it('sends zero-decimal amounts unscaled', async () => {
     const { gateway, calls } = makeGateway({
       status: 200,
-      body: JSON.stringify({ id: 'cs_1', url: 'https://checkout.stripe.com/c/1' }),
+      body: JSON.stringify({
+        id: 'cs_1',
+        url: 'https://checkout.stripe.com/c/1',
+      }),
     });
-    await gateway.createCheckoutSession({ ...input, amount: '500000.00', currency: 'VND' });
+    await gateway.createCheckoutSession({
+      ...input,
+      amount: '500000.00',
+      currency: 'VND',
+    });
     const params = new URLSearchParams(calls[0]?.body);
     expect(params.get('line_items[0][price_data][unit_amount]')).toBe('500000');
     expect(params.get('line_items[0][price_data][currency]')).toBe('vnd');
@@ -242,7 +266,11 @@ describe('StripeGateway.refund', () => {
       status: 200,
       body: JSON.stringify({ id: 're_2', status: 'succeeded' }),
     });
-    await gateway.refund({ providerPaymentId: 'pi_123', amount: '10.00', currency: 'USD' });
+    await gateway.refund({
+      providerPaymentId: 'pi_123',
+      amount: '10.00',
+      currency: 'USD',
+    });
     expect(calls[0]?.headers['idempotency-key']).toBeUndefined();
   });
 
@@ -252,7 +280,11 @@ describe('StripeGateway.refund', () => {
       body: JSON.stringify({ error: { message: 'Charge already refunded' } }),
     });
     await expect(
-      gateway.refund({ providerPaymentId: 'pi_123', amount: '30.00', currency: 'USD' }),
+      gateway.refund({
+        providerPaymentId: 'pi_123',
+        amount: '30.00',
+        currency: 'USD',
+      }),
     ).rejects.toThrow(/already refunded/i);
   });
 });

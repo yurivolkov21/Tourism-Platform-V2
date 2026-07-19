@@ -17,16 +17,16 @@ import {
 import { BookingNotFoundError } from './refunds.service.js';
 
 /**
- * Authed booking procedures (spec P2 W1), same @Implement pattern as catalog.
+ * Booking procedures cần auth (spec P2 W1), cùng pattern @Implement như catalog.
  *
- * Guard composition (verified against @orpc/nest 1.14.8 source): on a single
- * procedure, `@Implement` is just `applyDecorators(Post/Get(path), HttpCode,
- * UseInterceptors(ImplementInterceptor))` — the method stays an ordinary Nest
- * route handler, so `@UseGuards` composes at class OR method level, and Nest's
- * lifecycle (guards BEFORE interceptors) means AuthGuard rejects anonymous
- * calls with 401 before oRPC ever parses input. Param decorators also resolve
- * normally — `@CurrentUser()` is bound per-request and captured by the
- * returned handler closure.
+ * Cách ghép guard (đã đối chiếu source @orpc/nest 1.14.8): trên một procedure
+ * đơn lẻ, `@Implement` chỉ là `applyDecorators(Post/Get(path), HttpCode,
+ * UseInterceptors(ImplementInterceptor))` — method vẫn là route handler Nest
+ * bình thường, nên `@UseGuards` ghép được ở cấp class HOẶC method, và vòng đời
+ * Nest (guard TRƯỚC interceptor) khiến AuthGuard từ chối call ẩn danh bằng 401
+ * trước khi oRPC parse input. Param decorator cũng resolve bình thường —
+ * `@CurrentUser()` bind theo từng request và được capture bởi closure của
+ * handler trả về.
  */
 @Controller()
 @UseGuards(AuthGuard)
@@ -75,7 +75,7 @@ export class BookingsController {
       try {
         return await this.cancellations.request(user.id, input.code, input.reason);
       } catch (error) {
-        // Owner-or-404, same policy as byCode (no existence leak).
+        // Owner-or-404, cùng chính sách với byCode (không lộ sự tồn tại).
         if (error instanceof BookingNotFoundError) throw errors.NOT_FOUND();
         if (error instanceof BookingNotCancellableError) {
           throw errors.NOT_CANCELLABLE({ message: error.message });

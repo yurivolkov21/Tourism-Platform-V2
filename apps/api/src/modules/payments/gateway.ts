@@ -1,109 +1,109 @@
 import type { PaymentProvider } from '../../generated/prisma/enums.js';
 
 /**
- * PaymentGateway — the audit's headline upgrade over Nexora's money-path:
- * Nexora branched on `PaymentProvider` inside BookingsService (`if STRIPE …
- * else PAYPAL …`, one SDK-shaped call-site per provider). v2 inverts that:
- * ONE interface, provider impls behind it, callers resolve by the booking's
- * `paymentProvider` and never see an SDK type. W1 ships the interface +
- * FakeGateway (the test instrument for W2/W3); W5 adds StripeGateway /
- * PayPalGateway (test/sandbox mode) behind the SAME token.
+ * PaymentGateway — nâng cấp đáng chú ý nhất của audit so với money-path của
+ * Nexora: Nexora rẽ nhánh theo `PaymentProvider` ngay trong BookingsService
+ * (`if STRIPE … else PAYPAL …`, mỗi provider một call-site hình dạng SDK). v2
+ * đảo ngược lại: MỘT interface duy nhất, các impl provider nằm sau nó, caller
+ * resolve theo `paymentProvider` của booking và không bao giờ thấy kiểu SDK.
+ * W1 giao interface + FakeGateway (test instrument cho W2/W3); W5 thêm
+ * StripeGateway / PayPalGateway (test/sandbox mode) sau CÙNG một token.
  *
- * Money crosses this boundary as 2dp decimal STRINGS ("117.00") — each impl
- * owns its provider's minor-unit/format conversion (Nexora money.ts logic
- * moves inside the gateways in W5).
+ * Tiền băng qua ranh giới này dưới dạng CHUỖI decimal 2 chữ số thập phân
+ * ("117.00") — mỗi impl tự lo phần chuyển đổi minor-unit/format của provider
+ * mình (logic money.ts của Nexora dời vào trong các gateway ở W5).
  */
 export interface PaymentGateway {
   readonly provider: PaymentProvider;
 
-  /** Mints a hosted checkout session for a PENDING booking. */
+  /** Tạo hosted checkout session cho một booking PENDING. */
   createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession>;
 
   /**
-   * Verifies a webhook delivery against the RAW request bytes (JSON-parsing
-   * first corrupts the signature) and maps it onto the provider-neutral
-   * {@link VerifiedEvent}. THROWS on a bad/missing signature — the webhook
-   * controller maps that to 400 (never 500: the provider would retry forever).
+   * Verify một webhook delivery dựa trên RAW request bytes (parse JSON trước sẽ
+   * làm hỏng signature) rồi map nó về {@link VerifiedEvent} provider-neutral.
+   * THROW khi signature sai/thiếu — webhook controller map cái đó thành 400
+   * (không bao giờ 500: provider sẽ retry mãi mãi).
    */
   verifyWebhook(
     rawBody: Buffer | string,
     headers: Record<string, string | string[] | undefined>,
   ): Promise<VerifiedEvent>;
 
-  /** Issues a (partial) refund against a captured payment. */
+  /** Phát hành một khoản refund (có thể một phần) trên payment đã capture. */
   refund(input: RefundInput): Promise<{ providerRefundId: string }>;
 }
 
 export interface CreateCheckoutSessionInput {
   bookingId: string;
-  /** Human-readable booking code (`BK-…`) — lands in provider metadata/receipts. */
+  /** Booking code người đọc được (`BK-…`) — đưa vào metadata/receipt của provider. */
   code: string;
-  /** 2dp decimal string, e.g. "117.00". */
+  /** Chuỗi decimal 2 chữ số thập phân, ví dụ "117.00". */
   amount: string;
-  /** ISO-4217, e.g. "USD". */
+  /** ISO-4217, ví dụ "USD". */
   currency: string;
-  /** Line-item description shown on the provider's checkout page. */
+  /** Mô tả line-item hiển thị trên trang checkout của provider. */
   description: string;
   successUrl: string;
   cancelUrl: string;
 }
 
 export interface CheckoutSession {
-  /** Provider session id — persisted as `Booking.providerSessionId`. */
+  /** Session id của provider — lưu vào `Booking.providerSessionId`. */
   sessionId: string;
-  /** Hosted checkout redirect URL returned to the client. */
+  /** URL redirect đến hosted checkout, trả về cho client. */
   checkoutUrl: string;
 }
 
 export interface RefundInput {
-  /** Captured payment handle (`Booking.providerPaymentId`). */
+  /** Handle của payment đã capture (`Booking.providerPaymentId`). */
   providerPaymentId: string;
-  /** 2dp decimal string — supports partial refunds (Refund ledger, W3). */
+  /** Chuỗi decimal 2 chữ số thập phân — hỗ trợ refund một phần (Refund ledger, W3). */
   amount: string;
   currency: string;
   /**
-   * Deterministic caller-supplied key the real gateways forward as the
-   * provider idempotency header (`Idempotency-Key` / `PayPal-Request-Id`) so a
-   * crash-retry of the same refund attempt can never double-refund (W4 flag).
-   * Keys per flow: admin `refund:<bookingId>:<alreadyRefundedTotal>` (the
-   * ledger sum identifies the ATTEMPT STATE — a Refund row id doesn't exist
-   * before the provider call), approve `cancel-refund:<requestId>`, auto
+   * Key deterministic do caller cung cấp, các gateway thật forward nó thành
+   * header idempotency của provider (`Idempotency-Key` / `PayPal-Request-Id`)
+   * để một crash-retry của cùng một lượt refund không bao giờ double-refund
+   * (W4 flag). Key theo từng flow: admin `refund:<bookingId>:<alreadyRefundedTotal>`
+   * (tổng ledger xác định TRẠNG THÁI LƯỢT THỬ — id của Refund row chưa tồn tại
+   * trước khi gọi provider), approve `cancel-refund:<requestId>`, auto
    * `orphan-refund:<bookingId>` / `overbook-refund:<bookingId>`.
    */
   idempotencyKey?: string;
 }
 
 /**
- * Provider-neutral verified webhook event. `type` collapses each provider's
- * event zoo into what the money-path dispatches on; everything else rides in
- * `raw` for the PaymentEvent log. Optional fields may be missing on `other`
- * events or malformed-but-signed payloads — the handler (W2) treats absence
- * as "log, skip".
+ * Webhook event đã verify, provider-neutral. `type` gom cả rừng event của mỗi
+ * provider về đúng thứ money-path dispatch trên đó; mọi thứ khác đi kèm trong
+ * `raw` cho PaymentEvent log. Các field optional có thể vắng ở event `other`
+ * hoặc payload malformed-nhưng-đã-ký — handler (W2) coi việc vắng là
+ * "log, skip".
  */
 export interface VerifiedEvent {
-  /** Provider event id — idempotency key half (`PaymentEvent @@unique([provider, eventId])`). */
+  /** Event id của provider — nửa của idempotency key (`PaymentEvent @@unique([provider, eventId])`). */
   eventId: string;
   type: 'payment.completed' | 'payment.failed' | 'other';
   bookingId?: string;
-  /** Captured payment handle (needed later for refunds). */
+  /** Handle của payment đã capture (cần về sau để refund). */
   providerPaymentId?: string;
-  /** 2dp decimal string as reported by the provider (audit H4 forensics). */
+  /** Chuỗi decimal 2 chữ số thập phân như provider báo về (forensics audit H4). */
   amount?: string;
   currency?: string;
-  /** Full provider payload — persisted as `PaymentEvent.payload`. */
+  /** Payload đầy đủ của provider — lưu vào `PaymentEvent.payload`. */
   raw: unknown;
 }
 
 /**
- * DI token: `PaymentGateway[]` (one per configured provider). Resolve with
- * {@link resolveGateway}. Interfaces don't exist at runtime, hence a Symbol.
+ * DI token: `PaymentGateway[]` (mỗi provider được cấu hình một cái). Resolve
+ * bằng {@link resolveGateway}. Interface không tồn tại ở runtime, nên dùng Symbol.
  */
 export const PAYMENT_GATEWAYS = Symbol('PAYMENT_GATEWAYS');
 
 /**
- * First value of a (possibly multi-valued) incoming webhook header — Fastify
- * lower-cases names, so look up with the lowercase form. Shared by the real
- * gateways' `verifyWebhook` implementations.
+ * Giá trị đầu tiên của một header webhook đến (có thể đa giá trị) — Fastify
+ * lowercase tên header, nên tra bằng dạng lowercase. Dùng chung bởi các bản
+ * `verifyWebhook` của gateway thật.
  */
 export function headerValue(
   headers: Record<string, string | string[] | undefined>,
@@ -113,7 +113,7 @@ export function headerValue(
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** Picks the gateway for a booking's provider; throws if it isn't configured. */
+/** Chọn gateway theo provider của booking; throw nếu provider đó chưa được cấu hình. */
 export function resolveGateway(
   gateways: readonly PaymentGateway[],
   provider: PaymentProvider,

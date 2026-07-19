@@ -39,8 +39,8 @@ describe('parseEnv', () => {
       parseEnv({
         NODE_ENV: 'production',
         BETTER_AUTH_SECRET: 'real-secret',
-        // P2: prod also requires a payment provider — satisfy it to isolate
-        // the assertion on BETTER_AUTH_SECRET.
+        // P2: prod cũng cần một payment provider — thoả điều kiện đó để cô lập
+        // assertion về BETTER_AUTH_SECRET.
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
       }).BETTER_AUTH_SECRET,

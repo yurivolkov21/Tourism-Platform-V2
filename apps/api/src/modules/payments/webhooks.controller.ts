@@ -20,23 +20,23 @@ import {
 import { PaymentsService } from './payments.service.js';
 
 /**
- * Provider webhook receivers (spec P2 §3 W2). PLAIN Nest routes on purpose —
- * NOT oRPC procedures: the callers are Stripe/PayPal servers, not contract
- * clients, and signature verification needs the RAW request bytes, which the
- * contract layer would JSON-parse away.
+ * Nơi nhận webhook của provider (spec P2 §3 W2). CỐ Ý dùng route Nest THUẦN —
+ * KHÔNG phải procedure oRPC: bên gọi là server Stripe/PayPal chứ không phải
+ * contract client, và verify signature cần RAW bytes của request, thứ mà tầng
+ * contract sẽ JSON-parse mất.
  *
- * Raw body: the app boots with `NestFactory.create(..., { rawBody: true })`
- * (main.ts + webhook int-test bootstraps). Verified against
- * @nestjs/platform-fastify 11.1.28: the flag makes the adapter's JSON content
- * parser `parseAs: 'buffer'` and stash the untouched bytes on
- * `request.rawBody` before Fastify's normal JSON parsing — exactly what
- * `RawBodyRequest<FastifyRequest>` types here.
+ * Raw body: app boot với `NestFactory.create(..., { rawBody: true })`
+ * (main.ts + bootstrap của webhook int-test). Đã kiểm chứng với
+ * @nestjs/platform-fastify 11.1.28: cờ này khiến JSON content parser của
+ * adapter chạy `parseAs: 'buffer'` và cất nguyên bytes vào `request.rawBody`
+ * trước bước parse JSON thường của Fastify — đúng thứ mà
+ * `RawBodyRequest<FastifyRequest>` khai kiểu ở đây.
  *
- * Status contract (Nexora-proven):
- * - bad/missing signature → 400 (never 500 — the provider would retry forever
- *   against a request that can never succeed);
- * - processed AND duplicate → 200 fast (a duplicate is a success to the
- *   provider; anything non-2xx triggers redelivery).
+ * Status contract (đã chứng minh ở Nexora):
+ * - signature sai/thiếu → 400 (không bao giờ 500 — provider sẽ retry mãi mãi
+ *   với một request không bao giờ thành công được);
+ * - đã xử lý VÀ trùng lặp → 200 nhanh (với provider, duplicate là thành công;
+ *   bất kỳ response non-2xx nào cũng kích hoạt redeliver).
  */
 @Controller('api/webhooks')
 export class WebhooksController {
@@ -60,8 +60,8 @@ export class WebhooksController {
   }
 
   private async handle(provider: PaymentProvider, req: RawBodyRequest<FastifyRequest>) {
-    // Unconfigured provider (e.g. PAYPAL before W5 lands the impl) → 404: for
-    // this deployment the endpoint effectively does not exist.
+    // Provider chưa cấu hình (vd PAYPAL trước khi W5 ráp impl) → 404: với
+    // deployment này endpoint coi như không tồn tại.
     let gateway: PaymentGateway;
     try {
       gateway = resolveGateway(this.gateways, provider);

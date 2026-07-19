@@ -5,9 +5,9 @@ import { AppModule } from './app.module.js';
 import { env } from './config/env.js';
 
 async function bootstrap() {
-  // rawBody (W2): the Fastify adapter stashes the untouched request bytes on
-  // `req.rawBody` (Buffer) for JSON bodies — webhook signature verification
-  // MUST see the raw bytes (re-serialized JSON breaks Stripe/PayPal HMACs).
+  // rawBody (W2): Fastify adapter cất nguyên bytes request chưa đụng vào
+  // `req.rawBody` (Buffer) cho body JSON — verify signature webhook BẮT BUỘC
+  // thấy raw bytes (JSON re-serialize sẽ phá HMAC của Stripe/PayPal).
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter(), {
     rawBody: true,
   });

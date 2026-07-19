@@ -4,13 +4,13 @@ import { contract } from '@tourism/contract';
 import { CatalogService } from './catalog.service.js';
 
 /**
- * oRPC contract implementation (spec §6, D2) via `@orpc/nest`:
- * each method is decorated with `@Implement(<contract procedure>)` and returns
- * `implement(<same procedure>).handler(...)` — @orpc/nest mounts it as a
- * regular Nest route at the contract's `.route.path` (`{slug}` → `:slug` for
- * the router), then validates input/output against the contract schemas.
+ * Cài đặt contract oRPC (spec §6, D2) qua `@orpc/nest`:
+ * mỗi method được decorate bằng `@Implement(<contract procedure>)` và trả về
+ * `implement(<đúng procedure đó>).handler(...)` — @orpc/nest mount nó thành
+ * route Nest thường tại `.route.path` của contract (`{slug}` → `:slug` cho
+ * router), rồi validate input/output theo các schema của contract.
  *
- * All catalog procedures are PUBLIC — no AuthGuard on purpose.
+ * Mọi procedure catalog đều PUBLIC — cố ý không gắn AuthGuard.
  */
 @Controller()
 export class CatalogController {
@@ -18,7 +18,7 @@ export class CatalogController {
 
   constructor(private readonly catalog: CatalogService) {}
 
-  /** Contract flavour of the health probe (the REST /health stays for infra). */
+  /** Bản contract của health probe (REST /health vẫn giữ cho infra). */
   @Implement(contract.health.check)
   health() {
     return implement(contract.health.check).handler(() => ({

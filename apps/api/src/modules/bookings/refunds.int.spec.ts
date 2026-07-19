@@ -14,15 +14,15 @@ import {
 import { BookingNotFoundError, RefundsService } from './refunds.service.js';
 
 /**
- * Integration (Docker PG, db tourism_test) — money-path W3: the Refund ledger
- * suite (spec P2 §4 invariants 5–6). Admin session comes from the bootstrap
- * ADMIN_EMAILS signup (vitest.int.config.ts); bookings become PAID through the
- * REAL webhook route so every refund starts from a genuine money-path state.
+ * Integration (Docker PG, db tourism_test) — money-path W3: suite cho Refund
+ * ledger (spec P2 §4 invariant 5–6). Admin session đến từ bootstrap signup
+ * ADMIN_EMAILS (vitest.int.config.ts); booking chuyển PAID qua route webhook
+ * THẬT nên mọi refund đều xuất phát từ một money-path state chân thực.
  *
- * Invariant #6 (currency mismatch) is enforced BY CONSTRUCTION, not by an
- * input error: the refund input carries no currency (the booking's currency is
- * implied), and the service issues + ledgers in `booking.currency` only — so
- * there is no input-path CURRENCY_MISMATCH case to test (see refund-math.ts).
+ * Invariant #6 (currency mismatch) được đảm bảo BẰNG THIẾT KẾ, không phải qua
+ * input error: input refund không mang currency (currency của booking được ngầm
+ * hiểu), và service chỉ issue + ghi ledger theo `booking.currency` — nên không
+ * có case CURRENCY_MISMATCH trên input-path để test (xem refund-math.ts).
  */
 
 const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
@@ -70,7 +70,7 @@ describe('refunds integration (admin refund ledger)', () => {
 
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
-      rawBody: true, // webhook route verifies signatures against raw bytes
+      rawBody: true, // route webhook verify signature dựa trên raw bytes
     });
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -101,10 +101,10 @@ describe('refunds integration (admin refund ledger)', () => {
     return sessionCookie(res);
   }
 
-  /** Admin session via the ADMIN_EMAILS bootstrap grant (create.after hook). */
+  /** Admin session qua bootstrap grant ADMIN_EMAILS (hook create.after). */
   const signUpAdmin = () => signUpUser(ADMIN_EMAIL, 'Boss');
 
-  /** Create a PENDING booking through the real API (party 3 → 117.00 USD). */
+  /** Tạo một booking PENDING qua API thật (party 3 → 117.00 USD). */
   async function createBooking(cookie: string, payload: Record<string, unknown> = {}) {
     const res = await app.inject({
       method: 'POST',
@@ -124,7 +124,7 @@ describe('refunds integration (admin refund ledger)', () => {
     return BookingSchema.parse(res.json());
   }
 
-  /** Flip a booking PAID via the REAL webhook route (records the capture id). */
+  /** Chuyển một booking sang PAID qua route webhook THẬT (ghi lại capture id). */
   async function payBooking(bookingId: string) {
     const event = fake.emitPaymentCompleted(bookingId);
     const res = await app.inject({
@@ -141,7 +141,7 @@ describe('refunds integration (admin refund ledger)', () => {
     return event;
   }
 
-  /** Customer booking taken all the way to PAID; returns the contract shape. */
+  /** Booking của khách đi hết đến PAID; trả về shape của contract. */
   async function createPaidBooking(cookie: string) {
     const booking = await createBooking(cookie);
     await payBooking(booking.id);
@@ -160,7 +160,7 @@ describe('refunds integration (admin refund ledger)', () => {
   it('partial 30.00 on a 117.00 PAID booking → PARTIALLY_REFUNDED + ledger row + gateway call + per-row outbox key', async () => {
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('alice@example.com', 'Alice'));
-    const paidEvent = fake.sessionFor(booking.id); // session recorded at create
+    const paidEvent = fake.sessionFor(booking.id); // session được ghi lúc create
     expect(paidEvent).toBeDefined();
 
     const res = await postRefund(admin, booking.code, { amount: '30.00', reason: 'goodwill' });
@@ -172,7 +172,7 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(body.refunds[0]?.currency).toBe('USD');
     expect(body.refunds[0]?.providerRefundId).toMatch(/^fake_re_/);
 
-    // DB: status projection + append-only ledger row with adminId set.
+    // DB: projection status + ledger row append-only có set adminId.
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.PARTIALLY_REFUNDED);
     const admins = await prisma.user.findUniqueOrThrow({ where: { email: ADMIN_EMAIL } });
@@ -181,9 +181,9 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(refunds[0]?.amount.toFixed(2)).toBe('30.00');
     expect(refunds[0]?.adminId).toBe(admins.id);
 
-    // Gateway refunded FIRST, in the booking's currency (invariant #6), with
-    // the W5 provider idempotency key (attempt state = ledger sum BEFORE this
-    // refund: nothing refunded yet → 0.00).
+    // Gateway refund TRƯỚC, theo currency của booking (invariant #6), kèm
+    // idempotency key của provider W5 (attempt state = tổng ledger TRƯỚC lần
+    // refund này: chưa refund gì → 0.00).
     expect(fake.refunds).toHaveLength(1);
     expect(fake.refunds[0]).toMatchObject({
       amount: '30.00',
@@ -191,7 +191,7 @@ describe('refunds integration (admin refund ledger)', () => {
       idempotencyKey: `refund:${booking.id}:0.00`,
     });
 
-    // Outbox row keyed per refund row (refunds legitimately repeat per booking).
+    // Outbox row key theo từng refund row (refund lặp lại hợp lệ trên mỗi booking).
     const outbox = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]?.dedupeKey).toBe(`refund:${booking.id}:${refunds[0]?.id}`);
@@ -199,7 +199,7 @@ describe('refunds integration (admin refund ledger)', () => {
       code: booking.code,
       amount: '30.00',
       currency: 'USD',
-      reason: 'goodwill', // reason lives ONLY here — the Refund model has no reason column
+      reason: 'goodwill', // reason CHỈ nằm ở đây — model Refund không có cột reason
     });
   });
 
@@ -217,14 +217,14 @@ describe('refunds integration (admin refund ledger)', () => {
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds.map((r) => r.amount)).toEqual(['30.00', '87.00']);
-    // W5 provider idempotency: each ATTEMPT mints a distinct key — the second
-    // refund sees the accumulated ledger (30.00), so a crash-retry of either
-    // attempt dedupes at the provider without blocking the next refund.
+    // W5 provider idempotency: mỗi ATTEMPT sinh một key riêng — lần refund thứ
+    // hai thấy ledger đã tích lũy (30.00), nên crash-retry của bất kỳ attempt
+    // nào cũng dedupe ở provider mà không chặn lần refund kế tiếp.
     expect(fake.refunds.map((r) => r.idempotencyKey)).toEqual([
       `refund:${booking.id}:0.00`,
       `refund:${booking.id}:30.00`,
     ]);
-    // Two refund emails with DISTINCT per-row keys (repeat-event convention).
+    // Hai refund email với key theo từng row KHÁC NHAU (quy ước repeat-event).
     const keys = (
       await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } })
     ).map((o) => o.dedupeKey);
@@ -241,7 +241,7 @@ describe('refunds integration (admin refund ledger)', () => {
     const res = await postRefund(admin, booking.code, { amount: '1.00' });
     expect(res.statusCode).toBe(422);
     expect(res.json()).toMatchObject({ code: 'NOTHING_LEFT' });
-    expect(fake.refunds).toHaveLength(2); // gateway NOT called again
+    expect(fake.refunds).toHaveLength(2); // gateway KHÔNG bị gọi lại
     expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(2);
   });
 
@@ -258,7 +258,7 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(accumulated.statusCode).toBe(422);
     expect(accumulated.json()).toMatchObject({ code: 'OVER_TOTAL' });
 
-    expect(fake.refunds).toHaveLength(1); // only the valid 30.00
+    expect(fake.refunds).toHaveLength(1); // chỉ có 30.00 hợp lệ
     expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
     expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
       BookingStatus.PARTIALLY_REFUNDED,
@@ -280,7 +280,7 @@ describe('refunds integration (admin refund ledger)', () => {
     const booking = await createPaidBooking(await signUpUser('frank@example.com'));
     expect((await postRefund(admin, booking.code, { amount: '30.00' })).statusCode).toBe(200);
 
-    const res = await postRefund(admin, booking.code, {}); // no amount: remainder 87.00
+    const res = await postRefund(admin, booking.code, {}); // không amount: phần còn lại 87.00
     expect(res.statusCode).toBe(200);
     const body = AdminRefundResultSchema.parse(res.json());
     expect(body.booking.status).toBe('REFUNDED');
@@ -289,7 +289,7 @@ describe('refunds integration (admin refund ledger)', () => {
 
   it('non-PAID booking (PENDING) → 422 NOT_REFUNDABLE; unknown code → 404', async () => {
     const admin = await signUpAdmin();
-    const booking = await createBooking(await signUpUser('gina@example.com')); // stays PENDING
+    const booking = await createBooking(await signUpUser('gina@example.com')); // vẫn PENDING
 
     const res = await postRefund(admin, booking.code, { amount: '10.00' });
     expect(res.statusCode).toBe(422);
@@ -326,7 +326,7 @@ describe('refunds integration (admin refund ledger)', () => {
     ).toBe(403);
     expect((await postRefund('', booking.code, { amount: '1.00' })).statusCode).toBe(401);
 
-    // 403s changed nothing.
+    // 403 không đổi gì cả.
     expect(fake.refunds).toHaveLength(0);
     expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
       BookingStatus.PAID,
@@ -345,7 +345,7 @@ describe('refunds integration (admin refund ledger)', () => {
     });
     expect(all.statusCode).toBe(200);
     const page = PagedSchema(BookingSchema).parse(all.json());
-    expect(page.total).toBe(2); // across BOTH users — not owner-scoped
+    expect(page.total).toBe(2); // qua CẢ HAI user — không giới hạn theo owner
     expect(page.items.map((b) => b.code).sort()).toEqual([paid.code, pending.code].sort());
 
     const filtered = await app.inject({
@@ -401,7 +401,7 @@ describe('refunds integration (admin refund ledger)', () => {
     const refunds = app.get(RefundsService);
     const history = await refunds.historyForBooking(booking.code);
     expect(history).toHaveLength(2);
-    expect(history.map((r) => Number(r.amount))).toEqual([30, 87]); // oldest first
+    expect(history.map((r) => Number(r.amount))).toEqual([30, 87]); // cũ nhất trước
     expect(history.every((r) => r.adminId !== null)).toBe(true);
 
     await expect(refunds.historyForBooking('BK-ZZZZ9999')).rejects.toThrow(BookingNotFoundError);

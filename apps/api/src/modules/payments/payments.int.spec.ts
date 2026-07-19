@@ -11,10 +11,10 @@ import { FAKE_SIGNATURE_HEADER, FAKE_VALID_SIGNATURE, FakeGateway } from './fake
 import type { VerifiedEvent } from './gateway.js';
 
 /**
- * Integration (Docker PG, db tourism_test) — money-path W2: the invariant
- * suite for the webhook → PaymentEvent idempotency → atomic PAID claim CTE
- * (spec P2 §4 invariants 1–4, 7). App boots with `{ rawBody: true }` — the
- * webhook controller verifies signatures against the RAW bytes.
+ * Integration (Docker PG, db tourism_test) — money-path W2: bộ test invariant
+ * cho luồng webhook → idempotency PaymentEvent → CTE claim PAID nguyên tử
+ * (spec P2 §4 invariant 1–4, 7). App boot với `{ rawBody: true }` — webhook
+ * controller verify signature dựa trên RAW bytes.
  */
 
 const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
@@ -41,7 +41,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
   let fake: FakeGateway;
 
   const future45 = new Date(Date.now() + 45 * 86_400_000);
-  // depMain: pre-booked seats prove the claim increments EXACTLY party size.
+  // depMain: seat đã book sẵn để chứng minh claim tăng ĐÚNG party size.
   const depMain = {
     id: 'e9200001-0000-4000-8000-000000000001',
     tourId: tour.id,
@@ -51,14 +51,14 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     seatsBooked: 3,
     status: DepartureStatus.OPEN,
   } satisfies Prisma.TourDepartureCreateManyInput;
-  // depTight: starts empty so a party-6 create passes the soft check; tests
-  // then fill it to near-full to force the overbook outcome at claim time.
+  // depTight: khởi đầu rỗng để một create party-6 qua được soft check; test sau
+  // đó đổ đầy gần hết để ép ra outcome overbook tại thời điểm claim.
   const depTight = {
     ...depMain,
     id: 'e9200001-0000-4000-8000-000000000002',
     seatsBooked: 0,
   } satisfies Prisma.TourDepartureCreateManyInput;
-  // depBig: roomy — the concurrency loop books it repeatedly without filling.
+  // depBig: rộng rãi — vòng lặp concurrency book liên tục mà không đầy.
   const depBig = {
     ...depMain,
     id: 'e9200001-0000-4000-8000-000000000003',
@@ -73,11 +73,15 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     );
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
     await prisma.destination.createMany({ data: catalog.destinations });
-    await prisma.tour.createMany({ data: [tour] as unknown as Prisma.TourCreateManyInput[] });
+    await prisma.tour.createMany({
+      data: [tour] as unknown as Prisma.TourCreateManyInput[],
+    });
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    // rawBody: true — same wiring as main.ts; without it `req.rawBody` is
-    // undefined and every signature verification would 400.
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
+    // rawBody: true — cùng wiring như main.ts; thiếu nó thì `req.rawBody` là
+    // undefined và mọi lần verify signature sẽ 400.
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
       rawBody: true,
     });
@@ -110,7 +114,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     return sessionCookie(res);
   }
 
-  /** Create a PENDING booking through the real API; returns the contract shape. */
+  /** Tạo một booking PENDING qua API thật; trả về đúng shape của contract. */
   async function createBooking(cookie: string, payload: Record<string, unknown> = {}) {
     const res = await app.inject({
       method: 'POST',
@@ -130,12 +134,15 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     return BookingSchema.parse(res.json());
   }
 
-  /** POST a (Fake-)signed provider event to the raw-body webhook route. */
+  /** POST một event provider đã ký (bằng Fake) vào route webhook raw-body. */
   async function postWebhook(event: VerifiedEvent, signature: string = FAKE_VALID_SIGNATURE) {
     return app.inject({
       method: 'POST',
       url: '/api/webhooks/stripe',
-      headers: { 'content-type': 'application/json', [FAKE_SIGNATURE_HEADER]: signature },
+      headers: {
+        'content-type': 'application/json',
+        [FAKE_SIGNATURE_HEADER]: signature,
+      },
       payload: JSON.stringify(event),
     });
   }
@@ -157,16 +164,18 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       outcome: 'claimed',
     });
 
-    // Booking flipped PAID with paidAt + captured payment handle.
-    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    // Booking đã lật sang PAID kèm paidAt + payment handle đã capture.
+    const row = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+    });
     expect(row.status).toBe(BookingStatus.PAID);
     expect(row.paidAt).not.toBeNull();
     expect(row.providerPaymentId).toBe(event.providerPaymentId);
 
-    // Seats claimed by EXACTLY the party size (3 pre-booked + 3).
+    // Seat được claim ĐÚNG bằng party size (3 book sẵn + 3).
     expect(await seatsOf(depMain.id)).toBe(6);
 
-    // Outbox enqueued atomically inside the claim CTE (invariant #7).
+    // Outbox được enqueue nguyên tử bên trong claim CTE (invariant #7).
     const outbox = await prisma.outbox.findMany();
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
@@ -185,9 +194,11 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       currency: 'USD',
     });
 
-    // PaymentEvent audit row (H4): denormalized money columns + processedAt.
+    // Row audit PaymentEvent (H4): các cột money denormalized + processedAt.
     const pe = await prisma.paymentEvent.findUniqueOrThrow({
-      where: { provider_eventId: { provider: 'STRIPE', eventId: event.eventId } },
+      where: {
+        provider_eventId: { provider: 'STRIPE', eventId: event.eventId },
+      },
     });
     expect(pe.type).toBe('payment.completed');
     expect(pe.amount?.toFixed(2)).toBe('117.00');
@@ -200,7 +211,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     const cookie = await signUpUser('dup@example.com');
     const booking = await createBooking(cookie);
 
-    const event = fake.emitPaymentCompleted(booking.id, { eventId: 'evt_pinned_1' });
+    const event = fake.emitPaymentCompleted(booking.id, {
+      eventId: 'evt_pinned_1',
+    });
     expect((await postWebhook(event)).statusCode).toBe(200);
     const replay = await postWebhook(
       fake.emitPaymentCompleted(booking.id, { eventId: 'evt_pinned_1' }),
@@ -208,7 +221,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(replay.statusCode).toBe(200);
     expect(replay.json()).toMatchObject({ status: 'duplicate' });
 
-    expect(await seatsOf(depMain.id)).toBe(6); // incremented ONCE
+    expect(await seatsOf(depMain.id)).toBe(6); // chỉ tăng MỘT LẦN
     expect(await prisma.outbox.count()).toBe(1);
     expect(await prisma.paymentEvent.count()).toBe(1);
   });
@@ -220,11 +233,14 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect((await postWebhook(fake.emitPaymentCompleted(booking.id))).statusCode).toBe(200);
     const second = await postWebhook(fake.emitPaymentCompleted(booking.id));
     expect(second.statusCode).toBe(200);
-    expect(second.json()).toMatchObject({ status: 'processed', outcome: 'already-paid' });
+    expect(second.json()).toMatchObject({
+      status: 'processed',
+      outcome: 'already-paid',
+    });
 
     expect(await seatsOf(depMain.id)).toBe(6);
     expect(await prisma.outbox.count()).toBe(1);
-    // Both events are logged and finished — the SECOND one changed nothing.
+    // Cả hai event đều được log và hoàn tất — cái THỨ HAI không đổi gì.
     const events = await prisma.paymentEvent.findMany();
     expect(events).toHaveLength(2);
     expect(events.every((e) => e.processedAt !== null)).toBe(true);
@@ -232,13 +248,13 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
   it('overbook: seats no longer fit at claim time → auto-refund + CANCELLED (invariant #3)', async () => {
     const cookie = await signUpUser('late@example.com');
-    // Party of 6 passes the soft check (8 seats free at create)…
+    // Party 6 qua được soft check (8 seat trống lúc create)…
     const booking = await createBooking(cookie, {
       departureId: depTight.id,
       numAdults: 6,
       numChildren: 0,
     });
-    // …then the departure fills to 7/8 while the buyer sits on checkout.
+    // …rồi departure đầy lên 7/8 trong lúc người mua còn ngồi ở checkout.
     await prisma.tourDeparture.update({
       where: { id: depTight.id },
       data: { seatsBooked: 7 },
@@ -247,29 +263,36 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     const event = fake.emitPaymentCompleted(booking.id);
     const res = await postWebhook(event);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'overbooked' });
+    expect(res.json()).toMatchObject({
+      status: 'processed',
+      outcome: 'overbooked',
+    });
 
-    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    const row = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+    });
     expect(row.status).toBe(BookingStatus.CANCELLED);
     expect(row.cancelledAt).not.toBeNull();
     expect(row.paidAt).toBeNull();
     expect(await seatsOf(depTight.id)).toBe(7); // untouched
 
-    // Full auto-refund: gateway called + Refund ledger row (adminId null).
+    // Auto-refund toàn phần: gọi gateway + một row ledger Refund (adminId null).
     expect(fake.refunds).toHaveLength(1);
     expect(fake.refunds[0]).toMatchObject({
       providerPaymentId: event.providerPaymentId,
       amount: '234.00', // 39.00 × 6
       currency: 'USD',
-      idempotencyKey: `overbook-refund:${booking.id}`, // W5 provider idempotency
+      idempotencyKey: `overbook-refund:${booking.id}`, // idempotency provider W5
     });
-    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    const refunds = await prisma.refund.findMany({
+      where: { bookingId: booking.id },
+    });
     expect(refunds).toHaveLength(1);
     expect(refunds[0]?.amount.toFixed(2)).toBe('234.00');
     expect(refunds[0]?.adminId).toBeNull();
     expect(refunds[0]?.providerRefundId).toBe(fake.refunds[0]?.providerRefundId);
 
-    // Refund email enqueued once per booking — and NO confirmation email.
+    // Email refund enqueue một lần mỗi booking — và KHÔNG có email confirmation.
     const outbox = await prisma.outbox.findMany();
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
@@ -289,30 +312,40 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     const res = await postWebhook(fake.emitPaymentCompleted(booking.id));
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'cancelled' });
+    expect(res.json()).toMatchObject({
+      status: 'processed',
+      outcome: 'cancelled',
+    });
 
-    // W3 finalized: money refunded + ledgered, then status DERIVED from the
-    // ledger — SUM(refunds) == totalAmount ⇒ REFUNDED (no longer CANCELLED;
-    // contrast the overbook path above, which never counted as revenue).
-    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    // W3 chốt: tiền đã refund + ghi ledger, rồi status được SUY RA từ ledger —
+    // SUM(refunds) == totalAmount ⇒ REFUNDED (không còn CANCELLED; trái với path
+    // overbook ở trên vốn không bao giờ tính là doanh thu).
+    const row = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+    });
     expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds).toHaveLength(1);
-    // W5 provider idempotency key for the orphan auto-refund flow.
+    // Key idempotency provider W5 cho luồng auto-refund orphan.
     expect(fake.refunds[0]?.idempotencyKey).toBe(`orphan-refund:${booking.id}`);
-    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    const refunds = await prisma.refund.findMany({
+      where: { bookingId: booking.id },
+    });
     expect(refunds).toHaveLength(1);
     expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
-    expect(refunds[0]?.adminId).toBeNull(); // automatic, not admin-issued
-    expect(await seatsOf(depMain.id)).toBe(3); // never claimed
+    expect(refunds[0]?.adminId).toBeNull(); // tự động, không phải admin phát hành
+    expect(await seatsOf(depMain.id)).toBe(3); // chưa bao giờ được claim
 
-    // W3 owns the refund email for this path: once per booking.
+    // W3 chịu trách nhiệm email refund cho path này: một lần mỗi booking.
     const outbox = await prisma.outbox.findMany();
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
       type: EmailType.BOOKING_REFUNDED,
       dedupeKey: `orphan-refund:${booking.id}`,
     });
-    expect(outbox[0]?.payload).toMatchObject({ amount: '117.00', reason: 'orphaned capture' });
+    expect(outbox[0]?.payload).toMatchObject({
+      amount: '117.00',
+      reason: 'orphaned capture',
+    });
   });
 
   it('bad signature → 400, NO PaymentEvent row, nothing processed', async () => {
@@ -340,14 +373,18 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(res.json()).toMatchObject({ status: 'processed' });
     expect(res.json()).not.toHaveProperty('outcome');
 
-    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    const row = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+    });
     expect(row.status).toBe(BookingStatus.PENDING);
     expect(row.paidAt).toBeNull();
     expect(await seatsOf(depMain.id)).toBe(3);
     expect(await prisma.outbox.count()).toBe(0);
 
     const pe = await prisma.paymentEvent.findUniqueOrThrow({
-      where: { provider_eventId: { provider: 'STRIPE', eventId: event.eventId } },
+      where: {
+        provider_eventId: { provider: 'STRIPE', eventId: event.eventId },
+      },
     });
     expect(pe.processedAt).not.toBeNull();
     expect(pe.bookingId).toBe(booking.id);
@@ -357,17 +394,20 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     const event = fake.emitPaymentCompleted('e9200001-dead-4000-8000-000000000000');
     const res = await postWebhook(event);
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'not-found' });
+    expect(res.json()).toMatchObject({
+      status: 'processed',
+      outcome: 'not-found',
+    });
     expect(await prisma.paymentEvent.count()).toBe(1);
   });
 
   it('CONCURRENT duplicate claims (same booking, 2 connections) → exactly one claimed, seats once — ×10', async () => {
-    // The EPQ race the lead flagged: two payment.completed deliveries with
-    // DISTINCT eventIds (beginEvent cannot dedupe) claiming the SAME booking
-    // concurrently. The bookings-first claim puts the status qual on the
-    // UPDATE-target row, so the loser's EPQ re-check must fail. 10 fresh
-    // bookings to give the race room to bite; prisma's pool (max 10) runs the
-    // two calls on separate connections.
+    // Race EPQ mà lead đã cảnh báo: hai lần giao payment.completed với eventId
+    // KHÁC NHAU (beginEvent không dedupe được) cùng claim MỘT booking đồng thời.
+    // Claim theo kiểu bookings-first đặt status qual lên chính row đích của
+    // UPDATE, nên lần re-check EPQ của kẻ thua bắt buộc phải fail. 10 booking mới
+    // để cho race đủ chỗ mà cắn; pool của prisma (max 10) chạy hai call trên hai
+    // connection riêng.
     const bookings = app.get(BookingsService);
     const cookie = await signUpUser('race@example.com');
 
@@ -379,22 +419,26 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       ]);
 
       expect([a, b].sort()).toEqual(['already-paid', 'claimed']);
-      // Seats incremented EXACTLY once per booking across both racers.
+      // Seat tăng ĐÚNG một lần mỗi booking qua cả hai racer.
       expect(await seatsOf(depBig.id)).toBe(3 * (i + 1));
-      // Single outbox row per booking (dedupe key + single flip).
+      // Một row outbox mỗi booking (dedupe key + một lần flip).
       expect(
-        await prisma.outbox.count({ where: { dedupeKey: `booking-confirmed:${booking.id}` } }),
+        await prisma.outbox.count({
+          where: { dedupeKey: `booking-confirmed:${booking.id}` },
+        }),
       ).toBe(1);
-      const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      const row = await prisma.booking.findUniqueOrThrow({
+        where: { id: booking.id },
+      });
       expect(row.status).toBe(BookingStatus.PAID);
     }
     expect(await prisma.outbox.count()).toBe(10);
   });
 
   it('direct claim on an overfull departure → CHECK abort: overbooked, booking STAYS PENDING, zero partial effects', async () => {
-    // Observes the claim in isolation (the webhook overbook test covers the
-    // full refund path to CANCELLED): the statement-wide abort must leave the
-    // PAID flip, seats and outbox ALL unapplied.
+    // Quan sát claim một cách biệt lập (test overbook qua webhook đã bao path
+    // refund đầy đủ tới CANCELLED): việc abort toàn statement phải để lần flip
+    // PAID, seat và outbox TẤT CẢ không được áp dụng.
     const bookings = app.get(BookingsService);
     const cookie = await signUpUser('abort@example.com');
     const booking = await createBooking(cookie, {
@@ -402,13 +446,18 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       numAdults: 6,
       numChildren: 0,
     });
-    await prisma.tourDeparture.update({ where: { id: depTight.id }, data: { seatsBooked: 7 } });
+    await prisma.tourDeparture.update({
+      where: { id: depTight.id },
+      data: { seatsBooked: 7 },
+    });
 
     const outcome = await bookings.claimSeatsForPaid(booking.id, 'pay_abort_1');
     expect(outcome).toBe('overbooked');
 
-    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
-    expect(row.status).toBe(BookingStatus.PENDING); // NOT flipped — statement aborted whole
+    const row = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+    });
+    expect(row.status).toBe(BookingStatus.PENDING); // KHÔNG flip — cả statement bị abort
     expect(row.paidAt).toBeNull();
     expect(row.providerPaymentId).toBeNull();
     expect(await seatsOf(depTight.id)).toBe(7);
@@ -426,6 +475,8 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       payload: JSON.stringify(fake.emitPaymentCompleted('e9200001-dead-4000-8000-000000000000')),
     });
     expect(res.statusCode).toBe(404);
-    expect(res.json()).toMatchObject({ code: 'WEBHOOK_PROVIDER_NOT_CONFIGURED' });
+    expect(res.json()).toMatchObject({
+      code: 'WEBHOOK_PROVIDER_NOT_CONFIGURED',
+    });
   });
 });

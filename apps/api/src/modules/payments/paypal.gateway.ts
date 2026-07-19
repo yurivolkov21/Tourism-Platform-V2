@@ -12,38 +12,38 @@ import {
 } from './gateway.js';
 import { toAmountValue } from './money.js';
 
-/** Sandbox only for the capstone (no revenue — spec §1); tests may override. */
+/** Chỉ sandbox cho capstone (không doanh thu — spec §1); test có thể override. */
 const SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
-/** Refresh the cached OAuth token this long before its stated expiry. */
+/** Refresh OAuth token đang cache sớm bấy nhiêu trước thời điểm expiry ghi trên token. */
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
 
 export interface PayPalGatewayOptions {
   clientId: string;
   clientSecret: string;
-  /** Webhook id from the PayPal app config — REQUIRED for verification. */
+  /** Webhook id từ cấu hình PayPal app — BẮT BUỘC để verify. */
   webhookId: string;
-  /** Override for tests; defaults to the sandbox API host. */
+  /** Override cho test; mặc định là host API sandbox. */
   baseUrl?: string;
 }
 
 /**
- * PayPal (Orders v2, sandbox) implementation of {@link PaymentGateway} — port
- * of Nexora's PayPalService SHAPE without `@paypal/paypal-server-sdk`: Nexora
- * used the SDK for orders/refunds but ALREADY spoke raw HTTP (fetch + cached
- * client-credentials token) for OAuth and webhook verification; v2 does the
- * remaining two endpoints raw as well, through the injectable {@link HttpPost}
- * seam so every call is unit-testable offline (D2: no network smoke in P2).
+ * Bản triển khai {@link PaymentGateway} cho PayPal (Orders v2, sandbox) — port
+ * HÌNH DẠNG PayPalService của Nexora nhưng không dùng `@paypal/paypal-server-sdk`:
+ * Nexora dùng SDK cho orders/refunds nhưng ĐÃ nói raw HTTP (fetch + token
+ * client-credentials có cache) cho OAuth và verify webhook; v2 làm nốt hai
+ * endpoint còn lại cũng bằng raw HTTP, qua seam {@link HttpPost} injectable để
+ * mọi lời gọi unit-test được offline (D2: không network smoke trong P2).
  *
- * Webhook verification is PayPal's `verify-webhook-signature` API (unlike
- * Stripe there is no offline HMAC scheme for REST webhooks) — a network call
- * in production, a stubbed `httpPost` in tests. `custom_id` on the purchase
- * unit is the bookingId bridge (Nexora-proven), the capture id becomes
- * `providerPaymentId` (the refund handle).
+ * Verify webhook dùng API `verify-webhook-signature` của PayPal (khác Stripe,
+ * REST webhook không có scheme HMAC offline) — một network call ở production,
+ * một `httpPost` stub trong test. `custom_id` trên purchase unit là cầu nối
+ * bookingId (đã được Nexora kiểm chứng), capture id trở thành
+ * `providerPaymentId` (handle để refund).
  *
- * NOTE capture trigger: Nexora captured on buyer return (`captureOrder` from
- * the return endpoint) with the webhook as backstop. The P2 interface has no
- * capture surface — the return-page capture lands with the web checkout flow
- * (P3); until then `CHECKOUT.ORDER.APPROVED` maps to `other` (recorded only).
+ * LƯU Ý trigger capture: Nexora capture khi buyer quay lại (`captureOrder` từ
+ * return endpoint) với webhook làm backstop. Interface P2 không có mặt capture
+ * — capture ở return-page sẽ tới cùng web checkout flow (P3); từ giờ tới đó
+ * `CHECKOUT.ORDER.APPROVED` map thành `other` (chỉ ghi lại).
  */
 export class PayPalGateway implements PaymentGateway {
   readonly provider = PaymentProvider.PAYPAL;
@@ -144,9 +144,9 @@ export class PayPalGateway implements PaymentGateway {
     return { providerRefundId: refund.id };
   }
 
-  // ── Internals ─────────────────────────────────────────────────────────────
+  // ── Nội bộ ─────────────────────────────────────────────────────────────
 
-  /** JSON POST with Bearer auth; `PayPal-Request-Id` = provider idempotency. */
+  /** JSON POST với Bearer auth; `PayPal-Request-Id` = idempotency phía provider. */
   private async post<T>(path: string, payload: unknown, requestId?: string): Promise<T> {
     const token = await this.getAccessToken();
     const headers: Record<string, string> = {
@@ -186,8 +186,14 @@ export class PayPalGateway implements PaymentGateway {
     if (response.status < 200 || response.status >= 300) {
       throw new Error(`PayPal OAuth token request failed: HTTP ${response.status}`);
     }
-    const json = JSON.parse(response.body) as { access_token: string; expires_in: number };
-    this.cachedToken = { token: json.access_token, expiresAt: now + json.expires_in * 1000 };
+    const json = JSON.parse(response.body) as {
+      access_token: string;
+      expires_in: number;
+    };
+    this.cachedToken = {
+      token: json.access_token,
+      expiresAt: now + json.expires_in * 1000,
+    };
     return json.access_token;
   }
 }

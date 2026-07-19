@@ -8,12 +8,12 @@ import { CancellationsService } from './cancellations.service.js';
 import { RefundsService } from './refunds.service.js';
 
 /**
- * `forwardRef`: BookingsModule ↔ PaymentsModule is a real cycle (W2) —
- * BookingsService and RefundsService consume PAYMENT_GATEWAYS, PaymentsService
- * consumes BookingsService.claimSeatsForPaid. See payments.module.ts.
- * CancellationsService (W4) lives here rather than its own module: it is the
- * third leg of the same money-path (reuses RefundsService's gateway step and
- * the booking mappers).
+ * `forwardRef`: BookingsModule ↔ PaymentsModule là một cycle thật (W2) —
+ * BookingsService và RefundsService tiêu thụ PAYMENT_GATEWAYS, còn
+ * PaymentsService tiêu thụ BookingsService.claimSeatsForPaid. Xem
+ * payments.module.ts. CancellationsService (W4) nằm ở đây thay vì module riêng:
+ * nó là chân thứ ba của cùng money-path (tái dùng bước gateway của RefundsService
+ * và các booking mapper).
  */
 @Module({
   imports: [forwardRef(() => PaymentsModule)],

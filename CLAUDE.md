@@ -30,10 +30,14 @@ P5 mobile → P6 AI concierge → freeze 15/10.
 5. **ADR đi TRƯỚC code** cho mọi quyết định kiến trúc (sửa lỗi ADR-retroactive
    của Nexora). ADR đánh số trong `docs/adr/`.
 6. **Frontend: tokens-only, không hex** — dùng `@tourism/tokens`.
-7. **English-only** cho copy user-facing, tập trung trong `@tourism/i18n`.
-8. **`pnpm gate` trước khi khai xanh** (build + typecheck + test + lint).
-9. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
-10. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
+7. **English-only** cho copy user-facing (text sản phẩm — nút, nhãn, email,
+   thông báo), tập trung trong `@tourism/i18n`.
+8. **Comment code: tiếng Việt** (developer-facing — khác luật 7). Mọi comment
+   `//` và JSDoc `/** */` viết bằng tiếng Việt, kể cả code do subagent sinh ra
+   (brief subagent phải dặn điều này). Tên biến/hàm/identifier vẫn tiếng Anh.
+9. **`pnpm gate` trước khi khai xanh** (build + typecheck + test + lint).
+10. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
+11. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · số test) + cập nhật doc hiện-trạng bị ảnh hưởng.
 
 ## Chính sách theo lịch (capstone)

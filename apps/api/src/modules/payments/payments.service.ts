@@ -11,36 +11,37 @@ import {
   type VerifiedEvent,
 } from './gateway.js';
 
-/** What {@link PaymentsService.handleEvent} tells the webhook controller. */
+/** Thứ mà {@link PaymentsService.handleEvent} báo lại cho webhook controller. */
 export interface HandleEventResult {
   /**
-   * `processed` — the event ran (or was consciously ignored) and is now marked
-   * done; `duplicate` — a PaymentEvent with this `[provider, eventId]` was
-   * already processed, nothing re-ran. Both answer HTTP 200 (providers retry
-   * on non-2xx forever; a duplicate is a SUCCESS from their point of view).
+   * `processed` — event đã chạy (hoặc chủ ý bỏ qua) và giờ được đánh dấu xong;
+   * `duplicate` — một PaymentEvent với `[provider, eventId]` này đã được xử lý
+   * rồi, không có gì chạy lại. Cả hai đều trả HTTP 200 (provider retry mãi mãi
+   * khi gặp non-2xx; với họ một duplicate là THÀNH CÔNG).
    */
   status: 'processed' | 'duplicate';
-  /** Claim outcome, present only for a processed `payment.completed`. */
+  /** Kết quả claim, chỉ có ở một `payment.completed` đã processed. */
   outcome?: ClaimOutcome;
 }
 
-/** {@link PaymentsService.beginEvent}: what a webhook delivery turned out to be. */
+/** {@link PaymentsService.beginEvent}: một webhook delivery hóa ra là loại gì. */
 type BeginOutcome = 'new' | 'retry' | 'duplicate';
 
 /**
- * PaymentEvent idempotency + provider-neutral webhook dispatch (spec P2 §3/§4
- * invariant #2) — port of Nexora's battle-tested beginEvent/finishEvent shape
- * onto the v2 schema (audit H4: `amount`/`currency`/`bookingId` are now real
- * columns written at begin time, so money forensics never re-parse payloads).
+ * Idempotency cho PaymentEvent + dispatch webhook provider-neutral (spec P2
+ * §3/§4 invariant #2) — port hình dạng beginEvent/finishEvent đã dày dạn trận
+ * mạc của Nexora sang schema v2 (audit H4: `amount`/`currency`/`bookingId` giờ
+ * là các cột thật, ghi ngay lúc begin, nên money forensics không bao giờ phải
+ * parse lại payload).
  *
- * Two idempotency layers (unchanged from Nexora):
- *  1. **Event-level** — `PaymentEvent @@unique([provider, eventId])`.
- *     `processedAt` set ⇒ true duplicate (skip, answer 200).
- *     `processedAt` NULL ⇒ a prior attempt crashed mid-flight → RE-RUN the
- *     handler; that is safe because of layer 2.
- *  2. **Booking-level** — the seat claim is a single conditional statement
- *     gated on `status = 'PENDING'` ({@link BookingsService.claimSeatsForPaid}),
- *     so replays can never double-count seats.
+ * Hai lớp idempotency (giữ nguyên từ Nexora):
+ *  1. **Cấp event** — `PaymentEvent @@unique([provider, eventId])`.
+ *     `processedAt` đã set ⇒ duplicate thật (skip, trả 200).
+ *     `processedAt` NULL ⇒ một lượt trước crash giữa chừng → CHẠY LẠI handler;
+ *     an toàn nhờ lớp 2.
+ *  2. **Cấp booking** — seat claim là một câu lệnh điều kiện đơn, gate trên
+ *     `status = 'PENDING'` ({@link BookingsService.claimSeatsForPaid}), nên
+ *     replay không bao giờ đếm trùng seat.
  */
 @Injectable()
 export class PaymentsService {
@@ -52,11 +53,11 @@ export class PaymentsService {
   ) {}
 
   /**
-   * Records the verified event (`processedAt` NULL = "received, not finished").
-   * `P2002` on `[provider, eventId]` means we have seen this delivery before:
-   * with `processedAt` set it is a true duplicate (`duplicate` — skip); with
-   * NULL the prior attempt never reached {@link finishEvent} (`retry` —
-   * re-run, handlers are idempotent at booking level).
+   * Ghi lại event đã verify (`processedAt` NULL = "đã nhận, chưa xong").
+   * `P2002` trên `[provider, eventId]` nghĩa là ta đã thấy delivery này trước
+   * đó: nếu `processedAt` đã set thì đây là duplicate thật (`duplicate` —
+   * skip); nếu NULL thì lượt trước chưa từng tới {@link finishEvent} (`retry` —
+   * chạy lại, các handler idempotent ở cấp booking).
    */
   async beginEvent(provider: PaymentProvider, verified: VerifiedEvent): Promise<BeginOutcome> {
     try {
@@ -66,8 +67,8 @@ export class PaymentsService {
           eventId: verified.eventId,
           type: verified.type,
           payload: verified.raw as Prisma.InputJsonValue,
-          // Audit H4 columns — written from the VERIFIED payload, nullable on
-          // 'other'/malformed-but-signed events.
+          // Các cột audit H4 — ghi từ payload ĐÃ VERIFY, nullable với event
+          // 'other'/malformed-nhưng-đã-ký.
           amount: verified.amount ?? null,
           currency: verified.currency ?? null,
           bookingId: verified.bookingId ?? null,
@@ -91,7 +92,7 @@ export class PaymentsService {
     }
   }
 
-  /** Marks the event done — every later retry of this id becomes a pure no-op. */
+  /** Đánh dấu event xong — mọi retry sau này của id này trở thành no-op thuần túy. */
   async finishEvent(provider: PaymentProvider, eventId: string): Promise<void> {
     await prisma.paymentEvent.update({
       where: { provider_eventId: { provider, eventId } },
@@ -100,15 +101,15 @@ export class PaymentsService {
   }
 
   /**
-   * Dispatches a signature-verified event. Called by the webhook controller
-   * AFTER `gateway.verifyWebhook` succeeded — nothing unverified gets here.
+   * Dispatch một event đã verify signature. Được webhook controller gọi SAU khi
+   * `gateway.verifyWebhook` thành công — không có gì chưa verify lọt tới đây.
    *
-   * - `payment.completed` → atomic PAID claim; `overbooked` / `cancelled`
-   *   outcomes auto-refund (invariants #3/#4).
-   * - `payment.failed` → record + mark processed; the booking stays PENDING
-   *   (it holds no seats — the buyer can retry checkout, or the pending-expiry
-   *   sweep reaps it).
-   * - `other` → record + mark processed (audit log only).
+   * - `payment.completed` → claim PAID nguyên tử; outcome `overbooked` /
+   *   `cancelled` auto-refund (invariant #3/#4).
+   * - `payment.failed` → ghi lại + đánh dấu processed; booking vẫn PENDING (nó
+   *   không giữ seat nào — buyer có thể retry checkout, hoặc để sweep
+   *   pending-expiry dọn nó).
+   * - `other` → ghi lại + đánh dấu processed (chỉ để audit log).
    */
   async handleEvent(
     provider: PaymentProvider,
@@ -142,8 +143,8 @@ export class PaymentsService {
         break;
       }
       case 'payment.failed':
-        // Invariant #1 corollary: PENDING holds no seats, so a failed payment
-        // needs no compensation — log it and move on.
+        // Hệ quả của invariant #1: PENDING không giữ seat nào, nên một payment
+        // thất bại không cần bù trừ gì — log lại rồi đi tiếp.
         this.logger.log(
           `${provider} payment.failed for booking ${verified.bookingId ?? '<unknown>'} — booking stays PENDING`,
         );
@@ -157,21 +158,22 @@ export class PaymentsService {
   }
 
   /**
-   * Invariant #3 — the buyer paid but lost the seat race while on the hosted
-   * checkout page (booking still PENDING, seats no longer fit). Provider
-   * refund FIRST (outbound HTTP stays outside any DB write — and we never
-   * record a refund that did not happen), then ONE atomic CTE: booking →
-   * CANCELLED + Refund ledger row (full amount, `adminId` NULL = automatic) +
-   * BOOKING_REFUNDED outbox row. dedupeKey `overbook-refund:<bookingId>` —
-   * an overbook refund is legitimate exactly once per booking (convention
-   * `<event>:<entityId>`). EmailType: the schema has no REFUND_ISSUED;
-   * BOOKING_REFUNDED is the refund email type (Nexora parity).
+   * Invariant #3 — buyer đã trả tiền nhưng thua cuộc đua giành seat khi còn ở
+   * trang hosted checkout (booking vẫn PENDING, seat không còn đủ). Refund
+   * provider TRƯỚC (HTTP outbound nằm ngoài mọi DB write — và ta không bao giờ
+   * ghi một refund chưa thực sự xảy ra), rồi MỘT CTE nguyên tử duy nhất:
+   * booking → CANCELLED + Refund ledger row (toàn bộ amount, `adminId` NULL =
+   * tự động) + outbox row BOOKING_REFUNDED. dedupeKey
+   * `overbook-refund:<bookingId>` — một overbook refund hợp lệ đúng một lần cho
+   * mỗi booking (quy ước `<event>:<entityId>`). EmailType: schema không có
+   * REFUND_ISSUED; BOOKING_REFUNDED là email type cho refund (ngang Nexora).
    *
-   * Terminal state stays CANCELLED (NOT re-derived to REFUNDED, W3 decision):
-   * an overbooked booking never delivered seats and never counted as revenue —
-   * it never left PENDING — so full refund + CANCELLED is its correct terminal
-   * state. Contrast {@link refundOrphanedCapture}, where PAID-money was
-   * captured on a cancelled booking and the ledger derivation lands REFUNDED.
+   * Trạng thái terminal giữ nguyên CANCELLED (KHÔNG re-derive thành REFUNDED,
+   * quyết định W3): một booking overbooked chưa từng giao seat và chưa từng
+   * tính là doanh thu — nó chưa từng rời PENDING — nên full refund + CANCELLED
+   * là trạng thái terminal đúng của nó. Đối lập với {@link refundOrphanedCapture},
+   * nơi tiền-PAID đã bị capture trên một booking đã cancelled và ledger
+   * derivation cho ra REFUNDED.
    */
   private async refundOverbooked(
     provider: PaymentProvider,
@@ -180,14 +182,14 @@ export class PaymentsService {
   ): Promise<void> {
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
       cause: 'overbooked',
-      // Legitimate exactly once per booking → the booking id names the attempt
-      // (same convention as the outbox dedupeKey below, provider-side).
+      // Hợp lệ đúng một lần cho mỗi booking → dùng booking id đặt tên cho lượt
+      // thử (cùng quy ước với outbox dedupeKey bên dưới, ở phía provider).
       idempotencyKey: `overbook-refund:${bookingId}`,
     });
-    // 'failed' (no payment id / provider error) leaves the booking PENDING for
-    // an operator. 'already-refunded' still runs the cancel CTE below — it
-    // closes the crash window between the Refund insert and the flip on a
-    // retry (the CTE is idempotent, gated on PENDING).
+    // 'failed' (thiếu payment id / provider lỗi) để booking ở PENDING cho
+    // operator. 'already-refunded' vẫn chạy CTE cancel bên dưới — nó đóng lại
+    // crash window giữa lúc insert Refund và lúc flip khi retry (CTE là
+    // idempotent, gate trên PENDING).
     if (refund === 'failed') return;
 
     await prisma.$queryRaw(Prisma.sql`
@@ -223,23 +225,23 @@ export class PaymentsService {
   }
 
   /**
-   * Invariant #4 — orphaned capture: the payment completed AFTER the booking
-   * was already CANCELLED (Nexora paid for this lesson in bug 7e51a24).
-   * Refund the capture in full + record the Refund ledger row, then finalize
-   * per W3 ledger semantics: derive Booking.status from SUM(refunds) vs
-   * totalAmount (a full auto-refund sums to the total → REFUNDED) + enqueue
-   * the refund email, atomically, gated on status='CANCELLED'.
+   * Invariant #4 — orphaned capture: payment completed SAU khi booking đã
+   * CANCELLED (Nexora đã trả giá cho bài học này ở bug 7e51a24). Refund toàn bộ
+   * capture + ghi Refund ledger row, rồi finalize theo ngữ nghĩa ledger W3:
+   * derive Booking.status từ SUM(refunds) so với totalAmount (một full
+   * auto-refund cộng lại bằng tổng → REFUNDED) + enqueue email refund, nguyên
+   * tử, gate trên status='CANCELLED'.
    *
-   * Terminal-state distinction vs {@link refundOverbooked}: an orphaned
-   * capture is PAID-money captured on a cancelled booking — real revenue came
-   * in and went back out, so the ledger-derived REFUNDED is the honest
-   * terminal state. An overbooked booking never delivered seats and never
-   * counted as revenue (it never left PENDING); full refund + CANCELLED is
-   * its correct terminal state, so it does NOT re-derive here.
+   * Khác biệt trạng thái terminal so với {@link refundOverbooked}: một orphaned
+   * capture là tiền-PAID bị capture trên một booking đã cancelled — doanh thu
+   * thật đã vào rồi lại đi ra, nên REFUNDED derive từ ledger là trạng thái
+   * terminal trung thực. Một booking overbooked chưa từng giao seat và chưa
+   * từng tính là doanh thu (nó chưa từng rời PENDING); full refund + CANCELLED
+   * là trạng thái terminal đúng của nó, nên nó KHÔNG re-derive ở đây.
    *
-   * `already-refunded` (a provider retry re-entering after a crash between
-   * the Refund insert and this flip) still runs the finalize CTE — same
-   * crash-window closure as the overbook path; the CTE is idempotent.
+   * `already-refunded` (một provider retry quay lại sau một crash giữa lúc
+   * insert Refund và lúc flip này) vẫn chạy CTE finalize — cùng cách đóng
+   * crash-window như đường overbook; CTE là idempotent.
    */
   private async refundOrphanedCapture(
     provider: PaymentProvider,
@@ -248,14 +250,14 @@ export class PaymentsService {
   ): Promise<void> {
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
       cause: 'orphaned capture',
-      // Legitimate exactly once per booking → the booking id names the attempt
-      // (same convention as the outbox dedupeKey below, provider-side).
+      // Hợp lệ đúng một lần cho mỗi booking → dùng booking id đặt tên cho lượt
+      // thử (cùng quy ước với outbox dedupeKey bên dưới, ở phía provider).
       idempotencyKey: `orphan-refund:${bookingId}`,
     });
     if (refund === 'failed') return;
 
-    // Ledger → projection, the W3 rule (spec §3): never hardcode the target
-    // status; derive it from what the ledger actually sums to.
+    // Ledger → projection, quy tắc W3 (spec §3): không bao giờ hardcode status
+    // đích; derive nó từ giá trị mà ledger thực sự cộng lại.
     const [booking, ledger] = await Promise.all([
       prisma.booking.findUniqueOrThrow({
         where: { id: bookingId },
@@ -268,8 +270,8 @@ export class PaymentsService {
       booking.totalAmount,
     );
 
-    // dedupeKey `orphan-refund:<bookingId>` — an orphaned-capture refund is
-    // legitimate exactly once per booking (convention `<event>:<entityId>`).
+    // dedupeKey `orphan-refund:<bookingId>` — một refund orphaned-capture hợp
+    // lệ đúng một lần cho mỗi booking (quy ước `<event>:<entityId>`).
     await prisma.$queryRaw(Prisma.sql`
       WITH refunded AS (
         UPDATE bookings b
@@ -303,16 +305,17 @@ export class PaymentsService {
   }
 
   /**
-   * Shared auto-refund step: gateway refund (full amount) + Refund ledger row.
+   * Bước auto-refund dùng chung: refund qua gateway (toàn bộ amount) + Refund
+   * ledger row.
    *
-   * Idempotency: a crash after the gateway call but before `finishEvent` makes
-   * the provider retry re-enter here (the claim then reports `cancelled` for a
-   * booking WE cancelled) — the existing-Refund guard turns that replay into
-   * `already-refunded`. The guard stays valid alongside W3's RefundsService:
-   * both auto-refund paths run on bookings that were never admin-refundable
-   * (PENDING-overbook / CANCELLED-orphan, both outside the PAID/
-   * PARTIALLY_REFUNDED admin gate), so ANY existing Refund row here can only
-   * be a prior attempt of this same full auto-refund.
+   * Idempotency: một crash sau khi gọi gateway nhưng trước `finishEvent` khiến
+   * provider retry quay lại đây (khi đó claim báo `cancelled` cho một booking
+   * mà CHÍNH TA đã cancel) — guard existing-Refund biến replay đó thành
+   * `already-refunded`. Guard này vẫn hợp lệ khi có mặt RefundsService của W3:
+   * cả hai đường auto-refund đều chạy trên các booking chưa bao giờ
+   * admin-refundable được (PENDING-overbook / CANCELLED-orphan, đều nằm ngoài
+   * gate admin PAID/PARTIALLY_REFUNDED), nên BẤT KỲ Refund row nào tồn tại ở
+   * đây cũng chỉ có thể là một lượt thử trước của chính full auto-refund này.
    */
   private async issueFullAutoRefund(
     provider: PaymentProvider,
@@ -331,7 +334,10 @@ export class PaymentsService {
       );
       return 'failed';
     }
-    const existing = await prisma.refund.findFirst({ where: { bookingId }, select: { id: true } });
+    const existing = await prisma.refund.findFirst({
+      where: { bookingId },
+      select: { id: true },
+    });
     if (existing) {
       this.logger.log(
         `Booking ${booking.code} already has a Refund row — skipping ${opts.cause} auto-refund (retry)`,
@@ -339,9 +345,9 @@ export class PaymentsService {
       return 'already-refunded';
     }
 
-    // Provider call FIRST and OUTSIDE any DB write — never ledger a refund
-    // that did not happen. A failed provider refund leaves the booking as-is
-    // for an operator (Nexora refundOrphanedCapture semantics).
+    // Gọi provider TRƯỚC và NGOÀI mọi DB write — không bao giờ ledger một
+    // refund chưa thực sự xảy ra. Một provider refund thất bại để booking y
+    // nguyên cho operator (ngữ nghĩa refundOrphanedCapture của Nexora).
     let providerRefundId: string;
     try {
       const gateway = resolveGateway(this.gateways, provider);
@@ -349,9 +355,9 @@ export class PaymentsService {
         providerPaymentId,
         amount: booking.totalAmount.toFixed(2),
         currency: booking.currency,
-        // W5: provider-side idempotency — a crash between this call and
-        // finishEvent makes the provider retry re-enter; the same key makes
-        // the provider dedupe instead of double-refunding.
+        // W5: idempotency ở phía provider — một crash giữa lời gọi này và
+        // finishEvent khiến provider retry quay lại; cùng một key khiến
+        // provider dedupe thay vì double-refund.
         idempotencyKey: opts.idempotencyKey,
       }));
     } catch (err) {
@@ -366,7 +372,7 @@ export class PaymentsService {
         amount: booking.totalAmount,
         currency: booking.currency,
         providerRefundId,
-        adminId: null, // automatic path (schema: null = not admin-issued)
+        adminId: null, // đường tự động (schema: null = không phải admin phát hành)
       },
     });
     return 'refunded';

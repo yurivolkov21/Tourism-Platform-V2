@@ -10,9 +10,9 @@ import {
 const D = (value: string) => new Prisma.Decimal(value);
 
 /**
- * TDD suite (spec P2 §4 invariant #5, written FIRST) for the pure refund
- * ledger math: classify an admin request against total vs SUM(refunds), and
- * derive the Booking.status projection from the ledger.
+ * TDD suite (spec P2 §4 invariant #5, viết TRƯỚC) cho refund ledger math thuần:
+ * phân loại một admin request đối chiếu total với SUM(refunds), và suy ra
+ * projection Booking.status từ ledger.
  */
 describe('classifyRefundAmount', () => {
   const total = D('117.00');

@@ -1,0 +1,8 @@
+{
+  "comment": "Docs là văn xuôi tiếng Việt — tắt các luật phong cách gây nhiễu, giữ luật cấu trúc.",
+  "default": true,
+  "MD013": false,
+  "MD033": false,
+  "MD041": false,
+  "MD024": { "siblings_only": true }
+}

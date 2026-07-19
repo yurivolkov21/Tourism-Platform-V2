@@ -7,35 +7,36 @@ import type {
   VerifiedEvent,
 } from './gateway.js';
 
-/** Webhook signature header the FakeGateway verifies (see {@link FakeGateway.verifyWebhook}). */
+/** Header signature webhook mà FakeGateway verify (xem {@link FakeGateway.verifyWebhook}). */
 export const FAKE_SIGNATURE_HEADER = 'x-fake-signature';
-/** The only signature value the FakeGateway accepts. */
+/** Giá trị signature duy nhất mà FakeGateway chấp nhận. */
 export const FAKE_VALID_SIGNATURE = 'fake-valid';
 
-/** What the fake remembers about a minted checkout session. */
+/** Thứ mà fake nhớ về một checkout session đã tạo. */
 export interface FakeCheckoutSession extends CheckoutSession {
   input: CreateCheckoutSessionInput;
 }
 
 /**
- * In-memory, deterministic PaymentGateway — THE test instrument for the
- * money-path (spec P2 §4: FakeGateway simulates duplicate, out-of-order and
- * orphaned webhooks; W2/W3 int tests drive it).
+ * PaymentGateway in-memory, deterministic — CHÍNH là test instrument cho
+ * money-path (spec P2 §4: FakeGateway mô phỏng webhook duplicate, out-of-order
+ * và orphaned; int test W2/W3 điều khiển nó).
  *
- * Registration: exported from PaymentsModule but only PROVIDED under
- * `NODE_ENV=test` (conditional provider in payments.module.ts — prod DI never
- * sees it; W5 registers the real gateways for the other envs). Int tests grab
- * the instance with `app.get(FakeGateway)`.
+ * Đăng ký: export từ PaymentsModule nhưng chỉ được PROVIDE khi `NODE_ENV=test`
+ * (conditional provider trong payments.module.ts — DI ở prod không bao giờ
+ * thấy nó; W5 đăng ký các gateway thật cho các env khác). Int test lấy instance
+ * bằng `app.get(FakeGateway)`.
  *
- * Determinism: ids come from a monotonic counter (`fake_cs_1`, `fake_evt_2`,
- * …), never from randomness or clocks — assertions can pin exact values.
+ * Tính deterministic: id sinh từ một counter đơn điệu (`fake_cs_1`,
+ * `fake_evt_2`, …), không bao giờ từ randomness hay clock — assertion có thể
+ * ghim chính xác giá trị.
  *
- * Webhook simulation: `emitPaymentCompleted()` returns a synthetic
- * {@link VerifiedEvent}; POST its JSON with header
- * `x-fake-signature: fake-valid` and `verifyWebhook` round-trips it.
- * - DUPLICATE delivery: pass the same `eventId` again (`opts.eventId`).
- * - ORPHANED / LATE capture: emit for a booking that was already cancelled —
- *   the fake neither knows nor cares about booking state.
+ * Mô phỏng webhook: `emitPaymentCompleted()` trả về một {@link VerifiedEvent}
+ * tổng hợp; POST JSON của nó kèm header `x-fake-signature: fake-valid` và
+ * `verifyWebhook` sẽ round-trip nó.
+ * - Delivery DUPLICATE: truyền lại cùng `eventId` (`opts.eventId`).
+ * - Capture ORPHANED / MUỘN: emit cho một booking đã bị cancelled — fake không
+ *   biết cũng không quan tâm trạng thái booking.
  */
 export class FakeGateway implements PaymentGateway {
   readonly sessions: FakeCheckoutSession[] = [];
@@ -57,9 +58,9 @@ export class FakeGateway implements PaymentGateway {
   }
 
   /**
-   * Accepts exactly `x-fake-signature: fake-valid` and a JSON body shaped like
-   * a {@link VerifiedEvent} (what the emit helpers return). Throws on anything
-   * else — mirroring the real gateways' throw-on-bad-signature contract.
+   * Chỉ chấp nhận đúng `x-fake-signature: fake-valid` và một JSON body có hình
+   * dạng như {@link VerifiedEvent} (thứ các helper emit trả về). Throw với mọi
+   * thứ khác — soi gương đúng hợp đồng throw-on-bad-signature của gateway thật.
    */
   async verifyWebhook(
     rawBody: Buffer | string,
@@ -82,37 +83,37 @@ export class FakeGateway implements PaymentGateway {
     return { ...(event as VerifiedEvent), raw: parsed };
   }
 
-  /** Records the full {@link RefundInput} — INCLUDING the caller's provider
-   * `idempotencyKey` (W5), so int tests can assert the key each flow passes. */
+  /** Ghi lại toàn bộ {@link RefundInput} — BAO GỒM `idempotencyKey` phía
+   * provider mà caller truyền (W5), để int test có thể assert key mỗi flow gửi. */
   async refund(input: RefundInput): Promise<{ providerRefundId: string }> {
     const providerRefundId = `fake_re_${++this.seq}`;
     this.refunds.push({ ...input, providerRefundId });
     return { providerRefundId };
   }
 
-  // ── Test helpers (not part of PaymentGateway) ─────────────────────────────
+  // ── Test helper (không thuộc PaymentGateway) ─────────────────────────────
 
   /**
-   * Synthesizes a `payment.completed` event for a booking. Amount/currency/
-   * payment id default from the booking's recorded checkout session when one
-   * exists; every call mints a fresh `eventId` unless `opts.eventId` pins one
-   * (that is how a DUPLICATE provider retry is simulated).
+   * Tổng hợp một event `payment.completed` cho một booking. Amount/currency/
+   * payment id mặc định lấy từ checkout session đã ghi của booking nếu có; mỗi
+   * lời gọi tạo một `eventId` mới trừ khi `opts.eventId` ghim sẵn một cái (đó
+   * là cách mô phỏng một provider retry DUPLICATE).
    */
   emitPaymentCompleted(bookingId: string, opts: FakeEmitOptions = {}): VerifiedEvent {
     return this.emit('payment.completed', bookingId, opts);
   }
 
-  /** Synthetic `payment.failed` event — same defaulting rules as completed. */
+  /** Event `payment.failed` tổng hợp — cùng quy tắc mặc định như completed. */
   emitPaymentFailed(bookingId: string, opts: FakeEmitOptions = {}): VerifiedEvent {
     return this.emit('payment.failed', bookingId, opts);
   }
 
-  /** Last recorded checkout session for a booking, if any. */
+  /** Checkout session được ghi gần nhất cho một booking, nếu có. */
   sessionFor(bookingId: string): FakeCheckoutSession | undefined {
     return [...this.sessions].reverse().find((s) => s.input.bookingId === bookingId);
   }
 
-  /** Clears all recorded state and the id counter (call in beforeEach). */
+  /** Xóa toàn bộ state đã ghi và id counter (gọi trong beforeEach). */
   reset(): void {
     this.sessions.length = 0;
     this.refunds.length = 0;
@@ -139,10 +140,10 @@ export class FakeGateway implements PaymentGateway {
 }
 
 export interface FakeEmitOptions {
-  /** Pin the event id to replay the SAME event (duplicate webhook delivery). */
+  /** Ghim event id để replay CÙNG một event (webhook delivery duplicate). */
   eventId?: string;
   providerPaymentId?: string;
-  /** 2dp decimal string; defaults to the recorded session amount. */
+  /** Chuỗi decimal 2 chữ số thập phân; mặc định lấy amount của session đã ghi. */
   amount?: string;
   currency?: string;
 }

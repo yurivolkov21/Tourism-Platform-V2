@@ -109,7 +109,10 @@ describe('ResendDeliverer.deliver', () => {
   });
 
   it('propagates an API error so the outbox drain retries', async () => {
-    const { deliverer } = stub({ status: 422, body: '{"message":"Invalid `to`"}' });
+    const { deliverer } = stub({
+      status: 422,
+      body: '{"message":"Invalid `to`"}',
+    });
     await expect(
       deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD),
     ).rejects.toThrow(/Resend/);

@@ -42,7 +42,10 @@ const orderResponse: HttpPostResponse = {
     id: 'ORDER-1',
     links: [
       { href: `${SANDBOX}/v2/checkout/orders/ORDER-1`, rel: 'self' },
-      { href: 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1', rel: 'payer-action' },
+      {
+        href: 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1',
+        rel: 'payer-action',
+      },
     ],
   }),
 };
@@ -176,13 +179,19 @@ describe('PayPalGateway.createCheckoutSession', () => {
     });
     const orderCall = http.calls.find((c) => c.url.endsWith('/v2/checkout/orders'));
     const body = JSON.parse(orderCall?.body ?? '{}');
-    expect(body.purchase_units[0].amount).toEqual({ currency_code: 'VND', value: '500000' });
+    expect(body.purchase_units[0].amount).toEqual({
+      currency_code: 'VND',
+      value: '500000',
+    });
   });
 
   it('throws when the order has no approval link', async () => {
     const http = stubHttp({
       '/v1/oauth2/token': tokenResponse(),
-      '/v2/checkout/orders': { status: 200, body: JSON.stringify({ id: 'ORDER-2', links: [] }) },
+      '/v2/checkout/orders': {
+        status: 200,
+        body: JSON.stringify({ id: 'ORDER-2', links: [] }),
+      },
     });
     const gateway = new PayPalGateway(OPTS, http.post);
     await expect(gateway.createCheckoutSession(CHECKOUT_INPUT)).rejects.toThrow(/approv/i);
@@ -260,13 +269,21 @@ describe('PayPalGateway.verifyWebhook', () => {
     const gateway = new PayPalGateway(OPTS, http.post);
 
     const refunded = await gateway.verifyWebhook(
-      JSON.stringify({ ...captureEvent(), id: 'WH-3', event_type: 'PAYMENT.CAPTURE.REFUNDED' }),
+      JSON.stringify({
+        ...captureEvent(),
+        id: 'WH-3',
+        event_type: 'PAYMENT.CAPTURE.REFUNDED',
+      }),
       TRANSMISSION_HEADERS,
     );
     expect(refunded.type).toBe('other');
 
     const approved = await gateway.verifyWebhook(
-      JSON.stringify({ id: 'WH-4', event_type: 'CHECKOUT.ORDER.APPROVED', resource: {} }),
+      JSON.stringify({
+        id: 'WH-4',
+        event_type: 'CHECKOUT.ORDER.APPROVED',
+        resource: {},
+      }),
       TRANSMISSION_HEADERS,
     );
     expect(approved.type).toBe('other');
@@ -309,7 +326,11 @@ describe('PayPalGateway.refund', () => {
       },
     });
     const gateway = new PayPalGateway(OPTS, http.post);
-    await gateway.refund({ providerPaymentId: 'CAP-1', amount: '10.00', currency: 'USD' });
+    await gateway.refund({
+      providerPaymentId: 'CAP-1',
+      amount: '10.00',
+      currency: 'USD',
+    });
     const call = http.calls.find((c) => c.url.includes('/refund'));
     expect(call?.headers['paypal-request-id']).toBeUndefined();
   });
@@ -319,12 +340,19 @@ describe('PayPalGateway.refund', () => {
       '/v1/oauth2/token': tokenResponse(),
       '/v2/payments/captures/CAP-1/refund': {
         status: 422,
-        body: JSON.stringify({ name: 'UNPROCESSABLE_ENTITY', message: 'CAPTURE_FULLY_REFUNDED' }),
+        body: JSON.stringify({
+          name: 'UNPROCESSABLE_ENTITY',
+          message: 'CAPTURE_FULLY_REFUNDED',
+        }),
       },
     });
     const gateway = new PayPalGateway(OPTS, http.post);
     await expect(
-      gateway.refund({ providerPaymentId: 'CAP-1', amount: '30.00', currency: 'USD' }),
+      gateway.refund({
+        providerPaymentId: 'CAP-1',
+        amount: '30.00',
+        currency: 'USD',
+      }),
     ).rejects.toThrow(/CAPTURE_FULLY_REFUNDED/);
   });
 });

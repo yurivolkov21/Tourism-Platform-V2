@@ -14,32 +14,33 @@ import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../paymen
 import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 
-/** Departure missing / not OPEN / departed / tour unpublished — one error on
- * purpose (contract: single DEPARTURE_NOT_AVAILABLE code, no existence leak). */
+/** Departure không tồn tại / không OPEN / đã departed / tour unpublished — cố
+ * ý gộp thành một error (contract: một code DEPARTURE_NOT_AVAILABLE duy nhất,
+ * không leak sự tồn tại). */
 export class DepartureNotAvailableError extends Error {
   constructor() {
     super('This departure is not available for booking');
   }
 }
 
-/** Soft capacity check failed at create time (see invariant #1 note below). */
+/** Soft capacity check fail lúc create (xem note invariant #1 phía dưới). */
 export class SeatsUnavailableError extends Error {
   constructor(seatsLeft: number, requested: number) {
     super(`Only ${seatsLeft} seat(s) left, requested ${requested}`);
   }
 }
 
-/** Prisma Decimal → lossless string ("39.00"). Money NEVER becomes a float. */
+/** Prisma Decimal → string không mất mát ("39.00"). Money KHÔNG BAO GIỜ thành float. */
 const money = (value: { toString(): string }): string => value.toString();
 
-/** Prisma `@db.Date` (UTC midnight Date) → calendar date "YYYY-MM-DD".
- * Exported for the cancellation surface (same serialization convention). */
+/** Prisma `@db.Date` (Date nửa đêm UTC) → calendar date "YYYY-MM-DD".
+ * Export cho cancellation surface (cùng quy ước serialize). */
 export const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 type BookingRow = Prisma.BookingModel;
 
-/** Row → contract shape. `checkoutUrl` is non-null only right after create.
- * Exported for the admin surface (RefundsService returns the same shape). */
+/** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
+ * Export cho admin surface (RefundsService trả về cùng shape). */
 export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking {
   return {
     id: row.id,
@@ -66,20 +67,20 @@ export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking 
 }
 
 /**
- * Outcome of {@link BookingsService.claimSeatsForPaid} (spec P2 §4, ADR-0009):
- * - `claimed`       — seats incremented, booking flipped PAID, outbox enqueued.
- * - `overbooked`    — booking still PENDING but the party no longer fits →
- *                     caller auto-refunds + cancels (invariant #3).
- * - `cancelled`     — booking was already CANCELLED when the capture landed
- *                     (orphaned capture, invariant #4) → caller auto-refunds.
- * - `already-paid`  — PAID / REFUNDED / PARTIALLY_REFUNDED: a retry or a second
- *                     provider event for a booking already settled → no-op.
- * - `not-found`     — no such booking id (webhook references something we
- *                     never minted) → log-and-skip.
+ * Kết quả của {@link BookingsService.claimSeatsForPaid} (spec P2 §4, ADR-0009):
+ * - `claimed`       — seat đã tăng, booking flip PAID, outbox đã enqueue.
+ * - `overbooked`    — booking vẫn PENDING nhưng party không còn vừa chỗ →
+ *                     caller auto-refund + cancel (invariant #3).
+ * - `cancelled`     — booking đã CANCELLED sẵn khi capture về (orphaned
+ *                     capture, invariant #4) → caller auto-refund.
+ * - `already-paid`  — PAID / REFUNDED / PARTIALLY_REFUNDED: một retry hoặc một
+ *                     provider event thứ hai cho booking đã settle → no-op.
+ * - `not-found`     — không có booking id này (webhook tham chiếu thứ ta chưa
+ *                     bao giờ mint) → log-and-skip.
  */
 export type ClaimOutcome = 'claimed' | 'overbooked' | 'cancelled' | 'already-paid' | 'not-found';
 
-/** UNIQUE violation on bookings.code (the mint collided) — retryable. */
+/** UNIQUE violation trên bookings.code (mint bị đụng) — retryable. */
 function isCodeCollision(error: unknown): boolean {
   return (
     error instanceof Prisma.PrismaClientKnownRequestError &&
@@ -91,11 +92,11 @@ function isCodeCollision(error: unknown): boolean {
 const CODE_MINT_ATTEMPTS = 3;
 
 /**
- * Customer booking flows (spec P2 §3, W1) — create-PENDING logic ported from
- * Nexora bookings.service (battle-tested validation order), upgraded to the
- * `PaymentGateway` interface (no provider branching) and to create-time
- * checkout (Nexora split create / startCheckout; v2 books + mints the session
- * in one call — one round-trip to a redirect).
+ * Các customer booking flow (spec P2 §3, W1) — logic create-PENDING port từ
+ * bookings.service của Nexora (thứ tự validation đã dày dạn), nâng lên
+ * interface `PaymentGateway` (không branch theo provider) và checkout ngay lúc
+ * create (Nexora tách create / startCheckout; v2 book + mint session trong một
+ * lời gọi — một round-trip tới redirect).
  */
 @Injectable()
 export class BookingsService {
@@ -104,17 +105,19 @@ export class BookingsService {
   constructor(@Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[]) {}
 
   /**
-   * Creates a PENDING booking + gateway checkout session.
+   * Tạo một PENDING booking + gateway checkout session.
    *
-   * Validation (ported semantics): departure exists, its tour is published,
-   * status OPEN, and it has not DEPARTED — same-day stays bookable (walk-in,
-   * Nexora rule); only a strictly-past startDate rejects. UTC calendar-date
-   * string compare (`@db.Date` loads as UTC midnight) is server-tz independent.
+   * Validation (giữ nguyên semantics đã port): departure tồn tại, tour của nó
+   * đã published, status OPEN, và chưa DEPARTED — same-day vẫn book được
+   * (walk-in, rule Nexora); chỉ startDate strictly-past mới reject. So sánh
+   * calendar-date string kiểu UTC (`@db.Date` load thành nửa đêm UTC) độc lập
+   * với timezone của server.
    *
-   * Seats: SOFT check only (`seatsTotal - seatsBooked >= party`) — NOT a
-   * reservation. Invariant #1 (spec §4): a PENDING booking holds NO seats;
-   * seats are claimed atomically by the PAID webhook path (W2, ADR-0009 CTE).
-   * Two racing creates can both pass this check by design — the claim decides.
+   * Seats: CHỈ soft check (`seatsTotal - seatsBooked >= party`) — KHÔNG phải
+   * reservation. Invariant #1 (spec §4): một PENDING booking KHÔNG giữ seat
+   * nào; seat được claim nguyên tử bởi đường PAID webhook (W2, ADR-0009 CTE).
+   * Hai create chạy đua có thể cùng pass check này theo thiết kế — claim mới
+   * là bên quyết định.
    */
   async create(userId: string, input: CreateBookingInput): Promise<Booking> {
     const departure = await prisma.tourDeparture.findUnique({
@@ -150,9 +153,9 @@ export class BookingsService {
     const unitPrice = effectiveUnitPrice(departure.tour.basePrice, departure.priceOverride);
     const total = totalAmount(unitPrice, seats);
 
-    // Snapshots frozen at create (audit H3): what the customer bought never
-    // re-renders when the tour is edited. Unique code: mint + retry on the
-    // rare UNIQUE collision (P2002) instead of a pre-flight SELECT (TOCTOU).
+    // Snapshot đóng băng lúc create (audit H3): thứ khách đã mua không bao giờ
+    // render lại khi tour bị sửa. Code unique: mint + retry khi hiếm hoi đụng
+    // UNIQUE collision (P2002) thay vì SELECT pre-flight (TOCTOU).
     let booking: BookingRow | undefined;
     for (let attempt = 1; attempt <= CODE_MINT_ATTEMPTS; attempt++) {
       try {
@@ -186,10 +189,10 @@ export class BookingsService {
     }
     if (!booking) throw new Error('unreachable: booking create loop exited without a row');
 
-    // Outbound provider call OUTSIDE any transaction (its HTTP latency must
-    // never hold a connection). A gateway failure surfaces after the row
-    // exists: the booking stays PENDING without a session — harmless (holds
-    // no seats) and swept by the pending-expiry pass (W2).
+    // Lời gọi provider ra ngoài NGOÀI mọi transaction (latency HTTP của nó
+    // không bao giờ được giữ connection). Gateway fail thì nổi lên sau khi row
+    // đã tồn tại: booking ở lại PENDING mà không có session — vô hại (không giữ
+    // seat) và sẽ được quét bởi pass pending-expiry (W2).
     const gateway = resolveGateway(this.gateways, input.paymentProvider);
     const session = await gateway.createCheckoutSession({
       bookingId: booking.id,
@@ -211,7 +214,7 @@ export class BookingsService {
     return toBooking(withSession, session.checkoutUrl);
   }
 
-  /** Own bookings, newest first (stable id tiebreak), optional status filter. */
+  /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status filter optional. */
   async mine(userId: string, query: BookingsListQuery): Promise<Paged<Booking>> {
     const { page, limit, status } = query;
     const where: Prisma.BookingWhereInput = {
@@ -239,9 +242,9 @@ export class BookingsService {
   }
 
   /**
-   * Own booking by code, or null (controller → NOT_FOUND). Owner-only on
-   * purpose — another user's code 404s (not 403: no existence leak). Admin
-   * bypass is NOT here; the admin surface is its own list (W3+).
+   * Booking của chính user theo code, hoặc null (controller → NOT_FOUND). Cố ý
+   * chỉ owner — code của user khác thì 404 (không phải 403: không leak sự tồn
+   * tại). KHÔNG có admin bypass ở đây; admin surface là list riêng của nó (W3+).
    */
   async byCode(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({ where: { code } });
@@ -250,10 +253,10 @@ export class BookingsService {
   }
 
   /**
-   * Admin management list (spec P2 W3, ported lightly from Nexora's admin
-   * list): ALL bookings, newest first, optional status filter + free-text
-   * `search` matched case-insensitively against code / contact email /
-   * contact name. Guarded by @Roles('ADMIN') at the controller.
+   * List quản trị cho admin (spec P2 W3, port nhẹ từ admin list của Nexora):
+   * TẤT CẢ booking, mới nhất trước, status filter optional + `search`
+   * free-text khớp case-insensitive theo code / contact email / contact name.
+   * Được guard bằng @Roles('ADMIN') ở controller.
    */
   async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {
     const { page, limit, status, search } = query;
@@ -290,45 +293,46 @@ export class BookingsService {
     };
   }
 
-  /** Any booking by code — admin surface, deliberately NOT owner-scoped. */
+  /** Bất kỳ booking nào theo code — admin surface, cố ý KHÔNG scope theo owner. */
   async adminByCode(code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({ where: { code } });
     return booking ? toBooking(booking, null) : null;
   }
 
   /**
-   * THE atomic PAID claim (ADR-0009, v2-hardened). ONE data-modifying
-   * statement, layered so every race-deciding qual sits on an UPDATE-target
-   * table (re-evaluated fresh under READ COMMITTED EvalPlanQual — CTE rows are
-   * NOT re-fetched after a lock wait, so quals routed through a joined CTE are
-   * snapshot-stale and unsound for concurrency control):
+   * PAID claim nguyên tử CHỦ CHỐT (ADR-0009, đã hardened cho v2). MỘT statement
+   * data-modifying, xếp lớp sao cho mọi qual quyết-định-race đều nằm trên một
+   * bảng UPDATE-target (được re-evaluate tươi mới dưới READ COMMITTED
+   * EvalPlanQual — các CTE row KHÔNG được re-fetch sau khi chờ lock, nên qual
+   * đi vòng qua một CTE join sẽ bị stale theo snapshot và không đáng tin cho
+   * concurrency control):
    *
-   *   (a) `claim` — flip the BOOKING first: `UPDATE bookings … WHERE
-   *       status = 'PENDING'`. The contended row for a duplicate-delivery race
-   *       (same booking, two distinct eventIds — beginEvent cannot dedupe
-   *       those) is the booking row itself; the loser blocks on it, EPQ
-   *       re-checks `status` against the winner's committed tuple, matches
-   *       zero rows, and the whole rest of the statement is a no-op.
-   *   (b) `seat_claim` — seats increment UNCONDITIONAL, driven FROM `claim`.
-   *       Overbook protection is the DB CHECK `departures_seats_within_total`
-   *       (hardening migration): an overfilling increment aborts the ENTIRE
-   *       statement — including the PAID flip in (a) — atomically. The caller
-   *       maps SQLSTATE 23514 on that constraint → 'overbooked' (booking is
-   *       then still PENDING, exactly what the refund path expects).
-   *   (c) `outbox_insert` — BOOKING_CONFIRMATION enqueued in the SAME
+   *   (a) `claim` — flip BOOKING trước: `UPDATE bookings … WHERE
+   *       status = 'PENDING'`. Row bị tranh chấp trong race duplicate-delivery
+   *       (cùng booking, hai eventId khác nhau — beginEvent không dedupe được
+   *       chúng) chính là booking row; bên thua block trên nó, EPQ re-check
+   *       `status` với committed tuple của bên thắng, khớp zero row, và toàn bộ
+   *       phần còn lại của statement thành no-op.
+   *   (b) `seat_claim` — seat tăng VÔ ĐIỀU KIỆN, driven FROM `claim`. Bảo vệ
+   *       overbook là DB CHECK `departures_seats_within_total` (migration
+   *       hardening): một increment làm tràn sẽ abort TOÀN BỘ statement — kể cả
+   *       PAID flip ở (a) — một cách nguyên tử. Caller map SQLSTATE 23514 trên
+   *       constraint đó → 'overbooked' (booking khi đó vẫn PENDING, đúng thứ mà
+   *       refund path mong đợi).
+   *   (c) `outbox_insert` — BOOKING_CONFIRMATION được enqueue trong CÙNG
    *       statement (invariant #7), `ON CONFLICT (dedupe_key) DO NOTHING`,
    *       dedupeKey `booking-confirmed:<bookingId>` (once per booking,
    *       docs/conventions/outbox-dedupe-key.md).
    *
-   * The final `SELECT id FROM claim` is the success marker — the happy path
-   * needs no second round-trip. Zero rows ⇒ nothing changed; classification
-   * then runs as a separate follow-up SELECT on a fresh snapshot (Nexora's
-   * original shape — it is classification-only, no effects, so it needs no
-   * atomicity with the claim).
+   * `SELECT id FROM claim` cuối cùng là success marker — happy path không cần
+   * round-trip thứ hai. Zero row ⇒ không có gì đổi; classification khi đó chạy
+   * như một SELECT follow-up riêng trên snapshot tươi (shape gốc của Nexora —
+   * nó chỉ classification, không effect, nên không cần atomic chung với claim).
    *
-   * Single-statement is still the point: atomic on ANY pool (no transaction
-   * pooler contortions), idempotent at booking level. `updated_at` set
-   * manually — Prisma's `@updatedAt` is client-side and raw SQL bypasses it.
+   * Single-statement vẫn là điểm cốt lõi: nguyên tử trên BẤT KỲ pool nào
+   * (không cần vặn vẹo transaction pooler), idempotent ở mức booking.
+   * `updated_at` set thủ công — `@updatedAt` của Prisma chạy client-side và raw
+   * SQL đi vòng qua nó.
    */
   async claimSeatsForPaid(
     bookingId: string,
@@ -378,8 +382,8 @@ export class BookingsService {
       `);
     } catch (err) {
       if (isSeatsCheckViolation(err)) {
-        // The CHECK aborted the whole statement: no PAID flip, no seats, no
-        // outbox — the booking is provably still PENDING and did not fit.
+        // CHECK đã abort cả statement: không PAID flip, không seat, không
+        // outbox — booking chắc chắn vẫn PENDING và đã không vừa chỗ.
         this.logger.warn(`PAID claim for booking ${bookingId}: overbooked (CHECK abort)`);
         return 'overbooked';
       }
@@ -390,7 +394,7 @@ export class BookingsService {
       return 'claimed';
     }
 
-    // Nothing changed — classify on a fresh snapshot (follow-up SELECT).
+    // Không có gì đổi — classify trên snapshot tươi (SELECT follow-up).
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
       select: { status: true },
@@ -399,9 +403,9 @@ export class BookingsService {
     if (!booking) outcome = 'not-found';
     else if (booking.status === BookingStatus.CANCELLED) outcome = 'cancelled';
     else if (booking.status === BookingStatus.PENDING) {
-      // Theoretically unreachable: no exception + zero claim rows + still
-      // PENDING. Defensive mapping: treat as overbooked — its handler path is
-      // the safe one for a PENDING booking holding real money.
+      // Về lý thuyết là bất khả tới: không exception + zero claim row + vẫn
+      // PENDING. Map phòng thủ: coi như overbooked — đường handler của nó là
+      // đường an toàn cho một PENDING booking đang giữ tiền thật.
       outcome = 'overbooked';
     } else outcome = 'already-paid'; // PAID / REFUNDED / PARTIALLY_REFUNDED
     this.logger.log(`PAID claim for booking ${bookingId}: ${outcome}`);
@@ -410,12 +414,12 @@ export class BookingsService {
 }
 
 /**
- * Statement abort caused by the `departures_seats_within_total` CHECK — the
- * overbook signal from {@link BookingsService.claimSeatsForPaid}. Shape
- * verified empirically against Prisma 7.8.0 + @prisma/adapter-pg on a live
- * violation: `PrismaClientKnownRequestError` with `code: 'P2010'` and the
- * Postgres SQLSTATE nested at `meta.driverAdapterError.cause.code = '23514'`
- * (check_violation), constraint name only inside the cause message.
+ * Statement bị abort do CHECK `departures_seats_within_total` — tín hiệu
+ * overbook từ {@link BookingsService.claimSeatsForPaid}. Shape đã kiểm chứng
+ * thực nghiệm với Prisma 7.8.0 + @prisma/adapter-pg trên một violation thật:
+ * `PrismaClientKnownRequestError` với `code: 'P2010'` và SQLSTATE Postgres nằm
+ * lồng ở `meta.driverAdapterError.cause.code = '23514'` (check_violation), tên
+ * constraint chỉ có trong message của cause.
  */
 function isSeatsCheckViolation(err: unknown): boolean {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2010') return false;

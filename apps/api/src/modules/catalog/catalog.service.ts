@@ -11,16 +11,16 @@ import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus } from '../../generated/prisma/enums.js';
 
-/** Prisma Decimal → lossless string ("39.00"). Money NEVER becomes a float. */
+/** Prisma Decimal → string không mất mát ("39.00"). Money KHÔNG BAO GIỜ thành float. */
 const money = (value: { toString(): string }): string => value.toString();
 
-/** Prisma `@db.Date` (UTC midnight Date) → calendar date "YYYY-MM-DD". */
+/** Prisma `@db.Date` (Date nửa đêm UTC) → ngày lịch "YYYY-MM-DD". */
 const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
-/** UTC midnight today — lower bound for "upcoming" departures. */
+/** Nửa đêm UTC hôm nay — cận dưới cho departure "upcoming". */
 const startOfTodayUtc = (): Date => new Date(new Date().toISOString().slice(0, 10));
 
-/** Card-level include: category + primary destination via the M:N join. */
+/** Include cấp card: category + primary destination qua bảng join M:N. */
 const cardInclude = {
   category: { select: { slug: true, name: true } },
   destinations: {
@@ -58,10 +58,10 @@ function toTourCard(tour: TourCardRow): TourCard {
 }
 
 /**
- * Public catalog reads (spec §6) — published/active rows only, shapes mapped
- * 1:1 onto `@tourism/contract` schemas (integration tests parse responses with
- * the schemas to prove conformity). Query patterns mirror Nexora's public
- * tours service: filter → count+page in parallel → include lookups.
+ * Đọc catalog public (spec §6) — chỉ row published/active, shape map 1:1 sang
+ * schema `@tourism/contract` (integration test parse response bằng chính các
+ * schema đó để chứng minh conformity). Query pattern lặp theo public tours
+ * service của Nexora: filter → count+page song song → include lookup.
  */
 @Injectable()
 export class CatalogService {
@@ -88,7 +88,7 @@ export class CatalogService {
       prisma.tour.findMany({
         where,
         include: cardInclude,
-        // Secondary id sort keeps pagination stable across equal sort keys.
+        // Sort phụ theo id giữ pagination ổn định khi sort key bằng nhau.
         orderBy: [{ [SORT_COLUMN[sort]]: order }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -104,7 +104,7 @@ export class CatalogService {
     };
   }
 
-  /** Published tour detail, or null (controller translates to NOT_FOUND). */
+  /** Detail của tour đã published, hoặc null (controller dịch thành NOT_FOUND). */
   async getTourBySlug(slug: string): Promise<TourDetail | null> {
     const tour = await prisma.tour.findFirst({
       where: { slug, isPublished: true },
@@ -114,7 +114,10 @@ export class CatalogService {
         faqs: { orderBy: { order: 'asc' } },
         policies: { orderBy: { order: 'asc' } },
         departures: {
-          where: { status: DepartureStatus.OPEN, startDate: { gte: startOfTodayUtc() } },
+          where: {
+            status: DepartureStatus.OPEN,
+            startDate: { gte: startOfTodayUtc() },
+          },
           orderBy: { startDate: 'asc' },
         },
       },
@@ -134,7 +137,10 @@ export class CatalogService {
         title: day.title,
         description: day.description,
       })),
-      faqs: tour.faqs.map((faq) => ({ question: faq.question, answer: faq.answer })),
+      faqs: tour.faqs.map((faq) => ({
+        question: faq.question,
+        answer: faq.answer,
+      })),
       policies: tour.policies.map((policy) => ({
         kind: policy.kind,
         title: policy.title,
@@ -156,8 +162,10 @@ export class CatalogService {
       where: { isActive: true },
       orderBy: { name: 'asc' },
       include: {
-        // Filtered relation count: only tours that are published.
-        _count: { select: { tours: { where: { tour: { isPublished: true } } } } },
+        // Đếm relation có filter: chỉ tour đã published.
+        _count: {
+          select: { tours: { where: { tour: { isPublished: true } } } },
+        },
       },
     });
 

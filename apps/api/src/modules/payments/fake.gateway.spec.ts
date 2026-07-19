@@ -53,7 +53,9 @@ describe('FakeGateway', () => {
   });
 
   it('emits orphaned/late events for bookings without a session', () => {
-    const orphan = fake.emitPaymentCompleted('never-checked-out', { amount: '10.00' });
+    const orphan = fake.emitPaymentCompleted('never-checked-out', {
+      amount: '10.00',
+    });
     expect(orphan.bookingId).toBe('never-checked-out');
     expect(orphan.amount).toBe('10.00');
     expect(fake.emitPaymentFailed('never-checked-out').type).toBe('payment.failed');
@@ -67,14 +69,19 @@ describe('FakeGateway', () => {
     const verified = await fake.verifyWebhook(body, {
       [FAKE_SIGNATURE_HEADER]: FAKE_VALID_SIGNATURE,
     });
-    expect(verified).toMatchObject({ eventId: event.eventId, type: 'payment.completed' });
+    expect(verified).toMatchObject({
+      eventId: event.eventId,
+      type: 'payment.completed',
+    });
 
     await expect(fake.verifyWebhook(body, {})).rejects.toThrow(/signature/);
     await expect(fake.verifyWebhook(body, { [FAKE_SIGNATURE_HEADER]: 'wrong' })).rejects.toThrow(
       /signature/,
     );
     await expect(
-      fake.verifyWebhook('not json', { [FAKE_SIGNATURE_HEADER]: FAKE_VALID_SIGNATURE }),
+      fake.verifyWebhook('not json', {
+        [FAKE_SIGNATURE_HEADER]: FAKE_VALID_SIGNATURE,
+      }),
     ).rejects.toThrow(/not JSON/);
   });
 

@@ -1,30 +1,30 @@
 -- ─────────────────────────────────────────────────────────────────────────────
--- Tourism v2 — hardening DDL that Prisma's schema can't express.
--- Ported from Nexora `prisma/hardening.sql` + audit deltas (H1/H2, RLS gaps).
+-- Tourism v2 — DDL hardening mà schema của Prisma không diễn tả được.
+-- Port từ Nexora `prisma/hardening.sql` + các audit delta (H1/H2, khoảng trống RLS).
 --
--- HOW TO APPLY: this file must land as its OWN migration, applied AFTER the
--- schema migrations. Once the first schema migration exists:
+-- CÁCH APPLY: file này phải nằm thành migration RIÊNG, apply SAU các schema
+-- migration. Khi đã có schema migration đầu tiên:
 --   pnpm prisma migrate dev --create-only --name hardening_v2
---   → paste this file into the generated migration.sql, then `migrate dev`.
--- Keep this file as the source of truth; the migration is the applied copy.
+--   → dán file này vào migration.sql được sinh ra, rồi `migrate dev`.
+-- Giữ file này là source of truth; migration là bản đã apply.
 --
--- Notes vs Nexora:
---   * citext: the extension is owned by the schema now
---     (`datasource … extensions = [citext]`), so no ALTER COLUMN here — the
---     schema migration creates users.email / subscribers.email as citext
---     directly. CREATE EXTENSION below is a belt-and-braces no-op.
---   * NEW: refunds CHECKs + RLS; RLS on cancellation_requests (missed by
---     Nexora — its file predates the model) and on every table added since.
---   * Audit H2 (status↔refund consistency: bookings.status in
---     REFUNDED/PARTIALLY_REFUNDED ⇒ at least one refunds row): a plain CHECK
---     cannot reference another table — needs a constraint trigger. NOT
---     implemented here; decide with the lead before P2 money-path.
+-- Ghi chú so với Nexora:
+--   * citext: extension giờ do schema sở hữu
+--     (`datasource … extensions = [citext]`), nên không ALTER COLUMN ở đây — schema
+--     migration tạo users.email / subscribers.email thẳng thành citext.
+--     CREATE EXTENSION bên dưới là no-op cho chắc ăn.
+--   * MỚI: CHECK + RLS cho refunds; RLS trên cancellation_requests (Nexora bỏ
+--     sót — file của nó có trước model) và trên mọi bảng thêm về sau.
+--   * Audit H2 (nhất quán status↔refund: bookings.status thuộc
+--     REFUNDED/PARTIALLY_REFUNDED ⇒ ít nhất một row refunds): một CHECK thường
+--     không tham chiếu được bảng khác — cần constraint trigger. CHƯA làm
+--     ở đây; quyết định với lead trước khi vào P2 money-path.
 -- ─────────────────────────────────────────────────────────────────────────────
 
--- ── citext: case-insensitive unique email (ADR-0008) ─────────────────────────
+-- ── citext: email unique case-insensitive (ADR-0008) ─────────────────────────
 CREATE EXTENSION IF NOT EXISTS citext;
 
--- ── CHECK constraints (bounded values) ───────────────────────────────────────
+-- ── CHECK constraint (giá trị có biên) ───────────────────────────────────────
 ALTER TABLE reviews
   ADD CONSTRAINT reviews_rating_range CHECK (rating BETWEEN 1 AND 5);
 
@@ -43,14 +43,14 @@ ALTER TABLE tours
   ADD CONSTRAINT tours_duration_min CHECK (duration_days >= 1),
   ADD CONSTRAINT tours_group_min CHECK (max_group_size >= 1);
 
--- Refund ledger (audit H1): amounts are strictly positive — a zero/negative
--- row would corrupt the SUM(refunds)-derived booking status.
+-- Refund ledger (audit H1): số tiền phải dương ngặt — một row bằng 0/âm sẽ làm
+-- hỏng booking status suy ra từ SUM(refunds).
 ALTER TABLE refunds
   ADD CONSTRAINT refunds_amount_positive CHECK (amount > 0);
 
--- ── Row-Level Security: enable on every table (defense-in-depth) ─────────────
--- The API connects as the table-owning role, which bypasses RLS — these are a
--- backstop if a direct/anon path ever appears. Default deny (no policies).
+-- ── Row-Level Security: bật trên mọi bảng (defense-in-depth) ─────────────────
+-- API kết nối bằng role sở hữu bảng, vốn bypass RLS — mấy dòng này là backstop
+-- nếu một ngày xuất hiện đường direct/anon. Mặc định deny (không policy nào).
 ALTER TABLE users                 ENABLE ROW LEVEL SECURITY;
 ALTER TABLE sessions              ENABLE ROW LEVEL SECURITY;
 ALTER TABLE accounts              ENABLE ROW LEVEL SECURITY;

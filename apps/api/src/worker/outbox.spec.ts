@@ -5,8 +5,14 @@ import { MAX_ATTEMPTS, nextAttemptState, trimError } from './outbox.service.js';
 
 describe('nextAttemptState', () => {
   it('increments attempts and stays PENDING below MAX_ATTEMPTS', () => {
-    expect(nextAttemptState(0)).toEqual({ attempts: 1, status: OutboxStatus.PENDING });
-    expect(nextAttemptState(3)).toEqual({ attempts: 4, status: OutboxStatus.PENDING });
+    expect(nextAttemptState(0)).toEqual({
+      attempts: 1,
+      status: OutboxStatus.PENDING,
+    });
+    expect(nextAttemptState(3)).toEqual({
+      attempts: 4,
+      status: OutboxStatus.PENDING,
+    });
   });
 
   it(`parks FAILED when attempts reach MAX_ATTEMPTS (${MAX_ATTEMPTS})`, () => {

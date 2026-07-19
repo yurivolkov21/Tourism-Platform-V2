@@ -74,7 +74,9 @@ describe('contract type inference', () => {
     expectTypeOf<
       Awaited<ReturnType<Client['catalog']['tours']['bySlug']>>
     >().toEqualTypeOf<TourDetail>();
-    expectTypeOf<ContractInputs['catalog']['tours']['bySlug']>().toEqualTypeOf<{ slug: string }>();
+    expectTypeOf<ContractInputs['catalog']['tours']['bySlug']>().toEqualTypeOf<{
+      slug: string;
+    }>();
   });
 
   it('destinations/categories lists infer as arrays', () => {

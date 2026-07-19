@@ -34,7 +34,13 @@ const validDetail = {
   meetingPoint: '78 Lê Lợi street',
   itinerary: [{ dayNumber: 1, title: 'Old town on foot', description: null }],
   faqs: [{ question: 'Is it kid-friendly?', answer: 'Yes.' }],
-  policies: [{ kind: 'CANCELLATION', title: 'Free cancellation', body: 'Up to 48h before.' }],
+  policies: [
+    {
+      kind: 'CANCELLATION',
+      title: 'Free cancellation',
+      body: 'Up to 48h before.',
+    },
+  ],
   departures: [
     {
       id: 'e0000001-0000-4000-8000-000000000001',
@@ -148,14 +154,26 @@ describe('PagedSchema', () => {
   const PagedCards = PagedSchema(TourCardSchema);
 
   it('parses an envelope', () => {
-    const paged = { items: [validCard], page: 1, limit: 12, total: 1, totalPages: 1 };
+    const paged = {
+      items: [validCard],
+      page: 1,
+      limit: 12,
+      total: 1,
+      totalPages: 1,
+    };
     expect(PagedCards.parse(paged)).toEqual(paged);
   });
 
   it('rejects a missing/negative total', () => {
     expect(() => PagedCards.parse({ items: [], page: 1, limit: 12, totalPages: 0 })).toThrow();
     expect(() =>
-      PagedCards.parse({ items: [], page: 1, limit: 12, total: -1, totalPages: 0 }),
+      PagedCards.parse({
+        items: [],
+        page: 1,
+        limit: 12,
+        total: -1,
+        totalPages: 0,
+      }),
     ).toThrow();
   });
 
@@ -200,7 +218,11 @@ describe('DestinationSchema / TourCategorySchema / HealthSchema', () => {
   });
 
   it('parses health and rejects a non-ok status', () => {
-    const health = { status: 'ok', uptimeSec: 3, timestamp: '2026-07-18T08:00:00.000Z' };
+    const health = {
+      status: 'ok',
+      uptimeSec: 3,
+      timestamp: '2026-07-18T08:00:00.000Z',
+    };
     expect(HealthSchema.parse(health)).toEqual(health);
     expect(() => HealthSchema.parse({ ...health, status: 'down' })).toThrow();
   });

@@ -1,24 +1,24 @@
 /**
- * Database seed — v2 port of Nexora's seed, adapted to schema v2.
+ * Database seed — bản port v2 của seed Nexora, chỉnh cho schema v2.
  *
- * What it seeds (catalog essentials + functional overlay):
- *   1. Catalog fixtures (`./fixtures/catalog.ts`, ported from Nexora): tour
- *      categories, destinations, tours (+ M:N destinations, itinerary, FAQs,
- *      policies, departures). `createMany({ skipDuplicates })` → re-runnable.
- *   2. Site media slots — the 9 brand-chrome slot keys (Nexora seeded these by
- *      migration; here the seed upserts them).
- *   3. A login-able CUSTOMER (`customer@tourism.test`) + an ADMIN (first entry
- *      of `ADMIN_EMAILS`, default `admin@tourism.test`) — plain User rows;
- *      Better Auth reads the same table, register with the same email to link.
- *   4. One self-signed PAID booking (`BK-SEEDPAID`) owned by that customer,
- *      with the v2 snapshot columns (tourTitle/departure dates/unitPrice), so
- *      reviews / "my bookings" flows are exercisable without a live payment.
+ * Seed những gì (catalog cốt lõi + functional overlay):
+ *   1. Catalog fixtures (`./fixtures/catalog.ts`, port từ Nexora): tour
+ *      category, destination, tour (+ M:N destination, itinerary, FAQ, policy,
+ *      departure). `createMany({ skipDuplicates })` → chạy lại được nhiều lần.
+ *   2. Site media slot — 9 slot key brand-chrome (Nexora seed chúng bằng
+ *      migration; ở đây seed upsert chúng).
+ *   3. Một CUSTOMER đăng nhập được (`customer@tourism.test`) + một ADMIN (entry
+ *      đầu của `ADMIN_EMAILS`, mặc định `admin@tourism.test`) — chỉ là User row
+ *      thường; Better Auth đọc cùng bảng, đăng ký cùng email để link vào.
+ *   4. Một PAID booking tự ký (`BK-SEEDPAID`) thuộc về customer đó, kèm các cột
+ *      snapshot v2 (tourTitle/ngày departure/unitPrice), để các luồng review /
+ *      "my bookings" thử được mà không cần payment thật.
  *
- * NOT ported from Nexora (user-dependent fixtures that assumed Supabase
- * identities): sample users, bookings, payment events, reviews, wishlist,
- * enquiries, posts, outbox, media assets/garbage.
+ * KHÔNG port từ Nexora (các fixture phụ thuộc user, vốn giả định identity
+ * Supabase): user mẫu, booking, payment event, review, wishlist, enquiry, post,
+ * outbox, media asset/rác.
  *
- * Run: pnpm --filter @tourism/api db:seed  (compiled via swc, see package.json)
+ * Chạy: pnpm --filter @tourism/api db:seed  (compile qua swc, xem package.json)
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -31,13 +31,13 @@ import {
 } from '../src/generated/prisma/enums.js';
 import * as catalog from './fixtures/catalog.js';
 
-/** Self-signed PAID booking code (owned by the overlay customer). */
+/** Code của PAID booking tự ký (thuộc về customer trong overlay). */
 const PAID_BOOKING_CODE = 'BK-SEEDPAID';
-/** Attach the PAID booking to this tour when it qualifies; else the soonest qualifying departure. */
+/** Gắn PAID booking vào tour này nếu nó đủ điều kiện; nếu không thì departure đủ điều kiện gần nhất. */
 const PREFERRED_PAID_TOUR_SLUG = 'hoi-an-walking-tour';
 const PAID_SEATS = 2;
 
-/** Brand-chrome slot keys — mirror of the API slot catalog (site-media). */
+/** Các slot key brand-chrome — bản sao của slot catalog phía API (site-media). */
 const SITE_SLOT_KEYS = [
   'home-hero',
   'home-experiences',
@@ -57,9 +57,10 @@ const prisma = new PrismaClient({
 });
 
 /**
- * Coerce a bare `YYYY-MM-DD` fixture value to a `Date` — Prisma 7 `createMany`
- * rejects date-only strings for `@db.Date` columns. `new Date('2026-07-31')`
- * parses as UTC midnight, so the stored calendar date is unchanged.
+ * Ép một giá trị fixture dạng `YYYY-MM-DD` trần về `Date` — Prisma 7
+ * `createMany` từ chối string chỉ có ngày cho cột `@db.Date`.
+ * `new Date('2026-07-31')` parse thành nửa đêm UTC nên ngày lịch lưu vào không
+ * đổi.
  */
 const toDate = (value: string): Date => new Date(value);
 
@@ -85,8 +86,8 @@ async function insertCatalog(): Promise<number> {
       'tours',
       () =>
         prisma.tour.createMany({
-          // Fixture arrays are plain JSON strings; the generated catalog module
-          // already uses valid enum values (difficulty/suitableFor/badges).
+          // Các mảng fixture là JSON string thuần; module catalog được generate
+          // đã dùng giá trị enum hợp lệ sẵn (difficulty/suitableFor/badges).
           data: catalog.tours as unknown as Prisma.TourCreateManyInput[],
           skipDuplicates: true,
         }),
@@ -120,7 +121,7 @@ async function insertCatalog(): Promise<number> {
       'tourDepartures',
       () =>
         prisma.tourDeparture.createMany({
-          // @db.Date columns → coerce the date-only strings (see toDate).
+          // Cột @db.Date → ép các string chỉ có ngày (xem toDate).
           data: catalog.tourDepartures.map((d) => ({
             ...d,
             startDate: toDate(d.startDate),
@@ -141,10 +142,10 @@ async function insertCatalog(): Promise<number> {
 }
 
 /**
- * Picks an OPEN departure (on a published tour) with at least `seats` free.
- * Prefers {@link PREFERRED_PAID_TOUR_SLUG} when it qualifies, else the soonest
- * qualifying departure. Prisma can't compare two columns in a `where`, so free
- * seats are filtered in JS.
+ * Chọn một departure OPEN (trên tour đã publish) còn trống ít nhất `seats` chỗ.
+ * Ưu tiên {@link PREFERRED_PAID_TOUR_SLUG} nếu nó đủ điều kiện, nếu không thì
+ * departure đủ điều kiện gần nhất. Prisma không so sánh hai cột trong `where`
+ * được nên số seat trống được filter ở JS.
  */
 async function pickPaidDeparture(seats: number) {
   const candidates = await prisma.tourDeparture.findMany({
@@ -166,20 +167,21 @@ async function pickPaidDeparture(seats: number) {
 }
 
 async function main(): Promise<void> {
-  // 1. Catalog fixtures.
+  // 1. Fixtures catalog.
   console.log('[seed] loading catalog fixtures...');
   const inserted = await insertCatalog();
   console.log(`[seed] catalog: ${inserted} rows inserted (duplicates skipped).`);
 
-  // 2. Site media slots — stable uuid per key so assets can attach later.
+  // 2. Site media slot — uuid ổn định theo từng key để asset gắn vào sau này.
   for (const key of SITE_SLOT_KEYS) {
     await prisma.siteMediaSlot.upsert({ where: { key }, create: { key }, update: {} });
   }
   console.log(`[seed] site media slots: ${SITE_SLOT_KEYS.length} keys upserted.`);
 
-  // 3. Functional overlay — a known CUSTOMER + an ADMIN (upsert by citext-unique
-  //    email). Plain rows in the Better Auth `users` table: registering through
-  //    Better Auth with the same email links to the row (no supabaseId in v2).
+  // 3. Functional overlay — một CUSTOMER đã biết + một ADMIN (upsert theo email
+  //    unique kiểu citext). Chỉ là row thường trong bảng `users` của Better
+  //    Auth: đăng ký qua Better Auth cùng email sẽ link vào row đó (v2 không có
+  //    supabaseId).
   const adminEmail = process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@tourism.test';
   const customer = await prisma.user.upsert({
     where: { email: 'customer@tourism.test' },
@@ -204,9 +206,9 @@ async function main(): Promise<void> {
   });
   console.log(`[seed] overlay users: customer=${customer.email} admin=${admin.email}`);
 
-  // 4. Self-signed PAID booking with the v2 create-time snapshots (audit H3):
-  //    tourTitle + departure dates + unitPrice are frozen on the row. Created
-  //    once; seats claimed atomically so it can't overbook.
+  // 4. PAID booking tự ký với các snapshot lúc create của v2 (audit H3):
+  //    tourTitle + ngày departure + unitPrice được đóng băng trên row. Tạo một
+  //    lần; seat được claim nguyên tử nên không thể overbook.
   const existing = await prisma.booking.findUnique({
     where: { code: PAID_BOOKING_CODE },
     select: { id: true, tourTitle: true },
@@ -231,7 +233,7 @@ async function main(): Promise<void> {
           totalAmount: unitPrice.mul(PAID_SEATS),
           currency: departure.tour.currency,
           status: BookingStatus.PAID,
-          // v2 snapshots (audit H3)
+          // snapshot v2 (audit H3)
           tourTitle: departure.tour.title,
           departureStartDate: departure.startDate,
           departureEndDate: departure.endDate,

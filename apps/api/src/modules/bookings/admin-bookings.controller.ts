@@ -21,10 +21,10 @@ import {
 } from './refunds.service.js';
 
 /**
- * Admin booking surface (spec P2 W3). Same @Implement composition as
- * BookingsController; the class-level `@Roles(ADMIN)` is read by AuthGuard
- * (getAllAndOverride handler→class), so anonymous → 401, non-admin → 403 —
- * both before oRPC parses any input.
+ * Bề mặt booking cho admin (spec P2 W3). Cùng cách ghép @Implement như
+ * BookingsController; `@Roles(ADMIN)` ở cấp class được AuthGuard đọc
+ * (getAllAndOverride handler→class), nên ẩn danh → 401, không phải admin → 403 —
+ * cả hai đều trước khi oRPC parse bất kỳ input nào.
  */
 @Controller()
 @UseGuards(AuthGuard)
@@ -48,8 +48,8 @@ export class AdminBookingsController {
     return implement(contract.admin.bookings.byCode).handler(async ({ input, errors }) => {
       const booking = await this.bookings.adminByCode(input.code);
       if (!booking) throw errors.NOT_FOUND();
-      // W4: the admin detail carries the full D1-B cancellation trail (DENIED
-      // history rows survive re-requests), oldest first.
+      // W4: admin detail mang theo toàn bộ trail cancellation D1-B (các history
+      // row DENIED sống sót qua các lần request lại), cũ nhất trước.
       return {
         ...booking,
         cancellationRequests: await this.cancellations.historyForBooking(booking.id, booking.code),

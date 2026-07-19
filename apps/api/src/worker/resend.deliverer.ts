@@ -7,21 +7,21 @@ const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
 
 export interface ResendDelivererOptions {
   apiKey: string;
-  /** RFC-5322 From, e.g. `Tourism <noreply@tourism.test>` (env EMAIL_FROM). */
+  /** From theo RFC-5322, vd `Tourism <noreply@tourism.test>` (env EMAIL_FROM). */
   from: string;
 }
 
 /**
- * Resend implementation of {@link EmailDeliverer} (spec P2 §3 W5) — the P2
- * binding behind EMAIL_DELIVERER when RESEND_API_KEY is set (worker.module.ts;
- * without the key the P1 ConsoleDeliverer stays, dev boots need no email —
- * Nexora pattern).
+ * Bản cài Resend của {@link EmailDeliverer} (spec P2 §3 W5) — binding P2 đứng
+ * sau EMAIL_DELIVERER khi RESEND_API_KEY được set (worker.module.ts; không có
+ * key thì giữ ConsoleDeliverer của P1, dev boot không cần email — pattern
+ * Nexora).
  *
- * Rendering is deliberately minimal: per-type subject + a few HTML lines from
- * the outbox payload fields (no react-email in P2 — P3 owns pretty templates).
- * Errors THROW so OutboxService.drainOnce counts the attempt and retries /
- * parks FAILED per its state machine; HTTP goes through the injectable
- * {@link HttpPost} seam (D2: unit tests stay offline).
+ * Render cố ý tối giản: subject theo từng type + vài dòng HTML lấy từ các field
+ * trong outbox payload (P2 chưa dùng react-email — template đẹp để P3 lo). Lỗi
+ * thì THROW để OutboxService.drainOnce đếm attempt rồi retry / park FAILED theo
+ * state machine của nó; HTTP đi qua seam {@link HttpPost} inject được (D2: unit
+ * test chạy offline).
  */
 @Injectable()
 export class ResendDeliverer implements EmailDeliverer {
@@ -36,8 +36,8 @@ export class ResendDeliverer implements EmailDeliverer {
     const fields = asRecord(payload);
     const to = typeof fields.email === 'string' ? fields.email : undefined;
     if (!to) {
-      // Producer bug, not transient — still throw: drain retries then parks
-      // the row FAILED with this message for operator triage.
+      // Bug ở producer, không phải lỗi tạm thời — vẫn throw: drain retry rồi
+      // park row FAILED kèm message này cho operator triage.
       throw new Error(`outbox payload for ${type} has no recipient email`);
     }
     const { subject, html } = renderEmail(type, fields);
@@ -47,7 +47,12 @@ export class ResendDeliverer implements EmailDeliverer {
         authorization: `Bearer ${this.options.apiKey}`,
         'content-type': 'application/json',
       },
-      body: JSON.stringify({ from: this.options.from, to: [to], subject, html }),
+      body: JSON.stringify({
+        from: this.options.from,
+        to: [to],
+        subject,
+        html,
+      }),
     });
     if (response.status < 200 || response.status >= 300) {
       throw new Error(
@@ -59,9 +64,9 @@ export class ResendDeliverer implements EmailDeliverer {
 }
 
 /**
- * Pure per-type rendering — exported for unit tests. All copy is English-only
- * (CLAUDE.md #7); payload fields are HTML-escaped (contact names are
- * user-supplied).
+ * Render thuần theo từng type — export cho unit test. Toàn bộ copy English-only
+ * (CLAUDE.md #7); các field trong payload đều được HTML-escape (tên người liên
+ * hệ do user nhập).
  */
 export function renderEmail(
   type: EmailType,
@@ -167,8 +172,8 @@ export function renderEmail(
         ),
       };
     default: {
-      // Exhaustiveness backstop — a new EmailType fails loudly here (and the
-      // spec's enum-coverage test fails first).
+      // Chốt exhaustiveness — EmailType mới sẽ fail ầm ĩ ở đây (và test
+      // enum-coverage của spec fail trước).
       const exhaustive: never = type;
       throw new Error(`No email template for type ${String(exhaustive)}`);
     }

@@ -11,7 +11,7 @@ import {
   RefundNothingLeftError,
 } from './refund-math.js';
 
-/** No booking with this code (admin surface: a plain 404, nothing to hide). */
+/** Không có booking với code này (admin surface: 404 trơn, không có gì phải giấu). */
 export class BookingNotFoundError extends Error {
   constructor(code: string) {
     super(`Booking "${code}" not found`);
@@ -19,11 +19,11 @@ export class BookingNotFoundError extends Error {
 }
 
 /**
- * Refund gate failed: status outside PAID/PARTIALLY_REFUNDED, or no captured
- * payment to refund against. Ported from Nexora's `BOOKING_NOT_REFUNDABLE`
- * gate (PAID-only) and EXTENDED with PARTIALLY_REFUNDED — the ledger makes
- * partial refunds accumulate (spec P2 §4 invariant #5), so a partially
- * refunded booking is still refundable until the ledger sums to the total.
+ * Refund gate fail: status nằm ngoài PAID/PARTIALLY_REFUNDED, hoặc không có
+ * captured payment nào để refund vào. Port từ gate `BOOKING_NOT_REFUNDABLE`
+ * (chỉ PAID) của Nexora và MỞ RỘNG thêm PARTIALLY_REFUNDED — ledger cho phép
+ * partial refund cộng dồn (spec P2 §4 invariant #5), nên một booking đã refund
+ * một phần vẫn còn refundable cho tới khi ledger cộng đủ total.
  */
 export class BookingNotRefundableError extends Error {
   constructor(status: BookingStatus, hasCapturedPayment: boolean) {
@@ -35,7 +35,7 @@ export class BookingNotRefundableError extends Error {
   }
 }
 
-/** The provider refused/failed the refund call — nothing was ledgered. */
+/** Provider từ chối/lỗi lời gọi refund — không có gì được ghi ledger. */
 export class ProviderRefundFailedError extends Error {
   constructor(detail: string) {
     super(`Provider refund failed: ${detail}`);
@@ -44,7 +44,7 @@ export class ProviderRefundFailedError extends Error {
 
 type RefundRow = Prisma.RefundModel;
 
-/** Refund ledger row → contract shape (money as string, same conventions). */
+/** Refund ledger row → contract shape (money dạng string, cùng quy ước). */
 function toRefund(row: RefundRow): RefundView {
   return {
     id: row.id,
@@ -57,11 +57,11 @@ function toRefund(row: RefundRow): RefundView {
 }
 
 /**
- * Refund ledger service (spec P2 §3, W3 — the audit-H1 upgrade): Refund rows
- * are APPEND-ONLY and the source of truth; `Booking.status` is a stored
- * projection derived from SUM(refunds) vs totalAmount, and every
- * refund-related transition goes through here (or the W2 auto-refund paths in
- * PaymentsService, which follow the same ledger semantics).
+ * Refund ledger service (spec P2 §3, W3 — bản nâng cấp audit-H1): các Refund
+ * row là APPEND-ONLY và là source of truth; `Booking.status` là projection
+ * được lưu, derive từ SUM(refunds) so với totalAmount, và mọi transition liên
+ * quan refund đều đi qua đây (hoặc các đường auto-refund W2 trong
+ * PaymentsService, vốn theo cùng ledger semantics).
  */
 @Injectable()
 export class RefundsService {
@@ -70,29 +70,29 @@ export class RefundsService {
   constructor(@Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[]) {}
 
   /**
-   * Admin-issued (partial) refund, ported from Nexora `refundByAdmin` onto the
-   * ledger. Order of operations is the W2 principle:
+   * Refund (một phần) do admin phát, port từ `refundByAdmin` của Nexora sang
+   * ledger. Thứ tự thao tác theo nguyên tắc W2:
    *
-   *  1. Gate + classify against the ledger (`classifyRefundAmount` on
-   *     total vs SUM(refunds) — throws the typed 422 domain errors).
-   *  2. Provider refund FIRST, outside any transaction — we never ledger a
-   *     refund that did not happen, and provider HTTP latency never holds a
-   *     DB connection.
-   *  3. ONE transaction: append the Refund row (adminId set) → re-derive
-   *     Booking.status via {@link deriveStatusAfterRefund} → enqueue the
-   *     BOOKING_REFUNDED outbox row. dedupeKey `refund:<bookingId>:<refundRowId>`
-   *     — refunds legitimately repeat per booking, and the refund row id is
-   *     unique per refund, satisfying the convention's repeat-event rule
+   *  1. Gate + classify theo ledger (`classifyRefundAmount` trên total vs
+   *     SUM(refunds) — ném các domain error 422 có kiểu).
+   *  2. Provider refund TRƯỚC, ngoài mọi transaction — ta không bao giờ ledger
+   *     một refund chưa xảy ra, và latency HTTP của provider không bao giờ giữ
+   *     một DB connection.
+   *  3. MỘT transaction: append Refund row (set adminId) → re-derive
+   *     Booking.status qua {@link deriveStatusAfterRefund} → enqueue outbox row
+   *     BOOKING_REFUNDED. dedupeKey `refund:<bookingId>:<refundRowId>` — refund
+   *     lặp lại hợp lệ theo từng booking, và refund row id là unique theo mỗi
+   *     refund, thỏa quy tắc repeat-event của quy ước
    *     (docs/conventions/outbox-dedupe-key.md).
    *
-   * `reason` is carried in the outbox payload ONLY — the Refund model has no
-   * reason column on purpose (audit: the ledger stores money facts; free-text
-   * context belongs to the notification, schema stays as audited).
+   * `reason` CHỈ được mang trong outbox payload — Refund model cố ý không có
+   * cột reason (audit: ledger lưu money fact; context free-text thuộc về
+   * notification, schema giữ đúng như đã audit).
    *
-   * Unlike Nexora, a FULL admin refund does NOT release seats or set
-   * cancelledAt here: seat release belongs to the cancellation flow (W4
-   * approve → refund); an admin goodwill refund of a still-travelling booking
-   * must not free its seats.
+   * Khác với Nexora, một FULL admin refund ở đây KHÔNG release seat hay set
+   * cancelledAt: seat release thuộc về cancellation flow (W4 approve →
+   * refund); một goodwill refund của admin trên booking vẫn đang du lịch không
+   * được giải phóng seat của nó.
    */
   async refundByAdmin(
     adminUserId: string,
@@ -101,8 +101,8 @@ export class RefundsService {
   ): Promise<AdminRefundResult> {
     const booking = await prisma.booking.findUnique({ where: { code: bookingCode } });
     if (!booking) throw new BookingNotFoundError(bookingCode);
-    // REFUNDED gets the precise error (the ledger is settled), before the
-    // generic status gate — same 422 class, better operator signal.
+    // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
+    // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
     if (booking.status === BookingStatus.REFUNDED) throw new RefundNothingLeftError();
     const refundableStatus =
       booking.status === BookingStatus.PAID || booking.status === BookingStatus.PARTIALLY_REFUNDED;
@@ -121,12 +121,12 @@ export class RefundsService {
       alreadyRefunded,
     });
 
-    // Provider refund FIRST (see doc above). A failure surfaces as a typed
-    // error and leaves booking + ledger untouched — the admin just retries.
-    // Provider idempotency key: the Refund row id doesn't exist yet (we ledger
-    // AFTER the provider call), so the ledger sum identifies the ATTEMPT STATE
-    // — a retry of the same attempt reuses the key (provider dedupes), while
-    // the next legitimate refund sees a different sum and mints a new key.
+    // Provider refund TRƯỚC (xem doc phía trên). Fail thì nổi lên dưới dạng
+    // typed error và để nguyên booking + ledger — admin chỉ việc retry.
+    // Provider idempotency key: Refund row id chưa tồn tại (ta ledger SAU lời
+    // gọi provider), nên ledger sum định danh ATTEMPT STATE — một retry của
+    // cùng attempt tái dùng key (provider tự dedupe), còn refund hợp lệ tiếp
+    // theo thấy sum khác và mint ra key mới.
     const providerRefundId = await this.executeGatewayRefund(
       { ...booking, providerPaymentId: booking.providerPaymentId },
       amount,
@@ -177,19 +177,20 @@ export class RefundsService {
   }
 
   /**
-   * The provider-refund step SHARED by the admin refund above and the W4
-   * cancellation-approve flow (spec: reuse, don't duplicate gateway logic):
-   * resolve the booking's gateway and refund `amount` in the BOOKING's
-   * currency — invariant #6 by construction, a currency mismatch is
-   * unrepresentable. Runs OUTSIDE any transaction on purpose (provider HTTP
-   * latency never holds a DB connection; we never ledger a refund that did
-   * not happen — callers ledger AFTER this returns). Failures wrap into
-   * {@link ProviderRefundFailedError} (→ 502), nothing has been written.
+   * Bước provider-refund được DÙNG CHUNG bởi admin refund phía trên và W4
+   * cancellation-approve flow (spec: reuse, đừng nhân bản logic gateway):
+   * resolve gateway của booking và refund `amount` theo currency của BOOKING —
+   * invariant #6 theo thiết kế, một currency mismatch là bất khả biểu diễn.
+   * Chạy NGOÀI mọi transaction một cách cố ý (latency HTTP của provider không
+   * bao giờ giữ DB connection; ta không bao giờ ledger một refund chưa xảy ra
+   * — caller ledger SAU khi hàm này trả về). Fail thì bọc vào
+   * {@link ProviderRefundFailedError} (→ 502), chưa có gì được ghi.
    *
-   * `idempotencyKey` (W5): deterministic per refund ATTEMPT, forwarded by the
-   * real gateways as the provider idempotency header (Stripe `Idempotency-Key`
-   * / `PayPal-Request-Id`) — a crash-retry of the same attempt can never
-   * double-refund at the provider. See RefundInput for the per-flow keys.
+   * `idempotencyKey` (W5): deterministic theo mỗi refund ATTEMPT, được các
+   * gateway thật forward làm provider idempotency header (Stripe
+   * `Idempotency-Key` / `PayPal-Request-Id`) — một crash-retry của cùng attempt
+   * không bao giờ double-refund ở provider. Xem RefundInput cho key theo từng
+   * flow.
    */
   async executeGatewayRefund(
     booking: {
@@ -218,8 +219,8 @@ export class RefundsService {
   }
 
   /**
-   * Refund ledger for a booking, oldest first (append order). Contract-shaped
-   * — the admin detail view lands later (P4); int tests call this directly.
+   * Refund ledger của một booking, cũ nhất trước (append order). Đã ở dạng
+   * contract — admin detail view sẽ có sau (P4); int test gọi thẳng hàm này.
    */
   async historyForBooking(bookingCode: string): Promise<RefundView[]> {
     const booking = await prisma.booking.findUnique({

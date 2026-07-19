@@ -42,30 +42,47 @@ describe('CreateBookingInputSchema', () => {
 
   it('rejects an unknown payment provider', () => {
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, paymentProvider: 'BITCOIN' }).success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        paymentProvider: 'BITCOIN',
+      }).success,
     ).toBe(false);
     expect(PaymentProviderSchema.options).toEqual(['STRIPE', 'PAYPAL']);
   });
 
   it('rejects a non-uuid departureId and a malformed contact email', () => {
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, departureId: 'not-a-uuid' }).success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        departureId: 'not-a-uuid',
+      }).success,
     ).toBe(false);
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, contactEmail: 'nope' }).success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        contactEmail: 'nope',
+      }).success,
     ).toBe(false);
   });
 
   it('enforces the schema.prisma length caps on contact fields', () => {
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, contactName: 'x'.repeat(121) }).success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        contactName: 'x'.repeat(121),
+      }).success,
     ).toBe(false);
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, contactPhone: '9'.repeat(31) }).success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        contactPhone: '9'.repeat(31),
+      }).success,
     ).toBe(false);
     expect(
-      CreateBookingInputSchema.safeParse({ ...validCreate, specialRequests: 'x'.repeat(1001) })
-        .success,
+      CreateBookingInputSchema.safeParse({
+        ...validCreate,
+        specialRequests: 'x'.repeat(1001),
+      }).success,
     ).toBe(false);
   });
 });
@@ -104,7 +121,10 @@ describe('BookingSchema', () => {
 
 describe('BookingsListQuerySchema', () => {
   it('defaults page/limit and accepts an optional status filter', () => {
-    expect(BookingsListQuerySchema.parse({})).toMatchObject({ page: 1, limit: 12 });
+    expect(BookingsListQuerySchema.parse({})).toMatchObject({
+      page: 1,
+      limit: 12,
+    });
     expect(BookingsListQuerySchema.parse({ status: 'PAID' }).status).toBe('PAID');
     expect(BookingsListQuerySchema.safeParse({ status: 'NOPE' }).success).toBe(false);
     expect(BookingsListQuerySchema.safeParse({ limit: 999 }).success).toBe(false);

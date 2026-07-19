@@ -55,7 +55,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     startDate: start,
     endDate: new Date(start.getTime() + 86_400_000),
     seatsTotal: 8,
-    seatsBooked: 3, // 5 left — pre-booked seats prove create doesn't touch them
+    seatsBooked: 3, // còn 5 — seat đã book sẵn để chứng minh create không đụng vào chúng
     status: DepartureStatus.OPEN,
     ...patch,
   });
@@ -155,9 +155,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       cancelledAt: null,
     });
     expect(Number(body.unitPrice)).toBe(39);
-    expect(Number(body.totalAmount)).toBe(117); // 39.00 × (2 adults + 1 child)
+    expect(Number(body.totalAmount)).toBe(117); // 39.00 × (2 người lớn + 1 trẻ em)
 
-    // checkoutUrl comes from the FakeGateway session, minted with exact money.
+    // checkoutUrl đến từ session của FakeGateway, sinh ra với số tiền chính xác.
     const session = fake.sessionFor(body.id);
     expect(session).toBeDefined();
     expect(body.checkoutUrl).toBe(session?.checkoutUrl);
@@ -167,7 +167,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       currency: 'USD',
     });
 
-    // DB row: PENDING, snapshots frozen, provider session persisted.
+    // DB row: PENDING, snapshot đã đóng băng, provider session được lưu.
     const row = await prisma.booking.findUnique({ where: { code: body.code } });
     expect(row).toMatchObject({
       status: BookingStatus.PENDING,
@@ -180,7 +180,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(row?.unitPrice.toFixed(2)).toBe('39.00');
     expect(row?.totalAmount.toFixed(2)).toBe('117.00');
 
-    // Invariant #1 (spec §4): PENDING holds NO seats.
+    // Invariant #1 (spec §4): PENDING KHÔNG giữ seat nào.
     const after = await prisma.tourDeparture.findUnique({
       where: { id: depOpen.id },
     });
@@ -197,7 +197,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(res.statusCode).toBe(200);
     const body = BookingSchema.parse(res.json());
     expect(Number(body.unitPrice)).toBe(59);
-    expect(Number(body.totalAmount)).toBe(118); // 59.00 × 2 adults
+    expect(Number(body.totalAmount)).toBe(118); // 59.00 × 2 người lớn
   });
 
   it('CLOSED / past / unpublished-tour departures → 400 DEPARTURE_NOT_AVAILABLE', async () => {
@@ -206,7 +206,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       depClosed.id,
       depPast.id,
       depUnpublished.id,
-      'e9100001-dead-4000-8000-000000000000', // does not exist
+      'e9100001-dead-4000-8000-000000000000', // không tồn tại
     ]) {
       const res = await createBooking(cookie, {
         ...createPayload,
@@ -287,7 +287,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       totalPages: 1,
     });
     expect(paged.items.map((b) => b.code).sort()).toEqual([first.code, second.code].sort());
-    // Reads never re-expose a checkout redirect.
+    // Read không bao giờ phơi lại checkout redirect.
     expect(paged.items.every((b) => b.checkoutUrl === null)).toBe(true);
 
     const paid = PagedSchema(BookingSchema).parse(
@@ -317,7 +317,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(body.code).toBe(created.code);
     expect(body.checkoutUrl).toBeNull();
 
-    // Another user's code → 404 (no existence leak), same for a made-up code.
+    // Code của user khác → 404 (không lộ sự tồn tại), code bịa ra cũng vậy.
     for (const [cookie, code] of [
       [bob, created.code],
       [alice, 'BK-ZZZZ9999'],

@@ -34,7 +34,9 @@ describe('outbox worker integration', () => {
   let outbox: OutboxService;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [WorkerModule] })
+    const moduleRef = await Test.createTestingModule({
+      imports: [WorkerModule],
+    })
       .overrideProvider(EMAIL_DELIVERER)
       .useValue(deliverer)
       .compile();
@@ -83,8 +85,12 @@ describe('outbox worker integration', () => {
     });
 
     it('respects batchSize', async () => {
-      await seed('enquiry-received:b1', { createdAt: new Date(Date.now() - 2000) });
-      await seed('enquiry-received:b2', { createdAt: new Date(Date.now() - 1000) });
+      await seed('enquiry-received:b1', {
+        createdAt: new Date(Date.now() - 2000),
+      });
+      await seed('enquiry-received:b2', {
+        createdAt: new Date(Date.now() - 1000),
+      });
       await seed('enquiry-received:b3');
 
       const result = await outbox.drainOnce(2);
@@ -102,9 +108,15 @@ describe('outbox worker integration', () => {
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
         const result = await outbox.drainOnce();
         const isLast = attempt === MAX_ATTEMPTS;
-        expect(result).toEqual({ sent: 0, failed: isLast ? 1 : 0, retried: isLast ? 0 : 1 });
+        expect(result).toEqual({
+          sent: 0,
+          failed: isLast ? 1 : 0,
+          retried: isLast ? 0 : 1,
+        });
 
-        const updated = await prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
+        const updated = await prisma.outbox.findUniqueOrThrow({
+          where: { id: row.id },
+        });
         expect(updated.attempts).toBe(attempt);
         expect(updated.status).toBe(isLast ? OutboxStatus.FAILED : OutboxStatus.PENDING);
         expect(updated.lastError).toHaveLength(1000);
@@ -133,7 +145,9 @@ describe('outbox worker integration', () => {
 
       expect(first).toBe(true);
       expect(second).toBe(false);
-      const rows = await prisma.outbox.findMany({ where: { dedupeKey: 'booking-paid:b-1' } });
+      const rows = await prisma.outbox.findMany({
+        where: { dedupeKey: 'booking-paid:b-1' },
+      });
       expect(rows).toHaveLength(1);
       expect(rows[0]?.status).toBe(OutboxStatus.PENDING);
     });

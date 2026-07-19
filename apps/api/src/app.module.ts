@@ -9,12 +9,12 @@ import { HealthModule } from './modules/health/health.module.js';
 @Module({
   imports: [
     /**
-     * oRPC runtime config for every `@Implement` controller (docs: openapi/
-     * integrations/implement-contract-in-nest). ZodSmartCoercionPlugin turns
-     * HTTP query strings ("2", "true") into the schema's number/boolean so
-     * contract schemas stay honest (no z.coerce) for typed clients.
-     * Unexpected (non-ORPCError) failures are logged via onError; oRPC still
-     * answers with its INTERNAL_SERVER_ERROR JSON shape.
+     * Config runtime oRPC cho mọi controller `@Implement` (docs: openapi/
+     * integrations/implement-contract-in-nest). ZodSmartCoercionPlugin biến
+     * query string HTTP ("2", "true") thành number/boolean của schema để các
+     * schema contract giữ đúng bản chất (không cần z.coerce) cho typed client.
+     * Lỗi ngoài dự kiến (không phải ORPCError) được log qua onError; oRPC vẫn
+     * trả về theo shape JSON INTERNAL_SERVER_ERROR của nó.
      */
     ORPCModule.forRoot({
       plugins: [new ZodSmartCoercionPlugin()],

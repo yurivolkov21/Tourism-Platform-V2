@@ -2,19 +2,19 @@ import { z } from 'zod';
 import { DecimalStringSchema } from './catalog.js';
 
 /**
- * Booking schemas (spec P2 §3, W1) — the ONE source of truth for the customer
- * booking surface: oRPC contract input/output + P3 web client types.
+ * Booking schema (spec P2 §3, W1) — nguồn sự thật DUY NHẤT cho bề mặt booking
+ * phía khách: input/output của oRPC contract + kiểu client web P3.
  *
- * Same serialization conventions as catalog.ts: Decimal money as strings,
- * `@db.Date` columns as `YYYY-MM-DD`, DB-nullable fields as explicit `null`.
- * Length caps mirror `apps/api/prisma/schema.prisma` (Booking model) exactly.
+ * Cùng quy ước serialize như catalog.ts: money Decimal dạng string, cột
+ * `@db.Date` dạng `YYYY-MM-DD`, field nullable ở DB trả về `null` tường minh.
+ * Các giới hạn độ dài mirror y hệt `apps/api/prisma/schema.prisma` (model Booking).
  */
 
-/** Mirrors Prisma enum PaymentProvider (ADR-0006, amended). */
+/** Mirror enum Prisma PaymentProvider (ADR-0006, đã sửa đổi). */
 export const PaymentProviderSchema = z.enum(['STRIPE', 'PAYPAL']);
 export type PaymentProviderValue = z.output<typeof PaymentProviderSchema>;
 
-/** Mirrors Prisma enum BookingStatus. */
+/** Mirror enum Prisma BookingStatus. */
 export const BookingStatusSchema = z.enum([
   'PENDING',
   'PAID',
@@ -24,14 +24,14 @@ export const BookingStatusSchema = z.enum([
 ]);
 export type BookingStatusValue = z.output<typeof BookingStatusSchema>;
 
-/** `BK-` + 8 uppercase base36 chars (see apps/api bookings/booking-code.ts). */
+/** `BK-` + 8 ký tự base36 in hoa (xem apps/api bookings/booking-code.ts). */
 export const BookingCodeSchema = z.string().regex(/^BK-[A-Z0-9]{8}$/, 'expected a booking code');
 
 /**
- * Input for `bookings.create`. The departure is addressed directly by id (the
- * tour is derived server-side — no `tourSlug`, it could only disagree).
- * Group-size bounds beyond `numAdults ≥ 1` are business rules checked
- * server-side against the departure's remaining seats.
+ * Input cho `bookings.create`. Departure được định danh trực tiếp bằng id (tour
+ * suy ra ở server — không có `tourSlug`, thứ chỉ có thể mâu thuẫn). Các giới hạn
+ * kích thước nhóm ngoài `numAdults ≥ 1` là business rule, kiểm ở server dựa trên
+ * số seat còn lại của departure.
  */
 export const CreateBookingInputSchema = z.object({
   departureId: z.uuid(),
@@ -47,11 +47,10 @@ export const CreateBookingInputSchema = z.object({
 export type CreateBookingInput = z.output<typeof CreateBookingInputSchema>;
 
 /**
- * Public booking shape. Snapshot fields (tourTitle, departure dates,
- * unitPrice) reflect what the customer bought at create time — they never
- * re-render when the tour is edited (audit H3). `checkoutUrl` is only
- * non-null right after `create` (the gateway session redirect); reads
- * return it as `null`.
+ * Shape booking công khai. Các field snapshot (tourTitle, ngày departure,
+ * unitPrice) phản ánh đúng thứ khách đã mua tại thời điểm create — chúng không
+ * bao giờ render lại khi tour bị sửa (audit H3). `checkoutUrl` chỉ khác null
+ * ngay sau `create` (redirect session của gateway); khi read trả về `null`.
  */
 export const BookingSchema = z.object({
   id: z.uuid(),
@@ -79,9 +78,8 @@ export const BookingSchema = z.object({
 export type Booking = z.output<typeof BookingSchema>;
 
 /**
- * Query for `bookings.mine`. Same pagination conventions as the catalog list
- * (plain typed fields — ZodSmartCoercionPlugin coerces query strings
- * server-side).
+ * Query cho `bookings.mine`. Cùng quy ước pagination như list catalog (field gõ
+ * kiểu thuần — ZodSmartCoercionPlugin lo coerce query string ở server).
  */
 export const BookingsListQuerySchema = z.object({
   page: z.int().min(1).default(1),
@@ -92,13 +90,13 @@ export const BookingsListQuerySchema = z.object({
 export type BookingsListQuery = z.output<typeof BookingsListQuerySchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Admin surface (spec P2 §3, W3) — refund ledger + management list
+// Bề mặt admin (spec P2 §3, W3) — refund ledger + list quản trị
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * One append-only Refund ledger row (audit H1 upgrade — replaces Nexora's four
- * nullable refund columns). `adminId` null = automatic refund (overbook /
- * orphaned capture); `providerRefundId` null only for legacy/unknown rows.
+ * Một row ledger Refund append-only (nâng cấp audit H1 — thay cho bốn cột refund
+ * nullable của Nexora). `adminId` null = refund tự động (overbook / orphaned
+ * capture); `providerRefundId` null chỉ với row legacy/không rõ.
  */
 export const RefundSchema = z.object({
   id: z.uuid(),
@@ -112,11 +110,11 @@ export const RefundSchema = z.object({
 export type Refund = z.output<typeof RefundSchema>;
 
 /**
- * Input for `admin.bookings.refund`. `amount` omitted → refund the remainder
- * (total − SUM(refunds)); it is currency-less on purpose — the booking's
- * currency is implied, so a refund/booking currency mismatch (invariant #6) is
- * unrepresentable on this path. `reason` is stored in the refund email outbox
- * payload only (the Refund model deliberately has no reason column — audit).
+ * Input cho `admin.bookings.refund`. Bỏ trống `amount` → refund phần còn lại
+ * (total − SUM(refunds)); nó cố ý không mang currency — currency của booking đã
+ * ngầm định, nên mismatch currency refund/booking (invariant #6) là bất khả biểu
+ * diễn trên path này. `reason` chỉ lưu trong payload outbox của email refund
+ * (model Refund cố ý không có cột reason — audit).
  */
 export const AdminRefundInputSchema = z.object({
   code: BookingCodeSchema,
@@ -126,7 +124,7 @@ export const AdminRefundInputSchema = z.object({
 
 export type AdminRefundInput = z.output<typeof AdminRefundInputSchema>;
 
-/** Output of `admin.bookings.refund`: the re-derived booking + full ledger. */
+/** Output của `admin.bookings.refund`: booking suy ra lại + toàn bộ ledger. */
 export const AdminRefundResultSchema = z.object({
   booking: BookingSchema,
   refunds: z.array(RefundSchema),
@@ -135,9 +133,9 @@ export const AdminRefundResultSchema = z.object({
 export type AdminRefundResult = z.output<typeof AdminRefundResultSchema>;
 
 /**
- * Query for `admin.bookings.list` (ported lightly from Nexora's admin list
- * DTO): pagination + `status` filter + free-text `search` matched
- * case-insensitively against booking code, contact email and contact name.
+ * Query cho `admin.bookings.list` (port nhẹ từ DTO list admin của Nexora):
+ * pagination + filter `status` + `search` free-text khớp không phân biệt hoa
+ * thường theo booking code, contact email và contact name.
  */
 export const AdminBookingsListQuerySchema = z.object({
   page: z.int().min(1).default(1),
@@ -149,19 +147,19 @@ export const AdminBookingsListQuerySchema = z.object({
 export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchema>;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Cancellations (spec P2 §3, W4 — D1-B append-only history)
+// Cancellation (spec P2 §3, W4 — lịch sử append-only D1-B)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Mirrors Prisma enum CancellationRequestStatus. REQUESTED = live (at most one
- * per booking — partial unique index), DENIED = admin refused (booking stays
- * PAID), REFUNDED = approved → full-remainder refund issued + booking
- * CANCELLED (docs/conventions/booking-states.md).
+ * Mirror enum Prisma CancellationRequestStatus. REQUESTED = đang mở (nhiều nhất
+ * một cái mỗi booking — partial unique index), DENIED = admin từ chối (booking
+ * vẫn PAID), REFUNDED = đã duyệt → refund toàn phần còn lại + booking CANCELLED
+ * (docs/conventions/booking-states.md).
  */
 export const CancellationRequestStatusSchema = z.enum(['REQUESTED', 'REFUNDED', 'DENIED']);
 export type CancellationRequestStatusValue = z.output<typeof CancellationRequestStatusSchema>;
 
-/** Input for `bookings.cancel` — the customer's reason travels to the admin queue. */
+/** Input cho `bookings.cancel` — lý do của khách được chuyển tới queue admin. */
 export const CancelBookingInputSchema = z.object({
   code: BookingCodeSchema,
   reason: z.string().min(1).max(1000),
@@ -170,9 +168,9 @@ export const CancelBookingInputSchema = z.object({
 export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;
 
 /**
- * One cancellation request row (append-only history per D1-B — a booking can
- * carry several: DENIED history + at most one live REQUESTED). Decision fields
- * are null until an admin decides.
+ * Một row cancellation request (lịch sử append-only theo D1-B — một booking có
+ * thể mang nhiều cái: lịch sử DENIED + nhiều nhất một REQUESTED đang mở). Các
+ * field quyết định là null cho tới khi admin quyết.
  */
 export const CancellationRequestSchema = z.object({
   id: z.uuid(),
@@ -187,8 +185,8 @@ export const CancellationRequestSchema = z.object({
 export type CancellationRequest = z.output<typeof CancellationRequestSchema>;
 
 /**
- * Admin-queue row: the request plus enough booking context to decide without a
- * second lookup (ported from Nexora's admin cancellation DTO).
+ * Row cho queue admin: request kèm đủ context booking để quyết mà không cần
+ * lookup lần hai (port từ DTO cancellation admin của Nexora).
  */
 export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
   tourTitle: z.string().min(1).max(160),
@@ -200,8 +198,8 @@ export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
 export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestSchema>;
 
 /**
- * Query for `admin.cancellations.list`. `status` omitted → ALL requests
- * (consistent with `admin.bookings.list`; the open queue is `?status=REQUESTED`).
+ * Query cho `admin.cancellations.list`. Bỏ trống `status` → TẤT CẢ request (nhất
+ * quán với `admin.bookings.list`; queue đang mở là `?status=REQUESTED`).
  */
 export const AdminCancellationsListQuerySchema = z.object({
   page: z.int().min(1).default(1),
@@ -212,9 +210,9 @@ export const AdminCancellationsListQuerySchema = z.object({
 export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsListQuerySchema>;
 
 /**
- * Input for `admin.cancellations.decide` — one endpoint for both verdicts.
- * `approve: true` → full-remainder refund + booking CANCELLED + seats released
- * + request REFUNDED; `approve: false` → request DENIED, booking untouched.
+ * Input cho `admin.cancellations.decide` — một endpoint cho cả hai phán quyết.
+ * `approve: true` → refund toàn phần còn lại + booking CANCELLED + trả lại seat
+ * + request REFUNDED; `approve: false` → request DENIED, booking giữ nguyên.
  */
 export const DecideCancellationInputSchema = z.object({
   id: z.uuid(),
@@ -224,7 +222,7 @@ export const DecideCancellationInputSchema = z.object({
 
 export type DecideCancellationInput = z.output<typeof DecideCancellationInputSchema>;
 
-/** Output of `admin.cancellations.decide`: the decided request + the booking after it. */
+/** Output của `admin.cancellations.decide`: request đã quyết + booking sau đó. */
 export const DecideCancellationResultSchema = z.object({
   request: AdminCancellationRequestSchema,
   booking: BookingSchema,
@@ -233,9 +231,9 @@ export const DecideCancellationResultSchema = z.object({
 export type DecideCancellationResult = z.output<typeof DecideCancellationResultSchema>;
 
 /**
- * Output of `admin.bookings.byCode` (W4 upgrade): the booking plus its full
- * cancellation history, oldest first — the D1-B append-only trail (DENIED rows
- * survive re-requests) is part of the admin detail view.
+ * Output của `admin.bookings.byCode` (nâng cấp W4): booking kèm toàn bộ lịch sử
+ * cancellation, cũ nhất trước — dấu vết append-only D1-B (row DENIED vẫn còn qua
+ * các lần re-request) là một phần của view chi tiết admin.
  */
 export const AdminBookingDetailSchema = BookingSchema.extend({
   cancellationRequests: z.array(CancellationRequestSchema),

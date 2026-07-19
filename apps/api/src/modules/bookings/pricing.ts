@@ -1,15 +1,15 @@
 import { Prisma } from '../../generated/prisma/client.js';
 
 /**
- * Pure money math for the booking create path (spec P2 §3). Everything runs on
- * `Prisma.Decimal` — money NEVER transits IEEE754 floats (CLAUDE.md / catalog
- * convention: decimal strings on the wire, Decimal in memory).
+ * Money math thuần cho booking create path (spec P2 §3). Mọi thứ chạy trên
+ * `Prisma.Decimal` — tiền KHÔNG BAO GIỜ đi qua float IEEE754 (CLAUDE.md / quy
+ * ước catalog: decimal string trên đường truyền, Decimal trong bộ nhớ).
  */
 
 /**
- * The price one seat actually costs on a departure:
- * `priceOverride ?? tour.basePrice`. A 0 override is a real price (free promo
- * departure), not a missing one — hence `??`, not `||`.
+ * Giá thực một seat trên một departure: `priceOverride ?? tour.basePrice`.
+ * Override bằng 0 là một mức giá thật (departure promo miễn phí), không phải
+ * giá thiếu — nên dùng `??`, không phải `||`.
  */
 export function effectiveUnitPrice(
   basePrice: Prisma.Decimal,
@@ -19,10 +19,9 @@ export function effectiveUnitPrice(
 }
 
 /**
- * Booking total: `unitPrice × seats`, rounded HALF_UP to 2dp to match the DB
- * column (`Decimal(14,2)`). Our own unit prices are already 2dp so the
- * rounding is a no-op in practice, but the invariant belongs to the helper,
- * not to every caller.
+ * Tổng booking: `unitPrice × seats`, làm tròn HALF_UP về 2 chữ số thập phân cho
+ * khớp cột DB (`Decimal(14,2)`). Unit price của ta vốn đã 2dp nên việc làm tròn
+ * thực tế là no-op, nhưng invariant này thuộc về helper, không phải mọi caller.
  */
 export function totalAmount(unitPrice: Prisma.Decimal, seats: number): Prisma.Decimal {
   return unitPrice.mul(seats).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);

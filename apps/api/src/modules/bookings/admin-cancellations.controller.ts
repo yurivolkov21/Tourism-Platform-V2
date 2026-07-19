@@ -15,9 +15,9 @@ import { RefundNothingLeftError } from './refund-math.js';
 import { BookingNotRefundableError, ProviderRefundFailedError } from './refunds.service.js';
 
 /**
- * Admin cancellation queue (spec P2 W4). Same guard composition as
- * AdminBookingsController: class-level `@Roles(ADMIN)` read by AuthGuard —
- * anonymous → 401, non-admin → 403, both before oRPC parses input.
+ * Queue cancellation cho admin (spec P2 W4). Cùng cách ghép guard như
+ * AdminBookingsController: `@Roles(ADMIN)` ở cấp class được AuthGuard đọc —
+ * ẩn danh → 401, không phải admin → 403, cả hai đều trước khi oRPC parse input.
  */
 @Controller()
 @UseGuards(AuthGuard)
@@ -45,9 +45,9 @@ export class AdminCancellationsController {
         if (error instanceof CancellationAlreadyDecidedError) {
           throw errors.ALREADY_DECIDED({ message: error.message });
         }
-        // Approve-only gates: no refundable remainder / captured payment
-        // (incl. a booking already settled through W3 while the request sat
-        // open — the admin denies such a request instead).
+        // Các gate chỉ áp khi approve: không còn phần refund được / payment đã
+        // capture (kể cả booking đã được settle qua W3 trong khi request còn
+        // treo — khi đó admin từ chối request thay vì duyệt).
         if (error instanceof BookingNotRefundableError || error instanceof RefundNothingLeftError) {
           throw errors.NOT_REFUNDABLE({ message: error.message });
         }

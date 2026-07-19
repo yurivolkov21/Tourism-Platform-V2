@@ -12,9 +12,9 @@ import {
 } from './gateway.js';
 import { fromMinorUnits, toMinorUnits } from './money.js';
 
-/** Stripe's documented webhook timestamp tolerance (replay window), seconds. */
+/** Tolerance timestamp webhook theo tài liệu Stripe (cửa sổ replay), tính giây. */
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
-/** Explicit Checkout Session expiry — abandoned sessions fire `checkout.session.expired`. */
+/** Hạn Checkout Session tường minh — session bị bỏ dở sẽ bắn `checkout.session.expired`. */
 const SESSION_EXPIRY_SECONDS = 30 * 60;
 
 const API_BASE = 'https://api.stripe.com';
@@ -25,21 +25,21 @@ export interface StripeGatewayOptions {
 }
 
 /**
- * Stripe implementation of {@link PaymentGateway} (spec P2 §3 W5, test mode).
+ * Bản triển khai {@link PaymentGateway} cho Stripe (spec P2 §3 W5, test mode).
  *
- * Nexora wrapped the `stripe` npm SDK (StripeService); v2 talks to the three
- * endpoints the money-path needs over raw HTTPS instead — the SDK would be a
- * whole dependency for two form-encoded POSTs plus an HMAC we must be able to
- * unit-test offline anyway (D2: no network smoke in P2). The PROVEN pieces are
- * ported 1:1: Checkout Session field set incl. the 30-min `expires_at` and
- * `metadata.bookingId` bridge, refund-by-payment_intent with an idempotency
- * key, and verify-then-map webhook handling.
+ * Nexora bọc SDK npm `stripe` (StripeService); v2 nói chuyện raw HTTPS với
+ * đúng ba endpoint mà money-path cần — kéo nguyên SDK về chỉ để làm hai POST
+ * form-encoded cộng một HMAC mà đằng nào ta cũng phải tự unit-test offline
+ * (D2: P2 không smoke qua mạng) là không đáng. Các mảnh ĐÃ ĐƯỢC KIỂM CHỨNG
+ * port 1:1: bộ field Checkout Session gồm `expires_at` 30 phút và cầu nối
+ * `metadata.bookingId`, refund theo payment_intent kèm idempotency key, và
+ * lối xử lý webhook verify-rồi-map.
  *
- * Webhook verification implements Stripe's documented scheme by hand: header
- * `Stripe-Signature: t=<unix>,v1=<hex hmac>` where the HMAC-SHA256 of
- * `"<t>.<raw body>"` is keyed with the endpoint's webhook secret; constant-time
- * compare, ±5-min tolerance on `t`. THROWS on any failure — the webhooks
- * controller maps that to 400.
+ * Phần verify webhook tự cài theo đúng scheme Stripe công bố: header
+ * `Stripe-Signature: t=<unix>,v1=<hex hmac>`, trong đó HMAC-SHA256 của
+ * `"<t>.<raw body>"` ký bằng webhook secret của endpoint; so sánh
+ * constant-time, tolerance ±5 phút cho `t`. THROW ở mọi thất bại — controller
+ * webhook map cái đó thành 400.
  */
 export class StripeGateway implements PaymentGateway {
   readonly provider = PaymentProvider.STRIPE;
@@ -102,7 +102,7 @@ export class StripeGateway implements PaymentGateway {
 
   // ── Internals ─────────────────────────────────────────────────────────────
 
-  /** Form-encoded POST with Bearer auth; non-2xx → throw the Stripe error message. */
+  /** POST form-encoded kèm Bearer auth; non-2xx → throw kèm message lỗi của Stripe. */
   private async post<T>(
     path: string,
     params: URLSearchParams,
@@ -126,9 +126,9 @@ export class StripeGateway implements PaymentGateway {
   }
 
   /**
-   * Stripe-Signature scheme (`t=`,`v1=`): HMAC-SHA256(`"<t>.<payload>"`,
-   * webhookSecret) must constant-time-equal one of the `v1` candidates and `t`
-   * must sit within the 5-min tolerance (replay window).
+   * Scheme Stripe-Signature (`t=`,`v1=`): HMAC-SHA256(`"<t>.<payload>"`,
+   * webhookSecret) phải constant-time-equal với một trong các ứng viên `v1`, và
+   * `t` phải nằm trong tolerance 5 phút (cửa sổ replay).
    */
   private verifySignature(payload: string, header: string | undefined): void {
     if (!header) throw new Error('missing Stripe-Signature header');
@@ -156,7 +156,7 @@ export class StripeGateway implements PaymentGateway {
   }
 }
 
-/** Fields we read off a verified Stripe event (everything else rides in `raw`). */
+/** Các field ta đọc từ event Stripe đã verify (phần còn lại nằm trong `raw`). */
 interface StripeEventShape {
   id?: string;
   type?: string;
@@ -171,15 +171,15 @@ interface StripeEventShape {
 }
 
 /**
- * Verified Stripe event → provider-neutral {@link VerifiedEvent} (Nexora's
- * PaymentsService dispatch mapping, moved inside the gateway):
- * - `checkout.session.completed` → `payment.completed` — bookingId from the
- *   session metadata we minted, providerPaymentId = `payment_intent` (the
- *   canonical refund handle), amount/currency from `amount_total`.
+ * Event Stripe đã verify → {@link VerifiedEvent} trung lập provider (mapping
+ * dispatch vốn nằm ở PaymentsService của Nexora, nay dời vào trong gateway):
+ * - `checkout.session.completed` → `payment.completed` — bookingId lấy từ
+ *   metadata session do ta tự đặt, providerPaymentId = `payment_intent` (handle
+ *   chuẩn để refund), amount/currency lấy từ `amount_total`.
  * - `checkout.session.expired` / `payment_intent.payment_failed` →
- *   `payment.failed` (a PaymentIntent carries no session metadata, so
- *   bookingId may be absent — handler logs and skips).
- * - anything else → `other` (recorded, ignored).
+ *   `payment.failed` (PaymentIntent không mang metadata của session nên
+ *   bookingId có thể vắng — handler log-and-skip).
+ * - còn lại → `other` (chỉ ghi nhận, bỏ qua).
  */
 function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
   if (typeof event.id !== 'string' || typeof event.type !== 'string') {
@@ -189,7 +189,10 @@ function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
   const bookingId = object.metadata?.bookingId;
   const currency = object.currency ? object.currency.toUpperCase() : undefined;
 
-  const base = { eventId: event.id, raw: event } satisfies Partial<VerifiedEvent> & {
+  const base = {
+    eventId: event.id,
+    raw: event,
+  } satisfies Partial<VerifiedEvent> & {
     eventId: string;
     raw: unknown;
   };
@@ -206,13 +209,17 @@ function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
       };
     case 'checkout.session.expired':
     case 'payment_intent.payment_failed':
-      return { ...base, type: 'payment.failed', ...(bookingId ? { bookingId } : {}) };
+      return {
+        ...base,
+        type: 'payment.failed',
+        ...(bookingId ? { bookingId } : {}),
+      };
     default:
       return { ...base, type: 'other' };
   }
 }
 
-/** Best-effort extraction of Stripe's `error.message` from a failure body. */
+/** Cố gắng rút `error.message` của Stripe từ body lỗi (best-effort). */
 function stripeErrorMessage(body: string): string {
   try {
     const parsed = JSON.parse(body) as { error?: { message?: string } };

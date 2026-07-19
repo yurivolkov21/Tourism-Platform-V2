@@ -9,13 +9,13 @@ import { StripeGateway } from './stripe.gateway.js';
 import { WebhooksController } from './webhooks.controller.js';
 
 /**
- * Real gateways (W5): each registers ONLY when its env set is complete —
- * Stripe needs the key+webhook-secret pair, PayPal the client id/secret +
- * webhook id trio (sandbox host is hardcoded; the capstone never runs live —
- * spec §1). A missing set simply leaves that provider out of the array, so
- * its webhook/create paths 404 via resolveGateway (existing behavior).
- * Production requires at least one full set at env parse time (env.ts
- * superRefine), so a prod boot can never end up with an empty array.
+ * Real gateway (W5): mỗi cái CHỈ đăng ký khi bộ env của nó đầy đủ — Stripe cần
+ * cặp key+webhook-secret, PayPal cần bộ ba client id/secret + webhook id (host
+ * sandbox hardcode; capstone không bao giờ chạy live — spec §1). Thiếu bộ env
+ * thì provider đó đơn giản không có trong array, nên các path webhook/create của
+ * nó 404 qua resolveGateway (hành vi sẵn có). Production bắt buộc ít nhất một bộ
+ * đầy đủ ở thời điểm parse env (superRefine trong env.ts), nên một lần boot prod
+ * không bao giờ rơi vào array rỗng.
  */
 function realGateways(): PaymentGateway[] {
   const gateways: PaymentGateway[] = [];
@@ -40,18 +40,18 @@ function realGateways(): PaymentGateway[] {
 }
 
 /**
- * Payment gateway wiring (spec P2 §3, W1 + W5).
+ * Wiring cho payment gateway (spec P2 §3, W1 + W5).
  *
- * `PAYMENT_GATEWAYS` resolves to `PaymentGateway[]`; consumers pick by
- * provider via `resolveGateway`. Provider set is decided ONCE, at module
- * definition, off `NODE_ENV`:
+ * `PAYMENT_GATEWAYS` resolve ra `PaymentGateway[]`; consumer chọn theo provider
+ * qua `resolveGateway`. Bộ provider được quyết định MỘT LẦN, tại lúc định nghĩa
+ * module, dựa trên `NODE_ENV`:
  *
- * - test  → a single FakeGateway (also registered under its own class token so
- *   int tests can `app.get(FakeGateway)` to inspect sessions / emit webhooks).
- *   Chosen over a separate PaymentsTestModule because the int suites boot the
- *   REAL AppModule (catalog/auth pattern) — a conditional provider keeps that
- *   boot path identical while never letting the fake into a prod graph.
- * - dev/prod → the env-configured real gateways ({@link realGateways}).
+ * - test  → một FakeGateway duy nhất (cũng đăng ký dưới class token riêng để int
+ *   test có thể `app.get(FakeGateway)` mà xem session / emit webhook). Chọn cách
+ *   này thay vì một PaymentsTestModule riêng vì các int suite boot AppModule
+ *   THẬT (theo pattern catalog/auth) — một conditional provider giữ boot path đó
+ *   y hệt mà không bao giờ để fake lọt vào graph prod.
+ * - dev/prod → các real gateway cấu hình theo env ({@link realGateways}).
  */
 const gatewayProviders: Provider[] =
   env.NODE_ENV === 'test'
@@ -66,12 +66,11 @@ const gatewayProviders: Provider[] =
     : [{ provide: PAYMENT_GATEWAYS, useValue: realGateways() }];
 
 /**
- * W2 additions: {@link WebhooksController} (raw-body provider webhooks) +
- * {@link PaymentsService} (PaymentEvent idempotency + dispatch). The module
- * cycle with BookingsModule is real and intentional — BookingsService needs
- * `PAYMENT_GATEWAYS` (checkout at create), PaymentsService needs
- * `BookingsService.claimSeatsForPaid` (PAID claim on webhook) — hence
- * `forwardRef` on BOTH imports.
+ * Bổ sung ở W2: {@link WebhooksController} (webhook provider dạng raw-body) +
+ * {@link PaymentsService} (idempotency PaymentEvent + dispatch). Vòng lặp module
+ * với BookingsModule là có thật và cố ý — BookingsService cần `PAYMENT_GATEWAYS`
+ * (checkout khi create), PaymentsService cần `BookingsService.claimSeatsForPaid`
+ * (claim PAID khi có webhook) — nên `forwardRef` ở CẢ HAI import.
  */
 @Module({
   imports: [forwardRef(() => BookingsModule)],

@@ -17,29 +17,29 @@ import {
   RefundsService,
 } from './refunds.service.js';
 
-/** Booking not PAID, or its departure already started — cannot enter the flow (422). */
+/** Booking không PAID, hoặc departure đã khởi hành — không vào flow được (422). */
 export class BookingNotCancellableError extends Error {
   constructor(detail: string) {
     super(`Booking cannot be cancelled: ${detail}`);
   }
 }
 
-/** The partial unique index fired — a live REQUESTED row already exists (409). */
+/** Partial unique index đã fire — đã tồn tại một REQUESTED row còn sống (409). */
 export class CancellationAlreadyRequestedError extends Error {
   constructor() {
     super('A cancellation request is already open for this booking');
   }
 }
 
-/** No cancellation request with this id (admin surface: plain 404). */
+/** Không có cancellation request với id này (admin surface: 404 trơn). */
 export class CancellationRequestNotFoundError extends Error {
   constructor(id: string) {
     super(`Cancellation request "${id}" not found`);
   }
 }
 
-/** The request is already DENIED/REFUNDED — decisions are final (409). D1-B:
- * history rows are never reused; the customer re-requests instead. */
+/** Request đã DENIED/REFUNDED — decision là chung cuộc (409). D1-B: history
+ * row không bao giờ được tái dùng; khách re-request thay vào đó. */
 export class CancellationAlreadyDecidedError extends Error {
   constructor(status: CancellationRequestStatus) {
     super(`Request is ${status}; only an open (REQUESTED) request can be decided`);
@@ -48,8 +48,8 @@ export class CancellationAlreadyDecidedError extends Error {
 
 type CancellationRow = Prisma.CancellationRequestModel;
 
-/** Booking context an admin needs to decide without a second lookup — all
- * SNAPSHOT columns (tourTitle/departureStartDate frozen at create, audit H3). */
+/** Booking context admin cần để quyết định mà không phải lookup lần hai — toàn
+ * cột SNAPSHOT (tourTitle/departureStartDate đóng băng lúc create, audit H3). */
 const BOOKING_CONTEXT = {
   code: true,
   tourTitle: true,
@@ -66,7 +66,7 @@ type BookingContext = {
   contactEmail: string;
 };
 
-/** Row → public contract shape (customer surface + history in admin byCode). */
+/** Row → public contract shape (customer surface + history trong admin byCode). */
 function toCancellationRequest(row: CancellationRow, bookingCode: string): CancellationRequestView {
   return {
     id: row.id,
@@ -79,7 +79,7 @@ function toCancellationRequest(row: CancellationRow, bookingCode: string): Cance
   };
 }
 
-/** Row + booking context → admin-queue shape. */
+/** Row + booking context → shape cho admin-queue. */
 function toAdminCancellationRequest(
   row: CancellationRow & { booking: BookingContext },
 ): AdminCancellationRequest {
@@ -93,19 +93,19 @@ function toAdminCancellationRequest(
 }
 
 /**
- * Cancellation flow (spec P2 §3 W4, D1 resolved as B): a PAID customer asks to
- * cancel; an admin denies (booking untouched) or approves (full-remainder
- * refund + booking CANCELLED + seats released). Requests are APPEND-ONLY
- * history — every request INSERTs a new row, DENIED rows are never reused
- * (Nexora upserted over them, losing the denial audit trail — audit M7); "one
- * live request per booking" is the DB's job via the partial unique index
+ * Cancellation flow (spec P2 §3 W4, D1 chốt là B): một khách PAID xin hủy;
+ * admin deny (booking để nguyên) hoặc approve (refund full-remainder + booking
+ * CANCELLED + release seat). Request là history APPEND-ONLY — mỗi request
+ * INSERT một row mới, DENIED row không bao giờ tái dùng (Nexora upsert đè lên
+ * chúng, làm mất audit trail của denial — audit M7); "một live request mỗi
+ * booking" là việc của DB qua partial unique index
  * `cancellation_requests_one_live_per_booking` (WHERE status = 'REQUESTED').
  *
- * Terminal-state semantics live in docs/conventions/booking-states.md: the
- * Refund ledger records the MONEY story, Booking.status the SEAT/TRAVEL story
- * — an approved cancellation sets CANCELLED explicitly (customer stopped
- * travelling, seats returned), NOT the ledger-derived REFUNDED, even though
- * the ledger sums to the total. Cancellation ≠ refund-only.
+ * Semantics của terminal-state nằm ở docs/conventions/booking-states.md:
+ * Refund ledger ghi câu chuyện MONEY, Booking.status ghi câu chuyện
+ * SEAT/TRAVEL — một cancellation được approve set CANCELLED tường minh (khách
+ * ngừng du lịch, seat được trả lại), KHÔNG phải REFUNDED derive từ ledger, dù
+ * ledger có cộng đủ total. Cancellation ≠ chỉ refund.
  */
 @Injectable()
 export class CancellationsService {
@@ -114,20 +114,20 @@ export class CancellationsService {
   constructor(private readonly refunds: RefundsService) {}
 
   /**
-   * Customer requests cancellation of an own PAID booking (Nexora gate,
-   * ported): owner-or-404 (no existence leak), PAID-only, and the departure
-   * must not have started — v2 folds Nexora's DEPARTURE_ALREADY_STARTED into
-   * NOT_CANCELLABLE (422) and compares SNAPSHOT calendar dates the same way
-   * create does (strictly-past rejects; a same-day departure can still ask —
-   * consistent with the same-day walk-in booking rule).
+   * Khách xin hủy một PAID booking của chính mình (gate Nexora, đã port):
+   * owner-hoặc-404 (không leak sự tồn tại), chỉ PAID, và departure chưa được
+   * khởi hành — v2 gộp DEPARTURE_ALREADY_STARTED của Nexora vào
+   * NOT_CANCELLABLE (422) và so sánh SNAPSHOT calendar date đúng cách create
+   * làm (strictly-past thì reject; departure cùng ngày vẫn xin được — nhất
+   * quán với rule walk-in booking cùng ngày).
    *
-   * Write path is ONE atomic statement (house CTE style, pooler-safe):
-   * INSERT the REQUESTED row + enqueue CANCELLATION_REQUESTED (invariant #7),
-   * dedupeKey `cancellation-requested:<requestId>` — append-only rows make the
-   * request id the natural once-per-entity key (a re-request after a denial is
-   * a NEW row → new id → new email, exactly the convention's semantics).
-   * A concurrent duplicate loses at the partial unique index (23505 → 409),
-   * not at a racy pre-SELECT.
+   * Đường ghi là MỘT statement nguyên tử (house CTE style, an toàn với pooler):
+   * INSERT REQUESTED row + enqueue CANCELLATION_REQUESTED (invariant #7),
+   * dedupeKey `cancellation-requested:<requestId>` — row append-only làm cho
+   * request id thành key once-per-entity tự nhiên (một re-request sau denial là
+   * một row MỚI → id mới → email mới, đúng semantics của quy ước). Một duplicate
+   * đồng thời sẽ thua ở partial unique index (23505 → 409), không phải ở một
+   * pre-SELECT dính race.
    */
   async request(
     userId: string,
@@ -188,7 +188,7 @@ export class CancellationsService {
     return toCancellationRequest(row, booking.code);
   }
 
-  /** Own request history, newest first — the customer sees every attempt. */
+  /** Lịch sử request của chính khách, mới nhất trước — khách thấy mọi attempt. */
   async myRequests(userId: string): Promise<CancellationRequestView[]> {
     const rows = await prisma.cancellationRequest.findMany({
       where: { userId },
@@ -198,8 +198,8 @@ export class CancellationsService {
     return rows.map((row) => toCancellationRequest(row, row.booking.code));
   }
 
-  /** Full history for one booking, oldest first (the D1-B audit trail) —
-   * merged into `admin.bookings.byCode` by the admin controller. */
+  /** Lịch sử đầy đủ cho một booking, cũ nhất trước (audit trail D1-B) —
+   * được admin controller merge vào `admin.bookings.byCode`. */
   async historyForBooking(
     bookingId: string,
     bookingCode: string,
@@ -211,8 +211,8 @@ export class CancellationsService {
     return rows.map((row) => toCancellationRequest(row, bookingCode));
   }
 
-  /** Admin queue: paged, newest first, optional status filter (omitted → all —
-   * consistent with admin.bookings.list; the open queue is ?status=REQUESTED). */
+  /** Admin queue: phân trang, mới nhất trước, status filter optional (bỏ trống
+   * → all — nhất quán với admin.bookings.list; open queue là ?status=REQUESTED). */
   async adminList(query: AdminCancellationsListQuery): Promise<Paged<AdminCancellationRequest>> {
     const { page, limit, status } = query;
     const where: Prisma.CancellationRequestWhereInput = status ? { status } : {};
@@ -236,8 +236,8 @@ export class CancellationsService {
   }
 
   /**
-   * Admin decision — 404 unknown id, 409 once decided (append-only: a decision
-   * is final, the customer re-requests instead of the row being reopened).
+   * Quyết định của admin — 404 nếu id lạ, 409 khi đã decide (append-only: một
+   * decision là chung cuộc, khách re-request chứ không reopen row).
    */
   async decide(
     adminUserId: string,
@@ -259,11 +259,12 @@ export class CancellationsService {
   }
 
   /**
-   * DENY — the booking is untouched (stays PAID; deny does not cancel).
-   * ONE atomic statement: flip gated on status='REQUESTED' (the race-deciding
-   * qual sits on the UPDATE target — a concurrent decision makes this a no-op)
-   * + CANCELLATION_DENIED outbox row, dedupeKey `cancellation-denied:<requestId>`
-   * (a given request is denied at most once — its row is never reused).
+   * DENY — booking để nguyên (ở lại PAID; deny không hủy). MỘT statement
+   * nguyên tử: flip gate trên status='REQUESTED' (qual quyết-định-race nằm
+   * trên UPDATE target — một decision đồng thời làm cái này thành no-op) +
+   * CANCELLATION_DENIED outbox row, dedupeKey
+   * `cancellation-denied:<requestId>` (một request cho trước bị deny nhiều
+   * nhất một lần — row của nó không bao giờ tái dùng).
    */
   private async deny(
     adminUserId: string,
@@ -302,7 +303,7 @@ export class CancellationsService {
       SELECT id FROM decided
     `);
     if (decided.length === 0) {
-      // Lost a decide race between the pre-check and the flip. Nothing ran.
+      // Thua một decide race giữa pre-check và flip. Không có gì chạy.
       const fresh = await prisma.cancellationRequest.findUnique({
         where: { id: request.id },
         select: { status: true },
@@ -314,41 +315,42 @@ export class CancellationsService {
   }
 
   /**
-   * APPROVE — the W4 money+seats orchestration (spec §4 invariants, order is
-   * the W2/W3 principle):
+   * APPROVE — orchestration money+seats của W4 (invariant spec §4, thứ tự theo
+   * nguyên tắc W2/W3):
    *
-   *  1. Gate: booking must be refundable (PAID / PARTIALLY_REFUNDED with a
-   *     captured payment) and the ledger must leave a remainder — a booking
-   *     already fully refunded through W3 while the request sat open cannot be
-   *     approved (NOT_REFUNDABLE 422; the admin denies it instead).
-   *  2. Provider refund of the FULL REMAINDER first, outside any transaction
-   *     (never ledger what didn't happen; HTTP never holds a connection).
-   *     `adminId` = the deciding admin.
-   *  3. ONE atomic statement (house CTE style), everything driven FROM the
-   *     request flip so a lost decide-race makes the WHOLE statement a no-op:
-   *       req_flip     — REQUESTED → REFUNDED (the model's resolved-by-refund
-   *                      value) + decidedBy/decidedAt/note; race-deciding qual
-   *                      on the UPDATE target.
-   *       refund_insert— append the Refund ledger row (money story).
-   *       cancel       — booking → CANCELLED + cancelledAt: the travel story.
-   *                      EXPLICITLY CANCELLED, not ledger-derived REFUNDED —
-   *                      the customer stopped travelling and the seats return;
-   *                      deriveStatusAfterRefund is for refund-only flows
+   *  1. Gate: booking phải refundable (PAID / PARTIALLY_REFUNDED có captured
+   *     payment) và ledger phải còn dư một remainder — một booking đã fully
+   *     refund qua W3 trong lúc request còn mở thì không approve được
+   *     (NOT_REFUNDABLE 422; admin deny nó thay vào đó).
+   *  2. Provider refund FULL REMAINDER trước, ngoài mọi transaction (không bao
+   *     giờ ledger thứ chưa xảy ra; HTTP không bao giờ giữ connection).
+   *     `adminId` = admin đang quyết định.
+   *  3. MỘT statement nguyên tử (house CTE style), mọi thứ driven FROM cái
+   *     flip của request để một decide-race bị thua làm CẢ statement thành
+   *     no-op:
+   *       req_flip     — REQUESTED → REFUNDED (giá trị resolved-by-refund của
+   *                      model) + decidedBy/decidedAt/note; qual quyết-định-race
+   *                      trên UPDATE target.
+   *       refund_insert— append Refund ledger row (money story).
+   *       cancel       — booking → CANCELLED + cancelledAt: travel story.
+   *                      CANCELLED TƯỜNG MINH, không phải REFUNDED derive từ
+   *                      ledger — khách ngừng du lịch và seat được trả lại;
+   *                      deriveStatusAfterRefund là cho các flow chỉ-refund
    *                      (docs/conventions/booking-states.md).
-   *       seat_release — single-statement `seats_booked - party`, guarded
-   *                      `seats_booked >= party` (defensive; the PAID claim
-   *                      counted them in) with CHECK seats_booked >= 0 as the
-   *                      DB backstop. W3's refundByAdmin deliberately does NOT
-   *                      release seats — this flow OWNS seat release.
+   *       seat_release — single-statement `seats_booked - party`, guard
+   *                      `seats_booked >= party` (phòng thủ; PAID claim đã đếm
+   *                      chúng vào) với CHECK seats_booked >= 0 làm backstop ở
+   *                      DB. refundByAdmin của W3 cố ý KHÔNG release seat —
+   *                      flow này mới là chủ của seat release.
    *       outbox       — CANCELLATION_APPROVED, dedupeKey
    *                      `cancellation-approved:<requestId>` (once per request).
    *
-   * Failure notes: a refused provider refund aborts before any write (502,
-   * request stays REQUESTED — retryable). If the flip races to zero rows AFTER
-   * the provider refund succeeded, nothing is ledgered — logged loudly for
-   * operator reconciliation (same residual window as any gateway-then-DB
-   * sequence; the pre-check makes it concurrent-admin-only). A failed seat
-   * guard does NOT abort: the money story already happened and MUST commit.
+   * Ghi chú failure: một provider refund bị từ chối sẽ abort trước mọi lần ghi
+   * (502, request ở lại REQUESTED — retryable). Nếu flip race về zero row SAU
+   * KHI provider refund thành công, không có gì được ledger — log thật to để
+   * operator reconcile (cùng cửa sổ tồn dư như mọi chuỗi gateway-rồi-DB;
+   * pre-check khiến nó chỉ xảy ra khi có admin đồng thời). Một seat guard bị
+   * fail KHÔNG abort: money story đã xảy ra rồi và PHẢI commit.
    */
   private async approve(
     adminUserId: string,
@@ -365,17 +367,17 @@ export class CancellationsService {
       where: { bookingId: booking.id },
       _sum: { amount: true },
     });
-    // requested:null → full remainder; throws RefundNothingLeftError on a
-    // settled ledger (mapped to NOT_REFUNDABLE by the controller).
+    // requested:null → full remainder; ném RefundNothingLeftError trên một
+    // ledger đã settle (được controller map sang NOT_REFUNDABLE).
     const { amount } = classifyRefundAmount({
       requested: null,
       total: booking.totalAmount,
       alreadyRefunded: ledger._sum.amount ?? new Prisma.Decimal(0),
     });
 
-    // Provider idempotency key `cancel-refund:<requestId>`: a request is
-    // approved at most once (append-only, flip gated on REQUESTED), so the
-    // request id names this refund attempt deterministically (W5).
+    // Provider idempotency key `cancel-refund:<requestId>`: một request được
+    // approve nhiều nhất một lần (append-only, flip gate trên REQUESTED), nên
+    // request id đặt tên cho refund attempt này một cách deterministic (W5).
     const providerRefundId = await this.refunds.executeGatewayRefund(
       { ...booking, providerPaymentId: booking.providerPaymentId },
       amount,
@@ -443,8 +445,8 @@ export class CancellationsService {
 
     const flip = flipped[0];
     if (!flip) {
-      // Concurrent decision won between pre-check and flip: the provider
-      // refund WENT THROUGH but nothing was ledgered — operator must reconcile.
+      // Một decision đồng thời đã thắng giữa pre-check và flip: provider refund
+      // ĐÃ ĐI QUA nhưng không có gì được ledger — operator phải reconcile.
       this.logger.error(
         `Approve race on request ${request.id}: provider refund ${providerRefundId} ` +
           `(${amount.toFixed(2)} ${booking.currency}, booking ${booking.code}) issued but NOT ledgered`,
@@ -458,8 +460,8 @@ export class CancellationsService {
       );
     }
     if (Number(flip.released) === 0) {
-      // Seats guard failed (counter drifted below the party size) — the CHECK
-      // backstop kept it >= 0; money story committed regardless. Operator item.
+      // Seat guard fail (counter đã trôi xuống dưới party size) — CHECK
+      // backstop giữ nó >= 0; money story vẫn commit bất kể. Việc của operator.
       this.logger.error(
         `Approve on request ${request.id}: seats NOT released for booking ${booking.code} ` +
           `(guard seats_booked >= party failed) — departure counter needs operator attention`,
@@ -473,7 +475,7 @@ export class CancellationsService {
     return this.decisionResult(request.id);
   }
 
-  /** Fresh read → contract result (decided request + booking after decision). */
+  /** Đọc tươi → contract result (request đã decide + booking sau decision). */
   private async decisionResult(requestId: string): Promise<DecideCancellationResult> {
     const row = await prisma.cancellationRequest.findUniqueOrThrow({
       where: { id: requestId },
@@ -487,16 +489,16 @@ export class CancellationsService {
 }
 
 /**
- * UNIQUE violation (SQLSTATE 23505) on the D1-B partial index (one live
- * REQUESTED per booking). Shape verified empirically against Prisma 7.8.0 +
- * @prisma/adapter-pg on a live violation — NOT the same nesting as
- * isSeatsCheckViolation (bookings.service.ts): the adapter NORMALIZES 23505
- * (unlike 23514, which stays a generic cause with a `code`) into
+ * UNIQUE violation (SQLSTATE 23505) trên partial index D1-B (một live
+ * REQUESTED mỗi booking). Shape đã kiểm chứng thực nghiệm với Prisma 7.8.0 +
+ * @prisma/adapter-pg trên một violation thật — KHÔNG lồng giống
+ * isSeatsCheckViolation (bookings.service.ts): adapter NORMALIZE 23505 (khác
+ * với 23514, vốn ở lại dạng cause generic có `code`) thành
  * `meta.driverAdapterError.cause = { kind: 'UniqueConstraintViolation',
- * constraint: { fields: ['booking_id'] } }` under the outer P2010; the index
- * NAME only survives in the outer error message
+ * constraint: { fields: ['booking_id'] } }` dưới P2010 bên ngoài; TÊN của index
+ * chỉ còn sống trong message của error bên ngoài
  * (`… violates unique constraint "cancellation_requests_one_live_per_booking"`),
- * so that is where it is matched.
+ * nên đó là chỗ được đem ra khớp.
  */
 function isOneLiveRequestViolation(err: unknown): boolean {
   if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2010') return false;

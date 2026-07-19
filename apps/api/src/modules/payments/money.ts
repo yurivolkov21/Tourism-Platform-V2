@@ -1,20 +1,20 @@
 import { Prisma } from '../../generated/prisma/client.js';
 
 /**
- * Minor-units money math for the payment gateways — port of Nexora's
- * `payments/money.ts` (`toStripeMinorUnits` / `toPayPalAmount`) behind the W5
- * gateway boundary, upgraded to Decimal-in/Decimal-out with explicit HALF_UP
- * rounding (Nexora rounded via `Math.round(scaled.toNumber())`, which detours
- * through IEEE754; v2 stays in Decimal until the final integer).
+ * Money math theo minor units cho các payment gateway — port từ
+ * `payments/money.ts` của Nexora (`toStripeMinorUnits` / `toPayPalAmount`) đặt
+ * sau gateway boundary W5, nâng cấp thành Decimal-vào/Decimal-ra với rounding
+ * HALF_UP tường minh (Nexora làm tròn qua `Math.round(scaled.toNumber())`, vòng
+ * qua IEEE754; v2 giữ nguyên Decimal cho tới số nguyên cuối cùng).
  *
- * Boundary conventions (gateway.ts): money crosses the PaymentGateway interface
- * as 2dp decimal STRINGS ("117.00"); each provider impl converts here.
+ * Quy ước ở boundary (gateway.ts): tiền đi qua interface PaymentGateway dưới
+ * dạng decimal STRING 2 chữ số ("117.00"); mỗi provider impl tự convert tại đây.
  */
 
 /**
- * ISO-4217 zero-decimal currencies (Stripe's list, same set Nexora shipped):
- * no minor unit exists, so provider amounts are the major value as-is (×1, not
- * ×100). Includes VND (our VN pricing currency) and JPY/KRW.
+ * Các currency zero-decimal theo ISO-4217 (danh sách của Stripe, đúng bộ Nexora
+ * đã ship): không có minor unit nên số tiền gửi provider chính là giá trị major
+ * để nguyên (×1, không ×100). Gồm VND (currency định giá VN của mình) và JPY/KRW.
  */
 export const ZERO_DECIMAL_CURRENCIES: ReadonlySet<string> = new Set([
   'BIF',
@@ -35,15 +35,15 @@ export const ZERO_DECIMAL_CURRENCIES: ReadonlySet<string> = new Set([
   'XPF',
 ]);
 
-/** True when `currency` (any case) has no minor unit. */
+/** True khi `currency` (không phân biệt hoa thường) không có minor unit. */
 export function isZeroDecimalCurrency(currency: string): boolean {
   return ZERO_DECIMAL_CURRENCIES.has(currency.toUpperCase());
 }
 
 /**
- * Decimal amount (string form) → the integer smallest-unit value a provider
- * expects (cents for USD, whole units for VND/JPY). HALF_UP on sub-minor
- * precision; Decimal end-to-end so `"19.99"` can never become `1998.99…`.
+ * Số tiền Decimal (dạng string) → giá trị số nguyên đơn vị nhỏ nhất mà provider
+ * mong đợi (cent cho USD, đơn vị nguyên cho VND/JPY). HALF_UP ở phần lẻ dưới
+ * minor unit; Decimal xuyên suốt để `"19.99"` không bao giờ thành `1998.99…`.
  */
 export function toMinorUnits(amount: string | Prisma.Decimal, currency: string): number {
   const decimal = new Prisma.Decimal(amount);
@@ -52,11 +52,11 @@ export function toMinorUnits(amount: string | Prisma.Decimal, currency: string):
 }
 
 /**
- * Provider smallest-unit integer → the gateway-boundary 2dp decimal string
- * (`11700, USD → "117.00"`; `500000, VND → "500000.00"`). Used when mapping
- * verified webhook amounts onto {@link VerifiedEvent.amount} — ALWAYS 2dp, the
- * same shape `Booking.totalAmount.toFixed(2)` produces, so forensics compare
- * string-equal.
+ * Số nguyên đơn vị nhỏ nhất của provider → decimal string 2 chữ số ở gateway
+ * boundary (`11700, USD → "117.00"`; `500000, VND → "500000.00"`). Dùng khi map
+ * amount đã verify từ webhook vào {@link VerifiedEvent.amount} — LUÔN 2 chữ số,
+ * cùng shape mà `Booking.totalAmount.toFixed(2)` sinh ra, để việc đối soát so
+ * sánh string-equal.
  */
 export function fromMinorUnits(minor: number | string, currency: string): string {
   const decimal = new Prisma.Decimal(minor);
@@ -65,10 +65,10 @@ export function fromMinorUnits(minor: number | string, currency: string): string
 }
 
 /**
- * Decimal amount (string form) → the major-units `amount.value` STRING with
- * the currency's exact precision (`"117.00"` USD, `"500000"` VND) — PayPal
- * rejects a value whose decimals don't match the currency (Nexora
- * `toPayPalAmount`). HALF_UP when the input is finer than the currency.
+ * Số tiền Decimal (dạng string) → STRING `amount.value` theo major units với
+ * đúng precision của currency (`"117.00"` USD, `"500000"` VND) — PayPal từ chối
+ * giá trị có số chữ số thập phân không khớp currency (Nexora `toPayPalAmount`).
+ * HALF_UP khi input mịn hơn precision của currency.
  */
 export function toAmountValue(amount: string | Prisma.Decimal, currency: string): string {
   const places = isZeroDecimalCurrency(currency) ? 0 : 2;

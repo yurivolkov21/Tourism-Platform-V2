@@ -59,7 +59,11 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   const past10 = new Date(Date.now() - 10 * 86_400_000);
   const departures = [
     dep('1', future60, { seatsBooked: 3 }), // upcoming OPEN → seatsLeft 5
-    dep('2', future90, { priceOverride: '59.00', compareAtPrice: '75.00', seatsTotal: 10 }),
+    dep('2', future90, {
+      priceOverride: '59.00',
+      compareAtPrice: '75.00',
+      seatsTotal: 10,
+    }),
     dep('3', past10, {}), // past → invisible
     dep('4', future60, { status: DepartureStatus.CLOSED }), // CLOSED → invisible
   ];
@@ -87,7 +91,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     });
     await prisma.tourDeparture.createMany({ data: departures });
 
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const moduleRef = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -102,7 +108,12 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     expect(res.statusCode).toBe(200);
 
     const paged = PagedCards.parse(res.json());
-    expect(paged).toMatchObject({ page: 1, limit: 12, total: 2, totalPages: 1 });
+    expect(paged).toMatchObject({
+      page: 1,
+      limit: 12,
+      total: 2,
+      totalPages: 1,
+    });
     const slugs = paged.items.map((item) => item.slug);
     expect(slugs).toContain(PUBLISHED_DAY_SLUG);
     expect(slugs).toContain(PUBLISHED_CRUISE_SLUG);
@@ -123,7 +134,10 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   });
 
   it('filters by category slug', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/tours?category=cruise' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/tours?category=cruise',
+    });
     expect(res.statusCode).toBe(200);
     const paged = PagedCards.parse(res.json());
     expect(paged.total).toBe(1);
@@ -131,14 +145,22 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   });
 
   it('filters by case-insensitive search on title/summary', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/tours?search=WALKING' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/tours?search=WALKING',
+    });
     expect(res.statusCode).toBe(200);
     const paged = PagedCards.parse(res.json());
     expect(paged.total).toBe(1);
     expect(paged.items[0]?.slug).toBe(PUBLISHED_DAY_SLUG);
 
     const none = PagedCards.parse(
-      (await app.inject({ method: 'GET', url: '/api/tours?search=no-such-tour-xyz' })).json(),
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/api/tours?search=no-such-tour-xyz',
+        })
+      ).json(),
     );
     expect(none.total).toBe(0);
     expect(none.items).toEqual([]);
@@ -147,7 +169,10 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   it('filters by destination slug (any linked destination, not just primary)', async () => {
     // The cruise links Hà Nội as a NON-primary destination; the only other
     // hanoi-linked fixture tour is unpublished → exactly the cruise matches.
-    const res = await app.inject({ method: 'GET', url: '/api/tours?destination=hanoi' });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/tours?destination=hanoi',
+    });
     expect(res.statusCode).toBe(200);
     const paged = PagedCards.parse(res.json());
     expect(paged.total).toBe(1);
@@ -169,12 +194,18 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     )[1]?.slug;
     expect(paged.items[0]?.slug).toBe(expensiveSlug);
 
-    const outOfRange = await app.inject({ method: 'GET', url: '/api/tours?limit=999' });
+    const outOfRange = await app.inject({
+      method: 'GET',
+      url: '/api/tours?limit=999',
+    });
     expect(outOfRange.statusCode).toBe(400); // input validation from the contract
   });
 
   it('GET /api/tours/{slug} returns detail with upcoming OPEN departures only', async () => {
-    const res = await app.inject({ method: 'GET', url: `/api/tours/${PUBLISHED_DAY_SLUG}` });
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/tours/${PUBLISHED_DAY_SLUG}`,
+    });
     expect(res.statusCode).toBe(200);
 
     const detail = TourDetailSchema.parse(res.json());
@@ -214,10 +245,16 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
 
   it('unpublished tour is invisible via bySlug; missing slug → oRPC NOT_FOUND shape', async () => {
     for (const slug of [UNPUBLISHED_SLUG, 'does-not-exist']) {
-      const res = await app.inject({ method: 'GET', url: `/api/tours/${slug}` });
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/tours/${slug}`,
+      });
       expect(res.statusCode).toBe(404);
       // oRPC OpenAPI error body: { defined, code, status, message, data }.
-      expect(res.json()).toMatchObject({ code: 'NOT_FOUND', message: 'Tour not found' });
+      expect(res.json()).toMatchObject({
+        code: 'NOT_FOUND',
+        message: 'Tour not found',
+      });
     }
   });
 

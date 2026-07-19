@@ -14,7 +14,10 @@ import { ResendDeliverer } from './resend.deliverer.js';
 const delivererProvider: Provider = env.RESEND_API_KEY
   ? {
       provide: EMAIL_DELIVERER,
-      useValue: new ResendDeliverer({ apiKey: env.RESEND_API_KEY, from: env.EMAIL_FROM }),
+      useValue: new ResendDeliverer({
+        apiKey: env.RESEND_API_KEY,
+        from: env.EMAIL_FROM,
+      }),
     }
   : { provide: EMAIL_DELIVERER, useClass: ConsoleDeliverer };
 

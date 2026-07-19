@@ -25,13 +25,13 @@ import {
 import { CancellationsService } from './cancellations.service.js';
 
 /**
- * Integration (Docker PG, db tourism_test) — money-path W4: the cancellation
- * flow under D1-B (spec P2 §2): requests are APPEND-ONLY history rows, "one
- * live request per booking" is the PARTIAL unique index
- * `cancellation_requests_one_live_per_booking`, and an approve orchestrates
- * gateway refund → [Refund row + booking CANCELLED + seat release + request
- * REFUNDED + outbox] atomically. Terminal-state semantics under test are the
- * ones documented in docs/conventions/booking-states.md.
+ * Integration (Docker PG, db tourism_test) — money-path W4: luồng cancellation
+ * dưới D1-B (spec P2 §2): request là các history row APPEND-ONLY, "một request
+ * sống mỗi booking" chính là PARTIAL unique index
+ * `cancellation_requests_one_live_per_booking`, và một lần approve điều phối
+ * gateway refund → [Refund row + booking CANCELLED + release seat + request
+ * REFUNDED + outbox] một cách nguyên tử. Ngữ nghĩa terminal-state được test ở
+ * đây là những gì ghi trong docs/conventions/booking-states.md.
  */
 
 const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
@@ -83,7 +83,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter(), {
-      rawBody: true, // webhook route verifies signatures against raw bytes
+      rawBody: true, // route webhook verify signature dựa trên raw bytes
     });
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -114,10 +114,10 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     return sessionCookie(res);
   }
 
-  /** Admin session via the ADMIN_EMAILS bootstrap grant (create.after hook). */
+  /** Admin session qua bootstrap grant ADMIN_EMAILS (hook create.after). */
   const signUpAdmin = () => signUpUser(ADMIN_EMAIL, 'Boss');
 
-  /** Create a PENDING booking through the real API (party 3 → 117.00 USD). */
+  /** Tạo một booking PENDING qua API thật (party 3 → 117.00 USD). */
   async function createBooking(cookie: string) {
     const res = await app.inject({
       method: 'POST',
@@ -136,7 +136,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     return res.json() as { id: string; code: string };
   }
 
-  /** Flip a booking PAID via the REAL webhook route (claims the 3 seats). */
+  /** Chuyển một booking sang PAID qua route webhook THẬT (claim 3 seat). */
   async function payBooking(bookingId: string) {
     const event = fake.emitPaymentCompleted(bookingId);
     const res = await app.inject({
@@ -199,14 +199,14 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       decidedAt: null,
     });
 
-    // Booking untouched by a mere request; seats still held.
+    // Chỉ request thôi thì booking không đổi; seat vẫn được giữ.
     const row = await prisma.booking.findUniqueOrThrow({
       where: { id: booking.id },
     });
     expect(row.status).toBe(BookingStatus.PAID);
     expect(await seatsBooked()).toBe(3);
 
-    // Outbox enqueued in the SAME statement (invariant #7), keyed by requestId.
+    // Outbox được enqueue trong CÙNG statement (invariant #7), key theo requestId.
     const outbox = await prisma.outbox.findMany({
       where: { type: EmailType.CANCELLATION_REQUESTED },
     });
@@ -255,7 +255,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       bookingCode: booking.code,
     });
     expect(body.request.decidedAt).not.toBeNull();
-    expect(body.booking.status).toBe('PAID'); // deny does not cancel
+    expect(body.booking.status).toBe('PAID'); // deny không cancel
 
     const adminRow = await prisma.user.findUniqueOrThrow({
       where: { email: ADMIN_EMAIL },
@@ -287,7 +287,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const second = await postCancel(alice, booking.code, 'second ask');
     expect(second.statusCode).toBe(200);
     const secondRequest = CancellationRequestSchema.parse(second.json());
-    expect(secondRequest.id).not.toBe(first.id); // append-only: a NEW row, not a reused one
+    expect(secondRequest.id).not.toBe(first.id); // append-only: một row MỚI, không tái dùng
 
     const rows = await prisma.cancellationRequest.findMany({
       where: { booking: { code: booking.code } },
@@ -295,20 +295,20 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
     expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.status)).toEqual([
-      CancellationRequestStatus.DENIED, // the denial audit trail survived
+      CancellationRequestStatus.DENIED, // audit trail của lần deny vẫn còn
       CancellationRequestStatus.REQUESTED,
     ]);
     expect(rows[0]?.reason).toBe('first ask');
     expect(rows[1]?.reason).toBe('second ask');
 
-    // Each request row got its own outbox email (id-keyed dedupe → 2 rows).
+    // Mỗi request row có outbox email riêng (dedupe key theo id → 2 row).
     expect(
       await prisma.outbox.count({
         where: { type: EmailType.CANCELLATION_REQUESTED },
       }),
     ).toBe(2);
 
-    // The admin detail view exposes the full trail, oldest first.
+    // View detail của admin phơi toàn bộ trail, cũ nhất trước.
     const detail = await app.inject({
       method: 'GET',
       url: `/api/admin/bookings/${booking.code}`,
@@ -323,7 +323,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('alice5@example.com');
     const booking = await createPaidBooking(alice);
-    expect(await seatsBooked()).toBe(3); // PAID claim counted the party in
+    expect(await seatsBooked()).toBe(3); // claim PAID đã tính cả party vào
     const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
 
     const res = await postDecide(admin, request.id, {
@@ -333,13 +333,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(res.statusCode).toBe(200);
     const body = DecideCancellationResultSchema.parse(res.json());
     expect(body.request.status).toBe('REFUNDED');
-    // Terminal semantics (booking-states.md): CANCELLED, NOT ledger-derived
-    // REFUNDED — customer cancelled, money story lives in the ledger.
+    // Ngữ nghĩa terminal (booking-states.md): CANCELLED, KHÔNG phải REFUNDED
+    // suy từ ledger — khách hủy, còn câu chuyện tiền nong nằm trong ledger.
     expect(body.booking.status).toBe('CANCELLED');
     expect(body.booking.cancelledAt).not.toBeNull();
 
-    // (a) Gateway refund of the FULL remainder, in the booking's currency,
-    // keyed by the request id (W5 provider idempotency: one approve per request).
+    // (a) Gateway refund TOÀN BỘ phần còn lại, theo currency của booking, key
+    // theo request id (W5 provider idempotency: một approve mỗi request).
     expect(fake.refunds).toHaveLength(1);
     expect(fake.refunds[0]).toMatchObject({
       amount: '117.00',
@@ -347,7 +347,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       idempotencyKey: `cancel-refund:${request.id}`,
     });
 
-    // (b) Ledger row: full amount, adminId = the deciding admin.
+    // (b) Ledger row: full amount, adminId = admin ra quyết định.
     const adminRow = await prisma.user.findUniqueOrThrow({
       where: { email: ADMIN_EMAIL },
     });
@@ -359,7 +359,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(refunds[0]?.adminId).toBe(adminRow.id);
     expect(refunds[0]?.providerRefundId).toMatch(/^fake_re_/);
 
-    // (c) Booking CANCELLED + cancelledAt; seats RELEASED back to the pool.
+    // (c) Booking CANCELLED + cancelledAt; seat được RELEASE trả lại pool.
     const dbBooking = await prisma.booking.findUniqueOrThrow({
       where: { id: booking.id },
     });
@@ -367,7 +367,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(dbBooking.cancelledAt).not.toBeNull();
     expect(await seatsBooked()).toBe(0);
 
-    // (d) Request resolved as REFUNDED with audit fields.
+    // (d) Request được resolve thành REFUNDED kèm các field audit.
     const dbRequest = await prisma.cancellationRequest.findUniqueOrThrow({
       where: { id: request.id },
     });
@@ -375,7 +375,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(dbRequest.decidedById).toBe(adminRow.id);
     expect(dbRequest.decisionNote).toBe('ok, refund');
 
-    // (e) Outbox approved-email in the same atomic statement, requestId-keyed.
+    // (e) Outbox approved-email trong cùng statement nguyên tử, key theo requestId.
     const outbox = await prisma.outbox.findMany({
       where: { type: EmailType.CANCELLATION_APPROVED },
     });
@@ -397,7 +397,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const again = await postDecide(admin, request.id, { approve: true });
     expect(again.statusCode).toBe(409);
     expect(again.json()).toMatchObject({ code: 'ALREADY_DECIDED' });
-    expect(fake.refunds).toHaveLength(0); // gate fired BEFORE any gateway call
+    expect(fake.refunds).toHaveLength(0); // gate chặn TRƯỚC mọi call gateway
 
     const missing = await postDecide(admin, '00000000-0000-4000-8000-000000000000', {
       approve: true,
@@ -415,7 +415,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(foreign.statusCode).toBe(404);
     expect(foreign.json()).toMatchObject({ code: 'NOT_FOUND' });
 
-    const pending = await createBooking(alice); // never paid
+    const pending = await createBooking(alice); // chưa từng pay
     const res = await postCancel(alice, pending.code);
     expect(res.statusCode).toBe(422);
     expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
@@ -439,7 +439,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     ).toBe(403);
     expect((await postDecide('', request.id, { approve: true })).statusCode).toBe(401);
 
-    // Nothing moved.
+    // Không có gì thay đổi.
     expect(fake.refunds).toHaveLength(0);
     expect(
       (
@@ -470,7 +470,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
     expect(all.statusCode).toBe(200);
     const page = PagedSchema(AdminCancellationRequestSchema).parse(all.json());
-    expect(page.total).toBe(2); // across users, all statuses by default
+    expect(page.total).toBe(2); // qua nhiều user, mặc định mọi status
     expect(page.items.map((r) => r.bookingCode).sort()).toEqual(
       [aliceBooking.code, bobBooking.code].sort(),
     );
@@ -484,7 +484,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const openPage = PagedSchema(AdminCancellationRequestSchema).parse(open.json());
     expect(openPage.items.map((r) => r.bookingCode)).toEqual([bobBooking.code]);
 
-    // myRequests (service surface — customer UI lands in P3).
+    // myRequests (bề mặt service — UI cho khách sẽ có ở P3).
     const aliceRow = await prisma.user.findUniqueOrThrow({
       where: { email: 'alice9@example.com' },
     });

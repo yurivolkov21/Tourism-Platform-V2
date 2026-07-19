@@ -1,9 +1,9 @@
-// Tourism v2 — Prisma schema (ported from Nexora, all audit deltas applied).
-// Sources: docs/specs/2026-07-18-schema-audit-nexora.md (H1-H6, H5b, M1-M8, LOW)
-// and docs/specs/2026-07-18-p1-api-core.md §4.
-// Hardening that Prisma can't express (CHECK constraints, RLS) lives in
-// `prisma/hardening-v2.sql` — apply it as a migration right after the schema
-// migrations. Connection URLs live in `prisma.config.ts` (Prisma 7).
+// Tourism v2 — Prisma schema (port từ Nexora, đã áp mọi audit delta).
+// Nguồn: docs/specs/2026-07-18-schema-audit-nexora.md (H1-H6, H5b, M1-M8, LOW)
+// và docs/specs/2026-07-18-p1-api-core.md §4.
+// Phần hardening Prisma không diễn tả được (CHECK constraint, RLS) nằm ở
+// `prisma/hardening-v2.sql` — apply như một migration ngay sau các schema
+// migration. Connection URL nằm trong `prisma.config.ts` (Prisma 7).
 
 generator client {
   provider               = "prisma-client"
@@ -43,14 +43,14 @@ enum BookingStatus {
   PARTIALLY_REFUNDED
 }
 
-/// Payment rail for a booking (ADR-0006, amended). Stripe = cards/wallets,
-/// PayPal = international travellers.
+/// Payment rail cho một booking (ADR-0006, đã amend). Stripe = thẻ/ví,
+/// PayPal = khách quốc tế.
 enum PaymentProvider {
   STRIPE
   PAYPAL
 }
 
-/// Lead lifecycle for "Inquire Now" (ADR-0003 — CRM).
+/// Vòng đời lead cho "Inquire Now" (ADR-0003 — CRM).
 enum EnquiryStatus {
   NEW
   CONTACTED
@@ -59,7 +59,7 @@ enum EnquiryStatus {
   LOST
 }
 
-/// Support lifecycle for a PAID-booking cancellation request.
+/// Vòng đời support cho yêu cầu hủy một booking đã PAID.
 enum CancellationRequestStatus {
   REQUESTED
   REFUNDED
@@ -79,9 +79,9 @@ enum MediaOwnerType {
   SITE
 }
 
-/// Slot a media asset occupies within its owner. Closed enum (security-first).
-/// Values stay lowercase on purpose — renaming enum values silently breaks
-/// ported code (same class of hazard as the ReviewSource ordering note below).
+/// Slot mà một media asset chiếm trong owner của nó. Closed enum (security-first).
+/// Giá trị cố tình giữ lowercase — đổi tên enum value sẽ âm thầm phá code đã
+/// port (cùng loại hazard với note về thứ tự ReviewSource bên dưới).
 enum MediaRole {
   hero
   gallery
@@ -89,14 +89,14 @@ enum MediaRole {
   body
 }
 
-/// Kind of a tour policy (TourPolicy is its own model).
+/// Loại policy của tour (TourPolicy là model riêng).
 enum PolicyKind {
   CANCELLATION
   BOOKING
   GENERAL
 }
 
-/// Traveller types a tour suits (merchandising).
+/// Nhóm traveller mà một tour phù hợp (merchandising).
 enum TravellerType {
   FAMILY
   COUPLE
@@ -105,22 +105,22 @@ enum TravellerType {
   BUSINESS
 }
 
-/// Tour difficulty (audit M4 — was a free String, DTO only checked length).
+/// Độ khó của tour (audit M4 — trước là String tự do, DTO chỉ check độ dài).
 enum TourDifficulty {
   EASY
   MODERATE
   CHALLENGING
 }
 
-/// VERIFIED = earned from a real booking; CURATED = admin-authored testimonial.
-/// ⚠️ Alphabetical order (CURATED < VERIFIED) carries testimonial sort logic —
-/// renaming values requires fixing the queries with them (audit keep-list).
+/// VERIFIED = có từ booking thật; CURATED = testimonial do admin soạn.
+/// ⚠️ Thứ tự alphabet (CURATED < VERIFIED) mang logic sort testimonial —
+/// đổi tên value là phải sửa các query dùng nó (audit keep-list).
 enum ReviewSource {
   VERIFIED
   CURATED
 }
 
-/// Merchandising badge on a tour card.
+/// Badge merchandising trên tour card.
 enum TourBadge {
   BEST_VALUE
   LIMITED_OFFER
@@ -129,7 +129,7 @@ enum TourBadge {
   POPULAR
 }
 
-/// Transactional email kind for the outbox (ADR-0007).
+/// Loại transactional email cho outbox (ADR-0007).
 enum EmailType {
   BOOKING_CONFIRMATION
   BOOKING_REFUNDED
@@ -142,14 +142,14 @@ enum EmailType {
   EMAIL_CHANGED
 }
 
-/// Outbox row lifecycle (ADR-0007). PENDING → SENT, or → FAILED after retries.
+/// Vòng đời row outbox (ADR-0007). PENDING → SENT, hoặc → FAILED sau khi retry.
 enum OutboxStatus {
   PENDING
   SENT
   FAILED
 }
 
-/// Editorial blog post lifecycle. DRAFT → PUBLISHED.
+/// Vòng đời bài blog editorial. DRAFT → PUBLISHED.
 enum PostStatus {
   DRAFT
   PUBLISHED
@@ -161,20 +161,20 @@ enum ChatRole {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Identity — Better Auth v1.6 core schema (audit H5/H5b). Replaces the old
-// Supabase-mirror User: no supabaseId, no locale; fullName → name. Domain
-// additionalFields: phone + role. `deletedAt` is the tombstone marker (H5b) —
-// the ONLY soft delete in the schema. BA `beforeDelete` hook sets it, scrubs
-// name/phone → null and email → deleted+<uuid>@tombstone.local, hard-deletes
-// sessions/accounts, and flips Review.authorDeleted. FKs stay Restrict — the
-// user row is never hard-deleted.
-// NOTE: BA core declares `name` required; it is nullable here because the
-// tombstone scrub nulls it (spec §5). BA always writes it on signup.
+// Identity — Better Auth v1.6 core schema (audit H5/H5b). Thay cho User kiểu
+// Supabase-mirror cũ: bỏ supabaseId, bỏ locale; fullName → name. Domain
+// additionalFields: phone + role. `deletedAt` là tombstone marker (H5b) —
+// soft delete DUY NHẤT trong schema. Hook `beforeDelete` của BA set nó, scrub
+// name/phone → null và email → deleted+<uuid>@tombstone.local, hard-delete
+// sessions/accounts, và lật Review.authorDeleted. FK giữ Restrict — row user
+// không bao giờ bị hard-delete.
+// LƯU Ý: BA core khai `name` là required; ở đây nó nullable vì tombstone scrub
+// set nó về null (spec §5). BA luôn ghi nó lúc signup.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
   id            String    @id @default(uuid()) @db.Uuid
-  // Case-insensitive unique email via Postgres citext (ADR-0008).
+  // Email unique case-insensitive nhờ Postgres citext (ADR-0008).
   email         String    @unique @db.Citext
   name          String?   @db.VarChar(120)
   emailVerified Boolean   @default(false) @map("email_verified")
@@ -253,7 +253,7 @@ model Verification {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TourCategory — lookup table
+// TourCategory — bảng lookup
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourCategory {
@@ -306,19 +306,19 @@ model Tour {
   durationDays   Int             @map("duration_days")
   maxGroupSize   Int             @default(20) @map("max_group_size")
   basePrice      Decimal         @map("base_price") @db.Decimal(14, 2)
-  // Per-traveller cost in the tour's currency (margin analytics).
-  // Null = unknown → contributes 0 cost (margin reads as an upper bound).
+  // Chi phí trên mỗi traveller theo currency của tour (margin analytics).
+  // Null = chưa biết → tính 0 cost (margin đọc như một cận trên).
   costPrice      Decimal?        @map("cost_price") @db.Decimal(14, 2)
-  // Price anchoring — optional "compare at" / strike-through price.
+  // Price anchoring — giá "compare at" / gạch ngang, optional.
   compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
   currency       String          @default("USD") @db.VarChar(3)
   difficulty     TourDifficulty?
   isPublished    Boolean         @default(false) @map("is_published")
   isFeatured     Boolean         @default(false) @map("is_featured")
-  // Merchandising — who the tour suits + card badges.
+  // Merchandising — tour hợp với ai + badge trên card.
   suitableFor    TravellerType[] @default([]) @map("suitable_for")
   badges         TourBadge[]     @default([])
-  // EN-only arrays (ADR-0005) → Postgres text[].
+  // Array EN-only (ADR-0005) → Postgres text[].
   included       String[]        @default([])
   excluded       String[]        @default([])
   highlights     String[]        @default([])
@@ -345,7 +345,7 @@ model Tour {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TourDestination — M:N join (ADR-0002), with primary-destination flag
+// TourDestination — join M:N (ADR-0002), có cờ primary-destination
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourDestination {
@@ -362,7 +362,7 @@ model TourDestination {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TourItineraryDay — one row per day
+// TourItineraryDay — một row mỗi ngày
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourItineraryDay {
@@ -379,7 +379,7 @@ model TourItineraryDay {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TourDeparture — concrete dates
+// TourDeparture — ngày khởi hành cụ thể
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourDeparture {
@@ -388,7 +388,7 @@ model TourDeparture {
   startDate      DateTime        @map("start_date") @db.Date
   endDate        DateTime        @map("end_date") @db.Date
   priceOverride  Decimal?        @map("price_override") @db.Decimal(14, 2)
-  // Departure-level price anchor.
+  // Price anchor ở cấp departure.
   compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
   seatsTotal     Int             @map("seats_total")
   seatsBooked    Int             @default(0) @map("seats_booked")
@@ -421,7 +421,7 @@ model TourFaq {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TourPolicy — structured policy
+// TourPolicy — policy có cấu trúc
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourPolicy {
@@ -439,12 +439,12 @@ model TourPolicy {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Booking — multi-gateway (ADR-0006) + integrity hardening (ADR-0008).
-// v2 (audit H1/H3): the 4 nullable `refunded*` audit columns are GONE — refund
-// money lives in the `Refund` ledger; booking status is derived from
-// SUM(refunds). New immutable snapshots taken at create time (tourTitle,
-// departure dates, unitPrice) so historical bookings don't re-render when the
-// tour is edited (price+currency were already snapshotted).
+// Booking — multi-gateway (ADR-0006) + hardening tính toàn vẹn (ADR-0008).
+// v2 (audit H1/H3): 4 cột audit `refunded*` nullable đã BỎ — tiền refund nằm
+// trong ledger `Refund`; booking status suy ra từ SUM(refunds). Thêm các
+// snapshot bất biến chụp lúc create (tourTitle, ngày departure, unitPrice) để
+// booking lịch sử không render lại khi tour bị sửa (price+currency đã được
+// snapshot từ trước).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Booking {
@@ -458,8 +458,8 @@ model Booking {
   totalAmount        Decimal         @map("total_amount") @db.Decimal(14, 2)
   currency           String          @default("USD") @db.VarChar(3)
   status             BookingStatus   @default(PENDING)
-  // Snapshots at create (audit H3) — live joins stay for convenience, these
-  // freeze what the customer actually bought.
+  // Snapshot lúc create (audit H3) — live join vẫn giữ cho tiện, mấy field này
+  // đóng băng đúng thứ khách đã mua.
   tourTitle          String          @map("tour_title") @db.VarChar(160)
   departureStartDate DateTime        @map("departure_start_date") @db.Date
   departureEndDate   DateTime        @map("departure_end_date") @db.Date
@@ -468,8 +468,8 @@ model Booking {
   contactEmail       String          @map("contact_email") @db.VarChar(200)
   contactPhone       String?         @map("contact_phone") @db.VarChar(30)
   specialRequests    String?         @map("special_requests") @db.VarChar(1000)
-  // Provider-neutral payment refs (ADR-0006). `providerSessionId` is the
-  // Checkout session id; `providerPaymentId` the captured payment.
+  // Payment ref không phụ thuộc provider (ADR-0006). `providerSessionId` là id
+  // của Checkout session; `providerPaymentId` là payment đã capture.
   paymentProvider    PaymentProvider @map("payment_provider")
   providerSessionId  String?         @unique @map("provider_session_id") @db.VarChar(255)
   providerPaymentId  String?         @map("provider_payment_id") @db.VarChar(255)
@@ -494,10 +494,10 @@ model Booking {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Refund — append-only refund ledger (audit H1). Replaces Booking.refunded*.
-// Partial refunds accumulate; booking status (REFUNDED/PARTIALLY_REFUNDED) is
-// derived from SUM(amount) vs totalAmount. `adminId` null = automatic path
-// (e.g. departure-cancelled auto-refund); set = admin-issued.
+// Refund — refund ledger append-only (audit H1). Thay cho Booking.refunded*.
+// Refund một phần cộng dồn; booking status (REFUNDED/PARTIALLY_REFUNDED) suy ra
+// từ SUM(amount) so với totalAmount. `adminId` null = đường tự động (vd
+// auto-refund khi departure bị hủy); có giá trị = do admin phát hành.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Refund {
@@ -505,8 +505,8 @@ model Refund {
   bookingId        String   @map("booking_id") @db.Uuid
   amount           Decimal  @db.Decimal(14, 2)
   currency         String   @db.VarChar(3)
-  // Provider-side refund id (Stripe re_…, PayPal capture refund id). Unique so
-  // a webhook retry can't double-insert the same provider refund.
+  // Refund id phía provider (Stripe re_…, PayPal capture refund id). Unique để
+  // một webhook retry không double-insert cùng một provider refund.
   providerRefundId String?  @unique @map("provider_refund_id") @db.VarChar(255)
   adminId          String?  @map("admin_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at")
@@ -519,17 +519,17 @@ model Refund {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CancellationRequest — a PAID customer's request to cancel/refund a booking.
-// Audit M7 CLOSED by spec P2 §2 D1 (option B): rows are APPEND-ONLY history —
-// every request is a NEW row, a DENIED row is never reused/overwritten, so the
-// denial audit trail survives re-requests. "One LIVE request per booking" is
-// enforced by a PARTIAL unique index the schema DSL can't express (lives in
-// migration `cancellation_request_history`):
+// CancellationRequest — yêu cầu của khách đã PAID để hủy/refund một booking.
+// Audit M7 ĐÓNG theo spec P2 §2 D1 (option B): các row là history APPEND-ONLY —
+// mỗi yêu cầu là một row MỚI, row DENIED không bao giờ bị tái dùng/ghi đè, nên
+// audit trail của việc từ chối sống sót qua các lần re-request. "Một yêu cầu
+// LIVE mỗi booking" được ép bằng một partial unique index mà schema DSL không
+// diễn tả được (nằm trong migration `cancellation_request_history`):
 //   CREATE UNIQUE INDEX cancellation_requests_one_live_per_booking
 //     ON cancellation_requests (booking_id) WHERE status = 'REQUESTED';
-// Reading history = findMany({ orderBy: createdAt }). Status semantics:
-// REQUESTED = live; DENIED = admin refused (booking untouched); REFUNDED =
-// resolved by an approve → full-remainder refund + booking CANCELLED
+// Đọc history = findMany({ orderBy: createdAt }). Ngữ nghĩa status:
+// REQUESTED = live; DENIED = admin từ chối (booking không đụng tới); REFUNDED =
+// đã xử lý bằng một approve → refund toàn bộ phần còn lại + booking CANCELLED
 // (docs/conventions/booking-states.md).
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -555,35 +555,35 @@ model CancellationRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Review — one per booking (rating 1..5 enforced by CHECK in hardening-v2.sql).
-// v2 (audit M1): `authorDeleted` is a denormalized tombstone flag flipped by
-// the Better Auth beforeDelete hook (updateMany) — public sort
-// [authorDeleted asc, createdAt desc] runs on the composite index, no User join.
+// Review — một cái mỗi booking (rating 1..5 ép bằng CHECK trong hardening-v2.sql).
+// v2 (audit M1): `authorDeleted` là cờ tombstone denormalized, được lật bởi
+// hook beforeDelete của Better Auth (updateMany) — sort public
+// [authorDeleted asc, createdAt desc] chạy trên composite index, không join User.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Review {
   id             String       @id @default(uuid(7)) @db.Uuid
-  // FKs are nullable so a CURATED testimonial can exist without a real
-  // booking/user/tour. VERIFIED reviews keep all three set.
+  // FK nullable để một testimonial CURATED tồn tại được mà không cần
+  // booking/user/tour thật. Review VERIFIED giữ đủ cả ba.
   tourId         String?      @map("tour_id") @db.Uuid
   userId         String?      @map("user_id") @db.Uuid
   bookingId      String?      @unique @map("booking_id") @db.Uuid
   rating         Int
   title          String?      @db.VarChar(120)
   body           String       @db.VarChar(2000)
-  // Snapshot display name (verified: copied from user.name at create;
-  // curated: admin-entered). When authorDeleted, render "Deleted account".
+  // Snapshot tên hiển thị (verified: copy từ user.name lúc create;
+  // curated: admin nhập). Khi authorDeleted, render "Deleted account".
   authorName     String       @map("author_name") @db.VarChar(120)
   authorDeleted  Boolean      @default(false) @map("author_deleted")
-  // Free-text "City, Country" — curated only.
+  // Free-text "City, Country" — chỉ curated.
   authorLocation String?      @map("author_location") @db.VarChar(120)
   source         ReviewSource @default(VERIFIED)
   isFeatured     Boolean      @default(false) @map("is_featured")
-  // Free-text trip name for curated rows with no tourId.
+  // Tên chuyến free-text cho row curated không có tourId.
   tripLabel      String?      @map("trip_label") @db.VarChar(160)
   isApproved     Boolean      @default(false) @map("is_approved")
-  // Moderation audit: who decided last + when. Overwritten on re-moderation —
-  // latest decision wins. SetNull keeps the review if the admin is deleted.
+  // Moderation audit: ai quyết định lần cuối + khi nào. Bị ghi đè khi
+  // re-moderation — quyết định mới nhất thắng. SetNull giữ review nếu admin bị xóa.
   moderatedById  String?      @map("moderated_by") @db.Uuid
   moderatedAt    DateTime?    @map("moderated_at")
   createdAt      DateTime     @default(now()) @map("created_at")
@@ -601,7 +601,7 @@ model Review {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Wishlist — composite PK (user, tour)
+// Wishlist — PK ghép (user, tour)
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Wishlist {
@@ -618,12 +618,12 @@ model Wishlist {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PaymentEvent — webhook idempotency log, per provider (ADR-0006).
-// v2 (audit H4): denormalized `amount`/`currency`/`bookingId` so money
-// forensics stop parsing the JSON payload per request. `bookingId` is a plain
-// pointer (NO FK) — a webhook may reference a booking we can't resolve, and
-// the log row must land regardless. Idempotency = @@unique([provider, eventId])
-// with `processedAt NULL` ⇒ handler must re-run (port unchanged, keep-list).
+// PaymentEvent — log idempotency cho webhook, theo từng provider (ADR-0006).
+// v2 (audit H4): denormalized `amount`/`currency`/`bookingId` để việc forensics
+// tiền không phải parse JSON payload mỗi request. `bookingId` là con trỏ trần
+// (KHÔNG FK) — một webhook có thể tham chiếu booking ta không resolve được, mà
+// row log vẫn phải ghi được bất kể. Idempotency = @@unique([provider, eventId])
+// với `processedAt NULL` ⇒ handler phải chạy lại (port giữ nguyên, keep-list).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model PaymentEvent {
@@ -635,8 +635,8 @@ model PaymentEvent {
   amount      Decimal?        @db.Decimal(14, 2)
   currency    String?         @db.VarChar(3)
   bookingId   String?         @map("booking_id") @db.Uuid
-  // NULL = received but processing not finished → a provider retry must RE-RUN
-  // the handler (handlers are idempotent at booking level).
+  // NULL = đã nhận nhưng xử lý chưa xong → một provider retry phải CHẠY LẠI
+  // handler (handler idempotent ở cấp booking).
   processedAt DateTime?       @map("processed_at")
   receivedAt  DateTime        @default(now()) @map("received_at")
 
@@ -647,7 +647,7 @@ model PaymentEvent {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Enquiry — "Inquire Now" lead (ADR-0003)
+// Enquiry — lead "Inquire Now" (ADR-0003)
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Enquiry {
@@ -657,8 +657,8 @@ model Enquiry {
   phone       String?       @db.VarChar(30)
   message     String        @db.VarChar(2000)
   tourId      String?       @map("tour_id") @db.Uuid
-  // Structured lead fields — all optional (a general enquiry omits them);
-  // EN-only (ADR-0005). `interests` is a free multi-select.
+  // Field lead có cấu trúc — đều optional (enquiry chung bỏ trống);
+  // EN-only (ADR-0005). `interests` là multi-select tự do.
   nationality String?       @db.VarChar(80)
   travelDate  DateTime?     @map("travel_date") @db.Date
   groupSize   Int?          @map("group_size")
@@ -677,9 +677,9 @@ model Enquiry {
   @@map("enquiries")
 }
 
-/// Internal CRM note on an enquiry (admin-only, append-only thread).
-/// `authorName` is a snapshot so the thread stays readable if the admin
-/// account is deleted (`authorId` then goes null via SetNull).
+/// Note CRM nội bộ trên một enquiry (chỉ admin, thread append-only).
+/// `authorName` là snapshot để thread vẫn đọc được nếu tài khoản admin bị
+/// xóa (`authorId` khi đó thành null qua SetNull).
 model EnquiryNote {
   id         String   @id @default(uuid(7)) @db.Uuid
   enquiryId  String   @map("enquiry_id") @db.Uuid
@@ -696,9 +696,9 @@ model EnquiryNote {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Subscriber — newsletter lead capture. DB-backed only (no ESP); the public
-// subscribe endpoint upserts by email — citext makes the dedupe DB-enforced
-// (audit M2), the service lowercase-normalization is no longer load-bearing.
+// Subscriber — thu lead newsletter. Chỉ lưu ở DB (không ESP); endpoint subscribe
+// public upsert theo email — citext làm việc dedupe được ép ở DB (audit M2),
+// việc normalize lowercase trong service không còn load-bearing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Subscriber {
@@ -711,9 +711,9 @@ model Subscriber {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MediaAsset — Cloudinary-backed, polymorphic by (ownerType, ownerId).
-// No hard FK (pragmatic) — integrity via a reconcile job + same-tx cleanup.
-// Stores Cloudinary public_id; delivery URLs derived at read time.
+// MediaAsset — dựa trên Cloudinary, polymorphic theo (ownerType, ownerId).
+// Không FK cứng (thực dụng) — toàn vẹn nhờ một reconcile job + cleanup cùng tx.
+// Lưu public_id của Cloudinary; delivery URL suy ra lúc đọc.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model MediaAsset {
@@ -729,15 +729,15 @@ model MediaAsset {
   durationSec Float?         @map("duration_sec")
   posterId    String?        @map("poster_id") @db.VarChar(300)
   bytes       Int?
-  // Editable alt text (admin media library) — web falls back to owner-derived
-  // text when null.
+  // Alt text sửa được (media library của admin) — web fallback về text suy từ
+  // owner khi null.
   alt         String?        @db.VarChar(300)
   sortOrder   Int            @default(0) @map("sort_order")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
 
-  // One row per owner+publicId — lets registerAsset upsert instead of racing
-  // findFirst-then-create. Per-owner (NOT global) on purpose — reuse picker.
+  // Một row mỗi owner+publicId — cho registerAsset upsert thay vì race
+  // findFirst-rồi-create. Cố tình per-owner (KHÔNG global) — reuse picker.
   @@unique([ownerType, ownerId, publicId])
   @@index([ownerType, ownerId, role])
   @@index([publicId])
@@ -747,9 +747,9 @@ model MediaAsset {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SiteMediaSlot — one row per brand-chrome image slot on the public web. The
-// catalog of keys/kinds lives in API code; this table only gives each slot a
-// stable uuid so its images live in media_assets (ownerType=SITE).
+// SiteMediaSlot — một row mỗi slot ảnh brand-chrome trên web public. Catalog
+// các key/kind nằm trong code API; bảng này chỉ cấp cho mỗi slot một uuid ổn
+// định để ảnh của nó nằm trong media_assets (ownerType=SITE).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model SiteMediaSlot {
@@ -762,9 +762,9 @@ model SiteMediaSlot {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Post — editorial blog article (agency-authored). Cover/inline media via
-// MediaAsset(ownerType=POST). Content is markdown, rendered sanitized
-// client-side — NOT Json blocks (deliberate blog-v2 decision, keep-list).
+// Post — bài blog editorial (do agency soạn). Media cover/inline qua
+// MediaAsset(ownerType=POST). Content là markdown, render sanitized phía
+// client — KHÔNG phải Json block (quyết định blog-v2 có chủ đích, keep-list).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Post {
@@ -773,7 +773,7 @@ model Post {
   title           String     @db.VarChar(160)
   excerpt         String?    @db.VarChar(300)
   content         String
-  // SEO overrides for <title>/meta description (fall back to title/excerpt).
+  // Override SEO cho <title>/meta description (fallback về title/excerpt).
   metaTitle       String?    @map("meta_title") @db.VarChar(70)
   metaDescription String?    @map("meta_description") @db.VarChar(160)
   status          PostStatus @default(DRAFT)
@@ -792,8 +792,8 @@ model Post {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PostTag — free-form blog taxonomy (created inline from the admin post form).
-// Slug is the identity (upsert target); display name = first writer's casing.
+// PostTag — taxonomy blog tự do (tạo inline từ form post của admin).
+// Slug là identity (đích upsert); tên hiển thị = casing của người viết đầu tiên.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model PostTag {
@@ -820,8 +820,8 @@ model PostTagLink {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PostTour — admin-curated "tours in this story" (max 3 enforced at the DTO).
-// `order` = pick order. Tour deletion silently drops the link (post survives).
+// PostTour — "tours in this story" do admin curate (max 3 ép ở DTO).
+// `order` = thứ tự pick. Xóa tour âm thầm bỏ link (post vẫn sống).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model PostTour {
@@ -838,16 +838,15 @@ model PostTour {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Outbox — transactional email outbox (ADR-0007).
+// Outbox — outbox cho transactional email (ADR-0007).
 //
-// A row is written ATOMICALLY with the state change it announces (raw-SQL CTE
-// or short $transaction). A pg-boss worker drains PENDING rows oldest-first.
-// `dedupeKey` makes the pipeline idempotent under webhook/handler retries
-// (`ON CONFLICT DO NOTHING`); convention `<event>:<entityId>[:<state>]`, uuid
-// suffix only for legitimately repeating events (audit M5). `id` is
-// DB-generated (`gen_random_uuid()`) so the raw-SQL CTE insert needs no
-// client-side id. Retention (audit M5): worker cron deletes SENT > 30 days,
-// keeps FAILED for triage.
+// Một row được ghi NGUYÊN TỬ cùng state change mà nó thông báo (raw-SQL CTE
+// hoặc $transaction ngắn). Một worker pg-boss drain các row PENDING oldest-first.
+// `dedupeKey` làm pipeline idempotent dưới các lần webhook/handler retry
+// (`ON CONFLICT DO NOTHING`); quy ước `<event>:<entityId>[:<state>]`, hậu tố
+// uuid chỉ cho các event lặp lại chính đáng (audit M5). `id` do DB sinh
+// (`gen_random_uuid()`) nên câu insert raw-SQL CTE không cần id phía client.
+// Retention (audit M5): cron của worker xóa SENT > 30 ngày, giữ FAILED để triage.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Outbox {
@@ -866,15 +865,15 @@ model Outbox {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// MediaGarbage — orphaned Cloudinary assets awaiting destruction.
-// `publicId` is UNIQUE so duplicate pending entries collapse. `id` is
-// DB-generated for raw-SQL inserts (same rationale as Outbox).
+// MediaGarbage — asset Cloudinary mồ côi đang chờ xóa.
+// `publicId` UNIQUE nên các entry pending trùng gộp lại. `id` do DB sinh cho
+// các insert raw-SQL (cùng lý do với Outbox).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model MediaGarbage {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   publicId     String   @unique @map("public_id") @db.VarChar(300)
-  // Cloudinary resource_type ('image' | 'video') — destroy needs it.
+  // resource_type của Cloudinary ('image' | 'video') — destroy cần nó.
   resourceType String   @default("image") @map("resource_type") @db.VarChar(10)
   attempts     Int      @default(0)
   lastError    String?  @map("last_error") @db.VarChar(1000)
@@ -884,12 +883,12 @@ model MediaGarbage {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AI Concierge Chat. Guest identity = knowledge of the conversation uuid
-// (capstone-accepted risk); a conversation created by a logged-in user binds to
-// userId and then REQUIRES a matching Better Auth session to read/continue
-// (audit H6 — ownership gate moved off Supabase JWT). Retention (H6): worker
-// cron purges stale conversations (guest `userId IS NULL` first) using the
-// [updatedAt] index below.
+// AI Concierge Chat. Danh tính guest = biết được uuid của conversation (rủi ro
+// đã chấp nhận ở capstone); một conversation do user đã đăng nhập tạo sẽ gắn với
+// userId và khi đó YÊU CẦU một Better Auth session khớp để đọc/tiếp tục
+// (audit H6 — ownership gate chuyển khỏi Supabase JWT). Retention (H6): cron của
+// worker dọn các conversation cũ (guest `userId IS NULL` trước) dùng index
+// [updatedAt] bên dưới.
 // ─────────────────────────────────────────────────────────────────────────────
 
 model ChatConversation {
@@ -909,11 +908,11 @@ model ChatConversation {
 model ChatMessage {
   id             String   @id @default(uuid()) @db.Uuid
   conversationId String   @map("conversation_id") @db.Uuid
-  // Insertion order within the conversation (createdAt can collide in-batch).
+  // Thứ tự chèn trong conversation (createdAt có thể trùng trong cùng batch).
   seq            Int
   role           ChatRole
-  // The AI SDK UIMessage stored verbatim ({id, role, parts}) — lossless and
-  // directly replayable into useChat on the web.
+  // UIMessage của AI SDK lưu nguyên văn ({id, role, parts}) — không mất mát và
+  // replay thẳng vào useChat trên web.
   payload        Json
   createdAt      DateTime @default(now()) @map("created_at")
 

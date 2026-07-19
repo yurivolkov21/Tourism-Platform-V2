@@ -29,7 +29,10 @@ async function bootstrap(): Promise<void> {
   const app = await NestFactory.createApplicationContext(WorkerModule);
   const outbox = app.get(OutboxService);
 
-  const boss = new PgBoss({ connectionString: env.DATABASE_URL, schema: 'pgboss' });
+  const boss = new PgBoss({
+    connectionString: env.DATABASE_URL,
+    schema: 'pgboss',
+  });
   boss.on('error', (err) => logger.error(`pg-boss error: ${err.message}`, err.stack));
   await boss.start();
 

@@ -27,14 +27,14 @@ import {
 } from './schemas/catalog.js';
 
 /**
- * oRPC contract v1 (spec §6) — health + public catalog read. Implemented in
- * `@tourism/api` via `@orpc/nest` `@Implement`; consumed by P3 web through
+ * oRPC contract v1 (spec §6) — health + catalog read public. Được implement ở
+ * `@tourism/api` qua `@orpc/nest` `@Implement`; P3 web tiêu thụ qua
  * `ContractRouterClient<ContractRouter>`.
  *
- * Every procedure carries an explicit REST-ish `.route` path — @orpc/nest
- * mounts controllers at EXACTLY these paths (no extra prefix), hence the
- * `/api` namespace to sit alongside `/api/auth/*` (Better Auth) and clear of
- * the bare `/health` infra probe.
+ * Mỗi procedure mang một `.route` path kiểu REST tường minh — @orpc/nest mount
+ * controller ĐÚNG các path này (không thêm prefix), nên phải tự đặt namespace
+ * `/api` để nằm cạnh `/api/auth/*` (Better Auth) và không đụng `/health` trần
+ * của infra probe.
  */
 export const contract = {
   health: {
@@ -88,10 +88,10 @@ export const contract = {
     },
   },
   /**
-   * Customer bookings (spec P2 §3, W1) — every procedure here is AUTHED:
-   * the oRPC contract carries no auth metadata by design; enforcement is the
-   * Nest `AuthGuard` applied on the implementing controller (guards run
-   * before the oRPC interceptor, so an anonymous call 401s before parsing).
+   * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:
+   * contract oRPC cố ý không mang metadata auth; việc chặn do `AuthGuard` của
+   * Nest đảm nhiệm trên controller implement (guard chạy TRƯỚC interceptor
+   * oRPC, nên call ẩn danh bị 401 trước cả khi parse input).
    */
   bookings: {
     create: oc
@@ -102,9 +102,9 @@ export const contract = {
       })
       .input(CreateBookingInputSchema)
       .errors({
-        // Departure missing, not OPEN, already departed, or tour unpublished —
-        // one code on purpose: the caller can't act on the difference, and a
-        // fine-grained code would leak unpublished-tour existence.
+        // Departure không tồn tại, không OPEN, đã khởi hành, hoặc tour chưa
+        // publish — cố ý gộp thành MỘT code: caller không làm gì khác được với
+        // sự khác biệt đó, mà code chi tiết sẽ leak sự tồn tại của tour ẩn.
         DEPARTURE_NOT_AVAILABLE: {
           status: 400,
           message: 'This departure is not available for booking',
@@ -131,7 +131,7 @@ export const contract = {
       })
       .input(z.object({ code: BookingCodeSchema }))
       .errors({
-        // Also returned for another user's booking — owner-or-404.
+        // Trả cả khi truy cập booking của user khác — owner-or-404.
         NOT_FOUND: { message: 'Booking not found' },
       })
       .output(BookingSchema),
@@ -143,15 +143,15 @@ export const contract = {
       })
       .input(CancelBookingInputSchema)
       .errors({
-        // Owner-or-404, same policy as byCode.
+        // Owner-or-404, cùng policy với byCode.
         NOT_FOUND: { message: 'Booking not found' },
-        // The partial unique index fired — a live REQUESTED row already exists.
+        // Partial unique index đã nổ — đang tồn tại một row REQUESTED còn sống.
         ALREADY_REQUESTED: {
           status: 409,
           message: 'A cancellation request is already open for this booking',
         },
-        // Booking not PAID, or the departure has already started — one code:
-        // either way this booking cannot enter the cancellation flow.
+        // Booking chưa PAID, hoặc departure đã khởi hành — gộp một code: cách
+        // nào thì booking này cũng không vào được flow cancellation.
         NOT_CANCELLABLE: {
           status: 422,
           message: 'Only a PAID booking with a future departure can be cancelled',
@@ -160,10 +160,10 @@ export const contract = {
       .output(CancellationRequestSchema),
   },
   /**
-   * Admin surface (spec P2 §3, W3). Same guard model as `bookings`: the
-   * contract carries no auth metadata; the implementing controller stacks
-   * `AuthGuard` + `@Roles('ADMIN')` (anonymous → 401, non-admin → 403) before
-   * oRPC parses anything.
+   * Surface admin (spec P2 §3, W3). Cùng mô hình guard với `bookings`:
+   * contract không mang metadata auth; controller implement xếp chồng
+   * `AuthGuard` + `@Roles('ADMIN')` (ẩn danh → 401, không phải admin → 403)
+   * trước khi oRPC parse bất cứ thứ gì.
    */
   admin: {
     bookings: {
@@ -195,7 +195,7 @@ export const contract = {
         .input(AdminRefundInputSchema)
         .errors({
           NOT_FOUND: { message: 'Booking not found' },
-          // 422s below: the request parsed fine but the ledger/state refuses it.
+          // Các 422 bên dưới: request parse hợp lệ nhưng ledger/state từ chối.
           NOT_REFUNDABLE: {
             status: 422,
             message:
@@ -213,7 +213,7 @@ export const contract = {
             status: 422,
             message: 'Booking is already fully refunded',
           },
-          // The provider refused/failed the refund call — nothing was ledgered.
+          // Provider từ chối/lỗi khi gọi refund — chưa ghi gì vào ledger.
           REFUND_FAILED: {
             status: 502,
             message: 'Provider refund failed',
@@ -222,9 +222,9 @@ export const contract = {
         .output(AdminRefundResultSchema),
     },
     /**
-     * Cancellation queue (spec P2 W4, D1-B). `decide` is one endpoint for both
-     * verdicts: deny flips the request only; approve orchestrates the
-     * full-remainder refund + booking CANCELLED + seat release.
+     * Hàng đợi cancellation (spec P2 W4, D1-B). `decide` là một endpoint cho
+     * cả hai phán quyết: deny chỉ flip request; approve điều phối trọn gói
+     * refund phần còn lại + booking CANCELLED + nhả seat.
      */
     cancellations: {
       list: oc
@@ -244,20 +244,20 @@ export const contract = {
         .input(DecideCancellationInputSchema)
         .errors({
           NOT_FOUND: { message: 'Cancellation request not found' },
-          // The request is DENIED/REFUNDED already — decisions are final
-          // (append-only history: the customer re-requests instead).
+          // Request đã DENIED/REFUNDED — quyết định là chung cuộc (history
+          // append-only: khách muốn nữa thì gửi request MỚI).
           ALREADY_DECIDED: {
             status: 409,
             message: 'This cancellation request has already been decided',
           },
-          // Approve only: the booking has no refundable remainder / captured
-          // payment (same gate class as admin.bookings.refund).
+          // Chỉ ở nhánh approve: booking không còn phần refund được / không có
+          // payment đã capture (cùng lớp gate với admin.bookings.refund).
           NOT_REFUNDABLE: {
             status: 422,
             message: 'Booking has no refundable remainder to approve against',
           },
-          // Approve only: the provider refused/failed the refund call —
-          // nothing was ledgered and the request stays REQUESTED.
+          // Chỉ ở nhánh approve: provider từ chối/lỗi khi gọi refund — chưa ghi
+          // gì vào ledger và request vẫn ở REQUESTED.
           REFUND_FAILED: {
             status: 502,
             message: 'Provider refund failed',
