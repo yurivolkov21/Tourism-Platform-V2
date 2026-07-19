@@ -51,4 +51,14 @@ describe('checkReviewEligibility', () => {
       }),
     ).toEqual({ ok: false, reason: 'NOT_OWNER' });
   });
+
+  it('kiểm trạng thái PAID TRƯỚC ngày kết thúc — NOT_PAID thắng TRIP_NOT_COMPLETED', () => {
+    expect(
+      checkReviewEligibility({
+        ...base,
+        bookingStatus: BookingStatus.PENDING,
+        departureEndDate: new Date('2026-08-01'),
+      }),
+    ).toEqual({ ok: false, reason: 'NOT_PAID' });
+  });
 });
