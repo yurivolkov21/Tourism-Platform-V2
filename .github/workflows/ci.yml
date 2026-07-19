@@ -25,7 +25,9 @@ jobs:
     # (không phụ thuộc tên container Docker cụ thể).
     services:
       postgres:
-        image: postgres:18
+        # Khớp compose.yaml — test trên major version khác với dev/deploy là
+        # tự chuốc lỗi chỉ lộ ở một phía.
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: tourism
           POSTGRES_PASSWORD: tourism

@@ -40,7 +40,12 @@ P5 mobile → P6 AI concierge → freeze 15/10.
    để biết có gì và dùng khi nào). Có thì gọi qua Skill tool; đừng dựng lại thứ
    đã có. Brief cho subagent cũng phải nhắc điều này — hook nhắc-skill chỉ chạy
    khi user gửi tin, KHÔNG áp cho subagent.
-10. **`pnpm gate` trước khi khai xanh** (build + typecheck + test + lint).
+10. **`pnpm gate:int` trước khi khai một task/feature là xong** — nó chạy
+    `gate` (build + typecheck + unit test + lint) CỘNG integration test.
+    `pnpm gate` trần chỉ dùng cho vòng lặp TDD nhanh; nó KHÔNG đụng tới
+    integration test, nên "gate xanh" một mình không đủ để khai hoàn thành.
+    Lý do tách: int test cần Postgres và chậm hơn ~6x. Lý do bắt buộc chạy:
+    một int spec từng hỏng suốt 4 task mà không ai biết vì không có gì canh.
 11. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
 12. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · số test) + cập nhật doc hiện-trạng bị ảnh hưởng.
@@ -67,7 +72,7 @@ Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
    và làm `biome check` fail.
 2. **`.githooks/pre-commit`** chạy `biome check --staged` — chặn ngay tại máy,
    tự bật qua script `prepare` khi `pnpm install`. Bỏ qua: `--no-verify`.
-3. **CI** chạy `pnpm gate` — lưới cuối.
+3. **CI** chạy `gate` + `test:int` (có service Postgres) — lưới cuối.
 
 ## Chính sách theo lịch (capstone)
 
@@ -77,7 +82,8 @@ Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
 ## Lệnh
 
 ```bash
-pnpm gate                        # quality gate đầy đủ
+pnpm gate:int                    # gate ĐẦY ĐỦ — dùng cái này trước khi khai xong
+pnpm gate                        # nhanh, KHÔNG có int test — chỉ cho vòng lặp TDD
 pnpm turbo run test --filter=@tourism/tokens   # một package
 pnpm lint:fix                    # biome tự sửa format + lint
 ```
