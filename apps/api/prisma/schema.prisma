@@ -113,6 +113,13 @@ enum TourDifficulty {
 }
 
 /// VERIFIED = có từ booking thật; CURATED = testimonial do admin soạn.
+///
+/// Bất biến THẬT do CHECK `reviews_source_shape` ép (migration p3a_customer):
+///   VERIFIED → tour_id, user_id, booking_id đều NOT NULL
+///   CURATED  → booking_id NULL, user_id NULL; **tour_id được phép có giá trị**
+/// (comment trong file migration ghi nhầm là "CURATED null cả 3" — migration đã
+/// apply nên bất biến, đọc chỗ này mới đúng. Để tour_id mở là CỐ Ý: testimonial
+/// admin soạn vẫn cần gắn được vào trang một tour cụ thể.)
 /// ⚠️ Thứ tự alphabet (CURATED < VERIFIED) mang logic sort testimonial —
 /// đổi tên value là phải sửa các query dùng nó (audit keep-list).
 enum ReviewSource {
