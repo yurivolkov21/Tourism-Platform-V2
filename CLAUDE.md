@@ -56,7 +56,13 @@ P5 mobile → P6 AI concierge → freeze 15/10.
     một int spec từng hỏng suốt 4 task mà không ai biết vì không có gì canh.
 12. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
 13. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
-    (ngày · hash · nội dung · số test) + cập nhật doc hiện-trạng bị ảnh hưởng.
+    (ngày · hash · nội dung · review findings · số test) + cập nhật doc
+    hiện-trạng bị ảnh hưởng + **thêm doc mới vào bản đồ `docs/README.md`**
+    (đó là cửa vào duy nhất; doc không nằm trong bản đồ coi như không tồn tại).
+    Luật này từng bị bỏ qua 8 merge liên tiếp (19/07) nên giờ có
+    `scripts/docs-freshness.sh` chạy trong CI **trên nhánh main**: còn commit
+    `feat`/`fix` mới hơn entry CHANGELOG mới nhất là CI đỏ. Chạy tay bất cứ
+    lúc nào bằng `./scripts/docs-freshness.sh`.
 
 ## Toolchain thống nhất (MỘT tool cho mỗi việc — không có ngoại lệ)
 

@@ -46,6 +46,10 @@ jobs:
       DATABASE_URL: postgresql://tourism:tourism@localhost:5432/tourism_test
     steps:
       - uses: actions/checkout@v4
+        with:
+          # docs-freshness cần lịch sử commit để đối chiếu với CHANGELOG;
+          # checkout mặc định là shallow depth=1 nên `git log` sẽ rỗng.
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4 # đọc packageManager từ package.json
 
@@ -61,3 +65,11 @@ jobs:
       - run: pnpm test:int
 
       - run: pnpm lint
+
+      # Luật 13 (docs sweep) tồn tại từ P0 mà vẫn bị bỏ qua 8 merge liên tiếp
+      # ngày 19/07 — nên kiểm bằng máy thay vì trông vào trí nhớ. CHỈ chạy
+      # trên main: nhánh feature đang làm dở thì CHANGELOG lạc hậu là bình
+      # thường, entry viết lúc merge.
+      - name: CHANGELOG còn theo kịp main không (CLAUDE.md luật 13)
+        if: github.ref == 'refs/heads/main'
+        run: ./scripts/docs-freshness.sh
