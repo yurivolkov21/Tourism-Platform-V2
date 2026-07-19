@@ -23,6 +23,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- |
 | [0001](adr/0001-tech-stack.md) | Tech stack + lộ trình vertical slice + chiến lược UI |
 | [0002](adr/0002-payment-gateway-refund-ledger.md) | PaymentGateway interface · Refund ledger · atomic claim thế hệ 2 |
+| [0003](adr/0003-auth-fail-closed.md) | Auth mặc định fail-closed — global guard + `@Public()` |
 
 ## Specs — theo phase
 
@@ -46,6 +47,9 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- |
 | [Schema audit](analysis/2026-07-18-schema-audit-nexora.md) | Soi 27 model + quyết định tối ưu (H/M/LOW) |
 | [API parity + upgrade map](analysis/2026-07-19-api-parity-upgrade-map.md) | Kiểm kê ~64 endpoint còn thiếu + 14 nâng cấp + 10 delta schema |
+| [Infra parity](analysis/2026-07-19-infra-parity-nexora.md) | 8 lỗ hạ tầng xuyên suốt — thứ API parity map bỏ lọt |
+| [Quét sâu Nexora](analysis/2026-07-19-nexora-deep-sweep.md) | **Bảng theo dõi A1–A11** + quy tắc nghiệp vụ W2–W6 + kiến trúc P3b |
+| [Kiểm kê env keys](analysis/2026-07-19-env-keys-inventory.md) | Key nào đã lấy/còn thiếu, rủi ro ngày bảo vệ |
 
 ## Conventions — luật áp dụng mãi
 
@@ -53,6 +57,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- |
 | [booking-states](conventions/booking-states.md) | Ledger kể chuyện tiền, status kể chuyện ghế — 4 trạng thái terminal |
 | [outbox-dedupe-key](conventions/outbox-dedupe-key.md) | `<event>:<entityId>[:<state>]` — chống bug nuốt email 16/07 |
+| [read-then-write-races](conventions/read-then-write-races.md) | Bẫy EvalPlanQual — đã cắn dự án 2 lần, kèm cách sai đã thử |
 
 ## Quy tắc viết
 

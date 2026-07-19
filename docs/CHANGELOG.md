@@ -2,6 +2,38 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-19 — Đợt vá sau P3a-A (8 merge nhỏ vào `main`)
+
+Bắt nguồn từ việc user phát hiện v2 **thiếu rate limiting** trong khi Nexora
+có — rồi rà lại đúng tầng thì lòi ra nhiều hơn.
+
+- **Env** (`8958e95`, `938dc6b`, `aad7131`): `superRefine` chặn `DATABASE_URL`
+  mặc định ở production (bỏ sót cạnh 2 guard đã có). Biến rỗng `KEY=` là
+  **chuỗi rỗng** chứ không phải undefined nên `.default()` không chạy còn
+  `.min(1)` fail — copy file mẫu rồi để trống 9 biến optional là app không
+  boot; nền tảng deploy cũng gửi chuỗi rỗng khi ô bị bỏ trống. Chốt quy ước
+  tên `.env.local` / `.env.production` / `.env.example`, `.gitignore` viết
+  không kèm đường dẫn để app sinh sau tự được che (verify 13 trường hợp).
+- **Supabase** (không commit — thao tác hạ tầng): `migrate deploy` + seed lên
+  Session pooler, 33 bảng khớp local, `citext` 1.6, pg-boss chạy trọn vòng
+  đời. Direct connection IPv6 **không tới được từ WSL** (đã đo).
+- **Hạ tầng** (`b407c68`): CORS thiếu hoàn toàn (chặn cứng P3b) · `trustProxy`
+  (thiếu là rate limit sau này tự DoS) · health probe chạm DB, 503 khi hỏng ·
+  `provider-http` timeout 15s (`fetch()` trần không có timeout mặc định —
+  money-path đã chạy thật). Tách `configureHttp()` sang `bootstrap.ts` để test
+  chạm được. Mutation-test cả 4.
+- **Catalog** (`d88487d`): P3a xây `ratingAvg/ratingCount` xử lý race rất kỹ
+  nhưng catalog **chưa hề đọc ra** — dữ liệu trong DB mà FE không lấy được.
+  Thêm `toursCount` cho category (chỉ đếm tour đã publish).
+- **Auth** (`e5c382a`, [ADR-0003](adr/0003-auth-fail-closed.md)): đảo mặc định
+  sang **fail-closed** — `APP_GUARD` toàn cục + `@Public()`. Test canh chính
+  cái mặc định bằng cách đăng ký controller mới không khai gì ngay trong test.
+- **Docs** (`de61748`, `12f1db4`, `bfcf5a8`): quét sâu 1.377 file Nexora,
+  bảng theo dõi A1–A11 (A1/A5/A9 đã vá). Bác bỏ 1 dương tính giả (`seatsLeft`
+  clamp — CHECK constraint khiến trạng thái đó bất khả thi). CLAUDE.md thêm
+  luật 10: chủ động đối chiếu Nexora ở CẢ hai tầng trước mỗi phase.
+- Tests after: **284** (204 unit + 80 integration), `gate:int` xanh, CI xanh.
+
 ## 2026-07-19 — P3a-A: Nền chung + API reviews (branch `feat/p3-customer`)
 
 - **T1** Schema query dùng chung: `PageQuerySchema`, `SearchQuerySchema`,
