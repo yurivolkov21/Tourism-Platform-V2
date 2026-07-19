@@ -2,6 +2,43 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-19 — P3a-A: Nền chung + API reviews (branch `feat/p3-customer`)
+
+- **T1** Schema query dùng chung: `PageQuerySchema`, `SearchQuerySchema`,
+  `sortQuerySchema(keys)` generic suy ra literal union (không phải `string`).
+- **T2** Migration `p3a_customer`: `Tour.ratingAvg/ratingCount`,
+  `Review.featuredRank`, `Subscriber.unsubscribedAt/updatedAt`,
+  `Enquiry.email → citext`, bảng `ReviewModerationEvent`, CHECK
+  `reviews_source_shape`. ⚠️ DROP+ADD trên `enquiries.email` và
+  `subscribers.updated_at NOT NULL` — fail cứng (rollback, KHÔNG mất data
+  âm thầm) trên DB có dữ liệu; phải viết migration MỚI trước khi staging
+  P3b có traffic thật.
+- **T3** `checkReviewEligibility` TDD thuần: ownership kiểm TRƯỚC status
+  (không rò trạng thái booking người khác), so sánh calendar-day UTC.
+- **T4** `reviews.create` — P2002 → 409 `REVIEW_ALREADY_EXISTS`.
+- **T5** `admin.reviews.moderate` transaction 4-trong-1: flip trạng thái +
+  audit trail append-only + recompute rating + outbox dedupe. **Review phát
+  hiện lost update** khi duyệt 2 review cùng tour song song. Cách sửa đầu
+  tiên (gộp một câu `UPDATE … FROM (SELECT …)`) **đo thực nghiệm cho thấy
+  VẪN sai** — EvalPlanQual không tính lại subquery khi statement chờ lock.
+  Fix đúng: `SELECT … FOR UPDATE` ở statement riêng. Lần thứ hai EPQ cắn dự
+  án (lần đầu: claim ghế P2-W2) → [read-then-write-races.md](conventions/read-then-write-races.md).
+- **T6** `reviews.listByTour` + `reviews.mine` (endpoint spec W1 có nhưng
+  **plan bỏ sót**, phát hiện khi review) + integration suite vòng đời.
+  Review findings: rating tour bị testimonial `CURATED` đội lên (gate theo
+  `tourId` thay vì `source`), và test canh nó là **test rỗng trá hình**.
+- **Final review (mutation-test)**: xoá `@Roles(ADMIN)` khỏi controller admin
+  → 72/72 test vẫn xanh; xoá `isApproved`+`isPublished` khỏi list công khai
+  → vẫn xanh. Nguyên nhân gốc: `gate` chưa bao giờ chạy integration test và
+  CI không có Postgres — một int spec hỏng từ T2 sống tới T6. Đã nối
+  `test:int` vào turbo + CI service; `gate:int` giờ là điều kiện khai xong.
+  Cũng vá: tombstone bật cờ mà quên scrub `authorName` (spec §4.2).
+- Review findings: 3 Important (lost update rating · CURATED đội rating ·
+  bề mặt bảo mật không có test canh) + 1 Important hạ tầng (int test không
+  có lưới) — tất cả đã fix. Bác bỏ 1 đề xuất của chính controller (thống
+  nhất outbox `refunds` theo `reviews` — hai `dedupeKey` khác ngữ nghĩa).
+- Tests after: **266** (189 unit + 77 integration), gate:int xanh.
+
 ## 2026-07-18 — P2: Money-path (branch `feat/p2-money-path`)
 
 - **W1** Contract `bookings.{create,mine,byCode}` (procedure authed đầu tiên —
