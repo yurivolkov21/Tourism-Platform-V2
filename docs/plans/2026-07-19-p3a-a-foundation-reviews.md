@@ -562,12 +562,19 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { ReviewSource } from '../../generated/prisma/enums.js';
 import { checkReviewEligibility } from './review-eligibility.js';
 
-/** Lỗi domain — controller map sang error code của contract. */
-export class ReviewError extends Error {
-  constructor(readonly code: string) {
-    super(code);
-  }
-}
+/**
+ * Lỗi domain — MỘT class cho MỖI lỗi, theo đúng pattern đã có ở
+ * `bookings/refunds.service.ts`. Cố ý KHÔNG dùng một class chung mang string
+ * code: `instanceof` cho type-safety lúc compile, còn string code gõ sai thì
+ * chỉ chết lúc chạy.
+ */
+export class BookingNotFoundError extends Error {}
+export class BookingForbiddenError extends Error {}
+export class ReviewNotEligibleError extends Error {}
+export class ReviewTripNotCompletedError extends Error {}
+export class ReviewAlreadyExistsError extends Error {}
+export class ReviewNotFoundError extends Error {}
+export class TourNotFoundError extends Error {}
 
 /** Row Prisma → shape công khai. Không bao giờ trả thẳng row (tránh rò userId). */
 export function toPublicReview(row: {
@@ -608,7 +615,7 @@ export class ReviewsService {
         user: { select: { name: true } },
       },
     });
-    if (!booking) throw new ReviewError('BOOKING_NOT_FOUND');
+    if (!booking) throw new BookingNotFoundError();
 
     const eligibility = checkReviewEligibility({
       bookingStatus: booking.status,
@@ -618,13 +625,9 @@ export class ReviewsService {
       callerId,
     });
     if (!eligibility.ok) {
-      throw new ReviewError(
-        eligibility.reason === 'NOT_OWNER'
-          ? 'BOOKING_FORBIDDEN'
-          : eligibility.reason === 'TRIP_NOT_COMPLETED'
-            ? 'REVIEW_TRIP_NOT_COMPLETED'
-            : 'REVIEW_NOT_ELIGIBLE',
-      );
+      if (eligibility.reason === 'NOT_OWNER') throw new BookingForbiddenError();
+      if (eligibility.reason === 'TRIP_NOT_COMPLETED') throw new ReviewTripNotCompletedError();
+      throw new ReviewNotEligibleError();
     }
 
     try {
@@ -646,7 +649,7 @@ export class ReviewsService {
     } catch (err) {
       // unique(bookingId) → mỗi booking đúng một review.
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-        throw new ReviewError('REVIEW_ALREADY_EXISTS');
+        throw new ReviewAlreadyExistsError();
       }
       throw err;
     }
@@ -663,7 +666,15 @@ import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { AuthGuard } from '../../auth/auth.guard.js';
 import { CurrentUser, type SessionUser } from '../../auth/current-user.decorator.js';
-import { ReviewError, ReviewsService } from './reviews.service.js';
+import {
+  BookingForbiddenError,
+  BookingNotFoundError,
+  ReviewAlreadyExistsError,
+  ReviewNotEligibleError,
+  ReviewNotFoundError,
+  ReviewsService,
+  ReviewTripNotCompletedError,
+} from './reviews.service.js';
 
 @Controller()
 export class ReviewsController {
@@ -676,11 +687,13 @@ export class ReviewsController {
       try {
         return await this.reviews.create(user.id, input);
       } catch (err) {
-        if (err instanceof ReviewError) {
-          // Map lỗi domain → error code đã khai trong contract (client có type).
-          const map = errors as Record<string, () => never>;
-          map[err.code]?.();
-        }
+        // Map lỗi domain → error code của contract (pattern giống
+        // admin-bookings.controller.ts đã có).
+        if (err instanceof BookingNotFoundError) throw errors.BOOKING_NOT_FOUND();
+        if (err instanceof BookingForbiddenError) throw errors.BOOKING_FORBIDDEN();
+        if (err instanceof ReviewTripNotCompletedError) throw errors.REVIEW_TRIP_NOT_COMPLETED();
+        if (err instanceof ReviewNotEligibleError) throw errors.REVIEW_NOT_ELIGIBLE();
+        if (err instanceof ReviewAlreadyExistsError) throw errors.REVIEW_ALREADY_EXISTS();
         throw err;
       }
     });
@@ -796,7 +809,7 @@ Thêm vào `ReviewsService`:
       where: { id: input.id },
       select: { id: true, isApproved: true, tourId: true },
     });
-    if (!existing) throw new ReviewError('REVIEW_NOT_FOUND');
+    if (!existing) throw new ReviewNotFoundError();
 
     const justApproved = !existing.isApproved && input.approve;
 
@@ -927,7 +940,15 @@ import { AuthGuard } from '../../auth/auth.guard.js';
 import { CurrentUser, type SessionUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
-import { ReviewError, ReviewsService } from './reviews.service.js';
+import {
+  BookingForbiddenError,
+  BookingNotFoundError,
+  ReviewAlreadyExistsError,
+  ReviewNotEligibleError,
+  ReviewNotFoundError,
+  ReviewsService,
+  ReviewTripNotCompletedError,
+} from './reviews.service.js';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -943,7 +964,7 @@ export class AdminReviewsController {
         // query lại sau đó.
         return await this.reviews.moderate(user.id, input);
       } catch (err) {
-        if (err instanceof ReviewError && err.code === 'REVIEW_NOT_FOUND') errors.REVIEW_NOT_FOUND();
+        if (err instanceof ReviewNotFoundError) throw errors.REVIEW_NOT_FOUND();
         throw err;
       }
     });
@@ -997,7 +1018,7 @@ git commit -m "feat(api,contract): duyệt review — transaction 4-trong-1 + au
       select: { id: true },
     });
     // 404 thay vì "200 rỗng": 200-rỗng che mất bug routing của FE.
-    if (!tour) throw new ReviewError('TOUR_NOT_FOUND');
+    if (!tour) throw new TourNotFoundError();
 
     const where = { tourId: tour.id, isApproved: true };
     const [rows, total] = await Promise.all([

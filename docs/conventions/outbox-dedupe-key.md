@@ -11,7 +11,7 @@ một key đã dùng sẽ **chặn mọi enqueue trùng key cho đến khi row b
 Chọn dạng key theo đúng ngữ nghĩa lặp của event:
 
 | Dạng key | Khi nào dùng | Ví dụ |
-|---|---|---|
+| --- | --- | --- |
 | `<event>:<entityId>` | Event chỉ được phép xảy ra **một lần cho mỗi entity** | `enquiry-received:${enquiry.id}` |
 | `<event>:<entityId>:<state>` | Một lần cho mỗi **bước chuyển trạng thái** của entity | `booking-paid:${booking.id}`, `cancellation-denied:${req.id}:${decidedAt}` |
 | `<event>:<email>` | Một lần **vĩnh viễn cho mỗi địa chỉ** — chỉ hợp lệ khi đó đúng là ý định (rất hiếm) | `newsletter-welcome:${email}` (chủ đích: welcome chỉ gửi 1 lần/địa chỉ) |

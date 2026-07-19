@@ -18,7 +18,7 @@ với một booking được trả tiền nhưng vẫn đi tour. Vì vậy appro
 ## Ba ngữ nghĩa terminal
 
 | Flow | Status cuối | Ledger | Ghế | Vì sao |
-|---|---|---|---|---|
+| --- | --- | --- | --- | --- |
 | **Approved cancellation** (W4: khách xin hủy booking PAID, admin duyệt) | `CANCELLED` + `cancelledAt` | 1 row full-remainder (adminId = người duyệt) | **Trả lại** (`seats_booked -= party`) | Khách chủ động thôi đi tour — chuyến đi kết thúc. Tiền đã trả nằm trọn trong ledger; status kể chuyện ghế/chuyến đi, không kể chuyện tiền. CancellationRequest → `REFUNDED` (enum của model — "resolved by refund"). |
 | **Overbooked claim** (W2: thanh toán xong nhưng thua cuộc đua ghế) | `CANCELLED` + `cancelledAt` | 1 row full (adminId NULL = tự động) | Không đụng (chưa từng giữ) | Booking chưa bao giờ rời PENDING thành doanh thu, chưa bao giờ giữ ghế — hủy + hoàn là trạng thái đúng. |
 | **Orphaned capture** (W2/W3: capture đến SAU khi booking đã CANCELLED) | `REFUNDED` (derive từ ledger) | 1 row full (adminId NULL) | Không đụng (CANCELLED chưa giữ ghế) | Tiền thật đã vào trên một booking đã chết → câu chuyện còn lại thuần về tiền; ledger derive ra terminal `REFUNDED` trung thực. |

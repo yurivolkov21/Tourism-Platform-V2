@@ -40,7 +40,7 @@ còn lại cho phase nào** — nhãn "web" che giấu một khối lượng API
 **mỗi phase một lát cắt dọc, API + UI đi chung**:
 
 | Phase | Nội dung |
-|---|---|
+| --- | --- |
 | P0–P2 | ✅ Khung xương · API lõi · Money-path |
 | **P3** | API khách hàng (reviews, wishlist, enquiry, newsletter, blog, site-media) **+ Web Next.js chức năng** |
 | **P4** | API quản trị (CRUD catalog, departures, users, media ops, moderation, CRM, stats) **+ Admin SPA** |
