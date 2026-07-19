@@ -16,6 +16,32 @@ concurrency:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # Postgres cho integration test (apps/api/src/**/*.int.spec.ts, 9 file /
+    # 72 test — TOÀN BỘ luồng tiền P2 + bề mặt bảo mật P3a). Trước đây
+    # `test:int` chỉ là script rời trong apps/api/package.json, không nối vào
+    # turbo task/CI nào — 6 vòng review lọt qua chính vì thứ này chưa từng
+    # chạy trên CI. Cổng 5432 map ra host giống hệt compose.yaml ở local, vì
+    # `vitest.int.global-setup.ts` nói chuyện qua TCP tới `localhost:5432`
+    # (không phụ thuộc tên container Docker cụ thể).
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: tourism
+          POSTGRES_PASSWORD: tourism
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U tourism"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      # `vitest.int.config.ts` tự hard-code DATABASE_URL trỏ `tourism_test`
+      # cho tiến trình test — biến này chỉ để rõ ràng/nhất quán với quy ước
+      # DATABASE_URL của repo, globalSetup của test:int tự tạo db đó (idempotent)
+      # rồi `prisma migrate deploy`, KHÔNG cần bước tạo db/migrate riêng ở đây.
+      DATABASE_URL: postgresql://tourism:tourism@localhost:5432/tourism_test
     steps:
       - uses: actions/checkout@v4
 
@@ -29,5 +55,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - run: pnpm turbo run build typecheck test
+
+      - run: pnpm test:int
 
       - run: pnpm lint

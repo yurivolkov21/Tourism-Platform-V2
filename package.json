@@ -13,7 +13,9 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
+    "test:int": "turbo run test:int",
     "gate": "turbo run build typecheck test && biome check .",
+    "gate:int": "pnpm gate && pnpm test:int",
     "prepare": "git config core.hooksPath .githooks || true",
     "ci:wait": "sh scripts/ci-wait.sh"
   },
