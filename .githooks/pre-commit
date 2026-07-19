@@ -1,0 +1,27 @@
+#!/bin/sh
+# Chặn commit lệch chuẩn Biome NGAY TẠI MÁY, thay vì để CI bắt sau khi đã push.
+# Bật tự động qua `prepare` script (pnpm install → git config core.hooksPath).
+# Chỉ kiểm file đã staged nên chạy trong mili-giây.
+
+# Gọi THẲNG binary trong node_modules: git chạy hook với PATH tối giản nên
+# `pnpm biome ...` có thể không resolve được — đã gặp thật: hook in ra
+# "command not found: biome" MÀ VẪN exit 0, tức an toàn giả. Fallback sang
+# `pnpm exec` khi chưa cài node_modules.
+BIOME="./node_modules/.bin/biome"
+if [ ! -x "$BIOME" ]; then
+  if command -v pnpm >/dev/null 2>&1; then
+    BIOME="pnpm exec biome"
+  else
+    echo "⚠ pre-commit: chưa có node_modules và không thấy pnpm — BỎ QUA kiểm"
+    echo "  Biome (CI vẫn sẽ chặn). Chạy 'pnpm install' để bật lại hook."
+    exit 0
+  fi
+fi
+
+if ! $BIOME check --staged --no-errors-on-unmatched; then
+  echo ""
+  echo "✖ pre-commit: có file staged lệch chuẩn Biome (format/lint)."
+  echo "  Sửa nhanh:  pnpm lint:fix && git add -u"
+  echo "  Bỏ qua 1 lần (KHÔNG khuyến khích):  git commit --no-verify"
+  exit 1
+fi

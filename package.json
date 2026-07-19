@@ -13,7 +13,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "gate": "turbo run build typecheck test && biome check ."
+    "gate": "turbo run build typecheck test && biome check .",
+    "prepare": "git config core.hooksPath .githooks || true"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.4",

@@ -40,6 +40,30 @@ P5 mobile → P6 AI concierge → freeze 15/10.
 11. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · số test) + cập nhật doc hiện-trạng bị ảnh hưởng.
 
+## Toolchain thống nhất (MỘT tool cho mỗi việc — không có ngoại lệ)
+
+| Việc | Tool DUY NHẤT | Chạy ở đâu |
+| --- | --- | --- |
+| Format + lint (ts/tsx/js/jsx/json) | **Biome** | editor save · `pnpm lint:fix` · pre-commit · CI |
+| Typecheck | **tsc (TypeScript 7)** | `pnpm typecheck` · CI |
+| Test | **Vitest** (mobile sau này: jest-expo) | `pnpm test` · CI |
+| Build/orchestrate | **Turborepo** | `pnpm build` |
+| Markdown | markdownlint (Biome không format .md) | editor |
+| YAML / Prisma | extension chuyên dụng tương ứng | editor |
+
+**KHÔNG bao giờ thêm Prettier hay ESLint vào repo này** — chúng sẽ tranh format
+với Biome. Repo hiện không có dependency/config nào của hai tool đó; giữ vậy.
+
+Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
+
+1. **`.vscode/settings.json` pin formatter theo TỪNG ngôn ngữ.** Bắt buộc vì
+   setting theo-ngôn-ngữ ở settings global của máy **thắng** setting chung của
+   workspace — từng khiến Prettier âm thầm format lại 39 file (nháy kép/80 cột)
+   và làm `biome check` fail.
+2. **`.githooks/pre-commit`** chạy `biome check --staged` — chặn ngay tại máy,
+   tự bật qua script `prepare` khi `pnpm install`. Bỏ qua: `--no-verify`.
+3. **CI** chạy `pnpm gate` — lưới cuối.
+
 ## Chính sách theo lịch (capstone)
 
 - NestJS v12: chỉ migrate nếu GA trước **30/09/2026**, sau đó ở lại v11.

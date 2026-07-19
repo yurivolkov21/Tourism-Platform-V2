@@ -1,4 +1,12 @@
 {
+  // MỘT bộ công cụ duy nhất cho repo này (xem CLAUDE.md "Toolchain thống nhất"):
+  //   format + lint  → Biome        (ts/tsx/js/jsx/json/jsonc)
+  //   typecheck      → tsc (TS 7)   qua typescript.tsdk bên dưới
+  //   markdown       → markdownlint (Biome không format .md)
+  //   yaml / prisma  → extension chuyên dụng (Biome không hỗ trợ)
+  // Các override "[ngôn ngữ]" bên dưới là BẮT BUỘC: setting theo-ngôn-ngữ ở
+  // settings global của máy THẮNG setting chung của workspace — không pin ở đây
+  // thì máy nào cài Prettier sẽ âm thầm format lệch chuẩn dự án.
   "editor.defaultFormatter": "biomejs.biome",
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
@@ -14,5 +22,8 @@
   "[javascript]": { "editor.defaultFormatter": "biomejs.biome" },
   "[javascriptreact]": { "editor.defaultFormatter": "biomejs.biome" },
   "[json]": { "editor.defaultFormatter": "biomejs.biome" },
-  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" }
+  "[jsonc]": { "editor.defaultFormatter": "biomejs.biome" },
+  "[markdown]": { "editor.defaultFormatter": "DavidAnson.vscode-markdownlint" },
+  "[yaml]": { "editor.defaultFormatter": "redhat.vscode-yaml" },
+  "[prisma]": { "editor.defaultFormatter": "Prisma.prisma" }
 }
