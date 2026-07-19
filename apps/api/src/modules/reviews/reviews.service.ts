@@ -134,6 +134,15 @@ export class ReviewsService {
    *
    * Review CURATED có tourId null (testimonial admin viết) nên BỎ QUA ③:
    * nó là social proof, không phải đánh giá chuyến đi.
+   *
+   * Hai điểm concurrency đã fix (code review):
+   *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
+   *     LẠI TRONG transaction (khoá bằng `FOR UPDATE`) chứ không dùng
+   *     snapshot đọc trước transaction — tránh TOCTOU khi hai admin bấm
+   *     duyệt cùng review gần như đồng thời (audit trail ghi sai
+   *     `fromApproved`, email có thể gửi/không-gửi sai).
+   *   - Rating của tour được khoá row (`SELECT … FOR UPDATE`) TRƯỚC khi
+   *     aggregate+ghi, xem chi tiết ở ③.
    */
   async moderate(
     actorId: string,
@@ -143,7 +152,6 @@ export class ReviewsService {
       where: { id: input.id },
       select: {
         id: true,
-        isApproved: true,
         tourId: true,
         // Cần cho payload email ở bước ④ — ResendDeliverer throw nếu payload
         // thiếu `email` (xem resend.deliverer.ts). Review CURATED không có
@@ -154,9 +162,21 @@ export class ReviewsService {
     });
     if (!existing) throw new ReviewNotFoundError();
 
-    const justApproved = !existing.isApproved && input.approve;
-
     return prisma.$transaction(async (tx) => {
+      // Khoá đúng row review NÀY trước khi đọc isApproved. Đọc thường
+      // (không FOR UPDATE) dưới Read Committed có thể trả về snapshot đã cũ
+      // nếu một moderate() khác trên CÙNG review đang chờ commit (TOCTOU) —
+      // `FOR UPDATE` buộc câu SELECT này BLOCK tới khi lock giải phóng rồi
+      // đọc lại giá trị mới nhất đã commit, nên fromApproved/justApproved
+      // dưới đây luôn đúng dù hai admin bấm duyệt gần như đồng thời.
+      const [locked] = await tx.$queryRaw<{ isApproved: boolean }[]>(Prisma.sql`
+        SELECT is_approved AS "isApproved" FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
+      `);
+      if (!locked) throw new ReviewNotFoundError();
+
+      const fromApproved = locked.isApproved;
+      const justApproved = !fromApproved && input.approve;
+
       // ① trạng thái + dấu vết
       await tx.review.update({
         where: { id: input.id },
@@ -172,26 +192,53 @@ export class ReviewsService {
         data: {
           reviewId: input.id,
           actorId,
-          fromApproved: existing.isApproved,
+          fromApproved,
           toApproved: input.approve,
           note: input.note ?? null,
         },
       });
 
-      // ③ recompute rating của ĐÚNG tour đó (bỏ qua nếu là CURATED)
+      // ③ recompute rating của ĐÚNG tour đó (bỏ qua nếu là CURATED).
+      //
+      // Race đã tránh (ADR-0009 "single-statement atomic claims", áp dụng
+      // TINH THẦN chứ không thể gộp mù một câu): trước đây đọc-rồi-ghi qua
+      // `aggregate()` + `update()` hai round-trip riêng — dưới Read
+      // Committed, hai transaction duyệt hai review KHÁC NHAU của CÙNG tour
+      // đều aggregate trên snapshot KHÔNG thấy thay đổi (chưa commit) của
+      // nhau rồi ghi đè lẫn nhau, ratingCount thiếu 1 (tự lành ở lần duyệt
+      // kế nhưng vẫn là dữ liệu sai tạm thời).
+      //
+      // Gộp thẳng thành MỘT câu `UPDATE tours … FROM (SELECT AVG…) s` KHÔNG
+      // đủ để fix — đã tự kiểm chứng bằng test tay hai transaction chồng
+      // nhau trên Postgres thật: khi statement đó phải chờ lock trên row
+      // Tour rồi chạy tiếp qua EvalPlanQual, Postgres CHỈ đọc lại đúng row
+      // đích bị khoá, KHÔNG tính lại subquery aggregate — snapshot của cả
+      // statement bị chốt ngay lúc statement bắt đầu chạy. Kết quả: vẫn mất
+      // update y hệt bug gốc (đo được ratingCount thiếu 1).
+      //
+      // Cách đúng: khoá row Tour bằng `SELECT … FOR UPDATE` ở một statement
+      // RIÊNG trước — statement này block tới khi transaction khác commit
+      // xong. Statement UPDATE...FROM theo sau là statement MỚI nên có
+      // snapshot MỚI, thấy đủ mọi thay đổi đã commit trước đó (kể cả của
+      // transaction vừa nhả lock) → aggregate luôn đúng, không mất update.
       if (existing.tourId) {
-        const agg = await tx.review.aggregate({
-          where: { tourId: existing.tourId, isApproved: true },
-          _avg: { rating: true },
-          _count: { _all: true },
-        });
-        await tx.tour.update({
-          where: { id: existing.tourId },
-          data: {
-            ratingAvg: agg._avg.rating ?? null,
-            ratingCount: agg._count._all,
-          },
-        });
+        const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+          SELECT id FROM tours WHERE id = ${existing.tourId}::uuid FOR UPDATE
+        `);
+        if (lockedTour) {
+          await tx.$executeRaw(Prisma.sql`
+            UPDATE tours t
+            SET rating_avg = s.avg_rating,
+                rating_count = s.cnt,
+                updated_at = now()
+            FROM (
+              SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
+              FROM reviews
+              WHERE tour_id = ${existing.tourId}::uuid AND is_approved = true
+            ) s
+            WHERE t.id = ${existing.tourId}::uuid
+          `);
+        }
       }
 
       // ④ email — chỉ ở lần chuyển false→true; dedupeKey chặn gửi lại khi
