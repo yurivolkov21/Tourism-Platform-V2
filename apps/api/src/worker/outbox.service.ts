@@ -1,8 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
-import type { EmailType } from '../generated/prisma/enums.js';
-import { OutboxStatus } from '../generated/prisma/enums.js';
+import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
 import { EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
 
 /** Mỗi lượt drain lấy tối đa bấy nhiêu row PENDING (oldest-first). */
@@ -12,6 +11,33 @@ export const MAX_ATTEMPTS = 5;
 /** Trần cột `last_error` (VarChar(1000)). */
 const LAST_ERROR_MAX = 1000;
 
+/**
+ * Loại email coi là "bản tin" — chịu chi phối bởi `unsubscribedAt` của
+ * Subscriber (spec §4.4: "worker bỏ qua subscriber có unsubscribedAt ≠
+ * null"). Set riêng thay vì mọi EmailType: các email giao dịch khác
+ * (BOOKING_CONFIRMATION, REVIEW_APPROVED…) không liên quan tới bảng
+ * subscribers — subscriber huỷ đăng ký bản tin không có nghĩa họ ngừng nhận
+ * email xác nhận đơn hàng của chính họ.
+ */
+const NEWSLETTER_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([EmailType.NEWSLETTER_WELCOME]);
+
+/**
+ * Rút field `email` (string) từ payload JSON nếu có. Không ép kiểu `any`:
+ * `payload` là `Prisma.JsonValue` (union string|number|boolean|object|array|
+ * null), phải tự thu hẹp bằng type guard tay trước khi đọc `.email`.
+ */
+function extractPayloadEmail(payload: Prisma.JsonValue): string | undefined {
+  if (
+    payload !== null &&
+    typeof payload === 'object' &&
+    !Array.isArray(payload) &&
+    typeof payload.email === 'string'
+  ) {
+    return payload.email;
+  }
+  return undefined;
+}
+
 export interface DrainResult {
   /** Row giao thành công → SENT. */
   sent: number;
@@ -19,6 +45,12 @@ export interface DrainResult {
   failed: number;
   /** Row lỗi nhưng còn lượt → vẫn PENDING chờ lượt drain sau. */
   retried: number;
+  /**
+   * Bản tin cho subscriber đã huỷ đăng ký (`unsubscribedAt` ≠ null) — bỏ
+   * qua, KHÔNG gọi deliverer, đánh dấu SENT ngay (spec §4.4). Đếm riêng
+   * thay vì gộp vào `sent`: gộp chung sẽ nói dối số email THẬT SỰ đã gửi.
+   */
+  skippedUnsubscribed: number;
 }
 
 /**
@@ -66,8 +98,22 @@ export class OutboxService {
       take: batchSize,
     });
 
-    const result: DrainResult = { sent: 0, failed: 0, retried: 0 };
+    const result: DrainResult = { sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 };
     for (const row of rows) {
+      if (
+        NEWSLETTER_EMAIL_TYPES.has(row.type) &&
+        (await this.isUnsubscribedRecipient(row.payload))
+      ) {
+        // Bỏ qua NGAY, không gọi deliverer — đánh dấu SENT để row không kẹt
+        // ở đầu hàng đợi PENDING (batch luôn lấy cũ nhất trước, xem
+        // `orderBy: createdAt asc` ở trên) và chặn các email khác phía sau.
+        await prisma.outbox.updateMany({
+          where: { id: row.id, status: OutboxStatus.PENDING },
+          data: { status: OutboxStatus.SENT, processedAt: new Date() },
+        });
+        result.skippedUnsubscribed += 1;
+        continue;
+      }
       try {
         await this.deliverer.deliver(row.type, row.payload);
         // updateMany + guard status PENDING (pattern Nexora): row có thể bị
@@ -93,12 +139,29 @@ export class OutboxService {
       }
     }
 
-    if (result.sent || result.failed || result.retried) {
+    if (result.sent || result.failed || result.retried || result.skippedUnsubscribed) {
       this.logger.log(
-        `Outbox drain: ${result.sent} sent, ${result.failed} failed, ${result.retried} retried`,
+        `Outbox drain: ${result.sent} sent, ${result.failed} failed, ${result.retried} retried, ` +
+          `${result.skippedUnsubscribed} skipped (unsubscribed)`,
       );
     }
     return result;
+  }
+
+  /**
+   * Subscriber ứng với `payload.email` của row (nếu có) đã huỷ đăng ký hay
+   * chưa. `findUnique` trên `email` chạy trên cột `@db.Citext` nên không cần
+   * tự lowercase ở đây — DB tự so khớp không phân biệt hoa/thường (cùng bài
+   * học citext ở `NewsletterService.subscribe()`).
+   */
+  private async isUnsubscribedRecipient(payload: Prisma.JsonValue): Promise<boolean> {
+    const email = extractPayloadEmail(payload);
+    if (!email) return false;
+    const subscriber = await prisma.subscriber.findUnique({
+      where: { email },
+      select: { unsubscribedAt: true },
+    });
+    return subscriber?.unsubscribedAt != null;
   }
 
   /**

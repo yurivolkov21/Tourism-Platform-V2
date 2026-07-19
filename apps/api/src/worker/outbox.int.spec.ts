@@ -71,7 +71,7 @@ describe('outbox worker integration', () => {
 
       const result = await outbox.drainOnce();
 
-      expect(result).toEqual({ sent: 2, failed: 0, retried: 0 });
+      expect(result).toEqual({ sent: 2, failed: 0, retried: 0, skippedUnsubscribed: 0 });
       expect(deliverer.calls.map((c) => c.payload)).toEqual([
         { enquiryId: 'enquiry-received:e-older' },
         { enquiryId: 'enquiry-received:e-newer' },
@@ -112,6 +112,7 @@ describe('outbox worker integration', () => {
           sent: 0,
           failed: isLast ? 1 : 0,
           retried: isLast ? 0 : 1,
+          skippedUnsubscribed: 0,
         });
 
         const updated = await prisma.outbox.findUniqueOrThrow({
@@ -125,7 +126,7 @@ describe('outbox worker integration', () => {
 
       // FAILED là trạng thái đỗ — drain tiếp theo không đụng nữa.
       const after = await outbox.drainOnce();
-      expect(after).toEqual({ sent: 0, failed: 0, retried: 0 });
+      expect(after).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 });
       expect(deliverer.calls).toHaveLength(MAX_ATTEMPTS);
     });
   });

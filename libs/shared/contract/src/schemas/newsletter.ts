@@ -26,3 +26,35 @@ export type SubscribeInput = z.infer<typeof SubscribeInputSchema>;
 export const SubscribeResultSchema = z.object({ subscribed: z.literal(true) });
 
 export type SubscribeResult = z.infer<typeof SubscribeResultSchema>;
+
+/**
+ * Huỷ đăng ký bản tin (spec §4.4, nửa sau) — v2 làm hơn Nexora (Nexora không
+ * có unsubscribe công khai, rủi ro pháp lý GDPR/CAN-SPAM). Input DÙNG CHUNG
+ * cho cả GET xác nhận lẫn POST thực thi: `id` (subscriberId) + `token` (HMAC
+ * tự xác thực, xem `unsubscribe-token.ts`) — cả hai đều lấy thẳng từ link
+ * trong email, không cần đăng nhập.
+ */
+export const UnsubscribeInputSchema = z.object({
+  id: z.uuid(),
+  token: z.string().min(1).max(200),
+});
+
+export type UnsubscribeInput = z.infer<typeof UnsubscribeInputSchema>;
+
+/**
+ * Output của GET — dữ liệu cho trang xác nhận, KHÔNG tự huỷ đăng ký (email
+ * client như Gmail/Outlook prefetch mọi link trong thư để quét virus; nếu GET
+ * tự huỷ thì khách bị huỷ mà chưa hề bấm gì). `alreadyUnsubscribed` cho FE đổi
+ * copy nút khi khách bấm lại link cũ sau khi đã huỷ rồi.
+ */
+export const UnsubscribeConfirmResultSchema = z.object({
+  email: z.string(),
+  alreadyUnsubscribed: z.boolean(),
+});
+
+export type UnsubscribeConfirmResult = z.infer<typeof UnsubscribeConfirmResultSchema>;
+
+/** Output của POST — luôn `true` khi thành công, kể cả gọi lần hai (idempotent). */
+export const UnsubscribeResultSchema = z.object({ unsubscribed: z.literal(true) });
+
+export type UnsubscribeResult = z.infer<typeof UnsubscribeResultSchema>;

@@ -40,10 +40,12 @@ describe('parseEnv', () => {
         NODE_ENV: 'production',
         BETTER_AUTH_SECRET: 'real-secret',
         // P2: prod cũng cần một payment provider, và DATABASE_URL tường minh —
-        // thoả cả hai để cô lập assertion về BETTER_AUTH_SECRET.
+        // thoả cả hai để cô lập assertion về BETTER_AUTH_SECRET. P3a: thêm cả
+        // NEWSLETTER_UNSUBSCRIBE_SECRET (guard production riêng, cùng khuôn).
         DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
+        NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
   });
@@ -56,6 +58,7 @@ describe('parseEnv', () => {
       BETTER_AUTH_SECRET: 'real-secret',
       STRIPE_SECRET_KEY: 'sk_test_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
     };
     expect(() => parseEnv(base)).toThrow(/DATABASE_URL/);
     // Khai tường minh trùng chuỗi compose cũng bị chặn — đó vẫn là localhost.
@@ -90,6 +93,33 @@ describe('parseEnv', () => {
     expect(() => parseEnv({ BETTER_AUTH_URL: 'not a url' })).toThrow(/BETTER_AUTH_URL/);
   });
 
+  it('defaults NEWSLETTER_UNSUBSCRIBE_SECRET outside production', () => {
+    expect(parseEnv({}).NEWSLETTER_UNSUBSCRIBE_SECRET).toBe('dev-unsubscribe-secret-change-me');
+  });
+
+  it('requires a real NEWSLETTER_UNSUBSCRIBE_SECRET in production', () => {
+    // Cùng khuôn với BETTER_AUTH_SECRET: hai secret có hai vòng đời khác
+    // nhau (session vs. link huỷ đăng ký đã gửi đi) nên guard cũng riêng.
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+    };
+    expect(() => parseEnv(base)).toThrow(/NEWSLETTER_UNSUBSCRIBE_SECRET/);
+    expect(() =>
+      parseEnv({
+        ...base,
+        NEWSLETTER_UNSUBSCRIBE_SECRET: 'dev-unsubscribe-secret-change-me',
+      }),
+    ).toThrow(/NEWSLETTER_UNSUBSCRIBE_SECRET/);
+    expect(
+      parseEnv({ ...base, NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret' })
+        .NEWSLETTER_UNSUBSCRIBE_SECRET,
+    ).toBe('real-unsubscribe-secret');
+  });
+
   it('defaults P2 provider vars to unset (dev boots with no payment/email keys)', () => {
     const env = parseEnv({});
     expect(env.STRIPE_SECRET_KEY).toBeUndefined();
@@ -106,6 +136,7 @@ describe('parseEnv', () => {
       NODE_ENV: 'production',
       BETTER_AUTH_SECRET: 'real-secret',
       DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+      NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
     };
     // None configured → rejected.
     expect(() => parseEnv(base)).toThrow(/payment provider/i);

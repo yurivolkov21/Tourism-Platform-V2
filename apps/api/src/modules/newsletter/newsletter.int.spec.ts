@@ -3,7 +3,12 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { createFastifyAdapter } from '../../bootstrap.js';
-import { EmailType } from '../../generated/prisma/enums.js';
+import { env } from '../../config/env.js';
+import { EmailType, OutboxStatus } from '../../generated/prisma/enums.js';
+import { EMAIL_DELIVERER, type EmailDeliverer } from '../../worker/deliverer.js';
+import { OutboxService } from '../../worker/outbox.service.js';
+import { WorkerModule } from '../../worker/worker.module.js';
+import { makeUnsubscribeToken } from './unsubscribe-token.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts).
@@ -14,12 +19,35 @@ import { EmailType } from '../../generated/prisma/enums.js';
  * email — và welcome email chỉ gửi MỘT LẦN VĨNH VIỄN cho mỗi địa chỉ nhờ
  * `dedupeKey` ổn định `newsletter-welcome:<email>` + `skipDuplicates`.
  *
+ * Task 6 (P3a-B, endpoint MỚI — A1): tự huỷ đăng ký, thứ Nexora KHÔNG có
+ * (rủi ro pháp lý GDPR/CAN-SPAM). Token HMAC tự xác thực (unsubscribe-token.ts,
+ * TDD riêng ở unsubscribe-token.spec.ts) — GET chỉ đọc (trang xác nhận),
+ * POST mới thực thi, tách hẳn vì email client (Gmail/Outlook) prefetch mọi
+ * link trong thư để quét virus.
+ *
  * Dùng createFastifyAdapter() dùng chung với main.ts (trustProxy) — thiếu nó
  * thì test throttle theo IP sai (mọi request `.inject()` trông như cùng một
  * IP giả của socket).
  */
 
 let app: NestFastifyApplication;
+
+/** Fake deliverer riêng cho test "worker bỏ qua subscriber đã huỷ" — cùng
+ * pattern với outbox.int.spec.ts (test worker thật, không mock Prisma). */
+class FakeDeliverer implements EmailDeliverer {
+  calls: Array<{ type: EmailType; payload: unknown }> = [];
+
+  async deliver(type: EmailType, payload: unknown): Promise<void> {
+    this.calls.push({ type, payload });
+  }
+
+  reset(): void {
+    this.calls = [];
+  }
+}
+
+const fakeDeliverer = new FakeDeliverer();
+let outbox: OutboxService;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -28,6 +56,15 @@ beforeAll(async () => {
   });
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
+
+  // Module RIÊNG cho worker (AppModule không import WorkerModule — chạy ở
+  // tiến trình process.ts khác trong sản phẩm thật) — chỉ để test hành vi
+  // drain bỏ qua subscriber đã huỷ (item 5 spec §4.4 / §6).
+  const workerModuleRef = await Test.createTestingModule({ imports: [WorkerModule] })
+    .overrideProvider(EMAIL_DELIVERER)
+    .useValue(fakeDeliverer)
+    .compile();
+  outbox = workerModuleRef.get(OutboxService);
 });
 
 afterAll(async () => {
@@ -36,6 +73,7 @@ afterAll(async () => {
 
 beforeEach(async () => {
   await prisma.$executeRawUnsafe('TRUNCATE subscribers, outbox RESTART IDENTITY CASCADE');
+  fakeDeliverer.reset();
 });
 
 /** Gửi POST /api/newsletter/subscribe, giả lập một IP riêng cho mỗi test
@@ -143,5 +181,152 @@ describe('newsletter (int)', () => {
     const sixth = await postSubscribe(app, { email: 'throttle-6@example.com' }, ip);
     expect(sixth.statusCode).toBe(429);
     expect(await prisma.subscriber.count()).toBe(5);
+  });
+});
+
+/** Đăng ký một subscriber thật qua endpoint công khai rồi đọc lại row (cần
+ * `id` để sinh token) — dựng dữ liệu qua API thay vì `prisma.subscriber.create`
+ * thẳng để test không phụ thuộc chi tiết nội bộ của bảng. */
+async function createSubscriber(email: string, ip: string) {
+  const res = await postSubscribe(app, { email }, ip);
+  expect(res.statusCode).toBe(200);
+  return prisma.subscriber.findUniqueOrThrow({ where: { email } });
+}
+
+describe('newsletter unsubscribe (int)', () => {
+  it('GET với token hợp lệ → trả email + alreadyUnsubscribed:false, DB KHÔNG đổi (GET không có side effect)', async () => {
+    const email = 'confirm.valid@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.1');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/newsletter/unsubscribe?id=${subscriber.id}&token=${token}`,
+      headers: { 'x-forwarded-for': '10.1.1.1' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ email, alreadyUnsubscribed: false });
+
+    // Oracle bắt lỗi thật: nếu GET vô tình cũng set unsubscribedAt (side
+    // effect KHÔNG được phép — email client prefetch link này để quét virus,
+    // xem doc-comment đầu file), assertion dưới đây sẽ đỏ.
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeNull();
+  });
+
+  it('POST với token hợp lệ → unsubscribedAt được set', async () => {
+    const email = 'unsub.first@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.2');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.1.2' },
+      payload: { id: subscriber.id, token },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ unsubscribed: true });
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeInstanceOf(Date);
+  });
+
+  it('POST lần hai → vẫn 200 (idempotent), unsubscribedAt KHÔNG đổi giá trị', async () => {
+    const email = 'unsub.twice@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.3');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    const payload = { id: subscriber.id, token };
+    const ip = '10.1.1.3';
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': ip },
+      payload,
+    });
+    expect(first.statusCode).toBe(200);
+    const firstUnsubscribedAt = (
+      await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } })
+    ).unsubscribedAt;
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': ip },
+      payload,
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual({ unsubscribed: true });
+
+    const afterSecond = await prisma.subscriber.findUniqueOrThrow({
+      where: { id: subscriber.id },
+    });
+    // Mốc thời gian PHẢI giữ nguyên lần gọi đầu — POST thứ hai không được
+    // "làm mới" ngày huỷ đăng ký (đó mới là bằng chứng consent chính xác).
+    expect(afterSecond.unsubscribedAt).toEqual(firstUnsubscribedAt);
+  });
+
+  it('token sai / id không tồn tại → INVALID_UNSUBSCRIBE_TOKEN (400), DB không đổi — cả GET lẫn POST', async () => {
+    const email = 'unsub.badtoken@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.4');
+    const wrongToken = makeUnsubscribeToken(subscriber.id, 'not-the-real-secret');
+    const randomId = '01920000-0000-7000-8000-00000000dead';
+    const validTokenForRandomId = makeUnsubscribeToken(randomId, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const wrongTokenRes = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.1.4' },
+      payload: { id: subscriber.id, token: wrongToken },
+    });
+    expect(wrongTokenRes.statusCode).toBe(400);
+    expect(wrongTokenRes.json().code).toBe('INVALID_UNSUBSCRIBE_TOKEN');
+
+    const missingIdRes = await app.inject({
+      method: 'GET',
+      url: `/api/newsletter/unsubscribe?id=${randomId}&token=${validTokenForRandomId}`,
+      headers: { 'x-forwarded-for': '10.1.1.4' },
+    });
+    expect(missingIdRes.statusCode).toBe(400);
+    expect(missingIdRes.json().code).toBe('INVALID_UNSUBSCRIBE_TOKEN');
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeNull();
+  });
+
+  it('worker bỏ qua subscriber đã huỷ: enqueue NEWSLETTER_WELCOME cho subscriber có unsubscribedAt ≠ null → không gửi', async () => {
+    const email = 'already.unsubscribed@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.5');
+    await prisma.subscriber.update({
+      where: { id: subscriber.id },
+      data: { unsubscribedAt: new Date() },
+    });
+    // Outbox đã có 1 row NEWSLETTER_WELCOME từ createSubscriber() (subscribe
+    // enqueue welcome) — xoá sạch rồi enqueue lại một row MỚI cho rõ ràng,
+    // tránh lẫn với dedupeKey đã dùng ở bước subscribe. `outbox` ở đây là
+    // OutboxService của module worker RIÊNG (deliverer = fakeDeliverer, xem
+    // beforeAll) — dùng cùng instance cho cả enqueue lẫn drain.
+    await prisma.outbox.deleteMany();
+    const enqueued = await outbox.enqueue(
+      EmailType.NEWSLETTER_WELCOME,
+      { email },
+      `newsletter-welcome:${email}`,
+    );
+    expect(enqueued).toBe(true);
+
+    const result = await outbox.drainOnce();
+
+    expect(result.skippedUnsubscribed).toBe(1);
+    expect(result.sent).toBe(0);
+    // Bằng chứng trực tiếp: deliverer KHÔNG hề được gọi cho email này.
+    expect(fakeDeliverer.calls).toHaveLength(0);
+
+    const row = await prisma.outbox.findFirstOrThrow({
+      where: { dedupeKey: `newsletter-welcome:${email}` },
+    });
+    expect(row.status).toBe(OutboxStatus.SENT);
   });
 });

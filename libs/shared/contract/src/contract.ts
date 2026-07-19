@@ -27,7 +27,13 @@ import {
 } from './schemas/catalog.js';
 import { PageQuerySchema } from './schemas/common.js';
 import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
-import { SubscribeInputSchema, SubscribeResultSchema } from './schemas/newsletter.js';
+import {
+  SubscribeInputSchema,
+  SubscribeResultSchema,
+  UnsubscribeConfirmResultSchema,
+  UnsubscribeInputSchema,
+  UnsubscribeResultSchema,
+} from './schemas/newsletter.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -219,6 +225,32 @@ export const contract = {
       })
       .input(SubscribeInputSchema)
       .output(SubscribeResultSchema),
+    /**
+     * Huỷ đăng ký (spec §4.4, nửa sau) — v2 làm hơn Nexora (không có
+     * unsubscribe công khai, rủi ro GDPR/CAN-SPAM). Tách GET/POST cố ý:
+     * email client (Gmail, Outlook) prefetch mọi link trong thư để quét
+     * virus — nếu GET tự huỷ thì khách bị huỷ mà chưa hề bấm. GET chỉ trả dữ
+     * liệu cho trang xác nhận (KHÔNG side effect); POST mới thực thi.
+     * `id`/`token` lấy thẳng từ link trong email nên KHÔNG cần đăng nhập.
+     */
+    unsubscribeConfirm: oc
+      .route({
+        method: 'GET',
+        path: '/api/newsletter/unsubscribe',
+        summary: 'Confirmation page data (read-only, no side effect)',
+      })
+      .input(UnsubscribeInputSchema)
+      .output(UnsubscribeConfirmResultSchema)
+      .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
+    unsubscribe: oc
+      .route({
+        method: 'POST',
+        path: '/api/newsletter/unsubscribe',
+        summary: 'Execute unsubscribe (idempotent)',
+      })
+      .input(UnsubscribeInputSchema)
+      .output(UnsubscribeResultSchema)
+      .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:

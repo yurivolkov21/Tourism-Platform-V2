@@ -3,20 +3,24 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
-import { NewsletterService } from './newsletter.service.js';
+import { InvalidUnsubscribeTokenError, NewsletterService } from './newsletter.service.js';
 
-// Form đăng ký bản tin công khai: khách chưa đăng nhập PHẢI gửi được (ADR-0003)
-// — AuthGuard chạy toàn cục nên thiếu @Public() ở đây là 401 chết form ngay.
-// ThrottlerGuard riêng (PUBLIC_WRITE_THROTTLE, config/throttle.ts) chống spam,
-// cùng khuôn với EnquiriesController.
+// Mọi endpoint trong controller này công khai: khách gọi subscribe() chưa
+// đăng nhập (ADR-0003), khách bấm link unsubscribe trong email cũng chưa
+// chắc đã đăng nhập. AuthGuard chạy toàn cục nên thiếu @Public() ở class là
+// 401 chết cả ba endpoint.
 @Public()
-@UseGuards(ThrottlerGuard)
 @Controller()
 export class NewsletterController {
   private readonly logger = new Logger(NewsletterController.name);
 
   constructor(private readonly newsletter: NewsletterService) {}
 
+  // ThrottlerGuard riêng (PUBLIC_WRITE_THROTTLE, config/throttle.ts) chống
+  // spam — gắn ở METHOD (không phải class) vì chỉ áp cho endpoint GHI công
+  // khai, cùng khuôn với EnquiriesController. `unsubscribeConfirm` (GET) bên
+  // dưới cố ý KHÔNG có guard này — đọc thuần, không cần trần tần suất.
+  @UseGuards(ThrottlerGuard)
   @Implement(contract.newsletter.subscribe)
   subscribe() {
     return implement(contract.newsletter.subscribe).handler(async ({ input }) => {
@@ -32,6 +36,38 @@ export class NewsletterController {
       // Luôn `true` — kể cả email đã tồn tại. Response khác nhau giữa "mới"
       // và "đã có" biến endpoint này thành máy dò email (xem JSDoc contract).
       return { subscribed: true as const };
+    });
+  }
+
+  /**
+   * GET — dữ liệu cho trang xác nhận. KHÔNG được có side effect: email client
+   * (Gmail, Outlook) prefetch mọi link trong thư để quét virus, nếu GET này
+   * tự huỷ đăng ký thì khách bị huỷ mà chưa hề bấm gì (spec §4.4).
+   */
+  @Implement(contract.newsletter.unsubscribeConfirm)
+  unsubscribeConfirm() {
+    return implement(contract.newsletter.unsubscribeConfirm).handler(async ({ input, errors }) => {
+      try {
+        return await this.newsletter.confirm(input.id, input.token);
+      } catch (err) {
+        if (err instanceof InvalidUnsubscribeTokenError) throw errors.INVALID_UNSUBSCRIBE_TOKEN();
+        throw err;
+      }
+    });
+  }
+
+  /** POST — thực thi huỷ đăng ký thật. Idempotent: gọi lại lần hai vẫn 200. */
+  @UseGuards(ThrottlerGuard)
+  @Implement(contract.newsletter.unsubscribe)
+  unsubscribe() {
+    return implement(contract.newsletter.unsubscribe).handler(async ({ input, errors }) => {
+      try {
+        await this.newsletter.unsubscribe(input.id, input.token);
+        return { unsubscribed: true as const };
+      } catch (err) {
+        if (err instanceof InvalidUnsubscribeTokenError) throw errors.INVALID_UNSUBSCRIBE_TOKEN();
+        throw err;
+      }
     });
   }
 }

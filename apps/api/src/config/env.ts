@@ -7,6 +7,14 @@ import { z } from 'zod';
 const DEV_BETTER_AUTH_SECRET = 'dev-secret-change-me';
 
 /**
+ * Dev-only secret ký link huỷ đăng ký newsletter (spec §4.4). Cố ý TÁCH khỏi
+ * `DEV_BETTER_AUTH_SECRET`: xoay `BETTER_AUTH_SECRET` là việc bảo mật bình
+ * thường (session), nhưng nó sẽ làm chết mọi link huỷ đăng ký đã gửi đi nếu
+ * hai secret dùng chung — hai vòng đời khác nhau thì tách secret.
+ */
+const DEV_UNSUBSCRIBE_SECRET = 'dev-unsubscribe-secret-change-me';
+
+/**
  * Postgres compose local. Là default để `pnpm dev`/seed/test chạy được ngay
  * không cần `.env`; `superRefine` dưới đây chặn nó ở production — deploy mà
  * quên set DATABASE_URL thì phải chết ở tầng config với thông điệp rõ ràng,
@@ -47,6 +55,11 @@ const EnvSchema = z
     // set → giữ ConsoleDeliverer (dev boots không cần email, pattern Nexora).
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).default('Tourism <noreply@tourism.test>'),
+    // Newsletter unsubscribe (P3a spec §4.4) — ký/verify token HMAC tự xác
+    // thực, KHÔNG dùng chung BETTER_AUTH_SECRET (xem comment ở
+    // DEV_UNSUBSCRIBE_SECRET). Optional-với-default ở dev/test, bắt buộc
+    // production qua superRefine bên dưới.
+    NEWSLETTER_UNSUBSCRIBE_SECRET: z.string().min(1).default(DEV_UNSUBSCRIBE_SECRET),
   })
   .superRefine((cfg, ctx) => {
     // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ
@@ -79,6 +92,13 @@ const EnvSchema = z
         code: 'custom',
         path: ['BETTER_AUTH_SECRET'],
         message: 'BETTER_AUTH_SECRET must be set explicitly in production',
+      });
+    }
+    if (cfg.NEWSLETTER_UNSUBSCRIBE_SECRET === DEV_UNSUBSCRIBE_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['NEWSLETTER_UNSUBSCRIBE_SECRET'],
+        message: 'NEWSLETTER_UNSUBSCRIBE_SECRET must be set explicitly in production',
       });
     }
     // Money-path không thể chạy prod mà không có provider nào: yêu cầu ÍT NHẤT
