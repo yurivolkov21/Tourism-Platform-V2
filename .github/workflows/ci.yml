@@ -1,9 +1,17 @@
 name: CI
 
+# Chạy trên MỌI branch: trước đây chỉ `main` + pull_request, nên feature branch
+# đẩy lên không được CI kiểm gì cả — chỉ biết xanh/đỏ SAU khi đã merge vào main.
+# Với quy ước merge rebase+ff (không qua PR), đó là lỗ hổng thật.
 on:
   push:
-    branches: [main]
+    branches: ['**']
   pull_request:
+
+# Push kèm PR sẽ sinh 2 run cho cùng một ref — huỷ run cũ, giữ run mới nhất.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   gate:
