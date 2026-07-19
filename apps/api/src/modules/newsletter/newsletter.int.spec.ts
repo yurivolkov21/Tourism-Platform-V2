@@ -96,7 +96,7 @@ describe('newsletter (int)', () => {
     expect(outboxRows).toHaveLength(1);
   });
 
-  it('email khác hoa/thường (Jane@X.com vs jane@x.com) → citext coi là MỘT người, vẫn 1 row', async () => {
+  it('email khác hoa/thường (Jane@X.com vs jane@x.com) → citext coi là MỘT người, vẫn 1 row, VÀ chỉ 1 welcome', async () => {
     const first = await postSubscribe(app, { email: 'Jane@X.com' }, '10.1.0.3');
     expect(first.statusCode).toBe(200);
 
@@ -107,6 +107,16 @@ describe('newsletter (int)', () => {
     expect(await prisma.subscriber.count()).toBe(1);
     const found = await prisma.subscriber.findFirst({ where: { email: 'jane@x.com' } });
     expect(found).not.toBeNull();
+
+    // Oracle bắt lỗi thật: `Subscriber.email` là citext nên DB tự coi hai
+    // biến thể hoa/thường là MỘT hàng — assertion phía trên vẫn xanh dù
+    // service có chuẩn hoá email hay không. Nhưng `Outbox.dedupeKey` là
+    // VarChar thường; nếu service ghép dedupeKey từ email thô (chưa
+    // `.toLowerCase()`), hai lần subscribe ở trên sinh hai dedupeKey khác
+    // chuỗi và `skipDuplicates` không chặn được — ra 2 row welcome cho cùng
+    // một hộp thư (vi phạm spec §4.4). `beforeEach` đã TRUNCATE nên đếm
+    // tuyệt đối là đủ, không cần lọc theo dedupeKey.
+    expect(await prisma.outbox.count({ where: { type: EmailType.NEWSLETTER_WELCOME } })).toBe(1);
   });
 
   it('honeypot có giá trị → 200 {subscribed:true} GIẢ, DB không có row mới', async () => {

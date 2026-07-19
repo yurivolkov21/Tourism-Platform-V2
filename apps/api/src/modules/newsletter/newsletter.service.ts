@@ -11,9 +11,22 @@ export class NewsletterService {
    * quyết định của chính người dùng, subscribe lại không tự ý đảo ngược nó).
    */
   async subscribe(email: string, source?: string): Promise<void> {
+    // Chuẩn hoá email TẠI BIÊN service — bắt buộc vì hai cột liên quan có
+    // ngữ nghĩa case khác nhau: `Subscriber.email` là `@db.Citext` nên DB tự
+    // coi `Jane@X.com` và `jane@x.com` là MỘT hàng, nhưng `Outbox.dedupeKey`
+    // là `@db.VarChar(200)` THƯỜNG — phân biệt hoa/thường. Nếu ghép
+    // `dedupeKey` từ `email` thô, hai lần subscribe cùng địa chỉ nhưng khác
+    // hoa/thường sinh ra hai chuỗi dedupeKey khác nhau → `skipDuplicates`
+    // không chặn được → hai email NEWSLETTER_WELCOME cho cùng một hộp thư,
+    // vi phạm spec §4.4 ("chỉ gửi MỘT LẦN trong đời địa chỉ đó"). Dùng
+    // NGUYÊN bản `normalizedEmail` cho cả upsert, dedupeKey, lẫn
+    // `payload.email` (worker lấy field này làm người nhận — gửi tới bản đã
+    // chuẩn hoá vừa đúng vừa nhất quán với hàng subscriber thật sự tồn tại).
+    const normalizedEmail = email.trim().toLowerCase();
+
     await prisma.subscriber.upsert({
-      where: { email },
-      create: { email, source: source ?? null },
+      where: { email: normalizedEmail },
+      create: { email: normalizedEmail, source: source ?? null },
       update: {},
     });
 
@@ -27,8 +40,8 @@ export class NewsletterService {
       data: [
         {
           type: EmailType.NEWSLETTER_WELCOME,
-          payload: { email },
-          dedupeKey: `newsletter-welcome:${email}`,
+          payload: { email: normalizedEmail },
+          dedupeKey: `newsletter-welcome:${normalizedEmail}`,
         },
       ],
       skipDuplicates: true,

@@ -721,8 +721,11 @@ model EnquiryNote {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Subscriber — thu lead newsletter. Chỉ lưu ở DB (không ESP); endpoint subscribe
-// public upsert theo email — citext làm việc dedupe được ép ở DB (audit M2),
-// việc normalize lowercase trong service không còn load-bearing.
+// public upsert theo email — citext làm việc dedupe HÀNG SUBSCRIBER được ép ở
+// DB (audit M2). NHƯNG normalize lowercase trong service VẪN load-bearing cho
+// `Outbox.dedupeKey` (@db.VarChar thường, không citext) — thiếu nó, hai biến
+// thể hoa/thường của cùng một email sinh hai dedupeKey khác chuỗi và
+// welcome email bị gửi hai lần (xem comment trong newsletter.service.ts).
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Subscriber {
