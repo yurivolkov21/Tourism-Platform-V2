@@ -32,6 +32,29 @@ JS-based, chuỗi OpenAPI codegen thủ công, và **transaction pooler**
 | Payments | Stripe + PayPal sau **interface `PaymentGateway`** (test mode) | enum + branching |
 | Media/Email/AI/Obs | Cloudinary · Resend · AI SDK 6 + claude-haiku-4-5 · Sentry | (giữ, nâng bản) |
 
+## Lộ trình (sửa 19/07 — vertical slice)
+
+Lộ trình ban đầu ghi "P3 = web, P4 = admin" nhưng **không phân bổ ~64 endpoint API
+còn lại cho phase nào** — nhãn "web" che giấu một khối lượng API lớn (chi tiết:
+[API parity map](../specs/2026-07-19-api-parity-upgrade-map.md)). Sửa thành
+**mỗi phase một lát cắt dọc, API + UI đi chung**:
+
+| Phase | Nội dung |
+|---|---|
+| P0–P2 | ✅ Khung xương · API lõi · Money-path |
+| **P3** | API khách hàng (reviews, wishlist, enquiry, newsletter, blog, site-media) **+ Web Next.js chức năng** |
+| **P4** | API quản trị (CRUD catalog, departures, users, media ops, moderation, CRM, stats) **+ Admin SPA** |
+| P5 | Mobile (dùng lại contract) |
+| P6 | AI concierge |
+| **P7** | Polish UI toàn bộ (trước freeze 15/10) |
+
+**Chiến lược UI (chốt 19/07):** dựng chức năng trước, hoãn đánh bóng thị giác —
+NHƯNG phân biệt rõ: quyết định *kiến trúc* (RSC/Client boundary, Cache Components,
+cấu trúc route, dùng shadcn/Base UI + design tokens từ trang đầu tiên) làm ĐÚNG
+ngay từ đầu vì hoãn = viết lại; chỉ hoãn *thị giác* (hero, ảnh, animation, tinh
+chỉnh màu/khoảng cách, responsive edge case, copy marketing). Dùng component
+library từ đầu tốn ~0 công thêm mà khiến P7 chỉ còn là chỉnh layout + token.
+
 ## Hệ quả
 
 - **ESM xuyên suốt** (Nest v12 · oRPC · Vitest) — hết dynamic-import pg-boss.
