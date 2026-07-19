@@ -55,6 +55,12 @@ ngay từ đầu vì hoãn = viết lại; chỉ hoãn *thị giác* (hero, ản
 chỉnh màu/khoảng cách, responsive edge case, copy marketing). Dùng component
 library từ đầu tốn ~0 công thêm mà khiến P7 chỉ còn là chỉnh layout + token.
 
+**Legacy components (chốt 19/07, áp dụng từ P3b):** ngay sau khi scaffold
+Next.js, user sẽ nạp sẵn một bộ component gốc vào web. Quy tắc: **component gốc
+KHÔNG sửa** — chỉ đọc và compose; chỉ đụng vào khi chính nó lỗi. Muốn khác đi
+thì bọc/extend ở tầng của mình, không edit bản gốc.
+⚠️ Bắt buộc **báo user trước khi scaffold Next.js** để user nạp bộ này vào.
+
 ## Hệ quả
 
 - **ESM xuyên suốt** (Nest v12 · oRPC · Vitest) — hết dynamic-import pg-boss.

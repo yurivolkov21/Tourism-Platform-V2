@@ -9,6 +9,7 @@
 | --- | --- | --- |
 | [`adr/`](adr/) | **Vì sao** chọn thế này? | TRƯỚC khi code (luật CLAUDE.md #5) |
 | [`specs/`](specs/) | **Sẽ xây gì** ở phase này? | Đầu mỗi phase, user duyệt rồi mới code |
+| [`plans/`](plans/) | **Làm theo bước nào** để hiện thực spec? | Sau khi spec được duyệt, trước khi code |
 | [`analysis/`](analysis/) | **Học được gì** từ Nexora? | Khi cần dữ liệu để ra quyết định |
 | [`conventions/`](conventions/) | Quy tắc **áp dụng mãi mãi** | Khi một bài học cần thành luật |
 
@@ -31,6 +32,13 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | 🔨 đang làm |
 | P3b Web · P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
+
+## Plans — kế hoạch triển khai (task-by-task)
+
+| Kế hoạch | Phủ | Trạng thái |
+| --- | --- | --- |
+| [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | 🔨 sẵn sàng thực thi |
+| P3a-B: W2–W6 | wishlist · enquiry · newsletter · posts · site-media | ⬜ viết sau khi W1 đóng đinh pattern |
 
 ## Analysis — nghiên cứu từ Nexora
 
