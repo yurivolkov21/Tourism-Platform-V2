@@ -24,12 +24,16 @@ export class NewsletterController {
   @Implement(contract.newsletter.subscribe)
   subscribe() {
     return implement(contract.newsletter.subscribe).handler(async ({ input }) => {
-      // Honeypot: trả kết quả GIẢ (giống hệt nhánh thành công), KHÔNG ghi gì.
-      // Không reject để bot không biết mình bị phát hiện. Log warn để phía ta
-      // vẫn lần dấu được — response giống hệt thành công là tín hiệu DUY NHẤT
-      // phân biệt nhánh này.
+      // Honeypot: trả kết quả GIẢ (giống hệt nhánh thành công tới từng byte —
+      // cả hai nhánh cùng `{subscribed: true}`), KHÔNG ghi gì. Không reject để
+      // bot không biết mình bị phát hiện. Log warn để phía ta vẫn lần dấu được
+      // — response giống hệt thành công là tín hiệu DUY NHẤT phân biệt nhánh
+      // này.
+      //
+      // KHÔNG nội suy `website` thô vào log: chuỗi do kẻ tấn công điều khiển,
+      // chèn CR/LF là giả mạo được cả dòng log (xem `.max(200)` ở contract).
       if (input.website && input.website.length > 0) {
-        this.logger.warn(`Honeypot triggered — email=${input.email}, website=${input.website}`);
+        this.logger.warn(`Honeypot triggered — email=${input.email}, website field non-empty`);
         return { subscribed: true as const };
       }
       await this.newsletter.subscribe(input.email, input.source);

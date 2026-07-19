@@ -172,6 +172,55 @@ describe('newsletter (int)', () => {
     expect(await prisma.outbox.count()).toBe(0);
   });
 
+  it('ghi outbox lỗi giữa transaction → subscriber KHÔNG được lưu, không ai kẹt vĩnh viễn không có welcome', async () => {
+    // `subscribe()` ghi HAI thứ: hàng `subscriber` và hàng `outbox`
+    // NEWSLETTER_WELCOME. Trước fix chúng là hai round-trip ĐỘC LẬP, nên một
+    // cú crash/lỗi ở giữa để lại subscriber KHÔNG BAO GIỜ nhận welcome — và
+    // vì `dedupeKey` khoá theo email "một lần vĩnh viễn", lần đăng ký lại
+    // cũng không sinh được welcome mới. Chỉ tự khỏi nếu ĐÚNG người đó tình cờ
+    // điền lại form, mà cái đó cũng vô ích vì upsert `update: {}` no-op.
+    //
+    // Cùng khuôn với test atomicity của enquiry: cài TẠM một CHECK constraint
+    // chặn insert NEWSLETTER_WELCOME để ép lệnh ghi THỨ HAI hỏng giữa chừng,
+    // rồi khẳng định hàng `subscriber` ghi TRƯỚC đó cũng rollback theo.
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE outbox ADD CONSTRAINT newsletter_int_spec_block_welcome
+      CHECK (type <> 'NEWSLETTER_WELCOME')
+    `);
+    try {
+      const email = 'atomicity.rollback@example.com';
+      const res = await postSubscribe(app, { email }, '10.1.0.8');
+
+      // Lỗi không lường trước → oRPC trả shape INTERNAL_SERVER_ERROR.
+      expect(res.statusCode).toBeGreaterThanOrEqual(500);
+
+      // Điều CỐT LÕI: subscriber KHÔNG tồn tại — transaction rollback sạch,
+      // không dừng giữa chừng với subscriber đã lưu mà welcome thì không có.
+      expect(await prisma.subscriber.findFirst({ where: { email } })).toBeNull();
+      expect(await prisma.outbox.count()).toBe(0);
+    } finally {
+      // Dọn constraint TẠM — TRUNCATE ở beforeEach không xoá được nó.
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE outbox DROP CONSTRAINT newsletter_int_spec_block_welcome',
+      );
+    }
+  });
+
+  it('honeypot `website` dài quá 200 ký tự → 400, KHÔNG lọt vào log lẫn DB', async () => {
+    // Cùng lý do như bên enquiry: chuỗi do kẻ tấn công điều khiển, không trần
+    // thì chỉ còn body-limit 1 MiB của Fastify chắn — đủ để bơm ~1 MB text tự
+    // chọn (kể cả CR/LF giả mạo dòng log) vào log ứng dụng.
+    const res = await postSubscribe(
+      app,
+      { email: 'honeypot.oversize@example.com', website: 'a'.repeat(201) },
+      '10.1.0.6',
+    );
+
+    expect(res.statusCode).toBe(400);
+    expect(await prisma.subscriber.count()).toBe(0);
+    expect(await prisma.outbox.count()).toBe(0);
+  });
+
   it('throttle: gửi 6 lần liên tiếp cùng IP → lần thứ 6 trả 429', async () => {
     const ip = '10.1.0.5';
     for (let i = 1; i <= 5; i++) {
@@ -297,6 +346,36 @@ describe('newsletter unsubscribe (int)', () => {
     expect(after.unsubscribedAt).toBeNull();
   });
 
+  it('guard chỉ chặn BẢN TIN: email giao dịch tới người đã huỷ bản tin VẪN được gửi', async () => {
+    // Mutation-test bắt lỗ hổng này: NỚI guard ra MỌI EmailType (bỏ điều kiện
+    // `NEWSLETTER_EMAIL_TYPES.has(row.type)`) KHÔNG làm test nào đỏ — trong
+    // khi đó là lỗi nghiêm trọng: khách huỷ BẢN TIN sẽ mất luôn email xác nhận
+    // đơn hàng / hoàn tiền của chính họ (thứ họ đã trả tiền và luật KHÔNG cho
+    // phép chặn). Test này ghim PHẠM VI của guard, không chỉ tác dụng của nó.
+    const email = 'txn.still.sent@example.com';
+    const subscriber = await createSubscriber(email, '10.1.1.6');
+    await prisma.subscriber.update({
+      where: { id: subscriber.id },
+      data: { unsubscribedAt: new Date() },
+    });
+    await prisma.outbox.deleteMany();
+
+    await outbox.enqueue(
+      EmailType.BOOKING_CONFIRMATION,
+      { email, code: 'BK-TXN-1' },
+      `booking-confirmation:${email}`,
+    );
+    await outbox.enqueue(EmailType.NEWSLETTER_WELCOME, { email }, `newsletter-welcome:${email}`);
+
+    const result = await outbox.drainOnce();
+
+    // Bản tin bị bỏ qua; email giao dịch thì KHÔNG.
+    expect(result.skippedUnsubscribed).toBe(1);
+    expect(result.sent).toBe(1);
+    expect(fakeDeliverer.calls).toHaveLength(1);
+    expect(fakeDeliverer.calls[0]?.type).toBe(EmailType.BOOKING_CONFIRMATION);
+  });
+
   it('worker bỏ qua subscriber đã huỷ: enqueue NEWSLETTER_WELCOME cho subscriber có unsubscribedAt ≠ null → không gửi', async () => {
     const email = 'already.unsubscribed@example.com';
     const subscriber = await createSubscriber(email, '10.1.1.5');
@@ -397,6 +476,14 @@ describe('newsletter resubscribe (int)', () => {
     const subscriber = await createSubscriber(email, '10.1.2.5');
     const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
 
+    // Sentinel thay vì so `updatedAt` với giá trị lúc tạo: đẩy updatedAt về
+    // mốc quá khứ xa bằng raw SQL (đi vòng @updatedAt của Prisma) để biên phát
+    // hiện là HÀNG CHỤC NĂM, không phải vài millisecond. Oracle cũ chỉ đỏ khi
+    // hai lần ghi rơi vào hai millisecond khác nhau (đo được: 4-19ms) — đúng
+    // hướng an toàn nhưng phụ thuộc tốc độ máy một cách không cần thiết.
+    const sentinel = new Date('2000-01-01T00:00:00.000Z');
+    await prisma.$executeRaw`UPDATE subscribers SET updated_at = ${sentinel} WHERE id = ${subscriber.id}::uuid`;
+
     const res = await app.inject({
       method: 'POST',
       url: '/api/newsletter/resubscribe',
@@ -407,7 +494,7 @@ describe('newsletter resubscribe (int)', () => {
     expect(res.json()).toEqual({ subscribed: true });
 
     const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
-    expect(after.updatedAt).toEqual(subscriber.updatedAt);
+    expect(after.updatedAt).toEqual(sentinel);
   });
 
   it('gọi resubscribe 2 lần vẫn 200 (idempotent)', async () => {

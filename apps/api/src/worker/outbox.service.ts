@@ -3,6 +3,7 @@ import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
 import { EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
+import { resolveRecipient } from './recipient.js';
 
 /** Mỗi lượt drain lấy tối đa bấy nhiêu row PENDING (oldest-first). */
 const DRAIN_BATCH_SIZE = 50;
@@ -20,23 +21,6 @@ const LAST_ERROR_MAX = 1000;
  * email xác nhận đơn hàng của chính họ.
  */
 const NEWSLETTER_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([EmailType.NEWSLETTER_WELCOME]);
-
-/**
- * Rút field `email` (string) từ payload JSON nếu có. Không ép kiểu `any`:
- * `payload` là `Prisma.JsonValue` (union string|number|boolean|object|array|
- * null), phải tự thu hẹp bằng type guard tay trước khi đọc `.email`.
- */
-function extractPayloadEmail(payload: Prisma.JsonValue): string | undefined {
-  if (
-    payload !== null &&
-    typeof payload === 'object' &&
-    !Array.isArray(payload) &&
-    typeof payload.email === 'string'
-  ) {
-    return payload.email;
-  }
-  return undefined;
-}
 
 export interface DrainResult {
   /** Row giao thành công → SENT. */
@@ -155,7 +139,7 @@ export class OutboxService {
    * học citext ở `NewsletterService.subscribe()`).
    */
   private async isUnsubscribedRecipient(payload: Prisma.JsonValue): Promise<boolean> {
-    const email = extractPayloadEmail(payload);
+    const email = resolveRecipient(payload);
     if (!email) return false;
     const subscriber = await prisma.subscriber.findUnique({
       where: { email },

@@ -35,33 +35,45 @@ export class NewsletterService {
     // chuẩn hoá vừa đúng vừa nhất quán với hàng subscriber thật sự tồn tại).
     const normalizedEmail = email.trim().toLowerCase();
 
-    const subscriber = await prisma.subscriber.upsert({
-      where: { email: normalizedEmail },
-      create: { email: normalizedEmail, source: source ?? null },
-      update: {},
-    });
+    // MỘT transaction cho CẢ HAI lệnh ghi — cùng khuôn producer-nguyên-tử với
+    // `EnquiriesService.create()` và đúng bất biến `OutboxService` tự ghi
+    // trong JSDoc ("producer ghi row PENDING nguyên tử cùng state change").
+    // Tách rời thì một cú crash giữa hai lệnh để lại subscriber KHÔNG BAO GIỜ
+    // nhận welcome: `dedupeKey` khoá theo email là "một lần vĩnh viễn", nên
+    // ngay cả khi họ điền lại form cũng không sinh được welcome mới (upsert
+    // `update: {}` no-op) — hỏng vĩnh viễn, im lặng, chỉ với một người.
+    await prisma.$transaction(async (tx) => {
+      const subscriber = await tx.subscriber.upsert({
+        where: { email: normalizedEmail },
+        create: { email: normalizedEmail, source: source ?? null },
+        update: {},
+      });
 
-    // Vá review Task 6 — Khoản 2: "chưa email nào chứa link huỷ đăng ký".
-    // Sinh sẵn token NGAY LÚC enqueue (không để deliverer tự tính lại) —
-    // giữ một nguồn sự thật duy nhất cho bí mật ký, và deliverer chỉ cần đọc
-    // payload để ghép URL, không cần biết `NEWSLETTER_UNSUBSCRIBE_SECRET`.
-    const unsubscribeToken = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+      // Vá review Task 6 — Khoản 2: "chưa email nào chứa link huỷ đăng ký".
+      // Sinh sẵn token NGAY LÚC enqueue (không để deliverer tự tính lại) —
+      // giữ một nguồn sự thật duy nhất cho bí mật ký, và deliverer chỉ cần đọc
+      // payload để ghép URL, không cần biết `NEWSLETTER_UNSUBSCRIBE_SECRET`.
+      const unsubscribeToken = makeUnsubscribeToken(
+        subscriber.id,
+        env.NEWSLETTER_UNSUBSCRIBE_SECRET,
+      );
 
-    // dedupeKey theo EMAIL (không phải id) → "một lần vĩnh viễn cho mỗi địa
-    // chỉ". Đây là ngoại lệ hợp lệ DUY NHẤT của quy ước dedupe-key (xem
-    // docs/conventions/outbox-dedupe-key.md) — spec §4.4 ghi rõ: xoá
-    // subscriber rồi đăng ký lại sẽ KHÔNG nhận welcome lần hai.
-    // `skipDuplicates` ở đây LOAD-BEARING thật sự (key ổn định, khác hẳn
-    // enquiry — key đó chứa uuid nên duy nhất theo cấu tạo).
-    await prisma.outbox.createMany({
-      data: [
-        {
-          type: EmailType.NEWSLETTER_WELCOME,
-          payload: { email: normalizedEmail, subscriberId: subscriber.id, unsubscribeToken },
-          dedupeKey: `newsletter-welcome:${normalizedEmail}`,
-        },
-      ],
-      skipDuplicates: true,
+      // dedupeKey theo EMAIL (không phải id) → "một lần vĩnh viễn cho mỗi địa
+      // chỉ". Đây là ngoại lệ hợp lệ DUY NHẤT của quy ước dedupe-key (xem
+      // docs/conventions/outbox-dedupe-key.md) — spec §4.4 ghi rõ: xoá
+      // subscriber rồi đăng ký lại sẽ KHÔNG nhận welcome lần hai.
+      // `skipDuplicates` ở đây LOAD-BEARING thật sự (key ổn định, khác hẳn
+      // enquiry — key đó chứa uuid nên duy nhất theo cấu tạo).
+      await tx.outbox.createMany({
+        data: [
+          {
+            type: EmailType.NEWSLETTER_WELCOME,
+            payload: { email: normalizedEmail, subscriberId: subscriber.id, unsubscribeToken },
+            dedupeKey: `newsletter-welcome:${normalizedEmail}`,
+          },
+        ],
+        skipDuplicates: true,
+      });
     });
   }
 

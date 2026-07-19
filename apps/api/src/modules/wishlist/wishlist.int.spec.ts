@@ -96,6 +96,15 @@ describe('wishlist (int)', () => {
       headers: { cookie },
       payload: { tourId: tour.id, wished: true },
     });
+    // Sentinel: đẩy createdAt về mốc quá khứ xa TRƯỚC lần set thứ hai. Bất kỳ
+    // field nào lọt vào `update: {}` của upsert sau này (vd `createdAt`,
+    // `updatedAt`) đều kéo giá trị về NOW() — lệch hàng chục năm nên oracle
+    // không phụ thuộc hai lần ghi có rơi vào hai millisecond khác nhau.
+    // createdAt QUYẾT ĐỊNH thứ tự list (orderBy createdAt desc), nên ghi đè nó
+    // là đẩy tour cũ lên đầu wishlist mà không ai bấm gì.
+    const sentinel = new Date('2000-01-01T00:00:00.000Z');
+    await prisma.$executeRaw`UPDATE wishlist SET created_at = ${sentinel} WHERE user_id = ${user.id}::uuid AND tour_id = ${tour.id}::uuid`;
+
     const second = await app.inject({
       method: 'POST',
       url: '/api/wishlist',
@@ -106,6 +115,10 @@ describe('wishlist (int)', () => {
     expect(first.statusCode).toBe(200);
     expect(second.statusCode).toBe(200);
     expect(await prisma.wishlist.count({ where: { userId: user.id, tourId: tour.id } })).toBe(1);
+    const row = await prisma.wishlist.findFirstOrThrow({
+      where: { userId: user.id, tourId: tour.id },
+    });
+    expect(row.createdAt).toEqual(sentinel);
   });
 
   it('set({wished:false}) cho tour chưa từng lưu → 200, không 404 (no-op)', async () => {

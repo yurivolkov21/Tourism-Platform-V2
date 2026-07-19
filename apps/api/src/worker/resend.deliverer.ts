@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EmailType } from '../generated/prisma/enums.js';
 import { defaultHttpPost, type HttpPost } from '../lib/provider-http.js';
 import type { EmailDeliverer } from './deliverer.js';
+import { resolveRecipient } from './recipient.js';
 
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
 
@@ -50,12 +51,7 @@ export class ResendDeliverer implements EmailDeliverer {
      * Không tách thì alert bay thẳng về hộp thư khách và không admin nào
      * biết có lead mới — đúng thứ tính năng này sinh ra để sửa.
      */
-    const to =
-      typeof fields.to === 'string' && fields.to.length > 0
-        ? fields.to
-        : typeof fields.email === 'string'
-          ? fields.email
-          : undefined;
+    const to = resolveRecipient(fields);
     if (!to) {
       // Bug ở producer, không phải lỗi tạm thời — vẫn throw: drain retry rồi
       // park row FAILED kèm message này cho operator triage.

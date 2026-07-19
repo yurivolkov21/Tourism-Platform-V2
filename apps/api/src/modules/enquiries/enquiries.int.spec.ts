@@ -1,5 +1,6 @@
 import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { z } from 'zod';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { createFastifyAdapter } from '../../bootstrap.js';
@@ -175,7 +176,12 @@ describe('enquiries (int)', () => {
     }
   });
 
-  it('honeypot: website có giá trị → 200 GIẢ (CÙNG status thành công), id null, DB không có row nào mới', async () => {
+  it('honeypot: response KHÔNG phân biệt được với thành công (uuid hợp lệ, KHÔNG phải null) mà DB vẫn trống', async () => {
+    // Điểm cốt lõi của honeypot: bot KHÔNG được biết mình bị bắt. Trước đây
+    // nhánh này trả `{id: null}` còn nhánh thành công trả `{id: <uuid>}` —
+    // bot chỉ cần đọc body là biết ngay, vô hiệu hoá toàn bộ cái bẫy (status
+    // 200 giống nhau chẳng cứu được gì khi body tự khai). Test này ghim
+    // SHAPE của response, không chỉ status.
     const before = await prisma.enquiry.count();
 
     const res = await postEnquiry(
@@ -185,8 +191,31 @@ describe('enquiries (int)', () => {
     );
 
     expect(res.statusCode).toBe(200);
-    expect(res.json().id).toBeNull();
+    // uuid hợp lệ y như nhánh thành công — KHÔNG null, KHÔNG rỗng.
+    const { id } = res.json();
+    expect(id).toEqual(expect.any(String));
+    expect(z.uuid().safeParse(id).success).toBe(true);
+
+    // ...nhưng KHÔNG có gì được ghi: uuid kia là đồ giả, không trỏ tới row nào.
     expect(await prisma.enquiry.count()).toBe(before);
+    expect(await prisma.outbox.count()).toBe(0);
+    expect(await prisma.enquiry.findUnique({ where: { id } })).toBeNull();
+  });
+
+  it('honeypot `website` dài quá 200 ký tự → 400, KHÔNG lọt vào log lẫn DB', async () => {
+    // `website` là chuỗi DUY NHẤT do người dùng điều khiển mà trước đây không
+    // có trần, trong khi mọi field anh em đều có (`name` 120, `message` 2000).
+    // Không trần thì cái chắn duy nhất là body-limit 1 MiB của Fastify — bot
+    // bơm được ~1 MB text tự chọn (kể cả CR/LF giả mạo dòng log) vào log ứng
+    // dụng, lặp vô hạn từ vô số IP.
+    // IP RIÊNG (không dùng lại `10.0.0.8` của test throttle): throttler là
+    // in-memory và tính theo IP xuyên suốt cả file, nên mượn IP của test khác
+    // sẽ ăn mất một lượt trong hạn mức 5 của nó — flake tiềm ẩn, chỉ lộ ra khi
+    // request này ĐƯỢC 200 thay vì 400.
+    const res = await postEnquiry(app, { ...VALID_PAYLOAD, website: 'a'.repeat(201) }, '10.0.0.10');
+
+    expect(res.statusCode).toBe(400);
+    expect(await prisma.enquiry.count()).toBe(0);
     expect(await prisma.outbox.count()).toBe(0);
   });
 

@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { Controller, Logger, UseGuards } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
@@ -20,15 +21,23 @@ export class EnquiriesController {
   @Implement(contract.enquiries.create)
   create() {
     return implement(contract.enquiries.create).handler(async ({ input, errors }) => {
-      // Honeypot: trả 200 GIẢ (CÙNG status với nhánh thành công) và không ghi
-      // gì. Không reject để bot không biết mình bị phát hiện rồi đổi chiến
-      // thuật — status khác đi là dấu hiệu lộ ngay cho bot phân biệt. Đổi lại,
-      // log warn kèm email + nội dung honeypot (KHÔNG log toàn bộ payload —
-      // bỏ qua message/phone/...) để phía ta vẫn lần dấu được, vì response
-      // giống hệt thành công là tín hiệu DUY NHẤT phân biệt nhánh này.
+      // Honeypot: trả 200 GIẢ và không ghi gì. Không reject để bot không biết
+      // mình bị phát hiện rồi đổi chiến thuật.
+      //
+      // `randomUUID()` chứ KHÔNG phải `null`: cùng status thôi chưa đủ — bot
+      // đọc được body, nên `{id: null}` cạnh `{id: <uuid>}` của nhánh thành
+      // công là tấm biển báo "mày bị bắt rồi", vô hiệu hoá đúng cái bẫy này
+      // sinh ra để giăng. uuid trả về hợp lệ về cú pháp nhưng KHÔNG BAO GIỜ
+      // được ghi xuống DB — không tra ra row nào, không rò rỉ id thật.
+      //
+      // Log warn để phía ta vẫn lần dấu được (đây là tín hiệu DUY NHẤT phân
+      // biệt nhánh này). Giữ `email` — tín hiệu forensic hữu ích và là thứ
+      // vẫn log thường ngày — nhưng TUYỆT ĐỐI không nội suy `website` thô:
+      // đó là chuỗi do kẻ tấn công điều khiển, nội suy thẳng cho phép chèn
+      // CR/LF giả mạo cả dòng log (xem `.max(200)` ở contract).
       if (input.website && input.website.length > 0) {
-        this.logger.warn(`Honeypot triggered — email=${input.email}, website=${input.website}`);
-        return { id: null };
+        this.logger.warn(`Honeypot triggered — email=${input.email}, website field non-empty`);
+        return { id: randomUUID() };
       }
       try {
         return await this.enquiries.create(input);
