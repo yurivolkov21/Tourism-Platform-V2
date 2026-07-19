@@ -187,16 +187,17 @@ model User {
 
   sessions              Session[]
   accounts              Account[]
-  bookings              Booking[]             @relation("BookingCustomer")
-  refunds               Refund[]              @relation("RefundAdmin")
+  bookings              Booking[]               @relation("BookingCustomer")
+  refunds               Refund[]                @relation("RefundAdmin")
   reviews               Review[]
-  moderatedReviews      Review[]              @relation("ModeratedReviews")
+  moderatedReviews      Review[]                @relation("ModeratedReviews")
   wishlist              Wishlist[]
   posts                 Post[]
-  cancellationRequests  CancellationRequest[] @relation("CancellationRequester")
-  cancellationDecisions CancellationRequest[] @relation("CancellationDecider")
+  cancellationRequests  CancellationRequest[]   @relation("CancellationRequester")
+  cancellationDecisions CancellationRequest[]   @relation("CancellationDecider")
   enquiryNotes          EnquiryNote[]
   chatConversations     ChatConversation[]
+  moderationEvents      ReviewModerationEvent[]
 
   @@index([role])
   @@map("users")
@@ -315,6 +316,11 @@ model Tour {
   difficulty     TourDifficulty?
   isPublished    Boolean         @default(false) @map("is_published")
   isFeatured     Boolean         @default(false) @map("is_featured")
+  // Rating denormalized (audit A9): Nexora aggregate live mỗi page load
+  // (`summarize()` scan toàn bảng reviews). Ở đây cập nhật trong CÙNG
+  // transaction duyệt review nên không bao giờ lệch — xem ReviewsService.
+  ratingAvg      Decimal?        @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount    Int             @default(0) @map("rating_count")
   // Merchandising — tour hợp với ai + badge trên card.
   suitableFor    TravellerType[] @default([]) @map("suitable_for")
   badges         TourBadge[]     @default([])
@@ -478,9 +484,9 @@ model Booking {
   createdAt          DateTime        @default(now()) @map("created_at")
   updatedAt          DateTime        @updatedAt @map("updated_at")
 
-  user                User                 @relation("BookingCustomer", fields: [userId], references: [id], onDelete: Restrict)
-  tour                Tour                 @relation(fields: [tourId], references: [id], onDelete: Restrict)
-  departure           TourDeparture        @relation(fields: [departureId], references: [id], onDelete: Restrict)
+  user                 User                  @relation("BookingCustomer", fields: [userId], references: [id], onDelete: Restrict)
+  tour                 Tour                  @relation(fields: [tourId], references: [id], onDelete: Restrict)
+  departure            TourDeparture         @relation(fields: [departureId], references: [id], onDelete: Restrict)
   refunds              Refund[]
   reviews              Review[]
   cancellationRequests CancellationRequest[]
@@ -579,6 +585,10 @@ model Review {
   authorLocation String?      @map("author_location") @db.VarChar(120)
   source         ReviewSource @default(VERIFIED)
   isFeatured     Boolean      @default(false) @map("is_featured")
+  // Thứ tự testimonial trang chủ. Nexora sort bằng `orderBy source asc` —
+  // chạy được CHỈ nhờ thứ tự alphabet enum (CURATED < VERIFIED); đổi tên
+  // value là hỏng ngầm, không test nào bắt. Cột này làm ý định tường minh.
+  featuredRank   Int?         @map("featured_rank")
   // Tên chuyến free-text cho row curated không có tourId.
   tripLabel      String?      @map("trip_label") @db.VarChar(160)
   isApproved     Boolean      @default(false) @map("is_approved")
@@ -589,10 +599,11 @@ model Review {
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
-  tour        Tour?    @relation(fields: [tourId], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  moderatedBy User?    @relation("ModeratedReviews", fields: [moderatedById], references: [id], onDelete: SetNull)
+  tour             Tour?                   @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  user             User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  booking          Booking?                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  moderatedBy      User?                   @relation("ModeratedReviews", fields: [moderatedById], references: [id], onDelete: SetNull)
+  moderationEvents ReviewModerationEvent[]
 
   @@index([tourId, isApproved, authorDeleted, createdAt(sort: Desc)])
   @@index([userId])
@@ -653,7 +664,10 @@ model PaymentEvent {
 model Enquiry {
   id          String        @id @default(uuid(7)) @db.Uuid
   name        String        @db.VarChar(120)
-  email       String        @db.VarChar(200)
+  // citext (audit A2): Nexora KHÔNG lowercase email nhưng repeat-lead lại
+  // `groupBy(['email'])` so khớp chính xác → Jane@x.com và jane@x.com thành
+  // hai lead khác nhau, tính năng phát hiện trùng hỏng âm thầm.
+  email       String        @db.Citext
   phone       String?       @db.VarChar(30)
   message     String        @db.VarChar(2000)
   tourId      String?       @map("tour_id") @db.Uuid
@@ -702,10 +716,15 @@ model EnquiryNote {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Subscriber {
-  id        String   @id @default(uuid(7)) @db.Uuid
-  email     String   @unique @db.Citext
-  source    String?  @db.VarChar(40)
-  createdAt DateTime @default(now()) @map("created_at")
+  id             String    @id @default(uuid(7)) @db.Uuid
+  email          String    @unique @db.Citext
+  source         String?   @db.VarChar(40)
+  // Hủy đăng ký (audit A1): Nexora KHÔNG có unsubscribe công khai — rủi ro
+  // pháp lý GDPR/CAN-SPAM. Soft-unsubscribe giữ được bằng chứng consent,
+  // khác hẳn hard-delete của Nexora.
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
 
   @@map("subscribers")
 }
@@ -920,4 +939,27 @@ model ChatMessage {
 
   @@unique([conversationId, seq])
   @@map("chat_messages")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ReviewModerationEvent — lịch sử duyệt review, append-only (audit A8).
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Lịch sử duyệt review, append-only (audit A8). Nexora chỉ giữ
+/// `moderatedById/moderatedAt` kiểu last-write-wins nên không trả lời được
+/// "ai unapprove bài này 3 tuần trước và vì sao".
+model ReviewModerationEvent {
+  id           String   @id @default(uuid(7)) @db.Uuid
+  reviewId     String   @map("review_id") @db.Uuid
+  actorId      String?  @map("actor_id") @db.Uuid
+  fromApproved Boolean  @map("from_approved")
+  toApproved   Boolean  @map("to_approved")
+  note         String?  @db.VarChar(500)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  review Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  actor  User?  @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([reviewId, createdAt])
+  @@map("review_moderation_events")
 }

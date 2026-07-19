@@ -55,11 +55,13 @@ Vitest (unit + integration trên Docker Postgres `tourism_test`).
 ## Task 1: Schema query dùng chung
 
 **Files:**
+
 - Create: `libs/shared/contract/src/schemas/common.ts`
 - Create: `libs/shared/contract/src/schemas/common.spec.ts`
 - Modify: `libs/shared/contract/src/index.ts`
 
 **Interfaces:**
+
 - Produces: `PageQuerySchema` (`{page: number, pageSize: number}`), `SearchQuerySchema` (`{search?: string}`), `sortQuerySchema(keys)` → Zod object `{sortBy, sortOrder}`. Task 4 và 6 dùng lại.
 
 - [ ] **Bước 1: Viết test đỏ**
@@ -165,15 +167,17 @@ git add libs/shared/contract/src/schemas/common.ts libs/shared/contract/src/sche
 git commit -m "feat(contract): schema query dùng chung cho list endpoint (P3a-W0)"
 ```
 
----
+ ---
 
 ## Task 2: Migration `p3a_customer`
 
 **Files:**
+
 - Modify: `apps/api/prisma/schema.prisma`
 - Create: `apps/api/prisma/migrations/<timestamp>_p3a_customer/migration.sql`
 
 **Interfaces:**
+
 - Produces: `Tour.ratingAvg` (`Decimal?`), `Tour.ratingCount` (`Int`), `Review.featuredRank` (`Int?`), `Subscriber.unsubscribedAt` (`DateTime?`), model `ReviewModerationEvent`. Task 5 dùng tất cả.
 
 - [ ] **Bước 1: Sửa schema.prisma — Tour**
@@ -324,15 +328,17 @@ git add apps/api/prisma/
 git commit -m "feat(api): migration p3a_customer — rating denormalized, featuredRank, unsubscribedAt, audit moderation (P3a-W0)"
 ```
 
----
+ ---
 
 ## Task 3: Logic thuần — gate điều kiện review (TDD)
 
 **Files:**
+
 - Create: `apps/api/src/modules/reviews/review-eligibility.ts`
 - Create: `apps/api/src/modules/reviews/review-eligibility.spec.ts`
 
 **Interfaces:**
+
 - Produces: `checkReviewEligibility(input: EligibilityInput): EligibilityResult` — `EligibilityInput = { bookingStatus: BookingStatus; departureEndDate: Date; now: Date; ownerId: string; callerId: string }`; `EligibilityResult = { ok: true } | { ok: false; reason: 'NOT_OWNER' | 'NOT_PAID' | 'TRIP_NOT_COMPLETED' }`. Task 4 dùng.
 
 - [ ] **Bước 1: Viết test đỏ**
@@ -456,17 +462,19 @@ git add apps/api/src/modules/reviews/
 git commit -m "feat(api): gate điều kiện review — siết phải đi xong tour (P3a-W1)"
 ```
 
----
+ ---
 
 ## Task 4: Contract reviews + endpoint tạo review
 
 **Files:**
+
 - Create: `libs/shared/contract/src/schemas/reviews.ts`
 - Modify: `libs/shared/contract/src/contract.ts`, `libs/shared/contract/src/index.ts`
 - Create: `apps/api/src/modules/reviews/reviews.service.ts`, `reviews.controller.ts`, `reviews.module.ts`
 - Modify: `apps/api/src/app.module.ts`
 
 **Interfaces:**
+
 - Consumes: `checkReviewEligibility` (Task 3), `PageQuerySchema` (Task 1)
 - Produces: `ReviewsService.create(userId, input)` → `PublicReview`; contract `reviews.create`. Task 5 và 6 mở rộng service này.
 
@@ -730,16 +738,18 @@ git add libs/shared/contract/src apps/api/src
 git commit -m "feat(api,contract): endpoint tạo review với gate điều kiện (P3a-W1)"
 ```
 
----
+ ---
 
 ## Task 5: Transaction duyệt review 4-trong-1 + endpoint admin
 
 **Files:**
+
 - Modify: `apps/api/src/modules/reviews/reviews.service.ts`
 - Create: `apps/api/src/modules/reviews/admin-reviews.controller.ts`
 - Modify: `libs/shared/contract/src/contract.ts`, `libs/shared/contract/src/schemas/reviews.ts`, `apps/api/src/modules/reviews/reviews.module.ts`
 
 **Interfaces:**
+
 - Consumes: `ReviewsService` (Task 4)
 - Produces: `ReviewsService.moderate(actorId, reviewId, { approve, note? })` → `{ id, isApproved }`; contract `admin.reviews.{list, moderate}`. Task 6 dùng dữ liệu đã duyệt.
 
@@ -992,15 +1002,17 @@ git add .
 git commit -m "feat(api,contract): duyệt review — transaction 4-trong-1 + audit trail (P3a-W1)"
 ```
 
----
+ ---
 
 ## Task 6: Danh sách công khai + `mine` + integration test vòng đời
 
 **Files:**
+
 - Modify: `apps/api/src/modules/reviews/reviews.service.ts`, `reviews.controller.ts`
 - Create: `apps/api/src/modules/reviews/reviews.int.spec.ts`
 
 **Interfaces:**
+
 - Consumes: toàn bộ Task 3–5
 - Produces: `ReviewsService.{listByTour, mine, adminList, adminById}`
 
@@ -1310,7 +1322,7 @@ git add .
 git commit -m "feat(api): list review công khai + integration suite vòng đời (P3a-W1)"
 ```
 
----
+ ---
 
 ## Hoàn thành kế hoạch A khi
 

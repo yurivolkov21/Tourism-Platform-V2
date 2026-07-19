@@ -93,3 +93,9 @@ pnpm lint:fix                    # biome tự sửa format + lint
   `pnpm turbo run build --filter=@tourism/tokens`, không sửa tay.
 - Postgres: kết nối direct/session với pool ~10 — **cấm transaction pooler**
   (nguồn gốc mọi contortion của Nexora).
+- **TUYỆT ĐỐI không sửa file `migration.sql` đã được apply** — kể cả sửa
+  comment. Prisma lưu checksum từng migration; đổi một ký tự là drift, và
+  `migrate dev` từ chối chạy tiếp. Đã dính 19/07 khi đợt dịch comment sang
+  tiếng Việt quét cả `prisma/migrations/`. Migration đã chạy là **bản ghi lịch
+  sử bất biến**; muốn đổi gì thì viết migration MỚI. (Khi chạy công cụ sửa
+  hàng loạt, luôn loại trừ `apps/api/prisma/migrations/`.)
