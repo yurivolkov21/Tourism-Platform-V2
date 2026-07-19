@@ -26,7 +26,10 @@ import {
   ToursListQuerySchema,
 } from './schemas/catalog.js';
 import {
+  AdminReviewSchema,
+  AdminReviewsQuerySchema,
   CreateReviewInputSchema,
+  ModerateReviewInputSchema,
   PublicReviewSchema,
   ReviewsByTourQuerySchema,
 } from './schemas/reviews.js';
@@ -302,6 +305,28 @@ export const contract = {
           },
         })
         .output(DecideCancellationResultSchema),
+    },
+    /**
+     * Hàng đợi moderation review (spec P3a-A W1). `list` mặc định trả TẤT CẢ
+     * (kể cả chưa duyệt) để admin có cái nhìn đầy đủ; `moderate` là transaction
+     * 4-trong-1 (flip trạng thái + audit trail + recompute rating tour +
+     * enqueue email) — xem `ReviewsService.moderate`.
+     */
+    reviews: {
+      list: oc
+        .route({ method: 'GET', path: '/api/admin/reviews', summary: 'Moderation queue' })
+        .input(AdminReviewsQuerySchema)
+        .output(PagedSchema(AdminReviewSchema)),
+
+      moderate: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/reviews/{id}/moderate',
+          summary: 'Approve or unapprove a review',
+        })
+        .input(ModerateReviewInputSchema)
+        .output(AdminReviewSchema)
+        .errors({ REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' } }),
     },
   },
 };
