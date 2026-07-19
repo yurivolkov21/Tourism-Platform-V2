@@ -35,6 +35,13 @@ import {
   PublicReviewSchema,
   ReviewsByTourQuerySchema,
 } from './schemas/reviews.js';
+import {
+  CheckWishlistInputSchema,
+  CheckWishlistResultSchema,
+  SetWishlistInputSchema,
+  SetWishlistResultSchema,
+  WishlistItemSchema,
+} from './schemas/wishlist.js';
 
 /**
  * oRPC contract v1 (spec §6) — health + catalog read public. Được implement ở
@@ -149,6 +156,29 @@ export const contract = {
         REVIEW_TRIP_NOT_COMPLETED: { status: 400, message: 'Trip has not finished yet' },
         REVIEW_ALREADY_EXISTS: { status: 409, message: 'This booking already has a review' },
       }),
+  },
+  /**
+   * Wishlist — MỌI procedure đều CẦN AUTH (AuthGuard chạy toàn cục theo
+   * ADR-0003; không khai @Public() nghĩa là cần đăng nhập).
+   */
+  wishlist: {
+    set: oc
+      .route({ method: 'POST', path: '/api/wishlist', summary: 'Add/remove a tour (idempotent)' })
+      .input(SetWishlistInputSchema)
+      .output(SetWishlistResultSchema)
+      .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
+    list: oc
+      .route({ method: 'GET', path: '/api/wishlist', summary: 'List own wishlist, newest first' })
+      .input(PageQuerySchema)
+      .output(PagedSchema(WishlistItemSchema)),
+    check: oc
+      .route({
+        method: 'POST',
+        path: '/api/wishlist/check',
+        summary: 'Which of these tours are wished (batch)',
+      })
+      .input(CheckWishlistInputSchema)
+      .output(CheckWishlistResultSchema),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:

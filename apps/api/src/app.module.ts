@@ -10,6 +10,7 @@ import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
+import { WishlistModule } from './modules/wishlist/wishlist.module.js';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module.js';
     CatalogModule,
     BookingsModule,
     ReviewsModule,
+    WishlistModule,
   ],
   providers: [
     /**

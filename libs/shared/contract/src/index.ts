@@ -3,6 +3,7 @@ export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
 export * from './schemas/common.js';
 export * from './schemas/reviews.js';
+export * from './schemas/wishlist.js';
 
 // Re-exported so consumers can write `ContractInputs['catalog']['tours']['list']`
 // without depending on @orpc/contract directly.
