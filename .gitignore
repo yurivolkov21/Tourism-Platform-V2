@@ -13,11 +13,20 @@ generated/
 # turbo
 .turbo/
 
-# env — không bao giờ commit secrets
+# env — không bao giờ commit secrets.
+# Quy ước tên (chốt 19/07, áp cho MỌI app sinh ra về sau):
+#   .env.local       dev trên máy — Postgres Docker local
+#   .env.production  giá trị deploy thật (Supabase, key sandbox) — CÓ SECRET
+#   .env.example     bản mẫu, KHÔNG có secret — file env duy nhất được commit
+# Hai luật dưới không có đường dẫn nên khớp ở MỌI cấp thư mục: apps/web,
+# apps/admin… sinh sau cũng tự động được che, không cần sửa lại file này.
 .env
 .env.*
-# Mẫu không chứa secret — phải commit để người clone biết cần khai gì.
-!apps/api/.env.example
+# CẢNH BÁO: Next.js quy ước `.env.production` là file ĐƯỢC commit (chứa giá
+# trị prod không nhạy cảm), secret thì nằm ở `.env.production.local`. Dự án
+# này KHÔNG theo quy ước đó — `.env.production` ở đây CÓ secret thật. Đừng
+# bao giờ thêm ngoại lệ cho nó, kể cả khi tool của Next.js gợi ý.
+!.env.example
 
 # test / coverage
 coverage/

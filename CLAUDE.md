@@ -98,7 +98,18 @@ pnpm lint:fix                    # biome tự sửa format + lint
 - `libs/shared/tokens/generated/` là build artifact (gitignored) — build bằng
   `pnpm turbo run build --filter=@tourism/tokens`, không sửa tay.
 - Postgres: kết nối direct/session với pool ~10 — **cấm transaction pooler**
-  (nguồn gốc mọi contortion của Nexora).
+  (nguồn gốc mọi contortion của Nexora). Với Supabase: dùng **Session pooler**
+  (host `…pooler.supabase.com`, cổng **5432**, user `postgres.<ref>`). Cổng
+  **6543** là transaction pooler — cấm. Direct `db.<ref>.supabase.co` chỉ có
+  IPv6, WSL không tới được (đã đo).
+- **Tên file env — chốt 19/07, áp cho mọi app sinh ra về sau:** `.env.local`
+  (dev, file DUY NHẤT script pnpm tự đọc) · `.env.production` (deploy thật,
+  CÓ secret, phải trỏ tường minh `--env-file`) · `.env.example` (mẫu, file env
+  duy nhất được commit). Đặt env ở root repo là vô tác dụng — script chạy với
+  cwd `apps/api` nên chỉ thấy `apps/api/.env.local`.
+- Biến env để trống (`KEY=`) là **chuỗi rỗng**, không phải undefined —
+  `parseEnv` strip nó để `.default()` vẫn chạy. Nền tảng deploy cũng gửi chuỗi
+  rỗng khi ô bị bỏ trống, nên đừng gỡ bước strip này.
 - **TUYỆT ĐỐI không sửa file `migration.sql` đã được apply** — kể cả sửa
   comment. Prisma lưu checksum từng migration; đổi một ký tự là drift, và
   `migrate dev` từ chối chạy tiếp. Đã dính 19/07 khi đợt dịch comment sang

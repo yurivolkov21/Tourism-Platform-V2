@@ -8,14 +8,14 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:int": "vitest run --config vitest.int.config.ts",
-    "dev": "pnpm build && node --env-file-if-exists=.env dist/main.js",
-    "dev:worker": "pnpm build && node --env-file-if-exists=.env dist/worker.js",
+    "dev": "pnpm build && node --env-file-if-exists=.env.local dist/main.js",
+    "dev:worker": "pnpm build && node --env-file-if-exists=.env.local dist/worker.js",
     "start": "node dist/main.js",
     "start:worker": "node dist/worker.js",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
-    "db:seed": "swc src prisma -d dist-seed --ignore '**/*.spec.ts' && node --env-file-if-exists=.env dist-seed/prisma/seed.js"
+    "db:seed": "swc src prisma -d dist-seed --ignore '**/*.spec.ts' && node --env-file-if-exists=.env.local dist-seed/prisma/seed.js"
   },
   "dependencies": {
     "@nestjs/common": "11.1.28",
