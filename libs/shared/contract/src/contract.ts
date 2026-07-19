@@ -26,6 +26,7 @@ import {
   ToursListQuerySchema,
 } from './schemas/catalog.js';
 import { PageQuerySchema } from './schemas/common.js';
+import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -179,6 +180,28 @@ export const contract = {
       })
       .input(CheckWishlistInputSchema)
       .output(CheckWishlistResultSchema),
+  },
+  /**
+   * Form liên hệ công khai (spec §4.3) — endpoint GHI đầu tiên khách CHƯA
+   * đăng nhập gọi được (`@Public()` trên controller, ADR-0003), có
+   * `@UseGuards(ThrottlerGuard)` riêng chống spam (`PUBLIC_WRITE_THROTTLE`).
+   *
+   * `successStatus: 201` — khai TƯỜNG MINH vì oRPC mặc định 200 cho mọi
+   * method (`defaultSuccessStatus`); đây là tạo mới một resource (kể cả
+   * nhánh honeypot trả `id: null` giả) nên đúng ngữ nghĩa REST là 201, khác
+   * `wishlist.set` ở trên vốn là idempotent upsert nên giữ 200 mặc định.
+   */
+  enquiries: {
+    create: oc
+      .route({
+        method: 'POST',
+        path: '/api/enquiries',
+        summary: 'Submit a contact enquiry',
+        successStatus: 201,
+      })
+      .input(CreateEnquiryInputSchema)
+      .output(EnquiryResultSchema)
+      .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:

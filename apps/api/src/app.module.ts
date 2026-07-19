@@ -8,6 +8,7 @@ import { AuthModule } from './auth/auth.module.js';
 import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { WishlistModule } from './modules/wishlist/wishlist.module.js';
@@ -45,6 +46,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     BookingsModule,
     ReviewsModule,
     WishlistModule,
+    EnquiriesModule,
   ],
   providers: [
     /**

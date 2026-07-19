@@ -2,6 +2,7 @@ export * from './contract.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
 export * from './schemas/common.js';
+export * from './schemas/enquiries.js';
 export * from './schemas/reviews.js';
 export * from './schemas/wishlist.js';
 
