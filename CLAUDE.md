@@ -40,14 +40,22 @@ P5 mobile → P6 AI concierge → freeze 15/10.
    để biết có gì và dùng khi nào). Có thì gọi qua Skill tool; đừng dựng lại thứ
    đã có. Brief cho subagent cũng phải nhắc điều này — hook nhắc-skill chỉ chạy
    khi user gửi tin, KHÔNG áp cho subagent.
-10. **`pnpm gate:int` trước khi khai một task/feature là xong** — nó chạy
+10. **Đối chiếu Nexora TRƯỚC mỗi phase — chủ động, không đợi được nhắc.**
+    v2 là bản *nâng cấp*; thứ gì Nexora có mà đây thiếu là thụt lùi. Rà ở
+    CẢ HAI tầng: (a) endpoint/feature, (b) **hạ tầng xuyên suốt** —
+    bootstrap, middleware, interceptor/filter/guard, cron, retry/timeout,
+    observability, security header. Bài học 19/07: API parity map chỉ đếm
+    endpoint nên bỏ lọt CORS, rate limit, HTTP timeout, health-check DB —
+    user phải tự phát hiện. Phân loại mỗi khác biệt: thụt lùi cần vá / cố
+    ý bỏ (ghi lý do) / làm khác mà tương đương / v2 tốt hơn.
+11. **`pnpm gate:int` trước khi khai một task/feature là xong** — nó chạy
     `gate` (build + typecheck + unit test + lint) CỘNG integration test.
     `pnpm gate` trần chỉ dùng cho vòng lặp TDD nhanh; nó KHÔNG đụng tới
     integration test, nên "gate xanh" một mình không đủ để khai hoàn thành.
     Lý do tách: int test cần Postgres và chậm hơn ~6x. Lý do bắt buộc chạy:
     một int spec từng hỏng suốt 4 task mà không ai biết vì không có gì canh.
-11. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
-12. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
+12. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
+13. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · số test) + cập nhật doc hiện-trạng bị ảnh hưởng.
 
 ## Toolchain thống nhất (MỘT tool cho mỗi việc — không có ngoại lệ)
