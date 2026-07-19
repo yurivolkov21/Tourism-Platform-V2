@@ -92,15 +92,23 @@ describe('enquiries (int)', () => {
     expect(enquiry.status).toBe(EnquiryStatus.NEW);
     expect(enquiry.name).toBe(VALID_PAYLOAD.name);
 
-    // Đúng 2 outbox, gắn ĐÚNG dedupeKey theo quy ước <event>:<entityId>.
+    // ĐÚNG 2 outbox trong toàn bảng — beforeEach đã TRUNCATE nên count() trần
+    // là assertion mạnh hơn lọc theo `dedupeKey: { contains: body.id } }`:
+    // cách cũ không bắt được một row THỨ BA có dedupeKey không liên quan.
+    expect(await prisma.outbox.count()).toBe(2);
+
+    // Gắn ĐÚNG dedupeKey theo quy ước <event>:<entityId>.
     const outboxRows = await prisma.outbox.findMany({
       where: { dedupeKey: { contains: body.id } },
     });
-    expect(outboxRows).toHaveLength(2);
     const received = outboxRows.find((r) => r.dedupeKey === `enquiry-received:${body.id}`);
     const alert = outboxRows.find((r) => r.dedupeKey === `enquiry-admin-alert:${body.id}`);
     expect(received?.type).toBe(EmailType.ENQUIRY_RECEIVED);
     expect(alert?.type).toBe(EmailType.ENQUIRY_ADMIN_ALERT);
+    // Payload ACK khách KHÔNG được có `to` — nếu ai gộp nó vào object `shared`
+    // dùng chung cho cả hai outbox, ack cũng sẽ bay về admin trong khi test
+    // riêng cho alert (bên dưới) vẫn xanh vì nó không kiểm ACK.
+    expect(received?.payload).not.toHaveProperty('to');
   });
 
   it('alert đi tới ADMIN, không tới khách — payload.to = adminEmails[0], khác email khách', async () => {
@@ -234,6 +242,45 @@ describe('enquiries (int)', () => {
       where: { dedupeKey: `enquiry-received:${res.json().id}` },
     });
     expect((received.payload as Record<string, unknown>).tourTitle).toBe(tour.title);
+  });
+
+  it('payload đủ 10/10 field → mỗi field trong row DB khớp đúng giá trị đã gửi', async () => {
+    // Mutation-test đã phát hiện: VALID_PAYLOAD tối giản chỉ có
+    // name/email/message nên 6 field còn lại (phone, nationality, travelDate,
+    // groupSize, budgetTier, interests) chưa bao giờ được assert — hoán đổi
+    // nationality ↔ budgetTier trong service, 8/8 test cũ vẫn XANH. Test này
+    // gửi ĐỦ 10 field rồi soi TỪNG field trong DB, không qua `toMatchObject`
+    // lỏng lẻo, để bắt đúng lớp lỗi "field map sai chỗ".
+    const tour = await createPublishedTour('full-field-enquiry');
+    const fullPayload = {
+      name: 'Full Field Tester',
+      email: 'full.field@example.com',
+      phone: '+84 901 234 567',
+      message: 'This enquiry exercises every single optional field end to end.',
+      tourId: tour.id,
+      nationality: 'Vietnamese',
+      // ISO date → cột `@db.Date` — dòng rủi ro nhất trong cả field map,
+      // phải soi giá trị THẬT thay vì chỉ kiểm not-null.
+      travelDate: '2026-12-25',
+      groupSize: 4,
+      budgetTier: 'luxury',
+      interests: ['diving', 'street-food'],
+    };
+
+    const res = await postEnquiry(app, fullPayload, '10.0.0.9');
+    expect(res.statusCode).toBe(200);
+
+    const row = await prisma.enquiry.findUniqueOrThrow({ where: { id: res.json().id } });
+    expect(row.name).toBe(fullPayload.name);
+    expect(row.email).toBe(fullPayload.email);
+    expect(row.phone).toBe(fullPayload.phone);
+    expect(row.message).toBe(fullPayload.message);
+    expect(row.tourId).toBe(fullPayload.tourId);
+    expect(row.nationality).toBe(fullPayload.nationality);
+    expect(row.travelDate?.toISOString().slice(0, 10)).toBe(fullPayload.travelDate);
+    expect(row.groupSize).toBe(fullPayload.groupSize);
+    expect(row.budgetTier).toBe(fullPayload.budgetTier);
+    expect(row.interests).toEqual(fullPayload.interests);
   });
 
   it('throttle: gửi 6 lần liên tiếp cùng IP → lần thứ 6 trả 429, DB chỉ có 5 row', async () => {

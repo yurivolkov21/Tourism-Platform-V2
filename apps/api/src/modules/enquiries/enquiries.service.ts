@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { CreateEnquiryInput } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import { adminEmails } from '../../config/env.js';
+import { primaryAdminEmail } from '../../config/env.js';
 import { EmailType } from '../../generated/prisma/enums.js';
 
 export class TourNotFoundError extends Error {}
@@ -72,7 +72,9 @@ export class EnquiriesService {
             // KHÁCH (để admin đọc trong nội dung). Thiếu `to` thì alert bay
             // thẳng về hộp thư khách và không admin nào biết có lead mới,
             // đúng thứ A13 sinh ra để sửa. `to` THẮNG `email` trong deliver().
-            payload: { ...shared, to: adminEmails[0] },
+            // `primaryAdminEmail` là `string` thật (không `| undefined`) —
+            // env.ts đã chặn ADMIN_EMAILS rỗng ngay lúc boot.
+            payload: { ...shared, to: primaryAdminEmail },
             dedupeKey: `enquiry-admin-alert:${enquiry.id}`,
           },
         ],

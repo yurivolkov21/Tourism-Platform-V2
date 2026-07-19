@@ -132,6 +132,17 @@ describe('parseEnv', () => {
     ).toBe('wh-1');
   });
 
+  it('rejects ADMIN_EMAILS that parses to an empty list, in ANY environment', () => {
+    // Bug đã suýt lọt: " " hoặc "," không phải chuỗi rỗng CHÍNH XÁC nên
+    // `cleaned` (strip `v !== ''`) không strip, `.default()` không kích
+    // hoạt — nhưng `parseCommaList` lại lọc sạch, để `adminEmails = []` và
+    // `adminEmails[0]` (dùng làm `to` của ENQUIRY_ADMIN_ALERT) là undefined.
+    // Guard phải chặn NGAY ở boot, không chỉ ở production.
+    expect(() => parseEnv({ ADMIN_EMAILS: ' ' })).toThrow(/ADMIN_EMAILS/);
+    expect(() => parseEnv({ ADMIN_EMAILS: ',' })).toThrow(/ADMIN_EMAILS/);
+    expect(() => parseEnv({ ADMIN_EMAILS: ',,' })).toThrow(/ADMIN_EMAILS/);
+  });
+
   it('accepts Google OAuth pair when provided', () => {
     const env = parseEnv({ GOOGLE_CLIENT_ID: 'id', GOOGLE_CLIENT_SECRET: 'secret' });
     expect(env.GOOGLE_CLIENT_ID).toBe('id');

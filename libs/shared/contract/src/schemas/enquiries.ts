@@ -21,7 +21,7 @@ export const CreateEnquiryInputSchema = z.object({
    * HONEYPOT — field ẩn trong form, người thật không bao giờ điền.
    *
    * Cố ý `.optional()` KHÔNG refine reject: nếu trả lỗi validate thì bot
-   * biết ngay mình bị phát hiện rồi đổi chiến thuật. Controller sẽ trả 201
+   * biết ngay mình bị phát hiện rồi đổi chiến thuật. Controller sẽ trả 200
    * giả và KHÔNG ghi DB — bot tưởng thành công, ta không tốn một dòng nào.
    */
   website: z.string().optional(),
@@ -29,7 +29,7 @@ export const CreateEnquiryInputSchema = z.object({
 
 export type CreateEnquiryInput = z.infer<typeof CreateEnquiryInputSchema>;
 
-/** `id: null` khi bị honeypot bắt — response vẫn 201 nên bot không phân biệt
+/** `id: null` khi bị honeypot bắt — response vẫn 200 nên bot không phân biệt
  * được, còn phía ta thì log được. */
 export const EnquiryResultSchema = z.object({ id: z.uuid().nullable() });
 

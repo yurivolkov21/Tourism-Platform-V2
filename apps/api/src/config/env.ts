@@ -49,6 +49,22 @@ const EnvSchema = z
     EMAIL_FROM: z.string().min(1).default('Tourism <noreply@tourism.test>'),
   })
   .superRefine((cfg, ctx) => {
+    // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ
+    // " " hoặc "," hoặc ",,") là misconfiguration nghiêm trọng ở MỌI môi
+    // trường, không riêng production — `adminEmails[0]` là người nhận `to`
+    // của email ENQUIRY_ADMIN_ALERT; rỗng → `to: undefined` → JSON.stringify
+    // bỏ key → `deliver()` rơi về `payload.email` = email KHÁCH, alert bay
+    // nhầm hộp thư khách mà không ai biết (đúng bug A13 tính năng này sinh
+    // ra để chặn). Chặn NGAY ở boot thay vì hỏng âm thầm lúc runtime.
+    if (parseCommaList(cfg.ADMIN_EMAILS).length === 0) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ADMIN_EMAILS'],
+        message:
+          'ADMIN_EMAILS must resolve to at least one email after parsing ' +
+          '(comma list is empty — check for stray whitespace/commas)',
+      });
+    }
     if (cfg.NODE_ENV !== 'production') return;
     if (cfg.DATABASE_URL === LOCAL_COMPOSE_DATABASE_URL) {
       ctx.addIssue({
@@ -116,3 +132,19 @@ export const adminEmails: readonly string[] = parseCommaList(env.ADMIN_EMAILS).m
 
 /** TRUSTED_ORIGINS đã parse cho Better Auth. */
 export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIGINS);
+
+/**
+ * Địa chỉ admin ĐẦU TIÊN — dùng làm người nhận (`to`) cho email nội bộ như
+ * ENQUIRY_ADMIN_ALERT. Kiểu `string` THẬT, không `| undefined`:
+ * `EnvSchema.superRefine` phía trên đã chặn ADMIN_EMAILS parse ra rỗng ngay
+ * lúc boot nên `adminEmails` không bao giờ rỗng tới đây — nhánh throw dưới
+ * chỉ để TypeScript (`noUncheckedIndexedAccess`) hẹp kiểu thật sự, không
+ * dùng cast `as` để lách.
+ */
+const [firstAdminEmail] = adminEmails;
+if (firstAdminEmail === undefined) {
+  throw new Error(
+    'adminEmails rỗng dù EnvSchema.superRefine đã guard ADMIN_EMAILS ở boot — bất biến bị vi phạm',
+  );
+}
+export const primaryAdminEmail: string = firstAdminEmail;
