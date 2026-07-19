@@ -1,5 +1,23 @@
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { trustedOrigins } from './config/env.js';
+
+/**
+ * Adapter Fastify dùng chung cho `main.ts` VÀ test — một nguồn sự thật.
+ *
+ * `trustProxy`: deploy nằm sau reverse proxy của nền tảng (Render/Railway).
+ * Không bật thì `req.ip` là IP của proxy — MỌI client dùng chung một địa
+ * chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài request của một
+ * người.
+ *
+ * Vì sao là factory chứ không hard-code hai nơi: trước đây `main.ts` và
+ * file test mỗi bên tự dựng adapter riêng, nên gỡ `trustProxy` khỏi
+ * `main.ts` mà cả suite vẫn xanh (đã tái hiện được). Đúng loại lỗ mà
+ * `configureHttp` bên dưới sinh ra để tránh — lặp lại lần hai thì phải
+ * chữa tận gốc.
+ */
+export function createFastifyAdapter(): FastifyAdapter {
+  return new FastifyAdapter({ trustProxy: true });
+}
 
 /**
  * Cấu hình tầng HTTP dùng chung cho cả `main.ts` (production) lẫn test e2e.

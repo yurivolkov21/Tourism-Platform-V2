@@ -1,9 +1,10 @@
 import { Controller, Post, UseGuards } from '@nestjs/common';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import { AppModule } from '../app.module.js';
 import { Public } from '../auth/public.decorator.js';
+import { createFastifyAdapter } from '../bootstrap.js';
 
 /**
  * Canh chính cơ chế: không có test này thì ai đó gỡ ThrottlerModule mà cả
@@ -33,9 +34,7 @@ describe('rate limiting endpoint ghi công khai', () => {
     // socket giả của `.inject()` (giống hệt cho mọi request), khiến
     // ThrottlerGuard đếm chung một khoá bất kể header IP test set khác nhau
     // (test "đếm theo IP" sẽ bị vạ lây 429 dù dùng client khác).
-    app = moduleRef.createNestApplication<NestFastifyApplication>(
-      new FastifyAdapter({ trustProxy: true }),
-    );
+    app = moduleRef.createNestApplication<NestFastifyApplication>(createFastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });

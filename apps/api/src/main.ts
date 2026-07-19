@@ -1,8 +1,8 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { AppModule } from './app.module.js';
-import { configureHttp } from './bootstrap.js';
+import { configureHttp, createFastifyAdapter } from './bootstrap.js';
 import { env } from './config/env.js';
 
 async function bootstrap() {
@@ -14,11 +14,9 @@ async function bootstrap() {
   // Không bật thì `req.ip` là IP của proxy — MỌI client dùng chung một địa
   // chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài request của một
   // người. Phải có TRƯỚC khi gắn throttle, không phải sau.
-  const app = await NestFactory.create<NestFastifyApplication>(
-    AppModule,
-    new FastifyAdapter({ trustProxy: true }),
-    { rawBody: true },
-  );
+  const app = await NestFactory.create<NestFastifyApplication>(AppModule, createFastifyAdapter(), {
+    rawBody: true,
+  });
 
   // CORS — tách sang bootstrap.ts để test e2e dùng lại được cùng cấu hình.
   await configureHttp(app);
