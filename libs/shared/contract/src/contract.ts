@@ -27,6 +27,7 @@ import {
 } from './schemas/catalog.js';
 import { PageQuerySchema } from './schemas/common.js';
 import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
+import { SubscribeInputSchema, SubscribeResultSchema } from './schemas/newsletter.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -201,6 +202,23 @@ export const contract = {
       .input(CreateEnquiryInputSchema)
       .output(EnquiryResultSchema)
       .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
+  },
+  /**
+   * Đăng ký nhận bản tin (spec §4.4, nửa đầu) — endpoint GHI công khai thứ
+   * hai (`@Public()`, cùng `PUBLIC_WRITE_THROTTLE` với enquiries). Output
+   * LUÔN `{subscribed: true}` — xem JSDoc ở `SubscribeResultSchema` — nên
+   * KHÔNG khai `.errors()` nào: mọi nhánh (mới/đã có/honeypot) đều thành
+   * công theo response, không có gì để phân biệt bằng error code.
+   */
+  newsletter: {
+    subscribe: oc
+      .route({
+        method: 'POST',
+        path: '/api/newsletter/subscribe',
+        summary: 'Subscribe to the newsletter (idempotent, anti email-enumeration)',
+      })
+      .input(SubscribeInputSchema)
+      .output(SubscribeResultSchema),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:
