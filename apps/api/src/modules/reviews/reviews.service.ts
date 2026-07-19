@@ -272,6 +272,51 @@ export class ReviewsService {
     });
   }
 
+  /**
+   * Review đã duyệt của một tour. Sort [authorDeleted asc, createdAt desc]
+   * chạy thẳng trên index [tourId, isApproved, authorDeleted, createdAt desc]
+   * — review khuyết danh tự trôi xuống dưới, review có danh tính lên trước.
+   */
+  async listByTour(
+    tourSlug: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{
+    items: PublicReview[];
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  }> {
+    const tour = await prisma.tour.findFirst({
+      where: { slug: tourSlug, isPublished: true },
+      select: { id: true },
+    });
+    // 404 thay vì "200 rỗng": 200-rỗng che mất bug routing của FE.
+    if (!tour) throw new TourNotFoundError();
+
+    const where = { tourId: tour.id, isApproved: true };
+    const [rows, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        orderBy: [{ authorDeleted: 'asc' }, { createdAt: 'desc' }],
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.review.count({ where }),
+    ]);
+
+    return {
+      items: rows.map(toPublicReview),
+      page,
+      // Output contract dùng `limit` (PagedSchema chung), không phải
+      // `pageSize` — cùng gotcha đã ghi ở adminList() bên dưới.
+      limit: pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
   /** Hàng đợi moderation cho admin. Mặc định không lọc — admin thấy tất cả. */
   async adminList(query: { page: number; pageSize: number; isApproved?: boolean }): Promise<{
     items: AdminReview[];

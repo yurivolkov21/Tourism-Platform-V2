@@ -11,11 +11,25 @@ import {
   ReviewNotEligibleError,
   ReviewsService,
   ReviewTripNotCompletedError,
+  TourNotFoundError,
 } from './reviews.service.js';
 
 @Controller()
 export class ReviewsController {
   constructor(private readonly reviews: ReviewsService) {}
+
+  /** Public — review đã duyệt của một tour, không cần đăng nhập. */
+  @Implement(contract.reviews.listByTour)
+  listByTour() {
+    return implement(contract.reviews.listByTour).handler(async ({ input, errors }) => {
+      try {
+        return await this.reviews.listByTour(input.tourSlug, input.page, input.pageSize);
+      } catch (err) {
+        if (err instanceof TourNotFoundError) throw errors.TOUR_NOT_FOUND();
+        throw err;
+      }
+    });
+  }
 
   @UseGuards(AuthGuard)
   @Implement(contract.reviews.create)

@@ -43,8 +43,10 @@ describe('auth integration (Better Auth + tombstone)', () => {
   });
 
   beforeEach(async () => {
+    // Thứ tự truncate theo chiều phụ thuộc FK (bookings/tours thêm vào cho
+    // fixture VERIFIED của test d — xem comment ở đó).
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE users, sessions, accounts, verifications, reviews CASCADE',
+      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications CASCADE',
     );
   });
 
@@ -109,9 +111,61 @@ describe('auth integration (Better Auth + tombstone)', () => {
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('sign-up did not create user');
 
-    // Review của user (tourId/bookingId nullable → không cần fixture catalog).
+    // Review VERIFIED của user — CHECK `reviews_source_shape` (migration
+    // p3a_customer, sau khi test này viết) đòi VERIFIED phải có ĐỦ CẢ BA
+    // tourId/userId/bookingId NOT NULL, nên phải dựng tour+booking tối
+    // thiểu kèm theo (không còn "tourId/bookingId nullable" như trước nữa).
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'walking-d', name: 'Walking', order: 1 },
+    });
+    const tour = await prisma.tour.create({
+      data: {
+        slug: 'dave-tombstone-tour',
+        title: 'Dave Tombstone Tour',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '39.00',
+        currency: 'USD',
+        isPublished: true,
+      },
+    });
+    const departure = await prisma.tourDeparture.create({
+      data: {
+        tourId: tour.id,
+        startDate: new Date(Date.now() - 864e5),
+        endDate: new Date(Date.now() - 864e5),
+        seatsTotal: 10,
+        seatsBooked: 1,
+      },
+    });
+    const booking = await prisma.booking.create({
+      data: {
+        code: 'BK-DAVETEST',
+        userId: user.id,
+        tourId: tour.id,
+        departureId: departure.id,
+        numAdults: 1,
+        totalAmount: '39.00',
+        currency: 'USD',
+        status: 'PAID',
+        tourTitle: tour.title,
+        departureStartDate: departure.startDate,
+        departureEndDate: departure.endDate,
+        unitPrice: '39.00',
+        contactName: 'Dave',
+        contactEmail: email,
+        paymentProvider: 'STRIPE',
+      },
+    });
     const review = await prisma.review.create({
-      data: { userId: user.id, rating: 5, body: 'Great trip!', authorName: 'Dave' },
+      data: {
+        tourId: tour.id,
+        userId: user.id,
+        bookingId: booking.id,
+        rating: 5,
+        body: 'Great trip!',
+        authorName: 'Dave',
+      },
     });
 
     const del = await app.inject({ method: 'DELETE', url: '/api/account', headers: { cookie } });
