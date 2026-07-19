@@ -24,14 +24,22 @@ export const CreateEnquiryInputSchema = z.object({
    * biết ngay mình bị phát hiện rồi đổi chiến thuật. Controller sẽ trả 200
    * giả và KHÔNG ghi DB — bot tưởng thành công, ta không tốn một dòng nào.
    *
-   * `.max(200)` BẮT BUỘC dù field này chẳng bao giờ được dùng: đây là chuỗi
-   * do kẻ tấn công điều khiển và mọi field anh em đều đã có trần (`name` 120,
-   * `message` 2000). Không có trần thì cái chặn duy nhất là giới hạn body
-   * 1 MiB mặc định của Fastify — tức bot bơm được ~1 MB text tự chọn, lặp vô
-   * hạn từ vô số IP, vào log ứng dụng. 200 đủ rộng cho mọi giá trị thật
-   * (luôn là chuỗi rỗng) mà vẫn chặn được kiểu lạm dụng đó.
+   * CẮT NGẮN 200 ký tự, CỐ Ý KHÔNG `.max()` reject. Đây là chuỗi do kẻ tấn
+   * công điều khiển và là field user-controlled DUY NHẤT từng không có trần
+   * (mọi field anh em đều có: `name` 120, `message` 2000) — không chặn thì
+   * bot bơm được ~1 MB text tự chọn, kèm CR/LF giả mạo cả dòng log.
+   *
+   * Vì sao cắt chứ không reject: Fastify đã parse TOÀN BỘ body (tới trần
+   * 1 MiB mặc định) TRƯỚC khi zod chạy, nên reject không tiết kiệm được byte
+   * băng thông hay công parse nào — nó chỉ biến một 200-giả thành 400, tức
+   * dựng lại đúng tín hiệu phân biệt mà honeypot sinh ra để xoá (xem
+   * `EnquiryResultSchema`). Cắt ngắn chặn phơi nhiễm log y hệt mà response
+   * vẫn không phân biệt được với thành công.
    */
-  website: z.string().max(200).optional(),
+  website: z
+    .string()
+    .transform((value) => value.slice(0, 200))
+    .optional(),
 });
 
 export type CreateEnquiryInput = z.infer<typeof CreateEnquiryInputSchema>;

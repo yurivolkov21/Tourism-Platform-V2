@@ -12,11 +12,15 @@ export const SubscribeInputSchema = z.object({
    * HONEYPOT — cùng cơ chế với enquiry: không reject, controller trả kết quả
    * GIẢ giống hệt thành công để bot không phân biệt được.
    *
-   * `.max(200)` cùng lý do như `website` bên enquiry: chuỗi do kẻ tấn công
-   * điều khiển, không có trần thì chỉ còn body-limit 1 MiB của Fastify chắn
-   * — đủ để bơm ~1 MB text tự chọn vào log ứng dụng, lặp vô hạn.
+   * CẮT NGẮN 200 ký tự (KHÔNG `.max()` reject) — cùng lý do như `website` bên
+   * enquiry: Fastify đã parse hết body trước khi zod chạy nên reject không
+   * tiết kiệm gì, chỉ biến 200-giả thành 400 và dựng lại đúng tín hiệu phân
+   * biệt mà honeypot sinh ra để xoá. Cắt ngắn chặn phơi nhiễm log y hệt.
    */
-  website: z.string().max(200).optional(),
+  website: z
+    .string()
+    .transform((value) => value.slice(0, 200))
+    .optional(),
 });
 
 export type SubscribeInput = z.infer<typeof SubscribeInputSchema>;

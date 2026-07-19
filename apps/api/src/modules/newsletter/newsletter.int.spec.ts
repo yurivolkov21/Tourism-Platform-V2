@@ -206,17 +206,25 @@ describe('newsletter (int)', () => {
     }
   });
 
-  it('honeypot `website` dài quá 200 ký tự → 400, KHÔNG lọt vào log lẫn DB', async () => {
+  it('honeypot `website` quá dài → CẮT NGẮN, response vẫn KHÔNG phân biệt được với thành công (không 400)', async () => {
     // Cùng lý do như bên enquiry: chuỗi do kẻ tấn công điều khiển, không trần
-    // thì chỉ còn body-limit 1 MiB của Fastify chắn — đủ để bơm ~1 MB text tự
-    // chọn (kể cả CR/LF giả mạo dòng log) vào log ứng dụng.
+    // thì bot bơm được ~1 MB text tự chọn (kể cả CR/LF giả mạo dòng log) vào
+    // log ứng dụng. CẮT chứ không reject — Fastify parse xong body trước khi
+    // zod chạy nên reject không tiết kiệm gì, chỉ trả lại cho bot tín hiệu
+    // phân biệt 400-vs-200 mà honeypot sinh ra để xoá.
+    //
+    // IP RIÊNG: ThrottlerGuard in-memory đếm theo IP xuyên suốt cả file spec
+    // — dùng lại IP của test khác là ăn mất một lượt trong hạn mức của nó.
     const res = await postSubscribe(
       app,
-      { email: 'honeypot.oversize@example.com', website: 'a'.repeat(201) },
+      { email: 'honeypot.oversize@example.com', website: 'a'.repeat(5000) },
       '10.1.0.6',
     );
 
-    expect(res.statusCode).toBe(400);
+    // Byte-identical với nhánh thành công.
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ subscribed: true });
+
     expect(await prisma.subscriber.count()).toBe(0);
     expect(await prisma.outbox.count()).toBe(0);
   });

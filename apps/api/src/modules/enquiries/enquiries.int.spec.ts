@@ -202,21 +202,38 @@ describe('enquiries (int)', () => {
     expect(await prisma.enquiry.findUnique({ where: { id } })).toBeNull();
   });
 
-  it('honeypot `website` dài quá 200 ký tự → 400, KHÔNG lọt vào log lẫn DB', async () => {
+  it('honeypot `website` quá dài → CẮT NGẮN, response vẫn KHÔNG phân biệt được với thành công (không 400)', async () => {
     // `website` là chuỗi DUY NHẤT do người dùng điều khiển mà trước đây không
     // có trần, trong khi mọi field anh em đều có (`name` 120, `message` 2000).
-    // Không trần thì cái chắn duy nhất là body-limit 1 MiB của Fastify — bot
-    // bơm được ~1 MB text tự chọn (kể cả CR/LF giả mạo dòng log) vào log ứng
-    // dụng, lặp vô hạn từ vô số IP.
-    // IP RIÊNG (không dùng lại `10.0.0.8` của test throttle): throttler là
-    // in-memory và tính theo IP xuyên suốt cả file, nên mượn IP của test khác
-    // sẽ ăn mất một lượt trong hạn mức 5 của nó — flake tiềm ẩn, chỉ lộ ra khi
-    // request này ĐƯỢC 200 thay vì 400.
-    const res = await postEnquiry(app, { ...VALID_PAYLOAD, website: 'a'.repeat(201) }, '10.0.0.10');
+    // Không trần thì bot bơm được ~1 MB text tự chọn (kể cả CR/LF giả mạo
+    // dòng log) vào log ứng dụng, lặp vô hạn từ vô số IP.
+    //
+    // CẮT chứ KHÔNG reject, và test này ghim đúng chỗ đó: Fastify đã parse
+    // toàn bộ body trước khi zod chạy nên reject chẳng tiết kiệm byte nào —
+    // nó chỉ biến 200-giả thành 400, tức trả lại cho bot đúng tín hiệu phân
+    // biệt mà test honeypot phía trên sinh ra để xoá. Ca "website quá khổ"
+    // phải KHÔNG phân biệt được y như ca honeypot thường.
+    //
+    // IP RIÊNG (không dùng lại `10.0.0.8` của test throttle): ThrottlerGuard
+    // là in-memory và đếm theo IP XUYÊN SUỐT cả file spec, nên mượn IP của
+    // test khác sẽ ăn mất một lượt trong hạn mức 5 của nó → test kia flake.
+    // Cấp IP mới cho mỗi test có phát request, đừng dùng lại.
+    const res = await postEnquiry(
+      app,
+      { ...VALID_PAYLOAD, website: 'a'.repeat(5000) },
+      '10.0.0.10',
+    );
 
-    expect(res.statusCode).toBe(400);
+    // Shape y hệt nhánh thành công — cùng assertion với test honeypot ở trên.
+    expect(res.statusCode).toBe(200);
+    const { id } = res.json();
+    expect(id).toEqual(expect.any(String));
+    expect(z.uuid().safeParse(id).success).toBe(true);
+
+    // ...và vẫn không ghi gì.
     expect(await prisma.enquiry.count()).toBe(0);
     expect(await prisma.outbox.count()).toBe(0);
+    expect(await prisma.enquiry.findUnique({ where: { id } })).toBeNull();
   });
 
   it('message 9 ký tự → lỗi validate (400)', async () => {
