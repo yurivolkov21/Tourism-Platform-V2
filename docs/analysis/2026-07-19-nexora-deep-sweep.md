@@ -11,15 +11,15 @@ Xếp theo giá trị / chi phí.
 
 | # | Lỗ | Chi tiết | Mức |
 | --- | --- | --- | --- |
-| A1 | **Rating đã có nhưng chưa "cắm dây"** | P3a xây `Tour.ratingAvg/ratingCount` + transaction duyệt review xử lý race rất kỹ — nhưng `toTourCard()`/`getTourBySlug()` (`catalog.service.ts:42-58,108-158`) **không select, không trả**, và `TourCardSchema`/`TourDetailSchema` không khai trường rating nào. Dữ liệu nằm sẵn trong DB mà FE không đọc được | **Quan trọng** — sửa rẻ, giá trị cao |
+| ~~A1~~ ✅ `d88487d` | **Rating đã có nhưng chưa "cắm dây"** | P3a xây `Tour.ratingAvg/ratingCount` + transaction duyệt review xử lý race rất kỹ — nhưng `toTourCard()`/`getTourBySlug()` (`catalog.service.ts:42-58,108-158`) **không select, không trả**, và `TourCardSchema`/`TourDetailSchema` không khai trường rating nào. Dữ liệu nằm sẵn trong DB mà FE không đọc được | **Quan trọng** — sửa rẻ, giá trị cao |
 | A2 | **Tour card thiếu next-departure** | Nexora `attachNextDeparture` (`tours.service.ts:268-302`) đưa `nextDepartureDate`/`nextDepartureSeatsLeft` lên MỌI card, phục vụ badge "Chỉ còn N chỗ". v2 chỉ có `departures[]` trong detail, card không có tín hiệu nào | Quan trọng |
 | A3 | **Khách không tự huỷ được booking PENDING** | Nexora `cancelOwnPending` (`bookings.service.ts:552-567`) flip thẳng CANCELLED, không cần admin (chưa trả tiền nên không refund). v2 route `bookings.cancel` đi thẳng vào `CancellationsService.request` — chặn cứng `!== PAID` → 422. Khách đổi ý trước khi trả tiền không có đường dọn | Nên có |
 | A4 | **Không có Admin Outbox** | Nexora có `GET /admin/outbox`, `POST /:id/retry` (chỉ FAILED→PENDING), `DELETE /:id` (chặn xoá SENT). v2 không có gì. Một row FAILED (hết `MAX_ATTEMPTS=5`) — ví dụ email xác nhận booking — **kẹt vĩnh viễn**, chỉ phát hiện được bằng cách đọc log hoặc vào DB tay | Quan trọng (P4) |
-| A5 | **Guard mặc định fail-OPEN** | Nexora đăng ký `APP_GUARD` toàn cục + `@Public()` opt-out → route mới sinh ra mặc định AN TOÀN. v2 auth là opt-in từng controller. Hiện 10 controller đều đúng, nhưng sang P4/P5/P6 chỉ cần quên một `@UseGuards` là route nhạy cảm public hoàn toàn — không compiler/lint/test nào bắt | Quan trọng (trước P4) |
+| ~~A5~~ ✅ `e5c382a` | **Guard mặc định fail-OPEN** | Nexora đăng ký `APP_GUARD` toàn cục + `@Public()` opt-out → route mới sinh ra mặc định AN TOÀN. v2 auth là opt-in từng controller. Hiện 10 controller đều đúng, nhưng sang P4/P5/P6 chỉ cần quên một `@UseGuards` là route nhạy cảm public hoàn toàn — không compiler/lint/test nào bắt | Quan trọng (trước P4) |
 | A6 | **Admin thiếu công cụ điều tra** | Không lọc được booking theo `tourId`/`departureId`/`userId`; detail thiếu `otherBookings` + `paymentEvents`; **không có admin payment-events viewer nào** — webhook lỗi chỉ tra được bằng query DB tay | Nên có (P4) |
 | A7 | **Prisma nằm ngoài lifecycle Nest** | `export const prisma = new PrismaClient()` module-level, không phải Nest provider → không `$connect()` eager (DATABASE_URL sai chỉ vỡ ở request đầu thay vì lúc boot), không `$disconnect()` khi SIGTERM (pool ~10 connection, redeploy liên tục dễ áp trần) | Nên có |
 | A8 | **Không có `EMAIL_REPLY_TO`** | Nexora gắn `replyTo` vào mọi email; template mời khách "trả lời email này". v2 không có → khách reply bay vào `noreply@` | Nhỏ |
-| A9 | **Category list thiếu `toursCount`** | Destination CÓ `tourCount`, category thì không — bất đối xứng giữa hai lookup cùng loại | Nhỏ |
+| ~~A9~~ ✅ `d88487d` | **Category list thiếu `toursCount`** | Destination CÓ `tourCount`, category thì không — bất đối xứng giữa hai lookup cùng loại | Nhỏ |
 | A10 | **`numAdults`/`numChildren` không có cận trên** | Nexora `@Max(20)`. v2 chỉ `.min(1)`/`.min(0)`, không CHECK bù. Chỉ bị chặn gián tiếp qua sức chứa departure | Nhỏ |
 | A11 | **`EMAIL_FROM` không validate định dạng** | Nexora có regex bắt `addr@domain` hoặc `Name <addr@domain>` fail-fast lúc boot. v2 chỉ `.min(1)` → gõ sai chỉ vỡ ở lần gửi mail thật đầu tiên | Nhỏ |
 
@@ -33,6 +33,13 @@ sẽ làm oRPC reject cả response. **Nhưng CHECK constraint
 trên DB và bị chặn. Nexora cần clamp runtime vì thiếu ràng buộc đó; v2 ép ở
 tầng DB nên chặt hơn. Thêm `Math.max(0, …)` sẽ là code chết và còn che mất
 vi phạm bất biến nếu có.
+
+## Đã vá (19/07)
+
+A1 + A9 → `d88487d` · A5 → `e5c382a` (kèm [ADR-0003](../adr/0003-auth-fail-closed.md)).
+Còn lại: A2 (next-departure badge) · A3 (huỷ PENDING) · A4 (Admin Outbox) ·
+A6 (công cụ điều tra admin) · A7 (Prisma lifecycle) · A8 (reply-to) ·
+A10 (cận trên khách) · A11 (validate EMAIL_FROM).
 
 ## B. Ghi chú cho phase sau
 
