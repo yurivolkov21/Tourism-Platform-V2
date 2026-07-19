@@ -25,6 +25,11 @@ import {
   TourDetailSchema,
   ToursListQuerySchema,
 } from './schemas/catalog.js';
+import {
+  CreateReviewInputSchema,
+  PublicReviewSchema,
+  ReviewsByTourQuerySchema,
+} from './schemas/reviews.js';
 
 /**
  * oRPC contract v1 (spec §6) — health + catalog read public. Được implement ở
@@ -86,6 +91,39 @@ export const contract = {
         })
         .output(z.array(TourCategorySchema)),
     },
+  },
+  /**
+   * Review phía khách. `create` cần auth (AuthGuard trên controller);
+   * `listByTour` là public.
+   */
+  reviews: {
+    listByTour: oc
+      .route({
+        method: 'GET',
+        path: '/api/tours/{tourSlug}/reviews',
+        summary: 'Approved reviews of a tour',
+      })
+      .input(ReviewsByTourQuerySchema)
+      .output(PagedSchema(PublicReviewSchema))
+      .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
+
+    create: oc
+      .route({
+        method: 'POST',
+        path: '/api/reviews',
+        summary: 'Write a review for a completed booking',
+      })
+      .input(CreateReviewInputSchema)
+      .output(PublicReviewSchema)
+      .errors({
+        BOOKING_NOT_FOUND: { status: 404, message: 'Booking not found' },
+        // 403 cố ý, KHÔNG 404: khách đã thấy mã này trong danh sách của mình
+        // nên che giấu là giả tạo.
+        BOOKING_FORBIDDEN: { status: 403, message: 'Not your booking' },
+        REVIEW_NOT_ELIGIBLE: { status: 400, message: 'Booking is not eligible for review' },
+        REVIEW_TRIP_NOT_COMPLETED: { status: 400, message: 'Trip has not finished yet' },
+        REVIEW_ALREADY_EXISTS: { status: 409, message: 'This booking already has a review' },
+      }),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:
