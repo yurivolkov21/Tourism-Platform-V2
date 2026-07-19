@@ -81,10 +81,10 @@ function postEnquiry(
 }
 
 describe('enquiries (int)', () => {
-  it('tạo enquiry hợp lệ → 201, DB có 1 row status NEW, và CÙNG transaction sinh ĐÚNG 2 outbox', async () => {
+  it('tạo enquiry hợp lệ → 200, DB có 1 row status NEW, và CÙNG transaction sinh ĐÚNG 2 outbox', async () => {
     const res = await postEnquiry(app, VALID_PAYLOAD, '10.0.0.1');
 
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(200);
     const body = res.json();
     expect(body.id).not.toBeNull();
 
@@ -119,7 +119,55 @@ describe('enquiries (int)', () => {
     expect(payload.email).toBe(VALID_PAYLOAD.email);
   });
 
-  it('honeypot: website có giá trị → 201 GIẢ, id null, DB không có row nào mới', async () => {
+  it('outbox thứ hai (ENQUIRY_ADMIN_ALERT) ghi lỗi giữa transaction → enquiry KHÔNG được lưu, không outbox mồ côi', async () => {
+    // Mutation-test ở Task 4 phát hiện: tách hai lệnh ghi outbox ra khỏi
+    // `$transaction` thì KHÔNG test nào đỏ — 7 test còn lại chỉ assert trạng
+    // thái DB SAU một lời gọi THÀNH CÔNG, giống hệt nhau dù ghi nguyên tử
+    // hay tuần tự. Test này ép chính lệnh ghi outbox THỨ HAI lỗi GIỮA
+    // transaction để chứng minh rollback thật xảy ra.
+    //
+    // Không đoán trước được `dedupeKey` (chứa id enquiry — `uuid(7)` Prisma
+    // sinh phía client lúc insert, không dự đoán được) nên không "cài sẵn"
+    // một row outbox trùng dedupeKey như cách thông thường. Thay vào đó,
+    // thêm TẠM một CHECK constraint chặn mọi insert `type = ENQUIRY_ADMIN_ALERT`
+    // — độc lập với id. Vì `createMany` gộp CẢ HAI outbox vào MỘT câu lệnh
+    // INSERT, vi phạm ở row thứ hai làm hỏng CẢ CÂU LỆNH → lỗi văng ra bên
+    // trong callback `$transaction` → Postgres ROLLBACK toàn bộ, bao gồm cả
+    // row `enquiry` vừa ghi trước đó trong CÙNG transaction.
+    await prisma.$executeRawUnsafe(`
+      ALTER TABLE outbox ADD CONSTRAINT enquiries_int_spec_block_admin_alert
+      CHECK (type <> 'ENQUIRY_ADMIN_ALERT')
+    `);
+    try {
+      const marker = 'Atomicity Rollback Marker';
+      const res = await postEnquiry(app, { ...VALID_PAYLOAD, name: marker }, '10.0.0.7');
+
+      // Lời gọi PHẢI thất bại — lỗi không lường trước (không phải
+      // TOUR_NOT_FOUND/validate), oRPC trả shape INTERNAL_SERVER_ERROR (xem
+      // onError interceptor ở app.module.ts).
+      expect(res.statusCode).toBeGreaterThanOrEqual(500);
+
+      // Điều CỐT LÕI cần chứng minh: row enquiry KHÔNG tồn tại trong DB —
+      // transaction đã rollback, không dừng lại giữa chừng với enquiry đã
+      // lưu mà outbox thì thiếu.
+      expect(await prisma.enquiry.findFirst({ where: { name: marker } })).toBeNull();
+
+      // Không outbox mồ côi nào — kể cả ENQUIRY_RECEIVED (row đầu trong cùng
+      // `createMany`, hợp lệ riêng lẻ nhưng phải rollback theo cả câu lệnh).
+      // Tìm theo nội dung payload vì id chưa từng sinh ra thành công.
+      const orphaned = await prisma.outbox.findMany({
+        where: { payload: { path: ['name'], equals: marker } },
+      });
+      expect(orphaned).toHaveLength(0);
+    } finally {
+      // Dọn constraint TẠM — TRUNCATE ở beforeEach không xoá được nó.
+      await prisma.$executeRawUnsafe(
+        'ALTER TABLE outbox DROP CONSTRAINT enquiries_int_spec_block_admin_alert',
+      );
+    }
+  });
+
+  it('honeypot: website có giá trị → 200 GIẢ (CÙNG status thành công), id null, DB không có row nào mới', async () => {
     const before = await prisma.enquiry.count();
 
     const res = await postEnquiry(
@@ -128,7 +176,7 @@ describe('enquiries (int)', () => {
       '10.0.0.3',
     );
 
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(200);
     expect(res.json().id).toBeNull();
     expect(await prisma.enquiry.count()).toBe(before);
     expect(await prisma.outbox.count()).toBe(0);
@@ -175,7 +223,7 @@ describe('enquiries (int)', () => {
       { ...VALID_PAYLOAD, email: 'Jane@X.com', tourId: tour.id },
       '10.0.0.6',
     );
-    expect(res.statusCode).toBe(201);
+    expect(res.statusCode).toBe(200);
 
     const found = await prisma.enquiry.findFirst({ where: { email: 'jane@x.com' } });
     expect(found).not.toBeNull();
@@ -192,7 +240,7 @@ describe('enquiries (int)', () => {
     const ip = '10.0.0.8';
     for (let i = 1; i <= 5; i++) {
       const res = await postEnquiry(app, VALID_PAYLOAD, ip);
-      expect(res.statusCode, `request thứ ${i} phải qua`).toBe(201);
+      expect(res.statusCode, `request thứ ${i} phải qua`).toBe(200);
     }
     const sixth = await postEnquiry(app, VALID_PAYLOAD, ip);
     expect(sixth.statusCode).toBe(429);

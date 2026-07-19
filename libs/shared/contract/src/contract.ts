@@ -186,10 +186,10 @@ export const contract = {
    * đăng nhập gọi được (`@Public()` trên controller, ADR-0003), có
    * `@UseGuards(ThrottlerGuard)` riêng chống spam (`PUBLIC_WRITE_THROTTLE`).
    *
-   * `successStatus: 201` — khai TƯỜNG MINH vì oRPC mặc định 200 cho mọi
-   * method (`defaultSuccessStatus`); đây là tạo mới một resource (kể cả
-   * nhánh honeypot trả `id: null` giả) nên đúng ngữ nghĩa REST là 201, khác
-   * `wishlist.set` ở trên vốn là idempotent upsert nên giữ 200 mặc định.
+   * Giữ mặc định 200 của oRPC (KHÔNG khai `successStatus: 201`) — mọi
+   * endpoint create khác trong repo (bookings, reviews, wishlist) đều 200,
+   * lệch một chỗ thành vết chắp vá bắt FE nhớ ngoại lệ. Muốn 201 cho mọi
+   * create thì làm đồng loạt ở một đợt sửa riêng, không lẻ tẻ từng endpoint.
    */
   enquiries: {
     create: oc
@@ -197,7 +197,6 @@ export const contract = {
         method: 'POST',
         path: '/api/enquiries',
         summary: 'Submit a contact enquiry',
-        successStatus: 201,
       })
       .input(CreateEnquiryInputSchema)
       .output(EnquiryResultSchema)

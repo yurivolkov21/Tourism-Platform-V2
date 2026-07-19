@@ -18,8 +18,9 @@ export class EnquiriesController {
   @Implement(contract.enquiries.create)
   create() {
     return implement(contract.enquiries.create).handler(async ({ input, errors }) => {
-      // Honeypot: trả 201 GIẢ và không ghi gì. Không reject để bot không
-      // biết mình bị phát hiện rồi đổi chiến thuật.
+      // Honeypot: trả 200 GIẢ (CÙNG status với nhánh thành công) và không ghi
+      // gì. Không reject để bot không biết mình bị phát hiện rồi đổi chiến
+      // thuật — status khác đi là dấu hiệu lộ ngay cho bot phân biệt.
       if (input.website && input.website.length > 0) {
         return { id: null };
       }
