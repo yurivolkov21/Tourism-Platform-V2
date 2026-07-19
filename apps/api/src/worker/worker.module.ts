@@ -17,6 +17,7 @@ const delivererProvider: Provider = env.RESEND_API_KEY
       useValue: new ResendDeliverer({
         apiKey: env.RESEND_API_KEY,
         from: env.EMAIL_FROM,
+        frontendUrl: env.FRONTEND_URL,
       }),
     }
   : { provide: EMAIL_DELIVERER, useClass: ConsoleDeliverer };

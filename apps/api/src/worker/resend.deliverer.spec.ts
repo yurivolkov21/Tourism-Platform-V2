@@ -1,8 +1,16 @@
 import { EmailType } from '../generated/prisma/enums.js';
 import type { HttpPostCall, HttpPostResponse } from '../lib/provider-http.js';
+import {
+  makeUnsubscribeToken,
+  verifyUnsubscribeToken,
+} from '../modules/newsletter/unsubscribe-token.js';
 import { ResendDeliverer, renderEmail } from './resend.deliverer.js';
 
-const OPTS = { apiKey: 're_unit_key', from: 'Tourism <noreply@tourism.test>' };
+const OPTS = {
+  apiKey: 're_unit_key',
+  from: 'Tourism <noreply@tourism.test>',
+  frontendUrl: 'https://tourism.test',
+};
 
 const BOOKING_PAYLOAD = {
   bookingId: 'b-1',
@@ -183,5 +191,60 @@ describe('ResendDeliverer.deliver', () => {
     });
     expect(subject).not.toMatch(/[\r\n]/);
     expect(subject).toBe('New enquiry from Jane Bcc: attacker@evil.com');
+  });
+
+  // Vá review Task 6 — Khoản 2: "chưa email nào chứa link huỷ đăng ký".
+  // NewsletterService.subscribe() sinh sẵn subscriberId + unsubscribeToken
+  // lúc enqueue (newsletter.service.ts); deliverer chỉ ghép URL, không tự
+  // tính lại token.
+  it('email NEWSLETTER_WELCOME chứa link huỷ đăng ký đúng id + token', async () => {
+    const { calls, deliverer } = stub();
+    const subscriberId = '01920000-0000-7000-8000-0000000000aa';
+    const unsubscribeToken = makeUnsubscribeToken(subscriberId, 'welcome-link-test-secret');
+
+    await deliverer.deliver(EmailType.NEWSLETTER_WELCOME, {
+      email: 'new.subscriber@example.com',
+      subscriberId,
+      unsubscribeToken,
+    });
+
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.html).toContain(subscriberId);
+    expect(body.html).toContain(unsubscribeToken);
+    expect(body.html).toContain(`${OPTS.frontendUrl}/newsletter/unsubscribe?id=${subscriberId}`);
+
+    // Token trong link vẫn verify được — deliverer không được làm hỏng/escape
+    // token khi ghép vào HTML.
+    expect(verifyUnsubscribeToken(subscriberId, unsubscribeToken, 'welcome-link-test-secret')).toBe(
+      true,
+    );
+  });
+
+  it('email NEWSLETTER_WELCOME mang header List-Unsubscribe trỏ về đúng URL huỷ đăng ký', async () => {
+    // KHÔNG dùng one-click RFC 8058 (List-Unsubscribe-Post): one-click khiến
+    // mail client POST thẳng `List-Unsubscribe=One-Click` vào endpoint của
+    // ta, không khớp schema JSON {id, token} nên sẽ fail toàn bộ — chỉ dùng
+    // List-Unsubscribe trỏ tới trang xác nhận (GET, đọc thuần).
+    const { calls, deliverer } = stub();
+    const subscriberId = '01920000-0000-7000-8000-0000000000bb';
+    const unsubscribeToken = makeUnsubscribeToken(subscriberId, 'welcome-header-test-secret');
+
+    await deliverer.deliver(EmailType.NEWSLETTER_WELCOME, {
+      email: 'new.subscriber@example.com',
+      subscriberId,
+      unsubscribeToken,
+    });
+
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    const expectedUrl = `${OPTS.frontendUrl}/newsletter/unsubscribe?id=${subscriberId}&token=${unsubscribeToken}`;
+    expect(body.headers?.['List-Unsubscribe']).toBe(`<${expectedUrl}>`);
+    expect(body.headers?.['List-Unsubscribe-Post']).toBeUndefined();
+  });
+
+  it('email khác NEWSLETTER_WELCOME không bị gắn header List-Unsubscribe', async () => {
+    const { calls, deliverer } = stub();
+    await deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    const body = JSON.parse(calls[0]?.body ?? '{}');
+    expect(body.headers).toBeUndefined();
   });
 });

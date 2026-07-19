@@ -9,6 +9,13 @@ export interface ResendDelivererOptions {
   apiKey: string;
   /** From theo RFC-5322, vd `Tourism <noreply@tourism.test>` (env EMAIL_FROM). */
   from: string;
+  /**
+   * Base URL của web app (env FRONTEND_URL) — vá review Task 6 Khoản 2, dùng
+   * để ghép URL trang xác nhận huỷ đăng ký gắn vào email NEWSLETTER_WELCOME.
+   * Nhận qua option (giống `apiKey`/`from`) thay vì import thẳng `env` — giữ
+   * seam test-được-offline (D2) của file này.
+   */
+  frontendUrl: string;
 }
 
 /**
@@ -54,7 +61,26 @@ export class ResendDeliverer implements EmailDeliverer {
       // park row FAILED kèm message này cho operator triage.
       throw new Error(`outbox payload for ${type} has no recipient email`);
     }
-    const { subject, html } = renderEmail(type, fields);
+    const { subject, html } = renderEmail(type, fields, this.options.frontendUrl);
+
+    /**
+     * List-Unsubscribe (RFC 2369) — vá review Task 6 Khoản 2. CHỈ áp cho
+     * NEWSLETTER_WELCOME (loại email duy nhất hiện có `subscriberId`/
+     * `unsubscribeToken` trong payload).
+     *
+     * CỐ Ý KHÔNG kèm one-click RFC 8058 (`List-Unsubscribe-Post`): one-click
+     * khiến mail client (Gmail, Outlook…) tự POST thẳng
+     * `List-Unsubscribe=One-Click` vào URL trong header — body đó không khớp
+     * schema JSON `{id, token}` mà endpoint `unsubscribe` của ta chờ, request
+     * sẽ fail toàn bộ. Trỏ về TRANG xác nhận (GET, đọc thuần, không side
+     * effect — xem `unsubscribeConfirm`) là lựa chọn an toàn: khách vẫn phải
+     * tự bấm nút trên trang mới thực sự huỷ (POST).
+     */
+    const unsubscribeUrl = buildUnsubscribeUrl(this.options.frontendUrl, fields);
+    const resendHeaders =
+      type === EmailType.NEWSLETTER_WELCOME && unsubscribeUrl
+        ? { headers: { 'List-Unsubscribe': `<${unsubscribeUrl}>` } }
+        : {};
 
     const response = await this.httpPost(RESEND_EMAILS_URL, {
       headers: {
@@ -66,6 +92,7 @@ export class ResendDeliverer implements EmailDeliverer {
         to: [to],
         subject,
         html,
+        ...resendHeaders,
       }),
     });
     if (response.status < 200 || response.status >= 300) {
@@ -85,6 +112,8 @@ export class ResendDeliverer implements EmailDeliverer {
 export function renderEmail(
   type: EmailType,
   payload: Record<string, unknown>,
+  /** Chỉ dùng cho NEWSLETTER_WELCOME (link huỷ đăng ký) — các type khác bỏ qua tham số này. */
+  frontendUrl?: string,
 ): { subject: string; html: string } {
   const f = (key: string): string | undefined => {
     const value = payload[key];
@@ -194,15 +223,24 @@ export function renderEmail(
           footer,
         ),
       };
-    case EmailType.NEWSLETTER_WELCOME:
+    case EmailType.NEWSLETTER_WELCOME: {
+      // Link huỷ đăng ký — vá review Task 6 Khoản 2 (GDPR/CAN-SPAM đòi hỏi
+      // mọi email bản tin phải có đường huỷ tới được từ hộp thư thật).
+      // `subscriberId`/`unsubscribeToken` do NewsletterService.subscribe()
+      // sinh sẵn lúc enqueue; ở đây chỉ ghép URL, không tự tính lại token.
+      const unsubscribeUrl = buildUnsubscribeUrl(frontendUrl, payload);
       return {
         subject: 'Welcome to the Tourism newsletter',
         html: wrap(
           greeting,
           '<p>Thanks for subscribing — expect fresh tours and travel ideas in your inbox.</p>',
+          unsubscribeUrl
+            ? `<p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe</a></p>`
+            : undefined,
           footer,
         ),
       };
+    }
     case EmailType.EMAIL_CHANGED:
       return {
         subject: 'Your email address was changed',
@@ -219,6 +257,24 @@ export function renderEmail(
       throw new Error(`No email template for type ${String(exhaustive)}`);
     }
   }
+}
+
+/**
+ * Ghép URL trang xác nhận huỷ đăng ký (vá review Task 6 Khoản 2). CHỈ ghép
+ * khi có ĐỦ `frontendUrl` lẫn cặp `subscriberId`/`unsubscribeToken` trong
+ * payload — thiếu một trong ba (email cũ trước bản vá này, hoặc payload test
+ * tối giản không mang hai field mới) thì bỏ qua, KHÔNG throw: đây là một
+ * nhánh degrade êm, không phải lỗi chặn gửi email.
+ */
+function buildUnsubscribeUrl(
+  frontendUrl: string | undefined,
+  payload: Record<string, unknown>,
+): string | undefined {
+  const id = payload.subscriberId;
+  const token = payload.unsubscribeToken;
+  if (!frontendUrl || typeof id !== 'string' || typeof token !== 'string') return undefined;
+  if (id.length === 0 || token.length === 0) return undefined;
+  return `${frontendUrl}/newsletter/unsubscribe?id=${id}&token=${token}`;
 }
 
 function asRecord(payload: unknown): Record<string, unknown> {

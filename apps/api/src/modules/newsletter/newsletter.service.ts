@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { EmailType } from '../../generated/prisma/enums.js';
-import { verifyUnsubscribeToken } from './unsubscribe-token.js';
+import { makeUnsubscribeToken, verifyUnsubscribeToken } from './unsubscribe-token.js';
 
 /**
  * Token sai định dạng, secret không khớp, hoặc `id` không ứng với subscriber
@@ -35,11 +35,17 @@ export class NewsletterService {
     // chuẩn hoá vừa đúng vừa nhất quán với hàng subscriber thật sự tồn tại).
     const normalizedEmail = email.trim().toLowerCase();
 
-    await prisma.subscriber.upsert({
+    const subscriber = await prisma.subscriber.upsert({
       where: { email: normalizedEmail },
       create: { email: normalizedEmail, source: source ?? null },
       update: {},
     });
+
+    // Vá review Task 6 — Khoản 2: "chưa email nào chứa link huỷ đăng ký".
+    // Sinh sẵn token NGAY LÚC enqueue (không để deliverer tự tính lại) —
+    // giữ một nguồn sự thật duy nhất cho bí mật ký, và deliverer chỉ cần đọc
+    // payload để ghép URL, không cần biết `NEWSLETTER_UNSUBSCRIBE_SECRET`.
+    const unsubscribeToken = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
 
     // dedupeKey theo EMAIL (không phải id) → "một lần vĩnh viễn cho mỗi địa
     // chỉ". Đây là ngoại lệ hợp lệ DUY NHẤT của quy ước dedupe-key (xem
@@ -51,7 +57,7 @@ export class NewsletterService {
       data: [
         {
           type: EmailType.NEWSLETTER_WELCOME,
-          payload: { email: normalizedEmail },
+          payload: { email: normalizedEmail, subscriberId: subscriber.id, unsubscribeToken },
           dedupeKey: `newsletter-welcome:${normalizedEmail}`,
         },
       ],
@@ -103,5 +109,30 @@ export class NewsletterService {
     const exists = await prisma.subscriber.findUnique({ where: { id }, select: { id: true } });
     if (!exists) throw new InvalidUnsubscribeTokenError();
     // exists nhưng count === 0 → đã unsubscribe từ trước, no-op idempotent.
+  }
+
+  /**
+   * Vá review Task 6 — Khoản 1: đăng ký lại sau khi huỷ. Verify token TRƯỚC
+   * rồi mới chạm DB — giữ đúng nếp của `unsubscribe()` (không dò được `id`
+   * nào có thật từ response). Sau đó `updateMany` với guard
+   * `unsubscribedAt: { not: null }`: chỉ động tới hàng ĐANG bị huỷ, subscriber
+   * vốn đã active thì để yên (không đụng `updatedAt`/audit trail của họ một
+   * cách vô cớ).
+   *
+   * Cố ý KHÔNG phân biệt `count === 0` do "id không tồn tại" hay "đã active
+   * sẵn" như `unsubscribe()` — output LUÔN `{subscribed:true}` một khi token
+   * hợp lệ (xem JSDoc `ResubscribeResultSchema`, contract): không tiết lộ
+   * thêm thông tin nào ngoài "token này hợp lệ", đây chính là tính idempotent
+   * được yêu cầu (gọi lại bao nhiêu lần cũng 200, không throw, không đổi
+   * hành vi).
+   */
+  async resubscribe(id: string, token: string): Promise<void> {
+    if (!verifyUnsubscribeToken(id, token, env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+      throw new InvalidUnsubscribeTokenError();
+    }
+    await prisma.subscriber.updateMany({
+      where: { id, unsubscribedAt: { not: null } },
+      data: { unsubscribedAt: null },
+    });
   }
 }

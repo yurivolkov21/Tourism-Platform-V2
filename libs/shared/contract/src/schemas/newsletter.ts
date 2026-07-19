@@ -58,3 +58,29 @@ export type UnsubscribeConfirmResult = z.infer<typeof UnsubscribeConfirmResultSc
 export const UnsubscribeResultSchema = z.object({ unsubscribed: z.literal(true) });
 
 export type UnsubscribeResult = z.infer<typeof UnsubscribeResultSchema>;
+
+/**
+ * Đăng ký LẠI sau khi đã huỷ (vá review Task 6 — Khoản 1: "đăng ký lại sau
+ * khi huỷ là ngõ cụt câm lặng"). Kịch bản: khách huỷ → đổi ý → tự điền lại
+ * form subscribe → `subscribe()` cố tình KHÔNG reset `unsubscribedAt` (chống
+ * đăng ký hộ người lạ khi hệ thống chưa có double opt-in, xem JSDoc
+ * `NewsletterService.subscribe`) → khách không bao giờ nhận gì và không có
+ * đường tự sửa.
+ *
+ * Input DÙNG LẠI NGUYÊN `UnsubscribeInputSchema` (không tạo schema mới trùng
+ * shape): chính token HMAC của unsubscribe (`id` + `token`) chứng minh người
+ * bấm thật sự cầm link gửi tới hộp thư đó — thay thế cho double opt-in mà v2
+ * chưa xây.
+ */
+export const ResubscribeInputSchema = UnsubscribeInputSchema;
+
+export type ResubscribeInput = z.infer<typeof ResubscribeInputSchema>;
+
+/**
+ * Output — LUÔN `{subscribed:true}` sau khi token hợp lệ, DÙNG LẠI đúng
+ * `SubscribeResultSchema` (cùng shape, cùng tinh thần chống dò: không tiết lộ
+ * subscriber đang active hay vừa được reset).
+ */
+export const ResubscribeResultSchema = SubscribeResultSchema;
+
+export type ResubscribeResult = z.infer<typeof ResubscribeResultSchema>;

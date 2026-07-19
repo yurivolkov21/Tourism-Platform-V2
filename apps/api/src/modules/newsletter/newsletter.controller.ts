@@ -70,4 +70,30 @@ export class NewsletterController {
       }
     });
   }
+
+  /**
+   * Vá review Task 6 — Khoản 1. POST — đăng ký lại sau khi đã huỷ, dùng LẠI
+   * chính token unsubscribe làm bằng chứng "chính chủ" (chưa có double
+   * opt-in nên không thể cho `subscribe()` tự reset `unsubscribedAt` —
+   * ai cũng đăng ký hộ người lạ được).
+   *
+   * BẮT BUỘC POST, TUYỆT ĐỐI KHÔNG được thêm biến thể GET (xem JSDoc route
+   * trong contract.ts): email client (Gmail, Outlook) prefetch mọi link
+   * trong thư để quét virus — một GET resubscribe sẽ tự đăng ký lại đúng
+   * người VỪA huỷ, y hệt cái bẫy mà việc tách GET/POST của `unsubscribe` ở
+   * trên sinh ra để tránh. Idempotent: gọi lại lần hai vẫn 200.
+   */
+  @UseGuards(ThrottlerGuard)
+  @Implement(contract.newsletter.resubscribe)
+  resubscribe() {
+    return implement(contract.newsletter.resubscribe).handler(async ({ input, errors }) => {
+      try {
+        await this.newsletter.resubscribe(input.id, input.token);
+        return { subscribed: true as const };
+      } catch (err) {
+        if (err instanceof InvalidUnsubscribeTokenError) throw errors.INVALID_UNSUBSCRIBE_TOKEN();
+        throw err;
+      }
+    });
+  }
 }

@@ -330,3 +330,155 @@ describe('newsletter unsubscribe (int)', () => {
     expect(row.status).toBe(OutboxStatus.SENT);
   });
 });
+
+/**
+ * Vá review Task 6 — Khoản 1: "đăng ký lại sau khi huỷ là ngõ cụt câm lặng".
+ * Kịch bản gốc reviewer chạy: khách huỷ → đổi ý → tự điền lại form subscribe
+ * → `subscribe()` cố tình KHÔNG reset `unsubscribedAt` (`update: {}` của
+ * Task 5, chống đăng ký hộ người lạ) → khách không bao giờ nhận lại được gì
+ * và không có đường tự sửa. Endpoint MỚI `resubscribe` dùng LẠI đúng token
+ * HMAC của unsubscribe làm bằng chứng "chính chủ".
+ */
+describe('newsletter resubscribe (int)', () => {
+  it('resubscribe sau khi huỷ → unsubscribedAt về null, bản tin kế tiếp gửi được (drain sent tăng, không còn skippedUnsubscribed)', async () => {
+    const email = 'resub.happy@example.com';
+    const subscriber = await createSubscriber(email, '10.1.2.1');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const unsub = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.1' },
+      payload: { id: subscriber.id, token },
+    });
+    expect(unsub.statusCode).toBe(200);
+
+    const resub = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.1' },
+      payload: { id: subscriber.id, token },
+    });
+    expect(resub.statusCode).toBe(200);
+    expect(resub.json()).toEqual({ subscribed: true });
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeNull();
+
+    // Bằng chứng đầu-cuối, không chỉ tin response: bản tin kế tiếp KHÔNG còn
+    // bị worker bỏ qua (đối chứng trực tiếp với test "worker bỏ qua
+    // subscriber đã huỷ" phía trên) — đây chính là oracle bắt lỗi thật của
+    // Khoản 1. Nếu `resubscribe` không thật sự reset `unsubscribedAt` trong
+    // DB (chỉ giả vờ trả `{subscribed:true}`), `drainOnce()` dưới đây sẽ báo
+    // `skippedUnsubscribed:1, sent:0` y hệt kịch bản lỗi gốc.
+    await prisma.outbox.deleteMany();
+    const enqueued = await outbox.enqueue(
+      EmailType.NEWSLETTER_WELCOME,
+      { email },
+      `newsletter-welcome-resub:${email}`,
+    );
+    expect(enqueued).toBe(true);
+    const result = await outbox.drainOnce();
+    expect(result.sent).toBe(1);
+    expect(result.skippedUnsubscribed).toBe(0);
+    expect(fakeDeliverer.calls).toHaveLength(1);
+  });
+
+  it('resubscribe trên subscriber ĐANG active (chưa từng huỷ) → updatedAt KHÔNG đổi', async () => {
+    // Mutation-test (task-6-report.md) đã phát hiện: bỏ guard
+    // `unsubscribedAt: { not: null }` khỏi `resubscribe()` KHÔNG làm 3 test
+    // phía trên đỏ — set `unsubscribedAt` null→null là no-op logic nên
+    // response/DB state cuối cùng nhìn giống hệt. Oracle bắt lỗi thật nằm ở
+    // cột `updatedAt @updatedAt` (schema.prisma): Prisma bơm
+    // `updated_at = NOW()` cho MỌI hàng khớp WHERE, bất kể giá trị SET có
+    // đổi hay không — guard chặn không cho `updateMany` chạm vào subscriber
+    // đang active mới có tác dụng quan sát được qua cột này.
+    const email = 'resub.already-active@example.com';
+    const subscriber = await createSubscriber(email, '10.1.2.5');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.5' },
+      payload: { id: subscriber.id, token },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ subscribed: true });
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.updatedAt).toEqual(subscriber.updatedAt);
+  });
+
+  it('gọi resubscribe 2 lần vẫn 200 (idempotent)', async () => {
+    const email = 'resub.twice@example.com';
+    const subscriber = await createSubscriber(email, '10.1.2.2');
+    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.2' },
+      payload: { id: subscriber.id, token },
+    });
+
+    const payload = { id: subscriber.id, token };
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.2' },
+      payload,
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({ subscribed: true });
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.2' },
+      payload,
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual({ subscribed: true });
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeNull();
+  });
+
+  it('token sai → INVALID_UNSUBSCRIBE_TOKEN (400), unsubscribedAt KHÔNG đổi', async () => {
+    const email = 'resub.badtoken@example.com';
+    const subscriber = await createSubscriber(email, '10.1.2.3');
+    const validToken = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.3' },
+      payload: { id: subscriber.id, token: validToken },
+    });
+
+    const wrongToken = makeUnsubscribeToken(subscriber.id, 'not-the-real-secret');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.3' },
+      payload: { id: subscriber.id, token: wrongToken },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('INVALID_UNSUBSCRIBE_TOKEN');
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeInstanceOf(Date);
+  });
+
+  it('GET tới /api/newsletter/resubscribe KHÔNG tồn tại — khẳng định không có biến thể GET', async () => {
+    // Oracle bắt lỗi thật của yêu cầu "BẮT BUỘC POST, KHÔNG GET": nếu ai đó
+    // lỡ thêm route GET song song (vd copy khuôn unsubscribeConfirm), email
+    // client prefetch link để quét virus sẽ tự đăng ký lại đúng người VỪA
+    // huỷ — route GET này phải KHÔNG tồn tại (404), không phải 400/401.
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.2.4' },
+    });
+    expect(res.statusCode).toBe(404);
+  });
+});

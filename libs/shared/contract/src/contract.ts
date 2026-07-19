@@ -28,6 +28,8 @@ import {
 import { PageQuerySchema } from './schemas/common.js';
 import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
 import {
+  ResubscribeInputSchema,
+  ResubscribeResultSchema,
   SubscribeInputSchema,
   SubscribeResultSchema,
   UnsubscribeConfirmResultSchema,
@@ -250,6 +252,27 @@ export const contract = {
       })
       .input(UnsubscribeInputSchema)
       .output(UnsubscribeResultSchema)
+      .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
+    /**
+     * Đăng ký LẠI sau khi đã huỷ (vá review Task 6 — Khoản 1). Dùng lại
+     * chính token HMAC của unsubscribe làm bằng chứng "chính chủ" (xem JSDoc
+     * `ResubscribeInputSchema`).
+     *
+     * BẮT BUỘC `method: 'POST'`, TUYỆT ĐỐI KHÔNG được thêm biến thể GET:
+     * email client (Gmail, Outlook) prefetch mọi link trong thư để quét
+     * virus — một GET resubscribe sẽ tự đăng ký lại đúng người VỪA huỷ, y
+     * hệt cái bẫy mà việc tách GET/POST của `unsubscribeConfirm`/`unsubscribe`
+     * ở trên sinh ra để tránh (spec §4.4). Route này chỉ tồn tại dưới dạng
+     * POST — không có `unsubscribeConfirm`-style GET song song.
+     */
+    resubscribe: oc
+      .route({
+        method: 'POST',
+        path: '/api/newsletter/resubscribe',
+        summary: 'Re-subscribe after unsubscribing, reusing the unsubscribe token (POST only)',
+      })
+      .input(ResubscribeInputSchema)
+      .output(ResubscribeResultSchema)
       .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
   },
   /**
