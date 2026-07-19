@@ -7,3 +7,12 @@ allowBuilds:
   '@prisma/engines': true
   '@swc/core': true
   prisma: true
+
+# Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
+# serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
+# Ta không dùng Hono, và prisma là devDependency nên không vào bundle prod —
+# nhưng vẫn ghim bản vá để repo sạch alert.
+# Ghim trong dòng 1.x: '>=1.19.13' sẽ kéo lên 2.0.x (nhảy major) và có thể phá
+# @prisma/dev vốn khai báo cho 1.x.
+overrides:
+  '@hono/node-server': '^1.19.13'
