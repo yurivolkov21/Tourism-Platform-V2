@@ -38,9 +38,9 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 
 | Kế hoạch | Phủ | Trạng thái |
 | --- | --- | --- |
-| [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | 🔨 sẵn sàng thực thi |
-| [P3a-B: Wishlist · Enquiry · Newsletter](plans/2026-07-19-p3a-b-wishlist-enquiry-newsletter.md) | W2–W4 + hạ tầng rate limiting (6 task) | 🔨 sẵn sàng thực thi |
-| P3a-C: Posts · Site-media | W5–W6 | ⬜ viết sau khi P3a-B đóng đinh pattern module |
+| [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | ✅ đã merge |
+| [P3a-B: Wishlist · Enquiry · Newsletter](plans/2026-07-19-p3a-b-wishlist-enquiry-newsletter.md) | W2–W4 + hạ tầng rate limiting (6 task) | ✅ đã merge |
+| P3a-C: Posts · Site-media | W5–W6 | ⏭️ kế tiếp — pattern module đã chốt ở P3a-B |
 
 ## Analysis — nghiên cứu từ Nexora
 

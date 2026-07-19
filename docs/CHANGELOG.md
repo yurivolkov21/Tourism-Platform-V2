@@ -2,6 +2,96 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-19 — P3a-B: Wishlist · Enquiry · Newsletter (branch `feat/p3a-b-customer-writes`)
+
+Ba endpoint GHI công khai đầu tiên (khách chưa đăng nhập gọi được) + hạ tầng
+rate limiting đi kèm. 16 commit, `6d3d49c..8a5d71c`.
+
+- **T1** (`33fb899`..`35706bf`) `EmailType.ENQUIRY_ADMIN_ALERT` + template
+  deliverer. Security review tự động báo XSS → **dương tính giả** (`f()` đã
+  escape đủ; fix nó đề xuất sẽ escape hai lần), nhưng chạm đúng lỗi thật kề
+  bên: subject là plain text KHÔNG được escape → thêm `subjectText()` + cắt
+  CR/LF chặn header injection. Review còn bắt lỗi trong **chính plan**:
+  `deliver()` lấy người nhận từ `payload.email`, mà Task 4 dùng chung payload
+  cho ack khách + alert admin → alert bay về hộp thư khách. Thêm `to` thắng
+  `email`, vá luôn plan.
+- **T2** (`0370206`, `fcb0397`) Rate limiting cho endpoint ghi công khai. Test
+  không canh được `trustProxy` của `main.ts` (reviewer tái hiện: gỡ khỏi
+  `main.ts` mà suite vẫn xanh) → `createFastifyAdapter()` dùng chung.
+- **T3** (`a2ec198`) Wishlist set/list/check idempotent + cờ `unavailable`.
+- **T4** (`b232c66`..`477b457`) Enquiry công khai: honeypot, throttle, outbox
+  kép trong `$transaction`. Implementer tự phát hiện gỡ `$transaction` mà
+  KHÔNG test nào đỏ → thêm test atomicity ép outbox thứ hai hỏng. Review (7
+  mutation độc lập) bắt 2 Important: 6/10 field input không test nào chạm
+  (hoán đổi `nationality`/`budgetTier` mà 8/8 vẫn xanh) · `adminEmails[0]`
+  fallback **im lặng** về email khách khi `ADMIN_EMAILS=" "` — bug A13 quay
+  lại đường khác → fail-fast ở `env.ts` + `primaryAdminEmail`.
+- **T5** (`5fb13a4`..`c8665fa`) Newsletter subscribe im lặng chống dò email.
+  Review bắt **Critical** (chạy thật trên DB, đo được 2 dedupeKey): email chưa
+  normalize khi ghép `dedupeKey`. `Subscriber.email` là `citext` nhưng
+  `Outbox.dedupeKey` là `VarChar` thường → `Jane@X.com` vs `jane@x.com` ra hai
+  key → welcome gửi **2 lần**. Test cũ tưởng phủ ca này nhưng chỉ assert
+  `subscriber.count()`, không nhìn outbox.
+- **T6** (`97eef44`, `d991054`) Unsubscribe tự phục vụ, token HMAC, tách
+  GET/POST (GET thuần đọc — email client prefetch link để quét virus). I1:
+  đăng ký lại sau khi huỷ là ngõ cụt câm lặng → `resubscribe` dùng LẠI token
+  HMAC làm bằng chứng chính chủ, **bắt buộc POST** (GET sẽ bị prefetch tự
+  đăng ký lại đúng người vừa huỷ). I2: link huỷ vào email welcome + header
+  `List-Unsubscribe`; **cố ý không** one-click RFC 8058 (mail provider POST
+  body không khớp schema JSON).
+
+**Final review toàn nhánh** (3 reviewer song song, mảng tách rời) — 7 phát
+hiện đã vá (`f0d4528`, `8a5d71c`):
+
+- **Honeypot enquiries phân biệt được với thành công**: trả `{id: null}` còn
+  nhánh thành công trả `{id: <uuid>}` → bot đọc body là biết mình bị bắt. Ba
+  comment + JSDoc contract đều *khẳng định* tính chất mà code không có. Sửa:
+  trả uuid giả không bao giờ persist; siết `EnquiryResultSchema` sang
+  non-nullable (contract nói dối thì sửa contract).
+- **Guard "đã huỷ bản tin" không có test canh phạm vi**: xoá
+  `NEWSLETTER_EMAIL_TYPES.has(row.type) &&` khiến guard chặn MỌI loại email
+  mà **110/110 test vẫn xanh** → người huỷ bản tin sẽ mất luôn
+  `BOOKING_CONFIRMATION`. Lần verify thủ công trước đây (`sent:2`) chưa bao
+  giờ được commit. Đã commit test canh.
+- **Guard đọc `payload.email` còn deliverer ưu tiên `payload.to`** → loại email
+  tương lai mang `to` sẽ bị kiểm đồng thuận ở địa chỉ này, gửi tới địa chỉ
+  kia. Gộp về `resolveRecipient()` dùng chung.
+- **Wishlist `createdAt` không được pin**: mutation `update: {createdAt}` qua
+  6/6 test. `createdAt` quyết thứ tự list → sentinel `2000-01-01`.
+- **Oracle `@updatedAt` biên chỉ 4–19ms** (đo 25 lần) → đổi sang sentinel,
+  biên ~26 năm, hết phụ thuộc timing.
+- **`website` honeypot không giới hạn độ dài và bị log nguyên văn** — field
+  user-controlled DUY NHẤT không có `.max()` (các field anh em đều có). Log
+  injection qua CR/LF, ~1MB/request. Sửa: **cắt ngắn 200 ký tự chứ không
+  reject** — Fastify parse hết body TRƯỚC khi zod chạy nên reject không tiết
+  kiệm gì mà lại trả 400, dựng lại đúng tín hiệu lộ honeypot vừa xoá ở trên.
+- **`subscribe()` ghi subscriber + outbox không transaction** trong khi
+  `enquiries` có → bọc `$transaction` cho khớp bất biến outbox-producer.
+
+Nếp mutation-test hai chiều bắt thêm 2 ca "xanh mà không canh gì": int test
+**không thể** quan sát truncation (giá trị không vào DB, cũng không còn vào
+log) → gỡ `.transform()` mà 114 int vẫn xanh, phải thêm `honeypot.spec.ts` ở
+tầng contract. Tổng 26+ mutation, 23 bị bắt ngay.
+
+**Cố ý để lại** (không phải quên): `timingSafeEqual` → `===` không test nào
+bắt được — side-channel timing không thể canh bằng assertion giá trị, ghi nhận
+thay vì dựng test giả · `subjectText` trả `''` với tên toàn CR/LF và case body
+thiếu `??` (zod `.trim().min(1)` chặn từ tầng trên) · N+1 `findUnique` trong
+drain (≤50 query/phút) · row bị skip vẫn ghi `SENT` — cần `OutboxStatus.SKIPPED`
+tức là migration mới, không phải blocker · `trustProxy: true` khiến khoá
+throttle giả mạo được qua `X-Forwarded-For` (phụ thuộc cách deploy) · throttler
+in-memory nên trần là per-process.
+
+**Nợ chưa trả, chặn P3a-C** (ghi rõ để không tưởng đã xong): link huỷ đăng ký
+trong email welcome trỏ tới `apps/web/` — hiện mới chỉ có `.gitkeep`. Chưa cắn
+được vì `RESEND_API_KEY` chưa bật, nhưng nghĩa là **lý do GDPR của T6 chưa đạt
+đầu-cuối**. Liên quan: chỗ DUY NHẤT user nhận được token resubscribe là email
+welcome vốn chỉ gửi một lần vĩnh viễn (`dedupeKey` theo email) → ca "tôi xoá
+mất email rồi" vẫn là ngõ cụt. I1 coi như **đóng một nửa**.
+
+- Tests after: **340** (226 unit — api 167 · contract 51 · tokens 7 · i18n 1 —
+  + 114 integration), `gate:int` xanh.
+
 ## 2026-07-19 — Đợt vá sau P3a-A (8 merge nhỏ vào `main`)
 
 Bắt nguồn từ việc user phát hiện v2 **thiếu rate limiting** trong khi Nexora
