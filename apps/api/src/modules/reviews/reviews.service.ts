@@ -317,6 +317,51 @@ export class ReviewsService {
     };
   }
 
+  /**
+   * Review của CHÍNH user gọi API — khác `listByTour` ở chỗ KHÔNG lọc
+   * `isApproved`: đây là review của chính họ nên họ có quyền thấy cả review
+   * đang chờ duyệt. Output vẫn dùng `PublicReviewSchema`/`toPublicReview`
+   * (không thêm field `isApproved`) — quyết định có chủ đích: caller đã biết
+   * mọi review trả về ở đây là CỦA MÌNH, và tại thời điểm này chưa có yêu cầu
+   * UI hiển thị badge "đang chờ duyệt". Muốn thêm thì mở rộng schema kiểu
+   * `AdminReviewSchema` sau, không cần đổi shape ở đây.
+   *
+   * Sort createdAt desc — mới nhất trước, không cần đẩy authorDeleted xuống
+   * cuối như `listByTour` (review của chính mình thì tác giả luôn là mình).
+   */
+  async mine(
+    userId: string,
+    page: number,
+    pageSize: number,
+  ): Promise<{
+    items: PublicReview[];
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  }> {
+    const where = { userId };
+    const [rows, total] = await Promise.all([
+      prisma.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      prisma.review.count({ where }),
+    ]);
+
+    return {
+      items: rows.map(toPublicReview),
+      page,
+      // Output contract dùng `limit` (PagedSchema chung), không phải
+      // `pageSize` — cùng gotcha đã ghi ở listByTour()/adminList() bên dưới.
+      limit: pageSize,
+      total,
+      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+    };
+  }
+
   /** Hàng đợi moderation cho admin. Mặc định không lọc — admin thấy tất cả. */
   async adminList(query: { page: number; pageSize: number; isApproved?: boolean }): Promise<{
     items: AdminReview[];

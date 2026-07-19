@@ -449,4 +449,151 @@ describe('reviews (int)', () => {
       expect(Number(fresh.ratingAvg)).toBe(3); // (4 + 2) / 2 = 3, không lệch do lost update
     },
   );
+
+  describe('reviews.mine', () => {
+    /** Booking + tour riêng cho từng review — tránh đụng unique(code)/slug khi
+     * một test cần nhiều review cho CÙNG một user. */
+    async function seedOwnBooking(opts: { userId: string; code: string; tourSlug: string }) {
+      const category = await prisma.tourCategory.create({
+        data: { slug: `cat-${opts.tourSlug}`, name: 'Walking', order: 1 },
+      });
+      const destination = await prisma.destination.create({
+        data: { slug: `dest-${opts.tourSlug}`, name: 'Hội An' },
+      });
+      const endDate = new Date(Date.now() - 864e5);
+      const tour = await prisma.tour.create({
+        data: {
+          slug: opts.tourSlug,
+          title: 'Hội An Walking Tour',
+          categoryId: category.id,
+          durationDays: 1,
+          basePrice: '39.00',
+          currency: 'USD',
+          isPublished: true,
+          destinations: { create: { destinationId: destination.id, isPrimary: true } },
+        },
+      });
+      const departure = await prisma.tourDeparture.create({
+        data: { tourId: tour.id, startDate: endDate, endDate, seatsTotal: 10, seatsBooked: 1 },
+      });
+      await prisma.booking.create({
+        data: {
+          code: opts.code,
+          userId: opts.userId,
+          tourId: tour.id,
+          departureId: departure.id,
+          numAdults: 1,
+          totalAmount: '39.00',
+          currency: 'USD',
+          status: BookingStatus.PAID,
+          tourTitle: tour.title,
+          departureStartDate: departure.startDate,
+          departureEndDate: departure.endDate,
+          unitPrice: '39.00',
+          contactName: 'Test',
+          contactEmail: 'test@example.com',
+          paymentProvider: 'STRIPE',
+        },
+      });
+      return { tour };
+    }
+
+    /** Viết review qua API thật cho booking `code` bằng cookie của chính chủ. */
+    async function writeReview(cookie: string, code: string, rating: number, body: string) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: code, rating, body },
+      });
+      return res.json().id as string;
+    }
+
+    it('trả đúng review của chính mình, KHÔNG lẫn review của user khác', async () => {
+      const mine = await signUpAndSignIn(app, 'mine-owner@example.com');
+      const other = await signUpAndSignIn(app, 'mine-other@example.com');
+      await seedOwnBooking({ userId: mine.user.id, code: 'BK-MINE0001', tourSlug: 'walk-mine-1' });
+      await seedOwnBooking({
+        userId: other.user.id,
+        code: 'BK-OTHR0001',
+        tourSlug: 'walk-other-1',
+      });
+      const myReviewId = await writeReview(mine.cookie, 'BK-MINE0001', 5, 'Review của chính tôi');
+      await writeReview(other.cookie, 'BK-OTHR0001', 3, 'Review của người khác, không liên quan');
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine',
+        headers: { cookie: mine.cookie },
+      });
+
+      expect(res.statusCode).toBe(200);
+      const items = res.json().items;
+      expect(items).toHaveLength(1);
+      expect(items[0].id).toBe(myReviewId);
+    });
+
+    it('có cả review CHƯA duyệt của chính mình (mới nhất trước)', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'mine-pending@example.com');
+      await seedOwnBooking({ userId: user.id, code: 'BK-MINE0002', tourSlug: 'walk-mine-2' });
+      await seedOwnBooking({ userId: user.id, code: 'BK-MINE0003', tourSlug: 'walk-mine-3' });
+
+      const firstId = await writeReview(cookie, 'BK-MINE0002', 4, 'Review đầu tiên, chưa duyệt');
+      // Duyệt review thứ hai để chắc chắn mine KHÔNG lọc theo isApproved.
+      const secondId = await writeReview(cookie, 'BK-MINE0003', 5, 'Review thứ hai, đã được duyệt');
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      await app.inject({
+        method: 'POST',
+        url: `/api/admin/reviews/${secondId}/moderate`,
+        headers: { cookie: admin.cookie },
+        payload: { id: secondId, approve: true },
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine',
+        headers: { cookie },
+      });
+
+      const items = res.json().items;
+      expect(items).toHaveLength(2);
+      // Mới nhất trước → review thứ hai (đã duyệt) lên đầu.
+      expect(items[0].id).toBe(secondId);
+      expect(items[1].id).toBe(firstId);
+    });
+
+    it('gọi ẩn danh → 401', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/reviews/mine' });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('phân trang đúng: field `limit` (không phải `pageSize`) trong output', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'mine-paged@example.com');
+      await seedOwnBooking({ userId: user.id, code: 'BK-PAGE0001', tourSlug: 'walk-page-1' });
+      await seedOwnBooking({ userId: user.id, code: 'BK-PAGE0002', tourSlug: 'walk-page-2' });
+      await seedOwnBooking({ userId: user.id, code: 'BK-PAGE0003', tourSlug: 'walk-page-3' });
+      await writeReview(cookie, 'BK-PAGE0001', 3, 'Review phân trang thứ nhất');
+      await writeReview(cookie, 'BK-PAGE0002', 4, 'Review phân trang thứ hai');
+      await writeReview(cookie, 'BK-PAGE0003', 5, 'Review phân trang thứ ba');
+
+      const page1 = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine?page=1&pageSize=2',
+        headers: { cookie },
+      });
+      const body1 = page1.json();
+      expect(body1.items).toHaveLength(2);
+      expect(body1.limit).toBe(2);
+      expect(body1.total).toBe(3);
+      expect(body1.totalPages).toBe(2);
+      expect(body1.pageSize).toBeUndefined();
+
+      const page2 = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine?page=2&pageSize=2',
+        headers: { cookie },
+      });
+      expect(page2.json().items).toHaveLength(1);
+    });
+  });
 });

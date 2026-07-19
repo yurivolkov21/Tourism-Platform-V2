@@ -25,6 +25,7 @@ import {
   TourDetailSchema,
   ToursListQuerySchema,
 } from './schemas/catalog.js';
+import { PageQuerySchema } from './schemas/common.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -96,8 +97,10 @@ export const contract = {
     },
   },
   /**
-   * Review phía khách. `create` cần auth (AuthGuard trên controller);
-   * `listByTour` là public.
+   * Review phía khách. `create` và `mine` CẦN AUTH (AuthGuard trên
+   * controller, cùng mô hình `bookings.{create,mine}` — contract oRPC không
+   * mang metadata auth, guard chạy TRƯỚC interceptor oRPC nên call ẩn danh
+   * bị 401 trước khi parse input); `listByTour` là public.
    */
   reviews: {
     listByTour: oc
@@ -109,6 +112,22 @@ export const contract = {
       .input(ReviewsByTourQuerySchema)
       .output(PagedSchema(PublicReviewSchema))
       .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
+
+    /**
+     * Review của chính user gọi API — path riêng `/api/reviews/mine`
+     * (KHÔNG đụng `POST /api/reviews` của `create`, khác method lẫn path).
+     * Trả CẢ review chưa duyệt: đây là review của chính họ, họ có quyền thấy
+     * nó tồn tại/đang chờ duyệt. Output vẫn dùng `PublicReviewSchema` (không
+     * thêm field `isApproved`) — xem giải thích ở `ReviewsService.mine`.
+     */
+    mine: oc
+      .route({
+        method: 'GET',
+        path: '/api/reviews/mine',
+        summary: "List caller's own reviews, newest first (authed, paged, includes unapproved)",
+      })
+      .input(PageQuerySchema)
+      .output(PagedSchema(PublicReviewSchema)),
 
     create: oc
       .route({

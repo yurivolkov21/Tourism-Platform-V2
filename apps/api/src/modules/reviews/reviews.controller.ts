@@ -31,6 +31,15 @@ export class ReviewsController {
     });
   }
 
+  /** Authed — review của chính user gọi API, kể cả chưa duyệt. */
+  @UseGuards(AuthGuard)
+  @Implement(contract.reviews.mine)
+  mine(@CurrentUser() user: SessionUser) {
+    return implement(contract.reviews.mine).handler(({ input }) =>
+      this.reviews.mine(user.id, input.page, input.pageSize),
+    );
+  }
+
   @UseGuards(AuthGuard)
   @Implement(contract.reviews.create)
   create(@CurrentUser() user: SessionUser) {
