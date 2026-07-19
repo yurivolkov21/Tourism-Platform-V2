@@ -780,14 +780,20 @@ export const SubscribeResultSchema = z.object({ subscribed: z.literal(true) });
 
 1. Đăng ký mới → 201 `{subscribed:true}`, DB có row, outbox có `NEWSLETTER_WELCOME` dedupeKey `newsletter-welcome:<email>`
 2. **Đăng ký lại cùng email → response GIỐNG HỆT** (`{subscribed:true}`), DB vẫn 1 row, outbox vẫn **1** welcome (không gửi lần hai)
-3. Email khác hoa/thường (`Jane@X.com` vs `jane@x.com`) → citext coi là **một** người, vẫn 1 row
+3. Email khác hoa/thường (`Jane@X.com` vs `jane@x.com`) → citext coi là **một** người, vẫn 1 row **VÀ đúng 1 row outbox `NEWSLETTER_WELCOME`** (assert outbox, không chỉ subscriber — thiếu vế này là lỗi lọt qua test)
 4. Honeypot có giá trị → 201, DB không có row mới
 5. Throttle: 6 lần → lần 6 trả 429
 
 - [ ] **Step 3: Implement service**
 
 ```ts
-  async subscribe(email: string, source?: string): Promise<void> {
+  async subscribe(rawEmail: string, source?: string): Promise<void> {
+    // ⚠️ PHẢI chuẩn hoá TRƯỚC khi ghép dedupeKey. `Subscriber.email` là
+    // citext nên DB tự coi Jane@X.com = jane@x.com là một người — nhưng
+    // `Outbox.dedupeKey` là VarChar THƯỜNG, phân biệt hoa/thường. Ghép key
+    // từ email thô thì hai biến thể ra hai key khác nhau, `skipDuplicates`
+    // không chặn được, và welcome bị gửi HAI lần cho cùng hộp thư.
+    const email = rawEmail.trim().toLowerCase();
     // Upsert im lặng: đăng ký lại KHÔNG báo lỗi, KHÔNG đổi response —
     // chống dò email (xem comment ở schema output).
     const subscriber = await prisma.subscriber.upsert({
