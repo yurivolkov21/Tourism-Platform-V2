@@ -1,0 +1,2 @@
+-- AlterEnum
+ALTER TYPE "EmailType" ADD VALUE 'ENQUIRY_ADMIN_ALERT';

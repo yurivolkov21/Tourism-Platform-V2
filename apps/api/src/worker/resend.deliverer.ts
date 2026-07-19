@@ -123,6 +123,17 @@ export function renderEmail(
           footer,
         ),
       };
+    // Alert nội bộ: gửi tới hộp thư admin, KHÔNG gửi cho khách. Payload mang
+    // sẵn mọi thứ admin cần để phân loại lead mà không phải mở CRM.
+    case EmailType.ENQUIRY_ADMIN_ALERT:
+      return {
+        subject: `New enquiry from ${f('name')}`,
+        html: `<p>New enquiry received.</p>
+<p><strong>Name:</strong> ${f('name')}<br/>
+<strong>Email:</strong> ${f('email')}<br/>
+<strong>Tour:</strong> ${f('tourTitle') ?? 'General enquiry'}</p>
+<p>${f('message')}</p>`,
+      };
     case EmailType.CANCELLATION_REQUESTED:
       return {
         subject: `Cancellation request received for booking ${code}`,

@@ -29,6 +29,7 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.BOOKING_REFUNDED, /Refund issued for booking BK-1/],
     [EmailType.REVIEW_APPROVED, /review/i],
     [EmailType.ENQUIRY_RECEIVED, /enquiry/i],
+    [EmailType.ENQUIRY_ADMIN_ALERT, /New enquiry from/],
     [EmailType.CANCELLATION_REQUESTED, /Cancellation request received for booking BK-1/],
     [EmailType.CANCELLATION_APPROVED, /Cancellation approved for booking BK-1/],
     [EmailType.CANCELLATION_DENIED, /Cancellation request denied for booking BK-1/],

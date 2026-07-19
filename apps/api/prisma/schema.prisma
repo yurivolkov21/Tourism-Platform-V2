@@ -142,6 +142,9 @@ enum EmailType {
   BOOKING_REFUNDED
   REVIEW_APPROVED
   ENQUIRY_RECEIVED
+  /// Alert nội bộ cho admin khi có lead mới (A13 — Nexora chỉ gửi ack cho
+  /// khách nên lead mới không ai biết cho tới khi mở CRM).
+  ENQUIRY_ADMIN_ALERT
   CANCELLATION_REQUESTED
   CANCELLATION_APPROVED
   CANCELLATION_DENIED
