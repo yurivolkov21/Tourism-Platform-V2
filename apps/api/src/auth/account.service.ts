@@ -32,8 +32,17 @@ export class AccountService {
       prisma.session.deleteMany({ where: { userId } }),
       prisma.account.deleteMany({ where: { userId } }),
       // Cờ denormalized cho sort/render public (audit M1) — web hiển thị
-      // "Deleted account" mà không cần join users.
-      prisma.review.updateMany({ where: { userId }, data: { authorDeleted: true } }),
+      // "Deleted account" mà không cần join users. Scrub LUÔN `authorName`
+      // trong CÙNG update (spec §4.2, audit H5b) — bật cờ mà quên scrub thì
+      // tên vẫn nằm trong DB. API hiện che được nhờ ternary ở mapper
+      // (toPublicReview: authorDeleted ? null : authorName), nhưng đó là lỗ
+      // xoá-dữ-liệu (GDPR erasure) thật ở tầng dữ liệu — một mapper tương lai
+      // quên ternary là thành lỗ API thật ngay. `authorName` là NOT NULL nên
+      // scrub về chuỗi rỗng, không phải null.
+      prisma.review.updateMany({
+        where: { userId },
+        data: { authorDeleted: true, authorName: '' },
+      }),
     ]);
   }
 }

@@ -185,9 +185,15 @@ describe('auth integration (Better Auth + tombstone)', () => {
     expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
     expect(await prisma.account.count({ where: { userId: user.id } })).toBe(0);
 
-    // Review flag denormalized bật.
+    // Review flag denormalized bật — VÀ authorName phải được scrub trong
+    // CÙNG transaction (spec §4.2). Bật cờ mà quên scrub thì tên vẫn nằm
+    // trong DB — API hiện che được nhờ ternary trong mapper (toPublicReview),
+    // nhưng đây là lỗ xoá-dữ-liệu (GDPR erasure) thật ở tầng dữ liệu, chỉ cần
+    // một mapper tương lai quên ternary là thành lỗ API thật. `authorName`
+    // là NOT NULL (schema) nên scrub về chuỗi rỗng, không phải null.
     const flagged = await prisma.review.findUnique({ where: { id: review.id } });
     expect(flagged?.authorDeleted).toBe(true);
+    expect(flagged?.authorName).toBe('');
 
     // Session cũ chết → 401.
     const stale = await app.inject({ method: 'GET', url: '/api/account/me', headers: { cookie } });

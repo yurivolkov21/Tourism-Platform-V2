@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module.js';
@@ -366,6 +367,58 @@ describe('reviews (int)', () => {
     expect(items[1].authorName).toBeNull(); // tên đã bị giấu
   });
 
+  it('list công khai: review CHƯA duyệt (pending) KHÔNG xuất hiện', async () => {
+    // Mutation-test đã chứng minh: xoá filter `isApproved: true` khỏi
+    // `listByTour` thì 72/72 test cũ VẪN XANH — bề mặt bảo mật này trước đó
+    // không có gì canh. Test này PHẢI fail nếu ai đó gỡ filter đó ra.
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'walking', name: 'Walking', order: 1 },
+    });
+    const destination = await prisma.destination.create({
+      data: { slug: 'hoi-an', name: 'Hội An' },
+    });
+    const tour = await prisma.tour.create({
+      data: {
+        slug: 'hoi-an-walking-tour',
+        title: 'Hội An Walking Tour',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '39.00',
+        currency: 'USD',
+        isPublished: true,
+        destinations: { create: { destinationId: destination.id, isPrimary: true } },
+      },
+    });
+    const approved = await prisma.review.create({
+      data: {
+        tourId: tour.id,
+        source: ReviewSource.CURATED,
+        rating: 5,
+        body: 'Review đã duyệt, phải xuất hiện trong list công khai',
+        authorName: 'Alice',
+        isApproved: true,
+      },
+    });
+    await prisma.review.create({
+      data: {
+        tourId: tour.id,
+        source: ReviewSource.CURATED,
+        rating: 1,
+        body: 'Review CHƯA duyệt, KHÔNG được lộ ra ngoài công khai',
+        authorName: 'Mallory',
+        isApproved: false,
+      },
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/api/tours/${tour.slug}/reviews` });
+
+    expect(res.statusCode).toBe(200);
+    const items = res.json().items;
+    expect(items).toHaveLength(1);
+    expect(items[0].id).toBe(approved.id);
+    expect(res.json().total).toBe(1);
+  });
+
   it('KHÔNG có dữ liệu trust giả: tour chưa có review → ratingAvg null, list rỗng', async () => {
     // Regression có chủ đích: Nexora từng hiện 4 reviewer bịa (Emily Carter…)
     // khi chưa có review thật, phải gỡ rồi viết test chặn nó sống lại.
@@ -384,8 +437,34 @@ describe('reviews (int)', () => {
     expect(fresh.ratingCount).toBe(0);
   });
 
-  it('list công khai: tour chưa publish hoặc slug lạ → TOUR_NOT_FOUND', async () => {
+  it('list công khai: slug lạ → TOUR_NOT_FOUND', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/tours/khong-ton-tai/reviews' });
+
+    expect(res.statusCode).toBe(404);
+    expect(res.json().code).toBe('TOUR_NOT_FOUND');
+  });
+
+  it('list công khai: tour có isPublished=false → TOUR_NOT_FOUND', async () => {
+    // Nửa còn lại của tên test cũ ('tour chưa publish hoặc slug lạ') chưa
+    // từng chạy — mutation-test đã chứng minh xoá filter `isPublished: true`
+    // khỏi `listByTour` thì 72/72 test cũ VẪN XANH. Test này PHẢI fail nếu
+    // filter đó bị gỡ.
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'walking', name: 'Walking', order: 1 },
+    });
+    const tour = await prisma.tour.create({
+      data: {
+        slug: 'chua-xuat-ban',
+        title: 'Tour chưa xuất bản',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '39.00',
+        currency: 'USD',
+        isPublished: false,
+      },
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/api/tours/${tour.slug}/reviews` });
 
     expect(res.statusCode).toBe(404);
     expect(res.json().code).toBe('TOUR_NOT_FOUND');
@@ -628,6 +707,105 @@ describe('reviews (int)', () => {
         headers: { cookie },
       });
       expect(page2.json().items).toHaveLength(1);
+    });
+  });
+
+  describe('admin reviews — phân quyền + adminList', () => {
+    // Mutation-test đã chứng minh: xoá `@Roles(UserRole.ADMIN)` khỏi
+    // AdminReviewsController thì 72/72 test cũ VẪN XANH, và `adminList`
+    // không có test nào canh — bề mặt admin coi như KHÔNG có gì bảo vệ. Ba
+    // test dưới đây PHẢI fail nếu guard/filter tương ứng bị gỡ.
+
+    it('moderate: customer đã đăng nhập (không phải admin) → 403', async () => {
+      const { cookie } = await signUpAndSignIn(app, 'not-admin@example.com');
+      const fakeId = randomUUID(); // guard chạy TRƯỚC oRPC parse input → id không cần tồn tại thật.
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/admin/reviews/${fakeId}/moderate`,
+        headers: { cookie },
+        payload: { id: fakeId, approve: true },
+      });
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    it('moderate: ẩn danh (không cookie) → 401', async () => {
+      const fakeId = randomUUID();
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/admin/reviews/${fakeId}/moderate`,
+        payload: { id: fakeId, approve: true },
+      });
+
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('adminList: lọc theo isApproved hoạt động đúng', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const category = await prisma.tourCategory.create({
+        data: { slug: 'walking', name: 'Walking', order: 1 },
+      });
+      const tour = await prisma.tour.create({
+        data: {
+          slug: 'hoi-an-walking-tour',
+          title: 'Hội An Walking Tour',
+          categoryId: category.id,
+          durationDays: 1,
+          basePrice: '39.00',
+          currency: 'USD',
+          isPublished: true,
+        },
+      });
+      const approved = await prisma.review.create({
+        data: {
+          tourId: tour.id,
+          source: ReviewSource.CURATED,
+          rating: 5,
+          body: 'Review đã duyệt, phải nằm trong kết quả isApproved=true',
+          authorName: 'Alice',
+          isApproved: true,
+        },
+      });
+      const pending = await prisma.review.create({
+        data: {
+          tourId: tour.id,
+          source: ReviewSource.CURATED,
+          rating: 2,
+          body: 'Review đang chờ duyệt, phải nằm trong kết quả isApproved=false',
+          authorName: 'Bob',
+          isApproved: false,
+        },
+      });
+
+      const approvedOnly = await app.inject({
+        method: 'GET',
+        url: '/api/admin/reviews?isApproved=true',
+        headers: { cookie: admin.cookie },
+      });
+      expect(approvedOnly.statusCode).toBe(200);
+      const approvedItems = approvedOnly.json().items;
+      expect(approvedItems).toHaveLength(1);
+      expect(approvedItems[0].id).toBe(approved.id);
+
+      const pendingOnly = await app.inject({
+        method: 'GET',
+        url: '/api/admin/reviews?isApproved=false',
+        headers: { cookie: admin.cookie },
+      });
+      expect(pendingOnly.statusCode).toBe(200);
+      const pendingItems = pendingOnly.json().items;
+      expect(pendingItems).toHaveLength(1);
+      expect(pendingItems[0].id).toBe(pending.id);
+
+      // Không truyền isApproved → thấy CẢ hai (mặc định không lọc).
+      const all = await app.inject({
+        method: 'GET',
+        url: '/api/admin/reviews',
+        headers: { cookie: admin.cookie },
+      });
+      expect(all.json().items).toHaveLength(2);
     });
   });
 });

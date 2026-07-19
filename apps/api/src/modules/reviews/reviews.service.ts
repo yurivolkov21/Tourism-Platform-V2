@@ -156,12 +156,18 @@ export class ReviewsService {
    * là thổi phồng điểm. Vì vậy gate ③ kiểm CẢ `tourId` LẪN `source ===
    * VERIFIED`, không chỉ `tourId`.
    *
-   * Hai điểm concurrency đã fix (code review):
+   * Ba điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
    *     LẠI TRONG transaction (khoá bằng `FOR UPDATE`) chứ không dùng
    *     snapshot đọc trước transaction — tránh TOCTOU khi hai admin bấm
    *     duyệt cùng review gần như đồng thời (audit trail ghi sai
    *     `fromApproved`, email có thể gửi/không-gửi sai).
+   *   - `tourId`/`source` dùng ở gate ③ CŨNG đọc TRONG transaction dưới CÙNG
+   *     `FOR UPDATE` đó (không phải snapshot trước tx) — nhánh chưa có
+   *     endpoint sửa review nên hiện tại vô hại, nhưng P4 (admin CRUD review)
+   *     sẽ có request có thể đổi hai cột này; đọc trước tx thì moderate() chạy
+   *     song song với request sửa đó có thể tính rating cho SAI tour hoặc
+   *     tính nhầm CURATED vào rating.
    *   - Rating của tour được khoá row (`SELECT … FOR UPDATE`) TRƯỚC khi
    *     aggregate+ghi, xem chi tiết ở ③.
    */
@@ -172,14 +178,12 @@ export class ReviewsService {
     const existing = await prisma.review.findUnique({
       where: { id: input.id },
       select: {
-        id: true,
-        tourId: true,
-        // Cần cho gate ③ — CURATED được PHÉP có tourId (reviews_source_shape)
-        // nên phải kiểm thêm source mới biết có tính vào rating hay không.
-        source: true,
         // Cần cho payload email ở bước ④ — ResendDeliverer throw nếu payload
         // thiếu `email` (xem resend.deliverer.ts). Review CURATED không có
         // user thật (userId null) nên không email được — bước ④ tự bỏ qua.
+        // CHỈ dùng cho metadata email, KHÔNG dùng cho gate ③ (xem `locked`
+        // trong transaction bên dưới) — không cần nhất quán atomic với phần
+        // ghi rating.
         user: { select: { email: true, name: true } },
         tour: { select: { title: true } },
       },
@@ -187,14 +191,18 @@ export class ReviewsService {
     if (!existing) throw new ReviewNotFoundError();
 
     return prisma.$transaction(async (tx) => {
-      // Khoá đúng row review NÀY trước khi đọc isApproved. Đọc thường
-      // (không FOR UPDATE) dưới Read Committed có thể trả về snapshot đã cũ
-      // nếu một moderate() khác trên CÙNG review đang chờ commit (TOCTOU) —
-      // `FOR UPDATE` buộc câu SELECT này BLOCK tới khi lock giải phóng rồi
-      // đọc lại giá trị mới nhất đã commit, nên fromApproved/justApproved
-      // dưới đây luôn đúng dù hai admin bấm duyệt gần như đồng thời.
-      const [locked] = await tx.$queryRaw<{ isApproved: boolean }[]>(Prisma.sql`
-        SELECT is_approved AS "isApproved" FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
+      // Khoá đúng row review NÀY trước khi đọc isApproved/tourId/source. Đọc
+      // thường (không FOR UPDATE) dưới Read Committed có thể trả về snapshot
+      // đã cũ nếu một request khác trên CÙNG review đang chờ commit (TOCTOU)
+      // — `FOR UPDATE` buộc câu SELECT này BLOCK tới khi lock giải phóng rồi
+      // đọc lại giá trị mới nhất đã commit. Gộp CẢ BA cột vào MỘT câu SELECT
+      // (không chỉ isApproved) để `tourId`/`source` dùng ở gate ③ cũng luôn
+      // nhất quán với đúng review vừa bị khoá.
+      const [locked] = await tx.$queryRaw<
+        { isApproved: boolean; tourId: string | null; source: ReviewSource }[]
+      >(Prisma.sql`
+        SELECT is_approved AS "isApproved", tour_id AS "tourId", source AS "source"
+        FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new ReviewNotFoundError();
 
@@ -224,9 +232,12 @@ export class ReviewsService {
 
       // ③ recompute rating của ĐÚNG tour đó — CHỈ khi review này là VERIFIED.
       // CURATED được PHÉP có tourId (reviews_source_shape) nên riêng
-      // `existing.tourId` KHÔNG đủ để gate: phải kiểm cả `source`, nếu không
+      // `locked.tourId` KHÔNG đủ để gate: phải kiểm cả `source`, nếu không
       // testimonial CURATED đã duyệt sẽ đội rating tour lên (xem doc-comment
-      // ở đầu hàm). Subquery aggregate bên dưới cũng lọc `source = 'VERIFIED'`
+      // ở đầu hàm). `locked.tourId`/`locked.source` đọc TRONG transaction
+      // dưới CÙNG `FOR UPDATE` với `isApproved` ở trên (không phải snapshot
+      // `existing` đọc trước tx) — xem "Ba điểm concurrency" ở doc-comment
+      // đầu hàm. Subquery aggregate bên dưới cũng lọc `source = 'VERIFIED'`
       // cùng lý do — nếu chỉ gate ở ngoài mà quên lọc trong subquery thì
       // những review CURATED ĐÃ duyệt từ trước (trước khi có fix này) vẫn lọt
       // vào phép tính mỗi lần một review VERIFIED khác của cùng tour được
@@ -253,9 +264,9 @@ export class ReviewsService {
       // xong. Statement UPDATE...FROM theo sau là statement MỚI nên có
       // snapshot MỚI, thấy đủ mọi thay đổi đã commit trước đó (kể cả của
       // transaction vừa nhả lock) → aggregate luôn đúng, không mất update.
-      if (existing.tourId && existing.source === ReviewSource.VERIFIED) {
+      if (locked.tourId && locked.source === ReviewSource.VERIFIED) {
         const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
-          SELECT id FROM tours WHERE id = ${existing.tourId}::uuid FOR UPDATE
+          SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
         `);
         if (lockedTour) {
           await tx.$executeRaw(Prisma.sql`
@@ -266,11 +277,11 @@ export class ReviewsService {
             FROM (
               SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
               FROM reviews
-              WHERE tour_id = ${existing.tourId}::uuid
+              WHERE tour_id = ${locked.tourId}::uuid
                 AND is_approved = true
                 AND source = 'VERIFIED'::"ReviewSource"
             ) s
-            WHERE t.id = ${existing.tourId}::uuid
+            WHERE t.id = ${locked.tourId}::uuid
           `);
         }
       }
@@ -404,7 +415,13 @@ export class ReviewsService {
     };
   }
 
-  /** Hàng đợi moderation cho admin. Mặc định không lọc — admin thấy tất cả. */
+  /**
+   * Hàng đợi moderation cho admin. Mặc định không lọc — admin thấy tất cả.
+   * Tie-breaker `id desc` cùng lý do đã ghi ở `listByTour()`/`mine()`:
+   * `createdAt` chỉ chính xác tới millisecond nên hai review trùng millisecond
+   * thì thứ tự giữa chúng không ổn định qua các lần query — phân trang hàng
+   * đợi moderation có thể lặp/bỏ sót item.
+   */
   async adminList(query: { page: number; pageSize: number; isApproved?: boolean }): Promise<{
     items: AdminReview[];
     page: number;
@@ -417,7 +434,7 @@ export class ReviewsService {
       prisma.review.findMany({
         where,
         include: { tour: { select: { slug: true } } },
-        orderBy: { createdAt: 'desc' },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,
       }),
