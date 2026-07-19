@@ -1,0 +1,63 @@
+import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { Test } from '@nestjs/testing';
+import { AppModule } from './app.module.js';
+import { configureHttp } from './bootstrap.js';
+
+/**
+ * CORS là bề mặt bảo mật: thiếu nó thì web/admin bị trình duyệt chặn sạch;
+ * mở quá tay (`origin: true`) thì trang bất kỳ đọc được API kèm cookie phiên
+ * của người dùng. Cả hai chiều đều phải có test canh.
+ */
+describe('configureHttp — CORS (e2e)', () => {
+  let app: NestFastifyApplication;
+  // Khớp default của TRUSTED_ORIGINS trong config/env.ts.
+  const allowedOrigin = 'http://localhost:3000';
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await configureHttp(app);
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  it('cho phép origin nằm trong TRUSTED_ORIGINS, kèm credentials', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { origin: allowedOrigin },
+    });
+    expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
+    // Thiếu header này thì trình duyệt không gửi cookie phiên Better Auth.
+    expect(res.headers['access-control-allow-credentials']).toBe('true');
+  });
+
+  it('KHÔNG cấp quyền cho origin lạ', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/health',
+      headers: { origin: 'https://evil.example.com' },
+    });
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('trả lời preflight OPTIONS cho origin hợp lệ', async () => {
+    // Mọi request có Content-Type: application/json từ trình duyệt đều bắn
+    // preflight trước — trượt bước này là toàn bộ POST của web hỏng.
+    const res = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/tours',
+      headers: {
+        origin: allowedOrigin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+    expect(res.statusCode).toBeLessThan(300);
+    expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
+  });
+});

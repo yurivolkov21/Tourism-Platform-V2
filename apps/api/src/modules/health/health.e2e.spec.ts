@@ -23,4 +23,27 @@ describe('GET /health (e2e)', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({ status: 'ok' });
   });
+
+  it('thật sự chạm DB, không phải trả ok tĩnh', async () => {
+    // Bảo vệ chính: nếu ai đó bỏ `SELECT 1` đi, test này vẫn xanh nhưng
+    // test bên dưới (DB chết → 503) sẽ đỏ. Cặp hai test mới đủ nghĩa.
+    const res = await app.inject({ method: 'GET', url: '/health' });
+    expect(res.json()).toMatchObject({ status: 'ok', database: 'up' });
+  });
+
+  it('trả 503 + database:down khi query DB ném lỗi', async () => {
+    // Vì sao quan trọng: Supabase free TỰ PAUSE sau 7 ngày không hoạt động.
+    // Probe trả ok tĩnh sẽ báo xanh trong khi mọi request thật đều 5xx —
+    // nền tảng không restart, không ai được cảnh báo.
+    const { prisma } = await import('../../auth/auth.config.js');
+    const spy = vi.spyOn(prisma, '$queryRaw').mockRejectedValueOnce(new Error('connection lost'));
+
+    const res = await app.inject({ method: 'GET', url: '/health' });
+
+    expect(res.statusCode).toBe(503);
+    expect(res.json()).toMatchObject({ status: 'degraded', database: 'down' });
+    // Không được rò chi tiết lỗi DB ra endpoint public.
+    expect(res.payload).not.toContain('connection lost');
+    spy.mockRestore();
+  });
 });
