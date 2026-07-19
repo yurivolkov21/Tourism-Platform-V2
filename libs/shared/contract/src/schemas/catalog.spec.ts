@@ -22,6 +22,8 @@ const validCard = {
   isFeatured: true,
   primaryDestination: { slug: 'hoi-an', name: 'Hội An' },
   category: { slug: 'day', name: 'Day Tours' },
+  ratingAvg: 4.5,
+  ratingCount: 12,
 };
 
 const validDetail = {
@@ -212,9 +214,11 @@ describe('DestinationSchema / TourCategorySchema / HealthSchema', () => {
       name: 'Day Tours',
       description: null,
       order: 1,
+      toursCount: 7,
     };
     expect(TourCategorySchema.parse(category)).toEqual(category);
     expect(() => TourCategorySchema.parse({ ...category, order: 'first' })).toThrow();
+    expect(() => TourCategorySchema.parse({ ...category, toursCount: -1 })).toThrow();
   });
 
   it('parses health and rejects a non-ok status', () => {

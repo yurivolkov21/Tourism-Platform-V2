@@ -53,6 +53,17 @@ export const TourCardSchema = z.object({
   isFeatured: z.boolean(),
   primaryDestination: z.object({ slug: z.string(), name: z.string() }).nullable(),
   category: z.object({ slug: z.string(), name: z.string() }),
+  // Rating denormalize sẵn trên Tour (cập nhật atomically trong transaction
+  // duyệt review — xem ReviewsService.moderate). Nexora tính live bằng
+  // groupBy mỗi lần đọc; cách này rẻ hơn hẳn ở đường đọc.
+  //
+  // `number` chứ không phải DecimalString như tiền: đây là số để hiển thị
+  // sao, FE cần dùng số trực tiếp, và Decimal(2,1) biểu diễn chính xác
+  // được trong double. Quy tắc "tiền luôn là string" không áp ở đây.
+  //
+  // null ≠ 0: null là "chưa ai đánh giá", 0 là "bị chấm 0 điểm".
+  ratingAvg: z.number().min(0).max(5).nullable(),
+  ratingCount: z.int().nonnegative(),
 });
 
 export type TourCard = z.output<typeof TourCardSchema>;
@@ -128,6 +139,11 @@ export const TourCategorySchema = z.object({
   name: z.string().min(1).max(120),
   description: z.string().max(500).nullable(),
   order: z.int(),
+  // Đối xứng với `DestinationSchema.tourCount` — dùng cho nhãn bộ lọc
+  // "Adventure Tours (7)". CHỈ đếm tour đã publish: đếm cả draft là
+  // endpoint công khai gián tiếp lộ số tour nháp (lỗi Nexora mắc ở
+  // destinations, v2 đã tránh — giữ nhất quán ở đây).
+  toursCount: z.int().nonnegative(),
 });
 
 export type TourCategory = z.output<typeof TourCategorySchema>;

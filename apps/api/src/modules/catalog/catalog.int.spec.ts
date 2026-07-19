@@ -91,6 +91,14 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     });
     await prisma.tourDeparture.createMany({ data: departures });
 
+    // Rating denormalized: đặt thẳng giá trị thay vì đi qua luồng duyệt
+    // review (đã có test riêng ở reviews.int.spec). Ở đây chỉ kiểm ĐÚNG
+    // một việc: catalog có đọc hai cột đó ra không.
+    await prisma.tour.update({
+      where: { id: dayTour.id },
+      data: { ratingAvg: '4.5', ratingCount: 12 },
+    });
+
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
     }).compile();
@@ -290,5 +298,44 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     expect(categories.map((c) => c.order)).toEqual(
       [...categories.map((c) => c.order)].sort((a, b) => a - b),
     );
+  });
+
+  it('tour card trả rating đã denormalize (A1 — hạ tầng có sẵn từ P3a)', async () => {
+    // P3a xây Tour.ratingAvg/ratingCount và cập nhật atomically trong
+    // transaction duyệt review, nhưng catalog KHÔNG hề đọc ra — dữ liệu
+    // nằm trong DB mà FE không lấy được. Test này canh đúng chỗ đó.
+    const res = await app.inject({ method: 'GET', url: '/api/tours?pageSize=100' });
+    const page = PagedSchema(TourCardSchema).parse(res.json());
+
+    const rated = page.items.find((t) => t.slug === PUBLISHED_DAY_SLUG);
+    expect(rated?.ratingAvg).toBe(4.5);
+    expect(rated?.ratingCount).toBe(12);
+
+    // Tour chưa có review nào: null chứ không phải 0 — phân biệt "chưa ai
+    // đánh giá" với "bị chấm 0 điểm".
+    const unrated = page.items.find((t) => t.slug === PUBLISHED_CRUISE_SLUG);
+    expect(unrated?.ratingAvg).toBeNull();
+    expect(unrated?.ratingCount).toBe(0);
+  });
+
+  it('tour detail cũng trả rating (kế thừa từ TourCardSchema)', async () => {
+    const res = await app.inject({ method: 'GET', url: `/api/tours/${PUBLISHED_DAY_SLUG}` });
+    const detail = TourDetailSchema.parse(res.json());
+    expect(detail.ratingAvg).toBe(4.5);
+    expect(detail.ratingCount).toBe(12);
+  });
+
+  it('category list trả toursCount (A9 — destination đã có, category thì chưa)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/categories' });
+    const categories = TourCategorySchema.array().parse(res.json());
+
+    // Fixture: dayTour published + unpublishedTour đều thuộc category 'day'.
+    // Chỉ ĐẾM tour đã publish — nếu không, endpoint công khai gián tiếp lộ
+    // số lượng tour nháp (đúng lỗi Nexora mắc phải ở destinations).
+    const day = categories.find((c) => c.slug === 'day');
+    expect(day?.toursCount).toBe(1);
+
+    const cruise = categories.find((c) => c.slug === 'cruise');
+    expect(cruise?.toursCount).toBe(1);
   });
 });

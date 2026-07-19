@@ -54,6 +54,11 @@ function toTourCard(tour: TourCardRow): TourCard {
     isFeatured: tour.isFeatured,
     primaryDestination: tour.destinations[0]?.destination ?? null,
     category: tour.category,
+    // Decimal → number: rating là số hiển thị sao, không phải tiền, và
+    // Decimal(2,1) biểu diễn chính xác được trong double. null giữ nguyên
+    // null (chưa ai đánh giá), KHÔNG fold về 0.
+    ratingAvg: tour.ratingAvg === null ? null : Number(tour.ratingAvg),
+    ratingCount: tour.ratingCount,
   };
 }
 
@@ -184,6 +189,9 @@ export class CatalogService {
     const categories = await prisma.tourCategory.findMany({
       where: { isActive: true },
       orderBy: { order: 'asc' },
+      // Chỉ đếm tour đã publish — cùng lý do với `listDestinations`: đếm cả
+      // draft là endpoint công khai gián tiếp lộ số tour nháp.
+      include: { _count: { select: { tours: { where: { isPublished: true } } } } },
     });
 
     return categories.map((category) => ({
@@ -192,6 +200,7 @@ export class CatalogService {
       name: category.name,
       description: category.description,
       order: category.order,
+      toursCount: category._count.tours,
     }));
   }
 }
