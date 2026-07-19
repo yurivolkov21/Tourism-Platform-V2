@@ -68,6 +68,24 @@ describe('parseEnv', () => {
     ).toBe('postgresql://u:p@db.example.com:5432/app');
   });
 
+  it('treats an empty value as unset (KEY= behaves like no KEY line)', () => {
+    // .env sinh ra chuỗi rỗng chứ không phải undefined; nếu không xử lý,
+    // copy .env.example rồi để trống các biến optional là app không boot.
+    const env = parseEnv({
+      BETTER_AUTH_SECRET: '',
+      STRIPE_SECRET_KEY: '',
+      RESEND_API_KEY: '',
+      EMAIL_FROM: '',
+    });
+    expect(env.BETTER_AUTH_SECRET).toBe('dev-secret-change-me'); // default áp dụng
+    expect(env.STRIPE_SECRET_KEY).toBeUndefined(); // optional vẫn undefined
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.EMAIL_FROM).toBe('Tourism <noreply@tourism.test>');
+    // Và ở production, DATABASE_URL rỗng vẫn phải bị chặn (rơi về default
+    // localhost rồi bị guard bắt) — không được lọt qua vì đã bị strip.
+    expect(() => parseEnv({ NODE_ENV: 'production', DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
+  });
+
   it('rejects invalid BETTER_AUTH_URL', () => {
     expect(() => parseEnv({ BETTER_AUTH_URL: 'not a url' })).toThrow(/BETTER_AUTH_URL/);
   });

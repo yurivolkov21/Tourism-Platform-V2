@@ -17,8 +17,7 @@ generated/
 .env
 .env.*
 # Mẫu không chứa secret — phải commit để người clone biết cần khai gì.
-!.env.example
-!.env.example
+!apps/api/.env.example
 
 # test / coverage
 coverage/

@@ -86,7 +86,12 @@ const EnvSchema = z
 export type Env = z.infer<typeof EnvSchema>;
 
 export function parseEnv(raw: NodeJS.ProcessEnv): Env {
-  const result = EnvSchema.safeParse(raw);
+  // Biến để trống (`KEY=` trong .env, hoặc ô bỏ trống trên dashboard
+  // Vercel/Render) tới đây là CHUỖI RỖNG, không phải undefined — nên
+  // `.default()` không kích hoạt còn `.min(1)` thì fail. Coi rỗng là
+  // "chưa khai" để `KEY=` và bỏ hẳn dòng KEY hành xử giống nhau.
+  const cleaned = Object.fromEntries(Object.entries(raw).filter(([, v]) => v !== ''));
+  const result = EnvSchema.safeParse(cleaned);
   if (!result.success) {
     const detail = result.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
     throw new Error(`Invalid environment: ${detail}`);
