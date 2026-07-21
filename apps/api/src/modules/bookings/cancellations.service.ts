@@ -10,6 +10,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
 import { calendarDate, toBooking } from './bookings.service.js';
+import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
   BookingNotFoundError,
@@ -318,16 +319,24 @@ export class CancellationsService {
    * APPROVE — orchestration money+seats của W4 (invariant spec §4, thứ tự theo
    * nguyên tắc W2/W3):
    *
-   *  1. Gate: booking phải refundable (PAID / PARTIALLY_REFUNDED có captured
-   *     payment) và ledger phải còn dư một remainder — một booking đã fully
-   *     refund qua W3 trong lúc request còn mở thì không approve được
-   *     (NOT_REFUNDABLE 422; admin deny nó thay vào đó).
-   *  2. Provider refund FULL REMAINDER trước, ngoài mọi transaction (không bao
-   *     giờ ledger thứ chưa xảy ra; HTTP không bao giờ giữ connection).
+   * BK-R1 cross-path (ADR-0009): TOÀN BỘ gate→ledger→gateway→ghi nằm TRONG
+   * `withBookingRefundLock(booking.id)` — cùng advisory lock mà `refundByAdmin`
+   * (W3) dùng, nên hai đường refund khác nhau trên cùng booking serialize:
+   * đường thứ hai block tới khi đường đầu commit, đọc ledger đã cập nhật →
+   * không double-refund ở gateway. Gate + ledger đọc TƯƠI trong lock (không xài
+   * `request.booking` đã cũ lúc `decide`).
+   *
+   *  1. Gate (TƯƠI, trong lock): booking phải refundable (PAID /
+   *     PARTIALLY_REFUNDED có captured payment) và ledger phải còn dư một
+   *     remainder — một booking đã fully refund qua W3 trong lúc request còn mở
+   *     thì không approve được (NOT_REFUNDABLE 422; admin deny nó thay vào đó).
+   *  2. Provider refund FULL REMAINDER (không bao giờ ledger thứ chưa xảy ra).
+   *     Chạy TRONG tx của lock — ngoại lệ có chủ đích của "gateway ngoài tx"
+   *     (ADR-0009), chỉ cho đường refund hiếm; lock giữ suốt read→gateway→ledger.
    *     `adminId` = admin đang quyết định.
-   *  3. MỘT statement nguyên tử (house CTE style), mọi thứ driven FROM cái
-   *     flip của request để một decide-race bị thua làm CẢ statement thành
-   *     no-op:
+   *  3. MỘT statement nguyên tử (house CTE style, chạy qua `tx.$queryRaw` trong
+   *     lock), mọi thứ driven FROM cái flip của request để một decide-race bị
+   *     thua làm CẢ statement thành no-op:
    *       req_flip     — REQUESTED → REFUNDED (giá trị resolved-by-refund của
    *                      model) + decidedBy/decidedAt/note; qual quyết-định-race
    *                      trên UPDATE target.
@@ -348,8 +357,8 @@ export class CancellationsService {
    * Ghi chú failure: một provider refund bị từ chối sẽ abort trước mọi lần ghi
    * (502, request ở lại REQUESTED — retryable). Nếu flip race về zero row SAU
    * KHI provider refund thành công, không có gì được ledger — log thật to để
-   * operator reconcile (cùng cửa sổ tồn dư như mọi chuỗi gateway-rồi-DB;
-   * pre-check khiến nó chỉ xảy ra khi có admin đồng thời). Một seat guard bị
+   * operator reconcile (advisory lock giờ khiến nó gần như bất khả: đường thứ
+   * hai đã bị chặn ở gate TƯƠI trong lock trước cả gateway). Một seat guard bị
    * fail KHÔNG abort: money story đã xảy ra rồi và PHẢI commit.
    */
   private async approve(
@@ -357,99 +366,110 @@ export class CancellationsService {
     request: CancellationRow & { booking: Prisma.BookingModel },
     note: string | null,
   ): Promise<DecideCancellationResult> {
-    const booking = request.booking;
-    const refundableStatus =
-      booking.status === BookingStatus.PAID || booking.status === BookingStatus.PARTIALLY_REFUNDED;
-    if (!refundableStatus || !booking.providerPaymentId) {
-      throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
-    }
-    const ledger = await prisma.refund.aggregate({
-      where: { bookingId: booking.id },
-      _sum: { amount: true },
+    const bookingId = request.booking.id;
+
+    // MỌI gate + ledger + gateway + ghi nằm TRONG advisory lock (BK-R1
+    // cross-path, ADR-0009) — serialize với refundByAdmin/approve đồng thời trên
+    // cùng booking. Đọc booking TƯƠI trong lock (không xài request.booking cũ).
+    const result = await withBookingRefundLock(bookingId, async (tx) => {
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
+      const refundableStatus =
+        booking.status === BookingStatus.PAID ||
+        booking.status === BookingStatus.PARTIALLY_REFUNDED;
+      if (!refundableStatus || !booking.providerPaymentId) {
+        throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
+      }
+      const ledger = await tx.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      // requested:null → full remainder; ném RefundNothingLeftError trên một
+      // ledger đã settle (được controller map sang NOT_REFUNDABLE).
+      const { amount } = classifyRefundAmount({
+        requested: null,
+        total: booking.totalAmount,
+        alreadyRefunded: ledger._sum.amount ?? new Prisma.Decimal(0),
+      });
+
+      // Provider idempotency key `cancel-refund:<requestId>`: một request được
+      // approve nhiều nhất một lần (append-only, flip gate trên REQUESTED), nên
+      // request id đặt tên cho refund attempt này một cách deterministic (W5).
+      // Gọi TRONG tx của lock (ngoại lệ ADR-0009) để lock giữ suốt read→gateway→ledger.
+      const providerRefundId = await this.refunds.executeGatewayRefund(
+        { ...booking, providerPaymentId: booking.providerPaymentId },
+        amount,
+        `cancel-refund:${request.id}`,
+      );
+
+      const flipped = await tx.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`
+        WITH req_flip AS (
+          UPDATE cancellation_requests cr
+          SET status = 'REFUNDED'::"CancellationRequestStatus",
+              decision_note = ${note},
+              decided_by = ${adminUserId}::uuid,
+              decided_at = now(),
+              updated_at = now()
+          WHERE cr.id = ${request.id}::uuid
+            AND cr.status = 'REQUESTED'::"CancellationRequestStatus"
+          RETURNING cr.id, cr.booking_id
+        ),
+        refund_insert AS (
+          INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id, admin_id)
+          SELECT gen_random_uuid(), r.booking_id, ${amount.toFixed(2)}::numeric,
+                 ${booking.currency}::text, ${providerRefundId}::text, ${adminUserId}::uuid
+          FROM req_flip r
+          RETURNING id
+        ),
+        cancel AS (
+          UPDATE bookings b
+          SET status = 'CANCELLED'::"BookingStatus",
+              cancelled_at = now(),
+              updated_at = now()
+          FROM req_flip r
+          WHERE b.id = r.booking_id
+          RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
+                    b.code, b.contact_email, b.contact_name, b.tour_title
+        ),
+        seat_release AS (
+          UPDATE tour_departures d
+          SET seats_booked = d.seats_booked - c.seats,
+              updated_at = now()
+          FROM cancel c
+          WHERE d.id = c.departure_id AND d.seats_booked >= c.seats
+          RETURNING d.id
+        ),
+        outbox_insert AS (
+          INSERT INTO outbox (type, payload, dedupe_key)
+          SELECT 'CANCELLATION_APPROVED'::"EmailType",
+                 jsonb_build_object(
+                   'requestId', r.id,
+                   'bookingId', c.id,
+                   'code', c.code,
+                   'email', c.contact_email,
+                   'name', c.contact_name,
+                   'title', c.tour_title,
+                   'amount', ${amount.toFixed(2)}::text,
+                   'currency', ${booking.currency}::text,
+                   'note', ${note}::text
+                 ),
+                 'cancellation-approved:' || r.id::text
+          FROM req_flip r
+          JOIN cancel c ON c.id = r.booking_id
+          ON CONFLICT (dedupe_key) DO NOTHING
+        )
+        SELECT r.id, (SELECT count(*) FROM seat_release) AS released FROM req_flip r
+      `);
+      return { flipped, amount, providerRefundId, currency: booking.currency, code: booking.code };
     });
-    // requested:null → full remainder; ném RefundNothingLeftError trên một
-    // ledger đã settle (được controller map sang NOT_REFUNDABLE).
-    const { amount } = classifyRefundAmount({
-      requested: null,
-      total: booking.totalAmount,
-      alreadyRefunded: ledger._sum.amount ?? new Prisma.Decimal(0),
-    });
 
-    // Provider idempotency key `cancel-refund:<requestId>`: một request được
-    // approve nhiều nhất một lần (append-only, flip gate trên REQUESTED), nên
-    // request id đặt tên cho refund attempt này một cách deterministic (W5).
-    const providerRefundId = await this.refunds.executeGatewayRefund(
-      { ...booking, providerPaymentId: booking.providerPaymentId },
-      amount,
-      `cancel-refund:${request.id}`,
-    );
-
-    const flipped = await prisma.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`
-      WITH req_flip AS (
-        UPDATE cancellation_requests cr
-        SET status = 'REFUNDED'::"CancellationRequestStatus",
-            decision_note = ${note},
-            decided_by = ${adminUserId}::uuid,
-            decided_at = now(),
-            updated_at = now()
-        WHERE cr.id = ${request.id}::uuid
-          AND cr.status = 'REQUESTED'::"CancellationRequestStatus"
-        RETURNING cr.id, cr.booking_id
-      ),
-      refund_insert AS (
-        INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id, admin_id)
-        SELECT gen_random_uuid(), r.booking_id, ${amount.toFixed(2)}::numeric,
-               ${booking.currency}::text, ${providerRefundId}::text, ${adminUserId}::uuid
-        FROM req_flip r
-        RETURNING id
-      ),
-      cancel AS (
-        UPDATE bookings b
-        SET status = 'CANCELLED'::"BookingStatus",
-            cancelled_at = now(),
-            updated_at = now()
-        FROM req_flip r
-        WHERE b.id = r.booking_id
-        RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
-                  b.code, b.contact_email, b.contact_name, b.tour_title
-      ),
-      seat_release AS (
-        UPDATE tour_departures d
-        SET seats_booked = d.seats_booked - c.seats,
-            updated_at = now()
-        FROM cancel c
-        WHERE d.id = c.departure_id AND d.seats_booked >= c.seats
-        RETURNING d.id
-      ),
-      outbox_insert AS (
-        INSERT INTO outbox (type, payload, dedupe_key)
-        SELECT 'CANCELLATION_APPROVED'::"EmailType",
-               jsonb_build_object(
-                 'requestId', r.id,
-                 'bookingId', c.id,
-                 'code', c.code,
-                 'email', c.contact_email,
-                 'name', c.contact_name,
-                 'title', c.tour_title,
-                 'amount', ${amount.toFixed(2)}::text,
-                 'currency', ${booking.currency}::text,
-                 'note', ${note}::text
-               ),
-               'cancellation-approved:' || r.id::text
-        FROM req_flip r
-        JOIN cancel c ON c.id = r.booking_id
-        ON CONFLICT (dedupe_key) DO NOTHING
-      )
-      SELECT r.id, (SELECT count(*) FROM seat_release) AS released FROM req_flip r
-    `);
-
+    const { flipped, amount, providerRefundId, currency, code } = result;
     const flip = flipped[0];
     if (!flip) {
       // Một decision đồng thời đã thắng giữa pre-check và flip: provider refund
       // ĐÃ ĐI QUA nhưng không có gì được ledger — operator phải reconcile.
       this.logger.error(
         `Approve race on request ${request.id}: provider refund ${providerRefundId} ` +
-          `(${amount.toFixed(2)} ${booking.currency}, booking ${booking.code}) issued but NOT ledgered`,
+          `(${amount.toFixed(2)} ${currency}, booking ${code}) issued but NOT ledgered`,
       );
       const fresh = await prisma.cancellationRequest.findUnique({
         where: { id: request.id },
@@ -463,14 +483,14 @@ export class CancellationsService {
       // Seat guard fail (counter đã trôi xuống dưới party size) — CHECK
       // backstop giữ nó >= 0; money story vẫn commit bất kể. Việc của operator.
       this.logger.error(
-        `Approve on request ${request.id}: seats NOT released for booking ${booking.code} ` +
+        `Approve on request ${request.id}: seats NOT released for booking ${code} ` +
           `(guard seats_booked >= party failed) — departure counter needs operator attention`,
       );
     }
 
     this.logger.log(
       `Cancellation request ${request.id} approved by ${adminUserId}: refunded ` +
-        `${amount.toFixed(2)} ${booking.currency}, booking ${booking.code} CANCELLED, seats released`,
+        `${amount.toFixed(2)} ${currency}, booking ${code} CANCELLED, seats released`,
     );
     return this.decisionResult(request.id);
   }

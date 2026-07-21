@@ -185,6 +185,16 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
   }
 
+  /** Admin refund trực tiếp (W3) — dùng cho test cross-path BK-R1. */
+  function postRefund(cookie: string, code: string, payload: Record<string, unknown> = {}) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/admin/bookings/${code}/refund`,
+      headers: { cookie },
+      payload,
+    });
+  }
+
   async function seatsBooked(): Promise<number> {
     const row = await prisma.tourDeparture.findUniqueOrThrow({
       where: { id: dep.id },
@@ -457,6 +467,32 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         })
       ).status,
     ).toBe(CancellationRequestStatus.REQUESTED);
+  });
+
+  it('BK-R1 cross-path: admin refund ‖ cancel-approve ĐỒNG THỜI → đúng 1 refund + 1 lần gọi gateway (advisory lock)', async () => {
+    const admin = await signUpAdmin();
+    const alice = await signUpUser('cross-path@example.com', 'Alice');
+    const booking = await createPaidBooking(alice); // 117.00
+    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+
+    fake.refundDelayMs = 100; // ép hai path cùng đọc ledger=0 trước khi bên nào ghi
+    const [a, b] = await Promise.allSettled([
+      postRefund(admin, booking.code, {}), // W3 admin full refund
+      postDecide(admin, request.id, { approve: true }), // W4 cancel-approve full refund
+    ]);
+    const codes = [a, b]
+      .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))
+      .sort((x, y) => x - y);
+    // Một path thắng lock (200); path chạy sau đọc ledger đã settle / booking không
+    // còn refundable → 422 (NOTHING_LEFT hoặc NOT_REFUNDABLE tùy thứ tự).
+    expect(codes).toEqual([200, 422]);
+
+    // Bất biến money cross-path: gateway ĐÚNG một lần, ledger đúng một row, không
+    // vượt total — hai đường refund khác nhau vẫn serialize trên cùng advisory lock.
+    expect(fake.refunds).toHaveLength(1);
+    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    expect(refunds).toHaveLength(1);
+    expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
   });
 
   it('admin.cancellations.list: booking context + status filter; myRequests returns own history', async () => {
