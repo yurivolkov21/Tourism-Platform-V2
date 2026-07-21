@@ -309,6 +309,47 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     });
   });
 
+  it('PAY-R1: overbook-cancelled rồi capture redelivery (eventId MỚI) → GIỮ CANCELLED, không refund/email lần 2', async () => {
+    const cookie = await signUpUser('pay-r1@example.com');
+    // Overbook y như test trên: party 6 qua soft-check rồi departure đầy 7/8 lúc claim.
+    const booking = await createBooking(cookie, {
+      departureId: depTight.id,
+      numAdults: 6,
+      numChildren: 0,
+    });
+    await prisma.tourDeparture.update({
+      where: { id: depTight.id },
+      data: { seatsBooked: 7 },
+    });
+
+    // Webhook #1 → overbooked → auto-refund + CANCELLED (paid_at NULL, ledger 234).
+    const first = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(first.json()).toMatchObject({ outcome: 'overbooked' });
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+      BookingStatus.CANCELLED,
+    );
+    expect(fake.refunds).toHaveLength(1);
+
+    // Webhook #2: CÙNG booking, eventId MỚI (beginEvent không dedupe theo eventId) →
+    // claim thấy CANCELLED → route sang refundOrphanedCapture. Đây là ca PAY-R1: booking
+    // đã có refund từ overbook-path → issueFullAutoRefund trả 'already-refunded'.
+    const retry = await postWebhook(
+      fake.emitPaymentCompleted(booking.id, { eventId: 'evt_pay_r1_retry' }),
+    );
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json()).toMatchObject({ outcome: 'cancelled' });
+
+    // GIỮ CANCELLED — KHÔNG sống dậy thành REFUNDED (overbook chưa từng là doanh thu).
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+
+    // Không refund lần 2 ở gateway; ledger vẫn đúng 1 row (overbook); email refund 1 lần
+    // (re-derive bị chặn → không chèn thêm outbox `orphan-refund:`).
+    expect(fake.refunds).toHaveLength(1);
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+    expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_REFUNDED } })).toBe(1);
+  });
+
   it('orphaned capture: completed AFTER cancel → auto-refund + ledger-derived REFUNDED (invariant #4)', async () => {
     const cookie = await signUpUser('orphan@example.com');
     const booking = await createBooking(cookie);

@@ -239,9 +239,16 @@ export class PaymentsService {
    * từng tính là doanh thu (nó chưa từng rời PENDING); full refund + CANCELLED
    * là trạng thái terminal đúng của nó, nên nó KHÔNG re-derive ở đây.
    *
-   * `already-refunded` (một provider retry quay lại sau một crash giữa lúc
-   * insert Refund và lúc flip này) vẫn chạy CTE finalize — cùng cách đóng
-   * crash-window như đường overbook; CTE là idempotent.
+   * PAY-R1 (ADR-0009): chỉ re-derive khi refund vừa phát MỚI (`'refunded'`).
+   * `'already-refunded'` nghĩa là booking đã mang một Refund row từ path KHÁC —
+   * overbook auto-refund (terminal CANCELLED) hoặc W4 cancel-approve (terminal
+   * CANCELLED) — bị route nhầm vào đây khi một capture redelivery/late tới sau
+   * lúc booking đã cancelled. KHÔNG re-derive các terminal đó thành REFUNDED
+   * (chúng không phải orphan). Đánh đổi: một crash đúng khe giữa `refund.create`
+   * và CTE flip của một orphan THẬT khiến retry (đọc thấy refund cũ →
+   * 'already-refunded') để booking kẹt CANCELLED thay vì REFUNDED — tiền vẫn
+   * hoàn đủ; nguồn orphan-thật duy nhất là pending-expiry (sub-project A chưa
+   * dựng). `paid_at` KHÔNG phân biệt được (overbook-retry lẫn orphan-thật đều NULL).
    */
   private async refundOrphanedCapture(
     provider: PaymentProvider,
@@ -254,7 +261,13 @@ export class PaymentsService {
       // thử (cùng quy ước với outbox dedupeKey bên dưới, ở phía provider).
       idempotencyKey: `orphan-refund:${bookingId}`,
     });
-    if (refund === 'failed') return;
+    // PAY-R1 (ADR-0009): CHỈ re-derive REFUNDED khi refund vừa phát MỚI ('refunded')
+    // — nghĩa là booking chưa có refund nào trước đó → capture này là tiền orphan
+    // thật. 'already-refunded' = booking đã có refund từ path KHÁC (overbook
+    // auto-refund hoặc W4 cancel-approve): terminal của nó do path đó quản, KHÔNG
+    // phải orphan này — giữ nguyên CANCELLED, không re-derive, không email lần hai.
+    // (Không dùng `paid_at` để phân biệt: overbook-retry và orphan-thật đều NULL.)
+    if (refund !== 'refunded') return;
 
     // Ledger → projection, quy tắc W3 (spec §3): không bao giờ hardcode status
     // đích; derive nó từ giá trị mà ledger thực sự cộng lại.
