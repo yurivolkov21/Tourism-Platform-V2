@@ -61,9 +61,10 @@ lúc HTTP — nguyên tắc money-path).
    kẹt CANCELLED thay vì REFUNDED (tiền vẫn hoàn đủ; nguồn orphan-thật duy nhất là pending-expiry
    của sub-project A chưa dựng). Chấp nhận.
 
-4. **TOCTOU (BK-R2/PAY-R2/TQ-3).** Áp cùng advisory lock per-booking cho nhánh webhook
-   auto-refund → duplicate delivery bị serialize; `issueFullAutoRefund` re-check
-   `status='PENDING'` trong lock trước khi gọi gateway.
+4. **TOCTOU (BK-R2/PAY-R2/TQ-3).** Bọc `issueFullAutoRefund` (check→gateway→ledger) bằng
+   cùng advisory lock per-booking của W3 → duplicate delivery đồng thời bị serialize; re-check
+   **existing-Refund** trong lock trước khi gọi gateway (dùng existing-Refund thay `status='PENDING'`
+   vì nó là idempotency-signal tổng quát cho CẢ overbook-PENDING lẫn orphan-CANCELLED).
 
 Cơ chế giữ lock qua HTTP (Prisma pool ~10) — interactive-tx bao gateway (timeout > 15s)
 hoặc raw-connection session-lock — chốt ở plan; cả hai đều serialize đúng.

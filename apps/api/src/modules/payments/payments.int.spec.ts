@@ -350,6 +350,38 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_REFUNDED } })).toBe(1);
   });
 
+  it('TOCTOU: overbook + hai webhook auto-refund ĐỒNG THỜI (eventId khác) → đúng 1 refund + 1 gateway call (advisory lock)', async () => {
+    const cookie = await signUpUser('toctou@example.com');
+    const booking = await createBooking(cookie, {
+      departureId: depTight.id,
+      numAdults: 6,
+      numChildren: 0,
+    });
+    await prisma.tourDeparture.update({
+      where: { id: depTight.id },
+      data: { seatsBooked: 7 },
+    });
+
+    // Hai delivery CÙNG booking, eventId KHÁC (beginEvent không dedupe) → cả hai
+    // claim overbooked → cả hai vào refundOverbooked. refundDelayMs ép cả hai đọc
+    // existing-refund=none trước khi bên nào ghi (canh advisory lock TOCTOU #4).
+    fake.refundDelayMs = 100;
+    const [a, b] = await Promise.allSettled([
+      postWebhook(fake.emitPaymentCompleted(booking.id, { eventId: 'evt_toctou_1' })),
+      postWebhook(fake.emitPaymentCompleted(booking.id, { eventId: 'evt_toctou_2' })),
+    ]);
+
+    // Cả hai webhook 200 (provider coi cả hai là thành công); nhưng auto-refund
+    // chỉ CHẠY GATEWAY một lần — flow thứ hai đọc existing-refund đã có → skip.
+    const codes = [a, b].map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0));
+    expect(codes).toEqual([200, 200]);
+    expect(fake.refunds).toHaveLength(1);
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+      BookingStatus.CANCELLED,
+    );
+  });
+
   it('orphaned capture: completed AFTER cancel → auto-refund + ledger-derived REFUNDED (invariant #4)', async () => {
     const cookie = await signUpUser('orphan@example.com');
     const booking = await createBooking(cookie);

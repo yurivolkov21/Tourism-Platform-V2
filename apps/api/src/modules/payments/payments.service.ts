@@ -3,6 +3,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import type { PaymentProvider } from '../../generated/prisma/enums.js';
 import { BookingsService, type ClaimOutcome } from '../bookings/bookings.service.js';
+import { withBookingRefundLock } from '../bookings/refund-lock.js';
 import { deriveStatusAfterRefund } from '../bookings/refund-math.js';
 import {
   PAYMENT_GATEWAYS,
@@ -329,6 +330,14 @@ export class PaymentsService {
    * admin-refundable được (PENDING-overbook / CANCELLED-orphan, đều nằm ngoài
    * gate admin PAID/PARTIALLY_REFUNDED), nên BẤT KỲ Refund row nào tồn tại ở
    * đây cũng chỉ có thể là một lượt thử trước của chính full auto-refund này.
+   *
+   * TOCTOU (ADR-0009 #4): check-existing → gateway → ghi-ledger nằm TRONG
+   * `withBookingRefundLock` (cùng advisory lock của W3), nên hai delivery
+   * duplicate ĐỒNG THỜI (eventId khác nhau → beginEvent không dedupe) bị
+   * serialize: flow thứ hai block tới khi flow đầu commit, đọc existing-Refund
+   * đã có → `already-refunded`, KHÔNG gọi gateway lần hai. Không có lock, cả hai
+   * cùng đọc existing=none → double gateway call (provider W5-key dedupe được ở
+   * prod, nhưng trigger `SUM≤total` sẽ ném ở ledger insert thứ hai → 500).
    */
   private async issueFullAutoRefund(
     provider: PaymentProvider,
@@ -347,48 +356,57 @@ export class PaymentsService {
       );
       return 'failed';
     }
-    const existing = await prisma.refund.findFirst({
-      where: { bookingId },
-      select: { id: true },
-    });
-    if (existing) {
-      this.logger.log(
-        `Booking ${booking.code} already has a Refund row — skipping ${opts.cause} auto-refund (retry)`,
-      );
-      return 'already-refunded';
-    }
 
-    // Gọi provider TRƯỚC và NGOÀI mọi DB write — không bao giờ ledger một
-    // refund chưa thực sự xảy ra. Một provider refund thất bại để booking y
-    // nguyên cho operator (ngữ nghĩa refundOrphanedCapture của Nexora).
-    let providerRefundId: string;
-    try {
-      const gateway = resolveGateway(this.gateways, provider);
-      ({ providerRefundId } = await gateway.refund({
-        providerPaymentId,
-        amount: booking.totalAmount.toFixed(2),
-        currency: booking.currency,
-        // W5: idempotency ở phía provider — một crash giữa lời gọi này và
-        // finishEvent khiến provider retry quay lại; cùng một key khiến
-        // provider dedupe thay vì double-refund.
-        idempotencyKey: opts.idempotencyKey,
-      }));
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'unknown';
-      this.logger.error(`${opts.cause} auto-refund failed for booking ${booking.code}: ${message}`);
-      return 'failed';
-    }
+    return withBookingRefundLock(bookingId, async (tx) => {
+      // Re-check existing-Refund TRONG lock — điểm serialize TOCTOU. Existing-refund
+      // là idempotency-signal tổng quát cho CẢ overbook (PENDING) lẫn orphan
+      // (CANCELLED); dùng nó thay cho re-check status vốn overbook-specific.
+      const existing = await tx.refund.findFirst({
+        where: { bookingId },
+        select: { id: true },
+      });
+      if (existing) {
+        this.logger.log(
+          `Booking ${booking.code} already has a Refund row — skipping ${opts.cause} auto-refund (retry)`,
+        );
+        return 'already-refunded';
+      }
 
-    await prisma.refund.create({
-      data: {
-        bookingId,
-        amount: booking.totalAmount,
-        currency: booking.currency,
-        providerRefundId,
-        adminId: null, // đường tự động (schema: null = không phải admin phát hành)
-      },
+      // Gọi provider TRƯỚC ghi ledger — không bao giờ ledger một refund chưa xảy
+      // ra. Chạy TRONG tx của lock (ngoại lệ có chủ đích ADR-0009) để lock giữ
+      // suốt check→gateway→ledger. Provider refund thất bại để booking y nguyên
+      // cho operator (ngữ nghĩa refundOrphanedCapture của Nexora).
+      let providerRefundId: string;
+      try {
+        const gateway = resolveGateway(this.gateways, provider);
+        ({ providerRefundId } = await gateway.refund({
+          providerPaymentId,
+          amount: booking.totalAmount.toFixed(2),
+          currency: booking.currency,
+          // W5: idempotency ở phía provider — một crash giữa lời gọi này và
+          // finishEvent khiến provider retry quay lại; cùng một key khiến
+          // provider dedupe thay vì double-refund.
+          idempotencyKey: opts.idempotencyKey,
+        }));
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'unknown';
+        this.logger.error(
+          `${opts.cause} auto-refund failed for booking ${booking.code}: ${message}`,
+        );
+        return 'failed';
+      }
+
+      await tx.refund.create({
+        data: {
+          bookingId,
+          amount: booking.totalAmount,
+          currency: booking.currency,
+          providerRefundId,
+          adminId: null, // đường tự động (schema: null = không phải admin phát hành)
+        },
+      });
+      return 'refunded';
     });
-    return 'refunded';
   }
 
   private isUniqueConstraintError(err: unknown): boolean {
