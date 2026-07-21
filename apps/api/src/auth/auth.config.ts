@@ -3,7 +3,7 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { adminEmails, env, trustedOrigins } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
-import { UserRole } from '../generated/prisma/enums.js';
+import { EmailType, UserRole } from '../generated/prisma/enums.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
 
 /**
@@ -24,8 +24,9 @@ export const prisma = new PrismaClient({
  *   (emailVerified, expiresAt…); cột snake_case do Prisma `@map` lo.
  * - `advanced.database.generateId: false`: BA mặc định tự sinh id base62 —
  *   KHÔNG hợp lệ với cột `@db.Uuid`. Tắt đi để Prisma `@default(uuid())` sinh.
- * - P1: email verification TẮT; send-email stubs chỉ console.log URL
- *   (prod = Resend, dây ở P2).
+ * - AUTH-2 (ADR-0008): send-email (reset + verify) ghi OUTBOX → ResendDeliverer
+ *   gửi qua Resend (retry/backoff), thay console.log stub. Verify gửi lúc signup
+ *   (`sendOnSignUp`). `requireEmailVerification` GIỮ false — khách không bị chặn.
  */
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -36,12 +37,27 @@ export const auth = betterAuth({
     enabled: true,
     requireEmailVerification: false,
     sendResetPassword: async ({ user, url }) => {
-      console.log(`[auth] password reset for ${user.email}: ${url}`);
+      // AUTH-2: ghi outbox thay console.log. dedupeKey bounded theo VarChar(200).
+      await prisma.outbox.create({
+        data: {
+          type: EmailType.PASSWORD_RESET,
+          payload: { email: user.email, url },
+          dedupeKey: `pwreset:${user.id}:${url}`.slice(0, 200),
+        },
+      });
     },
   },
   emailVerification: {
+    // Gửi verify email lúc signup — để admin có đường chứng minh sở hữu (SEC-1).
+    sendOnSignUp: true,
     sendVerificationEmail: async ({ user, url }) => {
-      console.log(`[auth] email verification for ${user.email}: ${url}`);
+      await prisma.outbox.create({
+        data: {
+          type: EmailType.EMAIL_VERIFICATION,
+          payload: { email: user.email, url },
+          dedupeKey: `verify:${user.id}:${url}`.slice(0, 200),
+        },
+      });
     },
   },
   user: {

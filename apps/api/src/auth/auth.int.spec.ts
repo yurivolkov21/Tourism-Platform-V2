@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { AppModule } from '../app.module.js';
-import { UserRole } from '../generated/prisma/enums.js';
+import { EmailType, UserRole } from '../generated/prisma/enums.js';
 import { prisma } from './auth.config.js';
 
 /**
@@ -46,13 +46,38 @@ describe('auth integration (Better Auth + tombstone)', () => {
     // Thứ tự truncate theo chiều phụ thuộc FK (bookings/tours thêm vào cho
     // fixture VERIFIED của test d — xem comment ở đó).
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers CASCADE',
+      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers, outbox CASCADE',
     );
   });
 
   afterAll(async () => {
     await app.close();
     await prisma.$disconnect();
+  });
+
+  it('e. signup gửi verify-email qua outbox (sendOnSignUp — AUTH-2)', async () => {
+    await signUp(app, 'verify-me@example.com', 'V');
+    const rows = await prisma.outbox.findMany({ where: { type: EmailType.EMAIL_VERIFICATION } });
+    expect(rows).toHaveLength(1);
+    const payload = rows[0]?.payload as { email?: string; url?: string };
+    expect(payload.email).toBe('verify-me@example.com');
+    expect(payload.url).toMatch(/verify/i);
+  });
+
+  it('f. request-password-reset ghi outbox PASSWORD_RESET, không console.log (AUTH-2)', async () => {
+    const email = 'reset-me@example.com';
+    await signUp(app, email, 'R');
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/request-password-reset',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ email, redirectTo: '/reset' }),
+    });
+    expect(res.statusCode).toBe(200);
+    const rows = await prisma.outbox.findMany({ where: { type: EmailType.PASSWORD_RESET } });
+    expect(rows).toHaveLength(1);
+    const payload = rows[0]?.payload as { email?: string };
+    expect(payload.email).toBe(email);
   });
 
   it('a. sign-up/email creates a CUSTOMER user row', async () => {
