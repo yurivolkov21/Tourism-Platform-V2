@@ -60,6 +60,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Kiểm kê env keys](analysis/2026-07-19-env-keys-inventory.md) | Key nào đã lấy/còn thiếu, rủi ro ngày bảo vệ |
 | [Đối chiếu lại P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Rà song song wishlist·enquiry·newsletter — không thụt lùi Quan trọng, chỉ 2 điểm Nhỏ |
 | [Rà soát độc lập toàn API](analysis/2026-07-21-independent-review.md) | **Parity + review defect toàn `apps/api`** — 4 High (refund/spam), chùm Medium, 19 invariant canh mạnh; tiền-RA là điểm yếu |
+| [Sweep parity toàn code trước P3a-B](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md) | Đối chiếu parity 7 vùng (catalog·reviews·bookings·payments·cancel/refund·auth·worker), 7 agent — 1 Quan trọng (C1 catalog destination phụ) + 4 Nên có + 3 Nhỏ + nợ; invariant money/security lõi sạch. *Snapshot 21/07; B2·C3 đã vá sau (CAT-4/BK-3)* |
 
 ## Conventions — luật áp dụng mãi
 
