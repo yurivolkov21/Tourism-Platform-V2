@@ -11,8 +11,11 @@ import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus } from '../../generated/prisma/enums.js';
 
-/** Prisma Decimal → string không mất mát ("39.00"). Money KHÔNG BAO GIỜ thành float. */
-const money = (value: { toString(): string }): string => value.toString();
+/**
+ * Prisma Decimal → chuỗi 2 chữ số thập phân ("39.00", KHÔNG "39"). Khớp mọi
+ * serializer money khác trong repo (`.toFixed(2)`); money KHÔNG BAO GIỜ thành float.
+ */
+const money = (value: Prisma.Decimal): string => value.toFixed(2);
 
 /** Prisma `@db.Date` (Date nửa đêm UTC) → ngày lịch "YYYY-MM-DD". */
 const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);

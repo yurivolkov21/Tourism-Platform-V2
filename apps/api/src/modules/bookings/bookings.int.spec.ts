@@ -156,6 +156,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     });
     expect(Number(body.unitPrice)).toBe(39);
     expect(Number(body.totalAmount)).toBe(117); // 39.00 × (2 người lớn + 1 trẻ em)
+    // Money API response phải là chuỗi 2 chữ số thập phân ("117.00", KHÔNG "117")
+    // — khớp serializer money toàn repo. So-bằng-Number ở trên không thấy mất format.
+    expect(body.totalAmount).toMatch(/^\d+\.\d{2}$/);
 
     // checkoutUrl đến từ session của FakeGateway, sinh ra với số tiền chính xác.
     const session = fake.sessionFor(body.id);

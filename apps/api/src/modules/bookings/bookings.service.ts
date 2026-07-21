@@ -31,7 +31,7 @@ export class SeatsUnavailableError extends Error {
 }
 
 /** Prisma Decimal → string không mất mát ("39.00"). Money KHÔNG BAO GIỜ thành float. */
-const money = (value: { toString(): string }): string => value.toString();
+const money = (value: Prisma.Decimal): string => value.toFixed(2);
 
 /** Prisma `@db.Date` (Date nửa đêm UTC) → calendar date "YYYY-MM-DD".
  * Export cho cancellation surface (cùng quy ước serialize). */

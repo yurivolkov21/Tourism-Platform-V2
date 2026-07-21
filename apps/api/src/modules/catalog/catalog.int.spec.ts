@@ -138,6 +138,10 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
       category: { slug: 'day', name: 'Day Tours' },
     });
     expect(Number(card?.basePrice)).toBe(Number(dayTour.basePrice));
+    // Money phải là chuỗi 2 chữ số thập phân ("39.00", KHÔNG "39") — khớp mọi
+    // serializer money khác (bookings/refunds/money.ts đều .toFixed(2)). CAT-R1:
+    // so-bằng-Number ở trên KHÔNG thấy được mất format này.
+    expect(card?.basePrice).toMatch(/^\d+\.\d{2}$/);
     expect(card?.primaryDestination).not.toBeNull();
   });
 
