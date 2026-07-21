@@ -5,6 +5,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
 import { toBooking } from './bookings.service.js';
+import { withBookingRefundLock } from './refund-lock.js';
 import {
   classifyRefundAmount,
   deriveStatusAfterRefund,
@@ -99,42 +100,48 @@ export class RefundsService {
     bookingCode: string,
     input: { amount?: string; reason?: string },
   ): Promise<AdminRefundResult> {
-    const booking = await prisma.booking.findUnique({ where: { code: bookingCode } });
-    if (!booking) throw new BookingNotFoundError(bookingCode);
-    // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
-    // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
-    if (booking.status === BookingStatus.REFUNDED) throw new RefundNothingLeftError();
-    const refundableStatus =
-      booking.status === BookingStatus.PAID || booking.status === BookingStatus.PARTIALLY_REFUNDED;
-    if (!refundableStatus || !booking.providerPaymentId) {
-      throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
-    }
-
-    const ledger = await prisma.refund.aggregate({
-      where: { bookingId: booking.id },
-      _sum: { amount: true },
+    // Đọc id trước (ngoài lock) để có khoá; MỌI validation + read-ledger + gateway
+    // + ghi-ledger nằm TRONG advisory lock (BK-R1, ADR-0009) — serialize refund/
+    // cancel đồng thời: flow thứ hai đọc ledger đã cập nhật, không double-refund.
+    const pre = await prisma.booking.findUnique({
+      where: { code: bookingCode },
+      select: { id: true },
     });
-    const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
-    const { kind, amount } = classifyRefundAmount({
-      requested: input.amount ?? null,
-      total: booking.totalAmount,
-      alreadyRefunded,
-    });
+    if (!pre) throw new BookingNotFoundError(bookingCode);
 
-    // Provider refund TRƯỚC (xem doc phía trên). Fail thì nổi lên dưới dạng
-    // typed error và để nguyên booking + ledger — admin chỉ việc retry.
-    // Provider idempotency key: Refund row id chưa tồn tại (ta ledger SAU lời
-    // gọi provider), nên ledger sum định danh ATTEMPT STATE — một retry của
-    // cùng attempt tái dùng key (provider tự dedupe), còn refund hợp lệ tiếp
-    // theo thấy sum khác và mint ra key mới.
-    const providerRefundId = await this.executeGatewayRefund(
-      { ...booking, providerPaymentId: booking.providerPaymentId },
-      amount,
-      `refund:${booking.id}:${alreadyRefunded.toFixed(2)}`,
-    );
+    const updated = await withBookingRefundLock(pre.id, async (tx) => {
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: pre.id } });
+      // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
+      // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
+      if (booking.status === BookingStatus.REFUNDED) throw new RefundNothingLeftError();
+      const refundableStatus =
+        booking.status === BookingStatus.PAID ||
+        booking.status === BookingStatus.PARTIALLY_REFUNDED;
+      if (!refundableStatus || !booking.providerPaymentId) {
+        throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
+      }
 
-    const nextStatus = deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
-    const updated = await prisma.$transaction(async (tx) => {
+      const ledger = await tx.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
+      const { kind, amount } = classifyRefundAmount({
+        requested: input.amount ?? null,
+        total: booking.totalAmount,
+        alreadyRefunded,
+      });
+
+      // Provider refund TRƯỚC ghi ledger. Chạy TRONG tx (ngoại lệ có chủ đích của
+      // "gateway ngoài tx" — ADR-0009) để advisory lock giữ suốt read→gateway→ledger.
+      // Idempotency key theo attempt-state (ledger sum): retry cùng attempt tái dùng key.
+      const providerRefundId = await this.executeGatewayRefund(
+        { ...booking, providerPaymentId: booking.providerPaymentId },
+        amount,
+        `refund:${booking.id}:${alreadyRefunded.toFixed(2)}`,
+      );
+
+      const nextStatus = deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
       const refundRow = await tx.refund.create({
         data: {
           bookingId: booking.id,
@@ -164,12 +171,12 @@ export class RefundsService {
           dedupeKey: `refund:${booking.id}:${refundRow.id}`,
         },
       });
+      this.logger.log(
+        `Admin ${adminUserId} refunded ${amount.toFixed(2)} ${booking.currency} on booking ${booking.code} (${kind} → ${nextStatus})`,
+      );
       return row;
     });
 
-    this.logger.log(
-      `Admin ${adminUserId} refunded ${amount.toFixed(2)} ${booking.currency} on booking ${booking.code} (${kind} → ${nextStatus})`,
-    );
     return {
       booking: toBooking(updated, null),
       refunds: await this.historyForBooking(bookingCode),

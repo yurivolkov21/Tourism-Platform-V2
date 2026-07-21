@@ -460,4 +460,25 @@ describe('refunds integration (admin refund ledger)', () => {
     ).rejects.toThrow();
     expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
   });
+
+  it('BK-R1: hai admin refund full ĐỒNG THỜI → đúng 1 refund + 1 lần gọi gateway (advisory lock)', async () => {
+    const admin = await signUpAdmin();
+    const booking = await createPaidBooking(await signUpUser('bk-r1@example.com', 'A')); // 117.00
+
+    fake.refundDelayMs = 100; // ép cả hai request cùng đọc ledger=0 trước khi ghi
+    const [a, b] = await Promise.allSettled([
+      postRefund(admin, booking.code, {}), // full
+      postRefund(admin, booking.code, {}), // full — đồng thời
+    ]);
+    const codes = [a, b]
+      .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))
+      .sort((x, y) => x - y);
+    expect(codes).toEqual([200, 422]); // một thành công, một RefundNothingLeft
+
+    // Bất biến money: gateway gọi ĐÚNG một lần, ledger đúng một row, không vượt total.
+    expect(fake.refunds).toHaveLength(1);
+    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    expect(refunds).toHaveLength(1);
+    expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
+  });
 });

@@ -52,6 +52,13 @@ export class FakeGateway implements PaymentGateway {
    */
   failRefunds = false;
 
+  /**
+   * Test toggle: trễ nhân tạo (ms) trong `refund()` — dùng để ÉP race concurrent
+   * (hai refund cùng đọc ledger trước khi bên nào ghi), canh advisory lock BK-R1.
+   * Reset về 0 trong `reset()`.
+   */
+  refundDelayMs = 0;
+
   constructor(readonly provider: PaymentProvider = PaymentProvider.STRIPE) {}
 
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession> {
@@ -99,6 +106,9 @@ export class FakeGateway implements PaymentGateway {
     if (this.failRefunds) {
       throw new Error('FakeGateway: forced refund failure');
     }
+    if (this.refundDelayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, this.refundDelayMs));
+    }
     const providerRefundId = `fake_re_${++this.seq}`;
     this.refunds.push({ ...input, providerRefundId });
     return { providerRefundId };
@@ -132,6 +142,7 @@ export class FakeGateway implements PaymentGateway {
     this.refunds.length = 0;
     this.seq = 0;
     this.failRefunds = false;
+    this.refundDelayMs = 0;
   }
 
   private emit(
