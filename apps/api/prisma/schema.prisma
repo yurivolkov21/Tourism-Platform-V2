@@ -150,6 +150,10 @@ enum EmailType {
   CANCELLATION_DENIED
   NEWSLETTER_WELCOME
   EMAIL_CHANGED
+  /// Reset mật khẩu + xác minh email (AUTH-2, ADR-0008) — dây callback Better Auth
+  /// vào outbox thay cho console.log stub.
+  PASSWORD_RESET
+  EMAIL_VERIFICATION
 }
 
 /// Vòng đời row outbox (ADR-0007). PENDING → SENT, hoặc → FAILED sau khi retry.
