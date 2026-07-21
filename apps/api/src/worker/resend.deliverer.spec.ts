@@ -43,6 +43,8 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.CANCELLATION_DENIED, /Cancellation request denied for booking BK-1/],
     [EmailType.NEWSLETTER_WELCOME, /newsletter/i],
     [EmailType.EMAIL_CHANGED, /email address/i],
+    [EmailType.PASSWORD_RESET, /reset your password/i],
+    [EmailType.EMAIL_VERIFICATION, /verify your email/i],
   ];
 
   it.each(cases)('%s has a dedicated subject', (type, expected) => {
@@ -96,6 +98,22 @@ describe('renderEmail payload rendering', () => {
     });
     expect(subject.length).toBeGreaterThan(0);
     expect(html.length).toBeGreaterThan(0);
+  });
+
+  it('renders the reset link in the PASSWORD_RESET html (AUTH-2)', () => {
+    const { html } = renderEmail(EmailType.PASSWORD_RESET, {
+      email: 'x@example.com',
+      url: 'https://tourism.test/reset?t=abc',
+    });
+    expect(html).toContain('https://tourism.test/reset?t=abc');
+  });
+
+  it('renders the verify link in the EMAIL_VERIFICATION html (AUTH-2)', () => {
+    const { html } = renderEmail(EmailType.EMAIL_VERIFICATION, {
+      email: 'x@example.com',
+      url: 'https://tourism.test/verify?t=abc',
+    });
+    expect(html).toContain('https://tourism.test/verify?t=abc');
   });
 });
 

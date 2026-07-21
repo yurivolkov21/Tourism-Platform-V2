@@ -246,6 +246,31 @@ export function renderEmail(
           footer,
         ),
       };
+    // AUTH-2 (ADR-0008) — link do Better Auth sinh, truyền qua payload.url; `f()`
+    // escape (an toàn HTML, `&amp;` trong href là chuẩn, client decode lại).
+    case EmailType.PASSWORD_RESET:
+      return {
+        subject: 'Reset your password',
+        html: wrap(
+          greeting,
+          f('url')
+            ? `<p>We received a request to reset your password: <a href="${f('url')}">reset your password</a>.</p>`
+            : '<p>We received a request to reset your password.</p>',
+          '<p>If you did not request this, you can safely ignore this email.</p>',
+          footer,
+        ),
+      };
+    case EmailType.EMAIL_VERIFICATION:
+      return {
+        subject: 'Verify your email',
+        html: wrap(
+          greeting,
+          f('url')
+            ? `<p>Please confirm your email address: <a href="${f('url')}">verify your email</a>.</p>`
+            : '<p>Please confirm your email address.</p>',
+          footer,
+        ),
+      };
     default: {
       // Chốt exhaustiveness — EmailType mới sẽ fail ầm ĩ ở đây (và test
       // enum-coverage của spec fail trước).
