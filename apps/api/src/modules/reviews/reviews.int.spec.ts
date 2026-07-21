@@ -79,7 +79,10 @@ async function signUpAndSignIn(app: NestFastifyApplication, email: string) {
  * (create.after) tự promote lên ADMIN ngay lúc tạo (auth.int.spec.ts test b).
  */
 async function signUpAdmin(app: NestFastifyApplication, email: string) {
-  return signUpAndSignIn(app, email);
+  const result = await signUpAndSignIn(app, email);
+  // ADR-0008: signup không còn auto-promote; test cần admin nên promote thẳng DB.
+  await prisma.user.update({ where: { email }, data: { role: 'ADMIN', emailVerified: true } });
+  return result;
 }
 
 /** Dựng 1 tour + 1 departure đã kết thúc + 1 booking PAID của user cho sẵn. */

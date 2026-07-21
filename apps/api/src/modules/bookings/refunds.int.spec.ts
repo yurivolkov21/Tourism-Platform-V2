@@ -101,8 +101,17 @@ describe('refunds integration (admin refund ledger)', () => {
     return sessionCookie(res);
   }
 
-  /** Admin session qua bootstrap grant ADMIN_EMAILS (hook create.after). */
-  const signUpAdmin = () => signUpUser(ADMIN_EMAIL, 'Boss');
+  /** Admin session: signup ADMIN_EMAILS rồi promote thẳng DB (ADR-0008 — signup
+   * không còn auto-promote, admin phải verify; test set role+emailVerified trực
+   * tiếp). Guard đọc role tươi từ DB nên cookie signup dùng được ngay. */
+  const signUpAdmin = async () => {
+    const cookie = await signUpUser(ADMIN_EMAIL, 'Boss');
+    await prisma.user.update({
+      where: { email: ADMIN_EMAIL },
+      data: { role: 'ADMIN', emailVerified: true },
+    });
+    return cookie;
+  };
 
   /** Tạo một booking PENDING qua API thật (party 3 → 117.00 USD). */
   async function createBooking(cookie: string, payload: Record<string, unknown> = {}) {

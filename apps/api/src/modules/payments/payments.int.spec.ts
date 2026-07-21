@@ -176,7 +176,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(await seatsOf(depMain.id)).toBe(6);
 
     // Outbox được enqueue nguyên tử bên trong claim CTE (invariant #7).
-    const outbox = await prisma.outbox.findMany();
+    const outbox = await prisma.outbox.findMany({
+      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+    });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
       type: EmailType.BOOKING_CONFIRMATION,
@@ -222,7 +224,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(replay.json()).toMatchObject({ status: 'duplicate' });
 
     expect(await seatsOf(depMain.id)).toBe(6); // chỉ tăng MỘT LẦN
-    expect(await prisma.outbox.count()).toBe(1);
+    expect(
+      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+    ).toBe(1);
     expect(await prisma.paymentEvent.count()).toBe(1);
   });
 
@@ -239,7 +243,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     });
 
     expect(await seatsOf(depMain.id)).toBe(6);
-    expect(await prisma.outbox.count()).toBe(1);
+    expect(
+      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+    ).toBe(1);
     // Cả hai event đều được log và hoàn tất — cái THỨ HAI không đổi gì.
     const events = await prisma.paymentEvent.findMany();
     expect(events).toHaveLength(2);
@@ -293,7 +299,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(refunds[0]?.providerRefundId).toBe(fake.refunds[0]?.providerRefundId);
 
     // Email refund enqueue một lần mỗi booking — và KHÔNG có email confirmation.
-    const outbox = await prisma.outbox.findMany();
+    const outbox = await prisma.outbox.findMany({
+      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+    });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
       type: EmailType.BOOKING_REFUNDED,
@@ -336,7 +344,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(await seatsOf(depMain.id)).toBe(3); // chưa bao giờ được claim
 
     // W3 chịu trách nhiệm email refund cho path này: một lần mỗi booking.
-    const outbox = await prisma.outbox.findMany();
+    const outbox = await prisma.outbox.findMany({
+      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+    });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
       type: EmailType.BOOKING_REFUNDED,
@@ -379,7 +389,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.status).toBe(BookingStatus.PENDING);
     expect(row.paidAt).toBeNull();
     expect(await seatsOf(depMain.id)).toBe(3);
-    expect(await prisma.outbox.count()).toBe(0);
+    expect(
+      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+    ).toBe(0);
 
     const pe = await prisma.paymentEvent.findUniqueOrThrow({
       where: {
@@ -432,7 +444,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       });
       expect(row.status).toBe(BookingStatus.PAID);
     }
-    expect(await prisma.outbox.count()).toBe(10);
+    expect(
+      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+    ).toBe(10);
   });
 
   it('direct claim on an overfull departure → CHECK abort: overbooked, booking STAYS PENDING, zero partial effects', async () => {
@@ -461,7 +475,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.paidAt).toBeNull();
     expect(row.providerPaymentId).toBeNull();
     expect(await seatsOf(depTight.id)).toBe(7);
-    expect(await prisma.outbox.count()).toBe(0);
+    expect(
+      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+    ).toBe(0);
   });
 
   it('unconfigured provider route (paypal before W5) → 404', async () => {
