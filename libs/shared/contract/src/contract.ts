@@ -36,6 +36,7 @@ import {
   UnsubscribeInputSchema,
   UnsubscribeResultSchema,
 } from './schemas/newsletter.js';
+import { PostCardSchema, PostsListQuerySchema } from './schemas/posts.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -113,6 +114,17 @@ export const contract = {
         })
         .output(z.array(TourCategorySchema)),
     },
+  },
+  /**
+   * Blog công khai (spec §4.6, P3a-C) — card GỌN (không `content`), lọc bài
+   * published qua `publishedPostWhere()` (ADR-0004).
+   */
+  posts: {
+    list: oc
+      .route({ method: 'GET', path: '/api/posts', summary: 'List published blog posts' })
+      .input(PostsListQuerySchema)
+      .output(PagedSchema(PostCardSchema)),
+    // bySlug (Task 5) + tags (Task 6) thêm sau, cùng nhánh này.
   },
   /**
    * Review phía khách. `create` và `mine` CẦN AUTH (AuthGuard trên

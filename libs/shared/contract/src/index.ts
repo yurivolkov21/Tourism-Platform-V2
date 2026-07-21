@@ -5,6 +5,7 @@ export * from './schemas/common.js';
 export * from './schemas/enquiries.js';
 export * from './schemas/media.js';
 export * from './schemas/newsletter.js';
+export * from './schemas/posts.js';
 export * from './schemas/reviews.js';
 export * from './schemas/wishlist.js';
 
