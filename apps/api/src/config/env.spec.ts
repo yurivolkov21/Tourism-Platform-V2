@@ -42,10 +42,12 @@ describe('parseEnv', () => {
         // P2: prod cũng cần một payment provider, và DATABASE_URL tường minh —
         // thoả cả hai để cô lập assertion về BETTER_AUTH_SECRET. P3a: thêm cả
         // NEWSLETTER_UNSUBSCRIBE_SECRET (guard production riêng, cùng khuôn).
+        // P3a-C: thêm CLOUDINARY_CLOUD_NAME (guard production cho media).
         DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
         NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+        CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
   });
@@ -59,6 +61,7 @@ describe('parseEnv', () => {
       STRIPE_SECRET_KEY: 'sk_test_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+      CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
     };
     expect(() => parseEnv(base)).toThrow(/DATABASE_URL/);
     // Khai tường minh trùng chuỗi compose cũng bị chặn — đó vẫn là localhost.
@@ -106,6 +109,7 @@ describe('parseEnv', () => {
       DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
       STRIPE_SECRET_KEY: 'sk_test_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
     };
     expect(() => parseEnv(base)).toThrow(/NEWSLETTER_UNSUBSCRIBE_SECRET/);
     expect(() =>
@@ -118,6 +122,37 @@ describe('parseEnv', () => {
       parseEnv({ ...base, NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret' })
         .NEWSLETTER_UNSUBSCRIBE_SECRET,
     ).toBe('real-unsubscribe-secret');
+  });
+
+  it('defaults CLOUDINARY_CLOUD_NAME outside production', () => {
+    // Giá trị công khai (không phải secret), dùng để dựng URL delivery ảnh.
+    // Ngoài production: default thành 'demo' (fixture Cloudinary công cộng để
+    // test). Dev/test không cần set.
+    expect(parseEnv({}).CLOUDINARY_CLOUD_NAME).toBe('demo');
+  });
+
+  it('requires a real CLOUDINARY_CLOUD_NAME in production', () => {
+    // Cùng khuôn với NEWSLETTER_UNSUBSCRIBE_SECRET: guard production riêng
+    // vì URL ảnh sẽ bị dùng 'demo' cloud nếu quên set. Đó là UX degradation,
+    // không bảo mật, nhưng vẫn phải chặn.
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+    };
+    // Không set CLOUDINARY_CLOUD_NAME → default 'demo' → bị guard chặn
+    expect(() => parseEnv(base)).toThrow(/CLOUDINARY_CLOUD_NAME/);
+    // Set thành 'demo' rõ ràng cũng bị chặn
+    expect(() => parseEnv({ ...base, CLOUDINARY_CLOUD_NAME: 'demo' })).toThrow(
+      /CLOUDINARY_CLOUD_NAME/,
+    );
+    // Set thành giá trị thật → qua
+    expect(
+      parseEnv({ ...base, CLOUDINARY_CLOUD_NAME: 'real-cloud-name' }).CLOUDINARY_CLOUD_NAME,
+    ).toBe('real-cloud-name');
   });
 
   it('defaults P2 provider vars to unset (dev boots with no payment/email keys)', () => {
@@ -137,6 +172,7 @@ describe('parseEnv', () => {
       BETTER_AUTH_SECRET: 'real-secret',
       DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+      CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
     };
     // None configured → rejected.
     expect(() => parseEnv(base)).toThrow(/payment provider/i);

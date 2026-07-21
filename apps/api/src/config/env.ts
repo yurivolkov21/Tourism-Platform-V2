@@ -60,6 +60,10 @@ const EnvSchema = z
     // DEV_UNSUBSCRIBE_SECRET). Optional-với-default ở dev/test, bắt buộc
     // production qua superRefine bên dưới.
     NEWSLETTER_UNSUBSCRIBE_SECRET: z.string().min(1).default(DEV_UNSUBSCRIBE_SECRET),
+    // Cloud name Cloudinary — GIÁ TRỊ CÔNG KHAI (không phải secret upload),
+    // chỉ để dựng URL delivery đọc (ADR-0005). Default dev; prod PHẢI set thật
+    // qua superRefine bên dưới, nếu không URL ảnh sẽ trỏ cloud 'demo' hỏng.
+    CLOUDINARY_CLOUD_NAME: z.string().min(1).default('demo'),
   })
   .superRefine((cfg, ctx) => {
     // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ
@@ -99,6 +103,13 @@ const EnvSchema = z
         code: 'custom',
         path: ['NEWSLETTER_UNSUBSCRIBE_SECRET'],
         message: 'NEWSLETTER_UNSUBSCRIBE_SECRET must be set explicitly in production',
+      });
+    }
+    if (cfg.CLOUDINARY_CLOUD_NAME === 'demo') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLOUDINARY_CLOUD_NAME'],
+        message: 'CLOUDINARY_CLOUD_NAME must be set explicitly in production',
       });
     }
     // Money-path không thể chạy prod mà không có provider nào: yêu cầu ÍT NHẤT
