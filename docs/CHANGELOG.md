@@ -82,15 +82,18 @@ tức là migration mới, không phải blocker · `trustProxy: true` khiến k
 throttle giả mạo được qua `X-Forwarded-For` (phụ thuộc cách deploy) · throttler
 in-memory nên trần là per-process.
 
-**Nợ chưa trả, chặn P3a-C** (ghi rõ để không tưởng đã xong): link huỷ đăng ký
-trong email welcome trỏ tới `apps/web/` — hiện mới chỉ có `.gitkeep`. Chưa cắn
-được vì `RESEND_API_KEY` chưa bật, nhưng nghĩa là **lý do GDPR của T6 chưa đạt
-đầu-cuối**. Liên quan: chỗ DUY NHẤT user nhận được token resubscribe là email
-welcome vốn chỉ gửi một lần vĩnh viễn (`dedupeKey` theo email) → ca "tôi xoá
-mất email rồi" vẫn là ngõ cụt. I1 coi như **đóng một nửa**.
+**Nợ chưa trả — đến hạn ở P3b, KHÔNG chặn P3a-C** (ghi rõ để không tưởng đã
+xong): link huỷ đăng ký trong email welcome trỏ tới `apps/web/` — hiện mới chỉ
+có `.gitkeep`. Không chặn Posts/Site-media (P3a-C) vì hai module đó không đụng
+web; đây là **điều kiện tiên quyết trước khi bật `RESEND_API_KEY` ở
+production**, mà trang unsubscribe thuộc web (P3b). Chừng nào Resend chưa bật
+thì chưa cắn, nhưng nghĩa là **lý do GDPR của T6 chưa đạt đầu-cuối**. Liên
+quan: chỗ DUY NHẤT user nhận được token resubscribe là email welcome vốn chỉ
+gửi một lần vĩnh viễn (`dedupeKey` theo email) → ca "tôi xoá mất email rồi" vẫn
+là ngõ cụt. I1 coi như **đóng một nửa**.
 
 - Tests after: **340** (226 unit — api 167 · contract 51 · tokens 7 · i18n 1 —
-  + 114 integration), `gate:int` xanh.
+  - 114 integration), `gate:int` xanh.
 
 ## 2026-07-19 — Đợt vá sau P3a-A (8 merge nhỏ vào `main`)
 
