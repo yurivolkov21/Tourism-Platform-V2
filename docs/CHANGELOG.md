@@ -2,6 +2,27 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-21 — Rà soát độc lập + vá P0 batch (branch `fix/review-p0-batch`)
+
+Rà soát độc lập toàn `apps/api` (parity vs Nexora + review defect v2 tự sinh, fan-out
+8+6 agent, tự kiểm chứng 4 High) — báo cáo
+[independent-review](analysis/2026-07-21-independent-review.md). Vá 6 finding
+an-toàn/không-cần-ADR (5 commit `d776d02..2a0cff3`), mỗi cái TDD + mutation-proof:
+
+- **ENQ-R1** (`d776d02`) `trustProxy:1` (không `true`) — throttle chống spam bypass
+  được bằng spoof `X-Forwarded-For`; +e2e regression (đỏ dưới mutation `true`).
+- **TQ-1** (`c654b2e`) `FakeGateway.failRefunds` + int test nhánh refund-thất-bại
+  (502 · không ledger/outbox · giữ PAID) — nhánh W3 trước đây test-chết.
+- **CAT-R1** (`b07fc1e`) serialize tiền `.toFixed(2)` ở `catalog` VÀ `bookings` API
+  response ("39"→"39.00") — lệch mọi serializer khác; test cũ so-bằng-`Number` không bắt.
+- **INF-R1** (`024f459`) prod-guard `RESEND_API_KEY` — thiếu → email im lặng rớt (SENT giả).
+- **NL-R1** (`2a0cff3`) `deleteAccount` xóa HẲN `Subscriber` trùng email (GDPR erasure;
+  chốt hard-delete: bảng lá, nhất quán scrub-PII của User tombstone).
+
+Kèm **[ADR-0006](adr/0006-pending-lifecycle.md)** trạng thái **Proposed** (vòng đời
+PENDING) — chùm refund production (BK-R1/PAY-R1) + SEC-1/AUTH-2 chờ chốt ADR/hướng
+mới code. Tests after: `pnpm gate:int` xanh (128 integration).
+
 ## 2026-07-21 — P3a-C: Posts · Site-media (branch `feat/p3a-c-posts-site-media`)
 
 Hai module ĐỌC công khai cuối của P3a — blog (`posts.{list, bySlug, tags}`) và

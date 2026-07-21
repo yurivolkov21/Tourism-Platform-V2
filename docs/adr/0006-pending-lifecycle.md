@@ -1,0 +1,73 @@
+# ADR-0006 — Vòng đời booking PENDING: hết hạn, tự hủy, và checkout phục hồi được
+
+- **Trạng thái:** Proposed (2026-07-21) — **chưa Accepted; cần user duyệt trước khi code.**
+- **Bối cảnh:** [rà soát độc lập 21/07](../analysis/2026-07-21-independent-review.md)
+  (gói pending-expiry BK-1/BK-2/PAY-1/WRK-1); nối tiếp
+  [infra-parity #8](../analysis/2026-07-19-infra-parity-nexora.md),
+  [booking-states.md](../conventions/booking-states.md),
+  [ADR-0002](0002-payment-gateway-refund-ledger.md).
+
+> Soạn theo kỷ luật "ADR đi TRƯỚC code" (CLAUDE.md #5). Anchor `file:line` là as-of
+> `main@5e773a1` — xác nhận lại lúc code. Đề xuất mở rộng ADR này để bao thêm ba
+> defect refund cùng mảng (BK-R1, PAY-R1, TQ-1) trước khi Accepted.
+
+## Bối cảnh
+
+Ba agent độc lập lần ra **một gốc chung** với bốn triệu chứng — và **hai comment
+tự hứa một cơ chế chưa bao giờ tồn tại**:
+
+| id | Triệu chứng | Anchor |
+| --- | --- | --- |
+| BK-1 | `create` mint checkout bằng `await` trần → gateway lỗi ném **500 opaque**; contract chỉ khai 2 error; **không đường re-checkout** → PENDING mồ côi không trả được tiền | `bookings.service.ts:162-183,197`; `contract.ts:296,300` |
+| BK-2 | `cancel` chỉ nhận PAID → hủy PENDING nhận **422**; `cancelOwnPending` của Nexora bị bỏ | bookings cancel path |
+| PAY-1 | `checkout.session.expired` → `payment.failed` rồi **chỉ log** "stays PENDING"; Nexora flip CANCELLED | `stripe.gateway.ts:210-216`; `payments.service.ts:145-151` |
+| WRK-1 | **Không cron** dọn abandoned PENDING; Nexora có `cancelAbandonedBookings` 15′ | `worker.ts` |
+
+**Comment nói dối:** `bookings.service.ts:192-195` + `payments.service.ts:110-111`
+trấn an một "pending-expiry (W2) sweep" — nhưng `grep @Cron|@Interval|ScheduleModule`
+= **rỗng cả hai repo**. Chưa từng port.
+
+**Không hỏng:** PENDING **không giữ ghế** (claim chỉ khi PAID, có CHECK
+`departures_seats_within_total`). Bốn triệu chứng **không chạm oversell/tiền/idempotency**
+— là lỗ **độ tin cậy / UX / API-contract**. Xếp Should, không Critical.
+
+## Quyết định
+
+Định nghĩa **hợp đồng vòng đời PENDING** trọn vẹn, phòng thủ nhiều lớp:
+
+1. **Checkout phục hồi được (BK-1).** Bọc gateway call try/catch → ném contract-error
+   typed **`CHECKOUT_FAILED` (502, "please retry")** thay vì 500 opaque. Thêm procedure
+   **re-checkout** (`POST /bookings/:code/checkout`) mint lại session cho PENDING chưa trả — idempotent.
+2. **Webhook-driven cancel (PAY-1).** `checkout.session.expired` (+ PayPal voided) →
+   flip PENDING → **CANCELLED** (adminId NULL), ghi PaymentEvent. Không đụng `seats_booked`.
+3. **Backstop cron (WRK-1).** Job pg-boss `cancelAbandonedBookings` TTL **30′** (khớp
+   hạn Stripe Checkout), lịch ~10-15′. Lưới an toàn khi webhook rớt. Idempotent với (2).
+4. **Khách tự hủy PENDING (BK-2, tùy chọn).** Chủ booking chuyển PENDING → CANCELLED
+   (không refund — chưa charge). Khôi phục parity `cancelOwnPending`.
+5. **Dọn hai comment nói dối** cho khớp cơ chế thật.
+
+**Bất biến giữ nguyên:** PENDING không giữ ghế; chỉ PAID mới claim (CHECK oversell).
+Không đụng đường tiền/ghế.
+
+## Hệ quả
+
+- Lỗi gateway → khách nhận **502 typed re-try-able** + re-checkout, thay vì 500 mù + booking kẹt.
+  Contract `bookings.create` thêm `CHECKOUT_FAILED`; FE phải xử lý.
+- Bảng `Booking` không phình PENDING vô hạn; thống kê "chờ thanh toán" trung thực.
+- Ba lớp (typed-error · webhook · cron) chồng nhau cố ý — phải test **cả ba nhánh độc lập**.
+- **TDD bắt buộc** (#4, ≥80%): unit cho transition thuần; integration cho webhook-expired
+  → CANCELLED và cron-sweep (PG thật). Webhook-cancel phải **idempotent** với cron và
+  capture-đến-muộn (orphaned = REFUNDED theo `booking-states.md`).
+- Cập nhật `booking-states.md`: thêm hàng "PENDING expired/abandoned → CANCELLED".
+
+## Đã cân nhắc và loại
+
+- **Chỉ cron, bỏ webhook.** Loại: khách nhìn "đang chờ" cả 30′ sau khi Stripe đã báo expired ngay.
+- **Chỉ webhook, bỏ cron.** Loại: webhook rớt/không tới → PENDING kẹt vĩnh viễn (đúng lỗ hiện tại). Cần backstop.
+- **Giữ 500 opaque (không typed error).** Loại: FE không phân biệt "hết ghế" vs "gateway lỗi" → không hiện nút re-try đúng; booking mồ côi không phục hồi được.
+- **`expiresAt` cột + lọc query, không cron.** Loại: booking "hết hạn ngầm" vẫn PENDING trong DB, thống kê vẫn sai, phải nhớ lọc ở MỌI query đọc — dễ sót.
+
+## Kế hoạch triển khai
+
+Soạn chi tiết (task-by-task, TDD + mutation-test) khi Accepted → `docs/plans/`. Chỉ
+bắt đầu code sau khi ADR này Accepted và trên branch riêng `feat/refund-hardening`.

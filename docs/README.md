@@ -26,6 +26,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0003](adr/0003-auth-fail-closed.md) | Auth mặc định fail-closed — global guard + `@Public()` |
 | [0004](adr/0004-post-visibility-helper.md) | Post visibility — helper bắt buộc `publishedPostWhere()` (status + publishedAt<=now) |
 | [0005](adr/0005-media-read-build-url.md) | Media đọc — API dựng & trả Cloudinary URL (chỉ cần cloud name công khai) |
+| [0006](adr/0006-pending-lifecycle.md) | **Proposed** — vòng đời PENDING: hết hạn/tự-hủy/re-checkout (gói pending-expiry, chờ duyệt) |
 
 ## Specs — theo phase
 
@@ -54,6 +55,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Quét sâu Nexora](analysis/2026-07-19-nexora-deep-sweep.md) | **Bảng theo dõi A1–A11** + quy tắc nghiệp vụ W2–W6 + kiến trúc P3b |
 | [Kiểm kê env keys](analysis/2026-07-19-env-keys-inventory.md) | Key nào đã lấy/còn thiếu, rủi ro ngày bảo vệ |
 | [Đối chiếu lại P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Rà song song wishlist·enquiry·newsletter — không thụt lùi Quan trọng, chỉ 2 điểm Nhỏ |
+| [Rà soát độc lập toàn API](analysis/2026-07-21-independent-review.md) | **Parity + review defect toàn `apps/api`** — 4 High (refund/spam), chùm Medium, 19 invariant canh mạnh; tiền-RA là điểm yếu |
 
 ## Conventions — luật áp dụng mãi
 
