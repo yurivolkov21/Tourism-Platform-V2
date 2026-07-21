@@ -25,6 +25,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0002](adr/0002-payment-gateway-refund-ledger.md) | PaymentGateway interface · Refund ledger · atomic claim thế hệ 2 |
 | [0003](adr/0003-auth-fail-closed.md) | Auth mặc định fail-closed — global guard + `@Public()` |
 | [0004](adr/0004-post-visibility-helper.md) | Post visibility — helper bắt buộc `publishedPostWhere()` (status + publishedAt<=now) |
+| [0005](adr/0005-media-read-build-url.md) | Media đọc — API dựng & trả Cloudinary URL (chỉ cần cloud name công khai) |
 
 ## Specs — theo phase
 
@@ -41,7 +42,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- | --- |
 | [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | ✅ đã merge |
 | [P3a-B: Wishlist · Enquiry · Newsletter](plans/2026-07-19-p3a-b-wishlist-enquiry-newsletter.md) | W2–W4 + hạ tầng rate limiting (6 task) | ✅ đã merge |
-| P3a-C: Posts · Site-media | W5–W6 | ⏭️ kế tiếp — pattern module đã chốt ở P3a-B |
+| [P3a-C: Posts · Site-media](plans/2026-07-21-p3a-c-posts-site-media.md) | W5–W6 + hạ tầng media-đọc (7 task) | 🔨 sẵn sàng thực thi |
 
 ## Analysis — nghiên cứu từ Nexora
 
@@ -52,6 +53,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Infra parity](analysis/2026-07-19-infra-parity-nexora.md) | 8 lỗ hạ tầng xuyên suốt — thứ API parity map bỏ lọt |
 | [Quét sâu Nexora](analysis/2026-07-19-nexora-deep-sweep.md) | **Bảng theo dõi A1–A11** + quy tắc nghiệp vụ W2–W6 + kiến trúc P3b |
 | [Kiểm kê env keys](analysis/2026-07-19-env-keys-inventory.md) | Key nào đã lấy/còn thiếu, rủi ro ngày bảo vệ |
+| [Đối chiếu lại P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Rà song song wishlist·enquiry·newsletter — không thụt lùi Quan trọng, chỉ 2 điểm Nhỏ |
 
 ## Conventions — luật áp dụng mãi
 
