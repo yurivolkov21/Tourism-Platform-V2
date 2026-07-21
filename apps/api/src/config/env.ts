@@ -112,6 +112,16 @@ const EnvSchema = z
         message: 'CLOUDINARY_CLOUD_NAME must be set explicitly in production',
       });
     }
+    // Thiếu RESEND_API_KEY ở production → worker KHÔNG bind ResendDeliverer, mọi
+    // email transactional (reset mật khẩu, refund, enquiry alert…) im lặng rớt
+    // dù outbox đánh dấu SENT. Chặn ở boot, cùng khuôn các var prod-critical khác.
+    if (!cfg.RESEND_API_KEY) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['RESEND_API_KEY'],
+        message: 'RESEND_API_KEY must be set explicitly in production',
+      });
+    }
     // Money-path không thể chạy prod mà không có provider nào: yêu cầu ÍT NHẤT
     // một bộ ĐẦY ĐỦ (nửa bộ không tính — gateway sẽ không được đăng ký).
     const stripeReady = Boolean(cfg.STRIPE_SECRET_KEY && cfg.STRIPE_WEBHOOK_SECRET);

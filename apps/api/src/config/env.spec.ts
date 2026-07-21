@@ -48,6 +48,7 @@ describe('parseEnv', () => {
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
         NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
         CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+        RESEND_API_KEY: 're_test_x',
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
   });
@@ -70,7 +71,11 @@ describe('parseEnv', () => {
     ).toThrow(/DATABASE_URL/);
     // Có URL thật → qua.
     expect(
-      parseEnv({ ...base, DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app' }).DATABASE_URL,
+      parseEnv({
+        ...base,
+        DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+        RESEND_API_KEY: 're_test_x',
+      }).DATABASE_URL,
     ).toBe('postgresql://u:p@db.example.com:5432/app');
   });
 
@@ -119,8 +124,11 @@ describe('parseEnv', () => {
       }),
     ).toThrow(/NEWSLETTER_UNSUBSCRIBE_SECRET/);
     expect(
-      parseEnv({ ...base, NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret' })
-        .NEWSLETTER_UNSUBSCRIBE_SECRET,
+      parseEnv({
+        ...base,
+        NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+        RESEND_API_KEY: 're_test_x',
+      }).NEWSLETTER_UNSUBSCRIBE_SECRET,
     ).toBe('real-unsubscribe-secret');
   });
 
@@ -151,7 +159,11 @@ describe('parseEnv', () => {
     );
     // Set thành giá trị thật → qua
     expect(
-      parseEnv({ ...base, CLOUDINARY_CLOUD_NAME: 'real-cloud-name' }).CLOUDINARY_CLOUD_NAME,
+      parseEnv({
+        ...base,
+        CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+        RESEND_API_KEY: 're_test_x',
+      }).CLOUDINARY_CLOUD_NAME,
     ).toBe('real-cloud-name');
   });
 
@@ -185,8 +197,12 @@ describe('parseEnv', () => {
     ).toThrow(/payment provider/i);
     // A full Stripe pair suffices.
     expect(
-      parseEnv({ ...base, STRIPE_SECRET_KEY: 'sk_test_x', STRIPE_WEBHOOK_SECRET: 'whsec_x' })
-        .STRIPE_SECRET_KEY,
+      parseEnv({
+        ...base,
+        STRIPE_SECRET_KEY: 'sk_test_x',
+        STRIPE_WEBHOOK_SECRET: 'whsec_x',
+        RESEND_API_KEY: 're_test_x',
+      }).STRIPE_SECRET_KEY,
     ).toBe('sk_test_x');
     // A full PayPal trio suffices.
     expect(
@@ -195,8 +211,30 @@ describe('parseEnv', () => {
         PAYPAL_CLIENT_ID: 'id',
         PAYPAL_CLIENT_SECRET: 'secret',
         PAYPAL_WEBHOOK_ID: 'wh-1',
+        RESEND_API_KEY: 're_test_x',
       }).PAYPAL_WEBHOOK_ID,
     ).toBe('wh-1');
+  });
+
+  it('requires RESEND_API_KEY in production (INF-R1: else email silently dropped)', () => {
+    // Mọi var prod-critical khác đều có guard; RESEND từng thiếu → deploy sót key
+    // thì worker KHÔNG bind ResendDeliverer, email transactional im lặng rớt mà
+    // vẫn được đánh dấu SENT. Guard prod cùng khuôn với các var khác.
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+      CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+    };
+    // Thiếu RESEND_API_KEY → chặn ngay ở boot.
+    expect(() => parseEnv(base)).toThrow(/RESEND_API_KEY/);
+    // Chuỗi rỗng (KEY=) bị strip về unset → cũng bị chặn.
+    expect(() => parseEnv({ ...base, RESEND_API_KEY: '' })).toThrow(/RESEND_API_KEY/);
+    // Có key thật → qua.
+    expect(parseEnv({ ...base, RESEND_API_KEY: 're_live_x' }).RESEND_API_KEY).toBe('re_live_x');
   });
 
   it('rejects ADMIN_EMAILS that parses to an empty list, in ANY environment', () => {
