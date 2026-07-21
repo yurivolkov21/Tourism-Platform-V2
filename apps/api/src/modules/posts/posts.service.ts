@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { Paged, PostCard, PostDetail, PostsListQuery } from '@tourism/contract';
+import type { Paged, PostCard, PostDetail, PostsListQuery, PostTag } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType } from '../../generated/prisma/enums.js';
@@ -135,5 +135,26 @@ export class PostsService {
       media,
       relatedTours,
     };
+  }
+
+  /**
+   * Tag toàn cục CÓ ≥1 bài published, kèm `count`, order theo `name` asc
+   * (Task 6). Đếm bằng MỘT query `_count` với nested `where` qua RELATION
+   * (`posts` là `PostTagLink[]`, lọc theo `post` bên trong link) — chống
+   * N+1 (ADR-0004). Tag count 0 (chỉ có draft/future) bị loại ở tầng JS vì
+   * Prisma không lọc được "has count > 0" ngay trong `findMany`.
+   */
+  async listTags(): Promise<PostTag[]> {
+    const rows = await prisma.postTag.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        slug: true,
+        name: true,
+        _count: { select: { posts: { where: { post: publishedPostWhere() } } } },
+      },
+    });
+    return rows
+      .filter((r) => r._count.posts > 0)
+      .map((r) => ({ slug: r.slug, name: r.name, count: r._count.posts }));
   }
 }

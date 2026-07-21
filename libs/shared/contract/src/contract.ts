@@ -36,7 +36,12 @@ import {
   UnsubscribeInputSchema,
   UnsubscribeResultSchema,
 } from './schemas/newsletter.js';
-import { PostCardSchema, PostDetailSchema, PostsListQuerySchema } from './schemas/posts.js';
+import {
+  PostCardSchema,
+  PostDetailSchema,
+  PostsListQuerySchema,
+  PostTagSchema,
+} from './schemas/posts.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -129,7 +134,20 @@ export const contract = {
       .input(z.object({ slug: z.string().min(1).max(80) }))
       .output(PostDetailSchema)
       .errors({ POST_NOT_FOUND: { status: 404, message: 'Post not found' } }),
-    // tags (Task 6) thêm sau, cùng nhánh này.
+    /**
+     * Tag toàn cục CÓ ≥1 bài published (Task 6). Path RIÊNG `/api/posts-tags`
+     * (KHÔNG `/api/posts/tags`) để tách khỏi `bySlug` `/api/posts/{slug}` —
+     * oRPC procedure-based nên hai path không thực sự đụng nhau, nhưng đặt
+     * tách cho rõ (đừng tạo post có slug "tags"). KHÔNG paged — danh sách tag
+     * toàn cục luôn nhỏ.
+     */
+    tags: oc
+      .route({
+        method: 'GET',
+        path: '/api/posts-tags',
+        summary: 'List blog tags with published-post counts',
+      })
+      .output(z.array(PostTagSchema)),
   },
   /**
    * Review phía khách. `create` và `mine` CẦN AUTH (AuthGuard trên

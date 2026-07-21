@@ -1,6 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { PagedSchema, PostCardSchema, PostDetailSchema } from '@tourism/contract';
+import { PagedSchema, PostCardSchema, PostDetailSchema, PostTagSchema } from '@tourism/contract';
+import { z } from 'zod';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { MediaOwnerType, PostStatus } from '../../generated/prisma/enums.js';
@@ -273,5 +274,49 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
     const detail = PostDetailSchema.parse(res.json());
     expect(detail.relatedTours).toHaveLength(1);
     expect(detail.relatedTours[0]?.slug).toBe('tour-con-hien');
+  });
+
+  it('GET /api/posts-tags: chỉ tag có ≥1 bài published, count chỉ đếm published, order name asc', async () => {
+    // Tên ASCII đảo thứ tự TẠO ('Zeta' trước, 'Alpha' sau) — để order-assert
+    // có ≥2 phần tử và bắt được nếu ai gỡ `orderBy: name asc`. ASCII thuần để
+    // tránh lệch collation giữa Postgres và JS.
+    const tagPublished = await prisma.postTag.create({
+      data: { slug: 'tag-published', name: 'Zeta' },
+    });
+    // tag-mixed gắn CẢ BA trạng thái: bai-a (published-quá-khứ) + bai-nhap
+    // (DRAFT) + bai-tuong-lai (published-tương-lai). count PHẢI = 1 — chứng
+    // minh _count.where lọc đúng CẢ draft LẪN future, không chỉ status.
+    const tagMixed = await prisma.postTag.create({
+      data: { slug: 'tag-mixed', name: 'Alpha' },
+    });
+    const tagDraftOnly = await prisma.postTag.create({
+      data: { slug: 'tag-chi-draft', name: 'Chỉ nháp' },
+    });
+    await prisma.postTagLink.createMany({
+      data: [
+        { postId: 'c0000001-0000-4000-8000-000000000001', tagId: tagPublished.id }, // bai-a
+        { postId: 'c0000001-0000-4000-8000-000000000001', tagId: tagMixed.id }, // bai-a
+        { postId: 'c0000001-0000-4000-8000-000000000002', tagId: tagMixed.id }, // bai-tuong-lai
+        { postId: 'c0000001-0000-4000-8000-000000000003', tagId: tagMixed.id }, // bai-nhap
+        { postId: 'c0000001-0000-4000-8000-000000000003', tagId: tagDraftOnly.id }, // bai-nhap
+      ],
+    });
+
+    const res = await app.inject({ method: 'GET', url: '/api/posts-tags' });
+    expect(res.statusCode).toBe(200);
+    const tags = z.array(PostTagSchema).parse(res.json());
+
+    const slugs = tags.map((t) => t.slug);
+    expect(slugs).toContain('tag-published');
+    expect(slugs).toContain('tag-mixed');
+    // Tag chỉ gắn bài DRAFT → count 0 → bị loại hoàn toàn.
+    expect(slugs).not.toContain('tag-chi-draft');
+
+    expect(tags.find((t) => t.slug === 'tag-published')?.count).toBe(1);
+    // Mixed gắn 3 bài nhưng chỉ 1 published-hiện-tại → count 1 (không 3).
+    expect(tags.find((t) => t.slug === 'tag-mixed')?.count).toBe(1);
+
+    // Order name asc THẬT: 'Alpha' đứng trước 'Zeta' (2 phần tử, không vacuous).
+    expect(tags.map((t) => t.name)).toEqual(['Alpha', 'Zeta']);
   });
 });

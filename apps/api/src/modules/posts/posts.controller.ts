@@ -24,4 +24,9 @@ export class PostsController {
       return post;
     });
   }
+
+  @Implement(contract.posts.tags)
+  tags() {
+    return implement(contract.posts.tags).handler(() => this.posts.listTags());
+  }
 }
