@@ -33,7 +33,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- | --- |
 | P1 API lõi | [2026-07-18-p1-api-core](specs/2026-07-18-p1-api-core.md) | ✅ đã merge |
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
-| P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | 🔨 đang làm |
+| P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3b Web · P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -42,7 +42,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | --- | --- | --- |
 | [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | ✅ đã merge |
 | [P3a-B: Wishlist · Enquiry · Newsletter](plans/2026-07-19-p3a-b-wishlist-enquiry-newsletter.md) | W2–W4 + hạ tầng rate limiting (6 task) | ✅ đã merge |
-| [P3a-C: Posts · Site-media](plans/2026-07-21-p3a-c-posts-site-media.md) | W5–W6 + hạ tầng media-đọc (7 task) | 🔨 sẵn sàng thực thi |
+| [P3a-C: Posts · Site-media](plans/2026-07-21-p3a-c-posts-site-media.md) | W5–W6 + hạ tầng media-đọc (7 task) | ✅ đã merge |
 
 ## Analysis — nghiên cứu từ Nexora
 

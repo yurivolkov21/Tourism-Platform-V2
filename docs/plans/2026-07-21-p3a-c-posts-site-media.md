@@ -396,9 +396,11 @@ describe('publishedPostWhere', () => {
   });
 
   it('không truyền now → dùng thời điểm gọi (lte là Date)', () => {
-    const w = publishedPostWhere();
-    expect(w.status).toBe(PostStatus.PUBLISHED);
-    expect((w.publishedAt as { lte: Date }).lte).toBeInstanceOf(Date);
+    // Dùng `expect.any(Date)` thay vì cast — tuân luật không-cast (kể cả test).
+    expect(publishedPostWhere()).toEqual({
+      status: PostStatus.PUBLISHED,
+      publishedAt: { lte: expect.any(Date) },
+    });
   });
 });
 ```

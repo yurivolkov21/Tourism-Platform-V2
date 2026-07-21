@@ -2,6 +2,64 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-21 — P3a-C: Posts · Site-media (branch `feat/p3a-c-posts-site-media`)
+
+Hai module ĐỌC công khai cuối của P3a — blog (`posts.{list, bySlug, tags}`) và
+`siteMedia.list` — cùng hạ tầng **media-đọc** (dựng Cloudinary URL) mà v2 chưa
+từng có. 7 commit feat `8f5dc97..8c5fc79`. Thực thi subagent-driven (7 task,
+mỗi task 1 implementer + 1 review).
+
+Hai ADR đi trước code (luật 5):
+- **[ADR-0004](adr/0004-post-visibility-helper.md)** — helper bắt buộc
+  `publishedPostWhere()`: mọi path public đọc Post lọc `status=PUBLISHED ∧
+  publishedAt<=now()`. Loại Prisma extension (cản admin P4) + repository wrapper.
+- **[ADR-0005](adr/0005-media-read-build-url.md)** — API dựng & trả Cloudinary
+  URL lúc đọc (chỉ cần `CLOUDINARY_CLOUD_NAME` công khai, không secret upload).
+  Web dumb; đổi transform không phải migrate.
+
+- **T1** (`82e1529`) Helper thuần `buildCloudinaryUrl` + env
+  `CLOUDINARY_CLOUD_NAME` (default dev, chặn prod). Review bắt 2 Important:
+  implementer (haiku) **tự thêm `Co-Authored-By: Claude`** vào commit — vi phạm
+  luật 12, amend bỏ; guard prod thiếu test hai chiều → thêm theo khuôn sibling.
+- **T2** (`f65a3fa`) `MediaService.resolveForOwners` — resolve batch (MỘT
+  query, chống N+1) → `Map<ownerId, MediaItem[]>` đã dựng URL. Tie-break
+  hero-đầu dựa Postgres sort enum `MediaRole` theo declaration order.
+- **T3** (`74174f1`) `publishedPostWhere()` (ADR-0004). Fix: test đổi cast
+  `as {lte}` → `expect.any(Date)` (tuân luật không-cast).
+- **T4** (`58acc83`) `posts.list` — card GỌN (không `content`), cover role
+  `hero`, tie-breaker `[{sort},{id:desc}]`, lọc tag, search title. `pageSize`
+  (query) → `limit` (output). Mutation-test ADR-0004: bỏ guard → bài
+  future/draft lọt, test đỏ.
+- **T5** (`7c634e3`) `posts.bySlug` — detail đầy đủ + full media + related
+  tours (dùng `toTourCard` catalog, **KHÔNG media**, tour unpublish rớt âm
+  thầm). Draft/future → `POST_NOT_FOUND` 404, không phân biệt với không tồn tại.
+- **T6** (`0ac24c2`) `posts.tags` — tag có ≥1 bài published + `count`, MỘT
+  query `_count` nested where (chống N+1), order name asc, path `/api/posts-tags`.
+  Review bắt Minor "order-assert vacuous" (mảng 1 phần tử → luôn đúng) → thêm
+  tag-mixed (published+draft+future, count phải =1) + tên đảo thứ tự tạo.
+- **T7** (`8c5fc79`) `siteMedia.list` — đọc `site_media_slots`, resolve batch
+  `SITE`, chỉ trả slot CÓ media. YAGNI: không tạo slot-catalog (việc admin P4).
+
+**Final review toàn nhánh** (model mạnh nhất) — Ready to merge: **Yes**, không
+Critical/Important. Xác nhận cả 8 bề mặt (visibility 3 path canh thật · N+1 sạch
+· enum SITE/POST · `@Public()` 2 controller · related-tours-no-media ·
+no-cast-kể-cả-test · coherence). Đính chính: `cover=media.find(role==='hero')`
+ROBUST với sort order (find theo predicate, không vị trí) — hero-first rủi ro
+thấp. Nếp mutation-test hai chiều áp cho cả 3 path visibility + honeypot filter.
+
+**Bài học quy trình:** implementer subagent (nhất là model rẻ) có xu hướng tự
+thêm AI attribution — từ Task 2 trở đi brief nhấn mạnh + kiểm `git log` sau mỗi
+task, không tái phạm.
+
+**Cố ý để lại (cleanup đợt sau, không chặn merge):** `siteMedia` findMany
+thiếu `orderBy` (thứ tự phi tất định — web tra theo `key` nên không hại) ·
+literal `'demo'` lặp tay ở `env.ts` (nên tách hằng `DEV_*`) · thiếu comment
+cảnh báo THỨ TỰ cạnh enum `MediaRole` (schema chỉ cảnh báo đổi TÊN) · khoảng
+trống phủ test (phân trang page 2, video có poster URL tuyệt đối).
+
+- Tests after: **361** (234 unit — api 175 · contract 51 · tokens 7 · i18n 1 —
+  + 127 integration), `gate:int` xanh.
+
 ## 2026-07-19 — P3a-B: Wishlist · Enquiry · Newsletter (branch `feat/p3a-b-customer-writes`)
 
 Ba endpoint GHI công khai đầu tiên (khách chưa đăng nhập gọi được) + hạ tầng
