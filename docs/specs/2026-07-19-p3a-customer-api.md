@@ -141,9 +141,10 @@ tự đoán, hậu quả là item chết click ra 404.
 
 ### 4.6 Blog
 
-ADR-0012 nói "không có cổng chặn duy nhất, mọi path public phải tự mang
-`publishedAt <= now()`". v2 biến thành **helper bắt buộc** `publishedPostWhere()`
-dùng ở cả 3 path (list, bySlug, tags) thay vì rà tay.
+[ADR-0004](../adr/0004-post-visibility-helper.md): Nexora không có cổng chặn
+tập trung, mọi path public tự mang `publishedAt <= now()` nên dễ sót. v2 biến
+thành **helper bắt buộc** `publishedPostWhere()` dùng ở cả 3 path (list, bySlug,
+tags) thay vì rà tay.
 
 ## 5. Error code (khai trong `.errors({})` của contract)
 
