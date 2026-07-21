@@ -2,6 +2,24 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-21 — Admin bootstrap emailVerified-gated + AUTH-2 email (branch `feat/admin-bootstrap-verified`)
+
+Đóng **SEC-1** (priv-esc) + **AUTH-1** (no self-heal) + **AUTH-2** (email chưa dây)
+theo [ADR-0008](adr/0008-admin-bootstrap-verified.md) — 8 commit `8283fbd..112fd0a`,
+mỗi bước TDD + mutation-proof:
+- **AUTH-2** (`51d3ebf`·`37c4593`·`2833f9e`) EmailType +PASSWORD_RESET/EMAIL_VERIFICATION;
+  `sendResetPassword`/`sendVerificationEmail` ghi outbox → Resend (thay console.log);
+  `sendOnSignUp:true`. Vá luôn reset-mật-khẩu prod đang hỏng.
+- **AUTH-1** (`bb7c43b`) `reconcileAdmins` + `AdminReconcileService` (OnApplicationBootstrap)
+  — self-heal promote email thêm vào `ADMIN_EMAILS` sau, promote-only.
+- **SEC-1** (`648da2a`) bỏ auto-promote signup-hook; promote qua `afterEmailVerification`
+  (chỉ sau khi chứng minh sở hữu email). `requireEmailVerification` giữ false — khách
+  không bị chặn, verify chỉ gate đặc quyền admin.
+- **Ripple test** (`112fd0a`) fixture int: admin promote thẳng DB sau signup (guard đọc
+  role tươi); lọc `EMAIL_VERIFICATION` khỏi assertion đếm outbox.
+
+Edge email-squatting ghi nhận trong ADR (không priv-esc). Tests after: `pnpm gate:int` xanh.
+
 ## 2026-07-21 — Vá parity nhỏ CAT-4 · BK-3 · ENQ-1 (branch `worktree-fix+enquiry-name-min2`)
 
 Ba finding parity **Nhỏ** còn lại từ đợt rà soát (khôi phục quy tắc Nexora), làm ở
