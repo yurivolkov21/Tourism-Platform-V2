@@ -47,6 +47,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [P3a-B: Wishlist · Enquiry · Newsletter](plans/2026-07-19-p3a-b-wishlist-enquiry-newsletter.md) | W2–W4 + hạ tầng rate limiting (6 task) | ✅ đã merge |
 | [P3a-C: Posts · Site-media](plans/2026-07-21-p3a-c-posts-site-media.md) | W5–W6 + hạ tầng media-đọc (7 task) | ✅ đã merge |
 | [Admin bootstrap emailVerified + AUTH-2](plans/2026-07-21-admin-bootstrap-verified.md) | SEC-1/AUTH-1/AUTH-2 (5 task) | ✅ đã merge |
+| [Refund correctness](plans/2026-07-21-refund-correctness.md) | BK-R1/PAY-R1/TOCTOU (5 task) | 🚧 đang làm |
 
 ## Analysis — nghiên cứu từ Nexora
 
