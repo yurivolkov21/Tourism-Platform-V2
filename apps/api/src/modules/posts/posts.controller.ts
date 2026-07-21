@@ -15,4 +15,13 @@ export class PostsController {
   list() {
     return implement(contract.posts.list).handler(({ input }) => this.posts.listPosts(input));
   }
+
+  @Implement(contract.posts.bySlug)
+  bySlug() {
+    return implement(contract.posts.bySlug).handler(async ({ input, errors }) => {
+      const post = await this.posts.getPostBySlug(input.slug);
+      if (!post) throw errors.POST_NOT_FOUND();
+      return post;
+    });
+  }
 }

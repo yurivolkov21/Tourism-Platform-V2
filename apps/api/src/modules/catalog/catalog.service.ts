@@ -21,7 +21,7 @@ const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 const startOfTodayUtc = (): Date => new Date(new Date().toISOString().slice(0, 10));
 
 /** Include cấp card: category + primary destination qua bảng join M:N. */
-const cardInclude = {
+export const cardInclude = {
   category: { select: { slug: true, name: true } },
   destinations: {
     where: { isPrimary: true },
@@ -39,7 +39,7 @@ const SORT_COLUMN = {
   title: 'title',
 } as const satisfies Record<ToursListQuery['sort'], keyof Prisma.TourOrderByWithRelationInput>;
 
-function toTourCard(tour: TourCardRow): TourCard {
+export function toTourCard(tour: TourCardRow): TourCard {
   return {
     id: tour.id,
     slug: tour.slug,

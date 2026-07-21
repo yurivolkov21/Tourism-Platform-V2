@@ -36,7 +36,7 @@ import {
   UnsubscribeInputSchema,
   UnsubscribeResultSchema,
 } from './schemas/newsletter.js';
-import { PostCardSchema, PostsListQuerySchema } from './schemas/posts.js';
+import { PostCardSchema, PostDetailSchema, PostsListQuerySchema } from './schemas/posts.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -124,7 +124,12 @@ export const contract = {
       .route({ method: 'GET', path: '/api/posts', summary: 'List published blog posts' })
       .input(PostsListQuerySchema)
       .output(PagedSchema(PostCardSchema)),
-    // bySlug (Task 5) + tags (Task 6) thêm sau, cùng nhánh này.
+    bySlug: oc
+      .route({ method: 'GET', path: '/api/posts/{slug}', summary: 'Get a published post by slug' })
+      .input(z.object({ slug: z.string().min(1).max(80) }))
+      .output(PostDetailSchema)
+      .errors({ POST_NOT_FOUND: { status: 404, message: 'Post not found' } }),
+    // tags (Task 6) thêm sau, cùng nhánh này.
   },
   /**
    * Review phía khách. `create` và `mine` CẦN AUTH (AuthGuard trên

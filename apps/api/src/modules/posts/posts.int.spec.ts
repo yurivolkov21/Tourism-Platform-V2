@@ -1,6 +1,6 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { PagedSchema, PostCardSchema } from '@tourism/contract';
+import { PagedSchema, PostCardSchema, PostDetailSchema } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { MediaOwnerType, PostStatus } from '../../generated/prisma/enums.js';
@@ -33,9 +33,11 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
 
   beforeEach(async () => {
     // Thứ tự truncate theo chiều phụ thuộc FK; media_assets không có FK cứng
-    // (ADR-0005) nên phải truncate riêng.
+    // (ADR-0005) nên phải truncate riêng. `tour_categories CASCADE` kéo theo
+    // `tours` (FK categoryId) rồi `post_tours` (FK cả hai chiều) — dọn sạch
+    // fixture tour dùng cho test related tours (Task 5) mỗi lần chạy.
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE media_assets, post_tag_links, post_tags, posts, users, sessions, accounts CASCADE',
+      'TRUNCATE TABLE media_assets, post_tag_links, post_tags, posts, users, sessions, accounts, tour_categories CASCADE',
     );
     // Tác giả cố định — `name: null` cố ý để canh nhánh nullable
     // (User.name VarChar(120)?) không làm mapper vỡ hay parse output lỗi.
@@ -208,5 +210,68 @@ describe('posts integration (oRPC @Implement over Fastify) — GET /api/posts', 
     );
     expect(none.total).toBe(0);
     expect(none.items).toEqual([]);
+  });
+
+  it('GET /api/posts/:slug trả detail đầy đủ + media + related tours (không media)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/posts/bai-a' });
+    expect(res.statusCode).toBe(200);
+    const detail = PostDetailSchema.parse(res.json());
+    expect(detail.content).toBe('noi dung A');
+    expect(detail.media.length).toBeGreaterThanOrEqual(1);
+    // related tours là TourCard (không có field media) — parse đã đảm bảo.
+  });
+
+  it('bài DRAFT hoặc hẹn-giờ-tương-lai → 404 POST_NOT_FOUND (như không tồn tại)', async () => {
+    for (const slug of ['bai-nhap', 'bai-tuong-lai']) {
+      const res = await app.inject({ method: 'GET', url: `/api/posts/${slug}` });
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toMatchObject({ code: 'POST_NOT_FOUND', message: 'Post not found' });
+    }
+  });
+
+  it('bài không tồn tại → cùng 404 POST_NOT_FOUND (không phân biệt với draft/tương lai)', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/posts/khong-ton-tai-xyz' });
+    expect(res.statusCode).toBe(404);
+    expect(res.json()).toMatchObject({ code: 'POST_NOT_FOUND' });
+  });
+
+  it('related tour bị unpublish → rớt âm thầm khỏi mảng, không 500', async () => {
+    const category = await prisma.tourCategory.create({
+      data: { slug: 'day', name: 'Day Tours' },
+    });
+    const tourVisible = await prisma.tour.create({
+      data: {
+        slug: 'tour-con-hien',
+        title: 'Tour con hiển thị',
+        categoryId: category.id,
+        durationDays: 1,
+        basePrice: '10.00',
+        isPublished: true,
+      },
+    });
+    const tourAnUnpublish = await prisma.tour.create({
+      data: {
+        slug: 'tour-bi-an',
+        title: 'Tour bị ẩn',
+        categoryId: category.id,
+        durationDays: 2,
+        basePrice: '20.00',
+        isPublished: true,
+      },
+    });
+    await prisma.postTour.createMany({
+      data: [
+        { postId: 'c0000001-0000-4000-8000-000000000001', tourId: tourVisible.id, order: 0 },
+        { postId: 'c0000001-0000-4000-8000-000000000001', tourId: tourAnUnpublish.id, order: 1 },
+      ],
+    });
+    // Unpublish sau khi đã pick — mô phỏng admin ẩn tour sau khi bài đã ra.
+    await prisma.tour.update({ where: { id: tourAnUnpublish.id }, data: { isPublished: false } });
+
+    const res = await app.inject({ method: 'GET', url: '/api/posts/bai-a' });
+    expect(res.statusCode).toBe(200);
+    const detail = PostDetailSchema.parse(res.json());
+    expect(detail.relatedTours).toHaveLength(1);
+    expect(detail.relatedTours[0]?.slug).toBe('tour-con-hien');
   });
 });
