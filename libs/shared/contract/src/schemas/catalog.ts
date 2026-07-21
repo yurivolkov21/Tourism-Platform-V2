@@ -152,7 +152,14 @@ export type TourCategory = z.output<typeof TourCategorySchema>;
 // List query + pagination envelope
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const TourSortKeySchema = z.enum(['createdAt', 'basePrice', 'durationDays', 'title']);
+// `updatedAt`: parity Nexora — cho sort "mới cập nhật".
+export const TourSortKeySchema = z.enum([
+  'createdAt',
+  'updatedAt',
+  'basePrice',
+  'durationDays',
+  'title',
+]);
 export const SortOrderSchema = z.enum(['asc', 'desc']);
 
 /**

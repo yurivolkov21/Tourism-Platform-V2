@@ -5,6 +5,7 @@ import {
   TourCardSchema,
   TourCategorySchema,
   TourDetailSchema,
+  TourSortKeySchema,
   ToursListQuerySchema,
 } from './catalog.js';
 
@@ -149,6 +150,12 @@ describe('ToursListQuerySchema', () => {
   it('does NOT coerce strings — HTTP coercion is the server plugin’s job', () => {
     expect(() => ToursListQuerySchema.parse({ page: '2' })).toThrow();
     expect(() => ToursListQuerySchema.parse({ featured: 'true' })).toThrow();
+  });
+});
+
+describe('TourSortKeySchema', () => {
+  it('accepts updatedAt (parity Nexora sort whitelist)', () => {
+    expect(TourSortKeySchema.safeParse('updatedAt').success).toBe(true);
   });
 });
 

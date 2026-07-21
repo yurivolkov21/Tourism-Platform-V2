@@ -37,6 +37,7 @@ type TourCardRow = Prisma.TourGetPayload<{ include: typeof cardInclude }>;
 
 const SORT_COLUMN = {
   createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
   basePrice: 'basePrice',
   durationDays: 'durationDays',
   title: 'title',

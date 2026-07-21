@@ -85,6 +85,15 @@ describe('CreateBookingInputSchema', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('rejects contactPhone shorter than 6 chars (parity Nexora @Length(6,30))', () => {
+    expect(
+      CreateBookingInputSchema.safeParse({ ...validCreate, contactPhone: '12345' }).success,
+    ).toBe(false);
+    expect(
+      CreateBookingInputSchema.safeParse({ ...validCreate, contactPhone: '123456' }).success,
+    ).toBe(true);
+  });
 });
 
 describe('BookingSchema', () => {

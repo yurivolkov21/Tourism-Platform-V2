@@ -39,7 +39,8 @@ export const CreateBookingInputSchema = z.object({
   numChildren: z.int().min(0).default(0),
   contactName: z.string().min(1).max(120),
   contactEmail: z.email().max(200),
-  contactPhone: z.string().min(1).max(30).optional(),
+  // min 6: parity Nexora `@Length(6,30)` — chặn số điện thoại 1–5 ký tự.
+  contactPhone: z.string().min(6).max(30).optional(),
   specialRequests: z.string().min(1).max(1000).optional(),
   paymentProvider: PaymentProviderSchema,
 });
