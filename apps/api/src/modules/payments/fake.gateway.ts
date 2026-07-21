@@ -44,6 +44,14 @@ export class FakeGateway implements PaymentGateway {
 
   private seq = 0;
 
+  /**
+   * Test toggle (không thuộc PaymentGateway): bật để `refund()` NÉM lỗi, mô phỏng
+   * provider từ chối/timeout. Dùng để canh nhánh refund-thất-bại (W3): service
+   * phải ném `ProviderRefundFailedError` (→ 502) và KHÔNG ghi ledger nào. Reset
+   * về false trong `reset()`.
+   */
+  failRefunds = false;
+
   constructor(readonly provider: PaymentProvider = PaymentProvider.STRIPE) {}
 
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession> {
@@ -86,6 +94,11 @@ export class FakeGateway implements PaymentGateway {
   /** Ghi lại toàn bộ {@link RefundInput} — BAO GỒM `idempotencyKey` phía
    * provider mà caller truyền (W5), để int test có thể assert key mỗi flow gửi. */
   async refund(input: RefundInput): Promise<{ providerRefundId: string }> {
+    // Mô phỏng provider từ chối refund (xem {@link failRefunds}) — ném TRƯỚC khi
+    // ghi gì, đúng như gateway thật khi HTTP refund lỗi.
+    if (this.failRefunds) {
+      throw new Error('FakeGateway: forced refund failure');
+    }
     const providerRefundId = `fake_re_${++this.seq}`;
     this.refunds.push({ ...input, providerRefundId });
     return { providerRefundId };
@@ -118,6 +131,7 @@ export class FakeGateway implements PaymentGateway {
     this.sessions.length = 0;
     this.refunds.length = 0;
     this.seq = 0;
+    this.failRefunds = false;
   }
 
   private emit(

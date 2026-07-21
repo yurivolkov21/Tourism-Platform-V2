@@ -203,6 +203,27 @@ describe('refunds integration (admin refund ledger)', () => {
     });
   });
 
+  it('provider refund FAIL → 502 REFUND_FAILED, KHÔNG ledger/outbox, booking giữ PAID (W3: không bao giờ ghi refund chưa xảy ra)', async () => {
+    const admin = await signUpAdmin();
+    const booking = await createPaidBooking(await signUpUser('alice@example.com', 'Alice'));
+
+    fake.failRefunds = true; // provider từ chối refund đúng lúc gọi gateway
+
+    const res = await postRefund(admin, booking.code, { amount: '30.00', reason: 'goodwill' });
+    // Gateway refund chạy TRƯỚC ledger + ném ProviderRefundFailedError → 502 typed.
+    expect(res.statusCode).toBe(502);
+
+    // Bất biến W3: provider fail thì KHÔNG có gì được ghi — ledger, outbox, và
+    // status booking đều nguyên vẹn; admin chỉ việc retry.
+    expect(fake.refunds).toHaveLength(0);
+    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    expect(refunds).toHaveLength(0);
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.PAID);
+    const outbox = await prisma.outbox.findMany({ where: { type: EmailType.BOOKING_REFUNDED } });
+    expect(outbox).toHaveLength(0);
+  });
+
   it('second partial 87.00 accumulates to the total → REFUNDED, 2 ledger rows (invariant #5)', async () => {
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('bob@example.com'));
