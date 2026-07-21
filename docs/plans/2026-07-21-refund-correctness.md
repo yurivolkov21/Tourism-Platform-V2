@@ -211,22 +211,22 @@ it('PAY-R1: overbook-cancelled rồi capture retry → GIỮ CANCELLED, không r
 });
 ```
 - [ ] **Step 2: Run → FAIL** (retry vào orphan → re-derive REFUNDED + refund/email lần 2).
-- [ ] **Step 3: Gate sớm trong `refundOrphanedCapture`** — đọc `paid_at`; nếu NULL → no-op (booking overbook, đã refund qua overbook-path; provider key `overbook-refund:` dedup):
+- [ ] **Step 3: Gate re-derive theo fresh-refund** (ADR-0009 sửa đổi — KHÔNG dùng `paid_at`, nó không phân biệt được overbook-retry với orphan thật, cả hai đều NULL). Chỉ re-derive khi `issueFullAutoRefund` trả `'refunded'` (phát MỚI); `'already-refunded'` → giữ terminal, không re-derive/email:
 ```ts
   private async refundOrphanedCapture(provider, bookingId, providerPaymentId): Promise<void> {
-    const booking = await prisma.booking.findUniqueOrThrow({ where: { id: bookingId }, select: { paidAt: true } });
-    if (booking.paidAt === null) {
-      // paid_at NULL = booking OVERBOOK-cancelled bị retry (không phải orphan paid-thật).
-      // Overbook-path đã refund + CANCELLED; không issue orphan refund, không re-derive (PAY-R1).
-      this.logger.warn(`Orphan-capture cho booking overbook-cancelled ${bookingId} — no-op (PAY-R1)`);
+    const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, { cause: 'orphaned capture', idempotencyKey: `orphan-refund:${bookingId}` });
+    if (refund !== 'refunded') {
+      // 'failed' → operator; 'already-refunded' → booking đã có refund từ path KHÁC
+      // (overbook auto-refund / W4 cancel-approve): terminal của nó KHÔNG phải orphan
+      // này quản → giữ nguyên (CANCELLED), không re-derive REFUNDED, không email (PAY-R1).
       return;
     }
-    // ... phần còn lại giữ nguyên (issueFullAutoRefund + CTE re-derive) ...
+    // ... phần còn lại giữ nguyên (đọc ledger + CTE re-derive REFUNDED) ...
   }
 ```
-- [ ] **Step 4: Run → PASS.** Chạy full payments.int.spec — ca orphaned-capture THẬT (paid_at NOT NULL) vẫn REFUNDED.
-- [ ] **Step 5: Mutation-test** — tạm gỡ `if (booking.paidAt === null) return` → test PAY-R1 phải ĐỎ. Khôi phục.
-- [ ] **Step 6: Commit:** `git commit -m "fix(api): gate orphan re-derive trên paid_at — overbook-cancelled không sống dậy (PAY-R1, ADR-0009)"`
+- [ ] **Step 4: Run → PASS.** Chạy full payments.int.spec — ca orphaned-capture THẬT (refund fresh) vẫn REFUNDED; PAY-R1 (overbook + duplicate webhook) giữ CANCELLED.
+- [ ] **Step 5: Mutation-test** — tạm đổi `if (refund !== 'refunded') return` thành `if (refund === 'failed') return` (re-derive cả trên already-refunded, tức bug cũ) → test PAY-R1 phải ĐỎ. Khôi phục.
+- [ ] **Step 6: Commit:** `git commit -m "fix(api): gate orphan re-derive theo fresh-refund — overbook/W4-cancelled không sống dậy (PAY-R1, ADR-0009)"`
 
 ---
 

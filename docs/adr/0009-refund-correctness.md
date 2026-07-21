@@ -1,6 +1,12 @@
-# ADR-0009 — Đúng đắn refund: advisory-lock serialize + trigger `SUM ≤ total` + gate `paid_at`
+# ADR-0009 — Đúng đắn refund: advisory-lock serialize + trigger `SUM ≤ total` + gate re-derive orphan
 
 - **Trạng thái:** Accepted (2026-07-21)
+- **Sửa đổi (2026-07-21, lúc thực thi RT4):** Quyết định #3 đổi cơ chế gate PAY-R1 từ
+  `paid_at IS NOT NULL` sang **fresh-refund guard**. Lý do: `paid_at` KHÔNG phân biệt được
+  overbook-retry với orphan thật — cả hai đều `paid_at` NULL (capture tới *sau* khi hủy nên
+  booking chưa từng PAID), nên gate `paid_at` (a) phá test orphan đang xanh
+  [payments.int.spec.ts:312](../../apps/api/src/modules/payments/payments.int.spec.ts) và
+  (b) bỏ sót ca W4-cancelled bị capture-redelivery sống dậy thành REFUNDED. Xem #3 + "Đã loại".
 - **Bối cảnh:** BK-R1 · PAY-R1 · BK-R2/PAY-R2/TQ-3 trong
   [rà soát độc lập 21/07](../analysis/2026-07-21-independent-review.md).
 
@@ -43,10 +49,17 @@ lúc HTTP — nguyên tắc money-path).
    `BEFORE INSERT ON refunds`: chặn nếu `SUM(refunds hiện có) + NEW.amount > booking.total_amount`.
    Defense-in-depth — bắt mọi path lách khóa (bao gồm auto-refund + admin đồng thời).
 
-3. **PAY-R1 — gate re-derive theo `paid_at`.** `refundOrphanedCapture` (nhánh
-   `claimSeatsForPaid = 'cancelled'`) chỉ re-derive REFUNDED khi **`paid_at IS NOT NULL`**
-   (orphan paid-thật). `paid_at IS NULL` (overbook-cancelled bị retry) → giữ CANCELLED,
-   KHÔNG re-derive, KHÔNG email lần hai. Gate trong CTE.
+3. **PAY-R1 — gate re-derive theo fresh-refund.** `refundOrphanedCapture` (nhánh
+   `claimSeatsForPaid = 'cancelled'`) chỉ re-derive REFUNDED khi `issueFullAutoRefund` trả
+   **`'refunded'`** (vừa phát refund MỚI — booking chưa có refund trước đó → capture này là
+   tiền orphan thật). Khi trả **`'already-refunded'`** (booking đã có refund từ path khác:
+   overbook auto-refund HOẶC W4 cancel-approve) → **giữ nguyên terminal (CANCELLED)**, KHÔNG
+   re-derive, KHÔNG email lần hai. Discriminator đúng là "refund này của CHÍNH orphan-flow hay
+   của path khác", không phải `paid_at` (cả hai ca đều NULL). Đồng thời vá luôn ca W4-cancelled
+   bị capture-redelivery sống dậy thành REFUNDED — điều `paid_at` bỏ sót.
+   *Đánh đổi:* crash đúng khe giữa `refund.create` và CTE flip của một orphan *thật* → booking
+   kẹt CANCELLED thay vì REFUNDED (tiền vẫn hoàn đủ; nguồn orphan-thật duy nhất là pending-expiry
+   của sub-project A chưa dựng). Chấp nhận.
 
 4. **TOCTOU (BK-R2/PAY-R2/TQ-3).** Áp cùng advisory lock per-booking cho nhánh webhook
    auto-refund → duplicate delivery bị serialize; `issueFullAutoRefund` re-check
@@ -64,7 +77,7 @@ hoặc raw-connection session-lock — chốt ở plan; cả hai đều serializ
 - **Chi phí:** đường admin-refund giữ 1 connection pool lúc HTTP. Chấp nhận (hiếm + serialize).
 - **Test bắt buộc (mutation-aware):** BK-R1 concurrent refund‖cancel (2 connection) → đúng 1
   full refund + cái thứ 2 error (gỡ lock → double-refund ĐỎ) · trigger chặn insert vượt total ·
-  PAY-R1 overbook-cancelled + duplicate webhook → giữ CANCELLED (gỡ gate paid_at → REFUNDED ĐỎ) ·
+  PAY-R1 overbook-cancelled + duplicate webhook → giữ CANCELLED (gỡ fresh-refund guard → REFUNDED ĐỎ) ·
   TOCTOU concurrent auto-refund → 1 refund. Không đụng đường claim/oversell (giữ nguyên).
 
 ## Đã cân nhắc và loại
@@ -78,3 +91,7 @@ hoặc raw-connection session-lock — chốt ở plan; cả hai đều serializ
   và trigger chặn ledger thứ hai NHƯNG provider đã bị gọi hai lần (tiền đã ra). Lock là bắt buộc.
 - **Unify idempotency key hai path (không lock):** ca partial-vs-full vẫn hỏng (provider trả
   refund đầu cho key trùng nhưng amount khác). Loại.
+- **Gate PAY-R1 theo `paid_at IS NOT NULL`** (bản đầu của #3): dựa trên giả định "orphan thật
+  có paid_at NOT NULL" — SAI. Orphan thật là capture tới *sau* khi hủy, nên booking chưa từng
+  PAID → `paid_at` NULL y hệt overbook-retry; gate này phá test orphan đang xanh và bỏ sót ca
+  W4-cancelled. Thay bằng fresh-refund guard (#3). Loại vì discriminator sai bản chất.
