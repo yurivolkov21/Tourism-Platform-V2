@@ -91,16 +91,48 @@ describe('auth integration (Better Auth + tombstone)', () => {
     expect(user?.deletedAt).toBeNull();
   });
 
-  it('b. sign-up with bootstrap admin email gets role=ADMIN via create.after hook', async () => {
-    // Case khác với ADMIN_EMAILS để chứng minh match case-insensitive.
+  it('b. signup email admin CHƯA verify KHÔNG được promote (SEC-1)', async () => {
+    // Case khác ADMIN_EMAILS (match citext) — nhưng CHƯA verify nên chưa chứng
+    // minh sở hữu email → giữ CUSTOMER. Kẻ đăng ký email admin mà không kiểm
+    // soát inbox không bao giờ verify được → không bao giờ thành admin.
     const res = await signUp(app, 'Bootstrap-Admin@tourism.test', 'Boss');
     expect(res.statusCode).toBe(200);
-
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.findUniqueOrThrow({
       where: { email: 'bootstrap-admin@tourism.test' },
     });
-    expect(user).not.toBeNull();
-    expect(user?.role).toBe(UserRole.ADMIN);
+    expect(user.role).toBe(UserRole.CUSTOMER);
+    expect(user.emailVerified).toBe(false);
+  });
+
+  /** Verify email user vừa signup: lấy link từ outbox (sendOnSignUp) → GET verify. */
+  async function verifyLatestEmail(): Promise<void> {
+    const vrow = await prisma.outbox.findFirstOrThrow({
+      where: { type: EmailType.EMAIL_VERIFICATION },
+      orderBy: { createdAt: 'desc' },
+    });
+    const url = (vrow.payload as { url: string }).url;
+    const token = new URL(url).searchParams.get('token');
+    if (!token) throw new Error(`No verify token in url: ${url}`);
+    const res = await app.inject({ method: 'GET', url: `/api/auth/verify-email?token=${token}` });
+    expect([200, 302]).toContain(res.statusCode);
+  }
+
+  it('b2. signup email admin → verify → promote ADMIN (SEC-1 happy path)', async () => {
+    await signUp(app, 'bootstrap-admin@tourism.test', 'Boss');
+    await verifyLatestEmail();
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: 'bootstrap-admin@tourism.test' },
+    });
+    expect(user.emailVerified).toBe(true);
+    expect(user.role).toBe(UserRole.ADMIN); // afterEmailVerification promote
+  });
+
+  it('b3. verify email user THƯỜNG KHÔNG promote (guard afterEmailVerification)', async () => {
+    await signUp(app, 'not-admin@example.com', 'Reg');
+    await verifyLatestEmail();
+    const user = await prisma.user.findUniqueOrThrow({ where: { email: 'not-admin@example.com' } });
+    expect(user.emailVerified).toBe(true);
+    expect(user.role).toBe(UserRole.CUSTOMER);
   });
 
   it('c. sign-in/email returns a session cookie that passes the AuthGuard probe', async () => {

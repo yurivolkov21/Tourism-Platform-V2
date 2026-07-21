@@ -59,6 +59,14 @@ export const auth = betterAuth({
         },
       });
     },
+    // Promote ADMIN CHỈ sau khi đã chứng minh sở hữu email (SEC-1). Hook này fire
+    // sau verify thành công → emailVerified=true. Promote-only; update thẳng qua
+    // prisma (không qua BA adapter) nên không loop hook. Backstop: reconcile lúc boot.
+    afterEmailVerification: async (user) => {
+      if (isBootstrapAdmin(user.email, adminEmails)) {
+        await prisma.user.update({ where: { id: user.id }, data: { role: UserRole.ADMIN } });
+      }
+    },
   },
   user: {
     additionalFields: {
@@ -85,22 +93,6 @@ export const auth = betterAuth({
   advanced: {
     database: {
       generateId: false,
-    },
-  },
-  databaseHooks: {
-    user: {
-      create: {
-        // Bootstrap admin dual-grant: email ∈ ADMIN_EMAILS → promote ADMIN
-        // ngay sau khi tạo. Chỉ promote, không bao giờ demote (spec §5).
-        after: async (user) => {
-          if (isBootstrapAdmin(user.email, adminEmails)) {
-            await prisma.user.update({
-              where: { id: user.id },
-              data: { role: UserRole.ADMIN },
-            });
-          }
-        },
-      },
     },
   },
 });
