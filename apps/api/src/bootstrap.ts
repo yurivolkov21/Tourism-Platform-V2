@@ -4,10 +4,16 @@ import { trustedOrigins } from './config/env.js';
 /**
  * Adapter Fastify dùng chung cho `main.ts` VÀ test — một nguồn sự thật.
  *
- * `trustProxy`: deploy nằm sau reverse proxy của nền tảng (Render/Railway).
- * Không bật thì `req.ip` là IP của proxy — MỌI client dùng chung một địa
- * chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài request của một
- * người.
+ * `trustProxy: 1`: deploy nằm sau ĐÚNG MỘT reverse proxy của nền tảng
+ * (Render/Railway). Không bật thì `req.ip` là IP của proxy — MỌI client dùng
+ * chung một địa chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài
+ * request của một người.
+ *
+ * Vì sao `1` chứ KHÔNG `true`: `true` tin toàn bộ chuỗi `X-Forwarded-For` do
+ * client gửi, nên `req.ip` lấy entry trái nhất mà kẻ tấn công tự đặt được →
+ * throttle chống spam (enquiry/newsletter) bị bypass bằng cách đổi header mỗi
+ * request. `1` chỉ tin ĐÚNG một hop (proxy nền tảng), trả về IP client thật mà
+ * proxy thấy. Giả định ingress *append* XFF (chuẩn Render/Railway), không overwrite.
  *
  * Vì sao là factory chứ không hard-code hai nơi: trước đây `main.ts` và
  * file test mỗi bên tự dựng adapter riêng, nên gỡ `trustProxy` khỏi
@@ -16,7 +22,7 @@ import { trustedOrigins } from './config/env.js';
  * chữa tận gốc.
  */
 export function createFastifyAdapter(): FastifyAdapter {
-  return new FastifyAdapter({ trustProxy: true });
+  return new FastifyAdapter({ trustProxy: 1 });
 }
 
 /**

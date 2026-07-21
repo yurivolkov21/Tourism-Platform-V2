@@ -28,12 +28,13 @@ describe('rate limiting endpoint ghi công khai', () => {
       imports: [AppModule],
       controllers: [ThrottledController],
     }).compile();
-    // trustProxy: true — PHẢI bật ở đây vì test dựng app trực tiếp qua
-    // Test.createTestingModule(), không đi qua main.ts. Fastify mặc định
-    // KHÔNG đọc `x-forwarded-for`; thiếu cờ này thì `req.ip` luôn là địa chỉ
-    // socket giả của `.inject()` (giống hệt cho mọi request), khiến
-    // ThrottlerGuard đếm chung một khoá bất kể header IP test set khác nhau
-    // (test "đếm theo IP" sẽ bị vạ lây 429 dù dùng client khác).
+    // Adapter thật qua createFastifyAdapter() (trustProxy: 1) — PHẢI dùng vì test
+    // dựng app trực tiếp qua Test.createTestingModule(), không đi qua main.ts.
+    // Fastify mặc định KHÔNG đọc `x-forwarded-for`; thiếu cờ này thì `req.ip`
+    // luôn là địa chỉ socket giả của `.inject()` (giống hệt cho mọi request),
+    // khiến ThrottlerGuard đếm chung một khoá bất kể header IP test set khác nhau
+    // (test "đếm theo IP" sẽ bị vạ lây 429 dù dùng client khác). `1` (không phải
+    // `true`) là điều then chốt cho test chống-spoof bên dưới.
     app = moduleRef.createNestApplication<NestFastifyApplication>(createFastifyAdapter());
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -70,5 +71,30 @@ describe('rate limiting endpoint ghi công khai', () => {
       headers: { 'x-forwarded-for': '198.51.100.20' },
     });
     expect(res.statusCode).toBe(201);
+  });
+
+  it('không bypass được throttle bằng cách giả mạo `X-Forwarded-For` (ENQ-R1)', async () => {
+    // Kẻ tấn công đổi entry TRÁI NHẤT của XFF mỗi request để né rate-limit theo IP.
+    // Với `trustProxy: 1`, `req.ip` chỉ tin ĐÚNG một hop → lấy entry phải nhất
+    // (IP client thật mà proxy nền tảng thấy), nên mọi request vẫn đếm chung một
+    // khoá → request thứ 6 bị 429. Với lỗ cũ `trustProxy: true`, Fastify tin cả
+    // chuỗi → `req.ip` = entry trái nhất tự đặt → mỗi request một khoá → KHÔNG
+    // BAO GIỜ chặn (test này ĐỎ). IP thật (.99) khác hai IP ở test trên → khoá sạch.
+    const spoof = (leftmost: number) =>
+      app.inject({
+        method: 'POST',
+        url: '/test-throttled',
+        payload: {},
+        headers: { 'x-forwarded-for': `10.0.0.${leftmost}, 203.0.113.99` },
+      });
+
+    for (let i = 1; i <= 5; i++) {
+      const res = await spoof(i);
+      expect(res.statusCode, `request giả mạo thứ ${i} (XFF trái nhất khác nhau) phải qua`).toBe(
+        201,
+      );
+    }
+    const blocked = await spoof(6);
+    expect(blocked.statusCode, 'request thứ 6 phải bị 429 dù XFF trái nhất luôn đổi').toBe(429);
   });
 });
