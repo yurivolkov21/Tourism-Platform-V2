@@ -7,6 +7,7 @@ export * from './schemas/media.js';
 export * from './schemas/newsletter.js';
 export * from './schemas/posts.js';
 export * from './schemas/reviews.js';
+export * from './schemas/site-media.js';
 export * from './schemas/wishlist.js';
 
 // Re-exported so consumers can write `ContractInputs['catalog']['tours']['list']`

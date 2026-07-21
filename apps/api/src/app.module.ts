@@ -13,6 +13,7 @@ import { HealthModule } from './modules/health/health.module.js';
 import { NewsletterModule } from './modules/newsletter/newsletter.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
+import { SiteMediaModule } from './modules/site-media/site-media.module.js';
 import { WishlistModule } from './modules/wishlist/wishlist.module.js';
 
 @Module({
@@ -51,6 +52,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     EnquiriesModule,
     NewsletterModule,
     PostsModule,
+    SiteMediaModule,
   ],
   providers: [
     /**

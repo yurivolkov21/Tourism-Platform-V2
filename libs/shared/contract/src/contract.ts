@@ -51,6 +51,7 @@ import {
   PublicReviewSchema,
   ReviewsByTourQuerySchema,
 } from './schemas/reviews.js';
+import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
   CheckWishlistInputSchema,
   CheckWishlistResultSchema,
@@ -381,6 +382,21 @@ export const contract = {
         },
       })
       .output(CancellationRequestSchema),
+  },
+  /**
+   * Brand-chrome media công khai (spec P3a-C W6) — danh sách slot ảnh/video
+   * cố định trên web (hero trang chủ, cta-band, v.v.) hiện đang CÓ media.
+   * Chỉ đọc DB `site_media_slots` rồi lọc slot có ≥1 asset (ADR-0005); danh
+   * mục 9 key/kind là việc admin validate/sync (P4), không thuộc read-path.
+   */
+  siteMedia: {
+    list: oc
+      .route({
+        method: 'GET',
+        path: '/api/site-media',
+        summary: 'List site brand-chrome media slots (only slots with media)',
+      })
+      .output(z.array(SiteMediaEntrySchema)),
   },
   /**
    * Surface admin (spec P2 §3, W3). Cùng mô hình guard với `bookings`:
