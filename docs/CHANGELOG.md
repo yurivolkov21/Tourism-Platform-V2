@@ -2,6 +2,16 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-21 — Vá parity nhỏ CAT-4 · BK-3 · ENQ-1 (branch `worktree-fix+enquiry-name-min2`)
+
+Ba finding parity **Nhỏ** còn lại từ đợt rà soát (khôi phục quy tắc Nexora), làm ở
+branch song song, rebase+ff lên main — 2 commit `098e92d..9b74186`, kèm test contract:
+- **ENQ-1** (`098e92d`) enquiry `name` `min(1)`→`min(2)` — parity `@MinLength(2)`.
+- **CAT-4 + BK-3** (`9b74186`) `TourSortKeySchema` + `SORT_COLUMN` thêm `updatedAt`;
+  booking `contactPhone` `min(1)`→`min(6)` — parity `@Length(6,30)`.
+
+Tests after: `pnpm gate:int` xanh (128 integration).
+
 ## 2026-07-21 — Rà soát độc lập + vá P0 batch (branch `fix/review-p0-batch`)
 
 Rà soát độc lập toàn `apps/api` (parity vs Nexora + review defect v2 tự sinh, fan-out
