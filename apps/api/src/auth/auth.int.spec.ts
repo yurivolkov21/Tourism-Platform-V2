@@ -46,7 +46,7 @@ describe('auth integration (Better Auth + tombstone)', () => {
     // Thứ tự truncate theo chiều phụ thuộc FK (bookings/tours thêm vào cho
     // fixture VERIFIED của test d — xem comment ở đó).
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications CASCADE',
+      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers CASCADE',
     );
   });
 
@@ -110,6 +110,10 @@ describe('auth integration (Better Auth + tombstone)', () => {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('sign-up did not create user');
+
+    // Subscriber trùng email (NL-R1): account deletion phải dọn HẲN để không còn
+    // gửi marketing tới email của user "đã xoá" (GDPR erasure).
+    await prisma.subscriber.create({ data: { email, source: 'test' } });
 
     // Review VERIFIED của user — CHECK `reviews_source_shape` (migration
     // p3a_customer, sau khi test này viết) đòi VERIFIED phải có ĐỦ CẢ BA
@@ -184,6 +188,9 @@ describe('auth integration (Better Auth + tombstone)', () => {
     // Sessions + accounts hard-deleted.
     expect(await prisma.session.count({ where: { userId: user.id } })).toBe(0);
     expect(await prisma.account.count({ where: { userId: user.id } })).toBe(0);
+
+    // Subscriber trùng email bị xoá HẲN (NL-R1 — GDPR erasure trên account deletion).
+    expect(await prisma.subscriber.count({ where: { email } })).toBe(0);
 
     // Review flag denormalized bật — VÀ authorName phải được scrub trong
     // CÙNG transaction (spec §4.2). Bật cờ mà quên scrub thì tên vẫn nằm

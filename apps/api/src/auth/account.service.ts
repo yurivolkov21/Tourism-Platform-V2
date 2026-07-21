@@ -13,6 +13,12 @@ import { prisma } from './auth.config.js';
 @Injectable()
 export class AccountService {
   async deleteAccount(userId: string): Promise<void> {
+    // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
+    // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
+    const { email } = await prisma.user.findUniqueOrThrow({
+      where: { id: userId },
+      select: { email: true },
+    });
     // Email tombstone unique-per-delete → email gốc được GIẢI PHÓNG (citext
     // unique) cho người khác (hoặc chính chủ) đăng ký lại.
     const tombstoneEmail = `deleted+${randomUUID()}@tombstone.local`;
@@ -43,6 +49,10 @@ export class AccountService {
         where: { userId },
         data: { authorDeleted: true, authorName: '' },
       }),
+      // GDPR erasure (NL-R1): xoá HẲN Subscriber trùng email. Account deletion là
+      // quyền-được-xoá — mạnh hơn soft-unsubscribe của flow công khai; để lại thì
+      // vẫn gửi marketing tới email của user đã xoá VÀ giữ PII email trong DB.
+      prisma.subscriber.deleteMany({ where: { email } }),
     ]);
   }
 }
