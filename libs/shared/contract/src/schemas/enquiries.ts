@@ -6,7 +6,8 @@ import { z } from 'zod';
  * hoặc là câu hỏi chung chung.
  */
 export const CreateEnquiryInputSchema = z.object({
-  name: z.string().trim().min(1).max(120),
+  // min 2: chặn tên 1 ký tự — giữ parity Nexora `@MinLength(2)`.
+  name: z.string().trim().min(2).max(120),
   email: z.email().max(200),
   phone: z.string().trim().max(30).optional(),
   // min 10: chặn "hi"/"test" — ngưỡng Nexora dùng, giữ nguyên.
