@@ -2,6 +2,30 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-21 — Refund correctness: đóng tiền-RA (branch `feat/refund-correctness`)
+
+Sub-project B của "chùm refund" — vá ba gốc double-refund/resurrection ở đường tiền-RA
+theo [ADR-0009](adr/0009-refund-correctness.md), 8 commit `47d906d..96cc1a6`, mỗi bước
+TDD + mutation-proof:
+- **BK-R1** (`7e90bbc`·`666f3c6`·`f2bd9c4`) trigger DB `SUM(refunds) ≤ total` (lưới cứng)
+  + `withBookingRefundLock` (advisory `pg_advisory_xact_lock` per-booking bao
+  read→gateway→ledger) bọc `refundByAdmin` VÀ `cancellations.approve` — hai admin refund
+  đồng thời, hoặc refund‖cancel-approve cross-path, giờ serialize: đúng 1 refund + 1 gateway
+  call, flow thua nhận `RefundNothingLeftError`. Mutation gỡ lock → double-refund `[200,200]`/500 ĐỎ.
+- **PAY-R1** (`23b30b9`) `refundOrphanedCapture` chỉ re-derive REFUNDED khi refund vừa phát
+  MỚI (`issueFullAutoRefund='refunded'`); `'already-refunded'` (booking đã refund qua
+  overbook/W4) → giữ CANCELLED, không email lần hai. **Sửa cơ chế ADR** (`1572f98`): bỏ gate
+  `paid_at` (không phân biệt được overbook-retry với orphan-thật — cả hai NULL; lại phá test
+  orphan + bỏ sót ca W4). Vá luôn W4-cancelled resurrection.
+- **TOCTOU** (`96cc1a6`) bọc `issueFullAutoRefund` bằng cùng advisory lock, re-check
+  existing-Refund trong lock → hai webhook auto-refund đồng thời (eventId khác) chỉ gọi
+  gateway 1 lần. Mutation gỡ lock → double gateway `[200,500]` ĐỎ.
+
+Ngoại lệ có chủ đích của "gateway ngoài transaction" (giữ 1 connection lúc HTTP) — giới hạn
+cho đường refund hiếm, đổi lấy money-integrity (ADR-0009 §Quyết định 1). Đánh đổi PAY-R1:
+crash đúng khe của orphan-thật → kẹt CANCELLED (tiền vẫn hoàn đủ; orphan-thật = pending-expiry
+của sub-project A chưa dựng). Tests after: `pnpm gate:int` xanh (140 integration).
+
 ## 2026-07-21 — Admin bootstrap emailVerified-gated + AUTH-2 email (branch `feat/admin-bootstrap-verified`)
 
 Đóng **SEC-1** (priv-esc) + **AUTH-1** (no self-heal) + **AUTH-2** (email chưa dây)
