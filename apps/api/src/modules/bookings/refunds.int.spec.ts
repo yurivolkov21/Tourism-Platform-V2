@@ -436,4 +436,28 @@ describe('refunds integration (admin refund ledger)', () => {
 
     await expect(refunds.historyForBooking('BK-ZZZZ9999')).rejects.toThrow(BookingNotFoundError);
   });
+
+  it('trigger: insert refund làm SUM(refunds) > total → bị chặn (BK-R1 defense-in-depth)', async () => {
+    const booking = await createPaidBooking(await signUpUser('sum-trigger@example.com', 'S')); // total 117.00
+    await prisma.refund.create({
+      data: {
+        bookingId: booking.id,
+        amount: '100.00',
+        currency: 'USD',
+        providerRefundId: 'trig-r1',
+      },
+    });
+    // 100 + 50 = 150 > 117 → trigger phải raise.
+    await expect(
+      prisma.refund.create({
+        data: {
+          bookingId: booking.id,
+          amount: '50.00',
+          currency: 'USD',
+          providerRefundId: 'trig-r2',
+        },
+      }),
+    ).rejects.toThrow();
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+  });
 });
