@@ -475,6 +475,28 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(pe.bookingId).toBe(booking.id);
   });
 
+  it('PAY-1: checkout.session.expired trên PENDING → CANCELLED, không đụng ghế (idempotent)', async () => {
+    const cookie = await signUpUser('expire@example.com');
+    const booking = await createBooking(cookie); // PENDING, party 3
+
+    const res = await postWebhook(fake.emitCheckoutExpired(booking.id));
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'expired' });
+
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.cancelledAt).not.toBeNull();
+    expect(row.paidAt).toBeNull();
+    expect(await seatsOf(depMain.id)).toBe(3); // PENDING không giữ ghế → không đổi
+
+    // Idempotent: một expired thứ hai (eventId MỚI) → vẫn CANCELLED, không lỗi.
+    const again = await postWebhook(fake.emitCheckoutExpired(booking.id, { eventId: 'evt_exp_2' }));
+    expect(again.statusCode).toBe(200);
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+      BookingStatus.CANCELLED,
+    );
+  });
+
   it('unknown bookingId in a signed event → 200 not-found (log-and-skip, provider stops retrying)', async () => {
     const event = fake.emitPaymentCompleted('e9200001-dead-4000-8000-000000000000');
     const res = await postWebhook(event);

@@ -78,7 +78,13 @@ export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking 
  * - `not-found`     — không có booking id này (webhook tham chiếu thứ ta chưa
  *                     bao giờ mint) → log-and-skip.
  */
-export type ClaimOutcome = 'claimed' | 'overbooked' | 'cancelled' | 'already-paid' | 'not-found';
+export type ClaimOutcome =
+  | 'claimed'
+  | 'overbooked'
+  | 'cancelled'
+  | 'already-paid'
+  | 'not-found'
+  | 'expired';
 
 /** UNIQUE violation trên bookings.code (mint bị đụng) — retryable. */
 function isCodeCollision(error: unknown): boolean {

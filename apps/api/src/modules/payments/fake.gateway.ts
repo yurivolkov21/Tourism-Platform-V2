@@ -131,6 +131,11 @@ export class FakeGateway implements PaymentGateway {
     return this.emit('payment.failed', bookingId, opts);
   }
 
+  /** Event `payment.expired` (PAY-1) — checkout session hết hạn trên PENDING. */
+  emitCheckoutExpired(bookingId: string, opts: FakeEmitOptions = {}): VerifiedEvent {
+    return this.emit('payment.expired', bookingId, opts);
+  }
+
   /** Checkout session được ghi gần nhất cho một booking, nếu có. */
   sessionFor(bookingId: string): FakeCheckoutSession | undefined {
     return [...this.sessions].reverse().find((s) => s.input.bookingId === bookingId);
@@ -146,7 +151,7 @@ export class FakeGateway implements PaymentGateway {
   }
 
   private emit(
-    type: 'payment.completed' | 'payment.failed',
+    type: 'payment.completed' | 'payment.failed' | 'payment.expired',
     bookingId: string,
     opts: FakeEmitOptions,
   ): VerifiedEvent {

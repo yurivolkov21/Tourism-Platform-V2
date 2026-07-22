@@ -208,6 +208,12 @@ function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
           : {}),
       };
     case 'checkout.session.expired':
+      // PAY-1: hết hạn checkout ≠ thanh toán thất bại — tách để hủy PENDING.
+      return {
+        ...base,
+        type: 'payment.expired',
+        ...(bookingId ? { bookingId } : {}),
+      };
     case 'payment_intent.payment_failed':
       return {
         ...base,

@@ -150,12 +150,38 @@ export class PaymentsService {
           `${provider} payment.failed for booking ${verified.bookingId ?? '<unknown>'} — booking stays PENDING`,
         );
         break;
+      case 'payment.expired':
+        // PAY-1 (ADR-0006): checkout hết hạn → hủy PENDING mồ côi. Không giữ ghế
+        // nên không bù trừ; gate status='PENDING' → idempotent với cron sweep.
+        if (verified.bookingId) {
+          outcome = await this.cancelExpiredPending(verified.bookingId);
+        }
+        break;
       default:
         this.logger.log(`Ignoring ${provider} event type '${verified.type}' (${verified.eventId})`);
     }
 
     await this.finishEvent(provider, verified.eventId);
     return { status: 'processed', ...(outcome ? { outcome } : {}) };
+  }
+
+  /**
+   * PAY-1 (ADR-0006): checkout session hết hạn → hủy PENDING mồ côi. MỘT statement
+   * nguyên tử gate `status='PENDING'` — idempotent với cron sweep (WRK-1) và với
+   * retry/duplicate delivery (booking đã CANCELLED → 0 row → no-op). Không đụng
+   * `seats_booked`: PENDING chưa từng claim ghế (bất biến #1). adminId/refund
+   * không liên quan — chưa charge.
+   */
+  private async cancelExpiredPending(bookingId: string): Promise<ClaimOutcome> {
+    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      UPDATE bookings
+      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now()
+      WHERE id = ${bookingId}::uuid AND status = 'PENDING'::"BookingStatus"
+      RETURNING id
+    `);
+    if (rows.length > 0)
+      this.logger.log(`Booking ${bookingId} checkout expired → CANCELLED (PAY-1)`);
+    return 'expired';
   }
 
   /**

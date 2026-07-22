@@ -83,7 +83,7 @@ export interface RefundInput {
 export interface VerifiedEvent {
   /** Event id của provider — nửa của idempotency key (`PaymentEvent @@unique([provider, eventId])`). */
   eventId: string;
-  type: 'payment.completed' | 'payment.failed' | 'other';
+  type: 'payment.completed' | 'payment.failed' | 'payment.expired' | 'other';
   bookingId?: string;
   /** Handle của payment đã capture (cần về sau để refund). */
   providerPaymentId?: string;
