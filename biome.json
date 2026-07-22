@@ -6,7 +6,14 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/generated", "!**/dist", "!**/dist-seed", "!**/public"]
+    "includes": [
+      "**",
+      "!**/generated",
+      "!**/dist",
+      "!**/dist-seed",
+      "!**/public",
+      "!libs/shared/ui/src/styles/typeset.css"
+    ]
   },
   "formatter": {
     "enabled": true,
