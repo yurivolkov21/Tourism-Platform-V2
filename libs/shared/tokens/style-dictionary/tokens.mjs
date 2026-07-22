@@ -1,7 +1,7 @@
 // Design tokens — source of truth for @tourism/tokens.
-// Brand direction: "Emerald Heritage" (light luxury) — deep emerald primary, warm ivory
-// neutrals, brass accents; serif headings (Fraunces) + sans body (Geist); refined radius.
-// See docs/06-specs/2026-06-21-p2-design-direction.md.
+// Hướng brand: "Wuling" — ngọc bích trầm trên nền sương celadon, mực tàu, accent
+// sơn mài/hổ phách; heading serif (Lora) + thân sans (Be Vietnam Pro); radius refined.
+// Phân tích & giá trị chốt: docs/conventions/color-system.md · ADR-0013.
 //
 // Authored in Style Dictionary token format. Each color carries light + dark values.
 
@@ -9,36 +9,34 @@ const c = (light, dark) => ({ value: light, darkValue: dark, type: 'color' });
 
 export default {
   color: {
-    // "Emerald Heritage" (light luxury): deep emerald primary · warm ivory neutrals · brass accents.
-    // P5.6 "Nexora Dark Heritage": dark values retuned to the Navel-translated
-    // ramp — deep emerald canvas, warm cream text, BRASS dark CTA (light stays
-    // emerald). Spec: docs/06-specs/2026-07-15-p56-mobile-navel-redesign-design.md
-    background: c('oklch(0.985 0.006 95)', 'oklch(0.24 0.025 165)'),
-    foreground: c('oklch(0.23 0.012 155)', 'oklch(0.94 0.015 90)'),
-    card: c('oklch(0.995 0.004 95)', 'oklch(0.28 0.025 165)'),
-    'card-foreground': c('oklch(0.23 0.012 155)', 'oklch(0.94 0.015 90)'),
-    popover: c('oklch(0.995 0.004 95)', 'oklch(0.28 0.025 165)'),
-    'popover-foreground': c('oklch(0.23 0.012 155)', 'oklch(0.94 0.015 90)'),
-    primary: c('oklch(0.42 0.08 155)', 'oklch(0.75 0.11 80)'),
-    'primary-foreground': c('oklch(0.98 0.01 95)', 'oklch(0.24 0.03 160)'),
+    // Hệ "Wuling" — chốt 22/07/2026, phân tích tại docs/conventions/color-system.md.
+    // Quy đổi oklch từ hex chốt bằng culori (làm tròn 3 chữ số).
+    background: c('oklch(0.977 0.003 174.5)', 'oklch(0.25 0.015 181.5)'),
+    foreground: c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
+    card: c('oklch(0.996 0.002 174)', 'oklch(0.309 0.022 177.6)'),
+    'card-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
+    popover: c('oklch(0.996 0.002 174)', 'oklch(0.309 0.022 177.6)'),
+    'popover-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
+    primary: c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    'primary-foreground': c('oklch(0.974 0.007 174.4)', 'oklch(0.974 0.007 174.4)'),
     // Text/icons that sit ON dark media (image scrims via --overlay). Stays light in BOTH themes —
     // the scrim is always dark, so this must NOT flip like primary-foreground does.
-    'on-media': c('oklch(0.98 0.01 95)', 'oklch(0.98 0.01 95)'),
-    secondary: c('oklch(0.93 0.012 120)', 'oklch(0.31 0.022 165)'),
-    'secondary-foreground': c('oklch(0.3 0.02 155)', 'oklch(0.94 0.015 90)'),
-    muted: c('oklch(0.95 0.008 105)', 'oklch(0.31 0.022 165)'),
-    'muted-foreground': c('oklch(0.5 0.015 150)', 'oklch(0.72 0.02 150)'),
-    accent: c('oklch(0.93 0.014 130)', 'oklch(0.33 0.024 165)'),
-    'accent-foreground': c('oklch(0.3 0.02 155)', 'oklch(0.94 0.015 90)'),
-    destructive: c('oklch(0.577 0.245 27.325)', 'oklch(0.704 0.191 22.216)'),
-    border: c('oklch(0.9 0.01 120)', 'oklch(1 0 0 / 12%)'),
-    input: c('oklch(0.9 0.01 120)', 'oklch(1 0 0 / 16%)'),
-    ring: c('oklch(0.55 0.07 155)', 'oklch(0.72 0.1 80)'),
+    'on-media': c('oklch(0.98 0.005 180)', 'oklch(0.98 0.005 180)'),
+    secondary: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
+    'secondary-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
+    muted: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
+    'muted-foreground': c('oklch(0.473 0.022 179.5)', 'oklch(0.748 0.026 174.5)'),
+    accent: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
+    'accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
+    destructive: c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
+    border: c('oklch(0.781 0.015 180.6)', 'oklch(0.402 0.026 173.6)'),
+    input: c('oklch(0.781 0.015 180.6)', 'oklch(0.402 0.026 173.6)'),
+    ring: c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
     overlay: c('oklch(0 0 0 / 0.5)', 'oklch(0 0 0 / 0.6)'),
     // P5.6: uniform photo treatment — bottom scrim + full-bleed grade tint
-    // (consumed by mobile-ui ScrimImage; alpha-bearing like `overlay`).
-    scrim: c('oklch(0.15 0.03 170 / 0.75)', 'oklch(0.13 0.03 170 / 0.8)'),
-    'media-tint': c('oklch(0.35 0.05 180 / 0.1)', 'oklch(0.3 0.05 180 / 0.16)'),
+    // (consumed by mobile-ui ScrimImage; alpha-bearing like `overlay`). Hue → họ ngọc Wuling.
+    scrim: c('oklch(0.15 0.02 182 / 0.75)', 'oklch(0.13 0.02 182 / 0.8)'),
+    'media-tint': c('oklch(0.35 0.05 184 / 0.1)', 'oklch(0.3 0.05 184 / 0.16)'),
     // Functional status colors (not brand "gu") — used by departure status, badges, alerts.
     success: c('oklch(0.62 0.17 145)', 'oklch(0.7 0.15 145)'),
     'success-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
@@ -46,28 +44,28 @@ export default {
     'warning-foreground': c('oklch(0.27 0.04 80)', 'oklch(0.2 0.03 80)'),
     info: c('oklch(0.6 0.13 240)', 'oklch(0.7 0.13 240)'),
     'info-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
-    // Tourism-specific semantic colors — rating = brass (the light-luxury accent).
-    rating: c('oklch(0.74 0.11 80)', 'oklch(0.8 0.12 82)'),
-    'rating-muted': c('oklch(0.9 0.01 120)', 'oklch(1 0 0 / 0.2)'),
-    price: c('oklch(0.23 0.012 155)', 'oklch(0.95 0.008 95)'),
-    'price-compare': c('oklch(0.5 0.015 150)', 'oklch(0.7 0.012 130)'),
-    // Data-viz ramp in the emerald/brass family.
-    'chart-1': c('oklch(0.42 0.08 155)', 'oklch(0.72 0.1 155)'),
-    'chart-2': c('oklch(0.74 0.11 80)', 'oklch(0.8 0.12 82)'),
-    'chart-3': c('oklch(0.55 0.07 190)', 'oklch(0.65 0.08 190)'),
-    'chart-4': c('oklch(0.65 0.06 135)', 'oklch(0.72 0.07 135)'),
-    'chart-5': c('oklch(0.35 0.05 160)', 'oklch(0.5 0.06 160)'),
-    sidebar: c('oklch(0.97 0.008 110)', 'oklch(0.26 0.025 165)'),
-    'sidebar-foreground': c('oklch(0.23 0.012 155)', 'oklch(0.95 0.008 95)'),
-    'sidebar-primary': c('oklch(0.42 0.08 155)', 'oklch(0.72 0.1 155)'),
-    'sidebar-primary-foreground': c('oklch(0.98 0.01 95)', 'oklch(0.18 0.02 155)'),
-    'sidebar-accent': c('oklch(0.93 0.014 130)', 'oklch(0.3 0.018 160)'),
-    'sidebar-accent-foreground': c('oklch(0.3 0.02 155)', 'oklch(0.95 0.008 95)'),
-    'sidebar-border': c('oklch(0.9 0.01 120)', 'oklch(1 0 0 / 10%)'),
-    'sidebar-ring': c('oklch(0.55 0.07 155)', 'oklch(0.6 0.08 155)'),
+    // Tourism-specific semantic colors — rating = vàng hổ phách Wuling (chỉ dùng cho ★).
+    rating: c('oklch(0.731 0.13 73.3)', 'oklch(0.78 0.13 75)'),
+    'rating-muted': c('oklch(0.865 0.015 175.7)', 'oklch(1 0 0 / 0.2)'),
+    price: c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
+    'price-compare': c('oklch(0.473 0.022 179.5)', 'oklch(0.748 0.026 174.5)'),
+    // Data-viz ramp: 5 hue của brand + vùng (ngọc · thép · hổ phách · sơn mài · phù sa).
+    'chart-1': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    'chart-2': c('oklch(0.535 0.057 239.5)', 'oklch(0.645 0.056 238.3)'),
+    'chart-3': c('oklch(0.731 0.13 73.3)', 'oklch(0.78 0.13 75)'),
+    'chart-4': c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
+    'chart-5': c('oklch(0.555 0.053 48.4)', 'oklch(0.661 0.052 51.2)'),
+    sidebar: c('oklch(0.966 0.006 170.4)', 'oklch(0.29 0.02 178)'),
+    'sidebar-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
+    'sidebar-primary': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    'sidebar-primary-foreground': c('oklch(0.974 0.007 174.4)', 'oklch(0.974 0.007 174.4)'),
+    'sidebar-accent': c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
+    'sidebar-accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
+    'sidebar-border': c('oklch(0.865 0.015 175.7)', 'oklch(0.402 0.026 173.6)'),
+    'sidebar-ring': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
   },
   radius: {
-    DEFAULT: { value: '0.375rem', type: 'dimension' }, // refined (light luxury)
+    DEFAULT: { value: '0.375rem', type: 'dimension' }, // refined — giữ nguyên đợt rebrand
   },
 };
 
@@ -85,7 +83,7 @@ export const radiusScale = {
 // Font family theme vars (passthrough to the runtime --font-sans set in each app layout).
 export const fonts = {
   sans: 'var(--font-sans)',
-  heading: 'var(--font-heading)', // Fraunces (serif), set per-app via next/font; falls back to sans
+  heading: 'var(--font-heading)', // Lora (serif), đặt per-app qua next/font; fallback về sans
 };
 
 // Mode-independent Tailwind v4 @theme tokens → generate utilities (text-*, font-*,
@@ -193,8 +191,45 @@ export const baseRules = [
   '  background-color: var(--accent);',
   '  color: var(--accent-foreground);',
   '}',
-  '/* Light-luxury: headings in the serif display face (Fraunces), body stays sans. */',
+  '/* Wuling: heading dùng serif (Lora), thân giữ sans. */',
   'h1, h2, h3 {',
   '  font-family: var(--font-heading, var(--font-sans));',
   '}',
 ];
+
+// Lớp region Bắc/Trung/Nam (ADR-0013 #3) — 5 slot/vùng, chỉ page-level app dùng
+// (component KHÔNG tham chiếu --region-*). Nguồn phân tích: docs/conventions/color-system.md §4.
+export const regionDefaults = {
+  primary: 'oklch(0.494 0.067 184.3)',
+  deep: 'oklch(0.411 0.053 184.5)',
+  surface: 'oklch(0.914 0.01 174.3)',
+  spark: 'oklch(0.731 0.13 73.3)',
+  'on-surface': 'oklch(0.411 0.053 184.5)',
+};
+
+export const regions = {
+  // Bắc — thép sương núi + tím (codename Arcane)
+  north: {
+    primary: 'oklch(0.535 0.057 239.5)',
+    deep: 'oklch(0.423 0.056 245.8)',
+    surface: 'oklch(0.855 0.007 277.1)',
+    spark: 'oklch(0.56 0.151 285.4)',
+    'on-surface': 'oklch(0.423 0.056 245.8)',
+  },
+  // Trung — đỏ rượu hoàng thành + vàng hoàng gia (codename Tangtang)
+  central: {
+    primary: 'oklch(0.415 0.161 27.2)',
+    deep: 'oklch(0.351 0.131 25.9)',
+    surface: 'oklch(0.89 0.028 20.4)',
+    spark: 'oklch(0.799 0.163 99.1)',
+    'on-surface': 'oklch(0.31 0.006 214.4)',
+  },
+  // Nam — nâu phù sa + đỏ gạch nung (codename Gilberta)
+  south: {
+    primary: 'oklch(0.555 0.053 48.4)',
+    deep: 'oklch(0.394 0.091 28.3)',
+    surface: 'oklch(0.661 0.052 51.2)',
+    spark: 'oklch(0.485 0.183 29.7)',
+    'on-surface': 'oklch(0.303 0.037 35.2)',
+  },
+};
