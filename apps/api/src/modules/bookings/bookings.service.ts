@@ -10,7 +10,12 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
-import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
+import {
+  type CheckoutSession,
+  PAYMENT_GATEWAYS,
+  type PaymentGateway,
+  resolveGateway,
+} from '../payments/gateway.js';
 import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 
@@ -27,6 +32,22 @@ export class DepartureNotAvailableError extends Error {
 export class SeatsUnavailableError extends Error {
   constructor(seatsLeft: number, requested: number) {
     super(`Only ${seatsLeft} seat(s) left, requested ${requested}`);
+  }
+}
+
+/** BK-1: gateway lỗi lúc mint checkout session (create/re-checkout) → 502
+ * retry-able. Booking ở lại PENDING không session; khách retry qua re-checkout. */
+export class CheckoutFailedError extends Error {
+  constructor() {
+    super('Checkout could not be started, please retry');
+  }
+}
+
+/** BK-1/BK-2: thao tác chỉ hợp lệ trên PENDING (re-checkout / self-cancel) nhưng
+ * booking không còn PENDING → 422. */
+export class BookingNotPendingError extends Error {
+  constructor() {
+    super('Only a PENDING booking is valid for this operation');
   }
 }
 
@@ -195,20 +216,28 @@ export class BookingsService {
     }
     if (!booking) throw new Error('unreachable: booking create loop exited without a row');
 
-    // Lời gọi provider ra ngoài NGOÀI mọi transaction (latency HTTP của nó
-    // không bao giờ được giữ connection). Gateway fail thì nổi lên sau khi row
-    // đã tồn tại: booking ở lại PENDING mà không có session — vô hại (không giữ
-    // seat) và sẽ được quét bởi pass pending-expiry (W2).
+    // Lời gọi provider NGOÀI mọi transaction (latency HTTP không giữ connection).
+    // BK-1 (ADR-0006): gateway lỗi → ném CheckoutFailedError (502 typed) thay vì
+    // 500 opaque; booking ở lại PENDING không session — vô hại (không giữ seat),
+    // khách phục hồi qua `reCheckout`, và cron sweep (WRK-1) dọn nếu bỏ luôn.
     const gateway = resolveGateway(this.gateways, input.paymentProvider);
-    const session = await gateway.createCheckoutSession({
-      bookingId: booking.id,
-      code: booking.code,
-      amount: total.toFixed(2),
-      currency: booking.currency,
-      description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
-      successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
-      cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
-    });
+    let session: CheckoutSession;
+    try {
+      session = await gateway.createCheckoutSession({
+        bookingId: booking.id,
+        code: booking.code,
+        amount: total.toFixed(2),
+        currency: booking.currency,
+        description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
+        successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
+        cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Checkout mint failed for ${booking.code}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw new CheckoutFailedError();
+    }
     const withSession = await prisma.booking.update({
       where: { id: booking.id },
       data: { providerSessionId: session.sessionId },
@@ -218,6 +247,43 @@ export class BookingsService {
       `Created booking ${withSession.code} (departure=${departure.id}, seats=${seats}, provider=${input.paymentProvider})`,
     );
     return toBooking(withSession, session.checkoutUrl);
+  }
+
+  /**
+   * BK-1 (ADR-0006): mint LẠI checkout session cho một PENDING của CHÍNH CHỦ —
+   * phục hồi sau khi `create` gặp gateway lỗi, hoặc thanh toán lại trước khi
+   * hết hạn. Owner-or-404 (trả null → controller map NOT_FOUND, không lộ tồn
+   * tại); chỉ PENDING (BookingNotPendingError → 422); gateway lỗi →
+   * CheckoutFailedError (502). Idempotent: mỗi lần mint một session mới hợp lệ.
+   */
+  async reCheckout(userId: string, code: string): Promise<Booking | null> {
+    const booking = await prisma.booking.findUnique({ where: { code } });
+    if (!booking || booking.userId !== userId) return null;
+    if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
+
+    const gateway = resolveGateway(this.gateways, booking.paymentProvider);
+    let session: CheckoutSession;
+    try {
+      session = await gateway.createCheckoutSession({
+        bookingId: booking.id,
+        code: booking.code,
+        amount: booking.totalAmount.toFixed(2),
+        currency: booking.currency,
+        description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
+        successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
+        cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+      });
+    } catch (err) {
+      this.logger.error(
+        `Re-checkout mint failed for ${booking.code}: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw new CheckoutFailedError();
+    }
+    const updated = await prisma.booking.update({
+      where: { id: booking.id },
+      data: { providerSessionId: session.sessionId },
+    });
+    return toBooking(updated, session.checkoutUrl);
   }
 
   /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status filter optional. */

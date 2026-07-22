@@ -53,6 +53,14 @@ export class FakeGateway implements PaymentGateway {
   failRefunds = false;
 
   /**
+   * Test toggle: bật để `createCheckoutSession` NÉM lỗi, mô phỏng gateway lỗi/
+   * rate-limit đúng lúc create (BK-1). Service phải ném `CheckoutFailedError`
+   * (→ 502 `CHECKOUT_FAILED`) và để booking ở lại PENDING không session. Reset
+   * về false trong `reset()`.
+   */
+  failCheckout = false;
+
+  /**
    * Test toggle: trễ nhân tạo (ms) trong `refund()` — dùng để ÉP race concurrent
    * (hai refund cùng đọc ledger trước khi bên nào ghi), canh advisory lock BK-R1.
    * Reset về 0 trong `reset()`.
@@ -62,6 +70,9 @@ export class FakeGateway implements PaymentGateway {
   constructor(readonly provider: PaymentProvider = PaymentProvider.STRIPE) {}
 
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession> {
+    if (this.failCheckout) {
+      throw new Error('FakeGateway: forced checkout failure');
+    }
     const sessionId = `fake_cs_${++this.seq}`;
     const session: FakeCheckoutSession = {
       sessionId,
@@ -148,6 +159,7 @@ export class FakeGateway implements PaymentGateway {
     this.seq = 0;
     this.failRefunds = false;
     this.refundDelayMs = 0;
+    this.failCheckout = false;
   }
 
   private emit(

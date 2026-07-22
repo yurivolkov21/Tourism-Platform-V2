@@ -5,7 +5,9 @@ import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import {
+  BookingNotPendingError,
   BookingsService,
+  CheckoutFailedError,
   DepartureNotAvailableError,
   SeatsUnavailableError,
 } from './bookings.service.js';
@@ -47,6 +49,28 @@ export class BookingsController {
         }
         if (error instanceof SeatsUnavailableError) {
           throw errors.SEATS_UNAVAILABLE({ message: error.message });
+        }
+        if (error instanceof CheckoutFailedError) {
+          throw errors.CHECKOUT_FAILED({ message: error.message });
+        }
+        throw error;
+      }
+    });
+  }
+
+  @Implement(contract.bookings.checkout)
+  checkout(@CurrentUser() user: SessionUser) {
+    return implement(contract.bookings.checkout).handler(async ({ input, errors }) => {
+      try {
+        const booking = await this.bookings.reCheckout(user.id, input.code);
+        if (!booking) throw errors.NOT_FOUND(); // owner-or-404, không lộ tồn tại
+        return booking;
+      } catch (error) {
+        if (error instanceof BookingNotPendingError) {
+          throw errors.NOT_PENDING({ message: error.message });
+        }
+        if (error instanceof CheckoutFailedError) {
+          throw errors.CHECKOUT_FAILED({ message: error.message });
         }
         throw error;
       }

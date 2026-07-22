@@ -337,6 +337,25 @@ export const contract = {
           status: 409,
           message: 'Not enough seats left on this departure',
         },
+        // BK-1: gateway lỗi lúc mint checkout — booking ĐÃ tạo (PENDING), khách
+        // retry qua `checkout`. Typed để FE phân biệt với hết-ghế/không-available.
+        CHECKOUT_FAILED: {
+          status: 502,
+          message: 'Checkout could not be started, please retry',
+        },
+      })
+      .output(BookingSchema),
+    checkout: oc
+      .route({
+        method: 'POST',
+        path: '/api/bookings/{code}/checkout',
+        summary: 'Re-mint checkout session for an own PENDING booking (authed, owner-only)',
+      })
+      .input(z.object({ code: BookingCodeSchema }))
+      .errors({
+        NOT_FOUND: { message: 'Booking not found' },
+        NOT_PENDING: { status: 422, message: 'Only a PENDING booking can be checked out' },
+        CHECKOUT_FAILED: { status: 502, message: 'Checkout could not be started, please retry' },
       })
       .output(BookingSchema),
     mine: oc

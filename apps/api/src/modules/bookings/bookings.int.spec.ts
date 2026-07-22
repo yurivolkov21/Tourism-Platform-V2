@@ -190,6 +190,52 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(after?.seatsBooked).toBe(3);
   });
 
+  it('BK-1: gateway lỗi lúc create → 502 CHECKOUT_FAILED, booking PENDING; re-checkout mint session', async () => {
+    const cookie = await signUpUser('bk1@example.com');
+    fake.failCheckout = true;
+    const failed = await createBooking(cookie);
+    expect(failed.statusCode).toBe(502);
+    expect(failed.json()).toMatchObject({ code: 'CHECKOUT_FAILED' });
+
+    // Booking PENDING đã tồn tại (owner thấy được) nhưng chưa có session.
+    const list = await app.inject({ method: 'GET', url: '/api/bookings', headers: { cookie } });
+    const code = list.json().items[0].code;
+    expect(list.json().items[0].status).toBe('PENDING');
+
+    // Re-checkout mint lại session cho PENDING của chính chủ.
+    fake.failCheckout = false;
+    const retry = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${code}/checkout`,
+      headers: { cookie },
+    });
+    expect(retry.statusCode).toBe(200);
+    expect(retry.json().checkoutUrl).toMatch(/^https:\/\/checkout\.fake\.local\//);
+
+    // Re-checkout trên booking KHÔNG PENDING → 422 NOT_PENDING; người khác → 404.
+    const paid = await createBooking(cookie);
+    const paidCode = paid.json().code;
+    await prisma.booking.update({
+      where: { code: paidCode },
+      data: { status: BookingStatus.PAID },
+    });
+    const onPaid = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${paidCode}/checkout`,
+      headers: { cookie },
+    });
+    expect(onPaid.statusCode).toBe(422);
+    expect(onPaid.json()).toMatchObject({ code: 'NOT_PENDING' });
+
+    const mallory = await signUpUser('mallory-bk1@example.com');
+    const foreign = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${code}/checkout`,
+      headers: { cookie: mallory },
+    });
+    expect(foreign.statusCode).toBe(404);
+  });
+
   it('departure priceOverride wins over tour basePrice in the snapshot', async () => {
     const cookie = await signUpUser('override@example.com');
     const res = await createBooking(cookie, {
