@@ -2,6 +2,21 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — Infra hardening trước P3b (branch `feat/infra-hardening`)
+
+Đóng 2/3 gap "độ chín production" (TB) từ [độ sẵn sàng backend](analysis/2026-07-22-backend-readiness-vs-nexora.md)
+theo [ADR-0010](adr/0010-infra-hardening.md), trước khi web P3b lộ FE. 2 commit `a0cb221..dc1beec`, TDD:
+- **Global exception filter** (`APP_FILTER` `AllExceptionsFilter`) — chuẩn hoá MỌI lỗi rơi vào pipeline Nest
+  (guard 401/403, route Nest thuần, lỗi bất ngờ) về envelope oRPC `{defined, code, status, message, data}`;
+  FE một parser. oRPC procedure-error + webhook `{code}` giữ nguyên (không bị đụng — verify). 500 ẩn stack.
+  Unit 5 + e2e 401.
+- **`@fastify/helmet`** trong `configureHttp` (test e2e phủ) — security headers, **CSP tắt** (API JSON, CSP để P3b).
+- **Sentry seam** env-gated (`SENTRY_DSN` + `captureException`) — filter gọi cho 500; hiện no-op (interim:
+  Logger.error → platform stdout). Cài `@sentry/node` là follow-up khi provision DSN (trừ phần cần key).
+
+Guard 401/403 đổi shape body (thêm `code`) — không test nào assert body-shape lỗi nên **zero ripple**.
+Tests after: `pnpm gate:int` xanh (145 integration + unit filter/e2e).
+
 ## 2026-07-22 — Vòng đời PENDING: đóng lỗ mồ côi (branch `feat/pending-lifecycle`)
 
 Đưa booking PENDING mồ côi về terminal theo [ADR-0006](adr/0006-pending-lifecycle.md) (Accepted 22/07) —
