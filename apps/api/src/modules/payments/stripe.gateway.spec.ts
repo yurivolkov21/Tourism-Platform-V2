@@ -120,7 +120,7 @@ describe('StripeGateway.verifyWebhook', () => {
     );
   });
 
-  it('maps checkout.session.expired to payment.failed', async () => {
+  it('maps checkout.session.expired to payment.expired (PAY-1: tách khỏi failed)', async () => {
     const { gateway } = makeGateway();
     const body = JSON.stringify({
       id: 'evt_2',
@@ -132,7 +132,7 @@ describe('StripeGateway.verifyWebhook', () => {
     });
     expect(event).toMatchObject({
       eventId: 'evt_2',
-      type: 'payment.failed',
+      type: 'payment.expired',
       bookingId: 'b-1',
     });
   });
