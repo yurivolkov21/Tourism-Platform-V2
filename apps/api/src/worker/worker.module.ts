@@ -2,6 +2,7 @@ import { Module, type Provider } from '@nestjs/common';
 import { env } from '../config/env.js';
 import { ConsoleDeliverer, EMAIL_DELIVERER } from './deliverer.js';
 import { OutboxService } from './outbox.service.js';
+import { PendingSweepService } from './pending-sweep.service.js';
 import { ResendDeliverer } from './resend.deliverer.js';
 
 /**
@@ -23,7 +24,7 @@ const delivererProvider: Provider = env.RESEND_API_KEY
   : { provide: EMAIL_DELIVERER, useClass: ConsoleDeliverer };
 
 @Module({
-  providers: [OutboxService, delivererProvider],
-  exports: [OutboxService],
+  providers: [OutboxService, PendingSweepService, delivererProvider],
+  exports: [OutboxService, PendingSweepService],
 })
 export class WorkerModule {}

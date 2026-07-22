@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { env } from './config/env.js';
 import { OutboxService } from './worker/outbox.service.js';
+import { PendingSweepService } from './worker/pending-sweep.service.js';
 import { WorkerModule } from './worker/worker.module.js';
 
 /**
@@ -22,12 +23,19 @@ const OUTBOX_PURGE_QUEUE = 'outbox-purge';
 const OUTBOX_PURGE_CRON = '0 3 * * *';
 const RETENTION_DAYS = 30;
 
+const BOOKING_SWEEP_QUEUE = 'booking-sweep';
+/** Mỗi 10′ — backstop WRK-1 khi webhook expired rớt. */
+const BOOKING_SWEEP_CRON = '*/10 * * * *';
+/** TTL 30′ khớp hạn Stripe Checkout — PENDING quá đó coi như bỏ hoang. */
+const PENDING_TTL_MINUTES = 30;
+
 const logger = new Logger('Worker');
 
 async function bootstrap(): Promise<void> {
   // Application context tối giản — không HTTP listener.
   const app = await NestFactory.createApplicationContext(WorkerModule);
   const outbox = app.get(OutboxService);
+  const pendingSweep = app.get(PendingSweepService);
 
   const boss = new PgBoss({
     connectionString: env.DATABASE_URL,
@@ -51,6 +59,13 @@ async function bootstrap(): Promise<void> {
   });
   await boss.schedule(OUTBOX_PURGE_QUEUE, OUTBOX_PURGE_CRON);
 
+  // Booking sweep — WRK-1: hủy PENDING bỏ hoang quá TTL (backstop webhook expired).
+  await boss.createQueue(BOOKING_SWEEP_QUEUE, { policy: 'short' });
+  await boss.work(BOOKING_SWEEP_QUEUE, async () => {
+    await pendingSweep.sweepAbandoned(PENDING_TTL_MINUTES);
+  });
+  await boss.schedule(BOOKING_SWEEP_QUEUE, BOOKING_SWEEP_CRON);
+
   let stopping = false;
   const shutdown = (signal: string): void => {
     if (stopping) return;
@@ -72,7 +87,7 @@ async function bootstrap(): Promise<void> {
   process.on('SIGINT', () => shutdown('SIGINT'));
 
   logger.log(
-    `@tourism/api worker started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON}`,
+    `@tourism/api worker started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON}`,
   );
 }
 
