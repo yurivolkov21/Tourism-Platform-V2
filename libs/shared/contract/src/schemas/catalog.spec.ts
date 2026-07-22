@@ -21,7 +21,7 @@ const validCard = {
   difficulty: 'EASY',
   maxGroupSize: 12,
   isFeatured: true,
-  primaryDestination: { slug: 'hoi-an', name: 'Hội An' },
+  destinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
   category: { slug: 'day', name: 'Day Tours' },
   ratingAvg: 4.5,
   ratingCount: 12,
@@ -67,7 +67,7 @@ describe('TourCardSchema', () => {
       summary: null,
       compareAtPrice: null,
       difficulty: null,
-      primaryDestination: null,
+      destinations: [], // mảng rỗng hợp lệ (tour chưa gắn destination nào)
     };
     expect(TourCardSchema.parse(card)).toEqual(card);
   });

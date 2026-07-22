@@ -39,6 +39,15 @@ export const PolicyKindSchema = z.enum(['CANCELLATION', 'BOOKING', 'GENERAL']);
 // Tour card (public list item)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Một destination mà tour đi qua (bảng join M:N). `isPrimary` = destination
+ * chính; card/detail trả CẢ mảng (primary đứng đầu) nên client tự chọn được —
+ * thay cho field `primaryDestination` đơn cũ (C1: tour đi qua nhiều nơi). */
+export const DestinationLinkSchema = z.object({
+  slug: z.string(),
+  name: z.string(),
+  isPrimary: z.boolean(),
+});
+
 export const TourCardSchema = z.object({
   id: z.uuid(),
   slug: z.string().min(1).max(120),
@@ -51,7 +60,7 @@ export const TourCardSchema = z.object({
   difficulty: TourDifficultySchema.nullable(),
   maxGroupSize: z.int().positive(),
   isFeatured: z.boolean(),
-  primaryDestination: z.object({ slug: z.string(), name: z.string() }).nullable(),
+  destinations: z.array(DestinationLinkSchema),
   category: z.object({ slug: z.string(), name: z.string() }),
   // Rating denormalize sẵn trên Tour (cập nhật atomically trong transaction
   // duyệt review — xem ReviewsService.moderate). Nexora tính live bằng

@@ -23,13 +23,14 @@ const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 /** Nửa đêm UTC hôm nay — cận dưới cho departure "upcoming". */
 const startOfTodayUtc = (): Date => new Date(new Date().toISOString().slice(0, 10));
 
-/** Include cấp card: category + primary destination qua bảng join M:N. */
+/** Include cấp card: category + TẤT CẢ destination qua bảng join M:N (C1 —
+ * primary đứng đầu, rồi theo tên). Trước đây lọc `isPrimary/take:1` làm mất
+ * destination phụ; giờ trả cả mảng để client tự chọn. */
 export const cardInclude = {
   category: { select: { slug: true, name: true } },
   destinations: {
-    where: { isPrimary: true },
-    select: { destination: { select: { slug: true, name: true } } },
-    take: 1,
+    select: { isPrimary: true, destination: { select: { slug: true, name: true } } },
+    orderBy: [{ isPrimary: 'desc' }, { destination: { name: 'asc' } }],
   },
 } satisfies Prisma.TourInclude;
 
@@ -56,7 +57,11 @@ export function toTourCard(tour: TourCardRow): TourCard {
     difficulty: tour.difficulty,
     maxGroupSize: tour.maxGroupSize,
     isFeatured: tour.isFeatured,
-    primaryDestination: tour.destinations[0]?.destination ?? null,
+    destinations: tour.destinations.map((d) => ({
+      slug: d.destination.slug,
+      name: d.destination.name,
+      isPrimary: d.isPrimary,
+    })),
     category: tour.category,
     // Decimal → number: rating là số hiển thị sao, không phải tiền, và
     // Decimal(2,1) biểu diễn chính xác được trong double. null giữ nguyên

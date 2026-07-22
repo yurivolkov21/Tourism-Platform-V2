@@ -142,7 +142,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     // serializer money khác (bookings/refunds/money.ts đều .toFixed(2)). CAT-R1:
     // so-bằng-Number ở trên KHÔNG thấy được mất format này.
     expect(card?.basePrice).toMatch(/^\d+\.\d{2}$/);
-    expect(card?.primaryDestination).not.toBeNull();
+    // C1: card trả CẢ mảng destinations (primary đứng đầu), không còn field đơn.
+    expect(card?.destinations).toHaveLength(1);
+    expect(card?.destinations[0]).toMatchObject({ slug: 'hoi-an', isPrimary: true });
   });
 
   it('filters by category slug', async () => {
@@ -188,7 +190,15 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     expect(res.statusCode).toBe(200);
     const paged = PagedCards.parse(res.json());
     expect(paged.total).toBe(1);
-    expect(paged.items[0]?.slug).toBe(PUBLISHED_CRUISE_SLUG);
+    const cruiseCard = paged.items[0];
+    expect(cruiseCard?.slug).toBe(PUBLISHED_CRUISE_SLUG);
+    // C1: cruise gắn ≥2 destination — primary đứng đầu, Hà Nội là non-primary
+    // vẫn có mặt trong mảng (không bị `where isPrimary` cắt như trước).
+    expect(cruiseCard?.destinations.length).toBeGreaterThanOrEqual(2);
+    expect(cruiseCard?.destinations[0]?.isPrimary).toBe(true);
+    expect(cruiseCard?.destinations.find((d) => d.slug === 'hanoi')).toMatchObject({
+      isPrimary: false,
+    });
   });
 
   it('coerces query-string pagination + sorts (ZodSmartCoercionPlugin)', async () => {
@@ -222,6 +232,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
 
     const detail = TourDetailSchema.parse(res.json());
     expect(detail.slug).toBe(PUBLISHED_DAY_SLUG);
+    // C1: detail cũng mang mảng destinations (kế thừa card).
+    expect(detail.destinations).toHaveLength(1);
+    expect(detail.destinations[0]).toMatchObject({ slug: 'hoi-an', isPrimary: true });
     expect(detail.meetingPoint).toBe(dayTour.meetingPoint);
     expect(detail.suitableFor).toEqual(dayTour.suitableFor);
     expect(detail.badges).toEqual(dayTour.badges);
