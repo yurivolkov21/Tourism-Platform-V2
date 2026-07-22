@@ -13,8 +13,20 @@ A framework for building ui, components and design systems. Components are added
 
 ## Current Project Context
 
+<!-- Vá monorepo 22/07/2026 (tourism-v2): lệnh gốc `info --json` không có -c sẽ fail
+     "monorepo_root" khi chạy từ root repo. Repo có 2 workspace shadcn — chạy tường
+     minh từng cái. Nếu cập nhật skill từ upstream, giữ lại patch này. -->
+
+Workspace `apps/web`:
+
 ```json
-!`npx shadcn@latest info --json`
+!`npx shadcn@latest info --json -c apps/web`
+```
+
+Workspace `libs/shared/ui` (bộ shared components `@tourism/ui`):
+
+```json
+!`npx shadcn@latest info --json -c libs/shared/ui`
 ```
 
 The JSON above contains the project config and installed components. Use `npx shadcn@latest docs <component>` to get documentation and example URLs for any component.

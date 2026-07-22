@@ -14,7 +14,7 @@ Cài lại toàn bộ skill trong repo sau khi clone: `npx skills experimental_i
 | Skill | Nguồn | Dùng khi |
 | --- | --- | --- |
 | `turborepo` | vercel/turborepo (chính chủ) | Sửa `turbo.json`, task deps/outputs, caching, `--filter`, `--affected`, CI |
-| `shadcn` | shadcn-ui/ui (chính chủ) | Thêm/sửa component UI, styling, form, registry |
+| `shadcn` | shadcn-ui/ui (chính chủ) | Thêm/sửa component UI, styling, form, registry. **Đã vá local 22/07**: khối context `info --json` thêm `-c apps/web` + `-c libs/shared/ui` (bản gốc fail `monorepo_root` khi chạy từ root — nếu cập nhật skill từ upstream, giữ lại patch, xem comment trong SKILL.md) |
 | `migrate-radix-to-base` | shadcn-ui/ui | Chuyển component Radix → **Base UI** (ta đã chọn Base UI) |
 | `prisma-upgrade-v7` | prisma/skills (chính chủ) | ⭐ Breaking change Prisma 7: ESM config, driver adapter bắt buộc, `prisma.config.ts` |
 | `prisma-cli` · `prisma-client-api` · `prisma-database-setup` · `prisma-postgres-setup` · `prisma-postgres` · `prisma-driver-adapter-implementation` | prisma/skills | Migration, query API, cấu hình DB |
