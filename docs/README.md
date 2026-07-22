@@ -37,7 +37,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P1 API lõi | [2026-07-18-p1-api-core](specs/2026-07-18-p1-api-core.md) | ✅ đã merge |
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
-| P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | 🚧 đang làm |
+| P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
 | P3b Web · P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -49,7 +49,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [P3a-C: Posts · Site-media](plans/2026-07-21-p3a-c-posts-site-media.md) | W5–W6 + hạ tầng media-đọc (7 task) | ✅ đã merge |
 | [Admin bootstrap emailVerified + AUTH-2](plans/2026-07-21-admin-bootstrap-verified.md) | SEC-1/AUTH-1/AUTH-2 (5 task) | ✅ đã merge |
 | [Refund correctness](plans/2026-07-21-refund-correctness.md) | BK-R1/PAY-R1/TOCTOU (5 task) | ✅ đã merge |
-| [P3a contract closeout](plans/2026-07-21-p3a-contract-closeout.md) | C1·R1·R2 parity (4 task) | 🚧 đang làm |
+| [P3a contract closeout](plans/2026-07-21-p3a-contract-closeout.md) | C1·R1·R2 parity (4 task) | ✅ đã merge |
 
 ## Analysis — nghiên cứu từ Nexora
 

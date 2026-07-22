@@ -2,6 +2,25 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3a contract closeout: C1·R1·R2 (branch `feat/p3a-contract-closeout`)
+
+Đóng 3 gap hình dạng contract customer/admin API TRƯỚC khi mở P3b Web (đổi sau = rework
+component), theo [spec](specs/2026-07-21-p3a-contract-closeout-design.md) —
+parity từ [sweep parity toàn code](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md).
+3 commit feat `7319426..728c020`, mỗi cái TDD (không ADR — thuần additive; không migration):
+- **C1** (`7319426`) `TourCard`/`TourDetail` trả `destinations[]` (`{slug,name,isPrimary}`, primary
+  đứng đầu) thay `primaryDestination` đơn — tour đi qua nhiều nơi không còn mất destination phụ.
+  `cardInclude` bỏ `where isPrimary/take:1`.
+- **R1** (`810a724`) `reviews.mine` thêm `tourSlug`/`tourTitle` (+ `include tour`) — trang "Đánh giá
+  của tôi" hiện tên + link tour.
+- **R2** (`728c020`) `admin.reviews.list` thêm filter `source`/`rating`/`search` (body/title/tên) +
+  output `moderatedBy`(tên admin)/`tourTitle`. Chỉ include (FK `moderatedById` có sẵn), không migration.
+  PII khách (email) cố ý không phơi (admin UI P4 chưa xây).
+
+Quyết định shape (chốt với user): C1 bỏ hẳn `primaryDestination` (web chưa xây → đổi contract free);
+R2 không userEmail. Không mutation-test (không phải logic money/security; test filter đã discriminating).
+Tests after: `pnpm gate:int` xanh (141 integration).
+
 ## 2026-07-21 — Refund correctness: đóng tiền-RA (branch `feat/refund-correctness`)
 
 Sub-project B của "chùm refund" — vá ba gốc double-refund/resurrection ở đường tiền-RA
