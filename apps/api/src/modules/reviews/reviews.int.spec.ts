@@ -813,5 +813,85 @@ describe('reviews (int)', () => {
       });
       expect(all.json().items).toHaveLength(2);
     });
+
+    it('adminList: lọc source/rating + search + trả moderatedBy/tourTitle (R2)', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const adminRow = await prisma.user.findUniqueOrThrow({ where: { email: ADMIN_EMAIL } });
+      const category = await prisma.tourCategory.create({
+        data: { slug: 'r2-cat', name: 'R2', order: 1 },
+      });
+      const tour = await prisma.tour.create({
+        data: {
+          slug: 'r2-tour',
+          title: 'R2 Heritage Tour',
+          categoryId: category.id,
+          durationDays: 1,
+          basePrice: '39.00',
+          currency: 'USD',
+          isPublished: true,
+        },
+      });
+      // Hai review CURATED (VERIFIED cần booking/user thật — CHECK
+      // reviews_source_shape). Source filter vẫn discriminate qua ?source=VERIFIED→0.
+      const fiveStar = await prisma.review.create({
+        data: {
+          tourId: tour.id,
+          source: ReviewSource.CURATED,
+          rating: 5,
+          body: 'Chuyến đi tuyệt vời đáng nhớ',
+          authorName: 'Alice Reviewer',
+          isApproved: false,
+        },
+      });
+      const twoStar = await prisma.review.create({
+        data: {
+          tourId: tour.id,
+          source: ReviewSource.CURATED,
+          rating: 2,
+          body: 'Bình thường không đặc sắc',
+          authorName: 'Bob Reviewer',
+          isApproved: false,
+        },
+      });
+
+      const get = (qs: string) =>
+        app.inject({
+          method: 'GET',
+          url: `/api/admin/reviews${qs}`,
+          headers: { cookie: admin.cookie },
+        });
+
+      // Lọc source: không có VERIFIED nào → rỗng; CURATED → cả hai (filter được áp).
+      expect((await get('?source=VERIFIED')).json().items).toHaveLength(0);
+      expect((await get('?source=CURATED')).json().items).toHaveLength(2);
+      // Lọc rating → chỉ review 2 sao.
+      expect((await get('?rating=2')).json().items.map((r: { id: string }) => r.id)).toEqual([
+        twoStar.id,
+      ]);
+      // Search (không phân biệt hoa thường) khớp tên tác giả.
+      expect((await get('?search=alice')).json().items.map((r: { id: string }) => r.id)).toEqual([
+        fiveStar.id,
+      ]);
+
+      // tourTitle hiện; moderatedBy null khi chưa duyệt.
+      const items = (await get('')).json().items as {
+        tourTitle: string;
+        moderatedBy: string | null;
+      }[];
+      expect(items.every((r) => r.tourTitle === 'R2 Heritage Tour')).toBe(true);
+      expect(items.every((r) => r.moderatedBy === null)).toBe(true);
+
+      // Sau khi duyệt → moderatedBy = tên admin ra quyết định.
+      await app.inject({
+        method: 'POST',
+        url: `/api/admin/reviews/${twoStar.id}/moderate`,
+        headers: { cookie: admin.cookie },
+        payload: { id: twoStar.id, approve: true },
+      });
+      const moderated = (await get('?isApproved=true'))
+        .json()
+        .items.find((r: { id: string }) => r.id === twoStar.id);
+      expect(moderated.moderatedBy).toBe(adminRow.name);
+    });
   });
 });

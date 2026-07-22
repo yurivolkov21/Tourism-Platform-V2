@@ -59,14 +59,18 @@ export function toAdminReview(row: {
   isApproved: boolean;
   source: ReviewSource;
   moderatedAt: Date | null;
-  tour: { slug: string } | null;
+  tour: { slug: string; title: string } | null;
+  moderatedBy: { name: string | null } | null;
 }): AdminReview {
   return {
     ...toPublicReview(row),
     isApproved: row.isApproved,
     source: row.source,
     tourSlug: row.tour?.slug ?? null,
+    // R2: tên tour + ai duyệt lần cuối (null khi chưa duyệt).
+    tourTitle: row.tour?.title ?? null,
     moderatedAt: row.moderatedAt?.toISOString() ?? null,
+    moderatedBy: row.moderatedBy?.name ?? null,
   };
 }
 
@@ -320,7 +324,10 @@ export class ReviewsService {
       // ngoài tx (tránh đọc trạng thái đã cũ và tránh một round-trip thừa).
       const fresh = await tx.review.findUniqueOrThrow({
         where: { id: input.id },
-        include: { tour: { select: { slug: true } } },
+        include: {
+          tour: { select: { slug: true, title: true } },
+          moderatedBy: { select: { name: true } },
+        },
       });
       return toAdminReview(fresh);
     });
@@ -433,18 +440,43 @@ export class ReviewsService {
    * thì thứ tự giữa chúng không ổn định qua các lần query — phân trang hàng
    * đợi moderation có thể lặp/bỏ sót item.
    */
-  async adminList(query: { page: number; pageSize: number; isApproved?: boolean }): Promise<{
+  async adminList(query: {
+    page: number;
+    pageSize: number;
+    isApproved?: boolean;
+    source?: ReviewSource;
+    rating?: number;
+    search?: string;
+  }): Promise<{
     items: AdminReview[];
     page: number;
     limit: number;
     total: number;
     totalPages: number;
   }> {
-    const where = query.isApproved === undefined ? {} : { isApproved: query.isApproved };
+    // R2: cộng dồn các filter tùy chọn — source + rating khớp chính xác, search
+    // là free-text không phân biệt hoa thường trên body/title/tên tác giả.
+    const where: Prisma.ReviewWhereInput = {
+      ...(query.isApproved === undefined ? {} : { isApproved: query.isApproved }),
+      ...(query.source ? { source: query.source } : {}),
+      ...(query.rating ? { rating: query.rating } : {}),
+      ...(query.search
+        ? {
+            OR: [
+              { body: { contains: query.search, mode: 'insensitive' } },
+              { title: { contains: query.search, mode: 'insensitive' } },
+              { authorName: { contains: query.search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
+    };
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        include: { tour: { select: { slug: true } } },
+        include: {
+          tour: { select: { slug: true, title: true } },
+          moderatedBy: { select: { name: true } },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,

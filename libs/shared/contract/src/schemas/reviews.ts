@@ -55,11 +55,20 @@ export const AdminReviewSchema = PublicReviewSchema.extend({
   isApproved: z.boolean(),
   source: z.enum(['VERIFIED', 'CURATED']),
   tourSlug: z.string().nullable(),
+  // R2: tên tour (không chỉ slug) để admin nhận diện; ai duyệt lần cuối
+  // (null khi chưa duyệt). PII khách (email/tên) CỐ Ý không phơi ở đây.
+  tourTitle: z.string().nullable(),
   moderatedAt: z.iso.datetime().nullable(),
+  moderatedBy: z.string().nullable(),
 });
 
+/** R2: ngoài `isApproved`, admin lọc thêm theo nguồn + số sao + free-text
+ * search (body/title/tên tác giả) để soi hàng đợi moderation. */
 export const AdminReviewsQuerySchema = PageQuerySchema.extend({
   isApproved: z.boolean().optional(),
+  source: z.enum(['VERIFIED', 'CURATED']).optional(),
+  rating: RatingSchema.optional(),
+  search: z.string().min(1).max(100).optional(),
 });
 
 export type AdminReview = z.infer<typeof AdminReviewSchema>;
