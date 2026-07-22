@@ -35,6 +35,10 @@ export type PublicReview = z.infer<typeof PublicReviewSchema>;
  * `REVIEW_ALREADY_EXISTS` vì tưởng nhầm là gửi chưa thành công. */
 export const MyReviewSchema = PublicReviewSchema.extend({
   isApproved: z.boolean(),
+  // R1: danh tính tour để trang "Đánh giá của tôi" hiện tên + link được.
+  // nullable — FK tour trên schema là nullable (review curated có thể không tour).
+  tourSlug: z.string().nullable(),
+  tourTitle: z.string().nullable(),
 });
 
 export type MyReview = z.infer<typeof MyReviewSchema>;

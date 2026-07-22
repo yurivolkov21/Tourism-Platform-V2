@@ -640,6 +640,9 @@ describe('reviews (int)', () => {
       expect(items[0].id).toBe(myReviewId);
       // Review vừa tạo chưa được admin duyệt.
       expect(items[0].isApproved).toBe(false);
+      // R1: danh tính tour đi kèm — trang "Đánh giá của tôi" hiện tên + link.
+      expect(items[0].tourSlug).toBe('walk-mine-1');
+      expect(items[0].tourTitle).toBe('Hội An Walking Tour');
     });
 
     it('có cả review CHƯA duyệt của chính mình (mới nhất trước)', async () => {

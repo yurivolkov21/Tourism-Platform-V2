@@ -76,9 +76,18 @@ export function toAdminReview(row: {
  * (query của `mine()` không include quan hệ `tour`, ít trùng lặp hơn phải
  * thêm include chỉ để phục vụ một field không dùng tới). */
 export function toMyReview(
-  row: Parameters<typeof toPublicReview>[0] & { isApproved: boolean },
+  row: Parameters<typeof toPublicReview>[0] & {
+    isApproved: boolean;
+    tour: { slug: string; title: string } | null;
+  },
 ): MyReview {
-  return { ...toPublicReview(row), isApproved: row.isApproved };
+  return {
+    ...toPublicReview(row),
+    isApproved: row.isApproved,
+    // R1: danh tính tour (nullable — review curated có thể không gắn tour).
+    tourSlug: row.tour?.slug ?? null,
+    tourTitle: row.tour?.title ?? null,
+  };
 }
 
 @Injectable()
@@ -397,6 +406,8 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
+        // R1: kèm danh tính tour cho trang "Đánh giá của tôi".
+        include: { tour: { select: { slug: true, title: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
