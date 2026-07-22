@@ -31,6 +31,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0009](adr/0009-refund-correctness.md) | Đúng đắn refund — advisory-lock serialize + trigger `SUM≤total` + gate re-derive orphan (BK-R1/PAY-R1/TOCTOU) |
 | [0010](adr/0010-infra-hardening.md) | Infra hardening trước P3b — global exception filter (envelope oRPC) + `@fastify/helmet` + Sentry env-gated |
 | [0011](adr/0011-p3b-web-architecture.md) | Kiến trúc web P3b — Next.js 16 + React 19 + Tailwind v4; shared UI `libs/shared/ui` (web+admin), custom-in-app; Biome-không-ESLint |
+| [0012](adr/0012-typeset-typography.md) | Typography nội dung render — vendor shadcn/typeset (lõi nguyên bản + 3 preset docs/chat/reading) trong `@tourism/ui`, thay `@tailwindcss/typography` của Nexora |
 
 ## Specs — theo phase
 
@@ -40,7 +41,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 + bộ shared UI `@tourism/ui` (59 shadcn) xong; **kế tiếp**: wire theme-tokens → dựng trang |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 + bộ shared UI `@tourism/ui` (59 shadcn) + Typeset ([spec](specs/2026-07-22-ui-typeset-design.md)) xong; **kế tiếp**: rebrand + tokens pipeline → dựng trang |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -54,6 +55,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Refund correctness](plans/2026-07-21-refund-correctness.md) | BK-R1/PAY-R1/TOCTOU (5 task) | ✅ đã merge |
 | [P3a contract closeout](plans/2026-07-21-p3a-contract-closeout.md) | C1·R1·R2 parity (4 task) | ✅ đã merge |
 | [Vòng đời PENDING](plans/2026-07-22-pending-lifecycle.md) | BK-1·BK-2·PAY-1·WRK-1 (5 task) | ✅ đã merge |
+| [Typeset trong @tourism/ui](plans/2026-07-22-ui-typeset.md) | ADR-0012 (3 task) | ✅ đã merge |
 
 ## Analysis — nghiên cứu từ Nexora
 

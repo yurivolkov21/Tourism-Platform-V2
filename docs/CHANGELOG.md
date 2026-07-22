@@ -2,6 +2,23 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3b: shadcn/typeset trong `@tourism/ui` (branch `feat/ui-typeset`, merge `985f911`)
+
+Tích hợp **Typeset** (shadcn 10/07/2026 — hệ typography cho HTML/markdown render trong MỘT file CSS
+sở hữu repo) theo [ADR-0012](adr/0012-typeset-typography.md), thay `@tailwindcss/typography` của Nexora:
+- `libs/shared/ui/src/styles/typeset.css`: lõi vendor NGUYÊN BẢN từ `shadcn-ui/ui@main` (490 dòng, pin
+  nguồn+ngày, loại khỏi Biome như artifact để diff upstream) + **3 preset tự viết**: `typeset-docs`
+  (tour/FAQ/admin preview) · `typeset-chat` (chặt, ≈`prose-sm` cũ, dành cho AI concierge P6) ·
+  `typeset-reading` (thoáng, trang đọc dài). Import trong `globals.css` → web+admin hưởng tự động.
+- Component `<Typeset preset>` (cva + `useRender`, idiom base-nova) + **vitest đầu tiên của `@tourism/ui`**
+  (5 unit test `typesetVariants`, TDD).
+- Đối chiếu Nexora (#10): `prose prose-sm dark:prose-invert` (chat-panel/post-content/tour-itinerary) →
+  v2 tương đương hoặc tốt hơn (streaming-safe, bớt plugin dependency).
+
+Review findings: tự kiểm chứng render (page tạm + screenshot chromium — 3 preset khác biệt đúng thiết kế,
+class có mặt trong CSS build production; page đã gỡ). Font còn fallback serif — chờ task rebrand/tokens.
+Tests after: gate:int xanh — unit 5 (ui) + int **145/17 file** · typecheck · biome sạch.
+
 ## 2026-07-22 — P3b: bộ shared UI shadcn `@tourism/ui` (branch `feat/p3b-shared-ui`)
 
 Dựng bộ **components/blocks dùng chung** cho web+admin theo [ADR-0011](adr/0011-p3b-web-architecture.md):
