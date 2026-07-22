@@ -11,6 +11,8 @@ import tokens, {
   densityCompact,
   fonts,
   radiusScale,
+  regionDefaults,
+  regions,
   rootExtras,
   themeExtras,
 } from './tokens.mjs';
@@ -42,6 +44,8 @@ StyleDictionary.registerFormat({
       ...colors.map((t) => `  ${cssVar(t)}: ${t.original.value};`),
       `  --radius: ${radius.original.value};`,
       ...rootExtras.map(([k, v]) => `  ${k}: ${v};`),
+      // Slot region mặc định = brand — trang không gắn data-region không đổi gì (ADR-0013 #3).
+      ...Object.entries(regionDefaults).map(([k, v]) => `  --region-${k}: ${v};`),
     ];
     const dark = colors.map((t) => `  ${cssVar(t)}: ${t.original.darkValue};`);
 
@@ -60,6 +64,13 @@ StyleDictionary.registerFormat({
       ...dark,
       '}',
       '',
+      // Tint vùng Bắc/Trung/Nam — override slot --region-* theo data-region (ADR-0013 #3).
+      ...Object.entries(regions).flatMap(([name, vals]) => [
+        `[data-region='${name}'] {`,
+        ...Object.entries(vals).map(([k, v]) => `  --region-${k}: ${v};`),
+        '}',
+        '',
+      ]),
       "[data-density='compact'] {",
       ...densityCompact.map(([k, v]) => `  ${k}: ${v};`),
       '}',
