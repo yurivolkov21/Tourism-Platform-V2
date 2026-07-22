@@ -1,23 +1,24 @@
 import type { Metadata } from 'next';
-import { Be_Vietnam_Pro, Geist_Mono, Lora } from 'next/font/google';
+import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
 import './globals.css';
 
-// Font brand (ADR-0013 #6): Be Vietnam Pro (thân/UI) + Lora (heading) — cả hai
-// có subset vietnamese cho địa danh; Geist Mono giữ cho code/kbd.
-const sans = Be_Vietnam_Pro({
+// Bộ font chốt qua 2 vòng specimen (ADR-0013 #6, cập nhật 22/07): Literata
+// (heading serif) + Archivo (thân/UI grotesque) + IBM Plex Mono (mã đặt chỗ,
+// số kỹ thuật). Cả ba có subset vietnamese — địa danh đủ dấu ở mọi vai trò.
+const sans = Archivo({
   variable: '--font-sans',
   subsets: ['latin', 'vietnamese'],
-  weight: ['400', '500', '600', '700'],
 });
 
-const heading = Lora({
+const heading = Literata({
   variable: '--font-heading',
   subsets: ['latin', 'vietnamese'],
 });
 
-const mono = Geist_Mono({
+const mono = IBM_Plex_Mono({
   variable: '--font-mono',
-  subsets: ['latin'],
+  subsets: ['latin', 'vietnamese'],
+  weight: ['400', '500'],
 });
 
 export const metadata: Metadata = {

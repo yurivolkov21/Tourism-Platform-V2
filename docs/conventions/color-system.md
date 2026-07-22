@@ -126,9 +126,15 @@ bảng màu gốc + chủ đạo vùng.
 
 ## 6. Font (chốt cùng đợt — xem ADR-0013)
 
-- **Sans (thân + UI): Be Vietnam Pro** — hỗ trợ tiếng Việt trọn vẹn (địa danh),
-  hiện đại, hợp khí "bản chính thức".
-- **Serif (heading + journal): Lora** — chất du ký trầm, có tiếng Việt, cặp đôi
-  ổn định với Be Vietnam Pro.
-- Nạp qua `next/font/google`, expose biến `--font-sans`/`--font-heading` —
-  typeset.css và shadcn theme ăn theo tự động.
+Chốt sau 2 vòng specimen (22/07/2026) — cả ba đều có subset `vietnamese`:
+
+- **Heading + journal: Literata** — serif đọc hiện đại (gốc font sách Google
+  Play Books), bền ở cả cỡ lớn lẫn tên tour trong card. User chọn trực tiếp.
+- **Sans (thân + UI): Archivo** — grotesque x-height cao, chắc khỏe, giọng
+  "editorial" ghép tự nhiên với Literata.
+- **Mono (mã đặt chỗ, số kỹ thuật): IBM Plex Mono** — cùng khí chất kỹ thuật
+  với Archivo, phân biệt 0/O 1/l rõ, hiển thị được tiếng Việt trong mã vé.
+- Nạp qua `next/font/google`, expose biến `--font-sans`/`--font-heading`/
+  `--font-mono` — typeset.css và shadcn theme ăn theo tự động.
+- Lịch sử: đề xuất ban đầu Be Vietnam Pro + Lora (+ Geist Mono) chạy tạm từ
+  ADR-0013 tới khi user duyệt specimen và đổi sang bộ trên.

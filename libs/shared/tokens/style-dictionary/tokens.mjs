@@ -1,6 +1,6 @@
 // Design tokens — source of truth for @tourism/tokens.
 // Hướng brand: "Wuling" — ngọc bích trầm trên nền sương celadon, mực tàu, accent
-// sơn mài/hổ phách; heading serif (Lora) + thân sans (Be Vietnam Pro); radius refined.
+// sơn mài/hổ phách; heading serif (Literata) + thân sans (Archivo); radius refined.
 // Phân tích & giá trị chốt: docs/conventions/color-system.md · ADR-0013.
 //
 // Authored in Style Dictionary token format. Each color carries light + dark values.
@@ -83,7 +83,7 @@ export const radiusScale = {
 // Font family theme vars (passthrough to the runtime --font-sans set in each app layout).
 export const fonts = {
   sans: 'var(--font-sans)',
-  heading: 'var(--font-heading)', // Lora (serif), đặt per-app qua next/font; fallback về sans
+  heading: 'var(--font-heading)', // Literata (serif), đặt per-app qua next/font; fallback về sans
 };
 
 // Mode-independent Tailwind v4 @theme tokens → generate utilities (text-*, font-*,
@@ -191,7 +191,7 @@ export const baseRules = [
   '  background-color: var(--accent);',
   '  color: var(--accent-foreground);',
   '}',
-  '/* Wuling: heading dùng serif (Lora), thân giữ sans. */',
+  '/* Wuling: heading dùng serif (Literata), thân giữ sans (Archivo). */',
   'h1, h2, h3 {',
   '  font-family: var(--font-heading, var(--font-sans));',
   '}',

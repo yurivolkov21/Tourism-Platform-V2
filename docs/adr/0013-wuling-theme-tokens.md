@@ -51,6 +51,10 @@ chờ app đặt).
    `next/font/google` tại `apps/web` layout → biến `--font-sans`/`--font-heading`
    mà tokens/typeset/shadcn đã chờ sẵn. Thay cặp Geist+Fraunces của Nexora
    (không hỗ trợ tiếng Việt trọn vẹn) — phân loại: v2 tốt hơn.
+   **Cập nhật cùng ngày (22/07, sau 2 vòng specimen với user):** bộ chốt CUỐI là
+   **Literata (heading) + Archivo (sans/UI) + IBM Plex Mono (mono)** — user muốn
+   bộ mặt khác đề xuất ban đầu; cả ba đều subset vietnamese (Plex Mono còn hiển
+   thị được tiếng Việt trong mã vé — hơn Geist Mono). Cơ chế wire không đổi.
 
 ## Đối chiếu Nexora (luật #10)
 
