@@ -63,6 +63,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Đối chiếu lại P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Rà song song wishlist·enquiry·newsletter — không thụt lùi Quan trọng, chỉ 2 điểm Nhỏ |
 | [Rà soát độc lập toàn API](analysis/2026-07-21-independent-review.md) | **Parity + review defect toàn `apps/api`** — 4 High (refund/spam), chùm Medium, 19 invariant canh mạnh; tiền-RA là điểm yếu |
 | [Sweep parity toàn code trước P3a-B](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md) | Đối chiếu parity 7 vùng (catalog·reviews·bookings·payments·cancel/refund·auth·worker), 7 agent — 1 Quan trọng (C1 catalog destination phụ) + 4 Nên có + 3 Nhỏ + nợ; invariant money/security lõi sạch. *Snapshot 21/07; B2·C3 đã vá sau (CAT-4/BK-3)* |
+| [Độ sẵn sàng backend + đối chiếu Nexora (trước P3b)](analysis/2026-07-22-backend-readiness-vs-nexora.md) | **Go/No-Go cho web** — 4 agent (endpoint·hạ tầng·money-path·auth/chất lượng). Backend P1-P3a xong & vượt Nexora ở tầng lõi; còn cụm PENDING-lifecycle (ADR-0006) + 3 infra-TB + P4-admin (58 ep, phase sau). Web không bị chặn cứng |
 
 ## Conventions — luật áp dụng mãi
 
