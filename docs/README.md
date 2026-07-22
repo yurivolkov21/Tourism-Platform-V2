@@ -37,6 +37,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P1 API lõi | [2026-07-18-p1-api-core](specs/2026-07-18-p1-api-core.md) | ✅ đã merge |
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
+| P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | 🚧 đang làm |
 | P3b Web · P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
