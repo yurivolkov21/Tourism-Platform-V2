@@ -42,7 +42,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 + shared UI (59 shadcn) + Typeset + theme Wuling/tokens ([spec](specs/2026-07-22-wuling-theme-tokens-design.md)) xong; **kế tiếp**: chốt fonts → dựng trang |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 nền thẩm mỹ KHÓA XONG: scaffold Next 16 + shared UI (59 shadcn) + Typeset + theme Wuling/tokens + fonts Literata·Archivo·Plex Mono; **kế tiếp**: dựng trang |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)

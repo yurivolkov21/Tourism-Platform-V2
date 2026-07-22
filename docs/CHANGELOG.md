@@ -2,6 +2,20 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3b: bộ font chính thức (branch `feat/fonts-final`, merge `9e26959`)
+
+Chốt bộ 3 font theo vai trò sau 2 vòng specimen trực quan với user (font thật nhúng
+trang, đủ dấu tiếng Việt): **Literata** (heading — user chọn trực tiếp) ·
+**Archivo** (sans thân/UI — grotesque ghép giọng editorial với Literata) ·
+**IBM Plex Mono** (mã đặt chỗ/số kỹ thuật — có subset vietnamese, hơn Geist Mono cũ).
+Thay bộ tạm Be Vietnam Pro + Lora + Geist Mono của ADR-0013 — ADR ghi khối
+"cập nhật cùng ngày" thay vì sửa lặng lẽ; [color-system §6](conventions/color-system.md)
+ghi bộ chốt + lịch sử. Chỉ đổi `layout.tsx` (next/font, subset latin+vietnamese)
++ comment tokens.mjs — cơ chế wire `--font-*` giữ nguyên.
+Review findings: không phát sinh (đổi 1 file code; verify = build web + 20 woff2
+self-host + 3 family có mặt trong CSS build).
+Tests after: gate:int xanh — tokens 10 · ui 5 · int 145/17 file · typecheck · biome sạch.
+
 ## 2026-07-22 — P3b: theme Wuling + region tokens + fonts (branch `feat/theme-tokens`, merge `be43756`)
 
 Rebrand hoàn chỉnh theo [ADR-0013](adr/0013-wuling-theme-tokens.md), hệ màu chốt cùng user qua 6 vòng
