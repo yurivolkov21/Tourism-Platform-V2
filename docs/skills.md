@@ -9,7 +9,7 @@ Hai kênh phân phối khác nhau — đừng lẫn:
 
 Cài lại toàn bộ skill trong repo sau khi clone: `npx skills experimental_install`.
 
-## Skill trong repo (13 — kênh skills.sh)
+## Skill trong repo (15 — kênh skills.sh)
 
 | Skill | Nguồn | Dùng khi |
 | --- | --- | --- |
@@ -18,6 +18,7 @@ Cài lại toàn bộ skill trong repo sau khi clone: `npx skills experimental_i
 | `migrate-radix-to-base` | shadcn-ui/ui | Chuyển component Radix → **Base UI** (ta đã chọn Base UI) |
 | `prisma-upgrade-v7` | prisma/skills (chính chủ) | ⭐ Breaking change Prisma 7: ESM config, driver adapter bắt buộc, `prisma.config.ts` |
 | `prisma-cli` · `prisma-client-api` · `prisma-database-setup` · `prisma-postgres-setup` · `prisma-postgres` · `prisma-driver-adapter-implementation` | prisma/skills | Migration, query API, cấu hình DB |
+| `prisma-compute` · `prisma-mongodb-upgrade` | prisma/skills | Đi kèm bundle `prisma/skills`, **KHÔNG dùng** — serverless compute + Mongo không thuộc stack Postgres của ta. Còn trong `skills-lock.json`; prune nếu muốn gọn |
 | `api-and-interface-design` | addyosmani | Thiết kế contract oRPC, ranh giới module, hợp đồng type FE↔BE |
 | `documentation-and-adrs` | addyosmani | ⭐ Viết ADR — thứ hội đồng capstone chấm |
 | `domain-modeling` | mattpocock | Ubiquitous language cho domain tourism (booking/tour/departure) |

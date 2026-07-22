@@ -14,8 +14,9 @@ test/sandbox mode. Rebuild nâng cấp từ Nexora; repo cũ tại
 đọc — tuyệt đối không sửa**.
 
 Stack đã chốt + lý do: [docs/adr/0001-tech-stack.md](docs/adr/0001-tech-stack.md).
-Roadmap: P0 khung xương ✅ → P1 API lõi → P2 money-path → P3 web → P4 admin →
-P5 mobile → P6 AI concierge → freeze 15/10.
+Roadmap: P0 khung xương ✅ → P1 API lõi ✅ → P2 money-path ✅ → P3a API khách ✅
+→ P3b web (đang) → P4 admin → P5 mobile → P6 AI concierge → P7 polish UI →
+freeze 15/10.
 
 ## Quy ước làm việc (bất di bất dịch trừ khi user nói khác)
 
