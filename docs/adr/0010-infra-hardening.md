@@ -31,9 +31,11 @@ Ba lỗ hạ tầng Nexora có mà v2 thiếu, không chặn cứng web nhưng n
 2. **`@fastify/helmet`** đăng ký trong `configureHttp` (cùng chỗ CORS → test e2e phủ được, đúng bài học
    mutation 19/07). API-only (không serve HTML) nên **tắt CSP** (`contentSecurityPolicy: false`) — CSP là
    việc của web P3b; giữ các header còn lại (HSTS, X-Content-Type-Options, frameguard, …).
-3. **Sentry** env-gated theo `SENTRY_DSN` (giống `RESEND_API_KEY`): DSN set → init + capture ở
-   exception filter (500) và oRPC `onError`; không set → no-op (dev/test/capstone chưa có DSN).
-   **Code-complete, active khi có DSN** — không verify live được (cần key), không phải blocker.
+3. **Sentry — đặt SEAM, hoãn kích hoạt (cần key + dep nặng).** Reserve env `SENTRY_DSN` (optional) + hàm
+   `captureException(error)` (seam) mà exception filter GỌI cho lỗi 500. Hiện `captureException` NO-OP khi
+   thiếu DSN — interim capture là `Logger.error` của filter (Render/Railway bắt stdout/stderr, không mất
+   ngay lập tức). Cài `@sentry/node` + `Sentry.init/captureException` là follow-up một-hàm khi provision DSN
+   (đúng tiêu chí "trừ phần cần key"). Không thêm dep nặng khi chưa dùng.
 
 ## Hệ quả
 
