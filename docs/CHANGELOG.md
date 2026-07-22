@@ -2,6 +2,29 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3b: theme Wuling + region tokens + fonts (branch `feat/theme-tokens`, merge `be43756`)
+
+Rebrand hoàn chỉnh theo [ADR-0013](adr/0013-wuling-theme-tokens.md), hệ màu chốt cùng user qua 6 vòng
+demo trực quan (bản ghi đầy đủ: [conventions/color-system](conventions/color-system.md) — brand "Wuling"
++ 3 region tint theo 3 operator Endfield, codename nội bộ, kèm ghi chú pháp lý):
+- **Phát hiện quan trọng**: `@tourism/tokens` KHÔNG phải stub — P0 đã port nguyên pipeline Style
+  Dictionary 5 + culori của Nexora (type scale, shadow, z-index, density, semantic colors, rn-convert
+  cho P5). Giữ nguyên kiến trúc, chỉ thay giá trị + mở rộng.
+- `tokens.mjs`: toàn bộ màu brand light+dark → hệ Wuling (oklch, quy đổi culori từ hex chốt); chart
+  ramp = 5 hue brand+vùng; scrim/media-tint đổi hue theo họ ngọc.
+- **Lớp region mới**: 5 slot `--region-*` mặc định brand trên `:root`, override qua
+  `[data-region='north|central|south']` — luật 90/10: component shared CẤM tham chiếu `--region-*`.
+- `@tourism/ui/globals.css`: bỏ khối neutral shadcn, import `@tourism/tokens/tokens.css` (đối chiếu
+  key: tokens phủ 100% biến cũ trước khi xóa).
+- Fonts: **Be Vietnam Pro** (sans) + **Lora** (heading) qua next/font — subset `vietnamese` (Geist+
+  Fraunces Nexora không đủ dấu); metadata description sang tiếng Anh (luật #7).
+- TDD: 4 test mới nguồn token (oklch hợp lệ · primary hue 170–195 · region đủ slot · REGIONS khớp);
+  sửa 1 test rn-convert theo brand mới (ghi chú trong file); +`@types/culori`.
+
+Review findings: tự kiểm chứng — visual light/dark + 3 region tint qua page tạm (đã gỡ); bug quy trình
+tự bắt: gắn class `dark` trước hydration bị React ghi đè (chụp dark phải gắn sau load).
+Tests after: gate:int xanh — tokens 10 unit (4 mới) · ui 5 · int **145/17 file** · typecheck · biome sạch.
+
 ## 2026-07-22 — P3b: shadcn/typeset trong `@tourism/ui` (branch `feat/ui-typeset`, merge `985f911`)
 
 Tích hợp **Typeset** (shadcn 10/07/2026 — hệ typography cho HTML/markdown render trong MỘT file CSS
