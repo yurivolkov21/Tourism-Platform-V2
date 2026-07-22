@@ -1,11 +1,12 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ORPCModule, onError } from '@orpc/nest';
 import { experimental_ZodSmartCoercionPlugin as ZodSmartCoercionPlugin } from '@orpc/zod/zod4';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
+import { AllExceptionsFilter } from './lib/all-exceptions.filter.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
@@ -63,6 +64,13 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
      * compiler/lint/test nào bắt được.
      */
     { provide: APP_GUARD, useClass: AuthGuard },
+    /**
+     * ADR-0010: chuẩn hoá mọi lỗi rơi vào pipeline Nest (guard 401/403, route
+     * Nest thuần, lỗi bất ngờ) về envelope oRPC `{defined, code, status,
+     * message, data}` — FE một parser. oRPC procedure-error tự format nên không
+     * bị đụng.
+     */
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
 export class AppModule {}

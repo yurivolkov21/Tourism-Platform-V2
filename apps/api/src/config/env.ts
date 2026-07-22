@@ -55,6 +55,10 @@ const EnvSchema = z
     // set → giữ ConsoleDeliverer (dev boots không cần email, pattern Nexora).
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).default('Tourism <noreply@tourism.test>'),
+    // Observability (ADR-0010) — SENTRY_DSN set → captureException đẩy lỗi 500
+    // lên Sentry; không set → no-op (interim: Logger.error → platform stdout).
+    // Optional mọi env: capstone chưa provision DSN. Cài @sentry/node là follow-up.
+    SENTRY_DSN: z.string().min(1).optional(),
     // Newsletter unsubscribe (P3a spec §4.4) — ký/verify token HMAC tự xác
     // thực, KHÔNG dùng chung BETTER_AUTH_SECRET (xem comment ở
     // DEV_UNSUBSCRIBE_SECRET). Optional-với-default ở dev/test, bắt buộc

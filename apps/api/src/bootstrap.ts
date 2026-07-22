@@ -47,4 +47,12 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
     origin: [...trustedOrigins],
     credentials: true,
   });
+
+  // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ
+  // được, đúng bài học mutation 19/07. CSP CỐ Ý tắt: API JSON không serve HTML,
+  // CSP là hợp đồng của web P3b; bật mù dễ chặn nhầm asset. Các header còn lại
+  // (HSTS, X-Content-Type-Options, frameguard, referrer-policy…) giữ nguyên.
+  await app.register(import('@fastify/helmet'), {
+    contentSecurityPolicy: false,
+  });
 }

@@ -8,7 +8,7 @@ import { configureHttp } from './bootstrap.js';
  * mở quá tay (`origin: true`) thì trang bất kỳ đọc được API kèm cookie phiên
  * của người dùng. Cả hai chiều đều phải có test canh.
  */
-describe('configureHttp — CORS (e2e)', () => {
+describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception filter)', () => {
   let app: NestFastifyApplication;
   // Khớp default của TRUSTED_ORIGINS trong config/env.ts.
   const allowedOrigin = 'http://localhost:3000';
@@ -59,5 +59,29 @@ describe('configureHttp — CORS (e2e)', () => {
     });
     expect(res.statusCode).toBeLessThan(300);
     expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
+  });
+
+  // ── Helmet (ADR-0010) ────────────────────────────────────────────────────
+  it('gắn security header cơ bản (helmet) trên response', async () => {
+    const res = await app.inject({ method: 'GET', url: '/health' });
+    // helmet đặt X-Content-Type-Options: nosniff cho mọi response.
+    expect(res.headers['x-content-type-options']).toBe('nosniff');
+    // CSP CỐ Ý tắt cho API (ADR-0010 — CSP là việc web P3b).
+    expect(res.headers['content-security-policy']).toBeUndefined();
+  });
+
+  // ── Exception filter — envelope oRPC (ADR-0010) ──────────────────────────
+  it('lỗi từ guard (401) → envelope thống nhất có `code`', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/account/me' }); // không cookie
+    expect(res.statusCode).toBe(401);
+    expect(res.json()).toMatchObject({
+      defined: false,
+      code: 'UNAUTHORIZED',
+      status: 401,
+      data: null,
+    });
+    expect(typeof res.json().message).toBe('string');
+    // (Bằng chứng filter KHÔNG đụng procedure-error oRPC — `/tours/:slug` lạ vẫn
+    // `{code:'NOT_FOUND'}` — nằm ở catalog.int.spec, spec đó có DB.)
   });
 });
