@@ -2,6 +2,27 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — Vòng đời PENDING: đóng lỗ mồ côi (branch `feat/pending-lifecycle`)
+
+Đưa booking PENDING mồ côi về terminal theo [ADR-0006](adr/0006-pending-lifecycle.md) (Accepted 22/07) —
+gap "v2 kém Nexora" duy nhất chạm checkout, phát hiện ở
+[độ sẵn sàng backend 22/07](analysis/2026-07-22-backend-readiness-vs-nexora.md). 4 feat + 2 chore commit
+`d40597b..63af354`, mỗi feat TDD (không migration — enum/cột sẵn có):
+- **PAY-1** (`d40597b`) `VerifiedEvent` +type `payment.expired`; Stripe `checkout.session.expired` tách khỏi
+  `payment.failed`; `handleEvent` → flip PENDING→CANCELLED (gate `status='PENDING'`, không đụng ghế).
+- **WRK-1** (`988e8b8`) `PendingSweepService` + pg-boss job `booking-sweep` lịch 10′, TTL 30′ — backstop khi
+  webhook expired rớt. Idempotent với PAY-1.
+- **BK-1** (`f5b546a`) create bọc try/catch → `CHECKOUT_FAILED` (502 typed) thay 500 opaque; procedure
+  `bookings.checkout` re-mint session cho PENDING của chủ. FE phân biệt được gateway-lỗi vs hết-ghế.
+- **BK-2** (`3e17568`) procedure `bookings.cancelPending` — khách tự hủy PENDING chưa trả (không refund),
+  tách khỏi cancellation-request (PAID).
+- Chore (`bb3bd8d`·`63af354`) dọn 2 comment "nói dối" pending-expiry-sweep + `booking-states.md` thêm hàng
+  PENDING→CANCELLED; unit ripple stripe expired→payment.expired.
+
+Ba đường cancel (webhook · cron · self-cancel) đều gate `status='PENDING'` → idempotent chồng nhau;
+capture-đến-muộn sau CANCELLED đã được PAY-R1 fresh-refund guard lo (ADR-0009). Không chạm bất biến ghế/tiền
+(PENDING không giữ ghế). Tests after: `pnpm gate:int` xanh (145 integration).
+
 ## 2026-07-22 — P3a contract closeout: C1·R1·R2 (branch `feat/p3a-contract-closeout`)
 
 Đóng 3 gap hình dạng contract customer/admin API TRƯỚC khi mở P3b Web (đổi sau = rework

@@ -50,7 +50,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Admin bootstrap emailVerified + AUTH-2](plans/2026-07-21-admin-bootstrap-verified.md) | SEC-1/AUTH-1/AUTH-2 (5 task) | ✅ đã merge |
 | [Refund correctness](plans/2026-07-21-refund-correctness.md) | BK-R1/PAY-R1/TOCTOU (5 task) | ✅ đã merge |
 | [P3a contract closeout](plans/2026-07-21-p3a-contract-closeout.md) | C1·R1·R2 parity (4 task) | ✅ đã merge |
-| [Vòng đời PENDING](plans/2026-07-22-pending-lifecycle.md) | BK-1·BK-2·PAY-1·WRK-1 (5 task) | 🚧 đang làm |
+| [Vòng đời PENDING](plans/2026-07-22-pending-lifecycle.md) | BK-1·BK-2·PAY-1·WRK-1 (5 task) | ✅ đã merge |
 
 ## Analysis — nghiên cứu từ Nexora
 
