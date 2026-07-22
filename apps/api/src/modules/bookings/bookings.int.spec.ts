@@ -236,6 +236,58 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(foreign.statusCode).toBe(404);
   });
 
+  it('BK-2: chủ tự hủy PENDING → CANCELLED (không refund); lặp lại/PAID → 422; non-owner → 404', async () => {
+    const alice = await signUpUser('bk2@example.com');
+    const code = (await createBooking(alice)).json().code;
+
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${code}/cancel-pending`,
+      headers: { cookie: alice },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().status).toBe('CANCELLED');
+    expect(res.json().cancelledAt).not.toBeNull();
+
+    // Hủy lại (đã CANCELLED) → 422 NOT_PENDING.
+    const again = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${code}/cancel-pending`,
+      headers: { cookie: alice },
+    });
+    expect(again.statusCode).toBe(422);
+    expect(again.json()).toMatchObject({ code: 'NOT_PENDING' });
+
+    // Booking PAID → 422 (không phải đường tự-hủy PENDING).
+    const paidCode = (await createBooking(alice)).json().code;
+    await prisma.booking.update({
+      where: { code: paidCode },
+      data: { status: BookingStatus.PAID },
+    });
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/bookings/${paidCode}/cancel-pending`,
+          headers: { cookie: alice },
+        })
+      ).statusCode,
+    ).toBe(422);
+
+    // Người khác → 404 (owner-or-404, không lộ tồn tại).
+    const foreignCode = (await createBooking(alice)).json().code;
+    const mallory = await signUpUser('mallory-bk2@example.com');
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: `/api/bookings/${foreignCode}/cancel-pending`,
+          headers: { cookie: mallory },
+        })
+      ).statusCode,
+    ).toBe(404);
+  });
+
   it('departure priceOverride wins over tour basePrice in the snapshot', async () => {
     const cookie = await signUpUser('override@example.com');
     const res = await createBooking(cookie, {

@@ -286,6 +286,27 @@ export class BookingsService {
     return toBooking(updated, session.checkoutUrl);
   }
 
+  /**
+   * BK-2 (ADR-0006): chủ tự hủy một PENDING chưa trả (không refund — chưa
+   * charge). Owner-or-404 (null → NOT_FOUND); flip atomic gate `status='PENDING'`
+   * → PAID/CANCELLED cho 0 row → BookingNotPendingError (422). Không đụng
+   * `seats_booked` (PENDING không giữ ghế). Tách khỏi cancellation-request (PAID).
+   */
+  async cancelPending(userId: string, code: string): Promise<Booking | null> {
+    const booking = await prisma.booking.findUnique({ where: { code } });
+    if (!booking || booking.userId !== userId) return null;
+    const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      UPDATE bookings
+      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now()
+      WHERE id = ${booking.id}::uuid AND status = 'PENDING'::"BookingStatus"
+      RETURNING id
+    `);
+    if (rows.length === 0) throw new BookingNotPendingError();
+    const updated = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    this.logger.log(`Booking ${booking.code} self-cancelled by owner (PENDING → CANCELLED, BK-2)`);
+    return toBooking(updated, null);
+  }
+
   /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status filter optional. */
   async mine(userId: string, query: BookingsListQuery): Promise<Paged<Booking>> {
     const { page, limit, status } = query;

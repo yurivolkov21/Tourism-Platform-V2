@@ -401,6 +401,18 @@ export const contract = {
         },
       })
       .output(CancellationRequestSchema),
+    cancelPending: oc
+      .route({
+        method: 'POST',
+        path: '/api/bookings/{code}/cancel-pending',
+        summary: 'Owner cancels an own unpaid PENDING booking (authed, owner-only)',
+      })
+      .input(z.object({ code: BookingCodeSchema }))
+      .errors({
+        NOT_FOUND: { message: 'Booking not found' },
+        NOT_PENDING: { status: 422, message: 'Only a PENDING booking can be cancelled this way' },
+      })
+      .output(BookingSchema),
   },
   /**
    * Brand-chrome media công khai (spec P3a-C W6) — danh sách slot ảnh/video

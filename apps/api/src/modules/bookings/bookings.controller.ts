@@ -111,4 +111,20 @@ export class BookingsController {
       }
     });
   }
+
+  @Implement(contract.bookings.cancelPending)
+  cancelPending(@CurrentUser() user: SessionUser) {
+    return implement(contract.bookings.cancelPending).handler(async ({ input, errors }) => {
+      try {
+        const booking = await this.bookings.cancelPending(user.id, input.code);
+        if (!booking) throw errors.NOT_FOUND(); // owner-or-404
+        return booking;
+      } catch (error) {
+        if (error instanceof BookingNotPendingError) {
+          throw errors.NOT_PENDING({ message: error.message });
+        }
+        throw error;
+      }
+    });
+  }
 }
