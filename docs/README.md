@@ -26,7 +26,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0003](adr/0003-auth-fail-closed.md) | Auth mặc định fail-closed — global guard + `@Public()` |
 | [0004](adr/0004-post-visibility-helper.md) | Post visibility — helper bắt buộc `publishedPostWhere()` (status + publishedAt<=now) |
 | [0005](adr/0005-media-read-build-url.md) | Media đọc — API dựng & trả Cloudinary URL (chỉ cần cloud name công khai) |
-| [0006](adr/0006-pending-lifecycle.md) | **Proposed** — vòng đời PENDING: hết hạn/tự-hủy/re-checkout (gói pending-expiry, chờ duyệt) |
+| [0006](adr/0006-pending-lifecycle.md) | **Accepted** — vòng đời PENDING: CHECKOUT_FAILED+re-checkout · expired→CANCELLED · cron sweep · self-cancel (BK-1/BK-2/PAY-1/WRK-1) |
 | [0008](adr/0008-admin-bootstrap-verified.md) | Admin bootstrap — promote gated `emailVerified` + reconcile lúc boot (SEC-1/AUTH-1/AUTH-2) |
 | [0009](adr/0009-refund-correctness.md) | Đúng đắn refund — advisory-lock serialize + trigger `SUM≤total` + gate re-derive orphan (BK-R1/PAY-R1/TOCTOU) |
 

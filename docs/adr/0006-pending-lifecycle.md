@@ -1,15 +1,20 @@
 # ADR-0006 — Vòng đời booking PENDING: hết hạn, tự hủy, và checkout phục hồi được
 
-- **Trạng thái:** Proposed (2026-07-21) — **chưa Accepted; cần user duyệt trước khi code.**
+- **Trạng thái:** **Accepted (2026-07-22).** (Proposed 2026-07-21.)
 - **Bối cảnh:** [rà soát độc lập 21/07](../analysis/2026-07-21-independent-review.md)
   (gói pending-expiry BK-1/BK-2/PAY-1/WRK-1); nối tiếp
   [infra-parity #8](../analysis/2026-07-19-infra-parity-nexora.md),
   [booking-states.md](../conventions/booking-states.md),
-  [ADR-0002](0002-payment-gateway-refund-ledger.md).
+  [ADR-0002](0002-payment-gateway-refund-ledger.md),
+  [độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md).
 
-> Soạn theo kỷ luật "ADR đi TRƯỚC code" (CLAUDE.md #5). Anchor `file:line` là as-of
-> `main@5e773a1` — xác nhận lại lúc code. Đề xuất mở rộng ADR này để bao thêm ba
-> defect refund cùng mảng (BK-R1, PAY-R1, TQ-1) trước khi Accepted.
+> **Chốt khi Accept (2026-07-22):**
+> - **Phạm vi thu gọn:** đề xuất cũ "mở rộng bao BK-R1/PAY-R1/TQ-1" giờ **moot** — ba defect
+>   refund đó đã đóng ở [ADR-0009](0009-refund-correctness.md) + batch P0. ADR này thuần cụm
+>   **vòng đời PENDING** (BK-1/BK-2/PAY-1/WRK-1).
+> - **BK-2 ĐƯA VÀO** (user chốt 22/07) — procedure RIÊNG `bookings.cancelPending`, tách khỏi
+>   cancellation-request (vốn cho PAID).
+> - Anchor `file:line` xác nhận lại lúc code (`main@80c2fd3`); branch: `feat/pending-lifecycle`.
 
 ## Bối cảnh
 
@@ -35,16 +40,22 @@ trấn an một "pending-expiry (W2) sweep" — nhưng `grep @Cron|@Interval|Sch
 
 Định nghĩa **hợp đồng vòng đời PENDING** trọn vẹn, phòng thủ nhiều lớp:
 
-1. **Checkout phục hồi được (BK-1).** Bọc gateway call try/catch → ném contract-error
-   typed **`CHECKOUT_FAILED` (502, "please retry")** thay vì 500 opaque. Thêm procedure
-   **re-checkout** (`POST /bookings/:code/checkout`) mint lại session cho PENDING chưa trả — idempotent.
-2. **Webhook-driven cancel (PAY-1).** `checkout.session.expired` (+ PayPal voided) →
-   flip PENDING → **CANCELLED** (adminId NULL), ghi PaymentEvent. Không đụng `seats_booked`.
-3. **Backstop cron (WRK-1).** Job pg-boss `cancelAbandonedBookings` TTL **30′** (khớp
-   hạn Stripe Checkout), lịch ~10-15′. Lưới an toàn khi webhook rớt. Idempotent với (2).
-4. **Khách tự hủy PENDING (BK-2, tùy chọn).** Chủ booking chuyển PENDING → CANCELLED
-   (không refund — chưa charge). Khôi phục parity `cancelOwnPending`.
-5. **Dọn hai comment nói dối** cho khớp cơ chế thật.
+1. **Checkout phục hồi được (BK-1).** Bọc `createCheckoutSession` bằng try/catch → ném
+   `CheckoutFailedError` → contract-error typed **`CHECKOUT_FAILED` (502, "please retry")**
+   thay vì 500 opaque; booking ở lại PENDING không session (vô hại — không giữ ghế). Thêm
+   procedure **`bookings.checkout`** (`POST /bookings/:code/checkout`) mint lại session cho
+   PENDING của CHÍNH CHỦ — idempotent (gọi lại trả session hiện có / mint mới nếu chưa có).
+2. **Webhook-driven cancel (PAY-1).** Thêm `VerifiedEvent.type = 'payment.expired'`; Stripe
+   `checkout.session.expired` (TÁCH khỏi `payment.failed`) + PayPal voided → `handleEvent`
+   route → flip PENDING → **CANCELLED** (gate `status='PENDING'`, adminId NULL), ghi PaymentEvent.
+   Không đụng `seats_booked`. (`payment_intent.payment_failed` VẪN là `payment.failed` — chỉ log.)
+3. **Backstop cron (WRK-1).** Job pg-boss `cancel-abandoned` TTL **30′** (khớp hạn Stripe
+   Checkout), lịch ~10′. `status='PENDING' AND createdAt < now()-30′` → CANCELLED. Lưới an toàn
+   khi webhook rớt. Idempotent với (2) (cùng gate PENDING).
+4. **Khách tự hủy PENDING (BK-2).** Procedure RIÊNG **`bookings.cancelPending`** — chủ booking
+   chuyển PENDING → CANCELLED (không refund — chưa charge), gate owner + `status='PENDING'`.
+   Tách khỏi cancellation-request (PAID). Khôi phục parity `cancelOwnPending`.
+5. **Dọn hai comment nói dối** (`bookings.service.ts:194-195` + `payments.service.ts`) cho khớp cơ chế thật.
 
 **Bất biến giữ nguyên:** PENDING không giữ ghế; chỉ PAID mới claim (CHECK oversell).
 Không đụng đường tiền/ghế.
