@@ -108,8 +108,9 @@ export class PaymentsService {
    * - `payment.completed` → claim PAID nguyên tử; outcome `overbooked` /
    *   `cancelled` auto-refund (invariant #3/#4).
    * - `payment.failed` → ghi lại + đánh dấu processed; booking vẫn PENDING (nó
-   *   không giữ seat nào — buyer có thể retry checkout, hoặc để sweep
-   *   pending-expiry dọn nó).
+   *   không giữ seat nào — buyer retry qua `bookings.checkout` (BK-1), hoặc cron
+   *   sweep WRK-1 dọn nếu bỏ luôn).
+   * - `payment.expired` → hủy PENDING mồ côi → CANCELLED (PAY-1, ADR-0006).
    * - `other` → ghi lại + đánh dấu processed (chỉ để audit log).
    */
   async handleEvent(
@@ -274,8 +275,9 @@ export class PaymentsService {
    * (chúng không phải orphan). Đánh đổi: một crash đúng khe giữa `refund.create`
    * và CTE flip của một orphan THẬT khiến retry (đọc thấy refund cũ →
    * 'already-refunded') để booking kẹt CANCELLED thay vì REFUNDED — tiền vẫn
-   * hoàn đủ; nguồn orphan-thật duy nhất là pending-expiry (sub-project A chưa
-   * dựng). `paid_at` KHÔNG phân biệt được (overbook-retry lẫn orphan-thật đều NULL).
+   * hoàn đủ; nguồn orphan-thật là một PENDING bị hủy qua pending-expiry (PAY-1
+   * webhook / WRK-1 cron, ADR-0006 — nay đã dựng) rồi nhận capture đến muộn.
+   * `paid_at` KHÔNG phân biệt được (overbook-retry lẫn orphan-thật đều NULL).
    */
   private async refundOrphanedCapture(
     provider: PaymentProvider,
