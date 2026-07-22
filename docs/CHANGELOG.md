@@ -2,6 +2,18 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3b: scaffold web Next.js 16 (branch `feat/p3b-web-scaffold`)
+
+Mở phase P3b — dựng nền `apps/web` (`@tourism/web`) theo [ADR-0011](adr/0011-p3b-web-architecture.md):
+**Next.js 16.2.11** (App Router · Turbopack) + React 19 + Tailwind v4, tích hợp Turborepo + **Biome
+(KHÔNG ESLint)**. Reconcile monorepo: xóa nested `pnpm-workspace.yaml`/`CLAUDE.md` create-next-app thêm;
+tên `@tourism/web`; `sharp` vào `allowBuilds`; biome bật `css.parser.tailwindDirectives` (Tailwind v4
+`@theme`) + loại `public/` (asset không lint); gỡ SVG demo; page/metadata placeholder sạch.
+
+Bộ **shared components/blocks (`libs/shared/ui`)** + shadcn + trang thật là **bước phối hợp kế tiếp** (chờ
+user điều phối bộ legacy components). Verify: `pnpm --filter @tourism/web build` (Turbopack) xanh + typecheck
++ biome sạch. Không đụng backend (gate:int giữ nguyên 145 int).
+
 ## 2026-07-22 — Infra hardening trước P3b (branch `feat/infra-hardening`)
 
 Đóng 2/3 gap "độ chín production" (TB) từ [độ sẵn sàng backend](analysis/2026-07-22-backend-readiness-vs-nexora.md)

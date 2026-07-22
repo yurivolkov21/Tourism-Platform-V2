@@ -7,6 +7,22 @@ allowBuilds:
   '@prisma/engines': true
   '@swc/core': true
   prisma: true
+  # sharp: Next.js image optimization (next/image) — cần build native binary.
+  sharp: true
+
+# Next 16.2.11 vừa release: pnpm supply-chain gate (minimumReleaseAge) tự loại
+# trừ để cài ngay. Giữ nguyên — đúng phiên bản đã chốt.
+minimumReleaseAgeExclude:
+  - '@next/env@16.2.11'
+  - '@next/swc-darwin-arm64@16.2.11'
+  - '@next/swc-darwin-x64@16.2.11'
+  - '@next/swc-linux-arm64-gnu@16.2.11'
+  - '@next/swc-linux-arm64-musl@16.2.11'
+  - '@next/swc-linux-x64-gnu@16.2.11'
+  - '@next/swc-linux-x64-musl@16.2.11'
+  - '@next/swc-win32-arm64-msvc@16.2.11'
+  - '@next/swc-win32-x64-msvc@16.2.11'
+  - next@16.2.11
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.

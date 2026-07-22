@@ -30,6 +30,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0008](adr/0008-admin-bootstrap-verified.md) | Admin bootstrap — promote gated `emailVerified` + reconcile lúc boot (SEC-1/AUTH-1/AUTH-2) |
 | [0009](adr/0009-refund-correctness.md) | Đúng đắn refund — advisory-lock serialize + trigger `SUM≤total` + gate re-derive orphan (BK-R1/PAY-R1/TOCTOU) |
 | [0010](adr/0010-infra-hardening.md) | Infra hardening trước P3b — global exception filter (envelope oRPC) + `@fastify/helmet` + Sentry env-gated |
+| [0011](adr/0011-p3b-web-architecture.md) | Kiến trúc web P3b — Next.js 16 + React 19 + Tailwind v4; shared UI `libs/shared/ui` (web+admin), custom-in-app; Biome-không-ESLint |
 
 ## Specs — theo phase
 
@@ -39,7 +40,8 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web · P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 xong; shared UI + trang đang làm |
+| P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
 

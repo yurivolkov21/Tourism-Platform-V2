@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**", "!**/generated", "!**/dist", "!**/dist-seed"]
+    "includes": ["**", "!**/generated", "!**/dist", "!**/dist-seed", "!**/public"]
   },
   "formatter": {
     "enabled": true,
@@ -21,6 +21,11 @@
     "formatter": {
       "quoteStyle": "single",
       "trailingCommas": "all"
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
     }
   },
   "linter": {
