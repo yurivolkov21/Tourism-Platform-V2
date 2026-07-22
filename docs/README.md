@@ -40,7 +40,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 xong; shared UI + trang đang làm |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 scaffold Next 16 + bộ shared UI `@tourism/ui` (59 shadcn) xong; theme-tokens + trang đang làm |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)

@@ -2,6 +2,22 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-22 — P3b: bộ shared UI shadcn `@tourism/ui` (branch `feat/p3b-shared-ui`)
+
+Dựng bộ **components/blocks dùng chung** cho web+admin theo [ADR-0011](adr/0011-p3b-web-architecture.md):
+gói **`libs/shared/ui` (`@tourism/ui`)** — shadcn monorepo mode, style **base-nova (Base UI, KHÔNG Radix)**,
+baseColor neutral, icon lucide. **59 components** (tất cả registry `@shadcn` *trừ* `native-select` theo yêu cầu).
+Runtime deps (cmdk/recharts/sonner/date-fns/react-day-picker…) khai ở chính `@tourism/ui` (self-contained
+cho admin tái dùng); `apps/web` consume qua `@tourism/ui/components/*` + `transpilePackages` + theme dùng chung.
+
+**Rà từng component xử cảnh báo Biome** (khác ESLint-next của Nexora nên soi kỹ hơn, nhất là a11y):
+- Sửa thật 6: `pagination` bỏ `role` thừa · `field` `===`+key-theo-message · `chart` 2 array-key→`item.name`/`item.value` · `scroll-area` gỡ import React thừa.
+- `biome-ignore` + lý do (11 file): pattern primitive canonical shadcn/Base-UI (a11y role trên div/span, `dangerouslySetInnerHTML` chart, `noArrayIndexKey` slider, `noDocumentCookie`+`useExhaustiveDependencies` sidebar) — không sửa được sạch mà không phá primitive.
+
+Setup monorepo: `components.json` ở cả `@tourism/ui` lẫn `apps/web`; `sharp` allowBuilds; Biome bật
+`css.parser.tailwindDirectives` + loại `!**/public`. Theme wire vào `@tourism/tokens` để **giai đoạn sau**.
+Tests after: `@tourism/ui` typecheck xanh · `@tourism/web` build (Turbopack) xanh · biome sạch (không đụng backend, gate:int giữ 145 int).
+
 ## 2026-07-22 — P3b: scaffold web Next.js 16 (branch `feat/p3b-web-scaffold`)
 
 Mở phase P3b — dựng nền `apps/web` (`@tourism/web`) theo [ADR-0011](adr/0011-p3b-web-architecture.md):
