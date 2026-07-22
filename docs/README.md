@@ -29,6 +29,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0006](adr/0006-pending-lifecycle.md) | **Accepted** — vòng đời PENDING: CHECKOUT_FAILED+re-checkout · expired→CANCELLED · cron sweep · self-cancel (BK-1/BK-2/PAY-1/WRK-1) |
 | [0008](adr/0008-admin-bootstrap-verified.md) | Admin bootstrap — promote gated `emailVerified` + reconcile lúc boot (SEC-1/AUTH-1/AUTH-2) |
 | [0009](adr/0009-refund-correctness.md) | Đúng đắn refund — advisory-lock serialize + trigger `SUM≤total` + gate re-derive orphan (BK-R1/PAY-R1/TOCTOU) |
+| [0010](adr/0010-infra-hardening.md) | Infra hardening trước P3b — global exception filter (envelope oRPC) + `@fastify/helmet` + Sentry env-gated |
 
 ## Specs — theo phase
 
