@@ -136,7 +136,8 @@ export function AboutTimeline() {
   const [m1, m2, m3, m4] = MILESTONES;
 
   return (
-    <section id="milestones" className="w-full bg-muted px-4 py-24 md:px-16 md:py-32">
+    // Nền background (trắng ở light) thay muted — review §3 lần 4
+    <section id="milestones" className="w-full bg-background px-4 py-24 md:px-16 md:py-32">
       <div className="mx-auto flex max-w-7xl flex-col items-center">
         <SectionEyebrow>Milestones</SectionEyebrow>
         <motion.h2
