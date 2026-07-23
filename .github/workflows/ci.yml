@@ -60,9 +60,15 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - run: pnpm turbo run build typecheck test
-
+      # test:int chạy TRƯỚC gate — CỐ Ý, đừng đảo lại. Từ ADR-0008 (reconcile
+      # admin lúc onApplicationBootstrap), 4 e2e spec trong task `test` boot cả
+      # AppModule nên chạm bảng User → cần db `tourism_test` ĐÃ migrate. Cơ chế
+      # tạo db + migrate duy nhất là globalSetup của test:int (idempotent, qua
+      # TCP) — cho nó chạy trước là unit e2e có schema, không phải nhân đôi
+      # bước tạo db/migrate trong YAML này. (CI đỏ 21→23/07 vì thiếu điều này.)
       - run: pnpm test:int
+
+      - run: pnpm turbo run build typecheck test
 
       - run: pnpm lint
 
