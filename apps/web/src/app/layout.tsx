@@ -18,6 +18,9 @@ const sans = Archivo({
 const heading = Literata({
   variable: '--font-heading',
   subsets: ['latin', 'vietnamese'],
+  // Nạp thêm italic thật — dòng accent của CTA (#25) dùng nghiêng; thiếu là
+  // trình duyệt tự nghiêng giả (faux italic), mất nét thư pháp của Literata.
+  style: ['normal', 'italic'],
 });
 
 const mono = IBM_Plex_Mono({

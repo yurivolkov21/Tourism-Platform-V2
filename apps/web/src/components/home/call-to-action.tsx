@@ -34,8 +34,12 @@ export function CallToAction() {
           Autumn departures open
         </motion.span>
 
+        {/* Review #25: bỏ ALL-CAPS + weight 900 (Literata viết hoa toàn bộ ra chất
+            "khắc bia đá" quá cứng) — giữ kịch bản 2 dòng + dòng accent + dấu chấm
+            của forged nhưng typography về giọng brand: sentence case, weight vừa,
+            dòng accent nghiêng italic cho mềm. */}
         <motion.h2
-          className="mx-auto mb-8 max-w-4xl font-heading text-4xl leading-tight font-black tracking-tight uppercase md:text-6xl"
+          className="mx-auto mb-8 max-w-4xl font-heading text-4xl leading-tight font-medium tracking-tight md:text-6xl"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
@@ -43,7 +47,7 @@ export function CallToAction() {
         >
           Find the journey
           <br />
-          <span className="text-primary">that fits your pace.</span>
+          <span className="text-primary italic">that fits your pace.</span>
         </motion.h2>
 
         <motion.p
@@ -69,7 +73,7 @@ export function CallToAction() {
             href="#tours"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="group inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-heading text-base font-black tracking-wider text-primary-foreground uppercase transition-shadow duration-300 hover:shadow-[0_0_40px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
+            className="group inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-shadow duration-300 hover:shadow-[0_0_40px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
           >
             <span>Browse tours</span>
             <MoveRightIcon
@@ -81,7 +85,7 @@ export function CallToAction() {
             href="#contact"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            className="inline-flex items-center gap-2 rounded-full border border-foreground/20 px-6 py-3 font-heading text-base font-bold tracking-wider uppercase transition-colors duration-200 hover:border-foreground/50"
+            className="inline-flex items-center gap-2 rounded-full border border-foreground/20 px-7 py-3 text-sm font-medium transition-colors duration-200 hover:border-foreground/50"
           >
             Talk to a local
           </motion.a>
