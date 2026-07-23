@@ -78,11 +78,11 @@
   color: var(--primary-foreground);
 }
 
-/* ── Watermark chữ khổng lồ dưới footer (convert từ SVG "estate" của template):
- * text thật + stroke mảnh theo token, fill trong suốt — chìm trên nền tối. ── */
+/* ── Watermark chữ khổng lồ dưới footer (review #28, đổi sang kiểu forged):
+ * fill đặc nhưng cực mờ (~4% foreground) thay stroke viền rỗng — bóng chìm
+ * tràn chiều rộng sau nội dung, không che chữ. ── */
 .footer-watermark {
-  color: transparent;
-  -webkit-text-stroke: 1.5px color-mix(in oklab, var(--foreground) 10%, transparent);
+  color: color-mix(in oklab, var(--foreground) 4%, transparent);
 }
 
 /* ── Offset cho top-bar (kiểu Nexora): navbar đọc biến này để nằm dưới bar.
