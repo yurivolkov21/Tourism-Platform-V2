@@ -1,13 +1,11 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
-import type { MockRegionKey } from '@/mocks/types';
-import { JourneyScrubber, type ScrubberHandle } from './journey-scrubber';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Gallery cuộn ngang (sticky, cơ chế Estate) — 9 địa điểm 3/vùng Bắc→Trung→Nam,
@@ -19,8 +17,6 @@ const REGION_NAME = new Map(REGIONS.map((r) => [r.key, r.name]));
 export function Gallery() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  const [activeRegion, setActiveRegion] = useState<MockRegionKey>('north');
-  const scrubberRef = useRef<ScrubberHandle>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -40,9 +36,6 @@ export function Gallery() {
       const progress = Math.max(0, Math.min(1, -rect.top / maxScroll));
       const limit = Math.max(0, track.scrollWidth - window.innerWidth);
       track.style.transform = `translateX(-${progress * limit}px)`;
-      // 9 card chia đều 3-3-3 → vùng đang xem theo phần ba tiến độ
-      setActiveRegion(progress < 1 / 3 ? 'north' : progress < 2 / 3 ? 'central' : 'south');
-      scrubberRef.current?.set(progress);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -125,23 +118,6 @@ export function Gallery() {
             ))}
           </div>
         </div>
-
-        {/* Scrubber hành trình (review #18): kéo badge = tua track; scroll là nguồn sự thật */}
-        <JourneyScrubber
-          activeRegion={activeRegion}
-          handleRef={scrubberRef}
-          onScrub={(p) => {
-            const container = containerRef.current;
-            if (!container) {
-              return;
-            }
-            const rect = container.getBoundingClientRect();
-            const sectionTop = rect.top + window.scrollY;
-            const maxScroll = rect.height - window.innerHeight;
-            // Nhảy tức thời để không giành quyền với Lenis khi kéo liên tục
-            window.scrollTo({ top: sectionTop + p * maxScroll, behavior: 'instant' });
-          }}
-        />
       </div>
     </section>
   );
