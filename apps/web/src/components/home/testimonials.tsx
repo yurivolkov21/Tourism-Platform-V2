@@ -10,8 +10,15 @@ import { SectionEyebrow } from './section-eyebrow';
 // Convert từ Estate testimonials.tsx: cột trái heading, cột phải marquee dọc
 // 2 cột chạy ngược chiều (keyframes marquee-up/down trong globals.css, hover
 // thì tạm dừng). Avatar dùng fallback chữ cái thay ảnh người.
+// Review #29: lấp khoảng trống dưới heading bằng "bảng điểm tin cậy" — điểm
+// trung bình TÍNH THẬT từ mock (không hardcode) + hàng sao + avatar chồng lấn.
+// Giữ nguyên bố cục + marquee dọc (đã phân tích: không xoay ngang theo
+// prompt2app vì trang đã có 2 marquee ngang, dọc là điểm nhấn riêng).
 const col1 = TESTIMONIALS.slice(0, 4);
 const col2 = TESTIMONIALS.slice(4, 8);
+
+const AVERAGE_RATING = TESTIMONIALS.reduce((acc, t) => acc + t.rating, 0) / TESTIMONIALS.length;
+const AVATAR_PREVIEW = TESTIMONIALS.slice(0, 5);
 
 function TestimonialCard({ item }: { item: MockTestimonial }) {
   return (
@@ -76,6 +83,51 @@ export function Testimonials() {
           >
             Honest words from people who trusted us with their time off.
           </motion.p>
+
+          {/* Bảng điểm tin cậy (#29) — social proof lấp khoảng trống cột trái */}
+          <motion.div
+            className="mt-10 flex flex-col gap-5"
+            initial={{ y: 50, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          >
+            <div className="flex items-end gap-3">
+              <span className="font-heading text-5xl leading-none font-medium text-foreground">
+                {AVERAGE_RATING.toFixed(1)}
+              </span>
+              <div className="flex flex-col gap-1.5 pb-0.5">
+                <div
+                  role="img"
+                  aria-label={`${AVERAGE_RATING.toFixed(1)} out of 5 stars`}
+                  className="flex items-center gap-1"
+                >
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <StarIcon
+                      // biome-ignore lint/suspicious/noArrayIndexKey: dãy sao tĩnh 5 phần tử, không reorder
+                      key={i}
+                      aria-hidden="true"
+                      className={
+                        i < Math.round(AVERAGE_RATING)
+                          ? 'size-3.5! fill-rating text-rating'
+                          : 'size-3.5! text-rating-muted'
+                      }
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">from 2,400+ travellers</span>
+              </div>
+            </div>
+
+            <div className="flex items-center">
+              {AVATAR_PREVIEW.map((t, i) => (
+                <Avatar key={t.name} className={`size-9 ring-2 ring-muted ${i > 0 ? '-ml-2' : ''}`}>
+                  <AvatarFallback>{t.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              ))}
+              <span className="ml-3 text-xs text-muted-foreground">and thousands more</span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Cột phải: marquee 2 cột ngược chiều, fade mask trên dưới */}
