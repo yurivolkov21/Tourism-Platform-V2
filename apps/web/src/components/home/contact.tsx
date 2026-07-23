@@ -163,14 +163,17 @@ export function Contact() {
             timeline "What happens next" 3 bước dọc tự dựng (mượn ngôn ngữ badge
             số + đường nối của stepper, KHÔNG phải wizard tương tác) + card liên
             hệ đáy panel. Thay hẳn khối ảnh placeholder cũ. */}
+        {/* Màu panel (#32): gradient dọc primary → region-deep (mặc định = jade sâu
+            brand; --region-* ở page-level là hợp lệ theo ADR-0013 #4) cho khối bớt
+            phẳng; eyebrow nhuộm spark (vàng nắng) làm điểm nhiệt trên nền jade. */}
         <motion.div
-          className="flex min-h-[455px] w-full flex-col rounded-xl bg-primary p-8 text-primary-foreground sm:p-10"
+          className="flex min-h-[455px] w-full flex-col rounded-xl bg-linear-to-b from-primary to-(--region-deep) p-8 text-primary-foreground sm:p-10"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          <span className="text-xs font-semibold tracking-[0.2em] uppercase opacity-70">
+          <span className="text-xs font-semibold tracking-[0.2em] text-(--region-spark) uppercase">
             What happens next
           </span>
           <h3 className="mt-3 max-w-[360px] font-heading text-2xl leading-snug font-medium">

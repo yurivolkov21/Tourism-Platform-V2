@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
 import { LenisScroll } from '@/components/lenis-scroll';
 import { MotionProvider } from '@/components/motion/motion-provider';
+import { ScrollToTop } from '@/components/scroll-to-top';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
 import { TopBar } from '@/components/top-bar';
@@ -51,6 +52,7 @@ export default function RootLayout({
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />
+          <ScrollToTop />
         </MotionProvider>
       </body>
     </html>
