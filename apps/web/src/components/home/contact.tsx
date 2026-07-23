@@ -42,8 +42,12 @@ const STEPS = [
 ];
 
 // Class gỡ viền/ring riêng của shadcn Input/Textarea khi nằm trong wrapper
-// có viền (tránh viền kép — wrapper lo focus ring qua focus-within)
-const BARE_FIELD = 'border-0 bg-transparent px-2 shadow-none focus-visible:ring-0';
+// có viền (tránh viền kép — wrapper lo focus ring qua focus-within).
+// dark:bg-transparent BẮT BUỘC (navbar #5): base có dark:bg-input/30 — nền
+// riêng chỉ-dark-mode mà bg-transparent (variant khác) không gỡ được, gây
+// "hai lớp màu" trong field ở dark theme.
+const BARE_FIELD =
+  'border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 dark:bg-transparent';
 
 function ContactField({
   id,
