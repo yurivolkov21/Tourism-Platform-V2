@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
+import { AnnouncementBanner } from '@/components/announcement-banner';
 import { LenisScroll } from '@/components/lenis-scroll';
 import { MotionProvider } from '@/components/motion/motion-provider';
 import { SiteFooter } from '@/components/site-footer';
@@ -43,6 +44,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <MotionProvider>
           <LenisScroll />
+          <AnnouncementBanner />
           <SiteHeader />
           <main className="flex-1">{children}</main>
           <SiteFooter />

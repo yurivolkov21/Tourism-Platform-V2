@@ -18,7 +18,8 @@ export function Logo({ className }: { className?: string }) {
           d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"
         />
       </svg>
-      <span className="font-heading text-xl font-semibold tracking-tight">
+      {/* text-foreground tường minh để wordmark đọc token theo scope (vd span.dark trên hero) */}
+      <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
         tour<span className="text-primary">ism</span>
       </span>
     </span>

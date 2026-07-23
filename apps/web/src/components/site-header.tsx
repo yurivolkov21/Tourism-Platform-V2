@@ -34,7 +34,7 @@ export function SiteHeader() {
   return (
     <>
       <nav
-        className={`fixed left-1/2 z-(--z-sticky) flex -translate-x-1/2 items-center justify-between p-4 transition-all duration-500 ${
+        className={`fixed top-(--banner-offset) left-1/2 z-(--z-sticky) flex -translate-x-1/2 items-center justify-between p-4 transition-all duration-500 ${
           scrolled
             ? 'mt-4 w-[calc(100vw-14px)] rounded-full bg-background/60 pl-6 shadow-(--shadow-dropdown) backdrop-blur-2xl lg:w-5xl'
             : 'w-full md:px-16 lg:px-24 xl:px-32'
