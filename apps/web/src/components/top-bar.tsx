@@ -5,7 +5,15 @@ import { FacebookIcon, InstagramIcon, TwitterIcon } from './icons/social';
 // bỏ khung max-w (nội dung giãn sát hai mép, hết cảm giác "co vào giữa"),
 // tagline trái chạy marquee liên tục (keyframes trong globals.css, hover dừng,
 // reduced-motion tắt). Email/phone mock — thay bằng site-config khi gắn API.
-const TAGLINE = 'Vietnam’s slow-travel journeys, crafted end to end by locals';
+// 5 thông điệp riêng biệt luân phiên trong marquee (review vòng 1 #7) —
+// mix định vị + khuyến mãi (khớp flag mock) + cam kết + tin mới.
+const MESSAGES = [
+  'Vietnam’s slow-travel journeys, crafted end to end by locals',
+  'Autumn sale — 20% off selected Ha Long departures this week',
+  'Small groups of twelve, always led by local guides',
+  'Free cancellation up to 48 hours before departure',
+  'New route: Mekong Delta Boats — two days on the river',
+];
 const EMAIL = 'hello@tourism.example';
 const PHONE = '+84 24 3826 0126';
 
@@ -15,17 +23,13 @@ const SOCIALS = [
   { Icon: TwitterIcon, label: 'X' },
 ];
 
-// Một "toa" marquee: tagline + dấu ngăn, lặp vài lần cho đủ dài hơn mọi khung nhìn.
+// Một "toa" marquee: chuỗi 5 thông điệp nối nhau — hai toa giống hệt tạo loop kín.
 function MarqueeGroup({ hidden = false }: { hidden?: boolean }) {
   return (
     <span aria-hidden={hidden || undefined} className="flex shrink-0 items-center">
-      {Array.from({ length: 3 }, (_, i) => (
-        <span
-          // biome-ignore lint/suspicious/noArrayIndexKey: chuỗi lặp tĩnh, không reorder
-          key={i}
-          className="flex shrink-0 items-center"
-        >
-          <span className="whitespace-nowrap">{TAGLINE}</span>
+      {MESSAGES.map((msg) => (
+        <span key={msg} className="flex shrink-0 items-center">
+          <span className="whitespace-nowrap">{msg}</span>
           <span className="mx-8 opacity-50">✦</span>
         </span>
       ))}
