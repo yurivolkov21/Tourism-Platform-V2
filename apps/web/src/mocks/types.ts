@@ -53,6 +53,14 @@ export interface MockJournalPost {
   author: string;
 }
 
+/** Thành viên sáng lập/vận hành cho trang About §5 — ứng viên schema team_members */
+export interface MockTeamMember {
+  name: string;
+  role: string;
+  /** Một câu "chữ ký" hiển thị dưới chức danh */
+  line: string;
+}
+
 /** Người dùng đăng nhập giả cho navbar — nguồn thật là Better Auth (phase auth) */
 export interface MockSessionUser {
   name: string;

@@ -61,6 +61,19 @@ describe('mock regions / testimonials / journal', () => {
   });
 });
 
+describe('mock team (About §5 — chỉ founder/vận hành, quyết định user 23/07)', () => {
+  it('4 thành viên, đủ tên/chức danh/chữ ký, tên duy nhất', async () => {
+    const { TEAM } = await import('./team.js');
+    expect(TEAM).toHaveLength(4);
+    expect(new Set(TEAM.map((m: { name: string }) => m.name)).size).toBe(4);
+    for (const m of TEAM) {
+      expect(m.name.length).toBeGreaterThan(0);
+      expect(m.role.length).toBeGreaterThan(0);
+      expect(m.line.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('mock destinations (gallery Home — review #14)', () => {
   it('đúng 9 địa điểm, mỗi vùng 3, xếp liền nhau Bắc → Trung → Nam', () => {
     expect(DESTINATIONS).toHaveLength(9);
