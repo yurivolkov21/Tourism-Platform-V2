@@ -53,9 +53,13 @@
   -webkit-text-stroke: 1.5px color-mix(in oklab, var(--foreground) 16%, transparent);
 }
 
-/* ── Offset cho announcement banner: navbar đọc biến này để nằm dưới banner.
- * Mặc định = chiều cao banner (banner mở sẵn khi load, tránh giật layout);
- * component banner set về 0px khi người dùng đóng. ── */
+/* ── Offset cho top-bar (kiểu Nexora): navbar đọc biến này để nằm dưới bar.
+ * Top-bar ẩn trên mobile (max-sm:hidden) nên offset cũng responsive theo. ── */
 :root {
-  --banner-offset: 2.5rem;
+  --banner-offset: 0px;
+}
+@media (min-width: 40rem) {
+  :root {
+    --banner-offset: 2.25rem;
+  }
 }
