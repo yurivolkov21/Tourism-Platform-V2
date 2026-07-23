@@ -4,90 +4,87 @@ import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 
-// Review #21 (phương án A): thay CTA cột-giữa của Estate bằng banner tràn viền
-// convert từ forged/CTABanner — nền ảnh phủ kín + scrim tối + nội dung căn giữa
-// + 2 nút (primary + outline). Khoảng trống hai bên biến mất vì nền ảnh chính
-// là nội dung. Nền dùng dark-scope + ImagePlaceholder như hero (ảnh thật thay
-// sau khi trang chốt); gradient nhấn từ token primary thay neon hardcode.
+// Review #23: convert 100% lối thiết kế forged/CTABanner (quyết định của user —
+// trước đó #21 mới lấy xương, lần này lấy cả chất giọng): eyebrow màu accent,
+// heading 2 dòng ALL-CAPS đậm với dòng sau nhuộm primary + dấu chấm, mô tả mờ,
+// nút chính màu accent glow khi hover + scale, nút phụ outline mảnh. Chỉ thay
+// da thịt bằng token + font dự án (Literata heading, không hex, không neon).
+// Toàn bộ nội dung nằm trong scope `dark` — banner luôn tối ở cả hai theme.
 export function CallToAction() {
   return (
-    <section className="relative w-full overflow-hidden py-28 text-on-media md:py-36">
-      {/* Nền banner: placeholder + scrim + vệt gradient nhấn màu chủ đạo */}
+    <section className="relative w-full overflow-hidden py-32">
+      {/* Nền banner: placeholder + scrim + vệt gradient nhấn primary (forged: neon/10) */}
       <div className="dark absolute inset-0 -z-10">
         <ImagePlaceholder corner label="Banner — Mekong delta at dusk" className="h-full w-full" />
         <div className="absolute inset-0 bg-overlay" />
         <div
           aria-hidden="true"
-          className="absolute inset-0 bg-linear-to-br from-primary/25 via-transparent to-transparent"
+          className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
         />
       </div>
 
-      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center">
+      <div className="dark mx-auto flex max-w-5xl flex-col items-center px-4 text-center text-foreground">
         <motion.span
-          className="text-sm tracking-[0.2em] uppercase"
+          className="mb-6 block text-xs font-semibold tracking-[0.25em] text-primary uppercase"
           initial={{ y: -20, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          Ready when you are
+          Autumn departures open
         </motion.span>
 
         <motion.h2
-          className="mt-4 max-w-3xl font-heading text-3xl leading-tight tracking-tight md:text-5xl"
+          className="mx-auto mb-8 max-w-4xl font-heading text-4xl leading-tight font-black tracking-tight uppercase md:text-6xl"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
         >
-          Find the journey that fits your pace
+          Find the journey
+          <br />
+          <span className="text-primary">that fits your pace.</span>
         </motion.h2>
 
         <motion.p
-          className="mt-4 max-w-md text-sm opacity-85 md:text-base"
+          className="mx-auto mb-10 max-w-md text-base text-foreground/50"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
           Limestone bays, misty terraces, imperial cities, and river markets — pick a region and let
-          a local plan the rest.
+          a local plan the rest. Small groups, no rush, no scripts.
         </motion.p>
 
         <motion.div
-          className="mt-9 flex flex-col items-center gap-4 sm:flex-row"
+          className="flex flex-col items-center justify-center gap-4 sm:flex-row"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          <a
+          {/* Glow hover của forged: bóng đổ lấy màu từ token primary qua color-mix */}
+          <motion.a
             href="#tours"
-            className="group flex cursor-pointer items-center gap-2 rounded-full bg-card px-7 py-3 text-sm font-medium text-card-foreground transition hover:bg-card/85"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="group inline-flex items-center gap-2 rounded-full bg-primary px-6 py-3 font-heading text-base font-black tracking-wider text-primary-foreground uppercase transition-shadow duration-300 hover:shadow-[0_0_40px_color-mix(in_oklab,var(--primary)_45%,transparent)]"
           >
             <span>Browse tours</span>
             <MoveRightIcon
-              className="size-4 transition-transform duration-200 group-hover:translate-x-1"
+              className="size-4.5 transition-transform group-hover:translate-x-1"
               aria-hidden="true"
             />
-          </a>
-          <a
+          </motion.a>
+          <motion.a
             href="#contact"
-            className="group cursor-pointer rounded-full border border-on-media/40 px-6 py-3 text-sm font-medium transition hover:border-on-media/70"
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            className="inline-flex items-center gap-2 rounded-full border border-foreground/20 px-6 py-3 font-heading text-base font-bold tracking-wider uppercase transition-colors duration-200 hover:border-foreground/50"
           >
-            {/* Hiệu ứng chữ trượt dọc khi hover — đồng bộ với nút phụ của hero */}
-            <span className="relative block overflow-hidden">
-              <span className="block transition-transform duration-200 group-hover:-translate-y-full">
-                Talk to a local
-              </span>
-              <span
-                aria-hidden="true"
-                className="absolute top-0 left-0 block translate-y-full transition-transform duration-200 group-hover:translate-y-0"
-              >
-                Talk to a local
-              </span>
-            </span>
-          </a>
+            Talk to a local
+          </motion.a>
         </motion.div>
       </div>
     </section>
