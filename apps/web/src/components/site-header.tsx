@@ -13,8 +13,12 @@ import { UserMenu } from './user-menu';
 // dropdown NavigationMenu · cụm action = AnimatedThemeToggler (magicui, lan
 // tròn View Transitions) + UserMenu (Log in / avatar dropdown theo mock) +
 // nút Book a tour. Mọi mảnh đều nhận "skin" theo 2 chế độ nền của navbar.
+// Thứ tự theo Nexora (Tours · Destinations · Blog · About · Contact) + Reviews.
+// About Us tạm trỏ #top — trang /about là mục kế tiếp của lộ trình; Travel
+// Blog trỏ section Journal, sau thành /blog.
 const NAV_LINKS = [
-  { label: 'Tours', href: '#tours' },
+  { label: 'Travel Blog', href: '#journal' },
+  { label: 'About Us', href: '#top' },
   { label: 'Reviews', href: '#reviews' },
   { label: 'Contact', href: '#contact' },
 ];
@@ -25,6 +29,8 @@ const MOBILE_LINKS = [
   { label: 'Destinations — North', href: '#gallery' },
   { label: 'Destinations — Central', href: '#gallery' },
   { label: 'Destinations — South', href: '#gallery' },
+  { label: 'Travel Blog', href: '#journal' },
+  { label: 'About Us', href: '#top' },
   { label: 'Reviews', href: '#reviews' },
   { label: 'Contact', href: '#contact' },
   { label: 'Log in', href: '/login' },
@@ -47,11 +53,14 @@ export function SiteHeader() {
       : 'text-on-media hover:text-on-media/90'
   }`;
 
-  // Skin cho trigger dropdown + nút icon: trên hero phải sáng chữ, nền hover
-  // trong mờ thay vì muted (đè style mặc định của navigationMenuTriggerStyle)
-  const triggerSkin = scrolled
-    ? ''
-    : 'text-on-media hover:bg-on-media/10 focus:bg-on-media/10 data-open:bg-on-media/10 data-popup-open:bg-on-media/10 hover:text-on-media';
+  // Trigger dropdown đồng bộ với link trần bên cạnh (review navbar #2): LỘT
+  // hết nền muted mặc định của navigationMenuTriggerStyle ở mọi trạng thái —
+  // hover chỉ đổi màu chữ như các link khác, tự khớp light/dark theo token.
+  const triggerSkin = `h-auto bg-transparent px-0 py-0 font-normal hover:bg-transparent focus:bg-transparent data-open:bg-transparent data-popup-open:bg-transparent data-open:hover:bg-transparent data-popup-open:hover:bg-transparent ${
+    scrolled
+      ? 'text-foreground hover:text-muted-foreground data-open:text-muted-foreground'
+      : 'text-on-media hover:text-on-media/90 data-open:text-on-media/90'
+  }`;
   const iconButtonClass = `flex size-9 cursor-pointer items-center justify-center rounded-full transition-colors duration-500 [&_svg]:size-4.5 ${
     scrolled ? 'text-foreground hover:bg-muted' : 'text-on-media hover:bg-on-media/10'
   }`;
@@ -77,7 +86,7 @@ export function SiteHeader() {
             Tours
           </a>
           <DestinationsMenu triggerClassName={`text-sm font-normal ${triggerSkin}`} />
-          {NAV_LINKS.slice(1).map((l) => (
+          {NAV_LINKS.map((l) => (
             <a key={l.label} href={l.href} className={linkClass}>
               {l.label}
             </a>
