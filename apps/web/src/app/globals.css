@@ -46,6 +46,21 @@
   }
 }
 
+/* ── Autofill Chrome (review navbar #4): style UA :-webkit-autofill ép nền
+ * trắng/vàng đè lên bg-transparent của field → ô tự điền "tách màu" khỏi
+ * wrapper tối ở dark theme. Ép lại theo token: nền bằng inset shadow màu card
+ * (autofill không cho đổi background trực tiếp), chữ + caret theo
+ * card-foreground — tự đúng ở cả hai theme. ── */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-text-fill-color: var(--card-foreground);
+  caret-color: var(--card-foreground);
+  box-shadow: inset 0 0 0 1000px var(--card);
+}
+
 /* ── Thanh cuộn custom (review #24, convert từ forged): mảnh 4px, track tiệp
  * màu nền nên "tàng hình", chỉ còn thumb màu primary nổi như vệt sáng.
  * Token tự đổi theo theme sáng/tối. ── */
