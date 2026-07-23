@@ -2,6 +2,35 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-23 — CI xanh lại + vá 5 alert Dependabot (branch `fix/ci-test-db-and-dep-vulns`, merge `69cac5a`)
+
+CI main đỏ **suốt 21→23/07** (từ merge ADR-0008) mà không ai nhận ra vì merge
+kiểu ff không qua PR — phát hiện khi push trang Home. Lỗi HAI TẦNG cùng một
+triệu chứng P2021:
+- **Tầng 1**: ADR-0008 thêm reconcile admin lúc `onApplicationBootstrap` → 4 e2e
+  spec trong task `test` (bootstrap · fail-closed · throttle · health) boot cả
+  AppModule nên chạm bảng `User`; CI chỉ tạo + migrate `tourism_test` trong
+  globalSetup của `test:int` — chạy SAU. Sửa: đảo `test:int` lên trước bước gate
+  trong ci.yml (tái dùng cơ chế idempotent duy nhất, không nhân đôi vào YAML).
+- **Tầng 2** (che tầng 1 khỏi chẩn đoán): turbo **strict env** lột `DATABASE_URL`
+  khỏi task `test` (turbo.json không khai báo `env`) → e2e rơi về db mặc định
+  `tourism` — ở CI db này TỒN TẠI nhưng RỖNG (image Postgres tự tạo db trùng tên
+  POSTGRES_USER), nên lỗi hiện ra là "thiếu bảng" chứ không phải "thiếu db".
+  Sửa: `"env": ["DATABASE_URL"]` cho task `test`.
+- **5 alert Dependabot**: fast-uri 3.1.4/4.1.1 (2 high — `pnpm update` trong
+  range) · sharp 0.35.3 (high, chạy prod thật qua next/image — override
+  `>=0.35.0` vì Next khai báo ^0.34) · postcss 8.5.22 (moderate — override
+  `>=8.5.10` vì Next pin cứng 8.4.31) · @hono/node-server GIỮ 1.x + dismiss
+  tolerable-risk có ghi lý do (path traversal chỉ Windows, transitive của
+  dev-tooling, bản vá 2.0.5 là major phá `@prisma/dev`) — lý do nằm tại comment
+  pnpm-workspace.yaml.
+Review findings: bài học "CI chạy mọi branch" phát huy — fix được CI thật xác
+nhận (run `success` 2m48s) TRƯỚC khi merge vào main, đúng lỗ hổng mà quy ước
+này sinh ra để vá.
+Tests after: gate:int xanh 18/18 task — API unit 188/21 file (có mô phỏng điều
+kiện CI: unit chạy trên `tourism_test`) · int 145/17 · web 8 · tokens 10 · ui 5 ·
+typecheck · biome sạch.
+
 ## 2026-07-23 — P3b: trang Home tĩnh hoàn chỉnh (branch `feat/home-page`, merge `2d98be3`)
 
 Trang Home static-first đầu tiên của P3b — 40 commit, **33 vòng điều chỉnh** review
