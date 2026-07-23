@@ -21,11 +21,12 @@ phải được phân tích và chốt riêng với user trước khi làm.
    `whileInView` (once); counter đếm số; hover lift card. Baseline bất khả
    xâm phạm: mọi animation tôn trọng `prefers-reduced-motion` (dùng
    `useReducedMotion`/`MotionConfig reducedMotion="user"`).
-2. **Logo: mark "Vectory"** (PrebuiltUI free placeholder logos — hai lá + chấm
-   kim cương) — CHỈ dùng phần mark, đã trích SVG path; lá nhuộm ngọc
-   (`--primary`), chấm mực (`--foreground`); wordmark là chữ "tourism" render
-   bằng Literata (không dùng chữ "Vectory"). Ghi chú: placeholder logo = không
-   độc quyền, đủ cho capstone; thương mại hóa nghiêm túc thì đặt mark riêng (P7+).
+2. **Logo: mark "Slidex"** (PrebuiltUI free placeholder logos — hai viên kim
+   cương bo góc lồng nhau; user chọn ở review vòng 1, thay mark "Vectory" ban
+   đầu) — CHỈ dùng phần mark; viên sau nhuộm ngọc (`--primary`), viên trước mực
+   (`--foreground`); wordmark là chữ "tourism" render bằng Literata. Ghi chú:
+   placeholder logo = không độc quyền, đủ cho capstone; thương mại hóa nghiêm
+   túc thì đặt mark riêng (P7+).
 3. **Ảnh mock**: ~8 ảnh Unsplash (license cho phép) TẢI VỀ `apps/web/public/mock/`
    — không hotlink (bài học từ template Forged). Tối ưu qua `next/image`.
 4. **RSC-first**: page + section là Server Component; `"use client"` chỉ ở

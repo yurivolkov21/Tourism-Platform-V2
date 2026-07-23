@@ -1,20 +1,21 @@
 import { cn } from '@tourism/ui/lib/utils';
 
-// Mark: PrebuiltUI free placeholder logos ("Vectory") — chỉ dùng phần mark,
-// wordmark là chữ của mình (Literata). Lá nhuộm primary, chấm theo foreground
-// nên tự đổi theo light/dark. Placeholder logo (không độc quyền) — đủ cho
-// capstone; thương mại hóa nghiêm túc thì đặt mark riêng (spec Home §Quyết định 2).
+// Mark: PrebuiltUI free placeholder logos ("Slidex" — user chọn ở review vòng 1,
+// thay mark "Vectory" ban đầu) — chỉ dùng phần mark hai viên kim cương lồng nhau,
+// wordmark là chữ của mình (Literata). Viên sau nhuộm primary, viên trước theo
+// foreground nên tự đổi theo light/dark. Placeholder logo (không độc quyền) —
+// đủ cho capstone; thương mại hóa nghiêm túc thì đặt mark riêng.
 export function Logo({ className }: { className?: string }) {
   return (
     <span className={cn('flex items-center gap-2', className)}>
-      <svg viewBox="0 0 63 77" aria-hidden="true" className="h-7 w-auto shrink-0">
+      <svg viewBox="0 0 46 33" aria-hidden="true" className="h-6 w-auto shrink-0">
         <path
           className="fill-primary"
-          d="M33.817 52.382c0-15.988 12.96-28.948 28.948-28.948v17.585c0 15.987-12.96 28.948-28.948 28.948zm-4.869 0c0-15.988-12.96-28.948-28.948-28.948v17.585c0 15.987 12.96 28.948 28.948 28.948z"
+          d="M30.966 12.968 19.938 1.945a2.75 2.75 0 0 0-3.891 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L12.975 30.95a2.75 2.75 0 0 0 3.891 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"
         />
         <path
           className="fill-foreground"
-          d="M31.487 0c0 8.764 7.049 15.881 15.786 15.992l.207.001-.207.001c-8.737.11-15.786 7.228-15.786 15.992 0-8.833-7.16-15.993-15.993-15.993 8.833 0 15.993-7.16 15.993-15.993"
+          d="M44.032 12.968 33.004 1.945a2.75 2.75 0 0 0-3.89 0l-14.1 14.093a2.75 2.75 0 0 0 0 3.89L26.041 30.95a2.75 2.75 0 0 0 3.89 0l14.1-14.094a2.75 2.75 0 0 0 0-3.889"
         />
       </svg>
       <span className="font-heading text-xl font-semibold tracking-tight">
