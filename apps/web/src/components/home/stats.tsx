@@ -10,9 +10,9 @@ export function Stats() {
   return (
     <section id="tours" className="w-full px-4 py-16 md:px-16 md:py-25 lg:px-24 xl:px-32">
       {/* 2 cột (review #9): trái giữ nguyên thiết kế Estate, phải lấp bằng hover-expand gallery */}
-      <div className="grid grid-cols-1 items-stretch gap-12 lg:grid-cols-2 lg:gap-16">
-        <div>
-          <div className="flex max-w-3xl flex-col items-start">
+      <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div className="flex justify-center">
+          <div className="flex max-w-xl flex-col items-start">
             <SectionEyebrow>Tours across Vietnam</SectionEyebrow>
             <motion.h2
               className="mt-8 max-w-[610px] font-heading text-5xl leading-tight text-foreground md:text-6xl"
@@ -45,44 +45,44 @@ export function Stats() {
             >
               Explore tours
             </motion.a>
-          </div>
 
-          <div className="mt-16 flex max-w-4xl justify-between max-lg:flex-col max-lg:gap-10 md:mt-20">
-            <div className="flex flex-col justify-center">
-              <span className="min-w-[152px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                <CountUp to={68} />+
-              </span>
-              <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                Hand-picked tours
-              </span>
-            </div>
+            <div className="mt-16 flex w-full justify-between max-lg:flex-col max-lg:gap-10 md:mt-20">
+              <div className="flex flex-col justify-center">
+                <span className="min-w-[152px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
+                  <CountUp to={68} />+
+                </span>
+                <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
+                  Hand-picked tours
+                </span>
+              </div>
 
-            <div className="h-20 w-px bg-border max-lg:hidden" />
+              <div className="h-20 w-px bg-border max-lg:hidden" />
 
-            <div className="flex flex-col justify-center">
-              <span className="min-w-[200px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                <CountUp to={12400} />+
-              </span>
-              <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                Happy travelers
-              </span>
-            </div>
+              <div className="flex flex-col justify-center">
+                <span className="min-w-[200px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
+                  <CountUp to={12400} />+
+                </span>
+                <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
+                  Happy travelers
+                </span>
+              </div>
 
-            <div className="h-20 w-px bg-border max-lg:hidden" />
+              <div className="h-20 w-px bg-border max-lg:hidden" />
 
-            <div className="flex flex-col justify-center">
-              <span className="min-w-[94px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                <CountUp to={98} />%
-              </span>
-              <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                Traveler satisfaction
-              </span>
+              <div className="flex flex-col justify-center">
+                <span className="min-w-[94px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
+                  <CountUp to={98} />%
+                </span>
+                <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
+                  Traveler satisfaction
+                </span>
+              </div>
             </div>
           </div>
         </div>
 
         <motion.div
-          className="flex max-lg:order-last"
+          className="flex items-center justify-center max-lg:order-last"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
