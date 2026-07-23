@@ -98,7 +98,7 @@ export function Gallery() {
                 <a
                   href="#contact"
                   data-region={dest.region}
-                  className="group relative block h-[400px] w-[320px] overflow-hidden rounded-xl lg:h-[440px] lg:w-[352px]"
+                  className="group relative block aspect-[4/5] h-[min(52vh,540px)] min-h-[380px] overflow-hidden rounded-xl"
                 >
                   <ImagePlaceholder label={dest.blurb} className="h-full w-full" />
                   {/* Chip vùng — tint theo slot --region-* */}

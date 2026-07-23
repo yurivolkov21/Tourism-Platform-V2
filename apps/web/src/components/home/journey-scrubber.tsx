@@ -4,10 +4,11 @@ import { type Ref, useImperativeHandle, useRef } from 'react';
 import { REGIONS } from '@/mocks/regions';
 import type { MockRegionKey } from '@/mocks/types';
 
-// Scrubber hành trình (review #18): ray ngang 3 đoạn nhuộm màu 3 vùng (mini
-// bản đồ Bắc→Trung→Nam) + badge kéo được. Scroll là NGUỒN SỰ THẬT duy nhất:
-// gallery đẩy tiến độ vào qua imperative handle (set), kéo/click chỉ phát
-// onScrub(p) để gallery scrollTo — badge không tự giữ state vị trí.
+// Scrubber hành trình (review #19, style badge-lồng-badge của PrebuiltUI —
+// Exclusive Offer/Order Tracking): outer pill viền tròn làm khe chạy với 3 chấm
+// mốc màu vùng, inner chip tint vùng TRƯỢT bên trong — cuộn xuống card chạy
+// trái, chip chạy phải (ngược chiều). Scroll là NGUỒN SỰ THẬT duy nhất:
+// gallery đẩy tiến độ qua handle set(), kéo/click chỉ phát onScrub(p).
 export interface ScrubberHandle {
   /** Gallery gọi mỗi scroll tick — đặt vị trí badge theo tiến độ 0..1 */
   set(progress: number): void;
@@ -30,7 +31,9 @@ export function JourneyScrubber({ activeRegion, onScrub, handleRef }: JourneyScr
     set(progress: number) {
       const badge = badgeRef.current;
       if (badge) {
+        // left + translateX ngược để chip trượt TRONG lòng pill, không tràn mép
         badge.style.left = `${progress * 100}%`;
+        badge.style.transform = `translateX(${-progress * 100}%) translateY(-50%)`;
         badge.setAttribute('aria-valuenow', String(Math.round(progress * 100)));
       }
     },
@@ -83,31 +86,31 @@ export function JourneyScrubber({ activeRegion, onScrub, handleRef }: JourneyScr
   };
 
   return (
-    <div className="flex items-center justify-center pb-8">
-      {/* Ray: touch-action none để kéo ngang không giành cuộn dọc (chỉ trên ray nhỏ) */}
+    <div className="flex items-center justify-center pb-5">
+      {/* Outer pill = khe chạy (badge ngoài): viền tròn, 3 chấm mốc màu vùng.
+          touch-action none chỉ trên pill nhỏ — không giành cuộn dọc của trang. */}
       <div
         ref={railRef}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="relative h-1.5 w-[min(360px,70vw)] cursor-pointer touch-none rounded-full"
+        className="relative h-10 w-[min(320px,70vw)] cursor-pointer touch-none rounded-full border bg-card shadow-(--shadow-card)"
         role="presentation"
       >
-        {/* 3 đoạn màu vùng — đoạn đang xem sáng rõ, còn lại mờ */}
-        <div className="flex h-full gap-1 overflow-hidden rounded-full">
-          {REGIONS.map((region) => (
-            <div
-              key={region.key}
-              data-region={region.key}
-              className={`h-full flex-1 rounded-full transition-opacity duration-500 ${
-                region.key === activeRegion ? 'opacity-100' : 'opacity-30'
-              }`}
-              style={{ background: 'var(--region-primary)' }}
-            />
-          ))}
-        </div>
+        {/* 3 chấm mốc — vị trí giữa mỗi vùng trên hành trình */}
+        {REGIONS.map((region, i) => (
+          <span
+            key={region.key}
+            data-region={region.key}
+            aria-hidden="true"
+            className={`absolute top-1/2 size-1.5 -translate-x-1/2 -translate-y-1/2 rounded-full transition-opacity duration-500 ${
+              region.key === activeRegion ? 'opacity-90' : 'opacity-35'
+            }`}
+            style={{ left: `${((i * 2 + 1) / 6) * 100}%`, background: 'var(--region-primary)' }}
+          />
+        ))}
 
-        {/* Badge kéo được — slider chuẩn a11y, tint theo vùng đang xem */}
+        {/* Inner chip (badge trong) — trượt trong lòng pill, tint vùng đang xem */}
         <button
           ref={badgeRef}
           type="button"
@@ -119,12 +122,12 @@ export function JourneyScrubber({ activeRegion, onScrub, handleRef }: JourneyScr
           aria-valuenow={0}
           aria-valuetext={REGION_NAME.get(activeRegion)}
           onKeyDown={handleKeyDown}
-          className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap shadow-(--shadow-dropdown) transition-colors duration-300 active:cursor-grabbing"
+          className="absolute top-1/2 cursor-grab rounded-full px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors duration-300 active:cursor-grabbing"
           style={{
             left: '0%',
-            background: 'var(--region-surface)',
-            color: 'var(--region-on-surface)',
-            borderColor: 'var(--region-primary)',
+            transform: 'translateY(-50%)',
+            background: 'var(--region-primary)',
+            color: 'var(--on-media)',
           }}
         >
           {REGION_NAME.get(activeRegion)}
