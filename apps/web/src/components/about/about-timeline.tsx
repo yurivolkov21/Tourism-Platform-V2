@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { TiltCard } from '@/components/motion/tilt-card';
 
 // About §3 Timeline (convert 100% cơ chế prompt2app/build-process): trục dọc
 // giữa gồm 3 đoạn line TỰ LẤP ĐẦY theo tiến trình cuộn (đo getBoundingClientRect
@@ -79,7 +80,9 @@ function MilestoneText({ milestone }: { milestone: Milestone }) {
 }
 
 // Ảnh minh hoạ chiếm ô trống ĐỐI DIỆN chữ (góp ý user — kiểu genesis/Nexora):
-// trượt vào từ phía mình đứng, vạch accent màu vùng ở đáy.
+// trượt vào từ phía mình đứng, vạch accent màu vùng ở đáy. Motion ảnh (§3 lần
+// 3): bọc TiltCard 3D nghiêng theo chuột (đồng bộ card Destinations — gốc
+// pixels/TiltImage của PrebuiltUI) + zoom mềm khi hover.
 function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left' | 'right' }) {
   return (
     <motion.div
@@ -90,14 +93,19 @@ function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left
       viewport={{ once: true }}
       transition={SPRING}
     >
-      <div className="relative h-full w-full overflow-hidden rounded-xl">
-        <ImagePlaceholder label={milestone.imageLabel} className="h-full w-full" />
-        <span
-          aria-hidden="true"
-          className="absolute inset-x-0 bottom-0 h-1"
-          style={{ background: 'var(--region-primary)' }}
-        />
-      </div>
+      <TiltCard className="h-full w-full">
+        <div className="group relative h-full w-full overflow-hidden rounded-xl">
+          <ImagePlaceholder
+            label={milestone.imageLabel}
+            className="h-full w-full transition-transform duration-700 group-hover:scale-105"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute inset-x-0 bottom-0 h-1"
+            style={{ background: 'var(--region-primary)' }}
+          />
+        </div>
+      </TiltCard>
     </motion.div>
   );
 }
