@@ -2,6 +2,7 @@ import { CallToAction } from '@/components/home/call-to-action';
 import { Contact } from '@/components/home/contact';
 import { Gallery } from '@/components/home/gallery';
 import { Hero } from '@/components/home/hero';
+import { Partners } from '@/components/home/partners';
 import { Stats } from '@/components/home/stats';
 import { Testimonials } from '@/components/home/testimonials';
 import { WhyChooseUs } from '@/components/home/why-choose-us';
@@ -12,6 +13,9 @@ export default function HomePage() {
   return (
     <>
       <Hero />
+      {/* Dải trust ngay dưới hero (vị trí gốc của forged): nền tối nối liền
+          hero, ngăn với Stats sáng bên dưới bằng border */}
+      <Partners />
       <Stats />
       <Gallery />
       <WhyChooseUs />
