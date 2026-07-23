@@ -2,7 +2,7 @@
 
 import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import Image from 'next/image';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 
 // Convert từ Estate call-to-action.tsx: 3 ảnh xòe quạt (hover xòe rộng thêm),
 // heading + mô tả + nút mũi tên trượt. Ảnh lấy từ mock tours.
@@ -11,26 +11,17 @@ export function CallToAction() {
     <section className="flex w-full flex-col items-center justify-center px-4 py-36 text-center md:px-16 lg:px-24 xl:px-32">
       <div className="mx-auto flex max-w-4xl flex-col items-center">
         <div className="group/cta-images relative mb-12 flex h-[200px] w-full max-w-sm items-center justify-center overflow-hidden select-none md:h-[220px] md:max-w-[600px] md:overflow-visible">
-          <Image
-            height={139}
-            width={251}
-            src="/mock/sapa.jpg"
-            alt="Sa Pa terraces"
-            className="absolute z-0 h-[100px] w-[200px] origin-bottom-right -rotate-12 translate-x-[-115px] translate-y-4 rounded-[10px] object-cover transition-all duration-500 ease-out group-hover/cta-images:translate-x-[-155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-[-16deg] md:h-[139px] md:w-[251px]"
+          <ImagePlaceholder
+            label="Sa Pa terraces"
+            className="absolute z-0 h-[100px] w-[200px] origin-bottom-right -rotate-12 translate-x-[-115px] translate-y-4 rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-x-[-155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-[-16deg] md:h-[139px] md:w-[251px]"
           />
-          <Image
-            height={139}
-            width={251}
-            src="/mock/hoian.jpg"
-            alt="Hội An lanterns"
-            className="absolute z-0 h-[100px] w-[200px] origin-bottom-left rotate-12 translate-x-[115px] translate-y-4 rounded-[10px] object-cover transition-all duration-500 ease-out group-hover/cta-images:translate-x-[155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-16 md:h-[139px] md:w-[251px]"
+          <ImagePlaceholder
+            label="Hội An lanterns"
+            className="absolute z-0 h-[100px] w-[200px] origin-bottom-left rotate-12 translate-x-[115px] translate-y-4 rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-x-[155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-16 md:h-[139px] md:w-[251px]"
           />
-          <Image
-            height={139}
-            width={251}
-            src="/mock/halong.jpg"
-            alt="Hạ Long bay"
-            className="absolute z-10 h-[100px] w-[200px] translate-y-[-10px] rounded-[10px] object-cover transition-all duration-500 ease-out group-hover/cta-images:translate-y-[-22px] group-hover/cta-images:scale-105 md:h-[139px] md:w-[251px]"
+          <ImagePlaceholder
+            label="Hạ Long bay"
+            className="absolute z-10 h-[100px] w-[200px] translate-y-[-10px] rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-y-[-22px] group-hover/cta-images:scale-105 md:h-[139px] md:w-[251px]"
           />
         </div>
 

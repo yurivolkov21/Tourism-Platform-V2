@@ -1,7 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import { useEffect, useRef } from 'react';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TOURS } from '@/mocks/tours';
 
 // Convert từ Estate gallery.tsx: section cao 180vh, khung sticky, track ảnh
@@ -51,12 +51,9 @@ export function Gallery() {
         >
           {TOURS.map((tour) => (
             <figure key={tour.slug} className="relative shrink-0">
-              <Image
-                src={tour.image}
-                alt={tour.title}
-                width={364}
-                height={457}
-                className="pointer-events-none h-[457px] w-[364px] rounded-xl object-cover"
+              <ImagePlaceholder
+                label={tour.title}
+                className="pointer-events-none h-[457px] w-[364px] rounded-xl"
               />
               <figcaption className="absolute right-4 bottom-4 left-4 rounded-lg bg-overlay px-4 py-2.5 text-on-media backdrop-blur-sm">
                 <span className="block font-heading text-base font-medium">{tour.title}</span>

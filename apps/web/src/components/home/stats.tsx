@@ -3,7 +3,7 @@
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
 import { SectionEyebrow } from './section-eyebrow';
-import { StatsGallery } from './stats-gallery';
+import { StatsSlider } from './stats-slider';
 
 // Convert từ Estate stats.tsx: headline lớn + mô tả + nút + 3 counter có vách ngăn.
 export function Stats() {
@@ -82,13 +82,13 @@ export function Stats() {
         </div>
 
         <motion.div
-          className="max-lg:order-last"
+          className="flex max-lg:order-last"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          <StatsGallery />
+          <StatsSlider />
         </motion.div>
       </div>
     </section>

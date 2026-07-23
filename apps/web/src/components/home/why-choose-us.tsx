@@ -10,8 +10,8 @@ import {
   UsersIcon,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import Image from 'next/image';
 import { useState } from 'react';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate why-choose-us.tsx: accordion trái (mở mục nào thì ảnh phải
@@ -148,25 +148,19 @@ export function WhyChooseUs() {
             viewport={{ once: true }}
             transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
           >
-            <Image
-              src="/mock/danang.jpg"
-              alt="Golden Bridge, Đà Nẵng"
-              width={486}
-              height={411}
-              className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 ease-in-out ${
+            <ImagePlaceholder
+              label="Golden Bridge, Đà Nẵng"
+              className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
                 openIndex === null
                   ? 'scale-100 opacity-100'
                   : 'pointer-events-none scale-95 opacity-0'
               }`}
             />
             {ITEMS.map((item, index) => (
-              <Image
+              <ImagePlaceholder
                 key={item.title}
-                src={item.image}
-                alt={item.title}
-                width={486}
-                height={411}
-                className={`absolute inset-0 h-full w-full object-cover transition-all duration-500 ease-in-out ${
+                label={item.title}
+                className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
                   openIndex === index
                     ? 'scale-100 opacity-100'
                     : 'pointer-events-none scale-95 opacity-0'

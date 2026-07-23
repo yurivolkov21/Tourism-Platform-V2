@@ -2,7 +2,7 @@
 
 import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import Image from 'next/image';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 
 // Convert từ Estate hero-sections.tsx: hero fullscreen ảnh + badge pill +
 // heading giữa + 2 nút (nút phụ có hiệu ứng chữ trượt khi hover).
@@ -17,9 +17,9 @@ export function Hero() {
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
     >
-      {/* Nền ảnh + scrim tối (token --overlay) cho chữ nổi */}
-      <div className="absolute inset-0 -z-10">
-        <Image src="/mock/halong.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
+      {/* Placeholder nền (chính sách review #10 — ảnh thật thay sau) + scrim giữ nguyên */}
+      <div className="dark absolute inset-0 -z-10">
+        <ImagePlaceholder label="Hero — Ha Long Bay panorama" className="h-full w-full" />
         <div className="absolute inset-0 bg-overlay" />
       </div>
 

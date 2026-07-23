@@ -3,8 +3,8 @@
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { motion } from 'motion/react';
-import Image from 'next/image';
 import type { ReactNode } from 'react';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate contact.tsx: form trái (label uppercase, field trồi lần
@@ -97,13 +97,12 @@ export function Contact() {
           transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
           <div className="relative h-[455px] w-[382px] overflow-hidden rounded-xl">
-            <Image
-              src="/mock/hoian.jpg"
-              alt="Hội An at night"
-              width={382}
-              height={455}
-              className="h-full w-full object-cover brightness-80 transition-transform duration-700 select-none group-hover:scale-105"
-            />
+            <span className="dark block h-full w-full">
+              <ImagePlaceholder
+                label="Hội An at night"
+                className="h-full w-full transition-transform duration-700 select-none group-hover:scale-105"
+              />
+            </span>
             <div className="absolute bottom-10 left-10 z-10 flex flex-col gap-2.5 text-on-media">
               <span className="text-base">Answer times</span>
               <motion.div
