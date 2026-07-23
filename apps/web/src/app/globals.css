@@ -59,6 +59,11 @@ select:-webkit-autofill {
   -webkit-text-fill-color: var(--card-foreground);
   caret-color: var(--card-foreground);
   box-shadow: inset 0 0 0 1000px var(--card);
+  /* Hoãn background UA gần như vô hạn — chặn cú chớp trắng lúc mới tải trang.
+   * LƯU Ý giới hạn đã biết: trạng thái PREVIEW (rê chuột qua danh sách gợi ý)
+   * dùng style nội bộ :-internal-autofill-previewed — Chrome cấm trang đè
+   * (chính sách bảo mật), chớp nhẹ ở đó là hành vi trình duyệt, không fix được. */
+  transition: background-color 9999999s ease-in-out 0s;
 }
 
 /* ── Thanh cuộn custom (review #24, convert từ forged): mảnh 4px, track tiệp
