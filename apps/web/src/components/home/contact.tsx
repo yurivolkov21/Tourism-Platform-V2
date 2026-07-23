@@ -5,7 +5,6 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { CalendarIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon, UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate contact.tsx: form trái + ảnh phải. Submit no-op
@@ -25,6 +24,22 @@ const fieldMotion = {
 // Kênh liên hệ khớp TopBar — gom về site-config chung khi gắn API
 const EMAIL = 'hello@tourism.example';
 const PHONE = '+84 24 3826 0126';
+
+// 3 bước "What happens next" — trả lời câu hỏi "gửi form xong thì sao?"
+const STEPS = [
+  {
+    title: 'Tell us your dates',
+    description: 'Share when, where, and how you like to travel.',
+  },
+  {
+    title: 'Get itineraries in 24 hours',
+    description: 'Local guides draft two or three routes around your pace.',
+  },
+  {
+    title: 'Book when you love one',
+    description: 'No payment until you approve the plan.',
+  },
+];
 
 // Class gỡ viền/ring riêng của shadcn Input/Textarea khi nằm trong wrapper
 // có viền (tránh viền kép — wrapper lo focus ring qua focus-within)
@@ -144,49 +159,84 @@ export function Contact() {
           </form>
         </div>
 
-        {/* Cột phải: ảnh bám trọn cột (A) + glass card liên hệ đáy ảnh (B) */}
+        {/* Cột phải (#31): panel lai kiểu Nexora "Plan your trip" — nền primary,
+            timeline "What happens next" 3 bước dọc tự dựng (mượn ngôn ngữ badge
+            số + đường nối của stepper, KHÔNG phải wizard tương tác) + card liên
+            hệ đáy panel. Thay hẳn khối ảnh placeholder cũ. */}
         <motion.div
-          className="group relative min-h-[455px] w-full overflow-hidden rounded-xl"
+          className="flex min-h-[455px] w-full flex-col rounded-xl bg-primary p-8 text-primary-foreground sm:p-10"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          <span className="dark block h-full w-full">
-            <ImagePlaceholder
-              corner
-              label="Hội An at night"
-              className="h-full w-full transition-transform duration-700 select-none group-hover:scale-105"
-            />
-
-            {/* Glass card 3 hàng liên hệ — token đọc theo bảng tối của scope dark */}
-            <motion.div
-              className="absolute inset-x-6 bottom-6 z-10 flex flex-col gap-3.5 rounded-xl border border-foreground/10 bg-background/55 p-5 text-sm text-foreground backdrop-blur-md"
-              initial={{ y: 20, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
-            >
-              <a
-                href={`mailto:${EMAIL}`}
-                className="flex items-center gap-3 transition-colors hover:text-primary"
-              >
-                <MailIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
-                {EMAIL}
-              </a>
-              <a
-                href={`tel:${PHONE.replace(/\s/g, '')}`}
-                className="flex items-center gap-3 transition-colors hover:text-primary"
-              >
-                <PhoneIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
-                {PHONE}
-              </a>
-              <p className="flex items-center gap-3 text-muted-foreground">
-                <ClockIcon className="size-4 shrink-0 text-primary" aria-hidden="true" />
-                Mon–Fri within the hour · weekends same day
-              </p>
-            </motion.div>
+          <span className="text-xs font-semibold tracking-[0.2em] uppercase opacity-70">
+            What happens next
           </span>
+          <h3 className="mt-3 max-w-[360px] font-heading text-2xl leading-snug font-medium">
+            Three steps between you and the road
+          </h3>
+
+          {/* Timeline dọc: badge số + đường nối, motion trồi stagger từng bước */}
+          <ol className="mt-10 flex flex-1 flex-col">
+            {STEPS.map((step, index) => (
+              <motion.li
+                key={step.title}
+                className="flex gap-4"
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{
+                  delay: 0.15 * index,
+                  type: 'spring',
+                  stiffness: 320,
+                  damping: 70,
+                  mass: 1,
+                }}
+              >
+                <div className="flex flex-col items-center">
+                  <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 font-heading text-sm font-semibold">
+                    {index + 1}
+                  </span>
+                  {index < STEPS.length - 1 ? (
+                    <span aria-hidden="true" className="w-px flex-1 bg-primary-foreground/20" />
+                  ) : null}
+                </div>
+                <div className={index < STEPS.length - 1 ? 'pb-8' : ''}>
+                  <p className="font-medium">{step.title}</p>
+                  <p className="mt-1 text-sm text-primary-foreground/75">{step.description}</p>
+                </div>
+              </motion.li>
+            ))}
+          </ol>
+
+          {/* Card liên hệ — giữ nguyên 3 hàng, đổi da theo nền primary */}
+          <motion.div
+            className="mt-10 flex flex-col gap-3.5 rounded-xl border border-primary-foreground/15 bg-primary-foreground/10 p-5 text-sm"
+            initial={{ y: 20, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          >
+            <a
+              href={`mailto:${EMAIL}`}
+              className="flex items-center gap-3 transition-opacity hover:opacity-80"
+            >
+              <MailIcon className="size-4 shrink-0" aria-hidden="true" />
+              {EMAIL}
+            </a>
+            <a
+              href={`tel:${PHONE.replace(/\s/g, '')}`}
+              className="flex items-center gap-3 transition-opacity hover:opacity-80"
+            >
+              <PhoneIcon className="size-4 shrink-0" aria-hidden="true" />
+              {PHONE}
+            </a>
+            <p className="flex items-center gap-3 text-primary-foreground/75">
+              <ClockIcon className="size-4 shrink-0" aria-hidden="true" />
+              Mon–Fri within the hour · weekends same day
+            </p>
+          </motion.div>
         </motion.div>
       </div>
     </section>
