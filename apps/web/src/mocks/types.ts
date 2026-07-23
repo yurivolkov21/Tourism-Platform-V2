@@ -53,6 +53,12 @@ export interface MockJournalPost {
   author: string;
 }
 
+/** Người dùng đăng nhập giả cho navbar — nguồn thật là Better Auth (phase auth) */
+export interface MockSessionUser {
+  name: string;
+  email: string;
+}
+
 export interface MockMoment {
   /** Khoảnh khắc trải nghiệm của khách trên hành trình (slider ở Stats) */
   title: string;

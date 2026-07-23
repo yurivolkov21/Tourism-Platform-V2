@@ -59,7 +59,10 @@ function TestimonialCard({ item }: { item: MockTestimonial }) {
 
 export function Testimonials() {
   return (
-    <section className="w-full overflow-hidden bg-muted px-4 py-20 md:px-16 md:py-40 lg:px-24 xl:px-32">
+    <section
+      id="reviews"
+      className="w-full overflow-hidden bg-muted px-4 py-20 md:px-16 md:py-40 lg:px-24 xl:px-32"
+    >
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-start justify-start gap-4 lg:grid-cols-12 lg:gap-2">
         {/* Cột trái: heading */}
         <div className="mt-20 flex flex-col items-start lg:col-span-5">

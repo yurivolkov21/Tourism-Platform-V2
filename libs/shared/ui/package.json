@@ -15,6 +15,7 @@
   },
   "devDependencies": {
     "@types/react": "^19",
+    "@types/react-dom": "^19.2.3",
     "typescript": "^5",
     "vitest": "4.1.10"
   },
@@ -24,8 +25,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
-    "@tourism/tokens": "workspace:*",
     "@shadcn/react": "^0.2.1",
+    "@tourism/tokens": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

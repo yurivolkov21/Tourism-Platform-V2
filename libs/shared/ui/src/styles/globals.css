@@ -17,3 +17,11 @@
     @apply font-sans;
   }
 }
+/* AnimatedThemeToggler (@magicui, review navbar #1): tắt cross-fade mặc định
+ * của View Transitions — hiệu ứng lan tròn do component tự animate clip-path
+ * trên ::view-transition-new(root). */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

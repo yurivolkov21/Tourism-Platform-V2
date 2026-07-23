@@ -18,7 +18,7 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
     links: [
       ['Tours', '#tours'],
       ['Destinations', '#gallery'],
-      ['Reviews', '#top'],
+      ['Reviews', '#reviews'],
       ['Contact', '#contact'],
       ['Journal', '#journal'],
     ],

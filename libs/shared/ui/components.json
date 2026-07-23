@@ -13,8 +13,11 @@
   "aliases": {
     "components": "@tourism/ui/components",
     "utils": "@tourism/ui/lib/utils",
-    "hooks": "@tourism/ui/hooks",
+    "ui": "@tourism/ui/components",
     "lib": "@tourism/ui/lib",
-    "ui": "@tourism/ui/components"
+    "hooks": "@tourism/ui/hooks"
+  },
+  "registries": {
+    "@magicui": "https://magicui.design/r/{name}"
   }
 }

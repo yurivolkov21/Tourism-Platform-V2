@@ -44,7 +44,20 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${sans.variable} ${heading.variable} ${mono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Áp theme đã lưu TRƯỚC paint đầu (đọc localStorage của
+            AnimatedThemeToggler, fallback theo hệ) — không có script này thì
+            trang dark bị chớp trắng mỗi lần tải lại. Chạy trước hydrate nên
+            html cần suppressHydrationWarning. */}
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: script tĩnh nội bộ, không có input người dùng
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col">
         <MotionProvider>
           <LenisScroll />

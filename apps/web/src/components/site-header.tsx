@@ -1,17 +1,33 @@
 'use client';
 
+import { AnimatedThemeToggler } from '@tourism/ui/components/animated-theme-toggler';
 import { MenuIcon, XIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { DestinationsMenu } from './destinations-menu';
 import { Logo } from './logo';
+import { UserMenu } from './user-menu';
 
 // Convert từ Estate navbar.tsx: nav fixed trong suốt nằm trên hero (chữ sáng),
-// cuộn quá 50px thì thu thành pill nổi bg blur (chữ theo theme). Link các trang
-// chưa có trỏ anchor section — thay dần khi từng trang được user chốt.
+// cuộn quá 50px thì thu thành pill nổi bg blur (chữ theo theme).
+// Nâng cấp review navbar (đối chiếu Nexora site-header): Destinations thành
+// dropdown NavigationMenu · cụm action = AnimatedThemeToggler (magicui, lan
+// tròn View Transitions) + UserMenu (Log in / avatar dropdown theo mock) +
+// nút Book a tour. Mọi mảnh đều nhận "skin" theo 2 chế độ nền của navbar.
 const NAV_LINKS = [
   { label: 'Tours', href: '#tours' },
-  { label: 'Destinations', href: '#gallery' },
-  { label: 'Reviews', href: '#top' },
+  { label: 'Reviews', href: '#reviews' },
   { label: 'Contact', href: '#contact' },
+];
+
+// Link phẳng cho overlay mobile — bung Destinations thành từng vùng (kiểu Nexora)
+const MOBILE_LINKS = [
+  { label: 'Tours', href: '#tours' },
+  { label: 'Destinations — North', href: '#gallery' },
+  { label: 'Destinations — Central', href: '#gallery' },
+  { label: 'Destinations — South', href: '#gallery' },
+  { label: 'Reviews', href: '#reviews' },
+  { label: 'Contact', href: '#contact' },
+  { label: 'Log in', href: '/login' },
 ];
 
 export function SiteHeader() {
@@ -31,6 +47,15 @@ export function SiteHeader() {
       : 'text-on-media hover:text-on-media/90'
   }`;
 
+  // Skin cho trigger dropdown + nút icon: trên hero phải sáng chữ, nền hover
+  // trong mờ thay vì muted (đè style mặc định của navigationMenuTriggerStyle)
+  const triggerSkin = scrolled
+    ? ''
+    : 'text-on-media hover:bg-on-media/10 focus:bg-on-media/10 data-open:bg-on-media/10 data-popup-open:bg-on-media/10 hover:text-on-media';
+  const iconButtonClass = `flex size-9 cursor-pointer items-center justify-center rounded-full transition-colors duration-500 [&_svg]:size-4.5 ${
+    scrolled ? 'text-foreground hover:bg-muted' : 'text-on-media hover:bg-on-media/10'
+  }`;
+
   return (
     <>
       <nav
@@ -47,44 +72,55 @@ export function SiteHeader() {
           </span>
         </a>
 
-        <div className="hidden items-center gap-6 text-sm md:flex md:gap-10">
-          {NAV_LINKS.map((l) => (
+        <div className="hidden items-center gap-2 text-sm md:flex lg:gap-6">
+          <a href="#tours" className={linkClass}>
+            Tours
+          </a>
+          <DestinationsMenu triggerClassName={`text-sm font-normal ${triggerSkin}`} />
+          {NAV_LINKS.slice(1).map((l) => (
             <a key={l.label} href={l.href} className={linkClass}>
               {l.label}
             </a>
           ))}
         </div>
 
-        <button
-          type="button"
-          className={`hidden cursor-pointer rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-500 md:block ${
-            scrolled
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-              : 'bg-card text-card-foreground hover:bg-card/85'
-          }`}
-        >
-          Book a tour
-        </button>
+        <div className="hidden items-center gap-2 md:flex">
+          <AnimatedThemeToggler className={iconButtonClass} />
+          <UserMenu linkClassName={`px-2 text-sm ${linkClass}`} />
+          <button
+            type="button"
+            className={`cursor-pointer rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-500 ${
+              scrolled
+                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                : 'bg-card text-card-foreground hover:bg-card/85'
+            }`}
+          >
+            Book a tour
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={() => setMobileOpen(true)}
-          aria-label="Open menu"
-          className={`cursor-pointer rounded-md p-2 transition md:hidden ${
-            scrolled ? 'text-foreground' : 'text-on-media'
-          }`}
-        >
-          <MenuIcon className="size-6" aria-hidden="true" />
-        </button>
+        <div className="flex items-center gap-1 md:hidden">
+          <AnimatedThemeToggler className={iconButtonClass} />
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            aria-label="Open menu"
+            className={`cursor-pointer rounded-md p-2 transition ${
+              scrolled ? 'text-foreground' : 'text-on-media'
+            }`}
+          >
+            <MenuIcon className="size-6" aria-hidden="true" />
+          </button>
+        </div>
       </nav>
 
       {/* Overlay menu mobile — trượt ngang toàn màn, blur nền (pattern template) */}
       <div
         className={`${
           mobileOpen ? 'max-md:w-full' : 'max-md:w-0'
-        } flex items-center gap-6 text-sm max-md:fixed max-md:top-0 max-md:left-0 max-md:z-(--z-overlay) max-md:h-full max-md:flex-col max-md:justify-center max-md:overflow-hidden max-md:bg-background/80 max-md:backdrop-blur-xl max-md:transition-all max-md:duration-300 md:hidden`}
+        } flex items-center gap-5 text-sm max-md:fixed max-md:top-0 max-md:left-0 max-md:z-(--z-overlay) max-md:h-full max-md:flex-col max-md:justify-center max-md:overflow-hidden max-md:bg-background/80 max-md:backdrop-blur-xl max-md:transition-all max-md:duration-300 md:hidden`}
       >
-        {NAV_LINKS.map((l) => (
+        {MOBILE_LINKS.map((l) => (
           <a
             key={l.label}
             href={l.href}
