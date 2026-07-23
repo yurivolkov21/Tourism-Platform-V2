@@ -1,0 +1,91 @@
+import type { MockTour } from './types.js';
+
+// 6 tour mock phủ đủ 3 vùng — copy tiếng Anh (luật #7), địa danh giữ dấu.
+export const TOURS: MockTour[] = [
+  {
+    slug: 'ha-long-bay-cruise',
+    title: 'Ha Long Bay Cruise — 2 days',
+    region: 'north',
+    place: 'Quảng Ninh · junk boat · kayaking',
+    days: 2,
+    priceUsd: 189,
+    compareUsd: 236,
+    rating: 4.9,
+    reviews: 1204,
+    tags: ['Nature', 'Easy'],
+    image: '/mock/halong.jpg',
+    flag: '−20% TODAY',
+    summary:
+      'Two days aboard a traditional junk boat with kayaking, a cave visit, and fresh seafood dinners under lantern light.',
+  },
+  {
+    slug: 'sa-pa-terraces-trek',
+    title: 'Sa Pa Terraces Trek — 3 days',
+    region: 'north',
+    place: 'Lào Cai · homestay · rice season',
+    days: 3,
+    priceUsd: 145,
+    rating: 4.8,
+    reviews: 897,
+    tags: ['Trekking', 'Homestay'],
+    image: '/mock/sapa.jpg',
+    summary:
+      'Walk the mist-covered terraces with a local guide, sleep in a village homestay, and wake to valley sunrise.',
+  },
+  {
+    slug: 'hoi-an-lantern-evening',
+    title: 'Hoi An Lantern Evening',
+    region: 'central',
+    place: 'Quảng Nam · old town · street food',
+    days: 1,
+    priceUsd: 59,
+    rating: 4.9,
+    reviews: 2036,
+    tags: ['Culture', 'Food'],
+    image: '/mock/hoian.jpg',
+    summary:
+      'Wander the old town as thousands of lanterns light up, then eat your way through the night market.',
+  },
+  {
+    slug: 'hue-imperial-day',
+    title: 'Hue Imperial Day',
+    region: 'central',
+    place: 'Thừa Thiên Huế · citadel · royal cuisine',
+    days: 1,
+    priceUsd: 75,
+    rating: 4.7,
+    reviews: 643,
+    tags: ['Heritage', 'Guided'],
+    image: '/mock/hue.jpg',
+    summary:
+      'Walk the Meridian Gate into the Imperial City, then finish with a royal-style lunch by the Perfume River.',
+  },
+  {
+    slug: 'mekong-delta-boats',
+    title: 'Mekong Delta Boats — 2 days',
+    region: 'south',
+    place: 'Cần Thơ · floating market · orchards',
+    days: 2,
+    priceUsd: 129,
+    rating: 4.8,
+    reviews: 758,
+    tags: ['River life', 'Local food'],
+    image: '/mock/mekong.jpg',
+    summary:
+      'Catch the dawn floating market at Cái Răng, drift through coconut canals, and stay the night with a farming family.',
+  },
+  {
+    slug: 'da-nang-coast-ride',
+    title: 'Da Nang Coast Ride',
+    region: 'central',
+    place: 'Đà Nẵng · Golden Bridge · Hải Vân pass',
+    days: 1,
+    priceUsd: 89,
+    rating: 4.6,
+    reviews: 512,
+    tags: ['Scenic', 'Photo stops'],
+    image: '/mock/danang.jpg',
+    summary:
+      'Cross the Golden Bridge at Bà Nà Hills, then ride the Hải Vân pass with photo stops over the coast.',
+  },
+];
