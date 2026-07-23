@@ -3,19 +3,13 @@
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import { TOURS } from '@/mocks/tours';
+import { MOMENTS } from '@/mocks/moments';
 
-// Convert từ PrebuiltUI "Image Slider with Indicators" (review #10, thay
-// hover-expand gallery): slider trượt ngang + chấm indicator, tự chạy 4s/slide
-// (dừng khi hover hoặc reduced-motion), bấm chấm để nhảy slide.
-// Thu ~13% so với cột (w-[87%]) theo yêu cầu giảm tỉ lệ 10–15%.
-const SLIDES = TOURS.slice(0, 5);
-
-const usd = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  maximumFractionDigits: 0,
-});
+// Convert từ PrebuiltUI "Image Slider with Indicators" (review #10; #11 đổi
+// nội dung sang KHOẢNH KHẮC TRẢI NGHIỆM của khách — bằng chứng sống đứng cạnh
+// số liệu social proof, không phải danh mục tour): tự chạy 4s/slide (dừng khi
+// hover / reduced-motion), bấm chấm nhảy slide. Thu ~13% so với cột.
+const SLIDES = MOMENTS;
 
 export function StatsSlider() {
   const [index, setIndex] = useState(0);
@@ -33,7 +27,7 @@ export function StatsSlider() {
   return (
     <section
       aria-roledescription="carousel"
-      aria-label="Featured tours"
+      aria-label="Traveler moments"
       className="mx-auto w-full self-center lg:w-[87%]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -43,10 +37,10 @@ export function StatsSlider() {
           className="flex transition-transform duration-500 ease-out"
           style={{ transform: `translateX(-${index * 100}%)` }}
         >
-          {SLIDES.map((tour) => (
-            <div key={tour.slug} className="w-full shrink-0">
+          {SLIDES.map((moment) => (
+            <div key={moment.title} className="w-full shrink-0">
               <ImagePlaceholder
-                label={`${tour.title} — from ${usd.format(tour.priceUsd)} / person`}
+                label={`${moment.title} — ${moment.credit}`}
                 className="aspect-(--aspect-card) w-full"
               />
             </div>
@@ -55,11 +49,11 @@ export function StatsSlider() {
 
         {/* Chấm indicator — chấm active giãn dài, bấm để nhảy slide */}
         <div className="absolute inset-x-0 bottom-3 flex items-center justify-center gap-2">
-          {SLIDES.map((tour, i) => (
+          {SLIDES.map((moment, i) => (
             <button
-              key={tour.slug}
+              key={moment.title}
               type="button"
-              aria-label={`Slide ${i + 1}: ${tour.title}`}
+              aria-label={`Slide ${i + 1}: ${moment.title}`}
               aria-current={i === index || undefined}
               onClick={() => setIndex(i)}
               className={`h-2 cursor-pointer rounded-full transition-all duration-300 ${

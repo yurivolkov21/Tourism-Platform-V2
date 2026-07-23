@@ -48,3 +48,10 @@ export interface MockJournalPost {
   readMinutes: number;
   image: string;
 }
+
+export interface MockMoment {
+  /** Khoảnh khắc trải nghiệm của khách trên hành trình (slider ở Stats) */
+  title: string;
+  /** "Tên khách, tên tour" */
+  credit: string;
+}
