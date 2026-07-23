@@ -13,13 +13,14 @@ import { UserMenu } from './user-menu';
 // dropdown NavigationMenu · cụm action = AnimatedThemeToggler (magicui, lan
 // tròn View Transitions) + UserMenu (Log in / avatar dropdown theo mock) +
 // nút Book a tour. Mọi mảnh đều nhận "skin" theo 2 chế độ nền của navbar.
-// Thứ tự theo Nexora (Tours · Destinations · Blog · About · Contact) + Reviews.
-// About Us tạm trỏ #top — trang /about là mục kế tiếp của lộ trình; Travel
-// Blog trỏ section Journal, sau thành /blog.
+// Thứ tự theo Nexora (Tours · Destinations · Blog · About · Contact) — navbar
+// chỉ chứa đích đến là TRANG thật (review navbar #3: bỏ Reviews vì nó mãi là
+// section trong Home, link tới nó vẫn còn ở footer). About Us tạm trỏ #top —
+// trang /about là mục kế tiếp của lộ trình; Travel Blog trỏ section Journal,
+// sau thành /blog.
 const NAV_LINKS = [
   { label: 'Travel Blog', href: '#journal' },
   { label: 'About Us', href: '#top' },
-  { label: 'Reviews', href: '#reviews' },
   { label: 'Contact', href: '#contact' },
 ];
 
@@ -31,7 +32,6 @@ const MOBILE_LINKS = [
   { label: 'Destinations — South', href: '#gallery' },
   { label: 'Travel Blog', href: '#journal' },
   { label: 'About Us', href: '#top' },
-  { label: 'Reviews', href: '#reviews' },
   { label: 'Contact', href: '#contact' },
   { label: 'Log in', href: '/login' },
 ];
