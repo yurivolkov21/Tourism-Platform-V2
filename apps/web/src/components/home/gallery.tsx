@@ -7,6 +7,7 @@ import { TiltCard } from '@/components/motion/tilt-card';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 import type { MockRegionKey } from '@/mocks/types';
+import { JourneyScrubber, type ScrubberHandle } from './journey-scrubber';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Gallery cuộn ngang (sticky, cơ chế Estate) — 9 địa điểm 3/vùng Bắc→Trung→Nam,
@@ -19,6 +20,7 @@ export function Gallery() {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [activeRegion, setActiveRegion] = useState<MockRegionKey>('north');
+  const scrubberRef = useRef<ScrubberHandle>(null);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -40,6 +42,7 @@ export function Gallery() {
       track.style.transform = `translateX(-${progress * limit}px)`;
       // 9 card chia đều 3-3-3 → vùng đang xem theo phần ba tiến độ
       setActiveRegion(progress < 1 / 3 ? 'north' : progress < 2 / 3 ? 'central' : 'south');
+      scrubberRef.current?.set(progress);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -60,7 +63,7 @@ export function Gallery() {
         {/* Header CĂN GIỮA kiểu PrebuiltUI Feature Sections, nằm TRONG khung sticky —
             tận dụng khoảng trắng trên track, đứng yên suốt hành trình cuộn (review #17,
             combo phương án 1+2). */}
-        <div className="mx-auto w-full max-w-3xl px-6 pt-32 text-center">
+        <div className="mx-auto w-full max-w-5xl px-6 pt-32 text-center">
           <div className="flex justify-center">
             <SectionEyebrow>Destinations</SectionEyebrow>
           </div>
@@ -74,7 +77,7 @@ export function Gallery() {
             From the northern mists to the southern delta
           </motion.h2>
           <motion.p
-            className="mx-auto mt-2 max-w-[480px] text-sm text-muted-foreground md:text-base"
+            className="mx-auto mt-2 max-w-[640px] text-sm text-muted-foreground md:text-base"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
@@ -123,25 +126,22 @@ export function Gallery() {
           </div>
         </div>
 
-        {/* Hint động — vùng đang xem đổi theo tiến độ (phương án C) */}
-        <p
-          data-region={activeRegion}
-          className="flex items-center justify-center gap-2 pb-6 text-sm text-muted-foreground"
-        >
-          <span
-            aria-hidden="true"
-            className="size-2 rounded-full transition-colors duration-500"
-            style={{ background: 'var(--region-primary)' }}
-          />
-          Now crossing:{' '}
-          <span
-            className="font-semibold transition-colors duration-500"
-            style={{ color: 'var(--region-primary)' }}
-          >
-            {REGION_NAME.get(activeRegion)}
-          </span>
-          <span aria-hidden="true">· keep scrolling →</span>
-        </p>
+        {/* Scrubber hành trình (review #18): kéo badge = tua track; scroll là nguồn sự thật */}
+        <JourneyScrubber
+          activeRegion={activeRegion}
+          handleRef={scrubberRef}
+          onScrub={(p) => {
+            const container = containerRef.current;
+            if (!container) {
+              return;
+            }
+            const rect = container.getBoundingClientRect();
+            const sectionTop = rect.top + window.scrollY;
+            const maxScroll = rect.height - window.innerHeight;
+            // Nhảy tức thời để không giành quyền với Lenis khi kéo liên tục
+            window.scrollTo({ top: sectionTop + p * maxScroll, behavior: 'instant' });
+          }}
+        />
       </div>
     </section>
   );
