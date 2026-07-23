@@ -2,6 +2,41 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-23 — P3b: trang Home tĩnh hoàn chỉnh (branch `feat/home-page`, merge `2d98be3`)
+
+Trang Home static-first đầu tiên của P3b — 40 commit, **33 vòng điều chỉnh** review
+từng-section với user (quy trình: demo → user review local → điều chỉnh đánh số).
+Nguồn thiết kế: convert **nguyên bố cục template Estate** (quyết định vòng 1 sau khi
+bản tự-compose bị chê "chán"), sau đó thay/bồi từng section bằng convert từ
+**forged** (Partners marquee, CTA banner tràn viền, footer newsletter+watermark,
+Journal/Insight Hub, thanh cuộn 4px + ::selection) — luật chung: *bố cục + motion
+100% template, da thịt 100% token/font dự án* (bài học #25: không ép Literata
+ALL-CAPS 900).
+- **10 khối**: Hero fullscreen · Partners marquee · Stats (CountUp + slider) ·
+  Destinations sticky-scroll ngang (9 địa danh 3 vùng, chip tint `--region-*`) ·
+  WhyChooseUs (accordion + ảnh đổi theo mục + caption/chấm điều hướng) ·
+  Testimonials (marquee dọc 2 cột ngược chiều + bảng điểm 4.9 tính từ mock) ·
+  Journal (3 card, khôi phục sau khi bị bỏ rơi ở vòng convert) · CTA banner
+  (heading 2 dòng accent italic, nút glow) · Contact (form icon-field + panel
+  primary gradient: timeline 3 bước + card liên hệ, lai Nexora "Plan your trip") ·
+  shell TopBar/pill-navbar/footer/ScrollToTop (convert Nexora).
+- **Mocks = công cụ khám phá schema** (`apps/web/src/mocks/`, 8 test bất biến):
+  ứng viên đã ghi chú tại chỗ — destinations · trip_moments · announcements ·
+  newsletter_subscribers · blog_posts.
+- **Chính sách placeholder**: mọi ảnh dùng `ImagePlaceholder` (kèm biến thể
+  `corner`); ảnh thật thay khi trang chốt. 7 ảnh Commons/Unsplash đã tải sẵn
+  (CREDITS.md) cho lúc đó.
+- **Nợ ghi nhận cho lúc gắn API** (đối chiếu Nexora): form Contact/newsletter
+  đang no-op — phải vá validate + honeypot + rate-limit + success state như
+  `plan-trip-form` Nexora; độ giàu trường (phone·groupSize·budget·interests) là
+  quyết định sản phẩm còn mở.
+Review findings đáng nhớ: import sót sau xóa file làm typecheck đỏ (bắt trước khi
+giao — bài học replace-không-assert); flex `justify-between` vỡ khi thêm con thứ 3
+(bọc khối); watermark đè link sửa bằng z-âm; JourneyScrubber thử rồi gỡ theo review
+(#20) — giá thử rẻ vì component độc lập.
+Tests after: gate:int xanh 18/18 task — web unit 8 (mocks) · tokens 10 · ui 5 ·
+API int 145/17 file · typecheck · biome sạch.
+
 ## 2026-07-22 — P3b: bộ font chính thức (branch `feat/fonts-final`, merge `9e26959`)
 
 Chốt bộ 3 font theo vai trò sau 2 vòng specimen trực quan với user (font thật nhúng
