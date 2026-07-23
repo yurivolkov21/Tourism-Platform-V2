@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AboutHero } from '@/components/about/about-hero';
+import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
 import { AboutTimeline } from '@/components/about/about-timeline';
 
@@ -7,7 +8,8 @@ import { AboutTimeline } from '@/components/about/about-timeline';
 // (quy trình: demo section → review → chốt → section kế). Lineup đã chốt
 // 7 khối: Hero · Story · Timeline · Numbers · Team · Partners · CTA.
 // Hiện có: §1 Hero (forged/Hero) · §2 Story (forged/About) · §3 Timeline
-// (prompt2app/build-process — trục tự vẽ theo scroll).
+// (prompt2app/build-process — trục tự vẽ theo scroll) · §4 Numbers
+// (forged/Stats — lưới hairline + watermark).
 export const metadata: Metadata = {
   title: 'About us — Tourism',
   description: 'Small-group tours across Vietnam, led by people who grew up there.',
@@ -19,6 +21,7 @@ export default function AboutPage() {
       <AboutHero />
       <AboutStory />
       <AboutTimeline />
+      <AboutNumbers />
     </>
   );
 }
