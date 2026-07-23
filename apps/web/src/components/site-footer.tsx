@@ -72,10 +72,11 @@ export function SiteFooter() {
           <p>Photos: Wikimedia Commons contributors &amp; Unsplash (see credits).</p>
         </div>
 
-        {/* Watermark chữ khổng lồ chìm trên nền — vị trí bottom-right như template */}
+        {/* Watermark chữ khổng lồ — z ÂM để nét outline nằm DƯỚI chữ nội dung
+            (sửa luôn lỗi bản gốc Estate vẽ watermark đè lên link — review #8, phương án B) */}
         <span
           aria-hidden="true"
-          className="footer-watermark pointer-events-none absolute -right-4 bottom-9 font-heading text-[clamp(7rem,19vw,15rem)] leading-none font-semibold select-none"
+          className="footer-watermark pointer-events-none absolute -right-4 bottom-9 -z-10 font-heading text-[clamp(7rem,19vw,15rem)] leading-none font-semibold select-none"
         >
           tourism
         </span>
