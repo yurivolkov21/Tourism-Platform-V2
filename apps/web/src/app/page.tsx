@@ -2,6 +2,7 @@ import { CallToAction } from '@/components/home/call-to-action';
 import { Contact } from '@/components/home/contact';
 import { Gallery } from '@/components/home/gallery';
 import { Hero } from '@/components/home/hero';
+import { Journal } from '@/components/home/journal';
 import { Partners } from '@/components/home/partners';
 import { Stats } from '@/components/home/stats';
 import { Testimonials } from '@/components/home/testimonials';
@@ -20,6 +21,9 @@ export default function HomePage() {
       <Gallery />
       <WhyChooseUs />
       <Testimonials />
+      {/* Journal trắng chen giữa Testimonials (muted) và CTA (tối) — nhịp nền
+          sáng/tối xen kẽ (review #33) */}
+      <Journal />
       <CallToAction />
       <Contact />
     </>

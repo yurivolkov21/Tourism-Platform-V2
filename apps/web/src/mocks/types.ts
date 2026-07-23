@@ -47,6 +47,10 @@ export interface MockJournalPost {
   date: string;
   readMinutes: number;
   image: string;
+  /** Chuyên mục hiển thị trên chip card (review #33 — convert forged/Blog) */
+  category: string;
+  /** Tác giả — guide bản địa, khớp câu chuyện thương hiệu */
+  author: string;
 }
 
 export interface MockMoment {

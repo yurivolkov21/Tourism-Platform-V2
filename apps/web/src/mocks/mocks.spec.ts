@@ -54,6 +54,9 @@ describe('mock regions / testimonials / journal', () => {
     expect(JOURNAL_POSTS).toHaveLength(3);
     for (const p of JOURNAL_POSTS) {
       expect(existsSync(join(PUBLIC_DIR, p.image)), p.image).toBe(true);
+      // Card Journal (#33, convert forged/Blog) cần chip chuyên mục + tác giả
+      expect(p.category.length, p.slug).toBeGreaterThan(0);
+      expect(p.author.length, p.slug).toBeGreaterThan(0);
     }
   });
 });

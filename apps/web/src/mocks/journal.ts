@@ -1,5 +1,8 @@
 import type { MockJournalPost } from './types.js';
 
+// Ứng viên schema khi gắn API (tiền đề hệ blogs như Nexora): bảng blog_posts
+// (slug · title · excerpt · category · author · published_at · read_minutes ·
+// hero_image) — shape này là bản nháp khám phá, chốt lúc reconcile Prisma.
 export const JOURNAL_POSTS: MockJournalPost[] = [
   {
     slug: 'what-to-pack-for-the-mist-season',
@@ -9,6 +12,8 @@ export const JOURNAL_POSTS: MockJournalPost[] = [
     date: '2026-10-02',
     readMinutes: 6,
     image: '/mock/journal-mist.jpg',
+    category: 'Packing',
+    author: 'Mai — Sa Pa guide',
   },
   {
     slug: 'eating-your-way-through-hoi-an',
@@ -18,6 +23,8 @@ export const JOURNAL_POSTS: MockJournalPost[] = [
     date: '2026-09-18',
     readMinutes: 8,
     image: '/mock/hoian.jpg',
+    category: 'Food',
+    author: 'Linh — Hội An guide',
   },
   {
     slug: 'floating-markets-before-sunrise',
@@ -27,5 +34,7 @@ export const JOURNAL_POSTS: MockJournalPost[] = [
     date: '2026-08-30',
     readMinutes: 5,
     image: '/mock/mekong.jpg',
+    category: 'Markets',
+    author: 'Tâm — Cần Thơ guide',
   },
 ];
