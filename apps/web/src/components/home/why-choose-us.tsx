@@ -16,17 +16,11 @@ import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate why-choose-us.tsx: accordion trái (mở mục nào thì ảnh phải
 // đổi theo mục đó, transition scale+fade), nội dung sang tours.
-// Review #26 (B+C): thêm quote guide bản địa dưới heading (lấp khoảng trống
-// trái, thêm chất người cho lời hứa "people who call it home") + dải caption
-// động dưới ảnh (hiện tên mục đang mở + chấm điều hướng — làm cơ chế
-// accordion-đổi-ảnh hiện hình thay vì ngầm).
+// Review #26: thêm dải caption động dưới ảnh (hiện tên mục đang mở + chấm
+// điều hướng — làm cơ chế accordion-đổi-ảnh hiện hình thay vì ngầm).
+// Review #27: quote guide (từng thêm ở #26) bị gỡ theo review — khoảng
+// trống dưới heading trả về nhịp thở nguyên bản của Estate.
 const DEFAULT_IMAGE_LABEL = 'Golden Bridge, Đà Nẵng';
-
-const GUIDE_QUOTE = {
-  text: 'I take people across the terraces my grandfather planted. That is the whole job.',
-  name: 'Mai',
-  role: 'Local guide, Sa Pa',
-};
 
 const ITEMS = [
   {
@@ -85,32 +79,7 @@ export function WhyChooseUs() {
             Travel Vietnam with people who call it home
           </motion.h2>
 
-          {/* Quote guide bản địa (B) — nằm trong khoảng trống cũ giữa heading và accordion */}
-          <motion.figure
-            className="mt-8 flex max-w-100 items-start gap-4"
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.15, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
-          >
-            {/* Avatar chữ cái đầu — cùng hệ với avatar testimonials */}
-            <span
-              aria-hidden="true"
-              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-heading text-base font-semibold text-primary"
-            >
-              {GUIDE_QUOTE.name.charAt(0)}
-            </span>
-            <div>
-              <blockquote className="font-heading text-sm text-foreground/80 italic md:text-base">
-                “{GUIDE_QUOTE.text}”
-              </blockquote>
-              <figcaption className="mt-1.5 text-xs text-muted-foreground">
-                {GUIDE_QUOTE.name} — {GUIDE_QUOTE.role}
-              </figcaption>
-            </div>
-          </motion.figure>
-
-          <div className="mt-8 flex w-full flex-col gap-4 md:mt-10">
+          <div className="mt-12 flex w-full flex-col gap-4 md:mt-16">
             {ITEMS.map((item, index) => {
               const isOpen = openIndex === index;
               return (
