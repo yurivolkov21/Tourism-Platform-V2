@@ -63,3 +63,28 @@
     --banner-offset: 2.25rem;
   }
 }
+
+/* ── Marquee ngang cho tagline top-bar: hai group giống hệt nhau nối đuôi,
+ * dịch -50% rồi lặp = chạy liên tục không khớp nối. Hover dừng để đọc. ── */
+@keyframes marquee-left {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-marquee-left {
+  animation: marquee-left 28s linear infinite;
+}
+
+.animate-marquee-left:hover {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-marquee-left {
+    animation: none;
+  }
+}
