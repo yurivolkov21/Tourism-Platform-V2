@@ -4,29 +4,37 @@ import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 
-// Convert từ Estate call-to-action.tsx: 3 ảnh xòe quạt (hover xòe rộng thêm),
-// heading + mô tả + nút mũi tên trượt. Ảnh lấy từ mock tours.
+// Review #21 (phương án A): thay CTA cột-giữa của Estate bằng banner tràn viền
+// convert từ forged/CTABanner — nền ảnh phủ kín + scrim tối + nội dung căn giữa
+// + 2 nút (primary + outline). Khoảng trống hai bên biến mất vì nền ảnh chính
+// là nội dung. Nền dùng dark-scope + ImagePlaceholder như hero (ảnh thật thay
+// sau khi trang chốt); gradient nhấn từ token primary thay neon hardcode.
 export function CallToAction() {
   return (
-    <section className="flex w-full flex-col items-center justify-center px-4 py-36 text-center md:px-16 lg:px-24 xl:px-32">
-      <div className="mx-auto flex max-w-4xl flex-col items-center">
-        <div className="group/cta-images relative mb-12 flex h-[200px] w-full max-w-sm items-center justify-center overflow-hidden select-none md:h-[220px] md:max-w-[600px] md:overflow-visible">
-          <ImagePlaceholder
-            label="Sa Pa terraces"
-            className="absolute z-0 h-[100px] w-[200px] origin-bottom-right -rotate-12 translate-x-[-115px] translate-y-4 rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-x-[-155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-[-16deg] md:h-[139px] md:w-[251px]"
-          />
-          <ImagePlaceholder
-            label="Hội An lanterns"
-            className="absolute z-0 h-[100px] w-[200px] origin-bottom-left rotate-12 translate-x-[115px] translate-y-4 rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-x-[155px] group-hover/cta-images:translate-y-2 group-hover/cta-images:rotate-16 md:h-[139px] md:w-[251px]"
-          />
-          <ImagePlaceholder
-            label="Hạ Long bay"
-            className="absolute z-10 h-[100px] w-[200px] translate-y-[-10px] rounded-[10px] transition-all duration-500 ease-out group-hover/cta-images:translate-y-[-22px] group-hover/cta-images:scale-105 md:h-[139px] md:w-[251px]"
-          />
-        </div>
+    <section className="relative w-full overflow-hidden py-28 text-on-media md:py-36">
+      {/* Nền banner: placeholder + scrim + vệt gradient nhấn màu chủ đạo */}
+      <div className="dark absolute inset-0 -z-10">
+        <ImagePlaceholder corner label="Banner — Mekong delta at dusk" className="h-full w-full" />
+        <div className="absolute inset-0 bg-overlay" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-linear-to-br from-primary/25 via-transparent to-transparent"
+        />
+      </div>
+
+      <div className="mx-auto flex max-w-4xl flex-col items-center px-4 text-center">
+        <motion.span
+          className="text-sm tracking-[0.2em] uppercase"
+          initial={{ y: -20, opacity: 0 }}
+          whileInView={{ y: 0, opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+        >
+          Ready when you are
+        </motion.span>
 
         <motion.h2
-          className="mb-3 max-w-[520px] font-heading text-3xl tracking-tight text-foreground md:text-[40px]"
+          className="mt-4 max-w-3xl font-heading text-3xl leading-tight tracking-tight md:text-5xl"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
@@ -36,7 +44,7 @@ export function CallToAction() {
         </motion.h2>
 
         <motion.p
-          className="mb-7 max-w-[400px] text-sm text-muted-foreground"
+          className="mt-4 max-w-md text-sm opacity-85 md:text-base"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
@@ -46,20 +54,41 @@ export function CallToAction() {
           a local plan the rest.
         </motion.p>
 
-        <motion.a
-          href="#contact"
-          className="group flex cursor-pointer items-center gap-2 rounded-lg bg-primary px-5 py-3.5 text-sm text-primary-foreground transition-all duration-200 hover:bg-primary/90"
+        <motion.div
+          className="mt-9 flex flex-col items-center gap-4 sm:flex-row"
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
         >
-          <span>Browse tours</span>
-          <MoveRightIcon
-            className="size-4 transition-transform duration-200 group-hover:translate-x-1"
-            aria-hidden="true"
-          />
-        </motion.a>
+          <a
+            href="#tours"
+            className="group flex cursor-pointer items-center gap-2 rounded-full bg-card px-7 py-3 text-sm font-medium text-card-foreground transition hover:bg-card/85"
+          >
+            <span>Browse tours</span>
+            <MoveRightIcon
+              className="size-4 transition-transform duration-200 group-hover:translate-x-1"
+              aria-hidden="true"
+            />
+          </a>
+          <a
+            href="#contact"
+            className="group cursor-pointer rounded-full border border-on-media/40 px-6 py-3 text-sm font-medium transition hover:border-on-media/70"
+          >
+            {/* Hiệu ứng chữ trượt dọc khi hover — đồng bộ với nút phụ của hero */}
+            <span className="relative block overflow-hidden">
+              <span className="block transition-transform duration-200 group-hover:-translate-y-full">
+                Talk to a local
+              </span>
+              <span
+                aria-hidden="true"
+                className="absolute top-0 left-0 block translate-y-full transition-transform duration-200 group-hover:translate-y-0"
+              >
+                Talk to a local
+              </span>
+            </span>
+          </a>
+        </motion.div>
       </div>
     </section>
   );

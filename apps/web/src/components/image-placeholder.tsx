@@ -5,7 +5,17 @@ import { ImageIcon } from 'lucide-react';
 // user — dùng placeholder thay ảnh thật, khi nào chốt trang mới thay media
 // thật. Nền muted + sọc chéo mảnh từ token border, icon + nhãn mô tả ảnh
 // sẽ nằm ở đó. Bọc trong scope `dark` nếu cần bản tối (vd nền hero).
-export function ImagePlaceholder({ label, className }: { label?: string; className?: string }) {
+export function ImagePlaceholder({
+  label,
+  className,
+  corner = false,
+}: {
+  label?: string;
+  className?: string;
+  /** Nép icon+nhãn xuống góc dưới-trái thay vì căn giữa — dùng khi placeholder
+      làm NỀN cho nội dung căn giữa (vd banner CTA) để nhãn không đè lên chữ. */
+  corner?: boolean;
+}) {
   return (
     <div
       className={cn(
@@ -17,8 +27,15 @@ export function ImagePlaceholder({ label, className }: { label?: string; classNa
         aria-hidden="true"
         className="absolute inset-0 opacity-60 [background:repeating-linear-gradient(45deg,transparent_0_14px,var(--border)_14px_15px)]"
       />
-      <span className="relative flex flex-col items-center gap-1.5 px-3 text-center text-muted-foreground">
-        <ImageIcon className="size-6" aria-hidden="true" />
+      <span
+        className={cn(
+          'text-muted-foreground',
+          corner
+            ? 'absolute bottom-3 left-3 flex items-center gap-1.5'
+            : 'relative flex flex-col items-center gap-1.5 px-3 text-center',
+        )}
+      >
+        <ImageIcon className={corner ? 'size-4' : 'size-6'} aria-hidden="true" />
         {label ? <span className="text-xs">{label}</span> : null}
       </span>
     </div>
