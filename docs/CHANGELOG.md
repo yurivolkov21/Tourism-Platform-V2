@@ -2,6 +2,33 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-23 — P3b: nâng cấp navbar (branch `feat/navbar-upgrade`, merge `4e8f981`)
+
+Điều chỉnh Home sau chốt (đổi hướng lộ trình: nhóm trang marketing trước
+listing) — navbar lên đủ đồ theo đối chiếu Nexora site-header, 6 vòng điều
+chỉnh với user:
+- **Destinations dropdown** (NavigationMenu Base UI): 3 vùng + hint + chấm màu
+  `--region-primary` theo `data-region` (lần đầu region token lên navbar);
+  trigger LỘT nền muted mặc định của shadcn để đồng bộ link trần (#2).
+- **UserMenu** (convert Nexora): chưa đăng nhập → "Log in" (/login, phase auth);
+  đã đăng nhập → avatar + dropdown (mock `MOCK_SESSION` trong mocks/auth.ts —
+  flip sang SAMPLE_USER để xem). Nav thêm Travel Blog (#journal) + About Us;
+  bỏ Reviews (#3 — navbar chỉ chứa đích đến là trang thật).
+- **AnimatedThemeToggler @magicui** vào `@tourism/ui` qua shadcn CLI (lan tròn
+  View Transitions) + script init theme trước paint đầu (localStorage/system,
+  chống chớp trắng khi reload) + `@types/react-dom` còn thiếu.
+- **2 bug dark-theme lộ ra khi user lần đầu bật được dark**: (a) autofill
+  Chrome ép nền trắng — vá inset-shadow theo token card + transition trick; ghi
+  chú giới hạn: trạng thái preview (`:-internal-autofill-previewed`) là UA cấm
+  đè, không fix được; (b) field Contact HAI lớp màu — `dark:bg-input/30` của
+  shadcn Input/Textarea không bị `bg-transparent` gỡ (khác variant), phải thêm
+  `dark:bg-transparent` tường minh.
+Review findings đáng nhớ: screenshot tự soát bắt lỗi `slice(1)` nuốt mất mục
+"Travel Blog" trước khi tới tay user; bài học tw-merge-không-gỡ-variant-khác
+vào comment BARE_FIELD.
+Tests after: gate:int xanh 18/18 task — int 145/17 · web 8 · tokens 10 · ui 5 ·
+typecheck · biome sạch; CI branch `success` 2m48s trước merge.
+
 ## 2026-07-23 — CI xanh lại + vá 5 alert Dependabot (branch `fix/ci-test-db-and-dep-vulns`, merge `69cac5a`)
 
 CI main đỏ **suốt 21→23/07** (từ merge ADR-0008) mà không ai nhận ra vì merge
