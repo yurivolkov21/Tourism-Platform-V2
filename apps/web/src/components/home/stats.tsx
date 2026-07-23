@@ -12,7 +12,7 @@ export function Stats() {
       {/* 2 cột (review #9): trái giữ nguyên thiết kế Estate, phải lấp bằng hover-expand gallery */}
       <div className="grid grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
         <div className="flex justify-center">
-          <div className="flex max-w-xl flex-col items-start">
+          <div className="flex w-full flex-col items-start">
             <SectionEyebrow>Tours across Vietnam</SectionEyebrow>
             <motion.h2
               className="mt-8 max-w-[610px] font-heading text-5xl leading-tight text-foreground md:text-6xl"
