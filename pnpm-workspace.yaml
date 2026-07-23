@@ -30,5 +30,15 @@ minimumReleaseAgeExclude:
 # nhưng vẫn ghim bản vá để repo sạch alert.
 # Ghim trong dòng 1.x: '>=1.19.13' sẽ kéo lên 2.0.x (nhảy major) và có thể phá
 # @prisma/dev vốn khai báo cho 1.x.
+# 23/07 — alert Dependabot #2 (path traversal serve-static, CHỈ Windows, vá ở
+# 2.0.5 không có backport 1.x): giữ nguyên ghim 1.x, alert được dismiss có ghi
+# lý do — code path không chạm tới (dev-tooling, WSL/Linux, không serve-static).
 overrides:
   '@hono/node-server': '^1.19.13'
+  # Alert #6 (high, libvips CVE 2026-33327/28 + 35590/91): sharp là optional dep
+  # của Next (image optimization, CÓ chạy ở prod) nhưng Next khai báo ^0.34 —
+  # ép qua override lên dòng đã vá.
+  sharp: '>=0.35.0'
+  # Alert #5 (medium, XSS qua </style> trong stringify): Next pin CỨNG postcss
+  # 8.4.31 nội bộ cho styled-jsx — override kéo mọi bản 8.x về dòng đã vá.
+  postcss: '>=8.5.10'
