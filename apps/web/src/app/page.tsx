@@ -1,15 +1,26 @@
-import { Button } from '@tourism/ui/components/button';
+import { CtaBand } from '@/components/home/cta-band';
+import { FeaturedTours } from '@/components/home/featured-tours';
+import { Hero } from '@/components/home/hero';
+import { JournalPreview } from '@/components/home/journal-preview';
+import { RegionsStrip } from '@/components/home/regions-strip';
+import { Stats } from '@/components/home/stats';
+import { Testimonials } from '@/components/home/testimonials';
+import { WhyUs } from '@/components/home/why-us';
+import { MotionProvider } from '@/components/motion/reveal';
 
-/**
- * Placeholder trang chủ P3b — scaffold Next 16 (ADR-0011). UI thật + bộ
- * components/blocks dùng chung (@tourism/ui) dựng ở bước phối hợp kế tiếp.
- */
-export default function Home() {
+// Trang Home tĩnh (static-first) — dữ liệu mock, thứ tự section theo spec
+// docs/specs/2026-07-23-home-page-design.md.
+export default function HomePage() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
-      <h1 className="font-semibold text-2xl tracking-tight">Tourism v2</h1>
-      <p className="text-sm opacity-70">Web (P3b) — scaffold + shadcn UI sẵn sàng.</p>
-      <Button>Demo button</Button>
-    </main>
+    <MotionProvider>
+      <Hero />
+      <FeaturedTours />
+      <RegionsStrip />
+      <WhyUs />
+      <Stats />
+      <Testimonials />
+      <JournalPreview />
+      <CtaBand />
+    </MotionProvider>
   );
 }
