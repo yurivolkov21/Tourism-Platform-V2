@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { DESTINATIONS } from './destinations.js';
 import { JOURNAL_POSTS } from './journal.js';
 import { REGIONS } from './regions.js';
 import { TESTIMONIALS } from './testimonials.js';
@@ -53,6 +54,34 @@ describe('mock regions / testimonials / journal', () => {
     expect(JOURNAL_POSTS).toHaveLength(3);
     for (const p of JOURNAL_POSTS) {
       expect(existsSync(join(PUBLIC_DIR, p.image)), p.image).toBe(true);
+    }
+  });
+});
+
+describe('mock destinations (gallery Home — review #14)', () => {
+  it('đúng 9 địa điểm, mỗi vùng 3, xếp liền nhau Bắc → Trung → Nam', () => {
+    expect(DESTINATIONS).toHaveLength(9);
+    // Nhóm liền mạch theo thứ tự vùng — không xen kẽ
+    expect(DESTINATIONS.map((d) => d.region)).toEqual([
+      'north',
+      'north',
+      'north',
+      'central',
+      'central',
+      'central',
+      'south',
+      'south',
+      'south',
+    ]);
+  });
+
+  it('tổng số tour mỗi vùng khớp với REGIONS (một nguồn sự thật)', () => {
+    for (const region of REGIONS) {
+      const sum = DESTINATIONS.filter((d) => d.region === region.key).reduce(
+        (acc, d) => acc + d.tourCount,
+        0,
+      );
+      expect(sum, region.key).toBe(region.tourCount);
     }
   });
 });

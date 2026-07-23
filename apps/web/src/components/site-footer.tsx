@@ -7,7 +7,7 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
     title: 'Explore',
     links: [
       ['Tours', '#tours'],
-      ['Gallery', '#gallery'],
+      ['Destinations', '#gallery'],
       ['Reviews', '#top'],
       ['Contact', '#contact'],
     ],

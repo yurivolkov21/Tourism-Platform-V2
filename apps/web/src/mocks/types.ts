@@ -55,3 +55,12 @@ export interface MockMoment {
   /** "Tên khách, tên tour" */
   credit: string;
 }
+
+export interface MockDestination {
+  slug: string;
+  name: string;
+  region: MockRegionKey;
+  /** Số tour featured tại địa điểm — tổng theo vùng phải khớp MockRegion.tourCount */
+  tourCount: number;
+  blurb: string;
+}

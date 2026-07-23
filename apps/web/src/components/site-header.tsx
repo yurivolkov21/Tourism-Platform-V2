@@ -9,7 +9,7 @@ import { Logo } from './logo';
 // chưa có trỏ anchor section — thay dần khi từng trang được user chốt.
 const NAV_LINKS = [
   { label: 'Tours', href: '#tours' },
-  { label: 'Gallery', href: '#gallery' },
+  { label: 'Destinations', href: '#gallery' },
   { label: 'Reviews', href: '#top' },
   { label: 'Contact', href: '#contact' },
 ];
