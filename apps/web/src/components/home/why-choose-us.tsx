@@ -16,6 +16,18 @@ import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate why-choose-us.tsx: accordion trái (mở mục nào thì ảnh phải
 // đổi theo mục đó, transition scale+fade), nội dung sang tours.
+// Review #26 (B+C): thêm quote guide bản địa dưới heading (lấp khoảng trống
+// trái, thêm chất người cho lời hứa "people who call it home") + dải caption
+// động dưới ảnh (hiện tên mục đang mở + chấm điều hướng — làm cơ chế
+// accordion-đổi-ảnh hiện hình thay vì ngầm).
+const DEFAULT_IMAGE_LABEL = 'Golden Bridge, Đà Nẵng';
+
+const GUIDE_QUOTE = {
+  text: 'I take people across the terraces my grandfather planted. That is the whole job.',
+  name: 'Mai',
+  role: 'Local guide, Sa Pa',
+};
+
 const ITEMS = [
   {
     icon: CompassIcon,
@@ -73,7 +85,32 @@ export function WhyChooseUs() {
             Travel Vietnam with people who call it home
           </motion.h2>
 
-          <div className="mt-12 flex w-full flex-col gap-4 md:mt-16">
+          {/* Quote guide bản địa (B) — nằm trong khoảng trống cũ giữa heading và accordion */}
+          <motion.figure
+            className="mt-8 flex max-w-100 items-start gap-4"
+            initial={{ y: 50, opacity: 0 }}
+            whileInView={{ y: 0, opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.15, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          >
+            {/* Avatar chữ cái đầu — cùng hệ với avatar testimonials */}
+            <span
+              aria-hidden="true"
+              className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/15 font-heading text-base font-semibold text-primary"
+            >
+              {GUIDE_QUOTE.name.charAt(0)}
+            </span>
+            <div>
+              <blockquote className="font-heading text-sm text-foreground/80 italic md:text-base">
+                “{GUIDE_QUOTE.text}”
+              </blockquote>
+              <figcaption className="mt-1.5 text-xs text-muted-foreground">
+                {GUIDE_QUOTE.name} — {GUIDE_QUOTE.role}
+              </figcaption>
+            </div>
+          </motion.figure>
+
+          <div className="mt-8 flex w-full flex-col gap-4 md:mt-10">
             {ITEMS.map((item, index) => {
               const isOpen = openIndex === index;
               return (
@@ -141,33 +178,72 @@ export function WhyChooseUs() {
             only job is to be there.
           </motion.p>
 
-          <motion.div
-            className="relative h-102.75 w-121.5 max-w-full overflow-hidden rounded-xl bg-muted shadow-(--shadow-card)"
-            initial={{ y: 50, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
-          >
-            <ImagePlaceholder
-              label="Golden Bridge, Đà Nẵng"
-              className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
-                openIndex === null
-                  ? 'scale-100 opacity-100'
-                  : 'pointer-events-none scale-95 opacity-0'
-              }`}
-            />
-            {ITEMS.map((item, index) => (
+          {/* Bọc ảnh + caption thành MỘT con của flex justify-between — giữ nguyên
+              cách chia khoảng cũ (mô tả trên / khối ảnh dưới) */}
+          <div>
+            <motion.div
+              className="relative h-102.75 w-121.5 max-w-full overflow-hidden rounded-xl bg-muted shadow-(--shadow-card)"
+              initial={{ y: 50, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            >
               <ImagePlaceholder
-                key={item.title}
-                label={item.title}
+                label={DEFAULT_IMAGE_LABEL}
                 className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
-                  openIndex === index
+                  openIndex === null
                     ? 'scale-100 opacity-100'
                     : 'pointer-events-none scale-95 opacity-0'
                 }`}
               />
-            ))}
-          </motion.div>
+              {ITEMS.map((item, index) => (
+                <ImagePlaceholder
+                  key={item.title}
+                  label={item.title}
+                  className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
+                    openIndex === index
+                      ? 'scale-100 opacity-100'
+                      : 'pointer-events-none scale-95 opacity-0'
+                  }`}
+                />
+              ))}
+            </motion.div>
+
+            {/* Dải caption động (C) — hiện tên mục đang mở + chấm điều hướng,
+              làm rõ mối liên hệ accordion ↔ ảnh. Chấm bấm được: mở đúng mục
+              (bấm lại chấm đang mở thì đóng, y hệt hành vi accordion). */}
+            <motion.div
+              className="mt-4 flex w-121.5 max-w-full items-center justify-between gap-4"
+              initial={{ y: 20, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            >
+              <motion.span
+                key={openIndex === null ? DEFAULT_IMAGE_LABEL : ITEMS[openIndex]?.title}
+                className="truncate text-sm text-muted-foreground"
+                initial={{ y: 6, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ duration: 0.25 }}
+              >
+                {openIndex === null ? DEFAULT_IMAGE_LABEL : ITEMS[openIndex]?.title}
+              </motion.span>
+              <div className="flex shrink-0 items-center gap-2">
+                {ITEMS.map((item, index) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => setOpenIndex(openIndex === index ? null : index)}
+                    aria-label={item.title}
+                    aria-pressed={openIndex === index}
+                    className={`h-1.5 cursor-pointer rounded-full transition-all duration-300 ${
+                      openIndex === index ? 'w-6 bg-primary' : 'w-1.5 bg-border hover:bg-primary/40'
+                    }`}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          </div>
         </div>
       </div>
     </section>
