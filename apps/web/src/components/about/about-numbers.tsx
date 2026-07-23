@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
@@ -40,6 +41,17 @@ export function AboutNumbers() {
       id="numbers"
       className="dark relative w-full overflow-hidden border-y bg-background px-4 py-24 text-foreground md:px-16 md:py-32"
     >
+      {/* Nền ảnh mờ + scrim (góp ý §4 lần 2) — công thức CTA banner lai
+          watermark; placeholder thay ảnh thật khi chốt trang */}
+      <div aria-hidden="true" className="absolute inset-0">
+        <ImagePlaceholder
+          corner
+          label="Numbers backdrop — mountain road at dusk"
+          className="h-full w-full opacity-30"
+        />
+        <div className="absolute inset-0 bg-overlay/70" />
+      </div>
+
       {/* Chữ nền khổng lồ — neo giữa-dưới, chìm sau lưới (không che header) */}
       <div
         aria-hidden="true"
@@ -71,7 +83,7 @@ export function AboutNumbers() {
           {STATS.map((stat, index) => (
             <motion.div
               key={stat.label}
-              className="group bg-background p-8 transition-colors duration-300 hover:bg-muted/60 md:p-12"
+              className="group bg-background/85 p-8 backdrop-blur-md transition-colors duration-300 hover:bg-muted/60 md:p-12"
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true, margin: '-40px' }}
