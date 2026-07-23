@@ -56,12 +56,13 @@ export function Gallery() {
 
   return (
     <section id="gallery" ref={containerRef} className="relative h-[180vh] w-full">
-      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
-        {/* Header dẫn lối — đứng yên suốt thời gian track trượt (phương án A) */}
-        <div className="mx-auto w-full max-w-(--container-content) px-6 pt-40 md:px-16 lg:px-24 xl:px-32">
-          <SectionEyebrow>Destinations</SectionEyebrow>
+      {/* Header trong dòng chảy trang (review #16): căn trái thẳng hàng với header
+          Stats phía trên; mô tả nằm BÊN PHẢI heading, ngăn bằng vạch đứng. */}
+      <div className="w-full px-4 pb-10 md:px-16 lg:px-24 xl:px-32">
+        <SectionEyebrow>Destinations</SectionEyebrow>
+        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-8">
           <motion.h2
-            className="mt-3 max-w-[560px] font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
+            className="max-w-[560px] font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
@@ -69,8 +70,9 @@ export function Gallery() {
           >
             From the northern mists to the southern delta
           </motion.h2>
+          <div aria-hidden="true" className="hidden w-px self-stretch bg-border lg:block" />
           <motion.p
-            className="mt-2 max-w-[480px] text-sm text-muted-foreground md:text-base"
+            className="max-w-[380px] text-sm text-muted-foreground md:text-base lg:pb-1.5"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
@@ -79,7 +81,9 @@ export function Gallery() {
             Nine places across three regions — scroll to travel the country from north to south.
           </motion.p>
         </div>
+      </div>
 
+      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
         {/* Track trượt ngang */}
         <div className="flex flex-1 items-center">
           <div
