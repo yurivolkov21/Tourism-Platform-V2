@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
+import { SiteFooter } from '@/components/site-footer';
+import { SiteHeader } from '@/components/site-header';
 import './globals.css';
 
 // Bộ font chốt qua 2 vòng specimen (ADR-0013 #6, cập nhật 22/07): Literata
@@ -36,7 +38,11 @@ export default function RootLayout({
       lang="en"
       className={`${sans.variable} ${heading.variable} ${mono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <SiteHeader />
+        <main className="flex-1">{children}</main>
+        <SiteFooter />
+      </body>
     </html>
   );
 }

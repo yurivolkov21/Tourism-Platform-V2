@@ -7,12 +7,7 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      '@tourism/ui': fileURLToPath(new URL('../../libs/shared/ui/src', import.meta.url)),
     },
-  },
-  esbuild: {
-    // File .tsx dùng JSX runtime tự động của React 19.
-    jsx: 'automatic',
   },
   test: {
     environment: 'node',
