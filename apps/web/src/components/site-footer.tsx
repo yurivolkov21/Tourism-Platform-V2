@@ -16,17 +16,17 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
   {
     title: 'Explore',
     links: [
-      ['Tours', '#tours'],
-      ['Destinations', '#gallery'],
-      ['Reviews', '#reviews'],
-      ['Contact', '#contact'],
-      ['Journal', '#journal'],
+      ['Tours', '/#tours'],
+      ['Destinations', '/#gallery'],
+      ['Reviews', '/#reviews'],
+      ['Contact', '/#contact'],
+      ['Journal', '/#journal'],
     ],
   },
   {
     title: 'Company',
     links: [
-      ['About us', '#top'],
+      ['About us', '/about'],
       ['Our guides', '#top'],
       ['Careers', '#top'],
       ['Press', '#top'],

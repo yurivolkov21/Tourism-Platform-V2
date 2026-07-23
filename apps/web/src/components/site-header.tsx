@@ -18,21 +18,22 @@ import { UserMenu } from './user-menu';
 // section trong Home, link tới nó vẫn còn ở footer). About Us tạm trỏ #top —
 // trang /about là mục kế tiếp của lộ trình; Travel Blog trỏ section Journal,
 // sau thành /blog.
+// Anchor dạng TUYỆT ĐỐI (/#...) — đứng ở /about bấm vẫn về đúng section Home
 const NAV_LINKS = [
-  { label: 'Travel Blog', href: '#journal' },
-  { label: 'About Us', href: '#top' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Travel Blog', href: '/#journal' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact', href: '/#contact' },
 ];
 
 // Link phẳng cho overlay mobile — bung Destinations thành từng vùng (kiểu Nexora)
 const MOBILE_LINKS = [
-  { label: 'Tours', href: '#tours' },
-  { label: 'Destinations — North', href: '#gallery' },
-  { label: 'Destinations — Central', href: '#gallery' },
-  { label: 'Destinations — South', href: '#gallery' },
-  { label: 'Travel Blog', href: '#journal' },
-  { label: 'About Us', href: '#top' },
-  { label: 'Contact', href: '#contact' },
+  { label: 'Tours', href: '/#tours' },
+  { label: 'Destinations — North', href: '/#gallery' },
+  { label: 'Destinations — Central', href: '/#gallery' },
+  { label: 'Destinations — South', href: '/#gallery' },
+  { label: 'Travel Blog', href: '/#journal' },
+  { label: 'About Us', href: '/about' },
+  { label: 'Contact', href: '/#contact' },
   { label: 'Log in', href: '/login' },
 ];
 
@@ -82,7 +83,7 @@ export function SiteHeader() {
         </a>
 
         <div className="hidden items-center gap-2 text-sm md:flex lg:gap-6">
-          <a href="#tours" className={linkClass}>
+          <a href="/#tours" className={linkClass}>
             Tours
           </a>
           <DestinationsMenu triggerClassName={`text-sm font-normal ${triggerSkin}`} />

@@ -31,7 +31,7 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
             <ul className="grid w-72 gap-1">
               {REGIONS.map((region) => (
                 <li key={region.key} data-region={region.key}>
-                  <NavigationMenuLink render={<a href="#gallery" />}>
+                  <NavigationMenuLink render={<a href="/#gallery" />}>
                     <span
                       aria-hidden="true"
                       className="size-2.5 shrink-0 rounded-full"
