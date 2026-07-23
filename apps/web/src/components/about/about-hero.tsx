@@ -49,7 +49,9 @@ export function AboutHero() {
         <div className="absolute inset-0 bg-linear-to-r from-overlay via-overlay/60 to-transparent" />
       </div>
 
-      <div className="dark w-full px-4 pt-28 pb-12 md:px-16 lg:px-24 xl:px-32">
+      {/* Container căn giữa như .container-gym của forged (max-width + mx-auto) —
+          thiếu nó nội dung dính về mép trái ở màn rộng (review §1 lần 2) */}
+      <div className="dark mx-auto w-full max-w-7xl px-6 pt-28 pb-12 md:px-10">
         {/* Badge pill viền accent */}
         <motion.div
           className="mb-8 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/5 px-4 py-2 backdrop-blur-sm"
