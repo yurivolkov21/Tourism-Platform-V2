@@ -56,13 +56,16 @@ export function Gallery() {
 
   return (
     <section id="gallery" ref={containerRef} className="relative h-[180vh] w-full">
-      {/* Header trong dòng chảy trang (review #16): căn trái thẳng hàng với header
-          Stats phía trên; mô tả nằm BÊN PHẢI heading, ngăn bằng vạch đứng. */}
-      <div className="w-full px-4 pb-10 md:px-16 lg:px-24 xl:px-32">
-        <SectionEyebrow>Destinations</SectionEyebrow>
-        <div className="mt-3 flex flex-col gap-4 lg:flex-row lg:items-end lg:gap-8">
+      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
+        {/* Header CĂN GIỮA kiểu PrebuiltUI Feature Sections, nằm TRONG khung sticky —
+            tận dụng khoảng trắng trên track, đứng yên suốt hành trình cuộn (review #17,
+            combo phương án 1+2). */}
+        <div className="mx-auto w-full max-w-3xl px-6 pt-32 text-center">
+          <div className="flex justify-center">
+            <SectionEyebrow>Destinations</SectionEyebrow>
+          </div>
           <motion.h2
-            className="max-w-[560px] font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
+            className="mt-3 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
@@ -70,9 +73,8 @@ export function Gallery() {
           >
             From the northern mists to the southern delta
           </motion.h2>
-          <div aria-hidden="true" className="hidden w-px self-stretch bg-border lg:block" />
           <motion.p
-            className="max-w-[380px] text-sm text-muted-foreground md:text-base lg:pb-1.5"
+            className="mx-auto mt-2 max-w-[480px] text-sm text-muted-foreground md:text-base"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
@@ -81,9 +83,7 @@ export function Gallery() {
             Nine places across three regions — scroll to travel the country from north to south.
           </motion.p>
         </div>
-      </div>
 
-      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
         {/* Track trượt ngang */}
         <div className="flex flex-1 items-center">
           <div
