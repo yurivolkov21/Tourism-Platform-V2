@@ -46,6 +46,38 @@
   }
 }
 
+/* ── Thanh cuộn custom (review #24, convert từ forged): mảnh 4px, track tiệp
+ * màu nền nên "tàng hình", chỉ còn thumb màu primary nổi như vệt sáng.
+ * Token tự đổi theo theme sáng/tối. ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+/* Firefox không hiểu ::-webkit-scrollbar — cho bản thin + màu tương đương.
+ * Scope bằng @supports kiểu -moz để KHÔNG đụng Chromium: nếu đặt
+ * scrollbar-color toàn cục, Chromium sẽ bỏ qua các rule webkit 4px ở trên. */
+@supports (-moz-appearance: none) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--background);
+  }
+}
+
+/* Bôi đen văn bản cũng ra màu brand (đồng bộ trải nghiệm với thanh cuộn) */
+::selection {
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
 /* ── Watermark chữ khổng lồ dưới footer (convert từ SVG "estate" của template):
  * text thật + stroke mảnh theo token, fill trong suốt — chìm trên nền tối. ── */
 .footer-watermark {
