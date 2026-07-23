@@ -45,3 +45,10 @@
     animation: none;
   }
 }
+
+/* ── Watermark chữ khổng lồ dưới footer (convert từ SVG "estate" của template):
+ * text thật + stroke mảnh theo token, fill trong suốt — chìm trên nền tối. ── */
+.footer-watermark {
+  color: transparent;
+  -webkit-text-stroke: 1.5px color-mix(in oklab, var(--foreground) 16%, transparent);
+}

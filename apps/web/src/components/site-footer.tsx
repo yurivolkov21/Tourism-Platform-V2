@@ -13,6 +13,15 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
     ],
   },
   {
+    title: 'Social',
+    links: [
+      ['Instagram', '#top'],
+      ['LinkedIn', '#top'],
+      ['Twitter', '#top'],
+      ['Facebook', '#top'],
+    ],
+  },
+  {
     title: 'Company',
     links: [
       ['About', '#top'],
@@ -62,6 +71,14 @@ export function SiteFooter() {
           <p>© 2026 tourism. All rights reserved.</p>
           <p>Photos: Wikimedia Commons contributors &amp; Unsplash (see credits).</p>
         </div>
+
+        {/* Watermark chữ khổng lồ chìm trên nền — vị trí bottom-right như template */}
+        <span
+          aria-hidden="true"
+          className="footer-watermark pointer-events-none absolute -right-4 bottom-9 font-heading text-[clamp(7rem,19vw,15rem)] leading-none font-semibold select-none"
+        >
+          tourism
+        </span>
       </div>
     </footer>
   );
