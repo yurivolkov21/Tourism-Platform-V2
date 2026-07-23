@@ -33,7 +33,8 @@ export interface MockRegion {
 
 export interface MockTestimonial {
   name: string;
-  tour: string;
+  /** Nơi ở của khách (layout Estate hiển thị name + location) */
+  location: string;
   quote: string;
   rating: number;
 }

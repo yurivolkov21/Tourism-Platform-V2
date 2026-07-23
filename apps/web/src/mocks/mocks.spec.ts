@@ -42,11 +42,13 @@ describe('mock regions / testimonials / journal', () => {
     expect(REGIONS.map((r) => r.key).sort()).toEqual(['central', 'north', 'south']);
   });
 
-  it('3 testimonial rating hợp lệ, 3 bài journal có ảnh tồn tại', () => {
-    expect(TESTIMONIALS).toHaveLength(3);
+  it('8 testimonial (marquee 2 cột × 4) đủ trường, 3 bài journal có ảnh tồn tại', () => {
+    // Marquee của template Estate cần 2 cột × 4 card để loop mượt.
+    expect(TESTIMONIALS).toHaveLength(8);
     for (const t of TESTIMONIALS) {
       expect(t.rating).toBeGreaterThanOrEqual(4);
       expect(t.rating).toBeLessThanOrEqual(5);
+      expect(t.location.length).toBeGreaterThan(0);
     }
     expect(JOURNAL_POSTS).toHaveLength(3);
     for (const p of JOURNAL_POSTS) {

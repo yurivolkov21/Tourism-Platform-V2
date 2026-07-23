@@ -1,61 +1,88 @@
 'use client';
 
-import { StarIcon } from 'lucide-react';
+import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { SearchCard } from './search-card';
+import Image from 'next/image';
 
-// Stagger load-in kiểu Estate: các khối con trồi lên lần lượt khi trang mở.
-const container = {
-  hidden: {},
-  show: { transition: { staggerChildren: 0.12, delayChildren: 0.15 } },
-};
-const item = {
-  hidden: { opacity: 0, y: 34 },
-  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 240, damping: 60 } },
-};
-
+// Convert từ Estate hero-sections.tsx: hero fullscreen ảnh + badge pill +
+// heading giữa + 2 nút (nút phụ có hiệu ứng chữ trượt khi hover).
+// Giữ nguyên timings spring của template; màu/hình sang token + ảnh mock.
 export function Hero() {
   return (
-    <section id="top" className="relative overflow-hidden text-on-media">
-      <div className="hero-scene" aria-hidden="true" />
-      <div className="hero-fog" aria-hidden="true" />
-      <div className="hero-bamboo" aria-hidden="true" />
+    <motion.section
+      id="top"
+      className="relative flex min-h-screen w-full flex-col items-center justify-center px-4 text-on-media"
+      initial={{ opacity: 0.4 }}
+      whileInView={{ opacity: 1 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5 }}
+    >
+      {/* Nền ảnh + scrim tối (token --overlay) cho chữ nổi */}
+      <div className="absolute inset-0 -z-10">
+        <Image src="/mock/halong.jpg" alt="" fill priority sizes="100vw" className="object-cover" />
+        <div className="absolute inset-0 bg-overlay" />
+      </div>
+
       <motion.div
-        variants={container}
-        initial="hidden"
-        animate="show"
-        className="relative mx-auto flex w-full max-w-(--container-content) flex-col items-start gap-5 px-6 pt-24 pb-20"
+        className="flex items-center gap-2 rounded-full border border-on-media/20 bg-on-media/20 py-1 pr-4 pl-2 text-sm backdrop-blur"
+        initial={{ y: -20, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
       >
-        <motion.p
-          variants={item}
-          className="text-xs font-bold tracking-[0.16em] uppercase opacity-85"
-        >
-          Small-group tours across Vietnam
-        </motion.p>
-        <motion.h1
-          variants={item}
-          className="max-w-[16ch] font-heading text-4xl leading-[1.12] font-semibold text-balance md:text-6xl"
-        >
-          Travel slow. The valley will wait.
-        </motion.h1>
-        <motion.p variants={item} className="max-w-[46ch] opacity-85">
-          Hand-picked journeys through limestone bays, terraced highlands, and lantern-lit old towns
-          — led by people who grew up there.
-        </motion.p>
-        <motion.div variants={item} className="w-full">
-          <SearchCard />
-        </motion.div>
-        <motion.ul variants={item} className="flex flex-wrap items-center gap-6 text-sm opacity-90">
-          <li className="flex items-center gap-1.5">
-            <StarIcon className="size-4! fill-rating text-rating" aria-hidden="true" />
-            <strong className="font-semibold">4.9</strong> · 12,400 reviews
-          </li>
-          <li>
-            <strong className="font-semibold">140+</strong> local guides
-          </li>
-          <li>Free cancellation up to 48h</li>
-        </motion.ul>
+        <CompassIcon className="size-4" aria-hidden="true" />
+        <p>Small-group tours across Vietnam</p>
       </motion.div>
-    </section>
+
+      <motion.h1
+        className="mt-5 max-w-3xl text-center font-heading text-5xl leading-tight font-medium md:text-[64px]"
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+      >
+        Travel slow. The valley will wait.
+      </motion.h1>
+
+      <motion.p
+        className="mt-3 max-w-120 text-center"
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+      >
+        Hand-picked journeys through limestone bays, terraced highlands, and lantern-lit old towns —
+        led by people who grew up there.
+      </motion.p>
+
+      <motion.div
+        className="mt-8 flex items-center gap-4"
+        initial={{ y: 50, opacity: 0 }}
+        whileInView={{ y: 0, opacity: 1 }}
+        viewport={{ once: true }}
+        transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+      >
+        <a
+          href="#tours"
+          className="cursor-pointer rounded-md bg-card px-6 py-2.5 text-sm font-medium text-card-foreground transition hover:bg-card/85"
+        >
+          View tours
+        </a>
+        <a
+          href="#contact"
+          className="group cursor-pointer rounded-md border border-on-media/40 px-5 py-2.5 text-sm font-medium transition"
+        >
+          {/* Hiệu ứng chữ trượt dọc khi hover — giữ nguyên từ template */}
+          <span className="relative block overflow-hidden">
+            <span className="block transition-transform duration-200 group-hover:-translate-y-full">
+              Plan with us
+            </span>
+            <span className="absolute top-0 left-0 block translate-y-full transition-transform duration-200 group-hover:translate-y-0">
+              Plan with us
+            </span>
+          </span>
+        </a>
+      </motion.div>
+    </motion.section>
   );
 }

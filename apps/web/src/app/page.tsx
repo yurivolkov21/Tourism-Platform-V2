@@ -1,26 +1,23 @@
-import { CtaBand } from '@/components/home/cta-band';
-import { FeaturedTours } from '@/components/home/featured-tours';
+import { CallToAction } from '@/components/home/call-to-action';
+import { Contact } from '@/components/home/contact';
+import { Gallery } from '@/components/home/gallery';
 import { Hero } from '@/components/home/hero';
-import { JournalPreview } from '@/components/home/journal-preview';
-import { RegionsStrip } from '@/components/home/regions-strip';
 import { Stats } from '@/components/home/stats';
 import { Testimonials } from '@/components/home/testimonials';
-import { WhyUs } from '@/components/home/why-us';
-import { MotionProvider } from '@/components/motion/reveal';
+import { WhyChooseUs } from '@/components/home/why-choose-us';
 
-// Trang Home tĩnh (static-first) — dữ liệu mock, thứ tự section theo spec
-// docs/specs/2026-07-23-home-page-design.md.
+// Trang Home tĩnh (static-first, mock data) — convert nguyên bố cục template
+// Estate sang chuẩn dự án (review vòng 1, điều chỉnh #2 của user).
 export default function HomePage() {
   return (
-    <MotionProvider>
+    <>
       <Hero />
-      <FeaturedTours />
-      <RegionsStrip />
-      <WhyUs />
       <Stats />
+      <Gallery />
+      <WhyChooseUs />
       <Testimonials />
-      <JournalPreview />
-      <CtaBand />
-    </MotionProvider>
+      <CallToAction />
+      <Contact />
+    </>
   );
 }
