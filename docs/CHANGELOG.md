@@ -2,6 +2,36 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-24 — P3b: trang /about hoàn chỉnh (branch `feat/about-page`, merge `5e9dd08`)
+
+Trang thứ hai của P3b, dựng TỪNG SECTION theo quy trình demo → review → chốt
+(khác Home dựng cả trang một lượt) — 16 file, +1.207 dòng. Nguồn mở rộng:
+ngoài 12 template PrebuiltUI còn khai thác **ShadcnSpace** (đọc source thật qua
+registry `/r/<block>.json`, chỉ dùng block free).
+- **8 khối**: Hero (forged/Hero — reveal 3 dòng từng dòng, stats CountUp, scroll
+  cue) · Story (forged/About — ảnh + floating box "12+", 2 quote guide) ·
+  Timeline (prompt2app/build-process — trục TỰ VẼ theo scroll, 4 mốc nhuộm màu
+  vùng, zigzag chữ-ảnh + TiltCard, sửa lỗi thứ tự mobile của template gốc) ·
+  Numbers (forged/Stats — lưới hairline + watermark "NUMBERS" + nền ảnh mờ,
+  "0 Scripts" làm điểm dừng mắt) · Values (forged/Services — 6 lời hứa, thẻ
+  highlight No scripts, khép vòng các teaser pill/marquee) · Gallery (ShadcnSpace
+  Gallery 01 — bento 3 vùng + tổng, số derive từ REGIONS) · Team (ShadcnSpace
+  Team 01 — portrait grayscale hover, CHỈ founder theo quyết định user; TDD mock
+  `team_members`) · CTA (ShadcnSpace CTA 02 — video placeholder + marquee cam
+  kết nền primary, thắng CTA 01 aurora sau khi demo cả hai).
+- **Điều hướng**: navbar/footer anchor sang dạng `/#...`, About Us trỏ `/about`;
+  Partners bị BỎ khỏi About (dải tối cô lập CTA) — trust do Numbers gánh.
+- **Nhất quán dữ liệu**: phát hiện + vá Numbers hardcode 96 tour ≠ 68 tổng
+  REGIONS — cả Numbers lẫn Gallery giờ derive cùng nguồn.
+- Chẩn đoán phụ trong review: cảnh báo hydration `fdprocessedid` là do browser
+  extension (IDM) của user, không phải bug — không vá, đã giải thích.
+Review findings đáng nhớ: hero container thử kiểu forged rồi user chọn bản gốc
+(comment chống "sửa lại" đã ghi tại chỗ); script screenshot dùng sai tham số
+`viewportSize` → toàn bộ ảnh soát trước đó chụp 1280 thay 1920, đã sửa; bài học
+build-chen-dev-server thành memory + được tuân thủ suốt branch này.
+Tests after: gate:int xanh 18/18 task — web unit 9 (mocks +team) · int 145/17 ·
+tokens 10 · ui 5 · typecheck · biome sạch; CI branch `success` 2m39s trước merge.
+
 ## 2026-07-23 — P3b: nâng cấp navbar (branch `feat/navbar-upgrade`, merge `4e8f981`)
 
 Điều chỉnh Home sau chốt (đổi hướng lộ trình: nhóm trang marketing trước
