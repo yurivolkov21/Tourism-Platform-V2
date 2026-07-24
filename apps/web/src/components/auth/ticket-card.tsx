@@ -19,11 +19,17 @@ export function TicketCard({ stub, children }: TicketCardProps) {
 
       <div className="p-7 md:p-9">{children}</div>
 
-      {/* Cuống vé: ngăn bằng nét đứt như đường xé */}
-      <div className="border-t border-dashed px-7 py-3.5 md:px-9">
-        <p className="font-mono text-[11px] tracking-[0.2em] text-muted-foreground uppercase">
+      {/* Cuống vé: ngăn bằng nét đứt như đường xé, kèm vạch barcode giả lập */}
+      <div className="flex items-center justify-between gap-4 border-t border-dashed px-7 py-3.5 md:px-9">
+        {/* nowrap + size 10px: chừa chỗ cho barcode mà không gãy dòng ở max-w-md */}
+        <p className="font-mono text-[10px] tracking-[0.18em] whitespace-nowrap text-muted-foreground uppercase">
           {stub}
         </p>
+        {/* Barcode: 2 lớp repeating-gradient chu kỳ lệch nhau cho vạch dày mỏng ngẫu nhiên */}
+        <div
+          aria-hidden="true"
+          className="hidden h-5 w-14 shrink-0 text-muted-foreground opacity-70 [background:repeating-linear-gradient(90deg,currentColor_0,currentColor_1.5px,transparent_1.5px,transparent_4px),repeating-linear-gradient(90deg,currentColor_0,currentColor_1px,transparent_1px,transparent_7px)] sm:block"
+        />
       </div>
     </div>
   );
