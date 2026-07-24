@@ -1,19 +1,21 @@
 'use client';
 
 import { motion } from 'motion/react';
+import Image from 'next/image';
 import { Logo } from '@/components/logo';
-import { DawnPoster } from './dawn-poster';
 
-// Màn hình auth dùng chung (spec 2026-07-24, redesign vòng 2 sau khảo sát
-// Airbnb/Resend/Clerk/Linear): TRÁI vùng form yên tĩnh — chỉ một quầng sáng
-// lan từ phía poster sang (bài học Linear: quanh form càng tĩnh càng sang,
-// vân đồng mức vòng 1 bị chê "nhìn không rõ hình gì" đã bỏ) · PHẢI tấm poster
-// "SAPA EXPRESS" đóng khung hairline + caption mono cùng họ chữ cuống vé.
-// Mobile: ẩn panel phải. 6 trang auth chỉ khác ruột form + quote + cuống vé.
+// Màn hình auth dùng chung (spec 2026-07-24, redesign vòng 3 — user chốt chất
+// liệu ẢNH THẬT sau khi 2 vòng đồ hoạ vẽ tay đều lộ "mùi AI"): TRÁI vùng form
+// yên tĩnh, chỉ một quầng sáng lan từ phía ảnh sang (bài học Linear/Clerk) ·
+// PHẢI ảnh thật Sa Pa + scrim + khung hairline + caption mono cùng họ chữ
+// cuống vé + quote đổi theo trang. Mobile: ẩn panel phải.
+// Ảnh: "Ray over terrace rice field in Sapa - Trung Chải" — Phi Phi Hoang,
+// CC BY 2.0, Wikimedia Commons (crop dọc 4:5, nén q80). Ghi công đặt ngay
+// trong UI (dòng credit góc khung) để đúng điều kiện CC BY.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 interface AuthScreenProps {
-  /** Câu quote đặt trong poster — đổi theo ngữ cảnh từng trang */
+  /** Câu quote trên panel ảnh — đổi theo ngữ cảnh từng trang */
   quote: string;
   author: string;
   children: React.ReactNode;
@@ -22,7 +24,7 @@ interface AuthScreenProps {
 export function AuthScreen({ quote, author, children }: AuthScreenProps) {
   return (
     <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
-      {/* Trái: logo + card, nền chỉ có ánh rạng đông hắt từ poster sang */}
+      {/* Trái: logo + card, nền chỉ có ánh sáng hắt nhẹ từ phía ảnh */}
       <div className="relative flex flex-col overflow-hidden px-6 py-8 md:px-12">
         <div
           aria-hidden="true"
@@ -43,16 +45,32 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
         </div>
       </div>
 
-      {/* Phải: poster "SAPA EXPRESS" — chỉ lg+ */}
+      {/* Phải: ảnh thật Sa Pa — chỉ lg+ */}
       <div className="dark relative hidden overflow-hidden bg-background lg:block">
-        <DawnPoster />
-
-        {/* Khung poster hairline + caption đầu khung, cùng font mono với cuống vé */}
+        <Image
+          src="/images/auth-sapa-dawn.jpg"
+          alt="Sunbeams breaking through clouds over rice terraces near Sa Pa"
+          fill
+          priority
+          sizes="(min-width: 1024px) 50vw, 0px"
+          className="object-cover"
+        />
+        {/* Scrim 2 đầu: đậm dưới chân cho quote, nhẹ mép trên cho caption */}
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-5 rounded-sm border border-on-media/25"
+          className="absolute inset-0 bg-linear-to-t from-overlay/90 via-overlay/15 to-transparent"
         />
-        <p className="absolute inset-x-0 top-10 text-center font-mono text-[11px] tracking-[0.32em] text-on-media/85 uppercase">
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-40 bg-linear-to-b from-overlay/60 to-transparent"
+        />
+
+        {/* Khung hairline + caption mono — cùng họ ephemera với cuống vé */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-5 rounded-sm border border-on-media/30"
+        />
+        <p className="absolute inset-x-0 top-10 text-center font-mono text-[11px] tracking-[0.32em] text-on-media/90 uppercase">
           Sapa Express · departs at dawn
         </p>
 
@@ -67,6 +85,11 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
           </blockquote>
           <figcaption className="mt-3 text-sm opacity-75">— {author}</figcaption>
         </motion.figure>
+
+        {/* Ghi công CC BY 2.0 — kín đáo kiểu tạp chí, góc phải dưới trong khung */}
+        <p className="absolute right-8 bottom-7 font-mono text-[9px] tracking-wide text-on-media/50">
+          Photo: Phi Phi Hoang · CC BY 2.0
+        </p>
       </div>
     </div>
   );
