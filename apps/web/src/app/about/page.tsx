@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AboutCtaVideo } from '@/components/about/about-cta-video';
+import { AboutGallery } from '@/components/about/about-gallery';
 import { AboutHero } from '@/components/about/about-hero';
 import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
@@ -29,6 +30,9 @@ export default function AboutPage() {
       {/* Values "The promises we keep" — lấp tầng giá trị (phân tích: các lời
           hứa mới chỉ teaser ở pill/0-Scripts/marquee, chưa được giải thích) */}
       <AboutValues />
+      {/* Gallery bento 3 vùng + 1 tổng (ShadcnSpace Gallery 01) — quãng nghỉ
+          thị giác giữa hai khối chữ, số đếm derive từ REGIONS */}
+      <AboutGallery />
       <AboutTeam />
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);

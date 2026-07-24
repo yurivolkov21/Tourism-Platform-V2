@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
+import { REGIONS } from '@/mocks/regions';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
 // beat TỐI của trang (scope dark cố định như CTA/footer) — chữ nền "NUMBERS"
@@ -16,8 +17,17 @@ import { CountUp } from '@/components/motion/count-up';
 // Nexora ByTheNumbers, ISR 300s) + bảng team_members tương lai.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
+// Số tour derive từ REGIONS — một nguồn sự thật với gallery/destinations
+// (vá mâu thuẫn 96 hardcode ≠ 68 tổng mock, phát hiện khi thêm Gallery 01)
+const TOTAL_TOURS = REGIONS.reduce((acc, r) => acc + r.tourCount, 0);
+
 const STATS = [
-  { value: 96, suffix: '', label: 'Tours running', description: 'Across all three regions' },
+  {
+    value: TOTAL_TOURS,
+    suffix: '',
+    label: 'Tours running',
+    description: 'Across all three regions',
+  },
   { value: 27, suffix: '', label: 'Local guides', description: 'Every one born on their route' },
   { value: 9, suffix: '', label: 'Destinations', description: 'Three per region, north to south' },
   {
