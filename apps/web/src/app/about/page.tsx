@@ -5,7 +5,6 @@ import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
 import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
-import { Partners } from '@/components/home/partners';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
 // (quy trình: demo section → review → chốt → section kế). Lineup đã chốt
@@ -27,10 +26,9 @@ export default function AboutPage() {
       <AboutTimeline />
       <AboutNumbers />
       <AboutTeam />
-      {/* §6 tái dùng Partners của Home (Logo Cloud 01 same-mechanism, không thay);
-          §7 CTA riêng của About — ShadcnSpace CTA 01 (đang demo, ứng viên còn
-          lại: CTA 02 video) */}
-      <Partners />
+      {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
+          CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
+          §7 CTA riêng — ShadcnSpace CTA 01 (ứng viên còn lại: CTA 02 video) */}
       <AboutCta />
     </>
   );
