@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
+import { AboutCta } from '@/components/about/about-cta';
 import { AboutHero } from '@/components/about/about-hero';
 import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
 import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
-import { CallToAction } from '@/components/home/call-to-action';
 import { Partners } from '@/components/home/partners';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
@@ -27,9 +27,11 @@ export default function AboutPage() {
       <AboutTimeline />
       <AboutNumbers />
       <AboutTeam />
-      {/* §6-7: tái dùng nguyên dải trust + CTA banner của Home (lineup đã chốt) */}
+      {/* §6 tái dùng Partners của Home (Logo Cloud 01 same-mechanism, không thay);
+          §7 CTA riêng của About — ShadcnSpace CTA 01 (đang demo, ứng viên còn
+          lại: CTA 02 video) */}
       <Partners />
-      <CallToAction />
+      <AboutCta />
     </>
   );
 }
