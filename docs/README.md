@@ -42,7 +42,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ 23/07 + navbar nâng cấp ✅ + **/about ✅ merge 24/07** (8 khối, nguồn thêm ShadcnSpace); **kế tiếp**: nhóm trang marketing còn lại (Contact page...) rồi listing/tour detail (mỗi trang phân tích chung trước khi dựng) |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ 23/07 + navbar ✅ + /about ✅ + **/contact ✅ merge 24/07** (5 section, chữ ký "lá thư"); **kế tiếp**: listing/tour detail hoặc trang marketing còn lại (/faq, /blog...) — mỗi trang phân tích chung trước khi dựng |
 | P3b — trang Home | [2026-07-23-home-page-design](specs/2026-07-23-home-page-design.md) | ✅ đã merge (static-first, 33 vòng điều chỉnh) |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 

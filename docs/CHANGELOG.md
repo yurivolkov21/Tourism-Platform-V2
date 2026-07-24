@@ -2,6 +2,32 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-24 — P3b: trang /contact (branch `feat/contact-page`, merge `19e639f`)
+
+Trang thứ ba của P3b — kế hoạch 5 section user duyệt trước khi dựng, sau đó
+2 vòng điều chỉnh nâng "wow" (user chấm bản đầu 6.5 vì quá an toàn):
+- **5 section**: Hero tối ngắn (kiểu Nexora ContentHero, breadcrumb + dòng
+  "presence" chấm jade thở "Mai is on replies today") · Split form+info
+  (ShadcnSpace Contact 01 — trái info + mini-marquee Featured-by tái dùng
+  PARTNERS qua export, phải form card) · Location & hours (Nexora
+  ContactLocation — map placeholder + 2 card văn phòng HN/Sa Pa) · Mini-FAQ
+  (ShadcnSpace FAQ 01 — card rời, item mở đổi nền; 5 câu pre-sales, link /faq
+  tương lai) · CTA 01 aurora HỒI SINH từ git history (tránh trùng CTA 02 của
+  /about).
+- **Chữ ký "LÁ THƯ"** (skill frontend-design, đặt cược một chỗ = form vì luận
+  đề "not a hotline"): bản 1 mad-libs blank-giữa-câu bị chê rối mắt → bản 2 bố
+  cục thư rõ ràng — "Hello tourism," + từng dòng nhãn-câu-hỏi + chỗ điền gạch
+  nét đứt mực jade italic + "Yours," + tem la bàn + P.S. người thật đọc thư.
+- Mock mới TDD: `offices` (2 văn phòng) + `faq` (5 câu) — ứng viên schema;
+  Select vùng mock từ REGIONS (nợ API categories như Nexora); navbar/footer
+  Contact trỏ /contact (section Home giữ song song như Nexora).
+- Kỹ thuật: hero PHẢI scope dark (navbar chưa-cuộn chữ on-media theo pattern
+  "hero luôn tối" — hero sáng làm navbar tàng hình); export ContactField/
+  BARE_FIELD/EMAIL/PHONE từ home/contact thay vì nhân bản.
+Tests after: gate:int xanh 18/18 task — web unit 11 (mocks +offices/faq) ·
+int 145/17 · tokens 10 · ui 5 · typecheck · biome sạch; CI branch `success`
+2m28s trước merge.
+
 ## 2026-07-24 — P3b: trang /about hoàn chỉnh (branch `feat/about-page`, merge `5e9dd08`)
 
 Trang thứ hai của P3b, dựng TỪNG SECTION theo quy trình demo → review → chốt
