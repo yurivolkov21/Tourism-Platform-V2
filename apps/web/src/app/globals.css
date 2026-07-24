@@ -140,3 +140,49 @@ select:-webkit-autofill {
     animation: none;
   }
 }
+
+/* ── Poster "SAPA EXPRESS" panel auth (redesign vòng 2, khảo sát Airbnb/Resend):
+ * đoàn tàu nhỏ băng qua cầu cạn theo chu kỳ ~26s (60% băng màn, 40% nghỉ),
+ * mây trôi chậm qua lại. Toạ độ px = user unit của viewBox 800×1000.
+ * Reduced-motion: tàu đậu giữa cầu (transform tĩnh khai ở component), mây đứng. ── */
+@keyframes poster-train-cross {
+  0% {
+    transform: translateX(-200px);
+  }
+  60% {
+    transform: translateX(980px);
+  }
+  100% {
+    transform: translateX(980px);
+  }
+}
+
+.poster-train {
+  transform: translateX(310px);
+  animation: poster-train-cross 26s linear infinite;
+}
+
+@keyframes poster-cloud-drift {
+  from {
+    transform: translateX(-38px);
+  }
+  to {
+    transform: translateX(38px);
+  }
+}
+
+.poster-cloud {
+  animation: poster-cloud-drift 46s ease-in-out infinite alternate;
+}
+
+.poster-cloud-slow {
+  animation-duration: 64s;
+  animation-delay: -20s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poster-train,
+  .poster-cloud {
+    animation: none;
+  }
+}
