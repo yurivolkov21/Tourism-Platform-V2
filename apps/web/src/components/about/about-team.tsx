@@ -1,15 +1,20 @@
 'use client';
 
+import { GlobeIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { LinkedinIcon } from '@/components/icons/social';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TEAM } from '@/mocks/team';
 
-// About §5 Team (convert slidex/meet-our-team — section team-grid ĐÚNG NGHĨA
-// duy nhất trong 12 template): hàng card chân dung dọc (ảnh 208×256 + tên +
-// chức danh), bản gốc chỉ CSS hover nên bơm thêm spring nhà: card trồi vào
-// so le, hover nhấc nhẹ. Nội dung: CHỈ founder/vận hành (quyết định user
-// 23/07) — 4 người khớp chuyện §2. Anchor #team là đích của nút hero §1.
+// About §5 Team — §5 lần 2: bản slidex bị chê "trang nào cũng có", thay bằng
+// convert ShadcnSpace **Team 01** (user chọn sau vòng săn 3 nguồn): grid 4 cột
+// portrait LỚN, hover ảnh chuyển GRAYSCALE (thấy rõ khi có ảnh thật — ghi chú
+// dưới), name/role căn giữa + hàng social icon tròn. Motion đổi ease gốc
+// [0.21,0.47,0.32,0.98] về spring nhà, giữ stagger 0.1s. Trường `line` của
+// mock giữ trong data (schema candidate) nhưng không render — Team 01 chủ
+// đích tối giản. Nội dung CHỈ founder (quyết định user 23/07); anchor #team
+// là đích nút hero §1.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function AboutTeam() {
@@ -37,26 +42,43 @@ export function AboutTeam() {
           The people who signed the lease, drew the first routes, and still answer the phone.
         </motion.p>
 
-        <div className="mt-14 flex flex-wrap justify-center gap-8">
+        <div className="mt-14 grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {TEAM.map((member, index) => (
             <motion.figure
               key={member.name}
-              className="w-52 transition-transform duration-300 hover:-translate-y-1"
+              className="group flex flex-col items-center gap-6"
               initial={{ y: 40, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ ...SPRING, delay: index * 0.1 }}
             >
+              {/* Portrait lớn — hover chuyển grayscale (Team 01); hiệu ứng chỉ
+                  thấy rõ khi thay placeholder bằng ảnh chân dung thật */}
               <ImagePlaceholder
                 label={`Portrait — ${member.name}`}
-                className="h-64 w-52 rounded-xl"
+                className="h-80 w-full rounded-xl transition-all duration-300 group-hover:grayscale"
               />
-              <figcaption className="mt-4">
-                <p className="font-heading text-lg font-semibold text-foreground">{member.name}</p>
-                <p className="mt-0.5 text-xs font-medium tracking-wide text-primary uppercase">
-                  {member.role}
-                </p>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{member.line}</p>
+              <figcaption className="flex w-full flex-col items-center gap-4">
+                <div className="flex flex-col items-center gap-1.5 text-center">
+                  <p className="font-heading text-2xl font-medium text-foreground">{member.name}</p>
+                  <p className="text-sm text-muted-foreground">{member.role}</p>
+                </div>
+                <div className="flex gap-2">
+                  <a
+                    href="#team"
+                    aria-label={`${member.name} — website`}
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+                  >
+                    <GlobeIcon className="size-4" aria-hidden="true" />
+                  </a>
+                  <a
+                    href="#team"
+                    aria-label={`${member.name} — LinkedIn`}
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:bg-accent/80 hover:text-foreground"
+                  >
+                    <LinkedinIcon className="size-4" />
+                  </a>
+                </div>
               </figcaption>
             </motion.figure>
           ))}
