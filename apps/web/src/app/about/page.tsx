@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { AboutCta } from '@/components/about/about-cta';
+import { AboutCtaVideo } from '@/components/about/about-cta-video';
 import { AboutHero } from '@/components/about/about-hero';
 import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
@@ -29,7 +29,8 @@ export default function AboutPage() {
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
           §7 CTA riêng — ShadcnSpace CTA 01 (ứng viên còn lại: CTA 02 video) */}
-      <AboutCta />
+      {/* Đang so CTA 02 (video + marquee) với CTA 01 (aurora — about-cta.tsx) */}
+      <AboutCtaVideo />
     </>
   );
 }
