@@ -24,13 +24,19 @@ interface AuthScreenProps {
 export function AuthScreen({ quote, author, children }: AuthScreenProps) {
   return (
     <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
-      {/* Trái: logo + card trên BẢN ĐỒ ĐỒNG MỨC (user chọn lại hướng vân vòng 1,
-          thực thi đậm chất bản đồ hơn): 2 cụm vân 6 vòng — ĐỈNH trên-phải,
-          THUNG LŨNG dưới-trái, tâm vòng trôi dần như topo thật — nối bằng
-          TUYẾN HÀNH TRÌNH chấm chấm thung lũng → đỉnh (đồng bộ vé HN → SAPA
-          và câu "where the map left off"), trạm dừng chấm hổ phách. Card đặc
-          che khúc giữa tuyến nên nét có thể chạy tự do sau lưng nó. */}
+      {/* Trái: logo + card trên BẢN ĐỒ TRẮC ĐỊA (vòng chỉnh theo khảo sát
+          Dribbble/AllTrails): vân đồng mức SINH BẰNG THUẬT TOÁN (value-noise +
+          marching squares, script scratchpad gen-topo.mjs seed 7) phủ kín nền
+          như bản đồ thật — kèm lưới toạ độ + dấu × trắc địa nằm sẵn trong
+          /images/auth-topo.svg, dùng làm CSS MASK nên màu tô là token và tự
+          ăn theo theme. Đè lên là TUYẾN HÀNH TRÌNH chấm chấm + nhãn cao độ
+          mono: 1 650 m (ga Sa Pa, điểm khởi hành) → 3 143 m (đỉnh Fansipan,
+          điểm đến) — đồng bộ vé HN → SAPA và câu "where the map left off". */}
       <div className="relative flex flex-col overflow-hidden px-6 py-8 md:px-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-primary opacity-[0.14] dark:opacity-[0.22] [mask-image:url(/images/auth-topo.svg)] [mask-position:center] [mask-size:cover]"
+        />
         <svg
           aria-hidden="true"
           viewBox="0 0 900 1000"
@@ -38,23 +44,8 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
           className="pointer-events-none absolute inset-0 h-full w-full"
           fill="none"
         >
-          {/* Cụm vân: đỉnh (trên-phải) + thung lũng (dưới-trái) */}
-          <g className="stroke-primary opacity-[0.11] dark:opacity-[0.17]" strokeWidth="1.25">
-            <path d="M758 145 C758 173 732 195 700 195 C675 195 654 173 654 145 C654 120 675 100 700 100 C732 100 758 120 758 145 Z" />
-            <path d="M807 153 C807 207 758 251 697 251 C648 251 609 207 609 153 C609 102 648 61 697 61 C758 61 807 102 807 153 Z" />
-            <path d="M866 163 C866 246 789 313 694 313 C617 313 554 246 554 163 C554 81 617 15 694 15 C789 15 866 81 866 163 Z" />
-            <path d="M928 175 C928 289 821 381 690 381 C582 381 494 289 494 175 C494 60 582 -33 690 -33 C821 -33 928 60 928 175 Z" />
-            <path d="M992 190 C992 338 855 458 686 458 C544 458 428 338 428 190 C428 40 544 -82 686 -82 C855 -82 992 40 992 190 Z" />
-            <path d="M1060 207 C1060 391 891 541 682 541 C503 541 358 391 358 207 C358 19 503 -133 682 -133 C891 -133 1060 19 1060 207 Z" />
-            <path d="M164 788 C164 812 141 832 112 832 C89 832 70 812 70 788 C70 766 89 748 112 748 C141 748 164 766 164 788 Z" />
-            <path d="M218 781 C218 831 173 871 118 871 C73 871 36 831 36 781 C36 735 73 697 118 697 C173 697 218 735 218 781 Z" />
-            <path d="M282 773 C282 851 212 915 126 915 C54 915 -4 851 -4 773 C-4 698 54 637 126 637 C212 637 282 698 282 773 Z" />
-            <path d="M355 763 C355 873 256 963 135 963 C33 963 -49 873 -49 763 C-49 656 33 569 135 569 C256 569 355 656 355 763 Z" />
-            <path d="M435 752 C435 897 305 1014 145 1014 C10 1014 -99 897 -99 752 C-99 610 10 494 145 494 C305 494 435 610 435 752 Z" />
-            <path d="M518 740 C518 921 356 1068 156 1068 C-14 1068 -152 921 -152 740 C-152 560 -14 414 156 414 C356 414 518 560 518 740 Z" />
-          </g>
           {/* Tuyến hành trình: chấm chấm thung lũng → đỉnh + trạm dừng */}
-          <g className="opacity-30 dark:opacity-40">
+          <g className="opacity-35 dark:opacity-45">
             <path
               d="M112 786 C220 730 300 640 320 540 C338 452 430 430 520 400 C620 366 660 250 697 150"
               className="stroke-primary"
@@ -76,6 +67,19 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
             />
           </g>
         </svg>
+        {/* Nhãn cao độ kiểu bản đồ — cạnh điểm đi/điểm đến của tuyến */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute bottom-[17%] left-[15%] font-mono text-[10px] tracking-[0.15em] text-muted-foreground/60"
+        >
+          1 650 M
+        </span>
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute top-[12.5%] right-[16%] font-mono text-[10px] tracking-[0.15em] text-muted-foreground/60"
+        >
+          FAN SI PAN · 3 143 M
+        </span>
         <a href="/" aria-label="tourism — home" className="relative z-10 w-fit select-none">
           <Logo />
         </a>
