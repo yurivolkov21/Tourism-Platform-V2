@@ -22,7 +22,7 @@ import { UserMenu } from './user-menu';
 const NAV_LINKS = [
   { label: 'Travel Blog', href: '/#journal' },
   { label: 'About Us', href: '/about' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'Contact', href: '/contact' },
 ];
 
 // Link phẳng cho overlay mobile — bung Destinations thành từng vùng (kiểu Nexora)
@@ -33,7 +33,7 @@ const MOBILE_LINKS = [
   { label: 'Destinations — South', href: '/#gallery' },
   { label: 'Travel Blog', href: '/#journal' },
   { label: 'About Us', href: '/about' },
-  { label: 'Contact', href: '/#contact' },
+  { label: 'Contact', href: '/contact' },
   { label: 'Log in', href: '/login' },
 ];
 

@@ -74,6 +74,27 @@ describe('mock team (About §5 — chỉ founder/vận hành, quyết định us
   });
 });
 
+describe('mock contact page (offices + faq)', () => {
+  it('2 văn phòng đủ trường', async () => {
+    const { OFFICES } = await import('./offices.js');
+    expect(OFFICES).toHaveLength(2);
+    for (const o of OFFICES) {
+      expect(o.city.length).toBeGreaterThan(0);
+      expect(o.addressLines.length).toBeGreaterThan(0);
+      expect(o.hours.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('5 câu FAQ pre-sales, câu hỏi duy nhất', async () => {
+    const { FAQ_ITEMS } = await import('./faq.js');
+    expect(FAQ_ITEMS).toHaveLength(5);
+    expect(new Set(FAQ_ITEMS.map((f: { question: string }) => f.question)).size).toBe(5);
+    for (const f of FAQ_ITEMS) {
+      expect(f.answer.length).toBeGreaterThan(0);
+    }
+  });
+});
+
 describe('mock destinations (gallery Home — review #14)', () => {
   it('đúng 9 địa điểm, mỗi vùng 3, xếp liền nhau Bắc → Trung → Nam', () => {
     expect(DESTINATIONS).toHaveLength(9);

@@ -21,9 +21,10 @@ const fieldMotion = {
   transition: { type: 'spring' as const, stiffness: 320, damping: 70, mass: 1 },
 };
 
-// Kênh liên hệ khớp TopBar — gom về site-config chung khi gắn API
-const EMAIL = 'hello@tourism.example';
-const PHONE = '+84 24 3826 0126';
+// Kênh liên hệ khớp TopBar — gom về site-config chung khi gắn API.
+// Export cho trang /contact tái dùng (cùng ContactField + BARE_FIELD).
+export const EMAIL = 'hello@tourism.example';
+export const PHONE = '+84 24 3826 0126';
 
 // 3 bước "What happens next" — trả lời câu hỏi "gửi form xong thì sao?"
 const STEPS = [
@@ -46,10 +47,10 @@ const STEPS = [
 // dark:bg-transparent BẮT BUỘC (navbar #5): base có dark:bg-input/30 — nền
 // riêng chỉ-dark-mode mà bg-transparent (variant khác) không gỡ được, gây
 // "hai lớp màu" trong field ở dark theme.
-const BARE_FIELD =
+export const BARE_FIELD =
   'border-0 bg-transparent px-2 shadow-none focus-visible:ring-0 dark:bg-transparent';
 
-function ContactField({
+export function ContactField({
   id,
   label,
   icon: Icon,

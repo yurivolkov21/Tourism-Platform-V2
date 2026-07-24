@@ -8,7 +8,8 @@ import { motion } from 'motion/react';
 // trang trí (không phải ứng viên schema — sẽ không đọc từ API).
 // Marquee tái dùng .animate-marquee-left của globals.css (hover dừng,
 // reduced-motion tắt) theo đúng cơ chế hai toa của TopBar.
-const PARTNERS = [
+// Export cho mini-marquee "Featured by" của trang /contact tái dùng
+export const PARTNERS = [
   'Lonely Planet',
   'TripAdvisor',
   'National Geographic',

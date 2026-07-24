@@ -53,6 +53,20 @@ export interface MockJournalPost {
   author: string;
 }
 
+/** Văn phòng cho trang Contact — ứng viên schema offices */
+export interface MockOffice {
+  city: string;
+  name: string;
+  addressLines: string[];
+  hours: string;
+}
+
+/** Câu hỏi pre-sales cho mini-FAQ Contact — ứng viên schema faqs */
+export interface MockFaqItem {
+  question: string;
+  answer: string;
+}
+
 /** Thành viên sáng lập/vận hành cho trang About §5 — ứng viên schema team_members */
 export interface MockTeamMember {
   name: string;
