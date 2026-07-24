@@ -1,6 +1,5 @@
 'use client';
 
-import { Input } from '@tourism/ui/components/input';
 import {
   Select,
   SelectContent,
@@ -10,10 +9,9 @@ import {
   SelectValue,
 } from '@tourism/ui/components/select';
 import { Separator } from '@tourism/ui/components/separator';
-import { Textarea } from '@tourism/ui/components/textarea';
-import { CalendarIcon, MailIcon, UserIcon } from 'lucide-react';
+import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { BARE_FIELD, ContactField, EMAIL, PHONE } from '@/components/home/contact';
+import { EMAIL, PHONE } from '@/components/home/contact';
 import { PARTNERS } from '@/components/home/partners';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { REGIONS } from '@/mocks/regions';
@@ -28,6 +26,11 @@ import { REGIONS } from '@/mocks/regions';
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 const LOCATION = ['12 Hàng Bạc, Hoàn Kiếm', 'Hà Nội, Vietnam'];
+
+// Chỗ trống trong "lá thư": gạch dưới nét đứt, chữ điền vào là serif italic
+// màu primary — như mực khác màu trên thư in sẵn; focus đổi viền primary.
+const LETTER_BLANK =
+  'inline-block border-0 border-b-2 border-dashed border-border bg-transparent px-1 font-heading italic text-primary placeholder:text-muted-foreground/50 placeholder:not-italic outline-none transition-colors focus:border-primary';
 
 export function ContactSplit() {
   return (
@@ -122,7 +125,12 @@ export function ContactSplit() {
 
         <div className="hidden md:col-span-1 md:block" />
 
-        {/* Phải: form trong card viền */}
+        {/* Phải: "LÁ THƯ" — chữ ký của trang (nâng cấp 6.5→wow, skill
+            frontend-design: đặt cược táo bạo ở MỘT chỗ = chính form, vì luận
+            đề trang là "not a hotline" mà form kiểu hotline thì tự phản bội).
+            Form mad-libs: người dùng điền vào CHỖ TRỐNG giữa câu văn Literata
+            italic; tem thư góc card; tái bút cam kết người thật đọc thư.
+            A11y: mỗi blank có aria-label (ngữ cảnh câu văn là label thị giác). */}
         <motion.div
           className="col-span-12 md:col-span-5"
           initial={{ x: 40, opacity: 0 }}
@@ -131,74 +139,98 @@ export function ContactSplit() {
           transition={{ delay: 0.1, ...SPRING }}
         >
           <form
-            className="flex flex-col gap-5 rounded-2xl border bg-card p-6 shadow-(--shadow-card) md:p-8"
+            className="relative flex flex-col gap-6 rounded-2xl border bg-card p-6 shadow-(--shadow-card) md:p-9"
             onSubmit={(e) => e.preventDefault()}
           >
-            <ContactField id="cp-name" label="Your name" icon={UserIcon}>
-              <Input
-                id="cp-name"
-                type="text"
-                placeholder="Michael Anderson"
-                className={BARE_FIELD}
-              />
-            </ContactField>
-            <ContactField id="cp-email" label="Email address" icon={MailIcon}>
-              <Input
-                id="cp-email"
-                type="email"
-                placeholder="michael@example.com"
-                className={BARE_FIELD}
-              />
-            </ContactField>
-            <ContactField id="cp-dates" label="Travel dates" icon={CalendarIcon}>
-              <Input
-                id="cp-dates"
-                type="text"
-                placeholder="E.g. Oct 12 – Oct 18"
-                className={BARE_FIELD}
-              />
-            </ContactField>
+            {/* Tem thư góc trên-phải: viền răng cưa dashed + la bàn, nghiêng nhẹ */}
+            <div
+              aria-hidden="true"
+              className="absolute top-5 right-5 flex rotate-3 flex-col items-center gap-1 rounded-sm border-2 border-dashed border-primary/40 px-3 py-2 text-primary"
+            >
+              <CompassIcon className="size-5" />
+              <span className="text-[9px] font-semibold tracking-widest uppercase">
+                Hà Nội · Sa Pa
+              </span>
+            </div>
 
-            {/* Select vùng quan tâm — option mock từ REGIONS (nợ API categories) */}
-            <div className="flex flex-col">
-              <label
-                htmlFor="cp-region"
-                className="mb-2 text-sm tracking-wide text-muted-foreground uppercase"
-              >
-                Region of interest
-              </label>
+            <p className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
+              Write us a letter
+            </p>
+
+            {/* Thân thư — câu văn với chỗ trống gạch dưới nét đứt */}
+            <div className="font-heading text-lg/relaxed text-card-foreground md:text-xl/relaxed">
+              <span>Hello tourism, we are </span>
+              <input
+                type="text"
+                inputMode="numeric"
+                aria-label="How many travellers"
+                placeholder="2"
+                className={`${LETTER_BLANK} w-10 text-center`}
+              />
+              <span> travellers, dreaming of </span>
               <Select>
-                <SelectTrigger id="cp-region" className="w-full">
-                  <SelectValue placeholder="Anywhere in Vietnam" />
+                <SelectTrigger
+                  aria-label="Region of interest"
+                  className={`${LETTER_BLANK} inline-flex h-auto w-auto gap-1 rounded-none py-0 font-heading text-lg text-primary italic shadow-none focus-visible:ring-0 md:text-xl`}
+                >
+                  <SelectValue placeholder="anywhere in Vietnam" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
-                    <SelectItem value="any">Anywhere in Vietnam</SelectItem>
+                    {/* Option mock từ REGIONS — nợ API categories như Nexora */}
+                    <SelectItem value="any">anywhere in Vietnam</SelectItem>
                     {REGIONS.map((region) => (
                       <SelectItem key={region.key} value={region.key}>
-                        {region.name}
+                        {region.name.toLowerCase()}
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
+              <span> sometime around </span>
+              <input
+                type="text"
+                aria-label="Travel dates"
+                placeholder="Oct 12 – 18"
+                className={`${LETTER_BLANK} w-32`}
+              />
+              <span>. What we love most: </span>
+              <input
+                type="text"
+                aria-label="What you love when travelling"
+                placeholder="easy pace, food markets"
+                className={`${LETTER_BLANK} w-full md:w-72`}
+              />
+              <span>. Write back to </span>
+              <input
+                type="email"
+                aria-label="Your email address"
+                placeholder="michael@example.com"
+                className={`${LETTER_BLANK} w-56`}
+              />
+              <span>.</span>
+              <div className="mt-5 flex items-baseline justify-end gap-2">
+                <span>—</span>
+                <input
+                  type="text"
+                  aria-label="Your name"
+                  placeholder="your name"
+                  className={`${LETTER_BLANK} w-40`}
+                />
+              </div>
             </div>
 
-            <ContactField id="cp-message" label="Message" multiline>
-              <Textarea
-                id="cp-message"
-                rows={4}
-                placeholder="E.g. Two of us, easy pace, love food markets"
-                className={`${BARE_FIELD} resize-none pt-0`}
-              />
-            </ContactField>
-
-            <button
-              type="submit"
-              className="mt-1 cursor-pointer rounded-full bg-primary px-6 py-3.5 text-xs tracking-wide text-primary-foreground uppercase transition-colors duration-200 hover:bg-primary/90"
-            >
-              Send the enquiry
-            </button>
+            <div className="flex flex-col gap-3">
+              <button
+                type="submit"
+                className="cursor-pointer self-start rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors duration-200 hover:bg-primary/90"
+              >
+                Send the letter
+              </button>
+              <p className="text-xs text-muted-foreground italic">
+                P.S. A human reads every letter — no bots on this side.
+              </p>
+            </div>
           </form>
         </motion.div>
       </div>

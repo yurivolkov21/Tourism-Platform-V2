@@ -53,6 +53,21 @@ export function ContactHero() {
         >
           Tell us your dates and pace — a real person replies within the hour, Monday to Friday.
         </motion.p>
+
+        {/* Dòng "presence" người thật đang trực (mock — nguồn thật là API/CRM
+            sau này): chấm jade thở, motion-safe để tôn trọng reduced-motion */}
+        <motion.p
+          className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-primary/25 bg-primary/5 px-4 py-2 text-sm text-foreground/80"
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.5, ...SPRING }}
+        >
+          <span aria-hidden="true" className="relative flex size-2">
+            <span className="absolute inline-flex h-full w-full rounded-full bg-primary opacity-60 motion-safe:animate-ping" />
+            <span className="relative inline-flex size-2 rounded-full bg-primary" />
+          </span>
+          Mai is on replies today — average answer: 47 minutes
+        </motion.p>
       </div>
     </section>
   );
