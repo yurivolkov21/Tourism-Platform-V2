@@ -2,10 +2,6 @@ import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
 import { LenisScroll } from '@/components/lenis-scroll';
 import { MotionProvider } from '@/components/motion/motion-provider';
-import { ScrollToTop } from '@/components/scroll-to-top';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
-import { TopBar } from '@/components/top-bar';
 import './globals.css';
 
 // Bộ font chốt qua 2 vòng specimen (ADR-0013 #6, cập nhật 22/07): Literata
@@ -59,13 +55,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* Shell TopBar/navbar/footer đã dời xuống (site)/layout.tsx — root chỉ
+            còn provider toàn cục để cụm (auth) có màn hình riêng (plan auth) */}
         <MotionProvider>
           <LenisScroll />
-          <TopBar />
-          <SiteHeader />
-          <main className="flex-1">{children}</main>
-          <SiteFooter />
-          <ScrollToTop />
+          {children}
         </MotionProvider>
       </body>
     </html>

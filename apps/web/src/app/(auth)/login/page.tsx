@@ -1,0 +1,18 @@
+import type { Metadata } from 'next';
+import { AuthScreen } from '@/components/auth/auth-screen';
+import { LoginForm } from '@/components/auth/login-form';
+
+// /login — trang MẪU của cụm auth (spec/plan 2026-07-24): AuthScreen split +
+// TicketCard. Duyệt layout ở trang này xong mới nhân ra 5 trang còn lại.
+export const metadata: Metadata = {
+  title: 'Log in — Tourism',
+  description: 'Log in to pick up where the map left off.',
+};
+
+export default function LoginPage() {
+  return (
+    <AuthScreen quote="Welcome back — the valley kept your seat." author="Mai, Sa Pa guide">
+      <LoginForm />
+    </AuthScreen>
+  );
+}
