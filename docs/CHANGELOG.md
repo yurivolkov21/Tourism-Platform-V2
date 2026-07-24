@@ -2,6 +2,33 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-24 — P3b: hạ tầng cụm auth + /login mẫu (branch `feat/auth-pages`, merge `da006cb`)
+
+Merge MỘT PHẦN có chủ ý: spec+plan 6 trang auth, hạ tầng dùng chung, và /login
+làm trang MẪU đã chốt layout; 5 trang còn lại (register/forgot/reset/verify/2FA)
+nhân bản từ mẫu ở branch sau.
+- **Kiến trúc**: root layout tách route group — `(site)/` giữ shell
+  TopBar/navbar/footer/ScrollToTop (Home/About/Contact dời vào, URL không đổi),
+  `(auth)/` màn hình riêng chỉ logo; AuthScreen (split 2 cột, quote đổi theo
+  trang) + TicketCard (chữ ký "tấm vé": đục lỗ mép trái, cuống vé mono
+  `HN → SAPA · GATE: LOGIN` + barcode 2 lớp gradient) dùng chung cả cụm.
+- **Saga thiết kế 4 vòng** (bài học đắt → memory `design-research-before-decorating`):
+  aurora WebGL (ogl) → poster vector "SAPA EXPRESS" (tàu, ruộng bậc thang) →
+  cả hai bị loại vì "lộ mùi AI"; chốt bằng KHẢO SÁT MẪU THẬT (10 login SaaS +
+  Dribbble topo + Airbnb/AllTrails): panel phải = ẢNH THẬT Sa Pa "Ray over
+  terrace rice field" (Phi Phi Hoang, CC BY 2.0 Wikimedia, credit ngay UI,
+  crop 4:5 sharp 237KB) + khung hairline + caption mono; nền trái = vân đồng
+  mức SINH THUẬT TOÁN (value-noise + marching squares, script scratchpad seed 7)
+  xuất `auth-topo.svg` 16KB dùng CSS mask token-hoá + tuyến hành trình chấm
+  `1 650 M → FAN SI PAN · 3 143 M`. Dependency `ogl` thêm rồi GỠ sạch.
+- **GoogleIcon 4 màu brand** (ngoại lệ tokens-only có ghi chú — brand mark);
+  autofill/label a11y giữ chuẩn (`htmlFor` cho Checkbox base-ui).
+- Nợ ghi ở spec: Better Auth client, Google backend, twoFactor TOTP +
+  emailVerification (ADR lúc gắn), validate/honeypot/rate-limit form.
+- Ảnh thật đầu tiên vào repo (phá lệ placeholder CÓ CHỦ Ý, chỉ cụm auth).
+Tests after: gate:int xanh — gate 18/18 task (FULL TURBO) + int 145/17; web
+unit 11; typecheck + biome sạch; CI branch `success` 2m33s trước merge.
+
 ## 2026-07-24 — P3b: trang /contact (branch `feat/contact-page`, merge `19e639f`)
 
 Trang thứ ba của P3b — kế hoạch 5 section user duyệt trước khi dựng, sau đó
