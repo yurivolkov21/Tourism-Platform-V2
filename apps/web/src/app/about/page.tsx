@@ -5,6 +5,7 @@ import { AboutNumbers } from '@/components/about/about-numbers';
 import { AboutStory } from '@/components/about/about-story';
 import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
+import { AboutValues } from '@/components/about/about-values';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
 // (quy trình: demo section → review → chốt → section kế). Lineup đã chốt
@@ -25,6 +26,9 @@ export default function AboutPage() {
       <AboutStory />
       <AboutTimeline />
       <AboutNumbers />
+      {/* Values "The promises we keep" — lấp tầng giá trị (phân tích: các lời
+          hứa mới chỉ teaser ở pill/0-Scripts/marquee, chưa được giải thích) */}
+      <AboutValues />
       <AboutTeam />
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
