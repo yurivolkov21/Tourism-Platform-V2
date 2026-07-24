@@ -30,7 +30,10 @@ const LOCATION = ['12 Hàng Bạc, Hoàn Kiếm', 'Hà Nội, Vietnam'];
 // Chỗ trống trong "lá thư": gạch dưới nét đứt, chữ điền vào là serif italic
 // màu primary — như mực khác màu trên thư in sẵn; focus đổi viền primary.
 const LETTER_BLANK =
-  'inline-block border-0 border-b-2 border-dashed border-border bg-transparent px-1 font-heading italic text-primary placeholder:text-muted-foreground/50 placeholder:not-italic outline-none transition-colors focus:border-primary';
+  'block border-0 border-b-2 border-dashed border-border bg-transparent px-1 py-1 font-heading text-lg italic text-primary placeholder:text-muted-foreground/50 placeholder:not-italic outline-none transition-colors focus:border-primary';
+
+// Nhãn-câu-hỏi dẫn từng dòng thư — thường (không uppercase) cho giọng trò chuyện
+const LETTER_LABEL = 'text-sm text-muted-foreground';
 
 export function ContactSplit() {
   return (
@@ -125,12 +128,11 @@ export function ContactSplit() {
 
         <div className="hidden md:col-span-1 md:block" />
 
-        {/* Phải: "LÁ THƯ" — chữ ký của trang (nâng cấp 6.5→wow, skill
-            frontend-design: đặt cược táo bạo ở MỘT chỗ = chính form, vì luận
-            đề trang là "not a hotline" mà form kiểu hotline thì tự phản bội).
-            Form mad-libs: người dùng điền vào CHỖ TRỐNG giữa câu văn Literata
-            italic; tem thư góc card; tái bút cam kết người thật đọc thư.
-            A11y: mỗi blank có aria-label (ngữ cảnh câu văn là label thị giác). */}
+        {/* Phải: "LÁ THƯ" — chữ ký của trang (đặt cược táo bạo ở MỘT chỗ =
+            chính form, vì luận đề trang là "not a hotline"). Bản 1 kiểu
+            mad-libs (blank giữa câu) bị chê rối mắt → bản 2: bố cục thư RÕ
+            RÀNG — mở "Hello tourism," + từng dòng nhãn-câu-hỏi + chỗ điền
+            gạch nét đứt mực jade italic, chữ ký "Yours," + tem + tái bút. */}
         <motion.div
           className="col-span-12 md:col-span-5"
           initial={{ x: 40, opacity: 0 }}
@@ -157,65 +159,99 @@ export function ContactSplit() {
               Write us a letter
             </p>
 
-            {/* Thân thư — câu văn với chỗ trống gạch dưới nét đứt */}
-            <div className="font-heading text-lg/relaxed text-card-foreground md:text-xl/relaxed">
-              <span>Hello tourism, we are </span>
-              <input
-                type="text"
-                inputMode="numeric"
-                aria-label="How many travellers"
-                placeholder="2"
-                className={`${LETTER_BLANK} w-10 text-center`}
-              />
-              <span> travellers, dreaming of </span>
+            {/* Thân thư — bố cục RÕ RÀNG (điều chỉnh #2: bản mad-libs bị chê
+                rối mắt): mở thư "Hello tourism," rồi TỪNG DÒNG một nhãn-câu-hỏi
+                + một chỗ điền gạch nét đứt; giữ hồn thư ở tem, mực jade italic,
+                chữ ký "Yours," và tái bút. */}
+            <p className="font-heading text-xl text-card-foreground md:text-2xl">Hello tourism,</p>
+
+            <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="cl-count" className={LETTER_LABEL}>
+                  How many of you?
+                </label>
+                <input
+                  id="cl-count"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="2 travellers"
+                  className={LETTER_BLANK}
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="cl-dates" className={LETTER_LABEL}>
+                  When are you free?
+                </label>
+                <input
+                  id="cl-dates"
+                  type="text"
+                  placeholder="Oct 12 – 18"
+                  className={LETTER_BLANK}
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="cl-region" className={LETTER_LABEL}>
+                Where are you dreaming of?
+              </label>
               <Select>
                 <SelectTrigger
-                  aria-label="Region of interest"
-                  className={`${LETTER_BLANK} inline-flex h-auto w-auto gap-1 rounded-none py-0 font-heading text-lg text-primary italic shadow-none focus-visible:ring-0 md:text-xl`}
+                  id="cl-region"
+                  className={`${LETTER_BLANK} h-auto w-full justify-between rounded-none py-1 font-heading text-lg text-primary italic shadow-none focus-visible:ring-0`}
                 >
-                  <SelectValue placeholder="anywhere in Vietnam" />
+                  <SelectValue placeholder="Anywhere in Vietnam" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectGroup>
                     {/* Option mock từ REGIONS — nợ API categories như Nexora */}
-                    <SelectItem value="any">anywhere in Vietnam</SelectItem>
+                    <SelectItem value="any">Anywhere in Vietnam</SelectItem>
                     {REGIONS.map((region) => (
                       <SelectItem key={region.key} value={region.key}>
-                        {region.name.toLowerCase()}
+                        {region.name}
                       </SelectItem>
                     ))}
                   </SelectGroup>
                 </SelectContent>
               </Select>
-              <span> sometime around </span>
-              <input
-                type="text"
-                aria-label="Travel dates"
-                placeholder="Oct 12 – 18"
-                className={`${LETTER_BLANK} w-32`}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="cl-loves" className={LETTER_LABEL}>
+                What do you love when travelling?
+              </label>
+              <textarea
+                id="cl-loves"
+                rows={2}
+                placeholder="Easy pace, food markets, a free afternoon now and then…"
+                className={`${LETTER_BLANK} w-full resize-none leading-relaxed`}
               />
-              <span>. What we love most: </span>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="cl-email" className={LETTER_LABEL}>
+                Where do we write back?
+              </label>
               <input
-                type="text"
-                aria-label="What you love when travelling"
-                placeholder="easy pace, food markets"
-                className={`${LETTER_BLANK} w-full md:w-72`}
-              />
-              <span>. Write back to </span>
-              <input
+                id="cl-email"
                 type="email"
-                aria-label="Your email address"
                 placeholder="michael@example.com"
-                className={`${LETTER_BLANK} w-56`}
+                className={LETTER_BLANK}
               />
-              <span>.</span>
-              <div className="mt-5 flex items-baseline justify-end gap-2">
-                <span>—</span>
+            </div>
+
+            {/* Chữ ký — giữ chất thư */}
+            <div className="flex flex-col items-end gap-1.5">
+              <span className="font-heading text-lg text-card-foreground italic">Yours,</span>
+              <div className="flex w-full flex-col gap-1.5 sm:w-56">
+                <label htmlFor="cl-name" className="sr-only">
+                  Your name
+                </label>
                 <input
+                  id="cl-name"
                   type="text"
-                  aria-label="Your name"
-                  placeholder="your name"
-                  className={`${LETTER_BLANK} w-40`}
+                  placeholder="Your name"
+                  className={`${LETTER_BLANK} text-right`}
                 />
               </div>
             </div>
