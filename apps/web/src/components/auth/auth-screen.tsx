@@ -24,12 +24,24 @@ interface AuthScreenProps {
 export function AuthScreen({ quote, author, children }: AuthScreenProps) {
   return (
     <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
-      {/* Trái: logo + card, nền chỉ có ánh sáng hắt nhẹ từ phía ảnh */}
+      {/* Trái: logo + card trên FROSTED GLASS — cùng tấm ảnh Sa Pa của panel
+          phải nhưng blur mạnh + voan màu nền, như nhìn thung lũng qua lớp kính
+          mờ hơi nước: cả trang là MỘT tác phẩm liền mạch (bài học Resend),
+          card solid tự nổi bật. Ảnh trùng src với panel phải → không tốn thêm
+          request. Voan chỉnh riêng từng theme để giữ tương phản cho form. */}
       <div className="relative flex flex-col overflow-hidden px-6 py-8 md:px-12">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 [background:radial-gradient(52rem_36rem_at_112%_20%,color-mix(in_oklab,var(--primary)_8%,transparent),transparent_68%),radial-gradient(38rem_28rem_at_-8%_96%,color-mix(in_oklab,var(--region-spark)_7%,transparent),transparent_70%)]"
-        />
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0">
+          <Image
+            src="/images/auth-sapa-dawn.jpg"
+            alt=""
+            fill
+            sizes="(min-width: 1024px) 50vw, 100vw"
+            className="scale-110 object-cover blur-3xl saturate-[0.9]"
+          />
+          <div className="absolute inset-0 bg-background/78 dark:bg-background/82" />
+          {/* Vignette nhẹ quanh mép để tia sáng gold/jade chỉ "thở" ở rìa */}
+          <div className="absolute inset-0 [background:radial-gradient(120%_90%_at_50%_45%,var(--background)_0%,transparent_55%)] opacity-60" />
+        </div>
         <a href="/" aria-label="tourism — home" className="relative z-10 w-fit select-none">
           <Logo />
         </a>
