@@ -1,0 +1,117 @@
+import { Typeset } from '@tourism/ui/components/typeset';
+import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { PostHero } from '@/components/blog/post-hero';
+import { OnThisPage } from '@/components/content/on-this-page';
+import { ReadingProgress } from '@/components/content/reading-progress';
+import { Reveal } from '@/components/motion/reveal';
+import { slugify } from '@/lib/slug';
+import { tocFromSections } from '@/lib/toc';
+import { JOURNAL_POSTS } from '@/mocks/journal';
+
+// Sinh sẵn 9 slug lúc build; slug lạ rơi vào notFound() → trang 404 của cụm
+// pháp lý đón. Thân bài dùng ĐÚNG khuôn LegalArticle nên /blog/[slug] và
+// /terms là anh em cùng bộ xương.
+export function generateStaticParams() {
+  return JOURNAL_POSTS.map((post) => ({ slug: post.slug }));
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const post = JOURNAL_POSTS.find((p) => p.slug === slug);
+  if (!post) return { title: 'Post not found — Tourism' };
+  return {
+    title: `${post.title} — Tourism`,
+    description: post.excerpt,
+    openGraph: { title: post.title, description: post.excerpt },
+  };
+}
+
+export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const post = JOURNAL_POSTS.find((p) => p.slug === slug);
+  if (!post) notFound();
+
+  const toc = tocFromSections(post.sections);
+
+  // JSON-LD dựng từ mock TĨNH, escape `<` để không thoát khỏi thẻ script —
+  // cùng pattern an toàn với trang /faq.
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.excerpt,
+    datePublished: post.date,
+    ...(post.updated ? { dateModified: post.updated } : {}),
+    author: { '@type': 'Person', name: post.author },
+    image: post.image,
+  };
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: nội dung tĩnh của mình, đã escape `<`
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
+      <ReadingProgress />
+      <PostHero post={post} />
+
+      <div className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
+        <div className="mx-auto flex max-w-7xl flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-16">
+          <div className="min-w-0 max-w-[68ch]">
+            <Typeset preset="reading" className="text-muted-foreground">
+              <p className="lead">{post.excerpt}</p>
+            </Typeset>
+
+            <div className="mt-10 divide-y divide-border border-t border-border">
+              {post.sections.map((section, i) => (
+                <section
+                  key={section.heading}
+                  id={slugify(section.heading)}
+                  className="scroll-mt-28 py-10"
+                >
+                  <Reveal>
+                    <div className="mb-4 flex items-baseline gap-4">
+                      <span className="font-mono text-xs tabular-nums text-primary">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
+                        {section.heading}
+                      </h2>
+                    </div>
+
+                    <Typeset preset="reading" className="text-muted-foreground">
+                      {section.paragraphs?.map((paragraph) => (
+                        <p key={paragraph}>{paragraph}</p>
+                      ))}
+                      {section.bullets ? (
+                        <ul>
+                          {section.bullets.map((bullet) => (
+                            <li key={bullet}>{bullet}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </Typeset>
+                  </Reveal>
+                </section>
+              ))}
+            </div>
+          </div>
+
+          <aside className="order-first mb-12 lg:order-none lg:mb-0">
+            <div className="max-h-64 overflow-y-auto lg:sticky lg:top-28 lg:max-h-none lg:overflow-visible">
+              <OnThisPage items={toc} />
+            </div>
+          </aside>
+        </div>
+      </div>
+    </>
+  );
+}
