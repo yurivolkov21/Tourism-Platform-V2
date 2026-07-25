@@ -2,23 +2,13 @@
 
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
-import { useState } from 'react';
+import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';
 
-// Ruột form /reset-password (plan Task 4) — password ×2 + THANH ĐỘ MẠNH 4 vạch
-// đổi màu theo độ dài (mock thuần độ dài cho static-first; validate thật là nợ
-// spec). Vạch dùng token: yếu = muted, dần lên primary.
-const STRENGTH_LABELS = ['Too short', 'Getting there', 'Good', 'Trail-ready'] as const;
-
-/** Chấm độ mạnh mock: 0–4 theo ngưỡng độ dài (8/10/12/16) */
-function mockStrength(pw: string): number {
-  return [8, 10, 12, 16].filter((n) => pw.length >= n).length;
-}
-
+// Ruột form /reset-password (plan Task 4, chỉnh vòng 2) — dùng chung
+// PasswordStrengthField với /register (bản 4-vạch-theo-độ-dài cũ đã thay để
+// hai trang cùng MỘT chỉ báo độ mạnh). Confirm giữ Input thường.
 export function ResetPasswordForm() {
-  const [password, setPassword] = useState('');
-  const strength = mockStrength(password);
-
   return (
     <TicketCard stub="REISSUE TICKET · GATE: RESET">
       <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
@@ -32,34 +22,8 @@ export function ResetPasswordForm() {
           </p>
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="reset-password">New password</Label>
-          <Input
-            id="reset-password"
-            type="password"
-            placeholder="At least 8 characters"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          {/* Thanh độ mạnh: 4 vạch + nhãn, chỉ hiện khi bắt đầu gõ */}
-          {password.length > 0 && (
-            <div className="mt-1 flex items-center gap-2">
-              <div className="flex flex-1 gap-1" aria-hidden="true">
-                {[1, 2, 3, 4].map((step) => (
-                  <span
-                    key={step}
-                    className={`h-1 flex-1 rounded-full transition-colors ${
-                      strength >= step ? 'bg-primary' : 'bg-muted'
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="text-xs text-muted-foreground">
-                {STRENGTH_LABELS[Math.max(0, strength - 1)]}
-              </span>
-            </div>
-          )}
-        </div>
+        <PasswordStrengthField id="reset-password" label="New password" placeholder="Password" />
+
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="reset-confirm">Confirm new password</Label>
           <Input id="reset-confirm" type="password" placeholder="Type it once more" />

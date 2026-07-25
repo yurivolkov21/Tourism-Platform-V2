@@ -43,3 +43,6 @@ coverage/
 npm-debug.log*
 pnpm-debug.log*
 .superpowers/
+
+# File nháp cá nhân để dán code tham khảo
+playground.md

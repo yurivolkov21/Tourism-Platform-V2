@@ -4,6 +4,7 @@ import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { GoogleIcon } from '@/components/icons/social';
+import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';
 
 // Ruột form /register (plan Task 3) — nhân từ mẫu login-form: heading accent
@@ -18,9 +19,7 @@ export function RegisterForm() {
             Claim your seat
             <span className="text-primary italic"> on the next trip.</span>
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            One account for every valley, coast and city ahead.
-          </p>
+          <p className="mt-1.5 text-sm text-muted-foreground">One account for every trip ahead.</p>
         </div>
 
         <button
@@ -46,10 +45,8 @@ export function RegisterForm() {
           <Label htmlFor="register-email">Email</Label>
           <Input id="register-email" type="email" placeholder="you@example.com" />
         </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="register-password">Password</Label>
-          <Input id="register-password" type="password" placeholder="At least 8 characters" />
-        </div>
+        {/* Password + chấm độ mạnh (playground.md user cung cấp, đã token hoá) */}
+        <PasswordStrengthField id="register-password" label="Password" placeholder="Password" />
 
         <label
           htmlFor="register-terms"
@@ -75,11 +72,6 @@ export function RegisterForm() {
         >
           Create my account
         </button>
-
-        {/* Note register→verify (plan Task 6): báo trước bước soát vé email */}
-        <p className="text-center text-xs text-muted-foreground">
-          We'll mail you a six-digit code to confirm this address.
-        </p>
 
         <p className="text-center text-sm text-muted-foreground">
           Already have a ticket?{' '}

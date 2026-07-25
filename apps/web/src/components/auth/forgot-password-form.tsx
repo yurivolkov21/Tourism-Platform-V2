@@ -21,8 +21,7 @@ export function ForgotPasswordForm() {
               <span className="text-primary italic"> — help is on the way.</span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              If that address has an account, a reset link is riding over right now. It expires in
-              30 minutes.
+              A reset link is on its way — it expires in 30 minutes.
             </p>
           </div>
           <button
@@ -53,7 +52,7 @@ export function ForgotPasswordForm() {
               <span className="text-primary italic"> It happens on the road.</span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Tell us your email and we'll send a link to reset your password.
+              We'll email you a link to reset it.
             </p>
           </div>
 
