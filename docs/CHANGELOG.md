@@ -2,6 +2,30 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-25 — P3b: trọn bộ 5 trang auth còn lại (branch `feat/auth-pages` đợt 2, merge `3bf142f`)
+
+Nhân layout từ /login mẫu ra 5 trang (plan Task 3–6), cụm auth HOÀN CHỈNH 6/6:
+- **/register**: name/email/password + Terms checkbox + Google; quote "minivan
+  2014" (Đức Anh) bám chuyện sáng lập /about. Stub `NEW TRAVELLER`.
+- **/forgot-password**: mock state `sent` đổi thân card thành "Check your
+  inbox" + gửi lại (`LOST TICKET DESK`) · **/reset-password**: password ×2
+  (`REISSUE TICKET`).
+- **OtpForm dùng chung** (màn ra mắt `input-otp` của @tourism/ui): 6 ô 3+3 +
+  đếm ngược resend 60s → **/verify-email** (`BOARDING CHECK · EMAIL`, có móc
+  backend thật vì ADR-0008 đã gate emailVerified) + **/two-factor** (TOTP,
+  toggle "Use a recovery code", `BOARDING CHECK · TOTP`).
+- **PasswordStrengthField** (review vòng 2, convert từ playground FlyonUI user
+  đưa): eye toggle + 5 vạch điểm + checklist 5 yêu cầu; token hoá màu
+  (destructive→spark→primary thay orange/amber/green-500), ngưỡng 12→8 ký tự;
+  dùng chung register + reset. Copy dài rút gọn toàn cụm; bỏ note "six-digit".
+- Cross-link đủ: login ↔ register ↔ forgot → reset; các trang OTP có đường lui.
+- Sự cố tự vá: `git add -A` lỡ track `playground.md` (file nháp user) → gỡ
+  khỏi commit + thêm `.gitignore`.
+- Nợ không đổi (ghi ở spec): Better Auth client, Google backend, twoFactor
+  plugin, validate/honeypot/rate-limit.
+Tests after: gate:int xanh — gate 18/18 + int 145/17; web unit 11; CI branch
+`success` (3m8s và lượt chót sau strength-field) trước merge.
+
 ## 2026-07-24 — P3b: hạ tầng cụm auth + /login mẫu (branch `feat/auth-pages`, merge `da006cb`)
 
 Merge MỘT PHẦN có chủ ý: spec+plan 6 trang auth, hạ tầng dùng chung, và /login

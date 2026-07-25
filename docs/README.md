@@ -44,7 +44,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
 | P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ 23/07 + navbar ✅ + /about ✅ + /contact ✅ + **/login mẫu ✅ merge 24/07** (route group site/auth, vé tàu, ảnh thật + topo mask); **kế tiếp**: 5 trang auth còn lại nhân từ mẫu, rồi listing/tour detail hoặc /faq, /blog |
 | P3b — trang Home | [2026-07-23-home-page-design](specs/2026-07-23-home-page-design.md) | ✅ đã merge (static-first, 33 vòng điều chỉnh) |
-| P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | 🚧 /login mẫu ✅ merge 24/07 (vé tàu + ảnh Sa Pa + topo mask); còn 5 trang nhân bản |
+| P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | ✅ trọn bộ 6/6 merge 25/07 (vé tàu + ảnh Sa Pa + topo mask + OTP + strength field); nợ wire API ghi trong spec |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -61,7 +61,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Typeset trong @tourism/ui](plans/2026-07-22-ui-typeset.md) | ADR-0012 (3 task) | ✅ đã merge |
 | [Theme Wuling + region tokens](plans/2026-07-22-wuling-theme-tokens.md) | ADR-0013 (5 task) | ✅ đã merge |
 | [Trang Home tĩnh](plans/2026-07-23-home-page.md) | Shell + mocks + 8 section gốc (sau thành 10 qua review) | ✅ đã merge |
-| [Cụm 6 trang auth](plans/2026-07-24-auth-pages.md) | Route group + AuthScreen/TicketCard + 6 trang (6 task) | 🚧 Task 1–2 (/login mẫu) merge 24/07; Task 3–6 chờ branch sau |
+| [Cụm 6 trang auth](plans/2026-07-24-auth-pages.md) | Route group + AuthScreen/TicketCard + 6 trang (6 task) | ✅ đã merge trọn (Task 1–2 ngày 24/07 · Task 3–6 ngày 25/07) |
 
 ## Analysis — nghiên cứu từ Nexora
 
