@@ -76,6 +76,11 @@ export function RegisterForm() {
           Create my account
         </button>
 
+        {/* Note register→verify (plan Task 6): báo trước bước soát vé email */}
+        <p className="text-center text-xs text-muted-foreground">
+          We'll mail you a six-digit code to confirm this address.
+        </p>
+
         <p className="text-center text-sm text-muted-foreground">
           Already have a ticket?{' '}
           <a href="/login" className="font-medium text-primary hover:underline">
