@@ -31,7 +31,9 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # env files (can opt-in for committing if needed)
+# .env.example là file env DUY NHẤT được commit (quy ước 19/07, xem CLAUDE.md).
 .env*
+!.env.example
 
 # vercel
 .vercel
