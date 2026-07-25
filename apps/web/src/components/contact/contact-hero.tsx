@@ -2,6 +2,7 @@
 
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { TopoPattern } from '@/components/topo-pattern';
 
 // Contact §1 — hero NGẮN kiểu Nexora ContentHero (trang utility không cần
 // fullscreen): breadcrumb + heading 2 dòng accent italic + sub 1 dòng.
@@ -17,6 +18,8 @@ export function ContactHero() {
         aria-hidden="true"
         className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
       />
+      {/* Gia vị topo (demo 25/07): bản đồ jade mờ — nối duyên "lá thư từ Sa Pa" */}
+      <TopoPattern className="bg-primary opacity-[0.12]" />
       <div className="relative z-10 mx-auto max-w-7xl">
         <motion.nav
           aria-label="Breadcrumb"

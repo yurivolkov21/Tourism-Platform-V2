@@ -3,6 +3,7 @@
 import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { TopoPattern } from '@/components/topo-pattern';
 
 // Review #23: convert 100% lối thiết kế forged/CTABanner (quyết định của user —
 // trước đó #21 mới lấy xương, lần này lấy cả chất giọng): eyebrow màu accent,
@@ -21,6 +22,8 @@ export function CallToAction() {
           aria-hidden="true"
           className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
         />
+        {/* Gia vị topo (demo 25/07): vân sáng khắc chìm trên band tối */}
+        <TopoPattern className="bg-foreground opacity-[0.05]" />
       </div>
 
       <div className="dark mx-auto flex max-w-5xl flex-col items-center px-4 text-center text-foreground">

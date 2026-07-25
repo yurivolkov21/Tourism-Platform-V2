@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
+import { TopoPattern } from '@/components/topo-pattern';
 import { REGIONS } from '@/mocks/regions';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
@@ -60,6 +61,8 @@ export function AboutNumbers() {
           className="h-full w-full opacity-30"
         />
         <div className="absolute inset-0 bg-overlay/70" />
+        {/* Gia vị topo (demo 25/07): lớp trắc địa rất nhạt giữa ảnh và watermark */}
+        <TopoPattern className="bg-foreground opacity-[0.04]" />
       </div>
 
       {/* Chữ nền khổng lồ — neo giữa-dưới, chìm sau lưới (không che header) */}
