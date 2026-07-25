@@ -119,6 +119,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@tourism/i18n':
+        specifier: workspace:*
+        version: link:../../libs/shared/i18n
       '@tourism/ui':
         specifier: workspace:*
         version: link:../../libs/shared/ui

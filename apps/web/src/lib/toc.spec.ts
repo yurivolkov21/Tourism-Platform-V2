@@ -1,0 +1,34 @@
+import { describe, expect, it } from 'vitest';
+import { tocFromLegalDoc } from './toc.js';
+
+const doc = {
+  title: 'Terms',
+  breadcrumb: 'Terms',
+  updated: 'Last updated: 25 July 2026',
+  intro: ['Intro paragraph.'],
+  sections: [
+    { heading: 'Booking and your contract', paragraphs: ['a'] },
+    { heading: 'Prices, inclusions and payment', paragraphs: ['b'] },
+  ],
+};
+
+describe('tocFromLegalDoc', () => {
+  it('mỗi section thành một mục, id khớp slugify', () => {
+    expect(tocFromLegalDoc(doc)).toEqual([
+      { id: 'booking-and-your-contract', label: 'Booking and your contract', index: '01' },
+      { id: 'prices-inclusions-and-payment', label: 'Prices, inclusions and payment', index: '02' },
+    ]);
+  });
+
+  it('đánh số hai chữ số cho cột mono', () => {
+    const many = {
+      ...doc,
+      sections: Array.from({ length: 11 }, (_, i) => ({ heading: `Section ${i}` })),
+    };
+    expect(tocFromLegalDoc(many).at(-1)?.index).toBe('11');
+  });
+
+  it('doc không có section thì trả mảng rỗng', () => {
+    expect(tocFromLegalDoc({ ...doc, sections: [] })).toEqual([]);
+  });
+});
