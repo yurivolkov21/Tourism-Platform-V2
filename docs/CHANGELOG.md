@@ -2,6 +2,24 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-25 — P3b: gia vị bản đồ 4 vị trí (branch `feat/topo-accents`, merge `6074f06`)
+
+Nhân diện motif trắc địa của cụm auth ra site — nguyên tắc CHỪNG MỰC: tối đa
+1–2 vị trí/trang, mỗi texture phải kể đúng chuyện section đó (khảo sát Hero
+Patterns/Pattern Monster/Dribbble: pattern hình học generic bị loại).
+- **`TopoPattern`** component 3 variant (mask token, màu tự ăn theme):
+  `wide` (topo-wide.svg 1800×700 seed 11 — sinh MỚI cho band ngang, giữ độ
+  mảnh nét thay vì phóng bản dọc) · `portrait` (dùng chung auth-topo.svg) ·
+  `grid` (survey-grid.svg 1200×900 TILE chia hết bước 60px, không mối nối).
+- **4 vị trí**: CTA band Home (vân sáng 5% khắc chìm) · hero Contact (jade
+  12%, ăn rơ tem "HÀ NỘI · SA PA") · Numbers About (4% — nhạt nhất, user chốt
+  giữ) · Location Contact (LƯỚI trắc địa: index 300px + tick "+" + dấu ×,
+  fade dần về đáy bằng mask 2 lớp composite để card sạch; dark nâng 14%).
+- User note: "ổn dù không đúng hẳn ý định ban đầu" — chốt giữ cả 4; các đề
+  cử còn lại (vân giấy, postmark) chưa làm, để dành vòng polish P7.
+Tests after: gate:int xanh — gate 18/18 + int 145/17; CI branch `success`
+trước merge.
+
 ## 2026-07-25 — P3b: trọn bộ 5 trang auth còn lại (branch `feat/auth-pages` đợt 2, merge `3bf142f`)
 
 Nhân layout từ /login mẫu ra 5 trang (plan Task 3–6), cụm auth HOÀN CHỈNH 6/6:

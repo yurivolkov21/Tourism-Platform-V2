@@ -42,7 +42,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ 23/07 + navbar ✅ + /about ✅ + /contact ✅ + **/login mẫu ✅ merge 24/07** (route group site/auth, vé tàu, ảnh thật + topo mask); **kế tiếp**: 5 trang auth còn lại nhân từ mẫu, rồi listing/tour detail hoặc /faq, /blog |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ + navbar ✅ + /about ✅ + /contact ✅ + **auth 6/6 ✅ + gia vị bản đồ 4 vị trí ✅ merge 25/07** (TopoPattern 3 variant); **kế tiếp**: listing/tour detail hoặc /faq, /blog — mỗi trang phân tích chung trước khi dựng |
 | P3b — trang Home | [2026-07-23-home-page-design](specs/2026-07-23-home-page-design.md) | ✅ đã merge (static-first, 33 vòng điều chỉnh) |
 | P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | ✅ trọn bộ 6/6 merge 25/07 (vé tàu + ảnh Sa Pa + topo mask + OTP + strength field); nợ wire API ghi trong spec |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
