@@ -137,6 +137,13 @@ tokens-only không hex (luật #6).
   của Contact) **giữ nguyên**, không gộp trong cụm này.
 - `EnquiryCta` cuối trang FAQ — chờ component CTA enquiry dùng chung.
 - i18n sweep: copy inline của Home/About/Contact/auth gom về `@tourism/i18n`.
+- **`StepperTrigger` với `asChild` mới chỉ là đồ trang trí**: render ra `<span>`
+  trần, không `role="tab"`, không onClick, không bàn phím, không đăng ký vào
+  danh sách điều hướng → bấm không chuyển bước. Sửa đúng cách là dùng
+  `useRender` + prop `render` của Base UI như `typeset.tsx`, nhưng đó là đổi
+  API công khai nên để lại cho lúc làm checkout wizard — nơi Stepper thực sự
+  được dùng. (Cụm này đã thử đưa Stepper vào `/cancellation-policy` rồi gỡ:
+  trang pháp lý là tài liệu tra cứu, không phải quy trình.)
 
 ## Quy trình dựng
 

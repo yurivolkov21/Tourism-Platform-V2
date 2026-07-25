@@ -42,9 +42,10 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ + navbar ✅ + /about ✅ + /contact ✅ + **auth 6/6 ✅ + gia vị bản đồ 4 vị trí ✅ merge 25/07** (TopoPattern 3 variant); **kế tiếp**: listing/tour detail hoặc /faq, /blog — mỗi trang phân tích chung trước khi dựng |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ + navbar ✅ + /about ✅ + /contact ✅ + auth 6/6 ✅ + gia vị bản đồ ✅ + **cụm pháp lý/utility ✅ merge 25/07** (/terms · /privacy · /cancellation-policy · /faq + 404/error/global-error); **kế tiếp**: listing/tour detail hoặc /blog — mỗi trang phân tích chung trước khi dựng |
 | P3b — trang Home | [2026-07-23-home-page-design](specs/2026-07-23-home-page-design.md) | ✅ đã merge (static-first, 33 vòng điều chỉnh) |
 | P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | ✅ trọn bộ 6/6 merge 25/07 (vé tàu + ảnh Sa Pa + topo mask + OTP + strength field); nợ wire API ghi trong spec |
+| P3b — cụm pháp lý/utility | [2026-07-25-legal-utility-pages-design](specs/2026-07-25-legal-utility-pages-design.md) | ✅ merge 25/07 — 4 trang nội dung dài + 3 route boundary; nợ robots/sitemap + EnquiryCta + API FAQ ghi trong spec |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -62,6 +63,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Theme Wuling + region tokens](plans/2026-07-22-wuling-theme-tokens.md) | ADR-0013 (5 task) | ✅ đã merge |
 | [Trang Home tĩnh](plans/2026-07-23-home-page.md) | Shell + mocks + 8 section gốc (sau thành 10 qua review) | ✅ đã merge |
 | [Cụm 6 trang auth](plans/2026-07-24-auth-pages.md) | Route group + AuthScreen/TicketCard + 6 trang (6 task) | ✅ đã merge trọn (Task 1–2 ngày 24/07 · Task 3–6 ngày 25/07) |
+| [Cụm pháp lý/utility](plans/2026-07-25-legal-utility-pages.md) | i18n + LegalArticle + 4 trang + 3 boundary (7 task) | ✅ đã merge |
 
 ## Analysis — nghiên cứu từ Nexora
 

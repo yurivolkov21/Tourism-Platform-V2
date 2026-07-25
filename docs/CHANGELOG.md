@@ -2,6 +2,58 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-25 — P3b: cụm trang pháp lý/utility (branch `feat/legal-utility-pages`, merge `1760831`)
+
+Vá đúng chỗ thụt lùi so với Nexora: 4 trang nội dung dài + 3 route boundary
+chưa hề tồn tại ở v2.
+- **Nội dung có sẵn từ P0**: `libs/shared/i18n/src/lib/legal/{terms,privacy,
+  cancellation}.ts` + `messages.{faqPage,resilience,pageMeta}` đã port từ
+  18/07 nhưng chưa trang nào dùng — đây là lần ĐẦU `apps/web` import
+  `@tourism/i18n`. Dọn lại: 13 chỗ "Nexora" → "Tourism", `updated` → 25/07,
+  bật `reviewNote` cả 3 doc, **thêm mục "Test-mode payments"** vào terms +
+  đoạn nhắc trong cancellation (Stripe/PayPal sandbox, không tiền thật).
+- **Tách `resilience` ra module riêng**: `error.tsx`/`global-error.tsx` là
+  client component, import cả `messages.ts` (~83KB chuỗi) chỉ để lấy vài câu
+  là phí. `messages.resilience` vẫn trỏ về đó nên chỗ gọi cũ không đổi.
+- **Khuôn chung `LegalArticle`** (khảo sát Vercel/Linear/Stripe: trang pháp lý
+  hiện đại mở bằng typography, KHÔNG ảnh hero): `ContentHero` band tối mỏng +
+  `TopoPattern` tĩnh · thân bài 1 cột 68ch `Typeset preset="reading"`
+  (ADR-0012) · số mục mono + hairline · `OnThisPage` sticky **bên phải**
+  (Nexora để trái), mobile đưa lên đầu, cuộn trong khung 256px.
+- **Motion giữ lại 3 thứ bám hành vi đọc**: thanh tiến độ đọc (`useScroll`),
+  chỉ báo TOC trượt (`layoutId`), reveal section. Nền hero ĐỘNG (`TopoLive` —
+  noise + marching squares trên canvas, 12 test) đã dựng rồi **revert**
+  (`b0bb134`): user chốt vân dày lên và chạy liên tục phá nhịp trang đọc.
+- **/faq**: `filterFaqCategories` thuần (5 test) + 5 nhóm accordion kế thừa
+  style `contact-faq` + JSON-LD `FAQPage` (escape `<`, pattern Nexora).
+- **`SiteChrome`** tách khỏi `(site)/layout.tsx` — 404 của URL không khớp chỉ
+  render trong ROOT layout nên không có chrome nếu không dùng lại khối này.
+  `not-found` màn ảnh thật (halong.jpg, mẫu Intrepid); `error`/`global-error`
+  panel tối giản, CỐ Ý không chrome/ảnh để sống được khi cây trang đã hỏng.
+- **`Stepper`** (user tự thêm) vá để build được: cài `@stepperize/react` v7,
+  sửa alias `@/lib/utils`, **migrate API cũ → v7** (`state.current.data.id` →
+  `id`, `navigation.goTo` → `goTo`, `lookup.getIndex` → `index`), bỏ 2
+  useEffect controlled thủ công (v7 có `step`/`onStepChange`). Lỗi tool không
+  bắt: `data-loading={false}` vẫn render thuộc tính · `*:[svg]:size-4` không
+  sinh CSS · `role="tablist"` bọc cả tabpanel → chuyển xuống nav rồi đổi nav
+  thành div. Thử làm sơ đồ hoàn tiền ở /cancellation-policy rồi **revert**
+  (`13f5b3b`) — user chốt trang này dùng đúng khuôn /terms.
+- Nối link: footer nhóm Support (4 link `#top` → route thật); `/register` và
+  mini-FAQ Contact hết 404.
+- Review findings tự bắt bằng ĐO (không đoán): Turbopack không resolve
+  `'./slug.js'` → `.ts` dù Vitest resolve được (test xanh mà trang 500) · mép
+  trái thân bài lệch 80px so với hero (đo `getBoundingClientRect`) · thanh
+  tiến độ `z-50` bị TopBar `z-1700` che, rồi màu `primary` trên TopBar jade
+  thì tàng hình → `on-media` · eyebrow 404 jade trên ảnh vịnh đọc không ra →
+  `on-media/80`. Biome bắt thêm: `aria-hidden` trên `<canvas>`, tên hàm
+  `Error` che global.
+- Nợ ghi trong spec: `robots.ts`/`sitemap.ts` (cụm SEO riêng, user chốt hoãn) ·
+  `EnquiryCta` cuối /faq · gắn API cho FAQ (ứng viên bảng `faqs`) ·
+  `StepperTrigger asChild` mới chỉ là đồ trang trí · i18n sweep copy inline.
+Tests after: gate:int xanh — 26 unit web + 5 ui + **145 int / 17 file**;
+build production liệt kê đủ 4 route mới + `/_not-found`; CI branch `success`
+trước merge.
+
 ## 2026-07-25 — P3b: gia vị bản đồ 4 vị trí (branch `feat/topo-accents`, merge `6074f06`)
 
 Nhân diện motif trắc địa của cụm auth ra site — nguyên tắc CHỪNG MỰC: tối đa
