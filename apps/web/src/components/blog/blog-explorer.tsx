@@ -4,7 +4,7 @@ import { Input } from '@tourism/ui/components/input';
 import { SearchIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { CategoryChips } from '@/components/blog/category-chips';
 import { PostCard } from '@/components/blog/post-card';
 import { filterPostsByCategory, searchPosts, sortPostsByDate } from '@/lib/blog';
@@ -34,7 +34,14 @@ export function BlogExplorer({
 
   // Đồng bộ URL bằng replace (không nhét thêm mục vào lịch sử duyệt) và
   // scroll:false (gõ tìm mà trang nhảy về đầu thì rất khó chịu).
+  const firstRender = useRef(true);
   useEffect(() => {
+    // Bỏ qua lần mount đầu: URL lúc đó đã đúng rồi (server render theo chính
+    // nó), replace lại là ghi đè vô ích.
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
     const params = new URLSearchParams();
     if (tag) params.set('tag', tag);
     if (query.trim()) params.set('q', query.trim());
@@ -48,7 +55,12 @@ export function BlogExplorer({
   return (
     <div>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <CategoryChips categories={categories} active={tag} onSelect={setTag} />
+        <CategoryChips
+          categories={categories}
+          active={tag}
+          query={query.trim()}
+          onSelect={setTag}
+        />
 
         <div className="relative w-full lg:max-w-xs">
           <SearchIcon
@@ -60,7 +72,7 @@ export function BlogExplorer({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search the journal…"
-            aria-label="Search journal posts by title"
+            aria-label="Search journal posts by title or summary"
             className="h-11 rounded-full bg-background pr-4 pl-11 text-sm"
           />
         </div>

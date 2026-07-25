@@ -126,6 +126,15 @@ describe('searchPosts', () => {
     expect(searchPosts(POSTS, 'submarine')).toEqual([]);
   });
 
+  it('bỏ được chữ đ/Đ — normalize NFD không tách được nên phải thay tay', () => {
+    const posts = [post('da-nang', '2026-04-01', 'Food')].map((p) => ({
+      ...p,
+      title: 'Đà Nẵng in three days',
+    }));
+    expect(searchPosts(posts, 'da nang')).toHaveLength(1);
+    expect(searchPosts(posts, 'Đà')).toHaveLength(1);
+  });
+
   it('không sửa mảng gốc', () => {
     searchPosts(POSTS, 'a');
     expect(POSTS.map((p) => p.slug)).toEqual(['a', 'b', 'c']);
