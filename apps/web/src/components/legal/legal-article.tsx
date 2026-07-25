@@ -3,6 +3,8 @@ import { Typeset } from '@tourism/ui/components/typeset';
 import { TriangleAlertIcon } from 'lucide-react';
 import { ContentHero } from '@/components/content/content-hero';
 import { OnThisPage } from '@/components/content/on-this-page';
+import { ReadingProgress } from '@/components/content/reading-progress';
+import { Reveal } from '@/components/motion/reveal';
 import { slugify } from '@/lib/slug';
 import { tocFromLegalDoc } from '@/lib/toc';
 
@@ -10,12 +12,13 @@ import { tocFromLegalDoc } from '@/lib/toc';
 // một cột đo hẹp (~68ch), số section bằng font mono, hairline chia đoạn —
 // thay vòng tròn primary của Nexora. Thân chữ chạy bọc <Typeset preset="reading">
 // (ADR-0012) để cỡ chữ/leading/nhịp dọc do hệ typography lo, không chế tay.
-export function LegalArticle({ doc }: { doc: LegalDoc }) {
+export function LegalArticle({ doc, seed = 11 }: { doc: LegalDoc; seed?: number }) {
   const toc = tocFromLegalDoc(doc);
 
   return (
     <>
-      <ContentHero breadcrumb={doc.breadcrumb} title={doc.title} meta={doc.updated} />
+      <ReadingProgress />
+      <ContentHero breadcrumb={doc.breadcrumb} title={doc.title} meta={doc.updated} seed={seed} />
 
       {/* Padding đặt ở lớp full-bleed rồi mới max-w-7xl bên trong — đúng thứ tự
           của ContentHero; làm ngược lại thì mép trái thân bài lệch 80px so với
@@ -43,27 +46,29 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
                   id={slugify(section.heading)}
                   className="scroll-mt-28 py-10"
                 >
-                  <div className="mb-4 flex items-baseline gap-4">
-                    <span className="font-mono text-xs tabular-nums text-primary">
-                      {String(i + 1).padStart(2, '0')}
-                    </span>
-                    <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
-                      {section.heading}
-                    </h2>
-                  </div>
+                  <Reveal>
+                    <div className="mb-4 flex items-baseline gap-4">
+                      <span className="font-mono text-xs tabular-nums text-primary">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
+                        {section.heading}
+                      </h2>
+                    </div>
 
-                  <Typeset preset="reading" className="text-muted-foreground">
-                    {section.paragraphs?.map((paragraph) => (
-                      <p key={paragraph}>{paragraph}</p>
-                    ))}
-                    {section.bullets ? (
-                      <ul>
-                        {section.bullets.map((bullet) => (
-                          <li key={bullet}>{bullet}</li>
-                        ))}
-                      </ul>
-                    ) : null}
-                  </Typeset>
+                    <Typeset preset="reading" className="text-muted-foreground">
+                      {section.paragraphs?.map((paragraph) => (
+                        <p key={paragraph}>{paragraph}</p>
+                      ))}
+                      {section.bullets ? (
+                        <ul>
+                          {section.bullets.map((bullet) => (
+                            <li key={bullet}>{bullet}</li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </Typeset>
+                  </Reveal>
                 </section>
               ))}
             </div>

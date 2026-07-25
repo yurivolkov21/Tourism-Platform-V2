@@ -2,7 +2,7 @@
 
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { TopoPattern } from '@/components/topo-pattern';
+import { TopoLive } from '@/components/topo-live';
 
 // Header dùng chung cho trang nội dung dài (terms/privacy/cancellation/faq).
 // Band NGẮN và TỐI: khác Nexora ContentHero (ảnh full-bleed) — theo khảo sát
@@ -16,12 +16,15 @@ export function ContentHero({
   title,
   meta,
   subtitle,
+  seed = 11,
 }: {
   breadcrumb: string;
   title: string;
   /** Dòng "Last updated: …" — trang FAQ không có. */
   meta?: string;
   subtitle?: string;
+  /** Đổi vân giữa các trang trong cụm để không trang nào giống trang nào. */
+  seed?: number;
 }) {
   return (
     <section className="dark relative w-full overflow-hidden bg-background px-4 pt-36 pb-14 text-foreground md:px-16 md:pb-16 lg:px-24 xl:px-32">
@@ -29,8 +32,8 @@ export function ContentHero({
         aria-hidden="true"
         className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
       />
-      {/* Gia vị topo — đúng 1 vị trí trên trang này */}
-      <TopoPattern className="bg-primary opacity-[0.10]" />
+      {/* Gia vị topo — đúng 1 vị trí trên trang này, bản ĐỘNG trôi rất chậm */}
+      <TopoLive variant="ambient" seed={seed} className="text-primary opacity-30" />
 
       <div className="relative z-10 mx-auto max-w-7xl">
         <motion.nav
