@@ -51,7 +51,7 @@ export default function NotFound() {
             <Link href="/#tours" className={PILL_OUTLINE}>
               {t.tours}
             </Link>
-            <Link href="/#journal" className={PILL_OUTLINE}>
+            <Link href="/blog" className={PILL_OUTLINE}>
               {t.blog}
             </Link>
           </div>

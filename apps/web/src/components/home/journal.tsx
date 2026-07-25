@@ -40,7 +40,7 @@ export function Journal() {
           </div>
 
           <motion.a
-            href="#journal"
+            href="/blog"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
             className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 px-6 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"

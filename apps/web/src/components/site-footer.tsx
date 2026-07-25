@@ -20,7 +20,7 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
       ['Destinations', '/#gallery'],
       ['Reviews', '/#reviews'],
       ['Contact', '/contact'],
-      ['Journal', '/#journal'],
+      ['Journal', '/blog'],
     ],
   },
   {

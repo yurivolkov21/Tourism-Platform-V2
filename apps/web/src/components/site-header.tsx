@@ -15,12 +15,11 @@ import { UserMenu } from './user-menu';
 // nút Book a tour. Mọi mảnh đều nhận "skin" theo 2 chế độ nền của navbar.
 // Thứ tự theo Nexora (Tours · Destinations · Blog · About · Contact) — navbar
 // chỉ chứa đích đến là TRANG thật (review navbar #3: bỏ Reviews vì nó mãi là
-// section trong Home, link tới nó vẫn còn ở footer). About Us tạm trỏ #top —
-// trang /about là mục kế tiếp của lộ trình; Travel Blog trỏ section Journal,
-// sau thành /blog.
+// section trong Home, link tới nó vẫn còn ở footer). Travel Blog nay trỏ
+// thẳng /blog (Task 7) — trang /about cũng đã có, không còn link tạm nào.
 // Anchor dạng TUYỆT ĐỐI (/#...) — đứng ở /about bấm vẫn về đúng section Home
 const NAV_LINKS = [
-  { label: 'Travel Blog', href: '/#journal' },
+  { label: 'Travel Blog', href: '/blog' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },
 ];
@@ -31,7 +30,7 @@ const MOBILE_LINKS = [
   { label: 'Destinations — North', href: '/#gallery' },
   { label: 'Destinations — Central', href: '/#gallery' },
   { label: 'Destinations — South', href: '/#gallery' },
-  { label: 'Travel Blog', href: '/#journal' },
+  { label: 'Travel Blog', href: '/blog' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },
   { label: 'Log in', href: '/login' },
