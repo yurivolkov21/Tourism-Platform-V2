@@ -12,13 +12,13 @@ import { tocFromLegalDoc } from '@/lib/toc';
 // một cột đo hẹp (~68ch), số section bằng font mono, hairline chia đoạn —
 // thay vòng tròn primary của Nexora. Thân chữ chạy bọc <Typeset preset="reading">
 // (ADR-0012) để cỡ chữ/leading/nhịp dọc do hệ typography lo, không chế tay.
-export function LegalArticle({ doc, seed = 11 }: { doc: LegalDoc; seed?: number }) {
+export function LegalArticle({ doc }: { doc: LegalDoc }) {
   const toc = tocFromLegalDoc(doc);
 
   return (
     <>
       <ReadingProgress />
-      <ContentHero breadcrumb={doc.breadcrumb} title={doc.title} meta={doc.updated} seed={seed} />
+      <ContentHero breadcrumb={doc.breadcrumb} title={doc.title} meta={doc.updated} />
 
       {/* Padding đặt ở lớp full-bleed rồi mới max-w-7xl bên trong — đúng thứ tự
           của ContentHero; làm ngược lại thì mép trái thân bài lệch 80px so với
