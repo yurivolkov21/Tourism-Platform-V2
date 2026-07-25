@@ -5,6 +5,7 @@ import {
   filterPostsByCategory,
   postCategories,
   relatedPosts,
+  searchPosts,
   sortPostsByDate,
 } from './blog.js';
 
@@ -94,5 +95,39 @@ describe('relatedPosts', () => {
 
   it('không trả quá limit', () => {
     expect(relatedPosts(POSTS, 'a', 1)).toHaveLength(1);
+  });
+});
+
+describe('searchPosts', () => {
+  it('query rỗng hoặc toàn khoảng trắng trả nguyên danh sách', () => {
+    expect(searchPosts(POSTS, '   ')).toHaveLength(3);
+  });
+
+  it('khớp theo tiêu đề, không phân biệt hoa thường', () => {
+    expect(searchPosts(POSTS, 'A').map((p) => p.slug)).toEqual(['a']);
+  });
+
+  it('khớp cả trong excerpt', () => {
+    // Dùng factory `post()` thay vì spread POSTS[0] để khỏi đụng
+    // noUncheckedIndexedAccess (POSTS[0] là T | undefined) — Biome cấm `!`
+    // (noNonNullAssertion) nên factory là lối sạch hơn guard/assertion.
+    const posts = [{ ...post('a', '2026-01-10', 'Food'), excerpt: 'Bún chả in Hanoi' }];
+    expect(searchPosts(posts, 'hanoi')).toHaveLength(1);
+  });
+
+  it('bỏ dấu tiếng Việt hai chiều — gõ "bun cha" vẫn ra "bún chả"', () => {
+    const posts = [
+      { ...post('a', '2026-01-10', 'Food'), title: 'Bridges, beaches and bún chả cá' },
+    ];
+    expect(searchPosts(posts, 'bun cha')).toHaveLength(1);
+  });
+
+  it('không khớp gì thì trả mảng rỗng', () => {
+    expect(searchPosts(POSTS, 'submarine')).toEqual([]);
+  });
+
+  it('không sửa mảng gốc', () => {
+    searchPosts(POSTS, 'a');
+    expect(POSTS.map((p) => p.slug)).toEqual(['a', 'b', 'c']);
   });
 });

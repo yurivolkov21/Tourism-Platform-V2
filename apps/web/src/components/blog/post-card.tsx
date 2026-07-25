@@ -22,7 +22,7 @@ export function PostCard({
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-colors hover:border-primary/40 ${
+      className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-colors hover:border-primary/40 motion-safe:transition-all motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-lg ${
         featured ? 'sm:col-span-2' : ''
       }`}
     >
@@ -50,11 +50,16 @@ export function PostCard({
         </div>
 
         <h3
-          className={`font-heading font-medium text-balance text-foreground transition-colors group-hover:text-primary ${
+          className={`line-clamp-2 font-heading font-medium text-balance text-foreground transition-colors group-hover:text-primary ${
             featured ? 'text-2xl md:text-3xl' : 'text-lg'
           }`}
         >
-          {post.title}
+          {/* Gạch chân chạy từ trái sang phải khi hover: nền gradient 1px cao
+              lớn dần theo bề rộng, dùng currentColor nên tự ăn màu chữ —
+              không cần khai thêm token màu (tuân luật tokens-only). */}
+          <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-no-repeat bg-left-bottom motion-safe:transition-[background-size] motion-safe:duration-300 group-hover:bg-[length:100%_1px]">
+            {post.title}
+          </span>
         </h3>
         <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
           {post.excerpt}

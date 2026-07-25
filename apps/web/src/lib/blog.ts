@@ -43,3 +43,21 @@ export function relatedPosts(
   const filler = sorted.filter((post) => !sameCategory.includes(post));
   return [...sameCategory, ...filler].slice(0, limit);
 }
+
+/** Bỏ dấu tiếng Việt để gõ "bun cha" vẫn tìm ra "bún chả" — khách nước ngoài
+    không gõ được dấu, mà tên món trong bài thì có dấu đầy đủ. */
+function foldAccents(value: string): string {
+  return value
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/Đ/g, 'D')
+    .toLowerCase();
+}
+
+/** Tìm theo tiêu đề + excerpt, bỏ dấu cả hai phía. */
+export function searchPosts(posts: readonly MockJournalPost[], query: string): MockJournalPost[] {
+  const q = foldAccents(query.trim());
+  if (!q) return [...posts];
+  return posts.filter((post) => foldAccents(`${post.title} ${post.excerpt}`).includes(q));
+}
