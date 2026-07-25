@@ -1,10 +1,14 @@
 import { Typeset } from '@tourism/ui/components/typeset';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { PostCard } from '@/components/blog/post-card';
 import { PostHero } from '@/components/blog/post-hero';
+import { PostNav } from '@/components/blog/post-nav';
+import { ShareRow } from '@/components/blog/share-row';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
 import { Reveal } from '@/components/motion/reveal';
+import { adjacentPosts, relatedPosts } from '@/lib/blog';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
 import { JOURNAL_POSTS } from '@/mocks/journal';
@@ -37,6 +41,10 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   if (!post) notFound();
 
   const toc = tocFromSections(post.sections);
+  // Điều hướng cuối bài + gợi ý bài liên quan — cùng nguồn JOURNAL_POSTS,
+  // logic thuần đã có test riêng ở lib/blog.spec.ts.
+  const { newer, older } = adjacentPosts(JOURNAL_POSTS, slug);
+  const more = relatedPosts(JOURNAL_POSTS, slug, 3);
 
   // JSON-LD dựng từ mock TĨNH, escape `<` để không thoát khỏi thẻ script —
   // cùng pattern an toàn với trang /faq.
@@ -103,6 +111,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
                 </section>
               ))}
             </div>
+
+            <ShareRow title={post.title} />
+            <PostNav newer={newer} older={older} />
           </div>
 
           <aside className="order-first mb-12 lg:order-none lg:mb-0">
@@ -112,6 +123,19 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           </aside>
         </div>
       </div>
+
+      <section className="w-full px-4 pb-24 md:px-16 lg:px-24 xl:px-32">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-8 font-heading text-2xl font-medium text-foreground">
+            More from the journal
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {more.map((related) => (
+              <PostCard key={related.slug} post={related} />
+            ))}
+          </div>
+        </div>
+      </section>
     </>
   );
 }

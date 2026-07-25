@@ -18,10 +18,13 @@ export function PostHero({ post }: { post: MockJournalPost }) {
     <section className="dark relative w-full overflow-hidden px-4 pt-36 pb-16 text-foreground md:px-16 md:pb-20 lg:px-24 xl:px-32">
       {/* CHÍNH SÁCH ẢNH (user chốt 25/07): toàn site dùng placeholder, chỉ đổi
           sang ảnh thật khi user yêu cầu riêng. `corner` nép nhãn xuống góc để
-          không đè lên tiêu đề bài viết. */}
+          không đè lên tiêu đề bài viết.
+          Review Task 4 (Minor, trợ năng): KHÔNG dùng post.title làm label —
+          nó trùng y hệt <h1> ngay bên dưới nên trình đọc màn hình đọc tiêu đề
+          bài hai lần liên tiếp. Dùng mô tả riêng cho ảnh cover thay vào đó. */}
       <ImagePlaceholder
         corner
-        label={post.title}
+        label={`${post.category} · cover image`}
         className="absolute inset-0 -z-20 h-full w-full"
       />
       <div
