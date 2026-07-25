@@ -4,3 +4,4 @@ export * from './lib/legal/legal-page.js';
 export * from './lib/legal/privacy.js';
 export * from './lib/legal/terms.js';
 export * from './lib/messages.js';
+export * from './lib/resilience.js';

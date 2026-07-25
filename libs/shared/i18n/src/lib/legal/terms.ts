@@ -1,17 +1,19 @@
 import type { LegalDoc } from './legal-page.js';
 
 /**
- * Terms & Conditions — tour-operator booking terms grounded in the platform's actual flow
- * (enquiry → confirmation, deposit/balance, Stripe/PayPal payment, supplier-delivered services).
- * Operating name "Nexora"; governed by the laws of Vietnam. Cancellation specifics live in the
- * dedicated Cancellation & Refund Policy.
+ * Terms & Conditions — điều khoản đặt tour bám đúng luồng thật của nền tảng
+ * (enquiry → xác nhận, cọc/số dư, thanh toán Stripe/PayPal, dịch vụ do nhà
+ * cung cấp thực hiện). Tên vận hành "Tourism"; luật áp dụng là luật Việt Nam.
+ * Chi tiết huỷ/hoàn nằm ở Cancellation & Refund Policy riêng.
  */
 export const termsDoc: LegalDoc = {
   title: 'Terms & Conditions',
   breadcrumb: 'Terms & Conditions',
-  updated: 'Last updated: 29 June 2026',
+  updated: 'Last updated: 25 July 2026',
+  reviewNote:
+    'This document is sample content for a student capstone project, not legal advice. Tourism does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
-    'These Terms & Conditions govern the booking and provision of tours and travel services by Nexora (“we”, “us”, “our”). They form a binding agreement between us and the person making the booking (“you”), who accepts these terms on behalf of everyone in the booking.',
+    'These Terms & Conditions govern the booking and provision of tours and travel services by Tourism (“we”, “us”, “our”). They form a binding agreement between us and the person making the booking (“you”), who accepts these terms on behalf of everyone in the booking.',
     'Please read them carefully before you book. By placing a booking you confirm that you have read, understood, and agree to these terms.',
   ],
   sections: [
@@ -27,6 +29,13 @@ export const termsDoc: LegalDoc = {
       paragraphs: [
         'Prices are shown in the currency stated at the time of booking (for example, USD or VND) and apply to the services described on the relevant tour. Inclusions and exclusions are listed on each tour; anything not listed is not included.',
         'Depending on the tour, we may require a deposit to confirm your booking, with the balance due before departure as set out in your confirmation. Payments are processed securely through our payment providers (Stripe and PayPal); we do not store your full card details. Prices may change before your booking is confirmed; once confirmed, the agreed price is fixed except where a change is permitted by these terms.',
+      ],
+    },
+    {
+      heading: 'Test-mode payments',
+      paragraphs: [
+        'This site is a demonstration platform. Stripe and PayPal are connected in test/sandbox mode only, so no card is ever charged, no money is transferred, and no booking creates a real financial obligation for either side.',
+        'Any amount, invoice, or receipt you see is generated for demonstration purposes. Use the payment providers’ published test card numbers; never enter real card details on this site.',
       ],
     },
     {
@@ -119,7 +128,7 @@ export const termsDoc: LegalDoc = {
     {
       heading: 'Contact us',
       paragraphs: [
-        'For any question about these terms or your booking, contact us at tourism.platform.online@gmail.com, by phone at 1900 292 958, or by post at Nexora, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
+        'For any question about these terms or your booking, contact us at tourism.platform.online@gmail.com, by phone at 1900 292 958, or by post at Tourism, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
       ],
     },
   ],

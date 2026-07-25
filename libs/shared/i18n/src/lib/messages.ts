@@ -1,9 +1,10 @@
-// Centralized user-facing copy (EN-only, ADR-0005). Surfaces read from here — no inline strings.
-// `as const` keeps literal types so consumers get autocomplete + safety.
+// Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
+// đây — không rải chuỗi inline.
+import { resilience } from './resilience.js';
 
 export const messages = {
   brand: {
-    name: 'Nexora',
+    name: 'Tourism',
     tagline: 'Boutique heritage journeys across Vietnam',
   },
   // Assistive-tech-only copy (skip links, screen-reader hints, new-tab warnings).
@@ -14,7 +15,7 @@ export const messages = {
   },
   // Home + About trust band (real live stats + accepted payment methods).
   trustBand: {
-    eyebrow: 'Why travelers choose Nexora',
+    eyebrow: 'Why travelers choose Tourism',
     heading: 'Boutique journeys, trusted by travelers across Vietnam.',
     stats: {
       tours: 'Curated tours',
@@ -65,7 +66,7 @@ export const messages = {
       dashboard: {
         eyebrow: 'My account',
         greeting: (name: string) => `Welcome back, ${name}`,
-        subtitle: 'Your journeys with Nexora, all in one place.',
+        subtitle: 'Your journeys with Tourism, all in one place.',
         traveller: 'Traveller',
         memberSince: (date: string) => `Member since ${date}`,
         stats: {
@@ -454,7 +455,7 @@ export const messages = {
     last: 'Go to last page',
   },
   // Page <title>/description copy. Titles are PLAIN — the root layout's title.template
-  // (`%s — Nexora`) appends the brand, so never suffix the brand here (would double it).
+  // (`%s — Tourism`) appends the brand, so never suffix the brand here (would double it).
   pageMeta: {
     privacy: {
       title: 'Privacy Statement',
@@ -499,38 +500,9 @@ export const messages = {
     },
     regionSuffix: 'tours',
   },
-  // Resilience layer (W2): loading/error/404 states across web. Copy is warm + reassuring.
-  resilience: {
-    loadError: {
-      title: 'We couldn’t load this',
-      body: 'Something interrupted the connection. Please try again in a moment.',
-      retry: 'Try again',
-    },
-    error: {
-      title: 'Something went wrong',
-      body: 'An unexpected error occurred on our end. Please try again — if it keeps happening, get in touch.',
-      retry: 'Try again',
-      home: 'Back home',
-    },
-    notFound: {
-      title: 'Page not found',
-      body: 'The page you’re looking for doesn’t exist or may have moved. Let’s get you back on track.',
-      home: 'Back home',
-      tours: 'Browse tours',
-      blog: 'Read the journal',
-    },
-    globalError: {
-      title: 'Something went wrong',
-      body: 'The page failed to load. Please reload to try again.',
-      retry: 'Reload',
-    },
-    checkoutError: {
-      title: 'We’re confirming your payment',
-      body: 'Your payment is safe. We hit a snag loading this page, but your booking isn’t lost — try again, or check your trips in a moment.',
-      retry: 'Try again',
-      account: 'View my trips',
-    },
-  },
+  // Tầng chống chịu — định nghĩa ở ./resilience.ts (client boundary import
+  // thẳng module đó để khỏi kéo cả catalogue này vào bundle).
+  resilience,
   topBar: {
     tagline: 'Vietnam’s boutique heritage travel, crafted end to end',
   },
@@ -1250,7 +1222,7 @@ export const messages = {
   },
   // AI concierge chat panel (spec 2026-07-14-ai-concierge-chat).
   chatBot: {
-    title: 'Nexora Concierge',
+    title: 'Tourism Concierge',
     disclaimer: 'AI assistant — it can make mistakes. Tap WhatsApp for a human.',
     greeting:
       'Hi! I can help you find a tour, answer questions about itineraries and policies, or pass your details to our team. What are you planning?',
@@ -1293,8 +1265,9 @@ export const messages = {
       label: 'Send an enquiry',
       hint: 'Tell us about your trip and get a tailored quote.',
     },
-    prefillGeneric: 'Hi Nexora! I have a question about planning a trip.',
-    prefillTour: (title: string, url: string) => `Hi Nexora! I’m interested in “${title}” — ${url}`,
+    prefillGeneric: 'Hi Tourism! I have a question about planning a trip.',
+    prefillTour: (title: string, url: string) =>
+      `Hi Tourism! I’m interested in “${title}” — ${url}`,
   },
   contact: {
     heading: 'Contact us',

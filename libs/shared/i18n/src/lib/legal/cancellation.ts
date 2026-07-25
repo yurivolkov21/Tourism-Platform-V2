@@ -1,18 +1,21 @@
 import type { LegalDoc } from './legal-page.js';
 
 /**
- * Cancellation & Refund Policy — describes the platform's actual refund flow: the customer sends a
- * cancellation request, our team reviews and contacts them, then processes a refund manually to the
- * original payment method. Timeframe tiers are written as **guidelines** (not an automated engine),
- * since refunds are handled case by case. Bracketed values are placeholders pending legal review.
+ * Cancellation & Refund Policy — mô tả đúng luồng hoàn tiền thật: khách gửi
+ * yêu cầu huỷ, đội ngũ xem xét rồi liên hệ lại, sau đó hoàn thủ công về đúng
+ * phương thức đã thanh toán. Các mốc thời gian viết dưới dạng **hướng dẫn**
+ * (không phải cỗ máy tự động) vì mỗi ca hoàn được xử lý riêng.
  */
 export const cancellationDoc: LegalDoc = {
   title: 'Cancellation & Refund Policy',
   breadcrumb: 'Cancellation & Refund Policy',
-  updated: 'Last updated: 29 June 2026',
+  updated: 'Last updated: 25 July 2026',
+  reviewNote:
+    'This document is sample content for a student capstone project, not legal advice. Tourism does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
     'We want you to book with confidence. This policy explains how to cancel a booking, what to expect, and how refunds are handled. It applies alongside our Terms & Conditions and any cancellation terms shown on the specific tour you booked.',
     'Plans change — if you need to cancel, get in touch as early as you can. The sooner you tell us, the more we are usually able to refund.',
+    'Because this site runs payments in test/sandbox mode, every refund described below is simulated: nothing was charged, so nothing is returned to a real account.',
   ],
   sections: [
     {
