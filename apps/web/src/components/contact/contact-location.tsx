@@ -4,6 +4,7 @@ import { Clock8Icon, MapPinIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { TopoPattern } from '@/components/topo-pattern';
 import { OFFICES } from '@/mocks/offices';
 
 // Contact §3 — convert Nexora ContactLocation: map lớn bo 2xl (placeholder
@@ -14,8 +15,17 @@ const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const
 
 export function ContactLocation() {
   return (
-    <section id="visit" className="w-full bg-muted px-4 py-20 md:px-16 md:py-28 lg:px-24 xl:px-32">
-      <div className="mx-auto max-w-7xl">
+    <section
+      id="visit"
+      className="relative w-full overflow-hidden bg-muted px-4 py-20 md:px-16 md:py-28 lg:px-24 xl:px-32"
+    >
+      {/* Gia vị lưới trắc địa (demo 25/07): giấy kẻ ô bản đồ dưới section toạ độ
+          văn phòng — mờ dần về đáy để không đè lưới card */}
+      <TopoPattern
+        variant="grid"
+        className="bg-primary opacity-[0.07] dark:opacity-[0.14] [mask-composite:intersect] [mask-image:url(/images/survey-grid.svg),linear-gradient(to_bottom,black_35%,transparent_85%)]"
+      />
+      <div className="relative z-10 mx-auto max-w-7xl">
         <div className="mb-10 flex flex-col gap-4 md:mb-14">
           <SectionEyebrow>Come say hello</SectionEyebrow>
           <motion.h2
