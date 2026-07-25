@@ -1,12 +1,13 @@
 import { resilience } from '@tourism/i18n';
-import Image from 'next/image';
 import Link from 'next/link';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { SiteChrome } from '@/components/site-chrome';
 import { TopoPattern } from '@/components/topo-pattern';
 
 // 404 là trang utility khách THẬT SỰ nhìn thấy nên làm hẳn màn ảnh (mẫu
-// Intrepid): ảnh phong cảnh thật + scrim + câu ấm + đường thoát. Ảnh lấy từ
-// bộ mock đã có credit trong public/mock/CREDITS.md.
+// Intrepid): ảnh nền + scrim + câu ấm + đường thoát. Ảnh dùng placeholder
+// (chính sách toàn site — task 3c mục 0); file ảnh thật + credit vẫn giữ
+// trong public/mock/CREDITS.md chờ lúc chốt trang thay lại.
 //
 // Nút dùng thẻ <Link> bo tròn tự style theo idiom của site (home/call-to-action,
 // contact/contact-cta) chứ không dùng Button của @tourism/ui: Button là Base UI,
@@ -22,13 +23,10 @@ export default function NotFound() {
   return (
     <SiteChrome>
       <section className="dark relative flex min-h-[80vh] w-full items-center overflow-hidden px-4 py-32 text-foreground md:px-16 lg:px-24 xl:px-32">
-        <Image
-          src="/mock/halong.jpg"
-          alt=""
-          fill
-          priority
-          sizes="100vw"
-          className="-z-20 object-cover"
+        <ImagePlaceholder
+          corner
+          label="404 — Ha Long Bay panorama"
+          className="absolute inset-0 -z-20 h-full w-full"
         />
         <div
           aria-hidden="true"

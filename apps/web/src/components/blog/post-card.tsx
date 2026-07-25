@@ -1,11 +1,15 @@
-import { ClockIcon } from 'lucide-react';
-import Image from 'next/image';
+import { ArrowUpRightIcon, ClockIcon } from 'lucide-react';
 import Link from 'next/link';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import type { MockJournalPost } from '@/mocks/types';
 
-// Card bài viết dùng chung cho lưới /blog và khối "More from the journal"
-// cuối bài. `featured` là bài mới nhất — chiếm 2 cột, ảnh cao hơn (lối lưới
-// tạp chí của Nexora). Ảnh mock là ảnh THẬT nên dùng next/image.
+// Card bài viết dùng chung cho Home (teaser 3 bài, section Journal) và lưới
+// /blog — Home là bản chuẩn (#33, convert forged/Blog), /blog kế thừa nguyên
+// xi cùng một diện mạo, không rẽ nhánh riêng (task 3c mục 2 — user chỉ ra
+// /blog trước đây tự vẽ card khác Home, phải đổi ngược lại).
+// Card TRẦN: không viền, không nền bg-card, không nâng lên khi hover (thiết
+// kế Home không có hộp để nâng — nâng sẽ trông sai). Ba tín hiệu hover: ảnh
+// zoom, tiêu đề đổi màu + gạch chân, nút mũi tên sáng viền.
 const DATE_FMT = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
@@ -17,54 +21,60 @@ export function PostCard({
   featured = false,
 }: {
   post: MockJournalPost;
+  /** Bài dẫn của /blog: chiếm 2 cột, ảnh cao hơn, tiêu đề lớn hơn. */
   featured?: boolean;
 }) {
   return (
-    <Link
-      href={`/blog/${post.slug}`}
-      className={`group flex h-full flex-col overflow-hidden rounded-2xl border bg-card transition-colors hover:border-primary/40 motion-safe:transition-all motion-safe:duration-300 motion-safe:hover:-translate-y-1 hover:shadow-lg ${
-        featured ? 'sm:col-span-2' : ''
-      }`}
-    >
-      <div className={`relative overflow-hidden ${featured ? 'aspect-16/9' : 'aspect-4/3'}`}>
-        <Image
-          src={post.image}
-          alt=""
-          fill
-          sizes={featured ? '(min-width: 640px) 66vw, 100vw' : '(min-width: 640px) 33vw, 100vw'}
-          className="object-cover transition-transform duration-500 group-hover:scale-105"
+    <Link href={`/blog/${post.slug}`} className={`group block ${featured ? 'sm:col-span-2' : ''}`}>
+      {/* Ảnh: placeholder + gradient chân + chip chuyên mục */}
+      <div
+        className={`relative mb-5 overflow-hidden rounded-2xl ${featured ? 'h-56 md:h-96' : 'h-56'}`}
+      >
+        <ImagePlaceholder
+          label={post.title}
+          className="h-full w-full transition-transform duration-700 group-hover:scale-105"
         />
-        <span className="absolute top-4 left-4 rounded-full bg-background/90 px-3 py-1 text-xs font-medium text-foreground">
+        <div className="absolute inset-0 bg-linear-to-t from-overlay/60 to-transparent" />
+        <span className="absolute top-4 left-4 rounded-full bg-primary px-3 py-1 text-[10px] font-semibold tracking-widest text-primary-foreground uppercase">
           {post.category}
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col p-6">
-        <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <ClockIcon className="size-3.5" aria-hidden="true" />
-            {post.readMinutes} min read
-          </span>
-          <span aria-hidden="true">·</span>
-          <time dateTime={post.date}>{DATE_FMT.format(new Date(post.date))}</time>
-        </div>
+      {/* Meta: phút đọc · ngày */}
+      <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1">
+          <ClockIcon className="size-2.5" aria-hidden="true" />
+          {post.readMinutes} min read
+        </span>
+        <span aria-hidden="true" className="opacity-50">
+          ·
+        </span>
+        <time dateTime={post.date}>{DATE_FMT.format(new Date(post.date))}</time>
+      </div>
 
-        <h3
-          className={`line-clamp-2 font-heading font-medium text-balance text-foreground transition-colors group-hover:text-primary ${
-            featured ? 'text-2xl md:text-3xl' : 'text-lg'
-          }`}
-        >
-          {/* Gạch chân chạy từ trái sang phải khi hover: nền gradient 1px cao
-              lớn dần theo bề rộng, dùng currentColor nên tự ăn màu chữ —
-              không cần khai thêm token màu (tuân luật tokens-only). */}
-          <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-no-repeat bg-left-bottom motion-safe:transition-[background-size] motion-safe:duration-300 group-hover:bg-[length:100%_1px]">
-            {post.title}
-          </span>
-        </h3>
-        <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
-          {post.excerpt}
-        </p>
-        <p className="mt-auto pt-5 text-xs text-muted-foreground">{post.author}</p>
+      <h3
+        className={`mb-3 line-clamp-2 font-heading leading-tight font-semibold text-foreground transition-colors duration-300 group-hover:text-primary ${
+          featured ? 'text-xl md:text-3xl' : 'text-xl'
+        }`}
+      >
+        {/* Gạch chân chạy từ trái sang phải khi hover: nền gradient 1px cao lớn
+            dần theo bề rộng, dùng currentColor nên tự ăn màu chữ hiện tại —
+            không cần khai thêm token màu (tuân luật tokens-only). */}
+        <span className="bg-[linear-gradient(currentColor,currentColor)] bg-[length:0%_1px] bg-no-repeat bg-left-bottom motion-safe:transition-[background-size] motion-safe:duration-300 group-hover:bg-[length:100%_1px]">
+          {post.title}
+        </span>
+      </h3>
+
+      <p className="mb-4 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+        {post.excerpt}
+      </p>
+
+      {/* Tác giả + nút tròn mũi tên */}
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{post.author}</span>
+        <span className="flex size-8 items-center justify-center rounded-full border text-muted-foreground transition-all duration-300 group-hover:border-primary group-hover:text-primary">
+          <ArrowUpRightIcon className="size-3.5" aria-hidden="true" />
+        </span>
       </div>
     </Link>
   );

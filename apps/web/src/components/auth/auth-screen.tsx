@@ -1,17 +1,20 @@
 'use client';
 
 import { motion } from 'motion/react';
-import Image from 'next/image';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import { Logo } from '@/components/logo';
 
 // Màn hình auth dùng chung (spec 2026-07-24, redesign vòng 3 — user chốt chất
 // liệu ẢNH THẬT sau khi 2 vòng đồ hoạ vẽ tay đều lộ "mùi AI"): TRÁI vùng form
 // yên tĩnh, chỉ một quầng sáng lan từ phía ảnh sang (bài học Linear/Clerk) ·
-// PHẢI ảnh thật Sa Pa + scrim + khung hairline + caption mono cùng họ chữ
-// cuống vé + quote đổi theo trang. Mobile: ẩn panel phải.
-// Ảnh: "Ray over terrace rice field in Sapa - Trung Chải" — Phi Phi Hoang,
-// CC BY 2.0, Wikimedia Commons (crop dọc 4:5, nén q80). Ghi công đặt ngay
-// trong UI (dòng credit góc khung) để đúng điều kiện CC BY.
+// PHẢI ảnh Sa Pa + scrim + khung hairline + caption mono cùng họ chữ cuống vé
+// + quote đổi theo trang. Mobile: ẩn panel phải.
+// Task 3c mục 0: toàn site tạm về ImagePlaceholder (user chốt lại — chưa dùng
+// ảnh thật ở bất kỳ trang nào). Ảnh thật "Ray over terrace rice field in Sapa
+// - Trung Chải" (Phi Phi Hoang, CC BY 2.0, Wikimedia Commons) vẫn nằm sẵn ở
+// public/images/auth-sapa-dawn.jpg chờ lúc chốt trang; dòng ghi công CC BY bỏ
+// tạm khỏi UI vì ghi công cho ảnh không hiển thị là sai — thêm lại cùng lúc
+// với ảnh thật.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 interface AuthScreenProps {
@@ -95,15 +98,11 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
         </div>
       </div>
 
-      {/* Phải: ảnh thật Sa Pa — chỉ lg+ */}
+      {/* Phải: ảnh Sa Pa (placeholder tạm) — chỉ lg+ */}
       <div className="dark relative hidden overflow-hidden bg-background lg:block">
-        <Image
-          src="/images/auth-sapa-dawn.jpg"
-          alt="Sunbeams breaking through clouds over rice terraces near Sa Pa"
-          fill
-          priority
-          sizes="(min-width: 1024px) 50vw, 0px"
-          className="object-cover"
+        <ImagePlaceholder
+          label="Sa Pa terraces at dawn"
+          className="absolute inset-0 h-full w-full"
         />
         {/* Scrim 2 đầu: đậm dưới chân cho quote, nhẹ mép trên cho caption */}
         <div
@@ -136,10 +135,9 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
           <figcaption className="mt-3 text-sm opacity-75">— {author}</figcaption>
         </motion.figure>
 
-        {/* Ghi công CC BY 2.0 — kín đáo kiểu tạp chí, góc phải dưới trong khung */}
-        <p className="absolute right-8 bottom-7 font-mono text-[9px] tracking-wide text-on-media/50">
-          Photo: Phi Phi Hoang · CC BY 2.0
-        </p>
+        {/* Ghi công CC BY 2.0 tạm bỏ khỏi UI — ảnh đang là placeholder (task 3c
+            mục 0), ghi công cho ảnh không hiển thị là sai; thêm lại cùng lúc
+            với ảnh thật auth-sapa-dawn.jpg. */}
       </div>
     </div>
   );

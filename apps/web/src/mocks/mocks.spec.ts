@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { sortPostsByDate } from '../lib/blog.js';
 import { slugify } from '../lib/slug.js';
 import { DESTINATIONS } from './destinations.js';
 import { JOURNAL_POSTS } from './journal.js';
@@ -148,5 +149,16 @@ describe('mock journal', () => {
       const slugs = post.sections.map((s) => slugify(s.heading));
       expect(new Set(slugs).size).toBe(slugs.length);
     }
+  });
+
+  // Canh đúng lỗi vừa xảy ra (task 3c mục 1): Task 1 nâng mock 3→9 bài làm
+  // Home render tràn 9 card trong lưới md:grid-cols-3 vốn thiết kế cho 3. Test
+  // này canh bất biến ở tầng dữ liệu; nếu ai đó bỏ .slice(0, 3) ở journal.tsx
+  // thì test này KHÔNG đỏ (nó không đọc component) — phần verify HTML thật
+  // (curl vào section#journal) mới bắt được lỗi runtime đó.
+  it('teaser Home chỉ lấy 3 bài mới nhất — lưới Home là 3 cột', () => {
+    const teaser = sortPostsByDate(JOURNAL_POSTS).slice(0, 3);
+    expect(teaser).toHaveLength(3);
+    expect(teaser[0]?.date).toBe('2026-10-02');
   });
 });

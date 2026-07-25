@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from '@tourism/ui/components/card';
 import { HeartIcon, StarIcon } from 'lucide-react';
-import Image from 'next/image';
+import { ImagePlaceholder } from '@/components/image-placeholder';
 import type { MockTour } from '@/mocks/types';
 
 const usd = new Intl.NumberFormat('en-US', {
@@ -23,13 +23,9 @@ export function TourCard({ tour }: { tour: MockTour }) {
   return (
     <Card className="group pt-0 transition-shadow hover:shadow-(--shadow-dropdown)">
       <div className="relative">
-        <Image
-          src={tour.image}
-          alt={tour.title}
-          width={800}
-          height={600}
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          className="aspect-(--aspect-card) w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+        <ImagePlaceholder
+          label={tour.title}
+          className="aspect-(--aspect-card) w-full transition-transform duration-300 group-hover:scale-[1.03]"
         />
         {tour.flag ? (
           <Badge variant="destructive" className="absolute top-3 left-3">
