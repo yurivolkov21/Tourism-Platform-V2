@@ -1,19 +1,10 @@
-import { ScrollToTop } from '@/components/scroll-to-top';
-import { SiteFooter } from '@/components/site-footer';
-import { SiteHeader } from '@/components/site-header';
-import { TopBar } from '@/components/top-bar';
+import { SiteChrome } from '@/components/site-chrome';
 
-// Shell chung cho các trang "site" (Home/About/Contact...) — dời từ root
-// layout xuống route group (site) để cụm (auth) có màn hình riêng không
+// Shell chung cho các trang "site" (Home/About/Contact/pháp lý...) — dời từ
+// root layout xuống route group (site) để cụm (auth) có màn hình riêng không
 // TopBar/navbar/footer (plan auth Task 1). Route group không đổi URL.
+// Ruột chrome nằm trong SiteChrome để app/not-found.tsx dùng lại được: trang
+// 404 của URL không khớp KHÔNG đi qua layout của route group.
 export default function SiteLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <TopBar />
-      <SiteHeader />
-      <main className="flex-1">{children}</main>
-      <SiteFooter />
-      <ScrollToTop />
-    </>
-  );
+  return <SiteChrome>{children}</SiteChrome>;
 }

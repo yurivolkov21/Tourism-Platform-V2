@@ -36,11 +36,11 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
   {
     title: 'Support',
     links: [
-      ['FAQ', '#top'],
-      ['Booking help', '#top'],
-      ['Cancellation policy', '#top'],
-      ['Terms', '#top'],
-      ['Privacy policy', '#top'],
+      ['FAQ', '/faq'],
+      ['Booking help', '/faq'],
+      ['Cancellation policy', '/cancellation-policy'],
+      ['Terms', '/terms'],
+      ['Privacy policy', '/privacy'],
     ],
   },
 ];
