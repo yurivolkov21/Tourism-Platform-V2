@@ -61,3 +61,16 @@ export function searchPosts(posts: readonly MockJournalPost[], query: string): M
   if (!q) return [...posts];
   return posts.filter((post) => foldAccents(`${post.title} ${post.excerpt}`).includes(q));
 }
+
+/** Số bài blog hiện ở teaser trang Home — lưới Home là 3 cột. */
+export const HOME_TEASER_COUNT = 3;
+
+/**
+ * Bài cho teaser Journal trên trang Home: 3 bài mới nhất. Tách thành hàm
+ * riêng thay vì `.slice(0, 3)` viết thẳng trong component, để quy tắc này
+ * nằm trong vùng có test canh — trước đây sửa số 3 thành 5 mà không test nào
+ * đỏ, và Home âm thầm hiện 5 card trong lưới 3 cột.
+ */
+export function homeTeaserPosts(posts: readonly MockJournalPost[]): MockJournalPost[] {
+  return sortPostsByDate(posts).slice(0, HOME_TEASER_COUNT);
+}

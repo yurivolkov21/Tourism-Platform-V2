@@ -3,6 +3,8 @@ import type { MockJournalPost } from '@/mocks/types';
 import {
   adjacentPosts,
   filterPostsByCategory,
+  HOME_TEASER_COUNT,
+  homeTeaserPosts,
   postCategories,
   relatedPosts,
   searchPosts,
@@ -138,5 +140,33 @@ describe('searchPosts', () => {
   it('không sửa mảng gốc', () => {
     searchPosts(POSTS, 'a');
     expect(POSTS.map((p) => p.slug)).toEqual(['a', 'b', 'c']);
+  });
+});
+
+describe('homeTeaserPosts', () => {
+  it('trả đúng HOME_TEASER_COUNT bài', () => {
+    expect(HOME_TEASER_COUNT).toBe(3);
+    const many = Array.from({ length: 7 }, (_, i) => post(`p${i}`, `2026-0${i + 1}-01`, 'Food'));
+    expect(homeTeaserPosts(many)).toHaveLength(3);
+  });
+
+  it('lấy bài MỚI NHẤT trước', () => {
+    const many = [
+      post('cu', '2026-01-01', 'Food'),
+      post('moi-nhat', '2026-09-01', 'Food'),
+      post('giua', '2026-05-01', 'Food'),
+      post('cu-hon', '2025-12-01', 'Food'),
+    ];
+    expect(homeTeaserPosts(many).map((p) => p.slug)).toEqual(['moi-nhat', 'giua', 'cu']);
+  });
+
+  it('ít bài hơn giới hạn thì trả hết, không lỗi', () => {
+    expect(homeTeaserPosts([post('a', '2026-01-01', 'Food')])).toHaveLength(1);
+  });
+
+  it('không sửa mảng gốc', () => {
+    const many = [post('a', '2026-01-01', 'Food'), post('b', '2026-05-01', 'Food')];
+    homeTeaserPosts(many);
+    expect(many.map((p) => p.slug)).toEqual(['a', 'b']);
   });
 });

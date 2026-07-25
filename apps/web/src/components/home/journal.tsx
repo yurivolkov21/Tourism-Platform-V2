@@ -3,7 +3,7 @@
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PostCard } from '@/components/blog/post-card';
-import { sortPostsByDate } from '@/lib/blog';
+import { homeTeaserPosts } from '@/lib/blog';
 import { JOURNAL_POSTS } from '@/mocks/journal';
 import { SectionEyebrow } from './section-eyebrow';
 
@@ -56,19 +56,17 @@ export function Journal() {
 
         {/* Grid 3 card bài viết — chỉ 3 bài mới nhất, lưới là 3 cột */}
         <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {sortPostsByDate(JOURNAL_POSTS)
-            .slice(0, 3)
-            .map((post, index) => (
-              <motion.div
-                key={post.slug}
-                initial={{ y: 30, opacity: 0 }}
-                whileInView={{ y: 0, opacity: 1 }}
-                viewport={{ once: true, margin: '-40px' }}
-                transition={{ delay: index * 0.1, ...SPRING }}
-              >
-                <PostCard post={post} />
-              </motion.div>
-            ))}
+          {homeTeaserPosts(JOURNAL_POSTS).map((post, index) => (
+            <motion.div
+              key={post.slug}
+              initial={{ y: 30, opacity: 0 }}
+              whileInView={{ y: 0, opacity: 1 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={{ delay: index * 0.1, ...SPRING }}
+            >
+              <PostCard post={post} />
+            </motion.div>
+          ))}
         </div>
       </div>
     </section>

@@ -24,6 +24,9 @@ export function PostCard({
   /** Bài dẫn của /blog: chiếm 2 cột, ảnh cao hơn, tiêu đề lớn hơn. */
   featured?: boolean;
 }) {
+  // sm:col-span-2 ở dòng dưới KHÔNG có tác dụng khi card nằm trong BlogExplorer
+  // (grid item thật là motion.div bọc ngoài, nó tự đặt class này). Giữ lại để
+  // PostCard vẫn đúng nếu sau này được dùng làm grid item trực tiếp.
   return (
     <Link href={`/blog/${post.slug}`} className={`group block ${featured ? 'sm:col-span-2' : ''}`}>
       {/* Ảnh: placeholder + gradient chân + chip chuyên mục */}
