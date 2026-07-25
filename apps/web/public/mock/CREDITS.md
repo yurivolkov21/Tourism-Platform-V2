@@ -10,3 +10,5 @@ có media pipeline. Ảnh Wikimedia Commons giữ đúng ghi công theo license.
 - `mekong.jpg` — File:Can Tho, Vietnam, Floating Market, Boats.jpg · Vyacheslav Argenberg · CC BY 4.0 · Wikimedia Commons
 - `danang.jpg` — File:Aerial view of the Golden Bridge, Ba Na Hills, Da Nang, Vietnam.jpg · DvTor8303 · CC0 · Wikimedia Commons
 - `journal-mist.jpg` — Unsplash `photo-1483728642387-6c3bdd6c93e5` · Unsplash License
+- `ninhbinh.jpg` — File:Boat in Tam Coc - August 2023.jpg · Anass Sedrati · CC BY-SA 4.0 · Wikimedia Commons
+- `hanoi-oldquarter.jpg` — File:Old Quarter street scene, Hanoi (1) (38464672752).jpg · Richard Mortel · CC BY 2.0 · Wikimedia Commons

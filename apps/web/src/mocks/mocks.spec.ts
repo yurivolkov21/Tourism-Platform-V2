@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { slugify } from '../lib/slug.js';
 import { DESTINATIONS } from './destinations.js';
 import { JOURNAL_POSTS } from './journal.js';
 import { REGIONS } from './regions.js';
@@ -43,7 +44,7 @@ describe('mock regions / testimonials / journal', () => {
     expect(REGIONS.map((r) => r.key).sort()).toEqual(['central', 'north', 'south']);
   });
 
-  it('8 testimonial (marquee 2 cột × 4) đủ trường, 3 bài journal có ảnh tồn tại', () => {
+  it('8 testimonial (marquee 2 cột × 4) đủ trường; mỗi bài journal có ảnh tồn tại + category/author', () => {
     // Marquee của template Estate cần 2 cột × 4 card để loop mượt.
     expect(TESTIMONIALS).toHaveLength(8);
     for (const t of TESTIMONIALS) {
@@ -51,7 +52,7 @@ describe('mock regions / testimonials / journal', () => {
       expect(t.rating).toBeLessThanOrEqual(5);
       expect(t.location.length).toBeGreaterThan(0);
     }
-    expect(JOURNAL_POSTS).toHaveLength(3);
+    // Số lượng chính xác (9 bài) được canh riêng ở describe('mock journal') bên dưới.
     for (const p of JOURNAL_POSTS) {
       expect(existsSync(join(PUBLIC_DIR, p.image)), p.image).toBe(true);
       // Card Journal (#33, convert forged/Blog) cần chip chuyên mục + tác giả
@@ -119,6 +120,33 @@ describe('mock destinations (gallery Home — review #14)', () => {
         0,
       );
       expect(sum, region.key).toBe(region.tourCount);
+    }
+  });
+});
+
+describe('mock journal', () => {
+  it('đúng 9 bài, slug duy nhất', () => {
+    expect(JOURNAL_POSTS).toHaveLength(9);
+    expect(new Set(JOURNAL_POSTS.map((p) => p.slug)).size).toBe(9);
+  });
+
+  it('ngày đăng không trùng nhau — sắp xếp mới-nhất-trước mới ổn định', () => {
+    const dates = JOURNAL_POSTS.map((p) => p.date);
+    expect(new Set(dates).size).toBe(dates.length);
+  });
+
+  it('ảnh nằm trong /mock/ và file tồn tại thật', () => {
+    for (const post of JOURNAL_POSTS) {
+      expect(post.image.startsWith('/mock/')).toBe(true);
+      expect(existsSync(join(PUBLIC_DIR, post.image))).toBe(true);
+    }
+  });
+
+  it('mỗi bài có ít nhất 3 section, heading sinh slug duy nhất', () => {
+    for (const post of JOURNAL_POSTS) {
+      expect(post.sections.length).toBeGreaterThanOrEqual(3);
+      const slugs = post.sections.map((s) => slugify(s.heading));
+      expect(new Set(slugs).size).toBe(slugs.length);
     }
   });
 });

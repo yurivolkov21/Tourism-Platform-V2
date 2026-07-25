@@ -51,6 +51,11 @@ export interface MockJournalPost {
   category: string;
   /** Tác giả — guide bản địa, khớp câu chuyện thương hiệu */
   author: string;
+  /** Ngày cập nhật gần nhất — chỉ có ở bài đã sửa lại sau khi đăng */
+  updated?: string;
+  /** Thân bài: cùng hình dạng với LegalDoc.sections nên dùng chung được
+      tocFromSections + Typeset của cụm trang pháp lý */
+  sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[];
 }
 
 /** Văn phòng cho trang Contact — ứng viên schema offices */
