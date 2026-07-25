@@ -1,6 +1,7 @@
 import type { LegalDoc } from '@tourism/i18n';
 import { Typeset } from '@tourism/ui/components/typeset';
 import { TriangleAlertIcon } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { ContentHero } from '@/components/content/content-hero';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
@@ -12,7 +13,15 @@ import { tocFromLegalDoc } from '@/lib/toc';
 // một cột đo hẹp (~68ch), số section bằng font mono, hairline chia đoạn —
 // thay vòng tròn primary của Nexora. Thân chữ chạy bọc <Typeset preset="reading">
 // (ADR-0012) để cỡ chữ/leading/nhịp dọc do hệ typography lo, không chế tay.
-export function LegalArticle({ doc }: { doc: LegalDoc }) {
+export function LegalArticle({
+  doc,
+  afterIntro,
+}: {
+  doc: LegalDoc;
+  /** Nội dung riêng của từng trang, chèn giữa phần mở đầu và các mục đánh số
+      (vd sơ đồ quy trình hoàn tiền ở /cancellation-policy). */
+  afterIntro?: ReactNode;
+}) {
   const toc = tocFromLegalDoc(doc);
 
   return (
@@ -38,6 +47,8 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
                 <p key={paragraph}>{paragraph}</p>
               ))}
             </Typeset>
+
+            {afterIntro ? <div className="mt-12">{afterIntro}</div> : null}
 
             <div className="mt-12 divide-y divide-border border-t border-border">
               {doc.sections.map((section, i) => (

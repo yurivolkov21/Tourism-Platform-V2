@@ -26,6 +26,7 @@
   "dependencies": {
     "@base-ui/react": "^1.6.0",
     "@shadcn/react": "^0.2.1",
+    "@stepperize/react": "^7.0.0",
     "@tourism/tokens": "workspace:*",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

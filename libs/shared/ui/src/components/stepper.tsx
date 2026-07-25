@@ -1,0 +1,559 @@
+'use client';
+
+import * as Stepperize from '@stepperize/react';
+import { cn } from '@tourism/ui/lib/utils';
+import type { HTMLAttributes } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+
+// Kiểu dùng chung của bộ Stepper
+type StepperOrientation = 'horizontal' | 'vertical';
+type StepState = 'active' | 'completed' | 'inactive' | 'loading';
+type StepIndicators = {
+  active?: React.ReactNode;
+  completed?: React.ReactNode;
+  inactive?: React.ReactNode;
+  loading?: React.ReactNode;
+};
+
+type StepDefinition = {
+  id: string;
+  title?: string;
+  description?: string;
+  icon?: React.ReactElement;
+};
+
+interface StepperContextValue {
+  stepper: ReturnType<ReturnType<typeof Stepperize.defineStepper>['useStepper']>;
+  steps: StepDefinition[];
+  orientation: StepperOrientation;
+  configOrientation: StepperOrientation;
+  responsive?: boolean;
+  registerTrigger: (node: HTMLButtonElement | null, remove?: boolean) => void;
+  triggerNodes: HTMLButtonElement[];
+  focusNext: (currentIdx: number) => void;
+  focusPrev: (currentIdx: number) => void;
+  focusFirst: () => void;
+  focusLast: () => void;
+  indicators: StepIndicators;
+}
+
+interface StepItemContextValue {
+  step: StepDefinition;
+  index: number;
+  state: StepState;
+  isDisabled: boolean;
+  isLoading: boolean;
+}
+
+const StepperContext = createContext<StepperContextValue | undefined>(undefined);
+
+const StepItemContext = createContext<StepItemContextValue | undefined>(undefined);
+
+function useStepper() {
+  const ctx = useContext(StepperContext);
+
+  if (!ctx) throw new Error('useStepper phải được dùng bên trong <Stepper>');
+
+  return ctx;
+}
+
+function useStepItem() {
+  const ctx = useContext(StepItemContext);
+
+  if (!ctx) throw new Error('useStepItem phải được dùng bên trong <StepperItem>');
+
+  return ctx;
+}
+
+interface StepperProps extends HTMLAttributes<HTMLDivElement> {
+  steps: StepDefinition[];
+  defaultValue?: string;
+  orientation?: StepperOrientation;
+  responsive?: boolean;
+  indicators?: StepIndicators;
+  value?: string;
+  onValueChange?: (value: string) => void;
+}
+
+function Stepper({
+  steps,
+  defaultValue,
+  orientation = 'horizontal',
+  responsive = false,
+  className,
+  children,
+  indicators = {},
+  value,
+  onValueChange,
+  ...props
+}: StepperProps) {
+  // Định nghĩa stepper đúng MỘT lần — `steps` phải là tham chiếu ổn định.
+  // API v7 nhận MỘT MẢNG (không phải varargs như bản cũ).
+  const stepperDefRef = useRef<Stepperize.StepperDefinition<StepDefinition[]> | null>(null);
+
+  if (stepperDefRef.current === null) {
+    stepperDefRef.current = Stepperize.defineStepper(steps);
+  }
+  // Gán ra biến cục bộ: TypeScript không thu hẹp kiểu của `.current` trên ref
+  // qua nhánh if ở trên (ref có thể bị đổi bất cứ lúc nào theo nó hiểu).
+  const stepperDef = stepperDefRef.current;
+
+  // v7 hỗ trợ controlled sẵn qua `step` + `onStepChange`, nên không cần hai
+  // useEffect đồng bộ tay như bản viết cho API cũ (chúng vừa phải tắt lint,
+  // vừa bắn onValueChange thừa một lần lúc mount).
+  const stepper = stepperDef.useStepper({
+    defaultStep: defaultValue ?? steps[0]?.id,
+    ...(value === undefined ? {} : { step: value }),
+    onStepChange: (stepId) => onValueChange?.(stepId),
+  });
+
+  const [triggerNodes, setTriggerNodes] = useState<HTMLButtonElement[]>([]);
+
+  // Theo dõi breakpoint md của Tailwind (768px). Khi bật `responsive` và cấu
+  // hình là nằm ngang, dưới md sẽ tự chuyển sang dọc cho vừa màn hẹp.
+  const [isMdUp, setIsMdUp] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(min-width: 768px)').matches : true,
+  );
+
+  useEffect(() => {
+    if (!responsive) return;
+
+    // Bản gốc có nhánh dự phòng `mql.addListener` kèm hai @ts-expect-error.
+    // Đó là code CHẾT: `'addEventListener' in mql` luôn đúng trên mọi trình
+    // duyệt repo này nhắm tới, nên nhánh kia không bao giờ chạy — bỏ đi thì
+    // mất luôn hai chỗ phải tắt kiểm kiểu.
+    const mql = window.matchMedia('(min-width: 768px)');
+    const handler = (e: MediaQueryListEvent) => setIsMdUp(e.matches);
+
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, [responsive]);
+
+  // Đăng ký / gỡ đăng ký các nút trigger để điều hướng bàn phím biết thứ tự
+  const registerTrigger = useCallback((node: HTMLButtonElement | null, remove = false) => {
+    setTriggerNodes((prev) => {
+      if (!node) return prev;
+
+      if (remove) return prev.filter((n) => n !== node);
+
+      return prev.includes(node) ? prev : [...prev, node];
+    });
+  }, []);
+
+  // Điều hướng bàn phím: mũi tên chạy vòng, Home/End nhảy đầu/cuối
+  const focusNext = useCallback(
+    (currentIdx: number) => triggerNodes[(currentIdx + 1) % triggerNodes.length]?.focus(),
+    [triggerNodes],
+  );
+
+  const focusPrev = useCallback(
+    (currentIdx: number) =>
+      triggerNodes[(currentIdx - 1 + triggerNodes.length) % triggerNodes.length]?.focus(),
+    [triggerNodes],
+  );
+
+  const focusFirst = useCallback(() => triggerNodes[0]?.focus(), [triggerNodes]);
+
+  const focusLast = useCallback(
+    () => triggerNodes[triggerNodes.length - 1]?.focus(),
+    [triggerNodes],
+  );
+
+  // Hướng thực tế sau khi tính tới chế độ responsive.
+  const effectiveOrientation: StepperOrientation = useMemo(() => {
+    if (responsive && orientation === 'horizontal') {
+      return isMdUp ? 'horizontal' : 'vertical';
+    }
+
+    return orientation;
+  }, [responsive, orientation, isMdUp]);
+
+  // Giá trị context
+  const contextValue = useMemo<StepperContextValue>(
+    () => ({
+      stepper,
+      steps,
+      orientation: effectiveOrientation,
+      configOrientation: orientation,
+      responsive,
+      registerTrigger,
+      focusNext,
+      focusPrev,
+      focusFirst,
+      focusLast,
+      triggerNodes,
+      indicators,
+    }),
+    [
+      stepper,
+      steps,
+      effectiveOrientation,
+      orientation,
+      responsive,
+      registerTrigger,
+      focusNext,
+      focusPrev,
+      focusFirst,
+      focusLast,
+      triggerNodes,
+      indicators,
+    ],
+  );
+
+  return (
+    <StepperContext.Provider value={contextValue}>
+      {/* KHÔNG đặt role="tablist" ở đây: div này bọc cả StepperPanel, mà một
+          tablist chỉ được chứa tab — tabpanel nằm trong tablist là ARIA sai.
+          role đã chuyển xuống StepperNav, nơi chỉ chứa các tab. */}
+      <div
+        data-slot="stepper"
+        className={cn('w-full', className)}
+        data-orientation={effectiveOrientation}
+        {...props}
+      >
+        {children}
+      </div>
+    </StepperContext.Provider>
+  );
+}
+
+interface StepperItemProps extends React.HTMLAttributes<HTMLDivElement> {
+  stepId: string;
+  completed?: boolean;
+  disabled?: boolean;
+  loading?: boolean;
+}
+
+function StepperItem({
+  stepId,
+  completed = false,
+  disabled = false,
+  loading = false,
+  className,
+  children,
+  ...props
+}: StepperItemProps) {
+  const { stepper, steps } = useStepper();
+  const stepIndex = steps.findIndex((s) => s.id === stepId);
+  const currentIndex = stepper.index;
+  const step = steps[stepIndex];
+
+  // Không dùng `!` để ép kiểu: gõ sai stepId là lỗi rất dễ mắc, mà `!` khiến
+  // nó nổ tận trong StepperTitle với thông báo vô nghĩa. Ném lỗi ngay tại chỗ
+  // sai, cùng lối với hai hook ở đầu file.
+  if (!step) {
+    throw new Error(`<StepperItem stepId="${stepId}"> không khớp step nào trong <Stepper steps>.`);
+  }
+
+  const state: StepState =
+    completed || stepIndex < currentIndex
+      ? 'completed'
+      : currentIndex === stepIndex
+        ? 'active'
+        : 'inactive';
+
+  const isLoading = loading && currentIndex === stepIndex;
+
+  return (
+    <StepItemContext.Provider
+      value={{ step, index: stepIndex, state, isDisabled: disabled, isLoading }}
+    >
+      <div
+        data-slot="stepper-item"
+        className={cn(
+          'group/step flex items-center justify-center not-last:flex-1 group-data-[orientation=horizontal]/stepper-nav:flex-row group-data-[orientation=vertical]/stepper-nav:flex-col',
+          className,
+        )}
+        data-state={state}
+        {...(isLoading ? { 'data-loading': true } : {})}
+        {...props}
+      >
+        {children}
+      </div>
+    </StepItemContext.Provider>
+  );
+}
+
+interface StepperTriggerProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  asChild?: boolean;
+}
+
+function StepperTrigger({
+  asChild = false,
+  className,
+  children,
+  tabIndex,
+  ...props
+}: StepperTriggerProps) {
+  const { state, isLoading } = useStepItem();
+  const { stepper, registerTrigger, triggerNodes, focusNext, focusPrev, focusFirst, focusLast } =
+    useStepper();
+
+  const { step, isDisabled } = useStepItem();
+  const isSelected = stepper.id === step.id;
+  const id = `stepper-tab-${step.id}`;
+  const panelId = `stepper-panel-${step.id}`;
+
+  // Đăng ký trigger bằng callback ref để bắt đúng lúc mount/unmount
+  const btnRef = useRef<HTMLButtonElement | null>(null);
+
+  const triggerRef = useCallback(
+    (node: HTMLButtonElement | null) => {
+      if (node) {
+        btnRef.current = node;
+        registerTrigger(node);
+      } else if (btnRef.current) {
+        registerTrigger(btnRef.current, true);
+        btnRef.current = null;
+      }
+    },
+    [registerTrigger],
+  );
+
+  // Vị trí của trigger này trong danh sách, dùng cho điều hướng bàn phím
+  const myIdx = useMemo(
+    () => triggerNodes.findIndex((n: HTMLButtonElement) => n === btnRef.current),
+    [triggerNodes],
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>) => {
+    switch (e.key) {
+      case 'ArrowRight':
+      case 'ArrowDown':
+        e.preventDefault();
+        if (myIdx !== -1 && focusNext) focusNext(myIdx);
+        break;
+      case 'ArrowLeft':
+      case 'ArrowUp':
+        e.preventDefault();
+        if (myIdx !== -1 && focusPrev) focusPrev(myIdx);
+        break;
+      case 'Home':
+        e.preventDefault();
+        if (focusFirst) focusFirst();
+        break;
+      case 'End':
+        e.preventDefault();
+        if (focusLast) focusLast();
+        break;
+      case 'Enter':
+      case ' ':
+        e.preventDefault();
+        stepper.goTo(step.id);
+        break;
+    }
+  };
+
+  if (asChild) {
+    return (
+      <span data-slot="stepper-trigger" data-state={state} className={className}>
+        {children}
+      </span>
+    );
+  }
+
+  return (
+    <button
+      ref={triggerRef}
+      role="tab"
+      id={id}
+      aria-selected={isSelected}
+      aria-controls={panelId}
+      tabIndex={typeof tabIndex === 'number' ? tabIndex : isSelected ? 0 : -1}
+      data-slot="stepper-trigger"
+      data-state={state}
+      // Chỉ gắn khi ĐANG loading — để `data-loading={isLoading}` thì lúc false
+      // React vẫn render `data-loading="false"`, và selector `data-[loading]`
+      // khớp theo sự-có-mặt-của-thuộc-tính nên khớp luôn cả trạng thái thường.
+      // StepperItem ở trên đã làm đúng kiểu này, đây là chỗ bị sót.
+      {...(isLoading ? { 'data-loading': true } : {})}
+      className={cn(
+        'inline-flex cursor-pointer items-center outline-none disabled:pointer-events-none disabled:opacity-60',
+        'gap-2.5 rounded-full',
+        className,
+      )}
+      onClick={() => stepper.goTo(step.id)}
+      onKeyDown={handleKeyDown}
+      disabled={isDisabled}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+}
+
+interface StepperIndicatorProps extends React.ComponentProps<'div'> {
+  variant?: 'default' | 'outline';
+}
+
+function StepperIndicator({ children, className, variant = 'default' }: StepperIndicatorProps) {
+  const { state, isLoading, step } = useStepItem();
+  const { indicators } = useStepper();
+
+  const base =
+    'relative flex size-8 shrink-0 items-center justify-center overflow-hidden transition-all duration-300 rounded-md text-sm font-medium';
+
+  const defaultClasses = cn(
+    'border-background bg-muted data-[state=completed]:bg-primary data-[state=completed]:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground ring-offset-background group-data-[state=active]/step:ring-primary/30 group-data-[state=active]/step:ring-2 group-data-[state=active]/step:ring-offset-3',
+    base,
+  );
+
+  const outlineClasses = cn(
+    'bg-transparent border border-primary/20 text-muted-foreground data-[state=completed]:border-foreground data-[state=completed]:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground',
+    base,
+  );
+
+  const classes = variant === 'outline' ? outlineClasses : defaultClasses;
+
+  // Icon dùng `[&_svg]:size-4` chứ KHÔNG phải `*:[svg]:size-4` như bản gốc:
+  // Tailwind không nhận `[svg]` làm biến thể tuỳ ý nên class cũ chẳng sinh ra
+  // CSS nào, icon giữ nguyên cỡ gốc thay vì bị ép về 16px.
+  return (
+    <div data-slot="stepper-indicator" data-state={state} className={cn(classes, className)}>
+      <div className="absolute">
+        {(isLoading ? indicators?.loading : indicators?.[state]) ??
+          (step?.icon ? <span className="[&_svg]:size-4">{step.icon}</span> : children)}
+      </div>
+    </div>
+  );
+}
+
+function StepperSeparator({ className }: React.ComponentProps<'div'>) {
+  const { state } = useStepItem();
+
+  return (
+    <div
+      data-slot="stepper-separator"
+      data-state={state}
+      className={cn(
+        'bg-muted group-data-[state=completed]/step:bg-primary m-2 rounded-sm transition-colors duration-500 group-data-[orientation=horizontal]/stepper-nav:h-0.5 group-data-[orientation=horizontal]/stepper-nav:flex-1 group-data-[orientation=vertical]/stepper-nav:h-12 group-data-[orientation=vertical]/stepper-nav:w-0.5',
+        className,
+      )}
+    />
+  );
+}
+
+function StepperTitle({ children, className }: React.ComponentProps<'h3'>) {
+  const { state } = useStepItem();
+
+  return (
+    <h3
+      data-slot="stepper-title"
+      data-state={state}
+      className={cn('text-sm font-medium', className)}
+    >
+      {children}
+    </h3>
+  );
+}
+
+function StepperDescription({ children, className }: React.ComponentProps<'div'>) {
+  const { state } = useStepItem();
+
+  return (
+    <div
+      data-slot="stepper-description"
+      data-state={state}
+      className={cn('text-muted-foreground text-xs font-medium', className)}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StepperNav({ children, className, ...props }: React.ComponentProps<'div'>) {
+  const { stepper, orientation, configOrientation, responsive } = useStepper();
+
+  const responsiveNavClasses =
+    responsive && configOrientation === 'horizontal' ? 'flex-col md:flex-row md:w-full' : '';
+
+  // Là <div> chứ không phải <nav>: phần tử này mang role="tablist" (các
+  // StepperTrigger bên trong là role="tab"), mà gắn role tương tác lên một
+  // phần tử landmark như <nav> là sai — Biome chặn đúng.
+  //
+  // `role`/`aria-orientation` đặt TRƯỚC phần spread để caller ghi đè được.
+  // Cần thế khi dùng bộ này làm SƠ ĐỒ tĩnh (không có StepperTrigger nào):
+  // một `tablist` không chứa tab nào cũng là ARIA sai, lúc đó truyền role="list".
+  return (
+    <div
+      role="tablist"
+      aria-orientation={orientation}
+      {...props}
+      data-slot="stepper-nav"
+      data-state={stepper.id}
+      data-orientation={orientation}
+      className={cn(
+        'group/stepper-nav inline-flex data-[orientation=horizontal]:w-full data-[orientation=horizontal]:flex-row data-[orientation=vertical]:flex-col',
+        responsiveNavClasses,
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+function StepperPanel({ children, className }: React.ComponentProps<'div'>) {
+  const { stepper } = useStepper();
+
+  return (
+    <div data-slot="stepper-panel" data-state={stepper.id} className={cn('w-full', className)}>
+      {children}
+    </div>
+  );
+}
+
+interface StepperContentProps extends React.ComponentProps<'div'> {
+  value: string;
+  forceMount?: boolean;
+}
+
+function StepperContent({ value, forceMount, children, className }: StepperContentProps) {
+  const { stepper } = useStepper();
+  const isActive = value === stepper.id;
+
+  if (!forceMount && !isActive) {
+    return null;
+  }
+
+  return (
+    <div
+      role="tabpanel"
+      id={`stepper-panel-${value}`}
+      aria-labelledby={`stepper-tab-${value}`}
+      data-slot="stepper-content"
+      data-state={stepper.id}
+      className={cn('w-full', className, !isActive && forceMount && 'hidden')}
+      hidden={!isActive && forceMount}
+    >
+      {children}
+    </div>
+  );
+}
+
+export {
+  Stepper,
+  StepperContent,
+  type StepperContentProps,
+  StepperDescription,
+  StepperIndicator,
+  StepperItem,
+  type StepperItemProps,
+  StepperNav,
+  StepperPanel,
+  type StepperProps,
+  StepperSeparator,
+  StepperTitle,
+  StepperTrigger,
+  type StepperTriggerProps,
+  useStepItem,
+  useStepper,
+};
