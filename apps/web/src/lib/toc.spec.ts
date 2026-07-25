@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tocFromLegalDoc } from './toc.js';
+import { tocFromLegalDoc, tocFromSections } from './toc.js';
 
 const doc = {
   title: 'Terms',
@@ -30,5 +30,18 @@ describe('tocFromLegalDoc', () => {
 
   it('doc không có section thì trả mảng rỗng', () => {
     expect(tocFromLegalDoc({ ...doc, sections: [] })).toEqual([]);
+  });
+});
+
+describe('tocFromSections', () => {
+  it('dựng mục lục từ mảng section bất kỳ, không cần cả LegalDoc', () => {
+    expect(tocFromSections([{ heading: 'Getting there' }, { heading: 'What to eat' }])).toEqual([
+      { id: 'getting-there', label: 'Getting there', index: '01' },
+      { id: 'what-to-eat', label: 'What to eat', index: '02' },
+    ]);
+  });
+
+  it('mảng rỗng trả mảng rỗng', () => {
+    expect(tocFromSections([])).toEqual([]);
   });
 });
