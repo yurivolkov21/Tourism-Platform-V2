@@ -189,6 +189,12 @@ export const rootExtras = [
   ['--aspect-card', '4 / 3'],
   ['--aspect-hero', '16 / 9'],
   ['--aspect-thumb', '1 / 1'],
+  // Băng ảnh full-bleed cắt ngang trang (trang chi tiết tour, spec §6.2). Dẹt
+  // hơn `--aspect-hero` một bậc vì nó KHÔNG phải hero: ở 1440px thì 16/9 cao
+  // 810px, chiếm trọn một màn hình và đẩy nội dung bán hàng xuống dưới nếp gấp.
+  // 21/9 cho 617px — vẫn là một dải ảnh có mặt, nhưng đọc như đường phân cách
+  // giữa hai khu vực chứ không phải một trang riêng.
+  ['--aspect-band', '21 / 9'],
 ];
 
 // Compact density overrides — emitted under [data-density='compact'] for dense admin tables.
