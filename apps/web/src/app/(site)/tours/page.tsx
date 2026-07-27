@@ -1,34 +1,51 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
-import { TourCard } from '@/components/tours/tour-card';
-import { ToursHero } from '@/components/tours/tours-hero';
+import { ToursExplorer } from '@/components/tours/tours-explorer';
+import { tourCategories } from '@/lib/tours';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { TOURS } from '@/mocks/tours';
 
 export const metadata: Metadata = {
   title: 'Tours — Tourism',
   description: messages.toursPage.subtitle,
-  // Canonical: mẫu /blog bỏ sót cái này so với Nexora. Trang listing sẽ có
+  // Canonical: mẫu /blog bỏ sót cái này so với Nexora. Trang listing có
   // ?category=&destination=&page= nên càng cần trỏ về bản không tham số.
   alternates: { canonical: '/tours' },
 };
 
-export default function ToursPage() {
-  return (
-    <>
-      <ToursHero
-        eyebrow={messages.toursPage.resultSummary(TOURS.length, DESTINATIONS.length)}
-        title={messages.toursPage.title}
-        subtitle={messages.toursPage.subtitle}
-      />
+export default async function ToursPage({
+  searchParams,
+}: {
+  searchParams: Promise<{
+    category?: string;
+    destination?: string;
+    featured?: string;
+    q?: string;
+    sort?: string;
+    page?: string;
+  }>;
+}) {
+  const params = await searchParams;
 
-      <div className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {TOURS.map((tour) => (
-            <TourCard key={tour.slug} tour={tour} />
-          ))}
-        </div>
-      </div>
-    </>
+  // Truyền THÔ xuống ToursExplorer, KHÔNG lọc sạch giá trị lạ ở đây: slug lạ
+  // (link cũ / gõ tay) phải cho trạng thái rỗng, không 404 và không âm thầm rơi
+  // về "All". Đây đúng là bug đã sửa ở /blog — lọc sạch tag lạ thành undefined
+  // làm URL vẫn ghi ?tag=… mà lưới hiện đủ bài với chip "All" sáng.
+  const initial = {
+    category: params.category,
+    destination: params.destination,
+    featured: params.featured === 'true',
+    q: params.q,
+    sort: params.sort,
+    page: Number(params.page) || 1,
+  };
+
+  return (
+    <ToursExplorer
+      tours={TOURS}
+      categories={tourCategories(TOURS)}
+      destinations={DESTINATIONS}
+      initial={initial}
+    />
   );
 }
