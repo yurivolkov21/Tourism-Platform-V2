@@ -105,12 +105,17 @@ skip link · `images.remotePatterns` · cache-tag revalidation · `/destinations
 
 ### Task 1: ADR-0014 + hạ tầng test component (jsdom + RTL)
 
+> **Đã chạy spike xác minh 27/07 — phần code của task này ĐÃ XONG và đang nằm
+> trong working tree chưa commit.** Kết quả đo ở cuối task. Việc còn lại của
+> Task 1 là viết ADR rồi commit chung.
+
 **Files:**
 - Create: `docs/adr/0014-web-component-testing.md`
-- Create: `apps/web/vitest.setup.ts`
-- Create: `apps/web/src/components/image-placeholder.spec.tsx`
-- Modify: `apps/web/vitest.config.ts`
-- Modify: `apps/web/package.json`
+- Create: `apps/web/vitest.setup.ts` ✅
+- Create: `apps/web/src/components/image-placeholder.spec.tsx` ✅
+- Modify: `apps/web/vitest.config.ts` ✅
+- Modify: `apps/web/package.json` ✅
+- Modify: `pnpm-workspace.yaml` ✅ — **phát sinh từ spike, xem Bước 2b**
 - Modify: `docs/README.md`
 
 **Interfaces:**
@@ -135,21 +140,70 @@ bắt buộc phải có:
   `*.spec.tsx` chỉ dùng cho thứ **không** kiểm được ở tầng thuần — tương tác,
   a11y (role/label), đồng bộ trạng thái giữa nhiều component. Không viết lại
   test logic dưới dạng component test.
-- **Hệ quả:** `pnpm gate` chậm hơn một chút; `apps/web` có thêm 3 devDep; RTL
-  không tự cleanup khi `globals: false` nên phải cleanup tường minh trong setup.
+- **Hệ quả (số đo thật từ spike 27/07, không phải ước lượng):** `apps/web` thêm
+  4 devDep; test web 83 test chạy 1,5s; `pnpm gate` toàn repo 8,0s với 15/18
+  task cached; RTL không tự cleanup khi `globals: false` nên phải cleanup tường
+  minh trong setup.
+- **Hệ quả kéo theo — phải ghi rõ:** ADR này **buộc workspace ghim một bản
+  React duy nhất** (`pnpm-workspace.yaml`, Bước 2b). Đó không phải chi tiết
+  triển khai mà là ràng buộc mới cho toàn repo: từ nay nâng React phải nâng ở
+  cả override lẫn `apps/web`, nếu lệch thì test component vỡ trước tiên. Đổi
+  lại, ta gỡ được một quả bom âm ỉ — hai bản React trong cùng workspace vốn có
+  thể gây lỗi context xuyên ranh giới package, Next chỉ đang che nó đi.
 - **Phương án đã cân nhắc và loại:** `happy-dom` (nhanh hơn nhưng lệch chuẩn
   DOM ở form/dialog — cụm này có cả hai) · Playwright component testing (chồng
   chéo với ảnh chụp kiểm tra bằng playwright-core đang dùng thủ công).
 
-- [ ] **Bước 2: Cài devDependency**
+- [x] **Bước 2: Cài devDependency**
 
 ```bash
-pnpm --filter @tourism/web add -D jsdom @testing-library/react @testing-library/jest-dom @vitejs/plugin-react
+pnpm --filter @tourism/web add -D jsdom @testing-library/react @testing-library/jest-dom @testing-library/user-event
 ```
 
-Lý do cần `@vitejs/plugin-react`: file `.tsx` phải được transform bằng JSX
-automatic runtime của React 19; `tsconfig` của Next đặt `jsx: "preserve"` nên
-esbuild trần không tự làm được.
+**KHÔNG cần `@vitejs/plugin-react`** — đã đo: `apps/web/tsconfig.json` đặt
+`"jsx": "react-jsx"` (automatic runtime), esbuild của Vite đọc thẳng setting đó
+và transform `.tsx` đúng. Bớt được một dependency.
+
+Bản resolve được: RTL 16.3.2 (hỗ trợ React 19), jest-dom 7.x, user-event 14.6.1.
+
+- [x] **Bước 2b: Ghim MỘT bản React cho cả workspace** ← phát sinh từ spike
+
+Không có bước này thì **mọi test chạm component Base UI đều nổ**
+`TypeError: Cannot read properties of null (reading 'useRef')`.
+
+Nguyên nhân: `apps/web` ghim cứng `react: "19.2.4"`, còn `libs/shared/ui` khai
+peer `"^19"` nên pnpm tự cài thêm `19.2.7`, và `@base-ui/react` bám vào bản đó.
+Store có HAI React. Next bundler tự dedupe nên dev/build không lộ, nhưng Vitest
+thì lộ ngay: `react-dom@19.2.4` render component gọi hook của `react@19.2.7`
+→ dispatcher null.
+
+Hai cách chữa đã thử và **đều KHÔNG ăn** (đừng thử lại):
+
+| Cách | Vì sao trượt |
+| --- | --- |
+| `resolve.dedupe: ['react','react-dom']` | Store cô lập của pnpm — symlink react riêng của `@base-ui/react` vẫn thắng |
+| `resolve.alias` trỏ react về `apps/web/node_modules` | Vitest **externalize** `node_modules`, Node resolve thẳng nên không đi qua alias Vite |
+
+Cách ăn: override ở `pnpm-workspace.yaml` (pnpm 11 **không còn đọc**
+`pnpm.overrides` trong `package.json` — nó cảnh báo và bỏ qua). Thêm vào khối
+`overrides:` đang có:
+
+```yaml
+  react: '19.2.4'
+  react-dom: '19.2.4'
+```
+
+Ghim **đúng bản `apps/web` đang chạy** — đây là hạ xuống cho khớp, KHÔNG nâng
+cấp. Kèm comment tiếng Việt giải thích, cùng giọng với các override khác trong
+file đó.
+
+Kiểm chứng sau khi `pnpm install`:
+
+```bash
+readlink -f libs/shared/ui/node_modules/@base-ui/react | sed 's|.*/.pnpm/||'
+```
+
+Kỳ vọng: chuỗi chứa `react-dom@19.2.4_react@19.2.4`, **không** phải `19.2.7`.
 
 - [ ] **Bước 3: Viết setup file**
 
@@ -209,36 +263,45 @@ export default defineConfig({
 });
 ```
 
-- [ ] **Bước 5: Viết test khói chứng minh hạ tầng chạy**
+- [x] **Bước 5: Viết test khói chứng minh hạ tầng chạy**
 
-`apps/web/src/components/image-placeholder.spec.tsx`:
+`apps/web/src/components/image-placeholder.spec.tsx` — 3 test: có nhãn · không
+nhãn · icon `aria-hidden`.
 
-```tsx
-import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
-import { ImagePlaceholder } from './image-placeholder';
-
-describe('ImagePlaceholder', () => {
-  it('hiện nhãn mô tả khi được truyền', () => {
-    render(<ImagePlaceholder label="Hạ Long bay at dawn" />);
-    expect(screen.getByText('Hạ Long bay at dawn')).toBeInTheDocument();
-  });
-
-  it('không render nhãn rỗng khi không truyền label', () => {
-    const { container } = render(<ImagePlaceholder />);
-    expect(container.querySelector('span.text-xs')).toBeNull();
-  });
-});
-```
-
-- [ ] **Bước 6: Chạy test — cả hai project phải xanh**
+- [x] **Bước 6: Chạy test — cả hai project phải xanh**
 
 ```bash
 pnpm --filter @tourism/web test
 ```
 
-Kỳ vọng: hai project `node` và `dom` cùng chạy; test `ImagePlaceholder` PASS;
-toàn bộ test cũ trong `src/lib/` và `src/mocks/` vẫn PASS.
+Đã đo: `Test Files 8 passed (8) · Tests 83 passed (83)`, mỗi dòng có nhãn
+project `node` hoặc `dom`.
+
+**Đã dò sẵn cả những component Base UI mà task sau mới dùng** (spike đã xoá,
+nhưng kết quả còn giá trị — nếu Task 6/10 vỡ ở đây thì là lỗi mới, không phải
+hạ tầng):
+
+| Dò | Kết quả | Dùng ở |
+| --- | --- | --- |
+| `Badge`, `Button` từ `@tourism/ui` | ✅ | Task 5 |
+| `messages` từ `@tourism/i18n` trong jsdom | ✅ | mọi task |
+| `userEvent.click` + `useState` + `aria-pressed` | ✅ | Task 6, 9 |
+| `Accordion` (Base UI) mở panel | ✅ | Task 10 FAQ |
+| `Sheet` (Base UI, **có portal**) mở dialog | ✅ | Task 6 drawer mobile |
+| `vi.mock('next/navigation')` | ✅ | Task 6 URL-sync |
+
+- [x] **Bước 6b: Gate đầy đủ — override React không được phá gì khác**
+
+```bash
+pnpm gate
+```
+
+Đã đo: `Tasks: 18 successful, 18 total` · API `188 passed` · web `83 passed` ·
+`next build` compile sạch, sinh 27 trang tĩnh · Biome không lỗi.
+
+⚠️ Chỉ chạy `next build` khi cổng 3000 **trống** — kiểm trước bằng
+`curl -s -o /dev/null -w "%{http_code}" --max-time 3 http://localhost:3000/`
+(`000` = trống).
 
 - [ ] **Bước 7: Thêm ADR vào bản đồ docs**
 
@@ -252,9 +315,12 @@ Trong `docs/README.md`, bảng ADR, thêm hàng:
 
 ```bash
 pnpm lint:fix
-git add docs/adr/0014-web-component-testing.md docs/README.md apps/web/vitest.config.ts apps/web/vitest.setup.ts apps/web/package.json apps/web/src/components/image-placeholder.spec.tsx pnpm-lock.yaml
+git add docs/adr/0014-web-component-testing.md docs/README.md apps/web/vitest.config.ts apps/web/vitest.setup.ts apps/web/package.json apps/web/src/components/image-placeholder.spec.tsx pnpm-workspace.yaml pnpm-lock.yaml
 git commit -m "test(web): hạ tầng test component — Vitest 2 project + Testing Library (ADR-0014)"
 ```
+
+Commit này gộp cả override React vì hai thứ không tách được: không có override
+thì hạ tầng test không chạy. Thông điệp commit phải nhắc điều đó ở phần thân.
 
 ---
 
@@ -1895,6 +1961,12 @@ pnpm --filter @tourism/web test -- src/components/tours/tours-explorer.spec.tsx
 Kỳ vọng: FAIL — không resolve được `./tours-explorer`.
 
 - [ ] **Bước 3: Viết `PaginationBar`**
+
+⚠️ `@tourism/ui` **đã có** `components/pagination.tsx` (shadcn vendored). Mở nó
+ra trước; nếu nó phủ được nhu cầu thì dùng thẳng thay vì dựng lại — chỉ giữ
+`pageNumbers()` để sinh dãy số. Code dưới đây là bản tự dựng, chỉ dùng khi
+component có sẵn không khớp (ví dụ nó ép dùng `<a href>` mà ta cần `onClick`
+để không reload trang).
 
 ```tsx
 'use client';
