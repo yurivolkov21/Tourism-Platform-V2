@@ -2,6 +2,67 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-27 — P3b: cụm trang Blog (branch `feat/blog-pages`, merge `b7aeb3f`)
+
+Vá thụt lùi so với Nexora: `/blog`, `/blog/[slug]`, `/blog/rss.xml` — v2 trước
+đó chỉ có section `#journal` trên Home. Thực thi subagent-driven, 7 task + 3
+đợt vá, mỗi task một reviewer riêng CỘNG một final review toàn nhánh.
+- **Mock 3 → 9 bài**, mỗi bài có `sections[]` (cùng hình dạng `LegalDoc`) nên
+  dùng lại được nguyên bộ xương cụm pháp lý: `Typeset preset="reading"` +
+  `OnThisPage` + `ReadingProgress` + `tocFromSections` (tách ra từ
+  `tocFromLegalDoc`, test cũ giữ nguyên).
+- **`lib/blog.ts`** — toàn bộ logic thuần có test: `sortPostsByDate` ·
+  `filterPostsByCategory` · `postCategories` · `searchPosts` (bỏ dấu tiếng
+  Việt HAI CHIỀU, `đ`/`Đ` phải thay tay vì `normalize('NFD')` không tách được)
+  · `adjacentPosts` · `relatedPosts` · `homeTeaserPosts`.
+- **`/blog`**: lưới tạp chí (bài mới nhất 2 cột), chip lọc chuyên mục, **search
+  gõ-tới-đâu-lọc-tới-đó** đồng bộ `?tag=&q=` qua `router.replace(scroll:false)`.
+  Chip là `<Link>` thật + `preventDefault` → **lọc vẫn chạy khi tắt JS**.
+- **Gói motion** (user chọn sau khi xem bản đầu): hiệu ứng "chroma" CSS thuần
+  (`[&:has(a:hover)_a:not(:hover)]` — học ReactBits Chroma Grid, không thêm
+  dependency) · reflow `AnimatePresence` + `layout` + blur-fade (ý MagicUI Blur
+  Fade, dựng bằng `motion/react` sẵn có) · gạch chân chạy dùng `currentColor`.
+- **`/blog/[slug]`**: `generateStaticParams` 9 slug, slug lạ → `notFound()`,
+  JSON-LD `Article` + `BreadcrumbList`, `ShareRow` (copy link + X + Facebook),
+  `PostNav` bài mới/cũ hơn, 3 bài liên quan.
+- **`lib/site.ts`** (`siteUrl`·`absoluteUrl`·`escapeXml`) + `apps/web/.env.example`
+  — file env đầu tiên của web + feed RSS 9 item.
+- **HAI QUYẾT ĐỊNH ĐỔI HƯỚNG CỦA USER giữa chừng**:
+  1. **Một `PostCard` duy nhất theo thiết kế Home** (card trần, chip jade in
+     hoa, nút mũi tên tròn) — hướng Home → /blog, không phải ngược lại. Card
+     Home nay bấm được (trước chỉ có `cursor-pointer`, không `href`).
+  2. **Toàn site về `ImagePlaceholder`**, chỉ dùng ảnh thật khi user yêu cầu
+     riêng. 4 chỗ đổi: `not-found` · `auth-screen` · `tour-card` · `post-card`;
+     `grep next/image apps/web/src` nay rỗng. File ảnh + CREDITS giữ làm tài sản.
+- Review findings — **thứ chỉ final review toàn nhánh mới thấy** (7 reviewer
+  từng-task đều bỏ lọt vì mỗi người chỉ soi brief của mình):
+  * `BreadcrumbList` spec yêu cầu nhưng **rơi mất ngay từ lúc viết plan** nên
+    không brief nào nhắc → không ai bắt.
+  * Task 3b **âm thầm đảo hành vi** mà reviewer Task 3 đã xác minh: tag lạ
+    đáng lẽ ra trạng thái rỗng, sau 3b lại rơi về "All" hiện đủ 9 bài trong
+    khi URL vẫn ghi `?tag=…` — comment còn bị viết lại cho khớp hành vi mới,
+    xoá luôn dấu vết.
+  * Test `relatedPosts` tên là "bù bằng bài MỚI NHẤT" mà chỉ assert độ dài →
+    thêm `.reverse()` vào filler thì 76/76 vẫn xanh.
+- Review findings từng task (đều đã vá): nhánh `đ`/`Đ` có 0% canh (xoá 2 dòng
+  replace mà 19/19 xanh) · chip mất khả năng chạy không-JS · **Home render
+  tràn 9 card** vì Task 1 nâng mock mà không ai rà nơi tiêu thụ (USER tự phát
+  hiện, review tự động bỏ lọt) · test "Home chỉ 3 bài" là tautology → chuyển
+  vào hàm thuần `homeTeaserPosts` · `siteUrl` bỏ bước cắt `/` thừa mà 6/6 xanh
+  · `apps/web/.gitignore` có rule `.env*` TRẦN chặn luôn `.env.example`
+  (gitignore thư mục sâu thắng gitignore gốc) · `ShareRow` đọc
+  `window.location` lúc render làm **SSR sập 500** (lỗi trong chính brief).
+- Nợ ghi sổ: tách `ArticleBody` dùng chung cho `/terms` + `/blog/[slug]` (đang
+  chép ~40 dòng, đã bắt đầu trôi) · phân trang + gắn API (`blog_posts`) ·
+  `EnquiryCta` cuối bài · related tours · jsdom + RTL cho `apps/web` (cần ADR —
+  là gốc rễ khiến 2 lỗi tầng component lọt qua CI) · `robots.ts`/`sitemap.ts`
+  (giờ đã có `lib/site.ts` nên nhẹ hơn) · scrim hero bài viết đậm tới mức ô
+  placeholder vô hình (chờ ảnh thật) · `journal-mist.jpg` là núi tuyết kiểu
+  Himalaya gắn cho bài Sa Pa.
+Tests after: gate:int xanh — **76 unit web** (từ 41) + 5 ui + **145 int / 17
+file**; build production có đủ `/blog` (ƒ) · `/blog/[slug]` (● SSG 9 slug) ·
+`/blog/rss.xml` (○); CI branch `success` trước merge.
+
 ## 2026-07-25 — P3b: cụm trang pháp lý/utility (branch `feat/legal-utility-pages`, merge `1760831`)
 
 Vá đúng chỗ thụt lùi so với Nexora: 4 trang nội dung dài + 3 route boundary

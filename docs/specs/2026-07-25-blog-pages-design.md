@@ -121,6 +121,25 @@ dựng đón sẵn). JSON-LD `Article` + `BreadcrumbList`, escape `<` như trang
 - `robots.ts` + `sitemap.ts`: sau cụm này đã có `lib/site.ts` nên cụm SEO nhẹ
   hơn hẳn.
 
+## Nợ PHÁT SINH khi thi công (ghi thêm sau final review)
+
+- **Tách `ArticleBody` dùng chung**: `/blog/[slug]` đang chép ~40 dòng của
+  `LegalArticle` (wrapper padding, lưới 2 cột, vòng lặp section, `aside`
+  sticky). Đã bắt đầu trôi (`mt-12` vs `mt-10`, đã vá) — lần trôi sau sẽ không
+  ai bắt. Refactor chạm cả `/terms` nên cố ý không làm sát giờ merge.
+- **jsdom + Testing Library cho `apps/web`** (hiện `vitest.config.ts` là
+  `environment: 'node'`): là **gốc rễ** khiến hai lỗi tầng component lọt qua
+  CI trong cụm này — Home render tràn 9 card, và test "Home chỉ 3 bài" chỉ là
+  tautology. Là quyết định hạ tầng → cần ADR trước khi làm.
+- **Chính sách ảnh**: user chốt 27/07 toàn site dùng `ImagePlaceholder`, chỉ
+  đổi ảnh thật khi yêu cầu riêng. Khi quay lại ảnh thật thì xử lý luôn: scrim
+  hero `/blog/[slug]` đậm tới mức ô ảnh vô hình (nới về `to-transparent` như
+  `about-hero.tsx`), `journal-mist.jpg` là núi tuyết kiểu Himalaya gắn cho bài
+  Sa Pa, và ghi công ảnh ở footer + `auth-screen.tsx` phải thêm lại.
+- **Ngày đăng mock ở tương lai**: 4/9 bài có `date` sau 27/07/2026, nên RSS
+  phát `pubDate` tương lai — vài trình đọc feed sẽ ẩn. Vô hại cho demo, sửa
+  khi gắn API thật.
+
 ## Quy trình dựng
 
 `/blog` dựng TRƯỚC (mock + helper + listing) → screenshot tự kiểm → **dừng
