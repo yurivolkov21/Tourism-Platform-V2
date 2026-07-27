@@ -291,7 +291,7 @@ export function ToursExplorer({
               mất trọng lượng ở cả light lẫn dark.
               top-32 (128px) đo từ thực tế: navbar dạng pill lúc cuộn nằm ở
               52..124px, nên top-24 chồng lên nó 28px. */}
-          <div className="sticky top-32 z-(--z-dropdown) -mx-4 mb-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b bg-background/85 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
+          <div className="sticky top-32 z-(--z-dropdown) mb-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 rounded-xl border bg-card px-4 py-3 shadow-(--shadow-dropdown)">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
                 {messages.toursPage.resultCount(matched.length)}
@@ -392,7 +392,9 @@ export function ToursExplorer({
                       thoát, tầng 2 TRẠNG THÁI ĐỊNH LƯỢNG. Drawer 01 để thanh
                       progress ở đây; lọc thì không có đích nên thay bằng số kết
                       quả sống — nó biến header thành phản hồi, không phải nhãn. */}
-                  <DrawerHeader className="border-b">
+                  {/* pb-4: DrawerHeader gốc là `p-4 pb-0` (giả định không viền),
+                      nên thêm border-b không thôi thì chữ dính sát đường kẻ. */}
+                  <DrawerHeader className="border-b pb-4">
                     <div className="flex items-center justify-between gap-2">
                       <DrawerTitle>{messages.toursPage.filtersLabel}</DrawerTitle>
                       <DrawerClose
@@ -408,13 +410,22 @@ export function ToursExplorer({
                     </DrawerDescription>
                   </DrawerHeader>
 
-                  <div className="min-h-0 flex-1 overflow-y-auto p-4">{filtersNode}</div>
+                  {/* data-lenis-prevent: Lenis (smooth scroll toàn site, bật ở
+                      root layout) chặn wheel trên cả tài liệu, nên lăn chuột
+                      trong drawer lại cuộn TRANG CHÍNH — đo được: thân drawer
+                      scrollTop đứng im 0 trong khi window.scrollY nhảy 600px.
+                      Thuộc tính này là cơ chế Lenis cung cấp sẵn để trả wheel
+                      lại cho vùng cuộn lồng bên trong. */}
+                  <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto p-4">
+                    {filtersNode}
+                  </div>
 
                   {/* Footer KHÔNG chia 50/50 như Sheet 04 — hai nút không cùng
                       trọng lượng. Nút phải là LỐI THOÁT MANG KẾT QUẢ, không phải
                       lệnh commit: lọc đã áp dụng tức thì rồi (số đếm trên từng
                       option chỉ trung thực nếu state đã áp dụng). */}
-                  <DrawerFooter className="flex-row items-center justify-between gap-3 border-t">
+                  {/* pt-4: DrawerFooter gốc là `p-4 pt-0` — cùng lý do như header. */}
+                  <DrawerFooter className="flex-row items-center justify-between gap-3 border-t pt-4">
                     <Button
                       variant="ghost"
                       onClick={clearAll}
