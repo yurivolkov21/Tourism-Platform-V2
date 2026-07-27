@@ -2,6 +2,84 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-27 — P3b: cụm Tours đợt 1 — listing + khung trang chi tiết (branch `feat/tours-pages`, merge `<ff>`)
+
+**Merge GIỮA CỤM** theo yêu cầu user: Task 1–8 của
+[plan 13 task](plans/2026-07-27-tours-pages.md); Task 9–12 (dải khởi hành ·
+itinerary/inclusions · robots/sitemap · ArticleBody+phân trang blog) còn tiếp
+trên cùng branch. Nên `main` hiện có `/tours/[slug]` với các section là **tiêu
+đề rỗng** — trạng thái có chủ ý, không phải bug.
+
+- **Mock đắp theo contract, không theo nhu cầu UI** — ngoại lệ duy nhất của luật
+  "shape mock tự do": `MockTourCard`/`MockTourDetail` gương đúng
+  `TourCardSchema`/`TourDetailSchema` (16 tour), nên cụm gắn API là swap nguồn
+  chứ không rename khắp component. Bất biến canh bằng test: tiền là **string**,
+  `ratingAvg: null` ≠ 0, mỗi tour đúng 1 destination `isPrimary`,
+  `itinerary.length === durationDays`, mọi nhánh nullable có mock chứng minh.
+- **`lib/tours.ts` + `lib/paginate.ts` thuần, test trước** (ADR-0014 ranh giới:
+  logic thuần chạy project `node`, tương tác chạy `dom`). `foldAccents` tách khỏi
+  `lib/blog.ts` thành `lib/text.ts` dùng chung.
+- **`/tours` đi qua 4 VÒNG THIẾT KẾ LẠI** (plan dự tính 1 — bảng đầy đủ trong
+  plan): chip rail → sidebar Nexora → sidebar tĩnh → drawer → hàng tiêu đề khu
+  vực. Ba vòng đầu sửa *thuộc tính* của thứ đang có (màu, vị trí, thanh cuộn,
+  đệm); vòng 4 khảo sát 13 sản phẩm thật mới thấy gốc rễ "trống hoác" là **cái
+  khung** vẽ quanh các điều khiển, không phải ít phần tử. → luật mới:
+  **khảo sát mẫu thật TRƯỚC khi vẽ, không phải sau vòng sửa thứ ba.**
+- **Trang chi tiết (Task 8)**: hero tối + `RouteRibbon` + metadata có
+  `alternates.canonical` (mẫu `/blog` bỏ sót so với Nexora) + khung 3 cột. Ribbon
+  là vector sinh từ `destinations[]` thật, đứng thay bản đồ contract không có;
+  **không** gắn nhãn Start/End dù Intrepid rút hành trình về hai đầu mút, vì
+  `destinations[]` là bảng join M:N chứ không phải hành trình theo thời gian
+  (thứ tự thời gian nằm ở `itinerary[]`). Tour 1 địa danh không vẽ sơ đồ.
+- **`token hero`** (ngoài phạm vi plan, phát sinh từ review): trước đó hero mượn
+  `background` bên trong scope `dark` nên ở dark mode nó **trùng màu tuyệt đối**
+  với nền trang và biến mất. Quy ước chốt: `bg-hero` trên `<section>` + wrapper
+  `<div className="dark contents">` bọc nội dung — **không bao giờ** đặt `dark`
+  lên chính section. Thêm `--aspect-band` 21/9 cho băng ảnh cắt ngang trang.
+- **6 lỗi trong `@tourism/ui`** (vendored cho Radix, repo đã chuyển Base UI):
+  `z-50` hard-code trong khi navbar là `z-(--z-sticky)`=1100 (`sheet`/`select`/
+  `drawer` — **còn ~9 component chưa quét**) · biến thể `disabled:` chết vì Base
+  UI render `<span data-disabled>` · `Select.Value` in **giá trị thô** nếu không
+  truyền hàm render · đệm `DrawerHeader`/`DrawerFooter` (`p-4 pb-0`/`p-4 pt-0`)
+  bị mất khi thêm border · override class phải khớp **đúng tiền tố** gốc
+  (`data-[swipe-axis=x]:sm:`), viết `sm:` trần sẽ bị đè.
+- **Review findings đợt đọc lại trước Task 8** (4 lỗi, `1ccce02`·`f1f5e81`):
+  9 link dropdown Destinations trỏ `?destination=` (số ít) trong khi `/tours` đọc
+  `?destinations=` (số nhiều, danh sách ngăn phẩy) → **mở trang mà không lọc gì,
+  im lặng** · `tours/loading.tsx` còn vẽ lưới 3 cột card dọc của bản thiết kế
+  ĐẦU trong khi listing là một cột hàng ngang, và đặt `dark` lên section (đúng
+  anti-pattern vừa sửa ở `22bd75e`) · khối `tourDetail` trong i18n là **188 dòng
+  port trọn gói từ Nexora** mô tả bữa ăn/hạng phòng/travel style/FAQ+policy CỨNG
+  — không component nào dùng, đã cắt về đúng field contract · footer `Tours` trỏ
+  anchor `/#tours` (section Stats trang chủ) thay vì trang `/tours` thật.
+- **SOFT 404 — `loading.tsx` nuốt status code.** Đo được: `loading.tsx` ở segment
+  `/tours` tạo Suspense boundary bọc **cả route con `[slug]`**, Next stream shell
+  ra trước nên HTTP **200** đã gửi xong trước khi thân trang gọi `notFound()`.
+  Slug lạ trả 200 kèm giao diện 404 → crawler index trang lỗi, đúng route Task 11
+  sắp đưa vào sitemap. Đo ở CẢ `next dev` lẫn production build; `/blog/[slug]`
+  không dính vì không có `loading.tsx` nào. Chữa: listing vào route group
+  **`(listing)/`** (URL không đổi) nên skeleton không còn bọc `[slug]`, và
+  `[slug]` **không có `loading.tsx`** (trang là SSG tĩnh, skeleton không mua được
+  gì). Đã thử và KHÔNG ăn: `dynamicParams = false` — 404 của nó vẫn đi qua cùng
+  boundary. Hai lần đoán sai đầu tiên cũng ghi trong plan để không thử lại.
+- Nợ ghi sổ: 5 lỗ contract (spec §8) — nổi bật là **3 facet price/duration/
+  difficulty đang lọc CLIENT trên mock sẽ GÃY IM LẶNG khi chuyển sang phân trang
+  server**, giờ là điều kiện chặn của cụm gắn API · JSON-LD Product/Offer/
+  AggregateRating + FAQPage · skip link · `images.remotePatterns` · cache-tag
+  revalidation · `/destinations` · ~9 component `@tourism/ui` chưa quét z-index ·
+  khi gắn API mà muốn skeleton cho trang detail thì phải đo lại status slug lạ.
+
+Tests after: `pnpm gate` xanh — **18/18 task** · API 188 · web **214** (từ 83) ·
+contract 55 · tokens 10 · ui 5 · i18n 1; production build sinh `/tours` (ƒ) +
+`/tours/[slug]` (● SSG 16 slug); status đo bằng curl trên bản production:
+`/tours/<slug hợp lệ>` 200 · `/tours/<slug lạ>` **404**.
+⚠️ `pnpm gate:int` **CHƯA chạy được** ở máy này: `test:int` cần Docker Postgres
+ở `localhost:5432`, distro WSL hiện tại không có Docker CLI (`ECONNREFUSED`,
+globalSetup chết nên vitest báo "No test files found"). Rủi ro đã bound bằng
+grep: diff của cụm không chạm file nào trong `apps/api`/`libs/shared/contract`/
+`prisma`, và `apps/api` **không** phụ thuộc `@tourism/i18n` nên key i18n bị xoá
+không tới được int test. CI (có service Postgres) là nơi xác minh khi push.
+
 ## 2026-07-27 — Thân trang 404 + nền lưới động Contact (thẳng `main`, `e34de29`·`55c3c17`)
 
 Hai chỉnh sửa giao diện nhỏ, làm thẳng trên `main` vì không đụng contract nào.

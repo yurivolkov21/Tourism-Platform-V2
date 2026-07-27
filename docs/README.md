@@ -48,6 +48,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | ✅ trọn bộ 6/6 merge 25/07 (vé tàu + ảnh Sa Pa + topo mask + OTP + strength field); nợ wire API ghi trong spec |
 | P3b — cụm pháp lý/utility | [2026-07-25-legal-utility-pages-design](specs/2026-07-25-legal-utility-pages-design.md) | ✅ merge 25/07 — 4 trang nội dung dài + 3 route boundary; nợ robots/sitemap + EnquiryCta + API FAQ ghi trong spec |
 | P3b — cụm Blog | [2026-07-25-blog-pages-design](specs/2026-07-25-blog-pages-design.md) | ✅ merge 27/07 — /blog · /blog/[slug] · rss.xml; giữa chừng user đổi hướng 2 lần (gộp PostCard theo thiết kế Home · toàn site về placeholder); nợ tách ArticleBody + phân trang + API ghi trong spec |
+| P3b — cụm Tours | [2026-07-27-tours-pages-design](specs/2026-07-27-tours-pages-design.md) | 🚧 `/tours` listing ✅ duyệt sau **4 vòng thiết kế lại** · `/tours/[slug]` khung + hero ✅ (Task 8) · còn dải khởi hành · itinerary · robots/sitemap. §8 ghi **5 lỗ contract** (không field ảnh · không next-departure trên card · không sort rating · không filter price/duration/difficulty · thiếu suitableFor+badges) — ĐỪNG vá trong cụm tĩnh |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -67,6 +68,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Cụm 6 trang auth](plans/2026-07-24-auth-pages.md) | Route group + AuthScreen/TicketCard + 6 trang (6 task) | ✅ đã merge trọn (Task 1–2 ngày 24/07 · Task 3–6 ngày 25/07) |
 | [Cụm pháp lý/utility](plans/2026-07-25-legal-utility-pages.md) | i18n + LegalArticle + 4 trang + 3 boundary (7 task) | ✅ đã merge |
 | [Cụm Blog](plans/2026-07-25-blog-pages.md) | mock 9 bài + lib/blog + 3 route + RSS (7 task + 3 đợt vá) | ✅ đã merge |
+| [Cụm Tours](plans/2026-07-27-tours-pages.md) | mock 16 tour theo contract + lib/tours + `/tours` + `/tours/[slug]` + robots/sitemap + 4 khoản nợ (13 task) | 🚧 Task 1–8 ✅ merge 27/07 · còn Task 9–12. Có **bảng 4 vòng thiết kế lại** của listing + mục **bẫy soft 404 do `loading.tsx`** |
 
 ## Analysis — nghiên cứu từ Nexora
 
@@ -80,6 +82,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Đối chiếu lại P3a-B](analysis/2026-07-21-p3a-b-parity-recheck.md) | Rà song song wishlist·enquiry·newsletter — không thụt lùi Quan trọng, chỉ 2 điểm Nhỏ |
 | [Rà soát độc lập toàn API](analysis/2026-07-21-independent-review.md) | **Parity + review defect toàn `apps/api`** — 4 High (refund/spam), chùm Medium, 19 invariant canh mạnh; tiền-RA là điểm yếu |
 | [Sweep parity toàn code trước P3a-B](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md) | Đối chiếu parity 7 vùng (catalog·reviews·bookings·payments·cancel/refund·auth·worker), 7 agent — 1 Quan trọng (C1 catalog destination phụ) + 4 Nên có + 3 Nhỏ + nợ; invariant money/security lõi sạch. *Snapshot 21/07; B2·C3 đã vá sau (CAT-4/BK-3)* |
+| [Đối chiếu Nexora — cụm Tours](analysis/2026-07-27-tours-parity-nexora.md) | Hai tầng (endpoint/feature + hạ tầng xuyên suốt) cho listing & detail. Nexora **hardcode `departures: []`** nên khối chọn ngày của họ luôn ẩn — v2 có dữ liệu thật, đây là điểm nhấn số 1 của trang detail. Kèm 7 thụt lùi Quan trọng (robots/sitemap · JSON-LD Product · cache-tag revalidate · next-departure trên card…) |
 | [Độ sẵn sàng backend + đối chiếu Nexora (trước P3b)](analysis/2026-07-22-backend-readiness-vs-nexora.md) | **Go/No-Go cho web** — 4 agent (endpoint·hạ tầng·money-path·auth/chất lượng). Backend P1-P3a xong & vượt Nexora ở tầng lõi; còn cụm PENDING-lifecycle (ADR-0006) + 3 infra-TB + P4-admin (58 ep, phase sau). Web không bị chặn cứng |
 
 ## Conventions — luật áp dụng mãi
