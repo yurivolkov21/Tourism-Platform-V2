@@ -5,6 +5,7 @@ import {
   filterPostsByCategory,
   HOME_TEASER_COUNT,
   homeTeaserPosts,
+  latestPosts,
   postCategories,
   relatedPosts,
   searchPosts,
@@ -170,6 +171,33 @@ describe('homeTeaserPosts', () => {
   it('không sửa mảng gốc', () => {
     const many = [post('a', '2026-01-01', 'Food'), post('b', '2026-05-01', 'Food')];
     homeTeaserPosts(many);
+    expect(many.map((p) => p.slug)).toEqual(['a', 'b']);
+  });
+});
+
+describe('latestPosts', () => {
+  it('lấy đúng số lượng yêu cầu, mới nhất trước', () => {
+    const many = [
+      post('cu', '2026-01-01', 'Food'),
+      post('moi-nhat', '2026-09-01', 'Food'),
+      post('giua', '2026-05-01', 'Food'),
+    ];
+    expect(latestPosts(many, 2).map((p) => p.slug)).toEqual(['moi-nhat', 'giua']);
+  });
+
+  it('xin nhiều hơn số bài đang có thì trả hết, không lỗi', () => {
+    expect(latestPosts([post('a', '2026-01-01', 'Food')], 99)).toHaveLength(1);
+  });
+
+  it('count 0 hoặc âm trả mảng rỗng, không cắt ngược', () => {
+    const many = [post('a', '2026-01-01', 'Food'), post('b', '2026-05-01', 'Food')];
+    expect(latestPosts(many, 0)).toEqual([]);
+    expect(latestPosts(many, -3)).toEqual([]);
+  });
+
+  it('không sửa mảng gốc', () => {
+    const many = [post('a', '2026-01-01', 'Food'), post('b', '2026-05-01', 'Food')];
+    latestPosts(many, 1);
     expect(many.map((p) => p.slug)).toEqual(['a', 'b']);
   });
 });

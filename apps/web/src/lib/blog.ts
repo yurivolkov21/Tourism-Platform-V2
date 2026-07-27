@@ -75,5 +75,15 @@ export const HOME_TEASER_COUNT = 3;
  * đỏ, và Home âm thầm hiện 5 card trong lưới 3 cột.
  */
 export function homeTeaserPosts(posts: readonly MockJournalPost[]): MockJournalPost[] {
-  return sortPostsByDate(posts).slice(0, HOME_TEASER_COUNT);
+  return latestPosts(posts, HOME_TEASER_COUNT);
+}
+
+/**
+ * `count` bài mới nhất — dạng tổng quát của `homeTeaserPosts`, cho chỗ nào
+ * cần "vài bài gần đây" mà không phải teaser Home. Hiện chỉ `homeTeaserPosts`
+ * gọi tới; giữ tách ra vì "sắp mới-nhất-trước rồi cắt" là bất biến riêng,
+ * đáng có test canh độc lập với con số 3 của Home.
+ */
+export function latestPosts(posts: readonly MockJournalPost[], count: number): MockJournalPost[] {
+  return sortPostsByDate(posts).slice(0, Math.max(0, count));
 }

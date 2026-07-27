@@ -1,5 +1,6 @@
 import { resilience } from '@tourism/i18n';
 import Link from 'next/link';
+import { NotFoundBody } from '@/components/feedback/not-found-body';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { SiteChrome } from '@/components/site-chrome';
 import { TopoPattern } from '@/components/topo-pattern';
@@ -57,6 +58,8 @@ export default function NotFound() {
           </div>
         </div>
       </section>
+
+      <NotFoundBody />
     </SiteChrome>
   );
 }
