@@ -117,10 +117,17 @@ describe('ToursExplorer — phân trang', () => {
 });
 
 describe('ToursExplorer — sắp xếp', () => {
+  /** Select của Base UI không phải <select> gốc nên userEvent.selectOptions
+      không dùng được — phải mở popup rồi bấm đúng option. */
+  async function pickSort(user: ReturnType<typeof userEvent.setup>, label: RegExp) {
+    await user.click(screen.getByRole('combobox'));
+    await user.click(await screen.findByRole('option', { name: label }));
+  }
+
   it('sort giá tăng dần đưa tour rẻ nhất lên đầu', async () => {
     const user = userEvent.setup();
     renderExplorer();
-    await user.selectOptions(screen.getByLabelText(/sort by/i), 'priceAsc');
+    await pickSort(user, /price: low to high/i);
     const cheapest = [...TOURS].sort((a, b) => Number(a.basePrice) - Number(b.basePrice))[0];
     await waitFor(() =>
       expect(screen.getAllByRole('article')[0]).toHaveTextContent(cheapest?.title ?? ''),
@@ -130,10 +137,17 @@ describe('ToursExplorer — sắp xếp', () => {
   it('sort mặc định (newest) KHÔNG ghi vào URL — giữ link sạch', async () => {
     const user = userEvent.setup();
     renderExplorer();
-    await user.selectOptions(screen.getByLabelText(/sort by/i), 'priceAsc');
-    expect(replace).toHaveBeenLastCalledWith('/tours?sort=priceAsc', { scroll: false });
-    await user.selectOptions(screen.getByLabelText(/sort by/i), 'newest');
-    expect(replace).toHaveBeenLastCalledWith('/tours', { scroll: false });
+    await pickSort(user, /price: low to high/i);
+    await waitFor(() =>
+      expect(replace).toHaveBeenLastCalledWith('/tours?sort=priceAsc', { scroll: false }),
+    );
+    await pickSort(user, /newest first/i);
+    await waitFor(() => expect(replace).toHaveBeenLastCalledWith('/tours', { scroll: false }));
+  });
+
+  it('nút mở sort công bố nhãn "Sort by" cho trình đọc màn hình', () => {
+    renderExplorer();
+    expect(screen.getByRole('combobox')).toHaveAccessibleName(/sort by/i);
   });
 });
 

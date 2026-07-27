@@ -4,6 +4,13 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@tourism/ui/components/select';
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -299,29 +306,38 @@ export function ToursExplorer({
               </div>
 
               <div className="flex items-center gap-2">
-                <label
-                  htmlFor="tours-sort"
+                <span
+                  id="tours-sort-label"
                   className="hidden text-sm text-muted-foreground sm:inline"
                 >
                   {messages.toursPage.sortLabel}
-                </label>
-                {/* Select GỐC thay vì Select của Base UI: lựa chọn đơn, native
-                    cho trợ năng và UX mobile miễn phí, không portal, không JS. */}
-                <select
-                  id="tours-sort"
+                </span>
+                {/* Select của @tourism/ui (Base UI) — bản <select> gốc trước đây
+                    dùng khung vẽ của hệ điều hành nên lạc hẳn khỏi phần còn lại
+                    của trang. Đánh đổi: phải mock/điều khiển bằng click trong
+                    test thay vì userEvent.selectOptions. */}
+                <Select
                   value={sort}
-                  onChange={(e) => {
-                    setSort(e.target.value as SortValue);
+                  onValueChange={(value) => {
+                    setSort(value as SortValue);
                     setPage(1);
                   }}
-                  className="h-9 cursor-pointer rounded-md border bg-background px-3 text-sm text-foreground"
                 >
-                  {SORT_ORDER.map((value) => (
-                    <option key={value} value={value}>
-                      {messages.toursPage.sortOptions[value]}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger
+                    id="tours-sort"
+                    aria-labelledby="tours-sort-label tours-sort"
+                    className="w-44"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SORT_ORDER.map((value) => (
+                      <SelectItem key={value} value={value}>
+                        {messages.toursPage.sortOptions[value]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
