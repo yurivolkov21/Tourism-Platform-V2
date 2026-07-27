@@ -138,3 +138,35 @@ Chốt sau 2 vòng specimen (22/07/2026) — cả ba đều có subset `vietname
   `--font-mono` — typeset.css và shadcn theme ăn theo tự động.
 - Lịch sử: đề xuất ban đầu Be Vietnam Pro + Lora (+ Geist Mono) chạy tạm từ
   ADR-0013 tới khi user duyệt specimen và đổi sang bộ trên.
+
+## Bề mặt hero — token `hero` (thêm 27/07/2026)
+
+**Luật: hero LUÔN là mảng tối nhất của trang, ở cả hai chế độ màu.**
+
+| | Hero | Nền trang | Card |
+| --- | --- | --- | --- |
+| Light | `oklch(0.25 0.015 181.5)` | `0.977` | `0.996` |
+| Dark | `oklch(0.17 0.019 182.5)` | `0.25` | `0.309` |
+
+Thứ bậc hero → trang → card giữ nguyên chiều ở cả hai chế độ, chỉ dịch cả thang.
+
+**Vì sao có token này.** Trước 27/07 hero không có token riêng: nó mượn
+`background` bên trong một scope `dark`. Light mode ổn, nhưng dark mode nền
+trang ĐÃ là `0.25` nên hero trùng màu tuyệt đối và biến mất — đo được
+`lab(13.19 -5.13 -0.19)` cho cả hero lẫn nền, trên `/tours`, `/blog` và `/faq`.
+
+**Vì sao KHÔNG đảo thành hero sáng ở dark mode.** Navbar lúc chưa cuộn dùng
+`on-media`, token cố ý không lật theo theme (*"the scrim is always dark, so this
+must NOT flip"*). Nền hero sáng làm chữ navbar tàng hình — đúng lý do luật
+"hero luôn tối" ra đời ở `/contact`. Muốn đảo thì phải cho navbar biến thể theo
+từng trang; cái giá đó không đáng cho một thay đổi thị giác.
+
+**Cách dùng.** Đặt `bg-hero text-hero-foreground` trên `<section>` (đọc theme
+CỦA TRANG), rồi bọc nội dung trong `<div className="dark contents">` để chữ
+luôn sáng. **Không** đặt `dark` lên chính section — đó chính là cái đã gây lỗi:
+`bg-background` khi đó bị đọc trong scope dark. `contents` để wrapper không tạo
+hộp; biến CSS vẫn kế thừa bình thường qua `display:contents`.
+
+Vân topo đặt NGOÀI scope dark để biến thể `dark:` đọc được theme trang —
+`opacity-[0.12]` sáng, `dark:opacity-[0.2]` tối, vì nền tối hơn thì vân phải
+đậm lên mới đọc được.

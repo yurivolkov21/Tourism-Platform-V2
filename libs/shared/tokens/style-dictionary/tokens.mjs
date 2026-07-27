@@ -44,6 +44,20 @@ export default {
     'warning-foreground': c('oklch(0.27 0.04 80)', 'oklch(0.2 0.03 80)'),
     info: c('oklch(0.6 0.13 240)', 'oklch(0.7 0.13 240)'),
     'info-foreground': c('oklch(0.985 0 0)', 'oklch(0.205 0 0)'),
+    // Bề mặt HERO — luôn là mảng tối nhất của trang, ở CẢ hai chế độ màu.
+    //
+    // Trước 27/07 hero không có token riêng: nó mượn `background` bên trong một
+    // scope `dark`. Ở light mode ổn (0.25 trên nền 0.977), nhưng ở dark mode
+    // nền trang ĐÃ là 0.25 nên hero trùng màu tuyệt đối và biến mất — đo được
+    // lab(13.19 -5.13 -0.19) cho cả hai.
+    //
+    // Không đảo thành hero SÁNG ở dark mode: navbar lúc chưa cuộn dùng
+    // `on-media`, token cố ý không lật theo theme (xem comment ở trên), nên nền
+    // sáng sẽ làm chữ navbar tàng hình — đúng lý do luật "hero luôn tối" ra đời.
+    // Thay vào đó đẩy hero tối thêm một bậc, giữ thứ bậc hero → trang → card
+    // giống hệt nhau ở cả hai chế độ.
+    hero: c('oklch(0.25 0.015 181.5)', 'oklch(0.17 0.019 182.5)'),
+    'hero-foreground': c('oklch(0.921 0.014 174.1)', 'oklch(0.921 0.014 174.1)'),
     // Tourism-specific semantic colors — rating = vàng hổ phách Wuling (chỉ dùng cho ★).
     rating: c('oklch(0.731 0.13 73.3)', 'oklch(0.78 0.13 75)'),
     'rating-muted': c('oklch(0.865 0.015 175.7)', 'oklch(1 0 0 / 0.2)'),
