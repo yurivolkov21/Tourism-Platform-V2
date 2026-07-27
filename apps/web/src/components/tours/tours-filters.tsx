@@ -147,6 +147,7 @@ export function ToursFilters({
   categoryOptions,
   destinations,
   activeCount,
+  surfaceClassName = 'bg-background',
 }: {
   value: TourFilterState;
   counts: FacetCounts;
@@ -156,6 +157,12 @@ export function ToursFilters({
   categoryOptions: { slug: string; name: string }[];
   destinations: MockDestination[];
   activeCount: number;
+  /** Nền của vùng cuộn chứa component này. Header dính phải ĐỤC và phải TRÙNG
+      màu vùng cuộn, nếu không nó thành một vệt lệch màu khi nội dung trôi bên
+      dưới. Sidebar desktop nằm trên `bg-background`; drawer mobile là
+      SheetContent nền `bg-popover` — hai token khác nhau thật (đo 27/07:
+      lab 97.37 vs 99.56). */
+  surfaceClassName?: string;
 }) {
   const t = messages.toursPage;
   const featuredDead = counts.featured === 0 && !value.featured;
@@ -165,7 +172,9 @@ export function ToursFilters({
       {/* Header DÍNH trong vùng cuộn của sidebar: ở Nexora, cuộn xuống nhóm
           Price là nút "Clear all" trôi mất khỏi màn hình. Nền đặc để nội dung
           cuộn bên dưới không lộ qua. */}
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-background pb-3">
+      <div
+        className={`sticky top-0 z-10 flex items-center justify-between pb-3 ${surfaceClassName}`}
+      >
         <h2 className="font-heading text-lg font-medium">
           {t.filtersLabel}
           {activeCount > 0 ? (

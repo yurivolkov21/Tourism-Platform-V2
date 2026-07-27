@@ -137,8 +137,8 @@ export function ToursExplorer({
   }
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Đồng bộ URL bằng replace (không nhét thêm mục vào lịch sử duyệt) và
-  // scroll:false (gõ tìm mà trang nhảy về đầu thì rất khó chịu).
+  // Đồng bộ URL: ghi đè mục hiện tại thay vì thêm mục mới vào lịch sử duyệt,
+  // để nút Back đưa người dùng RỜI trang chứ không lùi qua từng lần tích ô.
   const firstRender = useRef(true);
   useEffect(() => {
     // Bỏ qua lần mount đầu: URL lúc đó đã đúng rồi (server render theo chính
@@ -271,18 +271,23 @@ export function ToursExplorer({
     }),
   );
 
-  const filtersNode = (
-    <ToursFilters
-      value={filters}
-      counts={counts}
-      onToggle={toggleFacet}
-      onToggleFeatured={toggleFeatured}
-      onClearAll={clearAll}
-      categoryOptions={categories}
-      destinations={destinations}
-      activeCount={activeCount}
-    />
-  );
+  /** Hai chỗ dùng bộ lọc nằm trên hai nền khác nhau nên phải truyền nền vào,
+      xem comment `surfaceClassName` trong ToursFilters. */
+  function renderFilters(surfaceClassName: string) {
+    return (
+      <ToursFilters
+        surfaceClassName={surfaceClassName}
+        value={filters}
+        counts={counts}
+        onToggle={toggleFacet}
+        onToggleFeatured={toggleFeatured}
+        onClearAll={clearAll}
+        categoryOptions={categories}
+        destinations={destinations}
+        activeCount={activeCount}
+      />
+    );
+  }
 
   return (
     <>
@@ -318,7 +323,13 @@ export function ToursExplorer({
         >
           <aside className={sidebarCollapsed ? 'hidden' : 'hidden lg:block'}>
             {/* top-28 = chiều cao navbar pill khi đã cuộn + thở */}
-            <div className="lg:sticky lg:top-28">{filtersNode}</div>
+            {/* Cuộn ĐỘC LẬP (nâng cấp C): sáu nhóm mở hết cao hơn màn hình;
+                không có max-h thì sidebar đẩy chiều cao cả trang và phải cuộn
+                qua hết bộ lọc mới tới kết quả. pr-1/-mr-1 chừa chỗ thanh cuộn
+                mà không thụt nội dung. */}
+            <div className="lg:sticky lg:top-28 lg:-mr-1 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
+              {renderFilters('bg-background')}
+            </div>
           </aside>
 
           <div className="min-w-0">
@@ -339,11 +350,14 @@ export function ToursExplorer({
                       </Button>
                     }
                   />
-                  <SheetContent side="left" className="w-[19rem] overflow-y-auto p-6">
+                  {/* KHÔNG pt ở đây: padding trên nằm TRONG vùng cuộn nên nội
+                      dung trôi qua khoảng đó trước khi chạm header dính, tạo một
+                      vệt 24px lộ chữ. Padding trên chuyển vào chính header. */}
+                  <SheetContent side="left" className="w-[19rem] overflow-y-auto px-6 pb-6">
                     <SheetHeader className="sr-only">
                       <SheetTitle>{messages.toursPage.filtersLabel}</SheetTitle>
                     </SheetHeader>
-                    {filtersNode}
+                    {renderFilters('bg-popover pt-6')}
                   </SheetContent>
                 </Sheet>
 
@@ -376,9 +390,13 @@ export function ToursExplorer({
               </div>
 
               <div className="flex items-center gap-2">
+                {/* sr-only chứ KHÔNG phải `hidden`: display:none loại phần tử
+                    khỏi cây trợ năng, nên trên mobile aria-labelledby trỏ vào
+                    một nhãn rỗng và trình đọc màn hình chỉ nghe "Newest first"
+                    mà không biết nút này để làm gì. */}
                 <span
                   id="tours-sort-label"
-                  className="hidden text-sm text-muted-foreground sm:inline"
+                  className="sr-only text-sm text-muted-foreground sm:not-sr-only"
                 >
                   {messages.toursPage.sortLabel}
                 </span>
@@ -405,7 +423,11 @@ export function ToursExplorer({
                       {(value) => messages.toursPage.sortOptions[value as SortValue]}
                     </SelectValue>
                   </SelectTrigger>
-                  <SelectContent>
+                  {/* alignItemWithTrigger mặc định của Base UI là kiểu select
+                      macOS: popup PHỦ LÊN trigger, canh mục đang chọn vào đúng
+                      chỗ nút. Trên thanh công cụ trông như bị lệch — đổi sang
+                      dropdown thường, mở xuống dưới và canh mép phải nút. */}
+                  <SelectContent alignItemWithTrigger={false} align="end">
                     {SORT_ORDER.map((value) => (
                       <SelectItem key={value} value={value}>
                         {messages.toursPage.sortOptions[value]}
