@@ -22,37 +22,103 @@ export function tourCategories(
   return [...map.values()];
 }
 
-/** Lọc theo chuyên mục. Slug lạ (link cũ / gõ tay) phải cho mảng RỖNG để trang
-    hiện trạng thái rỗng — KHÔNG âm thầm rơi về "All". Đây đúng là bug đã sửa ở
-    /blog: lọc sạch tag lạ thành undefined làm URL vẫn ghi ?tag=… mà lưới hiện
-    đủ bài với chip "All" sáng. */
-export function filterToursByCategory<T extends MockTourCard>(
-  tours: readonly T[],
-  categorySlug?: string,
-): T[] {
-  if (!categorySlug) return [...tours];
-  return tours.filter((tour) => tour.category.slug === categorySlug);
+export type DurationBucket = '1' | '2-3' | '4+';
+export type PriceBucket = '<100' | '100-300' | '300+';
+
+/** Nhóm thời lượng cho facet sidebar. Ngưỡng khớp Nexora để copy i18n port
+    sang dùng lại được nguyên văn. */
+export function durationBucket(durationDays: number): DurationBucket {
+  if (durationDays <= 1) return '1';
+  if (durationDays <= 3) return '2-3';
+  return '4+';
 }
 
-/** Lọc theo destination — khớp BẤT KỲ điểm nào tour đi qua, không chỉ primary.
-    Một tour đi qua nhiều nơi; đây là lý do contract trả cả mảng thay vì một
-    `primaryDestination` đơn như bản cũ. */
-export function filterToursByDestination<T extends MockTourCard>(
-  tours: readonly T[],
-  destinationSlug?: string,
-): T[] {
-  if (!destinationSlug) return [...tours];
-  return tours.filter((tour) => tour.destinations.some((d) => d.slug === destinationSlug));
+/** Nhóm giá. `basePrice` là chuỗi thập phân — Number() chỉ để SO SÁNH ở đây,
+    không bao giờ để tính tiền. Biên: 100 và 300 thuộc nhóm giữa. */
+export function priceBucket(basePrice: string): PriceBucket {
+  const value = Number(basePrice);
+  if (value < 100) return '<100';
+  if (value <= 300) return '100-300';
+  return '300+';
 }
 
-/** `undefined` = không lọc; `false` = chỉ tour KHÔNG featured. Hai thứ khác
-    nhau, đừng gộp bằng falsy check. */
-export function filterToursByFeatured<T extends MockTourCard>(
+/** Trạng thái bộ lọc sidebar. Mọi facet là MẢNG (đa chọn) trừ `featured` —
+    nó là công tắc một chiều: `false` nghĩa là KHÔNG lọc, không phải "chỉ tour
+    không featured". */
+export interface TourFilterState {
+  categories: readonly string[];
+  destinations: readonly string[];
+  durations: readonly DurationBucket[];
+  prices: readonly PriceBucket[];
+  difficulties: readonly NonNullable<MockTourCard['difficulty']>[];
+  featured: boolean;
+}
+
+export const EMPTY_TOUR_FILTERS: TourFilterState = {
+  categories: [],
+  destinations: [],
+  durations: [],
+  prices: [],
+  difficulties: [],
+  featured: false,
+};
+
+/**
+ * Lọc theo toàn bộ facet. Ngữ nghĩa chuẩn của mọi bộ lọc mặt hàng:
+ * **OR trong cùng một facet, AND giữa các facet**. Chọn "Trekking" + "Food" ra
+ * hợp của hai; thêm "Sa Pa" thì giao với nó.
+ *
+ * Facet rỗng = không lọc. Giá trị lạ (link cũ / gõ tay) cho mảng RỖNG chứ
+ * không âm thầm rơi về "All" — đúng bug đã sửa ở /blog.
+ *
+ * LƯU Ý KHI GẮN API: `categories`/`destinations`/`featured` có tham số tương
+ * ứng trong ToursListQuerySchema, nhưng `durations`/`prices`/`difficulties`
+ * thì KHÔNG — ba facet đó hiện chỉ chạy được vì dữ liệu là mock nằm sẵn ở
+ * client. Xem nợ mở rộng contract trong spec §8.
+ */
+export function filterTours<T extends MockTourCard>(
   tours: readonly T[],
-  featured?: boolean,
+  state: TourFilterState,
 ): T[] {
-  if (featured === undefined) return [...tours];
-  return tours.filter((tour) => tour.isFeatured === featured);
+  return tours.filter((tour) => {
+    if (state.categories.length > 0 && !state.categories.includes(tour.category.slug)) return false;
+    if (
+      state.destinations.length > 0 &&
+      !tour.destinations.some((d) => state.destinations.includes(d.slug))
+    ) {
+      return false;
+    }
+    if (
+      state.durations.length > 0 &&
+      !state.durations.includes(durationBucket(tour.durationDays))
+    ) {
+      return false;
+    }
+    if (state.prices.length > 0 && !state.prices.includes(priceBucket(tour.basePrice)))
+      return false;
+    // Tour không ghi độ khó KHÔNG lọt bất kỳ nhóm nào — thà thiếu còn hơn xếp
+    // bừa vào "Easy" rồi khách đặt nhầm một chuyến leo núi.
+    if (
+      state.difficulties.length > 0 &&
+      (tour.difficulty === null || !state.difficulties.includes(tour.difficulty))
+    ) {
+      return false;
+    }
+    if (state.featured && !tour.isFeatured) return false;
+    return true;
+  });
+}
+
+/** Số option đang bật — cho huy hiệu trên nút "Filters" và nút thu/mở sidebar. */
+export function countActiveFilters(state: TourFilterState): number {
+  return (
+    state.categories.length +
+    state.destinations.length +
+    state.durations.length +
+    state.prices.length +
+    state.difficulties.length +
+    (state.featured ? 1 : 0)
+  );
 }
 
 /** Tìm trên tiêu đề + tóm tắt + tên destination + tên chuyên mục, bỏ dấu cả hai

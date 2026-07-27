@@ -155,28 +155,55 @@ export interface MockTourDetail extends MockTourCard {
 
 ### 5.1 Bố cục
 
-Chọn **chip rail + toolbar dính**, không sidebar. Lý do cứng: API chỉ có 3
-chiều lọc (category · destination · featured) + search. Một rail 280px chứa 3
-nhóm là khoảng rỗng trông thấy; Baymard cũng khuyến nghị thanh ngang khi ≤8
-nhóm filter, sidebar chỉ hợp khi ≥5–10. Bố cục này còn tái dùng nguyên
-`CategoryChips` + mẫu URL-sync của `BlogExplorer` đã chạy thật ở `/blog`.
+> **Sửa 27/07 sau vòng review đầu.** Bản đầu dùng chip rail + toolbar ngang với
+> lý do "API chỉ có 3 chiều lọc nên sidebar sẽ rỗng". User chốt lại: **sidebar
+> kiểu Nexora, và đầy đủ hơn Nexora**. Kéo theo: facet đa chọn, thêm Duration ·
+> Price · Pace, và danh sách card hàng ngang thay lưới. Phần dưới đã viết lại
+> theo quyết định đó; §8 ghi thêm nợ contract phát sinh.
+
+**Sidebar `16rem` thu/mở được, sticky**, cộng drawer trên mobile — đúng mô hình
+Nexora (`tours-listing.tsx` + `tours-filters.tsx`).
+
+Sáu nhóm facet, **checkbox đa chọn**, mở sẵn:
+
+| Nhóm | Nguồn dữ liệu | API đỡ được? |
+| --- | --- | --- |
+| Category | `category.slug` + đếm | ✅ `category` |
+| Destination | `destinations[].slug` (khớp cả chặng phụ) | ✅ `destination` |
+| Duration | `durationBucket(durationDays)` → `1` / `2-3` / `4+` | ❌ |
+| Price | `priceBucket(basePrice)` → `<100` / `100-300` / `300+` | ❌ |
+| Pace | `difficulty` | ❌ |
+| Highlights | `isFeatured` | ✅ `featured` |
+
+Ngữ nghĩa: **OR trong cùng nhóm, AND giữa các nhóm**.
+
+Nexora để mọi nhóm **đóng sẵn** "to save space" — v2 mở sẵn, vì cả lý do tồn
+tại của sidebar là thấy được lựa chọn mà không phải bấm; sáu nhóm đóng hết thì
+sidebar chỉ còn sáu dòng tiêu đề, tệ hơn cả thanh ngang.
 
 ```
 ┌─────────────────── hero TỐI (~40vh, không ảnh) ───────────────────┐
 │ Home › Tours                                                      │
 │ 16 tours across 9 destinations          ← số đếm TRÊN H1          │
-│ H1 (font-heading)                                                 │
-│ subtitle                                                          │
-│ [🔍  search tours…]                                               │
+│ H1 (font-heading) · subtitle · [🔍 search tours…]                 │
 └───────────────────────────────────────────────────────────────────┘
-┌── toolbar dính ───────────────────────────────────────────────────┐
-│ ‹ All · Cruises · Trekking · Culture · Food · Beaches ›  (chip)   │
-│ 16 tours  ⓧ Trekking  ⓧ Sa Pa   Clear all                        │
-│                    [Destination ▾] [Featured] [Sort: Newest ▾]    │
-└───────────────────────────────────────────────────────────────────┘
-  lưới card 3 cột (lg) · 2 (sm) · 1 (base)
-  ‹ 1 2 › phân trang đánh số
+┌ Filters  Clear all ┐┌──────────────────────────────────────────────┐
+│ CATEGORY      (2)  ││ [◧ Hide filters] 3 tours    Sort by [ ▾ ]    │
+│ ☑ Trekking      3  ││ ⓧ Trekking  ⓧ Culture  ⓧ 4+ days  Clear all │
+│ ☑ Culture       4  │├──────────────────────────────────────────────┤
+│ DESTINATION        ││ ┌──────┬──────────────────────┬────────────┐ │
+│ ☐ Sa Pa            ││ │ ẢNH  │ HẠ LONG · 2 DAYS ·…  │  $̶2̶3̶6̶ $189 │ │
+│ ☐ Hạ Long       …  ││ │ 16:10│ Tiêu đề (2 dòng)     │  per person│ │
+│ DURATION      (1)  ││ │      │ Tóm tắt (2 dòng)     │  ♡ [View]  │ │
+│ ☑ 4+ days          ││ │      │ Hạ Long → Ninh Bình  │            │ │
+│ PRICE · PACE ·     ││ │      │ ★4.9 (1,204) [chip]  │            │ │
+│ HIGHLIGHTS         ││ └──────┴──────────────────────┴────────────┘ │
+└────────────────────┘│              ‹ 1 2 ›                         │
+                      └──────────────────────────────────────────────┘
 ```
+
+Danh sách **card hàng ngang xếp dọc** (`flex flex-col gap-5`), không phải lưới —
+mật độ thông tin cao hơn và dùng được `summary`, thứ lưới 3 cột không có chỗ.
 
 - Hero **tối** (hero sáng làm navbar tàng hình). `ContentHero` hiện tại phục vụ
   trang nội dung dài (breadcrumb + title + meta + subtitle) và **không nhận
@@ -191,28 +218,38 @@ nhóm filter, sidebar chỉ hợp khi ≥5–10. Bố cục này còn tái dùng
 - Phân trang **đánh số** (không "Load more"): back-button hoạt động đúng, URL
   chia sẻ được, và `limit=12` với catalog capstone thì số trang ít.
 
-### 5.2 Card tour
+### 5.2 Card tour — `TourListCard`
 
-Giữ nguyên thiết kế card đã có ở `components/home/tour-card.tsx` (hướng đã chốt
-ở cụm Blog: "lấy thiết kế Home áp cho trang listing"), **chuyển file** sang
-`components/tours/tour-card.tsx` — nó hiện không trang nào import, nên đây là
-dọn dẹp không rủi ro — rồi thay nguồn field:
+Card **hàng ngang** theo Nexora `tour-list-card.tsx`: ảnh trái · thân giữa ·
+rail giá phải, xếp dọc trên mobile.
 
-| Vùng trên card | Nguồn |
-| --- | --- |
-| Ảnh | `ImagePlaceholder`, nhãn = tên destination chính (không dùng `title` — trùng `CardTitle` ngay dưới, trình đọc màn hình đọc hai lần) |
-| Badge góc ảnh | `−N%` dẫn xuất từ `compareAtPrice`, hoặc `Featured` khi `isFeatured` |
-| Eyebrow | `category.name` |
-| Tiêu đề | `title` |
-| Dòng chặng | **chuỗi chặng** `Hạ Long → Cát Bà → Ninh Bình` in mono, `isPrimary` đậm |
-| Meta | `durationDays` · `maxGroupSize` · `difficulty` (null thì bỏ chip) |
-| Rating | `ratingAvg` + `ratingCount`; **`null` → bỏ hẳn dòng sao**, thay bằng nhãn `Not yet reviewed`. Tuyệt đối không render `0.0` hay 5 sao rỗng |
-| Giá | `basePrice` + `compareAtPrice` gạch + `/ person` |
-| Hành động | nút wishlist (chưa nối) + `View tour` → `/tours/[slug]` |
+| Vùng | Nguồn | Giới hạn dòng |
+| --- | --- | --- |
+| Ảnh (`sm:w-60 lg:w-72`) | `ImagePlaceholder`, nhãn = tên destination chính | — |
+| Huy hiệu góc ảnh | `−N%` từ `compareAtPrice`; không có thì `Featured` khi `isFeatured` | 1 dòng |
+| Meta | `destination chính` · `durationDays` · `maxGroupSize`, mono in hoa | **1 dòng**, `truncate` |
+| Tiêu đề | `title` | **2 dòng**, giữ chỗ 2 dòng |
+| Tóm tắt | `summary` (null → chuỗi rỗng, VẪN giữ chỗ) | **2 dòng**, giữ chỗ 2 dòng |
+| Chuỗi chặng | `routeChain(destinations)`, mono, primary đậm | **1 dòng**, `truncate` |
+| Rating | `ratingAvg` + `ratingCount`; `null` → nhãn `Not yet reviewed`, tuyệt đối không `0.0` | 1 dòng |
+| Chip | `category.name` + `difficulty` | **1 dòng, tối đa 2 chip** |
+| Rail giá (`sm:w-40`) | `compareAtPrice` gạch + `basePrice` + `per person` + ♡ + `View tour` | 1 dòng mỗi phần tử |
+
+**Hợp đồng số dòng là bắt buộc, không phải trang trí.** `line-clamp` một mình
+KHÔNG đủ: nó cắt phần thừa nhưng không giữ chỗ, nên tiêu đề 1 dòng và tiêu đề
+2 dòng vẫn cho hai chiều cao card khác nhau. Mỗi ô vừa `line-clamp-N` vừa
+`min-h-[Nlh]`. Nhờ đó tour không có `summary` vẫn cao đúng bằng tour có.
+
+Giới hạn **2 chip** là bắt buộc, không phải thẩm mỹ: ba chip từng làm chip cuối
+bị `overflow-hidden` xén ngang chữ trên tour có tên chuyên mục dài — CSS không
+có cách "chỉ hiện item nào vừa đủ", nên phải chặn ở nguồn.
 
 **Chuỗi chặng là điểm chống "mùi template" chính của card.** Template viết
 `7 days • Small group • Vietnam`; chuỗi chặng là dữ liệu thật từ `destinations[]`
 và là thứ duy nhất phân biệt card tour với card khách sạn.
+
+Card dọc `tour-card.tsx` giữ lại cho "You might also like" ở trang detail —
+Nexora cũng giữ cả hai biến thể.
 
 ### 5.3 Trạng thái
 
@@ -376,6 +413,13 @@ Năm lỗ đã xác định. Không cái nào chặn cụm tĩnh; tất cả ch�
    listing mất đòn bẩy urgency mà Nexora có.
 3. **Không sort được theo rating/popularity** dù cột đã denormalize sẵn.
 4. **Không filter được theo price / duration / difficulty** (Nexora có 2/3).
+   **Nâng mức độ sau review 27/07:** ba facet này đã được DỰNG và đang chạy
+   bằng lọc client trên mock. Chúng sẽ **gãy im lặng** khi chuyển sang phân
+   trang server nếu contract chưa mở rộng — server trả 12 tour của trang hiện
+   tại, client lọc tiếp trong 12 tour đó, và người dùng thấy kết quả thiếu mà
+   không có dấu hiệu gì. Đây giờ là **điều kiện chặn** của cụm gắn API, không
+   còn là "nên có": hoặc mở rộng `ToursListQuerySchema`
+   (`minDays`/`maxDays`/`minPrice`/`maxPrice`/`difficulty`), hoặc gỡ ba facet.
 5. **`suitableFor` và `badges` chưa có trên card**.
 
 Đề xuất: một ADR mở rộng `ToursListQuerySchema` + `TourCardSchema` trước cụm

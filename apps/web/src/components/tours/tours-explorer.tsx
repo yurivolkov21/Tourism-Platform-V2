@@ -1,30 +1,47 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
+import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
-import { SearchIcon } from 'lucide-react';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@tourism/ui/components/sheet';
+import {
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
+  SearchIcon,
+  SlidersHorizontalIcon,
+  XIcon,
+} from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { PaginationBar } from '@/components/tours/pagination-bar';
-import { TourCard } from '@/components/tours/tour-card';
-import { type SortValue, TourToolbar } from '@/components/tours/tour-toolbar';
+import { TourListCard } from '@/components/tours/tour-list-card';
+import { type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
 import { ToursHero } from '@/components/tours/tours-hero';
 import { paginate } from '@/lib/paginate';
 import {
-  filterToursByCategory,
-  filterToursByDestination,
-  filterToursByFeatured,
+  countActiveFilters,
+  EMPTY_TOUR_FILTERS,
+  filterTours,
   searchTours,
   sortTours,
+  type TourFilterState,
   type TourSortKey,
 } from '@/lib/tours';
 import type { MockDestination, MockTourCard } from '@/mocks/types';
 
 // Limit mặc định của ToursListQuerySchema. Giữ đúng con số đó ngay từ tầng tĩnh
-// để lúc gắn API không phải chỉnh lại lưới.
+// để lúc gắn API không phải chỉnh lại danh sách.
 const PAGE_SIZE = 12;
 
+type SortValue = 'newest' | 'priceAsc' | 'priceDesc' | 'durationAsc';
+const SORT_ORDER: SortValue[] = ['newest', 'priceAsc', 'priceDesc', 'durationAsc'];
 const SORT_MAP: Record<SortValue, { key: TourSortKey; order: 'asc' | 'desc' }> = {
   newest: { key: 'createdAt', order: 'desc' },
   priceAsc: { key: 'basePrice', order: 'asc' },
@@ -34,19 +51,39 @@ const SORT_MAP: Record<SortValue, { key: TourSortKey; order: 'asc' | 'desc' }> =
 
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
+/** Facet nào đọc được từ URL. Giá trị trong URL là danh sách ngăn bằng dấu phẩy
+    (`?categories=trekking,food`) — ngắn và người đọc URL vẫn hiểu. */
+const FACET_PARAMS: FacetKey[] = [
+  'categories',
+  'destinations',
+  'durations',
+  'prices',
+  'difficulties',
+];
+
 export interface ToursExplorerInitial {
-  category?: string;
-  destination?: string;
+  categories?: string;
+  destinations?: string;
+  durations?: string;
+  prices?: string;
+  difficulties?: string;
   featured?: boolean;
   q?: string;
   sort?: string;
   page?: number;
 }
 
-// Lọc + tìm chạy phía client để gõ tới đâu thấy tới đó, nhưng trạng thái vẫn
-// được ghi vào URL nên link chia sẻ được và F5 không mất bộ lọc. HTML đầu tiên
-// do server render với ĐÚNG initial này nên lần render client đầu khớp hệt —
-// không có hydration mismatch. (Cùng mẫu đã chạy thật ở BlogExplorer.)
+function parseList(raw?: string): string[] {
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+}
+
+// Lọc + tìm chạy phía client để bấm tới đâu thấy tới đó, nhưng trạng thái vẫn
+// ghi vào URL nên link chia sẻ được và F5 không mất bộ lọc. HTML đầu tiên do
+// server render với ĐÚNG initial này nên lần render client đầu khớp hệt.
 export function ToursExplorer({
   tours,
   categories,
@@ -61,14 +98,21 @@ export function ToursExplorer({
   const router = useRouter();
   const pathname = usePathname();
 
-  const [category, setCategory] = useState(initial.category);
-  const [destination, setDestination] = useState(initial.destination);
-  const [featured, setFeatured] = useState(Boolean(initial.featured));
+  const [filters, setFilters] = useState<TourFilterState>({
+    categories: parseList(initial.categories),
+    destinations: parseList(initial.destinations),
+    durations: parseList(initial.durations) as TourFilterState['durations'],
+    prices: parseList(initial.prices) as TourFilterState['prices'],
+    difficulties: parseList(initial.difficulties) as TourFilterState['difficulties'],
+    featured: Boolean(initial.featured),
+  });
   const [query, setQuery] = useState(initial.q ?? '');
   const [sort, setSort] = useState<SortValue>(
     initial.sort && initial.sort in SORT_MAP ? (initial.sort as SortValue) : 'newest',
   );
   const [page, setPage] = useState(Math.max(1, initial.page ?? 1));
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Đồng bộ URL bằng replace (không nhét thêm mục vào lịch sử duyệt) và
   // scroll:false (gõ tìm mà trang nhảy về đầu thì rất khó chịu).
@@ -81,73 +125,90 @@ export function ToursExplorer({
       return;
     }
     const params = new URLSearchParams();
-    if (category) params.set('category', category);
-    if (destination) params.set('destination', destination);
-    if (featured) params.set('featured', 'true');
+    for (const facet of FACET_PARAMS) {
+      const values = filters[facet];
+      if (values.length > 0) params.set(facet, values.join(','));
+    }
+    if (filters.featured) params.set('featured', 'true');
     if (query.trim()) params.set('q', query.trim());
     // Giá trị mặc định KHÔNG ghi vào URL — link chia sẻ giữ sạch.
     if (sort !== 'newest') params.set('sort', sort);
     if (page > 1) params.set('page', String(page));
-    const qs = params.toString();
+    // URLSearchParams mã hoá dấu phẩy thành %2C. Dấu phẩy là sub-delim hợp lệ
+    // trong query (RFC 3986) và URLSearchParams đọc lại nó bình thường, nên trả
+    // về dạng chữ để link chia sẻ còn đọc được: ?categories=trekking,food
+    const qs = params.toString().replace(/%2C/g, ',');
     router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [category, destination, featured, query, sort, page, pathname, router]);
+  }, [filters, query, sort, page, pathname, router]);
 
-  /** Mọi thao tác đổi bộ lọc phải đi qua đây: đổi filter mà giữ nguyên page là
-      cách chắc chắn nhất để ra màn hình trắng (lọc còn 3 tour trong khi đang ở
-      trang 2). */
-  function applyFilter(change: () => void) {
-    change();
+  /** Bật/tắt một option. Mọi thay đổi bộ lọc đều đưa page về 1 — giữ nguyên
+      page là cách chắc chắn nhất để ra màn hình trắng (lọc còn 3 tour trong
+      khi đang ở trang 2). */
+  function toggleFacet(facet: FacetKey, optionValue: string) {
+    setFilters((prev) => {
+      const current = prev[facet] as readonly string[];
+      const next = current.includes(optionValue)
+        ? current.filter((v) => v !== optionValue)
+        : [...current, optionValue];
+      return { ...prev, [facet]: next };
+    });
+    setPage(1);
+  }
+
+  function toggleFeatured() {
+    setFilters((prev) => ({ ...prev, featured: !prev.featured }));
     setPage(1);
   }
 
   function clearAll() {
-    setCategory(undefined);
-    setDestination(undefined);
-    setFeatured(false);
+    setFilters(EMPTY_TOUR_FILTERS);
     setQuery('');
     setPage(1);
   }
 
   const { key, order } = SORT_MAP[sort];
-  const matched = sortTours(
-    searchTours(
-      filterToursByFeatured(
-        filterToursByDestination(filterToursByCategory(tours, category), destination),
-        featured ? true : undefined,
-      ),
-      query,
-    ),
-    key,
-    order,
-  );
+  const matched = sortTours(searchTours(filterTours(tours, filters), query), key, order);
   const paged = paginate(matched, page, PAGE_SIZE);
+  const activeCount = countActiveFilters(filters);
 
-  const activeFilters = [
-    category
-      ? {
-          label: categories.find((c) => c.slug === category)?.name ?? category,
-          onRemove: () => applyFilter(() => setCategory(undefined)),
-        }
-      : null,
-    destination
-      ? {
-          label: destinations.find((d) => d.slug === destination)?.name ?? destination,
-          onRemove: () => applyFilter(() => setDestination(undefined)),
-        }
-      : null,
-    featured
-      ? {
-          label: messages.toursPage.featuredLabel,
-          onRemove: () => applyFilter(() => setFeatured(false)),
-        }
-      : null,
-  ].filter((f): f is { label: string; onRemove: () => void } => f !== null);
+  /** Nhãn hiển thị cho chip đang bật. Tra ngược từ slug sang tên người đọc
+      được; giá trị lạ giữ nguyên slug để người dùng thấy chính thứ trong URL. */
+  const chips = FACET_PARAMS.flatMap((facet) =>
+    (filters[facet] as readonly string[]).map((value) => {
+      const label =
+        facet === 'categories'
+          ? (categories.find((c) => c.slug === value)?.name ?? value)
+          : facet === 'destinations'
+            ? (destinations.find((d) => d.slug === value)?.name ?? value)
+            : facet === 'durations'
+              ? messages.toursPage.durationLabels[
+                  value as keyof typeof messages.toursPage.durationLabels
+                ]
+              : facet === 'prices'
+                ? messages.toursPage.priceLabels[
+                    value as keyof typeof messages.toursPage.priceLabels
+                  ]
+                : messages.toursPage.difficultyLabels[
+                    value as keyof typeof messages.toursPage.difficultyLabels
+                  ];
+      return { facet, value, label: label ?? value };
+    }),
+  );
+
+  const filtersNode = (
+    <ToursFilters
+      value={filters}
+      onToggle={toggleFacet}
+      onToggleFeatured={toggleFeatured}
+      onClearAll={clearAll}
+      categoryOptions={categories}
+      destinations={destinations}
+      activeCount={activeCount}
+    />
+  );
 
   return (
     <>
-      {/* Hero nằm TRONG explorer vì ô tìm kiếm sống trong hero (spec §5.1) mà
-          state của nó lại ở đây. ToursHero vốn đã là client component (motion),
-          nên không mất gì — H1 vẫn được server render bình thường. */}
       <ToursHero
         eyebrow={messages.toursPage.resultSummary(tours.length, destinations.length)}
         title={messages.toursPage.title}
@@ -161,7 +222,10 @@ export function ToursExplorer({
           <Input
             type="search"
             value={query}
-            onChange={(e) => applyFilter(() => setQuery(e.target.value))}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
             placeholder={messages.toursPage.searchPlaceholder}
             aria-label={messages.toursPage.searchAriaLabel}
             className="h-11 rounded-full bg-background pr-4 pl-11 text-sm"
@@ -169,65 +233,160 @@ export function ToursExplorer({
         </div>
       </ToursHero>
 
-      <div className="w-full px-4 pb-16 md:px-16 md:pb-20 lg:px-24 xl:px-32">
-        <div className="mx-auto max-w-7xl">
-          <TourToolbar
-            categories={categories}
-            destinations={destinations}
-            activeCategory={category}
-            activeDestination={destination}
-            featured={featured}
-            sort={sort}
-            resultCount={matched.length}
-            activeFilters={activeFilters}
-            onSelectCategory={(slug) => applyFilter(() => setCategory(slug))}
-            onSelectDestination={(slug) => applyFilter(() => setDestination(slug))}
-            onToggleFeatured={() => applyFilter(() => setFeatured((v) => !v))}
-            onSelectSort={(value) => applyFilter(() => setSort(value))}
-            onClearAll={clearAll}
-          />
+      <div className="w-full px-4 py-14 md:px-16 md:py-16 lg:px-24 xl:px-32">
+        <div
+          className={`mx-auto max-w-7xl lg:grid lg:gap-12 ${
+            sidebarCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[16rem_1fr]'
+          }`}
+        >
+          <aside className={sidebarCollapsed ? 'hidden' : 'hidden lg:block'}>
+            {/* top-28 = chiều cao navbar pill khi đã cuộn + thở */}
+            <div className="lg:sticky lg:top-28">{filtersNode}</div>
+          </aside>
 
-          {paged.items.length === 0 ? (
-            <div className="mt-10 rounded-2xl border border-dashed p-12 text-center">
-              <h2 className="font-heading text-xl font-medium text-foreground">
-                {messages.toursPage.empty.title}
-              </h2>
-              <p className="mt-2 text-pretty text-muted-foreground">
-                {messages.toursPage.empty.body}
-              </p>
-              <button
-                type="button"
-                onClick={clearAll}
-                className="mt-5 cursor-pointer text-sm font-medium text-primary hover:underline"
-              >
-                {messages.toursPage.empty.cta}
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
-                  không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
-              <h2 className="sr-only">All tours</h2>
-              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                <AnimatePresence mode="popLayout" initial={false}>
-                  {paged.items.map((tour, index) => (
-                    <motion.article
-                      key={tour.slug}
-                      layout
-                      initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
-                      animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                      exit={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                      transition={{ ...SPRING, delay: index * 0.03 }}
-                    >
-                      <TourCard tour={tour} />
-                    </motion.article>
-                  ))}
-                </AnimatePresence>
+          <div className="min-w-0">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {/* Mobile: mở drawer */}
+                <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                  <SheetTrigger
+                    render={
+                      <Button variant="outline" size="sm" className="lg:hidden">
+                        <SlidersHorizontalIcon className="size-4" aria-hidden="true" />
+                        {messages.toursPage.filtersLabel}
+                        {activeCount > 0 ? (
+                          <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                            {activeCount}
+                          </span>
+                        ) : null}
+                      </Button>
+                    }
+                  />
+                  <SheetContent side="left" className="w-[19rem] overflow-y-auto p-6">
+                    <SheetHeader className="sr-only">
+                      <SheetTitle>{messages.toursPage.filtersLabel}</SheetTitle>
+                    </SheetHeader>
+                    {filtersNode}
+                  </SheetContent>
+                </Sheet>
+
+                {/* Desktop: thu/mở sidebar */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="hidden lg:inline-flex"
+                  onClick={() => setSidebarCollapsed((v) => !v)}
+                  aria-expanded={!sidebarCollapsed}
+                >
+                  {sidebarCollapsed ? (
+                    <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
+                  ) : (
+                    <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
+                  )}
+                  {sidebarCollapsed
+                    ? messages.toursPage.showFilters
+                    : messages.toursPage.hideFilters}
+                  {sidebarCollapsed && activeCount > 0 ? (
+                    <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                      {activeCount}
+                    </span>
+                  ) : null}
+                </Button>
+
+                <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+                  {messages.toursPage.resultCount(matched.length)}
+                </p>
               </div>
 
-              <PaginationBar page={paged.page} totalPages={paged.totalPages} onChange={setPage} />
-            </>
-          )}
+              <div className="flex items-center gap-2">
+                <label
+                  htmlFor="tours-sort"
+                  className="hidden text-sm text-muted-foreground sm:inline"
+                >
+                  {messages.toursPage.sortLabel}
+                </label>
+                {/* Select GỐC thay vì Select của Base UI: lựa chọn đơn, native
+                    cho trợ năng và UX mobile miễn phí, không portal, không JS. */}
+                <select
+                  id="tours-sort"
+                  value={sort}
+                  onChange={(e) => {
+                    setSort(e.target.value as SortValue);
+                    setPage(1);
+                  }}
+                  className="h-9 cursor-pointer rounded-md border bg-background px-3 text-sm text-foreground"
+                >
+                  {SORT_ORDER.map((value) => (
+                    <option key={value} value={value}>
+                      {messages.toursPage.sortOptions[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {chips.length > 0 ? (
+              <div className="mb-6 flex flex-wrap items-center gap-2">
+                {chips.map((chip) => (
+                  <button
+                    key={`${chip.facet}-${chip.value}`}
+                    type="button"
+                    onClick={() => toggleFacet(chip.facet, chip.value)}
+                    aria-label={messages.toursPage.removeFilter(chip.label)}
+                    className="flex cursor-pointer items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm text-foreground/80 transition-colors hover:text-foreground"
+                  >
+                    <span aria-hidden="true">{chip.label}</span>
+                    <XIcon className="size-3.5" aria-hidden="true" />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  className="ml-1 cursor-pointer text-sm font-medium text-primary hover:underline"
+                >
+                  {messages.toursPage.clearAll}
+                </button>
+              </div>
+            ) : null}
+
+            {paged.items.length === 0 ? (
+              <div className="rounded-2xl border border-dashed px-6 py-20 text-center">
+                <h2 className="font-heading text-xl font-medium text-foreground">
+                  {messages.toursPage.empty.title}
+                </h2>
+                <p className="mt-2 text-pretty text-muted-foreground">
+                  {messages.toursPage.empty.body}
+                </p>
+                <Button variant="outline" className="mt-6" onClick={clearAll}>
+                  {messages.toursPage.empty.cta}
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
+                    không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
+                <h2 className="sr-only">All tours</h2>
+                <div className="flex flex-col gap-5">
+                  <AnimatePresence mode="popLayout" initial={false}>
+                    {paged.items.map((tour, index) => (
+                      <motion.div
+                        key={tour.slug}
+                        layout
+                        initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        exit={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
+                        transition={{ ...SPRING, delay: index * 0.03 }}
+                      >
+                        <TourListCard tour={tour} />
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                <PaginationBar page={paged.page} totalPages={paged.totalPages} onChange={setPage} />
+              </>
+            )}
+          </div>
         </div>
       </div>
     </>

@@ -1,14 +1,26 @@
 import { describe, expect, it } from 'vitest';
 import { TOURS } from '@/mocks/tours';
+
+/** State rỗng dùng làm nền cho mọi test lọc — spread rồi ghi đè đúng facet cần. */
+const EMPTY_FILTERS = {
+  categories: [],
+  destinations: [],
+  durations: [],
+  prices: [],
+  difficulties: [],
+  featured: false,
+} as const;
+
 import {
+  countActiveFilters,
   departureStatus,
   discountPercent,
-  filterToursByCategory,
-  filterToursByDestination,
-  filterToursByFeatured,
+  durationBucket,
+  filterTours,
   formatDateRange,
   formatMoney,
   groupPoliciesByKind,
+  priceBucket,
   relatedTours,
   routeChain,
   searchTours,
@@ -33,60 +45,118 @@ describe('tourCategories', () => {
   });
 });
 
-describe('filterToursByCategory', () => {
-  it('không truyền slug thì trả nguyên danh sách', () => {
-    expect(filterToursByCategory(TOURS, undefined)).toHaveLength(TOURS.length);
+describe('durationBucket', () => {
+  it('1 ngày là day trip', () => {
+    expect(durationBucket(1)).toBe('1');
+  });
+  it('2 và 3 ngày cùng nhóm', () => {
+    expect(durationBucket(2)).toBe('2-3');
+    expect(durationBucket(3)).toBe('2-3');
+  });
+  it('từ 4 ngày trở lên là nhóm dài', () => {
+    expect(durationBucket(4)).toBe('4+');
+    expect(durationBucket(12)).toBe('4+');
+  });
+});
+
+describe('priceBucket', () => {
+  it('so sánh theo SỐ dù giá lưu dạng chuỗi', () => {
+    expect(priceBucket('45.00')).toBe('<100');
+    expect(priceBucket('189.00')).toBe('100-300');
+    expect(priceBucket('1480.00')).toBe('300+');
+  });
+  it('biên 100 thuộc nhóm giữa, biên 300 thuộc nhóm giữa', () => {
+    expect(priceBucket('100.00')).toBe('100-300');
+    expect(priceBucket('300.00')).toBe('100-300');
+    expect(priceBucket('300.01')).toBe('300+');
+  });
+});
+
+describe('filterTours — đa chọn', () => {
+  it('state rỗng thì trả nguyên danh sách', () => {
+    expect(filterTours(TOURS, EMPTY_FILTERS)).toHaveLength(TOURS.length);
+  });
+
+  it('trong CÙNG một facet là OR — chọn 2 chuyên mục ra tổng của cả hai', () => {
+    const trekking = filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['trekking'] }).length;
+    const food = filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['food'] }).length;
+    const both = filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['trekking', 'food'] });
+    expect(both).toHaveLength(trekking + food);
+  });
+
+  it('giữa CÁC facet là AND — thu hẹp dần', () => {
+    const onlyTrekking = filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['trekking'] });
+    const trekkingInSaPa = filterTours(TOURS, {
+      ...EMPTY_FILTERS,
+      categories: ['trekking'],
+      destinations: ['sa-pa'],
+    });
+    expect(trekkingInSaPa.length).toBeLessThanOrEqual(onlyTrekking.length);
+    expect(
+      trekkingInSaPa.every(
+        (t) => t.category.slug === 'trekking' && t.destinations.some((d) => d.slug === 'sa-pa'),
+      ),
+    ).toBe(true);
   });
 
   it('slug lạ cho mảng RỖNG — không âm thầm rơi về "All"', () => {
-    expect(filterToursByCategory(TOURS, 'khong-ton-tai')).toEqual([]);
+    expect(filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['khong-ton-tai'] })).toEqual([]);
   });
 
-  it('lọc đúng theo slug chuyên mục', () => {
-    const result = filterToursByCategory(TOURS, 'trekking');
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.every((t) => t.category.slug === 'trekking')).toBe(true);
-  });
-});
-
-describe('filterToursByDestination', () => {
-  it('mọi kết quả đều thật sự đi qua destination đó', () => {
-    const result = filterToursByDestination(TOURS, 'ninh-binh');
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.every((t) => t.destinations.some((d) => d.slug === 'ninh-binh'))).toBe(true);
-  });
-
-  it('khớp cả khi destination chỉ là chặng PHỤ, không phải primary', () => {
-    // ha-long-bay-cruise có primary = ha-long, ninh-binh là chặng phụ. Nexora
-    // so theo TÊN destination chính nên bỏ lọt đúng trường hợp này.
-    const result = filterToursByDestination(TOURS, 'ninh-binh');
+  it('destination khớp cả khi là chặng PHỤ, không chỉ primary', () => {
+    const result = filterTours(TOURS, { ...EMPTY_FILTERS, destinations: ['ninh-binh'] });
     const halong = result.find((t) => t.slug === 'ha-long-bay-cruise');
-    expect(halong).toBeDefined();
     expect(halong?.destinations.find((d) => d.slug === 'ninh-binh')?.isPrimary).toBe(false);
   });
 
-  it('không truyền slug thì trả nguyên danh sách', () => {
-    expect(filterToursByDestination(TOURS, undefined)).toHaveLength(TOURS.length);
+  it('lọc theo nhóm thời lượng', () => {
+    const result = filterTours(TOURS, { ...EMPTY_FILTERS, durations: ['1'] });
+    expect(result.length).toBeGreaterThan(0);
+    expect(result.every((t) => t.durationDays === 1)).toBe(true);
   });
 
-  it('slug lạ cho mảng rỗng', () => {
-    expect(filterToursByDestination(TOURS, 'khong-ton-tai')).toEqual([]);
+  it('lọc theo nhóm giá', () => {
+    const result = filterTours(TOURS, { ...EMPTY_FILTERS, prices: ['<100'] });
+    expect(result.every((t) => Number(t.basePrice) < 100)).toBe(true);
   });
-});
 
-describe('filterToursByFeatured', () => {
-  it('undefined nghĩa là KHÔNG lọc, khác hẳn false', () => {
-    expect(filterToursByFeatured(TOURS, undefined)).toHaveLength(TOURS.length);
+  it('lọc theo độ khó; tour có difficulty null KHÔNG lọt bất kỳ nhóm nào', () => {
+    const result = filterTours(TOURS, {
+      ...EMPTY_FILTERS,
+      difficulties: ['EASY', 'MODERATE', 'CHALLENGING'],
+    });
+    expect(result.every((t) => t.difficulty !== null)).toBe(true);
+    expect(result).toHaveLength(TOURS.filter((t) => t.difficulty !== null).length);
   });
-  it('true chỉ giữ tour featured', () => {
-    const result = filterToursByFeatured(TOURS, true);
+
+  it('featured=false nghĩa là KHÔNG lọc, khác hẳn "chỉ tour không featured"', () => {
+    expect(filterTours(TOURS, { ...EMPTY_FILTERS, featured: false })).toHaveLength(TOURS.length);
+  });
+
+  it('featured=true chỉ giữ tour featured', () => {
+    const result = filterTours(TOURS, { ...EMPTY_FILTERS, featured: true });
     expect(result.length).toBeGreaterThan(0);
     expect(result.every((t) => t.isFeatured)).toBe(true);
   });
-  it('false chỉ giữ tour KHÔNG featured', () => {
-    const result = filterToursByFeatured(TOURS, false);
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.every((t) => !t.isFeatured)).toBe(true);
+
+  it('không sửa mảng gốc tại chỗ', () => {
+    const before = TOURS.map((t) => t.slug);
+    filterTours(TOURS, { ...EMPTY_FILTERS, categories: ['trekking'] });
+    expect(TOURS.map((t) => t.slug)).toEqual(before);
+  });
+});
+
+describe('countActiveFilters', () => {
+  it('đếm từng option đã chọn, cộng featured là 1', () => {
+    expect(countActiveFilters(EMPTY_FILTERS)).toBe(0);
+    expect(
+      countActiveFilters({
+        ...EMPTY_FILTERS,
+        categories: ['trekking', 'food'],
+        durations: ['1'],
+        featured: true,
+      }),
+    ).toBe(4);
   });
 });
 

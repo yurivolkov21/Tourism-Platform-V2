@@ -1398,24 +1398,29 @@ export const messages = {
     SOLO: 'Solo travellers',
     BUSINESS: 'Business',
   },
-  // CẢNH BÁO đã trả giá một lần: khối này port trọn gói từ Nexora nên từng mô
-  // tả filter/sort mà API v2 KHÔNG phục vụ được — facet duration/price/
-  // travelStyle/theme, sort theo popularity/rating. Đã cắt 27/07 khi dựng
-  // /tours. Trước khi thêm key mới, đối chiếu ToursListQuerySchema trong
-  // @tourism/contract: copy KHÔNG phải bằng chứng tính năng tồn tại.
+  // ĐỌC TRƯỚC KHI THÊM KEY: khối này port trọn gói từ Nexora nên từng mô tả cả
+  // những filter/sort mà API v2 KHÔNG phục vụ được. Tình trạng hiện tại
+  // (27/07), đối chiếu ToursListQuerySchema:
+  //   • API ĐỠ ĐƯỢC: category · destination · search · featured · sort
+  //     (createdAt/basePrice/durationDays/title)
+  //   • API CHƯA CÓ, đang lọc CLIENT trên mock: duration · price · difficulty
+  //   • ĐÃ BỎ HẲN: sort theo popularity/rating (cột đã denormalize nhưng
+  //     TourSortKeySchema không whitelist) · facet travelStyle/theme (schema
+  //     không có, Nexora cũng phải tắt)
+  // Nợ mở rộng contract ghi trong spec §8. Copy KHÔNG phải bằng chứng tính
+  // năng tồn tại — luôn đối chiếu contract trước.
   toursPage: {
     breadcrumb: 'Tours',
     title: 'Every journey we run',
     subtitle:
-      'Filter by category or destination to find the trip that fits you — every one of them small-group, and led by someone who lives there.',
+      'Filter by destination, length, price or pace to find the trip that fits you — every one of them small-group, and led by someone who lives there.',
     filtersLabel: 'Filters',
+    hideFilters: 'Hide filters',
+    showFilters: 'Show filters',
     clearAll: 'Clear all',
     searchPlaceholder: 'Search by destination or tour name…',
     searchAriaLabel: 'Search tours',
     sortLabel: 'Sort by',
-    // Bốn lựa chọn này ánh xạ 1-1 sang TourSortKey + order. Nexora còn có
-    // "Most popular" và "Top rated" — bỏ vì TourSortKeySchema không whitelist
-    // ratingAvg/ratingCount, dù cột đã denormalize sẵn (nợ ghi trong spec §8).
     sortOptions: {
       newest: 'Newest first',
       priceAsc: 'Price: low to high',
@@ -1427,11 +1432,26 @@ export const messages = {
       `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} destinations`,
     showing: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
     facets: {
-      destination: 'Destination',
       category: 'Category',
+      destination: 'Destination',
+      duration: 'Duration',
+      price: 'Price',
+      difficulty: 'Pace',
+      highlights: 'Highlights',
     },
-    allCategories: 'All',
-    featuredLabel: 'Featured',
+    durationLabels: { '1': 'Day trip', '2-3': '2–3 days', '4+': '4+ days' },
+    priceLabels: {
+      '<100': 'Under $100',
+      '100-300': '$100–$300',
+      '300+': '$300+',
+    },
+    difficultyLabels: {
+      EASY: 'Easy',
+      MODERATE: 'Moderate',
+      CHALLENGING: 'Challenging',
+    },
+    featuredLabel: 'Featured trips',
+    featuredBadge: 'Featured',
     // ratingAvg null = chưa ai đánh giá, KHÁC 0. Card hiện nhãn này thay vì
     // "0.0" hay 5 sao rỗng.
     notRated: 'Not yet reviewed',
@@ -1439,6 +1459,8 @@ export const messages = {
     removeFilter: (label: string) => `Remove filter ${label}`,
     viewTour: 'View tour',
     perPerson: 'per person',
+    maxGroup: (n: number) => `Max ${n}`,
+    durationValue: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
     empty: {
       title: 'No tours match your filters',
       body: 'Try removing a filter or two to see more journeys.',

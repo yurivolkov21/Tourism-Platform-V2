@@ -17,8 +17,11 @@ export default async function ToursPage({
   searchParams,
 }: {
   searchParams: Promise<{
-    category?: string;
-    destination?: string;
+    categories?: string;
+    destinations?: string;
+    durations?: string;
+    prices?: string;
+    difficulties?: string;
     featured?: string;
     q?: string;
     sort?: string;
@@ -32,8 +35,11 @@ export default async function ToursPage({
   // về "All". Đây đúng là bug đã sửa ở /blog — lọc sạch tag lạ thành undefined
   // làm URL vẫn ghi ?tag=… mà lưới hiện đủ bài với chip "All" sáng.
   const initial = {
-    category: params.category,
-    destination: params.destination,
+    categories: params.categories,
+    destinations: params.destinations,
+    durations: params.durations,
+    prices: params.prices,
+    difficulties: params.difficulties,
     featured: params.featured === 'true',
     q: params.q,
     sort: params.sort,
