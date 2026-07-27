@@ -42,3 +42,31 @@ overrides:
   # Alert #5 (medium, XSS qua </style> trong stringify): Next pin CỨNG postcss
   # 8.4.31 nội bộ cho styled-jsx — override kéo mọi bản 8.x về dòng đã vá.
   postcss: '>=8.5.10'
+  # 27/07 — ba alert mới (#8 #9 #10), cả ba là dependency bắc cầu.
+  #
+  # Alert #8 (high, CVSS 7.5, GHSA-c96f-x56v-gq3h — DDoS qua HTTP/2):
+  # find-my-way là router BÊN TRONG fastify, tức nằm trên đường HTTP thật của
+  # apps/api. fastify@5.10.0 khai ^9.6.0 nên tự lên 9.7.0 được, nhưng
+  # @nestjs/platform-fastify@11.1.28 GHIM CỨNG 9.6.0 (bản mới nhất 11.x cũng
+  # vẫn ghim 9.6.0) → phải override. Ghim trong dòng 9.x: nhảy 10.x có thể phá
+  # fastify 5. Ghi chú mức độ: apps/api KHÔNG bật HTTP/2 ở đâu (đã grep
+  # http2/allowHTTP1/createSecureServer = rỗng) nên lỗ hổng không với tới được
+  # ở cấu hình hiện tại — vá để sạch alert và phòng khi sau này bật HTTP/2.
+  find-my-way: '^9.7.0'
+  # Alert #9 (moderate, GHSA-5qjj-4xww-7phc — record() làm flatten() ném lỗi
+  # với tên thuộc tính kế thừa của Object): đường đi prisma CLI → @prisma/dev
+  # → valibot, bị GHIM CỨNG 1.2.0 (bản @prisma/dev mới nhất 0.24.16 vẫn ghim
+  # 1.2.0) → phải override. Dự án không dùng valibot (validate bằng zod), đây
+  # thuần dev-tooling. Ghim trong dòng 1.x cho khỏi nhảy major.
+  valibot: '^1.4.2'
+  # Alert #10 (high, CVSS 7.5, GHSA-mh99-v99m-4gvg — DoS: chuỗi brace nở vô
+  # hạn làm hết RAM): advisory ghi affected `<= 5.0.7`, tức CẢ dòng 2.x cũng
+  # dính mà KHÔNG có backport — bản vá duy nhất là 5.0.8. Hai đường đi:
+  #   minimatch@10 (shadcn/ts-morph + style-dictionary) — tự lên 5.0.8 được;
+  #   minimatch@9  (@swc/cli — trình biên dịch build của apps/api) khai ^2.0.1.
+  # Override này ÉP QUA major 2→5. An toàn được vì brace-expansion 5.x vẫn
+  # xuất bản CJS ở `exports.require`; đã chứng minh bằng cách chạy build API
+  # thật (gate:int) chứ không suy đoán. Nếu ngày nào build gãy vì dòng này:
+  # gỡ nó ra và chấp nhận alert — mẫu brace ở đây do CHÍNH package.json của
+  # mình viết, không phải input từ ngoài, nên không ai khai thác được.
+  brace-expansion: '^5.0.8'
