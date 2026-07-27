@@ -20,6 +20,48 @@ render. Tương tác (lọc, chọn đợt khởi hành) chạy client, trạng 
 **Spec:** [docs/specs/2026-07-27-tours-pages-design.md](../specs/2026-07-27-tours-pages-design.md)
 **Đối chiếu Nexora:** [docs/analysis/2026-07-27-tours-parity-nexora.md](../analysis/2026-07-27-tours-parity-nexora.md)
 
+## Tiến độ
+
+| Task | Trạng thái |
+| --- | --- |
+| 1 · ADR-0014 + hạ tầng test component | ✅ |
+| 2 · `lib/text.ts` + `lib/paginate.ts` | ✅ |
+| 3 · Mock 16 tour theo contract | ✅ |
+| 4 · `lib/tours.ts` | ✅ |
+| 5 · `/tours` hero + card | ✅ |
+| 6 · Lọc / sắp xếp / phân trang | ✅ |
+| 7 · Skeleton + LoadErrorState + vá navbar | ✅ |
+| **⛔ Mốc dừng — user duyệt `/tours`** | ✅ **duyệt 27/07** |
+| 8 · `/tours/[slug]` khung + hero | ⬜ |
+| 9 · Dải khởi hành + rail booking | ⬜ |
+| 10 · Itinerary · inclusions · good-to-know | ⬜ |
+| 11 · robots + sitemap | ⬜ |
+| 12 · ArticleBody + phân trang `/blog` | ⬜ |
+| 13 · `gate:int` → push → hỏi user → merge → docs sweep | ⬜ |
+
+**Listing đi qua 4 vòng thiết kế lại trước khi được duyệt** — plan gốc chỉ dự
+tính 1. Ghi lại để phase sau ước lượng đúng hơn:
+
+| Vòng | Từ → Đến | Nguyên nhân |
+| --- | --- | --- |
+| 1 | chip rail ngang → **sidebar Nexora** | Plan chọn toolbar vì "API chỉ có 3 chiều lọc"; user muốn sidebar đầy đủ hơn Nexora |
+| 2 | sidebar dính + cuộn nội bộ → **sidebar tĩnh** | Đo được: nội dung 1140px không vừa màn hình nào (608–968px), nên `sticky` là lời hứa không giữ được |
+| 3 | sidebar → **drawer** | Bố cục hai cột biến trang bán tour thành trang quản trị, hero mất trọng lượng ở cả hai chế độ màu |
+| 4 | thanh công cụ có khung → **hàng tiêu đề khu vực** | Khảo sát 13 sản phẩm thật: gốc rễ "trống hoác" là CÁI KHUNG, không phải ít phần tử |
+
+**Bài học cho phase sau:** ba vòng đầu tôi sửa *thuộc tính* của thứ đang có
+(màu, vị trí, thanh cuộn, đệm) mà không hỏi *thứ đó có nên tồn tại không*. Vòng
+4 mới đi khảo sát sản phẩm thật và tìm ra nguyên nhân ở tầng cao hơn. Với UI có
+tính thẩm mỹ, **khảo sát mẫu thật TRƯỚC, không phải sau vòng sửa thứ ba**.
+
+Ngoài phạm vi plan nhưng đã làm (phát sinh từ các vòng review): token `hero` +
+sửa hero cho `/tours` `/blog` `/faq` `/contact` · 6 lỗi trong `@tourism/ui`
+(z-index ở `sheet`/`select`/`drawer`, `disabled:` ở `checkbox`, `Select.Value`
+in giá trị thô, đệm `DrawerHeader`/`DrawerFooter`) · Lenis chặn cuộn trong modal
+· chọn số tour/trang.
+
+---
+
 ## Global Constraints
 
 Áp cho **mọi task**, không lặp lại trong từng task:
