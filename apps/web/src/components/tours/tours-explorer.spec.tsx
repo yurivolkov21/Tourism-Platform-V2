@@ -12,6 +12,17 @@ import { ToursExplorer } from './tours-explorer';
 // Bọc lại để kiểm đúng thứ nó hứa: mỗi lần đổi bộ lọc thì URL được ghi lại.
 const replace = vi.fn();
 beforeAll(() => {
+  // jsdom KHÔNG hiện thực IntersectionObserver. ToursExplorer dùng nó để biết
+  // sidebar còn trong tầm nhìn không; đôi giả này báo "còn thấy" nên nút
+  // Filters giữ nguyên hành vi mặc định (chỉ hiện ở mobile).
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    },
+  );
   // jsdom mở ở "/" mặc định; component đọc window.location.pathname thật nên
   // phải đưa nó về đúng route TRƯỚC khi bọc replaceState.
   window.history.pushState({}, '', '/tours');
@@ -252,5 +263,37 @@ describe('ToursExplorer — sidebar đa chọn', () => {
     renderExplorer();
     await user.click(screen.getByRole('checkbox', { name: /^Challenging, / }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 tour'));
+  });
+});
+
+describe('ToursFilters — nhóm dài rút gọn', () => {
+  it('Destination 9 địa danh chỉ hiện 6 + nút mở hết', () => {
+    renderExplorer();
+    expect(screen.getByRole('checkbox', { name: /^Sa Pa, / })).toBeInTheDocument();
+    // Phú Quốc là mục thứ 9 → nằm ngoài 6 mục đầu
+    expect(screen.queryByRole('checkbox', { name: /^Phú Quốc, / })).toBeNull();
+    expect(screen.getByRole('button', { name: /show all 9/i })).toBeInTheDocument();
+  });
+
+  it('bấm "Show all" hiện đủ 9', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await user.click(screen.getByRole('button', { name: /show all 9/i }));
+    expect(screen.getByRole('checkbox', { name: /^Phú Quốc, / })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument();
+  });
+
+  it('option đang bật nằm ngoài 6 mục đầu thì nhóm tự mở hết', () => {
+    // Nếu không, người dùng thấy chip "Phú Quốc" ở trên mà tìm mãi không ra ô
+    // để bỏ chọn.
+    renderExplorer({ destinations: 'phu-quoc' });
+    expect(screen.getByRole('checkbox', { name: /^Phú Quốc, / })).toBeChecked();
+    expect(screen.queryByRole('button', { name: /show all 9/i })).toBeNull();
+  });
+
+  it('nhóm ngắn KHÔNG có nút "Show all" thừa', () => {
+    renderExplorer();
+    // Category có 6 mục = đúng ngưỡng, Duration/Price/Pace có 3.
+    expect(screen.getAllByRole('button', { name: /show all/i })).toHaveLength(1);
   });
 });

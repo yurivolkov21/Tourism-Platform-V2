@@ -137,6 +137,28 @@ export function ToursExplorer({
   }
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  // Sidebar còn trong tầm nhìn không. Dùng IntersectionObserver thay vì nghe
+  // sự kiện scroll: trình duyệt tự báo, không tốn một dòng JS mỗi khung hình.
+  // Trên mobile <aside> là `hidden` nên không bao giờ giao nhau → nút Filters
+  // luôn hiện, đúng thứ ta muốn ở đó.
+  const asideRef = useRef<HTMLElement>(null);
+  const [filtersOutOfView, setFiltersOutOfView] = useState(false);
+  /** Sidebar đang hiện nhưng đã cuộn khỏi tầm mắt. Phải loại trường hợp THU
+      sidebar ra: lúc đó <aside> mang class `hidden` nên observer cũng báo
+      "khuất", và nếu dùng thẳng cờ này thì nút "Show filters" tự ẩn mất —
+      người dùng thu sidebar rồi không có cách nào mở lại. */
+  const filtersScrolledAway = filtersOutOfView && !sidebarCollapsed;
+  useEffect(() => {
+    const el = asideRef.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => setFiltersOutOfView(!entry?.isIntersecting),
+      { rootMargin: '-120px 0px 0px 0px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   // Đồng bộ URL: ghi đè mục hiện tại thay vì thêm mục mới vào lịch sử duyệt,
   // để nút Back đưa người dùng RỜI trang chứ không lùi qua từng lần tích ô.
   const firstRender = useRef(true);
@@ -321,25 +343,42 @@ export function ToursExplorer({
             sidebarCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[16rem_1fr]'
           }`}
         >
-          <aside className={sidebarCollapsed ? 'hidden' : 'hidden lg:block'}>
+          {/* self-start: grid item mặc định bị kéo giãn hết chiều cao hàng
+              (đo được 3144px), nên IntersectionObserver luôn thấy nó giao với
+              viewport và nút Filters không bao giờ hiện. Ép cao đúng bằng nội
+              dung — cũng là điều đúng khi sidebar không còn dính. */}
+          <aside
+            ref={asideRef}
+            className={sidebarCollapsed ? 'hidden' : 'hidden self-start lg:block'}
+          >
             {/* top-28 = chiều cao navbar pill khi đã cuộn + thở */}
-            {/* Cuộn ĐỘC LẬP (nâng cấp C): sáu nhóm mở hết cao hơn màn hình;
-                không có max-h thì sidebar đẩy chiều cao cả trang và phải cuộn
-                qua hết bộ lọc mới tới kết quả. pr-1/-mr-1 chừa chỗ thanh cuộn
-                mà không thụt nội dung. */}
-            <div className="scrollbar-slim lg:sticky lg:top-28 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-3">
-              {renderFilters('bg-background')}
-            </div>
+            {/* Sidebar TĨNH, trôi cùng trang — KHÔNG sticky, KHÔNG cuộn riêng.
+                Đo 27/07: nội dung cao 1140px, trong khi chỗ cho một cột dính
+                chỉ 608px (màn 720) / 788px (900) / 968px (1080). Tức là
+                "sticky" ở đây vốn không thật — đáy sidebar không bao giờ tới
+                được — và thanh cuộn lồng chỉ để làm cho điều đó chạy được.
+                Bộ lọc khi đã cuộn qua vẫn tới được bằng nút Filters trên thanh
+                công cụ dính bên dưới. */}
+            {renderFilters('bg-background')}
           </aside>
 
           <div className="min-w-0">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+            {/* Thanh công cụ DÍNH — cao ~48px nên vừa MỌI màn hình, khác hẳn
+                sidebar 1140px. Nó giữ hai thứ thật sự cần khi đang duyệt kết
+                quả: còn bao nhiêu tour, và đổi thứ tự — cộng lối vào bộ lọc.
+                top-32 (128px) đo từ thực tế: navbar dạng pill lúc đã cuộn nằm
+                ở 52..124px, nên top-24 (96px) chồng lên nó 28px. */}
+            <div className="sticky top-32 z-(--z-dropdown) -mx-4 mb-6 flex flex-wrap items-center justify-between gap-4 bg-background/85 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
               <div className="flex items-center gap-3">
                 {/* Mobile: mở drawer */}
                 <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
                   <SheetTrigger
                     render={
-                      <Button variant="outline" size="sm" className="lg:hidden">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={filtersScrolledAway ? '' : 'lg:hidden'}
+                      >
                         <SlidersHorizontalIcon className="size-4" aria-hidden="true" />
                         {messages.toursPage.filtersLabel}
                         {activeCount > 0 ? (
@@ -365,7 +404,10 @@ export function ToursExplorer({
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden lg:inline-flex"
+                  // Ẩn khi sidebar đã trôi khỏi tầm nhìn: lúc đó "Hide filters"
+                  // vô nghĩa (không thấy cái gì để thu) và nút Filters đã thay
+                  // vai trò. Hai nút cạnh nhau chỉ làm rối.
+                  className={filtersScrolledAway ? 'hidden' : 'hidden lg:inline-flex'}
                   onClick={toggleSidebar}
                   aria-expanded={!sidebarCollapsed}
                 >

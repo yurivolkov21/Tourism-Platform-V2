@@ -42,21 +42,6 @@
   }
 }
 
-/* ── Thanh cuộn cho vùng cuộn PHỤ (sidebar lọc /tours) ──
- * Thanh cuộn toàn cục ở cuối file này tô thumb bằng `var(--primary)` — cố ý,
- * để thanh cuộn TRANG thành một vệt sáng brand. Nhưng khi một vùng cuộn phụ
- * xuất hiện ngay cạnh nội dung (sidebar lọc), vệt xanh đó đọc thành một cột
- * lạ chẳng rõ để làm gì (user báo 27/07). Vùng phụ dùng màu viền, chìm đi.
- *
- * CHỈ dùng thuộc tính chuẩn, KHÔNG kèm ::-webkit-scrollbar: theo đúng bài học
- * đã ghi ở khối thanh cuộn toàn cục bên dưới — hễ đặt `scrollbar-color` thì
- * Chromium bỏ qua mọi rule webkit của phần tử đó, nên viết thêm cũng vô ích.
- */
-.scrollbar-slim {
-  scrollbar-width: thin;
-  scrollbar-color: var(--border) transparent;
-}
-
 /* ── Keyframes marquee cho testimonials (convert từ template Estate) ── */
 @keyframes marquee-up {
   0% {

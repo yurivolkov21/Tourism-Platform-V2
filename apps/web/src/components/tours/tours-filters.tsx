@@ -31,6 +31,10 @@ interface Option {
   count: number;
 }
 
+/** Số option hiện trước khi phải bấm "Show all". Chỉ áp cho nhóm dài
+    (Destination có 9); nhóm ≤ ngưỡng này hiện hết, không có nút thừa. */
+const COLLAPSED_OPTIONS = 6;
+
 /** Phần đuôi CHỈ trình đọc màn hình nghe được, gắn vào cuối <label>.
  *
  * Không có nó thì hai <span> cạnh nhau dính thành "Cruises3" — trình đọc màn
@@ -60,7 +64,16 @@ function FacetGroup({
 }) {
   const activeInGroup = options.filter((o) => selected.includes(o.value)).length;
   const [open, setOpen] = useState(true);
+  const [showAll, setShowAll] = useState(false);
   const panelId = useId();
+
+  // Option đang bật luôn phải thấy được, kể cả khi nó nằm ngoài 6 mục đầu —
+  // nếu không người dùng thấy chip "Phú Quốc" ở trên mà tìm mãi không ra ô để
+  // bỏ chọn.
+  const hasHiddenActive = options.slice(COLLAPSED_OPTIONS).some((o) => selected.includes(o.value));
+  const expanded = showAll || hasHiddenActive;
+  const visible = expanded ? options : options.slice(0, COLLAPSED_OPTIONS);
+  const hiddenCount = options.length - visible.length;
 
   return (
     <div className="border-b border-border pb-5 last:border-b-0 last:pb-0">
@@ -88,7 +101,7 @@ function FacetGroup({
 
       {open ? (
         <ul id={panelId} className="mt-3.5 space-y-2.5">
-          {options.map((option) => {
+          {visible.map((option) => {
             const id = `${panelId}-${option.value}`;
             const checked = selected.includes(option.value);
             // Option ra 0 kết quả bị vô hiệu hoá — chặn ngõ cụt "bấm thêm một ô
@@ -125,6 +138,27 @@ function FacetGroup({
               </li>
             );
           })}
+          {hiddenCount > 0 ? (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAll(true)}
+                className="cursor-pointer text-sm font-medium text-primary hover:underline"
+              >
+                Show all {options.length}
+              </button>
+            </li>
+          ) : expanded && options.length > COLLAPSED_OPTIONS && !hasHiddenActive ? (
+            <li>
+              <button
+                type="button"
+                onClick={() => setShowAll(false)}
+                className="cursor-pointer text-sm font-medium text-primary hover:underline"
+              >
+                Show less
+              </button>
+            </li>
+          ) : null}
         </ul>
       ) : null}
     </div>

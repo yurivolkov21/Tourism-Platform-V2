@@ -161,8 +161,36 @@ export interface MockTourDetail extends MockTourCard {
 > Price · Pace, và danh sách card hàng ngang thay lưới. Phần dưới đã viết lại
 > theo quyết định đó; §8 ghi thêm nợ contract phát sinh.
 
-**Sidebar `16rem` thu/mở được, sticky**, cộng drawer trên mobile — đúng mô hình
-Nexora (`tours-listing.tsx` + `tours-filters.tsx`).
+**Sidebar `16rem` thu/mở được — TĨNH, không dính, không cuộn riêng.**
+
+> **Sửa lần 2, 27/07.** Bản đầu làm sidebar `sticky` + cuộn nội bộ theo Nexora.
+> Sai từ gốc, và số đo chỉ ra: nội dung sidebar cao **1140px**, trong khi chỗ
+> cho một cột dính chỉ **608px** (màn 720) · **788px** (900) · **968px** (1080).
+> Không vừa màn hình phổ thông nào — nên `sticky` là lời hứa không giữ được
+> (đáy sidebar vĩnh viễn ngoài tầm với), và thanh cuộn lồng chỉ để che điều đó.
+> Ép cho vừa cũng bất khả: gộp facet + rút Destination + siết spacing mới được
+> ~380px, còn 760px, vẫn quá 608px; muốn vừa nữa thì phải đóng sẵn các nhóm —
+> đúng thứ làm sidebar thành sáu dòng tiêu đề vô dụng.
+>
+> Hướng đúng là **bỏ dính**, giống Booking/Amazon/Etsy. Thứ thật sự cần khi
+> đang duyệt kết quả không phải cả cột lọc, mà là **lối vào** bộ lọc.
+
+Cơ chế thay thế:
+
+| Thành phần | Hành vi |
+| --- | --- |
+| Sidebar | Tĩnh, trôi cùng trang. Không `max-h`, không `overflow`, không thanh cuộn thứ hai. `self-start` để không bị grid kéo giãn |
+| Thanh công cụ (đếm · sort · Filters) | **Dính** ở `top-32` — cao ~48px nên vừa mọi màn hình một cách trung thực. 128px đo từ thực tế: navbar pill lúc cuộn nằm ở 52–124px |
+| Nút `Filters (n)` | Mobile luôn hiện. Desktop hiện khi sidebar **đang mở nhưng đã cuộn khỏi tầm mắt** (IntersectionObserver, không nghe scroll) → mở drawer đã dựng cho mobile |
+| Nút `Hide/Show filters` | Ẩn đúng lúc nút Filters thay vai trò. **Không** ẩn khi sidebar đang thu — nếu không người dùng thu xong là không mở lại được |
+
+Nhóm dài rút gọn: Destination hiện **6 + "Show all 9"**. Option đang bật nằm
+ngoài 6 mục đầu thì nhóm tự mở hết — nếu không, chip "Phú Quốc" hiện ở trên mà
+không tìm ra ô để bỏ chọn.
+
+Đây là mô hình giống Nexora ở phần facet, nhưng **cơ chế hiển thị thì khác hẳn**
+— Nexora cũng dính và cũng vướng đúng vấn đề này, chỉ là họ đóng sẵn mọi nhóm
+nên chưa lộ ra.
 
 Sáu nhóm facet, **checkbox đa chọn**, mở sẵn:
 
