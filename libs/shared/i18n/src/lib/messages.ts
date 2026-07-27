@@ -1507,6 +1507,10 @@ export const messages = {
     durationValue: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
     /** Hero hiện tối đa 2 badge rồi gộp phần dư thành một chip. */
     moreBadges: (n: number) => `+${n}`,
+    /** Giá gạch cần nhãn đọc được: trình đọc màn hình không phát âm line-through,
+        nghe trần hai con số cạnh nhau là hiểu sai giá nào đang có hiệu lực. Dùng
+        ở cả hero và bảng đợt. */
+    wasPrice: (amount: string) => `was ${amount}`,
     badges: {
       BEST_VALUE: 'Best value',
       LIMITED_OFFER: 'Limited offer',
@@ -1559,8 +1563,6 @@ export const messages = {
         availability: 'Availability',
         price: 'Price',
       },
-      /** Giá gạch cần nhãn đọc được: trình đọc màn hình không phát âm line-through. */
-      wasPrice: (amount: string) => `was ${amount}`,
     },
 
     booking: {

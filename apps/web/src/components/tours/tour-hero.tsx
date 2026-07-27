@@ -1,0 +1,234 @@
+'use client';
+
+import { messages } from '@tourism/i18n';
+import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ImagePlaceholder } from '@/components/image-placeholder';
+import { TopoPattern } from '@/components/topo-pattern';
+import { RouteRibbon } from '@/components/tours/route-ribbon';
+import { discountPercent, formatMoney } from '@/lib/tours';
+import type { MockTourDetail } from '@/mocks/types';
+
+// Hero riêng cho trang chi tiết — KHÔNG tái dùng ToursHero: cái đó mang eyebrow
+// + H1 + subtitle + ô search, còn đây mang rating, chuỗi chặng, chip meta, badge
+// và giá. Ba hero (ContentHero, ToursHero, TourHero) chia sẻ TopoPattern + scrim
+// + nhịp spring, không chia sẻ component (spec §6.2).
+const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
+
+/**
+ * Hàng chip cạnh giá giữ TỐI ĐA 2 chip, và một sự thật về GIÁ luôn thắng một
+ * nhãn tiếp thị. Card listing đã học luật này bằng cách khó: 3 chip làm chip
+ * cuối bị overflow-hidden xén ngang chữ, trông như lỗi render.
+ *
+ * Nên: có giảm giá thì chip `−N%` chiếm một suất, `badges[]` còn một suất rồi
+ * gộp phần dư thành `+N`. Không giảm giá thì badges được cả hai suất.
+ */
+const MAX_CHIPS = 2;
+
+export function TourHero({ tour }: { tour: MockTourDetail }) {
+  const t = messages.tourDetail;
+  const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
+
+  const badgeBudget = discount !== null ? MAX_CHIPS - 1 : MAX_CHIPS;
+  const shownBadges = tour.badges.slice(0, badgeBudget);
+  const hiddenBadges = tour.badges.length - shownBadges.length;
+
+  return (
+    <section className="relative w-full overflow-hidden bg-hero px-4 pt-36 pb-14 text-hero-foreground md:px-16 md:pb-16 lg:px-24 xl:px-32">
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
+      />
+      {/* Vân topo ra NGOÀI scope dark để biến thể `dark:` đọc theme của TRANG:
+          nền hero tối hơn ở dark mode nên vân phải đậm lên mới đọc được. */}
+      <TopoPattern className="bg-primary opacity-[0.12] dark:opacity-[0.2]" />
+
+      {/* `dark` bọc NỘI DUNG, không đặt lên <section> — section phải đọc `bg-hero`
+          theo theme của trang. Đặt `dark` lên section thì `bg-*` bị đọc trong
+          scope dark và band trùng màu nền trang ở dark mode (lỗi đã sửa 22bd75e).
+          `contents` để wrapper không tạo hộp; biến CSS vẫn kế thừa bình thường. */}
+      <div className="dark contents">
+        <div className="relative z-10 mx-auto max-w-7xl">
+          <motion.nav
+            aria-label="Breadcrumb"
+            className="flex items-center gap-1.5 text-sm text-muted-foreground"
+            initial={{ y: -16, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1, ...SPRING }}
+          >
+            <a href="/" className="transition-colors hover:text-foreground">
+              Home
+            </a>
+            <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
+            <a href="/tours" className="transition-colors hover:text-foreground">
+              {t.breadcrumb}
+            </a>
+            <ChevronRightIcon className="size-3.5 shrink-0" aria-hidden="true" />
+            {/* Mắt xích cuối là chuyên mục, KHÔNG phải tên tour: tên tour đã là H1
+                ngay dưới, lặp lại là bắt trình đọc màn hình đọc hai lần. Nó cũng
+                dẫn tới một trang lọc CÓ THẬT. */}
+            <a
+              href={`/tours?categories=${tour.category.slug}`}
+              aria-current="page"
+              className="truncate text-foreground transition-colors hover:text-primary"
+            >
+              {tour.category.name}
+            </a>
+          </motion.nav>
+
+          {/* Hàng eyebrow + rating: danh tính bên trái, uy tín xã hội bên phải,
+              cùng một baseline. */}
+          <motion.div
+            className="mt-8 flex flex-wrap items-center justify-between gap-x-6 gap-y-3"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.15, ...SPRING }}
+          >
+            <p className="flex items-center gap-1.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
+              <span className="size-1.5 shrink-0 bg-primary" aria-hidden="true" />
+              {tour.category.name}
+              {/* difficulty null → bỏ hẳn cả dấu phân cách, không in "· null". */}
+              {tour.difficulty ? (
+                <>
+                  <span aria-hidden="true">·</span>
+                  {messages.toursPage.difficultyLabels[tour.difficulty]}
+                </>
+              ) : null}
+            </p>
+
+            {/* ratingAvg null = CHƯA AI đánh giá, khác hẳn 0 điểm. Hiện chip chữ
+                thay vì "0.0" hoặc 5 sao rỗng — cả hai đều là nói dối về dữ liệu. */}
+            {tour.ratingAvg === null ? (
+              <p className="rounded-full border border-muted-foreground/30 px-3 py-1 text-xs text-muted-foreground">
+                {t.notRated}
+              </p>
+            ) : (
+              <p className="flex items-center gap-2 text-sm">
+                <StarIcon className="size-4 shrink-0 fill-rating text-rating" aria-hidden="true" />
+                <span className="font-medium text-foreground">{tour.ratingAvg.toFixed(1)}</span>
+                <span className="text-muted-foreground">{t.reviewCount(tour.ratingCount)}</span>
+              </p>
+            )}
+          </motion.div>
+
+          <motion.h1
+            className="mt-3 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl"
+            initial={{ y: 40, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+          >
+            {tour.title}
+          </motion.h1>
+
+          {/* summary null → ẩn CẢ dòng, không giữ chỗ. Khác card listing (ở đó
+              phải giữ 2 dòng để các card cạnh nhau không lệch chiều cao); hero
+              chỉ có một, không có gì để so hàng. */}
+          {tour.summary ? (
+            <motion.p
+              className="mt-4 max-w-2xl text-pretty text-muted-foreground"
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3, ...SPRING }}
+            >
+              {tour.summary}
+            </motion.p>
+          ) : null}
+
+          <motion.div
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.35, ...SPRING }}
+          >
+            <RouteRibbon destinations={tour.destinations} className="mt-8" />
+          </motion.div>
+
+          {/* Hàng chân hero: dữ liệu chuyến đi bên trái, thương mại bên phải.
+              `items-end` để giá cỡ lớn và chip meta cỡ nhỏ chung một đường đáy. */}
+          <motion.div
+            className="mt-8 flex flex-wrap items-end justify-between gap-x-8 gap-y-5 border-t border-muted-foreground/20 pt-6"
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4, ...SPRING }}
+          >
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <ClockIcon className="size-4 shrink-0" aria-hidden="true" />
+                {t.durationValue(tour.durationDays)}
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <UsersIcon className="size-4 shrink-0" aria-hidden="true" />
+                {t.groupSize(tour.maxGroupSize)}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+              <p className="flex items-baseline gap-2">
+                <span className="text-xs text-muted-foreground">{t.fromPrice}</span>
+                <span className="font-heading text-3xl font-semibold text-foreground tabular-nums">
+                  {formatMoney(tour.basePrice, tour.currency)}
+                </span>
+                {tour.compareAtPrice ? (
+                  <>
+                    {/* Con số hiện ra bị aria-hidden, và trình đọc màn hình nghe
+                        câu đầy đủ "was $236" — nghe trần hai giá cạnh nhau thì
+                        không biết giá nào đang có hiệu lực. */}
+                    <span className="sr-only">
+                      {t.wasPrice(formatMoney(tour.compareAtPrice, tour.currency))}
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className="text-sm text-price-compare tabular-nums line-through"
+                    >
+                      {formatMoney(tour.compareAtPrice, tour.currency)}
+                    </span>
+                  </>
+                ) : null}
+              </p>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                {discount !== null ? (
+                  <span className="rounded-full bg-destructive px-2.5 py-1 text-xs font-medium text-white">
+                    −{discount}%
+                  </span>
+                ) : null}
+                {shownBadges.map((badge) => (
+                  <span
+                    key={badge}
+                    className={
+                      // LIMITED_OFFER là badge duy nhất mang tính khẩn — cho nó
+                      // token cảnh báo, phần còn lại là viền trầm. Nếu badge nào
+                      // cũng nổi thì không badge nào nổi.
+                      badge === 'LIMITED_OFFER'
+                        ? 'rounded-full bg-warning px-2.5 py-1 text-xs font-medium text-warning-foreground'
+                        : 'rounded-full border border-muted-foreground/30 px-2.5 py-1 text-xs text-muted-foreground'
+                    }
+                  >
+                    {t.badges[badge]}
+                  </span>
+                ))}
+                {hiddenBadges > 0 ? (
+                  <span className="text-xs text-muted-foreground">
+                    {t.moreBadges(hiddenBadges)}
+                  </span>
+                ) : null}
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Băng ảnh full-bleed ngay dưới hero. Tách khỏi TourHero vì nó KHÔNG nằm trong
+ * scope dark của hero — nó là dải riêng cắt ngang trang, và `ImagePlaceholder`
+ * phải đọc token theo theme của trang.
+ *
+ * Nhãn là tên tour: đây là ảnh DUY NHẤT của trang nên nó thật sự đại diện cho
+ * tour (khác card listing, nơi nhãn là tên địa danh chính để không lặp với <h3>
+ * ngay bên cạnh).
+ */
+export function TourImageBand({ label }: { label: string }) {
+  return <ImagePlaceholder label={label} className="aspect-(--aspect-band) w-full" />;
+}

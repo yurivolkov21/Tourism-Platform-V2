@@ -16,7 +16,12 @@ const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
   {
     title: 'Explore',
     links: [
-      ['Tours', '/#tours'],
+      // 'Tours' trỏ TRANG thật, không còn trỏ `/#tours` — cái anchor đó nằm trên
+      // section Stats ở trang chủ, hợp lý khi chưa có /tours, nay thì sai hẳn.
+      ['Tours', '/tours'],
+      // Hai mục dưới vẫn là anchor trang chủ CÓ THẬT (`#gallery`, `#reviews`):
+      // /destinations chưa tồn tại, còn Reviews mãi là section của Home (quyết
+      // định review navbar #3). Không đổi tới khi có trang riêng.
       ['Destinations', '/#gallery'],
       ['Reviews', '/#reviews'],
       ['Contact', '/contact'],

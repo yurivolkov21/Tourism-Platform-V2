@@ -2,6 +2,12 @@
 // kỳ route nào (Nexora có ở cả listing lẫn detail) — đây là chỗ nó có giá trị
 // nhất vì listing sẽ là trang gọi API nặng nhất khi wire.
 //
+// VÌ SAO NẰM TRONG ROUTE GROUP `(listing)/` chứ không ở `tours/`: đặt ở `tours/`
+// thì Suspense boundary của nó bọc luôn `[slug]`, và mọi slug lạ trả HTTP 200
+// kèm giao diện 404 (soft 404 — crawler đem trang lỗi đi index). Route group
+// không đổi URL: `/tours` vẫn là `/tours`. Xem giải thích đầy đủ ở đầu
+// `tours/[slug]/page.tsx`. ĐỪNG chuyển file này lên một cấp.
+//
 // Khối giả phải khớp bố cục THẬT, nếu không nó thành lời hứa sai: bản đầu vẽ
 // chip rail + lưới 3 cột card dọc, trong khi listing sau 4 vòng thiết kế lại là
 // hàng tiêu đề khu vực + MỘT cột TourListCard hàng ngang. Nội dung về là trang
