@@ -32,7 +32,7 @@ render. Tương tác (lọc, chọn đợt khởi hành) chạy client, trạng 
 | 6 · Lọc / sắp xếp / phân trang | ✅ |
 | 7 · Skeleton + LoadErrorState + vá navbar | ✅ |
 | **⛔ Mốc dừng — user duyệt `/tours`** | ✅ **duyệt 27/07** |
-| 8 · `/tours/[slug]` khung + hero | ⬜ |
+| 8 · `/tours/[slug]` khung + hero | ✅ |
 | 9 · Dải khởi hành + rail booking | ⬜ |
 | 10 · Itinerary · inclusions · good-to-know | ⬜ |
 | 11 · robots + sitemap | ⬜ |
@@ -99,8 +99,8 @@ in giá trị thô, đệm `DrawerHeader`/`DrawerFooter`) · Lenis chặn cuộn
 | `apps/web/src/lib/text.ts` (+`.spec.ts`) | `foldAccents` dùng chung |
 | `apps/web/src/lib/paginate.ts` (+`.spec.ts`) | `paginate` · `pageNumbers` — trung lập, `/blog` dùng lại |
 | `apps/web/src/lib/tours.ts` (+`.spec.ts`) | Toàn bộ logic lọc/sắp/định dạng của tour |
-| `apps/web/src/app/(site)/tours/page.tsx` · `loading.tsx` | Route listing |
-| `apps/web/src/app/(site)/tours/[slug]/page.tsx` · `loading.tsx` | Route detail |
+| `apps/web/src/app/(site)/tours/(listing)/page.tsx` · `loading.tsx` | Route listing — **route group** `(listing)/`, xem ghi chú soft 404 dưới |
+| `apps/web/src/app/(site)/tours/[slug]/page.tsx` | Route detail — **KHÔNG có `loading.tsx`**, cố ý |
 | `apps/web/src/app/robots.ts` · `sitemap.ts` | SEO |
 | `apps/web/src/components/tours/tours-hero.tsx` | Hero listing (tối, có search) |
 | `apps/web/src/components/tours/tour-card.tsx` | Card tour |
@@ -142,6 +142,26 @@ in giá trị thô, đệm `DrawerHeader`/`DrawerFooter`) · Lenis chặn cuộn
 
 **Ngoài phạm vi, ghi nợ:** JSON-LD Product/Offer/AggregateRating + FAQPage ·
 skip link · `images.remotePatterns` · cache-tag revalidation · `/destinations`.
+
+### ⚠️ Soft 404 vì `loading.tsx` — đo được ở Task 8, ảnh hưởng Task 11
+
+`loading.tsx` tạo Suspense boundary cho segment **và mọi route con**. Next stream
+shell ra trước, nên HTTP 200 đã gửi xong trước khi thân trang kịp gọi
+`notFound()`: slug lạ trả **200 kèm giao diện 404**. Crawler nhận 200 rồi đem
+trang lỗi đi index — đúng route mà Task 11 đưa vào sitemap. Đo ở CẢ `next dev`
+lẫn production build; `/blog/[slug]` không dính vì nó không có `loading.tsx` nào.
+
+Cách chữa đã áp: listing chuyển vào route group **`(listing)/`** (URL không đổi,
+`/tours` vẫn là `/tours`) nên `loading.tsx` của nó không còn bọc `[slug]`; và
+`[slug]` **không có `loading.tsx`** — trang detail là SSG tĩnh, HTML về ngay, nên
+skeleton không mua được gì, còn thêm vào là soft 404 quay lại.
+
+Đã thử và **KHÔNG ăn** (đừng thử lại): `export const dynamicParams = false` —
+404 của nó vẫn đi qua cùng Suspense boundary, đo vẫn ra 200; nó còn gài bẫy cho
+lúc gắn API (tour mới publish 404 tới lần build kế).
+
+Bẫy cho cụm gắn API: lúc đó trang detail cần skeleton thật, và thêm `loading.tsx`
+là soft 404 quay lại. Phải đo status của slug lạ trong CÙNG lần thay đổi đó.
 
 ---
 
