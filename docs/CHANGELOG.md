@@ -2,7 +2,7 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
-## 2026-07-27 — P3b: cụm Tours đợt 1 — listing + khung trang chi tiết (branch `feat/tours-pages`, merge `<ff>`)
+## 2026-07-27 — P3b: cụm Tours đợt 1 — listing + khung trang chi tiết (branch `feat/tours-pages`, ff-only, commit code cuối `f1f5e81`)
 
 **Merge GIỮA CỤM** theo yêu cầu user: Task 1–8 của
 [plan 13 task](plans/2026-07-27-tours-pages.md); Task 9–12 (dải khởi hành ·
