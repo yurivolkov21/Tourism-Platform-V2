@@ -1,4 +1,5 @@
 import type { MockJournalPost } from '@/mocks/types';
+import { foldAccents } from './text';
 
 /** Sắp xếp mới-nhất-trước. Trả mảng MỚI — mock là hằng số dùng chung, sửa tại
     chỗ là làm hỏng dữ liệu của mọi trang khác. */
@@ -47,18 +48,8 @@ export function relatedPosts(
   return [...sameCategory, ...filler].slice(0, limit);
 }
 
-/** Bỏ dấu tiếng Việt để gõ "bun cha" vẫn tìm ra "bún chả" — khách nước ngoài
-    không gõ được dấu, mà tên món trong bài thì có dấu đầy đủ. */
-function foldAccents(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/Đ/g, 'D')
-    .toLowerCase();
-}
-
-/** Tìm theo tiêu đề + excerpt, bỏ dấu cả hai phía. */
+/** Tìm theo tiêu đề + excerpt, bỏ dấu cả hai phía — gõ "bun cha" vẫn ra
+    "bún chả". `foldAccents` nay ở lib/text vì tours cũng dùng. */
 export function searchPosts(posts: readonly MockJournalPost[], query: string): MockJournalPost[] {
   const q = foldAccents(query.trim());
   if (!q) return [...posts];
