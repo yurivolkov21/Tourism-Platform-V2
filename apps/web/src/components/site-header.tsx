@@ -15,21 +15,22 @@ import { UserMenu } from './user-menu';
 // nút Book a tour. Mọi mảnh đều nhận "skin" theo 2 chế độ nền của navbar.
 // Thứ tự theo Nexora (Tours · Destinations · Blog · About · Contact) — navbar
 // chỉ chứa đích đến là TRANG thật (review navbar #3: bỏ Reviews vì nó mãi là
-// section trong Home, link tới nó vẫn còn ở footer). Travel Blog nay trỏ
-// thẳng /blog (Task 7) — trang /about cũng đã có, không còn link tạm nào.
-// Anchor dạng TUYỆT ĐỐI (/#...) — đứng ở /about bấm vẫn về đúng section Home
+// section trong Home, link tới nó vẫn còn ở footer).
+// 27/07: navbar KHÔNG còn link chết nào. Tours trỏ /tours; dropdown Destinations
+// liệt kê 9 địa danh trỏ /tours?destination=<slug> (API lọc theo slug, không có
+// tham số region — xem comment trong destinations-menu.tsx).
 const NAV_LINKS = [
   { label: 'Travel Blog', href: '/blog' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },
 ];
 
-// Link phẳng cho overlay mobile — bung Destinations thành từng vùng (kiểu Nexora)
+// Link phẳng cho overlay mobile. Không bung 9 địa danh ra đây — overlay là cột
+// dọc căn giữa, thêm 9 mục là phải cuộn. Một mục Destinations trỏ /tours là đủ;
+// người dùng lọc tiếp bằng toolbar ngay trên trang đó.
 const MOBILE_LINKS = [
-  { label: 'Tours', href: '/#tours' },
-  { label: 'Destinations — North', href: '/#gallery' },
-  { label: 'Destinations — Central', href: '/#gallery' },
-  { label: 'Destinations — South', href: '/#gallery' },
+  { label: 'Tours', href: '/tours' },
+  { label: 'Destinations', href: '/tours' },
   { label: 'Travel Blog', href: '/blog' },
   { label: 'About Us', href: '/about' },
   { label: 'Contact', href: '/contact' },
@@ -82,7 +83,7 @@ export function SiteHeader() {
         </a>
 
         <div className="hidden items-center gap-2 text-sm md:flex lg:gap-6">
-          <a href="/#tours" className={linkClass}>
+          <a href="/tours" className={linkClass}>
             Tours
           </a>
           <DestinationsMenu triggerClassName={`text-sm font-normal ${triggerSkin}`} />
