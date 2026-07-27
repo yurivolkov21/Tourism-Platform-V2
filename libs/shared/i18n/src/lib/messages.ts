@@ -1386,11 +1386,10 @@ export const messages = {
       cta: { label: 'Browse destinations', href: '/destinations' },
     },
   },
-  // Shared tour merchandising copy (card + detail).
-  tours: {
-    suitableFor: 'Ideal for',
-  },
-  // TravellerType enum → display label (tour card compact row + detail "Ideal for" chips).
+  // TravellerType enum → nhãn hiển thị cho hàng chip "Good for" ở trang chi tiết.
+  // Khối `tours.suitableFor: 'Ideal for'` đứng ở đây trước 27/07 đã bị bỏ: nó là
+  // key thứ hai cho cùng một nhãn, không ai dùng, và tiêu đề thật của khối là
+  // `tourDetail.sections.goodFor`. Hai tên cho một thứ là cách copy bắt đầu lệch.
   travellerTypes: {
     FAMILY: 'Family trips',
     COUPLE: 'Couples',
@@ -1485,192 +1484,127 @@ export const messages = {
       body: 'The tour catalogue didn’t load just now — this is usually momentary. Please try again.',
     },
   },
+  // ĐỌC TRƯỚC KHI THÊM KEY: khối này đã được CẮT LẠI 27/07 theo TourDetailSchema.
+  // Bản trước là 188 dòng port trọn gói từ Nexora và mô tả một trang KHÁC HẲN:
+  // bữa ăn, hạng phòng, travel style/theme, gallery ảnh, 6 ô "why travel with
+  // us", cộng 3 nhóm policy CỨNG và 6 câu FAQ CỨNG — trong khi contract v2 trả
+  // `policies[]` và `faqs[]` THẬT theo từng tour. Không component nào tiêu thụ
+  // nó, nên nó chỉ là copy nằm chờ ai đó dựng UI theo mình.
+  //
+  // Luật rút ra (spec §10): copy port trọn gói KHÔNG phải bằng chứng tính năng
+  // tồn tại. Mỗi key dưới đây ánh xạ về đúng một field của contract hoặc một
+  // nhãn UI có thật trên trang. Thêm key mới thì phải chỉ được ra field đó.
   tourDetail: {
     breadcrumb: 'Tours',
-    overview: 'Overview',
-    highlights: 'Highlights',
-    itinerary: 'Itinerary',
-    dayLabel: (n: number) => `Day ${n}`,
-    stepBack: 'Back',
-    stepNext: 'Next',
-    included: 'What’s included',
-    notIncluded: 'Not included',
-    gallery: 'Photos',
-    enquireHeading: (tour: string) => `Enquire about ${tour}`,
-    reviews: (n: number) => `${n} reviews`,
-    mealsLabel: 'Meals',
-    youMightLike: 'You might also like…',
+
+    // ── Hero ──
+    /** Nhãn đứng trước giá thấp nhất khi khách chưa chọn đợt: "from $189". */
+    fromPrice: 'from',
+    /** ratingAvg null = CHƯA AI đánh giá, khác hẳn 0 điểm. Không bao giờ in "0.0". */
+    notRated: 'New — no reviews yet',
+    reviewCount: (n: number) => `${n.toLocaleString('en-US')} ${n === 1 ? 'review' : 'reviews'}`,
+    groupSize: (n: number) => `Max ${n} guests`,
+    durationValue: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
+    /** Hero hiện tối đa 2 badge rồi gộp phần dư thành một chip. */
+    moreBadges: (n: number) => `+${n}`,
     badges: {
-      bestSeller: 'Best seller',
-      sellingFast: 'Likely to sell out',
+      BEST_VALUE: 'Best value',
+      LIMITED_OFFER: 'Limited offer',
+      EXCLUSIVE: 'Exclusive',
+      NEW: 'New',
+      POPULAR: 'Popular',
     },
-    note: {
-      heading: 'Good to know',
-      body: 'Itineraries can flex to your pace, dates and interests — share your preferences in an enquiry and our trip designers will tailor the plan. Prices are per person and may vary by season, group size and hotel choice.',
+
+    // ── Route ribbon ──
+    route: {
+      label: 'Route',
+      /** Tour một điểm đến: KHÔNG vẽ sơ đồ chặng — một chấm đơn độc trên một
+          đường kẻ là sơ đồ của thứ không phải hành trình. Chỉ nói nó ở đâu. */
+      single: (place: string) => `Based in ${place}`,
+      viewTours: (place: string) => `See tours in ${place}`,
     },
-    // Overview spec block (icon-led rows)
-    specs: {
-      destination: 'Destination',
-      duration: 'Duration',
-      departure: 'Departures',
-      travelStyle: 'Travel style',
-      theme: 'Best for',
-      accommodation: 'Accommodation',
+
+    // ── Tiêu đề section ──
+    // ĐÂY LÀ NGUỒN CỦA ID ANCHOR: page.tsx dựng mục lục bằng tocFromSections()
+    // rồi slugify chính các chuỗi này thành `id` của <section>. Sửa chữ ở đây là
+    // đổi URL fragment — link #cũ mà ai đã chia sẻ sẽ chết.
+    sections: {
+      why: 'Why this trip',
+      goodFor: 'Good for',
+      itinerary: 'Itinerary',
+      included: 'What’s included',
+      departures: 'All departures',
+      goodToKnow: 'Good to know',
+      related: 'You might also like',
     },
-    durationValue: (n: number) => `${n} day${n > 1 ? 's' : ''}`,
-    // Inclusions block (icon-led rows)
-    inclusionLabels: {
-      meals: 'Meals',
-      transport: 'Transport',
-      accommodation: 'Accommodation',
-      activities: 'Included activities',
-    },
-    mealsSummary: (b: number, l: number, d: number) => `${b}B · ${l}L · ${d}D`,
-    // "Value of the package" — themed value props in a tinted panel
-    value: {
-      heading: 'Value of the package',
-      props: [
-        {
-          title: 'Gastronomic & cultural immersion',
-          body: 'Street-food trails, hands-on cooking, and meals chosen for the place — not a buffet on repeat. You taste the region as locals do.',
-        },
-        {
-          title: 'Landscapes & gentle adventure',
-          body: 'Cruise emerald bays, cycle quiet countryside, and reach the views worth the early start — at a pace that still feels like a holiday.',
-        },
-        {
-          title: 'Expert local guides',
-          body: 'English-speaking guides who bring history and culture to life, adapt to your interests, and know the stops that aren’t on the map.',
-        },
-        {
-          title: 'Safety & quality, quietly handled',
-          body: 'Vetted vehicles, trusted hotels and 24/7 support — the logistics disappear so the trip doesn’t.',
-        },
-      ],
-    },
-    // Policies — grouped, collapsible
-    policies: {
-      heading: 'Policies',
-      readMore: 'Read full policy',
-      readLess: 'Show less',
-      groups: [
-        {
-          title: 'Booking & payment',
-          items: [
-            'A confirmation receipt is emailed within 15 minutes of a successful booking.',
-            'A 30% deposit of the total tour cost confirms the booking; the balance is due on the start day of the tour.',
-            'The confirmation voucher is released by email within 48 hours of the deposit.',
-          ],
-        },
-        {
-          title: 'Cancellation',
-          items: [
-            '15+ days before travel: 50% of the deposit is charged as a cancellation fee.',
-            '7–15 days before travel: 75% of the deposit is charged.',
-            '0–7 days before travel: 100% of the deposit is charged.',
-          ],
-        },
-        {
-          title: 'Changes & refunds',
-          items: [
-            'Changes made 15+ days before the travel date carry no change fee — we resend the final itinerary.',
-            'For changes inside 15 days, we’ll do our best to accommodate; any supplier fees incurred are passed on at cost.',
-          ],
-        },
-      ],
-    },
-    // Traveller reviews (placeholder until wired to the Review model)
-    reviewsSection: {
-      heading: 'Traveller reviews',
-      verified: 'Verified traveller',
-      readMore: 'Read more',
-      seeAll: (count: number): string => `See all ${count} reviews`,
-      dialogTitle: 'Traveller review',
-      listDialogTitle: 'All reviews',
-      loadMore: 'Load more reviews',
-      loading: 'Loading reviews…',
-      loadError: 'Could not load more reviews — please try again.',
-    },
-    // "Why travel with us" trust grid
-    trust: {
-      heading: 'Why travel with us',
-      items: [
-        {
-          title: '15 years of local expertise',
-          body: 'A decade and a half crafting journeys across Vietnam — refined trip by trip.',
-        },
-        {
-          title: 'Designed by locals',
-          body: 'No middlemen and no off-the-shelf scripts — real itineraries from people who live here.',
-        },
-        {
-          title: 'Loved by travellers',
-          body: 'Thousands of guests, and the kind of reviews that turn first-timers into regulars.',
-        },
-        {
-          title: '24/7 on-trip support',
-          body: 'A real person before, during and after your trip — wherever the road takes you.',
-        },
-        {
-          title: 'Fair, transparent pricing',
-          body: 'Clear quotes, no surprise fees, and flexible options to suit your budget.',
-        },
-        {
-          title: 'Flexible & tailored',
-          body: 'Every itinerary flexes to your pace, dates, interests and group size.',
-        },
-      ],
-    },
-    // Tour FAQ
-    faqSection: {
-      heading: 'Frequently asked questions',
-      items: [
-        {
-          q: 'What’s included in the tour price?',
-          a: 'Entrance fees, meals as listed, accommodation on multi-day trips, private transfers and an English-speaking guide. The exact inclusions are listed above and in the itinerary we send.',
-        },
-        {
-          q: 'Does the price include flights?',
-          a: 'No — international and domestic flights are not included, but we’re happy to advise on the best connections for your itinerary.',
-        },
-        {
-          q: 'Can I customise the itinerary?',
-          a: 'Yes. Most journeys can be tailored to your pace, interests and group size — share your preferences in an enquiry and our trip designers will adapt the plan.',
-        },
-        {
-          q: 'Are vegetarian or special diets catered for?',
-          a: 'Absolutely. Let us know any dietary needs in your enquiry and we’ll arrange suitable meals throughout.',
-        },
-        {
-          q: 'What is the cancellation and refund policy?',
-          a: 'See the Policies section above for the full breakdown by timeframe. In short: the earlier you let us know, the less is charged.',
-        },
-        {
-          q: 'Is airport pickup included?',
-          a: 'Yes — private airport transfers are arranged around your flight times on multi-day tours.',
-        },
-      ],
-    },
-    booking: {
-      heading: 'Book this tour',
-      fromLabel: 'From',
-      perPerson: 'per person',
-      reviewsInline: (n: number) => `${n} reviews`,
-      departures: 'Upcoming departures',
-      seatsLeft: (n: number) => `${n} seats left`,
-      requestCta: 'Request to book',
-      enquireCta: 'Ask a question',
-      deposit: (amount: string) => `Or deposit at least ${amount} to hold your dates`,
-      trustLine: 'No payment now — we confirm availability and send a tailored quote.',
-      twoWays: {
-        scheduledTitle: 'Book a scheduled date',
-        scheduledDesc: 'Join a set departure — book and pay instantly.',
-        privateTitle: 'Travel on your own dates',
-        privateDesc: 'Any date, private tour — we quote within 24h.',
-        privateBadge: 'On request',
+
+    // ── Dải khởi hành + rail booking + bảng đợt ──
+    departures: {
+      /** Dải chip ngay dưới hero — 4–6 đợt gần nhất. */
+      stripHeading: 'Next departures',
+      railLabel: 'Your departure',
+      /** departures[] rỗng: dải và rail đổi sang dòng này + CTA hỏi. */
+      none: 'No departures scheduled yet',
+      noneBody: 'Dates for this trip are still being confirmed. Ask us and we’ll tell you first.',
+      /** Ba nhãn ghế = suy diễn ở tầng UI từ seatsLeft (ngưỡng 0 / 1–3 / >3 trong
+          departureStatus). Contract KHÔNG có field `status` — đừng đi tìm. */
+      soldOut: 'Sold out',
+      seatsLimited: (n: number) => `Only ${n} ${n === 1 ? 'seat' : 'seats'} left`,
+      seatsAvailable: (n: number) => `${n} seats available`,
+      select: (range: string) => `Select departure ${range}`,
+      selected: 'Selected',
+      columns: {
+        dates: 'Dates',
+        length: 'Length',
+        availability: 'Availability',
+        price: 'Price',
       },
-      save: 'Save to wishlist',
-      saved: 'Saved',
+      /** Giá gạch cần nhãn đọc được: trình đọc màn hình không phát âm line-through. */
+      wasPrice: (amount: string) => `was ${amount}`,
+    },
+
+    booking: {
+      /** `Reserve` là <button> KHÔNG điều hướng — /tours/[slug]/book chưa tồn tại
+          và luật cấm đẩy người dùng vào 404 (spec §6.6). */
+      reserve: 'Reserve',
+      ask: 'Ask about this trip',
+      perPerson: 'per person',
+      /** Sandbox nói đúng HAI chỗ (spec §6.5): câu ngắn sát nút — nơi người dùng
+          thật sự phân vân; câu dài ở chân bảng giá — nơi con số dày nhất. Không
+          banner đỏ: banner phá nhịp trang và làm sản phẩm trông như bản nháp. */
+      testMode: 'Test mode — no card is charged.',
+      sandboxNote:
+        'Prices are for demonstration. Checkout runs on Stripe and PayPal sandbox accounts.',
+    },
+
+    // ── Itinerary ──
+    itinerary: {
+      dayLabel: (n: number) => `Day ${n}`,
+      /** meetingPoint gắn vào Day 1: nó là thông tin của NGÀY ĐẦU, không phải
+          của cả tour. */
+      meetAt: (place: string) => `Meet at ${place}`,
+    },
+
+    // ── Included / Not included ──
+    inclusions: {
+      included: 'Included',
+      excluded: 'Not included',
+      /** Một bên rỗng thì cột đó hiện dấu này và GIỮ nguyên lưới 2 cột — bỏ cột
+          đi là hai tour cạnh nhau có bố cục khác nhau. */
+      empty: '—',
+    },
+
+    // ── Good to know: FAQ + policy theo nhóm ──
+    goodToKnow: {
+      faqHeading: 'Questions travellers ask',
+      policyHeading: 'Policies',
+      /** PolicyKind enum → nhãn nhóm. Thứ tự nhóm do groupPoliciesByKind quyết
+          định (Cancellation trước — đó là thứ khách lo nhất). */
+      policyKinds: {
+        CANCELLATION: 'Cancellation',
+        BOOKING: 'Booking & payment',
+        GENERAL: 'General',
+      },
     },
   },
   enquiryCta: {
