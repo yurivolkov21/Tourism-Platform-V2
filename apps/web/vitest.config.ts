@@ -1,8 +1,9 @@
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
 
-// Unit test cho apps/web (mock data, helper thuần) — không cần jsdom.
-// Alias khớp tsconfig paths vì Vitest không tự đọc "paths".
+// Hai project, MỘT runner (ADR-0014): logic thuần chạy môi trường `node` cho
+// nhanh, test component chạy `jsdom`. Alias khớp tsconfig paths vì Vitest
+// không tự đọc "paths".
 export default defineConfig({
   resolve: {
     alias: {
@@ -10,6 +11,24 @@ export default defineConfig({
     },
   },
   test: {
-    environment: 'node',
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'node',
+          environment: 'node',
+          include: ['src/lib/**/*.spec.ts', 'src/mocks/**/*.spec.ts'],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: 'dom',
+          environment: 'jsdom',
+          include: ['src/components/**/*.spec.tsx'],
+          setupFiles: ['./vitest.setup.ts'],
+        },
+      },
+    ],
   },
 });

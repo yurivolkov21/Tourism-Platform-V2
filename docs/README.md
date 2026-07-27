@@ -33,6 +33,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0011](adr/0011-p3b-web-architecture.md) | Kiến trúc web P3b — Next.js 16 + React 19 + Tailwind v4; shared UI `libs/shared/ui` (web+admin), custom-in-app; Biome-không-ESLint |
 | [0012](adr/0012-typeset-typography.md) | Typography nội dung render — vendor shadcn/typeset (lõi nguyên bản + 3 preset docs/chat/reading) trong `@tourism/ui`, thay `@tailwindcss/typography` của Nexora |
 | [0013](adr/0013-wuling-theme-tokens.md) | Theme Wuling + region tint — giữ pipeline Style Dictionary P0, thay giá trị brand, lớp `--region-*` (north/central/south), wire ui vào tokens.css, font Be Vietnam Pro + Lora |
+| [0014](adr/0014-web-component-testing.md) | Test tầng component `apps/web` — Vitest 2 project (node + jsdom) + Testing Library, ranh giới với test logic thuần, ghim 1 bản React cho workspace |
 
 ## Specs — theo phase
 

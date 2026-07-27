@@ -34,6 +34,18 @@ minimumReleaseAgeExclude:
 # 2.0.5 không có backport 1.x): giữ nguyên ghim 1.x, alert được dismiss có ghi
 # lý do — code path không chạm tới (dev-tooling, WSL/Linux, không serve-static).
 overrides:
+  # 27/07 — MỘT bản React cho cả workspace. `apps/web` ghim cứng 19.2.4 (khớp
+  # Next 16.2.11), còn `libs/shared/ui` khai peer '^19' nên pnpm tự cài thêm
+  # 19.2.7 và `@base-ui/react` bám vào bản đó → store có HAI React.
+  # Next bundler tự dedupe nên dev/build không lộ ra, nhưng Vitest thì lộ ngay:
+  # react-dom 19.2.4 render component gọi hook của react 19.2.7 → dispatcher
+  # null, mọi component Base UI ném "Cannot read properties of null".
+  # Đã đo: `resolve.dedupe` KHÔNG chữa (store cô lập của pnpm), alias trong
+  # vitest.config cũng KHÔNG (Vitest externalize node_modules nên Node resolve
+  # thẳng, không qua alias). Ghim ở đây là chỗ duy nhất chữa tận gốc.
+  # Ghim ĐÚNG bản apps/web đang chạy — đây là hạ xuống cho khớp, KHÔNG nâng cấp.
+  react: '19.2.4'
+  react-dom: '19.2.4'
   '@hono/node-server': '^1.19.13'
   # Alert #6 (high, libvips CVE 2026-33327/28 + 35590/91): sharp là optional dep
   # của Next (image optimization, CÓ chạy ở prod) nhưng Next khai báo ^0.34 —
