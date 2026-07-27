@@ -2,6 +2,60 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-27 — Thân trang 404 + nền lưới động Contact (thẳng `main`, `e34de29`·`55c3c17`)
+
+Hai chỉnh sửa giao diện nhỏ, làm thẳng trên `main` vì không đụng contract nào.
+
+**Thân trang 404** — user hỏi vì sao 404 có khoảng trắng trước footer. Đo ra:
+khoảng đó (`mt-32` của footer) có ở **cả 7 trang**, nhưng chỉ 404 mới lộ, vì
+nền tối của nó do các lớp `absolute` vẽ nên dừng đúng ở biên section. User chốt
+KHÔNG gỡ khoảng trắng (đó là nhịp chung của site) mà thêm hẳn một section thân
+trang nền sáng hoà vào đó.
+- `not-found-body.tsx` — hai cột: chữ bên trái, số 404 khổ lớn bên phải. Số
+  dựng kiểu **in lệch**: một lớp đặc `text-primary`, sau lưng một lớp bóng
+  cùng chữ tông nhạt lệch xuống-phải. Motion: bóng "đặt xuống" trước, lớp đặc
+  đè lên sau, các dòng cột trái trồi lên lệch pha.
+- Copy dẫn đường bằng **link nhúng trong câu** (lối Mailchimp) thay vì hàng nút
+  trống, và **chỉ trỏ trang có thật** — /blog · /about · /faq. `/tours` và
+  `/destinations` chưa dựng; gợi ý sang đó là đẩy người đang lạc vào một 404 nữa.
+- `py-24` chứ không `py-32`: cộng `mt-32` của footer ra 224px, khớp nhịp 208px
+  các trang khác.
+- `lib/blog.ts`: thêm `latestPosts(posts, count)` + 5 test; `homeTeaserPosts`
+  nay định nghĩa qua nó.
+- **Ba bản bị user loại giữa chừng** (ghi lại để không thử lại): khối gợi ý bài
+  viết ("không phải ý mình") · số 404 nét viền rỗng · ba lớp viền lồng nhau. Nút
+  "Report a broken link" cũng bị bỏ — **mình không có tính năng nhận báo link
+  hỏng**, để nút đó là hứa một thứ không tồn tại.
+- Bài học quy trình user nhắc thẳng: *"mới nhìn vào cái đầu tiên là chốt sẵn
+  luôn"* — lần đầu tôi lấy ngay block đầu của shadcn/studio. Làm lại: khảo sát
+  cả 5 block + Mailchimp/Notion/Framer/GitHub rồi so 5 phương án mới chốt.
+
+**Nền lưới động `#visit` ("Two doors, always open.")** — thay `TopoPattern
+variant="grid"` bằng **Animated Grid Pattern** vendor từ MagicUI. Không thêm
+dependency npm (chỉ cần `motion`, `apps/web` đã có). Đặt ở
+`apps/web/src/components/motion/` **chứ không** `@tourism/ui`: gói dùng chung
+không khai `motion` (component MagicUI đã có trong đó — `animated-theme-toggler`
+— chạy bằng View Transitions API), và mọi component dùng motion đều nằm ở đây.
+Ba chỗ vá so với bản gốc, đều là thứ bản gốc thiếu:
+- bỏ mặc định `fill-gray-400/30` (hex cứng, vi phạm luật tokens-only) — màu do
+  caller đặt bằng token;
+- tự kiểm `prefers-reduced-motion` — `MotionConfig reducedMotion="user"` của
+  mình **chỉ tắt transform/layout, KHÔNG tắt opacity**, nên với bản gốc người
+  xin giảm chuyển động vẫn bị lưới nhấp nháy;
+- `IntersectionObserver` dừng hoạt hình khi cuộn khỏi khung nhìn; bản gốc chạy
+  vô hạn, mỗi ô `setState` liên tục kể cả khi không ai nhìn.
+
+Đo bằng trình duyệt thật thay vì tin lời hứa: số `<rect>` trong `#visit` là
+**28** khi trong khung nhìn, **2** khi cuộn khỏi, **2** với `reducedMotion:
+'reduce'` (2 = chỉ còn lưới nền tĩnh). `TopoPattern` vẫn dùng ở 5 chỗ khác nên
+giữ nguyên.
+
+Dọn trước khi push: 6 commit thử nghiệm trung gian squash còn 2 theo đúng ranh
+giới tính năng (diff cây so HEAD cũ = 0 ngoài 1 docstring sửa có chủ ý — docstring
+`latestPosts` còn viện dẫn khối gợi ý đã bị gỡ).
+Tests after: gate xanh 18/18 — 76 unit web + 5 ui; không lỗi runtime ở
+`/contact` lẫn `/not-found`, kiểm cả desktop 1440 và mobile 390.
+
 ## 2026-07-27 — Vá 3 alert Dependabot (thẳng `main`, `f01a58f`)
 
 Ba alert bắc cầu, không cái nào là dependency trực tiếp của mình.
