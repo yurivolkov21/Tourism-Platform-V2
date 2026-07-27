@@ -34,7 +34,7 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
         <NavigationMenuItem>
           <NavigationMenuTrigger className={triggerClassName}>Destinations</NavigationMenuTrigger>
           <NavigationMenuContent>
-            <div className="grid w-[34rem] grid-cols-3 gap-x-4 gap-y-1 p-1">
+            <div className="grid w-[42rem] grid-cols-3 gap-x-4 gap-y-1 p-1">
               {REGIONS.map((region) => (
                 <div key={region.key} data-region={region.key}>
                   <p className="flex items-center gap-2 px-2 pt-2 pb-1">
@@ -45,16 +45,30 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
                     />
                     <span className="font-medium text-sm">{region.name}</span>
                   </p>
-                  <p className="px-2 pb-2 text-xs text-muted-foreground">
+                  {/* Cố định 2 dòng: "River markets & island dusk" chỉ dài 1
+                      dòng trong khi hai vùng kia 2 dòng, làm cột Nam thụt lên
+                      và ba cột lệch nhau. Cùng thủ thuật min-h-[Nlh] như hợp
+                      đồng số dòng của card tour.
+                      KHÔNG đặt padding-bottom ở đây: box-sizing là border-box
+                      nên đệm bị TRỪ vào min-height, và ô 1 dòng vẫn thấp hơn ô
+                      2 dòng đúng bằng phần đệm. Khoảng cách chuyển xuống <ul>. */}
+                  <p className="min-h-[2lh] px-2 text-xs text-muted-foreground">
                     {REGION_HINTS[region.key]}
                   </p>
-                  <ul>
+                  <ul className="mt-2">
                     {DESTINATIONS.filter((dest) => dest.region === region.key).map((dest) => (
                       <li key={dest.slug}>
                         <NavigationMenuLink render={<a href={`/tours?destination=${dest.slug}`} />}>
                           <span className="flex flex-col gap-0.5">
                             <span className="text-sm">{dest.name}</span>
-                            <span className="text-xs text-muted-foreground">{dest.blurb}</span>
+                            {/* MỘT dòng cứng: "Coast rides & Golden Bridge"
+                                từng xuống 2 dòng làm mọi mục phía dưới trong
+                                cột đó tụt xuống, ba cột lệch nhau. Menu nới
+                                rộng 34→42rem để blurb dài nhất vẫn đủ chỗ;
+                                line-clamp là chốt chặn cho dữ liệu tương lai. */}
+                            <span className="line-clamp-1 text-xs text-muted-foreground">
+                              {dest.blurb}
+                            </span>
                           </span>
                         </NavigationMenuLink>
                       </li>

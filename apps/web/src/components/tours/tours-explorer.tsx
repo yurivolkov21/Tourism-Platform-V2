@@ -327,7 +327,7 @@ export function ToursExplorer({
                 không có max-h thì sidebar đẩy chiều cao cả trang và phải cuộn
                 qua hết bộ lọc mới tới kết quả. pr-1/-mr-1 chừa chỗ thanh cuộn
                 mà không thụt nội dung. */}
-            <div className="lg:sticky lg:top-28 lg:-mr-1 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-1">
+            <div className="scrollbar-slim lg:sticky lg:top-28 lg:max-h-[calc(100vh-9rem)] lg:overflow-y-auto lg:pr-3">
               {renderFilters('bg-background')}
             </div>
           </aside>
