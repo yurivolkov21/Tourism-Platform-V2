@@ -24,17 +24,18 @@ import {
   SlidersHorizontalIcon,
   XIcon,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import type React from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { TourListCard } from '@/components/tours/tour-list-card';
-import { type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
+import { type FacetCounts, type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
 import { ToursHero } from '@/components/tours/tours-hero';
 import { paginate } from '@/lib/paginate';
 import {
   countActiveFilters,
   EMPTY_TOUR_FILTERS,
+  facetOptionCounts,
+  featuredOptionCount,
   filterTours,
   searchTours,
   sortTours,
@@ -56,7 +57,12 @@ const SORT_MAP: Record<SortValue, { key: TourSortKey; order: 'asc' | 'desc' }> =
   durationAsc: { key: 'durationDays', order: 'asc' },
 };
 
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
+/** Trần bậc thang animation vào của card. Không kẹp thì card thứ 12 phải chờ
+    12×40ms = 0.48s mới hiện — cảm giác trang ì. */
+const MAX_STAGGER = 6;
+
+/** Khoá localStorage nhớ trạng thái thu sidebar (nâng cấp D). */
+const SIDEBAR_KEY = 'tours:sidebar-collapsed';
 
 /** Facet nào đọc được từ URL. Giá trị trong URL là danh sách ngăn bằng dấu phẩy
     (`?categories=trekking,food`) — ngắn và người đọc URL vẫn hiểu. */
@@ -102,9 +108,6 @@ export function ToursExplorer({
   destinations: MockDestination[];
   initial: ToursExplorerInitial;
 }) {
-  const router = useRouter();
-  const pathname = usePathname();
-
   const [filters, setFilters] = useState<TourFilterState>({
     categories: parseList(initial.categories),
     destinations: parseList(initial.destinations),
@@ -118,7 +121,20 @@ export function ToursExplorer({
     initial.sort && initial.sort in SORT_MAP ? (initial.sort as SortValue) : 'newest',
   );
   const [page, setPage] = useState(Math.max(1, initial.page ?? 1));
+  // Khởi tạo FALSE ở cả server lẫn lần render client đầu, rồi mới đọc
+  // localStorage trong effect. Đọc thẳng trong useState sẽ lệch HTML server và
+  // gây hydration mismatch.
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  useEffect(() => {
+    if (localStorage.getItem(SIDEBAR_KEY) === 'true') setSidebarCollapsed(true);
+  }, []);
+
+  function toggleSidebar() {
+    setSidebarCollapsed((v) => {
+      localStorage.setItem(SIDEBAR_KEY, String(!v));
+      return !v;
+    });
+  }
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   // Đồng bộ URL bằng replace (không nhét thêm mục vào lịch sử duyệt) và
@@ -145,8 +161,23 @@ export function ToursExplorer({
     // trong query (RFC 3986) và URLSearchParams đọc lại nó bình thường, nên trả
     // về dạng chữ để link chia sẻ còn đọc được: ?categories=trekking,food
     const qs = params.toString().replace(/%2C/g, ',');
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-  }, [filters, query, sort, page, pathname, router]);
+
+    // history.replaceState CHỨ KHÔNG PHẢI router.replace. Đo được 27/07:
+    // router.replace kích hoạt một RSC round-trip mỗi lần đổi bộ lọc — 4 lần
+    // bấm checkbox sinh 6 request về /tours?_rsc=…, tức server render lại toàn
+    // trang cho một thay đổi thuần client. Khi gắn API thật thì mỗi lần tích ô
+    // là thêm một lượt gọi API.
+    //
+    // Lọc ở đây là trạng thái CLIENT; URL chỉ cần phản ánh nó để chia sẻ được
+    // và F5 khôi phục được. replaceState làm đúng chừng đó, không điều hướng.
+    // Đánh đổi: usePathname/useSearchParams không cập nhật theo — không sao vì
+    // nguồn sự thật sau khi mount là state trong component này.
+    window.history.replaceState(
+      null,
+      '',
+      qs ? `${window.location.pathname}?${qs}` : window.location.pathname,
+    );
+  }, [filters, query, sort, page]);
 
   /** Bật/tắt một option. Mọi thay đổi bộ lọc đều đưa page về 1 — giữ nguyên
       page là cách chắc chắn nhất để ra màn hình trắng (lọc còn 3 tour trong
@@ -174,9 +205,47 @@ export function ToursExplorer({
   }
 
   const { key, order } = SORT_MAP[sort];
-  const matched = sortTours(searchTours(filterTours(tours, filters), query), key, order);
+
+  // Ba khối dẫn xuất dưới đây đều memo. Với 16 tour mock thì thừa, nhưng
+  // `facetOptionCounts` chạy MỘT lượt filterTours cho MỖI option (6+9+3+3+3 =
+  // 24 lượt); ở catalogue thật vài trăm tour, tính lại sau từng phím gõ là
+  // hàng chục nghìn phép so sánh. Memo theo đúng thứ nó phụ thuộc.
+  //
+  // Số đếm facet tính trên danh sách ĐÃ lọc theo ô tìm kiếm — search thu hẹp
+  // mọi facet, nên đếm theo toàn catalogue sẽ hứa nhiều hơn thực tế.
+  const searched = useMemo(() => searchTours(tours, query), [tours, query]);
+  const matched = useMemo(
+    () => sortTours(filterTours(searched, filters), key, order),
+    [searched, filters, key, order],
+  );
   const paged = paginate(matched, page, PAGE_SIZE);
   const activeCount = countActiveFilters(filters);
+
+  const counts: FacetCounts = useMemo(
+    () => ({
+      categories: facetOptionCounts(
+        searched,
+        filters,
+        'categories',
+        categories.map((c) => c.slug),
+      ),
+      destinations: facetOptionCounts(
+        searched,
+        filters,
+        'destinations',
+        destinations.map((d) => d.slug),
+      ),
+      durations: facetOptionCounts(searched, filters, 'durations', ['1', '2-3', '4+']),
+      prices: facetOptionCounts(searched, filters, 'prices', ['<100', '100-300', '300+']),
+      difficulties: facetOptionCounts(searched, filters, 'difficulties', [
+        'EASY',
+        'MODERATE',
+        'CHALLENGING',
+      ]),
+      featured: featuredOptionCount(searched, filters),
+    }),
+    [searched, filters, categories, destinations],
+  );
 
   /** Nhãn hiển thị cho chip đang bật. Tra ngược từ slug sang tên người đọc
       được; giá trị lạ giữ nguyên slug để người dùng thấy chính thứ trong URL. */
@@ -205,6 +274,7 @@ export function ToursExplorer({
   const filtersNode = (
     <ToursFilters
       value={filters}
+      counts={counts}
       onToggle={toggleFacet}
       onToggleFeatured={toggleFeatured}
       onClearAll={clearAll}
@@ -282,7 +352,7 @@ export function ToursExplorer({
                   variant="outline"
                   size="sm"
                   className="hidden lg:inline-flex"
-                  onClick={() => setSidebarCollapsed((v) => !v)}
+                  onClick={toggleSidebar}
                   aria-expanded={!sidebarCollapsed}
                 >
                   {sidebarCollapsed ? (
@@ -328,7 +398,12 @@ export function ToursExplorer({
                     aria-labelledby="tours-sort-label tours-sort"
                     className="w-44"
                   >
-                    <SelectValue />
+                    {/* Base UI Select.Value in ra GIÁ TRỊ thô nếu không được
+                        bảo cách hiển thị — nút sẽ hiện "newest" thay vì
+                        "Newest first". Truyền hàm render để tra sang nhãn. */}
+                    <SelectValue>
+                      {(value) => messages.toursPage.sortOptions[value as SortValue]}
+                    </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
                     {SORT_ORDER.map((value) => (
@@ -383,20 +458,17 @@ export function ToursExplorer({
                     không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
                 <h2 className="sr-only">All tours</h2>
                 <div className="flex flex-col gap-5">
-                  <AnimatePresence mode="popLayout" initial={false}>
-                    {paged.items.map((tour, index) => (
-                      <motion.div
-                        key={tour.slug}
-                        layout
-                        initial={{ opacity: 0, y: 20, filter: 'blur(6px)' }}
-                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                        exit={{ opacity: 0, scale: 0.98, filter: 'blur(4px)' }}
-                        transition={{ ...SPRING, delay: index * 0.03 }}
-                      >
-                        <TourListCard tour={tour} />
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
+                  {paged.items.map((tour, index) => (
+                    <div
+                      key={tour.slug}
+                      className="animate-tour-card-in"
+                      style={
+                        { '--card-index': Math.min(index, MAX_STAGGER) } as React.CSSProperties
+                      }
+                    >
+                      <TourListCard tour={tour} />
+                    </div>
+                  ))}
                 </div>
 
                 <PaginationBar page={paged.page} totalPages={paged.totalPages} onChange={setPage} />

@@ -109,6 +109,44 @@ export function filterTours<T extends MockTourCard>(
   });
 }
 
+/** Khoá của các facet dạng mảng — `featured` không nằm ở đây vì nó là boolean. */
+export type ArrayFacetKey = 'categories' | 'destinations' | 'durations' | 'prices' | 'difficulties';
+
+/**
+ * Số kết quả mỗi option SẼ cho, để hiện cạnh nhãn và làm mờ option ra 0.
+ * Đây là thứ ngăn ngõ cụt "bấm thêm một ô rồi trắng trang".
+ *
+ * Quy tắc then chốt — đếm cho facet F thì **bỏ qua lựa chọn hiện tại của chính
+ * F**, chỉ áp các facet khác. Vì trong cùng facet là OR: đang chọn "Trekking"
+ * mà đếm "Food" theo cả state thì ra 0 (không tour nào vừa trekking vừa food),
+ * và người dùng tưởng Food hỏng. Đúng ra Food phải hiện số tour food thật, vì
+ * bấm vào là THÊM chứ không phải giao.
+ *
+ * `tours` truyền vào nên là danh sách ĐÃ lọc theo ô tìm kiếm — search thu hẹp
+ * mọi facet.
+ */
+export function facetOptionCounts<T extends MockTourCard>(
+  tours: readonly T[],
+  state: TourFilterState,
+  facet: ArrayFacetKey,
+  options: readonly string[],
+): Record<string, number> {
+  const base = { ...state, [facet]: [] } as TourFilterState;
+  const counts: Record<string, number> = {};
+  for (const option of options) {
+    counts[option] = filterTours(tours, { ...base, [facet]: [option] }).length;
+  }
+  return counts;
+}
+
+/** Số tour featured còn lại theo các facet khác đang bật — cho ô "Featured trips". */
+export function featuredOptionCount<T extends MockTourCard>(
+  tours: readonly T[],
+  state: TourFilterState,
+): number {
+  return filterTours(tours, { ...state, featured: true }).length;
+}
+
 /** Số option đang bật — cho huy hiệu trên nút "Filters" và nút thu/mở sidebar. */
 export function countActiveFilters(state: TourFilterState): number {
   return (

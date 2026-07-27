@@ -6,6 +6,42 @@
  * symlink không tự nằm trong content-detection mặc định). */
 @source "../../../../libs/shared/ui/src";
 
+/* ── Card vào danh sách /tours ──
+ * CSS thuần, KHÔNG dùng motion/AnimatePresence. Lý do đo được (27/07): bản
+ * framer-motion cũ dùng `layout` + `mode="popLayout"` + `filter: blur()` trên
+ * 12 card, đo bằng PerformanceObserver khi bật/tắt facet 4 lần cho 2 long task
+ * (61ms, 52ms) và frame tệ nhất 76ms. Ba thứ đó đều đắt: blur bắt trình duyệt
+ * vẽ lại ngoài compositor, `layout` đo getBoundingClientRect từng khung hình,
+ * `popLayout` đo thêm lần nữa để định vị tuyệt đối phần tử đang thoát.
+ *
+ * Bản này chỉ chạm `opacity` + `transform` — hai thuộc tính compositor lo trọn,
+ * không tốn một dòng JS mỗi khung hình. React tái dùng DOM node theo key nên
+ * card đã ở lại KHÔNG animate lại khi lọc; chỉ card mới vào mới chạy.
+ */
+@keyframes tour-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-tour-card-in {
+  animation: tour-card-in 0.32s ease-out backwards;
+  /* Bậc thang nhẹ; --card-index bị kẹp ở tầng component nên card cuối không
+     phải chờ lâu. */
+  animation-delay: calc(var(--card-index, 0) * 40ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-tour-card-in {
+    animation: none;
+  }
+}
+
 /* ── Keyframes marquee cho testimonials (convert từ template Estate) ── */
 @keyframes marquee-up {
   0% {

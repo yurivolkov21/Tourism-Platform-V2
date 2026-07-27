@@ -16,6 +16,7 @@ import {
   departureStatus,
   discountPercent,
   durationBucket,
+  facetOptionCounts,
   filterTours,
   formatDateRange,
   formatMoney,
@@ -157,6 +158,49 @@ describe('countActiveFilters', () => {
         featured: true,
       }),
     ).toBe(4);
+  });
+});
+
+describe('facetOptionCounts', () => {
+  it('không có facet nào bật thì đếm bằng số tour thật của từng option', () => {
+    const counts = facetOptionCounts(TOURS, EMPTY_FILTERS, 'categories', ['trekking', 'food']);
+    expect(counts.trekking).toBe(TOURS.filter((t) => t.category.slug === 'trekking').length);
+    expect(counts.food).toBe(TOURS.filter((t) => t.category.slug === 'food').length);
+  });
+
+  it('đếm cho CHÍNH facet đang bật thì BỎ QUA lựa chọn hiện tại của facet đó', () => {
+    // Đã chọn Trekking. Trong cùng facet là OR nên "Food" phải hiện số tour
+    // food thật, KHÔNG phải 0 (giao của trekking và food).
+    const state = { ...EMPTY_FILTERS, categories: ['trekking'] };
+    const counts = facetOptionCounts(TOURS, state, 'categories', ['food']);
+    expect(counts.food).toBe(TOURS.filter((t) => t.category.slug === 'food').length);
+  });
+
+  it('đếm cho facet KHÁC thì có tính các facet đang bật', () => {
+    // Đã chọn category=trekking; đếm theo nhóm thời lượng phải thu hẹp trong
+    // phạm vi tour trekking.
+    const state = { ...EMPTY_FILTERS, categories: ['trekking'] };
+    const counts = facetOptionCounts(TOURS, state, 'durations', ['1', '2-3', '4+']);
+    const trekking = TOURS.filter((t) => t.category.slug === 'trekking');
+    expect(counts['1']).toBe(0);
+    expect(counts['2-3'] + counts['4+']).toBe(trekking.length);
+  });
+
+  it('option không ra kết quả nào cho 0 — đó là tín hiệu để làm mờ nó', () => {
+    const state = { ...EMPTY_FILTERS, categories: ['trekking'] };
+    const counts = facetOptionCounts(TOURS, state, 'destinations', ['phu-quoc']);
+    expect(counts['phu-quoc']).toBe(0);
+  });
+
+  it('featured đang bật cũng được tính vào phép đếm của facet khác', () => {
+    const withFeatured = facetOptionCounts(
+      TOURS,
+      { ...EMPTY_FILTERS, featured: true },
+      'categories',
+      ['cruises'],
+    );
+    const without = facetOptionCounts(TOURS, EMPTY_FILTERS, 'categories', ['cruises']);
+    expect(withFeatured.cruises).toBeLessThanOrEqual(without.cruises ?? 0);
   });
 });
 
