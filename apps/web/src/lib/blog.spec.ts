@@ -89,10 +89,13 @@ describe('relatedPosts', () => {
     expect(result[0]?.slug).toBe('c');
   });
 
-  it('thiếu bài cùng chuyên mục thì bù bằng bài mới nhất', () => {
+  it('thiếu bài cùng chuyên mục thì bù bằng bài mới nhất, ĐÚNG thứ tự mới-nhất-trước', () => {
+    // 'b' (Nature) không có bài cùng chuyên mục nào khác → toàn bộ kết quả là
+    // filler, phải xếp mới-nhất-trước: c (2026-02-05) rồi a (2026-01-10).
+    // Assert thứ tự tường minh — chỉ canh độ dài thì thêm .reverse() vào phần
+    // filler trong relatedPosts() vẫn xanh (lỗ hổng reviewer chỉ ra).
     const result = relatedPosts(POSTS, 'b', 2);
-    expect(result).toHaveLength(2);
-    expect(result.map((p) => p.slug)).not.toContain('b');
+    expect(result.map((p) => p.slug)).toEqual(['c', 'a']);
   });
 
   it('không trả quá limit', () => {

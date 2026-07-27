@@ -100,29 +100,34 @@ export function BlogExplorer({
           </button>
         </div>
       ) : (
-        <div className="mt-8 grid grid-cols-1 gap-6 [&:has(a:hover)_a:not(:hover)]:opacity-55 [&:has(a:hover)_a:not(:hover)]:grayscale motion-safe:[&_a]:transition-[opacity,filter] motion-safe:[&_a]:duration-300 sm:grid-cols-2 lg:grid-cols-3">
-          <AnimatePresence mode="popLayout" initial={false}>
-            {visible.map((post, index) => (
-              <motion.div
-                key={post.slug}
-                layout
-                // Vào bằng blur → nét (ý tưởng "Blur Fade" của MagicUI, dựng
-                // thẳng bằng motion/react đang có, khỏi vendor thêm component):
-                // ảnh hiện dần như phim đang tráng — hợp một tạp chí du ký.
-                // CHÚ Ý: blur đặt trên motion.div này, còn grayscale của hiệu
-                // ứng chroma đặt trên thẻ <a> bên trong — hai phần tử khác
-                // nhau, nếu dồn cùng một phần tử thì chúng ghi đè `filter`.
-                initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
-                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
-                exit={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
-                transition={{ ...SPRING, delay: index * 0.04 }}
-                className={!filtering && index === 0 ? 'sm:col-span-2' : ''}
-              >
-                <PostCard post={post} featured={!filtering && index === 0} />
-              </motion.div>
-            ))}
-          </AnimatePresence>
-        </div>
+        <>
+          {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình — /blog
+              trước đây nhảy thẳng H1 → H3 (tiêu đề card), không có H2 nào. */}
+          <h2 className="sr-only">All stories</h2>
+          <div className="mt-8 grid grid-cols-1 gap-6 [&:has(a:hover)_a:not(:hover)]:opacity-55 [&:has(a:hover)_a:not(:hover)]:grayscale motion-safe:[&_a]:transition-[opacity,filter] motion-safe:[&_a]:duration-300 sm:grid-cols-2 lg:grid-cols-3">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {visible.map((post, index) => (
+                <motion.div
+                  key={post.slug}
+                  layout
+                  // Vào bằng blur → nét (ý tưởng "Blur Fade" của MagicUI, dựng
+                  // thẳng bằng motion/react đang có, khỏi vendor thêm component):
+                  // ảnh hiện dần như phim đang tráng — hợp một tạp chí du ký.
+                  // CHÚ Ý: blur đặt trên motion.div này, còn grayscale của hiệu
+                  // ứng chroma đặt trên thẻ <a> bên trong — hai phần tử khác
+                  // nhau, nếu dồn cùng một phần tử thì chúng ghi đè `filter`.
+                  initial={{ opacity: 0, y: 24, filter: 'blur(6px)' }}
+                  animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                  exit={{ opacity: 0, scale: 0.96, filter: 'blur(4px)' }}
+                  transition={{ ...SPRING, delay: index * 0.04 }}
+                  className={!filtering && index === 0 ? 'sm:col-span-2' : ''}
+                >
+                  <PostCard post={post} featured={!filtering && index === 0} />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
+        </>
       )}
     </div>
   );

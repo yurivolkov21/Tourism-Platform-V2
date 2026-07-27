@@ -9,6 +9,7 @@ import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
 import { Reveal } from '@/components/motion/reveal';
 import { adjacentPosts, relatedPosts } from '@/lib/blog';
+import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
 import { JOURNAL_POSTS } from '@/mocks/journal';
@@ -56,7 +57,25 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     datePublished: post.date,
     ...(post.updated ? { dateModified: post.updated } : {}),
     author: { '@type': 'Person', name: post.author },
-    image: post.image,
+    // Schema.org cần URL tuyệt đối cho ảnh, không phải đường dẫn tương đối.
+    image: absoluteUrl(post.image),
+  };
+
+  // BreadcrumbList 3 cấp khớp breadcrumb đang hiển thị ở PostHero:
+  // Home → Journal → tiêu đề bài.
+  const breadcrumbJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+      { '@type': 'ListItem', position: 2, name: 'Journal', item: absoluteUrl('/blog') },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: post.title,
+        item: absoluteUrl(`/blog/${post.slug}`),
+      },
+    ],
   };
 
   return (
@@ -68,6 +87,13 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
         }}
       />
+      <script
+        type="application/ld+json"
+        // biome-ignore lint/security/noDangerouslySetInnerHtml: nội dung tĩnh của mình, đã escape `<`
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd).replace(/</g, '\\u003c'),
+        }}
+      />
       <ReadingProgress />
       <PostHero post={post} />
 
@@ -75,10 +101,12 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <div className="mx-auto flex max-w-7xl flex-col lg:grid lg:grid-cols-[minmax(0,1fr)_14rem] lg:gap-16">
           <div className="min-w-0 max-w-[68ch]">
             <Typeset preset="reading" className="text-muted-foreground">
-              <p className="lead">{post.excerpt}</p>
+              {/* Câu mở đầu to hơn thân bài thật sự (token Tailwind text-lg) —
+                  class `.lead` cũ không có rule nào định nghĩa, chỉ nằm chết */}
+              <p className="text-lg">{post.excerpt}</p>
             </Typeset>
 
-            <div className="mt-10 divide-y divide-border border-t border-border">
+            <div className="mt-12 divide-y divide-border border-t border-border">
               {post.sections.map((section, i) => (
                 <section
                   key={section.heading}

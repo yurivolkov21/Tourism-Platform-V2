@@ -33,8 +33,11 @@ export function PostCard({
       <div
         className={`relative mb-5 overflow-hidden rounded-2xl ${featured ? 'h-56 md:h-96' : 'h-56'}`}
       >
+        {/* Trợ năng: KHÔNG dùng post.title làm label (trùng y hệt <h3> ngay
+            dưới, trình đọc màn hình đọc tiêu đề bài hai lần liên tiếp) —
+            cùng lỗi đã sửa ở PostHero, mô tả theo chuyên mục thay vào đó. */}
         <ImagePlaceholder
-          label={post.title}
+          label={`${post.category} · story photo`}
           className="h-full w-full transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-linear-to-t from-overlay/60 to-transparent" />

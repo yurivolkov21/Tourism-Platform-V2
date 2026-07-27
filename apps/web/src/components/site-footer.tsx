@@ -151,10 +151,10 @@ export function SiteFooter() {
           viewport={{ once: true }}
           transition={{ ...SPRING, delay: 0.2 }}
         >
-          <p className="text-xs text-muted-foreground/70">
-            © 2026 tourism. All rights reserved. Photos: Wikimedia Commons contributors &amp;
-            Unsplash.
-          </p>
+          {/* Ghi công ảnh tạm bỏ khỏi UI — toàn site đang dùng ImagePlaceholder
+              (static-first), ghi công cho ảnh không hiển thị là sai. Thêm lại
+              cùng lúc với ảnh thật (cùng cách đã làm ở auth-screen.tsx). */}
+          <p className="text-xs text-muted-foreground/70">© 2026 tourism. All rights reserved.</p>
 
           <div className="flex items-center gap-3">
             {SOCIALS.map(({ Icon, label }) => (

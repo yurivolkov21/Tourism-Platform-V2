@@ -23,8 +23,12 @@ export function TourCard({ tour }: { tour: MockTour }) {
   return (
     <Card className="group pt-0 transition-shadow hover:shadow-(--shadow-dropdown)">
       <div className="relative">
+        {/* Trợ năng: cùng lỗi đã sửa ở PostHero/PostCard — KHÔNG dùng
+            tour.title làm label vì trùng y hệt <CardTitle> ngay dưới, trình
+            đọc màn hình đọc tiêu đề hai lần. Dùng tour.place (vùng · hoạt
+            động) làm mô tả riêng cho ảnh. */}
         <ImagePlaceholder
-          label={tour.title}
+          label={tour.place}
           className="aspect-(--aspect-card) w-full transition-transform duration-300 group-hover:scale-[1.03]"
         />
         {tour.flag ? (

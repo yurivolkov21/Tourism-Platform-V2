@@ -23,9 +23,17 @@ export function ShareRow({ title }: { title: string }) {
   }, []);
 
   const copy = async () => {
-    await navigator.clipboard.writeText(window.location.href);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    // Trên origin không bảo mật (vd mở bằng IP LAN từ điện thoại),
+    // navigator.clipboard là undefined → gọi thẳng ném TypeError, promise
+    // reject không ai bắt. Bọc try/catch, thất bại thì đừng bật cờ "Copied".
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Im lặng bỏ qua — nút vẫn hiện "Copy link", người dùng thử lại hoặc
+      // tự copy URL từ thanh địa chỉ.
+    }
   };
 
   return (
@@ -44,7 +52,9 @@ export function ShareRow({ title }: { title: string }) {
         ) : (
           <LinkIcon className="size-4" aria-hidden="true" />
         )}
-        {copied ? 'Copied' : 'Copy link'}
+        {/* aria-live: trình đọc màn hình cần được báo khi trạng thái đổi
+            thành "Copied" — nút không tự nhiên nhận focus lại sau click */}
+        <span aria-live="polite">{copied ? 'Copied' : 'Copy link'}</span>
       </button>
 
       <a

@@ -39,8 +39,11 @@ export function relatedPosts(
 ): MockJournalPost[] {
   const sorted = sortPostsByDate(posts).filter((post) => post.slug !== slug);
   const current = posts.find((post) => post.slug === slug);
+  // So sánh tường minh theo chuyên mục (thay vì reference-identity qua
+  // `sameCategory.includes(post)`) — cùng kết quả nhưng không còn phụ thuộc
+  // ngầm vào việc sameCategory/filler được lọc ra từ CÙNG mảng `sorted`.
   const sameCategory = current ? sorted.filter((post) => post.category === current.category) : [];
-  const filler = sorted.filter((post) => !sameCategory.includes(post));
+  const filler = current ? sorted.filter((post) => post.category !== current.category) : sorted;
   return [...sameCategory, ...filler].slice(0, limit);
 }
 

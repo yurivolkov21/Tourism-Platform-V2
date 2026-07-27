@@ -152,13 +152,16 @@ describe('mock journal', () => {
   });
 
   // Canh đúng lỗi vừa xảy ra (task 3c mục 1): Task 1 nâng mock 3→9 bài làm
-  // Home render tràn 9 card trong lưới md:grid-cols-3 vốn thiết kế cho 3. Test
-  // này canh bất biến ở tầng dữ liệu; nếu ai đó bỏ .slice(0, 3) ở journal.tsx
-  // thì test này KHÔNG đỏ (nó không đọc component) — phần verify HTML thật
-  // (curl vào section#journal) mới bắt được lỗi runtime đó.
-  it('teaser Home chỉ lấy 3 bài mới nhất — lưới Home là 3 cột', () => {
-    const teaser = sortPostsByDate(JOURNAL_POSTS).slice(0, 3);
-    expect(teaser).toHaveLength(3);
-    expect(teaser[0]?.date).toBe('2026-10-02');
+  // Home render tràn 9 card trong lưới md:grid-cols-3 vốn thiết kế cho 3.
+  // Review sau đó chỉ ra bản cũ của test này tự tính lại
+  // `sortPostsByDate(...).slice(0, 3)` rồi assert độ dài 3 — tautology, luôn
+  // đúng bất kể component/hàm thật làm gì (đổi HOME_TEASER_COUNT 3→5 thì test
+  // này vẫn xanh). Phần có giá trị duy nhất là bài mới nhất trong mock đúng
+  // ngày nào — giữ lại đúng phần đó, bỏ phần đếm độ dài vô nghĩa. Việc "lấy
+  // đúng 3 bài" đã có test riêng canh HOME_TEASER_COUNT/homeTeaserPosts ở
+  // lib/blog.spec.ts; verify HTML thật (curl vào section#journal) mới bắt
+  // được lỗi runtime nếu component bỏ .slice().
+  it('bài mới nhất trong mock journal là 2026-10-02', () => {
+    expect(sortPostsByDate(JOURNAL_POSTS)[0]?.date).toBe('2026-10-02');
   });
 });

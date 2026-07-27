@@ -8,6 +8,11 @@ export const metadata: Metadata = {
   title: 'Journal — Tourism',
   description:
     'Notes from the road, written by the local guides who lead our trips — food, packing, seasons, and the places we keep going back to.',
+  // Khai báo feed để trình duyệt/trình đọc feed tự phát hiện được — không thì
+  // /blog/rss.xml tồn tại nhưng không ai tìm ra.
+  alternates: {
+    types: { 'application/rss+xml': '/blog/rss.xml' },
+  },
 };
 
 export default async function BlogIndexPage({
@@ -17,9 +22,11 @@ export default async function BlogIndexPage({
 }) {
   const { tag, q } = await searchParams;
   const categories = postCategories(JOURNAL_POSTS);
-  // Tag lạ chỉ rơi về "All", KHÔNG 404: URL do người dùng gõ tay hoặc link cũ
-  // thì trả danh sách đầy đủ vẫn tử tế hơn trang lỗi.
-  const active = tag && categories.includes(tag) ? tag : undefined;
+  // Truyền tag THÔ xuống BlogExplorer, không lọc theo categories.includes ở
+  // đây: tag lạ (link cũ/gõ tay) phải khớp filterPostsByCategory ra mảng rỗng
+  // → trạng thái rỗng "Nothing here yet", KHÔNG 404 và KHÔNG âm thầm rơi về
+  // "All" (bug trước đây: lọc sạch tag lạ thành undefined làm URL vẫn ghi
+  // ?tag=… nhưng hiện đủ 9 bài với chip "All" sáng).
 
   return (
     <>
@@ -34,7 +41,7 @@ export default async function BlogIndexPage({
           <BlogExplorer
             posts={JOURNAL_POSTS}
             categories={categories}
-            initialTag={active}
+            initialTag={tag}
             initialQuery={q}
           />
         </div>
