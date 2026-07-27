@@ -2,6 +2,16 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@tourism/ui/components/drawer';
 import { Input } from '@tourism/ui/components/input';
 import {
   Select,
@@ -10,20 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@tourism/ui/components/select';
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@tourism/ui/components/sheet';
-import {
-  PanelLeftCloseIcon,
-  PanelLeftOpenIcon,
-  SearchIcon,
-  SlidersHorizontalIcon,
-  XIcon,
-} from 'lucide-react';
+import { SearchIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PaginationBar } from '@/components/tours/pagination-bar';
@@ -60,9 +57,6 @@ const SORT_MAP: Record<SortValue, { key: TourSortKey; order: 'asc' | 'desc' }> =
 /** Trần bậc thang animation vào của card. Không kẹp thì card thứ 12 phải chờ
     12×40ms = 0.48s mới hiện — cảm giác trang ì. */
 const MAX_STAGGER = 6;
-
-/** Khoá localStorage nhớ trạng thái thu sidebar (nâng cấp D). */
-const SIDEBAR_KEY = 'tours:sidebar-collapsed';
 
 /** Facet nào đọc được từ URL. Giá trị trong URL là danh sách ngăn bằng dấu phẩy
     (`?categories=trekking,food`) — ngắn và người đọc URL vẫn hiểu. */
@@ -121,50 +115,14 @@ export function ToursExplorer({
     initial.sort && initial.sort in SORT_MAP ? (initial.sort as SortValue) : 'newest',
   );
   const [page, setPage] = useState(Math.max(1, initial.page ?? 1));
-  // Khởi tạo FALSE ở cả server lẫn lần render client đầu, rồi mới đọc
-  // localStorage trong effect. Đọc thẳng trong useState sẽ lệch HTML server và
-  // gây hydration mismatch.
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  useEffect(() => {
-    if (localStorage.getItem(SIDEBAR_KEY) === 'true') setSidebarCollapsed(true);
-  }, []);
-
-  function toggleSidebar() {
-    setSidebarCollapsed((v) => {
-      localStorage.setItem(SIDEBAR_KEY, String(!v));
-      return !v;
-    });
-  }
   const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // Sidebar còn trong tầm nhìn không. Dùng IntersectionObserver thay vì nghe
-  // sự kiện scroll: trình duyệt tự báo, không tốn một dòng JS mỗi khung hình.
-  // Trên mobile <aside> là `hidden` nên không bao giờ giao nhau → nút Filters
-  // luôn hiện, đúng thứ ta muốn ở đó.
-  const asideRef = useRef<HTMLElement>(null);
-  const [filtersOutOfView, setFiltersOutOfView] = useState(false);
-  /** Sidebar đang hiện nhưng đã cuộn khỏi tầm mắt. Phải loại trường hợp THU
-      sidebar ra: lúc đó <aside> mang class `hidden` nên observer cũng báo
-      "khuất", và nếu dùng thẳng cờ này thì nút "Show filters" tự ẩn mất —
-      người dùng thu sidebar rồi không có cách nào mở lại. */
-  const filtersScrolledAway = filtersOutOfView && !sidebarCollapsed;
-  useEffect(() => {
-    const el = asideRef.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setFiltersOutOfView(!entry?.isIntersecting),
-      { rootMargin: '-120px 0px 0px 0px' },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
 
   // Đồng bộ URL: ghi đè mục hiện tại thay vì thêm mục mới vào lịch sử duyệt,
   // để nút Back đưa người dùng RỜI trang chứ không lùi qua từng lần tích ô.
   const firstRender = useRef(true);
   useEffect(() => {
     // Bỏ qua lần mount đầu: URL lúc đó đã đúng rồi (server render theo chính
-    // nó), replace lại là ghi đè vô ích.
+    // nó), ghi lại là ghi đè vô ích.
     if (firstRender.current) {
       firstRender.current = false;
       return;
@@ -180,20 +138,15 @@ export function ToursExplorer({
     if (sort !== 'newest') params.set('sort', sort);
     if (page > 1) params.set('page', String(page));
     // URLSearchParams mã hoá dấu phẩy thành %2C. Dấu phẩy là sub-delim hợp lệ
-    // trong query (RFC 3986) và URLSearchParams đọc lại nó bình thường, nên trả
-    // về dạng chữ để link chia sẻ còn đọc được: ?categories=trekking,food
+    // trong query (RFC 3986) và URLSearchParams đọc lại được, nên trả về dạng
+    // chữ để link chia sẻ còn đọc được: ?categories=trekking,food
     const qs = params.toString().replace(/%2C/g, ',');
 
     // history.replaceState CHỨ KHÔNG PHẢI router.replace. Đo được 27/07:
     // router.replace kích hoạt một RSC round-trip mỗi lần đổi bộ lọc — 4 lần
-    // bấm checkbox sinh 6 request về /tours?_rsc=…, tức server render lại toàn
-    // trang cho một thay đổi thuần client. Khi gắn API thật thì mỗi lần tích ô
-    // là thêm một lượt gọi API.
-    //
-    // Lọc ở đây là trạng thái CLIENT; URL chỉ cần phản ánh nó để chia sẻ được
-    // và F5 khôi phục được. replaceState làm đúng chừng đó, không điều hướng.
-    // Đánh đổi: usePathname/useSearchParams không cập nhật theo — không sao vì
-    // nguồn sự thật sau khi mount là state trong component này.
+    // bấm sinh 6 request về /tours?_rsc=…, tức server render lại toàn trang
+    // cho một thay đổi thuần client. Khi gắn API thật thì mỗi lần tích ô là
+    // thêm một lượt gọi API.
     window.history.replaceState(
       null,
       '',
@@ -293,23 +246,16 @@ export function ToursExplorer({
     }),
   );
 
-  /** Hai chỗ dùng bộ lọc nằm trên hai nền khác nhau nên phải truyền nền vào,
-      xem comment `surfaceClassName` trong ToursFilters. */
-  function renderFilters(surfaceClassName: string) {
-    return (
-      <ToursFilters
-        surfaceClassName={surfaceClassName}
-        value={filters}
-        counts={counts}
-        onToggle={toggleFacet}
-        onToggleFeatured={toggleFeatured}
-        onClearAll={clearAll}
-        categoryOptions={categories}
-        destinations={destinations}
-        activeCount={activeCount}
-      />
-    );
-  }
+  const filtersNode = (
+    <ToursFilters
+      value={filters}
+      counts={counts}
+      onToggle={toggleFacet}
+      onToggleFeatured={toggleFeatured}
+      categoryOptions={categories}
+      destinations={destinations}
+    />
+  );
 
   return (
     <>
@@ -338,207 +284,185 @@ export function ToursExplorer({
       </ToursHero>
 
       <div className="w-full px-4 py-14 md:px-16 md:py-16 lg:px-24 xl:px-32">
-        <div
-          className={`mx-auto max-w-7xl lg:grid lg:gap-12 ${
-            sidebarCollapsed ? 'lg:grid-cols-1' : 'lg:grid-cols-[16rem_1fr]'
-          }`}
-        >
-          {/* self-start: grid item mặc định bị kéo giãn hết chiều cao hàng
-              (đo được 3144px), nên IntersectionObserver luôn thấy nó giao với
-              viewport và nút Filters không bao giờ hiện. Ép cao đúng bằng nội
-              dung — cũng là điều đúng khi sidebar không còn dính. */}
-          <aside
-            ref={asideRef}
-            className={sidebarCollapsed ? 'hidden' : 'hidden self-start lg:block'}
-          >
-            {/* top-28 = chiều cao navbar pill khi đã cuộn + thở */}
-            {/* Sidebar TĨNH, trôi cùng trang — KHÔNG sticky, KHÔNG cuộn riêng.
-                Đo 27/07: nội dung cao 1140px, trong khi chỗ cho một cột dính
-                chỉ 608px (màn 720) / 788px (900) / 968px (1080). Tức là
-                "sticky" ở đây vốn không thật — đáy sidebar không bao giờ tới
-                được — và thanh cuộn lồng chỉ để làm cho điều đó chạy được.
-                Bộ lọc khi đã cuộn qua vẫn tới được bằng nút Filters trên thanh
-                công cụ dính bên dưới. */}
-            {renderFilters('bg-background')}
-          </aside>
+        <div className="mx-auto max-w-7xl">
+          {/* THANH KẾT QUẢ — dính. Trái là TRẠNG THÁI (số kết quả + chip đang
+              bật), phải là ĐIỀU KHIỂN (sort + mở bộ lọc). Không còn sidebar:
+              bố cục hai cột làm trang tour trông như trang quản trị và làm hero
+              mất trọng lượng ở cả light lẫn dark.
+              top-32 (128px) đo từ thực tế: navbar dạng pill lúc cuộn nằm ở
+              52..124px, nên top-24 chồng lên nó 28px. */}
+          <div className="sticky top-32 z-(--z-dropdown) -mx-4 mb-8 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-b bg-background/85 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
+                {messages.toursPage.resultCount(matched.length)}
+              </p>
 
-          <div className="min-w-0">
-            {/* Thanh công cụ DÍNH — cao ~48px nên vừa MỌI màn hình, khác hẳn
-                sidebar 1140px. Nó giữ hai thứ thật sự cần khi đang duyệt kết
-                quả: còn bao nhiêu tour, và đổi thứ tự — cộng lối vào bộ lọc.
-                top-32 (128px) đo từ thực tế: navbar dạng pill lúc đã cuộn nằm
-                ở 52..124px, nên top-24 (96px) chồng lên nó 28px. */}
-            <div className="sticky top-32 z-(--z-dropdown) -mx-4 mb-6 flex flex-wrap items-center justify-between gap-4 bg-background/85 px-4 py-3 backdrop-blur-xl md:-mx-6 md:px-6">
-              <div className="flex items-center gap-3">
-                {/* Mobile: mở drawer */}
-                <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                  <SheetTrigger
-                    render={
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={filtersScrolledAway ? '' : 'lg:hidden'}
-                      >
-                        <SlidersHorizontalIcon className="size-4" aria-hidden="true" />
-                        {messages.toursPage.filtersLabel}
-                        {activeCount > 0 ? (
-                          <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                            {activeCount}
-                          </span>
-                        ) : null}
-                      </Button>
-                    }
-                  />
-                  {/* KHÔNG pt ở đây: padding trên nằm TRONG vùng cuộn nên nội
-                      dung trôi qua khoảng đó trước khi chạm header dính, tạo một
-                      vệt 24px lộ chữ. Padding trên chuyển vào chính header. */}
-                  <SheetContent side="left" className="w-[19rem] overflow-y-auto px-6 pb-6">
-                    <SheetHeader className="sr-only">
-                      <SheetTitle>{messages.toursPage.filtersLabel}</SheetTitle>
-                    </SheetHeader>
-                    {renderFilters('bg-popover pt-6')}
-                  </SheetContent>
-                </Sheet>
-
-                {/* Desktop: thu/mở sidebar */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  // Ẩn khi sidebar đã trôi khỏi tầm nhìn: lúc đó "Hide filters"
-                  // vô nghĩa (không thấy cái gì để thu) và nút Filters đã thay
-                  // vai trò. Hai nút cạnh nhau chỉ làm rối.
-                  className={filtersScrolledAway ? 'hidden' : 'hidden lg:inline-flex'}
-                  onClick={toggleSidebar}
-                  aria-expanded={!sidebarCollapsed}
+              {/* Chip thay vai trò sidebar khi bộ lọc nằm trong drawer: đóng
+                  drawer lại thì đây là chỗ DUY NHẤT nói cho người dùng biết họ
+                  đang lọc gì. Chỉ render khi thật sự có filter bật. */}
+              {chips.map((chip) => (
+                <button
+                  key={`${chip.facet}-${chip.value}`}
+                  type="button"
+                  onClick={() => toggleFacet(chip.facet, chip.value)}
+                  aria-label={messages.toursPage.removeFilter(chip.label)}
+                  className="flex cursor-pointer items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm text-foreground/80 transition-colors hover:text-foreground"
                 >
-                  {sidebarCollapsed ? (
-                    <PanelLeftOpenIcon className="size-4" aria-hidden="true" />
-                  ) : (
-                    <PanelLeftCloseIcon className="size-4" aria-hidden="true" />
-                  )}
-                  {sidebarCollapsed
-                    ? messages.toursPage.showFilters
-                    : messages.toursPage.hideFilters}
-                  {sidebarCollapsed && activeCount > 0 ? (
-                    <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
-                      {activeCount}
-                    </span>
-                  ) : null}
-                </Button>
-
-                <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
-                  {messages.toursPage.resultCount(matched.length)}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {/* sr-only chứ KHÔNG phải `hidden`: display:none loại phần tử
-                    khỏi cây trợ năng, nên trên mobile aria-labelledby trỏ vào
-                    một nhãn rỗng và trình đọc màn hình chỉ nghe "Newest first"
-                    mà không biết nút này để làm gì. */}
-                <span
-                  id="tours-sort-label"
-                  className="sr-only text-sm text-muted-foreground sm:not-sr-only"
-                >
-                  {messages.toursPage.sortLabel}
-                </span>
-                {/* Select của @tourism/ui (Base UI) — bản <select> gốc trước đây
-                    dùng khung vẽ của hệ điều hành nên lạc hẳn khỏi phần còn lại
-                    của trang. Đánh đổi: phải mock/điều khiển bằng click trong
-                    test thay vì userEvent.selectOptions. */}
-                <Select
-                  value={sort}
-                  onValueChange={(value) => {
-                    setSort(value as SortValue);
-                    setPage(1);
-                  }}
-                >
-                  <SelectTrigger
-                    id="tours-sort"
-                    aria-labelledby="tours-sort-label tours-sort"
-                    className="w-44"
-                  >
-                    {/* Base UI Select.Value in ra GIÁ TRỊ thô nếu không được
-                        bảo cách hiển thị — nút sẽ hiện "newest" thay vì
-                        "Newest first". Truyền hàm render để tra sang nhãn. */}
-                    <SelectValue>
-                      {(value) => messages.toursPage.sortOptions[value as SortValue]}
-                    </SelectValue>
-                  </SelectTrigger>
-                  {/* alignItemWithTrigger mặc định của Base UI là kiểu select
-                      macOS: popup PHỦ LÊN trigger, canh mục đang chọn vào đúng
-                      chỗ nút. Trên thanh công cụ trông như bị lệch — đổi sang
-                      dropdown thường, mở xuống dưới và canh mép phải nút. */}
-                  <SelectContent alignItemWithTrigger={false} align="end">
-                    {SORT_ORDER.map((value) => (
-                      <SelectItem key={value} value={value}>
-                        {messages.toursPage.sortOptions[value]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {chips.length > 0 ? (
-              <div className="mb-6 flex flex-wrap items-center gap-2">
-                {chips.map((chip) => (
-                  <button
-                    key={`${chip.facet}-${chip.value}`}
-                    type="button"
-                    onClick={() => toggleFacet(chip.facet, chip.value)}
-                    aria-label={messages.toursPage.removeFilter(chip.label)}
-                    className="flex cursor-pointer items-center gap-1.5 rounded-full border bg-muted px-3 py-1 text-sm text-foreground/80 transition-colors hover:text-foreground"
-                  >
-                    <span aria-hidden="true">{chip.label}</span>
-                    <XIcon className="size-3.5" aria-hidden="true" />
-                  </button>
-                ))}
+                  <span aria-hidden="true">{chip.label}</span>
+                  <XIcon className="size-3.5" aria-hidden="true" />
+                </button>
+              ))}
+              {chips.length > 0 ? (
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="ml-1 cursor-pointer text-sm font-medium text-primary hover:underline"
+                  className="cursor-pointer text-sm font-medium text-primary hover:underline"
                 >
                   {messages.toursPage.clearAll}
                 </button>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
 
-            {paged.items.length === 0 ? (
-              <div className="rounded-2xl border border-dashed px-6 py-20 text-center">
-                <h2 className="font-heading text-xl font-medium text-foreground">
-                  {messages.toursPage.empty.title}
-                </h2>
-                <p className="mt-2 text-pretty text-muted-foreground">
-                  {messages.toursPage.empty.body}
-                </p>
-                <Button variant="outline" className="mt-6" onClick={clearAll}>
-                  {messages.toursPage.empty.cta}
-                </Button>
-              </div>
-            ) : (
-              <>
-                {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
-                    không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
-                <h2 className="sr-only">All tours</h2>
-                <div className="flex flex-col gap-5">
-                  {paged.items.map((tour, index) => (
-                    <div
-                      key={tour.slug}
-                      className="animate-tour-card-in"
-                      style={
-                        { '--card-index': Math.min(index, MAX_STAGGER) } as React.CSSProperties
-                      }
-                    >
-                      <TourListCard tour={tour} />
-                    </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {/* sr-only chứ KHÔNG phải `hidden`: display:none loại phần tử khỏi
+                  cây trợ năng, nên trên mobile aria-labelledby trỏ vào nhãn rỗng
+                  và trình đọc màn hình chỉ nghe "Newest first". */}
+              <span
+                id="tours-sort-label"
+                className="sr-only text-sm text-muted-foreground sm:not-sr-only"
+              >
+                {messages.toursPage.sortLabel}
+              </span>
+              {/* Sort ở NGOÀI trang, không nhét vào drawer: lọc thu hẹp tập kết
+                  quả, sắp xếp đổi thứ tự cùng tập — hai mô hình khác nhau, gộp
+                  chung dạy người dùng sai. Và sort được dùng nhiều hơn lọc,
+                  chôn nó sau hai cú bấm là phạt đúng hành vi phổ biến nhất. */}
+              <Select
+                value={sort}
+                onValueChange={(value) => {
+                  setSort(value as SortValue);
+                  setPage(1);
+                }}
+              >
+                <SelectTrigger
+                  id="tours-sort"
+                  aria-labelledby="tours-sort-label tours-sort"
+                  className="w-40"
+                >
+                  {/* Base UI Select.Value in GIÁ TRỊ thô nếu không truyền hàm
+                      render — nút sẽ hiện "newest" thay vì "Newest first". */}
+                  <SelectValue>
+                    {(value) => messages.toursPage.sortOptions[value as SortValue]}
+                  </SelectValue>
+                </SelectTrigger>
+                {/* alignItemWithTrigger mặc định là kiểu select macOS: popup PHỦ
+                    LÊN trigger. Đổi sang dropdown thường, mở xuống, canh mép phải. */}
+                <SelectContent alignItemWithTrigger={false} align="end">
+                  {SORT_ORDER.map((value) => (
+                    <SelectItem key={value} value={value}>
+                      {messages.toursPage.sortOptions[value]}
+                    </SelectItem>
                   ))}
-                </div>
+                </SelectContent>
+              </Select>
 
-                <PaginationBar page={paged.page} totalPages={paged.totalPages} onChange={setPage} />
-              </>
-            )}
+              <Drawer open={drawerOpen} onOpenChange={setDrawerOpen} swipeDirection="right">
+                <DrawerTrigger
+                  render={
+                    <Button variant="outline" size="sm" className="h-9">
+                      <SlidersHorizontalIcon className="size-4" aria-hidden="true" />
+                      {messages.toursPage.filtersLabel}
+                      {activeCount > 0 ? (
+                        <span className="ml-1 inline-flex size-5 items-center justify-center rounded-full bg-primary text-xs text-primary-foreground">
+                          {activeCount}
+                        </span>
+                      ) : null}
+                    </Button>
+                  }
+                />
+                {/* 30rem thay vì 24rem mặc định: đủ để hàng pill của
+                    Duration/Price/Pace nằm gọn một hàng, nên chỉ Category và
+                    Destination cần cuộn. rounded-none để panel dính mép màn
+                    hình như một tấm bảng, không phải card trôi nổi.
+                    PHẢI dùng tiền tố `data-[swipe-axis=x]:sm:` đúng như class
+                    gốc — viết `sm:` trần thì bộ chọn của component (có thêm
+                    thuộc tính data) ưu tiên cao hơn và đè mất. */}
+                <DrawerContent className="data-[swipe-axis=x]:sm:[--drawer-content-width:30rem] data-[swipe-direction=right]:rounded-none">
+                  {/* Header 2 tầng (mượn Drawer 01): tầng 1 danh tính + lối
+                      thoát, tầng 2 TRẠNG THÁI ĐỊNH LƯỢNG. Drawer 01 để thanh
+                      progress ở đây; lọc thì không có đích nên thay bằng số kết
+                      quả sống — nó biến header thành phản hồi, không phải nhãn. */}
+                  <DrawerHeader className="border-b">
+                    <div className="flex items-center justify-between gap-2">
+                      <DrawerTitle>{messages.toursPage.filtersLabel}</DrawerTitle>
+                      <DrawerClose
+                        render={
+                          <Button variant="ghost" size="icon-sm" aria-label="Close filters">
+                            <XIcon />
+                          </Button>
+                        }
+                      />
+                    </div>
+                    <DrawerDescription aria-live="polite">
+                      {messages.toursPage.matchCount(matched.length)}
+                    </DrawerDescription>
+                  </DrawerHeader>
+
+                  <div className="min-h-0 flex-1 overflow-y-auto p-4">{filtersNode}</div>
+
+                  {/* Footer KHÔNG chia 50/50 như Sheet 04 — hai nút không cùng
+                      trọng lượng. Nút phải là LỐI THOÁT MANG KẾT QUẢ, không phải
+                      lệnh commit: lọc đã áp dụng tức thì rồi (số đếm trên từng
+                      option chỉ trung thực nếu state đã áp dụng). */}
+                  <DrawerFooter className="flex-row items-center justify-between gap-3 border-t">
+                    <Button
+                      variant="ghost"
+                      onClick={clearAll}
+                      disabled={activeCount === 0 && !query.trim()}
+                    >
+                      {messages.toursPage.clearAll}
+                    </Button>
+                    <DrawerClose
+                      render={<Button>{messages.toursPage.showResults(matched.length)}</Button>}
+                    />
+                  </DrawerFooter>
+                </DrawerContent>
+              </Drawer>
+            </div>
           </div>
+
+          {paged.items.length === 0 ? (
+            <div className="rounded-2xl border border-dashed px-6 py-20 text-center">
+              <h2 className="font-heading text-xl font-medium text-foreground">
+                {messages.toursPage.empty.title}
+              </h2>
+              <p className="mt-2 text-pretty text-muted-foreground">
+                {messages.toursPage.empty.body}
+              </p>
+              <Button variant="outline" className="mt-6" onClick={clearAll}>
+                {messages.toursPage.empty.cta}
+              </Button>
+            </div>
+          ) : (
+            <>
+              {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
+                  không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
+              <h2 className="sr-only">All tours</h2>
+              <div className="flex flex-col gap-5">
+                {paged.items.map((tour, index) => (
+                  <div
+                    key={tour.slug}
+                    className="animate-tour-card-in"
+                    style={{ '--card-index': Math.min(index, MAX_STAGGER) } as React.CSSProperties}
+                  >
+                    <TourListCard tour={tour} />
+                  </div>
+                ))}
+              </div>
+
+              <PaginationBar page={paged.page} totalPages={paged.totalPages} onChange={setPage} />
+            </>
+          )}
         </div>
       </div>
     </>

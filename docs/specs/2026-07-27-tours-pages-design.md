@@ -161,90 +161,58 @@ export interface MockTourDetail extends MockTourCard {
 > Price · Pace, và danh sách card hàng ngang thay lưới. Phần dưới đã viết lại
 > theo quyết định đó; §8 ghi thêm nợ contract phát sinh.
 
-**Sidebar `16rem` thu/mở được — TĨNH, không dính, không cuộn riêng.**
+**Bộ lọc nằm trong DRAWER. Trang là MỘT cột rộng.**
 
-> **Sửa lần 2, 27/07.** Bản đầu làm sidebar `sticky` + cuộn nội bộ theo Nexora.
-> Sai từ gốc, và số đo chỉ ra: nội dung sidebar cao **1140px**, trong khi chỗ
-> cho một cột dính chỉ **608px** (màn 720) · **788px** (900) · **968px** (1080).
-> Không vừa màn hình phổ thông nào — nên `sticky` là lời hứa không giữ được
-> (đáy sidebar vĩnh viễn ngoài tầm với), và thanh cuộn lồng chỉ để che điều đó.
-> Ép cho vừa cũng bất khả: gộp facet + rút Destination + siết spacing mới được
-> ~380px, còn 760px, vẫn quá 608px; muốn vừa nữa thì phải đóng sẵn các nhóm —
-> đúng thứ làm sidebar thành sáu dòng tiêu đề vô dụng.
->
-> Hướng đúng là **bỏ dính**, giống Booking/Amazon/Etsy. Thứ thật sự cần khi
-> đang duyệt kết quả không phải cả cột lọc, mà là **lối vào** bộ lọc.
+> **Sửa lần 3, 27/07 — bỏ hẳn sidebar.** Hai bản trước đều là sidebar (bản 1
+> dính + cuộn nội bộ, bản 2 tĩnh + thanh công cụ dính). Cả hai đều sai ở tầng
+> cao hơn: bố cục hai cột biến trang bán tour thành trang quản trị, và hero mất
+> trọng lượng ở **cả light lẫn dark** — đúng nghĩa thụt lùi so với Nexora.
+> Khảo sát lại toàn bộ mẫu ở shadcnspace + shadcnstudio (27 + 31 mẫu, render
+> thật trong trình duyệt, đọc source registry) rồi chốt hướng drawer.
 
-Cơ chế thay thế:
+**Nguồn thiết kế và lấy gì từ đâu:**
 
-| Thành phần | Hành vi |
+| Nguồn | Lấy về |
 | --- | --- |
-| Sidebar | Tĩnh, trôi cùng trang. Không `max-h`, không `overflow`, không thanh cuộn thứ hai. `self-start` để không bị grid kéo giãn |
-| Thanh công cụ (đếm · sort · Filters) | **Dính** ở `top-32` — cao ~48px nên vừa mọi màn hình một cách trung thực. 128px đo từ thực tế: navbar pill lúc cuộn nằm ở 52–124px |
-| Nút `Filters (n)` | Mobile luôn hiện. Desktop hiện khi sidebar **đang mở nhưng đã cuộn khỏi tầm mắt** (IntersectionObserver, không nghe scroll) → mở drawer đã dựng cho mobile |
-| Nút `Hide/Show filters` | Ẩn đúng lúc nút Filters thay vai trò. **Không** ẩn khi sidebar đang thu — nếu không người dùng thu xong là không mở lại được |
+| **Drawer 01 — Onboarding Checklist** (shadcnspace) | Vỏ: `30rem`, `rounded-none` dính mép, header 2 tầng (danh tính + lối thoát / **trạng thái định lượng**), bọc mỗi nhóm trong MỘT thẻ có viền chia hàng bằng `border-b`, cả hàng là vùng bấm |
+| **Drawer 12 — Filter** (shadcnstudio) | Mở từ **phải**, ranh giới nhóm chạy hết mép, lọc **tức thì** không Apply |
+| **Sheet 04 — Filter Panel** (shadcnspace) | Footer dính + huy hiệu đếm trên trigger |
+| **Category Filter 1** (shadcnstudio) | "Show all" cắt danh sách dài |
+| **Category Filter 6** (shadcnstudio) | Hàng **pill** cho nhóm 3 lựa chọn thay checkbox dọc |
+| **Category Filter 3** (shadcnstudio) | Hàng chip filter đang bật — nhưng đẩy **RA NGOÀI** trang, không để trong drawer |
 
-Nhóm dài rút gọn: Destination hiện **6 + "Show all 9"**. Option đang bật nằm
-ngoài 6 mục đầu thì nhóm tự mở hết — nếu không, chip "Phú Quốc" hiện ở trên mà
-không tìm ra ô để bỏ chọn.
+**Quyết định và lý do:**
 
-Đây là mô hình giống Nexora ở phần facet, nhưng **cơ chế hiển thị thì khác hẳn**
-— Nexora cũng dính và cũng vướng đúng vấn đề này, chỉ là họ đóng sẵn mọi nhóm
-nên chưa lộ ra.
-
-Sáu nhóm facet, **checkbox đa chọn**, mở sẵn:
-
-| Nhóm | Nguồn dữ liệu | API đỡ được? |
+| Hạng mục | Chốt | Vì sao |
 | --- | --- | --- |
-| Category | `category.slug` + đếm | ✅ `category` |
-| Destination | `destinations[].slug` (khớp cả chặng phụ) | ✅ `destination` |
-| Duration | `durationBucket(durationDays)` → `1` / `2-3` / `4+` | ❌ |
-| Price | `priceBucket(basePrice)` → `<100` / `100-300` / `300+` | ❌ |
-| Pace | `difficulty` | ❌ |
-| Highlights | `isFeatured` | ✅ `featured` |
+| Hướng mở | Phải | Trigger ở cuối phải thanh kết quả → drawer bung ra ngay dưới con trỏ. Trái là địa bàn của menu điều hướng |
+| Bề rộng | `30rem` desktop (mặc định component là `24rem`) | Đủ để hàng pill Duration/Price/Pace nằm gọn MỘT hàng, nên chỉ Category + Destination phải cuộn. **Phải override bằng đúng tiền tố `data-[swipe-axis=x]:sm:`** — viết `sm:` trần thì bộ chọn gốc ưu tiên cao hơn |
+| Header | Title + `✕` + **số kết quả sống** | Drawer 01 để thanh progress ở đây; lọc thì KHÔNG có đích nên thay bằng số kết quả — header thành phản hồi, không phải nhãn |
+| Footer | `Clear all` (ghost) · `Show N tours` (primary) | KHÔNG chia 50/50 như Sheet 04 — hai nút không cùng trọng lượng. Nút phải là **lối thoát mang kết quả**, không phải lệnh commit |
+| Áp dụng | **Tức thì**, không Apply | Mỗi option mang số đếm; nếu hoãn áp dụng thì số đếm tính trên trạng thái chờ, tức là một con số không phản ánh gì đang có trên trang |
+| Nhóm 3 lựa chọn | Hàng **pill** `aria-pressed` (vẫn đa chọn) | Ba lựa chọn xếp dọc tốn ba hàng cho một quyết định đơn giản; pill gói vào một hàng và tách thị giác "chọn khoảng" khỏi "chọn từ danh sách" |
+| **Sort** | **Ngoài trang**, không nhét vào drawer | Lọc *thu hẹp tập kết quả*, sắp xếp *đổi thứ tự cùng tập* — hai mô hình khác nhau, gộp chung dạy người dùng sai. Và sort dùng nhiều hơn lọc; chôn sau hai cú bấm là phạt đúng hành vi phổ biến nhất |
 
-Ngữ nghĩa: **OR trong cùng nhóm, AND giữa các nhóm**.
-
-Nexora để mọi nhóm **đóng sẵn** "to save space" — v2 mở sẵn, vì cả lý do tồn
-tại của sidebar là thấy được lựa chọn mà không phải bấm; sáu nhóm đóng hết thì
-sidebar chỉ còn sáu dòng tiêu đề, tệ hơn cả thanh ngang.
+**Trang chính sau khi bỏ sidebar:**
 
 ```
-┌─────────────────── hero TỐI (~40vh, không ảnh) ───────────────────┐
+┌──────────── hero TỐI full-bleed, lấy lại trọng lượng ─────────────┐
 │ Home › Tours                                                      │
-│ 16 tours across 9 destinations          ← số đếm TRÊN H1          │
-│ H1 (font-heading) · subtitle · [🔍 search tours…]                 │
+│ 16 tours across 9 destinations                                    │
+│ H1 · subtitle · [🔍 search]                                       │
 └───────────────────────────────────────────────────────────────────┘
-┌ Filters  Clear all ┐┌──────────────────────────────────────────────┐
-│ CATEGORY      (2)  ││ [◧ Hide filters] 3 tours    Sort by [ ▾ ]    │
-│ ☑ Trekking      3  ││ ⓧ Trekking  ⓧ Culture  ⓧ 4+ days  Clear all │
-│ ☑ Culture       4  │├──────────────────────────────────────────────┤
-│ DESTINATION        ││ ┌──────┬──────────────────────┬────────────┐ │
-│ ☐ Sa Pa            ││ │ ẢNH  │ HẠ LONG · 2 DAYS ·…  │  $̶2̶3̶6̶ $189 │ │
-│ ☐ Hạ Long       …  ││ │ 16:10│ Tiêu đề (2 dòng)     │  per person│ │
-│ DURATION      (1)  ││ │      │ Tóm tắt (2 dòng)     │  ♡ [View]  │ │
-│ ☑ 4+ days          ││ │      │ Hạ Long → Ninh Bình  │            │ │
-│ PRICE · PACE ·     ││ │      │ ★4.9 (1,204) [chip]  │            │ │
-│ HIGHLIGHTS         ││ └──────┴──────────────────────┴────────────┘ │
-└────────────────────┘│              ‹ 1 2 ›                         │
-                      └──────────────────────────────────────────────┘
+┌── thanh kết quả, DÍNH ở top-32 ───────────────────────────────────┐
+│ 16 tours  ⓧ Trekking  ⓧ Sa Pa  Clear all                         │
+│                            Sort by [Newest ▾]  [⚙ Filters ②]      │
+└───────────────────────────────────────────────────────────────────┘
+  card hàng ngang, MỘT cột rộng, xếp dọc
+  ‹ 1 2 ›
 ```
 
-Danh sách **card hàng ngang xếp dọc** (`flex flex-col gap-5`), không phải lưới —
-mật độ thông tin cao hơn và dùng được `summary`, thứ lưới 3 cột không có chỗ.
-
-- Hero **tối** (hero sáng làm navbar tàng hình). `ContentHero` hiện tại phục vụ
-  trang nội dung dài (breadcrumb + title + meta + subtitle) và **không nhận
-  thêm gì được nữa mà không thành cái phễu prop**. Nên cụm này có hero riêng:
-  `components/tours/tours-hero.tsx`. Nó **dùng lại `TopoPattern` + lớp scrim +
-  nhịp animation** của `ContentHero`, không dùng lại chính component đó.
-- Chip rail lấy từ `category.name` **duy nhất** trong 16 tour mock, giữ thứ tự
-  xuất hiện — cùng quy tắc `postCategories()` của `/blog`, thêm mục `All` dẫn đầu.
-- **Số kết quả đặt TRÊN H1** dạng câu chữ, không phải label khô cạnh dropdown.
-- Toolbar `sticky` dưới navbar; trên mobile gom `Destination`/`Featured`/`Sort`
-  vào một drawer `Filters (n)`.
-- Phân trang **đánh số** (không "Load more"): back-button hoạt động đúng, URL
-  chia sẻ được, và `limit=12` với catalog capstone thì số trang ít.
+Trái thanh = **trạng thái** (số kết quả + chip đang bật), phải = **điều khiển**
+(sort + mở bộ lọc). Chip thay vai trò sidebar: khi drawer đóng, đó là chỗ DUY
+NHẤT nói cho người dùng biết họ đang lọc gì. Không có filter thì không render
+hàng chip rỗng.
 
 ### 5.2 Card tour — `TourListCard`
 

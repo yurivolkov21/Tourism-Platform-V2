@@ -2,8 +2,8 @@
 
 import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
-import { MinusIcon, PlusIcon } from 'lucide-react';
-import { useId, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useState } from 'react';
 import type { ArrayFacetKey, DurationBucket, PriceBucket, TourFilterState } from '@/lib/tours';
 import type { MockDestination, MockTourCard } from '@/mocks/types';
 
@@ -25,148 +25,184 @@ const DURATIONS: DurationBucket[] = ['1', '2-3', '4+'];
 const PRICES: PriceBucket[] = ['<100', '100-300', '300+'];
 const DIFFICULTIES: Difficulty[] = ['EASY', 'MODERATE', 'CHALLENGING'];
 
+/** Số option hiện trước khi phải bấm "Show all" — chỉ áp cho danh sách dài. */
+const COLLAPSED_OPTIONS = 6;
+
 interface Option {
   value: string;
   label: string;
   count: number;
 }
 
-/** Số option hiện trước khi phải bấm "Show all". Chỉ áp cho nhóm dài
-    (Destination có 9); nhóm ≤ ngưỡng này hiện hết, không có nút thừa. */
-const COLLAPSED_OPTIONS = 6;
-
-/** Phần đuôi CHỈ trình đọc màn hình nghe được, gắn vào cuối <label>.
+/** Đuôi CHỈ trình đọc màn hình nghe được, gắn cuối nhãn.
  *
- * Không có nó thì hai <span> cạnh nhau dính thành "Cruises3" — trình đọc màn
- * hình phát ra đúng chuỗi đó. Và KHÔNG chữa bằng aria-label trên <Checkbox>:
- * Base UI tự nối aria-labelledby tới <label>, nên aria-label không thắng; còn
- * aria-hidden nội dung label thì tên trợ năng thành RỖNG (đã thử, tệ hơn). */
+ * Không có nó thì nhãn và số đếm dính thành "Cruises3". Và KHÔNG chữa bằng
+ * `aria-label` trên `<Checkbox>`: Base UI tự nối `aria-labelledby` tới `<label>`
+ * nên aria-label không thắng; còn `aria-hidden` nội dung label thì tên trợ năng
+ * thành RỖNG (đã thử, tệ hơn). */
 function countSuffix(count: number): string {
   return `, ${count} ${count === 1 ? 'tour' : 'tours'}`;
 }
 
-/** Một nhóm facet: tiêu đề bấm mở/đóng + danh sách checkbox.
+/**
+ * Vỏ một nhóm facet: thẻ có viền, tiêu đề ngăn bằng đường kẻ chạy hết mép thẻ.
  *
- * MỞ SẴN, khác Nexora (họ đóng hết "to save space"). Lý do đổi: cả lý do tồn
- * tại của sidebar so với thanh lọc ngang là thấy được lựa chọn mà không phải
- * bấm. Sáu nhóm đóng hết thì sidebar chỉ còn sáu dòng tiêu đề — tệ hơn cả
- * thanh ngang. Vẫn thu lại được từng nhóm, và cả sidebar cũng thu được. */
-function FacetGroup({
-  heading,
+ * Mượn Drawer 01 (shadcnspace) — bọc cả nhóm trong MỘT thẻ rồi chia hàng bằng
+ * `border-b` bên trong, thay vì thả `Separator` rời giữa các nhóm như Sheet 04.
+ * Với 6 nhóm thì mắt cần biết nhóm bắt đầu và kết thúc ở đâu; viền bao làm việc
+ * đó, đường kẻ rời thì không.
+ */
+function FacetCard({ heading, children }: { heading: string; children: ReactNode }) {
+  return (
+    <section className="overflow-hidden rounded-lg border">
+      <h3 className="border-b bg-muted/30 px-4 py-2.5 font-mono text-xs font-medium tracking-widest text-muted-foreground uppercase">
+        {heading}
+      </h3>
+      {children}
+    </section>
+  );
+}
+
+/** Hàng checkbox — CẢ HÀNG là vùng bấm (mượn Drawer 01), không chỉ ô vuông. */
+function OptionRow({
+  option,
+  checked,
+  last,
+  onToggle,
+}: {
+  option: Option;
+  checked: boolean;
+  last: boolean;
+  onToggle: () => void;
+}) {
+  // Option ra 0 kết quả bị khoá — chặn ngõ cụt "bấm thêm một ô rồi trắng trang".
+  // KHÔNG khoá option đang bật, nếu không người dùng tự nhốt mình.
+  const dead = option.count === 0 && !checked;
+  const id = `facet-${option.value}`;
+
+  return (
+    <label
+      htmlFor={id}
+      className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
+        last ? '' : 'border-b'
+      } ${
+        dead
+          ? 'cursor-not-allowed text-muted-foreground/45'
+          : 'cursor-pointer text-foreground/90 hover:bg-muted/40'
+      }`}
+    >
+      <Checkbox id={id} checked={checked} disabled={dead} onCheckedChange={onToggle} />
+      <span className="line-clamp-1 flex-1">{option.label}</span>
+      <span className="sr-only">{countSuffix(option.count)}</span>
+      {/* Số đếm giữ cột cố định bên phải — mắt quét cột này để biết chọn thêm
+          gì còn ra kết quả. Vẫn hiện số 0 chứ không ẩn option: ẩn đi thì danh
+          sách đổi chiều cao mỗi lần lọc, gây mất phương hướng. */}
+      <span aria-hidden="true" className="shrink-0 text-xs text-muted-foreground tabular-nums">
+        {option.count}
+      </span>
+    </label>
+  );
+}
+
+/** Danh sách dài (Category, Destination) — hàng checkbox xếp dọc, có "Show all". */
+function OptionList({
   options,
   selected,
   onToggle,
 }: {
-  heading: string;
   options: Option[];
   selected: readonly string[];
   onToggle: (value: string) => void;
 }) {
-  const activeInGroup = options.filter((o) => selected.includes(o.value)).length;
-  const [open, setOpen] = useState(true);
   const [showAll, setShowAll] = useState(false);
-  const panelId = useId();
-
   // Option đang bật luôn phải thấy được, kể cả khi nó nằm ngoài 6 mục đầu —
-  // nếu không người dùng thấy chip "Phú Quốc" ở trên mà tìm mãi không ra ô để
-  // bỏ chọn.
+  // nếu không, chip hiện ở thanh kết quả mà không tìm ra ô nào để bỏ chọn.
   const hasHiddenActive = options.slice(COLLAPSED_OPTIONS).some((o) => selected.includes(o.value));
   const expanded = showAll || hasHiddenActive;
   const visible = expanded ? options : options.slice(0, COLLAPSED_OPTIONS);
+  const canCollapse = expanded && !hasHiddenActive;
   const hiddenCount = options.length - visible.length;
+  const hasFooterRow = hiddenCount > 0 || canCollapse;
 
   return (
-    <div className="border-b border-border pb-5 last:border-b-0 last:pb-0">
-      <h3>
+    <div>
+      {visible.map((option, i) => (
+        <OptionRow
+          key={option.value}
+          option={option}
+          checked={selected.includes(option.value)}
+          last={i === visible.length - 1 && !hasFooterRow}
+          onToggle={() => onToggle(option.value)}
+        />
+      ))}
+      {hasFooterRow ? (
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
-          aria-expanded={open}
-          aria-controls={panelId}
-          className="flex w-full cursor-pointer items-center justify-between gap-2 text-foreground"
+          onClick={() => setShowAll(!expanded)}
+          className="w-full cursor-pointer px-4 py-2.5 text-left text-sm font-medium text-primary hover:bg-muted/40"
         >
-          <span className="font-mono text-xs font-medium tracking-widest uppercase">
-            {heading}
-            {activeInGroup > 0 ? (
-              <span className="ml-1.5 text-primary normal-case">({activeInGroup})</span>
-            ) : null}
-          </span>
-          {open ? (
-            <MinusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          ) : (
-            <PlusIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          )}
+          {hiddenCount > 0 ? `Show all ${options.length}` : 'Show less'}
         </button>
-      </h3>
-
-      {open ? (
-        <ul id={panelId} className="mt-3.5 space-y-2.5">
-          {visible.map((option) => {
-            const id = `${panelId}-${option.value}`;
-            const checked = selected.includes(option.value);
-            // Option ra 0 kết quả bị vô hiệu hoá — chặn ngõ cụt "bấm thêm một ô
-            // rồi trắng trang". KHÔNG vô hiệu hoá option đang bật, nếu không
-            // người dùng tự khoá mình lại không bỏ chọn được.
-            const dead = option.count === 0 && !checked;
-            return (
-              <li key={option.value} className="flex items-center gap-2.5">
-                <Checkbox
-                  id={id}
-                  checked={checked}
-                  disabled={dead}
-                  onCheckedChange={() => onToggle(option.value)}
-                />
-                <label
-                  htmlFor={id}
-                  className={`flex flex-1 items-center justify-between gap-2 text-sm transition-colors ${
-                    dead
-                      ? 'cursor-not-allowed text-muted-foreground/45'
-                      : 'cursor-pointer text-foreground/90 hover:text-foreground'
-                  }`}
-                >
-                  {/* Nhãn giới hạn MỘT dòng: tên destination dài không được đẩy
-                      số đếm rơi xuống hàng và phá nhịp dọc của sidebar. */}
-                  <span className="line-clamp-1">{option.label}</span>
-                  <span className="sr-only">{countSuffix(option.count)}</span>
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0 text-xs text-muted-foreground tabular-nums"
-                  >
-                    {option.count}
-                  </span>
-                </label>
-              </li>
-            );
-          })}
-          {hiddenCount > 0 ? (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowAll(true)}
-                className="cursor-pointer text-sm font-medium text-primary hover:underline"
-              >
-                Show all {options.length}
-              </button>
-            </li>
-          ) : expanded && options.length > COLLAPSED_OPTIONS && !hasHiddenActive ? (
-            <li>
-              <button
-                type="button"
-                onClick={() => setShowAll(false)}
-                className="cursor-pointer text-sm font-medium text-primary hover:underline"
-              >
-                Show less
-              </button>
-            </li>
-          ) : null}
-        </ul>
       ) : null}
     </div>
   );
 }
 
 /**
- * Sáu nhóm facet dùng chung cho sidebar desktop và drawer mobile.
+ * Danh sách ngắn (Duration, Price, Pace) — hàng pill thay vì checkbox dọc.
+ *
+ * Ba lựa chọn xếp dọc tốn ba hàng cho một quyết định đơn giản; pill gói chúng
+ * vào 1–2 hàng và tách thị giác "chọn một khoảng" khỏi "chọn từ danh sách".
+ * Mẫu Category Filter 6 (shadcnstudio) làm đúng vậy.
+ *
+ * Vẫn là ĐA CHỌN: `aria-pressed` chứ không phải radio.
+ */
+function OptionPills({
+  options,
+  selected,
+  onToggle,
+}: {
+  options: Option[];
+  selected: readonly string[];
+  onToggle: (value: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2 p-3">
+      {options.map((option) => {
+        const checked = selected.includes(option.value);
+        const dead = option.count === 0 && !checked;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onToggle(option.value)}
+            aria-pressed={checked}
+            disabled={dead}
+            aria-label={`${option.label}${countSuffix(option.count)}`}
+            className={`cursor-pointer rounded-full border px-3 py-1.5 text-sm transition-colors ${
+              checked
+                ? 'border-primary bg-primary text-primary-foreground'
+                : dead
+                  ? 'cursor-not-allowed border-border text-muted-foreground/45'
+                  : 'border-border text-foreground/90 hover:bg-muted/40'
+            }`}
+          >
+            <span aria-hidden="true">{option.label}</span>
+            <span aria-hidden="true" className="ml-1.5 text-xs opacity-70 tabular-nums">
+              {option.count}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/**
+ * Thân bộ lọc — dùng chung cho drawer ở MỌI kích thước màn hình.
+ *
+ * Không còn biến thể sidebar: bố cục hai cột làm trang tour trông như trang
+ * quản trị và làm hero mất trọng lượng ở cả light lẫn dark (spec §5.1).
  *
  * Duration · Price · Pace hiện CHỈ chạy được nhờ lọc client trên mock —
  * `ToursListQuerySchema` không có tham số tương ứng. Xem nợ mở rộng contract
@@ -177,138 +213,88 @@ export function ToursFilters({
   counts,
   onToggle,
   onToggleFeatured,
-  onClearAll,
   categoryOptions,
   destinations,
-  activeCount,
-  surfaceClassName = 'bg-background',
 }: {
   value: TourFilterState;
   counts: FacetCounts;
   onToggle: (facet: FacetKey, optionValue: string) => void;
   onToggleFeatured: () => void;
-  onClearAll: () => void;
   categoryOptions: { slug: string; name: string }[];
   destinations: MockDestination[];
-  activeCount: number;
-  /** Nền của vùng cuộn chứa component này. Header dính phải ĐỤC và phải TRÙNG
-      màu vùng cuộn, nếu không nó thành một vệt lệch màu khi nội dung trôi bên
-      dưới. Sidebar desktop nằm trên `bg-background`; drawer mobile là
-      SheetContent nền `bg-popover` — hai token khác nhau thật (đo 27/07:
-      lab 97.37 vs 99.56). */
-  surfaceClassName?: string;
 }) {
   const t = messages.toursPage;
-  const featuredDead = counts.featured === 0 && !value.featured;
 
   return (
-    <div className="space-y-5">
-      {/* Header DÍNH trong vùng cuộn của sidebar: ở Nexora, cuộn xuống nhóm
-          Price là nút "Clear all" trôi mất khỏi màn hình. Nền đặc để nội dung
-          cuộn bên dưới không lộ qua. */}
-      <div
-        className={`sticky top-0 z-10 flex items-center justify-between pb-3 ${surfaceClassName}`}
-      >
-        <h2 className="font-heading text-lg font-medium">
-          {t.filtersLabel}
-          {activeCount > 0 ? (
-            <span className="ml-1.5 text-primary text-sm">({activeCount})</span>
-          ) : null}
-        </h2>
-        {activeCount > 0 ? (
-          <button
-            type="button"
-            onClick={onClearAll}
-            className="cursor-pointer text-sm font-medium text-primary hover:underline"
-          >
-            {t.clearAll}
-          </button>
-        ) : null}
-      </div>
+    <div className="space-y-4">
+      <FacetCard heading={t.facets.category}>
+        <OptionList
+          options={categoryOptions.map((c) => ({
+            value: c.slug,
+            label: c.name,
+            count: counts.categories[c.slug] ?? 0,
+          }))}
+          selected={value.categories}
+          onToggle={(v) => onToggle('categories', v)}
+        />
+      </FacetCard>
 
-      <FacetGroup
-        heading={t.facets.category}
-        options={categoryOptions.map((c) => ({
-          value: c.slug,
-          label: c.name,
-          count: counts.categories[c.slug] ?? 0,
-        }))}
-        selected={value.categories}
-        onToggle={(v) => onToggle('categories', v)}
-      />
-      <FacetGroup
-        heading={t.facets.destination}
-        options={destinations.map((d) => ({
-          value: d.slug,
-          label: d.name,
-          count: counts.destinations[d.slug] ?? 0,
-        }))}
-        selected={value.destinations}
-        onToggle={(v) => onToggle('destinations', v)}
-      />
-      <FacetGroup
-        heading={t.facets.duration}
-        options={DURATIONS.map((d) => ({
-          value: d,
-          label: t.durationLabels[d],
-          count: counts.durations[d] ?? 0,
-        }))}
-        selected={value.durations}
-        onToggle={(v) => onToggle('durations', v)}
-      />
-      <FacetGroup
-        heading={t.facets.price}
-        options={PRICES.map((p) => ({
-          value: p,
-          label: t.priceLabels[p],
-          count: counts.prices[p] ?? 0,
-        }))}
-        selected={value.prices}
-        onToggle={(v) => onToggle('prices', v)}
-      />
-      <FacetGroup
-        heading={t.facets.difficulty}
-        options={DIFFICULTIES.map((d) => ({
-          value: d,
-          label: t.difficultyLabels[d],
-          count: counts.difficulties[d] ?? 0,
-        }))}
-        selected={value.difficulties}
-        onToggle={(v) => onToggle('difficulties', v)}
-      />
+      <FacetCard heading={t.facets.destination}>
+        <OptionList
+          options={destinations.map((d) => ({
+            value: d.slug,
+            label: d.name,
+            count: counts.destinations[d.slug] ?? 0,
+          }))}
+          selected={value.destinations}
+          onToggle={(v) => onToggle('destinations', v)}
+        />
+      </FacetCard>
 
-      {/* Featured là công tắc đơn nên không dùng FacetGroup — vẫn giữ hình dạng
-          checkbox để mắt đọc sidebar thấy một mạch. */}
-      <div className="border-b border-border pb-5 last:border-b-0 last:pb-0">
-        <h3 className="font-mono text-xs font-medium tracking-widest text-foreground uppercase">
-          {t.facets.highlights}
-        </h3>
-        <div className="mt-3.5 flex items-center gap-2.5">
-          <Checkbox
-            id="tours-featured"
-            checked={value.featured}
-            disabled={featuredDead}
-            onCheckedChange={onToggleFeatured}
-          />
-          <label
-            htmlFor="tours-featured"
-            className={`flex flex-1 items-center justify-between gap-2 text-sm transition-colors ${
-              featuredDead
-                ? 'cursor-not-allowed text-muted-foreground/45'
-                : 'cursor-pointer text-foreground/90 hover:text-foreground'
-            }`}
-          >
-            <span className="line-clamp-1">{t.featuredLabel}</span>
-            <span className="sr-only">{countSuffix(counts.featured)}</span>
-            <span
-              aria-hidden="true"
-              className="shrink-0 text-xs text-muted-foreground tabular-nums"
-            >
-              {counts.featured}
-            </span>
-          </label>
-        </div>
-      </div>
+      <FacetCard heading={t.facets.duration}>
+        <OptionPills
+          options={DURATIONS.map((d) => ({
+            value: d,
+            label: t.durationLabels[d],
+            count: counts.durations[d] ?? 0,
+          }))}
+          selected={value.durations}
+          onToggle={(v) => onToggle('durations', v)}
+        />
+      </FacetCard>
+
+      <FacetCard heading={t.facets.price}>
+        <OptionPills
+          options={PRICES.map((p) => ({
+            value: p,
+            label: t.priceLabels[p],
+            count: counts.prices[p] ?? 0,
+          }))}
+          selected={value.prices}
+          onToggle={(v) => onToggle('prices', v)}
+        />
+      </FacetCard>
+
+      <FacetCard heading={t.facets.difficulty}>
+        <OptionPills
+          options={DIFFICULTIES.map((d) => ({
+            value: d,
+            label: t.difficultyLabels[d],
+            count: counts.difficulties[d] ?? 0,
+          }))}
+          selected={value.difficulties}
+          onToggle={(v) => onToggle('difficulties', v)}
+        />
+      </FacetCard>
+
+      <FacetCard heading={t.facets.highlights}>
+        <OptionRow
+          option={{ value: 'featured', label: t.featuredLabel, count: counts.featured }}
+          checked={value.featured}
+          last
+          onToggle={onToggleFeatured}
+        />
+      </FacetCard>
     </div>
   );
 }

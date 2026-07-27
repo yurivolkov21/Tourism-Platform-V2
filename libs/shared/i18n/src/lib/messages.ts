@@ -1428,6 +1428,12 @@ export const messages = {
       durationAsc: 'Duration: short to long',
     },
     resultCount: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
+    /** Dòng trạng thái trong header drawer — biến header thành phản hồi sống
+        thay vì nhãn tĩnh. */
+    matchCount: (n: number) => `${n} ${n === 1 ? 'tour matches' : 'tours match'}`,
+    /** Nhãn nút đóng drawer: lối thoát MANG KẾT QUẢ, không phải lệnh "Apply"
+        (bộ lọc đã áp dụng tức thì). */
+    showResults: (n: number) => `Show ${n} ${n === 1 ? 'tour' : 'tours'}`,
     resultSummary: (tours: number, destinations: number) =>
       `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} destinations`,
     showing: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,

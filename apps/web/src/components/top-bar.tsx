@@ -37,9 +37,15 @@ function MarqueeGroup({ hidden = false }: { hidden?: boolean }) {
   );
 }
 
+// z-(--z-sticky) chứ KHÔNG phải z-(--z-toast): đây là thanh thông báo cố định,
+// cùng tầng chrome với navbar — không phải toast. Toast được phép nằm trên
+// modal; banner thì không. Ở mức toast (1700) nó đè lên cả drawer/dialog
+// (1400) và cắt mất header của chúng — thấy thật ở drawer lọc /tours 27/07.
+// Không xung đột với navbar dù cùng 1100: navbar dùng top-(--banner-offset)
+// nên hai thứ không bao giờ chồng chỗ.
 export function TopBar() {
   return (
-    <div className="fixed inset-x-0 top-0 z-(--z-toast) bg-primary text-primary-foreground max-sm:hidden">
+    <div className="fixed inset-x-0 top-0 z-(--z-sticky) bg-primary text-primary-foreground max-sm:hidden">
       <div className="flex h-9 w-full items-center justify-between gap-8 px-4 text-xs sm:px-6 lg:px-10">
         {/* Tagline chạy liên tục — bản sao thứ hai chỉ để loop, ẩn khỏi a11y tree */}
         <div className="relative flex-1 overflow-hidden text-primary-foreground/85">

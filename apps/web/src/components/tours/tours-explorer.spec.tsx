@@ -11,18 +11,8 @@ import { ToursExplorer } from './tours-explorer';
 // cái đó kích hoạt RSC round-trip mỗi lần bấm, xem comment trong component).
 // Bọc lại để kiểm đúng thứ nó hứa: mỗi lần đổi bộ lọc thì URL được ghi lại.
 const replace = vi.fn();
+
 beforeAll(() => {
-  // jsdom KHÔNG hiện thực IntersectionObserver. ToursExplorer dùng nó để biết
-  // sidebar còn trong tầm nhìn không; đôi giả này báo "còn thấy" nên nút
-  // Filters giữ nguyên hành vi mặc định (chỉ hiện ở mobile).
-  vi.stubGlobal(
-    'IntersectionObserver',
-    class {
-      observe() {}
-      disconnect() {}
-      unobserve() {}
-    },
-  );
   // jsdom mở ở "/" mặc định; component đọc window.location.pathname thật nên
   // phải đưa nó về đúng route TRƯỚC khi bọc replaceState.
   window.history.pushState({}, '', '/tours');
@@ -31,10 +21,8 @@ beforeAll(() => {
 
 function renderExplorer(initial: Parameters<typeof ToursExplorer>[0]['initial'] = {}) {
   // MotionConfig reducedMotion="always" cho tất định — hero vẫn dùng motion
-  // (root layout thật để "user"). Danh sách card KHÔNG còn dùng motion: bản cũ
-  // dùng AnimatePresence mode="popLayout" + layout + blur, vừa tốn hiệu năng
-  // vừa khiến phần tử đang thoát nằm lại DOM vô thời hạn trong jsdom. Nay là
-  // CSS keyframes thuần nên đếm card sau khi lọc đã tin được.
+  // (root layout thật để "user"). Danh sách card KHÔNG dùng motion: nó là CSS
+  // keyframes thuần, nên đếm card sau khi lọc tin được.
   return render(
     <MotionConfig reducedMotion="always">
       <ToursExplorer
@@ -51,6 +39,12 @@ beforeEach(() => {
   replace.mockClear();
 });
 
+/** Bộ lọc nằm trong drawer nên mọi tương tác với facet phải mở nó trước. */
+async function openFilters(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: /^filters/i }));
+  await screen.findByRole('dialog');
+}
+
 describe('ToursExplorer — hiển thị', () => {
   it('mặc định hiện 12 tour đầu — đúng limit mặc định của contract', () => {
     renderExplorer();
@@ -66,17 +60,49 @@ describe('ToursExplorer — hiển thị', () => {
     renderExplorer({ page: 2 });
     expect(screen.getAllByRole('article')).toHaveLength(4);
   });
+
+  it('không có bộ lọc nào bật thì KHÔNG render chip rỗng', () => {
+    renderExplorer();
+    expect(screen.queryByRole('button', { name: /remove filter/i })).toBeNull();
+  });
+});
+
+describe('ToursExplorer — drawer bộ lọc', () => {
+  it('nút Filters mở drawer và mang huy hiệu đếm khi đang lọc', async () => {
+    const user = userEvent.setup();
+    renderExplorer({ categories: 'trekking' });
+    const trigger = screen.getByRole('button', { name: /^filters/i });
+    expect(trigger).toHaveTextContent('1');
+    await user.click(trigger);
+    expect(await screen.findByRole('dialog')).toBeInTheDocument();
+  });
+
+  it('header drawer công bố số kết quả sống, không phải nhãn tĩnh', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await openFilters(user);
+    expect(screen.getByText(/16 tours match/i)).toBeInTheDocument();
+  });
+
+  it('nút đóng drawer mang số kết quả — lối thoát, không phải lệnh Apply', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await openFilters(user);
+    expect(screen.getByRole('button', { name: /show 16 tours/i })).toBeInTheDocument();
+  });
+
+  it('lọc áp dụng TỨC THÌ, không chờ bấm Apply', async () => {
+    const user = userEvent.setup();
+    renderExplorer();
+    await openFilters(user);
+    await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
+    // Số ở header drawer đổi ngay, chưa hề đóng drawer.
+    await waitFor(() => expect(screen.getByText(/3 tours match/i)).toBeInTheDocument());
+    expect(replace).toHaveBeenCalledWith(null, '', '/tours?categories=trekking');
+  });
 });
 
 describe('ToursExplorer — lọc', () => {
-  it('chọn chip chuyên mục thì lọc và ghi vào URL', async () => {
-    const user = userEvent.setup();
-    renderExplorer();
-    await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
-    expect(replace).toHaveBeenCalledWith(null, '', '/tours?categories=trekking');
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('3 tours'));
-  });
-
   it('chuyên mục lạ trong URL cho trạng thái RỖNG, không âm thầm hiện hết', () => {
     renderExplorer({ categories: 'khong-ton-tai' });
     expect(screen.queryAllByRole('article')).toHaveLength(0);
@@ -103,6 +129,14 @@ describe('ToursExplorer — lọc', () => {
     await user.type(screen.getByRole('searchbox'), 'ha long');
     expect(screen.getByRole('status')).toHaveTextContent('2 tours');
   });
+
+  it('chip trên thanh kết quả gỡ được bộ lọc mà không cần mở drawer', async () => {
+    const user = userEvent.setup();
+    renderExplorer({ categories: 'trekking' });
+    expect(screen.getByRole('status')).toHaveTextContent('3 tours');
+    await user.click(screen.getByRole('button', { name: /remove filter trekking/i }));
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('16 tours'));
+  });
 });
 
 describe('ToursExplorer — phân trang', () => {
@@ -115,10 +149,10 @@ describe('ToursExplorer — phân trang', () => {
     const user = userEvent.setup();
     renderExplorer({ page: 2 });
     expect(screen.getAllByRole('article')).toHaveLength(4);
+    await openFilters(user);
     await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
-    // URL là bằng chứng tất định của việc page đã reset: nếu page còn 2 thì
-    // chuỗi sẽ là '/tours?category=trekking&page=2' và lưới ra 0 card (chỉ có
-    // 3 tour trekking, không đủ sang trang 2).
+    // URL là bằng chứng tất định: nếu page còn 2 thì chuỗi sẽ kèm &page=2 và
+    // lưới ra 0 card (chỉ 3 tour trekking, không đủ sang trang 2).
     expect(replace).toHaveBeenLastCalledWith(null, '', '/tours?categories=trekking');
   });
 
@@ -157,24 +191,25 @@ describe('ToursExplorer — sắp xếp', () => {
     await waitFor(() => expect(replace).toHaveBeenLastCalledWith(null, '', '/tours'));
   });
 
-  it('nút mở sort công bố nhãn "Sort by" cho trình đọc màn hình', () => {
+  it('sort ở NGOÀI trang, không nằm trong drawer — lọc và sắp xếp là hai mô hình khác nhau', () => {
     renderExplorer();
-    expect(screen.getByRole('combobox')).toHaveAccessibleName(/sort by/i);
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
+    expect(screen.queryByRole('dialog')).toBeNull();
   });
 
-  it('nút sort hiện NHÃN chứ không phải giá trị thô', () => {
+  it('nút mở sort công bố nhãn "Sort by" và hiện NHÃN chứ không phải giá trị thô', () => {
     renderExplorer();
-    // Base UI Select.Value in giá trị thô nếu không truyền hàm render — nút sẽ
-    // hiện "newest" thay vì "Newest first".
-    expect(screen.getByRole('combobox')).toHaveTextContent('Newest first');
-    expect(screen.getByRole('combobox')).not.toHaveTextContent(/^newest$/);
+    const trigger = screen.getByRole('combobox');
+    expect(trigger).toHaveAccessibleName(/sort by/i);
+    expect(trigger).toHaveTextContent('Newest first');
   });
 });
 
-describe('ToursExplorer — sidebar đa chọn', () => {
+describe('ToursExplorer — facet đa chọn', () => {
   it('chọn hai chuyên mục là OR — kết quả bằng tổng của cả hai', async () => {
     const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
     await user.click(screen.getByRole('checkbox', { name: /^Food & markets, / }));
     // 3 trekking + 3 food
@@ -185,115 +220,92 @@ describe('ToursExplorer — sidebar đa chọn', () => {
   it('facet khác nhau là AND — thu hẹp kết quả', async () => {
     const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('3 tours'));
     // 3 tour trekking: 8 ngày · 3 ngày · 2 ngày → chỉ 1 cái vào nhóm "4+ days"
-    await user.click(screen.getByRole('checkbox', { name: /^4\+ days/ }));
+    await user.click(screen.getByRole('button', { name: /^4\+ days, / }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 tour'));
   });
 
   it('option dẫn tới 0 kết quả bị VÔ HIỆU HOÁ — chặn ngõ cụt trắng trang', async () => {
     const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     // Không tour trekking nào là tour trong ngày.
     await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
-    // Base UI đánh dấu vô hiệu hoá bằng aria-disabled trên <span role="checkbox">
-    // chứ không phải thuộc tính `disabled` native, nên toBeDisabled() không nhận ra.
-    await waitFor(() =>
-      expect(screen.getByRole('checkbox', { name: /^Day trip, / })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      ),
-    );
-    // Bấm vào cũng không đổi gì — người dùng không tự đưa mình vào ngõ cụt được.
-    await user.click(screen.getByRole('checkbox', { name: /^Day trip, / }));
-    expect(screen.getByRole('status')).toHaveTextContent('3 tours');
+    await waitFor(() => expect(screen.getByRole('button', { name: /^Day trip, / })).toBeDisabled());
   });
 
   it('option ĐANG BẬT không bao giờ bị vô hiệu hoá — nếu không sẽ tự khoá mình', async () => {
     const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
-    await user.click(screen.getByRole('checkbox', { name: /^4\+ days/ }));
-    // "4+ days" đang bật; dù có kết hợp nào làm nó về 0 thì vẫn phải bỏ chọn được.
-    const box = screen.getByRole('checkbox', { name: /^4\+ days/ });
-    expect(box).not.toHaveAttribute('aria-disabled', 'true');
-    await user.click(box);
+    await user.click(screen.getByRole('button', { name: /^4\+ days, / }));
+    const pill = screen.getByRole('button', { name: /^4\+ days, / });
+    expect(pill).not.toBeDisabled();
+    await user.click(pill);
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('3 tours'));
   });
 
   it('số đếm cạnh mỗi option phản ánh các facet khác đang bật', async () => {
     const user = userEvent.setup();
     renderExplorer();
-    // Chưa lọc gì: Trekking có 3 tour.
+    await openFilters(user);
     expect(screen.getByRole('checkbox', { name: 'Trekking, 3 tours' })).toBeInTheDocument();
-    await user.click(screen.getByRole('checkbox', { name: /^4\+ days/ }));
-    // Trong nhóm 4+ days chỉ còn 1 tour trekking → số cạnh Trekking đổi thành 1.
+    await user.click(screen.getByRole('button', { name: /^4\+ days, / }));
+    // Trong nhóm 4+ days chỉ còn 1 tour trekking.
     await waitFor(() =>
       expect(screen.getByRole('checkbox', { name: 'Trekking, 1 tour' })).toBeInTheDocument(),
     );
   });
 
-  it('bỏ chọn bằng chip đang bật thì kết quả trở lại', async () => {
-    const user = userEvent.setup();
-    renderExplorer({ categories: 'trekking' });
-    expect(screen.getByRole('status')).toHaveTextContent('3 tours');
-    await user.click(screen.getByRole('button', { name: /remove filter trekking/i }));
-    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('16 tours'));
-  });
-
-  it('mọi nhóm facet mở sẵn, và lựa chọn từ URL hiện đúng trạng thái checked', () => {
-    renderExplorer({ prices: '<100' });
-    expect(screen.getByRole('checkbox', { name: /under \$100/i })).toBeChecked();
-    // Nhóm không có lựa chọn nào cũng phải mở — đó là lý do dùng sidebar.
-    expect(screen.getByRole('checkbox', { name: /^Challenging, / })).not.toBeChecked();
-  });
-
-  it('nút thu sidebar đổi nhãn và giữ nguyên bộ lọc', async () => {
-    const user = userEvent.setup();
-    renderExplorer({ categories: 'trekking' });
-    const toggle = screen.getByRole('button', { name: /hide filters/i });
-    await user.click(toggle);
-    expect(screen.getByRole('button', { name: /show filters/i })).toBeInTheDocument();
-    expect(screen.getByRole('status')).toHaveTextContent('3 tours');
-  });
-
   it('lọc theo độ khó bỏ qua tour không ghi độ khó', async () => {
     const user = userEvent.setup();
     renderExplorer();
-    await user.click(screen.getByRole('checkbox', { name: /^Challenging, / }));
+    await openFilters(user);
+    await user.click(screen.getByRole('button', { name: /^Challenging, / }));
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('1 tour'));
   });
 });
 
-describe('ToursFilters — nhóm dài rút gọn', () => {
-  it('Destination 9 địa danh chỉ hiện 6 + nút mở hết', () => {
+describe('ToursFilters — danh sách dài rút gọn', () => {
+  it('Destination 9 địa danh chỉ hiện 6 + nút mở hết', async () => {
+    const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     expect(screen.getByRole('checkbox', { name: /^Sa Pa, / })).toBeInTheDocument();
     // Phú Quốc là mục thứ 9 → nằm ngoài 6 mục đầu
     expect(screen.queryByRole('checkbox', { name: /^Phú Quốc, / })).toBeNull();
     expect(screen.getByRole('button', { name: /show all 9/i })).toBeInTheDocument();
   });
 
-  it('bấm "Show all" hiện đủ 9', async () => {
+  it('bấm "Show all" hiện đủ 9 rồi thu lại được', async () => {
     const user = userEvent.setup();
     renderExplorer();
+    await openFilters(user);
     await user.click(screen.getByRole('button', { name: /show all 9/i }));
     expect(screen.getByRole('checkbox', { name: /^Phú Quốc, / })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /show less/i })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: /show less/i }));
+    expect(screen.queryByRole('checkbox', { name: /^Phú Quốc, / })).toBeNull();
   });
 
-  it('option đang bật nằm ngoài 6 mục đầu thì nhóm tự mở hết', () => {
-    // Nếu không, người dùng thấy chip "Phú Quốc" ở trên mà tìm mãi không ra ô
-    // để bỏ chọn.
+  it('option đang bật nằm ngoài 6 mục đầu thì nhóm tự mở hết', async () => {
+    // Nếu không, chip "Phú Quốc" hiện trên thanh kết quả mà trong drawer không
+    // tìm ra ô nào để bỏ chọn.
+    const user = userEvent.setup();
     renderExplorer({ destinations: 'phu-quoc' });
+    await openFilters(user);
     expect(screen.getByRole('checkbox', { name: /^Phú Quốc, / })).toBeChecked();
     expect(screen.queryByRole('button', { name: /show all 9/i })).toBeNull();
   });
 
-  it('nhóm ngắn KHÔNG có nút "Show all" thừa', () => {
+  it('nhóm ngắn KHÔNG có nút "Show all" thừa', async () => {
+    const user = userEvent.setup();
     renderExplorer();
-    // Category có 6 mục = đúng ngưỡng, Duration/Price/Pace có 3.
+    await openFilters(user);
+    // Chỉ Destination (9) vượt ngưỡng 6; Category đúng 6, ba nhóm pill có 3.
     expect(screen.getAllByRole('button', { name: /show all/i })).toHaveLength(1);
   });
 });
