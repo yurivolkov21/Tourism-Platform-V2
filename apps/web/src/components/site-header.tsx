@@ -17,8 +17,9 @@ import { UserMenu } from './user-menu';
 // chỉ chứa đích đến là TRANG thật (review navbar #3: bỏ Reviews vì nó mãi là
 // section trong Home, link tới nó vẫn còn ở footer).
 // 27/07: navbar KHÔNG còn link chết nào. Tours trỏ /tours; dropdown Destinations
-// liệt kê 9 địa danh trỏ /tours?destination=<slug> (API lọc theo slug, không có
-// tham số region — xem comment trong destinations-menu.tsx).
+// liệt kê 9 địa danh trỏ /tours?destinations=<slug> — SỐ NHIỀU, đúng từ vựng URL
+// mà /tours đọc (xem comment trong destinations-menu.tsx: bản số ít mở trang mà
+// không lọc gì).
 const NAV_LINKS = [
   { label: 'Travel Blog', href: '/blog' },
   { label: 'About Us', href: '/about' },

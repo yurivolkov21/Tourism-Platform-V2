@@ -13,11 +13,20 @@ import { REGIONS } from '@/mocks/regions';
 
 // Dropdown "Destinations" trên navbar (convert bố cục NavigationMenu của Nexora).
 //
-// Liệt kê ĐỊA DANH chứ không phải vùng: `ToursListQuerySchema` chỉ nhận
-// `destination` (slug), không có tham số `region`. Trỏ một mục "North" sang
-// /tours mà không lọc được gì thì vẫn là link nói dối. Vùng vẫn hiện dưới dạng
-// tiêu đề nhóm + chấm tint `--region-primary` (data-region ở cấp nhóm — hợp lệ
-// ADR-0013 #4, điểm v2 làm được mà Nexora không có).
+// Liệt kê ĐỊA DANH chứ không phải vùng: lọc được theo slug địa danh, không có
+// tham số `region` ở đâu cả. Trỏ một mục "North" sang /tours mà không lọc được
+// gì thì vẫn là link nói dối. Vùng vẫn hiện dưới dạng tiêu đề nhóm + chấm tint
+// `--region-primary` (data-region ở cấp nhóm — hợp lệ ADR-0013 #4, điểm v2 làm
+// được mà Nexora không có).
+//
+// Tham số là `destinations` (SỐ NHIỀU) — đó là từ vựng URL của /tours, nơi mỗi
+// facet là danh sách ngăn bằng dấu phẩy vì bộ lọc cho chọn nhiều. Đừng viết
+// `?destination=` theo tên field của `ToursListQuerySchema`: contract nhận đúng
+// MỘT slug, còn trang đọc số nhiều, nên số ít rơi vào hư không — trang mở ra
+// KHÔNG lọc gì và không có dấu hiệu nào. Chín link ở đây đã chết đúng kiểu đó
+// cho tới 27/07. Khi gắn API, chỗ ánh xạ số nhiều → contract là nơi phải xử lý
+// (cùng họ với lỗ contract #4 ở spec §8: facet nhiều lựa chọn chưa có đường
+// biểu diễn trong query schema).
 //
 // Trang /destinations riêng là cụm sau; cho tới lúc đó mọi link ở đây đều tới
 // một trang CÓ THẬT và lọc ra kết quả thật.
@@ -58,7 +67,9 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
                   <ul className="mt-2">
                     {DESTINATIONS.filter((dest) => dest.region === region.key).map((dest) => (
                       <li key={dest.slug}>
-                        <NavigationMenuLink render={<a href={`/tours?destination=${dest.slug}`} />}>
+                        <NavigationMenuLink
+                          render={<a href={`/tours?destinations=${dest.slug}`} />}
+                        >
                           <span className="flex flex-col gap-0.5">
                             <span className="text-sm">{dest.name}</span>
                             {/* MỘT dòng cứng: "Coast rides & Golden Bridge"

@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Tours — Tourism',
   description: messages.toursPage.subtitle,
   // Canonical: mẫu /blog bỏ sót cái này so với Nexora. Trang listing có
-  // ?category=&destination=&page= nên càng cần trỏ về bản không tham số.
+  // ?categories=&destinations=&page= nên càng cần trỏ về bản không tham số.
   alternates: { canonical: '/tours' },
 };
 
