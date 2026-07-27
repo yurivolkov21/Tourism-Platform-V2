@@ -4,7 +4,7 @@ import { Clock8Icon, MapPinIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import { TopoPattern } from '@/components/topo-pattern';
+import { AnimatedGridPattern } from '@/components/motion/animated-grid-pattern';
 import { OFFICES } from '@/mocks/offices';
 
 // Contact §3 — convert Nexora ContactLocation: map lớn bo 2xl (placeholder
@@ -19,11 +19,17 @@ export function ContactLocation() {
       id="visit"
       className="relative w-full overflow-hidden bg-muted px-4 py-20 md:px-16 md:py-28 lg:px-24 xl:px-32"
     >
-      {/* Gia vị lưới trắc địa (demo 25/07): giấy kẻ ô bản đồ dưới section toạ độ
-          văn phòng — mờ dần về đáy để không đè lưới card */}
-      <TopoPattern
-        variant="grid"
-        className="bg-primary opacity-[0.07] dark:opacity-[0.14] [mask-composite:intersect] [mask-image:url(/images/survey-grid.svg),linear-gradient(to_bottom,black_35%,transparent_85%)]"
+      {/* Nền lưới ĐỘNG (thay lưới trắc địa tĩnh, 27/07): ô sáng nhấp nháy rải
+          rác trên lưới — giữ nguyên mask mờ dần về đáy của bản cũ để không đè
+          lưới card. Màu đặt bằng token (fill/stroke primary), không hex.
+          Component tự dừng khi cuộn khỏi khung nhìn và tự tắt hẳn khi người
+          dùng xin giảm chuyển động — hai thứ bản gốc MagicUI không có. */}
+      <AnimatedGridPattern
+        numSquares={26}
+        maxOpacity={0.28}
+        duration={4}
+        repeatDelay={0.8}
+        className="fill-primary/25 stroke-primary/20 [mask-image:linear-gradient(to_bottom,black_35%,transparent_85%)]"
       />
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="mb-10 flex flex-col gap-4 md:mb-14">
