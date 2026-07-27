@@ -2,6 +2,36 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-27 — Vá 3 alert Dependabot (thẳng `main`, `f01a58f`)
+
+Ba alert bắc cầu, không cái nào là dependency trực tiếp của mình.
+- **#8 find-my-way 9.6.0 → 9.7.0** (high, CVSS 7.5, DDoS qua HTTP/2). Đây là
+  router BÊN TRONG fastify nên nằm trên đường HTTP thật của `apps/api`.
+  `fastify@5.10.0` khai `^9.6.0` nên tự lên được, nhưng
+  `@nestjs/platform-fastify@11.1.28` **ghim cứng 9.6.0** và bản 11.x mới nhất
+  cũng vẫn ghim → phải override. Đo mức độ trước khi hốt hoảng: `apps/api`
+  **không bật HTTP/2 ở đâu** (grep `http2`/`allowHTTP1`/`createSecureServer`
+  = rỗng) nên lỗ hổng không với tới được ở cấu hình hiện tại.
+- **#9 valibot 1.2.0 → 1.4.2** (moderate). Đường đi prisma CLI → `@prisma/dev`
+  → valibot, **ghim cứng 1.2.0**, bản `@prisma/dev` mới nhất (0.24.16) cũng
+  vẫn ghim → override. Dự án không dùng valibot (validate bằng zod).
+- **#10 brace-expansion → 5.0.8** (high, CVSS 7.5, DoS nở chuỗi brace).
+  Advisory ghi affected `<= 5.0.7` tức **cả dòng 2.x cũng dính mà không có
+  backport** — bản vá duy nhất là 5.0.8. Hai đường: `minimatch@10`
+  (shadcn/ts-morph + style-dictionary) tự lên được; `minimatch@9` ←
+  `@swc/cli` — **trình biên dịch build của `apps/api`** — khai `^2.0.1`, nên
+  override này **ép qua major 2→5**. Không suy đoán là an toàn: đã xoá
+  `apps/api/dist` rồi ép build lại (`--force`), swc biên dịch đủ 115 file và
+  loại đúng `**/*.spec.ts` — chính glob đó là đường đi qua minimatch →
+  brace-expansion. Ghi sẵn lối thoát trong `pnpm-workspace.yaml`: nếu build
+  gãy vì dòng này thì gỡ ra và chấp nhận alert, vì mẫu brace ở đây do chính
+  `package.json` của mình viết, không phải input từ ngoài.
+
+Bài học công cụ: **pnpm 11 không còn đọc `pnpm.overrides` trong `package.json`**
+(chỉ cảnh báo rồi bỏ qua) — chỗ đúng là `overrides:` trong `pnpm-workspace.yaml`.
+Tests after: gate:int xanh — 334 unit (10 tokens + 55 contract + 5 ui + 76 web
++ 188 api) + 145 int; build ÉP LẠI từ đầu cho cả api lẫn web đều xanh.
+
 ## 2026-07-27 — P3b: cụm trang Blog (branch `feat/blog-pages`, merge `b7aeb3f`)
 
 Vá thụt lùi so với Nexora: `/blog`, `/blog/[slug]`, `/blog/rss.xml` — v2 trước
