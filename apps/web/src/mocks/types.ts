@@ -4,24 +4,84 @@
 
 export type MockRegionKey = 'north' | 'central' | 'south';
 
-export interface MockTour {
+// ─────────────────────────────────────────────────────────────────────────────
+// Tour — NGOẠI LỆ của luật "shape tự do" ghi ở đầu file.
+//
+// Gương đúng TourCardSchema/TourDetailSchema của @tourism/contract. Khác các
+// mock còn lại vì tour đã có contract backend chốt và GIÀU HƠN nhu cầu UI, nên
+// mock đi theo contract ngay từ đầu — lúc gắn API là swap nguồn dữ liệu, không
+// phải rename khắp component.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Một destination mà tour đi qua (bảng join M:N ở backend). `isPrimary` là
+    điểm đến chính; tour đi qua nhiều nơi nên contract trả CẢ mảng. */
+export interface MockDestinationLink {
+  slug: string;
+  name: string;
+  isPrimary: boolean;
+}
+
+export type MockTourDifficulty = 'EASY' | 'MODERATE' | 'CHALLENGING';
+export type MockTravellerType = 'FAMILY' | 'COUPLE' | 'FRIENDS' | 'SOLO' | 'BUSINESS';
+export type MockTourBadge = 'BEST_VALUE' | 'LIMITED_OFFER' | 'EXCLUSIVE' | 'NEW' | 'POPULAR';
+export type MockPolicyKind = 'CANCELLATION' | 'BOOKING' | 'GENERAL';
+
+/** Gương TourCardSchema — item của trang listing. */
+export interface MockTourCard {
+  id: string;
   slug: string;
   title: string;
-  region: MockRegionKey;
-  /** Dòng meta ngắn: "Quang Ninh · junk boat · kayaking" */
-  place: string;
-  days: number;
-  priceUsd: number;
-  /** Giá gạch (khuyến mãi) — hiển thị line-through */
-  compareUsd?: number;
-  rating: number;
-  reviews: number;
-  tags: string[];
-  /** Đường dẫn ảnh trong public, vd "/mock/halong.jpg" */
-  image: string;
-  /** Cờ khẩn (đỏ sơn mài) — tối đa 1 tour dùng, vd "−20% TODAY" */
-  flag?: string;
-  summary: string;
+  summary: string | null;
+  /** Chuỗi thập phân, KHÔNG phải number — tiền luôn là string để không mất
+      chính xác khi đi qua JSON. Number() chỉ dùng ở bước định dạng cuối. */
+  basePrice: string;
+  compareAtPrice: string | null;
+  currency: string;
+  durationDays: number;
+  difficulty: MockTourDifficulty | null;
+  maxGroupSize: number;
+  isFeatured: boolean;
+  destinations: MockDestinationLink[];
+  category: { slug: string; name: string };
+  /** null = CHƯA AI đánh giá. Khác hẳn 0 = bị chấm 0 điểm. UI phải render hai
+      trạng thái này khác nhau, đừng gộp bằng falsy check. */
+  ratingAvg: number | null;
+  ratingCount: number;
+}
+
+export interface MockItineraryDay {
+  dayNumber: number;
+  title: string;
+  description: string | null;
+}
+
+export interface MockTourDeparture {
+  id: string;
+  /** YYYY-MM-DD — cột @db.Date serialize thành ngày lịch, KHÔNG phải datetime.
+      Đừng dựng new Date() từ chuỗi này: nó bị hiểu là UTC rồi hiển thị theo
+      giờ máy, lệch một ngày ở múi giờ âm. */
+  startDate: string;
+  endDate: string;
+  seatsLeft: number;
+  /** = priceOverride của đợt ?? basePrice của tour. */
+  effectivePrice: string;
+  compareAtPrice: string | null;
+}
+
+/** Gương TourDetailSchema = card + nội dung bán hàng + đợt khởi hành.
+    Schema v2 KHÔNG có cột `description` dài — thân tour chính là các mảng
+    có cấu trúc dưới đây (summary nằm ở card). */
+export interface MockTourDetail extends MockTourCard {
+  suitableFor: MockTravellerType[];
+  badges: MockTourBadge[];
+  included: string[];
+  excluded: string[];
+  highlights: string[];
+  meetingPoint: string | null;
+  itinerary: MockItineraryDay[];
+  faqs: { question: string; answer: string }[];
+  policies: { kind: MockPolicyKind; title: string; body: string }[];
+  departures: MockTourDeparture[];
 }
 
 export interface MockRegion {

@@ -13,30 +13,133 @@ import { TOURS } from './tours.js';
 // nhưng dữ liệu phải tự nhất quán (ảnh tồn tại, slug duy nhất, đủ 3 vùng).
 const PUBLIC_DIR = join(import.meta.dirname, '../../public');
 
-describe('mock tours', () => {
-  it('đúng 6 tour, slug duy nhất', () => {
-    expect(TOURS).toHaveLength(6);
-    expect(new Set(TOURS.map((t) => t.slug)).size).toBe(6);
+// TOURS là mock DUY NHẤT gương theo contract backend (TourCard/TourDetailSchema)
+// thay vì shape tự do như các mock khác — tour đã có contract chốt và giàu hơn
+// UI, nên đi theo nó ngay từ đầu để lúc gắn API là swap nguồn, không phải
+// rename khắp component. Bộ test dưới đây canh chính sự-gương-đúng đó.
+const DECIMAL = /^\d+(\.\d+)?$/;
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+describe('mock tours — bất biến gương theo contract', () => {
+  it('có đủ 16 tour để limit=12 sinh ra trang 2 thật', () => {
+    expect(TOURS).toHaveLength(16);
   });
 
-  it('ảnh nằm trong /mock/ và file tồn tại thật', () => {
-    for (const t of TOURS) {
-      expect(t.image, t.slug).toMatch(/^\/mock\/[a-z-]+\.jpg$/);
-      expect(existsSync(join(PUBLIC_DIR, t.image)), t.image).toBe(true);
+  it('slug và id không trùng', () => {
+    expect(new Set(TOURS.map((t) => t.slug)).size).toBe(TOURS.length);
+    expect(new Set(TOURS.map((t) => t.id)).size).toBe(TOURS.length);
+  });
+
+  it('mọi trường tiền là chuỗi thập phân, không phải number', () => {
+    for (const tour of TOURS) {
+      expect(tour.basePrice, tour.slug).toMatch(DECIMAL);
+      if (tour.compareAtPrice !== null) expect(tour.compareAtPrice, tour.slug).toMatch(DECIMAL);
+      for (const dep of tour.departures) {
+        expect(dep.effectivePrice, tour.slug).toMatch(DECIMAL);
+        if (dep.compareAtPrice !== null) expect(dep.compareAtPrice, tour.slug).toMatch(DECIMAL);
+      }
     }
   });
 
-  it('rating hợp lệ [0,5] và mỗi vùng có ít nhất 1 tour', () => {
-    for (const t of TOURS) {
-      expect(t.rating).toBeGreaterThanOrEqual(0);
-      expect(t.rating).toBeLessThanOrEqual(5);
+  it('giá gạch luôn CAO HƠN giá gốc — ngược lại thì chip giảm giá vô nghĩa', () => {
+    for (const tour of TOURS) {
+      if (tour.compareAtPrice !== null) {
+        expect(Number(tour.compareAtPrice), tour.slug).toBeGreaterThan(Number(tour.basePrice));
+      }
     }
-    const regions = new Set(TOURS.map((t) => t.region));
-    expect([...regions].sort()).toEqual(['central', 'north', 'south']);
   });
 
-  it('tối đa 1 tour có flag khuyến mãi (đỏ sơn mài dùng tiết chế)', () => {
-    expect(TOURS.filter((t) => t.flag).length).toBeLessThanOrEqual(1);
+  it('mỗi tour có đúng MỘT destination isPrimary', () => {
+    for (const tour of TOURS) {
+      expect(
+        tour.destinations.filter((d) => d.isPrimary),
+        tour.slug,
+      ).toHaveLength(1);
+    }
+  });
+
+  it('mọi destination slug đều tồn tại trong DESTINATIONS', () => {
+    const known = new Set(DESTINATIONS.map((d) => d.slug));
+    for (const tour of TOURS) {
+      for (const dest of tour.destinations) expect(known, tour.slug).toContain(dest.slug);
+    }
+  });
+
+  it('itinerary có đúng durationDays ngày, đánh số 1..n liên tục', () => {
+    for (const tour of TOURS) {
+      expect(tour.itinerary, tour.slug).toHaveLength(tour.durationDays);
+      expect(
+        tour.itinerary.map((d) => d.dayNumber),
+        tour.slug,
+      ).toEqual(Array.from({ length: tour.durationDays }, (_, i) => i + 1));
+    }
+  });
+
+  it('departures là ngày lịch, sort tăng dần, endDate không trước startDate', () => {
+    for (const tour of TOURS) {
+      const starts = tour.departures.map((d) => d.startDate);
+      expect(starts, tour.slug).toEqual([...starts].sort());
+      for (const dep of tour.departures) {
+        expect(dep.startDate, tour.slug).toMatch(ISO_DATE);
+        expect(dep.endDate, tour.slug).toMatch(ISO_DATE);
+        expect(dep.endDate >= dep.startDate, tour.slug).toBe(true);
+        expect(dep.seatsLeft, tour.slug).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+
+  it('ratingAvg null nghĩa là chưa ai đánh giá — ratingCount phải bằng 0', () => {
+    for (const tour of TOURS) {
+      if (tour.ratingAvg === null) {
+        expect(tour.ratingCount, tour.slug).toBe(0);
+      } else {
+        expect(tour.ratingAvg, tour.slug).toBeGreaterThanOrEqual(0);
+        expect(tour.ratingAvg, tour.slug).toBeLessThanOrEqual(5);
+        expect(tour.ratingCount, tour.slug).toBeGreaterThan(0);
+      }
+    }
+  });
+});
+
+describe('mock tours — mọi nhánh nullable phải có mock chứng minh', () => {
+  it('có tour chưa ai đánh giá', () => {
+    expect(TOURS.some((t) => t.ratingAvg === null)).toBe(true);
+  });
+  it('có tour không giá gạch', () => {
+    expect(TOURS.some((t) => t.compareAtPrice === null)).toBe(true);
+  });
+  it('có tour chưa mở đợt khởi hành nào', () => {
+    expect(TOURS.some((t) => t.departures.length === 0)).toBe(true);
+  });
+  it('có đợt khởi hành đã hết chỗ', () => {
+    expect(TOURS.some((t) => t.departures.some((d) => d.seatsLeft === 0))).toBe(true);
+  });
+  it('có tour không ghi độ khó', () => {
+    expect(TOURS.some((t) => t.difficulty === null)).toBe(true);
+  });
+  it('có tour không có điểm hẹn', () => {
+    expect(TOURS.some((t) => t.meetingPoint === null)).toBe(true);
+  });
+  it('có tour không có tóm tắt', () => {
+    expect(TOURS.some((t) => t.summary === null)).toBe(true);
+  });
+  it('có ngày trong itinerary bỏ trống mô tả', () => {
+    expect(TOURS.some((t) => t.itinerary.some((d) => d.description === null))).toBe(true);
+  });
+  it('có tour không có FAQ nào', () => {
+    expect(TOURS.some((t) => t.faqs.length === 0)).toBe(true);
+  });
+  it('phủ đủ 3 mức độ khó', () => {
+    const levels = new Set(TOURS.map((t) => t.difficulty).filter(Boolean));
+    expect(levels).toEqual(new Set(['EASY', 'MODERATE', 'CHALLENGING']));
+  });
+  it('phủ ít nhất 5 chuyên mục và cả 9 địa danh', () => {
+    expect(new Set(TOURS.map((t) => t.category.slug)).size).toBeGreaterThanOrEqual(5);
+    const used = new Set(TOURS.flatMap((t) => t.destinations.map((d) => d.slug)));
+    expect(used.size).toBe(DESTINATIONS.length);
+  });
+  it('có ít nhất 3 tour featured', () => {
+    expect(TOURS.filter((t) => t.isFeatured).length).toBeGreaterThanOrEqual(3);
   });
 });
 
