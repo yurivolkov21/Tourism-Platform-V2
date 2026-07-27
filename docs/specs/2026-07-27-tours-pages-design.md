@@ -193,6 +193,41 @@ export interface MockTourDetail extends MockTourCard {
 | Nhóm 3 lựa chọn | Hàng **pill** `aria-pressed` (vẫn đa chọn) | Ba lựa chọn xếp dọc tốn ba hàng cho một quyết định đơn giản; pill gói vào một hàng và tách thị giác "chọn khoảng" khỏi "chọn từ danh sách" |
 | **Sort** | **Ngoài trang**, không nhét vào drawer | Lọc *thu hẹp tập kết quả*, sắp xếp *đổi thứ tự cùng tập* — hai mô hình khác nhau, gộp chung dạy người dùng sai. Và sort dùng nhiều hơn lọc; chôn sau hai cú bấm là phạt đúng hành vi phổ biến nhất |
 
+**Cụm điều khiển — sửa lần 4, 27/07.** Ba bản trước đều vẽ một cái **thẻ**
+rộng gần hết màn hình rồi nhét ba thứ nhỏ vào, nên giữa trống hoác; sửa màu và
+vị trí không giải quyết được. Khảo sát **13 sản phẩm thật** (Viator · Klook ·
+Airbnb · Booking · Intrepid · G Adventures · Expedia · Tripadvisor · Etsy ·
+ASOS · Zalando · REI · TourRadar — chụp thật + đọc computed style) cho hai kết
+luận đảo ngược cách tiếp cận:
+
+1. **Gốc rễ không phải ít phần tử, mà là CÁI KHUNG vẽ quanh chúng.** ASOS đặt
+   đúng 3 thứ trên dải 1300px và không ai thấy sai — vì không có container.
+   Chỉ 3/13 sản phẩm vẽ thứ gì giống một cái thanh có nền, và cả ba đều là
+   thanh **dính đã được lấp đầy** bằng chip danh mục.
+2. **9/13 không dính gì cả.** Baymard **không có số liệu nào** về sticky
+   toolbar trên desktop; luật sticky của họ chỉ áp cho **mobile**. Bốn site có
+   dính đều phục vụ 600–800+ kết quả với danh sách vô tận — không phải ta.
+
+Cách chữa: nâng số kết quả lên cỡ **tiêu đề khu vực** (`h2`) làm neo trái, điều
+khiển bám mép phải cùng baseline, một đường kẻ khép khoảng hở và kiêm cạnh trên
+của danh sách. Hàng đọc thành "tiêu đề + điều khiển đuôi" — hình dạng 6/13 sản
+phẩm dùng (Booking · G Adventures · Intrepid · REI · Tripadvisor · Expedia).
+Không khung, không nền, **không dính**.
+
+| Thành phần | Chốt |
+| --- | --- |
+| Số kết quả | `h2` + `role="status"`. `16 tours` · đang lọc thì `6 of 16 tours` |
+| Sort | `Select`, luôn hiện giá trị đang chọn. 13/13 sản phẩm có sort đều dùng dropdown; không ai dùng segmented |
+| Filters | Nút **viền** + icon + huy hiệu số. Không nút đặc, không icon-only trên desktop, **không nút nổi** — không sản phẩm desktop nào dùng |
+| Chip đang bật | Dòng thứ hai, chỉ render khi có lọc. Baymard: 72% site có phần này; "chỉ hiện số trên nút Filters" là lỗi khả dụng |
+| Ngăn cách | Một đường `border-b` — khoảng trắng giữa hai cụm thành khoảng trắng **có biên** |
+
+**Phân trang:** mặc định **10 tour/trang**, người dùng đổi được **10 / 20 / 50**
+(đều ≤ trần `limit` 50 của contract). Thanh phân trang có neo ba chỗ:
+`[10 ▾] per page` trái · số trang giữa · `Showing 1–10 of 16` phải — nên nó
+không lặp lại lỗi "trống hoác". Đóng luôn khoản nợ rows-per-page mà Nexora có
+và v2 thiếu (ghi ở đối chiếu §"Nhỏ" mục 15).
+
 **Trang chính sau khi bỏ sidebar:**
 
 ```

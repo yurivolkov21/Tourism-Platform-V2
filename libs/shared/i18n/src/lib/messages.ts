@@ -1437,6 +1437,14 @@ export const messages = {
     resultSummary: (tours: number, destinations: number) =>
       `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} destinations`,
     showing: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
+    perPage: 'per page',
+    perPageLabel: 'Tours per page',
+    /** Tiêu đề khu vực kết quả. Khi có lọc thì nói rõ "6 of 16" — người dùng
+        cần biết mình đang xem một phần của cái gì. */
+    resultsHeading: (shown: number, total: number) =>
+      shown === total
+        ? `${total} ${total === 1 ? 'tour' : 'tours'}`
+        : `${shown} of ${total} ${total === 1 ? 'tour' : 'tours'}`,
     facets: {
       category: 'Category',
       destination: 'Destination',

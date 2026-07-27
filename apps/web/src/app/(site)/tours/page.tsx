@@ -26,6 +26,7 @@ export default async function ToursPage({
     q?: string;
     sort?: string;
     page?: string;
+    limit?: string;
   }>;
 }) {
   const params = await searchParams;
@@ -44,6 +45,7 @@ export default async function ToursPage({
     q: params.q,
     sort: params.sort,
     page: Number(params.page) || 1,
+    limit: Number(params.limit) || undefined,
   };
 
   return (
