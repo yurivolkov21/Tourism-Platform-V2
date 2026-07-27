@@ -2,6 +2,12 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { OnThisPage } from '@/components/content/on-this-page';
+import {
+  BookingRailConnected,
+  DepartureSelectionProvider,
+  DepartureStripConnected,
+  DeparturesTableConnected,
+} from '@/components/tours/departure-selection';
 import { TourHero, TourImageBand } from '@/components/tours/tour-hero';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
@@ -80,19 +86,23 @@ export async function generateMetadata({
  * "You might also like" KHÔNG nằm trong danh sách: nó là gợi ý cuối trang, không
  * phải nội dung của tour này.
  */
-function pageSections(tour: MockTourDetail): string[] {
+type SectionKey = 'why' | 'goodFor' | 'itinerary' | 'included' | 'departures' | 'goodToKnow';
+
+function pageSections(tour: MockTourDetail): { key: SectionKey; heading: string }[] {
   const s = messages.tourDetail.sections;
   return [
-    tour.highlights.length > 0 ? s.why : null,
-    tour.suitableFor.length > 0 ? s.goodFor : null,
-    s.itinerary,
-    s.included,
-    s.departures,
-    tour.faqs.length > 0 || tour.policies.length > 0 ? s.goodToKnow : null,
-    // Không viết type predicate tường minh ở đây: `messages` là object const nên
-    // tiêu đề mang kiểu literal union, và `heading is string` bị TS từ chối vì
-    // rộng hơn chính tham số. Để TS tự suy diễn narrow từ phép so sánh.
-  ].filter((heading) => heading !== null);
+    tour.highlights.length > 0 ? { key: 'why' as const, heading: s.why } : null,
+    tour.suitableFor.length > 0 ? { key: 'goodFor' as const, heading: s.goodFor } : null,
+    { key: 'itinerary' as const, heading: s.itinerary },
+    { key: 'included' as const, heading: s.included },
+    { key: 'departures' as const, heading: s.departures },
+    tour.faqs.length > 0 || tour.policies.length > 0
+      ? { key: 'goodToKnow' as const, heading: s.goodToKnow }
+      : null,
+    // Khoá ổn định đi kèm tiêu đề: nội dung từng section chọn theo `key`, không
+    // so sánh chuỗi tiêu đề — sửa một chữ trong copy không được làm nội dung
+    // section biến mất.
+  ].filter((section) => section !== null);
 }
 
 export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -102,11 +112,48 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
   const t = messages.tourDetail;
   const sections = pageSections(tour);
-  const toc = tocFromSections(sections.map((heading) => ({ heading })));
+  const toc = tocFromSections(sections.map(({ heading }) => ({ heading })));
 
   return (
-    <>
+    <DepartureSelectionProvider departures={tour.departures}>
       <TourHero tour={tour} />
+
+      {/* Dải khởi hành là BĂNG RIÊNG nối tiếp hero, cùng `bg-hero`, cách nhau
+          bằng một hairline: hai băng liền màu đọc thành MỘT bảng có đường chia —
+          đúng hình ảnh "departure board" gắn dưới tiêu đề, thay vì một khối lạ
+          trôi trên nền sáng. Nó cũng là lý do dải phải ở trên nếp gấp: dữ liệu
+          đợt khởi hành là thứ Nexora không có (họ hardcode `departures: []`). */}
+      <section
+        aria-labelledby="departure-strip-heading"
+        className="w-full border-t border-hero-foreground/15 bg-hero px-4 py-6 text-hero-foreground md:px-16 lg:px-24 xl:px-32"
+      >
+        <div className="dark contents">
+          <div className="mx-auto max-w-7xl">
+            {/* Nhãn trái, link xuống bảng đầy đủ phải — cùng hình dạng "tiêu đề
+                khu vực + điều khiển đuôi" mà listing chốt ở vòng 4. Không có nó
+                thì nửa phải của băng trống hoác đúng kiểu ba bản listing đầu. */}
+            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+              <p
+                id="departure-strip-heading"
+                className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
+              >
+                {t.departures.stripHeading}
+              </p>
+              {/* Chỉ hiện khi có đợt: link tới một bảng rỗng là link nói dối. */}
+              {tour.departures.length > 0 ? (
+                <a
+                  href={`#${slugify(t.sections.departures)}`}
+                  className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                >
+                  {t.departures.seeAll(tour.departures.length)}
+                </a>
+              ) : null}
+            </div>
+            <DepartureStripConnected currency={tour.currency} />
+          </div>
+        </div>
+      </section>
+
       {/* Băng ảnh cắt ngang toàn chiều rộng, không có đệm hai bên — nó là đường
           phân cách giữa hero và khu nội dung. */}
       <TourImageBand label={tour.title} />
@@ -126,9 +173,9 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
           <main className="min-w-0">
             <div className="divide-y divide-border">
-              {sections.map((heading) => (
+              {sections.map(({ key, heading }) => (
                 <section
-                  key={heading}
+                  key={key}
                   id={slugify(heading)}
                   aria-labelledby={`${slugify(heading)}-heading`}
                   className="scroll-mt-28 py-10 first:pt-0"
@@ -139,20 +186,31 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
                   >
                     {heading}
                   </h2>
-                  {/* Task 9 điền "All departures", Task 10 điền phần còn lại. */}
+
+                  {/* Nội dung chọn theo `key`. Task 10 điền phần còn lại; chỗ nào
+                      chưa có thì KHÔNG render hộp rỗng để trang không có khoảng
+                      trống vô nghĩa. */}
+                  {key === 'departures' ? (
+                    <div className="mt-6">
+                      <DeparturesTableConnected
+                        currency={tour.currency}
+                        durationDays={tour.durationDays}
+                      />
+                    </div>
+                  ) : null}
                 </section>
               ))}
             </div>
           </main>
 
           <aside className="hidden lg:block">
-            <div className="lg:sticky lg:top-28">
-              <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-                {t.departures.railLabel}
-              </p>
-              {/* Rail booking thật (giá theo đợt, thanh ghế, nút Reserve, dòng
-                  test-mode) vào ở Task 9. */}
-            </div>
+            <BookingRailConnected
+              variant="rail"
+              currency={tour.currency}
+              basePrice={tour.basePrice}
+              durationDays={tour.durationDays}
+              maxGroupSize={tour.maxGroupSize}
+            />
           </aside>
         </div>
       </div>
@@ -171,6 +229,18 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           {/* Gợi ý dựng bằng relatedTours() vào ở Task 10. */}
         </div>
       </section>
-    </>
+
+      {/* Bar đáy dính chỉ có dưới lg (điều kiện nằm trong component). Đệm bên
+          dưới để bar không che mất hàng cuối trước footer — cùng lớp lỗi với đợt
+          vá "đệm footer" ở vòng test listing. */}
+      <div aria-hidden="true" className="h-24 lg:hidden" />
+      <BookingRailConnected
+        variant="bar"
+        currency={tour.currency}
+        basePrice={tour.basePrice}
+        durationDays={tour.durationDays}
+        maxGroupSize={tour.maxGroupSize}
+      />
+    </DepartureSelectionProvider>
   );
 }

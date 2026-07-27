@@ -1546,6 +1546,10 @@ export const messages = {
     departures: {
       /** Dải chip ngay dưới hero — 4–6 đợt gần nhất. */
       stripHeading: 'Next departures',
+      /** Link từ dải xuống bảng đầy đủ. Cả 8 sản phẩm đã khảo sát đều có
+          affordance "See all dates"; ta đảo pattern (đưa ngày lên đầu) nhưng vẫn
+          giữ đường dẫn tới bảng, vì dải chỉ hiện 4–6 đợt gần nhất. */
+      seeAll: (n: number) => `See all ${n} dates`,
       railLabel: 'Your departure',
       /** departures[] rỗng: dải và rail đổi sang dòng này + CTA hỏi. */
       none: 'No departures scheduled yet',
@@ -1555,7 +1559,10 @@ export const messages = {
       soldOut: 'Sold out',
       seatsLimited: (n: number) => `Only ${n} ${n === 1 ? 'seat' : 'seats'} left`,
       seatsAvailable: (n: number) => `${n} seats available`,
+      /** Nhãn ĐỌC ĐƯỢC cho nút chọn trong bảng đợt: nhãn hiện ra chỉ có "Select"
+          nên nghe trần 4 nút "Select" giống nhau là không biết chọn cái nào. */
       select: (range: string) => `Select departure ${range}`,
+      selectLabel: 'Select',
       selected: 'Selected',
       columns: {
         dates: 'Dates',
