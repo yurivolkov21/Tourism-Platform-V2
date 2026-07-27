@@ -1398,60 +1398,47 @@ export const messages = {
     SOLO: 'Solo travellers',
     BUSINESS: 'Business',
   },
+  // CẢNH BÁO đã trả giá một lần: khối này port trọn gói từ Nexora nên từng mô
+  // tả filter/sort mà API v2 KHÔNG phục vụ được — facet duration/price/
+  // travelStyle/theme, sort theo popularity/rating. Đã cắt 27/07 khi dựng
+  // /tours. Trước khi thêm key mới, đối chiếu ToursListQuerySchema trong
+  // @tourism/contract: copy KHÔNG phải bằng chứng tính năng tồn tại.
   toursPage: {
     breadcrumb: 'Tours',
-    title: 'All tours',
+    title: 'Every journey we run',
     subtitle:
-      'Browse every journey we run — filter by destination, length, travel style and theme to find the trip that fits you.',
+      'Filter by category or destination to find the trip that fits you — every one of them small-group, and led by someone who lives there.',
     filtersLabel: 'Filters',
-    hideFilters: 'Hide filters',
-    showFilters: 'Show filters',
     clearAll: 'Clear all',
     searchPlaceholder: 'Search by destination or tour name…',
     searchAriaLabel: 'Search tours',
     sortLabel: 'Sort by',
+    // Bốn lựa chọn này ánh xạ 1-1 sang TourSortKey + order. Nexora còn có
+    // "Most popular" và "Top rated" — bỏ vì TourSortKeySchema không whitelist
+    // ratingAvg/ratingCount, dù cột đã denormalize sẵn (nợ ghi trong spec §8).
     sortOptions: {
-      popular: 'Most popular',
+      newest: 'Newest first',
       priceAsc: 'Price: low to high',
       priceDesc: 'Price: high to low',
-      rating: 'Top rated',
+      durationAsc: 'Duration: short to long',
     },
     resultCount: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
-    perPage: 'Per page',
+    resultSummary: (tours: number, destinations: number) =>
+      `${tours} ${tours === 1 ? 'tour' : 'tours'} across ${destinations} destinations`,
     showing: (from: number, to: number, total: number) => `Showing ${from}–${to} of ${total}`,
     facets: {
       destination: 'Destination',
       category: 'Category',
-      duration: 'Duration',
-      travelStyle: 'Travel style',
-      theme: 'Theme',
-      price: 'Price',
     },
-    durationLabels: { '1': 'Day trip', '2-3': '2–3 days', '4+': '4+ days' },
-    priceLabels: {
-      '<100': 'Under $100',
-      '100-300': '$100–$300',
-      '300+': '$300+',
-    },
+    allCategories: 'All',
+    featuredLabel: 'Featured',
+    // ratingAvg null = chưa ai đánh giá, KHÁC 0. Card hiện nhãn này thay vì
+    // "0.0" hay 5 sao rỗng.
+    notRated: 'Not yet reviewed',
     activeFiltersLabel: 'Active filters',
+    removeFilter: (label: string) => `Remove filter ${label}`,
     viewTour: 'View tour',
     perPerson: 'per person',
-    styleLabels: {
-      family: 'Family',
-      couples: 'Couples',
-      adventure: 'Adventure',
-      luxury: 'Luxury',
-      group: 'Group',
-      private: 'Private',
-    },
-    themeLabels: {
-      cruise: 'Cruise',
-      trekking: 'Trekking',
-      cultural: 'Cultural',
-      culinary: 'Food & culinary',
-      beach: 'Beach & islands',
-      nature: 'Nature',
-    },
     empty: {
       title: 'No tours match your filters',
       body: 'Try removing a filter or two to see more journeys.',

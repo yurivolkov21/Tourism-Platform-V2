@@ -180,10 +180,10 @@ export const TOURS: MockTourDetail[] = [
   {
     // Tour DÀI, độ khó cao — ép nhánh CHALLENGING và itinerary nhiều ngày.
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e42',
-    slug: 'ha-giang-loop-expedition',
-    title: 'Hà Giang Loop Expedition',
+    slug: 'northern-highlands-loop',
+    title: 'Northern Highlands Loop',
     summary:
-      'Eight days riding the northern frontier — hairpin passes, market towns, and nights in stilt houses above the Nho Quế river.',
+      'Eight days riding the far north — hairpin passes above the terraces, hill-tribe markets, and nights in village homestays.',
     basePrice: '1480.00',
     compareAtPrice: '1690.00',
     currency: 'USD',
@@ -212,47 +212,47 @@ export const TOURS: MockTourDetail[] = [
       'Travel insurance — mandatory for this trip',
     ],
     highlights: [
-      'Ride the Mã Pí Lèng pass with the river a thousand metres below',
-      'Sunday market at Đồng Văn, where four language groups trade in one square',
+      'Ride the Ô Quy Hồ pass, the highest road in the country, with the valley a thousand metres below',
+      'Sunday market at Bắc Hà, where four language groups trade in one square',
       'Sleep in a stilt house with the family that built it',
     ],
-    meetingPoint: 'Hà Giang bus station, main gate — 6:30am',
+    meetingPoint: 'Sa Pa town square, by the stone church — 6:30am',
     itinerary: [
       {
         dayNumber: 1,
-        title: 'Gather in Hà Giang',
+        title: 'Gather in Sa Pa',
         description:
           'Bike fitting, a briefing over dinner, and an early night before the first long day.',
       },
       {
         dayNumber: 2,
-        title: 'Into the Quản Bạ valley',
+        title: 'Into the Mường Hoa valley',
         description:
           'The first pass climbs out of town in a series of switchbacks that keep going long after you expect them to stop.',
       },
       {
         dayNumber: 3,
-        title: 'Yên Minh to Đồng Văn',
+        title: 'Over Ô Quy Hồ to Lai Châu',
         description:
-          'Limestone plateau riding, a stop at the Hmong king palace, and a night in the old quarter.',
+          'The long climb over the pass, a stop at Thác Bạc waterfall, and a night on the far side.',
       },
-      { dayNumber: 4, title: 'Đồng Văn Sunday market', description: null },
+      { dayNumber: 4, title: 'Bắc Hà Sunday market', description: null },
       {
         dayNumber: 5,
-        title: 'Mã Pí Lèng',
+        title: 'The Bắc Hà high road',
         description:
-          'The pass everyone comes for. We ride it slowly, stop often, and finish with a boat trip on the Nho Quế.',
+          'The stretch everyone comes for. We ride it slowly, stop often, and finish with a boat trip on the Chảy river.',
       },
       {
         dayNumber: 6,
-        title: 'Du Già',
+        title: 'Tả Van and the back roads',
         description: 'Off the main loop onto dirt, ending at a waterfall you can swim in.',
       },
-      { dayNumber: 7, title: 'Back towards Hà Giang', description: null },
+      { dayNumber: 7, title: 'Back towards Sa Pa', description: null },
       {
         dayNumber: 8,
         title: 'Return transfer',
-        description: 'Morning ride into town, hand the bikes back, and the night bus south.',
+        description: 'Morning ride into town, hand the bikes back, and the night train south.',
       },
     ],
     faqs: [
