@@ -70,6 +70,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Cụm pháp lý/utility](plans/2026-07-25-legal-utility-pages.md) | i18n + LegalArticle + 4 trang + 3 boundary (7 task) | ✅ đã merge |
 | [Cụm Blog](plans/2026-07-25-blog-pages.md) | mock 9 bài + lib/blog + 3 route + RSS (7 task + 3 đợt vá) | ✅ đã merge |
 | [Cụm Tours](plans/2026-07-27-tours-pages.md) | mock 16 tour theo contract + lib/tours + `/tours` + `/tours/[slug]` + robots/sitemap + 4 khoản nợ (13 task) | ✅ đã merge (2 đợt 27/07). Có **bảng 4 vòng thiết kế lại** của listing + mục **bẫy soft 404 do `loading.tsx`** (đọc trước khi thêm `loading.tsx` vào bất kỳ route động nào) |
+| [Cụm Destinations](plans/2026-07-28-destinations-pages.md) | token `--region-hero` + đắp lại mock gương contract + `lib/regions` + 2 trang + nối dây nav/sitemap (8 task, 57 bước) | 🚧 chưa thực thi. Có **2 mốc dừng bắt buộc** (báo số liệu dẫn xuất trước khi vẽ · duyệt `/destinations` trước khi làm trang vùng) và giải thích vì sao **KHÔNG** dùng `color-mix` cho hero vùng như spec đề xuất ban đầu |
 
 ## Analysis — nghiên cứu từ Nexora
 
