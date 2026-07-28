@@ -50,10 +50,14 @@ Vitest 4 (2 project: `node` + `jsdom`) · Biome · `@tourism/tokens` · `@touris
 | File | Trách nhiệm |
 | --- | --- |
 | `libs/shared/tokens/style-dictionary/tokens.mjs` | **Sửa** — thêm slot `hero` cho 3 vùng |
-| `apps/web/src/mocks/types.ts` | **Sửa** — `MockDestination` gương `DestinationSchema`; bỏ `tourCount` khỏi interface nguồn |
+| `libs/shared/tokens/src/lib/tokens.spec.ts` | **Sửa** — `SLOTS` 5 → 6 + 2 test mới |
+| `apps/web/src/mocks/types.ts` | **Sửa** — `MockDestination` gương `DestinationSchema`; `MockRegion` thêm `slug`, **xoá** `tourCount` |
 | `apps/web/src/mocks/destinations.ts` | **Sửa** — 9 địa điểm theo shape mới; `tourCount` dẫn xuất |
-| `apps/web/src/lib/regions.ts` | **Tạo** — 3 vùng + chuẩn hoá + xếp nhóm + 3 phép dẫn xuất |
+| `apps/web/src/mocks/regions.ts` | **Sửa** — thêm `slug`, xoá `tourCount` viết tay |
+| `apps/web/src/lib/regions.ts` | **Tạo** — CHỈ hàm (dữ liệu vùng ở `mocks/regions.ts`): chuẩn hoá + xếp nhóm + 3 phép dẫn xuất |
 | `apps/web/src/lib/regions.spec.ts` | **Tạo** — test logic thuần |
+| `apps/web/src/components/about/about-numbers.tsx` | **Sửa** — `TOTAL_TOURS` 68 → `TOURS.length` (16) |
+| `apps/web/src/components/about/about-gallery.tsx` | **Sửa** — `TOTAL_TOURS` + 3 số theo vùng thành dẫn xuất |
 | `libs/shared/i18n/src/lib/messages.ts` | **Sửa** — cắt ~202 dòng copy port từ Nexora |
 | `apps/web/src/components/destinations/region-card.tsx` | **Tạo** — thẻ vùng của index |
 | `apps/web/src/components/destinations/region-glance.tsx` | **Tạo** — dải số liệu dẫn xuất |
@@ -74,7 +78,7 @@ Vitest 4 (2 project: `node` + `jsdom`) · Biome · `@tourism/tokens` · `@touris
 
 ### Task 1: Token `--region-hero` cho 3 vùng
 
-**Vì sao task này đứng đầu:** trang vùng ở Task 6 cần nó, và spec §5.2 để mở cách
+**Vì sao task này đứng đầu:** trang vùng ở Task 5 cần nó, và spec §5.2 để mở cách
 hiện thực. Spec đề xuất `color-mix(in oklch, var(--region-deep), var(--hero) …)`;
 tính ra thì cách đó **không dùng được**: để `--region-deep` của Bắc (L 0.423) về
 L≈0.28 cần pha **83% `--hero`**, tức xoá gần hết sắc vùng, và ba vùng cần ba tỉ lệ
@@ -84,57 +88,70 @@ thuộc **tầng token**, nên tác thẳng một slot mới là đúng chỗ h�
 **Files:**
 
 - Modify: `libs/shared/tokens/style-dictionary/tokens.mjs` (`regionDefaults` + `regions`)
-- Test: `libs/shared/tokens/style-dictionary/tokens.spec.mjs` (file test hiện có)
+- Modify: `libs/shared/tokens/src/lib/tokens.spec.ts` (file test THẬT — nó
+  `import * as src from '../../style-dictionary/tokens.mjs'` và dùng `oklch` của
+  `culori`)
 
 **Interfaces:**
 
 - Produces: biến CSS `--region-hero`, có mặt ở `:root` (mặc định) và trong cả ba
   khối `[data-region='north'|'central'|'south']` của `generated/tokens.css`.
 
+⚠️ **Task này LÀM ĐỎ một test đang xanh.** `tokens.spec.ts` (quanh dòng 28) có
+`const SLOTS = ['primary', 'deep', 'surface', 'spark', 'on-surface']` và khẳng định
+mỗi vùng có **đúng** bộ key đó. Thêm slot thứ 6 là vỡ test ấy — **đó là hành vi
+đúng của test**, nên phải cập nhật `SLOTS` thành 6 phần tử, không phải nới lỏng
+phép khẳng định.
+
 - [ ] **Step 1: Đọc test hiện có để biết khuôn**
 
-Run: `sed -n '1,40p' libs/shared/tokens/style-dictionary/tokens.spec.mjs`
+Run: `sed -n '1,50p' libs/shared/tokens/src/lib/tokens.spec.ts`
 Mục đích: bắt chước đúng cách file này khẳng định slot vùng, không tự phát minh khuôn mới.
 
 - [ ] **Step 2: Viết test thất bại**
 
-Thêm vào `tokens.spec.mjs`:
+Trong `tokens.spec.ts`, sửa `SLOTS` của `describe('lớp region …')` thành:
 
-```js
-// `--region-hero`: nền hero của trang vùng. Tách khỏi `--region-deep` vì deep
-// sáng 0.35–0.42 — dùng trực tiếp thì ba trang vùng sáng khác nhau thấy rõ, và
-// navbar lúc chưa cuộn là trong suốt nên hero phải TỐI (luật CLAUDE.md).
-describe('slot --region-hero', () => {
-  it('cả ba vùng đều có slot hero', () => {
-    for (const key of ['north', 'central', 'south']) {
-      expect(regions[key], key).toHaveProperty('hero');
-    }
-  });
+```ts
+  const SLOTS = ['primary', 'deep', 'surface', 'spark', 'on-surface', 'hero'];
+```
 
-  it('regionDefaults cũng có hero để :root không thiếu biến', () => {
-    expect(regionDefaults).toHaveProperty('hero');
-  });
+Rồi thêm vào **cùng** `describe` đó:
 
+```ts
+  // `--region-hero`: nền hero của trang vùng. Tách khỏi `--region-deep` vì deep
+  // sáng 0.35–0.42 — dùng trực tiếp thì ba trang vùng sáng khác nhau thấy rõ, và
+  // navbar lúc chưa cuộn là trong suốt nên hero phải TỐI (luật CLAUDE.md).
+  //
+  // Phép "cả ba vùng CÓ slot hero" không cần test riêng: `SLOTS` ở trên đã khẳng
+  // định bộ key đúng bằng 6 phần tử cho cả 3 vùng lẫn `regionDefaults`.
   it('hero của cả ba vùng TỐI và CÙNG một bậc — chênh nhau ≤ 0.02 L', () => {
-    // Đây là bất biến sinh ra task này: `--region-deep` chênh 0.351 vs 0.423 nên
+    // Đây là bất biến sinh ra slot này: `--region-deep` chênh 0.351 vs 0.423 nên
     // ba trang vùng đọc thành thiếu nhất quán chứ không thành bản sắc.
-    const lightness = (v) => Number(/oklch\(([\d.]+)/.exec(v)[1]);
-    const ls = ['north', 'central', 'south'].map((k) => lightness(regions[k].hero));
+    const ls = ['north', 'central', 'south'].map((k) => {
+      const value = (src.regions as Record<string, Record<string, string>>)[k]?.hero ?? '';
+      // Đọc L qua culori thay vì regex — cùng công cụ mà cả file này đang dùng.
+      const parsed = oklch(value) as { l?: number } | undefined;
+      expect(parsed, k).toBeDefined();
+      return parsed?.l ?? 1;
+    });
     for (const l of ls) expect(l).toBeLessThanOrEqual(0.26);
     expect(Math.max(...ls) - Math.min(...ls)).toBeLessThanOrEqual(0.02);
   });
 
   it('ba hero KHÁC nhau — nếu giống hết thì tint vùng vô nghĩa', () => {
-    const set = new Set(['north', 'central', 'south'].map((k) => regions[k].hero));
-    expect(set.size).toBe(3);
+    const heroes = ['north', 'central', 'south'].map(
+      (k) => (src.regions as Record<string, Record<string, string>>)[k]?.hero,
+    );
+    expect(new Set(heroes).size).toBe(3);
   });
-});
 ```
 
 - [ ] **Step 3: Chạy test, xác nhận ĐỎ**
 
 Run: `pnpm turbo run test --filter=@tourism/tokens`
-Expected: FAIL — `expect(regions.north).toHaveProperty('hero')`.
+Expected: FAIL — test `SLOTS` đỏ trước (`regions.north` chưa có key `hero`), rồi hai
+test mới cũng đỏ.
 
 - [ ] **Step 4: Thêm slot vào `tokens.mjs`**
 
@@ -187,33 +204,61 @@ git commit -m "feat(tokens): slot --region-hero cho 3 vùng, cùng một bậc t
 
 ---
 
-### Task 2: Đắp lại `MockDestination` gương contract
+### Task 2: Số liệu trở thành DẪN XUẤT — mock gương contract + `lib/regions.ts`
+
+**Vì sao một task chứ không hai:** reshape mock chỉ có nghĩa *vì* có dẫn xuất, mà
+dẫn xuất cần shape mới. Tách ra thì task đầu phải viết logic đếm tạm cho
+`about-gallery` rồi task sau thay — tức cố tình dựng bản trùng. Không reviewer nào
+duyệt được nửa này mà từ chối nửa kia.
 
 **Files:**
 
-- Modify: `apps/web/src/mocks/types.ts` (`MockDestination`, quanh dòng 224)
+- Modify: `apps/web/src/mocks/types.ts` (`MockDestination` ~224 · `MockRegion` ~155)
 - Modify: `apps/web/src/mocks/destinations.ts` (toàn file)
+- Modify: `apps/web/src/mocks/regions.ts` (thêm `slug`, **xoá** `tourCount`)
+- Create: `apps/web/src/lib/regions.ts`
+- Create: `apps/web/src/lib/regions.spec.ts`
 - Modify: `apps/web/src/mocks/mocks.spec.ts` (2 test quanh dòng 205–230)
-- Modify: `apps/web/src/components/home/gallery.tsx:96`
-- Modify: `apps/web/src/components/destinations-menu.tsx:81`
+- Modify: `apps/web/src/components/home/gallery.tsx` (dòng 96 `blurb`)
+- Modify: `apps/web/src/components/destinations-menu.tsx:81` (`blurb`)
+- Modify: `apps/web/src/components/about/about-numbers.tsx:23` (`TOTAL_TOURS`)
+- Modify: `apps/web/src/components/about/about-gallery.tsx` (dòng 17 · 82 · 90 · 99)
 
 **Interfaces:**
 
+- Consumes: `MockTourCard`, `MockTourDifficulty`, `TOURS` (đã có)
 - Produces:
   - `interface MockDestination { id: string; slug: string; name: string; country: string; region: string | null; description: string | null; tourCount: number }`
-  - `const DESTINATIONS: MockDestination[]` — 9 phần tử, `tourCount` **dẫn xuất**
-  - `const DESTINATIONS_SOURCE: Omit<MockDestination, 'tourCount'>[]` — dữ liệu tay
+  - `interface MockRegion { key: MockRegionKey; slug: string; name: string; tagline: string }` — **`tourCount` bị xoá**
+  - `const DESTINATIONS: MockDestination[]` — 9 phần tử, `tourCount` dẫn xuất
+  - `const REGIONS: MockRegion[]` — vẫn ở `mocks/regions.ts`, giờ có `slug`
+  - `lib/regions.ts`:
+    - `type RegionKey = MockRegionKey`
+    - `regionBySlug(regions: readonly MockRegion[], slug: string): MockRegion | undefined`
+    - `regionOf(regions: readonly MockRegion[], destination: { region: string | null }): RegionKey | null`
+    - `destinationsInRegion<T extends { region: string | null }>(regions: readonly MockRegion[], destinations: readonly T[], key: RegionKey): T[]`
+    - `toursInRegion<T extends MockTourCard>(regions: readonly MockRegion[], destinations: readonly MockDestination[], tours: readonly T[], key: RegionKey): T[]`
+    - `interface RegionGlance { fromPrice: string; difficulties: MockTourDifficulty[]; categories: { slug: string; name: string }[] }`
+    - `regionGlance(tours: readonly MockTourCard[]): RegionGlance | null`
 
-**Ghi chú bắt buộc:** `region` phải là `string | null`, **không** phải
-`MockRegionKey`. Mock hẹp hơn contract nghĩa là mọi ca hỏng chỉ lộ lúc gắn API.
-Giá trị dùng **tên hiển thị** (`'Northern Vietnam'`) chứ không phải `'north'`: nếu
-mock chứa đúng khoá thì hàm chuẩn hoá ở Task 3 thành hàm đồng nhất và không bao giờ
-được kiểm bằng input thật.
+Hàm nhận dữ liệu qua **tham số**, không import `DESTINATIONS`/`TOURS` — đúng khuôn
+`lib/tours.ts` hiện có (`filterTours(tours, …)`), và nhờ đó test được với fixture nhỏ.
 
-- [ ] **Step 1: Viết test thất bại**
+⚠️ **Phạm vi rộng hơn cụm này — user đã chốt "dẫn xuất toàn site" (28/07).**
+`tourCount` viết tay đang chạy trên HAI trang đã duyệt:
 
-Thay **cả hai** `it` trong `describe('mock destinations …')` của `mocks.spec.ts`
-bằng:
+| Chỗ | Đang hiện | Sau task |
+| --- | --- | --- |
+| `/about` stat "Tours running" | 68 | **16** |
+| `/about` gallery 3 vùng | 24 / 27 / 17 | **6 / 6 / 6** |
+| `/` thẻ địa điểm `#gallery` | Hạ Long 9 | **2** |
+
+**`TOTAL_TOURS` phải là `TOURS.length` (16), TUYỆT ĐỐI không phải tổng theo vùng
+(=18).** `north-to-south-classic` thuộc cả ba vùng nên cộng dồn là đếm nó ba lần.
+
+- [ ] **Step 1: Viết test thất bại cho mock**
+
+Thay **cả hai** `it` trong `describe('mock destinations …')` của `mocks.spec.ts`:
 
 ```ts
 describe('mock destinations — gương DestinationSchema', () => {
@@ -232,7 +277,7 @@ describe('mock destinations — gương DestinationSchema', () => {
     ]);
   });
 
-  it('có đủ field contract yêu cầu, id là uuid', () => {
+  it('có đủ field contract yêu cầu, id là uuid v4', () => {
     for (const d of DESTINATIONS) {
       expect(d.id, d.slug).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-/);
       expect(d.country, d.slug).toBe('Vietnam');
@@ -244,9 +289,9 @@ describe('mock destinations — gương DestinationSchema', () => {
     expect(new Set(DESTINATIONS.map((d) => d.slug)).size).toBe(9);
   });
 
-  // Bất biến quan trọng nhất của task này. `tourCount` viết tay đang phồng 2–5×
-  // (Hạ Long khai 9, thật 2) nên thẻ nói "9 tours" mà bấm sang
-  // /tours?destinations=ha-long ra 2 — đúng lỗi "See all 1,204 reviews" mở ra 14.
+  // Bất biến quan trọng nhất. `tourCount` viết tay đang phồng 2–5× (Hạ Long khai 9,
+  // thật 2) nên thẻ nói "9 tours" mà bấm sang /tours?destinations=ha-long ra 2 —
+  // đúng lỗi "See all 1,204 reviews" mở ra 14 dòng.
   it('tourCount DẪN XUẤT khớp số tour thật chạm địa điểm', () => {
     for (const d of DESTINATIONS) {
       const real = TOURS.filter((t) => t.destinations.some((x) => x.slug === d.slug)).length;
@@ -254,21 +299,160 @@ describe('mock destinations — gương DestinationSchema', () => {
     }
   });
 
-  it('con số thật NHỎ hơn số cũ viết tay — chốt chặn chống hồi quy', () => {
-    // Nếu ai đó nhét lại literal thì tổng sẽ về 68.
+  it('tổng lượt chạm là 25 — chốt chặn nếu ai nhét lại literal (tổng cũ 68)', () => {
     expect(DESTINATIONS.reduce((a, d) => a + d.tourCount, 0)).toBe(25);
+  });
+});
+
+describe('mock regions', () => {
+  it('có slug URL cho cả 3 vùng', () => {
+    expect(REGIONS.map((r) => r.slug)).toEqual([
+      'northern-vietnam',
+      'central-vietnam',
+      'southern-vietnam',
+    ]);
+  });
+
+  it('KHÔNG còn tourCount viết tay', () => {
+    for (const r of REGIONS) expect(r, r.key).not.toHaveProperty('tourCount');
   });
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận ĐỎ**
+- [ ] **Step 2: Viết test thất bại cho `lib/regions.ts`**
 
-Run: `cd apps/web && npx vitest run src/mocks/mocks.spec.ts`
-Expected: FAIL — `region` đang là `'north'`, và `d.id` undefined.
+Tạo `apps/web/src/lib/regions.spec.ts`:
 
-- [ ] **Step 3: Sửa `MockDestination` trong `types.ts`**
+```ts
+import { describe, expect, it } from 'vitest';
+import { DESTINATIONS } from '@/mocks/destinations';
+import { REGIONS } from '@/mocks/regions';
+import { TOURS } from '@/mocks/tours';
+import {
+  destinationsInRegion,
+  regionBySlug,
+  regionGlance,
+  regionOf,
+  toursInRegion,
+} from './regions';
 
-Thay khối `MockDestination` hiện tại bằng:
+describe('regionBySlug', () => {
+  it('tìm được vùng theo slug', () => {
+    expect(regionBySlug(REGIONS, 'central-vietnam')?.key).toBe('central');
+  });
+
+  it('slug lạ trả undefined — trang gọi sẽ notFound()', () => {
+    expect(regionBySlug(REGIONS, 'atlantis')).toBeUndefined();
+  });
+});
+
+describe('regionOf — chuẩn hoá chuỗi tự do của contract', () => {
+  it('khớp tên hiển thị', () => {
+    expect(regionOf(REGIONS, { region: 'Northern Vietnam' })).toBe('north');
+  });
+
+  it('không phân biệt hoa/thường và bỏ khoảng trắng thừa', () => {
+    expect(regionOf(REGIONS, { region: '  southern vietnam ' })).toBe('south');
+  });
+
+  it('khớp cả dạng khoá ngắn', () => {
+    expect(regionOf(REGIONS, { region: 'central' })).toBe('central');
+  });
+
+  it('chuỗi lạ trả null, KHÔNG đoán', () => {
+    expect(regionOf(REGIONS, { region: 'Mekong' })).toBeNull();
+  });
+
+  it('null trả null', () => {
+    expect(regionOf(REGIONS, { region: null })).toBeNull();
+  });
+});
+
+describe('bất biến chống địa điểm tàng hình', () => {
+  // Địa điểm không map được sẽ vắng mặt khỏi mọi trang vùng, mà index chỉ hiện 3
+  // vùng → nó tàng hình trên TOÀN SITE. Test này để ai thêm một cái lạ thì đỏ,
+  // thay vì một địa điểm biến mất im lặng.
+  it('cả 9 destination đều map được về một vùng', () => {
+    for (const d of DESTINATIONS) expect(regionOf(REGIONS, d), d.slug).not.toBeNull();
+  });
+
+  it('mỗi vùng đúng 3 địa điểm', () => {
+    const counts = REGIONS.map((r) => destinationsInRegion(REGIONS, DESTINATIONS, r.key).length);
+    expect(counts).toEqual([3, 3, 3]);
+  });
+});
+
+describe('toursInRegion', () => {
+  it('đếm tour DISTINCT — tour chạm 2 địa điểm cùng vùng chỉ tính 1 lần', () => {
+    // ha-long-bay-cruise chạm cả ha-long và ninh-binh (đều vùng Bắc).
+    const north = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'north');
+    expect(north.filter((t) => t.slug === 'ha-long-bay-cruise')).toHaveLength(1);
+  });
+
+  it('mỗi vùng đúng 6 tour', () => {
+    const counts = REGIONS.map((r) => toursInRegion(REGIONS, DESTINATIONS, TOURS, r.key).length);
+    expect(counts).toEqual([6, 6, 6]);
+  });
+
+  it('tour xuyên vùng có mặt ở CẢ BA vùng', () => {
+    for (const r of REGIONS) {
+      const slugs = toursInRegion(REGIONS, DESTINATIONS, TOURS, r.key).map((t) => t.slug);
+      expect(slugs, r.key).toContain('north-to-south-classic');
+    }
+  });
+
+  it('tổng theo vùng KHÔNG bằng TOURS.length — cấm cộng dồn', () => {
+    // 6+6+6 = 18 ≠ 16 vì north-to-south-classic thuộc cả ba vùng. Test này tồn tại
+    // để không ai "sửa" TOTAL_TOURS của /about thành tổng cộng dồn.
+    const total = REGIONS.reduce(
+      (a, r) => a + toursInRegion(REGIONS, DESTINATIONS, TOURS, r.key).length,
+      0,
+    );
+    expect(total).toBe(18);
+    expect(total).not.toBe(TOURS.length);
+  });
+});
+
+describe('regionGlance — chỉ những thứ PHÂN BIỆT được vùng', () => {
+  const north = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'north');
+  const south = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'south');
+
+  it('fromPrice là string và lấy basePrice nhỏ nhất', () => {
+    const glance = regionGlance(north);
+    expect(typeof glance?.fromPrice).toBe('string');
+    expect(glance?.fromPrice).toBe('68.00');
+  });
+
+  it('phổ độ khó xếp theo bậc, không theo thứ tự gặp', () => {
+    expect(regionGlance(north)?.difficulties).toEqual(['EASY', 'MODERATE', 'CHALLENGING']);
+  });
+
+  it('BỎ QUA difficulty null, không in "null" và không coi null là một bậc', () => {
+    // phu-quoc-reef-days có difficulty: null.
+    expect(regionGlance(south)?.difficulties).toEqual(['EASY', 'MODERATE']);
+  });
+
+  it('chuyên mục là tập duy nhất, giữ thứ tự gặp đầu tiên', () => {
+    expect(regionGlance(north)?.categories.map((c) => c.slug)).toEqual([
+      'cruises',
+      'trekking',
+      'scenic',
+      'culture',
+    ]);
+  });
+
+  it('không tour nào thì trả null — trang sẽ ẩn cả dải', () => {
+    expect(regionGlance([])).toBeNull();
+  });
+});
+```
+
+- [ ] **Step 3: Chạy cả hai, xác nhận ĐỎ**
+
+Run: `cd apps/web && npx vitest run src/mocks/mocks.spec.ts src/lib/regions.spec.ts`
+Expected: FAIL — `Failed to resolve import "./regions"`, và `region` đang là `'north'`.
+
+- [ ] **Step 4: Sửa `MockDestination` + `MockRegion` trong `types.ts`**
 
 ```ts
 /**
@@ -279,8 +463,6 @@ Thay khối `MockDestination` hiện tại bằng:
  * contract khai `z.string().max(80).nullable()`, và mock hẹp hơn contract nghĩa là
  * mọi ca hỏng chỉ lộ ra lúc gắn API. Việc xếp chuỗi tự do này vào 3 vùng đã biết
  * là việc của `lib/regions.ts`.
- *
- * `tourCount` KHÔNG viết tay — xem cuối `destinations.ts`.
  */
 export interface MockDestination {
   id: string;
@@ -290,17 +472,33 @@ export interface MockDestination {
   region: string | null;
   /** Contract dùng `description`; mock cũ gọi là `blurb` (đã đổi 28/07). */
   description: string | null;
-  /** Số tour đã publish CHẠM địa điểm này — dẫn xuất từ `TOURS`. */
+  /** Số tour đã publish CHẠM địa điểm này — dẫn xuất, xem cuối `destinations.ts`. */
   tourCount: number;
 }
 ```
 
-- [ ] **Step 4: Viết lại `destinations.ts`**
+```ts
+export interface MockRegion {
+  key: MockRegionKey;
+  /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` trỏ lớp
+      token `[data-region='…']`, còn slug là chuyện SEO — trộn lại mới là nợ. */
+  slug: string;
+  name: string;
+  tagline: string;
+  // `tourCount` ĐÃ XOÁ (28/07): viết tay và sai (khai 24/27/17, thật 6/6/6). Số
+  // tour của một vùng dẫn xuất bằng `toursInRegion()` ở lib/regions.ts.
+}
+```
+
+Xoá luôn comment lạc hậu ở `MockDestination.tourCount` cũ ("tổng theo vùng phải khớp
+MockRegion.tourCount") — bất biến đó không còn tồn tại.
+
+- [ ] **Step 5: Viết lại `destinations.ts`**
 
 ```ts
 import type { MockDestination } from './types.js';
-// Value import BỎ đuôi `.js` — Turbopack không map `.js`→`.ts` (bẫy đã ghi ở
-// đầu tours.ts và trong lib/toc.ts).
+// Value import BỎ đuôi `.js` — Turbopack không map `.js`→`.ts` (bẫy đã ghi ở đầu
+// tours.ts và trong lib/toc.ts).
 import { TOURS } from './tours';
 
 // 9 địa điểm, mỗi vùng 3, xếp liền mạch Bắc → Trung → Nam theo trục địa lý.
@@ -389,10 +587,9 @@ const DESTINATIONS_SOURCE: Omit<MockDestination, 'tourCount'>[] = [
 
 /**
  * `tourCount` DẪN XUẤT, không viết tay — cùng lý lẽ với `ratingAvg`/`ratingCount`
- * của tour: con số in trên thẻ phải là con số của chính danh sách người đọc bấm
- * vào xem được. Bản viết tay trước đây phồng 2–5× (Hạ Long khai 9, thật 2), nên
- * thẻ nói "9 tours" rồi mở ra 2. Ở API thật đây là COUNT trên bảng join, nên dẫn
- * xuất phản chiếu đúng quan hệ đó.
+ * của tour: con số in trên thẻ phải là con số của chính danh sách người đọc bấm vào
+ * xem được. Bản viết tay trước đây phồng 2–5× (Hạ Long khai 9, thật 2). Ở API thật
+ * đây là COUNT trên bảng join, nên dẫn xuất phản chiếu đúng quan hệ đó.
  */
 export const DESTINATIONS: MockDestination[] = DESTINATIONS_SOURCE.map((dest) => ({
   ...dest,
@@ -400,291 +597,69 @@ export const DESTINATIONS: MockDestination[] = DESTINATIONS_SOURCE.map((dest) =>
 }));
 ```
 
-- [ ] **Step 5: Sửa 2 consumer của `blurb`**
+- [ ] **Step 6: Thêm `slug`, xoá `tourCount` trong `mocks/regions.ts`**
 
-`apps/web/src/components/home/gallery.tsx:96` — đổi:
+Mỗi vùng thêm `slug` (`'northern-vietnam'` · `'central-vietnam'` ·
+`'southern-vietnam'`) và **xoá cả ba dòng `tourCount`**.
 
-```tsx
-<ImagePlaceholder label={dest.description ?? dest.name} className="h-full w-full" />
-```
-
-`apps/web/src/components/destinations-menu.tsx:81` — đổi:
-
-```tsx
-{dest.description}
-```
-
-Giữ nguyên `line-clamp-1` và chiều rộng menu: comment ở đó nói con số 34→42rem chọn
-theo "blurb dài nhất", mà độ dài text **không đổi** (chỉ đổi tên field), nên cơ sở
-của con số vẫn đúng.
-
-- [ ] **Step 6: Chạy test, xác nhận XANH**
-
-Run: `cd apps/web && npx vitest run src/mocks/mocks.spec.ts`
-Expected: PASS.
-
-- [ ] **Step 7: Xác nhận `blurb` đã tuyệt chủng**
-
-Run: `grep -rn "blurb" apps/web/src libs/shared/ui/src | grep -v node_modules`
-Expected: không dòng nào (comment trong `destinations-menu.tsx` nhắc chữ "blurb"
-thì sửa lại thành "description").
-
-- [ ] **Step 8: `pnpm gate` rồi commit**
-
-```bash
-pnpm gate
-git add apps/web/src/mocks apps/web/src/components/home/gallery.tsx apps/web/src/components/destinations-menu.tsx
-git commit -m "fix(web): MockDestination gương DestinationSchema, tourCount dẫn xuất"
-```
-
----
-
-### Task 3: `lib/regions.ts` — logic thuần, TDD
-
-**Files:**
-
-- Create: `apps/web/src/lib/regions.ts`
-- Create: `apps/web/src/lib/regions.spec.ts`
-
-**Interfaces:**
-
-- Consumes: `MockDestination` (Task 2), `MockTourCard`, `DESTINATIONS`, `TOURS`
-- Produces:
-  - `type RegionKey = 'north' | 'central' | 'south'`
-  - `interface Region { key: RegionKey; slug: string; name: string; tagline: string }`
-  - `const REGIONS: Region[]` (3, thứ tự Bắc→Trung→Nam)
-  - `regionBySlug(slug: string): Region | undefined`
-  - `regionOf(destination: { region: string | null }): RegionKey | null`
-  - `destinationsInRegion<T extends { region: string | null }>(destinations: readonly T[], key: RegionKey): T[]`
-  - `toursInRegion<T extends MockTourCard>(tours: readonly T[], destinations: readonly MockDestination[], key: RegionKey): T[]`
-  - `interface RegionGlance { fromPrice: string; difficulties: MockTourDifficulty[]; categories: { slug: string; name: string }[] }`
-  - `regionGlance(tours: readonly MockTourCard[]): RegionGlance | null`
-
-- [ ] **Step 1: Viết test thất bại**
-
-Tạo `apps/web/src/lib/regions.spec.ts`:
+- [ ] **Step 7: Viết `lib/regions.ts`**
 
 ```ts
-import { describe, expect, it } from 'vitest';
-import {
-  destinationsInRegion,
-  REGIONS,
-  regionBySlug,
-  regionGlance,
-  regionOf,
-  toursInRegion,
-} from './regions';
-import { DESTINATIONS } from '@/mocks/destinations';
-import { TOURS } from '@/mocks/tours';
+import type {
+  MockDestination,
+  MockRegion,
+  MockRegionKey,
+  MockTourCard,
+  MockTourDifficulty,
+} from '@/mocks/types';
 
-describe('REGIONS', () => {
-  it('đúng 3 vùng, thứ tự Bắc → Trung → Nam', () => {
-    expect(REGIONS.map((r) => r.key)).toEqual(['north', 'central', 'south']);
-  });
-
-  it('slug là từ vựng URL, TÁCH khỏi key trỏ lớp token', () => {
-    // Trộn hai từ vựng này mới là nợ: URL là chuyện SEO, tên lớp token
-    // (`[data-region='north']`) là chuyện thiết kế.
-    expect(REGIONS.map((r) => r.slug)).toEqual([
-      'northern-vietnam',
-      'central-vietnam',
-      'southern-vietnam',
-    ]);
-  });
-
-  it('KHÔNG còn tourCount viết tay', () => {
-    for (const r of REGIONS) expect(r).not.toHaveProperty('tourCount');
-  });
-});
-
-describe('regionBySlug', () => {
-  it('tìm được vùng theo slug', () => {
-    expect(regionBySlug('central-vietnam')?.key).toBe('central');
-  });
-
-  it('slug lạ trả undefined — trang gọi sẽ notFound()', () => {
-    expect(regionBySlug('atlantis')).toBeUndefined();
-  });
-});
-
-describe('regionOf — chuẩn hoá chuỗi tự do của contract', () => {
-  it('khớp tên hiển thị', () => {
-    expect(regionOf({ region: 'Northern Vietnam' })).toBe('north');
-  });
-
-  it('không phân biệt hoa/thường và bỏ khoảng trắng thừa', () => {
-    expect(regionOf({ region: '  southern vietnam ' })).toBe('south');
-  });
-
-  it('khớp cả dạng khoá ngắn', () => {
-    expect(regionOf({ region: 'central' })).toBe('central');
-  });
-
-  it('chuỗi lạ trả null, KHÔNG đoán', () => {
-    expect(regionOf({ region: 'Mekong' })).toBeNull();
-  });
-
-  it('null trả null', () => {
-    expect(regionOf({ region: null })).toBeNull();
-  });
-});
-
-describe('bất biến chống địa điểm tàng hình', () => {
-  // Địa điểm không map được sẽ vắng mặt khỏi mọi trang vùng, mà index chỉ hiện 3
-  // vùng → nó tàng hình trên TOÀN SITE. Test này để ai thêm một cái lạ thì đỏ,
-  // thay vì một địa điểm biến mất im lặng.
-  it('cả 9 destination đều map được về một vùng', () => {
-    for (const d of DESTINATIONS) expect(regionOf(d), d.slug).not.toBeNull();
-  });
-
-  it('mỗi vùng đúng 3 địa điểm, tổng 9', () => {
-    const counts = REGIONS.map((r) => destinationsInRegion(DESTINATIONS, r.key).length);
-    expect(counts).toEqual([3, 3, 3]);
-  });
-});
-
-describe('toursInRegion', () => {
-  it('đếm tour DISTINCT — tour chạm 2 địa điểm cùng vùng chỉ tính 1 lần', () => {
-    // ha-long-bay-cruise chạm cả ha-long và ninh-binh (đều vùng Bắc).
-    const north = toursInRegion(TOURS, DESTINATIONS, 'north');
-    expect(north.filter((t) => t.slug === 'ha-long-bay-cruise')).toHaveLength(1);
-  });
-
-  it('mỗi vùng đúng 6 tour', () => {
-    const counts = REGIONS.map((r) => toursInRegion(TOURS, DESTINATIONS, r.key).length);
-    expect(counts).toEqual([6, 6, 6]);
-  });
-
-  it('tour xuyên vùng có mặt ở CẢ BA vùng', () => {
-    for (const r of REGIONS) {
-      const slugs = toursInRegion(TOURS, DESTINATIONS, r.key).map((t) => t.slug);
-      expect(slugs, r.key).toContain('north-to-south-classic');
-    }
-  });
-
-  it('tổng theo vùng KHÔNG bằng TOURS.length — cấm cộng dồn', () => {
-    // 6+6+6 = 18 ≠ 16 vì north-to-south-classic thuộc cả ba vùng. Test này tồn
-    // tại để không ai "sửa" con số thành tổng cộng dồn rồi in "18 tours".
-    const total = REGIONS.reduce((a, r) => a + toursInRegion(TOURS, DESTINATIONS, r.key).length, 0);
-    expect(total).toBe(18);
-    expect(total).not.toBe(TOURS.length);
-  });
-});
-
-describe('regionGlance — chỉ những thứ PHÂN BIỆT được vùng', () => {
-  const north = toursInRegion(TOURS, DESTINATIONS, 'north');
-  const south = toursInRegion(TOURS, DESTINATIONS, 'south');
-
-  it('fromPrice là string và lấy basePrice nhỏ nhất, KHÔNG lấy giá đợt khởi hành', () => {
-    const glance = regionGlance(north);
-    expect(typeof glance?.fromPrice).toBe('string');
-    expect(glance?.fromPrice).toBe('68.00');
-  });
-
-  it('phổ độ khó xếp theo bậc, không theo thứ tự gặp', () => {
-    expect(regionGlance(north)?.difficulties).toEqual(['EASY', 'MODERATE', 'CHALLENGING']);
-  });
-
-  it('BỎ QUA difficulty null, không in "null" và không coi null là một bậc', () => {
-    // phu-quoc-reef-days có difficulty: null.
-    expect(regionGlance(south)?.difficulties).toEqual(['EASY', 'MODERATE']);
-  });
-
-  it('chuyên mục là tập duy nhất, giữ thứ tự gặp đầu tiên', () => {
-    expect(regionGlance(north)?.categories.map((c) => c.slug)).toEqual([
-      'cruises',
-      'trekking',
-      'scenic',
-      'culture',
-    ]);
-  });
-
-  it('không tour nào thì trả null — trang sẽ ẩn cả dải', () => {
-    expect(regionGlance([])).toBeNull();
-  });
-});
-```
-
-- [ ] **Step 2: Chạy test, xác nhận ĐỎ**
-
-Run: `cd apps/web && npx vitest run src/lib/regions.spec.ts`
-Expected: FAIL — `Failed to resolve import "./regions"`.
-
-- [ ] **Step 3: Viết `lib/regions.ts`**
-
-```ts
-import type { MockDestination, MockTourCard, MockTourDifficulty } from '@/mocks/types';
-
-/** Khoá vùng — TRỎ LỚP TOKEN `[data-region='…']` trong `tokens.css`. */
-export type RegionKey = 'north' | 'central' | 'south';
-
-export interface Region {
-  key: RegionKey;
-  /** Từ vựng URL. Cố tình KHÁC `key`: URL là chuyện SEO, `key` là chuyện thiết kế. */
-  slug: string;
-  name: string;
-  tagline: string;
-}
+/** Khoá vùng — TRỎ LỚP TOKEN `[data-region='…']` trong `tokens.css`. Tái dùng
+    `MockRegionKey` thay vì khai union thứ hai: web chỉ nên có MỘT kiểu khoá vùng. */
+export type RegionKey = MockRegionKey;
 
 /**
- * 3 vùng sống ở TẦNG TRÌNH BÀY, không đến từ API — Nexora cũng vậy
+ * Logic vùng. 3 vùng sống ở TẦNG TRÌNH BÀY, không đến từ API — Nexora cũng vậy
  * (`regionSlugs()`), nên đây là parity chứ không phải đi tắt.
- * `DestinationSchema.region` (chuỗi tự do) chỉ dùng để XẾP địa điểm vào 3 vùng này.
+ * `DestinationSchema.region` (chuỗi tự do) chỉ dùng để XẾP địa điểm vào 3 vùng đó.
  *
- * KHÔNG có `tourCount`: nó dẫn xuất từ `TOURS` qua `toursInRegion`.
+ * Dữ liệu vùng nằm ở `mocks/regions.ts`; file này chỉ có hàm, và nhận dữ liệu qua
+ * tham số — đúng khuôn `lib/tours.ts`, nhờ đó test được với fixture nhỏ.
  */
-export const REGIONS: Region[] = [
-  {
-    key: 'north',
-    slug: 'northern-vietnam',
-    name: 'Northern Vietnam',
-    tagline: 'Limestone bays, misty terraces, mountain passes',
-  },
-  {
-    key: 'central',
-    slug: 'central-vietnam',
-    name: 'Central Vietnam',
-    tagline: 'Imperial cities, lantern towns, coastal roads',
-  },
-  {
-    key: 'south',
-    slug: 'southern-vietnam',
-    name: 'Southern Vietnam',
-    tagline: 'River markets, orchards, delta life',
-  },
-];
-
-export function regionBySlug(slug: string): Region | undefined {
-  return REGIONS.find((region) => region.slug === slug);
+export function regionBySlug(
+  regions: readonly MockRegion[],
+  slug: string,
+): MockRegion | undefined {
+  return regions.find((region) => region.slug === slug);
 }
 
-/** Bảng nhận dạng: mỗi vùng nhận cả tên hiển thị lẫn khoá ngắn. Cố tình NGẮN —
-    thêm alias là đoán, và đoán sai thì xếp địa điểm vào vùng sai. */
-const ALIASES: Record<RegionKey, string[]> = {
-  north: ['north', 'northern vietnam'],
-  central: ['central', 'central vietnam'],
-  south: ['south', 'southern vietnam'],
-};
-
 /**
- * Xếp `region` chuỗi tự do của contract vào một vùng đã biết.
- * Trả `null` khi không nhận ra — KHÔNG đoán. Trang gọi phải tự quyết làm gì với
- * `null`; xem bất biến "không địa điểm nào tàng hình" trong `regions.spec.ts`.
+ * Xếp `region` chuỗi tự do của contract vào một vùng đã biết. Nhận cả tên hiển thị
+ * ('Northern Vietnam') lẫn khoá ngắn ('north'), không phân biệt hoa/thường.
+ *
+ * Bảng nhận dạng SUY TỪ chính `regions` chứ không khai riêng — một bảng alias tách
+ * rời là một nguồn nữa có thể trôi khỏi danh sách vùng.
+ *
+ * Trả `null` khi không nhận ra — KHÔNG đoán, vì đoán sai thì địa điểm bị xếp vào
+ * vùng sai. Xem bất biến "không địa điểm nào tàng hình" trong `regions.spec.ts`.
  */
-export function regionOf(destination: { region: string | null }): RegionKey | null {
+export function regionOf(
+  regions: readonly MockRegion[],
+  destination: { region: string | null },
+): RegionKey | null {
   if (destination.region === null) return null;
   const needle = destination.region.trim().toLowerCase();
-  for (const key of Object.keys(ALIASES) as RegionKey[]) {
-    if (ALIASES[key].includes(needle)) return key;
-  }
-  return null;
+  const match = regions.find(
+    (region) => region.key === needle || region.name.toLowerCase() === needle,
+  );
+  return match?.key ?? null;
 }
 
 export function destinationsInRegion<T extends { region: string | null }>(
+  regions: readonly MockRegion[],
   destinations: readonly T[],
   key: RegionKey,
 ): T[] {
-  return destinations.filter((dest) => regionOf(dest) === key);
+  return destinations.filter((dest) => regionOf(regions, dest) === key);
 }
 
 /**
@@ -694,11 +669,12 @@ export function destinationsInRegion<T extends { region: string | null }>(
  * `ninh-binh` (cùng vùng Bắc) nên cộng theo địa điểm sẽ đếm nó hai lần.
  */
 export function toursInRegion<T extends MockTourCard>(
-  tours: readonly T[],
+  regions: readonly MockRegion[],
   destinations: readonly MockDestination[],
+  tours: readonly T[],
   key: RegionKey,
 ): T[] {
-  const slugs = new Set(destinationsInRegion(destinations, key).map((dest) => dest.slug));
+  const slugs = new Set(destinationsInRegion(regions, destinations, key).map((d) => d.slug));
   return tours.filter((tour) => tour.destinations.some((dest) => slugs.has(dest.slug)));
 }
 
@@ -709,7 +685,7 @@ export interface RegionGlance {
   categories: { slug: string; name: string }[];
 }
 
-/** Bậc độ khó theo thứ tự tăng dần — để phổ in ra không phụ thuộc thứ tự gặp. */
+/** Bậc độ khó tăng dần — để phổ in ra không phụ thuộc thứ tự gặp. */
 const DIFFICULTY_ORDER: MockTourDifficulty[] = ['EASY', 'MODERATE', 'CHALLENGING'];
 
 /**
@@ -717,8 +693,8 @@ const DIFFICULTY_ORDER: MockTourDifficulty[] = ['EASY', 'MODERATE', 'CHALLENGING
  *
  * Cố tình KHÔNG có số tour và khoảng số ngày: đo trên mock thì số tour là 6/6/6 và
  * khoảng ngày là 1–12 ở CẢ BA vùng (mock chia đều, và tour 12 ngày thuộc cả ba),
- * nên hai con số đó là trang trí chứ không phải thông tin. Số tour chuyển sang
- * tiêu đề khu, nơi nó là ngữ cảnh chứ không giả làm điểm so sánh.
+ * nên hai con số đó là trang trí chứ không phải thông tin. Số tour chuyển sang tiêu
+ * đề khu, nơi nó là ngữ cảnh chứ không giả làm điểm so sánh.
  */
 export function regionGlance(tours: readonly MockTourCard[]): RegionGlance | null {
   if (tours.length === 0) return null;
@@ -744,33 +720,64 @@ export function regionGlance(tours: readonly MockTourCard[]): RegionGlance | nul
 }
 ```
 
-- [ ] **Step 4: Chạy test, xác nhận XANH**
+- [ ] **Step 8: Sửa 4 consumer**
 
-Run: `cd apps/web && npx vitest run src/lib/regions.spec.ts`
-Expected: PASS, 18 test.
+`components/home/gallery.tsx:96` — `label` của `ImagePlaceholder` đổi sang
+`dest.description ?? dest.name`. Dòng 114 (`{dest.tourCount} tours`) **giữ nguyên** —
+nó tự đúng vì `tourCount` giờ dẫn xuất.
 
-- [ ] **Step 5: `pnpm gate` rồi commit**
+`components/destinations-menu.tsx:81` — `{dest.blurb}` → `{dest.description}`. Giữ
+nguyên `line-clamp-1` và chiều rộng menu 42rem: comment ở đó chọn con số theo "blurb
+dài nhất", mà **độ dài text không đổi**. Sửa chữ "blurb" trong comment thành
+"description".
+
+`components/about/about-numbers.tsx:23` — `REGIONS.reduce((a, r) => a + r.tourCount, 0)`
+không còn biên dịch được. Đổi thành:
+
+```tsx
+// 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
+// vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
+// ≠ 68 tổng mock" — hoá ra chính con 68 cũng sai, giờ dẫn xuất hết (user chốt 28/07).
+const TOTAL_TOURS = TOURS.length;
+```
+
+`components/about/about-gallery.tsx` — dòng 17 sửa `TOTAL_TOURS` y như trên; ba chỗ
+`count={...tourCount...}` (dòng 82 · 90 · 99) đổi sang:
+
+```tsx
+const regionTourCount = (key: MockRegionKey) =>
+  toursInRegion(REGIONS, DESTINATIONS, TOURS, key).length;
+```
+
+rồi dùng `count={`${regionTourCount('north')} tours`}` … cho ba vùng.
+
+- [ ] **Step 9: Chạy test, xác nhận XANH**
+
+Run: `cd apps/web && npx vitest run src/mocks/mocks.spec.ts src/lib/regions.spec.ts`
+Expected: PASS.
+
+- [ ] **Step 10: Kiểm `blurb` và `tourCount` viết tay đã tuyệt chủng**
+
+Run: `grep -rn "blurb\|r\.tourCount\|region\.tourCount" apps/web/src`
+Expected: không dòng nào (kể cả trong comment).
+
+- [ ] **Step 11: `pnpm gate` rồi commit**
 
 ```bash
 pnpm gate
-git add apps/web/src/lib/regions.ts apps/web/src/lib/regions.spec.ts
-git commit -m "feat(web): lib/regions — 3 vùng, chuẩn hoá region tự do, 3 phép dẫn xuất"
+git add apps/web/src/mocks apps/web/src/lib/regions.ts apps/web/src/lib/regions.spec.ts apps/web/src/components
+git commit -m "fix(web): số liệu vùng và địa điểm chuyển sang dẫn xuất từ TOURS"
 ```
 
-- [ ] **Step 6: 🛑 MỐC DỪNG (spec §11) — báo user số liệu dẫn xuất**
+- [ ] **Step 12: 🛑 MỐC DỪNG (spec §11) — báo user số liệu dẫn xuất**
 
-In bảng thật rồi **chờ user đối chiếu trước khi vẽ giao diện**:
-
-```bash
-cd apps/web && npx vitest run src/lib/regions.spec.ts src/mocks/mocks.spec.ts --reporter=verbose
-```
-
-Báo: `tourCount` từng địa điểm (2–4), tour mỗi vùng (6/6/6), `fromPrice`
-($68/$59/$45), phổ độ khó, chuyên mục từng vùng.
+In bảng thật rồi **chờ user đối chiếu trước khi vẽ giao diện**: `tourCount` từng địa
+điểm (2–4), tour mỗi vùng (6/6/6), `fromPrice` ($68/$59/$45), phổ độ khó, chuyên mục
+từng vùng, và số mới trên `/about` (16 · 6/6/6).
 
 ---
 
-### Task 4: Cắt copy i18n port từ Nexora
+### Task 3: Cắt copy i18n port từ Nexora
 
 **Files:**
 
@@ -900,7 +907,7 @@ git commit -m "refactor(i18n): cắt copy Destinations port từ Nexora — bỏ
 
 ---
 
-### Task 5: `/destinations` — trang index
+### Task 4: `/destinations` — trang index
 
 **Files:**
 
@@ -910,8 +917,8 @@ git commit -m "refactor(i18n): cắt copy Destinations port từ Nexora — bỏ
 
 **Interfaces:**
 
-- Consumes: `REGIONS`, `destinationsInRegion`, `toursInRegion` (Task 3);
-  `DESTINATIONS` (Task 2)
+- Consumes: `REGIONS`, `destinationsInRegion`, `toursInRegion`, `DESTINATIONS` (Task 2)
+  — mọi thứ về vùng đã có sau Task 2
 - Produces: `RegionCard({ region, destinations, tourCount })` —
   `region: Region`, `destinations: MockDestination[]`, `tourCount: number`
 
@@ -1043,7 +1050,7 @@ Kiểm cổng 3000 rồi chụp ảnh cả **light và dark**, gửi user. Chờ
 
 ---
 
-### Task 6: `/destinations/[region]` — trang vùng
+### Task 5: `/destinations/[region]` — trang vùng
 
 **Files:**
 
@@ -1055,7 +1062,7 @@ Kiểm cổng 3000 rồi chụp ảnh cả **light và dark**, gửi user. Chờ
 **Interfaces:**
 
 - Consumes: `regionGlance`, `regionBySlug`, `REGIONS`, `toursInRegion`,
-  `destinationsInRegion` (Task 3); `formatMoney` từ `@/lib/tours`
+  `destinationsInRegion` (Task 2); `formatMoney` từ `@/lib/tours`
 - Produces: `RegionGlanceBar({ glance })` — `glance: RegionGlance`;
   `PlaceCard({ destination })` — `destination: MockDestination`
 
@@ -1164,7 +1171,7 @@ git commit -m "feat(web): trang /destinations/[region] — tint chiếm trang + 
 
 ---
 
-### Task 7: Nối dây nav/footer/gallery + sitemap
+### Task 6: Nối dây nav/footer/gallery + sitemap
 
 **Files:**
 
@@ -1177,7 +1184,7 @@ git commit -m "feat(web): trang /destinations/[region] — tint chiếm trang + 
 
 **Interfaces:**
 
-- Consumes: `REGIONS` (Task 3)
+- Consumes: `REGIONS` (mocks) + `toursInRegion` (Task 2)
 - Produces: `sitemapEntries(tours, posts)` trả **38** mục
 
 - [ ] **Step 1: Viết test thất bại**
@@ -1261,7 +1268,7 @@ git commit -m "feat(web): nối /destinations vào nav, footer, gallery và site
 
 ---
 
-### Task 8: Đo thật + kiểm mắt + đóng cụm
+### Task 7: Đo thật + kiểm mắt + đóng cụm
 
 **Files:** không sửa code; task này là cửa kiểm.
 
@@ -1334,30 +1341,45 @@ Không tự merge. Không tự push.
 
 | Spec | Task |
 | --- | --- |
-| §1 phạm vi | 1–8 |
-| §2 năm quyết định | 1 (tint) · 5 (index lồng địa điểm) · 3 (slug URL) · 6 (chữ ký) |
-| §3 parity Nexora | 3 (vùng trong code) · 4 (bỏ ảnh/copy bịa) |
+| §1 phạm vi | 1–7 |
+| §2 năm quyết định | 1 (tint) · 4 (index lồng địa điểm) · 2 (slug URL) · 5 (chữ ký) |
+| §3 parity Nexora | 2 (vùng trong code) · 3 (bỏ copy bịa) |
 | §4.1 mock gương contract | 2 |
-| §4.2 ba phép dẫn xuất | 2 (tourCount) · 3 (vùng + glance) |
-| §4.3 `lib/regions.ts` + ca `null` | 3 |
-| §5.1 `/destinations` | 5 |
-| §5.2 trang vùng + hero + glance | 1 · 6 |
-| §6 nối dây + sitemap | 7 |
-| §7 cắt copy i18n | 4 |
+| §4.2 ba phép dẫn xuất | 2 |
+| §4.3 logic vùng + ca `null` | 2 |
+| §5.1 `/destinations` | 4 |
+| §5.2 trang vùng + hero + glance | 1 (token hero) · 5 |
+| §6 nối dây + sitemap | 6 |
+| §7 cắt copy i18n | 3 |
 | §8 nợ ghi sổ | không có task — cố ý, đây là nợ |
-| §9 TDD | 1 · 2 · 3 · 5 · 6 · 7 |
-| §10 tiêu chí hoàn thành | 8 |
-| §11 mốc dừng | 3 Step 6 · 5 Step 7 · 8 Step 9 |
+| §9 TDD | 1 · 2 · 4 · 5 · 6 |
+| §10 tiêu chí hoàn thành | 7 |
+| §11 mốc dừng | **2 Step 12** · **4 Step 7** · 7 Step 9 |
 
-**Type consistency:** `RegionKey` · `Region` · `RegionGlance` khai ở Task 3 và
-dùng nguyên tên ở Task 5–7. `MockDestination` khai ở Task 2, dùng ở 3/5/6.
-`regionGlance` trả `RegionGlance | null` và Task 6 xử lý nhánh `null`.
+**Type consistency:** `RegionKey` (= `MockRegionKey`, không khai union thứ hai) ·
+`RegionGlance` khai ở Task 2, dùng nguyên tên ở Task 4–6. `MockDestination` và
+`MockRegion` khai ở Task 2, dùng ở 4/5/6. `regionGlance` trả `RegionGlance | null`
+và Task 5 xử lý nhánh `null`. Mọi hàm của `lib/regions.ts` nhận `regions` làm tham
+số đầu — đúng khuôn `lib/tours.ts`.
 
 **Placeholder scan:** không có "TBD"/"TODO"/"tương tự Task N"/"xử lý edge case cho
 phù hợp". Mọi bước đổi code đều có code thật hoặc danh sách yêu cầu đủ cụ thể để
 kiểm được bằng test đã viết ở bước trước nó.
 
-**Đã tự sửa khi soi lại:** khối `REGIONS` ở Task 3 ban đầu có một biểu thức vô nghĩa
-ở `REGIONS[2].name` và tôi định thêm một Step để sửa nó. Đó là **lỗi của plan**, không
-phải giải pháp — người thực thi copy nguyên khối là mang lỗi vào code. Đã sửa thẳng
-khối code và bỏ Step đó.
+**Bốn thứ pre-flight bắt được và đã sửa (28/07, trước khi dispatch):**
+
+1. Task 1 ghi sai đường dẫn test — file thật là `libs/shared/tokens/src/lib/tokens.spec.ts`
+   (TS, namespace import `src.*`, dùng `oklch` của `culori`), không phải `.mjs`.
+2. Task 1 sẽ **làm đỏ một test đang xanh**: `SLOTS` hardcode 5 slot và khẳng định mỗi
+   vùng có ĐÚNG bộ đó. Đã thêm bước cập nhật `SLOTS` — không nới lỏng phép khẳng định.
+3. **Task 2 và Task 3 cũ đã GỘP.** Bản cũ tách "reshape mock" khỏi "lib/regions", nhưng
+   `about-gallery` cần `toursInRegion` ngay khi `MockRegion.tourCount` bị xoá — tách ra
+   thì task đầu phải viết logic đếm tạm rồi task sau thay, tức cố tình dựng bản trùng.
+4. Bản cũ định khai `REGIONS` mới trong `lib/regions.ts`, nhưng `mocks/regions.ts` **đã
+   có `REGIONS` với 5 consumer**. Nay `lib/regions.ts` chỉ chứa hàm; dữ liệu vùng ở
+   mocks. Kèm phát hiện phạm vi: `tourCount` viết tay đang chạy trên `/about` và
+   `/#gallery` — user chốt **dẫn xuất toàn site**, nên `/about` đổi 68 → 16.
+
+**Đã tự sửa khi soi lại lần đầu:** khối `REGIONS` có một biểu thức vô nghĩa ở
+`name` và tôi định thêm một Step để sửa nó. Đó là **lỗi của plan**, không phải giải
+pháp — người thực thi copy nguyên khối là mang lỗi vào code. Đã sửa thẳng khối code.
