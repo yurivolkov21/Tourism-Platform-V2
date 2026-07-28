@@ -15,10 +15,12 @@ import { RelatedTours } from '@/components/tours/related-tours';
 import { GoodFor, WhyThisTrip } from '@/components/tours/tour-facts';
 import { TourGallery } from '@/components/tours/tour-gallery';
 import { TourHero } from '@/components/tours/tour-hero';
+import { TourReviews } from '@/components/tours/tour-reviews';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
 import { relatedTours, routeChain } from '@/lib/tours';
+import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
 import { TOURS } from '@/mocks/tours';
 import type { MockTourDetail } from '@/mocks/types';
 
@@ -93,7 +95,14 @@ export async function generateMetadata({
  * "You might also like" KHÔNG nằm trong danh sách: nó là gợi ý cuối trang, không
  * phải nội dung của tour này.
  */
-type SectionKey = 'why' | 'goodFor' | 'itinerary' | 'included' | 'departures' | 'goodToKnow';
+type SectionKey =
+  | 'why'
+  | 'goodFor'
+  | 'itinerary'
+  | 'included'
+  | 'departures'
+  | 'reviews'
+  | 'goodToKnow';
 
 function pageSections(tour: MockTourDetail): { key: SectionKey; heading: string }[] {
   const s = messages.tourDetail.sections;
@@ -103,6 +112,12 @@ function pageSections(tour: MockTourDetail): { key: SectionKey; heading: string 
     { key: 'itinerary' as const, heading: s.itinerary },
     { key: 'included' as const, heading: s.included },
     { key: 'departures' as const, heading: s.departures },
+    // Reviews đứng NGAY SAU đợt khởi hành, trước "Good to know": uy tín xã hội
+    // thuộc gần chỗ ra quyết định (giá + ngày) hơn là sau phần điều khoản.
+    // Section này luôn có mặt kể cả khi chưa review nào — khác `why`/`goodFor`:
+    // trạng thái rỗng của nó là một lời mời hỏi, có giá trị riêng, không phải
+    // một khung trống.
+    { key: 'reviews' as const, heading: s.reviews },
     tour.faqs.length > 0 || tour.policies.length > 0
       ? { key: 'goodToKnow' as const, heading: s.goodToKnow }
       : null,
@@ -215,6 +230,12 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
                         durationDays={tour.durationDays}
                       />
                     </div>
+                  ) : null}
+                  {key === 'reviews' ? (
+                    <TourReviews
+                      reviews={TOUR_REVIEWS[tour.slug] ?? []}
+                      ratingAvg={tour.ratingAvg}
+                    />
                   ) : null}
                   {key === 'goodToKnow' ? (
                     <GoodToKnow faqs={tour.faqs} policies={tour.policies} />

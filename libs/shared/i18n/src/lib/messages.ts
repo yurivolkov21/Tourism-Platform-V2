@@ -1523,6 +1523,37 @@ export const messages = {
       POPULAR: 'Popular',
     },
 
+    // ── Traveller reviews ──
+    // ĐỌC TRƯỚC KHI THÊM KEY: `PublicReviewSchema` chỉ có 7 field, và ba thứ khối
+    // i18n port từ Nexora từng có đều KHÔNG dựng được:
+    //   • `verified: 'Verified traveller'` — `source: VERIFIED|CURATED` chỉ tồn tại
+    //     ở `AdminReviewSchema`, cố ý không phơi công khai. Huy hiệu đó sẽ khẳng
+    //     định một điều dữ liệu công khai không xác nhận được.
+    //   • phân bố sao — contract không trả số đếm theo từng mức.
+    //   • sort/lọc — `ReviewsByTourQuerySchema` chỉ có page/pageSize/tourSlug.
+    // Cũng không có CTA viết review: `create` cần auth + bookingCode và eligibility
+    // đòi booking PAID + chuyến đã kết thúc; luồng booking chưa có trong web.
+    reviews: {
+      heading: 'Traveller reviews',
+      /** Nói thẳng đây là review MỚI NHẤT, không gọi là "nổi bật" — contract không
+          có tiêu chí nào để chọn ra cái nổi bật, nên gọi vậy là bịa. */
+      recentLabel: 'Most recent',
+      summary: (average: string, count: number) =>
+        `${average} average from ${count} ${count === 1 ? 'review' : 'reviews'}`,
+      seeAll: (count: number) => `See all ${count} ${count === 1 ? 'review' : 'reviews'}`,
+      dialogTitle: (count: number) => `All ${count} ${count === 1 ? 'review' : 'reviews'}`,
+      close: 'Close reviews',
+      /** Tác giả đã xoá tài khoản — `PublicReviewSchema.authorName` là null và
+          schema ghi rõ FE render đúng chuỗi này. Review vẫn ở lại vì nó là đánh giá
+          thật; chỉ danh tính biến mất. */
+      deletedAuthor: 'Deleted account',
+      ratingLabel: (rating: number) => `${rating} out of 5 stars`,
+      /** Trạng thái rỗng: mời hành động chứ không chỉ thông báo. Nhưng KHÔNG mời
+          viết review (chưa có luồng) — mời hỏi, trang /contact có thật. */
+      emptyTitle: 'No reviews yet',
+      emptyBody: 'This trip is new. Ask us anything about it and we will answer from experience.',
+    },
+
     // ── Gallery ảnh ──
     gallery: {
       /** Nhãn khu ảnh cho trình đọc màn hình. Không có tiêu đề nhìn thấy: khảm ảnh
@@ -1560,6 +1591,7 @@ export const messages = {
       itinerary: 'Itinerary',
       included: 'What’s included',
       departures: 'All departures',
+      reviews: 'Traveller reviews',
       goodToKnow: 'Good to know',
       related: 'You might also like',
     },

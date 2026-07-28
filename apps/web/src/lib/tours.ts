@@ -2,6 +2,7 @@ import type {
   MockDestinationLink,
   MockMediaItem,
   MockPolicyKind,
+  MockReview,
   MockTourCard,
   MockTourDetail,
 } from '@/mocks/types';
@@ -204,6 +205,55 @@ export function sortTours<T extends MockTourCard>(
     if (key === 'durationDays') return (a.durationDays - b.durationDays) * sign;
     return a.title.localeCompare(b.title) * sign;
   });
+}
+
+/**
+ * Trung bình rating, làm tròn tới MỘT chữ số thập phân — khớp `Decimal(2,1)` của
+ * cột `ratingAvg` được denormalize ở backend, nên số ở tầng tĩnh và số từ API
+ * không lệch nhau ở chữ số thứ hai.
+ *
+ * Mảng rỗng trả `null`, KHÔNG phải 0: "chưa ai đánh giá" khác "bị chấm 0 điểm", và
+ * cả contract lẫn UI đều phân biệt hai thứ đó.
+ */
+export function averageRating(reviews: readonly MockReview[]): number | null {
+  if (reviews.length === 0) return null;
+  const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+  return Math.round((sum / reviews.length) * 10) / 10;
+}
+
+/**
+ * Review theo ĐÚNG thứ tự server trả về: `authorDeleted asc → createdAt desc`.
+ *
+ * Sao y `ReviewsService.listByTour` chứ không tự chọn thứ tự đẹp hơn: nếu client
+ * sắp khác server thì trang 1 ở cụm tĩnh và trang 1 sau khi gắn API sẽ là hai danh
+ * sách khác nhau, và không ai nhận ra cho tới lúc so bằng mắt. Review của tài khoản
+ * đã xoá chìm xuống cuối — chúng vẫn là đánh giá thật nên không bị bỏ, chỉ không
+ * chiếm chỗ trên cùng.
+ */
+export function tourReviews(reviews: readonly MockReview[]): MockReview[] {
+  return [...reviews].sort((a, b) => {
+    if (a.authorDeleted !== b.authorDeleted) return a.authorDeleted ? 1 : -1;
+    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
+    return a.id < b.id ? 1 : -1;
+  });
+}
+
+/**
+ * Ngày của review: "July 2026".
+ *
+ * `Intl` + `new Date()` ở đây là ĐÚNG, khác hẳn `formatDateRange`: `createdAt` là
+ * ISO datetime có múi giờ tường minh (`…Z`) nên không có chỗ nào để diễn giải sai.
+ * Bẫy "đừng dựng new Date()" chỉ áp cho `startDate`/`endDate` dạng date-only
+ * `YYYY-MM-DD` — chuỗi đó bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày
+ * ở múi giờ âm.
+ *
+ * Chỉ tháng + năm, không ngày: độ chính xác tới ngày không giúp người đọc quyết
+ * định gì, mà lại làm review trông "cũ" một cách không cần thiết.
+ */
+const REVIEW_DATE_FMT = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' });
+
+export function formatReviewDate(createdAt: string): string {
+  return REVIEW_DATE_FMT.format(new Date(createdAt));
 }
 
 /**

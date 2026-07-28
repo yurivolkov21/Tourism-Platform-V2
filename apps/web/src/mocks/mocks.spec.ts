@@ -3,10 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sortPostsByDate } from '../lib/blog.js';
 import { slugify } from '../lib/slug.js';
+import { averageRating } from '../lib/tours.js';
 import { DESTINATIONS } from './destinations.js';
 import { JOURNAL_POSTS } from './journal.js';
 import { REGIONS } from './regions.js';
 import { TESTIMONIALS } from './testimonials.js';
+import { TOUR_REVIEWS } from './tour-reviews.js';
 import { TOURS } from './tours.js';
 
 // Bất biến của mock trang Home — mock là công cụ khám phá schema nên shape tự do,
@@ -332,5 +334,83 @@ describe('TOURS.media — mọi nhánh bố cục phải có mock chứng minh',
     expect(TOURS.some((t) => t.media.some((m) => m.width === null && m.height === null))).toBe(
       true,
     );
+  });
+});
+
+describe('TOUR_REVIEWS — bất biến gương theo PublicReviewSchema', () => {
+  const all = Object.values(TOUR_REVIEWS).flat();
+
+  it('rating là số NGUYÊN trong 1..5 (RatingSchema)', () => {
+    for (const review of all) {
+      expect(Number.isInteger(review.rating)).toBe(true);
+      expect(review.rating).toBeGreaterThanOrEqual(1);
+      expect(review.rating).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('id không trùng trên TOÀN BỘ mock, không chỉ trong một tour', () => {
+    // Khi gắn API, id là uuid toàn cục; mock trùng id giữa hai tour sẽ che mất lỗi
+    // key trùng ở React lúc dialog render danh sách gộp.
+    const ids = all.map((r) => r.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('authorDeleted và authorName luôn nhất quán', () => {
+    // Schema ghi rõ: authorName null KHI tác giả đã xoá tài khoản. Một review có
+    // tên mà authorDeleted=true (hoặc ngược lại) là dữ liệu tự mâu thuẫn.
+    for (const review of all) {
+      expect(review.authorDeleted).toBe(review.authorName === null);
+    }
+  });
+
+  it('body không rỗng và createdAt là ISO datetime parse được', () => {
+    for (const review of all) {
+      expect(review.body.trim().length).toBeGreaterThan(0);
+      expect(Number.isNaN(new Date(review.createdAt).getTime())).toBe(false);
+      // Có múi giờ tường minh — đây là lý do formatReviewDate được dùng new Date()
+      // trong khi departures thì không.
+      expect(review.createdAt).toMatch(/Z$/);
+    }
+  });
+});
+
+describe('TOUR_REVIEWS — rating của tour phải DẪN XUẤT đúng từ review', () => {
+  it('ratingCount bằng số review, ratingAvg bằng trung bình thật', () => {
+    // Bất biến quan trọng nhất của cụm này: hero in "4.8 (12)" thì 12 phải là số
+    // review người đọc bấm vào xem được, và 4.8 phải tính từ chính 12 cái đó.
+    for (const tour of TOURS) {
+      const reviews = TOUR_REVIEWS[tour.slug] ?? [];
+      expect(tour.ratingCount).toBe(reviews.length);
+      expect(tour.ratingAvg).toBe(averageRating(reviews));
+    }
+  });
+
+  it('có tour chưa ai đánh giá — ratingAvg null, KHÔNG phải 0', () => {
+    const unrated = TOURS.filter((t) => t.ratingAvg === null);
+    expect(unrated.length).toBeGreaterThan(0);
+    for (const tour of unrated) expect(tour.ratingCount).toBe(0);
+  });
+});
+
+describe('TOUR_REVIEWS — mọi nhánh UI phải có mock chứng minh', () => {
+  const counts = TOURS.map((t) => t.ratingCount);
+
+  it('có tour đúng MỘT review — ép nhánh số ít "1 review"', () => {
+    expect(counts).toContain(1);
+  });
+
+  it('có tour ĐÚNG 3 review — dưới ngưỡng nên KHÔNG có nút xem tất cả', () => {
+    expect(counts).toContain(3);
+  });
+
+  it('có tour >10 review để dialog có nhiều hơn một trang', () => {
+    expect(counts.some((c) => c > 10)).toBe(true);
+  });
+
+  it('có review của tài khoản đã xoá, có review không tiêu đề', () => {
+    const all = Object.values(TOUR_REVIEWS).flat();
+    expect(all.some((r) => r.authorDeleted)).toBe(true);
+    expect(all.some((r) => r.title === null)).toBe(true);
+    expect(all.some((r) => r.title !== null)).toBe(true);
   });
 });

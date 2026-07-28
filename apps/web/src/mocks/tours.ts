@@ -3,7 +3,9 @@
 // xanh mà `next build` đỏ). Các `import type` khác trong thư mục này giữ đuôi .js
 // được vì chúng bị xoá lúc biên dịch, chẳng ai phải resolve. Bẫy này đã ghi trong
 // lib/toc.ts và vừa tái diễn đúng như comment ở đó dự đoán.
+import { averageRating } from '@/lib/tours';
 import { TOUR_MEDIA } from './tour-media';
+import { TOUR_REVIEWS } from './tour-reviews';
 import type { MockTourDetail } from './types.js';
 
 // 16 tour mock gương theo TourCardSchema/TourDetailSchema.
@@ -23,7 +25,7 @@ import type { MockTourDetail } from './types.js';
 // `MediaService.resolveForOwners('TOUR', ids)` lấy theo lô rồi mới merge vào
 // detail — đúng như `posts.service.ts` đang làm. Mock ghép cùng cách nên lúc gắn
 // API là bỏ bước ghép, không phải sửa 16 object.
-const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
+const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media' | 'ratingAvg' | 'ratingCount'>[] = [
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e40',
     slug: 'ha-long-bay-cruise',
@@ -42,8 +44,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'ninh-binh', name: 'Ninh Bình', isPrimary: false },
     ],
     category: { slug: 'cruises', name: 'Cruises' },
-    ratingAvg: 4.9,
-    ratingCount: 1204,
     suitableFor: ['COUPLE', 'FAMILY', 'FRIENDS'],
     badges: ['BEST_VALUE', 'POPULAR'],
     included: [
@@ -155,8 +155,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'phu-quoc', name: 'Phú Quốc', isPrimary: true }],
     category: { slug: 'beaches', name: 'Beaches & islands' },
-    ratingAvg: null,
-    ratingCount: 0,
     suitableFor: ['COUPLE', 'SOLO'],
     badges: ['NEW'],
     included: [
@@ -208,8 +206,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'ninh-binh', name: 'Ninh Bình', isPrimary: false },
     ],
     category: { slug: 'trekking', name: 'Trekking' },
-    ratingAvg: 4.7,
-    ratingCount: 312,
     suitableFor: ['FRIENDS', 'SOLO'],
     badges: ['EXCLUSIVE', 'LIMITED_OFFER'],
     included: [
@@ -325,8 +321,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: true,
     destinations: [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }],
     category: { slug: 'trekking', name: 'Trekking' },
-    ratingAvg: 4.8,
-    ratingCount: 897,
     suitableFor: ['FRIENDS', 'SOLO', 'COUPLE'],
     badges: ['POPULAR'],
     included: [
@@ -418,8 +412,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: true,
     destinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
     category: { slug: 'culture', name: 'Culture & heritage' },
-    ratingAvg: 4.9,
-    ratingCount: 2036,
     suitableFor: ['COUPLE', 'FAMILY', 'FRIENDS'],
     badges: ['POPULAR', 'BEST_VALUE'],
     included: [
@@ -510,8 +502,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'hue', name: 'Huế', isPrimary: true }],
     category: { slug: 'culture', name: 'Culture & heritage' },
-    ratingAvg: 4.7,
-    ratingCount: 643,
     suitableFor: ['COUPLE', 'FAMILY', 'BUSINESS'],
     badges: [],
     included: [
@@ -593,8 +583,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'sai-gon', name: 'Sài Gòn', isPrimary: false },
     ],
     category: { slug: 'cruises', name: 'Cruises' },
-    ratingAvg: 4.8,
-    ratingCount: 758,
     suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
     badges: [],
     included: [
@@ -687,8 +675,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'hue', name: 'Huế', isPrimary: false },
     ],
     category: { slug: 'scenic', name: 'Scenic routes' },
-    ratingAvg: 4.6,
-    ratingCount: 512,
     suitableFor: ['FRIENDS', 'SOLO', 'COUPLE'],
     badges: [],
     included: [
@@ -763,8 +749,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'ninh-binh', name: 'Ninh Bình', isPrimary: true }],
     category: { slug: 'scenic', name: 'Scenic routes' },
-    ratingAvg: 4.8,
-    ratingCount: 941,
     suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
     badges: ['BEST_VALUE'],
     included: [
@@ -851,8 +835,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: true,
     destinations: [{ slug: 'sai-gon', name: 'Sài Gòn', isPrimary: true }],
     category: { slug: 'food', name: 'Food & markets' },
-    ratingAvg: 4.9,
-    ratingCount: 1533,
     suitableFor: ['COUPLE', 'FRIENDS', 'SOLO'],
     badges: ['POPULAR'],
     included: [
@@ -944,8 +926,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
     category: { slug: 'food', name: 'Food & markets' },
-    ratingAvg: 4.9,
-    ratingCount: 1108,
     suitableFor: ['COUPLE', 'FAMILY', 'SOLO'],
     badges: [],
     included: [
@@ -1024,8 +1004,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'can-tho', name: 'Cần Thơ', isPrimary: true }],
     category: { slug: 'food', name: 'Food & markets' },
-    ratingAvg: 4.7,
-    ratingCount: 402,
     suitableFor: ['SOLO', 'COUPLE', 'BUSINESS'],
     badges: [],
     included: [
@@ -1101,8 +1079,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'sai-gon', name: 'Sài Gòn', isPrimary: false },
     ],
     category: { slug: 'culture', name: 'Culture & heritage' },
-    ratingAvg: 4.8,
-    ratingCount: 268,
     suitableFor: ['COUPLE', 'FAMILY', 'FRIENDS', 'SOLO'],
     badges: ['BEST_VALUE', 'POPULAR'],
     included: [
@@ -1249,8 +1225,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }],
     category: { slug: 'trekking', name: 'Trekking' },
-    ratingAvg: null,
-    ratingCount: 0,
     suitableFor: ['FRIENDS', 'COUPLE'],
     badges: ['NEW'],
     included: [
@@ -1319,8 +1293,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
     isFeatured: false,
     destinations: [{ slug: 'phu-quoc', name: 'Phú Quốc', isPrimary: true }],
     category: { slug: 'cruises', name: 'Cruises' },
-    ratingAvg: 4.6,
-    ratingCount: 289,
     suitableFor: ['COUPLE', 'FRIENDS', 'BUSINESS'],
     badges: [],
     included: [
@@ -1409,8 +1381,6 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
       { slug: 'da-nang', name: 'Đà Nẵng', isPrimary: false },
     ],
     category: { slug: 'culture', name: 'Culture & heritage' },
-    ratingAvg: 4.7,
-    ratingCount: 355,
     suitableFor: ['COUPLE', 'FAMILY', 'BUSINESS'],
     badges: [],
     included: [
@@ -1493,9 +1463,24 @@ const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
   },
 ];
 
-// Ghép media vào từng tour. Slug không có trong TOUR_MEDIA thì ra mảng rỗng —
-// đúng nhánh "biên tập chưa upload" mà API cũng sẽ trả về.
-export const TOURS: MockTourDetail[] = TOURS_WITHOUT_MEDIA.map((tour) => ({
-  ...tour,
-  media: TOUR_MEDIA[tour.slug] ?? [],
-}));
+// Ghép media + DẪN XUẤT rating vào từng tour.
+//
+// Slug không có trong TOUR_MEDIA / TOUR_REVIEWS thì ra mảng rỗng — đúng nhánh
+// "biên tập chưa upload" và "chưa ai đánh giá" mà API cũng sẽ trả về.
+//
+// `ratingAvg`/`ratingCount` KHÔNG viết tay trong từng object nữa mà tính từ
+// TOUR_REVIEWS. Lý do: hero in "4.8 (12)" thì con số đó phải là con số của chính
+// danh sách người đọc bấm vào xem được — viết tay 1204 rồi mock 12 review là
+// "See all 1,204 reviews" mở ra 12, tức nói dối ngay trong cụm tĩnh. Ở API thật
+// hai cột này được denormalize atomically lúc duyệt review, nên dẫn xuất ở đây
+// phản chiếu đúng quan hệ đó.
+export const TOURS: MockTourDetail[] = TOURS_WITHOUT_MEDIA.map((tour) => {
+  const reviews = TOUR_REVIEWS[tour.slug] ?? [];
+  return {
+    ...tour,
+    media: TOUR_MEDIA[tour.slug] ?? [],
+    // null ≠ 0: chưa ai đánh giá, không phải bị chấm 0 điểm.
+    ratingAvg: reviews.length === 0 ? null : averageRating(reviews),
+    ratingCount: reviews.length,
+  };
+});

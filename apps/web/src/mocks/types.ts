@@ -49,6 +49,37 @@ export interface MockTourCard {
   ratingCount: number;
 }
 
+/**
+ * Gương `PublicReviewSchema` của `@tourism/contract` — **đúng 7 field, không hơn**.
+ *
+ * Những thứ CỐ TÌNH không có ở đây, vì bản công khai của contract không có, và mỗi
+ * cái đều là một UI thường thấy mà ta không được dựng:
+ *  • `source: VERIFIED | CURATED` chỉ tồn tại ở `AdminReviewSchema` → **không có
+ *    badge "Verified traveller"**. Khối i18n port từ Nexora từng có đúng key đó;
+ *    nó sẽ hiện một huy hiệu mà dữ liệu công khai không thể xác nhận.
+ *  • Không có số đếm theo từng mức sao → **không có histogram phân bố**. Tính từ
+ *    trang đang tải là nói dối: nó phản ánh 5 review vừa lấy, không phải toàn bộ.
+ *  • Không có avatar, không có vote hữu ích, không có trả lời của nhà vận hành.
+ *
+ * `ReviewsByTourQuerySchema` cũng chỉ có `page`/`pageSize`/`tourSlug` → **không
+ * sort, không lọc theo sao**. Thứ tự do server quyết: `authorDeleted asc →
+ * createdAt desc → id desc`.
+ */
+export interface MockReview {
+  id: string;
+  /** Số nguyên 1–5 (`RatingSchema`). */
+  rating: number;
+  title: string | null;
+  body: string;
+  /** null khi tác giả đã xoá tài khoản — schema ghi rõ FE render "Deleted account". */
+  authorName: string | null;
+  authorDeleted: boolean;
+  /** ISO **datetime** (có giờ + Z), KHÁC `MockTourDeparture.startDate` là date-only.
+      Bẫy "đừng dựng new Date()" chỉ áp cho date-only; với datetime có Z thì
+      `new Date()` là đúng. Xem `formatReviewDate` trong lib/tours.ts. */
+  createdAt: string;
+}
+
 export interface MockItineraryDay {
   dayNumber: number;
   title: string;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOURS } from '@/mocks/tours';
-import type { MockMediaItem } from '@/mocks/types';
+import type { MockMediaItem, MockReview } from '@/mocks/types';
 
 /** State rỗng dùng làm nền cho mọi test lọc — spread rồi ghi đè đúng facet cần. */
 const EMPTY_FILTERS = {
@@ -13,6 +13,7 @@ const EMPTY_FILTERS = {
 } as const;
 
 import {
+  averageRating,
   countActiveFilters,
   departureStatus,
   discountPercent,
@@ -21,6 +22,7 @@ import {
   filterTours,
   formatDateRange,
   formatMoney,
+  formatReviewDate,
   groupPoliciesByKind,
   priceBucket,
   relatedTours,
@@ -29,6 +31,7 @@ import {
   sortTours,
   tourCategories,
   tourGallery,
+  tourReviews,
 } from './tours';
 
 describe('tourCategories', () => {
@@ -427,5 +430,82 @@ describe('tourGallery', () => {
     // Nhánh thật khi biên tập upload ảnh mà quên đánh dấu hero.
     const result = tourGallery([item('gallery', 5), item('gallery', 2)]);
     expect(result.map((m) => m.sortOrder)).toEqual([2, 5]);
+  });
+});
+
+describe('averageRating', () => {
+  const r = (rating: number): MockReview => ({
+    id: `r${rating}`,
+    rating,
+    title: null,
+    body: 'x',
+    authorName: 'A',
+    authorDeleted: false,
+    createdAt: '2026-07-01T00:00:00.000Z',
+  });
+
+  it('làm tròn tới MỘT chữ số thập phân — khớp Decimal(2,1) của cột denormalize', () => {
+    expect(averageRating([r(5), r(4), r(4)])).toBe(4.3);
+  });
+
+  it('mảng rỗng cho null, KHÔNG phải 0 — chưa ai đánh giá khác bị chấm 0 điểm', () => {
+    expect(averageRating([])).toBeNull();
+  });
+
+  it('một review thì trung bình là chính nó', () => {
+    expect(averageRating([r(4)])).toBe(4);
+  });
+
+  it('không bao giờ vượt 5 hay xuống dưới 1 khi mọi rating hợp lệ', () => {
+    expect(averageRating([r(5), r(5)])).toBe(5);
+    expect(averageRating([r(1), r(1)])).toBe(1);
+  });
+});
+
+describe('tourReviews', () => {
+  const rv = (id: string, createdAt: string, authorDeleted = false): MockReview => ({
+    id,
+    rating: 5,
+    title: null,
+    body: 'x',
+    authorName: authorDeleted ? null : 'A',
+    authorDeleted,
+    createdAt,
+  });
+
+  it('mới nhất trước', () => {
+    const result = tourReviews([
+      rv('old', '2026-05-01T00:00:00.000Z'),
+      rv('new', '2026-07-01T00:00:00.000Z'),
+    ]);
+    expect(result.map((r) => r.id)).toEqual(['new', 'old']);
+  });
+
+  it('tác giả đã xoá tài khoản CHÌM xuống cuối, kể cả khi review mới hơn', () => {
+    // Đúng thứ tự server: `authorDeleted asc → createdAt desc`. Nếu client sắp
+    // khác server thì trang 1 tĩnh và trang 1 từ API sẽ ra hai danh sách khác nhau.
+    const result = tourReviews([
+      rv('deleted-but-newest', '2026-08-01T00:00:00.000Z', true),
+      rv('kept', '2026-06-01T00:00:00.000Z'),
+    ]);
+    expect(result.map((r) => r.id)).toEqual(['kept', 'deleted-but-newest']);
+  });
+
+  it('trả mảng MỚI — mock là hằng số dùng chung', () => {
+    const input = [rv('a', '2026-07-01T00:00:00.000Z')];
+    expect(tourReviews(input)).not.toBe(input);
+  });
+});
+
+describe('formatReviewDate', () => {
+  it('ISO datetime ra "tháng năm" đọc được', () => {
+    expect(formatReviewDate('2026-07-18T09:12:00.000Z')).toBe('July 2026');
+  });
+
+  it('KHÁC formatDateRange: chuỗi này có giờ + Z nên new Date() là đúng', () => {
+    // Bẫy "đừng dựng new Date()" chỉ áp cho date-only YYYY-MM-DD của departures —
+    // chuỗi đó bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày ở múi giờ âm.
+    // Ở đây có múi giờ tường minh nên không có chỗ nào để diễn giải sai.
+    expect(formatReviewDate('2026-01-01T23:30:00.000Z')).toBe('January 2026');
   });
 });
