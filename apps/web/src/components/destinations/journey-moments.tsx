@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { Reveal } from '@/components/motion/reveal';
 import type { MockMoment } from '@/mocks/types';
 
 /** Số ô nhỏ tối đa cạnh ô lớn — cùng khảm 1 lớn + 4 nhỏ mà `TourGallery` đã
@@ -46,14 +47,19 @@ export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
           </div>
 
           {/* Khảm: 1 ô lớn (2×2 ở sm+) + tối đa 4 ô nhỏ — cùng lưới
-              `TourGallery` dùng, không sao chép lightbox của nó. */}
+              `TourGallery` dùng, không sao chép lightbox của nó.
+              Mỗi ô bọc `Reveal` riêng với `delay` tăng dần: khảm DỰNG LÊN lần
+              lượt thay vì bật một cục. Trước đây cả khu chỉ có đúng một
+              `Reveal` bọc ngoài (ở page.tsx) nên 5 ô đến cùng lúc và đứng im. */}
           <div className="mt-10 grid grid-cols-2 gap-2 sm:grid-cols-4 sm:grid-rows-2">
-            <MomentTile
-              moment={lead}
-              className="col-span-2 aspect-4/3 sm:row-span-2 sm:aspect-auto sm:h-full"
-            />
-            {thumbs.map((moment) => (
-              <MomentTile key={moment.title} moment={moment} className="aspect-4/3 w-full" />
+            <Reveal className="col-span-2 sm:row-span-2 sm:h-full">
+              <MomentTile moment={lead} className="aspect-4/3 sm:aspect-auto sm:h-full" />
+            </Reveal>
+            {thumbs.map((moment, index) => (
+              // Bước 80ms — đủ để mắt thấy thứ tự mà không thành hàng đợi lê thê.
+              <Reveal key={moment.title} delay={0.08 * (index + 1)}>
+                <MomentTile moment={moment} className="aspect-4/3 w-full" />
+              </Reveal>
             ))}
           </div>
         </div>
@@ -62,10 +68,38 @@ export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
   );
 }
 
+/**
+ * Một ô khoảnh khắc. Là LINK sang chính tour trong `credit`, không phải `<div>`
+ * trơ: hover-zoom trên một thứ bấm không đi đâu là hứa hão — chuột báo "tương
+ * tác được" rồi bấm vào không có gì xảy ra. Ba component ảnh khác của repo
+ * (`tour-gallery`, `about-gallery`, `tour-card`) đều có hover VÌ chúng là link
+ * hoặc nút thật.
+ */
 function MomentTile({ moment, className }: { moment: MockMoment; className?: string }) {
   return (
-    <div className={cn('relative overflow-hidden rounded-xl', className)}>
-      <ImagePlaceholder className="h-full w-full" />
+    <a
+      href={`/tours/${moment.tourSlug}`}
+      className={cn(
+        'group relative block overflow-hidden rounded-xl',
+        // Vòng focus INSET: ô có `overflow-hidden` nên ring thường bị cắt mất.
+        'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none',
+        className,
+      )}
+    >
+      {/* Zoom ảnh theo đúng công thức `tour-gallery.tsx` (khảm cùng họ, bản
+          chuẩn nhất repo): 500ms ease-out, scale 105, có `group-focus-within`
+          cho bàn phím và ĐỦ guard `motion-reduce`. Cố ý KHÔNG theo
+          `about-gallery.tsx` — bản đó thiếu cả `ease-out` lẫn guard. */}
+      <ImagePlaceholder className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100" />
+
+      {/* Lớp phủ đậm thêm khi hover — caption nổi rõ hơn lúc con trỏ ở trên ô.
+          `--overlay` đã mang alpha sẵn nên `/25` là ~0.12 hiệu dụng: đủ thấy,
+          không nuốt mất ảnh. */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 transition-colors duration-500 group-hover:bg-overlay/25 group-focus-within:bg-overlay/25 motion-reduce:transition-none"
+      />
+
       {/* Caption đè lên ảnh: `title` là chú thích, `credit` là dòng nhỏ dưới —
           cùng khuôn scrim `from-overlay` + `text-on-media` mà `home/gallery.tsx`
           đã dùng cho caption đáy ảnh (token cố định, không phải theo theme,
@@ -74,6 +108,6 @@ function MomentTile({ moment, className }: { moment: MockMoment; className?: str
         <p className="text-sm font-medium text-pretty">{moment.title}</p>
         <p className="mt-1 text-xs opacity-85">{moment.credit}</p>
       </div>
-    </div>
+    </a>
   );
 }

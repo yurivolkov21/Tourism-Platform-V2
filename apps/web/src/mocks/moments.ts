@@ -7,21 +7,26 @@ export const MOMENTS: MockMoment[] = [
   {
     title: 'Kayaking into the hidden lagoon at golden hour',
     credit: 'Sarah, Ha Long Bay Cruise',
+    tourSlug: 'ha-long-bay-cruise',
   },
   {
     title: 'Sunrise over the terraces from the homestay porch',
     credit: 'Daniel, Sa Pa Terraces Trek',
+    tourSlug: 'sa-pa-terraces-trek',
   },
   {
     title: 'Releasing paper lanterns on the Hoài river',
     credit: 'Emma, Hoi An Lantern Evening',
+    tourSlug: 'hoi-an-lantern-evening',
   },
   {
     title: 'Learning royal recipes with chị Lan in her garden kitchen',
     credit: 'Kenji, Hue Imperial Day',
+    tourSlug: 'hue-imperial-day',
   },
   {
     title: 'Coffee on the boat as the floating market wakes up',
     credit: 'Tom, Mekong Delta Boats',
+    tourSlug: 'mekong-delta-boats',
   },
 ];

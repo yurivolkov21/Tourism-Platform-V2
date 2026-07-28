@@ -223,6 +223,18 @@ export interface MockMoment {
   title: string;
   /** "Tên khách, tên tour" */
   credit: string;
+  /**
+   * Slug của tour trong `credit` — thêm 28/07 để ô khoảnh khắc ở
+   * `/destinations` thành LINK thật sang trang tour.
+   *
+   * Ghi tường minh chứ KHÔNG bóc tên tour ra khỏi chuỗi `credit`: parse chuỗi
+   * tự do là đoán, và đoán sai thì link dẫn sang tour khác. Đây đúng cái bẫy
+   * đã khiến ta không port `tour-detail-derive.ts` của Nexora (regex-parse
+   * meals/transport từ text không có gì bảo đảm định dạng).
+   *
+   * Bất biến: phải khớp một `TOURS[].slug` có thật — có test canh.
+   */
+  tourSlug: string;
 }
 
 /**

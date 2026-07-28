@@ -6,6 +6,7 @@ import { slugify } from '../lib/slug.js';
 import { averageRating } from '../lib/tours.js';
 import { DESTINATIONS } from './destinations.js';
 import { JOURNAL_POSTS } from './journal.js';
+import { MOMENTS } from './moments.js';
 import { REGIONS } from './regions.js';
 import { TESTIMONIALS } from './testimonials.js';
 import { TOUR_REVIEWS } from './tour-reviews.js';
@@ -441,5 +442,27 @@ describe('TOUR_REVIEWS — mọi nhánh UI phải có mock chứng minh', () => 
     expect(all.some((r) => r.authorDeleted)).toBe(true);
     expect(all.some((r) => r.title === null)).toBe(true);
     expect(all.some((r) => r.title !== null)).toBe(true);
+  });
+});
+
+describe('mock moments', () => {
+  it('mỗi khoảnh khắc trỏ tới một tour CÓ THẬT', () => {
+    // Bất biến sinh ra khi ô khoảnh khắc ở /destinations thành link (28/07).
+    // `tourSlug` ghi tay chứ không bóc từ chuỗi `credit` — nên phải có test
+    // canh, nếu không một slug gõ sai sẽ dẫn thẳng sang trang 404.
+    const known = new Set(TOURS.map((t) => t.slug));
+    for (const m of MOMENTS) {
+      expect(known.has(m.tourSlug), `${m.credit} → ${m.tourSlug}`).toBe(true);
+    }
+  });
+
+  it('credit có nhắc đúng tour mà tourSlug trỏ tới', () => {
+    // Chống lệch âm thầm: đổi credit mà quên đổi slug (hoặc ngược lại) thì
+    // caption nói một tour còn link dẫn sang tour khác.
+    for (const m of MOMENTS) {
+      const tour = TOURS.find((t) => t.slug === m.tourSlug);
+      expect(tour, m.tourSlug).toBeDefined();
+      expect(m.credit, m.tourSlug).toContain(tour?.title ?? '\u0000');
+    }
   });
 });
