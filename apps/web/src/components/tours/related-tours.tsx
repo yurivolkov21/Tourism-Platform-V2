@@ -15,7 +15,9 @@ export function RelatedTours({ tours }: { tours: MockTourCard[] }) {
   if (tours.length === 0) return null;
 
   return (
-    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    // gap-y lớn hơn gap-x: card không có khung nên hai hàng cần khoảng thở dọc
+    // rộng hơn để không đọc thành một khối chữ liền.
+    <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
       {tours.map((tour) => (
         <TourCard key={tour.slug} tour={tour} />
       ))}

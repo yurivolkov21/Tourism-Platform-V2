@@ -1,120 +1,185 @@
 import { messages } from '@tourism/i18n';
-import { Badge } from '@tourism/ui/components/badge';
-import { Button } from '@tourism/ui/components/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@tourism/ui/components/card';
-import { HeartIcon, StarIcon, UsersIcon } from 'lucide-react';
+import { StarIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
 import type { MockTourCard } from '@/mocks/types';
 
-// Card tour chuẩn — giữ thiết kế đã chốt ở trang Home (ảnh 4:3 hover scale,
-// header, hàng meta, footer giá + hành động), đổi nguồn sang field contract.
-// Dùng cho listing; sau này cả trang vùng và wishlist.
+/**
+ * Card tour DỌC cho lưới gợi ý "You might also like" ở cuối trang chi tiết.
+ * (Listing dùng `TourListCard` hàng ngang — hai chỗ, hai việc khác nhau.)
+ *
+ * NĂM BĂNG, MỘT THỨ TỰ ĐỌC. Mỗi băng trả lời đúng một câu, theo thứ tự người ta
+ * hỏi: ở đâu → cái gì → dài bao lâu, nặng không → bao nhiêu + tin được không.
+ * Bản trước có sáu băng cộng bốn thứ trôi nổi (eyebrow chuyên mục, hàng 3 chip,
+ * rating bị `ml-auto` đẩy ra cuối hàng chip, footer có viền, nút tim) — mắt không
+ * biết đọc từ đâu.
+ *
+ * KHÔNG khung, KHÔNG nền card, KHÔNG đường kẻ chân: bài học vòng 4 của listing —
+ * gốc rễ cảm giác "trống hoác" là CÁI KHUNG, không phải số phần tử bên trong. Khu
+ * gợi ý này nằm ngay dưới bảng đợt có viền và rail booking có viền; thêm khung nữa
+ * là bốn thứ có viền xếp liên tiếp trong một màn hình.
+ *
+ * KHÔNG nút tim: wishlist chưa nối (contract có `wishlist.check` batch, UI chưa
+ * dùng). Một cái tim không làm gì là hứa thứ sản phẩm không giữ — cùng lý do nút
+ * "Report a broken link" bị bỏ khỏi trang 404.
+ *
+ * SÁU TRƯỜNG, tất cả đều có trong `TourCardSchema` nên card KHÔNG rỗng khi gắn
+ * API: chuỗi chặng · title · durationDays · difficulty · giá (+ giá gạch, −N%) ·
+ * rating. Cố tình bỏ `category` (ở slot này nó gần như hằng số vì `relatedTours()`
+ * ưu tiên cùng chuyên mục nên nó thường trùng tour vừa xem), `maxGroupSize` (thông
+ * tin lúc quyết, đã có ở hero + rail trang chi tiết), `summary` (2 dòng văn xuôi
+ * tranh chỗ với tiêu đề, lại nullable nên giữ chỗ = khoảng trống chết),
+ * `isFeatured` (tranh chỗ với chip giảm giá — sự thật về giá thắng nhãn tiếp thị).
+ */
+
+/**
+ * Dải chặng hiện 2 chặng đầu, phần dư gộp thành "+N".
+ *
+ * Vì sao cắt ở tầng DỮ LIỆU chứ không để CSS `overflow` cắt: cắt bằng CSS thì
+ * người đọc thấy chuỗi đứt giữa và không biết còn bao nhiêu chặng nữa. "+2" nói
+ * thẳng điều đó. Tên các chặng bị gộp vẫn nằm trong DOM dạng `sr-only` nên trình
+ * đọc màn hình không mất thông tin nào.
+ */
+const VISIBLE_STOPS = 2;
+
 export function TourCard({ tour }: { tour: MockTourCard }) {
+  const t = messages.toursPage;
   const chain = routeChain(tour.destinations);
-  const primary = chain[0];
+  const stops = chain.slice(0, VISIBLE_STOPS);
+  const hiddenStops = chain.slice(VISIBLE_STOPS);
   const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
 
   return (
-    <Card className="group relative h-full pt-0 transition-shadow hover:shadow-(--shadow-dropdown)">
-      <div className="relative">
-        {/* Trợ năng: KHÔNG dùng tour.title làm nhãn ảnh — nó trùng y hệt
-            <CardTitle> ngay dưới, trình đọc màn hình đọc tiêu đề hai lần.
-            Dùng tên destination chính làm mô tả riêng cho ảnh. */}
+    // `data-tour-card` là móc cho luật transition-delay theo chặng trong
+    // globals.css; `group` là móc cho các biến thể group-hover của Tailwind.
+    <article data-tour-card className="group relative flex flex-col gap-2.5">
+      {/* ── 1 · Ảnh. Thứ DUY NHẤT được đặt lên nó là chip giảm giá. ── */}
+      <div className="relative overflow-hidden rounded-xl">
+        {/* Nhãn ảnh là tên destination chính, KHÔNG phải tour.title — title đã là
+            <h3> ngay dưới, lặp lại là trình đọc màn hình đọc hai lần. */}
         <ImagePlaceholder
-          label={primary?.name}
-          className="aspect-(--aspect-card) w-full transition-transform duration-300 group-hover:scale-[1.03]"
+          label={chain[0]?.name}
+          className="aspect-16/10 w-full transition-transform duration-700 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
         />
         {discount !== null ? (
-          <Badge variant="destructive" className="absolute top-3 left-3">
+          <span className="absolute top-2.5 left-2.5 rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-white">
             −{discount}%
-          </Badge>
-        ) : tour.isFeatured ? (
-          <Badge className="absolute top-3 left-3">{messages.toursPage.featuredLabel}</Badge>
+          </span>
         ) : null}
       </div>
 
-      <CardHeader>
-        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          {tour.category.name}
-        </p>
-        <CardTitle className="text-lg">
-          {/* Lớp phủ vô hình biến cả card thành vùng bấm. Nút wishlist bên dưới
-              phải relative z-10 để nổi lên trên, không thì bấm tim lại mở tour. */}
-          <a href={`/tours/${tour.slug}`} className="after:absolute after:inset-0">
-            {tour.title}
-          </a>
-        </CardTitle>
-        {/* Chuỗi chặng — thứ duy nhất phân biệt card tour với card khách sạn.
-            Template viết "7 days • Small group • Vietnam"; đây là dữ liệu thật
-            từ destinations[], điểm chính in đậm. */}
-        <CardDescription className="font-mono text-xs">
-          {chain.map((dest, i) => (
-            <span key={dest.slug}>
-              {i > 0 ? <span aria-hidden="true"> → </span> : null}
-              <span className={dest.isPrimary ? 'font-medium text-foreground' : undefined}>
-                {dest.name}
-              </span>
+      {/* ── 2 · DẢI CHẶNG — phần tử ký tên của card. ──
+          Chấm ĐẶC cho điểm đến chính là tín hiệu duy nhất; bản trước còn thêm một
+          vòng sáng `box-shadow` quanh nó — tín hiệu thứ hai cho cùng một thứ, và
+          nó toả ra ngoài nên bị `overflow-hidden` cắt mất mép trái ở chấm đầu.
+          `-ml-0.5 pl-0.5`: nội dung đẩy vào 2px cho chấm có chỗ thở, hộp vẫn
+          thẳng lề với tiêu đề bên dưới. */}
+      <p className="-ml-0.5 flex items-center gap-1.5 overflow-hidden pl-0.5 font-mono text-[0.625rem] tracking-[0.16em] whitespace-nowrap text-muted-foreground uppercase">
+        {stops.map((dest, i) => (
+          <span key={dest.slug} className="flex shrink-0 items-center gap-1.5">
+            {i > 0 ? (
+              // Đường nối và chấm sáng lần lượt từ chặng đầu ra chặng cuối.
+              // --leg-index quyết định thứ tự; xem luật [data-leg] ở globals.css.
+              <span
+                aria-hidden="true"
+                data-leg
+                style={{ '--leg-index': i * 2 - 1 } as React.CSSProperties}
+                className="h-px w-5 shrink-0 bg-border group-hover:bg-primary group-focus-within:bg-primary"
+              />
+            ) : null}
+            {dest.isPrimary ? (
+              <span
+                aria-hidden="true"
+                className="size-[0.4375rem] shrink-0 rounded-full bg-primary"
+              />
+            ) : (
+              <span
+                aria-hidden="true"
+                data-leg
+                style={{ '--leg-index': i * 2 } as React.CSSProperties}
+                className="size-[0.4375rem] shrink-0 rounded-full border-[1.25px] border-muted-foreground opacity-75 group-hover:scale-125 group-hover:border-primary group-hover:opacity-100 group-focus-within:scale-125 group-focus-within:border-primary group-focus-within:opacity-100"
+              />
+            )}
+            <span className={dest.isPrimary ? 'text-foreground' : undefined}>{dest.name}</span>
+          </span>
+        ))}
+
+        {hiddenStops.length > 0 ? (
+          <>
+            <span
+              aria-hidden="true"
+              data-leg
+              style={{ '--leg-index': VISIBLE_STOPS * 2 - 1 } as React.CSSProperties}
+              className="h-px w-5 shrink-0 bg-border group-hover:bg-primary group-focus-within:bg-primary"
+            />
+            <span aria-hidden="true" className="shrink-0 opacity-80">
+              {t.moreStops(hiddenStops.length)}
             </span>
-          ))}
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="flex flex-wrap items-center gap-2">
-        <Badge variant="secondary">
-          {tour.durationDays} {tour.durationDays === 1 ? 'day' : 'days'}
-        </Badge>
-        <Badge variant="secondary" className="gap-1">
-          <UsersIcon className="size-3!" aria-hidden="true" />
-          max {tour.maxGroupSize}
-        </Badge>
-        {tour.difficulty ? (
-          // Nhãn độ khó lấy từ i18n, KHÔNG khai lại tại chỗ: bản cũ có hằng
-          // DIFFICULTY_LABEL riêng trùng y hệt `toursPage.difficultyLabels`, và
-          // hai tên cho một thứ là cách copy bắt đầu lệch nhau.
-          <Badge variant="secondary">{messages.toursPage.difficultyLabels[tour.difficulty]}</Badge>
+            {/* Tên chặng bị gộp — chỉ cho trình đọc màn hình, để "+2" không làm
+                mất thông tin. Tên địa danh là DỮ LIỆU nên không đi qua i18n. */}
+            <span className="sr-only">{hiddenStops.map((dest) => dest.name).join(', ')}</span>
+          </>
         ) : null}
+      </p>
 
-        {/* ratingAvg null = CHƯA AI đánh giá. Bỏ hẳn dòng sao thay vì hiện "0.0"
-            hay 5 sao rỗng — mẫu GetYourGuide dùng badge "New activity". */}
-        <span className="ml-auto text-sm text-muted-foreground">
-          {tour.ratingAvg === null ? (
-            <span className="text-xs">{messages.toursPage.notRated}</span>
+      {/* ── 3 · Tiêu đề. Lora, hợp đồng 2 dòng. ──
+          Gạch chân nằm trên <span> BỌC CHỮ, không trên <h3>: h3 là hộp hai dòng
+          (`min-h-[2lh]`) nên gạch ở đáy hộp sẽ rơi cách chữ một dòng khi tiêu đề
+          chỉ có một dòng. Đúng cách PostCard của /blog làm.
+          Đổi màu tiêu đề KHÔNG nằm trong motion-safe: nó là phản hồi trạng thái,
+          không phải hoạt cảnh, nên người tắt chuyển động vẫn cần thấy. */}
+      <h3 className="min-h-[2lh] overflow-hidden font-heading text-lg leading-snug font-medium text-foreground transition-colors duration-300 group-hover:text-primary group-focus-within:text-primary [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+        {/* `after:absolute after:inset-0` biến cả card thành vùng bấm mà vẫn chỉ có
+            MỘT link, và link đó có nội dung thật nên tên khả truy cập là tiêu đề
+            (một <a> rỗng chỉ mang aria-label bị Biome chặn, đúng lý). Đây là cùng
+            thủ thuật TourListCard đang dùng. Không phần tử tương tác nào khác trên
+            card → cảm ứng hoạt động y hệt desktop. */}
+        <a href={`/tours/${tour.slug}`} className="after:absolute after:inset-0">
+          <span className="bg-[linear-gradient(currentColor,currentColor)] bg-left-bottom bg-no-repeat bg-[length:0%_1px] group-hover:bg-[length:100%_1px] group-focus-within:bg-[length:100%_1px] motion-safe:transition-[background-size] motion-safe:duration-300">
+            {tour.title}
+          </span>
+        </a>
+      </h3>
+
+      {/* ── 4 · Hình dạng chuyến đi — MỘT CÂU, không phải hàng chip. Nhờ vậy không
+          còn bài toán "ba chip bị overflow-hidden xén ngang chữ" mà card ngang
+          phải chặn bằng MAX_CHIPS. ── */}
+      <p className="text-sm text-muted-foreground">
+        {t.durationValue(tour.durationDays)}
+        {tour.difficulty ? ` · ${t.difficultyLabels[tour.difficulty]}` : null}
+      </p>
+
+      {/* ── 5 · Hàng chân: tiền trái, uy tín phải, cùng baseline. Không đường kẻ. ── */}
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <span className="flex items-baseline gap-1.5">
+          <span className="font-heading text-xl font-semibold text-foreground tabular-nums">
+            {formatMoney(tour.basePrice, tour.currency)}
+          </span>
+          {tour.compareAtPrice ? (
+            <span className="text-sm text-price-compare tabular-nums line-through">
+              {formatMoney(tour.compareAtPrice, tour.currency)}
+            </span>
           ) : (
-            <span className="flex items-center gap-1">
-              <StarIcon className="size-3.5! fill-rating text-rating" aria-hidden="true" />
-              {/* toFixed(1) như TourListCard: in thô thì rating 4.0 hiện thành
-                  "4" và hai card cạnh nhau lệch định dạng. */}
-              <span className="font-medium text-foreground">{tour.ratingAvg.toFixed(1)}</span>(
-              {tour.ratingCount.toLocaleString('en-US')})
+            <span className="font-mono text-[0.6875rem] tracking-widest text-muted-foreground uppercase">
+              {t.perPerson}
             </span>
           )}
         </span>
-      </CardContent>
 
-      <CardFooter className="mt-auto items-center gap-2">
-        <span className="text-lg font-semibold tabular-nums">
-          {formatMoney(tour.basePrice, tour.currency)}
-        </span>
-        {tour.compareAtPrice ? (
-          <span className="text-sm text-price-compare tabular-nums line-through">
-            {formatMoney(tour.compareAtPrice, tour.currency)}
+        {/* ratingAvg null = CHƯA AI đánh giá, khác hẳn 0 điểm. Nhãn chữ thay vì
+            "0.0" hay 5 sao rỗng — cả hai đều là nói dối về dữ liệu. */}
+        {tour.ratingAvg === null ? (
+          <span className="text-xs text-muted-foreground">{t.notRated}</span>
+        ) : (
+          <span className="flex items-center gap-1.5 text-sm whitespace-nowrap">
+            <StarIcon className="size-3.5 fill-rating text-rating" aria-hidden="true" />
+            <span className="font-medium text-foreground">{tour.ratingAvg.toFixed(1)}</span>
+            <span className="text-muted-foreground">
+              ({tour.ratingCount.toLocaleString('en-US')})
+            </span>
           </span>
-        ) : null}
-        <span className="text-xs text-muted-foreground">/ {messages.toursPage.perPerson}</span>
-        <span className="relative z-10 ml-auto">
-          <Button variant="ghost" size="icon-sm" aria-label={`Save ${tour.title} to wishlist`}>
-            <HeartIcon />
-          </Button>
-        </span>
-      </CardFooter>
-    </Card>
+        )}
+      </div>
+    </article>
   );
 }

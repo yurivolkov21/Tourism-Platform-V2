@@ -1472,6 +1472,10 @@ export const messages = {
     removeFilter: (label: string) => `Remove filter ${label}`,
     viewTour: 'View tour',
     perPerson: 'per person',
+    /** Dải chặng trên card gợi ý chỉ hiện 2 chặng đầu; phần dư gộp thành "+2" để
+        người đọc biết tour còn đi qua nơi khác chứ không tưởng nó chỉ có hai điểm.
+        Tên các chặng bị gộp vẫn đọc được cho trình đọc màn hình (sr-only). */
+    moreStops: (n: number) => `+${n}`,
     maxGroup: (n: number) => `Max ${n}`,
     durationValue: (n: number) => `${n} ${n === 1 ? 'day' : 'days'}`,
     empty: {

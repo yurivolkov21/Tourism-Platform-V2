@@ -42,6 +42,40 @@
   }
 }
 
+/* ── Dải chặng của TourCard: hành trình "sáng dần" khi hover ──
+ * CSS ở đây lo NHỊP, Tailwind lo GIÁ TRỊ (`group-hover:border-primary`…). Tách
+ * vậy vì transition-delay theo chỉ số không viết gọn được bằng utility, còn màu
+ * thì phải ở component để đọc ra ngay.
+ *
+ * Chỉ chạm `transform` + màu — không phần tử nào đổi kích thước hộp nên không có
+ * reflow. Đây là ranh giới đã học từ đợt gỡ `filter: blur()` + `layout` ở trên.
+ *
+ * Delay chỉ áp trong trạng thái hover/focus: vào thì các chặng lần lượt sáng,
+ * rời chuột thì tắt đồng loạt — rút nhanh cho cảm giác phản hồi tức thì.
+ */
+[data-leg] {
+  transition:
+    border-color 260ms ease,
+    background-color 260ms ease,
+    transform 260ms ease,
+    opacity 260ms ease;
+}
+
+[data-tour-card]:hover [data-leg],
+[data-tour-card]:focus-within [data-leg] {
+  transition-delay: calc(var(--leg-index, 0) * 55ms);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-leg] {
+    transition: none;
+  }
+  [data-tour-card]:hover [data-leg],
+  [data-tour-card]:focus-within [data-leg] {
+    transition-delay: 0ms;
+  }
+}
+
 /* ── Keyframes marquee cho testimonials (convert từ template Estate) ── */
 @keyframes marquee-up {
   0% {
