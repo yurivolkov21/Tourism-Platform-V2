@@ -10,7 +10,7 @@ const MAX_THUMBS = 4;
 
 /**
  * Khu "Moments from the journey" — băng TỐI thứ hai của trang (sau hero),
- * đứng ngay sau ba `RegionBand`. Đây là phần *cảm xúc* mà bản thẻ vùng cũ
+ * đứng ngay sau ba `RegionGroup`. Đây là phần *cảm xúc* mà bản thẻ vùng cũ
  * thiếu hẳn: bằng chứng sống (`MOMENTS`, 5 mục) đứng cạnh ba trạm số liệu.
  *
  * Khuôn băng tối ĐÚNG quy ước repo: `bg-hero` + `text-hero-foreground` trên

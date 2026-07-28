@@ -652,7 +652,8 @@ export const messages = {
   //    tồn tại. Cùng lý lẽ đã đổi "highlight" thành "Most recent" ở reviews.
   //  · `breadcrumbCurrent` cũ là 'Vietnam tours' — đây là trang địa điểm, không
   //    phải trang tour.
-  //  · `viewMore` — không có trang nào để "xem thêm" tới.
+  //  · `viewMore` từng bị cắt vì "không có trang nào để 'xem thêm' tới" — Task 4c
+  //    thêm lại vì `RegionGroup` giờ link sang `/destinations/[region]`.
   destinationsPage: {
     breadcrumbCurrent: 'Destinations',
     heroTitle: 'Explore Vietnam by region',
@@ -661,6 +662,8 @@ export const messages = {
     placesLabel: 'Places',
     toursLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
     exploreRegion: (region: string) => `Explore ${region}`,
+    // Link "View more" ở header mỗi `RegionGroup`, trỏ `/destinations/[region]`.
+    viewMore: 'View more',
     // Ba khu mới của bản thiết kế lại Task 4b (đường kinh tuyến dọc) — khu
     // `featured` (Featured trips) đã XOÁ: trang này giới thiệu vùng, không bán
     // tour (user quyết 28/07, xem spec §5.1 "Sửa lần hai").

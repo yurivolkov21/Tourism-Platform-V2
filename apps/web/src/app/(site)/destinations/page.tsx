@@ -4,7 +4,7 @@ import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { JourneyMoments } from '@/components/destinations/journey-moments';
 import { KnowBeforeYouGo } from '@/components/destinations/know-before-you-go';
-import { RegionBand } from '@/components/destinations/region-band';
+import { RegionGroup } from '@/components/destinations/region-group';
 import { TravellerQuotes } from '@/components/destinations/traveller-quotes';
 import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
@@ -19,25 +19,25 @@ import { TOURS } from '@/mocks/tours';
 
 /**
  * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1). SÁU khu
- * (Task 4b, thiết kế lại sau khi user bác bản "3 thẻ vô hồn"): Hero → 3
- * `RegionBand` dọc kinh tuyến → Moments from the journey → Loved by
- * travellers → Know before you go → CTA hỏi. Khu `Featured trips` của bản
- * trước đã BỎ — trang này giới thiệu vùng, không bán tour (user quyết 28/07).
+ * (Task 4c, thiết kế lại LẦN HAI sau khi user chỉ vào bản Nexora): Hero → 3
+ * `RegionGroup` (header căn giữa + dải ảnh full-bleed) → Moments from the
+ * journey → Loved by travellers → Know before you go → CTA hỏi. Khu
+ * `Featured trips` của bản đầu đã BỎ — trang này giới thiệu vùng, không bán
+ * tour (user quyết 28/07).
  *
- * Chữ ký của trang: MỘT đường kinh tuyến dọc chạy suốt ba `RegionBand`
- * (Bắc → Trung → Nam, thứ tự là thông tin thật — Việt Nam dài theo trục đó).
- * Ba thứ cố tình KHÔNG làm để chữ ký chỉ có một: không đánh số `01/02/03`,
- * không lật ảnh trái-phải xen kẽ giữa các band, không cho mỗi vùng một băng
- * tối chiếm trọn màn hình.
+ * Chữ ký của trang giờ là DẢI ẢNH FULL-BLEED sát mép màn hình dưới mỗi header
+ * vùng, các ô giãn ra khi hover — KHÔNG còn đường kinh tuyến dọc của Task 4b
+ * (bản đó đã bị bác: dải ảnh chạy sát mép nên không còn chỗ cho một đường kẻ
+ * dọc bên trái, giữ cả hai là nhồi hai chữ ký vào một khu). Vẫn giữ nguyên
+ * quy ước không đánh số `01/02/03` — ba vùng không phải các bước tuần tự.
  *
  * Trang vẫn là Server Component thuần (không `'use client'` trên chính
  * `page.tsx`, `metadata` giữ nguyên). `Reveal` (`@/components/motion/reveal`,
  * tự mang `'use client'`) bọc NGOÀI từng khu (kể cả `<section>` nền tint của
- * từng khu) để cả khu — kể cả nền — trồi lên cùng lúc khi cuộn tới. Khác bản
- * trước (Reveal bọc div nội dung BÊN TRONG một `<section>` nền tĩnh dùng
- * chung): ở đây mỗi `RegionBand`/khu mới tự mang `<section>` full-bleed
- * riêng (nền tint theo vùng, hoặc `bg-hero`), nên không còn một `<section>`
- * nền chung nào để nhúng Reveal vào bên trong.
+ * từng khu) để cả khu — kể cả nền — trồi lên cùng lúc khi cuộn tới. Mỗi
+ * `RegionGroup`/khu tự mang `<section>` full-bleed riêng (nền tint theo vùng
+ * ở khối header, hoặc `bg-hero`), nên không có một `<section>` nền chung nào
+ * để nhúng Reveal vào bên trong.
  */
 export const metadata: Metadata = {
   title: 'Destinations — Tourism',
@@ -98,18 +98,17 @@ export default function DestinationsPage() {
         </div>
       </section>
 
-      {/* ── Khu 2 · Ba `RegionBand` dọc kinh tuyến, Bắc → Trung → Nam — thứ tự
-          là thông tin thật, không phải trang trí. Mỗi band tự mang
-          `<section>` full-bleed riêng (nền tint theo vùng), nên `Reveal` bọc
-          NGOÀI từng band thay vì bọc div nội dung bên trong một section nền
-          chung như bản 3-thẻ trước. */}
+      {/* ── Khu 2 · Ba `RegionGroup`, Bắc → Trung → Nam — thứ tự là thông tin
+          thật, không phải trang trí. Mỗi group tự mang `<section>` full-bleed
+          riêng (nền tint theo vùng ở khối header), nên `Reveal` bọc NGOÀI
+          từng group thay vì bọc div nội dung bên trong một section nền
+          chung. */}
       {REGIONS.map((region, i) => (
         <Reveal key={region.key} delay={i === 0 ? 0.1 : 0}>
-          <RegionBand
+          <RegionGroup
             region={region}
             destinations={destinationsInRegion(REGIONS, DESTINATIONS, region.key)}
             tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
-            isLast={i === REGIONS.length - 1}
           />
         </Reveal>
       ))}
