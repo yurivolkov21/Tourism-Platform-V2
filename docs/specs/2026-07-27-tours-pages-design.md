@@ -436,10 +436,46 @@ chung, `blog.ts` import lại. Test cũ của blog phải vẫn xanh.
 
 ## 8. Nợ contract — ghi lại, KHÔNG vá trong cụm này
 
-Năm lỗ đã xác định. Không cái nào chặn cụm tĩnh; tất cả chặn cụm gắn API:
+Năm khoản đã xác định. Không cái nào chặn cụm tĩnh; tất cả chặn cụm gắn API.
 
-1. **Không có field ảnh** trên `TourCardSchema` lẫn `TourDetailSchema`. Prisma
-   `MediaAsset` có `ownerType: TOUR` nhưng không code nào query cho tour.
+> **Sửa cách gọi tên (28/07):** mục này ban đầu gọi cả năm là "lỗ contract", hàm
+> ý cả năm đều là chỗ bị bỏ sót. Không đúng cho **#1**: nó là một quyết định đã
+> ghi trong ADR đã Accepted, hoãn có chủ đích. #2–#5 mới là lỗ thật. Phân biệt
+> này đổi việc phải làm: #1 **không cần ADR mới**, #2–#5 thì cần.
+
+1. **Media tour — HOÃN CÓ CHỦ ĐÍCH, không phải bỏ sót.** `TourCardSchema` lẫn
+   `TourDetailSchema` đều chưa có field ảnh; Prisma `MediaAsset` có
+   `ownerType: TOUR` nhưng chưa code nào query cho tour. Nhưng
+   [ADR-0005](../adr/0005-media-read-build-url.md) đã **chốt sẵn hình dạng và
+   đặt tên phase kế thừa**: bối cảnh của nó nói thẳng là chốt hợp đồng "trước khi
+   các module media sau (**tour media**, admin CRUD ở P4) kế thừa", và phần Hệ quả
+   ghi "Khi catalog thêm media (**P3b/P4**) thì related tự có". Nên đây là khoản
+   *đã thiết kế, chưa thực thi*.
+
+   **Chi phí thật nhỏ hơn nhiều so với cách viết cũ hàm ý** — hạ tầng đã generic
+   sẵn, không phải dựng mới:
+   - `MediaService.resolveForOwners(ownerType, ownerIds)` nhận **bất kỳ**
+     `MediaOwnerType`, và `TOUR` là giá trị **đầu tiên** của enum đó.
+   - `MediaItemSchema` đã tồn tại; `PostDetailSchema` đã dùng đúng cặp
+     `cover: MediaItemSchema.nullable()` + `media: z.array(MediaItemSchema)` —
+     tiền lệ nằm ngay trong contract này.
+   - `buildCloudinaryUrl` có escape-hatch "publicId đã là URL tuyệt đối thì trả
+     nguyên", tức seed/placeholder chạy được ngay mà không cần tài khoản
+     Cloudinary thật.
+
+   Việc còn lại đúng bằng: thêm field vào schema + inject `MediaService` vào
+   `CatalogService` và gọi `resolveForOwners('TOUR', ids)`, đúng như
+   `PostsService` đang làm.
+
+   **Nhưng mức độ ĐÃ TĂNG sau đợt 28/07**, vì [gallery ảnh đã được
+   dựng](../CHANGELOG.md): khảm + lightbox + `MockMediaItem` gương đúng
+   `MediaItemSchema`. Lúc gắn API mà `tour.media` không tồn tại thì `TourGallery`
+   trả `null` và cả khu ảnh **biến mất khỏi trang**. So với #4: #4 gãy **im
+   lặng** (trả kết quả thiếu, không dấu hiệu), #1 gãy **ồn ào** (mất hẳn một khu
+   nhìn thấy được) — dễ phát hiện hơn, nhưng vẫn là mất một khối UI đã thiết kế.
+   Thêm nữa `TourCardSchema` được `PostDetailSchema` tái dùng làm `relatedTours`,
+   nên thêm ảnh vào **card** vá luôn khoản "related tours không ảnh" mà ADR-0005
+   đã ghi là điểm tạm khác Nexora — một sửa, hai chỗ được.
 2. **Không có `nextDepartureDate` / `nextDepartureSeatsLeft` trên card** →
    listing mất đòn bẩy urgency mà Nexora có.
 3. **Không sort được theo rating/popularity** dù cột đã denormalize sẵn.
@@ -453,8 +489,20 @@ Năm lỗ đã xác định. Không cái nào chặn cụm tĩnh; tất cả ch�
    (`minDays`/`maxDays`/`minPrice`/`maxPrice`/`difficulty`), hoặc gỡ ba facet.
 5. **`suitableFor` và `badges` chưa có trên card**.
 
-Đề xuất: một ADR mở rộng `ToursListQuerySchema` + `TourCardSchema` trước cụm
-gắn API. Không làm ở đây.
+Đề xuất, tách theo đúng phân biệt ở trên — **không gộp cả năm vào một ADR**:
+
+- **#1 media: không cần ADR mới.** ADR-0005 đã quyết định hình dạng (`MediaItem`,
+  API dựng URL lúc đọc, resolve theo batch) và đã hẹn phase. Chỉ cần **một khối
+  "cập nhật cùng ngày" vào ADR-0005** ghi rõ đã thực thi cho `TOUR`, quyết định
+  card mang `cover` hay không, rồi làm. Viết ADR mới ở đây là ra quyết định lần
+  hai cho cùng một việc.
+- **#2–#5: cần một ADR thật**, vì chúng mở rộng bề mặt query/response chưa ai
+  quyết định: `ToursListQuerySchema`
+  (`minDays`/`maxDays`/`minPrice`/`maxPrice`/`difficulty` + `sort`) và
+  `TourCardSchema` (`nextDeparture*`, `suitableFor`, `badges`).
+
+Thứ tự nên làm: **#4 trước** (nó là khoản duy nhất gãy *im lặng*), rồi #1, rồi
+phần còn lại. Không làm cái nào ở đây — cụm này là cụm tĩnh.
 
 ## 9. Bốn khoản nợ trả trong cụm
 
