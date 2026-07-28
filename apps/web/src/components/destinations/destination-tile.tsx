@@ -40,13 +40,14 @@ export function DestinationTile({
         TILE_ACCORDION,
       )}
     >
-      {/* KHÔNG truyền `label`: nhãn "icon + tên" mặc định của `ImagePlaceholder`
-          căn GIỮA — trùng đúng vị trí caption riêng bên dưới (yêu cầu bố cục
-          "tên đè GIỮA ảnh"), thử với label thật thì ra hai chữ "Sa Pa" chồng
-          lên nhau (icon xám mờ + chữ nhỏ dưới caption trắng đậm — đã chụp màn
-          hình thấy rõ). Placeholder chỉ cần hoạ tiết sọc chéo báo "chưa có
-          ảnh thật"; tên thật đã có ở `<h3>` bên dưới rồi, không cần lặp. */}
-      <ImagePlaceholder className="absolute inset-0 h-full w-full" />
+      {/* `corner` — prop có sẵn của `ImagePlaceholder` cho ĐÚNG tình huống này:
+          "nép icon+nhãn xuống góc dưới-trái thay vì căn giữa, dùng khi
+          placeholder làm NỀN cho nội dung căn giữa". Không có nó thì icon nằm
+          giữa ô, đâm thẳng vào caption `<h3>` cũng căn giữa — đã chụp màn hình
+          thấy hai thứ chồng lên nhau.
+          Vẫn KHÔNG truyền `label`: tên địa điểm đã có ở `<h3>`, in thêm ở góc
+          là lặp cùng một chữ hai lần trên một ô. */}
+      <ImagePlaceholder corner className="absolute inset-0 h-full w-full" />
 
       {/* Scrim HAI LỚP — lệch khỏi công thức `bg-overlay/25 → /55` của Nexora vì
           nền ở đây là `ImagePlaceholder` (`--muted`, RẤT SÁNG ở light mode), khác
@@ -59,15 +60,24 @@ export function DestinationTile({
           đủ AA cho mô tả nhỏ trồi lên cùng lúc. Đây là lớp bảo vệ cho đúng lỗi
           "3 lần liên tiếp" ghi trong brief — không dùng số của Nexora rồi hy
           vọng có ảnh thật che lại. */}
-      <div aria-hidden="true" className="absolute inset-0 bg-overlay" />
+      {/* KHÔNG có lớp phủ tối, và đây là chỗ CỐ Ý lệch khỏi Nexora.
+          Nexora phủ `bg-overlay/25` rồi in chữ trắng — đẹp vì nền họ là ẢNH
+          THẬT, tự có sáng-tối. Ở đây nền là `ImagePlaceholder` (`--muted`, một
+          màu PHẲNG), mà phủ đều một lớp tối lên màu phẳng thì vẫn ra màu phẳng:
+          đã dựng thử và chụp lại — ô thành một tấm xám chết, người xem đọc
+          thành "vùng ảnh hỏng" chứ không phải "ảnh có lớp phủ".
+          Nên bỏ hẳn lớp phủ và để caption dùng cặp token theo-theme
+          (`bg-muted` + `text-foreground`): sáng trên nền sáng ở light, tối trên
+          nền tối ở dark — hệ token bảo đảm đọc được ở CẢ HAI theme mà không cần
+          scrim. Khi có ảnh thật thì mới quay lại mẫu phủ-tối + chữ trắng. */}
       <div
         aria-hidden="true"
-        className="absolute inset-0 bg-overlay opacity-0 transition-opacity duration-500 motion-reduce:transition-none group-hover:opacity-100 group-focus-visible:opacity-100"
+        className="absolute inset-0 bg-foreground/0 transition-colors duration-500 group-hover:bg-foreground/5 motion-reduce:transition-none"
       />
 
       <div
         className={cn(
-          'text-on-media absolute inset-0 flex flex-col items-center justify-center p-4 text-center [text-shadow:0_1px_4px_rgb(0_0_0/0.55)]',
+          'absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-foreground',
           variant === 'feature' ? 'p-5' : 'p-4',
         )}
       >
@@ -87,7 +97,12 @@ export function DestinationTile({
         {destination.description ? (
           <div className="grid grid-rows-[0fr] opacity-0 transition-all duration-300 ease-out motion-reduce:transition-none group-hover:grid-rows-[1fr] group-hover:opacity-100 group-focus-visible:grid-rows-[1fr] group-focus-visible:opacity-100">
             <div className="flex min-h-0 flex-col items-center gap-1 overflow-hidden pt-2">
-              <span className="text-on-media/90 text-xs text-pretty">
+              {/* `text-foreground/80` chứ KHÔNG phải `text-muted-foreground`:
+                  nền ở đây là `bg-muted` (của `ImagePlaceholder`), mà cặp
+                  muted-foreground/muted không dành cho nhau — đo được 3.35:1
+                  (light) và 4.06:1 (dark), dưới ngưỡng AA 4.5 cho chữ 12px.
+                  Hạ alpha giữ được thứ bậc so với tên mà vẫn đủ tương phản. */}
+              <span className="text-xs text-pretty text-foreground/80">
                 {destination.description}
               </span>
               <span className="inline-flex items-center gap-1 text-sm font-medium">
