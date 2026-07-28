@@ -34,7 +34,7 @@ render. Tương tác (lọc, chọn đợt khởi hành) chạy client, trạng 
 | **⛔ Mốc dừng — user duyệt `/tours`** | ✅ **duyệt 27/07** |
 | 8 · `/tours/[slug]` khung + hero | ✅ |
 | 9 · Dải khởi hành + rail booking | ✅ |
-| 10 · Itinerary · inclusions · good-to-know | ⬜ |
+| 10 · Itinerary · inclusions · good-to-know | ✅ |
 | 11 · robots + sitemap | ⬜ |
 | 12 · ArticleBody + phân trang `/blog` | ⬜ |
 | 13 · `gate:int` → push → hỏi user → merge → docs sweep | ⬜ |
