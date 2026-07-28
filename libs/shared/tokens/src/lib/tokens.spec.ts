@@ -25,9 +25,9 @@ describe('nguồn token màu', () => {
 });
 
 describe('lớp region (Bắc/Trung/Nam)', () => {
-  const SLOTS = ['primary', 'deep', 'surface', 'spark', 'on-surface'];
+  const SLOTS = ['primary', 'deep', 'surface', 'spark', 'on-surface', 'hero'];
 
-  it('đúng 3 vùng, mỗi vùng đủ 5 slot, cùng bộ key với regionDefaults', () => {
+  it('đúng 3 vùng, mỗi vùng đủ 6 slot, cùng bộ key với regionDefaults', () => {
     expect(Object.keys(src.regions).sort()).toEqual(['central', 'north', 'south']);
     expect(Object.keys(src.regionDefaults).sort()).toEqual([...SLOTS].sort());
     for (const [name, region] of Object.entries(src.regions)) {
@@ -40,5 +40,32 @@ describe('lớp region (Bắc/Trung/Nam)', () => {
 
   it('REGIONS (TS) khớp key của regions (nguồn token)', () => {
     expect([...REGIONS].sort()).toEqual(Object.keys(src.regions).sort());
+  });
+
+  // `--region-hero`: nền hero của trang vùng. Tách khỏi `--region-deep` vì deep
+  // sáng 0.35–0.42 — dùng trực tiếp thì ba trang vùng sáng khác nhau thấy rõ, và
+  // navbar lúc chưa cuộn là trong suốt nên hero phải TỐI (luật CLAUDE.md).
+  //
+  // Phép "cả ba vùng CÓ slot hero" không cần test riêng: `SLOTS` ở trên đã khẳng
+  // định bộ key đúng bằng 6 phần tử cho cả 3 vùng lẫn `regionDefaults`.
+  it('hero của cả ba vùng TỐI và CÙNG một bậc — chênh nhau ≤ 0.02 L', () => {
+    // Đây là bất biến sinh ra slot này: `--region-deep` chênh 0.351 vs 0.423 nên
+    // ba trang vùng đọc thành thiếu nhất quán chứ không thành bản sắc.
+    const ls = ['north', 'central', 'south'].map((k) => {
+      const value = (src.regions as Record<string, Record<string, string>>)[k]?.hero ?? '';
+      // Đọc L qua culori thay vì regex — cùng công cụ mà cả file này đang dùng.
+      const parsed = oklch(value) as { l?: number } | undefined;
+      expect(parsed, k).toBeDefined();
+      return parsed?.l ?? 1;
+    });
+    for (const l of ls) expect(l).toBeLessThanOrEqual(0.26);
+    expect(Math.max(...ls) - Math.min(...ls)).toBeLessThanOrEqual(0.02);
+  });
+
+  it('ba hero KHÁC nhau — nếu giống hết thì tint vùng vô nghĩa', () => {
+    const heroes = ['north', 'central', 'south'].map(
+      (k) => (src.regions as Record<string, Record<string, string>>)[k]?.hero,
+    );
+    expect(new Set(heroes).size).toBe(3);
   });
 });

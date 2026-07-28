@@ -225,6 +225,9 @@ export const regionDefaults = {
   surface: 'oklch(0.914 0.01 174.3)',
   spark: 'oklch(0.731 0.13 73.3)',
   'on-surface': 'oklch(0.411 0.053 184.5)',
+  // Nền hero của trang vùng. Bằng `--hero` bản light để vùng không rõ vẫn ra
+  // hero chuẩn của site, không ra một màu lạ.
+  hero: 'oklch(0.25 0.015 181.5)',
 };
 
 export const regions = {
@@ -235,6 +238,9 @@ export const regions = {
     surface: 'oklch(0.855 0.007 277.1)',
     spark: 'oklch(0.56 0.151 285.4)',
     'on-surface': 'oklch(0.423 0.056 245.8)',
+    // L 0.24 — cùng bậc tối với `--hero` (0.25) nên ba trang vùng sâu như nhau;
+    // giữ hue 245.8 của Bắc, hạ chroma so với `deep` để hero không gào.
+    hero: 'oklch(0.24 0.04 245.8)',
   },
   // Trung — đỏ rượu hoàng thành + vàng hoàng gia (codename Tangtang)
   central: {
@@ -243,6 +249,7 @@ export const regions = {
     surface: 'oklch(0.89 0.028 20.4)',
     spark: 'oklch(0.799 0.163 99.1)',
     'on-surface': 'oklch(0.31 0.006 214.4)',
+    hero: 'oklch(0.235 0.08 25.9)',
   },
   // Nam — nâu phù sa + đỏ gạch nung (codename Gilberta)
   south: {
@@ -251,5 +258,8 @@ export const regions = {
     surface: 'oklch(0.661 0.052 51.2)',
     spark: 'oklch(0.485 0.183 29.7)',
     'on-surface': 'oklch(0.303 0.037 35.2)',
+    // Hue lấy theo `primary` (48.4) chứ không theo `deep` (28.3): deep của Nam
+    // gần như trùng hue với Trung (25.9), hai hero sẽ khó phân biệt.
+    hero: 'oklch(0.24 0.05 45)',
   },
 };
