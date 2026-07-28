@@ -47,6 +47,20 @@ This applies to all trigger and close components: `DialogTrigger`, `SheetTrigger
 
 ## Button / trigger as non-button element (base only)
 
+<!-- Vá dự án 28/07/2026 (tourism-v2). Mục dưới là nội dung upstream và nó ĐÚNG
+     cho `<span>`/`<div>`, nhưng SAI cho `<a href>` điều hướng — xem cảnh báo ngay
+     dưới đây. Nếu cập nhật skill từ upstream, giữ lại patch này. -->
+
+> ⚠️ **KHÔNG áp mẫu này cho `<a href>` điều hướng.** `nativeButton={false}` khiến
+> `useButton` của Base UI gắn `role="button"`, **đè mất role `link` ngầm** của
+> anchor: trình đọc màn hình đọc "button" cho một thứ chuyển sang trang khác.
+> Không có prop nào tắt được (`role` nằm trong `getButtonProps`, merge SAU props
+> ngoài). Repo này dùng **`ButtonLink`** (`@tourism/ui/components/button-link`)
+> cho mọi CTA điều hướng; cần `next/link` thì dùng
+> `<Link className={buttonVariants({ variant: 'outline' })}>`. Mẫu upstream chỉ
+> còn đúng khi phần tử **thật sự là nút** mà không phải thẻ `<button>`
+> (`<span>`, `<div>`). Bất biến canh ở `apps/web/src/components/tours/link-cta.spec.tsx`.
+
 When `render` changes an element to a non-button (`<a>`, `<span>`), add `nativeButton={false}`.
 
 **Incorrect (base):** missing `nativeButton={false}`.

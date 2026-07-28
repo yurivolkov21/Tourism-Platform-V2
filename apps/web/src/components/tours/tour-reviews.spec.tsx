@@ -31,18 +31,17 @@ describe('TourReviews — trạng thái rỗng', () => {
     renderReviews([]);
     expect(screen.getByText('No reviews yet')).toBeInTheDocument();
 
-    // Query theo role BUTTON dù đây là thẻ <a href> thật — đó là hiện trạng, không
-    // phải điều tôi muốn: `Button` của Base UI với `nativeButton={false}` gắn
-    // `role="button"` lên anchor, đè mất role link ngầm, nên trình đọc màn hình
-    // đọc nó là nút dù nó điều hướng sang trang khác. Hành vi này áp cho 6 chỗ
-    // trong 4 file (tour-list-card, departures-table, booking-rail, ở đây) nên
-    // sửa nó là một đợt riêng, không phải việc của feature reviews. Test khoá lại
-    // hiện trạng để đợt đó biết chỗ nào cần đổi.
-    const cta = screen.getByRole('button', { name: /ask about this trip/i });
-    expect(cta.tagName).toBe('A');
-    expect(cta).toHaveAttribute('href', '/contact');
+    // CTA là LINK (nó điều hướng sang /contact), không phải nút. Trước đây test
+    // này khoá hiện trạng SAI — `Button render={<a/>}` của Base UI đè mất role
+    // link ngầm — và đã vá ở `fix/anchor-link-role`. Bất biến chung cho cả 6 CTA
+    // điều hướng nằm ở `link-cta.spec.tsx`; ở đây chỉ giữ phần thuộc về khu reviews.
+    expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
+      'href',
+      '/contact',
+    );
 
     expect(screen.queryByRole('button', { name: /write a review/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /write a review/i })).not.toBeInTheDocument();
   });
 
   it('trạng thái rỗng KHÔNG in 0.0 hay 0 sao', () => {

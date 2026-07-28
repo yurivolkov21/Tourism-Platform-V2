@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import { departureStatus, discountPercent, formatDateRange, formatMoney } from '@/lib/tours';
 import type { MockTourDeparture } from '@/mocks/types';
@@ -74,14 +75,9 @@ export function BookingRail({
         ) : (
           <div className="flex items-center justify-between gap-3">
             <p className="min-w-0 text-sm text-muted-foreground">{t.departures.none}</p>
-            <Button
-              variant="outline"
-              className="shrink-0"
-              nativeButton={false}
-              render={<a href="/contact" />}
-            >
+            <ButtonLink variant="outline" className="shrink-0" href="/contact">
               {t.booking.ask}
-            </Button>
+            </ButtonLink>
           </div>
         )}
       </div>
@@ -114,14 +110,9 @@ export function BookingRail({
               khi bấm (spec §6.5). Câu dài ở chân bảng đợt. Không banner đỏ. */}
           <p className="mt-3 text-xs text-muted-foreground">{t.booking.testMode}</p>
 
-          <Button
-            variant="ghost"
-            className="mt-2 w-full"
-            nativeButton={false}
-            render={<a href="/contact" />}
-          >
+          <ButtonLink variant="ghost" className="mt-2 w-full" href="/contact">
             {t.booking.ask}
-          </Button>
+          </ButtonLink>
         </>
       ) : (
         <>
@@ -136,9 +127,9 @@ export function BookingRail({
             </span>
             <span className="text-xs">{t.booking.perPerson}</span>
           </p>
-          <Button className="mt-5 w-full" nativeButton={false} render={<a href="/contact" />}>
+          <ButtonLink className="mt-5 w-full" href="/contact">
             {t.booking.ask}
-          </Button>
+          </ButtonLink>
         </>
       )}
     </div>

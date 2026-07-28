@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import {
   Table,
   TableBody,
@@ -38,14 +39,9 @@ export function DeparturesTable({
       <div className="rounded-2xl border border-dashed px-6 py-12 text-center">
         <p className="font-medium text-foreground">{t.departures.none}</p>
         <p className="mt-2 text-pretty text-muted-foreground">{t.departures.noneBody}</p>
-        <Button
-          variant="outline"
-          className="mt-6"
-          nativeButton={false}
-          render={<a href="/contact" />}
-        >
+        <ButtonLink variant="outline" className="mt-6" href="/contact">
           {t.booking.ask}
-        </Button>
+        </ButtonLink>
       </div>
     );
   }

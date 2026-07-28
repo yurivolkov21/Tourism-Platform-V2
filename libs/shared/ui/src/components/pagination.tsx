@@ -1,4 +1,4 @@
-import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 
 import { cn } from '@tourism/ui/lib/utils';
 import { ChevronLeftIcon, ChevronRightIcon, MoreHorizontalIcon } from 'lucide-react';
@@ -31,24 +31,27 @@ function PaginationItem({ ...props }: React.ComponentProps<'li'>) {
 
 type PaginationLinkProps = {
   isActive?: boolean;
-} & Pick<React.ComponentProps<typeof Button>, 'size'> &
+} & Pick<React.ComponentProps<typeof ButtonLink>, 'size'> &
   React.ComponentProps<'a'>;
 
+// Dùng `ButtonLink`, KHÔNG dùng `Button render={<a/>}` như bản vendored gốc: mẫu
+// đó gắn `role="button"` lên anchor và đè mất role `link` ngầm — xem lý do đầy đủ
+// trong `button-link.tsx`. Ở đây lỗi nặng hơn chỗ khác: một link phân trang mang
+// `aria-current="page"`, mà `aria-current` chỉ có nghĩa trên link điều hướng.
+//
+// Component này hiện KHÔNG ai dùng — `apps/web` tự dựng `PaginationBar` bằng
+// `<button>` thật vì lọc chạy hoàn toàn client (xem comment ở đó). Vá luôn để
+// admin P4 không kế thừa lỗi.
 function PaginationLink({ className, isActive, size = 'icon', ...props }: PaginationLinkProps) {
   return (
-    <Button
+    <ButtonLink
       variant={isActive ? 'outline' : 'ghost'}
       size={size}
       className={cn(className)}
-      nativeButton={false}
-      render={
-        <a
-          aria-current={isActive ? 'page' : undefined}
-          data-slot="pagination-link"
-          data-active={isActive}
-          {...props}
-        />
-      }
+      aria-current={isActive ? 'page' : undefined}
+      data-slot="pagination-link"
+      data-active={isActive}
+      {...props}
     />
   );
 }

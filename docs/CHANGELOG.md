@@ -347,6 +347,7 @@ Ba alert bắc cầu, không cái nào là dependency trực tiếp của mình.
 Bài học công cụ: **pnpm 11 không còn đọc `pnpm.overrides` trong `package.json`**
 (chỉ cảnh báo rồi bỏ qua) — chỗ đúng là `overrides:` trong `pnpm-workspace.yaml`.
 Tests after: gate:int xanh — 334 unit (10 tokens + 55 contract + 5 ui + 76 web
+
 - 188 api) + 145 int; build ÉP LẠI từ đầu cho cả api lẫn web đều xanh.
 
 ## 2026-07-27 — P3b: cụm trang Blog (branch `feat/blog-pages`, merge `b7aeb3f`)
@@ -697,6 +698,7 @@ trang, đủ dấu tiếng Việt): **Literata** (heading — user chọn trực
 Thay bộ tạm Be Vietnam Pro + Lora + Geist Mono của ADR-0013 — ADR ghi khối
 "cập nhật cùng ngày" thay vì sửa lặng lẽ; [color-system §6](conventions/color-system.md)
 ghi bộ chốt + lịch sử. Chỉ đổi `layout.tsx` (next/font, subset latin+vietnamese)
+
 - comment tokens.mjs — cơ chế wire `--font-*` giữ nguyên.
 Review findings: không phát sinh (đổi 1 file code; verify = build web + 20 woff2
 self-host + 3 family có mặt trong CSS build).
@@ -706,6 +708,7 @@ Tests after: gate:int xanh — tokens 10 · ui 5 · int 145/17 file · typecheck
 
 Rebrand hoàn chỉnh theo [ADR-0013](adr/0013-wuling-theme-tokens.md), hệ màu chốt cùng user qua 6 vòng
 demo trực quan (bản ghi đầy đủ: [conventions/color-system](conventions/color-system.md) — brand "Wuling"
+
 - 3 region tint theo 3 operator Endfield, codename nội bộ, kèm ghi chú pháp lý):
 
 - **Phát hiện quan trọng**: `@tourism/tokens` KHÔNG phải stub — P0 đã port nguyên pipeline Style
@@ -771,6 +774,7 @@ tên `@tourism/web`; `sharp` vào `allowBuilds`; biome bật `css.parser.tailwin
 
 Bộ **shared components/blocks (`libs/shared/ui`)** + shadcn + trang thật là **bước phối hợp kế tiếp** (chờ
 user điều phối bộ legacy components). Verify: `pnpm --filter @tourism/web build` (Turbopack) xanh + typecheck
+
 - biome sạch. Không đụng backend (gate:int giữ nguyên 145 int).
 
 ## 2026-07-22 — Infra hardening trước P3b (branch `feat/infra-hardening`)

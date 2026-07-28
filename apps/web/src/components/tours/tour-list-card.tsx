@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ClockIcon, HeartIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
@@ -165,9 +166,9 @@ export function TourListCard({ tour }: { tour: MockTourCard }) {
             <Button variant="ghost" size="icon-sm" aria-label={`Save ${tour.title} to wishlist`}>
               <HeartIcon />
             </Button>
-            <Button size="sm" nativeButton={false} render={<a href={href} />}>
+            <ButtonLink size="sm" href={href}>
               {t.viewTour}
-            </Button>
+            </ButtonLink>
           </div>
         </div>
       </div>

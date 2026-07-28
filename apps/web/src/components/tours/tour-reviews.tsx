@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import { Button } from '@tourism/ui/components/button';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@tourism/ui/components/dialog';
 import { StarIcon, UserIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
@@ -59,14 +60,9 @@ export function TourReviews({
       <div className="mt-6 rounded-2xl border border-dashed px-6 py-10 text-center">
         <p className="font-medium text-foreground">{t.emptyTitle}</p>
         <p className="mx-auto mt-2 max-w-prose text-pretty text-muted-foreground">{t.emptyBody}</p>
-        <Button
-          variant="outline"
-          className="mt-6"
-          nativeButton={false}
-          render={<a href="/contact" />}
-        >
+        <ButtonLink variant="outline" className="mt-6" href="/contact">
           {messages.tourDetail.booking.ask}
-        </Button>
+        </ButtonLink>
       </div>
     );
   }
