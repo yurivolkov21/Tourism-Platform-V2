@@ -2,6 +2,67 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-28 — CTA điều hướng trả lại role `link` + sửa cách gọi tên nợ contract #1 (branch `fix/anchor-link-role`, ff-only, commit cuối `60549ff`)
+
+Trả ba khoản nợ ghi ở entry dưới, không phải feature mới.
+
+- **Gốc rễ không nằm ở 6 call site mà ở một nhánh cứng trong Base UI.**
+  `useButton.js` gắn thuộc tính theo đúng `isNativeButton ? { type: 'button' } :
+  { role: 'button' }` — nên `nativeButton={false}` **luôn** đóng `role="button"`
+  lên phần tử `render` sinh ra, và trên `<a href>` nó **đè mất role `link` ngầm**.
+  Không prop nào tắt được: `role` nằm trong `getButtonProps`, mà `getButtonProps`
+  được merge SAU props ngoài. Trớ trêu là cùng file đã biết về link —
+  `isNativeButton ? isButton : !isLink` để **không** tổng hợp click cho anchor —
+  nó biết đấy là link mà vẫn ghi đè role.
+- **Bỏ hẳn primitive thay vì cố ghi đè.** Thêm `ButtonLink`
+  (`@tourism/ui/components/button-link`) là `<a>` + `buttonVariants`. Bỏ không
+  mất gì: Enter là hành vi gốc của `<a href>`, còn Space **không** kích hoạt link
+  — đó mới là hành vi link ĐÚNG, tức primitive đang thêm một hành vi sai. Đặt ở
+  **file riêng**, không nhét vào `button.tsx`: file đó vendored từ shadcn, chạy
+  lại `shadcn add button --overwrite` là mất. `buttonVariants` vẫn import từ đó
+  nên kiểu dáng có đúng một nguồn sự thật.
+- **Vá luôn rule file của skill shadcn** (`.claude/skills/shadcn/rules/base-vs-radix.md`)
+  — nó đang dạy đúng mẫu sinh ra cả 6 chỗ này, nên không vá thì lần sau lặp lại.
+  Mẫu upstream vẫn đúng cho `<span>`/`<div>`; cảnh báo chỉ giới hạn ở `<a href>`
+  điều hướng. Cùng kiểu patch có chú thích "giữ lại khi cập nhật upstream" như
+  patch monorepo 22/07.
+- **Chỗ thứ 7: `PaginationLink` của `@tourism/ui`** — chưa ai dùng (`apps/web` tự
+  dựng `PaginationBar` bằng `<button>` thật vì lọc chạy client). Vá để admin P4
+  không kế thừa. Ở đó lỗi nặng hơn: nó mang `aria-current="page"`, thuộc tính chỉ
+  có nghĩa trên link điều hướng.
+- **Chứng minh không đổi pixel bằng test so hai chuỗi class**, không ghim cứng
+  một chuỗi — ghim cứng thì mỗi lần đổi kiểu dáng nút là test đỏ oan. Kèm mặt còn
+  lại của bất biến: `Reserve` VẪN phải là `<button>` thật (nó không điều hướng).
+- **Spec §8 sửa BẢN CHẤT, không chỉ mức độ.** `posts.ts:35` ghi
+  `// Tour-summary hiện có của catalog — KHÔNG media (ADR-0005)`, và
+  [ADR-0005](adr/0005-media-read-build-url.md) nói thẳng là chốt hợp đồng "trước
+  khi các module media sau (**tour media**, admin CRUD ở P4) kế thừa" + "Khi
+  catalog thêm media (**P3b/P4**) thì related tự có". Vậy #1 **không phải lỗ bị
+  bỏ sót mà là khoản hoãn có chủ đích, đã thiết kế xong** — và điều đó đổi việc
+  phải làm: `resolveForOwners` nhận *mọi* `MediaOwnerType` (`TOUR` là giá trị đầu
+  enum), `MediaItemSchema` đã có, `PostDetailSchema` là tiền lệ nguyên vẹn, nên
+  **#1 không cần ADR mới**, chỉ #2–#5 cần. Ngược lại mức độ TĂNG: gallery đã dựng
+  nên thiếu media là mất hẳn một khu nhìn thấy được. Thứ tự đề xuất: **#4 trước**
+  (khoản duy nhất gãy *im lặng*), rồi #1.
+- **Review finding tự gây ra rồi tự sửa — đáng ghi vì `gate` không canh được.**
+  Khi lint markdown, **entry CHANGELOG CŨ bị đổi 9 dấu đầu dòng + chèn 27 dòng
+  trắng**. Bốn dấu trong đó là **phép cộng** của tổng số test bị ngắt dòng
+  (`… 5 ui + 76 web` / `+ 188 api)`): formatter thấy là bullet nên đổi sang `-`,
+  **nói sai con số đã ghi trong lịch sử**. Đã hoàn nguyên đúng nội dung `a701b32`.
+  Thủ phạm KHÔNG phải CLI — đo được: `markdownlint-cli2` không tự sửa khi thiếu
+  `--fix`, và `biome check docs/CHANGELOG.md` trả "0 files, path ignored" (Biome
+  bỏ qua `.md` hoàn toàn, nên `pnpm gate` **không bao giờ** thấy churn kiểu này).
+  Là extension markdownlint qua format-on-save, đúng thứ `.vscode/settings.json`
+  pin. Luật mới trong CLAUDE.md: entry mới không để `+` đầu dòng, và luôn
+  `git diff` file `.md` trước khi stage. Còn **6 chỗ** `+` đầu dòng trong file —
+  cố ý KHÔNG sửa, entry cũ là bản ghi lịch sử, cùng luật với `migration.sql`.
+
+Tests after: `pnpm gate` xanh — **18/18 task** · web **344** (từ 336; +8 test của
+`link-cta.spec.tsx`) · API 188 · contract 55 · tokens 10 · ui 5 · i18n 1.
+⚠️ `pnpm gate:int` vẫn KHÔNG chạy được ở máy này (không có Docker CLI trong distro
+WSL) — **CI là nơi xác minh**, và tới lúc merge này `main` còn **7 commit chưa
+push** nên chưa commit nào trong đợt 28/07 qua int test lần nào.
+
 ## 2026-07-28 — P3b: hình ảnh & uy tín trang chi tiết tour — card thiết kế lại + gallery + reviews (branch `feat/tour-detail-visuals`, ff-only, commit code cuối `9d21739`)
 
 Ba việc user nêu trong **một** yêu cầu, làm tuần tự trên cùng branch: thiết kế lại
