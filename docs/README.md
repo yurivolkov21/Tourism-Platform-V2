@@ -43,12 +43,12 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C) |
 | P3a closeout (C1·R1·R2) | [2026-07-21-p3a-contract-closeout-design](specs/2026-07-21-p3a-contract-closeout-design.md) | ✅ đã merge |
-| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ + navbar ✅ + /about ✅ + /contact ✅ + auth 6/6 ✅ + gia vị bản đồ ✅ + cụm pháp lý/utility ✅ 25/07 + **cụm Blog ✅ merge 27/07** (/blog · /blog/[slug] · rss.xml) + thân trang 404 & nền lưới động Contact ✅ 27/07; **chính sách ảnh hiện hành: toàn site dùng `ImagePlaceholder`, chỉ đổi ảnh thật khi user yêu cầu riêng**; **kế tiếp**: listing tour + tour detail |
+| P3b Web | [ADR-0011](adr/0011-p3b-web-architecture.md) | 🚧 Home ✅ + navbar ✅ + /about ✅ + /contact ✅ + auth 6/6 ✅ + gia vị bản đồ ✅ + cụm pháp lý/utility ✅ 25/07 + **cụm Blog ✅ merge 27/07** (/blog · /blog/[slug] · rss.xml) + thân trang 404 & nền lưới động Contact ✅ 27/07 + **cụm Tours ✅ merge 27/07** (`/tours` · `/tours/[slug]` · robots.txt · sitemap.xml); **chính sách ảnh hiện hành: toàn site dùng `ImagePlaceholder`, chỉ đổi ảnh thật khi user yêu cầu riêng**; **kế tiếp**: `/destinations` (+ `/destinations/[region]`) |
 | P3b — trang Home | [2026-07-23-home-page-design](specs/2026-07-23-home-page-design.md) | ✅ đã merge (static-first, 33 vòng điều chỉnh) |
 | P3b — cụm 6 trang auth | [2026-07-24-auth-pages-design](specs/2026-07-24-auth-pages-design.md) | ✅ trọn bộ 6/6 merge 25/07 (vé tàu + ảnh Sa Pa + topo mask + OTP + strength field); nợ wire API ghi trong spec |
 | P3b — cụm pháp lý/utility | [2026-07-25-legal-utility-pages-design](specs/2026-07-25-legal-utility-pages-design.md) | ✅ merge 25/07 — 4 trang nội dung dài + 3 route boundary; nợ robots/sitemap + EnquiryCta + API FAQ ghi trong spec |
 | P3b — cụm Blog | [2026-07-25-blog-pages-design](specs/2026-07-25-blog-pages-design.md) | ✅ merge 27/07 — /blog · /blog/[slug] · rss.xml; giữa chừng user đổi hướng 2 lần (gộp PostCard theo thiết kế Home · toàn site về placeholder); nợ tách ArticleBody + phân trang + API ghi trong spec |
-| P3b — cụm Tours | [2026-07-27-tours-pages-design](specs/2026-07-27-tours-pages-design.md) | 🚧 `/tours` listing ✅ duyệt sau **4 vòng thiết kế lại** · `/tours/[slug]` khung + hero ✅ (Task 8) · còn dải khởi hành · itinerary · robots/sitemap. §8 ghi **5 lỗ contract** (không field ảnh · không next-departure trên card · không sort rating · không filter price/duration/difficulty · thiếu suitableFor+badges) — ĐỪNG vá trong cụm tĩnh |
+| P3b — cụm Tours | [2026-07-27-tours-pages-design](specs/2026-07-27-tours-pages-design.md) | ✅ merge 27/07 (2 đợt) — `/tours` duyệt sau **4 vòng thiết kế lại** · `/tours/[slug]` "Departure Board": chọn đợt đồng bộ **3 nơi** · robots + sitemap. §8 ghi **5 lỗ contract** (không field ảnh · không next-departure trên card · không sort rating · không filter price/duration/difficulty · thiếu suitableFor+badges) — ĐỪNG vá trong cụm tĩnh, cần ADR mở rộng contract TRƯỚC cụm gắn API |
 | P4 Admin · P5 Mobile · P6 AI · P7 Polish UI | — | ⬜ chưa mở |
 
 ## Plans — kế hoạch triển khai (task-by-task)
@@ -68,7 +68,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [Cụm 6 trang auth](plans/2026-07-24-auth-pages.md) | Route group + AuthScreen/TicketCard + 6 trang (6 task) | ✅ đã merge trọn (Task 1–2 ngày 24/07 · Task 3–6 ngày 25/07) |
 | [Cụm pháp lý/utility](plans/2026-07-25-legal-utility-pages.md) | i18n + LegalArticle + 4 trang + 3 boundary (7 task) | ✅ đã merge |
 | [Cụm Blog](plans/2026-07-25-blog-pages.md) | mock 9 bài + lib/blog + 3 route + RSS (7 task + 3 đợt vá) | ✅ đã merge |
-| [Cụm Tours](plans/2026-07-27-tours-pages.md) | mock 16 tour theo contract + lib/tours + `/tours` + `/tours/[slug]` + robots/sitemap + 4 khoản nợ (13 task) | 🚧 Task 1–8 ✅ merge 27/07 · còn Task 9–12. Có **bảng 4 vòng thiết kế lại** của listing + mục **bẫy soft 404 do `loading.tsx`** |
+| [Cụm Tours](plans/2026-07-27-tours-pages.md) | mock 16 tour theo contract + lib/tours + `/tours` + `/tours/[slug]` + robots/sitemap + 4 khoản nợ (13 task) | ✅ đã merge (2 đợt 27/07). Có **bảng 4 vòng thiết kế lại** của listing + mục **bẫy soft 404 do `loading.tsx`** (đọc trước khi thêm `loading.tsx` vào bất kỳ route động nào) |
 
 ## Analysis — nghiên cứu từ Nexora
 

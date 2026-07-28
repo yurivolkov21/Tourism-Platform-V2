@@ -2,6 +2,92 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-28 — P3b: cụm Tours đợt 2 — trang chi tiết đủ nội dung + SEO + nợ blog (branch `feat/tours-pages`, ff-only, commit code cuối `7a1e743`)
+
+Đóng cụm: Task 9–12 của [plan 13 task](plans/2026-07-27-tours-pages.md). Đợt 1
+(Task 1–8) là entry ngay dưới. Ngày 28/07 vì Task 10–12 làm qua nửa đêm — ghi theo
+ngày commit thật, không theo ngày bắt đầu cụm.
+
+- **Dải khởi hành — điểm nhấn số 1 của cụm.** `departures[]` là dữ liệu v2 có mà
+  Nexora không (họ hardcode `departures: []` nên khối chọn ngày của họ luôn ẩn),
+  nên nó lên thẳng đầu trang — **ngược cả 8 sản phẩm đã khảo sát**, vốn giấu lịch
+  sau một cú click. Chọn một đợt thì **ba nơi cùng đổi**: dải chip · bảng đợt ·
+  rail booking (+ bar đáy mobile). Đo được cả hai chiều trên bản production.
+  Ghế + giá in thẳng trên chip vì Baymard ghi nhận: bộ chọn ngày không nói rõ
+  tình trạng chỗ thì người dùng phải tự đi xác minh, và đó là điểm rời trang.
+- **Trạng thái ở CONTEXT, không nâng lên page** (`departure-selection.tsx`): ba
+  nơi đó nằm ba vị trí khác nhau trong bố cục, nâng state lên page sẽ biến cả
+  trang thành client component và mất phần render phía server của itinerary,
+  inclusions, good-to-know. Ba component trình bày giữ dạng nhận prop thuần để
+  test độc lập; các bản `…Connected` chỉ nối chúng vào context.
+- Khởi tạo bằng **đợt CÒN CHỖ đầu tiên**, không phải `[0]`: đợt đầu có thể đã hết
+  chỗ, mở trang ra với một đợt không đặt được là dẫn người dùng vào ngõ cụt.
+- **Timeline mở hết, không accordion**: mô tả ngày của contract v2 là text thuần
+  ngắn (không Markdown như Nexora), giấu đi thì trang chỉ còn một cột tiêu đề.
+  Đường kẻ dọc dựng bằng `flex-1 w-px`, không phải pseudo-element tính chiều cao.
+  `meetingPoint` gắn vào **Day 1** vì nó là thông tin của ngày đầu.
+- **FAQ accordion nhưng policy MỞ SẴN** — cùng section, khác cơ chế có lý do: câu
+  hỏi ngắn thì quét rồi mở cái cần, còn điều khoản tiền và huỷ chuyến không được
+  giấu sau một cú bấm.
+- **Inclusions render nguyên văn** — không port cái regex-parse meals/transport
+  của `tour-detail-derive.ts` (Nexora): không field nào bảo đảm định dạng chuỗi
+  nên parse là đoán, đoán sai thì hiện sai thông tin bán hàng.
+- **`robots.ts` + `sitemap.ts`** trả một thụt lùi "Quan trọng": catalogue trước
+  giờ vô hình với crawler. Logic ở `lib/sitemap.ts` (12 test) vì project Vitest
+  `node` không quét `app/**`. `lastModified` **chỉ điền khi có ngày thật** — blog
+  dùng `updated ?? date`, tour bỏ trống; không bịa `new Date()` vì nó nói sai với
+  crawler **và** làm output build phụ thuộc thời điểm chạy. Có test canh bất biến
+  đó. Đo thật: 34 URL (9 tĩnh + 16 tour + 9 blog), 0 dòng auth.
+- **Task 12 (nợ từ cụm Blog)**: `ArticleBody` tách từ khối ~33 dòng mà
+  `legal-article.tsx` và `blog/[slug]/page.tsx` chép giống nhau **từng ký tự**.
+  Tách đúng khối đang chạy, KHÔNG theo khuôn trong plan — khuôn đó là bản nháp
+  (một `Typeset` bọc hết, không số mục, không `Reveal`, không `divide-y`) và làm
+  theo là hồi quy thị giác trên cả 4 trang. Kiểm mắt `/terms`: không đổi pixel nào.
+- **Phân trang `/blog` dùng `limit = 6`, không phải 9 như plan ghi**: mock có đúng
+  9 bài nên `limit = 9` cho `totalPages = 1` và `PaginationBar` tự ẩn — ship một
+  tính năng không bao giờ chạy. Đây đúng lý lẽ Task 3 dùng khi chọn 16 tour cho
+  `limit = 12`. Đổi luôn `/blog` sang `history.replaceState`: `router.replace`
+  kích hoạt RSC round-trip mỗi lần bấm — vấn đề đã sửa cho tours ở `29df3bb` mà
+  `/blog` còn sót, và phân trang làm số lần ghi URL tăng hẳn.
+- **Review findings tự tìm trong vòng kiểm mắt** (không ai báo):
+  - Nút **scroll-to-top che mất nút `Reserve`** của bar đáy mobile (`fixed
+    right-5 bottom-6` cùng `z-(--z-sticky)`). Chừa `pr-20` cho góc đó thay vì hạ
+    z-index — cùng lớp thì nút tròn vẫn phủ lên chữ.
+  - **Nửa phải băng khởi hành trống hoác** — đúng lớp lỗi listing mất 4 vòng mới
+    thấy. Thêm link `See all N dates`; cả 8 sản phẩm khảo sát đều có affordance
+    "See all dates" nên đây là phần còn lại hợp lý của pattern ta đảo.
+  - `role="group"` trên div bọc dải bị Biome chặn (đòi `<fieldset>`, mà fieldset
+    có `min-inline-size: min-content` phá vùng cuộn ngang). Bỏ hẳn vì `<section>`
+    bọc dải đã có `aria-labelledby`; handler bàn phím chuyển lên chính các chip.
+  - `TourCard` (từ trước không trang nào import, nay dùng cho related) tự khai
+    `DIFFICULTY_LABEL` trùng y hệt `toursPage.difficultyLabels`, và in rating thô
+    nên `4.0` hiện thành `4`.
+- **Ba điều học được khi viết test component**, ghi trong spec để không vấp lại:
+  `PostCard` gốc là `<Link>` chứ không phải `<article>` như `TourListCard` nên đếm
+  card phải theo `href` · chip chuyên mục cũng là `<Link>` (server-render + crawl
+  được) chứ không phải button · trong jsdom card đang exit của `AnimatePresence
+  mode="popLayout"` **không bao giờ rời DOM** (không có animation frame thật) nên
+  đếm sau khi bấm luôn ra 6+3=9 — `waitFor` không cứu, phải khẳng định nội dung
+  trang mới đã VÀO.
+- Nợ ghi sổ (không làm ở đây): 5 lỗ contract spec §8 — nổi bật là **3 facet
+  price/duration/difficulty đang lọc CLIENT sẽ GÃY IM LẶNG khi chuyển sang phân
+  trang server**, giờ là điều kiện chặn của cụm gắn API · JSON-LD
+  Product/Offer/AggregateRating + FAQPage tách module dùng chung · skip link ·
+  `images.remotePatterns` · cache-tag revalidation · `/destinations` · wishlist
+  (contract có `wishlist.check` batch) · ~9 component `@tourism/ui` chưa quét
+  z-index · **khi gắn API mà muốn skeleton cho trang detail thì phải đo lại status
+  slug lạ** (bẫy soft 404, ghi trong plan).
+
+Tests after: `pnpm gate` xanh — **18/18 task** · API 188 · web **255** (từ 214 đầu
+đợt 2) · contract 55 · tokens 10 · ui 5 · i18n 1. Production build có `/tours` (ƒ)
+· `/tours/[slug]` (● SSG 16 slug) · `/robots.txt` (○) · `/sitemap.xml` (○).
+Đo bằng curl trên bản production: slug tour lạ **404** (không phải soft 404),
+sitemap 34 URL, robots có dòng `Sitemap:`.
+⚠️ `pnpm gate:int` vẫn KHÔNG chạy được ở máy này (không có Docker CLI trong distro
+WSL, `test:int` cần Postgres ở `localhost:5432`) — **CI là nơi xác minh**, workflow
+chạy trên mọi branch với service `postgres:17-alpine` và gọi `pnpm test:int` trước
+`gate`.
+
 ## 2026-07-27 — P3b: cụm Tours đợt 1 — listing + khung trang chi tiết (branch `feat/tours-pages`, ff-only, commit code cuối `f1f5e81`)
 
 **Merge GIỮA CỤM** theo yêu cầu user: Task 1–8 của

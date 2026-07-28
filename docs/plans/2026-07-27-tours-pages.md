@@ -36,8 +36,8 @@ render. Tương tác (lọc, chọn đợt khởi hành) chạy client, trạng 
 | 9 · Dải khởi hành + rail booking | ✅ |
 | 10 · Itinerary · inclusions · good-to-know | ✅ |
 | 11 · robots + sitemap | ✅ |
-| 12 · ArticleBody + phân trang `/blog` | ⬜ |
-| 13 · `gate:int` → push → hỏi user → merge → docs sweep | ⬜ |
+| 12 · ArticleBody + phân trang `/blog` | ✅ |
+| 13 · `gate:int` → push → hỏi user → merge → docs sweep | ✅ (merge 2 đợt; `gate:int` local KHÔNG chạy được — không có Docker, CI xác minh thay) |
 
 **Listing đi qua 4 vòng thiết kế lại trước khi được duyệt** — plan gốc chỉ dự
 tính 1. Ghi lại để phase sau ước lượng đúng hơn:
