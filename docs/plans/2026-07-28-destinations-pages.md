@@ -1482,3 +1482,202 @@ kiểm được bằng test đã viết ở bước trước nó.
 **Đã tự sửa khi soi lại lần đầu:** khối `REGIONS` có một biểu thức vô nghĩa ở
 `name` và tôi định thêm một Step để sửa nó. Đó là **lỗi của plan**, không phải giải
 pháp — người thực thi copy nguyên khối là mang lỗi vào code. Đã sửa thẳng khối code.
+
+---
+
+### Task 4b: Thiết kế lại `/destinations` — hành trình dọc kinh tuyến
+
+**Vì sao có task này:** user xem bản dựng ở Task 4 và bác — *"3 cards vô hồn"*,
+*"không cần trình sẵn các tours ở trang này"*. Xem spec §5.1 (sửa lần hai) cho
+chẩn đoán đầy đủ. Task này **thay** khu 2 và **bỏ** khu Featured, **thêm** 3 khu.
+
+**Files:**
+
+- Modify: `libs/shared/i18n/src/lib/messages.ts` (thêm copy 3 khu mới)
+- Rewrite: `apps/web/src/components/destinations/region-card.tsx` → thành
+  `region-band.tsx` (đổi tên file, xoá file cũ)
+- Rewrite: `apps/web/src/components/destinations/region-card.spec.tsx` → `region-band.spec.tsx`
+- Create: `apps/web/src/components/destinations/journey-moments.tsx`
+- Create: `apps/web/src/components/destinations/traveller-quotes.tsx`
+- Create: `apps/web/src/components/destinations/know-before-you-go.tsx`
+- Modify: `apps/web/src/app/(site)/destinations/page.tsx`
+
+**Interfaces:**
+
+- Consumes: `REGIONS` (`@/mocks/regions`) · `DESTINATIONS` · `TOURS` ·
+  `MOMENTS` (`@/mocks/moments`) · `TESTIMONIALS` (`@/mocks/testimonials`) ·
+  `FAQ_ITEMS` (`@/mocks/faq`) · `destinationsInRegion` · `toursInRegion`
+- Produces:
+  - `RegionBand({ region, destinations, tourCount, isLast })`
+  - `JourneyMoments({ moments })` · `TravellerQuotes({ testimonials })` ·
+    `KnowBeforeYouGo({ items })`
+
+**Thứ tự khu của trang:** hero (giữ nguyên) → 3 `RegionBand` → `JourneyMoments`
+→ `TravellerQuotes` → `KnowBeforeYouGo` → CTA (giữ nguyên).
+
+- [ ] **Step 1: Thêm copy i18n cho 3 khu mới**
+
+Trong `messages.destinationsPage`, thêm:
+
+```ts
+    moments: {
+      heading: 'Moments from the journey',
+      subtitle: 'Sent in by travellers, from the road.',
+    },
+    quotes: {
+      heading: 'Loved by travellers',
+      subtitle: 'A few words from people who went.',
+    },
+    know: {
+      heading: 'Know before you go',
+      subtitle: 'The questions we get asked most, answered plainly.',
+      seeAll: 'See all questions',
+    },
+```
+
+**Xoá** khối `featured` đã thêm ở Task 3 — khu đó bị bỏ. Rồi rebuild i18n.
+
+- [ ] **Step 2: Viết test thất bại cho `RegionBand`**
+
+Tạo `region-band.spec.tsx` (thay `region-card.spec.tsx`, xoá file cũ):
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { REGIONS } from '@/mocks/regions';
+import type { MockDestination } from '@/mocks/types';
+import { RegionBand } from './region-band';
+
+const NORTH = REGIONS[0]!;
+
+function dest(slug: string, name: string, description: string, tourCount: number): MockDestination {
+  return {
+    id: `id-${slug}`,
+    slug,
+    name,
+    country: 'Vietnam',
+    region: 'Northern Vietnam',
+    description,
+    tourCount,
+  };
+}
+
+const PLACES = [
+  dest('sa-pa', 'Sa Pa', 'Misty rice terraces', 3),
+  dest('ha-long', 'Hạ Long', 'Limestone bay cruises', 2),
+];
+
+describe('RegionBand', () => {
+  it('HIỆN mô tả từng địa điểm — đây là thứ bản thẻ cũ bỏ phí', () => {
+    render(<RegionBand region={NORTH} destinations={PLACES} tourCount={6} />);
+    expect(screen.getByText('Misty rice terraces')).toBeInTheDocument();
+    expect(screen.getByText('Limestone bay cruises')).toBeInTheDocument();
+  });
+
+  it('mỗi địa điểm là link sang trang lọc tour CÓ THẬT', () => {
+    render(<RegionBand region={NORTH} destinations={PLACES} tourCount={6} />);
+    expect(screen.getByRole('link', { name: /Sa Pa/ })).toHaveAttribute(
+      'href',
+      '/tours?destinations=sa-pa',
+    );
+  });
+
+  it('CTA vùng dùng slug URL', () => {
+    render(<RegionBand region={NORTH} destinations={PLACES} tourCount={6} />);
+    expect(screen.getByRole('link', { name: /explore northern vietnam/i })).toHaveAttribute(
+      'href',
+      '/destinations/northern-vietnam',
+    );
+  });
+
+  it('in số tour của VÙNG, không cộng dồn số của từng địa điểm', () => {
+    // 3 + 2 = 5 nhưng vùng có 6 (tour distinct). Cộng dồn là nói sai.
+    render(<RegionBand region={NORTH} destinations={PLACES} tourCount={6} />);
+    expect(screen.getByText(/6 tours/)).toBeInTheDocument();
+    expect(screen.queryByText(/5 tours/)).not.toBeInTheDocument();
+  });
+
+  it('gắn data-region để lớp token tint đúng vùng', () => {
+    const { container } = render(
+      <RegionBand region={NORTH} destinations={PLACES} tourCount={6} />,
+    );
+    expect(container.querySelector('[data-region="north"]')).not.toBeNull();
+  });
+
+  it('KHÔNG đánh số thứ tự vùng — ba vùng không phải các bước tuần tự', () => {
+    render(<RegionBand region={NORTH} destinations={PLACES} tourCount={6} />);
+    expect(screen.queryByText(/^0?1$/)).not.toBeInTheDocument();
+  });
+});
+```
+
+- [ ] **Step 3: Chạy test, xác nhận ĐỎ**
+
+Run: `cd apps/web && npx vitest run src/components/destinations/region-band.spec.tsx`
+Expected: FAIL — không resolve `./region-band`.
+
+- [ ] **Step 4: Viết `region-band.tsx`**
+
+Yêu cầu bắt buộc:
+
+- **Bố cục hai cột** (dồn một cột dưới `md`): trái là nội dung, phải là
+  `ImagePlaceholder` tỉ lệ 4/3 với `label` là tên **địa điểm chính** của vùng
+  (địa điểm đầu trong danh sách) — nhãn phải là dữ liệu thật, không bịa.
+- **Kinh tuyến**: cột mảnh bên trái mang một đường dọc `w-px` + một chấm trạm
+  (`size-2.5 rounded-full`) ngang tiêu đề vùng. Chấm tô `var(--region-primary)`.
+  Đường kẻ dùng `bg-border`. `isLast` → đường dừng lại ở chấm (không kéo tiếp
+  xuống), để hành trình có điểm kết.
+- **Nền phớt**: `background: color-mix(in oklch, var(--region-surface), var(--background) 78%)`.
+  **KHÔNG** tô đặc `--region-surface` — Nam sáng 0.661 vs Bắc 0.855, tô đặc thì ba
+  băng sáng khác nhau thấy rõ.
+- Tên vùng: `font-heading` cỡ lớn (`text-3xl md:text-4xl`), màu `text-foreground`.
+- Danh sách địa điểm: **mỗi dòng có tên · `description` · số tour**, cả dòng là
+  link `/tours?destinations=<slug>`. Đây là điểm sửa chính — bản cũ bỏ phí 9 câu
+  mô tả này.
+- CTA cuối band: `ButtonLink` → `/destinations/${region.slug}`,
+  `style={{ background: 'var(--region-primary)' }}` + chữ trắng.
+- `data-region={region.key}` đặt ở phần tử **bọc ngoài cùng** của band.
+- **KHÔNG** đánh số 01/02/03.
+
+Xoá `region-card.tsx` và `region-card.spec.tsx` sau khi chuyển xong.
+
+- [ ] **Step 5: Chạy test, xác nhận XANH**
+
+Run: `cd apps/web && npx vitest run src/components/destinations/region-band.spec.tsx`
+Expected: PASS, 6 test.
+
+- [ ] **Step 6: Viết 3 component khu mới**
+
+`journey-moments.tsx` — băng **TỐI** (dùng `bg-hero` + `text-hero-foreground` +
+wrapper `<div className="dark contents">`, đúng khuôn hero của repo). Khảm 5
+`ImagePlaceholder`: 1 ô lớn + 4 ô nhỏ (cùng họ với `TourGallery` đã duyệt).
+`moment.title` là caption đè lên ảnh, `moment.credit` là dòng nhỏ dưới caption.
+**Không** lightbox — đây là khu giới thiệu, không phải gallery tương tác.
+
+`traveller-quotes.tsx` — **3** testimonial đầu, dạng **trích dẫn lớn**
+(`font-heading`, cỡ `text-xl`), kèm `name · location` và số sao. Cố ý KHÁC kiểu
+marquee 2 cột ở trang chủ để không thành bản sao.
+
+`know-before-you-go.tsx` — 5 `FAQ_ITEMS` dạng lưới 2 cột (1 cột dưới `md`), mỗi
+mục `question` in đậm + `answer` bên dưới. Kèm link `See all questions` → `/faq`
+(trang **có thật**).
+
+Cả ba nhận dữ liệu qua **prop**, không tự import mock — để test được với fixture.
+
+- [ ] **Step 7: Viết lại `page.tsx`**
+
+Giữ nguyên hero và CTA cuối. Thay khu 3 thẻ bằng 3 `RegionBand`, **xoá** khu
+Featured trips (và import `TourCard` không còn dùng). Thêm 3 khu mới đúng thứ tự.
+Giữ `Reveal` bọc từng khu như Task 4 đã làm.
+
+⚠️ `page.tsx` **phải vẫn là Server Component**, giữ `export const metadata`.
+⚠️ **KHÔNG** tạo `loading.tsx`.
+
+- [ ] **Step 8: `pnpm gate` rồi commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+pnpm gate
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): /destinations thành hành trình dọc kinh tuyến + 3 khu giới thiệu"
+```

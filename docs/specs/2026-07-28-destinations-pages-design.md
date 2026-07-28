@@ -175,8 +175,58 @@ số đó **không dựng được trung thực** vì chạy bằng dữ liệu 
 | `TravelTips` | ❌ **bỏ** | copy biên tập bịa, cùng loại `BestTime` |
 | `EnquiryCta` | ✅ giữ | `/contact` là trang có thật |
 
-**Bốn khu chốt:** hero tối + `TopoPattern` (tối đa 1 vị trí/trang, luật 25/07) →
-**3 thẻ vùng** → **Featured trips** → **CTA hỏi**.
+**Sửa lần hai 28/07 — user xem bản dựng và bác:** *"3 cards vô hồn"*, và
+*"không cần trình sẵn các tours ở trang này, trang này chủ yếu giới thiệu về các
+vùng"*. Ba chẩn đoán cụ thể (không phải chuyện gu):
+
+1. Bản đó làm ba vùng **trông giống nhau** — cùng hộp, cùng bố cục, cùng trường,
+   chỉ khác 4px viền và màu nút. Mà việc của trang đúng là làm ba vùng **khác nhau**.
+2. Nó **bỏ phí 9 câu `description`** đang có sẵn trong mock ("Misty rice terraces",
+   "Limestone bay cruises"…) — thẻ chỉ hiện tên + số.
+3. Nó dùng **2/6 slot** màu vùng (`surface` cho chip, `primary` cho nút);
+   `--region-hero` vừa tạo ở Task 1 còn chưa dùng tới. Lớp màu vùng là tài sản
+   Nexora **không có** mà trang lại tiêu như đồ trang trí.
+
+**Sáu khu chốt** (thay bản bốn khu ở trên): hero tối + `TopoPattern` →
+**hành trình 3 vùng dọc kinh tuyến** → **Moments from the journey** →
+**Loved by travellers** → **Know before you go** → **CTA hỏi**.
+**Bỏ** khu `Featured trips` — trang này giới thiệu vùng, không bán tour.
+
+**Chữ ký: đường kinh tuyến.** Một đường dọc chạy suốt ba vùng, mỗi vùng là một
+trạm. Thứ tự Bắc → Nam ở đây là **thông tin thật** (địa lý, và mock đã xếp đúng
+trục đó) — khác hẳn ca đã từ chối ở quyết định 5, nơi thứ tự 3 địa điểm *trong*
+một vùng là tuỳ ý. Nó cũng nói lại đúng ngôn ngữ hình mà `RouteRibbon` đã lập ở
+trang tour, nhưng ở quy mô quốc gia.
+
+**Nền mỗi vùng là PHỚT màu, không tô đặc:** `color-mix` sắc vùng với nền trang.
+Bắt buộc pha vì `--region-surface` của Nam sáng 0.661 còn Bắc 0.855 — tô đặc thì
+ba băng sáng khác nhau thấy rõ, đúng lỗi đã sửa cho hero ở §5.2.
+
+**Ba khu mới, mỗi khu một nguồn dữ liệu THẬT:**
+
+| Khu | Nguồn | Số lượng | Ghi chú |
+| --- | --- | --- | --- |
+| Moments from the journey | `MOMENTS` (`mocks/moments.ts`) | **5** | `title` + `credit` theo tour thật. Đây là phần *cảm xúc* mà bản cũ thiếu hẳn |
+| Loved by travellers | `TESTIMONIALS` | lấy **3** / 8 | Trang chủ đã có marquee 8 cái → ở đây làm **trích dẫn lớn**, khác hình thức nên không thành bản sao |
+| Know before you go | `FAQ_ITEMS` | **5** | Nội dung **thật, đã duyệt, đang chạy ở `/contact`**; kèm link `/faq` |
+
+**Đảo lại phán quyết trước, ghi rõ để không lẫn:** bảng ở đầu §5.1 từng loại
+`Gallery`/`Testimonials`/`TravelTips` với lý do "ảnh chưa có · trùng trang chủ ·
+copy bịa". Hai trong ba lý do đó **sai**: toàn site vốn dùng `ImagePlaceholder`
+nên khu ảnh dựng được, và "Know before you go" dựng bằng **FAQ có sẵn** thì không
+bịa gì — đó mới là bản *tốt hơn* Nexora, vì họ hardcode travel tips còn ta dùng
+nội dung mình thật sự duy trì. Lý do còn lại (trùng trang chủ) là chuyện gu, và
+user đã quyết.
+
+**Ba thứ cố tình KHÔNG làm** để chữ ký chỉ có một: không đánh số `01/02/03` (ba
+vùng không phải các bước tuần tự) · không lật ảnh trái-phải xen kẽ (mặc định) ·
+không cho mỗi vùng một băng tối chiếm trọn màn hình (đúng bẫy "khối to nói được
+ít" đã khai tử `TourImageBand` 617px).
+
+---
+
+*Bản bốn khu dưới đây giữ lại làm bản ghi lịch sử của vòng trước:* hero tối +
+`TopoPattern` → **3 thẻ vùng** → **Featured trips** → **CTA hỏi**.
 
 Mỗi thẻ vùng: tên · tagline · số tour **dẫn xuất** · danh sách địa điểm kèm số tour
 (mỗi tên là link `/tours?destinations=<slug>` — trang **có thật**) · CTA vào trang
