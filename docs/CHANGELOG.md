@@ -2,6 +2,52 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-28 — Vân topo phủ liên tục hero + dải khởi hành (branch `fix/topo-across-departure-board`, ff-only, commit `ec742b2`)
+
+User phát hiện bằng mắt: nền chỗ hiển thị giá không có vân như hero, và hỏi
+"hay là chủ ý thiết kế?". **Không phải chủ ý — nhưng cũng không phải cẩu thả**: nó
+là hệ quả chưa ai soi của hai quyết định đúng đâm nhau.
+
+- **Chẩn đoán.** (a) Task 9 cố ý cho dải khởi hành **cùng `bg-hero`** với hero,
+  cách nhau một hairline, để hai băng đọc thành *một bảng có đường chia*. (b) Luật
+  25/07: `TopoPattern` **tối đa 1 vị trí mỗi trang**, hero đã dùng suất đó. Mỗi cái
+  tự nó hợp lý; cộng lại thì nền và vân nằm trên TỪNG section nên vân dừng đúng tại
+  vạch chia. Đo được: hero y 0–580 có vân, dải y 580–763 không, mà màu nền hai bên
+  **giống nhau từng chữ số** (`lab(13.1862 -5.12658 -0.193918)`).
+- **Vì sao nó đọc thành lỗi render, không đọc thành hai khu khác nhau:** cùng màu
+  tuyệt đối thì hai băng là MỘT mặt trong mắt người xem, và một mặt liền có texture
+  **đứt ngang giữa nét đường cong** thì não đọc là hỏng. Chính ý định (a) làm khuyết
+  điểm (b) lộ ra. Việc user phải hỏi "hay là chủ ý?" là bằng chứng nó không truyền
+  đạt được chủ ý nào.
+- **Sửa:** hoist nền + **MỘT** instance `TopoPattern` lên wrapper phủ cả hai tấm
+  (vân 0–580 → **0–763**). Luật "1 topo mỗi trang" vẫn nguyên — một instance, chỉ
+  là phủ trọn bảng.
+- **Cố tình KHÔNG thêm instance thứ hai vào dải**, dù nhanh hơn: `mask-size: cover`
+  tính theo kích thước hộp, nên instance riêng trên hộp cao 183px crop và scale
+  khác hộp 580px → các đường **lệch nhau tại vạch ghép**, hỏng rõ ràng hơn cả để
+  phẳng.
+- **Hai bẫy đã xử lý, ghi vào comment:**
+  - `relative z-10` cho dải là **bắt buộc**, không phải trang trí: vân là phần tử
+    `absolute`, còn phần tử static nằm DƯỚI phần tử positioned cùng stacking
+    context theo thứ tự vẽ CSS — để static thì **vân phủ lên chính các chip khởi
+    hành**. Hero không cần vì nội dung nó đã có `relative z-10`.
+  - `bg-hero` và vân giữ **NGOÀI mọi scope `dark`**; đặt vào trong là tái lỗi
+    `22bd75e`. Đo lại dark mode: board `lab(4.59765 …)` khác nền trang
+    `lab(13.1862 …)`, và `dark:opacity-[0.2]` vẫn ăn.
+- **Đánh đổi đã nhận, ghi vào JSDoc:** `TourHero` giờ KHÔNG tự mang nền — nó là một
+  tấm của bảng, chỉ render đúng trên nền do cha cấp. Chấp nhận vì component dùng ở
+  đúng một chỗ, nhưng đó là coupling thật.
+- **Giới hạn nói thẳng: KHÔNG có test canh bất biến này.** jsdom không tính layout
+  nên không đo được chiều cao lẫn thứ tự vẽ; thứ duy nhất test được là chuỗi class,
+  mà đó là test giòn vô nghĩa. Phần dễ vỡ nhất — ai đó bỏ `relative z-10` — chỉ có
+  comment canh, không có CI canh.
+
+Tests after: `pnpm gate` xanh — **18/18 task** · web 344 · API 188 · contract 55 ·
+tokens 10 · ui 5 · i18n 1 (không đổi số: đây là sửa layout, không thêm logic).
+Kiểm mắt bằng ảnh cắt quanh vạch ghép ở cả light và dark, đo bằng
+`getComputedStyle` trên dev server đang chạy — KHÔNG chạy `next build` vì cổng
+3000 đang có dev server của user.
+
 ## 2026-07-28 — CTA điều hướng trả lại role `link` + sửa cách gọi tên nợ contract #1 (branch `fix/anchor-link-role`, ff-only, commit cuối `60549ff`)
 
 Trả ba khoản nợ ghi ở entry dưới, không phải feature mới.
