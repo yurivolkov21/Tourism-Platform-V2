@@ -661,14 +661,21 @@ export const messages = {
     placesLabel: 'Places',
     toursLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
     exploreRegion: (region: string) => `Explore ${region}`,
-    // Khu tour nổi bật của landing page. Gọi là "featured" vì nó lọc đúng field
-    // `isFeatured` (biên tập chọn) — TUYỆT ĐỐI không gọi "popular"/"most loved"/
-    // "traveller favourites": contract không có tín hiệu popularity nào đỡ những
-    // chữ đó (spec Tours §8 #3), và đó chính là lý do khối `popular*` bị cắt ở trên.
-    featured: {
-      heading: 'Featured trips',
-      subtitle: 'Journeys our team keeps coming back to, across all three regions.',
-      viewAll: 'View all tours',
+    // Ba khu mới của bản thiết kế lại Task 4b (đường kinh tuyến dọc) — khu
+    // `featured` (Featured trips) đã XOÁ: trang này giới thiệu vùng, không bán
+    // tour (user quyết 28/07, xem spec §5.1 "Sửa lần hai").
+    moments: {
+      heading: 'Moments from the journey',
+      subtitle: 'Sent in by travellers, from the road.',
+    },
+    quotes: {
+      heading: 'Loved by travellers',
+      subtitle: 'A few words from people who went.',
+    },
+    know: {
+      heading: 'Know before you go',
+      subtitle: 'The questions we get asked most, answered plainly.',
+      seeAll: 'See all questions',
     },
   },
 

@@ -1,35 +1,43 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ArrowRightIcon, ChevronRightIcon } from 'lucide-react';
+import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
-import { RegionCard } from '@/components/destinations/region-card';
+import { JourneyMoments } from '@/components/destinations/journey-moments';
+import { KnowBeforeYouGo } from '@/components/destinations/know-before-you-go';
+import { RegionBand } from '@/components/destinations/region-band';
+import { TravellerQuotes } from '@/components/destinations/traveller-quotes';
 import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
-import { TourCard } from '@/components/tours/tour-card';
 import { destinationsInRegion, toursInRegion } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
 import { DESTINATIONS } from '@/mocks/destinations';
+import { FAQ_ITEMS } from '@/mocks/faq';
+import { MOMENTS } from '@/mocks/moments';
 import { REGIONS } from '@/mocks/regions';
+import { TESTIMONIALS } from '@/mocks/testimonials';
 import { TOURS } from '@/mocks/tours';
 
 /**
- * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1, quyết
- * định 28/07 #1). BỐN khu, không phải "3 thẻ": Hero → 3 thẻ vùng → Featured
- * trips → CTA hỏi. Nexora có 8 khu; ba khu sau bị bỏ, ghi lý do để không ai
- * tưởng nhầm là thiếu sót:
- *  - `BestTime` / `TravelTips`: copy du lịch bịa (mùa nào đẹp, mẹo đi lại) —
- *    không field nào trong contract nói về mùa/thời tiết.
- *  - `Gallery` ảnh biên tập theo vùng: chưa có media cho destination (spec §8 #1).
- *  - `Testimonials`: trang chủ đã có nguyên khu này, lặp lại là độn cho dài.
+ * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1). SÁU khu
+ * (Task 4b, thiết kế lại sau khi user bác bản "3 thẻ vô hồn"): Hero → 3
+ * `RegionBand` dọc kinh tuyến → Moments from the journey → Loved by
+ * travellers → Know before you go → CTA hỏi. Khu `Featured trips` của bản
+ * trước đã BỎ — trang này giới thiệu vùng, không bán tour (user quyết 28/07).
+ *
+ * Chữ ký của trang: MỘT đường kinh tuyến dọc chạy suốt ba `RegionBand`
+ * (Bắc → Trung → Nam, thứ tự là thông tin thật — Việt Nam dài theo trục đó).
+ * Ba thứ cố tình KHÔNG làm để chữ ký chỉ có một: không đánh số `01/02/03`,
+ * không lật ảnh trái-phải xen kẽ giữa các band, không cho mỗi vùng một băng
+ * tối chiếm trọn màn hình.
  *
  * Trang vẫn là Server Component thuần (không `'use client'` trên chính
- * `page.tsx`, `metadata` giữ nguyên) — khác các trang khác trong site vốn
- * tách hero/CTA ra file `'use client'` riêng để có animation. Ở đây không cần
- * file mới: `Reveal` (`@/components/motion/reveal`, đã có sẵn, tự mang
- * `'use client'`) được import thẳng vào và bọc quanh từng khối, giống cách
- * `article-body.tsx` bọc section trong `/blog/[slug]` — một Server Component
- * khác có `generateMetadata`. Render Client Component con bên trong Server
- * Component cha không buộc cha phải `'use client'`.
+ * `page.tsx`, `metadata` giữ nguyên). `Reveal` (`@/components/motion/reveal`,
+ * tự mang `'use client'`) bọc NGOÀI từng khu (kể cả `<section>` nền tint của
+ * từng khu) để cả khu — kể cả nền — trồi lên cùng lúc khi cuộn tới. Khác bản
+ * trước (Reveal bọc div nội dung BÊN TRONG một `<section>` nền tĩnh dùng
+ * chung): ở đây mỗi `RegionBand`/khu mới tự mang `<section>` full-bleed
+ * riêng (nền tint theo vùng, hoặc `bg-hero`), nên không còn một `<section>`
+ * nền chung nào để nhúng Reveal vào bên trong.
  */
 export const metadata: Metadata = {
   title: 'Destinations — Tourism',
@@ -47,11 +55,6 @@ export const metadata: Metadata = {
 export default function DestinationsPage() {
   const t = messages.destinationsPage;
   const cta = messages.enquiryCta;
-
-  // Cờ biên tập, KHÔNG phải tín hiệu phổ biến — contract không có field nào đỡ
-  // chữ "popular"/"most loved"/"traveller favourites" (spec Tours §8 #3). Đúng
-  // 6 tour trong mock mang cờ này.
-  const featured = TOURS.filter((tour) => tour.isFeatured);
 
   return (
     <>
@@ -95,62 +98,38 @@ export default function DestinationsPage() {
         </div>
       </section>
 
-      {/* ── Khu 2 · 3 thẻ vùng, mỗi thẻ tint riêng qua data-region ── */}
-      <section className="w-full px-4 py-16 md:px-16 lg:px-24 xl:px-32">
-        {/* Một `Reveal` bọc CẢ LƯỚI, không phải từng thẻ — 3 thẻ trồi cùng lúc
-            thay vì nối đuôi thành chuỗi riêng lẻ. `delay={0.1}` tạo stagger
-            nhẹ với khối hero phía trên cho màn hình đủ cao để cả hai lọt
-            viewport cùng lúc lúc tải trang; cùng bậc 0.1s ToursHero dùng giữa
-            breadcrumb/eyebrow. */}
-        <Reveal delay={0.1} className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
-          {REGIONS.map((region) => (
-            <RegionCard
-              key={region.key}
-              region={region}
-              destinations={destinationsInRegion(REGIONS, DESTINATIONS, region.key)}
-              tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
-            />
-          ))}
+      {/* ── Khu 2 · Ba `RegionBand` dọc kinh tuyến, Bắc → Trung → Nam — thứ tự
+          là thông tin thật, không phải trang trí. Mỗi band tự mang
+          `<section>` full-bleed riêng (nền tint theo vùng), nên `Reveal` bọc
+          NGOÀI từng band thay vì bọc div nội dung bên trong một section nền
+          chung như bản 3-thẻ trước. */}
+      {REGIONS.map((region, i) => (
+        <Reveal key={region.key} delay={i === 0 ? 0.1 : 0}>
+          <RegionBand
+            region={region}
+            destinations={destinationsInRegion(REGIONS, DESTINATIONS, region.key)}
+            tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
+            isLast={i === REGIONS.length - 1}
+          />
         </Reveal>
-      </section>
+      ))}
 
-      {/* ── Khu 3 · Featured trips — ẨN CẢ KHU nếu rỗng, đừng render tiêu đề
-          trơ trọi không có gì bên dưới. */}
-      {featured.length > 0 ? (
-        <section className="w-full bg-muted px-4 py-16 md:px-16 lg:px-24 xl:px-32">
-          {/* Khối tự cách xa hero/lưới vùng một đoạn cuộn dài (py-16 + lưới 3
-              thẻ ở trên) nên trigger scroll riêng của nó — không cần delay,
-              giống cách `article-body.tsx` không delay giữa các section độc
-              lập. */}
-          <Reveal className="mx-auto max-w-7xl">
-            <div className="flex flex-wrap items-end justify-between gap-4">
-              <div>
-                <h2 className="font-heading text-3xl font-medium text-foreground">
-                  {t.featured.heading}
-                </h2>
-                <p className="mt-2 max-w-xl text-pretty text-muted-foreground">
-                  {t.featured.subtitle}
-                </p>
-              </div>
-              <a
-                href="/tours"
-                className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary hover:underline"
-              >
-                {t.featured.viewAll}
-                <ArrowRightIcon aria-hidden="true" className="size-3.5" />
-              </a>
-            </div>
+      {/* ── Khu 3 · Moments from the journey — băng tối, khảm ảnh + caption ── */}
+      <Reveal>
+        <JourneyMoments moments={MOMENTS} />
+      </Reveal>
 
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
-              {featured.map((tour) => (
-                <TourCard key={tour.slug} tour={tour} />
-              ))}
-            </div>
-          </Reveal>
-        </section>
-      ) : null}
+      {/* ── Khu 4 · Loved by travellers — 3 trích dẫn lớn, khác marquee trang chủ ── */}
+      <Reveal>
+        <TravellerQuotes testimonials={TESTIMONIALS} />
+      </Reveal>
 
-      {/* ── Khu 4 · CTA hỏi → /contact, dùng ButtonLink (KHÔNG Button render={<a/>}) ── */}
+      {/* ── Khu 5 · Know before you go — FAQ có thật, kèm link /faq ── */}
+      <Reveal>
+        <KnowBeforeYouGo items={FAQ_ITEMS} />
+      </Reveal>
+
+      {/* ── Khu 6 · CTA hỏi → /contact, dùng ButtonLink (KHÔNG Button render={<a/>}) ── */}
       <section className="w-full px-4 py-20 md:px-16 lg:px-24 xl:px-32">
         <Reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl border border-border bg-card px-6 py-14 text-center">
           <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
