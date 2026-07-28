@@ -1,0 +1,319 @@
+# Spec — cụm trang Destinations (P3b): `/destinations` + `/destinations/[region]`
+
+- **Trạng thái:** user duyệt design 28/07/2026, chờ plan
+- **Phase:** P3b web, đợt 1 của loạt "trả nợ trang tĩnh còn thiếu"
+- **Tiền đề:** [báo cáo tiến độ 28/07](../CHANGELOG.md) — v2 thiếu 11 trang khách so
+  với Nexora; cụm này trả 2 trang đầu
+
+## 1. Mục tiêu
+
+Dựng **cổng khám phá theo VÙNG**: `/destinations` là bản đồ 3 vùng,
+`/destinations/[region]` là trang bán vùng đó. Đây là trang duy nhất còn thiếu
+thuộc luồng *khám phá* — hiện `/#gallery` đang gánh tạm.
+
+### Trong phạm vi
+
+- `/destinations` — 3 thẻ vùng, mỗi thẻ lồng danh sách địa điểm của vùng.
+- `/destinations/[region]` — 3 slug tĩnh.
+- Đắp lại `MockDestination` cho **gương đúng `DestinationSchema`**.
+- `lib/regions.ts` thuần + TDD: chuẩn hoá vùng, xếp nhóm, ba phép dẫn xuất.
+- Nối lại các link đang trỏ tạm (footer, navbar, `/#gallery`) + `sitemap.ts`.
+
+### Ngoài phạm vi — nói rõ để không hiểu nhầm
+
+- **Không gắn API.** Toàn bộ chạy trên mock (luật user 28/07).
+- **Không đụng** `libs/shared/contract`, `apps/api`, `apps/api/prisma/`.
+- **Không ảnh thật.** Giữ policy `ImagePlaceholder` toàn site.
+- **Không** siết `region` thành enum trong contract (xem §7).
+- **Không** trang cho từng địa điểm (`/destinations/[region]/[place]`) — Nexora
+  cũng không có; `/tours?destinations=<slug>` đã là đích của một địa điểm.
+- **Không** lọc/sắp xếp trong trang vùng.
+
+## 2. Năm quyết định user đã chốt (28/07)
+
+| # | Quyết định | Loại bỏ |
+| --- | --- | --- |
+| 1 | Cụm là **cổng khám phá theo vùng** | chỉ-mục địa điểm tra cứu · nội dung biên tập theo vùng |
+| 2 | **Tint vùng + chữ + dữ liệu** gánh sức nặng thị giác; ảnh là gia vị | mock media ảnh-dẫn · tải ảnh thật vào `public/` |
+| 3 | Index **lồng tên địa điểm trong thẻ vùng** | 3 thẻ full-bleed editorial · 3 thẻ + lưới 9 địa điểm riêng |
+| 4 | URL là **`/destinations/northern-vietnam`** | `/destinations/north` · `/destinations/vietnam-north` |
+| 5 | Chữ ký trang vùng = **tint chiếm trang + dải số liệu dẫn xuất** | chỉ tint · dùng lại RouteRibbon ở cấp vùng |
+
+Lý do loại RouteRibbon (quyết định 5) đáng ghi lại: thứ tự ba địa điểm trong một
+vùng là **tuỳ ý**, không phải hành trình theo thời gian — đúng cái bẫy mà
+`RouteRibbon` đã cố tránh khi từ chối gắn nhãn Start/End trên trang chi tiết tour.
+
+## 3. Đối chiếu Nexora (luật 10)
+
+Rà cả hai tầng: trang/feature và hạ tầng xuyên suốt.
+
+| Khoản | Nexora | v2 dự kiến | Phân loại |
+| --- | --- | --- | --- |
+| `/destinations` | có (89 dòng) | có | parity |
+| `/destinations/[region]` | có (192 dòng, 8 component: RegionHero · RegionIntro · RegionHighlights · 3 bản Signature · RegionTours) | có, cấu trúc gọn hơn | **làm khác mà tương đương** |
+| Nguồn vùng | **hardcode trong code** (`regionSlugs()`, `getRegion()`) — KHÔNG lấy từ API | hardcode trong `lib/regions.ts` | parity (xem ghi chú dưới) |
+| Vùng không khớp | gộp vào `'Other'` rồi **lọc bỏ** | `regionOf()` trả `null` + **test bất biến** chặn | **v2 tốt hơn** |
+| Ảnh vùng | ~10 ảnh Unsplash **hardcode** mỗi vùng, tự ghi *"Temporary imagery (review only)"*; `deriveRegionImagery` fallback all-real-or-fixture | không ảnh; tint + chữ + dữ liệu | **cố ý bỏ** (quyết định 2) |
+| Tint theo vùng | không có | 3 lớp `--region-*` (ADR-0013) | **v2 tốt hơn** |
+| Dải số liệu dẫn xuất | không có | có (§5.2) | **v2 tốt hơn** |
+| `tourCount` | fixture | **dẫn xuất từ TOURS** | **v2 tốt hơn** (§4.2) |
+| sitemap phủ vùng | có | có (§6) | parity |
+
+**Ghi chú quan trọng về "hardcode 3 vùng":** ban đầu tôi xếp đây là nợ của v2
+("region là chuỗi tự do thì trang vùng dựa vào đâu"). Đọc Nexora mới thấy họ cũng
+**không** lấy vùng từ API — vùng là khái niệm của tầng trình bày ở cả hai bản. Nên
+3 vùng nằm trong code là *parity*, không phải đi tắt. `DestinationSchema.region`
+chỉ dùng để **xếp** địa điểm vào 3 vùng đã biết.
+
+## 4. Tầng dữ liệu — phần lớn nhất của cụm
+
+### 4.1 Đối chiếu mock hiện có → contract
+
+`MockDestination` là **mock duy nhất còn lại chưa gương contract** — nó có từ trước
+khi cụm Tours lập ra luật "mock đắp theo contract, không theo nhu cầu UI".
+
+| `DestinationSchema` | `MockDestination` hiện tại | Việc phải làm |
+| --- | --- | --- |
+| `id: z.uuid()` | **thiếu** | thêm |
+| `slug` | có | giữ |
+| `name` | có | giữ |
+| `country: string` | **thiếu** | thêm (`'Vietnam'`) |
+| `region: string \| null` | `MockRegionKey` (**hẹp hơn contract**) | nới thành `string \| null` |
+| `description: string \| null` | `blurb: string` (**tên khác, không nullable**) | đổi tên + nullable |
+| `tourCount: int` | có, **viết tay và SAI** | dẫn xuất (§4.2) |
+
+**`region` phải nới đúng thành `string | null`, không được giữ enum hẹp.** Đây là
+điểm quan trọng nhất của §4: mock hẹp hơn contract nghĩa là mọi ca hỏng chỉ lộ ra
+lúc gắn API. Cùng lý lẽ mà cụm Tours đã dùng khi bắt mock gương
+`TourCardSchema`/`TourDetailSchema`.
+
+Đổi `blurb` → `description` là **breaking change với HAI consumer**, phải sửa cùng
+lượt: `components/home/gallery.tsx:96` (dùng làm `label` của `ImagePlaceholder`) và
+`components/destinations-menu.tsx:81` (dòng phụ trong dropdown navbar — chỗ này còn
+có comment nói chiều rộng menu 34→42rem được chọn theo *"blurb dài nhất"*, nên đổi
+độ dài text ở đây là đổi cả cơ sở của con số đó).
+
+### 4.2 Ba con số đều DẪN XUẤT, không viết tay
+
+Khuyết tật đo được: mọi `tourCount` trong mock đang phồng **2–5×**.
+
+| Địa điểm | mock khai | tour thật chạm tới |
+| --- | --- | --- |
+| ha-long | 9 | **2** |
+| hoi-an | 10 | **4** |
+| da-nang | 9 | **2** |
+| sa-pa | 8 | **3** |
+| ninh-binh | 7 | **3** |
+| hue | 8 | **4** |
+| sai-gon | 6 | **3** |
+| can-tho | 6 | **2** |
+| phu-quoc | 5 | **2** |
+| **tổng khai** | **68** | 16 tour / **25 lượt chạm** |
+
+`REGIONS.tourCount` (24/27/17) chỉ là tổng của các số phồng đó.
+
+Vì sao phải sửa, không phải vì gọn code mà vì **trung thực**: thiết kế đã chốt in
+những con số này ngay trên thẻ, nên thẻ nói "Hạ Long 9 tours" rồi bấm sang
+`/tours?destinations=ha-long` ra **2**. Đúng lớp lỗi "See all 1,204 reviews" mở ra
+14 dòng mà cụm reviews vừa sửa bằng cách dẫn xuất `ratingAvg`/`ratingCount`.
+Contract ghi `tourCount` là *"Number of PUBLISHED tours touching this destination"*
+nên API thật sẽ trả số đúng — mock nói dối làm thiết kế được duyệt trên những con
+số **không thể xảy ra**.
+
+Ba phép dẫn xuất:
+
+1. `destination.tourCount` = số tour **distinct** chạm địa điểm đó.
+2. Tour của một vùng = tour **distinct** chạm **bất kỳ** địa điểm của vùng.
+3. Dải at-a-glance = tính từ chính tập tour ở (2).
+
+**Một sự thật phải tôn trọng:** `north-to-south-classic` chạm **cả ba vùng**, nên
+6 + 6 + 6 = 18 ≠ 16. Trang **KHÔNG được** in "18 tours" hay bất kỳ tổng cộng dồn
+nào; mỗi vùng chỉ nói con số của chính nó. Có test canh bất biến này.
+
+### 4.3 `lib/regions.ts` — logic thuần, TDD trước
+
+- `REGIONS`: `slug` (`northern-vietnam`) · `key` (`north`, để trỏ lớp token
+  `--region-*`) · `name` · `tagline`. **`tourCount` viết tay bị xoá.**
+  Hai từ vựng `slug` và `key` cố tình **tách**: URL là chuyện SEO, tên lớp token là
+  chuyện thiết kế — trộn lại mới là nợ.
+- `regionOf(destination): RegionKey | null` — chuẩn hoá `region` chuỗi tự do.
+- `destinationsInRegion(key)` · `toursInRegion(key)` · `regionGlance(tours)`.
+
+**Ca `null` không được âm thầm bỏ.** Địa điểm không map được sẽ vắng mặt khỏi mọi
+trang vùng, mà index chỉ hiện 3 vùng → nó **tàng hình trên toàn site**. Chốt: có
+**test bất biến** khẳng định cả 9 destination đều map. Ai thêm một cái lạ thì test
+đỏ, thay vì một địa điểm biến mất im lặng.
+
+## 5. Hai trang
+
+### 5.1 `/destinations`
+
+Hero tối + `TopoPattern` (tối đa 1 vị trí/trang, luật 25/07) → 3 thẻ vùng xếp dọc.
+
+Mỗi thẻ: tên vùng · tagline · số tour **dẫn xuất** · danh sách địa điểm kèm số tour
+(mỗi tên là link `/tours?destinations=<slug>` — trang **có thật**) · CTA vào trang
+vùng. Tint riêng từng thẻ qua `--region-*`.
+
+Không trùng `/#gallery`: ở đó địa điểm là thẻ cuộn ngang có ảnh; ở đây là chữ nhóm
+theo vùng, phục vụ tra cứu.
+
+### 5.2 `/destinations/[region]`
+
+Thứ tự khu: **hero tint → dải at-a-glance → PLACES IN THIS REGION → TRIPS**.
+
+**Hero: `--region-deep` phải chuẩn hoá độ tối trước khi dùng.** Đo được:
+
+| | `--region-deep` L | `--hero` L |
+| --- | --- | --- |
+| north | 0.423 | 0.25 |
+| central | 0.351 | 0.25 |
+| south | 0.394 | 0.25 |
+
+Chữ trắng trên cả ba vẫn đạt ~6–7:1 nên **không** vi phạm luật "hero luôn tối"
+(luật đó tồn tại vì navbar chưa cuộn là trong suốt, hero sáng thì chữ navbar tàng
+hình). Nhưng 0.351 so với 0.423 là bậc sáng **thấy được bằng mắt**, nên ba trang
+vùng sẽ đọc thành thiếu nhất quán chứ không thành bản sắc. Chốt: pha về cùng một
+bậc tối bằng `color-mix(in oklch, var(--region-deep), var(--hero) …)`, giữ nguyên
+sắc. Repo đã có tiền lệ `color-mix(in oklch, …)` trong `button.tsx`.
+
+Vẫn giữ đúng quy ước hero: `bg-*` trên `<section>` + wrapper `<div className="dark
+contents">` bọc nội dung — **không bao giờ** đặt `dark` lên chính section.
+
+**Dải at-a-glance: chỉ ba thứ THẬT SỰ phân biệt được vùng.** Đo cả bốn ứng viên:
+
+| Vùng | trips | days | from | độ khó | chuyên mục |
+| --- | --- | --- | --- | --- | --- |
+| north | 6 | 1–12 | **$68** | easy→**challenging** | cruises · trekking · scenic · culture |
+| central | 6 | 1–12 | **$59** | easy→moderate | culture · scenic · food |
+| south | 6 | 1–12 | **$45** | easy→moderate | beaches · cruises · food · culture |
+
+`trips` là **6/6/6** và `days` là **1–12 ở cả ba** — vì mock cố ý chia đều, và tour
+12 ngày thuộc cả ba vùng. Một dải mà 2 trong 4 con số bằng nhau trên cả ba trang
+thì hai con số đó là **trang trí, không phải thông tin** — nên dải chốt là
+**`from $X` · phổ độ khó · chuyên mục có mặt**. Số tour dời sang tiêu đề khu
+(`6 trips in the north`), nơi nó là ngữ cảnh chứ không giả làm điểm so sánh.
+
+*(Sửa lại con số tôi nói sai lúc trình bày design: "from $175" là giá một **đợt
+khởi hành**, không phải `basePrice`. Thật là **$68**.)*
+
+`difficulty` **nullable** — `phu-quoc-reef-days` có `difficulty: null`. Phổ độ khó
+bỏ qua giá trị null, **không** in chữ "null" và không coi null là một bậc.
+
+**PLACES IN THIS REGION:** 3 thẻ, mỗi thẻ có `description` + số tour + link
+`/tours?destinations=<slug>`.
+
+**TRIPS:** dùng lại `TourCard` đã duyệt (bản 5 băng) — không dựng card mới.
+
+**Metadata:** `alternates.canonical` + OG, cùng khuôn `/tours/[slug]`.
+
+⚠️ **Tuyệt đối KHÔNG thêm `loading.tsx`** vào `destinations/` lẫn
+`destinations/[region]/`. Đo được ở `/tours/[slug]` (cả `next dev` lẫn production):
+chỉ cần một `loading.tsx` ở bất kỳ segment trong chuỗi là slug lạ trả **HTTP 200**
+kèm giao diện 404 — `loading.tsx` tạo Suspense boundary, Next stream shell ra
+trước, status 200 đã gửi xong trước khi thân trang gọi `notFound()`. Cụm này đưa
+4 URL vào sitemap nên hậu quả y hệt.
+
+## 6. Nối lại các link đang trỏ tạm
+
+| Chỗ | Hiện tại | Sau cụm |
+| --- | --- | --- |
+| Footer `Destinations` | `/#gallery` | `/destinations` |
+| Navbar `Destinations` (desktop + mobile) | `/tours` | `/destinations` |
+| Dropdown địa điểm trong navbar | `/tours?destinations=<slug>` | **giữ nguyên** — nó nhắm tour, đúng đích |
+| `/#gallery` | không có lối ra | thêm link vào `/destinations` |
+| `sitemap.ts` | 34 URL | **38** (1 index + 3 vùng) |
+
+## 7. Copy i18n — phải CẮT trước khi dùng
+
+`@tourism/i18n` **đã có sẵn ba khối** cho cụm này, port từ Nexora, **chưa ai dùng**:
+`destinationsPage` (dòng 659) · `destinationDetail` (680) · `regionPage` (701) —
+tổng **≈202 dòng**. Đúng tình huống khối `tourDetail` 188 dòng mà cụm Tours đã phải
+cắt. Không rà là wire vào rồi mới phát hiện.
+
+**Khuyết tật nặng nhất: copy quảng cáo những nơi sản phẩm KHÔNG bán.** Đếm được:
+
+| Địa danh trong copy | Số lần trong copy | Số lần trong mock |
+| --- | --- | --- |
+| Hà Giang | **5** | **0** |
+| Lan Hạ | 2 | **0** |
+| Fansipan | 1 | **0** |
+| Pù Luông | 1 | **0** |
+| Mỹ Sơn | 3 | 3 ✓ |
+
+Ship nguyên khối này là trang vùng hứa những chuyến không tồn tại. Nặng hơn lỗi
+"See all 1,204 reviews", vì đây là **lời hứa về sản phẩm**, không chỉ là con số lệch.
+
+Phải cắt, kèm lý do từng khoản:
+
+| Khoản | Xử lý | Vì sao |
+| --- | --- | --- |
+| `destinationDetail` (cả khối) | **xoá** | Dành cho `/destinations/[slug]` — trang cho từng địa điểm mà cụm này cố ý không làm (§1) |
+| `destinationDetail.valueProps` | **xoá** | 3 lời hứa tiếp thị bịa ("Luxury transfers", "vetted private drivers") không field nào đỡ, trên một capstone **không doanh thu** |
+| `regionPage.signature.stats` | **xoá** | `350km`, `3,143m Fansipan`, `3+ Mountain regions` — số liệu biên tập bịa, và trỏ vào nơi không có trong mock |
+| `regionPage.highlights` | **xoá** | 3 mục biên tập mỗi vùng, cùng bệnh trên |
+| `regionPage.tags` | **xoá** | Hardcode `['Cruises','Trekking','Hill-tribe culture','Mountain passes']` trong khi §5.2 **dẫn xuất** chuyên mục từ tour thật; giữ cả hai là hai nguồn sự thật |
+| `regionPage.gallery*` | **xoá** | Gallery ảnh — quyết định 2 đã bỏ |
+| `regionPage.allTab` | **xoá** | Ngụ ý tab/lọc, ngoài phạm vi |
+| `regionPage.introHeading` "The best …" | **viết lại** | Superlative không có dữ liệu xếp hạng đỡ (spec Tours §8 #3: không sort được theo rating/popularity) |
+| `destinationsPage.regionHeading` "Top destinations in …" | **viết lại** | "Top" ngụ ý xếp hạng không tồn tại — cùng lý lẽ đã đổi "highlight" thành "Most recent" ở cụm reviews |
+| `destinationsPage.popular*` | **xoá** | "Most popular journeys" / "Traveller favourites" — **không có tín hiệu popularity trong contract**, đúng họ với badge "Verified" đã bị loại ở reviews |
+| `regionPage.noTours` | **viết lại** | Nói "destination" trên trang **vùng**, và "coming soon" là hứa thứ không ai cam kết |
+| `destinationsPage.breadcrumbCurrent: 'Vietnam tours'` | **viết lại** | Đây là trang địa điểm, không phải trang tour |
+| `regionIntro` / `regions` keyed by `'Northern Vietnam'` | **đổi khoá** | Đang khoá bằng **chuỗi user-facing** (`Record<string,string>`); đổi một chữ trong tên hiển thị là copy biến mất im lặng. Khoá bằng `key`/`slug` của vùng |
+| `regionPage.regions[*].tagline` · `intro` · `intro2` | **giữ, soi lại từng câu** | Đây là phần dùng được — nhưng phải bỏ mọi câu nhắc 4 địa danh không bán |
+
+## 8. Nợ ghi sổ — KHÔNG vá ở đây
+
+1. **Media cho destination.** `DestinationSchema` không có field ảnh, dù
+   `MediaOwnerType` đã có sẵn `DESTINATION` và ADR-0005 đã chốt hình dạng
+   `MediaItem`. Cùng một khoản với [nợ #1 của cụm Tours](2026-07-27-tours-pages-design.md).
+   Cụm này **thiết kế để không cần ảnh** nên nó không bị chặn — thêm ảnh về sau
+   không phải đụng bố cục. Đây là lý do chọn quyết định 2.
+2. **`region` là chuỗi tự do nullable trong contract** trong khi hệ thiết kế có
+   đúng 3 lớp tint. Static an toàn nhờ test bất biến ở §4.3, nhưng **lúc gắn API
+   sẽ có destination `region` không map được và nó cần một chỗ để ở** — quyết định
+   đó thuộc cụm gắn API: hoặc contract siết enum, hoặc index có khu "khác".
+3. **Không có `destinations.bySlug`** trong contract. Cụm này không cần (trang vùng
+   không phải trang địa điểm), nhưng nếu về sau muốn trang cho từng địa điểm thì
+   phải mở rộng contract.
+
+## 9. Logic thuần + TDD
+
+Test trước cho `lib/regions.ts` (project Vitest `node`, theo ADR-0014):
+
+- `regionOf`: khớp đúng · khác hoa/thường · khoảng trắng · `null` → `null`.
+- Xếp nhóm: mỗi vùng đúng 3 địa điểm; tổng 9.
+- `tourCount` dẫn xuất khớp đúng số tour distinct — **có case cho tour chạm 2 địa
+  điểm cùng vùng, phải đếm 1 lần**.
+- `toursInRegion`: `north-to-south-classic` xuất hiện ở **cả ba** vùng.
+- Bất biến chống nói dối: **tổng tour theo vùng KHÔNG bằng `TOURS.length`** (18 ≠ 16)
+  — test khẳng định điều này để không ai "sửa" nó thành cộng dồn.
+- `regionGlance`: bỏ qua `difficulty: null`; giá nhỏ nhất là `basePrice` chứ không
+  phải giá đợt khởi hành.
+- Bất biến: **mọi destination đều map được về một vùng**.
+
+Test component (project `dom`): index render đúng 3 vùng và mọi link địa điểm trỏ
+`/tours?destinations=`; trang vùng có dải at-a-glance khớp đúng danh sách tour bên
+dưới nó.
+
+## 10. Tiêu chí hoàn thành
+
+- `pnpm gate:int` xanh (CI xác minh — máy này không có Docker CLI).
+- Slug vùng lạ trả **404 thật**, đo bằng `curl` trên **bản production**, không chỉ
+  bằng unit test.
+- `sitemap.xml` có đúng 38 URL.
+- Không còn link nào trỏ `/#gallery` với nhãn "Destinations".
+- Không còn `blurb` trong codebase (2 consumer ở §4.1 đã đổi).
+- **Không còn `Hà Giang` / `Lan Hạ` / `Fansipan` / `Pù Luông` trong `@tourism/i18n`**
+  — grep phải trả 0. Đây là tiêu chí đo được của việc cắt copy ở §7.
+- `destinationDetail` đã bị xoá khỏi i18n (trang đó không thuộc cụm này).
+- Không key nào trong i18n còn khoá bằng chuỗi user-facing `'Northern Vietnam'`.
+- Kiểm mắt cả **light và dark** cho cả 3 vùng — ba hero về cùng một bậc tối.
+- **Rebuild `@tourism/i18n`** sau khi sửa `messages.ts` (web đọc qua `dist`).
+
+## 11. Mốc dừng bắt buộc
+
+- Sau khi đắp lại mock + `lib/regions.ts` (§4): báo số liệu dẫn xuất thật để user
+  đối chiếu **trước khi** vẽ giao diện.
+- Sau `/destinations`: user xem ảnh, duyệt rồi mới sang trang vùng.
+- Trước mọi merge/push: hỏi user (luật 2).
