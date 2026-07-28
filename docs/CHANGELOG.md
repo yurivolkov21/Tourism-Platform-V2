@@ -271,7 +271,6 @@ khoảng đó (`mt-32` của footer) có ở **cả 7 trang**, nhưng chỉ 404 
 nền tối của nó do các lớp `absolute` vẽ nên dừng đúng ở biên section. User chốt
 KHÔNG gỡ khoảng trắng (đó là nhịp chung của site) mà thêm hẳn một section thân
 trang nền sáng hoà vào đó.
-
 - `not-found-body.tsx` — hai cột: chữ bên trái, số 404 khổ lớn bên phải. Số
   dựng kiểu **in lệch**: một lớp đặc `text-primary`, sau lưng một lớp bóng
   cùng chữ tông nhạt lệch xuống-phải. Motion: bóng "đặt xuống" trước, lớp đặc
@@ -298,7 +297,6 @@ dependency npm (chỉ cần `motion`, `apps/web` đã có). Đặt ở
 không khai `motion` (component MagicUI đã có trong đó — `animated-theme-toggler`
 — chạy bằng View Transitions API), và mọi component dùng motion đều nằm ở đây.
 Ba chỗ vá so với bản gốc, đều là thứ bản gốc thiếu:
-
 - bỏ mặc định `fill-gray-400/30` (hex cứng, vi phạm luật tokens-only) — màu do
   caller đặt bằng token;
 - tự kiểm `prefers-reduced-motion` — `MotionConfig reducedMotion="user"` của
@@ -321,7 +319,6 @@ Tests after: gate xanh 18/18 — 76 unit web + 5 ui; không lỗi runtime ở
 ## 2026-07-27 — Vá 3 alert Dependabot (thẳng `main`, `f01a58f`)
 
 Ba alert bắc cầu, không cái nào là dependency trực tiếp của mình.
-
 - **#8 find-my-way 9.6.0 → 9.7.0** (high, CVSS 7.5, DDoS qua HTTP/2). Đây là
   router BÊN TRONG fastify nên nằm trên đường HTTP thật của `apps/api`.
   `fastify@5.10.0` khai `^9.6.0` nên tự lên được, nhưng
@@ -347,15 +344,13 @@ Ba alert bắc cầu, không cái nào là dependency trực tiếp của mình.
 Bài học công cụ: **pnpm 11 không còn đọc `pnpm.overrides` trong `package.json`**
 (chỉ cảnh báo rồi bỏ qua) — chỗ đúng là `overrides:` trong `pnpm-workspace.yaml`.
 Tests after: gate:int xanh — 334 unit (10 tokens + 55 contract + 5 ui + 76 web
-
-- 188 api) + 145 int; build ÉP LẠI từ đầu cho cả api lẫn web đều xanh.
++ 188 api) + 145 int; build ÉP LẠI từ đầu cho cả api lẫn web đều xanh.
 
 ## 2026-07-27 — P3b: cụm trang Blog (branch `feat/blog-pages`, merge `b7aeb3f`)
 
 Vá thụt lùi so với Nexora: `/blog`, `/blog/[slug]`, `/blog/rss.xml` — v2 trước
 đó chỉ có section `#journal` trên Home. Thực thi subagent-driven, 7 task + 3
 đợt vá, mỗi task một reviewer riêng CỘNG một final review toàn nhánh.
-
 - **Mock 3 → 9 bài**, mỗi bài có `sections[]` (cùng hình dạng `LegalDoc`) nên
   dùng lại được nguyên bộ xương cụm pháp lý: `Typeset preset="reading"` +
   `OnThisPage` + `ReadingProgress` + `tocFromSections` (tách ra từ
@@ -385,13 +380,13 @@ Vá thụt lùi so với Nexora: `/blog`, `/blog/[slug]`, `/blog/rss.xml` — v2
      `grep next/image apps/web/src` nay rỗng. File ảnh + CREDITS giữ làm tài sản.
 - Review findings — **thứ chỉ final review toàn nhánh mới thấy** (7 reviewer
   từng-task đều bỏ lọt vì mỗi người chỉ soi brief của mình):
-  - `BreadcrumbList` spec yêu cầu nhưng **rơi mất ngay từ lúc viết plan** nên
+  * `BreadcrumbList` spec yêu cầu nhưng **rơi mất ngay từ lúc viết plan** nên
     không brief nào nhắc → không ai bắt.
-  - Task 3b **âm thầm đảo hành vi** mà reviewer Task 3 đã xác minh: tag lạ
+  * Task 3b **âm thầm đảo hành vi** mà reviewer Task 3 đã xác minh: tag lạ
     đáng lẽ ra trạng thái rỗng, sau 3b lại rơi về "All" hiện đủ 9 bài trong
     khi URL vẫn ghi `?tag=…` — comment còn bị viết lại cho khớp hành vi mới,
     xoá luôn dấu vết.
-  - Test `relatedPosts` tên là "bù bằng bài MỚI NHẤT" mà chỉ assert độ dài →
+  * Test `relatedPosts` tên là "bù bằng bài MỚI NHẤT" mà chỉ assert độ dài →
     thêm `.reverse()` vào filler thì 76/76 vẫn xanh.
 - Review findings từng task (đều đã vá): nhánh `đ`/`Đ` có 0% canh (xoá 2 dòng
   replace mà 19/19 xanh) · chip mất khả năng chạy không-JS · **Home render
@@ -416,7 +411,6 @@ file**; build production có đủ `/blog` (ƒ) · `/blog/[slug]` (● SSG 9 slu
 
 Vá đúng chỗ thụt lùi so với Nexora: 4 trang nội dung dài + 3 route boundary
 chưa hề tồn tại ở v2.
-
 - **Nội dung có sẵn từ P0**: `libs/shared/i18n/src/lib/legal/{terms,privacy,
   cancellation}.ts` + `messages.{faqPage,resilience,pageMeta}` đã port từ
   18/07 nhưng chưa trang nào dùng — đây là lần ĐẦU `apps/web` import
@@ -470,7 +464,6 @@ trước merge.
 Nhân diện motif trắc địa của cụm auth ra site — nguyên tắc CHỪNG MỰC: tối đa
 1–2 vị trí/trang, mỗi texture phải kể đúng chuyện section đó (khảo sát Hero
 Patterns/Pattern Monster/Dribbble: pattern hình học generic bị loại).
-
 - **`TopoPattern`** component 3 variant (mask token, màu tự ăn theme):
   `wide` (topo-wide.svg 1800×700 seed 11 — sinh MỚI cho band ngang, giữ độ
   mảnh nét thay vì phóng bản dọc) · `portrait` (dùng chung auth-topo.svg) ·
@@ -487,7 +480,6 @@ trước merge.
 ## 2026-07-25 — P3b: trọn bộ 5 trang auth còn lại (branch `feat/auth-pages` đợt 2, merge `3bf142f`)
 
 Nhân layout từ /login mẫu ra 5 trang (plan Task 3–6), cụm auth HOÀN CHỈNH 6/6:
-
 - **/register**: name/email/password + Terms checkbox + Google; quote "minivan
   2014" (Đức Anh) bám chuyện sáng lập /about. Stub `NEW TRAVELLER`.
 - **/forgot-password**: mock state `sent` đổi thân card thành "Check your
@@ -514,7 +506,6 @@ Tests after: gate:int xanh — gate 18/18 + int 145/17; web unit 11; CI branch
 Merge MỘT PHẦN có chủ ý: spec+plan 6 trang auth, hạ tầng dùng chung, và /login
 làm trang MẪU đã chốt layout; 5 trang còn lại (register/forgot/reset/verify/2FA)
 nhân bản từ mẫu ở branch sau.
-
 - **Kiến trúc**: root layout tách route group — `(site)/` giữ shell
   TopBar/navbar/footer/ScrollToTop (Home/About/Contact dời vào, URL không đổi),
   `(auth)/` màn hình riêng chỉ logo; AuthScreen (split 2 cột, quote đổi theo
@@ -541,7 +532,6 @@ unit 11; typecheck + biome sạch; CI branch `success` 2m33s trước merge.
 
 Trang thứ ba của P3b — kế hoạch 5 section user duyệt trước khi dựng, sau đó
 2 vòng điều chỉnh nâng "wow" (user chấm bản đầu 6.5 vì quá an toàn):
-
 - **5 section**: Hero tối ngắn (kiểu Nexora ContentHero, breadcrumb + dòng
   "presence" chấm jade thở "Mai is on replies today") · Split form+info
   (ShadcnSpace Contact 01 — trái info + mini-marquee Featured-by tái dùng
@@ -570,7 +560,6 @@ Trang thứ hai của P3b, dựng TỪNG SECTION theo quy trình demo → review
 (khác Home dựng cả trang một lượt) — 16 file, +1.207 dòng. Nguồn mở rộng:
 ngoài 12 template PrebuiltUI còn khai thác **ShadcnSpace** (đọc source thật qua
 registry `/r/<block>.json`, chỉ dùng block free).
-
 - **8 khối**: Hero (forged/Hero — reveal 3 dòng từng dòng, stats CountUp, scroll
   cue) · Story (forged/About — ảnh + floating box "12+", 2 quote guide) ·
   Timeline (prompt2app/build-process — trục TỰ VẼ theo scroll, 4 mốc nhuộm màu
@@ -600,7 +589,6 @@ tokens 10 · ui 5 · typecheck · biome sạch; CI branch `success` 2m39s trư�
 Điều chỉnh Home sau chốt (đổi hướng lộ trình: nhóm trang marketing trước
 listing) — navbar lên đủ đồ theo đối chiếu Nexora site-header, 6 vòng điều
 chỉnh với user:
-
 - **Destinations dropdown** (NavigationMenu Base UI): 3 vùng + hint + chấm màu
   `--region-primary` theo `data-region` (lần đầu region token lên navbar);
   trigger LỘT nền muted mặc định của shadcn để đồng bộ link trần (#2).
@@ -628,7 +616,6 @@ typecheck · biome sạch; CI branch `success` 2m48s trước merge.
 CI main đỏ **suốt 21→23/07** (từ merge ADR-0008) mà không ai nhận ra vì merge
 kiểu ff không qua PR — phát hiện khi push trang Home. Lỗi HAI TẦNG cùng một
 triệu chứng P2021:
-
 - **Tầng 1**: ADR-0008 thêm reconcile admin lúc `onApplicationBootstrap` → 4 e2e
   spec trong task `test` (bootstrap · fail-closed · throttle · health) boot cả
   AppModule nên chạm bảng `User`; CI chỉ tạo + migrate `tourism_test` trong
@@ -663,7 +650,6 @@ bản tự-compose bị chê "chán"), sau đó thay/bồi từng section bằng
 Journal/Insight Hub, thanh cuộn 4px + ::selection) — luật chung: *bố cục + motion
 100% template, da thịt 100% token/font dự án* (bài học #25: không ép Literata
 ALL-CAPS 900).
-
 - **10 khối**: Hero fullscreen · Partners marquee · Stats (CountUp + slider) ·
   Destinations sticky-scroll ngang (9 địa danh 3 vùng, chip tint `--region-*`) ·
   WhyChooseUs (accordion + ảnh đổi theo mục + caption/chấm điều hướng) ·
@@ -698,8 +684,7 @@ trang, đủ dấu tiếng Việt): **Literata** (heading — user chọn trực
 Thay bộ tạm Be Vietnam Pro + Lora + Geist Mono của ADR-0013 — ADR ghi khối
 "cập nhật cùng ngày" thay vì sửa lặng lẽ; [color-system §6](conventions/color-system.md)
 ghi bộ chốt + lịch sử. Chỉ đổi `layout.tsx` (next/font, subset latin+vietnamese)
-
-- comment tokens.mjs — cơ chế wire `--font-*` giữ nguyên.
++ comment tokens.mjs — cơ chế wire `--font-*` giữ nguyên.
 Review findings: không phát sinh (đổi 1 file code; verify = build web + 20 woff2
 self-host + 3 family có mặt trong CSS build).
 Tests after: gate:int xanh — tokens 10 · ui 5 · int 145/17 file · typecheck · biome sạch.
@@ -708,9 +693,7 @@ Tests after: gate:int xanh — tokens 10 · ui 5 · int 145/17 file · typecheck
 
 Rebrand hoàn chỉnh theo [ADR-0013](adr/0013-wuling-theme-tokens.md), hệ màu chốt cùng user qua 6 vòng
 demo trực quan (bản ghi đầy đủ: [conventions/color-system](conventions/color-system.md) — brand "Wuling"
-
-- 3 region tint theo 3 operator Endfield, codename nội bộ, kèm ghi chú pháp lý):
-
++ 3 region tint theo 3 operator Endfield, codename nội bộ, kèm ghi chú pháp lý):
 - **Phát hiện quan trọng**: `@tourism/tokens` KHÔNG phải stub — P0 đã port nguyên pipeline Style
   Dictionary 5 + culori của Nexora (type scale, shadow, z-index, density, semantic colors, rn-convert
   cho P5). Giữ nguyên kiến trúc, chỉ thay giá trị + mở rộng.
@@ -733,7 +716,6 @@ Tests after: gate:int xanh — tokens 10 unit (4 mới) · ui 5 · int **145/17 
 
 Tích hợp **Typeset** (shadcn 10/07/2026 — hệ typography cho HTML/markdown render trong MỘT file CSS
 sở hữu repo) theo [ADR-0012](adr/0012-typeset-typography.md), thay `@tailwindcss/typography` của Nexora:
-
 - `libs/shared/ui/src/styles/typeset.css`: lõi vendor NGUYÊN BẢN từ `shadcn-ui/ui@main` (490 dòng, pin
   nguồn+ngày, loại khỏi Biome như artifact để diff upstream) + **3 preset tự viết**: `typeset-docs`
   (tour/FAQ/admin preview) · `typeset-chat` (chặt, ≈`prose-sm` cũ, dành cho AI concierge P6) ·
@@ -756,7 +738,6 @@ Runtime deps (cmdk/recharts/sonner/date-fns/react-day-picker…) khai ở chính
 cho admin tái dùng); `apps/web` consume qua `@tourism/ui/components/*` + `transpilePackages` + theme dùng chung.
 
 **Rà từng component xử cảnh báo Biome** (khác ESLint-next của Nexora nên soi kỹ hơn, nhất là a11y):
-
 - Sửa thật 6: `pagination` bỏ `role` thừa · `field` `===`+key-theo-message · `chart` 2 array-key→`item.name`/`item.value` · `scroll-area` gỡ import React thừa.
 - `biome-ignore` + lý do (11 file): pattern primitive canonical shadcn/Base-UI (a11y role trên div/span, `dangerouslySetInnerHTML` chart, `noArrayIndexKey` slider, `noDocumentCookie`+`useExhaustiveDependencies` sidebar) — không sửa được sạch mà không phá primitive.
 
@@ -774,14 +755,12 @@ tên `@tourism/web`; `sharp` vào `allowBuilds`; biome bật `css.parser.tailwin
 
 Bộ **shared components/blocks (`libs/shared/ui`)** + shadcn + trang thật là **bước phối hợp kế tiếp** (chờ
 user điều phối bộ legacy components). Verify: `pnpm --filter @tourism/web build` (Turbopack) xanh + typecheck
-
-- biome sạch. Không đụng backend (gate:int giữ nguyên 145 int).
++ biome sạch. Không đụng backend (gate:int giữ nguyên 145 int).
 
 ## 2026-07-22 — Infra hardening trước P3b (branch `feat/infra-hardening`)
 
 Đóng 2/3 gap "độ chín production" (TB) từ [độ sẵn sàng backend](analysis/2026-07-22-backend-readiness-vs-nexora.md)
 theo [ADR-0010](adr/0010-infra-hardening.md), trước khi web P3b lộ FE. 2 commit `a0cb221..dc1beec`, TDD:
-
 - **Global exception filter** (`APP_FILTER` `AllExceptionsFilter`) — chuẩn hoá MỌI lỗi rơi vào pipeline Nest
   (guard 401/403, route Nest thuần, lỗi bất ngờ) về envelope oRPC `{defined, code, status, message, data}`;
   FE một parser. oRPC procedure-error + webhook `{code}` giữ nguyên (không bị đụng — verify). 500 ẩn stack.
@@ -799,7 +778,6 @@ Tests after: `pnpm gate:int` xanh (145 integration + unit filter/e2e).
 gap "v2 kém Nexora" duy nhất chạm checkout, phát hiện ở
 [độ sẵn sàng backend 22/07](analysis/2026-07-22-backend-readiness-vs-nexora.md). 4 feat + 2 chore commit
 `d40597b..63af354`, mỗi feat TDD (không migration — enum/cột sẵn có):
-
 - **PAY-1** (`d40597b`) `VerifiedEvent` +type `payment.expired`; Stripe `checkout.session.expired` tách khỏi
   `payment.failed`; `handleEvent` → flip PENDING→CANCELLED (gate `status='PENDING'`, không đụng ghế).
 - **WRK-1** (`988e8b8`) `PendingSweepService` + pg-boss job `booking-sweep` lịch 10′, TTL 30′ — backstop khi
@@ -821,7 +799,6 @@ capture-đến-muộn sau CANCELLED đã được PAY-R1 fresh-refund guard lo (
 component), theo [spec](specs/2026-07-21-p3a-contract-closeout-design.md) —
 parity từ [sweep parity toàn code](analysis/2026-07-21-full-parity-sweep-pre-p3ab.md).
 3 commit feat `7319426..728c020`, mỗi cái TDD (không ADR — thuần additive; không migration):
-
 - **C1** (`7319426`) `TourCard`/`TourDetail` trả `destinations[]` (`{slug,name,isPrimary}`, primary
   đứng đầu) thay `primaryDestination` đơn — tour đi qua nhiều nơi không còn mất destination phụ.
   `cardInclude` bỏ `where isPrimary/take:1`.
@@ -840,9 +817,8 @@ Tests after: `pnpm gate:int` xanh (141 integration).
 Sub-project B của "chùm refund" — vá ba gốc double-refund/resurrection ở đường tiền-RA
 theo [ADR-0009](adr/0009-refund-correctness.md), 8 commit `47d906d..96cc1a6`, mỗi bước
 TDD + mutation-proof:
-
 - **BK-R1** (`7e90bbc`·`666f3c6`·`f2bd9c4`) trigger DB `SUM(refunds) ≤ total` (lưới cứng)
-  - `withBookingRefundLock` (advisory `pg_advisory_xact_lock` per-booking bao
+  + `withBookingRefundLock` (advisory `pg_advisory_xact_lock` per-booking bao
   read→gateway→ledger) bọc `refundByAdmin` VÀ `cancellations.approve` — hai admin refund
   đồng thời, hoặc refund‖cancel-approve cross-path, giờ serialize: đúng 1 refund + 1 gateway
   call, flow thua nhận `RefundNothingLeftError`. Mutation gỡ lock → double-refund `[200,200]`/500 ĐỎ.
@@ -865,7 +841,6 @@ của sub-project A chưa dựng). Tests after: `pnpm gate:int` xanh (140 integr
 Đóng **SEC-1** (priv-esc) + **AUTH-1** (no self-heal) + **AUTH-2** (email chưa dây)
 theo [ADR-0008](adr/0008-admin-bootstrap-verified.md) — 8 commit `8283fbd..112fd0a`,
 mỗi bước TDD + mutation-proof:
-
 - **AUTH-2** (`51d3ebf`·`37c4593`·`2833f9e`) EmailType +PASSWORD_RESET/EMAIL_VERIFICATION;
   `sendResetPassword`/`sendVerificationEmail` ghi outbox → Resend (thay console.log);
   `sendOnSignUp:true`. Vá luôn reset-mật-khẩu prod đang hỏng.
@@ -883,7 +858,6 @@ Edge email-squatting ghi nhận trong ADR (không priv-esc). Tests after: `pnpm 
 
 Ba finding parity **Nhỏ** còn lại từ đợt rà soát (khôi phục quy tắc Nexora), làm ở
 branch song song, rebase+ff lên main — 2 commit `098e92d..9b74186`, kèm test contract:
-
 - **ENQ-1** (`098e92d`) enquiry `name` `min(1)`→`min(2)` — parity `@MinLength(2)`.
 - **CAT-4 + BK-3** (`9b74186`) `TourSortKeySchema` + `SORT_COLUMN` thêm `updatedAt`;
   booking `contactPhone` `min(1)`→`min(6)` — parity `@Length(6,30)`.
@@ -919,7 +893,6 @@ từng có. 7 commit feat `8f5dc97..8c5fc79`. Thực thi subagent-driven (7 task
 mỗi task 1 implementer + 1 review).
 
 Hai ADR đi trước code (luật 5):
-
 - **[ADR-0004](adr/0004-post-visibility-helper.md)** — helper bắt buộc
   `publishedPostWhere()`: mọi path public đọc Post lọc `status=PUBLISHED ∧
   publishedAt<=now()`. Loại Prisma extension (cản admin P4) + repository wrapper.
@@ -968,7 +941,7 @@ cảnh báo THỨ TỰ cạnh enum `MediaRole` (schema chỉ cảnh báo đổi 
 trống phủ test (phân trang page 2, video có poster URL tuyệt đối).
 
 - Tests after: **361** (234 unit — api 175 · contract 51 · tokens 7 · i18n 1 —
-  - 127 integration), `gate:int` xanh.
+  + 127 integration), `gate:int` xanh.
 
 ## 2026-07-19 — P3a-B: Wishlist · Enquiry · Newsletter (branch `feat/p3a-b-customer-writes`)
 

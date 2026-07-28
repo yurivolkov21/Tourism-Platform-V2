@@ -131,3 +131,15 @@ pnpm lint:fix                    # biome tự sửa format + lint
   tiếng Việt quét cả `prisma/migrations/`. Migration đã chạy là **bản ghi lịch
   sử bất biến**; muốn đổi gì thì viết migration MỚI. (Khi chạy công cụ sửa
   hàng loạt, luôn loại trừ `apps/api/prisma/migrations/`.)
+- **`docs/CHANGELOG.md` có dòng bắt đầu bằng `+` là PHÉP CỘNG, không phải bullet**
+  — ví dụ một tổng số test bị ngắt dòng thành `… + 5 ui + 76 web` / `+ 188 api)`.
+  Mọi formatter markdown (MD004 ul-style) sẽ đổi `+` đầu dòng thành `-`, biến
+  một số hạng thành gạch đầu dòng và **nói sai con số đã ghi**; MD032 chèn thêm
+  dòng trắng quanh nó. Đã dính 28/07: 9 dấu + 27 dòng trắng bị đổi trong **entry
+  cũ** chỉ vì mở CHANGELOG ra rồi save (`.vscode/settings.json` pin formatter
+  markdown = extension markdownlint). Còn **6 chỗ** như vậy trong file. Vì vậy:
+  entry mới **không bao giờ** để `+` ở đầu dòng (viết `và`, hoặc gói cả tổng vào
+  một dòng), và **luôn `git diff` file .md trước khi stage** — churn kiểu này
+  không hiện ở `pnpm gate` vì Biome bỏ qua `.md` hoàn toàn (đo được:
+  `biome check docs/CHANGELOG.md` → "0 files, path ignored"). Entry cũ là **bản
+  ghi lịch sử**, cùng luật với `migration.sql`: đừng sửa, kể cả cho lint xanh.
