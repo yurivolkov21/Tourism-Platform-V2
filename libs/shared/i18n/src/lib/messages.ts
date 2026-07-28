@@ -551,30 +551,16 @@ export const messages = {
         },
       ],
     },
+    // Dropdown Destinations trên navbar. Nexora có đúng 4 dòng phẳng, mỗi dòng một
+    // `hint` GÕ TAY ('Hạ Long, Sa Pa, Ninh Bình') — thêm/bớt địa điểm là chữ đó sai
+    // mà không ai biết. v2 CỐ TÌNH không có `hint` ở đây: menu sinh hint và số tour
+    // từ dữ liệu (xem spec §6.1), nên i18n chỉ giữ nhãn tĩnh.
     destinationsMenu: {
       label: 'Destinations',
-      items: [
-        {
-          label: 'All destinations',
-          href: '/destinations',
-          hint: 'Browse every place we cover',
-        },
-        {
-          label: 'Northern Vietnam',
-          href: '/destinations/northern-vietnam',
-          hint: 'Hạ Long, Sa Pa, Ninh Bình',
-        },
-        {
-          label: 'Central Vietnam',
-          href: '/destinations/central-vietnam',
-          hint: 'Hội An, Huế, Đà Nẵng',
-        },
-        {
-          label: 'Southern Vietnam',
-          href: '/destinations/southern-vietnam',
-          hint: 'Mekong, Hồ Chí Minh City',
-        },
-      ],
+      all: 'All destinations',
+      allHint: 'Browse every place we cover',
+      /** Nhãn cho link tiêu đề vùng trong menu — điều hướng sang trang vùng. */
+      exploreRegion: (region: string) => `Explore ${region}`,
     },
   },
   hero: {
@@ -655,207 +641,78 @@ export const messages = {
     toursLabel: 'tours',
     toursCountLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
   },
-  // `/destinations` overview page.
+  // `/destinations` — cổng khám phá theo VÙNG.
+  //
+  // ĐÃ CẮT khỏi bản port từ Nexora, mỗi khoản một lý do:
+  //  · `popularHeading`/`popularSubtitle` ("Most popular journeys" / "Traveller
+  //    favourites") — KHÔNG có tín hiệu popularity trong contract (spec Tours §8 #3:
+  //    chưa sort được theo rating/popularity). Cùng họ với badge "Verified" đã bị
+  //    loại ở cụm reviews.
+  //  · `regionHeading` cũ là "Top destinations in …" — "Top" ngụ ý xếp hạng không
+  //    tồn tại. Cùng lý lẽ đã đổi "highlight" thành "Most recent" ở reviews.
+  //  · `breadcrumbCurrent` cũ là 'Vietnam tours' — đây là trang địa điểm, không
+  //    phải trang tour.
+  //  · `viewMore` — không có trang nào để "xem thêm" tới.
   destinationsPage: {
-    breadcrumbHome: 'Home',
-    breadcrumbCurrent: 'Vietnam tours',
-    heroTitle: 'Explore Vietnam by destination',
-    heroSubtitle: 'From the misty north to the Mekong south — choose where your journey begins.',
-    regionHeading: (region: string) => `Top destinations in ${region}`,
-    // Short editorial blurb under each region heading (keyed by canonical region).
-    regionIntro: {
-      'Northern Vietnam':
-        'Limestone bays, terraced highlands and the wild frontier passes — the north is Vietnam at its most dramatic.',
-      'Central Vietnam':
-        'Imperial heritage, lantern-lit old towns and a golden coastline strung between the mountains and the sea.',
-      'Southern Vietnam':
-        'River deltas, island beaches and the restless energy of Sài Gòn — the warm, easy-going south.',
-    } as Record<string, string>,
-    viewMore: 'View more',
-    popularHeading: 'Most popular journeys',
-    popularSubtitle: 'Traveller favourites across the country.',
-    popularViewAll: 'View all tours',
+    breadcrumbCurrent: 'Destinations',
+    heroTitle: 'Explore Vietnam by region',
+    heroSubtitle: 'Three regions, nine places. Start where the journey makes sense for you.',
+    regionHeading: (region: string) => `Places in ${region}`,
+    placesLabel: 'Places',
+    toursLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
+    exploreRegion: (region: string) => `Explore ${region}`,
+    // Khu tour nổi bật của landing page. Gọi là "featured" vì nó lọc đúng field
+    // `isFeatured` (biên tập chọn) — TUYỆT ĐỐI không gọi "popular"/"most loved"/
+    // "traveller favourites": contract không có tín hiệu popularity nào đỡ những
+    // chữ đó (spec Tours §8 #3), và đó chính là lý do khối `popular*` bị cắt ở trên.
+    featured: {
+      heading: 'Featured trips',
+      subtitle: 'Journeys our team keeps coming back to, across all three regions.',
+      viewAll: 'View all tours',
+    },
   },
-  // `/destinations/[slug]` destination page.
-  destinationDetail: {
-    backToAll: 'All destinations',
-    toursHeading: (name: string) => `Tours in ${name}`,
-    noTours: 'New journeys for this destination are coming soon.',
-    valuePropsHeading: 'We’ve got you covered',
-    valueProps: [
-      {
-        title: 'Luxury transfers',
-        body: 'Door-to-door comfort with vetted private drivers on every leg of the trip.',
-      },
-      {
-        title: 'Unique itineraries',
-        body: 'Journeys shaped by local experts — not scripted, off-the-shelf tours.',
-      },
-      {
-        title: 'Epic meals',
-        body: 'Eat where Vietnam eats, from street stalls to riverside kitchens.',
-      },
-    ],
-  },
-  // `/destinations/[region]` region pages.
+
+  // `/destinations/[region]`.
+  //
+  // ĐÃ CẮT: `gallery*` (không có gallery ảnh — quyết định 2 chốt tint+chữ+dữ liệu
+  // gánh trang) · `highlights` và `signature.stats` (số liệu biên tập bịa như
+  // "350km", "3,143m Fansipan", và trỏ vào nơi KHÔNG có trong mock) · `tags`
+  // (hardcode, trong khi chuyên mục được DẪN XUẤT từ tour thật — giữ cả hai là hai
+  // nguồn sự thật) · `allTab` (ngụ ý tab/lọc, ngoài phạm vi) · `bestForLabel`
+  // (`suitableFor` nằm trên TourDetail, không nằm trên vùng) · `introHeading` cũ
+  // "The best … tours" (superlative không có dữ liệu xếp hạng đỡ).
+  //
+  // `regions` KHOÁ BẰNG `key` của vùng, KHÔNG khoá bằng tên hiển thị: bản cũ dùng
+  // Record<string,string> khoá bằng 'Northern Vietnam', nên đổi một chữ trong tên
+  // hiển thị là copy biến mất im lặng.
   regionPage: {
     backToAll: 'All destinations',
-    introHeading: (region: string) => `The best ${region} tours`,
-    itinerariesCta: (region: string) => `${region} itineraries`,
-    bestForLabel: 'Best for',
-    highlightsHeading: (region: string) => `What makes ${region} special`,
-    toursHeading: 'Tours',
-    allTab: 'All',
-    noTours: 'New tours for this destination are coming soon.',
-    galleryHeading: (region: string) => `${region} in photos`,
-    gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
+    placesHeading: (region: string) => `Places in ${region}`,
+    toursHeading: (region: string) => `Trips in ${region}`,
+    toursCount: (n: number) => `${n} ${n === 1 ? 'trip' : 'trips'}`,
+    noTours: 'No trips run in this region yet.',
+    noToursBody: 'Tell us where you want to go and we will plan something.',
+    glance: {
+      fromLabel: 'From',
+      difficultyLabel: 'Difficulty',
+      categoriesLabel: 'Trip styles',
+      /** Phổ 1 bậc in một chữ; ≥2 bậc in "easy → challenging". */
+      difficultyRange: (from: string, to: string) => `${from} → ${to}`,
+    },
     regions: {
-      'Northern Vietnam': {
-        tagline: 'From Sa Pa to Hạ Long Bay — culture and natural wonders in the misty north.',
+      north: {
         intro:
-          'Awe-inspiring landscapes of limestone bays and terraced highlands, diverse hill-tribe cultures, and the frontier passes of the far north — this is Northern Vietnam at its most dramatic.',
-        intro2:
-          'Cruise the emerald karsts of Hạ Long, trek between Hmong and Dao villages around Sa Pa, and ride the legendary Hà Giang Loop. Browse our tours below, or read our itinerary suggestions.',
-        tags: ['Cruises', 'Trekking', 'Hill-tribe culture', 'Mountain passes'],
-        highlights: [
-          {
-            title: 'Emerald bays',
-            body: 'Overnight on a junk among the limestone islands of Hạ Long and Lan Hạ.',
-          },
-          {
-            title: 'Highland treks',
-            body: 'Walk the rice terraces and hill-tribe trails around Sa Pa and Pù Luông.',
-          },
-          {
-            title: 'The northern loop',
-            body: 'Ride the switchbacks of Hà Giang past the Mã Pí Lèng pass.',
-          },
-        ],
-        signature: {
-          eyebrow: 'Signature',
-          heading: 'Great northern adventures',
-          body: 'The north rewards travellers who go further — onto the water, into the mountains, and out to the frontier. These are the journeys that define the region.',
-          points: [
-            'Overnight cruises through Hạ Long & Lan Hạ Bay',
-            'Multi-day treks with Hmong and Dao guides',
-            'The Hà Giang Loop and the far-northern passes',
-          ],
-          stats: [
-            { value: '3+', label: 'Mountain regions' },
-            { value: '2D 1N', label: 'Overnight cruises' },
-            { value: '350km', label: 'The Hà Giang Loop' },
-            { value: '3,143m', label: 'Fansipan summit' },
-          ],
-        },
+          'Limestone bays, terraced highlands and cool mountain air — the north is Vietnam at its most dramatic.',
       },
-      'Central Vietnam': {
-        tagline: 'Imperial heritage, lantern-lit old towns and a golden coastline.',
+      central: {
         intro:
-          'Ancient citadels and UNESCO old towns beside white-sand beaches, and some of the world’s largest cave systems — Central Vietnam is the country’s cultural heart.',
-        intro2:
-          'Step inside the walled citadel of Huế, wander the lantern-lit lanes of Hội An, and explore the Chăm temples of Mỹ Sơn. Browse our tours below, or read our itinerary suggestions.',
-        tags: ['Heritage', 'Old towns', 'Beaches', 'Caves'],
-        highlights: [
-          {
-            title: 'Imperial Huế',
-            body: 'The citadel, royal tombs, and refined cuisine of the Nguyễn emperors.',
-          },
-          {
-            title: 'Hội An lanterns',
-            body: 'A car-free UNESCO old town of tailors, tea houses, and riverside lights.',
-          },
-          {
-            title: 'Golden coast',
-            body: 'Đà Nẵng’s beaches and the Marble Mountains, the Bà Nà hills above.',
-          },
-        ],
-        signature: {
-          eyebrow: 'Signature',
-          heading: 'The heritage trail',
-          body: 'Few stretches of Vietnam hold so much history in so little distance. Follow the thread of empires and trade from the citadel to the old port.',
-          points: [
-            'The walled citadel and royal tombs of Huế',
-            'Lantern-lit Hội An and the Thu Bồn river',
-            'The Chăm sanctuary of Mỹ Sơn',
-          ],
-          timeline: [
-            {
-              title: 'Huế',
-              era: 'Imperial capital',
-              body: 'The walled citadel, the Forbidden Purple City, and the royal tombs of the Nguyễn emperors along the Perfume river.',
-            },
-            {
-              title: 'Hội An',
-              era: 'Trading port',
-              body: 'A lantern-lit UNESCO old town of tailor shops, tea houses, and the Japanese covered bridge over the Thu Bồn.',
-            },
-            {
-              title: 'Mỹ Sơn',
-              era: 'Chăm sanctuary',
-              body: 'Red-brick temple towers set in a jungle valley — the spiritual heart of the Chăm kingdom for a thousand years.',
-            },
-          ],
-        },
+          'Imperial citadels and lantern-lit old towns strung along a golden coastline between mountains and sea.',
       },
-      'Southern Vietnam': {
-        tagline: 'River deltas, island beaches and the restless energy of Sài Gòn.',
+      south: {
         intro:
-          'Floating markets and flooded paddies, cosmopolitan cities and tropical islands — the warm, easy-going south runs at the pace of the water.',
-        intro2:
-          'Drift the Mekong’s waterways, trace history from the Củ Chi tunnels to the colonial centre, and unwind on the beaches of Phú Quốc. Browse our tours below, or read our itinerary suggestions.',
-        tags: ['River life', 'Islands', 'City & history', 'Street food'],
-        highlights: [
-          {
-            title: 'The Mekong',
-            body: 'Floating markets at dawn, orchards, and riverside homestays.',
-          },
-          {
-            title: 'Sài Gòn energy',
-            body: 'Củ Chi tunnels, colonial landmarks, and endless street food.',
-          },
-          {
-            title: 'Island escapes',
-            body: 'White-sand beaches and clear seas on Phú Quốc.',
-          },
-        ],
-        signature: {
-          eyebrow: 'Signature',
-          heading: 'Life on the water',
-          body: 'In the south, the river is the road. Slow down to the rhythm of the delta and the islands, where days unfold on boats and beaches.',
-          points: [
-            'Dawn floating markets on the Mekong Delta',
-            'Riverside homestays and orchard villages',
-            'Island hopping around Phú Quốc',
-          ],
-          postcards: [
-            {
-              title: 'The Mekong Delta',
-              caption: 'Floating markets & waterways',
-            },
-            { title: 'Sài Gòn', caption: 'City energy & history' },
-            { title: 'Phú Quốc', caption: 'Island beaches' },
-          ],
-        },
+          'River deltas, island beaches and the easy warmth of the Mekong — the south takes its time.',
       },
-    } as Record<
-      string,
-      {
-        tagline: string;
-        intro: string;
-        intro2: string;
-        tags: string[];
-        highlights: { title: string; body: string }[];
-        signature: {
-          eyebrow: string;
-          heading: string;
-          body: string;
-          points: string[];
-          stats?: { value: string; label: string }[];
-          timeline?: { title: string; era: string; body: string }[];
-          postcards?: { title: string; caption: string }[];
-        };
-      }
-    >,
+    },
   },
   // `/destinations` — when to visit, by region (unique to the destinations page).
   bestTime: {
