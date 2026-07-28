@@ -4,20 +4,20 @@ import type { MockRegion } from './types.js';
 export const REGIONS: MockRegion[] = [
   {
     key: 'north',
+    slug: 'northern-vietnam',
     name: 'Northern Vietnam',
     tagline: 'Limestone bays, misty terraces, mountain passes',
-    tourCount: 24,
   },
   {
     key: 'central',
+    slug: 'central-vietnam',
     name: 'Central Vietnam',
     tagline: 'Imperial cities, lantern towns, coastal roads',
-    tourCount: 27,
   },
   {
     key: 'south',
+    slug: 'southern-vietnam',
     name: 'Southern Vietnam',
     tagline: 'River markets, orchards, delta life',
-    tourCount: 17,
   },
 ];

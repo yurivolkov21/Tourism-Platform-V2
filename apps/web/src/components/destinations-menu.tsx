@@ -8,6 +8,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
 } from '@tourism/ui/components/navigation-menu';
+import { regionOf } from '@/lib/regions';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 
@@ -64,26 +65,32 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
                   <p className="min-h-[2lh] px-2 text-xs text-muted-foreground">
                     {REGION_HINTS[region.key]}
                   </p>
+                  {/* `dest.region` giờ là chuỗi tự do kiểu contract ('Northern
+                      Vietnam'), KHÔNG còn khớp trực tiếp `region.key` ('north') —
+                      phải chuẩn hoá qua regionOf() trước khi so sánh, nếu không
+                      mọi nhóm vùng rỗng trơn. */}
                   <ul className="mt-2">
-                    {DESTINATIONS.filter((dest) => dest.region === region.key).map((dest) => (
-                      <li key={dest.slug}>
-                        <NavigationMenuLink
-                          render={<a href={`/tours?destinations=${dest.slug}`} />}
-                        >
-                          <span className="flex flex-col gap-0.5">
-                            <span className="text-sm">{dest.name}</span>
-                            {/* MỘT dòng cứng: "Coast rides & Golden Bridge"
-                                từng xuống 2 dòng làm mọi mục phía dưới trong
-                                cột đó tụt xuống, ba cột lệch nhau. Menu nới
-                                rộng 34→42rem để blurb dài nhất vẫn đủ chỗ;
-                                line-clamp là chốt chặn cho dữ liệu tương lai. */}
-                            <span className="line-clamp-1 text-xs text-muted-foreground">
-                              {dest.blurb}
+                    {DESTINATIONS.filter((dest) => regionOf(REGIONS, dest) === region.key).map(
+                      (dest) => (
+                        <li key={dest.slug}>
+                          <NavigationMenuLink
+                            render={<a href={`/tours?destinations=${dest.slug}`} />}
+                          >
+                            <span className="flex flex-col gap-0.5">
+                              <span className="text-sm">{dest.name}</span>
+                              {/* MỘT dòng cứng: "Coast rides & Golden Bridge"
+                                  từng xuống 2 dòng làm mọi mục phía dưới trong
+                                  cột đó tụt xuống, ba cột lệch nhau. Menu nới
+                                  rộng 34→42rem để description dài nhất vẫn đủ
+                                  chỗ; line-clamp là chốt chặn cho dữ liệu tương lai. */}
+                              <span className="line-clamp-1 text-xs text-muted-foreground">
+                                {dest.description}
+                              </span>
                             </span>
-                          </span>
-                        </NavigationMenuLink>
-                      </li>
-                    ))}
+                          </NavigationMenuLink>
+                        </li>
+                      ),
+                    )}
                   </ul>
                 </div>
               ))}

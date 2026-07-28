@@ -5,7 +5,7 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
-import { REGIONS } from '@/mocks/regions';
+import { TOURS } from '@/mocks/tours';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
 // beat TỐI của trang (scope dark cố định như CTA/footer) — chữ nền "NUMBERS"
@@ -18,9 +18,10 @@ import { REGIONS } from '@/mocks/regions';
 // Nexora ByTheNumbers, ISR 300s) + bảng team_members tương lai.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
-// Số tour derive từ REGIONS — một nguồn sự thật với gallery/destinations
-// (vá mâu thuẫn 96 hardcode ≠ 68 tổng mock, phát hiện khi thêm Gallery 01)
-const TOTAL_TOURS = REGIONS.reduce((acc, r) => acc + r.tourCount, 0);
+// 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
+// vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
+// ≠ 68 tổng mock" — hoá ra chính con 68 cũng sai, giờ dẫn xuất hết (user chốt 28/07).
+const TOTAL_TOURS = TOURS.length;
 
 const STATS = [
   {

@@ -3,18 +3,29 @@
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { toursInRegion } from '@/lib/regions';
+import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
+import { TOURS } from '@/mocks/tours';
+import type { MockRegionKey } from '@/mocks/types';
 
 // About §Gallery (convert ShadcnSpace Gallery 01 "Destination Gallery" — user
 // chọn sau vòng săn): lưới bento 4 card ảnh — trái 1 card LỚN, phải 1 card
 // ngang + 2 card vuông; gradient chân + tiêu đề + số đếm, hover zoom 1.05.
 // Da thịt: Card shadcn của bản gốc bị lột sạch vai trò (border-none p-0) nên
 // thay div thuần; ảnh → ImagePlaceholder (thay thật khi chốt trang); gradient
-// gray-950 → token overlay; số đếm lấy THẬT từ REGIONS mock (một nguồn sự
+// gray-950 → token overlay; số đếm lấy THẬT qua toursInRegion() (một nguồn sự
 // thật — about-numbers cũng derive cùng nguồn). Chấm màu vùng qua data-region.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
-const TOTAL_TOURS = REGIONS.reduce((acc, r) => acc + r.tourCount, 0);
+// 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
+// vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
+// ≠ 68 tổng mock" — hoá ra chính con 68 cũng sai, giờ dẫn xuất hết (user chốt 28/07).
+const TOTAL_TOURS = TOURS.length;
+
+/** Số tour DẪN XUẤT của một vùng — tour DISTINCT chạm bất kỳ địa điểm của vùng. */
+const regionTourCount = (key: MockRegionKey) =>
+  toursInRegion(REGIONS, DESTINATIONS, TOURS, key).length;
 
 interface GalleryCardProps {
   title: string;
@@ -79,7 +90,7 @@ export function AboutGallery() {
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
             <GalleryCard
               title={north.name}
-              count={`${north.tourCount} tours`}
+              count={`${regionTourCount('north')} tours`}
               imageLabel="Gallery — terraces under moving mist, Sa Pa"
               region="north"
               className="h-[420px] md:h-[544px]"
@@ -87,7 +98,7 @@ export function AboutGallery() {
             <div className="grid gap-6 md:grid-rows-2">
               <GalleryCard
                 title={central.name}
-                count={`${central.tourCount} tours`}
+                count={`${regionTourCount('central')} tours`}
                 imageLabel="Gallery — lantern night on the Hoài river"
                 region="central"
                 className="h-[260px]"
@@ -96,7 +107,7 @@ export function AboutGallery() {
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <GalleryCard
                   title={south.name}
-                  count={`${south.tourCount} tours`}
+                  count={`${regionTourCount('south')} tours`}
                   imageLabel="Gallery — floating market, Cần Thơ"
                   region="south"
                   className="h-[260px]"

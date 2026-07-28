@@ -154,9 +154,13 @@ export interface MockTourDetail extends MockTourCard {
 
 export interface MockRegion {
   key: MockRegionKey;
+  /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` trỏ lớp
+      token `[data-region='…']`, còn slug là chuyện SEO — trộn lại mới là nợ. */
+  slug: string;
   name: string;
   tagline: string;
-  tourCount: number;
+  // `tourCount` ĐÃ XOÁ (28/07): viết tay và sai (khai 24/27/17, thật 6/6/6). Số
+  // tour của một vùng dẫn xuất bằng `toursInRegion()` ở lib/regions.ts.
 }
 
 export interface MockTestimonial {
@@ -221,11 +225,23 @@ export interface MockMoment {
   credit: string;
 }
 
+/**
+ * Gương đúng `DestinationSchema` của `@tourism/contract` — NGOẠI LỆ thứ hai của
+ * luật "shape mock tự do" ở đầu file (cái đầu là tour).
+ *
+ * `region` để `string | null` Y NHƯ contract, KHÔNG siết thành `MockRegionKey`:
+ * contract khai `z.string().max(80).nullable()`, và mock hẹp hơn contract nghĩa là
+ * mọi ca hỏng chỉ lộ ra lúc gắn API. Việc xếp chuỗi tự do này vào 3 vùng đã biết
+ * là việc của `lib/regions.ts`.
+ */
 export interface MockDestination {
+  id: string;
   slug: string;
   name: string;
-  region: MockRegionKey;
-  /** Số tour featured tại địa điểm — tổng theo vùng phải khớp MockRegion.tourCount */
+  country: string;
+  region: string | null;
+  /** Contract dùng `description`; mock cũ gọi là `blurb` (đã đổi 28/07). */
+  description: string | null;
+  /** Số tour đã publish CHẠM địa điểm này — dẫn xuất, xem cuối `destinations.ts`. */
   tourCount: number;
-  blurb: string;
 }

@@ -202,31 +202,60 @@ describe('mock contact page (offices + faq)', () => {
   });
 });
 
-describe('mock destinations (gallery Home — review #14)', () => {
-  it('đúng 9 địa điểm, mỗi vùng 3, xếp liền nhau Bắc → Trung → Nam', () => {
+describe('mock destinations — gương DestinationSchema', () => {
+  it('đúng 9 địa điểm, xếp liền mạch Bắc → Trung → Nam', () => {
     expect(DESTINATIONS).toHaveLength(9);
-    // Nhóm liền mạch theo thứ tự vùng — không xen kẽ
     expect(DESTINATIONS.map((d) => d.region)).toEqual([
-      'north',
-      'north',
-      'north',
-      'central',
-      'central',
-      'central',
-      'south',
-      'south',
-      'south',
+      'Northern Vietnam',
+      'Northern Vietnam',
+      'Northern Vietnam',
+      'Central Vietnam',
+      'Central Vietnam',
+      'Central Vietnam',
+      'Southern Vietnam',
+      'Southern Vietnam',
+      'Southern Vietnam',
     ]);
   });
 
-  it('tổng số tour mỗi vùng khớp với REGIONS (một nguồn sự thật)', () => {
-    for (const region of REGIONS) {
-      const sum = DESTINATIONS.filter((d) => d.region === region.key).reduce(
-        (acc, d) => acc + d.tourCount,
-        0,
-      );
-      expect(sum, region.key).toBe(region.tourCount);
+  it('có đủ field contract yêu cầu, id là uuid v4', () => {
+    for (const d of DESTINATIONS) {
+      expect(d.id, d.slug).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-/);
+      expect(d.country, d.slug).toBe('Vietnam');
+      expect(typeof d.description, d.slug).toBe('string');
     }
+  });
+
+  it('slug duy nhất', () => {
+    expect(new Set(DESTINATIONS.map((d) => d.slug)).size).toBe(9);
+  });
+
+  // Bất biến quan trọng nhất. `tourCount` viết tay đang phồng 2–5× (Hạ Long khai 9,
+  // thật 2) nên thẻ nói "9 tours" mà bấm sang /tours?destinations=ha-long ra 2 —
+  // đúng lỗi "See all 1,204 reviews" mở ra 14 dòng.
+  it('tourCount DẪN XUẤT khớp số tour thật chạm địa điểm', () => {
+    for (const d of DESTINATIONS) {
+      const real = TOURS.filter((t) => t.destinations.some((x) => x.slug === d.slug)).length;
+      expect(d.tourCount, d.slug).toBe(real);
+    }
+  });
+
+  it('tổng lượt chạm là 25 — chốt chặn nếu ai nhét lại literal (tổng cũ 68)', () => {
+    expect(DESTINATIONS.reduce((a, d) => a + d.tourCount, 0)).toBe(25);
+  });
+});
+
+describe('mock regions', () => {
+  it('có slug URL cho cả 3 vùng', () => {
+    expect(REGIONS.map((r) => r.slug)).toEqual([
+      'northern-vietnam',
+      'central-vietnam',
+      'southern-vietnam',
+    ]);
+  });
+
+  it('KHÔNG còn tourCount viết tay', () => {
+    for (const r of REGIONS) expect(r, r.key).not.toHaveProperty('tourCount');
   });
 });
 

@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
+import { regionOf } from '@/lib/regions';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 import { SectionEyebrow } from './section-eyebrow';
@@ -86,36 +87,45 @@ export function Gallery() {
             ref={trackRef}
             className="flex gap-5 px-4 transition-transform duration-300 ease-out will-change-transform md:px-16 lg:px-24 xl:px-32"
           >
-            {DESTINATIONS.map((dest) => (
-              <TiltCard key={dest.slug} className="shrink-0">
-                <a
-                  href="#contact"
-                  data-region={dest.region}
-                  className="group relative block aspect-[4/5] h-[min(52vh,540px)] min-h-[380px] overflow-hidden rounded-xl"
-                >
-                  <ImagePlaceholder label={dest.blurb} className="h-full w-full" />
-                  {/* Chip vùng — tint theo slot --region-* */}
-                  <span
-                    className="absolute top-4 left-4 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase"
-                    style={{
-                      background: 'var(--region-surface)',
-                      color: 'var(--region-on-surface)',
-                    }}
+            {DESTINATIONS.map((dest) => {
+              // `dest.region` giờ là chuỗi tự do kiểu contract ('Northern Vietnam'),
+              // KHÔNG còn là khoá 'north'/'central'/'south' — data-region và tra cứu
+              // tên vùng phải đi qua regionOf() để về đúng lớp token `[data-region]`.
+              const regionKey = regionOf(REGIONS, dest);
+              return (
+                <TiltCard key={dest.slug} className="shrink-0">
+                  <a
+                    href="#contact"
+                    data-region={regionKey ?? undefined}
+                    className="group relative block aspect-[4/5] h-[min(52vh,540px)] min-h-[380px] overflow-hidden rounded-xl"
                   >
-                    {REGION_NAME.get(dest.region)}
-                  </span>
-                  {/* Caption đáy — vạch nhấn màu chủ đạo vùng */}
-                  <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-linear-to-t from-overlay to-transparent p-4 pt-10 text-on-media">
-                    <span
-                      className="h-0.5 w-8 rounded-full"
-                      style={{ background: 'var(--region-primary)' }}
+                    <ImagePlaceholder
+                      label={dest.description ?? dest.name}
+                      className="h-full w-full"
                     />
-                    <span className="font-heading text-2xl font-semibold">{dest.name}</span>
-                    <span className="text-xs opacity-85">{dest.tourCount} tours</span>
-                  </span>
-                </a>
-              </TiltCard>
-            ))}
+                    {/* Chip vùng — tint theo slot --region-* */}
+                    <span
+                      className="absolute top-4 left-4 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase"
+                      style={{
+                        background: 'var(--region-surface)',
+                        color: 'var(--region-on-surface)',
+                      }}
+                    >
+                      {regionKey ? REGION_NAME.get(regionKey) : null}
+                    </span>
+                    {/* Caption đáy — vạch nhấn màu chủ đạo vùng */}
+                    <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-linear-to-t from-overlay to-transparent p-4 pt-10 text-on-media">
+                      <span
+                        className="h-0.5 w-8 rounded-full"
+                        style={{ background: 'var(--region-primary)' }}
+                      />
+                      <span className="font-heading text-2xl font-semibold">{dest.name}</span>
+                      <span className="text-xs opacity-85">{dest.tourCount} tours</span>
+                    </span>
+                  </a>
+                </TiltCard>
+              );
+            })}
           </div>
         </div>
       </div>

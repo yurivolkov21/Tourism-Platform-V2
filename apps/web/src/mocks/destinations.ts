@@ -1,69 +1,99 @@
+// Value import BỎ đuôi `.js` — Turbopack không map `.js`→`.ts` (bẫy đã ghi ở đầu
+// tours.ts và trong lib/toc.ts).
+import { TOURS } from './tours';
 import type { MockDestination } from './types.js';
 
-// 9 địa điểm nổi bật cho gallery Home (review #14): mỗi vùng đúng 3, xếp liền
-// mạch Bắc → Trung → Nam theo trục địa lý. Số biên tập cố định — DB thật sau
-// này dùng cờ `featured` + thứ tự, không phải "có bao nhiêu hiện bấy nhiêu".
-// Ứng viên schema khi gắn API: bảng `destinations` (name, region, featured,
-// sortOrder, image, quan hệ đếm tour).
-export const DESTINATIONS: MockDestination[] = [
+// 9 địa điểm, mỗi vùng 3, xếp liền mạch Bắc → Trung → Nam theo trục địa lý.
+//
+// `region` mang TÊN HIỂN THỊ ('Northern Vietnam') chứ không mang khoá ('north'):
+// contract khai region là chuỗi tự do, nên mock phải chứa thứ trông giống dữ liệu
+// thật. Nếu để đúng khoá thì `regionOf()` thành hàm đồng nhất và không bao giờ
+// được kiểm bằng input thật.
+const DESTINATIONS_SOURCE: Omit<MockDestination, 'tourCount'>[] = [
   // ── Bắc ──
-  { slug: 'sa-pa', name: 'Sa Pa', region: 'north', tourCount: 8, blurb: 'Misty rice terraces' },
   {
-    slug: 'ha-long',
-    name: 'Hạ Long',
-    region: 'north',
-    tourCount: 9,
-    blurb: 'Limestone bay cruises',
+    id: '7b1f0c3a-1111-4a11-8a01-000000000001',
+    slug: 'sa-pa',
+    name: 'Sa Pa',
+    country: 'Vietnam',
+    region: 'Northern Vietnam',
+    description: 'Misty rice terraces',
   },
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000002',
+    slug: 'ha-long',
+    name: 'Hạ Long',
+    country: 'Vietnam',
+    region: 'Northern Vietnam',
+    description: 'Limestone bay cruises',
+  },
+  {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000003',
     slug: 'ninh-binh',
     name: 'Ninh Bình',
-    region: 'north',
-    tourCount: 7,
-    blurb: 'River caves & karst peaks',
+    country: 'Vietnam',
+    region: 'Northern Vietnam',
+    description: 'River caves & karst peaks',
   },
   // ── Trung ──
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000004',
     slug: 'hue',
     name: 'Huế',
-    region: 'central',
-    tourCount: 8,
-    blurb: 'Imperial citadel & royal food',
+    country: 'Vietnam',
+    region: 'Central Vietnam',
+    description: 'Imperial citadel & royal food',
   },
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000005',
     slug: 'da-nang',
     name: 'Đà Nẵng',
-    region: 'central',
-    tourCount: 9,
-    blurb: 'Coast rides & Golden Bridge',
+    country: 'Vietnam',
+    region: 'Central Vietnam',
+    description: 'Coast rides & Golden Bridge',
   },
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000006',
     slug: 'hoi-an',
     name: 'Hội An',
-    region: 'central',
-    tourCount: 10,
-    blurb: 'Lantern-lit old town',
+    country: 'Vietnam',
+    region: 'Central Vietnam',
+    description: 'Lantern-lit old town',
   },
   // ── Nam ──
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000007',
     slug: 'sai-gon',
     name: 'Sài Gòn',
-    region: 'south',
-    tourCount: 6,
-    blurb: 'Street food & history',
+    country: 'Vietnam',
+    region: 'Southern Vietnam',
+    description: 'Street food & history',
   },
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000008',
     slug: 'can-tho',
     name: 'Cần Thơ',
-    region: 'south',
-    tourCount: 6,
-    blurb: 'Floating markets at dawn',
+    country: 'Vietnam',
+    region: 'Southern Vietnam',
+    description: 'Floating markets at dawn',
   },
   {
+    id: '7b1f0c3a-1111-4a11-8a01-000000000009',
     slug: 'phu-quoc',
     name: 'Phú Quốc',
-    region: 'south',
-    tourCount: 5,
-    blurb: 'Island reefs & fish sauce',
+    country: 'Vietnam',
+    region: 'Southern Vietnam',
+    description: 'Island reefs & fish sauce',
   },
 ];
+
+/**
+ * `tourCount` DẪN XUẤT, không viết tay — cùng lý lẽ với `ratingAvg`/`ratingCount`
+ * của tour: con số in trên thẻ phải là con số của chính danh sách người đọc bấm vào
+ * xem được. Bản viết tay trước đây phồng 2–5× (Hạ Long khai 9, thật 2). Ở API thật
+ * đây là COUNT trên bảng join, nên dẫn xuất phản chiếu đúng quan hệ đó.
+ */
+export const DESTINATIONS: MockDestination[] = DESTINATIONS_SOURCE.map((dest) => ({
+  ...dest,
+  tourCount: TOURS.filter((tour) => tour.destinations.some((d) => d.slug === dest.slug)).length,
+}));
