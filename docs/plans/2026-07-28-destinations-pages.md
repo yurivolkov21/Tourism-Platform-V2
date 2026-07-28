@@ -980,7 +980,7 @@ Tạo `region-card.spec.tsx`:
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import type { MockDestination } from '@/mocks/types';
-import { REGIONS } from '@/lib/regions';
+import { REGIONS } from '@/mocks/regions';
 import { RegionCard } from './region-card';
 
 const NORTH = REGIONS[0]!;
