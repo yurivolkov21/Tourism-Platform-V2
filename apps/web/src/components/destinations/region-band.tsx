@@ -45,11 +45,19 @@ export function RegionBand({
   return (
     <section
       data-region={region.key}
-      // Nền PHỚT: pha `--region-surface` (cố định, KHÔNG theo theme) với
-      // `--background` (theo theme) 78% — KHÔNG tô đặc `--region-surface`
-      // nguyên chất: Nam (L 0.661) và Bắc (L 0.855) tô đặc thì ba băng sáng
+      // Nền PHỚT: pha `--region-primary` (tông GIỮA, cố định không theo theme)
+      // với `--background` (theo theme) 88%.
+      //
+      // Vì sao `primary` chứ không phải `surface`: `--region-surface` là màu
+      // SÁNG, nên ở dark mode pha nó vào nền tối sẽ LÀM SÁNG băng lên và kéo tụt
+      // contrast của `--muted-foreground` đặt trên đó. Đo trên trình duyệt thật
+      // (canvas → sRGB → WCAG): bản dùng `surface` 78% cho vùng Trung chỉ đạt
+      // 4.35:1 ở dark mode, dưới ngưỡng AA 4.5 — 8 phần tử dính. Tông giữa dịch
+      // SẮC mà gần như không dịch độ sáng, nên an toàn ở cả hai theme.
+      //
+      // Vẫn KHÔNG tô đặc: Nam (L 0.661) và Bắc (L 0.855) tô đặc thì ba băng sáng
       // khác nhau thấy rõ bằng mắt (đúng lỗi đã sửa cho hero ở §5.2).
-      style={{ background: 'color-mix(in oklch, var(--region-surface), var(--background) 78%)' }}
+      style={{ background: 'color-mix(in oklch, var(--region-primary), var(--background) 88%)' }}
       className="relative w-full"
     >
       <div className="relative mx-auto max-w-7xl px-4 py-16 md:px-16 lg:px-24 xl:px-32">
