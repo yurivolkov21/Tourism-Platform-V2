@@ -777,17 +777,18 @@ từng vùng, và số mới trên `/about` (16 · 6/6/6).
 
 ---
 
-### Task 3: Cắt copy i18n port từ Nexora
+### Task 3: Copy i18n — cắt phần bịa, thêm phần điều hướng
 
 **Files:**
 
 - Modify: `libs/shared/i18n/src/lib/messages.ts` (`destinationsPage` ~659,
-  `destinationDetail` ~680, `regionPage` ~701 — tổng ≈202 dòng)
+  `destinationDetail` ~680, `regionPage` ~701 — tổng ≈202 dòng; **và** khối `nav`)
 
 **Interfaces:**
 
 - Produces: `messages.destinationsPage` + `messages.regionPage` với hình dạng mới;
-  `messages.destinationDetail` **bị xoá hẳn**.
+  `messages.destinationDetail` **bị xoá hẳn**; **thêm** `messages.nav.destinationsMenu`
+  và `messages.destinationsPage.featured`.
 
 **Vì sao task này trước khi dựng trang:** trang tiêu thụ copy. Và khối hiện có
 quảng cáo **4 địa danh v2 không bán** — `Hà Giang` (5 lần), `Lan Hạ`, `Fansipan`,
@@ -822,6 +823,15 @@ Run: `sed -n '655,865p' libs/shared/i18n/src/lib/messages.ts`
     placesLabel: 'Places',
     toursLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,
     exploreRegion: (region: string) => `Explore ${region}`,
+    // Khu tour nổi bật của landing page. Gọi là "featured" vì nó lọc đúng field
+    // `isFeatured` (biên tập chọn) — TUYỆT ĐỐI không gọi "popular"/"most loved"/
+    // "traveller favourites": contract không có tín hiệu popularity nào đỡ những
+    // chữ đó (spec Tours §8 #3), và đó chính là lý do khối `popular*` bị cắt ở trên.
+    featured: {
+      heading: 'Featured trips',
+      subtitle: 'Journeys our team keeps coming back to, across all three regions.',
+      viewAll: 'View all tours',
+    },
   },
 
   // `/destinations/[region]`.
@@ -872,7 +882,29 @@ Run: `sed -n '655,865p' libs/shared/i18n/src/lib/messages.ts`
 cụm này cố ý không làm (spec §1). Trong đó `valueProps` còn hứa "Luxury transfers"
 và "vetted private drivers", không field nào đỡ, trên một capstone **không doanh thu**.
 
-- [ ] **Step 3: Xác nhận 4 địa danh đã tuyệt chủng**
+- [ ] **Step 3: THÊM `nav.destinationsMenu` cho dropdown**
+
+Trong khối `messages.nav`, thêm:
+
+```ts
+    // Dropdown Destinations trên navbar. Nexora có đúng 4 dòng phẳng, mỗi dòng một
+    // `hint` GÕ TAY ('Hạ Long, Sa Pa, Ninh Bình') — thêm/bớt địa điểm là chữ đó sai
+    // mà không ai biết. v2 CỐ TÌNH không có `hint` ở đây: menu sinh hint và số tour
+    // từ dữ liệu (xem spec §6.1), nên i18n chỉ giữ nhãn tĩnh.
+    destinationsMenu: {
+      label: 'Destinations',
+      all: 'All destinations',
+      allHint: 'Browse every place we cover',
+      /** Nhãn cho link tiêu đề vùng trong menu — điều hướng sang trang vùng. */
+      exploreRegion: (region: string) => `Explore ${region}`,
+    },
+```
+
+Không thêm mảng `items` cứng như Nexora: 3 vùng đã có trong `REGIONS`
+(`mocks/regions.ts`) kèm `slug`, nên menu map từ đó. Một danh sách vùng thứ hai nằm
+trong file copy là một nguồn nữa có thể trôi.
+
+- [ ] **Step 4: Xác nhận 4 địa danh đã tuyệt chủng**
 
 Run:
 
@@ -882,32 +914,32 @@ for p in "Hà Giang" "Lan Hạ" "Fansipan" "Pù Luông"; do printf "%s=%s\n" "$p
 
 Expected: cả bốn `=0`.
 
-- [ ] **Step 4: Xác nhận không còn khoá bằng chuỗi user-facing**
+- [ ] **Step 5: Xác nhận không còn khoá bằng chuỗi user-facing**
 
 Run: `grep -n "'Northern Vietnam':" libs/shared/i18n/src/lib/messages.ts`
 Expected: không dòng nào.
 
-- [ ] **Step 5: Xác nhận `destinationDetail` đã xoá**
+- [ ] **Step 6: Xác nhận `destinationDetail` đã xoá**
 
 Run: `grep -c "destinationDetail" libs/shared/i18n/src/lib/messages.ts`
 Expected: `0`.
 
-- [ ] **Step 6: Rebuild i18n + gate**
+- [ ] **Step 7: Rebuild i18n + gate**
 
 Run: `pnpm turbo run build --filter=@tourism/i18n && pnpm gate`
 Expected: XANH. Nếu đỏ vì có chỗ đang đọc `messages.destinationDetail` thì đó là
 consumer chết — xoá luôn.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 git add libs/shared/i18n/src/lib/messages.ts
-git commit -m "refactor(i18n): cắt copy Destinations port từ Nexora — bỏ 4 địa danh v2 không bán"
+git commit -m "refactor(i18n): copy Destinations — cắt phần bịa, thêm menu điều hướng"
 ```
 
 ---
 
-### Task 4: `/destinations` — trang index
+### Task 4: `/destinations` — landing page toàn cảnh 3 vùng
 
 **Files:**
 
@@ -917,10 +949,28 @@ git commit -m "refactor(i18n): cắt copy Destinations port từ Nexora — bỏ
 
 **Interfaces:**
 
-- Consumes: `REGIONS`, `destinationsInRegion`, `toursInRegion`, `DESTINATIONS` (Task 2)
-  — mọi thứ về vùng đã có sau Task 2
+- Consumes: `REGIONS`, `destinationsInRegion`, `toursInRegion`, `DESTINATIONS`,
+  `TOURS` (Task 2) · `messages.destinationsPage` (Task 3) · `TourCard` (đã có)
 - Produces: `RegionCard({ region, destinations, tourCount })` —
-  `region: Region`, `destinations: MockDestination[]`, `tourCount: number`
+  `region: MockRegion`, `destinations: MockDestination[]`, `tourCount: number`
+
+**Bốn khu, không phải "3 thẻ"** (spec §5.1 sửa 28/07 sau khi đối chiếu lại Nexora —
+trang `/destinations` của họ có 8 khu, ta giữ 4 khu dựng được trung thực):
+
+1. **Hero** tối + `TopoPattern` (tối đa 1 vị trí/trang).
+2. **3 thẻ vùng** — `RegionCard`, mỗi thẻ mang tint riêng.
+3. **`Featured trips`** — lọc `TOURS.filter((t) => t.isFeatured)` (đúng **6** tour
+   trong mock), render bằng `TourCard` đã duyệt, kèm link `View all tours` → `/tours`.
+4. **CTA hỏi** → `/contact` (dùng `ButtonLink`, KHÔNG dùng `Button render={<a/>}`).
+
+Ba khu của Nexora **cố tình bỏ**, ghi lý do vào comment đầu file page: `BestTime` và
+`TravelTips` (copy du lịch bịa — không field nào trong contract nói về mùa/thời tiết)
+· `Gallery` ảnh biên tập (chưa có media cho destination) · `Testimonials` (trang chủ
+đã có nguyên khu, lặp lại là độn cho dài).
+
+⚠️ Khu Featured **không** được gọi là "popular"/"most loved"/"traveller favourites" —
+`isFeatured` là cờ biên tập, không phải tín hiệu phổ biến. Dùng đúng
+`messages.destinationsPage.featured`.
 
 - [ ] **Step 1: Viết test thất bại**
 
@@ -1021,19 +1071,33 @@ Yêu cầu:
   opacity-[0.12] dark:opacity-[0.2]" />` đặt **ngoài** scope `dark` ·
   `<div className="dark contents">` bọc nội dung. **Không** đặt `dark` lên chính
   `<section>`.
-- Ba thẻ vùng dựng bằng:
+- Ba thẻ vùng dựng bằng — **chú ý chữ ký hàm: `regions` là tham số ĐẦU**:
 
 ```tsx
 {REGIONS.map((region) => (
   <RegionCard
     key={region.key}
     region={region}
-    destinations={destinationsInRegion(DESTINATIONS, region.key)}
-    tourCount={toursInRegion(TOURS, DESTINATIONS, region.key).length}
+    destinations={destinationsInRegion(REGIONS, DESTINATIONS, region.key)}
+    tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
   />
 ))}
 ```
 
+- Khu `Featured trips` ngay sau đó:
+
+```tsx
+const featured = TOURS.filter((tour) => tour.isFeatured);
+// …
+{featured.map((tour) => (
+  <TourCard key={tour.slug} tour={tour} />
+))}
+```
+
+  Tiêu đề/phụ đề lấy từ `messages.destinationsPage.featured`. Link `viewAll` →
+  `/tours`. Nếu `featured.length === 0` thì **ẩn cả khu**, đừng render tiêu đề rỗng.
+
+- Khu CTA cuối: dùng `ButtonLink` → `/contact`.
 - ⚠️ **KHÔNG tạo `loading.tsx`** trong `destinations/`.
 
 - [ ] **Step 6: `pnpm gate` rồi commit**
@@ -1041,7 +1105,7 @@ Yêu cầu:
 ```bash
 pnpm gate
 git add apps/web/src/components/destinations apps/web/src/app/\(site\)/destinations
-git commit -m "feat(web): trang /destinations — 3 thẻ vùng lồng địa điểm"
+git commit -m "feat(web): landing page /destinations — 3 vùng có tint + featured trips"
 ```
 
 - [ ] **Step 7: 🛑 MỐC DỪNG (spec §11) — user duyệt `/destinations` trước khi sang trang vùng**
@@ -1148,7 +1212,8 @@ export function generateStaticParams() {
 
 Yêu cầu:
 
-- `const region = regionBySlug(slug); if (!region) notFound();`
+- `const region = regionBySlug(REGIONS, slug); if (!region) notFound();` —
+  **`regions` là tham số đầu**, đừng gọi `regionBySlug(slug)`.
 - `generateMetadata` có `alternates.canonical` + OG, cùng khuôn `/tours/[slug]`.
 - Hero: `<section style={{ background: 'var(--region-hero)' }}>` với
   `data-region={region.key}` đặt ở **phần tử bọc ngoài** để lớp token gán biến
@@ -1240,30 +1305,64 @@ Sửa comment dòng 22–23 — nó đang nói *"`/destinations` … CHƯA tồn
 Run: `cd apps/web && npx vitest run src/lib/sitemap.spec.ts`
 Expected: PASS.
 
-- [ ] **Step 5: Đổi 3 link đang trỏ tạm**
+- [ ] **Step 5: Dropdown navbar — thêm 2 tầng điều hướng (spec §6.1)**
+
+Đây là phần v2 hơn Nexora rõ nhất, và **bố cục 3 cột đã dựng sẵn** trong
+`destinations-menu.tsx` — chỉ thêm vào, không dựng lại:
+
+1. **Hàng `All destinations`** trên đầu menu, trải hết chiều ngang, trỏ
+   `/destinations`. Nhãn + hint lấy từ `messages.nav.destinationsMenu`
+   (`all` / `allHint`).
+2. **Tiêu đề mỗi cột vùng thành LINK** → `/destinations/${region.slug}`, kèm số tour
+   dẫn xuất `toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length`. Tiêu đề
+   mang tint vùng: đặt `data-region={region.key}` trên cột rồi dùng
+   `style={{ color: 'var(--region-primary)' }}`.
+3. **Giữ nguyên 9 link địa điểm** trỏ `/tours?destinations=<slug>` — đây chính là
+   tầng Nexora KHÔNG có (họ chỉ 4 dòng, muốn tới Hội An phải vào trang vùng tìm tiếp).
+
+Số tour **dẫn xuất**, tuyệt đối không gõ tay — Nexora gõ `hint` cứng
+(`'Hạ Long, Sa Pa, Ninh Bình'`) nên thêm/bớt địa điểm là chữ đó sai âm thầm.
+
+⚠️ `destinations-menu.spec.tsx` đã tồn tại (4 test từ Task 2) và mở menu bằng
+`userEvent` trước khi query. **Bổ sung test** cho hai thứ mới: hàng `All destinations`
+trỏ `/destinations`, và mỗi tiêu đề vùng là link trỏ đúng `/destinations/<slug>`.
+
+- [ ] **Step 6: Mobile — vá thụt lùi so với Nexora**
+
+`site-header.tsx`, `MOBILE_LINKS`: mục `{ label: 'Destinations', href: '/tours' }`
+hiện làm điện thoại **không có đường nào duyệt theo vùng** — Nexora trải phẳng 4 mục
+vào menu mobile, v2 đang tệ hơn. Thay bằng 4 mục:
+
+```tsx
+  { label: 'All destinations', href: '/destinations' },
+  ...REGIONS.map((region) => ({
+    label: region.name,
+    href: `/destinations/${region.slug}`,
+  })),
+```
+
+Sửa luôn comment phía trên nó — nó đang ghi *"Một mục Destinations trỏ /tours là
+đủ"*, đúng ở thời điểm chưa có trang nào để trỏ tới, sai từ khi cụm này tồn tại.
+
+- [ ] **Step 7: Footer + gallery**
 
 `site-footer.tsx` — `['Destinations', '/#gallery']` → `['Destinations', '/destinations']`,
 và xoá phần comment nói `/destinations` chưa tồn tại.
 
-`site-header.tsx` — mục `Destinations` trong `MOBILE_LINKS` (dòng 34) đổi `'/tours'`
-→ `'/destinations'`. Mục `Destinations` ở desktop là `DestinationsMenu` (dropdown):
-**giữ** các link địa điểm trỏ `/tours?destinations=`, nhưng thêm một dòng chân menu
-`All destinations →` trỏ `/destinations`.
-
 `home/gallery.tsx` — thêm link `/destinations` ở hàng tiêu đề khu (cùng hình dạng
 "tiêu đề khu vực + điều khiển đuôi" mà listing chốt ở vòng 4).
 
-- [ ] **Step 6: Xác nhận không còn link "Destinations" trỏ `/#gallery`**
+- [ ] **Step 8: Xác nhận không còn link "Destinations" trỏ `/#gallery`**
 
 Run: `grep -rn "'/#gallery'" apps/web/src`
 Expected: không dòng nào.
 
-- [ ] **Step 7: `pnpm gate` rồi commit**
+- [ ] **Step 9: `pnpm gate` rồi commit**
 
 ```bash
 pnpm gate
 git add apps/web/src/lib/sitemap.ts apps/web/src/lib/sitemap.spec.ts apps/web/src/components
-git commit -m "feat(web): nối /destinations vào nav, footer, gallery và sitemap"
+git commit -m "feat(web): dropdown 2 tầng + mobile 4 mục + sitemap 38 URL"
 ```
 
 ---

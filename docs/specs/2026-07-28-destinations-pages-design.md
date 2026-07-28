@@ -13,11 +13,13 @@ thuộc luồng *khám phá* — hiện `/#gallery` đang gánh tạm.
 
 ### Trong phạm vi
 
-- `/destinations` — 3 thẻ vùng, mỗi thẻ lồng danh sách địa điểm của vùng.
+- `/destinations` — **landing page 4 khu** (hero · 3 thẻ vùng có tint · Featured
+  trips · CTA), xem §5.1.
 - `/destinations/[region]` — 3 slug tĩnh.
 - Đắp lại `MockDestination` cho **gương đúng `DestinationSchema`**.
 - `lib/regions.ts` thuần + TDD: chuẩn hoá vùng, xếp nhóm, ba phép dẫn xuất.
-- Nối lại các link đang trỏ tạm (footer, navbar, `/#gallery`) + `sitemap.ts`.
+- **Dropdown navbar 2 tầng** + **vá đường duyệt theo vùng trên mobile** (§6.1).
+- Nối lại các link đang trỏ tạm (footer, `/#gallery`) + `sitemap.ts`.
 
 ### Ngoài phạm vi — nói rõ để không hiểu nhầm
 
@@ -49,7 +51,9 @@ Rà cả hai tầng: trang/feature và hạ tầng xuyên suốt.
 
 | Khoản | Nexora | v2 dự kiến | Phân loại |
 | --- | --- | --- | --- |
-| `/destinations` | có (89 dòng) | có | parity |
+| `/destinations` | có (89 dòng, **8 khu**) | có, **4 khu** — bỏ 3 khu chạy bằng dữ liệu không tồn tại, đổi `PopularTours` → `Featured trips` | **làm khác mà tương đương** (§5.1) |
+| Dropdown navbar | 4 dòng phẳng, `hint` **gõ tay** | 4 mục **+ giữ 9 link địa điểm**, hint **dẫn xuất** | **v2 tốt hơn** (§6.1) |
+| Duyệt theo vùng trên mobile | có (trải phẳng 4 mục) | **hiện KHÔNG có** → phải vá | **thụt lùi cần vá** (§6.1) |
 | `/destinations/[region]` | có (192 dòng, 8 component: RegionHero · RegionIntro · RegionHighlights · 3 bản Signature · RegionTours) | có, cấu trúc gọn hơn | **làm khác mà tương đương** |
 | Nguồn vùng | **hardcode trong code** (`regionSlugs()`, `getRegion()`) — KHÔNG lấy từ API | hardcode trong `lib/regions.ts` | parity (xem ghi chú dưới) |
 | Vùng không khớp | gộp vào `'Other'` rồi **lọc bỏ** | `regionOf()` trả `null` + **test bất biến** chặn | **v2 tốt hơn** |
@@ -132,12 +136,17 @@ nào; mỗi vùng chỉ nói con số của chính nó. Có test canh bất bi�
 
 ### 4.3 `lib/regions.ts` — logic thuần, TDD trước
 
-- `REGIONS`: `slug` (`northern-vietnam`) · `key` (`north`, để trỏ lớp token
-  `--region-*`) · `name` · `tagline`. **`tourCount` viết tay bị xoá.**
-  Hai từ vựng `slug` và `key` cố tình **tách**: URL là chuyện SEO, tên lớp token là
-  chuyện thiết kế — trộn lại mới là nợ.
-- `regionOf(destination): RegionKey | null` — chuẩn hoá `region` chuỗi tự do.
-- `destinationsInRegion(key)` · `toursInRegion(key)` · `regionGlance(tours)`.
+Dữ liệu vùng ở lại `mocks/regions.ts` (`REGIONS` đã có **5 consumer**); `lib/regions.ts`
+**chỉ chứa hàm**, và mọi hàm nhận dữ liệu qua tham số — đúng khuôn `lib/tours.ts`.
+
+- `MockRegion`: `key` (`north`, trỏ lớp token `--region-*`) · `slug`
+  (`northern-vietnam`, từ vựng URL) · `name` · `tagline`. **`tourCount` viết tay bị
+  xoá.** Hai từ vựng `slug` và `key` cố tình **tách**: URL là chuyện SEO, tên lớp
+  token là chuyện thiết kế — trộn lại mới là nợ.
+- `regionOf(regions, destination): RegionKey | null` — chuẩn hoá `region` chuỗi tự
+  do; bảng nhận dạng **suy từ chính `regions`**, không khai riêng.
+- `regionBySlug(regions, slug)` · `destinationsInRegion(regions, destinations, key)`
+  · `toursInRegion(regions, destinations, tours, key)` · `regionGlance(tours)`.
 
 **Ca `null` không được âm thầm bỏ.** Địa điểm không map được sẽ vắng mặt khỏi mọi
 trang vùng, mà index chỉ hiện 3 vùng → nó **tàng hình trên toàn site**. Chốt: có
@@ -146,16 +155,39 @@ trang vùng, mà index chỉ hiện 3 vùng → nó **tàng hình trên toàn si
 
 ## 5. Hai trang
 
-### 5.1 `/destinations`
+### 5.1 `/destinations` — landing page toàn cảnh 3 vùng
 
-Hero tối + `TopoPattern` (tối đa 1 vị trí/trang, luật 25/07) → 3 thẻ vùng xếp dọc.
+**Sửa phạm vi 28/07 (sau khi user hỏi lại):** bản đầu của spec này quy trang index
+về "3 thẻ vùng". Đối chiếu lại Nexora thì trang `/destinations` của họ có **8 khu**
+(`DestinationsHero` · `RegionGroup` · `BestTime` · `PopularTours` ·
+`Gallery` editorial · `Testimonials` · `TravelTips` · `EnquiryCta`) — tức một landing
+page thật. User muốn đúng hình dạng đó, "làm như Nexora nhưng tốt hơn". Ba khu trong
+số đó **không dựng được trung thực** vì chạy bằng dữ liệu v2 không có.
 
-Mỗi thẻ: tên vùng · tagline · số tour **dẫn xuất** · danh sách địa điểm kèm số tour
+| Khu Nexora | v2 | Lý do |
+| --- | --- | --- |
+| Hero | ✅ giữ | khuôn hero tối + topo đã có |
+| RegionGroup | ✅ giữ, **hơn** | thêm tint vùng · số tour dẫn xuất · địa điểm là link thật |
+| `BestTime` | ❌ **bỏ** | không field nào trong contract nói mùa/thời tiết; Nexora hardcode. Cùng loại copy bịa mà §7 đang cắt |
+| `PopularTours` | ⚠️ **đổi tên** → `Featured trips` | contract không có tín hiệu popularity (§8 #3), **nhưng có `isFeatured`** thật — mock có đúng **6** tour gắn cờ. Dùng field thật, gọi đúng tên |
+| Gallery editorial | ❌ **bỏ** | không có media cho destination (§8 #1) |
+| Testimonials | ❌ **bỏ** | trang chủ đã có nguyên khu này; lặp lại là độn cho dài |
+| `TravelTips` | ❌ **bỏ** | copy biên tập bịa, cùng loại `BestTime` |
+| `EnquiryCta` | ✅ giữ | `/contact` là trang có thật |
+
+**Bốn khu chốt:** hero tối + `TopoPattern` (tối đa 1 vị trí/trang, luật 25/07) →
+**3 thẻ vùng** → **Featured trips** → **CTA hỏi**.
+
+Mỗi thẻ vùng: tên · tagline · số tour **dẫn xuất** · danh sách địa điểm kèm số tour
 (mỗi tên là link `/tours?destinations=<slug>` — trang **có thật**) · CTA vào trang
-vùng. Tint riêng từng thẻ qua `--region-*`.
+vùng. Tint riêng từng thẻ qua `--region-*` (thứ Nexora **không** có).
 
-Không trùng `/#gallery`: ở đó địa điểm là thẻ cuộn ngang có ảnh; ở đây là chữ nhóm
-theo vùng, phục vụ tra cứu.
+`Featured trips`: lọc `TOURS` theo `isFeatured === true`, render bằng `TourCard` đã
+duyệt. **Không** gọi là "popular"/"most loved"/"traveller favourites" — không có dữ
+liệu nào đỡ những chữ đó, đúng lý lẽ đã loại badge `Verified` ở cụm reviews.
+
+Không trùng `/#gallery`: ở đó địa điểm là thẻ cuộn ngang; ở đây là toàn cảnh theo
+vùng có màu riêng, cộng lối đi tiếp vào từng vùng.
 
 ### 5.2 `/destinations/[region]`
 
@@ -218,12 +250,43 @@ trước, status 200 đã gửi xong trước khi thân trang gọi `notFound()`
 | Chỗ | Hiện tại | Sau cụm |
 | --- | --- | --- |
 | Footer `Destinations` | `/#gallery` | `/destinations` |
-| Navbar `Destinations` (desktop + mobile) | `/tours` | `/destinations` |
-| Dropdown địa điểm trong navbar | `/tours?destinations=<slug>` | **giữ nguyên** — nó nhắm tour, đúng đích |
+| Dropdown navbar (desktop) | 3 cột × 3 địa điểm, chỉ trỏ `/tours?destinations=` | **thêm** dòng `All destinations` → `/destinations`, **và** tiêu đề mỗi vùng thành link → `/destinations/<slug>`. Giữ 9 link địa điểm |
+| Navbar `Destinations` (mobile) | `/tours` | **4 mục trải phẳng**: All + 3 vùng |
 | `/#gallery` | không có lối ra | thêm link vào `/destinations` |
 | `sitemap.ts` | 34 URL | **38** (1 index + 3 vùng) |
 
-## 7. Copy i18n — phải CẮT trước khi dùng
+### 6.1 Dropdown — chỗ v2 hơn Nexora rõ nhất
+
+Nexora có **đúng 4 dòng** (`messages.nav.destinationsMenu`): `All destinations` +
+3 vùng, mỗi dòng một `hint` **gõ tay** (`'Hạ Long, Sa Pa, Ninh Bình'`). Muốn tới một
+địa điểm cụ thể thì phải vào trang vùng rồi tìm tiếp.
+
+v2 giữ **cả hai tầng** trong cùng một menu — bố cục 3 cột **đã dựng sẵn**, chỉ thêm
+hàng "All destinations" và biến tiêu đề vùng thành link:
+
+```text
+Destinations ▾
+┌────────────────────────────────────────────────────┐
+│  ALL DESTINATIONS →         Browse every place     │
+├──────────────┬──────────────┬──────────────────────┤
+│ NORTHERN  →  │ CENTRAL   →  │ SOUTHERN          →  │
+│ 6 tours      │ 6 tours      │ 6 tours              │
+│  Hạ Long   2 │  Huế       4 │  Sài Gòn           3 │
+│  Sa Pa     3 │  Hội An    4 │  Cần Thơ           2 │
+│  Ninh Bình 3 │  Đà Nẵng   2 │  Phú Quốc          2 │
+└──────────────┴──────────────┴──────────────────────┘
+```
+
+Tiêu đề vùng mang tint của vùng đó. Số tour **dẫn xuất**, không gõ tay — nên thêm
+hay bớt địa điểm thì menu tự đúng, khác hẳn `hint` cứng của Nexora.
+
+**Mobile là khoản THỤT LÙI phải vá.** Nexora trải phẳng 4 mục đó vào menu mobile
+(`mobileNav` spread `destinationsMenu.items`). v2 hiện chỉ có `Destinations → /tours`,
+tức trên điện thoại **không có đường nào duyệt theo vùng**. Comment trong
+`site-header.tsx` ghi *"Một mục Destinations trỏ /tours là đủ"* — đúng ở thời điểm
+chưa có trang nào để trỏ tới, sai từ khi cụm này tồn tại.
+
+## 7. Copy i18n — CẮT phần bịa, THÊM phần điều hướng
 
 `@tourism/i18n` **đã có sẵn ba khối** cho cụm này, port từ Nexora, **chưa ai dùng**:
 `destinationsPage` (dòng 659) · `destinationDetail` (680) · `regionPage` (701) —
@@ -261,6 +324,18 @@ Phải cắt, kèm lý do từng khoản:
 | `destinationsPage.breadcrumbCurrent: 'Vietnam tours'` | **viết lại** | Đây là trang địa điểm, không phải trang tour |
 | `regionIntro` / `regions` keyed by `'Northern Vietnam'` | **đổi khoá** | Đang khoá bằng **chuỗi user-facing** (`Record<string,string>`); đổi một chữ trong tên hiển thị là copy biến mất im lặng. Khoá bằng `key`/`slug` của vùng |
 | `regionPage.regions[*].tagline` · `intro` · `intro2` | **giữ, soi lại từng câu** | Đây là phần dùng được — nhưng phải bỏ mọi câu nhắc 4 địa danh không bán |
+
+### 7.1 Phần phải THÊM
+
+Cắt xong thì thiếu copy cho hai thứ mới, phải viết:
+
+- **`nav.destinationsMenu`** — nhãn 4 mục của dropdown (`All destinations` + 3 vùng)
+  và nhãn cho hàng "All". **Không** kèm `hint` gõ tay như Nexora: hint sinh từ dữ
+  liệu (§6.1), nên i18n chỉ giữ nhãn tĩnh.
+- **`destinationsPage.featured`** — tiêu đề + phụ đề khu `Featured trips`. Chữ dùng
+  phải trung thực với `isFeatured`: được gọi là *featured* (do biên tập chọn), **không**
+  được gọi là *popular* / *most loved* / *traveller favourites* — không dữ liệu nào
+  đỡ những chữ đó.
 
 ## 8. Nợ ghi sổ — KHÔNG vá ở đây
 
@@ -303,6 +378,10 @@ dưới nó.
   bằng unit test.
 - `sitemap.xml` có đúng 38 URL.
 - Không còn link nào trỏ `/#gallery` với nhãn "Destinations".
+- **Menu mobile có đủ 4 mục** (All + 3 vùng) — không còn `Destinations → /tours`.
+- Dropdown desktop có `All destinations` và 3 tiêu đề vùng đều là link sang trang vùng.
+- Khu `Featured trips` render đúng **6** tour (`isFeatured === true`), và **không**
+  chữ nào trên `/destinations` gọi chúng là "popular"/"most loved"/"favourites".
 - Không còn `blurb` trong codebase (2 consumer ở §4.1 đã đổi).
 - **Không còn `Hà Giang` / `Lan Hạ` / `Fansipan` / `Pù Luông` trong `@tourism/i18n`**
   — grep phải trả 0. Đây là tiêu chí đo được của việc cắt copy ở §7.
