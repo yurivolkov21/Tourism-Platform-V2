@@ -3,7 +3,6 @@
 import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TopoPattern } from '@/components/topo-pattern';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
 import { discountPercent, formatMoney } from '@/lib/tours';
@@ -220,15 +219,8 @@ export function TourHero({ tour }: { tour: MockTourDetail }) {
   );
 }
 
-/**
- * Băng ảnh full-bleed ngay dưới hero. Tách khỏi TourHero vì nó KHÔNG nằm trong
- * scope dark của hero — nó là dải riêng cắt ngang trang, và `ImagePlaceholder`
- * phải đọc token theo theme của trang.
- *
- * Nhãn là tên tour: đây là ảnh DUY NHẤT của trang nên nó thật sự đại diện cho
- * tour (khác card listing, nơi nhãn là tên địa danh chính để không lặp với <h3>
- * ngay bên cạnh).
- */
-export function TourImageBand({ label }: { label: string }) {
-  return <ImagePlaceholder label={label} className="aspect-(--aspect-band) w-full" />;
-}
+// `TourImageBand` (băng ảnh 21:9 full-bleed) đã bị bỏ: nó chiếm 617px ở màn 1440
+// mà chỉ nói được "sẽ có ảnh ở đây". Thay bằng `TourGallery` — khảm nhiều ảnh nằm
+// trong max-w-7xl. Token `--aspect-band` giữ lại: bộ aspect là bảng có sẵn
+// (`--aspect-hero`, `--aspect-thumb` cũng đang chưa dùng), không phải tập chỉ-những-
+// gì-đang-dùng.

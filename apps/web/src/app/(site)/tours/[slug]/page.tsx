@@ -13,11 +13,12 @@ import { Inclusions } from '@/components/tours/inclusions';
 import { ItineraryTimeline } from '@/components/tours/itinerary-timeline';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { GoodFor, WhyThisTrip } from '@/components/tours/tour-facts';
-import { TourHero, TourImageBand } from '@/components/tours/tour-hero';
+import { TourGallery } from '@/components/tours/tour-gallery';
+import { TourHero } from '@/components/tours/tour-hero';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
-import { relatedTours } from '@/lib/tours';
+import { relatedTours, routeChain } from '@/lib/tours';
 import { TOURS } from '@/mocks/tours';
 import type { MockTourDetail } from '@/mocks/types';
 
@@ -160,9 +161,12 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         </div>
       </section>
 
-      {/* Băng ảnh cắt ngang toàn chiều rộng, không có đệm hai bên — nó là đường
-          phân cách giữa hero và khu nội dung. */}
-      <TourImageBand label={tour.title} />
+      {/* Khảm ảnh THAY băng 21:9 full-bleed trước đây: băng đó chiếm 617px ở màn
+          1440 mà không nói được gì ngoài "sẽ có ảnh ở đây". Khảm nằm trong
+          max-w-7xl như mọi nội dung khác — trang đã có hai băng tối liên tiếp
+          (hero + dải khởi hành), thêm băng thứ ba là quá nhiều.
+          Nhãn ô lớn là tên điểm đến chính, KHÔNG phải tên tour: tên tour đã là H1. */}
+      <TourGallery media={tour.media} primaryLabel={routeChain(tour.destinations)[0]?.name} />
 
       <div className="w-full px-4 py-14 md:px-16 md:py-16 lg:px-24 xl:px-32">
         {/* Ba cột ở xl (rail · main · booking), hai cột ở lg (rail ẩn), một cột ở

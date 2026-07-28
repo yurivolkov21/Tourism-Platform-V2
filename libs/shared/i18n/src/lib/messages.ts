@@ -1523,6 +1523,24 @@ export const messages = {
       POPULAR: 'Popular',
     },
 
+    // ── Gallery ảnh ──
+    gallery: {
+      /** Nhãn khu ảnh cho trình đọc màn hình. Không có tiêu đề nhìn thấy: khảm ảnh
+          nằm ngay dưới hero, nó tự nói nó là gì. */
+      label: 'Photos',
+      viewAll: (n: number) => `View all ${n} photos`,
+      /** Tên khả truy cập của từng ô khảm. Nói VỊ TRÍ chứ không nói nội dung: nội
+          dung nằm ở `alt` và chỉ hiện thành chú thích trong lightbox — ô khảm bịa
+          mô tả ảnh là nói dối về thứ mình không biết. */
+      openPhoto: (index: number, total: number) => `Open photo ${index} of ${total}`,
+      /** Dialog của Base UI BẮT BUỘC có title cho trợ năng, kể cả khi ẩn thị giác. */
+      dialogTitle: 'Tour photos',
+      counter: (index: number, total: number) => `${index} / ${total}`,
+      previous: 'Previous photo',
+      next: 'Next photo',
+      close: 'Close photos',
+    },
+
     // ── Route ribbon ──
     route: {
       label: 'Route',

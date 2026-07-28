@@ -1,4 +1,9 @@
-import { TOUR_MEDIA } from './tour-media.js';
+// Import KHÔNG đuôi `.js` — đây là VALUE import nên Turbopack phải resolve thật, mà
+// nó không map './tour-media.js' sang './tour-media.ts' (Vitest thì có, nên test
+// xanh mà `next build` đỏ). Các `import type` khác trong thư mục này giữ đuôi .js
+// được vì chúng bị xoá lúc biên dịch, chẳng ai phải resolve. Bẫy này đã ghi trong
+// lib/toc.ts và vừa tái diễn đúng như comment ở đó dự đoán.
+import { TOUR_MEDIA } from './tour-media';
 import type { MockTourDetail } from './types.js';
 
 // 16 tour mock gương theo TourCardSchema/TourDetailSchema.
