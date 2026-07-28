@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import type { MockMoment } from '@/mocks/types';
 
@@ -34,7 +35,11 @@ export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
       <div className="dark contents">
         <div className="mx-auto max-w-7xl">
           <div className="max-w-2xl">
-            <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
+            <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
+            {/* `md:text-[40px]/12` là cỡ chuẩn của trang marketing (10 component
+                home/about dùng), KHÔNG phải `md:text-4xl` — cỡ đó thuộc về
+                `/contact`, một trang tiện ích. */}
+            <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
               {t.heading}
             </h2>
             <p className="mt-2 text-pretty text-muted-foreground">{t.subtitle}</p>

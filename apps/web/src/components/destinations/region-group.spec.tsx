@@ -1,8 +1,28 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
 import type { MockDestination } from '@/mocks/types';
 import { RegionGroup } from './region-group';
+
+beforeAll(() => {
+  // jsdom không hiện thực IntersectionObserver, mà `SectionEyebrow` dùng
+  // `whileInView` của framer-motion — thiếu API này là ném ReferenceError lúc
+  // mount. Stub tối giản (không làm gì) là đủ vì test không quan sát animation.
+  //
+  // CỐ Ý để cục bộ, KHÔNG dời lên `vitest.setup.ts` dù `home/gallery.spec.tsx`
+  // có bản y hệt: đã thử dời lên setup chung (cả bản no-op lẫn bản báo-ngay
+  // isIntersecting) và **19 test ở 3 file khác gãy** — có global này thì
+  // framer-motion đi nhánh khác hẳn so với khi không có. Gộp lại là việc riêng,
+  // cần đo từng file, không phải dọn tiện tay ở đây.
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
 
 // biome-ignore lint/style/noNonNullAssertion: REGIONS là hằng 3 phần tử ở module scope, phần tử 0 luôn tồn tại
 const NORTH = REGIONS[0]!;

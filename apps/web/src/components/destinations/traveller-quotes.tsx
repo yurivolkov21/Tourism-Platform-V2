@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { StarIcon } from 'lucide-react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import type { MockTestimonial } from '@/mocks/types';
 
 /** Số trích dẫn hiển thị — cố định 3, không phải toàn bộ `TESTIMONIALS` (8
@@ -24,7 +25,8 @@ export function TravellerQuotes({ testimonials }: { testimonials: MockTestimonia
     <section className="w-full px-4 py-16 md:px-16 lg:px-24 xl:px-32">
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
-          <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
+          <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
+          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
             {t.heading}
           </h2>
           <p className="mt-2 text-pretty text-muted-foreground">{t.subtitle}</p>

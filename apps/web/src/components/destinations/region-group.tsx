@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { ArrowRightIcon } from 'lucide-react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import type { MockDestination, MockRegion } from '@/mocks/types';
 import { DestinationTile } from './destination-tile';
 
@@ -41,13 +42,20 @@ export function RegionGroup({
         className="w-full px-4 py-16 text-center md:px-16 lg:px-24 xl:px-32"
       >
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3">
-          <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
+          {/* Số tour làm EYEBROW, không phải một dòng rời giữa intro và link.
+              Trước đây nó nằm dưới intro và đọc thành dòng lơ lửng không thuộc
+              về đâu — trong khi nó vốn đã đúng hình dạng eyebrow (chữ hoa nhỏ),
+              chỉ sai chỗ và thiếu chấm vuông.
+              `SectionEyebrow` là quy ước toàn site (15 component dùng); import
+              từ `home/` theo đúng tiền lệ `about/about-values.tsx`. */}
+          <SectionEyebrow>{t.toursLabel(tourCount)}</SectionEyebrow>
+          {/* Cỡ chữ theo chuẩn trang marketing (`md:text-[40px]/12`, 10 component
+              home/about dùng) — KHÔNG dùng `md:text-4xl`: cỡ đó là của `/contact`,
+              một trang tiện ích. */}
+          <h2 className="font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
             {t.regionHeading(region.name)}
           </h2>
           <p className="text-pretty text-muted-foreground">{intro}</p>
-          <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-            {t.toursLabel(tourCount)}
-          </p>
           {/* Link sang trang vùng CÓ THẬT (`/destinations/[region]`, Task 5 kế
               tiếp) — `<a>` thuần, cùng quy ước với các link nội bộ khác trong
               cụm destinations (know-before-you-go.tsx). */}
