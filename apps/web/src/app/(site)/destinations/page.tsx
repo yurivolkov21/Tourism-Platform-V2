@@ -3,6 +3,7 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ArrowRightIcon, ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { RegionCard } from '@/components/destinations/region-card';
+import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
 import { TourCard } from '@/components/tours/tour-card';
 import { destinationsInRegion, toursInRegion } from '@/lib/regions';
@@ -21,10 +22,14 @@ import { TOURS } from '@/mocks/tours';
  *  - `Gallery` ảnh biên tập theo vùng: chưa có media cho destination (spec §8 #1).
  *  - `Testimonials`: trang chủ đã có nguyên khu này, lặp lại là độn cho dài.
  *
- * Trang là Server Component thuần (không `'use client'`/motion) — khác các
- * trang khác trong site vốn tách hero/CTA ra file `'use client'` riêng để có
- * animation; ở đây brief chỉ cho phép 3 file (`region-card.tsx` + spec +
- * `page.tsx`), nên hero/CTA render tĩnh ngay trong file này.
+ * Trang vẫn là Server Component thuần (không `'use client'` trên chính
+ * `page.tsx`, `metadata` giữ nguyên) — khác các trang khác trong site vốn
+ * tách hero/CTA ra file `'use client'` riêng để có animation. Ở đây không cần
+ * file mới: `Reveal` (`@/components/motion/reveal`, đã có sẵn, tự mang
+ * `'use client'`) được import thẳng vào và bọc quanh từng khối, giống cách
+ * `article-body.tsx` bọc section trong `/blog/[slug]` — một Server Component
+ * khác có `generateMetadata`. Render Client Component con bên trong Server
+ * Component cha không buộc cha phải `'use client'`.
  */
 export const metadata: Metadata = {
   title: 'Destinations — Tourism',
@@ -63,7 +68,11 @@ export default function DestinationsPage() {
             mode `bg-hero` bị đọc trong scope dark và hero trùng màu nền trang
             (lỗi đã sửa một lần ở ToursHero, đừng tái diễn). */}
         <div className="dark contents">
-          <div className="relative z-10 mx-auto max-w-7xl">
+          {/* Một `Reveal` cho cả khối hero (breadcrumb + h1 + subtitle đi cùng
+              nhau) — không tách từng dòng như `ToursHero`, vì brief chỉ cần
+              khối này KHÔNG còn đứng yên, không cần tái tạo stagger tinh vi
+              của trang tour listing. */}
+          <Reveal className="relative z-10 mx-auto max-w-7xl">
             <nav
               aria-label="Breadcrumb"
               className="flex items-center gap-1.5 text-sm text-muted-foreground"
@@ -82,13 +91,18 @@ export default function DestinationsPage() {
             </h1>
 
             <p className="mt-4 max-w-2xl text-pretty text-muted-foreground">{t.heroSubtitle}</p>
-          </div>
+          </Reveal>
         </div>
       </section>
 
       {/* ── Khu 2 · 3 thẻ vùng, mỗi thẻ tint riêng qua data-region ── */}
       <section className="w-full px-4 py-16 md:px-16 lg:px-24 xl:px-32">
-        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
+        {/* Một `Reveal` bọc CẢ LƯỚI, không phải từng thẻ — 3 thẻ trồi cùng lúc
+            thay vì nối đuôi thành chuỗi riêng lẻ. `delay={0.1}` tạo stagger
+            nhẹ với khối hero phía trên cho màn hình đủ cao để cả hai lọt
+            viewport cùng lúc lúc tải trang; cùng bậc 0.1s ToursHero dùng giữa
+            breadcrumb/eyebrow. */}
+        <Reveal delay={0.1} className="mx-auto grid max-w-7xl grid-cols-1 gap-6 md:grid-cols-3">
           {REGIONS.map((region) => (
             <RegionCard
               key={region.key}
@@ -97,14 +111,18 @@ export default function DestinationsPage() {
               tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
             />
           ))}
-        </div>
+        </Reveal>
       </section>
 
       {/* ── Khu 3 · Featured trips — ẨN CẢ KHU nếu rỗng, đừng render tiêu đề
           trơ trọi không có gì bên dưới. */}
       {featured.length > 0 ? (
         <section className="w-full bg-muted px-4 py-16 md:px-16 lg:px-24 xl:px-32">
-          <div className="mx-auto max-w-7xl">
+          {/* Khối tự cách xa hero/lưới vùng một đoạn cuộn dài (py-16 + lưới 3
+              thẻ ở trên) nên trigger scroll riêng của nó — không cần delay,
+              giống cách `article-body.tsx` không delay giữa các section độc
+              lập. */}
+          <Reveal className="mx-auto max-w-7xl">
             <div className="flex flex-wrap items-end justify-between gap-4">
               <div>
                 <h2 className="font-heading text-3xl font-medium text-foreground">
@@ -128,13 +146,13 @@ export default function DestinationsPage() {
                 <TourCard key={tour.slug} tour={tour} />
               ))}
             </div>
-          </div>
+          </Reveal>
         </section>
       ) : null}
 
       {/* ── Khu 4 · CTA hỏi → /contact, dùng ButtonLink (KHÔNG Button render={<a/>}) ── */}
       <section className="w-full px-4 py-20 md:px-16 lg:px-24 xl:px-32">
-        <div className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl border border-border bg-card px-6 py-14 text-center">
+        <Reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl border border-border bg-card px-6 py-14 text-center">
           <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
             {cta.headings.destinations}
           </h2>
@@ -143,7 +161,7 @@ export default function DestinationsPage() {
             {cta.cta}
           </ButtonLink>
           <p className="text-xs text-muted-foreground">{cta.note}</p>
-        </div>
+        </Reveal>
       </section>
     </>
   );
