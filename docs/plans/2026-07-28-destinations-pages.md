@@ -198,7 +198,7 @@ Expected: `4` (1 ở `:root` + 3 khối `[data-region]`).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add libs/shared/tokens/style-dictionary/tokens.mjs libs/shared/tokens/style-dictionary/tokens.spec.mjs
+git add libs/shared/tokens/style-dictionary/tokens.mjs libs/shared/tokens/src/lib/tokens.spec.ts
 git commit -m "feat(tokens): slot --region-hero cho 3 vùng, cùng một bậc tối"
 ```
 

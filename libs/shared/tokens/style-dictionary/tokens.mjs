@@ -217,7 +217,7 @@ export const baseRules = [
   '}',
 ];
 
-// Lớp region Bắc/Trung/Nam (ADR-0013 #3) — 5 slot/vùng, chỉ page-level app dùng
+// Lớp region Bắc/Trung/Nam (ADR-0013 #3) — 6 slot/vùng, chỉ page-level app dùng
 // (component KHÔNG tham chiếu --region-*). Nguồn phân tích: docs/conventions/color-system.md §4.
 export const regionDefaults = {
   primary: 'oklch(0.494 0.067 184.3)',
