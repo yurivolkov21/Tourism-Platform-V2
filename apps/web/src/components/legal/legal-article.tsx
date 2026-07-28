@@ -1,11 +1,10 @@
 import type { LegalDoc } from '@tourism/i18n';
 import { Typeset } from '@tourism/ui/components/typeset';
 import { TriangleAlertIcon } from 'lucide-react';
+import { ArticleBody } from '@/components/content/article-body';
 import { ContentHero } from '@/components/content/content-hero';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
-import { Reveal } from '@/components/motion/reveal';
-import { slugify } from '@/lib/slug';
 import { tocFromLegalDoc } from '@/lib/toc';
 
 // Khung chung cho 3 trang pháp lý dài. Kỷ luật lấy từ mẫu Vercel/Linear:
@@ -39,38 +38,11 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
               ))}
             </Typeset>
 
-            <div className="mt-12 divide-y divide-border border-t border-border">
-              {doc.sections.map((section, i) => (
-                <section
-                  key={section.heading}
-                  id={slugify(section.heading)}
-                  className="scroll-mt-28 py-10"
-                >
-                  <Reveal>
-                    <div className="mb-4 flex items-baseline gap-4">
-                      <span className="font-mono text-xs tabular-nums text-primary">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
-                        {section.heading}
-                      </h2>
-                    </div>
-
-                    <Typeset preset="reading" className="text-muted-foreground">
-                      {section.paragraphs?.map((paragraph) => (
-                        <p key={paragraph}>{paragraph}</p>
-                      ))}
-                      {section.bullets ? (
-                        <ul>
-                          {section.bullets.map((bullet) => (
-                            <li key={bullet}>{bullet}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </Typeset>
-                  </Reveal>
-                </section>
-              ))}
+            {/* `mt-12` giữ ở ĐÂY, không đưa vào ArticleBody: khoảng cách giữa
+                intro và thân bài là việc của trang, không phải của khối thân bài
+                — /blog/[slug] cũng đặt khoảng riêng của nó. */}
+            <div className="mt-12">
+              <ArticleBody sections={doc.sections} />
             </div>
           </div>
 

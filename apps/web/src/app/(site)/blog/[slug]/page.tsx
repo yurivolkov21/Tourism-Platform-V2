@@ -5,12 +5,11 @@ import { PostCard } from '@/components/blog/post-card';
 import { PostHero } from '@/components/blog/post-hero';
 import { PostNav } from '@/components/blog/post-nav';
 import { ShareRow } from '@/components/blog/share-row';
+import { ArticleBody } from '@/components/content/article-body';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
-import { Reveal } from '@/components/motion/reveal';
 import { adjacentPosts, relatedPosts } from '@/lib/blog';
 import { absoluteUrl } from '@/lib/site';
-import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
 import { JOURNAL_POSTS } from '@/mocks/journal';
 
@@ -106,38 +105,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
               <p className="text-lg">{post.excerpt}</p>
             </Typeset>
 
-            <div className="mt-12 divide-y divide-border border-t border-border">
-              {post.sections.map((section, i) => (
-                <section
-                  key={section.heading}
-                  id={slugify(section.heading)}
-                  className="scroll-mt-28 py-10"
-                >
-                  <Reveal>
-                    <div className="mb-4 flex items-baseline gap-4">
-                      <span className="font-mono text-xs tabular-nums text-primary">
-                        {String(i + 1).padStart(2, '0')}
-                      </span>
-                      <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
-                        {section.heading}
-                      </h2>
-                    </div>
-
-                    <Typeset preset="reading" className="text-muted-foreground">
-                      {section.paragraphs?.map((paragraph) => (
-                        <p key={paragraph}>{paragraph}</p>
-                      ))}
-                      {section.bullets ? (
-                        <ul>
-                          {section.bullets.map((bullet) => (
-                            <li key={bullet}>{bullet}</li>
-                          ))}
-                        </ul>
-                      ) : null}
-                    </Typeset>
-                  </Reveal>
-                </section>
-              ))}
+            {/* Cùng một khối với 3 trang pháp lý — trước đây chép nguyên xi. */}
+            <div className="mt-12">
+              <ArticleBody sections={post.sections} />
             </div>
 
             <ShareRow title={post.title} />

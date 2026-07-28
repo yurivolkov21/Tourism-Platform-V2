@@ -18,9 +18,9 @@ export const metadata: Metadata = {
 export default async function BlogIndexPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string; q?: string }>;
+  searchParams: Promise<{ tag?: string; q?: string; page?: string }>;
 }) {
-  const { tag, q } = await searchParams;
+  const { tag, q, page } = await searchParams;
   const categories = postCategories(JOURNAL_POSTS);
   // Truyền tag THÔ xuống BlogExplorer, không lọc theo categories.includes ở
   // đây: tag lạ (link cũ/gõ tay) phải khớp filterPostsByCategory ra mảng rỗng
@@ -43,6 +43,9 @@ export default async function BlogIndexPage({
             categories={categories}
             initialTag={tag}
             initialQuery={q}
+            // `Number('abc') || 1` → 1: ?page= rác từ link cũ hay bot mở ra trang
+            // 1 chứ không phải NaN. `paginate` cũng tự kẹp page < 1.
+            initialPage={Number(page) || 1}
           />
         </div>
       </div>

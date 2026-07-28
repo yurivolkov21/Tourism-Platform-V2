@@ -37,7 +37,11 @@ export function PaginationBar({
   total: number;
   pageSize: number;
   onChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
+  /** Bỏ trống thì KHÔNG render ô chọn số/trang. `/blog` dùng thế: số bài mỗi
+      trang gắn với hình dạng lưới của trang đó, không phải thứ người đọc cần
+      điều chỉnh. Ẩn hẳn thay vì render ô vô hiệu — một điều khiển bấm không được
+      là điều khiển gây thắc mắc. */
+  onPageSizeChange?: (size: number) => void;
 }) {
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
@@ -48,26 +52,35 @@ export function PaginationBar({
   // nó có neo ở cả hai đầu chứ không phải vài nút lạc lõng trên dải rộng.
   return (
     <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t pt-6 sm:flex-row">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
-          <SelectTrigger
-            id="tours-page-size"
-            aria-label={messages.toursPage.perPageLabel}
-            size="sm"
-            className="w-20"
+      {onPageSizeChange ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => onPageSizeChange(Number(value))}
           >
-            <SelectValue>{(value) => value}</SelectValue>
-          </SelectTrigger>
-          <SelectContent alignItemWithTrigger={false}>
-            {PAGE_SIZES.map((size) => (
-              <SelectItem key={size} value={String(size)}>
-                {size}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <span>{messages.toursPage.perPage}</span>
-      </div>
+            <SelectTrigger
+              id="tours-page-size"
+              aria-label={messages.toursPage.perPageLabel}
+              size="sm"
+              className="w-20"
+            >
+              <SelectValue>{(value) => value}</SelectValue>
+            </SelectTrigger>
+            <SelectContent alignItemWithTrigger={false}>
+              {PAGE_SIZES.map((size) => (
+                <SelectItem key={size} value={String(size)}>
+                  {size}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span>{messages.toursPage.perPage}</span>
+        </div>
+      ) : (
+        // Giữ một ô rỗng để ba cụm không dồn về giữa: hàng này có neo ở cả hai
+        // đầu là lý do nó không "trống hoác" như thanh công cụ đã bị loại.
+        <div />
+      )}
 
       <PageNumbers page={page} numbers={numbers} totalPages={totalPages} onChange={onChange} />
 
