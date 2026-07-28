@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { OnThisPage } from '@/components/content/on-this-page';
+import { TopoPattern } from '@/components/topo-pattern';
 import {
   BookingRailConnected,
   DepartureSelectionProvider,
@@ -138,43 +139,69 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
   return (
     <DepartureSelectionProvider departures={tour.departures}>
-      <TourHero tour={tour} />
+      {/* ── "Departure board": hero + dải khởi hành là MỘT mặt, không hai băng ──
+          Ý định từ đầu (Task 9) là hai băng liền màu, cách nhau một hairline, đọc
+          thành một bảng có đường chia — thay vì một khối lạ trôi trên nền sáng.
+          Nhưng lúc đó nền và lớp vân vẫn nằm trên TỪNG section, nên vân dừng đúng
+          tại vạch chia: đo được hero phủ y 0–580 có vân, dải y 580–763 không, mà
+          màu nền hai bên GIỐNG NHAU tuyệt đối (`lab(13.19 -5.13 -0.19)`). Hệ quả
+          là các đường đồng mức bị cắt ngang GIỮA NÉT ở vạch chia — người xem đọc
+          thành lỗi render, không phải chủ ý (user hỏi đúng chỗ này 28/07).
 
-      {/* Dải khởi hành là BĂNG RIÊNG nối tiếp hero, cùng `bg-hero`, cách nhau
-          bằng một hairline: hai băng liền màu đọc thành MỘT bảng có đường chia —
-          đúng hình ảnh "departure board" gắn dưới tiêu đề, thay vì một khối lạ
-          trôi trên nền sáng. Nó cũng là lý do dải phải ở trên nếp gấp: dữ liệu
-          đợt khởi hành là thứ Nexora không có (họ hardcode `departures: []`). */}
-      <section
-        aria-labelledby="departure-strip-heading"
-        className="w-full border-t border-hero-foreground/15 bg-hero px-4 py-6 text-hero-foreground md:px-16 lg:px-24 xl:px-32"
-      >
-        <div className="dark contents">
-          <div className="mx-auto max-w-7xl">
-            {/* Nhãn trái, link xuống bảng đầy đủ phải — cùng hình dạng "tiêu đề
+          Nên nền + vân hoist lên đây, phủ liên tục cả hai tấm. Vẫn đúng luật
+          "tối đa MỘT vị trí topo mỗi trang" (25/07): đây là một instance, chỉ là
+          nó phủ trọn bảng. Cố tình KHÔNG thêm `TopoPattern` thứ hai vào dải —
+          `mask-size: cover` tính theo hộp, nên instance riêng trên hộp cao 183px
+          crop và scale khác hộp 580px, các đường sẽ LỆCH nhau tại vạch ghép, tệ
+          hơn cả để phẳng.
+
+          Vân ở NGOÀI mọi scope `dark` để biến thể `dark:` đọc theme của TRANG:
+          nền tối hơn ở dark mode nên vân phải đậm lên mới đọc được. `bg-hero`
+          cũng phải ở ngoài scope `dark` — đặt trong đó thì nó trùng màu nền trang
+          ở dark mode (lỗi đã sửa `22bd75e`). */}
+      <div className="relative overflow-hidden bg-hero text-hero-foreground">
+        <TopoPattern className="bg-primary opacity-[0.12] dark:opacity-[0.2]" />
+
+        <TourHero tour={tour} />
+
+        {/* `relative z-10` là BẮT BUỘC, không phải trang trí: lớp vân là phần tử
+            absolute, còn section này nếu để static thì theo thứ tự vẽ của CSS nó
+            nằm DƯỚI phần tử positioned cùng stacking context — tức vân sẽ phủ lên
+            chính các chip khởi hành. Hero không cần thêm vì nội dung nó đã có
+            `relative z-10` sẵn.
+            Dải phải ở trên nếp gấp: dữ liệu đợt khởi hành là thứ Nexora không có
+            (họ hardcode `departures: []`). */}
+        <section
+          aria-labelledby="departure-strip-heading"
+          className="relative z-10 w-full border-t border-hero-foreground/15 px-4 py-6 md:px-16 lg:px-24 xl:px-32"
+        >
+          <div className="dark contents">
+            <div className="mx-auto max-w-7xl">
+              {/* Nhãn trái, link xuống bảng đầy đủ phải — cùng hình dạng "tiêu đề
                 khu vực + điều khiển đuôi" mà listing chốt ở vòng 4. Không có nó
                 thì nửa phải của băng trống hoác đúng kiểu ba bản listing đầu. */}
-            <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-              <p
-                id="departure-strip-heading"
-                className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
-              >
-                {t.departures.stripHeading}
-              </p>
-              {/* Chỉ hiện khi có đợt: link tới một bảng rỗng là link nói dối. */}
-              {tour.departures.length > 0 ? (
-                <a
-                  href={`#${slugify(t.sections.departures)}`}
-                  className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
+                <p
+                  id="departure-strip-heading"
+                  className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
                 >
-                  {t.departures.seeAll(tour.departures.length)}
-                </a>
-              ) : null}
+                  {t.departures.stripHeading}
+                </p>
+                {/* Chỉ hiện khi có đợt: link tới một bảng rỗng là link nói dối. */}
+                {tour.departures.length > 0 ? (
+                  <a
+                    href={`#${slugify(t.sections.departures)}`}
+                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+                  >
+                    {t.departures.seeAll(tour.departures.length)}
+                  </a>
+                ) : null}
+              </div>
+              <DepartureStripConnected currency={tour.currency} />
             </div>
-            <DepartureStripConnected currency={tour.currency} />
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Khảm ảnh THAY băng 21:9 full-bleed trước đây: băng đó chiếm 617px ở màn
           1440 mà không nói được gì ngoài "sẽ có ảnh ở đây". Khảm nằm trong

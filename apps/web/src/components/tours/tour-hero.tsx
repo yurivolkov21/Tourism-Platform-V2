@@ -3,7 +3,6 @@
 import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { TopoPattern } from '@/components/topo-pattern';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
 import { discountPercent, formatMoney } from '@/lib/tours';
 import type { MockTourDetail } from '@/mocks/types';
@@ -11,7 +10,8 @@ import type { MockTourDetail } from '@/mocks/types';
 // Hero riêng cho trang chi tiết — KHÔNG tái dùng ToursHero: cái đó mang eyebrow
 // + H1 + subtitle + ô search, còn đây mang rating, chuỗi chặng, chip meta, badge
 // và giá. Ba hero (ContentHero, ToursHero, TourHero) chia sẻ TopoPattern + scrim
-// + nhịp spring, không chia sẻ component (spec §6.2).
+// + nhịp spring, không chia sẻ component (spec §6.2). Riêng ở trang này lớp vân
+// nằm một bậc CAO HƠN hero (`TourBoard`) vì nó phải phủ cả dải khởi hành.
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 /**
@@ -33,14 +33,17 @@ export function TourHero({ tour }: { tour: MockTourDetail }) {
   const hiddenBadges = tour.badges.length - shownBadges.length;
 
   return (
-    <section className="relative w-full overflow-hidden bg-hero px-4 pt-36 pb-14 text-hero-foreground md:px-16 md:pb-16 lg:px-24 xl:px-32">
+    // KHÔNG có `bg-hero` và KHÔNG có `TopoPattern` ở đây — cả hai đã lên
+    // `TourBoard` ở page.tsx. Hero là một TẤM của bảng đó, không phải một băng
+    // độc lập: nền và lớp vân phải liên tục qua vạch chia mới đọc thành một mặt.
+    // Đổi lại, component này chỉ render đúng trên nền do cha cấp.
+    <section className="relative w-full overflow-hidden px-4 pt-36 pb-14 md:px-16 md:pb-16 lg:px-24 xl:px-32">
+      {/* Quầng sáng góc trên-trái vẫn thuộc RIÊNG hero (nó nhấn vùng H1), nên ở
+          lại đây và bị `overflow-hidden` của hero cắt gọn. */}
       <div
         aria-hidden="true"
         className="absolute inset-0 bg-linear-to-br from-primary/15 via-transparent to-transparent"
       />
-      {/* Vân topo ra NGOÀI scope dark để biến thể `dark:` đọc theme của TRANG:
-          nền hero tối hơn ở dark mode nên vân phải đậm lên mới đọc được. */}
-      <TopoPattern className="bg-primary opacity-[0.12] dark:opacity-[0.2]" />
 
       {/* `dark` bọc NỘI DUNG, không đặt lên <section> — section phải đọc `bg-hero`
           theo theme của trang. Đặt `dark` lên section thì `bg-*` bị đọc trong
