@@ -48,9 +48,21 @@ export function RegionCard({
           <h3 className="font-heading text-2xl font-medium text-foreground">{region.name}</h3>
           <p className="mt-1 text-sm text-pretty text-muted-foreground">{region.tagline}</p>
         </div>
-        {/* Chip số tour — tint `--region-surface` / `--region-on-surface`. */}
+        {/* Chip số tour — cặp `--region-surface` / `--region-on-surface`, nhưng nền
+            được làm NHẠT thêm 22%.
+            Vì sao: đo trên trình duyệt thật (canvas → sRGB → WCAG, cả light lẫn dark)
+            thì cặp gốc của vùng NAM chỉ đạt 4.34:1, dưới ngưỡng AA 4.5:1 cho chữ
+            12px — Bắc 5.34 và Trung 9.37 thì đạt. Làm nhạt nền nâng cả ba lên trên
+            ngưỡng mà vẫn giữ đúng sắc của vùng.
+            KHÔNG đổi sang `text-foreground`: đã thử và hỏng — `--foreground` lật
+            trắng ở dark mode trong khi lớp `--region-*` KHÔNG đổi theo theme, nên
+            chữ trắng nằm trên nền sáng, đo được 1.12–2.5:1.
+            KHÔNG đụng token: 3 lớp vùng đã chốt ở ADR-0013 và còn dùng chỗ khác. */}
         <span
-          style={{ background: 'var(--region-surface)', color: 'var(--region-on-surface)' }}
+          style={{
+            background: 'color-mix(in oklch, var(--region-surface), white 22%)',
+            color: 'var(--region-on-surface)',
+          }}
           className="shrink-0 rounded-full px-3 py-1 text-xs font-medium whitespace-nowrap"
         >
           {t.toursLabel(tourCount)}
