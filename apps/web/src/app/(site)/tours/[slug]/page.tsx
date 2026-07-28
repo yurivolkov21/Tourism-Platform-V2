@@ -8,10 +8,16 @@ import {
   DepartureStripConnected,
   DeparturesTableConnected,
 } from '@/components/tours/departure-selection';
+import { GoodToKnow } from '@/components/tours/good-to-know';
+import { Inclusions } from '@/components/tours/inclusions';
+import { ItineraryTimeline } from '@/components/tours/itinerary-timeline';
+import { RelatedTours } from '@/components/tours/related-tours';
+import { GoodFor, WhyThisTrip } from '@/components/tours/tour-facts';
 import { TourHero, TourImageBand } from '@/components/tours/tour-hero';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
+import { relatedTours } from '@/lib/tours';
 import { TOURS } from '@/mocks/tours';
 import type { MockTourDetail } from '@/mocks/types';
 
@@ -187,9 +193,17 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
                     {heading}
                   </h2>
 
-                  {/* Nội dung chọn theo `key`. Task 10 điền phần còn lại; chỗ nào
-                      chưa có thì KHÔNG render hộp rỗng để trang không có khoảng
-                      trống vô nghĩa. */}
+                  {/* Nội dung chọn theo `key`, không theo chuỗi tiêu đề. Section
+                      nào không có dữ liệu thì đã bị loại khỏi `sections` từ đầu,
+                      nên ở đây không có nhánh rỗng nào. */}
+                  {key === 'why' ? <WhyThisTrip highlights={tour.highlights} /> : null}
+                  {key === 'goodFor' ? <GoodFor suitableFor={tour.suitableFor} /> : null}
+                  {key === 'itinerary' ? (
+                    <ItineraryTimeline days={tour.itinerary} meetingPoint={tour.meetingPoint} />
+                  ) : null}
+                  {key === 'included' ? (
+                    <Inclusions included={tour.included} excluded={tour.excluded} />
+                  ) : null}
                   {key === 'departures' ? (
                     <div className="mt-6">
                       <DeparturesTableConnected
@@ -197,6 +211,9 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
                         durationDays={tour.durationDays}
                       />
                     </div>
+                  ) : null}
+                  {key === 'goodToKnow' ? (
+                    <GoodToKnow faqs={tour.faqs} policies={tour.policies} />
                   ) : null}
                 </section>
               ))}
@@ -226,7 +243,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           >
             {t.sections.related}
           </h2>
-          {/* Gợi ý dựng bằng relatedTours() vào ở Task 10. */}
+          <RelatedTours tours={relatedTours(TOURS, tour.slug, 3)} />
         </div>
       </section>
 

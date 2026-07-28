@@ -14,12 +14,6 @@ import { ImagePlaceholder } from '@/components/image-placeholder';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
 import type { MockTourCard } from '@/mocks/types';
 
-const DIFFICULTY_LABEL: Record<NonNullable<MockTourCard['difficulty']>, string> = {
-  EASY: 'Easy',
-  MODERATE: 'Moderate',
-  CHALLENGING: 'Challenging',
-};
-
 // Card tour chuẩn — giữ thiết kế đã chốt ở trang Home (ảnh 4:3 hover scale,
 // header, hàng meta, footer giá + hành động), đổi nguồn sang field contract.
 // Dùng cho listing; sau này cả trang vùng và wishlist.
@@ -82,7 +76,10 @@ export function TourCard({ tour }: { tour: MockTourCard }) {
           max {tour.maxGroupSize}
         </Badge>
         {tour.difficulty ? (
-          <Badge variant="secondary">{DIFFICULTY_LABEL[tour.difficulty]}</Badge>
+          // Nhãn độ khó lấy từ i18n, KHÔNG khai lại tại chỗ: bản cũ có hằng
+          // DIFFICULTY_LABEL riêng trùng y hệt `toursPage.difficultyLabels`, và
+          // hai tên cho một thứ là cách copy bắt đầu lệch nhau.
+          <Badge variant="secondary">{messages.toursPage.difficultyLabels[tour.difficulty]}</Badge>
         ) : null}
 
         {/* ratingAvg null = CHƯA AI đánh giá. Bỏ hẳn dòng sao thay vì hiện "0.0"
@@ -93,7 +90,9 @@ export function TourCard({ tour }: { tour: MockTourCard }) {
           ) : (
             <span className="flex items-center gap-1">
               <StarIcon className="size-3.5! fill-rating text-rating" aria-hidden="true" />
-              <span className="font-medium text-foreground">{tour.ratingAvg}</span>(
+              {/* toFixed(1) như TourListCard: in thô thì rating 4.0 hiện thành
+                  "4" và hai card cạnh nhau lệch định dạng. */}
+              <span className="font-medium text-foreground">{tour.ratingAvg.toFixed(1)}</span>(
               {tour.ratingCount.toLocaleString('en-US')})
             </span>
           )}

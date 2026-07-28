@@ -1,0 +1,24 @@
+import { TourCard } from '@/components/tours/tour-card';
+import type { MockTourCard } from '@/mocks/types';
+
+/**
+ * Gợi ý cuối trang. Danh sách do `relatedTours()` chọn: cùng chuyên mục trước,
+ * rồi tour chia chung destination, rồi bù bằng phần còn lại — và không bao giờ
+ * chứa chính tour đang xem.
+ *
+ * KHÔNG port bản Nexora (`pickRelated` = cắt 4 tour đầu, không xét gì): một trang
+ * tour Hạ Long gợi ý bốn tour bất kỳ thì không phải gợi ý, chỉ là chỗ trống được
+ * lấp. Rỗng thì không render gì — 16 tour mock luôn đủ, nhưng khi gắn API mà
+ * catalogue chỉ có 1 tour thì đây là nhánh có thật.
+ */
+export function RelatedTours({ tours }: { tours: MockTourCard[] }) {
+  if (tours.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      {tours.map((tour) => (
+        <TourCard key={tour.slug} tour={tour} />
+      ))}
+    </div>
+  );
+}
