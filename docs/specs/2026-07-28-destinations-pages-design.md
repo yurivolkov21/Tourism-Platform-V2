@@ -351,6 +351,13 @@ Cắt xong thì thiếu copy cho hai thứ mới, phải viết:
 3. **Không có `destinations.bySlug`** trong contract. Cụm này không cần (trang vùng
    không phải trang địa điểm), nhưng nếu về sau muốn trang cho từng địa điểm thì
    phải mở rộng contract.
+4. **Khối `messages.mobile` là dead code port từ Nexora, mang đúng hai bệnh mà §7
+   vừa dọn** (phát hiện khi làm Task 3, 28/07): nó bịa địa danh
+   (`location: 'Hà Giang, Việt Nam'` — v2 không bán Hà Giang) và khoá `Record` bằng
+   **chuỗi user-facing** (`mobile.home.regionShort['Northern Vietnam']`). Đo được
+   **0 consumer** trên toàn repo. Cố ý không dọn ở đây vì nó thuộc **P5 mobile** chưa
+   khởi động — nhưng phải dọn khi P5 mở, nếu không app di động sẽ ship đúng lỗi mà
+   web vừa sửa.
 
 ## 9. Logic thuần + TDD
 
@@ -383,8 +390,11 @@ dưới nó.
 - Khu `Featured trips` render đúng **6** tour (`isFeatured === true`), và **không**
   chữ nào trên `/destinations` gọi chúng là "popular"/"most loved"/"favourites".
 - Không còn `blurb` trong codebase (2 consumer ở §4.1 đã đổi).
-- **Không còn `Hà Giang` / `Lan Hạ` / `Fansipan` / `Pù Luông` trong `@tourism/i18n`**
-  — grep phải trả 0. Đây là tiêu chí đo được của việc cắt copy ở §7.
+- **Không còn `Hà Giang` / `Lan Hạ` / `Fansipan` / `Pù Luông` trong chuỗi
+  user-facing của `destinationsPage` · `regionPage` · `nav`** — grep **loại trừ
+  comment và khối `mobile:`**. (Phát biểu lại 28/07: bản đầu ghi "grep toàn file = 0"
+  nhưng nó tự mâu thuẫn — §7 yêu cầu comment giải thích *có nêu tên* `Fansipan` để
+  nói rõ đã cắt gì, và khối `mobile:` là nợ Nexora riêng, xem §8 #4.)
 - `destinationDetail` đã bị xoá khỏi i18n (trang đó không thuộc cụm này).
 - Không key nào trong i18n còn khoá bằng chuỗi user-facing `'Northern Vietnam'`.
 - Kiểm mắt cả **light và dark** cho cả 3 vùng — ba hero về cùng một bậc tối.
