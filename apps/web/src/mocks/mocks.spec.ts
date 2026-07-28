@@ -268,3 +268,69 @@ describe('mock journal', () => {
     expect(sortPostsByDate(JOURNAL_POSTS)[0]?.date).toBe('2026-10-02');
   });
 });
+
+describe('TOURS.media — bất biến gương theo MediaItemSchema', () => {
+  it('mỗi tour có tối đa MỘT ảnh role hero', () => {
+    // Bố cục khảm dựa vào đúng một ảnh dẫn; hai hero thì không quyết được ô lớn
+    // là ảnh nào, và thứ tự sẽ phụ thuộc vào may mắn của sortOrder.
+    for (const tour of TOURS) {
+      expect(tour.media.filter((m) => m.role === 'hero').length).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it('media sắp tăng dần theo sortOrder', () => {
+    for (const tour of TOURS) {
+      const orders = tour.media.map((m) => m.sortOrder);
+      expect(orders).toEqual([...orders].sort((a, b) => a - b));
+    }
+  });
+
+  it('publicId không trùng trong cùng một tour', () => {
+    for (const tour of TOURS) {
+      const ids = tour.media.map((m) => m.publicId);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('mọi url là URL tuyệt đối hợp lệ — sitemap/JSON-LD sau này cần vậy', () => {
+    for (const tour of TOURS) {
+      for (const item of tour.media) {
+        expect(() => new URL(item.url)).not.toThrow();
+      }
+    }
+  });
+
+  it('hiện tại KHÔNG có media type VIDEO — UI chưa xử lý nhánh đó', () => {
+    // Contract cho phép VIDEO (kèm posterUrl), nhưng gallery mới chỉ render ảnh.
+    // Test này ĐỎ khi ai đó thêm VIDEO vào mock — đó là ý đồ: nó nhắc phải dựng
+    // UI video trước, chứ không phải để chặn dữ liệu vĩnh viễn.
+    for (const tour of TOURS) {
+      for (const item of tour.media) expect(item.type).toBe('IMAGE');
+    }
+  });
+});
+
+describe('TOURS.media — mọi nhánh bố cục phải có mock chứng minh', () => {
+  it('có tour KHÔNG ảnh nào — gallery phải biến mất sạch', () => {
+    expect(TOURS.some((t) => t.media.length === 0)).toBe(true);
+  });
+
+  it('có tour đúng MỘT ảnh — không đủ để xếp khảm', () => {
+    expect(TOURS.some((t) => t.media.length === 1)).toBe(true);
+  });
+
+  it('có tour ít ảnh (2–4) và tour nhiều ảnh (≥6)', () => {
+    expect(TOURS.some((t) => t.media.length >= 2 && t.media.length <= 4)).toBe(true);
+    expect(TOURS.some((t) => t.media.length >= 6)).toBe(true);
+  });
+
+  it('có ảnh alt null — ép nhánh đường lùi cho nhãn trình đọc màn hình', () => {
+    expect(TOURS.some((t) => t.media.some((m) => m.alt === null))).toBe(true);
+  });
+
+  it('có ảnh không có width/height — bố cục không được phụ thuộc tỉ lệ nội tại', () => {
+    expect(TOURS.some((t) => t.media.some((m) => m.width === null && m.height === null))).toBe(
+      true,
+    );
+  });
+});

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { TOURS } from '@/mocks/tours';
+import type { MockMediaItem } from '@/mocks/types';
 
 /** State rỗng dùng làm nền cho mọi test lọc — spread rồi ghi đè đúng facet cần. */
 const EMPTY_FILTERS = {
@@ -27,6 +28,7 @@ import {
   searchTours,
   sortTours,
   tourCategories,
+  tourGallery,
 } from './tours';
 
 describe('tourCategories', () => {
@@ -376,5 +378,54 @@ describe('relatedTours', () => {
   });
   it('slug lạ vẫn trả danh sách chứ không nổ', () => {
     expect(relatedTours(TOURS, 'khong-ton-tai', 3)).toHaveLength(3);
+  });
+});
+
+describe('tourGallery', () => {
+  const item = (
+    role: MockMediaItem['role'],
+    sortOrder: number,
+    type: MockMediaItem['type'] = 'IMAGE',
+  ): MockMediaItem => ({
+    publicId: `p${sortOrder}-${role}`,
+    url: `https://cdn.example/${sortOrder}.jpg`,
+    type,
+    role,
+    posterUrl: null,
+    width: 1600,
+    height: 1067,
+    alt: null,
+    sortOrder,
+  });
+
+  it('ảnh hero đứng đầu dù sortOrder của nó lớn hơn', () => {
+    // Ô lớn của khảm là ảnh dẫn, không phải "ảnh có sortOrder nhỏ nhất".
+    const result = tourGallery([item('gallery', 1), item('gallery', 2), item('hero', 9)]);
+    expect(result[0]?.role).toBe('hero');
+  });
+
+  it('phần còn lại giữ đúng thứ tự sortOrder', () => {
+    const result = tourGallery([item('gallery', 3), item('hero', 0), item('gallery', 1)]);
+    expect(result.map((m) => m.sortOrder)).toEqual([0, 1, 3]);
+  });
+
+  it('bỏ VIDEO — gallery hiện tại chỉ render ảnh', () => {
+    const result = tourGallery([item('hero', 0), item('gallery', 1, 'VIDEO')]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('bỏ role avatar và body — chúng thuộc chỗ khác, không phải gallery tour', () => {
+    const result = tourGallery([item('hero', 0), item('avatar', 1), item('body', 2)]);
+    expect(result).toHaveLength(1);
+  });
+
+  it('mảng rỗng cho mảng rỗng, không throw', () => {
+    expect(tourGallery([])).toEqual([]);
+  });
+
+  it('không có hero thì ảnh gallery đầu tiên lên làm ảnh dẫn', () => {
+    // Nhánh thật khi biên tập upload ảnh mà quên đánh dấu hero.
+    const result = tourGallery([item('gallery', 5), item('gallery', 2)]);
+    expect(result.map((m) => m.sortOrder)).toEqual([2, 5]);
   });
 });

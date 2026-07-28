@@ -68,7 +68,39 @@ export interface MockTourDeparture {
   compareAtPrice: string | null;
 }
 
-/** Gương TourDetailSchema = card + nội dung bán hàng + đợt khởi hành.
+/**
+ * Gương `MediaItemSchema` của `@tourism/contract` (ADR-0005) — **nguyên vẹn từng
+ * field**, kể cả những field cụm tĩnh chưa dùng.
+ *
+ * Vì sao gương đủ: schema này KHÔNG phải do ta nghĩ ra cho gallery. Nó đã tồn tại
+ * và đang chạy — `posts.service.ts` gọi `MediaService.resolveForOwners()` để cấp
+ * `PostDetailSchema.media: MediaItem[]`. Nó cũng đã có sẵn `role: 'hero' |
+ * 'gallery'` và `sortOrder`, tức hình dạng dữ liệu của một gallery đã được chốt ở
+ * tầng contract. Ta chỉ đang chờ tour được nối vào cùng đường dây đó.
+ */
+export interface MockMediaItem {
+  /** Giữ để admin (P4) re-submit item không đổi. */
+  publicId: string;
+  /** URL Cloudinary do API dựng. Cụm tĩnh KHÔNG fetch nó — mọi ảnh vẫn là
+      `ImagePlaceholder` theo chính sách hiện hành; URL có ở đây chỉ để hình dạng
+      mock đúng contract. */
+  url: string;
+  /** VIDEO là nhánh contract cho phép nhưng UI CHƯA xử lý. Mock hiện toàn IMAGE,
+      và `mocks.spec.ts` canh điều đó — thêm VIDEO vào mock là test đỏ, để nhắc
+      rằng phải dựng UI video trước chứ không phải để chặn dữ liệu. */
+  type: 'IMAGE' | 'VIDEO';
+  role: 'hero' | 'gallery' | 'avatar' | 'body';
+  posterUrl: string | null;
+  /** Nullable ở DB → bố cục KHÔNG được phụ thuộc tỉ lệ nội tại của ảnh. Đây là lý
+      do gallery dùng ô có aspect cố định thay vì masonry theo chiều ảnh. */
+  width: number | null;
+  height: number | null;
+  /** Nullable → phải có đường lùi khi soạn nhãn cho trình đọc màn hình. */
+  alt: string | null;
+  sortOrder: number;
+}
+
+/** Gương TourDetailSchema = card + nội dung bán hàng + đợt khởi hành + media.
     Schema v2 KHÔNG có cột `description` dài — thân tour chính là các mảng
     có cấu trúc dưới đây (summary nằm ở card). */
 export interface MockTourDetail extends MockTourCard {
@@ -82,6 +114,11 @@ export interface MockTourDetail extends MockTourCard {
   faqs: { question: string; answer: string }[];
   policies: { kind: MockPolicyKind; title: string; body: string }[];
   departures: MockTourDeparture[];
+  /** Ảnh của tour. `TourDetailSchema` CHƯA có field này — đó là lỗ contract #1 ở
+      spec §8, và cách vá đã rõ: `CatalogService` gọi
+      `MediaService.resolveForOwners('TOUR', [id])` đúng như `posts.service.ts`
+      đang làm. Mock để sẵn field nên lúc đó là swap nguồn, không phải sửa UI. */
+  media: MockMediaItem[];
 }
 
 export interface MockRegion {

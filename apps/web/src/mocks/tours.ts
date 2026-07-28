@@ -1,3 +1,4 @@
+import { TOUR_MEDIA } from './tour-media.js';
 import type { MockTourDetail } from './types.js';
 
 // 16 tour mock gương theo TourCardSchema/TourDetailSchema.
@@ -11,7 +12,13 @@ import type { MockTourDetail } from './types.js';
 // đẹp là trang chưa xong. Bất biến canh ở mocks.spec.ts.
 //
 // Địa danh giữ dấu tiếng Việt; mọi copy user-facing khác là tiếng Anh (luật #7).
-export const TOURS: MockTourDetail[] = [
+//
+// `media` KHÔNG viết trong từng object dưới đây mà được ghép ở bước cuối file, từ
+// `tour-media.ts`. Đó là chủ ý: trong API thật ảnh nằm ở bảng `MediaAsset` và do
+// `MediaService.resolveForOwners('TOUR', ids)` lấy theo lô rồi mới merge vào
+// detail — đúng như `posts.service.ts` đang làm. Mock ghép cùng cách nên lúc gắn
+// API là bỏ bước ghép, không phải sửa 16 object.
+const TOURS_WITHOUT_MEDIA: Omit<MockTourDetail, 'media'>[] = [
   {
     id: '9f1c0a6e-1d2b-4c3a-8e5f-7a0b1c2d3e40',
     slug: 'ha-long-bay-cruise',
@@ -1480,3 +1487,10 @@ export const TOURS: MockTourDetail[] = [
     ],
   },
 ];
+
+// Ghép media vào từng tour. Slug không có trong TOUR_MEDIA thì ra mảng rỗng —
+// đúng nhánh "biên tập chưa upload" mà API cũng sẽ trả về.
+export const TOURS: MockTourDetail[] = TOURS_WITHOUT_MEDIA.map((tour) => ({
+  ...tour,
+  media: TOUR_MEDIA[tour.slug] ?? [],
+}));

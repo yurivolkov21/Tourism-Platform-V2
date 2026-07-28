@@ -1,5 +1,6 @@
 import type {
   MockDestinationLink,
+  MockMediaItem,
   MockPolicyKind,
   MockTourCard,
   MockTourDetail,
@@ -203,6 +204,31 @@ export function sortTours<T extends MockTourCard>(
     if (key === 'durationDays') return (a.durationDays - b.durationDays) * sign;
     return a.title.localeCompare(b.title) * sign;
   });
+}
+
+/**
+ * Ảnh cho gallery, theo đúng thứ tự sẽ hiển thị: ảnh dẫn trước, rồi phần còn lại
+ * theo `sortOrder`.
+ *
+ * Ba luật, mỗi luật một lý do:
+ *  1. `role: 'hero'` lên đầu BẤT KỂ `sortOrder` — ô lớn của khảm là ảnh biên tập
+ *     chọn làm ảnh dẫn, không phải "ảnh có sortOrder nhỏ nhất". Không có hero thì
+ *     ảnh gallery đầu tiên lên thay (nhánh thật: upload xong mà quên đánh dấu).
+ *  2. Bỏ `type: 'VIDEO'`. Contract cho phép video (kèm `posterUrl`) nhưng gallery
+ *     mới chỉ render ảnh; lọc ở đây để UI không phải đoán, và `mocks.spec.ts` canh
+ *     rằng mock chưa có VIDEO nào.
+ *  3. Bỏ `role: 'avatar' | 'body'` — avatar là ảnh người, body là ảnh chèn trong
+ *     thân bài. Cùng bảng `MediaAsset` nhưng không phải ảnh của chuyến đi.
+ */
+export function tourGallery(media: readonly MockMediaItem[]): MockMediaItem[] {
+  const usable = media.filter(
+    (item) => item.type === 'IMAGE' && (item.role === 'hero' || item.role === 'gallery'),
+  );
+  const hero = usable.filter((item) => item.role === 'hero');
+  const rest = usable
+    .filter((item) => item.role !== 'hero')
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+  return [...hero, ...rest];
 }
 
 /** Chuỗi chặng: destination chính đứng đầu, phần còn lại giữ nguyên thứ tự
