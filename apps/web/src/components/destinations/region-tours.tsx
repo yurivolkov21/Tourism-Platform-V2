@@ -9,11 +9,31 @@ import { TourCard } from '@/components/tours/tour-card';
 import { paginate } from '@/lib/paginate';
 import type { MockTourCard } from '@/mocks/types';
 
-/** Hai hàng đầy trên lưới 3 cột (còn dư 2 ô ở hàng ba) — cùng con số
-    `REGION_PAGE_SIZE` của Nexora. Mock hiện có 6 tour/vùng nên luôn ra ĐÚNG một
-    trang; phân trang vẫn dựng vì đây là nhánh có thật khi gắn API (catalogue
-    thật của một vùng vượt 8 tour dễ dàng), chỉ thanh điều khiển là tự ẩn. */
-const REGION_PAGE_SIZE = 8;
+/**
+ * Số tour mỗi trang. **6 chứ không phải 8** (user chốt 29/07).
+ *
+ * Lưới ở đây là `sm:grid-cols-2 lg:grid-cols-3`, nên con số phải chia hết cho
+ * CẢ HAI: 6 = 3 hàng đầy ở khổ 2 cột và 2 hàng đầy ở khổ 3 cột. 8 để lại hàng
+ * cuối khuyết 1 ô ở 3 cột; 9 thì đầy ở 3 cột nhưng khuyết ở 2 cột. 6 là con số
+ * duy nhất dưới 12 không bỏ lại ô mồ côi ở bất kỳ khổ nào.
+ *
+ * Nexora dùng 8, nhưng nguyên tắc họ ghi trong comment là *"two full desktop
+ * rows"* và lưới của họ **4 cột** — port trung thành nguyên tắc đó sang lưới 3
+ * cột chính là 6, không phải chép lại con số.
+ *
+ * Mock hiện có đúng 6 tour/vùng nên vẫn luôn ra ĐÚNG một trang và thanh điều
+ * khiển tự ẩn. Phân trang vẫn dựng vì đây là nhánh CÓ THẬT khi gắn API — một
+ * vùng vượt 6 tour là chuyện thường. Hệ quả cần biết: tour thứ 7 của một vùng
+ * sẽ tạo ra trang 2 chỉ có một card.
+ *
+ * EXPORT **không phải** để spec thôi gõ lại con số. Spec CỐ TÌNH giữ literal
+ * riêng làm chốt chặn: nếu ai đổi cỡ trang ở đây mà không đổi test thì test đỏ
+ * ngay — import hằng số vào sẽ khiến test âm thầm đi theo mọi giá trị và mất
+ * hẳn khả năng bắt thay đổi ngoài ý muốn. Export chỉ để spec **so hai con số
+ * với nhau** trong một test riêng, nên lệch là báo thẳng chứ không hỏng lòng
+ * vòng qua một phép đếm card.
+ */
+export const REGION_PAGE_SIZE = 6;
 
 /** Giá trị `active` khi không lọc theo địa điểm nào. Không phải slug của địa
     điểm nào cả nên không thể đụng nhau. */
@@ -23,7 +43,7 @@ const CHIP = 'cursor-pointer rounded-full border px-4 py-1.5 text-sm font-medium
 
 /**
  * Khu TOURS của trang vùng — hàng chip lọc theo địa điểm + lưới `TourCard`,
- * phân trang 8/trang. Đây là nơi DUY NHẤT địa điểm của vùng xuất hiện: bản Task 5
+ * phân trang 6/trang. Đây là nơi DUY NHẤT địa điểm của vùng xuất hiện: bản Task 5
  * có thêm một khu "places" dạng hàng, nhưng trang Nexora thật không có nó — địa
  * điểm ở đó là TAB LỌC, và một danh sách nơi chốn không dẫn đi đâu thì chỉ là
  * mục lục cho chính khu này.

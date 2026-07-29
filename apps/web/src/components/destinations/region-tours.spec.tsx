@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { MockTourCard } from '@/mocks/types';
-import { RegionTours } from './region-tours';
+import { REGION_PAGE_SIZE, RegionTours } from './region-tours';
 
 beforeAll(() => {
   // jsdom không hiện thực IntersectionObserver, mà khu này render `SectionEyebrow`
@@ -55,9 +55,13 @@ function tour(
 }
 
 /** Số tour mỗi trang của khu này — phải khớp `REGION_PAGE_SIZE` ở component.
-    Gõ lại ở đây thay vì export hằng số: nếu component đổi cỡ trang mà test không
-    đổi theo thì hai test phân trang bên dưới ĐỎ ngay, đúng thứ ta muốn nghe. */
-const PAGE_SIZE = 8;
+    CỐ TÌNH gõ lại thay vì chỉ import: nếu ai đổi cỡ trang ở component mà không
+    đổi test thì test ĐỎ ngay, đúng thứ ta muốn nghe. Import hằng số vào đây sẽ
+    khiến test âm thầm đi theo mọi giá trị và mất hẳn chốt chặn đó.
+    Con số 6 (không phải 8): lưới `sm:grid-cols-2 lg:grid-cols-3` nên cỡ trang
+    phải chia hết cho cả 2 lẫn 3, nếu không hàng cuối bỏ lại ô mồ côi ở một khổ
+    màn hình nào đó. */
+const PAGE_SIZE = 6;
 
 // Ninh Bình CỐ TÌNH không có tour nào — đó là nhánh "lọc ra 0 kết quả", nhánh
 // có thật khi một địa điểm mới chưa gắn tour nào.
@@ -72,7 +76,7 @@ const TOURS = [
   ]),
 ];
 
-/** Vượt một trang: 9 tour cùng ở Sa Pa → 2 trang với cỡ trang 8. Nhánh CÓ phân
+/** Vượt một trang: PAGE_SIZE+1 tour cùng ở Sa Pa → 2 trang. Nhánh CÓ phân
     trang trước đây không test nào chạy qua. */
 const MANY_TOURS = Array.from({ length: PAGE_SIZE + 1 }, (_, i) =>
   tour(`sa-pa-${i}`, `Sa Pa Trip ${i + 1}`, [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }]),
@@ -84,6 +88,22 @@ function tourTitles() {
 }
 
 describe('RegionTours', () => {
+  // Chốt chặn drift: literal của spec và hằng số của component phải bằng nhau.
+  // Đổi một bên mà quên bên kia thì ĐỎ NGAY ở đây, kèm hai con số cụ thể — thay
+  // vì hỏng lòng vòng qua một phép đếm card ở test khác, nơi thông báo lỗi chỉ
+  // nói "expected 6 to have length 8" và không ai đoán ra nguyên nhân.
+  it('cỡ trang của component khớp con số spec đang giả định', () => {
+    expect(REGION_PAGE_SIZE).toBe(PAGE_SIZE);
+  });
+
+  // Lưới là `sm:grid-cols-2 lg:grid-cols-3`, nên cỡ trang phải chia hết cho CẢ
+  // HAI — nếu không, hàng cuối bỏ lại ô mồ côi ở một trong hai khổ màn hình.
+  // 8 chia 3 dư 2; 9 chia 2 dư 1. Test này chặn việc đổi sang một con số như thế.
+  it('cỡ trang lấp đầy hàng ở CẢ khổ 2 cột lẫn 3 cột', () => {
+    expect(REGION_PAGE_SIZE % 2).toBe(0);
+    expect(REGION_PAGE_SIZE % 3).toBe(0);
+  });
+
   it('mặc định hiện tất cả tour của vùng', () => {
     render(<RegionTours tours={TOURS} places={PLACES} />);
     expect(tourTitles()).toEqual([
@@ -133,7 +153,7 @@ describe('RegionTours', () => {
   });
 
   it('chỉ một trang thì KHÔNG render thanh phân trang', () => {
-    // 3 tour < 8/trang → đúng một trang. Thanh phân trang vẫn được DỰNG (nhánh
+    // 3 tour < 6/trang → đúng một trang. Thanh phân trang vẫn được DỰNG (nhánh
     // có thật khi gắn API) nhưng phải tự ẩn ở đây.
     //
     // ⚠️ Canh dòng "Showing …", KHÔNG canh `nav[aria-label=Pagination]`:
@@ -148,7 +168,7 @@ describe('RegionTours', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('quá một trang thì trang 1 chỉ hiện 8 card VÀ thanh phân trang có mặt', () => {
+  it('quá một trang thì trang 1 chỉ hiện đủ PAGE_SIZE card VÀ thanh phân trang có mặt', () => {
     render(<RegionTours tours={MANY_TOURS} places={PLACES} />);
 
     expect(tourTitles()).toHaveLength(PAGE_SIZE);
