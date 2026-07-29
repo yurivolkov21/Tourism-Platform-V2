@@ -689,45 +689,186 @@ export const messages = {
     },
   },
 
-  // `/destinations/[region]`.
+  // `/destinations/[region]` — dựng theo trang vùng THẬT của Nexora (7 khu, bỏ
+  // khu `Plan your trip`; user chốt 29/07).
   //
-  // ĐÃ CẮT: `gallery*` (không có gallery ảnh — quyết định 2 chốt tint+chữ+dữ liệu
-  // gánh trang) · `highlights` và `signature.stats` (số liệu biên tập bịa như
-  // "350km", "3,143m Fansipan", và trỏ vào nơi KHÔNG có trong mock) · `tags`
-  // (hardcode, trong khi chuyên mục được DẪN XUẤT từ tour thật — giữ cả hai là hai
-  // nguồn sự thật) · `allTab` (ngụ ý tab/lọc, ngoài phạm vi) · `bestForLabel`
-  // (`suitableFor` nằm trên TourDetail, không nằm trên vùng) · `introHeading` cũ
-  // "The best … tours" (superlative không có dữ liệu xếp hạng đỡ).
+  // Copy port từ Nexora nhưng ĐÃ THAY mọi địa danh v2 KHÔNG bán — `Hà Giang`
+  // (+ Mã Pí Lèng, 350km Loop), `Fansipan`, `Lan Hạ`, `Pù Luông`, `Củ Chi`,
+  // `Marble Mountains`, và `Caves` ở tags của Trung. Thay bằng nơi có thật trong
+  // mock: Ninh Bình · Mường Hoa · Ô Quy Hồ · Bắc Hà · Hải Vân · Bà Nà · Cần Thơ.
+  // Đây là tiêu chí hoàn thành ở spec §10, không phải chuyện gu.
+  //
+  // `tags` và dải số liệu của khu Signature KHÔNG nằm ở đây: chúng DẪN XUẤT từ
+  // `regionGlance()` và `toursInRegion()` — Nexora gõ tay nên thêm/bớt tour là
+  // chữ sai âm thầm.
   //
   // `regions` KHOÁ BẰNG `key` của vùng, KHÔNG khoá bằng tên hiển thị: bản cũ dùng
   // Record<string,string> khoá bằng 'Northern Vietnam', nên đổi một chữ trong tên
   // hiển thị là copy biến mất im lặng.
   regionPage: {
     backToAll: 'All destinations',
-    placesHeading: (region: string) => `Places in ${region}`,
-    toursHeading: (region: string) => `Trips in ${region}`,
-    toursCount: (n: number) => `${n} ${n === 1 ? 'trip' : 'trips'}`,
+    introHeading: (region: string) => `The best ${region} tours`,
+    /** CTA cuối khu intro. Nexora trỏ `#itineraries` (trang họ không có) — ở đây
+        trỏ neo `#tours` NGAY TRÊN CÙNG TRANG, là khu có thật. */
+    browseCta: (region: string) => `Browse ${region} trips`,
+    bestForLabel: 'Best for',
+    highlightsHeading: (region: string) => `What makes ${region} special`,
+    toursHeading: 'Tours',
+    allTab: 'All',
     noTours: 'No trips run in this region yet.',
     noToursBody: 'Tell us where you want to go and we will plan something.',
-    glance: {
-      fromLabel: 'From',
-      difficultyLabel: 'Difficulty',
-      categoriesLabel: 'Trip styles',
-      /** Phổ 1 bậc in một chữ; ≥2 bậc in "easy → challenging". */
-      difficultyRange: (from: string, to: string) => `${from} → ${to}`,
+    galleryHeading: (region: string) => `${region} in photos`,
+    gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
+    /** Nhãn cho dải số liệu khu Signature. GIÁ TRỊ dẫn xuất ở tầng trang. */
+    statLabels: {
+      from: 'From',
+      longest: 'Longest trip',
+      hardest: 'Hardest grade',
+      styles: 'Trip styles',
+      dayTrips: 'Trips done in a day',
+      places: 'Places',
     },
+    // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
+    // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
+    // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —
+    // `maxGroupSize` (12), giọng đã dùng ở footer, và `included`/`excluded`.
+    valuePropsHeading: "We've got you covered",
+    valueProps: [
+      {
+        title: 'Small groups',
+        body: 'Twelve travellers at most, so you are never following a flag through a crowd.',
+      },
+      {
+        title: 'Local guides',
+        body: 'Led by people who grew up in the valleys, old towns and delta villages you came to see.',
+      },
+      {
+        title: 'Clear inclusions',
+        body: 'Every trip lists what is covered and what is not, before you book.',
+      },
+    ],
     regions: {
       north: {
+        tagline: 'From Sa Pa to Hạ Long Bay — culture and natural wonders in the misty north.',
         intro:
-          'Limestone bays, terraced highlands and cool mountain air — the north is Vietnam at its most dramatic.',
+          'Awe-inspiring landscapes of limestone bays and terraced highlands, diverse hill-tribe cultures, and the high passes of the far north — this is Northern Vietnam at its most dramatic.',
+        // Nexora: "ride the legendary Hà Giang Loop" → thay bằng Ô Quy Hồ, đèo có
+        // thật trong itinerary ngày 3 của `northern-highlands-loop`.
+        intro2:
+          'Cruise the emerald karsts of Hạ Long, trek between Hmong and Dao villages around Sa Pa, and ride the switchbacks over Ô Quy Hồ. Browse our trips below.',
+        highlights: [
+          {
+            title: 'Emerald bays',
+            body: 'Overnight on a junk among the limestone islands of Hạ Long Bay.',
+          },
+          {
+            title: 'Highland treks',
+            body: 'Walk the rice terraces and hill-tribe trails of the Mường Hoa valley around Sa Pa.',
+          },
+          {
+            title: 'River caves',
+            body: 'Row between the karst peaks and flooded caves of Ninh Bình.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'Great northern adventures',
+          body: 'The north rewards travellers who go further — onto the water, into the mountains, and out to the high passes. These are the journeys that define the region.',
+          points: [
+            'Overnight cruises through Hạ Long Bay',
+            'Multi-day treks with Hmong and Dao guides',
+            'The high passes above Sa Pa and Bắc Hà',
+          ],
+        },
       },
       central: {
+        tagline: 'Imperial heritage, lantern-lit old towns and a golden coastline.',
+        // Nexora: "some of the world's largest cave systems" → v2 không bán tour
+        // hang động nào ở miền Trung. Thay bằng Chăm temple towers (Mỹ Sơn, có
+        // thật ở itinerary ngày 5 của `central-heritage-week`).
         intro:
-          'Imperial citadels and lantern-lit old towns strung along a golden coastline between mountains and sea.',
+          'Ancient citadels and UNESCO old towns beside a golden coast, and Chăm temple towers in the hills — Central Vietnam is the country’s cultural heart.',
+        intro2:
+          'Step inside the walled citadel of Huế, wander the lantern-lit lanes of Hội An, and explore the Chăm temples of Mỹ Sơn. Browse our trips below.',
+        highlights: [
+          {
+            title: 'Imperial Huế',
+            body: 'The citadel, royal tombs, and refined cuisine of the Nguyễn emperors.',
+          },
+          {
+            title: 'Hội An lanterns',
+            body: 'A car-free UNESCO old town of tailors, tea houses, and riverside lights.',
+          },
+          {
+            title: 'Golden coast',
+            body: 'Đà Nẵng’s beaches, the Hải Vân pass, and the Bà Nà hills above.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'The heritage trail',
+          body: 'Few stretches of Vietnam hold so much history in so little distance. Follow the thread of empires and trade from the citadel to the old port.',
+          points: [
+            'The walled citadel and royal tombs of Huế',
+            'Lantern-lit Hội An and the Thu Bồn river',
+            'The Chăm sanctuary of Mỹ Sơn',
+          ],
+          timeline: [
+            {
+              title: 'Huế',
+              era: 'Imperial capital',
+              body: 'The walled citadel, the Forbidden Purple City, and the royal tombs of the Nguyễn emperors along the Perfume river.',
+            },
+            {
+              title: 'Hội An',
+              era: 'Trading port',
+              body: 'A lantern-lit UNESCO old town of tailor shops, tea houses, and the Japanese covered bridge over the Thu Bồn.',
+            },
+            {
+              title: 'Mỹ Sơn',
+              era: 'Chăm sanctuary',
+              body: 'Red-brick temple towers set in a jungle valley — the spiritual heart of the Chăm kingdom for a thousand years.',
+            },
+          ],
+        },
       },
       south: {
+        tagline: 'River deltas, island beaches and the restless energy of Sài Gòn.',
         intro:
-          'River deltas, island beaches and the easy warmth of the Mekong — the south takes its time.',
+          'Floating markets and flooded paddies, a restless city and tropical islands — the warm, easy-going south runs at the pace of the water.',
+        // Nexora: "from the Củ Chi tunnels to the colonial centre" → v2 không bán
+        // Củ Chi. Thay bằng Cần Thơ và đêm ăn đường phố Sài Gòn, cả hai là tour thật.
+        intro2:
+          'Drift the Mekong’s waterways from Cần Thơ, eat your way through Sài Gòn after dark, and unwind on the reefs of Phú Quốc. Browse our trips below.',
+        highlights: [
+          {
+            title: 'The Mekong',
+            body: 'Floating markets at dawn, orchards, and riverside mornings around Cần Thơ.',
+          },
+          {
+            title: 'Sài Gòn energy',
+            body: 'Colonial landmarks by day and endless street food after dark.',
+          },
+          {
+            title: 'Island escapes',
+            body: 'White-sand beaches and clear reefs on Phú Quốc.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'Life on the water',
+          body: 'In the south, the river is the road. Slow down to the rhythm of the delta and the islands, where days unfold on boats and beaches.',
+          points: [
+            'Dawn floating markets on the Mekong Delta',
+            'Riverside mornings and orchard villages',
+            'Island hopping around Phú Quốc',
+          ],
+          postcards: [
+            { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
+            { title: 'Sài Gòn', caption: 'City energy & history' },
+            { title: 'Phú Quốc', caption: 'Island beaches' },
+          ],
+        },
       },
     },
   },
