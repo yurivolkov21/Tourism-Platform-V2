@@ -230,36 +230,9 @@ export const regionDefaults = {
   hero: 'oklch(0.25 0.015 181.5)',
 };
 
-export const regions = {
-  // Bắc — thép sương núi + tím (codename Arcane)
-  north: {
-    primary: 'oklch(0.535 0.057 239.5)',
-    deep: 'oklch(0.423 0.056 245.8)',
-    surface: 'oklch(0.855 0.007 277.1)',
-    spark: 'oklch(0.56 0.151 285.4)',
-    'on-surface': 'oklch(0.423 0.056 245.8)',
-    // L 0.24 — cùng bậc tối với `--hero` (0.25) nên ba trang vùng sâu như nhau;
-    // giữ hue 245.8 của Bắc, hạ chroma so với `deep` để hero không gào.
-    hero: 'oklch(0.24 0.04 245.8)',
-  },
-  // Trung — đỏ rượu hoàng thành + vàng hoàng gia (codename Tangtang)
-  central: {
-    primary: 'oklch(0.415 0.161 27.2)',
-    deep: 'oklch(0.351 0.131 25.9)',
-    surface: 'oklch(0.89 0.028 20.4)',
-    spark: 'oklch(0.799 0.163 99.1)',
-    'on-surface': 'oklch(0.31 0.006 214.4)',
-    hero: 'oklch(0.235 0.08 25.9)',
-  },
-  // Nam — nâu phù sa + đỏ gạch nung (codename Gilberta)
-  south: {
-    primary: 'oklch(0.555 0.053 48.4)',
-    deep: 'oklch(0.394 0.091 28.3)',
-    surface: 'oklch(0.661 0.052 51.2)',
-    spark: 'oklch(0.485 0.183 29.7)',
-    'on-surface': 'oklch(0.303 0.037 35.2)',
-    // Hue lấy theo `primary` (48.4) chứ không theo `deep` (28.3): deep của Nam
-    // gần như trùng hue với Trung (25.9), hai hero sẽ khó phân biệt.
-    hero: 'oklch(0.24 0.05 45)',
-  },
-};
+// ADR-0015: `regions` (ba khối override theo Bắc/Trung/Nam, mỗi vùng một sắc
+// riêng) đã XOÁ khỏi đây. Trước Task 5i nó từng nằm ở dòng 233–265 — không còn
+// consumer nào đọc `--region-*` mà có tổ tiên `[data-region]` (Task 5h chuyển
+// hết sang token brand), nên ba khối override đã trơ, xoá không đổi pixel nào.
+// `regionDefaults` ở trên GIỮ NGUYÊN: 4 file nhóm hai (auth ×2, home/contact,
+// contact-cta) vẫn đọc giá trị `:root` làm bảng màu phụ, không dùng tint.

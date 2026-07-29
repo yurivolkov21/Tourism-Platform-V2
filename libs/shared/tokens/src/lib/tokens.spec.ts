@@ -1,8 +1,9 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { oklch } from 'culori';
 import { describe, expect, it } from 'vitest';
-// Namespace import có chủ đích: cần cả default (tokens) lẫn named exports (regions).
+// Namespace import có chủ đích: cần cả default (tokens) lẫn named export regionDefaults.
 import * as src from '../../style-dictionary/tokens.mjs';
-import { REGIONS } from './tokens.js';
 
 // Bất biến của hệ màu Wuling (ADR-0013) — chặn regression khi chỉnh token.
 const tokens = src.default;
@@ -24,48 +25,35 @@ describe('nguồn token màu', () => {
   });
 });
 
-describe('lớp region (Bắc/Trung/Nam)', () => {
+// ADR-0015 (Task 5i): ba khối override `[data-region='north'|'central'|'south']`
+// đã XOÁ khỏi tokens.mjs — Task 5h chuyển hết consumer thật (component có tổ
+// tiên `[data-region]`) sang token brand, nên lớp tint theo vùng không còn ai
+// đọc. Các bất biến CŨ của describe này ("mỗi vùng đủ 6 slot", "ba hero cùng
+// bậc tối", "ba hero khác nhau") nói về `src.regions` — nguồn đó không còn tồn
+// tại, đã xoá cùng test. Test "REGIONS (TS) khớp key của regions" cũng xoá theo
+// vì lý do y hệt: nó so khớp với `src.regions`, không còn gì để so.
+describe('regionDefaults (:root — bảng màu phụ cho 4 consumer nhóm hai)', () => {
   const SLOTS = ['primary', 'deep', 'surface', 'spark', 'on-surface', 'hero'];
 
-  it('đúng 3 vùng, mỗi vùng đủ 6 slot, cùng bộ key với regionDefaults', () => {
-    expect(Object.keys(src.regions).sort()).toEqual(['central', 'north', 'south']);
+  it('đủ 6 slot, mọi giá trị parse được bằng oklch của culori', () => {
     expect(Object.keys(src.regionDefaults).sort()).toEqual([...SLOTS].sort());
-    for (const [name, region] of Object.entries(src.regions)) {
-      expect(Object.keys(region).sort(), name).toEqual([...SLOTS].sort());
-      for (const v of Object.values(region)) {
-        expect(oklch(v)).toBeDefined();
-      }
+    for (const [slot, v] of Object.entries(src.regionDefaults)) {
+      expect(oklch(v), slot).toBeDefined();
     }
   });
 
-  it('REGIONS (TS) khớp key của regions (nguồn token)', () => {
-    expect([...REGIONS].sort()).toEqual(Object.keys(src.regions).sort());
-  });
-
-  // `--region-hero`: nền hero của trang vùng. Tách khỏi `--region-deep` vì deep
-  // sáng 0.35–0.42 — dùng trực tiếp thì ba trang vùng sáng khác nhau thấy rõ, và
-  // navbar lúc chưa cuộn là trong suốt nên hero phải TỐI (luật CLAUDE.md).
-  //
-  // Phép "cả ba vùng CÓ slot hero" không cần test riêng: `SLOTS` ở trên đã khẳng
-  // định bộ key đúng bằng 6 phần tử cho cả 3 vùng lẫn `regionDefaults`.
-  it('hero của cả ba vùng TỐI và CÙNG một bậc — chênh nhau ≤ 0.02 L', () => {
-    // Đây là bất biến sinh ra slot này: `--region-deep` chênh 0.351 vs 0.423 nên
-    // ba trang vùng đọc thành thiếu nhất quán chứ không thành bản sắc.
-    const ls = ['north', 'central', 'south'].map((k) => {
-      const value = (src.regions as Record<string, Record<string, string>>)[k]?.hero ?? '';
-      // Đọc L qua culori thay vì regex — cùng công cụ mà cả file này đang dùng.
-      const parsed = oklch(value) as { l?: number } | undefined;
-      expect(parsed, k).toBeDefined();
-      return parsed?.l ?? 1;
-    });
-    for (const l of ls) expect(l).toBeLessThanOrEqual(0.26);
-    expect(Math.max(...ls) - Math.min(...ls)).toBeLessThanOrEqual(0.02);
-  });
-
-  it('ba hero KHÁC nhau — nếu giống hết thì tint vùng vô nghĩa', () => {
-    const heroes = ['north', 'central', 'south'].map(
-      (k) => (src.regions as Record<string, Record<string, string>>)[k]?.hero,
-    );
-    expect(new Set(heroes).size).toBe(3);
+  it('generated/tokens.css không còn khối [data-region] nào', async () => {
+    // Tự build lại trong test thay vì đọc file có sẵn: task `test` của package
+    // này chỉ dependsOn `^build` (build NGƯỢC DÒNG) trong turbo.json, không có
+    // cạnh `build` của CHÍNH package — nên khi `pnpm gate` chạy
+    // `turbo run build typecheck test` cùng lệnh, thứ tự build → test của
+    // @tourism/tokens KHÔNG được đảm bảo (đo bằng skill turborepo — hai task
+    // không nối dependsOn thì chạy song song). Import trực tiếp build.mjs để
+    // tự tái tạo artifact mới nhất ngay tại đây, không phụ thuộc file có sẵn
+    // (có thể cũ hoặc chưa từng được build).
+    await import('../../style-dictionary/build.mjs');
+    const cssPath = fileURLToPath(new URL('../../generated/tokens.css', import.meta.url));
+    const css = readFileSync(cssPath, 'utf-8');
+    expect(css).not.toContain('[data-region');
   });
 });

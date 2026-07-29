@@ -12,7 +12,6 @@ import tokens, {
   fonts,
   radiusScale,
   regionDefaults,
-  regions,
   rootExtras,
   themeExtras,
 } from './tokens.mjs';
@@ -64,13 +63,9 @@ StyleDictionary.registerFormat({
       ...dark,
       '}',
       '',
-      // Tint vùng Bắc/Trung/Nam — override slot --region-* theo data-region (ADR-0013 #3).
-      ...Object.entries(regions).flatMap(([name, vals]) => [
-        `[data-region='${name}'] {`,
-        ...Object.entries(vals).map(([k, v]) => `  --region-${k}: ${v};`),
-        '}',
-        '',
-      ]),
+      // ADR-0015: ba khối override `[data-region='north'|'central'|'south']` đã
+      // XOÁ (Task 5i) — `regionDefaults` ở `:root` trên là giá trị --region-*
+      // DUY NHẤT còn lại, không còn override theo vùng nào nữa.
       "[data-density='compact'] {",
       ...densityCompact.map(([k, v]) => `  ${k}: ${v};`),
       '}',
