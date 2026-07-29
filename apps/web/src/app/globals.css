@@ -210,3 +210,30 @@ select:-webkit-autofill {
     animation: none;
   }
 }
+
+/* ── Trang kết bằng một băng CÓ NỀN RIÊNG: footer bỏ khoảng cách trên ──
+ *
+ * `site-footer.tsx` mang `mt-32`, và con số đó ngầm giả định MỌI trang kết bằng
+ * một khu nền trong suốt — lúc đó 128px margin sơn đúng màu `--background` nên
+ * không ai thấy. Giả định vỡ ngay khi `/destinations/[region]` kết bằng băng CTA
+ * nền `--region-hero`: đo được một dải `rgb(245,248,247)` kẹp giữa băng tối và
+ * footer tối ở light mode.
+ *
+ * Vì sao phải là luật CSS ở đây chứ không phải `-mb-32` trên chính băng đó: `body`
+ * là `flex flex-col` và `main` là `flex-1`, mà **margin không collapse trong flex**
+ * — đo trên DOM sống thì `-mb-32` đặt trên section KHÔNG đổi khoảng cách (vẫn
+ * 128px), nó chỉ co nội dung bên trong `main` vốn không co lại. Chỉ `footer` hoặc
+ * chính `main` mới tác động được, mà cả hai nằm ở layout dùng chung.
+ *
+ * Nên đây là cơ chế OPT-IN: trang nào cần thì gắn `data-flush-footer` lên băng
+ * cuối của nó. 12 trang hiện có không mang dấu → không đổi một pixel nào.
+ * Đo lại sau khi thêm: trang vùng 127px → 0, `/contact` và `/about` giữ nguyên 128px.
+ *
+ * ⚠️ Cơ chế này có HAI nửa nằm ở hai file. Nửa kia là thuộc tính
+ * `data-flush-footer` trong `app/(site)/destinations/[region]/page.tsx`. Gỡ một
+ * nửa thì khoảng trắng quay lại IM LẶNG — bộ test không bắt được, vì Vitest không
+ * quét `src/app/**` và jsdom không dựng layout để `:has()` có nghĩa. Canh bằng
+ * phép đo trong trình duyệt thật. */
+body:has(main [data-flush-footer]) footer {
+  margin-top: 0;
+}

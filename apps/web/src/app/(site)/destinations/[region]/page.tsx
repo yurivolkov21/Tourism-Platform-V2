@@ -227,7 +227,18 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
 
       {/* ── Khu 4 · Băng CTA vùng — đóng khung trang bằng đúng màu đã mở đầu ── */}
       <Reveal>
+        {/* `data-flush-footer` là NỬA THỨ HAI của một cơ chế hai nửa; nửa kia là
+            luật `body:has(main [data-flush-footer]) footer` ở cuối `globals.css`.
+            Nó tắt `mt-32` của footer cho RIÊNG trang này.
+            Vì sao cần: 128px margin đó sơn màu `--background`, vô hình ở 12 trang
+            kết bằng khu nền trong suốt, nhưng ở đây nó thành một dải sáng kẹp giữa
+            băng tối này và footer tối. Vì sao không tự xử bằng `-mb-32` tại chỗ:
+            `body` là flex nên margin KHÔNG collapse — đã đo, `-mb-32` không đổi
+            được khoảng cách.
+            Gỡ thuộc tính này thì khoảng trắng quay lại IM LẶNG (Vitest không quét
+            `src/app/**`) — kiểm bằng mắt/đo trong trình duyệt. */}
         <section
+          data-flush-footer
           style={{ background: 'var(--region-hero)' }}
           className="w-full px-4 py-16 text-hero-foreground md:px-16 md:py-20 lg:px-24 xl:px-32"
         >
