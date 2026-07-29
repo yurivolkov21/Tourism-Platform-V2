@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RegionGallery } from '@/components/destinations/region-gallery';
 import { RegionHero, type RegionStat } from '@/components/destinations/region-hero';
-import { RegionHighlights } from '@/components/destinations/region-highlights';
 import { RegionIntro } from '@/components/destinations/region-intro';
 import { RegionSignatureItinerary } from '@/components/destinations/region-signature-itinerary';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
@@ -69,19 +68,23 @@ export async function generateMetadata({
 
 /**
  * Trang vùng `/destinations/[region]` — dựng lại theo TRANG VÙNG THẬT của Nexora
- * (user chốt 29/07 sau khi bác bản Task 5). Bảy khu, một thứ tự:
+ * (user chốt 29/07 sau khi bác bản Task 5). Sáu khu, một thứ tự CỐ ĐỊNH cho cả
+ * ba vùng:
  *
- *  1. Hero (tile + scrim, kiểu About)  5. Tours (chip lọc + lưới, phân trang)
- *  2. Intro (chữ + bento ảnh)         6. Gallery (khảm 10 ô)
- *  3/4. Signature ↔ Highlights        7. Value props (băng cuối, nền vùng)
+ *  1. Hero (tile + scrim, kiểu About)   4. Tours (chip lọc + lưới, phân trang)
+ *  2. Intro (chữ + 3 highlight)         5. Gallery (khảm 10 ô)
+ *  3. Signature (biến thể theo vùng)    6. Value props (băng cuối, nền vùng)
  *
  * Khu 8 của Nexora (`Plan your trip`) BỎ HẲN: nó là form gợi ý hành trình, thứ
  * capstone không-doanh-thu này không có backend để đỡ.
  *
- * Thứ tự khu 3/4 LẬT theo `regionTheme(key).signatureFirst`: miền Bắc mở màn
- * bằng timeline itinerary rồi mới tới ba thẻ highlight; hai vùng kia ngược lại.
- * Đây là nhánh `isAdventure` của Nexora, giữ nguyên — nó khiến ba trang vùng
- * đọc khác nhau ngay từ cuộn đầu tiên thay vì chỉ đổi màu.
+ * Khu `What makes {region} special` của Nexora KHÔNG còn đứng riêng (29/07):
+ * user duyệt khu 2 và chỉ ra bento ảnh của Intro là ảnh LẶP LẠI (gallery khu 5
+ * đã là khu ảnh riêng) — bento bị bỏ, ba thẻ highlight của khu kia GỘP vào cột
+ * phải của Intro thay chỗ bento. Hệ quả: nhánh `isAdventure`/`signatureFirst`
+ * của Nexora (lật thứ tự Signature ↔ Highlights cho miền Bắc) hết đối tượng để
+ * lật — đã bỏ khỏi `regionTheme`. Signature giờ LUÔN theo ngay sau Intro, cả
+ * ba vùng đọc cùng một thứ tự.
  *
  * HAI khu của Task 5 đã bị XOÁ cùng component của chúng (`region-glance`,
  * `place-card`): Nexora không có dải "at a glance" lẫn danh sách "places" dạng
@@ -199,8 +202,6 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
       />
     ) : null;
 
-  const highlightsNode = <RegionHighlights region={region} />;
-
   // Badge pill của hero: HAI chuyên mục đầu của vùng, nối bằng ` · `. Hai chứ
   // không phải cả danh sách — miền Bắc có bốn, và bốn chuyên mục trong một viên
   // pill thì nó dài bằng cả dòng tagline ngay dưới. Vùng chưa có tour nào thì
@@ -234,32 +235,27 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         stats={stats}
       />
 
-      {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng ── */}
+      {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng.
+          `highlights` là khu `What makes X special` cũ của Nexora, GỘP vào cột
+          phải của Intro (29/07) — không còn đứng riêng nên không cần `Reveal`
+          thứ hai cho nó. ── */}
       <Reveal>
         <RegionIntro
           region={region}
           tags={glance?.categories.map((category) => category.name) ?? []}
-          places={places}
+          highlights={t.regions[region.key].highlights}
         />
       </Reveal>
 
-      {/* ── Khu 3/4 · Signature ↔ Highlights, thứ tự theo `signatureFirst` ──
-          `signatureNode` có thể là `null` (vùng không có tour riêng để nuôi
-          itinerary) — khi đó KHÔNG bọc `Reveal` quanh nó, vì `Reveal` là một
-          `motion.div` có thật và một cái rỗng vẫn ăn chỗ trong luồng. */}
-      {theme.signatureFirst ? (
-        <>
-          {signatureNode ? <Reveal>{signatureNode}</Reveal> : null}
-          <Reveal>{highlightsNode}</Reveal>
-        </>
-      ) : (
-        <>
-          <Reveal>{highlightsNode}</Reveal>
-          {signatureNode ? <Reveal>{signatureNode}</Reveal> : null}
-        </>
-      )}
+      {/* ── Khu 3 · Signature — LUÔN theo sau Intro, cả ba vùng (29/07: Highlights
+          không còn là khu riêng để "lật thứ tự" với Signature nữa, nên nhánh
+          `signatureFirst` của Nexora đã bỏ). `signatureNode` có thể là `null`
+          (vùng không có tour riêng để nuôi itinerary) — khi đó KHÔNG bọc `Reveal`
+          quanh nó, vì `Reveal` là một `motion.div` có thật và một cái rỗng vẫn ăn
+          chỗ trong luồng. ── */}
+      {signatureNode ? <Reveal>{signatureNode}</Reveal> : null}
 
-      {/* ── Khu 5 · Tours — đích của neo `#tours` ở CTA khu intro ── */}
+      {/* ── Khu 4 · Tours — đích của neo `#tours` ở CTA khu intro ── */}
       <Reveal>
         <RegionTours
           tours={tours}
@@ -267,12 +263,12 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         />
       </Reveal>
 
-      {/* ── Khu 6 · Gallery ── */}
+      {/* ── Khu 5 · Gallery ── */}
       <Reveal>
         <RegionGallery region={region} />
       </Reveal>
 
-      {/* ── Khu 7 · Value props — khu CUỐI, mang `data-flush-footer` ── */}
+      {/* ── Khu 6 · Value props — khu CUỐI, mang `data-flush-footer` ── */}
       <Reveal>
         <RegionValueProps />
       </Reveal>

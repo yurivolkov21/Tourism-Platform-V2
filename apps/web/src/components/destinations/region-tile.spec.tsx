@@ -35,4 +35,17 @@ describe('RegionTile', () => {
     const { container } = render(<RegionTile label="Northern Vietnam" decorative />);
     expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
   });
+
+  // Lỗi user chỉ ra ở hero (29/07): `RegionTile` dùng làm NỀN TRANG TRÍ vẫn vẽ
+  // `ImageIcon` giữa khoảng trống, nổi lên như một vật thể lạ. Icon chỉ có
+  // nghĩa khi ô THẬT SỰ đứng vào vị trí của một tấm ảnh (gallery/bưu thiếp).
+  it('decorative: KHÔNG render icon — nền trang trí không cần tín hiệu "đây là ảnh"', () => {
+    const { container } = render(<RegionTile label="Northern Vietnam" decorative />);
+    expect(container.querySelector('svg')).not.toBeInTheDocument();
+  });
+
+  it('có nhãn (không decorative): CÓ icon — tín hiệu "đây là chỗ của ảnh" ở gallery/bưu thiếp', () => {
+    const { container } = render(<RegionTile label="Terraced rice fields" />);
+    expect(container.querySelector('svg')).toBeInTheDocument();
+  });
 });

@@ -8,9 +8,6 @@ export type SignatureVariant = 'itinerary' | 'timeline' | 'postcards';
 
 export interface RegionTheme {
   signature: SignatureVariant;
-  /** Bắc để Signature TRƯỚC Highlights; hai vùng kia ngược lại. Đây là nhánh
-      `isAdventure` trong `page.tsx` của Nexora, giữ nguyên. */
-  signatureFirst: boolean;
   /** Chiều cao tối thiểu hero — "mood" riêng từng vùng (Nexora: `heroHeight`).
       Đo bằng `vh` chứ không bằng `rem` (29/07): hero giờ mang breadcrumb, badge,
       h1, tagline, hai nút và hàng số liệu, nên nó phải chiếm phần lớn màn đầu như
@@ -28,23 +25,24 @@ export interface RegionTheme {
  *    nên màu đến từ `--region-*`, không cần chuỗi class Tailwind theo vùng.
  *  · Khoá bằng `MockRegionKey` (`north`) chứ không bằng slug URL — cùng lý do §7
  *    đã bỏ khoá-bằng-chuỗi-user-facing.
+ *
+ * `signatureFirst` đã BỎ (29/07): khu Highlights không còn đứng riêng (gộp vào
+ * cột phải của Intro), nên không còn gì để "lật thứ tự" với Signature nữa —
+ * giữ cờ lại là một field chết không ai đọc.
  */
 const THEMES: Record<MockRegionKey, RegionTheme> = {
   north: {
     signature: 'itinerary',
-    signatureFirst: true,
     heroMinH: 'min-h-[80vh]',
     scrim: 'from-scrim via-scrim/60 to-scrim/30',
   },
   central: {
     signature: 'timeline',
-    signatureFirst: false,
     heroMinH: 'min-h-[70vh]',
     scrim: 'from-scrim via-scrim/45 to-scrim/30',
   },
   south: {
     signature: 'postcards',
-    signatureFirst: false,
     heroMinH: 'min-h-[70vh]',
     scrim: 'from-scrim via-scrim/40 to-scrim/30',
   },

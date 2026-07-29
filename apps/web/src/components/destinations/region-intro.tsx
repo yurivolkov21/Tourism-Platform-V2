@@ -1,17 +1,30 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ArrowRightIcon } from 'lucide-react';
-import { RegionTile } from '@/components/destinations/region-tile';
+import { cn } from '@tourism/ui/lib/utils';
+import {
+  ArrowRightIcon,
+  CompassIcon,
+  type LucideIcon,
+  MapPinIcon,
+  SparklesIcon,
+} from 'lucide-react';
 import type { MockRegion } from '@/mocks/types';
 
-/** Số ô của bento bên phải — 1 ô cao + 2 ô xếp chồng, đúng ba địa điểm mà mỗi
-    vùng có. Cắt tường minh để vùng nào lỡ có 4 địa điểm cũng không vỡ lưới. */
-const BENTO_TILES = 3;
+/** Icon theo THỨ TỰ mục, đúng bộ `region-highlights.tsx` cũ dùng (khu đó đã gộp
+    vào đây 29/07). Ba mục là hằng số của copy nên danh sách này không cần dài
+    hơn; `?? SparklesIcon` là lưới an toàn nếu copy nở ra mục thứ tư. */
+const HIGHLIGHT_ICONS: readonly LucideIcon[] = [SparklesIcon, CompassIcon, MapPinIcon];
 
 /**
- * Khu 2 — đoạn dẫn của vùng: chữ bên trái, bento ảnh bên phải. Port
- * `region-intro.tsx` của Nexora, khác một chỗ: CTA trỏ neo `#tours` NGAY TRÊN
- * TRANG này (Nexora trỏ `#itineraries`, một khu họ không có).
+ * Khu 2 — đoạn dẫn của vùng: chữ bên trái, ba highlight xếp dọc bên phải. Port
+ * `region-intro.tsx` của Nexora, khác hai chỗ:
+ *  · CTA trỏ neo `#tours` NGAY TRÊN TRANG này (Nexora trỏ `#itineraries`, một
+ *    khu họ không có).
+ *  · Cột phải KHÔNG còn là bento ảnh (29/07): gallery ở khu 5 đã là khu ảnh
+ *    riêng, nên ba ô ảnh giữ chỗ ở đây là ảnh LẶP LẠI không thêm thông tin gì
+ *    mới. Gộp hẳn khu `RegionHighlights` cũ (`What makes {region} special`)
+ *    vào cột phải — vẫn trả lời "vùng này đặc biệt ở đâu", chỉ đổi từ một khu
+ *    đứng riêng có ba thẻ viền thành ba mục xếp dọc cạnh cột chữ.
  *
  * `tags` truyền từ page chứ không gõ tay trong i18n: chúng DẪN XUẤT từ
  * `regionGlance(tours).categories`, nên thêm/bớt tour là hàng chip tự đúng theo.
@@ -20,21 +33,29 @@ const BENTO_TILES = 3;
 export function RegionIntro({
   region,
   tags,
-  places,
+  highlights,
 }: {
   region: MockRegion;
   tags: string[];
-  places: { slug: string; name: string }[];
+  highlights: readonly { title: string; body: string }[];
 }) {
   const t = messages.regionPage;
   const copy = t.regions[region.key];
-  const tiles = places.slice(0, BENTO_TILES);
+  const hasHighlights = highlights.length > 0;
 
   return (
     <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
-      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-2 lg:items-center lg:gap-16">
-        {/* ── Trái: tiêu đề + vạch accent + hai đoạn + tags + CTA ── */}
-        <div>
+      <div
+        className={cn(
+          'mx-auto grid max-w-7xl gap-10',
+          hasHighlights && 'lg:grid-cols-2 lg:items-center lg:gap-16',
+        )}
+      >
+        {/* ── Trái: tiêu đề + vạch accent + hai đoạn + tags + CTA ──
+            `highlights` rỗng (nhánh có thật khi gắn API: vùng chưa có copy
+            highlight) thì cột này trải rộng `max-w-2xl` thay vì bó theo một
+            lưới hai cột không còn cột kia để cân. */}
+        <div className={hasHighlights ? undefined : 'max-w-2xl'}>
           <h2 className="font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.introHeading(region.name)}
           </h2>
@@ -79,21 +100,54 @@ export function RegionIntro({
           </ButtonLink>
         </div>
 
-        {/* ── Phải: bento 3 ô — một ô cao bên trái, hai ô chồng bên phải ──
-            Chiều cao CỐ ĐỊNH (`h-96`) chứ không theo tỉ lệ ảnh: `MockMediaItem`
-            khai `width`/`height` nullable, nên bố cục không được phụ thuộc tỉ lệ
-            nội tại của ảnh thật sau này.
-            Vùng chưa có địa điểm nào thì bỏ hẳn bento — `h-96` với 0 ô là một
-            khoảng trống 384px không giải thích được. */}
-        {tiles.length > 0 ? (
-          <div className="grid h-96 grid-cols-2 grid-rows-2 gap-3 sm:gap-4">
-            {tiles.map((place, i) => (
-              <RegionTile
-                key={place.slug}
-                label={place.name}
-                className={i === 0 ? 'row-span-2 h-full' : 'h-full'}
-              />
-            ))}
+        {/* ── Phải: ba highlight xếp dọc — khu `What makes X special` cũ, GỘP
+            vào đây 29/07 ──
+            Rỗng thì bỏ hẳn cột: cột trái đã trải rộng ở trên, một cột rỗng bên
+            cạnh là khoảng trống không giải thích được (cùng lý lẽ đã áp cho
+            bento cũ và hàng `tags`). */}
+        {hasHighlights ? (
+          <div>
+            <h3 className="font-heading text-xl font-medium text-foreground md:text-2xl">
+              {t.highlightsHeading(region.name)}
+            </h3>
+
+            <div className="mt-6 flex flex-col gap-6">
+              {highlights.map((item, i) => {
+                const Icon = HIGHLIGHT_ICONS[i] ?? SparklesIcon;
+                return (
+                  <div key={item.title} className="flex items-start gap-4">
+                    {/* Chip ĐẶC (nền `--region-primary` + icon `on-media`) —
+                        GIỮ NGUYÊN cặp màu của `region-highlights.tsx` cũ, KHÔNG
+                        đổi sang chip phớt dù cột này giờ nằm trên nền trang
+                        trần (không khung, không băng signature kề bên).
+                        Đã THỬ chip phớt (`color-mix(--region-primary,
+                        --background 88%)` + icon màu vùng) trước, vì cột hẹp
+                        không cần chip mạnh như một khu đứng riêng — nhưng ĐO
+                        thật (script canvas, 3 vùng × 2 theme) ra đúng lớp lỗi
+                        đã dính nhiều lần của cụm này: `--region-*` bất biến
+                        theo theme còn `--background` lật, nên contrast rơi
+                        4.10/7.14/3.89:1 ở light (qua ngưỡng 3.0) nhưng chỉ
+                        2.81/1.62/2.95:1 ở dark (DƯỚI ngưỡng, cả ba vùng). Chip
+                        đặc + on-media đo được 4.59–8.91:1 ở CẢ HAI theme (số
+                        đo lại nằm trong báo cáo Task 5e) — cùng cặp màu CTA
+                        `#tours` và tab đang chọn ở khu Tours đã dùng, nên cả
+                        trang vẫn đúng MỘT kiểu accent. */}
+                    <span
+                      style={{ background: 'var(--region-primary)' }}
+                      className="flex size-12 shrink-0 items-center justify-center rounded-full text-on-media"
+                    >
+                      <Icon className="size-6" aria-hidden="true" />
+                    </span>
+                    <div>
+                      <h4 className="font-heading text-lg font-medium text-foreground">
+                        {item.title}
+                      </h4>
+                      <p className="mt-1 text-pretty text-muted-foreground">{item.body}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         ) : null}
       </div>

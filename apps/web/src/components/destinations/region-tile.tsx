@@ -27,32 +27,32 @@ export function RegionTile({
   /** Bật khi CHỮ KỀ BÊN đã nói đúng cái nhãn này — hero (`<h1>` = tên vùng) và
       bưu thiếp (`<h3>` = tên bưu thiếp). Để nguyên `role="img"` ở đó là bắt
       trình đọc màn hình đọc cùng một cụm từ hai lần liền. Ô nào mà nhãn là
-      THÔNG TIN DUY NHẤT (khảm gallery, bento khu intro) thì KHÔNG bật. */
+      THÔNG TIN DUY NHẤT (khảm gallery) thì KHÔNG bật. */
   decorative?: boolean;
 }) {
-  // Phần NHÌN THẤY giống hệt nhau ở cả hai chế độ — chỉ khai báo trợ năng khác.
+  // Nền (gradient) giống hệt nhau ở cả hai chế độ — chỉ khác trợ năng VÀ icon.
   const style = {
     background:
       'linear-gradient(135deg, var(--region-primary), color-mix(in oklch, var(--region-spark), var(--region-deep) 45%))',
   };
   const classes = cn('flex items-center justify-center overflow-hidden rounded-xl', className);
-  const icon = <ImageIcon aria-hidden="true" className="size-7 text-on-media/70" />;
 
   // Hai nhánh JSX TÁCH HẲN thay vì `role={decorative ? undefined : 'img'}`:
   // Biome đọc tĩnh, gặp `role` là biểu thức thì nó coi như thẻ KHÔNG có role và
   // bắt lỗi `useAriaPropsSupportedByRole` cho `aria-label`. Tách ra thì cả hai
   // nhánh đều hợp lệ mà không phải tắt lint bằng `biome-ignore`.
+  //
+  // `decorative` KHÔNG vẽ icon (29/07, lỗi user chỉ ra ở hero): ô này chỉ làm
+  // NỀN sau chữ/scrim, không đứng vào vị trí một tấm ảnh, nên `ImageIcon` giữa
+  // khoảng trống đọc thành một vật thể lạ. Chế độ có nhãn (gallery, bưu thiếp)
+  // GIỮ icon — ở đó nó là tín hiệu "đây là chỗ của ảnh".
   if (decorative) {
-    return (
-      <div aria-hidden="true" style={style} className={classes}>
-        {icon}
-      </div>
-    );
+    return <div aria-hidden="true" style={style} className={classes} />;
   }
 
   return (
     <div role="img" aria-label={label} style={style} className={classes}>
-      {icon}
+      <ImageIcon aria-hidden="true" className="size-7 text-on-media/70" />
     </div>
   );
 }

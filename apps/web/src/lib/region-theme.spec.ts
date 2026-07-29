@@ -16,12 +16,6 @@ describe('regionTheme', () => {
     expect(regionTheme('south').signature).toBe('postcards');
   });
 
-  it('CHỈ Bắc để signature TRƯỚC highlights (nhánh isAdventure của Nexora)', () => {
-    expect(regionTheme('north').signatureFirst).toBe(true);
-    expect(regionTheme('central').signatureFirst).toBe(false);
-    expect(regionTheme('south').signatureFirst).toBe(false);
-  });
-
   it('hero của Bắc CAO hơn hai vùng kia — "mood" riêng, đúng heroHeight của Nexora', () => {
     expect(regionTheme('north').heroMinH).not.toBe(regionTheme('central').heroMinH);
     expect(regionTheme('central').heroMinH).toBe(regionTheme('south').heroMinH);
