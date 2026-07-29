@@ -65,7 +65,7 @@ describe('TravellerQuotes', () => {
   });
 
   it('điểm sao đọc thành MỘT câu, không phải 5 icon rời', () => {
-    render(<TravellerQuotes testimonials={[THREE[1]!]} />);
+    render(<TravellerQuotes testimonials={[t('Daniel Craig Jr.', 'x', 4)]} />);
     expect(screen.getByRole('img', { name: '4 out of 5 stars' })).toBeInTheDocument();
   });
 
