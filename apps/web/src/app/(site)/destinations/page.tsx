@@ -1,5 +1,4 @@
 import { messages } from '@tourism/i18n';
-import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { JourneyMoments } from '@/components/destinations/journey-moments';
@@ -18,12 +17,19 @@ import { TESTIMONIALS } from '@/mocks/testimonials';
 import { TOURS } from '@/mocks/tours';
 
 /**
- * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1). SÁU khu
+ * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1). NĂM khu
  * (Task 4c, thiết kế lại LẦN HAI sau khi user chỉ vào bản Nexora): Hero → 3
  * `RegionGroup` (header căn giữa + dải ảnh full-bleed) → Moments from the
- * journey → Loved by travellers → Know before you go → CTA hỏi. Khu
- * `Featured trips` của bản đầu đã BỎ — trang này giới thiệu vùng, không bán
- * tour (user quyết 28/07).
+ * journey → Loved by travellers → Know before you go.
+ *
+ * HAI khu đã bị BỎ, cả hai theo quyết định của user 28/07:
+ *  · `Featured trips` — trang này giới thiệu vùng, không bán tour.
+ *  · CTA hỏi ("Not sure where to begin?") — nó chỉ là vài dòng chữ căn giữa,
+ *    không đủ thành một khu; và nền `bg-muted/30` của nó tạo hai dải màu sát
+ *    nhau ngay trên footer, đọc rời rạc. Copy vẫn nằm ở `messages.enquiryCta`
+ *    cho component `EnquiryCta` dùng chung khi nào dựng thật (nợ đã ghi từ cụm
+ *    pháp lý) — khối đó có sẵn biến thể tiêu đề cho home/faq/about/blog và
+ *    `regionHeading` cho trang vùng.
  *
  * Chữ ký của trang giờ là DẢI ẢNH FULL-BLEED sát mép màn hình dưới mỗi header
  * vùng, các ô giãn ra khi hover — KHÔNG còn đường kinh tuyến dọc của Task 4b
@@ -54,7 +60,6 @@ export const metadata: Metadata = {
 
 export default function DestinationsPage() {
   const t = messages.destinationsPage;
-  const cta = messages.enquiryCta;
 
   return (
     <>
@@ -118,7 +123,8 @@ export default function DestinationsPage() {
         <JourneyMoments moments={MOMENTS} />
       </Reveal>
 
-      {/* ── Khu 4 · Loved by travellers — 3 trích dẫn lớn, khác marquee trang chủ ── */}
+      {/* ── Khu 4 · Loved by travellers — carousel MỘT trích dẫn một lúc (kiểu
+          Nexora), khác marquee 2 cột của trang chủ ── */}
       <Reveal>
         <TravellerQuotes testimonials={TESTIMONIALS} />
       </Reveal>
@@ -127,32 +133,6 @@ export default function DestinationsPage() {
       <Reveal>
         <KnowBeforeYouGo items={FAQ_ITEMS} />
       </Reveal>
-
-      {/* ── Khu 6 · CTA hỏi → /contact ──
-          Là BĂNG full-width, KHÔNG phải thẻ có viền. Bản đầu bọc nội dung trong
-          `rounded-3xl border bg-card max-w-3xl` — nó thành thứ DUY NHẤT trên
-          trang có khung, và là thứ duy nhất không dùng chiều rộng nội dung của
-          trang, nên đọc như một widget lạc vào chứ không phải một khu của trang
-          (user chỉ ra 28/07).
-          `border-t` nhắc lại vạch mảnh mà dải ảnh vùng đã dùng, và `bg-muted/30`
-          tách nó khỏi hai khu nền trắng ngay trên — nếu không, ba khu liền nhau
-          cùng nền sẽ dính thành một khối.
-          KHÔNG bê nguyên banner tối của `home/call-to-action.tsx`: trang chủ đã
-          có đúng banner đó, lặp y hệt thì đọc như bản sao. */}
-      <section className="w-full border-t border-border bg-muted/30 px-4 py-20 md:px-16 lg:px-24 xl:px-32">
-        <Reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
-          <h2 className="font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
-            {cta.headings.destinations}
-          </h2>
-          <p className="max-w-xl text-pretty text-muted-foreground">{cta.subtitle}</p>
-          {/* `rounded-full` nhắc lại kiểu nút viên thuốc của CTA trang chủ —
-              mượn NGÔN NGỮ nút, không mượn cả banner. */}
-          <ButtonLink href="/contact" size="lg" className="mt-2 rounded-full px-8">
-            {cta.cta}
-          </ButtonLink>
-          <p className="text-xs text-muted-foreground">{cta.note}</p>
-        </Reveal>
-      </section>
     </>
   );
 }

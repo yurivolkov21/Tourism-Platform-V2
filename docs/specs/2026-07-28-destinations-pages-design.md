@@ -187,10 +187,24 @@ vùng"*. Ba chẩn đoán cụ thể (không phải chuyện gu):
    `--region-hero` vừa tạo ở Task 1 còn chưa dùng tới. Lớp màu vùng là tài sản
    Nexora **không có** mà trang lại tiêu như đồ trang trí.
 
-**Sáu khu chốt** (thay bản bốn khu ở trên): hero tối + `TopoPattern` →
-**hành trình 3 vùng dọc kinh tuyến** → **Moments from the journey** →
-**Loved by travellers** → **Know before you go** → **CTA hỏi**.
-**Bỏ** khu `Featured trips` — trang này giới thiệu vùng, không bán tour.
+**NĂM khu chốt** (bản cuối, sau ba vòng user duyệt): hero tối + `TopoPattern` →
+**3 `RegionGroup`** (header căn giữa + dải ảnh full-bleed, kiểu Nexora) →
+**Moments from the journey** → **Loved by travellers** → **Know before you go**.
+
+**Hai khu đã bỏ**, cả hai theo quyết định user 28/07:
+
+- `Featured trips` — trang này giới thiệu vùng, không bán tour.
+- **CTA hỏi** ("Not sure where to begin?") — chỉ là vài dòng chữ căn giữa, không
+  đủ thành một khu; và nền `bg-muted/30` của nó tạo hai dải màu sát nhau ngay
+  trên footer, đọc rời rạc. Copy giữ nguyên ở `messages.enquiryCta` cho
+  component `EnquiryCta` dùng chung khi nào dựng thật (nợ từ cụm pháp lý) —
+  khối đó có sẵn biến thể tiêu đề cho home/faq/about/blog và `regionHeading`
+  cho trang vùng, nên **hiện chưa consumer nào**.
+
+⚠️ **Chữ ký đường kinh tuyến mô tả ở dưới đã BỊ THAY** ở vòng ba: user chỉ vào
+bản Nexora và chốt dải ảnh full-bleed. Dải chạy sát mép nên không còn chỗ cho
+đường kẻ dọc bên trái — giữ cả hai là nhồi hai chữ ký vào một khu. Phần dưới
+giữ lại làm bản ghi lịch sử.
 
 **Chữ ký: đường kinh tuyến.** Một đường dọc chạy suốt ba vùng, mỗi vùng là một
 trạm. Thứ tự Bắc → Nam ở đây là **thông tin thật** (địa lý, và mock đã xếp đúng
