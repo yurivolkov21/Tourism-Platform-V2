@@ -4,25 +4,40 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
- * Biến thể Signature "postcards" — ba bưu thiếp dọc so le trên băng phớt, hiện
- * chỉ miền Nam dùng. Đây là biến thể DẪN BẰNG ẢNH: miền Nam bán cảnh sông nước,
- * nên nó xứng đáng khu ảnh riêng chứ không phải thêm một khối chữ nữa.
+ * Khu bưu thiếp — ba bưu thiếp dọc so le trên băng phớt, hiện chỉ miền Nam dùng,
+ * và ở đó nó là khu MỞ ĐẦU (`regionTheme('south').openWith`). Đây là biến thể
+ * DẪN BẰNG ẢNH: miền Nam bán cảnh sông nước, nên nó xứng đáng khu ảnh riêng chứ
+ * không phải thêm một khối chữ nữa.
+ *
+ * `emphasis` DỰNG KHU LỚN HƠN, và lý do nằm ngoài file này: **miền Nam cố ý
+ * không có khu chữ ký thứ hai** (Bắc có `seasons`, Trung có `timeline`). Nam
+ * mỏng dữ liệu nhất — chuyến riêng 1–3 ngày, độ khó dừng ở Moderate, một tour
+ * `difficulty: null` — nên mọi khu thứ hai nghĩ ra cho nó đều trùng HÌNH với khu
+ * đã có hoặc phải bịa; ép cho đủ đối xứng chính là cái bẫy vừa làm hỏng phương
+ * án màu (ADR-0015). Prop này là phần BÙ: trang Nam có ít khu hơn nên khu mở đầu
+ * của nó được dựng cao hơn và thoáng hơn. **Đừng "sửa cho cân" bằng cách thêm
+ * khu thứ hai cho Nam** — xem JSDoc `THEMES` ở `lib/region-theme.ts`.
  */
 export function RegionSignaturePostcards({
   eyebrow,
   heading,
   body,
   postcards,
+  emphasis = false,
 }: {
   eyebrow: string;
   heading: string;
   body: string;
   postcards: readonly { title: string; caption: string }[];
+  emphasis?: boolean;
 }) {
   return (
     <section
       style={{ background: SIGNATURE_BAND_BG }}
-      className="w-full px-4 py-20 md:px-16 md:py-24 lg:px-24 xl:px-32"
+      className={cn(
+        'w-full px-4 md:px-16 lg:px-24 xl:px-32',
+        emphasis ? 'py-24 md:py-32' : 'py-20 md:py-24',
+      )}
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
@@ -43,7 +58,9 @@ export function RegionSignaturePostcards({
             <figure
               key={card.title}
               className={cn(
-                'relative aspect-4/5 overflow-hidden rounded-2xl text-on-media',
+                'relative overflow-hidden rounded-2xl text-on-media',
+                // Ô cao hơn (3:4 thay 4:5) là phần bù dựng-lớn-hơn của miền Nam.
+                emphasis ? 'aspect-3/4' : 'aspect-4/5',
                 // So le nhẹ: hai ô ngoài tụt xuống, ô giữa nhô lên. `transform`
                 // là hiệu ứng trang trí nên tắt hẳn khi người dùng tắt chuyển động.
                 i === 1 ? 'sm:-translate-y-4' : 'sm:translate-y-4',
@@ -68,7 +85,14 @@ export function RegionSignaturePostcards({
                 <p className="font-mono text-xs tracking-widest text-on-media/80 uppercase">
                   {card.caption}
                 </p>
-                <h3 className="font-heading text-xl font-medium text-balance">{card.title}</h3>
+                <h3
+                  className={cn(
+                    'font-heading font-medium text-balance',
+                    emphasis ? 'text-2xl' : 'text-xl',
+                  )}
+                >
+                  {card.title}
+                </h3>
               </figcaption>
             </figure>
           ))}

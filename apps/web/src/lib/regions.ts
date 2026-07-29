@@ -70,17 +70,41 @@ export function toursInRegion<T extends MockTourCard>(
 }
 
 /**
- * Chuyến dài nhất RIÊNG của một vùng — tour mà MỌI điểm đến đều nằm trong vùng.
+ * Chuyến RIÊNG của một vùng — tour mà MỌI điểm đến đều nằm trong vùng.
  *
  * Khác `toursInRegion()` một chữ nhưng khác hẳn về nghĩa: hàm kia gom theo
  * `some()` nên nó cũng kéo vào tour XUYÊN VÙNG — `north-to-south-classic` dài 12
- * ngày nhưng chạm cả ba vùng. Lấy nó làm "chuyến dài nhất của miền Bắc" là quảng
- * cáo một hành trình mà phần lớn thời gian ở nơi khác. `every()` cho miền Bắc 8
- * ngày (`northern-highlands-loop`), đúng nghĩa "dài nhất Ở ĐÂY".
+ * ngày nhưng chạm cả ba vùng. Nói "chuyến của miền Bắc" về nó là quảng cáo một
+ * hành trình mà phần lớn thời gian ở nơi khác. `every()` cho miền Bắc 5 chuyến,
+ * dài nhất 8 ngày (`northern-highlands-loop`), đúng nghĩa "Ở ĐÂY".
  *
- * MỘT hàm cho HAI chỗ dùng: ô số liệu "Longest trip" ở hero và itinerary nuôi khu
- * Signature của miền Bắc phải nói về cùng một chuyến — hai bản định nghĩa song
- * song là hai con số rồi sẽ lệch nhau im lặng.
+ * ĐÂY LÀ NƠI DUY NHẤT định nghĩa "riêng của vùng". `longestTourInRegion()` ngay
+ * dưới và khu phổ `region-spectrum.tsx` đều đi qua hàm này — hai bản định nghĩa
+ * song song là hai tập rồi sẽ lệch nhau im lặng, và `regions.spec.ts` có một test
+ * canh đúng chuyện đó ("một định nghĩa, hai chỗ dùng").
+ *
+ * KHÔNG sắp xếp: trả về theo thứ tự catalogue. Nơi gọi tự sắp theo nhu cầu của nó
+ * (khu phổ sắp theo số ngày tăng dần) — sắp hộ ở đây là ép một thứ tự lên mọi
+ * chỗ dùng.
+ */
+export function ownToursInRegion<T extends MockTourCard>(
+  regions: readonly MockRegion[],
+  destinations: readonly MockDestination[],
+  tours: readonly T[],
+  key: RegionKey,
+): T[] {
+  const slugs = new Set(destinationsInRegion(regions, destinations, key).map((d) => d.slug));
+  return tours.filter(
+    (tour) =>
+      // `length > 0` là điều kiện THẬT chứ không phải phòng thủ thừa: `every()`
+      // trên mảng rỗng trả true, nên tour không khai điểm đến nào sẽ được nhận
+      // làm "chuyến riêng" của MỌI vùng.
+      tour.destinations.length > 0 && tour.destinations.every((dest) => slugs.has(dest.slug)),
+  );
+}
+
+/**
+ * Chuyến dài nhất RIÊNG của một vùng — nuôi ô số liệu "Longest trip" ở hero.
  *
  * `null` khi vùng không có chuyến riêng nào (nhánh có thật khi gắn API: một vùng
  * mới chỉ được tour liên vùng ghé qua) — nơi gọi bỏ hẳn phần phụ thuộc vào nó.
@@ -91,14 +115,8 @@ export function longestTourInRegion<T extends MockTourCard>(
   tours: readonly T[],
   key: RegionKey,
 ): T | null {
-  const slugs = new Set(destinationsInRegion(regions, destinations, key).map((d) => d.slug));
   let longest: T | null = null;
-  for (const tour of tours) {
-    // `length > 0` là điều kiện THẬT chứ không phải phòng thủ thừa: `every()`
-    // trên mảng rỗng trả true, nên tour không khai điểm đến nào sẽ được nhận làm
-    // "chuyến riêng" của MỌI vùng.
-    if (tour.destinations.length === 0) continue;
-    if (!tour.destinations.every((dest) => slugs.has(dest.slug))) continue;
+  for (const tour of ownToursInRegion(regions, destinations, tours, key)) {
     // `>` chứ không `>=`: hai chuyến bằng nhau thì giữ chuyến GẶP TRƯỚC, để thứ
     // tự catalogue quyết định thay vì thứ tự lặp ngược.
     if (longest === null || tour.durationDays > longest.durationDays) longest = tour;

@@ -1,17 +1,31 @@
 import type { MockRegionKey } from '@/mocks/types';
 
-/** Biến thể khu Signature. Tên theo CẤU TRÚC nó dựng, không theo tên vùng —
-    `seasons`/`timeline`/`postcards` đọc là biết render gì.
-    Miền Bắc đã đi qua HAI biến thể chết, ghi lại để không ai chọn lại:
-     · `stats` (bỏ 29/07) — dải số liệu chuyển lên hero, giữ ở đây là in cùng bốn
-       con số hai lần trên một trang.
-     · `itinerary` (bỏ 29/07) — nó kể hành trình theo ngày của MỘT tour, tức là
-       nội dung của `/tours/[slug]`, nơi `ItineraryTimeline` đã làm đúng việc đó.
-       Trang VÙNG phải nói về vùng, nên `seasons` (mùa đẹp của chính vùng). */
-export type SignatureVariant = 'seasons' | 'timeline' | 'postcards';
+/**
+ * Khu đứng NGAY SAU Intro — thứ người đọc gặp đầu tiên sau hero, nên nó là thứ
+ * quyết định "trang này đọc như cái gì". Tên theo CẤU TRÚC nó dựng, không theo
+ * tên vùng: `spectrum`/`dayTrips`/`postcards` đọc là biết render gì.
+ */
+export type OpeningSection = 'spectrum' | 'dayTrips' | 'postcards';
+
+/**
+ * Khu chữ ký thứ hai — đặt SAU khu Tours, không liền sau khu mở đầu: hai khu đặc
+ * trưng dính nhau thì phần giữa trang thành một cục, và Tours mới là khu người ta
+ * tới để tìm.
+ *
+ * `null` là một giá trị HỢP LỆ, không phải chỗ chưa điền — xem JSDoc `THEMES`.
+ *
+ * Miền Bắc đã đi qua HAI biến thể chết, ghi lại để không ai chọn lại:
+ *  · `stats` (bỏ 29/07) — dải số liệu chuyển lên hero, giữ ở đây là in cùng bốn
+ *    con số hai lần trên một trang.
+ *  · `itinerary` (bỏ 29/07) — nó kể hành trình theo ngày của MỘT tour, tức là
+ *    nội dung của `/tours/[slug]`, nơi `ItineraryTimeline` đã làm đúng việc đó.
+ *    Trang VÙNG phải nói về vùng, nên `seasons` (mùa đẹp của chính vùng).
+ */
+export type SignatureVariant = 'seasons' | 'timeline';
 
 export interface RegionTheme {
-  signature: SignatureVariant;
+  openWith: OpeningSection;
+  secondSignature: SignatureVariant | null;
 }
 
 /**
@@ -45,11 +59,28 @@ export const SIGNATURE_BAND_BG = 'color-mix(in oklch, var(--muted), var(--backgr
  * chốt luôn ba hero đồng nhất, nên "mood riêng từng vùng" không còn là bất biến.
  * Chiều cao hero giờ là một hằng tại chỗ trong `region-hero.tsx`, còn scrim thì
  * không còn đối tượng để phủ — hero đã đổi sang nền đặc `bg-hero`.
+ *
+ * `signature` (một field, ba biến thể) đã BỎ 29/07 — Task 5j tách nó thành
+ * `openWith` + `secondSignature`. Lý do: với MỘT khu chữ ký, cả ba trang đọc
+ * cùng một thứ tự khu và user gọi chúng *"na ná, chỉ khác mỗi vài section"*. Đo
+ * lại thì đúng: 5/6 khu giống hệt nhau. Gốc sâu hơn nằm ở mock — nó ĐỐI XỨNG
+ * theo thiết kế (3 địa điểm · 6 tour · 5 riêng + 1 xuyên vùng ở cả ba vùng) —
+ * nhưng user chốt KHÔNG đụng mock (nó khoá `/tours`, `/about`, `/#gallery` và
+ * loạt test 16 tour · 6/6/6 · 25 lượt chạm), nên phân hoá bằng THỨ TỰ KHU.
+ *
+ * ⚠️ **Miền Nam CỐ Ý không có `secondSignature`, và đó là quyết định, không phải
+ * thiếu sót.** Nam mỏng dữ liệu nhất trong ba vùng: chuyến riêng chỉ 1–3 ngày,
+ * độ khó dừng ở Moderate (còn một tour `difficulty: null`), giảm giá 1/6. Mọi
+ * khu thứ hai nghĩ ra cho nó đều trùng HÌNH với khu đã có — thang giá cũng là
+ * một trục, cùng họ với phổ của Bắc — hoặc phải bịa ra dữ liệu không có. Ép cho
+ * đủ đối xứng chính là cái bẫy vừa làm hỏng phương án màu (ADR-0015): hình thù
+ * không cắm vào sự thật nào. Bù lại, Nam truyền `emphasis` cho khu bưu thiếp để
+ * khu mở đầu của nó dựng lớn hơn hai vùng kia. Đừng "bổ sung cho đủ".
  */
 const THEMES: Record<MockRegionKey, RegionTheme> = {
-  north: { signature: 'seasons' },
-  central: { signature: 'timeline' },
-  south: { signature: 'postcards' },
+  north: { openWith: 'spectrum', secondSignature: 'seasons' },
+  central: { openWith: 'dayTrips', secondSignature: 'timeline' },
+  south: { openWith: 'postcards', secondSignature: null },
 };
 
 export function regionTheme(key: MockRegionKey): RegionTheme {

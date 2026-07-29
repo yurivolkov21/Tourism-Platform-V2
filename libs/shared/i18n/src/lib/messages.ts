@@ -761,6 +761,27 @@ export const messages = {
     /** Chú giải dải tháng — dải là đồ hoạ nên cần nhãn chữ cho trình đọc màn hình. */
     seasonsBestLabel: 'Best months',
     seasonsOtherLabel: 'Shoulder & wet months',
+    /** Khu phổ ngày × độ khó — CHỈ miền Bắc dựng (vùng duy nhất trải 1–8 ngày và
+        chạm bậc Challenging; hai vùng kia vẽ ra một cụm phẳng). */
+    spectrum: {
+      eyebrow: 'The range',
+      heading: (region: string) => `From a day out to a week on the trail in ${region}`,
+      subtitle:
+        'The north is the only region that runs the whole way from an easy morning to a hard week — pick the depth you want.',
+      /** Nhãn trục. `daysAxis` đứng dưới thước ngang, `gradeAxis` mở đầu chú giải. */
+      daysAxis: 'Trip length',
+      gradeAxis: 'Grade',
+      /** `difficulty` của contract là nullable. Bậc thiếu phải có TÊN riêng —
+          bỏ trống ô thì thanh vẫn vẽ mà không ai biết nó nghĩa gì. */
+      ungraded: 'Not graded',
+    },
+    /** Khu bốn chuyến một ngày — CHỈ miền Trung dựng. */
+    dayTrips: {
+      eyebrow: 'Out and back',
+      heading: (n: number) => `${n} of these trips fit in a single day`,
+      subtitle:
+        'The centre is compact enough to see properly without packing a bag — leave after breakfast, back before dark.',
+    },
     // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
     // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
     // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —

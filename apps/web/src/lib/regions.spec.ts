@@ -5,6 +5,7 @@ import { TOURS } from '@/mocks/tours';
 import {
   destinationsInRegion,
   longestTourInRegion,
+  ownToursInRegion,
   regionBySlug,
   regionGlance,
   regionOf,
@@ -178,5 +179,51 @@ describe('longestTourInRegion — chuyến dài nhất RIÊNG của vùng', () =
     // làm "chuyến riêng" của MỌI vùng.
     const orphan = TOURS.map((tour) => ({ ...tour, destinations: [] }));
     expect(longestTourInRegion(REGIONS, DESTINATIONS, orphan, 'north')).toBeNull();
+  });
+});
+
+describe('ownToursInRegion — TẬP chuyến riêng của vùng', () => {
+  it('bỏ tour XUYÊN VÙNG khỏi tập, dù `toursInRegion` có nó', () => {
+    // `north-to-south-classic` 12 ngày chạm cả ba vùng. Vẽ nó lên trục ngày của
+    // miền Bắc là kéo trục dài gấp rưỡi rồi bóp cụm 1–8 lại thành một vệt.
+    const northTours = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'north');
+    expect(northTours.some((tour) => tour.slug === 'north-to-south-classic')).toBe(true);
+    const own = ownToursInRegion(REGIONS, DESTINATIONS, northTours, 'north');
+    expect(own.some((tour) => tour.slug === 'north-to-south-classic')).toBe(false);
+  });
+
+  it('mock đối xứng: mỗi vùng đúng 5 chuyến riêng trên 6 chuyến chạm', () => {
+    for (const region of REGIONS) {
+      const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
+      expect(tours.length, region.key).toBe(6);
+      expect(ownToursInRegion(REGIONS, DESTINATIONS, tours, region.key).length, region.key).toBe(5);
+    }
+  });
+
+  it('giữ NGUYÊN thứ tự catalogue — nơi gọi tự sắp, hàm này không sắp hộ', () => {
+    const northTours = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'north');
+    const own = ownToursInRegion(REGIONS, DESTINATIONS, northTours, 'north');
+    const expected = northTours
+      .filter((tour) => tour.slug !== 'north-to-south-classic')
+      .map((tour) => tour.slug);
+    expect(own.map((tour) => tour.slug)).toEqual(expected);
+  });
+
+  it('tour KHÔNG có điểm đến nào không được nhận làm chuyến riêng của MỌI vùng', () => {
+    // `every()` trên mảng rỗng trả true — cùng cái bẫy `longestTourInRegion` chặn.
+    const orphan = TOURS.map((tour) => ({ ...tour, destinations: [] }));
+    expect(ownToursInRegion(REGIONS, DESTINATIONS, orphan, 'north')).toEqual([]);
+  });
+
+  it('chuyến dài nhất CHÍNH LÀ chuyến dài nhất của tập này — một định nghĩa, hai chỗ dùng', () => {
+    // Bất biến chống trôi: `longestTourInRegion` và khu phổ phải nói về CÙNG một
+    // tập tour. Hai bản định nghĩa song song là hai con số rồi sẽ lệch im lặng.
+    for (const region of REGIONS) {
+      const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
+      const own = ownToursInRegion(REGIONS, DESTINATIONS, tours, region.key);
+      const longest = longestTourInRegion(REGIONS, DESTINATIONS, tours, region.key);
+      const maxDays = Math.max(...own.map((tour) => tour.durationDays));
+      expect(longest?.durationDays, region.key).toBe(maxDays);
+    }
   });
 });
