@@ -2758,3 +2758,176 @@ git add apps/web/src libs/shared/i18n
 git commit -m "style(web): chuẩn hoá header 5 khu trang vùng theo quy ước SectionEyebrow"
 ```
 
+---
+
+### Task 5g: Thay khu Signature của miền Bắc bằng `When to visit` (dải 12 tháng)
+
+**Vì sao:** user xem khu `Great northern adventures` và bác — *"nó giống trang tour
+details hơn"*. Đúng: khu đó đang kể **itinerary 8 ngày của MỘT tour**, mà việc đó thuộc
+`/tours/[slug]` và repo đã có `ItineraryTimeline` làm. Triệu chứng phụ: tiêu đề vẫn là
+copy Nexora ("Great northern adventures") trong khi ruột đã thành lịch trình một chuyến
+— tiêu đề và nội dung trôi khỏi nhau.
+
+**Đây là lỗi của bản kế hoạch, hai lần:** Nexora để Bắc là 4 thẻ số liệu bịa
+(`350km Hà Giang Loop`, `3.143m Fansipan`), tôi thay bằng "dữ liệu thật giàu nhất của
+Bắc" = itinerary; rồi Task 5d đưa số liệu lên hero nên Bắc lại phải đổi, và tôi chọn
+đúng cái itinerary đó lần nữa.
+
+**Chốt (user 29/07):** thay bằng **`When to visit`** — thứ duy nhất còn lại vừa thuộc
+về VÙNG (không phải một tour), vừa đã có copy sẵn cho cả ba vùng.
+
+⚠️ **Đảo quyết định spec §5.1**, vốn cắt `BestTime` khỏi `/destinations` vì "không field
+nào trong contract nói mùa/thời tiết". Lý do đó **không áp cho ca này**: mùa đẹp của một
+vùng là sự thật công khai về nơi chốn, khác hẳn `3.143m Fansipan` vốn là **lời hứa về
+sản phẩm ta không bán**. Cái giá thật vẫn phải ghi: đây là copy gõ tay, không ai duy trì.
+
+**Files:**
+
+- Modify: `libs/shared/i18n/src/lib/messages.ts`
+- Create: `components/destinations/region-seasons.tsx` + `.spec.tsx`
+- **Delete**: `components/destinations/region-signature-itinerary.tsx`
+- Modify: `lib/region-theme.ts` + `.spec.ts`
+- Modify: `app/(site)/destinations/[region]/page.tsx`
+
+- [ ] **Step 1: i18n — mùa thành DỮ LIỆU CÓ CẤU TRÚC**
+
+Trong mỗi `regionPage.regions[key]`, **thay** khối `signature` của `north` (và thêm cho
+cả ba vùng) bằng:
+
+```ts
+        /** Mùa đẹp nhất — mảng SỐ THÁNG (1–12), không phải chuỗi 'Mar–May'.
+            Dải 12 ô ở `region-seasons.tsx` đọc thẳng mảng này; nếu lưu chuỗi thì
+            component phải parse copy, và copy sửa một chữ là dải vỡ âm thầm. */
+        season: {
+          months: [3, 4, 5, 9, 10, 11], // north
+          note: 'Cool, dry and clear — ideal for Hạ Long and the mountains. Winters turn chilly up high; summers bring rain.',
+        },
+```
+
+- `central`: `months: [2, 3, 4, 5, 6, 7, 8]` · note `'Warm and dry along the coast and old towns. Avoid Oct–Dec, the wettest and most storm-prone months.'`
+- `south`: `months: [12, 1, 2, 3, 4]` · note `'The dry season for the Mekong and the islands. May–Nov is wetter but stays warm with short showers.'`
+
+Thêm nhãn dùng chung trong `regionPage`:
+
+```ts
+    seasonsEyebrow: 'Seasons',
+    seasonsHeading: (region: string) => `When to visit ${region}`,
+    /** Chú giải dải tháng — dải là đồ hoạ nên cần nhãn chữ cho trình đọc màn hình. */
+    seasonsBestLabel: 'Best months',
+    seasonsOtherLabel: 'Shoulder & wet months',
+```
+
+**Xoá:**
+- Khối `signature` của `north` (`eyebrow`/`heading`/`body`/`points`) — khu đó không còn.
+- `regionPage.dayLabel` và `regionPage.itineraryNote` — chỉ khu itinerary dùng.
+- Khối **`bestTime`** ở cấp cao nhất (`messages.ts` ~dòng 902): 0 consumer, và nội dung
+  của nó vừa chuyển vào `regions[key].season`. Giữ lại là hai nguồn cho cùng một sự thật.
+  `subtitle` của nó (*"Vietnam runs over 1,600km north to south … a quick guide by
+  region"*) vốn viết cho trang hiện CẢ BA vùng nên sai ngữ cảnh ở trang một vùng.
+- **KHÔNG đụng** `travelTips` — cũng 0 consumer nhưng là nợ có từ trước, ngoài phạm vi.
+
+- [ ] **Step 2: `region-theme.ts`**
+
+`SignatureVariant`: `'itinerary'` → **`'seasons'`**; `north` dùng `'seasons'`.
+Cập nhật `region-theme.spec.ts` (test khẳng định `north.signature`).
+
+- [ ] **Step 3: Test thất bại cho `RegionSeasons`**
+
+Tạo `components/destinations/region-seasons.spec.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { RegionSeasons } from './region-seasons';
+
+const PROPS = {
+  regionName: 'Northern Vietnam',
+  months: [3, 4, 5, 9, 10, 11],
+  note: 'Cool, dry and clear.',
+};
+
+describe('RegionSeasons', () => {
+  it('vẽ ĐỦ 12 ô tháng, không chỉ các tháng đẹp', () => {
+    const { container } = render(<RegionSeasons {...PROPS} />);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
+  });
+
+  it('đánh dấu ĐÚNG các tháng đẹp, không thừa không thiếu', () => {
+    const { container } = render(<RegionSeasons {...PROPS} />);
+    const best = [...container.querySelectorAll('[data-month][data-best="true"]')].map((el) =>
+      Number(el.getAttribute('data-month')),
+    );
+    expect(best).toEqual([3, 4, 5, 9, 10, 11]);
+  });
+
+  // Tháng 12 quấn qua tháng 1 ở miền Nam — dải phải đánh dấu cả hai đầu,
+  // không được coi [12,1,2,3,4] là một khoảng liên tục rồi tô nhầm 5..11.
+  it('mùa vắt qua năm (12→4) đánh dấu đúng hai đầu dải', () => {
+    const { container } = render(<RegionSeasons {...PROPS} months={[12, 1, 2, 3, 4]} />);
+    const best = [...container.querySelectorAll('[data-month][data-best="true"]')].map((el) =>
+      Number(el.getAttribute('data-month')),
+    );
+    expect(best).toEqual([1, 2, 3, 4, 12]);
+  });
+
+  it('in ghi chú thời tiết', () => {
+    render(<RegionSeasons {...PROPS} />);
+    expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
+  });
+
+  it('không tháng nào thì BỎ HẲN dải, vẫn giữ ghi chú', () => {
+    const { container } = render(<RegionSeasons {...PROPS} months={[]} />);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(0);
+    expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
+  });
+});
+```
+
+⚠️ Spec này render `SectionEyebrow` (dùng `whileInView`) → **stub `IntersectionObserver`
+cục bộ trong chính file spec**, copy khuôn từ `region-group.spec.tsx`. Đừng dời lên
+`vitest.setup.ts` (đã đo: làm 19 test ở 3 file khác gãy).
+
+- [ ] **Step 4: `region-seasons.tsx`**
+
+- Nền `color-mix(in oklch, var(--region-surface), var(--background) 88%)` — cùng công
+  thức hai biến thể Signature kia, để ba vùng vẫn cùng một họ nền.
+- Header chuẩn (Task 5f): `SectionEyebrow` = `seasonsEyebrow` → `<h2 className="mt-4 …
+  md:text-[40px]/12">` = `seasonsHeading(regionName)` → `<p className="mt-2 …">` = `note`.
+- **Dải 12 tháng**: 12 ô `grid grid-cols-6 sm:grid-cols-12`, mỗi ô mang
+  `data-month={n}` và `data-best={boolean}`. Ô "đẹp" nền `var(--region-primary)` chữ
+  `text-on-media`; ô còn lại nền `bg-muted` chữ `text-muted-foreground`.
+  Nhãn tháng lấy bằng `Intl.DateTimeFormat('en-US', { month: 'short' })` — cùng tiền lệ
+  `formatMoney` và `toLocaleString` đang dùng, không gõ 12 chuỗi vào i18n.
+- **Khả truy cập**: dải là đồ hoạ, nên bọc bằng `role="img"` với
+  `aria-label` liệt kê rõ các tháng đẹp bằng chữ, HOẶC dùng `<dl>` có nhãn
+  `seasonsBestLabel`/`seasonsOtherLabel`. Chọn một, giải thích trong comment. **Không**
+  để dải chỉ có màu làm tín hiệu duy nhất — người mù màu phải đọc được.
+- `months` rỗng → bỏ dải, giữ `note`.
+
+- [ ] **Step 5: `page.tsx`**
+
+- Nhánh `seasons` → `<RegionSeasons regionName={region.name} months={…} note={…} />`.
+- Xoá import `RegionSignatureItinerary` và file của nó; xoá chỗ tra tour dài nhất **chỉ
+  dùng cho khu itinerary**. ⚠️ **GIỮ** `longestTourInRegion` — hero vẫn dùng nó cho ô
+  số liệu "Longest trip".
+- Nhánh chọn biến thể vẫn guard bằng CẢ `regionTheme` LẪN hình dạng dữ liệu có thật.
+- ⚠️ `data-flush-footer` vẫn ở khu CUỐI. ⚠️ **KHÔNG** tạo `loading.tsx`.
+
+- [ ] **Step 6: Đo tương phản dải tháng**
+
+Ô "đẹp" (`--region-primary` + `text-on-media`) và ô thường (`bg-muted` +
+`text-muted-foreground`) — **cả 3 vùng × cả 2 theme**. Ngưỡng AA 4.5 (nhãn tháng cỡ nhỏ).
+⚠️ Cặp `muted-foreground`/`muted` đã đo **3.35:1 ở light** trong một ca trước của cụm —
+nếu lại rớt thì đổi sang `text-foreground/70` hoặc tương đương rồi đo lại.
+Cách đúng: composite nền dưới → nền ô → rồi so với màu chữ, bằng `canvas` đọc pixel
+sRGB. Không regex `rgb()`. Không lấy pixel rơi trúng nét chữ.
+
+- [ ] **Step 7: Gate rồi commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+# cổng 3000 trống → pnpm gate; đang bận → typecheck + test + lint, ghi rõ nợ build
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): miền Bắc đổi khu chữ ký sang When to visit — dải 12 tháng"
+```
+
