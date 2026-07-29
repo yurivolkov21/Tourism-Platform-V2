@@ -34,7 +34,7 @@ Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge ·
 | [0012](adr/0012-typeset-typography.md) | Typography nội dung render — vendor shadcn/typeset (lõi nguyên bản + 3 preset docs/chat/reading) trong `@tourism/ui`, thay `@tailwindcss/typography` của Nexora |
 | [0013](adr/0013-wuling-theme-tokens.md) | Theme Wuling + region tint — giữ pipeline Style Dictionary P0, thay giá trị brand, lớp `--region-*` (north/central/south), wire ui vào tokens.css, font Be Vietnam Pro + Lora |
 | [0014](adr/0014-web-component-testing.md) | Test tầng component `apps/web` — Vitest 2 project (node + jsdom) + Testing Library, ranh giới với test logic thuần, ghim 1 bản React cho workspace |
-| [0015](adr/0015-retire-region-tint.md) | Rút lớp tint theo vùng — xoá 3 khối `[data-region]`, trang vùng dùng thẳng token brand (lật theo theme), giữ họ `--region-*` ở `:root` cho 8 file Home/About/Auth/Contact; bản sắc vùng chuyển sang cấu trúc |
+| [0015](adr/0015-retire-region-tint.md) | Rút lớp tint theo vùng TOÀN SITE — xoá 3 khối `[data-region]`; trang vùng, Home gallery và About timeline/gallery dùng thẳng token brand; hero về `bg-hero` + TopoPattern; giữ `regionDefaults` cho 4 file auth/contact; bản sắc vùng chuyển sang cấu trúc |
 
 ## Specs — theo phase
 

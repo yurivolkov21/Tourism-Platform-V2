@@ -31,12 +31,22 @@ brand token thì lật (`--primary` ở dark là `oklch(0.563 0.076 181.3)`). V�
 **chỉ xoá ba khối override là chưa đủ**: trang vùng sẽ đúng màu ở light nhưng ở
 dark vẫn dùng giá trị light-brand. Component phải trỏ **thẳng** vào token brand.
 
-**2. `--region-*` còn phục vụ 8 file KHÔNG liên quan tới vùng.**
-`home/gallery.tsx` · `about/about-timeline.tsx` · `about/about-gallery.tsx` ·
-`auth/auth-screen.tsx` · `auth/password-strength-field.tsx` · `home/contact.tsx` ·
-`contact/contact-cta.tsx` · `destinations-menu.tsx`. Những trang đó không có tổ
-tiên `data-region` nên vốn đã đọc `:root` — chúng đang dùng lớp này như một **bảng
-màu phụ**, không phải như tint vùng.
+**2. Lớp region có HAI nhóm consumer khác hẳn nhau — và ranh giới không nằm ở
+chỗ ban đầu tưởng.**
+
+> ⚠️ **Đính chính (29/07, trước khi viết dòng code nào).** Bản nháp ADR này khẳng
+> định 8 file ngoài trang vùng "không có tổ tiên `data-region` nên không đổi một
+> pixel". **Sai** — phép grep dựng nên khẳng định đó lỗi cú pháp glob và bị đọc
+> thiếu. Đo lại bằng bản đồ di trú 56 điểm:
+
+| Nhóm | File | Có `data-region`? |
+| --- | --- | --- |
+| **Ăn tint thật** | `home/gallery.tsx:99` (từng thẻ địa điểm) · `about/about-timeline.tsx:66,89,207` (từng mốc) · `about/about-gallery.tsx:42` · `destinations-menu.tsx:49` · `region-group.tsx:35` · trang vùng | **CÓ** |
+| **Chỉ mượn bảng màu** | `auth/auth-screen.tsx` · `auth/password-strength-field.tsx` · `home/contact.tsx` · `contact/contact-cta.tsx` | không |
+
+Nhóm một **thật sự đổi giao diện** khi rút tint: thẻ địa điểm ở Home mất sắc riêng
+(miền Nam đang là nâu đất `oklch(0.661 0.052 51.2)`), bốn mốc ở About timeline về
+cùng một jade thay vì bốn màu. Nhóm hai đọc `:root` nên không đổi gì.
 
 ## Quyết định
 
@@ -44,25 +54,52 @@ màu phụ**, không phải như tint vùng.
    `tokens.mjs`. `regionDefaults` (giá trị `:root`) **giữ nguyên**.
 2. **Component của trang vùng trỏ thẳng vào token brand** (`--primary`, `--hero`,
    `--secondary`, `--rating`…) thay vì `--region-*`, để chúng lật theo theme.
-3. **Giữ họ `--region-*`** cho 8 file ở Home/About/Auth/Contact — không một trang
-   đã duyệt nào đổi một pixel.
-4. **Đồng nhất hero cả ba vùng**: bỏ khác biệt `heroMinH` và `scrim` theo vùng.
-5. Bản sắc vùng từ nay do **cấu trúc** gánh, không do màu: ba khu chữ ký khác hẳn
+3. **Rút tint TOÀN SITE** (user chốt sau khi biết đính chính trên): Home và About
+   cũng chuyển sang token brand. Chấp nhận **hai trang đã duyệt đổi giao diện** —
+   phải chụp và đo lại cả hai như một phần của việc này.
+4. **Giữ `regionDefaults` ở `:root`** cho 4 file nhóm hai (auth ×2, home/contact,
+   contact-cta). Chúng không dùng tint, chỉ mượn giá trị; đụng vào là mở rộng
+   phạm vi mà không phục vụ mục tiêu nào.
+5. **Đồng nhất hero cả ba vùng**: bỏ khác biệt `heroMinH` và `scrim` theo vùng.
+6. **Nền hero đổi sang `bg-hero` + `TopoPattern`**, bỏ nền gradient `RegionTile` —
+   đúng khuôn mọi hero khác của site (`/tours`, `/contact`, `/destinations`).
+7. Bản sắc vùng từ nay do **cấu trúc** gánh, không do màu: ba khu chữ ký khác hẳn
    nhau (mùa-đi 12 tháng · timeline 3 chặng · 3 bưu thiếp) cộng copy riêng.
 
-## Vì sao chọn hình dạng này thay vì xoá hẳn họ token
+## Vì sao hero phải bỏ nền gradient, không chỉ đổi token
 
-Xoá hẳn `--region-*` sạch hơn về mặt đặt tên, nhưng phải sửa 8 file trên các trang
-**đã duyệt** rồi chụp và đo lại toàn bộ chúng — rủi ro lan xa mà không phục vụ mục
-tiêu user nêu. Cái giá phải trả và ghi nhận: **tên `--region-*` từ nay sai nghĩa ở
-8 file đó** (chúng chẳng liên quan gì tới vùng). Đổi tên thành thứ như
-`--accent-alt` là việc dọn riêng, ghi thành nợ.
+Đo được trên bản đồ di trú: `RegionTile` làm nền hero nằm **trong scope `.dark`**,
+nên sau khi bỏ token vùng thì brand token bị ghim bảng TỐI ở **cả hai theme** —
+gradient ra `oklch(0.799 …)`, tức **nhạt**. Hero từ tối hoá sáng, lớp scrim mất
+đối tượng để phủ, và navbar chưa-cuộn (chữ `on-media` trắng) thành tàng hình —
+đúng luật "hero luôn tối" mà site giữ từ `/contact`. Thêm một lỗi hue: map 1-1
+`--region-deep` → `--secondary-foreground` khiến stop thứ hai nội suy qua **123°,
+xanh ô liu**, một sắc không có ở đâu trong brand.
+
+## Vì sao không xoá hẳn họ token
+
+Xoá hẳn `--region-*` sạch hơn về đặt tên, nhưng còn 4 file nhóm hai đang dùng nó
+như bảng màu phụ, và chúng nằm trên trang auth/contact đã duyệt. Cái giá ghi nhận:
+**tên `--region-*` từ nay sai nghĩa ở 4 file đó**. Đổi tên (ví dụ `--accent-alt`)
+là việc dọn riêng — ghi thành nợ, không làm ở đây.
 
 ## Hệ quả
 
-- Ba băng vùng ở `/destinations` và ba tiêu đề trong dropdown navbar **cũng mất
-  màu riêng** — chúng đặt `data-region` nên phụ thuộc chính ba khối vừa xoá. Đây là
-  hệ quả có chủ ý, thuận với lý do "đồng nhất giao diện".
+- Ba băng vùng ở `/destinations`, ba tiêu đề trong dropdown navbar, **thẻ địa điểm
+  ở Home, bốn mốc ở About timeline và chấm ở About gallery** đều mất màu riêng —
+  chúng đặt `data-region` nên phụ thuộc chính ba khối vừa xoá. Có chủ ý, thuận với
+  lý do "đồng nhất giao diện".
+- **Ba rủi ro cao đã đo, phải xử trong lúc di trú, không được map 1-1:**
+  1. Nút/chip nền `--primary` với chữ `on-media` rơi từ 4.84–8.88:1 xuống
+     **4.18:1** ở 5 chỗ. Bối cảnh: 4.18 **đúng bằng** cặp `bg-primary` /
+     `primary-foreground` mặc định của site ở dark — ta *thừa kế* lỗi toàn site đã
+     ghi nợ, không tạo lớp lỗi mới. Vẫn phải đo lại và ghi số.
+  2. `RegionTile` gradient — xem mục hero ở trên; icon `on-media/70` trên gradient
+     lật theo theme đo **1.74:1 ở dark**.
+  3. Công thức nền băng `color-mix(--region-surface, --background 88%)` được canh
+     cho một token surface **sáng, bất biến**; thay bằng token lật thì phép pha tự
+     triệt tiêu — ở dark ΔL chỉ còn **+0.014**, ba băng Signature gần như biến mất.
+     Phải chỉnh lại tỉ lệ hoặc dùng thẳng `bg-muted`, rồi đo.
 - **Xoá luôn một họ lỗi.** Năm lỗi tương phản của cụm này đều cùng gốc: ghép token
   cố định (`--region-*`, `--on-media`) với token theo-theme (`--foreground`,
   `--background`). Khi trang vùng dùng toàn token brand, cả hai vế cùng lật nên
