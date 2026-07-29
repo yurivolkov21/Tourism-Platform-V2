@@ -216,8 +216,8 @@ select:-webkit-autofill {
  * `site-footer.tsx` mang `mt-32`, và con số đó ngầm giả định MỌI trang kết bằng
  * một khu nền trong suốt — lúc đó 128px margin sơn đúng màu `--background` nên
  * không ai thấy. Giả định vỡ ngay khi `/destinations/[region]` kết bằng băng CTA
- * nền `--region-hero`: đo được một dải `rgb(245,248,247)` kẹp giữa băng tối và
- * footer tối ở light mode.
+ * nền TỐI (`dark` + `bg-background`, đúng công thức footer): đo được một dải
+ * `rgb(245,248,247)` kẹp giữa băng tối và footer tối ở light mode.
  *
  * Vì sao phải là luật CSS ở đây chứ không phải `-mb-32` trên chính băng đó: `body`
  * là `flex flex-col` và `main` là `flex-1`, mà **margin không collapse trong flex**

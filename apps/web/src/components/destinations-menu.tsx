@@ -16,9 +16,12 @@ import { REGIONS } from '@/mocks/regions';
 //
 // Liệt kê ĐỊA DANH chứ không phải vùng: lọc được theo slug địa danh, không có
 // tham số `region` ở đâu cả. Trỏ một mục "North" sang /tours mà không lọc được
-// gì thì vẫn là link nói dối. Vùng vẫn hiện dưới dạng tiêu đề nhóm + chấm tint
-// `--region-primary` (data-region ở cấp nhóm — hợp lệ ADR-0013 #4, điểm v2 làm
-// được mà Nexora không có).
+// gì thì vẫn là link nói dối. Vùng vẫn hiện dưới dạng tiêu đề nhóm + một chấm
+// `bg-primary`. Chấm dùng token BRAND, không còn tint theo vùng (ADR-0015 đảo
+// ADR-0013 #4) — ba chấm từ nay giống hệt nhau, chúng là bullet chứ không phải
+// tín hiệu phân biệt. `data-region` ở cấp nhóm GIỮ LẠI làm móc CẤU TRÚC:
+// `destinations-menu.spec.tsx:37` khoanh vùng theo nó để đếm link, và ba test
+// đó canh một bug THẬT (khoá vùng vs tên hiển thị). Đừng dọn nó đi như tàn dư.
 //
 // Tham số là `destinations` (SỐ NHIỀU) — đó là từ vựng URL của /tours, nơi mỗi
 // facet là danh sách ngăn bằng dấu phẩy vì bộ lọc cho chọn nhiều. Đừng viết
@@ -50,8 +53,7 @@ export function DestinationsMenu({ triggerClassName }: { triggerClassName?: stri
                   <p className="flex items-center gap-2 px-2 pt-2 pb-1">
                     <span
                       aria-hidden="true"
-                      className="size-2.5 shrink-0 rounded-full"
-                      style={{ background: 'var(--region-primary)' }}
+                      className="size-2.5 shrink-0 rounded-full bg-primary"
                     />
                     <span className="font-medium text-sm">{region.name}</span>
                   </p>

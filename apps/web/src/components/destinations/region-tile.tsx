@@ -4,7 +4,7 @@ import { ImageIcon } from 'lucide-react';
 /**
  * Ô giữ chỗ ảnh CHO TRANG VÙNG. Đây là cơ chế dự phòng của chính Nexora
  * (`marketing/gallery.tsx` → `Tile` khi thiếu `src`: nền gradient + icon), khác
- * ở chỗ gradient pha bằng token VÙNG nên mỗi vùng một sắc.
+ * ở chỗ gradient pha bằng token BRAND nên nó lật theo theme.
  *
  * Vì sao KHÔNG dùng `ImagePlaceholder` xám của repo ở đây (user chốt 29/07):
  * trang này có 14 ô ảnh, trong đó khu `X in photos` là 10 ô liền nhau. Mười hộp
@@ -31,9 +31,20 @@ export function RegionTile({
   decorative?: boolean;
 }) {
   // Nền (gradient) giống hệt nhau ở cả hai chế độ — chỉ khác trợ năng VÀ icon.
+  //
+  // Dốc ngọc bích: `--primary` (tông giữa) → `--hero` (mảng tối nhất của brand).
+  // HAI stop cùng một họ hue (184.3° và 181.5°) nên gradient KHÔNG đi vòng qua
+  // hue nào lạ — đây là lý do bỏ phương án `color-mix(--rating, --hero 45%)` mà
+  // bản đồ di trú đề xuất: đo ra `oklch(… 122°)`, tức XANH Ô LIU, đúng cái sắc
+  // ngoài-brand mà chính bản đồ cảnh báo ở phép map 1-1.
+  //
+  // Cả hai token đều LẬT theo theme, nên ô sáng lên nhẹ ở dark thay vì đứng yên
+  // như lớp `--region-*` cũ. Icon `on-media/70` nằm ở TÂM ô, tức trên điểm giữa
+  // của dốc: đo pixel thật (lõi nét, bỏ pixel khử răng cưa) được 6.00:1 light /
+  // 6.23:1 dark — trên ngưỡng 3.0 của đồ hoạ ở cả hai theme. (Ở riêng stop
+  // `--primary` con số là 3.66/2.91, nhưng icon không rơi vào đó vì nó căn giữa.)
   const style = {
-    background:
-      'linear-gradient(135deg, var(--region-primary), color-mix(in oklch, var(--region-spark), var(--region-deep) 45%))',
+    background: 'linear-gradient(135deg, var(--primary), var(--hero))',
   };
   const classes = cn('flex items-center justify-center overflow-hidden rounded-xl', className);
 

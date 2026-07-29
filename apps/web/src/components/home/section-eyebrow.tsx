@@ -7,8 +7,9 @@ import type { ReactNode } from 'react';
  *
  *  · `default` giữ NGUYÊN VĂN chuỗi class cũ — 21 component đang dùng eyebrow
  *    này, không chỗ nào được đổi một ký tự.
- *  · `onMedia` là cặp token CỐ ĐỊNH (không lật theo theme), dành cho nền tối cố
- *    định kiểu `--region-hero`. Đặt cặp `foreground` theo-theme lên nền đó là
+ *  · `onMedia` là cặp token CỐ ĐỊNH (không lật theo theme), dành cho nền tối ở
+ *    CẢ HAI theme — băng cuối `/destinations/[region]`, ảnh phủ scrim. Đặt cặp
+ *    `foreground` theo-theme lên nền đó là
  *    chữ tối-trên-tối ở light mode — đúng lớp lỗi cụm destinations đã dính
  *    nhiều lần khi pha token cố định với token theo-theme.
  */

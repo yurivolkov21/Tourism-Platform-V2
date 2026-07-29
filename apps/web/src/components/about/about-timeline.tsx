@@ -10,8 +10,10 @@ import { TiltCard } from '@/components/motion/tilt-card';
 // giữa gồm 3 đoạn line TỰ LẤP ĐẦY theo tiến trình cuộn (đo getBoundingClientRect
 // mỗi đoạn, map vào [0.6vh → 0.2vh]), chấm mốc đổi màu khi đoạn trên nó chạy
 // xong; 4 mốc zigzag hai bên (phải→trái→phải→trái, so le h-60/mt-60 y template).
-// Nâng cấp riêng v2: mỗi mốc nhuộm màu VÙNG nó mở ra qua data-region +
-// var(--region-primary) (page-level — hợp lệ ADR-0013 #4); mốc cuối màu brand.
+// Cả bốn mốc dùng CHUNG `--primary`: bản trước nhuộm mỗi mốc theo màu VÙNG nó mở
+// ra, user bác lớp màu theo vùng (ADR-0015) nên tín hiệu vùng ở đây rút về chữ —
+// tên nơi chốn nằm sẵn trong mô tả và nhãn ảnh của từng mốc. `data-region` giữ
+// làm móc dữ liệu, không còn tác dụng màu.
 // Mobile: ẩn trục, mốc xếp dọc (như template gốc).
 const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
@@ -21,7 +23,8 @@ interface Milestone {
   description: string;
   /** Nhãn ảnh minh hoạ — chiếm ô trống đối diện chữ (góp ý user, kiểu Nexora) */
   imageLabel: string;
-  /** Vùng gắn với mốc — undefined = màu brand mặc định */
+  /** Vùng mốc này mở ra — chỉ còn là DỮ LIỆU (đổ ra `data-region`), không còn
+      chọn màu; mốc 2026 không mở vùng nào nên để trống. */
   region?: 'north' | 'central' | 'south';
 }
 
@@ -70,9 +73,7 @@ function MilestoneText({ milestone }: { milestone: Milestone }) {
       viewport={{ once: true }}
       transition={SPRING}
     >
-      <p className="font-heading text-3xl font-semibold" style={{ color: 'var(--region-primary)' }}>
-        {milestone.year}
-      </p>
+      <p className="font-heading text-3xl font-semibold text-primary">{milestone.year}</p>
       <h3 className="mt-2 font-heading text-xl font-medium text-foreground">{milestone.title}</h3>
       <p className="mt-3 text-sm/6 text-muted-foreground">{milestone.description}</p>
     </motion.div>
@@ -99,11 +100,7 @@ function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left
             label={milestone.imageLabel}
             className="h-full w-full transition-transform duration-700 group-hover:scale-105"
           />
-          <span
-            aria-hidden="true"
-            className="absolute inset-x-0 bottom-0 h-1"
-            style={{ background: 'var(--region-primary)' }}
-          />
+          <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
         </div>
       </TiltCard>
     </motion.div>
@@ -205,23 +202,14 @@ export function AboutTimeline() {
         <div className="mt-16 flex flex-col gap-12 md:hidden">
           {MILESTONES.map((milestone) => (
             <div key={milestone.year} data-region={milestone.region}>
-              <p
-                className="font-heading text-3xl font-semibold"
-                style={{ color: 'var(--region-primary)' }}
-              >
-                {milestone.year}
-              </p>
+              <p className="font-heading text-3xl font-semibold text-primary">{milestone.year}</p>
               <h3 className="mt-2 font-heading text-xl font-medium text-foreground">
                 {milestone.title}
               </h3>
               <p className="mt-3 text-sm/6 text-muted-foreground">{milestone.description}</p>
               <div className="relative mt-5 h-44 w-full overflow-hidden rounded-xl">
                 <ImagePlaceholder label={milestone.imageLabel} className="h-full w-full" />
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-1"
-                  style={{ background: 'var(--region-primary)' }}
-                />
+                <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
               </div>
             </div>
           ))}

@@ -84,14 +84,13 @@ export function RegionIntro({
             </div>
           ) : null}
 
-          {/* Nền là token VÙNG nên đặt qua `style`, và inline style luôn thắng
-              `hover:bg-primary/90` của variant mặc định — hover đổi độ mờ thay
-              vì đổi nền, nếu không nút này sẽ không phản hồi gì khi rê chuột. */}
-          <ButtonLink
-            href="#tours"
-            style={{ background: 'var(--region-primary)' }}
-            className="mt-8 text-on-media transition-opacity hover:opacity-90"
-          >
+          {/* Nút primary MẶC ĐỊNH của hệ (ADR-0015: hết inline style theo vùng),
+              nên `hover:bg-primary/80` của variant chạy lại bình thường. Nút này
+              KHÔNG nằm trong scope `dark` nên cặp nền/chữ lật theo theme thật:
+              đo 5.52:1 (light) / 4.11:1 (dark) — con số dark đúng bằng cặp
+              `bg-primary`/`primary-foreground` mặc định của mọi nút primary
+              trong repo, tức nợ toàn site đã ghi, không phải lớp lỗi mới. */}
+          <ButtonLink href="#tours" className="mt-8">
             {t.browseCta(region.name)}
             <ArrowRightIcon className="size-4" aria-hidden="true" />
           </ButtonLink>
@@ -113,26 +112,17 @@ export function RegionIntro({
                 const Icon = HIGHLIGHT_ICONS[i] ?? SparklesIcon;
                 return (
                   <div key={item.title} className="flex items-start gap-4">
-                    {/* Chip ĐẶC (nền `--region-primary` + icon `on-media`) —
-                        GIỮ NGUYÊN cặp màu của `region-highlights.tsx` cũ, KHÔNG
-                        đổi sang chip phớt dù cột này giờ nằm trên nền trang
-                        trần (không khung, không băng signature kề bên).
-                        Đã THỬ chip phớt (`color-mix(--region-primary,
-                        --background 88%)` + icon màu vùng) trước, vì cột hẹp
-                        không cần chip mạnh như một khu đứng riêng — nhưng ĐO
-                        thật (script canvas, 3 vùng × 2 theme) ra đúng lớp lỗi
-                        đã dính nhiều lần của cụm này: `--region-*` bất biến
-                        theo theme còn `--background` lật, nên contrast rơi
-                        4.10/7.14/3.89:1 ở light (qua ngưỡng 3.0) nhưng chỉ
-                        2.81/1.62/2.95:1 ở dark (DƯỚI ngưỡng, cả ba vùng). Chip
-                        đặc + on-media đo được 4.59–8.91:1 ở CẢ HAI theme (số
-                        đo lại nằm trong báo cáo Task 5e) — cùng cặp màu CTA
-                        `#tours` và tab đang chọn ở khu Tours đã dùng, nên cả
-                        trang vẫn đúng MỘT kiểu accent. */}
-                    <span
-                      style={{ background: 'var(--region-primary)' }}
-                      className="flex size-12 shrink-0 items-center justify-center rounded-full text-on-media"
-                    >
+                    {/* Chip ĐẶC (`bg-primary` + icon `primary-foreground`),
+                        KHÔNG phải chip phớt. Bản chip phớt
+                        (`color-mix(--primary, --background 88%)` + icon màu
+                        primary) đã bị loại vì đo được ~3:1 hoặc thấp hơn — nền
+                        pha 12% quá gần nền trang để đỡ một icon.
+                        Sau ADR-0015 cả hai vế đều là token brand nên chúng cùng
+                        lật theo theme: đo 5.52:1 (light) / 4.11:1 (dark). Nội
+                        dung chip là ICON 24px nên ngưỡng là 3.0 — qua ở cả hai
+                        theme. Đây cũng đúng cặp màu của CTA `#tours` và chip lọc
+                        đang chọn ở khu Tours, nên cả trang giữ MỘT kiểu accent. */}
+                    <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
                       <Icon className="size-6" aria-hidden="true" />
                     </span>
                     <div>

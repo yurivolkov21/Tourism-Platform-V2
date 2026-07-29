@@ -10,9 +10,11 @@ import { REGIONS } from '@/mocks/regions';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Gallery cuộn ngang (sticky, cơ chế Estate) — 9 địa điểm 3/vùng Bắc→Trung→Nam,
-// card tilt 3D + tint vùng. Review #15 (phương án A+C): header dẫn lối đứng yên
-// phía trên track + hint động phía dưới hiển thị VÙNG ĐANG XEM theo tiến độ
-// cuộn (nhuộm --region-primary của vùng đó).
+// card tilt 3D. Review #15 (phương án A+C): header dẫn lối đứng yên phía trên
+// track + hint động phía dưới hiển thị VÙNG ĐANG XEM theo tiến độ cuộn.
+// Lớp tint theo vùng đã BỎ (ADR-0015, 29/07): chip và vạch nhấn của cả chín thẻ
+// dùng chung token brand. `data-region` GIỮ lại làm móc dữ liệu — `gallery.spec.tsx`
+// canh nó mang KHOÁ vùng chứ không phải tên hiển thị, một bug đã dính thật.
 const REGION_NAME = new Map(REGIONS.map((r) => [r.key, r.name]));
 
 export function Gallery() {
@@ -103,22 +105,17 @@ export function Gallery() {
                       label={dest.description ?? dest.name}
                       className="h-full w-full"
                     />
-                    {/* Chip vùng — tint theo slot --region-* */}
-                    <span
-                      className="absolute top-4 left-4 rounded-full px-3 py-1 text-xs font-semibold tracking-wide uppercase"
-                      style={{
-                        background: 'var(--region-surface)',
-                        color: 'var(--region-on-surface)',
-                      }}
-                    >
+                    {/* Chip vùng — cặp `secondary`/`secondary-foreground` của
+                        brand. Trước ADR-0015 nó lấy `--region-surface`/
+                        `--region-on-surface` nên ba vùng có ba sắc chip; user đã
+                        bác lớp màu theo vùng, nên chín thẻ dùng chung một cặp và
+                        cặp đó LẬT theo theme (thứ lớp cũ không làm được). */}
+                    <span className="absolute top-4 left-4 rounded-full bg-secondary px-3 py-1 text-xs font-semibold tracking-wide text-secondary-foreground uppercase">
                       {regionKey ? REGION_NAME.get(regionKey) : null}
                     </span>
-                    {/* Caption đáy — vạch nhấn màu chủ đạo vùng */}
+                    {/* Caption đáy — vạch nhấn brand */}
                     <span className="absolute inset-x-0 bottom-0 flex flex-col gap-1 bg-linear-to-t from-overlay to-transparent p-4 pt-10 text-on-media">
-                      <span
-                        className="h-0.5 w-8 rounded-full"
-                        style={{ background: 'var(--region-primary)' }}
-                      />
+                      <span className="h-0.5 w-8 rounded-full bg-primary" />
                       <span className="font-heading text-2xl font-semibold">{dest.name}</span>
                       <span className="text-xs opacity-85">{dest.tourCount} tours</span>
                     </span>

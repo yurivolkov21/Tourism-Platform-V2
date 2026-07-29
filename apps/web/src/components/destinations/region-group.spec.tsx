@@ -97,7 +97,11 @@ describe('RegionGroup', () => {
     expect(screen.getByText('Limestone bay cruises')).toBeInTheDocument();
   });
 
-  it('gắn data-region để lớp token tint đúng vùng', () => {
+  // ADR-0015 đã rút lớp tint `[data-region]` khỏi tokens, nên thuộc tính này
+  // KHÔNG còn tác dụng màu. Nó vẫn là móc CẤU TRÚC mang KHOÁ vùng ('north'),
+  // không phải tên hiển thị ('Northern Vietnam') — cùng bất biến mà
+  // `destinations-menu.spec.tsx` và `home/gallery.spec.tsx` đang canh.
+  it('gắn data-region mang KHOÁ vùng làm móc cấu trúc', () => {
     const { container } = render(
       <RegionGroup region={NORTH} destinations={PLACES} tourCount={6} />,
     );

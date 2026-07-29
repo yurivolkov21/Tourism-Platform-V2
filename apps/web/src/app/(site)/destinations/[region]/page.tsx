@@ -209,10 +209,11 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
     .join(' · ');
 
   return (
-    // `data-region` đặt trên MỘT div bọc TOÀN trang: lớp token `[data-region]`
-    // phải gán `--region-*` trước khi bất kỳ khu nào đọc chúng (hero đọc
-    // `--region-hero` qua scrim, chip tab đọc `--region-primary`).
-    <div data-region={region.key}>
+    // Fragment, KHÔNG một `<div data-region>` bọc toàn trang như trước: thuộc
+    // tính đó chỉ tồn tại để mở scope cho lớp tint `[data-region]`, mà ADR-0015
+    // đã rút lớp ấy — mọi khu của trang giờ đọc thẳng token brand. Giữ lại là
+    // một thuộc tính hứa một cơ chế đã chết.
+    <>
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: nội dung tĩnh của mình, đã escape `<`
@@ -269,6 +270,6 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
       <Reveal>
         <RegionValueProps />
       </Reveal>
-    </div>
+    </>
   );
 }

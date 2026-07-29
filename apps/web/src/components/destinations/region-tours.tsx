@@ -172,8 +172,11 @@ export function RegionTours({
   );
 }
 
-/** Một chip lọc. Chip đang chọn tô bằng token VÙNG nên hàng chip đổi sắc theo
-    vùng mà không cần bảng class riêng cho từng vùng (Nexora phải có `chipOn`). */
+/** Một chip lọc. Chip đang chọn dùng cặp `bg-primary`/`text-primary-foreground`
+    mặc định của hệ (ADR-0015: bỏ tint theo vùng) — hết inline style, nên chip ăn
+    theo hover/focus của hệ như mọi bề mặt primary khác. Đo 5.52:1 light /
+    4.11:1 dark; chữ 14px nên ngưỡng là 4.5 và con số dark trượt — nó đúng bằng
+    cặp mặc định của toàn repo, nợ đã ghi ở ADR-0015 §Hệ quả. */
 function FilterChip({
   label,
   pressed,
@@ -188,15 +191,10 @@ function FilterChip({
       type="button"
       aria-pressed={pressed}
       onClick={onSelect}
-      style={
-        pressed
-          ? { background: 'var(--region-primary)', borderColor: 'var(--region-primary)' }
-          : undefined
-      }
       className={cn(
         CHIP,
         pressed
-          ? 'text-on-media'
+          ? 'border-primary bg-primary text-primary-foreground'
           : 'border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground',
       )}
     >

@@ -9,8 +9,16 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 const ICONS: readonly LucideIcon[] = [UsersIcon, MapPinIcon, ListChecksIcon];
 
 /**
- * Khu CUỐI trang vùng — "We've got you covered", băng trên nền `--region-hero`,
- * đóng khung trang bằng đúng màu vùng đã mở đầu ở hero.
+ * Khu CUỐI trang vùng — "We've got you covered", băng tối đóng khung trang, đối
+ * xứng với hero đã mở đầu.
+ *
+ * Nền là `dark` + `bg-background` — ĐÚNG công thức `site-footer.tsx` dùng, và đó
+ * là chủ đích chứ không phải trùng hợp: footer luôn giải ra L 0.25 ở CẢ hai
+ * theme, nên băng này phải bám đúng giá trị ấy thì mối nối mới liền. Dùng
+ * `bg-hero` sẽ đúng ở light (0.25 = 0.25) nhưng ở dark hero tụt xuống 0.17 trong
+ * khi footer vẫn 0.25 — sinh một MỐI NỐI mới ΔL 0.08 ngay chỗ mà
+ * `data-flush-footer` sinh ra để xoá. Đo: `text-on-media` trên nền này 15.09:1 ở
+ * cả hai theme.
  *
  * ⚠️ `data-flush-footer` nằm trên `<section>` này và đó là NỬA THỨ HAI của một cơ
  * chế hai nửa; nửa kia là luật `body:has(main [data-flush-footer]) footer` ở cuối
@@ -20,7 +28,7 @@ const ICONS: readonly LucideIcon[] = [UsersIcon, MapPinIcon, ListChecksIcon];
  * LẶNG — Vitest không quét layout, jsdom không dựng `:has()`. Kiểm bằng mắt.
  *
  * Cùng cảnh báo với `region-hero.tsx`: băng tối ở CẢ HAI theme nên chữ dùng
- * `text-on-media`, KHÔNG `text-foreground`, và KHÔNG bọc class `dark`.
+ * `text-on-media` (token cố định), KHÔNG `text-foreground`.
  */
 export function RegionValueProps() {
   const t = messages.regionPage;
@@ -28,15 +36,15 @@ export function RegionValueProps() {
   return (
     <section
       data-flush-footer
-      style={{ background: 'var(--region-hero)' }}
-      className="w-full px-4 py-20 text-on-media md:px-16 md:py-24 lg:px-24 xl:px-32"
+      className="dark w-full bg-background px-4 py-20 text-on-media md:px-16 md:py-24 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
-          {/* `tone="onMedia"` là BẮT BUỘC ở đây: mặc định của `SectionEyebrow` là
-              cặp `bg-foreground`/`text-foreground` — token LẬT theo theme — còn nền
-              băng này là `--region-hero`, tối CỐ ĐỊNH ở cả hai theme. Để mặc định
-              thì ở light mode chữ eyebrow thành tối-trên-tối, gần như vô hình.
+          {/* `tone="onMedia"` — cặp token CỐ ĐỊNH, đúng thứ một bề mặt tối-ở-cả-
+              hai-theme cần. (Scope `dark` của section cũng đã ghim mặc định
+              `bg-foreground`/`text-foreground` về bảng tối nên mặc định không
+              còn hỏng như trước; vẫn khai tường minh để ai gỡ class `dark` đi
+              cũng không làm eyebrow tối-trên-tối trở lại.)
               Eyebrow là một hàng flex chiếm trọn bề ngang nên `text-center` không
               kéo nó vào giữa được — phải bọc `flex justify-center`. */}
           <div className="flex justify-center">

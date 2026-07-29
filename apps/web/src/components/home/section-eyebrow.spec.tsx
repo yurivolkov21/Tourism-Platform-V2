@@ -36,7 +36,8 @@ describe('SectionEyebrow', () => {
   it('tone="onMedia" đổi sang cặp token CỐ ĐỊNH — dành cho nền tối không lật theo theme', () => {
     const { container } = render(<SectionEyebrow tone="onMedia">How we travel</SectionEyebrow>);
 
-    // Nền `--region-hero` tối ở CẢ HAI theme. Dùng `foreground` ở đó là chữ
+    // Nền của những khu này (băng cuối trang vùng, ảnh phủ scrim) tối ở CẢ HAI
+    // theme. Dùng `foreground` ở đó là chữ
     // tối-trên-tối ở light mode — đúng lớp lỗi cụm này đã dính nhiều lần.
     expect(dot(container)).toHaveClass('bg-on-media');
     expect(dot(container)).not.toHaveClass('bg-foreground');

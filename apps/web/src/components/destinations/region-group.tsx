@@ -8,7 +8,7 @@ import { DestinationTile } from './destination-tile';
  * Một khu vùng trên trang `/destinations` — Task 4c, thay `RegionBand` (bố
  * cục hai cột + kinh tuyến dọc của Task 4b, user bác vì muốn đúng kiểu
  * Nexora). Bố cục mới: header căn giữa (tiêu đề + intro + số tour + link
- * "View more") trên nền tint theo vùng, rồi một DẢI ẢNH FULL-BLEED sát mép
+ * "View more") trên một băng nền brand phớt, rồi một DẢI ẢNH FULL-BLEED sát mép
  * màn hình gồm các `DestinationTile`, ô đầu `variant="feature"` (chữ to hơn),
  * các ô còn lại `variant="photo"`. Xem
  * `.superpowers/sdd/dest-task-4c-brief.md` cho ASCII bố cục và lý do.
@@ -32,13 +32,16 @@ export function RegionGroup({
   const intro = messages.regionPage.regions[region.key].intro;
 
   return (
+    // `data-region` GIỮ làm móc CẤU TRÚC (test khoanh vùng theo nó), KHÔNG còn
+    // tác dụng màu nào: ADR-0015 rút lớp tint `[data-region]` khỏi tokens.
     <section data-region={region.key} className="w-full">
-      {/* Header — CHỈ khối này tint theo vùng, dải ảnh bên dưới KHÔNG tint
-          (ảnh tự mang màu). Công thức pha giữ NGUYÊN như `region-band.tsx`:
-          `--region-primary` (tông GIỮA, cố định) pha `--background` (theo
-          theme) 88% — vừa được sửa để đạt AA ở dark mode, đừng đổi. */}
+      {/* Header — CHỈ khối này có nền riêng, dải ảnh bên dưới KHÔNG (ảnh tự mang
+          màu). Băng brand PHẲNG: `--primary` pha 12% vào `--background` — giữ
+          NGUYÊN tỉ lệ 88% của `region-band.tsx` vì ở light nó ra đúng cùng một
+          byte như công thức `--region-primary` cũ, còn ở dark chỉ lệch ΔL 0.009.
+          Hệ quả CÓ CHỦ Ý của ADR-0015: ba băng header từ nay giống hệt nhau. */}
       <div
-        style={{ background: 'color-mix(in oklch, var(--region-primary), var(--background) 88%)' }}
+        style={{ background: 'color-mix(in oklch, var(--primary), var(--background) 88%)' }}
         className="w-full px-4 py-16 text-center md:px-16 lg:px-24 xl:px-32"
       >
         <div className="mx-auto flex max-w-2xl flex-col items-center gap-3">

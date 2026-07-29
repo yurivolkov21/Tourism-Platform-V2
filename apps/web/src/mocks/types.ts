@@ -154,8 +154,8 @@ export interface MockTourDetail extends MockTourCard {
 
 export interface MockRegion {
   key: MockRegionKey;
-  /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` trỏ lớp
-      token `[data-region='…']`, còn slug là chuyện SEO — trộn lại mới là nợ. */
+  /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` là khoá
+      nội bộ (đổ ra `data-region`), còn slug là chuyện SEO — trộn lại mới là nợ. */
   slug: string;
   name: string;
   // `tourCount` ĐÃ XOÁ (28/07): viết tay và sai (khai 24/27/17, thật 6/6/6). Số

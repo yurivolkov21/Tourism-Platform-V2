@@ -6,7 +6,8 @@ import type {
   MockTourDifficulty,
 } from '@/mocks/types';
 
-/** Khoá vùng — TRỎ LỚP TOKEN `[data-region='…']` trong `tokens.css`. Tái dùng
+/** Khoá vùng — giá trị đổ ra thuộc tính `data-region`, nay thuần là móc dữ
+    liệu/test (ADR-0015 đã rút lớp tint `[data-region]` khỏi tokens). Tái dùng
     `MockRegionKey` thay vì khai union thứ hai: web chỉ nên có MỘT kiểu khoá vùng. */
 export type RegionKey = MockRegionKey;
 

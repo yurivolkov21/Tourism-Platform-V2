@@ -13,11 +13,15 @@ describe('RegionTile', () => {
     expect(screen.queryByText('Terraced rice fields')).not.toBeInTheDocument();
   });
 
-  it('nền pha từ token vùng, KHÔNG hex', () => {
+  // Bất biến MỚI (ADR-0015): nền pha từ token BRAND, không còn token vùng. Vế
+  // `not.toContain('--region-')` là vế đáng canh nhất — nó chặn cả họ token cũ
+  // quay lại, kể cả slot chưa ai dùng tới.
+  it('nền pha từ token brand, KHÔNG token vùng và KHÔNG hex', () => {
     const { container } = render(<RegionTile label="x" />);
     const style = container.querySelector('[role="img"]')?.getAttribute('style') ?? '';
-    expect(style).toContain('--region-primary');
-    expect(style).toContain('--region-spark');
+    expect(style).toContain('--primary');
+    expect(style).toContain('--hero');
+    expect(style).not.toContain('--region-');
     expect(style).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
 

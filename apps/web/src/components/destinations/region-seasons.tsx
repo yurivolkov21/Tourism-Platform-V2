@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /** Nhãn tháng viết tắt SINH ra, không gõ 12 chuỗi vào i18n — cùng tiền lệ
     `formatMoney`/`toLocaleString`: đây là format DỮ LIỆU, không phải copy.
@@ -16,7 +17,8 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => ({
 }));
 
 /**
- * Biến thể Signature "seasons" — dải 12 tháng tô sắc vùng, hiện chỉ miền Bắc dùng.
+ * Biến thể Signature "seasons" — dải 12 tháng, tháng đẹp tô `--primary`, hiện chỉ
+ * miền Bắc dùng.
  *
  * Thay biến thể `itinerary` bị bác 29/07: khu đó kể hành trình theo NGÀY của MỘT
  * tour, tức là nội dung của `/tours/[slug]` (nơi `ItineraryTimeline` đã làm đúng
@@ -48,16 +50,15 @@ export function RegionSeasons({
 
   return (
     <section
-      style={{ background: 'color-mix(in oklch, var(--region-surface), var(--background) 88%)' }}
+      style={{ background: SIGNATURE_BAND_BG }}
       className="w-full px-4 py-20 md:px-16 md:py-24 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
-          {/* `SectionEyebrow` (quy ước toàn site) — `text-foreground`, KHÔNG
-              `--region-primary`: token vùng không lật theo theme, tô nó lên chữ
-              là hỏng một trong hai theme (đã đo 1.31:1 ở dark tại
-              `region-signature-timeline.tsx`). Màu vùng ở khu này chỉ làm NỀN ô
-              tháng, nơi nó cặp với `text-on-media` cố định. */}
+          {/* `SectionEyebrow` (quy ước toàn site) — `text-foreground`, KHÔNG tô
+              `--primary` lên chữ eyebrow: trên nền băng phớt này primary đo được
+              3.03:1 ở dark, dưới ngưỡng 4.5 của chữ nhỏ. Accent của khu này đi
+              vào NỀN ô tháng, nơi nó cặp với `primary-foreground`. */}
           <SectionEyebrow>{t.seasonsEyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.seasonsHeading(regionName)}
@@ -93,10 +94,11 @@ export function RegionSeasons({
                     key={month.number}
                     data-month={month.number}
                     data-best={isBest}
-                    style={isBest ? { background: 'var(--region-primary)' } : undefined}
                     className={cn(
                       'flex h-12 items-center justify-center rounded-lg font-mono text-xs tracking-wider uppercase',
-                      isBest ? 'font-semibold text-on-media' : 'bg-muted text-muted-foreground',
+                      isBest
+                        ? 'bg-primary font-semibold text-primary-foreground'
+                        : 'bg-muted text-muted-foreground',
                     )}
                   >
                     {month.label}
@@ -110,10 +112,11 @@ export function RegionSeasons({
                 giữa), đọc thành hai chú giải rời chứ không phải một cặp. */}
             <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-3 text-sm">
               <div className="flex items-baseline gap-2.5">
+                {/* Chấm chú giải phải dùng ĐÚNG token của ô tháng đẹp
+                    (`bg-primary`) — lệch một trong hai là chú giải nói dối. */}
                 <span
                   aria-hidden="true"
-                  style={{ background: 'var(--region-primary)' }}
-                  className="size-2.5 shrink-0 translate-y-px rounded-[3px]"
+                  className="size-2.5 shrink-0 translate-y-px rounded-[3px] bg-primary"
                 />
                 <dt className="font-medium text-foreground">{t.seasonsBestLabel}</dt>
                 <dd className="text-muted-foreground">{bestNames.join(', ')}</dd>

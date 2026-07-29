@@ -22,8 +22,9 @@ beforeAll(() => {
 // HIỂN THỊ ('Northern Vietnam'), không còn là khoá vùng ('north'). Card phải
 // đi qua regionOf() để đổi tên hiển thị đó thành khoá trước khi gắn
 // data-region — nếu ai quay lại so thô `dest.region === region.key`,
-// data-region sẽ ra chuỗi tên hiển thị và mất tint token
-// `[data-region='north']` (`tokens.css`).
+// data-region sẽ ra chuỗi tên hiển thị. Lớp tint `[data-region]` đã rút theo
+// ADR-0015 nên hậu quả không còn là mất màu, nhưng thuộc tính vẫn phải mang
+// KHOÁ: nó là móc dữ liệu duy nhất nói thẻ này thuộc vùng nào.
 //
 // Ánh xạ dưới đây là SỰ THẬT NỀN cố định theo đúng fixture DESTINATIONS (xem
 // mocks/destinations.ts: 3 địa điểm/vùng, xếp liền mạch Bắc→Trung→Nam) — viết

@@ -18,8 +18,8 @@ describe('regionTheme', () => {
     expect(regionTheme('south').signature).toBe('postcards');
   });
 
-  it('hero của Bắc CAO hơn hai vùng kia — "mood" riêng, đúng heroHeight của Nexora', () => {
-    expect(regionTheme('north').heroMinH).not.toBe(regionTheme('central').heroMinH);
-    expect(regionTheme('central').heroMinH).toBe(regionTheme('south').heroMinH);
-  });
+  // Test "hero của Bắc CAO hơn hai vùng kia" đã XOÁ (ADR-0015): user chốt ba
+  // hero đồng nhất, nên bất biến "mỗi vùng một mood hero" không còn tồn tại.
+  // Viết lại nó thành "ba hero GIỐNG nhau" là so hằng với hằng — `heroMinH` đã
+  // rời khỏi `RegionTheme`, không còn gì để đọc.
 });

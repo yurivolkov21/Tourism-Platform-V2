@@ -1,11 +1,12 @@
 import { cn } from '@tourism/ui/lib/utils';
 import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
- * Biến thể Signature "postcards" — ba bưu thiếp dọc so le trên nền phớt màu vùng,
- * hiện chỉ miền Nam dùng. Đây là biến thể DẪN BẰNG ẢNH: miền Nam bán cảnh sông
- * nước, nên nó xứng đáng khu ảnh riêng chứ không phải thêm một khối chữ nữa.
+ * Biến thể Signature "postcards" — ba bưu thiếp dọc so le trên băng phớt, hiện
+ * chỉ miền Nam dùng. Đây là biến thể DẪN BẰNG ẢNH: miền Nam bán cảnh sông nước,
+ * nên nó xứng đáng khu ảnh riêng chứ không phải thêm một khối chữ nữa.
  */
 export function RegionSignaturePostcards({
   eyebrow,
@@ -20,17 +21,16 @@ export function RegionSignaturePostcards({
 }) {
   return (
     <section
-      style={{ background: 'color-mix(in oklch, var(--region-surface), var(--background) 92%)' }}
+      style={{ background: SIGNATURE_BAND_BG }}
       className="w-full px-4 py-20 md:px-16 md:py-24 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
           {/* `SectionEyebrow` (quy ước toàn site) thay cho eyebrow `font-mono` tự
-              chế port từ Nexora. Nó là `text-foreground`, KHÔNG `--region-primary`:
-              primary của miền Nam trên nền phớt này đo được 4.23:1 ở light (dưới
-              ngưỡng 4.5 của chữ nhỏ) và 2.95:1 ở dark. Xem
-              `region-signature-timeline.tsx` cho lý lẽ đầy đủ. Eyebrow hiện tại đo
-              được 12.78:1 light / 11.57:1 dark. */}
+              chế port từ Nexora. Nó là `text-foreground`, KHÔNG tô `--primary`:
+              primary trên băng phớt này đo được 5.11:1 ở light nhưng 3.03:1 ở
+              dark. Xem `region-signature-timeline.tsx` cho lý lẽ đầy đủ. Eyebrow
+              `text-foreground` trên băng đo 12.67:1 light / 10.65:1 dark. */}
           <SectionEyebrow>{eyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
@@ -61,11 +61,10 @@ export function RegionSignaturePostcards({
                 className="absolute inset-0 bg-linear-to-t from-scrim via-scrim/25 to-transparent"
               />
               <figcaption className="absolute inset-x-0 bottom-0 p-5">
-                <span
-                  aria-hidden="true"
-                  style={{ background: 'var(--region-spark)' }}
-                  className="mb-2 block h-1 w-9 rounded-full"
-                />
+                {/* Vạch hổ phách `--rating` trên đầu bưu thiếp — trang trí
+                    thuần. Nó nằm trên đáy dốc của `RegionTile` (stop `--hero`)
+                    nên đo 6.55:1 light / 9.34:1 dark, không có nguy cơ chìm. */}
+                <span aria-hidden="true" className="mb-2 block h-1 w-9 rounded-full bg-rating" />
                 <p className="font-mono text-xs tracking-widest text-on-media/80 uppercase">
                   {card.caption}
                 </p>

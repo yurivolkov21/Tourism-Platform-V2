@@ -52,11 +52,10 @@ function GalleryCard({ title, count, imageLabel, region, className, delay = 0 }:
       />
       <div className="absolute bottom-0 z-10 flex flex-col gap-1 pb-6 ps-6 text-on-media md:pb-8 md:ps-8">
         <span className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="size-2 rounded-full"
-            style={{ background: 'var(--region-primary)' }}
-          />
+          {/* Chấm brand. Trước ADR-0015 nó nhuộm theo `data-region` nên bốn thẻ
+              có bốn sắc; user đã bác lớp màu theo vùng, nên nó tụt xuống thành
+              bullet trang trí — tên vùng đã nằm ngay trong `<h3>` kề bên. */}
+          <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
           <h3 className="font-heading text-xl font-semibold md:text-2xl">{title}</h3>
         </span>
         <p className="text-sm opacity-80">{count}</p>
