@@ -1847,3 +1847,564 @@ pnpm gate
 git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): /destinations thành hành trình dọc kinh tuyến + 3 khu giới thiệu"
 ```
+
+---
+
+### Task 5b: Nền cho bản dựng lại theo Nexora — copy i18n + bản đồ biến thể + ô gradient
+
+**Vì sao có task này:** user xem bản Task 5 và bác (29/07, vòng bốn của cụm). Yêu cầu:
+dựng **giống trang Nexora thật** (`nexora-travel.agency/destinations/northern-vietnam`)
+cho từng vùng, **bỏ khu `Plan your trip`** trước footer. Đã đối chiếu trang live: 8 khu,
+giữ 7. Xem spec §5.2 "Sửa lần hai 29/07".
+
+⚠️ **Bản Task 5 cũ bị THAY.** `region-glance.tsx` và `place-card.tsx` (+ 2 spec) sẽ bị
+xoá ở Task 5c — Nexora không có hai khu đó. Hàm `regionGlance()` trong `lib/regions.ts`
+thì **GIỮ**: nó là nguồn dẫn xuất cho `tags` và dải số liệu.
+
+**Files:**
+
+- Modify: `libs/shared/i18n/src/lib/messages.ts` (khối `regionPage`, viết lại toàn bộ)
+- Create: `apps/web/src/lib/region-theme.ts` + `.spec.ts`
+- Create: `apps/web/src/components/destinations/region-tile.tsx` + `.spec.tsx`
+
+**Interfaces:**
+
+- Produces: `messages.regionPage` hình dạng mới (dưới đây) ·
+  `regionTheme(key): { signature: 'stats' | 'timeline' | 'postcards'; heroPad: string; scrim: string }` ·
+  `RegionTile({ label, className })`
+
+- [ ] **Step 1: Viết lại khối `regionPage` trong `messages.ts`**
+
+Thay TOÀN BỘ khối `regionPage` hiện có bằng khối dưới. Giữ nguyên comment giải thích
+đã có ở đầu khối (lý do khoá bằng `key`), thêm ghi chú vì sao copy lệch Nexora.
+
+```ts
+  // `/destinations/[region]` — dựng theo trang vùng THẬT của Nexora (7 khu, bỏ
+  // khu `Plan your trip`; user chốt 29/07).
+  //
+  // Copy port từ Nexora nhưng ĐÃ THAY mọi địa danh v2 KHÔNG bán — `Hà Giang`
+  // (+ Mã Pí Lèng, 350km Loop), `Fansipan`, `Lan Hạ`, `Pù Luông`, `Củ Chi`,
+  // `Marble Mountains`, và `Caves` ở tags của Trung. Thay bằng nơi có thật trong
+  // mock: Ninh Bình · Mường Hoa · Ô Quy Hồ · Bắc Hà · Hải Vân · Bà Nà · Cần Thơ.
+  // Đây là tiêu chí hoàn thành ở spec §10, không phải chuyện gu.
+  //
+  // `tags` và dải số liệu của khu Signature KHÔNG nằm ở đây: chúng DẪN XUẤT từ
+  // `regionGlance()` và `toursInRegion()` — Nexora gõ tay nên thêm/bớt tour là
+  // chữ sai âm thầm.
+  regionPage: {
+    backToAll: 'All destinations',
+    introHeading: (region: string) => `The best ${region} tours`,
+    /** CTA cuối khu intro. Nexora trỏ `#itineraries` (trang họ không có) — ở đây
+        trỏ neo `#tours` NGAY TRÊN CÙNG TRANG, là khu có thật. */
+    browseCta: (region: string) => `Browse ${region} trips`,
+    bestForLabel: 'Best for',
+    highlightsHeading: (region: string) => `What makes ${region} special`,
+    toursHeading: 'Tours',
+    allTab: 'All',
+    noTours: 'No trips run in this region yet.',
+    noToursBody: 'Tell us where you want to go and we will plan something.',
+    galleryHeading: (region: string) => `${region} in photos`,
+    gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
+    /** Nhãn cho dải số liệu khu Signature. GIÁ TRỊ dẫn xuất ở tầng trang. */
+    statLabels: {
+      from: 'From',
+      longest: 'Longest trip',
+      hardest: 'Hardest grade',
+      styles: 'Trip styles',
+      dayTrips: 'Trips done in a day',
+      places: 'Places',
+    },
+    // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
+    // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
+    // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —
+    // `maxGroupSize` (12), giọng đã dùng ở footer, và `included`/`excluded`.
+    valuePropsHeading: "We've got you covered",
+    valueProps: [
+      {
+        title: 'Small groups',
+        body: 'Twelve travellers at most, so you are never following a flag through a crowd.',
+      },
+      {
+        title: 'Local guides',
+        body: 'Led by people who grew up in the valleys, old towns and delta villages you came to see.',
+      },
+      {
+        title: 'Clear inclusions',
+        body: 'Every trip lists what is covered and what is not, before you book.',
+      },
+    ],
+    regions: {
+      north: {
+        tagline:
+          'From Sa Pa to Hạ Long Bay — culture and natural wonders in the misty north.',
+        intro:
+          'Awe-inspiring landscapes of limestone bays and terraced highlands, diverse hill-tribe cultures, and the high passes of the far north — this is Northern Vietnam at its most dramatic.',
+        // Nexora: "ride the legendary Hà Giang Loop" → thay bằng Ô Quy Hồ, đèo có
+        // thật trong itinerary ngày 3 của `northern-highlands-loop`.
+        intro2:
+          'Cruise the emerald karsts of Hạ Long, trek between Hmong and Dao villages around Sa Pa, and ride the switchbacks over Ô Quy Hồ. Browse our trips below.',
+        highlights: [
+          {
+            title: 'Emerald bays',
+            body: 'Overnight on a junk among the limestone islands of Hạ Long Bay.',
+          },
+          {
+            title: 'Highland treks',
+            body: 'Walk the rice terraces and hill-tribe trails of the Mường Hoa valley around Sa Pa.',
+          },
+          {
+            title: 'River caves',
+            body: 'Row between the karst peaks and flooded caves of Ninh Bình.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'Great northern adventures',
+          body: 'The north rewards travellers who go further — onto the water, into the mountains, and out to the high passes. These are the journeys that define the region.',
+          points: [
+            'Overnight cruises through Hạ Long Bay',
+            'Multi-day treks with Hmong and Dao guides',
+            'The high passes above Sa Pa and Bắc Hà',
+          ],
+        },
+      },
+      central: {
+        tagline: 'Imperial heritage, lantern-lit old towns and a golden coastline.',
+        // Nexora: "some of the world's largest cave systems" → v2 không bán tour
+        // hang động nào ở miền Trung. Thay bằng Chăm temple towers (Mỹ Sơn, có
+        // thật ở itinerary ngày 5 của `central-heritage-week`).
+        intro:
+          'Ancient citadels and UNESCO old towns beside a golden coast, and Chăm temple towers in the hills — Central Vietnam is the country’s cultural heart.',
+        intro2:
+          'Step inside the walled citadel of Huế, wander the lantern-lit lanes of Hội An, and explore the Chăm temples of Mỹ Sơn. Browse our trips below.',
+        highlights: [
+          {
+            title: 'Imperial Huế',
+            body: 'The citadel, royal tombs, and refined cuisine of the Nguyễn emperors.',
+          },
+          {
+            title: 'Hội An lanterns',
+            body: 'A car-free UNESCO old town of tailors, tea houses, and riverside lights.',
+          },
+          {
+            title: 'Golden coast',
+            body: 'Đà Nẵng’s beaches, the Hải Vân pass, and the Bà Nà hills above.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'The heritage trail',
+          body: 'Few stretches of Vietnam hold so much history in so little distance. Follow the thread of empires and trade from the citadel to the old port.',
+          points: [
+            'The walled citadel and royal tombs of Huế',
+            'Lantern-lit Hội An and the Thu Bồn river',
+            'The Chăm sanctuary of Mỹ Sơn',
+          ],
+          timeline: [
+            {
+              title: 'Huế',
+              era: 'Imperial capital',
+              body: 'The walled citadel, the Forbidden Purple City, and the royal tombs of the Nguyễn emperors along the Perfume river.',
+            },
+            {
+              title: 'Hội An',
+              era: 'Trading port',
+              body: 'A lantern-lit UNESCO old town of tailor shops, tea houses, and the Japanese covered bridge over the Thu Bồn.',
+            },
+            {
+              title: 'Mỹ Sơn',
+              era: 'Chăm sanctuary',
+              body: 'Red-brick temple towers set in a jungle valley — the spiritual heart of the Chăm kingdom for a thousand years.',
+            },
+          ],
+        },
+      },
+      south: {
+        tagline: 'River deltas, island beaches and the restless energy of Sài Gòn.',
+        intro:
+          'Floating markets and flooded paddies, a restless city and tropical islands — the warm, easy-going south runs at the pace of the water.',
+        // Nexora: "from the Củ Chi tunnels to the colonial centre" → v2 không bán
+        // Củ Chi. Thay bằng Cần Thơ và đêm ăn đường phố Sài Gòn, cả hai là tour thật.
+        intro2:
+          'Drift the Mekong’s waterways from Cần Thơ, eat your way through Sài Gòn after dark, and unwind on the reefs of Phú Quốc. Browse our trips below.',
+        highlights: [
+          {
+            title: 'The Mekong',
+            body: 'Floating markets at dawn, orchards, and riverside mornings around Cần Thơ.',
+          },
+          {
+            title: 'Sài Gòn energy',
+            body: 'Colonial landmarks by day and endless street food after dark.',
+          },
+          {
+            title: 'Island escapes',
+            body: 'White-sand beaches and clear reefs on Phú Quốc.',
+          },
+        ],
+        signature: {
+          eyebrow: 'Signature',
+          heading: 'Life on the water',
+          body: 'In the south, the river is the road. Slow down to the rhythm of the delta and the islands, where days unfold on boats and beaches.',
+          points: [
+            'Dawn floating markets on the Mekong Delta',
+            'Riverside mornings and orchard villages',
+            'Island hopping around Phú Quốc',
+          ],
+          postcards: [
+            { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
+            { title: 'Sài Gòn', caption: 'City energy & history' },
+            { title: 'Phú Quốc', caption: 'Island beaches' },
+          ],
+        },
+      },
+    },
+  },
+```
+
+- [ ] **Step 2: Xác nhận 7 địa danh bịa đã tuyệt chủng**
+
+Run:
+
+```bash
+for p in "Hà Giang" "Lan Hạ" "Fansipan" "Pù Luông" "Mã Pí Lèng" "Củ Chi" "Marble Mountains"; do printf "%s=%s\n" "$p" "$(grep -c "$p" libs/shared/i18n/src/lib/messages.ts)"; done
+```
+
+Expected: cả bảy `=0`. (Khối `mobile:` là nợ P5 riêng — nếu nó khớp thì báo, đừng sửa.)
+
+- [ ] **Step 3: Viết test thất bại cho `lib/region-theme.ts`**
+
+Tạo `apps/web/src/lib/region-theme.spec.ts`:
+
+```ts
+import { describe, expect, it } from 'vitest';
+import { REGIONS } from '@/mocks/regions';
+import { regionTheme } from './region-theme';
+
+describe('regionTheme', () => {
+  it('mỗi vùng một biến thể signature KHÁC nhau — đó là cả điểm của "da riêng"', () => {
+    const variants = REGIONS.map((r) => regionTheme(r.key).signature);
+    expect(new Set(variants).size).toBe(3);
+  });
+
+  it('Bắc dựng dải số liệu, Trung dựng timeline, Nam dựng bưu thiếp', () => {
+    expect(regionTheme('north').signature).toBe('stats');
+    expect(regionTheme('central').signature).toBe('timeline');
+    expect(regionTheme('south').signature).toBe('postcards');
+  });
+
+  it('CHỈ Bắc để signature TRƯỚC highlights (nhánh isAdventure của Nexora)', () => {
+    expect(regionTheme('north').signatureFirst).toBe(true);
+    expect(regionTheme('central').signatureFirst).toBe(false);
+    expect(regionTheme('south').signatureFirst).toBe(false);
+  });
+
+  it('hero của Bắc CAO hơn hai vùng kia — "mood" riêng, đúng heroHeight của Nexora', () => {
+    expect(regionTheme('north').heroMinH).not.toBe(regionTheme('central').heroMinH);
+    expect(regionTheme('central').heroMinH).toBe(regionTheme('south').heroMinH);
+  });
+});
+```
+
+- [ ] **Step 4: Viết `lib/region-theme.ts`**
+
+```ts
+import type { MockRegionKey } from '@/mocks/types';
+
+/** Biến thể khu Signature. Tên theo CẤU TRÚC nó dựng, không theo tên vùng —
+    `stats`/`timeline`/`postcards` đọc là biết render gì. */
+export type SignatureVariant = 'stats' | 'timeline' | 'postcards';
+
+export interface RegionTheme {
+  signature: SignatureVariant;
+  /** Bắc để Signature TRƯỚC Highlights; hai vùng kia ngược lại. Đây là nhánh
+      `isAdventure` trong `page.tsx` của Nexora, giữ nguyên. */
+  signatureFirst: boolean;
+  /** Chiều cao tối thiểu hero — "mood" riêng từng vùng (Nexora: `heroHeight`). */
+  heroMinH: string;
+  /** Độ đậm scrim hero (Nexora: `heroScrim`). */
+  scrim: string;
+}
+
+/**
+ * "Xương chung — da riêng": ba vùng dùng chung bộ khung nhưng mỗi vùng một biến
+ * thể Signature và một mood hero. Port thẳng ý của `lib/region-theme.ts` bên
+ * Nexora, KHÁC hai chỗ:
+ *  · Không có `accentText`/`accentBg`/`chipOn`: v2 đã có lớp token `[data-region]`
+ *    nên màu đến từ `--region-*`, không cần chuỗi class Tailwind theo vùng.
+ *  · Khoá bằng `MockRegionKey` (`north`) chứ không bằng slug URL — cùng lý do §7
+ *    đã bỏ khoá-bằng-chuỗi-user-facing.
+ */
+const THEMES: Record<MockRegionKey, RegionTheme> = {
+  north: {
+    signature: 'stats',
+    signatureFirst: true,
+    heroMinH: 'min-h-[26rem] lg:min-h-[34rem]',
+    scrim: 'from-scrim via-scrim/55 to-scrim/15',
+  },
+  central: {
+    signature: 'timeline',
+    signatureFirst: false,
+    heroMinH: 'min-h-80 lg:min-h-96',
+    scrim: 'from-scrim via-scrim/35 to-transparent',
+  },
+  south: {
+    signature: 'postcards',
+    signatureFirst: false,
+    heroMinH: 'min-h-80 lg:min-h-96',
+    scrim: 'from-scrim via-scrim/25 to-transparent',
+  },
+};
+
+export function regionTheme(key: MockRegionKey): RegionTheme {
+  return THEMES[key];
+}
+```
+
+- [ ] **Step 5: Viết test thất bại cho `RegionTile`**
+
+Tạo `apps/web/src/components/destinations/region-tile.spec.tsx`:
+
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import { RegionTile } from './region-tile';
+
+describe('RegionTile', () => {
+  it('là ảnh khả truy cập mang nhãn mô tả, không phải div trơ', () => {
+    render(<RegionTile label="Terraced rice fields" />);
+    expect(screen.getByRole('img', { name: 'Terraced rice fields' })).toBeInTheDocument();
+  });
+
+  it('KHÔNG in nhãn thành chữ — nhãn chỉ cho trình đọc màn hình', () => {
+    render(<RegionTile label="Terraced rice fields" />);
+    expect(screen.queryByText('Terraced rice fields')).not.toBeInTheDocument();
+  });
+
+  it('nền pha từ token vùng, KHÔNG hex', () => {
+    const { container } = render(<RegionTile label="x" />);
+    const style = container.querySelector('[role="img"]')?.getAttribute('style') ?? '';
+    expect(style).toContain('--region-primary');
+    expect(style).toContain('--region-spark');
+    expect(style).not.toMatch(/#[0-9a-f]{3,8}/i);
+  });
+});
+```
+
+- [ ] **Step 6: Viết `region-tile.tsx`**
+
+```tsx
+import { cn } from '@tourism/ui/lib/utils';
+import { ImageIcon } from 'lucide-react';
+
+/**
+ * Ô giữ chỗ ảnh CHO TRANG VÙNG. Đây là cơ chế dự phòng của chính Nexora
+ * (`marketing/gallery.tsx` → `Tile` khi thiếu `src`: nền gradient + icon), khác
+ * ở chỗ gradient pha bằng token VÙNG nên mỗi vùng một sắc.
+ *
+ * Vì sao KHÔNG dùng `ImagePlaceholder` xám của repo ở đây (user chốt 29/07):
+ * trang này có 14 ô ảnh, trong đó khu `X in photos` là 10 ô liền nhau. Mười hộp
+ * xám sọc chéo cạnh nhau đọc thành "vùng ảnh hỏng" chứ không thành gallery —
+ * đúng lỗi đã đo ở `destination-tile.tsx`. Gradient có màu thì đọc được là chủ ý.
+ *
+ * Khi có ảnh thật: thêm prop `src` và render `next/image`, KHÔNG phải đổi bố cục.
+ */
+export function RegionTile({ label, className }: { label: string; className?: string }) {
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      style={{
+        background:
+          'linear-gradient(135deg, var(--region-primary), color-mix(in oklch, var(--region-spark), var(--region-deep) 45%))',
+      }}
+      className={cn('flex items-center justify-center overflow-hidden rounded-xl', className)}
+    >
+      <ImageIcon aria-hidden="true" className="size-7 text-on-media/70" />
+    </div>
+  );
+}
+```
+
+- [ ] **Step 7: Rebuild i18n + gate + commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+pnpm gate
+git add libs/shared/i18n apps/web/src/lib/region-theme.ts apps/web/src/lib/region-theme.spec.ts apps/web/src/components/destinations/region-tile.tsx apps/web/src/components/destinations/region-tile.spec.tsx
+git commit -m "feat(web): nền trang vùng theo Nexora — copy, bản đồ biến thể, ô gradient"
+```
+
+---
+
+### Task 5c: Bảy khu trang vùng + lắp ráp `page.tsx`
+
+**Tham chiếu CHỈ ĐỌC** (tuyệt đối không sửa):
+`/mnt/c/Dev Program Files/Dev/Projects/Tourism-Platform/apps/web/src/` —
+`app/destinations/[region]/page.tsx` · `components/destinations/region-{hero,intro,highlights,signature,signature-adventure,signature-timeline,signature-delta,tours}.tsx` ·
+`components/marketing/gallery.tsx` · `components/destinations/value-props.tsx`.
+Đọc kỹ từng file trước khi viết bản v2 tương ứng.
+
+**Files:**
+
+- Create: `components/destinations/region-hero.tsx`
+- Create: `components/destinations/region-intro.tsx`
+- Create: `components/destinations/region-highlights.tsx`
+- Create: `components/destinations/region-signature-stats.tsx`
+- Create: `components/destinations/region-signature-timeline.tsx`
+- Create: `components/destinations/region-signature-postcards.tsx`
+- Create: `components/destinations/region-tours.tsx` (**client**) + `.spec.tsx`
+- Create: `components/destinations/region-gallery.tsx`
+- Create: `components/destinations/region-value-props.tsx`
+- Rewrite: `app/(site)/destinations/[region]/page.tsx`
+- **Delete**: `components/destinations/region-glance.tsx` + `.spec.tsx` ·
+  `components/destinations/place-card.tsx` + `.spec.tsx`
+
+⚠️ **Xoá 4 file trên là CÓ CHỦ Ý** — Nexora không có khu "dải at-a-glance" lẫn khu
+"places dạng hàng"; địa điểm xuất hiện dưới dạng **tab lọc** trong khu Tours. Hàm
+`regionGlance()` ở `lib/regions.ts` thì **GIỮ NGUYÊN**: nó nuôi `tags` và dải số liệu.
+
+**Thứ tự khu** (khớp trang live, bỏ khu 8 `Plan your trip`):
+
+1. `RegionHero` → 2. `RegionIntro` → 3/4. Signature ↔ Highlights (**Bắc: signature
+trước**, theo `regionTheme(key).signatureFirst`) → 5. `RegionTours` → 6. `RegionGallery`
+→ 7. `RegionValueProps`.
+
+- [ ] **Step 1: `region-hero.tsx`**
+
+- `<section>` `relative isolate flex items-end overflow-hidden` + `regionTheme(key).heroMinH`.
+- Nền: `<RegionTile>` phủ tuyệt đối `-z-10` (nhãn = tên vùng) + lớp scrim
+  `absolute inset-0 -z-10 bg-linear-to-t` với `regionTheme(key).scrim`.
+- Nội dung: breadcrumb 3 cấp (`Home` → `All destinations` `/destinations` → tên vùng,
+  nhãn cấp 2 lấy `messages.regionPage.backToAll`) · `<h1>` tên vùng · `<p>` tagline.
+- Chữ dùng `text-on-media` (token CỐ ĐỊNH, đúng cặp với scrim tối) — **KHÔNG**
+  `text-foreground`, nó lật theo theme và sẽ tàng hình ở một trong hai theme.
+- ⚠️ Hero này KHÔNG dùng khuôn `bg-hero` + `dark contents` như các hero khác của
+  repo: nền ở đây là ảnh/tile phủ scrim, giống Nexora. Vì vậy **không** đặt class
+  `dark` ở đâu trong khu này.
+
+- [ ] **Step 2: `region-intro.tsx`**
+
+Bố cục 2 cột (dồn 1 cột dưới `lg`), khớp `region-intro.tsx` của Nexora:
+
+- Trái: `<h2>` `introHeading(name)` · vạch accent `h-1 w-12 rounded-full` nền
+  `var(--region-primary)` · `<p>` intro (cỡ `text-lg`) · `<p>` intro2 ·
+  hàng `bestForLabel` + **chip `tags` DẪN XUẤT** từ `regionGlance(tours).categories`
+  (chip viền `border-border`, chữ `text-muted-foreground`) · `ButtonLink` →
+  `#tours` với nhãn `browseCta(name)`, nền `var(--region-primary)` chữ `text-on-media`.
+- Phải: bento 3 ô `RegionTile` — 1 ô cao `row-span-2` bên trái, 2 ô xếp chồng bên
+  phải, khung `grid h-96 grid-cols-2 grid-rows-2 gap-3 sm:gap-4`. Nhãn từng ô lấy
+  **tên 3 địa điểm thật của vùng**, không bịa.
+
+- [ ] **Step 3: `region-highlights.tsx`**
+
+`<h2>` `highlightsHeading(name)` + lưới 3 thẻ (`md:grid-cols-3`). Mỗi thẻ: chip icon
+tròn `size-12` nền `color-mix(in oklch, var(--region-primary), var(--background) 88%)`
+màu `var(--region-primary)` · `<h3>` title · `<p>` body. Icon theo thứ tự
+`SparklesIcon` · `CompassIcon` · `MapPinIcon` (đúng Nexora). Thẻ nền `bg-card` viền
+`border border-border rounded-2xl p-6`.
+
+- [ ] **Step 4: Ba biến thể Signature**
+
+`region-signature-stats.tsx` (**Bắc**) — băng TỐI full-bleed, nền
+`var(--region-hero)`, chữ `text-on-media`. Eyebrow · `<h2>` · body · danh sách
+`points` (chấm tròn `var(--region-spark)`) · `<dl>` 4 mục
+`grid-cols-2 sm:grid-cols-4`, mỗi mục viền trên `border-t border-on-media/15`,
+`<dt>` giá trị cỡ lớn `font-heading text-3xl sm:text-4xl` màu `var(--region-spark)`,
+`<dd>` nhãn nhỏ. **Giá trị dẫn xuất, truyền từ page qua prop `stats`** — component
+không tự tính.
+
+`region-signature-timeline.tsx` (**Trung**) — nền
+`color-mix(in oklch, var(--region-surface), var(--background) 88%)`. Eyebrow · `<h2>` ·
+body · `<ol>` 3 chặng `sm:grid-cols-3`, mỗi chặng viền trên + huy hiệu số tròn
+`size-8` (viền + chữ `var(--region-primary)`, nền `bg-background`) đặt `-top-4`,
+rồi `era` (mono, hoa) · `<h3>` title · `<p>` body. **Đánh số ở đây HỢP LỆ** — đó là
+trình tự lịch sử/địa lý có thật, khác ba vùng vốn không phải các bước tuần tự.
+
+`region-signature-postcards.tsx` (**Nam**) — nền
+`color-mix(in oklch, var(--region-surface), var(--background) 92%)`. Eyebrow · `<h2>` ·
+body · 3 `<figure>` `aspect-4/5` `sm:grid-cols-3`, ô giữa `sm:-translate-y-4` hai ô
+ngoài `sm:translate-y-4` (bọc `motion-reduce:transform-none`). Mỗi figure:
+`RegionTile` phủ nền + scrim `bg-linear-to-t from-scrim` + caption gồm vạch
+`h-1 w-9` nền `var(--region-spark)` · `caption` (mono, hoa) · `<h3>` title.
+
+Cả ba nhận dữ liệu qua **prop**, không tự import i18n theo khoá vùng.
+
+- [ ] **Step 5: `region-tours.tsx` — client, tab lọc + phân trang**
+
+- `'use client'`. Props: `tours: MockTourCard[]`, `places: { slug: string; name: string }[]`.
+- Tab: hàng chip `All` + 3 địa điểm. Chip đang chọn nền `var(--region-primary)` chữ
+  `text-on-media`; chip tắt viền `border-border`. Dùng `<button aria-pressed>`.
+- Lọc: tour có `destinations.some((d) => d.slug === active)`. `All` → tất cả.
+- Phân trang **8/trang** (đúng Nexora `REGION_PAGE_SIZE`). Đổi tab → về trang 1.
+  Mỗi vùng chỉ 6 tour nên hiện chỉ có 1 trang — **vẫn dựng phân trang** vì nó là
+  nhánh có thật khi gắn API, nhưng **ẩn thanh phân trang khi chỉ 1 trang**.
+- Lưới `TourCard` dùng lại khuôn `related-tours.tsx`:
+  `grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3`.
+- Trạng thái rỗng khi lọc ra 0 tour: `noTours` + `noToursBody`. Đây là nhánh CÓ THẬT
+  (chip một địa điểm ít tour) — **phải có test**.
+- `id="tours"` đặt trên `<section>` để CTA của khu intro neo tới được.
+
+Test bắt buộc (`region-tours.spec.tsx`), dùng `userEvent`:
+
+```tsx
+it('mặc định hiện tất cả tour của vùng', …)
+it('bấm chip một địa điểm thì chỉ còn tour chạm địa điểm đó', …)
+it('chip đang chọn mang aria-pressed=true, các chip khác false', …)
+it('lọc ra 0 tour thì hiện trạng thái rỗng, KHÔNG phải lưới rỗng', …)
+it('chỉ một trang thì KHÔNG render thanh phân trang', …)
+```
+
+⚠️ Spec này render `TourCard`; nếu nó kéo theo `SectionEyebrow`/`whileInView` thì
+stub `IntersectionObserver` **cục bộ trong chính file spec** (xem `region-group.spec.tsx`).
+Đã đo: dời stub lên `vitest.setup.ts` chung làm **19 test ở 3 file khác gãy**.
+
+- [ ] **Step 6: `region-gallery.tsx`**
+
+`<h2>` `galleryHeading(name)` + `<p>` `gallerySubtitle`, rồi khảm **10 ô** theo đúng
+nhịp Nexora: 1 ô lớn → cụm 2×2 → cụm 2×2 → 1 ô lớn. Ô lớn `aspect-16/9`, ô cụm
+`aspect-square`. Tất cả là `RegionTile`. Nhãn từng ô lấy từ danh sách mô tả cảnh
+**chung, không gắn địa danh cụ thể** (Nexora làm y vậy ở `PLACEHOLDER_SECTIONS`) —
+đặt danh sách nhãn trong i18n hay trong chính component đều được, nhưng **không bịa
+tên địa danh**. **KHÔNG lightbox** — đây là khu giới thiệu.
+
+- [ ] **Step 7: `region-value-props.tsx`**
+
+Băng nền `var(--region-hero)` chữ `text-on-media` (Nexora dùng ảnh + scrim; ta dùng
+nền tint vùng). `<h2>` `valuePropsHeading` + 3 mục căn giữa `sm:grid-cols-3`, mỗi mục
+chip icon tròn `size-12` viền `border-on-media/25` nền `bg-on-media/10`, icon
+`CarIcon`/`RouteIcon`/`UtensilsCrossedIcon`… — **đổi icon cho khớp nội dung mới**:
+`UsersIcon` (Small groups) · `MapPinIcon` (Local guides) · `ListChecksIcon`
+(Clear inclusions). `<h3>` title + `<p>` body từ `messages.regionPage.valueProps`.
+
+- [ ] **Step 8: Viết lại `page.tsx`**
+
+- Giữ nguyên `generateStaticParams`, `generateMetadata` (canonical + OG), `notFound()`
+  cho slug lạ, JSON-LD `BreadcrumbList`, và `data-flush-footer`… **KHÔNG**: khu cuối
+  giờ là `RegionValueProps` (nền `--region-hero`, vẫn là băng có nền) → **GIỮ**
+  `data-flush-footer` trên chính khu đó.
+- `data-region={region.key}` trên `<div>` bọc toàn trang.
+- Dải số liệu của Bắc dẫn xuất TẠI ĐÂY rồi truyền xuống prop `stats`:
+  `from` = `formatMoney(glance.fromPrice, currency)` · `longest` = số ngày lớn nhất
+  trong các tour **riêng của vùng** · `hardest` = bậc cuối của `glance.difficulties`
+  (nhãn từ `messages.toursPage.difficultyLabels`) · `styles` = `glance.categories.length`.
+  Nhãn lấy từ `messages.regionPage.statLabels`.
+- `Reveal` bọc ngoài từng khu, như `/destinations/page.tsx`.
+- ⚠️ **KHÔNG tạo `loading.tsx`.**
+- Xoá 4 file của Task 5 (`region-glance*`, `place-card*`) và mọi import tới chúng.
+
+- [ ] **Step 9: Đo tương phản CẢ BA vùng × CẢ HAI theme**
+
+Bắt buộc — cụm này đã dính 4 lỗi tương phản và 3 lần đo sai. Phương pháp ĐÚNG: vẽ
+màu computed lên `canvas` rồi đọc pixel sRGB; **không** regex `rgb()` (trình duyệt
+trả `lab()`). Đo: chữ hero trên scrim · chữ trên băng `--region-hero` (signature Bắc
++ value props) · chip tab đang chọn · caption bưu thiếp · chữ trên nền phớt
+`--region-surface`. Ngưỡng AA 4.5 (chữ thường) / 3.0 (chữ ≥24px). Ghi số vào report.
+
+- [ ] **Step 10: `pnpm gate` rồi commit**
+
+```bash
+pnpm gate
+git add apps/web/src
+git commit -m "feat(web): trang vùng dựng lại theo Nexora — 7 khu, 3 biến thể signature"
+```
+

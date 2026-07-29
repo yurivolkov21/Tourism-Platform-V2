@@ -255,6 +255,45 @@ vùng có màu riêng, cộng lối đi tiếp vào từng vùng.
 
 ### 5.2 `/destinations/[region]`
 
+**Sửa lần hai 29/07 — user xem bản dựng và BÁC, chốt dựng theo trang Nexora thật.**
+Bản "Sửa 29/07" bên dưới (rail trong hero · PLACES dạng hàng · CTA vùng) đã dựng xong
+và bị bác: *"thiết kế không đâu vào đâu"*. User chỉ vào
+`nexora-travel.agency/destinations/northern-vietnam` và cho phép **dựng giống hệt
+Nexora theo từng vùng**, chỉ **bỏ khu `Plan your trip`** trước footer.
+
+Đối chiếu trang live: **8 khu, giữ 7**. Thứ tự: hero ảnh → `The best X tours` (intro +
+intro2 + tags + bento 3 ô + CTA) → **Signature** ↔ `What makes X special` → `Tours`
+(tab lọc địa điểm + lưới phân trang 8) → `X in photos` (10 ô) → `We've got you covered`.
+Bắc để Signature **trước** Highlights (nhánh `isAdventure` của Nexora).
+
+**"Xương chung — da riêng":** ba vùng chung bộ khung, riêng khu Signature khác hẳn
+cấu trúc — Bắc dải số liệu trên băng tối · Trung timeline 3 chặng · Nam 3 bưu thiếp
+so le. Cộng chiều cao hero và độ đậm scrim riêng. Đây là thứ làm trang Nexora đứng
+được và là thứ bản trước thiếu (chỉ đổi tint nên ba trang đọc ra na ná).
+
+**Ba chỗ CỐ Ý lệch Nexora, đều đã đo:**
+
+| Khoản | Nexora | v2 | Vì sao |
+| --- | --- | --- | --- |
+| Địa danh trong copy | `Hà Giang` (350km · Mã Pí Lèng) · `Fansipan` 3.143m · `Lan Hạ` · `Pù Luông` · `Củ Chi` · `Marble Mountains` · tag `Caves` | thay bằng nơi CÓ THẬT trong mock: Ninh Bình · Mường Hoa · Ô Quy Hồ · Bắc Hà · Hải Vân · Bà Nà · Cần Thơ | 7 địa danh kia **0 lần** trong mock; §10 để đúng khoản này làm tiêu chí hoàn thành |
+| `tags` + dải số liệu | hardcode | **dẫn xuất** từ `regionGlance()` và `toursInRegion()` | thêm/bớt tour thì chữ của Nexora sai âm thầm |
+| `valueProps` | "Luxury transfers" · "vetted private drivers" · "Epic meals" | Small groups (12) · Local guides · Clear inclusions | không field nào đỡ ba lời hứa kia, trên capstone **không doanh thu** |
+
+**Ảnh:** user chốt 29/07 dùng **ô gradient theo vùng** (`RegionTile`) — chính cơ chế
+dự phòng Nexora đã thiết kế (`marketing/gallery.tsx` → `Tile` khi thiếu `src`: gradient
++ icon), khác ở chỗ pha bằng `--region-primary` → `--region-spark`. Lý do không dùng
+`ImagePlaceholder` xám của repo: trang có **14 ô ảnh**, riêng khu `X in photos` là 10
+ô liền nhau — mười hộp xám sọc chéo đọc thành "vùng ảnh hỏng", đúng lỗi đã đo ở
+`destination-tile.tsx`. Có ảnh thật thì thêm `src`, không phải đụng bố cục.
+
+**Hai khu của bản trước bị XOÁ:** dải at-a-glance và PLACES dạng hàng — Nexora không
+có chúng; địa điểm xuất hiện dưới dạng **tab lọc** trong khu Tours. Hàm `regionGlance()`
+ở `lib/regions.ts` **giữ nguyên**, nay nuôi `tags` và dải số liệu.
+
+---
+
+*Bản dưới đây giữ lại làm bản ghi lịch sử của vòng trước.*
+
 **Sửa 29/07 — user duyệt bốn quyết định trước khi dựng (Task 5).** Bản 28/07 dưới
 đây quy trang vùng về bốn khu xếp chồng. Rà lại trước khi dựng thì bản đó mang đúng
 rủi ro đã giết `/destinations` vòng một: một dải số liệu rời + ba thẻ cạnh nhau là
