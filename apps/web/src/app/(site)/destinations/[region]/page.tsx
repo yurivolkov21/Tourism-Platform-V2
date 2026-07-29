@@ -238,7 +238,18 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
                 {messages.enquiryCta.regionHeading(region.name)}
               </h2>
               <p className="text-pretty text-muted-foreground">{messages.enquiryCta.subtitle}</p>
-              <ButtonLink href="/contact" className="mt-2">
+              {/* `outline` chứ KHÔNG phải variant mặc định, và đây là chỗ ĐO ĐƯỢC
+                  chứ không phải chuyện gu: cặp `--primary-foreground` trên
+                  `--primary` chỉ đạt 5.52:1 ở light và **4.11:1 ở dark**. Nút này
+                  nằm trong scope `dark` nên nó đọc cặp dark ở CẢ HAI theme của
+                  trang → 4.11:1, dưới ngưỡng AA 4.5 cho chữ 14px.
+                  Đo bằng canvas (vẽ màu computed rồi đọc pixel sRGB), KHÔNG bằng
+                  regex `rgb()` — trình duyệt trả `lab()` và regex cho ra số bịa.
+                  4.11:1 ở dark mode là lỗi CÓ SẴN của token, áp cho MỌI nút
+                  `bg-primary` toàn site — đã ghi nợ riêng, sửa nó là đổi tầng
+                  token nên cần ADR. Ở đây chỉ tránh khối chữ trắng-trên-teal
+                  trượt ngưỡng ngay giữa băng tối. */}
+              <ButtonLink href="/contact" variant="outline" className="mt-2">
                 {messages.enquiryCta.cta}
               </ButtonLink>
             </div>
