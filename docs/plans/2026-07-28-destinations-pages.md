@@ -2931,3 +2931,144 @@ git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): miền Bắc đổi khu chữ ký sang When to visit — dải 12 tháng"
 ```
 
+---
+
+### Task 5h: Chuyển mọi consumer của `--region-*` sang token brand
+
+**Vì sao:** ADR-0015 — user bác tint theo vùng (*"làm giao diện không đồng nhất"*).
+Chốt rút **toàn site**, kể cả Home và About.
+
+**Tài liệu tham chiếu bắt buộc:** `.superpowers/sdd/region-token-migration-map.md`
+— bản đồ 56 điểm (18 high · 9 low · 29 none) do một workflow lập, có `file:line`,
+token thay thế, và màu đổi thế nào ở dark. ⚠️ Ba agent phản biện của workflow đã
+chết vì hit limit nên **bản đồ CHƯA qua vòng bác bỏ**: coi mỗi mục là giả thuyết
+có bằng chứng, tự kiểm trước khi làm theo. Đã biết ít nhất một `location` gõ sai
+(`appsys/web/...` — thật ra là `apps/web/src/components/destinations/region-seasons.tsx:96`).
+
+**Thứ tự CỐ Ý:** task này đổi *consumer* trong khi ba khối `[data-region]` **vẫn
+còn**. Xong 5h thì không consumer nào đọc `--region-*` nữa (trừ 4 file nhóm hai),
+nên ba khối thành trơ — và Task 5i xoá chúng là **no-op về thị giác**, rủi ro thấp.
+Làm ngược lại thì có một quãng cây code hiển thị sai ở cả 5 trang.
+
+**Files:**
+
+- Trang vùng: `components/destinations/region-{hero,intro,seasons,tours,gallery,value-props,tile}.tsx`,
+  `region-signature-{timeline,postcards}.tsx`, `app/(site)/destinations/[region]/page.tsx`
+- Trang index + navbar: `components/destinations/region-group.tsx` · `destination-tile.tsx` ·
+  `components/destinations-menu.tsx`
+- **Trang đã duyệt** (chấp nhận đổi giao diện): `components/home/gallery.tsx` ·
+  `components/about/about-timeline.tsx` · `components/about/about-gallery.tsx`
+- Spec: `region-tile.spec.tsx` (đang khẳng định style chứa `--region-primary`/`--region-spark`)
+- **KHÔNG đụng**: `auth/auth-screen.tsx` · `auth/password-strength-field.tsx` ·
+  `home/contact.tsx` · `contact/contact-cta.tsx` — nhóm hai, không có `data-region`,
+  chỉ mượn giá trị `:root` (ADR-0015 quyết định 4).
+
+- [ ] **Step 1: Hero bỏ nền gradient, về khuôn hero chuẩn của site**
+
+Đây là mục rủi ro cao nhất và **không map 1-1 được** (ADR-0015 mục "Vì sao hero
+phải bỏ nền gradient"). `RegionTile` làm nền hero nằm trong scope `.dark` nên brand
+token bị ghim bảng TỐI ở cả hai theme → gradient ra `oklch(0.799 …)` **nhạt**, hero
+từ tối hoá sáng và navbar chưa-cuộn (chữ trắng) thành tàng hình.
+
+Đổi `region-hero.tsx` sang đúng khuôn ba lớp đã chứng minh ở `/tours`, `/contact`,
+`/destinations`:
+- `<section className="… bg-hero … text-hero-foreground">` (nền đặc, KHÔNG gradient)
+- `<TopoPattern className="bg-primary opacity-[0.12] dark:opacity-[0.2]" />` đặt
+  **NGOÀI** scope `dark`
+- `<div className="dark contents">` bọc **nội dung**
+- **TUYỆT ĐỐI không** đặt class `dark` lên chính `<section>`.
+Bỏ `RegionTile` khỏi hero. Giữ nguyên bố cục About-style bên trong (badge pill,
+h1 `RevealLine`, tagline, 2 nút, hàng số liệu, chỉ báo Scroll).
+
+- [ ] **Step 2: Đồng nhất hero + rút gọn `region-theme.ts`**
+
+`heroMinH` và `scrim` không còn khác theo vùng (ADR-0015 quyết định 5) → **gỡ cả
+hai field** khỏi interface và ba entry; dùng một giá trị chung tại chỗ trong
+`region-hero.tsx`. `regionTheme()` còn đúng field `signature`. Cập nhật
+`region-theme.spec.ts`: **gỡ** test về `heroMinH` (bất biến đó không còn), giữ hai
+test về biến thể signature.
+
+- [ ] **Step 3: `RegionTile` — bỏ gradient theo vùng**
+
+Sau Step 1, tile chỉ còn dùng ở `region-gallery.tsx` (10 ô, có nhãn) và
+`region-signature-postcards.tsx` (3 ô, trang trí). Đổi nền sang một công thức
+**không dùng token vùng** và **an toàn ở cả hai theme**. Bản đồ đề xuất
+`linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--rating), var(--hero) 45%))`
+(đo 5.22:1 light / 5.41:1 dark cho icon) — **kiểm lại bằng phép đo của chính bạn**,
+và nếu thấy công thức đơn giản hơn mà vẫn đạt thì dùng, nói rõ lý do.
+⚠️ `region-tile.spec.tsx:19-20` khẳng định style chứa `--region-primary` và
+`--region-spark` → sẽ ĐỎ. Viết lại thành bất biến MỚI: style **không** chứa chuỗi
+`--region-`, và vẫn không chứa hex.
+
+- [ ] **Step 4: Đổi các điểm còn lại theo bản đồ**
+
+Bảng thay thế (đã đo trùng khít ở light): `--region-primary` → `--primary` ·
+`--region-surface` → `--secondary` · `--region-deep` → `--secondary-foreground` ·
+`--region-spark` → `--rating` · `--region-hero` → `--hero`.
+
+⚠️ **Ba chỗ KHÔNG được map 1-1** — bản đồ đã đo:
+1. **Nền băng Signature** (`region-seasons.tsx:51`, `region-signature-timeline.tsx:25`,
+   `region-signature-postcards.tsx:23`): công thức `color-mix(--region-surface,
+   --background 88%)` được canh cho token surface **sáng, bất biến**. Thay bằng
+   token lật thì phép pha tự triệt tiêu — ở dark ΔL chỉ còn **+0.014**, băng gần
+   như biến mất. Chỉnh tỉ lệ (bản đồ gợi ý 60–70%) hoặc dùng thẳng `bg-muted`,
+   rồi **đo ΔL ở cả hai theme** và ghi số.
+2. **Cặp nền `--primary` + chữ `text-on-media`** ở 5 chỗ (nút hero, nút intro, ô
+   tháng "đẹp", huy hiệu timeline, chip lọc đang chọn): rơi xuống **4.18:1**. Đổi
+   chữ sang `text-primary-foreground` để hai vế cùng họ theo-theme. Con số 4.18
+   **đúng bằng** cặp `bg-primary`/`primary-foreground` mặc định của site ở dark —
+   ta thừa kế lỗi toàn site đã ghi nợ, không tạo lớp mới. **Ghi rõ số đo vào
+   report**, đừng im lặng cho qua.
+3. **`ACCENT_ON_MEDIA` ở `region-hero.tsx:41`**: phép trộn `color-mix(spark,
+   on-media 45%)` tồn tại vì spark đỏ/tím của Trung/Nam quá tối. Sau khi bỏ tint
+   thì **lý do đó chết** — dùng `var(--rating)` trần (đo 9.35:1) và **xoá khối
+   comment giải thích phép trộn**, đừng để lại lời giải thích cho thứ không còn.
+
+- [ ] **Step 5: Comment nói về tint đều phải viết lại**
+
+Nhiều comment lập luận dựa trên tiền đề *"`--region-*` bất biến theo theme còn
+`--background` lật"* — tiền đề đó **chết cùng quyết định này**. Riêng
+`region-intro.tsx:116-131` là một bản ghi đo đạc dài về phương án chip phớt; nó
+phải viết lại toàn bộ, không được để nguyên. Rà mọi comment chứa "vùng", "tint",
+"region" trong các file bạn chạm.
+
+- [ ] **Step 6: Đo lại + chụp lại NĂM trang, cả hai theme**
+
+Trang vùng ×3 · `/destinations` · `/` (khu gallery) · `/about` (timeline + gallery).
+Đo mọi cặp nền/chữ bạn đã chạm; ngưỡng AA 4.5 (chữ thường) / 3.0 (icon, chữ ≥24px).
+Cách đúng: composite nền dưới → nền phần tử (kể cả alpha) → rồi mới so màu chữ,
+tất cả bằng `canvas` đọc pixel sRGB. **Không** regex `rgb()`. Không lấy pixel rơi
+trúng nét chữ. Hiệu chuẩn pipeline bằng vài ô sRGB đã biết trước khi tin số.
+⚠️ Hero có `CountUp` mất ~3s, và `Reveal` fade còn chạy sau khi cuộn tới — chờ đủ.
+
+- [ ] **Step 7: Gate rồi commit**
+
+```bash
+git add apps/web/src
+git commit -m "refactor(web): mọi consumer tint vùng chuyển sang token brand"
+```
+
+---
+
+### Task 5i: Xoá ba khối `[data-region]` khỏi tầng token
+
+Chạy **sau** 5h, khi không consumer nào còn đọc `--region-*` (trừ 4 file nhóm hai).
+Vì vậy đây phải là **no-op về thị giác** — nếu chụp lại thấy đổi thì 5h còn sót.
+
+- [ ] **Step 1:** Xoá `export const regions = {…}` trong
+  `libs/shared/tokens/style-dictionary/tokens.mjs` (bản đồ chỉ dòng 233–265).
+  **GIỮ `regionDefaults`** — 4 file nhóm hai vẫn đọc giá trị `:root`.
+- [ ] **Step 2:** `build.mjs` — gỡ dòng import `regions` (bản đồ chỉ dòng 15), giữ
+  `regionDefaults`. **Xác minh** build vẫn emit `--region-*` ở `:root`.
+- [ ] **Step 3:** `tokens.spec.ts` — ba test sẽ đỏ (đủ 6 slot mỗi vùng · ba hero
+  cùng bậc tối · ba hero khác nhau). Những bất biến đó **không còn tồn tại**: xoá.
+  Thay bằng bất biến MỚI: `regionDefaults` có đủ 6 slot và mọi giá trị parse được
+  `oklch`; và **không còn khối `[data-region]` nào** trong `generated/tokens.css`.
+- [ ] **Step 4:** `data-region` còn ai dùng? Sau 5h nó không gán biến CSS nào nữa.
+  Giữ hay gỡ là quyết định riêng — nhưng `region-group.spec.tsx:100` và
+  `destinations-menu.spec.tsx:37` đang khẳng định nó tồn tại. Nếu gỡ thuộc tính thì
+  phải sửa hai spec đó; nếu giữ thì **viết comment nói rõ nó còn dùng để làm gì**,
+  đừng để một thuộc tính không ai đọc.
+- [ ] **Step 5:** Rebuild tokens, `pnpm gate`, chụp lại 5 trang × 2 theme và
+  **so với ảnh sau 5h** — phải giống hệt.
+
