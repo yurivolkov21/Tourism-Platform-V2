@@ -128,14 +128,26 @@ export default function DestinationsPage() {
         <KnowBeforeYouGo items={FAQ_ITEMS} />
       </Reveal>
 
-      {/* ── Khu 6 · CTA hỏi → /contact, dùng ButtonLink (KHÔNG Button render={<a/>}) ── */}
-      <section className="w-full px-4 py-20 md:px-16 lg:px-24 xl:px-32">
-        <Reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 rounded-3xl border border-border bg-card px-6 py-14 text-center">
-          <h2 className="font-heading text-3xl font-medium text-foreground md:text-4xl">
+      {/* ── Khu 6 · CTA hỏi → /contact ──
+          Là BĂNG full-width, KHÔNG phải thẻ có viền. Bản đầu bọc nội dung trong
+          `rounded-3xl border bg-card max-w-3xl` — nó thành thứ DUY NHẤT trên
+          trang có khung, và là thứ duy nhất không dùng chiều rộng nội dung của
+          trang, nên đọc như một widget lạc vào chứ không phải một khu của trang
+          (user chỉ ra 28/07).
+          `border-t` nhắc lại vạch mảnh mà dải ảnh vùng đã dùng, và `bg-muted/30`
+          tách nó khỏi hai khu nền trắng ngay trên — nếu không, ba khu liền nhau
+          cùng nền sẽ dính thành một khối.
+          KHÔNG bê nguyên banner tối của `home/call-to-action.tsx`: trang chủ đã
+          có đúng banner đó, lặp y hệt thì đọc như bản sao. */}
+      <section className="w-full border-t border-border bg-muted/30 px-4 py-20 md:px-16 lg:px-24 xl:px-32">
+        <Reveal className="mx-auto flex max-w-3xl flex-col items-center gap-5 text-center">
+          <h2 className="font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
             {cta.headings.destinations}
           </h2>
           <p className="max-w-xl text-pretty text-muted-foreground">{cta.subtitle}</p>
-          <ButtonLink href="/contact" size="lg" className="mt-2">
+          {/* `rounded-full` nhắc lại kiểu nút viên thuốc của CTA trang chủ —
+              mượn NGÔN NGỮ nút, không mượn cả banner. */}
+          <ButtonLink href="/contact" size="lg" className="mt-2 rounded-full px-8">
             {cta.cta}
           </ButtonLink>
           <p className="text-xs text-muted-foreground">{cta.note}</p>
