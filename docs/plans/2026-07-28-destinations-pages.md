@@ -2558,3 +2558,76 @@ git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): hero trang vùng theo kiểu AboutHero, Bắc đổi sang timeline itinerary"
 ```
 
+---
+
+### Task 5e: Gộp `What makes X special` vào khu intro, bỏ bento ảnh
+
+**Vì sao:** user duyệt tiếp khu 2 (29/07). Nhận xét: gallery đã là khu trình bày ảnh
+riêng, nên bento 3 ô ở khu intro là **ảnh lặp lại không thêm thông tin**. Chốt: bỏ
+bento, thay cột phải bằng **3 thẻ highlight** — gộp hẳn khu `What makes X special`
+vào đây. Bố cục giữ **hai cột**: chữ trái, 3 highlight xếp dọc phải.
+
+**Hệ quả đã nói rõ với user:** nhánh `signatureFirst` hết ý nghĩa (không còn Highlights
+để đảo thứ tự với Signature) → **gỡ hẳn cờ đó**, đừng để lại một cờ chết kèm test chết.
+Ba vùng vẫn khác nhau nhờ ba biến thể Signature.
+
+**Files:**
+
+- Modify: `components/destinations/region-intro.tsx`
+- **Delete**: `components/destinations/region-highlights.tsx`
+- Modify: `lib/region-theme.ts` + `.spec.ts` (gỡ `signatureFirst`)
+- Modify: `app/(site)/destinations/[region]/page.tsx`
+- Modify: `components/destinations/region-tile.tsx` (xem bước 4)
+
+- [ ] **Step 1: `region-intro.tsx` — cột phải thành 3 highlight**
+
+- Bỏ hẳn bento `RegionTile`. Component **không còn import `RegionTile`**.
+- Thêm prop `highlights: { title: string; body: string }[]`.
+- Cột phải: một tiêu đề nhỏ = `messages.regionPage.highlightsHeading(name)` (cỡ
+  `text-xl md:text-2xl font-heading`, **không** cỡ `h2` khu — nó là tiêu đề phụ trong
+  một khu, không phải tiêu đề khu), rồi 3 mục xếp dọc.
+- Mỗi mục giữ đúng ngôn ngữ hình của `region-highlights.tsx` đang có: chip icon tròn
+  `size-12` nền `color-mix(in oklch, var(--region-primary), var(--background) 88%)`,
+  icon `SparklesIcon` · `CompassIcon` · `MapPinIcon` theo thứ tự, `<h4>` title,
+  `<p>` body. Bố cục mỗi mục: icon bên trái, chữ bên phải (khác lưới 3 cột cũ vì
+  giờ xếp dọc trong một cột hẹp).
+- `highlights` rỗng → bỏ hẳn cột phải, cột trái trải rộng `max-w-2xl`.
+- Cột trái giữ nguyên: `<h2>` `introHeading` · vạch accent · `intro` · `intro2` ·
+  hàng `bestForLabel` + chip tags dẫn xuất · `ButtonLink` → `#tours`.
+
+- [ ] **Step 2: `region-theme.ts` — gỡ `signatureFirst`**
+
+Gỡ field khỏi interface và cả ba entry. Gỡ test khẳng định nó trong `region-theme.spec.ts`
+(**gỡ, không phải sửa cho luôn đúng** — cờ không còn thì test của nó cũng không còn
+việc). Ba test kia giữ nguyên.
+
+- [ ] **Step 3: `page.tsx`**
+
+- Xoá khu `RegionHighlights` và nhánh lật thứ tự. Thứ tự mới, cố định cho cả ba vùng:
+  Hero → Intro (kèm highlights) → Signature → Tours → Gallery → Value props.
+- Truyền `highlights={t.regions[region.key].highlights}` xuống `RegionIntro`.
+- Xoá import `RegionHighlights` và file của nó.
+- ⚠️ `data-flush-footer` vẫn ở khu CUỐI (`region-value-props`). ⚠️ **KHÔNG** tạo `loading.tsx`.
+
+- [ ] **Step 4: Ô nền trang trí không được hiện icon giữ chỗ**
+
+Lỗi user chỉ ra ở hero: `RegionTile` dùng làm **nền trang trí** vẫn vẽ `ImageIcon` ở
+chính giữa, nên trên hero căn trái nó nổi lên như một vật thể lạ giữa khoảng trống.
+
+Sửa ở `region-tile.tsx`: chế độ `decorative` **không render icon** (nền gradient trơn).
+Chế độ có nhãn giữ nguyên icon — ở gallery/bưu thiếp icon là tín hiệu "đây là chỗ của
+ảnh", còn ở nền trang trí nó là nhiễu. Cập nhật `region-tile.spec.tsx`: thêm test
+khẳng định chế độ `decorative` **không có** icon, chế độ có nhãn **có** icon.
+
+- [ ] **Step 5: Kiểm mắt + gate**
+
+Chụp 3 vùng × 2 theme, xác nhận: khu intro hai cột không còn ô ảnh nào · không còn khu
+`What makes X special` đứng riêng · hero không còn icon lạ.
+Nếu cổng 3000 có dev server của user thì **không chạy `pnpm gate`** — chạy
+`pnpm typecheck` + `pnpm test` + `pnpm lint`, ghi rõ bước build còn nợ.
+
+```bash
+git add apps/web/src
+git commit -m "feat(web): gộp highlights vào khu intro, bỏ bento ảnh trùng gallery"
+```
+
