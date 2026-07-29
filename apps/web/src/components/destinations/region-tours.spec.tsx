@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import type { MockTourCard } from '@/mocks/types';
 import { RegionTours } from './region-tours';
@@ -34,6 +35,11 @@ function tour(
   };
 }
 
+/** Số tour mỗi trang của khu này — phải khớp `REGION_PAGE_SIZE` ở component.
+    Gõ lại ở đây thay vì export hằng số: nếu component đổi cỡ trang mà test không
+    đổi theo thì hai test phân trang bên dưới ĐỎ ngay, đúng thứ ta muốn nghe. */
+const PAGE_SIZE = 8;
+
 // Ninh Bình CỐ TÌNH không có tour nào — đó là nhánh "lọc ra 0 kết quả", nhánh
 // có thật khi một địa điểm mới chưa gắn tour nào.
 const TOURS = [
@@ -46,6 +52,12 @@ const TOURS = [
     { slug: 'ha-long', name: 'Hạ Long', isPrimary: false },
   ]),
 ];
+
+/** Vượt một trang: 9 tour cùng ở Sa Pa → 2 trang với cỡ trang 8. Nhánh CÓ phân
+    trang trước đây không test nào chạy qua. */
+const MANY_TOURS = Array.from({ length: PAGE_SIZE + 1 }, (_, i) =>
+  tour(`sa-pa-${i}`, `Sa Pa Trip ${i + 1}`, [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }]),
+);
 
 /** Tiêu đề tour = <h3> trong `TourCard`; đếm chúng là đếm số card trong lưới. */
 function tourTitles() {
@@ -95,14 +107,35 @@ describe('RegionTours', () => {
 
     await user.click(screen.getByRole('button', { name: 'Ninh Bình' }));
 
-    expect(screen.getByText('No trips run in this region yet.')).toBeInTheDocument();
+    // Chuỗi lấy từ i18n chứ không gõ tay: sửa copy thì test đi theo nguồn thay
+    // vì gãy ở một chỗ chẳng liên quan gì đến hành vi đang canh.
+    expect(screen.getByText(messages.regionPage.noTours)).toBeInTheDocument();
     expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
   });
 
   it('chỉ một trang thì KHÔNG render thanh phân trang', () => {
     // 3 tour < 8/trang → đúng một trang. Thanh phân trang vẫn được DỰNG (nhánh
     // có thật khi gắn API) nhưng phải tự ẩn ở đây.
+    //
+    // ⚠️ Canh dòng "Showing …", KHÔNG canh `nav[aria-label=Pagination]`:
+    // `PaginationBar` vốn KHÔNG BAO GIỜ render cái `<nav>` đó khi `totalPages ≤ 1`
+    // (`PageNumbers` trả `<div aria-hidden>` trước) — nên phép khẳng định kia
+    // đúng kể cả khi guard ở component bị xoá và thanh phân trang hiện nguyên
+    // (viền `border-t` + dòng "Showing 1–3 of 3"). Dòng "Showing …" thì CHỈ tồn
+    // tại khi cả thanh được dựng, nên nó canh được thật.
     render(<RegionTours tours={TOURS} places={PLACES} />);
-    expect(screen.queryByRole('navigation', { name: /pagination/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(messages.toursPage.showing(1, TOURS.length, TOURS.length)),
+    ).not.toBeInTheDocument();
+  });
+
+  it('quá một trang thì trang 1 chỉ hiện 8 card VÀ thanh phân trang có mặt', () => {
+    render(<RegionTours tours={MANY_TOURS} places={PLACES} />);
+
+    expect(tourTitles()).toHaveLength(PAGE_SIZE);
+    expect(screen.getByRole('navigation', { name: /pagination/i })).toBeInTheDocument();
+    expect(
+      screen.getByText(messages.toursPage.showing(1, PAGE_SIZE, MANY_TOURS.length)),
+    ).toBeInTheDocument();
   });
 });

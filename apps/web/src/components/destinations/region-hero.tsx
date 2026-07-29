@@ -18,14 +18,20 @@ import type { MockRegion } from '@/mocks/types';
  *
  * `heroMinH` và `scrim` đến từ `regionTheme(key)` — mỗi vùng một "mood": Bắc cao
  * hơn và scrim đặc hơn, hai vùng kia thấp và nhẹ.
+ *
+ * `tagline` vào bằng PROP (page truyền từ `messages.regionPage.regions[key]`)
+ * chứ component không tự tra i18n theo khoá vùng — mọi component khác của cụm
+ * đều nhận dữ liệu qua prop, và như thế mới test được với fixture.
  */
-export function RegionHero({ region }: { region: MockRegion }) {
+export function RegionHero({ region, tagline }: { region: MockRegion; tagline: string }) {
   const theme = regionTheme(region.key);
 
   return (
     <section className={cn('relative isolate flex items-end overflow-hidden', theme.heroMinH)}>
-      {/* Nhãn ô = TÊN VÙNG: khi thay bằng ảnh thật thì đây chính là `alt`. */}
-      <RegionTile label={region.name} className="absolute inset-0 -z-10 rounded-none" />
+      {/* `decorative`: nhãn ô sẽ là TÊN VÙNG, mà `<h1>` ngay dưới cũng là tên
+          vùng — để `role="img"` ở đây là trình đọc màn hình đọc "Northern Vietnam"
+          hai lần liền. Ô này là nền, không mang thông tin nào riêng. */}
+      <RegionTile label={region.name} decorative className="absolute inset-0 -z-10 rounded-none" />
       <div
         aria-hidden="true"
         className={cn('absolute inset-0 -z-10 bg-linear-to-t', theme.scrim)}
@@ -53,8 +59,11 @@ export function RegionHero({ region }: { region: MockRegion }) {
         </h1>
 
         {/* `tagline` chứ KHÔNG phải `intro`: intro là đoạn dẫn của khu ngay bên
-            dưới, in cả hai chỗ là lặp nguyên một câu trên cùng một màn hình. */}
-        <p className="mt-4 max-w-2xl text-lg text-pretty text-on-media/85">{region.tagline}</p>
+            dưới, in cả hai chỗ là lặp nguyên một câu trên cùng một màn hình.
+            Nguồn là `messages.regionPage.regions[key].tagline` (luật 7: copy
+            user-facing tập trung ở `@tourism/i18n`) — bản mock từng có field
+            `tagline` riêng, nó đã bị GỠ để không còn hai nguồn cho một câu. */}
+        <p className="mt-4 max-w-2xl text-lg text-pretty text-on-media/85">{tagline}</p>
       </div>
     </section>
   );

@@ -47,18 +47,22 @@ export function RegionSignatureStats({
           </h2>
           <p className="mt-4 text-lg text-pretty text-on-media/80">{body}</p>
 
-          <ul className="mt-8 space-y-3">
-            {points.map((point) => (
-              <li key={point} className="flex items-start gap-3">
-                <span
-                  aria-hidden="true"
-                  style={{ background: 'var(--region-spark)' }}
-                  className="mt-2 size-2 shrink-0 rounded-full"
-                />
-                <span className="text-pretty">{point}</span>
-              </li>
-            ))}
-          </ul>
+          {/* `points` rỗng thì bỏ hẳn `<ul>` — một danh sách không mục vẫn ăn
+              `mt-8` (32px) và để lại một khoảng hở không ai giải thích được. */}
+          {points.length > 0 ? (
+            <ul className="mt-8 space-y-3">
+              {points.map((point) => (
+                <li key={point} className="flex items-start gap-3">
+                  <span
+                    aria-hidden="true"
+                    style={{ background: 'var(--region-spark)' }}
+                    className="mt-2 size-2 shrink-0 rounded-full"
+                  />
+                  <span className="text-pretty">{point}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
         </div>
 
         {/* Vùng chưa có tour nào (nhánh có thật khi gắn API) thì `stats` rỗng —

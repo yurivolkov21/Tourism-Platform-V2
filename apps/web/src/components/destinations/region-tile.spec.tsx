@@ -20,4 +20,19 @@ describe('RegionTile', () => {
     expect(style).toContain('--region-spark');
     expect(style).not.toMatch(/#[0-9a-f]{3,8}/i);
   });
+
+  // `decorative`: ô nào có CHỮ KỀ BÊN nói đúng cái nhãn đó (hero có <h1> tên
+  // vùng, bưu thiếp có <h3> tên bưu thiếp) thì nhãn là lặp — trình đọc màn hình
+  // đọc hai lần. Ô đó là trang trí, phải biến mất khỏi cây trợ năng.
+  it('decorative: KHÔNG mang role img — nhãn đã có ở chữ kề bên', () => {
+    render(<RegionTile label="Northern Vietnam" decorative />);
+    // `hidden: true` để phép tìm KHÔNG bị chính `aria-hidden` che mất: ta đang
+    // khẳng định cái role không tồn tại, không phải nó chỉ bị ẩn.
+    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument();
+  });
+
+  it('decorative: mang aria-hidden nên biến mất khỏi cây trợ năng', () => {
+    const { container } = render(<RegionTile label="Northern Vietnam" decorative />);
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+  });
 });

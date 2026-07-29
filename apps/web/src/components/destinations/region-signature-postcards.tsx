@@ -46,7 +46,10 @@ export function RegionSignaturePostcards({
                 'motion-reduce:transform-none',
               )}
             >
-              <RegionTile label={card.title} className="absolute inset-0 rounded-none" />
+              {/* `decorative`: nhãn ô sẽ trùng nguyên văn `<h3>` trong
+                  `<figcaption>` bên dưới — đọc hai lần cùng một tên bưu thiếp.
+                  Chữ trong caption mới là thứ mang thông tin. */}
+              <RegionTile label={card.title} decorative className="absolute inset-0 rounded-none" />
               {/* Scrim từ đáy lên — caption đọc được (đo 11.19:1) mà ô vẫn thấy
                   được là một mảng màu, không bị phủ kín. */}
               <div

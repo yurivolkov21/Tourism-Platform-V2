@@ -107,13 +107,28 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const stats: RegionStat[] = [];
   if (glance && currency) {
     stats.push({ value: formatMoney(glance.fromPrice, currency), label: t.statLabels.from });
-    // `Math.max` trên mảng rỗng trả -Infinity, nhưng `glance` khác null đã bảo
-    // đảm có ít nhất một tour nên mảng này không rỗng.
-    const longest = Math.max(...tours.map((tour) => tour.durationDays));
-    stats.push({
-      value: messages.toursPage.durationValue(longest),
-      label: t.statLabels.longest,
-    });
+
+    // "Longest trip" phải là chuyến RIÊNG CỦA VÙNG: mọi điểm đến của nó đều nằm
+    // trong vùng đang xem. `toursInRegion()` gom theo `some()` nên nó cũng kéo
+    // vào tour XUYÊN VÙNG — `north-to-south-classic` dài 12 ngày nhưng chạm cả
+    // ba vùng, và in "12 days" trên trang miền Bắc là quảng cáo một chuyến mà
+    // phần lớn thời gian ở nơi khác. Lọc `every()` cho miền Bắc 8 ngày
+    // (`northern-highlands-loop`), đúng nghĩa "chuyến dài nhất Ở ĐÂY".
+    //
+    // Không có tour riêng nào (nhánh có thật khi gắn API: một vùng mới chỉ được
+    // ghé qua bởi tour liên vùng) thì BỎ HẲN ô này — mượn số của tour xuyên vùng
+    // là nói sai, còn in "0 days" thì vô nghĩa.
+    const regionSlugs = new Set(places.map((place) => place.slug));
+    const exclusive = tours.filter((tour) =>
+      tour.destinations.every((dest) => regionSlugs.has(dest.slug)),
+    );
+    if (exclusive.length > 0) {
+      const longest = Math.max(...exclusive.map((tour) => tour.durationDays));
+      stats.push({
+        value: messages.toursPage.durationValue(longest),
+        label: t.statLabels.longest,
+      });
+    }
     // `difficulties` đã được `regionGlance()` sắp theo bậc tăng dần nên phần tử
     // cuối là bậc nặng nhất. Mảng rỗng (mọi tour có `difficulty` null — nhánh có
     // thật khi gắn API) thì bỏ hẳn ô này thay vì in "undefined".
@@ -174,7 +189,11 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         eyebrow={signature.eyebrow}
         heading={signature.heading}
         body={signature.body}
-        points={signature.points}
+        // `points` giờ CHỈ có ở copy miền Bắc — vùng duy nhất dùng biến thể
+        // `stats` (hai biến thể kia không render danh sách gạch đầu dòng, nên
+        // để chúng có `points` là nuôi copy chết). Vùng khác rơi vào nhánh
+        // fallback này thì khu vẫn dựng, chỉ khuyết danh sách.
+        points={'points' in signature ? signature.points : []}
         stats={stats}
       />
     );
@@ -196,7 +215,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
 
       {/* ── Khu 1 · Hero ── */}
       <Reveal>
-        <RegionHero region={region} />
+        <RegionHero region={region} tagline={t.regions[region.key].tagline} />
       </Reveal>
 
       {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng ── */}

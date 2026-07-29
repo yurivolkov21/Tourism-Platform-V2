@@ -2066,10 +2066,23 @@ Thay TOÀN BỘ khối `regionPage` hiện có bằng khối dưới. Giữ nguy
 Run:
 
 ```bash
-for p in "Hà Giang" "Lan Hạ" "Fansipan" "Pù Luông" "Mã Pí Lèng" "Củ Chi" "Marble Mountains"; do printf "%s=%s\n" "$p" "$(grep -c "$p" libs/shared/i18n/src/lib/messages.ts)"; done
+FILTERED=$(awk '/^  mobile: \{/{skip=1} skip&&/^  \},$/{skip=0;next} !skip' libs/shared/i18n/src/lib/messages.ts | grep -vE '^[[:space:]]*(//|\*|/\*)')
+for p in "Hà Giang" "Lan Hạ" "Fansipan" "Pù Luông" "Mã Pí Lèng" "Củ Chi" "Marble Mountains"; do printf "%s=%s\n" "$p" "$(printf '%s\n' "$FILTERED" | grep -c "$p")"; done
 ```
 
-Expected: cả bảy `=0`. (Khối `mobile:` là nợ P5 riêng — nếu nó khớp thì báo, đừng sửa.)
+Expected: cả bảy `=0`.
+
+⚠️ Lệnh phải LOẠI TRỪ dòng comment và khối `mobile:`, đúng cách spec §10 đã phát
+biểu lại — bản đầu (`grep -c` thẳng cả file) **không bao giờ thoả được**, vì:
+
+- Step 1 ngay trên đây BẮT viết khối comment *có nêu tên* cả bảy địa danh để nói
+  rõ đã cắt gì (`// … 'Hà Giang' (+ Mã Pí Lèng, 350km Loop), 'Fansipan', …`), nên
+  cổng tự mâu thuẫn với chính task sinh ra nó;
+- `mobile:` là nợ P5 riêng (`location: 'Hà Giang, Việt Nam'` trong testimonial) —
+  spec §8 #4 nói rõ đừng sửa.
+
+Đây là lỗi CỦA PLAN và đã dính một lần ở Task 2. Cổng chỉ được đếm **chuỗi
+user-facing của `destinationsPage` · `regionPage` · `nav`**, đúng như §10 khai.
 
 - [ ] **Step 3: Viết test thất bại cho `lib/region-theme.ts`**
 

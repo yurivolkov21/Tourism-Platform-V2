@@ -158,9 +158,11 @@ export interface MockRegion {
       token `[data-region='…']`, còn slug là chuyện SEO — trộn lại mới là nợ. */
   slug: string;
   name: string;
-  tagline: string;
   // `tourCount` ĐÃ XOÁ (28/07): viết tay và sai (khai 24/27/17, thật 6/6/6). Số
   // tour của một vùng dẫn xuất bằng `toursInRegion()` ở lib/regions.ts.
+  // `tagline` ĐÃ XOÁ (29/07): có HAI nguồn cho cùng một câu — field này và
+  // `messages.regionPage.regions[key].tagline`. Hero đọc i18n (luật 7: copy
+  // user-facing tập trung ở `@tourism/i18n`), nên field mock là nguồn chết.
 }
 
 export interface MockTestimonial {

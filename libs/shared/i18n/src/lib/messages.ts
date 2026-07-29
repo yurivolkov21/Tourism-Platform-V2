@@ -746,8 +746,6 @@ export const messages = {
       longest: 'Longest trip',
       hardest: 'Hardest grade',
       styles: 'Trip styles',
-      dayTrips: 'Trips done in a day',
-      places: 'Places',
     },
     // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
     // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
@@ -829,11 +827,8 @@ export const messages = {
           eyebrow: 'Signature',
           heading: 'The heritage trail',
           body: 'Few stretches of Vietnam hold so much history in so little distance. Follow the thread of empires and trade from the citadel to the old port.',
-          points: [
-            'The walled citadel and royal tombs of Huế',
-            'Lantern-lit Hội An and the Thu Bồn river',
-            'The Chăm sanctuary of Mỹ Sơn',
-          ],
+          // KHÔNG có `points` ở đây: biến thể `timeline` không render chúng.
+          // Chỉ biến thể `stats` (miền Bắc) có danh sách gạch đầu dòng.
           timeline: [
             {
               title: 'Huế',
@@ -879,11 +874,8 @@ export const messages = {
           eyebrow: 'Signature',
           heading: 'Life on the water',
           body: 'In the south, the river is the road. Slow down to the rhythm of the delta and the islands, where days unfold on boats and beaches.',
-          points: [
-            'Dawn floating markets on the Mekong Delta',
-            'Riverside mornings and orchard villages',
-            'Island hopping around Phú Quốc',
-          ],
+          // KHÔNG có `points` ở đây: biến thể `postcards` không render chúng.
+          // Chỉ biến thể `stats` (miền Bắc) có danh sách gạch đầu dòng.
           postcards: [
             { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
             { title: 'Sài Gòn', caption: 'City energy & history' },
