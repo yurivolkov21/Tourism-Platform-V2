@@ -255,7 +255,42 @@ vùng có màu riêng, cộng lối đi tiếp vào từng vùng.
 
 ### 5.2 `/destinations/[region]`
 
-Thứ tự khu: **hero tint → dải at-a-glance → PLACES IN THIS REGION → TRIPS**.
+**Sửa 29/07 — user duyệt bốn quyết định trước khi dựng (Task 5).** Bản 28/07 dưới
+đây quy trang vùng về bốn khu xếp chồng. Rà lại trước khi dựng thì bản đó mang đúng
+rủi ro đã giết `/destinations` vòng một: một dải số liệu rời + ba thẻ cạnh nhau là
+hình dạng user đã bác bằng chữ *"3 cards vô hồn"*. Bốn điểm chốt lại:
+
+| # | Quyết định | Thay cho | Vì sao |
+| --- | --- | --- | --- |
+| 1 | Dải at-a-glance nằm **TRONG hero**, thành rail đáy trên chính nền `--region-hero` | dải riêng dưới hero | Vừa đáp xuống là màu vùng + đúng ba con số *phân biệt được* vùng đến cùng lúc. Bớt một băng ngang; ba con số ở lại trong ngữ cảnh màu vùng thay vì trôi trên nền trắng |
+| 2 | PLACES là **3 hàng rộng, kẻ mảnh** (tên cỡ lớn · `description` · số tour · mũi tên), cả hàng là link | 3 thẻ cạnh nhau | Khác hẳn dải ảnh full-bleed — **chữ ký của trang index** — nên hai trang không đọc thành bản sao; vẫn hiện đủ 9 câu `description` |
+| 3 | **Có** băng CTA cuối trên nền `--region-hero`, dùng `enquiryCta.regionHeading(region)` | (bản cũ không nói) | Trang mở và đóng cùng một màu vùng. Khác hẳn CTA vừa bị bỏ ở `/destinations`: cái đó là vài dòng chữ căn giữa trên `bg-muted/30` nhạt sát footer, còn đây là một băng thật và heading nói đúng tên vùng |
+| 4 | **Có** JSON-LD `BreadcrumbList` | (bản cũ chỉ canonical + OG) | Nexora có; v2 mới chỉ `/blog/[slug]` có — và ở cụm Blog nó **rơi mất từ lúc viết plan**, final review mới bắt (I1). Trang vùng có breadcrumb 3 cấp hiện hữu và sắp vào sitemap |
+
+**`region.tagline` là tài sản thứ tư đang nằm không** (phát hiện 29/07): 3 chuỗi
+trong `mocks/regions.ts`, **grep toàn repo = 0 consumer**. Nexora dùng nó ở
+`RegionHero`. Task 5 là consumer đầu tiên — tagline làm phụ đề hero, còn
+`regionPage.regions[key].intro` mở khu PLACES (không nhét cả hai vào hero).
+
+Thứ tự khu chốt: **hero tint (kèm rail at-a-glance) → PLACES (intro + 3 hàng) →
+TRIPS (lưới `TourCard`) → băng CTA vùng**.
+
+Đối chiếu Nexora cho riêng trang này (luật 10) — họ có 9 khu / 765 dòng:
+
+| Khoản Nexora | v2 | Phân loại |
+| --- | --- | --- |
+| `RegionHero` (ảnh cover + scrim + breadcrumb + name + tagline) | `--region-hero` + `TopoPattern` + breadcrumb + name + tagline | **làm khác mà tương đương** (quyết định 2: không ảnh) |
+| `RegionIntro` (intro + intro2 + tags *best for* **hardcode** + bento 3 ảnh + CTA) | 1 câu `intro`; tags → **dẫn xuất** thành trip styles trong rail | **v2 tốt hơn** ở tags; cố ý bỏ bento (placeholder xếp khảm là ô trống, bài học `destination-tile`) |
+| `RegionHighlights` · `RegionSignature` ×3 biến thể | rail at-a-glance dẫn xuất | **v2 tốt hơn** — số thật thay `350km` / `3,143m Fansipan` bịa |
+| `RegionTours` (tab lọc theo địa điểm + phân trang 8) | lưới 6 `TourCard`, không lọc trong trang | **cố ý bỏ** — `/tours?destinations=<slug>` đã là trang lọc thật và mỗi hàng PLACES trỏ thẳng vào đó; spec §1 loại lọc khỏi phạm vi |
+| `Gallery` 10 ảnh · `ValueProps` | bỏ | **cố ý bỏ** (§7 đã xoá copy, §8 #1 ghi nợ media) |
+| `EnquiryCta` `regionHeading` | có (quyết định 3) | parity |
+| `BreadcrumbJsonLd` | có (quyết định 4) | parity |
+
+---
+
+*Bản 28/07 dưới đây giữ lại làm bản ghi lịch sử.* Thứ tự khu:
+**hero tint → dải at-a-glance → PLACES IN THIS REGION → TRIPS**.
 
 **Hero: `--region-deep` phải chuẩn hoá độ tối trước khi dùng.** Đo được:
 

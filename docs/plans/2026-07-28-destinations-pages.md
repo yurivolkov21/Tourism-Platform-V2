@@ -1116,30 +1116,53 @@ Kiểm cổng 3000 rồi chụp ảnh cả **light và dark**, gửi user. Chờ
 
 ### Task 5: `/destinations/[region]` — trang vùng
 
+> **Bản 29/07.** User duyệt bốn quyết định trước khi dựng (spec §5.2 "Sửa 29/07"):
+> (1) dải at-a-glance nằm **trong hero** thành rail đáy, không phải băng riêng ·
+> (2) PLACES là **3 hàng rộng kẻ mảnh**, không phải 3 thẻ · (3) **có** băng CTA
+> cuối trên nền `--region-hero` · (4) **có** JSON-LD `BreadcrumbList`.
+> Bản Task 5 cũ (4 khu xếp chồng, 3 thẻ) đã bị thay — đừng quay lại nó.
+
 **Files:**
 
 - Create: `apps/web/src/components/destinations/region-glance.tsx`
 - Create: `apps/web/src/components/destinations/region-glance.spec.tsx`
 - Create: `apps/web/src/components/destinations/place-card.tsx`
+- Create: `apps/web/src/components/destinations/place-card.spec.tsx`
 - Create: `apps/web/src/app/(site)/destinations/[region]/page.tsx`
 
 **Interfaces:**
 
-- Consumes: `regionGlance`, `regionBySlug`, `REGIONS`, `toursInRegion`,
-  `destinationsInRegion` (Task 2); `formatMoney` từ `@/lib/tours`
-- Produces: `RegionGlanceBar({ glance })` — `glance: RegionGlance`;
-  `PlaceCard({ destination })` — `destination: MockDestination`
+- Consumes: `regionGlance`, `regionBySlug`, `toursInRegion`, `destinationsInRegion`,
+  type `RegionGlance` (Task 2, `@/lib/regions`) · `REGIONS` (`@/mocks/regions`) ·
+  `formatMoney` (`@/lib/tours`) · `TourCard` (`@/components/tours/tour-card`) ·
+  `SectionEyebrow` (`@/components/home/section-eyebrow`) · `Reveal`
+  (`@/components/motion/reveal`) · `TopoPattern` (`@/components/topo-pattern`) ·
+  `ButtonLink` (`@tourism/ui/components/button-link`) · `absoluteUrl` (`@/lib/site`)
+- Produces: `RegionGlanceBar({ glance, currency })` — `glance: RegionGlance`,
+  `currency: string`; `PlaceCard({ destination })` — `destination: MockDestination`
+
+⚠️ **Chữ ký hàm `@/lib/regions`: `regions` LUÔN là tham số đầu.** Gọi
+`regionBySlug(REGIONS, slug)`, `destinationsInRegion(REGIONS, DESTINATIONS, key)`,
+`toursInRegion(REGIONS, DESTINATIONS, TOURS, key)`, `regionGlance(tours)`.
+
+**Bốn tài sản Task 5 là consumer ĐẦU TIÊN** — không cái nào cần tạo mới:
+`--region-hero` (Task 1) · `region.tagline` (`mocks/regions.ts`, **0 consumer toàn
+repo**) · `messages.enquiryCta.regionHeading(region)` · gần trọn
+`messages.regionPage` (mới chỉ `regions[key].intro` được `RegionGroup` dùng).
 
 - [ ] **Step 1: Viết test thất bại cho `RegionGlanceBar`**
+
+Tạo `apps/web/src/components/destinations/region-glance.spec.tsx`:
 
 ```tsx
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import type { RegionGlance } from '@/lib/regions';
 import { RegionGlanceBar } from './region-glance';
 
-const GLANCE = {
+const GLANCE: RegionGlance = {
   fromPrice: '68.00',
-  difficulties: ['EASY', 'MODERATE', 'CHALLENGING'] as const,
+  difficulties: ['EASY', 'MODERATE', 'CHALLENGING'],
   categories: [
     { slug: 'cruises', name: 'Cruises' },
     { slug: 'trekking', name: 'Trekking' },
@@ -1148,13 +1171,13 @@ const GLANCE = {
 
 describe('RegionGlanceBar', () => {
   it('in giá "từ" đã format, KHÔNG in chuỗi thô', () => {
-    render(<RegionGlanceBar glance={{ ...GLANCE, difficulties: [...GLANCE.difficulties] }} currency="USD" />);
+    render(<RegionGlanceBar glance={GLANCE} currency="USD" />);
     expect(screen.getByText('$68')).toBeInTheDocument();
     expect(screen.queryByText('68.00')).not.toBeInTheDocument();
   });
 
-  it('phổ ≥2 bậc in dạng khoảng', () => {
-    render(<RegionGlanceBar glance={{ ...GLANCE, difficulties: [...GLANCE.difficulties] }} currency="USD" />);
+  it('phổ ≥2 bậc in dạng khoảng đầu → cuối', () => {
+    render(<RegionGlanceBar glance={GLANCE} currency="USD" />);
     expect(screen.getByText('Easy → Challenging')).toBeInTheDocument();
   });
 
@@ -1164,45 +1187,140 @@ describe('RegionGlanceBar', () => {
     expect(screen.queryByText(/→/)).not.toBeInTheDocument();
   });
 
-  it('KHÔNG in số tour và KHÔNG in khoảng ngày', () => {
-    // Cả hai bằng nhau ở cả ba vùng (6/6/6 và 1–12) nên chúng là trang trí.
-    render(<RegionGlanceBar glance={{ ...GLANCE, difficulties: [...GLANCE.difficulties] }} currency="USD" />);
-    expect(screen.queryByText(/trips?$/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/days/)).not.toBeInTheDocument();
+  // Thay bản cũ dùng `queryByText(/trips?$/)`: component không bao giờ render
+  // chữ đó nên phép phủ định luôn đúng dù code làm gì — xanh mà không canh.
+  // Khẳng định DANH SÁCH NHÃN thì thêm mục thứ tư (số tour, khoảng ngày) là đỏ.
+  it('ĐÚNG BA mục, đúng ba nhãn — không số tour, không khoảng ngày', () => {
+    const { container } = render(<RegionGlanceBar glance={GLANCE} currency="USD" />);
+    const labels = [...container.querySelectorAll('dt')].map((el) => el.textContent);
+    expect(labels).toEqual(['From', 'Difficulty', 'Trip styles']);
   });
 
   it('liệt kê chuyên mục có mặt', () => {
-    render(<RegionGlanceBar glance={{ ...GLANCE, difficulties: [...GLANCE.difficulties] }} currency="USD" />);
+    render(<RegionGlanceBar glance={GLANCE} currency="USD" />);
     expect(screen.getByText(/Cruises/)).toBeInTheDocument();
     expect(screen.getByText(/Trekking/)).toBeInTheDocument();
+  });
+
+  // Nhánh CÓ THẬT khi gắn API: `difficulty` nullable, một vùng mà mọi tour đều
+  // null thì `difficulties` rỗng. Bỏ hẳn mục, không in nhãn treo giá trị rỗng.
+  it('không bậc độ khó nào thì BỎ HẲN mục đó, không in nhãn rỗng', () => {
+    const { container } = render(
+      <RegionGlanceBar glance={{ ...GLANCE, difficulties: [] }} currency="USD" />,
+    );
+    const labels = [...container.querySelectorAll('dt')].map((el) => el.textContent);
+    expect(labels).toEqual(['From', 'Trip styles']);
   });
 });
 ```
 
-- [ ] **Step 2: Chạy test, xác nhận ĐỎ**
+- [ ] **Step 2: Viết test thất bại cho `PlaceCard`**
 
-Run: `cd apps/web && npx vitest run src/components/destinations/region-glance.spec.tsx`
-Expected: FAIL — không resolve `./region-glance`.
+Tạo `apps/web/src/components/destinations/place-card.spec.tsx`:
 
-- [ ] **Step 3: Viết `region-glance.tsx` + `place-card.tsx`**
+```tsx
+import { render, screen } from '@testing-library/react';
+import { describe, expect, it } from 'vitest';
+import type { MockDestination } from '@/mocks/types';
+import { PlaceCard } from './place-card';
 
-`RegionGlanceBar` yêu cầu:
+function dest(overrides: Partial<MockDestination> = {}): MockDestination {
+  return {
+    id: 'id-sa-pa',
+    slug: 'sa-pa',
+    name: 'Sa Pa',
+    country: 'Vietnam',
+    region: 'Northern Vietnam',
+    description: 'Misty rice terraces',
+    tourCount: 3,
+    ...overrides,
+  };
+}
 
-- Nhận `glance: RegionGlance` + `currency: string`; dùng `formatMoney` từ
-  `@/lib/tours` (đừng tự format tiền).
-- Nhãn độ khó lấy từ `messages.toursPage.difficultyLabels` (đã có, đừng khai lại —
-  `TourCard` từng mắc đúng lỗi này).
-- Copy nhãn lấy từ `messages.regionPage.glance`.
+describe('PlaceCard', () => {
+  it('CẢ HÀNG là một link sang trang lọc tour CÓ THẬT', () => {
+    render(<PlaceCard destination={dest()} />);
+    expect(screen.getByRole('link', { name: /Sa Pa/ })).toHaveAttribute(
+      'href',
+      '/tours?destinations=sa-pa',
+    );
+  });
 
-`PlaceCard` yêu cầu: tên + `description` + `tourCount` (dùng
-`messages.destinationsPage.toursLabel`) + link `/tours?destinations=<slug>`.
+  it('HIỆN description — đây là thứ bản 3-thẻ bỏ phí', () => {
+    render(<PlaceCard destination={dest()} />);
+    expect(screen.getByText('Misty rice terraces')).toBeInTheDocument();
+  });
 
-- [ ] **Step 4: Chạy test, xác nhận XANH**
+  it('in số tour DẪN XUẤT, số nhiều', () => {
+    render(<PlaceCard destination={dest()} />);
+    expect(screen.getByText('3 tours')).toBeInTheDocument();
+  });
 
-Run: `cd apps/web && npx vitest run src/components/destinations/region-glance.spec.tsx`
-Expected: PASS, 5 test.
+  it('số ÍT khi địa điểm chỉ có 1 tour', () => {
+    render(<PlaceCard destination={dest({ tourCount: 1 })} />);
+    expect(screen.getByText('1 tour')).toBeInTheDocument();
+  });
 
-- [ ] **Step 5: Viết `app/(site)/destinations/[region]/page.tsx`**
+  // `description` nullable trong contract (`DestinationSchema`) — không render
+  // đoạn rỗng, và không in chữ "null".
+  it('description null thì bỏ hẳn đoạn, không in "null"', () => {
+    render(<PlaceCard destination={dest({ description: null })} />);
+    expect(screen.queryByText(/null/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Sa Pa/ })).toBeInTheDocument();
+  });
+});
+```
+
+- [ ] **Step 3: Chạy cả hai, xác nhận ĐỎ**
+
+Run: `cd apps/web && npx vitest run src/components/destinations/region-glance.spec.tsx src/components/destinations/place-card.spec.tsx`
+Expected: FAIL — không resolve `./region-glance` và `./place-card`.
+
+- [ ] **Step 4: Viết `region-glance.tsx`**
+
+Rail at-a-glance ĐẶT TRONG hero (quyết định 1), nên nó render trên nền
+`--region-hero` bên trong scope `dark`.
+
+- Nhận `glance: RegionGlance` + `currency: string`. Dùng `formatMoney` từ
+  `@/lib/tours` — **đừng tự format tiền**.
+- Nhãn độ khó lấy từ `messages.toursPage.difficultyLabels` — **đừng khai lại**
+  bảng nhãn thứ hai (`TourCard` từng mắc đúng lỗi này).
+- Copy nhãn lấy từ `messages.regionPage.glance` (`fromLabel` · `difficultyLabel` ·
+  `categoriesLabel` · `difficultyRange`). Không chuỗi inline.
+- Đánh dấu bằng `<dl>` với cặp `<dt>` (nhãn) / `<dd>` (giá trị) — cùng khuôn
+  `know-before-you-go.tsx` đã dùng, và là thứ test Step 1 đếm.
+- Phổ độ khó: 1 bậc in một chữ; ≥2 bậc in `difficultyRange(đầu, cuối)`. Mảng rỗng
+  → **bỏ hẳn cặp `<dt>/<dd>` đó**.
+- Chuyên mục: nối `name` bằng dấu ` · ` (cùng dấu phân cách mà `TourCard` dùng cho
+  hàng duration · difficulty).
+- Bố cục: hàng ngang cuộn được ở hẹp, `flex-wrap` ở rộng; ngăn cách bằng
+  `border-t border-border` phía trên rail.
+
+- [ ] **Step 5: Viết `place-card.tsx`**
+
+Một HÀNG rộng (quyết định 2), **không phải thẻ có khung** — dải ảnh full-bleed và
+thẻ có khung đều là hình dạng của trang khác.
+
+- Gốc là `<a href={`/tours?destinations=${destination.slug}`}>` bọc CẢ hàng, có
+  `group` + `relative`. Đúng một link mỗi hàng.
+- Nội dung: tên (`font-heading`, `text-2xl md:text-3xl`, `text-foreground`) ·
+  `description` (`text-muted-foreground`) · `messages.destinationsPage.toursLabel(
+  destination.tourCount)` · `ArrowRightIcon` dịch phải khi hover.
+- `description === null` → không render đoạn đó.
+- Tint hover: một `<div aria-hidden>` phủ tuyệt đối, `style={{ background:
+  'var(--region-primary)' }}`, `opacity-0` → `group-hover:opacity-[0.06]
+  group-focus-visible:opacity-[0.06]`, có `transition-opacity duration-300` và
+  `motion-reduce:transition-none`. **Không** đổi màu chữ khi hover — nền phớt 6%
+  không đủ đổi nền để chữ phải theo.
+- Vạch ngăn giữa các hàng do phía gọi lo (`divide-y divide-border` trên container),
+  **không** để `PlaceCard` tự vẽ viền — nếu không hàng cuối thừa một vạch.
+
+- [ ] **Step 6: Chạy test, xác nhận XANH**
+
+Run: `cd apps/web && npx vitest run src/components/destinations/region-glance.spec.tsx src/components/destinations/place-card.spec.tsx`
+Expected: PASS, 6 + 5 = 11 test.
+
+- [ ] **Step 7: Viết `app/(site)/destinations/[region]/page.tsx`**
 
 ```tsx
 export function generateStaticParams() {
@@ -1210,28 +1328,76 @@ export function generateStaticParams() {
 }
 ```
 
-Yêu cầu:
+Bốn khu, theo thứ tự: **hero (kèm rail) → PLACES → TRIPS → băng CTA vùng**.
 
-- `const region = regionBySlug(REGIONS, slug); if (!region) notFound();` —
-  **`regions` là tham số đầu**, đừng gọi `regionBySlug(slug)`.
-- `generateMetadata` có `alternates.canonical` + OG, cùng khuôn `/tours/[slug]`.
-- Hero: `<section style={{ background: 'var(--region-hero)' }}>` với
-  `data-region={region.key}` đặt ở **phần tử bọc ngoài** để lớp token gán biến
-  trước khi hero đọc nó. Giữ đúng quy ước: `dark` bọc **nội dung**
-  (`<div className="dark contents">`), KHÔNG đặt lên `<section>`.
-- Thứ tự khu: hero → `RegionGlanceBar` → `placesHeading` + 3 `PlaceCard` →
-  `toursHeading` + lưới `TourCard`.
-- `TourCard` import từ `@/components/tours/tour-card` — **dùng lại**, không dựng card mới.
-- Nhánh rỗng: `regionGlance` trả `null` → ẩn cả dải; không tour nào → `noTours` +
-  `noToursBody` (link `/contact`).
-- ⚠️ **KHÔNG tạo `loading.tsx`** trong `[region]/`.
+- Server Component thuần. `const region = regionBySlug(REGIONS, slug); if (!region)
+  notFound();` — **`REGIONS` là tham số đầu**, đừng gọi `regionBySlug(slug)`.
+- `generateMetadata` cùng khuôn `/tours/[slug]`: slug lạ → trả
+  `{ title: 'Region not found — Tourism' }` (KHÔNG `notFound()` trong metadata);
+  slug hợp lệ → `title: \`${region.name} — Tourism\``, `description` =
+  `messages.regionPage.regions[region.key].intro`, `alternates.canonical:
+  \`/destinations/${region.slug}\``, `openGraph` với `absoluteUrl(...)`.
+- **`data-region={region.key}` đặt trên MỘT `<div>` bọc toàn trang** — lớp token
+  `[data-region]` phải gán `--region-*` trước khi bất kỳ khu nào đọc chúng.
+- **Hero — khuôn bắt buộc, ba lớp:** `bg` đặt bằng
+  `style={{ background: 'var(--region-hero)' }}` trên chính `<section>` (kèm
+  `text-hero-foreground`), `<TopoPattern className="bg-primary opacity-[0.12]
+  dark:opacity-[0.2]" />` đặt **NGOÀI** scope `dark`, rồi
+  `<div className="dark contents">` bọc **nội dung**. **TUYỆT ĐỐI không** đặt class
+  `dark` lên chính `<section>` — hero sẽ trùng màu nền trang ở dark mode.
+  Padding theo đúng hero `/destinations`: `px-4 pt-36 pb-14 md:px-16 md:pb-16
+  lg:px-24 xl:px-32`.
+- Hero chứa: breadcrumb **3 cấp** (`Home` → `Destinations` (`/destinations`) →
+  `region.name`, dùng `messages.regionPage.backToAll` cho nhãn cấp 2) · `<h1>` =
+  `region.name` · `<p>` = **`region.tagline`** · rồi `<RegionGlanceBar>`.
+  `regionGlance(tours)` trả `null` → **ẩn hẳn rail**, hero vẫn đứng.
+- **PLACES:** `SectionEyebrow` = `messages.destinationsPage.placesLabel` · `<h2>` =
+  `messages.regionPage.placesHeading(region.name)` · đoạn dẫn =
+  `messages.regionPage.regions[region.key].intro` · rồi container
+  `divide-y divide-border border-y border-border` chứa 3 `<PlaceCard>`.
+- **TRIPS:** `SectionEyebrow` = `messages.regionPage.toursCount(n)` · `<h2>` =
+  `messages.regionPage.toursHeading(region.name)` · lưới `TourCard` **dùng lại
+  nguyên khuôn `related-tours.tsx`**: `grid grid-cols-1 gap-x-6 gap-y-8
+  sm:grid-cols-2 lg:grid-cols-3`. Không dựng card mới.
+  Không tour nào → `messages.regionPage.noTours` + `noToursBody` +
+  `ButtonLink` → `/contact` (**không** `Button render={<a/>}`).
+- **Băng CTA cuối:** `<section style={{ background: 'var(--region-hero)' }}
+  className="… text-hero-foreground">` + `<div className="dark contents">` bọc nội
+  dung (cùng khuôn hero, cùng cảnh báo). Nội dung: `<h2>` =
+  `messages.enquiryCta.regionHeading(region.name)` · `<p>` =
+  `messages.enquiryCta.subtitle` · `ButtonLink` = `messages.enquiryCta.cta` →
+  `/contact`. **Không** dựng form ở đây — `/contact` là trang có thật.
+- **JSON-LD `BreadcrumbList`** 3 cấp khớp breadcrumb đang hiện, chép đúng khuôn
+  escape `<` của `/blog/[slug]` (`JSON.stringify(x).replace(/</g, '\\u003c')` +
+  `biome-ignore` kèm lý do).
+- `Reveal` bọc NGOÀI từng khu, đúng cách `/destinations/page.tsx` làm.
+- Cỡ `h2` của khu: `text-3xl md:text-[40px]/12 leading-tight font-medium` — cỡ
+  chuẩn trang marketing. **KHÔNG** `md:text-4xl` (cỡ đó của `/contact`).
+- ⚠️ **KHÔNG tạo `loading.tsx`** trong `destinations/[region]/` lẫn
+  `destinations/`. Một `loading.tsx` ở bất kỳ segment nào trong chuỗi làm slug lạ
+  trả **HTTP 200** kèm giao diện 404 (đã đo ở `/tours/[slug]`); cụm này đưa 4 URL
+  vào sitemap nên hậu quả y hệt.
 
-- [ ] **Step 6: `pnpm gate` rồi commit**
+- [ ] **Step 8: Đo tương phản CẢ BA vùng, CẢ HAI theme**
+
+Đây là bước bắt buộc — cụm này đã dính **4 lỗi tương phản liên tiếp**, và **3 lần
+phép đo sai** (đọc `lab()` bằng regex `rgb()` cho ra 1.16:1 hoàn toàn bịa).
+
+- Phương pháp ĐÚNG: vẽ màu computed lên `canvas` rồi đọc pixel sRGB. **Không**
+  parse chuỗi màu bằng regex — trình duyệt trả `lab()`/`oklch()`.
+- Đo trên `/destinations/northern-vietnam`, `/central-vietnam`, `/southern-vietnam`,
+  ở **light và dark**: chữ hero (h1, tagline) · **mọi `<dt>`/`<dd>` của rail** ·
+  chữ băng CTA cuối. Ngưỡng AA: 4.5:1 chữ thường, 3:1 chữ lớn (≥24px).
+- Ghi con số đo được vào report. Lưu ý giúp: `--region-hero` và scope `dark` đều
+  **bất biến theo theme**, nên cặp nền/chữ trong hero giống hệt nhau ở hai theme —
+  nhưng vẫn phải đo cả hai để bắt được chỗ nào lỡ dùng token theo-theme.
+
+- [ ] **Step 9: `pnpm gate` rồi commit**
 
 ```bash
 pnpm gate
 git add apps/web/src/components/destinations apps/web/src/app/\(site\)/destinations
-git commit -m "feat(web): trang /destinations/[region] — tint chiếm trang + dải số liệu dẫn xuất"
+git commit -m "feat(web): trang /destinations/[region] — tint chiếm trang + rail số liệu dẫn xuất"
 ```
 
 ---
