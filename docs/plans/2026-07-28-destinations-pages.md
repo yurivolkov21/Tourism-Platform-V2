@@ -3072,3 +3072,145 @@ Vì vậy đây phải là **no-op về thị giác** — nếu chụp lại th�
 - [ ] **Step 5:** Rebuild tokens, `pnpm gate`, chụp lại 5 trang × 2 theme và
   **so với ảnh sau 5h** — phải giống hệt.
 
+---
+
+### Task 5j: Ba trang vùng phân hoá — thứ tự khu riêng + khu chữ ký thứ hai
+
+**Vì sao:** sau khi rút tint (ADR-0015), user thấy ba trang *"na ná, chỉ khác mỗi
+vài section"*. Đúng: **5/6 khu giống hệt nhau**. Đo lại dữ liệu thì gốc sâu hơn —
+mock **đối xứng theo thiết kế**: cả ba vùng đều 3 địa điểm · 6 tour · 5 riêng + 1
+xuyên vùng. Hình dạng kho hàng giống nhau nên trang giống nhau.
+
+User chốt **không đụng mock** (đó là đòn bẩy mạnh hơn nhưng kéo theo `/tours`,
+`/about`, `/#gallery` và loạt test khoá 16 tour · 6/6/6 · 25 lượt chạm), mà phân
+hoá bằng **thứ tự khu** + **khu chữ ký thứ hai**.
+
+**Sự thật phân biệt được, đo ngày 29/07:**
+
+| | Bắc | Trung | Nam |
+| --- | --- | --- | --- |
+| ngày (tour riêng) | **1–8** | 1–6, **4/5 là 1 ngày** | **1–3** |
+| độ khó | tới **CHALLENGING** | Easy→Moderate | Easy→Moderate, **1 tour null** |
+| chuyên mục độc quyền | **Trekking** | *(không có)* | **Beaches & islands** |
+| giá | $68–$1.480 | 4 tour dưới $90 | **vào từ $45** |
+| giảm giá | **4/6** | 2/6 | 1/6 |
+| mùa | **hai cửa sổ đứt quãng** | 7 tháng liền | **vắt qua năm** |
+
+**Phân bổ chốt — sáu khu, không khu nào lặp:**
+
+| | Chữ ký 1 (đã có) | Chữ ký 2 (mới) | Khu MỞ đầu sau hero |
+| --- | --- | --- | --- |
+| Bắc | `When to visit` (mùa đứt quãng) | **Phổ ngày × độ khó** | phổ |
+| Trung | Timeline di sản 3 chặng | **Bốn chuyến một ngày** | dải một-ngày |
+| Nam | Ba bưu thiếp phố·sông·đảo | **— cố ý KHÔNG có** | bưu thiếp |
+
+⚠️ **Miền Nam KHÔNG có khu thứ hai, và đó là quyết định, không phải thiếu sót.**
+Nam mỏng dữ liệu nhất; mọi khu thứ hai nghĩ ra đều trùng hình với khu đã có (thang
+giá cũng là một trục — cùng họ với phổ của Bắc) hoặc phải bịa. Ép cho đủ đối xứng
+chính là bẫy vừa làm hỏng phương án màu. Bù lại: **khu bưu thiếp của Nam dựng lớn
+hơn** hai vùng kia. Ghi rõ lý do vào JSDoc để lần sau không ai "bổ sung cho đủ".
+
+**Files:**
+
+- Create: `components/destinations/region-spectrum.tsx` + `.spec.tsx`
+- Create: `components/destinations/region-day-trips.tsx` + `.spec.tsx`
+- Modify: `lib/region-theme.ts` + `.spec.ts` (thêm thứ tự khu)
+- Modify: `components/destinations/region-signature-postcards.tsx` (Nam dựng lớn hơn)
+- Modify: `app/(site)/destinations/[region]/page.tsx`
+- Modify: `libs/shared/i18n/src/lib/messages.ts`
+
+- [ ] **Step 1: i18n cho hai khu mới**
+
+Trong `messages.regionPage`, thêm:
+
+```ts
+    /** Khu phổ ngày × độ khó — CHỈ miền Bắc dựng (vùng duy nhất trải 1–8 ngày và
+        chạm bậc Challenging; hai vùng kia vẽ ra một cụm phẳng). */
+    spectrum: {
+      eyebrow: 'The range',
+      heading: (region: string) => `From a day out to a week on the trail in ${region}`,
+      subtitle:
+        'The north is the only region that runs the whole way from an easy morning to a hard week — pick the depth you want.',
+      /** Nhãn trục. `days` dùng cho mốc trên trục ngang. */
+      daysAxis: 'Trip length',
+      gradeAxis: 'Grade',
+    },
+    /** Khu bốn chuyến một ngày — CHỈ miền Trung dựng. */
+    dayTrips: {
+      eyebrow: 'Out and back',
+      heading: (n: number) => `${n} of these trips fit in a single day`,
+      subtitle:
+        'The centre is compact enough to see properly without packing a bag — leave after breakfast, back before dark.',
+    },
+```
+
+- [ ] **Step 2: `region-theme.ts` — thứ tự khu theo vùng**
+
+Thêm field `openWith: 'spectrum' | 'dayTrips' | 'postcards'` (khu đứng NGAY SAU
+intro) và `secondSignature: 'seasons' | 'timeline' | null`. Ba entry:
+
+- `north`: `openWith: 'spectrum'`, `secondSignature: 'seasons'`
+- `central`: `openWith: 'dayTrips'`, `secondSignature: 'timeline'`
+- `south`: `openWith: 'postcards'`, `secondSignature: null`
+
+Field `signature` cũ **gỡ** — nó bị hai field trên thay thế. Cập nhật
+`region-theme.spec.ts`: gỡ test về `signature`, thêm test khẳng định (a) ba vùng
+`openWith` KHÁC nhau, (b) **chỉ miền Nam** có `secondSignature === null`.
+
+- [ ] **Step 3: `region-spectrum.tsx` — phổ ngày × độ khó**
+
+Nhận prop `tours: MockTourCard[]`. Vẽ **trục ngang theo số ngày**, mỗi chuyến là
+một điểm/nhãn đặt theo `durationDays`; bậc độ khó mã hoá bằng **hình dạng hoặc độ
+đậm**, KHÔNG bằng màu riêng từng bậc (bài học ADR-0015 — và người mù màu phải đọc
+được). Kèm chú giải chữ liệt kê từng bậc, đúng cách `region-seasons.tsx` làm với
+dải tháng.
+
+- Trục dùng thang **tuyến tính theo ngày**, mốc từ 1 tới max. Hai chuyến cùng số
+  ngày phải **không đè lên nhau** (Bắc có hai chuyến 2 ngày) — xếp chồng dọc.
+- Tour **xuyên vùng** (12 ngày) sẽ kéo dài trục ra rất xa và bóp cụm 1–8 lại. Chỉ
+  vẽ **tour RIÊNG của vùng** (`longestTourInRegion` đã có helper cùng định nghĩa);
+  ghi chú lý do trong comment.
+- Mỗi điểm là **link** tới `/tours/<slug>` — trang có thật.
+- `tours` rỗng → không render khu.
+
+Test bắt buộc: đúng số điểm bằng số tour riêng vùng · hai tour cùng số ngày không
+đè nhau · bậc độ khó có nhãn chữ (không chỉ hình) · tour xuyên vùng KHÔNG có mặt.
+
+- [ ] **Step 4: `region-day-trips.tsx` — bốn chuyến một ngày**
+
+Nhận prop `tours: MockTourCard[]` (đã lọc `durationDays === 1` ở tầng trang) và
+render dải ngang gọn: mỗi mục có chuyên mục · tiêu đề · giá · link `/tours/<slug>`.
+Tiêu đề khu dùng `dayTrips.heading(n)` với `n` là **số đếm được**, không gõ tay.
+Ít hơn 2 chuyến → **không render khu** (một "dải" một phần tử là vô nghĩa).
+
+- [ ] **Step 5: Khu bưu thiếp của Nam dựng lớn hơn**
+
+`region-signature-postcards.tsx` nhận thêm prop `emphasis?: boolean`. Bật thì ô cao
+hơn (`aspect-3/4` thay `aspect-4/5`), chữ tiêu đề lớn hơn một bậc, và khoảng đệm
+khu rộng hơn. Chỉ trang Nam truyền `emphasis`. Ghi rõ trong JSDoc **vì sao** — Nam
+cố ý không có khu thứ hai, khu này gánh phần bù.
+
+- [ ] **Step 6: `page.tsx` — lắp theo thứ tự mới**
+
+Thứ tự: hero → intro → **khu `openWith`** → Tours → **khu `secondSignature`** (nếu
+có) → Gallery → Value props.
+
+⚠️ Đặt khu chữ ký thứ hai **SAU** Tours chứ không liền trước: hai khu đặc trưng
+dính nhau thì phần giữa trang thành một cục, và Tours là khu người ta tới để tìm.
+⚠️ `data-flush-footer` vẫn ở khu CUỐI (`region-value-props`). ⚠️ **KHÔNG** `loading.tsx`.
+
+- [ ] **Step 7: Đo tương phản + chụp**
+
+Hai khu mới, 3 vùng × 2 theme. Ngưỡng AA 4.5 (chữ thường) / 3.0 (đồ hoạ, chữ ≥24px).
+Composite nền dưới → nền phần tử → rồi so màu chữ, bằng `canvas` đọc pixel sRGB.
+Không regex `rgb()`. Không lấy pixel rơi trúng nét chữ.
+Chụp **cả ba trang, cả hai theme**, và tự soi: ba trang có mở đầu KHÁC nhau không.
+
+- [ ] **Step 8: Gate rồi commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): ba trang vùng phân hoá — thứ tự khu riêng + chữ ký thứ hai"
+```
+
