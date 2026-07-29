@@ -2631,3 +2631,130 @@ git add apps/web/src
 git commit -m "feat(web): gộp highlights vào khu intro, bỏ bento ảnh trùng gallery"
 ```
 
+---
+
+### Task 5f: Chuẩn hoá header khu cho cả trang vùng theo quy ước Home/About/Contact
+
+**Vì sao:** user duyệt tới khu intro và chỉ ra header/typography lệch chuẩn site, yêu
+cầu **đo từ Home/About/Contact rồi áp đúng thông số**. Đo được (29/07):
+
+| Thứ | Chuẩn site | Bằng chứng |
+| --- | --- | --- |
+| Eyebrow khu | `SectionEyebrow` | **21 component** dùng |
+| `h2` khu | `font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12` | 12/14 |
+| eyebrow → h2 | `mt-4` | 7/12 |
+| h2 → đoạn dẫn | `mt-2 text-pretty text-muted-foreground` | 9 lần |
+| Container | `mx-auto max-w-7xl` | 23 lần |
+| Lưới 2 cột | `gap-12 lg:grid-cols-2 lg:gap-16` | 2 lần |
+
+Trang vùng: **0/6 khu** dùng `SectionEyebrow`, và **3 khu Signature tự chế eyebrow**
+bằng `font-mono text-xs tracking-widest uppercase` — port thẳng từ Nexora, không phải
+quy ước repo. User chốt: **chuẩn hoá cả 5 khu một lượt** (hero miễn — nó có badge pill
+riêng, đúng như `AboutHero` và `ContactHero` cũng không dùng `SectionEyebrow`), và
+**bỏ vạch accent `h-1 w-12`** (chấm vuông của eyebrow đã là dấu accent của site).
+
+**Files:**
+
+- Modify: `libs/shared/ui/src/components/…` **KHÔNG** — `SectionEyebrow` nằm ở
+  `apps/web/src/components/home/section-eyebrow.tsx`. Sửa file đó (thêm `tone`).
+- Modify: `components/destinations/region-intro.tsx` · `region-signature-itinerary.tsx`
+  · `region-signature-timeline.tsx` · `region-signature-postcards.tsx` ·
+  `region-tours.tsx` · `region-gallery.tsx` · `region-value-props.tsx`
+- Modify: `components/destinations/region-tours.spec.tsx` (stub `IntersectionObserver`)
+- Modify: `libs/shared/i18n/src/lib/messages.ts` (3 nhãn eyebrow mới)
+
+- [ ] **Step 1: `SectionEyebrow` — thêm biến thể `onMedia`**
+
+⚠️ **Đây là bẫy đã đo:** component hardcode `bg-foreground` + `text-foreground`, mà
+`--foreground` **lật theo theme**. Khu `We've got you covered` có nền
+`var(--region-hero)` — tối **cố định, KHÔNG lật**. Đặt eyebrow mặc định lên đó thì ở
+**light mode** chữ thành tối-trên-tối. Đây đúng lớp lỗi cụm này đã dính 5 lần.
+
+Thêm prop `tone?: 'default' | 'onMedia'`:
+- `'default'` (mặc định): giữ **byte-identical** `bg-foreground` / `text-foreground` —
+  21 chỗ đang dùng không được đổi một pixel nào.
+- `'onMedia'`: `bg-on-media` / `text-on-media` (token **cố định**, đúng cặp với nền tối
+  cố định).
+
+Thêm test cho cả hai chế độ vào một spec cạnh component (nếu chưa có spec thì tạo).
+Spec render `SectionEyebrow` → **phải stub `IntersectionObserver` cục bộ trong chính
+file đó** (nó dùng `whileInView`; dời stub lên `vitest.setup.ts` chung đã đo là làm
+**19 test ở 3 file khác gãy**).
+
+- [ ] **Step 2: Ba nhãn eyebrow mới trong `messages.regionPage`**
+
+```ts
+    /** Eyebrow các khu — quy ước `SectionEyebrow` của site (21 component dùng).
+        Khu Signature dùng lại `regions[key].signature.eyebrow` đã có; khu Tours
+        dùng SỐ TOUR dẫn xuất, đúng cách `region-group.tsx` làm ở trang index. */
+    introEyebrow: 'Overview',
+    galleryEyebrow: 'Gallery',
+    valuePropsEyebrow: 'How we travel',
+```
+
+- [ ] **Step 3: Áp header chuẩn cho 5 khu**
+
+Khuôn dùng chung cho MỌI khu: `SectionEyebrow` → `<h2 className="mt-4 font-heading
+text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">`
+→ đoạn dẫn `<p className="mt-2 text-pretty text-muted-foreground">` (nếu khu có).
+
+| Khu | Eyebrow | `tone` |
+| --- | --- | --- |
+| `region-intro` | `t.introEyebrow` | default |
+| 3 khu Signature | `eyebrow` sẵn có trong prop | default (nền phớt, sáng) |
+| `region-tours` | `messages.destinationsPage.toursLabel(tours.length)` — DẪN XUẤT | default |
+| `region-gallery` | `t.galleryEyebrow` | default |
+| `region-value-props` | `t.valuePropsEyebrow` | **`onMedia`** |
+
+Ba khu Signature: **xoá `<p className="font-mono text-xs tracking-widest …">{eyebrow}</p>`
+tự chế**, thay bằng `<SectionEyebrow>`. Giữ nguyên các chỗ khác còn dùng
+`font-mono tracking-widest` cho **nhãn dữ liệu** (nhãn ngày của timeline, caption bưu
+thiếp) — đó là nhãn dữ liệu, không phải eyebrow khu.
+
+`region-value-props` hiện căn giữa; giữ căn giữa nhưng eyebrow là `inline-flex` nên
+phải bọc để nó căn giữa theo (`flex justify-center` hoặc `mx-auto w-fit`).
+
+- [ ] **Step 4: `region-intro` — bỏ vạch accent, sửa nhịp dọc**
+
+- **Xoá** khối `<div aria-hidden style={{ background: 'var(--region-primary)' }}
+  className="mt-5 h-1 w-12 rounded-full" />`.
+- Nhịp dọc theo chuẩn: eyebrow → `mt-4` h2 → `mt-2` đoạn `intro` → `mt-4` đoạn `intro2`.
+  (Đoạn `intro` bỏ `text-lg`? **KHÔNG** — `mt-4 text-lg text-pretty text-muted-foreground`
+  là biến thể có thật của site, 3 lần dùng. Giữ `text-lg` cho `intro`, nhưng đổi
+  `mt-5` → `mt-2` cho khớp khoảng cách h2→đoạn dẫn.)
+- Lưới hai cột: `gap-10` → **`gap-12`**, giữ `lg:gap-16`.
+
+- [ ] **Step 5: `region-tours.spec.tsx` — stub `IntersectionObserver`**
+
+Khu Tours giờ render `SectionEyebrow` (dùng `whileInView`) nên spec sẽ gãy nếu thiếu
+stub. Thêm stub **cục bộ trong chính file spec**, copy khuôn từ
+`components/destinations/region-group.spec.tsx`. **Đừng** dời lên `vitest.setup.ts`.
+
+- [ ] **Step 6: Đo tương phản eyebrow trên MỌI nền nó xuất hiện**
+
+Bắt buộc — đây là bước bắt lỗi của Step 1. Đo chữ + chấm vuông của `SectionEyebrow` ở:
+nền trang (`region-intro`, `region-tours`, `region-gallery`) · nền phớt
+`color-mix(--region-surface, --background 88%)` (3 khu Signature) · nền
+`var(--region-hero)` (`region-value-props`, `tone="onMedia"`).
+**Cả 3 vùng × cả 2 theme.** Ngưỡng AA 4.5 cho chữ eyebrow (cỡ `text-sm`).
+
+Cách đúng: composite nền dưới → nền phần tử (kể cả alpha) → rồi mới so với màu chữ,
+tất cả bằng `canvas` đọc pixel sRGB. **Không** regex `rgb()`. Không lấy pixel rơi
+trúng nét chữ.
+
+- [ ] **Step 7: Xác nhận 21 chỗ dùng cũ KHÔNG đổi**
+
+Run: `git diff --stat` — ngoài các file liệt kê ở trên, **không file nào khác được
+đổi**. `section-eyebrow.tsx` chỉ thêm nhánh `tone`, mặc định giữ nguyên chuỗi class cũ.
+
+- [ ] **Step 8: Gate rồi commit**
+
+Nếu cổng 3000 có dev server của user thì chạy `pnpm typecheck` + `pnpm test` + `pnpm lint`
+và ghi rõ bước build còn nợ; nếu trống thì chạy `pnpm gate`.
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+git add apps/web/src libs/shared/i18n
+git commit -m "style(web): chuẩn hoá header 5 khu trang vùng theo quy ước SectionEyebrow"
+```
+
