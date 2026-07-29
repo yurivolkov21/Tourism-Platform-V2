@@ -1,15 +1,20 @@
 import type { MockRegionKey } from '@/mocks/types';
 
 /** Biến thể khu Signature. Tên theo CẤU TRÚC nó dựng, không theo tên vùng —
-    `stats`/`timeline`/`postcards` đọc là biết render gì. */
-export type SignatureVariant = 'stats' | 'timeline' | 'postcards';
+    `itinerary`/`timeline`/`postcards` đọc là biết render gì.
+    `stats` đã BỎ (29/07): dải số liệu chuyển lên hero, nên vùng Bắc cần một khu
+    khác chứ không phải in lại cùng bốn con số ở khu thứ hai. */
+export type SignatureVariant = 'itinerary' | 'timeline' | 'postcards';
 
 export interface RegionTheme {
   signature: SignatureVariant;
   /** Bắc để Signature TRƯỚC Highlights; hai vùng kia ngược lại. Đây là nhánh
       `isAdventure` trong `page.tsx` của Nexora, giữ nguyên. */
   signatureFirst: boolean;
-  /** Chiều cao tối thiểu hero — "mood" riêng từng vùng (Nexora: `heroHeight`). */
+  /** Chiều cao tối thiểu hero — "mood" riêng từng vùng (Nexora: `heroHeight`).
+      Đo bằng `vh` chứ không bằng `rem` (29/07): hero giờ mang breadcrumb, badge,
+      h1, tagline, hai nút và hàng số liệu, nên nó phải chiếm phần lớn màn đầu như
+      `AboutHero`. `rem` cố định làm nội dung tràn trên màn cao và thừa trên màn thấp. */
   heroMinH: string;
   /** Độ đậm scrim hero (Nexora: `heroScrim`). */
   scrim: string;
@@ -26,22 +31,22 @@ export interface RegionTheme {
  */
 const THEMES: Record<MockRegionKey, RegionTheme> = {
   north: {
-    signature: 'stats',
+    signature: 'itinerary',
     signatureFirst: true,
-    heroMinH: 'min-h-[26rem] lg:min-h-[34rem]',
-    scrim: 'from-scrim via-scrim/55 to-scrim/15',
+    heroMinH: 'min-h-[80vh]',
+    scrim: 'from-scrim via-scrim/60 to-scrim/30',
   },
   central: {
     signature: 'timeline',
     signatureFirst: false,
-    heroMinH: 'min-h-80 lg:min-h-96',
-    scrim: 'from-scrim via-scrim/35 to-transparent',
+    heroMinH: 'min-h-[70vh]',
+    scrim: 'from-scrim via-scrim/45 to-scrim/30',
   },
   south: {
     signature: 'postcards',
     signatureFirst: false,
-    heroMinH: 'min-h-80 lg:min-h-96',
-    scrim: 'from-scrim via-scrim/25 to-transparent',
+    heroMinH: 'min-h-[70vh]',
+    scrim: 'from-scrim via-scrim/40 to-scrim/30',
   },
 };
 

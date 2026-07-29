@@ -446,6 +446,9 @@ export const messages = {
     onThisPage: 'On this page',
     breadcrumbLabel: 'Breadcrumb',
     emailPlaceholder: 'you@example.com',
+    /** Nhãn của chỉ báo cuộn dọc mép phải hero. Ở `common` chứ không ở
+        `regionPage`: nó là nhãn giao diện chung, hero nào cũng dùng được. */
+    scrollHint: 'Scroll',
   },
   // Shared pagination aria-labels (tours listing · region tours · blog).
   pagination: {
@@ -698,7 +701,7 @@ export const messages = {
   // mock: Ninh Bình · Mường Hoa · Ô Quy Hồ · Bắc Hà · Hải Vân · Bà Nà · Cần Thơ.
   // Đây là tiêu chí hoàn thành ở spec §10, không phải chuyện gu.
   //
-  // `tags` và dải số liệu của khu Signature KHÔNG nằm ở đây: chúng DẪN XUẤT từ
+  // `tags` và hàng số liệu của hero KHÔNG nằm ở đây: chúng DẪN XUẤT từ
   // `regionGlance()` và `toursInRegion()` — Nexora gõ tay nên thêm/bớt tour là
   // chữ sai âm thầm.
   //
@@ -740,13 +743,17 @@ export const messages = {
       'Street food stalls',
       'Rolling green highlands',
     ],
-    /** Nhãn cho dải số liệu khu Signature. GIÁ TRỊ dẫn xuất ở tầng trang. */
+    /** Nhãn cho hàng số liệu trong hero. GIÁ TRỊ dẫn xuất ở tầng trang. */
     statLabels: {
       from: 'From',
       longest: 'Longest trip',
       hardest: 'Hardest grade',
       styles: 'Trip styles',
     },
+    /** Nhãn từng chặng của timeline itinerary (biến thể `itinerary`, miền Bắc). */
+    dayLabel: (n: number) => `Day ${n}`,
+    /** Dòng ghi công dưới timeline: itinerary này là của MỘT tour có thật. */
+    itineraryNote: (tour: string) => `Day by day on ${tour}`,
     // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
     // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
     // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —
@@ -828,7 +835,7 @@ export const messages = {
           heading: 'The heritage trail',
           body: 'Few stretches of Vietnam hold so much history in so little distance. Follow the thread of empires and trade from the citadel to the old port.',
           // KHÔNG có `points` ở đây: biến thể `timeline` không render chúng.
-          // Chỉ biến thể `stats` (miền Bắc) có danh sách gạch đầu dòng.
+          // Chỉ biến thể `itinerary` (miền Bắc) có danh sách gạch đầu dòng.
           timeline: [
             {
               title: 'Huế',
@@ -875,7 +882,7 @@ export const messages = {
           heading: 'Life on the water',
           body: 'In the south, the river is the road. Slow down to the rhythm of the delta and the islands, where days unfold on boats and beaches.',
           // KHÔNG có `points` ở đây: biến thể `postcards` không render chúng.
-          // Chỉ biến thể `stats` (miền Bắc) có danh sách gạch đầu dòng.
+          // Chỉ biến thể `itinerary` (miền Bắc) có danh sách gạch đầu dòng.
           postcards: [
             { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
             { title: 'Sài Gòn', caption: 'City energy & history' },

@@ -4,6 +4,7 @@ import { CompassIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
+import { RevealLine } from '@/components/motion/reveal-line';
 
 // About §1 (convert 100% lối forged/Hero, da thịt token + bài học #25):
 // hero fullscreen căn TRÁI — badge pill viền accent, heading 3 dòng reveal
@@ -11,7 +12,9 @@ import { CountUp } from '@/components/motion/count-up';
 // accent italic thay ALL-CAPS 900; mô tả + 2 nút (primary glow / outline);
 // hàng 3 stat trên border hairline (CountUp spring thay chữ tĩnh); chỉ báo
 // "Scroll" dọc góc phải. Chạy animate lúc mount (trên màn đầu, không whileInView).
-const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+//
+// `RevealLine` đã TÁCH sang `components/motion/reveal-line.tsx` (29/07) để hero
+// trang vùng dùng chung đúng một khuôn cắt và đúng một đường cong ease.
 
 // Số liệu công ty mock (static-first) — sau này một phần lấy từ API catalog
 // như Nexora about-metrics; phần "năm hoạt động" là hằng số brand.
@@ -20,21 +23,6 @@ const HERO_STATS = [
   { value: 8000, suffix: '+', label: 'Travellers hosted' },
   { value: 98, suffix: '%', label: 'Would go again' },
 ];
-
-function RevealLine({ delay, children }: { delay: number; children: React.ReactNode }) {
-  return (
-    <div className="overflow-hidden">
-      <motion.span
-        className="block"
-        initial={{ y: 120, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.8, delay, ease: REVEAL_EASE }}
-      >
-        {children}
-      </motion.span>
-    </div>
-  );
-}
 
 export function AboutHero() {
   return (

@@ -2,20 +2,23 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { RegionGallery } from '@/components/destinations/region-gallery';
-import { RegionHero } from '@/components/destinations/region-hero';
+import { RegionHero, type RegionStat } from '@/components/destinations/region-hero';
 import { RegionHighlights } from '@/components/destinations/region-highlights';
 import { RegionIntro } from '@/components/destinations/region-intro';
+import { RegionSignatureItinerary } from '@/components/destinations/region-signature-itinerary';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
-import {
-  RegionSignatureStats,
-  type RegionStat,
-} from '@/components/destinations/region-signature-stats';
 import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
 import { RegionTours } from '@/components/destinations/region-tours';
 import { RegionValueProps } from '@/components/destinations/region-value-props';
 import { Reveal } from '@/components/motion/reveal';
 import { regionTheme } from '@/lib/region-theme';
-import { destinationsInRegion, regionBySlug, regionGlance, toursInRegion } from '@/lib/regions';
+import {
+  destinationsInRegion,
+  longestTourInRegion,
+  regionBySlug,
+  regionGlance,
+  toursInRegion,
+} from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
 import { formatMoney } from '@/lib/tours';
 import { DESTINATIONS } from '@/mocks/destinations';
@@ -68,22 +71,22 @@ export async function generateMetadata({
  * Trang vùng `/destinations/[region]` — dựng lại theo TRANG VÙNG THẬT của Nexora
  * (user chốt 29/07 sau khi bác bản Task 5). Bảy khu, một thứ tự:
  *
- *  1. Hero (tile phủ scrim)      5. Tours (chip lọc + lưới, phân trang)
- *  2. Intro (chữ + bento ảnh)    6. Gallery (khảm 10 ô)
- *  3/4. Signature ↔ Highlights   7. Value props (băng cuối, nền vùng)
+ *  1. Hero (tile + scrim, kiểu About)  5. Tours (chip lọc + lưới, phân trang)
+ *  2. Intro (chữ + bento ảnh)         6. Gallery (khảm 10 ô)
+ *  3/4. Signature ↔ Highlights        7. Value props (băng cuối, nền vùng)
  *
  * Khu 8 của Nexora (`Plan your trip`) BỎ HẲN: nó là form gợi ý hành trình, thứ
  * capstone không-doanh-thu này không có backend để đỡ.
  *
  * Thứ tự khu 3/4 LẬT theo `regionTheme(key).signatureFirst`: miền Bắc mở màn
- * bằng băng số liệu tối rồi mới tới ba thẻ highlight; hai vùng kia ngược lại.
+ * bằng timeline itinerary rồi mới tới ba thẻ highlight; hai vùng kia ngược lại.
  * Đây là nhánh `isAdventure` của Nexora, giữ nguyên — nó khiến ba trang vùng
  * đọc khác nhau ngay từ cuộn đầu tiên thay vì chỉ đổi màu.
  *
  * HAI khu của Task 5 đã bị XOÁ cùng component của chúng (`region-glance`,
  * `place-card`): Nexora không có dải "at a glance" lẫn danh sách "places" dạng
  * hàng — địa điểm ở đó là TAB LỌC trong khu Tours. Hàm `regionGlance()` thì GIỮ,
- * nó nuôi hàng chip `tags` của khu intro và dải số liệu của khu signature.
+ * nó nuôi hàng chip `tags` của khu intro, badge pill và hàng số liệu của hero.
  *
  * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai đoạn
  * static-first). `Reveal` tự mang `'use client'` nên bọc được từ đây.
@@ -100,7 +103,12 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const glance = regionGlance(tours);
   const signature = t.regions[region.key].signature;
 
-  // ── Dải số liệu của khu Signature — DẪN XUẤT ở đây, không gõ tay trong i18n.
+  // Chuyến dài nhất RIÊNG của vùng — MỘT định nghĩa nuôi HAI chỗ: ô "Longest
+  // trip" của hàng số liệu và itinerary của khu Signature miền Bắc. Hai bản định
+  // nghĩa song song là hai con số rồi sẽ lệch nhau im lặng.
+  const longestTour = longestTourInRegion(REGIONS, DESTINATIONS, tours, region.key);
+
+  // ── Hàng số liệu của HERO — DẪN XUẤT ở đây, không gõ tay trong i18n.
   // Nexora gõ tay bốn con số này, nên mỗi lần catalogue đổi là chữ sai âm thầm.
   // Mã tiền lấy từ chính tour của vùng, không phải hằng số 'USD' đặt cứng.
   const currency = tours[0]?.currency;
@@ -108,24 +116,12 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   if (glance && currency) {
     stats.push({ value: formatMoney(glance.fromPrice, currency), label: t.statLabels.from });
 
-    // "Longest trip" phải là chuyến RIÊNG CỦA VÙNG: mọi điểm đến của nó đều nằm
-    // trong vùng đang xem. `toursInRegion()` gom theo `some()` nên nó cũng kéo
-    // vào tour XUYÊN VÙNG — `north-to-south-classic` dài 12 ngày nhưng chạm cả
-    // ba vùng, và in "12 days" trên trang miền Bắc là quảng cáo một chuyến mà
-    // phần lớn thời gian ở nơi khác. Lọc `every()` cho miền Bắc 8 ngày
-    // (`northern-highlands-loop`), đúng nghĩa "chuyến dài nhất Ở ĐÂY".
-    //
-    // Không có tour riêng nào (nhánh có thật khi gắn API: một vùng mới chỉ được
+    // Không có chuyến riêng nào (nhánh có thật khi gắn API: một vùng mới chỉ được
     // ghé qua bởi tour liên vùng) thì BỎ HẲN ô này — mượn số của tour xuyên vùng
     // là nói sai, còn in "0 days" thì vô nghĩa.
-    const regionSlugs = new Set(places.map((place) => place.slug));
-    const exclusive = tours.filter((tour) =>
-      tour.destinations.every((dest) => regionSlugs.has(dest.slug)),
-    );
-    if (exclusive.length > 0) {
-      const longest = Math.max(...exclusive.map((tour) => tour.durationDays));
+    if (longestTour) {
       stats.push({
-        value: messages.toursPage.durationValue(longest),
+        value: messages.toursPage.durationValue(longestTour.durationDays),
         label: t.statLabels.longest,
       });
     }
@@ -149,7 +145,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: absoluteUrl('/') },
+      { '@type': 'ListItem', position: 1, name: messages.common.home, item: absoluteUrl('/') },
       {
         '@type': 'ListItem',
         position: 2,
@@ -166,9 +162,14 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   };
 
   // Biến thể Signature chọn bằng CẢ HAI điều kiện — bản đồ vùng→biến thể
-  // (`regionTheme`) VÀ hình dạng copy thật sự có (`'timeline' in signature`).
-  // Chỉ dựa vào bản đồ là hứa một khu mà i18n có thể không có dữ liệu; chỉ dựa
-  // vào copy là để nội dung quyết bố cục. Nexora dùng đúng cặp điều kiện này.
+  // (`regionTheme`) VÀ hình dạng dữ liệu thật sự có. Chỉ dựa vào bản đồ là hứa
+  // một khu mà dữ liệu có thể không có; chỉ dựa vào dữ liệu là để nội dung quyết
+  // bố cục. Nexora dùng đúng cặp điều kiện này.
+  //
+  // Biến thể `itinerary` cần MỘT tour riêng của vùng để lấy hành trình. Không có
+  // (nhánh có thật khi gắn API) thì `signatureNode` là `null` và khu BỎ HẲN —
+  // mượn itinerary của tour xuyên vùng là kể một hành trình phần lớn nằm ngoài
+  // vùng đang xem.
   const signatureNode =
     theme.signature === 'timeline' && 'timeline' in signature ? (
       <RegionSignatureTimeline
@@ -184,21 +185,30 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         body={signature.body}
         postcards={signature.postcards}
       />
-    ) : (
-      <RegionSignatureStats
+    ) : theme.signature === 'itinerary' && longestTour && longestTour.itinerary.length > 0 ? (
+      <RegionSignatureItinerary
         eyebrow={signature.eyebrow}
         heading={signature.heading}
         body={signature.body}
-        // `points` giờ CHỈ có ở copy miền Bắc — vùng duy nhất dùng biến thể
-        // `stats` (hai biến thể kia không render danh sách gạch đầu dòng, nên
-        // để chúng có `points` là nuôi copy chết). Vùng khác rơi vào nhánh
-        // fallback này thì khu vẫn dựng, chỉ khuyết danh sách.
+        // `points` CHỈ có ở copy miền Bắc — vùng duy nhất dùng biến thể
+        // `itinerary` (hai biến thể kia không render danh sách gạch đầu dòng, nên
+        // để chúng có `points` là nuôi copy chết).
         points={'points' in signature ? signature.points : []}
-        stats={stats}
+        tour={{ slug: longestTour.slug, title: longestTour.title }}
+        days={longestTour.itinerary}
       />
-    );
+    ) : null;
 
   const highlightsNode = <RegionHighlights region={region} />;
+
+  // Badge pill của hero: HAI chuyên mục đầu của vùng, nối bằng ` · `. Hai chứ
+  // không phải cả danh sách — miền Bắc có bốn, và bốn chuyên mục trong một viên
+  // pill thì nó dài bằng cả dòng tagline ngay dưới. Vùng chưa có tour nào thì
+  // chuỗi rỗng và hero bỏ hẳn pill.
+  const styles = (glance?.categories ?? [])
+    .slice(0, 2)
+    .map((category) => category.name)
+    .join(' · ');
 
   return (
     // `data-region` đặt trên MỘT div bọc TOÀN trang: lớp token `[data-region]`
@@ -213,10 +223,16 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         }}
       />
 
-      {/* ── Khu 1 · Hero ── */}
-      <Reveal>
-        <RegionHero region={region} tagline={t.regions[region.key].tagline} />
-      </Reveal>
+      {/* ── Khu 1 · Hero — KHÔNG bọc `Reveal`: hero tự chạy animate lúc mount
+          (nó ở màn đầu). Bọc thêm một lớp `whileInView` là hai nhịp chồng nhau,
+          và `Reveal` để `opacity: 0` cho tới khi viewport observer bắn — trên màn
+          đầu thì đó là một khoảnh khắc trắng không lý do. ── */}
+      <RegionHero
+        region={region}
+        tagline={t.regions[region.key].tagline}
+        styles={styles}
+        stats={stats}
+      />
 
       {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng ── */}
       <Reveal>
@@ -227,16 +243,19 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         />
       </Reveal>
 
-      {/* ── Khu 3/4 · Signature ↔ Highlights, thứ tự theo `signatureFirst` ── */}
+      {/* ── Khu 3/4 · Signature ↔ Highlights, thứ tự theo `signatureFirst` ──
+          `signatureNode` có thể là `null` (vùng không có tour riêng để nuôi
+          itinerary) — khi đó KHÔNG bọc `Reveal` quanh nó, vì `Reveal` là một
+          `motion.div` có thật và một cái rỗng vẫn ăn chỗ trong luồng. */}
       {theme.signatureFirst ? (
         <>
-          <Reveal>{signatureNode}</Reveal>
+          {signatureNode ? <Reveal>{signatureNode}</Reveal> : null}
           <Reveal>{highlightsNode}</Reveal>
         </>
       ) : (
         <>
           <Reveal>{highlightsNode}</Reveal>
-          <Reveal>{signatureNode}</Reveal>
+          {signatureNode ? <Reveal>{signatureNode}</Reveal> : null}
         </>
       )}
 
