@@ -230,10 +230,12 @@ select:-webkit-autofill {
  * Đo lại sau khi thêm: trang vùng 127px → 0, `/contact` và `/about` giữ nguyên 128px.
  *
  * ⚠️ Cơ chế này có HAI nửa nằm ở hai file. Nửa kia là thuộc tính
- * `data-flush-footer` trong `app/(site)/destinations/[region]/page.tsx`. Gỡ một
- * nửa thì khoảng trắng quay lại IM LẶNG — bộ test không bắt được, vì Vitest không
- * quét `src/app/**` và jsdom không dựng layout để `:has()` có nghĩa. Canh bằng
- * phép đo trong trình duyệt thật. */
+ * `data-flush-footer` trong `components/destinations/region-value-props.tsx` —
+ * khu CUỐI của `/destinations/[region]` (dấu này ở trên chính `page.tsx` cho tới
+ * 29/07, khi trang được dựng lại theo Nexora và khu cuối tách thành component
+ * riêng). Gỡ một nửa thì khoảng trắng quay lại IM LẶNG — bộ test không bắt được,
+ * vì Vitest không quét `src/app/**` và jsdom không dựng layout để `:has()` có
+ * nghĩa. Canh bằng phép đo trong trình duyệt thật. */
 body:has(main [data-flush-footer]) footer {
   margin-top: 0;
 }

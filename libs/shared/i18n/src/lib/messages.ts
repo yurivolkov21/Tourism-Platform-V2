@@ -719,6 +719,27 @@ export const messages = {
     noToursBody: 'Tell us where you want to go and we will plan something.',
     galleryHeading: (region: string) => `${region} in photos`,
     gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
+    /**
+     * Nhãn 10 ô khảm của khu ảnh — ĐÚNG 10, khớp nhịp `1 lớn · 2×2 · 2×2 · 1 lớn`.
+     *
+     * Mô tả CẢNH chung, cố ý KHÔNG gắn địa danh (Nexora làm y vậy ở
+     * `PLACEHOLDER_SECTIONS`): cùng một danh sách phục vụ cả ba vùng, nên gắn tên
+     * nơi chốn vào đây là hứa một bức ảnh cụ thể mà ô giữ chỗ không có — và ở hai
+     * vùng còn lại thì tên đó còn SAI. Chúng là `aria-label` của ô nên vẫn là chuỗi
+     * user-facing, vì thế ở đây chứ không nằm trong component.
+     */
+    galleryTiles: [
+      'Coastal cliffs above the sea',
+      'Lantern-lit old town',
+      'Terraced rice fields',
+      'Limestone karsts at dawn',
+      'Riverside floating market',
+      'Misty mountain pass',
+      'Fishing boats at sunset',
+      'Temple courtyard',
+      'Street food stalls',
+      'Rolling green highlands',
+    ],
     /** Nhãn cho dải số liệu khu Signature. GIÁ TRỊ dẫn xuất ở tầng trang. */
     statLabels: {
       from: 'From',

@@ -1,16 +1,23 @@
 import { messages } from '@tourism/i18n';
-import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { PlaceCard } from '@/components/destinations/place-card';
-import { RegionGlanceBar } from '@/components/destinations/region-glance';
-import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RegionGallery } from '@/components/destinations/region-gallery';
+import { RegionHero } from '@/components/destinations/region-hero';
+import { RegionHighlights } from '@/components/destinations/region-highlights';
+import { RegionIntro } from '@/components/destinations/region-intro';
+import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
+import {
+  RegionSignatureStats,
+  type RegionStat,
+} from '@/components/destinations/region-signature-stats';
+import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
+import { RegionTours } from '@/components/destinations/region-tours';
+import { RegionValueProps } from '@/components/destinations/region-value-props';
 import { Reveal } from '@/components/motion/reveal';
-import { TopoPattern } from '@/components/topo-pattern';
-import { TourCard } from '@/components/tours/tour-card';
+import { regionTheme } from '@/lib/region-theme';
 import { destinationsInRegion, regionBySlug, regionGlance, toursInRegion } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
+import { formatMoney } from '@/lib/tours';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 import { TOURS } from '@/mocks/tours';
@@ -58,23 +65,28 @@ export async function generateMetadata({
 }
 
 /**
- * Trang vùng `/destinations/[region]` — đích của link "View more" trên
- * `/destinations` (spec §5.2, bản 29/07 sau bốn quyết định của user).
+ * Trang vùng `/destinations/[region]` — dựng lại theo TRANG VÙNG THẬT của Nexora
+ * (user chốt 29/07 sau khi bác bản Task 5). Bảy khu, một thứ tự:
  *
- * BỐN KHU, một thứ tự: hero (kèm rail at-a-glance) → PLACES → TRIPS → băng CTA.
- * Bản Task 5 cũ (4 khu xếp chồng, PLACES là 3 thẻ, không có băng CTA) đã bị
- * thay hẳn:
- *  · Rail số liệu nằm TRONG hero, không phải một băng riêng — nó là ngữ cảnh
- *    của tiêu đề vùng, không phải một khu độc lập.
- *  · PLACES là 3 HÀNG rộng kẻ mảnh — hình dạng thứ ba của cụm (dải ảnh
- *    full-bleed đã là chữ ký `/destinations`, thẻ có khung là của listing), và
- *    là thứ duy nhất còn chỗ cho `description` ở trạng thái nghỉ.
- *  · CÓ băng CTA cuối trên nền `--region-hero` — khác `/destinations` (nơi CTA
- *    bị bỏ vì chỉ là vài dòng chữ trên `bg-muted/30` sát footer); ở đây nó đóng
- *    khung trang bằng đúng màu vùng đã mở đầu.
+ *  1. Hero (tile phủ scrim)      5. Tours (chip lọc + lưới, phân trang)
+ *  2. Intro (chữ + bento ảnh)    6. Gallery (khảm 10 ô)
+ *  3/4. Signature ↔ Highlights   7. Value props (băng cuối, nền vùng)
  *
- * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai
- * đoạn static-first). `Reveal` tự mang `'use client'` nên bọc được từ đây.
+ * Khu 8 của Nexora (`Plan your trip`) BỎ HẲN: nó là form gợi ý hành trình, thứ
+ * capstone không-doanh-thu này không có backend để đỡ.
+ *
+ * Thứ tự khu 3/4 LẬT theo `regionTheme(key).signatureFirst`: miền Bắc mở màn
+ * bằng băng số liệu tối rồi mới tới ba thẻ highlight; hai vùng kia ngược lại.
+ * Đây là nhánh `isAdventure` của Nexora, giữ nguyên — nó khiến ba trang vùng
+ * đọc khác nhau ngay từ cuộn đầu tiên thay vì chỉ đổi màu.
+ *
+ * HAI khu của Task 5 đã bị XOÁ cùng component của chúng (`region-glance`,
+ * `place-card`): Nexora không có dải "at a glance" lẫn danh sách "places" dạng
+ * hàng — địa điểm ở đó là TAB LỌC trong khu Tours. Hàm `regionGlance()` thì GIỮ,
+ * nó nuôi hàng chip `tags` của khu intro và dải số liệu của khu signature.
+ *
+ * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai đoạn
+ * static-first). `Reveal` tự mang `'use client'` nên bọc được từ đây.
  */
 export default async function RegionPage({ params }: { params: Promise<{ region: string }> }) {
   const { region: slug } = await params;
@@ -82,13 +94,38 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   if (!region) notFound();
 
   const t = messages.regionPage;
+  const theme = regionTheme(region.key);
   const places = destinationsInRegion(REGIONS, DESTINATIONS, region.key);
   const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
   const glance = regionGlance(tours);
-  // Mã tiền lấy từ chính tour của vùng, KHÔNG hằng số 'USD' đặt cứng: khi gắn
-  // API mà catalogue đổi tiền tệ thì rail phải đi theo. Vùng chưa có tour nào
-  // thì `glance` cũng đã là null nên rail ẩn hẳn — hai điều kiện luôn cùng nhau.
+  const signature = t.regions[region.key].signature;
+
+  // ── Dải số liệu của khu Signature — DẪN XUẤT ở đây, không gõ tay trong i18n.
+  // Nexora gõ tay bốn con số này, nên mỗi lần catalogue đổi là chữ sai âm thầm.
+  // Mã tiền lấy từ chính tour của vùng, không phải hằng số 'USD' đặt cứng.
   const currency = tours[0]?.currency;
+  const stats: RegionStat[] = [];
+  if (glance && currency) {
+    stats.push({ value: formatMoney(glance.fromPrice, currency), label: t.statLabels.from });
+    // `Math.max` trên mảng rỗng trả -Infinity, nhưng `glance` khác null đã bảo
+    // đảm có ít nhất một tour nên mảng này không rỗng.
+    const longest = Math.max(...tours.map((tour) => tour.durationDays));
+    stats.push({
+      value: messages.toursPage.durationValue(longest),
+      label: t.statLabels.longest,
+    });
+    // `difficulties` đã được `regionGlance()` sắp theo bậc tăng dần nên phần tử
+    // cuối là bậc nặng nhất. Mảng rỗng (mọi tour có `difficulty` null — nhánh có
+    // thật khi gắn API) thì bỏ hẳn ô này thay vì in "undefined".
+    const hardest = glance.difficulties[glance.difficulties.length - 1];
+    if (hardest) {
+      stats.push({
+        value: messages.toursPage.difficultyLabels[hardest],
+        label: t.statLabels.hardest,
+      });
+    }
+    stats.push({ value: String(glance.categories.length), label: t.statLabels.styles });
+  }
 
   // BreadcrumbList 3 cấp KHỚP breadcrumb đang hiện trong hero: Home → All
   // destinations → tên vùng. Escape `<` để chuỗi không thoát khỏi thẻ script —
@@ -113,10 +150,41 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
     ],
   };
 
+  // Biến thể Signature chọn bằng CẢ HAI điều kiện — bản đồ vùng→biến thể
+  // (`regionTheme`) VÀ hình dạng copy thật sự có (`'timeline' in signature`).
+  // Chỉ dựa vào bản đồ là hứa một khu mà i18n có thể không có dữ liệu; chỉ dựa
+  // vào copy là để nội dung quyết bố cục. Nexora dùng đúng cặp điều kiện này.
+  const signatureNode =
+    theme.signature === 'timeline' && 'timeline' in signature ? (
+      <RegionSignatureTimeline
+        eyebrow={signature.eyebrow}
+        heading={signature.heading}
+        body={signature.body}
+        timeline={signature.timeline}
+      />
+    ) : theme.signature === 'postcards' && 'postcards' in signature ? (
+      <RegionSignaturePostcards
+        eyebrow={signature.eyebrow}
+        heading={signature.heading}
+        body={signature.body}
+        postcards={signature.postcards}
+      />
+    ) : (
+      <RegionSignatureStats
+        eyebrow={signature.eyebrow}
+        heading={signature.heading}
+        body={signature.body}
+        points={signature.points}
+        stats={stats}
+      />
+    );
+
+  const highlightsNode = <RegionHighlights region={region} />;
+
   return (
     // `data-region` đặt trên MỘT div bọc TOÀN trang: lớp token `[data-region]`
     // phải gán `--region-*` trước khi bất kỳ khu nào đọc chúng (hero đọc
-    // `--region-hero`, PlaceCard đọc `--region-primary`).
+    // `--region-hero` qua scrim, chip tab đọc `--region-primary`).
     <div data-region={region.key}>
       <script
         type="application/ld+json"
@@ -126,146 +194,49 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         }}
       />
 
-      {/* ── Khu 1 · Hero tint theo vùng + rail at-a-glance ── */}
-      <section
-        style={{ background: 'var(--region-hero)' }}
-        className="relative w-full overflow-hidden px-4 pt-36 pb-14 text-hero-foreground md:px-16 md:pb-16 lg:px-24 xl:px-32"
-      >
-        {/* NGOÀI scope dark — biến thể `dark:` phải đọc theme của TRANG. */}
-        <TopoPattern className="bg-primary opacity-[0.12] dark:opacity-[0.2]" />
-
-        {/* `dark` chỉ bọc NỘI DUNG, KHÔNG đặt lên <section>: nếu đặt lên
-            section thì ở dark mode hero trùng màu nền trang (lỗi đã sửa một lần
-            ở ToursHero và một lần nữa ở hero /destinations — đừng tái diễn). */}
-        <div className="dark contents">
-          <Reveal className="relative z-10 mx-auto max-w-7xl">
-            <nav
-              aria-label="Breadcrumb"
-              className="flex flex-wrap items-center gap-1.5 text-sm text-muted-foreground"
-            >
-              <a href="/" className="transition-colors hover:text-foreground">
-                Home
-              </a>
-              <ChevronRightIcon className="size-3.5" aria-hidden="true" />
-              <a href="/destinations" className="transition-colors hover:text-foreground">
-                {t.backToAll}
-              </a>
-              <ChevronRightIcon className="size-3.5" aria-hidden="true" />
-              <span aria-current="page" className="text-foreground">
-                {region.name}
-              </span>
-            </nav>
-
-            <h1 className="mt-8 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl">
-              {region.name}
-            </h1>
-
-            {/* `tagline` chứ KHÔNG phải `intro`: intro là đoạn dẫn của khu
-                PLACES bên dưới, in cả hai chỗ là lặp nguyên một câu trên cùng
-                một màn hình. */}
-            <p className="mt-4 max-w-2xl text-pretty text-muted-foreground">{region.tagline}</p>
-
-            {glance && currency ? <RegionGlanceBar glance={glance} currency={currency} /> : null}
-          </Reveal>
-        </div>
-      </section>
-
-      {/* ── Khu 2 · PLACES — 3 hàng rộng kẻ mảnh ── */}
+      {/* ── Khu 1 · Hero ── */}
       <Reveal>
-        <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
-          <div className="mx-auto max-w-7xl">
-            <SectionEyebrow>{messages.destinationsPage.placesLabel}</SectionEyebrow>
-            <h2 className="mt-4 max-w-3xl font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
-              {t.placesHeading(region.name)}
-            </h2>
-            {/* Cùng câu `intro` đang hiện dưới header vùng ở `/destinations` —
-                CỐ Ý một nguồn duy nhất, không tạo key i18n thứ hai. */}
-            <p className="mt-3 max-w-2xl text-pretty text-muted-foreground">
-              {t.regions[region.key].intro}
-            </p>
-
-            {/* Vạch ngăn do container vẽ (`divide-y`), không để từng hàng tự vẽ
-                viền dưới — nếu không hàng cuối thừa một vạch. */}
-            <div className="mt-10 divide-y divide-border border-y border-border">
-              {places.map((place) => (
-                <PlaceCard key={place.slug} destination={place} />
-              ))}
-            </div>
-          </div>
-        </section>
+        <RegionHero region={region} />
       </Reveal>
 
-      {/* ── Khu 3 · TRIPS — lưới TourCard, dùng lại nguyên khuôn related-tours ── */}
+      {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng ── */}
       <Reveal>
-        <section className="w-full px-4 pb-16 md:px-16 md:pb-20 lg:px-24 xl:px-32">
-          <div className="mx-auto max-w-7xl">
-            <SectionEyebrow>{t.toursCount(tours.length)}</SectionEyebrow>
-            <h2 className="mt-4 max-w-3xl font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
-              {t.toursHeading(region.name)}
-            </h2>
-
-            {tours.length === 0 ? (
-              // Nhánh có thật khi gắn API (vùng mới chưa có tour publish). Đưa
-              // người đọc sang `/contact` — trang CÓ THẬT, không dựng form ở đây.
-              <div className="mt-6 max-w-2xl">
-                <p className="text-muted-foreground">{t.noTours}</p>
-                <p className="mt-2 text-pretty text-muted-foreground">{t.noToursBody}</p>
-                <ButtonLink href="/contact" className="mt-6">
-                  {messages.enquiryCta.cta}
-                </ButtonLink>
-              </div>
-            ) : (
-              <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-                {tours.map((tour) => (
-                  <TourCard key={tour.slug} tour={tour} />
-                ))}
-              </div>
-            )}
-          </div>
-        </section>
+        <RegionIntro
+          region={region}
+          tags={glance?.categories.map((category) => category.name) ?? []}
+          places={places}
+        />
       </Reveal>
 
-      {/* ── Khu 4 · Băng CTA vùng — đóng khung trang bằng đúng màu đã mở đầu ── */}
+      {/* ── Khu 3/4 · Signature ↔ Highlights, thứ tự theo `signatureFirst` ── */}
+      {theme.signatureFirst ? (
+        <>
+          <Reveal>{signatureNode}</Reveal>
+          <Reveal>{highlightsNode}</Reveal>
+        </>
+      ) : (
+        <>
+          <Reveal>{highlightsNode}</Reveal>
+          <Reveal>{signatureNode}</Reveal>
+        </>
+      )}
+
+      {/* ── Khu 5 · Tours — đích của neo `#tours` ở CTA khu intro ── */}
       <Reveal>
-        {/* `data-flush-footer` là NỬA THỨ HAI của một cơ chế hai nửa; nửa kia là
-            luật `body:has(main [data-flush-footer]) footer` ở cuối `globals.css`.
-            Nó tắt `mt-32` của footer cho RIÊNG trang này.
-            Vì sao cần: 128px margin đó sơn màu `--background`, vô hình ở 12 trang
-            kết bằng khu nền trong suốt, nhưng ở đây nó thành một dải sáng kẹp giữa
-            băng tối này và footer tối. Vì sao không tự xử bằng `-mb-32` tại chỗ:
-            `body` là flex nên margin KHÔNG collapse — đã đo, `-mb-32` không đổi
-            được khoảng cách.
-            Gỡ thuộc tính này thì khoảng trắng quay lại IM LẶNG (Vitest không quét
-            `src/app/**`) — kiểm bằng mắt/đo trong trình duyệt. */}
-        <section
-          data-flush-footer
-          style={{ background: 'var(--region-hero)' }}
-          className="w-full px-4 py-16 text-hero-foreground md:px-16 md:py-20 lg:px-24 xl:px-32"
-        >
-          {/* Cùng cảnh báo với hero: `dark` bọc NỘI DUNG, không đặt lên section. */}
-          <div className="dark contents">
-            <div className="mx-auto flex max-w-2xl flex-col items-center gap-4 text-center">
-              <h2 className="font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
-                {messages.enquiryCta.regionHeading(region.name)}
-              </h2>
-              <p className="text-pretty text-muted-foreground">{messages.enquiryCta.subtitle}</p>
-              {/* `outline` chứ KHÔNG phải variant mặc định, và đây là chỗ ĐO ĐƯỢC
-                  chứ không phải chuyện gu: cặp `--primary-foreground` trên
-                  `--primary` chỉ đạt 5.52:1 ở light và **4.11:1 ở dark**. Nút này
-                  nằm trong scope `dark` nên nó đọc cặp dark ở CẢ HAI theme của
-                  trang → 4.11:1, dưới ngưỡng AA 4.5 cho chữ 14px.
-                  Đo bằng canvas (vẽ màu computed rồi đọc pixel sRGB), KHÔNG bằng
-                  regex `rgb()` — trình duyệt trả `lab()` và regex cho ra số bịa.
-                  4.11:1 ở dark mode là lỗi CÓ SẴN của token, áp cho MỌI nút
-                  `bg-primary` toàn site — đã ghi nợ riêng, sửa nó là đổi tầng
-                  token nên cần ADR. Ở đây chỉ tránh khối chữ trắng-trên-teal
-                  trượt ngưỡng ngay giữa băng tối. */}
-              <ButtonLink href="/contact" variant="outline" className="mt-2">
-                {messages.enquiryCta.cta}
-              </ButtonLink>
-            </div>
-          </div>
-        </section>
+        <RegionTours
+          tours={tours}
+          places={places.map((place) => ({ slug: place.slug, name: place.name }))}
+        />
+      </Reveal>
+
+      {/* ── Khu 6 · Gallery ── */}
+      <Reveal>
+        <RegionGallery region={region} />
+      </Reveal>
+
+      {/* ── Khu 7 · Value props — khu CUỐI, mang `data-flush-footer` ── */}
+      <Reveal>
+        <RegionValueProps />
       </Reveal>
     </div>
   );
