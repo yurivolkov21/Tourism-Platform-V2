@@ -12,13 +12,32 @@ const ICONS: readonly LucideIcon[] = [UsersIcon, MapPinIcon, ListChecksIcon];
  * Khu CUỐI trang vùng — "We've got you covered", băng tối đóng khung trang, đối
  * xứng với hero đã mở đầu.
  *
- * Nền là `dark` + `bg-background` — ĐÚNG công thức `site-footer.tsx` dùng, và đó
- * là chủ đích chứ không phải trùng hợp: footer luôn giải ra L 0.25 ở CẢ hai
- * theme, nên băng này phải bám đúng giá trị ấy thì mối nối mới liền. Dùng
- * `bg-hero` sẽ đúng ở light (0.25 = 0.25) nhưng ở dark hero tụt xuống 0.17 trong
- * khi footer vẫn 0.25 — sinh một MỐI NỐI mới ΔL 0.08 ngay chỗ mà
- * `data-flush-footer` sinh ra để xoá. Đo: `text-on-media` trên nền này 15.09:1 ở
- * cả hai theme.
+ * Nền là `dark` + **`bg-muted`** (đổi 29/07 từ `bg-background`).
+ *
+ * Bản trước bám đúng giá trị của `site-footer.tsx` để mối nối liền tuyệt đối —
+ * và đó chính là lỗi: user nhìn ra ngay. Đo được ba vế, cả hai theme:
+ *
+ *  | nền băng          | ΔL vs nền trang | ΔL vs footer |
+ *  | `bg-background`   | light −0.9167 · **dark 0.0000** | **0.0000** |
+ *  | `bg-muted` (nay)  | +0.0350 | +0.0350 |
+ *
+ * Tức ở dark mode băng cũ KHÔNG tách khỏi bất cứ thứ gì — nền trang, băng và
+ * footer đều `rgb(26,36,34)`, cả đáy trang thành một khối phẳng; còn ở light thì
+ * nó trùng khít footer nên người đọc tưởng đã vào footer rồi. Tối ưu "mối nối
+ * liền" là tối ưu ngược hướng: khu này CẦN được nhận ra là một tấm riêng.
+ *
+ * `bg-muted` tách rõ nhất trong ba ứng viên đo được — gấp 2,4× `bg-card`
+ * (+0.0145) và 3,2× `bg-hero` (−0.0109). KHÔNG chọn `bg-hero` dù nó cũng tách:
+ * nó biến băng thành thứ tối nhất trang rồi footer lại sáng lên, bậc sáng đọc
+ * ngược. Cả ba ứng viên đều **bất biến theo theme** (giải trong scope `dark`)
+ * nên sửa một lần đúng cả hai chế độ.
+ *
+ * Đo lại sau khi đổi: `text-on-media` trên nền này 9.86:1 (h2) và 6.15:1 (chữ
+ * thường) — vẫn vượt xa AA, ở cả hai theme.
+ *
+ * ⚠️ Đổi nền ở đây KHÔNG được đụng `data-flush-footer` bên dưới: khoảng hở 128px
+ * vẫn phải tắt. Thứ ta muốn là một BƯỚC MÀU giữa băng và footer, không phải một
+ * dải nền trang chen vào giữa.
  *
  * ⚠️ `data-flush-footer` nằm trên `<section>` này và đó là NỬA THỨ HAI của một cơ
  * chế hai nửa; nửa kia là luật `body:has(main [data-flush-footer]) footer` ở cuối
@@ -36,7 +55,7 @@ export function RegionValueProps() {
   return (
     <section
       data-flush-footer
-      className="dark w-full bg-background px-4 py-20 text-on-media md:px-16 md:py-24 lg:px-24 xl:px-32"
+      className="dark w-full bg-muted px-4 py-20 text-on-media md:px-16 md:py-24 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
