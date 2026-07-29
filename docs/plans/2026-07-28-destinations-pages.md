@@ -2421,3 +2421,140 @@ git add apps/web/src
 git commit -m "feat(web): trang vùng dựng lại theo Nexora — 7 khu, 3 biến thể signature"
 ```
 
+---
+
+### Task 5d: Hero trang vùng chuyển sang kiểu `AboutHero` + Bắc đổi Signature sang timeline itinerary
+
+**Vì sao:** user duyệt từng khu một, bắt đầu từ hero (29/07). Chốt ba điều:
+(1) hero lấy **kiểu `AboutHero`** đầy đủ, không phải `ContactHero` (cái đó cố ý nhẹ,
+dành cho trang tiện ích) · (2) hero mang **hàng số liệu**, nên băng Signature của Bắc
+(đang là dải số liệu) **đổi sang timeline itinerary thật** để không lặp ·
+(3) hero cao **~70–80vh**, giữ Bắc cao hơn hai vùng kia.
+
+**Đánh đổi đã nói rõ với user:** Bắc và Trung cùng thành timeline đánh số. Giữ khác
+biệt bằng HÌNH: Bắc là timeline **DỌC 8 chặng theo ngày**, Trung là timeline **NGANG
+3 chặng theo thời kỳ**.
+
+**Files:**
+
+- Rewrite: `components/destinations/region-hero.tsx`
+- Modify: `lib/region-theme.ts` + `.spec.ts`
+- Create: `components/destinations/region-signature-itinerary.tsx`
+- **Delete**: `components/destinations/region-signature-stats.tsx`
+- Modify: `libs/shared/i18n/src/lib/messages.ts` (thêm nhãn cho hero + itinerary)
+- Modify: `app/(site)/destinations/[region]/page.tsx`
+
+- [ ] **Step 1: `region-theme.ts` — biến thể mới + chiều cao mới**
+
+- `SignatureVariant`: `'stats'` → **`'itinerary'`**. north dùng `'itinerary'`.
+- `heroMinH`: north `min-h-[80vh]`, central/south `min-h-[70vh]`. Giữ `signatureFirst`
+  y nguyên (north vẫn `true`).
+- Cập nhật `region-theme.spec.ts`: test "ba biến thể khác nhau" giữ nguyên; test
+  khẳng định `north.signature === 'stats'` đổi thành `'itinerary'`.
+
+- [ ] **Step 2: `region-hero.tsx` — dựng theo `AboutHero`**
+
+Đọc `components/about/about-hero.tsx` trước; bê **cấu trúc và nhịp**, thay nội dung.
+
+Khung (đúng thứ tự trong DOM):
+
+1. `<section className="relative flex w-full items-center overflow-hidden text-on-media">`
+   + `regionTheme(key).heroMinH`.
+2. Nền: `<div className="dark absolute inset-0 -z-10">` chứa `RegionTile` **trang trí**
+   (`decorative`, không `role="img"`) phủ `h-full w-full`, rồi lớp gradient
+   `absolute inset-0 bg-linear-to-r` + `regionTheme(key).scrim`. Hướng `to-r` (chữ
+   nằm trái) — đúng `AboutHero`, khác `to-t` của bản cũ.
+3. Nội dung: `<div className="dark w-full px-4 pt-28 pb-12 md:px-16 lg:px-24 xl:px-32">`
+   - **Breadcrumb** 3 cấp GIỮ NGUYÊN (nav thật, và JSON-LD `BreadcrumbList` ở
+     `page.tsx` phải soi đúng nó) — dòng nhỏ, `text-on-media/70`.
+   - **Badge pill** viền accent kiểu About: icon `CompassIcon` + **hai chuyên mục đầu
+     của vùng**, dẫn xuất từ `glance.categories`, nối bằng ` · `. Nhận qua prop
+     `styles: string`. Vùng không có chuyên mục nào → **bỏ hẳn pill**.
+   - `<h1>` = `region.name`, bọc trong khuôn `RevealLine` của `AboutHero`
+     (`overflow-hidden` + `y:120→0`, ease `[0.16, 1, 0.3, 1]`). Một dòng — tên vùng
+     hai chữ, đừng ép ba dòng.
+   - `<p>` = **tagline lấy từ i18n qua prop** (`messages.regionPage.regions[key].tagline`),
+     `max-w-md`.
+   - Hai nút kiểu About: `ButtonLink` chính → `#tours` nhãn
+     `messages.regionPage.browseCta(name)`, nền `var(--region-primary)` chữ
+     `text-on-media`; nút phụ viền → `/destinations` nhãn `messages.regionPage.backToAll`.
+     **`ButtonLink`, KHÔNG `Button render={<a/>}`.**
+   - **Hàng số liệu** trên hairline `border-t border-on-media/15 pt-7`, nhận prop
+     `stats: RegionStat[]` (kiểu chuyển từ `region-signature-stats.tsx` sang đây).
+     Giá trị **thuần số** dùng `CountUp` (`@/components/motion/count-up`); giá trị có
+     chữ (`$68`, `8 days`, `Challenging`) in thẳng — **đừng ép CountUp lên chuỗi**.
+     Nhãn nhỏ `uppercase` dưới mỗi số. `stats` rỗng → bỏ cả hàng lẫn hairline.
+4. Chỉ báo `Scroll` dọc mép phải, y `AboutHero`, có guard `motion-reduce`.
+
+⚠️ Khu này **không** dùng khuôn `bg-hero` + `dark contents` của các hero khác — nền là
+tile phủ gradient. Chữ dùng token **cố định** `text-on-media`. Đúng như bản hiện tại.
+
+- [ ] **Step 3: i18n — thêm nhãn cho itinerary**
+
+Trong `messages.regionPage`, thêm:
+
+```ts
+    /** Nhãn từng chặng của timeline itinerary (biến thể `itinerary`, miền Bắc). */
+    dayLabel: (n: number) => `Day ${n}`,
+    /** Dòng ghi công dưới timeline: itinerary này là của MỘT tour có thật. */
+    itineraryNote: (tour: string) => `Day by day on ${tour}`,
+```
+
+`regions.north.signature` GIỮ NGUYÊN `eyebrow`/`heading`/`body`/`points` — biến thể
+itinerary vẫn dùng cả bốn.
+
+- [ ] **Step 4: `region-signature-itinerary.tsx`**
+
+Timeline **DỌC** (khác timeline ngang 3 cột của Trung — đây là điểm giữ cho hai vùng
+không đọc thành một):
+
+- Nền `color-mix(in oklch, var(--region-surface), var(--background) 88%)` — cùng công
+  thức hai biến thể kia.
+- Eyebrow · `<h2>` · body · danh sách `points` (như bản `stats` đã có).
+- `<ol>` các chặng, mỗi `<li>` là lưới `[nhãn ngày | thân]`: cột trái
+  `messages.regionPage.dayLabel(day.dayNumber)` (mono, hoa, `text-muted-foreground`);
+  cột phải có **đường dọc** `w-px bg-border` chạy suốt và **chấm trạm** tròn — chặng
+  đầu và chặng cuối tô đặc `var(--region-primary)`, các chặng giữa để rỗng (viền
+  `var(--region-primary)`, nền `bg-background`). Chặng cuối **không** kéo đường xuống.
+- Mỗi chặng: `<h3>` `day.title` + `<p>` `day.description` — `description` là
+  **nullable**, null thì bỏ hẳn đoạn, KHÔNG in "null".
+- Dưới cùng: `messages.regionPage.itineraryNote(tour.title)` kèm link
+  `/tours/${tour.slug}` (trang CÓ THẬT).
+- Nhận qua prop: `eyebrow` · `heading` · `body` · `points` · `tour: { slug, title }` ·
+  `days: MockItineraryDay[]`. Không tự import mock.
+
+- [ ] **Step 5: `page.tsx`**
+
+- Chọn tour nuôi timeline: **tour dài nhất mà MỌI destination của nó đều thuộc vùng**
+  (Bắc → `northern-highlands-loop`, 8 ngày). Đây đúng là hàm đã dùng cho ô "Longest
+  trip" ở đợt fix trước — **tách thành một helper dùng chung**, đừng viết hai bản.
+  Không có tour riêng nào → **bỏ hẳn khu signature** cho vùng đó.
+- Truyền `stats` xuống **hero** (không còn xuống signature), thêm `styles` (2 chuyên
+  mục đầu) và `tagline`.
+- Nhánh chọn biến thể: `itinerary` → `RegionSignatureItinerary` · `timeline` →
+  bản cũ · `postcards` → bản cũ. Giữ cách guard bằng CẢ `regionTheme` LẪN hình dạng
+  dữ liệu thật sự có (`'timeline' in signature`…), đúng như hiện tại.
+- Xoá import `RegionSignatureStats` và file của nó.
+- ⚠️ `data-flush-footer` vẫn phải nằm đúng một chỗ, trên khu CUỐI (`region-value-props`).
+- ⚠️ **KHÔNG tạo `loading.tsx`.**
+
+- [ ] **Step 6: Đo tương phản hero mới, cả 3 vùng × 2 theme**
+
+Nền hero giờ là tile gradient + scrim `to-r`, khác bản cũ (`to-t`) → **mọi phép đo cũ
+cho hero hết hiệu lực**, phải đo lại: breadcrumb · badge pill (chữ + viền) · h1 ·
+tagline · nhãn/giá trị hàng số liệu · chữ trên hai nút.
+Cách đúng: composite **nền dưới → nền phần tử (kể cả alpha) → mới so với màu chữ**,
+tất cả bằng `canvas` đọc pixel sRGB. Không regex `rgb()`. Không lấy pixel rơi trúng
+nét chữ (đã suýt dính lần thứ tư ở đợt fix trước). Ngưỡng AA 4.5 / 3.0 cho chữ ≥24px.
+Chữ trên gradient phải đo ở **chỗ nền sáng nhất dưới khối chữ**, không phải tâm.
+
+- [ ] **Step 7: Gate rồi commit**
+
+Nếu cổng 3000 đang có dev server của user thì **không chạy `pnpm gate`** — chạy
+`pnpm typecheck` + `pnpm test` + `pnpm lint`, và ghi rõ bước build còn nợ.
+
+```bash
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): hero trang vùng theo kiểu AboutHero, Bắc đổi sang timeline itinerary"
+```
+
