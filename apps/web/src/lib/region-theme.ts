@@ -1,10 +1,14 @@
 import type { MockRegionKey } from '@/mocks/types';
 
 /** Biến thể khu Signature. Tên theo CẤU TRÚC nó dựng, không theo tên vùng —
-    `itinerary`/`timeline`/`postcards` đọc là biết render gì.
-    `stats` đã BỎ (29/07): dải số liệu chuyển lên hero, nên vùng Bắc cần một khu
-    khác chứ không phải in lại cùng bốn con số ở khu thứ hai. */
-export type SignatureVariant = 'itinerary' | 'timeline' | 'postcards';
+    `seasons`/`timeline`/`postcards` đọc là biết render gì.
+    Miền Bắc đã đi qua HAI biến thể chết, ghi lại để không ai chọn lại:
+     · `stats` (bỏ 29/07) — dải số liệu chuyển lên hero, giữ ở đây là in cùng bốn
+       con số hai lần trên một trang.
+     · `itinerary` (bỏ 29/07) — nó kể hành trình theo ngày của MỘT tour, tức là
+       nội dung của `/tours/[slug]`, nơi `ItineraryTimeline` đã làm đúng việc đó.
+       Trang VÙNG phải nói về vùng, nên `seasons` (mùa đẹp của chính vùng). */
+export type SignatureVariant = 'seasons' | 'timeline' | 'postcards';
 
 export interface RegionTheme {
   signature: SignatureVariant;
@@ -32,7 +36,7 @@ export interface RegionTheme {
  */
 const THEMES: Record<MockRegionKey, RegionTheme> = {
   north: {
-    signature: 'itinerary',
+    signature: 'seasons',
     heroMinH: 'min-h-[80vh]',
     scrim: 'from-scrim via-scrim/60 to-scrim/30',
   },

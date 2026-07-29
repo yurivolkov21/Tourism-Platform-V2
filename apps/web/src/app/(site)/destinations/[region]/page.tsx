@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { RegionGallery } from '@/components/destinations/region-gallery';
 import { RegionHero, type RegionStat } from '@/components/destinations/region-hero';
 import { RegionIntro } from '@/components/destinations/region-intro';
-import { RegionSignatureItinerary } from '@/components/destinations/region-signature-itinerary';
+import { RegionSeasons } from '@/components/destinations/region-seasons';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
 import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
 import { RegionTours } from '@/components/destinations/region-tours';
@@ -104,11 +104,15 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const places = destinationsInRegion(REGIONS, DESTINATIONS, region.key);
   const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
   const glance = regionGlance(tours);
-  const signature = t.regions[region.key].signature;
+  const copy = t.regions[region.key];
+  // Miền Bắc KHÔNG còn khối `signature` (khu của nó giờ là dải mùa, đọc từ
+  // `copy.season`), nên phải hỏi trước khi lấy — `t.regions[key]` là union ba
+  // hình dạng, không phải một kiểu duy nhất.
+  const signature = 'signature' in copy ? copy.signature : null;
 
-  // Chuyến dài nhất RIÊNG của vùng — MỘT định nghĩa nuôi HAI chỗ: ô "Longest
-  // trip" của hàng số liệu và itinerary của khu Signature miền Bắc. Hai bản định
-  // nghĩa song song là hai con số rồi sẽ lệch nhau im lặng.
+  // Chuyến dài nhất RIÊNG của vùng — nuôi ô "Longest trip" của hàng số liệu
+  // trong hero. (Trước 29/07 nó nuôi thêm khu Signature itinerary của miền Bắc;
+  // khu đó đã bỏ, ô số liệu thì còn.)
   const longestTour = longestTourInRegion(REGIONS, DESTINATIONS, tours, region.key);
 
   // ── Hàng số liệu của HERO — DẪN XUẤT ở đây, không gõ tay trong i18n.
@@ -169,37 +173,30 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   // một khu mà dữ liệu có thể không có; chỉ dựa vào dữ liệu là để nội dung quyết
   // bố cục. Nexora dùng đúng cặp điều kiện này.
   //
-  // Biến thể `itinerary` cần MỘT tour riêng của vùng để lấy hành trình. Không có
-  // (nhánh có thật khi gắn API) thì `signatureNode` là `null` và khu BỎ HẲN —
-  // mượn itinerary của tour xuyên vùng là kể một hành trình phần lớn nằm ngoài
-  // vùng đang xem.
+  // Biến thể `seasons` cần khối `season` của vùng. Không có (nhánh có thật khi
+  // gắn API: một vùng mới chưa có copy mùa) thì `signatureNode` là `null` và khu
+  // BỎ HẲN — mượn mùa của vùng khác là nói sai về thời tiết.
   const signatureNode =
-    theme.signature === 'timeline' && 'timeline' in signature ? (
+    theme.signature === 'timeline' && signature && 'timeline' in signature ? (
       <RegionSignatureTimeline
         eyebrow={signature.eyebrow}
         heading={signature.heading}
         body={signature.body}
         timeline={signature.timeline}
       />
-    ) : theme.signature === 'postcards' && 'postcards' in signature ? (
+    ) : theme.signature === 'postcards' && signature && 'postcards' in signature ? (
       <RegionSignaturePostcards
         eyebrow={signature.eyebrow}
         heading={signature.heading}
         body={signature.body}
         postcards={signature.postcards}
       />
-    ) : theme.signature === 'itinerary' && longestTour && longestTour.itinerary.length > 0 ? (
-      <RegionSignatureItinerary
-        eyebrow={signature.eyebrow}
-        heading={signature.heading}
-        body={signature.body}
-        // `points` CHỈ có ở copy miền Bắc — vùng duy nhất dùng biến thể
-        // `itinerary` (hai biến thể kia không render danh sách gạch đầu dòng, nên
-        // để chúng có `points` là nuôi copy chết).
-        points={'points' in signature ? signature.points : []}
-        tour={{ slug: longestTour.slug, title: longestTour.title }}
-        days={longestTour.itinerary}
-      />
+    ) : theme.signature === 'seasons' && 'season' in copy ? (
+      // Không truyền `eyebrow`/`heading`: khu này KHÔNG dùng copy `signature`
+      // riêng từng vùng nữa mà dùng nhãn chung `seasonsEyebrow`/`seasonsHeading`
+      // — tiêu đề sinh từ tên vùng nên không thể trôi khỏi nội dung như
+      // "Great northern adventures" đã trôi.
+      <RegionSeasons regionName={region.name} months={copy.season.months} note={copy.season.note} />
     ) : null;
 
   // Badge pill của hero: HAI chuyên mục đầu của vùng, nối bằng ` · `. Hai chứ

@@ -8,10 +8,12 @@ describe('regionTheme', () => {
     expect(new Set(variants).size).toBe(3);
   });
 
-  it('Bắc dựng itinerary, Trung dựng timeline, Nam dựng bưu thiếp', () => {
-    // Bắc đổi `stats` → `itinerary` (29/07): dải số liệu đã chuyển lên hero, để
-    // nguyên ở đây là in cùng bốn con số hai lần trên một trang.
-    expect(regionTheme('north').signature).toBe('itinerary');
+  it('Bắc dựng dải mùa, Trung dựng timeline, Nam dựng bưu thiếp', () => {
+    // Bắc đi `stats` → `itinerary` → `seasons` (29/07). `stats` bỏ vì dải số liệu
+    // đã lên hero; `itinerary` bỏ vì nó kể hành trình của MỘT tour, thuộc về
+    // `/tours/[slug]` (`ItineraryTimeline` đã làm đúng việc đó) chứ không phải
+    // trang vùng. `seasons` nói về chính VÙNG.
+    expect(regionTheme('north').signature).toBe('seasons');
     expect(regionTheme('central').signature).toBe('timeline');
     expect(regionTheme('south').signature).toBe('postcards');
   });

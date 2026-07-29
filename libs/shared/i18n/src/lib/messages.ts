@@ -756,10 +756,11 @@ export const messages = {
       hardest: 'Hardest grade',
       styles: 'Trip styles',
     },
-    /** Nhãn từng chặng của timeline itinerary (biến thể `itinerary`, miền Bắc). */
-    dayLabel: (n: number) => `Day ${n}`,
-    /** Dòng ghi công dưới timeline: itinerary này là của MỘT tour có thật. */
-    itineraryNote: (tour: string) => `Day by day on ${tour}`,
+    seasonsEyebrow: 'Seasons',
+    seasonsHeading: (region: string) => `When to visit ${region}`,
+    /** Chú giải dải tháng — dải là đồ hoạ nên cần nhãn chữ cho trình đọc màn hình. */
+    seasonsBestLabel: 'Best months',
+    seasonsOtherLabel: 'Shoulder & wet months',
     // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
     // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
     // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —
@@ -802,15 +803,12 @@ export const messages = {
             body: 'Row between the karst peaks and flooded caves of Ninh Bình.',
           },
         ],
-        signature: {
-          eyebrow: 'Signature',
-          heading: 'Great northern adventures',
-          body: 'The north rewards travellers who go further — onto the water, into the mountains, and out to the high passes. These are the journeys that define the region.',
-          points: [
-            'Overnight cruises through Hạ Long Bay',
-            'Multi-day treks with Hmong and Dao guides',
-            'The high passes above Sa Pa and Bắc Hà',
-          ],
+        /** Mùa đẹp nhất — mảng SỐ THÁNG (1–12), không phải chuỗi 'Mar–May'.
+            Dải 12 ô ở `region-seasons.tsx` đọc thẳng mảng này; nếu lưu chuỗi thì
+            component phải parse copy, và copy sửa một chữ là dải vỡ âm thầm. */
+        season: {
+          months: [3, 4, 5, 9, 10, 11],
+          note: 'Cool, dry and clear — ideal for Hạ Long and the mountains. Winters turn chilly up high; summers bring rain.',
         },
       },
       central: {
@@ -860,6 +858,13 @@ export const messages = {
             },
           ],
         },
+        /** Xem ghi chú ở `north.season`. Miền Trung chưa render dải này (khu
+            Signature của nó là `timeline`) — giữ để ba vùng cùng một hình dạng
+            dữ liệu, và vì đây là nội dung đã có sẵn từ khối `bestTime` cũ. */
+        season: {
+          months: [2, 3, 4, 5, 6, 7, 8],
+          note: 'Warm and dry along the coast and old towns. Avoid Oct–Dec, the wettest and most storm-prone months.',
+        },
       },
       south: {
         tagline: 'River deltas, island beaches and the restless energy of Sài Gòn.',
@@ -895,31 +900,15 @@ export const messages = {
             { title: 'Phú Quốc', caption: 'Island beaches' },
           ],
         },
+        /** Xem ghi chú ở `north.season`. Mùa VẮT QUA NĂM (12 → 4): mảng liệt kê
+            từng tháng chứ không phải cặp đầu–cuối, nên dải không cần biết mùa có
+            quấn vòng hay không. */
+        season: {
+          months: [12, 1, 2, 3, 4],
+          note: 'The dry season for the Mekong and the islands. May–Nov is wetter but stays warm with short showers.',
+        },
       },
     },
-  },
-  // `/destinations` — when to visit, by region (unique to the destinations page).
-  bestTime: {
-    heading: 'When to visit',
-    subtitle:
-      'Vietnam runs over 1,600km north to south, so the best season depends on where you go — a quick guide by region.',
-    regions: [
-      {
-        region: 'Northern Vietnam',
-        months: 'Mar–May · Sep–Nov',
-        note: 'Cool, dry and clear — ideal for Hạ Long and the mountains. Winters turn chilly up high; summers bring rain.',
-      },
-      {
-        region: 'Central Vietnam',
-        months: 'Feb–Aug',
-        note: 'Warm and dry along the coast and old towns. Avoid Oct–Dec, the wettest and most storm-prone months.',
-      },
-      {
-        region: 'Southern Vietnam',
-        months: 'Dec–Apr',
-        note: 'The dry season for the Mekong and the islands. May–Nov is wetter but stays warm with short showers.',
-      },
-    ],
   },
   // `/destinations` — practical know-before-you-go tips (unique to the destinations page).
   travelTips: {
