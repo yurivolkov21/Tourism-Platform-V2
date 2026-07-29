@@ -113,6 +113,29 @@ export function RegionTours({
           ))}
         </div>
 
+        {/* Vùng thông báo cho trình đọc màn hình. Lọc bằng chip hoặc bấm sang
+            trang khác thay TOÀN BỘ nội dung lưới mà không có gì được nói ra —
+            `/tours` đã có tiền lệ (`tours-explorer.tsx` gắn role=status +
+            aria-live lên số kết quả).
+
+            Đặt ở ĐÂY, ngoài nhánh rỗng, để vùng live tồn tại LIÊN TỤC trong DOM
+            kể cả lúc 0 kết quả: một vùng live chỉ xuất hiện cùng lúc nội dung đổi
+            thường bị trình đọc màn hình bỏ qua vì nó chưa kịp được theo dõi.
+
+            `sr-only` chứ không in ra màn hình: người nhìn thấy đã có chip đang bật
+            và chính các card để đếm; thêm một dòng số hiện hình là dựng chỉ báo
+            trạng thái THỨ HAI cạnh hàng chip — đúng thứ comment ở eyebrow trên kia
+            từ chối. Người dùng trình đọc màn hình thì không có cả hai manh mối đó.
+
+            Đếm `paged.items.length` trên nền `paged.total` (số card đang hiện /
+            tập đã lọc) chứ không phải `filtered.length` trên nền `tours.length`:
+            cách sau đứng yên khi bấm Next, tức bỏ đúng một nửa vấn đề. Dùng lại
+            `resultsHeading` sẵn có — nó tự thu về "3 tours" khi hai số bằng nhau
+            và cho "0 tours" ở nhánh rỗng, sạch hơn "Showing 0–0 of 0". */}
+        <p role="status" aria-live="polite" className="sr-only">
+          {messages.toursPage.resultsHeading(paged.items.length, paged.total)}
+        </p>
+
         {paged.items.length === 0 ? (
           // Nhánh CÓ THẬT: một địa điểm mới chưa gắn tour nào. Lưới rỗng không
           // giải thích được gì — hai câu này thì có, và `/contact` là trang thật.
