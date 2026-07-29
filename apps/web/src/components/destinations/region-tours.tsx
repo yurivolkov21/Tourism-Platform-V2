@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { TourCard } from '@/components/tours/tour-card';
 import { paginate } from '@/lib/paginate';
@@ -66,7 +67,13 @@ export function RegionTours({
     // chết cái nút đó, im lặng.
     <section id="tours" className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
       <div className="mx-auto max-w-7xl">
-        <h2 className="font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
+        {/* Số tour làm eyebrow — DẪN XUẤT từ `tours`, đúng cách `region-group.tsx`
+            làm ở trang index. Đếm CẢ vùng (`tours`), không đếm tập đang lọc: đây
+            là nhãn của khu, không phải bộ đếm kết quả — để nó nhảy theo từng chip
+            là biến header thành một chỉ báo trạng thái thứ hai bên cạnh chính hàng
+            chip đang bật. */}
+        <SectionEyebrow>{messages.destinationsPage.toursLabel(tours.length)}</SectionEyebrow>
+        <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
           {t.toursHeading}
         </h2>
 

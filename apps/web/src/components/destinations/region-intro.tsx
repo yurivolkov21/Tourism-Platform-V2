@@ -8,6 +8,7 @@ import {
   MapPinIcon,
   SparklesIcon,
 } from 'lucide-react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import type { MockRegion } from '@/mocks/types';
 
 /** Icon theo THỨ TỰ mục, đúng bộ `region-highlights.tsx` cũ dùng (khu đó đã gộp
@@ -47,27 +48,23 @@ export function RegionIntro({
     <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
       <div
         className={cn(
-          'mx-auto grid max-w-7xl gap-10',
+          'mx-auto grid max-w-7xl gap-12',
           hasHighlights && 'lg:grid-cols-2 lg:items-center lg:gap-16',
         )}
       >
-        {/* ── Trái: tiêu đề + vạch accent + hai đoạn + tags + CTA ──
+        {/* ── Trái: eyebrow + tiêu đề + hai đoạn + tags + CTA ──
             `highlights` rỗng (nhánh có thật khi gắn API: vùng chưa có copy
             highlight) thì cột này trải rộng `max-w-2xl` thay vì bó theo một
             lưới hai cột không còn cột kia để cân. */}
         <div className={hasHighlights ? undefined : 'max-w-2xl'}>
-          <h2 className="font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Vạch accent `h-1 w-12` màu vùng đã BỎ (29/07): chấm vuông của
+              `SectionEyebrow` đã là dấu accent chuẩn của site, hai dấu chồng
+              nhau trên cùng một header là thừa một. */}
+          <SectionEyebrow>{t.introEyebrow}</SectionEyebrow>
+          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.introHeading(region.name)}
           </h2>
-          {/* Vạch accent — thứ DUY NHẤT trong khu này mang màu vùng, nên nó là
-              chữ ký nhỏ chứ không phải trang trí rải rác. */}
-          <div
-            aria-hidden="true"
-            style={{ background: 'var(--region-primary)' }}
-            className="mt-5 h-1 w-12 rounded-full"
-          />
-
-          <p className="mt-5 text-lg text-pretty text-muted-foreground">{copy.intro}</p>
+          <p className="mt-2 text-lg text-pretty text-muted-foreground">{copy.intro}</p>
           <p className="mt-4 text-pretty text-muted-foreground">{copy.intro2}</p>
 
           {/* Vùng chưa có tour nào thì `tags` rỗng (chúng dẫn xuất từ chuyên mục

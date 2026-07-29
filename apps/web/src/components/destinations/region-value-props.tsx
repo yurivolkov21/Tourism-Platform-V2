@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { ListChecksIcon, type LucideIcon, MapPinIcon, UsersIcon } from 'lucide-react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 
 /** Icon theo THỨ TỰ mục: nhóm nhỏ · hướng dẫn bản địa · minh bạch bao gồm gì.
     KHÁC bộ `CarIcon`/`RouteIcon`/`UtensilsCrossedIcon` của Nexora vì nội dung đã
@@ -31,9 +32,20 @@ export function RegionValueProps() {
       className="w-full px-4 py-20 text-on-media md:px-16 md:py-24 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
-        <h2 className="mx-auto max-w-2xl text-center font-heading text-3xl leading-tight font-medium text-balance md:text-[40px]/12">
-          {t.valuePropsHeading}
-        </h2>
+        <div className="mx-auto max-w-2xl text-center">
+          {/* `tone="onMedia"` là BẮT BUỘC ở đây: mặc định của `SectionEyebrow` là
+              cặp `bg-foreground`/`text-foreground` — token LẬT theo theme — còn nền
+              băng này là `--region-hero`, tối CỐ ĐỊNH ở cả hai theme. Để mặc định
+              thì ở light mode chữ eyebrow thành tối-trên-tối, gần như vô hình.
+              Eyebrow là một hàng flex chiếm trọn bề ngang nên `text-center` không
+              kéo nó vào giữa được — phải bọc `flex justify-center`. */}
+          <div className="flex justify-center">
+            <SectionEyebrow tone="onMedia">{t.valuePropsEyebrow}</SectionEyebrow>
+          </div>
+          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance md:text-[40px]/12">
+            {t.valuePropsHeading}
+          </h2>
+        </div>
 
         <div className="mt-12 grid gap-8 sm:grid-cols-3">
           {t.valueProps.map((prop, i) => {

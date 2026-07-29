@@ -1,5 +1,6 @@
 import { cn } from '@tourism/ui/lib/utils';
 import { RegionTile } from '@/components/destinations/region-tile';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 
 /**
  * Biến thể Signature "postcards" — ba bưu thiếp dọc so le trên nền phớt màu vùng,
@@ -24,14 +25,17 @@ export function RegionSignaturePostcards({
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
-          {/* `text-foreground`, KHÔNG `--region-primary`: primary của miền Nam trên
-              nền phớt này đo được 4.23:1 ở light (dưới ngưỡng 4.5 của chữ nhỏ) và
-              2.95:1 ở dark. Xem `region-signature-timeline.tsx` cho lý lẽ đầy đủ. */}
-          <p className="font-mono text-xs tracking-widest text-foreground uppercase">{eyebrow}</p>
+          {/* `SectionEyebrow` (quy ước toàn site) thay cho eyebrow `font-mono` tự
+              chế port từ Nexora. Nó là `text-foreground`, KHÔNG `--region-primary`:
+              primary của miền Nam trên nền phớt này đo được 4.23:1 ở light (dưới
+              ngưỡng 4.5 của chữ nhỏ) và 2.95:1 ở dark. Xem
+              `region-signature-timeline.tsx` cho lý lẽ đầy đủ. Eyebrow hiện tại đo
+              được 12.78:1 light / 11.57:1 dark. */}
+          <SectionEyebrow>{eyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
           </h2>
-          <p className="mt-4 text-lg text-pretty text-muted-foreground">{body}</p>
+          <p className="mt-2 text-lg text-pretty text-muted-foreground">{body}</p>
         </div>
 
         <div className="mt-12 grid gap-5 sm:mt-16 sm:grid-cols-3 sm:gap-6">

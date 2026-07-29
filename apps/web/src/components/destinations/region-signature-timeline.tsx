@@ -1,3 +1,5 @@
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
+
 /**
  * Biến thể Signature "timeline" — ba chặng xếp ngang trên nền phớt màu vùng,
  * hiện chỉ miền Trung dùng. Khác hai biến thể kia ở CẤU TRÚC chứ không chỉ ở màu:
@@ -25,16 +27,18 @@ export function RegionSignatureTimeline({
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
-          {/* Eyebrow là `text-foreground`, KHÔNG `--region-primary` như Nexora tô
-              accent: token vùng không đổi theo theme, nên primary của miền Trung
-              trên nền phớt này đo được 8.54:1 ở light nhưng **1.31:1 ở dark**.
-              Màu vùng ở khu này đi vào HUY HIỆU SỐ, nơi nó làm nền chứ không làm
-              chữ — nền thì tương phản với `on-media` là cố định ở cả hai theme. */}
-          <p className="font-mono text-xs tracking-widest text-foreground uppercase">{eyebrow}</p>
+          {/* `SectionEyebrow` (quy ước toàn site) thay cho eyebrow `font-mono` tự
+              chế port từ Nexora. Nó là `text-foreground`, KHÔNG `--region-primary`
+              như Nexora tô accent: token vùng không đổi theo theme, nên primary của
+              miền Trung trên nền phớt này đo được 8.54:1 ở light nhưng **1.31:1 ở
+              dark**. Màu vùng ở khu này đi vào HUY HIỆU SỐ, nơi nó làm nền chứ không
+              làm chữ — nền thì tương phản với `on-media` là cố định ở cả hai theme.
+              Eyebrow trên nền phớt này đo được 13.30:1 light / 9.93:1 dark. */}
+          <SectionEyebrow>{eyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
           </h2>
-          <p className="mt-4 text-lg text-pretty text-muted-foreground">{body}</p>
+          <p className="mt-2 text-lg text-pretty text-muted-foreground">{body}</p>
         </div>
 
         <ol className="mt-16 grid gap-12 sm:mt-20 sm:grid-cols-3 sm:gap-8">

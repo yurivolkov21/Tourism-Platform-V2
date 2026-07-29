@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { RegionTile } from '@/components/destinations/region-tile';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import type { MockRegion } from '@/mocks/types';
 
 /**
@@ -19,10 +20,17 @@ export function RegionGallery({ region }: { region: MockRegion }) {
     <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
-          <h2 className="font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* `SectionEyebrow` là một hàng flex chiếm trọn bề ngang nên `text-center`
+              của khối cha KHÔNG kéo nó vào giữa — phải bọc `flex justify-center`,
+              đúng cách `home/gallery.tsx` (khu căn giữa duy nhất khác của site đang
+              dùng eyebrow này) làm. */}
+          <div className="flex justify-center">
+            <SectionEyebrow>{t.galleryEyebrow}</SectionEyebrow>
+          </div>
+          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.galleryHeading(region.name)}
           </h2>
-          <p className="mt-3 text-pretty text-muted-foreground">{t.gallerySubtitle}</p>
+          <p className="mt-2 text-pretty text-muted-foreground">{t.gallerySubtitle}</p>
         </div>
 
         {/* Bốn khối trên lưới 2 cột: khối 1 và 4 là MỘT ô lớn, khối 2 và 3 là cụm

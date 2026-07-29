@@ -1,9 +1,28 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { MockTourCard } from '@/mocks/types';
 import { RegionTours } from './region-tours';
+
+beforeAll(() => {
+  // jsdom không hiện thực IntersectionObserver, mà khu này render `SectionEyebrow`
+  // (dùng `whileInView` của framer-motion) — thiếu API này là ném ReferenceError
+  // lúc mount. Stub tối giản (không làm gì) là đủ vì test không quan sát animation.
+  //
+  // CỐ Ý để cục bộ, KHÔNG dời lên `vitest.setup.ts` dù `region-group.spec.tsx` và
+  // `home/gallery.spec.tsx` có bản y hệt: đã thử dời lên setup chung (cả bản no-op
+  // lẫn bản báo-ngay isIntersecting) và **19 test ở 3 file khác gãy** — có global
+  // này thì framer-motion đi nhánh khác hẳn so với khi không có.
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
 
 const PLACES = [
   { slug: 'sa-pa', name: 'Sa Pa' },

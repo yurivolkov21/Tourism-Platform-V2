@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { ArrowRightIcon } from 'lucide-react';
+import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import type { MockItineraryDay } from '@/mocks/types';
 
 /**
@@ -40,16 +41,18 @@ export function RegionSignatureItinerary({
     >
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
-          {/* `text-foreground`, KHÔNG `--region-primary`: token vùng KHÔNG đổi theo
-              theme, nên tô nó lên chữ là một trong hai theme sẽ hỏng — đúng lỗi đã
-              đo ở `region-signature-timeline.tsx` (1.31:1 ở dark). Màu vùng ở khu
-              này chỉ đi vào CHẤM TRẠM và chấm đầu dòng, nơi nó là hình khối chứ
-              không phải chữ. Eyebrow ở đây đo được 13.22:1 light / 10.02:1 dark. */}
-          <p className="font-mono text-xs tracking-widest text-foreground uppercase">{eyebrow}</p>
+          {/* `SectionEyebrow` (quy ước toàn site, 21 component dùng) thay cho eyebrow
+              `font-mono` tự chế port từ Nexora. Nó dùng `text-foreground`, KHÔNG
+              `--region-primary`: token vùng KHÔNG đổi theo theme, nên tô nó lên chữ
+              là một trong hai theme sẽ hỏng — đúng lỗi đã đo ở
+              `region-signature-timeline.tsx` (1.31:1 ở dark). Màu vùng ở khu này chỉ
+              đi vào CHẤM TRẠM và chấm đầu dòng, nơi nó là hình khối chứ không phải
+              chữ. Eyebrow trên nền phớt này đo được 13.22:1 light / 10.02:1 dark. */}
+          <SectionEyebrow>{eyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
           </h2>
-          <p className="mt-4 text-lg text-pretty text-muted-foreground">{body}</p>
+          <p className="mt-2 text-lg text-pretty text-muted-foreground">{body}</p>
 
           {/* `points` rỗng thì bỏ hẳn `<ul>` — một danh sách không mục vẫn ăn
               `mt-8` (32px) và để lại một khoảng hở không ai giải thích được. */}

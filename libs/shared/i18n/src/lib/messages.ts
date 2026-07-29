@@ -710,6 +710,12 @@ export const messages = {
   // hiển thị là copy biến mất im lặng.
   regionPage: {
     backToAll: 'All destinations',
+    /** Eyebrow các khu — quy ước `SectionEyebrow` của site (21 component dùng).
+        Khu Signature dùng lại `regions[key].signature.eyebrow` đã có; khu Tours
+        dùng SỐ TOUR dẫn xuất, đúng cách `region-group.tsx` làm ở trang index. */
+    introEyebrow: 'Overview',
+    galleryEyebrow: 'Gallery',
+    valuePropsEyebrow: 'How we travel',
     introHeading: (region: string) => `The best ${region} tours`,
     /** CTA cuối khu intro. Nexora trỏ `#itineraries` (trang họ không có) — ở đây
         trỏ neo `#tours` NGAY TRÊN CÙNG TRANG, là khu có thật. */
