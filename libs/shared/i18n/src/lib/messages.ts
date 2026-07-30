@@ -564,6 +564,23 @@ export const messages = {
       allHint: 'Browse every place we cover',
       /** Nhãn cho link tiêu đề vùng trong menu — điều hướng sang trang vùng. */
       exploreRegion: (region: string) => `Explore ${region}`,
+      /**
+       * Một dòng gợi ý dưới tên mỗi vùng trong dropdown. Ba chuỗi này TỪNG là một
+       * `Record` gõ trực tiếp trong `destinations-menu.tsx` — chuỗi user-facing
+       * inline, vi phạm luật 7; chuyển về đây khi menu rút còn 4 mục (30/07).
+       *
+       * CỐ TÌNH không phải danh sách địa danh như Nexora (`'Hạ Long, Sa Pa, Ninh
+       * Bình'`): thêm hoặc bớt một địa điểm là chữ đó sai mà không ai biết. Ba câu
+       * dưới đây mô tả CẢNH của vùng nên chúng không phụ thuộc số địa điểm.
+       *
+       * Ngắn hơn `regionPage.regions[key].tagline` một bậc: tagline là phụ đề hero
+       * cả câu, còn đây là một dòng trong menu hẹp.
+       */
+      regionHints: {
+        north: 'Misty terraces & limestone bays',
+        central: 'Imperial cities & lantern towns',
+        south: 'River markets & island dusk',
+      },
     },
   },
   hero: {
