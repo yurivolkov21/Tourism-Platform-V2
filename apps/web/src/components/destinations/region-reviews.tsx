@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import { StarIcon, UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import type { RegionReview } from '@/lib/regions';
 import { formatReviewDate } from '@/lib/tours';
 
@@ -59,10 +60,13 @@ export function RegionReviews({
       <div className="mx-auto max-w-7xl">
         <div className="max-w-2xl">
           <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.heading(regionName)}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{t.subtitle}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">
+            {t.subtitle}
+          </RevealLede>
         </div>
 
         {/* Ba cột ở `lg`, một cột dưới đó. Vạch trên mỗi cột (`border-t`) là thứ

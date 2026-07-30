@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { Lightbox } from '@/components/media/lightbox';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 import type { MockRegion } from '@/mocks/types';
 
@@ -114,10 +115,16 @@ export function RegionGallery({
           <div className="flex justify-center">
             <SectionEyebrow>{t.galleryEyebrow}</SectionEyebrow>
           </div>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m). Khu này ĐÃ là `'use client'` (lightbox có
+              state) nên dùng `RevealHeading` ở đây không phải để tránh chi phí client
+              — nó để chín khu chạy CÙNG một bộ số, thay vì thêm bản copy thứ 20 của
+              spring 240 gõ inline. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.galleryHeading(region.name)}
-          </h2>
-          <p className="mt-2 text-pretty text-muted-foreground">{t.gallerySubtitle}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-pretty text-muted-foreground">
+            {t.gallerySubtitle}
+          </RevealLede>
         </div>
 
         {variant === 'peaks' ? <PeaksLayout labels={labels} onOpen={setOpenAt} /> : null}

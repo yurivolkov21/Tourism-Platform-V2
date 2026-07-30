@@ -1,4 +1,5 @@
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
@@ -36,10 +37,14 @@ export function RegionSignatureTimeline({
               chữ. Eyebrow `text-foreground` trên băng đo 12.67:1 light /
               10.65:1 dark. */}
           <SectionEyebrow>{eyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m): tiêu đề → đoạn dẫn. Chỉ trượt `y`, không mờ
+              dần — xem `motion/reveal-header.tsx` cho lý do (SSG phải đọc được khi
+              JS chưa chạy). Khu này vẫn là Server Component: chỉ component con bên
+              dưới mới mang directive client. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{body}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">{body}</RevealLede>
         </div>
 
         <ol className="mt-16 grid gap-12 sm:mt-20 sm:grid-cols-3 sm:gap-8">

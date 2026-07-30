@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealBlock, RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 
 /** Nhãn tháng viết tắt SINH ra, không gõ 12 chuỗi vào i18n — cùng tiền lệ
     `formatMoney`/`toLocaleString`: đây là format DỮ LIỆU, không phải copy.
@@ -112,9 +113,14 @@ export function RegionSeasons({
           {/* `SectionEyebrow` là `text-foreground`, KHÔNG tô `--primary`: primary
               trên nền trang đo 3.03:1 ở dark, dưới ngưỡng 4.5 của chữ nhỏ. */}
           <SectionEyebrow>{t.seasonsEyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. Khu này là
+              khu duy nhất mà cascade chạy NGANG qua hai cột: câu HỎI (cột trái) mở
+              màn, câu TRẢ LỜI (cột phải) theo sau, ghi chú thời tiết đóng nhịp. Đó
+              đúng thứ tự người đọc đi, và ở dưới `lg` thì hai cột xếp dọc nên nhịp
+              vẫn là trên-xuống. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.seasonsHeading(regionName)}
-          </h2>
+          </RevealHeading>
         </div>
 
         <div className="max-w-xl">
@@ -122,7 +128,9 @@ export function RegionSeasons({
               câu tháng đẹp, giữ mỗi ghi chú thời tiết. Nhãn "Best months" đứng trên
               một khoảng trống đọc thành một lời khuyên cụt. */}
           {ranges.length > 0 ? (
-            <>
+            // Nhãn và câu trả lời đi CÙNG một nhịp: nhãn là 11px mono, để nó đứng im
+            // trên một câu đang trượt thì nó đọc thành một mẩu sót lại.
+            <RevealBlock beat="lede">
               <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
                 {t.seasonsBestLabel}
               </span>
@@ -131,9 +139,11 @@ export function RegionSeasons({
               <p className="mt-3 font-heading text-2xl leading-snug font-medium text-balance text-foreground md:text-3xl">
                 {t.seasonsWindow(RANGE_LIST.format(ranges))}
               </p>
-            </>
+            </RevealBlock>
           ) : null}
-          <p className="mt-4 text-pretty text-muted-foreground">{note}</p>
+          <RevealLede beat="cta" className="mt-4 text-pretty text-muted-foreground">
+            {note}
+          </RevealLede>
         </div>
       </div>
     </section>

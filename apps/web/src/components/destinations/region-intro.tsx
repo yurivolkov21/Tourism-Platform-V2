@@ -9,6 +9,7 @@ import {
   SparklesIcon,
 } from 'lucide-react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealBlock, RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import type { MockRegion } from '@/mocks/types';
 
 export type IntroVariant = 'aside' | 'row' | 'stacked';
@@ -100,17 +101,25 @@ export function RegionIntro({
           ) : (
             <SectionEyebrow>{t.introEyebrow}</SectionEyebrow>
           )}
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* ── Cascade header (Task 5m) — xem `motion/reveal-header.tsx` ──
+              Đây là khu DUY NHẤT của trang vùng dùng cả ba nhịp: tiêu đề → hai đoạn
+              → (hàng chip + CTA). Hai đoạn CÙNG một nhịp `lede` là cố ý — chúng là
+              một khối văn liền, tách chúng ra hai nhịp là biến đoạn dẫn thành một
+              hàng đợi. Khu vẫn là Server Component. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.introHeading(region.name)}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{copy.intro}</p>
-          <p className="mt-4 text-pretty text-muted-foreground">{copy.intro2}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">
+            {copy.intro}
+          </RevealLede>
+          <RevealLede className="mt-4 text-pretty text-muted-foreground">{copy.intro2}</RevealLede>
 
           {/* Vùng chưa có tour nào thì `tags` rỗng (chúng dẫn xuất từ chuyên mục
               của tour) — bỏ CẢ hàng, không để lại mỗi nhãn "Best for:" treo lơ
               lửng không theo sau thứ gì. */}
           {tags.length > 0 ? (
-            <div
+            <RevealBlock
+              beat="cta"
               className={cn(
                 'mt-6 flex flex-wrap items-center gap-2',
                 variant === 'stacked' && 'justify-center',
@@ -125,7 +134,7 @@ export function RegionIntro({
                   {tag}
                 </span>
               ))}
-            </div>
+            </RevealBlock>
           ) : null}
 
           {/* Nút primary MẶC ĐỊNH của hệ (ADR-0015: hết inline style theo vùng),
@@ -134,10 +143,14 @@ export function RegionIntro({
               đo 5.52:1 (light) / 4.11:1 (dark) — con số dark đúng bằng cặp
               `bg-primary`/`primary-foreground` mặc định của mọi nút primary
               trong repo, tức nợ toàn site đã ghi, không phải lớp lỗi mới. */}
-          <ButtonLink href="#tours" className="mt-8">
-            {t.browseCta(region.name)}
-            <ArrowRightIcon className="size-4" aria-hidden="true" />
-          </ButtonLink>
+          {/* `mt-8` dời từ nút LÊN khối bọc: nút là `inline-flex` nên nó vẫn ăn theo
+              `text-center` của biến thể `stacked` qua căn chữ của khối này. */}
+          <RevealBlock beat="cta" className="mt-8">
+            <ButtonLink href="#tours">
+              {t.browseCta(region.name)}
+              <ArrowRightIcon className="size-4" aria-hidden="true" />
+            </ButtonLink>
+          </RevealBlock>
         </div>
 
         {/* ── Ba highlight — khu `What makes X special` cũ, GỘP vào đây 29/07 ──

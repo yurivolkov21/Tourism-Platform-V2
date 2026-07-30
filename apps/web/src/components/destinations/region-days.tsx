@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import { MoveRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 import type { MockTourCard } from '@/mocks/types';
 
@@ -79,10 +80,15 @@ export function RegionDays({ tours }: { tours: readonly MockTourCard[] }) {
           {/* `SectionEyebrow` là `text-foreground`, KHÔNG tô `--primary` — trên
               băng phớt này primary đo 3.03:1 ở dark, dưới ngưỡng 4.5 chữ nhỏ. */}
           <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. Chỉ trượt
+              `y`: `region-days.spec.tsx` canh rằng không `[style]` nào đặt
+              `width`/`height`, và một transform không đụng tới hai thuộc tính đó. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.heading}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{t.subtitle}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">
+            {t.subtitle}
+          </RevealLede>
         </div>
 
         {/* `auto-fit` chứ không `lg:grid-cols-3` cố định: số nhóm dựng được là dữ

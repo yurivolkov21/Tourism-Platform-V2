@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { RegionDayTrips } from '@/components/destinations/region-day-trips';
 import { RegionDays } from '@/components/destinations/region-days';
 import { RegionGallery } from '@/components/destinations/region-gallery';
@@ -12,7 +12,6 @@ import { RegionSeasons } from '@/components/destinations/region-seasons';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
 import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
 import { RegionTours } from '@/components/destinations/region-tours';
-import { Reveal } from '@/components/motion/reveal';
 import { type RegionSectionKey, regionTheme } from '@/lib/region-theme';
 import {
   destinationsInRegion,
@@ -106,7 +105,9 @@ export async function generateMetadata({
  * nên nó ăn một trong bảy chỗ mà không trả lại gì.
  *
  * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai đoạn
- * static-first). `Reveal` tự mang `'use client'` nên bọc được từ đây.
+ * static-first). Trang KHÔNG bọc khu nào trong `Reveal` nữa (Task 5m): mỗi khu tự lo
+ * nhịp của mình qua `motion/reveal-header.tsx`, và 7 trong 9 khu vẫn là Server
+ * Component vì chỉ component con đó mang directive client.
  */
 export default async function RegionPage({ params }: { params: Promise<{ region: string }> }) {
   const { region: slug } = await params;
@@ -301,12 +302,20 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
       />
 
       {/* ── Khu 2–6 · năm khu GIỮA, thứ tự riêng từng miền ──
-          `null` (dữ liệu không đủ nuôi khu) thì KHÔNG bọc `Reveal` quanh nó:
-          `Reveal` là một `motion.div` có thật và một cái rỗng vẫn ăn chỗ trong
-          luồng. ── */}
+          `Fragment` trơ, KHÔNG `Reveal` (gỡ ở Task 5m). Trước đó cả năm khu bị bọc
+          trong một `Reveal` (`y:24`, viewport margin `-80px`) và điều đó chặn hẳn
+          đường làm nhịp NỘI BỘ cho từng khu: thêm `whileInView` cho phần tử con là
+          chồng hai transform, và hai observer bắn ở hai vị trí cuộn khác nhau
+          (margin `-80px` so với `0` của `SectionEyebrow`) nên chúng không xếp được
+          thành một cascade. Từ nay **mỗi khu tự lo nhịp của mình** — đúng như hero
+          vốn đã được miễn, cùng lý do ghi ở khối comment trên.
+          `Reveal` vẫn còn nguyên và vẫn đúng vai "bọc cả khu" ở `/destinations`
+          (index) và `article-body.tsx` — đừng sửa component đó.
+          Wrapper chỉ để mang `key`; nó không dựng hộp nào nên `null` (dữ liệu không
+          đủ nuôi khu) cũng không ăn chỗ trong luồng. ── */}
       {theme.sections.map((key) => {
         const node = renderSection(key);
-        return node ? <Reveal key={key}>{node}</Reveal> : null;
+        return node ? <Fragment key={key}>{node}</Fragment> : null;
       })}
 
       {/* ── Khu 7 · Footer — do layout dùng chung lo, giống hệt ở cả ba miền ── */}

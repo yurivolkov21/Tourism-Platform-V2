@@ -1,6 +1,7 @@
 import { cn } from '@tourism/ui/lib/utils';
 import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
@@ -48,10 +49,11 @@ export function RegionSignaturePostcards({
               dark. Xem `region-signature-timeline.tsx` cho lý lẽ đầy đủ. Eyebrow
               `text-foreground` trên băng đo 12.67:1 light / 10.65:1 dark. */}
           <SectionEyebrow>{eyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {heading}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{body}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">{body}</RevealLede>
         </div>
 
         <div className="mt-12 grid gap-5 sm:mt-16 sm:grid-cols-3 sm:gap-6">

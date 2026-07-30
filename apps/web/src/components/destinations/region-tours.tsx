@@ -4,6 +4,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading } from '@/components/motion/reveal-header';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { TourCard } from '@/components/tours/tour-card';
 import { paginate } from '@/lib/paginate';
@@ -93,9 +94,13 @@ export function RegionTours({
             là biến header thành một chỉ báo trạng thái thứ hai bên cạnh chính hàng
             chip đang bật. */}
         <SectionEyebrow>{messages.destinationsPage.toursLabel(tours.length)}</SectionEyebrow>
-        <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+        {/* Cascade header (Task 5m) — khu này chỉ có eyebrow + tiêu đề, không có đoạn
+            dẫn, nên cascade dừng ở nhịp `heading`. Hàng chip lọc CỐ Ý đứng im: nó là
+            điều khiển, và một bộ lọc trượt vào sau tiêu đề đọc ra "chưa dùng được".
+            Nhịp nội bộ của lưới card thuộc Task 5n. */}
+        <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
           {t.toursHeading}
-        </h2>
+        </RevealHeading>
 
         {/* `aria-pressed` chứ không phải `role="tab"`: đây là nhóm nút bật/tắt
             một bộ lọc, không phải tablist có panel tương ứng từng tab — dựng

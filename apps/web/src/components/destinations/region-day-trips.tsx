@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import { MoveRightIcon, StarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { formatMoney } from '@/lib/tours';
 import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
 
@@ -60,10 +61,16 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
           {/* `SectionEyebrow` là `text-foreground`, KHÔNG tô `--primary` — trên nền
               trang primary đo 3.03:1 ở dark, dưới ngưỡng 4.5 chữ nhỏ. */}
           <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
-          <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+          {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. Nhịp nằm
+              trên phần tử CON, không trên `<section>`: spec canh rằng section không
+              mang `style` (nó là khu cuối trang Trung, nền riêng thì `mt-32` của
+              footer hiện ra thành vạch sáng). */}
+          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.heading(dayTrips.length)}
-          </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{t.subtitle}</p>
+          </RevealHeading>
+          <RevealLede className="mt-2 text-lg text-pretty text-muted-foreground">
+            {t.subtitle}
+          </RevealLede>
         </div>
 
         {/* `auto-fit` chứ không `lg:grid-cols-4` cố định: số chuyến một ngày là dữ
