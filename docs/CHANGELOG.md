@@ -2,6 +2,70 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-30 — Dropdown navbar bị navbar đè: hai nguyên nhân, một lớp lỗi cũ bỏ sót (branch `fix/navbar-dropdown-stacking`, ff-only, commit code `e6f179f`)
+
+User báo: hover "Destinations" lúc đã cuộn thì dropdown bị thanh navbar đè lên. Điều
+tra bằng `elementFromPoint` quét dọc vùng chồng cho ra **hai nguyên nhân độc lập**,
+không phải một.
+
+- **Overlap 18px — neo sai mốc.** Base UI đo `sideOffset` từ ANCHOR, tức chính
+  trigger. Trigger cao 20px, căn giữa hàng cao 40px trong `p-4`, nên dải navbar còn
+  thừa đúng **26px** bên dưới nó; với offset 8 thì `popup.top − navbar.bottom =
+  −18px`. Con số này **giống nhau ở cả hai trạng thái cuộn**.
+- **Navbar thắng cuộc chồng lấp — z-index.** Popup **portal ra `body`** nên stacking
+  context của nó là **anh em** của `<nav>` trong context gốc, không phải con; navbar
+  là `z-(--z-sticky)`=1100 còn bản vendor để `z-50`. Portal còn là con ĐẦU TIÊN của
+  `body` nên kể cả bằng z vẫn thua. Hit-test: mọi y trong vùng chồng cho ra chính
+  `<nav>`.
+- **Vì sao chỉ thấy khi cuộn:** chưa cuộn nav là `rgba(0,0,0,0)` + `backdrop-filter:
+  none` — chồng vẫn 18px nhưng không có gì để che. Cuộn xuống nó thành
+  `bg-background/60 + blur(40px)`.
+
+**Đây là lớp lỗi repo đã sửa BỐN lần** (`select.tsx`, `dialog.tsx`, `sheet.tsx`,
+`drawer.tsx` đều có comment ghi đúng câu đó). `navigation-menu.tsx` là component
+vendor **duy nhất bị bỏ sót** đợt ấy.
+
+Vá: Positioner và Popup dùng `isolate z-(--z-popover)`; Root forward `sideOffset` và
+`destinations-menu` truyền **34 = 26 + 8**, đặt ở **call site** vì 26px là đặc thù
+`site-header`, không phải luật chung. Một con số cho cả hai trạng thái (user chốt
+phương án (a)). Z cao vẫn cần dù đã hết chồng: Positioner mang cầu hover
+`before:top-[-10px]` bắc qua khe, cầu nằm dưới navbar thì chuột đi xuống panel làm
+menu đóng giữa đường.
+
+**Hai phương án đã LOẠI, ghi để không ai thử lại:** `sideOffset` dạng hàm —
+`OffsetFunction` của Base UI 1.6 chỉ cấp **kích thước**, không cấp vị trí; và neo vào
+chính dải navbar — khi ấy `align='start'` căn theo mép dải chứ không theo trigger, mà
+căn ngang theo trigger đo được **đang đúng 0px lệch** nên đó là ràng buộc phải giữ,
+không phải lỗi thứ hai.
+
+**Review findings:**
+
+1. **Mutation không bite là phát hiện quan trọng nhất.** 2/3 đột biến bị bắt, nhưng
+   gỡ `sideOffset={sideOffset}` ở Root thì **6/6 test vẫn xanh, `lint` im,
+   `typecheck` im** — bug quay lại hoàn toàn âm thầm. Bịt bằng
+   `libs/shared/ui/src/components/navigation-menu.spec.ts` mới, làm TDD trung thực:
+   áp đột biến trước, viết test, xem đỏ, rồi bỏ đột biến. Spec đọc source vì "một prop
+   có được forward hay không" **không hiện ra DOM**, và jsdom không dựng layout nên
+   render không phân biệt offset 8 với 34.
+2. **Câu hỏi của user có một tiền đề sai, đã sửa lại:** họ hỏi cả "không bị lệch",
+   nhưng đo được `popup.left − trigger.left = 0px` — dropdown **không lệch**; đó là
+   thứ phải giữ khi vá, không phải lỗi cần vá.
+
+**Nợ mở — cùng bug, đang NGỦ:** `dropdown-menu.tsx` còn `isolate z-50` / `z-50` và
+được `user-menu.tsx` dùng **trong chính navbar đó** (`site-header.tsx:100`). Hôm nay
+`MOCK_SESSION` là chưa-đăng-nhập nên nó render link "Log in", dropdown avatar không
+mở — nên chưa thấy. Nó sẽ thức đúng lúc nối auth. Sáu component vendor khác còn `z-50`
+(`alert-dialog`, `combobox`, `context-menu`, `hover-card`, `popover`, `tooltip`) hiện
+**chưa file app nào dùng**.
+
+Tests after: `pnpm gate` xanh — **18/18 task** kể cả `next build` · web 656 (trước
+654) · ui **10** (trước 5) · API 188 · contract 55 · tokens 10 · i18n 1, tổng **920**.
+`@types/node` thêm vào `libs/shared/ui` cho spec đọc file, khớp `26.1.1` mà `apps/api`
+và `libs/shared/tokens` dùng. Đo lại trên Chromium cả hai trạng thái cuộn:
+`popup.top − navbar.bottom` từ **−18px thành +8px** · căn ngang giữ **0px lệch** ·
+z positioner **1500 > 1100** · chuột đi từ trigger qua khe xuống panel thì menu
+**vẫn mở**. `pnpm test:int` không chạy được ở máy này.
+
 ## 2026-07-30 — Đóng cụm Destinations (Task 6/7) và dọn 4 khoản nợ phase giao diện tĩnh (branch `fix/sitemap-destinations`, ff-only, commit cuối `cf8f821`)
 
 Đợt dọn nhà TRƯỚC khi nối API. User chốt: đóng Task 6 trước, rồi xử lý tồn đọng,
