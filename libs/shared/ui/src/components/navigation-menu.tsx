@@ -3,12 +3,30 @@ import { cn } from '@tourism/ui/lib/utils';
 import { cva } from 'class-variance-authority';
 import { ChevronDownIcon } from 'lucide-react';
 
+/**
+ * `sideOffset` forward xuống Positioner (thêm 30/07) vì khoảng cách đúng phụ thuộc
+ * vào **thanh chứa trigger**, thứ chỉ chỗ gọi biết. Base UI đo `sideOffset` từ
+ * ANCHOR (chính trigger), nên một trigger nằm giữa một thanh cao hơn nó sẽ mở panel
+ * chui vào thanh đó — đã đo −18px với navbar của site này.
+ *
+ * Không giải được bằng `sideOffset` dạng hàm: `OffsetFunction` của Base UI 1.6 chỉ
+ * cấp KÍCH THƯỚC (`anchor.width/height`, `positioner.*`), không cấp vị trí, nên
+ * không tính được khoảng từ đáy trigger tới đáy thanh.
+ * Cũng không giải bằng cách neo vào chính thanh đó: khi ấy `align='start'` căn theo
+ * mép thanh chứ không theo trigger, và `alignOffset` dạng hàm cũng chỉ cấp kích
+ * thước nên không bù lại được — mà căn ngang theo trigger là thứ phải giữ.
+ *
+ * Mặc định vẫn để Positioner tự quyết (8): component này dùng chung, và 26px đệm
+ * của navbar là đặc thù của `site-header`, không phải luật chung.
+ */
 function NavigationMenu({
   align = 'start',
+  sideOffset,
   className,
   children,
   ...props
-}: NavigationMenuPrimitive.Root.Props & Pick<NavigationMenuPrimitive.Positioner.Props, 'align'>) {
+}: NavigationMenuPrimitive.Root.Props &
+  Pick<NavigationMenuPrimitive.Positioner.Props, 'align' | 'sideOffset'>) {
   return (
     <NavigationMenuPrimitive.Root
       data-slot="navigation-menu"
@@ -19,7 +37,7 @@ function NavigationMenu({
       {...props}
     >
       {children}
-      <NavigationMenuPositioner align={align} />
+      <NavigationMenuPositioner align={align} sideOffset={sideOffset} />
     </NavigationMenuPrimitive.Root>
   );
 }
@@ -87,6 +105,23 @@ function NavigationMenuContent({ className, ...props }: NavigationMenuPrimitive.
   );
 }
 
+// z-index dùng thang token, KHÔNG phải `z-50` mặc định của shadcn.
+//
+// Đo 30/07 khi user báo dropdown "Destinations" bị navbar đè: popup portal ra
+// `body` nên stacking context của nó (`isolate z-…` trên Positioner) là ANH EM của
+// `<nav>` trong context gốc — không phải con — và navbar là `z-(--z-sticky)`=1100.
+// Với `z-50` thì 1100 > 50 nên navbar luôn thắng; `elementFromPoint` quét dọc vùng
+// chồng cho ra chính `<nav>` ở mọi y trong đó. Portal còn là con ĐẦU TIÊN của
+// `body`, đứng trước `<nav>` trong thứ tự tài liệu, nên kể cả bằng z nó vẫn thua.
+//
+// Cần z cao KỂ CẢ khi `sideOffset` đã đủ để panel không chồng navbar: Positioner
+// mang cầu hover vô hình `data-[side=bottom]:before:top-[-10px]` bắc qua khe, và nếu
+// cầu đó nằm dưới navbar thì chuột đi từ trigger xuống panel sẽ chạm navbar chứ
+// không chạm cầu, và menu đóng giữa đường.
+//
+// Cùng lỗi đã sửa ở `select.tsx`, `dialog.tsx`, `sheet.tsx`, `drawer.tsx` — file này
+// là component vendor DUY NHẤT bị bỏ sót đợt đó. Nếu vendor lại từ upstream, giữ
+// nguyên hai chỗ `z-(--z-popover)` bên dưới và hai `data-slot` (spec đọc chúng).
 function NavigationMenuPositioner({
   className,
   side = 'bottom',
@@ -98,17 +133,21 @@ function NavigationMenuPositioner({
   return (
     <NavigationMenuPrimitive.Portal>
       <NavigationMenuPrimitive.Positioner
+        data-slot="navigation-menu-positioner"
         side={side}
         sideOffset={sideOffset}
         align={align}
         alignOffset={alignOffset}
         className={cn(
-          'isolate z-50 h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none data-[side=bottom]:before:top-[-10px] data-[side=bottom]:before:right-0 data-[side=bottom]:before:left-0',
+          'isolate z-(--z-popover) h-(--positioner-height) w-(--positioner-width) max-w-(--available-width) transition-[top,left,right,bottom] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] data-instant:transition-none data-[side=bottom]:before:top-[-10px] data-[side=bottom]:before:right-0 data-[side=bottom]:before:left-0',
           className,
         )}
         {...props}
       >
-        <NavigationMenuPrimitive.Popup className="data-[ending-style]:easing-[ease] xs:w-(--popup-width) relative h-(--popup-height) w-(--popup-width) origin-(--transform-origin) rounded-lg bg-popover text-popover-foreground shadow ring-1 ring-foreground/10 transition-[opacity,transform,width,height,scale,translate] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] outline-none data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:scale-90 data-starting-style:opacity-0">
+        <NavigationMenuPrimitive.Popup
+          data-slot="navigation-menu-popup"
+          className="data-[ending-style]:easing-[ease] xs:w-(--popup-width) relative isolate z-(--z-popover) h-(--popup-height) w-(--popup-width) origin-(--transform-origin) rounded-lg bg-popover text-popover-foreground shadow ring-1 ring-foreground/10 transition-[opacity,transform,width,height,scale,translate] duration-[0.35s] ease-[cubic-bezier(0.22,1,0.36,1)] outline-none data-ending-style:scale-90 data-ending-style:opacity-0 data-ending-style:duration-150 data-starting-style:scale-90 data-starting-style:opacity-0"
+        >
           <NavigationMenuPrimitive.Viewport className="relative size-full overflow-hidden" />
         </NavigationMenuPrimitive.Popup>
       </NavigationMenuPrimitive.Positioner>

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
-import { DestinationsMenu } from './destinations-menu';
+import { DestinationsMenu, NAV_DROPDOWN_SIDE_OFFSET } from './destinations-menu';
 
 // Menu rút còn ĐÚNG BỐN mục (user chốt 30/07): All + ba vùng. Bốn test dưới đây
 // THAY bốn test cũ vốn khẳng định "mỗi nhóm vùng liệt kê đúng 3 địa danh" — bất
@@ -67,5 +67,41 @@ describe('DestinationsMenu — đúng bốn mục', () => {
         `/destinations/${region.slug}`,
       );
     }
+  });
+});
+
+/**
+ * Hai bất biến chống lại đúng hai nguyên nhân đã ĐO ngày 30/07 khi user báo
+ * *"hover Destinations lúc đã cuộn thì dropdown bị thanh navbar đè lên"*.
+ *
+ * Đo được (Chromium, 1440×900, `elementFromPoint` quét dọc vùng chồng):
+ *  · `popup.top − pill.bottom = **−18px**` ở CẢ hai trạng thái cuộn — panel chui
+ *    vào dải navbar, vì `sideOffset` neo theo TRIGGER mà dải navbar còn thừa 26px
+ *    bên dưới trigger.
+ *  · Tại y trong vùng chồng, phần tử trên cùng là chính `<nav>` (z=1100), chỉ qua
+ *    đáy nav thì popup mới thắng — vì popup portal ra `body` với stacking context
+ *    `z-50`, tức nó là ANH EM của `<nav>` trong context gốc và 1100 > 50.
+ *
+ * Chỉ thấy khi đã cuộn vì lúc chưa cuộn nav là `background: rgba(0,0,0,0)` và
+ * `backdrop-filter: none` — chồng vẫn 18px nhưng không có gì để che.
+ */
+describe('DestinationsMenu — dropdown không bị navbar đè', () => {
+  it('sideOffset = đệm dưới của dải navbar CỘNG khe, không phải mặc định 8', () => {
+    // 26 là khoảng nav thừa dưới trigger (trigger cao 20px căn giữa hàng cao 40px
+    // trong `p-4`), 8 là khe muốn thấy. Đo lại nếu ai đổi padding của `site-header`.
+    expect(NAV_DROPDOWN_SIDE_OFFSET).toBe(26 + 8);
+    // Phải LỚN HƠN 26, nếu không panel vẫn nằm trong dải navbar.
+    expect(NAV_DROPDOWN_SIDE_OFFSET).toBeGreaterThan(26);
+  });
+
+  it('popup dùng thang z token, KHÔNG phải z-50 của bản vendor', async () => {
+    await openMenu();
+    const popup = document.querySelector('[data-slot="navigation-menu-popup"]');
+    expect(popup).not.toBeNull();
+    // Positioner là tổ tiên mang stacking context; nó phải vượt z-(--z-sticky)=1100.
+    const positioner = popup?.closest('[data-slot="navigation-menu-positioner"]');
+    expect(positioner).not.toBeNull();
+    expect(positioner?.className).toContain('z-(--z-popover)');
+    expect(positioner?.className).not.toMatch(/(^|\s)z-50(\s|$)/);
   });
 });

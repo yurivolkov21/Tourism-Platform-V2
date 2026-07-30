@@ -35,11 +35,33 @@ import { REGIONS } from '@/mocks/regions';
  * đúng một dòng để test khẳng định link trỏ đúng slug vùng ấy. Nó không còn gán
  * biến CSS nào (lớp tint đã rút — ADR-0015), nên đừng dọn nó đi như tàn dư.
  */
+/**
+ * Khoảng cách từ trigger xuống panel, tính bằng px.
+ *
+ * **26 + 8**, không phải 8 mặc định của Positioner. Base UI đo `sideOffset` từ chính
+ * trigger, nhưng trigger nằm GIỮA dải navbar: nó cao 20px và căn giữa một hàng cao
+ * 40px trong `p-4`, nên dải navbar còn thừa đúng **26px** bên dưới nó. Với offset 8
+ * thì `popup.top − navbar.bottom = −18px` — panel chui vào navbar, đo được ở CẢ hai
+ * trạng thái cuộn (user báo 30/07). Cộng 26 rồi thêm khe 8 thì panel treo đúng 8px
+ * dưới dải navbar.
+ *
+ * MỘT con số cho cả hai trạng thái, không phải `scrolled ? 34 : 16` (user chốt
+ * phương án (a) ngày 30/07): navbar là dải tương tác cao 72px ở cả hai trạng thái —
+ * lúc chưa cuộn nó chỉ trong suốt, không phải nhỏ đi — nên "panel bắt đầu dưới dải
+ * đó" là mô hình đúng, còn khe nhảy khi cuộn thì đọc ra bug.
+ *
+ * ⚠️ Buộc vào `p-4` của `site-header.tsx` và chiều cao nút "Book a tour". Đổi hai thứ
+ * đó thì đo lại: `popup.top − navbar.bottom` phải ra **+8**, không phải số âm.
+ * `destinations-menu.spec.tsx` khoá con số nhưng jsdom KHÔNG dựng layout nên nó chỉ
+ * canh được phép cộng, không canh được hình học — chốt hình học là phép đo trình duyệt.
+ */
+export const NAV_DROPDOWN_SIDE_OFFSET = 34;
+
 export function DestinationsMenu({ triggerClassName }: { triggerClassName?: string }) {
   const t = messages.nav.destinationsMenu;
 
   return (
-    <NavigationMenu>
+    <NavigationMenu sideOffset={NAV_DROPDOWN_SIDE_OFFSET}>
       <NavigationMenuList>
         <NavigationMenuItem>
           <NavigationMenuTrigger className={triggerClassName}>{t.label}</NavigationMenuTrigger>
