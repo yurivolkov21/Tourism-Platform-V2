@@ -79,30 +79,34 @@ export function RegionSignaturePostcards({
                   'relative overflow-hidden rounded-2xl text-on-media',
                   // Ô cao hơn (3:4 thay 4:5) là phần bù dựng-lớn-hơn của miền Nam.
                   emphasis ? 'aspect-3/4' : 'aspect-4/5',
-                  // So le nhẹ: hai ô ngoài tụt xuống, ô giữa nhô lên.
+                  // So le nhẹ: hai ô ngoài tụt xuống, ô giữa nhô lên. Đây là BỐ CỤC —
+                  // nó luôn hiện và không bao giờ di chuyển.
                   i === 1 ? 'sm:-translate-y-4' : 'sm:translate-y-4',
-                  // ⚠️ `motion-reduce:transform-none` ở đây là **NO-OP** — đo được
-                  // 30/07, và comment cũ nói ngược ("tắt hẳn khi tắt chuyển động").
-                  // Tailwind v4 biên `translate-y-*` thành thuộc tính CSS `translate`
-                  // RIÊNG, không thành `transform`, nên `transform: none` không với tới
-                  // nó: đo ở `prefers-reduced-motion: reduce` thì `translate` vẫn là
-                  // `0px 16px`. Giữ class lại vì nó vô hại và vì XOÁ nó là ngầm khẳng
-                  // định "so le tĩnh phải mất khi giảm chuyển động" — điều KHÔNG đúng:
-                  // so le này là BỐ CỤC (luôn hiện, không phải chuyển động), và bố cục
-                  // đã qua bốn vòng thiết kế user duyệt. Vá thật sẽ là
-                  // `motion-reduce:translate-none`, nhưng nó ĐỔI hình ở chế độ reduce
-                  // nên phải hỏi user — nợ đã ghi, không lặng lẽ làm trong 5n.
-                  'motion-reduce:transform-none',
+                  // ⚠️ Ở đây từng có `motion-reduce:transform-none`, XOÁ 30/07. Hai lý
+                  // do, và lý do thứ hai mới là lý do thật:
+                  //  1. Nó là NO-OP. Tailwind v4 biên `translate-y-*` thành thuộc tính
+                  //     CSS `translate` RIÊNG chứ không thành `transform`, nên
+                  //     `transform: none` không với tới nó — đo `getComputedStyle` trên
+                  //     ba tấm cho `translate: 0px 16px` / `0px -16px` y hệt nhau ở chế
+                  //     độ thường và ở `prefers-reduced-motion: reduce`.
+                  //  2. Kể cả nếu nó CHẠY thì nó vẫn sai. `prefers-reduced-motion` xin
+                  //     bớt CHUYỂN ĐỘNG, không xin đổi BỐ CỤC; một khoảng lệch tĩnh
+                  //     16px không di chuyển nên không có gì để giảm. Dẹp phẳng nan quạt
+                  //     ở chế độ reduce là lấy đi hình của khu mà không đổi lại được gì.
+                  // Nên vá đúng KHÔNG phải `motion-reduce:translate-none` (nó sẽ làm
+                  // đúng cái sai ở mục 2) mà là xoá hẳn. Giữ lại thì tệ hơn im lặng:
+                  // một class trông như guard mà không guard gì sẽ được người sau tin và
+                  // copy — đó là cách lớp lỗi này lan. Chuyển động THẬT của khu nằm ở cú
+                  // xoè dưới đây, và nó được guard đúng.
                   // ── XOÈ khi chạm ──
                   // Đây là CSS transition, KHÔNG phải motion component, nên
                   // `MotionConfig reducedMotion="user"` ở root layout VÔ CAN với nó —
                   // guard loại 2 (`motion-safe:`) là bắt buộc và phải tự khai, đúng
                   // khuôn `destination-tile.tsx` và zoom ô gallery. Viết dưới dạng
-                  // `motion-safe:` (chỉ chạy khi người dùng KHÔNG tắt chuyển động) thay
-                  // vì `motion-reduce:…-none` để không phải đấu specificity với
-                  // `motion-reduce:transform-none` ở trên: `.group:hover &` có
-                  // specificity cao hơn nên nó sẽ THẮNG, và tấm bưu thiếp vẫn xoè
-                  // trong chế độ giảm chuyển động.
+                  // `motion-safe:` (chỉ sinh class khi người dùng KHÔNG tắt chuyển động)
+                  // chứ không `motion-reduce:…-none`: cách sau phải đấu specificity với
+                  // `.group:hover &` và sẽ THUA, còn `motion-safe:` thì lúc reduce không
+                  // sinh ra class nào nên không có gì để thua.
                   'motion-safe:transition-transform motion-safe:duration-500 motion-safe:ease-out',
                   // Chỉ từ `sm` trở lên — dưới đó dải về MỘT cột, và ba tấm xếp dọc thì
                   // không có nan quạt nào để mở.
