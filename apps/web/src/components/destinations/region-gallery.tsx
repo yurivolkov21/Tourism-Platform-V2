@@ -12,8 +12,16 @@ import type { MockRegion } from '@/mocks/types';
 export type GalleryVariant = 'peaks' | 'lanterns' | 'panorama';
 
 /**
- * Số ô mỗi biến thể dùng. Nhãn CẮT từ `galleryTiles` (10 mục) theo con số này —
- * cần ít hơn thì cắt, KHÔNG bịa thêm nhãn.
+ * Số ô mỗi biến thể dùng. Nhãn lấy từ `regions[key].galleryTiles` — **mỗi vùng
+ * một danh sách RIÊNG, dài đúng bằng con số ở đây**.
+ *
+ * ⚠️ Trước 30/07 nhãn cắt từ MỘT danh sách `galleryTiles` dùng chung 10 mục, và
+ * điều đó sai hai lần: ba vùng cắt cùng đầu danh sách nên **chú thích giống hệt
+ * nhau** (user yêu cầu ba gallery khác nhau), và vài nhãn thuộc vùng KHÁC — trang
+ * miền Bắc chú thích "Lantern-lit old town" (Hội An, miền Trung) và "Riverside
+ * floating market" (Cần Thơ, miền Nam). Cùng họ lỗi với 7 địa danh bịa mà §7 đã
+ * cắt, chỉ nhẹ hơn: chú thích mô tả một cảnh KHÔNG có trong vùng đang xem.
+ * Danh sách chung đã xoá khỏi i18n — đừng dựng lại.
  *
  * Rơi từ 8 · 10 · 3 (bản 5k) xuống 6 · 6 · 3: user duyệt bản đó và nêu *"ảnh
  * gallery quá nhỏ"*. Trong cùng một bề ngang, ít ô là điều kiện DUY NHẤT để mỗi ô
@@ -86,7 +94,10 @@ export function RegionGallery({
 }) {
   const t = messages.regionPage;
   const lb = t.galleryLightbox;
-  const labels = t.galleryTiles.slice(0, TILE_COUNT[variant]);
+  // Nhãn của CHÍNH vùng này. `slice` là chốt chặn cuối, không phải cơ chế chính:
+  // spec khẳng định mỗi danh sách dài ĐÚNG `TILE_COUNT[variant]`, nên nếu ai thêm
+  // nhãn thứ bảy thì test đỏ chứ không âm thầm bị cắt mất.
+  const labels = t.regions[region.key].galleryTiles.slice(0, TILE_COUNT[variant]);
   const [openAt, setOpenAt] = useState<number | null>(null);
 
   return (

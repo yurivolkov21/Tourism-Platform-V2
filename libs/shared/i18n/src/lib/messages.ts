@@ -745,34 +745,6 @@ export const messages = {
     galleryHeading: (region: string) => `${region} in photos`,
     gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
     /**
-     * Nhãn ô của khu ảnh — ĐÚNG 10, dư sức cho biến thể nhiều ô nhất.
-     * Ba biến thể dùng số ô khác nhau (peaks 6 · lanterns 6 · panorama 3) và mỗi
-     * biến thể CẮT lấy phần đầu của danh sách này. Cần ít hơn 10 thì cắt, KHÔNG
-     * bịa thêm nhãn: một nhãn không mô tả ô nào là một `aria-label` nói sai.
-     *
-     * Số ô rơi từ 8/10/3 xuống 6/6/3 ở Task 5l — user nêu *"ảnh quá nhỏ"*, và ít
-     * ô hơn là điều kiện để mỗi ô to hẳn ra. Danh sách giữ nguyên 10 mục làm dư
-     * địa cho biến thể về sau; bốn mục cuối hiện chưa ô nào dùng.
-     *
-     * Mô tả CẢNH chung, cố ý KHÔNG gắn địa danh (Nexora làm y vậy ở
-     * `PLACEHOLDER_SECTIONS`): cùng một danh sách phục vụ cả ba vùng, nên gắn tên
-     * nơi chốn vào đây là hứa một bức ảnh cụ thể mà ô giữ chỗ không có — và ở hai
-     * vùng còn lại thì tên đó còn SAI. Chúng là `aria-label` của ô nên vẫn là chuỗi
-     * user-facing, vì thế ở đây chứ không nằm trong component.
-     */
-    galleryTiles: [
-      'Coastal cliffs above the sea',
-      'Lantern-lit old town',
-      'Terraced rice fields',
-      'Limestone karsts at dawn',
-      'Riverside floating market',
-      'Misty mountain pass',
-      'Fishing boats at sunset',
-      'Temple courtyard',
-      'Street food stalls',
-      'Rolling green highlands',
-    ],
-    /**
      * Lightbox của khu ảnh vùng. Khối RIÊNG, không dùng lại
      * `tourDetail.gallery`: `Lightbox` nhận copy qua prop chính là để hai trang
      * nói bằng chữ của mình. Ở đây ô ảnh CÓ nhãn cảnh (`galleryTiles`) nên nút mở
@@ -848,6 +820,17 @@ export const messages = {
         // thật trong itinerary ngày 3 của `northern-highlands-loop`.
         intro2:
           'Cruise the emerald karsts of Hạ Long, trek between Hmong and Dao villages around Sa Pa, and ride the switchbacks over Ô Quy Hồ. Browse our trips below.',
+        /** Nhãn ô gallery — 6 ô cho biến thể `peaks`. Mỗi nhãn neo vào một chi tiết CÓ
+           THẬT: địa điểm của vùng, highlight, hoặc chặng trong itinerary
+           `northern-highlands-loop` (Mường Hoa · Ô Quy Hồ · Bắc Hà). */
+        galleryTiles: [
+          'Limestone islands in Hạ Long Bay',
+          'Rice terraces above the Mường Hoa valley',
+          'Flooded caves below the karst at Ninh Bình',
+          'The road over Ô Quy Hồ',
+          'Sunday morning at the Bắc Hà market',
+          'A junk at anchor for the night',
+        ],
         highlights: [
           {
             title: 'Emerald bays',
@@ -881,6 +864,16 @@ export const messages = {
           'Ancient citadels and UNESCO old towns beside a golden coast, and Chăm temple towers in the hills — Central Vietnam is the country’s cultural heart.',
         intro2:
           'Step inside the walled citadel of Huế, wander the lantern-lit lanes of Hội An, and explore the Chăm temples of Mỹ Sơn. Browse our trips below.',
+        /** Nhãn ô gallery — 6 ô cho biến thể `lanterns`. Nguồn: timeline di sản, highlight,
+           và itinerary `central-heritage-week` (Hải Vân · Mỹ Sơn). */
+        galleryTiles: [
+          'The citadel walls at Huế',
+          'Royal tombs along the Perfume river',
+          'Lanterns on the Hội An riverfront',
+          'The coast road over the Hải Vân pass',
+          'Chăm brick towers at Mỹ Sơn',
+          'The Golden Bridge above Bà Nà',
+        ],
         highlights: [
           {
             title: 'Imperial Huế',
@@ -935,6 +928,13 @@ export const messages = {
         // Củ Chi. Thay bằng Cần Thơ và đêm ăn đường phố Sài Gòn, cả hai là tour thật.
         intro2:
           'Drift the Mekong’s waterways from Cần Thơ, eat your way through Sài Gòn after dark, and unwind on the reefs of Phú Quốc. Browse our trips below.',
+        /** Nhãn ô gallery — 3 ô cho biến thể `panorama`, lấy từ mô tả ba địa điểm và
+           highlight của vùng. */
+        galleryTiles: [
+          'A floating market at first light near Cần Thơ',
+          'Street food after dark in Sài Gòn',
+          'Clear reefs off Phú Quốc',
+        ],
         highlights: [
           {
             title: 'The Mekong',

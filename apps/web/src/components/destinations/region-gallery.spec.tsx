@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { regionTheme } from '@/lib/region-theme';
 import { REGIONS } from '@/mocks/regions';
 import { RegionGallery, TILE_COUNT } from './region-gallery';
 
@@ -25,6 +26,8 @@ beforeAll(() => {
 
 // biome-ignore lint/style/noNonNullAssertion: REGIONS là hằng 3 phần tử ở module scope
 const NORTH = REGIONS[0]!;
+// biome-ignore lint/style/noNonNullAssertion: REGIONS là hằng 3 vùng ở mocks
+const SOUTH = REGIONS[2]!;
 
 const t = messages.regionPage;
 
@@ -75,12 +78,29 @@ describe('RegionGallery — ba bố cục, một khu', () => {
     }
   });
 
-  it('nhãn ô CẮT từ danh sách i18n, không bịa thêm nhãn', () => {
-    const { container } = render(<RegionGallery region={NORTH} variant="panorama" />);
+  it('nhãn ô lấy từ danh sách của CHÍNH vùng, không bịa thêm nhãn', () => {
+    const { container } = render(<RegionGallery region={SOUTH} variant="panorama" />);
     const labels = tiles(container).map((el) => el.getAttribute('aria-label'));
     expect(labels).toEqual(
-      t.galleryTiles.slice(0, 3).map((label) => t.galleryLightbox.open(label)),
+      t.regions.south.galleryTiles.map((label) => t.galleryLightbox.open(label)),
     );
+  });
+
+  // Chốt chặn cho chính lỗi vừa vá: trước 30/07 ba vùng cắt cùng đầu MỘT danh sách
+  // dùng chung, nên chú thích ba gallery giống hệt nhau và vài nhãn thuộc vùng
+  // khác (trang Bắc chú thích "Lantern-lit old town" — Hội An, miền Trung).
+  it('ba vùng KHÔNG dùng chung một nhãn nào', () => {
+    const all = REGIONS.flatMap((region) => t.regions[region.key].galleryTiles);
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  // Nhãn phải dài ĐÚNG số ô của biến thể vùng đó dùng: thiếu thì `slice` để lại ô
+  // không nhãn (component bỏ ô đó, gallery thiếu ảnh), thừa thì nhãn bị cắt âm thầm.
+  it('mỗi vùng có đúng số nhãn bằng số ô của biến thể mình dùng', () => {
+    for (const region of REGIONS) {
+      const variant = regionTheme(region.key).galleryVariant;
+      expect(t.regions[region.key].galleryTiles, region.key).toHaveLength(TILE_COUNT[variant]);
+    }
   });
 
   it('không ô nào lặp nhãn — mỗi ô là một cảnh khác', () => {
@@ -117,8 +137,8 @@ describe('RegionGallery — ba bố cục, một khu', () => {
 describe('RegionGallery — ô là nút mở lightbox', () => {
   it('mỗi ô là <button> có tên khả truy cập gọi tên cảnh', () => {
     render(<RegionGallery region={NORTH} variant="peaks" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    const first = t.galleryTiles[0]!;
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    const first = t.regions.north.galleryTiles[0]!;
     const button = screen.getByRole('button', { name: t.galleryLightbox.open(first) });
     expect(button.tagName).toBe('BUTTON');
     expect(button).toHaveAttribute('type', 'button');
@@ -150,8 +170,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('bấm ô thứ ba mở lightbox ở ĐÚNG ảnh đó', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="peaks" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    const third = t.galleryTiles[2]!;
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    const third = t.regions.north.galleryTiles[2]!;
     await openTile(user, t.galleryLightbox.open(third));
     expect(screen.getByText('3 / 6')).toBeInTheDocument();
   });
@@ -159,8 +179,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('lightbox nói bằng copy của TRANG VÙNG, không copy của trang tour', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="panorama" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    const first = t.galleryTiles[0]!;
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    const first = t.regions.north.galleryTiles[0]!;
     await openTile(user, t.galleryLightbox.open(first));
     expect(screen.getByText(t.galleryLightbox.dialogTitle)).toHaveClass('sr-only');
     expect(screen.getByRole('button', { name: t.galleryLightbox.close })).toBeInTheDocument();
@@ -169,8 +189,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('chú thích trong lightbox nêu cảnh của ĐÚNG ô đang xem', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="panorama" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    const second = t.galleryTiles[1]!;
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    const second = t.regions.north.galleryTiles[1]!;
     await openTile(user, t.galleryLightbox.open(second));
     // Đúng MỘT lần: nhãn ở chú thích, không lặp lại làm `aria-label` của ô ảnh
     // trong dialog — ô đó là `decorative` chính vì thế.
@@ -180,8 +200,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('mũi tên phải/trái đổi ảnh', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="lanterns" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    await openTile(user, t.galleryLightbox.open(t.galleryTiles[1]!));
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    await openTile(user, t.galleryLightbox.open(t.regions.north.galleryTiles[1]!));
     expect(screen.getByText('2 / 6')).toBeInTheDocument();
     await user.keyboard('{ArrowRight}');
     expect(screen.getByText('3 / 6')).toBeInTheDocument();
@@ -192,8 +212,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('KHÔNG cuộn vòng: nút vô hiệu ở hai đầu', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="panorama" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    await openTile(user, t.galleryLightbox.open(t.galleryTiles[0]!));
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    await openTile(user, t.galleryLightbox.open(t.regions.north.galleryTiles[0]!));
     expect(screen.getByRole('button', { name: t.galleryLightbox.previous })).toBeDisabled();
     const next = screen.getByRole('button', { name: t.galleryLightbox.next });
     await user.click(next);
@@ -205,8 +225,8 @@ describe('RegionGallery — ô là nút mở lightbox', () => {
   it('Escape đóng lightbox', async () => {
     const user = userEvent.setup();
     render(<RegionGallery region={NORTH} variant="peaks" />);
-    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
-    await openTile(user, t.galleryLightbox.open(t.galleryTiles[0]!));
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles của north là hằng 6 mục
+    await openTile(user, t.galleryLightbox.open(t.regions.north.galleryTiles[0]!));
     await user.keyboard('{Escape}');
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   });
