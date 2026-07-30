@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
 import { RegionDayTrips } from './region-day-trips';
@@ -30,6 +31,10 @@ function tour(
   basePrice: string,
   category: string,
   day1: string | null = null,
+  // Rating và độ khó khai được từ đây (thêm 30/07): thẻ giờ in cả hai, nên fixture
+  // phải biểu diễn được CẢ HAI nhánh — có đánh giá và chưa ai đánh giá.
+  rating: { avg: number; count: number } | null = null,
+  difficulty: MockTourCard['difficulty'] = 'EASY',
 ): MockTourCard & { itinerary?: MockItineraryDay[] } {
   return {
     id: `id-${slug}`,
@@ -40,13 +45,13 @@ function tour(
     compareAtPrice: null,
     currency: 'USD',
     durationDays,
-    difficulty: 'EASY',
+    difficulty,
     maxGroupSize: 12,
     isFeatured: false,
     destinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
     category: { slug: category.toLowerCase(), name: category },
-    ratingAvg: null,
-    ratingCount: 0,
+    ratingAvg: rating?.avg ?? null,
+    ratingCount: rating?.count ?? 0,
     ...(day1 === null ? {} : { itinerary: [{ dayNumber: 1, title: day1, description: null }] }),
   };
 }
@@ -76,6 +81,8 @@ const CENTRAL = [
     '89.00',
     'Scenic routes',
     'Bà Nà, the pass, and the lagoon',
+    { avg: 4.5, count: 4 },
+    'MODERATE',
   ),
   tour(
     'hoi-an-cooking-market',
@@ -130,10 +137,44 @@ describe('RegionDayTrips', () => {
     );
   });
 
-  it('mỗi mục in chuyên mục và giá khởi điểm', () => {
+  it('mỗi mục in chuyên mục · ĐỘ KHÓ và giá khởi điểm kèm "per person"', () => {
     render(<RegionDayTrips tours={CENTRAL} />);
-    expect(screen.getByText('Scenic routes')).toBeInTheDocument();
+    // Chuyên mục và độ khó nằm CÙNG một dòng, nên khẳng định cả cụm — bản trước chỉ
+    // tìm 'Scenic routes' và sẽ tiếp tục xanh kể cả khi độ khó bị bỏ đi.
+    // Matcher HÀM: cụm này gồm hai node chữ (`{category}` và template độ khó) nên
+    // `getByText('Scenic routes · Moderate')` không khớp — phải so `textContent`.
+    expect(
+      screen.getByText(
+        (_, el) => el?.tagName === 'SPAN' && el.textContent === 'Scenic routes · Moderate',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('$89')).toBeInTheDocument();
+    // "per person" nói giá là giá MỘT KHÁCH — tín hiệu "đặt được", có bốn thẻ nên
+    // bốn lần.
+    expect(screen.getAllByText(messages.toursPage.perPerson)).toHaveLength(4);
+  });
+
+  // Ba tín hiệu thêm 30/07 vì user không nhận ra thẻ là tour: độ khó, đánh giá, và
+  // nhãn CHỮ thay mũi tên trơn. Nếu ai gỡ một trong ba thì test này đỏ.
+  it('mỗi thẻ có đánh giá và nhãn hành động bằng CHỮ, không chỉ mũi tên', () => {
+    const { container } = render(<RegionDayTrips tours={CENTRAL} />);
+    expect(screen.getAllByText(messages.regionPage.dayTrips.viewTrip)).toHaveLength(4);
+    // `da-nang-coast-ride` có ratingAvg 4.5 / 4 lượt trong fixture.
+    expect(screen.getByText('4.5')).toBeInTheDocument();
+    expect(screen.getByText('(4)')).toBeInTheDocument();
+    // NGÔI SAO phải có mặt, không chỉ con số: chính nó nói "4.5" là một ĐÁNH GIÁ chứ
+    // không phải một con số bất kỳ. Mutation-test cho thấy nếu chỉ khẳng định hai
+    // chuỗi trên thì gỡ hẳn `StarIcon` mà 15/15 vẫn xanh.
+    expect(container.querySelector('svg.fill-rating')).not.toBeNull();
+  });
+
+  // `ratingAvg === null` là CHƯA AI đánh giá, khác hẳn 0 điểm — phải in nhãn chữ,
+  // không phải "0.0" hay năm sao rỗng.
+  it('chuyến chưa ai đánh giá in nhãn chữ, KHÔNG in 0.0', () => {
+    render(<RegionDayTrips tours={CENTRAL} />);
+    // Fixture: chỉ `da-nang-coast-ride` có đánh giá, BA chuyến còn lại `null`.
+    expect(screen.getAllByText(messages.toursPage.notRated)).toHaveLength(3);
+    expect(screen.queryByText('0.0')).not.toBeInTheDocument();
   });
 
   // Câu mô tả là tiêu đề NGÀY 1 của chính hành trình tour — nội dung biên tập có

@@ -783,6 +783,12 @@ export const messages = {
       heading: (n: number) => `${n} of these trips fit in a single day`,
       subtitle:
         'The centre is compact enough to see properly without packing a bag — leave after breakfast, back before dark.',
+      /**
+       * Nhãn hành động cuối thẻ. Thêm 30/07: user xem khu này và nói *"ban đầu mình
+       * không rõ là gì, click vào hoá ra nó đang hiển thị tour"* — thẻ chỉ có một
+       * mũi tên trơ nên không nói được nó dẫn đi đâu. Một nhãn CHỮ nói thẳng.
+       */
+      viewTrip: 'View trip',
     },
     /** "Bạn có mấy ngày?" — CHỈ miền Bắc. Ba lối vào theo thời lượng; đây là bản
         THAY THẾ cho khu biểu đồ bị bác, nói cùng sự thật (Bắc là vùng duy nhất

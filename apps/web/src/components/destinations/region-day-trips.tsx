@@ -1,5 +1,5 @@
 import { messages } from '@tourism/i18n';
-import { MoveRightIcon } from 'lucide-react';
+import { MoveRightIcon, StarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { formatMoney } from '@/lib/tours';
@@ -85,8 +85,16 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                   href={`/tours/${tour.slug}`}
                   className="group flex h-full flex-col rounded-2xl border border-border p-6 transition-colors hover:border-foreground/30"
                 >
+                  {/* Chuyên mục · ĐỘ KHÓ trên cùng một dòng. Độ khó thêm 30/07 và
+                      nó là thông tin MỚI, không phải nhắc lại: cả khu đã nói "một
+                      ngày" nên số ngày thì lặp, còn bậc độ khó thì chưa ở đâu trong
+                      khu này nói. `difficulty` nullable — thiếu thì bỏ luôn cả dấu
+                      phân cách, không để một dấu `·` treo lơ lửng. */}
                   <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
                     {tour.category.name}
+                    {tour.difficulty
+                      ? ` · ${messages.toursPage.difficultyLabels[tour.difficulty]}`
+                      : null}
                   </span>
                   <span className="mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary">
                     {tour.title}
@@ -96,19 +104,54 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                       {openingDay}
                     </span>
                   ) : null}
+
+                  {/* Đánh giá — tín hiệu mạnh nhất nói "đây là một chuyến bán được,
+                      có người đã đi". `ratingAvg === null` là CHƯA AI đánh giá, khác
+                      hẳn 0 điểm: in nhãn chữ thay vì "0.0" hay năm sao rỗng, cùng
+                      cách `TourCard` xử. Sao dùng `fill-rating` như mọi chỗ khác. */}
+                  <span className="mt-3 flex items-center gap-1.5 text-sm">
+                    {tour.ratingAvg === null ? (
+                      <span className="text-xs text-muted-foreground">
+                        {messages.toursPage.notRated}
+                      </span>
+                    ) : (
+                      <>
+                        <StarIcon aria-hidden="true" className="size-3.5 fill-rating text-rating" />
+                        <span className="font-medium text-foreground">
+                          {tour.ratingAvg.toFixed(1)}
+                        </span>
+                        <span className="text-muted-foreground">
+                          ({tour.ratingCount.toLocaleString('en-US')})
+                        </span>
+                      </>
+                    )}
+                  </span>
                   {/* `mt-auto` để hàng chân luôn tụt xuống đáy ô dù tiêu đề và câu
                       hành trình dài ngắn khác nhau — hàng giá đọc thành một dòng
                       ngang, không so le.
                       KHÔNG in "1 day" ở đây: cả khu đã là "chuyến một ngày", lặp
-                      lại trên từng ô là in cùng một sự thật bốn lần. */}
-                  <span className="mt-auto flex items-center justify-between gap-3 pt-6">
-                    <span className="text-sm font-medium text-foreground">
-                      {formatMoney(tour.basePrice, tour.currency)}
+                      lại trên từng ô là in cùng một sự thật bốn lần.
+                      `per person` thêm 30/07 — nó nói giá này là giá MỘT KHÁCH, tức
+                      đây là thứ đặt được, không phải một con số trang trí. Cùng chuỗi
+                      `TourCard` dùng, không khai bản thứ hai. */}
+                  <span className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
+                    <span className="flex items-baseline gap-1.5">
+                      <span className="font-heading text-lg font-semibold text-foreground tabular-nums">
+                        {formatMoney(tour.basePrice, tour.currency)}
+                      </span>
+                      <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                        {messages.toursPage.perPerson}
+                      </span>
                     </span>
-                    <MoveRightIcon
-                      aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground transition-colors group-hover:text-primary"
-                    />
+                    {/* Nhãn CHỮ thay mũi tên trơ — user không nhận ra thẻ dẫn đi đâu
+                        khi chỉ có mỗi mũi tên. `aria-hidden` cho icon vì chữ đã nói. */}
+                    <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                      {t.viewTrip}
+                      <MoveRightIcon
+                        aria-hidden="true"
+                        className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                      />
+                    </span>
                   </span>
                 </Link>
               </li>
