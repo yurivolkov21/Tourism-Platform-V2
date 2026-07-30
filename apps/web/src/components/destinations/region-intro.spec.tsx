@@ -112,6 +112,32 @@ describe('RegionIntro — ba biến thể, một khu', () => {
     expect(screen.getByRole('heading', { level: 2 })).toBeInTheDocument();
   });
 
+  /**
+   * ── Hợp đồng SỐ DÒNG (Task 5o) ──
+   *
+   * Đo ở 1440 trước khi vá: ba mục highlight của miền Bắc cao **56/80/56** vì mục
+   * giữa có câu dài hơn nên xuống hai dòng. Ở `aside` ba mục xếp DỌC nên đây không
+   * phải "lệch pha giữa hai thẻ cùng hàng" — nó là NHỊP: khoảng giữa các chip icon
+   * thành 80px rồi 104px, tức ba mục không còn đứng trên một thang đều.
+   *
+   * Giữ chỗ hai dòng cho câu mô tả là thứ đưa thang đó về đều. **Không** `line-clamp`
+   * — cùng lý lẽ như `region-days.tsx`: câu biên tập ngắn trong hộp rộng, cắt chữ ở
+   * đây là đổi một lỗi hình thành một lỗi nội dung. Ở `row` (miền Trung) hộp hẹp hơn
+   * nên câu vốn đã 3–4 dòng và `min-h` là no-op; ba mục ở đó cao bằng nhau nhờ
+   * `grid` stretch, không nhờ luật này.
+   */
+  it.each(VARIANTS)('biến thể %s: câu mô tả highlight giữ chỗ hai dòng', (variant) => {
+    const { container } = render(
+      <RegionIntro region={NORTH} variant={variant} tags={TAGS} highlights={HIGHLIGHTS} />,
+    );
+    const bodies = [...container.querySelectorAll('[data-intro-items] [data-highlight-body]')];
+    expect(bodies).toHaveLength(HIGHLIGHTS.length);
+    for (const body of bodies) {
+      expect(body.className).toContain('min-h-[2lh]');
+      expect(body.className).not.toContain('line-clamp');
+    }
+  });
+
   it.each(VARIANTS)('biến thể %s: tags rỗng thì bỏ cả hàng, không để nhãn treo', (variant) => {
     render(<RegionIntro region={NORTH} variant={variant} tags={[]} highlights={HIGHLIGHTS} />);
     expect(screen.queryByText(/Best for/)).not.toBeInTheDocument();

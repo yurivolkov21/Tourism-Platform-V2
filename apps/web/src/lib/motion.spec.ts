@@ -194,8 +194,15 @@ describe('nhịp thân khu — ba miền, ba TRỤC khác nhau', () => {
    * motions vào cho từng sections").
    *
    *  · Sáu khu RIÊNG của một miền chỉ được mang đúng chữ ký của miền đó.
-   *  · `intro` và `gallery` dùng chung cả ba miền qua BIẾN THỂ, nên chúng phải mang
-   *    CẢ BA chữ ký — mỗi biến thể một trục, đúng như bố cục của chúng đã tách.
+   *  · `intro` dùng chung cả ba miền qua BIẾN THỂ, nên nó phải mang CẢ BA chữ ký —
+   *    mỗi biến thể một trục, đúng như bố cục của chúng đã tách.
+   *  · `gallery` cũng dùng chung ba miền, nhưng chỉ mang HAI chữ ký (`rise` cho
+   *    `peaks`, `bloom` cho `panorama`). Biến thể `lanterns` của miền Trung KHÔNG
+   *    dùng `RevealItem` nữa từ Task 5o: dải của nó chạy ngang theo TIẾN ĐỘ CUỘN
+   *    TRANG (khuôn `home/gallery.tsx`), nên trục ngang của miền Trung ở khu này do
+   *    chính phép cuộn mang — mạnh hơn một nhịp `slide` 16px, và một transform ghi
+   *    lên đúng phần tử mà cơ chế đang lái sẽ tranh nhau. Trục của miền Trung vẫn có
+   *    ở ba khu khác (`heritage`, `dayTrips`, `intro`), nên phân hoá không mất.
    *  · `tours` là khu user chốt phải GIỐNG HỆT ở cả ba miền ("hero · lưới 6 tour
    *    card · footer" là ba thứ duy nhất giống nhau), nên nó KHÔNG được mang chữ ký
    *    miền nào — nó chạy nhịp NHÀ (`rise`), y hệt trên cả ba trang.
@@ -205,7 +212,7 @@ describe('nhịp thân khu — ba miền, ba TRỤC khác nhau', () => {
    */
   const ALLOWED: Record<(typeof REGION_SECTIONS)[number], readonly string[]> = {
     'region-intro': ['rise', 'slide', 'bloom'],
-    'region-gallery': ['rise', 'slide', 'bloom'],
+    'region-gallery': ['rise', 'bloom'],
     'region-tours': ['rise'],
     'region-signature-timeline': ['slide'],
     'region-signature-postcards': ['bloom'],
@@ -265,26 +272,40 @@ describe('nhịp thân khu — ba miền, ba TRỤC khác nhau', () => {
   });
 
   /**
-   * Dải đèn lồng của miền Trung là chỗ DUY NHẤT trang vùng có cuộn ngang, và nó có
-   * một cái bẫy chỉ đo mới thấy: `IntersectionObserver` tính giao qua cả chuỗi clip,
-   * nên ô thứ 4–6 không bao giờ giao với cửa sổ tài liệu cho tới khi người dùng cuộn
-   * chính cái dải. Observer không bắn thì ô ở lại `initial` VĨNH VIỄN — kể cả khi bật
-   * giảm chuyển động, vì `reducedMotion="user"` chỉ tước transform của phép animate,
-   * nó không xoá `initial` đã render. Đo 30/07 ở `prefers-reduced-motion: reduce`:
-   * đúng 2 ô còn kẹt `translateX(-16px)`. `eager` nới viewport để cả dải cùng vào tầm.
+   * ⚠️ Khẳng định này SUY LẠI ở Task 5o. Bản 5n canh "dải bọc ĐÚNG MỘT `RevealItem`
+   * cho cả dải" — đúng cho cơ chế cũ (dải là một vùng cuộn ngang có thanh cuộn riêng,
+   * và nó cần một nhịp vào như mọi khu khác). Từ 5o dải chạy theo TIẾN ĐỘ CUỘN TRANG
+   * trong một khung sticky, nên:
+   *
+   *  · **Nhịp của dải LÀ phép cuộn.** Không cần thêm một nhịp vào 16px nữa.
+   *  · Một `RevealItem` ở đây sẽ ghi `transform` lên ĐÚNG phần tử mà cơ chế mới điều
+   *    khiển vị trí — hai thứ tranh nhau.
+   *  · Và cái bẫy 5n phát hiện (`IntersectionObserver` cắt qua chuỗi tổ tiên có clip
+   *    nên ô 4–6 của một dải `overflow-x-auto` không bao giờ giao với root → phần tử
+   *    kẹt ở `initial` VĨNH VIỄN, kể cả ở `prefers-reduced-motion: reduce`) **tan
+   *    cùng cơ chế cũ**: không còn `initial` nào trong dải để mà kẹt.
+   *
+   * Bất biến mới cần canh là chính cơ chế: dải phải được lái bằng `scrollLeft` (KHÔNG
+   * phải `transform` như Home — xem JSDoc `LanternsSection` cho hai lỗ của transform),
+   * và tiến độ phải đọc từ hộp cao 180vh.
    */
-  it('dải cuộn ngang bọc MỘT nhịp cho cả dải, không một nhịp mỗi ô', () => {
+  it('dải cuộn ngang KHÔNG bọc nhịp nào — nhịp của nó LÀ phép cuộn trang', () => {
     const code = codeOf('../components/destinations/region-gallery.tsx');
-    // Khối `LanternsLayout` — từ tên hàm tới hết `PanoramaLayout` đứng sau nó.
+    // Khối `LanternsSection` — từ tên hàm tới hết `PanoramaLayout` đứng sau nó.
     const lanterns = code.slice(
-      code.indexOf('function LanternsLayout'),
+      code.indexOf('function LanternsSection'),
       code.indexOf('function PanoramaLayout'),
     );
-    // Đúng MỘT `RevealItem`, và nó KHÔNG có `delay` (một đơn vị thì không stagger).
-    expect(lanterns.match(/<RevealItem/g)).toHaveLength(1);
-    expect(lanterns).not.toContain('delay=');
-    // Và nó phải bọc NGOÀI vùng cuộn, không nằm trong `labels.map`.
-    expect(lanterns.indexOf('<RevealItem')).toBeLessThan(lanterns.indexOf('labels.map'));
+    expect(lanterns).not.toContain('<RevealItem');
+    // Cơ chế: ghi `scrollLeft` theo tiến độ, không ghi `style.transform`.
+    expect(lanterns).toContain('scrollLeft');
+    expect(lanterns).not.toMatch(/style\.transform/);
+    expect(lanterns).toContain('h-[180vh]');
+    // Vế BÀN PHÍM của cùng cơ chế, và nó là lý do chọn `scrollLeft` thay `transform`:
+    // ô đang focus phải kéo được vào tầm. Đo 30/07: Tab tới ô 4 thì Chromium để nó kẹt
+    // 252px ngoài mép và không tự cuộn, nên dải phải tự lo — bỏ listener này là quay
+    // về đúng chỗ đó mà không có gì báo.
+    expect(lanterns).toContain("'focusin'");
   });
 
   // Bưu thiếp xoè khi hover là CSS transition, không phải motion component, nên

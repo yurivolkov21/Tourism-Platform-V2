@@ -64,8 +64,7 @@ export type EnterSignature = keyof typeof ENTER;
 const VIEWPORT = { once: true } as const;
 
 /**
- * ⚠️ **KHÔNG bọc `RevealItem` quanh từng phần tử nằm trong một VÙNG CUỘN LỒNG** (ở
- * trang vùng chỉ có một chỗ: dải đèn lồng `lanterns` của miền Trung).
+ * ⚠️ **KHÔNG bọc `RevealItem` quanh phần tử nằm trong một VÙNG CUỘN LỒNG.**
  *
  * Đo được 30/07, và nó là một cái bẫy im lặng: `IntersectionObserver` tính vùng giao
  * bằng cách cắt hình chữ nhật của target qua CẢ chuỗi tổ tiên có clip TRƯỚC khi so
@@ -81,8 +80,13 @@ const VIEWPORT = { once: true } as const;
  * nguyên. Đặt `viewport.root` thành chính dải thì observer bắn ngay lúc mount cho cả
  * sáu ô (mọi ô đều nằm trong hộp của dải), tức mất hẳn nhịp theo-cuộn.
  *
- * Cách đúng là bọc CẢ dải trong một `RevealItem` — xem `LanternsLayout` ở
- * `region-gallery.tsx`.
+ * Bọc CẢ dải trong MỘT `RevealItem` là cách chữa 5n đã dùng, và nó đúng chừng nào dải
+ * còn tự đứng yên. **Từ Task 5o trang vùng KHÔNG còn consumer nào của cách đó**: dải
+ * đèn lồng miền Trung giờ chạy ngang theo tiến độ cuộn trang, nên một transform ghi
+ * lên chính phần tử đang được lái sẽ tranh nhau — nó không bọc nhịp nào cả (xem
+ * `LanternsSection` ở `region-gallery.tsx`). Cảnh báo này giữ lại vì nó vẫn đúng cho
+ * mọi vùng cuộn lồng KHÁC của repo (`departure-strip.tsx`, `departures-table.tsx`,
+ * `route-ribbon.tsx`), và vì phép đo phía trên đắt hơn phép đọc lại nó.
  */
 
 /** Chỉ hai thẻ, và cả hai đều có nhu cầu THẬT. `div` là mặc định; `h3` cho tiêu đề

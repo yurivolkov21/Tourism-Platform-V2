@@ -121,7 +121,21 @@ export function RegionDays({ tours }: { tours: readonly MockTourCard[] }) {
                 <h3 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
                   {group.copy.title}
                 </h3>
-                <p className="mt-2 text-pretty text-muted-foreground">{group.copy.body}</p>
+                {/* ── Hợp đồng SỐ DÒNG (Task 5o) ──
+                    Câu này là phần tử DUY NHẤT của thẻ đổi số dòng theo bề ngang, và
+                    ngay dưới nó là một `border-t`: lệch một dòng ở đây tức hai thẻ
+                    cạnh nhau có VẠCH NGANG ở hai độ cao khác nhau. Đo ở 768 (hai thẻ
+                    một hàng) trước khi vá: "Out after breakfast, back before dark."
+                    chiếm 1 dòng còn thẻ bên cạnh chiếm 2, và danh sách chuyến tụt
+                    **24px**.
+                    Chỉ GIỮ CHỖ, KHÔNG `line-clamp`: đây là một câu biên tập ngắn
+                    trong hộp rộng gấp đôi thẻ chuyến-một-ngày nên không có gì để cắt,
+                    mà kẹp dòng thì một bản dịch dài hơn sẽ mất chữ — đổi một lỗi hình
+                    thành một lỗi nội dung. `region-day-trips.tsx` clamp vì hộp ở đó
+                    hẹp 233px và tiêu đề tour tới từ API, không có trần. */}
+                <p data-bracket-body className="mt-2 min-h-[2lh] text-pretty text-muted-foreground">
+                  {group.copy.body}
+                </p>
 
                 {/* Tên chuyến THẬT, mỗi tên một link. Đây là thứ khu này tồn tại để
                     đưa ra: không phải "miền Bắc trải 1–8 ngày" như một con số, mà

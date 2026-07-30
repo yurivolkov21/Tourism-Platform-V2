@@ -155,4 +155,29 @@ describe('RegionDays', () => {
       expect(el.getAttribute('style')).not.toMatch(/width|height/);
     }
   });
+
+  /**
+   * ── Hợp đồng SỐ DÒNG (Task 5o) ──
+   *
+   * Câu mô tả nhóm là phần tử DUY NHẤT của thẻ có số dòng đổi theo bề ngang, và ngay
+   * dưới nó là một `border-t` — tức lệch một dòng ở đây là hai thẻ cạnh nhau có VẠCH
+   * NGANG ở hai độ cao khác nhau, thứ đọc ra ngay bằng mắt. Đo ở 768 (hai thẻ một
+   * hàng) trước khi vá: "Out after breakfast, back before dark." chiếm 1 dòng trong
+   * khi thẻ bên cạnh chiếm 2, và danh sách chuyến tụt **24px**.
+   *
+   * ⚠️ Chỉ GIỮ CHỖ (`min-h`), **không** `line-clamp`: đây là một câu biên tập ngắn
+   * trong hộp rộng gấp đôi thẻ chuyến-một-ngày, nên không có gì để cắt — mà kẹp dòng
+   * ở đây thì một bản dịch dài hơn sẽ bị mất chữ, đổi một lỗi hình thành một lỗi nội
+   * dung. (Thẻ chuyến-một-ngày thì clamp là ĐÚNG: hộp hẹp 233px và tiêu đề tour tới
+   * từ API nên độ dài không có trần.)
+   */
+  it('câu mô tả nhóm giữ chỗ ĐÚNG hai dòng — vạch dưới nó không so le', () => {
+    const { container } = render(<RegionDays tours={NORTH} />);
+    const bodies = [...container.querySelectorAll('[data-bracket] [data-bracket-body]')];
+    expect(bodies).toHaveLength(3);
+    for (const body of bodies) {
+      expect(body.className).toContain('min-h-[2lh]');
+      expect(body.className).not.toContain('line-clamp');
+    }
+  });
 });

@@ -1,4 +1,5 @@
 import { messages } from '@tourism/i18n';
+import { cn } from '@tourism/ui/lib/utils';
 import { MoveRightIcon, StarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
@@ -17,6 +18,30 @@ const MIN_TRIPS = 2;
     khu nhận được cả `MockTourCard` (không có hành trình) lẫn `MockTourDetail`, và
     tour chưa nhập hành trình là nhánh có thật khi gắn API. */
 type DayTripTour = MockTourCard & { itinerary?: readonly MockItineraryDay[] };
+
+/**
+ * HỢP ĐỒNG SỐ DÒNG (Task 5o) — lý do tồn tại là một lỗi user nhìn ra trên trang
+ * thật: *"chưa được cố định tiêu đề bao nhiêu dòng, nội dung bao nhiêu dòng, dẫn tới
+ * có sự lệch pha trong ảnh. Chỗ thì bị thục lên thục xuống"*.
+ *
+ * Đo bằng trình duyệt ở 1440 (bốn thẻ một hàng) và 768 (hai thẻ một hàng): tiêu đề
+ * chiếm **2 dòng ở thẻ 1+4** và **1 dòng ở thẻ 2+3**, và 28px `line-height` đó đẩy
+ * hàng mô tả cùng hàng đánh giá tụt **đúng 28px** so với hai thẻ bên cạnh. Hàng giá
+ * KHÔNG lệch — nó có `mt-auto` neo xuống đáy; hai hàng giữa thì không có gì neo.
+ *
+ * `line-clamp` MỘT MÌNH không chữa được: nó cắt phần thừa nhưng **không giữ chỗ**,
+ * nên tiêu đề 1 dòng và 2 dòng vẫn cho hai chiều cao khác nhau. Phải cộng
+ * `min-h-[2lh]` — `lh` là "một line-height của chính phần tử", nên đổi cỡ chữ không
+ * phải đi chỉnh lại con số. Cùng hợp đồng `tours/tour-list-card.tsx` (`CLAMP`) và
+ * `tours/tour-card.tsx` đang dùng; đây là bản thứ ba của cùng một luật, không phải
+ * một luật mới.
+ *
+ * Vì sao ở ĐÂY clamp là đúng (khác `region-days.tsx`/`region-intro.tsx`, hai chỗ chỉ
+ * giữ chỗ): hộp này hẹp — 233px chữ ở 1440, 192px ở cột hẹp nhất mà `auto-fit` cho
+ * phép — và tiêu đề tour tới từ API nên độ dài KHÔNG có trần. Đã đo trên mock hiện
+ * tại ở 390/768/1440: không tiêu đề nào tràn 2 dòng, tức hôm nay clamp cắt 0 ký tự.
+ */
+const CLAMP = 'line-clamp-2 min-h-[2lh]';
 
 /**
  * Khu các chuyến gói gọn trong MỘT ngày — CHỈ miền Trung dựng, và nó là khu CUỐI
@@ -56,6 +81,14 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
 
   if (dayTrips.length < MIN_TRIPS) return null;
 
+  // Quyết định "có hàng mô tả hay không" là quyết định của CẢ NHÓM, không của từng
+  // thẻ (đổi ở Task 5o). Bản trước render có điều kiện trên từng thẻ, và đó chính là
+  // một nguồn lệch pha thứ hai: thẻ thiếu hành trình thì hàng đánh giá của nó nhảy
+  // lên 32px trong khi ba thẻ bên cạnh không nhảy. Nên: còn MỘT chuyến có câu hành
+  // trình thì cả nhóm giữ chỗ cho hàng đó; KHÔNG chuyến nào có thì cả nhóm bỏ hẳn —
+  // không thẻ nào phải đeo hai dòng trắng vô nghĩa.
+  const hasNotes = dayTrips.some((tour) => tour.itinerary?.[0]?.title);
+
   return (
     <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
       <div className="mx-auto max-w-7xl">
@@ -81,7 +114,8 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
         <ul className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 sm:mt-14 sm:gap-5">
           {dayTrips.map((tour, i) => {
             // Ngày 1 của hành trình. `?.` vì `noUncheckedIndexedAccess` và vì
-            // `itinerary` có thể vắng hẳn — thiếu thì bỏ dòng, không in chuỗi rỗng.
+            // `itinerary` có thể vắng hẳn — thiếu ở MỘT thẻ thì hộp vẫn giữ chỗ
+            // (`hasNotes`), thiếu ở CẢ nhóm thì bỏ hẳn hàng.
             const openingDay = tour.itinerary?.[0]?.title;
             return (
               <li key={tour.slug} data-day-trip={tour.slug}>
@@ -112,11 +146,26 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                         ? ` · ${messages.toursPage.difficultyLabels[tour.difficulty]}`
                         : null}
                     </span>
-                    <span className="mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary">
+                    {/* Hợp đồng 2 dòng — xem `CLAMP`. `data-trip-title` là móc để
+                      spec đọc đúng hộp mang hợp đồng đó. */}
+                    <span
+                      data-trip-title
+                      className={cn(
+                        CLAMP,
+                        'mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary',
+                      )}
+                    >
                       {tour.title}
                     </span>
-                    {openingDay ? (
-                      <span className="mt-2 text-sm text-pretty text-muted-foreground">
+                    {/* Hộp này GIỮ CHỖ kể cả khi `openingDay` vắng (xem `hasNotes`) —
+                      nó rỗng chứ không bị bỏ, để hàng đánh giá của thẻ thiếu hành
+                      trình không nhảy lên trước ba thẻ bên cạnh. Rỗng thì trình đọc
+                      màn hình không đọc gì, nên không sinh nhiễu. */}
+                    {hasNotes ? (
+                      <span
+                        data-trip-note
+                        className={cn(CLAMP, 'mt-2 text-sm text-pretty text-muted-foreground')}
+                      >
                         {openingDay}
                       </span>
                     ) : null}

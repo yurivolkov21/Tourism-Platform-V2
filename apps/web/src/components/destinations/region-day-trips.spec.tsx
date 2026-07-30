@@ -186,16 +186,62 @@ describe('RegionDayTrips', () => {
     expect(screen.getByText('Bà Nà, the pass, and the lagoon')).toBeInTheDocument();
   });
 
-  // Tour chưa có hành trình là nhánh có thật khi gắn API — bỏ hẳn dòng đó, đừng in
-  // chuỗi rỗng hay một câu bịa thay chỗ.
-  it('tour không có hành trình thì bỏ dòng mô tả, thẻ vẫn dựng', () => {
+  // ⚠️ Đổi ở Task 5o: quyết định "thiếu hành trình thì bỏ dòng" giờ là quyết định
+  // của CẢ NHÓM, không của từng thẻ. Lý do đo được: bỏ dòng ở đúng một thẻ làm hàng
+  // đánh giá và hàng giá của thẻ đó tụt lệch so với ba thẻ bên cạnh — chính lỗi
+  // "thục lên thục xuống" user nêu. Nên: còn MỘT thẻ có câu hành trình thì cả nhóm
+  // giữ chỗ cho hàng đó; KHÔNG thẻ nào có thì cả nhóm bỏ hẳn.
+  it('KHÔNG thẻ nào có hành trình thì bỏ hàng mô tả ở CẢ nhóm, thẻ vẫn dựng', () => {
     const bare = [
       tour('a', 'Trip A', 1, '50.00', 'Scenic routes'),
       tour('b', 'Trip B', 1, '60.00', 'Food & markets'),
     ];
     const { container } = render(<RegionDayTrips tours={bare} />);
     expect(items(container)).toHaveLength(2);
+    expect(container.querySelectorAll('[data-trip-note]')).toHaveLength(0);
     expect(screen.getByRole('link', { name: /Trip A/ })).toBeInTheDocument();
+  });
+
+  it('MỘT thẻ thiếu hành trình vẫn GIỮ CHỖ hàng mô tả — cả nhóm cùng số dòng', () => {
+    const mixed = [
+      tour('a', 'Trip A', 1, '50.00', 'Scenic routes', 'Market, garden, kitchen'),
+      tour('b', 'Trip B', 1, '60.00', 'Food & markets'),
+      tour('c', 'Trip C', 1, '70.00', 'Scenic routes', 'Citadel, lunch, river'),
+    ];
+    const { container } = render(<RegionDayTrips tours={mixed} />);
+    const notes = [...container.querySelectorAll('[data-trip-note]')];
+    expect(notes).toHaveLength(3);
+    expect(notes[1]?.textContent).toBe('');
+  });
+
+  /**
+   * ── Hợp đồng SỐ DÒNG (Task 5o) ──
+   *
+   * User nêu sau khi xem trang thật: *"chưa được cố định tiêu đề bao nhiêu dòng, nội
+   * dung bao nhiêu dòng, dẫn tới có sự lệch pha trong ảnh. Chỗ thì bị thục lên thục
+   * xuống"*. Đo bằng trình duyệt ở 1440 và 768 trước khi vá: tiêu đề chiếm 2 dòng ở
+   * thẻ 1+4 nhưng 1 dòng ở thẻ 2+3, và `line-height` 28px đó đẩy hàng mô tả cùng
+   * hàng đánh giá tụt **đúng 28px** so với hai thẻ bên cạnh. Hàng giá KHÔNG lệch vì
+   * nó có `mt-auto`; hai hàng giữa thì không có gì neo.
+   *
+   * `line-clamp` MỘT MÌNH không chữa được — nó cắt phần thừa nhưng KHÔNG giữ chỗ,
+   * nên tiêu đề 1 dòng và tiêu đề 2 dòng vẫn cho hai chiều cao khác nhau. Phải cộng
+   * `min-h-[2lh]`, đúng hợp đồng `tours/tour-list-card.tsx` đã dùng cho danh sách
+   * tour (`CLAMP.title` / `CLAMP.summary`) và `tour-card.tsx` cho card lưới.
+   */
+  it('tiêu đề và câu hành trình đều chiếm ĐÚNG hai dòng — clamp CỘNG giữ chỗ', () => {
+    const { container } = render(<RegionDayTrips tours={CENTRAL} />);
+    expect(items(container)).toHaveLength(4);
+    for (const item of items(container)) {
+      const boxes = {
+        'tiêu đề': item.querySelector('[data-trip-title]')?.className ?? '',
+        'câu hành trình': item.querySelector('[data-trip-note]')?.className ?? '',
+      };
+      for (const [name, className] of Object.entries(boxes)) {
+        expect(className, name).toContain('line-clamp-2');
+        expect(className, name).toContain('min-h-[2lh]');
+      }
+    }
   });
 
   // ⚠️ Khu này là khu CUỐI của trang miền Trung. `site-footer.tsx` mang `mt-32` sơn

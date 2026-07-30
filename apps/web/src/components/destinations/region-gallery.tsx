@@ -2,7 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
-import { useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { Lightbox } from '@/components/media/lightbox';
@@ -72,8 +72,9 @@ const PEAK_MOBILE_HEIGHT = 'h-44';
  * vào cảnh vùng đó thật sự bán:
  *
  *  · **`peaks`** (Bắc) — ba cột lệch dọc so le, đỉnh dải răng cưa như dãy núi.
- *  · **`lanterns`** (Trung) — hàng ô dọc treo trên "dây" dài ngắn khác nhau, cuộn
- *    ngang; Hội An là phố đèn lồng, và đây là hình của nó.
+ *  · **`lanterns`** (Trung) — hàng ô dọc treo trên "dây" dài ngắn khác nhau, chạy
+ *    NGANG theo tiến độ cuộn dọc trong một khung sticky (Task 5o, khuôn
+ *    `home/gallery.tsx`); Hội An là phố đèn lồng, và đây là hình của nó.
  *  · **`panorama`** (Nam) — một ô rộng 16/9 trên hai ô lệch bề rộng: mặt nước của
  *    delta rồi rẽ hai nhánh không đều, thứ miền Nam bán.
  *
@@ -103,61 +104,93 @@ export function RegionGallery({
   const labels = t.regions[region.key].galleryTiles.slice(0, TILE_COUNT[variant]);
   const [openAt, setOpenAt] = useState<number | null>(null);
 
+  // Ô trong lightbox là `decorative`: nhãn cảnh đã ở chú thích ngay dưới, để nguyên
+  // `role="img"` là bắt trình đọc màn hình đọc cùng một câu hai lần. `withIcon` vì ô
+  // vẫn đứng đúng vị trí một tấm ảnh.
+  // Dựng thành BIẾN (Task 5o) vì hai hình `<section>` cùng cần nó — và cả hai phải
+  // dùng đúng MỘT bản, nếu không hai biến thể sẽ có hai hợp đồng trợ năng.
+  const lightbox = (
+    <Lightbox
+      count={labels.length}
+      openAt={openAt}
+      onOpenChange={(open) => setOpenAt(open ? (openAt ?? 0) : null)}
+      onNavigate={setOpenAt}
+      dialogTitle={lb.dialogTitle}
+      counterLabel={lb.counter}
+      closeLabel={lb.close}
+      previousLabel={lb.previous}
+      nextLabel={lb.next}
+      caption={(index) => labels[index] ?? null}
+      renderMedia={(index) => (
+        <RegionTile
+          label={labels[index] ?? ''}
+          decorative
+          withIcon
+          className="aspect-16/10 w-full rounded-lg"
+        />
+      )}
+    />
+  );
+
+  // `lanterns` rẽ SỚM vì nó là biến thể DUY NHẤT cần hình `<section>` khác: cao 180vh
+  // với một khung sticky bên trong (Task 5o). Nhồi nó vào cùng cây JSX với hai biến
+  // thể kia thì mỗi lớp của section phải mang một ternary, và `peaks`/`panorama` —
+  // hai bố cục user đã duyệt — bị đụng ở từng dòng mà không đổi hành vi gì.
+  if (variant === 'lanterns') {
+    return (
+      <LanternsSection region={region} labels={labels} onOpen={setOpenAt} lightbox={lightbox} />
+    );
+  }
+
   return (
     <section
       style={{ background: SIGNATURE_BAND_BG }}
       className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32"
     >
       <div className="mx-auto max-w-7xl">
-        <div className="mx-auto max-w-2xl text-center">
-          {/* `SectionEyebrow` là một hàng flex chiếm trọn bề ngang nên `text-center`
-              của khối cha KHÔNG kéo nó vào giữa — phải bọc `flex justify-center`,
-              đúng cách `home/gallery.tsx` (khu căn giữa duy nhất khác của site đang
-              dùng eyebrow này) làm. */}
-          <div className="flex justify-center">
-            <SectionEyebrow>{t.galleryEyebrow}</SectionEyebrow>
-          </div>
-          {/* Cascade header (Task 5m). Khu này ĐÃ là `'use client'` (lightbox có
-              state) nên dùng `RevealHeading` ở đây không phải để tránh chi phí client
-              — nó để chín khu chạy CÙNG một bộ số, thay vì thêm bản copy thứ 20 của
-              spring 240 gõ inline. */}
-          <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
-            {t.galleryHeading(region.name)}
-          </RevealHeading>
-          <RevealLede className="mt-2 text-pretty text-muted-foreground">
-            {t.gallerySubtitle}
-          </RevealLede>
-        </div>
-
-        {variant === 'peaks' ? <PeaksLayout labels={labels} onOpen={setOpenAt} /> : null}
-        {variant === 'lanterns' ? <LanternsLayout labels={labels} onOpen={setOpenAt} /> : null}
-        {variant === 'panorama' ? <PanoramaLayout labels={labels} onOpen={setOpenAt} /> : null}
-      </div>
-
-      {/* Ô trong lightbox là `decorative`: nhãn cảnh đã ở chú thích ngay dưới, để
-          nguyên `role="img"` là bắt trình đọc màn hình đọc cùng một câu hai lần.
-          `withIcon` vì ô vẫn đứng đúng vị trí một tấm ảnh. */}
-      <Lightbox
-        count={labels.length}
-        openAt={openAt}
-        onOpenChange={(open) => setOpenAt(open ? (openAt ?? 0) : null)}
-        onNavigate={setOpenAt}
-        dialogTitle={lb.dialogTitle}
-        counterLabel={lb.counter}
-        closeLabel={lb.close}
-        previousLabel={lb.previous}
-        nextLabel={lb.next}
-        caption={(index) => labels[index] ?? null}
-        renderMedia={(index) => (
-          <RegionTile
-            label={labels[index] ?? ''}
-            decorative
-            withIcon
-            className="aspect-16/10 w-full rounded-lg"
-          />
+        <GalleryHeader region={region} />
+        {variant === 'peaks' ? (
+          <PeaksLayout labels={labels} onOpen={setOpenAt} />
+        ) : (
+          <PanoramaLayout labels={labels} onOpen={setOpenAt} />
         )}
-      />
+      </div>
+      {lightbox}
     </section>
+  );
+}
+
+/**
+ * Header của khu — eyebrow · tiêu đề · đoạn dẫn.
+ *
+ * Tách ra thành component riêng ở Task 5o vì hai hình `<section>` giờ cùng dùng nó:
+ * `peaks`/`panorama` đặt nó trong khung `max-w-7xl` thường, còn `lanterns` đặt nó
+ * TRONG khung sticky (đó là điều làm tiêu đề đứng yên suốt hành trình cuộn). Nhân bản
+ * bốn dòng lớp typography ra hai chỗ là mở đường cho hai header trôi khỏi nhau.
+ */
+function GalleryHeader({ region }: { region: MockRegion }) {
+  const t = messages.regionPage;
+
+  return (
+    <div className="mx-auto max-w-2xl text-center">
+      {/* `SectionEyebrow` là một hàng flex chiếm trọn bề ngang nên `text-center` của
+          khối cha KHÔNG kéo nó vào giữa — phải bọc `flex justify-center`, đúng cách
+          `home/gallery.tsx` (khu căn giữa duy nhất khác của site đang dùng eyebrow
+          này) làm. */}
+      <div className="flex justify-center">
+        <SectionEyebrow>{t.galleryEyebrow}</SectionEyebrow>
+      </div>
+      {/* Cascade header (Task 5m). Khu này ĐÃ là `'use client'` (lightbox có state)
+          nên dùng `RevealHeading` ở đây không phải để tránh chi phí client — nó để
+          chín khu chạy CÙNG một bộ số, thay vì thêm bản copy thứ 20 của spring 240 gõ
+          inline. */}
+      <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
+        {t.galleryHeading(region.name)}
+      </RevealHeading>
+      <RevealLede className="mt-2 text-pretty text-muted-foreground">
+        {t.gallerySubtitle}
+      </RevealLede>
+    </div>
   );
 }
 
@@ -274,92 +307,201 @@ function PeaksLayout({
 }
 
 /**
- * Một hàng ô dọc treo trên dây, cuộn ngang.
+ * Dải đèn lồng của miền Trung — cuộn NGANG theo TIẾN ĐỘ CUỘN DỌC của trang, trong một
+ * khung sticky. Không có thanh cuộn nào nhìn thấy.
  *
- * `overflow-x-auto` nằm trên CHÍNH container này — thiếu nó là sáu ô rộng 380px
- * đẩy thân trang cuộn ngang, lỗi thấy ngay ở 390px.
+ * Đây là yêu cầu trực tiếp của user (Task 5o): *"chỗ gallery ở miền trung nếu bạn có
+ * thể làm giống với ở trang Home chỗ mà người dùng phải cuộn để xem các địa điểm …
+ * hãy áp dụng kiểu đó vào trong gallery ở đây rồi loại bỏ thanh cuộn ngang nằm phía
+ * dưới nữa thì sẽ hợp lí hơn."*
  *
- * `data-lenis-prevent`: Lenis chặn wheel trên cả tài liệu nên lăn chuột trong vùng
- * cuộn lồng lại cuộn TRANG CHÍNH. Thuộc tính này trả wheel về cho đây — cùng khuôn
- * `departure-strip.tsx` và `departures-table.tsx`.
+ * ## Khuôn mượn từ `home/gallery.tsx` (ĐỌC, đừng sửa file đó — nó là trang đã duyệt)
  *
- * Dải chảy RA TỚI MÉP MÀN HÌNH ở MỌI bề ngang: mỗi cặp `-mx-N px-N` khớp đúng một
- * bậc gutter của section (`px-4 md:px-16 lg:px-24 xl:px-32`). Âm lề đúng bằng
- * padding nên bề rộng dải = bề rộng viewport, KHÔNG rộng hơn, nên không sinh cuộn
- * ngang cho body; `px-N` bên trong giữ ô đầu thẳng hàng với tiêu đề khu.
+ *  · `<section>` cao **180vh** bọc một khung `sticky top-0 h-screen overflow-hidden`.
+ *  · **Header nằm TRONG khung sticky** nên nó đứng yên suốt hành trình cuộn.
+ *  · Tiến độ = `-rect.top / (rect.height - innerHeight)`, kẹp về `0..1`.
  *
- * Vì sao phải bleed cả ở desktop (bản đầu `md:mx-0 md:px-0`): ô 380px + gap 20 thì
- * ĐÚNG BA ô lấp kín khung `max-w-7xl` ở 1440 (1180 trên 1184 khả dụng) — ô thứ tư
- * nằm hẳn ngoài, không hở một mm. Chụp lại thì dải đọc thành một hàng ba ô tĩnh và
- * không có gì nói còn ảnh nữa. Bleed đẩy mép phải ra ngoài khung nên ô kế tiếp luôn
- * bị CẮT ở mép, và một ô bị cắt là tín hiệu "còn nữa" mà ai cũng đọc được.
- * ⚠️ Sửa gutter của `<section>` thì phải sửa cả bốn cặp ở đây — lệch một bậc là
- * thân trang cuộn ngang. `region-gallery.spec.tsx` canh từng cặp.
+ * ## Nhưng KHÔNG chép `transform` của Home — ở đây lái bằng `scrollLeft`
+ *
+ * Home ghi `track.style.transform = translateX(...)`. Cách đó có hai lỗ mà trang vùng
+ * không chịu được (trang vùng là SSG, và ô ở đây là `<button>` mở lightbox):
+ *
+ * | | `transform` (Home) | `scrollLeft` (ở đây) |
+ * | --- | --- | --- |
+ * | JS tắt | ô 4–6 **không bao giờ tới được** | vùng vẫn cuộn native → tới được |
+ * | Tab bàn phím | focus rơi ra ngoài khung `overflow-hidden`, không thấy (WCAG 2.4.11) | trình duyệt tự cuộn ô đang focus vào tầm |
+ * | Nhìn thấy | giống nhau | giống nhau |
+ * | Thanh cuộn | không có | **ẩn** bằng `scrollbar-none` → user vẫn không thấy |
+ *
+ * Nên vùng cuộn giữ NATIVE (`overflow-x-auto`), thanh cuộn ẩn bằng utility có sẵn của
+ * Tailwind v4 (`scrollbar-none` → `scrollbar-width: none`; repo đã dùng nó ở
+ * `ui/components/attachment.tsx`, không cần khai CSS mới), và tiến độ cuộn dọc chỉ
+ * ĐẶT `scrollLeft`. Kết quả thị giác giống Home; hai lỗ trên biến mất.
+ *
+ * ## Ba thứ đã BỎ cùng cơ chế cũ, mỗi thứ một lý do đo được
+ *
+ *  1. **`data-lenis-prevent`** — nó tồn tại để wheel cuộn DẢI thay vì trang. Cơ chế
+ *     mới là *cuộn trang để dải chạy*, nên giữ nó lại là làm đúng điều NGƯỢC LẠI.
+ *  2. **`snap-x` / `snap-start` / `scroll-px-*`** — snap kéo dải về mốc gần nhất sau
+ *     mỗi lần cuộn dừng, tức tranh với chính con số ta vừa ghi mỗi khung hình. Snap
+ *     có nghĩa khi NGƯỜI DÙNG flick một dải; ở đây vị trí là hàm của tiến độ trang.
+ *  3. **`RevealItem enter="slide"` bọc cả dải** (Task 5n) — nó ghi `transform` lên
+ *     ĐÚNG phần tử mà cơ chế này điều khiển. Và cái bẫy 5n đã đo (observer không bao
+ *     giờ bắn cho ô 4–6 của một dải `overflow-x-auto`, nên chúng kẹt `initial` vĩnh
+ *     viễn — kể cả ở `prefers-reduced-motion: reduce`) **tan** cùng nó: không còn
+ *     `initial` nào trong dải để mà kẹt. Trục NGANG của miền Trung ở khu này giờ do
+ *     chính phép cuộn mang, mạnh hơn một nhịp vào 16px; và nhịp `slide` vẫn còn nguyên
+ *     ở ba khu khác của miền (`heritage`, `dayTrips`, `intro`).
+ *
+ * ## Bốn cặp âm lề `-mx-N px-N` cũng biến mất
+ *
+ * Chúng tồn tại để dải chảy ra tới mép màn hình trong khi vẫn nằm trong một section
+ * có gutter. Khung sticky nay RỘNG BẰNG VIEWPORT nên không còn gì để bù — chỉ còn
+ * `px-N` giữ ô đầu thẳng hàng với khối tiêu đề, và `overflow-hidden` của khung là thứ
+ * giữ thân trang khỏi cuộn ngang (bất biến thay chỗ cặp âm lề; spec canh cả hai).
+ *
+ * ## Giữ nguyên
  *
  * Ô cao hơn rộng (`aspect-4/5`, 380×475 ở desktop) vì đèn lồng TREO — một ô vuông
- * dưới sợi dây đọc ra carousel. Bản 5k dùng ô vuông 176px, và 176px là chỗ user
- * nói *"ảnh quá nhỏ"*.
- *
- * "Dây" là `<span>` một pixel, dài ngắn xen kẽ, treo từ `border-t` của chính hàng
- * cuộn. Cả hai đều `aria-hidden` và không mang thông tin nào — nhưng chúng là thứ
- * làm hàng ô đọc ra ĐÈN LỒNG chứ không ra một carousel: đèn lồng Hội An treo so le
- * trên một sợi dây căng ngang lối, và đó là cảnh miền Trung bán. Bản đầu chỉ có dây
- * mà không có sợi ngang, chụp lại thì mấy đoạn dây treo lơ lửng từ khoảng không.
- * Sợi ngang nằm TRONG vùng cuộn nên nó chạy hết bề dài dải, đúng như một sợi dây
- * thật kéo dài quá tầm mắt.
+ * dưới sợi dây đọc ra carousel; bản 5k dùng ô vuông 176px và đó là chỗ user nói *"ảnh
+ * quá nhỏ"*. "Dây" là `<span>` một pixel dài ngắn xen kẽ, treo từ `border-t` của chính
+ * hàng cuộn: cả hai `aria-hidden` và không mang thông tin nào, nhưng chúng là thứ làm
+ * hàng ô đọc ra ĐÈN LỒNG chứ không ra một carousel. Sợi ngang nằm TRONG vùng cuộn nên
+ * nó chạy hết bề dài dải, đúng như một sợi dây thật kéo dài quá tầm mắt.
  */
-function LanternsLayout({
+function LanternsSection({
+  region,
   labels,
   onOpen,
+  lightbox,
 }: {
+  region: MockRegion;
   labels: readonly string[];
   onOpen: (index: number) => void;
+  lightbox: ReactNode;
 }) {
+  const frameRef = useRef<HTMLElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const frame = frameRef.current;
+    const strip = stripRef.current;
+    if (!frame || !strip) {
+      return;
+    }
+
+    const sync = () => {
+      const rect = frame.getBoundingClientRect();
+      // Quãng cuộn dọc mà khung sticky "đứng lại": chiều cao section trừ một màn hình.
+      const travel = rect.height - window.innerHeight;
+      const limit = strip.scrollWidth - strip.clientWidth;
+      // `limit <= 0` là ca THẬT, không phải phòng xa: ở khổ rất rộng sáu ô có thể vừa
+      // hết bề ngang, và khi đó chia cho 0 sẽ ghi `NaN` vào `scrollLeft`.
+      if (travel <= 0 || limit <= 0) {
+        return;
+      }
+      const progress = Math.max(0, Math.min(1, -rect.top / travel));
+      strip.scrollLeft = Math.round(progress * limit);
+    };
+
+    /**
+     * Kéo ô ĐANG FOCUS vào tầm. Đo được 30/07: Tab tới ô thứ 4 thì Chromium để nó
+     * **kẹt 252px ngoài mép** và KHÔNG tự cuộn (ô còn nhìn thấy một phần nên phép
+     * `CenterIfNeeded` của trình duyệt coi là đủ), rồi tới ô 5 mới cuộn — và cuộn tới
+     * hẳn cuối dải. Vòng focus vẫn thấy được nên WCAG 2.4.11 (Minimum) không đỏ, nhưng
+     * "ô đang focus bị cắt mất một phần tư" là thứ user sẽ nhìn ra.
+     *
+     * Tính bằng `getBoundingClientRect` rồi cộng thẳng vào `scrollLeft` thay vì gọi
+     * `scrollIntoView`: `scrollIntoView` cho trình duyệt chọn cả trục DỌC nên nó có
+     * thể cuộn cả trang (và một lần cuộn trang là một lần `sync` ghi lại `scrollLeft`,
+     * tức đánh nhau với chính mình). Phép cộng này chỉ chạm đúng một trục.
+     *
+     * `focusin` nổi bọt, nên MỘT listener trên dải phủ cả sáu ô.
+     */
+    const revealFocus = (event: FocusEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        return;
+      }
+      const tile = target.getBoundingClientRect();
+      const box = strip.getBoundingClientRect();
+      if (tile.right > box.right) {
+        strip.scrollLeft += tile.right - box.right;
+      } else if (tile.left < box.left) {
+        strip.scrollLeft -= box.left - tile.left;
+      }
+    };
+
+    window.addEventListener('scroll', sync, { passive: true });
+    window.addEventListener('resize', sync);
+    strip.addEventListener('focusin', revealFocus);
+    // Đợi layout đo xong kích thước sau paint đầu — cùng con số `home/gallery.tsx` dùng.
+    const timer = setTimeout(sync, 100);
+
+    return () => {
+      window.removeEventListener('scroll', sync);
+      window.removeEventListener('resize', sync);
+      strip.removeEventListener('focusin', revealFocus);
+      clearTimeout(timer);
+    };
+  }, []);
+
   return (
-    /* ── Chữ ký miền TRUNG: trượt ngang từ TRÁI — CẢ DẢI là MỘT đơn vị (Task 5n) ──
-       Đây là chỗ chữ ký miền Trung khớp nhất với hình của chính khu: dải này CUỘN
-       NGANG, nên một nhịp vào theo trục ngang là nhịp của chính cái dây đèn lồng đang
-       được căng ra.
-       ⚠️ **Một `RevealItem` cho cả dải, KHÔNG một cái cho mỗi ô** — và đây là kết quả
-       ĐO, không phải lựa chọn thẩm mỹ. Bản đầu bọc từng ô với `delay: index * 0.08`
-       để có đợt quét sáu nhịp; đo ở `prefers-reduced-motion: reduce` thì đúng **2 ô
-       kẹt `translateX(-16px)` vĩnh viễn**. Nguyên nhân: `IntersectionObserver` cắt
-       hình chữ nhật của target qua chuỗi tổ tiên có clip TRƯỚC khi so với root, nên ô
-       thứ 4–6 của một dải `overflow-x-auto` có vùng giao bằng 0 và observer không bao
-       giờ bắn; observer không bắn thì `initial` ở lại mãi, kể cả trong chế độ giảm
-       chuyển động (`reducedMotion="user"` chỉ tước transform của phép ANIMATE).
-       Hai cách chữa đã thử và đều KHÔNG được: nới `viewport.margin` không giúp vì
-       `rootMargin` nới bờ ROOT còn phép cắt bởi tổ tiên nằm ở bước trước; đặt
-       `viewport.root` thành chính dải thì cả sáu ô bắn ngay lúc mount.
-       Mất gì: đợt quét sáu nhịp. Được gì: dải vào như một sợi dây được kéo căng — sát
-       hình đèn lồng hơn — và nhịp so le vẫn còn nguyên ở ba khu khác của miền Trung
-       (`heritage` ba chặng, `dayTrips` lưới thẻ, `intro` hàng highlight), nên trục của
-       miền không bị mất ở đâu cả.
-       Biên độ 16px an toàn tuyệt đối tại đây bất kể khổ màn hình: transform nằm TRÊN
-       chính vùng cuộn nên nó dịch cả dải trong khung `max-w-7xl`, và đã đo `scrollWidth`
-       không nhích lên ở cả 1440 và 390. */
-    <RevealItem enter="slide">
-      <div
-        data-gallery-scroll
-        data-lenis-prevent
-        className="-mx-4 mt-12 flex snap-x scroll-px-4 items-start gap-4 overflow-x-auto border-t border-border px-4 pb-2 sm:mt-16 sm:gap-5 md:-mx-16 md:scroll-px-16 md:px-16 lg:-mx-24 lg:scroll-px-24 lg:px-24 xl:-mx-32 xl:scroll-px-32 xl:px-32"
-      >
-        {labels.map((label, index) => (
-          <div key={label} className="flex shrink-0 flex-col items-center">
-            <span
-              aria-hidden="true"
-              className={cn('w-px bg-border', index % 2 === 0 ? 'h-4' : 'h-10')}
-            />
-            <GalleryTile
-              label={label}
-              index={index}
-              onOpen={onOpen}
-              className="aspect-4/5 w-[280px] shrink-0 snap-start sm:w-[380px]"
-            />
+    <section
+      ref={frameRef}
+      style={{ background: SIGNATURE_BAND_BG }}
+      className="relative h-[180vh] w-full"
+    >
+      <div className="sticky top-0 flex h-screen flex-col overflow-hidden">
+        {/* `data-gallery-header` là móc để `region-gallery.spec.tsx` canh rằng gutter
+            của dải khớp gutter của header ở TỪNG bậc — đó là thứ giữ ô đầu thẳng hàng
+            với khối tiêu đề, việc mà cặp âm lề cũ từng làm.
+            `pt-32` là con số của `home/gallery.tsx`, và nó KHÔNG phải khẩu vị: khung
+            sticky bắt đầu ở `top-0`, tức ngay dưới mép cửa sổ, mà `SiteHeader` nổi trên
+            đó. Bản đầu tôi hạ xuống `pt-16 md:pt-20` để chừa chỗ cho ô, rồi chụp lại và
+            thấy **eyebrow của khu nằm hẳn sau navbar** (navbar cao ~118px kể cả
+            top-bar). Chỗ chừa cho ô phải lấy từ trần cao của ô (xem `max-h` dưới), chứ
+            không lấy từ khoảng hở của navbar. */}
+        <div
+          data-gallery-header
+          className="mx-auto w-full max-w-7xl px-4 pt-32 md:px-16 lg:px-24 xl:px-32"
+        >
+          <GalleryHeader region={region} />
+        </div>
+
+        <div className="flex flex-1 items-center">
+          <div
+            ref={stripRef}
+            data-gallery-scroll
+            className="flex w-full items-start gap-4 overflow-x-auto scrollbar-none border-t border-border px-4 sm:gap-5 md:px-16 lg:px-24 xl:px-32"
+          >
+            {labels.map((label, index) => (
+              <div key={label} className="flex shrink-0 flex-col items-center">
+                <span
+                  aria-hidden="true"
+                  className={cn('w-px bg-border', index % 2 === 0 ? 'h-4' : 'h-10')}
+                />
+                {/* `max-h-[calc(100vh-24rem)]` là TRẦN AN TOÀN, không phải kích thước
+                    thiết kế: khung sticky cao đúng 100vh và phải chứa CẢ header lẫn ô,
+                    nên trên màn hình THẤP thì `overflow-hidden` của khung sẽ cắt đáy ô.
+                    24rem = 384px = header với tiêu đề HAI dòng (~333px: `pt-32` + eyebrow
+                    + h2 hai dòng + đoạn dẫn) cộng đoạn dây (40px) cộng khe. Đo lại sau
+                    khi áp, ở 1280×720 và 900×700: đáy ô còn hở 33–58px, không cắt.
+                    Từ 900px cao trở lên trần này KHÔNG chạm (475 < 516) nên ô giữ đúng
+                    380×475 mà user đã duyệt; dưới đó nó thấp dần thay vì bị cắt. */}
+                <GalleryTile
+                  label={label}
+                  index={index}
+                  onOpen={onOpen}
+                  className="aspect-4/5 max-h-[calc(100vh-24rem)] w-[280px] shrink-0 sm:w-[380px]"
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
       </div>
-    </RevealItem>
+      {lightbox}
+    </section>
   );
 }
 

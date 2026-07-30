@@ -290,59 +290,140 @@ describe('RegionGallery — hình khối của peaks', () => {
   });
 });
 
+/**
+ * ⚠️ Bốn khẳng định của bản trước ĐÃ CHẾT cùng cơ chế cũ (Task 5o) — chúng được SUY
+ * LẠI ở đây, không bị xoá cho xanh:
+ *
+ *  1. *"có snap, và trả wheel về cho Lenis"* — `data-lenis-prevent` làm điều NGƯỢC
+ *     LẠI cơ chế mới (dải chạy VÌ trang cuộn, nên wheel phải về cho trang), và snap
+ *     tranh với phép ghi `scrollLeft` từng khung hình. Cả hai thành khẳng định VẮNG.
+ *  2. *"âm lề bleed khớp đúng padding từng bậc"* — khung sticky đã rộng bằng viewport
+ *     nên không còn gì để bleed. Thứ còn phải canh là gutter của dải khớp gutter của
+ *     header, tức ô đầu vẫn thẳng hàng với khối tiêu đề.
+ *  3. *"mỗi ô là điểm snap"* — theo (1).
+ *  4. *"mỗi biến thể dựng đúng MỘT hình khối"* dùng `[data-gallery-scroll]` làm móc
+ *     của `lanterns`; móc đó GIỮ nguyên tên nên test kia còn sống.
+ */
 describe('RegionGallery — hình khối của lanterns', () => {
-  // Cuộn ngang phải nằm trong CHÍNH container của nó. Thiếu `overflow-x` ở đây là
-  // sáu ô rộng 380px đẩy THÂN TRANG cuộn ngang — lỗi thấy được ở 390px.
-  it('cuộn ngang trong container riêng, có snap, và trả wheel về cho Lenis', () => {
+  function frame(container: HTMLElement) {
+    return container.querySelector<HTMLElement>('section > .sticky');
+  }
+
+  /**
+   * User yêu cầu: *"làm giống với ở trang Home chỗ mà người dùng phải cuộn để xem các
+   * địa điểm … rồi loại bỏ thanh cuộn ngang nằm phía dưới"*. Khuôn ở
+   * `home/gallery.tsx`: section cao 180vh bọc một khung `sticky top-0 h-screen
+   * overflow-hidden`, header nằm TRONG khung nên nó đứng yên suốt hành trình.
+   */
+  it('dựng khung sticky trong section cao 180vh — dải chạy theo tiến độ cuộn TRANG', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    const section = container.querySelector('section');
+    expect(section?.className).toContain('h-[180vh]');
+    const sticky = frame(container);
+    expect(sticky).not.toBeNull();
+    expect(sticky?.className).toContain('top-0');
+    expect(sticky?.className).toContain('h-screen');
+    // `overflow-hidden` theo đúng khuôn Home, và ở đây nó là hàng rào chống TRÀN DỌC:
+    // khung cao đúng 100vh nên nếu ô cao hơn phần còn lại thì nó sẽ đè sang khu kế
+    // tiếp. (Thân trang không cuộn ngang được là nhờ `overflow-x-auto` của chính dải,
+    // không nhờ lớp này — đo ở 1440/1280/768/390: `scrollWidth === clientWidth`.)
+    expect(sticky?.className).toContain('overflow-hidden');
+    // Và vì khung CẮT, ô phải có trần cao theo viewport — nếu không thì ở 1280×720
+    // đáy ô chỉ hở 4px và một tiêu đề hai dòng là mất đáy. Đo được, không phòng xa.
+    for (const tile of tiles(container)) {
+      expect(tile.className).toMatch(/max-h-\[calc\(100vh-\d+rem\)\]/);
+    }
+    // Header phải nằm TRONG khung sticky, không ở trên nó: đó là điều làm tiêu đề
+    // đứng yên trong khi dải chạy.
+    const heading = screen.getByRole('heading', { level: 2 });
+    expect(sticky?.contains(heading)).toBe(true);
+    // Và vùng cuộn cũng ở trong khung đó.
+    expect(sticky?.querySelector('[data-gallery-scroll]')).not.toBeNull();
+  });
+
+  /**
+   * Vùng cuộn giữ NATIVE (`overflow-x-auto`) chứ không đổi sang `transform` như Home,
+   * vì `transform` có hai lỗ mà trang vùng (SSG, ô là `<button>` mở lightbox) không
+   * chịu được: JS tắt thì ô 4–6 KHÔNG BAO GIỜ tới được, và Tab bàn phím thì focus rơi
+   * ra ngoài khung `overflow-hidden` nên người dùng không thấy mình đang ở đâu (WCAG
+   * 2.4.11). Thanh cuộn chỉ bị ẨN, nên thứ user muốn bỏ vẫn bỏ được.
+   *
+   * `data-lenis-prevent` phải VẮNG: nó tồn tại để wheel cuộn DẢI thay vì trang, mà cơ
+   * chế mới là *cuộn trang để dải chạy* — giữ nó lại là làm đúng điều ngược lại.
+   */
+  it('cuộn ngang NATIVE, thanh cuộn bị ẩn, và wheel trả về cho trang', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
     const scroller = container.querySelector('[data-gallery-scroll]');
     expect(scroller).not.toBeNull();
     expect(scroller?.className).toContain('overflow-x-auto');
-    expect(scroller?.className).toContain('snap-x');
-    expect(scroller?.hasAttribute('data-lenis-prevent')).toBe(true);
+    expect(scroller?.className).toContain('scrollbar-none');
+    expect(scroller?.hasAttribute('data-lenis-prevent')).toBe(false);
   });
 
-  // Dải bleed ra mép màn hình để ô kế tiếp luôn bị CẮT — đó là tín hiệu duy nhất
-  // nói "còn ảnh nữa". Nhưng âm lề phải khớp ĐÚNG gutter của `<section>` ở từng
-  // bậc: lệch một bậc là dải rộng hơn viewport và THÂN TRANG cuộn ngang, đúng lỗi
-  // đã canh ở test trên. Cặp `-mx-N`/`px-N` vì thế phải bằng nhau từng bậc.
-  it('âm lề bleed khớp ĐÚNG padding ở từng bậc — lệch là thân trang cuộn ngang', () => {
+  // Âm lề bleed biến mất cùng cơ chế cũ (khung sticky đã rộng bằng viewport). Nhưng
+  // thứ nó phục vụ vẫn phải đúng: ô ĐẦU thẳng hàng với khối tiêu đề. Nên gutter của
+  // dải phải khớp gutter của header ở TỪNG bậc.
+  it('KHÔNG còn âm lề bleed; gutter của dải khớp gutter của header từng bậc', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
-    const section = container.querySelector('section');
     const scroller = container.querySelector('[data-gallery-scroll]');
-    const gutters = (className: string, prefix: string) =>
+    expect(scroller?.className).not.toMatch(/(^|\s)-mx-/);
+    const gutters = (className: string) =>
       Object.fromEntries(
-        [
-          ...className.matchAll(
-            new RegExp(`(?:^|\\s)(?:(\\w+):)?-?${prefix}-(\\d+)(?=\\s|$)`, 'g'),
-          ),
-        ].map((m) => [m[1] ?? 'base', Number(m[2])]),
+        [...className.matchAll(/(?:^|\s)(?:(\w+):)?px-(\d+)(?=\s|$)/g)].map((m) => [
+          m[1] ?? 'base',
+          Number(m[2]),
+        ]),
       );
-    const sectionGutters = gutters(section?.className ?? '', 'px');
-    const bleed = gutters(scroller?.className ?? '', 'mx');
-    const inset = gutters(scroller?.className ?? '', 'px');
-    // Mọi bậc gutter của section phải có cặp bleed/inset tương ứng, cùng giá trị.
-    expect(Object.keys(sectionGutters).length).toBeGreaterThan(1);
-    for (const [breakpoint, value] of Object.entries(sectionGutters)) {
-      expect(bleed[breakpoint], `bleed@${breakpoint}`).toBe(value);
-      expect(inset[breakpoint], `inset@${breakpoint}`).toBe(value);
+    const heading = screen.getByRole('heading', { level: 2 });
+    const headerBox = heading.closest('[data-gallery-header]');
+    const header = gutters(headerBox?.className ?? '');
+    const strip = gutters(scroller?.className ?? '');
+    expect(Object.keys(header).length).toBeGreaterThan(1);
+    for (const [breakpoint, value] of Object.entries(header)) {
+      expect(strip[breakpoint], `gutter@${breakpoint}`).toBe(value);
     }
   });
 
-  it('mỗi ô là điểm snap, và ô rộng hẳn ở desktop', () => {
+  // Snap phải VẮNG: vị trí ngang của dải do phép ghi `scrollLeft` theo tiến độ cuộn
+  // lái, và một điểm snap sẽ kéo dải về mốc gần nhất ngay sau mỗi lần ghi — hai thứ
+  // tranh nhau cùng một con số. Ô vẫn rộng hẳn và vẫn `shrink-0`.
+  it('ô KHÔNG snap nữa — scrollLeft và snap tranh nhau cùng một con số', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    const scroller = container.querySelector('[data-gallery-scroll]');
+    expect(scroller?.className).not.toMatch(/(^|\s)snap-x(\s|$)/);
     expect(tiles(container)).toHaveLength(TILE_COUNT.lanterns);
     for (const tile of tiles(container)) {
-      expect(tile.className).toContain('snap-start');
+      expect(tile.className).not.toContain('snap-start');
       expect(tile.className).toContain('sm:w-[380px]');
       expect(tile.className).toContain('shrink-0');
     }
   });
 
-  it('hai biến thể kia KHÔNG có vùng cuộn ngang', () => {
+  // Sợi dây đèn lồng là HÌNH của miền Trung (Hội An treo đèn so le trên một sợi dây
+  // căng ngang lối) — nó phải sống qua đợt đổi cơ chế, và phải nằm TRONG vùng cuộn để
+  // chạy hết bề dài dải.
+  it('sợi dây đèn lồng còn nguyên — sáu đoạn treo dài ngắn xen kẽ trong dải', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    const scroller = container.querySelector('[data-gallery-scroll]');
+    expect(scroller?.className).toContain('border-t');
+    const wires = [...(scroller?.querySelectorAll('span[aria-hidden="true"]') ?? [])];
+    expect(wires).toHaveLength(TILE_COUNT.lanterns);
+    expect(wires.map((w) => (w.className.includes('h-4') ? 'ngắn' : 'dài'))).toEqual([
+      'ngắn',
+      'dài',
+      'ngắn',
+      'dài',
+      'ngắn',
+      'dài',
+    ]);
+  });
+
+  it('hai biến thể kia KHÔNG có vùng cuộn ngang và KHÔNG dùng khung sticky', () => {
     for (const variant of ['peaks', 'panorama'] as const) {
       const { container, unmount } = render(<RegionGallery region={NORTH} variant={variant} />);
       expect(container.querySelector('[data-gallery-scroll]'), variant).toBeNull();
+      expect(container.querySelector('section')?.className, variant).not.toContain('h-[180vh]');
+      expect(frame(container), variant).toBeNull();
       unmount();
     }
   });

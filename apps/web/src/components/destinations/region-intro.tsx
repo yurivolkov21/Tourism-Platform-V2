@@ -250,7 +250,23 @@ export function RegionIntro({
                       <h4 className="font-heading text-lg font-medium text-foreground">
                         {item.title}
                       </h4>
-                      <p className="mt-1 text-pretty text-muted-foreground">{item.body}</p>
+                      {/* ── Hợp đồng SỐ DÒNG (Task 5o) ──
+                          Đo ở 1440 trước khi vá: ba mục của miền Bắc cao 56/80/56 vì
+                          mục giữa có câu dài hơn nên xuống hai dòng. Ở `aside` ba mục
+                          xếp DỌC nên đây KHÔNG phải "lệch pha giữa hai thẻ cùng
+                          hàng" — nó là NHỊP: khoảng giữa các chip icon thành 80px rồi
+                          104px, ba mục không còn đứng trên một thang đều.
+                          Chỉ GIỮ CHỖ, KHÔNG `line-clamp` — cùng lý lẽ `region-days`:
+                          câu biên tập ngắn trong hộp rộng, cắt chữ ở đây là đổi lỗi
+                          hình thành lỗi nội dung. Ở `row` hộp hẹp hơn nên câu vốn đã
+                          3–4 dòng và `min-h` là no-op; ba mục ở đó cao bằng nhau nhờ
+                          `grid` stretch, không nhờ luật này. */}
+                      <p
+                        data-highlight-body
+                        className="mt-1 min-h-[2lh] text-pretty text-muted-foreground"
+                      >
+                        {item.body}
+                      </p>
                     </div>
                   </RevealItem>
                 );
