@@ -3214,3 +3214,208 @@ git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): ba trang vùng phân hoá — thứ tự khu riêng + chữ ký thứ hai"
 ```
 
+---
+
+### Task 5k: Thiết kế lại ba trang vùng — 7 khu mỗi miền, không biểu đồ
+
+**Vì sao:** user bác bản Task 5j. Lý do chí tử và đúng: khu phổ ngày×độ khó là một
+**biểu đồ trên trang bán tour** — *"khách vào để xem miền Bắc có gì đặc sắc, ập vào
+mặt là một cái đồ thị. Đây là trang cho người dùng xem chứ đâu phải dashboard"*.
+Bài học: phân hoá vùng phải nói bằng **ngôn ngữ khách du lịch**, không bằng ngôn ngữ
+phân tích dữ liệu. Đây là vòng thiết kế thứ tư của trang vùng.
+
+**Ràng buộc user chốt:**
+- Giống hệt cả ba miền: **hero · lưới 6 tour card · footer**.
+- Còn lại tuỳ miền, nhưng **mỗi miền BẮT BUỘC có gallery riêng** — khác bố cục,
+  không bê một kiểu dùng cho cả ba.
+- **Số khu bằng nhau: 7 mỗi miền.**
+
+**Lineup chốt — 6 khu riêng, không khu nào lặp:**
+
+| # | BẮC | TRUNG | NAM |
+| --- | --- | --- | --- |
+| 1 | Hero | Hero | Hero |
+| 2 | Intro `variant="aside"` | **Con đường di sản** | **Ba thế giới** |
+| 3 | **Gallery `peaks`** | Intro `variant="row"` | Intro `variant="stacked"` |
+| 4 | Lưới 6 tour | Lưới 6 tour | Lưới 6 tour |
+| 5 | **Bạn có mấy ngày?** | **Gallery `lanterns`** | **Gallery `panorama`** |
+| 6 | **When to visit** | **Một ngày ở miền Trung** | **Khách nói gì** |
+| 7 | Footer | Footer | Footer |
+
+**Files — XOÁ:**
+
+- `components/destinations/region-spectrum.tsx` + `.spec.tsx` — biểu đồ, chính thứ
+  bị bác. Xoá hẳn, đừng để lại "cho sau này".
+- `components/destinations/region-value-props.tsx` — giống hệt ở cả ba miền và không
+  nói gì về vùng; user gật cho bỏ để lấy chỗ.
+- Thuộc tính `data-flush-footer` ở `page.tsx` **và** luật
+  `body:has(main [data-flush-footer]) footer { margin-top: 0 }` ở cuối `globals.css`.
+  ⚠️ Cơ chế đó sinh ra vì khu CUỐI là một băng **có nền tối**; nay khu cuối của cả ba
+  miền đều dùng nền trang nên 128px margin của footer lại vô hình như 11 trang khác.
+  Giữ một cơ chế không còn consumer là để lại bẫy. **Xoá cả hai nửa cùng lúc.**
+
+**Files — TẠO:**
+
+- `components/destinations/region-days.tsx` + `.spec.tsx` — "Bạn có mấy ngày?" (Bắc)
+- `components/destinations/region-reviews.tsx` + `.spec.tsx` — "Khách nói gì" (Nam)
+- `lib/regions.ts`: thêm `reviewsInRegion()` + test
+
+**Files — SỬA:**
+
+- `components/destinations/region-gallery.tsx` — thêm `variant`
+- `components/destinations/region-intro.tsx` — thêm `variant`
+- `components/destinations/region-seasons.tsx` — bỏ dải 12 ô, chuyển sang editorial
+- `components/destinations/region-day-trips.tsx` — chuyển sang thẻ editorial
+- `components/destinations/region-signature-postcards.tsx` — Nam dựng lớn hơn
+- `lib/region-theme.ts` + `.spec.ts` — thứ tự khu + biến thể
+- `app/(site)/destinations/[region]/page.tsx`
+- `libs/shared/i18n/src/lib/messages.ts`
+
+- [ ] **Step 1: `region-theme.ts` — thứ tự khu và biến thể theo vùng**
+
+Thay `openWith`/`secondSignature`/`signature` bằng:
+
+```ts
+export type RegionSectionKey =
+  | 'intro' | 'gallery' | 'tours'
+  | 'heritage' | 'worlds' | 'days' | 'dayTrips' | 'seasons' | 'reviews';
+
+export interface RegionTheme {
+  /** Thứ tự khu GIỮA hero và footer. Hero/footer do layout lo. */
+  sections: readonly RegionSectionKey[];
+  galleryVariant: 'peaks' | 'lanterns' | 'panorama';
+  introVariant: 'aside' | 'row' | 'stacked';
+}
+```
+
+- `north`: `['intro','gallery','tours','days','seasons']`, gallery `peaks`, intro `aside`
+- `central`: `['heritage','intro','tours','gallery','dayTrips']`, gallery `lanterns`, intro `row`
+- `south`: `['worlds','intro','tours','gallery','reviews']`, gallery `panorama`, intro `stacked`
+
+Test bắt buộc: ba vùng đều **đúng 5 khu giữa** (⇒ 7 tính cả hero+footer) · ba
+`galleryVariant` khác nhau · ba `introVariant` khác nhau · `sections` của ba vùng
+**không trùng nhau về thứ tự** · mọi khu trong `sections` đều có nhánh render ở
+`page.tsx` (test này canh việc thêm key mà quên lắp).
+
+- [ ] **Step 2: i18n — copy hai khu mới**
+
+```ts
+    /** "Bạn có mấy ngày?" — CHỈ miền Bắc. Ba lối vào theo thời lượng; đây là bản
+        THAY THẾ cho khu biểu đồ bị bác, nói cùng sự thật (Bắc là vùng duy nhất
+        trải 1–8 ngày) bằng ngôn ngữ khách: "bạn có mấy ngày?" */
+    days: {
+      eyebrow: 'How long have you got',
+      heading: 'A morning, a weekend, or a week on the trail',
+      subtitle:
+        'The north is the only region that stretches the whole way — start with what your calendar allows.',
+      brackets: {
+        short: { title: 'One day', body: 'Out after breakfast, back before dark.' },
+        weekend: { title: 'A weekend', body: 'One night out — a bay, a valley, or a homestay.' },
+        long: { title: 'A week on the trail', body: 'The long way round, over the passes and back.' },
+      },
+      /** Nhãn số chuyến trong mỗi nhóm. */
+      tripCount: (n: number) => `${n} ${n === 1 ? 'trip' : 'trips'}`,
+    },
+    /** "Khách nói gì" — CHỈ miền Nam. Review THẬT lọc theo vùng. */
+    reviews: {
+      eyebrow: 'From people who went',
+      heading: (region: string) => `What travellers say about ${region}`,
+      subtitle: 'Unedited, from the trips below.',
+      /** Dòng ghi công: review này thuộc tour nào. */
+      onTrip: (tour: string) => `on ${tour}`,
+      seeTrip: 'See the trip',
+    },
+```
+
+- [ ] **Step 3: `lib/regions.ts` — `reviewsInRegion()`**
+
+```ts
+export function reviewsInRegion(
+  regions: readonly MockRegion[],
+  destinations: readonly MockDestination[],
+  tours: readonly MockTourCard[],
+  reviewsByTour: Readonly<Record<string, readonly MockReview[]>>,
+  key: RegionKey,
+): { review: MockReview; tourSlug: string; tourTitle: string }[]
+```
+
+Nhận `reviewsByTour` qua **tham số** như mọi hàm khác trong file — không import
+`TOUR_REVIEWS`. Trả phẳng, **sắp theo ngày mới nhất trước**. Đo được: Bắc 32 ·
+Trung 22 · Nam 20 review; `phu-quoc-reef-days` có **0** (khớp `ratingAvg: null`).
+
+Test: đúng tổng cho từng vùng · sắp đúng thứ tự ngày · tour không có review không
+làm vỡ gì · tour xuyên vùng có review xuất hiện ở cả ba vùng.
+
+- [ ] **Step 4: `region-days.tsx` — "Bạn có mấy ngày?" (Bắc)**
+
+**KHÔNG trục, KHÔNG thanh, KHÔNG biểu đồ.** Ba thẻ editorial nằm ngang:
+
+- Nhóm chia từ `durationDays` của tour **RIÊNG vùng**: `1` · `2–3` · `≥4`.
+- Mỗi thẻ: tiêu đề nhóm · một câu · **danh sách tên tour thật trong nhóm**, mỗi tên
+  là link `/tours/<slug>` · số chuyến (`tripCount`).
+- Nhóm rỗng → **bỏ hẳn thẻ đó**, không in "0 trips".
+- Tour xuyên vùng loại ra (cùng định nghĩa `longestTourInRegion` đang dùng).
+
+- [ ] **Step 5: `region-reviews.tsx` — "Khách nói gì" (Nam)**
+
+Ba review **mới nhất** của vùng. Mỗi review: số sao · tiêu đề (nullable → bỏ) · thân
+· tên tác giả · ngày · dòng `onTrip(tourTitle)` kèm link `/tours/<slug>`.
+Bố cục: ba cột ở `lg`, một cột dưới đó. `reviews` rỗng → không render khu.
+⚠️ `MockReview.title` **nullable** — đã thấy `null` trong mock, phải xử.
+
+- [ ] **Step 6: Ba biến thể gallery**
+
+`region-gallery.tsx` nhận `variant`. Cả ba dùng `RegionTile`, **khác hẳn hình khối**:
+
+- **`peaks`** (Bắc): 4 cột, mỗi cột một chiều cao khác nhau và lệch dọc so le —
+  đường viền trên của dải gợi dãy núi. 8 ô.
+- **`lanterns`** (Trung): một hàng ngang ô **vuông đều nhau**, cuộn ngang
+  (`overflow-x-auto`, `snap-x`). 10 ô. Phải có `overflow-x` trên container riêng để
+  thân trang không cuộn ngang.
+- **`panorama`** (Nam): 3 ô **thấp và dài** (`aspect-[21/9]`) xếp dọc, ô giữa lệch
+  ngang — gợi mặt nước. 3 ô.
+
+Nhãn ô lấy từ `galleryTiles` đã có; số ô khác nhau nên **cắt theo số cần**, đừng
+bịa thêm nhãn.
+
+- [ ] **Step 7: Ba biến thể intro**
+
+`region-intro.tsx` nhận `variant`:
+
+- **`aside`** (Bắc): giữ nguyên hiện tại — hai cột, 3 điểm đặc sắc bên phải.
+- **`row`** (Trung): copy `max-w-2xl` ở trên, 3 điểm đặc sắc thành **hàng ngang 3 cột**.
+- **`stacked`** (Nam): copy **căn giữa** `max-w-2xl mx-auto`, 3 điểm đặc sắc xếp
+  **dọc** thành 3 hàng (icon trái, chữ phải), khối `max-w-3xl mx-auto`.
+
+- [ ] **Step 8: Reshape `region-seasons` và `region-day-trips`**
+
+- `region-seasons.tsx`: **bỏ dải 12 ô** (nó là đồ thị thu nhỏ, cùng họ lỗi vừa bị
+  bác). Chuyển sang editorial: một câu nói rõ tháng đẹp bằng CHỮ (`Mar–May` và
+  `Sep–Nov`) cộng ghi chú thời tiết. Nếu cần hình thì dùng **hai chip tháng**, không
+  phải dải 12 ô có trục.
+- `region-day-trips.tsx`: chuyển sang **thẻ editorial** — mỗi chuyến một thẻ có
+  chuyên mục · tên · một câu từ `itinerary[0].title` · giá · link. Bỏ mọi thứ đọc
+  ra như bảng số liệu.
+
+- [ ] **Step 9: `page.tsx` — render theo `sections`**
+
+Lặp `theme.sections` và `switch` sang component tương ứng. Bọc `Reveal` từng khu.
+Giữ `generateStaticParams`, `generateMetadata`, `notFound()`, JSON-LD BreadcrumbList.
+⚠️ **Xoá `data-flush-footer`** và luật `:has()` ở `globals.css` (xem mục XOÁ).
+⚠️ **KHÔNG** tạo `loading.tsx`.
+
+- [ ] **Step 10: Đo tương phản + chụp**
+
+Mọi khu mới/đổi, 3 vùng × 2 theme. Composite nền dưới → nền phần tử → so màu chữ,
+bằng `canvas` đọc pixel sRGB. Không regex `rgb()`. Ngưỡng AA 4.5 / 3.0.
+Chụp **3 vùng × 2 theme full page** + 3 ảnh cận gallery để thấy ba bố cục khác nhau.
+Kiểm cả **390px** — gallery `lanterns` cuộn ngang phải không làm thân trang cuộn ngang.
+
+- [ ] **Step 11: Gate rồi commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): thiết kế lại ba trang vùng — 7 khu mỗi miền, 6 khu riêng"
+```
+
