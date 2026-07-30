@@ -7,6 +7,8 @@ import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { Lightbox } from '@/components/media/lightbox';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 import type { MockRegion } from '@/mocks/types';
 
@@ -228,31 +230,44 @@ function PeaksLayout({
   return (
     <div className="mt-12 grid grid-cols-1 gap-4 sm:mt-16 sm:grid-cols-3 sm:gap-5">
       {PEAK_COLUMNS.map((column, columnIndex) => (
-        <div
+        /* ── Chữ ký miền BẮC: trồi lên theo `y`, stagger theo CỘT (Task 5n) ──
+           Stagger theo cột chứ không theo từng Ô: hai ô của một cột là MỘT đỉnh núi
+           (đó là toàn bộ lý do `PEAK_COLUMNS` tồn tại), nên tách chúng ra hai nhịp là
+           xé một đỉnh thành hai mảnh. Ba cột nối nhau trái→phải thì dải đọc ra một
+           đường chân trời đang dựng lên — đúng hình mà biến thể này đi tìm.
+           `RevealItem` bọc NGOÀI cột thay vì thay chỗ nó: cột phải giữ
+           `data-peak-column` cùng lớp `sm:pt-*`, thứ `region-gallery.spec.tsx` đọc để
+           canh bất biến "ba cột cao bằng nhau = 141 đơn vị". */
+        <RevealItem
           // biome-ignore lint/suspicious/noArrayIndexKey: PEAK_COLUMNS là hằng ở module scope, không sắp lại và không thêm bớt
           key={columnIndex}
-          data-peak-column={columnIndex}
-          className={cn('flex flex-col gap-4 sm:gap-5', column.pad)}
+          enter="rise"
+          delay={columnIndex * STAGGER.grid}
         >
-          {column.heights.map((height, row) => {
-            const index = columnIndex * 2 + row;
-            const label = labels[index];
-            // `noUncheckedIndexedAccess` khai mọi truy cập theo chỉ số là có thể
-            // `undefined`. Ba cột × hai ô = 6 = đúng số nhãn đã cắt, nên nhánh này
-            // không chạy — nhưng bỏ ô còn hơn render một `aria-label` rỗng.
-            if (!label) return null;
-            return (
-              <GalleryTile
-                key={label}
-                label={label}
-                index={index}
-                onOpen={onOpen}
-                peakRow={row}
-                className={cn('w-full', PEAK_MOBILE_HEIGHT, height)}
-              />
-            );
-          })}
-        </div>
+          <div
+            data-peak-column={columnIndex}
+            className={cn('flex flex-col gap-4 sm:gap-5', column.pad)}
+          >
+            {column.heights.map((height, row) => {
+              const index = columnIndex * 2 + row;
+              const label = labels[index];
+              // `noUncheckedIndexedAccess` khai mọi truy cập theo chỉ số là có thể
+              // `undefined`. Ba cột × hai ô = 6 = đúng số nhãn đã cắt, nên nhánh này
+              // không chạy — nhưng bỏ ô còn hơn render một `aria-label` rỗng.
+              if (!label) return null;
+              return (
+                <GalleryTile
+                  key={label}
+                  label={label}
+                  index={index}
+                  onOpen={onOpen}
+                  peakRow={row}
+                  className={cn('w-full', PEAK_MOBILE_HEIGHT, height)}
+                />
+              );
+            })}
+          </div>
+        </RevealItem>
       ))}
     </div>
   );
@@ -301,26 +316,50 @@ function LanternsLayout({
   onOpen: (index: number) => void;
 }) {
   return (
-    <div
-      data-gallery-scroll
-      data-lenis-prevent
-      className="-mx-4 mt-12 flex snap-x scroll-px-4 items-start gap-4 overflow-x-auto border-t border-border px-4 pb-2 sm:mt-16 sm:gap-5 md:-mx-16 md:scroll-px-16 md:px-16 lg:-mx-24 lg:scroll-px-24 lg:px-24 xl:-mx-32 xl:scroll-px-32 xl:px-32"
-    >
-      {labels.map((label, index) => (
-        <div key={label} className="flex shrink-0 flex-col items-center">
-          <span
-            aria-hidden="true"
-            className={cn('w-px bg-border', index % 2 === 0 ? 'h-4' : 'h-10')}
-          />
-          <GalleryTile
-            label={label}
-            index={index}
-            onOpen={onOpen}
-            className="aspect-4/5 w-[280px] shrink-0 snap-start sm:w-[380px]"
-          />
-        </div>
-      ))}
-    </div>
+    /* ── Chữ ký miền TRUNG: trượt ngang từ TRÁI — CẢ DẢI là MỘT đơn vị (Task 5n) ──
+       Đây là chỗ chữ ký miền Trung khớp nhất với hình của chính khu: dải này CUỘN
+       NGANG, nên một nhịp vào theo trục ngang là nhịp của chính cái dây đèn lồng đang
+       được căng ra.
+       ⚠️ **Một `RevealItem` cho cả dải, KHÔNG một cái cho mỗi ô** — và đây là kết quả
+       ĐO, không phải lựa chọn thẩm mỹ. Bản đầu bọc từng ô với `delay: index * 0.08`
+       để có đợt quét sáu nhịp; đo ở `prefers-reduced-motion: reduce` thì đúng **2 ô
+       kẹt `translateX(-16px)` vĩnh viễn**. Nguyên nhân: `IntersectionObserver` cắt
+       hình chữ nhật của target qua chuỗi tổ tiên có clip TRƯỚC khi so với root, nên ô
+       thứ 4–6 của một dải `overflow-x-auto` có vùng giao bằng 0 và observer không bao
+       giờ bắn; observer không bắn thì `initial` ở lại mãi, kể cả trong chế độ giảm
+       chuyển động (`reducedMotion="user"` chỉ tước transform của phép ANIMATE).
+       Hai cách chữa đã thử và đều KHÔNG được: nới `viewport.margin` không giúp vì
+       `rootMargin` nới bờ ROOT còn phép cắt bởi tổ tiên nằm ở bước trước; đặt
+       `viewport.root` thành chính dải thì cả sáu ô bắn ngay lúc mount.
+       Mất gì: đợt quét sáu nhịp. Được gì: dải vào như một sợi dây được kéo căng — sát
+       hình đèn lồng hơn — và nhịp so le vẫn còn nguyên ở ba khu khác của miền Trung
+       (`heritage` ba chặng, `dayTrips` lưới thẻ, `intro` hàng highlight), nên trục của
+       miền không bị mất ở đâu cả.
+       Biên độ 16px an toàn tuyệt đối tại đây bất kể khổ màn hình: transform nằm TRÊN
+       chính vùng cuộn nên nó dịch cả dải trong khung `max-w-7xl`, và đã đo `scrollWidth`
+       không nhích lên ở cả 1440 và 390. */
+    <RevealItem enter="slide">
+      <div
+        data-gallery-scroll
+        data-lenis-prevent
+        className="-mx-4 mt-12 flex snap-x scroll-px-4 items-start gap-4 overflow-x-auto border-t border-border px-4 pb-2 sm:mt-16 sm:gap-5 md:-mx-16 md:scroll-px-16 md:px-16 lg:-mx-24 lg:scroll-px-24 lg:px-24 xl:-mx-32 xl:scroll-px-32 xl:px-32"
+      >
+        {labels.map((label, index) => (
+          <div key={label} className="flex shrink-0 flex-col items-center">
+            <span
+              aria-hidden="true"
+              className={cn('w-px bg-border', index % 2 === 0 ? 'h-4' : 'h-10')}
+            />
+            <GalleryTile
+              label={label}
+              index={index}
+              onOpen={onOpen}
+              className="aspect-4/5 w-[280px] shrink-0 snap-start sm:w-[380px]"
+            />
+          </div>
+        ))}
+      </div>
+    </RevealItem>
   );
 }
 
@@ -353,24 +392,37 @@ function PanoramaLayout({
 
   return (
     <div className="mx-auto mt-12 flex max-w-5xl flex-col gap-4 sm:mt-16 sm:gap-5">
-      <GalleryTile
-        label={lead}
-        index={0}
-        onOpen={onOpen}
-        className="aspect-16/9 w-full"
-        panoramaLead
-      />
-      <div data-panorama-row className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:gap-5">
-        {rest.map((label, index) => (
-          <GalleryTile
-            key={label}
-            label={label}
-            index={index + 1}
-            onOpen={onOpen}
-            className={cn('h-56 w-full sm:h-72', index === 0 ? 'sm:col-span-3' : 'sm:col-span-2')}
-          />
-        ))}
-      </div>
+      {/* ── Chữ ký miền NAM: NỞ RA tại chỗ, theo LỚP chứ không theo chuỗi (Task 5n) ──
+          Ô LỚN vào trước (nhịp 0), rồi HÀNG DƯỚI vào như MỘT khối (nhịp 1). Đây là
+          nhịp hai lớp, không phải ba nhịp nối nhau: hai ô dưới là một dòng nước đã rẽ
+          hai nhánh (xem JSDoc), nên chúng thuộc cùng một lớp và tách chúng ra hai
+          nhịp là kể sai hình.
+          `RevealItem` bọc CẢ hàng thay vì từng ô còn là điều kiện để `sm:col-span-*`
+          ở trên chính `<GalleryTile>` vẫn có tác dụng — nó phải là ô lưới trực tiếp
+          của `[data-panorama-row]`, và `region-gallery.spec.tsx` đọc lớp đó ngay trên
+          `[data-gallery-tile]` để canh "hai ô dưới rộng KHÁC nhau". */}
+      <RevealItem enter="bloom">
+        <GalleryTile
+          label={lead}
+          index={0}
+          onOpen={onOpen}
+          className="aspect-16/9 w-full"
+          panoramaLead
+        />
+      </RevealItem>
+      <RevealItem enter="bloom" delay={STAGGER.grid}>
+        <div data-panorama-row className="grid grid-cols-1 gap-4 sm:grid-cols-5 sm:gap-5">
+          {rest.map((label, index) => (
+            <GalleryTile
+              key={label}
+              label={label}
+              index={index + 1}
+              onOpen={onOpen}
+              className={cn('h-56 w-full sm:h-72', index === 0 ? 'sm:col-span-3' : 'sm:col-span-2')}
+            />
+          ))}
+        </div>
+      </RevealItem>
     </div>
   );
 }

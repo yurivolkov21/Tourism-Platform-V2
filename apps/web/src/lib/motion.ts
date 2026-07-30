@@ -38,8 +38,36 @@ export const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
  * Bước stagger theo loại nội dung. Chỉ có `grid` vì đó là bước DUY NHẤT đã dùng
  * thật (`destinations/journey-moments.tsx`) — thêm khoá cho `list`/`row` lúc này là
  * bịa số cho một nhu cầu chưa có.
+ *
+ * Task 5n vẫn KHÔNG thêm khoá nào: cả chín khu trang vùng đều stagger một LƯỚI
+ * (ba cột `peaks`, ba chặng `heritage`, lưới thẻ `days`/`dayTrips`/`reviews`, hàng
+ * highlight của `intro`), nên `grid` phủ đúng mọi chỗ. Một bước thứ hai ở đây chỉ
+ * có nghĩa khi có một loại nhịp thật sự khác, không phải khi có thêm consumer.
  */
 export const STAGGER = { grid: 0.08 } as const;
+
+/**
+ * Biên độ chuyển động vào — MỘT bộ cho cả cascade header (Task 5m) lẫn nhịp nội bộ
+ * của khu (Task 5n). Ba khoá là ba TRỤC, và ba trục đó chính là chữ ký ba miền:
+ * Bắc trồi lên (`rise`), Trung trượt ngang (`slide`), Nam nở ra (`bloom`).
+ *
+ * ⚠️ **`slide: 16` là con số ĐO ĐƯỢC, không phải khẩu vị — đừng nâng lên.** Trục x
+ * có một rủi ro mà trục y không có: `translateY` khi JS chết chỉ đẩy chữ xuống, còn
+ * `translateX` đẩy nội dung ra khỏi mép ngang — sang phải là sinh **thanh cuộn
+ * ngang** cho cả body (repo KHÔNG có `overflow-x: hidden` ở đâu, đã grep), sang
+ * trái là **cắt mất chữ**. Đo 30/07 trên cả ba trang vùng, ở 1440px và 390px, cho
+ * mọi phần tử ứng viên (`ol > li`, `ul > li`, `[data-gallery-tile]`, `figure`,
+ * `[data-intro-items] > div`, khối chữ `max-w-2xl`): ở **390px khe trái = khe phải
+ * = 16px** ở TẤT CẢ — đúng bằng gutter `px-4` của khu. Nên 16 là biên độ lớn nhất
+ * mà JS-tắt không mất một glyph nào và `scrollWidth` không nhích lên; 24 mất 8px,
+ * 32 mất 16px. Kế hoạch gốc đề 60 rồi hạ trần xuống 32 — cả hai đều quá lớn, và
+ * chỉ phép đo mới nói được điều đó.
+ *
+ * `rise: 24` là bậc nhà có từ trước (`motion/reveal.tsx` và 21 bản copy của nó).
+ * `bloom: 0.96` không dịch chỗ nên nó là trục AN TOÀN NHẤT khi JS chết: nội dung
+ * chỉ nhỏ đi 4%, không lệch một pixel nào và không thể tràn.
+ */
+export const AMPLITUDE = { rise: 24, slide: 16, bloom: 0.96 } as const;
 
 /**
  * Thang delay của cascade header khu: tiêu đề → đoạn dẫn → CTA.

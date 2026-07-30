@@ -4,6 +4,8 @@ import { StarIcon, UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import type { RegionReview } from '@/lib/regions';
 import { formatReviewDate } from '@/lib/tours';
 
@@ -75,78 +77,93 @@ export function RegionReviews({
             tô nền chỉ đọc ra "hơi khác" chứ không ra "một tấm riêng". Vạch mảnh
             cộng khoảng cách thì đọc được ở cả hai theme. */}
         <ul className="mt-12 grid gap-x-10 gap-y-10 sm:mt-14 lg:grid-cols-3">
-          {reviews.slice(0, INLINE_COUNT).map(({ review, tourSlug, tourTitle }) => {
+          {reviews.slice(0, INLINE_COUNT).map(({ review, tourSlug, tourTitle }, i) => {
             const name = review.authorName ?? shared.deletedAuthor;
             return (
-              <li key={review.id} data-review={review.id} className="border-t border-border pt-6">
-                <article>
-                  {/* `role="img"` + `aria-label` mang con số: năm icon rời rạc
+              <li key={review.id} data-review={review.id}>
+                {/* ── Chữ ký miền NAM: NỞ RA tại chỗ, không trục (Task 5n) ──
+                    Cùng nhịp với dải bưu thiếp mở đầu trang Nam, nên hai đầu trang
+                    khép lại thành một chữ ký.
+                    ⚠️ CỐ Ý **không** thêm phản hồi hover cho thẻ review, dù chữ ký
+                    của miền Nam là "chạm": thẻ này KHÔNG bấm được (chỉ dòng ghi công
+                    tour bên trong là link), nên một thẻ nhô lên khi trỏ chuột là hứa
+                    một cú bấm không tồn tại. Chỗ chữ ký chạm được nói thật là dải bưu
+                    thiếp (ảnh trang trí, xoè cả dải) và ô gallery (vốn là `<button>`
+                    mở lightbox, đã có zoom hover từ trước). */}
+                <RevealItem
+                  enter="bloom"
+                  delay={i * STAGGER.grid}
+                  className="border-t border-border pt-6"
+                >
+                  <article>
+                    {/* `role="img"` + `aria-label` mang con số: năm icon rời rạc
                       không đọc thành "4 trên 5" được. Cùng khuôn `TourReviews`. */}
-                  <span
-                    role="img"
-                    aria-label={shared.ratingLabel(review.rating)}
-                    className="flex items-center gap-0.5"
-                  >
-                    {[1, 2, 3, 4, 5].map((step) => (
-                      <StarIcon
-                        key={step}
-                        aria-hidden="true"
-                        className={
-                          step <= review.rating
-                            ? 'size-4 fill-rating text-rating'
-                            : 'size-4 text-rating-muted'
-                        }
-                      />
-                    ))}
-                  </span>
+                    <span
+                      role="img"
+                      aria-label={shared.ratingLabel(review.rating)}
+                      className="flex items-center gap-0.5"
+                    >
+                      {[1, 2, 3, 4, 5].map((step) => (
+                        <StarIcon
+                          key={step}
+                          aria-hidden="true"
+                          className={
+                            step <= review.rating
+                              ? 'size-4 fill-rating text-rating'
+                              : 'size-4 text-rating-muted'
+                          }
+                        />
+                      ))}
+                    </span>
 
-                  {/* `title` nullable và mock CÓ null thật — bỏ hẳn thẻ tiêu đề,
+                    {/* `title` nullable và mock CÓ null thật — bỏ hẳn thẻ tiêu đề,
                       không in chuỗi rỗng hay chữ thay thế bịa ra. */}
-                  {review.title ? (
-                    <h3 className="mt-3 font-heading text-xl font-medium text-balance text-foreground">
-                      {review.title}
-                    </h3>
-                  ) : null}
-                  <p className="mt-2 text-pretty text-muted-foreground">{review.body}</p>
+                    {review.title ? (
+                      <h3 className="mt-3 font-heading text-xl font-medium text-balance text-foreground">
+                        {review.title}
+                      </h3>
+                    ) : null}
+                    <p className="mt-2 text-pretty text-muted-foreground">{review.body}</p>
 
-                  <div className="mt-5 flex items-start gap-3">
-                    <Avatar className="size-9 shrink-0">
-                      <AvatarFallback>
-                        {/* Tài khoản đã xoá không có chữ cái nào để lấy — icon
+                    <div className="mt-5 flex items-start gap-3">
+                      <Avatar className="size-9 shrink-0">
+                        <AvatarFallback>
+                          {/* Tài khoản đã xoá không có chữ cái nào để lấy — icon
                             người trung tính thay vì một chữ cái bịa hay dấu "?". */}
-                        {review.authorName ? (
-                          review.authorName.charAt(0)
-                        ) : (
-                          <UserIcon className="size-4" aria-hidden="true" />
-                        )}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0">
-                      <span
-                        className={
-                          review.authorDeleted
-                            ? 'block text-sm text-muted-foreground italic'
-                            : 'block text-sm font-medium text-foreground'
-                        }
-                      >
-                        {name}
-                      </span>
-                      <span className="font-mono text-xs text-muted-foreground">
-                        {formatReviewDate(review.createdAt)}
-                      </span>
-                      {/* Ghi công tour — thứ giữ khu này khỏi nói sai. Review của
+                          {review.authorName ? (
+                            review.authorName.charAt(0)
+                          ) : (
+                            <UserIcon className="size-4" aria-hidden="true" />
+                          )}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <span
+                          className={
+                            review.authorDeleted
+                              ? 'block text-sm text-muted-foreground italic'
+                              : 'block text-sm font-medium text-foreground'
+                          }
+                        >
+                          {name}
+                        </span>
+                        <span className="font-mono text-xs text-muted-foreground">
+                          {formatReviewDate(review.createdAt)}
+                        </span>
+                        {/* Ghi công tour — thứ giữ khu này khỏi nói sai. Review của
                           tour XUYÊN VÙNG cũng thuộc miền Nam (lưới 6 tour của
                           trang cũng có nó), và dòng này cho người đọc thấy ngay
                           review nói về chuyến nào. */}
-                      <Link
-                        href={`/tours/${tourSlug}`}
-                        className="mt-0.5 block text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
-                      >
-                        {t.onTrip(tourTitle)}
-                      </Link>
+                        <Link
+                          href={`/tours/${tourSlug}`}
+                          className="mt-0.5 block text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+                        >
+                          {t.onTrip(tourTitle)}
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                </article>
+                  </article>
+                </RevealItem>
               </li>
             );
           })}

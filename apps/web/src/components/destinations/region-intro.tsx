@@ -10,9 +10,33 @@ import {
 } from 'lucide-react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealBlock, RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { type EnterSignature, RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import type { MockRegion } from '@/mocks/types';
 
 export type IntroVariant = 'aside' | 'row' | 'stacked';
+
+/**
+ * Biến thể bố cục → chữ ký chuyển động của miền dùng nó (Task 5n).
+ *
+ * `intro` là khu DUY NHẤT (cùng `gallery`) có mặt ở cả ba miền, nên nó cũng là chỗ
+ * duy nhất mà cả ba chữ ký cùng sống trong một file. Ánh xạ không phải tuỳ ý — mỗi
+ * trục khớp với chính hình mà biến thể đó đã dựng:
+ *
+ *  · `aside` (Bắc) → `rise`: ba highlight xếp DỌC thành một cột, nên chúng dựng lên.
+ *  · `row` (Trung) → `slide`: ba highlight thành một HÀNG NGANG ba cột, nên chúng
+ *    trượt vào theo đúng trục mà mắt quét.
+ *  · `stacked` (Nam) → `bloom`: khối chữ căn giữa là một nhịp NGHỈ giữa hai khu ảnh
+ *    (xem JSDoc component), và một nhịp có hướng ở đây sẽ phá đúng cái nghỉ đó.
+ *
+ * `Record` đầy đủ chứ không `switch` có `default`: thêm biến thể thứ tư mà quên chữ
+ * ký thì TS đỏ ngay, thay vì khu âm thầm chạy nhịp của vùng khác.
+ */
+const INTRO_ENTER: Record<IntroVariant, EnterSignature> = {
+  aside: 'rise',
+  row: 'slide',
+  stacked: 'bloom',
+};
 
 /** Icon theo THỨ TỰ mục, đúng bộ `region-highlights.tsx` cũ dùng (khu đó đã gộp
     vào đây 29/07). Ba mục là hằng số của copy nên danh sách này không cần dài
@@ -165,14 +189,21 @@ export function RegionIntro({
               variant === 'row' && 'w-full',
             )}
           >
-            <h3
+            {/* ── Nhịp thân khu (Task 5n) — chữ ký của miền dùng biến thể này ──
+                Tiêu đề khối là phần tử MỞ MÀN của cùng nhịp với ba mục dưới nó
+                (`delay: 0`, rồi các mục `(i + 1) * STAGGER.grid`). Để nó đứng im trên
+                một danh sách đang chuyển động thì nó đọc thành một mẩu sót lại — đúng
+                lý lẽ 5m đã áp cho nhãn `Best months` của khu mùa. */}
+            <RevealItem
+              as="h3"
+              enter={INTRO_ENTER[variant]}
               className={cn(
                 'font-heading text-xl font-medium text-foreground md:text-2xl',
                 variant === 'stacked' && 'text-center',
               )}
             >
               {t.highlightsHeading(region.name)}
-            </h3>
+            </RevealItem>
 
             <div
               data-intro-items={variant}
@@ -188,8 +219,11 @@ export function RegionIntro({
               {highlights.map((item, i) => {
                 const Icon = HIGHLIGHT_ICONS[i] ?? SparklesIcon;
                 return (
-                  <div
+                  <RevealItem
                     key={item.title}
+                    enter={INTRO_ENTER[variant]}
+                    // `+ 1` vì tiêu đề khối ở trên đã chiếm nhịp 0.
+                    delay={(i + 1) * STAGGER.grid}
                     className={cn(
                       // `row` xếp icon TRÊN chữ (cột hẹp, icon bên cạnh chữ thì
                       // chữ chỉ còn ~10 chữ mỗi dòng); hai biến thể kia icon bên
@@ -218,7 +252,7 @@ export function RegionIntro({
                       </h4>
                       <p className="mt-1 text-pretty text-muted-foreground">{item.body}</p>
                     </div>
-                  </div>
+                  </RevealItem>
                 );
               })}
             </div>

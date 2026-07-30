@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { HEADER_DELAY, REVEAL_EASE, SPRING, SPRING_HEADING, STAGGER } from './motion';
+import { AMPLITUDE, HEADER_DELAY, REVEAL_EASE, SPRING, SPRING_HEADING, STAGGER } from './motion';
 
 /**
  * ⚠️ Spec này ĐỌC SOURCE của component thay vì render chúng, và đó là lựa chọn có
@@ -155,9 +155,147 @@ describe('trang vùng phải ĐỌC ĐƯỢC khi JS chưa chạy', () => {
   const FILES = [
     ...REGION_SECTIONS.map((name) => `../components/destinations/${name}.tsx`),
     '../components/motion/reveal-header.tsx',
+    '../components/motion/reveal-item.tsx',
   ];
 
   it.each(FILES)('%s không để phần tử nào ở opacity 0 lúc chờ observer', (relative) => {
     expect(codeOf(relative)).not.toMatch(/initial=\{\{[^}]*opacity:\s*0/);
+  });
+});
+
+/**
+ * Task 5n — nhịp NỘI BỘ của khu, và nó là trục phân hoá ba miền.
+ *
+ * 5m chỉ chạm header khu; thân khu gần như tĩnh (6 khu không có gì, 3 khu chỉ đổi
+ * màu khi hover). 5n cho mỗi khu một nhịp bên trong, và trục của nhịp đó KHÁC nhau
+ * theo miền: Bắc trồi lên (`rise`), Trung trượt ngang (`slide`), Nam nở ra
+ * (`bloom`). Xem `components/motion/reveal-item.tsx` cho lý lẽ từng trục.
+ */
+describe('nhịp thân khu — ba miền, ba TRỤC khác nhau', () => {
+  /**
+   * Mọi chữ ký một file dùng.
+   *
+   * Bắt tên trong DẤU NHÁY, không bắt riêng `enter="…"`: hai khu dùng chung cả ba
+   * miền (`intro`, `gallery`) chọn chữ ký qua một `Record` ánh xạ từ biến thể bố cục
+   * (`aside: 'rise'`), nên ở đó tên nằm ở giá trị của map chứ không ở chỗ gọi. Bản
+   * đầu của hàm này chỉ khớp `enter="…"` và nó báo đỏ oan đúng hai khu đó.
+   *
+   * `codeOf` đã bỏ comment, nên comment tiếng Việt nhắc tên ba trục không tính.
+   */
+  function signaturesIn(name: string): string[] {
+    return [
+      ...codeOf(`../components/destinations/${name}.tsx`).matchAll(/['"](rise|slide|bloom)['"]/g),
+    ].map((match) => match[1] as string);
+  }
+
+  /**
+   * Khu → tập chữ ký được phép. Đây là bảng phân hoá ba miền ở dạng test, nên nó là
+   * chốt chặn cho chính điều user yêu cầu ("phân tích các trang của 3 miền … áp dụng
+   * motions vào cho từng sections").
+   *
+   *  · Sáu khu RIÊNG của một miền chỉ được mang đúng chữ ký của miền đó.
+   *  · `intro` và `gallery` dùng chung cả ba miền qua BIẾN THỂ, nên chúng phải mang
+   *    CẢ BA chữ ký — mỗi biến thể một trục, đúng như bố cục của chúng đã tách.
+   *  · `tours` là khu user chốt phải GIỐNG HỆT ở cả ba miền ("hero · lưới 6 tour
+   *    card · footer" là ba thứ duy nhất giống nhau), nên nó KHÔNG được mang chữ ký
+   *    miền nào — nó chạy nhịp NHÀ (`rise`), y hệt trên cả ba trang.
+   *  · `seasons` không có thân khu: hết header là hết khu (cột trái là câu hỏi, cột
+   *    phải là câu trả lời, cả hai đã nằm trong cascade 5m). Nên nó là khu DUY NHẤT
+   *    hợp lệ khi không có `enter` nào.
+   */
+  const ALLOWED: Record<(typeof REGION_SECTIONS)[number], readonly string[]> = {
+    'region-intro': ['rise', 'slide', 'bloom'],
+    'region-gallery': ['rise', 'slide', 'bloom'],
+    'region-tours': ['rise'],
+    'region-signature-timeline': ['slide'],
+    'region-signature-postcards': ['bloom'],
+    'region-days': ['rise'],
+    'region-day-trips': ['slide'],
+    'region-seasons': [],
+    'region-reviews': ['bloom'],
+  };
+
+  it.each(REGION_SECTIONS.filter((name) => name !== 'region-seasons'))(
+    '%s có nhịp thân khu, không chỉ có cascade header',
+    (name) => {
+      expect(signaturesIn(name).length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each(REGION_SECTIONS)('%s chỉ mang chữ ký được phép cho miền của nó', (name) => {
+    const allowed = ALLOWED[name];
+    expect(new Set(signaturesIn(name))).toEqual(new Set(allowed));
+  });
+
+  // Khu riêng của Bắc, của Trung và của Nam phải mang BA trục KHÁC nhau. Đây là
+  // khẳng định giữ 5n khỏi biến thành "ba miền cùng một nhịp, khác mỗi delay" —
+  // đúng thứ user đã bác hai lần ở các vòng thiết kế trước (tint màu và đồ thị).
+  it('ba miền KHÔNG dùng chung một trục nào ở khu riêng của mình', () => {
+    const north = signaturesIn('region-days');
+    const central = signaturesIn('region-signature-timeline');
+    const south = signaturesIn('region-signature-postcards');
+    expect(new Set([...north, ...central, ...south]).size).toBe(3);
+  });
+
+  // Stagger phải DẪN XUẤT từ `STAGGER.grid`, không gõ số tại chỗ: 21 file khai
+  // `const SPRING` nguyên văn là bài học đủ đắt về chuyện đó.
+  it.each(REGION_SECTIONS.filter((name) => name !== 'region-seasons'))(
+    '%s stagger bằng STAGGER.grid, không gõ số delay tại chỗ',
+    (name) => {
+      const code = codeOf(`../components/destinations/${name}.tsx`);
+      expect(code).toMatch(/delay=\{[^}]*STAGGER\.grid/);
+      expect(code).not.toMatch(/delay=\{\s*\d*\.\d+/);
+    },
+  );
+
+  it('biên độ nay là MỘT nguồn — reveal-header không còn khai 24 tại chỗ', () => {
+    const code = codeOf('../components/motion/reveal-header.tsx');
+    expect(code).toContain('AMPLITUDE.rise');
+    expect(code).not.toMatch(/const RISE = \d+/);
+  });
+
+  // Trục x là chỗ 5n có rủi ro RIÊNG: `translateX` khi JS chết đẩy nội dung ra khỏi
+  // mép ngang — sang phải là sinh thanh cuộn ngang cho cả body (repo không có
+  // `overflow-x: hidden` ở đâu), sang trái là cắt mất chữ. Đo 30/07 ở 390px trên cả
+  // ba miền: khe trái = khe phải = 16px cho MỌI phần tử ứng viên, đúng bằng gutter
+  // `px-4`. Kế hoạch gốc đề 60 rồi hạ trần 32; cả hai đều tràn.
+  it('biên độ x không vượt gutter hẹp nhất đã đo, và nhỏ hơn biên độ y', () => {
+    expect(AMPLITUDE.slide).toBeLessThanOrEqual(16);
+    expect(AMPLITUDE.slide).toBeLessThan(AMPLITUDE.rise);
+  });
+
+  /**
+   * Dải đèn lồng của miền Trung là chỗ DUY NHẤT trang vùng có cuộn ngang, và nó có
+   * một cái bẫy chỉ đo mới thấy: `IntersectionObserver` tính giao qua cả chuỗi clip,
+   * nên ô thứ 4–6 không bao giờ giao với cửa sổ tài liệu cho tới khi người dùng cuộn
+   * chính cái dải. Observer không bắn thì ô ở lại `initial` VĨNH VIỄN — kể cả khi bật
+   * giảm chuyển động, vì `reducedMotion="user"` chỉ tước transform của phép animate,
+   * nó không xoá `initial` đã render. Đo 30/07 ở `prefers-reduced-motion: reduce`:
+   * đúng 2 ô còn kẹt `translateX(-16px)`. `eager` nới viewport để cả dải cùng vào tầm.
+   */
+  it('dải cuộn ngang bọc MỘT nhịp cho cả dải, không một nhịp mỗi ô', () => {
+    const code = codeOf('../components/destinations/region-gallery.tsx');
+    // Khối `LanternsLayout` — từ tên hàm tới hết `PanoramaLayout` đứng sau nó.
+    const lanterns = code.slice(
+      code.indexOf('function LanternsLayout'),
+      code.indexOf('function PanoramaLayout'),
+    );
+    // Đúng MỘT `RevealItem`, và nó KHÔNG có `delay` (một đơn vị thì không stagger).
+    expect(lanterns.match(/<RevealItem/g)).toHaveLength(1);
+    expect(lanterns).not.toContain('delay=');
+    // Và nó phải bọc NGOÀI vùng cuộn, không nằm trong `labels.map`.
+    expect(lanterns.indexOf('<RevealItem')).toBeLessThan(lanterns.indexOf('labels.map'));
+  });
+
+  // Bưu thiếp xoè khi hover là CSS transition, không phải motion component, nên
+  // `MotionConfig reducedMotion="user"` VÔ CAN — phải tự guard bằng `motion-safe:`
+  // (loại 2). Khuôn: `destination-tile.tsx`, `region-gallery.tsx`.
+  it('hiệu ứng hover của bưu thiếp Nam tự guard bằng motion-safe', () => {
+    const code = codeOf('../components/destinations/region-signature-postcards.tsx');
+    const hovers = [...code.matchAll(/[\w:[\]/.-]*group-hover:[\w[\]/.\-%]+/g)].map(
+      (match) => match[0],
+    );
+    expect(hovers.length).toBeGreaterThan(0);
+    for (const hover of hovers) expect(hover.startsWith('motion-safe:')).toBe(true);
   });
 });

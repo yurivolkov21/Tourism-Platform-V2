@@ -3,6 +3,8 @@ import { MoveRightIcon, StarIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import { formatMoney } from '@/lib/tours';
 import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
 
@@ -77,63 +79,73 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
             liệu, không phải hằng. Bốn cột cứng để lại hai ô trống khi vùng chỉ có
             hai chuyến, và ép chữ xuống quá hẹp khi có sáu. */}
         <ul className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4 sm:mt-14 sm:gap-5">
-          {dayTrips.map((tour) => {
+          {dayTrips.map((tour, i) => {
             // Ngày 1 của hành trình. `?.` vì `noUncheckedIndexedAccess` và vì
             // `itinerary` có thể vắng hẳn — thiếu thì bỏ dòng, không in chuỗi rỗng.
             const openingDay = tour.itinerary?.[0]?.title;
             return (
               <li key={tour.slug} data-day-trip={tour.slug}>
-                {/* Thẻ VIỀN, không tô nền: khu này đứng trên nền trang, và đo được
+                {/* ── Chữ ký miền TRUNG: trượt ngang từ TRÁI, nối tiếp (Task 5n) ──
+                    Cùng trục với khu di sản mở đầu trang, nên hai đầu trang Trung khép
+                    lại thành một chữ ký. `h-full` phải có trên chính `RevealItem`:
+                    `<Link>` bên trong dùng `h-full` để hàng giá luôn tụt xuống đáy ô
+                    (`mt-auto`), và chuỗi đó chỉ nối được nếu mọi mắt giữa `li` (ô lưới
+                    bị kéo cao bằng hàng) và `Link` đều cao 100%. */}
+                <RevealItem enter="slide" delay={i * STAGGER.grid} className="h-full">
+                  {/* Thẻ VIỀN, không tô nền: khu này đứng trên nền trang, và đo được
                     ở đợt trước là không token bề mặt nào của bảng màu tách nổi 3:1
                     khỏi nền — một thẻ tô nền chỉ đọc ra "hơi khác". Viền cộng
                     khoảng cách thì đọc được ở cả hai theme, và thứ ĐỊNH DANH thẻ là
                     chữ trong nó (13.30 light / 11.81 dark). */}
-                <Link
-                  href={`/tours/${tour.slug}`}
-                  className="group flex h-full flex-col rounded-2xl border border-border p-6 transition-colors hover:border-foreground/30"
-                >
-                  {/* Chuyên mục · ĐỘ KHÓ trên cùng một dòng. Độ khó thêm 30/07 và
+                  <Link
+                    href={`/tours/${tour.slug}`}
+                    className="group flex h-full flex-col rounded-2xl border border-border p-6 transition-colors hover:border-foreground/30"
+                  >
+                    {/* Chuyên mục · ĐỘ KHÓ trên cùng một dòng. Độ khó thêm 30/07 và
                       nó là thông tin MỚI, không phải nhắc lại: cả khu đã nói "một
                       ngày" nên số ngày thì lặp, còn bậc độ khó thì chưa ở đâu trong
                       khu này nói. `difficulty` nullable — thiếu thì bỏ luôn cả dấu
                       phân cách, không để một dấu `·` treo lơ lửng. */}
-                  <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-                    {tour.category.name}
-                    {tour.difficulty
-                      ? ` · ${messages.toursPage.difficultyLabels[tour.difficulty]}`
-                      : null}
-                  </span>
-                  <span className="mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary">
-                    {tour.title}
-                  </span>
-                  {openingDay ? (
-                    <span className="mt-2 text-sm text-pretty text-muted-foreground">
-                      {openingDay}
+                    <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
+                      {tour.category.name}
+                      {tour.difficulty
+                        ? ` · ${messages.toursPage.difficultyLabels[tour.difficulty]}`
+                        : null}
                     </span>
-                  ) : null}
+                    <span className="mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary">
+                      {tour.title}
+                    </span>
+                    {openingDay ? (
+                      <span className="mt-2 text-sm text-pretty text-muted-foreground">
+                        {openingDay}
+                      </span>
+                    ) : null}
 
-                  {/* Đánh giá — tín hiệu mạnh nhất nói "đây là một chuyến bán được,
+                    {/* Đánh giá — tín hiệu mạnh nhất nói "đây là một chuyến bán được,
                       có người đã đi". `ratingAvg === null` là CHƯA AI đánh giá, khác
                       hẳn 0 điểm: in nhãn chữ thay vì "0.0" hay năm sao rỗng, cùng
                       cách `TourCard` xử. Sao dùng `fill-rating` như mọi chỗ khác. */}
-                  <span className="mt-3 flex items-center gap-1.5 text-sm">
-                    {tour.ratingAvg === null ? (
-                      <span className="text-xs text-muted-foreground">
-                        {messages.toursPage.notRated}
-                      </span>
-                    ) : (
-                      <>
-                        <StarIcon aria-hidden="true" className="size-3.5 fill-rating text-rating" />
-                        <span className="font-medium text-foreground">
-                          {tour.ratingAvg.toFixed(1)}
+                    <span className="mt-3 flex items-center gap-1.5 text-sm">
+                      {tour.ratingAvg === null ? (
+                        <span className="text-xs text-muted-foreground">
+                          {messages.toursPage.notRated}
                         </span>
-                        <span className="text-muted-foreground">
-                          ({tour.ratingCount.toLocaleString('en-US')})
-                        </span>
-                      </>
-                    )}
-                  </span>
-                  {/* `mt-auto` để hàng chân luôn tụt xuống đáy ô dù tiêu đề và câu
+                      ) : (
+                        <>
+                          <StarIcon
+                            aria-hidden="true"
+                            className="size-3.5 fill-rating text-rating"
+                          />
+                          <span className="font-medium text-foreground">
+                            {tour.ratingAvg.toFixed(1)}
+                          </span>
+                          <span className="text-muted-foreground">
+                            ({tour.ratingCount.toLocaleString('en-US')})
+                          </span>
+                        </>
+                      )}
+                    </span>
+                    {/* `mt-auto` để hàng chân luôn tụt xuống đáy ô dù tiêu đề và câu
                       hành trình dài ngắn khác nhau — hàng giá đọc thành một dòng
                       ngang, không so le.
                       KHÔNG in "1 day" ở đây: cả khu đã là "chuyến một ngày", lặp
@@ -141,26 +153,27 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                       `per person` thêm 30/07 — nó nói giá này là giá MỘT KHÁCH, tức
                       đây là thứ đặt được, không phải một con số trang trí. Cùng chuỗi
                       `TourCard` dùng, không khai bản thứ hai. */}
-                  <span className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
-                    <span className="flex items-baseline gap-1.5">
-                      <span className="font-heading text-lg font-semibold text-foreground tabular-nums">
-                        {formatMoney(tour.basePrice, tour.currency)}
+                    <span className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
+                      <span className="flex items-baseline gap-1.5">
+                        <span className="font-heading text-lg font-semibold text-foreground tabular-nums">
+                          {formatMoney(tour.basePrice, tour.currency)}
+                        </span>
+                        <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                          {messages.toursPage.perPerson}
+                        </span>
                       </span>
-                      <span className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-                        {messages.toursPage.perPerson}
-                      </span>
-                    </span>
-                    {/* Nhãn CHỮ thay mũi tên trơ — user không nhận ra thẻ dẫn đi đâu
+                      {/* Nhãn CHỮ thay mũi tên trơ — user không nhận ra thẻ dẫn đi đâu
                         khi chỉ có mỗi mũi tên. `aria-hidden` cho icon vì chữ đã nói. */}
-                    <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
-                      {t.viewTrip}
-                      <MoveRightIcon
-                        aria-hidden="true"
-                        className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
-                      />
+                      <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                        {t.viewTrip}
+                        <MoveRightIcon
+                          aria-hidden="true"
+                          className="size-4 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5 motion-reduce:transition-none"
+                        />
+                      </span>
                     </span>
-                  </span>
-                </Link>
+                  </Link>
+                </RevealItem>
               </li>
             );
           })}

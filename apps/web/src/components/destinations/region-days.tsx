@@ -3,6 +3,8 @@ import { MoveRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 import type { MockTourCard } from '@/mocks/types';
 
@@ -95,39 +97,52 @@ export function RegionDays({ tours }: { tours: readonly MockTourCard[] }) {
             liệu (một vùng có thể chỉ có hai nhóm), và ba cột cứng để lại một ô
             trống ở cuối hàng. */}
         <ul className="mt-12 grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-x-10 gap-y-12 sm:mt-16">
-          {groups.map((group) => (
-            <li key={group.key} data-bracket={group.key} className="border-t border-border pt-6">
-              {/* Số chuyến ĐỨNG TRÊN tiêu đề và ở cỡ nhỏ nhất của thẻ: nó là ngữ
-                  cảnh, không phải điểm so sánh giữa ba thẻ. Đặt nó to ngang tiêu
-                  đề là mời người đọc so ba con số với nhau — tức là đọc thẻ như
-                  một cột của biểu đồ. */}
-              <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
-                {t.tripCount(group.tours.length)}
-              </span>
-              <h3 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
-                {group.copy.title}
-              </h3>
-              <p className="mt-2 text-pretty text-muted-foreground">{group.copy.body}</p>
+          {groups.map((group, i) => (
+            <li key={group.key} data-bracket={group.key}>
+              {/* ── Chữ ký miền BẮC: trồi lên theo `y`, nối tiếp trái→phải (Task 5n) ──
+                  Nhịp nằm trên `RevealItem` chứ không trên `<li>`: `li` phải giữ
+                  `data-bracket` trơ cho `region-days.spec.tsx`, và `border-t` phải đi
+                  CÙNG nội dung — một vạch đứng im trên ba thẻ đang trồi lên thì đọc
+                  thành hai mảnh rời.
+                  `region-days.spec.tsx` canh rằng không `[style]` nào đặt
+                  `width`/`height`; một transform không đụng tới hai thuộc tính đó. */}
+              <RevealItem
+                enter="rise"
+                delay={i * STAGGER.grid}
+                className="border-t border-border pt-6"
+              >
+                {/* Số chuyến ĐỨNG TRÊN tiêu đề và ở cỡ nhỏ nhất của thẻ: nó là ngữ
+                    cảnh, không phải điểm so sánh giữa ba thẻ. Đặt nó to ngang tiêu
+                    đề là mời người đọc so ba con số với nhau — tức là đọc thẻ như
+                    một cột của biểu đồ. */}
+                <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
+                  {t.tripCount(group.tours.length)}
+                </span>
+                <h3 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
+                  {group.copy.title}
+                </h3>
+                <p className="mt-2 text-pretty text-muted-foreground">{group.copy.body}</p>
 
-              {/* Tên chuyến THẬT, mỗi tên một link. Đây là thứ khu này tồn tại để
-                  đưa ra: không phải "miền Bắc trải 1–8 ngày" như một con số, mà
-                  "đây là chuyến bạn đi được với số ngày bạn có". */}
-              <ul className="mt-5 flex flex-col gap-2.5 border-t border-border pt-5">
-                {group.tours.map((tour) => (
-                  <li key={tour.slug}>
-                    <Link
-                      href={`/tours/${tour.slug}`}
-                      className="group flex items-baseline gap-2 text-pretty text-foreground transition-colors hover:text-primary"
-                    >
-                      <MoveRightIcon
-                        aria-hidden="true"
-                        className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground transition-colors group-hover:text-primary"
-                      />
-                      {tour.title}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+                {/* Tên chuyến THẬT, mỗi tên một link. Đây là thứ khu này tồn tại để
+                    đưa ra: không phải "miền Bắc trải 1–8 ngày" như một con số, mà
+                    "đây là chuyến bạn đi được với số ngày bạn có". */}
+                <ul className="mt-5 flex flex-col gap-2.5 border-t border-border pt-5">
+                  {group.tours.map((tour) => (
+                    <li key={tour.slug}>
+                      <Link
+                        href={`/tours/${tour.slug}`}
+                        className="group flex items-baseline gap-2 text-pretty text-foreground transition-colors hover:text-primary"
+                      >
+                        <MoveRightIcon
+                          aria-hidden="true"
+                          className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground transition-colors group-hover:text-primary"
+                        />
+                        {tour.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </RevealItem>
             </li>
           ))}
         </ul>

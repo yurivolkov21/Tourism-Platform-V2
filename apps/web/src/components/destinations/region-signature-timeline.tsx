@@ -1,5 +1,7 @@
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
@@ -49,24 +51,39 @@ export function RegionSignatureTimeline({
 
         <ol className="mt-16 grid gap-12 sm:mt-20 sm:grid-cols-3 sm:gap-8">
           {timeline.map((stop, i) => (
-            <li key={stop.title} className="relative border-t border-border pt-9">
-              {/* Huy hiệu ĐẶC (`bg-primary` + `text-primary-foreground`), KHÔNG
+            <li key={stop.title}>
+              {/* ── Chữ ký miền TRUNG: trượt ngang từ TRÁI, ba chặng nối nhau (5n) ──
+                  Ba chặng vào theo ĐÚNG hướng con đường (Huế → Hội An → Mỹ Sơn), nên
+                  nhịp đọc thành "đi dọc trục" chứ thành "ba ô xếp cạnh nhau". Kế
+                  hoạch gốc đề so le x± (mượn `about-timeline.tsx`) — bỏ, vì ở đó hai
+                  bên trượt vào từ phía chúng ĐỨNG so với một đường tâm dọc, còn ở đây
+                  không có đường tâm nào và chặng giữa sẽ đi NGƯỢC hướng của chính con
+                  đường mà khu này tồn tại để kể.
+                  Nhịp trên `RevealItem` chứ không trên `<li>` để `relative` (mỏ neo
+                  của huy hiệu số `absolute -top-4`) và `border-t` đi cùng nội dung. */}
+              <RevealItem
+                enter="slide"
+                delay={i * STAGGER.grid}
+                className="relative border-t border-border pt-9"
+              >
+                {/* Huy hiệu ĐẶC (`bg-primary` + `text-primary-foreground`), KHÔNG
                   phải huy hiệu viền + chữ accent như Nexora: bản viền đo được
                   1.69:1 ở dark mode — con số gần như biến mất.
                   Chữ 14px nên ngưỡng là 4.5; đo 5.52:1 light / 4.11:1 dark. Con
                   số dark trượt ngưỡng, nhưng nó ĐÚNG BẰNG cặp mặc định
                   `bg-primary`/`primary-foreground` của toàn repo — nợ đã ghi ở
                   ADR-0015 §Hệ quả, không phải lớp lỗi mới của khu này. */}
-              <span className="absolute -top-4 left-0 flex size-8 items-center justify-center rounded-full bg-primary font-heading text-sm font-semibold text-primary-foreground">
-                {i + 1}
-              </span>
-              <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-                {stop.era}
-              </span>
-              <h3 className="mt-1 font-heading text-2xl font-medium text-foreground">
-                {stop.title}
-              </h3>
-              <p className="mt-2 text-sm text-pretty text-muted-foreground">{stop.body}</p>
+                <span className="absolute -top-4 left-0 flex size-8 items-center justify-center rounded-full bg-primary font-heading text-sm font-semibold text-primary-foreground">
+                  {i + 1}
+                </span>
+                <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
+                  {stop.era}
+                </span>
+                <h3 className="mt-1 font-heading text-2xl font-medium text-foreground">
+                  {stop.title}
+                </h3>
+                <p className="mt-2 text-sm text-pretty text-muted-foreground">{stop.body}</p>
+              </RevealItem>
             </li>
           ))}
         </ol>

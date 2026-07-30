@@ -2,7 +2,7 @@
 
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { HEADER_DELAY, SPRING, SPRING_HEADING } from '@/lib/motion';
+import { AMPLITUDE, HEADER_DELAY, SPRING, SPRING_HEADING } from '@/lib/motion';
 
 /**
  * Cascade header của một khu: tiêu đề trượt lên trước, đoạn dẫn theo sau, CTA đóng
@@ -31,8 +31,12 @@ import { HEADER_DELAY, SPRING, SPRING_HEADING } from '@/lib/motion';
  * — đúng loại 4 trong bốn cách guard. (Loại 2, `motion-safe:`/`motion-reduce:`, là
  * cho CSS transition/keyframes; loại 3, `useReducedMotion()`, là cho transform ghi
  * tay qua `style`.)
+ *
+ * Biên độ nay đọc từ `AMPLITUDE.rise` (Task 5n) chứ không khai `const RISE = 24` tại
+ * chỗ nữa: nhịp thân khu ở `reveal-item.tsx` dùng CÙNG bậc đó cho chữ ký miền Bắc,
+ * và hai bản 24 ở hai file là đúng thứ mà lý do #2 bên trên đi tránh.
  */
-const RISE = 24;
+const RISE = AMPLITUDE.rise;
 
 /** `once: true` và **KHÔNG margin** — khớp đúng `SectionEyebrow`, để cascade không
     lệch pha với chính eyebrow của nó. Đây là lỗi mà `Reveal` (margin `-80px`) gây ra

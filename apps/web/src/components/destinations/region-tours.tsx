@@ -5,8 +5,10 @@ import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading } from '@/components/motion/reveal-header';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { TourCard } from '@/components/tours/tour-card';
+import { STAGGER } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
 import type { MockTourCard } from '@/mocks/types';
 
@@ -153,8 +155,19 @@ export function RegionTours({
             {/* Cùng lưới `related-tours.tsx`: gap-y lớn hơn gap-x vì card không
                 có khung, hai hàng cần khoảng thở dọc rộng hơn. */}
             <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-              {paged.items.map((tour) => (
-                <TourCard key={tour.slug} tour={tour} />
+              {/* ── Nhịp NHÀ, không phải chữ ký miền (Task 5n) ──
+                  Đây là khu user chốt phải GIỐNG HỆT ở cả ba miền ("hero · lưới 6
+                  tour card · footer" là ba thứ duy nhất giống nhau), nên nó KHÔNG
+                  được mang trục riêng của miền nào: dùng `rise`, đúng nhịp mặc định
+                  của cả site (`motion/reveal.tsx`), y hệt trên ba trang.
+                  Nhịp bắn lại mỗi lần đổi trang hoặc đổi chip lọc, và đó là điều
+                  MUỐN: `key={tour.slug}` đổi thì `RevealItem` remount, nên tập card
+                  mới dựng lên thay vì hiện ra đột ngột. Hàng chip lọc thì vẫn cố ý
+                  đứng im (Task 5m) — nó là điều khiển, không phải nội dung. */}
+              {paged.items.map((tour, i) => (
+                <RevealItem key={tour.slug} enter="rise" delay={i * STAGGER.grid}>
+                  <TourCard tour={tour} />
+                </RevealItem>
               ))}
             </div>
 
