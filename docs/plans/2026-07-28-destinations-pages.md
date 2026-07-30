@@ -3419,3 +3419,139 @@ git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): thiết kế lại ba trang vùng — 7 khu mỗi miền, 6 khu riêng"
 ```
 
+---
+
+### Task 5l: Gallery ba miền dựng lại — ảnh to, click mở lightbox; vá nền hồng
+
+**Vì sao:** user duyệt bản Task 5k và nêu ba việc: (1) ảnh gallery phải **click mở
+xem được** như trang chi tiết tour · (2) **ảnh đang quá nhỏ**, dựng lại gallery cho
+cả ba miền · (3) **nền băng bị hồng**, đổi màu khác.
+
+**Nền hồng là LỖI KỸ THUẬT, không phải chuyện gu — đã đo:**
+
+| | `--muted` | `--background` | `color-mix(in oklch)` |
+| --- | --- | --- | --- |
+| Light | `#dce5e2` lục trội | `#f5f8f7` lục trội | **`#f2ecee` — lục THẤP nhất** ⚠ |
+| Dark | `#2f443f` | `#1a2422` | `#23322e` đúng |
+
+Hue kết quả lệch ~180° so với cả hai đầu vào. Điều kiện sinh lỗi: **cả hai token đều
+chroma ≈ 0** (`--muted` 0.01, `--background` 0.003) nên góc hue mất ổn định khi nội
+suy **cực toạ độ**. Chỗ `color-mix(in oklch)` thứ hai của repo (`region-group.tsx:44`,
+băng vùng ở `/destinations`) **KHÔNG bị** vì nó pha với `--primary` (chroma 0.067) đủ
+lớn để neo hue — đo xác nhận `#dde7e5`, bản `oklab` cho kết quả **y hệt**.
+
+**Files:**
+
+- Modify: `lib/region-theme.ts` — `SIGNATURE_BAND_BG`: `in oklch` → **`in oklab`**
+- Create: `components/media/lightbox.tsx` + `.spec.tsx` — tách từ `tour-gallery.tsx`
+- Modify: `components/tours/tour-gallery.tsx` — dùng bản tách ra
+- Rewrite: `components/destinations/region-gallery.tsx` + `.spec.tsx`
+- Modify: `components/destinations/region-tile.tsx` nếu cần cho ô bấm được
+- Modify: `libs/shared/i18n/src/lib/messages.ts` — copy cho lightbox vùng
+
+- [ ] **Step 1: Vá nền hồng**
+
+`SIGNATURE_BAND_BG` đổi `in oklch` → `in oklab`. Một từ. Ảnh hưởng **4 băng** đang
+dùng hằng số này (`region-gallery`, `region-days`, `region-signature-timeline`,
+`region-signature-postcards`). Đo lại: `#eaefee` ở light (lục trội), ΔL −0.0786 so
+với −0.0822 — nhịp trang không đổi.
+
+⚠️ **Ghi cảnh báo ngay cạnh hằng số**: `color-mix(in oklch, …)` giữa **hai** token
+chroma ≈ 0 làm lệch hue ~180°; dùng `in oklab` cho mọi phép pha giữa các màu gần
+trung tính. Đây là bẫy đã cắn thật, không phải lo xa.
+
+- [ ] **Step 2: Tách `Lightbox` thành component dùng chung**
+
+Hiện nó nằm cục bộ trong `tour-gallery.tsx` (khoảng dòng 157–215) và nhận
+`photos: MockMediaItem[]` — kiểu riêng của tour. Tách sang
+`components/media/lightbox.tsx` với hợp đồng **tổng quát**:
+
+```tsx
+export function Lightbox({
+  count, openAt, onOpenChange, onNavigate,
+  dialogTitle, counterLabel, caption, renderMedia,
+}: {
+  count: number;
+  openAt: number | null;
+  onOpenChange: (open: boolean) => void;
+  onNavigate: (index: number) => void;
+  dialogTitle: string;
+  counterLabel: (current: number, total: number) => string;
+  caption?: (index: number) => string | null;
+  renderMedia: (index: number) => ReactNode;
+}) 
+```
+
+**GIỮ NGUYÊN mọi hành vi đã có**, đừng viết lại: không cuộn vòng (nút vô hiệu ở hai
+đầu) · mũi tên bàn phím gắn trên **chính `DialogContent`** (không phải `window` —
+comment trong file giải thích rõ vì sao, và bản `window` không nhận được sự kiện
+trong jsdom) · `DialogTitle` `sr-only` · bộ đếm `aria-live="polite"`.
+
+Copy truyền qua **prop**, không nhét i18n vào component: `tour-gallery` tiếp tục
+dùng `messages.tourDetail.gallery`, gallery vùng dùng khối mới ở Step 3. Nhờ vậy
+copy của trang tour **không đổi một chữ**.
+
+`tour-gallery.spec.tsx` đang canh hành vi lightbox — nó phải **vẫn xanh không sửa**.
+Nếu phải sửa spec đó thì bạn đã đổi hành vi; dừng và báo.
+
+- [ ] **Step 3: i18n cho lightbox của gallery vùng**
+
+Trong `messages.regionPage`, thêm:
+
+```ts
+    galleryLightbox: {
+      dialogTitle: 'Region photo',
+      counter: (current: number, total: number) => `${current} / ${total}`,
+      close: 'Close',
+      previous: 'Previous photo',
+      next: 'Next photo',
+      /** Nhãn nút mở: ô ảnh là nút, cần tên khả truy cập nói rõ nó làm gì. */
+      open: (label: string) => `View photo: ${label}`,
+    },
+```
+
+- [ ] **Step 4: Dựng lại ba biến thể gallery — ÍT ô, TO hẳn, bấm được**
+
+Mọi ô là `<button type="button">` mở lightbox tại đúng index. Ô phải có tên khả
+truy cập từ `galleryLightbox.open(label)`. Zoom hover theo công thức chuẩn nhất repo
+(`tour-gallery.tsx`): `duration-500 ease-out group-hover:scale-105` +
+`group-focus-visible` + đủ guard `motion-reduce`. Vòng focus **inset** (ô có
+`overflow-hidden` nên ring thường bị cắt).
+
+- **`peaks`** (Bắc): **6 ô** lưới 3×2 (1 cột dưới `sm`). Chiều cao chênh **MẠNH** —
+  bản 5k lệch quá nhẹ nên đọc ra một lưới, không ra dãy núi. Ô cột giữa cao hơn hẳn
+  hai bên; hàng dưới lệch pha với hàng trên.
+- **`lanterns`** (Trung): hàng ngang cuộn, ô **~380px** ở desktop (bản 5k quá nhỏ),
+  6 ô, `snap-x`. ⚠️ `overflow-x-auto` phải nằm trên container RIÊNG — đã kiểm ở 5k
+  là thân trang không cuộn ngang ở 390px, **giữ tính chất đó**.
+- **`panorama`** (Nam): **1 ô lớn + 2 ô dưới**, bó `max-w-5xl`. Bản 5k là 3 ô 21/9
+  full-width chiếm ~1.500px, làm trang Nam dài 6.811px so với 4.903/4.931 — bố cục
+  mới phải **cắt bớt đáng kể** chiều cao đó. Ghi số đo lại vào report.
+
+Nhãn ô lấy từ `galleryTiles` đã có, **cắt theo số ô cần** — đừng bịa nhãn mới.
+
+- [ ] **Step 5: Test**
+
+`region-gallery.spec.tsx` viết lại: đúng số ô mỗi biến thể · mỗi ô là **button** có
+tên khả truy cập · bấm ô thứ N mở lightbox **đúng index N** · mũi tên phải/trái
+điều hướng · nút vô hiệu ở hai đầu · Escape đóng (Base UI lo, nhưng canh một lần).
+`lightbox.spec.tsx`: các hành vi tổng quát, độc lập với consumer.
+⚠️ Spec render `SectionEyebrow` → stub `IntersectionObserver` **cục bộ trong file**.
+
+- [ ] **Step 6: Đo + chụp**
+
+Tương phản: chữ trên nền băng MỚI (`oklab`) và chữ/chú thích trong lightbox, 3 vùng
+× 2 theme. Ngưỡng AA 4.5 / 3.0. Composite nền dưới → nền phần tử → so màu chữ, bằng
+`canvas` đọc pixel sRGB; không regex `rgb()`.
+Chụp: 3 vùng × 2 theme full page · 3 ảnh cận gallery · **1 ảnh lightbox đang mở** ·
+kiểm 390px (`lanterns` không làm thân trang cuộn ngang).
+**Ghi chiều cao trang từng miền** trước/sau để thấy Nam đã ngắn lại bao nhiêu.
+
+- [ ] **Step 7: Gate rồi commit**
+
+```bash
+pnpm turbo run build --filter=@tourism/i18n
+git add apps/web/src libs/shared/i18n
+git commit -m "feat(web): gallery ba miền ảnh lớn bấm mở lightbox, vá hue drift nền băng"
+```
+
