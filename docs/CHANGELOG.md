@@ -2,6 +2,82 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-30 — Đóng cụm Destinations (Task 6/7) và dọn 4 khoản nợ phase giao diện tĩnh (branch `fix/sitemap-destinations`, ff-only, commit cuối `cf8f821`)
+
+Đợt dọn nhà TRƯỚC khi nối API. User chốt: đóng Task 6 trước, rồi xử lý tồn đọng,
+rồi ADR-0016 (tầng dữ liệu web) ở session mới.
+
+- **Task 6 — sitemap thiếu 4 URL của trang đang sống.** `/destinations` và ba trang
+  vùng ship 30/07 nhưng `STATIC_PAGES` không có, và không có nhóm URL vùng nào.
+  Comment `lib/sitemap.ts` còn ghi *"`/destinations` … CHƯA tồn tại"* — đúng lúc
+  viết, sai từ lúc trang lên. Bài học ghi vào comment: câu "chưa tồn tại" là khẳng
+  định về HIỆN TRẠNG nên phải có **test** canh, không chỉ có comment.
+  Thang priority: `/destinations` cùng bậc **0.9** với `/tours` (hai lối vào
+  catalogue ngang hàng), trang vùng **0.8** cùng bậc tour detail. `regions` nhận qua
+  **tham số** chứ không `import` trong lib — hàm này test được chính vì mọi nguồn dữ
+  liệu đi vào từ ngoài; vỏ `app/sitemap.ts` truyền đúng `REGIONS` mà
+  `generateStaticParams` dùng, nên sitemap không thể liệt kê URL chưa prerender.
+- **Task 7 — đo trên PRODUCTION BUILD** (`next start`, không phải dev): 3 slug vùng
+  → 200, slug lạ **và slug sai chính tả** → **404 thật** (không soft-404),
+  `/tours/khong-co-tour` → 404, `sitemap.xml` → 200 với đúng **38 URL**.
+- **Cặp `primary` dark: lỗi WCAG AA thật, vá.** `primary-foreground` KHÔNG lật theo
+  theme mà dark `primary` lại SÁNG HƠN light → chữ 14px trên mọi nút primary ở dark
+  đo **4.11:1**, dưới 4.5. Hạ dark L 0.563 → **0.53** (chữ 4.73 ✅, nút/nền 3.13 ✅).
+  Phương án "chữ tối trên primary sáng" đã đo và **chết**: kể cả gần-đen (L=0.16)
+  cũng chỉ 4.37. Tối hơn 0.50 thì nút tan vào nền trang (2.75).
+- **`rating` light: 2.27 → 3.22.** Ngôi sao là graphic (ngưỡng 3:1) và bản cũ trượt
+  ở CẢ `background` (2.27) lẫn `card` (2.40). 0.66 mới đạt 2.98 — vẫn dưới; **0.64**
+  là mốc sáng nhất đạt trên cả hai. Dark giữ 0.78 (đã đạt).
+- **Nội dung ẩn khi JS tắt — lớn hơn tưởng.** `motion` render `initial` thành `style`
+  inline NGAY TRONG HTML server, nên `initial={{opacity:0}}` cộng `whileInView` là ẩn
+  vĩnh viễn khi JS chết — mà mọi trang là SSG. Đo: trang chủ **62** phần tử, `/about`
+  **60**, trang vùng 15, `/tours` 10, `/blog` 8. Vá bằng MỘT rule trong `<noscript>`
+  ở `<head>` thay vì sửa từng component (`initial` là cách duy nhất motion biết điểm
+  bắt đầu; bỏ nó là bỏ chuyển động đã duyệt ở 40+ chỗ). Đo được rule **không** nằm
+  trong stylesheet đang áp khi JS bật, và 0 phần tử kẹt mờ.
+- **Dedup bộ số spring: 62 bản copy → 1.** Trước: 21 file khai `const SPRING` nguyên
+  văn, 19 chỗ gõ spring 240 inline, 22 chỗ gõ spring 320 inline, cộng `REVEAL_EASE`
+  khai ở cả `reveal-line.tsx` lẫn `lib/motion.ts`. Hai spring **một-lần** giữ tại chỗ
+  (`on-this-page` 420, `not-found-body` 260) — chúng không phải bản copy, và nhồi mọi
+  giá trị một-lần vào `lib/motion.ts` biến file đó thành bãi hằng số.
+
+**Review findings:**
+
+1. **Test cũ đỏ vì thứ nó canh đã biến mất theo đúng ý muốn.** Ba test trong
+   `motion.spec.ts` khẳng định "`lib/motion` KHỚP bản copy trong reveal.tsx /
+   gallery.tsx / reveal-line.tsx" — hợp lý khi còn 62 bản copy. **Suy lại, không xoá
+   cho xanh**: bất biến mới đi NGƯỢC chiều, canh rằng **chỉ còn một bản**. Nó không
+   thể xanh giả — thêm lại một `const SPRING` là đỏ ngay, còn test cũ thì vẫn xanh
+   miễn hai bên cùng giá trị. Thêm **allowlist** cho spring một-lần: file thứ ba gõ
+   spring riêng sẽ đỏ và buộc trả lời "một-lần thật, hay bản copy thứ 22 sắp trôi?".
+2. **Test `'phần còn lại không vượt 0.7'` của sitemap cũng phải suy lại.** Bản cũ
+   liệt kê tay ba ngoại lệ; nối thêm ngoại lệ cho Destinations sẽ biến nó thành bản
+   sao của chính thang priority — xanh với BẤT KỲ thang nào miễn hai bên khớp. Bản
+   mới canh **THỨ TỰ** của thang nên đổi một giá trị là đỏ, mà thêm họ URL mới thì
+   không phải sửa test.
+3. **Tôi báo sai một lần rồi phép đo bác lại.** Đề xuất ban đầu cho
+   `motion-reduce:transform-none` là "xoá, đổi 0 pixel"; đo lại thì nan quạt bưu
+   thiếp **dẹp phẳng**. Truy ra không phải tailwind-merge — chính edit của tôi đánh
+   rơi dòng so le. Làm lại đúng thì `translate` giống hệt hai chế độ.
+4. **Con số 0.52 tôi đưa ra ban đầu là sai** vì đoán `background` dark = 0.208; giá
+   trị thật là 0.25 nên cửa sổ hẹp hơn, và **0.53** mới là điểm tối ít nhất vượt
+   ngưỡng.
+5. **Tự kill shell hai lần** vì `pkill -f "next dev"` / `pgrep -f "next start"` khớp
+   chính dòng lệnh chứa chuỗi đó trong commit message. Cách đúng: tra PID theo cổng
+   (`ss -ltnp`) hoặc để message trong file rồi `-F`.
+
+**Nợ mở:** nút primary đứng **trên card** ở dark đo 2.57 và **đã là 2.95 trước khi
+sửa** — dưới 3:1 của WCAG 1.4.11 ở cả hai bản. Hạ L không tạo ra lỗi đó và cũng không
+chữa được; chữa thật là đổi `card` dark hoặc cho nút một viền, và đó là quyết định
+thiết kế riêng cần user xem. Còn lại: `apps/web` **chưa có API client** nào (xem
+[rà soát 30/07](analysis/2026-07-30-docs-audit-progress.md)) — việc của ADR-0016.
+
+Tests after: `pnpm gate` xanh — **18/18 task** kể cả `next build` · web **654**
+(trước đợt này 649) · API 188 · contract 55 · tokens 10 · ui 5 · i18n 1, tổng **913**.
+TDD sitemap: 6 test đỏ trước khi sửa code, 16/16 xanh sau, mutation **4/4 bite**.
+Chứng minh dedup đổi 0 pixel: chụp **9 trang** fullPage ở chế độ reduce trước và sau
+— **9/9 giống hệt từng byte**. `pnpm test:int` không chạy được ở máy này.
+
 ## 2026-07-30 — P3b: cụm Destinations — `/destinations` và ba trang vùng (branch `feat/destinations-pages`, ff-only, commit cuối `03569b4`, 60 commit)
 
 Cụm dài nhất của P3b tới nay. `/destinations` dựng lại **2 lần**, `/destinations/[region]`
