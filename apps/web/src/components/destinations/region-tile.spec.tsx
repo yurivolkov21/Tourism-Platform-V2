@@ -52,4 +52,22 @@ describe('RegionTile', () => {
     const { container } = render(<RegionTile label="Terraced rice fields" />);
     expect(container.querySelector('svg')).toBeInTheDocument();
   });
+
+  // Trường hợp thứ BA, sinh ra ở Task 5l: ô gallery nằm TRONG một `<button>` mở
+  // lightbox, và chính cái nút đã mang tên khả truy cập ("View photo: …"). Ô phải
+  // ẩn khỏi cây trợ năng như `decorative` — nhưng nó VẪN đứng đúng vị trí một
+  // tấm ảnh, nên vẫn cần icon. Hai mối quan tâm đó là hai prop rời nhau:
+  // `decorative` lo TRỢ NĂNG, `withIcon` lo THỊ GIÁC.
+  it('decorative + withIcon: ẩn khỏi trợ năng mà VẪN có icon — ô trong nút mở lightbox', () => {
+    const { container } = render(<RegionTile label="Terraced rice fields" decorative withIcon />);
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument();
+    expect(container.querySelector('svg')).toBeInTheDocument();
+  });
+
+  it('withIcon KHÔNG đổi gì ở chế độ thường — ô có nhãn vốn đã có icon', () => {
+    const { container } = render(<RegionTile label="Terraced rice fields" withIcon />);
+    expect(screen.getByRole('img', { name: 'Terraced rice fields' })).toBeInTheDocument();
+    expect(container.querySelectorAll('svg')).toHaveLength(1);
+  });
 });

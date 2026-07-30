@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
 import type { MockRegionKey } from '@/mocks/types';
-import { type RegionSectionKey, regionTheme } from './region-theme';
+import { type RegionSectionKey, regionTheme, SIGNATURE_BAND_BG } from './region-theme';
 
 const KEYS: MockRegionKey[] = ['north', 'central', 'south'];
 
@@ -13,6 +13,29 @@ const MIDDLE_SECTIONS = 5;
 
 /** Khu chỉ được xuất hiện ở ĐÚNG MỘT miền — "6 khu riêng, không khu nào lặp". */
 const UNIQUE: RegionSectionKey[] = ['heritage', 'worlds', 'days', 'dayTrips', 'seasons', 'reviews'];
+
+describe('SIGNATURE_BAND_BG — không gian nội suy', () => {
+  // Bẫy đã cắn thật (Task 5l, user báo "nền băng bị hồng" ở cả ba miền):
+  // `color-mix(in oklch, var(--muted), var(--background) 55%)` pha HAI màu chroma
+  // ≈ 0 (0.010 và 0.003), nên Chrome trả `oklch(0.948648 0.00616 none)` — hue
+  // POWERLESS. Không còn góc hue nào để giữ, kết quả render ra 242,236,238
+  // (`#f2ecee`): kênh LỤC THẤP NHẤT, dù cả hai đầu vào đều lục trội
+  // (220,229,226 và 245,248,247). Lệch ~180° so với cả hai đầu vào.
+  //
+  // `in oklab` nội suy theo trục Descartes a/b nên không có góc nào để mất: đo
+  // lại được 234,239,238 (`#eaefee`), lục trội, ΔL −0.0786 so với −0.0822 → nhịp
+  // trang không đổi. Ở dark hai công thức ra gần y hệt (35,50,46 vs 35,50,47),
+  // đúng vì ở đó chroma của `--muted` lớn hơn.
+  //
+  // ⚠️ Luật rút ra: mọi phép `color-mix` giữa các màu GẦN TRUNG TÍNH phải dùng
+  // `in oklab`. Đối chứng KHÔNG hỏng: `region-group.tsx:44` pha `--primary`
+  // (chroma 0.067) với `--background` — chroma đủ lớn neo được hue, đo ra
+  // `#dde7e5` và bản oklab cho kết quả y hệt, nên chỗ đó để nguyên.
+  it('pha trong oklab, KHÔNG oklch — hai token gần trung tính làm hue mất ổn định', () => {
+    expect(SIGNATURE_BAND_BG).toContain('in oklab');
+    expect(SIGNATURE_BAND_BG).not.toContain('in oklch');
+  });
+});
 
 describe('regionTheme — thứ tự khu và biến thể theo vùng', () => {
   it('ba vùng đều có ĐÚNG 5 khu giữa — bảy khu tính cả hero và footer', () => {

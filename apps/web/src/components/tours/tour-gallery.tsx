@@ -2,11 +2,11 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
-import { Dialog, DialogClose, DialogContent, DialogTitle } from '@tourism/ui/components/dialog';
 import { cn } from '@tourism/ui/lib/utils';
-import { ChevronLeftIcon, ChevronRightIcon, ImagesIcon, XIcon } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { ImagesIcon } from 'lucide-react';
+import { useState } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { Lightbox } from '@/components/media/lightbox';
 import { tourGallery } from '@/lib/tours';
 import type { MockMediaItem } from '@/mocks/types';
 
@@ -104,11 +104,26 @@ export function TourGallery({
         ) : null}
       </div>
 
+      {/* `Lightbox` là component DÙNG CHUNG (`components/media/lightbox.tsx`) —
+          gallery trang vùng dùng cùng một bản. Copy đi qua prop nên khối
+          `messages.tourDetail.gallery` ở đây vẫn là nguồn duy nhất cho trang tour.
+
+          KHÔNG truyền nhãn vào media: mô tả đã nằm ở `caption` dưới ảnh, và chú
+          thích là thứ Ở LẠI khi có ảnh thật (nhãn placeholder thì biến mất).
+          Truyền cả hai làm cùng một câu hiện hai lần — đo được ở ảnh chụp vòng
+          đầu. */}
       <Lightbox
-        photos={photos}
+        count={photos.length}
         openAt={openAt}
         onOpenChange={(open) => setOpenAt(open ? (openAt ?? 0) : null)}
         onNavigate={setOpenAt}
+        dialogTitle={t.dialogTitle}
+        counterLabel={t.counter}
+        closeLabel={t.close}
+        previousLabel={t.previous}
+        nextLabel={t.next}
+        caption={(index) => photos[index]?.alt ?? null}
+        renderMedia={() => <ImagePlaceholder className="aspect-16/10 w-full rounded-lg" />}
       />
     </section>
   );
@@ -151,111 +166,5 @@ function GalleryTile({
         className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
     </button>
-  );
-}
-
-function Lightbox({
-  photos,
-  openAt,
-  onOpenChange,
-  onNavigate,
-}: {
-  photos: MockMediaItem[];
-  openAt: number | null;
-  onOpenChange: (open: boolean) => void;
-  onNavigate: (index: number) => void;
-}) {
-  const t = messages.tourDetail.gallery;
-  const current = openAt ?? 0;
-  const photo = photos[current];
-
-  // KHÔNG cuộn vòng: tới ảnh cuối rồi bấm tiếp mà quay về ảnh đầu làm người xem
-  // tưởng mình chưa xem hết. Nút bị vô hiệu ở hai đầu, đúng như dải khởi hành.
-  const go = useCallback(
-    (delta: number) => {
-      onNavigate(Math.min(photos.length - 1, Math.max(0, current + delta)));
-    },
-    [current, photos.length, onNavigate],
-  );
-
-  // Mũi tên bàn phím. Base UI Dialog đã lo Escape và bẫy focus; điều hướng ảnh thì
-  // không — phải tự nối, nếu không lightbox chỉ dùng được bằng chuột.
-  //
-  // Handler đặt trên CHÍNH DialogContent, không phải `window`: focus đã bị bẫy
-  // trong dialog nên mọi keydown đều nổi bọt lên đây, và mũi tên chỉ điều hướng ảnh
-  // khi dialog đang mở — một listener toàn cục thì còn phải tự nhớ đóng/mở, mà bản
-  // đầu tôi viết kiểu đó cũng không nhận được sự kiện trong jsdom.
-  function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (event.key === 'ArrowRight') {
-      event.preventDefault();
-      go(1);
-    }
-    if (event.key === 'ArrowLeft') {
-      event.preventDefault();
-      go(-1);
-    }
-  }
-
-  if (!photo) return null;
-
-  return (
-    <Dialog open={openAt !== null} onOpenChange={onOpenChange}>
-      <DialogContent
-        showCloseButton={false}
-        onKeyDown={onKeyDown}
-        className="w-full gap-3 sm:max-w-3xl lg:max-w-5xl"
-      >
-        <div className="flex items-center justify-between gap-3">
-          {/* Title bắt buộc cho trợ năng nhưng không cần thấy — bộ đếm ngay cạnh đã
-              nói người xem đang ở đâu. */}
-          <DialogTitle className="sr-only">{t.dialogTitle}</DialogTitle>
-          <p aria-live="polite" className="font-mono text-xs tracking-widest text-muted-foreground">
-            {t.counter(current + 1, photos.length)}
-          </p>
-          <DialogClose
-            render={
-              <Button variant="ghost" size="icon-sm" aria-label={t.close}>
-                <XIcon />
-              </Button>
-            }
-          />
-        </div>
-
-        {/* KHÔNG truyền `label`: mô tả đã nằm ở chú thích dưới ảnh, và chú thích là
-            thứ Ở LẠI khi có ảnh thật (nhãn placeholder thì biến mất). Truyền cả hai
-            làm cùng một câu hiện hai lần — đo được ở ảnh chụp vòng đầu. */}
-        <ImagePlaceholder className="aspect-16/10 w-full rounded-lg" />
-
-        <div className="flex items-center justify-between gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={t.previous}
-            disabled={current === 0}
-            onClick={() => go(-1)}
-          >
-            <ChevronLeftIcon aria-hidden="true" />
-          </Button>
-          {/* Chú thích lặp lại `alt` thành chữ đọc được — nhãn trong
-              ImagePlaceholder sẽ biến mất khi có ảnh thật, chú thích thì không. */}
-          {photo.alt ? (
-            <p className="min-w-0 flex-1 text-center text-sm text-pretty text-muted-foreground">
-              {photo.alt}
-            </p>
-          ) : (
-            <span className="flex-1" />
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            aria-label={t.next}
-            disabled={current === photos.length - 1}
-            onClick={() => go(1)}
-          >
-            <ChevronRightIcon aria-hidden="true" />
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
   );
 }

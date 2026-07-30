@@ -44,8 +44,26 @@ export interface RegionTheme {
  * dải ấy hiện ra thành một vạch sáng kẹp giữa khu cuối và footer. Cơ chế
  * `data-flush-footer` từng vá chuyện đó đã XOÁ (Task 5k) vì khu cuối của cả ba
  * miền giờ đều dùng nền trang — `seasons`, `dayTrips`, `reviews`.
+ *
+ * ⚠️⚠️ **`in oklab`, KHÔNG `in oklch` — đừng "sửa lại" cho giống chỗ khác.**
+ * Bản `oklch` đã ship và user báo ngay: *"nền băng bị hồng"* ở cả ba miền. Nguyên
+ * nhân đo được ở Chrome: cả HAI token đầu vào đều chroma ≈ 0 (`--muted` 0.010,
+ * `--background` 0.003), nên hue của chúng là POWERLESS và phép nội suy CỰC TOẠ
+ * ĐỘ không còn góc nào để giữ — `color-mix(in oklch, …)` trả về
+ * `oklch(0.948648 0.00616 none)`, render ra `#f2ecee` (242,236,238): kênh **lục
+ * THẤP NHẤT**, dù cả hai đầu vào đều lục trội (220,229,226 và 245,248,247). Tức
+ * lệch ~180° hue so với cả hai màu mình pha.
+ *
+ * `in oklab` nội suy theo trục Descartes a/b nên không có góc để mất: đo lại
+ * `#eaefee` (234,239,238), lục trội, ΔL −0.0786 so với −0.0822 → nhịp trang
+ * KHÔNG đổi. Ở dark hai công thức gần y hệt (35,50,46 vs 35,50,47).
+ *
+ * **Luật chung:** mọi `color-mix` giữa các màu GẦN TRUNG TÍNH dùng `in oklab`.
+ * Đối chứng KHÔNG hỏng, đừng đụng: `region-group.tsx:44` pha `--primary` (chroma
+ * 0.067) với `--background` — chroma đủ lớn để neo hue, đo ra `#dde7e5` và bản
+ * `oklab` cho kết quả y hệt. `region-theme.spec.ts` canh hằng số này.
  */
-export const SIGNATURE_BAND_BG = 'color-mix(in oklch, var(--muted), var(--background) 55%)';
+export const SIGNATURE_BAND_BG = 'color-mix(in oklab, var(--muted), var(--background) 55%)';
 
 /**
  * "Xương chung — da riêng": ba vùng dùng chung bộ khung, khác nhau ở THỨ TỰ khu,

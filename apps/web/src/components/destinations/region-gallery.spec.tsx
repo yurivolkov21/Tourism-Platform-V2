@@ -1,8 +1,9 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
-import { RegionGallery } from './region-gallery';
+import { RegionGallery, TILE_COUNT } from './region-gallery';
 
 beforeAll(() => {
   // jsdom không hiện thực IntersectionObserver, mà `SectionEyebrow` dùng
@@ -25,8 +26,32 @@ beforeAll(() => {
 // biome-ignore lint/style/noNonNullAssertion: REGIONS là hằng 3 phần tử ở module scope
 const NORTH = REGIONS[0]!;
 
+const t = messages.regionPage;
+
 function tiles(container: HTMLElement) {
-  return [...container.querySelectorAll('[role="img"]')];
+  return [...container.querySelectorAll<HTMLElement>('[data-gallery-tile]')];
+}
+
+/** Số trong `h-44` / `sm:pt-8` là đơn vị 0.25rem, nên so sánh SỐ đó là so sánh
+    chiều cao thật theo tỉ lệ — đủ để canh các bất biến hình khối của `peaks`. */
+function scale(className: string, prefix: string): number {
+  const match = className.match(new RegExp(`(?:^|\\s)${prefix}-(\\d+)(?:\\s|$)`));
+  return match?.[1] ? Number(match[1]) : Number.NaN;
+}
+
+/**
+ * Bấm một ô rồi chờ focus RƠI VÀO trong lightbox.
+ *
+ * Chờ focus, không chỉ chờ dialog xuất hiện: Base UI dời focus trong một effect
+ * chạy SAU khi popup vào DOM, nên `findByRole` về trước cuộc đua đó và mũi tên
+ * bàn phím bắn vào ô gallery (nằm NGOÀI portal) thì `DialogContent` không nhận
+ * được. Cùng cái bẫy đã đo ở `media/lightbox.spec.tsx`.
+ */
+async function openTile(user: ReturnType<typeof userEvent.setup>, name: string) {
+  await user.click(screen.getByRole('button', { name }));
+  const dialog = await screen.findByRole('dialog');
+  await waitFor(() => expect(dialog.contains(document.activeElement)).toBe(true));
+  return dialog;
 }
 
 describe('RegionGallery — ba bố cục, một khu', () => {
@@ -37,52 +62,261 @@ describe('RegionGallery — ba bố cục, một khu', () => {
     ).toBeInTheDocument();
   });
 
-  // "Mỗi miền BẮT BUỘC có gallery riêng — khác bố cục" là ràng buộc user chốt. Số
-  // ô là phần dễ đo nhất của "khác bố cục"; hình khối được canh bằng các test dưới.
-  it('mỗi biến thể dùng số ô riêng: peaks 8 · lanterns 10 · panorama 3', () => {
-    const peaks = render(<RegionGallery region={NORTH} variant="peaks" />);
-    expect(tiles(peaks.container)).toHaveLength(8);
-    peaks.unmount();
-
-    const lanterns = render(<RegionGallery region={NORTH} variant="lanterns" />);
-    expect(tiles(lanterns.container)).toHaveLength(10);
-    lanterns.unmount();
-
-    const panorama = render(<RegionGallery region={NORTH} variant="panorama" />);
-    expect(tiles(panorama.container)).toHaveLength(3);
+  // User nêu *"ảnh quá nhỏ"* ở bản 5k (8 · 10 · 3 ô). Ít ô hơn là ĐIỀU KIỆN để ô
+  // to hẳn ra trong cùng bề ngang, nên số ô là thứ phải khoá lại.
+  it('mỗi biến thể dùng đúng số ô đã chốt: peaks 6 · lanterns 6 · panorama 3', () => {
+    expect(TILE_COUNT).toEqual({ peaks: 6, lanterns: 6, panorama: 3 });
+    for (const [variant, count] of Object.entries(TILE_COUNT)) {
+      const { container, unmount } = render(
+        <RegionGallery region={NORTH} variant={variant as keyof typeof TILE_COUNT} />,
+      );
+      expect(tiles(container), variant).toHaveLength(count);
+      unmount();
+    }
   });
 
   it('nhãn ô CẮT từ danh sách i18n, không bịa thêm nhãn', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="panorama" />);
     const labels = tiles(container).map((el) => el.getAttribute('aria-label'));
-    expect(labels).toEqual(messages.regionPage.galleryTiles.slice(0, 3));
+    expect(labels).toEqual(
+      t.galleryTiles.slice(0, 3).map((label) => t.galleryLightbox.open(label)),
+    );
   });
 
   it('không ô nào lặp nhãn — mỗi ô là một cảnh khác', () => {
-    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
-    const labels = tiles(container).map((el) => el.getAttribute('aria-label'));
-    expect(new Set(labels).size).toBe(labels.length);
+    for (const variant of ['peaks', 'lanterns', 'panorama'] as const) {
+      const { container, unmount } = render(<RegionGallery region={NORTH} variant={variant} />);
+      const labels = tiles(container).map((el) => el.getAttribute('aria-label'));
+      expect(labels, variant).toHaveLength(TILE_COUNT[variant]);
+      expect(new Set(labels).size, variant).toBe(labels.length);
+      unmount();
+    }
   });
 
-  // `peaks`: bốn cột lệch dọc so le — đường viền TRÊN của dải là thứ gợi dãy núi,
-  // nên bốn cột phải có bốn khoảng lệch KHÁC nhau. Bốn cột cùng một offset là bốn
-  // cột thẳng hàng, tức mất hẳn hình.
-  it('peaks dựng bốn cột với bốn khoảng lệch dọc khác nhau', () => {
+  // "Mỗi miền BẮT BUỘC có gallery riêng — khác BỐ CỤC chứ không chỉ khác số ô" là
+  // ràng buộc user chốt. Peaks và lanterns nay CÙNG 6 ô, nên số ô một mình không
+  // còn phân biệt được ba biến thể; móc cấu trúc mới là thứ canh được.
+  it('mỗi biến thể dựng đúng MỘT hình khối, không lẫn sang hình của biến thể khác', () => {
+    const MARKERS = {
+      peaks: '[data-peak-column]',
+      lanterns: '[data-gallery-scroll]',
+      panorama: '[data-panorama-lead]',
+    } as const;
+    for (const variant of ['peaks', 'lanterns', 'panorama'] as const) {
+      const { container, unmount } = render(<RegionGallery region={NORTH} variant={variant} />);
+      for (const [owner, selector] of Object.entries(MARKERS)) {
+        const found = container.querySelectorAll(selector).length;
+        if (owner === variant) expect(found, `${variant}/${owner}`).toBeGreaterThan(0);
+        else expect(found, `${variant}/${owner}`).toBe(0);
+      }
+      unmount();
+    }
+  });
+});
+
+describe('RegionGallery — ô là nút mở lightbox', () => {
+  it('mỗi ô là <button> có tên khả truy cập gọi tên cảnh', () => {
+    render(<RegionGallery region={NORTH} variant="peaks" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    const first = t.galleryTiles[0]!;
+    const button = screen.getByRole('button', { name: t.galleryLightbox.open(first) });
+    expect(button.tagName).toBe('BUTTON');
+    expect(button).toHaveAttribute('type', 'button');
+  });
+
+  // Ô có `overflow-hidden` (gradient phải bị bo góc cắt), nên vòng focus VẼ RA
+  // NGOÀI sẽ bị chính ô cắt mất — bàn phím tab qua gallery mà không thấy mình
+  // đang ở đâu. `-outline-offset` kéo vòng vào TRONG ô.
+  it('vòng focus vẽ INSET — ô có overflow-hidden nên vòng ngoài bị cắt', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    expect(tiles(container)).toHaveLength(TILE_COUNT.peaks);
+    for (const tile of tiles(container)) {
+      expect(tile.className).toMatch(/(^|\s)focus-visible:-outline-offset-2(\s|$)/);
+      expect(tile.className).toContain('overflow-hidden');
+    }
+  });
+
+  it('zoom hover có guard motion-reduce ở CẢ transition lẫn scale', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    expect(tiles(container)).toHaveLength(TILE_COUNT.lanterns);
+    for (const tile of tiles(container)) {
+      const inner = tile.firstElementChild?.className ?? '';
+      expect(inner).toContain('group-hover:scale-105');
+      expect(inner).toContain('motion-reduce:transition-none');
+      expect(inner).toContain('motion-reduce:group-hover:scale-100');
+    }
+  });
+
+  it('bấm ô thứ ba mở lightbox ở ĐÚNG ảnh đó', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="peaks" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    const third = t.galleryTiles[2]!;
+    await openTile(user, t.galleryLightbox.open(third));
+    expect(screen.getByText('3 / 6')).toBeInTheDocument();
+  });
+
+  it('lightbox nói bằng copy của TRANG VÙNG, không copy của trang tour', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="panorama" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    const first = t.galleryTiles[0]!;
+    await openTile(user, t.galleryLightbox.open(first));
+    expect(screen.getByText(t.galleryLightbox.dialogTitle)).toHaveClass('sr-only');
+    expect(screen.getByRole('button', { name: t.galleryLightbox.close })).toBeInTheDocument();
+  });
+
+  it('chú thích trong lightbox nêu cảnh của ĐÚNG ô đang xem', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="panorama" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    const second = t.galleryTiles[1]!;
+    await openTile(user, t.galleryLightbox.open(second));
+    // Đúng MỘT lần: nhãn ở chú thích, không lặp lại làm `aria-label` của ô ảnh
+    // trong dialog — ô đó là `decorative` chính vì thế.
+    expect(screen.getAllByText(second)).toHaveLength(1);
+  });
+
+  it('mũi tên phải/trái đổi ảnh', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="lanterns" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    await openTile(user, t.galleryLightbox.open(t.galleryTiles[1]!));
+    expect(screen.getByText('2 / 6')).toBeInTheDocument();
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByText('3 / 6')).toBeInTheDocument();
+    await user.keyboard('{ArrowLeft}');
+    expect(screen.getByText('2 / 6')).toBeInTheDocument();
+  });
+
+  it('KHÔNG cuộn vòng: nút vô hiệu ở hai đầu', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="panorama" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    await openTile(user, t.galleryLightbox.open(t.galleryTiles[0]!));
+    expect(screen.getByRole('button', { name: t.galleryLightbox.previous })).toBeDisabled();
+    const next = screen.getByRole('button', { name: t.galleryLightbox.next });
+    await user.click(next);
+    await user.click(next);
+    expect(screen.getByText('3 / 3')).toBeInTheDocument();
+    expect(next).toBeDisabled();
+  });
+
+  it('Escape đóng lightbox', async () => {
+    const user = userEvent.setup();
+    render(<RegionGallery region={NORTH} variant="peaks" />);
+    // biome-ignore lint/style/noNonNullAssertion: galleryTiles là hằng 10 mục ở i18n
+    await openTile(user, t.galleryLightbox.open(t.galleryTiles[0]!));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+});
+
+describe('RegionGallery — hình khối của peaks', () => {
+  // Đường viền TRÊN của dải là thứ gợi dãy núi, nên ba cột phải có ba khoảng lệch
+  // KHÁC nhau. Ba cột cùng một offset là ba cột thẳng hàng, tức mất hẳn hình.
+  it('dựng ba cột với ba khoảng lệch dọc khác nhau', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
     const columns = [...container.querySelectorAll('[data-peak-column]')];
-    expect(columns).toHaveLength(4);
-    const offsets = columns.map((el) => el.className.match(/sm:pt-\d+/)?.[0]);
-    expect(new Set(offsets).size).toBe(4);
+    expect(columns).toHaveLength(3);
+    const offsets = columns.map((el) => scale(el.className, 'sm:pt'));
+    expect(new Set(offsets).size).toBe(3);
   });
 
-  // `lanterns`: cuộn ngang trong CHÍNH container của nó. Thiếu `overflow-x` ở đây
-  // là mười ô đẩy THÂN TRANG cuộn ngang — lỗi thấy được ở 390px.
-  it('lanterns cuộn ngang trong container riêng, và trả wheel về cho Lenis', () => {
+  // Lỗi user nêu ở 5k: *"lệch quá nhẹ nên đọc ra một lưới, không ra dãy núi"*.
+  // Chênh lệch chiều cao trong hàng trên phải MẠNH, không chỉ khác nhau.
+  it('hàng trên chênh chiều cao MẠNH — ô cao nhất gấp ≥1.5 lần ô thấp nhất', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    const top = tiles(container)
+      .filter((el) => el.dataset.peakRow === '0')
+      .map((el) => scale(el.className, 'sm:h'));
+    expect(top).toHaveLength(3);
+    expect(Math.max(...top) / Math.min(...top)).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('ô CAO NHẤT của hàng trên nằm ở cột GIỮA', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    const top = tiles(container).filter((el) => el.dataset.peakRow === '0');
+    const heights = top.map((el) => scale(el.className, 'sm:h'));
+    expect(heights.indexOf(Math.max(...heights))).toBe(1);
+  });
+
+  // "Hàng dưới lệch pha với hàng trên": nếu cột giữa cao nhất ở CẢ HAI hàng thì
+  // dải chỉ là một cột phình ra giữa một lưới, không phải một đường chân trời.
+  it('ô CAO NHẤT của hàng dưới KHÔNG ở cột giữa — hai hàng lệch pha', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    const bottom = tiles(container).filter((el) => el.dataset.peakRow === '1');
+    const heights = bottom.map((el) => scale(el.className, 'sm:h'));
+    expect(heights).toHaveLength(3);
+    expect(heights.indexOf(Math.max(...heights))).not.toBe(1);
+  });
+
+  // Bất biến hình: đáy dải THẲNG trong khi đỉnh dải RĂNG CƯA. Nếu cả hai mép đều
+  // so le thì dải đọc thành một khảm xếp lỗi chứ không thành đường chân trời. Cột
+  // nào sửa chiều cao thì phải sửa `sm:pt-*` bù lại đúng số đó — trước đây luật
+  // này chỉ nằm trong comment và không có gì canh.
+  it('ba cột cao BẰNG NHAU (pad + ô trên + gap + ô dưới) — đáy dải thẳng', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    const columns = [...container.querySelectorAll<HTMLElement>('[data-peak-column]')];
+    const gap = scale(columns[0]?.className ?? '', 'sm:gap');
+    expect(gap).not.toBeNaN();
+    const totals = columns.map((column) => {
+      const heights = [...column.querySelectorAll<HTMLElement>('[data-gallery-tile]')].map((el) =>
+        scale(el.className, 'sm:h'),
+      );
+      return scale(column.className, 'sm:pt') + heights.reduce((a, b) => a + b, 0) + gap;
+    });
+    expect(new Set(totals).size, `totals=${totals.join(',')}`).toBe(1);
+  });
+});
+
+describe('RegionGallery — hình khối của lanterns', () => {
+  // Cuộn ngang phải nằm trong CHÍNH container của nó. Thiếu `overflow-x` ở đây là
+  // sáu ô rộng 380px đẩy THÂN TRANG cuộn ngang — lỗi thấy được ở 390px.
+  it('cuộn ngang trong container riêng, có snap, và trả wheel về cho Lenis', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
     const scroller = container.querySelector('[data-gallery-scroll]');
     expect(scroller).not.toBeNull();
     expect(scroller?.className).toContain('overflow-x-auto');
+    expect(scroller?.className).toContain('snap-x');
     expect(scroller?.hasAttribute('data-lenis-prevent')).toBe(true);
+  });
+
+  // Dải bleed ra mép màn hình để ô kế tiếp luôn bị CẮT — đó là tín hiệu duy nhất
+  // nói "còn ảnh nữa". Nhưng âm lề phải khớp ĐÚNG gutter của `<section>` ở từng
+  // bậc: lệch một bậc là dải rộng hơn viewport và THÂN TRANG cuộn ngang, đúng lỗi
+  // đã canh ở test trên. Cặp `-mx-N`/`px-N` vì thế phải bằng nhau từng bậc.
+  it('âm lề bleed khớp ĐÚNG padding ở từng bậc — lệch là thân trang cuộn ngang', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    const section = container.querySelector('section');
+    const scroller = container.querySelector('[data-gallery-scroll]');
+    const gutters = (className: string, prefix: string) =>
+      Object.fromEntries(
+        [
+          ...className.matchAll(
+            new RegExp(`(?:^|\\s)(?:(\\w+):)?-?${prefix}-(\\d+)(?=\\s|$)`, 'g'),
+          ),
+        ].map((m) => [m[1] ?? 'base', Number(m[2])]),
+      );
+    const sectionGutters = gutters(section?.className ?? '', 'px');
+    const bleed = gutters(scroller?.className ?? '', 'mx');
+    const inset = gutters(scroller?.className ?? '', 'px');
+    // Mọi bậc gutter của section phải có cặp bleed/inset tương ứng, cùng giá trị.
+    expect(Object.keys(sectionGutters).length).toBeGreaterThan(1);
+    for (const [breakpoint, value] of Object.entries(sectionGutters)) {
+      expect(bleed[breakpoint], `bleed@${breakpoint}`).toBe(value);
+      expect(inset[breakpoint], `inset@${breakpoint}`).toBe(value);
+    }
+  });
+
+  it('mỗi ô là điểm snap, và ô rộng hẳn ở desktop', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="lanterns" />);
+    expect(tiles(container)).toHaveLength(TILE_COUNT.lanterns);
+    for (const tile of tiles(container)) {
+      expect(tile.className).toContain('snap-start');
+      expect(tile.className).toContain('sm:w-[380px]');
+      expect(tile.className).toContain('shrink-0');
+    }
   });
 
   it('hai biến thể kia KHÔNG có vùng cuộn ngang', () => {
@@ -92,15 +326,37 @@ describe('RegionGallery — ba bố cục, một khu', () => {
       unmount();
     }
   });
+});
 
-  // `panorama`: ba ô THẤP và DÀI xếp dọc, ô giữa lệch ngang — gợi mặt nước.
-  it('panorama dùng ô 21/9 và lệch ngang ĐÚNG ô giữa', () => {
+describe('RegionGallery — hình khối của panorama', () => {
+  // Bản 5k là ba ô 21/9 FULL-WIDTH chiếm ~1.695px, làm trang Nam dài 6.741px so
+  // với 4.833/4.861 của hai miền kia. Bó `max-w-5xl` + gộp hai ô xuống một hàng
+  // là cách cắt chiều cao đó mà ô lớn vẫn to hơn bất kỳ ô nào của bản cũ.
+  it('bó trong max-w-5xl, hẹp hơn khung 7xl của phần đầu khu', () => {
     const { container } = render(<RegionGallery region={NORTH} variant="panorama" />);
-    const items = tiles(container);
-    expect(items).toHaveLength(3);
-    for (const item of items) expect(item.className).toContain('aspect-21/9');
-    const shifted = items.filter((el) => /sm:ml-\d+/.test(el.className));
-    expect(shifted).toHaveLength(1);
-    expect(items.indexOf(shifted[0] as Element)).toBe(1);
+    // biome-ignore lint/style/noNonNullAssertion: test sẽ đỏ ở dòng trên nếu thiếu
+    const lead = container.querySelector('[data-panorama-lead]')!;
+    expect(lead.closest('.max-w-5xl')).not.toBeNull();
+  });
+
+  it('một ô LỚN trên, hai ô dưới', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="panorama" />);
+    expect(container.querySelectorAll('[data-panorama-lead]')).toHaveLength(1);
+    const row = container.querySelector('[data-panorama-row]');
+    expect(row?.querySelectorAll('[data-gallery-tile]')).toHaveLength(2);
+  });
+
+  // Hai ô dưới KHÔNG bằng nhau: một cặp đối xứng dưới một ô lớn là đúng cái khảm
+  // của trang chi tiết tour, và ba khu ảnh giống nhau thì mất phân hoá vùng. Bề
+  // rộng lệch nhau còn là hình của thứ miền Nam bán — một dòng nước rẽ hai nhánh
+  // không đều.
+  it('hai ô dưới rộng KHÁC nhau — không phải cặp đối xứng', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="panorama" />);
+    const row = container.querySelector('[data-panorama-row]');
+    const spans = [...(row?.querySelectorAll<HTMLElement>('[data-gallery-tile]') ?? [])].map((el) =>
+      scale(el.className, 'sm:col-span'),
+    );
+    expect(spans).toHaveLength(2);
+    expect(spans[0]).not.toBe(spans[1]);
   });
 });

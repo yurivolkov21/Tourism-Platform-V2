@@ -17,6 +17,7 @@ export function RegionTile({
   label,
   className,
   decorative = false,
+  withIcon = !decorative,
 }: {
   /** Mô tả cảnh trong ô. Là `aria-label` ở chế độ thường, và là `alt` khi ô này
       thành ảnh thật. Ở chế độ `decorative` nó KHÔNG ra HTML — vẫn giữ prop vì nó
@@ -29,6 +30,15 @@ export function RegionTile({
       trình đọc màn hình đọc cùng một cụm từ hai lần liền. Ô nào mà nhãn là
       THÔNG TIN DUY NHẤT (khảm gallery) thì KHÔNG bật. */
   decorative?: boolean;
+  /** Vẽ `ImageIcon` giữa ô hay không. Mặc định đi theo `decorative` — nền trang
+      trí thì không, ô đứng vào vị trí ảnh thì có.
+
+      Bật TAY (`decorative withIcon`) cho ô gallery nằm TRONG `<button>` mở
+      lightbox: ở đó chính cái nút đã mang tên khả truy cập, nên ô phải ẩn khỏi
+      cây trợ năng — nhưng nó vẫn đứng đúng chỗ một tấm ảnh, nên vẫn cần icon.
+      Hai prop rời nhau vì đây là hai mối quan tâm rời nhau: `decorative` lo TRỢ
+      NĂNG, `withIcon` lo THỊ GIÁC. */
+  withIcon?: boolean;
 }) {
   // Nền (gradient) giống hệt nhau ở cả hai chế độ — chỉ khác trợ năng VÀ icon.
   //
@@ -53,17 +63,26 @@ export function RegionTile({
   // bắt lỗi `useAriaPropsSupportedByRole` cho `aria-label`. Tách ra thì cả hai
   // nhánh đều hợp lệ mà không phải tắt lint bằng `biome-ignore`.
   //
-  // `decorative` KHÔNG vẽ icon (29/07, lỗi user chỉ ra ở hero): ô này chỉ làm
-  // NỀN sau chữ/scrim, không đứng vào vị trí một tấm ảnh, nên `ImageIcon` giữa
-  // khoảng trống đọc thành một vật thể lạ. Chế độ có nhãn (gallery, bưu thiếp)
-  // GIỮ icon — ở đó nó là tín hiệu "đây là chỗ của ảnh".
+  // `decorative` MẶC ĐỊNH không vẽ icon (29/07, lỗi user chỉ ra ở hero): ô đó chỉ
+  // làm NỀN sau chữ/scrim, không đứng vào vị trí một tấm ảnh, nên `ImageIcon`
+  // giữa khoảng trống đọc thành một vật thể lạ. Chế độ có nhãn (gallery, bưu
+  // thiếp) GIỮ icon — ở đó nó là tín hiệu "đây là chỗ của ảnh". `withIcon` cho
+  // phép tách hai chuyện đó ra: xem JSDoc của prop.
+  const icon = withIcon ? (
+    <ImageIcon aria-hidden="true" className="size-7 text-on-media/70" />
+  ) : null;
+
   if (decorative) {
-    return <div aria-hidden="true" style={style} className={classes} />;
+    return (
+      <div aria-hidden="true" style={style} className={classes}>
+        {icon}
+      </div>
+    );
   }
 
   return (
     <div role="img" aria-label={label} style={style} className={classes}>
-      <ImageIcon aria-hidden="true" className="size-7 text-on-media/70" />
+      {icon}
     </div>
   );
 }

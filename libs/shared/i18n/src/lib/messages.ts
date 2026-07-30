@@ -745,10 +745,14 @@ export const messages = {
     galleryHeading: (region: string) => `${region} in photos`,
     gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
     /**
-     * Nhãn ô của khu ảnh — ĐÚNG 10, đủ cho biến thể nhiều ô nhất (`lanterns`).
-     * Ba biến thể dùng số ô khác nhau (peaks 8 · lanterns 10 · panorama 3) và mỗi
+     * Nhãn ô của khu ảnh — ĐÚNG 10, dư sức cho biến thể nhiều ô nhất.
+     * Ba biến thể dùng số ô khác nhau (peaks 6 · lanterns 6 · panorama 3) và mỗi
      * biến thể CẮT lấy phần đầu của danh sách này. Cần ít hơn 10 thì cắt, KHÔNG
      * bịa thêm nhãn: một nhãn không mô tả ô nào là một `aria-label` nói sai.
+     *
+     * Số ô rơi từ 8/10/3 xuống 6/6/3 ở Task 5l — user nêu *"ảnh quá nhỏ"*, và ít
+     * ô hơn là điều kiện để mỗi ô to hẳn ra. Danh sách giữ nguyên 10 mục làm dư
+     * địa cho biến thể về sau; bốn mục cuối hiện chưa ô nào dùng.
      *
      * Mô tả CẢNH chung, cố ý KHÔNG gắn địa danh (Nexora làm y vậy ở
      * `PLACEHOLDER_SECTIONS`): cùng một danh sách phục vụ cả ba vùng, nên gắn tên
@@ -768,6 +772,22 @@ export const messages = {
       'Street food stalls',
       'Rolling green highlands',
     ],
+    /**
+     * Lightbox của khu ảnh vùng. Khối RIÊNG, không dùng lại
+     * `tourDetail.gallery`: `Lightbox` nhận copy qua prop chính là để hai trang
+     * nói bằng chữ của mình. Ở đây ô ảnh CÓ nhãn cảnh (`galleryTiles`) nên nút mở
+     * gọi tên cảnh; trang tour thì `alt` có thể null nên nút mở chỉ nói vị trí
+     * ("Open photo 3 of 6"). Gộp hai khối lại là buộc một trong hai phải nói sai.
+     */
+    galleryLightbox: {
+      dialogTitle: 'Region photo',
+      counter: (current: number, total: number) => `${current} / ${total}`,
+      close: 'Close',
+      previous: 'Previous photo',
+      next: 'Next photo',
+      /** Nhãn nút mở: ô ảnh là nút, cần tên khả truy cập nói rõ nó làm gì. */
+      open: (label: string) => `View photo: ${label}`,
+    },
     /** Nhãn cho hàng số liệu trong hero. GIÁ TRỊ dẫn xuất ở tầng trang. */
     statLabels: {
       from: 'From',
