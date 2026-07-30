@@ -5,6 +5,7 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { CalendarIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon, UserIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate contact.tsx: form trái + ảnh phải. Submit no-op
@@ -18,7 +19,7 @@ const fieldMotion = {
   initial: { y: 50, opacity: 0 },
   whileInView: { y: 0, opacity: 1 },
   viewport: { once: true },
-  transition: { type: 'spring' as const, stiffness: 320, damping: 70, mass: 1 },
+  transition: SPRING,
 };
 
 // Kênh liên hệ khớp TopBar — gom về site-config chung khi gắn API.
@@ -99,7 +100,7 @@ export function Contact() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Tell us your dates, <br />
             we’ll draw the route
@@ -176,7 +177,7 @@ export function Contact() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={SPRING}
         >
           <span className="text-xs font-semibold tracking-[0.2em] text-(--region-spark) uppercase">
             What happens next
@@ -194,13 +195,7 @@ export function Contact() {
                 initial={{ y: 20, opacity: 0 }}
                 whileInView={{ y: 0, opacity: 1 }}
                 viewport={{ once: true }}
-                transition={{
-                  delay: 0.15 * index,
-                  type: 'spring',
-                  stiffness: 320,
-                  damping: 70,
-                  mass: 1,
-                }}
+                transition={{ ...SPRING, delay: 0.15 * index }}
               >
                 <div className="flex flex-col items-center">
                   <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 font-heading text-sm font-semibold">
@@ -224,7 +219,7 @@ export function Contact() {
             initial={{ y: 20, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            transition={{ ...SPRING, delay: 0.2 }}
           >
             <a
               href={`mailto:${EMAIL}`}

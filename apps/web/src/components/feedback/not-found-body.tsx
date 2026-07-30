@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import Link from 'next/link';
+import { SPRING } from '@/lib/motion';
 
 // Thân trang 404 (nền sáng, dưới hero tối). Tách thành client component vì cả
 // khối có motion; not-found.tsx giữ nguyên là server component.
@@ -10,7 +11,6 @@ import Link from 'next/link';
 // lệch xuống phải; lớp đặc nằm trên. Bóng làm lớp đặc nhấc hẳn khỏi nền thay
 // vì nằm phẳng lì. Đây là chi tiết duy nhất được phép nổi bật ở thân trang;
 // mọi thứ khác giữ im lặng.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 const NUMERAL =
   'font-heading text-[30vw] leading-[0.8] font-semibold tracking-tight lg:text-[17vw]';

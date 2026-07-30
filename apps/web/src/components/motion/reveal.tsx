@@ -2,11 +2,11 @@
 
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { SPRING } from '@/lib/motion';
 
 // Bọc reveal khi cuộn tới — dùng đúng nhịp spring của cả site (320/70/1) để
 // trang nội dung dài không lệch tông với Home/About/Contact. `motion` tự tôn
 // trọng prefers-reduced-motion qua MotionProvider ở root layout.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function Reveal({
   children,

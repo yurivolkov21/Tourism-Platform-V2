@@ -3,13 +3,13 @@
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopoPattern } from '@/components/topo-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Contact §1 — hero NGẮN kiểu Nexora ContentHero (trang utility không cần
 // fullscreen): breadcrumb + heading 2 dòng accent italic + sub 1 dòng.
 // Nền scope `dark` BẮT BUỘC: navbar chưa-cuộn dùng chữ on-media (trắng) theo
 // pattern "hero luôn tối" của site — hero sáng sẽ làm navbar tàng hình.
 // Thêm vệt gradient primary cho band đỡ phẳng.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ContactHero() {
   return (
@@ -48,7 +48,7 @@ export function ContactHero() {
             className="mt-6 font-heading text-4xl leading-tight font-medium text-foreground md:text-6xl"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={{ ...SPRING_HEADING, delay: 0.2 }}
           >
             Talk to a human,
             <br />

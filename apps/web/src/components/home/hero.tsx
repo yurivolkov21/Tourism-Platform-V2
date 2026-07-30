@@ -3,6 +3,7 @@
 import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Convert từ Estate hero-sections.tsx: hero fullscreen ảnh + badge pill +
 // heading giữa + 2 nút (nút phụ có hiệu ứng chữ trượt khi hover).
@@ -28,7 +29,7 @@ export function Hero() {
         initial={{ y: -20, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+        transition={{ ...SPRING, delay: 0.2 }}
       >
         <CompassIcon className="size-4" aria-hidden="true" />
         <p>Small-group tours across Vietnam</p>
@@ -39,7 +40,7 @@ export function Hero() {
         initial={{ y: 50, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+        transition={SPRING_HEADING}
       >
         Travel slow. The valley will wait.
       </motion.h1>
@@ -49,7 +50,7 @@ export function Hero() {
         initial={{ y: 50, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+        transition={{ ...SPRING, delay: 0.2 }}
       >
         Hand-picked journeys through limestone bays, terraced highlands, and lantern-lit old towns —
         led by people who grew up there.
@@ -60,7 +61,7 @@ export function Hero() {
         initial={{ y: 50, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+        transition={SPRING}
       >
         <a
           href="#tours"

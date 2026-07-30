@@ -2,6 +2,7 @@
 
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { SPRING } from '@/lib/motion';
 import { FacebookIcon, InstagramIcon, TwitterIcon, YoutubeIcon } from './icons/social';
 import { Logo } from './logo';
 
@@ -56,8 +57,6 @@ const SOCIALS = [
   { Icon: YoutubeIcon, label: 'YouTube' },
   { Icon: FacebookIcon, label: 'Facebook' },
 ];
-
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function SiteFooter() {
   return (

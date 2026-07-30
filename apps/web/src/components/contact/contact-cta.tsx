@@ -2,13 +2,13 @@
 
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { SPRING } from '@/lib/motion';
 
 // Contact §5 — CTA 01 "Gradient Banner" (ShadcnSpace) HỒI SINH từ about-cta
 // đã dọn ở 5e9dd08: user chốt dùng cho /contact để tránh trùng CTA 02 video
 // của /about. Card bo 3xl viền nổi, nền "aurora" token hóa (jade primary +
 // vàng nắng --region-spark), nút MORPH viên tròn mũi tên trượt phải→trái +
 // xoay 45° khi hover.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ContactCta() {
   return (

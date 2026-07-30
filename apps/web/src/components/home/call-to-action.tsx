@@ -4,6 +4,7 @@ import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TopoPattern } from '@/components/topo-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Review #23: convert 100% lối thiết kế forged/CTABanner (quyết định của user —
 // trước đó #21 mới lấy xương, lần này lấy cả chất giọng): eyebrow màu accent,
@@ -32,7 +33,7 @@ export function CallToAction() {
           initial={{ y: -20, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={{ ...SPRING, delay: 0.2 }}
         >
           Autumn departures open
         </motion.span>
@@ -46,7 +47,7 @@ export function CallToAction() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+          transition={SPRING_HEADING}
         >
           Find the journey
           <br />
@@ -58,7 +59,7 @@ export function CallToAction() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={{ ...SPRING, delay: 0.2 }}
         >
           Limestone bays, misty terraces, imperial cities, and river markets — pick a region and let
           a local plan the rest. Small groups, no rush, no scripts.
@@ -69,7 +70,7 @@ export function CallToAction() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={{ ...SPRING, delay: 0.3 }}
         >
           {/* Glow hover của forged: bóng đổ lấy màu từ token primary qua color-mix */}
           <motion.a

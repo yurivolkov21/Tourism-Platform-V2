@@ -4,6 +4,7 @@ import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
 import { TopoPattern } from '@/components/topo-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Hero riêng cho listing tour. KHÔNG tái dùng ContentHero: cái đó phục vụ trang
 // nội dung dài (breadcrumb + title + meta + subtitle) và nhồi thêm ô search vào
@@ -12,7 +13,6 @@ import { TopoPattern } from '@/components/topo-pattern';
 //
 // Band phải TỐI — hero sáng làm navbar trong suốt bị tàng hình (pattern chốt ở
 // /contact và giữ nguyên cho mọi trang từ đó).
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ToursHero({
   eyebrow,
@@ -79,7 +79,7 @@ export function ToursHero({
             className="mt-3 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={{ ...SPRING_HEADING, delay: 0.2 }}
           >
             {title}
           </motion.h1>

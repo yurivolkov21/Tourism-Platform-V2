@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // About §Values "The promises we keep" (convert 100% lối forged/Services —
 // quán quân hạng values của bản quét 12 template): header 2 bên (heading trái,
@@ -20,7 +21,6 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 // teaser ở pill Story / ô "0 Scripts" Numbers / marquee CTA. Da thịt token +
 // án lệ #25 (bỏ uppercase 900); hover đổi nền bằng CSS class thay JS
 // whileHover backgroundColor của bản gốc.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 const VALUES = [
   {
@@ -81,7 +81,7 @@ export function AboutValues() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+              transition={SPRING_HEADING}
             >
               Six promises,
               <br />

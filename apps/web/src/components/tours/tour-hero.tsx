@@ -4,6 +4,7 @@ import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { discountPercent, formatMoney } from '@/lib/tours';
 import type { MockTourDetail } from '@/mocks/types';
 
@@ -12,7 +13,6 @@ import type { MockTourDetail } from '@/mocks/types';
 // và giá. Ba hero (ContentHero, ToursHero, TourHero) chia sẻ TopoPattern + scrim
 // + nhịp spring, không chia sẻ component (spec §6.2). Riêng ở trang này lớp vân
 // nằm một bậc CAO HƠN hero (`TourBoard`) vì nó phải phủ cả dải khởi hành.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 /**
  * Hàng chip cạnh giá giữ TỐI ĐA 2 chip, và một sự thật về GIÁ luôn thắng một
@@ -117,7 +117,7 @@ export function TourHero({ tour }: { tour: MockTourDetail }) {
             className="mt-3 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={{ ...SPRING_HEADING, delay: 0.2 }}
           >
             {tour.title}
           </motion.h1>

@@ -8,6 +8,7 @@ import { CategoryChips } from '@/components/blog/category-chips';
 import { PostCard } from '@/components/blog/post-card';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { filterPostsByCategory, searchPosts, sortPostsByDate } from '@/lib/blog';
+import { SPRING } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
 import type { MockJournalPost } from '@/mocks/types';
 
@@ -15,7 +16,6 @@ import type { MockJournalPost } from '@/mocks/types';
 // được ghi vào URL (?tag=&q=&page=) nên link chia sẻ được và F5 không mất bộ lọc.
 // HTML đầu tiên do server render với ĐÚNG initial* này, nên lần render client đầu
 // tiên khớp hệt — không có hydration mismatch.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 /**
  * Sáu bài mỗi trang, KHÔNG phải 9 như plan ghi.

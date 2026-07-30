@@ -5,6 +5,7 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TOURS } from '@/mocks/tours';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
@@ -16,7 +17,6 @@ import { TOURS } from '@/mocks/tours';
 // Bộ 6 số ĐÀO SÂU VẬN HÀNH — cố ý không lặp 12+/8,000+/98% của hero §1.
 // Mock static-first: tours/destinations/guides sẽ derive từ API catalog (như
 // Nexora ByTheNumbers, ISR 300s) + bảng team_members tương lai.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 // 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
 // vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
@@ -84,7 +84,7 @@ export function AboutNumbers() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Numbers we’re proud of,
             <br />

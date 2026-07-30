@@ -3,6 +3,7 @@
 import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import { StarIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TESTIMONIALS } from '@/mocks/testimonials';
 import type { MockTestimonial } from '@/mocks/types';
 import { SectionEyebrow } from './section-eyebrow';
@@ -73,7 +74,7 @@ export function Testimonials() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Trusted by travelers. Proven by stories.
           </motion.h2>
@@ -82,7 +83,7 @@ export function Testimonials() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            transition={{ ...SPRING, delay: 0.2 }}
           >
             Honest words from people who trusted us with their time off.
           </motion.p>
@@ -93,7 +94,7 @@ export function Testimonials() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            transition={{ ...SPRING, delay: 0.3 }}
           >
             <div className="flex items-end gap-3">
               <span className="font-heading text-5xl leading-none font-medium text-foreground">

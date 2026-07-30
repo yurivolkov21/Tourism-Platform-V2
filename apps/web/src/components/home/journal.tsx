@@ -4,6 +4,7 @@ import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PostCard } from '@/components/blog/post-card';
 import { homeTeaserPosts } from '@/lib/blog';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { JOURNAL_POSTS } from '@/mocks/journal';
 import { SectionEyebrow } from './section-eyebrow';
 
@@ -16,7 +17,6 @@ import { SectionEyebrow } from './section-eyebrow';
 // thừa) — đồng thời vá lỗi lưới 3 cột từng hiện tràn 9 bài (Task 1 nâng mock
 // 3→9 nhưng vòng lặp không giới hạn); giờ luôn cắt 3 bài mới nhất bằng
 // sortPostsByDate + slice, không phụ thuộc thứ tự khai báo trong mock.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function Journal() {
   return (
@@ -31,7 +31,7 @@ export function Journal() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+              transition={SPRING_HEADING}
             >
               Notes from the road,
               <br />

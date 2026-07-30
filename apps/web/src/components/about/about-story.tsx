@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
+import { SPRING } from '@/lib/motion';
 
 // About §2 Story (convert 100% lối forged/About, da thịt token + án lệ #25):
 // grid 5/7 — trái ảnh cao 600-700px + floating box accent "12+" đè góc
@@ -12,7 +13,6 @@ import { CountUp } from '@/components/motion/count-up';
 // italic) + 2 đoạn mission + hàng feature pill + 2 mini-quote card guide bản
 // địa (quote của Mai hồi sinh từ WhyChooseUs #26→#27). Motion: ảnh SlideIn
 // từ trái, cột phải FadeUp bậc thang — spring nhà 320/70.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 const PILLS = ['Local guides only', 'Twelve travellers max', 'Three regions', 'No scripts'];
 

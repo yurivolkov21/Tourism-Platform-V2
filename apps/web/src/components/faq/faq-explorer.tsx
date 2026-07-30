@@ -19,6 +19,7 @@ import {
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { type FaqCategory, filterFaqCategories } from '@/lib/faq-filter';
+import { SPRING } from '@/lib/motion';
 import { slugify } from '@/lib/slug';
 
 // Ruột trang /faq: ô search + 5 nhóm + accordion card rời — kế thừa nguyên
@@ -32,8 +33,6 @@ const CATEGORY_ICONS: readonly LucideIcon[] = [
   RefreshCwIcon,
   PlaneIcon,
 ];
-
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function FaqExplorer({
   categories,

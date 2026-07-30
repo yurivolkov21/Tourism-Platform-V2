@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { toursInRegion } from '@/lib/regions';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
@@ -16,7 +17,6 @@ import type { MockRegionKey } from '@/mocks/types';
 // thay div thuần; ảnh → ImagePlaceholder (thay thật khi chốt trang); gradient
 // gray-950 → token overlay; số đếm lấy THẬT qua toursInRegion() (một nguồn sự
 // thật — about-numbers cũng derive cùng nguồn). Chấm màu vùng qua data-region.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 // 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
 // vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
@@ -77,7 +77,7 @@ export function AboutGallery() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             The country we call
             <span className="text-primary italic"> the office.</span>

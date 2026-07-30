@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { regionOf } from '@/lib/regions';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
@@ -68,7 +69,7 @@ export function Gallery() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             From the northern mists to the southern delta
           </motion.h2>
@@ -77,7 +78,7 @@ export function Gallery() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            transition={{ ...SPRING, delay: 0.2 }}
           >
             Nine places across three regions — scroll to travel the country from north to south.
           </motion.p>

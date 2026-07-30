@@ -1,21 +1,41 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { AMPLITUDE, HEADER_DELAY, REVEAL_EASE, SPRING, SPRING_HEADING, STAGGER } from './motion';
 
 /**
  * ⚠️ Spec này ĐỌC SOURCE của component thay vì render chúng, và đó là lựa chọn có
- * lý do: `lib/motion.ts` không phải là nguồn duy nhất của bộ số này — 21 file khai
- * `const SPRING` nguyên văn tại chỗ và 19 file gõ spring 240 inline vào `transition`
- * của `h2`. Chừng nào chưa dedup được (đổi chúng là phải chụp và đo lại mọi trang đã
- * duyệt), thứ duy nhất giữ hai bản khỏi trôi khỏi nhau là một test so SỐ với SỐ.
+ * lý do: thứ nó canh là **sự VẮNG MẶT của một pattern** trên khắp cây component, và
+ * không có phép render nào nói được điều đó. Vitest cũng không render Server
+ * Component async, và `src/app/**` không nằm trong `include`.
  *
  * Cách này đã có tiền lệ trong repo: `region-theme.spec.ts` đọc `page.tsx` để bắt ca
- * "thêm khoá vào `sections` mà quên lắp nhánh render". Cùng lý do ở đây — Vitest
- * không render Server Component async, và `src/app/**` không nằm trong `include`.
+ * "thêm khoá vào `sections` mà quên lắp nhánh render".
+ *
+ * Lịch sử (đọc trước khi sửa): tới 30/07 `lib/motion.ts` **không** phải nguồn duy
+ * nhất — 21 file khai `const SPRING` nguyên văn, 19 chỗ gõ spring 240 inline và 22
+ * chỗ gõ spring 320 inline. Hồi đó spec này so SỐ với SỐ để hai bản khỏi trôi khỏi
+ * nhau. Dedup xong (user duyệt 30/07) thì bất biến ĐỔI CHIỀU: không còn "hai bản
+ * khớp nhau" mà là "chỉ còn một bản", và test đó không thể xanh giả.
  */
 function read(relative: string): string {
   return readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8');
+}
+
+/** Mọi file component (đệ quy), trả về đường dẫn TƯƠNG ĐỐI so với `components/`.
+    Quét cả cây thay vì liệt kê tay: danh sách gõ tay sẽ không bao giờ biết tới file
+    thứ 41, mà đúng file đó mới là chỗ bản copy quay lại. */
+function componentFiles(): string[] {
+  const root = fileURLToPath(new URL('../components', import.meta.url));
+  const walk = (dir: string, prefix = ''): string[] =>
+    readdirSync(join(root, dir), { withFileTypes: true }).flatMap((entry) => {
+      const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) return walk(join(dir, entry.name), rel);
+      // Bỏ spec: chúng CỐ Ý gõ số để khẳng định, đó là vai trò của chúng.
+      return /\.tsx?$/.test(entry.name) && !/\.spec\.tsx?$/.test(entry.name) ? [rel] : [];
+    });
+  return walk('.');
 }
 
 /** Source đã BỎ comment. Bắt buộc cho các assertion dạng "không được có X": comment
@@ -39,10 +59,6 @@ function springsIn(relative: string): { stiffness: number; damping: number; mass
   }));
 }
 
-function numbers(spring: typeof SPRING | typeof SPRING_HEADING) {
-  return { stiffness: spring.stiffness, damping: spring.damping, mass: spring.mass };
-}
-
 /** Chín khu của trang vùng. Danh sách này là bản sao của `RegionSectionKey` ở dạng
     tên file — `region-theme.spec.ts` đã canh rằng chín khoá đó có đủ nhánh render,
     còn ở đây ta canh chín KHU có đủ nhịp header. */
@@ -58,19 +74,57 @@ const REGION_SECTIONS = [
   'region-reviews',
 ] as const;
 
-describe('lib/motion — bộ số phải KHỚP bản copy đang chạy trên trang đã duyệt', () => {
-  it('SPRING đúng bộ số `motion/reveal.tsx` dùng (21 file khai lại nguyên văn)', () => {
-    expect(springsIn('../components/motion/reveal.tsx')).toEqual([numbers(SPRING)]);
-    expect(SPRING.type).toBe('spring');
+describe('lib/motion — NGUỒN DUY NHẤT của bộ số, không còn bản copy nào', () => {
+  // ⚠️ Ba test dưới đây được SUY LẠI ngày 30/07 sau khi dedup, không phải xoá đi cho
+  // xanh. Bản cũ khẳng định "`lib/motion.ts` KHỚP bản copy trong reveal.tsx /
+  // gallery.tsx / reveal-line.tsx" — hợp lý khi còn 21 bản `const SPRING`, 19 chỗ
+  // spring 240 inline và 22 chỗ spring 320 inline. Dedup xong thì các literal đó
+  // không còn, nên test cũ đỏ vì thứ nó canh đã BIẾN MẤT theo đúng ý muốn.
+  //
+  // Bất biến bây giờ mạnh hơn và đi NGƯỢC chiều: thay vì "hai bản khớp nhau", canh
+  // rằng **chỉ còn một bản**. Điều đó không thể xanh giả — thêm lại một `const
+  // SPRING` ở bất kỳ component nào là đỏ ngay, còn test cũ thì vẫn xanh miễn hai
+  // bên cùng giá trị.
+  it('KHÔNG component nào khai lại HAI spring DÙNG CHUNG — lib/motion là bản duy nhất', () => {
+    // `Set<number>` tường minh: `as const` ở `lib/motion.ts` làm suy diễn ra
+    // `Set<320 | 240>`, và `has()` khi đó từ chối một `number` bất kỳ.
+    const shared = new Set<number>([SPRING.stiffness, SPRING_HEADING.stiffness]);
+    const offenders = componentFiles().flatMap((file) =>
+      springsIn(`../components/${file}`)
+        .filter((spring) => shared.has(spring.stiffness))
+        .map((spring) => `${file}: stiffness ${spring.stiffness}`),
+    );
+    expect(offenders).toEqual([]);
   });
 
-  // `home/gallery.tsx` là bản mẫu của cặp này: `h2` chạy spring 240 (phần tử LỚN,
-  // chậm hơn một bậc) và đoạn dẫn ngay dưới chạy spring 320. Cả HAI phải có trong
-  // `lib/motion.ts`, nếu không khu vùng lại gõ tay một trong hai.
-  it('SPRING_HEADING và SPRING đều là bộ số `home/gallery.tsx` đang dùng', () => {
-    const found = springsIn('../components/home/gallery.tsx');
-    expect(found).toContainEqual(numbers(SPRING_HEADING));
-    expect(found).toContainEqual(numbers(SPRING));
+  /**
+   * Spring MỘT-LẦN được phép tồn tại, nhưng phải đi qua đây.
+   *
+   * Hai file dưới đây dùng độ cứng RIÊNG (420 · 260), không phải bản copy của bộ số
+   * dùng chung — nên gộp chúng vào `lib/motion.ts` là sai hướng: file đó giữ **từ
+   * vựng dùng chung**, và nhồi mọi giá trị một-lần vào sẽ biến nó thành một bãi hằng
+   * số mà không ai biết cái nào thật sự dùng ở nhiều nơi.
+   *
+   * Nhưng danh sách phải là ALLOWLIST chứ không phải bỏ qua im lặng: nếu mai có file
+   * thứ ba gõ một spring riêng, test này đỏ và buộc người viết trả lời một câu —
+   * "giá trị này là một-lần thật, hay là bản copy thứ 22 sắp trôi khỏi bộ số chung?".
+   * Đúng câu hỏi mà 62 bản copy trước 30/07 chưa ai bị buộc phải trả lời.
+   */
+  it('spring một-lần chỉ ở HAI file đã biết — file thứ ba phải giải trình', () => {
+    const withSprings = componentFiles().filter(
+      (file) => springsIn(`../components/${file}`).length > 0,
+    );
+    expect(withSprings.sort()).toEqual(['content/on-this-page.tsx', 'feedback/not-found-body.tsx']);
+  });
+
+  // `home/gallery.tsx` là bản mẫu của cặp này: `h2` chạy `SPRING_HEADING` (phần tử
+  // LỚN, chậm hơn một bậc) và đoạn dẫn ngay dưới chạy `SPRING`. Nay nó phải lấy CẢ
+  // HAI qua import — gõ lại một trong hai là vi phạm test trên.
+  it('`home/gallery.tsx` lấy CẢ HAI spring qua import, không gõ số', () => {
+    const code = codeOf('../components/home/gallery.tsx');
+    expect(code).toMatch(/import \{[^}]*\bSPRING\b[^}]*\} from '@\/lib\/motion'/);
+    expect(code).toMatch(/import \{[^}]*\bSPRING_HEADING\b[^}]*\} from '@\/lib\/motion'/);
+    expect(SPRING.type).toBe('spring');
     expect(SPRING_HEADING.type).toBe('spring');
   });
 
@@ -80,10 +134,15 @@ describe('lib/motion — bộ số phải KHỚP bản copy đang chạy trên t
     expect(SPRING_HEADING.mass).toBe(SPRING.mass);
   });
 
-  it('REVEAL_EASE đúng đường cong `motion/reveal-line.tsx` khai — ease DUY NHẤT có tên', () => {
-    expect(read('../components/motion/reveal-line.tsx')).toContain(
-      `[${REVEAL_EASE.join(', ')}] as const`,
-    );
+  // `REVEAL_EASE` SINH RA ở `reveal-line.tsx` và `lib/motion.ts` từng chép lại. Bản
+  // cục bộ đã xoá — hai khai báo cùng giá trị nghĩa là một ngày nào đó sửa một bên,
+  // và hero /about với hero trang vùng lặng lẽ chạy hai đường cong khác nhau.
+  it('REVEAL_EASE chỉ khai ở lib/motion — `reveal-line.tsx` import, không khai lại', () => {
+    const code = codeOf('../components/motion/reveal-line.tsx');
+    expect(code).toMatch(/import \{[^}]*\bREVEAL_EASE\b[^}]*\} from '@\/lib\/motion'/);
+    expect(code).not.toContain('const REVEAL_EASE');
+    // Đường cong vẫn phải đúng bộ số đã duyệt, không chỉ "tồn tại ở một chỗ".
+    expect([...REVEAL_EASE]).toEqual([0.16, 1, 0.3, 1]);
   });
 
   it('STAGGER.grid đúng bước lưới ảnh `journey-moments.tsx` dùng', () => {

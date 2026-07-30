@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { LinkedinIcon } from '@/components/icons/social';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TEAM } from '@/mocks/team';
 
 // About §5 Team — §5 lần 2: bản slidex bị chê "trang nào cũng có", thay bằng
@@ -15,7 +16,6 @@ import { TEAM } from '@/mocks/team';
 // mock giữ trong data (schema candidate) nhưng không render — Team 01 chủ
 // đích tối giản. Nội dung CHỈ founder (quyết định user 23/07); anchor #team
 // là đích nút hero §1.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function AboutTeam() {
   return (
@@ -27,7 +27,7 @@ export function AboutTeam() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+          transition={SPRING_HEADING}
         >
           Four faces,
           <span className="text-primary italic"> one slow idea.</span>

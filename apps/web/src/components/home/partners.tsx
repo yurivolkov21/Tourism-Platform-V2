@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { SPRING } from '@/lib/motion';
 
 // Review #22: convert từ forged/Partners — dải marquee tên đối tác/báo chí trên
 // nền tối, chấm nhấn màu primary, mask gradient hai mép. Đổi ngữ cảnh gym →
@@ -49,7 +50,7 @@ export function Partners() {
         initial={{ y: -20, opacity: 0 }}
         whileInView={{ y: 0, opacity: 1 }}
         viewport={{ once: true }}
-        transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+        transition={{ ...SPRING, delay: 0.2 }}
       >
         In good company — featured by travel storytellers worldwide
       </motion.p>

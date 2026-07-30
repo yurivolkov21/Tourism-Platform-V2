@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
 import { StatsSlider } from './stats-slider';
 
@@ -19,7 +20,7 @@ export function Stats() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+              transition={SPRING_HEADING}
             >
               Journeys shaped by the people who live them
             </motion.h2>
@@ -29,7 +30,7 @@ export function Stats() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+              transition={{ ...SPRING, delay: 0.2 }}
             >
               From misty terraces in the north to river markets in the delta — every route is
               researched, walked, and retold by local guides before it reaches you.
@@ -41,7 +42,7 @@ export function Stats() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+              transition={SPRING}
             >
               Explore tours
             </motion.a>
@@ -86,7 +87,7 @@ export function Stats() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+          transition={{ ...SPRING, delay: 0.2 }}
         >
           <StatsSlider />
         </motion.div>

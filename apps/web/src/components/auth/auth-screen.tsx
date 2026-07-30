@@ -3,6 +3,7 @@
 import { motion } from 'motion/react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { Logo } from '@/components/logo';
+import { SPRING } from '@/lib/motion';
 
 // Màn hình auth dùng chung (spec 2026-07-24, redesign vòng 3 — user chốt chất
 // liệu ẢNH THẬT sau khi 2 vòng đồ hoạ vẽ tay đều lộ "mùi AI"): TRÁI vùng form
@@ -15,7 +16,6 @@ import { Logo } from '@/components/logo';
 // public/images/auth-sapa-dawn.jpg chờ lúc chốt trang; dòng ghi công CC BY bỏ
 // tạm khỏi UI vì ghi công cho ảnh không hiển thị là sai — thêm lại cùng lúc
 // với ảnh thật.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 interface AuthScreenProps {
   /** Câu quote trên panel ảnh — đổi theo ngữ cảnh từng trang */

@@ -3,13 +3,13 @@
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { TopoPattern } from '@/components/topo-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Header dùng chung cho trang nội dung dài (terms/privacy/cancellation/faq).
 // Band NGẮN và TỐI: khác Nexora ContentHero (ảnh full-bleed) — theo khảo sát
 // Vercel/Linear/Stripe, trang pháp lý mở bằng typography chứ không bằng ảnh.
 // Vẫn phải scope `dark` vì navbar chưa cuộn dùng chữ on-media; hero sáng làm
 // navbar tàng hình (pattern "hero luôn tối" chốt ở /contact).
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ContentHero({
   breadcrumb,
@@ -64,7 +64,7 @@ export function ContentHero({
             className="mt-6 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl"
             initial={{ y: 40, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={{ ...SPRING_HEADING, delay: 0.2 }}
           >
             {title}
           </motion.h1>

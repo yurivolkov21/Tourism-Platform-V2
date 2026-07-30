@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // About §3 Timeline (convert 100% cơ chế prompt2app/build-process): trục dọc
 // giữa gồm 3 đoạn line TỰ LẤP ĐẦY theo tiến trình cuộn (đo getBoundingClientRect
@@ -15,7 +16,6 @@ import { TiltCard } from '@/components/motion/tilt-card';
 // tên nơi chốn nằm sẵn trong mô tả và nhãn ảnh của từng mốc. `data-region` giữ
 // làm móc dữ liệu, không còn tác dụng màu.
 // Mobile: ẩn trục, mốc xếp dọc (như template gốc).
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 interface Milestone {
   year: string;
@@ -142,7 +142,7 @@ export function AboutTimeline() {
           initial={{ y: 50, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+          transition={SPRING_HEADING}
         >
           Twelve years,
           <span className="text-primary italic"> four turning points.</span>

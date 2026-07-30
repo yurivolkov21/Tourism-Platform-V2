@@ -8,13 +8,13 @@ import {
 } from '@tourism/ui/components/accordion';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { FAQ_ITEMS } from '@/mocks/faq';
 
 // Contact §4 — mini-FAQ convert ShadcnSpace FAQ 01 (free): accordion dạng CARD
 // RỜI bo 2xl viền, item ĐANG MỞ đổi nền accent, vào so le; nội dung 5 câu
 // pre-sales rút gọn kiểu Nexora contact-faq — bản đầy đủ thuộc trang /faq
 // (link chờ sẵn). Data mock FAQ_ITEMS — ứng viên schema faqs.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ContactFaq() {
   return (
@@ -27,7 +27,7 @@ export function ContactFaq() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Five answers,
             <span className="text-primary italic"> saved you an email.</span>

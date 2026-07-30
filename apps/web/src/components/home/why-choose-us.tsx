@@ -12,6 +12,7 @@ import {
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate why-choose-us.tsx: accordion trái (mở mục nào thì ảnh phải
@@ -74,7 +75,7 @@ export function WhyChooseUs() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Travel Vietnam with people who call it home
           </motion.h2>
@@ -89,13 +90,7 @@ export function WhyChooseUs() {
                   initial={{ y: 150, opacity: 0 }}
                   whileInView={{ y: 0, opacity: 1 }}
                   viewport={{ once: true }}
-                  transition={{
-                    delay: index * 0.15,
-                    type: 'spring',
-                    stiffness: 320,
-                    damping: 70,
-                    mass: 1,
-                  }}
+                  transition={{ ...SPRING, delay: index * 0.15 }}
                 >
                   <button
                     type="button"
@@ -141,7 +136,7 @@ export function WhyChooseUs() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+            transition={{ ...SPRING, delay: 0.2 }}
           >
             Our local guides bring insider knowledge and personal care to every departure, so your
             only job is to be there.
@@ -155,7 +150,7 @@ export function WhyChooseUs() {
               initial={{ y: 50, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+              transition={SPRING}
             >
               <ImagePlaceholder
                 label={DEFAULT_IMAGE_LABEL}
@@ -186,7 +181,7 @@ export function WhyChooseUs() {
               initial={{ y: 20, opacity: 0 }}
               whileInView={{ y: 0, opacity: 1 }}
               viewport={{ once: true }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+              transition={{ ...SPRING, delay: 0.1 }}
             >
               <motion.span
                 key={openIndex === null ? DEFAULT_IMAGE_LABEL : ITEMS[openIndex]?.title}

@@ -2,6 +2,7 @@
 
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { SPRING } from '@/lib/motion';
 
 /** Cặp token của từng tone.
  *
@@ -40,7 +41,7 @@ export function SectionEyebrow({
       initial={{ y: -20, opacity: 0 }}
       whileInView={{ y: 0, opacity: 1 }}
       viewport={{ once: true }}
-      transition={{ delay: 0.2, type: 'spring', stiffness: 320, damping: 70, mass: 1 }}
+      transition={{ ...SPRING, delay: 0.2 }}
     >
       <span className={palette.dot} aria-hidden="true" />
       <span className={palette.text}>{children}</span>

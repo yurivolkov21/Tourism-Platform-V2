@@ -5,13 +5,13 @@ import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { AnimatedGridPattern } from '@/components/motion/animated-grid-pattern';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { OFFICES } from '@/mocks/offices';
 
 // Contact §3 — convert Nexora ContactLocation: map lớn bo 2xl (placeholder
 // static-first — sau này iframe bản đồ thật, ghi chú tại chỗ) + lưới 2 card
 // văn phòng (địa chỉ · giờ mở cửa · nút Get directions). Data mock OFFICES —
 // ứng viên schema offices.
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 export function ContactLocation() {
   return (
@@ -39,7 +39,7 @@ export function ContactLocation() {
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 240, damping: 70, mass: 1 }}
+            transition={SPRING_HEADING}
           >
             Two doors,
             <span className="text-primary italic"> always open.</span>

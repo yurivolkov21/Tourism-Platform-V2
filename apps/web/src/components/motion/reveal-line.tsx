@@ -2,10 +2,13 @@
 
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { REVEAL_EASE } from '@/lib/motion';
 
-/** Ease điện ảnh của lối forged — dùng chung để hero /about và hero trang vùng
-    có CÙNG một nhịp mở màn, không phải hai đường cong hơi khác nhau. */
-const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+// `REVEAL_EASE` (ease điện ảnh của lối forged) từng khai ở ĐÂY và `lib/motion.ts`
+// chép lại — file này là nơi nó sinh ra. Bản cục bộ xoá 30/07 khi dedup: giữ hai
+// khai báo cùng giá trị nghĩa là một ngày nào đó sửa một bên, và hero /about với
+// hero trang vùng lặng lẽ chạy hai đường cong hơi khác nhau. Nguồn duy nhất giờ ở
+// `lib/motion.ts`, và `motion.spec.ts` canh giá trị đó.
 
 /**
  * Một DÒNG heading trượt lên từ dưới khuôn cắt: khuôn `overflow-hidden` đứng yên,

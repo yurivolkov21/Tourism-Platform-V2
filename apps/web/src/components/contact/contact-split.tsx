@@ -14,6 +14,7 @@ import { motion } from 'motion/react';
 import { EMAIL, PHONE } from '@/components/home/contact';
 import { PARTNERS } from '@/components/home/partners';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { SPRING } from '@/lib/motion';
 import { REGIONS } from '@/mocks/regions';
 
 // Contact §2 — section chính, convert ShadcnSpace Contact 01 "Project Inquiry":
@@ -23,7 +24,6 @@ import { REGIONS } from '@/mocks/regions';
 // + MỚI: Select "Region of interest" — Nexora lấy option từ API categories
 // (ISR 1h), đây mock từ REGIONS, ghi nợ API khi wire. Submit no-op static-first
 // (nợ validate + honeypot + rate-limit đã ghi sổ từ Home).
-const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
 
 const LOCATION = ['12 Hàng Bạc, Hoàn Kiếm', 'Hà Nội, Vietnam'];
 
