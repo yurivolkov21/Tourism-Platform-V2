@@ -3555,3 +3555,160 @@ git add apps/web/src libs/shared/i18n
 git commit -m "feat(web): gallery ba miền ảnh lớn bấm mở lightbox, vá hue drift nền băng"
 ```
 
+---
+
+### Task 5m: Chuyển động trang vùng — hạ tầng + cascade header cho mọi khu
+
+**Vì sao:** user duyệt xong bố cục ba trang vùng và yêu cầu **áp chuyển động cho từng
+khu, từ ảnh đến chữ**, cho phép tham khảo template có sẵn. Một đợt khảo sát ba lăng
+kính (repo · templates · hiện trạng) đã chạy; kết luận dưới đây là nền của task.
+
+**Hiện trạng đo được — 15 thực thể khu:**
+- **6 khu TĨNH HOÀN TOÀN bên trong** (chỉ `SectionEyebrow`): `intro` × 3 miền ·
+  `heritage` (Trung) · `worlds` (Nam) · `seasons` (Bắc).
+- 3 khu chỉ có hover đổi màu, không nhịp vào: `days` · `dayTrips` · `reviews`.
+- Chỉ `gallery` và `tours` có chuyển động thật bên trong.
+
+**Rào chặn phải xử TRƯỚC:** `page.tsx:309` bọc **cả 5 khu giữa** trong `Reveal`
+(`y:24` + spring 320/70/1, viewport margin `-80px`). Thêm `whileInView` cho phần tử
+con là **chồng hai transform**, và hai observer bắn gần như đồng thời (margin `-80px`
+so với `0` của `SectionEyebrow`) nên không tách được thành nhịp.
+
+**Con số nhà — tái dùng nguyên văn, KHÔNG bịa mới:**
+
+| Dùng cho | Cấu hình | Nguồn |
+| --- | --- | --- |
+| mọi thứ trừ tiêu đề khu | spring `320 / 70 / 1` | `motion/reveal.tsx:9`, 21 file |
+| `h1` hero + `h2` khu | spring `240 / 70 / 1` | `home/gallery.tsx:71`, 19 file, luôn inline |
+| tween điện ảnh | ease `[0.16, 1, 0.3, 1]` | `motion/reveal-line.tsx:8` — đường cong DUY NHẤT có tên |
+| stagger lưới ảnh | `delay: index * 0.08` | `journey-moments.tsx:60` |
+
+Repo **không dùng** `variants`/`staggerChildren` ở bất kỳ đâu (grep = 0) — luôn
+`delay: index * step`. Giữ đúng lối đó.
+
+**Bốn cách guard reduced-motion, dùng đúng loại, đừng trộn:**
+1. `MotionConfig reducedMotion="user"` ở root — tự lo **transform/layout của motion
+   component**. **KHÔNG** lo opacity-only, **KHÔNG** với tới CSS.
+2. `motion-safe:` / `motion-reduce:` — bắt buộc cho **mọi** CSS transition/keyframes.
+3. `useReducedMotion()` — cho transform ghi tay qua `style`/hook (khuôn `tilt-card.tsx:13`).
+4. Không có gì — chỉ hợp lệ khi animation là **transform qua motion component**.
+
+**Files:**
+
+- Create: `apps/web/src/lib/motion.ts` + `.spec.ts`
+- Modify: `app/(site)/destinations/[region]/page.tsx` (bỏ `Reveal` bọc khu vùng)
+- Modify: 9 component khu — `region-intro` · `region-gallery` · `region-tours` ·
+  `region-signature-timeline` · `region-signature-postcards` · `region-days` ·
+  `region-day-trips` · `region-seasons` · `region-reviews`
+- Modify: spec của các khu cần thêm `'use client'` / stub `IntersectionObserver`
+
+- [ ] **Step 1: `lib/motion.ts` — một nguồn cho các con số**
+
+```ts
+/** Spring chuẩn nhà — mọi thứ TRỪ tiêu đề khu. */
+export const SPRING = { type: 'spring', stiffness: 320, damping: 70, mass: 1 } as const;
+/** Spring cho phần tử LỚN: `h1` hero và `h2` của khu. Chậm hơn 320 một bậc. */
+export const SPRING_HEADING = { type: 'spring', stiffness: 240, damping: 70, mass: 1 } as const;
+/** Ease điện ảnh duy nhất có tên trong repo. */
+export const REVEAL_EASE = [0.16, 1, 0.3, 1] as const;
+/** Bước stagger theo loại nội dung. */
+export const STAGGER = { grid: 0.08, list: 0.1, row: 0.06 } as const;
+/** Thang delay của cascade header khu: eyebrow đã tự có 0.2 ở `SectionEyebrow`. */
+export const HEADER_DELAY = { heading: 0, lede: 0.1, cta: 0.2 } as const;
+```
+
+⚠️ **CHỈ code MỚI dùng file này.** 21 file hiện khai `const SPRING` nguyên văn tại
+chỗ — **đừng refactor chúng trong task này**: đó là 21 file trên các trang đã duyệt,
+phải chụp và đo lại hết. Ghi thành nợ, hỏi user riêng.
+
+Test: khẳng định `SPRING` và `SPRING_HEADING` khớp đúng con số đang dùng ở
+`motion/reveal.tsx` và `home/gallery.tsx` (đọc chuỗi từ file, so số) — chốt chặn để
+`lib/motion.ts` không trôi khỏi 21 bản copy.
+
+- [ ] **Step 2: `page.tsx` — bỏ `Reveal` bọc khu vùng**
+
+Gỡ `<Reveal>` quanh 5 khu giữa. Từ nay **mỗi khu tự lo nhịp của mình** — đúng như
+hero vốn đã được miễn (comment `page.tsx:287-292` giải thích lý do).
+
+⚠️ **KHÔNG sửa `motion/reveal.tsx`**: `/destinations` (index) và `article-body.tsx`
+vẫn dùng nó đúng vai "bọc cả khu". Đổi component là đổi hai trang đã duyệt.
+
+- [ ] **Step 3: Cascade header cho CẢ 9 khu**
+
+Đây là pattern đáng mượn số 1 (`estate-nextjs/sections/stats.tsx:10-46`), và repo đã
+có 2/3: `SectionEyebrow` (y:-20, delay 0.2) và spring. Còn thiếu đúng hai thứ: `h2`
+chạy spring **240** và cặp delay.
+
+Mỗi khu: `SectionEyebrow` (giữ nguyên, đã có) → `motion.h2` `{y:24,opacity:0}` →
+`whileInView` spring `SPRING_HEADING`, `delay: HEADER_DELAY.heading` → đoạn dẫn
+`SPRING`, `delay: HEADER_DELAY.lede` → CTA/link (nếu có) `delay: HEADER_DELAY.cta`.
+`viewport={{ once: true }}` — **không** margin, khớp `SectionEyebrow` để cascade
+không lệch pha với chính eyebrow của nó.
+
+⚠️ **Chi phí `'use client'`:** 8/10 khu hiện là Server Component. Dùng `motion.*`
+inline buộc thêm `'use client'`, và vì các khu đó render `SectionEyebrow`
+(`whileInView`) thì **spec của chúng phải stub `IntersectionObserver` cục bộ** —
+copy nguyên khối từ `region-gallery.spec.tsx:9-25`, đừng dời lên `vitest.setup.ts`
+(đã đo: làm 19 test ở 3 file khác gãy).
+
+Nếu bạn thấy một khu nào chỉ cần nhịp header mà **không** cần hook, cân nhắc tách
+phần động thành component con `'use client'` để khu vẫn là Server Component — nói rõ
+lựa chọn trong report.
+
+- [ ] **Step 4: Kiểm reduced-motion THẬT**
+
+Không chỉ đọc code. Mở trang với `prefers-reduced-motion: reduce` và xác nhận:
+mọi thứ **có mặt và đọc được** (không phần tử nào kẹt `opacity:0`), không transform
+nào chạy. Đây là bẫy đã biết: `MotionProvider` **không** tắt opacity, nên một khu
+chỉ animate opacity sẽ vẫn fade — chấp nhận được, nhưng phải xác nhận nó không **ẩn**
+gì. Chụp ảnh ở chế độ reduce cho cả ba miền.
+
+- [ ] **Step 5: Kiểm không có gì kẹt ẩn khi JS chưa chạy**
+
+`whileInView` với `initial={{opacity:0}}` mà JS chết là chữ **không bao giờ hiện**.
+Kiểm bằng cách tắt JS (`context({ javaScriptEnabled: false })`) và khẳng định nội
+dung 9 khu vẫn đọc được trong HTML. Nếu không, dùng `initial={false}` hoặc để
+`opacity` do CSS lo với `motion-safe:`.
+
+- [ ] **Step 6: Gate + chụp**
+
+Chụp 3 miền × 2 theme, cộng 3 ảnh chế độ reduce. Ghi vào report: khu nào giờ có nhịp
+gì, và khu nào **vẫn còn tĩnh** (Task 5n sẽ lo nhịp nội bộ từng khu).
+
+```bash
+git add apps/web/src
+git commit -m "feat(web): cascade header cho chín khu trang vùng, mỗi khu tự lo nhịp"
+```
+
+---
+
+### Task 5n: Nhịp nội bộ riêng từng khu, phân hoá theo miền
+
+Chạy **sau** 5m. Mỗi miền một **chữ ký chuyển động** khác nhau — đây là trục phân hoá
+ba miền mà user chưa bác, và nó không đụng tới màu lẫn bố cục.
+
+| Miền | Chữ ký | Khu áp dụng | Mượn từ |
+| --- | --- | --- | --- |
+| **Bắc** | nhịp **DỌC** — trồi lên theo cột | gallery `peaks` stagger theo 3 cột · `days` 3 thẻ · `seasons` | `estate/why-choose-us.tsx:43` (hạ y:150 → 24, delay 0.15 → 0.08) |
+| **Trung** | nhịp **NGANG** — trượt vào theo trục x | `heritage` timeline (wrapper fade → 3 chặng so le x±) · gallery `lanterns` trái→phải · `dayTrips` | `genesis/workflow-steps.jsx:37-78` + `forged/motion/FadeUp.tsx:73-93` (SlideIn — repo CHƯA có reveal trục ngang) |
+| **Nam** | nhịp **CHẠM** — xoè khi hover | `worlds` bưu thiếp xoè (đã có nửa tĩnh `sm:±translate-y-4`) · gallery `panorama` ô lớn trước · `reviews` | `estate/call-to-action.tsx:15-19` |
+
+- [ ] **Step 1: `SlideIn` — reveal trục ngang, thứ repo chưa có**
+
+Thêm vào `components/motion/`: `{x: ±60, opacity: 0}` → `whileInView {x:0, opacity:1}`,
+spring `SPRING`, prop `from: 'left' | 'right'` và `delay`. **Không** nhân bản `Reveal`
+— nếu thấy hai component chỉ khác trục thì thêm prop `axis` vào `Reveal`, nhưng cân
+nhắc: `Reveal` đang có 3 consumer ở trang đã duyệt, thêm prop an toàn hơn sửa hành vi.
+
+- [ ] **Step 2–4: áp chữ ký từng miền** theo bảng trên. Mỗi khu: stagger
+`delay: index * STAGGER.*`, biên độ **y:24 / x:60 tối đa** — biên độ lớn hơn đọc ra
+"trang đang tải" chứ không phải "trang đang mở" (bài học từ `y:150` của estate).
+
+- [ ] **Step 5: Bưu thiếp xoè khi hover — CSS, nên BẮT BUỘC guard**
+
+`region-signature-postcards.tsx:66-69` đã có lệch dọc tĩnh. Thêm xoè khi hover bằng
+CSS transition → `MotionProvider` **vô can**, phải tự khai `motion-safe:` /
+`motion-reduce:transform-none` theo khuôn `destination-tile.tsx:23`.
+
+- [ ] **Step 6: Kiểm lại reduce + không-JS + gate**, như 5m Step 4–5.
+
