@@ -2,6 +2,7 @@ import type {
   MockDestination,
   MockRegion,
   MockRegionKey,
+  MockReview,
   MockTourCard,
   MockTourDifficulty,
 } from '@/mocks/types';
@@ -79,13 +80,12 @@ export function toursInRegion<T extends MockTourCard>(
  * dài nhất 8 ngày (`northern-highlands-loop`), đúng nghĩa "Ở ĐÂY".
  *
  * ĐÂY LÀ NƠI DUY NHẤT định nghĩa "riêng của vùng". `longestTourInRegion()` ngay
- * dưới và khu phổ `region-spectrum.tsx` đều đi qua hàm này — hai bản định nghĩa
- * song song là hai tập rồi sẽ lệch nhau im lặng, và `regions.spec.ts` có một test
- * canh đúng chuyện đó ("một định nghĩa, hai chỗ dùng").
+ * dưới và khu "bạn có mấy ngày" (`region-days.tsx`) đều đi qua hàm này — hai bản
+ * định nghĩa song song là hai tập rồi sẽ lệch nhau im lặng, và `regions.spec.ts`
+ * có một test canh đúng chuyện đó ("một định nghĩa, hai chỗ dùng").
  *
  * KHÔNG sắp xếp: trả về theo thứ tự catalogue. Nơi gọi tự sắp theo nhu cầu của nó
- * (khu phổ sắp theo số ngày tăng dần) — sắp hộ ở đây là ép một thứ tự lên mọi
- * chỗ dùng.
+ * — sắp hộ ở đây là ép một thứ tự lên mọi chỗ dùng.
  */
 export function ownToursInRegion<T extends MockTourCard>(
   regions: readonly MockRegion[],
@@ -122,6 +122,62 @@ export function longestTourInRegion<T extends MockTourCard>(
     if (longest === null || tour.durationDays > longest.durationDays) longest = tour;
   }
   return longest;
+}
+
+/** Một review kèm tour đã sinh ra nó — khu "Khách nói gì" cần cả hai để in được
+    dòng ghi công `on <tour>` và link sang trang tour. */
+export interface RegionReview {
+  review: MockReview;
+  tourSlug: string;
+  tourTitle: string;
+}
+
+/**
+ * Review THẬT của một vùng, trải phẳng và sắp NGÀY MỚI NHẤT TRƯỚC.
+ *
+ * Đi qua `toursInRegion()` (gom theo `some()`), KHÔNG qua `ownToursInRegion()`, và
+ * đó là quyết định chứ không phải sơ suất: tập tour ở đây phải TRÙNG tập mà lưới 6
+ * tour card trên cùng trang đang hiện. Lưới đó dùng `toursInRegion`, nên nó có
+ * `north-to-south-classic` ở cả ba trang; loại review của chuyến đó ra là để trang
+ * hiện một tour rồi giấu lời của người đã đi nó. Thứ giữ chuyện này khỏi thành nói
+ * sai là dòng ghi công `on <tour>` — người đọc thấy ngay review nói về chuyến 12
+ * ngày xuyên Việt, không phải về riêng miền Nam. Hệ quả đo được: Bắc 37 · Trung 27
+ * · Nam 25, và 5 review của tour xuyên vùng được đếm ở cả ba (`regions.spec.ts`
+ * canh cả hai con số).
+ *
+ * `reviewsByTour` vào bằng THAM SỐ, không `import TOUR_REVIEWS` — đúng khuôn mọi
+ * hàm khác trong file, nhờ đó test được với fixture nhỏ. Nó cũng gương đúng ranh
+ * giới của API thật: review đến từ một lời gọi RIÊNG có phân trang
+ * (`reviews.listByTour`), không nằm trong payload của tour.
+ *
+ * Tour thiếu khoá trong `reviewsByTour` (`phu-quoc-reef-days`, `ratingAvg: null`)
+ * chỉ đơn giản không góp gì — không ném, không đẩy một mục rỗng vào danh sách.
+ */
+export function reviewsInRegion(
+  regions: readonly MockRegion[],
+  destinations: readonly MockDestination[],
+  tours: readonly MockTourCard[],
+  reviewsByTour: Readonly<Record<string, readonly MockReview[]>>,
+  key: RegionKey,
+): RegionReview[] {
+  const flat: RegionReview[] = [];
+  for (const tour of toursInRegion(regions, destinations, tours, key)) {
+    for (const review of reviewsByTour[tour.slug] ?? []) {
+      flat.push({ review, tourSlug: tour.slug, tourTitle: tour.title });
+    }
+  }
+
+  // `id` là tie-break, không phải trang trí: hai review cùng `createdAt` là chuyện
+  // có thật (mock có nhiều review cùng ngày), và không có chốt thứ hai thì thứ tự
+  // phụ thuộc thuật toán sort của runtime — ba review "mới nhất" đổi chỗ giữa các
+  // lần build. Cùng luật `tourReviews()` trong lib/tours.ts đang dùng.
+  return flat.sort((a, b) => {
+    if (a.review.createdAt !== b.review.createdAt) {
+      return a.review.createdAt < b.review.createdAt ? 1 : -1;
+    }
+    if (a.review.id !== b.review.id) return a.review.id < b.review.id ? 1 : -1;
+    return 0;
+  });
 }
 
 export interface RegionGlance {

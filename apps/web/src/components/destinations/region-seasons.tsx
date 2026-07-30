@@ -1,7 +1,5 @@
 import { messages } from '@tourism/i18n';
-import { cn } from '@tourism/ui/lib/utils';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /** Nhãn tháng viết tắt SINH ra, không gõ 12 chuỗi vào i18n — cùng tiền lệ
     `formatMoney`/`toLocaleString`: đây là format DỮ LIỆU, không phải copy.
@@ -9,25 +7,85 @@ import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
     âm sẽ format ra tháng TRƯỚC nếu để múi giờ cục bộ. */
 const MONTH_FORMAT = new Intl.DateTimeFormat('en-US', { month: 'short', timeZone: 'UTC' });
 
-/** Mười hai tháng theo thứ tự lịch — hằng ở module scope, dựng một lần cho mọi
-    vùng. Năm 2001 chỉ là mỏ neo bất kỳ; tên tháng không phụ thuộc năm. */
-const MONTHS = Array.from({ length: 12 }, (_, i) => ({
-  number: i + 1,
-  label: MONTH_FORMAT.format(Date.UTC(2001, i, 1)),
-}));
+/** Tên 12 tháng theo chỉ số 1–12. Hằng ở module scope, dựng một lần cho mọi vùng;
+    năm 2001 chỉ là mỏ neo bất kỳ vì tên tháng không phụ thuộc năm. */
+const MONTH_NAMES: readonly string[] = Array.from({ length: 12 }, (_, i) =>
+  MONTH_FORMAT.format(Date.UTC(2001, i, 1)),
+);
+
+/** Nối các khoảng thành một liệt kê tiếng Anh ("Jan, May–Jun, and Oct"). Cũng là
+    format dữ liệu, không phải copy — copy là câu bọc quanh nó (`seasonsWindow`). */
+const RANGE_LIST = new Intl.ListFormat('en-US', { style: 'long', type: 'conjunction' });
+
+function monthName(month: number): string {
+  // `?? ''` vì `noUncheckedIndexedAccess`; `monthRanges` đã lọc 1–12 nên không chạy.
+  return MONTH_NAMES[month - 1] ?? '';
+}
 
 /**
- * Biến thể Signature "seasons" — dải 12 tháng, tháng đẹp tô `--primary`, hiện chỉ
- * miền Bắc dùng.
+ * Gom các số tháng rời thành những KHOẢNG LIỀN NHAU, đọc ra chữ: `[3,4,5,9,10,11]`
+ * → `['Mar–May', 'Sep–Nov']`.
  *
- * Thay biến thể `itinerary` bị bác 29/07: khu đó kể hành trình theo NGÀY của MỘT
- * tour, tức là nội dung của `/tours/[slug]` (nơi `ItineraryTimeline` đã làm đúng
- * việc đó). Trang VÙNG phải nói về vùng — mùa đẹp là sự thật về nơi chốn, không
- * phải lời hứa về một sản phẩm cụ thể.
+ * Ba ca phải đúng, cả ba đều có trong mock:
+ *  1. **Vắt qua năm.** Miền Nam là `[12,1,2,3,4]` — một mùa khô LIỀN năm tháng. Coi
+ *     tháng 12 và tháng 1 là hai đầu rời nhau thì in ra 'Dec' và 'Jan–Apr', nói sai
+ *     về chính mùa đó. Vì vậy phép tìm điểm bắt đầu quấn vòng: tháng `m` mở một
+ *     khoảng khi tháng liền TRƯỚC nó (12 nếu `m` là 1) không nằm trong tập.
+ *  2. **Đẹp quanh năm.** Cả 12 tháng trong tập thì KHÔNG tháng nào mở khoảng (tháng
+ *     nào cũng có tháng trước nó trong tập) — vòng lặp trả rỗng, nên phải có nhánh
+ *     riêng trả `Jan–Dec`.
+ *  3. **Tháng đơn lẻ.** `from === to` thì in một tên, không in 'Jul–Jul'.
  *
- * `months` là mảng SỐ THÁNG rời (1–12), KHÔNG phải cặp đầu–cuối: miền Nam là
- * `[12, 1, 2, 3, 4]`, vắt qua năm. Đọc nó như một khoảng min→max là tô nhầm cả
- * tháng 5–11.
+ * Lọc `1..12` và số nguyên trước khi gom: số ngoài dải là dữ liệu hỏng có thật khi
+ * gắn API, và để nó đi tiếp thì `monthName` trả rỗng và câu chữ có một dấu gạch
+ * treo lơ lửng.
+ */
+export function monthRanges(months: readonly number[]): string[] {
+  const set = new Set(months.filter((m) => Number.isInteger(m) && m >= 1 && m <= 12));
+  if (set.size === 0) return [];
+  if (set.size === 12) return [`${monthName(1)}–${monthName(12)}`];
+
+  const ranges: string[] = [];
+  // Quét 1→12 theo thứ tự lịch để thứ tự khoảng in ra không phụ thuộc thứ tự mảng
+  // vào (mock không hứa mảng đã sắp).
+  for (let start = 1; start <= 12; start++) {
+    if (!set.has(start)) continue;
+    const previous = start === 1 ? 12 : start - 1;
+    if (set.has(previous)) continue;
+
+    let end = start;
+    // Đi tới hết chuỗi liền, quấn vòng qua 12→1. `set.size` chặn vòng lặp: một tập
+    // đã loại ca "đủ 12 tháng" thì không thể quấn hết vòng.
+    for (let step = 1; step < set.size; step++) {
+      const next = ((end % 12) + 1) as number;
+      if (!set.has(next)) break;
+      end = next;
+    }
+    ranges.push(start === end ? monthName(start) : `${monthName(start)}–${monthName(end)}`);
+  }
+  return ranges;
+}
+
+/**
+ * Khu "When to visit {region}" — CHỈ miền Bắc dựng, và nó là khu CUỐI trang đó.
+ *
+ * ⚠️ **Dải 12 ô đã BỎ (Task 5k).** Nó là một đồ thị thu nhỏ: 12 ô có mốc, tô màu
+ * theo dữ liệu, kèm chú giải — đúng họ lỗi mà user bác thẳng ở khu phổ (*"ập vào
+ * mặt là một cái đồ thị. Đây là trang giao diện web cho người dùng xem chứ đâu
+ * phải dashboard báo cáo dành cho admin"*). Nay mùa đẹp nói bằng CHỮ ở cỡ display:
+ * "Plan for Mar–May and Sep–Nov if you can choose your dates." Người đọc lấy được
+ * câu trả lời trong một cái nhìn mà không phải giải mã một dải màu.
+ *
+ * Vì sao khu này là khu RIÊNG của miền Bắc: Bắc có HAI mùa đẹp RỜI NHAU. Trung là
+ * một dải liền (Feb–Aug), Nam vắt qua năm (Dec–Apr) — cả hai đọc thành một khoảng,
+ * tức một câu ba chữ, không đủ nuôi một khu.
+ *
+ * ⚠️ **Nền TRANG, không phải băng phớt.** Đây là khu cuối trang Bắc, và
+ * `site-footer.tsx` mang `mt-32` sơn màu `--background`; khu cuối có nền riêng thì
+ * 128px đó hiện ra thành một vạch sáng kẹp giữa khu này và footer. Cơ chế
+ * `data-flush-footer` từng vá chuyện đó đã xoá (Task 5k).
+ *
+ * `months` là mảng SỐ THÁNG rời (1–12), KHÔNG phải cặp đầu–cuối — xem `monthRanges`.
  */
 export function RegionSeasons({
   regionName,
@@ -39,104 +97,44 @@ export function RegionSeasons({
   note: string;
 }) {
   const t = messages.regionPage;
-
-  // Kiểm tra THÀNH VIÊN, không phải khoảng min→max. Bản khoảng đã đo sai: với
-  // miền Nam `[12, 1, 2, 3, 4]` nó tô luôn tháng 5–11, tức là đúng nửa năm mưa.
-  const bestMonths = new Set(months);
-  const isBestMonth = (n: number) => bestMonths.has(n);
-
-  const bestNames = MONTHS.filter((m) => isBestMonth(m.number)).map((m) => m.label);
-  const otherNames = MONTHS.filter((m) => !isBestMonth(m.number)).map((m) => m.label);
+  const ranges = monthRanges(months);
 
   return (
-    <section
-      style={{ background: SIGNATURE_BAND_BG }}
-      className="w-full px-4 py-20 md:px-16 md:py-24 lg:px-24 xl:px-32"
-    >
-      <div className="mx-auto max-w-7xl">
-        <div className="max-w-2xl">
-          {/* `SectionEyebrow` (quy ước toàn site) — `text-foreground`, KHÔNG tô
-              `--primary` lên chữ eyebrow: trên nền băng phớt này primary đo được
-              3.03:1 ở dark, dưới ngưỡng 4.5 của chữ nhỏ. Accent của khu này đi
-              vào NỀN ô tháng, nơi nó cặp với `primary-foreground`. */}
+    <section className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
+      {/* Hai cột: câu HỎI bên trái, câu TRẢ LỜI bên phải. Đây là khu đóng trang Bắc
+          nên nó cố tình là khu thuần chữ — sáu khu trên đã có ảnh, tour card và
+          danh sách; một khu chữ ở cuối là nhịp nghỉ trước footer.
+          `lg:grid-cols-2` chứ không `items-center`: tiêu đề và câu trả lời cùng căn
+          TRÊN, để hai cột đọc như hai đoạn ngang nhau chứ không như một chú thích
+          treo giữa cột kia. */}
+      <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-2 lg:gap-16">
+        <div className="max-w-xl">
+          {/* `SectionEyebrow` là `text-foreground`, KHÔNG tô `--primary`: primary
+              trên nền trang đo 3.03:1 ở dark, dưới ngưỡng 4.5 của chữ nhỏ. */}
           <SectionEyebrow>{t.seasonsEyebrow}</SectionEyebrow>
           <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.seasonsHeading(regionName)}
           </h2>
-          <p className="mt-2 text-lg text-pretty text-muted-foreground">{note}</p>
         </div>
 
-        {/* Điều kiện là "có ô nào được tô không", KHÔNG phải "mảng có phần tử
-            nào không": mảng rỗng (nhánh có thật khi gắn API: vùng chưa có dữ
-            liệu mùa) và mảng toàn số ngoài 1–12 (dữ liệu hỏng) cùng phải rơi vào
-            đây. Cả hai bỏ HẲN dải lẫn chú giải, giữ mỗi ghi chú — một dải 12 ô
-            xám trơn không nói gì, còn nhãn "Best months" đứng cạnh danh sách
-            rỗng thì đọc thành một lời khuyên cụt. */}
-        {bestNames.length > 0 ? (
-          <>
-            {/* Dải là ĐỒ HOẠ thuần: `aria-hidden` để trình đọc màn hình không
-                phải nghe 12 mẩu "Jan Feb Mar…" rời rạc. Toàn bộ thông tin của nó
-                nằm dưới dạng CHỮ trong `<dl>` ngay bên dưới — đó cũng là lý do
-                không dùng `role="img"` + `aria-label`: nội dung phải tồn tại
-                bằng chữ nhìn thấy được cho người mù màu, và nếu đã có chữ thì
-                thêm `aria-label` là bắt trình đọc nói hai lần cùng một câu.
-                Tín hiệu phân biệt KHÔNG chỉ là màu: ô đẹp khác ô thường ở nền,
-                ở độ đậm chữ, và trên hết là ở danh sách tên tháng viết bằng chữ
-                dưới đây — người mù màu đọc được mà không cần phân biệt sắc. */}
-            <ol
-              aria-hidden="true"
-              className="mt-12 grid grid-cols-6 gap-1.5 sm:mt-14 sm:grid-cols-12 sm:gap-2"
-            >
-              {MONTHS.map((month) => {
-                const isBest = isBestMonth(month.number);
-                return (
-                  <li
-                    key={month.number}
-                    data-month={month.number}
-                    data-best={isBest}
-                    className={cn(
-                      'flex h-12 items-center justify-center rounded-lg font-mono text-xs tracking-wider uppercase',
-                      isBest
-                        ? 'bg-primary font-semibold text-primary-foreground'
-                        : 'bg-muted text-muted-foreground',
-                    )}
-                  >
-                    {month.label}
-                  </li>
-                );
-              })}
-            </ol>
-
-            {/* `flex flex-wrap`, KHÔNG `grid-cols-2`: lưới hai cột kéo mục thứ
-                hai ra tận mép phải của khung `max-w-7xl` (đo được ~700px trống ở
-                giữa), đọc thành hai chú giải rời chứ không phải một cặp. */}
-            <dl className="mt-6 flex flex-wrap gap-x-10 gap-y-3 text-sm">
-              <div className="flex items-baseline gap-2.5">
-                {/* Chấm chú giải phải dùng ĐÚNG token của ô tháng đẹp
-                    (`bg-primary`) — lệch một trong hai là chú giải nói dối. */}
-                <span
-                  aria-hidden="true"
-                  className="size-2.5 shrink-0 translate-y-px rounded-[3px] bg-primary"
-                />
-                <dt className="font-medium text-foreground">{t.seasonsBestLabel}</dt>
-                <dd className="text-muted-foreground">{bestNames.join(', ')}</dd>
-              </div>
-              {/* Vùng đẹp quanh năm (nhiệt đới, không mùa mưa rõ rệt) là dữ
-                  liệu hợp lệ — khi đó bỏ hẳn mục này thay vì để nhãn đứng cạnh
-                  danh sách rỗng, vốn đọc thành một lời khuyên cụt. */}
-              {otherNames.length > 0 ? (
-                <div className="flex items-baseline gap-2.5">
-                  <span
-                    aria-hidden="true"
-                    className="size-2.5 shrink-0 translate-y-px rounded-[3px] bg-muted"
-                  />
-                  <dt className="font-medium text-foreground">{t.seasonsOtherLabel}</dt>
-                  <dd className="text-muted-foreground">{otherNames.join(', ')}</dd>
-                </div>
-              ) : null}
-            </dl>
-          </>
-        ) : null}
+        <div className="max-w-xl">
+          {/* Mảng rỗng và mảng toàn số ngoài 1–12 cùng rơi vào đây: bỏ HẲN nhãn và
+              câu tháng đẹp, giữ mỗi ghi chú thời tiết. Nhãn "Best months" đứng trên
+              một khoảng trống đọc thành một lời khuyên cụt. */}
+          {ranges.length > 0 ? (
+            <>
+              <span className="font-mono text-[11px] tracking-widest text-muted-foreground uppercase">
+                {t.seasonsBestLabel}
+              </span>
+              {/* Cỡ display cho câu trả lời — đây là chỗ khu này đặt toàn bộ trọng
+                  lượng thị giác của nó, thay cho dải màu đã bỏ. */}
+              <p className="mt-3 font-heading text-2xl leading-snug font-medium text-balance text-foreground md:text-3xl">
+                {t.seasonsWindow(RANGE_LIST.format(ranges))}
+              </p>
+            </>
+          ) : null}
+          <p className="mt-4 text-pretty text-muted-foreground">{note}</p>
+        </div>
       </div>
     </section>
   );

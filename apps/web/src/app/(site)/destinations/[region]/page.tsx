@@ -1,30 +1,33 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import type { ReactNode } from 'react';
 import { RegionDayTrips } from '@/components/destinations/region-day-trips';
+import { RegionDays } from '@/components/destinations/region-days';
 import { RegionGallery } from '@/components/destinations/region-gallery';
 import { RegionHero, type RegionStat } from '@/components/destinations/region-hero';
 import { RegionIntro } from '@/components/destinations/region-intro';
+import { RegionReviews } from '@/components/destinations/region-reviews';
 import { RegionSeasons } from '@/components/destinations/region-seasons';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
 import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
-import { RegionSpectrum } from '@/components/destinations/region-spectrum';
 import { RegionTours } from '@/components/destinations/region-tours';
-import { RegionValueProps } from '@/components/destinations/region-value-props';
 import { Reveal } from '@/components/motion/reveal';
-import { regionTheme } from '@/lib/region-theme';
+import { type RegionSectionKey, regionTheme } from '@/lib/region-theme';
 import {
   destinationsInRegion,
   longestTourInRegion,
   ownToursInRegion,
   regionBySlug,
   regionGlance,
+  reviewsInRegion,
   toursInRegion,
 } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
 import { formatMoney } from '@/lib/tours';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
+import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
 import { TOURS } from '@/mocks/tours';
 
 /**
@@ -70,55 +73,49 @@ export async function generateMetadata({
 }
 
 /**
- * Trang vùng `/destinations/[region]` — dựng lại theo TRANG VÙNG THẬT của Nexora
- * (user chốt 29/07 sau khi bác bản Task 5). Khung chung, thứ tự khu RIÊNG:
+ * Trang vùng `/destinations/[region]` — **7 khu mỗi miền, 6 khu riêng** (Task 5k,
+ * vòng thiết kế thứ TƯ; user chốt 30/07).
  *
- *  1. Hero                              4. Tours (chip lọc + lưới, phân trang)
- *  2. Intro (chữ + 3 highlight)         5. Khu chữ ký THỨ HAI (Bắc/Trung)
- *  3. Khu MỞ ĐẦU (riêng từng vùng)      6. Gallery → 7. Value props (băng cuối)
+ * Thứ tự khu KHÔNG viết cứng ở đây: trang lặp `regionTheme(key).sections` và
+ * `switch` sang component tương ứng. Bản đồ đầy đủ ba miền cùng lý do từng khu nằm
+ * ở JSDoc `THEMES` trong `lib/region-theme.ts` — đọc ở đó, đừng nhân bản bảng sang
+ * đây rồi để hai bản trôi khỏi nhau.
  *
- * Khu 3 và khu 5 chọn theo `regionTheme()`:
+ * Ràng buộc user chốt: giống hệt cả ba miền chỉ có **hero · lưới 6 tour card ·
+ * footer**; mỗi miền BẮT BUỘC có gallery riêng khác bố cục; **số khu bằng nhau, 7
+ * mỗi miền**. `region-theme.spec.ts` canh cả bốn điều đó, cộng một test đọc chính
+ * file này để bắt ca "thêm khoá vào `sections` mà quên lắp nhánh render".
  *
- *  | vùng  | mở đầu (khu 3)      | chữ ký thứ hai (khu 5) |
- *  | Bắc   | phổ ngày × độ khó   | When to visit          |
- *  | Trung | dải chuyến một ngày | timeline di sản        |
- *  | Nam   | bưu thiếp (emphasis)| — CỐ Ý không có        |
+ * ⚠️ Ba vòng thiết kế trước bị bác, và lần thứ ba đắt nhất: khu phổ ngày × độ khó
+ * là một BIỂU ĐỒ trên trang bán tour — *"khách du lịch vào trang này để tham khảo
+ * xem những gì đặc sắc có ở miền bắc, nhưng ập vào mặt là một cái đồ thị. Đây là
+ * trang giao diện web cho người dùng xem chứ đâu phải dashboard báo cáo dành cho
+ * admin."* Luật rút ra, áp cho mọi khu thêm về sau: phân hoá vùng nói bằng ngôn ngữ
+ * KHÁCH DU LỊCH (nơi chốn, ảnh, lời người đã đi, "bạn có mấy ngày"), không bằng
+ * ngôn ngữ phân tích dữ liệu.
  *
- * Vì sao tách làm hai chỗ thay vì một khu Signature như trước (Task 5j, 29/07):
- * với MỘT khu chữ ký, cả ba trang đọc cùng một thứ tự và user gọi chúng *"na ná,
- * chỉ khác mỗi vài section"* — đo lại thì 5/6 khu giống hệt. Nay khu ĐẦU TIÊN
- * sau intro khác nhau ở cả ba trang, nên ba trang khác nhau ngay từ màn thứ hai.
- *
- * ⚠️ Khu chữ ký thứ hai đứng SAU Tours, KHÔNG liền sau khu mở đầu: hai khu đặc
- * trưng dính nhau thì phần giữa trang thành một cục, và Tours mới là khu người
- * ta tới trang này để tìm.
- *
- * ⚠️ Miền Nam KHÔNG có khu thứ hai và đó là QUYẾT ĐỊNH — xem JSDoc `THEMES` ở
- * `lib/region-theme.ts` cho lý do đầy đủ. Đừng thêm khu cho cân đối.
+ * ⚠️ `data-flush-footer` đã XOÁ cả hai nửa (thuộc tính ở đây và luật
+ * `body:has(main [data-flush-footer]) footer` ở cuối `globals.css`). Nó tồn tại vì
+ * khu CUỐI từng là một băng nền tối; nay khu cuối của cả ba miền (`seasons`,
+ * `dayTrips`, `reviews`) đều dùng nền trang nên 128px margin của footer lại vô hình
+ * như 11 trang khác. Giữ một cơ chế không còn consumer là để lại bẫy.
  *
  * Khu 8 của Nexora (`Plan your trip`) BỎ HẲN: nó là form gợi ý hành trình, thứ
- * capstone không-doanh-thu này không có backend để đỡ.
- *
- * Khu `What makes {region} special` của Nexora KHÔNG còn đứng riêng (29/07):
- * user duyệt khu 2 và chỉ ra bento ảnh của Intro là ảnh LẶP LẠI (gallery khu 5
- * đã là khu ảnh riêng) — bento bị bỏ, ba thẻ highlight của khu kia GỘP vào cột
- * phải của Intro thay chỗ bento. Hệ quả: nhánh `isAdventure`/`signatureFirst`
- * của Nexora (lật thứ tự Signature ↔ Highlights cho miền Bắc) hết đối tượng để
- * lật — đã bỏ khỏi `regionTheme`. Signature giờ LUÔN theo ngay sau Intro, cả
- * ba vùng đọc cùng một thứ tự.
- *
- * HAI khu của Task 5 đã bị XOÁ cùng component của chúng (`region-glance`,
- * `place-card`): Nexora không có dải "at a glance" lẫn danh sách "places" dạng
- * hàng — địa điểm ở đó là TAB LỌC trong khu Tours. Hàm `regionGlance()` thì GIỮ,
- * nó nuôi hàng chip `tags` của khu intro, badge pill và hàng số liệu của hero.
+ * capstone không-doanh-thu này không có backend để đỡ. Khu `We've got you covered`
+ * (value props) BỎ ở Task 5k: nó giống hệt ở cả ba miền và không nói gì về vùng,
+ * nên nó ăn một trong bảy chỗ mà không trả lại gì.
  *
  * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai đoạn
  * static-first). `Reveal` tự mang `'use client'` nên bọc được từ đây.
  */
 export default async function RegionPage({ params }: { params: Promise<{ region: string }> }) {
   const { region: slug } = await params;
-  const region = regionBySlug(REGIONS, slug);
-  if (!region) notFound();
+  const found = regionBySlug(REGIONS, slug);
+  if (!found) notFound();
+  // Gán lại vào một const ĐÃ hẹp kiểu: `renderSection` bên dưới là một closure, và
+  // TS không giữ phép hẹp kiểu từ `if (!found) notFound()` vào trong thân closure —
+  // dùng `found` ở đó là `MockRegion | undefined` mỗi lần.
+  const region = found;
 
   const t = messages.regionPage;
   const theme = regionTheme(region.key);
@@ -126,23 +123,27 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
   const glance = regionGlance(tours);
   const copy = t.regions[region.key];
-  // Miền Bắc KHÔNG còn khối `signature` (khu của nó giờ là dải mùa, đọc từ
-  // `copy.season`), nên phải hỏi trước khi lấy — `t.regions[key]` là union ba
-  // hình dạng, không phải một kiểu duy nhất.
+  // Miền Bắc KHÔNG có khối `signature` (khu riêng của nó là mùa và "mấy ngày"), nên
+  // phải hỏi trước khi lấy — `t.regions[key]` là union ba hình dạng, không phải một
+  // kiểu duy nhất.
   const signature = 'signature' in copy ? copy.signature : null;
 
-  // Chuyến dài nhất RIÊNG của vùng — nuôi ô "Longest trip" của hàng số liệu
-  // trong hero. (Trước 29/07 nó nuôi thêm khu Signature itinerary của miền Bắc;
-  // khu đó đã bỏ, ô số liệu thì còn.)
+  // Chuyến dài nhất RIÊNG của vùng — nuôi ô "Longest trip" của hàng số liệu trong
+  // hero.
   const longestTour = longestTourInRegion(REGIONS, DESTINATIONS, tours, region.key);
 
-  // Chuyến RIÊNG của vùng — nguồn của khu phổ và khu dải một-ngày. `tours` (gom
-  // theo `some()`) KHÔNG dùng được cho hai khu đó: nó kéo theo
-  // `north-to-south-classic` 12 ngày, thứ có mặt ở cả ba vùng. Trên trục ngày
-  // của miền Bắc, một chuyến 12 ngày kéo trục dài gấp rưỡi rồi bóp cụm 1–8 lại
-  // thành một vệt. CÙNG một định nghĩa với `longestTourInRegion` ở trên — cả hai
-  // đi qua `ownToursInRegion`, và `regions.spec.ts` canh chuyện đó.
+  // Chuyến RIÊNG của vùng — nguồn của khu "bạn có mấy ngày" và khu chuyến-một-ngày.
+  // `tours` (gom theo `some()`) KHÔNG dùng được cho hai khu đó: nó kéo theo
+  // `north-to-south-classic` 12 ngày, thứ có mặt ở cả ba vùng, và trên khu "mấy
+  // ngày" nó sẽ nhảy vào nhóm "một tuần trên đường" của cả ba miền. CÙNG một định
+  // nghĩa với `longestTourInRegion` ở trên — cả hai đi qua `ownToursInRegion`, và
+  // `regions.spec.ts` canh chuyện đó.
   const ownTours = ownToursInRegion(REGIONS, DESTINATIONS, tours, region.key);
+
+  // Review của vùng — đi qua `toursInRegion` (CÙNG tập với lưới 6 tour card bên
+  // dưới), nên review của tour xuyên vùng cũng thuộc đây. Xem JSDoc
+  // `reviewsInRegion` cho lý do và cho con số đo được.
+  const reviews = reviewsInRegion(REGIONS, DESTINATIONS, TOURS, TOUR_REVIEWS, region.key);
 
   // ── Hàng số liệu của HERO — DẪN XUẤT ở đây, không gõ tay trong i18n.
   // Nexora gõ tay bốn con số này, nên mỗi lần catalogue đổi là chữ sai âm thầm.
@@ -197,66 +198,83 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
     ],
   };
 
-  // Cả hai khu đặc trưng chọn bằng CẢ HAI điều kiện — bản đồ vùng→khu
-  // (`regionTheme`) VÀ hình dạng dữ liệu thật sự có. Chỉ dựa vào bản đồ là hứa
-  // một khu mà dữ liệu có thể không có; chỉ dựa vào dữ liệu là để nội dung quyết
-  // bố cục. Nexora dùng đúng cặp điều kiện này.
-  //
-  // Khu MỞ ĐẦU — đứng ngay sau Intro, là thứ làm ba trang khác nhau sớm nhất.
-  // `spectrum` và `dayTrips` tự ẩn khi dữ liệu không đủ (tập rỗng / dưới hai
-  // chuyến một ngày), nên ở đây không cần kiểm thêm; `postcards` thì cần vì copy
-  // của nó là khối `signature` mà không phải vùng nào cũng có.
-  const openingNode =
-    theme.openWith === 'spectrum' ? (
-      <RegionSpectrum regionName={region.name} tours={ownTours} />
-    ) : theme.openWith === 'dayTrips' ? (
-      <RegionDayTrips tours={ownTours} />
-    ) : signature && 'postcards' in signature ? (
-      // `emphasis` CHỈ ở đây: miền Nam cố ý không có khu chữ ký thứ hai, nên khu
-      // mở đầu của nó dựng lớn hơn để bù. Xem JSDoc `THEMES` ở region-theme.ts.
-      <RegionSignaturePostcards
-        emphasis
-        eyebrow={signature.eyebrow}
-        heading={signature.heading}
-        body={signature.body}
-        postcards={signature.postcards}
-      />
-    ) : null;
-
-  // Khu chữ ký THỨ HAI — `null` ở miền Nam là giá trị hợp lệ, không phải chỗ
-  // chưa điền. Biến thể `seasons` cần khối `season` của vùng; không có (nhánh có
-  // thật khi gắn API: một vùng mới chưa có copy mùa) thì khu BỎ HẲN — mượn mùa
-  // của vùng khác là nói sai về thời tiết.
-  const secondSignatureNode =
-    theme.secondSignature === 'timeline' && signature && 'timeline' in signature ? (
-      <RegionSignatureTimeline
-        eyebrow={signature.eyebrow}
-        heading={signature.heading}
-        body={signature.body}
-        timeline={signature.timeline}
-      />
-    ) : theme.secondSignature === 'seasons' && 'season' in copy ? (
-      // Không truyền `eyebrow`/`heading`: khu này KHÔNG dùng copy `signature`
-      // riêng từng vùng nữa mà dùng nhãn chung `seasonsEyebrow`/`seasonsHeading`
-      // — tiêu đề sinh từ tên vùng nên không thể trôi khỏi nội dung như
-      // "Great northern adventures" đã trôi.
-      <RegionSeasons regionName={region.name} months={copy.season.months} note={copy.season.note} />
-    ) : null;
-
-  // Badge pill của hero: HAI chuyên mục đầu của vùng, nối bằng ` · `. Hai chứ
-  // không phải cả danh sách — miền Bắc có bốn, và bốn chuyên mục trong một viên
-  // pill thì nó dài bằng cả dòng tagline ngay dưới. Vùng chưa có tour nào thì
-  // chuỗi rỗng và hero bỏ hẳn pill.
-  const styles = (glance?.categories ?? [])
-    .slice(0, 2)
-    .map((category) => category.name)
-    .join(' · ');
+  /**
+   * Một khoá `sections` → một khu.
+   *
+   * Trả `null` là hợp lệ và có hai nguồn: (a) copy của vùng không có khối khu này
+   * cần (`heritage` đòi `signature.timeline`), (b) chính component tự ẩn khi dữ liệu
+   * không đủ (`days`, `dayTrips`, `reviews`). Cả hai đều là quyết định "dữ liệu
+   * quyết nội dung, bản đồ quyết thứ tự" — bản đồ một mình có thể hứa một khu mà
+   * dữ liệu không nuôi được.
+   *
+   * ⚠️ Thêm khoá vào `RegionSectionKey` mà quên thêm `case` ở đây thì khu BIẾN MẤT
+   * im lặng — trang vẫn dựng, chỉ thiếu một băng. `region-theme.spec.ts` đọc chính
+   * file này và đòi có `case '<key>':` cho mọi khoá đang dùng.
+   */
+  function renderSection(key: RegionSectionKey): ReactNode {
+    switch (key) {
+      case 'intro':
+        return (
+          <RegionIntro
+            region={region}
+            variant={theme.introVariant}
+            tags={glance?.categories.map((category) => category.name) ?? []}
+            highlights={copy.highlights}
+          />
+        );
+      case 'gallery':
+        return <RegionGallery region={region} variant={theme.galleryVariant} />;
+      case 'tours':
+        return (
+          <RegionTours
+            tours={tours}
+            places={places.map((place) => ({ slug: place.slug, name: place.name }))}
+          />
+        );
+      case 'heritage':
+        return signature && 'timeline' in signature ? (
+          <RegionSignatureTimeline
+            eyebrow={signature.eyebrow}
+            heading={signature.heading}
+            body={signature.body}
+            timeline={signature.timeline}
+          />
+        ) : null;
+      case 'worlds':
+        return signature && 'postcards' in signature ? (
+          // `emphasis` CHỈ ở đây: khu này là lời mở đầu bằng ảnh của trang Nam (khu
+          // đầu tiên sau hero), nên nó dựng cao hơn cỡ thường.
+          <RegionSignaturePostcards
+            emphasis
+            eyebrow={signature.eyebrow}
+            heading={signature.heading}
+            body={signature.body}
+            postcards={signature.postcards}
+          />
+        ) : null;
+      case 'days':
+        return <RegionDays tours={ownTours} />;
+      case 'dayTrips':
+        return <RegionDayTrips tours={ownTours} />;
+      case 'seasons':
+        // Vùng chưa có copy mùa (nhánh có thật khi gắn API) thì khu BỎ HẲN — mượn
+        // mùa của vùng khác là nói sai về thời tiết.
+        return 'season' in copy ? (
+          <RegionSeasons
+            regionName={region.name}
+            months={copy.season.months}
+            note={copy.season.note}
+          />
+        ) : null;
+      case 'reviews':
+        return <RegionReviews regionName={region.name} reviews={reviews} />;
+    }
+  }
 
   return (
-    // Fragment, KHÔNG một `<div data-region>` bọc toàn trang như trước: thuộc
-    // tính đó chỉ tồn tại để mở scope cho lớp tint `[data-region]`, mà ADR-0015
-    // đã rút lớp ấy — mọi khu của trang giờ đọc thẳng token brand. Giữ lại là
-    // một thuộc tính hứa một cơ chế đã chết.
+    // Fragment, KHÔNG một `<div data-region>` bọc toàn trang như trước: thuộc tính
+    // đó chỉ tồn tại để mở scope cho lớp tint `[data-region]`, mà ADR-0015 đã rút
+    // lớp ấy — mọi khu của trang giờ đọc thẳng token brand.
     <>
       <script
         type="application/ld+json"
@@ -266,59 +284,32 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
         }}
       />
 
-      {/* ── Khu 1 · Hero — KHÔNG bọc `Reveal`: hero tự chạy animate lúc mount
-          (nó ở màn đầu). Bọc thêm một lớp `whileInView` là hai nhịp chồng nhau,
-          và `Reveal` để `opacity: 0` cho tới khi viewport observer bắn — trên màn
-          đầu thì đó là một khoảnh khắc trắng không lý do. ── */}
+      {/* ── Khu 1 · Hero — giống hệt ở cả ba miền, và KHÔNG bọc `Reveal`: hero tự
+          chạy animate lúc mount (nó ở màn đầu). Bọc thêm một lớp `whileInView` là
+          hai nhịp chồng nhau, và `Reveal` để `opacity: 0` cho tới khi viewport
+          observer bắn — trên màn đầu thì đó là một khoảnh khắc trắng không lý do.
+          Badge pill lấy HAI chuyên mục đầu, không cả danh sách: miền Bắc có bốn, và
+          bốn chuyên mục trong một viên pill thì nó dài bằng cả dòng tagline. ── */}
       <RegionHero
         region={region}
-        tagline={t.regions[region.key].tagline}
-        styles={styles}
+        tagline={copy.tagline}
+        styles={(glance?.categories ?? [])
+          .slice(0, 2)
+          .map((category) => category.name)
+          .join(' · ')}
         stats={stats}
       />
 
-      {/* ── Khu 2 · Intro — `tags` dẫn xuất từ chuyên mục của tour trong vùng.
-          `highlights` là khu `What makes X special` cũ của Nexora, GỘP vào cột
-          phải của Intro (29/07) — không còn đứng riêng nên không cần `Reveal`
-          thứ hai cho nó. ── */}
-      <Reveal>
-        <RegionIntro
-          region={region}
-          tags={glance?.categories.map((category) => category.name) ?? []}
-          highlights={t.regions[region.key].highlights}
-        />
-      </Reveal>
+      {/* ── Khu 2–6 · năm khu GIỮA, thứ tự riêng từng miền ──
+          `null` (dữ liệu không đủ nuôi khu) thì KHÔNG bọc `Reveal` quanh nó:
+          `Reveal` là một `motion.div` có thật và một cái rỗng vẫn ăn chỗ trong
+          luồng. ── */}
+      {theme.sections.map((key) => {
+        const node = renderSection(key);
+        return node ? <Reveal key={key}>{node}</Reveal> : null;
+      })}
 
-      {/* ── Khu 3 · Khu MỞ ĐẦU — RIÊNG từng vùng (phổ · dải một-ngày · bưu thiếp).
-          Đây là chỗ ba trang tách khỏi nhau, và nó đứng sớm nhất có thể sau intro
-          vì user đọc ba trang thấy "na ná" chính là do khu này từng giống nhau.
-          Có thể là `null` (dữ liệu không đủ nuôi khu) — khi đó KHÔNG bọc `Reveal`
-          quanh nó, vì `Reveal` là một `motion.div` có thật và một cái rỗng vẫn ăn
-          chỗ trong luồng. ── */}
-      {openingNode ? <Reveal>{openingNode}</Reveal> : null}
-
-      {/* ── Khu 4 · Tours — đích của neo `#tours` ở CTA khu intro ── */}
-      <Reveal>
-        <RegionTours
-          tours={tours}
-          places={places.map((place) => ({ slug: place.slug, name: place.name }))}
-        />
-      </Reveal>
-
-      {/* ── Khu 5 · Khu chữ ký THỨ HAI — SAU Tours, không liền sau khu mở đầu (hai
-          khu đặc trưng dính nhau thì giữa trang thành một cục). `null` ở miền Nam
-          là CHỦ ĐÍCH, không phải thiếu sót — xem `THEMES` ở region-theme.ts. ── */}
-      {secondSignatureNode ? <Reveal>{secondSignatureNode}</Reveal> : null}
-
-      {/* ── Khu 6 · Gallery ── */}
-      <Reveal>
-        <RegionGallery region={region} />
-      </Reveal>
-
-      {/* ── Khu 7 · Value props — khu CUỐI, mang `data-flush-footer` ── */}
-      <Reveal>
-        <RegionValueProps />
-      </Reveal>
+      {/* ── Khu 7 · Footer — do layout dùng chung lo, giống hệt ở cả ba miền ── */}
     </>
   );
 }

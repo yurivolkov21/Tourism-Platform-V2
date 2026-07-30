@@ -27,27 +27,61 @@ const PROPS = {
 };
 
 describe('RegionSeasons', () => {
-  it('vẽ ĐỦ 12 ô tháng, không chỉ các tháng đẹp', () => {
+  // ⚠️ Dải 12 ô đã BỎ (Task 5k). Nó là một đồ thị thu nhỏ — 12 ô có mốc số, tô màu
+  // theo dữ liệu — tức cùng họ lỗi với khu phổ mà user bác thẳng: *"đây là trang
+  // giao diện web cho người dùng xem chứ đâu phải dashboard báo cáo dành cho
+  // admin"*. Test này canh để không ai dựng lại nó.
+  it('KHÔNG còn dải 12 ô tháng nào', () => {
     const { container } = render(<RegionSeasons {...PROPS} />);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(12);
+    expect(container.querySelectorAll('[data-month]')).toHaveLength(0);
+    expect(container.querySelector('ol')).toBeNull();
   });
 
-  it('đánh dấu ĐÚNG các tháng đẹp, không thừa không thiếu', () => {
-    const { container } = render(<RegionSeasons {...PROPS} />);
-    const best = [...container.querySelectorAll('[data-month][data-best="true"]')].map((el) =>
-      Number(el.getAttribute('data-month')),
-    );
-    expect(best).toEqual([3, 4, 5, 9, 10, 11]);
+  it('gom tháng đẹp thành KHOẢNG và nói bằng chữ', () => {
+    render(<RegionSeasons {...PROPS} />);
+    expect(
+      screen.getByText('Plan for Mar–May and Sep–Nov if you can choose your dates.'),
+    ).toBeInTheDocument();
   });
 
-  // Tháng 12 quấn qua tháng 1 ở miền Nam — dải phải đánh dấu cả hai đầu,
-  // không được coi [12,1,2,3,4] là một khoảng liên tục rồi tô nhầm 5..11.
-  it('mùa vắt qua năm (12→4) đánh dấu đúng hai đầu dải', () => {
-    const { container } = render(<RegionSeasons {...PROPS} months={[12, 1, 2, 3, 4]} />);
-    const best = [...container.querySelectorAll('[data-month][data-best="true"]')].map((el) =>
-      Number(el.getAttribute('data-month')),
-    );
-    expect(best).toEqual([1, 2, 3, 4, 12]);
+  it('mảng KHÔNG sắp sẵn vẫn ra đúng hai khoảng', () => {
+    render(<RegionSeasons {...PROPS} months={[11, 3, 10, 4, 9, 5]} />);
+    expect(
+      screen.getByText('Plan for Mar–May and Sep–Nov if you can choose your dates.'),
+    ).toBeInTheDocument();
+  });
+
+  // Miền Nam là `[12, 1, 2, 3, 4]` — VẮT QUA NĂM. Đọc như hai khoảng rời ('Dec' và
+  // 'Jan–Apr') là nói sai về một mùa khô liền mạch năm tháng.
+  it('mùa vắt qua năm nối thành MỘT khoảng', () => {
+    render(<RegionSeasons {...PROPS} months={[12, 1, 2, 3, 4]} />);
+    expect(screen.getByText('Plan for Dec–Apr if you can choose your dates.')).toBeInTheDocument();
+  });
+
+  it('một dải liền dài ra MỘT khoảng', () => {
+    render(<RegionSeasons {...PROPS} months={[2, 3, 4, 5, 6, 7, 8]} />);
+    expect(screen.getByText('Plan for Feb–Aug if you can choose your dates.')).toBeInTheDocument();
+  });
+
+  // Một tháng đơn lẻ phải in 'Jul', không phải 'Jul–Jul'.
+  it('tháng đơn lẻ in một tên, không in khoảng rỗng', () => {
+    render(<RegionSeasons {...PROPS} months={[7]} />);
+    expect(screen.getByText('Plan for Jul if you can choose your dates.')).toBeInTheDocument();
+  });
+
+  it('ba khoảng rời nối bằng dấu phẩy và "and"', () => {
+    render(<RegionSeasons {...PROPS} months={[1, 5, 6, 10]} />);
+    expect(
+      screen.getByText('Plan for Jan, May–Jun, and Oct if you can choose your dates.'),
+    ).toBeInTheDocument();
+  });
+
+  // Vùng đẹp quanh năm là dữ liệu hợp lệ (nhiệt đới, không mùa mưa rõ rệt). Không
+  // có tháng nào "bắt đầu" một khoảng khi cả 12 tháng đều đẹp — nhánh riêng.
+  it('đẹp cả 12 tháng ra đúng một khoảng Jan–Dec', () => {
+    const all = Array.from({ length: 12 }, (_, i) => i + 1);
+    render(<RegionSeasons {...PROPS} months={all} />);
+    expect(screen.getByText('Plan for Jan–Dec if you can choose your dates.')).toBeInTheDocument();
   });
 
   it('in ghi chú thời tiết', () => {
@@ -55,30 +89,48 @@ describe('RegionSeasons', () => {
     expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
   });
 
-  // Vùng đẹp quanh năm là dữ liệu hợp lệ (nhiệt đới, không mùa mưa rõ rệt).
-  // Khi đó nhãn "Shoulder & wet months" không được đứng một mình với danh sách
-  // rỗng — nó sẽ đọc thành một lời khuyên cụt.
-  it('đẹp cả 12 tháng thì BỎ mục chú giải "tháng còn lại", không để nhãn trống', () => {
-    const all = Array.from({ length: 12 }, (_, i) => i + 1);
-    const { container } = render(<RegionSeasons {...PROPS} months={all} />);
-    expect(container.querySelectorAll('[data-month][data-best="true"]')).toHaveLength(12);
-    expect(screen.getByText('Best months')).toBeInTheDocument();
-    expect(screen.queryByText('Shoulder & wet months')).not.toBeInTheDocument();
-  });
-
-  it('không tháng nào thì BỎ HẲN dải, vẫn giữ ghi chú', () => {
-    const { container } = render(<RegionSeasons {...PROPS} months={[]} />);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(0);
-    expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
-  });
-
-  // Số tháng ngoài 1–12 là dữ liệu hỏng. Điều kiện bỏ dải phải hỏi "có ô nào
-  // được tô không", không phải "mảng có phần tử nào không" — nếu không, dải hiện
-  // ra xám trơn kèm nhãn "Best months" trống rỗng.
-  it('số tháng ngoài dải 1–12 thì bỏ dải như khi không có tháng nào', () => {
-    const { container } = render(<RegionSeasons {...PROPS} months={[0, 13, 99]} />);
-    expect(container.querySelectorAll('[data-month]')).toHaveLength(0);
+  it('không tháng nào thì bỏ câu tháng đẹp, vẫn giữ ghi chú', () => {
+    render(<RegionSeasons {...PROPS} months={[]} />);
+    expect(screen.queryByText(/Plan for/)).not.toBeInTheDocument();
     expect(screen.queryByText('Best months')).not.toBeInTheDocument();
     expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
+  });
+
+  // Số tháng ngoài 1–12 là dữ liệu hỏng. Lọc trước khi gom, nếu không 'Invalid
+  // Date' hoặc một tên tháng quấn vòng sẽ lọt ra câu chữ.
+  it('số tháng ngoài dải 1–12 bị bỏ như khi không có tháng nào', () => {
+    render(<RegionSeasons {...PROPS} months={[0, 13, 99]} />);
+    expect(screen.queryByText(/Plan for/)).not.toBeInTheDocument();
+    expect(screen.getByText('Cool, dry and clear.')).toBeInTheDocument();
+  });
+
+  it('lọc số hỏng nhưng GIỮ số hợp lệ trong cùng mảng', () => {
+    render(<RegionSeasons {...PROPS} months={[0, 3, 4, 5, 99]} />);
+    expect(screen.getByText('Plan for Mar–May if you can choose your dates.')).toBeInTheDocument();
+  });
+
+  it('tiêu đề nêu tên vùng', () => {
+    render(<RegionSeasons {...PROPS} />);
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'When to visit Northern Vietnam' }),
+    ).toBeInTheDocument();
+  });
+
+  // ⚠️ Khu này là khu CUỐI của trang miền Bắc. `site-footer.tsx` mang `mt-32` sơn
+  // màu `--background`; khu cuối có nền RIÊNG thì 128px đó hiện ra thành một vạch
+  // sáng kẹp giữa khu này và footer. Cơ chế `data-flush-footer` từng vá chuyện đó
+  // đã xoá (Task 5k) đúng vì cả ba miền giờ kết bằng khu nền-trang.
+  it('dùng NỀN TRANG, không nền băng riêng — nó là khu cuối trang', () => {
+    const { container } = render(<RegionSeasons {...PROPS} />);
+    expect(container.querySelector('section')?.hasAttribute('style')).toBe(false);
+  });
+
+  it('KHÔNG vẽ trục, thanh tỉ lệ hay ô tô theo dữ liệu', () => {
+    const { container } = render(<RegionSeasons {...PROPS} />);
+    expect(container.querySelector('[role="meter"]')).toBeNull();
+    expect(container.querySelector('[role="progressbar"]')).toBeNull();
+    for (const el of container.querySelectorAll<HTMLElement>('[style]')) {
+      expect(el.getAttribute('style')).not.toMatch(/width|height/);
+    }
   });
 });

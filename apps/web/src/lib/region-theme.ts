@@ -1,37 +1,35 @@
 import type { MockRegionKey } from '@/mocks/types';
 
 /**
- * Khu đứng NGAY SAU Intro — thứ người đọc gặp đầu tiên sau hero, nên nó là thứ
- * quyết định "trang này đọc như cái gì". Tên theo CẤU TRÚC nó dựng, không theo
- * tên vùng: `spectrum`/`dayTrips`/`postcards` đọc là biết render gì.
- */
-export type OpeningSection = 'spectrum' | 'dayTrips' | 'postcards';
-
-/**
- * Khu chữ ký thứ hai — đặt SAU khu Tours, không liền sau khu mở đầu: hai khu đặc
- * trưng dính nhau thì phần giữa trang thành một cục, và Tours mới là khu người ta
- * tới để tìm.
+ * Khu GIỮA hero và footer. Tên theo NỘI DUNG khu nói, không theo tên vùng — đọc
+ * `heritage` là biết con đường di sản, đọc `days` là biết khu "bạn có mấy ngày".
  *
- * `null` là một giá trị HỢP LỆ, không phải chỗ chưa điền — xem JSDoc `THEMES`.
- *
- * Miền Bắc đã đi qua HAI biến thể chết, ghi lại để không ai chọn lại:
- *  · `stats` (bỏ 29/07) — dải số liệu chuyển lên hero, giữ ở đây là in cùng bốn
- *    con số hai lần trên một trang.
- *  · `itinerary` (bỏ 29/07) — nó kể hành trình theo ngày của MỘT tour, tức là
- *    nội dung của `/tours/[slug]`, nơi `ItineraryTimeline` đã làm đúng việc đó.
- *    Trang VÙNG phải nói về vùng, nên `seasons` (mùa đẹp của chính vùng).
+ * Chín khoá cho ba trang × năm khu: `intro`/`gallery`/`tours` dùng chung (hai khu
+ * đầu khác BIẾN THỂ ở từng vùng), sáu khoá còn lại mỗi khoá chỉ một vùng dựng —
+ * `region-theme.spec.ts` canh đúng chuyện đó.
  */
-export type SignatureVariant = 'seasons' | 'timeline';
+export type RegionSectionKey =
+  | 'intro'
+  | 'gallery'
+  | 'tours'
+  | 'heritage'
+  | 'worlds'
+  | 'days'
+  | 'dayTrips'
+  | 'seasons'
+  | 'reviews';
 
 export interface RegionTheme {
-  openWith: OpeningSection;
-  secondSignature: SignatureVariant | null;
+  /** Thứ tự khu GIỮA hero và footer. Hero/footer do layout lo. */
+  sections: readonly RegionSectionKey[];
+  galleryVariant: 'peaks' | 'lanterns' | 'panorama';
+  introVariant: 'aside' | 'row' | 'stacked';
 }
 
 /**
- * Nền băng của khu Signature — MỘT nguồn cho cả ba biến thể (`seasons`,
- * `timeline`, `postcards`). Trước ADR-0015 mỗi file tự gõ công thức và chúng đã
- * trôi khỏi nhau (88% · 88% · 92%); gom về đây để ba khu luôn cùng một sắc.
+ * Nền băng phớt — MỘT nguồn cho mọi khu dựng trên băng (`heritage`, `worlds`,
+ * `gallery`). Trước ADR-0015 mỗi file tự gõ công thức và chúng đã trôi khỏi nhau
+ * (88% · 88% · 92%); gom về đây để các khu luôn cùng một sắc.
  *
  * Vì sao 55% chứ không giữ 88% như công thức cũ: công thức cũ pha
  * `--region-surface` — một token SÁNG và BẤT BIẾN theo theme — vào `--background`
@@ -40,47 +38,91 @@ export interface RegionTheme {
  * lệ muted lên 45% đưa băng về lại đúng biên độ cũ mà nay CÂN ở cả hai theme —
  * đo được ΔL −0.028 (light) và +0.053 (dark), so với −0.008 / +0.080 trước đây.
  * Chữ trên băng vẫn thoải mái: `muted-foreground` 5.72:1 light / 6.04:1 dark.
+ *
+ * ⚠️ Khu CUỐI của mỗi miền KHÔNG được dùng băng này. `site-footer.tsx` mang
+ * `mt-32`, và 128px margin đó sơn màu `--background`; khu cuối có nền riêng thì
+ * dải ấy hiện ra thành một vạch sáng kẹp giữa khu cuối và footer. Cơ chế
+ * `data-flush-footer` từng vá chuyện đó đã XOÁ (Task 5k) vì khu cuối của cả ba
+ * miền giờ đều dùng nền trang — `seasons`, `dayTrips`, `reviews`.
  */
 export const SIGNATURE_BAND_BG = 'color-mix(in oklch, var(--muted), var(--background) 55%)';
 
 /**
- * "Xương chung — da riêng": ba vùng dùng chung bộ khung, khác nhau ở CẤU TRÚC
- * khu Signature. Port thẳng ý của `lib/region-theme.ts` bên Nexora, KHÁC hai chỗ:
- *  · Không có `accentText`/`accentBg`/`chipOn`: cả ba vùng dùng CHUNG bảng màu
- *    brand, không có chuỗi class Tailwind riêng theo vùng.
- *  · Khoá bằng `MockRegionKey` (`north`) chứ không bằng slug URL — cùng lý do §7
- *    đã bỏ khoá-bằng-chuỗi-user-facing.
+ * "Xương chung — da riêng": ba vùng dùng chung bộ khung, khác nhau ở THỨ TỰ khu,
+ * ở SÁU khu riêng, và ở BIẾN THỂ của hai khu dùng chung.
  *
- * `signatureFirst` đã BỎ (29/07): khu Highlights không còn đứng riêng (gộp vào
- * cột phải của Intro), nên không còn gì để "lật thứ tự" với Signature nữa —
- * giữ cờ lại là một field chết không ai đọc.
+ * Đây là vòng thiết kế THỨ TƯ của trang vùng. Ba vòng trước bị user bác, và mỗi
+ * lần bác đều để lại một luật:
+ *  1. Bản đầu (rail số liệu + hàng địa điểm) — *"thiết kế không đâu vào đâu"*.
+ *  2. Bản tint theo vùng — *"làm giao diện không đồng nhất"* → rút bằng ADR-0015,
+ *     nên bản sắc vùng do CẤU TRÚC gánh, không do màu.
+ *  3. Bản Task 5j có khu phổ ngày × độ khó — *"khách du lịch vào trang này để
+ *     tham khảo xem những gì đặc sắc có ở miền bắc, nhưng ập vào mặt là một cái
+ *     đồ thị. Đây là trang giao diện web cho người dùng xem chứ đâu phải
+ *     dashboard báo cáo dành cho admin."*
  *
- * `heroMinH` và `scrim` đã BỎ (ADR-0015, 29/07): user bác lớp màu theo vùng và
- * chốt luôn ba hero đồng nhất, nên "mood riêng từng vùng" không còn là bất biến.
- * Chiều cao hero giờ là một hằng tại chỗ trong `region-hero.tsx`, còn scrim thì
- * không còn đối tượng để phủ — hero đã đổi sang nền đặc `bg-hero`.
+ * ⚠️ **Luật rút ra từ lần bác thứ ba, áp cho mọi khu thêm về sau:** phân hoá vùng
+ * nói bằng NGÔN NGỮ KHÁCH DU LỊCH — nơi chốn, ảnh, lời người đã đi, "bạn có mấy
+ * ngày" — không bằng ngôn ngữ phân tích dữ liệu. Thấy mình đang dựng một trục,
+ * một thanh tỉ lệ, hay một dải ô có mốc số thì đó là sai hướng, **kể cả khi số
+ * liệu hoàn toàn thật**. Vì luật này mà `region-spectrum` đã bị xoá hẳn và dải 12
+ * ô của `region-seasons` bị bỏ (nó là một đồ thị thu nhỏ, cùng họ lỗi).
  *
- * `signature` (một field, ba biến thể) đã BỎ 29/07 — Task 5j tách nó thành
- * `openWith` + `secondSignature`. Lý do: với MỘT khu chữ ký, cả ba trang đọc
- * cùng một thứ tự khu và user gọi chúng *"na ná, chỉ khác mỗi vài section"*. Đo
- * lại thì đúng: 5/6 khu giống hệt nhau. Gốc sâu hơn nằm ở mock — nó ĐỐI XỨNG
- * theo thiết kế (3 địa điểm · 6 tour · 5 riêng + 1 xuyên vùng ở cả ba vùng) —
- * nhưng user chốt KHÔNG đụng mock (nó khoá `/tours`, `/about`, `/#gallery` và
- * loạt test 16 tour · 6/6/6 · 25 lượt chạm), nên phân hoá bằng THỨ TỰ KHU.
+ * Ràng buộc user chốt cho bản này:
+ *  · Giống hệt cả ba miền: **hero · lưới 6 tour card · footer** — không hơn.
+ *  · Mỗi miền BẮT BUỘC có gallery riêng, khác BỐ CỤC chứ không chỉ khác số ô.
+ *  · **Số khu bằng nhau: 7 mỗi miền** (hero + 5 + footer).
  *
- * ⚠️ **Miền Nam CỐ Ý không có `secondSignature`, và đó là quyết định, không phải
- * thiếu sót.** Nam mỏng dữ liệu nhất trong ba vùng: chuyến riêng chỉ 1–3 ngày,
- * độ khó dừng ở Moderate (còn một tour `difficulty: null`), giảm giá 1/6. Mọi
- * khu thứ hai nghĩ ra cho nó đều trùng HÌNH với khu đã có — thang giá cũng là
- * một trục, cùng họ với phổ của Bắc — hoặc phải bịa ra dữ liệu không có. Ép cho
- * đủ đối xứng chính là cái bẫy vừa làm hỏng phương án màu (ADR-0015): hình thù
- * không cắm vào sự thật nào. Bù lại, Nam truyền `emphasis` cho khu bưu thiếp để
- * khu mở đầu của nó dựng lớn hơn hai vùng kia. Đừng "bổ sung cho đủ".
+ * Vì sao KHÔNG phân hoá bằng dữ liệu: mock ĐỐI XỨNG theo thiết kế (3 địa điểm ·
+ * 6 tour · 5 riêng + 1 xuyên vùng ở cả ba vùng) và user chốt không đụng mock (nó
+ * khoá `/tours`, `/about`, `/#gallery` và loạt test 16 tour · 6/6/6 · 25 lượt
+ * chạm). Nên phân hoá bằng THỨ TỰ KHU và bằng SÁU khu riêng.
+ *
+ * Bản đồ khu — mỗi cột là một trang đọc theo thứ tự từ trên xuống:
+ *
+ * | # | BẮC | TRUNG | NAM |
+ * | 1 | Hero | Hero | Hero |
+ * | 2 | Intro `aside` | Con đường di sản | Ba thế giới |
+ * | 3 | Gallery `peaks` | Intro `row` | Intro `stacked` |
+ * | 4 | Lưới 6 tour | Lưới 6 tour | Lưới 6 tour |
+ * | 5 | Bạn có mấy ngày? | Gallery `lanterns` | Gallery `panorama` |
+ * | 6 | When to visit | Một ngày ở miền Trung | Khách nói gì |
+ * | 7 | Footer | Footer | Footer |
+ *
+ * Mỗi khu riêng cắm vào một SỰ THẬT của vùng, không phải một khuôn đem áp cho đủ:
+ *  · Bắc `days` — vùng DUY NHẤT trải 1→8 ngày (chuyến riêng: 1,2,2,3,8).
+ *  · Bắc `seasons` — hai mùa đẹp rời nhau (Mar–May, Sep–Nov), thứ hai vùng kia
+ *    không có: Trung một dải liền, Nam vắt qua năm.
+ *  · Trung `heritage` — Huế → Hội An → Mỹ Sơn là một trục có hướng.
+ *  · Trung `dayTrips` — **bốn trên năm** chuyến riêng gói trong một ngày.
+ *  · Nam `worlds` — ba thế giới rời nhau (delta · thành phố · đảo), nên dẫn bằng
+ *    ảnh; `emphasis` dựng ô cao hơn.
+ *  · Nam `reviews` — 20 review THẬT của vùng, nhiều nhất trên một khu chưa dùng.
+ *
+ * ⚠️ Khu CUỐI của cả ba miền (`seasons`, `dayTrips`, `reviews`) dùng NỀN TRANG —
+ * xem cảnh báo ở `SIGNATURE_BAND_BG`. Đổi thứ tự mà đưa một khu-có-băng xuống
+ * cuối là làm dải sáng 128px trên footer hiện lại, và Vitest không bắt được.
+ *
+ * ⚠️ Hai khu đặc trưng KHÔNG dính nhau: khu riêng thứ nhất đứng quanh Intro, khu
+ * riêng thứ hai đứng SAU Tours. Hai khu đặc trưng liền nhau thì phần giữa trang
+ * thành một cục, và Tours mới là khu người ta tới trang này để tìm.
  */
 const THEMES: Record<MockRegionKey, RegionTheme> = {
-  north: { openWith: 'spectrum', secondSignature: 'seasons' },
-  central: { openWith: 'dayTrips', secondSignature: 'timeline' },
-  south: { openWith: 'postcards', secondSignature: null },
+  north: {
+    sections: ['intro', 'gallery', 'tours', 'days', 'seasons'],
+    galleryVariant: 'peaks',
+    introVariant: 'aside',
+  },
+  central: {
+    sections: ['heritage', 'intro', 'tours', 'gallery', 'dayTrips'],
+    galleryVariant: 'lanterns',
+    introVariant: 'row',
+  },
+  south: {
+    sections: ['worlds', 'intro', 'tours', 'gallery', 'reviews'],
+    galleryVariant: 'panorama',
+    introVariant: 'stacked',
+  },
 };
 
 export function regionTheme(key: MockRegionKey): RegionTheme {

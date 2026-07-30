@@ -715,7 +715,6 @@ export const messages = {
         dùng SỐ TOUR dẫn xuất, đúng cách `region-group.tsx` làm ở trang index. */
     introEyebrow: 'Overview',
     galleryEyebrow: 'Gallery',
-    valuePropsEyebrow: 'How we travel',
     introHeading: (region: string) => `The best ${region} tours`,
     /** CTA cuối khu intro. Nexora trỏ `#itineraries` (trang họ không có) — ở đây
         trỏ neo `#tours` NGAY TRÊN CÙNG TRANG, là khu có thật. */
@@ -729,7 +728,10 @@ export const messages = {
     galleryHeading: (region: string) => `${region} in photos`,
     gallerySubtitle: 'A glimpse of the landscapes, towns, and moments that await.',
     /**
-     * Nhãn 10 ô khảm của khu ảnh — ĐÚNG 10, khớp nhịp `1 lớn · 2×2 · 2×2 · 1 lớn`.
+     * Nhãn ô của khu ảnh — ĐÚNG 10, đủ cho biến thể nhiều ô nhất (`lanterns`).
+     * Ba biến thể dùng số ô khác nhau (peaks 8 · lanterns 10 · panorama 3) và mỗi
+     * biến thể CẮT lấy phần đầu của danh sách này. Cần ít hơn 10 thì cắt, KHÔNG
+     * bịa thêm nhãn: một nhãn không mô tả ô nào là một `aria-label` nói sai.
      *
      * Mô tả CẢNH chung, cố ý KHÔNG gắn địa danh (Nexora làm y vậy ở
      * `PLACEHOLDER_SECTIONS`): cùng một danh sách phục vụ cả ba vùng, nên gắn tên
@@ -758,23 +760,14 @@ export const messages = {
     },
     seasonsEyebrow: 'Seasons',
     seasonsHeading: (region: string) => `When to visit ${region}`,
-    /** Chú giải dải tháng — dải là đồ hoạ nên cần nhãn chữ cho trình đọc màn hình. */
+    /** Nhãn của các khoảng tháng đẹp. Dải 12 ô đã BỎ (Task 5k) — nó là một đồ thị
+        thu nhỏ, cùng họ lỗi với khu phổ user vừa bác. Nay tháng đẹp nói bằng CHỮ,
+        nên nhãn này đứng trên hai chip khoảng tháng thay vì trên một chú giải. */
     seasonsBestLabel: 'Best months',
-    seasonsOtherLabel: 'Shoulder & wet months',
-    /** Khu phổ ngày × độ khó — CHỈ miền Bắc dựng (vùng duy nhất trải 1–8 ngày và
-        chạm bậc Challenging; hai vùng kia vẽ ra một cụm phẳng). */
-    spectrum: {
-      eyebrow: 'The range',
-      heading: (region: string) => `From a day out to a week on the trail in ${region}`,
-      subtitle:
-        'The north is the only region that runs the whole way from an easy morning to a hard week — pick the depth you want.',
-      /** Nhãn trục. `daysAxis` đứng dưới thước ngang, `gradeAxis` mở đầu chú giải. */
-      daysAxis: 'Trip length',
-      gradeAxis: 'Grade',
-      /** `difficulty` của contract là nullable. Bậc thiếu phải có TÊN riêng —
-          bỏ trống ô thì thanh vẫn vẽ mà không ai biết nó nghĩa gì. */
-      ungraded: 'Not graded',
-    },
+    /** Câu dẫn của khu mùa. `months` là các khoảng đã nối sẵn ("Mar–May and
+        Sep–Nov") — nối ở tầng component vì đó là format DỮ LIỆU (`Intl`), không
+        phải copy. Câu bảo người đọc LÀM GÌ, không chỉ nêu một sự thật. */
+    seasonsWindow: (months: string) => `Plan for ${months} if you can choose your dates.`,
     /** Khu bốn chuyến một ngày — CHỈ miền Trung dựng. */
     dayTrips: {
       eyebrow: 'Out and back',
@@ -782,25 +775,33 @@ export const messages = {
       subtitle:
         'The centre is compact enough to see properly without packing a bag — leave after breakfast, back before dark.',
     },
-    // "We've got you covered" — GIỮ khu, VIẾT LẠI nội dung. Bản Nexora hứa
-    // "Luxury transfers" và "vetted private drivers": không field nào đỡ, trên một
-    // capstone KHÔNG doanh thu. Ba mục dưới đây đều tựa vào thứ mock có thật —
-    // `maxGroupSize` (12), giọng đã dùng ở footer, và `included`/`excluded`.
-    valuePropsHeading: "We've got you covered",
-    valueProps: [
-      {
-        title: 'Small groups',
-        body: 'Twelve travellers at most, so you are never following a flag through a crowd.',
+    /** "Bạn có mấy ngày?" — CHỈ miền Bắc. Ba lối vào theo thời lượng; đây là bản
+        THAY THẾ cho khu biểu đồ bị bác, nói cùng sự thật (Bắc là vùng duy nhất
+        trải 1–8 ngày) bằng ngôn ngữ khách: "bạn có mấy ngày?" */
+    days: {
+      eyebrow: 'How long have you got',
+      heading: 'A morning, a weekend, or a week on the trail',
+      subtitle:
+        'The north is the only region that stretches the whole way — start with what your calendar allows.',
+      brackets: {
+        short: { title: 'One day', body: 'Out after breakfast, back before dark.' },
+        weekend: { title: 'A weekend', body: 'One night out — a bay, a valley, or a homestay.' },
+        long: {
+          title: 'A week on the trail',
+          body: 'The long way round, over the passes and back.',
+        },
       },
-      {
-        title: 'Local guides',
-        body: 'Led by people who grew up in the valleys, old towns and delta villages you came to see.',
-      },
-      {
-        title: 'Clear inclusions',
-        body: 'Every trip lists what is covered and what is not, before you book.',
-      },
-    ],
+      /** Nhãn số chuyến trong mỗi nhóm. */
+      tripCount: (n: number) => `${n} ${n === 1 ? 'trip' : 'trips'}`,
+    },
+    /** "Khách nói gì" — CHỈ miền Nam. Review THẬT lọc theo vùng. */
+    reviews: {
+      eyebrow: 'From people who went',
+      heading: (region: string) => `What travellers say about ${region}`,
+      subtitle: 'Unedited, from the trips below.',
+      /** Dòng ghi công: review này thuộc tour nào. */
+      onTrip: (tour: string) => `on ${tour}`,
+    },
     regions: {
       north: {
         tagline: 'From Sa Pa to Hạ Long Bay — culture and natural wonders in the misty north.',
@@ -825,8 +826,10 @@ export const messages = {
           },
         ],
         /** Mùa đẹp nhất — mảng SỐ THÁNG (1–12), không phải chuỗi 'Mar–May'.
-            Dải 12 ô ở `region-seasons.tsx` đọc thẳng mảng này; nếu lưu chuỗi thì
-            component phải parse copy, và copy sửa một chữ là dải vỡ âm thầm. */
+            `region-seasons.tsx` GOM mảng này thành các khoảng liền nhau rồi in ra
+            'Mar–May' / 'Sep–Nov'; lưu sẵn chuỗi thì component phải parse copy, và
+            copy sửa một chữ là khu vỡ âm thầm. Bắc có HAI khoảng rời nhau — thứ
+            hai vùng kia không có, nên khu này là khu riêng của Bắc. */
         season: {
           months: [3, 4, 5, 9, 10, 11],
           note: 'Cool, dry and clear — ideal for Hạ Long and the mountains. Winters turn chilly up high; summers bring rain.',
@@ -879,9 +882,9 @@ export const messages = {
             },
           ],
         },
-        /** Xem ghi chú ở `north.season`. Miền Trung chưa render dải này (khu
-            Signature của nó là `timeline`) — giữ để ba vùng cùng một hình dạng
-            dữ liệu, và vì đây là nội dung đã có sẵn từ khối `bestTime` cũ. */
+        /** Xem ghi chú ở `north.season`. Miền Trung KHÔNG render khu mùa (khu mùa
+            là khu riêng của Bắc) — giữ để ba vùng cùng một hình dạng dữ liệu, và
+            vì đây là nội dung đã có sẵn từ khối `bestTime` cũ. */
         season: {
           months: [2, 3, 4, 5, 6, 7, 8],
           note: 'Warm and dry along the coast and old towns. Avoid Oct–Dec, the wettest and most storm-prone months.',
@@ -922,8 +925,9 @@ export const messages = {
           ],
         },
         /** Xem ghi chú ở `north.season`. Mùa VẮT QUA NĂM (12 → 4): mảng liệt kê
-            từng tháng chứ không phải cặp đầu–cuối, nên dải không cần biết mùa có
-            quấn vòng hay không. */
+            từng tháng chứ không phải cặp đầu–cuối. Phép gom khoảng ở
+            `region-seasons.tsx` phải nối 12 với 1 để ra 'Dec–Apr' thay vì hai
+            khoảng rời — có test canh, dù miền Nam không render khu mùa. */
         season: {
           months: [12, 1, 2, 3, 4],
           note: 'The dry season for the Mekong and the islands. May–Nov is wetter but stays warm with short showers.',

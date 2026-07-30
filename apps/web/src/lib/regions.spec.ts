@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
+import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
 import { TOURS } from '@/mocks/tours';
 import {
   destinationsInRegion,
@@ -9,6 +10,7 @@ import {
   regionBySlug,
   regionGlance,
   regionOf,
+  reviewsInRegion,
   toursInRegion,
 } from './regions';
 
@@ -216,8 +218,9 @@ describe('ownToursInRegion — TẬP chuyến riêng của vùng', () => {
   });
 
   it('chuyến dài nhất CHÍNH LÀ chuyến dài nhất của tập này — một định nghĩa, hai chỗ dùng', () => {
-    // Bất biến chống trôi: `longestTourInRegion` và khu phổ phải nói về CÙNG một
-    // tập tour. Hai bản định nghĩa song song là hai con số rồi sẽ lệch im lặng.
+    // Bất biến chống trôi: `longestTourInRegion` và khu "bạn có mấy ngày" phải nói
+    // về CÙNG một tập tour. Hai bản định nghĩa song song là hai con số rồi sẽ lệch
+    // im lặng.
     for (const region of REGIONS) {
       const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
       const own = ownToursInRegion(REGIONS, DESTINATIONS, tours, region.key);
@@ -225,5 +228,85 @@ describe('ownToursInRegion — TẬP chuyến riêng của vùng', () => {
       const maxDays = Math.max(...own.map((tour) => tour.durationDays));
       expect(longest?.durationDays, region.key).toBe(maxDays);
     }
+  });
+});
+
+describe('reviewsInRegion — review THẬT của một vùng, phẳng và mới nhất trước', () => {
+  const north = reviewsInRegion(REGIONS, DESTINATIONS, TOURS, TOUR_REVIEWS, 'north');
+  const central = reviewsInRegion(REGIONS, DESTINATIONS, TOURS, TOUR_REVIEWS, 'central');
+  const south = reviewsInRegion(REGIONS, DESTINATIONS, TOURS, TOUR_REVIEWS, 'south');
+
+  // Đếm tay trên mock (30/07): Bắc = 14 (ha-long-bay-cruise) + 9
+  // (northern-highlands-loop) + 4 (sa-pa-terraces-trek) + 4 (ninh-binh-river-caves)
+  // + 1 (sa-pa-homestay-weekend) + 5 (north-to-south-classic) = 37.
+  // Trung = 5 + 6 + 4 + 4 + 3 + 5 = 27. Nam = 7 + 5 + 4 + 4 + 0 + 5 = 25.
+  it('đúng tổng review cho từng vùng', () => {
+    expect(north).toHaveLength(37);
+    expect(central).toHaveLength(27);
+    expect(south).toHaveLength(25);
+  });
+
+  // 79 review trong mock, nhưng 5 review của tour xuyên vùng được đếm ở CẢ BA vùng
+  // → 89. Test này tồn tại để không ai "sửa" tổng thành phép cộng dồn ba vùng.
+  it('tổng ba vùng KHÔNG bằng tổng review trong mock — cấm cộng dồn', () => {
+    const flat = Object.values(TOUR_REVIEWS).reduce((sum, list) => sum + list.length, 0);
+    expect(flat).toBe(79);
+    expect(north.length + central.length + south.length).toBe(89);
+  });
+
+  it('sắp theo NGÀY MỚI NHẤT trước', () => {
+    const dates = north.map((item) => item.review.createdAt);
+    expect(dates).toEqual([...dates].sort().reverse());
+    expect(dates.length).toBeGreaterThan(1);
+  });
+
+  it('mỗi mục mang slug và tiêu đề của tour đã sinh ra review đó', () => {
+    for (const item of south) {
+      const tour = TOURS.find((candidate) => candidate.slug === item.tourSlug);
+      expect(tour, item.tourSlug).toBeDefined();
+      expect(item.tourTitle).toBe(tour?.title);
+      expect(TOUR_REVIEWS[item.tourSlug]).toContain(item.review);
+    }
+  });
+
+  // `phu-quoc-reef-days` có `ratingAvg: null` và KHÔNG có khoá nào trong
+  // TOUR_REVIEWS. Truy cập thiếu khoá phải trả rỗng, không ném.
+  it('tour không có review nào không làm vỡ gì', () => {
+    const southSlugs = toursInRegion(REGIONS, DESTINATIONS, TOURS, 'south').map((t) => t.slug);
+    expect(southSlugs).toContain('phu-quoc-reef-days');
+    expect(TOUR_REVIEWS['phu-quoc-reef-days']).toBeUndefined();
+    expect(south.some((item) => item.tourSlug === 'phu-quoc-reef-days')).toBe(false);
+  });
+
+  // Tour xuyên vùng có mặt trong lưới 6 tour của CẢ BA trang (`toursInRegion` gom
+  // theo `some()`), nên review của nó cũng thuộc cả ba. Dòng ghi công `on <tour>`
+  // ở khu review là thứ giữ chuyện đó khỏi thành nói sai: người đọc thấy ngay
+  // review nói về chuyến 12 ngày nào.
+  it('review của tour XUYÊN VÙNG xuất hiện ở cả ba vùng', () => {
+    for (const [key, list] of [
+      ['north', north],
+      ['central', central],
+      ['south', south],
+    ] as const) {
+      const cross = list.filter((item) => item.tourSlug === 'north-to-south-classic');
+      expect(cross, key).toHaveLength(5);
+    }
+  });
+
+  // `ha-long-bay-cruise` chạm cả `ha-long` và `ninh-binh` (đều vùng Bắc). Gom theo
+  // địa điểm thay vì theo tour distinct là đếm 14 review của nó HAI lần.
+  it('tour chạm hai địa điểm cùng vùng không bị đếm hai lần', () => {
+    const cruise = north.filter((item) => item.tourSlug === 'ha-long-bay-cruise');
+    expect(cruise).toHaveLength(14);
+    const ids = cruise.map((item) => item.review.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it('không tour nào thì trả mảng rỗng', () => {
+    expect(reviewsInRegion(REGIONS, DESTINATIONS, [], TOUR_REVIEWS, 'north')).toEqual([]);
+  });
+
+  it('không review nào thì trả mảng rỗng', () => {
+    expect(reviewsInRegion(REGIONS, DESTINATIONS, TOURS, {}, 'north')).toEqual([]);
   });
 });

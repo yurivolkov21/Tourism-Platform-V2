@@ -1,50 +1,88 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
-import { regionTheme } from './region-theme';
+import type { MockRegionKey } from '@/mocks/types';
+import { type RegionSectionKey, regionTheme } from './region-theme';
 
-describe('regionTheme', () => {
-  // Bất biến CỦA CẢ CỤM: ba trang phải MỞ ĐẦU khác nhau. Trước 5j cả ba mở bằng
-  // đúng một khu (Signature ngay sau Intro) nên user đọc ba trang thấy "na ná".
-  it('mỗi vùng mở đầu bằng một khu KHÁC nhau — đó là cả điểm của việc phân hoá', () => {
-    const openings = REGIONS.map((r) => regionTheme(r.key).openWith);
-    expect(new Set(openings).size).toBe(3);
-  });
+const KEYS: MockRegionKey[] = ['north', 'central', 'south'];
 
-  it('Bắc mở bằng phổ, Trung mở bằng dải một-ngày, Nam mở bằng bưu thiếp', () => {
-    // Khu mở đầu cắm vào SỰ THẬT dữ liệu của từng vùng (đo 29/07):
-    //  · Bắc là vùng DUY NHẤT trải 1→8 ngày và chạm bậc Challenging → phổ.
-    //  · Trung có 4/5 chuyến riêng gói gọn trong một ngày → dải một-ngày.
-    //  · Nam mỏng dữ liệu nhất nhưng bán cảnh → bưu thiếp dẫn bằng ảnh.
-    expect(regionTheme('north').openWith).toBe('spectrum');
-    expect(regionTheme('central').openWith).toBe('dayTrips');
-    expect(regionTheme('south').openWith).toBe('postcards');
-  });
+/** Số khu GIỮA hero và footer. Bảy khu mỗi miền là ràng buộc user chốt, và hai
+    trong bảy là hero + footer do layout lo → còn đúng năm ở `sections`. */
+const MIDDLE_SECTIONS = 5;
 
-  it('Bắc và Trung có khu chữ ký thứ hai, mỗi vùng một biến thể khác nhau', () => {
-    expect(regionTheme('north').secondSignature).toBe('seasons');
-    expect(regionTheme('central').secondSignature).toBe('timeline');
-  });
+/** Khu chỉ được xuất hiện ở ĐÚNG MỘT miền — "6 khu riêng, không khu nào lặp". */
+const UNIQUE: RegionSectionKey[] = ['heritage', 'worlds', 'days', 'dayTrips', 'seasons', 'reviews'];
 
-  // ĐỪNG "bổ sung cho đủ đối xứng". Xem JSDoc `THEMES` trong region-theme.ts:
-  // mọi khu thứ hai nghĩ ra cho Nam đều trùng hình với khu đã có hoặc phải bịa.
-  it('CHỈ miền Nam không có khu chữ ký thứ hai — chủ đích, không phải thiếu sót', () => {
-    const withoutSecond = REGIONS.filter((r) => regionTheme(r.key).secondSignature === null);
-    expect(withoutSecond.map((r) => r.key)).toEqual(['south']);
-  });
-
-  // Khu mở đầu và khu chữ ký thứ hai KHÔNG được là cùng một thứ trên một trang —
-  // in hai lần cùng một khu là đúng thứ "na ná" mà task này đi sửa.
-  it('không vùng nào dựng cùng một khu hai lần', () => {
-    for (const region of REGIONS) {
-      const theme = regionTheme(region.key);
-      expect(theme.openWith, region.key).not.toBe(theme.secondSignature);
+describe('regionTheme — thứ tự khu và biến thể theo vùng', () => {
+  it('ba vùng đều có ĐÚNG 5 khu giữa — bảy khu tính cả hero và footer', () => {
+    for (const key of KEYS) {
+      expect(regionTheme(key).sections.length, key).toBe(MIDDLE_SECTIONS);
     }
   });
 
-  // Field `signature` đã bị `openWith` + `secondSignature` thay thế (Task 5j).
-  // Test "ba biến thể signature khác nhau" cũ đã XOÁ cùng nó — nó đọc một field
-  // không còn tồn tại. Test "hero của Bắc CAO hơn" xoá trước đó (ADR-0015).
-  it('không còn field `signature` — nó đã bị hai field thứ-tự-khu thay thế', () => {
-    expect('signature' in regionTheme('north')).toBe(false);
+  it('mọi vùng trong REGIONS đều có theme — không vùng nào rơi ra ngoài bản đồ', () => {
+    for (const region of REGIONS) {
+      expect(regionTheme(region.key).sections.length, region.key).toBe(MIDDLE_SECTIONS);
+    }
+  });
+
+  it('ba galleryVariant KHÁC nhau — mỗi miền một bố cục ảnh riêng', () => {
+    const variants = KEYS.map((key) => regionTheme(key).galleryVariant);
+    expect(new Set(variants).size).toBe(KEYS.length);
+  });
+
+  it('ba introVariant KHÁC nhau', () => {
+    const variants = KEYS.map((key) => regionTheme(key).introVariant);
+    expect(new Set(variants).size).toBe(KEYS.length);
+  });
+
+  it('thứ tự khu của ba vùng không trùng nhau', () => {
+    const orders = KEYS.map((key) => regionTheme(key).sections.join('>'));
+    expect(new Set(orders).size).toBe(KEYS.length);
+  });
+
+  // User chốt: ĐÚNG ba thứ giống hệt cả ba miền — hero, lưới 6 tour card, footer.
+  // Hero/footer do layout lo nên chỉ `tours` nằm trong `sections`. (`intro` và
+  // `gallery` cũng có ở cả ba nhưng KHÁC biến thể, nên chúng không "giống hệt".)
+  it('`tours` có mặt ở cả ba vùng, đúng một lần mỗi vùng', () => {
+    for (const key of KEYS) {
+      const tours = regionTheme(key).sections.filter((section) => section === 'tours');
+      expect(tours, key).toHaveLength(1);
+    }
+  });
+
+  // Sáu khu RIÊNG là cách ba trang tách khỏi nhau (user gọi bản một-khu-chữ-ký là
+  // *"na ná"*). Một khu lọt sang miền thứ hai là mất một phần phân hoá, và mất
+  // IM LẶNG — không có gì trên màn hình nói cho biết.
+  it('sáu khu riêng mỗi khu chỉ ở ĐÚNG MỘT miền', () => {
+    for (const unique of UNIQUE) {
+      const owners = KEYS.filter((key) => regionTheme(key).sections.includes(unique));
+      expect(owners, unique).toHaveLength(1);
+    }
+  });
+
+  it('mỗi miền dùng đúng hai khu riêng — 6 khu chia đều cho 3 miền', () => {
+    for (const key of KEYS) {
+      const own = regionTheme(key).sections.filter((section) => UNIQUE.includes(section));
+      expect(own, key).toHaveLength(2);
+    }
+  });
+
+  // Bất biến chống "thêm key mà quên lắp": `sections` là danh sách chuỗi, nên thêm
+  // một khoá vào đó mà không thêm nhánh render ở `page.tsx` thì khu đó BIẾN MẤT im
+  // lặng — trang vẫn dựng, chỉ thiếu một băng. Đọc chính source của page là cách
+  // duy nhất canh được từ tầng unit test: page là Server Component async, Vitest
+  // không render nó (và `src/app/**` không nằm trong `include` của runner).
+  it('mọi khu trong sections đều có nhánh render ở page.tsx', () => {
+    const source = readFileSync(
+      fileURLToPath(new URL('../app/(site)/destinations/[region]/page.tsx', import.meta.url)),
+      'utf8',
+    );
+    const used = new Set(KEYS.flatMap((key) => [...regionTheme(key).sections]));
+    expect(used.size).toBe(9);
+    for (const section of used) {
+      expect(source, section).toContain(`case '${section}':`);
+    }
   });
 });

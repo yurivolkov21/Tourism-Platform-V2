@@ -42,9 +42,10 @@ describe('RegionSignaturePostcards', () => {
     expect(screen.getByRole('heading', { level: 3, name: 'Phú Quốc' })).toBeInTheDocument();
   });
 
-  // `emphasis` là cách miền Nam BÙ cho việc cố ý không có khu chữ ký thứ hai
-  // (xem JSDoc `THEMES` ở lib/region-theme.ts). Prop bị bỏ quên = Nam mất phần
-  // bù mà không có gì báo, nên bất biến này được canh chứ không để mắt trông.
+  // `emphasis` dựng khu cao hơn vì đây là khu ĐẦU TIÊN sau hero của trang Nam —
+  // lời mở đầu bằng ảnh của cả trang (xem JSDoc component). Prop bị bỏ quên = trang
+  // Nam mở bằng một khu cỡ thường mà không có gì báo, nên bất biến này được canh
+  // chứ không để mắt trông.
   it('emphasis dựng ô CAO hơn — đó là toàn bộ tác dụng của prop', () => {
     const { container: plain } = render(<RegionSignaturePostcards {...PROPS} />);
     const { container: big } = render(<RegionSignaturePostcards {...PROPS} emphasis />);

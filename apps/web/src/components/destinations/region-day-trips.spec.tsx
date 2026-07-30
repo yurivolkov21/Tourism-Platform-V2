@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MockTourCard } from '@/mocks/types';
+import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
 import { RegionDayTrips } from './region-day-trips';
 
 beforeAll(() => {
@@ -21,14 +21,16 @@ beforeAll(() => {
   );
 });
 
-/** Fixture tối giản — chỉ những field khu này thật sự đọc mang giá trị có nghĩa. */
+/** Fixture tối giản — chỉ những field khu này thật sự đọc mang giá trị có nghĩa.
+    `day1` là tiêu đề ngày 1 của hành trình, thứ khu này in làm câu mô tả. */
 function tour(
   slug: string,
   title: string,
   durationDays: number,
   basePrice: string,
   category: string,
-): MockTourCard {
+  day1: string | null = null,
+): MockTourCard & { itinerary?: MockItineraryDay[] } {
   return {
     id: `id-${slug}`,
     slug,
@@ -45,15 +47,44 @@ function tour(
     category: { slug: category.toLowerCase(), name: category },
     ratingAvg: null,
     ratingCount: 0,
+    ...(day1 === null ? {} : { itinerary: [{ dayNumber: 1, title: day1, description: null }] }),
   };
 }
 
 /** Hình dạng thật của miền Trung: BỐN chuyến một ngày cộng một chuyến 6 ngày. */
 const CENTRAL = [
-  tour('hoi-an-lantern-evening', 'Hội An Lantern Evening', 1, '59.00', 'Culture & heritage'),
-  tour('hue-imperial-day', 'Huế Imperial Day', 1, '75.00', 'Culture & heritage'),
-  tour('da-nang-coast-ride', 'Đà Nẵng Coast Ride', 1, '89.00', 'Scenic routes'),
-  tour('hoi-an-cooking-market', 'Hội An Cooking Market', 1, '62.00', 'Food & markets'),
+  tour(
+    'hoi-an-lantern-evening',
+    'Hội An Lantern Evening',
+    1,
+    '59.00',
+    'Culture & heritage',
+    'Old town, lanterns, night market',
+  ),
+  tour(
+    'hue-imperial-day',
+    'Huế Imperial Day',
+    1,
+    '75.00',
+    'Culture & heritage',
+    'Citadel, lunch, river',
+  ),
+  tour(
+    'da-nang-coast-ride',
+    'Đà Nẵng Coast Ride',
+    1,
+    '89.00',
+    'Scenic routes',
+    'Bà Nà, the pass, and the lagoon',
+  ),
+  tour(
+    'hoi-an-cooking-market',
+    'Hội An Cooking Market',
+    1,
+    '62.00',
+    'Food & markets',
+    'Market, garden, kitchen',
+  ),
   tour('central-heritage-week', 'Central Heritage Week', 6, '740.00', 'Culture & heritage'),
 ];
 
@@ -103,6 +134,37 @@ describe('RegionDayTrips', () => {
     render(<RegionDayTrips tours={CENTRAL} />);
     expect(screen.getByText('Scenic routes')).toBeInTheDocument();
     expect(screen.getByText('$89')).toBeInTheDocument();
+  });
+
+  // Câu mô tả là tiêu đề NGÀY 1 của chính hành trình tour — nội dung biên tập có
+  // thật, không phải một nhãn sinh ra từ số liệu. Đây là thứ đưa thẻ ra khỏi họ
+  // "bảng số liệu" mà user đã bác.
+  it('mỗi thẻ in một câu từ ngày 1 của hành trình', () => {
+    render(<RegionDayTrips tours={CENTRAL} />);
+    expect(screen.getByText('Citadel, lunch, river')).toBeInTheDocument();
+    expect(screen.getByText('Bà Nà, the pass, and the lagoon')).toBeInTheDocument();
+  });
+
+  // Tour chưa có hành trình là nhánh có thật khi gắn API — bỏ hẳn dòng đó, đừng in
+  // chuỗi rỗng hay một câu bịa thay chỗ.
+  it('tour không có hành trình thì bỏ dòng mô tả, thẻ vẫn dựng', () => {
+    const bare = [
+      tour('a', 'Trip A', 1, '50.00', 'Scenic routes'),
+      tour('b', 'Trip B', 1, '60.00', 'Food & markets'),
+    ];
+    const { container } = render(<RegionDayTrips tours={bare} />);
+    expect(items(container)).toHaveLength(2);
+    expect(screen.getByRole('link', { name: /Trip A/ })).toBeInTheDocument();
+  });
+
+  // ⚠️ Khu này là khu CUỐI của trang miền Trung. `site-footer.tsx` mang `mt-32` sơn
+  // màu `--background`; khu cuối có nền RIÊNG thì 128px đó hiện ra thành một vạch
+  // sáng kẹp giữa khu này và footer. Cơ chế `data-flush-footer` từng vá chuyện đó
+  // đã xoá (Task 5k) đúng vì cả ba miền giờ kết bằng khu nền-trang — nên nền riêng
+  // quay lại ở đây là dải sáng quay lại, và Vitest là chốt duy nhất bắt được.
+  it('dùng NỀN TRANG, không nền băng riêng — nó là khu cuối trang', () => {
+    const { container } = render(<RegionDayTrips tours={CENTRAL} />);
+    expect(container.querySelector('section')?.hasAttribute('style')).toBe(false);
   });
 
   it('giá dùng MÃ TIỀN của chính tour, không phải hằng USD đặt cứng', () => {

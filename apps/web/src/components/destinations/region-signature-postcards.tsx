@@ -4,19 +4,20 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
 /**
- * Khu bưu thiếp — ba bưu thiếp dọc so le trên băng phớt, hiện chỉ miền Nam dùng,
- * và ở đó nó là khu MỞ ĐẦU (`regionTheme('south').openWith`). Đây là biến thể
- * DẪN BẰNG ẢNH: miền Nam bán cảnh sông nước, nên nó xứng đáng khu ảnh riêng chứ
- * không phải thêm một khối chữ nữa.
+ * Khu "Ba thế giới" — ba bưu thiếp dọc so le trên băng phớt, chỉ miền Nam dùng, và
+ * ở đó nó là khu ĐẦU TIÊN sau hero (`regionTheme('south').sections[0] === 'worlds'`).
  *
- * `emphasis` DỰNG KHU LỚN HƠN, và lý do nằm ngoài file này: **miền Nam cố ý
- * không có khu chữ ký thứ hai** (Bắc có `seasons`, Trung có `timeline`). Nam
- * mỏng dữ liệu nhất — chuyến riêng 1–3 ngày, độ khó dừng ở Moderate, một tour
- * `difficulty: null` — nên mọi khu thứ hai nghĩ ra cho nó đều trùng HÌNH với khu
- * đã có hoặc phải bịa; ép cho đủ đối xứng chính là cái bẫy vừa làm hỏng phương
- * án màu (ADR-0015). Prop này là phần BÙ: trang Nam có ít khu hơn nên khu mở đầu
- * của nó được dựng cao hơn và thoáng hơn. **Đừng "sửa cho cân" bằng cách thêm
- * khu thứ hai cho Nam** — xem JSDoc `THEMES` ở `lib/region-theme.ts`.
+ * Đây là biến thể DẪN BẰNG ẢNH, và nó cắm vào một sự thật của vùng: miền Nam là ba
+ * thế giới rời nhau — delta, thành phố, đảo — chứ không phải một trục có hướng như
+ * con đường di sản của miền Trung. Ba bưu thiếp cạnh nhau nói đúng cái "rời nhau"
+ * đó; một timeline thì sẽ nói sai.
+ *
+ * `emphasis` DỰNG KHU LỚN HƠN. Lý do ban đầu (Task 5j) là bù cho việc miền Nam
+ * không có khu chữ ký thứ hai; lý do đó đã HẾT ở Task 5k — Nam nay có `reviews`, và
+ * cả ba miền đều đúng 7 khu. Prop vẫn giữ vì có một lý do MỚI và đứng vững: đây là
+ * khu đầu tiên sau hero của trang Nam, tức lời mở đầu bằng ảnh của cả trang, nên nó
+ * được dựng cao hơn hai khu bưu-thiếp-cỡ-thường sẽ dùng ở chỗ khác. Ở Bắc và Trung
+ * vị trí đó là chữ (`intro`) hoặc một trục (`heritage`).
  */
 export function RegionSignaturePostcards({
   eyebrow,
