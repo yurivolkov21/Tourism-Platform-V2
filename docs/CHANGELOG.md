@@ -2,7 +2,7 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
-## 2026-07-30 — Dropdown navbar bị navbar đè: hai nguyên nhân, một lớp lỗi cũ bỏ sót (branch `fix/navbar-dropdown-stacking`, ff-only, commit code `e6f179f`)
+## 2026-07-30 — Dropdown navbar bị navbar đè: hai nguyên nhân, một lớp lỗi cũ bỏ sót (branch `fix/navbar-dropdown-stacking` rồi `fix/user-menu-stacking`, ff-only, commit code `e6f179f` và `00ea0d4`)
 
 User báo: hover "Destinations" lúc đã cuộn thì dropdown bị thanh navbar đè lên. Điều
 tra bằng `elementFromPoint` quét dọc vùng chồng cho ra **hai nguyên nhân độc lập**,
@@ -51,12 +51,30 @@ không phải lỗi thứ hai.
    nhưng đo được `popup.left − trigger.left = 0px` — dropdown **không lệch**; đó là
    thứ phải giữ khi vá, không phải lỗi cần vá.
 
-**Nợ mở — cùng bug, đang NGỦ:** `dropdown-menu.tsx` còn `isolate z-50` / `z-50` và
-được `user-menu.tsx` dùng **trong chính navbar đó** (`site-header.tsx:100`). Hôm nay
-`MOCK_SESSION` là chưa-đăng-nhập nên nó render link "Log in", dropdown avatar không
-mở — nên chưa thấy. Nó sẽ thức đúng lúc nối auth. Sáu component vendor khác còn `z-50`
-(`alert-dialog`, `combobox`, `context-menu`, `hover-card`, `popover`, `tooltip`) hiện
-**chưa file app nào dùng**.
+**Consumer thứ hai — cùng bug đang NGỦ, user chốt vá luôn** (commit `00ea0d4`).
+`dropdown-menu.tsx` còn nguyên cặp `isolate z-50` / `z-50`, và `user-menu.tsx` render
+nó **trong chính navbar đó** (`site-header.tsx:100`). Bug ngủ vì `MOCK_SESSION` là
+`null` nên navbar hiện link "Log in", dropdown avatar không mở — nó sẽ thức đúng lúc
+nối auth. Đo bằng cách **tạm** bật `MOCK_SESSION = SAMPLE_USER` (mock file ghi sẵn
+cách làm), cả hai trạng thái cuộn: `positioner z=50` · `popup.top − nav.bottom =
+−16px` · hit-test cho ra `<nav>`.
+
+Con số **khác** menu Destinations, và đây là điểm phải hiểu đúng thay vì gộp: cùng một
+dải navbar nhưng trigger khác chiều cao. Avatar `size-8` (32px) căn giữa hàng 40px
+trong `p-4` → đệm còn **20px** → offset **28**. Trigger Destinations là CHỮ cao 20px →
+đệm **26px** → offset **34**. Hai hằng số cố ý KHÔNG gộp, comment ghi lý do.
+`user-menu.spec.tsx` là spec **đầu tiên** cho khu này (trước đó không có test nào) và
+nó nói thẳng giới hạn: `MOCK_SESSION` là hằng module-scope nên chỉ test được nhánh
+chưa-đăng-nhập cộng hằng số; nhánh dropdown test được khi phase auth thay mock bằng
+session thật. Đo lại sau vá: `−16px → +8px`, hết chồng lấp, `align=end` giữ 0px lệch,
+`z` 1500 > 1100. Mutation 3/3 bite.
+
+**Nợ mở:** sáu component vendor còn `z-50` — `alert-dialog`, `combobox`,
+`context-menu`, `hover-card`, `popover`, `tooltip` — **chưa file app nào dùng**. CỐ Ý
+chưa đụng: thang z đúng cho mỗi cái phụ thuộc vai trò (`--z-modal` 1400 vs
+`--z-popover` 1500 vs `--z-toast` 1700), và gán bừa cho sáu component không có
+consumer lẫn test là quyết định không có cơ sở. **Trước khi dùng bất kỳ cái nào trong
+sáu, vá `z-50` của nó trước** — nếu nó xuất hiện gần navbar thì bug này tái diễn.
 
 Tests after: `pnpm gate` xanh — **18/18 task** kể cả `next build` · web 656 (trước
 654) · ui **10** (trước 5) · API 188 · contract 55 · tokens 10 · i18n 1, tổng **920**.
