@@ -2,6 +2,87 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-30 — P3b: cụm Destinations — `/destinations` và ba trang vùng (branch `feat/destinations-pages`, ff-only, commit cuối `03569b4`, 60 commit)
+
+Cụm dài nhất của P3b tới nay. `/destinations` dựng lại **2 lần**, `/destinations/[region]`
+dựng lại **4 lần** — mỗi lần vì user xem trang thật rồi bác, và mỗi lần bác đều
+chỉ ra một luật đúng mà bản trước vi phạm.
+
+- **Hai trang mới.** `/destinations` (hành trình dọc, 3 vùng lồng địa điểm) và
+  `/destinations/[region]` cho 3 slug qua `generateStaticParams`, slug lạ →
+  `notFound()`. Mỗi miền **7 khu**, trong đó **6 khu riêng** — chỉ hero, lưới 6
+  `TourCard` và footer là giống nhau, đúng ràng buộc user chốt.
+- **ADR-0015: rút lớp tint theo vùng TOÀN SITE.** Cụm này *thêm* slot
+  `--region-hero` ở Task 1 rồi *xoá cả ba khối* `[data-region]` ở Task 5i, vì user
+  kết luận *"màu sắc có lẽ không phải là lựa chọn phù hợp"*. Bản sắc vùng chuyển
+  hẳn sang **cấu trúc**: thứ tự khu riêng, gallery riêng ba bố cục
+  (`peaks`/`lanterns`/`panorama`), khu chữ ký riêng, và ba **trục chuyển động**
+  riêng (Bắc dọc · Trung ngang · Nam nở tại chỗ).
+- **Số liệu thành DẪN XUẤT.** `tourCount` trong mock phồng 2–5× so với `TOURS`;
+  `lib/regions.ts` tính lại từ nguồn duy nhất. Sửa này lan sang `/about`
+  (68 → 16 tour) — một con số sai đã hiển thị công khai.
+- **Copy: cắt phần bịa.** ≈202 dòng i18n port từ Nexora quảng cáo **4 địa danh v2
+  không bán** (Hà Giang 5 lần, Lan Hạ, Fansipan, Pù Luông = 0 trong mock). Cùng họ
+  lỗi ở nhãn gallery: ba vùng cắt chung MỘT danh sách nên trang miền Bắc chú thích
+  *"Lantern-lit old town"* (Hội An, miền Trung).
+- **Chuyển động (Task 5m/5n/5o).** `lib/motion.ts` giữ con số một chỗ,
+  `motion/reveal-header.tsx` cascade cho cả 9 khu, và `motion/reveal-item.tsx` mang
+  ba trục miền. Gallery miền Trung cuối cùng chuyển sang cơ chế cuộn của
+  `home/gallery.tsx` nhưng lái `scrollLeft` chứ **không** `transform`.
+
+**Review findings — mười lỗi đo được, phần lớn do tự đo chứ không do review báo:**
+
+1. **Cặp `--primary`/`--primary-foreground` chỉ 4.11:1 trong scope dark** (chữ 14px,
+   ngưỡng 4.5). Tìm ra sau khi review đã pass. Vá cục bộ bằng `variant="outline"`
+   (11.19–12.22:1); **nợ toàn site vẫn còn**, ghi ở ADR-0015 §Hệ quả.
+2. **Soft-404.** Một `loading.tsx` ở BẤT KỲ đâu trong chuỗi segment làm slug lạ trả
+   **HTTP 200** kèm UI 404. Đo được, nên `destinations/` tuyệt đối không có file đó.
+3. **`color-mix(in oklch)` trôi hue** khi cả hai đầu vào có chroma ≈ 0 — Chrome trả
+   hue `none`/powerless, ra nền hồng. Chuyển sang `in oklab`.
+4. **Nền phớt vùng pha `--region-surface` không đạt AA ở dark**; chip số tour cũng
+   trượt. Cả hai do trộn token bất-biến-theme với token lật-theo-theme — một gốc, năm
+   biểu hiện.
+5. **Dải trắng trên footer.** `site-footer` mang `mt-32` sơn `--background`; khu cuối
+   có nền riêng thì 128px đó hiện thành vạch sáng. Giả thuyết `-mb-32` **đo được là
+   sai** (`body` là `flex flex-col` nên margin không collapse).
+6. **`IntersectionObserver` cắt target qua tổ tiên có clip TRƯỚC khi so root**, nên ô
+   4–6 của một dải `overflow-x-auto` không bao giờ bắn observer và **kẹt `initial`
+   vĩnh viễn, kể cả ở chế độ giảm chuyển động**. Nới `rootMargin` và đặt
+   `viewport.root` đều không chữa — đã thử, đã đo.
+7. **`motion-reduce:transform-none` là NO-OP** (Tailwind v4 biên `translate-y-*`
+   thành thuộc tính `translate` riêng). Grep toàn repo: đúng 1 chỗ; đã xoá, vì kể cả
+   nếu chạy thì nó vẫn sai — `prefers-reduced-motion` xin bớt chuyển động, không xin
+   đổi bố cục.
+8. **Thẻ lệch pha vì số dòng không cố định**: thẻ chuyến-một-ngày lệch 28px ở hai
+   hàng giữa, thẻ nhóm miền Bắc lệch 24px ở khổ 768 (chỗ đó có `border-t` nên hai
+   thẻ cạnh nhau có vạch ngang lệch nhau). Hàng giá không lệch vì có `mt-auto`.
+9. **Cỡ trang 8 không khớp lưới.** Lưới 2 và 3 cột thì 8 để lại ô mồ côi; 6 là con số
+   duy nhất dưới 12 không bỏ ô lẻ ở bất kỳ khổ nào.
+10. **Ba brief tôi viết cho subagent có lỗi thật và implementer bắt được**: một brief
+    bắt `initial={{opacity:0}}` đồng thời đòi JS-tắt đọc được (không cùng đúng); một
+    brief nói repo chưa có reveal trục x (thực có 4 file); một brief nói `scrollLeft`
+    để trình duyệt tự kéo ô focus vào tầm (đo được: Tab tới ô 4 thì Chromium để nó
+    kẹt 252px ngoài mép và **không** cuộn).
+
+**Nợ mở, nói thẳng:**
+
+- **Task 6 của plan CHƯA XONG: `/destinations` và 3 URL vùng KHÔNG có trong sitemap**,
+  và comment `lib/sitemap.ts:22` vẫn ghi *"`/destinations` … CHƯA tồn tại"* — nay
+  sai. Trang sống nhưng crawler không thấy.
+- **Task 7 CHƯA XONG:** chưa đo 404 trên bản production build, chưa chạy `gate:int`
+  ở máy (không có Postgres cục bộ — CI lo).
+- `--rating` đo 2.27:1 trên light; 21 file khai `const SPRING` nguyên văn và 19 file
+  gõ spring 240 inline, chưa dedup. Cả hai là nợ toàn site có trước cụm này.
+- JS tắt còn 15 phần tử `opacity:0` (hero, eyebrow, footer) — pre-existing; cụm này
+  làm **giảm** từ 20 xuống 15 vì gỡ 5 lớp `Reveal` bọc trọn khu.
+
+Tests after: `pnpm gate` xanh — **18/18 task** kể cả `next build` · web 649 (trước
+cụm 344) · API 188 · contract 55 · tokens 10 · ui 5 · i18n 1, tổng **908**.
+Đo thêm bằng Chromium thật trên dev server: đồng bộ thẻ **0 vi phạm** trên 9 nhóm ×
+3 miền ở 1440/768 · chế độ giảm chuyển động **0 phần tử kẹt** ở 3 miền × 2 theme ·
+JS tắt cả 5 tiêu đề khu đọc được và dải Trung vẫn cuộn native · `body` không tràn
+ngang ở 1440/390. `pnpm test:int` không chạy được ở máy này.
+
 ## 2026-07-28 — Vân topo phủ liên tục hero + dải khởi hành (branch `fix/topo-across-departure-board`, ff-only, commit `ec742b2`)
 
 User phát hiện bằng mắt: nền chỗ hiển thị giá không có vân như hero, và hỏi
