@@ -1227,7 +1227,7 @@ export const tourPolicies: TourPolicyFixture[] = [
 ];
 
 export const tourDepartures: TourDepartureFixture[] = [
-  // ---- Tour #22 (spec §5: 4 đợt thứ Bảy cách tuần từ 2026-08-15, một đợt promo 119.00) ----
+  // ---- Tour #22 (giãn ~tháng: 08-15/09-19/10-17/11-21, 4 thứ Bảy — chốt controller 31/07 vì spec §5 tự mâu thuẫn (4 đợt cách tuần không thể tới 21/11) — ưu tiên mốc cuối sát ngày bảo vệ để demo còn đợt tương lai; một đợt promo 119.00) ----
   {
     id: 'e0000002-0000-4000-8000-000000000201',
     tourId: 'd0000002-0000-4000-8000-000000000022',
@@ -1244,8 +1244,8 @@ export const tourDepartures: TourDepartureFixture[] = [
   {
     id: 'e0000002-0000-4000-8000-000000000202',
     tourId: 'd0000002-0000-4000-8000-000000000022',
-    startDate: '2026-08-29',
-    endDate: '2026-08-30',
+    startDate: '2026-09-19',
+    endDate: '2026-09-20',
     priceOverride: null,
     compareAtPrice: null,
     seatsTotal: 16,
@@ -1257,8 +1257,8 @@ export const tourDepartures: TourDepartureFixture[] = [
   {
     id: 'e0000002-0000-4000-8000-000000000203',
     tourId: 'd0000002-0000-4000-8000-000000000022',
-    startDate: '2026-09-12',
-    endDate: '2026-09-13',
+    startDate: '2026-10-17',
+    endDate: '2026-10-18',
     priceOverride: '119.00',
     compareAtPrice: '129.00',
     seatsTotal: 16,
@@ -1270,8 +1270,8 @@ export const tourDepartures: TourDepartureFixture[] = [
   {
     id: 'e0000002-0000-4000-8000-000000000204',
     tourId: 'd0000002-0000-4000-8000-000000000022',
-    startDate: '2026-09-26',
-    endDate: '2026-09-27',
+    startDate: '2026-11-21',
+    endDate: '2026-11-22',
     priceOverride: null,
     compareAtPrice: null,
     seatsTotal: 16,
@@ -1495,8 +1495,8 @@ export const tourDepartures: TourDepartureFixture[] = [
   {
     id: 'e0000002-0000-4000-8000-000000000221',
     tourId: 'd0000002-0000-4000-8000-000000000026',
-    startDate: '2026-11-08',
-    endDate: '2026-11-08',
+    startDate: '2026-11-14',
+    endDate: '2026-11-14',
     priceOverride: null,
     compareAtPrice: null,
     seatsTotal: 14,
