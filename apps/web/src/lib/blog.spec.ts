@@ -1,35 +1,41 @@
 import { describe, expect, it } from 'vitest';
-import type { MockJournalPost } from '@/mocks/types';
+import type { JournalPost } from './api/posts';
 import {
   adjacentPosts,
-  filterPostsByCategory,
+  filterPostsByTag,
   HOME_TEASER_COUNT,
   homeTeaserPosts,
   latestPosts,
-  postCategories,
   relatedPosts,
   searchPosts,
   sortPostsByDate,
 } from './blog.js';
 
-// Không dùng `as const`: nó biến `sections: []` thành readonly tuple, lệch
-// kiểu với MockJournalPost.sections (mảng mutable) — vỡ dưới strict mode.
-const post = (slug: string, date: string, category: string): MockJournalPost => ({
+// Factory dựng post theo shape JournalPost (VM sau Task 5) — `category` là tag
+// đầu tiên, `tags` mang cả tag phụ để test filterPostsByTag phủ được chip lọc.
+const post = (
+  slug: string,
+  date: string,
+  category: string,
+  tags: { slug: string; name: string }[] = [{ slug: category.toLowerCase(), name: category }],
+): JournalPost => ({
   slug,
   title: slug,
   excerpt: '',
   date,
   readMinutes: 5,
-  image: '/mock/halong.jpg',
   category,
   author: 'Guide',
-  sections: [],
+  tags,
 });
 
 const POSTS = [
   post('a', '2026-01-10', 'Food'),
   post('b', '2026-03-01', 'Nature'),
-  post('c', '2026-02-05', 'Food'),
+  post('c', '2026-02-05', 'Food', [
+    { slug: 'food', name: 'Food' },
+    { slug: 'sa-pa', name: 'Sa Pa' },
+  ]),
 ];
 
 describe('sortPostsByDate', () => {
@@ -43,23 +49,21 @@ describe('sortPostsByDate', () => {
   });
 });
 
-describe('filterPostsByCategory', () => {
-  it('không truyền chuyên mục thì trả nguyên danh sách', () => {
-    expect(filterPostsByCategory(POSTS)).toHaveLength(3);
+describe('filterPostsByTag', () => {
+  it('không truyền tag thì trả nguyên danh sách', () => {
+    expect(filterPostsByTag(POSTS)).toHaveLength(3);
   });
 
-  it('lọc đúng chuyên mục', () => {
-    expect(filterPostsByCategory(POSTS, 'Food').map((p) => p.slug)).toEqual(['a', 'c']);
+  it('lọc đúng theo tag hiển thị chính (category)', () => {
+    expect(filterPostsByTag(POSTS, 'food').map((p) => p.slug)).toEqual(['a', 'c']);
   });
 
-  it('chuyên mục lạ trả mảng rỗng, không ném lỗi', () => {
-    expect(filterPostsByCategory(POSTS, 'Submarine')).toEqual([]);
+  it('lọc phủ CẢ tag phụ — không chỉ tag đầu tiên (category)', () => {
+    expect(filterPostsByTag(POSTS, 'sa-pa').map((p) => p.slug)).toEqual(['c']);
   });
-});
 
-describe('postCategories', () => {
-  it('trả chuyên mục duy nhất theo thứ tự xuất hiện', () => {
-    expect(postCategories(POSTS)).toEqual(['Food', 'Nature']);
+  it('tag lạ trả mảng rỗng, không ném lỗi', () => {
+    expect(filterPostsByTag(POSTS, 'submarine')).toEqual([]);
   });
 });
 

@@ -1,7 +1,7 @@
 import { ArrowUpRightIcon, ClockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import type { MockJournalPost } from '@/mocks/types';
+import type { JournalPost } from '@/lib/api/posts';
 
 // Card bài viết dùng chung cho Home (teaser 3 bài, section Journal) và lưới
 // /blog — Home là bản chuẩn (#33, convert forged/Blog), /blog kế thừa nguyên
@@ -20,7 +20,7 @@ export function PostCard({
   post,
   featured = false,
 }: {
-  post: MockJournalPost;
+  post: JournalPost;
   /** Bài dẫn của /blog: chiếm 2 cột, ảnh cao hơn, tiêu đề lớn hơn. */
   featured?: boolean;
 }) {

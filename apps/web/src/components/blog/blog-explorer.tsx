@@ -7,10 +7,10 @@ import { useEffect, useRef, useState } from 'react';
 import { CategoryChips } from '@/components/blog/category-chips';
 import { PostCard } from '@/components/blog/post-card';
 import { PaginationBar } from '@/components/tours/pagination-bar';
+import type { JournalPost } from '@/lib/api/posts';
 import { filterPostsByCategory, searchPosts, sortPostsByDate } from '@/lib/blog';
 import { SPRING } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
-import type { MockJournalPost } from '@/mocks/types';
 
 // Lọc + tìm chạy phía client để gõ tới đâu thấy tới đó, nhưng trạng thái vẫn
 // được ghi vào URL (?tag=&q=&page=) nên link chia sẻ được và F5 không mất bộ lọc.
@@ -37,7 +37,7 @@ export function BlogExplorer({
   initialQuery,
   initialPage,
 }: {
-  posts: MockJournalPost[];
+  posts: JournalPost[];
   categories: string[];
   initialTag?: string;
   initialQuery?: string;

@@ -1,7 +1,7 @@
 import { ChevronRightIcon, ClockIcon } from 'lucide-react';
 import Link from 'next/link';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import type { MockJournalPost } from '@/mocks/types';
+import type { JournalPost } from '@/lib/api/posts';
 
 // Hero bài viết: ảnh cover thật + scrim tối. Bọc scope `dark` vì navbar chưa
 // cuộn dùng chữ on-media — hero sáng làm navbar tàng hình (pattern chốt ở
@@ -13,7 +13,7 @@ const DATE_FMT = new Intl.DateTimeFormat('en-US', {
   year: 'numeric',
 });
 
-export function PostHero({ post }: { post: MockJournalPost }) {
+export function PostHero({ post }: { post: JournalPost }) {
   return (
     <section className="dark relative w-full overflow-hidden px-4 pt-36 pb-16 text-foreground md:px-16 md:pb-20 lg:px-24 xl:px-32">
       {/* CHÍNH SÁCH ẢNH (user chốt 25/07): toàn site dùng placeholder, chỉ đổi

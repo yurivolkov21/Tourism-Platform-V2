@@ -1,10 +1,10 @@
 import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
-import type { MockJournalPost } from '@/mocks/types';
+import type { JournalPost } from '@/lib/api/posts';
 
 // Dải điều hướng cuối bài. Ô trống được giữ chỗ bằng <div /> để bài mới nhất
 // và bài cũ nhất vẫn có ô còn lại nằm đúng bên phải/trái của nó.
-export function PostNav({ newer, older }: { newer?: MockJournalPost; older?: MockJournalPost }) {
+export function PostNav({ newer, older }: { newer?: JournalPost; older?: JournalPost }) {
   if (!newer && !older) return null;
 
   return (

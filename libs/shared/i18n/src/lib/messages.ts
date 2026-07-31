@@ -1912,6 +1912,11 @@ export const messages = {
     newerStory: 'Newer story',
     olderStory: 'Older story',
     postNavLabel: 'Continue reading',
+    // Đường lùi khi DTO thiếu dữ liệu (Task 5 — lib/api/posts.ts toJournalPost):
+    // author.name null → fallbackAuthor; không có tag nào → fallbackCategory.
+    // User-facing nên khai ở đây (luật 7), không hardcode trong lib.
+    fallbackAuthor: 'Tourism guides',
+    fallbackCategory: 'Journal',
   },
   footer: {
     tagline: 'Boutique heritage journeys across Vietnam, crafted with care.',
