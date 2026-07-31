@@ -1,6 +1,6 @@
 # Spec — Catalogue thật: seed lại ~30 tour + nối `/tours` và `/tours/[slug]` (2026-07-31)
 
-- **Trạng thái:** Chờ user duyệt spec (thiết kế tổng duyệt 31/07: itinerary =
+- **Trạng thái:** Approved 31/07 — user duyệt trọn spec kể cả §2 gộp detail (thiết kế tổng duyệt cùng ngày: itinerary =
   text kỷ luật có mốc giờ · thay trọn bộ 23 tour cũ · seed reviews CURATED ·
   gộp seed + wiring một branch. **Điểm MỚI so với duyệt miệng: nửa B gộp cả
   trang detail — xem §2 lý do bắt buộc**)
