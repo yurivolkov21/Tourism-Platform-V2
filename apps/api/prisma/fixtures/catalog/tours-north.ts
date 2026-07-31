@@ -1642,7 +1642,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Cancellation',
-    body: 'Free cancellation up to 24 hours before pickup. Inside 24 hours or no-show, the full amount is non-refundable.',
+    body: "You can cancel at no charge until 24 hours before pickup — after that cutoff, or if you don't show, the tour is billed in full.",
   },
   {
     id: 'd3000002-0000-4000-8000-000000000008',
