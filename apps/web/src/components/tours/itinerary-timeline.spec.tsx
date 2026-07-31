@@ -38,4 +38,27 @@ describe('ItineraryTimeline', () => {
     render(<ItineraryTimeline days={DAYS} meetingPoint={null} />);
     expect(screen.queryByText(/Meet at/)).not.toBeInTheDocument();
   });
+
+  it('mốc giờ trong mô tả (HH:MM — …\\n) phải XUỐNG DÒNG, không dồn một khối', () => {
+    // Dữ liệu thật (API) ghi mỗi mốc giờ một dòng bằng `\n` trong text thuần —
+    // không có Markdown, không có thẻ <br>. Component KHÔNG được parse chuỗi
+    // này (luật cứng), chỉ được phép giữ nguyên `\n` bằng CSS `white-space`.
+    const withSchedule: MockItineraryDay[] = [
+      {
+        dayNumber: 1,
+        title: 'Departure day',
+        description: '07:30 — Pickup at hotel\n12:00 — Lunch by the bay\n18:00 — Dinner on deck',
+      },
+    ];
+    render(<ItineraryTimeline days={withSchedule} meetingPoint={null} />);
+    const description = screen.getByText(/07:30 — Pickup at hotel/);
+    // `whitespace-pre-line` (Tailwind) là lớp DUY NHẤT cho phép `\n` xuống dòng
+    // mà vẫn gộp khoảng trắng thường — không đổi hiển thị nào khác.
+    expect(description).toHaveClass('whitespace-pre-line');
+    // Cả ba mốc giờ vẫn nằm trong ĐÚNG MỘT phần tử (không bị tách thành nhiều
+    // <p>) — `\n` là ký tự literal trong text thuần, không phải ranh giới thẻ.
+    expect(description.textContent).toBe(
+      '07:30 — Pickup at hotel\n12:00 — Lunch by the bay\n18:00 — Dinner on deck',
+    );
+  });
 });

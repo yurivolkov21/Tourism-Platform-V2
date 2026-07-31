@@ -46,9 +46,18 @@ export function ItineraryTimeline({
               </h3>
 
               {/* description null → CHỈ hiện tiêu đề. Không chèn placeholder,
-                  không bỏ mục: nhịp dọc của timeline vẫn phải đều. */}
+                  không bỏ mục: nhịp dọc của timeline vẫn phải đều.
+
+                  `whitespace-pre-line`: mô tả API là text thuần (không
+                  Markdown) nhưng biên tập vẫn dùng `\n` để tách từng mốc giờ
+                  ("07:30 — …\n12:00 — …"). Mặc định trình duyệt gộp mọi
+                  whitespace kể cả `\n` thành một dấu cách, dồn cả lịch trình
+                  thành một dòng dài. KHÔNG parse chuỗi này thành danh sách
+                  (luật cứng — regex đoán định dạng là hack `tour-detail-
+                  derive.ts` của Nexora đã bị loại): chỉ đổi CSS để giữ nguyên
+                  xuống dòng đã có sẵn trong dữ liệu. */}
               {day.description ? (
-                <p className="mt-1.5 max-w-[68ch] text-pretty text-muted-foreground">
+                <p className="mt-1.5 max-w-[68ch] text-pretty whitespace-pre-line text-muted-foreground">
                   {day.description}
                 </p>
               ) : null}

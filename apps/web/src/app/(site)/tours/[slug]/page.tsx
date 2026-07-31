@@ -17,13 +17,15 @@ import { GoodFor, WhyThisTrip } from '@/components/tours/tour-facts';
 import { TourGallery } from '@/components/tours/tour-gallery';
 import { TourHero } from '@/components/tours/tour-hero';
 import { TourReviews } from '@/components/tours/tour-reviews';
+import { fetchTourDetail, fetchTourReviews, fetchTours, type TourDetailVM } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
 import { tocFromSections } from '@/lib/toc';
 import { relatedTours, routeChain } from '@/lib/tours';
-import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
-import { TOURS } from '@/mocks/tours';
-import type { MockTourDetail } from '@/mocks/types';
+
+// Cùng cửa sổ revalidate với cụm blog (ADR-0016 §3, 300s) — một hằng số cho
+// mọi trang đọc catalog, đổi là đổi ở một chỗ.
+export const revalidate = 300;
 
 /**
  * ⚠️ ĐỪNG THÊM `loading.tsx` vào route này, cũng đừng thêm vào segment cha
@@ -45,13 +47,17 @@ import type { MockTourDetail } from '@/mocks/types';
  * vẫn 200. Nó cũng gài bẫy cho lúc gắn API (tour mới publish sẽ 404 tới lần build
  * kế), nên đã bỏ hẳn.
  *
- * KHI GẮN API: nếu muốn có skeleton cho trang detail thì phải đo lại status của
- * slug lạ ngay trong cùng lần thay đổi đó.
+ * KHI GẮN API (task 9): đã đo lại — slug lạ vẫn 404 THẬT (không phải soft-404)
+ * sau khi đổi nguồn, cùng lần thay đổi này (xem docs/CHANGELOG.md).
  */
-// Sinh sẵn 16 slug lúc build; slug lạ rơi vào notFound() → trang 404 chung đón.
-// Cùng khuôn với /blog/[slug], chỉ khác nguồn mock.
-export function generateStaticParams() {
-  return TOURS.map((tour) => ({ slug: tour.slug }));
+// Sinh sẵn ~30 slug lúc build từ API THẬT (ADR-0016 §3), KHÔNG settle lỗi ở
+// đây: fetch hỏng lúc build phải ném ra ngoài → build fail TO TIẾNG. Settle êm
+// ở đây là slug rỗng âm thầm → sitemap/ISR rỗng âm thầm, lỗi chỉ lộ ra khi
+// người dùng vào trang 404 nhầm chỗ. Slug lạ ngoài danh sách này vẫn rơi vào
+// notFound() bên dưới. Cùng khuôn với /blog/[slug], chỉ khác nguồn dữ liệu.
+export async function generateStaticParams() {
+  const tours = await fetchTours();
+  return tours.map((tour) => ({ slug: tour.slug }));
 }
 
 export async function generateMetadata({
@@ -60,7 +66,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const tour = TOURS.find((t) => t.slug === slug);
+  // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
+  const tour = await fetchTourDetail(slug);
   if (!tour) return { title: 'Tour not found — Tourism' };
 
   // summary nullable — mô tả rơi về một câu dựng từ field có thật, không để
@@ -105,7 +112,7 @@ type SectionKey =
   | 'reviews'
   | 'goodToKnow';
 
-function pageSections(tour: MockTourDetail): { key: SectionKey; heading: string }[] {
+function pageSections(tour: TourDetailVM): { key: SectionKey; heading: string }[] {
   const s = messages.tourDetail.sections;
   return [
     tour.highlights.length > 0 ? { key: 'why' as const, heading: s.why } : null,
@@ -130,12 +137,18 @@ function pageSections(tour: MockTourDetail): { key: SectionKey; heading: string 
 
 export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const tour = TOURS.find((t) => t.slug === slug);
+  const tour = await fetchTourDetail(slug);
   if (!tour) notFound();
 
   const t = messages.tourDetail;
   const sections = pageSections(tour);
   const toc = tocFromSections(sections.map(({ heading }) => ({ heading })));
+
+  // Cùng slug với `relatedTours()` bên dưới nên tận dụng luôn — danh sách
+  // ĐẦY ĐỦ (không phải trang hiện tại) vì gợi ý cuối trang cần xét mọi tour
+  // khác để chọn cùng chuyên mục/destination. Cùng pattern `fetchPosts()` gọi
+  // lại ở thân `/blog/[slug]` dù `generateStaticParams` đã gọi một lần.
+  const [tours, reviewsPage] = await Promise.all([fetchTours(), fetchTourReviews(slug)]);
 
   return (
     <DepartureSelectionProvider departures={tour.departures}>
@@ -207,8 +220,15 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           1440 mà không nói được gì ngoài "sẽ có ảnh ở đây". Khảm nằm trong
           max-w-7xl như mọi nội dung khác — trang đã có hai băng tối liên tiếp
           (hero + dải khởi hành), thêm băng thứ ba là quá nhiều.
-          Nhãn ô lớn là tên điểm đến chính, KHÔNG phải tên tour: tên tour đã là H1. */}
-      <TourGallery media={tour.media} primaryLabel={routeChain(tour.destinations)[0]?.name} />
+          Nhãn ô lớn là tên điểm đến chính, KHÔNG phải tên tour: tên tour đã là H1.
+
+          `media={[]}` CỐ Ý, không phải lỗ hổng: `TourDetailSchema` (catalog,
+          P1) CHƯA có field media — ADR-0005 mới đặt nền cho posts/site-media,
+          "tour media" được ghi rõ là module SAU kế thừa hợp đồng đó, chưa làm.
+          `TourGallery` đã tự degrade sạch cho mảng rỗng (return null, không
+          khung/không nút) nên không cần sửa gì ở component — chỉ cần không
+          giả vờ có ảnh. Khi contract có `media`, đổi lại `tour.media` là đủ. */}
+      <TourGallery media={[]} primaryLabel={routeChain(tour.destinations)[0]?.name} />
 
       <div className="w-full px-4 py-14 md:px-16 md:py-16 lg:px-24 xl:px-32">
         {/* Ba cột ở xl (rail · main · booking), hai cột ở lg (rail ẩn), một cột ở
@@ -259,10 +279,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
                     </div>
                   ) : null}
                   {key === 'reviews' ? (
-                    <TourReviews
-                      reviews={TOUR_REVIEWS[tour.slug] ?? []}
-                      ratingAvg={tour.ratingAvg}
-                    />
+                    <TourReviews reviews={reviewsPage.items} ratingAvg={tour.ratingAvg} />
                   ) : null}
                   {key === 'goodToKnow' ? (
                     <GoodToKnow faqs={tour.faqs} policies={tour.policies} />
@@ -295,7 +312,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           >
             {t.sections.related}
           </h2>
-          <RelatedTours tours={relatedTours(TOURS, tour.slug, 3)} />
+          <RelatedTours tours={relatedTours(tours, tour.slug, 3)} />
         </div>
       </section>
 
