@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '@/mocks/regions';
-import { TOURS } from '@/mocks/tours';
 import type { JournalPost } from './api/posts';
+import type { TourCardVM } from './api/tours';
 import { siteUrl } from './site';
 import { sitemapEntries } from './sitemap';
 
@@ -23,7 +23,47 @@ const FIXTURE_POSTS: Pick<JournalPost, 'slug' | 'date'>[] = [
   { slug: 'when-to-come-and-when-not-to', date: '2026-06-08' },
 ];
 
-const entries = sitemapEntries(TOURS, FIXTURE_POSTS, REGIONS);
+// Task 10: mock tours đã khai tử khỏi sitemap (nguồn thật giờ là `fetchTours()`
+// đọc DB) — fixture giờ NỘI BỘ trong spec này (30 slug thật, chép lại từ
+// `apps/api/prisma/fixtures/catalog/tours-{north,central,south}.ts`: 12 north
+// + 9 central + 9 south = 30) thay vì đọc từ `@/mocks/tours` (16 tour cũ).
+const FIXTURE_TOURS: Pick<TourCardVM, 'slug'>[] = [
+  // north (12)
+  { slug: 'hanoi-old-quarter-food-night' },
+  { slug: 'hanoi-heritage-day' },
+  { slug: 'red-river-craft-villages-day' },
+  { slug: 'ninh-binh-trang-an-day' },
+  { slug: 'halong-bay-overnight-cruise' },
+  { slug: 'lan-ha-kayak-cruise-3d' },
+  { slug: 'sapa-terraces-homestay-2d' },
+  { slug: 'sapa-fansipan-summit-3d' },
+  { slug: 'ha-giang-loop-4d' },
+  { slug: 'mai-chau-cycling-2d' },
+  { slug: 'northern-highlights-5d' },
+  { slug: 'vietnam-grand-journey-12d' },
+  // central (9)
+  { slug: 'hue-imperial-day' },
+  { slug: 'phong-nha-paradise-cave-day' },
+  { slug: 'hoi-an-lantern-evening' },
+  { slug: 'hoi-an-countryside-cooking-day' },
+  { slug: 'bana-hills-golden-bridge-day' },
+  { slug: 'my-son-sunrise-halfday' },
+  { slug: 'central-heritage-4d' },
+  { slug: 'quy-nhon-coastal-3d' },
+  { slug: 'central-honeymoon-5d' },
+  // south (9)
+  { slug: 'vung-tau-coastal-2d' },
+  { slug: 'saigon-cu-chi-day' },
+  { slug: 'saigon-after-dark-vespa' },
+  { slug: 'mekong-can-tho-2d' },
+  { slug: 'ben-tre-coconut-day' },
+  { slug: 'da-lat-highlands-3d' },
+  { slug: 'phu-quoc-island-hopping-day' },
+  { slug: 'phu-quoc-honeymoon-4d' },
+  { slug: 'con-dao-history-nature-3d' },
+];
+
+const entries = sitemapEntries(FIXTURE_TOURS, FIXTURE_POSTS, REGIONS);
 const urls = entries.map((entry) => entry.url);
 
 describe('sitemapEntries', () => {
@@ -73,16 +113,17 @@ describe('sitemapEntries', () => {
     expect(regionUrls).toEqual(REGIONS.map((r) => `${siteUrl()}/destinations/${r.slug}`));
   });
 
-  // 10 trang tĩnh + 16 tour + 9 bài + 3 vùng. Con số này là chốt chặn cuối: nếu ai
+  // 10 trang tĩnh + 30 tour + 9 bài + 3 vùng. Con số này là chốt chặn cuối: nếu ai
   // thêm một họ URL mà quên cập nhật đây thì test đỏ ngay.
-  it('tổng 38 URL', () => {
-    expect(entries).toHaveLength(38);
+  // Task 10: 38 (bản mock 16 tour) − 16 + 30 (tour thật từ DB, xem FIXTURE_TOURS) = 52.
+  it('tổng 52 URL', () => {
+    expect(entries).toHaveLength(52);
   });
 
-  it('phủ đủ 16 tour, đúng theo slug của TOURS', () => {
+  it('phủ đủ 30 tour, đúng theo slug của FIXTURE_TOURS', () => {
     const tourUrls = urls.filter((url) => /\/tours\/[^/]+$/.test(url));
-    expect(tourUrls).toHaveLength(16);
-    for (const tour of TOURS) expect(tourUrls).toContain(`${siteUrl()}/tours/${tour.slug}`);
+    expect(tourUrls).toHaveLength(30);
+    for (const tour of FIXTURE_TOURS) expect(tourUrls).toContain(`${siteUrl()}/tours/${tour.slug}`);
   });
 
   it('phủ đủ 9 bài blog, đúng theo slug của FIXTURE_POSTS', () => {
@@ -123,7 +164,7 @@ describe('sitemapEntries — priority theo plan', () => {
   it('trang chủ 1.0, listing tour 0.9, tour detail 0.8', () => {
     expect(priorityOf('/')).toBe(1);
     expect(priorityOf('/tours')).toBe(0.9);
-    expect(priorityOf(`/tours/${TOURS[0]?.slug}`)).toBe(0.8);
+    expect(priorityOf(`/tours/${FIXTURE_TOURS[0]?.slug}`)).toBe(0.8);
   });
 
   // Destinations đi CÙNG BẬC với Tours, không thấp hơn: hai cụm này là hai lối vào
@@ -150,7 +191,7 @@ describe('sitemapEntries — priority theo plan', () => {
     const home = priorityOf('/') ?? 0;
     const listings = [priorityOf('/tours') ?? 0, priorityOf('/destinations') ?? 0];
     const details = [
-      priorityOf(`/tours/${TOURS[0]?.slug}`) ?? 0,
+      priorityOf(`/tours/${FIXTURE_TOURS[0]?.slug}`) ?? 0,
       priorityOf(`/destinations/${REGIONS[0]?.slug}`) ?? 0,
     ];
     const support = entries

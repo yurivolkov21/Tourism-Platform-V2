@@ -1,5 +1,6 @@
-import type { MockRegion, MockTourCard } from '@/mocks/types';
+import type { MockRegion } from '@/mocks/types';
 import type { JournalPost } from './api/posts';
+import type { TourCardVM } from './api/tours';
 import { absoluteUrl } from './site';
 
 /** Một mục sitemap. Hình dạng gương `MetadataRoute.Sitemap` của Next để
@@ -32,8 +33,8 @@ export interface SitemapEntry {
  * ship 30/07 cùng ba trang vùng, nên suốt cụm Destinations sitemap **bỏ sót 4 URL
  * của trang đang sống**. Bài học: câu "chưa tồn tại" trong comment là một khẳng
  * định về hiện trạng, và nó hết đúng ngay khi trang lên — nên nó phải có test canh,
- * không chỉ có comment. Test canh giờ là `'tổng 38 URL'` cộng
- * `'URL vùng suy ra TỪ REGIONS'`.
+ * không chỉ có comment. Test canh giờ là `'tổng 52 URL'` (Task 10: 30 tour thật
+ * từ API, thay 16 tour mock) cộng `'URL vùng suy ra TỪ REGIONS'`.
  */
 const STATIC_PAGES: { path: string; priority: number }[] = [
   { path: '/', priority: 1 },
@@ -60,7 +61,9 @@ const STATIC_PAGES: { path: string; priority: number }[] = [
  * thì sửa test trước.
  */
 export function sitemapEntries(
-  tours: readonly MockTourCard[],
+  // Task 10: tours đổi nguồn từ mock sang API thật (`fetchTours()`) — Pick hẹp
+  // vì hàm này chỉ cần `slug`, cùng lý lẽ với Pick của posts ngay dưới.
+  tours: readonly Pick<TourCardVM, 'slug'>[],
   // Pick hẹp thay vì nguyên `JournalPost`: hàm này chỉ cần 2 field, và Pick hẹp
   // giữ fixture test nhỏ (không phải khai đủ title/excerpt/... cho mỗi bài).
   posts: readonly Pick<JournalPost, 'slug' | 'date'>[],
