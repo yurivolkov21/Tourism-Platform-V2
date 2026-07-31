@@ -1,8 +1,8 @@
 import { messages } from '@tourism/i18n';
 import { StarIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import type { TourCardVM } from '@/lib/api/tours';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
-import type { MockTourCard } from '@/mocks/types';
 
 /**
  * Card tour DỌC cho lưới gợi ý "You might also like" ở cuối trang chi tiết.
@@ -42,7 +42,7 @@ import type { MockTourCard } from '@/mocks/types';
  */
 const VISIBLE_STOPS = 2;
 
-export function TourCard({ tour }: { tour: MockTourCard }) {
+export function TourCard({ tour }: { tour: TourCardVM }) {
   const t = messages.toursPage;
   const chain = routeChain(tour.destinations);
   const stops = chain.slice(0, VISIBLE_STOPS);

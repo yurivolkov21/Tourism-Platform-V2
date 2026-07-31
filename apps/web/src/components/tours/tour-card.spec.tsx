@@ -1,9 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import type { MockTourCard } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
 import { TourCard } from './tour-card';
 
-const BASE: MockTourCard = {
+const BASE: TourCardVM = {
   id: 'a',
   slug: 'mekong-delta-boats',
   title: 'Mekong Delta Boats',
@@ -24,7 +24,7 @@ const BASE: MockTourCard = {
   ratingCount: 758,
 };
 
-function make(overrides: Partial<MockTourCard> = {}): MockTourCard {
+function make(overrides: Partial<TourCardVM> = {}): TourCardVM {
   return { ...BASE, ...overrides };
 }
 

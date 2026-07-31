@@ -8,9 +8,9 @@ import { Dialog, DialogClose, DialogContent, DialogTitle } from '@tourism/ui/com
 import { StarIcon, UserIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { PaginationBar } from '@/components/tours/pagination-bar';
+import type { TourReviewVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
 import { formatReviewDate, tourReviews } from '@/lib/tours';
-import type { MockReview } from '@/mocks/types';
 
 /**
  * Khu "Traveller reviews" của trang chi tiết tour.
@@ -43,7 +43,7 @@ export function TourReviews({
   reviews,
   ratingAvg,
 }: {
-  reviews: MockReview[];
+  reviews: TourReviewVM[];
   /** Từ `tour.ratingAvg` — được DẪN XUẤT từ chính `reviews` (xem cuối mocks/tours.ts),
       nên con số ở đây và độ dài danh sách không thể lệch nhau. */
   ratingAvg: number | null;
@@ -155,7 +155,7 @@ export function TourReviews({
   );
 }
 
-function ReviewBody({ review }: { review: MockReview }) {
+function ReviewBody({ review }: { review: TourReviewVM }) {
   const t = messages.tourDetail.reviews;
   const name = review.authorName ?? t.deletedAuthor;
 

@@ -4,10 +4,11 @@ import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
+import type { TourCardVM } from '@/lib/api/tours';
 import type { ArrayFacetKey, DurationBucket, PriceBucket, TourFilterState } from '@/lib/tours';
-import type { MockDestination, MockTourCard } from '@/mocks/types';
+import type { MockDestination } from '@/mocks/types';
 
-type Difficulty = NonNullable<MockTourCard['difficulty']>;
+type Difficulty = NonNullable<TourCardVM['difficulty']>;
 
 export type FacetKey = ArrayFacetKey;
 

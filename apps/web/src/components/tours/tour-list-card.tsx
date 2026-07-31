@@ -3,8 +3,8 @@ import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ClockIcon, HeartIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import type { TourCardVM } from '@/lib/api/tours';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
-import type { MockTourCard } from '@/mocks/types';
 
 /**
  * HỢP ĐỒNG SỐ DÒNG — lý do tồn tại: card cao thấp so le làm hỏng nhịp của cả
@@ -39,7 +39,7 @@ const CLAMP = {
  */
 const MAX_CHIPS = 2;
 
-export function TourListCard({ tour }: { tour: MockTourCard }) {
+export function TourListCard({ tour }: { tour: TourCardVM }) {
   const t = messages.toursPage;
   const href = `/tours/${tour.slug}`;
   const chain = routeChain(tour.destinations);

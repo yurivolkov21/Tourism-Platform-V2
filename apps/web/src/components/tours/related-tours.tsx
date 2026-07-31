@@ -1,5 +1,5 @@
 import { TourCard } from '@/components/tours/tour-card';
-import type { MockTourCard } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
 
 /**
  * Gợi ý cuối trang. Danh sách do `relatedTours()` chọn: cùng chuyên mục trước,
@@ -11,7 +11,7 @@ import type { MockTourCard } from '@/mocks/types';
  * lấp. Rỗng thì không render gì — 16 tour mock luôn đủ, nhưng khi gắn API mà
  * catalogue chỉ có 1 tour thì đây là nhánh có thật.
  */
-export function RelatedTours({ tours }: { tours: MockTourCard[] }) {
+export function RelatedTours({ tours }: { tours: TourCardVM[] }) {
   if (tours.length === 0) return null;
 
   return (

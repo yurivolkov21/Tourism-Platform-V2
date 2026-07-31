@@ -1,11 +1,11 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
+import type { TourReviewVM } from '@/lib/api/tours';
 import { averageRating } from '@/lib/tours';
-import type { MockReview } from '@/mocks/types';
 import { TourReviews } from './tour-reviews';
 
-function rv(n: number, overrides: Partial<MockReview> = {}): MockReview {
+function rv(n: number, overrides: Partial<TourReviewVM> = {}): TourReviewVM {
   const author = overrides.authorName === undefined ? `Guest ${n}` : overrides.authorName;
   return {
     id: `rv-${n}`,
@@ -20,7 +20,7 @@ function rv(n: number, overrides: Partial<MockReview> = {}): MockReview {
   };
 }
 
-function renderReviews(reviews: MockReview[]) {
+function renderReviews(reviews: TourReviewVM[]) {
   return render(<TourReviews reviews={reviews} ratingAvg={averageRating(reviews)} />);
 }
 

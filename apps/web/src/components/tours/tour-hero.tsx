@@ -4,9 +4,9 @@ import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
+import type { TourDetailVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { discountPercent, formatMoney } from '@/lib/tours';
-import type { MockTourDetail } from '@/mocks/types';
 
 // Hero riêng cho trang chi tiết — KHÔNG tái dùng ToursHero: cái đó mang eyebrow
 // + H1 + subtitle + ô search, còn đây mang rating, chuỗi chặng, chip meta, badge
@@ -24,7 +24,7 @@ import type { MockTourDetail } from '@/mocks/types';
  */
 const MAX_CHIPS = 2;
 
-export function TourHero({ tour }: { tour: MockTourDetail }) {
+export function TourHero({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail;
   const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
 

@@ -1,19 +1,13 @@
-import type {
-  MockDestinationLink,
-  MockMediaItem,
-  MockPolicyKind,
-  MockReview,
-  MockTourCard,
-  MockTourDetail,
-} from '@/mocks/types';
+import type { TourCardVM, TourDetailVM, TourReviewVM } from '@/lib/api/tours';
+import type { MockDestinationLink, MockMediaItem, MockPolicyKind } from '@/mocks/types';
 import { foldAccents } from './text';
 
-type Policy = MockTourDetail['policies'][number];
+type Policy = TourDetailVM['policies'][number];
 
 /** Chuyên mục duy nhất kèm số tour — nguồn cho hàng chip lọc. Giữ thứ tự xuất
     hiện trong mảng gốc (không sắp lại) để chip không nhảy chỗ khi thêm tour. */
 export function tourCategories(
-  tours: readonly MockTourCard[],
+  tours: readonly TourCardVM[],
 ): { slug: string; name: string; count: number }[] {
   const map = new Map<string, { slug: string; name: string; count: number }>();
   for (const tour of tours) {
@@ -52,7 +46,7 @@ export interface TourFilterState {
   destinations: readonly string[];
   durations: readonly DurationBucket[];
   prices: readonly PriceBucket[];
-  difficulties: readonly NonNullable<MockTourCard['difficulty']>[];
+  difficulties: readonly NonNullable<TourCardVM['difficulty']>[];
   featured: boolean;
 }
 
@@ -78,7 +72,7 @@ export const EMPTY_TOUR_FILTERS: TourFilterState = {
  * thì KHÔNG — ba facet đó hiện chỉ chạy được vì dữ liệu là mock nằm sẵn ở
  * client. Xem nợ mở rộng contract trong spec §8.
  */
-export function filterTours<T extends MockTourCard>(
+export function filterTours<T extends TourCardVM>(
   tours: readonly T[],
   state: TourFilterState,
 ): T[] {
@@ -127,7 +121,7 @@ export type ArrayFacetKey = 'categories' | 'destinations' | 'durations' | 'price
  * `tours` truyền vào nên là danh sách ĐÃ lọc theo ô tìm kiếm — search thu hẹp
  * mọi facet.
  */
-export function facetOptionCounts<T extends MockTourCard>(
+export function facetOptionCounts<T extends TourCardVM>(
   tours: readonly T[],
   state: TourFilterState,
   facet: ArrayFacetKey,
@@ -142,7 +136,7 @@ export function facetOptionCounts<T extends MockTourCard>(
 }
 
 /** Số tour featured còn lại theo các facet khác đang bật — cho ô "Featured trips". */
-export function featuredOptionCount<T extends MockTourCard>(
+export function featuredOptionCount<T extends TourCardVM>(
   tours: readonly T[],
   state: TourFilterState,
 ): number {
@@ -163,7 +157,7 @@ export function countActiveFilters(state: TourFilterState): number {
 
 /** Tìm trên tiêu đề + tóm tắt + tên destination + tên chuyên mục, bỏ dấu cả hai
     phía. `summary` nullable nên phải hứng null trước khi ghép chuỗi. */
-export function searchTours<T extends MockTourCard>(tours: readonly T[], query: string): T[] {
+export function searchTours<T extends TourCardVM>(tours: readonly T[], query: string): T[] {
   const q = foldAccents(query.trim());
   if (!q) return [...tours];
   return tours.filter((tour) => {
@@ -188,7 +182,7 @@ export type TourSortKey = 'createdAt' | 'basePrice' | 'durationDays' | 'title';
  * LÀ thứ tự `createdAt desc`. Khi gắn API thật nhánh này biến mất — server sắp
  * hộ và client chỉ truyền `sort=createdAt&order=desc`.
  */
-export function sortTours<T extends MockTourCard>(
+export function sortTours<T extends TourCardVM>(
   tours: readonly T[],
   key: TourSortKey,
   order: 'asc' | 'desc',
@@ -215,7 +209,7 @@ export function sortTours<T extends MockTourCard>(
  * Mảng rỗng trả `null`, KHÔNG phải 0: "chưa ai đánh giá" khác "bị chấm 0 điểm", và
  * cả contract lẫn UI đều phân biệt hai thứ đó.
  */
-export function averageRating(reviews: readonly MockReview[]): number | null {
+export function averageRating(reviews: readonly TourReviewVM[]): number | null {
   if (reviews.length === 0) return null;
   const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
   return Math.round((sum / reviews.length) * 10) / 10;
@@ -230,7 +224,7 @@ export function averageRating(reviews: readonly MockReview[]): number | null {
  * đã xoá chìm xuống cuối — chúng vẫn là đánh giá thật nên không bị bỏ, chỉ không
  * chiếm chỗ trên cùng.
  */
-export function tourReviews(reviews: readonly MockReview[]): MockReview[] {
+export function tourReviews(reviews: readonly TourReviewVM[]): TourReviewVM[] {
   return [...reviews].sort((a, b) => {
     if (a.authorDeleted !== b.authorDeleted) return a.authorDeleted ? 1 : -1;
     if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
@@ -354,7 +348,7 @@ export function groupPoliciesByKind(
 
 /** Gợi ý cuối trang: cùng chuyên mục trước, rồi tour chia chung destination,
     rồi bù bằng phần còn lại. Nexora cắt 4 tour đầu không xét gì — đừng port. */
-export function relatedTours<T extends MockTourCard>(
+export function relatedTours<T extends TourCardVM>(
   tours: readonly T[],
   slug: string,
   limit: number,
