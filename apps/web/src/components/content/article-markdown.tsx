@@ -17,7 +17,14 @@ function flattenToText(node: ReactNode): string {
   if (node === null || node === undefined || typeof node === 'boolean') return '';
   if (typeof node === 'string' || typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(flattenToText).join('');
-  if (isValidElement<{ children?: ReactNode }>(node)) return flattenToText(node.props.children);
+  if (isValidElement<{ children?: ReactNode; alt?: string }>(node)) {
+    // <img> (từ ![alt](url)) không có children — ảnh đóng góp alt text vào
+    // heading, hội tụ với headingPlainText() bên toc.ts xử `![alt](url)` -> alt.
+    if (node.props.children === undefined && typeof node.props.alt === 'string') {
+      return node.props.alt;
+    }
+    return flattenToText(node.props.children);
+  }
   return '';
 }
 

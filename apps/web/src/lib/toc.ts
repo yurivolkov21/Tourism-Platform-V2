@@ -28,6 +28,7 @@ export function tocFromLegalDoc(doc: LegalDoc): TocItem[] {
     thấy: heading có bold/italic/code từng cho id kiểu "object-object"). */
 export function headingPlainText(raw: string): string {
   return raw
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1') // ![alt](url) -> alt — ảnh đóng góp alt text (TRƯỚC regex link thường, vì link thường khớp luôn phần sau dấu !)
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
     .replace(/`([^`]+)`/g, '$1') // `code` -> code
     .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold** -> bold (trước italic vì ** chứa *)

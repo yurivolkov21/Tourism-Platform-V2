@@ -96,4 +96,15 @@ describe('headingPlainText', () => {
       'Bold and italic with code and a link',
     );
   });
+
+  // Finding review Task 6: ảnh markdown `![alt](url)` phải đóng góp alt text
+  // vào text thuần — trước đây regex link thường khớp luôn cả `![alt](url)`
+  // (bỏ dấu `!`), cho text "See !alt here" thay vì "See alt here".
+  it('ảnh markdown đóng góp alt text, không giữ dấu !', () => {
+    expect(headingPlainText('See ![alt text](https://x.com/i.png) here')).toBe('See alt text here');
+  });
+
+  it('heading chỉ có ảnh thì text thuần là alt text', () => {
+    expect(headingPlainText('![Just an image](https://x.com/i.png)')).toBe('Just an image');
+  });
 });

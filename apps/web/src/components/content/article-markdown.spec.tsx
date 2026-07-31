@@ -76,6 +76,19 @@ describe('ArticleMarkdown', () => {
     expect(script).toBeNull();
   });
 
+  // Finding review Task 6: heading H2 chứa ảnh markdown — <img> là React
+  // element không có children nên flattenToText cũ trả '', alt text rơi mất.
+  // So trực tiếp với tocFromMarkdown để bắt lệch id giữa hai phía.
+  it('heading có ảnh markdown — id khớp tocFromMarkdown, alt text được giữ', () => {
+    const md = '## See ![alt text](https://example.com/i.png) here\n\nBody text';
+    render(<ArticleMarkdown markdown={md} />);
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    const toc = tocFromMarkdown(md);
+    expect(heading).toHaveAttribute('id', toc[0]?.id);
+    expect(heading.id).toBe('see-alt-text-here');
+  });
+
   it('hỗ trợ GFM như strikethrough, table, task list', () => {
     const md = '## Features\n\n~~strikethrough~~\n\n- [x] Done\n- [ ] Todo';
     render(<ArticleMarkdown markdown={md} />);
