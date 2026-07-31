@@ -17,7 +17,7 @@ import type { VerifiedEvent } from './gateway.js';
  * controller verify signature dựa trên RAW bytes.
  */
 
-const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
+const PUBLISHED_SLUG = 'hoi-an-lantern-evening'; // basePrice 39.00 USD (roster mới, spec 2026-07-31-tours-catalogue-api-design §3)
 const PASSWORD = 'password-123';
 
 const tour = catalog.tours.find((t) => t.slug === PUBLISHED_SLUG);

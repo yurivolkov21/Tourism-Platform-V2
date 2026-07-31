@@ -34,7 +34,7 @@ import { CancellationsService } from './cancellations.service.js';
  * đây là những gì ghi trong docs/conventions/booking-states.md.
  */
 
-const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
+const PUBLISHED_SLUG = 'hoi-an-lantern-evening'; // basePrice 39.00 USD (roster mới, spec 2026-07-31-tours-catalogue-api-design §3)
 const PASSWORD = 'password-123';
 const ADMIN_EMAIL = 'bootstrap-admin@tourism.test'; // ADMIN_EMAILS (int config)
 

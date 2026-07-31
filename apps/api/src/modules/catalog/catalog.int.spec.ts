@@ -15,15 +15,19 @@ import { DepartureStatus } from '../../generated/prisma/enums.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts).
- * Fixture subset từ prisma/fixtures/catalog.ts: 2 tour published (khác
+ * Fixture subset từ prisma/fixtures/catalog/index.ts: 2 tour published (khác
  * category để test filter) + 1 tour UNPUBLISHED; departures thì tự dựng với
  * ngày ĐỘNG (quá khứ / tương lai / CLOSED) để test "upcoming OPEN only" không
  * thối theo thời gian thực.
  */
 
-const PUBLISHED_DAY_SLUG = 'hoi-an-walking-tour'; // category `day`, isFeatured
-const PUBLISHED_CRUISE_SLUG = 'halong-bay-2d1n'; // category `cruise`
-const UNPUBLISHED_SLUG = 'hanoi-street-food-walk'; // isPublished: false in fixtures
+const PUBLISHED_DAY_SLUG = 'hoi-an-lantern-evening'; // category `day`, isFeatured, basePrice 39.00
+const PUBLISHED_CRUISE_SLUG = 'halong-bay-overnight-cruise'; // category `cruise`
+// Roster mới (spec 2026-07-31-tours-catalogue-api-design §3) không còn tour
+// nào isPublished:false — mượn tour published thật cùng category `day` rồi ép
+// cờ cục bộ (xem `unpublishedTour` bên dưới), KHÔNG đụng file fixtures dùng
+// chung cho db:seed.
+const UNPUBLISHED_SLUG = 'hanoi-old-quarter-food-night';
 
 const PagedCards = PagedSchema(TourCardSchema);
 
@@ -38,7 +42,7 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
 
   const dayTour = pick(PUBLISHED_DAY_SLUG);
   const cruiseTour = pick(PUBLISHED_CRUISE_SLUG);
-  const unpublishedTour = pick(UNPUBLISHED_SLUG);
+  const unpublishedTour = { ...pick(UNPUBLISHED_SLUG), isPublished: false };
   const fixtureTours = [dayTour, cruiseTour, unpublishedTour];
   const tourIds = new Set(fixtureTours.map((t) => t.id));
 
@@ -75,8 +79,18 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     await prisma.tour.createMany({
       data: fixtureTours as unknown as Prisma.TourCreateManyInput[],
     });
+    // Roster mới: cruiseTour (halong-bay-overnight-cruise) chỉ nối 1 điểm đến
+    // (ha-long, primary) — không còn cruise nào tự nhiên nối Hà Nội non-primary
+    // như bản gốc halong-bay-2d1n. Đắp thêm 1 dòng join test-only ở đây (không
+    // đụng fixtures dùng chung) để giữ phủ nhánh "destination filter khớp qua
+    // non-primary, không chỉ primary" (xem 2 test bên dưới dùng destination=hanoi).
+    const hanoiId = catalog.destinations.find((d) => d.slug === 'hanoi')?.id;
+    if (!hanoiId) throw new Error('fixture destination missing: hanoi');
     await prisma.tourDestination.createMany({
-      data: catalog.tourDestinations.filter((row) => tourIds.has(row.tourId)),
+      data: [
+        ...catalog.tourDestinations.filter((row) => tourIds.has(row.tourId)),
+        { tourId: cruiseTour.id, destinationId: hanoiId, isPrimary: false },
+      ],
     });
     await prisma.tourItineraryDay.createMany({
       data: catalog.tourItineraryDays.filter((row) => tourIds.has(row.tourId)),
@@ -161,7 +175,7 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   it('filters by case-insensitive search on title/summary', async () => {
     const res = await app.inject({
       method: 'GET',
-      url: '/api/tours?search=WALKING',
+      url: '/api/tours?search=LANTERN',
     });
     expect(res.statusCode).toBe(200);
     const paged = PagedCards.parse(res.json());
@@ -181,8 +195,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   });
 
   it('filters by destination slug (any linked destination, not just primary)', async () => {
-    // The cruise links Hà Nội as a NON-primary destination; the only other
-    // hanoi-linked fixture tour is unpublished → exactly the cruise matches.
+    // Cruise nối Hà Nội qua join test-only (non-primary, đắp ở beforeAll);
+    // unpublishedTour cũng nối Hà Nội thật (primary) nhưng unpublished nên bị
+    // loại → chỉ cruise khớp.
     const res = await app.inject({
       method: 'GET',
       url: '/api/tours?destination=hanoi',
@@ -297,8 +312,8 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     const entry = destinations.find((d) => d.slug === hoiAn?.slug);
     expect(entry?.tourCount).toBeGreaterThanOrEqual(1);
 
-    // Hà Nội: linked to the UNPUBLISHED street-food tour (doesn't count) and
-    // to the published cruise via a non-primary join (counts) → exactly 1.
+    // Hà Nội: nối unpublishedTour thật (primary, không đếm vì unpublished) và
+    // cruiseTour qua join test-only non-primary (đếm) → đúng 1.
     const hanoi = destinations.find((d) => d.slug === 'hanoi');
     expect(hanoi?.tourCount).toBe(1);
   });

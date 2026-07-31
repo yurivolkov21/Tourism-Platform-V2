@@ -25,7 +25,7 @@ import { BookingNotFoundError, RefundsService } from './refunds.service.js';
  * có case CURRENCY_MISMATCH trên input-path để test (xem refund-math.ts).
  */
 
-const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
+const PUBLISHED_SLUG = 'hoi-an-lantern-evening'; // basePrice 39.00 USD (roster mới, spec 2026-07-31-tours-catalogue-api-design §3)
 const PASSWORD = 'password-123';
 const ADMIN_EMAIL = 'bootstrap-admin@tourism.test'; // ADMIN_EMAILS (int config)
 

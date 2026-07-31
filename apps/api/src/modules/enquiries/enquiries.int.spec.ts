@@ -49,7 +49,7 @@ async function createPublishedTour(slug: string) {
   return prisma.tour.create({
     data: {
       slug,
-      title: 'Hội An Walking Tour',
+      title: 'Hội An Old Town & Lantern Evening',
       categoryId: category.id,
       durationDays: 1,
       basePrice: '39.00',
@@ -270,7 +270,7 @@ describe('enquiries (int)', () => {
   it('email lưu dạng citext: gửi Jane@X.com rồi query jane@x.com phải khớp (kèm tourId hợp lệ)', async () => {
     // Gắn kèm tourId đã publish để cùng lúc xác nhận nhánh publish chạy
     // đúng — tourTitle phải lọt vào outbox payload chung của cả hai email.
-    const tour = await createPublishedTour('hoi-an-walking-tour');
+    const tour = await createPublishedTour('hoi-an-lantern-evening');
 
     const res = await postEnquiry(
       app,

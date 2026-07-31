@@ -14,8 +14,11 @@ import { FakeGateway } from '../payments/fake.gateway.js';
  * PaymentsModule provide fake), snapshot đúng, ghế KHÔNG bị trừ (bất biến #1).
  */
 
-const PUBLISHED_SLUG = 'hoi-an-walking-tour'; // basePrice 39.00 USD
-const UNPUBLISHED_SLUG = 'hanoi-street-food-walk';
+const PUBLISHED_SLUG = 'hoi-an-lantern-evening'; // basePrice 39.00 USD
+// Roster mới (spec 2026-07-31-tours-catalogue-api-design §3) không còn tour
+// nào isPublished:false — mượn tour published thật rồi ép cờ cục bộ (xem
+// `unpublishedTour` bên dưới), KHÔNG đụng file fixtures dùng chung cho db:seed.
+const UNPUBLISHED_SLUG = 'hanoi-old-quarter-food-night';
 const PASSWORD = 'password-123';
 
 const pick = (slug: string) => {
@@ -42,7 +45,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
   let fake: FakeGateway;
 
   const dayTour = pick(PUBLISHED_SLUG);
-  const unpublishedTour = pick(UNPUBLISHED_SLUG);
+  const unpublishedTour = { ...pick(UNPUBLISHED_SLUG), isPublished: false };
   const tourIds = new Set([dayTour.id, unpublishedTour.id]);
 
   const dep = (

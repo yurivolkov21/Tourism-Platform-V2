@@ -75,7 +75,7 @@ async function createPublishedTour(slug: string) {
   return prisma.tour.create({
     data: {
       slug,
-      title: 'Hội An Walking Tour',
+      title: 'Hội An Old Town & Lantern Evening',
       categoryId: category.id,
       durationDays: 1,
       basePrice: '39.00',
@@ -88,7 +88,7 @@ async function createPublishedTour(slug: string) {
 describe('wishlist (int)', () => {
   it('set({wished:true}) hai lần liên tiếp → cả hai 200, DB đúng MỘT row (idempotent)', async () => {
     const { user, cookie } = await signUpAndSignIn(app, 'wisher@example.com');
-    const tour = await createPublishedTour('hoi-an-walking-tour-1');
+    const tour = await createPublishedTour('hoi-an-lantern-evening-1');
 
     const first = await app.inject({
       method: 'POST',
@@ -123,7 +123,7 @@ describe('wishlist (int)', () => {
 
   it('set({wished:false}) cho tour chưa từng lưu → 200, không 404 (no-op)', async () => {
     const { cookie } = await signUpAndSignIn(app, 'wisher2@example.com');
-    const tour = await createPublishedTour('hoi-an-walking-tour-2');
+    const tour = await createPublishedTour('hoi-an-lantern-evening-2');
 
     const res = await app.inject({
       method: 'POST',

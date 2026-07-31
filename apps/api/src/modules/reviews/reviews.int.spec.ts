@@ -95,8 +95,8 @@ async function seedCompletedBooking(opts: { endDate: Date; userId: string }) {
   });
   const tour = await prisma.tour.create({
     data: {
-      slug: 'hoi-an-walking-tour',
-      title: 'Hội An Walking Tour',
+      slug: 'hoi-an-lantern-evening',
+      title: 'Hội An Old Town & Lantern Evening',
       categoryId: category.id,
       durationDays: 1,
       basePrice: '39.00',
@@ -170,8 +170,8 @@ async function seedTwoApprovedReviews() {
   });
   const tour = await prisma.tour.create({
     data: {
-      slug: 'hoi-an-walking-tour',
-      title: 'Hội An Walking Tour',
+      slug: 'hoi-an-lantern-evening',
+      title: 'Hội An Old Town & Lantern Evening',
       categoryId: category.id,
       durationDays: 1,
       basePrice: '39.00',
@@ -323,8 +323,8 @@ describe('reviews (int)', () => {
     });
     const tour = await prisma.tour.create({
       data: {
-        slug: 'hoi-an-walking-tour',
-        title: 'Hội An Walking Tour',
+        slug: 'hoi-an-lantern-evening',
+        title: 'Hội An Old Town & Lantern Evening',
         categoryId: category.id,
         durationDays: 1,
         basePrice: '39.00',
@@ -382,8 +382,8 @@ describe('reviews (int)', () => {
     });
     const tour = await prisma.tour.create({
       data: {
-        slug: 'hoi-an-walking-tour',
-        title: 'Hội An Walking Tour',
+        slug: 'hoi-an-lantern-evening',
+        title: 'Hội An Old Town & Lantern Evening',
         categoryId: category.id,
         durationDays: 1,
         basePrice: '39.00',
@@ -491,8 +491,8 @@ describe('reviews (int)', () => {
       });
       const tour = await prisma.tour.create({
         data: {
-          slug: 'hoi-an-walking-tour',
-          title: 'Hội An Walking Tour',
+          slug: 'hoi-an-lantern-evening',
+          title: 'Hội An Old Town & Lantern Evening',
           categoryId: category.id,
           durationDays: 1,
           basePrice: '39.00',
@@ -571,7 +571,7 @@ describe('reviews (int)', () => {
       const tour = await prisma.tour.create({
         data: {
           slug: opts.tourSlug,
-          title: 'Hội An Walking Tour',
+          title: 'Hội An Old Town & Lantern Evening',
           categoryId: category.id,
           durationDays: 1,
           basePrice: '39.00',
@@ -642,7 +642,7 @@ describe('reviews (int)', () => {
       expect(items[0].isApproved).toBe(false);
       // R1: danh tính tour đi kèm — trang "Đánh giá của tôi" hiện tên + link.
       expect(items[0].tourSlug).toBe('walk-mine-1');
-      expect(items[0].tourTitle).toBe('Hội An Walking Tour');
+      expect(items[0].tourTitle).toBe('Hội An Old Town & Lantern Evening');
     });
 
     it('có cả review CHƯA duyệt của chính mình (mới nhất trước)', async () => {
@@ -755,8 +755,8 @@ describe('reviews (int)', () => {
       });
       const tour = await prisma.tour.create({
         data: {
-          slug: 'hoi-an-walking-tour',
-          title: 'Hội An Walking Tour',
+          slug: 'hoi-an-lantern-evening',
+          title: 'Hội An Old Town & Lantern Evening',
           categoryId: category.id,
           durationDays: 1,
           basePrice: '39.00',
