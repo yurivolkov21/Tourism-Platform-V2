@@ -1,7 +1,8 @@
 # Spec — Bước 1 nối API: cụm Blog + nền `lib/api` (2026-07-31)
 
-- **Trạng thái:** Chờ user duyệt spec (thiết kế tổng đã duyệt 31/07 — chốt seed
-  từ 9 bài mock; điểm MỚI so với bản duyệt miệng: §2E teaser Home)
+- **Trạng thái:** Approved 31/07 — user duyệt trọn spec kể cả §2E (nối luôn
+  teaser Home trong branch này); seed từ 9 bài mock đã chốt từ buổi duyệt
+  thiết kế
 - **Nền:** [ADR-0016](../adr/0016-web-data-layer.md) — mọi quyết định kiến trúc
   tầng dữ liệu đã chốt ở đó; spec này chỉ hiện thực hoá cho cụm đầu tiên.
 - **Branch:** `feat/blog-api` (one feature = one branch, rebase + ff-only).
