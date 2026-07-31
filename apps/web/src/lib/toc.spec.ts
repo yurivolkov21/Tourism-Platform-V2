@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tocFromLegalDoc, tocFromSections } from './toc.js';
+import { tocFromLegalDoc, tocFromMarkdown, tocFromSections } from './toc.js';
 
 const doc = {
   title: 'Terms',
@@ -43,5 +43,20 @@ describe('tocFromSections', () => {
 
   it('mảng rỗng trả mảng rỗng', () => {
     expect(tocFromSections([])).toEqual([]);
+  });
+});
+
+describe('tocFromMarkdown', () => {
+  it('lấy H2 theo thứ tự, id slugify, index pad 2 chữ số', () => {
+    const md = '## Layers beat one big coat\n\nbody\n\n## Shoes that already know mud\n';
+    expect(tocFromMarkdown(md)).toEqual([
+      { id: 'layers-beat-one-big-coat', label: 'Layers beat one big coat', index: '01' },
+      { id: 'shoes-that-already-know-mud', label: 'Shoes that already know mud', index: '02' },
+    ]);
+  });
+
+  it('bỏ qua H3 và heading nằm trong code fence', () => {
+    const md = '### not me\n```\n## fenced\n```\n## real one\n';
+    expect(tocFromMarkdown(md).map((i) => i.label)).toEqual(['real one']);
   });
 });

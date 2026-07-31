@@ -20,3 +20,27 @@ export function tocFromSections(sections: { heading: string }[]): TocItem[] {
 export function tocFromLegalDoc(doc: LegalDoc): TocItem[] {
   return tocFromSections(doc.sections);
 }
+
+/** Mục lục từ markdown: chỉ H2 (`## `) — cùng cấp với section cũ; heading
+    trong code fence không phải heading. Id PHẢI khớp id mà ArticleMarkdown
+    gắn cho <h2> (cùng slugify) — lệch là TOC trỏ vào không khí. */
+export function tocFromMarkdown(markdown: string): TocItem[] {
+  const items: TocItem[] = [];
+  let inFence = false;
+  for (const line of markdown.split('\n')) {
+    if (line.trimStart().startsWith('```')) {
+      inFence = !inFence;
+      continue;
+    }
+    if (inFence) continue;
+    const match = /^##\s+(.+)$/.exec(line);
+    if (match?.[1]) {
+      items.push({
+        id: slugify(match[1]),
+        label: match[1].trim(),
+        index: String(items.length + 1).padStart(2, '0'),
+      });
+    }
+  }
+  return items;
+}
