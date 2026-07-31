@@ -2,9 +2,11 @@
  * Database seed — bản port v2 của seed Nexora, chỉnh cho schema v2.
  *
  * Seed những gì (catalog cốt lõi + functional overlay):
- *   1. Catalog fixtures (`./fixtures/catalog.ts`, port từ Nexora): tour
- *      category, destination, tour (+ M:N destination, itinerary, FAQ, policy,
- *      departure). `createMany({ skipDuplicates })` → chạy lại được nhiều lần.
+ *   1. Catalog fixtures (`./fixtures/catalog/index.ts`, tách theo miền Bắc/
+ *      Trung/Nam từ 2026-07-31 — trước đó một file `catalog.ts` port từ
+ *      Nexora, đã xoá): tour category, destination, tour (+ M:N destination,
+ *      itinerary, FAQ, policy, departure). `createMany({ skipDuplicates })` →
+ *      chạy lại được nhiều lần.
  *   2. Site media slot — 9 slot key brand-chrome (Nexora seed chúng bằng
  *      migration; ở đây seed upsert chúng).
  *   3. Một CUSTOMER đăng nhập được (`customer@tourism.test`) + một ADMIN (entry
@@ -32,12 +34,20 @@ import {
   PostStatus,
   UserRole,
 } from '../src/generated/prisma/enums.js';
-import * as catalog from './fixtures/catalog.js';
+import * as catalog from './fixtures/catalog/index.js';
 import { posts as blogPosts } from './fixtures/posts.js';
 
 /** Code của PAID booking tự ký (thuộc về customer trong overlay). */
 const PAID_BOOKING_CODE = 'BK-SEEDPAID';
-/** Gắn PAID booking vào tour này nếu nó đủ điều kiện; nếu không thì departure đủ điều kiện gần nhất. */
+/**
+ * Gắn PAID booking vào tour này nếu nó đủ điều kiện; nếu không thì departure
+ * đủ điều kiện gần nhất (`pickPaidDeparture` có fallback nên KHÔNG throw nếu
+ * slug này không khớp). ⚠️ Slug tour cũ — bộ tour mới (spec
+ * 2026-07-31-tours-catalogue-api-design.md §3) không có slug này; để lại
+ * nguyên vì Task 1 chỉ tách fixtures, không chọn lại tour ưu tiên. Task
+ * seed/reset DB catalogue mới nên chọn lại slug này (ví dụ tour mẫu Vũng Tàu
+ * `vung-tau-coastal-2d`) khi có nội dung tour thật.
+ */
 const PREFERRED_PAID_TOUR_SLUG = 'hoi-an-walking-tour';
 const PAID_SEATS = 2;
 
@@ -285,7 +295,7 @@ async function main(): Promise<void> {
       // Cố ý KHÔNG reconcile: `update: {}` nghĩa là sửa fixture rồi re-seed
       // sẽ KHÔNG đổi 9 row đã tồn tại — slug là khoá match, không phải khoá
       // đồng bộ nội dung. Muốn cập nhật nội dung đã seed thì sửa thẳng DB
-      // hoặc xoá row đó rồi seed lại (giống nếp `fixtures/catalog.ts`).
+      // hoặc xoá row đó rồi seed lại (giống nếp `fixtures/catalog/`).
       update: {},
     });
   }

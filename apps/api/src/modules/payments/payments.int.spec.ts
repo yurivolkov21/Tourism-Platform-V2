@@ -1,7 +1,7 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { BookingSchema } from '@tourism/contract';
-import * as catalog from '../../../prisma/fixtures/catalog.js';
+import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
