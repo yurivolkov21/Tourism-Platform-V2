@@ -5,19 +5,25 @@ import { PostCard } from '@/components/blog/post-card';
 import { PostHero } from '@/components/blog/post-hero';
 import { PostNav } from '@/components/blog/post-nav';
 import { ShareRow } from '@/components/blog/share-row';
-import { ArticleBody } from '@/components/content/article-body';
+import { ArticleMarkdown } from '@/components/content/article-markdown';
 import { OnThisPage } from '@/components/content/on-this-page';
 import { ReadingProgress } from '@/components/content/reading-progress';
+import { fetchPostDetail, fetchPosts } from '@/lib/api/posts';
 import { adjacentPosts, relatedPosts } from '@/lib/blog';
 import { absoluteUrl } from '@/lib/site';
-import { tocFromSections } from '@/lib/toc';
-import { JOURNAL_POSTS } from '@/mocks/journal';
+import { tocFromMarkdown } from '@/lib/toc';
 
-// Sinh sẵn 9 slug lúc build; slug lạ rơi vào notFound() → trang 404 của cụm
-// pháp lý đón. Thân bài dùng ĐÚNG khuôn LegalArticle nên /blog/[slug] và
-// /terms là anh em cùng bộ xương.
-export function generateStaticParams() {
-  return JOURNAL_POSTS.map((post) => ({ slug: post.slug }));
+export const revalidate = 300;
+
+// Sinh sẵn slug lúc build từ API THẬT (ADR-0016 §3), KHÔNG settle lỗi ở đây:
+// fetch hỏng lúc build phải ném ra ngoài → build fail TO TIẾNG. Settle êm ở
+// đây là slug rỗng âm thầm → sitemap/ISR rỗng âm thầm, lỗi chỉ lộ ra khi
+// người dùng vào trang 404 nhầm chỗ. Slug lạ ngoài danh sách này vẫn rơi vào
+// notFound() bên dưới — trang 404 của cụm pháp lý đón. Thân bài dùng ĐÚNG
+// khuôn LegalArticle nên /blog/[slug] và /terms là anh em cùng bộ xương.
+export async function generateStaticParams() {
+  const posts = await fetchPosts();
+  return posts.map((post) => ({ slug: post.slug }));
 }
 
 export async function generateMetadata({
@@ -26,7 +32,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const post = JOURNAL_POSTS.find((p) => p.slug === slug);
+  // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
+  const post = await fetchPostDetail(slug);
   if (!post) return { title: 'Post not found — Tourism' };
   return {
     title: `${post.title} — Tourism`,
@@ -37,27 +44,28 @@ export async function generateMetadata({
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const post = JOURNAL_POSTS.find((p) => p.slug === slug);
+  const post = await fetchPostDetail(slug);
   if (!post) notFound();
 
-  const toc = tocFromSections(post.sections);
-  // Điều hướng cuối bài + gợi ý bài liên quan — cùng nguồn JOURNAL_POSTS,
-  // logic thuần đã có test riêng ở lib/blog.spec.ts.
-  const { newer, older } = adjacentPosts(JOURNAL_POSTS, slug);
-  const more = relatedPosts(JOURNAL_POSTS, slug, 3);
+  const toc = tocFromMarkdown(post.contentMarkdown);
+  // Điều hướng cuối bài + gợi ý bài liên quan — cùng nguồn fetchPosts() (cùng
+  // tag TAGS.POSTS với trang listing nên chung một fetch cache), logic thuần
+  // đã có test riêng ở lib/blog.spec.ts.
+  const posts = await fetchPosts();
+  const { newer, older } = adjacentPosts(posts, slug);
+  const more = relatedPosts(posts, slug, 3);
 
-  // JSON-LD dựng từ mock TĨNH, escape `<` để không thoát khỏi thẻ script —
-  // cùng pattern an toàn với trang /faq.
+  // JSON-LD dựng từ dữ liệu API, escape `<` để không thoát khỏi thẻ script —
+  // cùng pattern an toàn với trang /faq. VM không có `updated`/`image` (contract
+  // không trả field này, và không bịa URL ảnh khi cover null) nên hai field đó
+  // bị bỏ hẳn thay vì suy đoán.
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
     description: post.excerpt,
     datePublished: post.date,
-    ...(post.updated ? { dateModified: post.updated } : {}),
     author: { '@type': 'Person', name: post.author },
-    // Schema.org cần URL tuyệt đối cho ảnh, không phải đường dẫn tương đối.
-    image: absoluteUrl(post.image),
   };
 
   // BreadcrumbList 3 cấp khớp breadcrumb đang hiển thị ở PostHero:
@@ -101,13 +109,17 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <div className="min-w-0 max-w-[68ch]">
             <Typeset preset="reading" className="text-muted-foreground">
               {/* Câu mở đầu to hơn thân bài thật sự (token Tailwind text-lg) —
-                  class `.lead` cũ không có rule nào định nghĩa, chỉ nằm chết */}
-              <p className="text-lg">{post.excerpt}</p>
+                  class `.lead` cũ không có rule nào định nghĩa, chỉ nằm chết.
+                  VM trả '' khi excerpt null nên bọc điều kiện, không render
+                  <p> rỗng. */}
+              {post.excerpt ? <p className="text-lg">{post.excerpt}</p> : null}
             </Typeset>
 
-            {/* Cùng một khối với 3 trang pháp lý — trước đây chép nguyên xi. */}
+            {/* ArticleMarkdown tự bọc Typeset riêng — thân bài từ nội dung
+                markdown thật của API, khác ArticleBody (giữ nguyên cho cụm
+                pháp lý — không đụng). */}
             <div className="mt-12">
-              <ArticleBody sections={post.sections} />
+              <ArticleMarkdown markdown={post.contentMarkdown} />
             </div>
 
             <ShareRow title={post.title} />

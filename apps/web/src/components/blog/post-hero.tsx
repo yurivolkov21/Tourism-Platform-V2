@@ -63,12 +63,9 @@ export function PostHero({ post }: { post: JournalPost }) {
             <ClockIcon className="size-3.5" aria-hidden="true" />
             {post.readMinutes} min read
           </span>
-          {post.updated ? (
-            <>
-              <span aria-hidden="true">·</span>
-              <span>Updated {DATE_FMT.format(new Date(post.updated))}</span>
-            </>
-          ) : null}
+          {/* Nhánh "Updated …" cũ đọc post.updated — cắt có chủ đích: contract
+              PostDetail không có updatedAt, JournalPost/JournalPostDetail
+              không mang field này (lib/api/posts.ts). */}
         </div>
       </div>
     </section>
