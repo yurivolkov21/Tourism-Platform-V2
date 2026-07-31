@@ -2198,6 +2198,16 @@ export const messages = {
       retry: 'Try again',
     },
   },
+  /** Khuôn phản hồi dùng chung của tầng dữ liệu (ADR-0016 §4) — không gắn
+      trang cụ thể; trang nào có copy riêng (vd toursPage.loadError) thì dùng
+      bản riêng của nó. */
+  feedback: {
+    loadError: {
+      title: "We couldn't load this section",
+      body: 'Something went wrong on our side — this is usually momentary.',
+      retry: 'Try again',
+    },
+  },
 } as const;
 
 export type Messages = typeof messages;

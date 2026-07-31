@@ -1,22 +1,29 @@
-import { AlertTriangleIcon } from 'lucide-react';
+'use client';
 
-// Phân biệt "API chết" với "rỗng thật". Nexora ghi thẳng bài học này trong
-// comment app/tours/page.tsx: hiện "No tours match your filters" khi API lỗi là
-// NÓI DỐI người dùng — họ sẽ đi gỡ từng bộ lọc mà chẳng bao giờ thấy tour nào.
-//
-// GIỚI HẠN HIỆN TẠI: cụm này còn chạy bằng mock nên chưa có API để mà lỗi. Đây
-// là khung dựng sẵn CHƯA có dữ liệu chạy qua — nó chỉ chứng minh được gì ở cụm
-// gắn API. Dựng bây giờ vì rẻ hơn nhét vào lúc wire, không phải vì nó đang bảo
-// vệ điều gì.
-export function LoadErrorState({ title, body }: { title: string; body: string }) {
+import { messages } from '@tourism/i18n';
+import { RotateCwIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+/**
+ * Panel lỗi tải section (ADR-0016 §4). Retry = router.refresh() — chạy lại
+ * RSC fetch của trang, đúng mẫu LoadErrorState Nexora. KHÔNG dùng cho lỗi
+ * validate form (inline cạnh field) — chỉ cho section dữ liệu API.
+ */
+export function LoadErrorState({ className = '' }: { className?: string }) {
+  const router = useRouter();
+  const t = messages.feedback.loadError;
   return (
-    <div
-      role="alert"
-      className="mt-10 rounded-2xl border border-dashed border-destructive/40 p-12 text-center"
-    >
-      <AlertTriangleIcon className="mx-auto size-6 text-destructive" aria-hidden="true" />
-      <h2 className="mt-4 font-heading text-xl font-medium text-foreground">{title}</h2>
-      <p className="mt-2 text-pretty text-muted-foreground">{body}</p>
+    <div role="alert" className={`rounded-2xl border border-dashed p-12 text-center ${className}`}>
+      <h2 className="font-heading text-xl font-medium text-foreground">{t.title}</h2>
+      <p className="mt-2 text-pretty text-muted-foreground">{t.body}</p>
+      <button
+        type="button"
+        onClick={() => router.refresh()}
+        className="mt-5 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline"
+      >
+        <RotateCwIcon className="size-3.5" aria-hidden="true" />
+        {t.retry}
+      </button>
     </div>
   );
 }
