@@ -17,21 +17,31 @@
  *      "my bookings" thử được mà không cần payment thật.
  *   5. 9 bài blog port từ mock journal đã duyệt của web (`./fixtures/posts.ts`)
  *      — upsert theo slug, tag connectOrCreate theo slug, authorId = admin.
+ *   6. 84 review CURATED cho 24/30 tour (`./fixtures/catalog/reviews.ts`, spec
+ *      2026-07-31-tours-catalogue-api §4/§5) — `createMany({ skipDuplicates })`
+ *      với `source: CURATED`, `isApproved: true`, không userId/bookingId.
+ *   6b. Recompute `ratingAvg`/`ratingCount` cho MỌI tour ngay sau bước 6 —
+ *      cùng công thức làm tròn với `ReviewsService.moderate` ③
+ *      (`AVG(rating)::numeric(2,1)`), nhưng KHÔNG lọc `source = 'VERIFIED'`
+ *      như service: ở seed, review CURATED chính là toàn bộ dữ liệu đánh giá
+ *      hiện có (chưa có booking/review thật), nên chỉ lọc `isApproved = true`
+ *      (xem doc-comment tại chỗ gọi bên dưới để biết lý do đầy đủ).
  *
  * KHÔNG port từ Nexora (các fixture phụ thuộc user, vốn giả định identity
- * Supabase): user mẫu, booking, payment event, review, wishlist, enquiry,
- * outbox, media asset/rác.
+ * Supabase): user mẫu, booking, payment event, wishlist, enquiry, outbox,
+ * media asset/rác.
  *
  * Chạy: pnpm --filter @tourism/api db:seed  (compile qua swc, xem package.json)
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';
-import { type Prisma, PrismaClient } from '../src/generated/prisma/client.js';
+import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
   BookingStatus,
   DepartureStatus,
   PaymentProvider,
   PostStatus,
+  ReviewSource,
   UserRole,
 } from '../src/generated/prisma/enums.js';
 import * as catalog from './fixtures/catalog/index.js';
@@ -300,6 +310,55 @@ async function main(): Promise<void> {
     });
   }
   console.log(`[seed] blog posts: ${blogPosts.length} upserted.`);
+
+  // 6. Reviews CURATED cho tour (spec 2026-07-31-tours-catalogue-api §4) —
+  //    row curated không cần booking/user (FK nullable có chủ đích trong
+  //    schema). Idempotent nhờ id tĩnh + skipDuplicates.
+  const { count: reviewCount } = await prisma.review.createMany({
+    data: catalog.tourReviews.map((review) => ({
+      ...review,
+      createdAt: new Date(review.createdAt),
+      source: ReviewSource.CURATED,
+      isApproved: true,
+    })),
+    skipDuplicates: true,
+  });
+  console.log(`[seed] tour reviews: +${reviewCount}`);
+
+  // 6b. Recompute ratingAvg/ratingCount cho MỌI tour (kể cả 0 review → null/0)
+  //     — CÙNG kỹ thuật làm tròn với `ReviewsService.moderate` ③
+  //     (`src/modules/reviews/reviews.service.ts` ~dòng 283-298):
+  //     `AVG(rating)::numeric(2,1)` trong một câu `UPDATE tours … FROM
+  //     (SELECT AVG…)`. Cố ý KHÁC service ở đúng MỘT điểm: service lọc thêm
+  //     `AND source = 'VERIFIED'` (rating sản xuất chỉ tính review thật của
+  //     khách đã đi tour, không tính testimonial CURATED — xem doc-comment
+  //     dài ở service giải thích vì sao). Ở seed thì NGƯỢC LẠI: toàn bộ review
+  //     vừa insert ở bước 6 ĐỀU là CURATED (chưa có review VERIFIED nào vì
+  //     seed chưa tạo booking đủ điều kiện để review), nên lọc
+  //     `source = 'VERIFIED'` sẽ luôn ra `ratingAvg = null` bất kể bước 6 vừa
+  //     insert bao nhiêu review — vô nghĩa với mục đích của bước này (spec
+  //     §5: Vũng Tàu phải ra 4.7/3 từ đúng 3 review CURATED của nó). Vì vậy
+  //     chỉ lọc `is_approved = true`, không lọc source — tính đúng nghĩa đen
+  //     "review approved" mà spec dùng, không phải gate nghiệp vụ riêng của
+  //     moderate() (gate đó dành cho lúc có review VERIFIED thật lẫn vào,
+  //     P4 trở đi). Không cần `FOR UPDATE`/transaction như moderate(): seed
+  //     chạy đơn luồng, không có ai ghi concurrent vào bảng reviews lúc này.
+  for (const tour of catalog.tours) {
+    await prisma.$executeRaw(Prisma.sql`
+      UPDATE tours t
+      SET rating_avg = s.avg_rating,
+          rating_count = s.cnt,
+          updated_at = now()
+      FROM (
+        SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
+        FROM reviews
+        WHERE tour_id = ${tour.id}::uuid
+          AND is_approved = true
+      ) s
+      WHERE t.id = ${tour.id}::uuid
+    `);
+  }
+  console.log(`[seed] recomputed ratingAvg/ratingCount for ${catalog.tours.length} tours.`);
 
   console.log('[seed] done.');
 }

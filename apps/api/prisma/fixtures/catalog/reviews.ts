@@ -1,22 +1,891 @@
 import type { TourReviewFixture } from './types.js';
 
 /**
- * Fixture review CURATED cho tour — RỖNG Ở TASK 1, nội dung viết ở Task 5 của
- * plan `docs/plans/2026-07-31-tours-catalogue-api.md` (spec
- * 2026-07-31-tours-catalogue-api-design.md §4 — "Reviews CURATED"). Shape
- * từng phần tử: `TourReviewFixture` (`./types.js`) — field `source`/
- * `isApproved` seed.ts TỰ GẮN ở bước 6 (KHÔNG khai ở fixture), không có
- * `userId`/`bookingId` (CURATED không cần gắn người dùng/booking thật — FK
- * nullable có chủ đích trong schema).
+ * Fixture review CURATED cho tour (spec `2026-07-31-tours-catalogue-api-
+ * design.md` §4 "Reviews CURATED" + §5 tour mẫu Vũng Tàu). Shape từng phần tử:
+ * `TourReviewFixture` (`./types.js`) — field `source`/`isApproved` seed.ts TỰ
+ * GẮN ở bước 6 (KHÔNG khai ở fixture), không có `userId`/`bookingId` (CURATED
+ * không cần gắn người dùng/booking thật — FK nullable có chủ đích trong
+ * schema).
  *
- * Series UUID MỚI (Global Constraints của plan): `a0000002-0000-4000-8000-
- * 0000000000NN`, đánh số tuần tự theo thứ tự viết (không cần khớp cột #
- * roster — mỗi tour có 0–5 review, không phải 1 review/tour).
+ * Series UUID: `a0000002-0000-4000-8000-0000000000NN`, đánh số tuần tự theo
+ * thứ tự viết dưới đây (không khớp cột # roster — mỗi tour có 0–5 review).
+ *
+ * Roster 30 tour · 24 tour có 2–5 review (tổng 84) · **6 tour CỐ Ý 0 review**
+ * (tour mới/ngách, hợp lý khi chưa có khách đánh giá):
+ *   #3  `red-river-craft-villages-day` (Bát Tràng & Red River Craft Villages)
+ *   #10 `mai-chau-cycling-2d` (Mai Châu Valley Cycling & Stilt House 2D1N)
+ *   #18 `my-son-sunrise-halfday` (Mỹ Sơn Sanctuary at Sunrise)
+ *   #20 `quy-nhon-coastal-3d` (Quy Nhơn Coastal Escape 3D2N)
+ *   #26 `ben-tre-coconut-day` (Bến Tre Coconut Country Day Trip)
+ *   #30 `con-dao-history-nature-3d` (Côn Đảo History & Nature 3D2N)
+ *
+ * Rating đa số 4–5, rải vài 3 kèm lời chê hợp lý (khách sạn xa chợ, hàng quán
+ * chèo kéo commission, thời tiết, chờ đợi) — không tour nào toàn điểm 3.
+ * `authorName`/`authorLocation` trộn quốc tịch (Anh, Đức, Úc, Hàn, Nhật,
+ * Pháp, Việt…). `createdAt` trải 2026-01 → 2026-07, không trùng giờ.
+ *
+ * 3 review của `vung-tau-coastal-2d` (#22) khớp spec §5 nguyên văn: 5★ gia
+ * đình khen mốc giờ đúng lịch + bữa Gành Hào · 5★ cặp đôi khen sunrise
+ * Lighthouse · 4★ khen tổng thể, chê khách sạn xa chợ đêm một chút — trung
+ * bình (5+5+4)/3 = 4.6667 → làm tròn `numeric(2,1)` = 4.7 (đúng số spec yêu
+ * cầu, seed.ts bước 6b recompute).
  *
  * Sau khi insert, seed.ts recompute `ratingAvg`/`ratingCount` trên bảng
- * `Tour` cho MỌI tour (kể cả tour không có review nào ở đây → `ratingAvg`
- * `null`, khác `0` — spec §4 nhấn mạnh tri-state này). 6 tour CỐ Ý 0 review
- * do Task 5 chọn và ghi rõ trong bản cập nhật của file này.
+ * `Tour` cho MỌI tour (kể cả 6 tour 0-review ở trên → `ratingAvg` `null`,
+ * khác `0` — spec §4 nhấn mạnh tri-state này).
  */
 
-export const tourReviews: TourReviewFixture[] = [];
+export const tourReviews: TourReviewFixture[] = [
+  // #1 hanoi-old-quarter-food-night — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000001',
+    tourId: 'd0000002-0000-4000-8000-000000000001',
+    rating: 5,
+    title: 'Best food night of the trip',
+    body: 'Our guide took us to a bún chả spot with no English menu — exactly what we wanted, not a tourist-menu version of the dish.',
+    authorName: 'Emma Wilson',
+    authorLocation: 'London, United Kingdom',
+    createdAt: '2026-01-14T19:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000002',
+    tourId: 'd0000002-0000-4000-8000-000000000001',
+    rating: 4,
+    body: 'Great pace and good stories about each dish, though the last stop felt rushed because the alley was packed with other tour groups.',
+    authorName: 'Lukas Neumann',
+    authorLocation: 'Berlin, Germany',
+    createdAt: '2026-02-03T20:05:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000003',
+    tourId: 'd0000002-0000-4000-8000-000000000001',
+    rating: 5,
+    title: 'Hungry and happy',
+    body: "Six stops across six different neighbourhoods, and our guide Mai remembered everyone's dietary notes the whole night. Worth every step.",
+    authorName: 'Priya Sharma',
+    authorLocation: 'Mumbai, India',
+    createdAt: '2026-03-11T18:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000004',
+    tourId: 'd0000002-0000-4000-8000-000000000001',
+    rating: 4,
+    body: 'Loved the egg coffee stop at the end. Group was a bit big (14 people) so it took a while to get everyone served at each stall.',
+    authorName: 'Daniel Kim',
+    authorLocation: 'Seoul, South Korea',
+    createdAt: '2026-04-22T19:55:00.000Z',
+  },
+
+  // #2 hanoi-heritage-day — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000005',
+    tourId: 'd0000002-0000-4000-8000-000000000002',
+    rating: 5,
+    title: 'Temple of Literature was a highlight',
+    body: 'Our guide explained the old exam-system history in a way that actually made sense, and the Old Quarter walk afterwards tied it all together.',
+    authorName: 'Grace Thompson',
+    authorLocation: 'Toronto, Canada',
+    createdAt: '2026-01-20T09:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000006',
+    tourId: 'd0000002-0000-4000-8000-000000000002',
+    rating: 4,
+    body: 'Water puppet show ticket included was a nice touch. Crossing traffic near Hoàn Kiếm Lake is chaotic but the guide walked us through it patiently.',
+    authorName: 'Thomas Dubois',
+    authorLocation: 'Lyon, France',
+    createdAt: '2026-03-02T14:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000007',
+    tourId: 'd0000002-0000-4000-8000-000000000002',
+    rating: 3,
+    title: 'Good overview, a bit rushed',
+    body: 'Solid introduction to the city, but we only got about 20 minutes at the Temple of Literature before moving on — would have liked more time there.',
+    authorName: 'Anna Kowalski',
+    authorLocation: 'Kraków, Poland',
+    createdAt: '2026-05-09T11:00:00.000Z',
+  },
+
+  // #4 ninh-binh-trang-an-day — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000008',
+    tourId: 'd0000002-0000-4000-8000-000000000004',
+    rating: 5,
+    title: 'Tràng An boat ride is unmissable',
+    body: 'Rowing through the limestone caves felt like something out of a film, and the rower who did it with her feet for two hours straight deserves a medal.',
+    authorName: 'Sofia Rossi',
+    authorLocation: 'Florence, Italy',
+    createdAt: '2026-01-08T08:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000009',
+    tourId: 'd0000002-0000-4000-8000-000000000004',
+    rating: 5,
+    body: 'Múa Cave steps (about 500 of them) are brutal in the heat, but the view over the rice fields at the top is the best in Ninh Bình. Bring water.',
+    authorName: 'Oliver Bennett',
+    authorLocation: 'Melbourne, Australia',
+    createdAt: '2026-02-17T07:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000010',
+    tourId: 'd0000002-0000-4000-8000-000000000004',
+    rating: 4,
+    title: 'Great day, tight schedule',
+    body: 'Beautiful scenery throughout, though we felt hurried at Tràng An to stay on schedule for the drive back to Hà Nội.',
+    authorName: 'Marta Nowak',
+    authorLocation: 'Warsaw, Poland',
+    createdAt: '2026-04-05T13:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000011',
+    tourId: 'd0000002-0000-4000-8000-000000000004',
+    rating: 3,
+    body: 'The caves and rice terraces are gorgeous, but our boat queue took almost an hour on a Saturday morning — worth knowing before booking a weekend date.',
+    authorName: 'Ravi Patel',
+    authorLocation: 'Leicester, United Kingdom',
+    createdAt: '2026-06-14T10:10:00.000Z',
+  },
+
+  // #5 halong-bay-overnight-cruise — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000012',
+    tourId: 'd0000002-0000-4000-8000-000000000005',
+    rating: 5,
+    title: 'Woke up to karsts outside the window',
+    body: 'Cabin was small but clean, kayaking through the limestone arches in the afternoon was the highlight, and the seafood dinner on board was excellent.',
+    authorName: 'Isabel Fernández',
+    authorLocation: 'Madrid, Spain',
+    createdAt: '2026-01-25T21:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000013',
+    tourId: 'd0000002-0000-4000-8000-000000000005',
+    rating: 4,
+    body: "Sung Sốt Cave stop was well organised and the sunrise tai chi session was a nice surprise. Wifi on board was patchy, but that's expected out on the water.",
+    authorName: 'Noah Becker',
+    authorLocation: 'Munich, Germany',
+    createdAt: '2026-03-06T08:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000014',
+    tourId: 'd0000002-0000-4000-8000-000000000005',
+    rating: 5,
+    title: 'Perfect two days off the grid',
+    body: 'Titop Island viewpoint climb is steep but short, and the crew kept things running smoothly for a boat of about 20 guests.',
+    authorName: 'Hana Kobayashi',
+    authorLocation: 'Osaka, Japan',
+    createdAt: '2026-04-30T16:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000015',
+    tourId: 'd0000002-0000-4000-8000-000000000005',
+    rating: 4,
+    body: 'Great cruise overall — the only downside was some engine noise at night that made it hard to sleep in the lower-deck cabins.',
+    authorName: 'Mateus Silva',
+    authorLocation: 'São Paulo, Brazil',
+    createdAt: '2026-06-19T22:30:00.000Z',
+  },
+
+  // #6 lan-ha-kayak-cruise-3d — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000016',
+    tourId: 'd0000002-0000-4000-8000-000000000006',
+    rating: 5,
+    title: 'Quieter than Hạ Long and better for it',
+    body: 'Kayaking into the karsts of Lan Hạ with barely another boat around was the best two hours of our whole Vietnam trip.',
+    authorName: 'Chloé Martin',
+    authorLocation: 'Bordeaux, France',
+    createdAt: '2026-02-11T15:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000017',
+    tourId: 'd0000002-0000-4000-8000-000000000006',
+    rating: 4,
+    body: 'Cát Bà National Park hike on day two was a good change of pace from the water — the guide knew a lot about the local monkeys and birds.',
+    authorName: 'Jake Sullivan',
+    authorLocation: 'Chicago, United States',
+    createdAt: '2026-05-02T09:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000018',
+    tourId: 'd0000002-0000-4000-8000-000000000006',
+    rating: 4,
+    title: 'Lovely trip, small hiccup',
+    body: 'The overnight cabin was comfortable and the crew were attentive, though our pickup from Hải Phòng ran about 40 minutes late on day one.',
+    authorName: 'Yuki Tanaka',
+    authorLocation: 'Yokohama, Japan',
+    createdAt: '2026-07-08T07:20:00.000Z',
+  },
+
+  // #7 sapa-terraces-homestay-2d — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000019',
+    tourId: 'd0000002-0000-4000-8000-000000000007',
+    rating: 5,
+    title: 'Homestay family made the trip',
+    body: 'Trekking down into the Mường Hoa terraces with our Hmông guide and staying with a local family for the night was more genuine than any hotel could be.',
+    authorName: 'Emily Carter',
+    authorLocation: 'Bristol, United Kingdom',
+    createdAt: '2026-01-18T18:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000020',
+    tourId: 'd0000002-0000-4000-8000-000000000007',
+    rating: 4,
+    body: 'Tả Van village walk was beautiful, rice terraces in full colour. The overnight train to Sa Pa beforehand is long, so come prepared to not sleep much.',
+    authorName: 'Michael Schmidt',
+    authorLocation: 'Hamburg, Germany',
+    createdAt: '2026-03-15T20:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000021',
+    tourId: 'd0000002-0000-4000-8000-000000000007',
+    rating: 4,
+    title: 'Muddy but worth it',
+    body: 'Trails were slippery after rain the day we went, and the guide had spare sandals ready which saved the day. Views over Lao Chải were stunning.',
+    authorName: 'Ji-woo Park',
+    authorLocation: 'Busan, South Korea',
+    createdAt: '2026-05-27T12:50:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000022',
+    tourId: 'd0000002-0000-4000-8000-000000000007',
+    rating: 3,
+    body: 'Trek itself was great, but the homestay room ended up shared with another group of four and got a bit cramped for sleeping.',
+    authorName: "Liam O'Connor",
+    authorLocation: 'Dublin, Ireland',
+    createdAt: '2026-07-19T14:05:00.000Z',
+  },
+
+  // #8 sapa-fansipan-summit-3d — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000023',
+    tourId: 'd0000002-0000-4000-8000-000000000008',
+    rating: 5,
+    title: 'Roof of Indochina, ticked off',
+    body: 'The cable car up to Fansipan is impressive on its own, but the final steps to the summit marker in the cold wind made it feel earned.',
+    authorName: 'Ethan Brooks',
+    authorLocation: 'Seattle, United States',
+    createdAt: '2026-01-30T09:10:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000024',
+    tourId: 'd0000002-0000-4000-8000-000000000008',
+    rating: 5,
+    body: 'Giàng Tả Chải village stop before the summit day was a great contrast — quiet, unhurried, good food. Whole itinerary was well paced.',
+    authorName: 'Hannah Clarke',
+    authorLocation: 'Manchester, United Kingdom',
+    createdAt: '2026-02-22T11:35:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000025',
+    tourId: 'd0000002-0000-4000-8000-000000000008',
+    rating: 4,
+    title: 'Cold at the top, worth packing for',
+    body: 'Nobody warned us how cold Fansipan gets even with the cable car doing most of the climbing — bring a proper jacket, not just a fleece.',
+    authorName: 'Lucas Meyer',
+    authorLocation: 'Frankfurt, Germany',
+    createdAt: '2026-04-11T16:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000026',
+    tourId: 'd0000002-0000-4000-8000-000000000008',
+    rating: 4,
+    body: 'Great trip overall, though the cable car queue on a holiday weekend took almost 90 minutes.',
+    authorName: 'Nguyễn Thị Lan',
+    authorLocation: 'Hồ Chí Minh City, Vietnam',
+    createdAt: '2026-06-25T10:45:00.000Z',
+  },
+
+  // #9 ha-giang-loop-4d — 5 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000027',
+    tourId: 'd0000002-0000-4000-8000-000000000009',
+    rating: 5,
+    title: 'Mã Pí Lèng pass is worth the whole trip',
+    body: 'Riding pillion through the pass with the Nho Quế river below us was the single best afternoon of our whole Southeast Asia trip.',
+    authorName: 'Sarah Mitchell',
+    authorLocation: 'Brisbane, Australia',
+    createdAt: '2026-01-09T07:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000028',
+    tourId: 'd0000002-0000-4000-8000-000000000009',
+    rating: 5,
+    body: 'Lũng Cú flagpoint at the top of Vietnam, then straight into the Đồng Văn plateau — our driver was skilled and clearly loved the route.',
+    authorName: 'Diego Álvarez',
+    authorLocation: 'Buenos Aires, Argentina',
+    createdAt: '2026-02-14T13:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000029',
+    tourId: 'd0000002-0000-4000-8000-000000000009',
+    rating: 4,
+    title: 'Rugged, unforgettable, a little sore',
+    body: 'Four days on the back of a bike over mountain roads is tiring — my back needed a rest day after — but the scenery makes up for it completely.',
+    authorName: 'Min-jun Lee',
+    authorLocation: 'Incheon, South Korea',
+    createdAt: '2026-04-03T17:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000030',
+    tourId: 'd0000002-0000-4000-8000-000000000009',
+    rating: 5,
+    body: 'Đồng Văn old quarter at night, then the Mã Pí Lèng pass the next morning — this loop delivers on every promise in the brochure.',
+    authorName: 'Isabelle Moreau',
+    authorLocation: 'Nice, France',
+    createdAt: '2026-06-01T08:25:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000031',
+    tourId: 'd0000002-0000-4000-8000-000000000009',
+    rating: 3,
+    title: 'Amazing scenery, rough patch on day 3',
+    body: 'The route and the drivers were great, but our group had a flat tyre on day 3 that cost us almost two hours waiting on the plateau road.',
+    authorName: 'Trần Văn Minh',
+    authorLocation: 'Đà Nẵng, Vietnam',
+    createdAt: '2026-07-14T15:10:00.000Z',
+  },
+
+  // #11 northern-highlights-5d — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000032',
+    tourId: 'd0000002-0000-4000-8000-000000000011',
+    rating: 4,
+    body: 'Good value combo of Hà Nội, Hạ Long and Ninh Bình in one trip — the overnight cruise on Hạ Long Bay was the standout for us.',
+    authorName: 'Olivia Turner',
+    authorLocation: 'Cardiff, United Kingdom',
+    createdAt: '2026-02-06T19:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000033',
+    tourId: 'd0000002-0000-4000-8000-000000000011',
+    rating: 5,
+    title: 'Efficient and well guided',
+    body: "Five days covered a lot of ground without ever feeling rushed — Bích Động on the way back to Hà Nội was a lovely stop we hadn't even heard of before booking.",
+    authorName: 'Jonas Weber',
+    authorLocation: 'Zurich, Switzerland',
+    createdAt: '2026-04-19T09:50:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000034',
+    tourId: 'd0000002-0000-4000-8000-000000000011',
+    rating: 4,
+    body: 'Great overview trip for a first visit to the north. Hotel on the last night in Hà Nội was a downgrade from the first two nights though.',
+    authorName: 'Aiko Suzuki',
+    authorLocation: 'Nagoya, Japan',
+    createdAt: '2026-06-28T20:40:00.000Z',
+  },
+
+  // #12 vietnam-grand-journey-12d — 2 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000035',
+    tourId: 'd0000002-0000-4000-8000-000000000012',
+    rating: 5,
+    title: 'Saw the whole country in under two weeks',
+    body: 'From the airport pickup in Hà Nội to the last morning in Cần Thơ, the itinerary flowed logically and every guide handoff between regions was smooth.',
+    authorName: 'Robert Hayes',
+    authorLocation: 'Boston, United States',
+    createdAt: '2026-03-08T12:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000036',
+    tourId: 'd0000002-0000-4000-8000-000000000012',
+    rating: 4,
+    body: 'Long trip but well organised — the Huế to Hội An leg over the Hải Vân Pass was a favourite. Some travel days are genuinely long, so pace yourself.',
+    authorName: 'Charlotte Evans',
+    authorLocation: 'Edinburgh, United Kingdom',
+    createdAt: '2026-05-21T14:15:00.000Z',
+  },
+
+  // #13 hue-imperial-day — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000037',
+    tourId: 'd0000002-0000-4000-8000-000000000013',
+    rating: 5,
+    title: 'The Citadel is bigger than photos suggest',
+    body: "Spent almost three hours inside the Citadel and still felt rushed — our guide's stories about the royal tombs afterwards tied the whole dynasty's history together.",
+    authorName: 'Amelia Foster',
+    authorLocation: 'Perth, Australia',
+    createdAt: '2026-01-27T10:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000038',
+    tourId: 'd0000002-0000-4000-8000-000000000013',
+    rating: 4,
+    body: 'Perfume River boat stop was relaxing after all the walking at the Citadel. Lunch included was decent, nothing special.',
+    authorName: 'Felix Bauer',
+    authorLocation: 'Cologne, Germany',
+    createdAt: '2026-03-24T13:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000039',
+    tourId: 'd0000002-0000-4000-8000-000000000013',
+    rating: 3,
+    title: 'Interesting history, hot day',
+    body: "Content was great but there's very little shade around the royal tombs — we went in July and it was brutal by midday.",
+    authorName: 'Ha-eun Choi',
+    authorLocation: 'Daegu, South Korea',
+    createdAt: '2026-07-02T09:20:00.000Z',
+  },
+
+  // #14 phong-nha-paradise-cave-day — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000040',
+    tourId: 'd0000002-0000-4000-8000-000000000014',
+    rating: 5,
+    title: 'Paradise Cave lives up to the name',
+    body: 'The walkway through Paradise Cave is beautifully lit without feeling artificial, and the boat ride on the Chày River afterwards was a peaceful way to close the day.',
+    authorName: 'Zoe Richardson',
+    authorLocation: 'Auckland, New Zealand',
+    createdAt: '2026-02-01T08:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000041',
+    tourId: 'd0000002-0000-4000-8000-000000000014',
+    rating: 5,
+    body: "One of the best cave systems I've seen anywhere, and our guide's background as a former park ranger meant he knew every formation by name.",
+    authorName: 'Sebastian Krause',
+    authorLocation: 'Stuttgart, Germany',
+    createdAt: '2026-04-14T11:10:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000042',
+    tourId: 'd0000002-0000-4000-8000-000000000014',
+    rating: 4,
+    title: 'Great cave, long drive',
+    body: 'The cave itself is spectacular, just be ready for a fair amount of driving from Đồng Hới to get there and back in a single day.',
+    authorName: 'Nguyễn Văn Hùng',
+    authorLocation: 'Hà Nội, Vietnam',
+    createdAt: '2026-06-09T15:30:00.000Z',
+  },
+
+  // #15 hoi-an-lantern-evening — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000043',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    rating: 5,
+    title: 'Lanterns at dusk, exactly as pictured',
+    body: 'Ancient Town by daylight and then again once the lanterns come on at dusk feels like two completely different towns — do both.',
+    authorName: 'Freya Larsen',
+    authorLocation: 'Copenhagen, Denmark',
+    createdAt: '2026-01-12T17:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000044',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    rating: 5,
+    body: "The basket boat ride wasn't even the main event, but the Thu Bồn riverfront at night with the floating lanterns was magic on its own.",
+    authorName: 'Marco Ferrari',
+    authorLocation: 'Turin, Italy',
+    createdAt: '2026-02-28T18:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000045',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    rating: 4,
+    title: 'Charming evening',
+    body: 'Old Town gets crowded by early evening on weekends, but our guide knew the quieter side streets to duck into for photos.',
+    authorName: 'Emma Larsson',
+    authorLocation: 'Gothenburg, Sweden',
+    createdAt: '2026-05-04T19:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000046',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    rating: 4,
+    body: 'Lovely, relaxed evening. Only complaint is the ticket booth queue at the ancient town entrance took longer than expected.',
+    authorName: 'Andrés Torres',
+    authorLocation: 'Valencia, Spain',
+    createdAt: '2026-06-30T18:00:00.000Z',
+  },
+
+  // #16 hoi-an-countryside-cooking-day — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000047',
+    tourId: 'd0000002-0000-4000-8000-000000000016',
+    rating: 5,
+    title: 'Best cooking class of our trip',
+    body: "The basket boat spin on the coconut river was hilarious fun, and the market-to-table cooking class afterwards actually taught us dishes we've made again at home.",
+    authorName: 'Laura Bennett',
+    authorLocation: 'Cambridge, United Kingdom',
+    createdAt: '2026-01-22T09:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000048',
+    tourId: 'd0000002-0000-4000-8000-000000000016',
+    rating: 4,
+    body: 'Rice field bike ride in the morning was peaceful, cooking class portions were generous. A little slow between activities waiting for the group to regroup.',
+    authorName: 'Tobias Richter',
+    authorLocation: 'Leipzig, Germany',
+    createdAt: '2026-03-30T12:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000049',
+    tourId: 'd0000002-0000-4000-8000-000000000016',
+    rating: 4,
+    title: 'Fun, hands-on day',
+    body: 'Great mix of activity and food — the fresh spring rolls we rolled ourselves were better than most restaurant versions in town.',
+    authorName: 'Seo-yeon Kang',
+    authorLocation: 'Daejeon, South Korea',
+    createdAt: '2026-06-06T13:00:00.000Z',
+  },
+
+  // #17 bana-hills-golden-bridge-day — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000050',
+    tourId: 'd0000002-0000-4000-8000-000000000017',
+    rating: 4,
+    body: 'The Golden Bridge photos really do look like that in person, and the cable car ride up is genuinely one of the longest and most scenic I have done.',
+    authorName: 'Henry Walsh',
+    authorLocation: 'Glasgow, United Kingdom',
+    createdAt: '2026-01-16T10:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000051',
+    tourId: 'd0000002-0000-4000-8000-000000000017',
+    rating: 3,
+    title: 'Photo spot is amazing, park is very touristy',
+    body: 'The Golden Bridge is worth seeing once, but the French Village theme park section around it felt crowded and a bit tacky for the price of entry.',
+    authorName: 'Clara Fischer',
+    authorLocation: 'Vienna, Austria',
+    createdAt: '2026-03-19T14:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000052',
+    tourId: 'd0000002-0000-4000-8000-000000000017',
+    rating: 5,
+    body: 'We went early on our guide’s advice and had the bridge almost to ourselves before the tour buses arrived around 10am — great tip.',
+    authorName: 'Ben Coleman',
+    authorLocation: 'Adelaide, Australia',
+    createdAt: '2026-05-13T09:05:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000053',
+    tourId: 'd0000002-0000-4000-8000-000000000017',
+    rating: 4,
+    title: 'Fun day out',
+    body: 'Views over the mountains from the cable car alone are worth the ticket, and the park rides included were a nice bonus for the kids.',
+    authorName: 'Léa Dubois',
+    authorLocation: 'Marseille, France',
+    createdAt: '2026-07-11T11:50:00.000Z',
+  },
+
+  // #19 central-heritage-4d — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000054',
+    tourId: 'd0000002-0000-4000-8000-000000000019',
+    rating: 5,
+    title: 'Three UNESCO stops without the rush',
+    body: "Loved how the itinerary connected Đà Nẵng's beach, Hội An's old town, and Huế's citadel without ever feeling like a checklist tour.",
+    authorName: 'Naomi Clark',
+    authorLocation: 'Wellington, New Zealand',
+    createdAt: '2026-02-09T16:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000055',
+    tourId: 'd0000002-0000-4000-8000-000000000019',
+    rating: 4,
+    body: 'The Hải Vân Pass drive between Hội An and Huế was a highlight on its own, better than any of the museum stops honestly.',
+    authorName: 'Simon Peters',
+    authorLocation: 'Birmingham, United Kingdom',
+    createdAt: '2026-04-26T08:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000056',
+    tourId: 'd0000002-0000-4000-8000-000000000019',
+    rating: 4,
+    title: 'Solid four days',
+    body: 'Good pacing overall, though the royal-style dinner in Huế on the last night was a bit overpriced for what was served.',
+    authorName: 'Yerin Oh',
+    authorLocation: 'Gwangju, South Korea',
+    createdAt: '2026-07-05T19:40:00.000Z',
+  },
+
+  // #21 central-honeymoon-5d — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000057',
+    tourId: 'd0000002-0000-4000-8000-000000000021',
+    rating: 5,
+    title: 'Exactly the honeymoon we wanted',
+    body: 'The private Hội An welcome dinner on arrival set the tone, and the couple’s cooking class two days later was a genuinely romantic touch, not just a gimmick.',
+    authorName: 'Rachel Ainsworth',
+    authorLocation: 'Bath, United Kingdom',
+    createdAt: '2026-01-29T20:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000058',
+    tourId: 'd0000002-0000-4000-8000-000000000021',
+    rating: 5,
+    body: 'Every detail felt considered for a couple rather than a big group — a quiet table at Mỹ Sơn sunrise, no rushing at any stop.',
+    authorName: 'Julian Hoffmann',
+    authorLocation: 'Dresden, Germany',
+    createdAt: '2026-03-17T18:25:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000059',
+    tourId: 'd0000002-0000-4000-8000-000000000021',
+    rating: 4,
+    title: 'Romantic trip, one late transfer',
+    body: 'Loved almost everything about this trip — the only miss was a late airport transfer on day one that pushed our first dinner back by an hour.',
+    authorName: 'So-hyun Yoon',
+    authorLocation: 'Ulsan, South Korea',
+    createdAt: '2026-05-30T21:10:00.000Z',
+  },
+
+  // #22 vung-tau-coastal-2d — 3 review, khớp spec §5 nguyên văn (→ ratingAvg
+  // 4.7 / ratingCount 3 sau recompute — xem doc-comment đầu file).
+  {
+    id: 'a0000002-0000-4000-8000-000000000060',
+    tourId: 'd0000002-0000-4000-8000-000000000022',
+    rating: 5,
+    title: 'Perfect family weekend away from Sài Gòn',
+    body: 'Every stop on the schedule ran exactly on time — swim, lunch, the Christ statue climb — and dinner at Gành Hào with the tide right under the floor was the best meal our kids have had on any trip.',
+    authorName: 'Karen Ramirez',
+    authorLocation: 'Manila, Philippines',
+    createdAt: '2026-02-15T20:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000061',
+    tourId: 'd0000002-0000-4000-8000-000000000022',
+    rating: 5,
+    title: 'Sunrise from the Lighthouse, worth the early alarm',
+    body: 'Woke up at 5am just for the optional sunrise walk up to the 1910 Lighthouse and it was hands down the most romantic hour of our whole trip — the light over the bay is unbeatable.',
+    authorName: 'Nathan Reid',
+    authorLocation: 'Singapore, Singapore',
+    createdAt: '2026-04-27T06:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000062',
+    tourId: 'd0000002-0000-4000-8000-000000000022',
+    rating: 4,
+    body: 'Loved the beaches and the seafood, guide was excellent throughout. Only complaint is the hotel was a short taxi ride from the night market rather than walking distance like we expected.',
+    authorName: 'Vũ Thị Hương',
+    authorLocation: 'Hà Nội, Vietnam',
+    createdAt: '2026-06-21T22:00:00.000Z',
+  },
+
+  // #23 saigon-cu-chi-day — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000063',
+    tourId: 'd0000002-0000-4000-8000-000000000023',
+    rating: 5,
+    title: 'Sobering and fascinating',
+    body: "Crawling through even the widened tourist section of the Củ Chi tunnels gave a real sense of the history, and our guide's own family stories from the war made it hit harder than any museum plaque.",
+    authorName: 'Patrick Doyle',
+    authorLocation: 'Cork, Ireland',
+    createdAt: '2026-01-11T13:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000064',
+    tourId: 'd0000002-0000-4000-8000-000000000023',
+    rating: 4,
+    body: "Good half-day trip, well organised transport. The tunnel crawl section is genuinely tight if you're tall — my husband skipped the last stretch.",
+    authorName: 'Ingrid Larsen',
+    authorLocation: 'Bergen, Norway',
+    createdAt: '2026-03-04T14:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000065',
+    tourId: 'd0000002-0000-4000-8000-000000000023',
+    rating: 4,
+    title: 'Informative city stop',
+    body: 'War Remnants Museum stop in the morning was heavy but important, and the guide gave good context before Củ Chi in the afternoon.',
+    authorName: 'Marcus Lindqvist',
+    authorLocation: 'Stockholm, Sweden',
+    createdAt: '2026-05-16T09:50:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000066',
+    tourId: 'd0000002-0000-4000-8000-000000000023',
+    rating: 3,
+    body: 'Content was interesting throughout, but the shooting range add-on at Củ Chi felt like an unnecessary extra push for money — we skipped it.',
+    authorName: 'Lê Thị Mai',
+    authorLocation: 'Cần Thơ, Vietnam',
+    createdAt: '2026-07-23T16:40:00.000Z',
+  },
+
+  // #24 saigon-after-dark-vespa — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000067',
+    tourId: 'd0000002-0000-4000-8000-000000000024',
+    rating: 5,
+    title: 'Adrenaline and street food, perfect combo',
+    body: 'Riding pillion through District 5 and District 1 at night with the city lit up was thrilling, and our driver knew exactly which stalls had the best bánh xèo.',
+    authorName: 'Connor Walsh',
+    authorLocation: 'Belfast, United Kingdom',
+    createdAt: '2026-02-20T20:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000068',
+    tourId: 'd0000002-0000-4000-8000-000000000024',
+    rating: 5,
+    body: "Best two hours of nightlife I've had on a tour anywhere — drivers were skilled, the safety briefing was thorough, and the walking street stop at the end was a great way to close the night.",
+    authorName: 'Mei Lin',
+    authorLocation: 'Singapore, Singapore',
+    createdAt: '2026-04-08T21:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000069',
+    tourId: 'd0000002-0000-4000-8000-000000000024',
+    rating: 4,
+    title: 'Fun but bring a jacket',
+    body: "Great ride and even better food stops, just didn't expect how cold it gets on the back of a Vespa once you're moving at night — pack something warmer than a t-shirt.",
+    authorName: 'Gabriel Santos',
+    authorLocation: 'Lisbon, Portugal',
+    createdAt: '2026-06-17T20:10:00.000Z',
+  },
+
+  // #25 mekong-can-tho-2d — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000070',
+    tourId: 'd0000002-0000-4000-8000-000000000025',
+    rating: 5,
+    title: 'Cái Răng at dawn is unforgettable',
+    body: 'Setting off on the boat before sunrise to catch the floating market in full swing was worth the early start — the coconut candy stop afterwards was a fun bonus.',
+    authorName: 'Victoria Hughes',
+    authorLocation: 'Leeds, United Kingdom',
+    createdAt: '2026-01-24T05:30:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000071',
+    tourId: 'd0000002-0000-4000-8000-000000000025',
+    rating: 4,
+    body: 'The homestay night on the delta was a great change of pace, and the canal boat ride through the narrow channels was beautiful with the sun going down.',
+    authorName: 'Paul Richter',
+    authorLocation: 'Bonn, Germany',
+    createdAt: '2026-03-13T17:15:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000072',
+    tourId: 'd0000002-0000-4000-8000-000000000025',
+    rating: 4,
+    title: 'Great trip, book ahead for the good rooms',
+    body: "Everything ran smoothly, just wish we'd known to ask for a river-view room at the homestay in advance — ours faced the car park.",
+    authorName: 'Hyun-woo Baek',
+    authorLocation: 'Jeonju, South Korea',
+    createdAt: '2026-05-25T11:40:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000073',
+    tourId: 'd0000002-0000-4000-8000-000000000025',
+    rating: 3,
+    body: 'The floating market was the highlight but the second day felt a bit padded with stops at craft shops that were clearly there for commission.',
+    authorName: 'Bùi Thị Ngọc',
+    authorLocation: 'Hải Phòng, Vietnam',
+    createdAt: '2026-07-16T10:20:00.000Z',
+  },
+
+  // #27 da-lat-highlands-3d — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000074',
+    tourId: 'd0000002-0000-4000-8000-000000000027',
+    rating: 5,
+    title: 'Cool mountain air after weeks of heat',
+    body: 'The cable car over to Trúc Lâm Pagoda and the strawberry farms up in the highlands were a lovely break from the coastal heat everywhere else in Vietnam.',
+    authorName: 'Katherine Moss',
+    authorLocation: 'Nottingham, United Kingdom',
+    createdAt: '2026-02-04T09:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000075',
+    tourId: 'd0000002-0000-4000-8000-000000000027',
+    rating: 4,
+    body: "Valley of Love is a bit kitsch but fun, and the Langbiang mountain viewpoint on day two was genuinely impressive. Bring a jacket, it's colder up there than you'd expect.",
+    authorName: 'Simon Vogel',
+    authorLocation: 'Graz, Austria',
+    createdAt: '2026-04-16T13:35:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000076',
+    tourId: 'd0000002-0000-4000-8000-000000000027',
+    rating: 4,
+    title: 'Charming highland town',
+    body: 'The Prenn Pass drive up into Đà Lạt was scenic from start to finish, and the market in the evening had great local coffee.',
+    authorName: 'Ye-jin Song',
+    authorLocation: 'Cheonan, South Korea',
+    createdAt: '2026-06-11T15:00:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000077',
+    tourId: 'd0000002-0000-4000-8000-000000000027',
+    rating: 4,
+    body: 'Really enjoyable trip overall, the flower farms were a highlight for my partner especially. A couple of the stops felt a bit touristy but nothing that ruined the trip.',
+    authorName: 'Diego Herrera',
+    authorLocation: 'Bogotá, Colombia',
+    createdAt: '2026-07-26T12:15:00.000Z',
+  },
+
+  // #28 phu-quoc-island-hopping-day — 4 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000078',
+    tourId: 'd0000002-0000-4000-8000-000000000028',
+    rating: 5,
+    title: 'Best snorkelling of our whole Vietnam trip',
+    body: 'Four islands by speedboat in one day sounds rushed on paper but it wasn’t — the reef around the third stop had the clearest water and best coral we saw anywhere in the country.',
+    authorName: 'Bethany Cross',
+    authorLocation: 'Southampton, United Kingdom',
+    createdAt: '2026-01-06T11:20:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000079',
+    tourId: 'd0000002-0000-4000-8000-000000000028',
+    rating: 5,
+    body: 'The crew grilled fresh seafood right on the boat for lunch between stops — simple but one of the best meals of the whole holiday.',
+    authorName: 'Franz Huber',
+    authorLocation: 'Salzburg, Austria',
+    createdAt: '2026-03-21T12:45:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000080',
+    tourId: 'd0000002-0000-4000-8000-000000000028',
+    rating: 4,
+    title: 'Great day on the water',
+    body: 'Snorkelling gear provided was decent quality, and the guide was attentive with the kids in our group. Water got a bit choppy on the way back from the last island.',
+    authorName: 'Do-yun Jang',
+    authorLocation: 'Suwon, South Korea',
+    createdAt: '2026-05-18T10:05:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000081',
+    tourId: 'd0000002-0000-4000-8000-000000000028',
+    rating: 3,
+    body: 'Beautiful spots but we felt a bit rushed at the second island — maybe 30 minutes in the water before being called back to the boat.',
+    authorName: 'Phạm Văn Đức',
+    authorLocation: 'Cần Thơ, Vietnam',
+    createdAt: '2026-07-09T09:30:00.000Z',
+  },
+
+  // #29 phu-quoc-honeymoon-4d — 3 review
+  {
+    id: 'a0000002-0000-4000-8000-000000000082',
+    tourId: 'd0000002-0000-4000-8000-000000000029',
+    rating: 5,
+    title: 'Dreamy start to married life',
+    body: "A Bãi Sao beach picnic set up just for the two of us on day two and the couples' spa session afterwards made this feel like a proper honeymoon, not a group tour with a label slapped on it.",
+    authorName: 'Melissa Grant',
+    authorLocation: 'York, United Kingdom',
+    createdAt: '2026-02-13T19:50:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000083',
+    tourId: 'd0000002-0000-4000-8000-000000000029',
+    rating: 5,
+    body: 'The pepper farm and fish sauce tour on day one was more interesting than we expected, and the resort arranged a private sunset dinner on the sand without us even asking twice.',
+    authorName: 'Erik Johansson',
+    authorLocation: 'Malmö, Sweden',
+    createdAt: '2026-04-24T18:10:00.000Z',
+  },
+  {
+    id: 'a0000002-0000-4000-8000-000000000084',
+    tourId: 'd0000002-0000-4000-8000-000000000029',
+    rating: 4,
+    title: 'Lovely trip, one late arrival',
+    body: 'Everything about the romantic side of this trip was well done — our only issue was the airport pickup on arrival ran about 45 minutes behind schedule.',
+    authorName: 'Nguyễn Thị Thu',
+    authorLocation: 'Đà Nẵng, Vietnam',
+    createdAt: '2026-06-03T21:25:00.000Z',
+  },
+];
