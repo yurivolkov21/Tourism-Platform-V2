@@ -13,7 +13,12 @@ export function LoadErrorState({ className = '' }: { className?: string }) {
   const router = useRouter();
   const t = messages.feedback.loadError;
   return (
-    <div role="alert" className={`rounded-2xl border border-dashed p-12 text-center ${className}`}>
+    <div
+      role="alert"
+      className={['rounded-2xl border border-dashed p-12 text-center', className]
+        .filter(Boolean)
+        .join(' ')}
+    >
       <h2 className="font-heading text-xl font-medium text-foreground">{t.title}</h2>
       <p className="mt-2 text-pretty text-muted-foreground">{t.body}</p>
       <button

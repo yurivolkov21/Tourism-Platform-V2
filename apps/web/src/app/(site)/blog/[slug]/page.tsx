@@ -35,10 +35,16 @@ export async function generateMetadata({
   // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
   const post = await fetchPostDetail(slug);
   if (!post) return { title: 'Post not found — Tourism' };
+  // excerpt có thể là '' (VM map null → '' — xem lib/api/posts.ts) — bỏ hẳn
+  // field description thay vì phát chuỗi rỗng, để Next tự fallback im lặng
+  // thay vì render <meta description=""> vô nghĩa.
   return {
     title: `${post.title} — Tourism`,
-    description: post.excerpt,
-    openGraph: { title: post.title, description: post.excerpt },
+    ...(post.excerpt ? { description: post.excerpt } : {}),
+    openGraph: {
+      title: post.title,
+      ...(post.excerpt ? { description: post.excerpt } : {}),
+    },
   };
 }
 
@@ -63,7 +69,9 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: post.title,
-    description: post.excerpt,
+    // excerpt rỗng thì bỏ field description luôn thay vì bịa chuỗi rỗng —
+    // cùng nguyên tắc với field `image` bên trên (không suy đoán dữ liệu).
+    ...(post.excerpt ? { description: post.excerpt } : {}),
     datePublished: post.date,
     author: { '@type': 'Person', name: post.author },
   };

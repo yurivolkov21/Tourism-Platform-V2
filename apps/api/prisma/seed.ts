@@ -282,6 +282,10 @@ async function main(): Promise<void> {
           })),
         },
       },
+      // Cố ý KHÔNG reconcile: `update: {}` nghĩa là sửa fixture rồi re-seed
+      // sẽ KHÔNG đổi 9 row đã tồn tại — slug là khoá match, không phải khoá
+      // đồng bộ nội dung. Muốn cập nhật nội dung đã seed thì sửa thẳng DB
+      // hoặc xoá row đó rồi seed lại (giống nếp `fixtures/catalog.ts`).
       update: {},
     });
   }
