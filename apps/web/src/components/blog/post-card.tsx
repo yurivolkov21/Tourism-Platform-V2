@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, ClockIcon } from 'lucide-react';
+import { ArrowUpRightIcon } from 'lucide-react';
 import Link from 'next/link';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import type { JournalPost } from '@/lib/api/posts';
@@ -46,15 +46,12 @@ export function PostCard({
         </span>
       </div>
 
-      {/* Meta: phút đọc · ngày */}
+      {/* Meta: chỉ còn ngày đăng. Chip "min read" đã BỎ (Task 7) — PostCardSchema
+          (contract) không trả `content` cho item listing, nên readMinutes ở
+          card chỉ tính được trên `excerpt` (vài chục từ) → gần như luôn ra
+          "1 min read", một con số bịa. VM (`JournalPost.readMinutes`) vẫn giữ
+          field này cho trang chi tiết, nơi có content thật để tính đúng. */}
       <div className="mb-3 flex items-center gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1">
-          <ClockIcon className="size-2.5" aria-hidden="true" />
-          {post.readMinutes} min read
-        </span>
-        <span aria-hidden="true" className="opacity-50">
-          ·
-        </span>
         <time dateTime={post.date}>{DATE_FMT.format(new Date(post.date))}</time>
       </div>
 

@@ -2,9 +2,53 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { postCategories, sortPostsByDate } from '@/lib/blog';
-import { JOURNAL_POSTS } from '@/mocks/journal';
+import type { JournalPost } from '@/lib/api/posts';
+import { sortPostsByDate } from '@/lib/blog';
 import { BlogExplorer } from './blog-explorer';
+
+// Fixture VM (JournalPost, hậu Task 5) — KHÔNG dùng JOURNAL_POSTS của
+// mocks/journal nữa: shape đó là MockJournalPost, thiếu `tags` (bắt buộc từ
+// khi chip lọc chuyển sang nguồn `fetchPostTags`). 9 bài để giữ đúng phép
+// tính phân trang 6+3 đã canh từ trước; `p5` mang thêm tag phụ "sa-pa" để có
+// bài cho case chọn chip tag phụ.
+const post = (
+  slug: string,
+  date: string,
+  category: string,
+  tags: { slug: string; name: string }[] = [{ slug: category.toLowerCase(), name: category }],
+): JournalPost => ({
+  slug,
+  title: slug,
+  excerpt: '',
+  date,
+  readMinutes: 5,
+  category,
+  author: 'Guide',
+  tags,
+});
+
+const JOURNAL_POSTS: JournalPost[] = [
+  post('p1', '2026-01-01', 'Food'),
+  post('p2', '2026-01-02', 'Food'),
+  post('p3', '2026-01-03', 'Nature'),
+  post('p4', '2026-01-04', 'Nature'),
+  post('p5', '2026-01-05', 'Packing', [
+    { slug: 'packing', name: 'Packing' },
+    { slug: 'sa-pa', name: 'Sa Pa' },
+  ]),
+  post('p6', '2026-01-06', 'Packing'),
+  post('p7', '2026-01-07', 'Culture'),
+  post('p8', '2026-01-08', 'Culture'),
+  post('p9', '2026-01-09', 'Food'),
+];
+
+const TAGS = [
+  { slug: 'food', name: 'Food' },
+  { slug: 'nature', name: 'Nature' },
+  { slug: 'packing', name: 'Packing' },
+  { slug: 'culture', name: 'Culture' },
+  { slug: 'sa-pa', name: 'Sa Pa' },
+];
 
 // BlogExplorer ghi URL bằng history.replaceState (đổi từ router.replace ở Task 12
 // — router.replace kích hoạt RSC round-trip mỗi lần bấm). Bọc lại để kiểm đúng
@@ -39,7 +83,7 @@ function renderBlog(
     // reducedMotion="always" cho tất định: lưới bài dùng AnimatePresence +
     // blur, không khoá lại thì đếm card lúc đang animate ra số khác.
     <MotionConfig reducedMotion="always">
-      <BlogExplorer posts={JOURNAL_POSTS} categories={postCategories(JOURNAL_POSTS)} {...initial} />
+      <BlogExplorer posts={JOURNAL_POSTS} tags={TAGS} {...initial} />
     </MotionConfig>,
   );
 }
@@ -108,17 +152,37 @@ describe('BlogExplorer — lọc và phân trang không đánh nhau', () => {
   it('đổi chuyên mục thì về trang 1', async () => {
     // Không reset thì đang ở trang 2 mà lọc còn 3 kết quả sẽ ra màn hình trắng.
     const user = userEvent.setup();
-    const category = postCategories(JOURNAL_POSTS)[0];
-    expect(category).toBeDefined();
+    const tag = TAGS[0];
+    expect(tag).toBeDefined();
     renderBlog({ initialPage: 2 });
 
-    // Chip chuyên mục là <Link> thật (server-render được, crawl được) — không
-    // phải button, nên phải query theo role link.
-    if (category) await user.click(screen.getByRole('link', { name: category }));
+    // Chip tag là <Link> thật (server-render được, crawl được) — không phải
+    // button, nên phải query theo role link. Nhãn hiển thị là `tag.name`.
+    if (tag) await user.click(screen.getByRole('link', { name: tag.name }));
     expect(postCards().length).toBeGreaterThan(0);
     // URL cuối cùng không còn `page=2`.
     const lastCall = replace.mock.calls.at(-1);
     expect(String(lastCall?.[2])).not.toContain('page=');
+  });
+
+  it('chọn chip tag PHỤ (sa-pa) hiện đúng bài mang tag đó, dù category hiển thị là Packing', async () => {
+    // p5 có category "Packing" (tag hiển thị đầu tiên) NHƯNG cũng mang tag phụ
+    // "sa-pa" — chip lọc phải phủ được cả tag phụ này (filterPostsByTag match
+    // trên toàn mảng tags, không chỉ category).
+    //
+    // KHÔNG đếm postCards() ở đây — cùng lý do đã ghi ở test "bấm sang trang
+    // 2": card đang exit không rời DOM trong jsdom (AnimatePresence cần một
+    // animation frame thật để hoàn tất, jsdom không có), nên p5 vốn đã nằm
+    // trong 6 card trang 1 (sort mới-nhất-trước) khiến đếm số card không phân
+    // biệt được "đã lọc" với "chưa lọc". `aria-live` count là plain text, đi
+    // thẳng theo `visible.length`, không qua AnimatePresence — tin được.
+    const user = userEvent.setup();
+    renderBlog();
+
+    await user.click(screen.getByRole('link', { name: 'Sa Pa' }));
+
+    await waitFor(() => expect(screen.getByText('1 story')).toBeInTheDocument());
+    expect(screen.getByRole('link', { name: /p5/ })).toBeInTheDocument();
   });
 
   it('gõ tìm kiếm cũng về trang 1', async () => {

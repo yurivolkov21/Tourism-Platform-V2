@@ -8,7 +8,7 @@ import { CategoryChips } from '@/components/blog/category-chips';
 import { PostCard } from '@/components/blog/post-card';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import type { JournalPost } from '@/lib/api/posts';
-import { filterPostsByCategory, searchPosts, sortPostsByDate } from '@/lib/blog';
+import { filterPostsByTag, searchPosts, sortPostsByDate } from '@/lib/blog';
 import { SPRING } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
 
@@ -32,13 +32,14 @@ const PAGE_SIZE = 6;
 
 export function BlogExplorer({
   posts,
-  categories,
+  tags,
   initialTag,
   initialQuery,
   initialPage,
 }: {
   posts: JournalPost[];
-  categories: string[];
+  /** Nguồn `fetchPostTags()` — chip hiển thị `name`, active/URL so theo `slug`. */
+  tags: { slug: string; name: string }[];
   initialTag?: string;
   initialQuery?: string;
   initialPage?: number;
@@ -75,7 +76,7 @@ export function BlogExplorer({
     );
   }, [tag, query, page]);
 
-  const visible = sortPostsByDate(searchPosts(filterPostsByCategory(posts, tag), query));
+  const visible = sortPostsByDate(searchPosts(filterPostsByTag(posts, tag), query));
   const filtering = Boolean(tag) || query.trim().length > 0;
   const paged = paginate(visible, page, PAGE_SIZE);
   // Trang 1 mới có card featured tràn 2 cột: ở trang 2 thì bài đầu của trang chỉ
@@ -97,12 +98,7 @@ export function BlogExplorer({
   return (
     <div>
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-        <CategoryChips
-          categories={categories}
-          active={tag}
-          query={query.trim()}
-          onSelect={changeTag}
-        />
+        <CategoryChips tags={tags} active={tag} query={query.trim()} onSelect={changeTag} />
 
         <div className="relative w-full lg:max-w-xs">
           <SearchIcon

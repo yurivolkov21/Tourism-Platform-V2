@@ -1,21 +1,26 @@
 import Link from 'next/link';
 
-// Chip lọc chuyên mục LUÔN là <Link> thật trỏ tới /blog?tag=… — server-render
+// Chip lọc tag LUÔN là <Link> thật trỏ tới /blog?tag=<slug> — server-render
 // nên crawl được và chạy cả khi JS chưa tải. Khi có `onSelect` (dùng trong
 // BlogExplorer phía client) thì chặn hành vi điều hướng mặc định và lọc tức
 // thì thay vào đó, khỏi tải lại trang; không có `onSelect` thì click đi qua
 // bình thường như một link — progressive enhancement, không đánh đổi cái này
 // lấy cái kia.
+//
+// Nguồn tag đổi từ `postCategories` (chuỗi tự suy ra từ mock) sang
+// `fetchPostTags()` (Task 5) — hiển thị `name`, nhưng active/URL so khớp theo
+// `slug` vì đó mới là định danh ổn định (hai tag có thể trùng tên hiển thị ở
+// ngôn ngữ khác, không bao giờ trùng slug).
 export function CategoryChips({
-  categories,
+  tags,
   active,
   query,
   onSelect,
 }: {
-  categories: string[];
+  tags: { slug: string; name: string }[];
   active?: string;
   query?: string;
-  onSelect?: (category?: string) => void;
+  onSelect?: (tagSlug?: string) => void;
 }) {
   const chipClassName = (isActive: boolean) =>
     `rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
@@ -24,24 +29,24 @@ export function CategoryChips({
         : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
     }`;
 
-  const hrefFor = (category: string | undefined) => {
+  const hrefFor = (tagSlug: string | undefined) => {
     const params = new URLSearchParams();
-    if (category) params.set('tag', category);
+    if (tagSlug) params.set('tag', tagSlug);
     if (query) params.set('q', query);
     const qs = params.toString();
     return qs ? `/blog?${qs}` : '/blog';
   };
 
-  const chip = (label: string, category: string | undefined, isActive: boolean) => (
+  const chip = (label: string, tagSlug: string | undefined, isActive: boolean) => (
     <Link
-      key={label}
-      href={hrefFor(category)}
+      key={tagSlug ?? 'all'}
+      href={hrefFor(tagSlug)}
       aria-current={isActive ? 'page' : undefined}
       onClick={
         onSelect
           ? (e) => {
               e.preventDefault();
-              onSelect(category);
+              onSelect(tagSlug);
             }
           : undefined
       }
@@ -57,7 +62,7 @@ export function CategoryChips({
     // ngữ nghĩa (đây là điều hướng lọc, giống on-this-page.tsx).
     <nav className="flex flex-wrap items-center gap-2" aria-label="Filter by topic">
       {chip('All', undefined, !active)}
-      {categories.map((category) => chip(category, category, category === active))}
+      {tags.map((tag) => chip(tag.name, tag.slug, tag.slug === active))}
     </nav>
   );
 }
