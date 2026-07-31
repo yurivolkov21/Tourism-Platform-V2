@@ -21,9 +21,25 @@ export function tocFromLegalDoc(doc: LegalDoc): TocItem[] {
   return tocFromSections(doc.sections);
 }
 
+/** Strip inline markdown (bold/italic/code/link) khỏi text raw của một heading,
+    trả về text thuần để slugify. ArticleMarkdown flatten children React về
+    cùng text thuần này (xem flattenToText) — hai phía PHẢI hội tụ về cùng
+    chuỗi trước khi slugify, nếu không TOC trỏ vào id không tồn tại (bug đã
+    thấy: heading có bold/italic/code từng cho id kiểu "object-object"). */
+export function headingPlainText(raw: string): string {
+  return raw
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // [text](url) -> text
+    .replace(/`([^`]+)`/g, '$1') // `code` -> code
+    .replace(/\*\*([^*]+)\*\*/g, '$1') // **bold** -> bold (trước italic vì ** chứa *)
+    .replace(/__([^_]+)__/g, '$1') // __bold__ -> bold
+    .replace(/\*([^*]+)\*/g, '$1') // *italic* -> italic
+    .replace(/_([^_]+)_/g, '$1') // _italic_ -> italic
+    .trim();
+}
+
 /** Mục lục từ markdown: chỉ H2 (`## `) — cùng cấp với section cũ; heading
     trong code fence không phải heading. Id PHẢI khớp id mà ArticleMarkdown
-    gắn cho <h2> (cùng slugify) — lệch là TOC trỏ vào không khí. */
+    gắn cho <h2> (cùng slugify text thuần) — lệch là TOC trỏ vào không khí. */
 export function tocFromMarkdown(markdown: string): TocItem[] {
   const items: TocItem[] = [];
   let inFence = false;
@@ -36,7 +52,7 @@ export function tocFromMarkdown(markdown: string): TocItem[] {
     const match = /^##\s+(.+)$/.exec(line);
     if (match?.[1]) {
       items.push({
-        id: slugify(match[1]),
+        id: slugify(headingPlainText(match[1])),
         label: match[1].trim(),
         index: String(items.length + 1).padStart(2, '0'),
       });

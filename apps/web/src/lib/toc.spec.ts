@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { tocFromLegalDoc, tocFromMarkdown, tocFromSections } from './toc.js';
+import { headingPlainText, tocFromLegalDoc, tocFromMarkdown, tocFromSections } from './toc.js';
 
 const doc = {
   title: 'Terms',
@@ -58,5 +58,42 @@ describe('tocFromMarkdown', () => {
   it('bỏ qua H3 và heading nằm trong code fence', () => {
     const md = '### not me\n```\n## fenced\n```\n## real one\n';
     expect(tocFromMarkdown(md).map((i) => i.label)).toEqual(['real one']);
+  });
+
+  it('heading có inline markdown (bold/italic) vẫn slugify đúng text thuần', () => {
+    const md = '## **Bold** and *italic* words\n';
+    expect(tocFromMarkdown(md)).toEqual([
+      { id: 'bold-and-italic-words', label: '**Bold** and *italic* words', index: '01' },
+    ]);
+  });
+});
+
+describe('headingPlainText', () => {
+  it('text thuần giữ nguyên', () => {
+    expect(headingPlainText('Layers beat one big coat')).toBe('Layers beat one big coat');
+  });
+
+  it('strip bold (** và __)', () => {
+    expect(headingPlainText('**Bold** heading')).toBe('Bold heading');
+    expect(headingPlainText('__Bold__ heading')).toBe('Bold heading');
+  });
+
+  it('strip italic (* và _)', () => {
+    expect(headingPlainText('*Italic* heading')).toBe('Italic heading');
+    expect(headingPlainText('_Italic_ heading')).toBe('Italic heading');
+  });
+
+  it('strip inline code', () => {
+    expect(headingPlainText('Use `npm install` now')).toBe('Use npm install now');
+  });
+
+  it('strip link, giữ text hiển thị', () => {
+    expect(headingPlainText('See [docs](https://example.com) now')).toBe('See docs now');
+  });
+
+  it('kết hợp bold + italic + code + link', () => {
+    expect(headingPlainText('**Bold** and *italic* with `code` and [a link](https://x.com)')).toBe(
+      'Bold and italic with code and a link',
+    );
   });
 });

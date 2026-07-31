@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { tocFromMarkdown } from '@/lib/toc';
 import { ArticleMarkdown } from './article-markdown';
 
 describe('ArticleMarkdown', () => {
@@ -8,7 +9,9 @@ describe('ArticleMarkdown', () => {
     render(<ArticleMarkdown markdown={md} />);
 
     const heading = screen.getByRole('heading', { level: 2 });
-    expect(heading).toHaveAttribute('id', 'layers-beat-one-big-coat');
+    // So trực tiếp với tocFromMarkdown thay vì literal — bắt được lệch id
+    // giữa hai phía nếu logic slugify của một bên đổi mà bên kia không theo.
+    expect(heading).toHaveAttribute('id', tocFromMarkdown(md)[0]?.id);
     expect(heading).toHaveTextContent('Layers beat one big coat');
   });
 
@@ -17,9 +20,30 @@ describe('ArticleMarkdown', () => {
     render(<ArticleMarkdown markdown={md} />);
 
     const headings = screen.getAllByRole('heading', { level: 2 });
+    const toc = tocFromMarkdown(md);
     expect(headings).toHaveLength(2);
-    expect(headings[0]).toHaveAttribute('id', 'first-section');
-    expect(headings[1]).toHaveAttribute('id', 'second-section');
+    expect(headings[0]).toHaveAttribute('id', toc[0]?.id);
+    expect(headings[1]).toHaveAttribute('id', toc[1]?.id);
+  });
+
+  it('heading có inline markdown (bold/italic) — id khớp tocFromMarkdown, không phải "[object Object]"', () => {
+    const md = '## **Bold** and *italic* words\n\nBody text';
+    render(<ArticleMarkdown markdown={md} />);
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    const toc = tocFromMarkdown(md);
+    expect(heading).toHaveAttribute('id', toc[0]?.id);
+    expect(heading.id).not.toContain('object');
+  });
+
+  it('heading có inline code — id khớp tocFromMarkdown', () => {
+    const md = '## Use `npm install` now\n\nBody text';
+    render(<ArticleMarkdown markdown={md} />);
+
+    const heading = screen.getByRole('heading', { level: 2 });
+    const toc = tocFromMarkdown(md);
+    expect(heading).toHaveAttribute('id', toc[0]?.id);
+    expect(heading.id).not.toContain('object');
   });
 
   it('render bullet list thành <ul><li>', () => {
@@ -39,7 +63,7 @@ describe('ArticleMarkdown', () => {
     render(<ArticleMarkdown markdown={md} />);
 
     const heading = screen.getByRole('heading', { level: 2 });
-    expect(heading).toHaveAttribute('id', 'shoes-that-already-know-mud');
+    expect(heading).toHaveAttribute('id', tocFromMarkdown(md)[0]?.id);
   });
 
   it('KHÔNG render raw HTML — giữ mặc định react-markdown', () => {
