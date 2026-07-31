@@ -307,13 +307,13 @@ describe('reviews (int)', () => {
     expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(3);
   });
 
-  it('review CURATED CÓ tourId vẫn KHÔNG ảnh hưởng rating của tour đó', async () => {
-    // Regression đúng nghĩa: CHECK constraint reviews_source_shape CHO PHÉP
-    // CURATED có tourId (chỉ cấm userId/bookingId) — nếu gate ③ chỉ kiểm
-    // `existing.tourId` (không kiểm thêm `source === VERIFIED`) thì duyệt
-    // testimonial này sẽ đội rating tour lên dù comment nói ngược lại. Test
-    // cũ dựng CURATED KHÔNG tourId nên nhánh ③ vốn dĩ không bao giờ chạy —
-    // không thể fail vì lý do tên nó ghi.
+  it('review CURATED CÓ tourId → duyệt CÓ tính vào rating của tour đó (quyết định 31/07)', async () => {
+    // Đảo bất biến so với test cũ (trước 31/07): trước đây CURATED có tourId
+    // được duyệt thì rating tour PHẢI đứng yên (gate ③ kiểm thêm
+    // `source === VERIFIED`). Quyết định 31/07 bỏ điều kiện đó — capstone
+    // không có khách thật, CURATED là nguồn sao DUY NHẤT, và seed/service
+    // giờ dùng CHUNG một công thức (mọi review approved có tourId). Test này
+    // giờ khẳng định NGƯỢC LẠI: duyệt CURATED CÓ tourId phải cập nhật rating.
     const admin = await signUpAdmin(app, ADMIN_EMAIL);
     const category = await prisma.tourCategory.create({
       data: { slug: 'walking', name: 'Walking', order: 1 },
@@ -352,10 +352,10 @@ describe('reviews (int)', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    // Rating của ĐÚNG tour đó không đổi — không chỉ "không tour nào bị đụng".
+    // Rating của ĐÚNG tour đó ĐÃ đổi — CURATED có tourId giờ tính như VERIFIED.
     const fresh = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
-    expect(fresh.ratingAvg).toBeNull();
-    expect(fresh.ratingCount).toBe(0);
+    expect(Number(fresh.ratingAvg)).toBe(5);
+    expect(fresh.ratingCount).toBe(1);
   });
 
   it('list công khai: review khuyết danh xếp SAU review có danh tính', async () => {

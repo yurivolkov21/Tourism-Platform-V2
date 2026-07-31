@@ -21,11 +21,10 @@
  *      2026-07-31-tours-catalogue-api §4/§5) — `createMany({ skipDuplicates })`
  *      với `source: CURATED`, `isApproved: true`, không userId/bookingId.
  *   6b. Recompute `ratingAvg`/`ratingCount` cho MỌI tour ngay sau bước 6 —
- *      cùng công thức làm tròn với `ReviewsService.moderate` ③
- *      (`AVG(rating)::numeric(2,1)`), nhưng KHÔNG lọc `source = 'VERIFIED'`
- *      như service: ở seed, review CURATED chính là toàn bộ dữ liệu đánh giá
- *      hiện có (chưa có booking/review thật), nên chỉ lọc `isApproved = true`
- *      (xem doc-comment tại chỗ gọi bên dưới để biết lý do đầy đủ).
+ *      CÙNG một công thức với `ReviewsService.moderate` ③ (quyết định 31/07:
+ *      mọi review approved có tourId đều tính, kể cả CURATED): chỉ lọc
+ *      `isApproved = true` + `tourId` khớp, KHÔNG lọc theo `source`
+ *      (`AVG(rating)::numeric(2,1)`) — xem doc-comment tại chỗ gọi bên dưới.
  *
  * KHÔNG port từ Nexora (các fixture phụ thuộc user, vốn giả định identity
  * Supabase): user mẫu, booking, payment event, wishlist, enquiry, outbox,
@@ -326,23 +325,21 @@ async function main(): Promise<void> {
   console.log(`[seed] tour reviews: +${reviewCount}`);
 
   // 6b. Recompute ratingAvg/ratingCount cho MỌI tour (kể cả 0 review → null/0)
-  //     — CÙNG kỹ thuật làm tròn với `ReviewsService.moderate` ③
-  //     (`src/modules/reviews/reviews.service.ts` ~dòng 283-298):
-  //     `AVG(rating)::numeric(2,1)` trong một câu `UPDATE tours … FROM
-  //     (SELECT AVG…)`. Cố ý KHÁC service ở đúng MỘT điểm: service lọc thêm
-  //     `AND source = 'VERIFIED'` (rating sản xuất chỉ tính review thật của
-  //     khách đã đi tour, không tính testimonial CURATED — xem doc-comment
-  //     dài ở service giải thích vì sao). Ở seed thì NGƯỢC LẠI: toàn bộ review
-  //     vừa insert ở bước 6 ĐỀU là CURATED (chưa có review VERIFIED nào vì
-  //     seed chưa tạo booking đủ điều kiện để review), nên lọc
-  //     `source = 'VERIFIED'` sẽ luôn ra `ratingAvg = null` bất kể bước 6 vừa
-  //     insert bao nhiêu review — vô nghĩa với mục đích của bước này (spec
-  //     §5: Vũng Tàu phải ra 4.7/3 từ đúng 3 review CURATED của nó). Vì vậy
-  //     chỉ lọc `is_approved = true`, không lọc source — tính đúng nghĩa đen
-  //     "review approved" mà spec dùng, không phải gate nghiệp vụ riêng của
-  //     moderate() (gate đó dành cho lúc có review VERIFIED thật lẫn vào,
-  //     P4 trở đi). Không cần `FOR UPDATE`/transaction như moderate(): seed
-  //     chạy đơn luồng, không có ai ghi concurrent vào bảng reviews lúc này.
+  //     — CÙNG MỘT công thức với `ReviewsService.moderate` ③
+  //     (`src/modules/reviews/reviews.service.ts` ~dòng 250-296) kể từ quyết
+  //     định 31/07: `AVG(rating)::numeric(2,1)` trong một câu `UPDATE tours …
+  //     FROM (SELECT AVG…)`, lọc `is_approved = true` + `tour_id` khớp,
+  //     KHÔNG lọc theo `source` — mọi review approved có tourId đều tính, kể
+  //     cả CURATED. (Trước 31/07, service còn lọc thêm
+  //     `AND source = 'VERIFIED'` để loại CURATED khỏi rating sản xuất — seed
+  //     khi đó CỐ Ý bỏ filter đó vì toàn bộ review seed đều là CURATED, lọc
+  //     VERIFIED sẽ luôn ra `ratingAvg = null` bất kể bước 6 vừa insert bao
+  //     nhiêu review, vô nghĩa với mục đích của bước này — spec §5: Vũng Tàu
+  //     phải ra 4.7/3 từ đúng 3 review CURATED của nó. Quyết định 31/07 đảo
+  //     bất biến đó ở service nên hai công thức giờ TRÙNG NHAU — không còn là
+  //     một ngoại lệ cố ý của seed nữa, chỉ tình cờ seed đã viết đúng từ đầu.)
+  //     Không cần `FOR UPDATE`/transaction như moderate(): seed chạy đơn
+  //     luồng, không có ai ghi concurrent vào bảng reviews lúc này.
   for (const tour of catalog.tours) {
     await prisma.$executeRaw(Prisma.sql`
       UPDATE tours t

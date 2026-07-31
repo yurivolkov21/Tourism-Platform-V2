@@ -161,13 +161,18 @@ export class ReviewsService {
    * ③ nằm trong transaction nên rating không bao giờ lệch với trạng thái
    * duyệt — Nexora tính live mỗi page load (scan toàn bảng reviews).
    *
-   * Review CURATED (testimonial admin viết) BỎ QUA ③ dù CHECK constraint
-   * `reviews_source_shape` cho phép nó có `tourId` — CURATED vẫn hiện trong
-   * danh sách review của tour đó (cùng `featuredRank`, đó là mục đích của
-   * nó), nhưng KHÔNG được tính vào `ratingAvg`/`ratingCount`: rating phải đại
-   * diện đánh giá của khách đã thật sự đi tour, trộn nội dung marketing vào
-   * là thổi phồng điểm. Vì vậy gate ③ kiểm CẢ `tourId` LẪN `source ===
-   * VERIFIED`, không chỉ `tourId`.
+   * Quyết định 31/07 (ĐẢO bất biến cũ): MỌI review đã duyệt CÓ `tourId` —
+   * kể cả CURATED — đều tính vào ③. CURATED không gắn tour (`tourId` null)
+   * vẫn không tính, gate chỉ cần `tourId` khác null là đủ. Trước đây gate ③
+   * còn kiểm thêm `source === VERIFIED` để loại CURATED, với lý do "rating
+   * phải đại diện khách đã thật sự đi tour, trộn nội dung marketing vào là
+   * thổi phồng điểm". Đảo lại vì: capstone không có khách thật nên CURATED
+   * là nguồn sao DUY NHẤT hiện có — giữ filter cũ thì rating tour gần như
+   * luôn rỗng; một công thức DUY NHẤT giữa seed (bước 6b) và service ở đây
+   * khử hẳn lớp bug "hai công thức lệch nhau ngủ yên tới lúc phát hiện"; và
+   * nhất quán UI — review CURATED vẫn hiện công khai trên trang tour đó
+   * (`listByTour`), tách riêng khỏi rating hiển thị cùng trang gây khó hiểu
+   * cho người xem hơn là giúp gì.
    *
    * Ba điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
@@ -175,12 +180,11 @@ export class ReviewsService {
    *     snapshot đọc trước transaction — tránh TOCTOU khi hai admin bấm
    *     duyệt cùng review gần như đồng thời (audit trail ghi sai
    *     `fromApproved`, email có thể gửi/không-gửi sai).
-   *   - `tourId`/`source` dùng ở gate ③ CŨNG đọc TRONG transaction dưới CÙNG
+   *   - `tourId` dùng ở gate ③ CŨNG đọc TRONG transaction dưới CÙNG
    *     `FOR UPDATE` đó (không phải snapshot trước tx) — nhánh chưa có
    *     endpoint sửa review nên hiện tại vô hại, nhưng P4 (admin CRUD review)
-   *     sẽ có request có thể đổi hai cột này; đọc trước tx thì moderate() chạy
-   *     song song với request sửa đó có thể tính rating cho SAI tour hoặc
-   *     tính nhầm CURATED vào rating.
+   *     sẽ có request có thể đổi cột này; đọc trước tx thì moderate() chạy
+   *     song song với request sửa đó có thể tính rating cho SAI tour.
    *   - Rating của tour được khoá row (`SELECT … FOR UPDATE`) TRƯỚC khi
    *     aggregate+ghi, xem chi tiết ở ③.
    */
@@ -243,18 +247,11 @@ export class ReviewsService {
         },
       });
 
-      // ③ recompute rating của ĐÚNG tour đó — CHỈ khi review này là VERIFIED.
-      // CURATED được PHÉP có tourId (reviews_source_shape) nên riêng
-      // `locked.tourId` KHÔNG đủ để gate: phải kiểm cả `source`, nếu không
-      // testimonial CURATED đã duyệt sẽ đội rating tour lên (xem doc-comment
-      // ở đầu hàm). `locked.tourId`/`locked.source` đọc TRONG transaction
-      // dưới CÙNG `FOR UPDATE` với `isApproved` ở trên (không phải snapshot
-      // `existing` đọc trước tx) — xem "Ba điểm concurrency" ở doc-comment
-      // đầu hàm. Subquery aggregate bên dưới cũng lọc `source = 'VERIFIED'`
-      // cùng lý do — nếu chỉ gate ở ngoài mà quên lọc trong subquery thì
-      // những review CURATED ĐÃ duyệt từ trước (trước khi có fix này) vẫn lọt
-      // vào phép tính mỗi lần một review VERIFIED khác của cùng tour được
-      // duyệt lại.
+      // ③ recompute rating của ĐÚNG tour đó — mọi review (kể cả CURATED) chỉ
+      // cần CÓ `tourId` là tính (quyết định 31/07, xem doc-comment đầu hàm).
+      // `locked.tourId` đọc TRONG transaction dưới CÙNG `FOR UPDATE` với
+      // `isApproved` ở trên (không phải snapshot `existing` đọc trước tx) —
+      // xem "Ba điểm concurrency" ở doc-comment đầu hàm.
       //
       // Race đã tránh (ADR-0009 "single-statement atomic claims", áp dụng
       // TINH THẦN chứ không thể gộp mù một câu): trước đây đọc-rồi-ghi qua
@@ -277,7 +274,7 @@ export class ReviewsService {
       // xong. Statement UPDATE...FROM theo sau là statement MỚI nên có
       // snapshot MỚI, thấy đủ mọi thay đổi đã commit trước đó (kể cả của
       // transaction vừa nhả lock) → aggregate luôn đúng, không mất update.
-      if (locked.tourId && locked.source === ReviewSource.VERIFIED) {
+      if (locked.tourId) {
         const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
           SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
         `);
@@ -292,7 +289,6 @@ export class ReviewsService {
               FROM reviews
               WHERE tour_id = ${locked.tourId}::uuid
                 AND is_approved = true
-                AND source = 'VERIFIED'::"ReviewSource"
             ) s
             WHERE t.id = ${locked.tourId}::uuid
           `);
