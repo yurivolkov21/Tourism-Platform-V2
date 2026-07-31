@@ -13,9 +13,11 @@
  *   4. Một PAID booking tự ký (`BK-SEEDPAID`) thuộc về customer đó, kèm các cột
  *      snapshot v2 (tourTitle/ngày departure/unitPrice), để các luồng review /
  *      "my bookings" thử được mà không cần payment thật.
+ *   5. 9 bài blog port từ mock journal đã duyệt của web (`./fixtures/posts.ts`)
+ *      — upsert theo slug, tag connectOrCreate theo slug, authorId = admin.
  *
  * KHÔNG port từ Nexora (các fixture phụ thuộc user, vốn giả định identity
- * Supabase): user mẫu, booking, payment event, review, wishlist, enquiry, post,
+ * Supabase): user mẫu, booking, payment event, review, wishlist, enquiry,
  * outbox, media asset/rác.
  *
  * Chạy: pnpm --filter @tourism/api db:seed  (compile qua swc, xem package.json)
@@ -27,9 +29,11 @@ import {
   BookingStatus,
   DepartureStatus,
   PaymentProvider,
+  PostStatus,
   UserRole,
 } from '../src/generated/prisma/enums.js';
 import * as catalog from './fixtures/catalog.js';
+import { posts as blogPosts } from './fixtures/posts.js';
 
 /** Code của PAID booking tự ký (thuộc về customer trong overlay). */
 const PAID_BOOKING_CODE = 'BK-SEEDPAID';
@@ -256,6 +260,32 @@ async function main(): Promise<void> {
       `[seed] created PAID booking ${PAID_BOOKING_CODE} on ${departure.tour.slug} (${PAID_SEATS} seats)`,
     );
   }
+
+  // 5. Blog posts — 9 bài port từ mock journal đã duyệt của web (spec
+  //    2026-07-31-blog-api-design §2B). Upsert theo slug; tag connectOrCreate
+  //    theo slug. Ngày đã dời hết về quá khứ (publishedPostWhere lọc
+  //    publishedAt <= now — ADR-0004).
+  for (const post of blogPosts) {
+    await prisma.post.upsert({
+      where: { slug: post.slug },
+      create: {
+        slug: post.slug,
+        title: post.title,
+        excerpt: post.excerpt,
+        content: post.content,
+        status: PostStatus.PUBLISHED,
+        publishedAt: new Date(post.publishedAt),
+        authorId: admin.id,
+        tags: {
+          create: post.tags.map((tag) => ({
+            tag: { connectOrCreate: { where: { slug: tag.slug }, create: tag } },
+          })),
+        },
+      },
+      update: {},
+    });
+  }
+  console.log(`[seed] blog posts: ${blogPosts.length} upserted.`);
 
   console.log('[seed] done.');
 }
