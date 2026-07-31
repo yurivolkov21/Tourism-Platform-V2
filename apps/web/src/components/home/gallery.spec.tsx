@@ -37,7 +37,7 @@ const EXPECTED_REGION_KEY: Record<string, 'north' | 'central' | 'south'> = {
   hue: 'central',
   'da-nang': 'central',
   'hoi-an': 'central',
-  'sai-gon': 'south',
+  'ho-chi-minh-city': 'south',
   'can-tho': 'south',
   'phu-quoc': 'south',
 };

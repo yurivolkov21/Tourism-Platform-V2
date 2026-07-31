@@ -25,7 +25,8 @@ import type {
  *     song song).
  *   - `tourFaqs[].id`          d2000002-0000-4000-8000-000000000101 → …0137
  *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000101 → …0127
- *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000101 → …0139
+ *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000101 → …0139,
+ *     mở rộng …0140–…0141 (final review 31/07, đợt bổ sung qua mốc bảo vệ)
  * Đánh số tuần tự theo thứ tự roster #13→#21, không có khoảng hở — dễ đối
  * chiếu ngược từ log seed về đúng tour.
  */
@@ -1395,6 +1396,33 @@ export const tourDepartures: TourDepartureFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000015',
     startDate: '2026-11-05',
     endDate: '2026-11-05',
+    priceOverride: null,
+    compareAtPrice: null,
+    seatsTotal: 16,
+    seatsBooked: 0,
+    status: 'OPEN',
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  // đợt bổ sung qua mốc bảo vệ (final review 31/07)
+  {
+    id: 'e0000002-0000-4000-8000-000000000140',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    startDate: '2026-12-05',
+    endDate: '2026-12-05',
+    priceOverride: null,
+    compareAtPrice: null,
+    seatsTotal: 16,
+    seatsBooked: 0,
+    status: 'OPEN',
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'e0000002-0000-4000-8000-000000000141',
+    tourId: 'd0000002-0000-4000-8000-000000000015',
+    startDate: '2027-01-09',
+    endDate: '2027-01-09',
     priceOverride: null,
     compareAtPrice: null,
     seatsTotal: 16,

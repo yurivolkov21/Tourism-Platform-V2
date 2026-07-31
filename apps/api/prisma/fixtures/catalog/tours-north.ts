@@ -25,7 +25,8 @@ import type {
  *     `tours-south.ts` — để 3 file không đụng số dù viết song song).
  *   - `tourFaqs[].id`          d2000002-0000-4000-8000-000000000001 → …0052
  *   - `tourPolicies[].id`      d3000002-0000-4000-8000-000000000001 → …0036
- *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000001 → …0057
+ *   - `tourDepartures[].id`    e0000002-0000-4000-8000-000000000001 → …0057,
+ *     mở rộng …0058 (final review 31/07, đợt bổ sung qua mốc bảo vệ)
  * Đánh số tuần tự theo thứ tự roster #1→#12, không có khoảng hở — dễ đối
  * chiếu ngược từ log seed về đúng tour.
  */
@@ -1999,6 +2000,20 @@ export const tourDepartures: TourDepartureFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000002',
     startDate: '2026-11-14',
     endDate: '2026-11-14',
+    priceOverride: null,
+    compareAtPrice: null,
+    seatsTotal: 14,
+    seatsBooked: 0,
+    status: 'OPEN',
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  // đợt bổ sung qua mốc bảo vệ (final review 31/07)
+  {
+    id: 'e0000002-0000-4000-8000-000000000058',
+    tourId: 'd0000002-0000-4000-8000-000000000002',
+    startDate: '2026-12-19',
+    endDate: '2026-12-19',
     priceOverride: null,
     compareAtPrice: null,
     seatsTotal: 14,

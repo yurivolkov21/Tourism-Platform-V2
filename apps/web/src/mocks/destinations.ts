@@ -63,7 +63,7 @@ const DESTINATIONS_SOURCE: Omit<MockDestination, 'tourCount'>[] = [
   // ── Nam ──
   {
     id: '7b1f0c3a-1111-4a11-8a01-000000000007',
-    slug: 'sai-gon',
+    slug: 'ho-chi-minh-city',
     name: 'Sài Gòn',
     country: 'Vietnam',
     region: 'Southern Vietnam',

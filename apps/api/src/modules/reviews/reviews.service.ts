@@ -174,6 +174,10 @@ export class ReviewsService {
    * (`listByTour`), tách riêng khỏi rating hiển thị cùng trang gây khó hiểu
    * cho người xem hơn là giúp gì.
    *
+   * `prisma/seed.ts` (bước 6b) SAO CHÉP TAY đúng công thức recompute ③ bên
+   * dưới — KHÔNG có shared helper giữa hai file; sửa công thức ở đây mà quên
+   * sửa seed.ts thì rating seed ra và rating `moderate()` tính sẽ lệch nhau.
+   *
    * Ba điểm concurrency đã fix (code review):
    *   - `fromApproved`/`justApproved` được tính từ giá trị `isApproved` đọc
    *     LẠI TRONG transaction (khoá bằng `FOR UPDATE`) chứ không dùng
