@@ -1,4 +1,5 @@
-import type { MockJournalPost, MockRegion, MockTourCard } from '@/mocks/types';
+import type { MockRegion, MockTourCard } from '@/mocks/types';
+import type { JournalPost } from './api/posts';
 import { absoluteUrl } from './site';
 
 /** Một mục sitemap. Hình dạng gương `MetadataRoute.Sitemap` của Next để
@@ -50,15 +51,19 @@ const STATIC_PAGES: { path: string; priority: number }[] = [
 /**
  * Dựng toàn bộ mục sitemap. Thuần, tất định, không đọc đồng hồ.
  *
- * `lastModified` CHỈ điền khi có ngày thật trong dữ liệu: bài blog có
- * `updated ?? date`, còn tour thì contract không trả ngày nào nên bỏ trống. Hai
- * lý do không bịa bằng `new Date()`: nó nói với crawler một điều không đúng, và
- * nó làm output build phụ thuộc thời điểm chạy — cùng một commit sinh ra hai
- * sitemap khác nhau. Khi contract mở `updatedAt` cho tour thì sửa test trước.
+ * `lastModified` CHỈ điền khi có ngày thật trong dữ liệu: bài blog có `date`
+ * (Task 9 — VM `JournalPost` từ API không còn `updated` riêng, `publishedAt`
+ * là ngày thật duy nhất nó biết), còn tour thì contract không trả ngày nào
+ * nên bỏ trống. Hai lý do không bịa bằng `new Date()`: nó nói với crawler một
+ * điều không đúng, và nó làm output build phụ thuộc thời điểm chạy — cùng một
+ * commit sinh ra hai sitemap khác nhau. Khi contract mở `updatedAt` cho tour
+ * thì sửa test trước.
  */
 export function sitemapEntries(
   tours: readonly MockTourCard[],
-  posts: readonly MockJournalPost[],
+  // Pick hẹp thay vì nguyên `JournalPost`: hàm này chỉ cần 2 field, và Pick hẹp
+  // giữ fixture test nhỏ (không phải khai đủ title/excerpt/... cho mỗi bài).
+  posts: readonly Pick<JournalPost, 'slug' | 'date'>[],
   // Nhận qua THAM SỐ chứ không `import { REGIONS }` tại đây, dù plan Task 6 viết
   // theo lối import: hàm này thuần và test được chính vì mọi nguồn dữ liệu đều đi
   // vào từ ngoài, và `sitemap.spec.ts` dựng được fixture nhỏ nhờ thế. Thêm một
@@ -79,7 +84,7 @@ export function sitemapEntries(
     })),
     ...posts.map((post) => ({
       url: absoluteUrl(`/blog/${post.slug}`),
-      lastModified: post.updated ?? post.date,
+      lastModified: post.date,
       priority: 0.6,
     })),
   ];

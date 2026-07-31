@@ -2,10 +2,19 @@ import { describe, expect, it } from 'vitest';
 import { JOURNAL_POSTS } from '@/mocks/journal';
 import { REGIONS } from '@/mocks/regions';
 import { TOURS } from '@/mocks/tours';
+import type { JournalPost } from './api/posts';
 import { siteUrl } from './site';
 import { sitemapEntries } from './sitemap';
 
-const entries = sitemapEntries(TOURS, JOURNAL_POSTS, REGIONS);
+// Task 9: `sitemapEntries` giờ nhận Pick<JournalPost, 'slug' | 'date'> — VM từ
+// API, không còn `updated`. Fixture ánh xạ xuống đúng shape đó từ mock có sẵn
+// (9 bài, cùng slug) thay vì gõ tay lại một mảng khác.
+const FIXTURE_POSTS: Pick<JournalPost, 'slug' | 'date'>[] = JOURNAL_POSTS.map(({ slug, date }) => ({
+  slug,
+  date,
+}));
+
+const entries = sitemapEntries(TOURS, FIXTURE_POSTS, REGIONS);
 const urls = entries.map((entry) => entry.url);
 
 describe('sitemapEntries', () => {
@@ -151,19 +160,13 @@ describe('sitemapEntries — priority theo plan', () => {
 });
 
 describe('sitemapEntries — lastModified chỉ dùng ngày CÓ THẬT', () => {
-  it('bài blog đã sửa lại dùng `updated`, bài chưa sửa dùng `date`', () => {
-    const edited = JOURNAL_POSTS.find((post) => post.updated);
-    const untouched = JOURNAL_POSTS.find((post) => !post.updated);
-    expect(edited).toBeDefined();
-    expect(untouched).toBeDefined();
-    if (edited) {
-      expect(entries.find((e) => e.url.endsWith(`/blog/${edited.slug}`))?.lastModified).toBe(
-        edited.updated,
-      );
-    }
-    if (untouched) {
-      expect(entries.find((e) => e.url.endsWith(`/blog/${untouched.slug}`))?.lastModified).toBe(
-        untouched.date,
+  // Task 9: VM `JournalPost` (nguồn API) không còn field `updated` riêng —
+  // `publishedAt` là ngày thật duy nhất nó biết, nên MỌI bài dùng `date`, không
+  // còn nhánh "đã sửa lại dùng updated" của bản mock cũ.
+  it('mọi bài blog dùng `date` làm lastModified', () => {
+    for (const post of FIXTURE_POSTS) {
+      expect(entries.find((e) => e.url.endsWith(`/blog/${post.slug}`))?.lastModified).toBe(
+        post.date,
       );
     }
   });

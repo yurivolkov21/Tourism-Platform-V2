@@ -1,13 +1,21 @@
+import { fetchPosts } from '@/lib/api/posts';
+import { settle } from '@/lib/api/resilience';
 import { sortPostsByDate } from '@/lib/blog';
 import { absoluteUrl, escapeXml } from '@/lib/site';
-import { JOURNAL_POSTS } from '@/mocks/journal';
 
 // Feed đặt NGOÀI route group (site): nó trả XML nên không được đi qua layout
 // có navbar/footer.
-export const dynamic = 'force-static';
+export const revalidate = 300;
 
-export function GET() {
-  const posts = sortPostsByDate(JOURNAL_POSTS);
+export async function GET() {
+  const postsRes = await settle(fetchPosts());
+  // Feed sai (rỗng/thiếu bài) còn tệ hơn feed vắng hẳn: trả 503 để reader/crawler
+  // biết đây là lỗi tạm thời, không phải "blog không còn bài nào" — khác nhánh
+  // sitemap (feed không có ISR tự chữa kiểu "trang có link" để bù).
+  if (!postsRes.ok) {
+    return new Response('temporarily unavailable', { status: 503 });
+  }
+  const posts = sortPostsByDate(postsRes.data);
   const items = posts
     .map((post) =>
       [

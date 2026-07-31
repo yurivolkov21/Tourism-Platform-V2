@@ -3,9 +3,10 @@
 import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { PostCard } from '@/components/blog/post-card';
+import { LoadErrorState } from '@/components/feedback/load-error-state';
+import type { JournalPost } from '@/lib/api/posts';
 import { homeTeaserPosts } from '@/lib/blog';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
-import { JOURNAL_POSTS } from '@/mocks/journal';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Review #33: convert từ forged/Blog ("Insight Hub") — header hai bên (heading
@@ -17,12 +18,16 @@ import { SectionEyebrow } from './section-eyebrow';
 // thừa) — đồng thời vá lỗi lưới 3 cột từng hiện tràn 9 bài (Task 1 nâng mock
 // 3→9 nhưng vòng lặp không giới hạn); giờ luôn cắt 3 bài mới nhất bằng
 // sortPostsByDate + slice, không phụ thuộc thứ tự khai báo trong mock.
+// Task 9: bỏ mock, nhận `posts`/`failed` từ page Home (server component fetch
+// qua `settle(fetchPosts())`) — component này giữ nguyên client vì có motion,
+// nên KHÔNG tự fetch được (ADR-0016 §4).
 
-export function Journal() {
+export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boolean }) {
   return (
     <section id="journal" className="w-full px-4 py-24 md:px-16 lg:px-24 xl:px-32">
       <div className="mx-auto max-w-7xl">
-        {/* Header: heading trái + nút outline phải (bố cục forged) */}
+        {/* Header: heading trái + nút outline phải (bố cục forged) — giữ nguyên
+            dù fetch lỗi: tri-state không được giấu cả section (ADR-0016 §4) */}
         <div className="mb-14 flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <div>
             <SectionEyebrow>Journal</SectionEyebrow>
@@ -54,20 +59,24 @@ export function Journal() {
           </motion.a>
         </div>
 
-        {/* Grid 3 card bài viết — chỉ 3 bài mới nhất, lưới là 3 cột */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-          {homeTeaserPosts(JOURNAL_POSTS).map((post, index) => (
-            <motion.div
-              key={post.slug}
-              initial={{ y: 30, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ delay: index * 0.1, ...SPRING }}
-            >
-              <PostCard post={post} />
-            </motion.div>
-          ))}
-        </div>
+        {failed ? (
+          <LoadErrorState className="mt-14" />
+        ) : (
+          // Grid 3 card bài viết — chỉ 3 bài mới nhất, lưới là 3 cột
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+            {homeTeaserPosts(posts).map((post, index) => (
+              <motion.div
+                key={post.slug}
+                initial={{ y: 30, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ delay: index * 0.1, ...SPRING }}
+              >
+                <PostCard post={post} />
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );
