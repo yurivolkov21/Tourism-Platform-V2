@@ -2,6 +2,86 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-31 — Bước 2+3 nối API: catalogue THẬT thay trọn seed + `/tours` + detail (branch `feat/tours-catalogue-api`, ff-only, 14 commit `64f780f..5e80270`)
+
+User chốt hướng: thay vì port 16 tour mock, **làm lại seed thành ~30 tour "như
+thật"** — itinerary có mốc giờ từng hoạt động trong ngày. Thi công subagent-driven
+10 task ([plan](plans/2026-07-31-tours-catalogue-api.md)) + final whole-branch
+review + gói fix pre-merge.
+
+- **Nửa A — catalogue mới (fixtures tách theo miền `fixtures/catalog/`):** 30 tour
+  (Bắc 12 · Trung 9 · Nam 9, roster spec §3) · 19 destinations · 84 review CURATED
+  trên 24 tour với **6 tour 0-review cố ý** (test `ratingAvg null ≠ 0`) ·
+  departures tĩnh tương lai, mọi tour biên được kéo QUA mốc bảo vệ ~10-11/11/2026.
+  Itinerary là text kỷ luật `HH:MM — hoạt động` trong `description` (không
+  migration, không đổi contract; luật cứng: KHÔNG BAO GIỜ parse ngược). Tour mẫu
+  `vung-tau-coastal-2d` khớp spec §5 **từng dòng** (reviewer đối chiếu). Content
+  qua 3 vòng review riêng: địa lý thật (cung Hà Giang đúng lộ trình
+  Quản Bạ→Đồng Văn→Mã Pí Lèng, chợ nổi Cái Răng đi 05:30), món/địa danh có thật,
+  không câu khuôn lặp quá 2 lần toàn catalogue.
+- **Hai quyết định user giữa chừng, đều là xung đột spec ↔ thực tại:**
+  1. Spec §5 tự mâu thuẫn (4 đợt "cách tuần" 15/08 không thể tới 21/11) → chốt
+     giãn ~tháng, đợt cuối 21/11 **sát ngày bảo vệ** để tour mẫu còn đợt tương lai
+     lúc demo. Spec đã được amend cùng đợt docs này.
+  2. **ĐẢO bất biến rating** (`bbd7b5a`): trước đây `moderate()` chỉ tính review
+     VERIFIED vào `ratingAvg` (chống thổi điểm bằng testimonial) — nhưng capstone
+     không có khách thật nên CURATED là nguồn sao duy nhất, và seed tính khác
+     service là bug ngủ sẽ nổ đúng lúc demo viết review (bước 9). Giờ: MỌI review
+     approved CÓ `tourId` đều tính (curated không gắn tour vẫn không tính). Service
+     + seed MỘT công thức (`AVG(rating)::numeric(2,1)`, không shared helper — hai
+     file sync theo quy ước, JSDoc ghi rõ); test int đảo assertion tương ứng.
+     JSDoc `moderate()` giữ lại lịch sử quyết định cũ và lý do đảo.
+- **Nửa B — web (đúng khuôn ADR-0016, đúng vết cụm Blog):** `lib/api/tours.ts`
+  (VM = type contract qua `ContractOutputs`, KHÔNG khai lại field — nhờ vậy Task 9
+  detail chỉ đổi 3 file, các component đã ăn đúng type từ trước) · `TAGS.TOURS` +
+  `tourTag(slug)` · `/tours` tri-state với facet destinations TỪ API (19 slug mới —
+  giữ mock là filter chết) · `/tours/[slug]` với Departure Board dữ liệu thật,
+  itinerary xuống dòng bằng `whitespace-pre-line` (một class, không parse), reviews
+  từ `reviews.listByTour`, gallery degrade sạch khi contract chưa có media
+  (ADR-0005) · sitemap 38 → **52 URL** (bỏ 16 slug mock, vào 30 slug thật).
+- **DB dev reset bởi user** (Prisma AI-safety guard chặn agent chạy
+  `migrate reset` — lớp chắn hoạt động đúng, không lách); seed 2 lần idempotent;
+  8 int spec đổi slug theo roster mới.
+
+**Review findings (12 vòng task + final):**
+
+1. Ba vòng fix content đều do reviewer độc lập bắt: 2 tour thiếu đợt promo (T2) ·
+   câu CANCELLATION lặp nguyên văn 6 chỗ xuyên file (T3, khử ở T4) · tour
+   `hoi-an-lantern-evening` cạn đợt từ 05/11 — NGAY TRƯỚC ngày bảo vệ, trong khi
+   nó là tour phơi bày nhất (booking mẫu + 1 trong 2 link sống từ trang vùng)
+   (final review, vá `5e80270` kèm 3 tour biên).
+2. **Tile "Sài Gòn" ở `/destinations` lọc ra rỗng nói dối**: slug mock `sai-gon`
+   ≠ slug API `ho-chi-minh-city`, 8/9 tile khác tình cờ khớp — chỉ góc nhìn
+   toàn-branch mới thấy. Đã đổi slug mock đồng bộ (`5e80270`).
+3. **Lệch tạm mock nặng hơn chữ nghĩa spec:** trang vùng `/destinations/[region]`
+   hiện có **14/16 card tour mock là link chết 404** (chỉ `hoi-an-lantern-evening`
+   và `hue-imperial-day` sống). Home và `/about` an toàn (chỉ lệch số đếm 16↔30,
+   không có link tour). → **bước 4 (destinations lên API) cần đi NGAY sau đợt này.**
+4. Chuỗi tự-bắt-lỗi đáng ghi: implementer T10 bắt lỗi số học "66 URL" trong chính
+   dispatch của controller (thật: 38−16+30=52); fixer final bắt brief ước "+6"
+   departures trong khi đúng nội dung là +5; T6 phát hiện 5 int spec hardcode slug
+   cũ mà plan không lường.
+
+**Nợ mở (triage ở final review):** làm tươi departures sau 01/2027 (bảng đợt-cuối
+từng tour nằm trong report T10; sớm nhất còn lại: `hanoi-old-quarter-food-night`
+20/11 — chấp nhận, dư ~9 ngày sau bảo vệ) · `fetchTourReviews` trần pageSize 20,
+form review bước 9 sẽ phá giả định · **seed là ADDITIVE** — DB nào chưa reset mà
+seed roster mới sẽ có 23 tour cũ lẫn 30 mới (DB remote/Supabase phải
+`migrate reset` trước) · 3 component detail còn `import type` từ `@/mocks/types`
+(structural-compatible; rehome khi mock chết ở bước 4+) · `pickPaidDeparture`
+không lọc đợt tương lai dù JSDoc nói vậy (sửa comment hoặc thêm filter) · promo
+tour mẫu 7.75% là ngoại lệ spec-định (đừng "sửa giúp" về 13-15%) · reviews
+createdAt (01-07/2026) trước mọi departure seed (chấp nhận cho CURATED) · cân
+nhắc phụ lục ADR-0016 cho bất biến rating mới khi mở P4 admin.
+
+Tests after: `pnpm gate` xanh **18/18 task** (gồm `next build` fetch API sống) —
+web **695** (trước 692) · ui 10 · API 188 · contract 55 · tokens 10 · i18n 1,
+tổng **959**. `pnpm test:int` **17/17 file, 145/145** — 8 int spec đã theo roster
+mới. Nghiệm thu production build: sitemap 52 URL (30 `/tours/…`, 0 slug mock) ·
+slug lạ **404 thật** · `/tours` 30 tour + filter/search fold dấu · detail Vũng Tàu
+hiện `07:30` xuống dòng đúng + rating 4.7/3 · tour 0-review hiện "chưa có đánh
+giá" · tri-state đo tắt-API.
+
 ## 2026-07-31 — Bước 1 nối API: cụm Blog đọc dữ liệu thật + nền `lib/api` cho cả phase (branch `feat/blog-api`, ff-only, 13 commit `ffb8ea5..1cbe22c`)
 
 Trang đầu tiên của web rời mock: `/blog` · `/blog/[slug]` · rss · sitemap · teaser

@@ -166,7 +166,11 @@ có vùng riêng.)
 - **policies:** CANCELLATION (miễn phí tới 72h, 50% trong 72h, no-show mất
   100%) · BOOKING (giữ chỗ 20%, thanh toán đủ trước 7 ngày) · GENERAL (mang
   kem chống nắng, đồ bơi; xe đón trong quận 1/3).
-- **departures (4):** thứ Bảy cách tuần từ 2026-08-15 tới 2026-11-21,
+- **departures:** ~~thứ Bảy cách tuần từ 2026-08-15 tới 2026-11-21~~ **AMENDED
+  31/07 (bản gốc tự mâu thuẫn — 4 đợt cách tuần từ 15/08 chỉ tới được 26/09):**
+  4 thứ Bảy giãn ~tháng 2026-08-15 · 09-19 · 10-17 · 11-21, ưu tiên đợt cuối sát
+  ngày bảo vệ để demo còn đợt tương lai (xem [CHANGELOG 31/07](../CHANGELOG.md)).
+  Đã ship đúng 4 đợt này,
   seatsTotal 16, một đợt promo priceOverride 119.00.
 - **reviews (3):** 5★ (gia đình, khen mốc giờ thật và bữa Gành Hào) · 5★ (cặp
   đôi, khen sunrise Lighthouse) · 4★ (khen tổng thể, chê khách sạn xa chợ đêm
