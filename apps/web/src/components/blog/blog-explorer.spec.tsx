@@ -6,11 +6,11 @@ import type { JournalPost } from '@/lib/api/posts';
 import { sortPostsByDate } from '@/lib/blog';
 import { BlogExplorer } from './blog-explorer';
 
-// Fixture VM (JournalPost, hậu Task 5) — KHÔNG dùng JOURNAL_POSTS của
-// mocks/journal nữa: shape đó là MockJournalPost, thiếu `tags` (bắt buộc từ
-// khi chip lọc chuyển sang nguồn `fetchPostTags`). 9 bài để giữ đúng phép
-// tính phân trang 6+3 đã canh từ trước; `p5` mang thêm tag phụ "sa-pa" để có
-// bài cho case chọn chip tag phụ.
+// Fixture VM (JournalPost, hậu Task 5) — KHÔNG dùng mock journal cũ nữa: shape
+// đó thiếu `tags` (bắt buộc từ khi chip lọc chuyển sang nguồn `fetchPostTags`,
+// và đã khai tử hoàn toàn ở Task 10). 9 bài để giữ đúng phép tính phân trang
+// 6+3 đã canh từ trước; `p5` mang thêm tag phụ "sa-pa" để có bài cho case chọn
+// chip tag phụ.
 const post = (
   slug: string,
   date: string,
@@ -27,7 +27,7 @@ const post = (
   tags,
 });
 
-const JOURNAL_POSTS: JournalPost[] = [
+const POSTS: JournalPost[] = [
   post('p1', '2026-01-01', 'Food'),
   post('p2', '2026-01-02', 'Food'),
   post('p3', '2026-01-03', 'Nature'),
@@ -83,7 +83,7 @@ function renderBlog(
     // reducedMotion="always" cho tất định: lưới bài dùng AnimatePresence +
     // blur, không khoá lại thì đếm card lúc đang animate ra số khác.
     <MotionConfig reducedMotion="always">
-      <BlogExplorer posts={JOURNAL_POSTS} tags={TAGS} {...initial} />
+      <BlogExplorer posts={POSTS} tags={TAGS} {...initial} />
     </MotionConfig>,
   );
 }
@@ -98,7 +98,7 @@ describe('BlogExplorer — phân trang', () => {
 
   it('trang 2 chỉ chứa phần dư', () => {
     renderBlog({ initialPage: 2 });
-    expect(postCards()).toHaveLength(JOURNAL_POSTS.length - 6);
+    expect(postCards()).toHaveLength(POSTS.length - 6);
   });
 
   it('thanh phân trang có mặt và công bố trang hiện tại', () => {
@@ -114,7 +114,7 @@ describe('BlogExplorer — phân trang', () => {
 
     // Bài đầu của trang 2 = bài thứ 7 theo ngày. Tính bằng chính hàm mà component
     // dùng, không hardcode slug — mock đổi thứ tự thì test đi theo.
-    const firstOnPageTwo = sortPostsByDate(JOURNAL_POSTS)[6];
+    const firstOnPageTwo = sortPostsByDate(POSTS)[6];
     expect(firstOnPageTwo).toBeDefined();
     expect(
       screen.queryByRole('link', { name: new RegExp(firstOnPageTwo?.title ?? '') }),

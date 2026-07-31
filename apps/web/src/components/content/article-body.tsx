@@ -3,8 +3,8 @@ import { Reveal } from '@/components/motion/reveal';
 import { slugify } from '@/lib/slug';
 
 /** Một section thân bài. Trang pháp lý (`LegalDoc.sections`) và bài blog
-    (`MockJournalPost.sections`) đã cùng hình dạng này từ đầu — đó là lý do tách
-    được mà không ai phải đổi dữ liệu. */
+    (mock journal cũ, đã khai tử Task 10) đã cùng hình dạng này từ đầu — đó là
+    lý do tách được mà không ai phải đổi dữ liệu. */
 export interface ArticleSection {
   heading: string;
   paragraphs?: string[];

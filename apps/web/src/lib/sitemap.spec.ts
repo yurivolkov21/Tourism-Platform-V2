@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { JOURNAL_POSTS } from '@/mocks/journal';
 import { REGIONS } from '@/mocks/regions';
 import { TOURS } from '@/mocks/tours';
 import type { JournalPost } from './api/posts';
@@ -7,12 +6,22 @@ import { siteUrl } from './site';
 import { sitemapEntries } from './sitemap';
 
 // Task 9: `sitemapEntries` giờ nhận Pick<JournalPost, 'slug' | 'date'> — VM từ
-// API, không còn `updated`. Fixture ánh xạ xuống đúng shape đó từ mock có sẵn
-// (9 bài, cùng slug) thay vì gõ tay lại một mảng khác.
-const FIXTURE_POSTS: Pick<JournalPost, 'slug' | 'date'>[] = JOURNAL_POSTS.map(({ slug, date }) => ({
-  slug,
-  date,
-}));
+// API, không còn `updated`. Task 10: mock journal đã khai tử, nên fixture giờ
+// NỘI BỘ trong spec này (9 slug + date thật, chép lại từ
+// `apps/api/prisma/fixtures/posts.ts` — `date` = 10 ký tự đầu của
+// `publishedAt`, đúng cách `toJournalPost` cắt) thay vì đọc từ mock — giữ
+// nguyên bất biến 38 URL, chỉ đổi nguồn dữ liệu.
+const FIXTURE_POSTS: Pick<JournalPost, 'slug' | 'date'>[] = [
+  { slug: 'what-to-pack-for-the-mist-season', date: '2026-07-22' },
+  { slug: 'eating-your-way-through-hoi-an', date: '2026-07-08' },
+  { slug: 'floating-markets-before-sunrise', date: '2026-06-25' },
+  { slug: 'reading-a-hue-royal-tomb', date: '2026-03-27' },
+  { slug: 'two-days-among-the-karsts', date: '2026-03-10' },
+  { slug: 'crossing-hanoi-on-foot', date: '2026-05-20' },
+  { slug: 'the-bay-without-the-crowds', date: '2026-04-14' },
+  { slug: 'bridges-beaches-and-bun-cha-ca', date: '2026-05-02' },
+  { slug: 'when-to-come-and-when-not-to', date: '2026-06-08' },
+];
 
 const entries = sitemapEntries(TOURS, FIXTURE_POSTS, REGIONS);
 const urls = entries.map((entry) => entry.url);
@@ -76,10 +85,10 @@ describe('sitemapEntries', () => {
     for (const tour of TOURS) expect(tourUrls).toContain(`${siteUrl()}/tours/${tour.slug}`);
   });
 
-  it('phủ đủ 9 bài blog, đúng theo slug của JOURNAL_POSTS', () => {
+  it('phủ đủ 9 bài blog, đúng theo slug của FIXTURE_POSTS', () => {
     const postUrls = urls.filter((url) => /\/blog\/[^/]+$/.test(url));
     expect(postUrls).toHaveLength(9);
-    for (const post of JOURNAL_POSTS) expect(postUrls).toContain(`${siteUrl()}/blog/${post.slug}`);
+    for (const post of FIXTURE_POSTS) expect(postUrls).toContain(`${siteUrl()}/blog/${post.slug}`);
   });
 
   it('KHÔNG liệt kê trang auth — không có giá trị index và lộ bề mặt tấn công', () => {

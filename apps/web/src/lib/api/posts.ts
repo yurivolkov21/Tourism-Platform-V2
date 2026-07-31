@@ -6,9 +6,10 @@ import { api } from './client';
 import { postTag, TAGS } from './tags';
 
 /**
- * VM listing — GIỮ TÊN FIELD của MockJournalPost (mocks/types.ts) để component
- * đổi tối thiểu khi gắn API (Task 7–9). `tags` là mảng ĐẦY ĐỦ từ DTO — chip
- * lọc phụ (`filterPostsByTag`) cần phủ CẢ tag không phải category hiển thị.
+ * VM listing — GIỮ TÊN FIELD của mock journal cũ (đã khai tử Task 10) để
+ * component đổi tối thiểu khi gắn API (Task 7–9). `tags` là mảng ĐẦY ĐỦ từ
+ * DTO — chip lọc phụ (`filterPostsByTag`) cần phủ CẢ tag không phải category
+ * hiển thị.
  */
 export interface JournalPost {
   slug: string;

@@ -173,25 +173,6 @@ export interface MockTestimonial {
   rating: number;
 }
 
-export interface MockJournalPost {
-  slug: string;
-  title: string;
-  excerpt: string;
-  /** ISO date hiển thị dạng "Oct 2026" */
-  date: string;
-  readMinutes: number;
-  image: string;
-  /** Chuyên mục hiển thị trên chip card (review #33 — convert forged/Blog) */
-  category: string;
-  /** Tác giả — guide bản địa, khớp câu chuyện thương hiệu */
-  author: string;
-  /** Ngày cập nhật gần nhất — chỉ có ở bài đã sửa lại sau khi đăng */
-  updated?: string;
-  /** Thân bài: cùng hình dạng với LegalDoc.sections nên dùng chung được
-      tocFromSections + Typeset của cụm trang pháp lý */
-  sections: { heading: string; paragraphs?: string[]; bullets?: string[] }[];
-}
-
 /** Văn phòng cho trang Contact — ứng viên schema offices */
 export interface MockOffice {
   city: string;

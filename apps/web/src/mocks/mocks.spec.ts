@@ -1,11 +1,6 @@
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { sortPostsByDate } from '../lib/blog.js';
-import { slugify } from '../lib/slug.js';
 import { averageRating } from '../lib/tours.js';
 import { DESTINATIONS } from './destinations.js';
-import { JOURNAL_POSTS } from './journal.js';
 import { MOMENTS } from './moments.js';
 import { REGIONS } from './regions.js';
 import { TESTIMONIALS } from './testimonials.js';
@@ -14,7 +9,6 @@ import { TOURS } from './tours.js';
 
 // Bất biến của mock trang Home — mock là công cụ khám phá schema nên shape tự do,
 // nhưng dữ liệu phải tự nhất quán (ảnh tồn tại, slug duy nhất, đủ 3 vùng).
-const PUBLIC_DIR = join(import.meta.dirname, '../../public');
 
 // TOURS là mock DUY NHẤT gương theo contract backend (TourCard/TourDetailSchema)
 // thay vì shape tự do như các mock khác — tour đã có contract chốt và giàu hơn
@@ -146,25 +140,18 @@ describe('mock tours — mọi nhánh nullable phải có mock chứng minh', ()
   });
 });
 
-describe('mock regions / testimonials / journal', () => {
+describe('mock regions / testimonials', () => {
   it('đủ 3 vùng north/central/south', () => {
     expect(REGIONS.map((r) => r.key).sort()).toEqual(['central', 'north', 'south']);
   });
 
-  it('8 testimonial (marquee 2 cột × 4) đủ trường; mỗi bài journal có ảnh tồn tại + category/author', () => {
+  it('8 testimonial (marquee 2 cột × 4) đủ trường', () => {
     // Marquee của template Estate cần 2 cột × 4 card để loop mượt.
     expect(TESTIMONIALS).toHaveLength(8);
     for (const t of TESTIMONIALS) {
       expect(t.rating).toBeGreaterThanOrEqual(4);
       expect(t.rating).toBeLessThanOrEqual(5);
       expect(t.location.length).toBeGreaterThan(0);
-    }
-    // Số lượng chính xác (9 bài) được canh riêng ở describe('mock journal') bên dưới.
-    for (const p of JOURNAL_POSTS) {
-      expect(existsSync(join(PUBLIC_DIR, p.image)), p.image).toBe(true);
-      // Card Journal (#33, convert forged/Blog) cần chip chuyên mục + tác giả
-      expect(p.category.length, p.slug).toBeGreaterThan(0);
-      expect(p.author.length, p.slug).toBeGreaterThan(0);
     }
   });
 });
@@ -260,46 +247,10 @@ describe('mock regions', () => {
   });
 });
 
-describe('mock journal', () => {
-  it('đúng 9 bài, slug duy nhất', () => {
-    expect(JOURNAL_POSTS).toHaveLength(9);
-    expect(new Set(JOURNAL_POSTS.map((p) => p.slug)).size).toBe(9);
-  });
-
-  it('ngày đăng không trùng nhau — sắp xếp mới-nhất-trước mới ổn định', () => {
-    const dates = JOURNAL_POSTS.map((p) => p.date);
-    expect(new Set(dates).size).toBe(dates.length);
-  });
-
-  it('ảnh nằm trong /mock/ và file tồn tại thật', () => {
-    for (const post of JOURNAL_POSTS) {
-      expect(post.image.startsWith('/mock/')).toBe(true);
-      expect(existsSync(join(PUBLIC_DIR, post.image))).toBe(true);
-    }
-  });
-
-  it('mỗi bài có ít nhất 3 section, heading sinh slug duy nhất', () => {
-    for (const post of JOURNAL_POSTS) {
-      expect(post.sections.length).toBeGreaterThanOrEqual(3);
-      const slugs = post.sections.map((s) => slugify(s.heading));
-      expect(new Set(slugs).size).toBe(slugs.length);
-    }
-  });
-
-  // Canh đúng lỗi vừa xảy ra (task 3c mục 1): Task 1 nâng mock 3→9 bài làm
-  // Home render tràn 9 card trong lưới md:grid-cols-3 vốn thiết kế cho 3.
-  // Review sau đó chỉ ra bản cũ của test này tự tính lại
-  // `sortPostsByDate(...).slice(0, 3)` rồi assert độ dài 3 — tautology, luôn
-  // đúng bất kể component/hàm thật làm gì (đổi HOME_TEASER_COUNT 3→5 thì test
-  // này vẫn xanh). Phần có giá trị duy nhất là bài mới nhất trong mock đúng
-  // ngày nào — giữ lại đúng phần đó, bỏ phần đếm độ dài vô nghĩa. Việc "lấy
-  // đúng 3 bài" đã có test riêng canh HOME_TEASER_COUNT/homeTeaserPosts ở
-  // lib/blog.spec.ts; verify HTML thật (curl vào section#journal) mới bắt
-  // được lỗi runtime nếu component bỏ .slice().
-  it('bài mới nhất trong mock journal là 2026-10-02', () => {
-    expect(sortPostsByDate(JOURNAL_POSTS)[0]?.date).toBe('2026-10-02');
-  });
-});
+// Mock journal đã khai tử Task 10 — cụm blog giờ đọc thẳng API (xem
+// apps/api posts + lib/api/posts.ts). Bất biến "9 bài mới nhất 2026-07-22
+// đứng đầu" giờ canh ở nghiệm thu production build, không còn canh được
+// bằng mock tĩnh nữa.
 
 describe('TOURS.media — bất biến gương theo MediaItemSchema', () => {
   it('mỗi tour có tối đa MỘT ảnh role hero', () => {
