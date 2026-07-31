@@ -16,6 +16,10 @@ import { TAGS, tourTag } from './tags';
 export type TourCardVM = ContractOutputs['catalog']['tours']['list']['items'][number];
 export type TourDetailVM = ContractOutputs['catalog']['tours']['bySlug'];
 export type TourReviewVM = ContractOutputs['reviews']['listByTour']['items'][number];
+/** VM facet destination cho sidebar lọc — cùng shape `MockDestination` (mock đã
+    gương đúng `DestinationSchema` từ trước), đặt tên VM ở đây cho nhất quán với
+    ba type trên khi ToursExplorer/ToursFilters đổi nguồn sang API thật. */
+export type DestinationVM = ContractOutputs['catalog']['destinations']['list'][number];
 
 const REVALIDATE_SEC = 300; // ADR-0016 §3 — con số Nexora đã vận hành, cùng revalidate cụm blog
 

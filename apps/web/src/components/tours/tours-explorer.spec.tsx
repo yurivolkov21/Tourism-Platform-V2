@@ -363,3 +363,42 @@ describe('ToursExplorer — số tour mỗi trang', () => {
     expect(screen.getAllByRole('article')).toHaveLength(10);
   });
 });
+
+describe('ToursExplorer — facet destination từ API (19 slug thật, khác 9 destination mock)', () => {
+  // Tour #22 rút gọn (spec 2026-07-31-tours-catalogue-api §3/§5): destination
+  // 'vung-tau' KHÔNG nằm trong 9 destination mock (Sa Pa…Phú Quốc), nên phép
+  // thử này không thể "ăn may" pass nhờ trùng dữ liệu sẵn có — nó buộc phải
+  // chạy qua đúng đường lọc facet generic bằng slug thật từ API.
+  const vungTauTour = {
+    ...TOURS[0],
+    id: 'test-vung-tau-coastal-2d',
+    slug: 'vung-tau-coastal-2d',
+    title: 'Vũng Tàu Coastal Escape 2D1N',
+    destinations: [{ slug: 'vung-tau', name: 'Vũng Tàu', isPrimary: true }],
+  };
+  const vungTauDestination = {
+    id: 'test-vung-tau',
+    slug: 'vung-tau',
+    name: 'Vũng Tàu',
+    country: 'Vietnam',
+    region: 'Southern Vietnam',
+    description: null,
+    tourCount: 1,
+  };
+
+  it('chọn destination vung-tau (từ URL) lọc đúng ra vung-tau-coastal-2d', () => {
+    const tours = [...TOURS, vungTauTour];
+    render(
+      <MotionConfig reducedMotion="always">
+        <ToursExplorer
+          tours={tours}
+          categories={tourCategories(tours)}
+          destinations={[...DESTINATIONS, vungTauDestination]}
+          initial={{ destinations: 'vung-tau' }}
+        />
+      </MotionConfig>,
+    );
+    expect(screen.getAllByRole('article')).toHaveLength(1);
+    expect(screen.getByText('Vũng Tàu Coastal Escape 2D1N')).toBeInTheDocument();
+  });
+});

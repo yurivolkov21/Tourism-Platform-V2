@@ -27,7 +27,7 @@ import { PAGE_SIZES, PaginationBar } from '@/components/tours/pagination-bar';
 import { TourListCard } from '@/components/tours/tour-list-card';
 import { type FacetCounts, type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
 import { ToursHero } from '@/components/tours/tours-hero';
-import type { TourCardVM } from '@/lib/api/tours';
+import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
 import {
   countActiveFilters,
@@ -40,7 +40,6 @@ import {
   type TourFilterState,
   type TourSortKey,
 } from '@/lib/tours';
-import type { MockDestination } from '@/mocks/types';
 
 /** Số tour mỗi trang mặc định. Contract mặc định 12, ta chọn 10 cho trang ngắn
     hơn — không xung đột vì client luôn gửi `limit` tường minh. Người dùng đổi
@@ -103,7 +102,7 @@ export function ToursExplorer({
 }: {
   tours: TourCardVM[];
   categories: { slug: string; name: string; count: number }[];
-  destinations: MockDestination[];
+  destinations: DestinationVM[];
   initial: ToursExplorerInitial;
 }) {
   const [filters, setFilters] = useState<TourFilterState>({
