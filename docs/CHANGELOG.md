@@ -2,6 +2,84 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-07-31 — Bước 1 nối API: cụm Blog đọc dữ liệu thật + nền `lib/api` cho cả phase (branch `feat/blog-api`, ff-only, 13 commit `ffb8ea5..1cbe22c`)
+
+Trang đầu tiên của web rời mock: `/blog` · `/blog/[slug]` · rss · sitemap · teaser
+Journal trên Home đọc từ API oRPC theo [ADR-0016](adr/0016-web-data-layer.md) và
+[spec 31/07](specs/2026-07-31-blog-api-design.md); plan 10 task thi công kiểu
+subagent-driven, mỗi task một vòng review độc lập cộng final whole-branch review.
+
+- **Nền `lib/api` dùng chung mọi bước sau:** `env.ts` (một module env duy nhất —
+  sửa bài học Nexora lặp base-URL 8 file) · `client.ts` — `OpenAPILink` ghim
+  `1.14.8`, timeout 10s, chuyển `next: {revalidate, tags}` per-call qua client
+  context (đường context→fetch→Data Cache được final review xác minh tận nguồn
+  Next 16.2.11: `init.next` được patch-fetch đọc trước, `signal` bị strip khi
+  revalidate nên timeout không phá cache) · `tags.ts` (`TAGS.POSTS`,
+  `postTag(slug)`) · khuôn tri-state `settle()`/`contentState()` (failed thắng
+  isEmpty — cấm empty-state khi API sập) + `LoadErrorState` (retry =
+  `router.refresh()`).
+- **Seed 9 bài phía API** từ mock journal đã duyệt, copy verbatim (reviewer đối
+  chiếu 3/9 bài từng heading/đoạn/bullet), sections → markdown. Bẫy đã né: 4/9
+  ngày mock ở TƯƠNG LAI mà `publishedPostWhere()` (ADR-0004) lọc
+  `publishedAt <= now` — bảng dời ngày giữ nguyên thứ tự trong
+  `fixtures/posts.ts`. Upsert theo slug idempotent (chạy 2 lần đo được không
+  nhân bản); `update: {}` cố ý không reconcile — comment tradeoff ghi tại chỗ.
+- **SSG → ISR:** 4 route `revalidate = 300` + mọi fetch gắn cache-tag từ ngày
+  đầu; một `fetchPosts()` (một cache key, một TTL) nuôi cả 5 consumer. Home diff
+  đúng 11 dòng/1 hunk (trang duyệt kỹ nhất — chỉ fetch + props + revalidate).
+  Bất đối xứng có chủ đích, comment tại chỗ: rss fail → 503 (feed sai tệ hơn
+  feed vắng) còn sitemap fail → mảng rỗng (thiếu tạm còn hơn build đổ);
+  `generateStaticParams` cố ý KHÔNG settle — API chết lúc build phải fail to.
+- **Shape gap mock ↔ contract xử tường minh:** markdown render bằng
+  `react-markdown` + `remark-gfm` trong Typeset preset reading (thay
+  `ArticleBody sections`; cụm pháp lý giữ nguyên khuôn cũ); `tocFromMarkdown`
+  hội tụ id với `ArticleMarkdown` qua một đường text-thuần chung; chip lọc
+  chuyển category → tag (`posts.tags`, so theo slug, URL `?tag=<slug>`); chip
+  "Updated" và JSON-LD `image`/`dateModified` cắt có chủ đích (contract không
+  có nguồn thật). **Chip "min read" bỏ khỏi card**: `PostCardSchema` không có
+  `content` nên số ở listing là bịa — detail vẫn hiện số thật tính từ content;
+  muốn chip về lại card thì thêm `readMinutes` vào contract ở đợt riêng.
+- **Khai tử `mocks/journal.ts`** (420 dòng) + `MockJournalPost`; grep
+  `mocks/journal|MockJournalPost|JOURNAL_POSTS` toàn `apps/web/src` về rỗng
+  thật sự (kể cả 2 JSDoc và 1 fixture trùng tên); `sitemap.spec.ts` chuyển
+  fixture cục bộ lấy ngày từ seed thật.
+
+**Review findings (10 vòng task + final):**
+
+1. **Hai bug thật đều nảy từ code mẫu trong chính plan** — `slugify(String(children))`
+   vỡ id khi heading có inline markdown (`[object Object]`) và ảnh `![alt](url)`
+   lệch id hai phía. Cả hai fix theo TDD trung thực: test mới ĐỎ trên code cũ
+   trước (17 rồi 3 test), xanh sau fix. Bài học plan-level: snippet đụng thư
+   viện bên thứ ba trong plan cần đối chiếu docs như plan đã (đúng) bắt làm với
+   oRPC — nơi implementer phát hiện docs online lệch `.d.ts` bản ghim (fetch 5
+   tham số, option `url` đơn) và tin bản cài là chọn lựa đúng.
+2. **Nghiệm thu đủ 8/8 mục spec §5 trên production build:** 9 bài + chip tag ·
+   slug lạ **404 thật** (bẫy soft-404 không tái diễn, không `loading.tsx` nào
+   mới) · JSON-LD sạch field bịa · teaser Home 3 bài mới nhất · rss 9 item ·
+   sitemap 38 URL · search fold dấu · tri-state đo thật: tắt API thì `/blog`
+   ra `LoadErrorState`, không "Nothing here yet". Khoảng trống bằng chứng mục
+   tri-state do final review bắt được và vá bằng phép đo bổ sung.
+3. **Hai commit dính trailer AI attribution** dù brief cấm — filter-branch gỡ
+   trước khi push; các dispatch sau thêm bước tự kiểm `git log`.
+4. **Giả định môi trường trong prompt session SAI:** máy này có Docker/Postgres —
+   `pnpm test:int` chạy được và xanh. Assumption môi trường nên là điều kiện
+   kiểm được, không phải khẳng định chết.
+
+**Nợ mở (đã triage ở final review):** server-side pagination `/blog` (điều kiện
+kích hoạt ghi ở spec §2C) · `metaTitle`/`metaDescription` contract có nhưng web
+chưa dùng (P4 admin điền là web lờ đi âm thầm) · `toJournalPostDetail` chưa có
+test riêng · bước on-demand revalidation phải quyết detail gắn thêm `TAGS.POSTS`
+hay chỉ `postTag` (hiện chỉ `postTag` — bust `posts` không đụng trang detail) ·
+visual `LoadErrorState` (không icon/màu lỗi) chờ user duyệt theo nếp
+design-by-demo · `readMinutes` ở list VM là field không ai render, cân nhắc dời
+sang detail VM.
+
+Tests after: `pnpm gate` **18/18 task** kể cả `next build` fetch API sống · web
+**692** (trước 656, đã trừ test journal mock bị khai tử) · ui 10 · API 188 ·
+contract 55 · tokens 10 · i18n 1, tổng **956**. Lần ĐẦU đo được
+`pnpm test:int` tại máy dev: **145/145** (17 file). Nghiệm thu production build
+8/8 mục spec §5.
+
 ## 2026-07-30 — Dropdown navbar bị navbar đè: hai nguyên nhân, một lớp lỗi cũ bỏ sót (branch `fix/navbar-dropdown-stacking` rồi `fix/user-menu-stacking`, ff-only, commit code `e6f179f` và `00ea0d4`)
 
 User báo: hover "Destinations" lúc đã cuộn thì dropdown bị thanh navbar đè lên. Điều
