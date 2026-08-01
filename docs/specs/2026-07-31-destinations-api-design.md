@@ -24,7 +24,7 @@ offices) sống tiếp đúng thiết kế ADR-0016.
 | B | `/destinations/[region]` ×3 | `generateStaticParams` giữ nguồn `REGIONS` (3 vùng cố định); data tours/destinations sang API; `regionOf()` bridge giữ nguyên; copy biên tập vùng ở i18n giữ nguyên; `revalidate = 300` |
 | C | Home | Tiles gallery (destinations + tourCount dẫn xuất) và mọi số đếm sang dữ liệu API — page (server, đã ISR từ bước 1) fetch rồi truyền props xuống client components, đúng vết teaser Journal; **diff Home tối thiểu** như lệ |
 | D | `/about` | `about-numbers`/`about-gallery` đổi số đếm/nguồn tour sang API → `/about` SSG thuần thành ISR 300 (hệ quả ghi nhận; trang không có searchParams nên vẫn serve HTML tĩnh) |
-| E | Navbar `destinations-menu` | `site-header` (server, trong root layout) fetch `destinations.list` (ISR 300, tag `TAGS.TOURS`) truyền props cho menu client — 19 điểm đến thật khớp listing. **Hệ quả phải đo:** layout fetch → mọi route mang fetch ISR, các trang tĩnh thuần (legal/auth) đổi render mode — nghiệm thu phải xác nhận nội dung + status không đổi và fetch fail không sập trang (settle → menu rơi về danh sách rỗng/ẩn mục, không crash layout) |
+| E | Navbar `destinations-menu` | ~~Đổi nguồn API 19 điểm~~ **AMENDED 01/08 — TASK MOOT:** premise spec sai (viết từ grep đọc nhầm consumer); dropdown đã được user thiết kế lại 30/07 (`696715e`) còn 4 link (All + 3 vùng → trang vùng, có 2 test khoá) và KHÔNG phụ thuộc dữ liệu catalogue nào — 4 link đều trỏ trang đã lên API ở A/B. User tái xác nhận 01/08: giữ 4-link → không cần layout fetch, rủi ro bán-kính-rộng của spec §5 biến mất |
 | F | Moments (`/destinations`) | Sửa 3 `tourSlug` chết trong `mocks/moments.ts` sang tour thật cùng bản chất (cruise→`halong-bay-overnight-cruise`, Sa Pa trek→`sapa-terraces-homestay-2d`, Mekong→`mekong-can-tho-2d` — chọn chuẩn khi thi công); test canh "slug phải tồn tại" đổi nguồn đối chiếu sang **danh sách slug roster tĩnh khai trong spec test** (comment ghi nguồn `fixtures/catalog/`, sync tay khi roster đổi — web không import fixtures API) |
 
 ## 2. Kỹ thuật — áp khuôn cũ, không quyết định mới
@@ -61,7 +61,7 @@ offices) sống tiếp đúng thiết kế ADR-0016.
    nguyên văn trong report).
 2. 3 trang vùng hiện tour THẬT theo miền (Bắc 12 · Trung 9 · Nam 9 — kiểm số
    card khớp phân bố roster); số đếm mọi nơi thống nhất "30".
-3. Navbar menu 19 điểm đến; link `/tours?destinations=<slug>` lọc đúng.
+3. ~~Navbar 19 điểm~~ (amended 01/08 — moot): 4 link dropdown hoạt động, trỏ đúng các trang đã lên API.
 4. Tri-state `/destinations` (tắt API → LoadErrorState); navbar degrade không
    crash khi API tắt (đo dev).
 5. Trang legal/auth vẫn 200 + nội dung y nguyên sau khi layout mang fetch.
