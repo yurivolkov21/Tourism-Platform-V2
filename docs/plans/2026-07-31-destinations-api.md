@@ -10,8 +10,8 @@ mock: `/destinations` + 3 trang vùng + Home + `/about` + navbar đọc API;
 theo [spec](../specs/2026-07-31-destinations-api-design.md) (đã duyệt, 6 bề mặt
 A–F) và [ADR-0016](../adr/0016-web-data-layer.md).
 
-**Architecture:** Không quyết định mới — áp khuôn `lib/api` + settle/tri-state
-+ ISR 300 + `TAGS.TOURS` của 2 cụm trước. `lib/regions.ts` giữ nguyên LOGIC
+**Architecture:** Không quyết định mới — áp khuôn `lib/api` cùng settle/tri-state
+và ISR 300 với `TAGS.TOURS` của 2 cụm trước. `lib/regions.ts` giữ nguyên LOGIC
 (chỉ đổi generic type Mock→VM); reviews vùng compose từ `fetchTourReviews`
 per-tour (mock đã gương đúng ranh giới `reviewsByTour` qua tham số).
 
