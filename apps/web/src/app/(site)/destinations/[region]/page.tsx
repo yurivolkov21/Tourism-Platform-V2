@@ -12,6 +12,14 @@ import { RegionSeasons } from '@/components/destinations/region-seasons';
 import { RegionSignaturePostcards } from '@/components/destinations/region-signature-postcards';
 import { RegionSignatureTimeline } from '@/components/destinations/region-signature-timeline';
 import { RegionTours } from '@/components/destinations/region-tours';
+import { LoadErrorState } from '@/components/feedback/load-error-state';
+import { contentState, settle } from '@/lib/api/resilience';
+import {
+  fetchDestinations,
+  fetchTourReviews,
+  fetchTours,
+  type TourReviewVM,
+} from '@/lib/api/tours';
 import { type RegionSectionKey, regionTheme } from '@/lib/region-theme';
 import {
   destinationsInRegion,
@@ -24,10 +32,9 @@ import {
 } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
 import { formatMoney } from '@/lib/tours';
-import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
-import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
-import { TOURS } from '@/mocks/tours';
+
+export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations/fetchTourReviews
 
 /**
  * ⚠️ ĐỪNG THÊM `loading.tsx` vào route này, cũng đừng thêm vào segment cha
@@ -104,10 +111,23 @@ export async function generateMetadata({
  * (value props) BỎ ở Task 5k: nó giống hệt ở cả ba miền và không nói gì về vùng,
  * nên nó ăn một trong bảy chỗ mà không trả lại gì.
  *
- * Server Component thuần — không `fetch`, không oRPC, dữ liệu từ mock (giai đoạn
- * static-first). Trang KHÔNG bọc khu nào trong `Reveal` nữa (Task 5m): mỗi khu tự lo
- * nhịp của mình qua `motion/reveal-header.tsx`, và 7 trong 9 khu vẫn là Server
- * Component vì chỉ component con đó mang directive client.
+ * Server Component thuần — tour/destination/review đọc qua oRPC (Task 3, đổi nguồn
+ * khỏi mock TOURS/DESTINATIONS/TOUR_REVIEWS). `REGIONS` (3 vùng cố định) VẪN ở tầng
+ * trình bày, không qua API — xem JSDoc `lib/regions.ts`. Trang KHÔNG bọc khu nào
+ * trong `Reveal` nữa (Task 5m): mỗi khu tự lo nhịp của mình qua
+ * `motion/reveal-header.tsx`, và 7 trong 9 khu vẫn là Server Component vì chỉ
+ * component con đó mang directive client.
+ *
+ * ⚠️ Tri-state (ADR-0016 §4, cùng khuôn `/destinations` index — Task 2): `tours`
+ * hoặc `destinations` lỗi → BỐN khu đọc dữ liệu API (`tours`/`days`/`dayTrips`/
+ * `reviews` — mỗi vùng chỉ dựng ĐÚNG HAI trong bốn khoá này, xem `THEMES`) thay
+ * bằng `LoadErrorState`; hero + ba khu thuần i18n/mock (`intro`, `gallery`,
+ * `heritage`/`worlds`/`seasons`) GIỮ NGUYÊN — chúng đọc `REGIONS` + `messages`, và
+ * hero tự degrade `stats` về mảng rỗng khi `tours` rỗng (nhánh đã có sẵn, không
+ * phải nhánh mới). `reviews` vùng compose từ MỘT fetch riêng mỗi tour
+ * (`fetchTourReviews`, tự cache theo `tourTag`) nên khi `tours`/`destinations` lỗi,
+ * danh sách tour-của-vùng rỗng theo và vòng lặp compose review tự không gọi fetch
+ * nào — không cần gate riêng theo `state`.
  */
 export default async function RegionPage({ params }: { params: Promise<{ region: string }> }) {
   const { region: slug } = await params;
@@ -120,8 +140,24 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
 
   const t = messages.regionPage;
   const theme = regionTheme(region.key);
-  const places = destinationsInRegion(REGIONS, DESTINATIONS, region.key);
-  const tours = toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key);
+
+  // settle() không bao giờ throw — hai fetch chạy song song, mỗi cái tự đứng độc
+  // lập (ADR-0016 §4, cùng khuôn `/destinations` index). Ở trang này CẢ HAI đều
+  // nuôi khu tours/days/dayTrips/reviews, nên MỘT trong hai fail là đủ coi bốn khu
+  // đó lỗi.
+  const [toursRes, destinationsRes] = await Promise.all([
+    settle(fetchTours()),
+    settle(fetchDestinations()),
+  ]);
+  // `isEmpty` cố tình luôn false: một vùng 0 tour do lọc là dữ liệu thật (nhánh có
+  // thật khi gắn API — địa điểm mới chưa gắn tour nào), không phải trạng thái rỗng
+  // cần một màn riêng.
+  const state = contentState({ failed: !toursRes.ok || !destinationsRes.ok, isEmpty: false });
+  const allTours = toursRes.data ?? [];
+  const allDestinations = destinationsRes.data ?? [];
+
+  const places = destinationsInRegion(REGIONS, allDestinations, region.key);
+  const tours = toursInRegion(REGIONS, allDestinations, allTours, region.key);
   const glance = regionGlance(tours);
   const copy = t.regions[region.key];
   // Miền Bắc KHÔNG có khối `signature` (khu riêng của nó là mùa và "mấy ngày"), nên
@@ -131,7 +167,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
 
   // Chuyến dài nhất RIÊNG của vùng — nuôi ô "Longest trip" của hàng số liệu trong
   // hero.
-  const longestTour = longestTourInRegion(REGIONS, DESTINATIONS, tours, region.key);
+  const longestTour = longestTourInRegion(REGIONS, allDestinations, tours, region.key);
 
   // Chuyến RIÊNG của vùng — nguồn của khu "bạn có mấy ngày" và khu chuyến-một-ngày.
   // `tours` (gom theo `some()`) KHÔNG dùng được cho hai khu đó: nó kéo theo
@@ -139,12 +175,23 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   // ngày" nó sẽ nhảy vào nhóm "một tuần trên đường" của cả ba miền. CÙNG một định
   // nghĩa với `longestTourInRegion` ở trên — cả hai đi qua `ownToursInRegion`, và
   // `regions.spec.ts` canh chuyện đó.
-  const ownTours = ownToursInRegion(REGIONS, DESTINATIONS, tours, region.key);
+  const ownTours = ownToursInRegion(REGIONS, allDestinations, tours, region.key);
 
-  // Review của vùng — đi qua `toursInRegion` (CÙNG tập với lưới 6 tour card bên
-  // dưới), nên review của tour xuyên vùng cũng thuộc đây. Xem JSDoc
-  // `reviewsInRegion` cho lý do và cho con số đo được.
-  const reviews = reviewsInRegion(REGIONS, DESTINATIONS, TOURS, TOUR_REVIEWS, region.key);
+  // Review của vùng — MỘT fetch riêng cho MỖI tour của vùng (`tours` ở trên, tính
+  // TRƯỚC bước này — cùng tập với lưới 6 tour card bên dưới, nên review của tour
+  // xuyên vùng cũng thuộc đây). Mỗi fetch đã tự cache theo `tourTag(slug)` + ISR
+  // 300 (`fetchTourReviews`), nên đây là ~10-12 fetch/vùng — chấp nhận được, không
+  // có endpoint batch nào trong contract để gộp lại. Tour fail HOẶC 0 review chỉ
+  // đơn giản không góp — đúng ngữ nghĩa `reviewsInRegion` (xem JSDoc hàm đó).
+  // `tours` rỗng (nhánh lỗi ở trên) thì `Promise.all([])` không gọi fetch nào —
+  // không cần gate riêng theo `state`.
+  const reviewResults = await Promise.all(tours.map((tour) => settle(fetchTourReviews(tour.slug))));
+  const reviewsByTour: Record<string, TourReviewVM[]> = {};
+  tours.forEach((tour, i) => {
+    const result = reviewResults[i];
+    if (result?.ok) reviewsByTour[tour.slug] = result.data.items;
+  });
+  const reviews = reviewsInRegion(REGIONS, allDestinations, tours, reviewsByTour, region.key);
 
   // ── Hàng số liệu của HERO — DẪN XUẤT ở đây, không gõ tay trong i18n.
   // Nexora gõ tay bốn con số này, nên mỗi lần catalogue đổi là chữ sai âm thầm.
@@ -199,6 +246,19 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
     ],
   };
 
+  // Panel lỗi dùng chung cho bốn khu đọc dữ liệu API — hàm chứ không hằng JSX, để
+  // mỗi lần `renderSection` gọi ra một node mới (khu `tours` và khu thứ hai của
+  // vùng, vd `days`, có thể CÙNG rơi vào nhánh này trên một trang).
+  function dataErrorPanel(): ReactNode {
+    return (
+      <div className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
+        <div className="mx-auto max-w-7xl">
+          <LoadErrorState />
+        </div>
+      </div>
+    );
+  }
+
   /**
    * Một khoá `sections` → một khu.
    *
@@ -211,6 +271,13 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
    * ⚠️ Thêm khoá vào `RegionSectionKey` mà quên thêm `case` ở đây thì khu BIẾN MẤT
    * im lặng — trang vẫn dựng, chỉ thiếu một băng. `region-theme.spec.ts` đọc chính
    * file này và đòi có `case '<key>':` cho mọi khoá đang dùng.
+   *
+   * ⚠️ Bốn case đọc dữ liệu API (`tours`/`days`/`dayTrips`/`reviews`) đều mở đầu
+   * bằng `state === 'error'` → `dataErrorPanel()`: KHÔNG được để chúng tự rơi vào
+   * nhánh `null`/rỗng sẵn có của từng component (`< MIN_TRIPS` v.v.), vì lỗi fetch
+   * và "vùng thật sự không có gì" đều làm `tours`/`ownTours`/`reviews` rỗng như
+   * nhau — im lặng biến khu mất là nói dối "vùng này không có" trong khi sự thật
+   * là "tải lỗi, bấm thử lại".
    */
   function renderSection(key: RegionSectionKey): ReactNode {
     switch (key) {
@@ -226,7 +293,9 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
       case 'gallery':
         return <RegionGallery region={region} variant={theme.galleryVariant} />;
       case 'tours':
-        return (
+        return state === 'error' ? (
+          dataErrorPanel()
+        ) : (
           <RegionTours
             tours={tours}
             places={places.map((place) => ({ slug: place.slug, name: place.name }))}
@@ -254,9 +323,9 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
           />
         ) : null;
       case 'days':
-        return <RegionDays tours={ownTours} />;
+        return state === 'error' ? dataErrorPanel() : <RegionDays tours={ownTours} />;
       case 'dayTrips':
-        return <RegionDayTrips tours={ownTours} />;
+        return state === 'error' ? dataErrorPanel() : <RegionDayTrips tours={ownTours} />;
       case 'seasons':
         // Vùng chưa có copy mùa (nhánh có thật khi gắn API) thì khu BỎ HẲN — mượn
         // mùa của vùng khác là nói sai về thời tiết.
@@ -268,7 +337,11 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
           />
         ) : null;
       case 'reviews':
-        return <RegionReviews regionName={region.name} reviews={reviews} />;
+        return state === 'error' ? (
+          dataErrorPanel()
+        ) : (
+          <RegionReviews regionName={region.name} reviews={reviews} />
+        );
     }
   }
 

@@ -1,7 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
+import type { MockItineraryDay } from '@/mocks/types';
 import { RegionDayTrips } from './region-day-trips';
 
 beforeAll(() => {
@@ -34,8 +35,8 @@ function tour(
   // Rating và độ khó khai được từ đây (thêm 30/07): thẻ giờ in cả hai, nên fixture
   // phải biểu diễn được CẢ HAI nhánh — có đánh giá và chưa ai đánh giá.
   rating: { avg: number; count: number } | null = null,
-  difficulty: MockTourCard['difficulty'] = 'EASY',
-): MockTourCard & { itinerary?: MockItineraryDay[] } {
+  difficulty: TourCardVM['difficulty'] = 'EASY',
+): TourCardVM & { itinerary?: MockItineraryDay[] } {
   return {
     id: `id-${slug}`,
     slug,
@@ -268,7 +269,7 @@ describe('RegionDayTrips', () => {
   });
 
   it('không chuyến một ngày nào thì BỎ HẲN khu', () => {
-    const { container } = render(<RegionDayTrips tours={[CENTRAL[4] as MockTourCard]} />);
+    const { container } = render(<RegionDayTrips tours={[CENTRAL[4] as TourCardVM]} />);
     expect(container).toBeEmptyDOMElement();
   });
 

@@ -5,19 +5,21 @@ import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
+import type { TourCardVM } from '@/lib/api/tours';
 import { STAGGER } from '@/lib/motion';
 import { formatMoney } from '@/lib/tours';
-import type { MockItineraryDay, MockTourCard } from '@/mocks/types';
+import type { MockItineraryDay } from '@/mocks/types';
 
 /** Dưới ngưỡng này thì khu KHÔNG dựng. Một "dải" một phần tử không phải dải — nó
     là một card lạc lõng, và tiêu đề "1 of these trips fit in a single day" thì
     vừa sai ngữ pháp vừa không nói được điều gì về vùng. */
 const MIN_TRIPS = 2;
 
-/** Tour mà khu này đọc. `itinerary` OPTIONAL dù `MockTourDetail` khai nó bắt buộc:
-    khu nhận được cả `MockTourCard` (không có hành trình) lẫn `MockTourDetail`, và
-    tour chưa nhập hành trình là nhánh có thật khi gắn API. */
-type DayTripTour = MockTourCard & { itinerary?: readonly MockItineraryDay[] };
+/** Tour mà khu này đọc. `itinerary` OPTIONAL dù `MockTourDetail`/`TourDetailVM` khai
+    nó bắt buộc: khu nhận được cả `TourCardVM` (không có hành trình — field đó chỉ ở
+    payload chi tiết) lẫn tour đã có hành trình, và tour chưa nhập hành trình là
+    nhánh có thật khi gắn API. */
+type DayTripTour = TourCardVM & { itinerary?: readonly MockItineraryDay[] };
 
 /**
  * HỢP ĐỒNG SỐ DÒNG (Task 5o) — lý do tồn tại là một lỗi user nhìn ra trên trang

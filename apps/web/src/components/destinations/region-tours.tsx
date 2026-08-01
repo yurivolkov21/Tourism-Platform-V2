@@ -8,9 +8,9 @@ import { RevealHeading } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
 import { PaginationBar } from '@/components/tours/pagination-bar';
 import { TourCard } from '@/components/tours/tour-card';
+import type { TourCardVM } from '@/lib/api/tours';
 import { STAGGER } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
-import type { MockTourCard } from '@/mocks/types';
 
 /**
  * Số tour mỗi trang. **6 chứ không phải 8** (user chốt 29/07).
@@ -61,7 +61,7 @@ export function RegionTours({
   tours,
   places,
 }: {
-  tours: MockTourCard[];
+  tours: TourCardVM[];
   places: { slug: string; name: string }[];
 }) {
   const t = messages.regionPage;

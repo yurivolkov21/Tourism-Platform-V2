@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MockTourCard } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
 import { RegionDays } from './region-days';
 
 beforeAll(() => {
@@ -22,7 +22,7 @@ beforeAll(() => {
 });
 
 /** Fixture tối giản — chỉ những field khu này thật sự đọc mang giá trị có nghĩa. */
-function tour(slug: string, title: string, durationDays: number): MockTourCard {
+function tour(slug: string, title: string, durationDays: number): TourCardVM {
   return {
     id: `id-${slug}`,
     slug,
@@ -107,7 +107,7 @@ describe('RegionDays', () => {
   // không có gì cho bạn — và đó là cái ô người đọc nhìn kỹ nhất.
   it('nhóm rỗng thì BỎ HẲN thẻ, không in "0 trips"', () => {
     // Một chuyến 1 ngày và một chuyến 8 ngày: nhóm giữa (2–3 ngày) rỗng.
-    const gap = [NORTH[0] as MockTourCard, NORTH[4] as MockTourCard];
+    const gap = [NORTH[0] as TourCardVM, NORTH[4] as TourCardVM];
     const { container } = render(<RegionDays tours={gap} />);
     expect(brackets(container).map((el) => el.getAttribute('data-bracket'))).toEqual([
       'short',

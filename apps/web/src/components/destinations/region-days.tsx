@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
+import type { TourCardVM } from '@/lib/api/tours';
 import { STAGGER } from '@/lib/motion';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
-import type { MockTourCard } from '@/mocks/types';
 
 /** Dưới ngưỡng này thì khu KHÔNG dựng. Tiêu đề hứa "một buổi sáng, một cuối tuần,
     HAY một tuần" — với một nhóm duy nhất thì lời hứa đó trống, và khu đọc thành
@@ -55,7 +55,7 @@ const BRACKETS = [
  * chuyến của nó, nên phép đếm và phép lọc phải ở CÙNG một chỗ — tách ra hai tầng
  * là mở đường cho nhãn "3 trips" đứng trên một danh sách 2 dòng.
  */
-export function RegionDays({ tours }: { tours: readonly MockTourCard[] }) {
+export function RegionDays({ tours }: { tours: readonly TourCardVM[] }) {
   const t = messages.regionPage.days;
 
   // `durationDays` tăng dần trong từng nhóm, và `[...tours]` vì `sort` sửa tại chỗ

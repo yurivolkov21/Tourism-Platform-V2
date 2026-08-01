@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-import type { MockTourCard } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
 import { REGION_PAGE_SIZE, RegionTours } from './region-tours';
 
 beforeAll(() => {
@@ -34,7 +34,7 @@ function tour(
   slug: string,
   title: string,
   destinations: { slug: string; name: string; isPrimary: boolean }[],
-): MockTourCard {
+): TourCardVM {
   return {
     id: `id-${slug}`,
     slug,
