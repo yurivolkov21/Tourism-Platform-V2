@@ -4,10 +4,10 @@ import { ContentHero } from '@/components/content/content-hero';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { ToursExplorer } from '@/components/tours/tours-explorer';
 import { contentState, settle } from '@/lib/api/resilience';
-import { fetchDestinationsFacet, fetchTours } from '@/lib/api/tours';
+import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { tourCategories } from '@/lib/tours';
 
-export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinationsFacet
+export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations
 
 export const metadata: Metadata = {
   title: 'Tours — Tourism',
@@ -39,7 +39,7 @@ export default async function ToursPage({
   // độc lập, một cái sập không kéo cái kia theo (ADR-0016 §4, giống cụm Blog).
   const [toursRes, destinationsRes] = await Promise.all([
     settle(fetchTours()),
-    settle(fetchDestinationsFacet()),
+    settle(fetchDestinations()),
   ]);
   // Facet destination là điều hướng PHỤ — tours sống mà facet chết thì vẫn hiện
   // lưới tour, sidebar destination rơi về rỗng; chỉ tours chết mới là lỗi trang.

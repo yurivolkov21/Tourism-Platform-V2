@@ -37,10 +37,11 @@ export async function fetchTours(): Promise<TourCardVM[]> {
 }
 
 /**
- * Facet destination cho sidebar lọc — đi cùng vòng đời `TAGS.TOURS` (số tour
- * đã publish/destination đổi theo cùng nhịp với danh sách tour).
+ * Danh sách destination — nuôi cả facet lọc ở trang listing lẫn cụm
+ * `/destinations` + navbar (menu vùng/địa điểm), đi cùng vòng đời `TAGS.TOURS`
+ * (số tour đã publish/destination đổi theo cùng nhịp với danh sách tour).
  */
-export async function fetchDestinationsFacet(): Promise<
+export async function fetchDestinations(): Promise<
   ContractOutputs['catalog']['destinations']['list']
 > {
   return api.catalog.destinations.list(undefined, {

@@ -1,11 +1,5 @@
-import type {
-  MockDestination,
-  MockRegion,
-  MockRegionKey,
-  MockReview,
-  MockTourCard,
-  MockTourDifficulty,
-} from '@/mocks/types';
+import type { MockRegion, MockRegionKey } from '@/mocks/types';
+import type { DestinationVM, TourCardVM, TourReviewVM } from './api/tours';
 
 /** Khoá vùng — giá trị đổ ra thuộc tính `data-region`, nay thuần là móc dữ
     liệu/test (ADR-0015 đã rút lớp tint `[data-region]` khỏi tokens). Tái dùng
@@ -57,12 +51,12 @@ export function destinationsInRegion<T extends { region: string | null }>(
 /**
  * Tour của một vùng = tour DISTINCT chạm bất kỳ địa điểm của vùng.
  *
- * Distinct là phần dễ sai nhất: `ha-long-bay-cruise` chạm cả `ha-long` và
- * `ninh-binh` (cùng vùng Bắc) nên cộng theo địa điểm sẽ đếm nó hai lần.
+ * Distinct là phần dễ sai nhất: `halong-bay-overnight-cruise` chạm cả `ha-long`
+ * và `ninh-binh` (cùng vùng Bắc) nên cộng theo địa điểm sẽ đếm nó hai lần.
  */
-export function toursInRegion<T extends MockTourCard>(
+export function toursInRegion<T extends TourCardVM>(
   regions: readonly MockRegion[],
-  destinations: readonly MockDestination[],
+  destinations: readonly DestinationVM[],
   tours: readonly T[],
   key: RegionKey,
 ): T[] {
@@ -74,8 +68,8 @@ export function toursInRegion<T extends MockTourCard>(
  * Chuyến RIÊNG của một vùng — tour mà MỌI điểm đến đều nằm trong vùng.
  *
  * Khác `toursInRegion()` một chữ nhưng khác hẳn về nghĩa: hàm kia gom theo
- * `some()` nên nó cũng kéo vào tour XUYÊN VÙNG — `north-to-south-classic` dài 12
- * ngày nhưng chạm cả ba vùng. Nói "chuyến của miền Bắc" về nó là quảng cáo một
+ * `some()` nên nó cũng kéo vào tour XUYÊN VÙNG — `vietnam-grand-journey-12d` dài
+ * 12 ngày nhưng chạm cả ba vùng. Nói "chuyến của miền Bắc" về nó là quảng cáo một
  * hành trình mà phần lớn thời gian ở nơi khác. `every()` cho miền Bắc 5 chuyến,
  * dài nhất 8 ngày (`northern-highlands-loop`), đúng nghĩa "Ở ĐÂY".
  *
@@ -87,9 +81,9 @@ export function toursInRegion<T extends MockTourCard>(
  * KHÔNG sắp xếp: trả về theo thứ tự catalogue. Nơi gọi tự sắp theo nhu cầu của nó
  * — sắp hộ ở đây là ép một thứ tự lên mọi chỗ dùng.
  */
-export function ownToursInRegion<T extends MockTourCard>(
+export function ownToursInRegion<T extends TourCardVM>(
   regions: readonly MockRegion[],
-  destinations: readonly MockDestination[],
+  destinations: readonly DestinationVM[],
   tours: readonly T[],
   key: RegionKey,
 ): T[] {
@@ -109,9 +103,9 @@ export function ownToursInRegion<T extends MockTourCard>(
  * `null` khi vùng không có chuyến riêng nào (nhánh có thật khi gắn API: một vùng
  * mới chỉ được tour liên vùng ghé qua) — nơi gọi bỏ hẳn phần phụ thuộc vào nó.
  */
-export function longestTourInRegion<T extends MockTourCard>(
+export function longestTourInRegion<T extends TourCardVM>(
   regions: readonly MockRegion[],
-  destinations: readonly MockDestination[],
+  destinations: readonly DestinationVM[],
   tours: readonly T[],
   key: RegionKey,
 ): T | null {
@@ -127,7 +121,7 @@ export function longestTourInRegion<T extends MockTourCard>(
 /** Một review kèm tour đã sinh ra nó — khu "Khách nói gì" cần cả hai để in được
     dòng ghi công `on <tour>` và link sang trang tour. */
 export interface RegionReview {
-  review: MockReview;
+  review: TourReviewVM;
   tourSlug: string;
   tourTitle: string;
 }
@@ -138,7 +132,7 @@ export interface RegionReview {
  * Đi qua `toursInRegion()` (gom theo `some()`), KHÔNG qua `ownToursInRegion()`, và
  * đó là quyết định chứ không phải sơ suất: tập tour ở đây phải TRÙNG tập mà lưới 6
  * tour card trên cùng trang đang hiện. Lưới đó dùng `toursInRegion`, nên nó có
- * `north-to-south-classic` ở cả ba trang; loại review của chuyến đó ra là để trang
+ * `vietnam-grand-journey-12d` ở cả ba trang; loại review của chuyến đó ra là để trang
  * hiện một tour rồi giấu lời của người đã đi nó. Thứ giữ chuyện này khỏi thành nói
  * sai là dòng ghi công `on <tour>` — người đọc thấy ngay review nói về chuyến 12
  * ngày xuyên Việt, không phải về riêng miền Nam. Hệ quả đo được: Bắc 37 · Trung 27
@@ -155,9 +149,9 @@ export interface RegionReview {
  */
 export function reviewsInRegion(
   regions: readonly MockRegion[],
-  destinations: readonly MockDestination[],
-  tours: readonly MockTourCard[],
-  reviewsByTour: Readonly<Record<string, readonly MockReview[]>>,
+  destinations: readonly DestinationVM[],
+  tours: readonly TourCardVM[],
+  reviewsByTour: Readonly<Record<string, readonly TourReviewVM[]>>,
   key: RegionKey,
 ): RegionReview[] {
   const flat: RegionReview[] = [];
@@ -180,15 +174,19 @@ export function reviewsInRegion(
   });
 }
 
+/** Độ khó SIẾT non-null — `TourCardVM['difficulty']` là union nullable (field
+    dùng để LỌC/GOM, `null` đã bị loại trước khi vào đây, xem `regionGlance`). */
+type TourDifficultyVM = NonNullable<TourCardVM['difficulty']>;
+
 export interface RegionGlance {
   /** `basePrice` nhỏ nhất — STRING, đúng luật "tiền luôn là string". */
   fromPrice: string;
-  difficulties: MockTourDifficulty[];
+  difficulties: TourDifficultyVM[];
   categories: { slug: string; name: string }[];
 }
 
 /** Bậc độ khó tăng dần — để phổ in ra không phụ thuộc thứ tự gặp. */
-const DIFFICULTY_ORDER: MockTourDifficulty[] = ['EASY', 'MODERATE', 'CHALLENGING'];
+const DIFFICULTY_ORDER: TourDifficultyVM[] = ['EASY', 'MODERATE', 'CHALLENGING'];
 
 /**
  * Dải "at a glance" của một vùng. CHỈ ba thứ phân biệt được vùng.
@@ -198,7 +196,7 @@ const DIFFICULTY_ORDER: MockTourDifficulty[] = ['EASY', 'MODERATE', 'CHALLENGING
  * nên hai con số đó là trang trí chứ không phải thông tin. Số tour chuyển sang tiêu
  * đề khu, nơi nó là ngữ cảnh chứ không giả làm điểm so sánh.
  */
-export function regionGlance(tours: readonly MockTourCard[]): RegionGlance | null {
+export function regionGlance(tours: readonly TourCardVM[]): RegionGlance | null {
   if (tours.length === 0) return null;
 
   let fromPrice = tours[0]?.basePrice ?? '0';
