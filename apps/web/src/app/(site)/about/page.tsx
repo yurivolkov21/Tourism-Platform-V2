@@ -41,7 +41,11 @@ export default async function AboutPage() {
       <AboutHero />
       <AboutStory />
       <AboutTimeline />
-      <AboutNumbers tours={toursRes.data ?? []} failed={!toursRes.ok} />
+      <AboutNumbers
+        tours={toursRes.data ?? []}
+        destinations={destinationsRes.data ?? []}
+        failed={!toursRes.ok || !destinationsRes.ok}
+      />
       {/* Values "The promises we keep" — lấp tầng giá trị (phân tích: các lời
           hứa mới chỉ teaser ở pill/0-Scripts/marquee, chưa được giải thích) */}
       <AboutValues />

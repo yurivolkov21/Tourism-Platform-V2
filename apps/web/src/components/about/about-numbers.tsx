@@ -6,7 +6,7 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
-import type { TourCardVM } from '@/lib/api/tours';
+import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
@@ -16,13 +16,23 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // sáng nhẹ + số phóng 1.05 từ mép trái, vào so le 0.1s. Counter dùng CountUp
 // spring nhà thay AnimatedCounter rAF của template.
 // Bộ 6 số ĐÀO SÂU VẬN HÀNH — cố ý không lặp 12+/8,000+/98% của hero §1.
-// Task 5 (cụm destinations-api): "Tours running" giờ nhận `tours` qua PROP
-// (page fetch `settle(fetchTours())`, đúng khuôn Task 4/9) thay vì đếm mock
-// TOURS — component KHÔNG tự fetch (client, có motion, ADR-0016 §4). 5 số
-// còn lại (guides/destinations/departures/km/scripts) CHƯA có endpoint
-// nguồn — vẫn là số biên tập cố định, cố ý giữ hardcode, không phải sơ suất.
+// Task 5 (cụm destinations-api): "Tours running" + "Destinations" giờ nhận
+// `tours` + `destinations` qua PROP (page fetch `settle(fetchTours())` +
+// `settle(fetchDestinations())`, đúng khuôn Task 4/9) thay vì đếm mock —
+// component KHÔNG tự fetch (client, có motion, ADR-0016 §4). Destinations:
+// số THẬT từ destinations.list (19: 7 Bắc / 5 Trung / 7 Nam), vá số bịa 9 sót
+// từ mock (review T5). 4 số còn lại (guides/departures/km/scripts) CHƯA có
+// endpoint nguồn — vẫn là số biên tập cố định, cố ý giữ hardcode.
 
-export function AboutNumbers({ tours, failed }: { tours: TourCardVM[]; failed: boolean }) {
+export function AboutNumbers({
+  tours,
+  destinations,
+  failed,
+}: {
+  tours: TourCardVM[];
+  destinations: DestinationVM[];
+  failed: boolean;
+}) {
   // Tổng tour THẬT — KHÔNG cộng dồn theo vùng: một tour xuyên vùng (vd.
   // north-to-south-classic) chạm cả ba vùng, cộng dồn sẽ đếm nó nhiều lần.
   // Đây là `tours.length` phẳng, không qua toursInRegion() nào cả.
@@ -37,10 +47,10 @@ export function AboutNumbers({ tours, failed }: { tours: TourCardVM[]; failed: b
     },
     { value: 27, suffix: '', label: 'Local guides', description: 'Every one born on their route' },
     {
-      value: 9,
+      value: destinations.length,
       suffix: '',
       label: 'Destinations',
-      description: 'Three per region, north to south',
+      description: 'From the far north to the islands',
     },
     {
       value: 560,
