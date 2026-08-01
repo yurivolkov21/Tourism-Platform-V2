@@ -1,6 +1,6 @@
 # Spec — Bước 4 nối API: cụm Destinations + xoá lớp lệch mock nhìn-thấy-được (2026-07-31)
 
-- **Trạng thái:** Chờ user duyệt spec (3 quyết định phạm vi đã chốt 31/07:
+- **Trạng thái:** Approved 31/07 (3 quyết định phạm vi chốt cùng ngày:
   trọn gói lệch-nhìn-thấy · navbar đổi nguồn API · moments sửa slug thật)
 - **Nền:** [ADR-0016](../adr/0016-web-data-layer.md) — khuôn `lib/api` đã hiện
   thực qua 2 cụm (Blog · Tours); spec này KHÔNG có quyết định kiến trúc mới,
