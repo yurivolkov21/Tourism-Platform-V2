@@ -20,8 +20,9 @@ const INLINE_COUNT = 3;
  * Vì sao là khu riêng của Nam: Nam mỏng dữ liệu nhất trong ba vùng (chuyến riêng
  * 1–3 ngày, độ khó dừng ở Moderate, một tour `difficulty: null`), nên mọi khu
  * "hình hoá dữ liệu" nghĩ ra cho nó đều phải bịa. Lời người đã đi thì có THẬT: 25
- * review thuộc vùng này. Đây là ngôn ngữ khách du lịch đúng nghĩa nhất trong sáu
- * khu riêng — không phải mô tả của người bán, mà là câu của người đã đi.
+ * review thuộc vùng này (số đo trên fixture test, không phải seed thật). Đây là
+ * ngôn ngữ khách du lịch đúng nghĩa nhất trong sáu khu riêng — không phải mô tả
+ * của người bán, mà là câu của người đã đi.
  *
  * ⚠️ KHÔNG có điểm trung bình và KHÔNG có histogram phân bố sao, cùng lý do
  * `TourReviews` đã ghi: `PublicReviewSchema` không có số đếm theo từng mức, nên

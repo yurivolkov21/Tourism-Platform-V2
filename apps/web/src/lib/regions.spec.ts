@@ -386,4 +386,33 @@ describe('topDestinations — quyết định user 31/07: Home giữ 9 tile, /de
     topDestinations(REGIONS, destinations, 1);
     expect(destinations).toEqual(original);
   });
+
+  // Quyết định user 01/08: CHỌN theo tourCount (tiêu chí không đổi), nhưng HIỂN
+  // THỊ theo trục miền Bắc→Trung→Nam — câu copy "north to south" của gallery
+  // trước đó nói sai vì kết quả chỉ sắp theo tourCount toàn cục.
+  it('chọn top theo tourCount NHƯNG trả về theo trục miền Bắc→Trung→Nam', () => {
+    const destinations = [
+      dest({ slug: 'south-high', name: 'South High', region: 'Southern Vietnam', tourCount: 20 }),
+      dest({ slug: 'north-low', name: 'North Low', region: 'Northern Vietnam', tourCount: 15 }),
+      dest({ slug: 'central-mid', name: 'Central Mid', region: 'Central Vietnam', tourCount: 18 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 3);
+    // Cả 3 đều được CHỌN (tập đúng — không loại/thêm gì).
+    expect(new Set(top.map((d) => d.slug))).toEqual(
+      new Set(['south-high', 'north-low', 'central-mid']),
+    );
+    // Nhưng THỨ TỰ trả về là Bắc→Trung→Nam, KHÔNG phải tourCount giảm dần
+    // (thứ tự tourCount giảm dần sẽ là south-high, central-mid, north-low).
+    expect(top.map((d) => d.slug)).toEqual(['north-low', 'central-mid', 'south-high']);
+  });
+
+  it('trong cùng một miền vẫn giữ tourCount giảm dần rồi name tăng dần', () => {
+    const destinations = [
+      dest({ slug: 'north-low', name: 'Zebra', region: 'Northern Vietnam', tourCount: 3 }),
+      dest({ slug: 'north-high', name: 'Alpha', region: 'Northern Vietnam', tourCount: 9 }),
+      dest({ slug: 'south-one', name: 'Beta', region: 'Southern Vietnam', tourCount: 1 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 3);
+    expect(top.map((d) => d.slug)).toEqual(['north-high', 'north-low', 'south-one']);
+  });
 });

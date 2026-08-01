@@ -185,6 +185,12 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   // đơn giản không góp — đúng ngữ nghĩa `reviewsInRegion` (xem JSDoc hàm đó).
   // `tours` rỗng (nhánh lỗi ở trên) thì `Promise.all([])` không gọi fetch nào —
   // không cần gate riêng theo `state`.
+  // `fetchTourReviews` không truyền `page` → luôn lấy PAGE 1 (pageSize mặc định
+  // 20/tour). Hôm nay phủ 100% vì mock tối đa 5 review/tour, nhưng đây KHÔNG phải
+  // bất biến: tour nào vượt 20 review, `reviewsByTour[slug]` chỉ còn là một lát cắt,
+  // và thậm chí không phải "20 mới nhất" — `reviews.listByTour` sort authorDeleted
+  // lên trước rồi mới tới ngày, nên page 1 có thể trộn review cũ của tài khoản đã
+  // xoá lẫn vào. Người sau đừng tưởng `reviewsByTour` là TOÀN BỘ review của tour.
   const reviewResults = await Promise.all(tours.map((tour) => settle(fetchTourReviews(tour.slug))));
   const reviewsByTour: Record<string, TourReviewVM[]> = {};
   tours.forEach((tour, i) => {

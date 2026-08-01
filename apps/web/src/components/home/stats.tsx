@@ -7,7 +7,7 @@ import { SectionEyebrow } from './section-eyebrow';
 import { StatsSlider } from './stats-slider';
 
 // Convert từ Estate stats.tsx: headline lớn + mô tả + nút + 3 counter có vách ngăn.
-export function Stats() {
+export function Stats({ toursCount }: { toursCount: number | null }) {
   return (
     <section id="tours" className="w-full px-4 py-16 md:px-16 md:py-25 lg:px-24 xl:px-32">
       {/* 2 cột (review #9): trái giữ nguyên thiết kế Estate, phải lấp bằng hover-expand gallery */}
@@ -48,16 +48,25 @@ export function Stats() {
             </motion.a>
 
             <div className="mt-16 flex w-full justify-between max-lg:flex-col max-lg:gap-10 md:mt-20">
-              <div className="flex flex-col justify-center">
-                <span className="min-w-[152px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
-                  <CountUp to={68} />+
-                </span>
-                <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
-                  Hand-picked tours
-                </span>
-              </div>
+              {/* Quyết định user 01/08 (vụ thứ 3 lớp Destinations-9): số tour phải
+                  có nguồn API thật, KHÔNG hardcode "68+" nữa — 68 là số bịa. Suffix
+                  là số TRẦN "30", không dấu "+", vì đây là con số CHÍNH XÁC (khác
+                  các ô editorial 12,400+/98% bên dưới, vẫn là số tròn/ước lượng).
+                  `toursCount` null khi fetch lỗi → ẨN HẲN ô này, cấm rơi về 68 cũ. */}
+              {toursCount !== null ? (
+                <>
+                  <div className="flex flex-col justify-center">
+                    <span className="min-w-[152px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">
+                      <CountUp to={toursCount} />
+                    </span>
+                    <span className="mt-4 text-sm tracking-wide text-muted-foreground uppercase">
+                      Hand-picked tours
+                    </span>
+                  </div>
 
-              <div className="h-20 w-px bg-border max-lg:hidden" />
+                  <div className="h-20 w-px bg-border max-lg:hidden" />
+                </>
+              ) : null}
 
               <div className="flex flex-col justify-center">
                 <span className="min-w-[200px] font-heading text-4xl text-foreground tabular-nums md:text-5xl">

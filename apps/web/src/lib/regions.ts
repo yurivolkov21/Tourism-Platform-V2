@@ -136,8 +136,8 @@ export interface RegionReview {
  * hiện một tour rồi giấu lời của người đã đi nó. Thứ giữ chuyện này khỏi thành nói
  * sai là dòng ghi công `on <tour>` — người đọc thấy ngay review nói về chuyến 12
  * ngày xuyên Việt, không phải về riêng miền Nam. Hệ quả đo được: Bắc 37 · Trung 27
- * · Nam 25, và 5 review của tour xuyên vùng được đếm ở cả ba (`regions.spec.ts`
- * canh cả hai con số).
+ * · Nam 25 (số đo trên fixture test, không phải seed thật), và 5 review của tour
+ * xuyên vùng được đếm ở cả ba (`regions.spec.ts` canh cả hai con số).
  *
  * `reviewsByTour` vào bằng THAM SỐ, không `import TOUR_REVIEWS` — đúng khuôn mọi
  * hàm khác trong file, nhờ đó test được với fixture nhỏ. Nó cũng gương đúng ranh
@@ -179,11 +179,18 @@ export function reviewsInRegion(
  * 9 tile như thiết kế đã duyệt (heading "Nine places…"), còn `/destinations`
  * mới là nơi hiện đủ 19 điểm API trả về.
  *
- * Sắp theo `tourCount` GIẢM dần. Tie-break 1: thứ tự vùng Bắc→Trung→Nam (theo
- * index trong `regions`) — điểm đến không nhận diện được vùng (`regionOf` trả
- * `null`) xếp CUỐI. Tie-break 2: `name` tăng dần — chốt ổn định, không phụ
- * thuộc thứ tự gặp hay thuật toán sort của runtime, đúng nếp tie-break đã dùng
- * ở `reviewsInRegion` phía trên.
+ * Hai bước TÁCH RIÊNG (quyết định user 01/08 — chọn theo sức nặng, HIỂN THỊ
+ * theo trục miền, để câu copy "north to south" của gallery đúng trở lại):
+ *
+ * 1. CHỌN: sắp theo `tourCount` GIẢM dần (tiêu chí không đổi so với bản cũ).
+ *    Tie-break 1: thứ tự vùng Bắc→Trung→Nam (theo index trong `regions`) —
+ *    điểm đến không nhận diện được vùng (`regionOf` trả `null`) xếp CUỐI.
+ *    Tie-break 2: `name` tăng dần. Cắt lấy `count` phần tử đầu — đây là tập
+ *    "nổi bật nhất" thật sự, không đổi.
+ * 2. HIỂN THỊ: re-sort CHÍNH tập đã chọn ở bước 1 theo trục miền Bắc→Trung→Nam
+ *    trước tiên; trong cùng một miền giữ `tourCount` giảm dần rồi `name` tăng
+ *    dần (ổn định, không phụ thuộc thứ tự gặp hay thuật toán sort của
+ *    runtime, đúng nếp tie-break đã dùng ở `reviewsInRegion` phía trên).
  *
  * Trả mảng MỚI (không sửa `destinations` gốc); `count` lớn hơn độ dài mảng thì
  * trả hết, không ném lỗi.
@@ -200,7 +207,8 @@ export function topDestinations(
     return idx === -1 ? regions.length : idx;
   };
 
-  return [...destinations]
+  // Bước 1 — CHỌN theo sức nặng (tourCount), tiêu chí + tie-break giữ nguyên.
+  const selected = [...destinations]
     .sort((a, b) => {
       if (a.tourCount !== b.tourCount) return b.tourCount - a.tourCount;
       const regionDiff = regionRank(a) - regionRank(b);
@@ -209,6 +217,15 @@ export function topDestinations(
       return 0;
     })
     .slice(0, count);
+
+  // Bước 2 — HIỂN THỊ theo trục miền: re-sort CHÍNH tập đã chọn, không đổi tập.
+  return selected.sort((a, b) => {
+    const regionDiff = regionRank(a) - regionRank(b);
+    if (regionDiff !== 0) return regionDiff;
+    if (a.tourCount !== b.tourCount) return b.tourCount - a.tourCount;
+    if (a.name !== b.name) return a.name < b.name ? -1 : 1;
+    return 0;
+  });
 }
 
 /** Độ khó SIẾT non-null — `TourCardVM['difficulty']` là union nullable (field

@@ -9,7 +9,7 @@ import { Testimonials } from '@/components/home/testimonials';
 import { WhyChooseUs } from '@/components/home/why-choose-us';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
-import { fetchDestinations } from '@/lib/api/tours';
+import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { topDestinations } from '@/lib/regions';
 import { REGIONS } from '@/mocks/regions';
 
@@ -22,9 +22,13 @@ export const revalidate = 300;
 export default async function HomePage() {
   // Task 4 (cụm destinations-api): tiles gallery đọc destinations thật, cùng
   // khuôn settle() + truyền props như teaser Journal (Task 9).
-  const [postsRes, destinationsRes] = await Promise.all([
+  // Fix final review (01/08): thêm fetchTours() để Stats có số tour THẬT thay vì
+  // "68+" bịa — cùng key cache (TAGS.TOURS) với fetchDestinations/fetchTours ở
+  // các trang khác nên đây là dedup Data Cache, không phải một round-trip mới.
+  const [postsRes, destinationsRes, toursRes] = await Promise.all([
     settle(fetchPosts()),
     settle(fetchDestinations()),
+    settle(fetchTours()),
   ]);
   return (
     <>
@@ -32,7 +36,7 @@ export default async function HomePage() {
       {/* Dải trust ngay dưới hero (vị trí gốc của forged): nền tối nối liền
           hero, ngăn với Stats sáng bên dưới bằng border */}
       <Partners />
-      <Stats />
+      <Stats toursCount={toursRes.ok ? toursRes.data.length : null} />
       {/* Fix sau review (31/07): Home giữ ĐÚNG 9 tile như thiết kế đã duyệt — chọn
           9 điểm tourCount cao nhất từ 19 điểm API trả về, /destinations mới đủ 19 */}
       <Gallery
