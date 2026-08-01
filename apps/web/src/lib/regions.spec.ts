@@ -3,6 +3,7 @@ import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
 import { TOURS } from '@/mocks/tours';
+import type { DestinationVM } from './api/tours';
 import {
   destinationsInRegion,
   longestTourInRegion,
@@ -11,6 +12,7 @@ import {
   regionGlance,
   regionOf,
   reviewsInRegion,
+  topDestinations,
   toursInRegion,
 } from './regions';
 
@@ -308,5 +310,73 @@ describe('reviewsInRegion — review THẬT của một vùng, phẳng và mới
 
   it('không review nào thì trả mảng rỗng', () => {
     expect(reviewsInRegion(REGIONS, DESTINATIONS, TOURS, {}, 'north')).toEqual([]);
+  });
+});
+
+// Fixture nhỏ riêng cho topDestinations — không dùng DESTINATIONS (19 điểm khi
+// gắn API thật) vì mỗi test chỉ cần vài bản ghi để canh đúng một tiêu chí sắp.
+function dest(
+  overrides: Pick<DestinationVM, 'slug' | 'name' | 'region' | 'tourCount'>,
+): DestinationVM {
+  return { id: overrides.slug, country: 'Vietnam', description: null, ...overrides };
+}
+
+describe('topDestinations — quyết định user 31/07: Home giữ 9 tile, /destinations mới đủ 19', () => {
+  it('lấy đúng N theo tourCount giảm dần', () => {
+    const destinations = [
+      dest({ slug: 'a', name: 'A', region: 'Northern Vietnam', tourCount: 3 }),
+      dest({ slug: 'b', name: 'B', region: 'Northern Vietnam', tourCount: 10 }),
+      dest({ slug: 'c', name: 'C', region: 'Northern Vietnam', tourCount: 7 }),
+      dest({ slug: 'd', name: 'D', region: 'Northern Vietnam', tourCount: 1 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 3);
+    expect(top.map((d) => d.slug)).toEqual(['b', 'c', 'a']);
+  });
+
+  it('tie tourCount → vùng Bắc đứng trước Nam', () => {
+    const destinations = [
+      dest({ slug: 'south-one', name: 'Zebra', region: 'Southern Vietnam', tourCount: 5 }),
+      dest({ slug: 'north-one', name: 'Alpha', region: 'Northern Vietnam', tourCount: 5 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 2);
+    expect(top.map((d) => d.slug)).toEqual(['north-one', 'south-one']);
+  });
+
+  it('tie tourCount cùng vùng → name tăng dần', () => {
+    const destinations = [
+      dest({ slug: 'zebra', name: 'Zebra Falls', region: 'Northern Vietnam', tourCount: 5 }),
+      dest({ slug: 'alpha', name: 'Alpha Peak', region: 'Northern Vietnam', tourCount: 5 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 2);
+    expect(top.map((d) => d.slug)).toEqual(['alpha', 'zebra']);
+  });
+
+  it('destination region lạ (không nhận diện được) xếp cuối dù tourCount bằng', () => {
+    const destinations = [
+      dest({ slug: 'mekong', name: 'Mekong Delta', region: 'Mekong Delta', tourCount: 5 }),
+      dest({ slug: 'north-one', name: 'Alpha', region: 'Northern Vietnam', tourCount: 5 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 2);
+    expect(top.map((d) => d.slug)).toEqual(['north-one', 'mekong']);
+  });
+
+  it('count lớn hơn độ dài mảng thì trả hết, không lỗi', () => {
+    const destinations = [
+      dest({ slug: 'a', name: 'A', region: 'Northern Vietnam', tourCount: 3 }),
+      dest({ slug: 'b', name: 'B', region: 'Central Vietnam', tourCount: 1 }),
+    ];
+    const top = topDestinations(REGIONS, destinations, 50);
+    expect(top).toHaveLength(2);
+    expect(top.map((d) => d.slug)).toEqual(['a', 'b']);
+  });
+
+  it('trả mảng MỚI, không sửa mảng gốc', () => {
+    const destinations = [
+      dest({ slug: 'a', name: 'A', region: 'Northern Vietnam', tourCount: 3 }),
+      dest({ slug: 'b', name: 'B', region: 'Central Vietnam', tourCount: 10 }),
+    ];
+    const original = [...destinations];
+    topDestinations(REGIONS, destinations, 1);
+    expect(destinations).toEqual(original);
   });
 });

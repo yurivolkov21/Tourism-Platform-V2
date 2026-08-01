@@ -174,6 +174,43 @@ export function reviewsInRegion(
   });
 }
 
+/**
+ * Chọn ra `count` điểm đến nổi bật nhất — quyết định user 31/07: Home giữ ĐÚNG
+ * 9 tile như thiết kế đã duyệt (heading "Nine places…"), còn `/destinations`
+ * mới là nơi hiện đủ 19 điểm API trả về.
+ *
+ * Sắp theo `tourCount` GIẢM dần. Tie-break 1: thứ tự vùng Bắc→Trung→Nam (theo
+ * index trong `regions`) — điểm đến không nhận diện được vùng (`regionOf` trả
+ * `null`) xếp CUỐI. Tie-break 2: `name` tăng dần — chốt ổn định, không phụ
+ * thuộc thứ tự gặp hay thuật toán sort của runtime, đúng nếp tie-break đã dùng
+ * ở `reviewsInRegion` phía trên.
+ *
+ * Trả mảng MỚI (không sửa `destinations` gốc); `count` lớn hơn độ dài mảng thì
+ * trả hết, không ném lỗi.
+ */
+export function topDestinations(
+  regions: readonly MockRegion[],
+  destinations: readonly DestinationVM[],
+  count: number,
+): DestinationVM[] {
+  const regionRank = (dest: DestinationVM): number => {
+    const key = regionOf(regions, dest);
+    if (key === null) return regions.length; // vùng lạ/không nhận diện được → cuối
+    const idx = regions.findIndex((region) => region.key === key);
+    return idx === -1 ? regions.length : idx;
+  };
+
+  return [...destinations]
+    .sort((a, b) => {
+      if (a.tourCount !== b.tourCount) return b.tourCount - a.tourCount;
+      const regionDiff = regionRank(a) - regionRank(b);
+      if (regionDiff !== 0) return regionDiff;
+      if (a.name !== b.name) return a.name < b.name ? -1 : 1;
+      return 0;
+    })
+    .slice(0, count);
+}
+
 /** Độ khó SIẾT non-null — `TourCardVM['difficulty']` là union nullable (field
     dùng để LỌC/GOM, `null` đã bị loại trước khi vào đây, xem `regionGlance`). */
 type TourDifficultyVM = NonNullable<TourCardVM['difficulty']>;

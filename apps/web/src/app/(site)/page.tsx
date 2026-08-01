@@ -10,6 +10,8 @@ import { WhyChooseUs } from '@/components/home/why-choose-us';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
 import { fetchDestinations } from '@/lib/api/tours';
+import { topDestinations } from '@/lib/regions';
+import { REGIONS } from '@/mocks/regions';
 
 // Home fetch teaser Journal từ API (Task 9) → trang thành ISR, khai tường
 // minh thay vì để Next suy ngầm từ revalidate của fetchPosts.
@@ -31,7 +33,12 @@ export default async function HomePage() {
           hero, ngăn với Stats sáng bên dưới bằng border */}
       <Partners />
       <Stats />
-      <Gallery destinations={destinationsRes.data ?? []} failed={!destinationsRes.ok} />
+      {/* Fix sau review (31/07): Home giữ ĐÚNG 9 tile như thiết kế đã duyệt — chọn
+          9 điểm tourCount cao nhất từ 19 điểm API trả về, /destinations mới đủ 19 */}
+      <Gallery
+        destinations={topDestinations(REGIONS, destinationsRes.data ?? [], 9)}
+        failed={!destinationsRes.ok}
+      />
       <WhyChooseUs />
       <Testimonials />
       {/* Journal trắng chen giữa Testimonials (muted) và CTA (tối) — nhịp nền
