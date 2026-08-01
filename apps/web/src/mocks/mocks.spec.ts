@@ -396,12 +396,61 @@ describe('TOUR_REVIEWS — mọi nhánh UI phải có mock chứng minh', () => 
   });
 });
 
+// Roster tour THẬT — canh cho `mock moments` dưới đây. `moments` là mock SỐNG
+// (không đổi nguồn sang API, xem Global Constraints của plan), nhưng nó trỏ
+// sang tour thật bằng `tourSlug` nên phải canh với DỮ LIỆU THẬT chứ không phải
+// mock `TOURS` (mock đó sẽ khai tử ở Task 7 — spec canh moments không được là
+// consumer chặn việc đó).
+//
+// Copy TAY 30 slug/title từ `apps/api/prisma/fixtures/catalog/tours-{north,
+// central,south}.ts` (12 Bắc + 9 Trung + 9 Nam, đúng thứ tự khai báo trong
+// fixture). KHÔNG import trực tiếp từ `apps/api` — web và api là hai app tách
+// biệt, không package chung. Đây là bản SAO TĨNH: ai đổi fixture (thêm/xoá/đổi
+// tên tour) phải tự tay đồng bộ lại danh sách này — không có cơ chế tự động.
+const REAL_TOUR_ROSTER: { slug: string; title: string }[] = [
+  // ---- Miền Bắc (tours-north.ts) ----
+  { slug: 'hanoi-old-quarter-food-night', title: 'Hanoi Old Quarter Street Food by Night' },
+  { slug: 'hanoi-heritage-day', title: 'Hanoi Heritage in a Day' },
+  { slug: 'red-river-craft-villages-day', title: 'Bát Tràng & Red River Craft Villages' },
+  { slug: 'ninh-binh-trang-an-day', title: 'Ninh Bình: Tràng An, Múa Cave & Rice Fields' },
+  { slug: 'halong-bay-overnight-cruise', title: 'Hạ Long Bay Overnight Cruise 2D1N' },
+  { slug: 'lan-ha-kayak-cruise-3d', title: 'Lan Hạ Bay & Cát Bà Kayak Cruise 3D2N' },
+  { slug: 'sapa-terraces-homestay-2d', title: 'Sa Pa Terraces & Homestay Trek 2D1N' },
+  { slug: 'sapa-fansipan-summit-3d', title: 'Sa Pa Villages & Fansipan Summit 3D2N' },
+  { slug: 'ha-giang-loop-4d', title: 'Hà Giang Loop by Easyrider 4D3N' },
+  { slug: 'mai-chau-cycling-2d', title: 'Mai Châu Valley Cycling & Stilt House 2D1N' },
+  { slug: 'northern-highlights-5d', title: 'Northern Highlights: Hanoi–Hạ Long–Ninh Bình 5D4N' },
+  { slug: 'vietnam-grand-journey-12d', title: 'Vietnam Grand Journey: North to South 12D11N' },
+  // ---- Miền Trung (tours-central.ts) ----
+  { slug: 'hue-imperial-day', title: 'Huế Imperial City & Royal Tombs' },
+  { slug: 'phong-nha-paradise-cave-day', title: 'Phong Nha & Paradise Cave Day Trip' },
+  { slug: 'hoi-an-lantern-evening', title: 'Hội An Old Town & Lantern Evening' },
+  { slug: 'hoi-an-countryside-cooking-day', title: 'Hội An Countryside, Basket Boat & Cooking' },
+  { slug: 'bana-hills-golden-bridge-day', title: 'Bà Nà Hills & Golden Bridge Day Trip' },
+  { slug: 'my-son-sunrise-halfday', title: 'Mỹ Sơn Sanctuary at Sunrise' },
+  { slug: 'central-heritage-4d', title: 'Central Heritage: Đà Nẵng–Hội An–Huế 4D3N' },
+  { slug: 'quy-nhon-coastal-3d', title: 'Quy Nhơn Coastal Escape 3D2N' },
+  { slug: 'central-honeymoon-5d', title: 'Central Vietnam Honeymoon 5D4N' },
+  // ---- Miền Nam (tours-south.ts) ----
+  { slug: 'vung-tau-coastal-2d', title: 'Vũng Tàu Coastal Escape 2D1N' },
+  { slug: 'saigon-cu-chi-day', title: 'Sài Gòn City & Củ Chi Tunnels' },
+  { slug: 'saigon-after-dark-vespa', title: 'Sài Gòn After Dark by Vespa' },
+  { slug: 'mekong-can-tho-2d', title: 'Mekong Delta & Cái Răng Floating Market 2D1N' },
+  { slug: 'ben-tre-coconut-day', title: 'Bến Tre Coconut Country Day Trip' },
+  { slug: 'da-lat-highlands-3d', title: 'Đà Lạt Highlands, Waterfalls & Farms 3D2N' },
+  { slug: 'phu-quoc-island-hopping-day', title: 'Phú Quốc 4-Island Hopping & Snorkelling' },
+  { slug: 'phu-quoc-honeymoon-4d', title: 'Phú Quốc Honeymoon Hideaway 4D3N' },
+  { slug: 'con-dao-history-nature-3d', title: 'Côn Đảo History & Nature 3D2N' },
+];
+
 describe('mock moments', () => {
   it('mỗi khoảnh khắc trỏ tới một tour CÓ THẬT', () => {
     // Bất biến sinh ra khi ô khoảnh khắc ở /destinations thành link (28/07).
     // `tourSlug` ghi tay chứ không bóc từ chuỗi `credit` — nên phải có test
-    // canh, nếu không một slug gõ sai sẽ dẫn thẳng sang trang 404.
-    const known = new Set(TOURS.map((t) => t.slug));
+    // canh, nếu không một slug gõ sai sẽ dẫn thẳng sang trang 404. Canh với
+    // ROSTER THẬT (không phải mock TOURS): moments không đổi nguồn nhưng phải
+    // trỏ đúng tour đang sống trên API.
+    const known = new Set(REAL_TOUR_ROSTER.map((t) => t.slug));
     for (const m of MOMENTS) {
       expect(known.has(m.tourSlug), `${m.credit} → ${m.tourSlug}`).toBe(true);
     }
@@ -411,7 +460,7 @@ describe('mock moments', () => {
     // Chống lệch âm thầm: đổi credit mà quên đổi slug (hoặc ngược lại) thì
     // caption nói một tour còn link dẫn sang tour khác.
     for (const m of MOMENTS) {
-      const tour = TOURS.find((t) => t.slug === m.tourSlug);
+      const tour = REAL_TOUR_ROSTER.find((t) => t.slug === m.tourSlug);
       expect(tour, m.tourSlug).toBeDefined();
       expect(m.credit, m.tourSlug).toContain(tour?.title ?? '\u0000');
     }

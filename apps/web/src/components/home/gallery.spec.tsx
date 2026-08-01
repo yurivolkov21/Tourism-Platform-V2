@@ -1,5 +1,8 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+// Task 4 (cụm destinations-api): `Gallery` giờ nhận `destinations` qua PROP
+// (không tự import mock nữa) — mock ở đây chỉ còn vai trò FIXTURE nhỏ, gọn
+// cho test, vẫn hợp lệ vì shape đã gương đúng `DestinationVM`.
 import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
 import { Gallery } from './gallery';
@@ -53,7 +56,7 @@ function cardFor(destName: string) {
 
 describe('Gallery — data-region phải là KHOÁ vùng, không phải tên hiển thị', () => {
   it('mỗi thẻ địa điểm mang data-region đúng khoá vùng (north/central/south)', () => {
-    render(<Gallery />);
+    render(<Gallery destinations={DESTINATIONS} failed={false} />);
     for (const dest of DESTINATIONS) {
       const link = cardFor(dest.name);
       const expectedKey = EXPECTED_REGION_KEY[dest.slug];
@@ -65,7 +68,7 @@ describe('Gallery — data-region phải là KHOÁ vùng, không phải tên hi�
   });
 
   it('chip vùng trên mỗi thẻ hiện đúng TÊN HIỂN THỊ của khoá vùng thẻ đó mang', () => {
-    render(<Gallery />);
+    render(<Gallery destinations={DESTINATIONS} failed={false} />);
     for (const dest of DESTINATIONS) {
       const link = cardFor(dest.name);
       const expectedKey = EXPECTED_REGION_KEY[dest.slug];
