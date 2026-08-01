@@ -4,8 +4,8 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
+import type { DepartureVM } from '@/lib/api/tours';
 import { departureStatus, discountPercent, formatDateRange, formatMoney } from '@/lib/tours';
-import type { MockTourDeparture } from '@/mocks/types';
 
 /**
  * Rail booking — nơi đợt đang chọn được nói lại bằng con số, cộng CTA.
@@ -23,7 +23,7 @@ export function BookingRail({
   variant,
 }: {
   /** Đợt đang chọn; `undefined` khi tour chưa mở đợt nào. */
-  departure: MockTourDeparture | undefined;
+  departure: DepartureVM | undefined;
   currency: string;
   /** Giá mặc định khi chưa có đợt — hero cũng in "from" giá này. */
   basePrice: string;
@@ -136,7 +136,7 @@ export function BookingRail({
   );
 }
 
-function PriceBlock({ departure, currency }: { departure: MockTourDeparture; currency: string }) {
+function PriceBlock({ departure, currency }: { departure: DepartureVM; currency: string }) {
   const t = messages.tourDetail;
   // Giảm giá tính theo giá CỦA ĐỢT, không phải basePrice của tour: đợt có
   // priceOverride riêng nên hai con số có thể khác nhau.

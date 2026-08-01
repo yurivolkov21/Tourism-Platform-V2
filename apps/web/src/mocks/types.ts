@@ -11,6 +11,28 @@ export type MockRegionKey = 'north' | 'central' | 'south';
 // mock còn lại vì tour đã có contract backend chốt và GIÀU HƠN nhu cầu UI, nên
 // mock đi theo contract ngay từ đầu — lúc gắn API là swap nguồn dữ liệu, không
 // phải rename khắp component.
+//
+// `MockTourCard`/`MockTourDetail` (item listing + chi tiết đầy đủ) và
+// `MockDestination` đã XOÁ ở Task 7 (cụm destinations-api) — hết consumer thật
+// khi `mocks/tours.ts`/`mocks/destinations.ts` khai tử; nơi từng dùng giờ đọc
+// `TourCardVM`/`TourDetailVM`/`DestinationVM` thẳng từ `@/lib/api/tours` (type
+// contract THẲNG, không map field — cùng lý do ghi ở đầu file đó).
+// `MockTourDifficulty`/`MockTourBadge` cũng xoá theo: hai type chỉ có một
+// consumer DUY NHẤT là chính `MockTourCard` vừa xoá, không nơi nào khác import
+// riêng chúng.
+//
+// Các type dưới đây GIỮ LẠI vì vẫn còn consumer thật độc lập với hai mock đã
+// xoá (component chi tiết tour, UI tour card) — không có VM tương ứng gọn hơn
+// đáng để đổi:
+//  · `MockDestinationLink` — `components/tours/route-ribbon.tsx`, `lib/tours.ts`
+//  · `MockTourDeparture` — `components/tours/departure-strip.tsx`,
+//    `components/tours/departures-table.tsx`
+//  · `MockItineraryDay` — `components/destinations/region-day-trips.tsx`
+//  · `MockMediaItem` — `components/tours/tour-gallery.tsx`, `lib/tours.ts`
+//    (contract CHƯA có field `media`, xem `TourGallery` ở `tours/[slug]/page.tsx`)
+//  · `MockReview` — `lib/tours.spec.ts` (fixture cục bộ)
+//  · `MockTravellerType` — `components/tours/tour-facts.tsx`
+//  · `MockPolicyKind` — `lib/tours.ts`, `components/tours/good-to-know.tsx`
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Một destination mà tour đi qua (bảng join M:N ở backend). `isPrimary` là
@@ -21,33 +43,8 @@ export interface MockDestinationLink {
   isPrimary: boolean;
 }
 
-export type MockTourDifficulty = 'EASY' | 'MODERATE' | 'CHALLENGING';
 export type MockTravellerType = 'FAMILY' | 'COUPLE' | 'FRIENDS' | 'SOLO' | 'BUSINESS';
-export type MockTourBadge = 'BEST_VALUE' | 'LIMITED_OFFER' | 'EXCLUSIVE' | 'NEW' | 'POPULAR';
 export type MockPolicyKind = 'CANCELLATION' | 'BOOKING' | 'GENERAL';
-
-/** Gương TourCardSchema — item của trang listing. */
-export interface MockTourCard {
-  id: string;
-  slug: string;
-  title: string;
-  summary: string | null;
-  /** Chuỗi thập phân, KHÔNG phải number — tiền luôn là string để không mất
-      chính xác khi đi qua JSON. Number() chỉ dùng ở bước định dạng cuối. */
-  basePrice: string;
-  compareAtPrice: string | null;
-  currency: string;
-  durationDays: number;
-  difficulty: MockTourDifficulty | null;
-  maxGroupSize: number;
-  isFeatured: boolean;
-  destinations: MockDestinationLink[];
-  category: { slug: string; name: string };
-  /** null = CHƯA AI đánh giá. Khác hẳn 0 = bị chấm 0 điểm. UI phải render hai
-      trạng thái này khác nhau, đừng gộp bằng falsy check. */
-  ratingAvg: number | null;
-  ratingCount: number;
-}
 
 /**
  * Gương `PublicReviewSchema` của `@tourism/contract` — **đúng 7 field, không hơn**.
@@ -131,27 +128,6 @@ export interface MockMediaItem {
   sortOrder: number;
 }
 
-/** Gương TourDetailSchema = card + nội dung bán hàng + đợt khởi hành + media.
-    Schema v2 KHÔNG có cột `description` dài — thân tour chính là các mảng
-    có cấu trúc dưới đây (summary nằm ở card). */
-export interface MockTourDetail extends MockTourCard {
-  suitableFor: MockTravellerType[];
-  badges: MockTourBadge[];
-  included: string[];
-  excluded: string[];
-  highlights: string[];
-  meetingPoint: string | null;
-  itinerary: MockItineraryDay[];
-  faqs: { question: string; answer: string }[];
-  policies: { kind: MockPolicyKind; title: string; body: string }[];
-  departures: MockTourDeparture[];
-  /** Ảnh của tour. `TourDetailSchema` CHƯA có field này — đó là lỗ contract #1 ở
-      spec §8, và cách vá đã rõ: `CatalogService` gọi
-      `MediaService.resolveForOwners('TOUR', [id])` đúng như `posts.service.ts`
-      đang làm. Mock để sẵn field nên lúc đó là swap nguồn, không phải sửa UI. */
-  media: MockMediaItem[];
-}
-
 export interface MockRegion {
   key: MockRegionKey;
   /** Từ vựng URL của `/destinations/[region]`. Cố tình KHÁC `key`: `key` là khoá
@@ -218,25 +194,4 @@ export interface MockMoment {
    * Bất biến: phải khớp một `TOURS[].slug` có thật — có test canh.
    */
   tourSlug: string;
-}
-
-/**
- * Gương đúng `DestinationSchema` của `@tourism/contract` — NGOẠI LỆ thứ hai của
- * luật "shape mock tự do" ở đầu file (cái đầu là tour).
- *
- * `region` để `string | null` Y NHƯ contract, KHÔNG siết thành `MockRegionKey`:
- * contract khai `z.string().max(80).nullable()`, và mock hẹp hơn contract nghĩa là
- * mọi ca hỏng chỉ lộ ra lúc gắn API. Việc xếp chuỗi tự do này vào 3 vùng đã biết
- * là việc của `lib/regions.ts`.
- */
-export interface MockDestination {
-  id: string;
-  slug: string;
-  name: string;
-  country: string;
-  region: string | null;
-  /** Contract dùng `description`; mock cũ gọi là `blurb` (đã đổi 28/07). */
-  description: string | null;
-  /** Số tour đã publish CHẠM địa điểm này — dẫn xuất, xem cuối `destinations.ts`. */
-  tourCount: number;
 }

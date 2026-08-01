@@ -15,10 +15,10 @@ import type { MockItineraryDay } from '@/mocks/types';
     vừa sai ngữ pháp vừa không nói được điều gì về vùng. */
 const MIN_TRIPS = 2;
 
-/** Tour mà khu này đọc. `itinerary` OPTIONAL dù `MockTourDetail`/`TourDetailVM` khai
-    nó bắt buộc: khu nhận được cả `TourCardVM` (không có hành trình — field đó chỉ ở
-    payload chi tiết) lẫn tour đã có hành trình, và tour chưa nhập hành trình là
-    nhánh có thật khi gắn API. */
+/** Tour mà khu này đọc. `itinerary` OPTIONAL dù `TourDetailVM` khai nó bắt buộc:
+    khu nhận được cả `TourCardVM` (không có hành trình — field đó chỉ ở payload
+    chi tiết) lẫn tour đã có hành trình, và tour chưa nhập hành trình là nhánh
+    có thật khi gắn API. */
 type DayTripTour = TourCardVM & { itinerary?: readonly MockItineraryDay[] };
 
 /**

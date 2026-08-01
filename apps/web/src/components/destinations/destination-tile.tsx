@@ -2,7 +2,7 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { ArrowRightIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import type { MockDestination } from '@/mocks/types';
+import type { DestinationVM } from '@/lib/api/tours';
 
 /**
  * Một ô trong dải ảnh full-bleed của `RegionGroup` (Task 4c, thay bố cục hai
@@ -26,7 +26,7 @@ export function DestinationTile({
   destination,
   variant,
 }: {
-  destination: MockDestination;
+  destination: DestinationVM;
   variant: 'feature' | 'photo';
 }) {
   const t = messages.destinationsPage;

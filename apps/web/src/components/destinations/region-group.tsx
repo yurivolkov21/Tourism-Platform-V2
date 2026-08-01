@@ -24,8 +24,8 @@ export function RegionGroup({
   tourCount,
 }: {
   region: MockRegion;
-  // VM contract thẳng (Task 2 — đổi nguồn sang API), gương đúng
-  // `MockDestination` cũ nên đây là types-only, không đổi hành vi.
+  // VM contract thẳng (Task 2 — đổi nguồn sang API); `mocks/destinations.ts`
+  // (mock từng gương shape này) đã khai tử ở Task 7.
   destinations: DestinationVM[];
   tourCount: number;
 }) {

@@ -1,8 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
-import { TOUR_REVIEWS } from '@/mocks/tour-reviews';
-import { TOURS } from '@/mocks/tours';
+// `mocks/tours.ts` + `mocks/destinations.ts` + `mocks/tour-reviews.ts` đã khai
+// tử ở Task 7 (cụm destinations-api) — ba biến dưới đây giờ là fixture nội bộ
+// trích nguyên vẹn từ mock cũ, xem đầu file fixture để biết vì sao (mọi con số
+// các test dưới đây đang canh — 37/27/25 review theo vùng, 6/6/6 tour, … — vẫn
+// đúng nguyên xi).
+import {
+  FIXTURE_DESTINATIONS as DESTINATIONS,
+  FIXTURE_REVIEWS as TOUR_REVIEWS,
+  FIXTURE_TOURS as TOURS,
+} from '@/test/fixtures/catalog';
 import type { DestinationVM } from './api/tours';
 import {
   destinationsInRegion,

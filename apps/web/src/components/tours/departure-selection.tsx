@@ -4,7 +4,7 @@ import { createContext, type ReactNode, useContext, useMemo, useState } from 're
 import { BookingRail } from '@/components/tours/booking-rail';
 import { DepartureStrip } from '@/components/tours/departure-strip';
 import { DeparturesTable } from '@/components/tours/departures-table';
-import type { MockTourDeparture } from '@/mocks/types';
+import type { DepartureVM } from '@/lib/api/tours';
 
 /**
  * Trạng thái "đợt đang chọn" dùng chung cho BA nơi: dải chip dưới hero, bảng đợt
@@ -24,7 +24,7 @@ import type { MockTourDeparture } from '@/mocks/types';
 interface DepartureSelection {
   selectedId: string | undefined;
   select: (id: string) => void;
-  departures: MockTourDeparture[];
+  departures: DepartureVM[];
 }
 
 const Ctx = createContext<DepartureSelection | null>(null);
@@ -41,7 +41,7 @@ export function DepartureSelectionProvider({
   departures,
   children,
 }: {
-  departures: MockTourDeparture[];
+  departures: DepartureVM[];
   children: ReactNode;
 }) {
   // Khởi tạo bằng đợt CÒN CHỖ đầu tiên, không phải phần tử [0]: đợt đầu có thể

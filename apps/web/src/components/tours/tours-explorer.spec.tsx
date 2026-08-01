@@ -3,8 +3,15 @@ import userEvent from '@testing-library/user-event';
 import { MotionConfig } from 'motion/react';
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { tourCategories } from '@/lib/tours';
-import { DESTINATIONS } from '@/mocks/destinations';
-import { TOURS } from '@/mocks/tours';
+// `mocks/tours.ts` + `mocks/destinations.ts` đã khai tử ở Task 7 (cụm
+// destinations-api) — hai biến dưới đây giờ là fixture nội bộ trích nguyên vẹn
+// từ mock cũ, xem đầu file fixture để biết vì sao (mọi con số các test dưới
+// đây đang canh — 16 tour, 9 destination, 3 tour trekking, … — vẫn đúng
+// nguyên xi).
+import {
+  FIXTURE_DESTINATIONS as DESTINATIONS,
+  FIXTURE_TOURS as TOURS,
+} from '@/test/fixtures/catalog';
 import { ToursExplorer } from './tours-explorer';
 
 // ToursExplorer ghi URL bằng history.replaceState (KHÔNG phải router.replace —

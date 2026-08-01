@@ -1,10 +1,11 @@
 import { render, screen, within } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
-// Task 4 (cụm destinations-api): `Gallery` giờ nhận `destinations` qua PROP
-// (không tự import mock nữa) — mock ở đây chỉ còn vai trò FIXTURE nhỏ, gọn
-// cho test, vẫn hợp lệ vì shape đã gương đúng `DestinationVM`.
-import { DESTINATIONS } from '@/mocks/destinations';
 import { REGIONS } from '@/mocks/regions';
+// Task 4 (cụm destinations-api): `Gallery` giờ nhận `destinations` qua PROP
+// (không tự import mock nữa). `mocks/destinations.ts` đã khai tử ở Task 7 —
+// DESTINATIONS giờ là fixture nội bộ trích nguyên vẹn từ mock cũ (9 địa điểm,
+// đúng thứ tự Bắc→Trung→Nam), vẫn hợp lệ vì shape đã gương đúng `DestinationVM`.
+import { FIXTURE_DESTINATIONS as DESTINATIONS } from '@/test/fixtures/catalog';
 import { Gallery } from './gallery';
 
 beforeAll(() => {
@@ -30,9 +31,9 @@ beforeAll(() => {
 // KHOÁ: nó là móc dữ liệu duy nhất nói thẻ này thuộc vùng nào.
 //
 // Ánh xạ dưới đây là SỰ THẬT NỀN cố định theo đúng fixture DESTINATIONS (xem
-// mocks/destinations.ts: 3 địa điểm/vùng, xếp liền mạch Bắc→Trung→Nam) — viết
-// tay bằng tay, KHÔNG gọi lại regionOf() để tính, vì nếu dùng lại chính hàm
-// đang được kiểm thì một bug trong hàm đó sẽ lọt qua test mà không ai biết.
+// test/fixtures/catalog.ts: 3 địa điểm/vùng, xếp liền mạch Bắc→Trung→Nam) —
+// viết tay bằng tay, KHÔNG gọi lại regionOf() để tính, vì nếu dùng lại chính
+// hàm đang được kiểm thì một bug trong hàm đó sẽ lọt qua test mà không ai biết.
 const EXPECTED_REGION_KEY: Record<string, 'north' | 'central' | 'south'> = {
   'sa-pa': 'north',
   'ha-long': 'north',

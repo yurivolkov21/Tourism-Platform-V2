@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { TOURS } from '@/mocks/tours';
 import type { MockMediaItem, MockReview } from '@/mocks/types';
+// `mocks/tours.ts` đã khai tử ở Task 7 (cụm destinations-api) — TOURS giờ là
+// fixture nội bộ trích nguyên vẹn từ mock cũ, xem đầu file fixture để biết vì
+// sao (mọi slug/con số các test dưới đây đang canh vẫn đúng nguyên xi).
+import { FIXTURE_TOURS as TOURS } from '@/test/fixtures/catalog';
 
 /** State rỗng dùng làm nền cho mọi test lọc — spread rồi ghi đè đúng facet cần. */
 const EMPTY_FILTERS = {

@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { MapPinIcon } from 'lucide-react';
-import type { MockItineraryDay } from '@/mocks/types';
+import type { ItineraryDayVM } from '@/lib/api/tours';
 
 /**
  * Timeline dọc, MỞ HẾT — không accordion. Mô tả từng ngày của contract v2 ngắn
@@ -15,7 +15,7 @@ export function ItineraryTimeline({
   days,
   meetingPoint,
 }: {
-  days: MockItineraryDay[];
+  days: ItineraryDayVM[];
   /** Điểm hẹn gắn vào Day 1 — nó là thông tin của NGÀY ĐẦU, không phải của cả
       tour. `null` thì không render thẻ nào. */
   meetingPoint: string | null;

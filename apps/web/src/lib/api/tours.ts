@@ -20,6 +20,15 @@ export type TourReviewVM = ContractOutputs['reviews']['listByTour']['items'][num
     gương đúng `DestinationSchema` từ trước), đặt tên VM ở đây cho nhất quán với
     ba type trên khi ToursExplorer/ToursFilters đổi nguồn sang API thật. */
 export type DestinationVM = ContractOutputs['catalog']['destinations']['list'][number];
+/** Một đợt khởi hành trong `TourDetailVM.departures` — tách riêng để component
+    nhận dữ liệu THẲNG từ `fetchTourDetail()` (`departure-selection.tsx`/
+    `booking-rail.tsx`) khai prop theo VM thay vì mượn `MockTourDeparture`
+    (mocks/tours.ts đã khai tử ở Task 7). `departure-strip.tsx`/`departures-
+    table.tsx` vẫn nhận qua context của `departure-selection.tsx` nên KHÔNG cần
+    đổi — `MockTourDeparture` còn sống ở `mocks/types.ts` đúng vì hai file đó. */
+export type DepartureVM = TourDetailVM['departures'][number];
+/** Một ngày trong `TourDetailVM.itinerary` — cùng lý do tách như `DepartureVM`. */
+export type ItineraryDayVM = TourDetailVM['itinerary'][number];
 
 const REVALIDATE_SEC = 300; // ADR-0016 §3 — con số Nexora đã vận hành, cùng revalidate cụm blog
 

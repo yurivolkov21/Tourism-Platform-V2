@@ -44,8 +44,9 @@ export function TourReviews({
   ratingAvg,
 }: {
   reviews: TourReviewVM[];
-  /** Từ `tour.ratingAvg` — được DẪN XUẤT từ chính `reviews` (xem cuối mocks/tours.ts),
-      nên con số ở đây và độ dài danh sách không thể lệch nhau. */
+  /** Từ `tour.ratingAvg` — được DẪN XUẤT từ chính `reviews` (denormalize atomically
+      lúc duyệt review, xem `ReviewsService.moderate` phía API), nên con số ở đây và
+      độ dài danh sách không thể lệch nhau. */
   ratingAvg: number | null;
 }) {
   const t = messages.tourDetail.reviews;
