@@ -5,16 +5,19 @@ import { JourneyMoments } from '@/components/destinations/journey-moments';
 import { KnowBeforeYouGo } from '@/components/destinations/know-before-you-go';
 import { RegionGroup } from '@/components/destinations/region-group';
 import { TravellerQuotes } from '@/components/destinations/traveller-quotes';
+import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
+import { contentState, settle } from '@/lib/api/resilience';
+import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { destinationsInRegion, toursInRegion } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
-import { DESTINATIONS } from '@/mocks/destinations';
 import { FAQ_ITEMS } from '@/mocks/faq';
 import { MOMENTS } from '@/mocks/moments';
 import { REGIONS } from '@/mocks/regions';
 import { TESTIMONIALS } from '@/mocks/testimonials';
-import { TOURS } from '@/mocks/tours';
+
+export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations
 
 /**
  * Landing page `/destinations` — cổng khám phá theo vùng (spec §5.1). NĂM khu
@@ -58,8 +61,22 @@ export const metadata: Metadata = {
   },
 };
 
-export default function DestinationsPage() {
+export default async function DestinationsPage() {
   const t = messages.destinationsPage;
+
+  // settle() không bao giờ throw — hai fetch chạy song song, mỗi cái tự đứng
+  // độc lập (ADR-0016 §4, cùng khuôn /tours và /blog). Ở trang này CẢ HAI đều
+  // nuôi khu 2 (destination lẫn tourCount), nên MỘT trong hai fail là đủ để
+  // coi khu 2 lỗi — khác /tours nơi destination chỉ là facet phụ.
+  const [toursRes, destinationsRes] = await Promise.all([
+    settle(fetchTours()),
+    settle(fetchDestinations()),
+  ]);
+  // `isEmpty` cố tình luôn false: trang này không có màn rỗng riêng cho khu 2
+  // (khác listing) — 3 vùng luôn có ít nhất một destination trong seed thật.
+  const state = contentState({ failed: !toursRes.ok || !destinationsRes.ok, isEmpty: false });
+  const tours = toursRes.data ?? [];
+  const destinations = destinationsRes.data ?? [];
 
   return (
     <>
@@ -107,16 +124,30 @@ export default function DestinationsPage() {
           thật, không phải trang trí. Mỗi group tự mang `<section>` full-bleed
           riêng (nền tint theo vùng ở khối header), nên `Reveal` bọc NGOÀI
           từng group thay vì bọc div nội dung bên trong một section nền
-          chung. */}
-      {REGIONS.map((region, i) => (
-        <Reveal key={region.key} delay={i === 0 ? 0.1 : 0}>
-          <RegionGroup
-            region={region}
-            destinations={destinationsInRegion(REGIONS, DESTINATIONS, region.key)}
-            tourCount={toursInRegion(REGIONS, DESTINATIONS, TOURS, region.key).length}
-          />
-        </Reveal>
-      ))}
+          chung.
+
+          Tri-state (ADR-0016 §4): tours HOẶC destinations lỗi → thay TOÀN khu
+          bằng `LoadErrorState` — CẤM hiện 2/3 vùng rồi im lặng thiếu vùng thứ
+          ba, và CẤM tourCount tính từ dữ liệu rỗng (đọc như "0 tour" thật).
+          Hero (khu 1) + khu 3–5 KHÔNG phụ thuộc API, giữ nguyên bên dưới dù
+          nhánh này rơi vào lỗi. */}
+      {state === 'error' ? (
+        <div className="w-full px-4 py-16 md:px-16 md:py-20 lg:px-24 xl:px-32">
+          <div className="mx-auto max-w-7xl">
+            <LoadErrorState />
+          </div>
+        </div>
+      ) : (
+        REGIONS.map((region, i) => (
+          <Reveal key={region.key} delay={i === 0 ? 0.1 : 0}>
+            <RegionGroup
+              region={region}
+              destinations={destinationsInRegion(REGIONS, destinations, region.key)}
+              tourCount={toursInRegion(REGIONS, destinations, tours, region.key).length}
+            />
+          </Reveal>
+        ))
+      )}
 
       {/* ── Khu 3 · Moments from the journey — băng tối, khảm ảnh + caption ── */}
       <Reveal>

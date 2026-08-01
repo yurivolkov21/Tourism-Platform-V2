@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
+import type { DestinationVM } from '@/lib/api/tours';
 import { REGIONS } from '@/mocks/regions';
-import type { MockDestination } from '@/mocks/types';
 import { RegionGroup } from './region-group';
 
 beforeAll(() => {
@@ -27,7 +27,7 @@ beforeAll(() => {
 // biome-ignore lint/style/noNonNullAssertion: REGIONS là hằng 3 phần tử ở module scope, phần tử 0 luôn tồn tại
 const NORTH = REGIONS[0]!;
 
-function dest(slug: string, name: string, description: string, tourCount: number): MockDestination {
+function dest(slug: string, name: string, description: string, tourCount: number): DestinationVM {
   return {
     id: `id-${slug}`,
     slug,

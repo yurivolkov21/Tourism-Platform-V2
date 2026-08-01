@@ -1,7 +1,8 @@
 import { messages } from '@tourism/i18n';
 import { ArrowRightIcon } from 'lucide-react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import type { MockDestination, MockRegion } from '@/mocks/types';
+import type { DestinationVM } from '@/lib/api/tours';
+import type { MockRegion } from '@/mocks/types';
 import { DestinationTile } from './destination-tile';
 
 /**
@@ -23,7 +24,9 @@ export function RegionGroup({
   tourCount,
 }: {
   region: MockRegion;
-  destinations: MockDestination[];
+  // VM contract thẳng (Task 2 — đổi nguồn sang API), gương đúng
+  // `MockDestination` cũ nên đây là types-only, không đổi hành vi.
+  destinations: DestinationVM[];
   tourCount: number;
 }) {
   const t = messages.destinationsPage;
