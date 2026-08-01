@@ -1,12 +1,13 @@
 'use client';
 
 import { motion } from 'motion/react';
+import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
+import type { TourCardVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
-import { TOURS } from '@/mocks/tours';
 
 // About §4 By the numbers (convert 100% lối forged/Stats, da thịt token):
 // beat TỐI của trang (scope dark cố định như CTA/footer) — chữ nền "NUMBERS"
@@ -15,39 +16,47 @@ import { TOURS } from '@/mocks/tours';
 // sáng nhẹ + số phóng 1.05 từ mép trái, vào so le 0.1s. Counter dùng CountUp
 // spring nhà thay AnimatedCounter rAF của template.
 // Bộ 6 số ĐÀO SÂU VẬN HÀNH — cố ý không lặp 12+/8,000+/98% của hero §1.
-// Mock static-first: tours/destinations/guides sẽ derive từ API catalog (như
-// Nexora ByTheNumbers, ISR 300s) + bảng team_members tương lai.
+// Task 5 (cụm destinations-api): "Tours running" giờ nhận `tours` qua PROP
+// (page fetch `settle(fetchTours())`, đúng khuôn Task 4/9) thay vì đếm mock
+// TOURS — component KHÔNG tự fetch (client, có motion, ADR-0016 §4). 5 số
+// còn lại (guides/destinations/departures/km/scripts) CHƯA có endpoint
+// nguồn — vẫn là số biên tập cố định, cố ý giữ hardcode, không phải sơ suất.
 
-// 16 tour thật, KHÔNG cộng dồn theo vùng (=18): north-to-south-classic thuộc cả ba
-// vùng nên cộng dồn là đếm nó ba lần. Comment cũ ở đây ghi "vá mâu thuẫn 96 hardcode
-// ≠ 68 tổng mock" — hoá ra chính con 68 cũng sai, giờ dẫn xuất hết (user chốt 28/07).
-const TOTAL_TOURS = TOURS.length;
+export function AboutNumbers({ tours, failed }: { tours: TourCardVM[]; failed: boolean }) {
+  // Tổng tour THẬT — KHÔNG cộng dồn theo vùng: một tour xuyên vùng (vd.
+  // north-to-south-classic) chạm cả ba vùng, cộng dồn sẽ đếm nó nhiều lần.
+  // Đây là `tours.length` phẳng, không qua toursInRegion() nào cả.
+  const totalTours = tours.length;
 
-const STATS = [
-  {
-    value: TOTAL_TOURS,
-    suffix: '',
-    label: 'Tours running',
-    description: 'Across all three regions',
-  },
-  { value: 27, suffix: '', label: 'Local guides', description: 'Every one born on their route' },
-  { value: 9, suffix: '', label: 'Destinations', description: 'Three per region, north to south' },
-  {
-    value: 560,
-    suffix: '+',
-    label: 'Departures a year',
-    description: 'Rain or shine, twelve seats',
-  },
-  {
-    value: 45000,
-    suffix: '+',
-    label: 'Kilometres each season',
-    description: 'By road, rail and river',
-  },
-  { value: 0, suffix: '', label: 'Scripts', description: 'And none planned' },
-];
+  const STATS = [
+    {
+      value: totalTours,
+      suffix: '',
+      label: 'Tours running',
+      description: 'Across all three regions',
+    },
+    { value: 27, suffix: '', label: 'Local guides', description: 'Every one born on their route' },
+    {
+      value: 9,
+      suffix: '',
+      label: 'Destinations',
+      description: 'Three per region, north to south',
+    },
+    {
+      value: 560,
+      suffix: '+',
+      label: 'Departures a year',
+      description: 'Rain or shine, twelve seats',
+    },
+    {
+      value: 45000,
+      suffix: '+',
+      label: 'Kilometres each season',
+      description: 'By road, rail and river',
+    },
+    { value: 0, suffix: '', label: 'Scripts', description: 'And none planned' },
+  ];
 
-export function AboutNumbers() {
   return (
     <section
       id="numbers"
@@ -92,26 +101,34 @@ export function AboutNumbers() {
           </motion.h2>
         </div>
 
-        {/* Lưới hairline: gap-px trên nền border tạo kẻ mảnh 1px giữa các ô */}
-        <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border md:grid-cols-3">
-          {STATS.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              className="group bg-background/85 p-8 backdrop-blur-md transition-colors duration-300 hover:bg-muted/60 md:p-12"
-              initial={{ y: 20, opacity: 0 }}
-              whileInView={{ y: 0, opacity: 1 }}
-              viewport={{ once: true, margin: '-40px' }}
-              transition={{ ...SPRING, delay: index * 0.1 }}
-            >
-              <span className="mb-2 block origin-left font-heading text-5xl leading-none font-semibold text-primary transition-transform duration-300 group-hover:scale-105">
-                <CountUp to={stat.value} />
-                {stat.suffix}
-              </span>
-              <p className="mb-1 text-sm font-semibold tracking-wide uppercase">{stat.label}</p>
-              <p className="text-xs text-foreground/40">{stat.description}</p>
-            </motion.div>
-          ))}
-        </div>
+        {/* Fetch tours lỗi → LoadErrorState thay cả lưới (không phải riêng ô
+            "Tours running"): lưới hairline 6 ô là MỘT khối hình học, bớt một
+            ô làm lệch grid-cols-3 và phá luôn nhịp so le; CẤM số bịa nên
+            không thể giữ ô đó với giá trị giả — đúng khuôn Journal/Gallery
+            (ADR-0016 §4), heading + backdrop vẫn đứng nguyên phía trên. */}
+        {failed ? (
+          <LoadErrorState className="mx-auto max-w-lg" />
+        ) : (
+          <div className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border bg-border md:grid-cols-3">
+            {STATS.map((stat, index) => (
+              <motion.div
+                key={stat.label}
+                className="group bg-background/85 p-8 backdrop-blur-md transition-colors duration-300 hover:bg-muted/60 md:p-12"
+                initial={{ y: 20, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true, margin: '-40px' }}
+                transition={{ ...SPRING, delay: index * 0.1 }}
+              >
+                <span className="mb-2 block origin-left font-heading text-5xl leading-none font-semibold text-primary transition-transform duration-300 group-hover:scale-105">
+                  <CountUp to={stat.value} />
+                  {stat.suffix}
+                </span>
+                <p className="mb-1 text-sm font-semibold tracking-wide uppercase">{stat.label}</p>
+                <p className="text-xs text-foreground/40">{stat.description}</p>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

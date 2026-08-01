@@ -7,6 +7,8 @@ import { AboutStory } from '@/components/about/about-story';
 import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
 import { AboutValues } from '@/components/about/about-values';
+import { settle } from '@/lib/api/resilience';
+import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
 // (quy trình: demo section → review → chốt → section kế). Lineup đã chốt
@@ -20,19 +22,37 @@ export const metadata: Metadata = {
   description: 'Small-group tours across Vietnam, led by people who grew up there.',
 };
 
-export default function AboutPage() {
+// SSG→ISR có chủ đích (bước 4 nối API, Task 5 cụm destinations-api): Numbers
+// (tổng tour) + Gallery (tour/vùng) giờ đọc tours/destinations THẬT thay vì
+// TOURS/DESTINATIONS mock — khai revalidate tường minh, đúng khuôn Home
+// (Task 4/9) thay vì để Next suy ngầm.
+export const revalidate = 300;
+
+export default async function AboutPage() {
+  // settle() không throw (ADR-0016 §4) nên build/ISR không sập khi API hắt
+  // hơi — page vẫn render, hai section phụ thuộc tự rẽ nhánh lỗi riêng.
+  const [toursRes, destinationsRes] = await Promise.all([
+    settle(fetchTours()),
+    settle(fetchDestinations()),
+  ]);
+
   return (
     <>
       <AboutHero />
       <AboutStory />
       <AboutTimeline />
-      <AboutNumbers />
+      <AboutNumbers tours={toursRes.data ?? []} failed={!toursRes.ok} />
       {/* Values "The promises we keep" — lấp tầng giá trị (phân tích: các lời
           hứa mới chỉ teaser ở pill/0-Scripts/marquee, chưa được giải thích) */}
       <AboutValues />
       {/* Gallery bento 3 vùng + 1 tổng (ShadcnSpace Gallery 01) — quãng nghỉ
-          thị giác giữa hai khối chữ, số đếm derive từ REGIONS */}
-      <AboutGallery />
+          thị giác giữa hai khối chữ, số đếm derive từ REGIONS (trình bày,
+          mock — xem lib/regions.ts) + tours/destinations THẬT truyền props */}
+      <AboutGallery
+        tours={toursRes.data ?? []}
+        destinations={destinationsRes.data ?? []}
+        failed={!toursRes.ok || !destinationsRes.ok}
+      />
       <AboutTeam />
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
