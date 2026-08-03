@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { TwoFactorForm } from '@/components/auth/two-factor-form';
 
-// /two-factor (plan Task 5) — TOTP app (spec đã chốt phương thức); recovery
-// code toggle mock. Nợ twoFactor plugin Better Auth ghi ở spec.
+// PARK theo ADR-0017 §5b — API chưa bật plugin twoFactor, trang giữ TĨNH làm
+// UI dự phòng (nợ có kế hoạch, không nối API ở Task 5 này).
 export const metadata: Metadata = {
   title: 'Two-factor check — Tourism',
   description: 'Enter the six-digit code from your authenticator app.',

@@ -284,6 +284,20 @@ export const messages = {
         body: 'Log in with your new password to continue.',
       },
     },
+    // Task 5 (auth-pages-api): verify-email OTP thật.
+    verifyEmail: {
+      submitting: 'Verifying…',
+      toast: {
+        title: 'Email verified',
+        body: 'Welcome aboard — you’re all set to travel.',
+      },
+      // Panel khi thiếu `?email=` — khuôn theo `resetPassword.invalidToken`.
+      noEmail: {
+        heading: 'Missing your email',
+        body: 'This link didn’t carry an email address. Head back to log in and we’ll send a fresh code.',
+        backLink: 'Back to log in',
+      },
+    },
     errors: {
       invalidCredentials: 'Invalid email or password.',
       emailExists: 'An account with this email already exists.',

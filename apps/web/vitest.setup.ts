@@ -27,3 +27,20 @@ vi.stubGlobal(
     dispatchEvent: vi.fn(),
   })),
 );
+
+// jsdom KHÔNG hiện thực ResizeObserver. `input-otp` (OtpForm, Task 5) đo kích
+// thước container bằng nó lúc mount — thiếu polyfill thì effect ném
+// ReferenceError và mọi test render OtpForm/InputOTP đều fail ngay từ mount.
+class ResizeObserverStub {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+vi.stubGlobal('ResizeObserver', ResizeObserverStub);
+
+// jsdom KHÔNG hiện thực `elementFromPoint` — `input-otp` polling nội bộ (theo
+// dõi caret) gọi hàm này, ném TypeError không bắt được khi chạy dưới fake
+// timers (spec OtpForm dùng fake timers để test countdown resend 60s).
+if (!document.elementFromPoint) {
+  document.elementFromPoint = () => null;
+}
