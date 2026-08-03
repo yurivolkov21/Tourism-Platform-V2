@@ -43,11 +43,13 @@ describe('parseEnv', () => {
         // thoả cả hai để cô lập assertion về BETTER_AUTH_SECRET. P3a: thêm cả
         // NEWSLETTER_UNSUBSCRIBE_SECRET (guard production riêng, cùng khuôn).
         // P3a-C: thêm CLOUDINARY_CLOUD_NAME (guard production cho media).
+        // on-demand revalidation: thêm REVALIDATE_SECRET (cùng khuôn).
         DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
         NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
         CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+        REVALIDATE_SECRET: 'real-revalidate-secret',
         RESEND_API_KEY: 're_test_x',
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
@@ -63,6 +65,7 @@ describe('parseEnv', () => {
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
       CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+      REVALIDATE_SECRET: 'real-revalidate-secret',
     };
     expect(() => parseEnv(base)).toThrow(/DATABASE_URL/);
     // Khai tường minh trùng chuỗi compose cũng bị chặn — đó vẫn là localhost.
@@ -115,6 +118,7 @@ describe('parseEnv', () => {
       STRIPE_SECRET_KEY: 'sk_test_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
       CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+      REVALIDATE_SECRET: 'real-revalidate-secret',
     };
     expect(() => parseEnv(base)).toThrow(/NEWSLETTER_UNSUBSCRIBE_SECRET/);
     expect(() =>
@@ -130,6 +134,38 @@ describe('parseEnv', () => {
         RESEND_API_KEY: 're_test_x',
       }).NEWSLETTER_UNSUBSCRIBE_SECRET,
     ).toBe('real-unsubscribe-secret');
+  });
+
+  it('defaults REVALIDATE_SECRET outside production', () => {
+    expect(parseEnv({}).REVALIDATE_SECRET).toBe('dev-revalidate-secret-change-me');
+  });
+
+  it('requires a real REVALIDATE_SECRET in production', () => {
+    // Cùng khuôn với NEWSLETTER_UNSUBSCRIBE_SECRET: guard production riêng
+    // cho secret header route /api/revalidate phía web.
+    const base = {
+      NODE_ENV: 'production',
+      BETTER_AUTH_SECRET: 'real-secret',
+      DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+      STRIPE_SECRET_KEY: 'sk_test_x',
+      STRIPE_WEBHOOK_SECRET: 'whsec_x',
+      NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+      CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+    };
+    expect(() => parseEnv(base)).toThrow(/REVALIDATE_SECRET/);
+    expect(() =>
+      parseEnv({
+        ...base,
+        REVALIDATE_SECRET: 'dev-revalidate-secret-change-me',
+      }),
+    ).toThrow(/REVALIDATE_SECRET/);
+    expect(
+      parseEnv({
+        ...base,
+        REVALIDATE_SECRET: 'real-revalidate-secret',
+        RESEND_API_KEY: 're_test_x',
+      }).REVALIDATE_SECRET,
+    ).toBe('real-revalidate-secret');
   });
 
   it('defaults CLOUDINARY_CLOUD_NAME outside production', () => {
@@ -150,6 +186,7 @@ describe('parseEnv', () => {
       STRIPE_SECRET_KEY: 'sk_test_x',
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+      REVALIDATE_SECRET: 'real-revalidate-secret',
     };
     // Không set CLOUDINARY_CLOUD_NAME → default 'demo' → bị guard chặn
     expect(() => parseEnv(base)).toThrow(/CLOUDINARY_CLOUD_NAME/);
@@ -185,6 +222,7 @@ describe('parseEnv', () => {
       DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
       CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+      REVALIDATE_SECRET: 'real-revalidate-secret',
     };
     // None configured → rejected.
     expect(() => parseEnv(base)).toThrow(/payment provider/i);
@@ -228,6 +266,7 @@ describe('parseEnv', () => {
       STRIPE_WEBHOOK_SECRET: 'whsec_x',
       NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
       CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+      REVALIDATE_SECRET: 'real-revalidate-secret',
     };
     // Thiếu RESEND_API_KEY → chặn ngay ở boot.
     expect(() => parseEnv(base)).toThrow(/RESEND_API_KEY/);

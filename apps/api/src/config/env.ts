@@ -15,6 +15,14 @@ const DEV_BETTER_AUTH_SECRET = 'dev-secret-change-me';
 const DEV_UNSUBSCRIBE_SECRET = 'dev-unsubscribe-secret-change-me';
 
 /**
+ * Dev-only secret cho route `/api/revalidate` phía web (on-demand
+ * revalidation, ADR-0016 §3). Dùng CHUNG chuỗi default với phía web để dev
+ * chạy liền không cần khai env gì thêm; production PHẢI đổi (superRefine
+ * dưới đây chặn).
+ */
+const DEV_REVALIDATE_SECRET = 'dev-revalidate-secret-change-me';
+
+/**
  * Postgres compose local. Là default để `pnpm dev`/seed/test chạy được ngay
  * không cần `.env`; `superRefine` dưới đây chặn nó ở production — deploy mà
  * quên set DATABASE_URL thì phải chết ở tầng config với thông điệp rõ ràng,
@@ -64,6 +72,11 @@ const EnvSchema = z
     // DEV_UNSUBSCRIBE_SECRET). Optional-với-default ở dev/test, bắt buộc
     // production qua superRefine bên dưới.
     NEWSLETTER_UNSUBSCRIBE_SECRET: z.string().min(1).default(DEV_UNSUBSCRIBE_SECRET),
+    // Secret header cho route /api/revalidate phía web (on-demand
+    // revalidation, ADR-0016 §3) — đích web dùng lại FRONTEND_URL sẵn có,
+    // KHÔNG thêm WEB_URL (AMENDED spec §4). Optional-với-default ở dev/test,
+    // bắt buộc production qua superRefine bên dưới.
+    REVALIDATE_SECRET: z.string().min(1).default(DEV_REVALIDATE_SECRET),
     // Cloud name Cloudinary — GIÁ TRỊ CÔNG KHAI (không phải secret upload),
     // chỉ để dựng URL delivery đọc (ADR-0005). Default dev; prod PHẢI set thật
     // qua superRefine bên dưới, nếu không URL ảnh sẽ trỏ cloud 'demo' hỏng.
@@ -107,6 +120,13 @@ const EnvSchema = z
         code: 'custom',
         path: ['NEWSLETTER_UNSUBSCRIBE_SECRET'],
         message: 'NEWSLETTER_UNSUBSCRIBE_SECRET must be set explicitly in production',
+      });
+    }
+    if (cfg.REVALIDATE_SECRET === DEV_REVALIDATE_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['REVALIDATE_SECRET'],
+        message: 'REVALIDATE_SECRET must be set explicitly in production',
       });
     }
     if (cfg.CLOUDINARY_CLOUD_NAME === 'demo') {
