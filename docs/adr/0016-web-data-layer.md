@@ -109,6 +109,16 @@ Logic thuần trong các module (map, derive, format) TDD theo luật 4 — patt
   mới phía API** gọi sang khi publish/duyệt nội dung (Nexora đã có nguyên
   mẫu: ADR-0013 của repo cũ + `web-revalidation.service.ts`). Ghi nợ có kế
   hoạch — không nhét vào bước 1.
+
+  > **Chốt 2026-08-03 (trả nợ — cơ chế cụ thể):** đúng blueprint Nexora đã
+  > đối chiếu. Web: route `POST /api/revalidate`, header secret so
+  > constant-time, whitelist đúng taxonomy `lib/api/tags.ts`, tag lạ 400.
+  > API: MỘT `WebRevalidationService` fire-and-forget (timeout 3s, mọi lỗi
+  > chỉ `warn` — ISR 300s vẫn là lưới đúng đắn), gọi SAU khi transaction
+  > commit; điểm móc duy nhất hiện có: `reviews.moderate` khi đổi bề mặt
+  > public. Secret theo nếp `DEV_*_SECRET`; không endpoint admin trung gian,
+  > không outbox (đã cân nhắc và loại — cache tự lành ≤300s). Chi tiết:
+  > [spec 03/08](../specs/2026-08-03-on-demand-revalidation-design.md).
 - **Vì sao không `cacheComponents`/`use cache`:** đổi mô hình render + cache
   của toàn app (mọi async data phải vào `use cache` hoặc Suspense) ngay trước
   freeze 15/10, trong khi ISR classic vẫn được Next 16 hỗ trợ đầy đủ và là mô
