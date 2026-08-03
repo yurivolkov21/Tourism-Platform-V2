@@ -55,13 +55,17 @@ describe('auth integration (Better Auth + tombstone)', () => {
     await prisma.$disconnect();
   });
 
-  it('e. signup gửi verify-email qua outbox (sendOnSignUp — AUTH-2)', async () => {
+  // CẬP NHẬT ADR-0017 §5a: sendOnSignUp giờ gửi OTP (EmailType.EMAIL_OTP) thay
+  // vì link (EMAIL_VERIFICATION) — plugin emailOTP override sendVerificationEmail.
+  // Test gốc assert link cũ; hành vi đổi là ĐÚNG thiết kế (xem auth.config.ts),
+  // sửa assertion theo OTP thay vì xoá (brief Task 1 Step 5).
+  it('e. signup gửi verify OTP qua outbox (ADR-0017 §5a — override link cũ)', async () => {
     await signUp(app, 'verify-me@example.com', 'V');
-    const rows = await prisma.outbox.findMany({ where: { type: EmailType.EMAIL_VERIFICATION } });
+    const rows = await prisma.outbox.findMany({ where: { type: EmailType.EMAIL_OTP } });
     expect(rows).toHaveLength(1);
-    const payload = rows[0]?.payload as { email?: string; url?: string };
+    const payload = rows[0]?.payload as { email?: string; otp?: string };
     expect(payload.email).toBe('verify-me@example.com');
-    expect(payload.url).toMatch(/verify/i);
+    expect(payload.otp).toMatch(/^\d{6}$/);
   });
 
   it('f. request-password-reset ghi outbox PASSWORD_RESET, không console.log (AUTH-2)', async () => {
@@ -104,17 +108,26 @@ describe('auth integration (Better Auth + tombstone)', () => {
     expect(user.emailVerified).toBe(false);
   });
 
-  /** Verify email user vừa signup: lấy link từ outbox (sendOnSignUp) → GET verify. */
+  /**
+   * Verify email user vừa signup: lấy OTP từ outbox (sendOnSignUp) → POST verify.
+   * CẬP NHẬT ADR-0017 §5a — trước đây đọc `url` + GET `/verify-email?token=`
+   * (flow link); giờ đọc `otp` + POST `/email-otp/verify-email` (flow OTP mới,
+   * xem auth.config.ts). Vẫn dùng chung tên hàm vì b2/b3 dựa vào side-effect
+   * giống nhau: verify xong → afterEmailVerification quyết định role.
+   */
   async function verifyLatestEmail(): Promise<void> {
     const vrow = await prisma.outbox.findFirstOrThrow({
-      where: { type: EmailType.EMAIL_VERIFICATION },
+      where: { type: EmailType.EMAIL_OTP },
       orderBy: { createdAt: 'desc' },
     });
-    const url = (vrow.payload as { url: string }).url;
-    const token = new URL(url).searchParams.get('token');
-    if (!token) throw new Error(`No verify token in url: ${url}`);
-    const res = await app.inject({ method: 'GET', url: `/api/auth/verify-email?token=${token}` });
-    expect([200, 302]).toContain(res.statusCode);
+    const { email, otp } = vrow.payload as { email: string; otp: string };
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/verify-email',
+      headers: { 'content-type': 'application/json' },
+      payload: { email, otp },
+    });
+    expect(res.statusCode).toBe(200);
   }
 
   it('b2. signup email admin → verify → promote ADMIN (SEC-1 happy path)', async () => {
@@ -269,5 +282,110 @@ describe('auth integration (Better Auth + tombstone)', () => {
     const fresh = await prisma.user.findUnique({ where: { email } });
     expect(fresh).not.toBeNull();
     expect(fresh?.id).not.toBe(user.id);
+  });
+});
+
+/**
+ * ADR-0017 §5a: flow verify email đổi từ link sang OTP (plugin `emailOTP`).
+ * Điều kiện nghiệm thu bắt buộc — hook `afterEmailVerification` (promote
+ * admin, SEC-1/ADR-0008) PHẢI fire cả ở đường OTP, không chỉ đường link cũ.
+ * describe RIÊNG (app instance riêng) — tách khỏi describe trên để không
+ * đụng fixture/luồng của các test link-verify hiện có.
+ */
+describe('verify email bằng OTP (ADR-0017 §5a — SEC-1 phải sống)', () => {
+  let app: NestFastifyApplication;
+
+  beforeAll(async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    await app.init();
+    await app.getHttpAdapter().getInstance().ready();
+  });
+
+  beforeEach(async () => {
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers, outbox CASCADE',
+    );
+  });
+
+  afterAll(async () => {
+    await app.close();
+  });
+
+  /** Đọc OTP mới nhất trong outbox (type EMAIL_OTP) — throw nếu chưa có row nào. */
+  async function latestOtp(email: string): Promise<string> {
+    const row = await prisma.outbox.findFirstOrThrow({
+      where: { type: EmailType.EMAIL_OTP },
+      orderBy: { createdAt: 'desc' },
+    });
+    const payload = row.payload as { email?: string; otp?: string };
+    if (payload.email !== email) {
+      throw new Error(`outbox EMAIL_OTP row mismatch email: ${payload.email}`);
+    }
+    if (!payload.otp) throw new Error('outbox EMAIL_OTP row missing otp');
+    return payload.otp;
+  }
+
+  async function verifyOtp(email: string, otp: string) {
+    return app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/verify-email',
+      headers: { 'content-type': 'application/json' },
+      payload: { email, otp },
+    });
+  }
+
+  it('1. sign-up ADMIN_EMAILS → verify OTP đúng → email_verified=true VÀ role=ADMIN (SEC-1)', async () => {
+    const email = 'bootstrap-admin@tourism.test';
+    await signUp(app, email, 'Boss');
+    const otp = await latestOtp(email);
+
+    const res = await verifyOtp(email, otp);
+    expect(res.statusCode).toBe(200);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.emailVerified).toBe(true);
+    expect(user.role).toBe(UserRole.ADMIN); // afterEmailVerification promote — phải fire cả đường OTP
+  });
+
+  it('2. sign-up email thường → verify OTP → role=CUSTOMER (không promote)', async () => {
+    const email = 'not-admin-otp@example.com';
+    await signUp(app, email, 'Reg');
+    const otp = await latestOtp(email);
+
+    const res = await verifyOtp(email, otp);
+    expect(res.statusCode).toBe(200);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.emailVerified).toBe(true);
+    expect(user.role).toBe(UserRole.CUSTOMER);
+  });
+
+  it('3. sau sign-up outbox CÓ row EMAIL_OTP và KHÔNG có row EMAIL_VERIFICATION mới (override link)', async () => {
+    const email = 'otp-override@example.com';
+    await signUp(app, email, 'O');
+
+    const otpRows = await prisma.outbox.findMany({ where: { type: EmailType.EMAIL_OTP } });
+    expect(otpRows).toHaveLength(1);
+    const linkRows = await prisma.outbox.findMany({
+      where: { type: EmailType.EMAIL_VERIFICATION },
+    });
+    expect(linkRows).toHaveLength(0);
+  });
+
+  it('4. OTP sai 1 ký tự → verify fail, email_verified vẫn false', async () => {
+    const email = 'wrong-otp@example.com';
+    await signUp(app, email, 'W');
+    const otp = await latestOtp(email);
+    // Đổi đúng 1 ký tự cuối — vẫn 6 số, chỉ sai giá trị.
+    const lastDigit = otp.at(-1);
+    const wrongLastDigit = lastDigit === '0' ? '1' : '0';
+    const wrongOtp = `${otp.slice(0, -1)}${wrongLastDigit}`;
+
+    const res = await verifyOtp(email, wrongOtp);
+    expect(res.statusCode).not.toBe(200);
+
+    const user = await prisma.user.findUniqueOrThrow({ where: { email } });
+    expect(user.emailVerified).toBe(false);
   });
 });

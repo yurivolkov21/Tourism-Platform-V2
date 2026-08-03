@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { emailOTP } from 'better-auth/plugins/email-otp';
 import { adminEmails, env, trustedOrigins } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { EmailType, UserRole } from '../generated/prisma/enums.js';
@@ -27,6 +28,18 @@ export const prisma = new PrismaClient({
  * - AUTH-2 (ADR-0008): send-email (reset + verify) ghi OUTBOX → ResendDeliverer
  *   gửi qua Resend (retry/backoff), thay console.log stub. Verify gửi lúc signup
  *   (`sendOnSignUp`). `requireEmailVerification` GIỮ false — khách không bị chặn.
+ * - ADR-0017 §5a: plugin `emailOTP` với `overrideDefaultEmailVerification: true`
+ *   ĐÈ `emailVerification.sendVerificationEmail` — signup vẫn gọi flow verify
+ *   (`sendOnSignUp`) nhưng nội dung gửi giờ là OTP 6 số thay vì link.
+ *   CHỦ Ý KHÔNG khai `sendVerificationEmail` ở khối `emailVerification` dưới
+ *   đây (khác bản nháp đầu của plan): đo bằng int test phát hiện BA merge
+ *   option plugin qua `defu(userOptions, pluginOverrides)` — `defu` giữ khoá
+ *   NGƯỜI DÙNG đã set, override của plugin chỉ lấp khoá còn `undefined`. Khai
+ *   `sendVerificationEmail` ở đây (như link flow cũ) sẽ THẮNG override của
+ *   plugin — OTP không bao giờ được gửi (đo được: outbox vẫn ra EMAIL_VERIFICATION
+ *   kèm link, không phải EMAIL_OTP). Bỏ field này để plugin sở hữu trọn khoá
+ *   đó; `sendOnSignUp` + `afterEmailVerification` (promote admin, SEC-1) GIỮ
+ *   NGUYÊN — hook sau-verify không liên quan tới field bị bỏ, int test canh.
  */
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -49,16 +62,9 @@ export const auth = betterAuth({
   },
   emailVerification: {
     // Gửi verify email lúc signup — để admin có đường chứng minh sở hữu (SEC-1).
+    // KHÔNG khai sendVerificationEmail ở đây nữa (xem doc-comment auth instance
+    // phía trên) — plugin emailOTP sở hữu khoá này để gửi OTP thay vì link.
     sendOnSignUp: true,
-    sendVerificationEmail: async ({ user, url }) => {
-      await prisma.outbox.create({
-        data: {
-          type: EmailType.EMAIL_VERIFICATION,
-          payload: { email: user.email, url },
-          dedupeKey: `verify:${user.id}:${url}`.slice(0, 200),
-        },
-      });
-    },
     // Promote ADMIN CHỈ sau khi đã chứng minh sở hữu email (SEC-1). Hook này fire
     // sau verify thành công → emailVerified=true. Promote-only; update thẳng qua
     // prisma (không qua BA adapter) nên không loop hook. Backstop: reconcile lúc boot.
@@ -95,6 +101,27 @@ export const auth = betterAuth({
       generateId: false,
     },
   },
+  plugins: [
+    emailOTP({
+      otpLength: 6,
+      expiresIn: 600, // 10 phút — khớp copy "code expires" nếu UI có
+      sendVerificationOnSignUp: true,
+      // Đè flow link mặc định: sendOnSignUp từ nay ra OTP (ADR-0017 §5a).
+      // Khối emailVerification bên dưới GIỮ NGUYÊN — afterEmailVerification
+      // (promote admin SEC-1) phải fire cả ở đường OTP; int test canh.
+      overrideDefaultEmailVerification: true,
+      allowedAttempts: 5,
+      async sendVerificationOTP({ email, otp }) {
+        await prisma.outbox.create({
+          data: {
+            type: EmailType.EMAIL_OTP,
+            payload: { email, otp },
+            dedupeKey: `email-otp:${email}:${otp}`.slice(0, 200),
+          },
+        });
+      },
+    }),
+  ],
 });
 
 /** User trong session Better Auth (kèm additionalFields: phone/role/deletedAt). */

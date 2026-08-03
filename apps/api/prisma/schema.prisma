@@ -154,6 +154,9 @@ enum EmailType {
   /// vào outbox thay cho console.log stub.
   PASSWORD_RESET
   EMAIL_VERIFICATION
+  /// Mã OTP verify email — ADR-0017 §5a (đè flow link mặc định bằng plugin
+  /// `emailOTP`, giữ nguyên hook afterEmailVerification cho SEC-1).
+  EMAIL_OTP
 }
 
 /// Vòng đời row outbox (ADR-0007). PENDING → SENT, hoặc → FAILED sau khi retry.

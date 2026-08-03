@@ -45,6 +45,7 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.EMAIL_CHANGED, /email address/i],
     [EmailType.PASSWORD_RESET, /reset your password/i],
     [EmailType.EMAIL_VERIFICATION, /verify your email/i],
+    [EmailType.EMAIL_OTP, /verification code/i],
   ];
 
   it.each(cases)('%s has a dedicated subject', (type, expected) => {
@@ -81,6 +82,12 @@ describe('renderEmail payload rendering', () => {
       note: 'Departure is within 24h',
     });
     expect(html).toContain('Departure is within 24h');
+  });
+
+  it('renders the OTP code to-rõ trong body EMAIL_OTP', () => {
+    const { html } = renderEmail(EmailType.EMAIL_OTP, { email: 'otp@example.com', otp: '123456' });
+    expect(html).toContain('123456');
+    expect(html).toMatch(/expires in 10 minutes/i);
   });
 
   it('escapes HTML in user-supplied fields', () => {

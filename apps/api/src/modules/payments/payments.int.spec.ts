@@ -177,7 +177,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     // Outbox được enqueue nguyên tử bên trong claim CTE (invariant #7).
     const outbox = await prisma.outbox.findMany({
-      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+      // ADR-0017 §5a: signup giờ enqueue EMAIL_OTP (không còn EMAIL_VERIFICATION)
+      // — loại CẢ HAI type auth khỏi đếm outbox domain booking.
+      where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
     });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
@@ -225,7 +227,10 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     expect(await seatsOf(depMain.id)).toBe(6); // chỉ tăng MỘT LẦN
     expect(
-      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+      await prisma.outbox.count({
+        // ADR-0017 §5a: loại cả EMAIL_OTP (signup) khỏi đếm outbox domain booking.
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
     ).toBe(1);
     expect(await prisma.paymentEvent.count()).toBe(1);
   });
@@ -244,7 +249,10 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     expect(await seatsOf(depMain.id)).toBe(6);
     expect(
-      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+      await prisma.outbox.count({
+        // ADR-0017 §5a: loại cả EMAIL_OTP (signup) khỏi đếm outbox domain booking.
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
     ).toBe(1);
     // Cả hai event đều được log và hoàn tất — cái THỨ HAI không đổi gì.
     const events = await prisma.paymentEvent.findMany();
@@ -300,7 +308,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     // Email refund enqueue một lần mỗi booking — và KHÔNG có email confirmation.
     const outbox = await prisma.outbox.findMany({
-      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+      // ADR-0017 §5a: signup giờ enqueue EMAIL_OTP (không còn EMAIL_VERIFICATION)
+      // — loại CẢ HAI type auth khỏi đếm outbox domain booking.
+      where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
     });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
@@ -418,7 +428,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     // W3 chịu trách nhiệm email refund cho path này: một lần mỗi booking.
     const outbox = await prisma.outbox.findMany({
-      where: { type: { not: EmailType.EMAIL_VERIFICATION } },
+      // ADR-0017 §5a: signup giờ enqueue EMAIL_OTP (không còn EMAIL_VERIFICATION)
+      // — loại CẢ HAI type auth khỏi đếm outbox domain booking.
+      where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
     });
     expect(outbox).toHaveLength(1);
     expect(outbox[0]).toMatchObject({
@@ -463,7 +475,10 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.paidAt).toBeNull();
     expect(await seatsOf(depMain.id)).toBe(3);
     expect(
-      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+      await prisma.outbox.count({
+        // ADR-0017 §5a: loại cả EMAIL_OTP (signup) khỏi đếm outbox domain booking.
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
     ).toBe(0);
 
     const pe = await prisma.paymentEvent.findUniqueOrThrow({
@@ -540,7 +555,10 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       expect(row.status).toBe(BookingStatus.PAID);
     }
     expect(
-      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+      await prisma.outbox.count({
+        // ADR-0017 §5a: loại cả EMAIL_OTP (signup) khỏi đếm outbox domain booking.
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
     ).toBe(10);
   });
 
@@ -571,7 +589,10 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.providerPaymentId).toBeNull();
     expect(await seatsOf(depTight.id)).toBe(7);
     expect(
-      await prisma.outbox.count({ where: { type: { not: EmailType.EMAIL_VERIFICATION } } }),
+      await prisma.outbox.count({
+        // ADR-0017 §5a: loại cả EMAIL_OTP (signup) khỏi đếm outbox domain booking.
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
     ).toBe(0);
   });
 

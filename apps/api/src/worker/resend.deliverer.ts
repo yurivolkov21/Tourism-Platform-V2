@@ -271,6 +271,21 @@ export function renderEmail(
           footer,
         ),
       };
+    // ADR-0017 §5a — plugin emailOTP đè flow link mặc định: verify email giờ
+    // gửi mã 6 số thay vì URL. Mã hiện to-rõ (không phải link) để khách gõ lại
+    // vào form OTP trên web.
+    case EmailType.EMAIL_OTP:
+      return {
+        subject: 'Your verification code',
+        html: wrap(
+          greeting,
+          f('otp')
+            ? `<p>Your verification code is: <strong style="font-size: 24px; letter-spacing: 4px;">${f('otp')}</strong></p>`
+            : '<p>Your verification code is ready.</p>',
+          '<p>This code expires in 10 minutes.</p>',
+          footer,
+        ),
+      };
     default: {
       // Chốt exhaustiveness — EmailType mới sẽ fail ầm ĩ ở đây (và test
       // enum-coverage của spec fail trước).
