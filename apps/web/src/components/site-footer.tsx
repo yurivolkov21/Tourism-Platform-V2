@@ -1,10 +1,10 @@
 'use client';
 
-import { ArrowUpRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SPRING } from '@/lib/motion';
 import { FacebookIcon, InstagramIcon, TwitterIcon, YoutubeIcon } from './icons/social';
 import { Logo } from './logo';
+import { NewsletterForm } from './newsletter-form';
 
 // Review #28: làm lại footer theo forged/Footer (convert 100% lối thiết kế,
 // da thịt token + font dự án): grid 12 — brand 4 cột (logo + mô tả +
@@ -90,31 +90,11 @@ export function SiteFooter() {
               misty terraces, lantern towns — at your pace.
             </p>
 
-            {/* Newsletter no-op (static-first) — khi gắn API đây là ứng viên
-                schema `newsletter_subscribers` (email + consent + nguồn đăng ký) */}
-            <div>
-              <label
-                htmlFor="footer-newsletter"
-                className="mb-3 block text-xs font-semibold tracking-widest uppercase"
-              >
-                Get the monthly travel letter
-              </label>
-              <div className="flex">
-                <input
-                  id="footer-newsletter"
-                  type="email"
-                  placeholder="your@email.com"
-                  className="min-w-0 flex-1 rounded-l-full border border-r-0 bg-card px-5 py-3 text-sm text-card-foreground placeholder:text-muted-foreground/60 focus:border-primary/40 focus:outline-none"
-                />
-                <button
-                  type="button"
-                  aria-label="Subscribe"
-                  className="cursor-pointer rounded-r-full bg-primary px-5 py-3 text-primary-foreground transition-colors hover:bg-primary/90"
-                >
-                  <ArrowUpRightIcon className="size-4" aria-hidden="true" />
-                </button>
-              </div>
-            </div>
+            {/* Newsletter — form client nhỏ tách riêng (`newsletter-form.tsx`,
+                spec §3, task-3-brief.md): validate + honeypot + submit
+                `newsletter.subscribe`, anti-enumeration. Markup/token nhìn
+                giữ NGUYÊN như bản no-op cũ. */}
+            <NewsletterForm />
           </motion.div>
 
           {/* 3 nhóm link — trồi lên stagger */}
