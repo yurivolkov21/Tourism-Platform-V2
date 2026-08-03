@@ -267,6 +267,23 @@ export const messages = {
     register: {
       submitting: 'Creating your account…',
     },
+    // Task 4 (auth-pages-api): forgot/reset password.
+    forgotPassword: {
+      submitting: 'Sending the link…',
+    },
+    resetPassword: {
+      submitting: 'Saving your password…',
+      // Panel khi thiếu/rỗng `?token=` — khuôn theo `unsubscribePage.invalidToken`.
+      invalidToken: {
+        heading: 'This link isn’t working',
+        body: 'The reset link looks incomplete or has expired. Request a fresh one and we’ll get you back on board.',
+        backLink: 'Request a new link',
+      },
+      toast: {
+        title: 'Password updated',
+        body: 'Log in with your new password to continue.',
+      },
+    },
     errors: {
       invalidCredentials: 'Invalid email or password.',
       emailExists: 'An account with this email already exists.',

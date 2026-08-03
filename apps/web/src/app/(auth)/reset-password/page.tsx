@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { ResetPasswordForm } from '@/components/auth/reset-password-form';
 
@@ -14,7 +15,12 @@ export default function ResetPasswordPage() {
       quote="New key, same door — the mountains didn't move."
       author="Minh Quân, Head of Routes"
     >
-      <ResetPasswordForm />
+      {/* Task 4: ResetPasswordForm đọc `token` qua useSearchParams — cùng lý
+          do Suspense của /login (Task 3): Next 16 bắt buộc bọc Suspense
+          quanh client component dùng hook này khi prerender static. */}
+      <Suspense fallback={null}>
+        <ResetPasswordForm />
+      </Suspense>
     </AuthScreen>
   );
 }
