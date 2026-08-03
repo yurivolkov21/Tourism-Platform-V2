@@ -63,8 +63,8 @@ tối ưu độ tươi. Mọi lỗi trên đường này không được phép l
 
 | Biến | Ở đâu | Giá trị |
 | --- | --- | --- |
-| `REVALIDATE_SECRET` | API `config/env.ts` + web (server-only, **KHÔNG** `NEXT_PUBLIC_`) | default dev `dev-revalidate-secret-change-me` cả hai bên (nếp `DEV_UNSUBSCRIBE_SECRET`) — dev chạy liền không cần khai; prod PHẢI set thật |
-| `WEB_URL` | API `config/env.ts` | `z.string().url()` default `http://localhost:3000` |
+| `REVALIDATE_SECRET` | API `config/env.ts` + web (server-only, **KHÔNG** `NEXT_PUBLIC_`) | default dev `dev-revalidate-secret-change-me` cả hai bên (nếp `DEV_UNSUBSCRIBE_SECRET`) — dev chạy liền không cần khai; prod PHẢI set thật (superRefine như các secret khác) |
+| ~~`WEB_URL`~~ → dùng lại `FRONTEND_URL` | API `config/env.ts` | **AMENDED 03/08 lúc lập plan:** env `FRONTEND_URL` (default `http://localhost:3000`, prod đã bắt set domain thật) tồn tại sẵn từ P2 với đúng nghĩa "base URL của web app" — thêm `WEB_URL` là lặp env, vi phạm DRY. Dùng `FRONTEND_URL` |
 
 Cập nhật `.env.example` cả hai app (file env duy nhất được commit).
 
