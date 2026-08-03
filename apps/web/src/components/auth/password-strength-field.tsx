@@ -46,11 +46,23 @@ interface PasswordStrengthFieldProps {
   id: string;
   label: string;
   placeholder?: string;
+  /** Bật chế độ CONTROLLED (Task 3 — register-form cần đọc password thật để
+      gọi authClient.signUp.email). Bỏ trống thì field tự quản state nội bộ
+      như cũ (reset-password-form chưa wire, vẫn dùng bản uncontrolled). */
+  value?: string;
+  onChange?: (value: string) => void;
 }
 
-export function PasswordStrengthField({ id, label, placeholder }: PasswordStrengthFieldProps) {
-  const [password, setPassword] = useState('');
+export function PasswordStrengthField({
+  id,
+  label,
+  placeholder,
+  value,
+  onChange,
+}: PasswordStrengthFieldProps) {
+  const [internalPassword, setInternalPassword] = useState('');
   const [visible, setVisible] = useState(false);
+  const password = value ?? internalPassword;
 
   const checks = REQUIREMENTS.map((req) => ({ met: req.regex.test(password), text: req.text }));
   const score = checks.filter((c) => c.met).length;
@@ -64,7 +76,7 @@ export function PasswordStrengthField({ id, label, placeholder }: PasswordStreng
           type={visible ? 'text' : 'password'}
           placeholder={placeholder}
           value={password}
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) => (onChange ?? setInternalPassword)(e.target.value)}
         />
         <InputGroupAddon align="inline-end">
           <InputGroupButton

@@ -256,6 +256,27 @@ export const messages = {
     },
     backHome: 'Back to home',
   },
+  // Copy THẬT cho login/register wire vào Better Auth (Task 3 auth-pages-api,
+  // spec 2026-08-03) — khối RIÊNG với `auth` ở trên (đó là bản nháp form
+  // static-first trước khi có API thật). `errors` khoá bằng `AuthErrorKey`
+  // (@/lib/auth-errors) nên mọi key lỗi map ra đúng MỘT câu tiếng Anh ổn định.
+  authForms: {
+    login: {
+      submitting: 'Signing in…',
+    },
+    register: {
+      submitting: 'Creating your account…',
+    },
+    errors: {
+      invalidCredentials: 'Invalid email or password.',
+      emailExists: 'An account with this email already exists.',
+      tooManyRequests: 'Too many attempts. Please wait a minute.',
+      invalidOtp: "That code didn't match. Try again.",
+      invalidToken: 'This link has expired or was already used.',
+      notAvailable: 'Google sign-in is not available yet.',
+      generic: 'Something went wrong. Please try again.',
+    },
+  },
   // Booking flow (book → pay → confirm). Login-required; Stripe + PayPal. EN-only (ADR-0005).
   booking: {
     // Inline date-picker field (private-request / booking forms).

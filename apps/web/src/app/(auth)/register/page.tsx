@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { RegisterForm } from '@/components/auth/register-form';
 
@@ -14,7 +15,11 @@ export default function RegisterPage() {
       quote="In 2014 this was four friends and one rented minivan. There is always room for one more."
       author="Đức Anh, co-founder"
     >
-      <RegisterForm />
+      {/* Cùng lý do Suspense với /login: RegisterForm cũng đọc `redirect` qua
+          useSearchParams (nút Google) — xem ghi chú đầy đủ ở login/page.tsx. */}
+      <Suspense fallback={null}>
+        <RegisterForm />
+      </Suspense>
     </AuthScreen>
   );
 }

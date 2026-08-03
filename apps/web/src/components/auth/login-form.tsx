@@ -1,19 +1,63 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { type FormEvent, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/social';
+import { authClient } from '@/lib/auth-client';
+import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { safeRedirect } from '@/lib/safe-redirect';
 import { TicketCard } from './ticket-card';
 
 // Ruột form /login (Task 2 — trang MẪU của cụm auth): heading accent italic,
-// nút Google (UI trước — social backend là nợ phase auth), separator chữ,
-// email + password, remember + forgot, submit full-width, link register.
-// Submit no-op static-first; nợ validate/honeypot/rate-limit ghi ở spec.
+// nút Google, separator chữ, email + password, remember + forgot, submit
+// full-width, link register. Task 3 (auth-pages-api): nối state/handler gọi
+// authClient thật — visual/markup/motion GIỮ NGUYÊN, chỉ thêm state + khối
+// lỗi inline (khuôn `role="alert"` + `text-xs text-destructive` mượn từ
+// contact-split.tsx — repo chưa có khuôn lỗi form auth trước đây).
 export function LoginForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    setPending(true);
+    const { error } = await authClient.signIn.email({ email, password, rememberMe });
+    setPending(false);
+    if (error) {
+      setFormError(mapAuthError(error));
+      return;
+    }
+    router.push(safeRedirect(searchParams.get('redirect')));
+    router.refresh();
+  }
+
+  // Google chuyển hướng khỏi trang khi thành công — chỉ có lỗi (chưa cấu hình
+  // provider ở API) mới còn ở lại để hiện inline.
+  async function handleGoogleSignIn() {
+    setFormError(null);
+    const { error } = await authClient.signIn.social({
+      provider: 'google',
+      callbackURL: `${window.location.origin}${safeRedirect(searchParams.get('redirect'))}`,
+    });
+    if (error) {
+      setFormError(mapAuthError(error));
+    }
+  }
+
   return (
     <TicketCard stub="HN → SAPA · SEAT 07/12 · GATE: LOGIN">
-      <form className="flex flex-col gap-5" onSubmit={(e) => e.preventDefault()}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Welcome back
@@ -26,6 +70,7 @@ export function LoginForm() {
 
         <button
           type="button"
+          onClick={handleGoogleSignIn}
           className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-full border py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
           <GoogleIcon className="size-4" />
@@ -41,11 +86,23 @@ export function LoginForm() {
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="login-email">Email</Label>
-          <Input id="login-email" type="email" placeholder="you@example.com" />
+          <Input
+            id="login-email"
+            type="email"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="login-password">Password</Label>
-          <Input id="login-password" type="password" placeholder="••••••••" />
+          <Input
+            id="login-password"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
         </div>
 
         <div className="flex items-center justify-between text-sm">
@@ -53,7 +110,7 @@ export function LoginForm() {
             htmlFor="login-remember"
             className="flex cursor-pointer items-center gap-2 text-muted-foreground"
           >
-            <Checkbox id="login-remember" />
+            <Checkbox id="login-remember" checked={rememberMe} onCheckedChange={setRememberMe} />
             Remember me
           </label>
           <a href="/forgot-password" className="font-medium text-primary hover:underline">
@@ -61,11 +118,18 @@ export function LoginForm() {
           </a>
         </div>
 
+        {formError && (
+          <p role="alert" className="text-xs text-destructive">
+            {messages.authForms.errors[formError]}
+          </p>
+        )}
+
         <button
           type="submit"
-          className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          disabled={pending}
+          className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Board the trip
+          {pending ? messages.authForms.login.submitting : 'Board the trip'}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">
