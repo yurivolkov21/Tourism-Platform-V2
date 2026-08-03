@@ -1,3 +1,4 @@
+import { Toaster } from '@tourism/ui/components/sonner';
 import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
 import { LenisScroll } from '@/components/lenis-scroll';
@@ -91,6 +92,14 @@ export default function RootLayout({
           <LenisScroll />
           {children}
         </MotionProvider>
+        {/* Bề mặt feedback toàn site (spec 2026-08-03 §5, quyết định user 03/08):
+            sonner đã vendor trong @tourism/ui, token-wired sẵn (`var(--popover)`…
+            — xem sonner.tsx). z-index: bản vendor sonner giữ mặc định của thư
+            viện `[data-sonner-toaster]{z-index:999999999}` (đo trong
+            node_modules/sonner/dist/styles.css) — cao hơn RẤT nhiều `--z-sticky`
+            1100 của navbar (nợ CHANGELOG 30/07), nên KHÔNG cần wire thêm
+            `--z-toast` ở đây. */}
+        <Toaster position="bottom-right" richColors />
       </body>
     </html>
   );

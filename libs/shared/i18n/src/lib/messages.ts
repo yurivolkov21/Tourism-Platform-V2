@@ -2213,6 +2213,124 @@ export const messages = {
       retry: 'Try again',
     },
   },
+  // Form "lá thư" contact (contact-split.tsx, spec 2026-08-03 §2) — bề mặt
+  // GHI công khai ĐẦU TIÊN của site. Lỗi validate hiển thị INLINE dưới field
+  // (không phải toast — nếp đã ghi), khớp min length của
+  // `CreateEnquiryInputSchema` (name ≥2, message ≥10) chạy được ở client.
+  // Toast chỉ cho KẾT QUẢ thao tác (success/error/throttle).
+  contactForm: {
+    errors: {
+      name: {
+        required: 'Enter your name.',
+        tooShort: 'A first name is enough — just 2 characters or more.',
+      },
+      email: {
+        required: 'Enter your email address.',
+        invalid: 'Enter a valid email address, e.g. you@example.com.',
+      },
+      message: {
+        required: 'Tell us a little about your trip.',
+        tooShort: 'A few more words would help — at least 10 characters.',
+      },
+    },
+    submitting: 'Sending your letter…',
+    toast: {
+      success: {
+        title: 'Letter sent — thank you!',
+        body: 'Our local experts read every letter and usually reply within about 24 hours.',
+      },
+      error: {
+        title: "Your letter didn't send",
+        body: 'Something went wrong on our side. Please try again, or email us directly.',
+      },
+      // 429 PUBLIC_WRITE_THROTTLE (5/phút theo IP) — lời lẽ thân thiện, không
+      // đổ lỗi cho khách.
+      throttle: {
+        title: 'Sending a little fast',
+        body: 'Give it about a minute before your next letter — we read every one properly.',
+      },
+    },
+  },
+  // Form newsletter ở footer (site-footer.tsx, spec §3) — LUÔN toast một kiểu
+  // dù email đã tồn tại hay chưa (anti-enumeration của contract, giữ nguyên ở
+  // FE: không thêm nhánh copy nào phân biệt hai trường hợp).
+  newsletterForm: {
+    heading: 'Get the monthly travel letter',
+    inputLabel: 'Email address',
+    inputPlaceholder: 'your@email.com',
+    submitLabel: 'Subscribe',
+    submitting: 'Subscribing…',
+    errors: {
+      email: {
+        required: 'Enter your email address.',
+        invalid: 'Enter a valid email address, e.g. you@example.com.',
+      },
+    },
+    toast: {
+      // Một kiểu DUY NHẤT cho mọi email hợp lệ — kể cả email đã subscribe rồi.
+      success: {
+        title: 'Check your inbox',
+        body: 'You’re on the list — the next travel letter lands in your inbox soon.',
+      },
+      error: {
+        title: "Couldn't subscribe",
+        body: 'Something went wrong on our side. Please try again in a moment.',
+      },
+      throttle: {
+        title: 'Sending a little fast',
+        body: 'Give it about a minute and try again.',
+      },
+    },
+  },
+  // Trang /newsletter/unsubscribe (spec §4) — 4 trạng thái panel: `confirm`
+  // (token hợp lệ, chưa huỷ — GET `unsubscribeConfirm`), `unsubscribed` (vừa
+  // POST huỷ xong trong phiên này), `alreadyUnsubscribed` (GET cho biết token
+  // hợp lệ nhưng đã huỷ từ trước — khách bấm lại link email cũ), `invalidToken`
+  // (thiếu/sai `id`+`token` — KHÔNG 404, panel lỗi thân thiện + link Home).
+  // `email` mọi nơi là bản ĐÃ MASK do API trả (contract `UnsubscribeConfirmResultSchema`).
+  unsubscribePage: {
+    breadcrumbCurrent: 'Unsubscribe',
+    title: 'Manage your email preferences',
+    subtitle: 'Confirm below and we’ll take care of the rest — no account needed.',
+    confirm: {
+      heading: 'Before you go…',
+      body: (email: string) => `You’re about to unsubscribe ${email} from our travel letter.`,
+      button: 'Unsubscribe me',
+      submitting: 'Unsubscribing…',
+    },
+    unsubscribed: {
+      heading: 'You’re unsubscribed',
+      body: 'You won’t receive our travel letter anymore. Changed your mind?',
+      resubscribeButton: 'Re-subscribe',
+      resubscribing: 'Re-subscribing…',
+    },
+    alreadyUnsubscribed: {
+      heading: 'Already unsubscribed',
+      body: (email: string) =>
+        `${email} isn’t receiving our travel letter — you unsubscribed already.`,
+      resubscribeButton: 'Re-subscribe',
+      resubscribing: 'Re-subscribing…',
+    },
+    invalidToken: {
+      heading: 'This link isn’t working',
+      body: 'The unsubscribe link looks incomplete or has expired. If you still want to unsubscribe, reply to any of our emails and we’ll take care of it by hand.',
+      homeLink: 'Back to home',
+    },
+    toast: {
+      unsubscribed: {
+        title: 'Unsubscribed',
+        body: 'You won’t receive our travel letter anymore.',
+      },
+      resubscribed: {
+        title: 'Welcome back',
+        body: 'You’re on the list again — watch your inbox.',
+      },
+      error: {
+        title: 'Something went wrong',
+        body: 'Please try again in a moment.',
+      },
+    },
+  },
 } as const;
 
 export type Messages = typeof messages;
