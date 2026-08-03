@@ -2,7 +2,7 @@ import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ContactSplit } from './contact-split';
 
 // jsdom KHÔNG hiện thực IntersectionObserver, mà mọi `motion.div` trong
@@ -40,6 +40,13 @@ async function fillValidLetter(user: ReturnType<typeof userEvent.setup>) {
     'Slow mornings, street food, and a boat ride at sunset.',
   );
   await user.type(screen.getByLabelText('Your name'), 'Minh Anh');
+}
+
+/** Select region combobox không phải <select> gốc — mở popup + bấm option
+    theo tiền lệ ToursExplorer (dòng ~191). */
+async function pickRegion(user: ReturnType<typeof userEvent.setup>, regionName: RegExp) {
+  await user.click(screen.getByRole('combobox', { name: /Where are you dreaming of/i }));
+  await user.click(await screen.findByRole('option', { name: regionName }));
 }
 
 describe('ContactSplit — honeypot ẩn khỏi accessibility tree', () => {
@@ -86,6 +93,10 @@ describe('ContactSplit — validate inline', () => {
 });
 
 describe('ContactSplit — submit', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
   it('hợp lệ → gọi api.enquiries.create đúng payload, toast success, reset form', async () => {
     create.mockResolvedValueOnce({ id: '0198c9c4-0000-7000-8000-000000000001' });
     const user = userEvent.setup();
@@ -151,5 +162,23 @@ describe('ContactSplit — submit', () => {
       }),
     );
     expect((screen.getByLabelText('Your name') as HTMLInputElement).value).toBe('Minh Anh');
+  });
+
+  it('Select region → payload.interests có region được chọn (dong day onValueChange → state → buildEnquiryPayload)', async () => {
+    create.mockResolvedValueOnce({ id: '0198c9c4-0000-7000-8000-000000000002' });
+    const user = userEvent.setup();
+    render(<ContactSplit />);
+
+    await pickRegion(user, /Northern Vietnam/i);
+    await fillValidLetter(user);
+    await user.click(screen.getByRole('button', { name: 'Send the letter' }));
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith({
+      name: 'Minh Anh',
+      email: 'minh@example.com',
+      message: 'Slow mornings, street food, and a boat ride at sunset.',
+      interests: ['north'],
+    });
   });
 });
