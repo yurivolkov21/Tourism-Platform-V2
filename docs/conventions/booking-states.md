@@ -15,7 +15,7 @@ Cancellation ≠ refund-only: một booking bị hủy (hết đi tour, ghế tr
 với một booking được trả tiền nhưng vẫn đi tour. Vì vậy approve-cancellation
 đặt `CANCELLED` **tường minh**, không đi qua `deriveStatusAfterRefund`.
 
-## Ba ngữ nghĩa terminal
+## Năm ngữ nghĩa terminal
 
 | Flow | Status cuối | Ledger | Ghế | Vì sao |
 | --- | --- | --- | --- | --- |

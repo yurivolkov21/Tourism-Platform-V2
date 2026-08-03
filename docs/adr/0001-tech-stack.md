@@ -4,6 +4,23 @@
 - **Bối cảnh đầy đủ + nguồn kiểm chứng:** bản đề xuất tổng
   (artifact nội bộ, 18/07/2026) — tóm tắt quyết định ghi tại đây làm nguồn sự thật trong repo.
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
+> - **Cache Components bị [ADR-0016](0016-web-data-layer.md) §3 loại** — web dùng
+>   ISR classic (`revalidate = N`), không bật `cacheComponents`/`use cache`;
+>   `apps/web/next.config.ts` không có cờ nào liên quan Cache Components.
+> - **React Compiler chưa bật** — bảng quyết định ghi kèm Next.js nhưng
+>   `apps/web/next.config.ts` hiện chỉ có `transpilePackages`, không cấu hình
+>   `experimental.reactCompiler` hay babel plugin tương ứng.
+> - **oxlint + dependency-cruiser chưa từng vào repo** — grep toàn repo cho hai
+>   tên này chỉ trúng chính ADR này (0 hit trong `package.json`/CI/config nào
+>   khác). Biome vẫn là lint/format duy nhất đang chạy thật (CLAUDE.md).
+> - **TS 7 (tsgo) mới phủ root + `apps/api`** (`typescript: "7.0.2"` ở
+>   `package.json` root và `apps/api/package.json`); `apps/web/package.json`
+>   và `libs/shared/ui/package.json` còn `typescript: "^5"`.
+>
+> Quyết định gốc giữ nguyên văn — đây là ghi nhận tiến độ thi hành, không đảo
+> lựa chọn.
+
 ## Bối cảnh
 
 Nexora (Nx + NestJS 11 + Prisma 7 + Supabase Auth + Next 16 + Expo 54) hoàn

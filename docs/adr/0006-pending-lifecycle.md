@@ -1,12 +1,19 @@
 # ADR-0006 — Vòng đời booking PENDING: hết hạn, tự hủy, và checkout phục hồi được
 
-- **Trạng thái:** **Accepted (2026-07-22).** (Proposed 2026-07-21.)
+- **Trạng thái:** **Accepted (2026-07-22).** (Proposed 2026-07-21.) — **đã thi
+  hành trọn 22/07 (5/5 mục)**.
 - **Bối cảnh:** [rà soát độc lập 21/07](../analysis/2026-07-21-independent-review.md)
   (gói pending-expiry BK-1/BK-2/PAY-1/WRK-1); nối tiếp
   [infra-parity #8](../analysis/2026-07-19-infra-parity-nexora.md),
   [booking-states.md](../conventions/booking-states.md),
   [ADR-0002](0002-payment-gateway-refund-ledger.md),
   [độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md).
+
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):** cả 5 mục Quyết định
+> đều có code chạy thật: BK-1 (`f5b546a`), PAY-1 (`d40597b`), WRK-1
+> (`988e8b8` — `apps/api/src/worker/pending-sweep.service.ts`), BK-2
+> (`3e17568`), dọn 2 comment nói dối (`bb3bd8d`). Quyết định gốc giữ nguyên
+> văn — đây chỉ là xác nhận đã thi hành.
 
 > **Chốt khi Accept (2026-07-22):**
 > - **Phạm vi thu gọn:** đề xuất cũ "mở rộng bao BK-R1/PAY-R1/TQ-1" giờ **moot** — ba defect
@@ -81,4 +88,6 @@ Không đụng đường tiền/ghế.
 ## Kế hoạch triển khai
 
 Soạn chi tiết (task-by-task, TDD + mutation-test) khi Accepted → `docs/plans/`. Chỉ
-bắt đầu code sau khi ADR này Accepted và trên branch riêng `feat/refund-hardening`.
+bắt đầu code sau khi ADR này Accepted và trên branch riêng `feat/pending-lifecycle`
+*(sửa 03/08 — lỗi copy-paste từ ADR-0009, branch thật ghi trong
+[CHANGELOG](../changelog/2026-07-p0-p3a-backend.md#2026-07-22--vòng-đời-pending-đóng-lỗ-mồ-côi-branch-featpending-lifecycle))*.

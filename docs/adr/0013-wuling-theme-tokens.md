@@ -1,5 +1,14 @@
 # ADR-0013 — Theme Wuling + region tint qua pipeline `@tourism/tokens` có sẵn
 
+> ⚠️ **Bị [ADR-0015](0015-retire-region-tint.md) đảo MỘT PHẦN (30/07):** 3 khối
+> `[data-region='north' | 'central' | 'south']` bị xoá khỏi `tokens.mjs`; hệ
+> quả "chỉ cần `data-region` trên container là ăn tint" (ghi ở Hệ quả cuối
+> file) **không còn đúng** — trang vùng nay trỏ thẳng token brand (`--primary`,
+> `--hero`…) để lật đúng theo theme. `regionDefaults` ở `:root` sống sót cho
+> 4 file nhóm "chỉ mượn bảng màu" (`auth-screen.tsx`, `password-strength-field.tsx`,
+> `home/contact.tsx`, `contact/contact-cta.tsx`) — chúng không dùng tint nên
+> không đổi gì. *(Cập nhật 2026-08-03 — đại tu docs, đối chiếu code)*
+
 - **Trạng thái:** Accepted (2026-07-22)
 - **Bối cảnh:** Nối tiếp [ADR-0011](0011-p3b-web-architecture.md) #4 (tokens-only,
   wire theme "giai đoạn sau") và [ADR-0012](0012-typeset-typography.md) (typeset

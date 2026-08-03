@@ -2,7 +2,7 @@
 
 - **Trạng thái:** user duyệt design 28/07/2026, chờ plan
 - **Phase:** P3b web, đợt 1 của loạt "trả nợ trang tĩnh còn thiếu"
-- **Tiền đề:** [báo cáo tiến độ 28/07](../CHANGELOG.md) — v2 thiếu 11 trang khách so
+- **Tiền đề:** [báo cáo tiến độ 28/07](../changelog/2026-07-p3b-static.md) — v2 thiếu 11 trang khách so
   với Nexora; cụm này trả 2 trang đầu
 
 ## 1. Mục tiêu

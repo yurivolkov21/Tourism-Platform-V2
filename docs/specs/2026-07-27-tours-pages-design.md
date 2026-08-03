@@ -468,7 +468,7 @@ Năm khoản đã xác định. Không cái nào chặn cụm tĩnh; tất cả 
    `PostsService` đang làm.
 
    **Nhưng mức độ ĐÃ TĂNG sau đợt 28/07**, vì [gallery ảnh đã được
-   dựng](../CHANGELOG.md): khảm + lightbox + `MockMediaItem` gương đúng
+   dựng](../changelog/2026-07-p3b-static.md): khảm + lightbox + `MockMediaItem` gương đúng
    `MediaItemSchema`. Lúc gắn API mà `tour.media` không tồn tại thì `TourGallery`
    trả `null` và cả khu ảnh **biến mất khỏi trang**. So với #4: #4 gãy **im
    lặng** (trả kết quả thiếu, không dấu hiệu), #1 gãy **ồn ào** (mất hẳn một khu

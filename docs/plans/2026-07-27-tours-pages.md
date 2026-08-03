@@ -370,7 +370,7 @@ pnpm gate
 Trong `docs/README.md`, bảng ADR, thêm hàng:
 
 ```markdown
-| [0014](adr/0014-web-component-testing.md) | Test tầng component cho `apps/web` — Vitest 2 project (node + jsdom) + Testing Library, ranh giới với test logic thuần |
+| [0014](../adr/0014-web-component-testing.md) | Test tầng component cho `apps/web` — Vitest 2 project (node + jsdom) + Testing Library, ranh giới với test logic thuần |
 ```
 
 - [ ] **Bước 8: Commit**

@@ -5,6 +5,20 @@
   media ra API; cần chốt hợp đồng trước khi các module media sau (tour media,
   admin CRUD ở P4) kế thừa
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
+> - **Hợp đồng chạy đúng phía API, nhưng web CHƯA có consumer nào.** `JournalPost`
+>   (VM blog) không có field media —
+>   [apps/web/src/lib/api/posts.ts:14-27](../../apps/web/src/lib/api/posts.ts);
+>   `post-card.tsx` và mọi component ảnh khác của web (28 file) dùng
+>   `ImagePlaceholder` thay ảnh thật; `siteMedia.list` — 0 nơi gọi trong
+>   `apps/web/src`.
+> - Mốc "web render `url` (P3b/P4)" ở Hệ quả nay chỉ còn đúng **P4** — P3b đã
+>   merge hết cụm Blog/Tours/Destinations mà không gắn media thật (chính sách
+>   ảnh hiện hành: toàn site `ImagePlaceholder`, xem `docs/README.md` dòng P3b).
+>
+> Quyết định gốc giữ nguyên văn — hợp đồng vẫn đúng như thiết kế, chỉ chưa có
+> ai tiêu thụ ở web.
+
 ## Bối cảnh
 
 `MediaAsset` lưu `publicId` của Cloudinary (polymorphic theo

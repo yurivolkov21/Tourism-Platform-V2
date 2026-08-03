@@ -137,7 +137,10 @@ pnpm lint:fix                    # biome tự sửa format + lint
   một số hạng thành gạch đầu dòng và **nói sai con số đã ghi**; MD032 chèn thêm
   dòng trắng quanh nó. Đã dính 28/07: 9 dấu + 27 dòng trắng bị đổi trong **entry
   cũ** chỉ vì mở CHANGELOG ra rồi save (`.vscode/settings.json` pin formatter
-  markdown = extension markdownlint). Còn **6 chỗ** như vậy trong file. Vì vậy:
+  markdown = extension markdownlint). Các chỗ như vậy nay nằm TRỌN trong
+  `docs/changelog/*.md` (archive tách 03/08 — 4 dòng cột 0, cùng luật bất
+  biến); file `docs/CHANGELOG.md` chính hiện KHÔNG còn dòng `+` cột 0 nào,
+  giữ vậy. Vì vậy:
   entry mới **không bao giờ** để `+` ở đầu dòng (viết `và`, hoặc gói cả tổng vào
   một dòng), và **luôn `git diff` file .md trước khi stage** — churn kiểu này
   không hiện ở `pnpm gate` vì Biome bỏ qua `.md` hoàn toàn (đo được:

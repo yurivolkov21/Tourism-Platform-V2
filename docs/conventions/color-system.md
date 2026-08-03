@@ -63,11 +63,34 @@ Tonal ramp (cho tokens): ngọc `#EDF4F2 · #C9DDD9 · #8FBAB2 · #4C8D83 · #2E
 Tỷ lệ phối chuẩn (đúc kết từ demo landing được duyệt): sương ~62% · celadon ~16%
 · ngọc ~12% · mực ~6% · đỏ/vàng vài %. **Cái đẹp nằm ở liều lượng, không ở mã lẻ.**
 
-## 4. Ba vùng — luật 90/10
+## 4. Ba vùng — tint đã RÚT khỏi luật sống (xem ADR-0015)
+
+> **Cập nhật 30/07/2026 — mục này KHÔNG còn là luật sống, chỉ là ghi chú lịch
+> sử.** Bản dưới đây (viết 22/07) mô tả luật 90/10: brand chiếm ~90% site, mỗi
+> vùng giữ ~10% qua lớp `[data-region='north'|'central'|'south']` phủ 6 slot
+> `--region-*`/vùng. Dựng xong và xem thật, user bác — ba sắc làm giao diện
+> mất đồng nhất với phần còn lại của site, và màu không phải đòn bẩy đúng để
+> tạo bản sắc vùng. [ADR-0015](../adr/0015-retire-region-tint.md) rút lớp này
+> **TOÀN SITE**: ba khối `[data-region]` đã XOÁ khỏi `tokens.mjs`,
+> `generated/tokens.css` không còn khối đó — khoá bằng
+> `libs/shared/tokens/src/lib/tokens.spec.ts`:
+> `expect(css).not.toContain('[data-region')`. Trang vùng, Home gallery và
+> About timeline/gallery giờ trỏ thẳng token brand (`--primary`, `--hero`,
+> `--secondary`, `--rating`…) nên lật đúng theo theme; bản sắc vùng chuyển
+> sang **cấu trúc** (mùa-đi 12 tháng · timeline 3 chặng · 3 bưu thiếp) thay vì
+> màu.
+>
+> `regionDefaults` ở `:root` (giá trị đo trong bảng dưới) **vẫn còn trong
+> `tokens.mjs`** — nhưng chỉ 4 file nhóm hai (auth ×2, `home/contact`,
+> `contact-cta`) còn mượn nó làm bảng màu phụ; chúng không có tổ tiên
+> `[data-region]` nên việc rút không đổi gì ở đó. Ba palette Bắc/Trung/Nam
+> chi tiết bên dưới tả lớp override **đã bị xoá** — giữ lại làm bản ghi nguồn
+> gốc màu (từ đâu ra, đo thế nào), đọc ADR-0015 để biết hiện trạng thi hành.
 
 Vùng KHÔNG BAO GIỜ đụng nút/chữ/form (lãnh thổ brand). Mỗi vùng chỉ được:
 hero trang vùng, eyebrow, chip vùng, tint ảnh card. Cả ba vùng cộng lại chỉ
-thêm ~12 giá trị token (không phải 3 palette đầy đủ).
+thêm ~12 giá trị token (không phải 3 palette đầy đủ). *(Mô tả ý đồ ban đầu
+22/07 — không còn là hành vi thi hành sau 30/07, xem khối cập nhật trên.)*
 
 ### Bắc — codename Arcane (sương núi, đá vôi: Hạ Long/Sa Pa/Hà Giang)
 

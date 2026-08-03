@@ -7,6 +7,32 @@
   (media hoãn có chủ đích). Dữ kiện nền: [rà soát docs ↔ code 30/07](../analysis/2026-07-30-docs-audit-progress.md)
   và [đối chiếu Nexora tầng dữ liệu web 31/07](../analysis/2026-07-31-web-data-layer-parity-nexora.md).
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
+> - **On-demand revalidation thành NỢ QUÁ HẠN.** Bước 1–6 của lộ trình nối API
+>   đã merge xong (xem [docs/README.md](../README.md) dòng P3b Web) nhưng
+>   **0 dòng code** cho route `/api/revalidate` hay module gọi sang từ API —
+>   grep `revalidateTag`/`/api/revalidate` trong `apps/web/src` và `apps/api/src`
+>   ra 0 hit. Nợ có kế hoạch ở bản gốc nay đáng lên lịch cụ thể, không còn là
+>   "sau bước 1–4" mơ hồ.
+> - **"Toast quyết ở form đầu tiên" ĐÃ CHỐT 03/08:** sonner cài thật
+>   (`apps/web/package.json` — `sonner: ^2.0.7`), `<Toaster>` vendor qua
+>   `@tourism/ui` mount toàn site ở
+>   [apps/web/src/app/layout.tsx:102](../../apps/web/src/app/layout.tsx) (form
+>   Contact/Newsletter — bước 5+6).
+> - **Mock sống bổ sung `mocks/auth.ts`** — [apps/web/src/mocks/auth.ts](../../apps/web/src/mocks/auth.ts)
+>   chờ bước 7 (session Better Auth); danh sách 4 mock-không-endpoint + team/offices
+>   ở Quyết định 5 không đổi. Lớp catalogue (`tours`/`destinations`/`journal`…)
+>   đã chết hết đúng thiết kế của mục này.
+> - **Bảng `lib/api/` nay có thêm 2 file:** `resilience.ts` (`settle()`/
+>   `contentState()` — khuôn tri-state cho đường ĐỌC, tách ra từ bước 1) và
+>   `submit.ts` (`classifySubmitError`/`submitToast` — đường GHI, bước 5+6;
+>   vẫn KHÔNG auto-retry mutation đúng Quyết định 6) —
+>   [apps/web/src/lib/api/](../../apps/web/src/lib/api/) cạnh `env.ts`,
+>   `client.ts`, `tags.ts` và các module theo resource.
+>
+> Quyết định gốc giữ nguyên văn — đây là ghi nhận tiến độ + nợ đến hạn, không
+> đảo kiến trúc.
+
 ## Bối cảnh
 
 19 trang web đã dựng đều là SSG từ `apps/web/src/mocks/**`; **0 trang gọi API** và
@@ -22,8 +48,9 @@ Ràng buộc đã đo:
 - Mọi lỗi HTTP đã về MỘT envelope `{defined, code, status, message, data}`
   (ADR-0010) — kể cả lỗi từ guard và route Nest thuần.
 - `loading.tsx` ở bất kỳ segment cha nào của route động gây **soft 404** (HTTP
-  200 kèm UI 404) — đo được, ghi ở [plan Tours](../plans/2026-07-27-tours-pages.md)
-  §"Soft 404 vì `loading.tsx`".
+  200 kèm UI 404) — đo được, nay là luật riêng:
+  [soft-404-loading-tsx](../conventions/soft-404-loading-tsx.md) (bản đo gốc
+  trong plan Tours).
 - API throttle ghi công khai **theo IP** (`PUBLIC_WRITE_THROTTLE` trên enquiries
   + newsletter) — nơi fetch chạy quyết định budget rate-limit của khách.
 

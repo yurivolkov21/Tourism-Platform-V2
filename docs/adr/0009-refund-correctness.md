@@ -14,6 +14,18 @@
 > ở [ADR-0006](0006-pending-lifecycle.md) (Proposed), làm sau. Số: 0007 reserve outbox,
 > 0008 admin-bootstrap → ADR này dùng `0009`.
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):** tham chiếu "ADR-0006
+> Proposed, làm sau" ở trên đã lỗi thời — [ADR-0006](0006-pending-lifecycle.md)
+> nay **Accepted và đã thi hành trọn 22/07** (`apps/api/src/worker/pending-sweep.service.ts`
+> chạy thật qua pg-boss). Điều này đổi bản chất đánh đổi #3 ở Quyết định: câu
+> "nguồn orphan-thật duy nhất là pending-expiry của sub-project A **chưa dựng**"
+> không còn đúng — pending-sweep giờ **đang chạy sống**, nên khe crash giữa
+> `refund.create` và CTE flip (chấp nhận ở #3) chuyển từ **giả định lý thuyết**
+> thành **rủi ro sống, đáng canh** khi P4/monitoring vào — bất kỳ orphan thật
+> nào sweep tạo ra đều có thể trúng đúng khe đó. Quyết định gốc giữ nguyên văn
+> (đánh đổi vẫn được chấp nhận); đây là nâng cấp mức độ rủi ro cần theo dõi,
+> không phải đảo quyết định.
+
 ## Bối cảnh
 
 Hệ tiền-VÀO (claim ghế, oversell CHECK, idempotency webhook) chắc; **tiền-RA (refund /

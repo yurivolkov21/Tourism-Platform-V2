@@ -7,6 +7,22 @@
 > Số ADR: `0007` đã bị `schema.prisma` "đặt chỗ" cho outbox (3 tham chiếu, file
 > chưa tồn tại — docs-debt sẵn có, có thể backfill riêng), nên ADR này dùng `0008`.
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
+> - **Đã thi hành trọn (4/4):** AUTH-2 outbox thật —
+>   [apps/api/src/auth/auth.config.ts:39-53](../../apps/api/src/auth/auth.config.ts)
+>   (không còn `console.log`); SEC-1 promote gated `emailVerified`; hai điểm
+>   promote (verify-hook + `OnApplicationBootstrap` reconcile) —
+>   [apps/api/src/auth/admin-reconcile.ts](../../apps/api/src/auth/admin-reconcile.ts);
+>   `requireEmailVerification: false` giữ nguyên cho khách thường.
+> - **Anchor test dời:** `auth.int.spec.ts:69-79` nay là
+>   [`:95-104`](../../apps/api/src/auth/auth.int.spec.ts) (test b — SEC-1 chưa
+>   verify không promote) và
+>   [`:120-127`](../../apps/api/src/auth/auth.int.spec.ts) (test b2 — verify
+>   xong mới promote ADMIN).
+>
+> Quyết định gốc giữ nguyên văn — đây chỉ là xác nhận đã thi hành + cập nhật
+> con trỏ dòng.
+
 ## Bối cảnh
 
 Promote admin hiện chỉ xảy ra trong hook `databaseHooks.user.create.after`

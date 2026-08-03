@@ -4,6 +4,20 @@
 - **Bối cảnh:** phát hiện A5 trong
   [quét sâu Nexora](../analysis/2026-07-19-nexora-deep-sweep.md)
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):**
+> - **4 controller public mới thêm ở P3a** (bề mặt public giờ 9 controller,
+>   không còn 5 như bảng gốc):
+>   - `posts.controller` — [apps/api/src/modules/posts/posts.controller.ts:9](../../apps/api/src/modules/posts/posts.controller.ts)
+>   - `site-media.controller` — [apps/api/src/modules/site-media/site-media.controller.ts:10](../../apps/api/src/modules/site-media/site-media.controller.ts)
+>   - `enquiries.controller` — [apps/api/src/modules/enquiries/enquiries.controller.ts:13](../../apps/api/src/modules/enquiries/enquiries.controller.ts)
+>   - `newsletter.controller` — [apps/api/src/modules/newsletter/newsletter.controller.ts:12](../../apps/api/src/modules/newsletter/newsletter.controller.ts)
+>   Lý do trùng mẫu bảng gốc: nội dung marketing/form công khai, khách chưa
+>   đăng nhập phải dùng được (đúng comment tại chỗ ở từng file: thiếu
+>   `@Public()` là 401 chết cả tính năng).
+>
+> Quyết định gốc giữ nguyên văn — đây là ghi nhận bề mặt public mở rộng theo
+> phase, không đảo cơ chế fail-closed.
+
 ## Bối cảnh
 
 v2 hiện đăng ký auth **opt-in từng controller**: route nào cần bảo vệ thì
@@ -39,7 +53,7 @@ Bề mặt public sau khi đổi (mọi chỗ khác mặc định cần auth):
 
 | Nơi | Vì sao public |
 | --- | --- |
-| `catalog.controller` (6 endpoint) | Catalogue là nội dung marketing, khách chưa đăng nhập phải xem được |
+| `catalog.controller` (5 endpoint) *(sửa 03/08 — đếm sai từ đầu, code luôn 5)* | Catalogue là nội dung marketing, khách chưa đăng nhập phải xem được |
 | `health.controller` | Probe hạ tầng — nền tảng deploy gọi, không có session |
 | `webhooks.controller` (2) | Stripe/PayPal gọi vào; xác thực bằng **chữ ký HMAC**, không phải session |
 | `auth.controller` | Mount Better Auth — chính là nơi đăng nhập, không thể đòi đã đăng nhập |

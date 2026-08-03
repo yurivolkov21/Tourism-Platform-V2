@@ -5,6 +5,18 @@
   Nối tiếp [ADR-0001](0001-tech-stack.md) (stack + chiến lược UI), [ADR-0010](0010-infra-hardening.md)
   (error-envelope thống nhất cho FE), CLAUDE.md #6 (tokens-only) · toolchain Biome.
 
+> **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):** lời hứa ở Quyết định
+> 5 ("typed oRPC client từ `@tourism/contract`") đã chốt chi tiết + thi hành ở
+> [ADR-0016](0016-web-data-layer.md) (`OpenAPILink`, ghim `@orpc/*` 1.14.8,
+> `lib/api/client.ts`). Tính tới 03/08, việc nối API đã đi được **6/10 bước**
+> của lộ trình (bước 1 Blog · 2+3 Tours catalogue · 4 Destinations · 5+6 form
+> Contact/Newsletter — tất cả ✅ merge, xem
+> [docs/README.md](../README.md) dòng P3b Web); bước 7 (session Better Auth)
+> và 8–10 (khu tài khoản) còn mở.
+>
+> Quyết định gốc giữ nguyên văn — đây là ghi nhận lời hứa đã thành hiện thực +
+> tiến độ thi hành.
+
 ## Bối cảnh
 
 `apps/web`/`apps/admin` mới là skeleton P0 (rỗng). Cần dựng nền web hiện đại, và một bộ **components/blocks
