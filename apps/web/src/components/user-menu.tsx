@@ -10,7 +10,8 @@ import {
   DropdownMenuTrigger,
 } from '@tourism/ui/components/dropdown-menu';
 import { LogOutIcon, TicketIcon, UserIcon } from 'lucide-react';
-import { MOCK_SESSION } from '@/mocks/auth';
+import { useRouter } from 'next/navigation';
+import { authClient, useSession } from '@/lib/auth-client';
 
 /**
  * Khoảng cách từ avatar xuống dropdown, tính bằng px.
@@ -19,7 +20,8 @@ import { MOCK_SESSION } from '@/mocks/auth';
  * từ chính trigger, nhưng avatar nằm GIỮA dải navbar: nó cao 32px và căn giữa một hàng
  * cao 40px trong `p-4`, nên dải navbar còn thừa đúng **20px** bên dưới nó. Với offset 4
  * thì `popup.top − nav.bottom = −16px` — dropdown chui vào navbar, và hit-test giữa vùng
- * chồng cho ra chính `<nav>` (đo 30/07 với `MOCK_SESSION` tạm bật `SAMPLE_USER`).
+ * chồng cho ra chính `<nav>` (đo 30/07 với session giả có user, bật tạm qua
+ * hằng số mock hồi đó dùng — trước khi Task 6 nối `useSession()` thật).
  *
  * ⚠️ KHÁC con số 34 của `NAV_DROPDOWN_SIDE_OFFSET` ở `destinations-menu.tsx`, và **đừng
  * gộp hai hằng số lại**: cùng một dải navbar, nhưng trigger ở đó là CHỮ cao 20px nên
@@ -33,16 +35,33 @@ export const USER_MENU_SIDE_OFFSET = 28;
 
 // Navbar auth control (convert từ Nexora auth/user-menu.tsx, review navbar):
 // chưa đăng nhập → link "Log in"; đã đăng nhập → avatar tròn mở dropdown
-// (tên/email · My account · My bookings · Sign out). State đọc từ mock
-// (static-first) — thay bằng Better Auth client ở phase auth; các item
-// trỏ #top vì trang đích chưa dựng.
+// (tên/email · My account · My bookings · Sign out). Task 6 (auth-pages-api):
+// state đọc từ `useSession()` (Better Auth client) thay cho hằng mock tĩnh
+// cũ; "My account"/"My bookings" VẪN trỏ `#top` — trang đích của hai mục
+// này chưa dựng (nợ đã ghi từ bản mock, chưa tới lượt trong plan này).
 export function UserMenu({ linkClassName }: { linkClassName?: string }) {
-  if (!MOCK_SESSION) {
+  const { data, isPending } = useSession();
+  const router = useRouter();
+
+  // isPending cũng render nhánh chưa đăng nhập: BA cần một round-trip
+  // `/get-session` trước khi biết chắc, và trong lúc chờ thà hiện "Log in"
+  // ổn định còn hơn chớp avatar rồi rớt xuống nếu hoá ra chưa đăng nhập.
+  if (isPending || !data?.user) {
     return (
       <a href="/login" className={linkClassName}>
         Log in
       </a>
     );
+  }
+
+  const { user } = data;
+
+  // Sign out CLIENT-SIDE (không server action): store BA cập nhật navbar
+  // ngay lập tức, không cần đợi full reload — bài học Nexora, ADR-0017 §2.
+  async function handleSignOut() {
+    await authClient.signOut();
+    router.push('/');
+    router.refresh();
   }
 
   return (
@@ -57,13 +76,13 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         }
       >
         <Avatar className="size-8">
-          <AvatarFallback>{MOCK_SESSION.name.charAt(0)}</AvatarFallback>
+          <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={USER_MENU_SIDE_OFFSET} className="w-56">
         <div className="px-2 py-1.5">
-          <p className="truncate text-sm font-medium">{MOCK_SESSION.name}</p>
-          <p className="truncate text-xs text-muted-foreground">{MOCK_SESSION.email}</p>
+          <p className="truncate text-sm font-medium">{user.name}</p>
+          <p className="truncate text-xs text-muted-foreground">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
@@ -78,8 +97,7 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          {/* No-op ở bản mock — gắn signOut thật ở phase auth */}
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={handleSignOut}>
             <LogOutIcon aria-hidden="true" />
             Sign out
           </DropdownMenuItem>
