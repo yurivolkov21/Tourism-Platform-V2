@@ -78,26 +78,44 @@ export function OtpForm({
 
     setFormError(null);
     setPending(true);
-    const { error } = await authClient.emailOtp.verifyEmail({ email, otp });
-    setPending(false);
-    if (error) {
-      // OTP sai — CHỈ hiện lỗi inline, KHÔNG đụng `secondsLeft` (countdown
-      // resend giữ nguyên, đúng yêu cầu brief).
-      setFormError(mapAuthError(error));
-      return;
-    }
+    // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
+    // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
+    // nút kẹt pending vĩnh viễn và khách không thấy lỗi gì cả.
+    try {
+      const { error } = await authClient.emailOtp.verifyEmail({ email, otp });
+      if (error) {
+        // OTP sai — CHỈ hiện lỗi inline, KHÔNG đụng `secondsLeft` (countdown
+        // resend giữ nguyên, đúng yêu cầu brief).
+        setFormError(mapAuthError(error));
+        return;
+      }
 
-    toast.success(messages.authForms.verifyEmail.toast.title, {
-      description: messages.authForms.verifyEmail.toast.body,
-    });
-    router.push(safeRedirect(redirect));
-    router.refresh();
+      toast.success(messages.authForms.verifyEmail.toast.title, {
+        description: messages.authForms.verifyEmail.toast.body,
+      });
+      router.push(safeRedirect(redirect));
+      router.refresh();
+    } catch {
+      setFormError('generic');
+    } finally {
+      setPending(false);
+    }
   }
 
   async function handleResend() {
-    setSecondsLeft(RESEND_SECONDS);
-    if (isLiveMode && email) {
+    if (!isLiveMode || !email) {
+      // Static mode (2FA, chưa nối API) — giữ hành vi cũ: chỉ reset đếm ngược.
+      setSecondsLeft(RESEND_SECONDS);
+      return;
+    }
+    setFormError(null);
+    try {
       await authClient.emailOtp.sendVerificationOtp({ email, type: 'email-verification' });
+      setSecondsLeft(RESEND_SECONDS);
+    } catch {
+      // fetch reject thật (mạng đứt) — hiện lỗi generic, KHÔNG reset đếm
+      // ngược để khách biết trạng thái thật và thử lại đúng lúc.
+      setFormError('generic');
     }
   }
 

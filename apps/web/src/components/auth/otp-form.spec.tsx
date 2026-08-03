@@ -118,6 +118,43 @@ describe('OtpForm — verify-email (có email)', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('lỗi mạng thật (promise reject từ verifyEmail) → hiện errors.generic, nút hết pending', async () => {
+    verifyEmail.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<OtpForm {...baseProps} email="minh@example.com" />);
+
+    await typeOtp(user, '123456');
+    const submitButton = screen.getByRole('button', { name: 'Stamp my ticket' });
+    await user.click(submitButton);
+
+    expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    expect(submitButton).not.toBeDisabled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('resend lỗi mạng thật (promise reject) → hiện errors.generic, KHÔNG reset đếm ngược', async () => {
+    vi.useFakeTimers();
+    sendVerificationOtp.mockRejectedValueOnce(new Error('network down'));
+    render(<OtpForm {...baseProps} email="minh@example.com" />);
+
+    for (let i = 0; i < 61; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
+    expect(screen.getByRole('button', { name: 'Resend the code' })).toBeInTheDocument();
+
+    // Chuyển về real timers trước khi click + waitFor — cùng lý do các test
+    // resend/OTP sai ở trên (mixing waitFor với fake timers hay treo).
+    vi.useRealTimers();
+    fireEvent.click(screen.getByRole('button', { name: 'Resend the code' }));
+
+    expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    // Nút "Resend the code" vẫn còn đó — đếm ngược KHÔNG bị reset về 60s sau
+    // khi resend lỗi mạng thật.
+    expect(screen.getByRole('button', { name: 'Resend the code' })).toBeInTheDocument();
+  });
+
   it('nút resend (sau khi countdown về 0) → gọi sendVerificationOtp đúng type', async () => {
     vi.useFakeTimers();
     sendVerificationOtp.mockResolvedValueOnce({ data: {}, error: null });

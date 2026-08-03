@@ -20,6 +20,10 @@ describe('mapAuthError', () => {
     expect(mapAuthError({ status: 429 })).toBe('tooManyRequests');
   });
 
+  it('code chứa ATTEMPTS -> tooManyRequests (OTP sai quá 5 lần, BA trả FORBIDDEN không phải 429)', () => {
+    expect(mapAuthError({ status: 403, code: 'TOO_MANY_ATTEMPTS' })).toBe('tooManyRequests');
+  });
+
   it('code chứa OTP -> invalidOtp', () => {
     expect(mapAuthError({ status: 400, code: 'INVALID_OTP' })).toBe('invalidOtp');
     expect(mapAuthError({ status: 400, code: 'OTP_EXPIRED' })).toBe('invalidOtp');

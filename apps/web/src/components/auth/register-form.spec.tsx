@@ -88,6 +88,20 @@ describe('RegisterForm — submit', () => {
     );
   });
 
+  it('lỗi mạng thật (promise reject từ signUp.email) → hiện errors.generic, nút hết pending', async () => {
+    signUpEmail.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+
+    await fillValidRegistration(user);
+    const submitButton = screen.getByRole('button', { name: 'Create my account' });
+    await user.click(submitButton);
+
+    expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    expect(submitButton).not.toBeDisabled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('422 emailExists → text lỗi i18n hiện inline, KHÔNG push', async () => {
     signUpEmail.mockResolvedValueOnce({ data: null, error: { status: 422 } });
     const user = userEvent.setup();

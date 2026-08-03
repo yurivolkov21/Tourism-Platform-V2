@@ -34,25 +34,38 @@ export function RegisterForm() {
     if (!agreedToTerms) return;
     setFormError(null);
     setPending(true);
-    const { error } = await authClient.signUp.email({ name, email, password });
-    setPending(false);
-    if (error) {
-      setFormError(mapAuthError(error));
-      return;
+    // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
+    // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
+    // nút kẹt pending vĩnh viễn và khách không thấy lỗi gì cả.
+    try {
+      const { error } = await authClient.signUp.email({ name, email, password });
+      if (error) {
+        setFormError(mapAuthError(error));
+        return;
+      }
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+    } catch {
+      setFormError('generic');
+    } finally {
+      setPending(false);
     }
-    router.push(`/verify-email?email=${encodeURIComponent(email)}`);
   }
 
   // Google chuyển hướng khỏi trang khi thành công — chỉ có lỗi (chưa cấu hình
   // provider ở API) mới còn ở lại để hiện inline. Cùng handler với login-form.
   async function handleGoogleSignIn() {
     setFormError(null);
-    const { error } = await authClient.signIn.social({
-      provider: 'google',
-      callbackURL: `${window.location.origin}${safeRedirect(searchParams.get('redirect'))}`,
-    });
-    if (error) {
-      setFormError(mapAuthError(error));
+    try {
+      const { error } = await authClient.signIn.social({
+        provider: 'google',
+        callbackURL: `${window.location.origin}${safeRedirect(searchParams.get('redirect'))}`,
+      });
+      if (error) {
+        setFormError(mapAuthError(error));
+      }
+    } catch {
+      // fetch reject thật (mạng đứt) — cùng lý do khối try/catch ở trên.
+      setFormError('generic');
     }
   }
 

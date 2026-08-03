@@ -94,6 +94,19 @@ describe('ResetPasswordForm — submit', () => {
     expect(toastSuccess).toHaveBeenCalledTimes(1);
   });
 
+  it('lỗi mạng thật (promise reject từ resetPassword) → hiện errors.generic, nút hết pending', async () => {
+    resetPassword.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<ResetPasswordForm />);
+
+    const submitButton = screen.getByRole('button', { name: 'Save and board again' });
+    await fillAndSubmit(user);
+
+    expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    expect(submitButton).not.toBeDisabled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('token hỏng (mock error code TOKEN) → text invalidToken hiện inline, KHÔNG push', async () => {
     resetPassword.mockResolvedValueOnce({ data: null, error: { code: 'INVALID_TOKEN' } });
     const user = userEvent.setup();

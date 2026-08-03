@@ -32,16 +32,24 @@ export function ResetPasswordForm() {
     if (!token) return;
     setFormError(null);
     setPending(true);
-    const { error } = await authClient.resetPassword({ newPassword: password, token });
-    setPending(false);
-    if (error) {
-      setFormError(mapAuthError(error));
-      return;
+    // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
+    // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
+    // nút kẹt pending vĩnh viễn và khách không thấy lỗi gì cả.
+    try {
+      const { error } = await authClient.resetPassword({ newPassword: password, token });
+      if (error) {
+        setFormError(mapAuthError(error));
+        return;
+      }
+      toast.success(messages.authForms.resetPassword.toast.title, {
+        description: messages.authForms.resetPassword.toast.body,
+      });
+      router.push('/login');
+    } catch {
+      setFormError('generic');
+    } finally {
+      setPending(false);
     }
-    toast.success(messages.authForms.resetPassword.toast.title, {
-      description: messages.authForms.resetPassword.toast.body,
-    });
-    router.push('/login');
   }
 
   // Thiếu/rỗng `?token=` — link email hỏng hoặc đã cũ. Panel lỗi thân thiện

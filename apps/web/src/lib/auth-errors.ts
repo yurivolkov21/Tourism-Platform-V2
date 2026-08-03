@@ -27,7 +27,9 @@ export function mapAuthError(
 
   if (status === 401) return 'invalidCredentials';
   if (status === 422 || code?.includes('EXISTS')) return 'emailExists';
-  if (status === 429) return 'tooManyRequests';
+  // OTP sai quá 5 lần — BA throw FORBIDDEN kèm code TOO_MANY_ATTEMPTS (không
+  // phải HTTP 429), nên phải khớp theo code chứ không chỉ theo status.
+  if (status === 429 || code?.includes('ATTEMPTS')) return 'tooManyRequests';
   if (code?.includes('OTP')) return 'invalidOtp';
   if (code?.includes('TOKEN')) return 'invalidToken';
   if (status === 404 || status === 501) return 'notAvailable';

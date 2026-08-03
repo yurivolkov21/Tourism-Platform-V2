@@ -94,6 +94,21 @@ describe('LoginForm — submit', () => {
     expect(push).not.toHaveBeenCalled();
   });
 
+  it('lỗi mạng thật (promise reject từ signIn.email) → hiện errors.generic, nút hết pending', async () => {
+    signInEmail.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await fillCredentials(user);
+    const submitButton = screen.getByRole('button', { name: 'Board the trip' });
+    await user.click(submitButton);
+
+    expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
+    expect(submitButton).toHaveTextContent('Board the trip');
+    expect(submitButton).not.toBeDisabled();
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('remember me tick → payload rememberMe: true', async () => {
     signInEmail.mockResolvedValueOnce({ data: { user: { id: '1' } }, error: null });
     const user = userEvent.setup();
