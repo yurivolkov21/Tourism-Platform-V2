@@ -14,7 +14,7 @@ export async function POST(request: Request): Promise<Response> {
     // vẫn chạy nhưng deprecated (xem node_modules/next .../revalidate.js).
     // { expire: 0 } = hard-bust (đường cacheLife.expire === 0 trong revalidate.js
     // của Next, cùng logic với legacy no-profile) — thay cho 'max' (SWR mềm)
-    // vì spec đòi thay đổi trải thấy NGAY. Bọc lại thành 1 tham số để lõi thuần
+    // vì spec đòi thay đổi phải thấy NGAY. Bọc lại thành 1 tham số để lõi thuần
     // (revalidate-route.ts) không phụ thuộc signature Next — deps.revalidateTag
     // giữ đúng interface Task 2 cần khớp.
     revalidateTag: (tag) => {
