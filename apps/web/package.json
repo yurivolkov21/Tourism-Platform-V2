@@ -16,6 +16,7 @@
     "@tourism/contract": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/ui": "workspace:*",
+    "better-auth": "1.6.23",
     "lenis": "^1.3.25",
     "lucide-react": "^1.25.0",
     "motion": "^12.23.0",
