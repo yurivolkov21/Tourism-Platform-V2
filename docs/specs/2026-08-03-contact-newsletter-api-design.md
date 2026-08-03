@@ -62,7 +62,7 @@
   catalogue). Meta `robots: noindex` (trang tiện ích từ email, không có giá
   trị index).
 - **GET `unsubscribeConfirm`** ở server component (settle): token hợp lệ →
-  panel hiện email (masked như API trả) + nút "Unsubscribe me" ; token hỏng/
+  panel hiện email (**AMENDED 03/08: API trả email TRẦN, không mask — giả định 'masked' của spec là sai, đã adjudicate**: người cầm link là chủ email, thực hành chuẩn) + nút "Unsubscribe me" ; token hỏng/
   thiếu param → panel lỗi thân thiện + link về Home (KHÔNG 404 — người thật
   bấm link email cũ xứng đáng một lời giải thích). LƯU Ý contract: GET không
   side effect (email client prefetch) — trang này TUYỆT ĐỐI không tự POST khi
@@ -91,9 +91,9 @@
 - CORS đã mở (`TRUSTED_ORIGINS` chứa localhost:3000; credentials chưa cần —
   hai endpoint public).
 - TDD thuần: `buildEnquiryPayload(formState)` (mapping + honeypot passthrough)
-  · parse-groupSize · masked-email hiển thị. Component jsdom: validate inline
+  · parse-groupSize · hiển thị email (trần — amended 03/08). Component jsdom: validate inline
   hiện đúng field, submit gọi đúng client (mock module `lib/api/client`),
-  honeypot không render vào accessibility tree, unsubscribe page 3 trạng thái.
+  honeypot không render vào accessibility tree, unsubscribe page 3 trạng thái (khớp — §4 từng ghi '4 trạng thái' là mâu thuẫn nội bộ, 3 panel + 1 lỗi cấp trang là đúng).
 - **Không đụng** migrations/contract/API server (mọi procedure đã có từ P3a).
 
 ## 7. Nghiệm thu (production build + API sống; DB đọc bằng psql qua docker)
@@ -106,7 +106,7 @@
 3. Newsletter: subscribe email mới → row `subscribers`; subscribe LẠI cùng
    email → vẫn toast success y hệt (đo response không phân biệt); lấy
    `id`+`token` thật từ DB → mở `/newsletter/unsubscribe` → confirm hiện email
-   masked → POST unsubscribe → row `unsubscribedAt` set → resubscribe → clear.
+   (trần — amended 03/08) → POST unsubscribe → row `unsubscribedAt` set → resubscribe → clear.
    Token rác → panel lỗi thân thiện, không crash.
 4. Toaster hiện đúng vị trí, không che element tương tác nào đã duyệt (đo
    nhanh cả mobile viewport); trang unsubscribe có `noindex`, không vào

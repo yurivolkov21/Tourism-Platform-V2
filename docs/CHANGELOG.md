@@ -2,6 +2,76 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-08-03 — Bước 5+6 nối API: form Contact + Newsletter + trang unsubscribe — site có hành vi GHI đầu tiên (branch `feat/contact-newsletter-api`, ff-only, 6 commit `60df01a..5afddf8`)
+
+Hai bề mặt ghi công khai đầu tiên, đúng ranh giới ADR-0016 §2 đã chốt từ trước:
+**browser gọi thẳng API** (throttle `PUBLIC_WRITE_THROTTLE` 5 req/60s tính theo
+IP — đi qua server Next là dồn mọi khách vào 1 IP). Quyết định user 03/08:
+**sonner Toaster toàn site** (khác khuyến nghị panel-inline — món nợ "toast hay
+không" của ADR-0016 chính thức chốt).
+
+- **Form contact "lá thư"** (`enquiries.create`): UI đã duyệt giữ nguyên pixel;
+  validate client bằng CHÍNH `CreateEnquiryInputSchema` (không khai lại rule,
+  lỗi inline theo field); mapping giữ-UI: ô "dates" text tự do GHÉP vào cuối
+  message ("Preferred dates: …") thay vì ép parse thành `travelDate` (không
+  bịa dữ liệu), count→groupSize parse-hoặc-bỏ 1..100, region→interests
+  (`'any'` → mảng rỗng, không thành tag rác). Honeypot `website` ẩn đúng kỹ
+  thuật (aria-hidden, tabIndex −1, đẩy khỏi viewport — KHÔNG display:none).
+- **Newsletter footer** (`subscribe`): anti-enumeration TUYỆT ĐỐI — một nhánh
+  toast success duy nhất, được chứng minh hai tầng: code không có if/switch
+  trên response, và contract `{subscribed: literal true}` làm nhánh phân biệt
+  bất-khả-biểu-diễn.
+- **Trang MỚI `/newsletter/unsubscribe`**: server động per-token (noindex,
+  không sitemap), GET `unsubscribeConfirm` KHÔNG side effect (bẫy email-client
+  prefetch — contract thiết kế sẵn, comment cảnh báo tại chỗ); panel client
+  3 trạng thái + 1 trạng thái lỗi cấp trang; token tái dùng cho vòng
+  unsubscribe ↔ resubscribe (undo).
+- **Hạ tầng feedback:** `classifySubmitError` (429→throttle, còn lại→error —
+  shape lỗi XÁC MINH LIVE bằng spam 6 request qua đúng client stack, không
+  đoán field) + `submitToast` (copy từ i18n truyền vào); Toaster mount root
+  layout, z sonner 999999999 ≫ navbar 1100 (số thật ghi comment, không wire
+  thừa).
+
+**Review findings (7 vòng task + final):**
+
+1. **Final review bắt bug ranh giới cả T2 lẫn reviewer T2 đều lọt:** điền ô
+   "dates" vô hiệu hoá ngầm yêu cầu bắt buộc của ô lời nhắn (suffix
+   "Preferred dates:" ≥18 ký tự tự thoả `message.min(10)` → lá thư rỗng ruột
+   vẫn gửi). Vá `5afddf8`: loves luôn bắt buộc ≥10 ký tự độc lập với dates,
+   RED thật trước fix; chi tiết then chốt là `return errors` thay `return {}`
+   ở nhánh success để lỗi sống sót qua safeParse.
+2. **Reviewer T2 bác lý do "Base UI Select flaky trong jsdom"** của implementer
+   bằng tiền lệ ngay trong repo (tours-explorer.spec test đúng component đó,
+   4/4 xanh) → buộc thêm interaction test với mutation-bite 3 bước (đổi state
+   key → test đỏ đúng chỗ). Bài học: lý do bỏ test phải có bằng chứng, không
+   phải giả định.
+3. **Spec tự mâu thuẫn/giả định sai 2 vụ trong cùng spec** — §4 "4 trạng thái"
+   vs §6 "3 trạng thái" (implementer đọc xuyên chữ nghĩa làm đúng theo thiết
+   kế contract token-tái-dùng); §7.3 "email masked" trong khi API trả email
+   TRẦN từ P3a (người cầm link là chủ email — thực hành chuẩn; spec đã amend).
+   Cộng dồn 4 vụ qua 3 cụm → bài học spec-writing: mọi con số/khẳng định xuất
+   hiện Ở HAI CHỖ trong spec phải cross-check lúc self-review, và khẳng định
+   về hành vi API phải đối chiếu code trước khi viết.
+4. Quy trình: một fixer (model rẻ) đọc NGƯỢC chỉ dẫn điều kiện gỡ trailer —
+   từ đó chỉ dẫn viết dạng lệnh một-chiều và controller luôn tự kiểm
+   `git log` sau mọi fixer (đã bắt thêm 1 vụ nhờ vậy).
+
+**Nợ mở:** `source: 'footer'` của SubscribeInput chưa gửi (contract affordance
+bỏ ngỏ — một từ cho admin P4 có data nguồn đăng ký) · re-export `toast` từ
+`@tourism/ui` để ghim version sonner một chỗ (hiện web + ui cùng ^2.0.7, drift
+tương lai sẽ tách store làm toast câm lặng) · trang unsubscribe gộp API-down
+và token-hỏng vào một panel lỗi (tách được bằng isDefinedError khi cần) ·
+service `migrate` trong docker compose fail ở seed (tourDestination FK — luồng
+`db:seed` trực tiếp và CI đều sạch; NỢ ĐIỀU TRA RIÊNG cho đường compose-trọn-
+gói) · `newsletterForm.submitting`/`inputLabel` i18n chưa dùng (nút icon-only).
+
+Tests after: `pnpm gate` xanh 18/18 — web **726** (trước 657) · ui 10 · API
+188 · contract 55 · tokens 10 · i18n 1, tổng **990**. `pnpm test:int` 145/145.
+Nghiệm thu 5/5 trên production build + DB thật: enquiry vào đúng mapping ·
+honeypot 200-giả không ghi row · 429 đúng ngưỡng rồi tự hồi sau cửa sổ ·
+vòng token HMAC unsubscribe↔resubscribe trọn · toast không bị navbar đè
+(elementFromPoint, desktop + 375px).
+
 ## 2026-08-03 — Bước 4 nối API: cụm Destinations + xoá TRỌN lớp lệch mock catalogue (branch `feat/destinations-api`, ff-only, 10 commit `dc55486..30fe3f9`)
 
 Đợt "trả nợ khẩn" ngay sau bước 2+3: trang vùng có 14/16 card tour mock là link
