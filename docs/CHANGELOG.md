@@ -2,6 +2,76 @@
 
 Một entry mỗi merge: ngày · hash · nội dung · review findings · "Tests after: ...".
 
+## 2026-08-03 — Bước 4 nối API: cụm Destinations + xoá TRỌN lớp lệch mock catalogue (branch `feat/destinations-api`, ff-only, 10 commit `dc55486..30fe3f9`)
+
+Đợt "trả nợ khẩn" ngay sau bước 2+3: trang vùng có 14/16 card tour mock là link
+chết 404. Sau merge này **không còn chỗ nào trên site kể chuyện catalogue bằng
+mock hay số bịa** — nghiệm thu đo được: **24/24 link `/tours/…` trên 6 trang
+production đều 200**. Thi công subagent-driven 7 task (1 moot) cùng final
+review và gói fix pre-merge; net **−1.028 dòng**.
+
+- **Đổi nguồn:** `/destinations` (19 điểm thật, tri-state theo khu — hero +
+  moments/quotes/FAQ mock sống giữ nguyên khi API sập) · 3 trang vùng (tour
+  12/10/10 theo ngữ nghĩa distinct-touch; **reviews vùng compose từ
+  `fetchTourReviews` per-tour, settle TỪNG fetch** — đúng ranh giới mà mock
+  `reviewsByTour` đã gương từ đầu; chỉ page 1/tour, comment ghi rõ giới hạn) ·
+  Home (tiles + Stats) · `/about` (30/19 thật). `lib/regions.ts` sang VM —
+  diff type-only từng hàm, mọi bất biến spec giữ.
+- **Ba quyết định user giữa chừng:**
+  1. Home gallery **chọn lọc 9/19** điểm đến (tourCount cao nhất) — giữ đúng
+     thiết kế + heading "Nine places" đã duyệt; sau final review bổ sung:
+     CHỌN theo sức nặng nhưng **HIỂN THỊ re-sort theo trục Bắc→Trung→Nam** để
+     câu copy "north to south" đúng trở lại (`topDestinations()` hai bước,
+     6 test + RED thật).
+  2. Stats Home **"68+" → 30 thật** (vụ thứ ba của lớp "số có nguồn API mà
+     vẫn bịa", sau Destinations-9 ở `/about` và chính số 68 từng bị vá một
+     lần ngày 30/07); fetch fail → ẨN ô số, cấm rơi về số cũ.
+  3. **Task 6 navbar = MOOT:** premise spec sai (grep đọc nhầm consumer —
+     dropdown đã được user rút còn 4 link ngày 30/07, không phụ thuộc
+     catalogue); user tái xác nhận giữ 4-link → **không có layout fetch nào**,
+     rủi ro bán-kính-rộng nhất của spec tự biến mất. Spec §1E/§4.3 đã amend.
+- **Khai tử:** `mocks/tours.ts` (1.486 dòng) · `mocks/destinations.ts` ·
+  `tour-media.ts` · `tour-reviews.ts` (2 file sau là orphan phát hiện khi
+  quét) + các type `Mock*` hết consumer + rehome 3 `import type` nợ từ cụm
+  Tours. Specs chuyển sang `test/fixtures/catalog.ts` — **fixture đông lạnh
+  test-only** (0 import runtime; data trích trung thực từ mock cũ, phần
+  synthesized có khai trong header). Moments hết link chết (3 slug sửa +
+  credit khớp title thật; test canh 2 chiều theo danh sách roster tĩnh).
+
+**Review findings (8 vòng task + final):**
+
+1. Hai "đứa em của Destinations-9" chỉ final review toàn-branch thấy: Stats
+   68+ và câu copy gallery lệch thứ tự tile — cả hai thành quyết định user
+   (mục 1–2 trên). Vòng task còn bắt: ô "Destinations: 9 — Three per region"
+   ở `/about` hardcode cạnh dữ liệu đã fetch 3 dòng phía trên (vá `0315ac8`).
+2. **Implementer T6 BLOCKED đúng lúc, đúng cách** khi phát hiện plan-vs-code
+   drift thay vì tự ý đảo thiết kế 30/07 của user — có timeline + 3 phương án
+   trong report. Bài học plan-level: premise spec phải kiểm được, không viết
+   từ grep chưa xác minh.
+3. Bài học plan-level thứ hai: số nghiệm thu trong plan phải **derive bằng
+   đúng hàm trang sẽ dùng** — plan đếm theo file roster ra 12/9/9, ngữ nghĩa
+   distinct-touch thật là 12/10/10 (grand tour đếm ở cả 3 miền).
+4. Quy trình: fixer (model rẻ) **đọc ngược chỉ dẫn điều kiện** về trailer
+   ("Present ✓ — no amend needed") — controller bắt bằng kiểm tay, amend gỡ;
+   từ đó chỉ dẫn trailer viết dạng lệnh một-chiều và controller luôn tự kiểm
+   `git log` sau mọi fixer.
+5. Gotcha đo đạc mới: `.next` cache từ build cũ **che nhánh lỗi khi đo
+   tri-state ở dev** — mọi phép đo tri-state phải `rm -rf .next` trước
+   (bổ sung cho bài học Data-Cache-giữ-bản-thành-công của cụm Tours).
+
+**Nợ mở:** danh sách slug roster đang chép tay ở HAI spec (`mocks.spec.ts` +
+`sitemap.spec.ts`) — gộp về một module trong `test/fixtures/` để một chỗ sync ·
+caption bento `/about` "12/10/10 cạnh 30" đúng ngữ nghĩa distinct-touch nhưng
+đọc như toán sai — cân nhắc chữ "touching" (thuần biên tập) · compose reviews
+vùng sẽ cần phân trang khi tour vượt 20 review (đã comment tại chỗ) · JSDoc
+`ownToursInRegion` các con số ví dụ là của fixture test (đã chú thích).
+
+Tests after: `pnpm gate` xanh **18/18** — web **657** (giảm so 701: khai tử
+các spec canh mock, thêm test fixture/topDestinations) · ui 10 · API 188 ·
+contract 55 · tokens 10 · i18n 1, tổng **921**. `pnpm test:int` **145/145**.
+Nghiệm thu production: 24/24 link tour 200 · số "30" nhất quán toàn site ·
+navbar 4 link · `/terms`/`/login` nguyên vẹn (không layout fetch).
+
 ## 2026-07-31 — Bước 2+3 nối API: catalogue THẬT thay trọn seed + `/tours` + detail (branch `feat/tours-catalogue-api`, ff-only, 14 commit `64f780f..5e80270`)
 
 User chốt hướng: thay vì port 16 tour mock, **làm lại seed thành ~30 tour "như
