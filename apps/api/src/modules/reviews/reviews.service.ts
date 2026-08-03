@@ -9,6 +9,8 @@ import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { EmailType, ReviewSource } from '../../generated/prisma/enums.js';
+import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { checkReviewEligibility } from './review-eligibility.js';
 
 /**
@@ -96,6 +98,8 @@ export function toMyReview(
 
 @Injectable()
 export class ReviewsService {
+  constructor(private readonly webRevalidation: WebRevalidationService) {}
+
   async create(
     callerId: string,
     input: z.infer<typeof CreateReviewInputSchema>,
@@ -211,7 +215,11 @@ export class ReviewsService {
     });
     if (!existing) throw new ReviewNotFoundError();
 
-    return prisma.$transaction(async (tx) => {
+    // Bắt fromApproved từ trong closure — cần cho quyết định bust SAU commit
+    // (xem cuối hàm). KHÔNG dùng `existing` (snapshot đọc TRƯỚC transaction,
+    // có thể cũ) — gán lại đúng giá trị đọc dưới FOR UPDATE ngay khi có nó.
+    let fromApprovedForRevalidate = false;
+    const result = await prisma.$transaction(async (tx) => {
       // Khoá đúng row review NÀY trước khi đọc isApproved/tourId/source. Đọc
       // thường (không FOR UPDATE) dưới Read Committed có thể trả về snapshot
       // đã cũ nếu một request khác trên CÙNG review đang chờ commit (TOCTOU)
@@ -228,6 +236,7 @@ export class ReviewsService {
       if (!locked) throw new ReviewNotFoundError();
 
       const fromApproved = locked.isApproved;
+      fromApprovedForRevalidate = fromApproved;
       const justApproved = !fromApproved && input.approve;
 
       // ① trạng thái + dấu vết
@@ -331,6 +340,17 @@ export class ReviewsService {
       });
       return toAdminReview(fresh);
     });
+
+    // Bust cache web SAU khi transaction đã commit (spec 03/08 §3): bust
+    // trước commit là race — web regenerate đọc data cũ rồi cache 300s.
+    // `void`: fire-and-forget, moderate không đợi và không fail theo.
+    const tags = moderationRevalidationTags({
+      tourSlug: result.tourSlug,
+      fromApproved: fromApprovedForRevalidate,
+      toApproved: input.approve,
+    });
+    if (tags) void this.webRevalidation.revalidate(tags);
+    return result;
   }
 
   /**

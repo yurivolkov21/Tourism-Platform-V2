@@ -4,6 +4,7 @@ import { Test } from '@nestjs/testing';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import { BookingStatus, ReviewSource } from '../../generated/prisma/enums.js';
+import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { ReviewsService } from './reviews.service.js';
 
 /**
@@ -22,6 +23,7 @@ const ADMIN_EMAIL = 'bootstrap-admin@tourism.test';
 
 let app: NestFastifyApplication;
 let reviewsService: ReviewsService;
+let webRevalidationService: WebRevalidationService;
 
 beforeAll(async () => {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
@@ -29,6 +31,7 @@ beforeAll(async () => {
     rawBody: true,
   });
   reviewsService = moduleRef.get(ReviewsService);
+  webRevalidationService = moduleRef.get(WebRevalidationService);
   await app.init();
   await app.getHttpAdapter().getInstance().ready();
 });
@@ -892,6 +895,105 @@ describe('reviews (int)', () => {
         .json()
         .items.find((r: { id: string }) => r.id === twoStar.id);
       expect(moderated.moderatedBy).toBe(adminRow.name);
+    });
+  });
+
+  describe('moderate: bust cache web SAU commit (Task 3, ADR-0016 §3)', () => {
+    // Spy thay real fetch — service thật ($REVALIDATE_SECRET/$FRONTEND_URL
+    // default dev vẫn hoạt động vì fire-and-forget nuốt lỗi network, nhưng
+    // spy cho biết ĐÚNG khi nào/với tag gì service được gọi, không phụ thuộc
+    // web app có chạy hay không.
+    let spy: ReturnType<typeof vi.spyOn>;
+
+    beforeEach(() => {
+      spy = vi.spyOn(webRevalidationService, 'revalidate').mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      spy.mockRestore();
+    });
+
+    it('duyệt review PENDING gắn tour → bust ĐÚNG 1 lần với tag đúng slug', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'bust-approve@example.com');
+      const { tour } = await seedCompletedBooking({
+        endDate: new Date(Date.now() - 864e5),
+        userId: user.id,
+      });
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Đáng để quay lại lần nữa' },
+      });
+      const reviewId = created.json().id;
+
+      await reviewsService.moderate(admin.user.id, { id: reviewId, approve: true });
+
+      expect(spy).toHaveBeenCalledTimes(1);
+      expect(spy).toHaveBeenCalledWith(['tours', `tour:${tour.slug}`]);
+    });
+
+    it('duyệt lại review ĐANG đã approved (trạng thái KHÔNG đổi) → KHÔNG bust thêm', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'bust-same@example.com');
+      await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Rất hài lòng với chuyến đi' },
+      });
+      const reviewId = created.json().id;
+
+      // Lần 1: PENDING → approved, có bust.
+      await reviewsService.moderate(admin.user.id, { id: reviewId, approve: true });
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      // Lần 2: approve lại khi ĐÃ approved — fromApproved === toApproved, không bust thêm.
+      await reviewsService.moderate(admin.user.id, { id: reviewId, approve: true });
+      expect(spy).toHaveBeenCalledTimes(1);
+    });
+
+    it('un-approve review đang approved → bust lại đúng tag', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'bust-unapprove@example.com');
+      const { tour } = await seedCompletedBooking({
+        endDate: new Date(Date.now() - 864e5),
+        userId: user.id,
+      });
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: 'BK-TESTREV1', rating: 3, body: 'Bình thường, tạm được thôi' },
+      });
+      const reviewId = created.json().id;
+      await reviewsService.moderate(admin.user.id, { id: reviewId, approve: true });
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      await reviewsService.moderate(admin.user.id, { id: reviewId, approve: false });
+
+      expect(spy).toHaveBeenCalledTimes(2);
+      expect(spy).toHaveBeenLastCalledWith(['tours', `tour:${tour.slug}`]);
+    });
+
+    it('duyệt review CURATED KHÔNG gắn tour (tourId null) → không bust', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const curated = await prisma.review.create({
+        data: {
+          tourId: null,
+          source: ReviewSource.CURATED,
+          authorName: 'Marketing Team',
+          rating: 5,
+          body: 'Testimonial chung, không gắn vào tour cụ thể nào',
+          isApproved: false,
+        },
+      });
+
+      await reviewsService.moderate(admin.user.id, { id: curated.id, approve: true });
+
+      expect(spy).not.toHaveBeenCalled();
     });
   });
 });
