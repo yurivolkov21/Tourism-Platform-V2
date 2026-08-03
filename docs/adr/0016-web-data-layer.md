@@ -13,7 +13,8 @@
 >   **0 dòng code** cho route `/api/revalidate` hay module gọi sang từ API —
 >   grep `revalidateTag`/`/api/revalidate` trong `apps/web/src` và `apps/api/src`
 >   ra 0 hit. Nợ có kế hoạch ở bản gốc nay đáng lên lịch cụ thể, không còn là
->   "sau bước 1–4" mơ hồ.
+>   "sau bước 1–4" mơ hồ. → **ĐÃ TRẢ cùng ngày 03/08** (`a6136ea..6be5abe`,
+>   xem khối "Chốt 2026-08-03" ở §3 + CHANGELOG 03/08).
 > - **"Toast quyết ở form đầu tiên" ĐÃ CHỐT 03/08:** sonner cài thật
 >   (`apps/web/package.json` — `sonner: ^2.0.7`), `<Toaster>` vendor qua
 >   `@tourism/ui` mount toàn site ở
@@ -119,6 +120,10 @@ Logic thuần trong các module (map, derive, format) TDD theo luật 4 — patt
   > public. Secret theo nếp `DEV_*_SECRET`; không endpoint admin trung gian,
   > không outbox (đã cân nhắc và loại — cache tự lành ≤300s). Chi tiết:
   > [spec 03/08](../specs/2026-08-03-on-demand-revalidation-design.md).
+  > **Đã thi hành + merge 03/08** — lưu ý thi công: Next 16 đổi
+  > `revalidateTag` thành 2 tham số và `'max'` là SWR mềm; hard-bust đúng là
+  > `{ expire: 0 }` (đường `cacheLife.expire === 0` trong revalidate.js —
+  > đã đo sống HIT→MISS ngay).
 - **Vì sao không `cacheComponents`/`use cache`:** đổi mô hình render + cache
   của toàn app (mọi async data phải vào `use cache` hoặc Suspense) ngay trước
   freeze 15/10, trong khi ISR classic vẫn được Next 16 hỗ trợ đầy đủ và là mô

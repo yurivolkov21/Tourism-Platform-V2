@@ -8,6 +8,47 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-03 — On-demand revalidation: duyệt review là trang tour tươi NGAY — trả nợ quá hạn ADR-0016 (branch `feat/on-demand-revalidation`, ff-only, 5 commit `a6136ea..6be5abe`)
+
+Nợ "bước riêng sau bước 1–4" của ADR-0016 §3 (bị khối đại tu docs cùng ngày
+đánh dấu QUÁ HẠN) trả xong trong ngày: web thêm route handler ĐẦU TIÊN
+(`POST /api/revalidate` — secret so constant-time `timingSafeEqual`, whitelist
+gương đúng taxonomy `tags.ts`, max 20 tag, lõi thuần 22 test tách khỏi vỏ
+route vì glob vitest không cover `src/app/**`); API thêm module
+`web-revalidation` (fire-and-forget 3s timeout, mọi lỗi chỉ warn — đo sống:
+tắt web, moderate vẫn 200) móc vào `reviews.moderate` SAU khi transaction
+commit, chỉ khi review gắn tour và trạng thái duyệt THỰC SỰ đổi
+(`moderationRevalidationTags` thuần). Thân transaction 3-điểm-concurrency
+nguyên vẹn ngoài đúng 1 dòng bắt `fromApproved`. Env: `REVALIDATE_SECRET`
+nếp `DEV_*_SECRET` + superRefine prod; dùng lại `FRONTEND_URL` (spec AMENDED
+lúc lập plan — `WEB_URL` mới là lặp env). ISR 300s vẫn là lưới đúng đắn;
+đường này chỉ mua độ tươi.
+
+**Review findings (4 vòng task + final trên fable):**
+
+1. **Reviewer T1 bắt ngữ nghĩa Next 16 đổi ngầm:** implementer theo warning
+   của chính Next dùng `revalidateTag(tag, 'max')`, reviewer đào
+   `incremental-cache` chứng minh `'max'` là SWR MỀM (request đầu sau bust
+   vẫn trả bản cũ một lần) — trái câu nghiệm thu "thấy NGAY". Controller
+   phân xử bằng source `revalidate.js:209`: `{ expire: 0 }` đi đúng đường
+   hard-bust legacy, không dính deprecation warning. Vá `70f8500`; nghiệm
+   thu sống xác nhận `x-nextjs-cache` HIT→MISS ngay lập tức. Bài học: lời
+   khuyên trong deprecation warning KHÔNG hứa giữ nguyên ngữ nghĩa cũ.
+2. **Reviewer T3 mutation-bite điều kiện quyết định** (đổi
+   `fromApproved === toApproved` → `false`): đúng ca "lặp trạng thái" đỏ với
+   thông điệp spy chuẩn — chứng minh 4 int test cắn thật, rồi revert sạch.
+3. Nghiệm thu lòi 2 ghi nhận ngoài diff: comment `seed.ts` (~206) tả sai
+   Better Auth 1.6.23 (sign-up trùng email admin → 422, không "link vào
+   row"); `FRONTEND_URL` KHÔNG có guard prod (tồn từ P2 — quên set là bust
+   câm về localhost, ISR tự lành). Cùng Minor thứ ba: cột slug VarChar(120)
+   nhưng whitelist cap 100 — chuyện P4 khi có form tạo tour. Cả ba ghi sổ,
+   không chặn merge.
+
+**Tests after:** gate:int xanh trọn — web 748 unit (22 mới revalidate-route),
+api 199 unit (9 service + 6 env mới), int 149 (4 mới moderate-bust trong 24
+của reviews). Nghiệm thu spec §7 đủ 5/5 trên production build, DB dọn sạch
+mồi, cổng trả về trống.
+
 ## 2026-08-03 — Bước 5+6 nối API: form Contact + Newsletter + trang unsubscribe — site có hành vi GHI đầu tiên (branch `feat/contact-newsletter-api`, ff-only, 6 commit `60df01a..5afddf8`)
 
 Hai bề mặt ghi công khai đầu tiên, đúng ranh giới ADR-0016 §2 đã chốt từ trước:
