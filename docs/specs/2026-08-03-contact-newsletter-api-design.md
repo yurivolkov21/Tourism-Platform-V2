@@ -1,6 +1,6 @@
 # Spec — Bước 5+6 nối API: form Contact + Newsletter + trang unsubscribe (2026-08-03)
 
-- **Trạng thái:** Chờ user duyệt spec (2 quyết định UX đã chốt 03/08: **sonner
+- **Trạng thái:** Approved 03/08 (2 quyết định UX chốt cùng ngày: **sonner
   toast toàn site** — user chọn khác khuyến nghị, mount Toaster từ cụm này ·
   trang unsubscribe theo khuôn utility sẵn, không vòng demo riêng)
 - **Nền:** [ADR-0016](../adr/0016-web-data-layer.md) §2 — ranh giới đã chốt
