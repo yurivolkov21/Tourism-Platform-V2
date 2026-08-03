@@ -60,7 +60,10 @@ export function NewsletterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate>
+    // `relative` để wrapper honeypot `absolute` neo đúng vào form này (khớp
+    // `contact-split.tsx`) — thiếu class này wrapper sẽ neo theo ancestor
+    // positioned gần nhất phía trên, sai vị trí (final review).
+    <form onSubmit={handleSubmit} noValidate className="relative">
       <label
         htmlFor="footer-newsletter"
         className="mb-3 block text-xs font-semibold tracking-widest uppercase"

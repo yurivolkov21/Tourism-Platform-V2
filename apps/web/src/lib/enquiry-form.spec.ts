@@ -75,6 +75,11 @@ describe('buildEnquiryPayload', () => {
     expect(payload.website).toBeUndefined();
   });
 
+  it('region "any" ("Anywhere in Vietnam"): interests rỗng, KHÔNG gửi \'any\' làm interest rác (final review item 2)', () => {
+    const payload = buildEnquiryPayload({ ...VALID_STATE, region: 'any' });
+    expect(payload.interests).toEqual([]);
+  });
+
   it('KHÔNG bao giờ gửi travelDate (schema đòi ISO date, text tự do là bịa dữ liệu)', () => {
     const payload = buildEnquiryPayload({ ...VALID_STATE, dates: 'next April' });
     expect(payload).not.toHaveProperty('travelDate');
@@ -117,6 +122,21 @@ describe('validateEnquiry', () => {
 
   it('message 9 ký tự (loves ngắn, dates rỗng) → lỗi field "loves", copy "tooShort"', () => {
     const errors = validateEnquiry({ ...VALID_STATE, loves: '123456789' });
+    expect(errors.loves).toBe('A few more words would help — at least 10 characters.');
+  });
+
+  // Final review item 1: suffix "\n\nPreferred dates: …" (≥18 ký tự) tự thoả
+  // message.min(10) của schema khi safeParse chạy trên payload ĐÃ GHÉP, nên
+  // "loves" rỗng vẫn lọt qua nếu chỉ soi issues của safeParse. Quyết định
+  // controller: "loves" LUÔN bắt buộc ≥10 ký tự (trim), ĐỘC LẬP với dates —
+  // hai test dưới phải ĐỎ trên code cũ (không check state.loves trước parse).
+  it('loves rỗng + dates có giá trị → vẫn lỗi field "loves", copy "required" (final review item 1)', () => {
+    const errors = validateEnquiry({ ...VALID_STATE, loves: '', dates: 'next April' });
+    expect(errors.loves).toBe('Tell us a little about your trip.');
+  });
+
+  it('loves 4 ký tự + dates có giá trị → vẫn lỗi field "loves", copy "tooShort" (final review item 1)', () => {
+    const errors = validateEnquiry({ ...VALID_STATE, loves: 'ngắn', dates: 'next April' });
     expect(errors.loves).toBe('A few more words would help — at least 10 characters.');
   });
 

@@ -66,7 +66,9 @@ export function buildEnquiryPayload(state: ContactFormState): CreateEnquiryInput
     message,
     // interests LUÔN có mặt (schema `.default([])` khiến kiểu output không
     // optional) — rỗng khi khách chưa chọn region, không phải "bỏ field".
-    interests: state.region ? [state.region] : [],
+    // `'any'` ("Anywhere in Vietnam") nghĩa là "không có sở thích vùng cụ
+    // thể" — KHÔNG gửi 'any' làm interest rác (final review item 2).
+    interests: state.region && state.region !== 'any' ? [state.region] : [],
   };
 
   const groupSize = parseGroupSize(state.count);
@@ -103,13 +105,27 @@ export function buildEnquiryPayload(state: ContactFormState): CreateEnquiryInput
 export function validateEnquiry(
   state: ContactFormState,
 ): Partial<Record<ContactFormField, string>> {
+  const errors: Partial<Record<ContactFormField, string>> = {};
+
+  // Final review item 1: khi "dates" có giá trị, buildEnquiryPayload ghép
+  // suffix "\n\nPreferred dates: …" (≥18 ký tự) vào message — đủ tự thoả
+  // `message.min(10)` của schema DÙ "loves" (textarea thật khách gõ) rỗng
+  // hoặc quá ngắn, khiến safeParse không báo lỗi gì cho field "message".
+  // Quyết định controller: "loves" LUÔN bắt buộc ≥10 ký tự (trim), ĐỘC LẬP
+  // với "dates" — check trước safeParse, không phụ thuộc issues của zod.
+  const trimmedLoves = state.loves.trim();
+  if (trimmedLoves.length === 0) {
+    errors.loves = messages.contactForm.errors.message.required;
+  } else if (trimmedLoves.length < 10) {
+    errors.loves = messages.contactForm.errors.message.tooShort;
+  }
+
   const payload = buildEnquiryPayload(state);
   const result = CreateEnquiryInputSchema.safeParse(payload);
   if (result.success) {
-    return {};
+    return errors;
   }
 
-  const errors: Partial<Record<ContactFormField, string>> = {};
   for (const issue of result.error.issues) {
     const field = issue.path[0];
     if (field === 'name') {

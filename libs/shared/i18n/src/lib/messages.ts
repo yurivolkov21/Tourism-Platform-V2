@@ -2282,12 +2282,14 @@ export const messages = {
       },
     },
   },
-  // Trang /newsletter/unsubscribe (spec §4) — 4 trạng thái panel: `confirm`
-  // (token hợp lệ, chưa huỷ — GET `unsubscribeConfirm`), `unsubscribed` (vừa
-  // POST huỷ xong trong phiên này), `alreadyUnsubscribed` (GET cho biết token
-  // hợp lệ nhưng đã huỷ từ trước — khách bấm lại link email cũ), `invalidToken`
-  // (thiếu/sai `id`+`token` — KHÔNG 404, panel lỗi thân thiện + link Home).
-  // `email` mọi nơi là bản ĐÃ MASK do API trả (contract `UnsubscribeConfirmResultSchema`).
+  // Trang /newsletter/unsubscribe (spec §4) — 3 trạng thái panel + 1 trạng
+  // thái lỗi cấp trang: `confirm` (token hợp lệ, chưa huỷ — GET
+  // `unsubscribeConfirm`), `unsubscribed` (vừa POST huỷ xong trong phiên
+  // này), `alreadyUnsubscribed` (GET cho biết token hợp lệ nhưng đã huỷ từ
+  // trước — khách bấm lại link email cũ), `invalidToken` (thiếu/sai
+  // `id`+`token` — KHÔNG 404, panel lỗi thân thiện + link Home).
+  // `email` là bản TRẦN do API trả (người cầm link là chủ email — spec §7.3
+  // "masked" là giả định sai đã adjudicate).
   unsubscribePage: {
     breadcrumbCurrent: 'Unsubscribe',
     title: 'Manage your email preferences',
