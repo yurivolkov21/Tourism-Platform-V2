@@ -15,6 +15,12 @@
 >   cấp — Stripe test-mode + PayPal sandbox, mỗi provider một vòng
 >   thanh toán thật + một refund thật.
 > - Spec: [2026-08-04-paypal-capture-smoke-design](../specs/2026-08-04-paypal-capture-smoke-design.md).
+> - → **CẢ HAI NỢ ĐÃ TRẢ cùng ngày** (`d7a49fb..9aa338f`, merge 04/08):
+>   capture-on-approved sống trên sandbox thật (APPROVED → capture →
+>   COMPLETED → PAID trong 23s), smoke đủ 2 provider × thanh toán + refund
+>   2 nhịp + âm bản. Smoke bắt và vá luôn 2 bug offline-không-thấy: Stripe
+>   `expires_at` sát floor 30' (→ 60') và TTL sweep < hạn session (→ 65' +
+>   unit khoá bất biến). Chi tiết: CHANGELOG 04/08.
 
 ## Quyết định
 

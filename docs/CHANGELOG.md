@@ -8,6 +8,49 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-04 — Trả 2 nợ ADR-0002: PayPal capture-on-approved + smoke sandbox THẬT 2 provider (branch `feat/paypal-capture-smoke`, ff-only, 5 commit `d7a49fb..9aa338f`)
+
+PayPal end-to-end LẦN ĐẦU trong lịch sử dự án: hook tuỳ chọn
+`PaymentGateway.followUp?` (side-effect sau verify+log; throw = xin provider
+retry) → `PayPalGateway` capture server-side khi webhook
+`CHECKOUT.ORDER.APPROVED` (`PayPal-Request-Id: capture:<orderId>` idempotent;
+`ORDER_ALREADY_CAPTURED` nuốt — cũng chính là ca out-of-order; lỗi khác
+throw-để-retry). Đường `payment.completed`/atomic claim không đổi một dòng.
+Smoke sandbox thật do user cấp key: PayPal buyer approve → capture của ta →
+COMPLETED → PAID trong 23 giây + refund 2 nhịp id thật; Stripe 4242 trọn vòng
++ refund 2 nhịp; âm bản chữ-ký-giả → 400, replay → duplicate không double.
+
+**Review findings (2 vòng task + final fable + 2 vòng fix) — cả 3 bug đều
+thuộc lớp "chỉ lộ khi chạm đời thật":**
+
+1. **Reviewer T2 bắt nhánh nuốt ALREADY_CAPTURED là DEAD CODE với lỗi PayPal
+   thật** — mã máy-đọc nằm `details[0].issue`, top-level message chỉ là
+   boilerplate; unit cũ xanh GIẢ nhờ stub bịa shape. Vá `f0f4400`
+   (issue-first trong `paypalErrorMessage`, RED proof trên shape 422 thật,
+   thêm case `INSTRUMENT_DECLINED` vẫn throw). Bài học: test chống lỗi
+   provider phải dùng SHAPE THẬT từ docs, không tự bịa cho khớp code.
+2. **Smoke bắt Stripe session bị từ chối 100%** (4/4): `expires_at` đặt ĐÚNG
+   floor 30' của Stripe không chừa lề, đồng hồ máy lệch −86s là đủ rớt. Vá
+   `43d7a2b` (60' + comment bất biến floor-theo-đồng-hồ-Stripe). Đúng giá
+   trị của nợ D2 — mọi verify offline trước đây không thể thấy.
+3. **Final review bắt hệ quả dây chuyền:** TTL sweep 30' (comment cũ "khớp
+   hạn Stripe") giờ NHỎ HƠN hạn session 60' → cửa sổ 30–60' buyer trả tiền
+   cho booking đã bị sweep hủy (tiền an toàn nhờ orphan-refund, UX tệ). Vá
+   `9aa338f`: TTL 65' + unit khoá BẤT BIẾN `TTL*60 > SESSION_EXPIRY_SECONDS`
+   (import hằng thật — đổi hạn ở đâu là đỏ ngay), int spec derive từ hằng
+   chống drift. Ghi chú TTL mới đã vào ADR-0006.
+
+**Nợ mở:** capture-on-return ở trang success = lớp UX bước 10 (webhook vẫn
+backstop — ADR-0002 khối 04/08); bất biến TTL>expiry mới assert Stripe,
+gateway nào thêm hạn session riêng phải vào spec đó (comment đã dặn).
+Đồng hồ WSL lệch −86s — khuyên user `sudo hwclock -s` (code đã chừa lề,
+không chặn).
+
+**Tests after:** api unit 208 (+9: followUp 5 + shape-thật 2 + expiry 1 +
+bất biến TTL 1) · int 156 (+3 wiring followUp qua Fake) · web 805 không đổi
+— `gate:int` xanh trọn tại `9aa338f`. Smoke: 2 provider × (1 thanh toán +
+2 refund) + 2 âm bản, DB/webhook sandbox/tiến trình dọn verified.
+
 ## 2026-08-04 — Vá 13 alert Dependabot (5 high, 8 moderate) + 1 audit thấy thêm (branch `fix/deps-dependabot`, ff-only, 1 commit `8089401`)
 
 Toàn bộ là dependency bắc cầu, vá bằng overrides SCOPED trong

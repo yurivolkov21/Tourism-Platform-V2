@@ -9,6 +9,14 @@
   [ADR-0002](0002-payment-gateway-refund-ledger.md),
   [độ sẵn sàng backend 22/07](../analysis/2026-07-22-backend-readiness-vs-nexora.md).
 
+> **Cập nhật 2026-08-04 (cụm capture ADR-0002):** TTL cron WRK-1 nâng
+> **30′ → 65′** (`9aa338f`) — hạn Stripe Checkout đã lên 60′ (fix floor+skew
+> cùng ngày), bất biến đúng là **TTL > hạn session dài nhất của mọi
+> gateway**; nay có unit khoá `PENDING_TTL_MINUTES*60 > SESSION_EXPIRY_SECONDS`
+> trong `pending-sweep.spec.ts`. Câu "khớp hạn Stripe 30′" ở Quyết định 3
+> dưới đây là giá trị lịch sử lúc Accept — đọc hằng trong
+> `pending-sweep.service.ts` làm sự thật.
+
 > **Cập nhật 2026-08-03 (đại tu docs — đối chiếu code):** cả 5 mục Quyết định
 > đều có code chạy thật: BK-1 (`f5b546a`), PAY-1 (`d40597b`), WRK-1
 > (`988e8b8` — `apps/api/src/worker/pending-sweep.service.ts`), BK-2
