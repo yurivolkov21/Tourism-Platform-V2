@@ -300,11 +300,28 @@ function mapPayPalEvent(event: PayPalEventShape): VerifiedEvent {
   }
 }
 
-/** Best-effort extraction of PayPal's error `message`/`name` from a failure body. */
+/**
+ * Best-effort extraction mã lỗi PayPal từ body lỗi (JSON hoặc text thô).
+ *
+ * Ưu tiên `details[0].issue` TRƯỚC `message`/`name`: body 422 THẬT của PayPal
+ * có dạng `{ name: 'UNPROCESSABLE_ENTITY', message: '<boilerplate không đổi
+ * theo nguyên nhân>', details: [{ issue: 'ORDER_ALREADY_CAPTURED' }] }` — mã
+ * máy-đọc-được (ORDER_ALREADY_CAPTURED, INSTRUMENT_DECLINED, ...) nằm ở
+ * details[].issue, còn `message` top-level chỉ là câu boilerplate cố định.
+ * Nếu ưu tiên `message` như cũ, `followUp` không bao giờ khớp được chuỗi
+ * ORDER_ALREADY_CAPTURED trong nhánh nuốt lỗi idempotent → webhook 422 hợp lệ
+ * bị coi là lỗi thật, ném ra và khiến PayPal retry vô hạn (500-loop).
+ * Hàm này còn phục vụ log lỗi của refund/verify: ưu tiên issue-first làm log
+ * GIÀU thông tin hơn (mã cụ thể thay vì câu boilerplate chung chung).
+ */
 function paypalErrorMessage(body: string): string {
   try {
-    const parsed = JSON.parse(body) as { message?: string; name?: string };
-    return parsed.message ?? parsed.name ?? body.slice(0, 200);
+    const parsed = JSON.parse(body) as {
+      message?: string;
+      name?: string;
+      details?: Array<{ issue?: string }>;
+    };
+    return parsed.details?.[0]?.issue ?? parsed.message ?? parsed.name ?? body.slice(0, 200);
   } catch {
     return body.slice(0, 200);
   }

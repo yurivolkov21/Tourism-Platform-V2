@@ -423,16 +423,42 @@ describe('PayPalGateway.followUp', () => {
   });
 
   it('swallows ORDER_ALREADY_CAPTURED as an idempotent success', async () => {
+    // Shape 422 THẬT của PayPal: mã máy-đọc-được nằm ở details[0].issue,
+    // message top-level chỉ là boilerplate ("The requested action could not
+    // be performed..."), KHÔNG chứa "ORDER_ALREADY_CAPTURED".
     const http = stubHttp({
       '/v1/oauth2/token': tokenResponse(),
       '/v2/checkout/orders/ORDER-9/capture': {
         status: 422,
-        body: JSON.stringify({ name: 'UNPROCESSABLE_ENTITY', message: 'ORDER_ALREADY_CAPTURED' }),
+        body: JSON.stringify({
+          name: 'UNPROCESSABLE_ENTITY',
+          message:
+            'The requested action could not be performed, semantically incorrect, or failed business validation.',
+          details: [{ issue: 'ORDER_ALREADY_CAPTURED' }],
+        }),
       },
     });
     const gateway = new PayPalGateway(OPTS, http.post);
 
     await expect(gateway.followUp(approvedEvent())).resolves.toBeUndefined();
+  });
+
+  it('throws when details[0].issue is a different error (not ALREADY_CAPTURED)', async () => {
+    const http = stubHttp({
+      '/v1/oauth2/token': tokenResponse(),
+      '/v2/checkout/orders/ORDER-9/capture': {
+        status: 422,
+        body: JSON.stringify({
+          name: 'UNPROCESSABLE_ENTITY',
+          message:
+            'The requested action could not be performed, semantically incorrect, or failed business validation.',
+          details: [{ issue: 'INSTRUMENT_DECLINED' }],
+        }),
+      },
+    });
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await expect(gateway.followUp(approvedEvent())).rejects.toThrow();
   });
 
   it('throws on other capture errors so the provider retries the webhook', async () => {
