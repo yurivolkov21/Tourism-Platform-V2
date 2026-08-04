@@ -8,6 +8,30 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-04 — Fix CI đỏ ÂM THẦM từ 31/07: build web cần API sống mà workflow không mở (branch `fix/ci-api-song-cho-web-build`, ff-only, 1 commit `a1cdb0f`)
+
+Phát hiện khi user nhờ check CI: **main đỏ liên tục từ 31/07 04:23** (ngay
+sau merge bước 1 nối API) mà không ai hay — `test:int` phía trên vẫn xanh,
+rồi build web chết `fetch failed` vì quyết định ADR-0016 "build với API
+sống" chưa bao giờ được phản ánh vào `ci.yml`; merge kiểu rebase+ff không
+chờ check nên đèn đỏ không cản được ai. Đúng phiên bản CI của bài học
+"int spec hỏng 4 task không ai biết" (lý do sinh ra luật 11).
+
+Vá: khối mới trong `ci.yml` — `prisma migrate deploy` + `db:seed` lên db
+`tourism` (Postgres service tự tạo, tách khỏi `tourism_test` của int) +
+build & start API nền + chờ health 200 tối đa 60s (fail thì dump log API)
+TRƯỚC bước `turbo run build typecheck test`. Đo trên chính CI: run branch
+`30875942867` success — lần xanh đầu của pipeline đầy đủ kể từ 31/07.
+
+**Nợ quy trình ghi nhận:** khoảng mù 31/07–04/08 tồn tại vì không ai nhìn
+đèn CI sau merge; cân nhắc (a) bật branch-protection đợi check trước push
+main, hoặc (b) nếp "liếc `gh run list` sau mỗi push main" — chưa chốt, chờ
+user quyết ở dịp gần nhất.
+
+**Tests after:** không đổi code app — gate:int local đã xanh ở `9aa338f`;
+CI branch run full pipeline success (int 156 + build web SSG với API sống
++ lint + freshness).
+
 ## 2026-08-04 — Trả 2 nợ ADR-0002: PayPal capture-on-approved + smoke sandbox THẬT 2 provider (branch `feat/paypal-capture-smoke`, ff-only, 5 commit `d7a49fb..9aa338f`)
 
 PayPal end-to-end LẦN ĐẦU trong lịch sử dự án: hook tuỳ chọn
