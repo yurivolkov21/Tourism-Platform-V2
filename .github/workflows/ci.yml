@@ -68,6 +68,26 @@ jobs:
       # bước tạo db/migrate trong YAML này. (CI đỏ 21→23/07 vì thiếu điều này.)
       - run: pnpm test:int
 
+      # Build web cần API SỐNG (ADR-0016, chốt 31/07: "build với API sống +
+      # settle() làm lưới" — SSG fetch catalogue lúc prerender). Thiếu khối
+      # này CI đỏ ÂM THẦM từ 31/07 tới 04/08: test:int phía trên vẫn xanh,
+      # rồi build web chết `fetch failed` — không ai hay vì merge kiểu
+      # rebase+ff không chờ check. Postgres service tự tạo db `tourism`
+      # (POSTGRES_DB mặc định theo user), tách khỏi `tourism_test` của int.
+      - name: Migrate + seed db `tourism` rồi mở API nền cho build web
+        env:
+          DATABASE_URL: postgresql://tourism:tourism@localhost:5432/tourism
+        run: |
+          pnpm --filter @tourism/api exec prisma migrate deploy
+          pnpm --filter @tourism/api run db:seed
+          pnpm --filter @tourism/api run build
+          (cd apps/api && node dist/main.js > /tmp/ci-api.log 2>&1 &)
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:3001/api/health > /dev/null && exit 0
+            sleep 2
+          done
+          echo '::error::API không lên được trong 60s'; tail -50 /tmp/ci-api.log; exit 1
+
       - run: pnpm turbo run build typecheck test
 
       - run: pnpm lint
