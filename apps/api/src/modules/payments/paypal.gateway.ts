@@ -40,10 +40,15 @@ export interface PayPalGatewayOptions {
  * bookingId (đã được Nexora kiểm chứng), capture id trở thành
  * `providerPaymentId` (handle để refund).
  *
- * LƯU Ý trigger capture: Nexora capture khi buyer quay lại (`captureOrder` từ
- * return endpoint) với webhook làm backstop. Interface P2 không có mặt capture
- * — capture ở return-page sẽ tới cùng web checkout flow (P3); từ giờ tới đó
- * `CHECKOUT.ORDER.APPROVED` map thành `other` (chỉ ghi lại).
+ * LƯU Ý trigger capture: đảo thứ tự ưu tiên so với Nexora. Nexora capture khi
+ * buyer quay lại (`captureOrder` từ return endpoint), webhook chỉ làm backstop.
+ * v2 lấy webhook `CHECKOUT.ORDER.APPROVED` (xử lý ở {@link followUp}, gọi SAU
+ * khi PaymentEvent đã ghi audit) làm ĐƯỜNG CHÍNH — capture xảy ra dù buyer có
+ * quay lại browser hay không, PayPal tự retry delivery nếu capture throw (an
+ * toàn nhờ `PayPal-Request-Id` idempotent theo orderId). Return-page bước 10
+ * (P3, web) chỉ còn là lớp UX — capture-nếu-chưa-capture, webhook đã lo phần
+ * chắc chắn; y hệt Stripe không cần followUp vì `payment_intent.succeeded`
+ * chỉ tới SAU khi Stripe đã tự capture.
  */
 export class PayPalGateway implements PaymentGateway {
   readonly provider = PaymentProvider.PAYPAL;
@@ -142,6 +147,38 @@ export class PayPalGateway implements PaymentGateway {
       `Refunded PayPal capture ${input.providerPaymentId} → ${refund.id} (status=${refund.status ?? 'unknown'})`,
     );
     return { providerRefundId: refund.id };
+  }
+
+  /**
+   * Side-effect sau verify: capture order khi webhook báo buyer đã APPROVED.
+   * Đây là đường capture CHÍNH (xem docblock lớp) — throw lan ra ngoài để
+   * controller trả 500, PayPal tự retry delivery này.
+   */
+  async followUp(event: VerifiedEvent): Promise<void> {
+    const raw = event.raw as PayPalEventShape;
+    if (raw.event_type !== 'CHECKOUT.ORDER.APPROVED') return;
+
+    const orderId = raw.resource?.id;
+    if (!orderId) {
+      // Payload dị dạng nhưng ĐÃ verify chữ ký — không có gì để retry, chỉ ghi log.
+      this.logger.warn(
+        'PayPal CHECKOUT.ORDER.APPROVED webhook has no resource.id — bỏ qua capture',
+      );
+      return;
+    }
+
+    try {
+      await this.post(`/v2/checkout/orders/${orderId}/capture`, {}, `capture:${orderId}`);
+      this.logger.log(`Captured PayPal order ${orderId} theo webhook APPROVED`);
+    } catch (error) {
+      // ORDER_ALREADY_CAPTURED = capture đã thành công ở lượt trước (retry của
+      // PayPal hoặc APPROVED đến sau) — idempotent, nuốt lỗi thay vì throw.
+      if (error instanceof Error && error.message.includes('ORDER_ALREADY_CAPTURED')) {
+        this.logger.log(`PayPal order ${orderId} đã được capture từ trước — no-op`);
+        return;
+      }
+      throw error;
+    }
   }
 
   // ── Nội bộ ─────────────────────────────────────────────────────────────

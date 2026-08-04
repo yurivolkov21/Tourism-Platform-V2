@@ -1,5 +1,6 @@
 import { PaymentProvider } from '../../generated/prisma/enums.js';
 import type { HttpPostCall, HttpPostResponse } from '../../lib/provider-http.js';
+import type { VerifiedEvent } from './gateway.js';
 import { PayPalGateway } from './paypal.gateway.js';
 
 const OPTS = {
@@ -354,6 +355,94 @@ describe('PayPalGateway.refund', () => {
         currency: 'USD',
       }),
     ).rejects.toThrow(/CAPTURE_FULLY_REFUNDED/);
+  });
+});
+
+describe('PayPalGateway.followUp', () => {
+  /** VerifiedEvent bọc raw CHECKOUT.ORDER.APPROVED — `type` map thành `other` (mapPayPalEvent). */
+  function approvedEvent(resourceOverrides: Record<string, unknown> = {}): VerifiedEvent {
+    return {
+      eventId: 'WH-EVT-APPROVED',
+      type: 'other',
+      raw: {
+        id: 'WH-EVT-APPROVED',
+        event_type: 'CHECKOUT.ORDER.APPROVED',
+        resource: { id: 'ORDER-9', ...resourceOverrides },
+      },
+    };
+  }
+
+  function completedEvent(): VerifiedEvent {
+    return {
+      eventId: 'WH-EVT-OTHER',
+      type: 'payment.completed',
+      bookingId: 'b-1',
+      raw: {
+        id: 'WH-EVT-OTHER',
+        event_type: 'PAYMENT.CAPTURE.COMPLETED',
+        resource: { id: 'CAP-1' },
+      },
+    };
+  }
+
+  it('captures the order on CHECKOUT.ORDER.APPROVED with idempotent Request-Id', async () => {
+    const http = stubHttp({
+      '/v1/oauth2/token': tokenResponse(),
+      '/v2/checkout/orders/ORDER-9/capture': {
+        status: 201,
+        body: JSON.stringify({ id: 'CAP-9', status: 'COMPLETED' }),
+      },
+    });
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await gateway.followUp(approvedEvent());
+
+    const captureCall = http.calls.find((c) =>
+      c.url.endsWith('/v2/checkout/orders/ORDER-9/capture'),
+    );
+    expect(captureCall).toBeDefined();
+    expect(captureCall?.headers['paypal-request-id']).toBe('capture:ORDER-9');
+    expect(captureCall?.headers.authorization).toBe('Bearer token-1');
+  });
+
+  it('does nothing for events other than CHECKOUT.ORDER.APPROVED (no HTTP call)', async () => {
+    const http = stubHttp({});
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await gateway.followUp(completedEvent());
+
+    expect(http.calls).toHaveLength(0);
+  });
+
+  it('warns and returns without throwing when resource.id is missing', async () => {
+    const http = stubHttp({});
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await expect(gateway.followUp(approvedEvent({ id: undefined }))).resolves.toBeUndefined();
+    expect(http.calls).toHaveLength(0);
+  });
+
+  it('swallows ORDER_ALREADY_CAPTURED as an idempotent success', async () => {
+    const http = stubHttp({
+      '/v1/oauth2/token': tokenResponse(),
+      '/v2/checkout/orders/ORDER-9/capture': {
+        status: 422,
+        body: JSON.stringify({ name: 'UNPROCESSABLE_ENTITY', message: 'ORDER_ALREADY_CAPTURED' }),
+      },
+    });
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await expect(gateway.followUp(approvedEvent())).resolves.toBeUndefined();
+  });
+
+  it('throws on other capture errors so the provider retries the webhook', async () => {
+    const http = stubHttp({
+      '/v1/oauth2/token': tokenResponse(),
+      '/v2/checkout/orders/ORDER-9/capture': { status: 503, body: '{}' },
+    });
+    const gateway = new PayPalGateway(OPTS, http.post);
+
+    await expect(gateway.followUp(approvedEvent())).rejects.toThrow();
   });
 });
 
