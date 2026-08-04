@@ -187,7 +187,9 @@ describe('StripeGateway.createCheckoutSession', () => {
       }),
     });
 
+    const before = Math.floor(Date.now() / 1000);
     const session = await gateway.createCheckoutSession(input);
+    const after = Math.floor(Date.now() / 1000);
 
     expect(session).toEqual({
       sessionId: 'cs_test_9',
@@ -208,7 +210,12 @@ describe('StripeGateway.createCheckoutSession', () => {
     expect(params.get('metadata[bookingCode]')).toBe('BK-1');
     expect(params.get('success_url')).toBe(input.successUrl);
     expect(params.get('cancel_url')).toBe(input.cancelUrl);
-    expect(Number(params.get('expires_at'))).toBeGreaterThan(Date.now() / 1000);
+    // Khoá đúng 60 phút (không chỉ ">now"): floor Stripe là 30' TÍNH THEO ĐỒNG HỒ
+    // STRIPE — đặt sát floor thì clock-skew âm của máy gọi làm request bị từ
+    // chối (đo −86s trong smoke sandbox 04/08). Chừa lề 30' trên floor.
+    const expiresAt = Number(params.get('expires_at'));
+    expect(expiresAt).toBeGreaterThanOrEqual(before + 3600);
+    expect(expiresAt).toBeLessThanOrEqual(after + 3600);
   });
 
   it('sends zero-decimal amounts unscaled', async () => {

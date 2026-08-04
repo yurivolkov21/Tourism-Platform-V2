@@ -14,8 +14,16 @@ import { fromMinorUnits, toMinorUnits } from './money.js';
 
 /** Tolerance timestamp webhook theo tài liệu Stripe (cửa sổ replay), tính giây. */
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
-/** Hạn Checkout Session tường minh — session bị bỏ dở sẽ bắn `checkout.session.expired`. */
-const SESSION_EXPIRY_SECONDS = 30 * 60;
+/**
+ * Hạn Checkout Session tường minh — session bị bỏ dở sẽ bắn `checkout.session.expired`.
+ * 60 phút, KHÔNG phải 30 phút: floor của Stripe là 30 phút nhưng tính THEO
+ * ĐỒNG HỒ CỦA STRIPE, không phải đồng hồ máy gọi. Đặt sát floor (30') từng bị
+ * Stripe từ chối `expires_at timestamp must be at least 30 minutes from
+ * Checkout Session creation` — đo được clock skew −86s giữa máy gọi và
+ * Stripe/Google/PayPal trong smoke sandbox 04/08, đủ để rơi dưới floor. Mọi
+ * máy đều có thể lệch vài chục giây; 60 phút chừa lề 30 phút an toàn.
+ */
+const SESSION_EXPIRY_SECONDS = 60 * 60;
 
 const API_BASE = 'https://api.stripe.com';
 
@@ -31,7 +39,7 @@ export interface StripeGatewayOptions {
  * đúng ba endpoint mà money-path cần — kéo nguyên SDK về chỉ để làm hai POST
  * form-encoded cộng một HMAC mà đằng nào ta cũng phải tự unit-test offline
  * (D2: P2 không smoke qua mạng) là không đáng. Các mảnh ĐÃ ĐƯỢC KIỂM CHỨNG
- * port 1:1: bộ field Checkout Session gồm `expires_at` 30 phút và cầu nối
+ * port 1:1: bộ field Checkout Session gồm `expires_at` tường minh và cầu nối
  * `metadata.bookingId`, refund theo payment_intent kèm idempotency key, và
  * lối xử lý webhook verify-rồi-map.
  *
