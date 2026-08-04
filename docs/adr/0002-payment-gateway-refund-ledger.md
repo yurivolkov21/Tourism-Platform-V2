@@ -3,6 +3,19 @@
 - **Trạng thái:** Accepted (2026-07-18, cùng merge P2)
 - **Bối cảnh:** spec P2 + schema audit (H1/H2/H4, M7) + Nexora ADR-0006/0009
 
+> **Cập nhật 2026-08-04 (trả 2 nợ P3 của ADR này — user chốt cùng ngày):**
+> - **Trigger capture PayPal ĐỔI so với ghi chú cũ** ("capture ở return-page
+>   sẽ tới cùng web checkout P3"): chốt capture **server-side khi webhook
+>   `CHECKOUT.ORDER.APPROVED`** — độc lập web, end-to-end được ngay và test
+>   headless được; trang success của bước 10 sẽ THÊM capture-on-return làm
+>   lớp UX tức thời, webhook vẫn là backstop (đủ bộ như Nexora). Lý do đổi:
+>   chờ return-page nghĩa là PayPal không hoàn tất được thanh toán nào cho
+>   tới bước 10, trong khi nợ đã quá hạn.
+> - **Smoke provider thật (D2)**: chạy cùng cụm này bằng sandbox key user
+>   cấp — Stripe test-mode + PayPal sandbox, mỗi provider một vòng
+>   thanh toán thật + một refund thật.
+> - Spec: [2026-08-04-paypal-capture-smoke-design](../specs/2026-08-04-paypal-capture-smoke-design.md).
+
 ## Quyết định
 
 **1. `PaymentGateway` interface thay enum+branching.** Nexora inject thẳng
