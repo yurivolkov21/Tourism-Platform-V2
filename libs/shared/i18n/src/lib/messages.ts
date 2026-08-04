@@ -2385,6 +2385,61 @@ export const messages = {
       },
     },
   },
+  // Khu `/account/*` (spec 2026-08-04-account-area-design, pha A1 tĩnh) — tab
+  // nav dùng chung cho layout.tsx. `bookings`/`profile` trỏ route Task 4 chưa
+  // dựng lúc Task 3 chạy — cùng nhánh, route sẽ sống trước mốc DỪNG A1 (Task 5).
+  accountNav: {
+    dashboard: 'Dashboard',
+    bookings: 'Bookings',
+    saved: 'Saved tours',
+    profile: 'Profile',
+  },
+  // Trang `/account` (dashboard) — 4 ô số + thẻ "chuyến kế tiếp" + 5 booking
+  // sắp tới + 3 tour đã lưu. `emptyState` chỉ hiện khi TOÀN BỘ khu account
+  // trống (không booking, không tour đã lưu) — khác empty-state riêng của
+  // từng khối con (vd "chưa có chuyến sắp tới" khi chỉ mục đó rỗng).
+  accountDashboard: {
+    title: 'My account',
+    greeting: (name: string) => `Welcome back, ${name}`,
+    stats: {
+      trips: 'Trips',
+      upcoming: 'Upcoming',
+      completed: 'Completed',
+      saved: 'Saved',
+    },
+    nextTrip: {
+      heading: 'Your next trip',
+      departing: (date: string) => `Departing ${date}`,
+    },
+    upcoming: {
+      heading: 'Upcoming bookings',
+      viewAll: 'View all bookings',
+      empty: 'No upcoming bookings yet.',
+    },
+    saved: {
+      heading: 'Saved tours',
+      viewAll: 'View all saved tours',
+      empty: 'No saved tours yet.',
+    },
+    emptyState: {
+      heading: 'Nothing here yet',
+      body: 'Once you book or save a tour, it’ll show up on your dashboard.',
+      cta: 'Browse tours',
+    },
+  },
+  // Trang `/account/saved` — grid tour đã lưu (wishlist), nút ✕ bỏ lưu (A1:
+  // state cục bộ optimistic trên mock, A2 nối `wishlist.set`).
+  accountSaved: {
+    title: 'Saved tours',
+    subtitle: 'Tours you’ve bookmarked to plan later.',
+    removeAria: (title: string) => `Remove ${title} from saved tours`,
+    unavailable: 'No longer available',
+    emptyState: {
+      heading: 'No saved tours yet',
+      body: 'Tap the heart on any tour to save it here for later.',
+      cta: 'Browse tours',
+    },
+  },
 } as const;
 
 export type Messages = typeof messages;

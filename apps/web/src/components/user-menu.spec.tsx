@@ -62,7 +62,7 @@ describe('UserMenu', () => {
     expect(screen.getByRole('link', { name: /log in/i })).toBeInTheDocument();
   });
 
-  it('có session → avatar + tên/email hiện trong dropdown, item vẫn trỏ #top', async () => {
+  it('có session → avatar + tên/email hiện trong dropdown, item trỏ route account thật', async () => {
     useSessionMock.mockReturnValue({
       data: { user: { name: 'Minh Anh', email: 'minh.anh@example.com' } },
       isPending: false,
@@ -77,8 +77,15 @@ describe('UserMenu', () => {
     await user.click(trigger);
     expect(await screen.findByText('Minh Anh')).toBeInTheDocument();
     expect(screen.getByText('minh.anh@example.com')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: /my account/i })).toHaveAttribute('href', '#top');
-    expect(screen.getByRole('menuitem', { name: /my bookings/i })).toHaveAttribute('href', '#top');
+    // Task 3 (cụm account, pha A1): hết nợ `#top` — 2 route tĩnh đã dựng.
+    expect(screen.getByRole('menuitem', { name: /my account/i })).toHaveAttribute(
+      'href',
+      '/account',
+    );
+    expect(screen.getByRole('menuitem', { name: /my bookings/i })).toHaveAttribute(
+      'href',
+      '/account/bookings',
+    );
   });
 
   it('click Sign out → gọi authClient.signOut() rồi push("/") + refresh()', async () => {

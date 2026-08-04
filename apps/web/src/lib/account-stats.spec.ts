@@ -1,6 +1,6 @@
 import type { Booking } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { dashboardStats, nextTrip } from './account-stats';
+import { dashboardStats, nextTrip, upcomingBookings } from './account-stats';
 
 const TODAY = '2026-08-04';
 
@@ -111,5 +111,54 @@ describe('nextTrip', () => {
     const pastPaid = makeBooking({ code: 'BK-PASTPAID', departureStartDate: '2026-01-01' });
 
     expect(nextTrip([soonerButPending, fartherPaid, nearestPaid, pastPaid])).toEqual(nearestPaid);
+  });
+});
+
+// Task 3 (dashboard tĩnh) — khác mục đích `nextTrip`/`dashboardStats`: dashboard
+// cần liệt kê việc CẦN CHÚ Ý (kể cả PENDING chưa trả tiền), không chỉ chuyến đã
+// xác nhận PAID.
+describe('upcomingBookings', () => {
+  it('rỗng → []', () => {
+    expect(upcomingBookings([], 5)).toEqual([]);
+  });
+
+  it('gồm CẢ PENDING và PAID sắp tới, sắp theo ngày tăng dần', () => {
+    const pending = makeBooking({
+      code: 'BK-PENDING1',
+      status: 'PENDING',
+      departureStartDate: '2026-09-10',
+    });
+    const paidSooner = makeBooking({
+      code: 'BK-PAIDSOON',
+      status: 'PAID',
+      departureStartDate: '2026-08-15',
+    });
+    expect(upcomingBookings([pending, paidSooner], 5)).toEqual([paidSooner, pending]);
+  });
+
+  it('loại CANCELLED/REFUNDED/PARTIALLY_REFUNDED dù ngày tương lai', () => {
+    const bookings = [
+      makeBooking({ status: 'CANCELLED', departureStartDate: '2026-09-01' }),
+      makeBooking({ status: 'REFUNDED', departureStartDate: '2026-09-02' }),
+      makeBooking({ status: 'PARTIALLY_REFUNDED', departureStartDate: '2026-09-03' }),
+    ];
+    expect(upcomingBookings(bookings, 5)).toEqual([]);
+  });
+
+  it('loại booking PAID quá khứ', () => {
+    const past = makeBooking({ departureStartDate: '2026-01-01' });
+    expect(upcomingBookings([past], 5)).toEqual([]);
+  });
+
+  it('phần tử biên đúng hôm nay được tính là sắp tới', () => {
+    const boundary = makeBooking({ code: 'BK-BOUNDARY', departureStartDate: TODAY });
+    expect(upcomingBookings([boundary], 5)).toEqual([boundary]);
+  });
+
+  it('cắt đúng limit, giữ N phần tử GẦN NHẤT', () => {
+    const a = makeBooking({ code: 'BK-A', departureStartDate: '2026-08-10' });
+    const b = makeBooking({ code: 'BK-B', departureStartDate: '2026-08-20' });
+    const c = makeBooking({ code: 'BK-C', departureStartDate: '2026-08-30' });
+    expect(upcomingBookings([c, a, b], 2)).toEqual([a, b]);
   });
 });

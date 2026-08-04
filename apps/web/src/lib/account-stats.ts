@@ -57,3 +57,24 @@ export function nextTrip(bookings: Booking[]): Booking | null {
     b.departureStartDate < nearest.departureStartDate ? b : nearest,
   );
 }
+
+/**
+ * N booking sắp tới gần nhất cho dashboard (Task 3, spec §3 "5 booking sắp
+ * tới") — gồm CẢ `PENDING` (cần thanh toán) và `PAID` (đã xác nhận), KHÁC
+ * `dashboardStats`/`nextTrip` phía trên (chỉ đếm `PAID` cho 3 ô số + thẻ
+ * "chuyến kế tiếp"). Lý do khác nhau: dashboard cần liệt kê việc CẦN CHÚ Ý —
+ * booking PENDING chưa trả tiền vẫn đáng nhắc khách, còn 3 ô số/thẻ nextTrip
+ * chỉ đo "chuyến sẽ đi THẬT" (tiền đã xác nhận). Sắp theo `departureStartDate`
+ * tăng dần (gần nhất trước) rồi cắt đúng `limit`.
+ */
+export function upcomingBookings(bookings: Booking[], limit: number): Booking[] {
+  const today = todayDateString();
+  return bookings
+    .filter((b) => (b.status === 'PENDING' || b.status === 'PAID') && isUpcoming(b, today))
+    .sort((a, b) => {
+      if (a.departureStartDate < b.departureStartDate) return -1;
+      if (a.departureStartDate > b.departureStartDate) return 1;
+      return 0;
+    })
+    .slice(0, limit);
+}

@@ -37,8 +37,9 @@ export const USER_MENU_SIDE_OFFSET = 28;
 // chưa đăng nhập → link "Log in"; đã đăng nhập → avatar tròn mở dropdown
 // (tên/email · My account · My bookings · Sign out). Task 6 (auth-pages-api):
 // state đọc từ `useSession()` (Better Auth client) thay cho hằng mock tĩnh
-// cũ; "My account"/"My bookings" VẪN trỏ `#top` — trang đích của hai mục
-// này chưa dựng (nợ đã ghi từ bản mock, chưa tới lượt trong plan này).
+// cũ. Cụm account (Task 3, pha A1): "My account"/"My bookings" nối 2 route
+// TĨNH thật (`/account`, `/account/bookings` — đọc mock nội bộ cụm, chưa
+// wire session/API, đó là việc Task 6/A2) — hết nợ link `#top` cũ.
 export function UserMenu({ linkClassName }: { linkClassName?: string }) {
   const { data, isPending } = useSession();
   const router = useRouter();
@@ -86,11 +87,11 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         </div>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem render={<a href="#top" />}>
+          <DropdownMenuItem render={<a href="/account" />}>
             <UserIcon aria-hidden="true" />
             My account
           </DropdownMenuItem>
-          <DropdownMenuItem render={<a href="#top" />}>
+          <DropdownMenuItem render={<a href="/account/bookings" />}>
             <TicketIcon aria-hidden="true" />
             My bookings
           </DropdownMenuItem>
