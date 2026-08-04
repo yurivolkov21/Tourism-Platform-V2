@@ -68,6 +68,15 @@ freeze 15/10.
     `feat`/`fix` mới hơn entry CHANGELOG mới nhất là CI đỏ. Chạy tay bất cứ
     lúc nào bằng `./scripts/docs-freshness.sh`.
 
+14. **Liếc đèn CI sau MỖI push lên main** (chốt 04/08): chạy
+    `gh run list --branch main --limit 1` và xác nhận run mới nhất
+    success (chờ nếu đang chạy) trước khi khai xong việc push. Lý do:
+    main từng đỏ ÂM THẦM suốt 31/07→04/08 (build web thiếu API sống
+    trong CI) vì flow rebase+ff không chờ check và không ai nhìn đèn —
+    ruleset `gate` bị bypass bằng quyền admin mỗi lần push là bình
+    thường, nhưng bypass ≠ miễn nhìn. Luật này áp cho cả agent lẫn
+    người; brief subagent nào có bước push phải nhắc.
+
 ## Toolchain thống nhất (MỘT tool cho mỗi việc — không có ngoại lệ)
 
 | Việc | Tool DUY NHẤT | Chạy ở đâu |
