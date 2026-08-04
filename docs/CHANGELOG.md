@@ -29,8 +29,8 @@ main, hoặc (b) nếp "liếc `gh run list` sau mỗi push main" — chưa ch�
 user quyết ở dịp gần nhất.
 
 **Tests after:** không đổi code app — gate:int local đã xanh ở `9aa338f`;
-CI branch run full pipeline success (int 156 + build web SSG với API sống
-+ lint + freshness).
+CI branch run full pipeline success (int 156 và build web SSG với API sống
+và lint và freshness).
 
 ## 2026-08-04 — Trả 2 nợ ADR-0002: PayPal capture-on-approved + smoke sandbox THẬT 2 provider (branch `feat/paypal-capture-smoke`, ff-only, 5 commit `d7a49fb..9aa338f`)
 
