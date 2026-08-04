@@ -2440,6 +2440,115 @@ export const messages = {
       cta: 'Browse tours',
     },
   },
+  // Trang `/account/bookings` — list mọi booking, mới nhất trước (Task 4,
+  // pha A1 đọc mock). Nhãn status DÙNG CHUNG `booking.list.status` (đã gom
+  // một nguồn từ Task 3 cho badge dashboard) — KHÔNG lặp lại enum ở đây,
+  // tránh hai nguồn cùng dịch một status rồi lệch nhau về sau.
+  accountBookings: {
+    title: 'My bookings',
+    subtitle: 'Every trip you’ve booked with us, newest first.',
+    refLabel: 'Reference',
+    departureLabel: 'Departure',
+    travellersLabel: 'Travellers',
+    totalLabel: 'Total',
+    bookedOn: (date: string) => `Booked ${date}`,
+    // Một nguồn cho cả list VÀ detail (trang detail tái dùng nguyên hàm
+    // này, không tự chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai
+    // trang cùng hiển thị travellers của MỘT booking.
+    travellers: (adults: number, children: number) =>
+      children > 0
+        ? `${adults} adult${adults > 1 ? 's' : ''}, ${children} child${children > 1 ? 'ren' : ''}`
+        : `${adults} adult${adults > 1 ? 's' : ''}`,
+    viewDetails: 'View details',
+    // A1: nút hiện diện tĩnh, không phân trang thật (mock chỉ 7 dòng) — A2
+    // (Task 6) nối `?page=` thật.
+    loadMore: 'Load more',
+    emptyState: {
+      heading: 'No bookings yet',
+      body: 'Once you book a tour, it’ll show up here.',
+      cta: 'Browse tours',
+    },
+  },
+  // Trang `/account/bookings/[code]` — grid thông tin + hành động theo
+  // `BookingView` (Task 2 `bookingView`, `@/lib/booking-vm`). Mã lạ/không
+  // phải của mình → `notFound()` (page tự gọi, không cần copy riêng ở đây).
+  accountBookingDetail: {
+    back: 'Back to my bookings',
+    tourLabel: 'Tour',
+    departureLabel: 'Departure',
+    travellersLabel: 'Travellers',
+    totalLabel: 'Total',
+    refLabel: 'Reference',
+    paymentLabel: 'Payment method',
+    contactLabel: 'Contact',
+    requestsLabel: 'Special requests',
+    // Terminal (CANCELLED/REFUNDED/PARTIALLY_REFUNDED — `actions: []` ở
+    // `bookingView`) không có amount đã hoàn ở đây: `Booking` (contract
+    // khách, `BookingSchema`) KHÔNG mang field ledger đó — chỉ
+    // `AdminBookingDetailSchema`/`Refund` (admin-only) có. Ghi rõ để A2
+    // không tưởng lầm đây là thiếu sót UI có thể tự vá bằng mock.
+    terminalNote: {
+      CANCELLED: 'This booking was cancelled.',
+      REFUNDED: 'This booking was refunded.',
+      PARTIALLY_REFUNDED: 'Part of this booking was refunded.',
+    } as Record<string, string>,
+    actions: {
+      payNow: 'Pay now',
+      cancelPending: 'Cancel booking',
+      cancelConfirmTitle: 'Cancel this booking?',
+      cancelConfirmBody: 'This releases your pending reservation. You can book again any time.',
+      cancelConfirmCta: 'Yes, cancel it',
+      cancelDismiss: 'Keep booking',
+      requestCancellation: 'Request cancellation',
+      viewCancellationPending: 'Cancellation requested — pending review.',
+      resubmitCancellation: 'Request cancellation again',
+    },
+    deniedNote: (note: string) => `Your previous request was declined: ${note}`,
+    policyLink: 'Read our cancellation & refund policy',
+    // Chừa chỗ cụm B (form review thật) — placeholder nhẹ, không dựng logic.
+    review: {
+      heading: 'Your review',
+      body: 'Once your trip is done, you’ll be able to leave a review here.',
+    },
+  },
+  // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
+  // connected accounts + danger-zone. Avatar/đổi email PARK (spec §4) —
+  // avatar chữ-cái tĩnh, email read-only kèm chú thích, KHÔNG dựng form ghi.
+  accountProfile: {
+    title: 'Profile',
+    subtitle: 'Manage your personal info, sign-in, and account.',
+    avatarHint: 'Shown as your initial for now — photo uploads aren’t available yet.',
+    details: {
+      heading: 'Personal information',
+      nameLabel: 'Full name',
+      phoneLabel: 'Phone',
+      emailLabel: 'Email',
+      emailHint: 'Your sign-in email — changing it isn’t available yet.',
+      save: 'Save changes',
+    },
+    password: {
+      heading: 'Change password',
+      newLabel: 'New password',
+      confirmLabel: 'Confirm new password',
+      submit: 'Update password',
+    },
+    connected: {
+      heading: 'Connected accounts',
+      subtitle: 'Sign-in methods linked to your account.',
+      emailPassword: 'Email & password',
+    },
+    danger: {
+      heading: 'Danger zone',
+      subtitle: 'Irreversible account actions.',
+      deleteCta: 'Delete account',
+      dialogTitle: 'Delete your account?',
+      dialogBody:
+        'This permanently removes your account and all your data. This action cannot be undone.',
+      typeToConfirm: (word: string) => `Type ${word} to confirm`,
+      confirmCta: 'Yes, delete my account',
+      cancel: 'Cancel',
+    },
+  },
 } as const;
 
 export type Messages = typeof messages;

@@ -16,8 +16,10 @@ const UPCOMING_LIMIT = 5;
 const SAVED_PREVIEW_LIMIT = 3;
 
 /** Badge trạng thái booking — cùng tông `bookingView` (Task 2) đang dùng cho
- *  hành động ở trang chi tiết, token-only (spec §3 "badge tone theo status"). */
-const TONE_CLASS: Record<BookingViewTone, string> = {
+ *  hành động ở trang chi tiết, token-only (spec §3 "badge tone theo status").
+ *  Export để `booking-card.tsx`/trang `/account/bookings` (Task 4) tái dùng
+ *  NGUYÊN — một nguồn map tone→class, không có bản sao thứ hai trong cụm. */
+export const TONE_CLASS: Record<BookingViewTone, string> = {
   success: 'bg-success/10 text-success',
   warning: 'bg-warning/10 text-warning',
   muted: 'bg-muted text-muted-foreground',
