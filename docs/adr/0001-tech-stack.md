@@ -17,6 +17,10 @@
 > - **TS 7 (tsgo) mới phủ root + `apps/api`** (`typescript: "7.0.2"` ở
 >   `package.json` root và `apps/api/package.json`); `apps/web/package.json`
 >   và `libs/shared/ui/package.json` còn `typescript: "^5"`.
+>   → **ĐÃ PHỦ TRỌN 04/08** (`4ece778`): web + ui lên 7.0.2 cùng Next 16.3.0
+>   (bản đầu hỗ trợ TS7 chính thức cho `next build`) — toàn repo một đời TS;
+>   gotcha tsgo: phải khai `types` tường minh trong tsconfig, xem CHANGELOG
+>   04/08.
 >
 > Quyết định gốc giữ nguyên văn — đây là ghi nhận tiến độ thi hành, không đảo
 > lựa chọn.

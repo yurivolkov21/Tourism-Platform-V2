@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-04 — Nâng Next 16.3.0 và phủ TypeScript 7 cho web/ui — toàn repo một đời TS (branch `chore/nang-next-16-3-phu-ts7`, ff-only, 1 commit `4ece778`)
+
+Cửa sổ trước freeze tận dụng đúng lúc: Next 16.3.0 GA 03/08 (một ngày trước)
+với hỗ trợ TS7 chính thức cho `next build`. Nâng `next` 16.2.11 → 16.3.0 và
+`typescript` `^5` → `7.0.2` ghim cứng ở `apps/web` + `libs/shared/ui` — từ
+nay CẢ REPO chạy một đời TS 7 (tsgo). Đổi code đúng MỘT dòng:
+`libs/shared/ui/tsconfig.json` thêm `"types": ["node"]` — tsgo không tự gom
+mọi `@types` trong node_modules như TS5 (API sống sót từ đầu nhờ đã khai
+tường minh). Đo được: build web 28s → 19s; typecheck toàn workspace 2.6s;
+KHÔNG breaking (`revalidateTag` 2-arg + `{expire: 0}` nguyên vẹn — thiết kế
+ổn định từ 16.0). Nghiệm thu production: sitemap 52 URL · soft-404 404 thật ·
+ISR HIT · auth/blog 200; `gate:int --force` xanh trọn; CI branch run
+`30879275087` success trước khi merge (nếp mới sau luật 14).
+
+**Phát hiện ngoài lề trong lúc đo — DB dev có 21 tour ZOMBIE** (series id
+`d0000001-…` thời mock, sitemap phồng 72 URL): root cause chốt được cho món
+nợ "điều tra compose-seed" ghi 03/08 — **compose service `migrate` mang image
+build cũ** (fixtures roster cũ nướng bên trong), container restart là nó chạy
+seed cũ, chèn 21 tour rồi gãy giữa chừng ở FK `tourDestination` (seed không
+transaction). User đã `migrate reset` + seed lại (DB về 30 tour chuẩn). Nợ
+đổi trạng thái: hết "điều tra", thành việc cụ thể — **rebuild image
+(`docker compose build migrate`) hoặc gỡ service `migrate` khỏi compose**;
+kèm bài học vận hành: seed nên chạy trong transaction để không bao giờ chèn
+nửa chừng. Bài học đo đạc cùng phiên: pkill theo pattern có thể tự giết
+shell của chính mình (lệnh chứa chuỗi khớp) và server cũ chưa chết hẳn sẽ
+ghi ISR đè vào build mới — kill theo PID của cổng, xác nhận cổng `000` rồi
+mới build/đo.
+
+**Tests after:** không đổi số test (805 web · 208 api unit · 156 int) —
+gate:int --force + CI full pipeline đều xanh trên `4ece778`.
+
 ## 2026-08-04 — Fix CI đỏ ÂM THẦM từ 31/07: build web cần API sống mà workflow không mở (branch `fix/ci-api-song-cho-web-build`, ff-only, 1 commit `a1cdb0f`)
 
 Phát hiện khi user nhờ check CI: **main đỏ liên tục từ 31/07 04:23** (ngay
