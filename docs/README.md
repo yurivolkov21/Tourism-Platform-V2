@@ -3,7 +3,7 @@
 Đây là **cửa vào duy nhất**. Mọi tài liệu của dự án đều nằm dưới `docs/` và
 được liệt kê ở đây — không có spec nào nằm chỗ khác.
 
-## Năm thể loại, đừng lẫn
+## Sáu thể loại, đừng lẫn
 
 | Thư mục | Trả lời câu hỏi | Viết khi nào |
 | --- | --- | --- |
@@ -12,6 +12,7 @@
 | [`plans/`](plans/) | **Làm theo bước nào** để hiện thực spec? | Sau khi spec được duyệt, trước khi code |
 | [`analysis/`](analysis/) | **Học được gì** từ Nexora? | Khi cần dữ liệu để ra quyết định |
 | [`conventions/`](conventions/) | Quy tắc **áp dụng mãi mãi** | Khi một bài học cần thành luật |
+| [`design/`](design/) | Đồ nghề **Claude Design** (brief ngôn ngữ thiết kế + prompt từng luồng) | Khi cần thiết kế trang mới ngoài code; brief là BẢN TRÍCH — code thắng, sửa brief theo code (commit chính thức 04/08) |
 
 Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge (phase đang
 chạy; entry cũ hơn 30/07 ở [`changelog/`](changelog/) — 2 archive theo kỷ
