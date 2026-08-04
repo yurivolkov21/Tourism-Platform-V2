@@ -17,8 +17,9 @@ retry) → `PayPalGateway` capture server-side khi webhook
 `ORDER_ALREADY_CAPTURED` nuốt — cũng chính là ca out-of-order; lỗi khác
 throw-để-retry). Đường `payment.completed`/atomic claim không đổi một dòng.
 Smoke sandbox thật do user cấp key: PayPal buyer approve → capture của ta →
-COMPLETED → PAID trong 23 giây + refund 2 nhịp id thật; Stripe 4242 trọn vòng
-+ refund 2 nhịp; âm bản chữ-ký-giả → 400, replay → duplicate không double.
+COMPLETED → PAID trong 23 giây + refund 2 nhịp id thật; Stripe 4242 trọn
+vòng và refund 2 nhịp; âm bản chữ-ký-giả → 400, replay → duplicate không
+double.
 
 **Review findings (2 vòng task + final fable + 2 vòng fix) — cả 3 bug đều
 thuộc lớp "chỉ lộ khi chạm đời thật":**
