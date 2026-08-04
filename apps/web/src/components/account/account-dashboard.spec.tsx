@@ -115,4 +115,29 @@ describe('AccountDashboard — có dữ liệu', () => {
     render(<AccountDashboard bookings={bookings} wishlist={wishlist} />);
     expect(screen.getByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields')).toBeInTheDocument();
   });
+
+  it('saved preview có item unavailable → KHÔNG link /tours/[slug], hiện UnavailableCard (khớp saved-grid)', () => {
+    const unavailableItem = makeWishlistItem({
+      tourId: 'ded599f0-df12-43a3-9b3d-bbe5d26764dc',
+      slug: 'ha-giang-loop-4d',
+      title: 'Hà Giang Loop by Easyrider 4D3N',
+      unavailable: true,
+    });
+    render(<AccountDashboard bookings={bookings} wishlist={[unavailableItem]} />);
+    expect(screen.getByText('Hà Giang Loop by Easyrider 4D3N')).toBeInTheDocument();
+    expect(screen.getByText('No longer available')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: /hà giang loop by easyrider/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('badge status PENDING lấy nhãn "Awaiting payment" từ i18n booking.list.status (một nguồn với trang bookings)', () => {
+    const pendingBooking = makeBooking({
+      code: 'BK-PENDING1',
+      status: 'PENDING',
+      departureStartDate: '2026-08-25',
+    });
+    render(<AccountDashboard bookings={[pendingBooking]} wishlist={wishlist} />);
+    expect(screen.getByText('Awaiting payment')).toBeInTheDocument();
+  });
 });

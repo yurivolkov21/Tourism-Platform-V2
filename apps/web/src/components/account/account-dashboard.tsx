@@ -2,6 +2,7 @@ import type { Booking, WishlistItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
+import { UnavailableCard } from '@/components/account/saved-grid';
 import { TourCard } from '@/components/tours/tour-card';
 import { dashboardStats, nextTrip, upcomingBookings } from '@/lib/account-stats';
 import { type BookingViewTone, bookingView } from '@/lib/booking-vm';
@@ -21,14 +22,6 @@ const TONE_CLASS: Record<BookingViewTone, string> = {
   warning: 'bg-warning/10 text-warning',
   muted: 'bg-muted text-muted-foreground',
   destructive: 'bg-destructive/10 text-destructive',
-};
-
-const STATUS_LABEL: Record<Booking['status'], string> = {
-  PENDING: 'Pending',
-  PAID: 'Paid',
-  CANCELLED: 'Cancelled',
-  REFUNDED: 'Refunded',
-  PARTIALLY_REFUNDED: 'Partially refunded',
 };
 
 function EmptyState() {
@@ -129,7 +122,10 @@ export function AccountDashboard({
                     <span
                       className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASS[view.tone]}`}
                     >
-                      {STATUS_LABEL[booking.status]}
+                      {/* Nguồn label status DUY NHẤT: `booking.list.status` — cùng
+                          khối i18n Task 4 (trang /account/bookings) dùng, tránh
+                          drift chuỗi giữa hai nơi hiện cùng một enum. */}
+                      {messages.booking.list.status[booking.status]}
                     </span>
                   </Link>
                 </li>
@@ -150,9 +146,17 @@ export function AccountDashboard({
           <p className="mt-4 text-sm text-muted-foreground">{t.saved.empty}</p>
         ) : (
           <div className="mt-4 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {savedPreview.map((item) => (
-              <TourCard key={item.tourId} tour={wishlistToTourCardVM(item)} />
-            ))}
+            {savedPreview.map((item) =>
+              // Tour đã unpublish sau khi khách lưu → dùng lại UnavailableCard
+              // của saved-grid.tsx (KHÔNG có nút bỏ lưu ở đây, chỉ là preview)
+              // thay vì TourCard trần — TourCard luôn link tới /tours/[slug],
+              // link đó chết với tour đã gỡ.
+              item.unavailable ? (
+                <UnavailableCard key={item.tourId} item={item} />
+              ) : (
+                <TourCard key={item.tourId} tour={wishlistToTourCardVM(item)} />
+              ),
+            )}
           </div>
         )}
       </section>

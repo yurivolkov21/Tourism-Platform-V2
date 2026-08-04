@@ -35,8 +35,13 @@ function EmptyState() {
  * đích đó không còn tồn tại — bắt khách bấm vào một link chết còn tệ hơn một
  * card không bấm được. Vẫn giữ nhịp hình khối gần giống TourCard (ảnh + tiêu
  * đề) để không lệch hẳn khỏi các card khác trong lưới, chỉ mờ đi + đổi nhãn.
+ *
+ * Export để dùng lại ở khối "3 saved" trên dashboard (account-dashboard.tsx)
+ * — CÙNG một nguồn rẽ nhánh unavailable, tránh copy-paste. `onRemove` để
+ * OPTIONAL vì dashboard chỉ là bản xem trước, không có nút bỏ lưu (đó là
+ * việc của trang /account/saved).
  */
-function UnavailableCard({ item, onRemove }: { item: WishlistItem; onRemove: () => void }) {
+export function UnavailableCard({ item, onRemove }: { item: WishlistItem; onRemove?: () => void }) {
   const t = messages.accountSaved;
   return (
     <div className="relative flex flex-col gap-2.5 opacity-60">
@@ -49,16 +54,18 @@ function UnavailableCard({ item, onRemove }: { item: WishlistItem; onRemove: () 
       <h3 className="min-h-[2lh] font-heading text-lg leading-snug font-medium text-muted-foreground">
         {item.title}
       </h3>
-      <Button
-        type="button"
-        variant="ghost"
-        size="icon-sm"
-        aria-label={t.removeAria(item.title)}
-        onClick={onRemove}
-        className={REMOVE_BUTTON_CLASS}
-      >
-        <XIcon />
-      </Button>
+      {onRemove ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label={t.removeAria(item.title)}
+          onClick={onRemove}
+          className={REMOVE_BUTTON_CLASS}
+        >
+          <XIcon />
+        </Button>
+      ) : null}
     </div>
   );
 }
