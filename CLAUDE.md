@@ -56,6 +56,9 @@ freeze 15/10.
     Lý do tách: int test cần Postgres và chậm hơn ~6x. Lý do bắt buộc chạy:
     một int spec từng hỏng suốt 4 task mà không ai biết vì không có gì canh.
 12. **Commits: Conventional Commits.** KHÔNG AI attribution (quy ước user).
+    Message viết **tiếng Việt CÓ DẤU đầy đủ** (chốt 04/08 — trước đó hay bỏ
+    dấu; type/scope giữ tiếng Anh theo Conventional: `fix(api): sửa …`).
+    Brief cho subagent có commit phải nhắc luật này.
 13. **Docs sweep sau mỗi feature merge**: 1 entry vào `docs/CHANGELOG.md`
     (ngày · hash · nội dung · review findings · số test) + cập nhật doc
     hiện-trạng bị ảnh hưởng + **thêm doc mới vào bản đồ `docs/README.md`**
