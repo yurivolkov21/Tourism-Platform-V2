@@ -8,6 +8,49 @@ import { apiOrigin } from './env';
 /** Context per-call: Server Component điều khiển Next Data Cache qua đây. */
 export interface ApiClientContext {
   next?: { revalidate?: number; tags?: string[] };
+  /**
+   * Đường gọi CẦN session (ADR-0017 §3) — mở rộng CÙNG khuôn với `next` ở
+   * trên, không chế đường song song. Data per-user nên LUÔN ép
+   * `cache: 'no-store'`, không đi kèm `next` (revalidate/tag) ở field trên
+   * trong cùng một context.
+   * - `{ credentials: 'include' }`: gọi từ browser — cookie httpOnly do API
+   *   phát tự gửi kèm request, JS không cần đụng tay (ADR-0017 §1).
+   * - `{ cookie }`: gọi từ server — forward cookie đọc từ `next/headers`
+   *   (dựng qua `withAuthHeaders` bên dưới, cùng cách đọc của `session.ts`).
+   */
+  auth?: { credentials: 'include' } | { cookie: string };
+}
+
+/**
+ * Server: bọc cookie forward cho một call oRPC cần session (ADR-0017 §3) —
+ * dùng thẳng làm `context`, vd
+ * `api.account.me(undefined, { context: withAuthHeaders(cookieHeader) })`.
+ */
+export function withAuthHeaders(cookie: string): ApiClientContext {
+  return { auth: { cookie } };
+}
+
+/**
+ * Thuần để test: gắn credentials/cookie cho call cần session vào RequestInit
+ * (mở rộng cùng khuôn `withNextOptions`). Nhận thêm `request` gốc (KHÁC
+ * `withNextOptions`) để merge header qua `new Headers(request.headers)` thay
+ * vì gán đè `init.headers` — oRPC đã tự set content-type/accept trên
+ * `request`, gán đè sẽ làm mất các header đó (đo bằng typecheck chữ ký
+ * `LinkFetchClientOptions.fetch` của @orpc/client 1.14.8: `request` là
+ * `Request` đầy đủ, `init` chỉ có `{ redirect? }`).
+ */
+export function withAuthOptions(
+  request: Request,
+  init: RequestInit,
+  context: ApiClientContext | undefined,
+): RequestInit {
+  if (!context?.auth) return init;
+  if ('credentials' in context.auth) {
+    return { ...init, credentials: context.auth.credentials };
+  }
+  const headers = new Headers(request.headers);
+  headers.set('cookie', context.auth.cookie);
+  return { ...init, headers, cache: 'no-store' };
 }
 
 /**
@@ -43,7 +86,7 @@ const link = new OpenAPILink<ApiClientContext>(contract, {
   url: apiOrigin(),
   fetch: (request, init, { context }) =>
     globalThis.fetch(request, {
-      ...withNextOptions(init ?? {}, context),
+      ...withAuthOptions(request, withNextOptions(init ?? {}, context), context),
       signal: AbortSignal.timeout(10_000),
     }),
 });
