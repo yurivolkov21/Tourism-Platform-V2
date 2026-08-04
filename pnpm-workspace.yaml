@@ -23,6 +23,12 @@ minimumReleaseAgeExclude:
   - '@next/swc-win32-arm64-msvc@16.2.11'
   - '@next/swc-win32-x64-msvc@16.2.11'
   - next@16.2.11
+  - postcss@8.5.23
+  - undici@7.29.0
+  - fast-uri@3.1.5 || 4.1.2
+  - ip-address@10.2.1 || 10.2.2 || 10.3.1
+  - hono@4.12.34
+  - brace-expansion@5.0.9
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
@@ -81,4 +87,17 @@ overrides:
   # thật (gate:int) chứ không suy đoán. Nếu ngày nào build gãy vì dòng này:
   # gỡ nó ra và chấp nhận alert — mẫu brace ở đây do CHÍNH package.json của
   # mình viết, không phải input từ ngoài, nên không ai khai thác được.
-  brace-expansion: '^5.0.8'
+  brace-expansion: '^5.0.9'
+  # Đợt vá Dependabot 03/08 (13 alert + 1 pnpm audit thấy thêm) — sinh bởi
+  # `pnpm audit --fix=override`, scoped theo đúng dải dính lỗ hổng nên không
+  # ghim vĩnh viễn các bản sau. Toàn bộ là dep bắc cầu (fastify→fast-uri ·
+  # shadcn/MCP-sdk→ip-address+hono; @hono/node-server GIỮ ghim 1.x theo quyết định 23/07 đã dismiss · jsdom/vitest/dotenvx→undici · tooling→
+  # postcss). Chi tiết: CHANGELOG 03/08.
+  fast-uri@>=3.0.0 <3.1.5: ^3.1.5
+  fast-uri@>=4.0.0 <4.1.2: ^4.1.2
+  hono@<4.12.34: ^4.12.34
+  ip-address@<=10.3.0: ^10.3.1
+  ip-address@>=10.1.1 <=10.2.0: ^10.2.1
+  ip-address@>=10.1.1 <=10.2.1: ^10.2.2
+  postcss@<=8.5.22: ^8.5.23
+  undici@>=7.0.0 <7.29.0: ^7.29.0
