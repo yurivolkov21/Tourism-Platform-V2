@@ -90,6 +90,12 @@ export class WebhooksController {
     }
 
     const result = await this.payments.handleEvent(provider, verified);
+    // PHẢI chạy SAU handleEvent: PaymentEvent audit row cần ghi xong trước —
+    // followUp nổ (throw → 500, provider retry) không được kéo theo mất log.
+    // Không try/catch ở đây: throw lan thẳng ra ngoài, global exception
+    // filter map nó thành 500 (Task 2: PayPal capture-on-approved dùng đúng
+    // nhánh này).
+    await gateway.followUp?.(verified);
     return {
       received: true as const,
       eventId: verified.eventId,

@@ -32,6 +32,18 @@ export interface PaymentGateway {
 
   /** Phát hành một khoản refund (có thể một phần) trên payment đã capture. */
   refund(input: RefundInput): Promise<{ providerRefundId: string }>;
+
+  /**
+   * Hook OPTIONAL: side-effect riêng của provider chạy SAU khi event đã được
+   * verify VÀ log (PaymentEvent đã ghi, `handleEvent` đã chạy xong) — ví dụ
+   * PayPal cần tự capture order khi nhận CHECKOUT.ORDER.APPROVED (W2 spec
+   * ADR-0002, Task 2 dùng member này). Gateway không cần followUp thì bỏ
+   * qua member (đa số impl, kể cả Stripe — capture đã xảy ra ở phía Stripe).
+   * THROW ở đây cố ý lan ra ngoài route handler thành 500 — báo hiệu provider
+   * retry delivery này (không giống verifyWebhook: PaymentEvent audit row đã
+   * ghi xong nên retry không mất dữ liệu, chỉ chạy lại followUp).
+   */
+  followUp?(event: VerifiedEvent): Promise<void>;
 }
 
 export interface CreateCheckoutSessionInput {

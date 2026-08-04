@@ -41,6 +41,8 @@ export interface FakeCheckoutSession extends CheckoutSession {
 export class FakeGateway implements PaymentGateway {
   readonly sessions: FakeCheckoutSession[] = [];
   readonly refunds: Array<RefundInput & { providerRefundId: string }> = [];
+  /** Ghi lại mọi event mà controller đã gọi `followUp` (W1 nền cho Task 2). */
+  readonly followUpCalls: VerifiedEvent[] = [];
 
   private seq = 0;
 
@@ -66,6 +68,14 @@ export class FakeGateway implements PaymentGateway {
    * Reset về 0 trong `reset()`.
    */
   refundDelayMs = 0;
+
+  /**
+   * Test toggle: đặt để `followUp` NÉM lỗi này, mô phỏng side-effect
+   * follow-up thất bại (vd PayPal capture lỗi ở Task 2) — canh nhánh
+   * throw-lan-ra-500 của webhook controller. Reset về undefined trong
+   * `reset()`.
+   */
+  followUpError?: Error;
 
   constructor(readonly provider: PaymentProvider = PaymentProvider.STRIPE) {}
 
@@ -125,6 +135,18 @@ export class FakeGateway implements PaymentGateway {
     return { providerRefundId };
   }
 
+  /**
+   * Ghi lại event nhận được (kể cả khi sắp throw — controller phải thấy được
+   * followUp ĐÃ chạy dù kết quả là lỗi). Ném {@link followUpError} nếu được
+   * đặt, mô phỏng provider follow-up thất bại.
+   */
+  async followUp(event: VerifiedEvent): Promise<void> {
+    this.followUpCalls.push(event);
+    if (this.followUpError) {
+      throw this.followUpError;
+    }
+  }
+
   // ── Test helper (không thuộc PaymentGateway) ─────────────────────────────
 
   /**
@@ -156,10 +178,12 @@ export class FakeGateway implements PaymentGateway {
   reset(): void {
     this.sessions.length = 0;
     this.refunds.length = 0;
+    this.followUpCalls.length = 0;
     this.seq = 0;
     this.failRefunds = false;
     this.refundDelayMs = 0;
     this.failCheckout = false;
+    this.followUpError = undefined;
   }
 
   private emit(

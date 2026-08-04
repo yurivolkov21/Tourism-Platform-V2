@@ -611,4 +611,60 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       code: 'WEBHOOK_PROVIDER_NOT_CONFIGURED',
     });
   });
+
+  describe('webhook followUp wiring', () => {
+    // W1 nền cho Task 2 (PayPal capture server-side khi APPROVED): controller
+    // phải gọi `gateway.followUp?.(verified)` NGAY SAU handleEvent, TRƯỚC khi
+    // build response. Ba ca canh: happy path ghi đúng event SAU khi PaymentEvent
+    // đã tồn tại, throw từ followUp lan ra 500 nhưng KHÔNG xoá PaymentEvent đã
+    // ghi, và chữ ký sai thì followUp không bao giờ được gọi.
+    afterEach(() => {
+      fake.followUpError = undefined;
+    });
+
+    it('gọi followUp với ĐÚNG event vừa verify, SAU khi PaymentEvent đã ghi', async () => {
+      const cookie = await signUpUser('followup-ok@example.com');
+      const booking = await createBooking(cookie);
+
+      const event = fake.emitPaymentCompleted(booking.id);
+      const res = await postWebhook(event);
+      expect(res.statusCode).toBe(200);
+
+      expect(fake.followUpCalls).toHaveLength(1);
+      expect(fake.followUpCalls[0]?.eventId).toBe(event.eventId);
+
+      const pe = await prisma.paymentEvent.findUniqueOrThrow({
+        where: {
+          provider_eventId: { provider: 'STRIPE', eventId: event.eventId },
+        },
+      });
+      expect(pe.processedAt).not.toBeNull();
+    });
+
+    it('followUp throw → 500, nhưng PaymentEvent VẪN đã ghi (handleEvent chạy trước)', async () => {
+      const cookie = await signUpUser('followup-throw@example.com');
+      const booking = await createBooking(cookie);
+      fake.followUpError = new Error('boom');
+
+      const event = fake.emitPaymentCompleted(booking.id);
+      const res = await postWebhook(event);
+      expect(res.statusCode).toBe(500);
+
+      const pe = await prisma.paymentEvent.findUniqueOrThrow({
+        where: {
+          provider_eventId: { provider: 'STRIPE', eventId: event.eventId },
+        },
+      });
+      expect(pe.processedAt).not.toBeNull();
+    });
+
+    it('chữ ký sai → 400, followUp KHÔNG được gọi', async () => {
+      const cookie = await signUpUser('followup-badsig@example.com');
+      const booking = await createBooking(cookie);
+
+      const res = await postWebhook(fake.emitPaymentCompleted(booking.id), 'totally-wrong');
+      expect(res.statusCode).toBe(400);
+      expect(fake.followUpCalls).toHaveLength(0);
+    });
+  });
 });
