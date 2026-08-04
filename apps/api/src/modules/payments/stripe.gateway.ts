@@ -23,7 +23,7 @@ const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
  * Stripe/Google/PayPal trong smoke sandbox 04/08, đủ để rơi dưới floor. Mọi
  * máy đều có thể lệch vài chục giây; 60 phút chừa lề 30 phút an toàn.
  */
-const SESSION_EXPIRY_SECONDS = 60 * 60;
+export const SESSION_EXPIRY_SECONDS = 60 * 60;
 
 const API_BASE = 'https://api.stripe.com';
 

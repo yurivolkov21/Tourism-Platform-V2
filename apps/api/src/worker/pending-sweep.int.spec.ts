@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { prisma } from '../auth/auth.config.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { BookingStatus } from '../generated/prisma/enums.js';
-import { PendingSweepService } from './pending-sweep.service.js';
+import { PENDING_TTL_MINUTES, PendingSweepService } from './pending-sweep.service.js';
 import { WorkerModule } from './worker.module.js';
 
 /**
@@ -88,9 +88,12 @@ describe('pending-sweep worker integration (WRK-1)', () => {
     (await prisma.booking.findUniqueOrThrow({ where: { id } })).status;
 
   it('hủy PENDING cũ hơn TTL, giữ PENDING mới + không đụng PAID', async () => {
+    // Neo theo hằng thật (65′, xem pending-sweep.service.ts) thay vì số cứng
+    // — test tự theo hằng khi hằng đổi, tránh drift như I1 (30′ trong khi
+    // Stripe đã lên 60′).
     const old = await seedBooking({
       code: 'BK-SWEEPOLD',
-      minutesAgo: 40,
+      minutesAgo: PENDING_TTL_MINUTES + 5,
       status: BookingStatus.PENDING,
     });
     const fresh = await seedBooking({
@@ -100,17 +103,17 @@ describe('pending-sweep worker integration (WRK-1)', () => {
     });
     const paid = await seedBooking({
       code: 'BK-SWEEPPAY',
-      minutesAgo: 60,
+      minutesAgo: PENDING_TTL_MINUTES + 5,
       status: BookingStatus.PAID,
     });
 
-    const n = await sweep.sweepAbandoned(30);
+    const n = await sweep.sweepAbandoned(PENDING_TTL_MINUTES);
     expect(n).toBe(1);
     expect(await statusOf(old)).toBe(BookingStatus.CANCELLED);
     expect(await statusOf(fresh)).toBe(BookingStatus.PENDING);
     expect(await statusOf(paid)).toBe(BookingStatus.PAID);
 
     // Idempotent: chạy lại không còn gì để hủy.
-    expect(await sweep.sweepAbandoned(30)).toBe(0);
+    expect(await sweep.sweepAbandoned(PENDING_TTL_MINUTES)).toBe(0);
   });
 });

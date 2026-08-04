@@ -4,7 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { env } from './config/env.js';
 import { OutboxService } from './worker/outbox.service.js';
-import { PendingSweepService } from './worker/pending-sweep.service.js';
+import { PENDING_TTL_MINUTES, PendingSweepService } from './worker/pending-sweep.service.js';
 import { WorkerModule } from './worker/worker.module.js';
 
 /**
@@ -26,8 +26,7 @@ const RETENTION_DAYS = 30;
 const BOOKING_SWEEP_QUEUE = 'booking-sweep';
 /** Mỗi 10′ — backstop WRK-1 khi webhook expired rớt. */
 const BOOKING_SWEEP_CRON = '*/10 * * * *';
-/** TTL 30′ khớp hạn Stripe Checkout — PENDING quá đó coi như bỏ hoang. */
-const PENDING_TTL_MINUTES = 30;
+/** Hằng TTL (bất biến TTL > hạn session mọi provider) sống ở pending-sweep.service.ts. */
 
 const logger = new Logger('Worker');
 

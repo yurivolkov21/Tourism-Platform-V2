@@ -3,8 +3,20 @@ import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
 
 /**
+ * TTL sweep mặc định, phút. BẤT BIẾN: giá trị này PHẢI > SESSION_EXPIRY_SECONDS
+ * của MỌI gateway đang bật, nếu không sweep sẽ hủy booking trong khi session
+ * thanh toán bên ngoài vẫn còn sống — buyer trả tiền xong bị auto-refund vô cớ
+ * (không mất tiền vì orphan-capture vẫn đỡ, nhưng UX tệ + event rác).
+ * 65′ = lề 5′ trên hạn Stripe Checkout hiện tại (60′, xem SESSION_EXPIRY_SECONDS
+ * ở stripe.gateway.ts, nâng bởi 43d7a2b). PayPal order sống ~3h — đã vượt mốc
+ * này sẵn, chấp nhận vì webhook APPROVED + capture idempotent xử được order
+ * muộn. Đổi hạn session ở gateway nào thì PHẢI xem lại hằng này.
+ */
+export const PENDING_TTL_MINUTES = 65;
+
+/**
  * WRK-1 (ADR-0006): backstop cho webhook `payment.expired` (PAY-1) khi delivery
- * rớt — hủy mọi booking PENDING quá TTL (mặc định 30′, khớp hạn Stripe Checkout).
+ * rớt — hủy mọi booking PENDING quá TTL (xem {@link PENDING_TTL_MINUTES}).
  *
  * MỘT statement nguyên tử gate `status='PENDING'` → idempotent với webhook cancel
  * và với chính nó (chạy lại chỉ bắt các PENDING mới quá hạn). KHÔNG đụng
