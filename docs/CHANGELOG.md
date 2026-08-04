@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-08-03 — Vá 13 alert Dependabot (5 high, 8 moderate) + 1 audit thấy thêm (branch `fix/deps-dependabot`, ff-only, 1 commit `8089401`)
+## 2026-08-04 — Vá 13 alert Dependabot (5 high, 8 moderate) + 1 audit thấy thêm (branch `fix/deps-dependabot`, ff-only, 1 commit `8089401`)
 
 Toàn bộ là dependency bắc cầu, vá bằng overrides SCOPED trong
 `pnpm-workspace.yaml` (sinh bởi `pnpm audit --fix=override` — chỉ áp trong
