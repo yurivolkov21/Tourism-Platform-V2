@@ -153,7 +153,10 @@ viết test cho đủ case ác.
    `?redirect=https://evil.example` và `//evil.example` → về `/`.
 5. Trang public không thụt lùi render: `curl -s -o /dev/null -w '%{size_download} %{http_code}' localhost:3000/tours` trước/sau
    không đổi mô hình (vẫn ISR — kiểm `x-nextjs-cache` HIT lần hai); slug lạ
-   vẫn 404 thật (khuôn soft-404).
+   vẫn 404 thật (khuôn soft-404). *(AMENDED 03/08 lúc nghiệm thu: `/tours`
+   LISTING vốn dynamic từ trước cụm — đọc `searchParams` filter; header
+   `x-nextjs-cache`/ISR đo ở `/tours/[slug]`. Hành vi có sẵn, không phải
+   regression — đã đối chiếu git diff = 0.)*
 6. `pnpm gate:int` xanh trọn (int mới §7 nằm trong đó).
 
 ## 9. Ngoài phạm vi

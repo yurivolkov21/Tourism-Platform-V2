@@ -8,6 +8,65 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-03 — Bước 7 nối API: 6 trang auth + session Better Auth ở web (branch `feat/auth-pages-api`, ff-only, 7 commit `ec33797..9a0c30a`)
+
+Cụm auth theo [ADR-0017](adr/0017-web-session-better-auth.md) (Accepted cùng
+ngày): cookie httpOnly thẳng browser↔API, không proxy/Bearer. 5/6 form nối
+thật (two-factor PARK đúng §5b); UI đã duyệt 24–25/07 không đổi pixel.
+
+- **API:** verify email chuyển link → **OTP** (plugin `emailOTP`, migration
+  MỚI `EMAIL_OTP` + template worker); bất biến SEC-1 (promote admin sau
+  verify — ADR-0008) đo sống ở đường OTP bằng int test HAI CHIỀU (admin
+  promote / customer giữ role). Gotcha đắt nhất cụm: Better Auth merge
+  option plugin bằng `defu` — GIỮ `sendVerificationEmail` cũ là override
+  của plugin bị nuốt IM LẶNG, link flow vẫn bắn; phải xoá field đó (reviewer
+  xác minh tới source `defu@6.1.7` + `email-otp/index.mjs`; plan chỗ này đã
+  AMEND).
+- **Web:** nền `lib/auth-client.ts` (ghim `better-auth@1.6.23` đúng version
+  API) + `safeRedirect` whitelist chống open-redirect (phủ mọi chỗ đọc
+  `?redirect=`/callbackURL) + `mapAuthError` một chỗ; login/register (+
+  Google `signIn.social` — dev chưa cấu hình thì lỗi inline thân thiện,
+  không ẩn nút); forgot **anti-enumeration tuyệt đối** (không nhánh phân
+  biệt); reset với panel token-hỏng kiểu TicketCard; verify-OTP tái dùng
+  countdown 60s; user-menu sang `useSession` + signOut client-side (navbar
+  đổi ngay — bài học Nexora), `mocks/auth.ts` + `MockSessionUser` khai tử
+  sạch.
+- **Nghiệm thu sống 6/6** (production build + DB thật + playwright headless):
+  vòng đời register→OTP-từ-outbox→verified; SEC-1 hai chiều qua env
+  `ADMIN_EMAILS` runtime; vòng reset trọn (token dùng lại → panel lỗi);
+  redirect ác `//evil` → `/`; trang public không thụt lùi (ISR `[slug]`
+  STALE→HIT, slug lạ 404 thật); cookie httpOnly — `document.cookie` không
+  thấy token. `gate:int` 153/153.
+
+**Review findings (6 vòng task + final trên fable + 1 vòng fix):**
+
+1. **Final review bắt bug Important cả 6 task-review lọt:** lỗi mạng THẬT
+   (promise reject — API sập/offline) làm nút kẹt `pending` vĩnh viễn ở 4
+   form + resend + Google vì `await authClient.*` không try/catch — trong
+   khi chính forgot-form của cùng cụm có khuôn đúng. Chứng minh bằng source
+   `@better-fetch/fetch` (fetch ngoài try/catch, không `catchAllError`). Vá
+   `9a0c30a`: try/catch 7 điểm await → `errors.generic`, kèm map
+   `TOO_MANY_ATTEMPTS`→`tooManyRequests` (sau 5 lần OTP sai). Bài học: khuôn
+   xử lỗi phải là HỢP ĐỒNG của nền (Task 2), không phải nếp tự chọn per-form.
+2. **Reviewer T5 tự mutation-bite** countdown resend (thêm reset vào nhánh
+   lỗi → test đỏ đúng chỗ, revert sạch) — nếp reviewer-tự-đo tiếp tục giữ.
+3. Deviation có bằng chứng được duyệt: prop `email` của OtpForm thành
+   optional (dùng chung TwoFactorForm mode tĩnh); panel token-hỏng đặt trong
+   TicketCard (nhất quán khung auth hơn khuôn unsubscribe).
+
+**Nợ ghi sổ (backlog, không chặn):** confirm-password chưa validate mismatch
+(thừa kế mock tĩnh); register chưa chuyển tiếp `?redirect=` sang verify-email;
+resend OTP double-click có thể bắn 2 mã và 429 reset countdown im (vô hại);
+test signOut chưa assert thứ tự await-trước-push; route link-verify cũ của BA
+còn mount nhưng mồ côi vô hại (không ai phát link); comment `seed.ts` (~206)
+tả sai Better Auth khi sign-up trùng email admin (422). Dependabot cảnh báo
+1 high trên main sau push — chờ user quyết (chính sách freeze chưa tới,
+nâng dep là quyết định user).
+
+**Tests after:** web 63 file / 805 unit (đo lại trên main sau merge; cụm thêm
+57: 748→805) và api 199 unit + int 153 (17 file; 4 SEC-1/OTP mới) —
+`gate:int` xanh trọn trên `9a0c30a`.
+
 ## 2026-08-03 — On-demand revalidation: duyệt review là trang tour tươi NGAY — trả nợ quá hạn ADR-0016 (branch `feat/on-demand-revalidation`, ff-only, 5 commit `a6136ea..6be5abe`)
 
 Nợ "bước riêng sau bước 1–4" của ADR-0016 §3 (bị khối đại tu docs cùng ngày

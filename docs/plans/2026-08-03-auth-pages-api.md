@@ -90,6 +90,12 @@ import { emailOTP } from 'better-auth/plugins/email-otp';
       // Đè flow link mặc định: sendOnSignUp từ nay ra OTP (ADR-0017 §5a).
       // Khối emailVerification bên dưới GIỮ NGUYÊN — afterEmailVerification
       // (promote admin SEC-1) phải fire cả ở đường OTP; int test canh.
+      // ⚠️ AMENDED 03/08 lúc thi công: "GIỮ NGUYÊN" ở trên SAI MỘT NỬA —
+      // Better Auth merge option plugin bằng defu (giữ key user đã khai),
+      // nên PHẢI XOÁ field `sendVerificationEmail` cũ trong emailVerification
+      // để override OTP của plugin thắng; giữ nó là link flow vẫn bắn im
+      // lặng. `sendOnSignUp` + `afterEmailVerification` vẫn giữ nguyên.
+      // Bằng chứng: defu@6.1.7 + email-otp/index.mjs (review Task 1).
       overrideDefaultEmailVerification: true,
       allowedAttempts: 5,
       async sendVerificationOTP({ email, otp }) {

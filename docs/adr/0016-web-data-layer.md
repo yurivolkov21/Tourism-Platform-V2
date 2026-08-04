@@ -20,10 +20,11 @@
 >   `@tourism/ui` mount toàn site ở
 >   [apps/web/src/app/layout.tsx:102](../../apps/web/src/app/layout.tsx) (form
 >   Contact/Newsletter — bước 5+6).
-> - **Mock sống bổ sung `mocks/auth.ts`** — [apps/web/src/mocks/auth.ts](../../apps/web/src/mocks/auth.ts)
->   chờ bước 7 (session Better Auth); danh sách 4 mock-không-endpoint + team/offices
->   ở Quyết định 5 không đổi. Lớp catalogue (`tours`/`destinations`/`journal`…)
->   đã chết hết đúng thiết kế của mục này.
+> - **Mock sống bổ sung `mocks/auth.ts`** — chờ bước 7 (session Better Auth);
+>   danh sách 4 mock-không-endpoint + team/offices ở Quyết định 5 không đổi.
+>   Lớp catalogue (`tours`/`destinations`/`journal`…) đã chết hết đúng thiết
+>   kế của mục này. → **`mocks/auth.ts` ĐÃ KHAI TỬ cùng ngày 03/08** (bước 7
+>   merge — user-menu sang `useSession` thật, xem CHANGELOG 03/08).
 > - **Bảng `lib/api/` nay có thêm 2 file:** `resilience.ts` (`settle()`/
 >   `contentState()` — khuôn tri-state cho đường ĐỌC, tách ra từ bước 1) và
 >   `submit.ts` (`classifySubmitError`/`submitToast` — đường GHI, bước 5+6;

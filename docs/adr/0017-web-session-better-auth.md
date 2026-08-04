@@ -2,6 +2,12 @@
 
 - **Trạng thái:** **Accepted (2026-08-03)** — user duyệt toàn văn cùng ngày;
   2 điểm §5 (emailOTP · PARK 2FA) user chốt qua hỏi-đáp trước khi Accept.
+  **Đã thi hành phần bước 7 cùng ngày** (`ec33797..9a0c30a` — 5/6 form +
+  `useSession` island + emailOTP; SEC-1 đo sống đường OTP). Phần bước 8–10
+  (`proxy.ts`, `credentials: 'include'` cho oRPC, trang account) còn mở.
+  Lưu ý thi công đã đo: Better Auth merge option plugin bằng `defu` — tự
+  khai `sendVerificationEmail` là override OTP của plugin bị nuốt im lặng,
+  phải bỏ field đó (chi tiết CHANGELOG 03/08).
 - **Bối cảnh:** ADR-0016 §2 cố ý chốt non ("chi tiết CHỐT Ở BƯỚC 7"). Bước 7
   (6 trang auth) + 8–10 (khu tài khoản) cần cơ chế session. Khảo sát 3 mũi
   03/08: Better Auth phía API (`auth.config.ts`, guard, CORS) · Nexora tầng
