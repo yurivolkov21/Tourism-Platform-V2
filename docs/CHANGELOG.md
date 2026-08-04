@@ -8,6 +8,26 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-03 — Vá 13 alert Dependabot (5 high, 8 moderate) + 1 audit thấy thêm (branch `fix/deps-dependabot`, ff-only, 1 commit `8089401`)
+
+Toàn bộ là dependency bắc cầu, vá bằng overrides SCOPED trong
+`pnpm-workspace.yaml` (sinh bởi `pnpm audit --fix=override` — chỉ áp trong
+dải dính lỗ hổng, không ghim chết bản sau): `fast-uri` 3.1.5/4.1.2 (đường
+HTTP thật của API — fastify/ajv), `undici` 7.29.0 (5 alert, dev-tooling
+jsdom/vitest/dotenvx), `ip-address` ≥10.3.1 và `hono` 4.12.34 (MCP-sdk của
+shadcn CLI), `postcss` ≥8.5.23, `brace-expansion` override sẵn có nâng
+`^5.0.8`→`^5.0.9` (@swc/cli).
+
+Điểm phân xử: `audit --fix` đòi nhảy `@hono/node-server` 1.x→2.0.5, ĐÈ lên
+quyết định 23/07 (ghim 1.x vì 2.x có thể phá `@prisma/dev`; alert
+path-traversal đã dismiss `tolerable_risk` có hồ sơ — chỉ Windows,
+dev-tooling). Gỡ rule đó, giữ ghim 1.x → `pnpm audit` còn đúng 1 moderate =
+alert đã dismiss, là trạng thái chấp nhận có chủ đích chứ không phải sót.
+
+**Tests after:** `gate:int --force` toàn bộ KHÔNG cache — 18/18 task, biome
+504 file, 153/153 int; build API qua `@swc/cli` chạy thật trên
+brace-expansion 5.0.9 (đúng phép thử comment workspace.yaml dặn từ 27/07).
+
 ## 2026-08-03 — Bước 7 nối API: 6 trang auth + session Better Auth ở web (branch `feat/auth-pages-api`, ff-only, 7 commit `ec33797..9a0c30a`)
 
 Cụm auth theo [ADR-0017](adr/0017-web-session-better-auth.md) (Accepted cùng
