@@ -107,8 +107,10 @@ export function PasswordStrengthField({
 
       <p className="text-xs font-medium text-foreground">{statusText(score)}</p>
 
-      {/* Checklist yêu cầu — tick jade khi đạt */}
-      <ul className="space-y-1">
+      {/* Checklist yêu cầu — tick jade khi đạt. Lưới 2 cột (user chốt 06/08:
+          1 cột 5 dòng kéo giãn chiều cao form đăng ký) — item lẻ cuối tự
+          chiếm ô trái hàng chót. */}
+      <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
         {checks.map((check) => (
           <li key={check.text} className="flex items-center gap-2">
             {check.met ? (
