@@ -29,7 +29,9 @@ export function BookingActions({
 }: {
   view: BookingView;
   /** Lý do admin từ chối lần yêu cầu hủy trước — chỉ có ý nghĩa ở nhánh
-   *  `resubmitCancellation` (đọc từ `MOCK_CANCELLATIONS`, page truyền vào). */
+   *  `resubmitCancellation`. Task 6 (A2): page dựng qua `toCancellationView`
+   *  từ `Booking['cancellationStatus']` thật — LUÔN `null` (contract khách
+   *  không mang lý do admin, xem JSDoc `CancellationView` ở `booking-vm.ts`). */
   deniedNote?: string | null;
   onAction?: (action: BookingAction) => void;
 }) {

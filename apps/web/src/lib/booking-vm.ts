@@ -1,14 +1,15 @@
 import type { Booking } from '@tourism/contract';
 
 /**
- * Trạng thái yêu cầu hủy phía KHÁCH — type WEB TỰ KHAI, không lấy từ
- * `Booking`. Đối chiếu THẬT `libs/shared/contract/src/contract.ts`:
- * `bookings.byCode` (route khách gọi, owner-only) output `BookingSchema`
- * TRẦN — field `cancellationRequests` chỉ có ở `AdminBookingDetailSchema`
- * (`admin.bookings.byCode`, admin-only). Vì contract khách không mang field
- * này, mock cấp `CancellationView` riêng theo `bookingCode`
- * (`mocks/account.ts`) — đúng lựa chọn spec §9 dự phòng khi shape khách
- * không có sẵn.
+ * Trạng thái yêu cầu hủy phía KHÁCH — type WEB TỰ KHAI, KHÔNG trùng field
+ * `Booking['cancellationStatus']` (Task 6a: `'REQUESTED'|'REFUNDED'|'DENIED'|
+ * null`). Dựng từ field đó qua `toCancellationView` bên dưới (Task 6, A2) —
+ * `decisionNote` LUÔN `null` khi dựng từ API thật: đối chiếu
+ * `libs/shared/contract/src/contract.ts`, `bookings.byCode` (route khách gọi,
+ * owner-only) output `BookingSchema` TRẦN, không mang lý do admin từ chối —
+ * field đó (`cancellationRequests[].decisionNote`) chỉ có ở
+ * `AdminBookingDetailSchema` (`admin.bookings.byCode`, admin-only). `null`
+ * vẫn hiển thị đúng — `BookingActions` đã bọc nhánh `deniedNote ? … : null`.
  *
  * `REFUNDED` không xuất hiện ở đây: approve-cancellation chuyển `Booking`
  * sang `CANCELLED` ngay (docs/conventions/booking-states.md) nên một booking
@@ -55,6 +56,26 @@ export interface BookingView {
  * status khác vì máy trạng thái không cho phép cancellation request đang mở
  * trên booking không PAID (booking-states.md).
  */
+/**
+ * Task 6 (A2): map `Booking['cancellationStatus']` (đọc thẳng từ
+ * `bookings.byCode` thật — Task 6a) sang `CancellationView` cho `bookingView`
+ * bên dưới. `REFUNDED` map về `undefined` (KHÔNG map thẳng vào `CancellationView`
+ * — kiểu đó cố ý chỉ có 'REQUESTED'|'DENIED', xem JSDoc trên) — theo
+ * `docs/conventions/booking-states.md` một khi cancellation được duyệt thì
+ * `Booking.status` đã chuyển `CANCELLED` ngay, nên một booking còn `PAID` không
+ * bao giờ mang `cancellationStatus: 'REFUNDED'` thật; nhánh này chỉ là phòng thủ
+ * (never null decisionNote vì contract khách không mang field đó — chỉ
+ * `AdminBookingDetailSchema` admin-only mới có lịch sử `decisionNote`).
+ */
+export function toCancellationView(
+  status: Booking['cancellationStatus'],
+): CancellationView | undefined {
+  if (status === 'REQUESTED' || status === 'DENIED') {
+    return { status, decisionNote: null };
+  }
+  return undefined;
+}
+
 export function bookingView(b: Booking, cancellation?: CancellationView): BookingView {
   switch (b.status) {
     case 'PENDING':

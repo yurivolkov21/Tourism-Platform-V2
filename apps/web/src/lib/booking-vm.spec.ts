@@ -1,6 +1,6 @@
 import type { Booking } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
-import { bookingView, type CancellationView } from './booking-vm';
+import { bookingView, type CancellationView, toCancellationView } from './booking-vm';
 
 /** Factory booking hợp lệ theo shape `Booking` — chỉ field spec cần cho
  *  `bookingView` (status) thật sự biến thiên trong test, còn lại giữ cố định
@@ -96,5 +96,29 @@ describe('bookingView', () => {
     const cancellation: CancellationView = { status: 'REQUESTED', decisionNote: null };
     const view = bookingView(makeBooking({ status: 'CANCELLED' }), cancellation);
     expect(view).toEqual({ tone: 'muted', statusKey: 'CANCELLED', actions: [] });
+  });
+});
+
+/**
+ * `toCancellationView` — map `Booking['cancellationStatus']` (Task 6a, đọc
+ * thẳng từ `bookings.byCode` thật) sang `CancellationView` để truyền cho
+ * `bookingView`. Task 6: dùng cái này ở trang chi tiết THẬT thay vì tra
+ * `MOCK_CANCELLATIONS` theo `bookingCode` (mock đã khai tử).
+ */
+describe('toCancellationView', () => {
+  it('null (chưa từng xin) → undefined', () => {
+    expect(toCancellationView(null)).toBeUndefined();
+  });
+
+  it('REQUESTED → { status: REQUESTED, decisionNote: null }', () => {
+    expect(toCancellationView('REQUESTED')).toEqual({ status: 'REQUESTED', decisionNote: null });
+  });
+
+  it('DENIED → { status: DENIED, decisionNote: null }', () => {
+    expect(toCancellationView('DENIED')).toEqual({ status: 'DENIED', decisionNote: null });
+  });
+
+  it('REFUNDED (không thể xảy ra trên PAID theo booking-states.md, phòng thủ) → undefined', () => {
+    expect(toCancellationView('REFUNDED')).toBeUndefined();
   });
 });

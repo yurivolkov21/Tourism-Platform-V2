@@ -11,10 +11,10 @@ import { AccountNav } from '@/components/account/account-nav';
  * ăn khoảng đó thì phải tự bù ở layout, thiếu bước này nội dung sẽ chui dưới
  * navbar khi cuộn lên đầu trang.
  *
- * KHÔNG gọi `requireSession`/`getServerSession` ở đây (đã có từ Task 1) — pha
- * A1 mọi trang con tự đọc mock trực tiếp (`@/mocks/account`); wire session
- * thật là việc Task 6 (A2), mỗi TRANG tự gọi lúc đó — đặt ở layout sẽ che một
- * lỗi/trạng thái riêng của từng trang sau một fetch chung.
+ * KHÔNG gọi `requireSession`/`getServerSession` ở đây (đã có từ Task 1) — mỗi
+ * TRANG con tự gọi riêng (Task 6, A2) để gate + fetch dữ liệu thật của chính
+ * nó; đặt ở layout sẽ che một lỗi/trạng thái riêng của từng trang sau một
+ * fetch chung.
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (

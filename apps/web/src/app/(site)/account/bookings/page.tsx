@@ -1,14 +1,17 @@
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
+import { buttonVariants } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
+import Link from 'next/link';
 import { BookingCard } from '@/components/account/booking-card';
-import { MOCK_BOOKINGS } from '@/mocks/account';
+import { BOOKINGS_MAX_LIMIT, BOOKINGS_PAGE_SIZE, fetchMyBookings } from '@/lib/api/bookings';
+import { requireSession } from '@/lib/api/session';
 
 /**
- * `/account/bookings` — list mọi booking (spec §3, pha A1 TĨNH). Đọc trực
- * tiếp `MOCK_BOOKINGS`, KHÔNG gọi `bookings.mine` — Task 6 (A2) thay bằng
- * fetch thật (`?page=` server component, không client state — giữ dynamic).
+ * `/account/bookings` — list mọi booking (spec §3, Task 6/A2: fetch thật thay
+ * mock nội bộ cụm đã khai tử). Server đã `orderBy createdAt desc` — không cần sort lại
+ * phía web như bản mock cũ.
  */
 export const metadata: Metadata = {
   title: `${messages.accountBookings.title} — Tourism`,
@@ -31,12 +34,40 @@ function EmptyState() {
   );
 }
 
-export default function AccountBookingsPage() {
+/**
+ * "Load more" KHÔNG dùng client state (brief Task 6: server đọc `?page=`) —
+ * `chunk` (tên tham số URL vẫn là `page` cho gọn) đếm số LẦN đã bấm "Load
+ * more", KHÔNG phải offset trang chuẩn: fetch luôn `page: 1` với
+ * `limit = chunk * BOOKINGS_PAGE_SIZE` (kẹp trần `BOOKINGS_MAX_LIMIT`) — nhờ
+ * vậy link `?page=${chunk + 1}` CỘNG DỒN danh sách đã thấy thay vì thay hẳn
+ * bằng trang kế (đúng nghĩa "load more", không phải "trang sau"), mà vẫn
+ * không cần một dòng JS client nào — mỗi lần bấm là một điều hướng server
+ * thật (URL chia sẻ được, back-button hoạt động đúng).
+ */
+export default async function AccountBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>;
+}) {
+  // Chỉ cần GATE (defense-in-depth, `proxy.ts` đã chặn sớm — ADR-0017 §3) —
+  // trang này không hiện tên/hồ sơ nên không giữ lại giá trị trả về.
+  await requireSession('/account/bookings');
+
+  const { page: pageParam } = await searchParams;
+  // `Number('abc') || 1` → 1: `?page=` rác từ link cũ/bot mở ra chunk 1 chứ
+  // không phải NaN.
+  const chunk = Math.max(1, Number(pageParam) || 1);
+  const limit = Math.min(chunk * BOOKINGS_PAGE_SIZE, BOOKINGS_MAX_LIMIT);
+
+  const cookie = (await cookies()).toString();
+  const paged = await fetchMyBookings(cookie, limit);
+  const bookings = paged.items;
+  // Còn nữa để tải VÀ chưa chạm trần limit — trần thì im re (biên hiếm gặp ở
+  // quy mô capstone, xem comment `BOOKINGS_MAX_LIMIT`/`DASHBOARD_BOOKINGS_LIMIT`
+  // ở `bookings.ts`).
+  const hasMore = bookings.length < paged.total && limit < BOOKINGS_MAX_LIMIT;
+
   const t = messages.accountBookings;
-  // Mới nhất trước (spec §3, khớp thứ tự `bookings.mine` thật) — mock KHÔNG
-  // tự theo thứ tự này (Task 2 sắp theo nhánh trạng thái để dễ đọc), nên sort
-  // lại ở đây thay vì sửa thứ tự mock.
-  const bookings = [...MOCK_BOOKINGS].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
   return (
     <div className="flex flex-col gap-8">
@@ -56,13 +87,16 @@ export default function AccountBookingsPage() {
               <BookingCard key={booking.id} booking={booking} />
             ))}
           </ul>
-          {/* A1: nút hiện diện tĩnh, chưa phân trang thật (mock chỉ 7 dòng,
-              vừa một trang) — A2 (Task 6) nối `?page=` server component. */}
-          <div className="flex justify-center">
-            <Button type="button" variant="outline">
-              {t.loadMore}
-            </Button>
-          </div>
+          {hasMore ? (
+            <div className="flex justify-center">
+              <Link
+                href={`/account/bookings?page=${chunk + 1}`}
+                className={buttonVariants({ variant: 'outline' })}
+              >
+                {t.loadMore}
+              </Link>
+            </div>
+          ) : null}
         </>
       )}
     </div>

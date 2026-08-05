@@ -1,16 +1,17 @@
 import { messages } from '@tourism/i18n';
 import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { ChangePasswordForm } from '@/components/account/change-password-form';
 import { DangerZone } from '@/components/account/danger-zone';
 import { ProfileForm } from '@/components/account/profile-form';
-import { MOCK_PROFILE } from '@/mocks/account';
+import { fetchAccountMe } from '@/lib/api/account';
+import { requireSession } from '@/lib/api/session';
 
 /**
  * `/account/profile` — hợp nhất tên/phone + đổi mật khẩu + connected
- * accounts + danger-zone (spec §3, pha A1 TĨNH). Đọc trực tiếp
- * `MOCK_PROFILE`, KHÔNG gọi `GET /api/account/me` — Task 6 (A2) thay bằng
- * session thật. Avatar chữ-cái tĩnh + email read-only (PARK spec §4 —
+ * accounts + danger-zone (spec §3, Task 6/A2: session thật thay
+ * mock nội bộ cụm đã khai tử). Avatar chữ-cái tĩnh + email read-only (PARK spec §4 —
  * upload avatar/đổi email chưa làm, có hồ sơ lý do trong spec).
  */
 export const metadata: Metadata = {
@@ -19,9 +20,19 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-export default function AccountProfilePage() {
+/**
+ * `requireSession` gate (defense-in-depth, ADR-0017 §3) — kết quả KHÔNG dùng
+ * trực tiếp cho form: hồ sơ hiển thị đọc riêng từ `GET /api/account/me`
+ * (`fetchAccountMe`, cùng khuôn "content fetch song song với gate" như các
+ * trang khác đọc `bookings.mine`/`wishlist.list` sau khi gate). Hai fetch
+ * chạy `Promise.all` trên CÙNG cookie forward.
+ */
+export default async function AccountProfilePage() {
+  await requireSession('/account/profile');
+  const cookie = (await cookies()).toString();
+  const profile = await fetchAccountMe(cookie);
+
   const t = messages.accountProfile;
-  const profile = MOCK_PROFILE;
 
   return (
     <div className="flex flex-col gap-8">
@@ -51,9 +62,9 @@ export default function AccountProfilePage() {
       <section className="rounded-2xl border bg-card p-6">
         <h2 className="font-heading text-lg font-medium text-foreground">{t.connected.heading}</h2>
         <p className="mt-1 text-sm text-muted-foreground">{t.connected.subtitle}</p>
-        {/* Mock chỉ có email/password (không có OAuth demo) — A2 (Task 6)
-            đọc danh sách provider thật từ session/Better Auth, có thể nhiều
-            dòng hơn một. */}
+        {/* Chỉ email/password (không có OAuth demo trong seed dev) — danh
+            sách provider thật từ Better Auth/session, có thể nhiều dòng hơn
+            một khi Google OAuth bật (Task 7+ nếu cần). */}
         <ul className="mt-4 flex flex-col gap-2">
           <li className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
             <span className="text-foreground">{t.connected.emailPassword}</span>

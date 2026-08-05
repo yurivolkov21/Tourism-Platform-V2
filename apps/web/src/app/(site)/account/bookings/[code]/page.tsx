@@ -1,13 +1,16 @@
+import { BookingCodeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ArrowLeftIcon } from 'lucide-react';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { TONE_CLASS } from '@/components/account/account-dashboard';
 import { BookingActions } from '@/components/account/booking-actions';
-import { bookingView } from '@/lib/booking-vm';
+import { fetchBookingByCode } from '@/lib/api/bookings';
+import { requireSession } from '@/lib/api/session';
+import { bookingView, toCancellationView } from '@/lib/booking-vm';
 import { formatDateRange, formatMoney } from '@/lib/tours';
-import { MOCK_BOOKINGS, MOCK_CANCELLATIONS } from '@/mocks/account';
 
 /** Nhãn provider hiển thị — TÁI DÙNG nguyên copy đã có ở `booking.form`
  *  (trang checkout chọn provider), không thêm key i18n mới cho hai tên
@@ -18,12 +21,15 @@ const PROVIDER_LABEL = {
 } as const;
 
 /**
- * Tìm booking theo mã trong mock (pha A1) — mã lạ hoặc không phải của mình
- * (Task 6/A2 sẽ đổi thành `bookings.byCode` NOT_FOUND thật) đều rơi vào
- * `notFound()`, khớp spec §3 "mã lạ → 404 thật".
+ * Tìm booking theo mã (Task 6/A2: `bookings.byCode` thật thay mock). Mã
+ * KHÔNG khớp shape `BookingCodeSchema` (link cũ/gõ tay/bot) → `null` NGAY,
+ * khỏi tốn round-trip API cho một input chắc chắn không tồn tại — cùng nhánh
+ * `notFound()` với mã hợp lệ nhưng không phải của mình/không tồn tại
+ * (`NOT_FOUND` owner-or-404 từ `fetchBookingByCode`, xem `bookings.ts`).
  */
-function findBooking(code: string) {
-  return MOCK_BOOKINGS.find((b) => b.code === code) ?? null;
+async function findBooking(cookie: string, code: string) {
+  if (!BookingCodeSchema.safeParse(code).success) return null;
+  return fetchBookingByCode(cookie, code);
 }
 
 export async function generateMetadata({
@@ -32,7 +38,18 @@ export async function generateMetadata({
   params: Promise<{ code: string }>;
 }): Promise<Metadata> {
   const { code } = await params;
-  const booking = findBooking(code);
+  // `generateMetadata` có thể chạy TRƯỚC guard session của thân trang (Next
+  // không đảm bảo thứ tự) — không gate ở đây, chỉ đọc THỬ để có tiêu đề đẹp;
+  // thân trang vẫn là nơi quyết định 404/redirect thật. `try/catch` best-effort:
+  // một lỗi hiếm (session hết hạn giữa proxy và đây, mạng chập chờn…) chỉ rớt
+  // về tiêu đề chung, KHÔNG được làm sập cả trang — đó là việc của thân trang.
+  const cookie = (await cookies()).toString();
+  let booking: Awaited<ReturnType<typeof findBooking>> = null;
+  try {
+    booking = await findBooking(cookie, code);
+  } catch {
+    booking = null;
+  }
   if (!booking) return { title: 'Booking not found — Tourism' };
   return {
     title: `${booking.tourTitle} — ${messages.accountBookingDetail.tourLabel} ${booking.code} — Tourism`,
@@ -46,11 +63,13 @@ export default async function AccountBookingDetailPage({
   params: Promise<{ code: string }>;
 }) {
   const { code } = await params;
-  const booking = findBooking(code);
+  await requireSession(`/account/bookings/${code}`);
+  const cookie = (await cookies()).toString();
+  const booking = await findBooking(cookie, code);
   if (!booking) notFound();
 
   const t = messages.accountBookingDetail;
-  const cancellation = MOCK_CANCELLATIONS[booking.code];
+  const cancellation = toCancellationView(booking.cancellationStatus);
   const view = bookingView(booking, cancellation);
   // `terminalNote` chỉ có key cho 3 status không mang action nào — tra bảng
   // bằng `statusKey` của VM (giống cách badge dashboard đọc `booking.list.
