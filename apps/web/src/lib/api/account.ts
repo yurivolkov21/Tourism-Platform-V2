@@ -49,3 +49,32 @@ export async function fetchAccountMe(cookie: string): Promise<SessionUser> {
     phone: user.phone ?? null,
   };
 }
+
+/**
+ * Lỗi `DELETE /api/account` — giữ nguyên `status` HTTP để caller (`DangerZone`)
+ * phân biệt 401 giữa chừng (session hết hạn — spec §5, message + link đăng
+ * nhập lại) khỏi lỗi chung. `Error` trần không mang field này.
+ */
+export class AccountDeleteError extends Error {
+  constructor(public readonly status: number) {
+    super(`DELETE /api/account failed with status ${status}`);
+  }
+}
+
+/**
+ * Xoá tài khoản (danger-zone `/account/profile`, Task 7/A2) — `DELETE
+ * /api/account` REST thuần (KHÔNG phải oRPC, cùng lý do `fetchAccountMe` ở
+ * trên), gọi TỪ BROWSER nên dùng `credentials: 'include'` (cookie httpOnly
+ * tự gửi, ADR-0017 §1) thay vì forward cookie tay như bản server-fetch.
+ * `AccountController.deleteOwnAccount` trả `204` rỗng — không có body để
+ * parse; caller tự `authClient.signOut()` sau khi promise này resolve.
+ */
+export async function deleteAccount(): Promise<void> {
+  const response = await fetch(`${apiOrigin()}/api/account`, {
+    method: 'DELETE',
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new AccountDeleteError(response.status);
+  }
+}

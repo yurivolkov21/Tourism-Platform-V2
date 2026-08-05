@@ -42,10 +42,22 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
   //
   // `credentials: true` bắt buộc: session Better Auth đi bằng cookie, thiếu
   // nó thì trình duyệt không gửi cookie kèm request cross-origin.
+  //
+  // `methods` PHẢI khai tường minh — `@fastify/cors` 11.x mặc định
+  // `'GET,HEAD,POST'` (đối chiếu `node_modules/@fastify/cors/index.js`,
+  // KHÔNG đoán theo docs online của bản `cors` npm cũ), thiếu `DELETE` thì
+  // route DUY NHẤT dùng verb này (`AccountController.deleteOwnAccount`, Task
+  // 7/A2 — xoá tài khoản) bị trình duyệt chặn NGAY tại preflight, server
+  // không bao giờ thấy request tới (đo sống bằng Playwright thật mới lộ ra —
+  // bootstrap.e2e.spec.ts canh lại để không tái phát, bài học hạ tầng xuyên
+  // suốt CLAUDE.md §10). Danh sách khớp ĐÚNG tập verb toàn contract hiện có
+  // (`grep "method: '" contract.ts` = GET/POST + đúng 1 route DELETE) — thêm
+  // verb mới thì cập nhật cả đây lẫn test canh.
   await app.register(import('@fastify/cors'), {
     // Spread: `trustedOrigins` là readonly, @fastify/cors nhận mảng thường.
     origin: [...trustedOrigins],
     credentials: true,
+    methods: ['GET', 'HEAD', 'POST', 'DELETE'],
   });
 
   // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ

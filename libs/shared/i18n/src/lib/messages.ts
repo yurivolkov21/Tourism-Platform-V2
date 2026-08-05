@@ -2439,6 +2439,13 @@ export const messages = {
       body: 'Tap the heart on any tour to save it here for later.',
       cta: 'Browse tours',
     },
+    // Task 7 (A2): bỏ lưu optimistic, `wishlist.set` lỗi → rollback + toast
+    // (chỉ toast lỗi — thành công đã tự hiện qua card biến mất, không cần
+    // xác nhận thêm, khác các form khác trong khu account).
+    removeErrorToast: {
+      title: "Couldn't remove this tour",
+      body: 'Please try again.',
+    },
   },
   // Trang `/account/bookings` — list mọi booking, mới nhất trước (Task 4,
   // pha A1 đọc mock). Nhãn status DÙNG CHUNG `booking.list.status` (đã gom
@@ -2510,6 +2517,14 @@ export const messages = {
       heading: 'Your review',
       body: 'Once your trip is done, you’ll be able to leave a review here.',
     },
+    // Toast SAU khi hành động ghi thành công (Task 7/A2) — trang tự
+    // `router.refresh()` để đọc lại trạng thái mới, toast chỉ báo kết quả.
+    toast: {
+      cancelPendingTitle: 'Booking cancelled',
+      cancelPendingBody: 'Your pending reservation has been released.',
+      cancelRequestedTitle: 'Cancellation requested',
+      cancelRequestedBody: "We'll review your request and follow up by email.",
+    },
   },
   // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
   // connected accounts + danger-zone. Avatar/đổi email PARK (spec §4) —
@@ -2528,9 +2543,15 @@ export const messages = {
     },
     password: {
       heading: 'Change password',
+      // Better Auth `changePassword` BẮT BUỘC `currentPassword` (đối chiếu
+      // `.d.mts`/nguồn `update-user.mjs` của gói pin — không phải suy đoán)
+      // — markup A1 thiếu field này, Task 7 (A2) thêm tối thiểu để form CHẠY
+      // ĐƯỢC, không phải một vòng thiết kế lại (xem AMENDED 06/08 trong spec).
+      currentLabel: 'Current password',
       newLabel: 'New password',
       confirmLabel: 'Confirm new password',
       submit: 'Update password',
+      mismatch: 'New password and confirmation do not match.',
     },
     connected: {
       heading: 'Connected accounts',
@@ -2548,6 +2569,25 @@ export const messages = {
       confirmCta: 'Yes, delete my account',
       cancel: 'Cancel',
     },
+    // Toast SAU khi hành động ghi thành công (Task 7/A2).
+    toast: {
+      profileSavedTitle: 'Profile updated',
+      passwordUpdatedTitle: 'Password updated',
+      accountDeletedTitle: 'Account deleted',
+      accountDeletedBody: 'Sorry to see you go — you have been signed out.',
+    },
+  },
+  // Copy lỗi DÙNG CHUNG cho mọi hành động ghi trong khu account (booking
+  // actions, bỏ lưu, xoá tài khoản — Task 7/A2). Một nguồn duy nhất tránh mỗi
+  // component tự chế câu chữ hơi khác nhau cho cùng 3 tình huống: mạng/5xx,
+  // 429 (hiếm ở đường authed nhưng vẫn phòng), và 401 giữa chừng (session hết
+  // hạn khi đang thao tác — spec §5: message + link đăng nhập lại, KHÔNG
+  // auto-signout, KHÔNG toast — đây là copy cho khối lỗi inline).
+  accountActionErrors: {
+    generic: 'Something went wrong. Please try again.',
+    throttle: 'Too many requests — please wait a minute and try again.',
+    sessionExpired: 'Your session has expired.',
+    loginLink: 'Log in again',
   },
 } as const;
 

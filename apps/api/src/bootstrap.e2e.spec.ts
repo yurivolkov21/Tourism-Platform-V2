@@ -61,6 +61,29 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
     expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
   });
 
+  /**
+   * Đo sống (Task 7/A2, `DangerZone` gọi `DELETE /api/account` từ browser):
+   * `@fastify/cors` 11.x mặc định `methods: 'GET,HEAD,POST'` (đối chiếu
+   * `node_modules/@fastify/cors/index.js` — KHÔNG đoán) — thiếu tường minh
+   * `DELETE` thì preflight của route DUY NHẤT dùng verb này
+   * (`AccountController.deleteOwnAccount`) bị trình duyệt chặn NGAY tại
+   * preflight, endpoint không bao giờ được gọi tới dù server hoàn toàn khoẻ.
+   * Bài học 19/07 kiểu cũ: hạ tầng xuyên suốt (CORS) nằm ngoài mọi test
+   * per-endpoint nên lặng lẽ hỏng cho tới khi đo sống bằng trình duyệt thật.
+   */
+  it('cho phép preflight DELETE (AccountController.deleteOwnAccount — verb DUY NHẤT ngoài GET/POST)', async () => {
+    const res = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/account',
+      headers: {
+        origin: allowedOrigin,
+        'access-control-request-method': 'DELETE',
+      },
+    });
+    expect(res.statusCode).toBeLessThan(300);
+    expect(res.headers['access-control-allow-methods']).toContain('DELETE');
+  });
+
   // ── Helmet (ADR-0010) ────────────────────────────────────────────────────
   it('gắn security header cơ bản (helmet) trên response', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });

@@ -31,6 +31,18 @@ export function withAuthHeaders(cookie: string): ApiClientContext {
 }
 
 /**
+ * Browser: ngữ cảnh cho call oRPC cần session gọi TỪ client component
+ * (Task 7/A2 — khu account: pay-now/cancel/bỏ-lưu…). Cookie httpOnly do API
+ * phát tự gửi kèm request qua `credentials: 'include'`, JS không cần đọc/
+ * forward tay (khác `withAuthHeaders` — bản đó cho đường SERVER, forward
+ * cookie đọc từ `next/headers`), vd
+ * `api.bookings.checkout({ code }, { context: withBrowserAuth() })`.
+ */
+export function withBrowserAuth(): ApiClientContext {
+  return { auth: { credentials: 'include' } };
+}
+
+/**
  * Thuần để test: gắn credentials/cookie cho call cần session vào RequestInit
  * (mở rộng cùng khuôn `withNextOptions`). Nhận thêm `request` gốc (KHÁC
  * `withNextOptions`) để merge header qua `new Headers(request.headers)` thay

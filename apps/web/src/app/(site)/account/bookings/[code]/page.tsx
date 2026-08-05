@@ -153,6 +153,10 @@ export default async function AccountBookingDetailPage({
         <BookingActions
           view={view}
           deniedNote={cancellation?.status === 'DENIED' ? cancellation.decisionNote : null}
+          // Task 7 (A2): `code` — KHÔNG `onAction` (Server Component không
+          // truyền được hàm client thật qua RSC boundary, xem JSDoc
+          // `BookingActions`); component tự dựng handler thật từ mã này.
+          code={booking.code}
         />
         {terminalNote ? <p className="text-sm text-muted-foreground">{terminalNote}</p> : null}
         <Link href="/cancellation-policy" className="text-sm text-primary hover:underline">
