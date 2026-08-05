@@ -22,8 +22,8 @@ describe('featuredInRegion', () => {
     expect(input).toEqual(snapshot);
   });
 
-  it('mặc định count = 6', () => {
+  it('mặc định count = 4 (user chốt 3-4 địa danh chính)', () => {
     const input = Array.from({ length: 9 }, (_, i) => d(`D${i}`, i));
-    expect(featuredInRegion(input)).toHaveLength(6);
+    expect(featuredInRegion(input)).toHaveLength(4);
   });
 });

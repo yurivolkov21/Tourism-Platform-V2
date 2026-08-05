@@ -49,7 +49,8 @@ export function destinationsInRegion<T extends { region: string | null }>(
 }
 
 /**
- * Địa danh NỔI BẬT của một section landing — cap `count` (mặc định 6) theo
+ * Địa danh NỔI BẬT của một section landing — cap `count` (mặc định 4 —
+ * user chỉnh từ 6 xuống 06/08 chiều: 1 tile feature + 3 tile ảnh) theo
  * sức nặng `tourCount` giảm dần, tie-break `name` tăng dần (cùng nếp
  * `topDestinations` của Home). Lý do cap (user chốt 06/08): section landing
  * không giới hạn sẽ phình vô hạn khi thêm địa danh; "View more →" dẫn vào
@@ -58,7 +59,7 @@ export function destinationsInRegion<T extends { region: string | null }>(
  */
 export function featuredInRegion<T extends { tourCount: number; name: string }>(
   destinations: readonly T[],
-  count = 6,
+  count = 4,
 ): T[] {
   return [...destinations]
     .sort((a, b) => {
