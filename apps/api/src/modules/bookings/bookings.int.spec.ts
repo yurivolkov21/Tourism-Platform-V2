@@ -5,7 +5,11 @@ import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  CancellationRequestStatus,
+  DepartureStatus,
+} from '../../generated/prisma/enums.js';
 import { FakeGateway } from '../payments/fake.gateway.js';
 
 /**
@@ -437,5 +441,81 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         message: 'Booking not found',
       });
     }
+  });
+
+  // Task 6a (A2, user duyệt 06/08): byCode trả kèm `cancellationStatus` —
+  // request MỚI NHẤT theo booking, null nếu chưa từng xin.
+  it('GET /api/bookings/{code}: cancellationStatus null trước khi xin hủy, REQUESTED sau khi xin', async () => {
+    const alice = await signUpUser('alice-cancel-status@example.com', 'Alice');
+    const created = (await createBooking(alice)).json();
+    await prisma.booking.update({
+      where: { code: created.code },
+      data: { status: BookingStatus.PAID },
+    });
+
+    const before = BookingSchema.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/bookings/${created.code}`,
+          headers: { cookie: alice },
+        })
+      ).json(),
+    );
+    expect(before.cancellationStatus).toBeNull();
+
+    const cancelRes = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${created.code}/cancel`,
+      headers: { cookie: alice },
+      payload: { reason: 'Change of plans' },
+    });
+    expect(cancelRes.statusCode).toBe(200);
+
+    const after = BookingSchema.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/bookings/${created.code}`,
+          headers: { cookie: alice },
+        })
+      ).json(),
+    );
+    expect(after.cancellationStatus).toBe('REQUESTED');
+  });
+
+  it('GET /api/bookings/{code}: cancellationStatus phản ánh request MỚI NHẤT (DENIED sau khi admin quyết)', async () => {
+    const alice = await signUpUser('alice-cancel-denied@example.com', 'Alice');
+    const created = (await createBooking(alice)).json();
+    await prisma.booking.update({
+      where: { code: created.code },
+      data: { status: BookingStatus.PAID },
+    });
+
+    const cancelRes = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${created.code}/cancel`,
+      headers: { cookie: alice },
+      payload: { reason: 'Change of plans' },
+    });
+    const requestId = cancelRes.json().id as string;
+
+    // Flip trực tiếp qua Prisma thay vì dựng lại toàn bộ admin sign-in + role
+    // ADMIN (đã có sẵn ở cancellations.int.spec.ts) chỉ để phủ một field mới.
+    await prisma.cancellationRequest.update({
+      where: { id: requestId },
+      data: { status: CancellationRequestStatus.DENIED, decidedAt: new Date() },
+    });
+
+    const after = BookingSchema.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/bookings/${created.code}`,
+          headers: { cookie: alice },
+        })
+      ).json(),
+    );
+    expect(after.cancellationStatus).toBe('DENIED');
   });
 });

@@ -47,6 +47,9 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: null,
     cancelledAt: null,
     createdAt: '2026-08-01T03:12:00.000Z',
+    // Task 6a (A2, user duyệt 06/08): field mới trên BookingSchema — PENDING
+    // không thể mang cancellation request (chỉ PAID mới xin hủy được).
+    cancellationStatus: null,
   },
   {
     id: '54596eba-ef88-4ec0-952b-5ea335a3cf21',
@@ -69,6 +72,9 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: '2026-07-02T08:40:00.000Z',
     cancelledAt: null,
     createdAt: '2026-07-02T08:31:00.000Z',
+    // Task 6a: chưa từng xin hủy — khớp việc BK-PAIDOK01 không có key trong
+    // MOCK_CANCELLATIONS phía dưới.
+    cancellationStatus: null,
   },
   {
     id: '6cb2be43-346b-42a2-a2f3-361e1dabc0b5',
@@ -91,6 +97,8 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: '2026-07-15T11:05:00.000Z',
     cancelledAt: null,
     createdAt: '2026-07-15T10:58:00.000Z',
+    // Task 6a: khớp MOCK_CANCELLATIONS['BK-PAIDREQ1'] phía dưới (request đang mở).
+    cancellationStatus: 'REQUESTED',
   },
   {
     id: 'f15e4be1-6245-40fa-a961-07788d161f50',
@@ -113,6 +121,8 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: '2026-05-20T09:00:00.000Z',
     cancelledAt: null,
     createdAt: '2026-05-20T08:50:00.000Z',
+    // Task 6a: khớp MOCK_CANCELLATIONS['BK-PAIDDEN1'] phía dưới (admin đã từ chối).
+    cancellationStatus: 'DENIED',
   },
   {
     id: 'e068c8bf-ac84-402a-a5cd-d82b6e40e5ed',
@@ -135,6 +145,9 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: null,
     cancelledAt: '2026-07-05T06:00:00.000Z',
     createdAt: '2026-07-01T04:20:00.000Z',
+    // Task 6a: tự-hủy PENDING (cancelPending, BK-2) — KHÔNG đi qua đường
+    // cancellation-request PAID, nên field này vẫn null.
+    cancellationStatus: null,
   },
   {
     id: '5d6ac513-e929-4d36-ac27-16d9ebb432f6',
@@ -157,6 +170,9 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: '2026-04-10T07:00:00.000Z',
     cancelledAt: '2026-04-20T05:30:00.000Z',
     createdAt: '2026-04-10T06:55:00.000Z',
+    // Task 6a: mock này refund toàn phần không qua flow cancellation-request
+    // (admin refund trực tiếp, W3) — không có request nào đứng sau nó.
+    cancellationStatus: null,
   },
   {
     id: '51e30145-336e-411d-b285-4daffa5f1943',
@@ -179,6 +195,8 @@ export const MOCK_BOOKINGS: Booking[] = [
     paidAt: '2026-06-01T10:00:00.000Z',
     cancelledAt: null,
     createdAt: '2026-06-01T09:52:00.000Z',
+    // Task 6a: refund một phần trực tiếp bởi admin — không qua cancellation-request.
+    cancellationStatus: null,
   },
 ];
 

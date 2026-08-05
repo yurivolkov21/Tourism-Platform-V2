@@ -27,6 +27,10 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     paidAt: null,
     cancelledAt: null,
     createdAt: '2026-08-01T00:00:00.000Z',
+    // Task 6a (A2): field mới trên BookingSchema — mặc định chưa-có (null);
+    // test cancellation view dùng tham số `cancellation` rời (xem trên), không
+    // qua field này.
+    cancellationStatus: null,
     ...overrides,
   };
 }

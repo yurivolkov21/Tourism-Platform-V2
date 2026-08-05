@@ -119,12 +119,21 @@ describe('BookingSchema', () => {
       paidAt: null,
       cancelledAt: null,
       createdAt: '2026-07-18T09:00:00.000Z',
+      cancellationStatus: null,
     });
     expect(parsed.totalAmount).toBe('117.00');
     expect(parsed.checkoutUrl).not.toBeNull();
+    expect(parsed.cancellationStatus).toBeNull();
     expect(BookingSchema.safeParse({ ...parsed, code: 'bk-lowercase' }).success).toBe(false);
     // Money must never arrive as a float.
     expect(BookingSchema.safeParse({ ...parsed, totalAmount: 117 }).success).toBe(false);
+    // Task 6a (A2): cancellationStatus mirror enum CancellationRequestStatus.
+    expect(BookingSchema.safeParse({ ...parsed, cancellationStatus: 'REQUESTED' }).success).toBe(
+      true,
+    );
+    expect(BookingSchema.safeParse({ ...parsed, cancellationStatus: 'APPROVED' }).success).toBe(
+      false,
+    );
   });
 });
 

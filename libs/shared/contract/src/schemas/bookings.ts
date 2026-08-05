@@ -48,6 +48,17 @@ export const CreateBookingInputSchema = z.object({
 export type CreateBookingInput = z.output<typeof CreateBookingInputSchema>;
 
 /**
+ * Mirror enum Prisma CancellationRequestStatus. REQUESTED = đang mở (nhiều nhất
+ * một cái mỗi booking — partial unique index), DENIED = admin từ chối (booking
+ * vẫn PAID), REFUNDED = đã duyệt → refund toàn phần còn lại + booking CANCELLED
+ * (docs/conventions/booking-states.md). Đặt TRƯỚC `BookingSchema` (thay vì ở
+ * cụm Cancellation phía dưới) vì `BookingSchema.cancellationStatus` cần tham
+ * chiếu nó — const khai sau không dùng được do temporal dead zone.
+ */
+export const CancellationRequestStatusSchema = z.enum(['REQUESTED', 'REFUNDED', 'DENIED']);
+export type CancellationRequestStatusValue = z.output<typeof CancellationRequestStatusSchema>;
+
+/**
  * Shape booking công khai. Các field snapshot (tourTitle, ngày departure,
  * unitPrice) phản ánh đúng thứ khách đã mua tại thời điểm create — chúng không
  * bao giờ render lại khi tour bị sửa (audit H3). `checkoutUrl` chỉ khác null
@@ -74,6 +85,14 @@ export const BookingSchema = z.object({
   paidAt: z.iso.datetime().nullable(),
   cancelledAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
+  /**
+   * Task 6a (A2, user duyệt 06/08): trạng thái đơn-xin-hủy MỚI NHẤT của booking
+   * này (theo `createdAt desc`), null nếu chưa từng xin. CHỈ `bookings.byCode`
+   * điền giá trị thật (đọc kèm — dùng cho trang chi tiết); `mine`/`adminList`/
+   * `adminByCode` để null cố ý (giữ list nhẹ — không thêm N query phụ cho mỗi
+   * row list, xem comment tại `BookingsService.mine`).
+   */
+  cancellationStatus: CancellationRequestStatusSchema.nullable(),
 });
 
 export type Booking = z.output<typeof BookingSchema>;
@@ -150,15 +169,6 @@ export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchem
 // ─────────────────────────────────────────────────────────────────────────────
 // Cancellation (spec P2 §3, W4 — lịch sử append-only D1-B)
 // ─────────────────────────────────────────────────────────────────────────────
-
-/**
- * Mirror enum Prisma CancellationRequestStatus. REQUESTED = đang mở (nhiều nhất
- * một cái mỗi booking — partial unique index), DENIED = admin từ chối (booking
- * vẫn PAID), REFUNDED = đã duyệt → refund toàn phần còn lại + booking CANCELLED
- * (docs/conventions/booking-states.md).
- */
-export const CancellationRequestStatusSchema = z.enum(['REQUESTED', 'REFUNDED', 'DENIED']);
-export type CancellationRequestStatusValue = z.output<typeof CancellationRequestStatusSchema>;
 
 /** Input cho `bookings.cancel` — lý do của khách được chuyển tới queue admin. */
 export const CancelBookingInputSchema = z.object({

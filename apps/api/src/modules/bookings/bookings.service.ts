@@ -61,8 +61,16 @@ export const calendarDate = (value: Date): string => value.toISOString().slice(0
 type BookingRow = Prisma.BookingModel;
 
 /** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
- * Export cho admin surface (RefundsService trả về cùng shape). */
-export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking {
+ * `cancellationStatus` mặc định null — CHỈ `byCode` truyền giá trị thật (đọc
+ * kèm request cancellation mới nhất); mọi call site khác (create/mine/
+ * adminList/adminByCode/cancelPending) không cần biết field này nên bỏ qua
+ * tham số, hưởng default null (Task 6a, A2). Export cho admin surface
+ * (RefundsService trả về cùng shape). */
+export function toBooking(
+  row: BookingRow,
+  checkoutUrl: string | null,
+  cancellationStatus: Booking['cancellationStatus'] = null,
+): Booking {
   return {
     id: row.id,
     code: row.code,
@@ -84,6 +92,7 @@ export function toBooking(row: BookingRow, checkoutUrl: string | null): Booking 
     paidAt: row.paidAt ? row.paidAt.toISOString() : null,
     cancelledAt: row.cancelledAt ? row.cancelledAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
+    cancellationStatus,
   };
 }
 
@@ -307,7 +316,11 @@ export class BookingsService {
     return toBooking(updated, null);
   }
 
-  /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status filter optional. */
+  /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status
+   * filter optional. `cancellationStatus` cố ý giữ null (default của
+   * `toBooking`) — list này phục vụ trang danh sách nhiều row, thêm một query
+   * cancellation MỚI NHẤT cho mỗi row (N+1) không đáng giá cho một field chỉ
+   * trang chi tiết (`byCode`) cần (Task 6a, A2). */
   async mine(userId: string, query: BookingsListQuery): Promise<Paged<Booking>> {
     const { page, limit, status } = query;
     const where: Prisma.BookingWhereInput = {
@@ -338,11 +351,22 @@ export class BookingsService {
    * Booking của chính user theo code, hoặc null (controller → NOT_FOUND). Cố ý
    * chỉ owner — code của user khác thì 404 (không phải 403: không leak sự tồn
    * tại). KHÔNG có admin bypass ở đây; admin surface là list riêng của nó (W3+).
+   *
+   * Task 6a (A2, user duyệt 06/08): kèm `cancellationStatus` — request MỚI
+   * NHẤT theo `createdAt desc` (không phải trạng thái máy trạng thái booking,
+   * chỉ đọc — KHÔNG đổi hành vi/ghi gì). Trang chi tiết (nơi duy nhất gọi
+   * `byCode`) cần field này để biết có nên hiện nút "xin hủy" hay không; `mine`
+   * (list) cố ý không trả (xem comment ở đó).
    */
   async byCode(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({ where: { code } });
     if (!booking || booking.userId !== userId) return null;
-    return toBooking(booking, null);
+    const latestCancellation = await prisma.cancellationRequest.findFirst({
+      where: { bookingId: booking.id },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      select: { status: true },
+    });
+    return toBooking(booking, null, latestCancellation?.status ?? null);
   }
 
   /**
