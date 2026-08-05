@@ -8,6 +8,71 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-06 — Cụm A bước 8–10: hạ tầng session client + khu Account 6 route sống thật (branch `feat/account-area`, ff-only, 12 commit `c88b2c0..2cebb8b`)
+
+Cụm lớn nhất P3b (51 file, hơn 4.100 dòng), đi trọn quy trình static-first
+HAI PHA user yêu cầu: T1–T4 dựng tĩnh trên mock gương contract → **mốc DỪNG
+T5 user duyệt visual trên localhost** (2 fix từ vòng test của user: checklist
+mật khẩu sang lưới 2 cột; giải oan "Alex Nguyên là ai" = mock A1 vs session
+thật ở navbar) → T6a/T6/T7 wire thật → T8 nghiệm thu sống. User chốt kèm
+tuyên bố: visual mức dựng-tạm, KHU ACCOUNT SẼ THIẾT KẾ LẠI ở session khác.
+
+- **Hạ tầng session client (nửa còn lại ADR-0017):** `proxy.ts` matcher chỉ
+  `/account/:path*` (kiểm cookie tồn tại, nhận cả tên `__Secure-` cho prod
+  https) + defense-in-depth `requireSession` từng page + `getServerSession`
+  React-cache + đường gọi authed (browser `credentials: 'include'`; server
+  cookie-forward + `no-store`, tách hẳn cache catalogue).
+- **6 route:** dashboard (stats/nextTrip/upcoming/saved) · bookings list
+  (badge tone một nguồn `booking-vm`, Load more theo pagination contract) ·
+  booking detail (hành động theo máy trạng thái: PENDING pay-now/cancel;
+  PAID request-cancellation 3 biến thể) · profile hợp nhất (updateUser +
+  changePassword + danger-zone gõ-DELETE; avatar/đổi-email PARK có hồ sơ) ·
+  security → redirect 308 (parity Nexora) · saved (optimistic + rollback).
+- **Mở rộng contract có phép (user duyệt 06/08):** `bookings.byCode` thêm
+  `cancellationStatus` (request mới nhất — enum thật REQUESTED/REFUNDED/
+  DENIED; plan ghi nhầm APPROVED, implementer bắt và theo code).
+- `mocks/account.ts` sống đúng một cụm rồi khai tử (0 hit).
+
+**Review findings (9 vòng task + final fable + 3 vòng fix) — 4 bug thật:**
+
+1. **CORS chặn DELETE từ MỌI browser** (smoke sống T7 bắt): `@fastify/cors`
+   v11 mặc định chỉ GET/HEAD/POST — route `DELETE /api/account` (duy nhất
+   trong contract) chết ở preflight từ khi sinh ra; offline test không thấy
+   vì inject không qua preflight. Vá bootstrap khai `methods` tường minh +
+   e2e canh. Cùng lớp giá trị với smoke ADR-0002.
+2. **Proxy đá user đã đăng nhập trên prod https** (final review bắt): chỉ
+   kiểm tên cookie trần, BA gắn `__Secure-` khi baseURL https → lockout
+   loop /account. Vá nhận cả hai tên + spec 3 ca RED-proof + trích source
+   `SECURE_COOKIE_PREFIX` làm bằng chứng.
+3. **Link chết tour unavailable** ở preview saved của dashboard (review T3
+   render sống chứng minh) — vá tái dùng `UnavailableCard` một nguồn.
+4. **Lỗ test orderBy "mới nhất"** của cancellationStatus (reviewer T6a
+   mutation-bite: đảo asc vẫn 158/158 xanh vì test chỉ có 1 row) — vá test
+   2-row re-request, bite được xác nhận độc lập.
+
+**Sự cố quy trình (ghi để không tái diễn):** implementer T7 build `.next`
+trong `apps/web` khi dev server của user đang chạy cùng thư mục → crash dev
+server của user. Rule có trong memory nhưng CHƯA từng nằm trong brief —
+từ nay mọi brief có khả năng build web bắt buộc kèm lệnh cấm + đường
+worktree tạm (T8 đã chạy đúng kiểu worktree + cổng 3002/3003).
+
+**Nợ ghi sổ (phân loại ở final review):** textarea lý do hủy — spec §3 đòi
+nhưng A1 bỏ sót, khoá không-đụng-visual chặn fix → làm khi redesign khu
+account (session user tự lo) · terminal-note "số tiền đã hoàn" không nguồn
+(BookingSchema khách không mang ledger — M-2, cân thêm field khi cần) ·
+DENIED không hiện lý do admin (privacy hợp lý; cân fallback "contact
+support") · Load-more cap 50 không lối thoát khi >50 booking · user-menu
+label hardcode (có TRƯỚC branch, `auth.menu.*` mồ côi) · connected-accounts
+một dòng cứng (sẽ nói dối khi bật Google) · saved-grid 401 thiếu nhánh
+sessionExpired · PayPal checkout UI chưa đo trong cụm (env dev thiếu
+webhook id; đường PayPal đã smoke ở cụm ADR-0002).
+
+**Tests after:** web **900** unit (74 file; +47 của cụm) · api **209** unit
+và **158** int (+5 SEC/orderBy/CORS mới) — `gate:int` 1343 test tổng, CI
+branch run `30977237984` success trước merge. Nghiệm thu sống: vòng đời
+đăng-ký→booking→hủy→xoá-tài-khoản đo bằng playwright + SQL; proxy và page
+redirect đo TÁCH LỚP; trang public giữ ISR HIT xuyên suốt.
+
 ## 2026-08-04 — Nâng Next 16.3.0 và phủ TypeScript 7 cho web/ui — toàn repo một đời TS (branch `chore/nang-next-16-3-phu-ts7`, ff-only, 1 commit `4ece778`)
 
 Cửa sổ trước freeze tận dụng đúng lúc: Next 16.3.0 GA 03/08 (một ngày trước)

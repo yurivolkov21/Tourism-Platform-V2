@@ -5,6 +5,11 @@
   **Đã thi hành phần bước 7 cùng ngày** (`ec33797..9a0c30a` — 5/6 form +
   `useSession` island + emailOTP; SEC-1 đo sống đường OTP). Phần bước 8–10
   (`proxy.ts`, `credentials: 'include'` cho oRPC, trang account) còn mở.
+  → **Phần đó ĐÃ THI HÀNH 06/08** (cụm A `c88b2c0..2cebb8b`): proxy matcher
+  hẹp + defense-in-depth + đường authed cookie-forward/no-store + 6 route
+  account. Lưu ý thi công: proxy phải nhận CẢ tên cookie `__Secure-…` trên
+  https (final review bắt — xem CHANGELOG 06/08). Còn mở duy nhất:
+  `/tours/:slug/book` vào matcher khi cụm C làm booking.
   Lưu ý thi công đã đo: Better Auth merge option plugin bằng `defu` — tự
   khai `sendVerificationEmail` là override OTP của plugin bị nuốt im lặng,
   phải bỏ field đó (chi tiết CHANGELOG 03/08).

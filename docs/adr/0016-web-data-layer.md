@@ -25,6 +25,10 @@
 >   Lớp catalogue (`tours`/`destinations`/`journal`…) đã chết hết đúng thiết
 >   kế của mục này. → **`mocks/auth.ts` ĐÃ KHAI TỬ cùng ngày 03/08** (bước 7
 >   merge — user-menu sang `useSession` thật, xem CHANGELOG 03/08).
+>   → 06/08: `mocks/account.ts` sinh ra Ở PHA TĨNH cụm A và khai tử NGAY
+>   trong cùng cụm (mẫu mock-chết-trong-cụm — không bao giờ lên main ở
+>   trạng thái sống); danh sách mock sống hiện tại: 4 mock-không-endpoint
+>   (faq · testimonials · moments · regions) + team/offices — không đổi.
 > - **Bảng `lib/api/` nay có thêm 2 file:** `resilience.ts` (`settle()`/
 >   `contentState()` — khuôn tri-state cho đường ĐỌC, tách ra từ bước 1) và
 >   `submit.ts` (`classifySubmitError`/`submitToast` — đường GHI, bước 5+6;
