@@ -8,6 +8,23 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-06 — Landing /destinations: cap 4 địa danh nổi bật mỗi miền + hero đếm số thật (branch `feat/dia-danh-noi-bat-landing`, ff-only, 2 commit `3237bbd..0f5caed`)
+
+Việc lẻ user đặt hàng khi review trang: section mỗi miền trước đây render
+TOÀN BỘ địa danh (miền Bắc 7 tile, thêm địa danh là phình vô hạn). Nay cap
+**top-4 theo `tourCount`** (hàm thuần `featuredInRegion` — TDD 4 ca, tie-break
+tên vi-locale, cùng nếp `topDestinations` của Home; user chỉnh 6 → 4 giữa
+chừng khi xem bản đo: 1 tile feature + 3 tile ảnh); "View more →" vào trang
+miền vẫn xem đủ. Nhặt kèm một bug nội dung cùng lớp "68+" cũ: hero subtitle
+ghi cứng "nine places" sai từ thời mock — nay đếm động từ data thật
+("Three regions, 19 places"; bản meta cố ý không đếm số để không tự lỗi
+thời). Đo sống trên production build: miền Bắc còn đúng 4 tile
+(Hà Nội · Hạ Long · Ninh Bình · Sa Pa). Không đổi component RegionGroup —
+cap đặt ở page.
+
+**Tests after:** web +4 (featured-in-region) = 904 unit · gate:int --force
+trọn xanh · CI branch success cả hai vòng (top-6 rồi hạ 4).
+
 ## 2026-08-06 — Cụm A bước 8–10: hạ tầng session client + khu Account 6 route sống thật (branch `feat/account-area`, ff-only, 12 commit `c88b2c0..2cebb8b`)
 
 Cụm lớn nhất P3b (51 file, hơn 4.100 dòng), đi trọn quy trình static-first
