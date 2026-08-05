@@ -17,7 +17,9 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/lib/**/*.spec.ts', 'src/mocks/**/*.spec.ts'],
+          // src/proxy.spec.ts: thêm glob riêng (I-1) — proxy.ts nằm ở gốc
+          // src/, không khớp glob thư mục con sẵn có.
+          include: ['src/lib/**/*.spec.ts', 'src/mocks/**/*.spec.ts', 'src/proxy.spec.ts'],
         },
       },
       {
