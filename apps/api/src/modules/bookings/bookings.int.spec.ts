@@ -502,12 +502,19 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
 
     // Flip trực tiếp qua Prisma thay vì dựng lại toàn bộ admin sign-in + role
     // ADMIN (đã có sẵn ở cancellations.int.spec.ts) chỉ để phủ một field mới.
+    // Đồng thời lùi createdAt về quá khứ để row này CHẮC CHẮN là row CŨ nhất —
+    // tránh flaky nếu hai lần tạo request rơi cùng mili-giây.
+    const oldCreatedAt = new Date(Date.now() - 60_000);
     await prisma.cancellationRequest.update({
       where: { id: requestId },
-      data: { status: CancellationRequestStatus.DENIED, decidedAt: new Date() },
+      data: {
+        status: CancellationRequestStatus.DENIED,
+        decidedAt: new Date(),
+        createdAt: oldCreatedAt,
+      },
     });
 
-    const after = BookingSchema.parse(
+    const afterDeny = BookingSchema.parse(
       (
         await app.inject({
           method: 'GET',
@@ -516,6 +523,45 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         })
       ).json(),
     );
-    expect(after.cancellationStatus).toBe('DENIED');
+    expect(afterDeny.cancellationStatus).toBe('DENIED');
+
+    // D1-B: request đã DENIED không được tái dùng — khách re-request tạo THÊM
+    // một row MỚI (append-only, JSDoc `cancellations.service.ts` gần
+    // `CancellationAlreadyDecidedError`). Booking giờ có HAI row
+    // cancellation_request: row cũ DENIED (createdAt lùi ở trên) + row mới
+    // REQUESTED (createdAt = now, muộn hơn). Đây là bằng chứng khoá mệnh đề
+    // `orderBy createdAt desc` trong `bookings.service.ts#byCode` — nếu đảo
+    // thành `asc`, `findFirst` sẽ trả về row DENIED (đứng trước theo asc) thay
+    // vì row REQUESTED, và assertion `toBe('REQUESTED')` bên dưới phải ĐỎ.
+    const secondCancelRes = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${created.code}/cancel`,
+      headers: { cookie: alice },
+      payload: { reason: 'Asking again' },
+    });
+    expect(secondCancelRes.statusCode).toBe(200);
+    const secondRequestId = secondCancelRes.json().id as string;
+    expect(secondRequestId).not.toBe(requestId);
+
+    const rows = await prisma.cancellationRequest.findMany({
+      where: { bookingId: created.id as string },
+      orderBy: { createdAt: 'asc' },
+    });
+    expect(rows).toHaveLength(2);
+    expect(rows.map((r) => r.status)).toEqual([
+      CancellationRequestStatus.DENIED,
+      CancellationRequestStatus.REQUESTED,
+    ]);
+
+    const afterReRequest = BookingSchema.parse(
+      (
+        await app.inject({
+          method: 'GET',
+          url: `/api/bookings/${created.code}`,
+          headers: { cookie: alice },
+        })
+      ).json(),
+    );
+    expect(afterReRequest.cancellationStatus).toBe('REQUESTED');
   });
 });
