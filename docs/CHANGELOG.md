@@ -8,6 +8,23 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-06 — Nền dark sáng hơn 10% (token `background` L 0.25 → 0.275) theo góp ý nhóm (branch `feat/nen-toi-sang-hon`, ff-only, 1 commit `121cff6`)
+
+Nhóm của user góp ý nền dark "hơi tối, khó nhìn" → user đặt hàng giảm độ tối
+10–20%, CHỈ nền gốc (hero/card/muted giữ nguyên theo chỉ đạo tường minh).
+Quy trình: áp +10% cho user A/B trực tiếp trên localhost kèm BẢNG ĐO contrast
+tự tính từ OKLCH (script scratchpad, không ước lượng) → user chốt +10%.
+Số đo sau đổi: chữ/nền 12.67 → **11.73** (vẫn dư xa AAA 7:1); nút
+primary/nền 3.14 → **2.91** — rớt nhẹ mốc 3:1 non-text (WCAG 1.4.11).
+
+**Nợ mở (ghi cả trong comment token — "đừng tiện tay chỉnh"):** cân lại
+primary dark cho ≥3:1 trên nền mới là quyết định thiết kế riêng, CÙNG HỌ với
+nợ "primary/card dark 2.57" có từ trước — gộp xử một thể khi user mở vòng
+redesign (đã hẹn session riêng).
+
+**Tests after:** tokens build + test xanh; CI branch success trước merge;
+không đổi số test (904 web · 209 api unit · 158 int).
+
 ## 2026-08-06 — Landing /destinations: cap 4 địa danh nổi bật mỗi miền + hero đếm số thật (branch `feat/dia-danh-noi-bat-landing`, ff-only, 2 commit `3237bbd..0f5caed`)
 
 Việc lẻ user đặt hàng khi review trang: section mỗi miền trước đây render
