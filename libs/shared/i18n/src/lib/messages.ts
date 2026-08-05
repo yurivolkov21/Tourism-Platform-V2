@@ -729,7 +729,12 @@ export const messages = {
   destinationsPage: {
     breadcrumbCurrent: 'Destinations',
     heroTitle: 'Explore Vietnam by region',
-    heroSubtitle: 'Three regions, nine places. Start where the journey makes sense for you.',
+    // Số địa danh truyền động từ data thật (từng ghi cứng "nine places" —
+    // sai từ khi catalogue lên 19; cùng lớp bug "68+" của Home). Bản meta
+    // dưới cố ý KHÔNG đếm số: metadata là hằng module-level, không có data.
+    heroSubtitle: (places: number) =>
+      `Three regions, ${places} places. Start where the journey makes sense for you.`,
+    heroSubtitleMeta: 'Three regions. Start where the journey makes sense for you.',
     regionHeading: (region: string) => `Places in ${region}`,
     placesLabel: 'Places',
     toursLabel: (n: number) => `${n} ${n === 1 ? 'tour' : 'tours'}`,

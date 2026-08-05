@@ -10,7 +10,7 @@ import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
 import { contentState, settle } from '@/lib/api/resilience';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
-import { destinationsInRegion, toursInRegion } from '@/lib/regions';
+import { destinationsInRegion, featuredInRegion, toursInRegion } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
 import { FAQ_ITEMS } from '@/mocks/faq';
 import { MOMENTS } from '@/mocks/moments';
@@ -50,12 +50,12 @@ export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của f
  */
 export const metadata: Metadata = {
   title: 'Destinations — Tourism',
-  description: messages.destinationsPage.heroSubtitle,
+  description: messages.destinationsPage.heroSubtitleMeta,
   // Canonical: cùng lý do /tours và /tours/[slug] đã thêm — mẫu /blog từng bỏ sót.
   alternates: { canonical: '/destinations' },
   openGraph: {
     title: messages.destinationsPage.heroTitle,
-    description: messages.destinationsPage.heroSubtitle,
+    description: messages.destinationsPage.heroSubtitleMeta,
     type: 'website',
     url: absoluteUrl('/destinations'),
   },
@@ -115,7 +115,9 @@ export default async function DestinationsPage() {
               {t.heroTitle}
             </h1>
 
-            <p className="mt-4 max-w-2xl text-pretty text-muted-foreground">{t.heroSubtitle}</p>
+            <p className="mt-4 max-w-2xl text-pretty text-muted-foreground">
+              {t.heroSubtitle(destinations.length)}
+            </p>
           </Reveal>
         </div>
       </section>
@@ -142,7 +144,9 @@ export default async function DestinationsPage() {
           <Reveal key={region.key} delay={i === 0 ? 0.1 : 0}>
             <RegionGroup
               region={region}
-              destinations={destinationsInRegion(REGIONS, destinations, region.key)}
+              destinations={featuredInRegion(
+                destinationsInRegion(REGIONS, destinations, region.key),
+              )}
               tourCount={toursInRegion(REGIONS, destinations, tours, region.key).length}
             />
           </Reveal>

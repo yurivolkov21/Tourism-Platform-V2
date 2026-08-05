@@ -49,6 +49,26 @@ export function destinationsInRegion<T extends { region: string | null }>(
 }
 
 /**
+ * Địa danh NỔI BẬT của một section landing — cap `count` (mặc định 6) theo
+ * sức nặng `tourCount` giảm dần, tie-break `name` tăng dần (cùng nếp
+ * `topDestinations` của Home). Lý do cap (user chốt 06/08): section landing
+ * không giới hạn sẽ phình vô hạn khi thêm địa danh; "View more →" dẫn vào
+ * trang miền — nơi hiển thị ĐỦ. Trả mảng mới, không sửa mảng gốc; `count`
+ * vượt độ dài thì trả hết.
+ */
+export function featuredInRegion<T extends { tourCount: number; name: string }>(
+  destinations: readonly T[],
+  count = 6,
+): T[] {
+  return [...destinations]
+    .sort((a, b) => {
+      if (a.tourCount !== b.tourCount) return b.tourCount - a.tourCount;
+      return a.name.localeCompare(b.name, 'vi');
+    })
+    .slice(0, count);
+}
+
+/**
  * Tour của một vùng = tour DISTINCT chạm bất kỳ địa điểm của vùng.
  *
  * Distinct là phần dễ sai nhất: `halong-bay-overnight-cruise` chạm cả `ha-long`
