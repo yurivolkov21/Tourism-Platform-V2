@@ -198,6 +198,25 @@ không if/else status trong JSX ngoài map action→nút.
 
 ---
 
+### Task 6a (A2 — AMENDED 06/08, user duyệt): mở rộng `bookings.byCode` trả trạng thái đơn-xin-hủy
+
+**Files:**
+- Modify: `libs/shared/contract/src/schemas/bookings.ts` (`BookingSchema` thêm
+  `cancellationStatus: z.enum(['REQUESTED','APPROVED','DENIED']).nullable()` —
+  request MỚI NHẤT; null = chưa từng xin)
+- Modify: `apps/api/src/modules/bookings/bookings.service.ts` (`byCode` +
+  `mine`? — CHỈ byCode cần; mine giữ nhẹ, ghi comment vì sao)
+- Modify: `apps/api/src/modules/bookings/bookings.int.spec.ts` (+2 ca:
+  chưa-có → null · sau request → REQUESTED; DENIED dựng qua flow admin decide
+  sẵn có nếu helper cho phép, không thì SQL)
+
+- [ ] Step 1 (RED): int test 2 ca → đỏ. Step 2: schema + service (đọc
+  request mới nhất theo `createdAt desc` từ bảng sẵn có — KHÔNG đổi máy
+  trạng thái). Step 3: GREEN + contract unit nếu có + typecheck + biome;
+  commit `feat(api): byCode trả trạng thái đơn-xin-hủy mới nhất (user duyệt 06/08)`.
+
+---
+
 ### Task 6 (A2): Wire ĐỌC — session thật + dashboard/bookings/saved từ API
 
 **Files:**

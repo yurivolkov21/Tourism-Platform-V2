@@ -9,6 +9,13 @@
   [booking-states](../conventions/booking-states.md) (ngữ nghĩa terminal).
 - **Branch:** `feat/account-area`.
 
+> **AMENDED 06/08 (user chốt khi duyệt T5):** (a) cụm ĐƯỢC PHÉP mở rộng nhẹ
+> API: `bookings.byCode` trả thêm trạng thái đơn-xin-hủy mới nhất (đọc bảng
+> `cancellation_requests` sẵn có) — nguồn thật cho 3 biến thể PAID đã duyệt;
+> (b) card wishlist GIỮ NGUYÊN không dòng destinations (không đụng contract);
+> (c) visual duyệt ở mức dựng-tạm — khu account sẽ có vòng THIẾT KẾ LẠI ở
+> session khác do user tự lo, cụm này không đụng thêm visual.
+
 ## 1. Phạm vi — HAI PHA trong một cụm, có MỐC DỪNG
 
 | Pha | Nội dung | Gate |
