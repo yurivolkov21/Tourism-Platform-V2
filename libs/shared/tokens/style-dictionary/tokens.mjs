@@ -11,7 +11,13 @@ export default {
   color: {
     // Hệ "Wuling" — chốt 22/07/2026, phân tích tại docs/conventions/color-system.md.
     // Quy đổi oklch từ hex chốt bằng culori (làm tròn 3 chữ số).
-    background: c('oklch(0.977 0.003 174.5)', 'oklch(0.25 0.015 181.5)'),
+    // Dark L 0.25 → 0.275 (+10% — CHỐT 06/08, góp ý nhóm "nền tối quá khó
+    // nhìn", user duyệt sau khi xem A/B). CHỈ nền gốc đổi; hero/card/muted
+    // giữ nguyên theo chỉ đạo. Số đo sau đổi: chữ/nền 11.73 (dư AAA);
+    // nút primary/nền 2.91 — RỚT NHẸ mốc 3:1 non-text, NỢ CÓ HỒ SƠ cùng họ
+    // với "primary/card 2.57" bên dưới: cân lại primary dark là một quyết
+    // định thiết kế riêng (xem CHANGELOG 06/08), đừng "tiện tay" chỉnh ở đây.
+    background: c('oklch(0.977 0.003 174.5)', 'oklch(0.275 0.015 181.5)'),
     foreground: c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
     card: c('oklch(0.996 0.002 174)', 'oklch(0.309 0.022 177.6)'),
     'card-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
