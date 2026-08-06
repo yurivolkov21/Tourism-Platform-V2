@@ -155,6 +155,10 @@ export interface MockOffice {
   name: string;
   addressLines: string[];
   hours: string;
+  /** [kinh độ, vĩ độ] — thứ tự của MapLibre, KHÔNG phải [lat, lng] */
+  coords: [number, number];
+  /** Link Google Maps cho nút Get directions, mở tab mới */
+  mapHref: string;
 }
 
 /** Câu hỏi pre-sales cho mini-FAQ Contact — ứng viên schema faqs */

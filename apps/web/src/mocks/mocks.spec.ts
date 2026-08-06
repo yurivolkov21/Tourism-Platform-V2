@@ -44,14 +44,30 @@ describe('mock team (About §5 — chỉ founder/vận hành, quyết định us
 });
 
 describe('mock contact page (offices + faq)', () => {
-  it('2 văn phòng đủ trường', async () => {
+  it('2 văn phòng đủ trường, toạ độ nằm trong khung Việt Nam', async () => {
     const { OFFICES } = await import('./offices.js');
     expect(OFFICES).toHaveLength(2);
     for (const o of OFFICES) {
       expect(o.city.length).toBeGreaterThan(0);
+      expect(o.name.length).toBeGreaterThan(0);
       expect(o.addressLines.length).toBeGreaterThan(0);
       expect(o.hours.length).toBeGreaterThan(0);
+      // Toạ độ MapLibre là [kinh độ, vĩ độ] — KHÔNG phải [lat, lng]. Khung
+      // Việt Nam: kinh độ 102–110, vĩ độ 8–24. Test này chặn lỗi đảo cặp số,
+      // thứ sẽ ném marker sang giữa Ấn Độ Dương mà nhìn map vẫn thấy "có pin".
+      const [lng, lat] = o.coords;
+      expect(lng).toBeGreaterThan(102);
+      expect(lng).toBeLessThan(110);
+      expect(lat).toBeGreaterThan(8);
+      expect(lat).toBeLessThan(24);
+      expect(o.mapHref.startsWith('https://')).toBe(true);
     }
+  });
+
+  it('trụ sở đứng đầu danh sách văn phòng', async () => {
+    const { OFFICES } = await import('./offices.js');
+    const [hq] = OFFICES;
+    expect(hq?.city).toBe('Hà Nội');
   });
 
   it('5 câu FAQ pre-sales, câu hỏi duy nhất', async () => {
