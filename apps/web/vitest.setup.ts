@@ -44,24 +44,3 @@ vi.stubGlobal('ResizeObserver', ResizeObserverStub);
 if (!document.elementFromPoint) {
   document.elementFromPoint = () => null;
 }
-
-// jsdom KHÔNG hiện thực IntersectionObserver. ContactLocation dùng nó để hoãn
-// nạp chunk bản đồ tới khi khách cuộn tới — thiếu polyfill thì effect ném
-// ReferenceError ngay lúc mount và mọi test render section này fail.
-// Stub gọi callback NGAY với isIntersecting=true: test luôn thấy trạng thái
-// "đã cuộn tới", đúng thứ ta muốn khẳng định.
-class IntersectionObserverStub {
-  constructor(private readonly callback: IntersectionObserverCallback) {}
-  observe() {
-    this.callback(
-      [{ isIntersecting: true } as IntersectionObserverEntry],
-      this as unknown as IntersectionObserver,
-    );
-  }
-  unobserve() {}
-  disconnect() {}
-  takeRecords(): IntersectionObserverEntry[] {
-    return [];
-  }
-}
-vi.stubGlobal('IntersectionObserver', IntersectionObserverStub);
