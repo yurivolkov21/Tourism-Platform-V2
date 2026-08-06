@@ -87,8 +87,10 @@ export default function ContactMap() {
     const hosts = OFFICES.map((office) => {
       const el = document.createElement('div');
       // Pin là trang trí: tên + địa chỉ văn phòng đã nằm ở card ngay dưới bản
-      // đồ. Không ẩn thì MapLibre tự gán role="button" + aria-label="Map
-      // marker", screen reader đọc thành 2 nút bấm không làm gì.
+      // đồ. MapLibre luôn tự gán role="button" + aria-label="Map marker" cho
+      // element marker (nó chỉ bỏ qua khi ta tự set sẵn `role`/`aria-label`),
+      // nên chặn ở tầng cây trợ năng: aria-hidden loại hẳn pin khỏi screen
+      // reader thay vì để nó đọc thành 2 nút bấm không làm gì.
       el.setAttribute('aria-hidden', 'true');
       new MapLibreGL.Marker({ element: el }).setLngLat(office.coords).addTo(instance);
       return { city: office.city, el };

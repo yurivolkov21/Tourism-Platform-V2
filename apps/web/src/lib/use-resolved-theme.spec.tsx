@@ -1,9 +1,8 @@
-// @vitest-environment jsdom
-//
-// File này nằm trong src/lib/ nên theo vitest.config.ts sẽ rơi vào project
-// `node` (environment mặc định cho logic thuần) — nhưng test ở đây động vào
-// `document`/`MutationObserver` nên cần jsdom. Override tại chỗ bằng docblock
-// thay vì sửa vitest.config.ts, giữ đúng ràng buộc "không đụng gì khác".
+// File này render React (renderHook) và quan sát DOM nên thuộc project `dom`
+// theo ADR-0014 §4, dù không có JSX — đuôi .spec.tsx quyết định project, và
+// project `dom` mới nạp vitest.setup.ts (cleanup() của RTL, matchMedia,
+// ResizeObserver, matcher jest-dom). Logic thuần đồng bộ (resolveThemeNow)
+// vẫn test được ở đây luôn, không cần tách file.
 import { renderHook, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { resolveThemeNow, useResolvedTheme } from './use-resolved-theme.js';

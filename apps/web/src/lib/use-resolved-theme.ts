@@ -31,7 +31,13 @@ export function resolveThemeNow(): Theme {
   return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 
-/** Theme đang hiển thị, tự cập nhật khi user bấm nút đổi theme. */
+/**
+ * Theme đang hiển thị, tự cập nhật khi user bấm nút đổi theme.
+ *
+ * SSR: giá trị khởi tạo đọc từ `resolveThemeNow()` nên server luôn ra
+ * `'light'`. Consumer PHẢI là client-only (`dynamic(..., { ssr: false })`),
+ * nếu không sẽ lệch hydration khi khách đang ở theme tối.
+ */
 export function useResolvedTheme(): Theme {
   const [theme, setTheme] = useState<Theme>(resolveThemeNow);
 

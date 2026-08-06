@@ -27,7 +27,11 @@ export default defineConfig({
         test: {
           name: 'dom',
           environment: 'jsdom',
-          include: ['src/components/**/*.spec.tsx'],
+          // `src/lib/**/*.spec.tsx`: spec của hook render React (vd
+          // use-resolved-theme) — ADR-0014 §4 xếp thứ phải render vào bên
+          // `dom`, và nó CẦN vitest.setup.ts để có cleanup() của RTL. Logic
+          // thuần vẫn ở `lib/*.spec.ts` bên project `node`, không đổi.
+          include: ['src/components/**/*.spec.tsx', 'src/lib/**/*.spec.tsx'],
           setupFiles: ['./vitest.setup.ts'],
         },
       },
