@@ -51,6 +51,8 @@ export default function ContactMap() {
   // bằng portal để vẫn viết được JSX + icon lucide + class token.
   const [markerHosts, setMarkerHosts] = useState<{ city: string; el: HTMLElement }[]>([]);
   const theme = useResolvedTheme();
+  // Style đã áp lên map — cho effect đổi theme biết khi nào là no-op (M1).
+  const appliedStyleRef = useRef<string | null>(null);
 
   // Khởi tạo map ĐÚNG MỘT LẦN. `theme` cố tình không nằm trong deps — đổi
   // theme thì setStyle ở effect dưới, dựng lại cả map sẽ nháy trắng và mất
@@ -63,10 +65,13 @@ export default function ContactMap() {
     const container = containerRef.current;
     if (!container) return;
 
+    // Đọc theme đồng bộ để lần vẽ đầu đã đúng màu, không nháy sáng rồi tối.
+    const initialStyle = STYLES[resolveThemeNow()];
+    appliedStyleRef.current = initialStyle;
+
     const instance = new MapLibreGL.Map({
       container,
-      // Đọc theme đồng bộ để lần vẽ đầu đã đúng màu, không nháy sáng rồi tối.
-      style: STYLES[resolveThemeNow()],
+      style: initialStyle,
       bounds: officeBounds(),
       fitBoundsOptions: { padding: 64 },
       // Không cướp cuộn trang: lăn chuột vẫn cuộn trang, muốn zoom thì bấm nút.
@@ -81,6 +86,10 @@ export default function ContactMap() {
 
     const hosts = OFFICES.map((office) => {
       const el = document.createElement('div');
+      // Pin là trang trí: tên + địa chỉ văn phòng đã nằm ở card ngay dưới bản
+      // đồ. Không ẩn thì MapLibre tự gán role="button" + aria-label="Map
+      // marker", screen reader đọc thành 2 nút bấm không làm gì.
+      el.setAttribute('aria-hidden', 'true');
       new MapLibreGL.Marker({ element: el }).setLngLat(office.coords).addTo(instance);
       return { city: office.city, el };
     });
@@ -93,10 +102,15 @@ export default function ContactMap() {
     };
   }, []);
 
-  // Đổi theme → đổi style tile, giữ nguyên khung nhìn.
+  // Đổi theme → đổi style tile, giữ nguyên khung nhìn. Bỏ qua khi style không
+  // đổi: lúc mount effect này chạy một lần với đúng style vừa dựng map, gọi
+  // setStyle ở đó chỉ tốn thêm một lượt tải style.
   useEffect(() => {
     if (!map) return;
-    map.setStyle(STYLES[theme]);
+    const nextStyle = STYLES[theme];
+    if (appliedStyleRef.current === nextStyle) return;
+    appliedStyleRef.current = nextStyle;
+    map.setStyle(nextStyle);
   }, [map, theme]);
 
   return (
