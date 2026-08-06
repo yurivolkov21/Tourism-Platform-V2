@@ -2,18 +2,49 @@
 
 import { Clock8Icon, MapPinIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import dynamic from 'next/dynamic';
+import { useEffect, useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { AnimatedGridPattern } from '@/components/motion/animated-grid-pattern';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { OFFICES } from '@/mocks/offices';
 
-// Contact §3 — convert Nexora ContactLocation: map lớn bo 2xl (placeholder
-// static-first — sau này iframe bản đồ thật, ghi chú tại chỗ) + lưới 2 card
-// văn phòng (địa chỉ · giờ mở cửa · nút Get directions). Data mock OFFICES —
-// ứng viên schema offices.
+// Contact §3 — map thật MapLibre (ADR-0018, thay ImagePlaceholder 06/08) +
+// lưới 2 card văn phòng (địa chỉ · giờ mở cửa · nút Get directions trỏ Google
+// Maps). Data từ mock OFFICES — nguồn sự thật duy nhất của địa chỉ toàn site.
+
+// maplibre-gl nặng và cần WebGL (client-only) → chunk lười, bỏ SSR.
+const ContactMap = dynamic(() => import('./contact-map'), {
+  ssr: false,
+  loading: () => <MapSkeleton />,
+});
+
+function MapSkeleton() {
+  return <div className="size-full animate-pulse bg-muted" aria-hidden="true" />;
+}
 
 export function ContactLocation() {
+  // Chunk bản đồ chỉ tải khi khách thật sự cuộn tới khu này — rootMargin 200px
+  // để nó kịp tải xong trước khi lọt vào tầm mắt.
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el || inView) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '200px' },
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [inView]);
+
   return (
     <section
       id="visit"
@@ -46,18 +77,16 @@ export function ContactLocation() {
           </motion.h2>
         </div>
 
-        {/* Map placeholder — thay bằng iframe bản đồ (OSM/Google) khi chốt trang */}
+        {/* Bản đồ MapLibre — nằm trong lớp z-10 để nền lưới động không đè lên */}
         <motion.div
+          ref={mapRef}
           className="relative h-90 overflow-hidden rounded-2xl ring-1 ring-border sm:h-110"
           initial={{ y: 40, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={SPRING}
         >
-          <ImagePlaceholder
-            label="Map — Hà Nội HQ & Sa Pa basecamp (iframe bản đồ khi có media)"
-            className="h-full w-full"
-          />
+          {inView ? <ContactMap /> : <MapSkeleton />}
         </motion.div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
@@ -95,9 +124,12 @@ export function ContactLocation() {
                   <span className="text-muted-foreground">{office.hours}</span>
                 </div>
               </div>
-              {/* Nút chỉ đường — trỏ map thật khi có toạ độ */}
+              {/* Chỉ đường mở Google Maps ở tab mới — trước 06/08 đây là
+                  href="#visit", một link chết trỏ ngược về chính section. */}
               <a
-                href="#visit"
+                href={office.mapHref}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
               >
                 Get directions →
