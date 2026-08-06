@@ -65,7 +65,7 @@ Trung tính: `#F5F8F7 · #DCE5E2 · #AEBBB8 · #7D8F8B · #4F605C · #2C3B39 · 
 
 Tỷ lệ đúc kết từ các trang đã được duyệt:
 
-**sương ~62% · celadon ~16% · ngọc ~12% · mực ~6% · đỏ+vàng vài %**
+là **sương ~62% · celadon ~16% · ngọc ~12% · mực ~6% · đỏ+vàng vài %**
 
 Cái đẹp nằm ở liều lượng. Một trang phủ đầy màu primary là **sai**, dù dùng đúng
 mã. Ngọc bích để dành cho hành động chính và điểm nhấn.
@@ -103,7 +103,7 @@ Dự án có sẵn **63 primitive** (shadcn style `base-nova` trên Base UI). Th
 trang mới **phải lắp từ những thứ này**; mỗi component bạn nghĩ ra ngoài danh
 sách là một thứ ai đó phải viết mới.
 
-```
+```text
 accordion · alert · alert-dialog · animated-theme-toggler · aspect-ratio ·
 attachment · avatar · badge · breadcrumb · bubble · button · button-group ·
 button-link · calendar · card · carousel · chart · checkbox · collapsible ·
@@ -133,6 +133,11 @@ Bám các khuôn này để trang mới trông cùng một nhà:
 - **Ảnh: dùng ô placeholder, đừng dùng ảnh thật.** Sản phẩm đang ở chính sách
   static-first — mọi vị trí ảnh là ô nền xám sọc chéo mảnh, có icon và nhãn mô tả
   ảnh sẽ nằm ở đó. Mockup nên theo đúng vậy để không hứa hẹn thứ chưa có.
+  **Ngoại lệ DUY NHẤT (06/08): khu Location của `/contact` là bản đồ MapLibre
+  THẬT**, tương tác được, 2 pin Hà Nội và Hồ Chí Minh, tile đổi theo sáng/tối
+  ([ADR-0018](../adr/0018-web-map-library.md)). Bản đồ là component *chức năng*
+  chứ không phải ô ảnh — chính sách placeholder không áp cho nó. Mockup nào chạm
+  `/contact` phải vẽ bản đồ thật, đừng vẽ ô sọc chéo ở đó.
 - **Padding trang:** hẹp ở mobile, nới dần tới rất rộng ở màn lớn. Nội dung
   không tràn sát mép ở desktop.
 - Bo góc vừa phải, viền mảnh 1px, đổ bóng rất nhẹ hoặc không có. Không neumorphism,
