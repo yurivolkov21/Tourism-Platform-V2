@@ -30,7 +30,13 @@ CLAUDE.md #10.
 1. **Thêm môi trường `jsdom` + `@testing-library/react`, cấu hình bằng
    `test.projects` của Vitest 4 — MỘT runner, hai project.**
    - `node`: `src/lib/**/*.spec.ts` + `src/mocks/**/*.spec.ts` (nhanh, không DOM).
-   - `dom`: `src/components/**/*.spec.tsx` (jsdom + setup file).
+   - `dom`: `src/components/**/*.spec.tsx` + `src/lib/**/*.spec.tsx` (jsdom +
+     setup file). **Cập nhật 06/08** (nhánh `feat/contact-map-offices`,
+     `958d582`): mở rộng thêm `src/lib/**/*.spec.tsx` vì spec của hook render
+     React (vd `use-resolved-theme.spec.tsx`) thuộc bên `dom` theo ranh giới ở
+     mục 4 dưới đây dù file hook nằm vật lý trong `src/lib/` — nó cần môi
+     trường jsdom và `vitest.setup.ts` để có `cleanup()` của RTL, thứ project
+     `node` không có.
    - *Bỏ qua:* thêm Jest — vi phạm thẳng luật "một tool cho mỗi việc" của
      CLAUDE.md, và sẽ tranh cấu hình với Vitest như Prettier từng tranh với Biome.
    - *Bỏ qua:* `happy-dom` — nhanh hơn nhưng lệch chuẩn DOM ở form và dialog,

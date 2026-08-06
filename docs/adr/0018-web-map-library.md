@@ -1,5 +1,14 @@
 # ADR-0018 — Bản đồ web: `maplibre-gl` pin `5.24.0` + tile OpenFreeMap
 
+> ⚠️ **Mục 4 và "Hệ quả" AMENDED 06/08 (cùng nhánh, trước merge — review cuối
+> phát hiện):** hai chỗ ghi quyết định mà code KHÔNG thi hành. Mục 4 nói
+> "chỉ port đúng 4/14 primitive" nhưng `contact-map.tsx` đã ship KHÔNG port
+> primitive nào — viết riêng, gọi thẳng API `maplibre-gl`. "Hệ quả" nói cần
+> thêm stub `IntersectionObserver` vào `vitest.setup.ts` nhưng đó chính là
+> việc đã thử và HOÀN TÁC sau khi đo (19 test ở 3 file khác gãy) — stub nằm
+> CỤC BỘ trong spec. Xem đánh dấu AMENDED tại từng mục bên dưới; quyết định
+> gốc vẫn giữ nguyên câu chữ, không xoá dấu vết.
+
 - **Trạng thái:** Accepted (2026-08-06)
 - **Bối cảnh thi hành:** nhánh `feat/contact-map-offices`, đi trước code theo
   luật CLAUDE.md #5
@@ -43,7 +52,7 @@ mới thêm vào `package.json` và chạy `pnpm install`.
 
 ### 2. Tile: OpenFreeMap, không phải CARTO mặc định của mapcn
 
-```
+```text
 light: https://tiles.openfreemap.org/styles/positron
 dark:  https://tiles.openfreemap.org/styles/dark
 ```
@@ -72,13 +81,27 @@ OpenStreetMap. v2 giữ nguyên lý do đó, không tự đặt lại vấn đ�
 Nexora đã đứng trước lựa chọn này và chủ động bỏ iframe để thay bằng MapLibre
 thật — v2 kế thừa quyết định đó, không tự đặt lại vấn đề.
 
-### 4. Viết riêng `contact-map.tsx` trong `apps/web`, không port primitive `map.tsx` của mapcn vào `@tourism/ui`
+### 4. Viết riêng `contact-map.tsx` trong `apps/web`, KHÔNG port primitive nào của mapcn vào `@tourism/ui`
 
-Đặt tại `apps/web/src/components/contact/contact-map.tsx`. Chỉ port đúng
-4/14 primitive mà `/contact` Nexora thật sự tiêu thụ — `Map`, `MapMarker`,
-`MarkerContent`, `MapControls` — không bê nguyên 2177 dòng `map.tsx` (popup,
-GeoJSON layer, choropleth, `blank` style, imperative handle… những thứ
-`/contact` không dùng).
+Đặt tại `apps/web/src/components/contact/contact-map.tsx`.
+
+~~Chỉ port đúng 4/14 primitive mà `/contact` Nexora thật sự tiêu thụ — `Map`,
+`MapMarker`, `MarkerContent`, `MapControls` — không bê nguyên 2177 dòng
+`map.tsx` (popup, GeoJSON layer, choropleth, `blank` style, imperative
+handle… những thứ `/contact` không dùng).~~
+
+**AMENDED 06/08 (lúc lập plan, trước khi viết code — xem
+[plan](../plans/2026-08-06-contact-map-offices.md) mục "Sai lệch có chủ đích
+so với spec §4a")**: đọc source thật `libs/web/ui/src/components/ui/map.tsx`
+lộ ra 4 primitive đó vẫn kéo theo ~700 dòng máy móc tổng quát mà `/contact`
+không dùng tới — basemap trong suốt, `projection`, viewport có kiểm soát,
+popup/tooltip/label, nút la bàn + định vị + toàn màn hình. Port dù chỉ 4/14
+vẫn là bê nguyên phần khung tổng quát đó vào, không né được cái giá đang
+muốn né. Quyết định cuối: **viết riêng 146 dòng dùng thẳng API của
+`maplibre-gl`, KHÔNG port một primitive nào** — `Map`/`MapMarker`/
+`MarkerContent`/`MapControls` không tồn tại ở đâu trong `apps/web`, giữ
+nguyên mọi hành vi spec yêu cầu. Code đã ship đúng quyết định này
+(`contact-map.tsx`, đo bằng `wc -l` = 146).
 
 Không nhét vào `@tourism/ui` (lib dùng chung web+admin) vì hiện chỉ một
 trang tiêu thụ; đặt `maplibre-gl` trong `apps/web/package.json` thay vì ghim
@@ -154,9 +177,16 @@ trường build/deploy thật, trước khi cửa sổ nâng cấp đóng lại.
   bọc trong `IntersectionObserver` (`rootMargin: '200px'`) — không tải cho
   khách không bao giờ cuộn tới đó, không chặn `next build` hay ISR của các
   trang khác.
-- `apps/web/vitest.setup.ts` cần thêm stub `IntersectionObserver` — jsdom
+- ~~`apps/web/vitest.setup.ts` cần thêm stub `IntersectionObserver` — jsdom
   không hiện thực API này, setup hiện tại mới vá `matchMedia`/
-  `ResizeObserver`/`elementFromPoint`.
+  `ResizeObserver`/`elementFromPoint`.~~ **AMENDED 06/08 (lúc triển khai Task
+  4)**: đã thử đúng việc này và HOÀN TÁC sau khi đo — dời stub (cả bản no-op
+  lẫn bản báo-ngay `isIntersecting`) lên `vitest.setup.ts` làm **19 test ở 3
+  file khác gãy**, vì có global `IntersectionObserver` thì framer-motion đi
+  nhánh khác hẳn so với khi không có (cùng phát hiện đã ghi ở
+  `apps/web/src/components/destinations/region-group.spec.tsx:12-16`). jsdom
+  vẫn không hiện thực API này nên polyfill vẫn cần, chỉ khác phạm vi: stub
+  đặt CỤC BỘ trong `contact-location.spec.tsx`, không đụng file setup chung.
 - `import 'maplibre-gl/dist/maplibre-gl.css'` đặt ngay trong
   `contact-map.tsx` (không phải file global) — vì v2 dùng subpath exports
   không có barrel, CSS này không lây sang trang khác qua import chain, khác
@@ -174,9 +204,11 @@ trường build/deploy thật, trước khi cửa sổ nâng cấp đóng lại.
 - **`<iframe>` Google Maps/OSM** — loại vì không theo theme, không style
   token, script bên thứ ba ngoài tầm quản lý (xem mục 3).
 - **Basemap CARTO mặc định của mapcn** — cần licence thương mại (xem mục 2).
-- **Port nguyên `map.tsx` 2177 dòng vào `@tourism/ui`** — quá tải cho một
-  trang tiêu thụ 4/14 primitive; nâng cấp lên lib dùng chung khi có consumer
-  thứ hai thật sự cần (xem mục 4).
+- **Port nguyên `map.tsx` 2177 dòng, hoặc chỉ 4/14 primitive nó có, vào
+  `@tourism/ui`** — cả hai đều quá tải cho một trang tiêu thụ: ngay cả 4/14
+  primitive cũng kéo theo ~700 dòng máy móc tổng quát không dùng tới (mục 4,
+  AMENDED 06/08); nâng cấp lên lib dùng chung khi có consumer thứ hai thật sự
+  cần.
 - **`vi.mock('@tourism/ui')` toàn barrel như Nexora buộc phải làm** — không
   cần thiết ở v2 vì kiến trúc subpath exports đã tránh được vấn đề gốc
   (barrel kéo maplibre-gl vào mọi trang); mock rộng hơn phạm vi cần thiết chỉ

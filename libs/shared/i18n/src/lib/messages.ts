@@ -1475,7 +1475,11 @@ export const messages = {
         submit: 'Send enquiry',
       },
     },
-    // Kept for the site footer's Information column.
+    // Khối `contact` (heading/breadcrumb/subtitle/intro/inquiry/info/faq/
+    // ctaBand) hiện KHÔNG có consumer nào trong apps/web — site-footer.tsx
+    // không import `messages`, và contact/page.tsx tự hardcode `metadata`
+    // riêng (grep xác nhận 0 hit). Giữ lại là nợ đã ghi nhận
+    // (docs/CHANGELOG.md entry 06/08, mục "Nợ mở"), chờ dọn ở nhánh riêng.
     info: [
       {
         title: 'Office hours',

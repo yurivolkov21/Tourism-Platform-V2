@@ -21,7 +21,7 @@ quay lại chính nó. ADR-0018 chốt `maplibre-gl@5.24.0` (pin cứng) và til
 OpenFreeMap (positron sáng, dark tối, đổi theo theme — không CARTO vì cần
 licence thương mại) TRƯỚC code, đúng luật #5.
 
-- **Bản đồ thật:** `contact-map.tsx` viết riêng khoảng 180 dòng dùng thẳng
+- **Bản đồ thật:** `contact-map.tsx` viết riêng 146 dòng dùng thẳng
   `maplibre-gl`, không port lớp primitive `map.tsx` 2177 dòng của Nexora
   (quyết định đổi giữa spec và plan, lý do ghi trong ADR-0018). 2 marker và
   `fitBounds` thay center/zoom cứng — Hà Nội và Hồ Chí Minh cách nhau khoảng
@@ -37,8 +37,9 @@ licence thương mại) TRƯỚC code, đúng luật #5.
   office) — cả hai là cơ sở thật của VTC Academy, công ty tour trong spec là
   hư cấu mượn địa chỉ toà nhà. Toạ độ geocode từ OpenStreetMap, KHÔNG port
   toạ độ Nexora (lệch khoảng 600m — toạ độ cũ chấm bằng mắt, không geocode).
-  Xoá khối `contact.offices`/`getDirections`/`officesSubtitle` mồ côi trong
-  i18n sau khi grep xác nhận 0 nơi trong repo đọc chúng.
+  Xoá khối `contact.officesHeading`/`offices`/`getDirections`/
+  `officesSubtitle` mồ côi trong i18n sau khi grep xác nhận 0 nơi trong repo
+  đọc chúng.
 - **Vá nút "Get directions"**: từ `href="#visit"` sang `office.mapHref` thật
   trỏ Google Maps, kèm `target="_blank"` và `rel="noopener noreferrer"` — đo
   sống bằng click thật trên dev server, tab mới mở đúng URL từng văn phòng.
@@ -84,11 +85,13 @@ byte-diff ảnh chụp), 2 card đúng địa chỉ và giờ mở cửa theo sp
 directions" mở tab mới đúng URL Google Maps từng văn phòng, chunk `maplibre`
 0 request lúc đầu trang rồi 2 request sau khi cuộn hết trang.
 
-**Nợ mở:** khối `contact.*` còn lại trong `@tourism/i18n` (`contact.info`,
-`contact.inquiry`, `contact.faq`, `footer.phone`, `footer.email`) mồ côi
-trọn — 0 consumer, đã grep xác nhận; không có test nào canh việc gom nguồn
-xuyên suốt, chỉ `next build` mới bắt được nếu sau này ai hardcode lại một
-địa chỉ khác ở đâu đó.
+**Nợ mở:** cả khối `contact` trong `@tourism/i18n` (`heading`, `breadcrumb`,
+`subtitle`, `intro`, `inquiry`, `info`, `faq`, `ctaBand` — TOÀN BỘ, không chỉ
+`info`/`inquiry`/`faq`) mồ côi trọn, cộng `footer.phone` và `footer.email` —
+tất cả 0 consumer, đã grep xác nhận (`contact/page.tsx` tự hardcode
+`metadata` riêng, không đọc `messages.contact`). Hiện KHÔNG có gì canh việc
+gom nguồn xuyên suốt — ai hardcode lại một địa chỉ khác ở đâu đó sau này sẽ
+không bị `next build`, test, hay lint nào chặn.
 
 ## 2026-08-06 — Nền dark sáng hơn 10% (token `background` L 0.25 → 0.275) theo góp ý nhóm (branch `feat/nen-toi-sang-hon`, ff-only, 1 commit `121cff6`)
 
