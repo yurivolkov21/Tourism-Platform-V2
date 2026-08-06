@@ -534,7 +534,7 @@ Expected: không có trailer `Co-Authored-By`.
 ## Task 4: Lắp bản đồ vào §Location + vá link chết
 
 **Files:**
-- Modify: `apps/web/vitest.setup.ts`
+- ~~Modify: `apps/web/vitest.setup.ts`~~ **AMENDED 06/08**: stub `IntersectionObserver` ở CỤC BỘ trong spec dưới đây, không đụng file setup chung (xem Step 1)
 - Modify: `apps/web/src/components/contact/contact-location.tsx:1-9, 49-61, 98-104`
 - Create: `apps/web/src/components/contact/contact-location.spec.tsx`
 
@@ -544,7 +544,12 @@ Expected: không có trailer `Co-Authored-By`.
 
 - [ ] **Step 1: Stub `IntersectionObserver` cho jsdom**
 
-Thêm vào CUỐI `apps/web/vitest.setup.ts`:
+~~Thêm vào CUỐI `apps/web/vitest.setup.ts`~~ **AMENDED 06/08 (lúc triển khai)**:
+KHÔNG dời lên `vitest.setup.ts` — đã thử và **19 test ở 3 file khác gãy**
+(có global này thì framer-motion đi nhánh khác hẳn so với khi không có, cùng
+lớp phát hiện đã ghi ở `region-group.spec.tsx:12-16`). Đặt CỤC BỘ trong
+`beforeAll()` của chính `contact-location.spec.tsx` (Task 4 Step 2), không
+đụng file setup chung:
 
 ```ts
 // jsdom KHÔNG hiện thực IntersectionObserver. ContactLocation dùng nó để hoãn
@@ -552,6 +557,10 @@ Thêm vào CUỐI `apps/web/vitest.setup.ts`:
 // ReferenceError ngay lúc mount và mọi test render section này fail.
 // Stub gọi callback NGAY với isIntersecting=true: test luôn thấy trạng thái
 // "đã cuộn tới", đúng thứ ta muốn khẳng định.
+//
+// CỤC BỘ trong spec này, KHÔNG dời lên vitest.setup.ts — đã thử dời lên global
+// và 19 test ở 3 file khác gãy vì có global này thì framer-motion đi nhánh
+// khác hẳn so với khi không có (xem region-group.spec.tsx:12-16).
 class IntersectionObserverStub {
   constructor(private readonly callback: IntersectionObserverCallback) {}
   observe() {
@@ -783,19 +792,40 @@ export const EMAIL = 'tourism.platform.online@gmail.com';
 
 - [ ] **Step 3: `top-bar.tsx` thôi nhân bản hằng**
 
-Xoá 2 dòng 17–18 (`const EMAIL = ...` và `const PHONE = ...`), thêm vào khối import đầu file:
+~~Xoá 2 dòng 17–18 (`const EMAIL = ...` và `const PHONE = ...`), thêm vào khối
+import đầu file: `import { EMAIL, PHONE } from '@/components/home/contact';`~~
+**AMENDED 06/08 (lúc triển khai)**: import từ `home/contact` làm `next build`
+vỡ ở prerender. `home/contact.tsx` có `'use client'`; `top-bar.tsx` là Server
+Component (không có `'use client'`) nằm trong layout gốc mọi route đều có.
+Server Component import BẤT KỲ export nào từ module `'use client'` chỉ nhận
+về client-reference proxy chứ không phải chuỗi thật — nên `PHONE.replace(...)`
+ném `TypeError` lúc prerender, giết mọi trang tĩnh (đo bằng `next build`).
+
+Vá đúng: tạo module thường mới **`apps/web/src/lib/site.ts`** (KHÔNG
+`'use client'`) khai `EMAIL`/`PHONE`, rồi cả `top-bar.tsx` lẫn
+`home/contact.tsx` cùng import từ đó — không còn ai "xuất" hằng từ một module
+client nữa. Xoá 2 dòng 17–18 cũ trong `top-bar.tsx`, thêm:
 
 ```tsx
-import { EMAIL, PHONE } from '@/components/home/contact';
+import { EMAIL, PHONE } from '@/lib/site';
 ```
 
-Sửa luôn comment ở dòng 7 — `// Email/phone mock — thay bằng site-config khi gắn API.` thành:
+Sửa luôn comment ở dòng 7 — `// Email/phone mock — thay bằng site-config khi gắn API.` thành (bản cuối, sau một vòng tự-sửa comment ở `76720c5` vì bản đầu chẩn đoán sai cơ chế RSC):
 
 ```tsx
-// Email/phone dùng chung, export từ home/contact (quy ước 24/07 — đừng khai lại).
+// Email/phone lấy từ `@/lib/site` — module THƯỜNG, không 'use client'. File
+// này là Server Component nên nếu import hằng từ một module 'use client' thì
+// nhận về client-reference proxy chứ không phải chuỗi, và `.replace()` sẽ ném
+// TypeError lúc prerender. Chi tiết ghi ở đầu `lib/site.ts`.
 ```
 
-> Đây là chỗ DUY NHẤT còn sót của quy ước "export EMAIL/PHONE từ `home/contact` thay vì nhân bản" chốt 24/07; `contact-split.tsx` đã import đúng từ trước.
+> Quy ước "export EMAIL/PHONE từ `home/contact` thay vì nhân bản" chốt 24/07
+> vẫn đúng tinh thần (một nguồn duy nhất) nhưng SAI vị trí đặt nguồn đó — nguồn
+> phải là module thường, không phải module `'use client'`. `contact-split.tsx`
+> an toàn khi import từ `home/contact` không phải vì nó "chỉ dùng ở một
+> trang", mà vì CHÍNH NÓ có `'use client'` (import client→client trả giá trị
+> thật) — biến quyết định duy nhất là consumer nằm ở graph server hay graph
+> client. Xem `lib/site.ts` (commit `76720c5`).
 
 - [ ] **Step 4: Sửa điện thoại trong `@tourism/i18n`**
 

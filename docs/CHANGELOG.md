@@ -8,6 +8,88 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-06 — Bản đồ MapLibre thật và gom một nguồn sự thật liên hệ trên `/contact` (branch `feat/contact-map-offices`, ff-only, 11 commit `98d2800..76720c5`)
+
+Đối chiếu Nexora (luật CLAUDE.md #10) lộ **3 nguồn thông tin liên hệ chỏi
+nhau cùng live**: `mocks/offices.ts` nói Hà Nội 12 Hàng Bạc và Sa Pa 45
+Fansipan Road, `contact-split.tsx`/`top-bar.tsx` hardcode 12 Hàng Bạc riêng,
+còn `@tourism/i18n` (port nguyên từ Nexora) in Hà Nội 18 Tam Trinh và Hồ Chí
+Minh 184 Lê Đại Hành trên `/terms` và `/privacy` — cùng một site nói ba địa
+chỉ khác nhau. Kèm **2 thụt lùi chưa từng ghi nhận**: bản đồ `/contact` là
+`ImagePlaceholder` tĩnh, nút "Get directions" trỏ `href="#visit"` — link chết
+quay lại chính nó. ADR-0018 chốt `maplibre-gl@5.24.0` (pin cứng) và tile
+OpenFreeMap (positron sáng, dark tối, đổi theo theme — không CARTO vì cần
+licence thương mại) TRƯỚC code, đúng luật #5.
+
+- **Bản đồ thật:** `contact-map.tsx` viết riêng khoảng 180 dòng dùng thẳng
+  `maplibre-gl`, không port lớp primitive `map.tsx` 2177 dòng của Nexora
+  (quyết định đổi giữa spec và plan, lý do ghi trong ADR-0018). 2 marker và
+  `fitBounds` thay center/zoom cứng — Hà Nội và Hồ Chí Minh cách nhau khoảng
+  1150km nên zoom cứng sẽ mất một đầu. Nạp lười bằng `dynamic(ssr:false)` và
+  `IntersectionObserver` (rootMargin 200px): đo bằng network intercept thật,
+  0 request `maplibre` lúc chưa cuộn, 2 request (JS và CSS chunk) sau khi
+  cuộn hết trang. `scrollZoom:false` giữ cho lăn chuột trên map vẫn cuộn
+  trang chứ không zoom; nút zoom tự vẽ bằng token thay vì `NavigationControl`
+  mặc định của MapLibre (style riêng không biểu diễn được bằng token).
+- **Gom nguồn liên hệ:** `mocks/offices.ts` thành nguồn duy nhất, đúng
+  ADR-0016. Địa chỉ đối chiếu Nexora: Hà Nội 18 Tam Trinh, Tương Mai
+  (Headquarters) và Hồ Chí Minh 184 Lê Đại Hành, Phú Thọ (Ho Chi Minh City
+  office) — cả hai là cơ sở thật của VTC Academy, công ty tour trong spec là
+  hư cấu mượn địa chỉ toà nhà. Toạ độ geocode từ OpenStreetMap, KHÔNG port
+  toạ độ Nexora (lệch khoảng 600m — toạ độ cũ chấm bằng mắt, không geocode).
+  Xoá khối `contact.offices`/`getDirections`/`officesSubtitle` mồ côi trong
+  i18n sau khi grep xác nhận 0 nơi trong repo đọc chúng.
+- **Vá nút "Get directions"**: từ `href="#visit"` sang `office.mapHref` thật
+  trỏ Google Maps, kèm `target="_blank"` và `rel="noopener noreferrer"` — đo
+  sống bằng click thật trên dev server, tab mới mở đúng URL từng văn phòng.
+- **Điện thoại GIỮ** `+84 24 3826 0126` xuyên suốt site, thay `1900 292 958`
+  ở 4 chỗ trong `@tourism/i18n` vì đó là hotline THẬT đang hoạt động của VTC
+  Academy — site demo không được in số thật của bên thứ ba.
+
+**Review findings — 4 phát hiện đáng ghi, cả bốn đều là lỗi trong PLAN chứ
+không phải lỗi lúc triển khai (implementer bắt và vá ngay khi code):**
+
+1. Hook dò theme `useResolvedTheme` bê nguyên từ Nexora — Nexora dùng
+   `next-themes` ghi CẢ HAI class `light` và `dark` lên `documentElement`,
+   còn v2 chỉ bật/tắt mỗi `.dark`. Bê nguyên logic làm kẹt chiều đổi
+   dark sang light (thiếu nhánh "không có `.dark` nghĩa là light"). Vá ở
+   `17539b7`.
+2. Plan chỉ định stub `IntersectionObserver` global vào `vitest.setup.ts` —
+   đi ngược quy ước đã đo của repo (`region-group.spec.tsx:12-16`): từng thử
+   dời lên global và 19 test ở 3 file khác gãy vì framer-motion đi nhánh
+   khác khi có global đó. Implementer bắt, đặt cục bộ trong
+   `contact-location.spec.tsx` thay vì sửa `vitest.setup.ts` (`0234766`).
+3. Plan chỉ định `top-bar.tsx` import `EMAIL`/`PHONE` từ `home/contact.tsx`
+   — module đó có `'use client'`, còn `top-bar.tsx` là Server Component;
+   Server Component import export từ module `'use client'` chỉ nhận về
+   client-reference proxy chứ không phải giá trị gốc, nên
+   `PHONE.replace(...)` ném `TypeError` lúc prerender và vỡ `next build`
+   trên mọi trang tĩnh. Vá bằng module thường mới `apps/web/src/lib/site.ts`
+   (`b187725`, comment giải thích cơ chế được viết lại đúng ở `76720c5` sau
+   một vòng tự chẩn đoán sai nguyên nhân).
+4. Test khung toạ độ Việt Nam (kinh độ 102 đến 110, vĩ độ 8 đến 24) không
+   bắt được lỗi hoán đổi chéo `coords`/`mapHref` giữa 2 văn phòng — cả Hà
+   Nội lẫn Hồ Chí Minh đều nằm trong khung đó nên gán nhầm vẫn xanh. Siết
+   test kiểm coords khớp đúng từng văn phòng ở `c71ec0a`.
+
+**Tests after:** `apps/web` 78 file và 916 test; `gate:int` trọn 1.362 test
+xanh (916 web, 209 api unit, 158 api int, 55 contract, 13 ui, 10 tokens, 1
+i18n) — build web cần API sống lúc prerender theo ADR-0016, chạy local phải
+tự bật API và Postgres trước, giống hệt bước CI làm. 7 mục nghiệm thu sống đo
+trên dev server thật bằng Playwright script viết tay (không qua MCP — máy
+thiếu Chrome cho MCP): tile thật hiện hình chữ S với 2 pin, đổi theme xong
+marker giữ nguyên vị trí pixel (khung nhìn không nhảy), lăn chuột trên map
+cuộn TRANG chứ không zoom map, nút zoom hoạt động (canvas redraw đo bằng
+byte-diff ảnh chụp), 2 card đúng địa chỉ và giờ mở cửa theo spec §3, bấm "Get
+directions" mở tab mới đúng URL Google Maps từng văn phòng, chunk `maplibre`
+0 request lúc đầu trang rồi 2 request sau khi cuộn hết trang.
+
+**Nợ mở:** khối `contact.*` còn lại trong `@tourism/i18n` (`contact.info`,
+`contact.inquiry`, `contact.faq`, `footer.phone`, `footer.email`) mồ côi
+trọn — 0 consumer, đã grep xác nhận; không có test nào canh việc gom nguồn
+xuyên suốt, chỉ `next build` mới bắt được nếu sau này ai hardcode lại một
+địa chỉ khác ở đâu đó.
+
 ## 2026-08-06 — Nền dark sáng hơn 10% (token `background` L 0.25 → 0.275) theo góp ý nhóm (branch `feat/nen-toi-sang-hon`, ff-only, 1 commit `121cff6`)
 
 Nhóm của user góp ý nền dark "hơi tối, khó nhìn" → user đặt hàng giảm độ tối

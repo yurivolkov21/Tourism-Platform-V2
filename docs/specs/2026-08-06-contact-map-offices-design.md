@@ -97,8 +97,17 @@ cấu mượn địa chỉ toà nhà, số tầng của trường sẽ thừa v�
 `apps/web/package.json` thay vì ghim vào lib dùng chung. Nâng lên
 `@tourism/ui` khi nào admin/mobile thật sự cần bản đồ.
 
-Chỉ port **4/14 primitive** mà `/contact` Nexora thật sự tiêu thụ — `Map`,
-`MapMarker`, `MarkerContent`, `MapControls`. Không bê 2177 dòng.
+~~Chỉ port **4/14 primitive** mà `/contact` Nexora thật sự tiêu thụ — `Map`,
+`MapMarker`, `MarkerContent`, `MapControls`. Không bê 2177 dòng.~~ **AMENDED
+06/08 (lúc lập plan, trước khi code)**: đọc source thật
+`libs/web/ui/src/components/ui/map.tsx` thấy 4 primitive đó vẫn kéo theo
+~700 dòng máy móc tổng quát không dùng tới (basemap trong suốt, `projection`,
+viewport có kiểm soát, popup/tooltip/label, nút la bàn + định vị + toàn màn
+hình). Quyết định cuối: **viết riêng ~180 dòng dùng thẳng `maplibre-gl`**,
+KHÔNG port primitive nào — xem [ADR-0018](../adr/0018-web-map-library.md) và
+mục "Sai lệch có chủ đích so với spec §4a" ở đầu
+[plan](../plans/2026-08-06-contact-map-offices.md). Thực tế đã ship đúng theo
+quyết định này.
 
 ### 4b. Hành vi
 
@@ -144,7 +153,7 @@ tuyệt đối dùng token.
 | `contact-location.tsx:49-61` | `ImagePlaceholder` → `<ContactMap />` lazy |
 | `contact-split.tsx:36` | Bỏ hằng `LOCATION` hardcode, đọc `OFFICES[0]` (trụ sở Hà Nội) |
 | `home/contact.tsx:27` | `EMAIL` → `tourism.platform.online@gmail.com`. `PHONE` giữ nguyên |
-| `top-bar.tsx:17-18` | Bỏ khai lại `EMAIL`/`PHONE`, **import từ `home/contact`** — đúng quy ước đã chốt 24/07 ("export EMAIL/PHONE từ home/contact thay vì nhân bản"), top-bar là chỗ duy nhất còn sót |
+| `top-bar.tsx:17-18` | ~~Bỏ khai lại `EMAIL`/`PHONE`, **import từ `home/contact`** — đúng quy ước đã chốt 24/07 ("export EMAIL/PHONE từ home/contact thay vì nhân bản"), top-bar là chỗ duy nhất còn sót~~ **AMENDED 06/08 (lúc triển khai)**: import từ `home/contact` làm `next build` vỡ ở prerender — module đó có `'use client'`, mà `top-bar.tsx` là Server Component; Server Component import bất kỳ export nào từ module `'use client'` chỉ nhận về client-reference proxy chứ không phải giá trị gốc, nên `PHONE.replace(...)` ném `TypeError` lúc prerender, giết mọi trang tĩnh. Vá đúng: tách `EMAIL`/`PHONE` sang module thường mới **`apps/web/src/lib/site.ts`** (không `'use client'`); cả `top-bar.tsx` lẫn `home/contact.tsx` cùng import từ đó. Chi tiết cơ chế ghi ở comment đầu `lib/site.ts` (commit `76720c5`) |
 | `libs/shared/i18n/.../messages.ts:1442` · `:1503` · `:2018` | `1900 292 958` → `+84 24 3826 0126` |
 | `libs/shared/i18n/.../legal/terms.ts:131` · `legal/privacy.ts:105` | như trên (địa chỉ bưu chính Hồ Chí Minh giữ nguyên — nay đã khớp) |
 | `libs/shared/i18n/.../messages.ts` block `contact` | Xoá `offices` / `getDirections` / `officesSubtitle` mồ côi để không còn hai bản dữ liệu văn phòng |
