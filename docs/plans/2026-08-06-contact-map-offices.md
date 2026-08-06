@@ -286,7 +286,7 @@ import { useEffect, useState } from 'react';
 // tự theo dõi class đó thay vì gọi useTheme(). Logic bê từ Nexora
 // (libs/web/ui/.../map.tsx useResolvedTheme) vì cơ chế trùng khớp.
 
-type Theme = 'light' | 'dark';
+export type Theme = 'light' | 'dark';
 
 function getDocumentTheme(): Theme | null {
   if (typeof document === 'undefined') return null;
@@ -300,9 +300,18 @@ function getSystemTheme(): Theme {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
+/**
+ * Theme đang hiển thị, đọc ĐỒNG BỘ ngay lúc gọi. Dùng cho thứ phải đúng màu
+ * từ lần vẽ đầu (vd style của MapLibre lúc dựng map) — chờ state của hook thì
+ * map đã nháy sáng rồi mới sang tối.
+ */
+export function resolveThemeNow(): Theme {
+  return getDocumentTheme() ?? getSystemTheme();
+}
+
 /** Theme đang hiển thị thật, tự cập nhật khi user bấm nút đổi theme. */
 export function useResolvedTheme(): Theme {
-  const [theme, setTheme] = useState<Theme>(() => getDocumentTheme() ?? getSystemTheme());
+  const [theme, setTheme] = useState<Theme>(resolveThemeNow);
 
   useEffect(() => {
     // Nút đổi theme sửa class trên <html> — MutationObserver bắt được, còn
@@ -345,7 +354,7 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPinIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useResolvedTheme } from '@/lib/use-resolved-theme';
+import { resolveThemeNow, useResolvedTheme } from '@/lib/use-resolved-theme';
 import { OFFICES } from '@/mocks/offices';
 
 // Bản đồ §Location của /contact — thay ô ImagePlaceholder (ADR-0018).
@@ -401,7 +410,8 @@ export default function ContactMap() {
 
     const instance = new MapLibreGL.Map({
       container,
-      style: STYLES[getInitialTheme()],
+      // Đọc theme đồng bộ để lần vẽ đầu đã đúng màu, không nháy sáng rồi tối.
+      style: STYLES[resolveThemeNow()],
       bounds: officeBounds(),
       fitBoundsOptions: { padding: 64 },
       // Không cướp cuộn trang: lăn chuột vẫn cuộn trang, muốn zoom thì bấm nút.
@@ -463,12 +473,6 @@ export default function ContactMap() {
       </div>
     </div>
   );
-}
-
-// Theme lúc dựng map — đọc trực tiếp DOM thay vì chờ state của hook, để lần
-// vẽ đầu đã đúng màu, không nháy sáng rồi mới sang tối.
-function getInitialTheme(): 'light' | 'dark' {
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 }
 ```
 
