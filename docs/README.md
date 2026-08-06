@@ -12,7 +12,7 @@
 | [`plans/`](plans/) | **Làm theo bước nào** để hiện thực spec? | Sau khi spec được duyệt, trước khi code |
 | [`analysis/`](analysis/) | **Học được gì** từ Nexora? | Khi cần dữ liệu để ra quyết định |
 | [`conventions/`](conventions/) | Quy tắc **áp dụng mãi mãi** | Khi một bài học cần thành luật |
-| [`design/`](design/) | Đồ nghề **Claude Design** (brief ngôn ngữ thiết kế · prompt từng luồng · [`mockups/`](design/mockups/) nguồn HTML của bản demo trả về) | Khi cần thiết kế trang mới ngoài code; brief là BẢN TRÍCH — code thắng, sửa brief theo code (commit chính thức 04/08); mockup là ẢNH CHỤP một vòng thiết kế, cách dựng lại ghi ở header `build.mjs` (04/08) |
+| [`design/`](design/) | Đồ nghề **Claude Design** (brief ngôn ngữ thiết kế · prompt từng luồng · [`mockups/`](design/mockups/) nguồn HTML của bản demo trả về · [`references.md`](design/references.md) mẫu đã khảo sát) | Khi cần thiết kế trang mới ngoài code; brief là BẢN TRÍCH — code thắng, sửa brief theo code (commit chính thức 04/08); mockup là ẢNH CHỤP một vòng thiết kế, cách dựng lại ghi ở header `build.mjs` (04/08); references khảo sát 06/08 cho khu account + booking |
 
 Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge (phase đang
 chạy; entry cũ hơn 30/07 ở [`changelog/`](changelog/) — 2 archive theo kỷ
