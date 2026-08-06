@@ -1,16 +1,19 @@
 // Kênh liên hệ chính thức — NGUỒN DUY NHẤT cho toàn site (topbar, section
-// Contact trang chủ, ContactSplit /contact). Đặt ở module thường (KHÔNG
-// 'use client') thay vì trong home/contact.tsx — đã thử export hằng từ đó rồi
-// import vào top-bar.tsx thì `pnpm gate` (next build) vỡ ở bước prerender:
-// `TypeError: <module>.PHONE.replace is not a function` trên MỌI trang tĩnh.
-// Lý do: home/contact.tsx là 'use client' NHƯNG cũng export component
-// <Contact/> mà `app/(site)/page.tsx` (Server Component) render trực tiếp —
-// việc đó biến cả file thành ranh giới client-reference của Flight/RSC. TopBar
-// nằm trong layout gốc (mọi route đều có), nên import hằng số qua ranh giới
-// đó từ MỘT client component site-wide khác làm giá trị không còn đáng tin
-// cậy lúc prerender (contact-split.tsx vẫn an toàn vì chỉ dùng ở một trang).
-// Tách ra module thường này để mọi nơi import trực tiếp, không đụng ranh
-// giới RSC nào cả — đã kiểm chứng lại bằng `next build` sau khi tách.
+// Contact trang chủ, ContactSplit /contact). PHẢI nằm ở module thường như file
+// này, KHÔNG được đặt trong một file có 'use client'.
+//
+// Lý do, đã đo bằng ba lần `next build`: `TopBar` là Server Component. Server
+// Component import BẤT KỲ export nào từ module 'use client' thì nhận về
+// client-reference proxy chứ không phải giá trị gốc — nên `PHONE` thành object
+// và `PHONE.replace(...)` ném `TypeError` ở bước prerender, giết mọi trang
+// tĩnh. Đã thử đặt hằng trong `home/contact.tsx` ('use client'): vỡ. Thử một
+// module 'use client' rỗng chỉ có 2 hằng, không export component nào: vỡ y
+// hệt — nên nguyên nhân KHÔNG phải là file đó có export component.
+//
+// `contact-split.tsx` đọc được hằng từ module 'use client' là vì CHÍNH NÓ có
+// 'use client' (import client→client trả giá trị thật), không phải vì nó chỉ
+// dùng ở một trang. Biến quyết định duy nhất: consumer nằm ở graph server hay
+// graph client.
 export const EMAIL = 'tourism.platform.online@gmail.com';
 export const PHONE = '+84 24 3826 0126';
 
