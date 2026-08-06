@@ -93,6 +93,21 @@ tất cả 0 consumer, đã grep xác nhận (`contact/page.tsx` tự hardcode
 gom nguồn xuyên suốt — ai hardcode lại một địa chỉ khác ở đâu đó sau này sẽ
 không bị `next build`, test, hay lint nào chặn.
 
+**Hotfix sau merge (`adaedf3`) — CI đỏ ngay lần push đầu:** toàn bộ 916 test
+PASS nhưng Vitest bắt 1 unhandled error nên exit 1 —
+`ReferenceError: window is not defined` từ `otp-form.spec.tsx`. Không phải lỗi
+của cụm này (diff ròng của `vitest.setup.ts` bằng 0, không đụng file otp/auth
+nào), nhưng cụm có thêm 2 file vào project `dom` nên xáo lịch chạy song song
+và làm lộ một rò rỉ tiềm ẩn: `input-otp@1.4.2` hẹn 3 `setTimeout` THẬT
+(0/10/50ms) mỗi lần giá trị OTP hoặc focus đổi, qua một `useEffect` **không
+trả cleanup function** — React không có gì để huỷ, kể cả lúc unmount. Timer
+nào chưa nổ trước khi Vitest tháo jsdom sẽ nổ khi `window` đã mất. Vá bằng
+`afterEach` cấp-file đợi thật 150ms (bọc `act`) cho timer rò rỉ nổ an toàn
+lúc component còn mounted. Đây là biện pháp giảm thiểu cho lỗi thư viện bên
+thứ ba, không sửa được tại gốc. Tái hiện 2/35 lần trước khi vá, 0/35 sau khi
+vá; CI run `31101061881` success. 11 run CI trước đó trên `main` đều xanh nên
+đây là lần đầu lỗi này lộ trên CI.
+
 ## 2026-08-06 — Nền dark sáng hơn 10% (token `background` L 0.25 → 0.275) theo góp ý nhóm (branch `feat/nen-toi-sang-hon`, ff-only, 1 commit `121cff6`)
 
 Nhóm của user góp ý nền dark "hơi tối, khó nhìn" → user đặt hàng giảm độ tối
