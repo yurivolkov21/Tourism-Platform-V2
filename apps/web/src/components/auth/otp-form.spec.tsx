@@ -38,6 +38,28 @@ const baseProps = {
   submitLabel: 'Stamp my ticket',
 };
 
+// Gốc rễ bug "window is not defined" (flaky trên CI, KHÔNG PHẢI thứ tự
+// afterEach): thư viện input-otp tự lên lịch 3 setTimeout THẬT (0/10/50ms —
+// hàm `ht()` trong input-otp/dist/index.mjs) MỖI LẦN giá trị OTP hoặc trạng
+// thái focus đổi, qua `useEffect(() => { ht(cb) }, [i, j])` — effect này
+// KHÔNG trả cleanup function, nên React không có gì để hủy, kể cả lúc
+// unmount (cleanup() của RTL ở vitest.setup.ts) hay khi mount lần đầu (mọi
+// test render OtpForm đều dính, không riêng test dùng fake timers). Nếu một
+// trong các timer đó (tối đa 50ms) chưa kịp nổ trước khi CẢ FILE chạy xong
+// và Vitest tháo môi trường jsdom, nó nổ SAU khi `window` đã bị gỡ →
+// ReferenceError trong dispatchSetState của React — càng dễ trúng ở test
+// cuối file (không còn test nào sau để "mua" thêm thời gian đệm). Áp
+// afterEach này cho CẢ FILE (ngoài mọi describe) để mọi test render OtpForm
+// đều được đợi thật ~150ms (component vẫn mounted, window vẫn còn) cho
+// timer rò rỉ tự nổ an toàn trước khi file kết thúc — bọc trong `act` để
+// React flush state đó gọn gàng, không văng cảnh báo act().
+afterEach(async () => {
+  vi.useRealTimers();
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+  });
+});
+
 async function typeOtp(user: ReturnType<typeof userEvent.setup>, digits: string) {
   // input-otp expose MỘT input ẩn nhận trọn chuỗi, gõ từng ký tự vẫn ra đúng.
   const hiddenInput = document.querySelector('input[inputmode="numeric"]') as HTMLInputElement;
@@ -47,13 +69,6 @@ async function typeOtp(user: ReturnType<typeof userEvent.setup>, digits: string)
 describe('OtpForm — verify-email (có email)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  // Luôn khôi phục real timers dù test throw giữa chừng — không thì fake
-  // timers rò rỉ sang test sau (userEvent thật của các describe khác sẽ treo
-  // vì chờ real setTimeout dưới đồng hồ giả không bao giờ tự trôi).
-  afterEach(() => {
-    vi.useRealTimers();
   });
 
   it('submit đủ 6 số → gọi authClient.emailOtp.verifyEmail đúng payload', async () => {
