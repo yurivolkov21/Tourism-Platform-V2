@@ -70,6 +70,35 @@ describe('mock contact page (offices + faq)', () => {
     expect(hq?.city).toBe('Hà Nội');
   });
 
+  it('mỗi văn phòng một thành phố, không trùng', async () => {
+    const { OFFICES } = await import('./offices.js');
+    const cities = OFFICES.map((o) => o.city);
+    expect(new Set(cities).size).toBe(cities.length);
+  });
+
+  it('toạ độ khớp đúng văn phòng — Hà Nội phải ở BẮC Hồ Chí Minh', async () => {
+    const { OFFICES } = await import('./offices.js');
+    // Khung Việt Nam ở test trên KHÔNG bắt được lỗi hoán đổi CHÉO coords giữa
+    // hai văn phòng: cả hai cặp số đều nằm trong khung nên test vẫn xanh. Neo
+    // bằng quan hệ địa lý — Hà Nội ~vĩ độ 21, Hồ Chí Minh ~vĩ độ 10.8.
+    const hanoi = OFFICES.find((o) => o.city === 'Hà Nội');
+    const hcmc = OFFICES.find((o) => o.city === 'Hồ Chí Minh City');
+    if (!hanoi || !hcmc) throw new Error('thiếu văn phòng Hà Nội hoặc Hồ Chí Minh');
+    expect(hanoi.coords[1]).toBeGreaterThan(hcmc.coords[1] + 5);
+  });
+
+  it('link chỉ đường trỏ đúng văn phòng của nó', async () => {
+    const { OFFICES } = await import('./offices.js');
+    for (const o of OFFICES) {
+      // Số nhà trong link phải khớp số nhà ở dòng địa chỉ đầu — chặn lỗi dán
+      // nhầm link của văn phòng này sang văn phòng kia.
+      const [firstLine] = o.addressLines;
+      const streetNumber = firstLine?.match(/^\d+/)?.[0];
+      expect(streetNumber).toBeTruthy();
+      expect(o.mapHref).toContain(`q=${streetNumber}+`);
+    }
+  });
+
   it('5 câu FAQ pre-sales, câu hỏi duy nhất', async () => {
     const { FAQ_ITEMS } = await import('./faq.js');
     expect(FAQ_ITEMS).toHaveLength(5);
