@@ -34,7 +34,7 @@
 
 .t-dark,
 :root[data-theme='dark'] {
-  --background: oklch(0.25 0.015 181.5);
+  --background: oklch(0.275 0.015 181.5);
   --foreground: oklch(0.921 0.014 174.1);
   --card: oklch(0.309 0.022 177.6);
   --muted: oklch(0.367 0.028 178.3);
@@ -59,7 +59,7 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
-    --background: oklch(0.25 0.015 181.5);
+    --background: oklch(0.275 0.015 181.5);
     --foreground: oklch(0.921 0.014 174.1);
     --card: oklch(0.309 0.022 177.6);
     --muted: oklch(0.367 0.028 178.3);
@@ -2455,7 +2455,7 @@ fieldset {
             </div>
             <div class="utility">
               <div class="utility-card">
-                <span class="pill tone-muted pill--mono">PENDING</span>
+                <span class="pill pill--mono tone-warning">PENDING</span>
                 <h1>You stopped before paying.</h1>
                 <p class="body">
                   Nothing is lost. We're holding this booking unpaid, and you can pay for it whenever
@@ -2476,8 +2476,8 @@ fieldset {
                   <button type="button" class="btn btn--outline btn--lg">Back to tours</button>
                 </div>
                 <p class="hint">
-                  Unpaid bookings are released after about an hour so the seats stay honest for
-                  everyone.
+                  Unpaid bookings are cancelled after about an hour — nothing is held for you until
+                  payment lands.
                 </p>
               </div>
             </div>
@@ -2602,8 +2602,8 @@ fieldset {
                       <span class="v amount num">$3,870 USD</span>
                     </div>
                     <p class="hint">
-                      This booking expires in about 52 minutes, at 15:20 today. After that the seats
-                      go back on sale and you'd start again.
+                      This booking expires in about 52 minutes, at 15:20 today. After that it's
+                      cancelled and you'd book again from the start.
                     </p>
                   </div>
 
@@ -3099,7 +3099,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-destructive">PARTIALLY_REFUNDED</span>
+                    <span class="pill pill--mono tone-muted">PARTIALLY_REFUNDED</span>
                   </div>
 
                   <div class="stories">
@@ -3190,7 +3190,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-destructive">REFUNDED</span>
+                    <span class="pill pill--mono tone-muted">REFUNDED</span>
                   </div>
 
                   <div class="stories">
@@ -3330,6 +3330,21 @@ fieldset {
           that shows one also shows two cells — <strong>Trip</strong> and <strong>Payment</strong> —
           that answer separately. Two CANCELLED frames prove the point: same word, opposite money
           story.
+        </p>
+      </div>
+      <div class="note-card">
+        <h3>Tone means "needs you", not "good or bad"</h3>
+        <p>
+          PENDING is amber because you have to act or it expires. PAID is green because it is
+          settled. CANCELLED, PARTIALLY_REFUNDED and REFUNDED are all neutral — they are records of
+          something that already happened, and none of them is an error.
+        </p>
+        <p>
+          This departs from the account spec, which pairs the two refund statuses with the
+          destructive tone. Red on REFUNDED would say "your trip is off" at a glance, which is
+          exactly the confusion this screen exists to prevent — the traveller may well still be
+          going. Whether the trip is on is answered by the Trip cell, every time, never by the
+          colour of a badge.
         </p>
       </div>
       <div class="note-card">
