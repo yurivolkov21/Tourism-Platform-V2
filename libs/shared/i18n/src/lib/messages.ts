@@ -1439,7 +1439,7 @@ export const messages = {
       heading: 'Let’s plan your trip together',
       body: 'Tell us about the trip you have in mind and our local experts will craft a tailored itinerary — free and no obligation, with a reply within about 24 hours.',
       details: [
-        { label: 'Phone', value: '1900 292 958' },
+        { label: 'Phone', value: '+84 24 3826 0126' },
         { label: 'Email', value: 'tourism.platform.online@gmail.com' },
         { label: 'Location', value: 'Hồ Chí Minh City, Vietnam' },
       ],
@@ -1475,24 +1475,6 @@ export const messages = {
         submit: 'Send enquiry',
       },
     },
-    officesHeading: 'Where we’re based',
-    officesSubtitle:
-      'Our local teams work out of Hà Nội and Hồ Chí Minh City — reach us any time through the form above.',
-    getDirections: 'Open in Maps',
-    offices: [
-      {
-        city: 'Hà Nội',
-        lines: ['18 Tam Trinh, Tương Mai', 'Hà Nội, Vietnam'],
-        hours: 'Mon–Fri · 8:00 am – 6:00 pm (GMT+7)',
-        mapHref: 'https://www.google.com/maps?q=18+Tam+Trinh,+Tuong+Mai,+Ha+Noi',
-      },
-      {
-        city: 'Hồ Chí Minh City',
-        lines: ['184 Lê Đại Hành, Phú Thọ', 'Hồ Chí Minh City, Vietnam'],
-        hours: 'Mon–Fri · 8:00 am – 6:00 pm (GMT+7)',
-        mapHref: 'https://www.google.com/maps?q=184+Le+Dai+Hanh,+Phu+Tho,+Ho+Chi+Minh',
-      },
-    ],
     // Kept for the site footer's Information column.
     info: [
       {
@@ -1500,7 +1482,7 @@ export const messages = {
         lines: ['Monday – Friday', '8:00 am – 6:00 pm (GMT+7)'],
       },
       { title: 'Offices', lines: ['Hà Nội · Hồ Chí Minh City'] },
-      { title: 'Call us', lines: ['1900 292 958'] },
+      { title: 'Call us', lines: ['+84 24 3826 0126'] },
       { title: 'Email us', lines: ['tourism.platform.online@gmail.com'] },
     ],
     // Short pre-sales FAQ for the contact page (curated from the full /faq).
@@ -2015,7 +1997,7 @@ export const messages = {
     ],
     contactHeading: 'Contact',
     email: 'tourism.platform.online@gmail.com',
-    phone: '1900 292 958',
+    phone: '+84 24 3826 0126',
     rights: 'All rights reserved.',
   },
   wishlist: {

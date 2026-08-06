@@ -1,10 +1,16 @@
 import { MailIcon, PhoneIcon } from 'lucide-react';
+import { EMAIL, PHONE } from '@/lib/site';
 import { FacebookIcon, InstagramIcon, TwitterIcon } from './icons/social';
 
 // Convert từ TopBar của Nexora (Lily-style) + chỉnh theo review vòng 1 #6:
 // bỏ khung max-w (nội dung giãn sát hai mép, hết cảm giác "co vào giữa"),
 // tagline trái chạy marquee liên tục (keyframes trong globals.css, hover dừng,
-// reduced-motion tắt). Email/phone mock — thay bằng site-config khi gắn API.
+// reduced-motion tắt). Email/phone dùng chung, nguồn ở lib/site.ts (quy ước
+// 24/07 — đừng khai lại). KHÔNG import từ home/contact.tsx dù nó có vẻ "gần"
+// hơn: file đó 'use client' + export component <Contact/> mà page.tsx (Server
+// Component) render trực tiếp, biến nó thành ranh giới client-reference của
+// Flight/RSC — TopBar site-wide đọc hằng số qua ranh giới đó làm `next build`
+// vỡ lúc prerender mọi trang tĩnh (xem comment dài ở lib/site.ts).
 // 5 thông điệp riêng biệt luân phiên trong marquee (review vòng 1 #7) —
 // mix định vị + khuyến mãi (khớp flag mock) + cam kết + tin mới.
 const MESSAGES = [
@@ -14,8 +20,6 @@ const MESSAGES = [
   'Free cancellation up to 48 hours before departure',
   'New route: Mekong Delta Boats — two days on the river',
 ];
-const EMAIL = 'hello@tourism.example';
-const PHONE = '+84 24 3826 0126';
 
 const SOCIALS = [
   { Icon: FacebookIcon, label: 'Facebook' },

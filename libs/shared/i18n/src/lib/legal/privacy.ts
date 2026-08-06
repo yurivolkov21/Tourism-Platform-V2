@@ -102,7 +102,7 @@ export const privacyDoc: LegalDoc = {
     {
       heading: 'Contact us',
       paragraphs: [
-        'For any privacy question or to exercise your rights, contact us at tourism.platform.online@gmail.com, by phone at 1900 292 958, or by post at Tourism, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
+        'For any privacy question or to exercise your rights, contact us at tourism.platform.online@gmail.com, by phone at +84 24 3826 0126, or by post at Tourism, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
       ],
     },
   ],

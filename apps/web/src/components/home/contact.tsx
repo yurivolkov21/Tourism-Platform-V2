@@ -6,6 +6,7 @@ import { CalendarIcon, ClockIcon, MailIcon, MapPinIcon, PhoneIcon, UserIcon } fr
 import { motion } from 'motion/react';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+import { EMAIL, PHONE } from '@/lib/site';
 import { SectionEyebrow } from './section-eyebrow';
 
 // Convert từ Estate contact.tsx: form trái + ảnh phải. Submit no-op
@@ -21,11 +22,6 @@ const fieldMotion = {
   viewport: { once: true },
   transition: SPRING,
 };
-
-// Kênh liên hệ khớp TopBar — gom về site-config chung khi gắn API.
-// Export cho trang /contact tái dùng (cùng ContactField + BARE_FIELD).
-export const EMAIL = 'hello@tourism.example';
-export const PHONE = '+84 24 3826 0126';
 
 // 3 bước "What happens next" — trả lời câu hỏi "gửi form xong thì sao?"
 const STEPS = [

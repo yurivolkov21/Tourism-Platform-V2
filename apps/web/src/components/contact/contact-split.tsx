@@ -13,13 +13,14 @@ import { Separator } from '@tourism/ui/components/separator';
 import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { type FormEvent, useState } from 'react';
-import { EMAIL, PHONE } from '@/components/home/contact';
 import { PARTNERS } from '@/components/home/partners';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { api } from '@/lib/api/client';
 import { classifySubmitError, submitToast } from '@/lib/api/submit';
 import { buildEnquiryPayload, type ContactFormState, validateEnquiry } from '@/lib/enquiry-form';
 import { SPRING } from '@/lib/motion';
+import { EMAIL, PHONE } from '@/lib/site';
+import { OFFICES } from '@/mocks/offices';
 import { REGIONS } from '@/mocks/regions';
 
 // Contact §2 — section chính, convert ShadcnSpace Contact 01 "Project Inquiry":
@@ -32,8 +33,6 @@ import { REGIONS } from '@/mocks/regions';
 // `api.enquiries.create` (browser-direct, KHÔNG context — ADR-0016 §2), validate
 // bằng CHÍNH `CreateEnquiryInputSchema` qua `buildEnquiryPayload`/`validateEnquiry`
 // (`lib/enquiry-form.ts`, TDD riêng) + honeypot ẩn field "website".
-
-const LOCATION = ['12 Hàng Bạc, Hoàn Kiếm', 'Hà Nội, Vietnam'];
 
 // Chỗ trống trong "lá thư": gạch dưới nét đứt, chữ điền vào là serif italic
 // màu primary — như mực khác màu trên thư in sẵn; focus đổi viền primary.
@@ -147,7 +146,9 @@ export function ContactSplit() {
             transition={{ delay: 0.15, ...SPRING }}
           >
             <p className="text-sm text-muted-foreground">Headquarters</p>
-            <p className="text-base font-medium text-primary">{LOCATION.join(', ')}</p>
+            <p className="text-base font-medium text-primary">
+              {OFFICES[0]?.addressLines.join(', ')}
+            </p>
           </motion.div>
 
           <Separator />
