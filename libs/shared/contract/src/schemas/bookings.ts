@@ -93,6 +93,36 @@ export const BookingSchema = z.object({
    * row list, xem comment tại `BookingsService.mine`).
    */
   cancellationStatus: CancellationRequestStatusSchema.nullable(),
+  /**
+   * Mốc thời gian của CHÍNH đơn-xin-hủy mà `cancellationStatus` đang nói tới —
+   * gửi lúc nào, quyết lúc nào (null khi chưa quyết). Cùng luật điền như
+   * `cancellationStatus`: chỉ `byCode` có giá trị thật.
+   *
+   * Vì sao thêm (spec cụm C §3): "Cancellation requested — pending review"
+   * không kèm ngày thì khách không biết yêu cầu đã tới hay chưa, và phản xạ tự
+   * nhiên là gửi lại lần hai. Rẻ: `byCode` vốn đã chạy `findFirst` trên bảng
+   * này, chỉ thêm cột vào `select` — không tốn query nào.
+   *
+   * CỐ Ý KHÔNG mở `decisionNote` (lý do admin từ chối) ra contract khách: đó là
+   * ghi chú nội bộ, mở ra là biến nó thành copy user-facing không qua luật biên
+   * tập nào. Nhánh DENIED dùng câu cố định + link `/cancellation-policy`.
+   */
+  cancellationRequestedAt: z.iso.datetime().nullable(),
+  cancellationDecidedAt: z.iso.datetime().nullable(),
+  /**
+   * Tổng tiền ĐÃ HOÀN tính tới lúc đọc — `SUM(refunds.amount)` của booking này,
+   * `'0.00'` khi chưa hoàn đồng nào. Cùng luật điền: chỉ `byCode`.
+   *
+   * Vì sao là MỘT CON SỐ chứ không phải danh sách refund: trang chi tiết của
+   * khách cần trả lời "tiền về bao nhiêu rồi", không cần sổ cái từng lần —
+   * sổ cái là việc của back-office (`AdminRefundResultSchema`). Thiết kế đã
+   * chốt ô Payment là con số chứ không phải tính từ, vì tính từ không kể được
+   * ca hoàn một phần mà chuyến vẫn chạy.
+   *
+   * Đáng tin: trigger của ADR-0009 khoá bất biến `SUM(refunds) ≤ totalAmount`,
+   * nên con số này không bao giờ vượt tổng.
+   */
+  refundedTotal: DecimalStringSchema,
 });
 
 export type Booking = z.output<typeof BookingSchema>;

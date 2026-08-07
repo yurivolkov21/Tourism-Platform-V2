@@ -1,36 +1,8 @@
-import type { Booking } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeBooking } from '@/test/fixtures/booking';
 import { dashboardStats, nextTrip, upcomingBookings } from './account-stats';
 
 const TODAY = '2026-08-04';
-
-function makeBooking(overrides: Partial<Booking> = {}): Booking {
-  return {
-    id: 'b0000000-0000-4000-8000-000000000000',
-    code: 'BK-TESTAAAA',
-    status: 'PAID',
-    tourTitle: 'Test Tour',
-    departureStartDate: '2026-09-01',
-    departureEndDate: '2026-09-02',
-    unitPrice: '10.00',
-    totalAmount: '10.00',
-    currency: 'USD',
-    numAdults: 1,
-    numChildren: 0,
-    contactName: 'Test Traveller',
-    contactEmail: 'test@example.com',
-    contactPhone: null,
-    specialRequests: null,
-    paymentProvider: 'STRIPE',
-    checkoutUrl: null,
-    paidAt: '2026-07-01T00:00:00.000Z',
-    cancelledAt: null,
-    createdAt: '2026-07-01T00:00:00.000Z',
-    // Task 6a (A2): field mới trên BookingSchema, không dùng bởi account-stats.
-    cancellationStatus: null,
-    ...overrides,
-  };
-}
 
 // "Hôm nay" cố định để test biên ngày không phụ thuộc giờ chạy CI thật.
 beforeEach(() => {

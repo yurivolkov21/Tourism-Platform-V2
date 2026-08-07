@@ -60,16 +60,33 @@ export const calendarDate = (value: Date): string => value.toISOString().slice(0
 
 type BookingRow = Prisma.BookingModel;
 
+/**
+ * Phần ĐỌC KÈM của một booking: dữ liệu không nằm trên chính row `Booking` mà
+ * phải truy thêm bảng khác (đơn xin hủy, sổ refund).
+ *
+ * Gom thành object thay vì nối thêm tham số vị trí: từ cụm C có bốn giá trị
+ * đọc-kèm, và bốn tham số nullable liên tiếp là chỗ rất dễ truyền lộn thứ tự mà
+ * TypeScript không cứu được (hai trong số đó cùng kiểu `string | null`).
+ */
+export interface BookingReadExtras {
+  /** Trạng thái đơn-xin-hủy MỚI NHẤT (theo `createdAt desc`), null nếu chưa từng xin. */
+  cancellationStatus?: Booking['cancellationStatus'];
+  cancellationRequestedAt?: Date | null;
+  cancellationDecidedAt?: Date | null;
+  /** `SUM(refunds.amount)` của booking. Bỏ trống = chưa đọc → trả `'0.00'`. */
+  refundedTotal?: Prisma.Decimal | null;
+}
+
 /** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
- * `cancellationStatus` mặc định null — CHỈ `byCode` truyền giá trị thật (đọc
- * kèm request cancellation mới nhất); mọi call site khác (create/mine/
- * adminList/adminByCode/cancelPending) không cần biết field này nên bỏ qua
- * tham số, hưởng default null (Task 6a, A2). Export cho admin surface
+ * Phần đọc-kèm mặc định RỖNG — CHỈ `bookings.byCode` truyền giá trị thật (trang
+ * chi tiết là nơi duy nhất cần); mọi call site khác (create/mine/adminList/
+ * adminByCode/cancelPending/refunds/cancellations) bỏ qua tham số này để list
+ * không phải gánh thêm query cho mỗi row. Export cho admin surface
  * (RefundsService trả về cùng shape). */
 export function toBooking(
   row: BookingRow,
   checkoutUrl: string | null,
-  cancellationStatus: Booking['cancellationStatus'] = null,
+  extras: BookingReadExtras = {},
 ): Booking {
   return {
     id: row.id,
@@ -92,7 +109,13 @@ export function toBooking(
     paidAt: row.paidAt ? row.paidAt.toISOString() : null,
     cancelledAt: row.cancelledAt ? row.cancelledAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
-    cancellationStatus,
+    cancellationStatus: extras.cancellationStatus ?? null,
+    cancellationRequestedAt: extras.cancellationRequestedAt?.toISOString() ?? null,
+    cancellationDecidedAt: extras.cancellationDecidedAt?.toISOString() ?? null,
+    // Chưa đọc sổ refund (mọi call site trừ byCode) → '0.00', KHÔNG phải null:
+    // contract khai `DecimalStringSchema` không nullable vì "chưa hoàn đồng nào"
+    // và "chưa đọc" đối với khách là cùng một câu trả lời.
+    refundedTotal: extras.refundedTotal ? money(extras.refundedTotal) : '0.00',
   };
 }
 
@@ -364,9 +387,20 @@ export class BookingsService {
     const latestCancellation = await prisma.cancellationRequest.findFirst({
       where: { bookingId: booking.id },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
-      select: { status: true },
+      select: { status: true, createdAt: true, decidedAt: true },
     });
-    return toBooking(booking, null, latestCancellation?.status ?? null);
+    // Tổng đã hoàn: một aggregate trên `Refund` (bảng có @@index([bookingId])).
+    // Đọc ở ĐÂY chứ không ở `mine` — cùng lý do tránh N+1 đã ghi ở `mine`.
+    const refunded = await prisma.refund.aggregate({
+      where: { bookingId: booking.id },
+      _sum: { amount: true },
+    });
+    return toBooking(booking, null, {
+      cancellationStatus: latestCancellation?.status ?? null,
+      cancellationRequestedAt: latestCancellation?.createdAt ?? null,
+      cancellationDecidedAt: latestCancellation?.decidedAt ?? null,
+      refundedTotal: refunded._sum.amount,
+    });
   }
 
   /**

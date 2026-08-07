@@ -120,6 +120,9 @@ describe('BookingSchema', () => {
       cancelledAt: null,
       createdAt: '2026-07-18T09:00:00.000Z',
       cancellationStatus: null,
+      cancellationRequestedAt: null,
+      cancellationDecidedAt: null,
+      refundedTotal: '0.00',
     });
     expect(parsed.totalAmount).toBe('117.00');
     expect(parsed.checkoutUrl).not.toBeNull();
@@ -134,6 +137,79 @@ describe('BookingSchema', () => {
     expect(BookingSchema.safeParse({ ...parsed, cancellationStatus: 'APPROVED' }).success).toBe(
       false,
     );
+  });
+
+  // Cụm C (spec 07/08 §3): ba field đọc-kèm, tất cả additive.
+  it('carries the cancellation timestamps as nullable ISO datetimes', () => {
+    const base = {
+      id: 'b0000001-0000-4000-8000-000000000001',
+      code: 'BK-AAAA1111',
+      status: 'PAID',
+      tourTitle: 'North to South Classic',
+      departureStartDate: '2026-09-12',
+      departureEndDate: '2026-09-23',
+      unitPrice: '1290.00',
+      totalAmount: '3870.00',
+      currency: 'USD',
+      numAdults: 2,
+      numChildren: 1,
+      contactName: 'Alice Nguyen',
+      contactEmail: 'alice@example.com',
+      contactPhone: null,
+      specialRequests: null,
+      paymentProvider: 'STRIPE',
+      checkoutUrl: null,
+      paidAt: '2026-08-04T07:22:00.000Z',
+      cancelledAt: null,
+      createdAt: '2026-08-04T07:15:00.000Z',
+      cancellationStatus: 'REQUESTED',
+      cancellationRequestedAt: '2026-08-05T09:00:00.000Z',
+      cancellationDecidedAt: null,
+      refundedTotal: '0.00',
+    };
+    expect(BookingSchema.parse(base).cancellationRequestedAt).toBe('2026-08-05T09:00:00.000Z');
+    expect(
+      BookingSchema.parse({ ...base, cancellationDecidedAt: null }).cancellationDecidedAt,
+    ).toBeNull();
+    // Ngày lịch trần không phải datetime — chặn nhầm lẫn với departureStartDate.
+    expect(
+      BookingSchema.safeParse({ ...base, cancellationRequestedAt: '2026-08-05' }).success,
+    ).toBe(false);
+    // Không được vắng mặt: contract khai nullable chứ không optional.
+    const { cancellationRequestedAt: _drop, ...missing } = base;
+    expect(BookingSchema.safeParse(missing).success).toBe(false);
+  });
+
+  it('always carries refundedTotal as a decimal string, never a float or null', () => {
+    const base = {
+      id: 'b0000001-0000-4000-8000-000000000001',
+      code: 'BK-AAAA1111',
+      status: 'PARTIALLY_REFUNDED',
+      tourTitle: 'North to South Classic',
+      departureStartDate: '2026-09-12',
+      departureEndDate: '2026-09-23',
+      unitPrice: '1290.00',
+      totalAmount: '3870.00',
+      currency: 'USD',
+      numAdults: 2,
+      numChildren: 1,
+      contactName: 'Alice Nguyen',
+      contactEmail: 'alice@example.com',
+      contactPhone: null,
+      specialRequests: null,
+      paymentProvider: 'STRIPE',
+      checkoutUrl: null,
+      paidAt: '2026-08-04T07:22:00.000Z',
+      cancelledAt: null,
+      createdAt: '2026-08-04T07:15:00.000Z',
+      cancellationStatus: null,
+      cancellationRequestedAt: null,
+      cancellationDecidedAt: null,
+      refundedTotal: '700.00',
+    };
+    expect(BookingSchema.parse(base).refundedTotal).toBe('700.00');
+    expect(BookingSchema.safeParse({ ...base, refundedTotal: 700 }).success).toBe(false);
+    expect(BookingSchema.safeParse({ ...base, refundedTotal: null }).success).toBe(false);
   });
 });
 

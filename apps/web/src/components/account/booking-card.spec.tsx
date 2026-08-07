@@ -1,39 +1,11 @@
 import { render, screen } from '@testing-library/react';
-import type { Booking } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
+import { makeBooking } from '@/test/fixtures/booking';
 import { BookingCard } from './booking-card';
-
-function makeBooking(overrides: Partial<Booking> = {}): Booking {
-  return {
-    id: 'b0000000-0000-4000-8000-000000000000',
-    code: 'BK-TESTAAAA',
-    status: 'PENDING',
-    tourTitle: 'Test Tour',
-    departureStartDate: '2026-09-01',
-    departureEndDate: '2026-09-02',
-    unitPrice: '10.00',
-    totalAmount: '10.00',
-    currency: 'USD',
-    numAdults: 1,
-    numChildren: 0,
-    contactName: 'Test Traveller',
-    contactEmail: 'test@example.com',
-    contactPhone: null,
-    specialRequests: null,
-    paymentProvider: 'STRIPE',
-    checkoutUrl: null,
-    paidAt: null,
-    cancelledAt: null,
-    createdAt: '2026-08-01T00:00:00.000Z',
-    // Task 6a (A2): field mới trên BookingSchema, không dùng bởi BookingCard.
-    cancellationStatus: null,
-    ...overrides,
-  };
-}
 
 describe('BookingCard', () => {
   it('render tiêu đề tour + tổng tiền + link tới trang detail', () => {
-    render(<BookingCard booking={makeBooking()} />);
+    render(<BookingCard booking={makeBooking({ status: 'PENDING', paidAt: null })} />);
     expect(screen.getByText('Test Tour')).toBeInTheDocument();
     expect(screen.getByText('$10')).toBeInTheDocument();
     expect(screen.getByRole('link')).toHaveAttribute('href', '/account/bookings/BK-TESTAAAA');
@@ -66,7 +38,11 @@ describe('BookingCard', () => {
   });
 
   it('có trẻ em → travellers hiện cả người lớn và trẻ em', () => {
-    render(<BookingCard booking={makeBooking({ numAdults: 2, numChildren: 1 })} />);
+    render(
+      <BookingCard
+        booking={makeBooking({ status: 'PENDING', paidAt: null, numAdults: 2, numChildren: 1 })}
+      />,
+    );
     expect(screen.getByText(/2 adults, 1 child/)).toBeInTheDocument();
   });
 });

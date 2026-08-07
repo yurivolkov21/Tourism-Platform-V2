@@ -1,37 +1,10 @@
 import { render, screen } from '@testing-library/react';
-import type { Booking, WishlistItem } from '@tourism/contract';
+import type { WishlistItem } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeBooking } from '@/test/fixtures/booking';
 import { AccountDashboard } from './account-dashboard';
 
 const TODAY = '2026-08-04';
-
-function makeBooking(overrides: Partial<Booking> = {}): Booking {
-  return {
-    id: 'b0000000-0000-4000-8000-000000000000',
-    code: 'BK-TESTAAAA',
-    status: 'PAID',
-    tourTitle: 'Test Tour',
-    departureStartDate: '2026-09-01',
-    departureEndDate: '2026-09-02',
-    unitPrice: '10.00',
-    totalAmount: '10.00',
-    currency: 'USD',
-    numAdults: 1,
-    numChildren: 0,
-    contactName: 'Test Traveller',
-    contactEmail: 'test@example.com',
-    contactPhone: null,
-    specialRequests: null,
-    paymentProvider: 'STRIPE',
-    checkoutUrl: null,
-    paidAt: '2026-07-01T00:00:00.000Z',
-    cancelledAt: null,
-    createdAt: '2026-07-01T00:00:00.000Z',
-    // Task 6a (A2): field mới trên BookingSchema, không dùng bởi AccountDashboard.
-    cancellationStatus: null,
-    ...overrides,
-  };
-}
 
 function makeWishlistItem(overrides: Partial<WishlistItem> = {}): WishlistItem {
   return {
