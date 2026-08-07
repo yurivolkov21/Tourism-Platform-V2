@@ -5,8 +5,7 @@ import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
-import { MinusIcon, PlusIcon } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import type { DepartureVM } from '@/lib/api/tours';
 import {
@@ -17,6 +16,7 @@ import {
   validateBookingForm,
 } from '@/lib/booking-form';
 import { departureStatus, formatDateRange, formatMoney } from '@/lib/tours';
+import { Field, FieldError, Stepper } from './form-parts';
 
 /**
  * Form đặt chỗ — chế độ Scheduled departure.
@@ -110,7 +110,7 @@ export function BookingForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+    <form onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]" noValidate>
       <div className="flex flex-col gap-8">
         <section className="flex flex-col gap-3">
           <h2 className="font-heading text-lg font-semibold">{t.datesHeading}</h2>
@@ -199,9 +199,7 @@ export function BookingForm({
             // Một dòng bình thản, KHÔNG toast: khách chưa làm gì sai, chỉ là
             // chạm trần. Nói ĐÚNG ràng buộc nào đang bó để họ biết sửa ở đâu.
             <p className="text-sm text-muted-foreground">
-              {reason === 'seats'
-                ? messages.tourDetail.departures.seatsLimited(cap)
-                : messages.tourDetail.groupSize(cap)}
+              {reason === 'seats' ? t.capBySeats : messages.tourDetail.groupSize(cap)}
             </p>
           ) : null}
         </section>
@@ -320,53 +318,6 @@ export function BookingForm({
   );
 }
 
-function Stepper({
-  label,
-  value,
-  onStep,
-  minusDisabled,
-  plusDisabled,
-}: {
-  label: string;
-  value: number;
-  onStep: (delta: number) => void;
-  minusDisabled: boolean;
-  plusDisabled: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border bg-card px-3.5 py-3">
-      <span className="text-sm font-medium">{label}</span>
-      {/* button-group + input — KHÔNG phải primitive `stepper` (cái đó là luồng
-          nhiều bước). Ghép hai primitive sẵn có, không đẻ component mới. */}
-      <span className="inline-flex items-center overflow-hidden rounded-lg border">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`${label} −`}
-          disabled={minusDisabled}
-          onClick={() => onStep(-1)}
-        >
-          <MinusIcon />
-        </Button>
-        <span className="min-w-8 border-x px-2 py-1 text-center text-sm font-medium tabular-nums">
-          {value}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label={`${label} +`}
-          disabled={plusDisabled}
-          onClick={() => onStep(1)}
-        >
-          <PlusIcon />
-        </Button>
-      </span>
-    </div>
-  );
-}
-
 function ProviderChoice({
   selected,
   name,
@@ -402,38 +353,5 @@ function ProviderChoice({
         <span className="text-xs text-muted-foreground">{hint}</span>
       </span>
     </button>
-  );
-}
-
-function Field({
-  label,
-  error,
-  children,
-}: {
-  label: string;
-  error?: string;
-  /** Nhận id đã sinh — buộc caller gắn nó vào control, nên quan hệ nhãn ↔ ô
-      nhập là tường minh chứ không dựa vào việc control tình cờ nằm trong label. */
-  children: (id: string) => React.ReactNode;
-}) {
-  const id = useId();
-  return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {children(id)}
-      {error ? <FieldError>{error}</FieldError> : null}
-    </div>
-  );
-}
-
-/** Lỗi field: dải nền pha destructive + chữ ink. KHÔNG dùng `text-destructive`
- *  trần — đo được 2,83:1 trên card ở dark theme, dưới ngưỡng AA. */
-function FieldError({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="rounded-md border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-sm text-foreground">
-      {children}
-    </p>
   );
 }

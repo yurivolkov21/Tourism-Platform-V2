@@ -361,6 +361,10 @@ export const messages = {
       stripeHint: 'Visa, Mastercard, Amex',
       paypal: 'PayPal',
       paypalHint: 'Pay with your PayPal balance or card',
+      // Chạm trần vì hết ghế. KHÔNG lặp lại nhãn ghế của hàng đợt — nói vì sao
+      // nút cộng dừng, và lối ra là đổi đợt chứ không phải bỏ bớt người.
+      capBySeats:
+        "That's every seat left on this departure — pick another date for a bigger party.",
       submit: 'Continue to payment',
       submitting: 'Starting secure checkout…',
       trustLine:

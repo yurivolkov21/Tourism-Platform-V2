@@ -1,10 +1,9 @@
 import { messages } from '@tourism/i18n';
-import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookingForm } from '@/components/booking/booking-form';
+import { BookingModes } from '@/components/booking/booking-modes';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
 import { routeChain } from '@/lib/tours';
@@ -27,7 +26,6 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
   if (!tour) notFound();
 
   const t = messages.booking.page;
-  const bookable = tour.departures.filter((d) => d.seatsLeft > 0);
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-14">
@@ -60,34 +58,14 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
       </header>
 
       <div className="mt-10">
-        {tour.departures.length === 0 || bookable.length === 0 ? (
-          /* Tour chưa mở đợt nào (hoặc đã kín chỗ hết). Chế độ Private trip —
-             gửi `enquiries.create` — là slice kế tiếp; TRONG LÚC ĐÓ chỉ đường
-             sang /contact (trang có thật) chứ KHÔNG để khách ở ngõ cụt. Cùng
-             luật "không đẩy user vào 404" mà `booking-rail.tsx` đã lập. */
-          <div className="flex max-w-xl flex-col gap-4 rounded-2xl border bg-card p-6">
-            <h2 className="font-heading text-lg font-semibold">
-              {messages.tourDetail.departures.none}
-            </h2>
-            <p className="text-sm text-pretty text-muted-foreground">
-              {messages.booking.form.modeToggle.noDepartures}
-            </p>
-            <div className="flex flex-wrap gap-2.5">
-              <ButtonLink href="/contact">{messages.tourDetail.booking.ask}</ButtonLink>
-              <ButtonLink variant="outline" href={`/tours/${tour.slug}`}>
-                {t.backToTour}
-              </ButtonLink>
-            </div>
-          </div>
-        ) : (
-          <BookingForm
-            departures={tour.departures}
-            maxGroupSize={tour.maxGroupSize}
-            currency={tour.currency}
-            defaultName={session.name ?? ''}
-            defaultEmail={session.email}
-          />
-        )}
+        <BookingModes
+          tourId={tour.id}
+          departures={tour.departures}
+          maxGroupSize={tour.maxGroupSize}
+          currency={tour.currency}
+          defaultName={session.name ?? ''}
+          defaultEmail={session.email}
+        />
       </div>
     </div>
   );
