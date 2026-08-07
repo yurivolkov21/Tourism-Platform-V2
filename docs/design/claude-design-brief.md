@@ -50,7 +50,7 @@ là **ngọc bích trầm trên nền sương phớt lục**, không phải xanh
 
 | Vai trò | Hex |
 | --- | --- |
-| Nền trang | `#1A2422` |
+| Nền trang | `#202A28` |
 | Card / bề mặt | `#243430` |
 | Border | `#3A4D47` |
 | Chữ chính | `#DCE8E4` |
@@ -166,5 +166,12 @@ Home · About · Blog + bài viết · Contact · FAQ · Destinations + trang v�
 Tours (danh sách) · Tour chi tiết · Login/Register/Forgot/Reset/2FA/Verify email ·
 Terms/Privacy/Cancellation policy.
 
-**Chưa có, đang cần thiết kế:** Booking (luồng đặt chỗ) · Profile · Account
-settings · Lịch sử đặt chỗ · Wishlist.
+**Chưa có:** Booking (luồng đặt chỗ) — `/tours/[slug]/book`, `/checkout/success`,
+`/checkout/cancel` đều chưa tồn tại, dù API đã trỏ redirect vào hai URL sau.
+
+**Đã ship nhưng ở mức DỰNG TẠM, đang cần thiết kế lại:** cả khu account merge
+06/08 với điều kiện rõ ràng là sẽ redesign — `/account` (dashboard) ·
+`/account/bookings` · `/account/bookings/[code]` · `/account/profile` ·
+`/account/saved`. Lưu ý `/account/security` KHÔNG phải trang: nó là
+`permanentRedirect` 308 sang profile, nên chỉ có **5 màn thật**. Chi tiết nợ:
+[sổ nợ kỹ thuật mục A](../analysis/2026-08-06-backlog-no-ky-thuat.md).
