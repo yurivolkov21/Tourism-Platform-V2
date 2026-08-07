@@ -8,6 +8,58 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-07 — Cụm C: luồng đặt chỗ và hai màn quay về từ cổng thanh toán (branch `feat/booking-checkout`, ff-only, 6 commit `13bc78e..4959455`)
+
+Money-path đang có một **ngõ cụt 404 bấm chuột tới được** trên main: nút "Pay
+now" ở `/account/bookings/[code]` là nút thật, gọi `bookings.checkout` rồi
+`assign(checkoutUrl)`, và cổng thanh toán trả khách về `/checkout/success` —
+route chưa bao giờ tồn tại. Cụm này vá lỗ đó và dựng nốt form đặt chỗ.
+
+Thứ tự C trước redesign account là quyết định của user 07/08: redesign là làm
+đẹp trên các trang đã chạy được, còn checkout thủng là lỗi chức năng ở đúng
+tính năng đầu bảng của một nền tảng đặt tour.
+
+**Không vẽ mockup riêng cho cụm này** — ba màn đã chốt ở vòng thiết kế 04–06/08
+và copy tiếng Anh đã nằm sẵn trong `@tourism/i18n` (khối `booking.page`/`form`/
+`success`/`cancel`, trước đó mồ côi 0 consumer). Spec cụm C vì thế mỏng, chỉ nối
+dây: [2026-08-07-booking-checkout-design](specs/2026-08-07-booking-checkout-design.md).
+
+**Contract nở 3 field ADDITIVE**, chỉ `bookings.byCode` điền, `mine` giữ nguyên
+lý do tránh N+1: `refundedTotal` (một `SUM` trên bảng đã có index; trigger
+ADR-0009 khoá bất biến SUM ≤ total) và hai mốc thời gian đơn xin huỷ
+(`cancellationRequestedAt`/`cancellationDecidedAt` — miễn phí thật sự, `byCode`
+vốn đã chạy `findFirst` trên bảng đó, chỉ thêm cột vào `select`). CỐ Ý không mở
+`decisionNote`: ghi chú nội bộ của admin, mở ra là biến nó thành copy
+user-facing không qua luật biên tập nào.
+
+**Ba bug/khiếm khuyết bị bắt trong lúc làm:**
+
+1. **Thiếu `noValidate` ở cả hai form** — validation GỐC của trình duyệt chặn
+   submit trước khi `onSubmit` kịp chạy, nên `validateBookingForm` không bao giờ
+   được gọi và khách chỉ thấy bong bóng mặc định của trình duyệt. Test jsdom bắt
+   được; test logic thuần thì xanh 15/15 trong khi hàm đó không hề được gọi trên
+   trang thật. Giả thuyết đầu (primitive `Button` của Base UI không submit được)
+   đã bị bác bằng cách dựng hai form cạnh nhau — cả hai đều submit.
+2. **Câu giải thích khi chạm trần lặp lại y nguyên nhãn ghế của hàng đợt** —
+   "Only 3 seats left" hiện hai lần. Lặp lại không phải giải thích; thêm
+   `capBySeats` nói vì sao nút cộng dừng và lối ra là đổi đợt.
+3. **`toBooking` sắp thành 6 tham số vị trí** với 4 cái nullable, hai trong đó
+   cùng kiểu `string | null` — chỗ truyền lộn thứ tự mà TypeScript không cứu
+   được. Gom phần đọc-kèm vào `BookingReadExtras`.
+
+**Dọn kèm:** bốn spec web mỗi cái tự chép một `makeBooking` riêng nên thêm một
+field vào contract là vỡ bốn chỗ cùng lúc — gom về `test/fixtures/booking.ts`.
+
+**Nợ mở:** chế độ Private trip đã có nhưng chưa có test jsdom riêng; nghiệm thu
+sống (Stripe sandbox end-to-end) CHƯA chạy — cần Docker và tài khoản thật.
+
+**Tests after:** `apps/web` 82 file và 958 test; toàn workspace 1.248 test unit
+(web 958 · api 209 · contract 57 · ui 13 · tokens 10 · i18n 1), cộng 158 int là
+1.406. ⚠️ Số api và int đo lúc Docker còn chạy; sau khi user tắt Docker Desktop
+để nhả RAM thì 4 spec `*.e2e.spec.ts` trong bộ test thường cũng đỏ ở tầng kết
+nối DB — `pnpm gate` KHÔNG chỉ có `gate:int` mới cần Postgres. Phải chạy lại
+`gate:int` trước khi merge.
+
 ## 2026-08-06 — Bản đồ MapLibre thật và gom một nguồn sự thật liên hệ trên `/contact` (branch `feat/contact-map-offices`, ff-only, 11 commit `98d2800..76720c5`)
 
 Đối chiếu Nexora (luật CLAUDE.md #10) lộ **3 nguồn thông tin liên hệ chỏi
