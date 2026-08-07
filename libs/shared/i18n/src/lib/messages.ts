@@ -427,6 +427,12 @@ export const messages = {
       emailNote: 'A confirmation has been sent to your email.',
       viewTours: 'Browse more tours',
       notFound: 'We couldn’t find that booking.',
+      viewBooking: 'View booking',
+      // Mood thứ ba: khách quay về từ cổng nhưng booking đã ở một kết cục khác
+      // (hết hạn giữa chừng, đã huỷ, đã hoàn tiền). KHÔNG tự làm mới — không có
+      // gì để đợi; câu chữ vì thế không hứa hẹn gì, chỉ chỉ đường.
+      settledTitle: 'This booking is already settled',
+      settledBody: 'There’s nothing left to pay here. Open the booking to see where it stands.',
     },
     // /checkout/cancel.
     cancel: {
@@ -435,6 +441,10 @@ export const messages = {
       manage: 'Pay now or manage booking',
       retry: 'Try again',
       backToTours: 'Browse tours',
+      // Một câu, KHÔNG đếm ngược — thiết kế đã chốt không có đồng hồ chạy lùi ở
+      // bất kỳ màn nào của luồng này. Nói "khoảng" vì con số làm tròn xuống.
+      expiresIn: (minutes: number) =>
+        `This booking is released in about ${minutes} minute${minutes === 1 ? '' : 's'} if it stays unpaid.`,
     },
     // My bookings list (/account/bookings).
     list: {

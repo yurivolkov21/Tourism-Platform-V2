@@ -32,4 +32,15 @@ export function proxy(request: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ['/account/:path*'] };
+/**
+ * Cụm C thêm hai nhánh: form đặt chỗ và hai màn quay-về từ cổng thanh toán.
+ * `/checkout/*` PHẢI có mặt ở đây — khách vừa từ Stripe/PayPal về và trang đó
+ * đọc `bookings.byCode` (procedure authed). Cookie session sống sót qua redirect
+ * top-level GET vì nó là SameSite=Lax.
+ *
+ * Vẫn GIỮ defense-in-depth: mỗi page tự gọi `requireSession`. Proxy chỉ chặn
+ * sớm cho đỡ một round-trip, không phải lớp bảo vệ duy nhất.
+ */
+export const config = {
+  matcher: ['/account/:path*', '/tours/:slug/book', '/checkout/:path*'],
+};
