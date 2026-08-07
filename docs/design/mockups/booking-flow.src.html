@@ -457,12 +457,6 @@ code {
   white-space: nowrap;
 }
 
-.pill--mono {
-  font-family: var(--font-mono);
-  font-size: 0.6875rem;
-  letter-spacing: 0.06em;
-}
-
 .pill svg {
   width: 0.75rem;
   height: 0.75rem;
@@ -2455,7 +2449,7 @@ fieldset {
             </div>
             <div class="utility">
               <div class="utility-card">
-                <span class="pill pill--mono tone-warning">PENDING</span>
+                <span class="pill tone-warning">Awaiting payment</span>
                 <h1>You stopped before paying.</h1>
                 <p class="body">
                   Nothing is lost. We're holding this booking unpaid, and you can pay for it whenever
@@ -2540,7 +2534,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-warning">PENDING</span>
+                    <span class="pill tone-warning">Awaiting payment</span>
                   </div>
 
                   <div class="stories">
@@ -2649,7 +2643,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-success">PAID</span>
+                    <span class="pill tone-success">Paid</span>
                   </div>
 
                   <div class="stories">
@@ -2762,7 +2756,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-success">PAID</span>
+                    <span class="pill tone-success">Paid</span>
                   </div>
 
                   <div class="stories">
@@ -2840,7 +2834,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-success">PAID</span>
+                    <span class="pill tone-success">Paid</span>
                   </div>
 
                   <div class="stories">
@@ -2862,12 +2856,15 @@ fieldset {
                         <span class="title">Cancellation declined</span>
                         <span class="pill tone-destructive">Declined 6 Aug 2026</span>
                       </div>
-                      <blockquote class="quote">
-                        The departure is inside the 48-hour window, so the trip is already committed
-                        with our partners. We can move you to a later date instead — reply and we'll
-                        set it up.
-                        <cite>Operations team</cite>
-                      </blockquote>
+                      <p class="body">
+                        Our team looked at it and couldn't approve this one. They can talk you
+                        through why — and if the dates are the problem, moving to a later departure
+                        is usually possible.
+                      </p>
+                      <p class="hint">
+                        <a class="link" href="#s3">Read the cancellation policy</a> or
+                        <a class="link" href="#s3">contact us</a>.
+                      </p>
                     </div>
 
                     <div class="field">
@@ -2918,7 +2915,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-3H8PZ0RM</p>
                     </div>
-                    <span class="pill pill--mono tone-muted">CANCELLED</span>
+                    <span class="pill tone-muted">Cancelled</span>
                   </div>
 
                   <div class="stories">
@@ -3008,7 +3005,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-5RT9WQ2C</p>
                     </div>
-                    <span class="pill pill--mono tone-muted">CANCELLED</span>
+                    <span class="pill tone-muted">Cancelled</span>
                   </div>
 
                   <div class="stories">
@@ -3054,8 +3051,8 @@ fieldset {
                       <span class="v num">$3,870</span>
                     </div>
                     <p class="hint">
-                      Your cancellation was approved and everything you paid went back to Stripe on 6
-                      Aug 2026. It reaches your bank in a few working days.
+                      Your cancellation was approved and everything you paid has been returned. It
+                      reaches your bank a few working days after that.
                     </p>
                   </div>
 
@@ -3099,7 +3096,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-muted">PARTIALLY_REFUNDED</span>
+                    <span class="pill tone-muted">Partially refunded</span>
                   </div>
 
                   <div class="stories">
@@ -3190,7 +3187,7 @@ fieldset {
                       <p class="eyebrow">Booking reference</p>
                       <p class="code">BK-7QK2M4XD</p>
                     </div>
-                    <span class="pill pill--mono tone-muted">REFUNDED</span>
+                    <span class="pill tone-muted">Refunded</span>
                   </div>
 
                   <div class="stories">
@@ -3326,10 +3323,13 @@ fieldset {
       <div class="note-card">
         <h3>Status is never one badge</h3>
         <p>
-          The five words appear once each, in monospace, as the system's vocabulary. Every screen
-          that shows one also shows two cells — <strong>Trip</strong> and <strong>Payment</strong> —
-          that answer separately. Two CANCELLED frames prove the point: same word, opposite money
-          story.
+          The five statuses appear as the plain-English labels already in
+          <code>@tourism/i18n</code> — "Paid", "Awaiting payment" — not as raw enum values. The
+          vocabulary is still fixed at five; it just isn't shouted in SCREAMING_SNAKE_CASE, and the
+          monospace face goes back to the one job the brief gives it: the booking reference. Every
+          screen that shows a status also shows two cells — <strong>Trip</strong> and
+          <strong>Payment</strong> — that answer separately. Two cancelled frames prove the point:
+          same status, opposite money story.
         </p>
       </div>
       <div class="note-card">

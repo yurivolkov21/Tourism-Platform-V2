@@ -50,15 +50,18 @@ user-facing không qua luật biên tập nào.
 **Dọn kèm:** bốn spec web mỗi cái tự chép một `makeBooking` riêng nên thêm một
 field vào contract là vỡ bốn chỗ cùng lúc — gom về `test/fixtures/booking.ts`.
 
-**Nợ mở:** chế độ Private trip đã có nhưng chưa có test jsdom riêng; nghiệm thu
-sống (Stripe sandbox end-to-end) CHƯA chạy — cần Docker và tài khoản thật.
+**Nợ mở:** nghiệm thu sống (Stripe sandbox end-to-end) CHƯA chạy — cần tài
+khoản thật, làm cùng user.
 
-**Tests after:** `apps/web` 82 file và 958 test; toàn workspace 1.248 test unit
-(web 958 · api 209 · contract 57 · ui 13 · tokens 10 · i18n 1), cộng 158 int là
-1.406. ⚠️ Số api và int đo lúc Docker còn chạy; sau khi user tắt Docker Desktop
-để nhả RAM thì 4 spec `*.e2e.spec.ts` trong bộ test thường cũng đỏ ở tầng kết
-nối DB — `pnpm gate` KHÔNG chỉ có `gate:int` mới cần Postgres. Phải chạy lại
-`gate:int` trước khi merge.
+**Tests after:** `apps/web` 83 file và 963 test; toàn workspace 1.253 test unit
+(web 963 · api 209 · contract 57 · ui 13 · tokens 10 · i18n 1), cộng 158 int là
+**1.411**. `gate:int` xanh trọn (18/18 rồi 5/5) với Postgres và API sống.
+
+Ghi lại một sự thật về môi trường vì nó đã làm lệch một lần đo: 4 spec
+`*.e2e.spec.ts` NẰM TRONG bộ test thường cũng chạm DB, nên `pnpm gate` cần
+Postgres chứ KHÔNG chỉ `gate:int`. Tắt Docker là 4 file đó đỏ ở tầng kết nối
+(`PrismaClientKnownRequestError` tại `admin-reconcile.ts:16`) chứ không phải lỗi
+logic — đừng tưởng cụm nào vừa merge làm hỏng.
 
 ## 2026-08-06 — Bản đồ MapLibre thật và gom một nguồn sự thật liên hệ trên `/contact` (branch `feat/contact-map-offices`, ff-only, 11 commit `98d2800..76720c5`)
 
