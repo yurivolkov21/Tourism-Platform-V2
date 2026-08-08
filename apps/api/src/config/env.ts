@@ -81,6 +81,14 @@ const EnvSchema = z
     // chỉ để dựng URL delivery đọc (ADR-0005). Default dev; prod PHẢI set thật
     // qua superRefine bên dưới, nếu không URL ảnh sẽ trỏ cloud 'demo' hỏng.
     CLOUDINARY_CLOUD_NAME: z.string().min(1).default('demo'),
+    // Bộ SECRET để KÝ upload (khác hẳn CLOUDINARY_CLOUD_NAME ở trên, vốn công
+    // khai). Chỉ tầng upload P4 cần; optional để dev/test không phải có tài
+    // khoản Cloudinary mới boot được. Đi theo CẶP — xem superRefine bên dưới.
+    CLOUDINARY_API_KEY: z.string().min(1).optional(),
+    CLOUDINARY_API_SECRET: z.string().min(1).optional(),
+    // Thư mục đích trên Cloudinary. Có default để asset dev không rơi thẳng
+    // vào thư mục gốc rồi lẫn với tài khoản khác đang dùng chung cloud.
+    CLOUDINARY_UPLOAD_FOLDER: z.string().min(1).default('tourism'),
   })
   .superRefine((cfg, ctx) => {
     // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ
@@ -97,6 +105,20 @@ const EnvSchema = z
         message:
           'ADMIN_EMAILS must resolve to at least one email after parsing ' +
           '(comma list is empty — check for stray whitespace/commas)',
+      });
+    }
+    // Credential upload Cloudinary đi theo CẶP: ký upload cần CẢ api_key lẫn
+    // api_secret. Khai đúng một nửa là misconfiguration ở MỌI môi trường (như
+    // ADMIN_EMAILS ở trên), không riêng production — và nó hỏng ÂM THẦM: app
+    // vẫn boot, chỉ tới lúc ai đó bấm upload mới lộ. Chặn ngay ở boot.
+    const cloudinaryUploadKeys = [cfg.CLOUDINARY_API_KEY, cfg.CLOUDINARY_API_SECRET];
+    if (cloudinaryUploadKeys.some(Boolean) && !cloudinaryUploadKeys.every(Boolean)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['CLOUDINARY_API_KEY'],
+        message:
+          'Cloudinary upload credentials must be set as a pair: ' +
+          'CLOUDINARY_API_KEY + CLOUDINARY_API_SECRET (one without the other cannot sign uploads)',
       });
     }
     if (cfg.NODE_ENV !== 'production') return;

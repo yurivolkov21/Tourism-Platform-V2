@@ -254,6 +254,27 @@ describe('parseEnv', () => {
     ).toBe('wh-1');
   });
 
+  it('rejects half a Cloudinary upload credential pair, in EVERY environment', () => {
+    // Ký upload cần CẢ api_key lẫn api_secret. Nửa bộ hỏng ÂM THẦM — app vẫn
+    // boot, chỉ tới lúc bấm upload mới lộ — nên guard này KHÔNG gate theo
+    // production, khác các guard prod-critical bên dưới.
+    expect(() => parseEnv({ CLOUDINARY_API_KEY: 'k' })).toThrow(/pair/i);
+    expect(() => parseEnv({ CLOUDINARY_API_SECRET: 's' })).toThrow(/pair/i);
+    // Đủ cặp → qua, và không kéo theo yêu cầu nào khác ở dev.
+    expect(
+      parseEnv({ CLOUDINARY_API_KEY: 'k', CLOUDINARY_API_SECRET: 's' }).CLOUDINARY_API_KEY,
+    ).toBe('k');
+    // Không khai gì cả vẫn là cấu hình hợp lệ: đọc ảnh không cần credential.
+    const bare = parseEnv({});
+    expect(bare.CLOUDINARY_API_KEY).toBeUndefined();
+    expect(bare.CLOUDINARY_API_SECRET).toBeUndefined();
+    // Thư mục đích có default để asset dev không rơi vào thư mục gốc.
+    expect(bare.CLOUDINARY_UPLOAD_FOLDER).toBe('tourism');
+    // `KEY=` (chuỗi rỗng) phải hành xử giống bỏ hẳn dòng — nếu không, một ô
+    // bỏ trống trên dashboard sẽ bị tính là "đã khai một nửa" và chặn boot.
+    expect(() => parseEnv({ CLOUDINARY_API_KEY: '', CLOUDINARY_API_SECRET: '' })).not.toThrow();
+  });
+
   it('requires RESEND_API_KEY in production (INF-R1: else email silently dropped)', () => {
     // Mọi var prod-critical khác đều có guard; RESEND từng thiếu → deploy sót key
     // thì worker KHÔNG bind ResendDeliverer, email transactional im lặng rớt mà
