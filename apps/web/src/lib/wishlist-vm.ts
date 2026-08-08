@@ -34,5 +34,11 @@ export function wishlistToTourCardVM(item: WishlistItem): TourCardVM {
     category: { slug: '', name: '' },
     ratingAvg: item.ratingAvg,
     ratingCount: item.ratingCount,
+    // `WishlistItemSchema` không mang ảnh, nên null ở đây là TRUNG THỰC chứ
+    // không phải thiếu sót của hàm này — cùng lý lẽ với `destinations: []` ở
+    // trên. Hệ quả nhìn thấy được: tour trong /account/saved còn ô giữ chỗ
+    // trong khi /tours đã có ảnh thật. Vá đúng cách là thêm `cover` vào
+    // contract wishlist, không phải bịa ảnh ở tầng VM.
+    cover: null,
   };
 }

@@ -771,6 +771,17 @@ model MediaAsset {
   // Alt text sửa được (media library của admin) — web fallback về text suy từ
   // owner khi null.
   alt         String?        @db.VarChar(300)
+  // Ghi công nguồn ảnh (ADR-0020). Nullable vì không phải nguồn nào cũng đòi:
+  // Pixabay không bắt ghi công, ảnh tự chụp cũng không. Nhưng ảnh Commons thì
+  // CÓ — đo được chỉ 8-10% file là CC0/PD, phần còn lại là CC BY / CC BY-SA,
+  // với chúng ghi công là ĐIỀU KIỆN của giấy phép chứ không phải phép lịch sự.
+  //
+  // `license` giữ nguyên chuỗi nguồn công bố ('CC BY-SA 4.0', 'Public domain')
+  // chứ không ép enum: phiên bản quyết định nghĩa vụ, ép enum là mất thông tin.
+  author      String?        @db.VarChar(200)
+  license     String?        @db.VarChar(60)
+  licenseUrl  String?        @map("license_url") @db.VarChar(300)
+  sourceUrl   String?        @map("source_url") @db.VarChar(500)
   sortOrder   Int            @default(0) @map("sort_order")
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")

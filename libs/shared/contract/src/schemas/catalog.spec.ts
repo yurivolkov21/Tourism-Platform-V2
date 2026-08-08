@@ -25,10 +25,13 @@ const validCard = {
   category: { slug: 'day', name: 'Day Tours' },
   ratingAvg: 4.5,
   ratingCount: 12,
+  // ADR-0020: khoá bắt buộc, giá trị nullable. null = tour chưa có ảnh nào.
+  cover: null,
 };
 
 const validDetail = {
   ...validCard,
+  media: [],
   suitableFor: ['COUPLE', 'FAMILY'],
   badges: ['POPULAR'],
   included: ['Guide'],
@@ -56,9 +59,37 @@ const validDetail = {
   ],
 };
 
+/** Một MediaItem đủ trường, dùng chung cho các ca ảnh bên dưới (ADR-0020). */
+const validMedia = {
+  publicId: 'tourism/seed/destinations/hoi-an/commons-hoi-an-01',
+  url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tourism/x',
+  type: 'IMAGE',
+  role: 'hero',
+  posterUrl: null,
+  width: 2400,
+  height: 1600,
+  alt: 'Lanterns over the Thu Bồn river',
+  sortOrder: 0,
+  author: 'www.viajar24h.com',
+  license: 'CC BY 2.0',
+  licenseUrl: 'https://creativecommons.org/licenses/by/2.0/',
+  sourceUrl: 'https://commons.wikimedia.org/wiki/File:Hoi_An_lanterns.jpg',
+};
+
 describe('TourCardSchema', () => {
   it('parses a valid card', () => {
     expect(TourCardSchema.parse(validCard)).toEqual(validCard);
+  });
+
+  it('mang cover — đóng "nợ contract #1", tour trước đây không có đường nào ra ảnh', () => {
+    const card = { ...validCard, cover: validMedia };
+    expect(TourCardSchema.parse(card).cover?.license).toBe('CC BY 2.0');
+  });
+
+  it('cover null khi tour chưa có ảnh nào — khoá vẫn phải có mặt', () => {
+    expect(TourCardSchema.parse({ ...validCard, cover: null }).cover).toBeNull();
+    const { cover: _c, ...thieuCover } = { ...validCard, cover: null };
+    expect(() => TourCardSchema.parse(thieuCover)).toThrow();
   });
 
   it('accepts nullable fields as null', () => {
@@ -81,6 +112,22 @@ describe('TourCardSchema', () => {
   it('rejects unknown difficulty and malformed id', () => {
     expect(() => TourCardSchema.parse({ ...validCard, difficulty: 'BRUTAL' })).toThrow();
     expect(() => TourCardSchema.parse({ ...validCard, id: 'not-a-uuid' })).toThrow();
+  });
+});
+
+describe('TourDetailSchema — gallery (ADR-0020)', () => {
+  it('mang mảng media nuôi khảm gallery, KHÁC cover một tấm của card', () => {
+    const detail = {
+      ...validDetail,
+      cover: validMedia,
+      media: [validMedia, { ...validMedia, role: 'gallery', sortOrder: 1 }],
+    };
+    expect(TourDetailSchema.parse(detail).media).toHaveLength(2);
+  });
+
+  it('media rỗng là hợp lệ — gallery tự ẩn, không phải lỗi', () => {
+    const detail = { ...validDetail, cover: null, media: [] };
+    expect(TourDetailSchema.parse(detail).media).toEqual([]);
   });
 });
 
@@ -209,9 +256,28 @@ describe('DestinationSchema / TourCategorySchema / HealthSchema', () => {
       region: 'Northern Vietnam',
       description: 'A thousand-year-old capital.',
       tourCount: 5,
+      cover: null,
     };
     expect(DestinationSchema.parse(destination)).toEqual(destination);
     expect(() => DestinationSchema.parse({ ...destination, tourCount: -1 })).toThrow();
+  });
+
+  it('địa danh mang cover — MỘT tấm, vì không có trang chi tiết địa danh', () => {
+    // ADR-0020 §5: tile địa danh chỉ hiện 1 ảnh. Kho 10 ảnh/địa danh tồn tại
+    // để nuôi gallery TOUR, không phải để trưng ở đây — nên chỗ này là `cover`
+    // đơn lẻ chứ không phải mảng `media`.
+    const destination = {
+      id: 'c0000001-0000-4000-8000-000000000001',
+      slug: 'hanoi',
+      name: 'Hà Nội',
+      country: 'Vietnam',
+      region: 'Northern Vietnam',
+      description: 'A thousand-year-old capital.',
+      tourCount: 5,
+      cover: validMedia,
+    };
+    expect(DestinationSchema.parse(destination).cover?.author).toBe('www.viajar24h.com');
+    expect(DestinationSchema.parse({ ...destination, cover: null }).cover).toBeNull();
   });
 
   it('parses a category', () => {

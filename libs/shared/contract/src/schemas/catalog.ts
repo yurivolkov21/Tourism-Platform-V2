@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MediaItemSchema } from './media.js';
 
 /**
  * Catalog read schemas (spec §6) — the ONE source of truth for the public
@@ -73,6 +74,12 @@ export const TourCardSchema = z.object({
   // null ≠ 0: null là "chưa ai đánh giá", 0 là "bị chấm 0 điểm".
   ratingAvg: z.number().min(0).max(5).nullable(),
   ratingCount: z.int().nonnegative(),
+  // Ảnh bìa — role `hero` của tour (ADR-0020). Đóng "nợ contract #1": trước
+  // đây tour KHÔNG có đường nào ra ảnh, cả ở schema lẫn contract, nên web chỉ
+  // vẽ được ô giữ chỗ. Cùng khuôn `PostCardSchema.cover` đã chạy từ P3a.
+  //
+  // Card chỉ cần MỘT tấm; mảng đầy đủ nằm ở `TourDetailSchema.media`.
+  cover: MediaItemSchema.nullable(),
 });
 
 export type TourCard = z.output<typeof TourCardSchema>;
@@ -121,6 +128,12 @@ export const TourDetailSchema = TourCardSchema.extend({
   faqs: z.array(TourFaqSchema),
   policies: z.array(TourPolicySchema),
   departures: z.array(TourDepartureSchema),
+  // Bộ ảnh đầy đủ nuôi khảm gallery (`tour-gallery.tsx`: 1 ô lớn + 4 ô nhỏ,
+  // lightbox không giới hạn). Trước ADR-0020 trang detail truyền `media={[]}`
+  // cứng vì chỗ này không tồn tại.
+  //
+  // Mảng rỗng là hợp lệ — gallery tự ẩn, không phải lỗi.
+  media: z.array(MediaItemSchema),
 });
 
 export type TourDetail = z.output<typeof TourDetailSchema>;
@@ -138,6 +151,10 @@ export const DestinationSchema = z.object({
   description: z.string().max(2000).nullable(),
   /** Number of PUBLISHED tours touching this destination. */
   tourCount: z.int().nonnegative(),
+  // MỘT tấm, không phải mảng: site không có trang chi tiết địa danh, mỗi địa
+  // danh chỉ xuất hiện dưới dạng một tile. Kho ~10 ảnh mỗi địa danh (ADR-0020
+  // §5) tồn tại để nuôi gallery TOUR, không phải để trưng ở đây.
+  cover: MediaItemSchema.nullable(),
 });
 
 export type Destination = z.output<typeof DestinationSchema>;

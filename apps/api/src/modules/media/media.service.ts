@@ -44,6 +44,13 @@ export class MediaService {
         height: asset.height,
         alt: asset.alt,
         sortOrder: asset.sortOrder,
+        // Ghi công (ADR-0020) đi CÙNG asset ra tới web, không phải tra riêng:
+        // giấy phép CC đòi hiển thị ghi công ở nơi dùng ảnh, nên bốn trường này
+        // phải có mặt ở mọi đường đọc, không chỉ ở màn admin.
+        author: asset.author,
+        license: asset.license,
+        licenseUrl: asset.licenseUrl,
+        sourceUrl: asset.sourceUrl,
       };
       const list = map.get(asset.ownerId);
       if (list) list.push(item);

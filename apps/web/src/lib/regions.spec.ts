@@ -325,7 +325,7 @@ describe('reviewsInRegion — review THẬT của một vùng, phẳng và mới
 function dest(
   overrides: Pick<DestinationVM, 'slug' | 'name' | 'region' | 'tourCount'>,
 ): DestinationVM {
-  return { id: overrides.slug, country: 'Vietnam', description: null, ...overrides };
+  return { id: overrides.slug, country: 'Vietnam', description: null, cover: null, ...overrides };
 }
 
 describe('topDestinations — quyết định user 31/07: Home giữ 9 tile, /destinations mới đủ 19', () => {

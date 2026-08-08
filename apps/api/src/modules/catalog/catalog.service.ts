@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
   Destination,
+  MediaItem,
   Paged,
   TourCard,
   TourCategory,
@@ -9,7 +10,12 @@ import type {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { DepartureStatus } from '../../generated/prisma/enums.js';
+import { DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { MediaService } from '../media/media.service.js';
+
+/** Ảnh bìa = asset role `hero`. null khi owner chưa có ảnh nào (ADR-0020). */
+const pickCover = (media: MediaItem[] | undefined): MediaItem | null =>
+  media?.find((m) => m.role === 'hero') ?? null;
 
 /**
  * Prisma Decimal → chuỗi 2 chữ số thập phân ("39.00", KHÔNG "39"). Khớp mọi
@@ -44,8 +50,18 @@ const SORT_COLUMN = {
   title: 'title',
 } as const satisfies Record<ToursListQuery['sort'], keyof Prisma.TourOrderByWithRelationInput>;
 
-export function toTourCard(tour: TourCardRow): TourCard {
+/**
+ * `cover` là tham số chứ không tự query bên trong: hàm này chạy trong vòng lặp
+ * `map()` trên cả trang kết quả, nên gọi DB ở đây là đẻ ra N+1. Chỗ gọi có
+ * trách nhiệm resolve media MỘT lần cho cả lô rồi truyền xuống — cùng khuôn
+ * `posts.service` đã dùng từ P3a.
+ *
+ * Mặc định `null` để chỗ gọi nào chưa cần ảnh vẫn biên dịch được và trả về
+ * "không có ảnh" một cách tường minh, thay vì thiếu khoá.
+ */
+export function toTourCard(tour: TourCardRow, cover: MediaItem | null = null): TourCard {
   return {
+    cover,
     id: tour.id,
     slug: tour.slug,
     title: tour.title,
@@ -79,6 +95,8 @@ export function toTourCard(tour: TourCardRow): TourCard {
  */
 @Injectable()
 export class CatalogService {
+  constructor(private readonly media: MediaService) {}
+
   async listTours(query: ToursListQuery): Promise<Paged<TourCard>> {
     const { page, limit, category, destination, search, featured, sort, order } = query;
 
@@ -109,8 +127,14 @@ export class CatalogService {
       }),
     ]);
 
+    // MỘT query media cho cả trang (chống N+1) — không gọi trong `map()`.
+    const coverMap = await this.media.resolveForOwners(
+      MediaOwnerType.TOUR,
+      tours.map((t) => t.id),
+    );
+
     return {
-      items: tours.map(toTourCard),
+      items: tours.map((tour) => toTourCard(tour, pickCover(coverMap.get(tour.id)))),
       page,
       limit,
       total,
@@ -138,8 +162,12 @@ export class CatalogService {
     });
     if (!tour) return null;
 
+    // Detail cần CẢ BỘ ảnh (nuôi khảm gallery), khác list chỉ cần một tấm bìa.
+    const media = (await this.media.resolveForOwners(MediaOwnerType.TOUR, [tour.id])).get(tour.id);
+
     return {
-      ...toTourCard(tour),
+      ...toTourCard(tour, pickCover(media)),
+      media: media ?? [],
       suitableFor: tour.suitableFor,
       badges: tour.badges,
       included: tour.included,
@@ -183,6 +211,11 @@ export class CatalogService {
       },
     });
 
+    const coverMap = await this.media.resolveForOwners(
+      MediaOwnerType.DESTINATION,
+      destinations.map((d) => d.id),
+    );
+
     return destinations.map((destination) => ({
       id: destination.id,
       slug: destination.slug,
@@ -191,6 +224,7 @@ export class CatalogService {
       region: destination.region,
       description: destination.description,
       tourCount: destination._count.tours,
+      cover: pickCover(coverMap.get(destination.id)),
     }));
   }
 

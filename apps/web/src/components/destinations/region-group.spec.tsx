@@ -36,6 +36,7 @@ function dest(slug: string, name: string, description: string, tourCount: number
     region: 'Northern Vietnam',
     description,
     tourCount,
+    cover: null,
   };
 }
 

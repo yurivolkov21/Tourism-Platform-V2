@@ -391,6 +391,7 @@ describe('ToursExplorer — facet destination từ API (19 slug thật, khác 9 
     region: 'Southern Vietnam',
     description: null,
     tourCount: 1,
+    cover: null,
   };
 
   it('chọn destination vung-tau (từ URL) lọc đúng ra vung-tau-coastal-2d', () => {

@@ -39,6 +39,7 @@ function tour(slug: string, title: string, durationDays: number): TourCardVM {
     category: { slug: 'trekking', name: 'Trekking' },
     ratingAvg: null,
     ratingCount: 0,
+    cover: null,
   };
 }
 

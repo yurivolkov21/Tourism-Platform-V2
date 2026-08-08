@@ -22,6 +22,7 @@ const BASE: TourCardVM = {
   category: { slug: 'cruises', name: 'Cruises' },
   ratingAvg: 4.8,
   ratingCount: 758,
+  cover: null,
 };
 
 function make(overrides: Partial<TourCardVM> = {}): TourCardVM {

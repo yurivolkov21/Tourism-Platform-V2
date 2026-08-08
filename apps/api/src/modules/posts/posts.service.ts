@@ -110,8 +110,14 @@ export class PostsService {
     const media =
       (await this.media.resolveForOwners(MediaOwnerType.POST, [post.id])).get(post.id) ?? [];
     const cover = media.find((m) => m.role === 'hero') ?? null;
-    // Map sang TourCard bằng mapper dùng chung (KHÔNG media — ADR-0005).
-    const relatedTours = post.relatedTours.map((rt) => toTourCard(rt.tour));
+    // Map sang TourCard bằng mapper dùng chung. Từ ADR-0020, TourCard CÓ ảnh
+    // bìa — nên resolve luôn ở đây, một query cho cả lô related. Không làm thì
+    // tour dưới bài viết hiện ô giữ chỗ trong khi `/tours` đã có ảnh thật.
+    const relatedIds = post.relatedTours.map((rt) => rt.tour.id);
+    const tourCovers = await this.media.resolveForOwners(MediaOwnerType.TOUR, relatedIds);
+    const relatedTours = post.relatedTours.map((rt) =>
+      toTourCard(rt.tour, tourCovers.get(rt.tour.id)?.find((m) => m.role === 'hero') ?? null),
+    );
 
     // `where` đã spread publishedPostWhere() (publishedAt: { lte: now }) nên
     // publishedAt không thể null ở đây — cùng lý do/kỹ thuật thu hẹp kiểu

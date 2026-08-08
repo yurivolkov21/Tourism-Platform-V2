@@ -48,6 +48,7 @@ const CARD = {
   category: { slug: 'cruise', name: 'Cruise' },
   ratingAvg: 4.6,
   ratingCount: 14,
+  cover: null,
 };
 
 describe('CTA điều hướng là LINK, không phải nút', () => {
