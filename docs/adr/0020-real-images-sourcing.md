@@ -1,6 +1,36 @@
 # ADR-0020 — Ảnh thật: nguồn, ghi công, và đường ảnh cho catalog
 
-- **Trạng thái:** Accepted (2026-08-08)
+> ⚠️ **AMENDED 08/08 — mục 1 nói ĐÚNG nhưng KHÔNG ĐỦ, thực tế đã bác bỏ.**
+>
+> Lô đầu tiên gồm 189 ảnh đã seed theo đúng ADR này và **bị user từ chối
+> toàn bộ**: trong đó có ảnh bãi rác thật, ảnh công trình, ảnh sinh hoạt
+> đường phố — không phải ảnh du lịch. Toàn bộ đã bị xoá khỏi Cloudinary và
+> Supabase; commit chứa script chọn ảnh đã bị bỏ khỏi nhánh.
+>
+> Vì sao lọt: mục 1 khẳng định `geosearch` "kiểm chứng được bằng máy rằng ảnh
+> đúng chụp tại địa danh đó". Câu đó **vẫn đúng**, nhưng nó chỉ kiểm chứng
+> **VỊ TRÍ**, không kiểm chứng **CHỦ THỂ trong khung hình**. Một tấm chụp bãi
+> rác ngay tại Hạ Long thì đúng toạ độ, đúng giấy phép, đủ độ phân giải — nó
+> qua sạch mọi bộ lọc đã dựng. "Chụp đúng chỗ" và "ảnh du lịch tốt" là hai
+> chuyện khác nhau; ADR gốc chỉ giải chuyện thứ nhất rồi coi như đã giải cả
+> hai.
+>
+> Hai điều bắt buộc cho mọi lần thử sau:
+>
+> 1. Phải có **cửa lọc theo CHỦ THỂ/CHẤT LƯỢNG**, không chỉ theo vị trí.
+>    Hướng đáng tìm hiểu kỹ: Commons có hệ thống thẩm định của người thật —
+>    `Quality images`, `Featured pictures`, `Valued images` — do reviewer cộng
+>    đồng gắn và đọc được bằng máy qua `prop=categories`.
+> 2. **Duyệt bằng mắt phải đứng TRƯỚC upload**, không phải sau. Lần này bảng
+>    duyệt được dựng sau khi đã đẩy 189 tấm lên CDN và ghi 256 row vào DB —
+>    sai thứ tự, nên việc dọn tốn công gấp nhiều lần.
+>
+> Các mục 2–7 (loại API Unsplash · ghi công bắt buộc · không cắt cúp ảnh
+> ShareAlike · kho ảnh theo địa danh · nở contract · không seed ảnh người)
+> **không bị ảnh hưởng** và vẫn giữ nguyên hiệu lực — phần lược đồ và contract
+> của chúng đã merge trong commit `405d5f5`.
+
+- **Trạng thái:** Accepted (2026-08-08) · mục 1 AMENDED cùng ngày
 - **Bối cảnh thi hành:** nhánh `feat/real-images`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0005](0005-media-read-build-url.md) (đọc media, dựng URL —
@@ -32,6 +62,10 @@ Hiện trạng đo được:
 ## Quyết định
 
 ### 1. Nguồn: Wikimedia Commons chính, Pixabay lấp chỗ
+
+> ⚠️ **AMENDED** — xem khối đầu file. Mục này đúng về NGUỒN và về cách kiểm
+> chứng VỊ TRÍ, nhưng thiếu hẳn cửa lọc theo chủ thể; lô 189 ảnh dựng theo
+> đúng mục này đã bị từ chối toàn bộ.
 
 **Commons làm nguồn chính** vì một lý do không nguồn nào khác có:
 `list=geosearch` lọc theo **toạ độ GPS thật** gắn trong structured data của
