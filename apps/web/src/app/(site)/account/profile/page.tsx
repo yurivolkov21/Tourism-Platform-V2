@@ -1,6 +1,12 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import {
+  AccountRow,
+  AccountRows,
+  AccountSection,
+  AccountSections,
+} from '@/components/account/account-section';
 import { DangerZone } from '@/components/account/danger-zone';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { fetchAccountMe } from '@/lib/api/account';
@@ -33,34 +39,35 @@ export default async function AccountProfilePage() {
   const t = messages.accountProfile;
 
   return (
-    <div className="flex flex-col gap-8">
+    <div>
       {/* Mockup redesign bỏ avatar khỏi trang này: nó chỉ là chữ cái đầu tên
           (chưa có upload ảnh) nên không mang thêm thông tin gì, mà lại chiếm
           đúng chỗ dễ nhìn nhất của trang. Vẫn còn ở navbar cho việc nhận diện. */}
-      <div>
-        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
-          {t.title}
-        </h1>
-        <p className="mt-1 text-muted-foreground">{t.subtitle}</p>
+      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
+
+      <div className="mt-2">
+        <AccountSections>
+          <AccountSection title={t.details.heading} description={t.details.blurb}>
+            <ProfileSummary profile={profile} />
+          </AccountSection>
+
+          <AccountSection title={t.connected.heading} description={t.connected.subtitle}>
+            {/* Chỉ email/password (không có OAuth demo trong seed dev) — danh
+                sách provider thật từ Better Auth/session, có thể nhiều dòng hơn
+                một khi Google OAuth bật (Task 7+ nếu cần). */}
+            <AccountRows>
+              <AccountRow label={t.connected.emailPassword}>
+                <span className="text-muted-foreground">{profile.email}</span>
+              </AccountRow>
+            </AccountRows>
+          </AccountSection>
+
+          <AccountSection title={t.danger.heading} description={t.danger.subtitle}>
+            <DangerZone />
+          </AccountSection>
+        </AccountSections>
       </div>
-
-      <ProfileSummary profile={profile} />
-
-      <section className="rounded-2xl border bg-card p-6">
-        <h2 className="font-heading text-lg font-medium text-foreground">{t.connected.heading}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{t.connected.subtitle}</p>
-        {/* Chỉ email/password (không có OAuth demo trong seed dev) — danh
-            sách provider thật từ Better Auth/session, có thể nhiều dòng hơn
-            một khi Google OAuth bật (Task 7+ nếu cần). */}
-        <ul className="mt-4 flex flex-col gap-2">
-          <li className="flex items-center justify-between rounded-xl border px-4 py-3 text-sm">
-            <span className="text-foreground">{t.connected.emailPassword}</span>
-            <span className="text-muted-foreground">{profile.email}</span>
-          </li>
-        </ul>
-      </section>
-
-      <DangerZone />
     </div>
   );
 }

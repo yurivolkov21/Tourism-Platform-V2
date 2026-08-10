@@ -4,6 +4,7 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { AccountRows, AccountSection, AccountSections } from '@/components/account/account-section';
 import { BookingCard } from '@/components/account/booking-card';
 import { groupBookingsByTime } from '@/lib/account-stats';
 import { BOOKINGS_MAX_LIMIT, BOOKINGS_PAGE_SIZE, fetchMyBookings } from '@/lib/api/bookings';
@@ -78,52 +79,58 @@ export default async function AccountBookingsPage({
   ] as const;
 
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
-          {t.title}
-        </h1>
-        <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
-      </div>
+    <div>
+      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
       {bookings.length === 0 ? (
-        <EmptyState />
+        <div className="mt-2">
+          <EmptyState />
+        </div>
       ) : (
-        <>
-          {/* Ba nhóm thời gian thay danh sách phẳng. Nhóm rỗng KHÔNG render
-              tiêu đề — một khối "On the road now" trống rỗng đọc như trang
-              hỏng chứ không như tin "bạn đang ở nhà". */}
-          {GROUPS.map(({ key, items }) =>
-            items.length === 0 ? null : (
-              <section key={key}>
-                <h2 className="mb-2.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
-                  {t.groups[key]}
-                </h2>
-                {/* MỘT tấm sheet ngăn hairline cho cả nhóm — `divide-y` giữ
-                    đường ngăn mảnh, không nhân đôi viền như card rời. */}
-                <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
-                  {items.map((booking) => (
-                    <BookingCard
-                      key={booking.id}
-                      booking={booking}
-                      showEndsHint={key === 'onTheRoad'}
-                    />
-                  ))}
-                </ul>
-              </section>
-            ),
-          )}
+        <div className="mt-2">
+          {/* MỖI NHÓM THỜI GIAN LÀ MỘT MỤC của lưới chung: cột trái là tên nhóm
+              + mô tả + số đếm, cột phải là các dòng booking. Nhóm rỗng KHÔNG
+              render — một mục "On the road now" trống đọc như trang hỏng chứ
+              không như tin "bạn đang ở nhà". */}
+          <AccountSections>
+            {GROUPS.map(({ key, items }) =>
+              items.length === 0 ? null : (
+                <AccountSection
+                  key={key}
+                  title={t.groups[key]}
+                  description={t.groupBlurbs[key]}
+                  meta={t.tripCount(items.length)}
+                >
+                  <AccountRows>
+                    {items.map((booking) => (
+                      <BookingCard
+                        key={booking.id}
+                        booking={booking}
+                        showEndsHint={key === 'onTheRoad'}
+                      />
+                    ))}
+                  </AccountRows>
+                </AccountSection>
+              ),
+            )}
+          </AccountSections>
+          {/* "Load more" đứng SAU tất cả các nhóm, không nằm trong nhóm nào —
+              nó tải thêm cho cả danh sách chứ không riêng nhóm cuối, và nhóm
+              cuối có thể rỗng. Bám mép PHẢI container như mọi hành động khác
+              trong khu này; căn giữa là một toạ độ x thứ tư và nó còn xê dịch
+              theo bề rộng nút. */}
           {hasMore ? (
-            <div className="flex justify-center">
+            <div className="flex justify-end border-t pt-6">
               <Link
                 href={`/account/bookings?page=${chunk + 1}`}
-                className={buttonVariants({ variant: 'outline' })}
+                className={buttonVariants({ variant: 'outline', size: 'lg' })}
               >
                 {t.loadMore}
               </Link>
             </div>
           ) : null}
-        </>
+        </div>
       )}
     </div>
   );

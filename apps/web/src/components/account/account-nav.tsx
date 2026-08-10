@@ -5,10 +5,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 /**
- * 4 tab khu account (dashboard/bookings/saved/profile — spec §3, đủ 6 route
- * nhưng `security` chỉ redirect nên không có tab riêng). `bookings`/`profile`
- * trỏ route Task 4 chưa dựng lúc Task 3 chạy — CÙNG branch, route sẽ sống
- * trước mốc DỪNG A1 (Task 5) nên không phải link chết khi user duyệt.
+ * 4 tab khu account. `security` chỉ redirect 308 sang profile nên không có tab
+ * riêng — "đủ route không đủ tab".
  */
 const TABS = [
   { href: '/account', key: 'dashboard' as const },
@@ -18,42 +16,77 @@ const TABS = [
 ] as const;
 
 /**
- * Tab nội khu — khuôn mượn từ `CategoryChips` (blog): cùng cách tô sáng tab
- * hiện tại (`border-primary bg-primary text-primary-foreground`) và cùng
- * `aria-current="page"`, KHÔNG dùng `Tabs`/`TabsList` của `@tourism/ui`
- * (primitive đó điều khiển panel qua state JS trong MỘT trang — ở đây mỗi
- * tab là một ROUTE thật, điều hướng bằng URL). Cần `usePathname()` (client)
- * để biết tab nào đang mở — layout.tsx bọc ngoài vẫn là server component,
- * chỉ tách riêng phần nav này ra client.
+ * Tab nội khu — kiểu GẠCH CHÂN, không phải chip bo tròn (bản trước) và không
+ * phải cột dọc (bản 10/08 đã bị bác).
+ *
+ * Vì sao gạch chân: chip có nền và viền riêng nên nó tự tạo một mép trái thứ
+ * hai — chữ trong chip thụt vào so với mép container. Cột dọc còn tệ hơn, nó
+ * thụt 32px. Gạch chân không có hộp, nên nhãn tab ĐẦU TIÊN bắt đầu đúng x của
+ * mép container, trùng lề với H1, tiêu đề mục và đầu mọi đường kẻ bên dưới.
+ * Đây là lý do kỹ thuật, không phải khẩu vị: cả khu account chỉ được có ba toạ
+ * độ x, và mọi thứ có hộp riêng đều đẻ ra toạ độ thứ tư.
+ *
+ * Đặt TRÊN CÙNG, trước H1 của từng trang: thanh điều hướng phải đứng yên một
+ * chỗ khi đổi tab. Để dưới H1 thì tiêu đề dài ngắn khác nhau sẽ đẩy nó nhấp
+ * nhô giữa các trang.
+ *
+ * Nhãn dùng Literata (`font-heading`) — bốn tab là bốn NƠI, và địa danh trên
+ * site này luôn viết bằng serif. Giữ `text-base`: H1 các trang con là
+ * `text-2xl`, leo lên đó thì tab và tiêu đề trang thành hai dòng chữ ngang cỡ.
+ *
+ * KHÔNG dùng `Tabs`/`TabsList` của `@tourism/ui`: primitive đó điều khiển panel
+ * bằng state trong MỘT trang, còn ở đây mỗi tab là một ROUTE thật — cần
+ * `<Link>` + `aria-current`, không cần state machine.
  */
 export function AccountNav() {
   const pathname = usePathname();
   const t = messages.accountNav;
 
   return (
-    <nav aria-label="Account" className="flex flex-wrap items-center gap-2 border-b pb-4">
-      {TABS.map((tab) => {
-        // Dashboard là route gốc `/account` — so khớp CHÍNH XÁC (không thì
-        // mọi tab con cũng khớp prefix `/account` và tab Dashboard luôn sáng
-        // dù đang ở /account/saved). Các tab khác so khớp cả path con (vd
-        // `/account/bookings/BK-XXXX` vẫn sáng tab Bookings).
-        const isActive =
-          tab.href === '/account' ? pathname === '/account' : pathname.startsWith(tab.href);
-        return (
-          <Link
-            key={tab.href}
-            href={tab.href}
-            aria-current={isActive ? 'page' : undefined}
-            className={`rounded-full border px-4 py-1.5 text-sm font-medium transition-colors ${
-              isActive
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border text-muted-foreground hover:border-primary/40 hover:text-foreground'
-            }`}
-          >
-            {t[tab.key]}
-          </Link>
-        );
-      })}
+    <nav aria-label={t.ariaLabel} className="border-b">
+      {/* `-mx-4 px-4` ở màn nhỏ để dải tab cuộn được sát mép màn hình mà chữ
+          vẫn thẳng lề nội dung. Từ `sm:` trả về 0 để tab đầu tiên trùng đúng
+          mép container. */}
+      <ul className="-mx-4 flex gap-x-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        {TABS.map((tab) => {
+          // Dashboard là route gốc `/account` — so khớp CHÍNH XÁC. Không thì
+          // mọi route con cũng khớp prefix và Dashboard luôn sáng. Các tab khác
+          // so khớp cả path con (`/account/bookings/BK-XXXX` vẫn sáng Bookings).
+          const isActive =
+            tab.href === '/account' ? pathname === '/account' : pathname.startsWith(tab.href);
+          return (
+            <li key={tab.href} className="shrink-0">
+              <Link
+                href={tab.href}
+                aria-current={isActive ? 'page' : undefined}
+                // `-outline-offset-2` (offset ÂM): `ul` có `overflow-x-auto`,
+                // vòng focus offset dương bị cắt ở tab đầu và tab cuối. Lỗi này
+                // không hiện trong ảnh chụp, chỉ hiện khi tab bằng bàn phím.
+                className={`relative block rounded-sm py-3 font-heading text-base whitespace-nowrap outline-ring transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 ${
+                  isActive
+                    ? 'font-medium text-foreground'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t[tab.key]}
+                {/* Gạch chân 2px ngồi ĐÈ lên ray 1px của `border-b` nhờ
+                    `-bottom-px`. Rộng đúng bề rộng chữ vì `inset-x-0` của một
+                    khối không padding ngang.
+                    `primary-emphasis` chứ không `primary`: đo `primary` trên nền
+                    tối chỉ 2.91:1, rớt mốc 3:1 của WCAG 1.4.11; `primary-emphasis`
+                    ra 7.10. Xem đính chính ở ADR-0019 mục 2 về việc dùng token
+                    này cho một hình đặc không cõng chữ. */}
+                {isActive ? (
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-x-0 -bottom-px h-0.5 bg-primary-emphasis"
+                  />
+                ) : null}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
     </nav>
   );
 }

@@ -5,11 +5,16 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import {
+  AccountRow,
+  AccountRows,
+  AccountSection,
+  AccountSections,
+} from '@/components/account/account-section';
 import { BookingActions } from '@/components/account/booking-actions';
 import { ReviewForm } from '@/components/account/review-form';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView, toCancellationView } from '@/lib/booking-vm';
 import { reviewSlot } from '@/lib/review';
 import { formatDateRange, formatMoney } from '@/lib/tours';
@@ -81,8 +86,13 @@ export default async function AccountBookingDetailPage({
   // status[...]`), KHÔNG if/else riêng theo từng status ở đây.
   const terminalNote = t.terminalNote[view.statusKey];
 
+  const sec = t.sections;
+
   return (
-    <div className="flex flex-col gap-8">
+    <div>
+      {/* Back-link đứng TRÊN H1 như breadcrumb của Airbnb: nó nói "bạn đang ở
+          trong Trips", tức thuộc về thanh điều hướng chứ không thuộc về nội
+          dung trang. */}
       <Link
         href="/account/bookings"
         className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -90,104 +100,98 @@ export default async function AccountBookingDetailPage({
         <ArrowLeftIcon className="size-3.5" aria-hidden="true" />
         {t.back}
       </Link>
+      <h1 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
+        {booking.tourTitle}
+      </h1>
+      {/* Mã + trạng thái thành MỘT dòng mono dưới tiêu đề, thay pill
+          `TONE_CLASS` — pill dùng `bg-warning/10 text-warning`, mà `warning`
+          trên nền ở chế độ sáng đo 1.90:1. */}
+      <p className="mt-2 font-mono text-xs tracking-[0.16em] text-muted-foreground uppercase">
+        {booking.code}
+        {' · '}
+        {messages.booking.list.status[booking.status]}
+      </p>
 
-      <div>
-        <div className="flex items-center gap-2.5">
-          <span
-            className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASS[view.tone]}`}
-          >
-            {messages.booking.list.status[booking.status]}
-          </span>
-          <span className="font-mono text-xs text-muted-foreground">{booking.code}</span>
-        </div>
-        <h1 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
-          {booking.tourTitle}
-        </h1>
-      </div>
+      <div className="mt-2">
+        <AccountSections>
+          <AccountSection title={sec.bookingHeading} description={sec.bookingBlurb}>
+            <AccountRows>
+              <AccountRow label={t.departureLabel}>
+                <span className="text-foreground tabular-nums">
+                  {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+                </span>
+              </AccountRow>
+              <AccountRow label={t.travellersLabel}>
+                <span className="text-foreground tabular-nums">
+                  {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
+                </span>
+              </AccountRow>
+              <AccountRow label={t.refLabel}>
+                <span className="font-mono text-foreground">{booking.code}</span>
+              </AccountRow>
+              <AccountRow label={t.paymentLabel}>
+                <span className="text-foreground">{PROVIDER_LABEL[booking.paymentProvider]}</span>
+              </AccountRow>
+              {/* Dòng TỔNG đóng danh sách — cùng khuôn dòng, chỉ đậm hơn. */}
+              <AccountRow label={<span className="font-medium">{t.totalLabel}</span>}>
+                <span className="font-medium text-foreground tabular-nums">
+                  {formatMoney(booking.totalAmount, booking.currency)}
+                </span>
+              </AccountRow>
+            </AccountRows>
+          </AccountSection>
 
-      <dl className="grid gap-6 rounded-2xl border bg-card p-6 sm:grid-cols-2">
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.departureLabel}</dt>
-          <dd className="mt-1 text-foreground">
-            {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.travellersLabel}</dt>
-          <dd className="mt-1 text-foreground">
-            {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.refLabel}</dt>
-          <dd className="mt-1 font-mono text-foreground">{booking.code}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.totalLabel}</dt>
-          <dd className="mt-1 font-heading text-lg font-semibold tabular-nums text-foreground">
-            {formatMoney(booking.totalAmount, booking.currency)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.paymentLabel}</dt>
-          <dd className="mt-1 text-foreground">{PROVIDER_LABEL[booking.paymentProvider]}</dd>
-        </div>
-        <div>
-          <dt className="text-sm text-muted-foreground">{t.contactLabel}</dt>
-          <dd className="mt-1 text-foreground">
-            {booking.contactName}
-            <br />
-            <span className="text-muted-foreground">{booking.contactEmail}</span>
-            {booking.contactPhone ? (
-              <>
-                <br />
-                <span className="text-muted-foreground">{booking.contactPhone}</span>
-              </>
+          <AccountSection title={sec.contactHeading} description={sec.contactBlurb}>
+            <AccountRows>
+              <AccountRow label={t.contactLabel} sub={booking.contactName}>
+                <span className="block text-muted-foreground">{booking.contactEmail}</span>
+                {booking.contactPhone ? (
+                  <span className="mt-0.5 block text-muted-foreground tabular-nums">
+                    {booking.contactPhone}
+                  </span>
+                ) : null}
+              </AccountRow>
+              {booking.specialRequests ? (
+                <AccountRow label={t.requestsLabel} sub={booking.specialRequests} />
+              ) : null}
+            </AccountRows>
+          </AccountSection>
+
+          <AccountSection title={sec.actionsHeading} description={sec.actionsBlurb}>
+            {terminalNote ? (
+              <p className="mb-4 text-sm text-muted-foreground">{terminalNote}</p>
             ) : null}
-          </dd>
-        </div>
-        {booking.specialRequests ? (
-          <div className="sm:col-span-2">
-            <dt className="text-sm text-muted-foreground">{t.requestsLabel}</dt>
-            <dd className="mt-1 text-pretty text-foreground">{booking.specialRequests}</dd>
-          </div>
-        ) : null}
-      </dl>
+            <BookingActions
+              view={view}
+              // Task 7 (A2): `code` — KHÔNG `onAction` (Server Component không
+              // truyền được hàm client thật qua RSC boundary, xem JSDoc
+              // `BookingActions`); component tự dựng handler thật từ mã này.
+              code={booking.code}
+            />
+            <Link
+              href="/cancellation-policy"
+              className="mt-4 inline-block text-sm text-primary-emphasis underline-offset-4 hover:underline"
+            >
+              {t.policyLink}
+            </Link>
+          </AccountSection>
 
-      <div className="flex flex-col gap-3">
-        <BookingActions
-          view={view}
-          // Task 7 (A2): `code` — KHÔNG `onAction` (Server Component không
-          // truyền được hàm client thật qua RSC boundary, xem JSDoc
-          // `BookingActions`); component tự dựng handler thật từ mã này.
-          code={booking.code}
-        />
-        {terminalNote ? <p className="text-sm text-muted-foreground">{terminalNote}</p> : null}
-        <Link href="/cancellation-policy" className="text-sm text-primary-emphasis hover:underline">
-          {t.policyLink}
-        </Link>
-      </div>
-
-      {/* Cụm B nửa 2 — chỗ giữ chỗ tĩnh nay thành form thật. Đặt SAU khối
-          thông tin booking có chủ đích: câu hỏi đầu tiên khi mở trang này gần
-          như luôn là "tiền của tôi đâu", nên lời mời đánh giá không được chen
-          lên trước nó. */}
-      {slot === 'hidden' ? null : (
-        <section className="rounded-2xl border bg-card p-6">
-          {slot === 'form' ? (
-            <ReviewForm bookingCode={booking.code} />
-          ) : (
-            <>
-              <h2 className="font-heading text-lg font-medium text-foreground">
-                {slot === 'done' ? rv.alreadyReviewedTitle : rv.tooEarlyTitle}
-              </h2>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
-              </p>
-            </>
+          {/* Cụm B nửa 2. Đặt SAU khối thông tin booking có chủ đích: câu hỏi
+              đầu tiên khi mở trang này gần như luôn là "tiền của tôi đâu", nên
+              lời mời đánh giá không được chen lên trước nó. */}
+          {slot === 'hidden' ? null : (
+            <AccountSection title={sec.reviewHeading} description={sec.reviewBlurb}>
+              {slot === 'form' ? (
+                <ReviewForm bookingCode={booking.code} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
+                </p>
+              )}
+            </AccountSection>
           )}
-        </section>
-      )}
+        </AccountSections>
+      </div>
     </div>
   );
 }

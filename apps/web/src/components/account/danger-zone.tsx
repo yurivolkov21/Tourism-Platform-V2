@@ -69,10 +69,12 @@ export function DangerZone() {
   }
 
   return (
-    <section className="rounded-2xl border border-destructive/30 bg-destructive/5 p-6">
-      <h2 className="font-heading text-lg font-medium text-foreground">{t.heading}</h2>
-      <p className="mt-1 text-sm text-muted-foreground">{t.subtitle}</p>
-
+    // Bỏ vỏ `<section>` + tiêu đề + hộp nền đỏ: `AccountSection` bọc ngoài đã
+    // cung cấp tiêu đề và mô tả, giữ lại là hiện heading hai lần. Hộp nền cũng
+    // phải đi — nó có mép trái riêng nên đẻ ra một toạ độ x thứ tư ngoài lưới.
+    // Sức nặng cảnh báo nay do CHỮ mang: nút `variant="destructive"` và hộp
+    // thoại xác nhận gõ-để-chắc, không do một mảng màu nền.
+    <div className="flex justify-end">
       <AlertDialog
         onOpenChange={(open) => {
           if (!open) {
@@ -83,7 +85,7 @@ export function DangerZone() {
       >
         <AlertDialogTrigger
           render={
-            <Button type="button" variant="destructive" className="mt-4">
+            <Button type="button" variant="destructive" size="lg">
               {t.deleteCta}
             </Button>
           }
@@ -124,6 +126,6 @@ export function DangerZone() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </section>
+    </div>
   );
 }

@@ -2,11 +2,14 @@ import type { Booking, WishlistItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import Link from 'next/link';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import {
+  AccountRow,
+  AccountRows,
+  AccountSection,
+  AccountSections,
+} from '@/components/account/account-section';
+import { BookingCard } from '@/components/account/booking-card';
 import { dashboardStats, daysUntilDeparture, nextTrip, recentBookings } from '@/lib/account-stats';
-import { TONE_CLASS } from '@/lib/booking-tone';
-import { bookingView } from '@/lib/booking-vm';
-import { formatMoney } from '@/lib/tours';
 
 /** Bao nhiêu dòng trong khối "Recent bookings" — bản trích ngắn, danh sách đủ
  *  nằm ở `/account/bookings`. */
@@ -89,98 +92,75 @@ export function AccountDashboard({
   const recent = recentBookings(bookings, RECENT_LIMIT);
 
   return (
-    <div className="flex flex-col gap-10">
+    <AccountSections>
       {trip ? (
-        <section>
-          <h2 className="mb-2.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
-            {t.nextTrip.heading}
-          </h2>
-          <div className="flex flex-col gap-5 rounded-2xl border bg-card p-5 shadow-sm sm:flex-row sm:items-center">
-            <ImagePlaceholder className="aspect-[4/3] w-full shrink-0 rounded-xl sm:w-40" />
-            <div className="flex min-w-0 flex-col gap-2">
-              <p className="font-heading text-xl font-semibold text-foreground">{trip.tourTitle}</p>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {t.nextTrip.departing(trip.departureStartDate)} ·{' '}
-                {t.nextTrip.travellers(trip.numAdults + trip.numChildren)}
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col items-start gap-1.5 sm:ml-auto sm:items-end">
+        <AccountSection title={t.nextTrip.heading} description={t.nextTrip.blurb}>
+          {/* Không còn card nâng bằng `shadow-sm` và không còn ảnh placeholder:
+              cả hai đều có mép riêng nằm ngoài lưới ba toạ độ, và ảnh thì hiện
+              chỉ là ô xám (lô ảnh thật đã bị loại). Sức nặng của khối này nay
+              do CON SỐ mang — đây là số lớn DUY NHẤT của cả khu account. */}
+          <AccountRows>
+            <AccountRow
+              label={trip.tourTitle}
+              sub={
+                <span className="tabular-nums">
+                  {t.nextTrip.departing(trip.departureStartDate)} ·{' '}
+                  {t.nextTrip.travellers(trip.numAdults + trip.numChildren)}
+                </span>
+              }
+            >
               <Countdown startDate={trip.departureStartDate} />
               <Link
                 href={`/account/bookings/${trip.code}`}
-                className="text-sm font-medium text-primary-emphasis hover:underline"
+                className="mt-1 block text-sm font-medium text-primary-emphasis underline-offset-4 hover:underline"
               >
                 {t.nextTrip.viewBooking}
               </Link>
-            </div>
-          </div>
-        </section>
+            </AccountRow>
+          </AccountRows>
+        </AccountSection>
       ) : null}
 
       {/* HAI ô số, không phải bốn: "upcoming"/"completed" lặp lại thứ khối
-          "Recent bookings" ngay dưới đã nói rõ hơn. */}
-      <dl className="grid grid-cols-2 gap-4">
-        {(['trips', 'saved'] as const).map((key) => (
-          <div key={key} className="rounded-2xl border bg-card p-5">
-            <dt className="text-sm text-muted-foreground">{t.stats[key]}</dt>
-            <dd className="mt-1 font-heading text-3xl font-semibold tabular-nums text-foreground">
-              {stats[key]}
-            </dd>
-          </div>
-        ))}
-      </dl>
+          "Recent bookings" ngay dưới đã nói rõ hơn. Nay chúng là hai DÒNG dữ
+          liệu chứ không phải hai hộp — cùng khuôn với mọi dòng khác trong khu,
+          và bỏ được hai mép hộp ngoài lưới. */}
+      <AccountSection title={t.stats.heading} description={t.stats.blurb}>
+        <AccountRows>
+          {(['trips', 'saved'] as const).map((key) => (
+            <AccountRow key={key} label={t.stats[key]}>
+              <span className="font-mono text-sm text-foreground tabular-nums">{stats[key]}</span>
+            </AccountRow>
+          ))}
+        </AccountRows>
+      </AccountSection>
 
-      <section>
-        <div className="flex items-center justify-between">
-          <h2 className="font-heading text-lg font-medium text-foreground">{t.recent.heading}</h2>
-          <Link href="/account/bookings" className="text-sm text-primary-emphasis hover:underline">
+      <AccountSection
+        title={t.recent.heading}
+        description={t.recent.blurb}
+        meta={
+          <Link
+            href="/account/bookings"
+            className="text-primary-emphasis underline-offset-4 hover:underline"
+          >
             {t.recent.viewAll}
           </Link>
-        </div>
+        }
+      >
         {recent.length === 0 ? (
-          <p className="mt-4 text-sm text-muted-foreground">{t.recent.empty}</p>
+          <p className="text-sm text-muted-foreground">{t.recent.empty}</p>
         ) : (
-          /* MỘT tấm sheet ngăn bằng hairline thay vì nhiều card rời — bản cũ
-             cho mỗi booking một khung viền, đọc thành danh sách hộp thay vì
-             một bảng. `divide-y` giữ đường ngăn mảnh, không nhân đôi viền. */
-          <ul className="mt-4 divide-y overflow-hidden rounded-2xl border bg-card">
-            {recent.map((booking) => {
-              const view = bookingView(booking);
-              return (
-                <li key={booking.id}>
-                  <Link
-                    href={`/account/bookings/${booking.code}`}
-                    className="flex items-center gap-4 p-4 transition-colors hover:bg-accent/40"
-                  >
-                    <span className="hidden shrink-0 font-mono text-xs text-muted-foreground sm:inline">
-                      {booking.code}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium text-foreground">
-                        {booking.tourTitle}
-                      </span>
-                      <span className="block text-sm text-muted-foreground tabular-nums">
-                        {booking.departureStartDate}
-                      </span>
-                    </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASS[view.tone]}`}
-                    >
-                      {/* Nguồn label status DUY NHẤT: `booking.list.status` —
-                          cùng khối i18n trang `/account/bookings` dùng, tránh
-                          drift chuỗi giữa hai nơi hiện cùng một enum. */}
-                      {messages.booking.list.status[booking.status]}
-                    </span>
-                    <span className="hidden shrink-0 font-medium tabular-nums text-foreground sm:inline">
-                      {formatMoney(booking.totalAmount, booking.currency)}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+          /* Dùng lại NGUYÊN `BookingCard` của `/account/bookings` thay vì dựng
+             bản thứ hai: hai màn hiện cùng một thứ thì phải cùng một dòng, và
+             bản cũ ở đây còn mang pill `TONE_CLASS` — thứ đo được 1.90:1 ở chế
+             độ sáng. */
+          <AccountRows>
+            {recent.map((booking) => (
+              <BookingCard key={booking.id} booking={booking} />
+            ))}
+          </AccountRows>
         )}
-      </section>
-    </div>
+      </AccountSection>
+    </AccountSections>
   );
 }

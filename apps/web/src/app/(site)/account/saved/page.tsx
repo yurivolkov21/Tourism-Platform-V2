@@ -1,6 +1,7 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { AccountSection, AccountSections } from '@/components/account/account-section';
 import { SavedGrid } from '@/components/account/saved-grid';
 import { requireSession } from '@/lib/api/session';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
@@ -26,14 +27,20 @@ export default async function AccountSavedPage() {
 
   const t = messages.accountSaved;
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
-          {t.title}
-        </h1>
-        <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
+    <div>
+      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
+      <div className="mt-2">
+        <AccountSections>
+          <AccountSection
+            title={t.listHeading}
+            description={t.blurb}
+            meta={t.savedCount(wishlist.length)}
+          >
+            <SavedGrid initialItems={wishlist} />
+          </AccountSection>
+        </AccountSections>
       </div>
-      <SavedGrid initialItems={wishlist} />
     </div>
   );
 }

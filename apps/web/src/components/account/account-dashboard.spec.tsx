@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import type { WishlistItem } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
@@ -159,10 +159,13 @@ describe('AccountDashboard — Recent bookings', () => {
       departureStartDate: '2026-12-31',
     });
     render(<AccountDashboard bookings={[older, newer]} wishlist={[]} />);
-    // Đo TRONG danh sách, không đo cả trang: 'Booked First' khởi hành gần hơn
-    // nên nó còn xuất hiện ở thẻ "chuyến kế tiếp" phía trên, và phép đo toàn
-    // trang sẽ bắt nhầm lần xuất hiện đó.
-    const rows = screen.getAllByRole('listitem').map((li) => li.textContent ?? '');
+    // Đo TRONG mục "Recent bookings", không đo cả trang: 'Booked First' khởi
+    // hành gần hơn nên nó còn xuất hiện ở mục "chuyến kế tiếp" phía trên, và
+    // từ redesign 11/08 thì mục "At a glance" cũng có dòng `<li>` riêng — quét
+    // toàn trang sẽ bắt nhầm cả hai. Mỗi mục là một `region` có tên (xem
+    // `AccountSection`), nên khoanh vùng bằng chính tên đó.
+    const list = within(screen.getByRole('region', { name: 'Recent bookings' }));
+    const rows = list.getAllByRole('listitem').map((li) => li.textContent ?? '');
     expect(rows[0]).toContain('Booked Later');
     expect(rows[1]).toContain('Booked First');
   });

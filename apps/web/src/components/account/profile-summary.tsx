@@ -37,22 +37,28 @@ function SummaryRow({
   children?: ReactNode;
 }) {
   return (
-    <li className="p-4">
-      <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span className="w-24 shrink-0 text-sm text-muted-foreground">{label}</span>
-        {/* Đang sửa thì form THAY THẾ giá trị, không xếp chồng dưới nó. Bản
-            đầu tiên xếp chồng và nhìn ảnh thật mới thấy: nhãn trường hiện hai
-            lần, và có hai nút Cancel cạnh nhau — người dùng không biết cái nào
-            là cái nào. */}
-        {editing ? (
-          <div className="min-w-0 flex-1">{children}</div>
-        ) : (
-          <>
-            <span className="min-w-0 flex-1 text-foreground">{value}</span>
-            {action}
-          </>
-        )}
-      </div>
+    <li className="py-4">
+      {/* Đang sửa thì form THAY THẾ giá trị, không xếp chồng dưới nó. Bản đầu
+          tiên xếp chồng và nhìn ảnh thật mới thấy: nhãn trường hiện hai lần, và
+          có hai nút Cancel cạnh nhau — người dùng không biết cái nào là cái nào. */}
+      {editing ? (
+        <>
+          <div className="text-sm font-medium text-foreground">{label}</div>
+          {children}
+        </>
+      ) : (
+        // Khuôn Airbnb "Personal info": nhãn ĐẬM trên, giá trị mờ dưới, hành
+        // động bám mép phải. Bản trước cho nhãn một cột cứng `w-24` rồi thả
+        // giá trị `flex-1` — nên ở cột rộng, hành động bị đẩy cách giá trị tới
+        // ~790px trống, và người đọc không nối được hai thứ với nhau.
+        <div className="flex items-baseline justify-between gap-6">
+          <div className="min-w-0">
+            <div className="text-sm font-medium text-foreground">{label}</div>
+            <div className="mt-0.5 text-sm text-muted-foreground">{value}</div>
+          </div>
+          <div className="shrink-0">{action}</div>
+        </div>
+      )}
     </li>
   );
 }
@@ -117,8 +123,11 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   const changeButton = (field: EditableField, label: string) => (
     <Button
       type="button"
-      variant="ghost"
+      variant="link"
       size="sm"
+      // `px-0`: variant link vẫn mang padding ngang của size, và 10px đó đẩy
+      // chữ lệch khỏi mép phải container — mất đúng toạ độ thứ ba của lưới.
+      className="h-auto px-0"
       aria-expanded={open === field}
       aria-label={s.changeAria(label)}
       onClick={() => setOpen(field)}
@@ -139,7 +148,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   ) : null;
 
   return (
-    <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+    <ul className="divide-y">
       <SummaryRow
         label={t.details.nameLabel}
         value={profile.name}

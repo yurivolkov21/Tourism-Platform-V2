@@ -2416,6 +2416,9 @@ export const messages = {
   // nav dùng chung cho layout.tsx. `bookings`/`profile` trỏ route Task 4 chưa
   // dựng lúc Task 3 chạy — cùng nhánh, route sẽ sống trước mốc DỪNG A1 (Task 5).
   accountNav: {
+    /** Tên khả truy cập của dải tab. Trước đây hardcode thẳng trong component
+     *  — copy user-facing phải gom ở đây (luật #7), kể cả `aria-label`. */
+    ariaLabel: 'Account sections',
     dashboard: 'Dashboard',
     bookings: 'Bookings',
     saved: 'Saved tours',
@@ -2440,9 +2443,14 @@ export const messages = {
       // Đổi NHÃN cho trung thực với con số, không đổi phép đếm.
       trips: 'Trips paid',
       saved: 'Tours saved',
+      /** Tiêu đề + mô tả mục "ô số" (redesign 11/08). */
+      heading: 'At a glance',
+      blurb: 'Your account in two numbers.',
     },
     nextTrip: {
       heading: 'Your next trip',
+      /** Mô tả cột trái. Mọi mục trong khu account đều có một dòng như vậy. */
+      blurb: 'The next departure you’ve paid for.',
       departing: (date: string) => `Departing ${date}`,
       /** Đồng hồ đếm ngược: con số đứng riêng cỡ lớn, dòng này là nhãn dưới nó. */
       daysAway: 'days away',
@@ -2454,6 +2462,8 @@ export const messages = {
     },
     recent: {
       heading: 'Recent bookings',
+      /** Mô tả cột trái. */
+      blurb: 'Your five most recent, newest first.',
       viewAll: 'See all',
       empty: 'No bookings yet.',
     },
@@ -2478,6 +2488,11 @@ export const messages = {
   accountSaved: {
     title: 'Saved tours',
     subtitle: 'Tours you’ve bookmarked to plan later.',
+    /** Tiêu đề MỤC ở cột trái — cố ý KHÁC `title` của trang. Đặt trùng thì cột
+     *  trái và H1 thành hai dòng chữ y hệt nhau cách nhau vài chục px. */
+    listHeading: 'Your list',
+    blurb: 'Ready whenever you are.',
+    savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
     removeAria: (title: string) => `Remove ${title} from saved tours`,
     unavailable: 'No longer available',
     emptyState: {
@@ -2509,6 +2524,15 @@ export const messages = {
       upcoming: 'Upcoming',
       past: 'Past',
     },
+    /** Mô tả một dòng cho cột trái của mỗi nhóm (redesign 10/08). Mọi mục đều
+     *  phải có — mục im lặng cạnh mục đang nói đọc như lỗi tải. */
+    groupBlurbs: {
+      onTheRoad: 'Happening right now.',
+      upcoming: 'Booked and still ahead of you.',
+      past: 'Trips you’ve already taken.',
+    },
+    /** Dòng đếm dưới mô tả. Số ít/số nhiều tách bạch để không ra "1 trips". */
+    tripCount: (n: number) => (n === 1 ? '1 trip' : `${n} trips`),
     /** Gợi ý ngày kết thúc, chỉ hiện ở nhóm "đang đi". */
     endsToday: 'ends today',
     endsTomorrow: 'ends tomorrow',
@@ -2548,6 +2572,18 @@ export const messages = {
     paymentLabel: 'Payment method',
     contactLabel: 'Contact',
     requestsLabel: 'Special requests',
+    /** Ba mục của trang chi tiết (redesign 11/08) — cột trái mỗi mục là tiêu
+     *  đề + một dòng mô tả, giống mọi màn khác trong khu account. */
+    sections: {
+      bookingHeading: 'This booking',
+      bookingBlurb: 'Reference, dates, and who’s travelling.',
+      contactHeading: 'Contact',
+      contactBlurb: 'Where we’ll reach you about this trip.',
+      actionsHeading: 'Manage',
+      actionsBlurb: 'Pay, cancel, or read the refund rules.',
+      reviewHeading: 'Your review',
+      reviewBlurb: 'Tell other travellers how it went.',
+    },
     // Terminal (CANCELLED/REFUNDED/PARTIALLY_REFUNDED — `actions: []` ở
     // `bookingView`) không có amount đã hoàn ở đây: `Booking` (contract
     // khách, `BookingSchema`) KHÔNG mang field ledger đó — chỉ
@@ -2594,6 +2630,9 @@ export const messages = {
     avatarHint: 'Shown as your initial for now — photo uploads aren’t available yet.',
     details: {
       heading: 'Personal information',
+      /** Mô tả cột trái (redesign 11/08). Mọi mục trong khu account đều có một
+       *  dòng như thế này — mục im lặng cạnh mục đang nói đọc như lỗi tải. */
+      blurb: 'Your name, contact details, and password.',
       nameLabel: 'Full name',
       phoneLabel: 'Phone',
       emailLabel: 'Email',

@@ -2,7 +2,6 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import Link from 'next/link';
 import { daysUntilDeparture } from '@/lib/account-stats';
-import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView } from '@/lib/booking-vm';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
@@ -21,15 +20,20 @@ function endsHint(endDate: string): string {
 }
 
 /**
- * Một DÒNG trong sheet `/account/bookings` (redesign 10/08).
+ * Một DÒNG trong cột phải của `/account/bookings` (redesign 11/08).
  *
- * Trước đây mỗi booking là một card có viền riêng; xếp cạnh nhau chúng đọc
- * thành một chồng hộp chứ không thành một bảng. Nay các dòng nằm chung trong
- * một tấm sheet do trang dựng, ngăn nhau bằng hairline — nên component này
- * KHÔNG tự vẽ viền hay bo góc nữa.
+ * Khuôn lấy từ mẫu Airbnb "Personal info" và shadcn-studio 07: nhãn + dòng phụ
+ * bên trái, giá trị bám ĐÚNG mép phải container, hairline ngăn từng dòng.
+ * Không viền, không bo góc, không nền riêng — tấm sheet `rounded-2xl border
+ * bg-card` của bản trước tự đẻ ra hai mép x không nằm trong lưới ba toạ độ.
  *
- * Bỏ luôn affordance "View details" ở cuối: cả dòng đã là một link, thêm một
- * nhãn nói lại điều đó chỉ tốn chỗ.
+ * PILL TRẠNG THÁI BỊ BỎ, và đây là vá một lỗi WCAG có thật chứ không phải đổi
+ * gu: `TONE_CLASS.warning` là `bg-warning/10 text-warning`, mà `warning` trên
+ * nền ở chế độ SÁNG đo được 1.90:1 — pill "Awaiting payment" gần như vô hình.
+ * Thay bằng nhãn mono chữ hoa: `foreground` (13.78/11.73) cho trạng thái CẦN
+ * LÀM GÌ ĐÓ, `muted-foreground` (6.24/6.66) cho trạng thái đã yên. Cả hai đều
+ * qua 4.5:1 ở cả hai chế độ màu, và độ đậm nhạt mang đúng nghĩa "còn việc hay
+ * xong rồi".
  */
 export function BookingCard({
   booking,
@@ -40,18 +44,25 @@ export function BookingCard({
 }) {
   const t = messages.accountBookings;
   const view = bookingView(booking);
+  // `warning` là tone của các trạng thái còn treo việc (chưa trả tiền). Chỉ
+  // nhóm đó mới được nổi lên; còn lại lùi về muted.
+  const needsAction = view.tone === 'warning';
 
   return (
     <li>
       <Link
         href={`/account/bookings/${booking.code}`}
-        className="flex flex-col gap-3 p-4 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:gap-4"
+        // `-mx-2 px-2` để nền hover thở ra hai bên mà CHỮ vẫn đứng đúng mép
+        // lưới — nếu thêm padding thật thì dòng thụt vào và sinh toạ độ thứ tư.
+        className="-mx-2 flex flex-col gap-1 rounded-md px-2 py-4 outline-ring transition-colors hover:bg-accent/40 focus-visible:outline-2 focus-visible:-outline-offset-2 sm:flex-row sm:items-baseline sm:justify-between sm:gap-6"
       >
-        <span className="shrink-0 font-mono text-xs text-muted-foreground">{booking.code}</span>
-
-        <span className="min-w-0 flex-1">
-          <span className="block truncate font-medium text-foreground">{booking.tourTitle}</span>
-          <span className="block text-sm text-muted-foreground tabular-nums">
+        <span className="min-w-0">
+          <span className="block truncate text-sm font-medium text-foreground">
+            {booking.tourTitle}
+          </span>
+          <span className="mt-0.5 block text-sm text-muted-foreground tabular-nums">
+            <span className="font-mono text-xs">{booking.code}</span>
+            {' · '}
             {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
             {showEndsHint ? ` · ${endsHint(booking.departureEndDate)}` : null}
             {' · '}
@@ -59,14 +70,17 @@ export function BookingCard({
           </span>
         </span>
 
-        <span
-          className={`shrink-0 self-start rounded-full px-2.5 py-0.5 text-xs font-medium sm:self-auto ${TONE_CLASS[view.tone]}`}
-        >
-          {messages.booking.list.status[booking.status]}
-        </span>
-
-        <span className="shrink-0 font-medium tabular-nums text-foreground sm:w-24 sm:text-right">
-          {formatMoney(booking.totalAmount, booking.currency)}
+        <span className="shrink-0 sm:text-right">
+          <span className="block text-sm font-medium text-foreground tabular-nums">
+            {formatMoney(booking.totalAmount, booking.currency)}
+          </span>
+          <span
+            className={`mt-0.5 block font-mono text-[0.625rem] tracking-[0.16em] uppercase ${
+              needsAction ? 'font-medium text-foreground' : 'text-muted-foreground'
+            }`}
+          >
+            {messages.booking.list.status[booking.status]}
+          </span>
         </span>
       </Link>
     </li>

@@ -39,14 +39,12 @@ export default async function AccountDashboardPage() {
 
   const t = messages.accountDashboard;
   return (
-    <div className="flex flex-col gap-8">
-      <div>
-        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
-          {t.title}
-        </h1>
-        <p className="mt-2 text-muted-foreground">{t.greeting(user.name)}</p>
+    <div>
+      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
+      <p className="mt-2 text-muted-foreground">{t.greeting(user.name)}</p>
+      <div className="mt-2">
+        <AccountDashboard bookings={bookingsPage.items} wishlist={wishlist} />
       </div>
-      <AccountDashboard bookings={bookingsPage.items} wishlist={wishlist} />
     </div>
   );
 }

@@ -18,10 +18,17 @@ import { AccountNav } from '@/components/account/account-nav';
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
+    // Padding NGANG phải giống hệt 52 chỗ còn lại của site và giống footer
+    // (`site-footer.tsx`: `md:px-16 lg:px-24 xl:px-32` + `max-w-7xl`) — khu này
+    // nằm ngay trên footer nên lệch một hằng số là nhìn thấy ngay.
     <div className="w-full px-4 pt-36 pb-16 md:px-16 md:pb-20 lg:px-24 xl:px-32">
-      <div className="mx-auto max-w-6xl">
+      {/* `max-w-6xl` (1152) đổi thành `max-w-7xl` (1280): footer ngay dưới dùng
+          7xl, nên từ 1536px trở lên nội dung account bị thụt 64px mỗi bên so
+          với footer. Đây là lệch có thật, có từ trước, và không liên quan tới
+          vòng thiết kế nào. */}
+      <div className="mx-auto max-w-7xl">
         <AccountNav />
-        <div className="mt-8">{children}</div>
+        <div className="mt-10">{children}</div>
       </div>
     </div>
   );

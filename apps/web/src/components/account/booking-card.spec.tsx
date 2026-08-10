@@ -11,30 +11,41 @@ describe('BookingCard', () => {
     expect(screen.getByRole('link')).toHaveAttribute('href', '/account/bookings/BK-TESTAAAA');
   });
 
-  it('badge status PENDING → nhãn "Awaiting payment" (một nguồn booking.list.status) + tone warning', () => {
-    render(<BookingCard booking={makeBooking({ status: 'PENDING' })} />);
-    const badge = screen.getByText('Awaiting payment');
-    expect(badge.className).toContain('text-warning');
+  it('nhãn trạng thái lấy từ MỘT nguồn `booking.list.status`, đủ cả năm', () => {
+    // Nhãn là thứ mang nghĩa; màu chỉ phụ hoạ. Test canh CHỮ chứ không canh
+    // class, vì chữ mới là thứ người dùng và trình đọc màn hình nhận được.
+    for (const [status, label] of [
+      ['PENDING', 'Awaiting payment'],
+      ['PAID', 'Paid'],
+      ['CANCELLED', 'Cancelled'],
+      ['REFUNDED', 'Refunded'],
+      ['PARTIALLY_REFUNDED', 'Partially refunded'],
+    ] as const) {
+      const { unmount } = render(<BookingCard booking={makeBooking({ status })} />);
+      expect(screen.getByText(label)).toBeInTheDocument();
+      unmount();
+    }
   });
 
-  it('badge status PAID → nhãn "Paid" + tone success', () => {
-    render(<BookingCard booking={makeBooking({ status: 'PAID' })} />);
-    const badge = screen.getByText('Paid');
-    expect(badge.className).toContain('text-success');
+  it('KHÔNG dùng pill `text-warning`/`text-success` nữa — chúng rớt WCAG', () => {
+    // Redesign 11/08 bỏ `TONE_CLASS`. Lý do đo được, không phải đổi gu:
+    // `bg-warning/10 text-warning` cho ra 1.90:1 trên nền ở chế độ SÁNG, tức
+    // "Awaiting payment" gần như vô hình đúng lúc nó cần được nhìn thấy nhất.
+    // Test này chặn việc ai đó "khôi phục màu cho dễ nhìn" mà không đo lại.
+    const { container } = render(<BookingCard booking={makeBooking({ status: 'PENDING' })} />);
+    expect(container.innerHTML).not.toContain('text-warning');
+    expect(container.innerHTML).not.toContain('text-success');
+    expect(container.innerHTML).not.toContain('text-destructive');
   });
 
-  it('badge status CANCELLED → nhãn "Cancelled" + tone muted', () => {
-    render(<BookingCard booking={makeBooking({ status: 'CANCELLED' })} />);
-    const badge = screen.getByText('Cancelled');
-    expect(badge.className).toContain('text-muted-foreground');
-  });
-
-  it('badge status REFUNDED và PARTIALLY_REFUNDED → cùng tone destructive', () => {
-    const { unmount } = render(<BookingCard booking={makeBooking({ status: 'REFUNDED' })} />);
-    expect(screen.getByText('Refunded').className).toContain('text-destructive');
+  it('trạng thái CÒN VIỆC nổi hơn trạng thái đã yên — không chỉ khác nhau ở màu', () => {
+    // Kênh phân biệt là ĐỘ ĐẬM của chữ (`font-medium` + `foreground`), dùng
+    // được cả khi người dùng không phân biệt được màu.
+    const { unmount } = render(<BookingCard booking={makeBooking({ status: 'PENDING' })} />);
+    expect(screen.getByText('Awaiting payment').className).toContain('text-foreground');
     unmount();
-    render(<BookingCard booking={makeBooking({ status: 'PARTIALLY_REFUNDED' })} />);
-    expect(screen.getByText('Partially refunded').className).toContain('text-destructive');
+    render(<BookingCard booking={makeBooking({ status: 'PAID' })} />);
+    expect(screen.getByText('Paid').className).toContain('text-muted-foreground');
   });
 
   it('KHÔNG còn nhãn "View details" — cả dòng đã là link, nói lại chỉ tốn chỗ', () => {
