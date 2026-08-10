@@ -515,6 +515,20 @@ export const messages = {
       partiallyRefundedNote: (amount: string) => `Partially refunded ${amount}.`,
     },
   },
+  // Card tóm tắt đơn ở cột phải trang /tours/[slug]/book (checkout hướng B —
+  // Task 2 cụm redesign checkout/account). Đặt cạnh `booking` cho dễ tìm.
+  checkoutSummary: {
+    heading: 'Order summary',
+    freeCancellation: 'Free cancellation',
+    instantConfirmation: 'Instant confirmation',
+    adultsLine: (n: number) => `${n} adult${n > 1 ? 's' : ''}`,
+    childrenLine: (n: number) => `${n} child${n > 1 ? 'ren' : ''}`,
+    totalLabel: 'Total',
+    taxesNote: 'Includes all taxes and fees.',
+    trustRow: 'Stripe & PayPal · SSL encrypted · 24/7 support',
+    // Chưa chọn đợt khởi hành — breakdown hiện câu này thay vì các dòng số tiền.
+    pickDeparture: 'Select a departure to see your total',
+  },
   common: {
     home: 'Home',
     onThisPage: 'On this page',
