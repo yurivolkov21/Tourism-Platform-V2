@@ -16,6 +16,7 @@ import {
   validateBookingForm,
 } from '@/lib/booking-form';
 import { departureStatus, formatDateRange, formatMoney } from '@/lib/tours';
+import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
 import { Field, FieldError, Stepper } from './form-parts';
 
 /**
@@ -34,12 +35,14 @@ export function BookingForm({
   currency,
   defaultName,
   defaultEmail,
+  summaryTour,
 }: {
   departures: DepartureVM[];
   maxGroupSize: number;
   currency: string;
   defaultName: string;
   defaultEmail: string;
+  summaryTour: CheckoutSummaryTour;
 }) {
   const t = messages.booking.form;
   const tp = messages.booking.page;
@@ -110,13 +113,20 @@ export function BookingForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]" noValidate>
+    <form
+      onSubmit={onSubmit}
+      className="grid gap-8 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)] lg:items-start"
+      noValidate
+    >
       <div className="flex flex-col gap-8">
-        <section className="flex flex-col gap-3">
-          <h2 className="font-heading text-lg font-semibold">{t.datesHeading}</h2>
-          <p className="text-sm text-muted-foreground">{t.datesDesc}</p>
+        {/* Card 1 — Trip details: gộp đợt khởi hành + số người, ĐÚNG nhãn bước
+            "hiện tại" của step indicator ở `book/page.tsx` (steps.trip) — khách
+            nối được step indicator trên đầu trang với card đầu tiên của form. */}
+        <div className="rounded-2xl border bg-card p-6">
+          <h2 className="font-heading text-lg font-semibold">{tp.steps.trip}</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{t.datesDesc}</p>
 
-          <ul className="flex flex-col gap-2">
+          <ul className="mt-4 flex flex-col gap-2">
             {departures.map((d) => {
               const status = departureStatus(d.seatsLeft);
               const soldOut = status === 'sold-out';
@@ -175,39 +185,40 @@ export function BookingForm({
             })}
           </ul>
           {errors.departureId ? <FieldError>{errors.departureId}</FieldError> : null}
-        </section>
 
-        <section className="flex flex-col gap-3">
-          <h2 className="font-heading text-lg font-semibold">{tp.partyLabel}</h2>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Stepper
-              label={t.adults}
-              value={state.numAdults}
-              onStep={(d) => step('numAdults', d)}
-              minusDisabled={state.numAdults <= 1}
-              plusDisabled={atCap}
-            />
-            <Stepper
-              label={t.children}
-              value={state.numChildren}
-              onStep={(d) => step('numChildren', d)}
-              minusDisabled={state.numChildren <= 0}
-              plusDisabled={atCap}
-            />
+          <div className="mt-6 flex flex-col gap-3">
+            <h3 className="text-sm font-medium text-foreground">{tp.partyLabel}</h3>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Stepper
+                label={t.adults}
+                value={state.numAdults}
+                onStep={(d) => step('numAdults', d)}
+                minusDisabled={state.numAdults <= 1}
+                plusDisabled={atCap}
+              />
+              <Stepper
+                label={t.children}
+                value={state.numChildren}
+                onStep={(d) => step('numChildren', d)}
+                minusDisabled={state.numChildren <= 0}
+                plusDisabled={atCap}
+              />
+            </div>
+            {atCap ? (
+              // Một dòng bình thản, KHÔNG toast: khách chưa làm gì sai, chỉ là
+              // chạm trần. Nói ĐÚNG ràng buộc nào đang bó để họ biết sửa ở đâu.
+              <p className="text-sm text-muted-foreground">
+                {reason === 'seats' ? t.capBySeats : messages.tourDetail.groupSize(cap)}
+              </p>
+            ) : null}
           </div>
-          {atCap ? (
-            // Một dòng bình thản, KHÔNG toast: khách chưa làm gì sai, chỉ là
-            // chạm trần. Nói ĐÚNG ràng buộc nào đang bó để họ biết sửa ở đâu.
-            <p className="text-sm text-muted-foreground">
-              {reason === 'seats' ? t.capBySeats : messages.tourDetail.groupSize(cap)}
-            </p>
-          ) : null}
-        </section>
+        </div>
 
-        <section className="flex flex-col gap-3">
+        {/* Card 2 — Lead traveler. */}
+        <div className="rounded-2xl border bg-card p-6">
           <h2 className="font-heading text-lg font-semibold">{t.travellersHeading}</h2>
-          <p className="text-sm text-muted-foreground">{t.travellersDesc}</p>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <p className="mt-1 text-sm text-muted-foreground">{t.travellersDesc}</p>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label={t.contactName} error={errors.contactName}>
               {(id) => (
                 <Input
@@ -238,7 +249,7 @@ export function BookingForm({
                 value={state.contactPhone}
                 onChange={(e) => set('contactPhone', e.target.value)}
                 aria-invalid={Boolean(errors.contactPhone)}
-                className="max-w-xs"
+                className="mt-4 max-w-xs"
               />
             )}
           </Field>
@@ -251,15 +262,20 @@ export function BookingForm({
                 placeholder={t.specialRequestsPlaceholder}
                 aria-invalid={Boolean(errors.specialRequests)}
                 rows={3}
+                className="mt-4"
               />
             )}
           </Field>
-        </section>
+        </div>
 
-        <section className="flex flex-col gap-3">
+        {/* Card 3 — Payment method: nhãn "Payment" đúng nhãn bước "kế tiếp"
+            (steps.payment) của step indicator — vòng khớp lại giữa header
+            trang và card cuối, dù bước thanh toán thật xảy ra ở trang hosted
+            của Stripe/PayPal ngay sau khi submit. */}
+        <div className="rounded-2xl border bg-card p-6">
           <h2 className="font-heading text-lg font-semibold">{t.paymentHeading}</h2>
-          <p className="text-sm text-muted-foreground">{t.paymentDesc}</p>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <p className="mt-1 text-sm text-muted-foreground">{t.paymentDesc}</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <ProviderChoice
               selected={state.paymentProvider === 'STRIPE'}
               name={t.stripe}
@@ -273,47 +289,28 @@ export function BookingForm({
               onSelect={() => set('paymentProvider', 'PAYPAL')}
             />
           </div>
-          <p className="text-sm text-muted-foreground">{t.trustLine}</p>
-        </section>
+          <p className="mt-3 text-sm text-muted-foreground">{t.trustLine}</p>
+        </div>
       </div>
 
-      <aside className="flex h-fit flex-col gap-3 rounded-2xl border bg-card p-5 lg:sticky lg:top-28">
-        <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-          {tp.summaryHeading}
-        </p>
-        {selected ? (
-          <p className="font-heading text-lg font-medium tabular-nums">
-            {formatDateRange(selected.startDate, selected.endDate)}
-          </p>
-        ) : (
-          <p className="text-sm text-muted-foreground">{t.departure}</p>
-        )}
-
-        <hr className="border-border" />
-        <dl className="flex flex-col gap-2 text-sm">
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-muted-foreground">
-              {tp.adultsLine(state.numAdults)}
-              {state.numChildren > 0 ? `, ${tp.childrenLine(state.numChildren)}` : ''}
-            </dt>
-            <dd className="tabular-nums">
-              {unit === null ? '—' : formatMoney(String(unit), currency)}
-            </dd>
-          </div>
-        </dl>
-        <div className="flex items-baseline justify-between gap-3 border-t pt-3">
-          <span className="font-medium">{tp.totalLabel}</span>
-          <span className="font-heading text-2xl font-semibold tabular-nums">
-            {total === null ? '—' : formatMoney(total, currency)}
-          </span>
-        </div>
-        <p className="text-xs text-muted-foreground">{tp.totalNote}</p>
-
-        <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-          {submitting ? t.submitting : t.submit}
-        </Button>
-        <p className="text-xs text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
-      </aside>
+      {/* Cột phải: card tóm tắt đơn, dính khi cuộn ở desktop. Trên mobile lên
+          TRƯỚC form (`order-first`) — khách thấy tổng tiền trước khi cuộn qua
+          hết ba card bên trái. */}
+      <div className="order-first lg:sticky lg:top-24 lg:order-none">
+        <CheckoutSummary
+          tour={summaryTour}
+          departure={selected}
+          numAdults={state.numAdults}
+          numChildren={state.numChildren}
+          currency={currency}
+          cta={
+            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+              {submitting ? t.submitting : t.submit}
+              {total !== null ? ` · ${formatMoney(total, currency)}` : ''}
+            </Button>
+          }
+        />
+      </div>
     </form>
   );
 }

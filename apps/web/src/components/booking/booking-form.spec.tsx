@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DepartureVM } from '@/lib/api/tours';
 import { BookingForm } from './booking-form';
+import type { CheckoutSummaryTour } from './checkout-summary';
 
 // `api.bookings.create` là biên duy nhất của component ra thế giới — mock đúng
 // nó, không mock cả `@/lib/api/client`, để phần dựng payload vẫn chạy thật.
@@ -24,11 +25,25 @@ function makeDeparture(over: Partial<DepartureVM> = {}): DepartureVM {
   } as DepartureVM;
 }
 
+// Cùng khuôn `makeTour` của `checkout-summary.spec.tsx` — T3 gắn `CheckoutSummary`
+// vào form nên form giờ CẦN prop này.
+function makeSummaryTour(): CheckoutSummaryTour {
+  return {
+    title: 'Sapa Highlands Trek',
+    cover: null,
+    durationDays: 4,
+    destinationNames: ['Sapa', 'Lao Cai'],
+    ratingAvg: 4.8,
+    ratingCount: 126,
+  };
+}
+
 const BASE = {
   maxGroupSize: 12,
   currency: 'USD',
   defaultName: 'Elena Moreau',
   defaultEmail: 'elena.moreau@example.com',
+  summaryTour: makeSummaryTour(),
 };
 
 beforeEach(() => {
@@ -125,5 +140,40 @@ describe('BookingForm', () => {
 
     expect(await screen.findByText(/couldn’t start the payment session/i)).toBeInTheDocument();
     expect(screen.getByLabelText('Full name')).toHaveValue('Trần Mai');
+  });
+
+  // T3 — lưới hai cột hướng B: cột trái mở đầu bằng card "Trip details"
+  // (đúng nhãn bước hiện tại của step indicator RSC ở `book/page.tsx`) và kết
+  // ở card "Payment" (đúng nhãn bước kế tiếp) — hai heading này là điểm neo
+  // để khách nối được step indicator trên đầu trang với nội dung form.
+  it('card đầu là "Trip details", card cuối là "Payment" — khớp nhãn step indicator', () => {
+    render(<BookingForm {...BASE} departures={[makeDeparture()]} />);
+
+    expect(screen.getByRole('heading', { name: 'Trip details' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Payment' })).toBeInTheDocument();
+  });
+
+  it('tổng tiền hiển thị TRONG summary card ("Order summary" có mặt)', () => {
+    render(<BookingForm {...BASE} departures={[makeDeparture()]} />);
+
+    expect(screen.getByText('Order summary')).toBeInTheDocument();
+  });
+
+  it('đổi stepper adults → total trong summary đổi theo', async () => {
+    const user = userEvent.setup();
+    render(<BookingForm {...BASE} departures={[makeDeparture({ effectivePrice: '1290.00' })]} />);
+
+    // Neo vào ĐÚNG dòng "Total" của summary — không phải giá niêm yết trên
+    // hàng đợt khởi hành (hàng đó cũng hiện "$1,290" nhưng KHÔNG đổi theo
+    // stepper, vì đó là đơn giá per-adult, không phải tổng).
+    const totalRow = screen.getByText('Total').closest('div');
+    // 1 người lớn × $1,290 = $1,290 — số ban đầu.
+    expect(totalRow).toHaveTextContent('$1,290');
+
+    const plusAdults = screen.getByRole('button', { name: /Adults \+/ });
+    await user.click(plusAdults); // 2 người lớn
+
+    // 2 × $1,290 = $2,580.
+    expect(totalRow).toHaveTextContent('$2,580');
   });
 });

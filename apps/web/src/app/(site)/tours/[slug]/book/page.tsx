@@ -4,6 +4,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingModes } from '@/components/booking/booking-modes';
+import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
 import { routeChain } from '@/lib/tours';
@@ -26,6 +27,17 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
   if (!tour) notFound();
 
   const t = messages.booking.page;
+
+  // Card tóm tắt (T2/T3) chỉ cần lát cắt nhỏ của `tour` — xem lý do tách ở
+  // JSDoc `CheckoutSummaryTour`.
+  const summaryTour: CheckoutSummaryTour = {
+    title: tour.title,
+    cover: tour.cover,
+    durationDays: tour.durationDays,
+    destinationNames: tour.destinations.map((d) => d.name),
+    ratingAvg: tour.ratingAvg,
+    ratingCount: tour.ratingCount,
+  };
 
   return (
     <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-14">
@@ -57,6 +69,10 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
         </p>
       </header>
 
+      <div className="mt-8">
+        <BookingSteps />
+      </div>
+
       <div className="mt-10">
         <BookingModes
           tourId={tour.id}
@@ -65,8 +81,45 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
           currency={tour.currency}
           defaultName={session.name ?? ''}
           defaultEmail={session.email}
+          summaryTour={summaryTour}
         />
       </div>
+    </div>
+  );
+}
+
+/**
+ * Chỉ báo hai bước ở đầu trang — RSC thuần, nội bộ file này (không đáng tách
+ * riêng cho một khối tĩnh chỉ hai chấm). ① Trip details là bước ĐANG ở trên
+ * trang này; ② Payment KHÔNG xảy ra trong app — nó là trang hosted của
+ * Stripe/PayPal sau khi submit, nên chấm mờ + kèm ghi chú nhỏ giải thích.
+ */
+function BookingSteps() {
+  const t = messages.booking.page;
+  return (
+    <div className="flex flex-col gap-1.5">
+      <ol className="flex items-center gap-3" aria-label={t.title}>
+        <li className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
+          >
+            1
+          </span>
+          <span className="text-sm font-medium text-foreground">{t.steps.trip}</span>
+        </li>
+        <li aria-hidden="true" className="h-px w-8 shrink-0 bg-border sm:w-16" />
+        <li className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
+          >
+            2
+          </span>
+          <span className="text-sm font-medium text-muted-foreground">{t.steps.payment}</span>
+        </li>
+      </ol>
+      <p className="pl-9 text-xs text-muted-foreground">{t.paymentStepNote}</p>
     </div>
   );
 }

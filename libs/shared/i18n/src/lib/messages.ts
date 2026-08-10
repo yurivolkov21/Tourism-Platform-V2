@@ -339,6 +339,13 @@ export const messages = {
       perChild: 'per child',
       totalLabel: 'Estimated total',
       totalNote: 'Final amount is confirmed at payment.',
+      // Step indicator ở đầu trang (RSC, T3): bước 1 là form này, bước 2 là
+      // trang thanh toán hosted của Stripe/PayPal — KHÔNG nằm trong app.
+      steps: {
+        trip: 'Trip details',
+        payment: 'Payment',
+      },
+      paymentStepNote: 'Payment happens on the next screen, hosted by your provider.',
     },
     // Booking form fields.
     form: {

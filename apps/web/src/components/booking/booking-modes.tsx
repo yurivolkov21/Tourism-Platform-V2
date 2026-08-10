@@ -5,6 +5,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
 import { BookingForm } from './booking-form';
+import type { CheckoutSummaryTour } from './checkout-summary';
 import { PrivateTripForm } from './private-trip-form';
 
 /**
@@ -27,6 +28,7 @@ export function BookingModes({
   currency,
   defaultName,
   defaultEmail,
+  summaryTour,
 }: {
   tourId: string;
   departures: DepartureVM[];
@@ -34,6 +36,7 @@ export function BookingModes({
   currency: string;
   defaultName: string;
   defaultEmail: string;
+  summaryTour: CheckoutSummaryTour;
 }) {
   const bookable = departures.filter((d) => d.seatsLeft > 0);
   const canSchedule = bookable.length > 0;
@@ -69,6 +72,7 @@ export function BookingModes({
           currency={currency}
           defaultName={defaultName}
           defaultEmail={defaultEmail}
+          summaryTour={summaryTour}
         />
       ) : (
         <PrivateTripForm
