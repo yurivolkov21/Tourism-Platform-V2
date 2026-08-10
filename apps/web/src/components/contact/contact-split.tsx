@@ -45,7 +45,7 @@ const LETTER_LABEL = 'text-sm text-muted-foreground';
 // Lỗi inline dưới field — không có khuôn "auth-field-error" nào sẵn trong repo
 // (chưa có form auth) nên dùng text nhỏ token destructive, cỡ chữ khớp dòng
 // P.S. cuối form (text-xs) để không phá tỉ lệ "lá thư".
-const LETTER_ERROR = 'text-xs text-destructive';
+const LETTER_ERROR = 'text-xs text-destructive-emphasis';
 
 const INITIAL_STATE: ContactFormState = {
   name: '',

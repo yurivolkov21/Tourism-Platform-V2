@@ -135,7 +135,7 @@ function CancelRequestDialog({
             onBlur={() => setTouched(true)}
           />
           {invalid ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-sm text-destructive-emphasis">
               {t.reasonRequired}
             </p>
           ) : null}

@@ -35,7 +35,7 @@ describe('BookingCard', () => {
     const { container } = render(<BookingCard booking={makeBooking({ status: 'PENDING' })} />);
     expect(container.innerHTML).not.toContain('text-warning');
     expect(container.innerHTML).not.toContain('text-success');
-    expect(container.innerHTML).not.toContain('text-destructive');
+    expect(container.innerHTML).not.toContain('text-destructive-emphasis');
   });
 
   it('trạng thái CÒN VIỆC nổi hơn trạng thái đã yên — không chỉ khác nhau ở màu', () => {

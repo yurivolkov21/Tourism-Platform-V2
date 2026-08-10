@@ -21,21 +21,21 @@ import type { ReactNode } from 'react';
  */
 
 /**
- * Bọc các mục của một màn. `divide-y` đặt ở ĐÂY chứ không viền từng mục —
- * viền từng cái sẽ nhân đôi ở chỗ hai mục giáp nhau (hợp đồng đã ghi ở
- * `article-body.tsx`).
+ * Bọc các mục của một màn. Trước đây dùng `divide-y` để kẻ hairline ngăn mục;
+ * từ 11/08 việc ngăn cách do CARD ở cột phải đảm nhiệm, nên chỉ còn khoảng
+ * thở dọc.
  */
 export function AccountSections({ children }: { children: ReactNode }) {
-  return <div className="divide-y">{children}</div>;
+  return <div className="flex flex-col gap-6">{children}</div>;
 }
 
 /**
- * Một mục: cột trái là tiêu đề + một dòng mô tả (giọng nói), cột phải là nội
- * dung thật (dữ liệu). Hai họ chữ đứng ở hai cột và không lẫn sang nhau.
+ * Một mục: cột trái là tiêu đề + một dòng mô tả (giọng nói), cột phải là card
+ * chứa nội dung thật (dữ liệu). Hai họ chữ đứng ở hai cột và không lẫn sang nhau.
  *
- * `py-12` cho nhịp 48+1+48 = 97px giữa hai mục — chậm hơn mẫu shadcn (81px)
- * khoảng 20%. Đây là chỗ chữ "chậm" của slow travel nằm: trong nhịp dọc, không
- * trong hình vẽ.
+ * Nhịp dọc: mục cách mục 24px (`gap-6` ở `AccountSections`), cột trái `lg:py-6`
+ * để tiêu đề ngang tầm dòng đầu trong card. Trước 11/08 nhịp là `py-12` cộng
+ * hairline ngăn mục; nay card tự ngăn nên không cần cả hai.
  */
 export function AccountSection({
   title,
@@ -59,8 +59,8 @@ export function AccountSection({
   const headingId = `account-section-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
   return (
-    <section aria-labelledby={headingId} className="grid gap-x-10 gap-y-6 py-12 lg:grid-cols-3">
-      <div>
+    <section aria-labelledby={headingId} className="grid gap-x-10 gap-y-4 lg:grid-cols-3">
+      <div className="lg:py-6">
         <h2 id={headingId} className="font-heading text-lg font-medium text-foreground">
           {title}
         </h2>
@@ -73,7 +73,19 @@ export function AccountSection({
           </p>
         ) : null}
       </div>
-      <div className="min-w-0 lg:col-span-2">{children}</div>
+      {/* CARD ở cột phải — chốt 11/08 thay hairline ngăn mục.
+          Mép card rơi ĐÚNG hai toạ độ đã có: trái x=536, phải x=1312. Nên card
+          không đẻ toạ độ mới ở hai mép ngoài; chỉ nội dung bên trong thụt vào
+          đúng `px-6` của card, giống hệt cách mọi card trên site hành xử và
+          giống ô nội dung bên phải của mẫu Airbnb.
+          `rounded-2xl border bg-card` là thành ngữ card sẵn có của site (16
+          chỗ dùng) — không phát minh kiểu card thứ hai.
+          `self-start`: ô lưới mặc định giãn cho bằng ô cao nhất trong hàng, nên
+          một card một dòng đứng cạnh cột mô tả ba dòng sẽ phình ra và chừa một
+          mảng trống dưới nội dung. Card phải ôm sát nội dung của nó. */}
+      <div className="min-w-0 self-start rounded-2xl border bg-card px-6 lg:col-span-2">
+        {children}
+      </div>
     </section>
   );
 }

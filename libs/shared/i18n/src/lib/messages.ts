@@ -2431,6 +2431,28 @@ export const messages = {
   accountDashboard: {
     title: 'My account',
     greeting: (name: string) => `Welcome back, ${name}`,
+    /** Trang `/account` là HUB dạng khối (redesign 11/08, theo mẫu Airbnb
+     *  "Account"): mỗi khối là một nơi để đi tới, kèm một dòng số liệu thật.
+     *  Không khối nào là trang trí — bấm vào đều dẫn đi đâu đó. */
+    hub: {
+      trips: {
+        title: 'My trips',
+        desc: 'Everything you’ve booked, grouped by when you travel.',
+      },
+      saved: {
+        title: 'Saved tours',
+        desc: 'Tours you’ve bookmarked to plan later.',
+      },
+      profile: {
+        title: 'Personal info',
+        desc: 'Your name, contact details, and password.',
+      },
+      /** Số liệu dưới mỗi khối. Khối rỗng vẫn hiện số 0 chứ không im lặng —
+       *  chỗ trống phải được KHAI BÁO là trống. */
+      tripCount: (n: number) => (n === 1 ? '1 trip' : `${n} trips`),
+      savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
+      awaiting: (n: number) => `${n} awaiting payment`,
+    },
     stats: {
       // Redesign 10/08: dashboard giữ HAI ô, bỏ `upcoming`/`completed`. Hai ô
       // đó lặp lại thứ khối "Recent bookings" ngay bên dưới đã nói rõ hơn, và

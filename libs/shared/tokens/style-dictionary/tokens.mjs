@@ -77,6 +77,25 @@ export default {
     accent: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
     'accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
     destructive: c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
+    // `destructive` khi nó LÀ CHỮ, không phải khi nó là bề mặt — cùng một phép
+    // tách với `primary-emphasis` (ADR-0019 mục 2), vì đây là CÙNG mâu thuẫn
+    // hai vai, phát hiện 11/08 khi đo lại khu account.
+    //
+    // Đo `destructive` ở dark (L 0.579):
+    //   vai BỀ MẶT — badge giảm giá `bg-destructive` + `text-white`: 4.62 ✅
+    //   vai MỰC    — `text-destructive` trên nền 3.19 ❌ · trên card 2.83 ❌
+    // Nâng L để cứu vai mực thì giết vai bề mặt: L 0.70 kéo chữ trắng trên
+    // badge xuống 2.85. Hai khoảng rời hẳn nhau, y như `primary`.
+    //
+    // LIGHT giữ Y HỆT `destructive` (0.516): vai mực ở sáng đã đạt sẵn (nền
+    // 5.62 · card 5.93), nên tách token KHÔNG đổi một pixel nào ở light.
+    //
+    // Đo dark ở L 0.72: nền 5.58 · card 4.95. Chọn 0.72 chứ không phải 0.70
+    // (4.59 trên card, sát mép) để có đệm — cùng lối chọn với `primary-emphasis`.
+    //
+    // Dùng ở đâu: MỌI `text-destructive`. Bề mặt đặc (badge "−20%" cõng chữ
+    // trắng) vẫn là `destructive`.
+    'destructive-emphasis': c('oklch(0.516 0.136 27.3)', 'oklch(0.72 0.148 26.7)'),
     // ⚠️ `border` và `input` KHÔNG cùng luật, dù giá trị từng giống hệt nhau
     // (ADR-0019 mục 5). `border` là đường phân cách và mép thẻ — TRANG TRÍ,
     // không thuộc WCAG 1.4.11, nâng nó lên 3:1 sẽ biến toàn site thành lưới kẻ

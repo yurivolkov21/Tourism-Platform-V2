@@ -149,7 +149,7 @@ export function RegisterForm() {
         </label>
 
         {formError && (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="text-xs text-destructive-emphasis">
             {messages.authForms.errors[formError]}
           </p>
         )}

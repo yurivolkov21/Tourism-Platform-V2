@@ -16,7 +16,7 @@ import { TicketCard } from './ticket-card';
 // nút Google, separator chữ, email + password, remember + forgot, submit
 // full-width, link register. Task 3 (auth-pages-api): nối state/handler gọi
 // authClient thật — visual/markup/motion GIỮ NGUYÊN, chỉ thêm state + khối
-// lỗi inline (khuôn `role="alert"` + `text-xs text-destructive` mượn từ
+// lỗi inline (khuôn `role="alert"` + `text-xs text-destructive-emphasis` mượn từ
 // contact-split.tsx — repo chưa có khuôn lỗi form auth trước đây).
 export function LoginForm() {
   const router = useRouter();
@@ -132,7 +132,7 @@ export function LoginForm() {
         </div>
 
         {formError && (
-          <p role="alert" className="text-xs text-destructive">
+          <p role="alert" className="text-xs text-destructive-emphasis">
             {messages.authForms.errors[formError]}
           </p>
         )}

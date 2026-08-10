@@ -113,7 +113,7 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
 
       <RatingPicker value={rating} onChange={setRating} />
       {touched && rating === 0 ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-emphasis">
           {t.ratingRequired}
         </p>
       ) : null}
@@ -141,14 +141,14 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
           onChange={(event) => setBody(event.target.value)}
         />
         {touched && bodyTooShort ? (
-          <p role="alert" className="text-sm text-destructive">
+          <p role="alert" className="text-sm text-destructive-emphasis">
             {t.bodyTooShort(BODY_MIN)}
           </p>
         ) : null}
       </div>
 
       {error ? (
-        <p role="alert" className="text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive-emphasis">
           {error}
         </p>
       ) : null}

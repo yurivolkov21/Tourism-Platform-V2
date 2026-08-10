@@ -9,7 +9,7 @@ import { useId } from 'react';
  *
  * Tách ra vì cả hai đều cần đúng ba thứ này và chúng có luật riêng đáng giữ ở
  * một chỗ — nhất là `Field` (quan hệ nhãn ↔ ô nhập) và `FieldError` (lý do
- * không dùng `text-destructive` trần).
+ * không dùng `text-destructive-emphasis` trần).
  */
 
 /**
@@ -94,7 +94,7 @@ export function Field({
 /**
  * Lỗi field: dải nền pha destructive + chữ ink.
  *
- * KHÔNG dùng `text-destructive` trần như `field.tsx` của `@tourism/ui` đang
+ * KHÔNG dùng `text-destructive-emphasis` trần như `field.tsx` của `@tourism/ui` đang
  * làm — đo được 2,83:1 trên card ở dark theme, dưới ngưỡng AA 4,5 mà chính
  * design brief §6 đặt ra. Nền pha giữ chữ ở trên 8:1 ở cả hai theme.
  */

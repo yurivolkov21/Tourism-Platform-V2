@@ -92,6 +92,42 @@ Vai chữ cần `L ≥ 0.74` để qua 4.5:1 trên nền tệ nhất (`muted`). 
 Chế độ **sáng giữ nguyên** `oklch(0.494 …)` — đo được 5.57 (nền) · 5.88 (card)
 · 4.62 (muted), qua hết. Token này chỉ tồn tại để giải mâu thuẫn ở dark.
 
+### 2b. `destructive` mắc ĐÚNG bệnh đó — tách thêm `destructive-emphasis`
+
+Bổ sung 11/08, phát hiện khi đo lại khu account. ADR gốc chỉ soi `primary`;
+`destructive` mang y hệt hai vai loại trừ nhau và chưa ai đo.
+
+| Vai | Ở đâu | Dark L 0.579 | Ngưỡng | |
+| --- | --- | --- | --- | --- |
+| Bề mặt cõng chữ | badge "−20%" (`bg-destructive` + `text-white`) | 4.62 | 4.5 | ✅ |
+| Mực | `text-destructive` trên `background` | 3.19 | 4.5 | ❌ |
+| Mực | `text-destructive` trên `card` | 2.83 | 4.5 | ❌ |
+
+Nâng L để cứu vai mực thì giết vai bề mặt — đo chữ trắng trên badge:
+
+| L | chữ trắng/badge | mực/nền | mực/card |
+| --- | --- | --- | --- |
+| 0.579 (nay) | 4.62 ✅ | 3.19 ❌ | 2.83 ❌ |
+| 0.70 | 2.85 ❌ | 5.17 ✅ | 4.59 ✅ |
+| **0.72** | 2.64 ❌ | **5.58 ✅** | **4.95 ✅** |
+
+Hai khoảng rời hẳn nhau, đúng hình dạng mâu thuẫn ở mục 1. Nên lời giải cũng là
+lời giải ở mục 2: **tách token vai mực**.
+
+- `destructive` giữ nguyên → vai **bề mặt**. Badge giảm giá không đổi một pixel.
+- `destructive-emphasis` mới → vai **mực**. Light giữ y hệt `destructive`
+  (0.516) vì ở sáng vai mực đã đạt sẵn (nền 5.62 · card 5.93) — tách token
+  không đổi gì ở light. Dark chọn **0.72** thay vì 0.70 (4.59 trên card, sát
+  mép) để có đệm, cùng lối chọn với `primary-emphasis`.
+
+Quét đổi 34 chỗ `text-destructive` sang token mới trong `apps/web/src` và
+`libs/shared/ui/src`. Ba vai KHÁC giữ nguyên `destructive`, đếm được và không
+đụng tới: 24 `bg-`, 25 `border-`, 30 `ring-`.
+
+Không có token `destructive-foreground` — không chỗ nào đặt chữ sáng lên nền
+`destructive` đặc ngoài badge (dùng `text-white` cứng ở cả hai theme, cố ý, vì
+nền badge luôn đỏ đậm). Nên phép tách này không kéo theo token thứ hai.
+
 ### 3. `ring` và `sidebar-ring` nâng lên, không hạ xuống
 
 Dark 0.563 → **0.60**: `/card` 2.96 → **3.44** ✅, `/nền` 3.34 → 3.88.

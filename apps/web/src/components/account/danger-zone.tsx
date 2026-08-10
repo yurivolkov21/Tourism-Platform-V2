@@ -74,7 +74,7 @@ export function DangerZone() {
     // phải đi — nó có mép trái riêng nên đẻ ra một toạ độ x thứ tư ngoài lưới.
     // Sức nặng cảnh báo nay do CHỮ mang: nút `variant="destructive"` và hộp
     // thoại xác nhận gõ-để-chắc, không do một mảng màu nền.
-    <div className="flex justify-end">
+    <div className="flex justify-end py-6">
       <AlertDialog
         onOpenChange={(open) => {
           if (!open) {

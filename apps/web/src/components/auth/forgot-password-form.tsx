@@ -87,7 +87,7 @@ export function ForgotPasswordForm() {
           </div>
 
           {networkError && (
-            <p role="alert" className="text-xs text-destructive">
+            <p role="alert" className="text-xs text-destructive-emphasis">
               {messages.authForms.errors.generic}
             </p>
           )}

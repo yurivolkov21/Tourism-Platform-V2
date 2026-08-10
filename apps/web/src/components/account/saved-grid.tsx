@@ -91,7 +91,7 @@ function SavedTourCard({ item, onRemove }: { item: WishlistItem; onRemove: () =>
  * card không bấm được. Vẫn giữ nhịp hình khối gần giống TourCard (ảnh + tiêu
  * đề) để không lệch hẳn khỏi các card khác trong lưới, chỉ mờ đi + đổi nhãn.
  *
- * Export để dùng lại ở khối "3 saved" trên dashboard (account-dashboard.tsx)
+ * Export từ thời còn khối "3 saved" trên dashboard; khối đó đã bỏ 11/08
  * — CÙNG một nguồn rẽ nhánh unavailable, tránh copy-paste. `onRemove` để
  * OPTIONAL vì dashboard chỉ là bản xem trước, không có nút bỏ lưu (đó là
  * việc của trang /account/saved).

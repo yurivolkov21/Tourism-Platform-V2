@@ -30,7 +30,10 @@ export function AccountActionError({
   className?: string;
 }) {
   return (
-    <p role="alert" className={`text-sm text-destructive${className ? ` ${className}` : ''}`}>
+    <p
+      role="alert"
+      className={`text-sm text-destructive-emphasis${className ? ` ${className}` : ''}`}
+    >
       {expired ? (
         <>
           {messages.accountActionErrors.sessionExpired}{' '}
