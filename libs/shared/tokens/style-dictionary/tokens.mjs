@@ -17,6 +17,9 @@ export default {
     // nút primary/nền 2.91 — RỚT NHẸ mốc 3:1 non-text, NỢ CÓ HỒ SƠ cùng họ
     // với "primary/card 2.57" bên dưới: cân lại primary dark là một quyết
     // định thiết kế riêng (xem CHANGELOG 06/08), đừng "tiện tay" chỉnh ở đây.
+    // NỢ ĐÓNG 10/08 bằng giải pháp thay thế — viền `border-border` trên nút
+    // primary ở dark (không đạt được đồng thời 3:1 nền + 4.5:1 chữ, xem
+    // ADR-0019); đo lại nếu đổi ramp.
     background: c('oklch(0.977 0.003 174.5)', 'oklch(0.275 0.015 181.5)'),
     foreground: c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
     card: c('oklch(0.996 0.002 174)', 'oklch(0.309 0.022 177.6)'),
@@ -45,6 +48,9 @@ export default {
     // 2.95 từ trước khi sửa** — dưới 3:1 của WCAG 1.4.11 ở cả hai bản. Sửa L không
     // tạo ra lỗi đó và cũng không chữa được nó; chữa thật là đổi `card` dark hoặc cho
     // nút một viền, và đó là quyết định thiết kế riêng. Ghi ở CHANGELOG 30/07.
+    // NỢ ĐÓNG 10/08 bằng giải pháp thay thế — viền `border-border` trên nút
+    // primary ở dark (không đạt được đồng thời 3:1 nền + 4.5:1 chữ, xem
+    // ADR-0019); đo lại nếu đổi ramp.
     primary: c('oklch(0.494 0.067 184.3)', 'oklch(0.53 0.076 181.3)'),
     'primary-foreground': c('oklch(0.974 0.007 174.4)', 'oklch(0.974 0.007 174.4)'),
     // `primary` khi nó LÀ CHỮ, không phải khi nó là bề mặt (ADR-0019 mục 2).
