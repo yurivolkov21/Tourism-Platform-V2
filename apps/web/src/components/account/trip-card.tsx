@@ -31,10 +31,13 @@ function HeroCard({ booking }: { booking: Booking }): ReactNode {
   // "On the road" suy ra từ chính booking, không phải prop rời: chuyến đã
   // khởi hành (daysToStart <= 0) mà còn ở đây (chưa rơi vào nhóm "past" —
   // `groupBookingsByTime` giữ nó lại vì `departureEndDate` chưa qua) nghĩa
-  // là đang diễn ra NGAY BÂY GIỜ. Cùng luật với `groupBookingsByTime`, không
-  // bịa luật thứ hai.
+  // là đang diễn ra NGAY BÂY GIỜ. Cùng luật với `groupBookingsByTime`
+  // (`account-stats.ts`), không bịa luật thứ hai: đòi CẢ `status === 'PAID'`
+  // LẪN `daysToStart <= 0`, không chỉ ngày. Booking `PENDING` chưa giữ chỗ
+  // (bất biến #1) nên dù ngày đã tới cũng không phải "đang đi" — vẫn đếm
+  // ngược/"Departing today" như một chuyến chưa bắt đầu.
   const daysToStart = daysUntilDeparture(booking.departureStartDate);
-  const onTheRoad = daysToStart <= 0;
+  const onTheRoad = booking.status === 'PAID' && daysToStart <= 0;
   const eyebrow = onTheRoad
     ? t.endsOn(formatDateRange(booking.departureEndDate, booking.departureEndDate))
     : t.inDays(daysToStart);
@@ -99,10 +102,10 @@ function HeroCard({ booking }: { booking: Booking }): ReactNode {
 /**
  * Ghi chú cột phải của dòng "past" — tra qua TONE, không if/else theo status
  * rải trong JSX (cùng nguyên tắc `BookingActions`/`bookingView`, xem JSDoc
- * `booking-vm.ts`). `success` (PAID đã qua) và `warning` (hiếm — booking chưa
- * trả tiền mà ngày đã qua) không có mặt trong bảng: nhánh mặc định ở
- * `RowCard` render link "Leave a review" cho cả hai, coi PAID-đã-qua là ca
- * chính đáng cần rơi vào đây.
+ * `booking-vm.ts`). Chỉ `muted` (CANCELLED) và `destructive`
+ * (REFUNDED/PARTIALLY_REFUNDED) có mặt: đó là hai tone có gì đó để NÓI. `warning`
+ * (PENDING quá hạn — chưa trả tiền dù ngày đã qua, ca hiếm nhưng có thật) cố ý
+ * vắng mặt — không map vào đây.
  */
 const PAST_NOTE: Partial<Record<BookingViewTone, string>> = {
   muted: messages.accountBookings.cancelledNote,
@@ -135,16 +138,22 @@ function RowCard({ booking }: { booking: Booking }): ReactNode {
       </div>
 
       <div className="shrink-0 text-sm">
-        {note ? (
-          <span className="text-muted-foreground">{note}</span>
-        ) : (
-          <Link
-            href={`/account/bookings/${booking.code}#review`}
-            className="text-primary-emphasis underline decoration-1 underline-offset-4 hover:no-underline"
-          >
-            {t.leaveReview}
-          </Link>
-        )}
+        {
+          view.tone === 'success' ? (
+            // Chỉ PAID-đã-qua mới có gì để review — đây là điều kiện tường
+            // minh, KHÔNG phải nhánh else mặc định (cùng gốc lỗi review vòng 1:
+            // default từng bắt cả PENDING quá hạn, chưa hề trả tiền, đi kèm
+            // link "Leave a review" sai sự thật).
+            <Link
+              href={`/account/bookings/${booking.code}#review`}
+              className="text-primary-emphasis underline decoration-1 underline-offset-4 hover:no-underline"
+            >
+              {t.leaveReview}
+            </Link>
+          ) : note ? (
+            <span className="text-muted-foreground">{note}</span>
+          ) : null // tone `warning` (PENDING quá hạn): không note, không link.
+        }
       </div>
     </li>
   );
