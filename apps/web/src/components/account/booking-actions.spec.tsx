@@ -53,11 +53,34 @@ describe('BookingActions', () => {
     expect(onAction).toHaveBeenCalledWith('payNow');
   });
 
+  it('payNow-only (KHÔNG có action hủy) → KHÔNG render policy link', () => {
+    const view: BookingView = {
+      tone: 'warning',
+      statusKey: 'PENDING',
+      actions: ['payNow'],
+    };
+    render(<BookingActions view={view} />);
+
+    expect(screen.getByRole('button', { name: 'Pay now' })).toBeInTheDocument();
+    // Policy link KHÔNG render ở nhánh này (chỉ render ở 3 nhánh có hành động hủy)
+    expect(
+      screen.queryByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('cancelPending → mở dialog confirm, bấm "Yes, cancel it" gọi onAction("cancelPending")', async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
     const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['cancelPending'] };
     render(<BookingActions view={view} onAction={onAction} />);
+
+    // Policy link phải hiện cạnh nút hủy (Task 7) — kiểm TRƯỚC mở dialog
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toHaveAttribute('href', '/cancellation-policy');
 
     await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
     expect(screen.getByText('Cancel this booking?')).toBeInTheDocument();
@@ -74,9 +97,17 @@ describe('BookingActions', () => {
     };
     render(<BookingActions view={view} />);
     expect(screen.getByRole('button', { name: 'Request cancellation' })).toBeInTheDocument();
+
+    // Policy link phải hiện cạnh nút hủy (Task 7)
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toHaveAttribute('href', '/cancellation-policy');
   });
 
-  it('viewCancellationPending → text trạng thái, KHÔNG có nút', () => {
+  it('viewCancellationPending → text trạng thái, KHÔNG có nút, KHÔNG có policy link', () => {
     const view: BookingView = {
       tone: 'success',
       statusKey: 'PAID',
@@ -85,6 +116,11 @@ describe('BookingActions', () => {
     render(<BookingActions view={view} />);
     expect(screen.getByText('Cancellation requested — pending review.')).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+
+    // Policy link KHÔNG render ở nhánh này (chỉ render ở 3 nhánh có hành động hủy)
+    expect(
+      screen.queryByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).not.toBeInTheDocument();
   });
 
   it('resubmitCancellation → mở dialog, gõ lý do rồi gửi mới gọi onAction KÈM lý do', async () => {
@@ -96,6 +132,14 @@ describe('BookingActions', () => {
       actions: ['resubmitCancellation'],
     };
     render(<BookingActions view={view} onAction={onAction} />);
+
+    // Policy link phải hiện cạnh nút hủy (Task 7) — kiểm TRƯỚC mở dialog
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
+    ).toHaveAttribute('href', '/cancellation-policy');
 
     await user.click(screen.getByRole('button', { name: 'Request cancellation again' }));
     await user.type(screen.getByRole('textbox'), 'Plans changed');
