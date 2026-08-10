@@ -2563,6 +2563,11 @@ export const messages = {
   accountBookingDetail: {
     back: 'Back to my bookings',
     tourLabel: 'Tour',
+    // Task 7 (redesign hướng A): link cạnh H1 sang trang tour công khai
+    // (`/tours/{tourSlug}`) — riêng cho namespace này, KHÔNG tái dùng
+    // `view`/`viewTour` của namespace khác (đã có tiền lệ mỗi trang giữ bản
+    // copy riêng dù cùng chữ, xem `accountBookings.list.viewTour`).
+    viewTour: 'View tour',
     departureLabel: 'Departure',
     travellersLabel: 'Travellers',
     totalLabel: 'Total',

@@ -16,6 +16,7 @@ import {
 import { Button } from '@tourism/ui/components/button';
 import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
@@ -68,6 +69,25 @@ function errorCopy(kind: ActionErrorKind): string {
 }
 
 /**
+ * Link chính sách hủy — Task 7: chuyển từ footer chung chung của trang (mọi
+ * mục "Manage" đều thấy, kể cả khi không còn hành động hủy nào) sang đứng
+ * NGAY CẠNH text-link hủy cụ thể, chuẩn Booking.com (policy gắn vào đúng
+ * hành động). Chỉ ba case còn có gì để hủy (`cancelPending`/
+ * `requestCancellation`/`resubmitCancellation`) mới render cạnh nó —
+ * `payNow`/`viewCancellationPending` không có action hủy để gắn vào.
+ */
+function PolicyLink() {
+  return (
+    <Link
+      href="/cancellation-policy"
+      className="text-sm text-primary-emphasis underline-offset-4 hover:underline"
+    >
+      {messages.accountBookingDetail.policyLink}
+    </Link>
+  );
+}
+
+/**
  * Dialog xin huỷ booking ĐÃ TRẢ TIỀN, có ô nhập lý do.
  *
  * CHỈ dùng cho `requestCancellation`/`resubmitCancellation`. Tuyệt đối không
@@ -103,63 +123,77 @@ function CancelRequestDialog({
   const invalid = touched && trimmed.length === 0;
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger
-        render={
-          <Button type="button" variant="outline" disabled={pending}>
-            {label}
-          </Button>
-        }
-      />
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t.requestTitle}</AlertDialogTitle>
-          <AlertDialogDescription>{t.requestBody}</AlertDialogDescription>
-        </AlertDialogHeader>
+    // Task 7: trigger + policy link đứng CHUNG một hàng — "gắn liền vào hành
+    // động", KHÔNG phải hai mẩu rời rạc trên trang.
+    <div className="inline-flex flex-wrap items-center gap-3">
+      <AlertDialog>
+        <AlertDialogTrigger
+          render={
+            // Giáng cấp từ Button nổi (`variant="outline"`) xuống text-link —
+            // dialog/textarea/submit bên dưới GIỮ NGUYÊN, chỉ trình bày nút
+            // mở dialog đổi. `h-auto px-0` gỡ khung/đệm còn sót của size mặc
+            // định (tiền lệ `profile-summary.tsx`, nút "Change" cạnh field).
+            <Button
+              type="button"
+              variant="link"
+              className="h-auto px-0 text-destructive-emphasis"
+              disabled={pending}
+            >
+              {label}
+            </Button>
+          }
+        />
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t.requestTitle}</AlertDialogTitle>
+            <AlertDialogDescription>{t.requestBody}</AlertDialogDescription>
+          </AlertDialogHeader>
 
-        <div className="flex flex-col gap-1.5">
-          <div className="flex items-baseline justify-between gap-3">
-            <Label htmlFor="cancel-reason">{t.reasonLabel}</Label>
-            <span className="font-mono text-xs text-muted-foreground tabular-nums">
-              {t.reasonCounter(trimmed.length)}
-            </span>
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-baseline justify-between gap-3">
+              <Label htmlFor="cancel-reason">{t.reasonLabel}</Label>
+              <span className="font-mono text-xs text-muted-foreground tabular-nums">
+                {t.reasonCounter(trimmed.length)}
+              </span>
+            </div>
+            <Textarea
+              id="cancel-reason"
+              rows={4}
+              maxLength={REASON_MAX}
+              placeholder={t.reasonPlaceholder}
+              value={reason}
+              aria-invalid={invalid}
+              onChange={(event) => setReason(event.target.value)}
+              onBlur={() => setTouched(true)}
+            />
+            {invalid ? (
+              <p role="alert" className="text-sm text-destructive-emphasis">
+                {t.reasonRequired}
+              </p>
+            ) : null}
           </div>
-          <Textarea
-            id="cancel-reason"
-            rows={4}
-            maxLength={REASON_MAX}
-            placeholder={t.reasonPlaceholder}
-            value={reason}
-            aria-invalid={invalid}
-            onChange={(event) => setReason(event.target.value)}
-            onBlur={() => setTouched(true)}
-          />
-          {invalid ? (
-            <p role="alert" className="text-sm text-destructive-emphasis">
-              {t.reasonRequired}
-            </p>
-          ) : null}
-        </div>
 
-        {error}
+          {error}
 
-        <AlertDialogFooter>
-          <AlertDialogCancel>
-            {messages.accountBookingDetail.actions.cancelDismiss}
-          </AlertDialogCancel>
-          <AlertDialogAction
-            disabled={pending}
-            onClick={() => {
-              setTouched(true);
-              if (trimmed.length === 0) return;
-              onSubmit(trimmed);
-            }}
-          >
-            {pending ? t.submitting : t.submitRequest}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+          <AlertDialogFooter>
+            <AlertDialogCancel>
+              {messages.accountBookingDetail.actions.cancelDismiss}
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={pending}
+              onClick={() => {
+                setTouched(true);
+                if (trimmed.length === 0) return;
+                onSubmit(trimmed);
+              }}
+            >
+              {pending ? t.submitting : t.submitRequest}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <PolicyLink />
+    </div>
   );
 }
 
@@ -293,28 +327,38 @@ export function BookingActions({
               );
             case 'cancelPending':
               return (
-                <AlertDialog key={action}>
-                  <AlertDialogTrigger
-                    render={
-                      <Button type="button" variant="outline" disabled={pending}>
-                        {t.cancelPending}
-                      </Button>
-                    }
-                  />
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>{t.cancelConfirmTitle}</AlertDialogTitle>
-                      <AlertDialogDescription>{t.cancelConfirmBody}</AlertDialogDescription>
-                    </AlertDialogHeader>
-                    {errorInDialog ? errorNode : null}
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>{t.cancelDismiss}</AlertDialogCancel>
-                      <AlertDialogAction disabled={pending} onClick={() => handleClick?.(action)}>
-                        {t.cancelConfirmCta}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                // Task 7: cùng khuôn `PolicyLink` cạnh trigger như
+                // `CancelRequestDialog` — trigger + policy đứng chung hàng.
+                <div key={action} className="inline-flex flex-wrap items-center gap-3">
+                  <AlertDialog>
+                    <AlertDialogTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto px-0 text-destructive-emphasis"
+                          disabled={pending}
+                        >
+                          {t.cancelPending}
+                        </Button>
+                      }
+                    />
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>{t.cancelConfirmTitle}</AlertDialogTitle>
+                        <AlertDialogDescription>{t.cancelConfirmBody}</AlertDialogDescription>
+                      </AlertDialogHeader>
+                      {errorInDialog ? errorNode : null}
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>{t.cancelDismiss}</AlertDialogCancel>
+                        <AlertDialogAction disabled={pending} onClick={() => handleClick?.(action)}>
+                          {t.cancelConfirmCta}
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                  <PolicyLink />
+                </div>
               );
             case 'requestCancellation':
               return (

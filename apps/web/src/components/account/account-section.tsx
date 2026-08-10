@@ -41,6 +41,7 @@ export function AccountSection({
   title,
   description,
   meta,
+  id,
   children,
 }: {
   title: string;
@@ -49,6 +50,11 @@ export function AccountSection({
   /** Dòng số liệu tuỳ chọn dưới mô tả (vd "3 trips"). Mono để nó đọc như dữ
    *  liệu chứ không như câu văn tiếp theo của mô tả. */
   meta?: ReactNode;
+  /** Id DOM tuỳ chọn — đích cho anchor `#id` từ trang khác (Task 7: `TripCard`
+   *  row trỏ `/account/bookings/{code}#review` vào mục review). KHÁC
+   *  `headingId` bên dưới (id của riêng thẻ `h2`, dùng cho `aria-labelledby`) —
+   *  đây là id của cả `<section>` để trình duyệt cuộn tới đúng khối. */
+  id?: string;
   children: ReactNode;
 }) {
   // `<section>` chỉ được ánh xạ thành role `region` khi nó CÓ TÊN. Trỏ
@@ -59,7 +65,7 @@ export function AccountSection({
   const headingId = `account-section-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
 
   return (
-    <section aria-labelledby={headingId} className="grid gap-x-10 gap-y-4 lg:grid-cols-3">
+    <section id={id} aria-labelledby={headingId} className="grid gap-x-10 gap-y-4 lg:grid-cols-3">
       <div className="lg:py-6">
         <h2 id={headingId} className="font-heading text-lg font-medium text-foreground">
           {title}

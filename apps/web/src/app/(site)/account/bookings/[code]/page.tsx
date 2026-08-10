@@ -1,6 +1,6 @@
 import { BookingCodeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { ArrowLeftIcon } from 'lucide-react';
+import { ArrowLeftIcon, ArrowRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -90,6 +90,20 @@ export default async function AccountBookingDetailPage({
 
   return (
     <div>
+      {/* Hero A (Task 7): ảnh ngang KHI có `tourImage` — null thì BỎ HẲN,
+          không giữ chỗ (khác `TripCard` giữa danh sách nhiều thẻ cần cao bằng
+          nhau; ở đây chỉ một trang, một thẻ, không có hàng để so lệch). */}
+      {booking.tourImage ? (
+        // `<img>` thường, KHÔNG `next/image`: `next.config.ts` chưa khai
+        // `images.remotePatterns` cho host media thật — tiền lệ
+        // `trip-card.tsx`/`checkout-summary.tsx`.
+        // biome-ignore lint/performance/noImgElement: lý do ở comment trên.
+        <img
+          src={booking.tourImage.url}
+          alt={booking.tourImage.alt ?? ''}
+          className="mb-4 aspect-[21/9] w-full rounded-2xl object-cover"
+        />
+      ) : null}
       {/* Back-link đứng TRÊN H1 như breadcrumb của Airbnb: nó nói "bạn đang ở
           trong Trips", tức thuộc về thanh điều hướng chứ không thuộc về nội
           dung trang. */}
@@ -100,9 +114,20 @@ export default async function AccountBookingDetailPage({
         <ArrowLeftIcon className="size-3.5" aria-hidden="true" />
         {t.back}
       </Link>
-      <h1 className="mt-2 font-heading text-2xl font-medium text-balance text-foreground">
-        {booking.tourTitle}
-      </h1>
+      {/* H1 + link "View tour" sang trang tour công khai — cùng hàng, link
+          nhỏ hơn và nhạt hơn để H1 vẫn là thứ mắt đọc trước. */}
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
+          {booking.tourTitle}
+        </h1>
+        <Link
+          href={`/tours/${booking.tourSlug}`}
+          className="inline-flex items-center gap-1 text-sm text-primary-emphasis underline-offset-4 hover:underline"
+        >
+          {t.viewTour}
+          <ArrowRightIcon className="size-3.5" aria-hidden="true" />
+        </Link>
+      </div>
       {/* Mã + trạng thái thành MỘT dòng mono dưới tiêu đề, thay pill
           `TONE_CLASS` — pill dùng `bg-warning/10 text-warning`, mà `warning`
           trên nền ở chế độ sáng đo 1.90:1. */}
@@ -161,6 +186,10 @@ export default async function AccountBookingDetailPage({
             {terminalNote ? (
               <p className="mb-4 text-sm text-muted-foreground">{terminalNote}</p>
             ) : null}
+            {/* Link chính sách hủy KHÔNG còn ở đây — Task 7 chuyển nó vào
+                trong `BookingActions`, đứng NGAY CẠNH text-link hủy (chuẩn
+                Booking.com: policy gắn vào đúng hành động, không làm footer
+                chung chung tách rời ngữ cảnh). */}
             <BookingActions
               view={view}
               // Task 7 (A2): `code` — KHÔNG `onAction` (Server Component không
@@ -168,19 +197,15 @@ export default async function AccountBookingDetailPage({
               // `BookingActions`); component tự dựng handler thật từ mã này.
               code={booking.code}
             />
-            <Link
-              href="/cancellation-policy"
-              className="mt-4 inline-block text-sm text-primary-emphasis underline-offset-4 hover:underline"
-            >
-              {t.policyLink}
-            </Link>
           </AccountSection>
 
           {/* Cụm B nửa 2. Đặt SAU khối thông tin booking có chủ đích: câu hỏi
               đầu tiên khi mở trang này gần như luôn là "tiền của tôi đâu", nên
               lời mời đánh giá không được chen lên trước nó. */}
           {slot === 'hidden' ? null : (
-            <AccountSection title={sec.reviewHeading} description={sec.reviewBlurb}>
+            // `id="review"` — đích anchor `/account/bookings/{code}#review`
+            // mà dòng "past" của `TripCard` đã trỏ tới từ Task 6.
+            <AccountSection id="review" title={sec.reviewHeading} description={sec.reviewBlurb}>
               {slot === 'form' ? (
                 <ReviewForm bookingCode={booking.code} />
               ) : (
