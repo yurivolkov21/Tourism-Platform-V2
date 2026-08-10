@@ -78,3 +78,52 @@ export function upcomingBookings(bookings: Booking[], limit: number): Booking[] 
     })
     .slice(0, limit);
 }
+
+/**
+ * N booking GẦN ĐÂY NHẤT theo lúc ĐẶT, cho khối "Recent bookings" của
+ * dashboard sau redesign.
+ *
+ * Khác `upcomingBookings` ở CẢ HAI phép lọc, và đây là điểm dễ nhầm nhất:
+ *
+ * - KHÔNG lọc trạng thái — giữ cả `CANCELLED`. Khối này là dòng thời gian
+ *   HOẠT ĐỘNG ("tôi vừa làm gì"), không phải danh sách việc sắp tới ("tôi
+ *   sắp đi đâu"). Một booking vừa bị huỷ là tin đáng thấy nhất trong ngày.
+ * - KHÔNG lọc theo ngày khởi hành — chuyến đã đi qua vẫn là hoạt động gần đây.
+ *
+ * Sắp theo `createdAt` giảm dần, KHÔNG theo `departureStartDate`: booking đặt
+ * sau hoàn toàn có thể khởi hành trước, nên sắp nhầm trục sẽ cho ra thứ tự vô
+ * nghĩa với khách.
+ *
+ * Sắp phụ theo `code` để kết quả TẤT ĐỊNH khi hai booking cùng mốc tạo —
+ * `Array.prototype.sort` ổn định theo spec, nhưng dựa vào thứ tự đầu vào thì
+ * cùng dữ liệu mà khác nguồn lại ra khác thứ tự.
+ */
+export function recentBookings(bookings: Booking[], limit: number): Booking[] {
+  return [...bookings]
+    .sort((a, b) => {
+      if (a.createdAt > b.createdAt) return -1;
+      if (a.createdAt < b.createdAt) return 1;
+      return a.code.localeCompare(b.code);
+    })
+    .slice(0, limit);
+}
+
+/** Số mili-giây một ngày — dùng để đếm ngày, không phải để cộng giờ. */
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * Số ngày từ hôm nay tới ngày khởi hành. 0 = đi hôm nay, âm = đã qua.
+ *
+ * So theo NGÀY LỊCH UTC chứ không theo giờ máy: `departureStartDate` là
+ * `@db.Date` (ngày lịch, không giờ), nên đem so với `new Date()` giờ địa
+ * phương sẽ lệch một ngày ở các mốc gần nửa đêm — và lệch theo múi giờ của
+ * người xem, tức cùng một booking hiện hai con số khác nhau ở hai máy.
+ *
+ * Trả về số ÂM khi chuyến đã qua thay vì kẹp về 0: chỗ gọi biết rõ nó muốn
+ * hiện gì cho ca đó hơn là hàm này.
+ */
+export function daysUntilDeparture(departureStartDate: string): number {
+  const from = Date.parse(`${todayDateString()}T00:00:00.000Z`);
+  const to = Date.parse(`${departureStartDate}T00:00:00.000Z`);
+  return Math.round((to - from) / MS_PER_DAY);
+}

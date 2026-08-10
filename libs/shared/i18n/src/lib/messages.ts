@@ -2411,14 +2411,33 @@ export const messages = {
     title: 'My account',
     greeting: (name: string) => `Welcome back, ${name}`,
     stats: {
-      trips: 'Trips',
-      upcoming: 'Upcoming',
-      completed: 'Completed',
-      saved: 'Saved',
+      // Redesign 10/08: dashboard giữ HAI ô, bỏ `upcoming`/`completed`. Hai ô
+      // đó lặp lại thứ khối "Recent bookings" ngay bên dưới đã nói rõ hơn, và
+      // bốn con số ngang hàng làm mắt không biết nhìn đâu trước.
+      //
+      // "Trips PAID" chứ không phải "booked": `dashboardStats.trips` cố ý chỉ
+      // đếm booking đã trả tiền. Nhìn màn hình thật mới lộ ra vấn đề — ba dòng
+      // booking PENDING nằm ngay dưới một ô ghi "Trips booked 0" đọc thành mâu
+      // thuẫn. Bản bốn ô cũ giấu được vì có "Upcoming 3" đứng cạnh làm dịu.
+      // Đổi NHÃN cho trung thực với con số, không đổi phép đếm.
+      trips: 'Trips paid',
+      saved: 'Tours saved',
     },
     nextTrip: {
       heading: 'Your next trip',
       departing: (date: string) => `Departing ${date}`,
+      /** Đồng hồ đếm ngược: con số đứng riêng cỡ lớn, dòng này là nhãn dưới nó. */
+      daysAway: 'days away',
+      /** Hai mốc đặc biệt — "0 days away" đọc như lỗi, không như tin vui. */
+      today: 'Departing today',
+      tomorrow: 'Departing tomorrow',
+      travellers: (n: number) => `${n} ${n === 1 ? 'traveller' : 'travellers'}`,
+      viewBooking: 'View booking',
+    },
+    recent: {
+      heading: 'Recent bookings',
+      viewAll: 'See all',
+      empty: 'No bookings yet.',
     },
     upcoming: {
       heading: 'Upcoming bookings',

@@ -32,87 +32,161 @@ afterEach(() => {
 });
 
 describe('AccountDashboard — empty tổng', () => {
-  it('không booking, không saved → empty-state với CTA /tours, KHÔNG render 4 ô số', () => {
+  it('không booking, không saved → empty-state với CTA /tours, KHÔNG render ô số', () => {
     render(<AccountDashboard bookings={[]} wishlist={[]} />);
     expect(screen.getByRole('link', { name: /browse tours/i })).toHaveAttribute('href', '/tours');
-    expect(screen.queryByText('Trips')).not.toBeInTheDocument();
+    expect(screen.queryByText('Trips paid')).not.toBeInTheDocument();
   });
 });
 
-describe('AccountDashboard — có dữ liệu', () => {
-  const bookings = [
-    makeBooking({ code: 'BK-NEAREST1', departureStartDate: '2026-08-20' }),
-    makeBooking({ code: 'BK-PASTPAID', departureStartDate: '2026-01-01' }),
-  ];
-  const wishlist = [makeWishlistItem()];
-
-  it('4 ô số đúng theo dashboardStats (trips=2, upcoming=1, completed=1, saved=1)', () => {
-    render(<AccountDashboard bookings={bookings} wishlist={wishlist} />);
-    expect(screen.getByText('Trips')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-    // upcoming + completed + saved đều = 1 → ba ô số cùng hiện "1".
-    expect(screen.getAllByText('1')).toHaveLength(3);
+describe('AccountDashboard — thứ tự khối (redesign 10/08)', () => {
+  it('thẻ "chuyến kế tiếp" đứng TRƯỚC hai ô số và trước "Recent bookings"', () => {
+    // Đảo trục là điểm chính của redesign: câu người ta mở trang này để hỏi là
+    // "tôi sắp đi đâu", không phải "tôi có bao nhiêu chuyến". Kiểm bằng thứ tự
+    // xuất hiện trong DOM chứ không bằng class.
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ code: 'BK-NEAREST1', departureStartDate: '2026-08-20' })]}
+        wishlist={[makeWishlistItem()]}
+      />,
+    );
+    const html = document.body.innerHTML;
+    expect(html.indexOf('Your next trip')).toBeLessThan(html.indexOf('Trips paid'));
+    expect(html.indexOf('Trips paid')).toBeLessThan(html.indexOf('Recent bookings'));
   });
 
-  it('có nextTrip → hiện thẻ "chuyến kế tiếp" với tên tour', () => {
-    render(<AccountDashboard bookings={bookings} wishlist={wishlist} />);
+  it('CHỈ hai ô số — bốn ô cũ đã bỏ', () => {
+    render(<AccountDashboard bookings={[makeBooking()]} wishlist={[makeWishlistItem()]} />);
+    expect(screen.getByText('Trips paid')).toBeInTheDocument();
+    expect(screen.getByText('Tours saved')).toBeInTheDocument();
+    expect(screen.queryByText('Upcoming')).not.toBeInTheDocument();
+    expect(screen.queryByText('Completed')).not.toBeInTheDocument();
+  });
+});
+
+describe('AccountDashboard — thẻ chuyến kế tiếp', () => {
+  const soon = makeBooking({ code: 'BK-NEAREST1', departureStartDate: '2026-08-20' });
+
+  it('hiện số ngày còn lại và link tới đúng booking', () => {
+    render(<AccountDashboard bookings={[soon]} wishlist={[]} />);
     expect(screen.getByText('Your next trip')).toBeInTheDocument();
-    // "Test Tour" xuất hiện 2 lần: thẻ nextTrip + hàng của chính booking đó
-    // trong danh sách "5 upcoming" (cùng một booking, hai khối khác nhau).
-    expect(screen.getAllByText('Test Tour').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('16')).toBeInTheDocument(); // 04/08 → 20/08
+    expect(screen.getByText('days away')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /view booking/i })).toHaveAttribute(
+      'href',
+      '/account/bookings/BK-NEAREST1',
+    );
   });
 
-  it('không có nextTrip (toàn quá khứ) nhưng vẫn có booking khác → KHÔNG hiện thẻ nextTrip, KHÔNG rơi vào empty tổng', () => {
-    const onlyPast = [makeBooking({ departureStartDate: '2026-01-01' })];
-    render(<AccountDashboard bookings={onlyPast} wishlist={[]} />);
+  it('khởi hành HÔM NAY dùng câu riêng, không phải "0 days away"', () => {
+    // "0 days away" đọc như một lỗi chứ không như tin vui.
+    render(
+      <AccountDashboard bookings={[makeBooking({ departureStartDate: TODAY })]} wishlist={[]} />,
+    );
+    expect(screen.getByText('Departing today')).toBeInTheDocument();
+    expect(screen.queryByText('days away')).not.toBeInTheDocument();
+  });
+
+  it('khởi hành NGÀY MAI cũng dùng câu riêng', () => {
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ departureStartDate: '2026-08-05' })]}
+        wishlist={[]}
+      />,
+    );
+    expect(screen.getByText('Departing tomorrow')).toBeInTheDocument();
+  });
+
+  it('đếm số khách theo người lớn CỘNG trẻ em', () => {
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ departureStartDate: '2026-08-20', numAdults: 2, numChildren: 1 })]}
+        wishlist={[]}
+      />,
+    );
+    expect(screen.getByText(/3 travellers/)).toBeInTheDocument();
+  });
+
+  it('một khách → số ít, không phải "1 travellers"', () => {
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ departureStartDate: '2026-08-20', numAdults: 1, numChildren: 0 })]}
+        wishlist={[]}
+      />,
+    );
+    expect(screen.getByText(/1 traveller(?!s)/)).toBeInTheDocument();
+  });
+
+  it('toàn booking quá khứ → KHÔNG hiện thẻ, nhưng cũng KHÔNG rơi vào empty tổng', () => {
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ departureStartDate: '2026-01-01' })]}
+        wishlist={[]}
+      />,
+    );
     expect(screen.queryByText('Your next trip')).not.toBeInTheDocument();
-    expect(screen.getByText('Trips')).toBeInTheDocument();
+    expect(screen.getByText('Trips paid')).toBeInTheDocument();
   });
+});
 
-  it('upcoming rỗng (chỉ có booking quá khứ) → text "No upcoming bookings yet."', () => {
-    const onlyPast = [makeBooking({ departureStartDate: '2026-01-01' })];
-    render(<AccountDashboard bookings={onlyPast} wishlist={wishlist} />);
-    expect(screen.getByText('No upcoming bookings yet.')).toBeInTheDocument();
-  });
-
-  it('upcoming có phần tử → link tới /account/bookings/[code]', () => {
-    render(<AccountDashboard bookings={bookings} wishlist={wishlist} />);
-    const link = screen.getByRole('link', { name: /test tour/i });
-    expect(link).toHaveAttribute('href', '/account/bookings/BK-NEAREST1');
-  });
-
-  it('saved rỗng (bookings vẫn có) → text "No saved tours yet."', () => {
-    render(<AccountDashboard bookings={bookings} wishlist={[]} />);
-    expect(screen.getByText('No saved tours yet.')).toBeInTheDocument();
-  });
-
-  it('saved có phần tử → render tour card với tiêu đề', () => {
-    render(<AccountDashboard bookings={bookings} wishlist={wishlist} />);
-    expect(screen.getByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields')).toBeInTheDocument();
-  });
-
-  it('saved preview có item unavailable → KHÔNG link /tours/[slug], hiện UnavailableCard (khớp saved-grid)', () => {
-    const unavailableItem = makeWishlistItem({
-      tourId: 'ded599f0-df12-43a3-9b3d-bbe5d26764dc',
-      slug: 'ha-giang-loop-4d',
-      title: 'Hà Giang Loop by Easyrider 4D3N',
-      unavailable: true,
+describe('AccountDashboard — Recent bookings', () => {
+  it('GIỮ booking CANCELLED — đây là khác biệt so với khối "upcoming" cũ', () => {
+    const cancelled = makeBooking({
+      code: 'BK-CANCEL01',
+      status: 'CANCELLED',
+      tourTitle: 'Cancelled Trip',
+      departureStartDate: '2026-01-01',
     });
-    render(<AccountDashboard bookings={bookings} wishlist={[unavailableItem]} />);
-    expect(screen.getByText('Hà Giang Loop by Easyrider 4D3N')).toBeInTheDocument();
-    expect(screen.getByText('No longer available')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /hà giang loop by easyrider/i }),
-    ).not.toBeInTheDocument();
+    render(<AccountDashboard bookings={[cancelled]} wishlist={[]} />);
+    expect(screen.getByText('Cancelled Trip')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /cancelled trip/i })).toHaveAttribute(
+      'href',
+      '/account/bookings/BK-CANCEL01',
+    );
   });
 
-  it('badge status PENDING lấy nhãn "Awaiting payment" từ i18n booking.list.status (một nguồn với trang bookings)', () => {
-    const pendingBooking = makeBooking({
-      code: 'BK-PENDING1',
-      status: 'PENDING',
-      departureStartDate: '2026-08-25',
+  it('sắp theo lúc ĐẶT giảm dần, không theo ngày khởi hành', () => {
+    const older = makeBooking({
+      code: 'BK-OLDER001',
+      tourTitle: 'Booked First',
+      createdAt: '2026-07-01T00:00:00.000Z',
+      departureStartDate: '2026-08-10',
     });
-    render(<AccountDashboard bookings={[pendingBooking]} wishlist={wishlist} />);
+    const newer = makeBooking({
+      code: 'BK-NEWER001',
+      tourTitle: 'Booked Later',
+      createdAt: '2026-08-03T00:00:00.000Z',
+      departureStartDate: '2026-12-31',
+    });
+    render(<AccountDashboard bookings={[older, newer]} wishlist={[]} />);
+    // Đo TRONG danh sách, không đo cả trang: 'Booked First' khởi hành gần hơn
+    // nên nó còn xuất hiện ở thẻ "chuyến kế tiếp" phía trên, và phép đo toàn
+    // trang sẽ bắt nhầm lần xuất hiện đó.
+    const rows = screen.getAllByRole('listitem').map((li) => li.textContent ?? '');
+    expect(rows[0]).toContain('Booked Later');
+    expect(rows[1]).toContain('Booked First');
+  });
+
+  it('nhãn status lấy từ i18n booking.list.status — một nguồn với trang bookings', () => {
+    render(
+      <AccountDashboard
+        bookings={[makeBooking({ status: 'PENDING', departureStartDate: '2026-08-25' })]}
+        wishlist={[]}
+      />,
+    );
     expect(screen.getByText('Awaiting payment')).toBeInTheDocument();
+  });
+
+  it('chỉ có tour đã lưu, không booking nào → khối rỗng có câu riêng', () => {
+    render(<AccountDashboard bookings={[]} wishlist={[makeWishlistItem()]} />);
+    expect(screen.getByText('No bookings yet.')).toBeInTheDocument();
+  });
+
+  it('KHÔNG còn khối "tour đã lưu" — mockup đã bỏ hẳn', () => {
+    render(<AccountDashboard bookings={[makeBooking()]} wishlist={[makeWishlistItem()]} />);
+    expect(
+      screen.queryByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('Saved tours')).not.toBeInTheDocument();
   });
 });

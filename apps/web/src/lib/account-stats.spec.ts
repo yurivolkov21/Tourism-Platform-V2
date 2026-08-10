@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { dashboardStats, nextTrip, upcomingBookings } from './account-stats';
+import {
+  dashboardStats,
+  daysUntilDeparture,
+  nextTrip,
+  recentBookings,
+  upcomingBookings,
+} from './account-stats';
 
 const TODAY = '2026-08-04';
 
@@ -134,5 +140,95 @@ describe('upcomingBookings', () => {
     const b = makeBooking({ code: 'BK-B', departureStartDate: '2026-08-20' });
     const c = makeBooking({ code: 'BK-C', departureStartDate: '2026-08-30' });
     expect(upcomingBookings([c, a, b], 2)).toEqual([a, b]);
+  });
+});
+
+describe('recentBookings — dòng thời gian HOẠT ĐỘNG, khác "sắp tới"', () => {
+  // `upcomingBookings` trả lời "tôi sắp đi đâu"; hàm này trả lời "tôi vừa làm
+  // gì". Hai câu hỏi khác nhau nên phép chọn cũng khác: ở đây KHÔNG lọc theo
+  // trạng thái và KHÔNG lọc theo ngày khởi hành.
+  const at = (createdAt: string, over = {}) =>
+    makeBooking({ createdAt: `${createdAt}T00:00:00.000Z`, ...over });
+
+  it('rỗng → mảng rỗng, không ném', () => {
+    expect(recentBookings([], 5)).toEqual([]);
+  });
+
+  it('GIỮ booking CANCELLED — đây là điểm khác upcomingBookings', () => {
+    const cancelled = at('2026-08-03', { status: 'CANCELLED' as const, code: 'BK-CANCEL01' });
+    expect(recentBookings([cancelled], 5).map((b) => b.code)).toEqual(['BK-CANCEL01']);
+    // Đối chứng: phép chọn cũ loại nó.
+    expect(upcomingBookings([cancelled], 5)).toEqual([]);
+  });
+
+  it('GIỮ chuyến đã đi qua — "gần đây" nói về lúc ĐẶT, không phải lúc đi', () => {
+    const past = at('2026-08-01', { departureStartDate: '2026-01-05', code: 'BK-PAST0001' });
+    expect(recentBookings([past], 5).map((b) => b.code)).toEqual(['BK-PAST0001']);
+    expect(upcomingBookings([past], 5)).toEqual([]);
+  });
+
+  it('sắp theo createdAt GIẢM DẦN, không theo ngày khởi hành', () => {
+    // Bẫy thật: booking đặt sau có thể khởi hành trước. Sắp nhầm trục là
+    // "gần đây" hiện ra thứ tự vô nghĩa với khách.
+    const older = at('2026-07-01', { code: 'BK-OLDER001', departureStartDate: '2026-01-01' });
+    const newer = at('2026-08-05', { code: 'BK-NEWER001', departureStartDate: '2026-12-31' });
+    expect(recentBookings([older, newer], 5).map((b) => b.code)).toEqual([
+      'BK-NEWER001',
+      'BK-OLDER001',
+    ]);
+  });
+
+  it('cắt đúng limit', () => {
+    const many = ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04'].map((d, i) =>
+      at(d, { code: `BK-000000P${i}` }),
+    );
+    expect(recentBookings(many, 2)).toHaveLength(2);
+    expect(recentBookings(many, 0)).toEqual([]);
+  });
+
+  it('KHÔNG sửa mảng gốc — hàm thuần', () => {
+    const input = [
+      at('2026-07-01', { code: 'BK-AAAAAAA1' }),
+      at('2026-08-01', { code: 'BK-BBBBBBB1' }),
+    ];
+    const before = input.map((b) => b.code);
+    recentBookings(input, 5);
+    expect(input.map((b) => b.code)).toEqual(before);
+  });
+
+  it('createdAt bằng nhau → thứ tự TẤT ĐỊNH theo code, không phụ thuộc thứ tự vào', () => {
+    const a = at('2026-08-01', { code: 'BK-AAAAAAAA' });
+    const b = at('2026-08-01', { code: 'BK-BBBBBBBB' });
+    expect(recentBookings([a, b], 5).map((x) => x.code)).toEqual(
+      recentBookings([b, a], 5).map((x) => x.code),
+    );
+  });
+});
+
+describe('daysUntilDeparture — đồng hồ đếm ngược trên thẻ chuyến kế tiếp', () => {
+  it('khởi hành hôm nay → 0, KHÔNG âm', () => {
+    expect(daysUntilDeparture(TODAY)).toBe(0);
+  });
+
+  it('ngày mai → 1', () => {
+    expect(daysUntilDeparture('2026-08-05')).toBe(1);
+  });
+
+  it('đếm đúng qua ranh giới THÁNG', () => {
+    // 04/08 → 01/09 là 28 ngày. Trừ chuỗi ngày kiểu ngây thơ sẽ ra sai ở đây.
+    expect(daysUntilDeparture('2026-09-01')).toBe(28);
+  });
+
+  it('chuyến đã qua → số ÂM, để chỗ gọi tự quyết hiển thị gì', () => {
+    expect(daysUntilDeparture('2026-08-01')).toBe(-3);
+  });
+
+  it('KHÔNG lệch vì múi giờ — so theo ngày lịch UTC, không theo giờ máy', () => {
+    // Chạy lúc 12:00 UTC (beforeEach). Nếu hàm dùng giờ địa phương của máy
+    // thì một máy ở UTC+7 sẽ cho lệch một ngày ở các mốc gần nửa đêm.
+    vi.setSystemTime(new Date(`${TODAY}T23:59:59.000Z`));
+    expect(daysUntilDeparture('2026-08-05')).toBe(1);
+    vi.setSystemTime(new Date(`${TODAY}T00:00:01.000Z`));
+    expect(daysUntilDeparture('2026-08-05')).toBe(1);
   });
 });
