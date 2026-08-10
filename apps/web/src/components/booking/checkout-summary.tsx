@@ -71,11 +71,13 @@ export function CheckoutSummary({
           <h2 className="font-heading text-lg font-semibold text-foreground">{t.heading}</h2>
           <p className="mt-2 font-medium text-foreground">{tour.title}</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            {tour.durationDays} days · {tour.destinationNames.join(' · ')}
+            {messages.tourDetail.durationValue(tour.durationDays)} ·{' '}
+            {tour.destinationNames.join(' · ')}
             {tour.ratingAvg !== null ? (
               <>
                 {' · '}
-                <span className="text-rating">★</span> {tour.ratingAvg} ({tour.ratingCount})
+                <span className="text-rating">★</span> {tour.ratingAvg.toFixed(1)} (
+                {tour.ratingCount})
               </>
             ) : null}
           </p>

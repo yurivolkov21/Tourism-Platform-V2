@@ -60,7 +60,7 @@ describe('CheckoutSummary — breakdown giá', () => {
         cta={<button type="submit">Continue</button>}
       />,
     );
-    expect(screen.queryByText(/0 children/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/child/)).not.toBeInTheDocument();
   });
 
   it('departure: null → hiện pickDeparture, không hiện total', () => {
@@ -76,6 +76,34 @@ describe('CheckoutSummary — breakdown giá', () => {
     );
     expect(screen.getByText('Select a departure to see your total')).toBeInTheDocument();
     expect(screen.queryByText('Total')).not.toBeInTheDocument();
+  });
+
+  it('durationDays: 1 → hiện "1 day" (không phải "1 days")', () => {
+    render(
+      <CheckoutSummary
+        tour={makeTour({ durationDays: 1 })}
+        departure={makeDeparture()}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.getByText(/1 day/)).toBeInTheDocument();
+  });
+
+  it('ratingAvg: 4 → hiện "4.0" với .toFixed(1)', () => {
+    render(
+      <CheckoutSummary
+        tour={makeTour({ ratingAvg: 4 })}
+        departure={makeDeparture()}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.getByText(/4\.0/)).toBeInTheDocument();
   });
 
   it('badge Free cancellation + Instant confirmation luôn hiển thị', () => {
