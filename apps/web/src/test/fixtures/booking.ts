@@ -20,6 +20,8 @@ export function makeBooking(overrides: Partial<Booking> = {}): Booking {
     code: 'BK-TESTAAAA',
     status: 'PAID',
     tourTitle: 'Test Tour',
+    tourSlug: 'test-tour',
+    tourImage: null,
     departureStartDate: '2026-09-01',
     departureEndDate: '2026-09-02',
     unitPrice: '10.00',
