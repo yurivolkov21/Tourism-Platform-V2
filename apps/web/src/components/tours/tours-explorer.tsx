@@ -27,6 +27,7 @@ import { PAGE_SIZES, PaginationBar } from '@/components/tours/pagination-bar';
 import { TourListCard } from '@/components/tours/tour-list-card';
 import { type FacetCounts, type FacetKey, ToursFilters } from '@/components/tours/tours-filters';
 import { ToursHero } from '@/components/tours/tours-hero';
+import { WishlistProvider } from '@/components/tours/wishlist-store';
 import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
 import {
@@ -266,8 +267,13 @@ export function ToursExplorer({
     />
   );
 
+  // Chỉ hỏi trạng thái tim cho tour ĐANG hiện trên trang, không phải cả bộ:
+  // `wishlist.check` có trần 100 id, và tô tim cho thứ khách không nhìn thấy
+  // là tốn một vòng mạng vô ích.
+  const pagedTourIds = paged.items.map((tour) => tour.id);
+
   return (
-    <>
+    <WishlistProvider tourIds={pagedTourIds}>
       <ToursHero
         eyebrow={messages.toursPage.resultSummary(tours.length, destinations.length)}
         title={messages.toursPage.title}
@@ -519,6 +525,6 @@ export function ToursExplorer({
           )}
         </div>
       </div>
-    </>
+    </WishlistProvider>
   );
 }

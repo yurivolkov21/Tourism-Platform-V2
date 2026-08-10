@@ -1627,6 +1627,10 @@ export const messages = {
     removeFilter: (label: string) => `Remove filter ${label}`,
     viewTour: 'View tour',
     perPerson: 'per person',
+    /** Nhãn nút tim. Một nhãn DUY NHẤT cho cả hai trạng thái — trạng thái bật/tắt
+        đi qua `aria-pressed`, trình đọc màn hình đọc sẵn. Đổi nhãn qua lại khiến
+        người dùng tưởng đó là hai nút khác nhau. */
+    wishlistLabel: (title: string) => `Save ${title} to your wishlist`,
     /** Dải chặng trên card gợi ý chỉ hiện 2 chặng đầu; phần dư gộp thành "+2" để
         người đọc biết tour còn đi qua nơi khác chứ không tưởng nó chỉ có hai điểm.
         Tên các chặng bị gộp vẫn đọc được cho trình đọc màn hình (sr-only). */

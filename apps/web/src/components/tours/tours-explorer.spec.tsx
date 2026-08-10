@@ -14,6 +14,21 @@ import {
 } from '@/test/fixtures/catalog';
 import { ToursExplorer } from './tours-explorer';
 
+// Từ cụm B (nút tim), cây của ToursExplorer có `WishlistProvider` → chạm
+// next/navigation, session và API. Không mock thì `useRouter()` ném
+// "invariant expected app router to be mounted" và CẢ 38 test ở đây đỏ vì một
+// lý do không liên quan gì tới thứ chúng đang canh.
+//
+// Mock ở mức TỐI THIỂU và mặc định CHƯA đăng nhập: các test dưới đây kiểm lọc,
+// phân trang và URL — không kiểm wishlist. Hành vi nút tim có spec riêng ở
+// `wishlist-heart.spec.tsx`.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/tours',
+  useSearchParams: () => new URLSearchParams(),
+}));
+vi.mock('@/lib/auth-client', () => ({ useSession: () => ({ data: null }) }));
+
 // ToursExplorer ghi URL bằng history.replaceState (KHÔNG phải router.replace —
 // cái đó kích hoạt RSC round-trip mỗi lần bấm, xem comment trong component).
 // Bọc lại để kiểm đúng thứ nó hứa: mỗi lần đổi bộ lọc thì URL được ghi lại.

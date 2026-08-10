@@ -1,8 +1,8 @@
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ClockIcon, HeartIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
+import { ClockIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { ImagePlaceholder } from '@/components/image-placeholder';
+import { WishlistHeart } from '@/components/tours/wishlist-heart';
 import type { TourCardVM } from '@/lib/api/tours';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
 
@@ -163,9 +163,7 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
             <span className="block text-xs text-muted-foreground">{t.perPerson}</span>
           </div>
           <div className="relative z-10 flex items-center gap-1.5">
-            <Button variant="ghost" size="icon-sm" aria-label={`Save ${tour.title} to wishlist`}>
-              <HeartIcon />
-            </Button>
+            <WishlistHeart tourId={tour.id} tourTitle={tour.title} />
             <ButtonLink size="sm" href={href}>
               {t.viewTour}
             </ButtonLink>
