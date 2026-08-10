@@ -1,5 +1,6 @@
 import { cn } from '@tourism/ui/lib/utils';
 import type { ReactNode } from 'react';
+import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 
 /**
  * Khung dùng chung của hai màn quay-về (`/checkout/success`, `/checkout/cancel`).
@@ -45,15 +46,19 @@ export function CheckoutShell({
       {body ? <p className="max-w-lg text-pretty text-muted-foreground">{body}</p> : null}
 
       {code ? (
-        <div className="flex w-full flex-col items-center gap-1.5 rounded-2xl border border-dashed p-5">
+        <div className="flex w-full flex-col items-center gap-2 rounded-xl border-2 border-dashed p-5">
           {codeLabel ? (
             <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
               {codeLabel}
             </p>
           ) : null}
-          {/* Mã đặt chỗ ở mặt chữ mono — vai trò brief giao cho IBM Plex Mono
-              (mã kỹ thuật, mã tham chiếu). Đây là thứ khách cần chép lại. */}
-          <p className="font-mono text-xl font-medium tracking-wide">{code}</p>
+          {/* Khối mã đặt chỗ nâng thành "voucher": mã to hơn hẳn phần thân
+              trang, mặt chữ mono (IBM Plex Mono — vai trò mã kỹ thuật/tham
+              chiếu) giãn cách rộng để đọc/chép tay dễ, cùng nút chép cạnh bên. */}
+          <div className="flex flex-wrap items-center justify-center gap-3">
+            <p className="font-mono text-2xl font-medium tracking-[0.2em] md:text-3xl">{code}</p>
+            <CopyCodeButton code={code} />
+          </div>
         </div>
       ) : null}
 

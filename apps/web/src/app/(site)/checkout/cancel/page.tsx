@@ -45,7 +45,7 @@ export default async function CheckoutCancelPage({
     <CheckoutShell
       tone="warning"
       title={t.title}
-      body={t.body}
+      body={t.heldNote}
       code={booking?.code}
       codeLabel={booking ? messages.booking.success.refLabel : undefined}
     >

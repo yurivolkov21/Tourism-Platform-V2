@@ -447,6 +447,14 @@ export const messages = {
       // gì để đợi; câu chữ vì thế không hứa hẹn gì, chỉ chỉ đường.
       settledTitle: 'This booking is already settled',
       settledBody: 'There’s nothing left to pay here. Open the booking to see where it stands.',
+      // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
+      copyCode: 'Copy code',
+      copied: 'Copied',
+      // Section "What happens next" — chỉ hiện ở mood confirmed.
+      nextHeading: 'What happens next',
+      nextEmail: 'A confirmation email is on its way to your inbox.',
+      nextVoucher: 'Your booking code is your voucher — show it at the meeting point.',
+      nextManage: 'View or cancel this trip anytime in Trips.',
     },
     // /checkout/cancel.
     cancel: {
@@ -459,6 +467,11 @@ export const messages = {
       // bất kỳ màn nào của luồng này. Nói "khoảng" vì con số làm tròn xuống.
       expiresIn: (minutes: number) =>
         `This booking is released in about ${minutes} minute${minutes === 1 ? '' : 's'} if it stays unpaid.`,
+      // Câu trấn an trung thực thay cho `body` ở màn cancel: không hứa giữ
+      // ghế (invariant #1 — PENDING không giữ seat), chỉ nói đúng sự thật là
+      // session Stripe hết hạn sau ~1 giờ. KHÔNG đồng hồ đếm ngược.
+      heldNote:
+        'No charge was made. Your reservation is held for up to an hour — you can finish payment from Trips.',
     },
     // My bookings list (/account/bookings).
     list: {

@@ -95,6 +95,20 @@ export default async function CheckoutSuccessPage({
 
       {mood === 'confirmed' ? <p className="text-sm text-muted-foreground">{t.emailNote}</p> : null}
 
+      {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
+          xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
+          còn lại (confirming chưa có gì để hứa; settled đã kết thúc). */}
+      {mood === 'confirmed' ? (
+        <div className="w-full rounded-xl border p-5 text-left">
+          <h2 className="font-heading text-sm font-semibold text-foreground">{t.nextHeading}</h2>
+          <ul className="mt-3 flex flex-col gap-2">
+            <NextStep text={t.nextEmail} />
+            <NextStep text={t.nextVoucher} />
+            <NextStep text={t.nextManage} />
+          </ul>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-2.5">
         <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
         {mood === 'confirming' ? (
@@ -115,5 +129,14 @@ function Fact({ label, value }: { label: string; value: string }) {
       <dt className="font-mono text-xs tracking-widest text-muted-foreground uppercase">{label}</dt>
       <dd className="text-foreground">{value}</dd>
     </div>
+  );
+}
+
+function NextStep({ text }: { text: string }) {
+  return (
+    <li className="flex items-start gap-2.5 text-sm text-muted-foreground">
+      <span aria-hidden="true" className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+      <span>{text}</span>
+    </li>
   );
 }
