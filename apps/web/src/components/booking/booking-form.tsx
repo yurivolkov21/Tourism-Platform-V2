@@ -216,7 +216,7 @@ export function BookingForm({
 
         {/* Card 2 — Lead traveler. */}
         <div className="rounded-2xl border bg-card p-6">
-          <h2 className="font-heading text-lg font-semibold">{t.travellersHeading}</h2>
+          <h2 className="font-heading text-lg font-semibold">{tp.leadTravelerHeading}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t.travellersDesc}</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Field label={t.contactName} error={errors.contactName}>
@@ -268,12 +268,11 @@ export function BookingForm({
           </Field>
         </div>
 
-        {/* Card 3 — Payment method: nhãn "Payment" đúng nhãn bước "kế tiếp"
-            (steps.payment) của step indicator — vòng khớp lại giữa header
-            trang và card cuối, dù bước thanh toán thật xảy ra ở trang hosted
-            của Stripe/PayPal ngay sau khi submit. */}
+        {/* Card 3 — Payment method: bước thanh toán thật xảy ra ở trang hosted
+            của Stripe/PayPal ngay sau khi submit, KHÔNG ở đây — card này chỉ
+            chọn provider. */}
         <div className="rounded-2xl border bg-card p-6">
-          <h2 className="font-heading text-lg font-semibold">{t.paymentHeading}</h2>
+          <h2 className="font-heading text-lg font-semibold">{tp.paymentMethodHeading}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t.paymentDesc}</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             <ProviderChoice
@@ -304,10 +303,20 @@ export function BookingForm({
           numChildren={state.numChildren}
           currency={currency}
           cta={
-            <Button type="submit" size="lg" className="w-full" disabled={submitting}>
-              {submitting ? t.submitting : t.submit}
-              {total !== null ? ` · ${formatMoney(total, currency)}` : ''}
-            </Button>
+            <>
+              <Button type="submit" size="lg" className="w-full" disabled={submitting}>
+                {submitting ? t.submitting : t.submit}
+                {total !== null ? ` · ${formatMoney(total, currency)}` : ''}
+              </Button>
+              {/* Finding 2 (vòng review 1) — disclosure "test mode" rớt lúc
+                  refactor T3, khôi phục NGAY DƯỚI nút: capstone không doanh
+                  thu, khách phải thấy dòng này trước khi bấm nút trả tiền.
+                  Dùng LẠI key đã có (`tourDetail.booking.testMode`), khớp
+                  câu ở `booking-rail.tsx` — không bịa key trùng nghĩa. */}
+              <p className="text-xs text-muted-foreground">
+                {messages.tourDetail.booking.testMode}
+              </p>
+            </>
           }
         />
       </div>

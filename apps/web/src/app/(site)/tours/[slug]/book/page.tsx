@@ -69,11 +69,10 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
         </p>
       </header>
 
-      <div className="mt-8">
-        <BookingSteps />
-      </div>
-
       <div className="mt-10">
+        {/* `steps` chỉ render bên trong `BookingModes` khi mode là scheduled
+            (Finding 4, vòng review 1) — Private là form hỏi báo giá, không có
+            bước thanh toán nào để chỉ. */}
         <BookingModes
           tourId={tour.id}
           departures={tour.departures}
@@ -82,6 +81,7 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
           defaultName={session.name ?? ''}
           defaultEmail={session.email}
           summaryTour={summaryTour}
+          steps={<BookingSteps />}
         />
       </div>
     </div>
@@ -99,7 +99,7 @@ function BookingSteps() {
   return (
     <div className="flex flex-col gap-1.5">
       <ol className="flex items-center gap-3" aria-label={t.title}>
-        <li className="flex items-center gap-2">
+        <li aria-current="step" className="flex items-center gap-2">
           <span
             aria-hidden="true"
             className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"

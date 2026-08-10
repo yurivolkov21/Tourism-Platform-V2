@@ -330,7 +330,6 @@ export const messages = {
       title: 'Complete your booking',
       subtitle: 'Review your trip, add your details, and choose how to pay.',
       backToTour: 'Back to tour',
-      summaryHeading: 'Your trip',
       departureLabel: 'Departure',
       partyLabel: 'Travellers',
       adultsLine: (n: number) => `${n} adult${n > 1 ? 's' : ''}`,
@@ -338,7 +337,11 @@ export const messages = {
       perAdult: 'per adult',
       perChild: 'per child',
       totalLabel: 'Estimated total',
-      totalNote: 'Final amount is confirmed at payment.',
+      // Heading của card 2/3 trong `BookingForm` (vòng review 1, Finding 1) —
+      // khác `steps.trip`/`steps.payment` ngay dưới đây: đó là nhãn của step
+      // indicator, đây là heading THẬT của từng card.
+      leadTravelerHeading: 'Lead traveler',
+      paymentMethodHeading: 'Payment method',
       // Step indicator ở đầu trang (RSC, T3): bước 1 là form này, bước 2 là
       // trang thanh toán hosted của Stripe/PayPal — KHÔNG nằm trong app.
       steps: {

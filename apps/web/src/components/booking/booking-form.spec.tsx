@@ -1,8 +1,10 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DepartureVM } from '@/lib/api/tours';
 import { BookingForm } from './booking-form';
+import { BookingModes } from './booking-modes';
 import type { CheckoutSummaryTour } from './checkout-summary';
 
 // `api.bookings.create` là biên duy nhất của component ra thế giới — mock đúng
@@ -143,14 +145,25 @@ describe('BookingForm', () => {
   });
 
   // T3 — lưới hai cột hướng B: cột trái mở đầu bằng card "Trip details"
-  // (đúng nhãn bước hiện tại của step indicator RSC ở `book/page.tsx`) và kết
-  // ở card "Payment" (đúng nhãn bước kế tiếp) — hai heading này là điểm neo
-  // để khách nối được step indicator trên đầu trang với nội dung form.
-  it('card đầu là "Trip details", card cuối là "Payment" — khớp nhãn step indicator', () => {
+  // (đúng nhãn bước hiện tại của step indicator RSC ở `book/page.tsx`), card
+  // giữa "Lead traveler", card cuối "Payment method" — đúng copy brief vòng
+  // review 1 (Finding 1), khác nhãn `steps.trip`/`steps.payment` của indicator.
+  it('ba card đúng heading brief: "Trip details" / "Lead traveler" / "Payment method"', () => {
     render(<BookingForm {...BASE} departures={[makeDeparture()]} />);
 
     expect(screen.getByRole('heading', { name: 'Trip details' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Payment' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Lead traveler' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Payment method' })).toBeInTheDocument();
+  });
+
+  // Finding 2 (vòng review 1) — dòng "Test mode" cạnh nút submit bị rớt lúc
+  // refactor T3. Đây là disclosure quan trọng cho capstone không doanh thu:
+  // dùng LẠI đúng key `tourDetail.booking.testMode` đã có (khớp `booking-rail.tsx`),
+  // không tạo key mới trùng nghĩa.
+  it('hiện dòng "Test mode" ngay dưới nút submit — disclosure sandbox', () => {
+    render(<BookingForm {...BASE} departures={[makeDeparture()]} />);
+
+    expect(screen.getByText(messages.tourDetail.booking.testMode)).toBeInTheDocument();
   });
 
   it('tổng tiền hiển thị TRONG summary card ("Order summary" có mặt)', () => {
@@ -175,5 +188,34 @@ describe('BookingForm', () => {
 
     // 2 × $1,290 = $2,580.
     expect(totalRow).toHaveTextContent('$2,580');
+  });
+});
+
+// Finding 4 (vòng review 1) — `BookingModes` nhận `steps` qua prop, chỉ render
+// ở nhánh scheduled: mode Private là form hỏi báo giá, không có bước thanh
+// toán nên step indicator không có chỗ đứng ở đó.
+describe('BookingModes — step indicator chỉ thuộc về nhánh scheduled', () => {
+  it('mode private KHÔNG hiện step indicator; mode scheduled (mặc định) CÓ', async () => {
+    const user = userEvent.setup();
+    render(
+      <BookingModes
+        tourId="tour-1"
+        departures={[makeDeparture()]}
+        maxGroupSize={12}
+        currency="USD"
+        defaultName="Elena Moreau"
+        defaultEmail="elena.moreau@example.com"
+        summaryTour={makeSummaryTour()}
+        steps={<nav aria-label="Booking steps">Payment</nav>}
+      />,
+    );
+
+    // Mặc định scheduled (còn đợt) — step indicator có mặt.
+    expect(screen.getByLabelText('Booking steps')).toBeInTheDocument();
+
+    // Chuyển sang Private — step indicator phải biến mất hoàn toàn, không
+    // chỉ ẩn thị giác: `queryByLabelText`, KHÔNG `getByLabelText`.
+    await user.click(screen.getByRole('button', { name: /Travel on my own dates/i }));
+    expect(screen.queryByLabelText('Booking steps')).not.toBeInTheDocument();
   });
 });

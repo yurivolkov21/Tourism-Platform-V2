@@ -29,6 +29,7 @@ export function BookingModes({
   defaultName,
   defaultEmail,
   summaryTour,
+  steps,
 }: {
   tourId: string;
   departures: DepartureVM[];
@@ -37,6 +38,13 @@ export function BookingModes({
   defaultName: string;
   defaultEmail: string;
   summaryTour: CheckoutSummaryTour;
+  /**
+   * Step indicator ① Trip details / ② Payment do `book/page.tsx` dựng (RSC).
+   * CHỈ có ý nghĩa ở nhánh scheduled — Private là form hỏi báo giá, không có
+   * bước thanh toán nào để chỉ (Finding 4, vòng review 1). Vì vậy prop này
+   * KHÔNG render ở nhánh Private, dù component cha có truyền vào.
+   */
+  steps?: React.ReactNode;
 }) {
   const bookable = departures.filter((d) => d.seatsLeft > 0);
   const canSchedule = bookable.length > 0;
@@ -66,14 +74,17 @@ export function BookingModes({
       </div>
 
       {mode === 'scheduled' && canSchedule ? (
-        <BookingForm
-          departures={departures}
-          maxGroupSize={maxGroupSize}
-          currency={currency}
-          defaultName={defaultName}
-          defaultEmail={defaultEmail}
-          summaryTour={summaryTour}
-        />
+        <>
+          {steps}
+          <BookingForm
+            departures={departures}
+            maxGroupSize={maxGroupSize}
+            currency={currency}
+            defaultName={defaultName}
+            defaultEmail={defaultEmail}
+            summaryTour={summaryTour}
+          />
+        </>
       ) : (
         <PrivateTripForm
           tourId={tourId}
