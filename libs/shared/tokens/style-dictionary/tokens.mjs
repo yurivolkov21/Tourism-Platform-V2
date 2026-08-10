@@ -57,9 +57,29 @@ export default {
     accent: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
     'accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
     destructive: c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
+    // ⚠️ `border` và `input` KHÔNG cùng luật, dù giá trị từng giống hệt nhau
+    // (ADR-0019 mục 5). `border` là đường phân cách và mép thẻ — TRANG TRÍ,
+    // không thuộc WCAG 1.4.11, nâng nó lên 3:1 sẽ biến toàn site thành lưới kẻ
+    // ô và phá ngôn ngữ hairline. `input` là ranh giới của một ĐIỀU KHIỂN nên
+    // phải đạt 3:1. Gộp hai thứ này vào một phép "nâng tương phản" là sai —
+    // ghi rõ ở đây để lần sau không ai vá nhầm.
     border: c('oklch(0.781 0.015 180.6)', 'oklch(0.402 0.026 173.6)'),
-    input: c('oklch(0.781 0.015 180.6)', 'oklch(0.402 0.026 173.6)'),
-    ring: c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    // Đo trên CẢ HAI bề mặt ô nhập thật sự đứng lên — nền trang VÀ card. Ở chế
+    // độ sáng, nền trang (L 0.977) mới là ca khó chứ không phải card (L 0.996):
+    // card sáng hơn nên viền tối tương phản MẠNH hơn. Lấy card làm "tệ nhất" là
+    // sai chiều, và đã suýt chốt nhầm ở 0.66 (card 3.06 ✅ nhưng nền 2.89 ❌).
+    //   light 0.64 → nền 3.13 ✅ · card 3.30 ✅   (cũ 0.781 → 1.24 / 1.30 ❌)
+    //   dark  0.58 → nền 3.49 ✅ · card 3.09 ✅   (cũ 0.402 → 1.44 / 1.28 ❌)
+    // Ở dark thì ngược lại: card SÁNG hơn nền nên card là ca khó.
+    input: c('oklch(0.64 0.015 180.6)', 'oklch(0.58 0.026 173.6)'),
+    // ⚠️ Dark NÂNG 0.563 → 0.60, tức NGƯỢC hướng với `primary` (đang hạ dần).
+    // Vòng focus cần SÁNG để nhìn thấy trên nền tối; bề mặt nút cần TỐI để cõng
+    // nhãn gần-trắng. Đây chính là bằng chứng hai vai không dùng chung một giá
+    // trị được (ADR-0019). Đo: /card 2.96 ❌ → 3.44 ✅ trên 22 chỗ `ring-ring`.
+    //
+    // `cf8f821` (30/07) hạ `primary` dark mà bỏ quên token này cùng ba token
+    // soi gương khác — đó là lý do vòng focus âm thầm trượt chuẩn suốt từ đó.
+    ring: c('oklch(0.494 0.067 184.3)', 'oklch(0.60 0.076 181.3)'),
     overlay: c('oklch(0 0 0 / 0.5)', 'oklch(0 0 0 / 0.6)'),
     // P5.6: uniform photo treatment — bottom scrim + full-bleed grade tint
     // (consumed by mobile-ui ScrimImage; alpha-bearing like `overlay`). Hue → họ ngọc Wuling.
@@ -108,19 +128,25 @@ export default {
     price: c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
     'price-compare': c('oklch(0.473 0.022 179.5)', 'oklch(0.748 0.026 174.5)'),
     // Data-viz ramp: 5 hue của brand + vùng (ngọc · thép · hổ phách · sơn mài · phù sa).
-    'chart-1': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    // Vai ĐỒ HOẠ trên nền (WCAG 1.4.11, ngưỡng 3:1) — cần SÁNG ở dark, nên
+    // dùng thang vai-chữ 0.76 thay vì soi gương `primary`. Hiện 0 consumer;
+    // sửa luôn để P4 admin không kế thừa một giá trị đã biết là trượt chuẩn.
+    'chart-1': c('oklch(0.494 0.067 184.3)', 'oklch(0.76 0.076 181.3)'),
     'chart-2': c('oklch(0.535 0.057 239.5)', 'oklch(0.645 0.056 238.3)'),
     'chart-3': c('oklch(0.731 0.13 73.3)', 'oklch(0.78 0.13 75)'),
     'chart-4': c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
     'chart-5': c('oklch(0.555 0.053 48.4)', 'oklch(0.661 0.052 51.2)'),
     sidebar: c('oklch(0.966 0.006 170.4)', 'oklch(0.29 0.02 178)'),
     'sidebar-foreground': c('oklch(0.275 0.021 196)', 'oklch(0.921 0.014 174.1)'),
-    'sidebar-primary': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    // Vai BỀ MẶT — cõng `sidebar-primary-foreground` gần-trắng, nên đi theo
+    // `primary` (0.53) chứ không đứng ở 0.563. Trôi từ `cf8f821`.
+    'sidebar-primary': c('oklch(0.494 0.067 184.3)', 'oklch(0.53 0.076 181.3)'),
     'sidebar-primary-foreground': c('oklch(0.974 0.007 174.4)', 'oklch(0.974 0.007 174.4)'),
     'sidebar-accent': c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
     'sidebar-accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
     'sidebar-border': c('oklch(0.865 0.015 175.7)', 'oklch(0.402 0.026 173.6)'),
-    'sidebar-ring': c('oklch(0.494 0.067 184.3)', 'oklch(0.563 0.076 181.3)'),
+    // Vai VÒNG FOCUS — đi theo `ring` (0.60), không theo `primary`.
+    'sidebar-ring': c('oklch(0.494 0.067 184.3)', 'oklch(0.60 0.076 181.3)'),
   },
   radius: {
     DEFAULT: { value: '0.375rem', type: 'dimension' }, // refined — giữ nguyên đợt rebrand

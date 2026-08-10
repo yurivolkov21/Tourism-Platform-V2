@@ -160,11 +160,12 @@ export function RegionHero({
               {/* Nút primary MẶC ĐỊNH của hệ (`bg-primary`/`text-primary-foreground`)
                   — không còn inline style nên `hover:bg-primary/80` của variant
                   chạy lại bình thường, khỏi mẹo `hover:opacity-90`.
-                  Đo: 4.11:1 ở CẢ hai theme (nút nằm trong scope `dark` nên
-                  `--primary` bị ghim bảng tối). Con số này DƯỚI 4.5 nhưng đúng
-                  BẰNG cặp mặc định của mọi nút primary khác trong repo ở dark —
-                  ta thừa kế nợ toàn site, không tạo lớp lỗi mới. Xem
-                  ADR-0015 §Hệ quả. */}
+                  Đo lại 10/08: **4.72:1** ở CẢ hai theme (nút nằm trong scope
+                  `dark` nên `--primary` bị ghim bảng tối) — ĐẠT ngưỡng 4.5.
+                  Con số 4.11 ghi ở đây trước đây là giá trị TRƯỚC commit
+                  `cf8f821` (30/07 hạ `primary` dark 0.563 → 0.53); comment
+                  không được cập nhật theo nên nói sai suốt từ đó. Xem
+                  ADR-0019 và ADR-0015 §Hệ quả. */}
               <ButtonLink href="#tours" className="group h-11 rounded-full px-6">
                 {t.browseCta(region.name)}
                 <MoveRightIcon
