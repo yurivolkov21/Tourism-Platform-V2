@@ -2,6 +2,7 @@
 
 import { AnimatedThemeToggler } from '@tourism/ui/components/animated-theme-toggler';
 import { MenuIcon, XIcon } from 'lucide-react';
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { DestinationsMenu } from './destinations-menu';
 import { Logo } from './logo';
@@ -38,9 +39,25 @@ const MOBILE_LINKS = [
   { label: 'Log in', href: '/login' },
 ];
 
+/**
+ * Đường dẫn KHÔNG có hero tối phía sau navbar.
+ *
+ * Navbar lúc chưa cuộn dùng `on-media` (chữ sáng) vì nó giả định đang nằm trên
+ * một mảng hero tối. Giả định đó đúng với mọi trang nội dung, nhưng SAI với
+ * khu account và hai màn checkout — chúng bù khoảng bằng `pt-36` chứ không có
+ * hero thật. Hệ quả ở chế độ SÁNG: chữ sáng trên nền sáng, navbar tàng hình
+ * cho tới khi người dùng cuộn xuống. Ở chế độ tối thì tình cờ vẫn đọc được nên
+ * lỗi này sống sót lâu — chỉ lộ ra khi chụp ảnh nghiệm thu chế độ sáng.
+ *
+ * Dùng tiền tố đường dẫn thay vì một context: navbar nằm ở layout `(site)`,
+ * TRÊN cây của các layout con, nên context từ dưới không với tới được nó.
+ */
+const HERO_LESS_PREFIXES = ['/account', '/checkout'];
+
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 50);
@@ -49,22 +66,25 @@ export function SiteHeader() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Trang không có hero thì navbar dùng LUÔN kiểu "đã cuộn" (nền đặc, chữ
+  // `foreground`) ngay từ đầu — không có mảng tối nào để chữ sáng đứng lên.
+  const onDarkHero = !HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  const solid = scrolled || !onDarkHero;
+
   const linkClass = `transition-colors duration-500 ${
-    scrolled
-      ? 'text-foreground hover:text-muted-foreground'
-      : 'text-on-media hover:text-on-media/90'
+    solid ? 'text-foreground hover:text-muted-foreground' : 'text-on-media hover:text-on-media/90'
   }`;
 
   // Trigger dropdown đồng bộ với link trần bên cạnh (review navbar #2): LỘT
   // hết nền muted mặc định của navigationMenuTriggerStyle ở mọi trạng thái —
   // hover chỉ đổi màu chữ như các link khác, tự khớp light/dark theo token.
   const triggerSkin = `h-auto bg-transparent px-0 py-0 font-normal hover:bg-transparent focus:bg-transparent data-open:bg-transparent data-popup-open:bg-transparent data-open:hover:bg-transparent data-popup-open:hover:bg-transparent ${
-    scrolled
+    solid
       ? 'text-foreground hover:text-muted-foreground data-open:text-muted-foreground'
       : 'text-on-media hover:text-on-media/90 data-open:text-on-media/90'
   }`;
   const iconButtonClass = `flex size-9 cursor-pointer items-center justify-center rounded-full transition-colors duration-500 [&_svg]:size-4.5 ${
-    scrolled ? 'text-foreground hover:bg-muted' : 'text-on-media hover:bg-on-media/10'
+    solid ? 'text-foreground hover:bg-muted' : 'text-on-media hover:bg-on-media/10'
   }`;
 
   return (
@@ -78,7 +98,7 @@ export function SiteHeader() {
       >
         <a href="/" aria-label="tourism — home">
           {/* Trên hero (chưa cuộn) logo phải sáng: ép màu qua class dark-scope */}
-          <span className={scrolled ? '' : 'dark'}>
+          <span className={solid ? '' : 'dark'}>
             <Logo />
           </span>
         </a>
@@ -100,8 +120,11 @@ export function SiteHeader() {
           <UserMenu linkClassName={`px-2 text-sm ${linkClass}`} />
           <button
             type="button"
+            // `solid`, KHÔNG phải `scrolled`: nền `bg-card` gần-trắng chỉ nổi khi
+            // đứng trên hero tối. Trên trang không hero ở chế độ sáng nó là
+            // trắng-trên-trắng, nên dùng nút primary đặc.
             className={`cursor-pointer rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-500 ${
-              scrolled
+              solid
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-card text-card-foreground hover:bg-card/85'
             }`}
@@ -117,7 +140,7 @@ export function SiteHeader() {
             onClick={() => setMobileOpen(true)}
             aria-label="Open menu"
             className={`cursor-pointer rounded-md p-2 transition ${
-              scrolled ? 'text-foreground' : 'text-on-media'
+              solid ? 'text-foreground' : 'text-on-media'
             }`}
           >
             <MenuIcon className="size-6" aria-hidden="true" />
