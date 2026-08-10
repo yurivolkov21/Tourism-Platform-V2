@@ -8,6 +8,86 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-08 — Đường ảnh cho catalog: contract nở, cột ghi công, và một lô ảnh bị loại (branch `feat/real-images`, ff-only, 3 commit `ecc88f3..a68a4a9`)
+
+Entry này ghi cả thứ đã ship lẫn thứ **đã làm rồi vứt** — vứt là phần tốn công
+nhất, và lý do vứt mới là thứ đáng nhớ.
+
+**Đã ship và giữ lại.** Tour và Destination trước nay KHÔNG có đường nào ra ảnh:
+không field ở `schema.prisma`, không field ở contract `catalog.ts`, nên web chỉ
+vẽ được ô giữ chỗ và trang chi tiết tour phải truyền `media={[]}` cứng cho khảm
+gallery. `docs/README.md` xếp đây là "nợ contract #1"; nay đã trả:
+`TourCard`/`Destination` nhận `cover`, `TourDetail` nhận mảng `media`. Kèm
+migration `20260808140917_media_attribution` thêm bốn cột ghi công
+(`author`/`license`/`licenseUrl`/`sourceUrl`) vào `media_assets` — thuần
+`ADD COLUMN`, nullable, đã áp cho cả DB local lẫn Supabase.
+
+Chọn **khoá bắt buộc với giá trị nullable** thay vì `optional`: web phải phân
+biệt được "chưa có ảnh" với "trường không tồn tại", và cách này ép mọi nơi sinh
+dữ liệu khai tường minh. Cái giá là 34 chỗ fixture phải thêm một dòng.
+
+`toTourCard` nhận `cover` làm THAM SỐ chứ không tự query: hàm chạy trong vòng
+lặp `map()` trên cả trang nên gọi DB bên trong là đẻ N+1. Chỗ gọi resolve một
+lần cho cả lô, cùng khuôn `posts.service` từ P3a. Nhân tiện nối luôn cover cho
+`relatedTours` dưới bài blog.
+
+[ADR-0020](adr/0020-real-images-sourcing.md) chốt nguồn ảnh: Wikimedia Commons
+chính, Pixabay lấp chỗ, **loại đường API Unsplash** vì API Terms bắt hotlink,
+mâu thuẫn thẳng với kiến trúc rehost lên Cloudinary (lưu ý Unsplash *License*
+cho ảnh tải từ website thì vẫn hợp lệ). ShareAlike giải bằng kỹ thuật: transform
+CHỈ `f_auto,q_auto,w_`, cấm `c_fill`/`c_crop`, vì cắt cúp tạo tác phẩm phái sinh
+còn đổi định dạng và thu nhỏ theo tỉ lệ thì không.
+
+**Đã làm rồi vứt: lô 189 ảnh.** Script seed ba pha đã chạy trọn — 189 ảnh lên
+Cloudinary, 19/19 địa danh có bìa, 30/30 tour có bộ ảnh, 256 `media_asset`,
+không row nào thiếu ghi công. User duyệt và **từ chối toàn bộ**: lẫn ảnh bãi rác
+thật, ảnh công trình, ảnh sinh hoạt đường phố.
+
+Gốc rễ nằm ở mục 1 của ADR-0020, nay đã đính chính tại chỗ: `geosearch` kiểm
+chứng **VỊ TRÍ** chứ không kiểm chứng **CHỦ THỂ trong khung hình**. Một tấm chụp
+bãi rác ngay tại Hạ Long thì đúng toạ độ, đúng giấy phép, đủ độ phân giải, tên
+file không chứa từ khoá rác nào — nó qua sạch mọi bộ lọc đã dựng. "Chụp đúng
+chỗ" và "ảnh du lịch tốt" là hai bài toán khác nhau; ADR gốc chỉ giải bài thứ
+nhất rồi coi như đã giải cả hai. Sai quy trình đi kèm: bảng duyệt được dựng SAU
+khi upload, đúng ra phải là cửa chặn TRƯỚC.
+
+Toàn bộ 189 ảnh đã xoá khỏi Cloudinary và 256 row khỏi Supabase (kiểm từng cái:
+`main-sample` có từ 12/07 và `site_media_slots` 9 row còn nguyên; 30 tour, 19
+địa danh, 137 đợt khởi hành, 84 review, 9 bài, 2 booking, 3 user không bị đụng).
+Commit chứa script chọn ảnh đã bị bỏ khỏi nhánh — giữ nó lại chỉ tạo ảo giác đã
+có sẵn thứ dùng được, và manifest trong đó có cơ chế tự-dùng-lại nên lần chạy
+sau sẽ lặng lẽ nạp lại đúng lô ảnh vừa bị loại.
+
+**Bốn lỗi kỹ thuật gặp trong lúc làm**, ghi lại vì ba trong số đó dễ tái phạm:
+
+1. **Manifest ghi vào `dist-seed/`** — script chạy từ thư mục biên dịch nên
+   `import.meta.url` trỏ vào build artifact, vốn gitignored và bị xoá mỗi lần
+   compile.
+2. **Commons trả HTTP 200 KÈM lỗi trong thân JSON** (ratelimit/maxlag). Code chỉ
+   đọc `query.geosearch`, thấy `undefined` thì coi như "không có ảnh" — TP.HCM
+   về 0 trong khi thực tế có 87 tấm đạt chuẩn. **Hỏng im lặng**, không kêu một
+   tiếng; ba lỗi kia đều kêu. Đây là loại nguy hiểm nhất.
+3. **Tải qua `Special:Redirect`** tức đi qua app server MediaWiki, nơi siết ngặt
+   nhất: 8/189 tấm qua. Lấy `thumburl` từ API rồi tải thẳng CDN
+   `upload.wikimedia.org` thì gần như trọn bộ.
+4. **Ô Artist của Commons là văn bản tự do** — một trường dài 601 ký tự làm vỡ
+   INSERT. Không nới cột, vì chỗ hiển thị ghi công cần TÊN người chứ không phải
+   đoạn văn.
+
+Kèm một lỗi idempotency: upsert chỉ THÊM và SỬA, không BỚT, nên lần chạy dở để
+lại 22 ảnh bìa cho 19 địa danh. Idempotent đúng nghĩa là **hội tụ** về trạng
+thái mong muốn.
+
+**Nợ mở:** không có ảnh nào trên site; mọi việc giao diện phụ thuộc ảnh (nối
+cover blog, tile địa danh, khảm gallery, dựng lại lớp phủ và đo lại tương phản)
+tạm dừng cho tới khi có hướng chọn ảnh mới. Ứng viên đáng tìm hiểu kỹ: hệ thống
+thẩm định của người thật trên Commons (`Quality images`, `Featured pictures`,
+`Valued images`), đọc được bằng máy qua `prop=categories`.
+
+**Tests after:** `gate:int` trọn 1.422 test (contract 57 → 67 nhờ 10 ca mới cho
+`cover`/`media` và ghi công; api 210 unit và 158 int; web 963; ui 13; tokens 10;
+i18n 1). 18/18 task `gate` và 5/5 task `test:int`, chạy không cache.
+
 ## 2026-08-07 — Cụm C: luồng đặt chỗ và hai màn quay về từ cổng thanh toán (branch `feat/booking-checkout`, ff-only, 6 commit `13bc78e..4959455`)
 
 Money-path đang có một **ngõ cụt 404 bấm chuột tới được** trên main: nút "Pay
