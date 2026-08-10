@@ -1,19 +1,43 @@
 import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
+import { daysUntilDeparture } from '@/lib/account-stats';
 import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView } from '@/lib/booking-vm';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
 /**
- * Một dòng trong `/account/bookings` (spec §3) — badge tone lấy NGUYÊN
- * `TONE_CLASS`/`bookingView` (Task 2, export lại từ `account-dashboard.tsx`
- * theo đúng lời dặn brief Task 4: một nguồn map tone→class, không tự chế bản
- * thứ hai). Cả card là một `Link` tới trang detail — "View details" chỉ là
- * gợi ý thị giác cuối card, không phải hành động riêng.
+ * Gợi ý "còn mấy hôm nữa xong" — CHỈ dùng cho nhóm "đang đi".
+ *
+ * Ở các nhóm khác nó vô nghĩa hoặc gây hiểu nhầm: chuyến chưa khởi hành mà
+ * ghi "ends in 3 days" thì người đọc tưởng sắp hết hạn gì đó.
  */
-export function BookingCard({ booking }: { booking: Booking }) {
+function endsHint(endDate: string): string {
+  const t = messages.accountBookings;
+  const days = daysUntilDeparture(endDate);
+  if (days <= 0) return t.endsToday;
+  if (days === 1) return t.endsTomorrow;
+  return t.endsInDays(days);
+}
+
+/**
+ * Một DÒNG trong sheet `/account/bookings` (redesign 10/08).
+ *
+ * Trước đây mỗi booking là một card có viền riêng; xếp cạnh nhau chúng đọc
+ * thành một chồng hộp chứ không thành một bảng. Nay các dòng nằm chung trong
+ * một tấm sheet do trang dựng, ngăn nhau bằng hairline — nên component này
+ * KHÔNG tự vẽ viền hay bo góc nữa.
+ *
+ * Bỏ luôn affordance "View details" ở cuối: cả dòng đã là một link, thêm một
+ * nhãn nói lại điều đó chỉ tốn chỗ.
+ */
+export function BookingCard({
+  booking,
+  showEndsHint,
+}: {
+  booking: Booking;
+  showEndsHint?: boolean;
+}) {
   const t = messages.accountBookings;
   const view = bookingView(booking);
 
@@ -21,34 +45,29 @@ export function BookingCard({ booking }: { booking: Booking }) {
     <li>
       <Link
         href={`/account/bookings/${booking.code}`}
-        className="group flex flex-col gap-4 rounded-2xl border bg-card p-5 transition-colors hover:border-primary/40 sm:flex-row sm:items-center sm:justify-between"
+        className="flex flex-col gap-3 p-4 transition-colors hover:bg-accent/40 sm:flex-row sm:items-center sm:gap-4"
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span
-              className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${TONE_CLASS[view.tone]}`}
-            >
-              {messages.booking.list.status[booking.status]}
-            </span>
-            <span className="font-mono text-xs text-muted-foreground">{booking.code}</span>
-          </div>
-          <p className="mt-2 truncate font-heading text-lg font-medium text-foreground">
-            {booking.tourTitle}
-          </p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {formatDateRange(booking.departureStartDate, booking.departureEndDate)} ·{' '}
+        <span className="shrink-0 font-mono text-xs text-muted-foreground">{booking.code}</span>
+
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-medium text-foreground">{booking.tourTitle}</span>
+          <span className="block text-sm text-muted-foreground tabular-nums">
+            {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+            {showEndsHint ? ` · ${endsHint(booking.departureEndDate)}` : null}
+            {' · '}
             {t.travellers(booking.numAdults, booking.numChildren)}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-6 sm:flex-col sm:items-end sm:gap-1">
-          <p className="font-heading text-lg font-semibold tabular-nums text-foreground">
-            {formatMoney(booking.totalAmount, booking.currency)}
-          </p>
-          <span className="inline-flex items-center gap-1 text-sm text-primary-emphasis group-hover:underline">
-            {t.viewDetails}
-            <ArrowRightIcon className="size-3.5" aria-hidden="true" />
           </span>
-        </div>
+        </span>
+
+        <span
+          className={`shrink-0 self-start rounded-full px-2.5 py-0.5 text-xs font-medium sm:self-auto ${TONE_CLASS[view.tone]}`}
+        >
+          {messages.booking.list.status[booking.status]}
+        </span>
+
+        <span className="shrink-0 font-medium tabular-nums text-foreground sm:w-24 sm:text-right">
+          {formatMoney(booking.totalAmount, booking.currency)}
+        </span>
       </Link>
     </li>
   );

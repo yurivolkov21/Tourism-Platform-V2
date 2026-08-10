@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingCard } from './booking-card';
 
@@ -37,6 +37,11 @@ describe('BookingCard', () => {
     expect(screen.getByText('Partially refunded').className).toContain('text-destructive');
   });
 
+  it('KHÔNG còn nhãn "View details" — cả dòng đã là link, nói lại chỉ tốn chỗ', () => {
+    render(<BookingCard booking={makeBooking()} />);
+    expect(screen.queryByText(/view details/i)).not.toBeInTheDocument();
+  });
+
   it('có trẻ em → travellers hiện cả người lớn và trẻ em', () => {
     render(
       <BookingCard
@@ -44,5 +49,39 @@ describe('BookingCard', () => {
       />,
     );
     expect(screen.getByText(/2 adults, 1 child/)).toBeInTheDocument();
+  });
+});
+
+describe('BookingCard — gợi ý ngày kết thúc (chỉ nhóm "đang đi")', () => {
+  const TODAY = '2026-08-04';
+
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(`${TODAY}T12:00:00.000Z`));
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('MẶC ĐỊNH không hiện — ở nhóm khác nó gây hiểu nhầm', () => {
+    // Chuyến chưa khởi hành mà ghi "ends in 3 days" thì người đọc tưởng sắp
+    // hết hạn thứ gì đó.
+    render(<BookingCard booking={makeBooking({ departureEndDate: '2026-08-07' })} />);
+    expect(screen.queryByText(/ends in/)).not.toBeInTheDocument();
+  });
+
+  it('bật cờ → "ends in N days"', () => {
+    render(<BookingCard booking={makeBooking({ departureEndDate: '2026-08-07' })} showEndsHint />);
+    expect(screen.getByText(/ends in 3 days/)).toBeInTheDocument();
+  });
+
+  it('kết thúc hôm nay và ngày mai có câu riêng', () => {
+    const { unmount } = render(
+      <BookingCard booking={makeBooking({ departureEndDate: TODAY })} showEndsHint />,
+    );
+    expect(screen.getByText(/ends today/)).toBeInTheDocument();
+    unmount();
+    render(<BookingCard booking={makeBooking({ departureEndDate: '2026-08-05' })} showEndsHint />);
+    expect(screen.getByText(/ends tomorrow/)).toBeInTheDocument();
   });
 });

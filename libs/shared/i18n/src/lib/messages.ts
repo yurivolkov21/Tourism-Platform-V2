@@ -2481,7 +2481,20 @@ export const messages = {
   // tránh hai nguồn cùng dịch một status rồi lệch nhau về sau.
   accountBookings: {
     title: 'My bookings',
-    subtitle: 'Every trip you’ve booked with us, newest first.',
+    // Redesign 10/08: danh sách nay gom theo BA nhóm thời gian, không còn
+    // "newest first" phẳng — câu phụ đề phải nói đúng thứ trang đang làm.
+    subtitle: 'Every trip you’ve booked with us, grouped by when you travel.',
+    /** Tiêu đề ba nhóm. "On the road now" đứng đầu vì nó là thứ khẩn nhất và
+     *  cũng là thứ danh sách phẳng cũ không nói được. */
+    groups: {
+      onTheRoad: 'On the road now',
+      upcoming: 'Upcoming',
+      past: 'Past',
+    },
+    /** Gợi ý ngày kết thúc, chỉ hiện ở nhóm "đang đi". */
+    endsToday: 'ends today',
+    endsTomorrow: 'ends tomorrow',
+    endsInDays: (n: number) => `ends in ${n} days`,
     refLabel: 'Reference',
     departureLabel: 'Departure',
     travellersLabel: 'Travellers',

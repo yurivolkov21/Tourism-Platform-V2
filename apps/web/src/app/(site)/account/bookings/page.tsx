@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { BookingCard } from '@/components/account/booking-card';
+import { groupBookingsByTime } from '@/lib/account-stats';
 import { BOOKINGS_MAX_LIMIT, BOOKINGS_PAGE_SIZE, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 
@@ -68,6 +69,13 @@ export default async function AccountBookingsPage({
   const hasMore = bookings.length < paged.total && limit < BOOKINGS_MAX_LIMIT;
 
   const t = messages.accountBookings;
+  const grouped = groupBookingsByTime(bookings);
+  // Thứ tự cố định: đang đi → sắp tới → đã qua. Khẩn trước, ký ức sau.
+  const GROUPS = [
+    { key: 'onTheRoad', items: grouped.onTheRoad },
+    { key: 'upcoming', items: grouped.upcoming },
+    { key: 'past', items: grouped.past },
+  ] as const;
 
   return (
     <div className="flex flex-col gap-8">
@@ -82,11 +90,29 @@ export default async function AccountBookingsPage({
         <EmptyState />
       ) : (
         <>
-          <ul className="flex flex-col gap-4">
-            {bookings.map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
-            ))}
-          </ul>
+          {/* Ba nhóm thời gian thay danh sách phẳng. Nhóm rỗng KHÔNG render
+              tiêu đề — một khối "On the road now" trống rỗng đọc như trang
+              hỏng chứ không như tin "bạn đang ở nhà". */}
+          {GROUPS.map(({ key, items }) =>
+            items.length === 0 ? null : (
+              <section key={key}>
+                <h2 className="mb-2.5 font-mono text-xs tracking-widest text-muted-foreground uppercase">
+                  {t.groups[key]}
+                </h2>
+                {/* MỘT tấm sheet ngăn hairline cho cả nhóm — `divide-y` giữ
+                    đường ngăn mảnh, không nhân đôi viền như card rời. */}
+                <ul className="divide-y overflow-hidden rounded-2xl border bg-card">
+                  {items.map((booking) => (
+                    <BookingCard
+                      key={booking.id}
+                      booking={booking}
+                      showEndsHint={key === 'onTheRoad'}
+                    />
+                  ))}
+                </ul>
+              </section>
+            ),
+          )}
           {hasMore ? (
             <div className="flex justify-center">
               <Link
