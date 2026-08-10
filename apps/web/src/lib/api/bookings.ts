@@ -12,20 +12,10 @@ export const BOOKINGS_PAGE_SIZE = 12;
 export const BOOKINGS_MAX_LIMIT = 50;
 
 /**
- * Đủ cho dashboard đếm ĐÚNG 4 ô số (`dashboardStats`/`nextTrip` cần TOÀN BỘ
- * booking PAID của user, không phải một trang) trong MỘT call — cùng lý do
- * `fetchTours` dùng `limit: 50` (đủ seed dev trong một call). Giới hạn thật:
- * nếu một user có > 50 booking thì 4 ô số dashboard sẽ đếm THIẾU — chấp nhận
- * được cho quy mô capstone (ghi rõ, không âm thầm).
- */
-export const DASHBOARD_BOOKINGS_LIMIT = BOOKINGS_MAX_LIMIT;
-
-/**
  * Booking của chính user, mới nhất trước (server đã `orderBy createdAt desc`
- * — KHÔNG cần sort lại phía web như mock cũ). Dùng CHUNG cho dashboard (gọi
- * với `DASHBOARD_BOOKINGS_LIMIT`, chỉ đọc `.items`) và trang
- * `/account/bookings` (gọi với limit theo `?page=`, đọc cả `.total` để quyết
- * định có hiện "Load more" hay không — xem trang đó).
+ * — KHÔNG cần sort lại phía web như mock cũ). Gọi từ `/account/bookings`
+ * (`?page=` quyết định `limit`, đọc cả `.total` để quyết định có hiện
+ * "Load more" hay không — xem trang đó).
  */
 export async function fetchMyBookings(cookie: string, limit: number): Promise<Paged<Booking>> {
   return api.bookings.mine({ page: 1, limit }, { context: withAuthHeaders(cookie) });

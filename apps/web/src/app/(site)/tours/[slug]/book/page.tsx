@@ -102,7 +102,10 @@ function BookingSteps() {
   const t = messages.booking.page;
   return (
     <div className="flex flex-col gap-1.5">
-      <ol className="flex items-center gap-3" aria-label={t.title}>
+      {/* aria-label riêng cho steps (NHÓM 6c, final review) — trước đây mượn
+          tạm `t.title` ("Complete your booking"), sai ngữ nghĩa cho một danh
+          sách bước. */}
+      <ol className="flex items-center gap-3" aria-label={t.stepsAria}>
         <li aria-current="step" className="flex items-center gap-2">
           <span
             aria-hidden="true"

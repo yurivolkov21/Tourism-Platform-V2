@@ -7,8 +7,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default:
-          'bg-primary text-primary-foreground hover:bg-primary/80 dark:border dark:border-border',
+        // Đóng nợ contrast 2.91/2.57 (ADR-0019): chỉ cần ĐỔI MÀU viền ở dark
+        // (`dark:border-border`) — base class dùng chung mọi variant
+        // (`buttonVariants` gốc) đã sẵn `border border-transparent`, tức
+        // border-width/style đã áp cho MỌI theme; `dark:border` riêng ở đây
+        // là thừa.
+        default: 'bg-primary text-primary-foreground hover:bg-primary/80 dark:border-border',
         outline:
           'border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50',
         secondary:
