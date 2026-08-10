@@ -7,6 +7,7 @@ import { Label } from '@tourism/ui/components/label';
 import { useRouter } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
+import { AccountActionError } from '@/components/account/account-action-error';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
@@ -76,18 +77,15 @@ export function ProfileForm({ profile }: { profile: SessionUser }) {
       </div>
 
       {errorKind ? (
-        <p role="alert" className="text-sm text-destructive">
-          {errorKind === 'sessionExpired' ? (
-            <>
-              {messages.accountActionErrors.sessionExpired}{' '}
-              <a href="/login?redirect=/account/profile" className="underline">
-                {messages.accountActionErrors.loginLink}
-              </a>
-            </>
-          ) : (
-            messages.authForms.errors[errorKind]
-          )}
-        </p>
+        <AccountActionError
+          expired={errorKind === 'sessionExpired'}
+          redirectTo="/account/profile"
+          // Nhánh null có chủ đích: không bao giờ được dùng (component đã hiện
+          // UI riêng khi `expired`), nhưng cần để TypeScript THU HẸP `errorKind`
+          // — 'sessionExpired' không phải khoá của `authForms.errors`. Ternary
+          // nội tuyến trước đây thu hẹp sẵn; truyền prop thì mất.
+          fallback={errorKind === 'sessionExpired' ? null : messages.authForms.errors[errorKind]}
+        />
       ) : null}
 
       <Button type="submit" disabled={pending} className="self-start">

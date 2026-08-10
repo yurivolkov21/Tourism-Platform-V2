@@ -6,6 +6,7 @@ import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
+import { AccountActionError } from '@/components/account/account-action-error';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
 
@@ -97,20 +98,25 @@ export function ChangePasswordForm() {
       </div>
 
       {errorKind ? (
-        <p role="alert" className="text-sm text-destructive">
-          {errorKind === 'sessionExpired' ? (
-            <>
-              {messages.accountActionErrors.sessionExpired}{' '}
-              <a href="/login?redirect=/account/profile" className="underline">
-                {messages.accountActionErrors.loginLink}
-              </a>
-            </>
-          ) : errorKind === 'mismatch' ? (
-            t.mismatch
-          ) : (
-            messages.authForms.errors[errorKind]
-          )}
-        </p>
+        <AccountActionError
+          expired={errorKind === 'sessionExpired'}
+          redirectTo="/account/profile"
+          // Nhánh `sessionExpired` trả null có chủ đích: nó KHÔNG bao giờ được
+          // dùng (component đã hiện UI riêng khi `expired`), nhưng phải có mặt
+          // để TypeScript THU HẸP `errorKind` — không có nó thì `errorKind` vẫn
+          // mang cả 'sessionExpired', vốn không phải khoá của `authForms.errors`.
+          // Ternary nội tuyến trước đây thu hẹp sẵn; truyền prop thì mất.
+          //
+          // `mismatch` là lỗi do MÌNH kiểm ở client (hai ô mật khẩu mới không
+          // khớp), không đến từ server, nên cũng không nằm trong bảng đó.
+          fallback={
+            errorKind === 'sessionExpired'
+              ? null
+              : errorKind === 'mismatch'
+                ? t.mismatch
+                : messages.authForms.errors[errorKind]
+          }
+        />
       ) : null}
 
       <Button type="submit" disabled={pending} className="self-start">

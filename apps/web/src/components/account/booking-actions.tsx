@@ -17,6 +17,7 @@ import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { AccountActionError } from '@/components/account/account-action-error';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import type { BookingAction, BookingView } from '@/lib/booking-vm';
@@ -223,20 +224,16 @@ export function BookingActions({
         })}
       </div>
       {errorKind ? (
-        <p role="alert" className="mt-3 text-sm text-destructive">
-          {errorKind === 'sessionExpired' ? (
-            <>
-              {messages.accountActionErrors.sessionExpired}{' '}
-              <a href={`/login?redirect=/account/bookings/${code}`} className="underline">
-                {messages.accountActionErrors.loginLink}
-              </a>
-            </>
-          ) : errorKind === 'throttle' ? (
-            messages.accountActionErrors.throttle
-          ) : (
-            messages.accountActionErrors.generic
-          )}
-        </p>
+        <AccountActionError
+          expired={errorKind === 'sessionExpired'}
+          redirectTo={`/account/bookings/${code}`}
+          className="mt-3"
+          fallback={
+            errorKind === 'throttle'
+              ? messages.accountActionErrors.throttle
+              : messages.accountActionErrors.generic
+          }
+        />
       ) : null}
     </>
   );

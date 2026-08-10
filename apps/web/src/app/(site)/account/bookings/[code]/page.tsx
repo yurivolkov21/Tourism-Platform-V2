@@ -5,10 +5,10 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { TONE_CLASS } from '@/components/account/account-dashboard';
 import { BookingActions } from '@/components/account/booking-actions';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
+import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView, toCancellationView } from '@/lib/booking-vm';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 

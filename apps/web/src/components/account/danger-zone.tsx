@@ -18,6 +18,7 @@ import { Label } from '@tourism/ui/components/label';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
+import { AccountActionError } from '@/components/account/account-action-error';
 import { AccountDeleteError, deleteAccount } from '@/lib/api/account';
 import { authClient } from '@/lib/auth-client';
 
@@ -104,18 +105,11 @@ export function DangerZone() {
           </div>
 
           {errorKind ? (
-            <p role="alert" className="text-sm text-destructive">
-              {errorKind === 'sessionExpired' ? (
-                <>
-                  {messages.accountActionErrors.sessionExpired}{' '}
-                  <a href="/login?redirect=/account/profile" className="underline">
-                    {messages.accountActionErrors.loginLink}
-                  </a>
-                </>
-              ) : (
-                messages.accountActionErrors.generic
-              )}
-            </p>
+            <AccountActionError
+              expired={errorKind === 'sessionExpired'}
+              redirectTo="/account/profile"
+              fallback={messages.accountActionErrors.generic}
+            />
           ) : null}
 
           <AlertDialogFooter>

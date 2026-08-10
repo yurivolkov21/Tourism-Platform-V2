@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { UnavailableCard } from '@/components/account/saved-grid';
 import { TourCard } from '@/components/tours/tour-card';
 import { dashboardStats, nextTrip, upcomingBookings } from '@/lib/account-stats';
-import { type BookingViewTone, bookingView } from '@/lib/booking-vm';
+import { TONE_CLASS } from '@/lib/booking-tone';
+import { bookingView } from '@/lib/booking-vm';
 import { formatMoney } from '@/lib/tours';
 import { wishlistToTourCardVM } from '@/lib/wishlist-vm';
 
@@ -14,17 +15,6 @@ import { wishlistToTourCardVM } from '@/lib/wishlist-vm';
  *  là bản trích ngắn). */
 const UPCOMING_LIMIT = 5;
 const SAVED_PREVIEW_LIMIT = 3;
-
-/** Badge trạng thái booking — cùng tông `bookingView` (Task 2) đang dùng cho
- *  hành động ở trang chi tiết, token-only (spec §3 "badge tone theo status").
- *  Export để `booking-card.tsx`/trang `/account/bookings` (Task 4) tái dùng
- *  NGUYÊN — một nguồn map tone→class, không có bản sao thứ hai trong cụm. */
-export const TONE_CLASS: Record<BookingViewTone, string> = {
-  success: 'bg-success/10 text-success',
-  warning: 'bg-warning/10 text-warning',
-  muted: 'bg-muted text-muted-foreground',
-  destructive: 'bg-destructive/10 text-destructive',
-};
 
 function EmptyState() {
   const t = messages.accountDashboard.emptyState;

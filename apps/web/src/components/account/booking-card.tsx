@@ -2,7 +2,7 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ArrowRightIcon } from 'lucide-react';
 import Link from 'next/link';
-import { TONE_CLASS } from '@/components/account/account-dashboard';
+import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView } from '@/lib/booking-vm';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
