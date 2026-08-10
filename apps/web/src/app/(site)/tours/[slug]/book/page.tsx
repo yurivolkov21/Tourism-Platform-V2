@@ -40,7 +40,11 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
   };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-10 md:px-8 md:py-14">
+    // `pt-36` mượn ĐÚNG hằng số `account/layout.tsx` dùng để né navbar `fixed`
+    // (site-header.tsx: `fixed top-(--banner-offset)`) — trang này không có
+    // hero thật để ăn khoảng đó, thiếu bước bù thì breadcrumb/tiêu đề chui
+    // dưới navbar khi cuộn lên đầu trang (lộ ra ở ảnh nghiệm thu book-light.png).
+    <div className="mx-auto w-full max-w-6xl px-4 pt-36 pb-10 md:px-8 md:pb-14">
       <nav
         aria-label="Breadcrumb"
         className="flex items-center gap-1.5 text-sm text-muted-foreground"
