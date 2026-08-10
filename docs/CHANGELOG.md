@@ -8,6 +8,76 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-11 — Khu account: lưới ba toạ độ, hub khối, tách token mực `destructive` (branch `feat/account-sidebar`, 3 commit)
+
+Vòng này có ba lần user bác thiết kế liên tiếp, và bài học lớn nhất là bài học
+QUY TRÌNH chứ không phải kỹ thuật: mỗi lần được yêu cầu "làm lại", em giữ bộ
+khung cũ rồi vá góp ý mới lên trên. Ba lần như vậy cho ra một khu account chắp
+vá, và user chốt lại bằng đúng câu đó. Lần sau nghe "làm lại" thì phải BỎ HẲN
+bản cũ và dựng từ đầu, không lượm góp ý ghép vào khung cũ.
+
+**Lệch lề mà user chỉ ra có gốc sâu hơn chỗ nhìn thấy.** Grep ra: 52 chỗ trên
+site dùng `lg:px-24 xl:px-32`, và khu account là chỗ DUY NHẤT dùng `px-16` —
+do chính commit sidebar (vòng trước, đã bị gỡ) cắt đôi padding để lấy chỗ cho
+cột dọc 240px. Footer ngay dưới lại dùng `xl:px-32` + `max-w-7xl`. Tức chọn
+sidebar mới là thứ ép khu này phá lề chung với phần còn lại của site; thứ user
+nhìn thấy (ray dọc, chấm tròn) chỉ là lớp trên cùng. Kèm một lệch có sẵn từ
+trước và không liên quan vòng nào: `max-w-6xl` trong khi footer `max-w-7xl`,
+chênh 64px mỗi bên từ 1536px.
+
+**Cả khu nay chỉ có BA toạ độ x** (đo thật trên trình duyệt ở 1440, W=1184):
+128 là mép container = H1 = tiêu đề mục = tab đầu tiên; 536 là mép cột phải =
+đầu mọi dòng dữ liệu; 1312 là mép phải = mọi giá trị và mọi hành động. Kiểm
+bằng script duyệt DOM chứ không bằng mắt: 128 và 536 mỗi cái xuất hiện 8 lần,
+toạ độ lẻ chỉ còn ở mép TRÁI của khối căn phải — nơi theo thiết kế chỉ mép phải
+bị ghim. Cơ chế giữ được điều đó là `account-section.tsx`: lưới khai báo MỘT
+lần cho cả năm màn, không màn nào tự khai lưới riêng. `grid-cols-3 gap-x-10`
+không phải số bịa — nó bằng đúng lưới 12 cột span-4/span-8 mà footer và
+testimonials đã dùng, vì (T−2g)/3 = 368.
+
+**Hai vòng thiết kế trong cùng branch, vòng sau đè vòng trước.** Vòng đầu theo
+hai mẫu shadcn-studio user gửi: tab gạch chân, hairline ngăn mục, không card.
+Vòng sau theo hai màn Airbnb user gửi tiếp: `/account` thành hub khối (ba khối
+đích có icon + mô tả + một dòng số liệu thật), các trang trong giữ dòng dữ liệu
+nhưng cột phải bọc trong card. Mép card rơi ĐÚNG hai neo cũ 536/1312 nên card
+không đẻ toạ độ thứ tư; nội dung bên trong thụt đều 25px (viền 1px + `px-6`).
+
+**Một lỗi WCAG thật bị bắt trên đường:** pill trạng thái dùng
+`bg-warning/10 text-warning`, mà `warning` trên nền ở chế độ SÁNG đo **1.90:1**
+— "Awaiting payment" gần như vô hình đúng lúc nó cần được nhìn thấy nhất. Bỏ
+pill, xoá `booking-tone.ts` (hết consumer), thay bằng nhãn mono chữ hoa:
+`foreground` (13.78/11.73) cho trạng thái còn việc, `muted-foreground`
+(6.24/6.66) cho trạng thái đã yên — kênh phân biệt là ĐỘ ĐẬM, không phải màu.
+
+**`destructive` mắc đúng mâu thuẫn ba vai mà ADR-0019 dựng ra để giải** —
+chưa ai soi vì ADR gốc chỉ xét `primary`. Vai bề mặt (badge "−20%" cõng chữ
+trắng) đo 4.62 ✅; vai mực (`text-destructive`) đo 3.19 trên nền và 2.83 trên
+card, đều dưới 4.5. Nâng L cứu vai mực thì giết vai bề mặt: L 0.70 kéo chữ
+trắng trên badge xuống 2.85. Hai khoảng rời hẳn nhau nên lời giải là lời giải
+cũ — tách `destructive-emphasis`, light giữ y hệt (vai mực ở sáng đã đạt sẵn
+5.62/5.93 nên không đổi một pixel nào), dark 0.72 cho 5.58/4.95. Quét 34 chỗ
+`text-destructive`; ba vai khác giữ nguyên và đếm được: 24 `bg-`, 25 `border-`,
+30 `ring-`. Ghi vào [ADR-0019](adr/0019-color-token-roles.md) mục 2b.
+
+**Ba số em từng nói SAI với user, đính chính bằng phép đo lại thẳng từ nguồn
+token thay vì hardcode giá trị vào script:** `border` là 1.86/1.64 chứ không
+phải 1.35 · `muted-foreground` 6.24/6.66 · và `destructive` dark 3.19. Bài học:
+script đo tương phản phải `import` từ `tokens.mjs`, không được chép giá trị.
+
+**Lỗi chỉ ẢNH CHỤP bắt được, test xanh suốt:** ô lưới mặc định giãn cho bằng ô
+cao nhất trong hàng, nên card một dòng ("Danger zone") đứng cạnh cột mô tả ba
+dòng thì phình ra và chừa một mảng trống dưới nút. `self-start` xử lý.
+
+**Dọn code chết:** `booking-tone.ts` · `account-dashboard.tsx` (166 dòng, hub
+thay hẳn) và spec của nó — thay bằng `account-hub.spec.tsx` 10 test.
+
+**Nợ mở:** khu checkout/booking CHƯA đụng tới trong vòng này. User chốt sẽ giao
+thiết kế lại toàn bộ khu account cho một session khác dựng lại từ đầu — bản
+merge ở đây là nền để đập đi xây lại, không phải bản chốt thẩm mỹ.
+
+Tests after: 1036 web · 210 api · 71 contract · 13 ui · 10 tokens · 1 i18n, và
+158 integration. Build + typecheck 12/12 task, lint sạch.
+
 ## 2026-08-10 — Redesign khu account: ba nợ A1/A2/A3 đóng cùng lượt (branch `feat/account-redesign`, 9 task)
 
 Khu account "dựng tạm" chỉ tạm ở phần NHÌN — dữ liệu và hành động đã thật từ
