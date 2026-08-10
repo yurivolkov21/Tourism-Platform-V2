@@ -1,10 +1,8 @@
 import { messages } from '@tourism/i18n';
-import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { ChangePasswordForm } from '@/components/account/change-password-form';
 import { DangerZone } from '@/components/account/danger-zone';
-import { ProfileForm } from '@/components/account/profile-form';
+import { ProfileSummary } from '@/components/account/profile-summary';
 import { fetchAccountMe } from '@/lib/api/account';
 import { requireSession } from '@/lib/api/session';
 
@@ -36,28 +34,17 @@ export default async function AccountProfilePage() {
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex items-start gap-4">
-        <div className="flex flex-col items-center gap-1.5">
-          {/* Avatar chữ-cái ĐẦU tên — cùng quy ước `charAt(0)` đã dùng ở
-              `user-menu.tsx`/`testimonials.tsx`, không tự chế initials hai
-              chữ mới cho riêng trang này. */}
-          <Avatar size="lg">
-            <AvatarFallback className="text-lg font-medium">
-              {profile.name.charAt(0)}
-            </AvatarFallback>
-          </Avatar>
-          <p className="max-w-28 text-center text-xs text-muted-foreground">{t.avatarHint}</p>
-        </div>
-        <div>
-          <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
-            {t.title}
-          </h1>
-          <p className="mt-1 text-muted-foreground">{t.subtitle}</p>
-        </div>
+      {/* Mockup redesign bỏ avatar khỏi trang này: nó chỉ là chữ cái đầu tên
+          (chưa có upload ảnh) nên không mang thêm thông tin gì, mà lại chiếm
+          đúng chỗ dễ nhìn nhất của trang. Vẫn còn ở navbar cho việc nhận diện. */}
+      <div>
+        <h1 className="font-heading text-2xl font-medium text-balance text-foreground">
+          {t.title}
+        </h1>
+        <p className="mt-1 text-muted-foreground">{t.subtitle}</p>
       </div>
 
-      <ProfileForm profile={profile} />
-      <ChangePasswordForm />
+      <ProfileSummary profile={profile} />
 
       <section className="rounded-2xl border bg-card p-6">
         <h2 className="font-heading text-lg font-medium text-foreground">{t.connected.heading}</h2>

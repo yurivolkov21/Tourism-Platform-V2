@@ -2590,6 +2590,24 @@ export const messages = {
       emailHint: 'Your sign-in email — changing it isn’t available yet.',
       save: 'Save changes',
     },
+    /** Redesign 10/08: danh sách tóm tắt đọc-trước (kiểu GOV.UK) thay hai form
+     *  luôn mở. Đa số lần vào trang này người ta chỉ muốn XEM lại thông tin,
+     *  không sửa — mở sẵn sáu ô nhập bắt họ đọc form thay vì đọc dữ liệu. */
+    summary: {
+      change: 'Change',
+      cancel: 'Cancel',
+      saveName: 'Save name',
+      savePhone: 'Save phone',
+      passwordLabel: 'Password',
+      /** Chấm tròn, KHÔNG phải độ dài thật — hiện đúng số ký tự là rò rỉ. */
+      passwordMask: '••••••••••',
+      emailLocked: 'Can’t be changed yet',
+      phoneHint: 'So the guide can reach you on the day.',
+      notSet: 'Not set',
+      /** Nhãn cho trình đọc màn hình: "Change" trần lặp bốn lần thì nghe
+       *  giống nhau hệt, không biết đang đổi cái gì. */
+      changeAria: (field: string) => `Change ${field}`,
+    },
     password: {
       heading: 'Change password',
       // Better Auth `changePassword` BẮT BUỘC `currentPassword` (đối chiếu

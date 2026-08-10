@@ -27,7 +27,7 @@ type PasswordErrorKind = 'sessionExpired' | 'mismatch' | AuthErrorKey;
  * AMENDED 06/08 trong spec — "vòng thiết kế lại" nằm ở session khác do user
  * tự lo).
  */
-export function ChangePasswordForm() {
+export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
   const t = messages.accountProfile.password;
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -55,6 +55,8 @@ export function ChangePasswordForm() {
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      // Đổi xong thì đóng dòng lại — để mở với ba ô rỗng trông như chưa lưu.
+      onDone?.();
     } catch {
       setErrorKind('generic');
     } finally {
@@ -63,9 +65,9 @@ export function ChangePasswordForm() {
   }
 
   return (
-    <form className="flex flex-col gap-4 rounded-2xl border bg-card p-6" onSubmit={handleSubmit}>
-      <h2 className="font-heading text-lg font-medium text-foreground">{t.heading}</h2>
-
+    /* KHÔNG khung card riêng nữa: form này nay nằm TRONG một dòng của danh
+       sách tóm tắt, thêm viền nữa là hộp lồng hộp. */
+    <form noValidate className="flex flex-col gap-4" onSubmit={handleSubmit}>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-current-password">{t.currentLabel}</Label>
         <Input
