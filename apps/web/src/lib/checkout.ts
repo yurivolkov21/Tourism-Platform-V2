@@ -23,6 +23,27 @@ export const PENDING_TTL_MINUTES = 65;
  */
 export type CheckoutMood = 'confirmed' | 'confirming' | 'settled';
 
+/**
+ * Tổng tiền booking — MỘT nguồn dùng CHUNG cho nhãn nút CTA (`booking-form.tsx`)
+ * VÀ dòng "Total" (`checkout-summary.tsx`) — hai chỗ trước đây tự tính riêng,
+ * lệch một chỗ là hai số khác nhau trên cùng một màn hình.
+ *
+ * Luật giá của hệ: trẻ em CÙNG đơn giá người lớn — `effectivePrice × (adults +
+ * children)`, không có mức giá riêng cho trẻ em (khớp API:
+ * `totalAmount(unitPrice, adults + children)`).
+ *
+ * `Number()` chỉ dùng ở BƯỚC CUỐI để tính, không phải nguồn sự thật —
+ * `effectivePrice` (chuỗi thập phân) vẫn là nguồn; kết quả trả về CHUỖI đã
+ * `.toFixed(2)`, khớp khuôn `formatMoney` nhận vào.
+ */
+export function computeBookingTotal(
+  effectivePrice: string,
+  adults: number,
+  children: number,
+): string {
+  return (Number(effectivePrice) * (adults + children)).toFixed(2);
+}
+
 export function checkoutMood(booking: Booking): CheckoutMood {
   if (booking.status === 'PAID') return 'confirmed';
   if (booking.status === 'PENDING') return 'confirming';

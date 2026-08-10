@@ -15,6 +15,7 @@ import {
   partyCap,
   validateBookingForm,
 } from '@/lib/booking-form';
+import { computeBookingTotal } from '@/lib/checkout';
 import { departureStatus, formatDateRange, formatMoney } from '@/lib/tours';
 import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
 import { Field, FieldError, Stepper } from './form-parts';
@@ -69,9 +70,11 @@ export function BookingForm({
   const atCap = party >= cap;
 
   // Giá của ĐỢT đang chọn, không phải basePrice của tour: đợt có priceOverride
-  // riêng. Trẻ em tính CÙNG giá (API: totalAmount(unitPrice, adults + children)).
-  const unit = selected ? Number(selected.effectivePrice) : null;
-  const total = unit === null ? null : (unit * party).toFixed(2);
+  // riêng. NHÓM 5 (final review): MỘT nguồn cho nhãn CTA này VÀ dòng Total
+  // của `CheckoutSummary` — xem `computeBookingTotal` (`lib/checkout.ts`).
+  const total = selected
+    ? computeBookingTotal(selected.effectivePrice, state.numAdults, state.numChildren)
+    : null;
 
   const set = <K extends keyof BookingFormState>(key: K, value: BookingFormState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
@@ -214,8 +217,10 @@ export function BookingForm({
           </div>
         </div>
 
-        {/* Card 2 — Lead traveler. */}
-        <div className="rounded-2xl border bg-card p-6">
+        {/* Card 2 — Lead traveler. Final review (NHÓM 4b): `flex flex-col
+            gap-4` — nhãn của Field phải dính CONTROL của chính nó, không
+            phải dính khối phía trên do `mt-4` ăn lố. */}
+        <div className="flex flex-col gap-4 rounded-2xl border bg-card p-6">
           <h2 className="font-heading text-lg font-semibold">{tp.leadTravelerHeading}</h2>
           <p className="mt-1 text-sm text-muted-foreground">{t.travellersDesc}</p>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -249,7 +254,7 @@ export function BookingForm({
                 value={state.contactPhone}
                 onChange={(e) => set('contactPhone', e.target.value)}
                 aria-invalid={Boolean(errors.contactPhone)}
-                className="mt-4 max-w-xs"
+                className="max-w-xs"
               />
             )}
           </Field>
@@ -262,7 +267,6 @@ export function BookingForm({
                 placeholder={t.specialRequestsPlaceholder}
                 aria-invalid={Boolean(errors.specialRequests)}
                 rows={3}
-                className="mt-4"
               />
             )}
           </Field>
@@ -292,10 +296,11 @@ export function BookingForm({
         </div>
       </div>
 
-      {/* Cột phải: card tóm tắt đơn, dính khi cuộn ở desktop. Trên mobile lên
-          TRƯỚC form (`order-first`) — khách thấy tổng tiền trước khi cuộn qua
-          hết ba card bên trái. */}
-      <div className="order-first lg:sticky lg:top-24 lg:order-none">
+      {/* Cột phải: card tóm tắt đơn, dính khi cuộn ở desktop. Final review
+          (NHÓM 4a): GỠ `order-first` — trên mobile summary+CTA giờ đứng SAU
+          form theo đúng thứ tự DOM (chọn đợt → nhập tên → mới gặp nút trả
+          tiền), không nhảy lên trước ép khách bấm trước khi kịp điền gì. */}
+      <div className="lg:sticky lg:top-24">
         <CheckoutSummary
           tour={summaryTour}
           departure={selected}

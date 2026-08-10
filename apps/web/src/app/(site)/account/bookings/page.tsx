@@ -69,8 +69,7 @@ export default async function AccountBookingsPage({
   const paged = await fetchMyBookings(cookie, limit);
   const bookings = paged.items;
   // Còn nữa để tải VÀ chưa chạm trần limit — trần thì im re (biên hiếm gặp ở
-  // quy mô capstone, xem comment `BOOKINGS_MAX_LIMIT`/`DASHBOARD_BOOKINGS_LIMIT`
-  // ở `bookings.ts`).
+  // quy mô capstone, xem comment `BOOKINGS_MAX_LIMIT` ở `bookings.ts`).
   const hasMore = bookings.length < paged.total && limit < BOOKINGS_MAX_LIMIT;
 
   const t = messages.accountBookings;
@@ -84,7 +83,7 @@ export default async function AccountBookingsPage({
 
   return (
     <div>
-      <h1 className="font-heading text-3xl font-medium text-balance text-foreground">{t.title}</h1>
+      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
       <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
       {bookings.length === 0 ? (

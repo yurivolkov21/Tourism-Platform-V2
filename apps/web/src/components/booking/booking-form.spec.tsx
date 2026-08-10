@@ -189,6 +189,22 @@ describe('BookingForm', () => {
     // 2 × $1,290 = $2,580.
     expect(totalRow).toHaveTextContent('$2,580');
   });
+
+  // NHÓM 5 (final review) — nhãn nút CTA và dòng "Total" của summary phải
+  // CÙNG dùng `computeBookingTotal`: canh cả hai cùng ra MỘT số, không lệch.
+  it('nhãn CTA và dòng Total của summary cùng một số tiền (một nguồn — computeBookingTotal)', async () => {
+    const user = userEvent.setup();
+    render(<BookingForm {...BASE} departures={[makeDeparture({ effectivePrice: '1290.00' })]} />);
+
+    const plusAdults = screen.getByRole('button', { name: /Adults \+/ });
+    await user.click(plusAdults); // 2 người lớn → tổng 2 × $1,290 = $2,580.
+
+    const totalRow = screen.getByText('Total').closest('div');
+    expect(totalRow).toHaveTextContent('$2,580');
+    expect(screen.getByRole('button', { name: /Continue to payment/i })).toHaveTextContent(
+      '$2,580',
+    );
+  });
 });
 
 // Finding 4 (vòng review 1) — `BookingModes` nhận `steps` qua prop, chỉ render

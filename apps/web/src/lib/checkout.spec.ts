@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { checkoutMood, PENDING_TTL_MINUTES, pendingExpiry } from './checkout';
+import { checkoutMood, computeBookingTotal, PENDING_TTL_MINUTES, pendingExpiry } from './checkout';
 
 describe('checkoutMood — tâm trạng màn /checkout/success đọc từ status', () => {
   it('PAID → confirmed', () => {
@@ -55,5 +55,21 @@ describe('pendingExpiry — hạn 65 phút tính từ createdAt', () => {
 
   it('hằng số khớp PENDING_TTL_MINUTES của API', () => {
     expect(PENDING_TTL_MINUTES).toBe(65);
+  });
+});
+
+// Final review (NHÓM 5) — MỘT nguồn cho cả nhãn CTA (`booking-form.tsx`) VÀ
+// dòng Total (`checkout-summary.tsx`): trẻ em CÙNG đơn giá người lớn.
+describe('computeBookingTotal — tổng tiền, trẻ em CÙNG đơn giá', () => {
+  it('2 adults 1 child × $1,290 → "3870.00"', () => {
+    expect(computeBookingTotal('1290.00', 2, 1)).toBe('3870.00');
+  });
+
+  it('1 adult, 0 children → chính đơn giá', () => {
+    expect(computeBookingTotal('1290.00', 1, 0)).toBe('1290.00');
+  });
+
+  it('luôn trả 2 chữ số thập phân, kể cả giá tròn', () => {
+    expect(computeBookingTotal('100', 1, 0)).toBe('100.00');
   });
 });

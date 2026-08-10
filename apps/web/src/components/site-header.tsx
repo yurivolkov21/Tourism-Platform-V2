@@ -68,7 +68,17 @@ export function SiteHeader() {
 
   // Trang không có hero thì navbar dùng LUÔN kiểu "đã cuộn" (nền đặc, chữ
   // `foreground`) ngay từ đầu — không có mảng tối nào để chữ sáng đứng lên.
-  const onDarkHero = !HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  //
+  // Final review (NHÓM 4c): `/tours/[slug]/book` cũng không có hero (cùng
+  // `pt-36` bù khoảng như khu account/checkout) nhưng KHÔNG rơi vào tiền tố
+  // `/tours` trần — tour detail (`/tours/[slug]`) CÓ hero thật, thêm tiền tố
+  // trần sẽ làm chữ navbar tối trên hero tối ở đó. Chỉ khớp đúng route con
+  // `/book` bằng `startsWith` + `endsWith`, không đụng tới các route `/tours/*`
+  // khác.
+  const isHeroLess =
+    HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+    (pathname.startsWith('/tours/') && pathname.endsWith('/book'));
+  const onDarkHero = !isHeroLess;
   const solid = scrolled || !onDarkHero;
 
   const linkClass = `transition-colors duration-500 ${
