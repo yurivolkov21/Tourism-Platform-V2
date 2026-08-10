@@ -9,7 +9,8 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
-import { calendarDate, toBooking } from './bookings.service.js';
+import { MediaService } from '../media/media.service.js';
+import { calendarDate, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
@@ -112,7 +113,10 @@ function toAdminCancellationRequest(
 export class CancellationsService {
   private readonly logger = new Logger(CancellationsService.name);
 
-  constructor(private readonly refunds: RefundsService) {}
+  constructor(
+    private readonly refunds: RefundsService,
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * Khách xin hủy một PAID booking của chính mình (gate Nexora, đã port):
@@ -499,11 +503,12 @@ export class CancellationsService {
   private async decisionResult(requestId: string): Promise<DecideCancellationResult> {
     const row = await prisma.cancellationRequest.findUniqueOrThrow({
       where: { id: requestId },
-      include: { booking: true },
+      include: { booking: { include: { tour: { select: { slug: true } } } } },
     });
+    const tourImage = await resolveTourCover(this.media, row.booking.tourId);
     return {
       request: toAdminCancellationRequest({ ...row, booking: row.booking }),
-      booking: toBooking(row.booking, null),
+      booking: toBooking(row.booking, null, tourImage),
     };
   }
 }

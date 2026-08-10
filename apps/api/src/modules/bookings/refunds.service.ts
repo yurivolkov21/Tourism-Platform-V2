@@ -3,8 +3,9 @@ import type { AdminRefundResult, Refund as RefundView } from '@tourism/contract'
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
+import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
-import { toBooking } from './bookings.service.js';
+import { resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import {
   classifyRefundAmount,
@@ -68,7 +69,10 @@ function toRefund(row: RefundRow): RefundView {
 export class RefundsService {
   private readonly logger = new Logger(RefundsService.name);
 
-  constructor(@Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[]) {}
+  constructor(
+    @Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[],
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * Refund (một phần) do admin phát, port từ `refundByAdmin` của Nexora sang
@@ -154,6 +158,7 @@ export class RefundsService {
       const row = await tx.booking.update({
         where: { id: booking.id },
         data: { status: nextStatus },
+        include: { tour: { select: { slug: true } } },
       });
       await tx.outbox.create({
         data: {
@@ -177,8 +182,9 @@ export class RefundsService {
       return row;
     });
 
+    const tourImage = await resolveTourCover(this.media, updated.tourId);
     return {
-      booking: toBooking(updated, null),
+      booking: toBooking(updated, null, tourImage),
       refunds: await this.historyForBooking(bookingCode),
     };
   }

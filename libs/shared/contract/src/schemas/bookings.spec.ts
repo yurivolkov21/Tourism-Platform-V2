@@ -5,6 +5,23 @@ import {
   PaymentProviderSchema,
 } from './bookings.js';
 
+/** MediaItem hợp lệ tối thiểu — dùng làm cover mẫu cho `tourImage`. */
+const sampleTourImage = {
+  publicId: 'tours/hoi-an-hero',
+  url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tours/hoi-an-hero',
+  type: 'IMAGE',
+  role: 'hero',
+  posterUrl: null,
+  width: 1600,
+  height: 900,
+  alt: 'Hội An lantern street at dusk',
+  sortOrder: 0,
+  author: null,
+  license: null,
+  licenseUrl: null,
+  sourceUrl: null,
+};
+
 const validCreate = {
   departureId: 'e9000001-0000-4000-8000-000000000001',
   numAdults: 2,
@@ -103,6 +120,8 @@ describe('BookingSchema', () => {
       code: 'BK-7Q2M9XKD',
       status: 'PENDING',
       tourTitle: 'Hội An Ancient Town Walking Tour',
+      tourSlug: 'hoi-an-ancient-town-walking-tour',
+      tourImage: sampleTourImage,
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
       unitPrice: '39.00',
@@ -126,6 +145,7 @@ describe('BookingSchema', () => {
       reviewedAt: null,
     });
     expect(parsed.totalAmount).toBe('117.00');
+    expect(parsed.tourImage).toEqual(sampleTourImage);
     expect(parsed.checkoutUrl).not.toBeNull();
     expect(parsed.cancellationStatus).toBeNull();
     expect(BookingSchema.safeParse({ ...parsed, code: 'bk-lowercase' }).success).toBe(false);
@@ -147,6 +167,8 @@ describe('BookingSchema', () => {
       code: 'BK-AAAA1111',
       status: 'PAID',
       tourTitle: 'North to South Classic',
+      tourSlug: 'north-to-south-classic',
+      tourImage: null,
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       unitPrice: '1290.00',
@@ -169,6 +191,8 @@ describe('BookingSchema', () => {
       refundedTotal: '0.00',
       reviewedAt: null,
     };
+    // tourImage: null hợp lệ — tour chưa có media (ADR-0020).
+    expect(BookingSchema.parse(base).tourImage).toBeNull();
     expect(BookingSchema.parse(base).cancellationRequestedAt).toBe('2026-08-05T09:00:00.000Z');
     expect(
       BookingSchema.parse({ ...base, cancellationDecidedAt: null }).cancellationDecidedAt,
@@ -188,6 +212,8 @@ describe('BookingSchema', () => {
       code: 'BK-AAAA1111',
       status: 'PARTIALLY_REFUNDED',
       tourTitle: 'North to South Classic',
+      tourSlug: 'north-to-south-classic',
+      tourImage: null,
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       unitPrice: '1290.00',
@@ -234,6 +260,8 @@ const validBooking = {
   code: 'BK-7Q2M9XKD',
   status: 'PENDING',
   tourTitle: 'Hội An Ancient Town Walking Tour',
+  tourSlug: 'hoi-an-ancient-town-walking-tour',
+  tourImage: null,
   departureStartDate: '2026-09-18',
   departureEndDate: '2026-09-18',
   unitPrice: '39.00',
@@ -256,6 +284,29 @@ const validBooking = {
   refundedTotal: '0.00',
   reviewedAt: null,
 };
+
+// Task 1 (Redesign Checkout B + Account A): tourSlug/tourImage nuôi khu Trips
+// (T6/T7) render ảnh + link ngược về trang tour.
+describe('BookingSchema.tourSlug / tourImage — khu Trips', () => {
+  it('nhận tourImage là một MediaItem hợp lệ (cover có media)', () => {
+    const b = { ...validBooking, tourImage: sampleTourImage };
+    expect(BookingSchema.parse(b).tourImage).toEqual(sampleTourImage);
+  });
+
+  it('tourImage: null hợp lệ — tour chưa có media (ADR-0020)', () => {
+    expect(BookingSchema.parse({ ...validBooking, tourImage: null }).tourImage).toBeNull();
+  });
+
+  it('tourSlug BẮT BUỘC có mặt', () => {
+    const { tourSlug: _drop, ...missing } = validBooking;
+    expect(() => BookingSchema.parse(missing)).toThrow();
+  });
+
+  it('tourImage BẮT BUỘC có mặt (khác optional — thiếu là lỗi, không phải "chưa hỏi")', () => {
+    const { tourImage: _drop, ...missing } = validBooking;
+    expect(() => BookingSchema.parse(missing)).toThrow();
+  });
+});
 
 describe('BookingSchema.reviewedAt — cụm B nửa 2', () => {
   it('nhận mốc thời gian đã review', () => {

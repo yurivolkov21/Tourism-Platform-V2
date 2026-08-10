@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { DecimalStringSchema } from './catalog.js';
+import { MediaItemSchema } from './media.js';
 
 /**
  * Booking schema (spec P2 §3, W1) — nguồn sự thật DUY NHẤT cho bề mặt booking
@@ -69,6 +70,10 @@ export const BookingSchema = z.object({
   code: BookingCodeSchema,
   status: BookingStatusSchema,
   tourTitle: z.string().min(1).max(160),
+  /** Slug tour để link ngược về trang tour — snapshot lúc đọc, join từ quan hệ. */
+  tourSlug: z.string().min(1).max(160),
+  /** Ảnh cover tour cho card Trips (hướng A) — null khi tour chưa có media. */
+  tourImage: MediaItemSchema.nullable(),
   departureStartDate: z.iso.date(),
   departureEndDate: z.iso.date(),
   unitPrice: DecimalStringSchema,

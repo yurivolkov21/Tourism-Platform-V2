@@ -13,8 +13,12 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
 
-/** Ảnh bìa = asset role `hero`. null khi owner chưa có ảnh nào (ADR-0020). */
-const pickCover = (media: MediaItem[] | undefined): MediaItem | null =>
+/**
+ * Ảnh bìa = asset role `hero`. null khi owner chưa có ảnh nào (ADR-0020).
+ * Export cho các module khác dùng chung cách chọn cover (booking Task 1 —
+ * `tourImage` của khu Trips theo đúng khuôn này).
+ */
+export const pickCover = (media: MediaItem[] | undefined): MediaItem | null =>
   media?.find((m) => m.role === 'hero') ?? null;
 
 /**

@@ -4,12 +4,15 @@ import type {
   Booking,
   BookingsListQuery,
   CreateBookingInput,
+  MediaItem,
   Paged,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, DepartureStatus } from '../../generated/prisma/enums.js';
+import { BookingStatus, DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { pickCover } from '../catalog/catalog.service.js';
+import { MediaService } from '../media/media.service.js';
 import {
   type CheckoutSession,
   PAYMENT_GATEWAYS,
@@ -79,15 +82,35 @@ export interface BookingReadExtras {
   reviewedAt?: Date | null;
 }
 
+/**
+ * Ảnh bìa tour cho MỘT booking (Task 1, khu Trips T6/T7) — dùng ở các đường
+ * đọc ĐƠN LẺ (create/reCheckout/cancelPending/byCode/adminByCode). Các đường
+ * BATCH (mine/adminList) tự gọi `MediaService.resolveForOwners` một lần cho cả
+ * trang rồi `pickCover` từng row, tránh N query cho N booking (N+1).
+ */
+export async function resolveTourCover(
+  media: MediaService,
+  tourId: string,
+): Promise<MediaItem | null> {
+  const map = await media.resolveForOwners(MediaOwnerType.TOUR, [tourId]);
+  return pickCover(map.get(tourId));
+}
+
 /** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
  * Phần đọc-kèm mặc định RỖNG — CHỈ `bookings.byCode` truyền giá trị thật (trang
  * chi tiết là nơi duy nhất cần); mọi call site khác (create/mine/adminList/
  * adminByCode/cancelPending/refunds/cancellations) bỏ qua tham số này để list
  * không phải gánh thêm query cho mỗi row. Export cho admin surface
- * (RefundsService trả về cùng shape). */
+ * (RefundsService trả về cùng shape).
+ *
+ * `row.tour.slug` là intersection type BẮT BUỘC (không optional) — ép mọi call
+ * site phải join quan hệ `tour` trong câu Prisma select của nó, biên dịch fail
+ * nếu quên (Task 1: tourSlug/tourImage giờ là field bắt buộc trên contract,
+ * không có sentinel "chưa đọc" hợp lệ như refundedTotal/reviewedAt). */
 export function toBooking(
-  row: BookingRow,
+  row: BookingRow & { tour: { slug: string } },
   checkoutUrl: string | null,
+  tourImage: MediaItem | null,
   extras: BookingReadExtras = {},
 ): Booking {
   return {
@@ -95,6 +118,8 @@ export function toBooking(
     code: row.code,
     status: row.status,
     tourTitle: row.tourTitle,
+    tourSlug: row.tour.slug,
+    tourImage,
     departureStartDate: calendarDate(row.departureStartDate),
     departureEndDate: calendarDate(row.departureEndDate),
     unitPrice: money(row.unitPrice),
@@ -168,7 +193,10 @@ const CODE_MINT_ATTEMPTS = 3;
 export class BookingsService {
   private readonly logger = new Logger(BookingsService.name);
 
-  constructor(@Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[]) {}
+  constructor(
+    @Inject(PAYMENT_GATEWAYS) private readonly gateways: PaymentGateway[],
+    private readonly media: MediaService,
+  ) {}
 
   /**
    * Tạo một PENDING booking + gateway checkout session.
@@ -192,6 +220,7 @@ export class BookingsService {
         tour: {
           select: {
             id: true,
+            slug: true,
             title: true,
             currency: true,
             basePrice: true,
@@ -285,7 +314,12 @@ export class BookingsService {
     this.logger.log(
       `Created booking ${withSession.code} (departure=${departure.id}, seats=${seats}, provider=${input.paymentProvider})`,
     );
-    return toBooking(withSession, session.checkoutUrl);
+    const tourImage = await resolveTourCover(this.media, departure.tour.id);
+    return toBooking(
+      { ...withSession, tour: { slug: departure.tour.slug } },
+      session.checkoutUrl,
+      tourImage,
+    );
   }
 
   /**
@@ -296,7 +330,10 @@ export class BookingsService {
    * CheckoutFailedError (502). Idempotent: mỗi lần mint một session mới hợp lệ.
    */
   async reCheckout(userId: string, code: string): Promise<Booking | null> {
-    const booking = await prisma.booking.findUnique({ where: { code } });
+    const booking = await prisma.booking.findUnique({
+      where: { code },
+      include: { tour: { select: { slug: true } } },
+    });
     if (!booking || booking.userId !== userId) return null;
     if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
 
@@ -321,8 +358,10 @@ export class BookingsService {
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: { providerSessionId: session.sessionId },
+      include: { tour: { select: { slug: true } } },
     });
-    return toBooking(updated, session.checkoutUrl);
+    const tourImage = await resolveTourCover(this.media, booking.tourId);
+    return toBooking(updated, session.checkoutUrl, tourImage);
   }
 
   /**
@@ -341,9 +380,13 @@ export class BookingsService {
       RETURNING id
     `);
     if (rows.length === 0) throw new BookingNotPendingError();
-    const updated = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    const updated = await prisma.booking.findUniqueOrThrow({
+      where: { id: booking.id },
+      include: { tour: { select: { slug: true } } },
+    });
     this.logger.log(`Booking ${booking.code} self-cancelled by owner (PENDING → CANCELLED, BK-2)`);
-    return toBooking(updated, null);
+    const tourImage = await resolveTourCover(this.media, booking.tourId);
+    return toBooking(updated, null, tourImage);
   }
 
   /** Booking của chính user, mới nhất trước (id làm tiebreak ổn định), status
@@ -362,14 +405,21 @@ export class BookingsService {
       prisma.booking.count({ where }),
       prisma.booking.findMany({
         where,
+        include: { tour: { select: { slug: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
     ]);
 
+    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`).
+    const coverMap = await this.media.resolveForOwners(
+      MediaOwnerType.TOUR,
+      rows.map((row) => row.tourId),
+    );
+
     return {
-      items: rows.map((row) => toBooking(row, null)),
+      items: rows.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
       page,
       limit,
       total,
@@ -389,7 +439,10 @@ export class BookingsService {
    * (list) cố ý không trả (xem comment ở đó).
    */
   async byCode(userId: string, code: string): Promise<Booking | null> {
-    const booking = await prisma.booking.findUnique({ where: { code } });
+    const booking = await prisma.booking.findUnique({
+      where: { code },
+      include: { tour: { select: { slug: true } } },
+    });
     if (!booking || booking.userId !== userId) return null;
     const latestCancellation = await prisma.cancellationRequest.findFirst({
       where: { bookingId: booking.id },
@@ -409,7 +462,8 @@ export class BookingsService {
       where: { bookingId: booking.id },
       select: { createdAt: true },
     });
-    return toBooking(booking, null, {
+    const tourImage = await resolveTourCover(this.media, booking.tourId);
+    return toBooking(booking, null, tourImage, {
       cancellationStatus: latestCancellation?.status ?? null,
       cancellationRequestedAt: latestCancellation?.createdAt ?? null,
       cancellationDecidedAt: latestCancellation?.decidedAt ?? null,
@@ -444,14 +498,21 @@ export class BookingsService {
       prisma.booking.count({ where }),
       prisma.booking.findMany({
         where,
+        include: { tour: { select: { slug: true } } },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
       }),
     ]);
 
+    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`).
+    const coverMap = await this.media.resolveForOwners(
+      MediaOwnerType.TOUR,
+      rows.map((row) => row.tourId),
+    );
+
     return {
-      items: rows.map((row) => toBooking(row, null)),
+      items: rows.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
       page,
       limit,
       total,
@@ -461,8 +522,13 @@ export class BookingsService {
 
   /** Bất kỳ booking nào theo code — admin surface, cố ý KHÔNG scope theo owner. */
   async adminByCode(code: string): Promise<Booking | null> {
-    const booking = await prisma.booking.findUnique({ where: { code } });
-    return booking ? toBooking(booking, null) : null;
+    const booking = await prisma.booking.findUnique({
+      where: { code },
+      include: { tour: { select: { slug: true } } },
+    });
+    if (!booking) return null;
+    const tourImage = await resolveTourCover(this.media, booking.tourId);
+    return toBooking(booking, null, tourImage);
   }
 
   /**

@@ -9,6 +9,7 @@ import {
   BookingStatus,
   CancellationRequestStatus,
   DepartureStatus,
+  MediaOwnerType,
 } from '../../generated/prisma/enums.js';
 import { FakeGateway } from '../payments/fake.gateway.js';
 
@@ -91,6 +92,18 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       data: catalog.tourDestinations.filter((row) => tourIds.has(row.tourId)),
     });
     await prisma.tourDeparture.createMany({ data: departures });
+    // Cover cho dayTour (Task 1: tourImage) — role hero, cùng khuôn seed của
+    // `posts.int.spec.ts`. unpublishedTour cố ý KHÔNG có media: nó không bao
+    // giờ được book (rejected ở create), nên không cần cover.
+    await prisma.mediaAsset.create({
+      data: {
+        publicId: 'tours/hoi-an-hero',
+        type: 'IMAGE',
+        ownerType: MediaOwnerType.TOUR,
+        ownerId: dayTour.id,
+        role: 'hero',
+      },
+    });
 
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
@@ -151,6 +164,7 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(body).toMatchObject({
       status: 'PENDING',
       tourTitle: dayTour.title,
+      tourSlug: dayTour.slug,
       departureStartDate: future60.toISOString().slice(0, 10),
       currency: 'USD',
       numAdults: 2,
@@ -161,6 +175,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       paidAt: null,
       cancelledAt: null,
     });
+    // Task 1 (khu Trips T6/T7): tourImage = cover role hero đã seed cho dayTour.
+    expect(body.tourImage?.role).toBe('hero');
+    expect(body.tourImage?.url).toContain('/image/upload/f_auto,q_auto/tours/hoi-an-hero');
     expect(Number(body.unitPrice)).toBe(39);
     expect(Number(body.totalAmount)).toBe(117); // 39.00 × (2 người lớn + 1 trẻ em)
     // Money API response phải là chuỗi 2 chữ số thập phân ("117.00", KHÔNG "117")
@@ -397,6 +414,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(paged.items.map((b) => b.code).sort()).toEqual([first.code, second.code].sort());
     // Read không bao giờ phơi lại checkout redirect.
     expect(paged.items.every((b) => b.checkoutUrl === null)).toBe(true);
+    // Task 1 (khu Trips T6/T7): mỗi item mang đúng tourSlug + tourImage của
+    // dayTour (cover role hero đã seed) — batch resolve, không N+1.
+    expect(paged.items.every((b) => b.tourSlug === dayTour.slug)).toBe(true);
+    expect(
+      paged.items.every((b) => b.tourImage?.url.includes('/f_auto,q_auto/tours/hoi-an-hero')),
+    ).toBe(true);
 
     const paid = PagedSchema(BookingSchema).parse(
       (
@@ -424,6 +447,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     const body = BookingSchema.parse(own.json());
     expect(body.code).toBe(created.code);
     expect(body.checkoutUrl).toBeNull();
+    // Task 1 (khu Trips T6/T7): byCode cũng mang tourSlug + tourImage.
+    expect(body.tourSlug).toBe(dayTour.slug);
+    expect(body.tourImage?.url).toContain('/f_auto,q_auto/tours/hoi-an-hero');
 
     // Code của user khác → 404 (không lộ sự tồn tại), code bịa ra cũng vậy.
     for (const [cookie, code] of [
