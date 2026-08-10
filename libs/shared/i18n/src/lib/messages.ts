@@ -2493,16 +2493,21 @@ export const messages = {
   // một nguồn từ Task 3 cho badge dashboard) — KHÔNG lặp lại enum ở đây,
   // tránh hai nguồn cùng dịch một status rồi lệch nhau về sau.
   accountBookings: {
-    title: 'My bookings',
+    // Redesign Trips hướng A (Task 6): H1 đổi từ "My bookings" sang "Trips" —
+    // cùng chữ với nhãn tab `accountNav.bookings`, trang không còn được phép
+    // nói khác tên nó đứng dưới.
+    title: 'Trips',
     // Redesign 10/08: danh sách nay gom theo BA nhóm thời gian, không còn
     // "newest first" phẳng — câu phụ đề phải nói đúng thứ trang đang làm.
     subtitle: 'Every trip you’ve booked with us, grouped by when you travel.',
     /** Tiêu đề ba nhóm. "On the road now" đứng đầu vì nó là thứ khẩn nhất và
-     *  cũng là thứ danh sách phẳng cũ không nói được. */
+     *  cũng là thứ danh sách phẳng cũ không nói được. `past` đổi giọng ở
+     *  redesign Trips hướng A (Task 6): "Where you've been" gợi ký ức chuyến
+     *  đi hơn là nhãn trung tính "Past". */
     groups: {
       onTheRoad: 'On the road now',
       upcoming: 'Upcoming',
-      past: 'Past',
+      past: 'Where you’ve been',
     },
     /** Mô tả một dòng cho cột trái của mỗi nhóm (redesign 10/08). Mọi mục đều
      *  phải có — mục im lặng cạnh mục đang nói đọc như lỗi tải. */
@@ -2517,6 +2522,19 @@ export const messages = {
     endsToday: 'ends today',
     endsTomorrow: 'ends tomorrow',
     endsInDays: (n: number) => `ends in ${n} days`,
+    /** Eyebrow đếm ngược của `TripCard` hero (Task 6, nhóm "upcoming") — biên
+     *  hai đầu có câu riêng, "N days" chỉ dùng từ ngày thứ hai trở đi. */
+    inDays: (n: number) => (n === 0 ? 'Departing today' : n === 1 ? 'In 1 day' : `In ${n} days`),
+    /** Eyebrow hero cho nhóm "on the road" — thay `inDays` khi chuyến đã bắt đầu. */
+    endsOn: (d: string) => `Ends ${d}`,
+    /** Hàng action của `TripCard` hero — hai link, không phải nút. */
+    viewBooking: 'View booking',
+    contactUs: 'Contact us',
+    /** `TripCard` row (nhóm "past") — tra qua `bookingView(b).tone`, không
+     *  if/else status rải trong JSX. */
+    cancelledNote: 'Cancelled',
+    refundedNote: 'Cancelled · refunded',
+    leaveReview: 'Leave a review',
     refLabel: 'Reference',
     departureLabel: 'Departure',
     travellersLabel: 'Travellers',

@@ -4,16 +4,20 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
-import { AccountRows, AccountSection, AccountSections } from '@/components/account/account-section';
-import { BookingCard } from '@/components/account/booking-card';
+import { TripCard } from '@/components/account/trip-card';
 import { groupBookingsByTime } from '@/lib/account-stats';
 import { BOOKINGS_MAX_LIMIT, BOOKINGS_PAGE_SIZE, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 
 /**
- * `/account/bookings` — list mọi booking (spec §3, Task 6/A2: fetch thật thay
- * mock nội bộ cụm đã khai tử). Server đã `orderBy createdAt desc` — không cần sort lại
- * phía web như bản mock cũ.
+ * `/account/bookings` — "Trips" hướng A (redesign Task 6): dòng chảy dọc MỘT
+ * cột, không còn lưới ba toạ độ của `AccountSection` — trang này là nơi DUY
+ * NHẤT trong khu account không dùng lưới đó, có chủ đích: mỗi chuyến là một
+ * thẻ lớn có ảnh (`TripCard`), không phải một dòng dữ liệu như bốn màn còn
+ * lại (`account-section.tsx`).
+ *
+ * Server đã `orderBy createdAt desc` — không cần sort lại phía web như bản
+ * mock cũ.
  */
 export const metadata: Metadata = {
   title: `${messages.accountBookings.title} — Tourism`,
@@ -80,41 +84,47 @@ export default async function AccountBookingsPage({
 
   return (
     <div>
-      <h1 className="font-heading text-2xl font-medium text-balance text-foreground">{t.title}</h1>
+      <h1 className="font-heading text-3xl font-medium text-balance text-foreground">{t.title}</h1>
       <p className="mt-2 text-muted-foreground">{t.subtitle}</p>
 
       {bookings.length === 0 ? (
-        <div className="mt-2">
+        <div className="mt-8">
           <EmptyState />
         </div>
       ) : (
-        <div className="mt-2">
-          {/* MỖI NHÓM THỜI GIAN LÀ MỘT MỤC của lưới chung: cột trái là tên nhóm
-              + mô tả + số đếm, cột phải là các dòng booking. Nhóm rỗng KHÔNG
-              render — một mục "On the road now" trống đọc như trang hỏng chứ
-              không như tin "bạn đang ở nhà". */}
-          <AccountSections>
-            {GROUPS.map(({ key, items }) =>
-              items.length === 0 ? null : (
-                <AccountSection
-                  key={key}
-                  title={t.groups[key]}
-                  description={t.groupBlurbs[key]}
-                  meta={t.tripCount(items.length)}
+        <div className="mt-10 flex flex-col gap-12">
+          {/* MỖI NHÓM THỜI GIAN LÀ MỘT KICKER + DÒNG CHẢY DỌC — hướng A ở
+              trang này KHÔNG bọc `AccountSection` (lưới ba toạ độ dành cho
+              màn dữ liệu-dòng, Trips là màn thẻ-lớn có ảnh). Nhóm rỗng KHÔNG
+              render — một kicker "On the road now" trống đọc như trang hỏng
+              chứ không như tin "bạn đang ở nhà". */}
+          {GROUPS.map(({ key, items }) =>
+            items.length === 0 ? null : (
+              <section key={key} aria-labelledby={`trips-group-${key}`}>
+                <h2
+                  id={`trips-group-${key}`}
+                  className="font-mono text-xs font-semibold tracking-[0.16em] text-muted-foreground uppercase"
                 >
-                  <AccountRows>
+                  {t.groups[key]}
+                </h2>
+                {key === 'past' ? (
+                  // Nhóm "đã qua" là danh sách tra cứu — dòng gọn, ngăn hairline.
+                  <ul className="mt-4 divide-y">
                     {items.map((booking) => (
-                      <BookingCard
-                        key={booking.id}
-                        booking={booking}
-                        showEndsHint={key === 'onTheRoad'}
-                      />
+                      <TripCard key={booking.id} booking={booking} variant="row" />
                     ))}
-                  </AccountRows>
-                </AccountSection>
-              ),
-            )}
-          </AccountSections>
+                  </ul>
+                ) : (
+                  // Nhóm "đang đi"/"sắp tới" là thứ khẩn — thẻ lớn xếp dọc.
+                  <div className="mt-4 flex flex-col gap-6">
+                    {items.map((booking) => (
+                      <TripCard key={booking.id} booking={booking} variant="hero" />
+                    ))}
+                  </div>
+                )}
+              </section>
+            ),
+          )}
           {/* "Load more" đứng SAU tất cả các nhóm, không nằm trong nhóm nào —
               nó tải thêm cho cả danh sách chứ không riêng nhóm cuối, và nhóm
               cuối có thể rỗng. Bám mép PHẢI container như mọi hành động khác

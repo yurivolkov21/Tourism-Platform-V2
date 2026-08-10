@@ -3,7 +3,7 @@ import { AccountNav } from '@/components/account/account-nav';
 
 /**
  * Khung khu `/account` (spec 2026-08-04-account-area-design, pha A1 tĩnh) —
- * nav tab dùng chung 4 trang con (dashboard/bookings/saved/profile).
+ * nav tab dùng chung 3 trang con (Trips/Saved/Profile).
  *
  * `pt-36` mượn ĐÚNG hằng số `ContentHero` dùng để né navbar `fixed`
  * (`site-header.tsx`: `fixed top-(--banner-offset)`, không có trang nào
