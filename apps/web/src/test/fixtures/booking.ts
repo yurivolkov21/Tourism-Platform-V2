@@ -42,6 +42,8 @@ export function makeBooking(overrides: Partial<Booking> = {}): Booking {
     cancellationRequestedAt: null,
     cancellationDecidedAt: null,
     refundedTotal: '0.00',
+    // Cụm B: null = chưa viết đánh giá. Chỉ `byCode` điền giá trị thật.
+    reviewedAt: null,
     ...overrides,
   };
 }

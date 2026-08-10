@@ -75,6 +75,8 @@ export interface BookingReadExtras {
   cancellationDecidedAt?: Date | null;
   /** `SUM(refunds.amount)` của booking. Bỏ trống = chưa đọc → trả `'0.00'`. */
   refundedTotal?: Prisma.Decimal | null;
+  /** Mốc khách đã viết review cho booking này. Bỏ trống = chưa đọc → `null`. */
+  reviewedAt?: Date | null;
 }
 
 /** Row → contract shape. `checkoutUrl` chỉ non-null ngay sau khi create.
@@ -116,6 +118,11 @@ export function toBooking(
     // contract khai `DecimalStringSchema` không nullable vì "chưa hoàn đồng nào"
     // và "chưa đọc" đối với khách là cùng một câu trả lời.
     refundedTotal: extras.refundedTotal ? money(extras.refundedTotal) : '0.00',
+    // Chưa đọc (mọi call site trừ byCode) → null, KHÁC `refundedTotal` ở trên:
+    // ở đây "chưa đọc" và "chưa review" KHÔNG cùng một câu trả lời, nhưng web
+    // chỉ dùng field này ở trang chi tiết nên null ở list là vô hại — và thà
+    // ẩn form review còn hơn hiện nhầm cho một booking đã review.
+    reviewedAt: extras.reviewedAt ? extras.reviewedAt.toISOString() : null,
   };
 }
 
@@ -395,11 +402,19 @@ export class BookingsService {
       where: { bookingId: booking.id },
       _sum: { amount: true },
     });
+    // Đã review chưa: `Review.bookingId` là @unique nên đây là một lookup khoá
+    // duy nhất, không phải quét. Đọc ở ĐÂY chứ không ở `mine` — cùng lý do
+    // tránh N+1 đã ghi ở trên.
+    const review = await prisma.review.findUnique({
+      where: { bookingId: booking.id },
+      select: { createdAt: true },
+    });
     return toBooking(booking, null, {
       cancellationStatus: latestCancellation?.status ?? null,
       cancellationRequestedAt: latestCancellation?.createdAt ?? null,
       cancellationDecidedAt: latestCancellation?.decidedAt ?? null,
       refundedTotal: refunded._sum.amount,
+      reviewedAt: review?.createdAt ?? null,
     });
   }
 

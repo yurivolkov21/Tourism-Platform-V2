@@ -2044,10 +2044,15 @@ export const messages = {
     titlePlaceholder: 'Sum up your trip in a few words',
     bodyLabel: 'Your review',
     bodyPlaceholder: 'Tell other travellers about your experience…',
+    /** Ràng buộc contract: body 10–2000 ký tự. Nói rõ con số thay vì "quá ngắn". */
+    bodyTooShort: (n: number) => `Please write at least ${n} characters.`,
+    ratingRequired: 'Pick a rating from 1 to 5 stars.',
     submit: 'Submit review',
     submitting: 'Submitting…',
     successTitle: 'Thanks for your review',
     successBody: 'Your review is awaiting moderation — thank you for sharing your trip.',
+    tooEarlyTitle: 'Review this trip when you’re back',
+    tooEarlyBody: 'You’ll be able to rate this trip once it has finished.',
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
     alreadyReviewedBody: 'Thanks again for sharing your experience with other travellers.',
     // Friendly EN for each `POST /reviews` error code (+ generic fallback).
@@ -2057,6 +2062,11 @@ export const messages = {
       BOOKING_FORBIDDEN: 'This booking doesn’t belong to your account.',
       BOOKING_NOT_FOUND: 'We couldn’t find that booking.',
       REVIEW_ALREADY_EXISTS: 'You’ve already reviewed this trip.',
+      // Mã này CÓ trong contract nhưng thiếu ở bảng — mọi lần gửi review cho
+      // chuyến chưa xong đều rơi vào `generic`, tức câu chung chung thay cho
+      // câu nói đúng chuyện. (`USER_NOT_SYNCED` ở trên thì ngược lại: có ở
+      // bảng mà không có trong contract; để lại vì vô hại.)
+      REVIEW_TRIP_NOT_COMPLETED: 'You can review this trip once it has finished.',
       generic: 'Something went wrong. Please try again.',
     } as Record<string, string>,
   },

@@ -123,6 +123,19 @@ export const BookingSchema = z.object({
    * nên con số này không bao giờ vượt tổng.
    */
   refundedTotal: DecimalStringSchema,
+  /**
+   * Mốc khách đã viết đánh giá cho booking này; null = chưa viết (cụm B).
+   *
+   * Vì sao cần: `reviews.create` có ràng buộc `bookingId @unique`, nên nếu
+   * không có field này thì cách DUY NHẤT để biết đã review hay chưa là POST
+   * rồi bắt 409 — tức khách gõ xong cả bài đánh giá mới được báo là không
+   * viết được. Copy "bạn đã đánh giá chuyến này" đã có sẵn trong i18n từ
+   * trước nhưng không có gì drive được nó.
+   *
+   * Chỉ `bookings.byCode` điền giá trị thật; `mine` giữ null — cùng lý do với
+   * `refundedTotal` và hai mốc huỷ ở trên: tránh N+1 trên đường đọc danh sách.
+   */
+  reviewedAt: z.iso.datetime().nullable(),
 });
 
 export type Booking = z.output<typeof BookingSchema>;

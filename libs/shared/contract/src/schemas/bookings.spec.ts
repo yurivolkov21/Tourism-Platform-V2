@@ -123,6 +123,7 @@ describe('BookingSchema', () => {
       cancellationRequestedAt: null,
       cancellationDecidedAt: null,
       refundedTotal: '0.00',
+      reviewedAt: null,
     });
     expect(parsed.totalAmount).toBe('117.00');
     expect(parsed.checkoutUrl).not.toBeNull();
@@ -166,6 +167,7 @@ describe('BookingSchema', () => {
       cancellationRequestedAt: '2026-08-05T09:00:00.000Z',
       cancellationDecidedAt: null,
       refundedTotal: '0.00',
+      reviewedAt: null,
     };
     expect(BookingSchema.parse(base).cancellationRequestedAt).toBe('2026-08-05T09:00:00.000Z');
     expect(
@@ -206,6 +208,7 @@ describe('BookingSchema', () => {
       cancellationRequestedAt: null,
       cancellationDecidedAt: null,
       refundedTotal: '700.00',
+      reviewedAt: null,
     };
     expect(BookingSchema.parse(base).refundedTotal).toBe('700.00');
     expect(BookingSchema.safeParse({ ...base, refundedTotal: 700 }).success).toBe(false);
@@ -222,5 +225,56 @@ describe('BookingsListQuerySchema', () => {
     expect(BookingsListQuerySchema.parse({ status: 'PAID' }).status).toBe('PAID');
     expect(BookingsListQuerySchema.safeParse({ status: 'NOPE' }).success).toBe(false);
     expect(BookingsListQuerySchema.safeParse({ limit: 999 }).success).toBe(false);
+  });
+});
+
+/** Booking hợp lệ tối thiểu, dùng cho các khối test thêm về sau. */
+const validBooking = {
+  id: 'a0000001-0000-4000-8000-000000000001',
+  code: 'BK-7Q2M9XKD',
+  status: 'PENDING',
+  tourTitle: 'Hội An Ancient Town Walking Tour',
+  departureStartDate: '2026-09-18',
+  departureEndDate: '2026-09-18',
+  unitPrice: '39.00',
+  totalAmount: '117.00',
+  currency: 'USD',
+  numAdults: 2,
+  numChildren: 1,
+  contactName: 'Alice Nguyen',
+  contactEmail: 'alice@example.com',
+  contactPhone: null,
+  specialRequests: null,
+  paymentProvider: 'STRIPE',
+  checkoutUrl: null,
+  paidAt: null,
+  cancelledAt: null,
+  createdAt: '2026-07-18T09:00:00.000Z',
+  cancellationStatus: null,
+  cancellationRequestedAt: null,
+  cancellationDecidedAt: null,
+  refundedTotal: '0.00',
+  reviewedAt: null,
+};
+
+describe('BookingSchema.reviewedAt — cụm B nửa 2', () => {
+  it('nhận mốc thời gian đã review', () => {
+    const b = { ...validBooking, reviewedAt: '2026-08-01T10:00:00.000Z' };
+    expect(BookingSchema.parse(b).reviewedAt).toBe('2026-08-01T10:00:00.000Z');
+  });
+
+  it('null = CHƯA review — khác undefined là "chưa hỏi"', () => {
+    expect(BookingSchema.parse({ ...validBooking, reviewedAt: null }).reviewedAt).toBeNull();
+  });
+
+  it('khoá BẮT BUỘC có mặt', () => {
+    // Không có nó thì web phải POST rồi bắt 409 để biết — tức khách gõ xong cả
+    // bài đánh giá mới được báo là không viết được.
+    const { reviewedAt: _r, ...missing } = { ...validBooking, reviewedAt: null };
+    expect(() => BookingSchema.parse(missing)).toThrow();
+  });
+
+  it('từ chối chuỗi không phải datetime', () => {
+    expect(() => BookingSchema.parse({ ...validBooking, reviewedAt: '2026-08-01' })).toThrow();
   });
 });

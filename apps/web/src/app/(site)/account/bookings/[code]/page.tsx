@@ -6,10 +6,12 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
+import { ReviewForm } from '@/components/account/review-form';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { TONE_CLASS } from '@/lib/booking-tone';
 import { bookingView, toCancellationView } from '@/lib/booking-vm';
+import { reviewSlot } from '@/lib/review';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
 /** Nhãn provider hiển thị — TÁI DÙNG nguyên copy đã có ở `booking.form`
@@ -69,6 +71,9 @@ export default async function AccountBookingDetailPage({
   if (!booking) notFound();
 
   const t = messages.accountBookingDetail;
+  const rv = messages.reviews;
+  // Soi gương luật của API — xem JSDoc `reviewSlot`.
+  const slot = reviewSlot(booking);
   const cancellation = toCancellationView(booking.cancellationStatus);
   const view = bookingView(booking, cancellation);
   // `terminalNote` chỉ có key cho 3 status không mang action nào — tra bảng
@@ -163,12 +168,26 @@ export default async function AccountBookingDetailPage({
         </Link>
       </div>
 
-      {/* Chừa chỗ cụm B (form review thật gắn ở đây) — placeholder nhẹ, chỉ
-          hiện copy tĩnh, không dựng logic/form. */}
-      <section className="rounded-2xl border p-6">
-        <h2 className="font-heading text-lg font-medium text-foreground">{t.review.heading}</h2>
-        <p className="mt-2 text-sm text-muted-foreground">{t.review.body}</p>
-      </section>
+      {/* Cụm B nửa 2 — chỗ giữ chỗ tĩnh nay thành form thật. Đặt SAU khối
+          thông tin booking có chủ đích: câu hỏi đầu tiên khi mở trang này gần
+          như luôn là "tiền của tôi đâu", nên lời mời đánh giá không được chen
+          lên trước nó. */}
+      {slot === 'hidden' ? null : (
+        <section className="rounded-2xl border bg-card p-6">
+          {slot === 'form' ? (
+            <ReviewForm bookingCode={booking.code} />
+          ) : (
+            <>
+              <h2 className="font-heading text-lg font-medium text-foreground">
+                {slot === 'done' ? rv.alreadyReviewedTitle : rv.tooEarlyTitle}
+              </h2>
+              <p className="mt-2 text-sm text-muted-foreground">
+                {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
+              </p>
+            </>
+          )}
+        </section>
+      )}
     </div>
   );
 }
