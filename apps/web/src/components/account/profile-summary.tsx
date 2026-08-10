@@ -120,7 +120,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
     }
   }
 
-  const changeButton = (field: EditableField, label: string) => (
+  const editButton = (field: EditableField, label: string) => (
     <Button
       type="button"
       variant="link"
@@ -129,10 +129,10 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
       // chữ lệch khỏi mép phải container — mất đúng toạ độ thứ ba của lưới.
       className="h-auto px-0"
       aria-expanded={open === field}
-      aria-label={s.changeAria(label)}
+      aria-label={s.editAria(label)}
       onClick={() => setOpen(field)}
     >
-      {s.change}
+      {s.edit}
     </Button>
   );
 
@@ -153,7 +153,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
         label={t.details.nameLabel}
         value={profile.name}
         editing={open === 'name'}
-        action={changeButton('name', t.details.nameLabel)}
+        action={editButton('name', t.details.nameLabel)}
       >
         {open === 'name' ? (
           /* `noValidate`: nếu sau này thêm `required`/`type=email` mà quên cái
@@ -180,7 +180,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
                 {s.saveName}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={close}>
-                {s.cancel}
+                {s.cancelEdit}
               </Button>
             </div>
           </form>
@@ -197,7 +197,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
           )
         }
         editing={open === 'phone'}
-        action={changeButton('phone', t.details.phoneLabel)}
+        action={editButton('phone', t.details.phoneLabel)}
       >
         {open === 'phone' ? (
           <form
@@ -225,7 +225,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
                 {s.savePhone}
               </Button>
               <Button type="button" size="sm" variant="ghost" onClick={close}>
-                {s.cancel}
+                {s.cancelEdit}
               </Button>
             </div>
           </form>
@@ -244,7 +244,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
         // rò rỉ một mẩu thông tin về mật khẩu.
         value={<span className="font-mono text-muted-foreground">{s.passwordMask}</span>}
         editing={open === 'password'}
-        action={changeButton('password', s.passwordLabel)}
+        action={editButton('password', s.passwordLabel)}
       >
         {open === 'password' ? (
           <div className="mt-3">

@@ -121,9 +121,20 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
         />
       ) : null}
 
-      <Button type="submit" disabled={pending} className="self-start">
-        {t.submit}
-      </Button>
+      {/* Cancel: đồng bộ với dòng tên/phone (nút Save/Cancel cạnh nhau) —
+          trước bản này dòng mật khẩu chỉ có nút Save, không có đường lùi
+          giữa chừng. `onClick={onDone}` dùng lại ĐÚNG callback "đóng dòng"
+          sau khi lưu — không cần dọn `currentPassword`/`newPassword`/
+          `confirmPassword` riêng vì dòng đóng thì component này unmount,
+          state cục bộ mất theo, không rò sang lần mở kế tiếp. */}
+      <div className="flex items-center gap-2">
+        <Button type="submit" disabled={pending}>
+          {t.submit}
+        </Button>
+        <Button type="button" variant="ghost" onClick={onDone}>
+          {messages.accountProfile.summary.cancelEdit}
+        </Button>
+      </div>
     </form>
   );
 }

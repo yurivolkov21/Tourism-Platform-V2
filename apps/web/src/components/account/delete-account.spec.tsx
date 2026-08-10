@@ -1,17 +1,22 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccountDeleteError } from '@/lib/api/account';
-import { DangerZone } from './danger-zone';
+import { DeleteAccount } from './delete-account';
 
 /**
  * Gate "gõ đúng chữ DELETE mới bật nút" (spec §3) + hành động xoá THẬT
  * (Task 7/A2 — `DELETE /api/account` → `authClient.signOut()` →
  * `router.push('/')` + toast, xem describe cuối file).
+ *
+ * Task 8: không còn card viền destructive lẫn `AccountSection` bọc ngoài —
+ * component TỰ mang heading nhỏ + một câu mô tả (trước đây do page.tsx
+ * truyền vào `AccountSection`), và nút mở dialog hạ cấp thành text-link.
  */
 
 // Mock fetch helper — GIỮ NGUYÊN `AccountDeleteError` thật (importOriginal)
-// để `instanceof` trong `danger-zone.tsx` hoạt động đúng với fixture 401.
+// để `instanceof` trong `delete-account.tsx` hoạt động đúng với fixture 401.
 const { deleteAccount } = vi.hoisted(() => ({ deleteAccount: vi.fn() }));
 vi.mock('@/lib/api/account', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/api/account')>();
@@ -36,21 +41,29 @@ async function openDialogAndUnlock(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByRole('textbox'), 'DELETE');
 }
 
-describe('DangerZone', () => {
+describe('DeleteAccount', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
+  it('tự mang heading + mô tả — trang không còn bọc AccountSection cho khối này', () => {
+    render(<DeleteAccount />);
+    expect(
+      screen.getByRole('heading', { name: messages.accountProfile.danger.heading }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(messages.accountProfile.danger.subtitle)).toBeInTheDocument();
+  });
+
   it('mở dialog → nút xác nhận bị khoá (disabled) khi ô gõ còn rỗng', async () => {
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
   });
 
   it('gõ sai chữ (thường, thiếu ký tự, thừa ký tự) → nút vẫn khoá', async () => {
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     const input = screen.getByRole('textbox');
     const confirmBtn = screen.getByRole('button', { name: 'Yes, delete my account' });
@@ -69,14 +82,14 @@ describe('DangerZone', () => {
 
   it('gõ đúng chữ "DELETE" → nút xác nhận bật (không còn disabled)', async () => {
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     await user.type(screen.getByRole('textbox'), 'DELETE');
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeEnabled();
   });
 });
 
-describe('DangerZone — xoá tài khoản thật (Task 7/A2)', () => {
+describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
@@ -85,7 +98,7 @@ describe('DangerZone — xoá tài khoản thật (Task 7/A2)', () => {
     deleteAccount.mockResolvedValueOnce(undefined);
     signOut.mockResolvedValueOnce(undefined);
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -99,7 +112,7 @@ describe('DangerZone — xoá tài khoản thật (Task 7/A2)', () => {
   it('deleteAccount lỗi chung → message inline, KHÔNG signOut/push, nút hết pending', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(500));
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
@@ -113,7 +126,7 @@ describe('DangerZone — xoá tài khoản thật (Task 7/A2)', () => {
   it('deleteAccount 401 giữa chừng → message riêng + link /login?redirect=, KHÔNG auto-signout', async () => {
     deleteAccount.mockRejectedValueOnce(new AccountDeleteError(401));
     const user = userEvent.setup();
-    render(<DangerZone />);
+    render(<DeleteAccount />);
 
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));

@@ -5,7 +5,7 @@ import type { ReactNode } from 'react';
  * Dòng báo lỗi cho hành động trong khu account.
  *
  * Gom lại vì khối này đang được chép NGUYÊN VĂN ở bốn chỗ (`profile-form`,
- * `change-password-form`, `danger-zone`, `booking-actions`). Bốn bản sao nghĩa
+ * `change-password-form`, `delete-account`, `booking-actions`). Bốn bản sao nghĩa
  * là mỗi lần đổi cách trình bày lỗi phải sửa bốn nơi, và chỉ cần quên một là
  * chúng lệch nhau — thứ không ai phát hiện cho tới khi gặp đúng nhánh lỗi đó.
  *

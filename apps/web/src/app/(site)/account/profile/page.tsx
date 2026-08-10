@@ -7,16 +7,20 @@ import {
   AccountSection,
   AccountSections,
 } from '@/components/account/account-section';
-import { DangerZone } from '@/components/account/danger-zone';
+import { DeleteAccount } from '@/components/account/delete-account';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { fetchAccountMe } from '@/lib/api/account';
 import { requireSession } from '@/lib/api/session';
 
 /**
  * `/account/profile` — hợp nhất tên/phone + đổi mật khẩu + connected
- * accounts + danger-zone (spec §3, Task 6/A2: session thật thay
- * mock nội bộ cụm đã khai tử). Avatar chữ-cái tĩnh + email read-only (PARK spec §4 —
+ * accounts + xoá tài khoản (spec §3, Task 6/A2: session thật thay mock nội
+ * bộ cụm đã khai tử). Avatar chữ-cái tĩnh + email read-only (PARK spec §4 —
  * upload avatar/đổi email chưa làm, có hồ sơ lý do trong spec).
+ *
+ * Task 8: xoá tài khoản không còn là một `AccountSection` ngang hàng —
+ * `DeleteAccount` đứng CUỐI, ngoài `AccountSections`, xem comment tại chỗ
+ * dùng.
  */
 export const metadata: Metadata = {
   title: `${messages.accountProfile.title} — Tourism`,
@@ -62,12 +66,13 @@ export default async function AccountProfilePage() {
               </AccountRow>
             </AccountRows>
           </AccountSection>
-
-          <AccountSection title={t.danger.heading} description={t.danger.subtitle}>
-            <DangerZone />
-          </AccountSection>
         </AccountSections>
       </div>
+
+      {/* Xoá tài khoản đứng CUỐI trang, NGOÀI mọi section (Task 8) — không
+          còn là một mục "Danger zone" ngang hàng Personal information/
+          Connected accounts; component tự lo heading/mô tả/ngăn cách. */}
+      <DeleteAccount />
     </div>
   );
 }

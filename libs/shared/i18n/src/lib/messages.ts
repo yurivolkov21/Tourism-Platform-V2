@@ -2625,7 +2625,7 @@ export const messages = {
     },
   },
   // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
-  // connected accounts + danger-zone. Avatar/đổi email PARK (spec §4) —
+  // connected accounts + xoá tài khoản. Avatar/đổi email PARK (spec §4) —
   // avatar chữ-cái tĩnh, email read-only kèm chú thích, KHÔNG dựng form ghi.
   accountProfile: {
     title: 'Profile',
@@ -2646,8 +2646,12 @@ export const messages = {
      *  luôn mở. Đa số lần vào trang này người ta chỉ muốn XEM lại thông tin,
      *  không sửa — mở sẵn sáu ô nhập bắt họ đọc form thay vì đọc dữ liệu. */
     summary: {
-      change: 'Change',
-      cancel: 'Cancel',
+      /** Redesign hàng-nở-inline (Task 8): "Edit" thay "Change" — mỗi dòng
+       *  tĩnh label/giá trị/nút, bấm vào nở form NGAY tại dòng. */
+      edit: 'Edit',
+      /** Cancel của MỘT dòng đang nở (khác `danger.cancel` — cancel trong
+       *  dialog xoá tài khoản, hai ngữ cảnh khác nhau). */
+      cancelEdit: 'Cancel',
       saveName: 'Save name',
       savePhone: 'Save phone',
       passwordLabel: 'Password',
@@ -2656,9 +2660,9 @@ export const messages = {
       emailLocked: 'Can’t be changed yet',
       phoneHint: 'So the guide can reach you on the day.',
       notSet: 'Not set',
-      /** Nhãn cho trình đọc màn hình: "Change" trần lặp bốn lần thì nghe
-       *  giống nhau hệt, không biết đang đổi cái gì. */
-      changeAria: (field: string) => `Change ${field}`,
+      /** Nhãn cho trình đọc màn hình: "Edit" trần lặp ba lần thì nghe giống
+       *  nhau hệt, không biết đang sửa cái gì. */
+      editAria: (field: string) => `Edit ${field}`,
     },
     password: {
       heading: 'Change password',
