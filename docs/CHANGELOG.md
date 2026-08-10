@@ -8,6 +8,73 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-10 — Cụm B nửa 1: nút tim wishlist trên `/tours` (branch `feat/wishlist-heart`, ff-only, 1 commit `3e83df8`)
+
+Card danh sách tour đang ship một nút tim **bấm được nhưng hoàn toàn trơ**:
+không `onClick`, file còn không phải client component, trong khi `aria-label`
+vẫn nói "Save … to wishlist". Trình đọc màn hình quảng cáo một chức năng không
+tồn tại, trên trang catalogue chính — đúng điều repo tự cấm ở `tour-card.tsx`:
+"một cái tim không làm gì là hứa thứ sản phẩm không giữ". Ba nhánh rà độc lập
+đều nêu chỗ này; nó là lỗi đang sống chứ không phải việc tương lai.
+
+Ba tầng dưới đã sẵn từ P3a nên cụm này thuần web: contract có
+`wishlist.set/list/check`, API có module đầy đủ, và đường GHI đã chạy thật ở
+`/account/saved` từ cụm A.
+
+**Hỏi trạng thái ở CLIENT sau hydrate, không ở server component.** `/tours` là
+trang công khai ISR 300s dùng chung cho mọi khách; nhét trạng thái
+theo-từng-người vào đó vừa hỏng cache vừa **rò rỉ wishlist người này sang người
+khác**. HTML tĩnh luôn ra tim rỗng, client tô lại sau khi biết mình là ai.
+
+**Context cho cả trang thay vì state trong từng nút.** `wishlist.check` là
+endpoint BATCH (trần 100 id) được thiết kế đúng cho việc này; mỗi nút tự hỏi là
+quay lại N+1 mà contract đã cố tránh. Chỉ hỏi cho tour đang hiện trên trang
+hiện tại, không phải cả bộ.
+
+**Khách chưa đăng nhập** bấm tim thì sang trang login, GIỮ nguyên query đang lọc
+— đăng nhập xong bị ném về `/tours` trống là mất công họ vừa chọn. Chặn open
+redirect ngay tại hàm dựng href (lớp thứ hai là `safeRedirect` của trang login).
+
+**Nút tự ẩn khi không có provider bao ngoài.** Card dùng chung ở trang miền, tour
+liên quan và khu account; chỗ nào không có nguồn trạng thái thì không vẽ tim,
+thay vì lặp lại đúng lỗi vừa sửa.
+
+Lỗi `check` **nuốt im lặng có chủ đích**: không tô được tim là mất trang trí chứ
+không mất chức năng, bấm vẫn lưu được — toast ở đó là quấy khách vì thứ họ không
+yêu cầu. Lỗi `set` thì rollback đúng khuôn `SavedGrid` và có báo.
+
+Nhãn nút chuyển từ hardcode trong component sang `@tourism/i18n` (luật #7), một
+nhãn DUY NHẤT cho cả hai trạng thái — bật/tắt đi qua `aria-pressed`, đổi nhãn
+qua lại làm người dùng tưởng là hai nút khác nhau.
+
+**Bốn thứ phát sinh:**
+
+1. **Thêm provider làm đỏ 38 test** của `tours-explorer.spec.tsx` — spec đó
+   KHÔNG mock gì cả, nên `useRouter()` ném "invariant expected app router".
+   Đúng loại giòn mà đợt rà khu account đã cảnh báo; đã thêm mock tối thiểu.
+2. **Thử phá code để kiểm test có cắn không**: bỏ rollback → đúng 1 test đỏ; bỏ
+   guard provider → đúng 1 test đỏ; khôi phục → xanh lại.
+3. **Biome bắt một lỗi thật**, không chỉ format: optional chaining rồi truy cập
+   thẳng thuộc tính, `undefined` sẽ ném TypeError thay vì fail assertion tử tế.
+4. **Better Auth chặn `MISSING_OR_NULL_ORIGIN`** khi script nghiệm thu gọi API
+   thiếu header `Origin` — không phải lỗi, đó là bảo vệ CSRF làm đúng việc.
+
+TDD đúng nghĩa cho phần logic thuần (`lib/wishlist.ts`: viết test, thấy đỏ, rồi
+implement); phần component thì viết code trước rồi mới viết test, bù lại bằng
+vòng phá-code ở trên.
+
+**Nghiệm thu sống** trên trình duyệt thật, đi trọn vòng: chưa đăng nhập bấm tim
+→ `/login?redirect=/tours?destinations=hue` giữ nguyên bộ lọc; đăng nhập rồi bấm
+→ đổi màu ngay; tải lại trang → vẫn đặc, tức đã lưu ở server; `/account/saved`
+thấy tour; bấm lại → bỏ lưu.
+
+**Nợ mở:** `TourCard` (card lưới ở trang miền, tour liên quan) vẫn chưa có tim —
+quyết định riêng, không gộp vào đây. Nửa 2 của cụm B (form review) đi cùng vòng
+redesign khu account vì nó nằm trên đúng trang sẽ được vẽ lại.
+
+**Tests after:** `gate:int` trọn 1.440 test (web 963 → 981: thêm 8 ca logic thuần
+và 10 ca jsdom cho nút tim). 18/18 task `gate` và 5/5 task `test:int`.
+
 ## 2026-08-08 — Đường ảnh cho catalog: contract nở, cột ghi công, và một lô ảnh bị loại (branch `feat/real-images`, ff-only, 3 commit `ecc88f3..a68a4a9`)
 
 Entry này ghi cả thứ đã ship lẫn thứ **đã làm rồi vứt** — vứt là phần tốn công
