@@ -91,7 +91,7 @@ export function AboutGallery({
             transition={SPRING_HEADING}
           >
             The country we call
-            <span className="text-primary italic"> the office.</span>
+            <span className="text-primary-emphasis italic"> the office.</span>
           </motion.h2>
         </div>
 

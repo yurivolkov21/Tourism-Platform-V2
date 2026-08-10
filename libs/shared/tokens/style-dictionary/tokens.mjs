@@ -47,6 +47,26 @@ export default {
     // nút một viền, và đó là quyết định thiết kế riêng. Ghi ở CHANGELOG 30/07.
     primary: c('oklch(0.494 0.067 184.3)', 'oklch(0.53 0.076 181.3)'),
     'primary-foreground': c('oklch(0.974 0.007 174.4)', 'oklch(0.974 0.007 174.4)'),
+    // `primary` khi nó LÀ CHỮ, không phải khi nó là bề mặt (ADR-0019 mục 2).
+    //
+    // Vì sao phải tách hẳn một token: ở chế độ tối, `primary` bị kéo về hai
+    // phía loại trừ nhau. Làm BỀ MẶT thì phải đủ tối để cõng nhãn gần-trắng
+    // (`primary-foreground` 4.5:1 ép L ≤ 0.542); làm CHỮ thì phải đủ sáng để
+    // đọc trên nền tối (4.5:1 trên `muted` đòi L ≥ 0.74). Hai khoảng rời hẳn
+    // nhau — không giá trị nào thoả cả hai, nên mọi lần chỉnh L trước đây đều
+    // chỉ là kéo co giữa hai vai.
+    //
+    // LIGHT giữ Y HỆT `primary` (0.494): ở chế độ sáng nó đã đạt trên mọi bề
+    // mặt (nền 5.57 · card 5.88 · muted 4.62), nên tách token KHÔNG đổi một
+    // pixel nào ở light. Chỉ dark mới khác.
+    //
+    // Đo dark ở L 0.76: nền 7.10 · card 6.30 · muted 5.01 — cặp tệ nhất
+    // (`muted`) từ 2.05 lên 5.01. Chọn 0.76 chứ không phải 0.74 (4.67, sát mép)
+    // để có đệm.
+    //
+    // Dùng ở đâu: chữ nhấn mạnh, link, icon, số lớn — tức mọi chỗ `primary`
+    // đứng làm mực trên nền. KHÔNG dùng cho `bg-*`; bề mặt vẫn là `primary`.
+    'primary-emphasis': c('oklch(0.494 0.067 184.3)', 'oklch(0.76 0.076 181.3)'),
     // Text/icons that sit ON dark media (image scrims via --overlay). Stays light in BOTH themes —
     // the scrim is always dark, so this must NOT flip like primary-foreground does.
     'on-media': c('oklch(0.98 0.005 180)', 'oklch(0.98 0.005 180)'),

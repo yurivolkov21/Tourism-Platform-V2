@@ -40,7 +40,7 @@ export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boole
             >
               Notes from the road,
               <br />
-              <span className="text-primary italic">written by locals.</span>
+              <span className="text-primary-emphasis italic">written by locals.</span>
             </motion.h2>
           </div>
 
@@ -48,7 +48,7 @@ export function Journal({ posts, failed }: { posts: JournalPost[]; failed: boole
             href="/blog"
             whileHover={{ scale: 1.04 }}
             whileTap={{ scale: 0.96 }}
-            className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 px-6 py-3 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
+            className="inline-flex w-fit items-center gap-2 rounded-full border border-primary/30 px-6 py-3 text-sm font-medium text-primary-emphasis transition-colors hover:bg-primary/10"
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
             viewport={{ once: true }}

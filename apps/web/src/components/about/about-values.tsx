@@ -85,7 +85,7 @@ export function AboutValues() {
             >
               Six promises,
               <br />
-              <span className="text-primary italic">kept since the minivan.</span>
+              <span className="text-primary-emphasis italic">kept since the minivan.</span>
             </motion.h2>
           </div>
           <motion.p
@@ -134,13 +134,13 @@ export function AboutValues() {
                 className={`mb-5 flex size-12 items-center justify-center rounded-xl transition-all duration-300 ${
                   value.highlight
                     ? 'bg-primary text-primary-foreground group-hover:scale-110'
-                    : 'bg-muted text-primary group-hover:bg-primary/10'
+                    : 'bg-muted text-primary-emphasis group-hover:bg-primary/10'
                 }`}
               >
                 <value.icon className="size-5.5" aria-hidden="true" />
               </div>
 
-              <h3 className="mb-3 font-heading text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary">
+              <h3 className="mb-3 font-heading text-xl font-semibold text-foreground transition-colors duration-300 group-hover:text-primary-emphasis">
                 {value.title}
               </h3>
 

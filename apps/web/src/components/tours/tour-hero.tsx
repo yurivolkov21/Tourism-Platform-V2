@@ -72,7 +72,7 @@ export function TourHero({ tour }: { tour: TourDetailVM }) {
             <a
               href={`/tours?categories=${tour.category.slug}`}
               aria-current="page"
-              className="truncate text-foreground transition-colors hover:text-primary"
+              className="truncate text-foreground transition-colors hover:text-primary-emphasis"
             >
               {tour.category.name}
             </a>

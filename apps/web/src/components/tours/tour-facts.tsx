@@ -51,7 +51,7 @@ export function GoodFor({ suitableFor }: { suitableFor: MockTravellerType[] }) {
             key={type}
             className="inline-flex items-center gap-2 rounded-full border px-3.5 py-1.5 text-sm text-foreground"
           >
-            <Icon className="size-4 shrink-0 text-primary" aria-hidden="true" />
+            <Icon className="size-4 shrink-0 text-primary-emphasis" aria-hidden="true" />
             {messages.travellerTypes[type]}
           </li>
         );

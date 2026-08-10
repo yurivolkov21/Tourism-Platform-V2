@@ -30,7 +30,7 @@ export function ContactFaq() {
             transition={SPRING_HEADING}
           >
             Five answers,
-            <span className="text-primary italic"> saved you an email.</span>
+            <span className="text-primary-emphasis italic"> saved you an email.</span>
           </motion.h2>
           <motion.p
             className="text-sm text-muted-foreground md:text-base"
@@ -40,7 +40,7 @@ export function ContactFaq() {
             transition={{ delay: 0.15, ...SPRING }}
           >
             The questions every traveller asks first —{' '}
-            <a href="/faq" className="font-medium text-primary hover:underline">
+            <a href="/faq" className="font-medium text-primary-emphasis hover:underline">
               see the full list
             </a>
             .

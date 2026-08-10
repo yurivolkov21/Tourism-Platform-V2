@@ -128,7 +128,7 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
           chỉ có một dòng. Đúng cách PostCard của /blog làm.
           Đổi màu tiêu đề KHÔNG nằm trong motion-safe: nó là phản hồi trạng thái,
           không phải hoạt cảnh, nên người tắt chuyển động vẫn cần thấy. */}
-      <h3 className="min-h-[2lh] overflow-hidden font-heading text-lg leading-snug font-medium text-foreground transition-colors duration-300 group-hover:text-primary group-focus-within:text-primary [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
+      <h3 className="min-h-[2lh] overflow-hidden font-heading text-lg leading-snug font-medium text-foreground transition-colors duration-300 group-hover:text-primary-emphasis group-focus-within:text-primary-emphasis [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
         {/* `after:absolute after:inset-0` biến cả card thành vùng bấm mà vẫn chỉ có
             MỘT link, và link đó có nội dung thật nên tên khả truy cập là tiêu đề
             (một <a> rỗng chỉ mang aria-label bị Biome chặn, đúng lý). Đây là cùng

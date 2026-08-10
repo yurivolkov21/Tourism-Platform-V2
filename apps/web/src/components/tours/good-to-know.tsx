@@ -69,7 +69,7 @@ export function GoodToKnow({
           <div className="mt-4 divide-y divide-border border-t border-border">
             {groups.map((group) => (
               <div key={group.kind} className="py-5">
-                <p className="text-xs font-medium tracking-wide text-primary uppercase">
+                <p className="text-xs font-medium tracking-wide text-primary-emphasis uppercase">
                   {t.goodToKnow.policyKinds[group.kind]}
                 </p>
                 {group.items.map((policy) => (

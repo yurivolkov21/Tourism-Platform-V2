@@ -27,7 +27,10 @@ export function LegalArticle({ doc }: { doc: LegalDoc }) {
           <div className="min-w-0 max-w-[68ch]">
             {doc.reviewNote ? (
               <div className="mb-12 flex gap-3 rounded-2xl border border-primary/25 bg-primary/5 p-5 text-sm">
-                <TriangleAlertIcon className="size-5 shrink-0 text-primary" aria-hidden="true" />
+                <TriangleAlertIcon
+                  className="size-5 shrink-0 text-primary-emphasis"
+                  aria-hidden="true"
+                />
                 <p className="leading-relaxed text-pretty text-foreground/80">{doc.reviewNote}</p>
               </div>
             ) : null}

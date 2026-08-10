@@ -148,7 +148,7 @@ export function SiteFooter() {
                 aria-label={label}
                 whileHover={{ scale: 1.15, y: -2 }}
                 whileTap={{ scale: 0.9 }}
-                className="flex size-9 items-center justify-center rounded-full border text-muted-foreground transition-colors duration-200 hover:border-primary/50 hover:text-primary"
+                className="flex size-9 items-center justify-center rounded-full border text-muted-foreground transition-colors duration-200 hover:border-primary/50 hover:text-primary-emphasis"
               >
                 <Icon className="size-3.5" />
               </motion.a>

@@ -88,7 +88,7 @@ export function AccountDashboard({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg font-medium text-foreground">{t.upcoming.heading}</h2>
-          <Link href="/account/bookings" className="text-sm text-primary hover:underline">
+          <Link href="/account/bookings" className="text-sm text-primary-emphasis hover:underline">
             {t.upcoming.viewAll}
           </Link>
         </div>
@@ -130,7 +130,7 @@ export function AccountDashboard({
       <section>
         <div className="flex items-center justify-between">
           <h2 className="font-heading text-lg font-medium text-foreground">{t.saved.heading}</h2>
-          <Link href="/account/saved" className="text-sm text-primary hover:underline">
+          <Link href="/account/saved" className="text-sm text-primary-emphasis hover:underline">
             {t.saved.viewAll}
           </Link>
         </div>

@@ -18,7 +18,7 @@ const NUMERAL =
 const PILL_PRIMARY =
   'inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80';
 
-const INLINE_LINK = 'font-medium text-primary underline-offset-4 hover:underline';
+const INLINE_LINK = 'font-medium text-primary-emphasis underline-offset-4 hover:underline';
 
 /** Trồi lên + hiện dần, dùng chung cho từng dòng ở cột trái. */
 function Line({ children, delay }: { children: React.ReactNode; delay: number }) {
@@ -51,7 +51,7 @@ export function NotFoundBody() {
             <h2 className="mt-6 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
               We lost this page,
               <br />
-              <span className="text-primary italic">not you.</span>
+              <span className="text-primary-emphasis italic">not you.</span>
             </h2>
           </Line>
 
@@ -107,7 +107,7 @@ export function NotFoundBody() {
               lớp đặc và trượt từ xa về nên mắt thấy bóng "đặt xuống" rồi lớp
               đặc mới đè lên. */}
           <motion.span
-            className={`${NUMERAL} absolute inset-0 flex items-center justify-center text-primary/25 lg:justify-end`}
+            className={`${NUMERAL} absolute inset-0 flex items-center justify-center text-primary-emphasis/25 lg:justify-end`}
             initial={{ x: 26, y: 26, opacity: 0 }}
             whileInView={{ x: 14, y: 14, opacity: 1 }}
             viewport={{ once: true, margin: '-60px' }}
@@ -118,7 +118,7 @@ export function NotFoundBody() {
 
           {/* Lớp đặc — nhân vật chính */}
           <motion.span
-            className={`${NUMERAL} relative text-primary`}
+            className={`${NUMERAL} relative text-primary-emphasis`}
             initial={{ scale: 0.94, opacity: 0 }}
             whileInView={{ scale: 1, opacity: 1 }}
             viewport={{ once: true, margin: '-60px' }}

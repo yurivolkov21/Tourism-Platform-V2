@@ -22,7 +22,7 @@ export function ScrollToTop() {
       type="button"
       aria-label="Back to top"
       onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      className={`fixed right-5 bottom-6 z-(--z-sticky) flex size-11 cursor-pointer items-center justify-center rounded-full bg-background text-foreground shadow-(--shadow-dropdown) ring-1 ring-border transition-all duration-300 hover:text-primary hover:ring-primary/40 ${
+      className={`fixed right-5 bottom-6 z-(--z-sticky) flex size-11 cursor-pointer items-center justify-center rounded-full bg-background text-foreground shadow-(--shadow-dropdown) ring-1 ring-border transition-all duration-300 hover:text-primary-emphasis hover:ring-primary/40 ${
         visible ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
       }`}
     >

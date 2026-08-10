@@ -48,8 +48,8 @@ export function AboutHero() {
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
         >
-          <CompassIcon className="size-3.5 text-primary" aria-hidden="true" />
-          <span className="text-xs font-medium tracking-widest text-primary uppercase">
+          <CompassIcon className="size-3.5 text-primary-emphasis" aria-hidden="true" />
+          <span className="text-xs font-medium tracking-widest text-primary-emphasis uppercase">
             The people behind the paths
           </span>
         </motion.div>
@@ -58,7 +58,7 @@ export function AboutHero() {
         <h1 className="mb-8 font-heading text-5xl leading-[1.05] font-medium tracking-tight text-foreground md:text-6xl xl:text-7xl">
           <RevealLine delay={0.3}>Slow travel,</RevealLine>
           <RevealLine delay={0.45}>
-            <span className="text-primary italic">crafted by locals,</span>
+            <span className="text-primary-emphasis italic">crafted by locals,</span>
           </RevealLine>
           <RevealLine delay={0.6}>since 2014.</RevealLine>
         </h1>
@@ -106,7 +106,7 @@ export function AboutHero() {
         >
           {HERO_STATS.map((stat) => (
             <div key={stat.label} className="flex flex-col">
-              <span className="font-heading text-3xl leading-none font-semibold text-primary">
+              <span className="font-heading text-3xl leading-none font-semibold text-primary-emphasis">
                 <CountUp to={stat.value} delay={1.1} />
                 {stat.suffix}
               </span>

@@ -48,7 +48,7 @@ export function ShareRow({ title }: { title: string }) {
         className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
       >
         {copied ? (
-          <CheckIcon className="size-4 text-primary" aria-hidden="true" />
+          <CheckIcon className="size-4 text-primary-emphasis" aria-hidden="true" />
         ) : (
           <LinkIcon className="size-4" aria-hidden="true" />
         )}

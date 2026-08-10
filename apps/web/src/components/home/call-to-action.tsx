@@ -29,7 +29,7 @@ export function CallToAction() {
 
       <div className="dark mx-auto flex max-w-5xl flex-col items-center px-4 text-center text-foreground">
         <motion.span
-          className="mb-6 block text-xs font-semibold tracking-[0.25em] text-primary uppercase"
+          className="mb-6 block text-xs font-semibold tracking-[0.25em] text-primary-emphasis uppercase"
           initial={{ y: -20, opacity: 0 }}
           whileInView={{ y: 0, opacity: 1 }}
           viewport={{ once: true }}
@@ -51,7 +51,7 @@ export function CallToAction() {
         >
           Find the journey
           <br />
-          <span className="text-primary italic">that fits your pace.</span>
+          <span className="text-primary-emphasis italic">that fits your pace.</span>
         </motion.h2>
 
         <motion.p

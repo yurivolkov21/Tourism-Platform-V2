@@ -159,7 +159,7 @@ export default async function AccountBookingDetailPage({
           code={booking.code}
         />
         {terminalNote ? <p className="text-sm text-muted-foreground">{terminalNote}</p> : null}
-        <Link href="/cancellation-policy" className="text-sm text-primary hover:underline">
+        <Link href="/cancellation-policy" className="text-sm text-primary-emphasis hover:underline">
           {t.policyLink}
         </Link>
       </div>

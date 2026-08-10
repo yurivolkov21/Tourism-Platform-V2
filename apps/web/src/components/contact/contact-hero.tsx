@@ -52,7 +52,7 @@ export function ContactHero() {
           >
             Talk to a human,
             <br />
-            <span className="text-primary italic">not a hotline.</span>
+            <span className="text-primary-emphasis italic">not a hotline.</span>
           </motion.h1>
 
           <motion.p

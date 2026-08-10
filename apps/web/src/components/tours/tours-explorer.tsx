@@ -466,7 +466,7 @@ export function ToursExplorer({
                 <button
                   type="button"
                   onClick={clearAll}
-                  className="ml-1 cursor-pointer text-sm font-medium text-primary hover:underline"
+                  className="ml-1 cursor-pointer text-sm font-medium text-primary-emphasis hover:underline"
                 >
                   {messages.toursPage.clearAll}
                 </button>

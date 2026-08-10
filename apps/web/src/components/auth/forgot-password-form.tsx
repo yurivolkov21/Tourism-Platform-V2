@@ -43,7 +43,7 @@ export function ForgotPasswordForm() {
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
               Check your inbox
-              <span className="text-primary italic"> — help is on the way.</span>
+              <span className="text-primary-emphasis italic"> — help is on the way.</span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
               A reset link is on its way — it expires in 30 minutes.
@@ -58,7 +58,7 @@ export function ForgotPasswordForm() {
           </button>
           <p className="text-center text-sm text-muted-foreground">
             Remembered it?{' '}
-            <a href="/login" className="font-medium text-primary hover:underline">
+            <a href="/login" className="font-medium text-primary-emphasis hover:underline">
               Back to log in
             </a>
           </p>
@@ -68,7 +68,7 @@ export function ForgotPasswordForm() {
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
               Lost your ticket?
-              <span className="text-primary italic"> It happens on the road.</span>
+              <span className="text-primary-emphasis italic"> It happens on the road.</span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
               We'll email you a link to reset it.
@@ -102,7 +102,7 @@ export function ForgotPasswordForm() {
 
           <p className="text-center text-sm text-muted-foreground">
             Remembered it?{' '}
-            <a href="/login" className="font-medium text-primary hover:underline">
+            <a href="/login" className="font-medium text-primary-emphasis hover:underline">
               Back to log in
             </a>
           </p>

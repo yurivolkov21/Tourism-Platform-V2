@@ -53,7 +53,7 @@ export function OnThisPage({ items }: { items: TocItem[] }) {
               className={cn(
                 'flex gap-2.5 py-1.5 pl-4 text-pretty transition-colors',
                 active === item.id
-                  ? 'font-medium text-primary'
+                  ? 'font-medium text-primary-emphasis'
                   : 'text-muted-foreground hover:text-foreground',
               )}
             >

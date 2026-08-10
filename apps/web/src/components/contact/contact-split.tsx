@@ -37,7 +37,7 @@ import { REGIONS } from '@/mocks/regions';
 // Chỗ trống trong "lá thư": gạch dưới nét đứt, chữ điền vào là serif italic
 // màu primary — như mực khác màu trên thư in sẵn; focus đổi viền primary.
 const LETTER_BLANK =
-  'block border-0 border-b-2 border-dashed border-border bg-transparent px-1 py-1 font-heading text-lg italic text-primary placeholder:text-muted-foreground/50 placeholder:not-italic outline-none transition-colors focus:border-primary';
+  'block border-0 border-b-2 border-dashed border-border bg-transparent px-1 py-1 font-heading text-lg italic text-primary-emphasis placeholder:text-muted-foreground/50 placeholder:not-italic outline-none transition-colors focus:border-primary';
 
 // Nhãn-câu-hỏi dẫn từng dòng thư — thường (không uppercase) cho giọng trò chuyện
 const LETTER_LABEL = 'text-sm text-muted-foreground';
@@ -110,7 +110,7 @@ export function ContactSplit() {
             <SectionEyebrow>We can help</SectionEyebrow>
             <h2 className="max-w-md font-heading text-3xl leading-tight font-medium text-foreground md:text-4xl">
               Let’s plan your dates
-              <span className="text-primary italic"> before the seats go.</span>
+              <span className="text-primary-emphasis italic"> before the seats go.</span>
             </h2>
           </motion.div>
 
@@ -125,14 +125,14 @@ export function ContactSplit() {
               <p className="text-sm text-muted-foreground">Phone</p>
               <a
                 href={`tel:${PHONE.replace(/\s/g, '')}`}
-                className="text-base font-medium text-primary"
+                className="text-base font-medium text-primary-emphasis"
               >
                 {PHONE}
               </a>
             </div>
             <div className="flex flex-col gap-1">
               <p className="text-sm text-muted-foreground">Email</p>
-              <a href={`mailto:${EMAIL}`} className="text-base font-medium text-primary">
+              <a href={`mailto:${EMAIL}`} className="text-base font-medium text-primary-emphasis">
                 {EMAIL}
               </a>
             </div>
@@ -146,7 +146,7 @@ export function ContactSplit() {
             transition={{ delay: 0.15, ...SPRING }}
           >
             <p className="text-sm text-muted-foreground">Headquarters</p>
-            <p className="text-base font-medium text-primary">
+            <p className="text-base font-medium text-primary-emphasis">
               {OFFICES[0]?.addressLines.join(', ')}
             </p>
           </motion.div>
@@ -230,7 +230,7 @@ export function ContactSplit() {
             {/* Tem thư góc trên-phải: viền răng cưa dashed + la bàn, nghiêng nhẹ */}
             <div
               aria-hidden="true"
-              className="absolute top-5 right-5 flex rotate-3 flex-col items-center gap-1 rounded-sm border-2 border-dashed border-primary/40 px-3 py-2 text-primary"
+              className="absolute top-5 right-5 flex rotate-3 flex-col items-center gap-1 rounded-sm border-2 border-dashed border-primary/40 px-3 py-2 text-primary-emphasis"
             >
               <CompassIcon className="size-5" />
               <span className="text-[9px] font-semibold tracking-widest uppercase">
@@ -288,7 +288,7 @@ export function ContactSplit() {
               >
                 <SelectTrigger
                   id="cl-region"
-                  className={`${LETTER_BLANK} h-auto w-full justify-between rounded-none py-1 font-heading text-lg text-primary italic shadow-none focus-visible:ring-0`}
+                  className={`${LETTER_BLANK} h-auto w-full justify-between rounded-none py-1 font-heading text-lg text-primary-emphasis italic shadow-none focus-visible:ring-0`}
                 >
                   <SelectValue placeholder="Anywhere in Vietnam" />
                 </SelectTrigger>

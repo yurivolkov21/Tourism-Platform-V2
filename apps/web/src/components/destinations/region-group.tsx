@@ -67,7 +67,7 @@ export function RegionGroup({
               cụm destinations (know-before-you-go.tsx). */}
           <a
             href={`/destinations/${region.slug}`}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-primary-emphasis hover:underline"
           >
             {t.viewMore}
             <ArrowRightIcon aria-hidden="true" className="size-3.5" />

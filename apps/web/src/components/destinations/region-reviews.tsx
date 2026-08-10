@@ -157,7 +157,7 @@ export function RegionReviews({
                           review nói về chuyến nào. */}
                         <Link
                           href={`/tours/${tourSlug}`}
-                          className="mt-0.5 block text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary hover:decoration-primary"
+                          className="mt-0.5 block text-sm text-muted-foreground underline decoration-border underline-offset-4 transition-colors hover:text-primary-emphasis hover:decoration-primary"
                         >
                           {t.onTrip(tourTitle)}
                         </Link>

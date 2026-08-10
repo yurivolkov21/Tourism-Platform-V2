@@ -24,7 +24,7 @@ export function LoadErrorState({ className = '' }: { className?: string }) {
       <button
         type="button"
         onClick={() => router.refresh()}
-        className="mt-5 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary hover:underline"
+        className="mt-5 inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-primary-emphasis hover:underline"
       >
         <RotateCwIcon className="size-3.5" aria-hidden="true" />
         {t.retry}

@@ -107,7 +107,7 @@ export function AboutNumbers({
           >
             Numbers we’re proud of,
             <br />
-            <span className="text-primary italic">counted the slow way.</span>
+            <span className="text-primary-emphasis italic">counted the slow way.</span>
           </motion.h2>
         </div>
 
@@ -129,7 +129,7 @@ export function AboutNumbers({
                 viewport={{ once: true, margin: '-40px' }}
                 transition={{ ...SPRING, delay: index * 0.1 }}
               >
-                <span className="mb-2 block origin-left font-heading text-5xl leading-none font-semibold text-primary transition-transform duration-300 group-hover:scale-105">
+                <span className="mb-2 block origin-left font-heading text-5xl leading-none font-semibold text-primary-emphasis transition-transform duration-300 group-hover:scale-105">
                   <CountUp to={stat.value} />
                   {stat.suffix}
                 </span>

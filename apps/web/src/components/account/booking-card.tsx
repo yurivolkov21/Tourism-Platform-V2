@@ -44,7 +44,7 @@ export function BookingCard({ booking }: { booking: Booking }) {
           <p className="font-heading text-lg font-semibold tabular-nums text-foreground">
             {formatMoney(booking.totalAmount, booking.currency)}
           </p>
-          <span className="inline-flex items-center gap-1 text-sm text-primary group-hover:underline">
+          <span className="inline-flex items-center gap-1 text-sm text-primary-emphasis group-hover:underline">
             {t.viewDetails}
             <ArrowRightIcon className="size-3.5" aria-hidden="true" />
           </span>

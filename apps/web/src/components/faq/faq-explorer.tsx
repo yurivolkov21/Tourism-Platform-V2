@@ -74,7 +74,7 @@ export function FaqExplorer({
             return (
               <section key={group.title} id={slugify(group.title)} className="scroll-mt-28">
                 <div className="mb-5 flex items-center gap-3">
-                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary">
+                  <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-border bg-card text-primary-emphasis">
                     <Icon className="size-5" aria-hidden="true" />
                   </span>
                   <h2 className="font-heading text-xl font-medium text-foreground">

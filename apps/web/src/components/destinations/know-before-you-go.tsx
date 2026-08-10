@@ -29,7 +29,7 @@ export function KnowBeforeYouGo({ items }: { items: MockFaqItem[] }) {
           </div>
           <a
             href="/faq"
-            className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-primary-emphasis hover:underline"
           >
             {t.seeAll}
             <ArrowRightIcon aria-hidden="true" className="size-3.5" />

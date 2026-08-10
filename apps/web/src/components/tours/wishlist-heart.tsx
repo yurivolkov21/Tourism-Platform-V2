@@ -37,7 +37,7 @@ export function WishlistHeart({ tourId, tourTitle }: { tourId: string; tourTitle
       aria-label={t.wishlistLabel(tourTitle)}
       onClick={() => wishlist.toggle(tourId)}
     >
-      <HeartIcon className={wished ? 'fill-current text-primary' : undefined} />
+      <HeartIcon className={wished ? 'fill-current text-primary-emphasis' : undefined} />
     </Button>
   );
 }

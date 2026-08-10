@@ -101,7 +101,7 @@ function QuoteFigure({ item }: { item: MockTestimonial }) {
             là trích dẫn, đọc thêm một dấu nháy là nhiễu. */}
         <p
           aria-hidden="true"
-          className="h-10 font-heading text-7xl leading-none text-primary/25 select-none"
+          className="h-10 font-heading text-7xl leading-none text-primary-emphasis/25 select-none"
         >
           &ldquo;
         </p>
@@ -112,7 +112,7 @@ function QuoteFigure({ item }: { item: MockTestimonial }) {
 
       <figcaption className="flex items-center gap-3">
         <Avatar className="size-11">
-          <AvatarFallback className="bg-primary/10 font-medium text-primary">
+          <AvatarFallback className="bg-primary/10 font-medium text-primary-emphasis">
             {initials(item.name)}
           </AvatarFallback>
         </Avatar>

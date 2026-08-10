@@ -73,7 +73,7 @@ export function ContactLocation() {
             transition={SPRING_HEADING}
           >
             Two doors,
-            <span className="text-primary italic"> always open.</span>
+            <span className="text-primary-emphasis italic"> always open.</span>
           </motion.h2>
         </div>
 
@@ -108,7 +108,7 @@ export function ContactLocation() {
               <div className="mt-3 flex flex-col gap-3 text-sm">
                 <div className="flex items-start gap-2.5">
                   <MapPinIcon
-                    className="mt-0.5 size-4.5 shrink-0 text-primary"
+                    className="mt-0.5 size-4.5 shrink-0 text-primary-emphasis"
                     aria-hidden="true"
                   />
                   <span className="text-muted-foreground">
@@ -120,7 +120,10 @@ export function ContactLocation() {
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
-                  <Clock8Icon className="size-4.5 shrink-0 text-primary" aria-hidden="true" />
+                  <Clock8Icon
+                    className="size-4.5 shrink-0 text-primary-emphasis"
+                    aria-hidden="true"
+                  />
                   <span className="text-muted-foreground">{office.hours}</span>
                 </div>
               </div>
@@ -130,7 +133,7 @@ export function ContactLocation() {
                 href={office.mapHref}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+                className="mt-4 inline-block text-sm font-medium text-primary-emphasis hover:underline"
               >
                 Get directions →
               </a>

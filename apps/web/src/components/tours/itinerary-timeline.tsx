@@ -31,7 +31,7 @@ export function ItineraryTimeline({
           <li key={day.dayNumber} className="flex gap-5">
             {/* Rail trái: ô số + đường kẻ nối xuống mục sau. */}
             <div className="flex flex-col items-center">
-              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-background font-mono text-xs tabular-nums text-primary">
+              <span className="flex size-9 shrink-0 items-center justify-center rounded-full border bg-background font-mono text-xs tabular-nums text-primary-emphasis">
                 {/* Số hiện ra ở dạng gọn "01"; trình đọc màn hình nghe câu đủ
                     "Day 1" vì nghe trần "01" thì không biết đó là số gì. */}
                 <span className="sr-only">{t.itinerary.dayLabel(day.dayNumber)}</span>
@@ -64,7 +64,10 @@ export function ItineraryTimeline({
 
               {index === 0 && meetingPoint ? (
                 <p className="mt-3 inline-flex items-start gap-2 rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                  <MapPinIcon className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+                  <MapPinIcon
+                    className="mt-0.5 size-4 shrink-0 text-primary-emphasis"
+                    aria-hidden="true"
+                  />
                   {t.itinerary.meetAt(meetingPoint)}
                 </p>
               ) : null}

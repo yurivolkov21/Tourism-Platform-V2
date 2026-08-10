@@ -192,7 +192,7 @@ export function OtpForm({
           <button
             type="button"
             onClick={handleResend}
-            className="cursor-pointer text-center text-sm font-medium text-primary hover:underline"
+            className="cursor-pointer text-center text-sm font-medium text-primary-emphasis hover:underline"
           >
             Resend the code
           </button>

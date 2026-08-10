@@ -74,7 +74,7 @@ export function LoginForm() {
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Welcome back
-            <span className="text-primary italic"> to the road.</span>
+            <span className="text-primary-emphasis italic"> to the road.</span>
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Log in to pick up where the map left off.
@@ -126,7 +126,7 @@ export function LoginForm() {
             <Checkbox id="login-remember" checked={rememberMe} onCheckedChange={setRememberMe} />
             Remember me
           </label>
-          <a href="/forgot-password" className="font-medium text-primary hover:underline">
+          <a href="/forgot-password" className="font-medium text-primary-emphasis hover:underline">
             Forgot password?
           </a>
         </div>
@@ -147,7 +147,7 @@ export function LoginForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           New here?{' '}
-          <a href="/register" className="font-medium text-primary hover:underline">
+          <a href="/register" className="font-medium text-primary-emphasis hover:underline">
             Create an account
           </a>
         </p>

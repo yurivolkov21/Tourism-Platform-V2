@@ -20,7 +20,7 @@ export function Logo({ className }: { className?: string }) {
       </svg>
       {/* text-foreground tường minh để wordmark đọc token theo scope (vd span.dark trên hero) */}
       <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-        tour<span className="text-primary">ism</span>
+        tour<span className="text-primary-emphasis">ism</span>
       </span>
     </span>
   );

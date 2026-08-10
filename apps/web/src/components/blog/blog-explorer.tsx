@@ -132,7 +132,7 @@ export function BlogExplorer({
               changeTag(undefined);
               changeQuery('');
             }}
-            className="mt-5 cursor-pointer text-sm font-medium text-primary hover:underline"
+            className="mt-5 cursor-pointer text-sm font-medium text-primary-emphasis hover:underline"
           >
             Clear filters
           </button>

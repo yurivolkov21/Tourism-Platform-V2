@@ -30,7 +30,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
         heading={
           <>
             We mailed you
-            <span className="text-primary italic"> six digits.</span>
+            <span className="text-primary-emphasis italic"> six digits.</span>
           </>
         }
         description="Enter the code we sent to confirm your email address."

@@ -114,11 +114,16 @@ export function PasswordStrengthField({
         {checks.map((check) => (
           <li key={check.text} className="flex items-center gap-2">
             {check.met ? (
-              <CheckIcon aria-hidden="true" className="size-3.5 text-primary" />
+              <CheckIcon aria-hidden="true" className="size-3.5 text-primary-emphasis" />
             ) : (
               <XIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
             )}
-            <span className={cn('text-xs', check.met ? 'text-primary' : 'text-muted-foreground')}>
+            <span
+              className={cn(
+                'text-xs',
+                check.met ? 'text-primary-emphasis' : 'text-muted-foreground',
+              )}
+            >
               {check.text}
               <span className="sr-only">
                 {check.met ? ' — requirement met' : ' — requirement not met'}

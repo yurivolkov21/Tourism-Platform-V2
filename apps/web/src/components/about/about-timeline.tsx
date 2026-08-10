@@ -73,7 +73,7 @@ function MilestoneText({ milestone }: { milestone: Milestone }) {
       viewport={{ once: true }}
       transition={SPRING}
     >
-      <p className="font-heading text-3xl font-semibold text-primary">{milestone.year}</p>
+      <p className="font-heading text-3xl font-semibold text-primary-emphasis">{milestone.year}</p>
       <h3 className="mt-2 font-heading text-xl font-medium text-foreground">{milestone.title}</h3>
       <p className="mt-3 text-sm/6 text-muted-foreground">{milestone.description}</p>
     </motion.div>
@@ -145,7 +145,7 @@ export function AboutTimeline() {
           transition={SPRING_HEADING}
         >
           Twelve years,
-          <span className="text-primary italic"> four turning points.</span>
+          <span className="text-primary-emphasis italic"> four turning points.</span>
         </motion.h2>
 
         {/* Desktop: zigzag chữ–ảnh soi gương qua trục — mỗi cột xen kẽ
@@ -202,7 +202,9 @@ export function AboutTimeline() {
         <div className="mt-16 flex flex-col gap-12 md:hidden">
           {MILESTONES.map((milestone) => (
             <div key={milestone.year} data-region={milestone.region}>
-              <p className="font-heading text-3xl font-semibold text-primary">{milestone.year}</p>
+              <p className="font-heading text-3xl font-semibold text-primary-emphasis">
+                {milestone.year}
+              </p>
               <h3 className="mt-2 font-heading text-xl font-medium text-foreground">
                 {milestone.title}
               </h3>

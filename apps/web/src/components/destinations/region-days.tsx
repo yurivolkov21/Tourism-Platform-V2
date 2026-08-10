@@ -145,11 +145,11 @@ export function RegionDays({ tours }: { tours: readonly TourCardVM[] }) {
                     <li key={tour.slug}>
                       <Link
                         href={`/tours/${tour.slug}`}
-                        className="group flex items-baseline gap-2 text-pretty text-foreground transition-colors hover:text-primary"
+                        className="group flex items-baseline gap-2 text-pretty text-foreground transition-colors hover:text-primary-emphasis"
                       >
                         <MoveRightIcon
                           aria-hidden="true"
-                          className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground transition-colors group-hover:text-primary"
+                          className="size-3.5 shrink-0 translate-y-0.5 text-muted-foreground transition-colors group-hover:text-primary-emphasis"
                         />
                         {tour.title}
                       </Link>

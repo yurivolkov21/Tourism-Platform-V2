@@ -75,7 +75,7 @@ export function RegisterForm() {
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Claim your seat
-            <span className="text-primary italic"> on the next trip.</span>
+            <span className="text-primary-emphasis italic"> on the next trip.</span>
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">One account for every trip ahead.</p>
         </div>
@@ -137,11 +137,11 @@ export function RegisterForm() {
           />
           <span>
             I agree to the{' '}
-            <a href="/terms" className="font-medium text-primary hover:underline">
+            <a href="/terms" className="font-medium text-primary-emphasis hover:underline">
               Terms
             </a>{' '}
             and{' '}
-            <a href="/privacy" className="font-medium text-primary hover:underline">
+            <a href="/privacy" className="font-medium text-primary-emphasis hover:underline">
               Privacy Policy
             </a>
             .
@@ -164,7 +164,7 @@ export function RegisterForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           Already have a ticket?{' '}
-          <a href="/login" className="font-medium text-primary hover:underline">
+          <a href="/login" className="font-medium text-primary-emphasis hover:underline">
             Log in
           </a>
         </p>

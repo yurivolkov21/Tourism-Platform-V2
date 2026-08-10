@@ -30,7 +30,7 @@ export function AboutTeam() {
           transition={SPRING_HEADING}
         >
           Four faces,
-          <span className="text-primary italic"> one slow idea.</span>
+          <span className="text-primary-emphasis italic"> one slow idea.</span>
         </motion.h2>
         <motion.p
           className="mt-3 max-w-md text-center text-sm text-muted-foreground md:text-base"

@@ -21,7 +21,7 @@ export function PostNav({ newer, older }: { newer?: JournalPost; older?: Journal
             <ArrowLeftIcon className="size-3.5" aria-hidden="true" />
             Newer
           </span>
-          <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary">
+          <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary-emphasis">
             {newer.title}
           </p>
         </Link>
@@ -38,7 +38,7 @@ export function PostNav({ newer, older }: { newer?: JournalPost; older?: Journal
             Older
             <ArrowRightIcon className="size-3.5" aria-hidden="true" />
           </span>
-          <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary">
+          <p className="mt-2 font-heading text-base font-medium text-balance text-foreground transition-colors group-hover:text-primary-emphasis">
             {older.title}
           </p>
         </Link>

@@ -25,7 +25,7 @@ export function ContactCta() {
             <div className="flex flex-col items-center gap-3 text-center">
               <h2 className="font-heading text-3xl font-medium text-foreground md:text-5xl">
                 The road is ready
-                <span className="text-primary italic"> when you are.</span>
+                <span className="text-primary-emphasis italic"> when you are.</span>
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground">
                 Twelve seats, three regions, and people who grew up on every path. Pick a journey

@@ -16,7 +16,7 @@ export function TwoFactorForm() {
       heading={
         <>
           One more stamp
-          <span className="text-primary italic"> before boarding.</span>
+          <span className="text-primary-emphasis italic"> before boarding.</span>
         </>
       }
       description="Open your authenticator app and enter the six-digit code."
@@ -29,7 +29,7 @@ export function TwoFactorForm() {
             <button
               type="button"
               onClick={() => setUseRecovery(false)}
-              className="mt-1 cursor-pointer text-left text-sm font-medium text-primary hover:underline"
+              className="mt-1 cursor-pointer text-left text-sm font-medium text-primary-emphasis hover:underline"
             >
               Back to authenticator code
             </button>

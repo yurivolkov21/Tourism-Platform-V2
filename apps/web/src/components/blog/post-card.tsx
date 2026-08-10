@@ -56,7 +56,7 @@ export function PostCard({
       </div>
 
       <h3
-        className={`mb-3 line-clamp-2 font-heading leading-tight font-semibold text-foreground transition-colors duration-300 group-hover:text-primary ${
+        className={`mb-3 line-clamp-2 font-heading leading-tight font-semibold text-foreground transition-colors duration-300 group-hover:text-primary-emphasis ${
           featured ? 'text-xl md:text-3xl' : 'text-xl'
         }`}
       >
@@ -75,7 +75,7 @@ export function PostCard({
       {/* Tác giả + nút tròn mũi tên */}
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium text-muted-foreground">{post.author}</span>
-        <span className="flex size-8 items-center justify-center rounded-full border text-muted-foreground transition-all duration-300 group-hover:border-primary group-hover:text-primary">
+        <span className="flex size-8 items-center justify-center rounded-full border text-muted-foreground transition-all duration-300 group-hover:border-primary group-hover:text-primary-emphasis">
           <ArrowUpRightIcon className="size-3.5" aria-hidden="true" />
         </span>
       </div>

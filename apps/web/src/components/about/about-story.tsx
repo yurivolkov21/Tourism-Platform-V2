@@ -98,7 +98,7 @@ export function AboutStory() {
             <h2 className="mt-4 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12">
               We don’t sell tours.
               <br />
-              <span className="text-primary italic">We introduce you to home.</span>
+              <span className="text-primary-emphasis italic">We introduce you to home.</span>
             </h2>
           </FadeUp>
 
@@ -133,7 +133,7 @@ export function AboutStory() {
           <FadeUp delay={0.5} className="mt-9 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {QUOTES.map((quote) => (
               <figure key={quote.name} className="rounded-xl border bg-card p-5">
-                <QuoteIcon className="size-4 text-primary" aria-hidden="true" />
+                <QuoteIcon className="size-4 text-primary-emphasis" aria-hidden="true" />
                 <blockquote className="mt-3 font-heading text-sm text-card-foreground/85 italic">
                   “{quote.text}”
                 </blockquote>

@@ -84,7 +84,7 @@ export function ResetPasswordForm() {
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Fresh ticket,
-            <span className="text-primary italic"> same destination.</span>
+            <span className="text-primary-emphasis italic"> same destination.</span>
           </h1>
           <p className="mt-1.5 text-sm text-muted-foreground">
             Pick a new password and you're back on board.
@@ -120,7 +120,7 @@ export function ResetPasswordForm() {
 
         <p className="text-center text-sm text-muted-foreground">
           Changed your mind?{' '}
-          <a href="/login" className="font-medium text-primary hover:underline">
+          <a href="/login" className="font-medium text-primary-emphasis hover:underline">
             Back to log in
           </a>
         </p>

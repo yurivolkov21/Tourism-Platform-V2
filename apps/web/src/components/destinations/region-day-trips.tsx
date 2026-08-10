@@ -154,7 +154,7 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                       data-trip-title
                       className={cn(
                         CLAMP,
-                        'mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary',
+                        'mt-3 font-heading text-xl font-medium text-pretty text-foreground group-hover:text-primary-emphasis',
                       )}
                     >
                       {tour.title}
@@ -215,7 +215,7 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
                       </span>
                       {/* Nhãn CHỮ thay mũi tên trơ — user không nhận ra thẻ dẫn đi đâu
                         khi chỉ có mỗi mũi tên. `aria-hidden` cho icon vì chữ đã nói. */}
-                      <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary">
+                      <span className="flex shrink-0 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors group-hover:text-primary-emphasis">
                         {t.viewTrip}
                         <MoveRightIcon
                           aria-hidden="true"

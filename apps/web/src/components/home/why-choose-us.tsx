@@ -99,7 +99,7 @@ export function WhyChooseUs() {
                     aria-expanded={isOpen}
                   >
                     <span className="flex items-center gap-4">
-                      <item.icon className="size-5 text-primary" aria-hidden="true" />
+                      <item.icon className="size-5 text-primary-emphasis" aria-hidden="true" />
                       <span className="text-sm text-card-foreground md:text-base">
                         {item.title}
                       </span>

@@ -41,7 +41,7 @@ export function ArticleBody({ sections }: { sections: ArticleSection[] }) {
         <section key={section.heading} id={slugify(section.heading)} className="scroll-mt-28 py-10">
           <Reveal>
             <div className="mb-4 flex items-baseline gap-4">
-              <span className="font-mono text-xs tabular-nums text-primary">
+              <span className="font-mono text-xs tabular-nums text-primary-emphasis">
                 {String(i + 1).padStart(2, '0')}
               </span>
               <h2 className="font-heading text-2xl leading-snug font-medium text-balance text-foreground">
