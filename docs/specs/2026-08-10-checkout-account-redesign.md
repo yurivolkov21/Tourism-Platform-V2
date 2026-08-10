@@ -74,6 +74,14 @@ Ngôn ngữ chung: heading serif Literata, hierarchy bằng cỡ chữ + divider
   `Trips · Saved · Profile · Security` (mobile: giữ pattern nav hiện có).
   Component `account-hub.tsx` + `account-stats.ts` ngừng dùng ở đây — gỡ nếu
   không còn ai import (kèm gỡ test tương ứng), KHÔNG để mã chết.
+
+  > **AMENDED (Task 5, 2026-08-10):** nav khu account thực ra **3 mục**
+  > (`Trips · Saved · Profile`), không phải 4 như câu trên — vòng 10/08 TRƯỚC
+  > câu này đã nhập `/account/security` vào `/account/profile` bằng redirect
+  > 308 rồi ("đủ route không đủ tab": route còn sống cho link/bookmark cũ,
+  > nhưng không có tab riêng). Quyết định đó GIỮ NGUYÊN ở Task 5: password +
+  > delete account nằm trong Profile, khớp pattern Airbnb "rows một trang"
+  > thay vì tách trang Security riêng.
 - **`/account/bookings` → "Trips"**: section `Upcoming` — card lớn: ảnh tour,
   eyebrow đếm ngược "In N days", title, ngày + khách, mã mono, hàng action link
   (`View voucher` → detail · `Contact us`), chú thích policy nhỏ. Section

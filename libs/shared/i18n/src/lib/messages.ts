@@ -2447,99 +2447,22 @@ export const messages = {
       },
     },
   },
-  // Khu `/account/*` (spec 2026-08-04-account-area-design, pha A1 tĩnh) — tab
-  // nav dùng chung cho layout.tsx. `bookings`/`profile` trỏ route Task 4 chưa
-  // dựng lúc Task 3 chạy — cùng nhánh, route sẽ sống trước mốc DỪNG A1 (Task 5).
+  // Khu `/account/*` — tab nav dùng chung cho layout.tsx. Ba tab (spec
+  // 2026-08-10 AMENDED — hub `/account` gỡ, key `dashboard` gỡ theo vì hết
+  // call site).
   accountNav: {
     /** Tên khả truy cập của dải tab. Trước đây hardcode thẳng trong component
      *  — copy user-facing phải gom ở đây (luật #7), kể cả `aria-label`. */
     ariaLabel: 'Account sections',
-    dashboard: 'Dashboard',
-    bookings: 'Bookings',
+    /** Nhãn tab đầu — đổi từ 'Bookings' theo spec 2026-08-10, Trips là cửa
+     *  chính của khu account sau khi hub gỡ. */
+    bookings: 'Trips',
     saved: 'Saved tours',
     profile: 'Profile',
   },
-  // Trang `/account` (dashboard) — 4 ô số + thẻ "chuyến kế tiếp" + 5 booking
-  // sắp tới + 3 tour đã lưu. `emptyState` chỉ hiện khi TOÀN BỘ khu account
-  // trống (không booking, không tour đã lưu) — khác empty-state riêng của
-  // từng khối con (vd "chưa có chuyến sắp tới" khi chỉ mục đó rỗng).
-  accountDashboard: {
-    title: 'My account',
-    greeting: (name: string) => `Welcome back, ${name}`,
-    /** Trang `/account` là HUB dạng khối (redesign 11/08, theo mẫu Airbnb
-     *  "Account"): mỗi khối là một nơi để đi tới, kèm một dòng số liệu thật.
-     *  Không khối nào là trang trí — bấm vào đều dẫn đi đâu đó. */
-    hub: {
-      trips: {
-        title: 'My trips',
-        desc: 'Everything you’ve booked, grouped by when you travel.',
-      },
-      saved: {
-        title: 'Saved tours',
-        desc: 'Tours you’ve bookmarked to plan later.',
-      },
-      profile: {
-        title: 'Personal info',
-        desc: 'Your name, contact details, and password.',
-      },
-      /** Số liệu dưới mỗi khối. Khối rỗng vẫn hiện số 0 chứ không im lặng —
-       *  chỗ trống phải được KHAI BÁO là trống. */
-      tripCount: (n: number) => (n === 1 ? '1 trip' : `${n} trips`),
-      savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
-      awaiting: (n: number) => `${n} awaiting payment`,
-    },
-    stats: {
-      // Redesign 10/08: dashboard giữ HAI ô, bỏ `upcoming`/`completed`. Hai ô
-      // đó lặp lại thứ khối "Recent bookings" ngay bên dưới đã nói rõ hơn, và
-      // bốn con số ngang hàng làm mắt không biết nhìn đâu trước.
-      //
-      // "Trips PAID" chứ không phải "booked": `dashboardStats.trips` cố ý chỉ
-      // đếm booking đã trả tiền. Nhìn màn hình thật mới lộ ra vấn đề — ba dòng
-      // booking PENDING nằm ngay dưới một ô ghi "Trips booked 0" đọc thành mâu
-      // thuẫn. Bản bốn ô cũ giấu được vì có "Upcoming 3" đứng cạnh làm dịu.
-      // Đổi NHÃN cho trung thực với con số, không đổi phép đếm.
-      trips: 'Trips paid',
-      saved: 'Tours saved',
-      /** Tiêu đề + mô tả mục "ô số" (redesign 11/08). */
-      heading: 'At a glance',
-      blurb: 'Your account in two numbers.',
-    },
-    nextTrip: {
-      heading: 'Your next trip',
-      /** Mô tả cột trái. Mọi mục trong khu account đều có một dòng như vậy. */
-      blurb: 'The next departure you’ve paid for.',
-      departing: (date: string) => `Departing ${date}`,
-      /** Đồng hồ đếm ngược: con số đứng riêng cỡ lớn, dòng này là nhãn dưới nó. */
-      daysAway: 'days away',
-      /** Hai mốc đặc biệt — "0 days away" đọc như lỗi, không như tin vui. */
-      today: 'Departing today',
-      tomorrow: 'Departing tomorrow',
-      travellers: (n: number) => `${n} ${n === 1 ? 'traveller' : 'travellers'}`,
-      viewBooking: 'View booking',
-    },
-    recent: {
-      heading: 'Recent bookings',
-      /** Mô tả cột trái. */
-      blurb: 'Your five most recent, newest first.',
-      viewAll: 'See all',
-      empty: 'No bookings yet.',
-    },
-    upcoming: {
-      heading: 'Upcoming bookings',
-      viewAll: 'View all bookings',
-      empty: 'No upcoming bookings yet.',
-    },
-    saved: {
-      heading: 'Saved tours',
-      viewAll: 'View all saved tours',
-      empty: 'No saved tours yet.',
-    },
-    emptyState: {
-      heading: 'Nothing here yet',
-      body: 'Once you book or save a tour, it’ll show up on your dashboard.',
-      cta: 'Browse tours',
-    },
-  },
+  // `accountDashboard` (hub `/account` + 4 ô số + thẻ "chuyến kế tiếp") GỠ
+  // theo spec 2026-08-10 AMENDED — trang `/account` giờ chỉ redirect, không
+  // còn UI riêng nào đọc khối này. Xoá hẳn thay vì giữ mã chết.
   // Trang `/account/saved` — grid tour đã lưu (wishlist), nút ✕ bỏ lưu (A1:
   // state cục bộ optimistic trên mock, A2 nối `wishlist.set`).
   accountSaved: {

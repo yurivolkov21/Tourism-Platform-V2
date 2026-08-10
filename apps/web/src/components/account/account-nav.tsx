@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 /**
- * 4 tab khu account. `security` chỉ redirect 308 sang profile nên không có tab
- * riêng — "đủ route không đủ tab".
+ * 3 tab khu account (hub `/account` gỡ theo spec 2026-08-10 AMENDED — 4 mục
+ * < ngưỡng 6 của khảo sát, Trips nhận vai cửa chính). `security` chỉ redirect
+ * 308 sang profile nên không có tab riêng — "đủ route không đủ tab", quyết
+ * định giữ nguyên từ vòng 10/08 trước đó.
  */
 const TABS = [
-  { href: '/account', key: 'dashboard' as const },
   { href: '/account/bookings', key: 'bookings' as const },
   { href: '/account/saved', key: 'saved' as const },
   { href: '/account/profile', key: 'profile' as const },
@@ -30,7 +31,7 @@ const TABS = [
  * chỗ khi đổi tab. Để dưới H1 thì tiêu đề dài ngắn khác nhau sẽ đẩy nó nhấp
  * nhô giữa các trang.
  *
- * Nhãn dùng Literata (`font-heading`) — bốn tab là bốn NƠI, và địa danh trên
+ * Nhãn dùng Literata (`font-heading`) — ba tab là ba NƠI, và địa danh trên
  * site này luôn viết bằng serif. Giữ `text-base`: H1 các trang con là
  * `text-2xl`, leo lên đó thì tab và tiêu đề trang thành hai dòng chữ ngang cỡ.
  *
@@ -49,11 +50,10 @@ export function AccountNav() {
           mép container. */}
       <ul className="-mx-4 flex gap-x-8 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         {TABS.map((tab) => {
-          // Dashboard là route gốc `/account` — so khớp CHÍNH XÁC. Không thì
-          // mọi route con cũng khớp prefix và Dashboard luôn sáng. Các tab khác
-          // so khớp cả path con (`/account/bookings/BK-XXXX` vẫn sáng Bookings).
-          const isActive =
-            tab.href === '/account' ? pathname === '/account' : pathname.startsWith(tab.href);
+          // Không còn tab route gốc `/account` (đã redirect sang bookings) nên
+          // mọi tab đều so khớp cả path con — `/account/bookings/BK-XXXX` vẫn
+          // sáng Trips.
+          const isActive = pathname.startsWith(tab.href);
           return (
             <li key={tab.href} className="shrink-0">
               <Link
