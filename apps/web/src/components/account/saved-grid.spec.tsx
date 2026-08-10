@@ -1,3 +1,4 @@
+import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { WishlistItem } from '@tourism/contract';
@@ -133,5 +134,74 @@ describe('SavedGrid', () => {
       await screen.findByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields'),
     ).toBeInTheDocument();
     expect(toastError).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SavedGrid — card riêng, không mượn TourCard', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('render đúng thứ wishlist CÓ: tiêu đề, giá, số ngày, rating', () => {
+    render(<SavedGrid initialItems={[makeItem()]} />);
+    expect(screen.getByText('Ninh Bình: Tràng An, Múa Cave & Rice Fields')).toBeInTheDocument();
+    expect(screen.getByText('$79')).toBeInTheDocument();
+    expect(screen.getByText('1 day')).toBeInTheDocument();
+  });
+
+  it('KHÔNG render chip category rỗng — nguồn bịa đã bị gỡ', () => {
+    // `wishlistToTourCardVM` cũ điền `category: {slug:'', name:''}`. TourCard
+    // tình cờ không render field đó nên chưa ai thấy, nhưng nó là mìn hẹn giờ.
+    const { container } = render(<SavedGrid initialItems={[makeItem()]} />);
+    expect(container.querySelectorAll('[class*="chip"]')).toHaveLength(0);
+  });
+
+  it('chưa ai đánh giá → nhãn riêng, không phải "★ null"', () => {
+    render(<SavedGrid initialItems={[makeItem({ ratingAvg: null, ratingCount: 0 })]} />);
+    expect(screen.getByText('Not yet reviewed')).toBeInTheDocument();
+  });
+});
+
+describe('SavedGrid — session hết hạn', () => {
+  // `beforeEach` của describe đầu file nằm TRONG khối đó, không áp cho đây —
+  // thiếu dòng này thì mock cộng dồn call từ test trước và assertion
+  // `not.toHaveBeenCalled` đọc sai.
+  beforeEach(() => {
+    vi.clearAllMocks();
+    set.mockResolvedValue({ tourId: '604041ef-3601-43cb-8a46-cf91f2c9b53a', wished: false });
+  });
+
+  it('401 → thông báo RIÊNG kèm link đăng nhập lại, KHÔNG phải toast lỗi chung', async () => {
+    // Toast biến mất sau vài giây; tin "bạn cần đăng nhập lại" phải nằm lại
+    // trên trang. Trước đây mọi lỗi đều rơi vào cùng một toast.
+    set.mockRejectedValueOnce(
+      createORPCErrorFromJson({
+        defined: false,
+        code: 'UNAUTHORIZED',
+        status: 401,
+        message: 'Unauthorized',
+        data: null,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[makeItem()]} />);
+    await user.click(screen.getByRole('button', { name: /remove/i }));
+
+    expect(await screen.findByText('Your session has expired.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Log in again' })).toHaveAttribute(
+      'href',
+      '/login?redirect=/account/saved',
+    );
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it('lỗi KHÔNG phải 401 vẫn dùng toast như cũ', async () => {
+    set.mockRejectedValueOnce(new Error('network down'));
+    const user = userEvent.setup();
+    render(<SavedGrid initialItems={[makeItem()]} />);
+    await user.click(screen.getByRole('button', { name: /remove/i }));
+
+    await waitFor(() => expect(toastError).toHaveBeenCalled());
+    expect(screen.queryByText('Your session has expired.')).not.toBeInTheDocument();
   });
 });
