@@ -1,6 +1,20 @@
 # Redesign khu account — thay da, đóng ba khoản nợ
 
-- **Trạng thái:** Draft, chờ user duyệt
+- **Trạng thái:** ✅ Đã thi hành 10/08 — xem [plan](../plans/2026-08-10-account-redesign.md)
+
+> ⚠️ **AMENDED 10/08 — hai chỗ spec nói khác code đã ship:**
+>
+> **§2 "cắt 4, hoãn 1, thêm 1, dựng 1".** Mục "Member since" (thêm một field
+> additive vào `AccountMe`) KHÔNG làm: trang hồ sơ sau redesign là danh sách
+> tóm tắt bốn dòng, không còn chỗ nào tự nhiên để đặt nó, và mở contract cho
+> một dòng trang trí là không đáng. Field additive DUY NHẤT thật sự thêm là
+> `reviewedAt` cho cụm B.
+>
+> **§6 "tách hook trước khi vẽ lại".** Không làm — mục đích của nó là để spec
+> bám hook thay vì bám DOM, nhưng markup của cả 5 màn đều đổi thật nên spec
+> phải viết lại bằng mọi giá. Hai việc còn lại của bước chuẩn bị (gom khối lỗi
+> chép 4 lần, dời `TONE_CLASS` khỏi component màn hình) mới là thứ thật sự gỡ
+> được ràng buộc chéo.
 - **Nền:** [ADR-0019](../adr/0019-color-token-roles.md) (tách vai token màu) ·
   [ADR-0016](../adr/0016-web-data-layer.md) (tầng dữ liệu web) ·
   [ADR-0017](../adr/0017-web-session-better-auth.md) (session cookie)

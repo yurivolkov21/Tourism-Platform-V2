@@ -8,6 +8,85 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-10 — Redesign khu account: ba nợ A1/A2/A3 đóng cùng lượt (branch `feat/account-redesign`, 9 task)
+
+Khu account "dựng tạm" chỉ tạm ở phần NHÌN — dữ liệu và hành động đã thật từ
+cụm A. Vòng này thay lớp trình bày của 5 màn, và trên đường đi đóng luôn hai
+khoản nợ đi kèm.
+
+**Nợ A3 (tương phản dark) hoá ra sâu hơn sổ ghi.** [ADR-0019](adr/0019-color-token-roles.md)
+gọi tên thứ chưa ai gọi: `primary` gánh BA vai loại trừ nhau ở chế độ tối. Bề
+mặt phải đủ TỐI để cõng nhãn gần-trắng (`L ≤ 0.542`); chữ phải đủ SÁNG để đọc
+trên `muted` (`L ≥ 0.74`); vòng focus cũng cần sáng. Hai khoảng đầu rời hẳn
+nhau — nên hai lần vá trước đều chỉ là kéo co: `cf8f821` hạ primary cứu nhãn
+nút, `121cff6` nâng nền cứu chữ thường, mỗi lần cứu một vai làm vai kia tệ đi.
+
+Sổ nợ còn ghi SAI ngưỡng: 2.91 và 2.57 là cặp BỀ MẶT (WCAG 1.4.11, ngưỡng 3:1),
+không phải chữ. Nhóm thật sự chịu 4.5:1 thì sổ không liệt kê, và đó mới là chỗ
+tệ nhất — **2.05 trên nền muted**. Sau khi tách token: 7.10 / 6.30 / 5.01. Kèm
+bốn token bị `cf8f821` bỏ quên (`ring` phải NÂNG lên chứ không hạ theo primary
+— bằng chứng thứ hai cho lý lẽ của ADR) và viền ô nhập từ 1.24 lên 3.13.
+
+**Nợ A2 không phải nợ thẩm mỹ.** Chuỗi hardcode `'Requested via account portal.'`
+được worker render vào email gửi NGƯỢC cho chính khách ("Your reason: …"), tức
+mọi người xin huỷ đều nhận một câu nói rằng lý do của họ là như vậy. Nay có ô
+nhập bắt buộc, chỉ ở nhánh PAID; `cancelPending` không đụng tới vì đó là luồng
+khác bản chất (input chỉ `{code}`, không qua admin, không đụng ghế).
+
+**Cụm B đóng trọn.** Contract nở `reviewedAt` (additive) — không có nó thì cách
+duy nhất biết booking đã đánh giá hay chưa là POST rồi bắt 409, tức khách gõ
+xong cả bài mới được báo là không viết được. `reviewSlot()` soi gương luật API
+kể cả THỨ TỰ ưu tiên; web nói khác API thì khách gõ hết bài rồi mới bị từ chối.
+
+**Năm màn, tóm tắt:** dashboard đảo trục (chuyến kế tiếp lên đầu, hai ô số thay
+bốn, Recent bookings dạng sheet — phép chọn MỚI có cả CANCELLED, sắp theo lúc
+ĐẶT chứ không theo ngày đi) · `/bookings` gom ba nhóm thời gian với hai luật
+không thuần-ngày (CANCELLED luôn "đã qua"; chỉ PAID mới "đang đi", vì PENDING
+không giữ chỗ) · trang chi tiết thêm ô lý do và form review · hồ sơ thành danh
+sách tóm tắt đọc-trước, mỗi lúc một dòng mở · `/saved` có card riêng.
+
+**Ba thứ chỉ ẢNH CHỤP bắt được, test đều xanh lúc đó:**
+
+1. **"Trips booked 0"** đứng ngay trên ba dòng booking PENDING — đọc thành mâu
+   thuẫn. Bản bốn ô cũ giấu được vì có "Upcoming 3" làm dịu. Đổi nhãn thành
+   "Trips paid": sửa CÂU CHỮ cho trung thực với con số, không đổi phép đếm.
+2. **Nhãn trường hiện hai lần, hai nút Cancel** ở trang hồ sơ — form nở ra xếp
+   chồng dưới dòng thay vì thay thế giá trị.
+3. **Navbar tàng hình ở chế độ SÁNG trên 8 trang không có hero** (`/account/*`,
+   `/checkout/*`). Navbar lúc chưa cuộn dùng `on-media` vì giả định đang nằm
+   trên hero tối; 8 trang này bù khoảng bằng `pt-36` mà không có hero thật. Ở
+   chế độ tối tình cờ vẫn đọc được nên lỗi sống sót lâu. Lỗi CÓ SẴN, không do
+   redesign — vá ở `b7ccf83`.
+
+**Hai lỗi có sẵn khác được vá nhân tiện:** lỗi của hành động trong dialog render
+PHÍA SAU lớp modal (`getByText` thấy nên test cũ xanh, `getByRole` thì không —
+người dùng bàn phím không với tới link đăng nhập lại); và `SavedGrid` là
+component duy nhất trong khu account thiếu nhánh 401, khiến khách hết phiên bị
+báo là thao tác hỏng.
+
+**Dọn code chết:** prop `deniedNote` (contract khách cố ý không mang
+`decisionNote` nên nó LUÔN null) · `ProfileForm` · `wishlist-vm` — hàm này bịa
+`category`/`maxGroupSize`/`isFeatured` để nhét WishlistItem vào TourCardVM;
+`TourCard` tình cờ không render ba field đó nên chưa ai thấy, nhưng ngày nào nó
+bắt đầu hiện category thì mọi tour đã lưu mọc ra một chip rỗng.
+
+**Một lỗi quy trình của em, ghi để không lặp:** một lệnh thay chuỗi hàng loạt
+trượt IM LẶNG vì Biome đã xuống dòng chuỗi đích từ trước, và `replace` không
+báo gì — chỉ lộ khi test đỏ theo kiểu khó hiểu. Từ đó mọi lệnh sửa hàng loạt
+đều `assert` trước khi ghi.
+
+**Nghiệm thu sống:** 5 màn × 2 chế độ không màn nào ra lỗi · xin huỷ một booking
+PAID thật, `cancellation_requests.reason` đúng chữ khách gõ và outbox có email
+mang đúng lý do · viết một đánh giá 5 sao thật, DB có review đúng nội dung với
+`is_approved=false` và `title` bỏ hẳn khi để trống · đo lại 20 cặp tương phản,
+toàn bộ đạt ngưỡng ADR-0019.
+
+**Nợ mở:** `/account/saved` và mọi bề mặt ảnh vẫn là ô giữ chỗ — chờ hướng chọn
+ảnh mới (xem [ADR-0020](adr/0020-real-images-sourcing.md) đã AMEND).
+
+**Tests after:** `gate:int` trọn 1.504 test (web 1.041 · api 210 unit và 158 int
+· contract 71 · ui 13 · tokens 10 · i18n 1). 18/18 task `gate` và 5/5 `test:int`.
+
 ## 2026-08-10 — Cụm B nửa 1: nút tim wishlist trên `/tours` (branch `feat/wishlist-heart`, ff-only, 1 commit `3e83df8`)
 
 Card danh sách tour đang ship một nút tim **bấm được nhưng hoàn toàn trơ**:

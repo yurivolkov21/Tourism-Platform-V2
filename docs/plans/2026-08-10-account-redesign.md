@@ -35,82 +35,116 @@ jsdom.
 
 ### Task 1 — Chuẩn bị test-safety (KHÔNG đụng markup)
 
-- [ ] Tách lớp gọi API + `classifyActionError` của 5 component client ra hook
-      riêng (`useBookingActions`, `useSavedList`, `useProfileForm`,
-      `usePasswordForm`, `useDangerZone`).
-- [ ] Gom khối lỗi `sessionExpired` + link `/login?redirect=` đang chép NGUYÊN
+- [ ] ~~Tách lớp gọi API + `classifyActionError` của 5 component client ra hook
+      riêng~~ — **KHÔNG làm.** Mục đích của nó là để spec bám hook thay vì bám
+      DOM, nhưng markup của cả 5 màn đều đổi thật nên spec phải viết lại bằng
+      mọi giá. Năm cái hook chỉ thêm một tầng gián tiếp mà không cứu được test
+      nào. Hai việc còn lại của Task 1 (gom khối lỗi, dời `TONE_CLASS`) mới là
+      thứ thật sự gỡ được ràng buộc chéo.
+- [x] Gom khối lỗi `sessionExpired` + link `/login?redirect=` đang chép NGUYÊN
       4 lần thành một component dùng chung.
-- [ ] Dời `TONE_CLASS` ra khỏi `account-dashboard.tsx` — hiện `booking-card.tsx`
+- [x] Dời `TONE_CLASS` ra khỏi `account-dashboard.tsx` — hiện `booking-card.tsx`
       và trang detail đang import ngược từ component dashboard.
-- [ ] `pnpm test --filter=@tourism/web` phải XANH mà không sửa spec nào: task
+- [x] `pnpm test --filter=@tourism/web` phải XANH mà không sửa spec nào: task
       này thuần refactor, đổi hành vi là sai.
 
 ### Task 2 — Token theo ADR-0019 (site-wide, KHÔNG riêng account)
 
-- [ ] Thêm token vai CHỮ cho dark (`L 0.76`); light giữ `0.494`.
-- [ ] `ring`/`sidebar-ring` dark `0.563 → 0.60`; `sidebar-primary`, `chart-1`
+- [x] Thêm token vai CHỮ cho dark (`L 0.76`); light giữ `0.494`.
+- [x] `ring`/`sidebar-ring` dark `0.563 → 0.60`; `sidebar-primary`, `chart-1`
       về đúng vai (đây là trôi từ `cf8f821`, bốn token bị bỏ quên).
-- [ ] `input` nâng đạt 3:1 (dark `L ≥ 0.58`, light `≈ 0.66`); **`border` GIỮ
+- [x] `input` nâng đạt 3:1 (dark `L ≥ 0.58`, light `≈ 0.66`); **`border` GIỮ
       NGUYÊN** — nó là đường phân cách, không thuộc WCAG 1.4.11.
-- [ ] Nút primary ở dark nhận viền hairline mang ranh giới 3:1.
-- [ ] Sửa comment sai số ở `region-hero.tsx:163` (ghi 4.11, đo thật 4.72).
-- [ ] Đo lại bằng culori, mọi cặp trong ADR-0019 đạt ngưỡng đã ghi.
-- [ ] `pnpm gate` để bắt chỗ vỡ NGOÀI khu account.
+- [x] Nút primary ở dark nhận viền hairline mang ranh giới 3:1.
+- [x] Sửa comment sai số ở `region-hero.tsx:163` (ghi 4.11, đo thật 4.72).
+- [x] Đo lại bằng culori, mọi cặp trong ADR-0019 đạt ngưỡng đã ghi.
+- [x] `pnpm gate` để bắt chỗ vỡ NGOÀI khu account.
 
 ### Task 3 — `/account` dashboard
 
-- [ ] Đảo trục: thẻ chuyến kế tiếp lifted lên đầu → 2 ô số (thay 4) → "Recent
+- [x] Đảo trục: thẻ chuyến kế tiếp lifted lên đầu → 2 ô số (thay 4) → "Recent
       bookings" dạng sheet. Bỏ khối 3 tour đã lưu.
-- [ ] Hàm thuần MỚI chọn "recent bookings" — có CẢ CANCELLED, khác
+- [x] Hàm thuần MỚI chọn "recent bookings" — có CẢ CANCELLED, khác
       `upcomingBookings` hiện tại (chỉ PENDING/PAID, chỉ tương lai). TDD.
-- [ ] Đồng hồ hạn PENDING dùng `pendingExpiry()` đã có từ cụm C.
+- [x] Đồng hồ hạn PENDING dùng `pendingExpiry()` đã có từ cụm C.
 
 ### Task 4 — `/account/bookings`
 
-- [ ] Ba nhóm thời gian (On the road now / Upcoming / Past) trên sheet hairline.
-- [ ] Hàm thuần chia nhóm — TDD.
+- [x] Ba nhóm thời gian (On the road now / Upcoming / Past) trên sheet hairline.
+- [x] Hàm thuần chia nhóm — TDD.
 
 ### Task 5 — `/account/bookings/[code]` + nợ A2
 
-- [ ] Ô nhập lý do huỷ, **chỉ ở nhánh PAID**. Tuyệt đối không gắn vào dialog
+- [x] Ô nhập lý do huỷ, **chỉ ở nhánh PAID**. Tuyệt đối không gắn vào dialog
       `cancelPending` (input chỉ `{code}`, không lý do, không admin).
-- [ ] Xoá hằng `DEFAULT_CANCELLATION_REASON` — chuỗi đó đang được email NGƯỢC
+- [x] Xoá hằng `DEFAULT_CANCELLATION_REASON` — chuỗi đó đang được email NGƯỢC
       cho chính khách.
-- [ ] Copy lấy từ khối i18n mồ côi `messages.booking.detail`; sửa `reasonLabel`
+- [x] Copy lấy từ khối i18n mồ côi `messages.booking.detail`; sửa `reasonLabel`
       từ "(optional)" thành bắt buộc (user chốt 08/08). Bộ đếm trần **1000**.
-- [ ] Vá `classifyActionError`: 409 `ALREADY_REQUESTED` và 422 `NOT_CANCELLABLE`
+- [x] Vá `classifyActionError`: 409 `ALREADY_REQUESTED` và 422 `NOT_CANCELLABLE`
       đang rơi vào generic dù i18n đã có copy riêng.
-- [ ] Xoá nhánh JSX dùng `deniedNote` — prop đó LUÔN null, là code chết.
-- [ ] Dựng slot trống đúng kích thước cho form review (Task 8).
+- [x] Xoá nhánh JSX dùng `deniedNote` — prop đó LUÔN null, là code chết.
+- [ ] ~~Dựng slot trống cho form review~~ — gộp vào Task 8, xem mục sai lệch.
 
 ### Task 6 — `/account/profile`
 
-- [ ] Summary-list đọc-trước kiểu GOV.UK: mỗi dòng có link "Change", chỉ dòng
+- [x] Summary-list đọc-trước kiểu GOV.UK: mỗi dòng có link "Change", chỉ dòng
       đang sửa nở thành form.
-- [ ] GIỮ field "Current password" — bắt buộc của Better Auth.
-- [ ] Nếu thêm thuộc tính validate native thì PHẢI thêm `noValidate` (bug đã
+- [x] GIỮ field "Current password" — bắt buộc của Better Auth.
+- [x] Nếu thêm thuộc tính validate native thì PHẢI thêm `noValidate` (bug đã
       dính ở form đặt chỗ, `4959455`).
-- [ ] Mockup bỏ avatar — theo mockup.
+- [x] Mockup bỏ avatar — theo mockup.
 
 ### Task 7 — `/account/saved`
 
-- [ ] Bỏ hai field không có dữ liệu (category, giá gạch) — spec §2.
-- [ ] Giữ `item.unavailable` đi qua `UnavailableCard`.
-- [ ] Vá `SavedGrid` nuốt trọn lỗi trong `catch {}` — thêm nhánh
+- [x] Bỏ hai field không có dữ liệu (category, giá gạch) — spec §2. **Làm
+      mạnh hơn:** gỡ hẳn nguồn bịa, xem mục sai lệch.
+- [x] Giữ `item.unavailable` đi qua `UnavailableCard`.
+- [x] Vá `SavedGrid` nuốt trọn lỗi trong `catch {}` — thêm nhánh
       `sessionExpired` cho đồng bộ với 4 component còn lại.
 
 ### Task 8 — Cụm B nửa 2: form review
 
-- [ ] Field additive cho "booking này đã review chưa" — hiện KHÔNG có cách nào
+- [x] Field additive cho "booking này đã review chưa" — hiện KHÔNG có cách nào
       biết ngoài POST rồi ăn 409, tức khách gõ xong cả bài mới biết.
-- [ ] Form review trên trang chi tiết booking, chỉ hiện khi đủ điều kiện.
+- [x] Form review trên trang chi tiết booking, chỉ hiện khi đủ điều kiện.
 
 ### Task 9 — Nghiệm thu + docs sweep
 
-- [ ] `pnpm gate:int` xanh (luật #11).
-- [ ] Đo lại tương phản, đối chiếu ADR-0019.
-- [ ] Đi tay 5 màn ở CẢ hai chế độ sáng/tối.
-- [ ] Xin huỷ một booking PAID thật, xác nhận lý do KHÁCH GÕ xuất hiện trong
+- [x] `pnpm gate:int` xanh (luật #11).
+- [x] Đo lại tương phản, đối chiếu ADR-0019.
+- [x] Đi tay 5 màn ở CẢ hai chế độ sáng/tối.
+- [x] Xin huỷ một booking PAID thật, xác nhận lý do KHÁCH GÕ xuất hiện trong
       `cancellation_requests.reason` và trong email — không còn chuỗi
       'Requested via account portal.'
-- [ ] Entry CHANGELOG + cập nhật spec/plan chỗ nào lệch code + bản đồ docs.
+- [x] Entry CHANGELOG + cập nhật spec/plan chỗ nào lệch code + bản đồ docs.
+
+## Sai lệch có chủ đích so với plan
+
+**Task 5 KHÔNG dựng slot trống cho form review.** Plan ghi "dựng slot trống
+đúng kích thước cho form review (Task 8)", nhưng dựng một chỗ trống rồi thay
+ngay ở task kế là làm hai lần cùng một chỗ. Gộp vào Task 8.
+
+**Task 7 làm nhiều hơn plan.** Plan chỉ ghi "bỏ hai field không có dữ liệu",
+nhưng đọc code mới thấy `TourCard` vốn KHÔNG render `category`/`maxGroupSize`/
+`isFeatured` — nên phần bịa chưa bao giờ lên màn hình, chỉ nằm chờ. Vì Task 3
+đã bỏ khối "3 tour đã lưu" khỏi dashboard, `saved-grid` thành consumer cuối
+cùng và viết card riêng trở nên rẻ — gỡ được hẳn nguồn bịa thay vì giấu nó,
+xoá luôn `wishlist-vm` và spec.
+
+**Task 9 phát sinh một bản vá ngoài phạm vi.** Ảnh nghiệm thu chế độ SÁNG lộ
+ra navbar tàng hình trên 8 trang không có hero (`/account/*`, `/checkout/*`).
+Lỗi có sẵn, không do redesign, nhưng nó làm hỏng đúng tiêu chí nghiệm thu nên
+vá luôn — xem `b7ccf83`.
+
+## Ba thứ chỉ ẢNH CHỤP bắt được, test thì không
+
+1. **"Trips booked 0"** đứng ngay trên ba dòng booking PENDING — đọc thành mâu
+   thuẫn. Bản bốn ô cũ giấu được vì có "Upcoming 3" làm dịu. Đổi nhãn thành
+   "Trips paid".
+2. **Nhãn trường hiện hai lần và hai nút Cancel** ở trang hồ sơ, do form nở ra
+   xếp chồng dưới dòng thay vì thay thế giá trị.
+3. **Navbar tàng hình ở chế độ sáng** — mục trên.
+
+Cả ba đều có test xanh tại thời điểm đó. Test kiểm hành vi; bố cục và tương
+phản thì phải nhìn.
