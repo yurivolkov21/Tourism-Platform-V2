@@ -93,8 +93,6 @@ export default async function CheckoutSuccessPage({
         <Fact label={t.totalLabel} value={formatMoney(booking.totalAmount, booking.currency)} />
       </dl>
 
-      {mood === 'confirmed' ? <p className="text-sm text-muted-foreground">{t.emailNote}</p> : null}
-
       {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
           xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
           còn lại (confirming chưa có gì để hứa; settled đã kết thúc). */}
