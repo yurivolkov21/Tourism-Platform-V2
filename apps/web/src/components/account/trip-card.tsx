@@ -27,6 +27,11 @@ export function TripCard({
 
 function HeroCard({ booking }: { booking: Booking }): ReactNode {
   const t = messages.accountBookings;
+  // Final review (NHÓM 2): khôi phục parity với `BookingCard` cũ — hero
+  // trước đây KHÔNG hiện status, nên một PENDING chưa trả tiền nhìn y hệt một
+  // chuyến bình thường. Một nguồn nhãn (`messages.booking.list.status`) +
+  // một nguồn hành động (`bookingView`), không rẽ if/else theo status ở đây.
+  const view = bookingView(booking);
 
   // "On the road" suy ra từ chính booking, không phải prop rời: chuyến đã
   // khởi hành (daysToStart <= 0) mà còn ở đây (chưa rơi vào nhóm "past" —
@@ -78,9 +83,21 @@ function HeroCard({ booking }: { booking: Booking }): ReactNode {
           <span className="font-mono text-xs">{booking.code}</span>
           {' · '}
           {formatMoney(booking.totalAmount, booking.currency)}
+          {' · '}
+          {messages.booking.list.status[view.statusKey]}
         </p>
 
         <div className="mt-2 flex gap-4 border-t pt-3 text-sm">
+          {/* PENDING chưa trả tiền — action trả tiền đứng TRƯỚC "View
+              booking" vì đó là việc khẩn nhất trên thẻ này. */}
+          {view.actions.includes('payNow') ? (
+            <Link
+              href={`/account/bookings/${booking.code}`}
+              className="text-primary-emphasis underline decoration-1 underline-offset-4 hover:no-underline"
+            >
+              {messages.booking.detail.payNow}
+            </Link>
+          ) : null}
           <Link
             href={`/account/bookings/${booking.code}`}
             className="text-foreground underline decoration-1 underline-offset-4 hover:text-primary-emphasis"

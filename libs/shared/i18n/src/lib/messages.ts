@@ -349,6 +349,10 @@ export const messages = {
         payment: 'Payment',
       },
       paymentStepNote: 'Payment happens on the next screen, hosted by your provider.',
+      // aria-label của `<ol>` step indicator ở đầu trang — TÁCH khỏi `title`
+      // (dọn dẹp cuối, NHÓM 6c): trước đây mượn tạm `title` ("Complete your
+      // booking"), sai ngữ nghĩa cho một danh sách bước.
+      stepsAria: 'Booking steps',
     },
     // Booking form fields.
     form: {
@@ -365,7 +369,6 @@ export const messages = {
       contactPhone: 'Phone (optional)',
       specialRequests: 'Special requests (optional)',
       specialRequestsPlaceholder: 'Dietary needs, accessibility, occasions…',
-      paymentHeading: 'Payment',
       paymentDesc: 'Secure checkout — pick how you’d like to pay.',
       stripe: 'Card (Stripe)',
       stripeHint: 'Visa, Mastercard, Amex',
@@ -468,8 +471,13 @@ export const messages = {
       // Câu trấn an trung thực thay cho `body` ở màn cancel: không hứa giữ
       // ghế (invariant #1 — PENDING không giữ seat), chỉ nói đúng sự thật là
       // session Stripe hết hạn sau ~1 giờ. KHÔNG đồng hồ đếm ngược.
+      //
+      // Fix cuối (final review, NHÓM 3): bản cũ nói "Your reservation is
+      // held" — NGỤ Ý giữ chỗ, vi phạm thẳng invariant #1 ngay trong câu nói
+      // ra để trấn an nó. Đổi hướng: nói booking CÒN MỞ (đúng sự thật — khách
+      // trả tiếp được), không nói gì về "held"/"reservation".
       heldNote:
-        'No charge was made. Your reservation is held for up to an hour — you can finish payment from Trips.',
+        'No charge was made. Your booking is still open — you can finish payment from Trips within the hour.',
     },
     // My bookings list (/account/bookings).
     list: {
@@ -540,7 +548,10 @@ export const messages = {
   // Task 2 cụm redesign checkout/account). Đặt cạnh `booking` cho dễ tìm.
   checkoutSummary: {
     heading: 'Order summary',
-    freeCancellation: 'Free cancellation',
+    // Đợt review cuối (Critical + §2.2): "Free cancellation" NGỤ Ý hoàn 100%
+    // vô điều kiện — sai với chính sách thật (`legal/cancellation.ts`: 30+
+    // ngày mới hoàn đủ, có xét duyệt tay). Chip trung tính, KHÔNG hứa số.
+    flexibleCancellation: 'Flexible cancellation',
     instantConfirmation: 'Instant confirmation',
     adultsLine: (n: number) => `${n} adult${n > 1 ? 's' : ''}`,
     childrenLine: (n: number) => `${n} child${n > 1 ? 'ren' : ''}`,
@@ -549,6 +560,17 @@ export const messages = {
     trustRow: 'Stripe & PayPal · SSL encrypted · 24/7 support',
     // Chưa chọn đợt khởi hành — breakdown hiện câu này thay vì các dòng số tiền.
     pickDeparture: 'Select a departure to see your total',
+    // Dòng trấn an TRUNG THỰC ngay dưới CTA, tính từ mốc thật của
+    // `legal/cancellation.ts` (30 ngày → hoàn đủ · 15 ngày → hoàn 50%).
+    // "cancellation policy" LUÔN là link `/cancellation-policy` — lắp trong
+    // component, không bịa số/chữ hứa hơn chính sách thật.
+    cancellationAssurance: {
+      policyLinkLabel: 'cancellation policy',
+      full: (date: string) => `Full refund available until ${date} — see our`,
+      partial: (date: string) => `50% refund available until ${date} — see our`,
+      closeWindow: 'This departure is close — review our',
+      closeWindowSuffix: 'before booking.',
+    },
   },
   common: {
     home: 'Home',

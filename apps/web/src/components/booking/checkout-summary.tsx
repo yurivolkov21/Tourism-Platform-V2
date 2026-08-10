@@ -1,7 +1,9 @@
 import type { MediaItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
+import { computeBookingTotal } from '@/lib/checkout';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
 /** Dữ liệu tour cần cho card tóm tắt — CHỈ những field card này thật sự vẽ,
@@ -14,6 +16,97 @@ export interface CheckoutSummaryTour {
   destinationNames: string[];
   ratingAvg: number | null;
   ratingCount: number;
+}
+
+/** Ba mức trấn an hủy/hoàn tiền — đối chiếu ĐÚNG mốc thật của
+    `legal/cancellation.ts` (§ "Refund guidelines"), không bịa số khác. */
+export type CancellationAssuranceKind = 'full' | 'partial' | 'closeWindow';
+
+export interface CancellationAssurance {
+  kind: CancellationAssuranceKind;
+  /** Ngày cắt (YYYY-MM-DD) cho `full`/`partial`; `null` ở `closeWindow` —
+   *  không có mốc nào để nói, câu closeWindow không mang ngày. */
+  cutoffDate: string | null;
+}
+
+/** Số ngày lịch từ 00:00 UTC tới một mốc `y-m-d` — dùng làm trục chung để trừ
+    hai ngày lịch mà không dính múi giờ/DST (`Date.UTC` không có DST). */
+function utcDayIndex(y: number, m: number, d: number): number {
+  return Math.floor(Date.UTC(y, m - 1, d) / 86_400_000);
+}
+
+/** Trừ N ngày khỏi một chuỗi ngày `YYYY-MM-DD`, trả về cùng khuôn dạng. Tách
+    riêng thay vì `new Date(dateStr)`: chuỗi date-only bị hiểu là UTC rồi hiển
+    thị theo giờ máy (bẫy đã ghi ở `formatDateRange`) — ở đây luôn thao tác
+    trên trục UTC nên không dính bẫy đó. */
+function subtractDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number) as [number, number, number];
+  const t = Date.UTC(y, m - 1, d) - days * 86_400_000;
+  const dt = new Date(t);
+  const yy = dt.getUTCFullYear();
+  const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const dd = String(dt.getUTCDate()).padStart(2, '0');
+  return `${yy}-${mm}-${dd}`;
+}
+
+/**
+ * Mốc trấn an hủy/hoàn tiền, tính từ `startDate` của đợt đang chọn — hàm
+ * THUẦN, `now` truyền vào được để test không phụ thuộc đồng hồ thật (cùng
+ * khuôn `pendingExpiry` ở `lib/checkout.ts`).
+ *
+ * Ba nhánh đúng "Refund guidelines" của `legal/cancellation.ts`:
+ * - `diffDays >= 30` → `full`, cắt ở `startDate − 30 ngày`.
+ * - `diffDays >= 15` → `partial` (khoảng 15–29 ngày của policy), cắt ở
+ *   `startDate − 15 ngày`.
+ * - còn lại (< 15 ngày, gồm cả mốc 14 ngày mà policy để lửng giữa "15–29" và
+ *   "fewer than 14") → `closeWindow` — KHÔNG hứa số, an toàn hơn là đoán.
+ *
+ * `now` lấy theo giờ ĐỊA PHƯƠNG của khách (`getFullYear/Month/Date`, không
+ * phải `getUTCFullYear`) — đó là ngày lịch khách đang thấy trên máy mình;
+ * `startDate` (date-only) lại luôn đọc theo UTC (theo quy ước
+ * `formatDateRange`). Quy cả hai về trục `utcDayIndex` trước khi trừ để phép
+ * trừ ra đúng số ngày lịch, không lệch theo offset múi giờ.
+ */
+export function computeCancellationAssurance(
+  startDate: string,
+  now: Date = new Date(),
+): CancellationAssurance {
+  const [sy, sm, sd] = startDate.split('-').map(Number) as [number, number, number];
+  const startDay = utcDayIndex(sy, sm, sd);
+  const todayDay = utcDayIndex(now.getFullYear(), now.getMonth() + 1, now.getDate());
+  const diffDays = startDay - todayDay;
+
+  if (diffDays >= 30) return { kind: 'full', cutoffDate: subtractDays(startDate, 30) };
+  if (diffDays >= 15) return { kind: 'partial', cutoffDate: subtractDays(startDate, 15) };
+  return { kind: 'closeWindow', cutoffDate: null };
+}
+
+/** Dòng trấn an dưới CTA — lắp câu từ `messages` + link `cancellation policy`
+    trỏ `/cancellation-policy`, KHÔNG bịa link riêng cho từng nhánh (một đích
+    duy nhất, đúng chính sách thật đang sống ở đó). */
+function CancellationAssuranceLine({ departure }: { departure: DepartureVM }) {
+  const t = messages.checkoutSummary.cancellationAssurance;
+  const assurance = computeCancellationAssurance(departure.startDate);
+
+  const prefix =
+    assurance.kind === 'full' && assurance.cutoffDate !== null
+      ? t.full(formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
+      : assurance.kind === 'partial' && assurance.cutoffDate !== null
+        ? t.partial(formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
+        : t.closeWindow;
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      {prefix}{' '}
+      <Link
+        href="/cancellation-policy"
+        className="underline underline-offset-4 hover:text-foreground"
+      >
+        {t.policyLinkLabel}
+      </Link>
+      {assurance.kind === 'closeWindow' ? ` ${t.closeWindowSuffix}` : ''}
+    </p>
+  );
 }
 
 /**
@@ -49,7 +142,11 @@ export function CheckoutSummary({
   const unit = departure ? Number(departure.effectivePrice) : null;
   const adultsAmount = unit === null ? null : (unit * numAdults).toFixed(2);
   const childrenAmount = unit === null ? null : (unit * numChildren).toFixed(2);
-  const totalAmount = unit === null ? null : (unit * (numAdults + numChildren)).toFixed(2);
+  // NHÓM 5 (final review): MỘT nguồn cho Total, dùng CHUNG với nhãn CTA của
+  // `booking-form.tsx` — xem `computeBookingTotal`.
+  const totalAmount = departure
+    ? computeBookingTotal(departure.effectivePrice, numAdults, numChildren)
+    : null;
 
   return (
     <div className="overflow-hidden rounded-2xl border bg-card">
@@ -85,7 +182,7 @@ export function CheckoutSummary({
 
         <div className="flex flex-wrap gap-2">
           <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
-            {t.freeCancellation}
+            {t.flexibleCancellation}
           </span>
           <span className="rounded-full bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
             {t.instantConfirmation}
@@ -122,6 +219,10 @@ export function CheckoutSummary({
         </div>
 
         {cta}
+
+        {/* Trấn an TRUNG THỰC ngay dưới CTA — chỉ hiện khi đã có đợt để tính
+            mốc thật; `departure: null` không bịa mốc. */}
+        {departure ? <CancellationAssuranceLine departure={departure} /> : null}
 
         <p className="border-t pt-4 text-xs text-muted-foreground">{t.trustRow}</p>
       </div>

@@ -1,8 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import type { MediaItem } from '@tourism/contract';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { DepartureVM } from '@/lib/api/tours';
-import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
+import {
+  CheckoutSummary,
+  type CheckoutSummaryTour,
+  computeCancellationAssurance,
+} from './checkout-summary';
 
 function makeDeparture(over: Partial<DepartureVM> = {}): DepartureVM {
   return {
@@ -106,7 +110,11 @@ describe('CheckoutSummary — breakdown giá', () => {
     expect(screen.getByText(/4\.0/)).toBeInTheDocument();
   });
 
-  it('badge Free cancellation + Instant confirmation luôn hiển thị', () => {
+  // Final review (Critical + §2.2): "Free cancellation" bị GỠ vì ngụ ý hoàn
+  // 100% vô điều kiện — sai với chính sách thật. Chip trung tính thay thế,
+  // "Instant confirmation" giữ nguyên vì đúng sự thật (booking PAID xác nhận
+  // ngay).
+  it('chip Flexible cancellation (trung tính) + Instant confirmation luôn hiển thị', () => {
     render(
       <CheckoutSummary
         tour={makeTour()}
@@ -117,7 +125,8 @@ describe('CheckoutSummary — breakdown giá', () => {
         cta={<button type="submit">Continue</button>}
       />,
     );
-    expect(screen.getByText('Free cancellation')).toBeInTheDocument();
+    expect(screen.getByText('Flexible cancellation')).toBeInTheDocument();
+    expect(screen.queryByText('Free cancellation')).not.toBeInTheDocument();
     expect(screen.getByText('Instant confirmation')).toBeInTheDocument();
   });
 
@@ -164,5 +173,121 @@ describe('CheckoutSummary — breakdown giá', () => {
     const img = container.querySelector('img');
     expect(img).toBeInTheDocument();
     expect(img).toHaveAttribute('alt', 'Terraced rice fields at sunrise');
+  });
+});
+
+// Final review (Critical + §2.2): hàm THUẦN tính mốc trấn an hủy/hoàn tiền,
+// đối chiếu đúng ba mốc thật của `legal/cancellation.ts` (30 ngày → hoàn đủ ·
+// 15 ngày → hoàn 50% · dưới đó → xét duyệt tay, không hứa số).
+describe('computeCancellationAssurance', () => {
+  const START = '2026-09-30';
+
+  it('hôm nay đúng 30 ngày trước departure → full, cutoff = start - 30d', () => {
+    // 2026-08-31 → 2026-09-30 = đúng 30 ngày.
+    const result = computeCancellationAssurance(START, new Date('2026-08-31T12:00:00.000Z'));
+    expect(result).toEqual({ kind: 'full', cutoffDate: '2026-08-31' });
+  });
+
+  it('hôm nay 29 ngày trước departure (vừa lọt mốc) → partial, cutoff = start - 15d', () => {
+    // 2026-09-01 → 2026-09-30 = 29 ngày, dưới 30 nên rơi vào nhánh 50%.
+    const result = computeCancellationAssurance(START, new Date('2026-09-01T12:00:00.000Z'));
+    expect(result).toEqual({ kind: 'partial', cutoffDate: '2026-09-15' });
+  });
+
+  it('hôm nay đúng 15 ngày trước departure → partial (biên dưới của khoảng 15–29)', () => {
+    // 2026-09-15 → 2026-09-30 = đúng 15 ngày.
+    const result = computeCancellationAssurance(START, new Date('2026-09-15T12:00:00.000Z'));
+    expect(result).toEqual({ kind: 'partial', cutoffDate: '2026-09-15' });
+  });
+
+  it('hôm nay 14 ngày trước departure (vừa lọt mốc) → closeWindow, không cutoffDate', () => {
+    // 2026-09-16 → 2026-09-30 = 14 ngày, dưới 15 nên không còn hứa 50%.
+    const result = computeCancellationAssurance(START, new Date('2026-09-16T12:00:00.000Z'));
+    expect(result).toEqual({ kind: 'closeWindow', cutoffDate: null });
+  });
+
+  it('departure đã qua (diff âm) → vẫn closeWindow, không ném lỗi', () => {
+    const result = computeCancellationAssurance(START, new Date('2026-10-05T12:00:00.000Z'));
+    expect(result.kind).toBe('closeWindow');
+  });
+});
+
+describe('CheckoutSummary — dòng trấn an hủy/hoàn tiền dưới CTA', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('departure: null → KHÔNG render dòng trấn an nào', () => {
+    vi.setSystemTime(new Date('2026-08-01T12:00:00.000Z'));
+    render(
+      <CheckoutSummary
+        tour={makeTour()}
+        departure={null}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.queryByRole('link', { name: 'cancellation policy' })).not.toBeInTheDocument();
+  });
+
+  it('≥30 ngày trước departure → "Full refund available until …" kèm link cancellation policy', () => {
+    vi.setSystemTime(new Date('2026-08-01T12:00:00.000Z'));
+    render(
+      <CheckoutSummary
+        tour={makeTour()}
+        departure={makeDeparture({ startDate: '2026-09-30', endDate: '2026-10-05' })}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.getByText(/Full refund available until 31 Aug 2026/)).toBeInTheDocument();
+    const link = screen.getByRole('link', { name: 'cancellation policy' });
+    expect(link).toHaveAttribute('href', '/cancellation-policy');
+  });
+
+  it('15–29 ngày trước departure → "50% refund available until …" kèm link', () => {
+    vi.setSystemTime(new Date('2026-09-10T12:00:00.000Z'));
+    render(
+      <CheckoutSummary
+        tour={makeTour()}
+        departure={makeDeparture({ startDate: '2026-09-30', endDate: '2026-10-05' })}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.getByText(/50% refund available until 15 Sep 2026/)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'cancellation policy' })).toHaveAttribute(
+      'href',
+      '/cancellation-policy',
+    );
+  });
+
+  it('<15 ngày trước departure → "This departure is close…" kèm link, KHÔNG hứa số', () => {
+    vi.setSystemTime(new Date('2026-09-25T12:00:00.000Z'));
+    render(
+      <CheckoutSummary
+        tour={makeTour()}
+        departure={makeDeparture({ startDate: '2026-09-30', endDate: '2026-10-05' })}
+        numAdults={1}
+        numChildren={0}
+        currency="USD"
+        cta={<button type="submit">Continue</button>}
+      />,
+    );
+    expect(screen.getByText(/This departure is close/)).toBeInTheDocument();
+    expect(screen.getByText(/before booking\./)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'cancellation policy' })).toHaveAttribute(
+      'href',
+      '/cancellation-policy',
+    );
   });
 });
