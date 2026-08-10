@@ -152,7 +152,6 @@ export default async function AccountBookingDetailPage({
       <div className="flex flex-col gap-3">
         <BookingActions
           view={view}
-          deniedNote={cancellation?.status === 'DENIED' ? cancellation.decisionNote : null}
           // Task 7 (A2): `code` — KHÔNG `onAction` (Server Component không
           // truyền được hàm client thật qua RSC boundary, xem JSDoc
           // `BookingActions`); component tự dựng handler thật từ mã này.

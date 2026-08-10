@@ -493,8 +493,16 @@ export const messages = {
       requestBody:
         'Paid bookings are cancelled by our team. Send a request and we’ll get back to you about a refund.',
       requestCta: 'Request cancellation',
-      reasonLabel: 'Reason (optional)',
-      reasonPlaceholder: 'Tell us why you need to cancel…',
+      // BẮT BUỘC, không phải optional (user chốt 08/08). Contract khai
+      // `reason: z.string().min(1).max(1000)` và lý do này đi thẳng vào hàng
+      // đợi admin duyệt hoàn tiền — một đơn không lý do thì người duyệt không
+      // có gì để quyết. Nhãn cũ ghi "(optional)" là nói sai với hợp đồng thật.
+      reasonLabel: 'Why are you cancelling?',
+      reasonPlaceholder: 'A sentence is enough — it goes straight to our team.',
+      /** Trần 1000 là `max` của contract. Bộ đếm ở mockup booking-flow ghi 500
+       *  — đó là trần `decisionNote` của ADMIN, nhầm bề mặt. */
+      reasonCounter: (n: number) => `${n} / 1000`,
+      reasonRequired: 'Please tell us why — our team needs it to process a refund.',
       submitRequest: 'Send request',
       submitting: 'Sending…',
       requestSent: 'Request sent — our team will follow up shortly.',
@@ -2627,6 +2635,11 @@ export const messages = {
   accountActionErrors: {
     generic: 'Something went wrong. Please try again.',
     throttle: 'Too many requests — please wait a minute and try again.',
+    /** 409 từ `bookings.cancel` — đã có một đơn đang mở cho booking này. Trước
+     *  đây rơi vào `generic` dù copy riêng đã tồn tại ở `booking.errors`. */
+    alreadyRequested: 'You’ve already sent a cancellation request for this booking.',
+    /** 422 — booking ở trạng thái không huỷ online được (đã đi, đã hoàn…). */
+    notCancellable: 'This booking can’t be cancelled online. Contact us for help.',
     sessionExpired: 'Your session has expired.',
     loginLink: 'Log in again',
   },

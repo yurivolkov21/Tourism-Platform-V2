@@ -87,7 +87,7 @@ describe('BookingActions', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('resubmitCancellation → hiện lý do bị từ chối + nút gửi lại, bấm gọi onAction đúng tham số', async () => {
+  it('resubmitCancellation → mở dialog, gõ lý do rồi gửi mới gọi onAction KÈM lý do', async () => {
     const user = userEvent.setup();
     const onAction = vi.fn();
     const view: BookingView = {
@@ -95,20 +95,23 @@ describe('BookingActions', () => {
       statusKey: 'PAID',
       actions: ['resubmitCancellation'],
     };
-    render(
-      <BookingActions
-        view={view}
-        deniedNote="Departure is less than 14 days away."
-        onAction={onAction}
-      />,
-    );
+    render(<BookingActions view={view} onAction={onAction} />);
 
-    expect(
-      screen.getByText('Your previous request was declined: Departure is less than 14 days away.'),
-    ).toBeInTheDocument();
-    const resubmitBtn = screen.getByRole('button', { name: 'Request cancellation again' });
-    await user.click(resubmitBtn);
-    expect(onAction).toHaveBeenCalledWith('resubmitCancellation');
+    await user.click(screen.getByRole('button', { name: 'Request cancellation again' }));
+    await user.type(screen.getByRole('textbox'), 'Plans changed');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    expect(onAction).toHaveBeenCalledWith('resubmitCancellation', 'Plans changed');
+  });
+
+  it('KHÔNG còn hiện lý do admin từ chối — prop đó LUÔN null, là code chết', () => {
+    // Contract khách cố ý không mang `decisionNote` (ghi chú nội bộ của admin).
+    const view: BookingView = {
+      tone: 'success',
+      statusKey: 'PAID',
+      actions: ['resubmitCancellation'],
+    };
+    render(<BookingActions view={view} onAction={vi.fn()} />);
+    expect(screen.queryByText(/previous request was declined/i)).not.toBeInTheDocument();
   });
 
   it('actions rỗng (terminal: CANCELLED/REFUNDED/PARTIALLY_REFUNDED) → không render gì', () => {
@@ -191,15 +194,52 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     render(<BookingActions view={view} code={CODE} />);
 
     await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.type(screen.getByRole('textbox'), 'Family emergency');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
 
     await waitFor(() =>
+      // Lý do KHÁCH GÕ, không phải hằng số cứng — chuỗi cũ còn được email
+      // ngược lại cho chính họ.
       expect(cancel).toHaveBeenCalledWith(
-        { code: CODE, reason: expect.any(String) },
+        { code: CODE, reason: 'Family emergency' },
         expect.anything(),
       ),
     );
     expect(toastSuccess).toHaveBeenCalled();
     expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('lý do RỖNG → chặn ngay ở client, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    const view: BookingView = {
+      tone: 'success',
+      statusKey: 'PAID',
+      actions: ['requestCancellation'],
+    };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+
+    expect(cancel).not.toHaveBeenCalled();
+    expect(
+      screen.getByText('Please tell us why — our team needs it to process a refund.'),
+    ).toBeInTheDocument();
+  });
+
+  it('lý do chỉ có khoảng trắng cũng bị chặn', async () => {
+    const user = userEvent.setup();
+    const view: BookingView = {
+      tone: 'success',
+      statusKey: 'PAID',
+      actions: ['requestCancellation'],
+    };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.type(screen.getByRole('textbox'), '   ');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    expect(cancel).not.toHaveBeenCalled();
   });
 
   it('resubmitCancellation → gọi bookings.cancel({code, reason}) (cùng route với requestCancellation)', async () => {
@@ -210,13 +250,15 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
       statusKey: 'PAID',
       actions: ['resubmitCancellation'],
     };
-    render(<BookingActions view={view} code={CODE} deniedNote="Too close to departure." />);
+    render(<BookingActions view={view} code={CODE} />);
 
     await user.click(screen.getByRole('button', { name: 'Request cancellation again' }));
+    await user.type(screen.getByRole('textbox'), 'Still need to cancel');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
 
     await waitFor(() =>
       expect(cancel).toHaveBeenCalledWith(
-        { code: CODE, reason: expect.any(String) },
+        { code: CODE, reason: 'Still need to cancel' },
         expect.anything(),
       ),
     );
@@ -258,10 +300,68 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     render(<BookingActions view={view} code={CODE} />);
 
     await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.type(screen.getByRole('textbox'), 'Session will die');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
 
     expect(await screen.findByText('Your session has expired.')).toBeInTheDocument();
     const loginLink = screen.getByRole('link', { name: 'Log in again' });
     expect(loginLink).toHaveAttribute('href', `/login?redirect=/account/bookings/${CODE}`);
     expect(refresh).not.toHaveBeenCalled();
+  });
+  it('409 → copy RIÊNG "đã gửi rồi", không phải câu lỗi chung', async () => {
+    // Trước cụm này, 409 và 422 đều rơi vào 'generic' dù i18n đã có copy riêng
+    // cho đúng hai tình huống đó — khách bị báo "có gì đó sai" trong khi hệ
+    // thống biết chính xác chuyện gì.
+    cancel.mockRejectedValueOnce(
+      createORPCErrorFromJson({
+        defined: false,
+        code: 'CONFLICT',
+        status: 409,
+        message: 'Already requested',
+        data: null,
+      }),
+    );
+    const user = userEvent.setup();
+    const view: BookingView = {
+      tone: 'success',
+      statusKey: 'PAID',
+      actions: ['requestCancellation'],
+    };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.type(screen.getByRole('textbox'), 'Duplicate');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+
+    expect(
+      await screen.findByText('You’ve already sent a cancellation request for this booking.'),
+    ).toBeInTheDocument();
+  });
+
+  it('422 → copy RIÊNG "không huỷ online được"', async () => {
+    cancel.mockRejectedValueOnce(
+      createORPCErrorFromJson({
+        defined: false,
+        code: 'UNPROCESSABLE_CONTENT',
+        status: 422,
+        message: 'Not cancellable',
+        data: null,
+      }),
+    );
+    const user = userEvent.setup();
+    const view: BookingView = {
+      tone: 'success',
+      statusKey: 'PAID',
+      actions: ['requestCancellation'],
+    };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.type(screen.getByRole('textbox'), 'Too late');
+    await user.click(screen.getByRole('button', { name: 'Send request' }));
+
+    expect(
+      await screen.findByText('This booking can’t be cancelled online. Contact us for help.'),
+    ).toBeInTheDocument();
   });
 });
