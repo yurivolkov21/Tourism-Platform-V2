@@ -16,10 +16,15 @@ import { formatMoney } from '@/lib/tours';
 const REMOVE_BUTTON_CLASS =
   'absolute top-2 right-2 z-10 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background';
 
+/**
+ * Hướng A: bỏ khung hộp (`border`/`bg-card`) — trước đây nhốt copy dạy-hành-vi
+ * trong một hộp trông như thông báo lỗi. Giờ chỉ căn giữa, khoảng trắng rộng
+ * tự làm việc, cùng nhịp "không hộp" với empty-state Trips.
+ */
 function EmptyState() {
   const t = messages.accountSaved.emptyState;
   return (
-    <div className="rounded-2xl border bg-card p-10 text-center">
+    <div className="py-16 text-center">
       <h2 className="font-heading text-2xl font-medium text-balance text-foreground">
         {t.heading}
       </h2>
@@ -49,8 +54,13 @@ function SavedTourCard({ item, onRemove }: { item: WishlistItem; onRemove: () =>
   const tc = messages.toursPage;
 
   return (
-    <div className="group relative flex flex-col gap-2.5">
-      <div className="overflow-hidden rounded-xl">
+    // Hướng A: viền mảnh `border-border/60` quanh CẢ card (không chỉ ảnh) —
+    // khác `TourCard` cố tình borderless (khu gợi ý cuối trang chi tiết đã
+    // đủ khung xung quanh). Ở đây card là một MỤC trong danh sách quản lý
+    // (có nút xoá riêng từng cái), viền mảnh giúp mắt tách biên từng ô trong
+    // lưới 2-3 cột thay vì chỉ dựa vào khoảng cách `gap-6`.
+    <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/60 p-3">
+      <div className="overflow-hidden rounded-lg">
         <ImagePlaceholder className="aspect-16/10 w-full" />
       </div>
       <h3 className="min-h-[2lh] overflow-hidden font-heading text-lg leading-snug font-medium text-foreground transition-colors group-hover:text-primary-emphasis [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
@@ -99,8 +109,11 @@ function SavedTourCard({ item, onRemove }: { item: WishlistItem; onRemove: () =>
 export function UnavailableCard({ item, onRemove }: { item: WishlistItem; onRemove?: () => void }) {
   const t = messages.accountSaved;
   return (
-    <div className="relative flex flex-col gap-2.5 opacity-60">
-      <div className="relative overflow-hidden rounded-xl">
+    // Cùng khung viền mảnh với `SavedTourCard` (xem JSDoc ở đó) — `opacity-60`
+    // vẫn là tín hiệu "không khả dụng" DUY NHẤT, viền không đổi màu/kiểu theo
+    // trạng thái để tránh mọc thêm ngôn ngữ màu thứ hai cho cùng một ý.
+    <div className="relative flex flex-col gap-2.5 rounded-xl border border-border/60 p-3 opacity-60">
+      <div className="relative overflow-hidden rounded-lg">
         <ImagePlaceholder className="aspect-16/10 w-full" />
         <span className="absolute top-2.5 left-2.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {t.unavailable}

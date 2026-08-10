@@ -46,6 +46,16 @@ describe('SavedGrid', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
+  it('rỗng ngay từ đầu → copy dạy hành vi (bấm tim để lưu), không phải copy chung chung cũ', () => {
+    // Task 9: copy empty state đổi để DẠY hành vi bấm tim — trước đây chỉ nói
+    // "chưa có tour đã lưu", không nói khách phải làm gì để có.
+    render(<SavedGrid initialItems={[]} />);
+    expect(screen.getByText('Nothing saved yet')).toBeInTheDocument();
+    expect(
+      screen.getByText('Tap the heart on any tour to keep it here for later.'),
+    ).toBeInTheDocument();
+  });
+
   it('render đủ N tour đã lưu (title + giá)', () => {
     render(
       <SavedGrid

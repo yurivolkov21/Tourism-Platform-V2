@@ -2475,9 +2475,11 @@ export const messages = {
     savedCount: (n: number) => (n === 1 ? '1 tour' : `${n} tours`),
     removeAria: (title: string) => `Remove ${title} from saved tours`,
     unavailable: 'No longer available',
+    // Task 9 (hướng A): copy dạy hành vi — không chỉ nói "chưa có gì", còn
+    // nói RÕ khách phải bấm tim ở đâu để có.
     emptyState: {
-      heading: 'No saved tours yet',
-      body: 'Tap the heart on any tour to save it here for later.',
+      heading: 'Nothing saved yet',
+      body: 'Tap the heart on any tour to keep it here for later.',
       cta: 'Browse tours',
     },
     // Task 7 (A2): bỏ lưu optimistic, `wishlist.set` lỗi → rollback + toast
