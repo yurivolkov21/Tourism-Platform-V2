@@ -200,7 +200,10 @@ export default async function AccountBookingDetailPage({
             {tv.fineLine(
               booking.contactName,
               booking.contactEmail,
-              formatDate(booking.createdAt),
+              // `createdAt` là ISO datetime đầy đủ — `formatDate` chỉ nhận
+              // calendar date (tách chuỗi, không qua new Date) nên phải cắt
+              // phần ngày trước, không thì ra "NaN AUG" (bug bắt ở nghiệm thu).
+              formatDate(booking.createdAt.slice(0, 10)),
               PROVIDER_LABEL[booking.paymentProvider],
             )}
             {booking.specialRequests ? (

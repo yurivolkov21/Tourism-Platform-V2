@@ -131,7 +131,15 @@ export default async function AccountPassportPage({
       <div className="mx-auto max-w-5xl px-4 md:px-8">
         <StatRow stats={stats} />
 
-        <div className="mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]">
+        {/* Hộ chiếu trống: không còn cột journey → bản đồ đứng GIỮA một cột,
+            không để nó lệch phải cạnh một khoảng trống lớn. */}
+        <div
+          className={
+            isEmpty
+              ? 'mx-auto mt-9 max-w-md'
+              : 'mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]'
+          }
+        >
           <div>
             {isEmpty ? null : (
               <>
