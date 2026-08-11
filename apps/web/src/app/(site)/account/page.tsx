@@ -59,17 +59,9 @@ export default async function AccountPassportPage() {
 
   return (
     <div>
-      {/* Hero chuẩn site; Settings là ACTION của hero (control UI không nằm
-          trên giấy tờ — góp ý 11/08; menu avatar navbar cũng có mục này). */}
-      <ContentHero
-        breadcrumb={t.heroBreadcrumb}
-        title={t.heroTitle}
-        action={
-          <ButtonLink variant="outline" size="sm" href="/account/settings">
-            {t.settingsLink}
-          </ButtonLink>
-        }
-      />
+      {/* Hero chuẩn site — Settings + My bookings đã dời VÀO góc phải khung
+          hộ chiếu (góp ý 11/08 vòng mới); menu avatar navbar vẫn có Settings. */}
+      <ContentHero breadcrumb={t.heroBreadcrumb} title={t.heroTitle} />
       <div className="mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-8 md:pb-20">
         <PassportCard
           name={name}
@@ -78,6 +70,16 @@ export default async function AccountPassportPage() {
           sinceYear={sinceYear}
           passportNo={passportNo(session.id)}
           mrz={mrzLines(name, session.id, sinceYear)}
+          actions={
+            <>
+              <ButtonLink variant="outline" size="sm" href="/account/bookings">
+                {t.bookingsLink}
+              </ButtonLink>
+              <ButtonLink variant="outline" size="sm" href="/account/settings">
+                {t.settingsLink}
+              </ButtonLink>
+            </>
+          }
         />
 
         {/* Dòng ledger nén thay hàng stats 4 ô (user chọn 11/08) — khít ngay

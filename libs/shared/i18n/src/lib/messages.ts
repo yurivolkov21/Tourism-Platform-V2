@@ -2574,6 +2574,9 @@ export const messages = {
     fieldSince: 'Traveler since',
     fieldNo: 'Passport no.',
     settingsLink: 'Settings ⚙',
+    /** Nút lối vào bookings trong khung hộ chiếu (góp ý 11/08 — đứng cạnh
+     *  Settings ở góc phải trên của khung). */
+    bookingsLink: 'My bookings',
     stampsHeading: 'Stamps',
     /** Sub-label (sr-only) của dấu ghost "chờ đóng" trên trang visa mở. */
     awaitingStamp: 'next stamp',

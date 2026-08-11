@@ -1,4 +1,5 @@
 import { messages } from '@tourism/i18n';
+import type { ReactNode } from 'react';
 
 /**
  * KHUNG HỘ CHIẾU — data page đóng khung (addendum spec §7.4, user duyệt
@@ -38,6 +39,7 @@ export function PassportCard({
   sinceYear,
   passportNo,
   mrz,
+  actions,
 }: {
   name: string;
   email: string;
@@ -47,6 +49,9 @@ export function PassportCard({
   /** 'TV214306' — hiển thị tự nhóm 'TV 214 306'. */
   passportNo: string;
   mrz: [string, string];
+  /** Cụm nút góc phải trên của khung (góp ý 11/08: Settings + My bookings
+   *  sống TRONG khung) — page truyền vào, card chỉ lo chỗ đứng. */
+  actions?: ReactNode;
 }) {
   const t = messages.passportHome;
   const noDisplay = `${passportNo.slice(0, 2)} ${passportNo.slice(2, 5)} ${passportNo.slice(5)}`;
@@ -58,6 +63,13 @@ export function PassportCard({
         aria-hidden="true"
         className="pointer-events-none absolute inset-[5px] z-10 rounded-xl border border-ink/15"
       />
+      {/* Cụm nút: mobile là hàng căn phải đầu khung, ≥sm ghim góc phải trên
+          (z trên lớp laminate để bấm được). */}
+      {actions ? (
+        <div className="relative z-20 flex flex-wrap justify-end gap-2 px-5 pt-5 sm:absolute sm:top-6 sm:right-6 sm:p-0">
+          {actions}
+        </div>
+      ) : null}
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:gap-7 md:p-7">
         {/* Avatar VUÔNG bo góc kiểu trang profile (góp ý user 11/08 — thay ô
             chân dung 3:4 kiểu giấy tờ); vẫn chữ-cái-đầu chờ cụm avatar upload
