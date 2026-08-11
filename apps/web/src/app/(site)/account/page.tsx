@@ -7,7 +7,6 @@ import { ContentHero } from '@/components/content/content-hero';
 import { DotMap } from '@/components/passport/dot-map';
 import { JourneyRow } from '@/components/passport/journey-row';
 import { PassportHeader } from '@/components/passport/passport-header';
-import { PassportPaper } from '@/components/passport/passport-paper';
 import { SavedTuck } from '@/components/passport/saved-tuck';
 import { StampRow } from '@/components/passport/stamp-row';
 import { StatRow } from '@/components/passport/stat-row';
@@ -117,109 +116,112 @@ export default async function AccountPassportPage({
           </ButtonLink>
         }
       />
-      <PassportPaper>
-        <section className="relative border-b border-border/55">
-          <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
-            {isEmpty ? (
-              // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-
-              // tiên bên dưới mới căn giữa.
-              <div>
-                {header}
-                <div className="mt-8 text-center">
-                  {/* Tem ghost phóng to ở empty state — lời mời "con tem đầu
+      {/* Nền THƯỜNG như mọi trang content (góp ý user 11/08 vòng 3): lớp
+          bg-paper + texture + gáy + mép trang cũ tạo một dải phân lớp lộ rõ
+          trước footer — gỡ trọn, chất passport nằm ở tem/MRZ/typography. */}
+      <section className="relative border-b border-border/55">
+        <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
+          {isEmpty ? (
+            // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-
+            // tiên bên dưới mới căn giữa.
+            <div>
+              {header}
+              <div className="mt-8 text-center">
+                {/* Tem ghost phóng to ở empty state — lời mời "con tem đầu
                     tiên" cần chiếm không gian, không lẫn vào một hàng tem nhỏ
                     như nhánh có dữ liệu. */}
-                  <div className="flex justify-center">
-                    <div className="scale-125">
-                      <StampRow stamps={stamps} />
-                    </div>
+                <div className="flex justify-center">
+                  <div className="scale-125">
+                    <StampRow stamps={stamps} />
                   </div>
-                  <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">
-                    {te.heading}
-                  </h2>
-                  <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
-                    {te.body}
-                  </p>
-                  <ButtonLink href="/tours" className="mt-6">
-                    {te.cta}
-                  </ButtonLink>
                 </div>
+                <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">
+                  {te.heading}
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
+                  {te.body}
+                </p>
+                <ButtonLink href="/tours" className="mt-6">
+                  {te.cta}
+                </ButtonLink>
               </div>
-            ) : (
-              <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-                {header}
-                <div className="max-w-[300px] md:pt-7">
-                  <StampRow stamps={stamps} />
-                </div>
+            </div>
+          ) : (
+            <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+              {header}
+              <div className="max-w-[300px] md:pt-7">
+                <StampRow stamps={stamps} />
               </div>
-            )}
-            {/* Vùng đọc máy (Zone VII): dải nền SÁNG hơn trang giấy — chính
-                sự tương phản nền là tín hiệu "thật" của MRZ; đồ đạc giấy tờ
-                (Type/Code/Passport No.) đứng làm caption của dải, tránh xa
-                khối danh tính. Trang trí thuần (aria-hidden), cắt bằng
+            </div>
+          )}
+          {/* Vùng đọc máy (Zone VII): khối bo góc nền `card` sáng hơn nền
+                trang một bậc — dấu hiệu "vùng máy đọc" của MRZ; đồ đạc giấy
+                tờ (Type/Code/Passport No.) đứng làm caption của dải, tránh
+                xa khối danh tính. Trang trí thuần (aria-hidden), cắt bằng
                 overflow, KHÔNG wrap. */}
-            <div aria-hidden="true" className="mt-8">
-              <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
-                {t.zoneType} {t.zoneTypeValue} · {t.zoneCode} {t.zoneCodeValue} · {t.zoneNo}{' '}
-                {passportNoDisplay}
-              </p>
-              <div className="mt-1.5 overflow-hidden rounded-lg border border-border/55 bg-background px-4 py-2.5 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:text-[13px] md:tracking-[0.18em]">
-                <p>{mrz[0]}</p>
-                <p>{mrz[1]}</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <div className="mx-auto max-w-5xl px-4 md:px-8">
-          <StatRow stats={stats} />
-
-          {/* Hộ chiếu trống: không còn cột journey → bản đồ đứng GIỮA một cột,
-            không để nó lệch phải cạnh một khoảng trống lớn. */}
-          <div
-            className={
-              isEmpty
-                ? 'mx-auto mt-9 max-w-md'
-                : 'mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]'
-            }
-          >
-            <div>
-              {isEmpty ? null : (
-                <>
-                  <h2 className="mb-4 font-heading text-xl font-semibold">{t.journeyHeading}</h2>
-                  <div>
-                    {journey.map((booking) => (
-                      <JourneyRow key={booking.id} booking={booking} />
-                    ))}
-                  </div>
-                  {hasMore ? (
-                    <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
-                      <Link
-                        href={`/account?page=${chunk + 1}`}
-                        className="text-[13.5px] font-semibold text-primary-emphasis hover:underline"
-                      >
-                        {messages.accountBookings.loadMore}
-                      </Link>
-                    </div>
-                  ) : null}
-                </>
-              )}
-            </div>
-            <div>
-              {/* destinations rỗng (catalog thật rỗng, hoặc fetch phụ hỏng đã
-                bị `safe()` nuốt lỗi ở trên) → ẩn cả khối bản đồ: caption đếm
-                "0 of our 0 destinations" không nói được gì. */}
-              {destinations.length > 0 ? (
-                <>
-                  <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
-                  <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
-                </>
-              ) : null}
-              {wishlist.length > 0 ? <SavedTuck total={wishlist.length} /> : null}
+          <div aria-hidden="true" className="mt-8">
+            <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+              {t.zoneType} {t.zoneTypeValue} · {t.zoneCode} {t.zoneCodeValue} · {t.zoneNo}{' '}
+              {passportNoDisplay}
+            </p>
+            <div className="mt-1.5 overflow-hidden rounded-lg border border-border/55 bg-card px-4 py-2.5 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:text-[13px] md:tracking-[0.18em]">
+              <p>{mrz[0]}</p>
+              <p>{mrz[1]}</p>
             </div>
           </div>
         </div>
-      </PassportPaper>
+      </section>
+
+      {/* pb theo nhịp trang content chuẩn (faq py-16/20) — khoảng cách tới
+            footer từ đây + `mt-32` của footer, không còn tầng đệm riêng. */}
+      <div className="mx-auto max-w-5xl px-4 pb-16 md:px-8 md:pb-20">
+        <StatRow stats={stats} />
+
+        {/* Hộ chiếu trống: không còn cột journey → bản đồ đứng GIỮA một cột,
+            không để nó lệch phải cạnh một khoảng trống lớn. */}
+        <div
+          className={
+            isEmpty
+              ? 'mx-auto mt-9 max-w-md'
+              : 'mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]'
+          }
+        >
+          <div>
+            {isEmpty ? null : (
+              <>
+                <h2 className="mb-4 font-heading text-xl font-semibold">{t.journeyHeading}</h2>
+                <div>
+                  {journey.map((booking) => (
+                    <JourneyRow key={booking.id} booking={booking} />
+                  ))}
+                </div>
+                {hasMore ? (
+                  <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
+                    <Link
+                      href={`/account?page=${chunk + 1}`}
+                      className="text-[13.5px] font-semibold text-primary-emphasis hover:underline"
+                    >
+                      {messages.accountBookings.loadMore}
+                    </Link>
+                  </div>
+                ) : null}
+              </>
+            )}
+          </div>
+          <div>
+            {/* destinations rỗng (catalog thật rỗng, hoặc fetch phụ hỏng đã
+                bị `safe()` nuốt lỗi ở trên) → ẩn cả khối bản đồ: caption đếm
+                "0 of our 0 destinations" không nói được gì. */}
+            {destinations.length > 0 ? (
+              <>
+                <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
+                <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
+              </>
+            ) : null}
+            {wishlist.length > 0 ? <SavedTuck total={wishlist.length} /> : null}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

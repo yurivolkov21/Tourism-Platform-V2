@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { DeleteAccount } from '@/components/account/delete-account';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { ContentHero } from '@/components/content/content-hero';
-import { PassportPaper } from '@/components/passport/passport-paper';
 import { fetchAccountMe } from '@/lib/api/account';
 import { requireSession } from '@/lib/api/session';
 
@@ -40,51 +39,49 @@ export default async function AccountSettingsPage() {
   return (
     <div>
       <ContentHero breadcrumb={tp.heroBreadcrumb} title={tp.title} subtitle={tp.subtitle} />
-      <PassportPaper>
-        <div className="mx-auto max-w-5xl px-4 py-10 md:px-8">
-          <Link
-            href="/account"
-            className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {tp.back}
-          </Link>
+      <div className="mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-8 md:pb-20">
+        <Link
+          href="/account"
+          className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {tp.back}
+        </Link>
 
-          {/* ── Nhóm 1: Personal information ─────────────────────────────── */}
-          <section className="mt-8 grid grid-cols-1 gap-x-10 gap-y-4 md:grid-cols-3">
-            <div>
-              <h2 className="mb-1.5 font-heading text-lg font-semibold">{t.details.heading}</h2>
-              <p className="text-sm text-muted-foreground">{t.details.blurb}</p>
-            </div>
-            <div className="md:col-span-2">
-              <ProfileSummary profile={profile} />
-            </div>
-          </section>
+        {/* ── Nhóm 1: Personal information ─────────────────────────────── */}
+        <section className="mt-8 grid grid-cols-1 gap-x-10 gap-y-4 md:grid-cols-3">
+          <div>
+            <h2 className="mb-1.5 font-heading text-lg font-semibold">{t.details.heading}</h2>
+            <p className="text-sm text-muted-foreground">{t.details.blurb}</p>
+          </div>
+          <div className="md:col-span-2">
+            <ProfileSummary profile={profile} />
+          </div>
+        </section>
 
-          <Separator className="my-10" />
+        <Separator className="my-10" />
 
-          {/* ── Nhóm 2: Connected accounts ───────────────────────────────── */}
-          <section className="grid grid-cols-1 gap-x-10 gap-y-4 md:grid-cols-3">
-            <div>
-              <h2 className="mb-1.5 font-heading text-lg font-semibold">{t.connected.heading}</h2>
-              <p className="text-sm text-muted-foreground">{t.connected.subtitle}</p>
+        {/* ── Nhóm 2: Connected accounts ───────────────────────────────── */}
+        <section className="grid grid-cols-1 gap-x-10 gap-y-4 md:grid-cols-3">
+          <div>
+            <h2 className="mb-1.5 font-heading text-lg font-semibold">{t.connected.heading}</h2>
+            <p className="text-sm text-muted-foreground">{t.connected.subtitle}</p>
+          </div>
+          <div className="md:col-span-2">
+            <div className="flex items-baseline justify-between gap-6 py-4">
+              <span className="text-sm font-medium text-foreground">
+                {t.connected.emailPassword}
+              </span>
+              <span className="truncate text-sm text-muted-foreground">{profile.email}</span>
             </div>
-            <div className="md:col-span-2">
-              <div className="flex items-baseline justify-between gap-6 py-4">
-                <span className="text-sm font-medium text-foreground">
-                  {t.connected.emailPassword}
-                </span>
-                <span className="truncate text-sm text-muted-foreground">{profile.email}</span>
-              </div>
-            </div>
-          </section>
+          </div>
+        </section>
 
-          {/* Xoá tài khoản đứng CUỐI — component tự mang divider trên
+        {/* Xoá tài khoản đứng CUỐI — component tự mang divider trên
               (border-t) + heading/mô tả; không thêm Separator kẻo hai vạch
               chồng nhau, và không ép vào lưới 3 cột để hành động nguy hiểm
               không đứng ngang hàng một form thường. */}
-          <DeleteAccount />
-        </div>
-      </PassportPaper>
+        <DeleteAccount />
+      </div>
     </div>
   );
 }

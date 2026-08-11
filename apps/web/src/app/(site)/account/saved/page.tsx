@@ -4,7 +4,6 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { SavedGrid } from '@/components/account/saved-grid';
 import { ContentHero } from '@/components/content/content-hero';
-import { PassportPaper } from '@/components/passport/passport-paper';
 import { requireSession } from '@/lib/api/session';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
 
@@ -37,19 +36,17 @@ export default async function AccountSavedPage() {
         subtitle={t.subtitle}
         meta={t.savedCount(wishlist.length)}
       />
-      <PassportPaper>
-        <div className="mx-auto max-w-5xl px-4 py-10 md:px-8">
-          <Link
-            href="/account"
-            className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {t.back}
-          </Link>
-          <div className="mt-6">
-            <SavedGrid initialItems={wishlist} />
-          </div>
+      <div className="mx-auto max-w-5xl px-4 pt-10 pb-16 md:px-8 md:pb-20">
+        <Link
+          href="/account"
+          className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {t.back}
+        </Link>
+        <div className="mt-6">
+          <SavedGrid initialItems={wishlist} />
         </div>
-      </PassportPaper>
+      </div>
     </div>
   );
 }
