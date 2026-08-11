@@ -113,3 +113,14 @@ overrides:
   ip-address@>=10.1.1 <=10.2.1: ^10.2.2
   postcss@<=8.5.22: ^8.5.23
   undici@>=7.0.0 <7.29.0: ^7.29.0
+  # Đợt vá Dependabot 11/08 (2 alert high) — cả hai là dep bắc cầu, scoped
+  # theo dải dính như hai batch trên.
+  # nanoid < 3.3.17: kéo về qua postcss@8.5.25 (dùng nanoid sinh source-map
+  # id) — đường vào apps/web (@tailwindcss/postcss, next, better-auth peer),
+  # apps/api (better-auth peer) và libs/shared/ui (shadcn). Bản trước override
+  # là 3.3.16, ghim trong dòng 3.x vì mọi parent đang thấy đều là CJS, không
+  # có bản 5.x nào trong cây (đã kiểm `pnpm why nanoid` — chỉ 1 version).
+  nanoid@<3.3.17: ^3.3.17
+  # js-yaml >=4.0.0 <4.3.1: kéo về qua cosmiconfig (shadcn CLI) →
+  # libs/shared/ui. Bản trước override là 4.3.0.
+  js-yaml@>=4.0.0 <4.3.1: ^4.3.1
