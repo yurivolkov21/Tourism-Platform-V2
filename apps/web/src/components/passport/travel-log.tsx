@@ -19,10 +19,8 @@ import {
   TimelineSeparator,
   TimelineTitle,
 } from '@tourism/ui/components/reui/timeline';
-import { ScrollArea } from '@tourism/ui/components/scroll-area';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import Link from 'next/link';
-import { useRef } from 'react';
 import type { TravelLogEntry, TravelLogTrip } from '@/lib/passport';
 
 /**
@@ -47,15 +45,17 @@ export interface TravelLogEntryWithCover extends TravelLogEntry {
 }
 
 export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
-  const parentRef = useRef<HTMLDivElement>(null);
   const t = messages.passportHome;
   return (
     <div className="grid gap-8 lg:grid-cols-[10rem_minmax(0,1fr)]">
-      {/* ── Nav địa danh dựng dọc (ảnh 2) — sticky khi đủ rộng ── */}
+      {/* ── Nav địa danh dựng dọc — sticky khi đủ rộng ── */}
       <div className="lg:sticky lg:top-28 lg:self-start">
+        {/* KHÔNG targetRef: scrollspy bám cuộn của WINDOW — bản đầu dùng
+            ScrollArea lồng trong trang, hai thanh cuộn tranh wheel nên trong
+            timeline chỉ kéo tay được (user bắt 11/08); một ngữ cảnh cuộn
+            duy nhất thì chuột/trackpad chạy tự nhiên. */}
         <Scrollspy
-          offset={40}
-          targetRef={parentRef}
+          offset={120}
           className="flex flex-row flex-wrap gap-2 lg:flex-col lg:items-stretch"
         >
           {entries.map((e) => (
@@ -72,46 +72,42 @@ export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
         </Scrollspy>
       </div>
 
-      {/* ── Section địa danh + timeline các chuyến ── */}
-      <div ref={parentRef} className="min-w-0">
-        <ScrollArea className={entries.length > 1 ? 'h-[560px]' : ''}>
-          {/* pl-2: indicator/đường nối của timeline neo âm về mép trái —
-              không đệm là viewport ScrollArea cắt mất nửa vòng check
-              (user bắt 11/08). */}
-          <div className="space-y-10 pr-3 pl-2">
-            {entries.map((e) => (
-              <section key={e.slug} id={`log-${e.slug}`}>
-                {e.cover ? (
-                  // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
-                  <img
-                    src={e.cover.url}
-                    alt={e.cover.alt ?? ''}
-                    className="h-40 w-full rounded-2xl border border-border object-cover"
+      {/* ── Section địa danh + timeline các chuyến — chảy theo trang ── */}
+      <div className="min-w-0">
+        {/* pl-2: indicator/đường nối của timeline neo âm về mép trái. */}
+        <div className="space-y-12 pl-2">
+          {entries.map((e) => (
+            <section key={e.slug} id={`log-${e.slug}`}>
+              {e.cover ? (
+                // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
+                <img
+                  src={e.cover.url}
+                  alt={e.cover.alt ?? ''}
+                  className="h-40 w-full rounded-2xl border border-border object-cover"
+                />
+              ) : (
+                <div aria-hidden="true" className="h-40 w-full rounded-2xl bg-muted" />
+              )}
+              <div className="mt-2.5 mb-5 flex items-baseline justify-between gap-3">
+                <h3 className="font-heading text-lg font-semibold">{e.name}</h3>
+                <p className="text-xs whitespace-nowrap text-muted-foreground">
+                  {t.travelLogVisits(e.visits)}
+                  {e.lastMonth ? ` · ${e.lastMonth}` : ''}
+                </p>
+              </div>
+              <Timeline defaultValue={e.trips.length}>
+                {[...e.trips, ...e.upcoming].map((trip, index) => (
+                  <VisitNode
+                    key={trip.code}
+                    trip={trip}
+                    step={index + 1}
+                    done={index < e.trips.length}
                   />
-                ) : (
-                  <div aria-hidden="true" className="h-40 w-full rounded-2xl bg-muted" />
-                )}
-                <div className="mt-2.5 mb-5 flex items-baseline justify-between gap-3">
-                  <h3 className="font-heading text-lg font-semibold">{e.name}</h3>
-                  <p className="text-xs whitespace-nowrap text-muted-foreground">
-                    {t.travelLogVisits(e.visits)}
-                    {e.lastMonth ? ` · ${e.lastMonth}` : ''}
-                  </p>
-                </div>
-                <Timeline defaultValue={e.trips.length}>
-                  {[...e.trips, ...e.upcoming].map((trip, index) => (
-                    <VisitNode
-                      key={trip.code}
-                      trip={trip}
-                      step={index + 1}
-                      done={index < e.trips.length}
-                    />
-                  ))}
-                </Timeline>
-              </section>
-            ))}
-          </div>
-        </ScrollArea>
+                ))}
+              </Timeline>
+            </section>
+          ))}
+        </div>
       </div>
     </div>
   );
