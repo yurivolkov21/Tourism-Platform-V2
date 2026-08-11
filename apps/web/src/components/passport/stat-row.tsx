@@ -21,10 +21,15 @@ export function StatRow({ stats }: { stats: PassportStats }) {
           key={c.label}
           className="border-r border-border/55 px-5 py-5 last:border-r-0 md:px-6 [&:nth-child(2)]:border-r-0 md:[&:nth-child(2)]:border-r"
         >
-          <dd className="font-heading text-3xl font-semibold tabular-nums">{c.value}</dd>
-          <dt className="mt-0.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-            {c.label}
-          </dt>
+          {/* dl hợp lệ (fix 11/08): DOM phải là dt TRƯỚC dd — đảo LẠI thứ tự
+              hiển thị (số lớn trên, nhãn dưới) bằng `flex-col-reverse`, không
+              đổi thứ tự DOM/tab. */}
+          <div className="flex flex-col-reverse">
+            <dt className="mt-0.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
+              {c.label}
+            </dt>
+            <dd className="font-heading text-3xl font-semibold tabular-nums">{c.value}</dd>
+          </div>
         </div>
       ))}
     </dl>

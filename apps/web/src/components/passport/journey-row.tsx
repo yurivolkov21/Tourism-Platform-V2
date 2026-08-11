@@ -1,7 +1,7 @@
 import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import Link from 'next/link';
-import { daysUntilDeparture } from '@/lib/account-stats';
+import { daysUntilDeparture, todayDateString } from '@/lib/account-stats';
 import { bookingView } from '@/lib/booking-vm';
 import { formatDateRange } from '@/lib/tours';
 
@@ -20,13 +20,17 @@ const DOT_CLASS: Record<string, string> = {
   destructive: 'bg-muted-foreground opacity-50',
 };
 
-export function JourneyRow({ booking, today }: { booking: Booking; today?: Date }) {
+export function JourneyRow({ booking, today }: { booking: Booking; today?: string }) {
   const t = messages.passportHome;
   const tb = messages.accountBookings;
   const view = bookingView(booking);
-  const now = today ?? new Date();
-  const started = new Date(booking.departureStartDate) <= now;
-  const ended = new Date(booking.departureEndDate) < now;
+  // So CHUỖI ngày UTC (như `account-stats.ts`), KHÔNG parse `Date`: giờ máy
+  // xem có thể ở bất kỳ đâu trong ngày, so `Date` với midnight-UTC của
+  // ngày booking từng khiến chuyến kết thúc ĐÚNG HÔM NAY bị tính nhầm "đã
+  // qua" ngay khi đồng hồ qua khỏi nửa đêm — một luật "đã xong" cho cả trang.
+  const now = today ?? todayDateString();
+  const started = booking.departureStartDate <= now;
+  const ended = booking.departureEndDate < now;
   const detailHref = `/account/bookings/${booking.code}`;
 
   // Động từ duy nhất bên phải: PENDING → trả tiền; PAID đã đi xong → mời
@@ -53,7 +57,7 @@ export function JourneyRow({ booking, today }: { booking: Booking; today?: Date 
     <div className="flex items-center gap-3.5 border-t border-border/55 py-3.5 first:border-t-0 first:pt-0">
       <span
         aria-hidden="true"
-        className={`size-[11px] flex-none rounded-full shadow-[0_0_0_4px_var(--paper)] ${DOT_CLASS[view.tone] ?? 'bg-muted-foreground'}`}
+        className={`size-[11px] flex-none rounded-full shadow-[0_0_0_4px_var(--background)] ${DOT_CLASS[view.tone] ?? 'bg-muted-foreground'}`}
       />
       {booking.tourImage ? (
         // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).

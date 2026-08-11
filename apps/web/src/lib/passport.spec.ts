@@ -9,9 +9,10 @@ import {
   passportStats,
 } from './passport';
 
-// Mốc "hôm nay" cố định cho mọi ca — hàm nhận tham số today nên không cần fake
+// Mốc "hôm nay" cố định cho mọi ca — hàm nhận tham số today (chuỗi
+// `YYYY-MM-DD`, so lexicographic như `account-stats.ts`) nên không cần fake
 // timer; 15/08/2026 nằm giữa mùa fixture (chuyến tháng 7 đã qua, tháng 9 chưa).
-const TODAY = new Date('2026-08-15T00:00:00.000Z');
+const TODAY = '2026-08-15';
 
 /** Booking PAID đã đi xong trước TODAY — nguyên liệu chuẩn cho tem/stats. */
 const doneTrip = (over: Partial<Parameters<typeof makeBooking>[0]> = {}) =>
@@ -69,6 +70,26 @@ describe('passportStats', () => {
     expect(passportStats([], 19, TODAY).exploredPct).toBe(0);
     // 1/200 = 0.5% → floor 0 nhưng đã có chuyến → kẹp sàn 1.
     expect(passportStats([doneTrip()], 200, TODAY).exploredPct).toBe(1);
+  });
+
+  // Biên đóng (fix 11/08): chuyến kết thúc ĐÚNG HÔM NAY chưa "xong" — so
+  // CHUỖI ngày UTC (như `account-stats.ts`) nên tránh được lệch giờ-trong-
+  // ngày mà so `Date` object cũ mắc phải.
+  it('kết thúc ĐÚNG HÔM NAY chưa tính là chuyến đã đi (biên đóng)', () => {
+    const stats = passportStats(
+      [doneTrip({ departureStartDate: '2026-08-13', departureEndDate: '2026-08-15' })],
+      19,
+      TODAY,
+    );
+    expect(stats.trips).toBe(0);
+  });
+
+  // RED trước fix 11/08 (controller chốt): PARTIALLY_REFUNDED = đi thật rồi
+  // mới hoàn MỘT PHẦN — có tem, khác REFUNDED toàn phần (test ở trên, loại).
+  it('PARTIALLY_REFUNDED đã kết thúc vẫn tính là chuyến đã đi (đi thật rồi mới hoàn một phần)', () => {
+    const stats = passportStats([doneTrip({ status: 'PARTIALLY_REFUNDED' })], 19, TODAY);
+    expect(stats.trips).toBe(1);
+    expect(stats.places).toBe(1);
   });
 });
 

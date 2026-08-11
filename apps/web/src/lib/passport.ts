@@ -1,4 +1,5 @@
 import type { Booking } from '@tourism/contract';
+import { todayDateString } from '@/lib/account-stats';
 import { bookingView } from '@/lib/booking-vm';
 import { foldAccents } from '@/lib/text';
 
@@ -22,28 +23,40 @@ function hash(input: string): number {
 }
 
 /**
- * "Chuyến đã hoàn thành" = ĐÃ TRẢ TIỀN (tone success của bookingView, tức
- * PAID) và ngày kết thúc đã qua. REFUNDED/PARTIALLY_REFUNDED cố ý KHÔNG tính:
- * tiền đã hoàn thì không đóng tem — hộ chiếu chỉ ghi nơi thật sự đã đi.
+ * "Chuyến đã hoàn thành" = ngày kết thúc đã qua VÀ (ĐÃ TRẢ TIỀN — tone
+ * success của bookingView, tức PAID — HOẶC hoàn MỘT PHẦN). Fix 11/08
+ * (controller chốt): `PARTIALLY_REFUNDED` tính là đã đi — đi thật rồi mới
+ * hoàn một phần, có tem. `REFUNDED` toàn phần vẫn loại: tiền đã hoàn hết thì
+ * không đóng tem.
+ *
+ * So NGÀY bằng SO CHUỖI `YYYY-MM-DD` (như `account-stats.ts`), KHÔNG parse
+ * `Date`: so trực tiếp hai `Date` object trộn giờ-trong-ngày thật của
+ * `today` với midnight-UTC của `departureEndDate` — một chuyến kết thúc
+ * ĐÚNG HÔM NAY bị tính nhầm "đã xong" ngay khi đồng hồ qua khỏi nửa đêm.
+ * So chuỗi thì biên đóng đúng: kết thúc hôm nay vẫn "đang đi".
  */
-function isCompleted(b: Booking, today: Date): boolean {
-  return bookingView(b).tone === 'success' && new Date(b.departureEndDate) < today;
+function isCompleted(b: Booking, today: string): boolean {
+  const ended = b.departureEndDate < today;
+  return ended && (bookingView(b).tone === 'success' || b.status === 'PARTIALLY_REFUNDED');
 }
 
 /**
  * Slug đích đến cho bản đồ chấm: `visited` = chuyến hoàn thành; `upcoming` =
  * chuyến còn phía trước ĐÃ hoặc SẮP trả tiền (tone success/warning chưa kết
  * thúc). Trả mảng distinct — `mapDots` tự xử phần visited-thắng-upcoming.
+ *
+ * `today` mặc định `todayDateString()` — cùng một luật "đã xong" với
+ * `isCompleted`/`account-stats.ts` (so chuỗi ngày UTC).
  */
 export function journeySlugs(
   bookings: Booking[],
-  today: Date = new Date(),
+  today: string = todayDateString(),
 ): { visited: string[]; upcoming: string[] } {
   const visited = new Set<string>();
   const upcoming = new Set<string>();
   for (const b of bookings) {
     const tone = bookingView(b).tone;
-    const ended = new Date(b.departureEndDate) < today;
+    const ended = b.departureEndDate < today;
     if (tone === 'success' && ended) {
       for (const d of b.tourDestinations) visited.add(d.slug);
     } else if ((tone === 'success' || tone === 'warning') && !ended) {
@@ -64,7 +77,7 @@ export interface PassportStats {
 export function passportStats(
   bookings: Booking[],
   catalogTotal: number,
-  today: Date = new Date(),
+  today: string = todayDateString(),
 ): PassportStats {
   const done = bookings.filter((b) => isCompleted(b, today));
   const placeSlugs = new Set(done.flatMap((b) => b.tourDestinations.map((d) => d.slug)));
@@ -104,7 +117,10 @@ function stampLabel(b: Booking): string {
   return b.tourTitle.split(/\s+/).slice(0, 2).join(' ').toUpperCase();
 }
 
-export function passportStamps(bookings: Booking[], today: Date = new Date()): PassportStamp[] {
+export function passportStamps(
+  bookings: Booking[],
+  today: string = todayDateString(),
+): PassportStamp[] {
   const done = bookings
     .filter((b) => isCompleted(b, today))
     .sort((a, b) => a.departureEndDate.localeCompare(b.departureEndDate));
@@ -152,6 +168,9 @@ export function mrzLine(name: string, memberNo: string, sinceYear: number): stri
 }
 
 export interface MapDot {
+  /** Khoá render ổn định (fix 11/08) — `name` KHÔNG đảm bảo unique giữa các
+   *  destination, `slug` thì có (đúng nguồn `journeySlugs`). */
+  slug: string;
   region: 'north' | 'central' | 'south' | 'other';
   visited: boolean;
   upcoming: boolean;
@@ -188,6 +207,7 @@ export function mapDots(
     .map((d) => {
       const isVisited = visited.has(d.slug);
       return {
+        slug: d.slug,
         region: (d.region && REGION_CLUSTER[d.region]) || 'other',
         visited: isVisited,
         upcoming: !isVisited && upcoming.has(d.slug),

@@ -11,24 +11,21 @@ import Link from 'next/link';
 export function PassportHeader({
   name,
   sinceYear,
-  location,
   mrz,
   settingsHref,
 }: {
   name: string;
   sinceYear: number;
-  location: string | null;
   mrz: string;
   settingsHref: string;
 }) {
   const t = messages.passportHome;
   return (
     <div className="relative">
-      <p className="text-[11px] font-bold tracking-[0.3em] text-ink/55 uppercase">{t.kicker}</p>
+      <p className="text-[11px] font-bold tracking-[0.3em] text-ink uppercase">{t.kicker}</p>
       <h1 className="mt-2 font-heading text-3xl font-semibold text-balance md:text-4xl">{name}</h1>
       <p className="mt-1 text-[12.5px] tracking-[0.16em] text-muted-foreground uppercase">
         {t.since(sinceYear)}
-        {location ? ` · ${location}` : null}
       </p>
       <Link
         href={settingsHref}

@@ -9,10 +9,14 @@ import type { MapDot } from '@/lib/passport';
 export function DotMap({ dots, caption }: { dots: MapDot[]; caption: string }) {
   return (
     <figure className="rounded-2xl border border-border bg-card p-5">
-      <ul className="grid grid-cols-9 gap-2 py-1">
+      {/* aria-hidden (fix 11/08): lưới chấm CÁCH ĐIỆU, không phải danh sách
+          thông tin — mỗi chấm chỉ có `title` (tooltip hover chuột), không có
+          gì cho trình đọc màn hình đọc ra có ích; `figcaption` bên dưới đã
+          nói hết nội dung thật (đếm bao nhiêu/tổng bao nhiêu). */}
+      <ul aria-hidden="true" className="grid grid-cols-9 gap-2 py-1">
         {dots.map((d) => (
           <li
-            key={d.name}
+            key={d.slug}
             title={d.name}
             className={`aspect-square w-full rounded-full ${
               d.visited ? 'bg-primary' : d.upcoming ? 'bg-primary opacity-40' : 'bg-muted'

@@ -77,6 +77,16 @@ theo `DestinationSchema`), KHÔNG cột DB mới, không migration. Phủ cùng 
   `opacity .4` khi có booking sắp tới. KHÔNG phải bản đồ địa lý thật — caption
   nói rõ ("N of our 19 destinations").
 
+> **AMENDED (fixer cuối, 11/08):** `isCompleted` (dùng bởi `passportStats` +
+> `passportStamps`) tính THÊM `PARTIALLY_REFUNDED` là "chuyến đã hoàn thành"
+> khi `departureEndDate` đã qua — controller chốt: đi thật rồi mới hoàn MỘT
+> PHẦN, có tem/count như bình thường. `REFUNDED` toàn phần vẫn loại (coi như
+> chưa từng đi). Đồng thời mọi so sánh "đã qua" trong khu này (`isCompleted`,
+> `journeySlugs`, `JourneyRow`) đổi từ so `Date` object sang SO CHUỖI ngày
+> UTC `YYYY-MM-DD` — cùng luật với `account-stats.ts` — để tránh lệch
+> giờ-trong-ngày (chuyến kết thúc đúng hôm nay từng bị tính nhầm "đã qua"
+> ngay khi đồng hồ qua khỏi nửa đêm).
+
 ### 3.3 Copy trung thực (English-only, i18n khối `passport*`)
 
 "2% of Việt Nam explored" của demo đổi thành **`{pct}% of the map explored`** +

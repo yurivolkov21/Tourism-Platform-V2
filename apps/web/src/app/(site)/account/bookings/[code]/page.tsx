@@ -120,7 +120,7 @@ export default async function AccountBookingDetailPage({
           <div aria-hidden="true" className={`h-1.5 ${STRIP_CLASS[view.tone]}`} />
           <header className="grid gap-4 border-b border-dashed border-border px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
             <div>
-              <p className="text-[11px] font-bold tracking-[0.3em] text-ink/55 uppercase">
+              <p className="text-[11px] font-bold tracking-[0.3em] text-ink uppercase">
                 {tv.kicker}
               </p>
               <h1 className="mt-1.5 font-heading text-2xl font-semibold text-balance">
@@ -220,7 +220,15 @@ export default async function AccountBookingDetailPage({
           {terminalNote ? (
             <p className="mb-3 text-sm text-muted-foreground">{terminalNote}</p>
           ) : null}
-          <p className="text-sm text-muted-foreground">{tv.cancelLead}</p>
+          {/* cancelLead ("Need to change plans?") chỉ có nghĩa khi còn HÀNH
+              ĐỘNG HỦY để câu dẫn tới — PENDING vừa có payNow vừa có
+              cancelPending; nút "Pay now" + "Cancel booking" bên dưới đã tự
+              nói đủ, câu dẫn hủy đứng riêng ở đây đọc lạc trọng tâm (khách
+              vừa mở trang, còn chưa chắc đã hủy). Chỉ ẩn khi payNow còn mặt
+              trong actions — mọi trạng thái PAID/khác vẫn giữ nguyên câu dẫn. */}
+          {!view.actions.includes('payNow') ? (
+            <p className="text-sm text-muted-foreground">{tv.cancelLead}</p>
+          ) : null}
           <div className="mt-1.5">
             <BookingActions view={view} code={booking.code} />
           </div>

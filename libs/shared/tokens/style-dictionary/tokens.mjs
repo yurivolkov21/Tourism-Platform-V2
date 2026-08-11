@@ -159,6 +159,12 @@ export default {
     // (oklch→OKLab→luminance, 11/08): ink/paper light **7.43** · dark **6.42**
     // — dư AA cả chữ nhỏ; foreground/paper 13.33 · 10.00 — giá trị đậm trên
     // giấy vẫn dùng `foreground` như thường.
+    //
+    // ⚠️ Fix cuối 11/08: `text-ink/55` đo **2.62:1 trên `paper`** ở light —
+    // KHÔNG đủ AA cho chữ. `/55` từ đây CHỈ dùng cho trang trí thuần —
+    // MRZ (`aria-hidden`, không mang thông tin thật) và viền nét đứt trong
+    // tem/mộc — KHÔNG bao giờ cho chữ nội dung (kicker, nhãn, v.v.); chữ nội
+    // dung luôn dùng `ink` nguyên độ (7.43 light / 6.42 dark).
     paper: c('oklch(0.965 0.008 174)', 'oklch(0.32 0.02 178)'),
     ink: c('oklch(0.42 0.06 184)', 'oklch(0.78 0.05 181)'),
     // Tourism-specific semantic colors — rating = vàng hổ phách Wuling (chỉ dùng cho ★).

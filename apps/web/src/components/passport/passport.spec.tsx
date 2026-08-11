@@ -16,7 +16,6 @@ describe('PassportHeader', () => {
       <PassportHeader
         name="Bosco Wong"
         sinceYear={2026}
-        location="Hà Nội, Việt Nam"
         mrz="P<TOURISM<<WONG<<BOSCO<<<<<<<<<214306<<2026<<<"
         settingsHref="/account/settings"
       />,
@@ -53,18 +52,27 @@ describe('StampRow', () => {
 });
 
 describe('DotMap', () => {
+  // aria-hidden (fix 11/08): lưới chấm là trang trí, `figcaption` mới là nội
+  // dung thật — `getAllByRole('listitem')` không còn thấy gì nên query thẳng
+  // DOM bằng `querySelectorAll`.
   it('mỗi dot đúng trạng thái màu: visited đầy, upcoming mờ, còn lại muted', () => {
-    render(
+    const { container } = render(
       <DotMap
         dots={[
-          { region: 'north', visited: true, upcoming: false, name: 'Hạ Long Bay' },
-          { region: 'central', visited: false, upcoming: true, name: 'Hội An' },
-          { region: 'south', visited: false, upcoming: false, name: 'Cần Thơ' },
+          {
+            slug: 'ha-long-bay',
+            region: 'north',
+            visited: true,
+            upcoming: false,
+            name: 'Hạ Long Bay',
+          },
+          { slug: 'hoi-an', region: 'central', visited: false, upcoming: true, name: 'Hội An' },
+          { slug: 'can-tho', region: 'south', visited: false, upcoming: false, name: 'Cần Thơ' },
         ]}
         caption="2 of our 19 destinations — the map is turning jade."
       />,
     );
-    const dots = screen.getAllByRole('listitem');
+    const dots = container.querySelectorAll('li');
     expect(dots[0]?.className).toContain('bg-primary');
     expect(dots[0]?.className).not.toContain('opacity-40');
     expect(dots[1]?.className).toContain('opacity-40');
@@ -126,6 +134,21 @@ describe('JourneyRow', () => {
       />,
     );
     expect(screen.getByText(/Ends /)).toBeInTheDocument();
+  });
+
+  // RED trước fix 11/08: kết thúc ĐÚNG HÔM NAY, xét ở giờ THẬT buổi tối
+  // (không phải nửa đêm mà `beforeEach` đóng băng) — so `Date` cũ coi
+  // midnight-của-endDate < giờ-thật-buổi-tối là true → hiện nhầm Review dù
+  // chuyến chưa chắc đã kết thúc trong ngày. Luật mới so CHUỖI ngày UTC.
+  it('PAID kết thúc ĐÚNG HÔM NAY (giờ thật buổi tối) vẫn "đang đi", chưa phải Review', () => {
+    vi.setSystemTime(new Date('2026-08-15T20:00:00.000Z'));
+    render(
+      <JourneyRow
+        booking={makeBooking({ departureStartDate: '2026-08-13', departureEndDate: '2026-08-15' })}
+      />,
+    );
+    expect(screen.getByText(/Ends /)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
   });
 
   it('PAID đã đi xong → động từ Review anchor #review', () => {

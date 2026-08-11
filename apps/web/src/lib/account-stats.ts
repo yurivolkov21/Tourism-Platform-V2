@@ -4,8 +4,12 @@ import type { Booking } from '@tourism/contract';
  * "Hôm nay" dạng `YYYY-MM-DD` (UTC) — cùng format thuần ngày với
  * `departureStartDate` (`z.iso.date()`, không giờ/múi giờ) nên so sánh
  * lexicographic (`>=`/`<`) là đủ đúng thứ tự thời gian, khỏi parse `Date`.
+ *
+ * Export (fix cuối 11/08): `lib/passport.ts` và `JourneyRow` tái dùng ĐÚNG
+ * helper này thay vì tự parse `Date` — một luật "đã xong"/"đang đi" duy nhất
+ * cho cả trang, tránh lệch múi giờ/giờ-trong-ngày giữa các chỗ gọi.
  */
-function todayDateString(): string {
+export function todayDateString(): string {
   return new Date().toISOString().slice(0, 10);
 }
 

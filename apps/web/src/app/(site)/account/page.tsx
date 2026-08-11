@@ -33,7 +33,11 @@ import {
  * kẹp trần — link cộng dồn danh sách, không cần JS client, URL chia sẻ được.
  */
 export const metadata: Metadata = {
-  title: `${messages.passportHome.kicker} — Tourism`,
+  // Literal (fix 11/08): `passportHome.kicker` = 'Traveler passport · Tourism'
+  // — ghép template cũ ra "Traveler passport · Tourism — Tourism" (trùng chữ
+  // Tourism, dấu · lẫn dấu —). Tiêu đề tab không cần đi qua i18n cho một
+  // chuỗi cố định như thế này.
+  title: 'Traveler passport — Tourism',
   robots: { index: false },
 };
 
@@ -49,11 +53,16 @@ export default async function AccountPassportPage({
 
   const cookie = (await cookies()).toString();
   // Ba nguồn độc lập — chạy song song; destinations là dữ liệu public (cached),
-  // wishlist chỉ để nuôi "ngăn kẹp" nên rỗng cũng không chặn trang.
+  // wishlist chỉ để nuôi "ngăn kẹp" nên rỗng cũng không chặn trang. Fix
+  // 11/08: CHỈ `fetchMyBookings` được phép ném lỗi (nó là dữ liệu CHÍNH của
+  // trang, lỗi ở đó thì trang không còn gì để hiện) — hai nguồn kia bọc
+  // `safe()` với fallback rỗng để một API phụ hỏng không kéo sập cả trang
+  // hộ chiếu của khách.
+  const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.catch(() => fallback);
   const [paged, destinations, wishlist] = await Promise.all([
     fetchMyBookings(cookie, limit),
-    fetchDestinations(),
-    fetchMyWishlist(cookie),
+    safe(fetchDestinations(), []),
+    safe(fetchMyWishlist(cookie), []),
   ]);
   const bookings = paged.items;
   const hasMore = bookings.length < paged.total && limit < BOOKINGS_MAX_LIMIT;
@@ -79,6 +88,19 @@ export default async function AccountPassportPage({
 
   const isEmpty = bookings.length === 0;
 
+  // Một component cho cả hai nhánh (fix 11/08): hộ chiếu trống trước đây tự
+  // dựng lại kicker/tên/since bằng tay và ĐÁNH RƠI link ⚙ Settings — một ngõ
+  // cụt thật sự khi khách chưa có booking nào nhưng vẫn cần đường vào
+  // settings đổi tên.
+  const header = (
+    <PassportHeader
+      name={session.name || session.email}
+      sinceYear={sinceYear}
+      mrz={mrzLine(session.name || session.email, memberNumber(session.id), sinceYear)}
+      settingsHref="/account/settings"
+    />
+  );
+
   return (
     <div>
       {/* Section GIẤY bleed hết viewport — texture kẻ ngang mờ bằng lớp phủ
@@ -90,36 +112,33 @@ export default async function AccountPassportPage({
         />
         <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
           {isEmpty ? (
-            <div className="text-center">
-              <p className="text-[11px] font-bold tracking-[0.3em] text-ink/55 uppercase">
-                {t.kicker}
-              </p>
-              <h1 className="mt-2 font-heading text-3xl font-semibold">{session.name ?? ''}</h1>
-              <p className="mt-1 text-[12.5px] tracking-[0.16em] text-muted-foreground uppercase">
-                {t.since(sinceYear)}
-              </p>
-              <div className="mt-8 flex justify-center">
-                <StampRow stamps={stamps} />
+            // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-
+            // tiên bên dưới mới căn giữa.
+            <div>
+              {header}
+              <div className="mt-8 text-center">
+                {/* Tem ghost phóng to ở empty state — lời mời "con tem đầu
+                    tiên" cần chiếm không gian, không lẫn vào một hàng tem nhỏ
+                    như nhánh có dữ liệu. */}
+                <div className="flex justify-center">
+                  <div className="scale-125">
+                    <StampRow stamps={stamps} />
+                  </div>
+                </div>
+                <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">
+                  {te.heading}
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
+                  {te.body}
+                </p>
+                <ButtonLink href="/tours" className="mt-6">
+                  {te.cta}
+                </ButtonLink>
               </div>
-              <h2 className="mt-8 font-heading text-2xl font-semibold text-balance">
-                {te.heading}
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
-                {te.body}
-              </p>
-              <ButtonLink href="/tours" className="mt-6">
-                {te.cta}
-              </ButtonLink>
             </div>
           ) : (
             <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-              <PassportHeader
-                name={session.name ?? session.email}
-                sinceYear={sinceYear}
-                location={null}
-                mrz={mrzLine(session.name ?? session.email, memberNumber(session.id), sinceYear)}
-                settingsHref="/account/settings"
-              />
+              {header}
               <div className="max-w-[300px] md:pt-7">
                 <StampRow stamps={stamps} />
               </div>
@@ -163,14 +182,16 @@ export default async function AccountPassportPage({
             )}
           </div>
           <div>
-            <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
-            <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
-            {wishlist.length > 0 ? (
-              <SavedTuck
-                items={wishlist.map((w) => ({ slug: w.slug, title: w.title, image: null }))}
-                total={wishlist.length}
-              />
+            {/* destinations rỗng (catalog thật rỗng, hoặc fetch phụ hỏng đã
+                bị `safe()` nuốt lỗi ở trên) → ẩn cả khối bản đồ: caption đếm
+                "0 of our 0 destinations" không nói được gì. */}
+            {destinations.length > 0 ? (
+              <>
+                <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
+                <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
+              </>
             ) : null}
+            {wishlist.length > 0 ? <SavedTuck total={wishlist.length} /> : null}
           </div>
         </div>
       </div>
