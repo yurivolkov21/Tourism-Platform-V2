@@ -1,35 +1,20 @@
 import type { ReactNode } from 'react';
-import { AccountNav } from '@/components/account/account-nav';
 
 /**
- * Khung khu `/account` (spec 2026-08-04-account-area-design, pha A1 tĩnh) —
- * nav tab dùng chung 3 trang con (Trips/Saved/Profile).
+ * Khung khu `/account` thời Hộ chiếu (spec 2026-08-11): KHÔNG còn nav tab —
+ * trang hộ chiếu là cửa duy nhất, điều hướng nội khu bằng link trong trang
+ * (⚙ Settings, Open → của ngăn Saved, back-link "← Passport").
  *
- * `pt-36` mượn ĐÚNG hằng số `ContentHero` dùng để né navbar `fixed`
- * (`site-header.tsx`: `fixed top-(--banner-offset)`, không có trang nào
- * chừa chỗ sẵn cho nó). Brief cấm dựng hero mới cho khu này — không có hero
- * ăn khoảng đó thì phải tự bù ở layout, thiếu bước này nội dung sẽ chui dưới
- * navbar khi cuộn lên đầu trang.
+ * Layout chỉ còn hai việc: (1) `pt-36` né navbar `fixed` (hằng số mượn từ
+ * `ContentHero` — xem `site-header.tsx`, không trang nào được chừa chỗ sẵn);
+ * (2) KHÔNG ép container/padding ngang nữa — từng trang tự quản, để section
+ * giấy (`bg-paper`) bleed hết bề ngang viewport rồi tự giới hạn nội dung bên
+ * trong (`max-w-5xl` + padding của chính nó).
  *
- * KHÔNG gọi `requireSession`/`getServerSession` ở đây (đã có từ Task 1) — mỗi
- * TRANG con tự gọi riêng (Task 6, A2) để gate + fetch dữ liệu thật của chính
- * nó; đặt ở layout sẽ che một lỗi/trạng thái riêng của từng trang sau một
- * fetch chung.
+ * KHÔNG gọi `requireSession`/`getServerSession` ở đây — mỗi trang con tự gate
+ * + fetch dữ liệu của chính nó (giữ nguyên quyết định từ cụm A, lý do cũ vẫn
+ * đúng: gate ở layout sẽ che trạng thái riêng của từng trang).
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
-  return (
-    // Padding NGANG phải giống hệt 52 chỗ còn lại của site và giống footer
-    // (`site-footer.tsx`: `md:px-16 lg:px-24 xl:px-32` + `max-w-7xl`) — khu này
-    // nằm ngay trên footer nên lệch một hằng số là nhìn thấy ngay.
-    <div className="w-full px-4 pt-36 pb-16 md:px-16 md:pb-20 lg:px-24 xl:px-32">
-      {/* `max-w-6xl` (1152) đổi thành `max-w-7xl` (1280): footer ngay dưới dùng
-          7xl, nên từ 1536px trở lên nội dung account bị thụt 64px mỗi bên so
-          với footer. Đây là lệch có thật, có từ trước, và không liên quan tới
-          vòng thiết kế nào. */}
-      <div className="mx-auto max-w-7xl">
-        <AccountNav />
-        <div className="mt-10">{children}</div>
-      </div>
-    </div>
-  );
+  return <div className="w-full pt-36 pb-16 md:pb-20">{children}</div>;
 }

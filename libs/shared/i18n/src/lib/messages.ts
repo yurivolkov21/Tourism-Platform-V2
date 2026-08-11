@@ -2495,16 +2495,6 @@ export const messages = {
   // Khu `/account/*` — tab nav dùng chung cho layout.tsx. Ba tab (spec
   // 2026-08-10 AMENDED — hub `/account` gỡ, key `dashboard` gỡ theo vì hết
   // call site).
-  accountNav: {
-    /** Tên khả truy cập của dải tab. Trước đây hardcode thẳng trong component
-     *  — copy user-facing phải gom ở đây (luật #7), kể cả `aria-label`. */
-    ariaLabel: 'Account sections',
-    /** Nhãn tab đầu — đổi từ 'Bookings' theo spec 2026-08-10, Trips là cửa
-     *  chính của khu account sau khi hub gỡ. */
-    bookings: 'Trips',
-    saved: 'Saved tours',
-    profile: 'Profile',
-  },
   // `accountDashboard` (hub `/account` + 4 ô số + thẻ "chuyến kế tiếp") GỠ
   // theo spec 2026-08-10 AMENDED — trang `/account` giờ chỉ redirect, không
   // còn UI riêng nào đọc khối này. Xoá hẳn thay vì giữ mã chết.
@@ -2633,6 +2623,15 @@ export const messages = {
     /** Nhãn tem ghost cuối dãy — lời mời chuyến kế, không phải dữ liệu. */
     ghostStampLabel: '?',
     ghostStampSub: 'next stamp',
+  },
+  /** Empty state hộ chiếu mới tinh (M4) — trang KHÔNG trống: nó là lời mời
+   *  đóng con tem đầu tiên; số 0 hiển thị chính danh, không giấu. */
+  passportEmpty: {
+    heading: 'Every passport starts blank',
+    body: 'Book your first tour and we’ll ink this page — dates, places, and a stamp to prove you were there.',
+    cta: 'Browse tours',
+    ghostLabel: 'Your first stamp',
+    ghostSub: 'is waiting',
   },
   accountBookingDetail: {
     back: 'Back to my bookings',

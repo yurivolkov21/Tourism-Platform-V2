@@ -30,6 +30,29 @@ function isCompleted(b: Booking, today: Date): boolean {
   return bookingView(b).tone === 'success' && new Date(b.departureEndDate) < today;
 }
 
+/**
+ * Slug đích đến cho bản đồ chấm: `visited` = chuyến hoàn thành; `upcoming` =
+ * chuyến còn phía trước ĐÃ hoặc SẮP trả tiền (tone success/warning chưa kết
+ * thúc). Trả mảng distinct — `mapDots` tự xử phần visited-thắng-upcoming.
+ */
+export function journeySlugs(
+  bookings: Booking[],
+  today: Date = new Date(),
+): { visited: string[]; upcoming: string[] } {
+  const visited = new Set<string>();
+  const upcoming = new Set<string>();
+  for (const b of bookings) {
+    const tone = bookingView(b).tone;
+    const ended = new Date(b.departureEndDate) < today;
+    if (tone === 'success' && ended) {
+      for (const d of b.tourDestinations) visited.add(d.slug);
+    } else if ((tone === 'success' || tone === 'warning') && !ended) {
+      for (const d of b.tourDestinations) upcoming.add(d.slug);
+    }
+  }
+  return { visited: [...visited], upcoming: [...upcoming] };
+}
+
 export interface PassportStats {
   trips: number;
   places: number;

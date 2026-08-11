@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { mapDots, memberNumber, mrzLine, passportStamps, passportStats } from './passport';
+import {
+  journeySlugs,
+  mapDots,
+  memberNumber,
+  mrzLine,
+  passportStamps,
+  passportStats,
+} from './passport';
 
 // Mốc "hôm nay" cố định cho mọi ca — hàm nhận tham số today nên không cần fake
 // timer; 15/08/2026 nằm giữa mùa fixture (chuyến tháng 7 đã qua, tháng 9 chưa).
@@ -129,6 +136,39 @@ describe('memberNumber + mrzLine', () => {
     const long = mrzLine('Nguyễn Thị Minh Khai Đặng Trần', 'NO. 000 001', 2026);
     expect(long).toHaveLength(44);
     expect(long).not.toMatch(/[ỄĐẶẦỊ]/);
+  });
+});
+
+describe('journeySlugs', () => {
+  it('visited = chuyến xong; upcoming = PAID/PENDING chưa kết thúc; CANCELLED bỏ qua', () => {
+    const { visited, upcoming } = journeySlugs(
+      [
+        doneTrip(), // xong → visited ha-long-bay
+        makeBooking({
+          code: 'BK-FUTUREAA',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
+          tourDestinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
+        }),
+        makeBooking({
+          code: 'BK-PENDFUTU',
+          status: 'PENDING',
+          departureStartDate: '2026-09-10',
+          departureEndDate: '2026-09-11',
+          tourDestinations: [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }],
+        }),
+        makeBooking({
+          code: 'BK-CANCELAA',
+          status: 'CANCELLED',
+          departureStartDate: '2026-09-20',
+          departureEndDate: '2026-09-21',
+          tourDestinations: [{ slug: 'can-tho', name: 'Cần Thơ', isPrimary: true }],
+        }),
+      ],
+      TODAY,
+    );
+    expect(visited).toEqual(['ha-long-bay']);
+    expect(upcoming.sort()).toEqual(['hoi-an', 'sa-pa']);
   });
 });
 
