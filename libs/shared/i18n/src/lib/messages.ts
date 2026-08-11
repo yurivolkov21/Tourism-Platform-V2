@@ -2575,8 +2575,10 @@ export const messages = {
     fieldNo: 'Passport no.',
     settingsLink: 'Settings ⚙',
     stampsHeading: 'Stamps',
-    /** Sub-label ô "chờ đóng tem" của bộ sưu tập (addendum §7 hướng A). */
+    /** Sub-label (sr-only) của dấu ghost "chờ đóng" trên trang visa mở. */
     awaitingStamp: 'next stamp',
+    /** Dòng chữ mờ dưới trang tem — các nơi CHƯA từng đóng dấu. */
+    stillBlank: (names: string) => `Still blank in this passport: ${names}`,
     /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
     bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
     bookingsOpen: 'Open →',

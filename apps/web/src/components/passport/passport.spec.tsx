@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { JourneyRow } from './journey-row';
 import { PassportCard } from './passport-card';
-import { StampCollection } from './stamp-collection';
+import { StampPages } from './stamp-pages';
 import { VisaStamp } from './visa-stamp';
 
 // Spec gộp cho bộ component passport (T4) — mỗi component vài ca hành vi,
@@ -39,43 +39,65 @@ describe('PassportCard', () => {
   });
 });
 
-describe('StampCollection', () => {
-  // Bộ sưu tập hợp nhất (addendum §7 hướng A) — thay StampRow + DotMap:
-  // ô stamped là tem mực thật, awaiting viền đứt, unexplored mờ; tên địa
-  // danh là NỘI DUNG (không aria-hidden như chấm cũ).
-  it('ba trạng thái ô đúng dạng: stamped mực + tháng + xoay, awaiting nét đứt, unexplored mờ', () => {
+describe('StampPages', () => {
+  // Trang visa mở (vòng 11/08 tối) — tem theo TỪNG CHUYẾN: hai chuyến cùng
+  // nơi là HAI con dấu khác tháng; dấu ghost viền đứt cho chuyến sắp tới.
+  it('mỗi chuyến một dấu (trùng nơi vẫn hai dấu), ghost nét đứt, dáng theo data', () => {
     render(
-      <StampCollection
-        slots={[
+      <StampPages
+        stamps={[
           {
-            slug: 'ha-long-bay',
-            name: 'Hạ Long Bay',
-            state: 'stamped',
-            month: 'Jul 2026',
+            key: 'BK-A',
+            label: 'HẠ LONG BAY',
+            month: 'May 2026',
             shape: 'round',
             rotationDeg: -6,
+            size: 'md',
+            ink: 0,
+            driftY: 0,
+            overlap: false,
           },
-          { slug: 'hoi-an', name: 'Hội An', state: 'awaiting' },
-          { slug: 'can-tho', name: 'Cần Thơ', state: 'unexplored' },
+          {
+            key: 'BK-B',
+            label: 'HẠ LONG BAY',
+            month: 'Jul 2026',
+            shape: 'oval',
+            rotationDeg: 4,
+            size: 'lg',
+            ink: 1,
+            driftY: 2,
+            overlap: true,
+          },
+          {
+            key: 'BK-C',
+            label: 'HỘI AN',
+            month: 'Sep 2026',
+            shape: 'square',
+            rotationDeg: 2,
+            size: 'sm',
+            ink: 0,
+            driftY: 1,
+            overlap: false,
+            ghost: true,
+          },
         ]}
         caption="1 of our 19 destinations — the map is turning jade."
       />,
     );
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(3);
-    // Tem đóng: UPPERCASE + tháng + mực stamp-ink + xoay theo data.
-    expect(screen.getByText('HẠ LONG BAY')).toBeInTheDocument();
+    // Đi lại cùng nơi → HAI dấu HẠ LONG BAY cùng tồn tại, khác tháng.
+    expect(screen.getAllByText('HẠ LONG BAY')).toHaveLength(2);
+    expect(screen.getByText('May 2026')).toBeInTheDocument();
     expect(screen.getByText('Jul 2026')).toBeInTheDocument();
+    // Dấu thật: mực stamp-ink + xoay theo data + dấu sau lấn mép dấu trước.
     expect(items[0]?.className).toContain('stamp-ink');
-    expect(items[0]?.className).toContain('rounded-full');
     expect(items[0]).toHaveStyle({ transform: 'rotate(-6deg)' });
-    // Ô chờ đóng: tên thường + sub "next stamp" + viền đứt.
-    expect(screen.getByText('Hội An')).toBeInTheDocument();
+    expect(items[1]?.className).toContain('-ml-4');
+    // Dấu ghost: viền đứt + sr-only "next stamp", KHÔNG mực stamp-ink.
+    expect(items[2]?.className).toContain('border-dashed');
+    expect(items[2]?.className).not.toContain('stamp-ink');
     expect(screen.getByText('next stamp')).toBeInTheDocument();
-    expect(items[1]?.className).toContain('border-dashed');
-    // Ô chưa khám phá: chỉ tên, giọng mờ.
-    expect(screen.getByText('Cần Thơ')).toBeInTheDocument();
-    expect(items[2]?.className).toContain('text-muted-foreground');
     expect(screen.getByText(/turning jade/)).toBeInTheDocument();
   });
 });

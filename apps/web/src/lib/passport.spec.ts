@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { mrzCheckDigit, mrzLines, passportNo, passportStats, stampSlots } from './passport';
+import {
+  mrzCheckDigit,
+  mrzLines,
+  pageStamps,
+  passportNo,
+  passportStats,
+  unstampedNames,
+} from './passport';
 
 // Mốc "hôm nay" cố định cho mọi ca — hàm nhận tham số today (chuỗi
 // `YYYY-MM-DD`, so lexicographic như `account-stats.ts`) nên không cần fake
@@ -86,22 +93,110 @@ describe('passportStats', () => {
   });
 });
 
-describe('stampSlots', () => {
-  // Bộ sưu tập tem hợp nhất (addendum §7 — thay passportStamps + mapDots):
-  // mỗi destination catalog một Ô, trạng thái theo booking của user.
-  const CATALOG = [
-    { slug: 'ha-long-bay', name: 'Hạ Long Bay', region: 'Northern Vietnam' },
-    { slug: 'sa-pa', name: 'Sa Pa', region: 'Northern Vietnam' },
-    { slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
-    { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
-    { slug: 'noi-la', name: 'Nơi Lạ', region: null },
-  ];
-
-  it('stamped = đã đi (kèm tháng), awaiting = chuyến còn phía trước, còn lại unexplored; sort theo miền', () => {
-    const slots = stampSlots(
-      CATALOG,
+describe('pageStamps', () => {
+  // Trang visa mở (vòng 11/08 tối): tem đóng theo TỪNG CHUYẾN — đi lại một
+  // nơi là THÊM dấu mới, không làm mới dấu cũ (trả lời thẳng câu hỏi user).
+  it('mỗi chuyến đã đi MỘT tem theo thứ tự thời gian; đi lại cùng nơi → HAI tem khác tháng', () => {
+    const stamps = pageStamps(
       [
-        doneTrip(), // ha-long-bay xong 23/07
+        doneTrip(), // Hạ Long, kết thúc 23/07
+        doneTrip({
+          code: 'BK-DONEBBBB',
+          departureStartDate: '2026-05-01',
+          departureEndDate: '2026-05-02',
+        }), // Hạ Long lần TRƯỚC — tháng 5
+      ],
+      TODAY,
+    );
+    expect(stamps).toHaveLength(2);
+    expect(stamps[0]?.label).toBe('HẠ LONG BAY');
+    expect(stamps[0]?.month).toBe('May 2026');
+    expect(stamps[1]?.label).toBe('HẠ LONG BAY');
+    expect(stamps[1]?.month).toBe('Jul 2026');
+    // Hai lần đóng KHÁC khoá render — không đè nhau.
+    expect(stamps[0]?.key).not.toBe(stamps[1]?.key);
+  });
+
+  it('chuyến còn phía trước (PAID/PENDING) → dấu ghost viền đứt đứng CUỐI, CANCELLED bỏ qua', () => {
+    const stamps = pageStamps(
+      [
+        doneTrip(),
+        makeBooking({
+          code: 'BK-FUTUREAA',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
+          tourDestinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
+        }),
+        makeBooking({
+          code: 'BK-PENDFUTU',
+          status: 'PENDING',
+          departureStartDate: '2026-09-10',
+          departureEndDate: '2026-09-11',
+          tourDestinations: [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }],
+        }),
+        makeBooking({
+          code: 'BK-CANCELAA',
+          status: 'CANCELLED',
+          departureStartDate: '2026-09-20',
+          departureEndDate: '2026-09-21',
+        }),
+      ],
+      TODAY,
+    );
+    expect(stamps).toHaveLength(3);
+    expect(stamps[0]?.ghost).toBeUndefined();
+    expect(stamps[1]?.label).toBe('HỘI AN');
+    expect(stamps[1]?.ghost).toBe(true);
+    expect(stamps[2]?.label).toBe('SA PA');
+    expect(stamps[2]?.ghost).toBe(true);
+  });
+
+  it('PARTIALLY_REFUNDED đã kết thúc vẫn có tem — một luật đã-đi với stats', () => {
+    const stamps = pageStamps([doneTrip({ status: 'PARTIALLY_REFUNDED' })], TODAY);
+    expect(stamps).toHaveLength(1);
+    expect(stamps[0]?.ghost).toBeUndefined();
+  });
+
+  it('dáng tem deterministic từ mã booking, các biến trong biên: shape 3 loại, xoay [−9,9], size/mực/drift hợp lệ', () => {
+    const one = pageStamps([doneTrip()], TODAY);
+    const two = pageStamps([doneTrip()], TODAY);
+    expect(one).toEqual(two);
+    const s = one[0];
+    expect(s && ['round', 'square', 'oval'].includes(s.shape)).toBe(true);
+    expect(s && s.rotationDeg >= -9 && s.rotationDeg <= 9).toBe(true);
+    expect(s && ['sm', 'md', 'lg'].includes(s.size)).toBe(true);
+    expect(s && [0, 1, 2].includes(s.ink)).toBe(true);
+    expect(s && s.driftY >= 0 && s.driftY <= 3).toBe(true);
+  });
+
+  it('tour không gắn destination → nhãn rơi về 2 từ đầu tourTitle UPPERCASE', () => {
+    const stamps = pageStamps(
+      [doneTrip({ tourDestinations: [], tourTitle: 'Mekong Delta Day Cruise' })],
+      TODAY,
+    );
+    expect(stamps[0]?.label).toBe('MEKONG DELTA');
+  });
+});
+
+describe('unstampedNames', () => {
+  it('trả tên các destination CHƯA từng đi, theo thứ tự miền bắc→trung→nam→other', () => {
+    const names = unstampedNames(
+      [
+        { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
+        { slug: 'ha-long-bay', name: 'Hạ Long Bay', region: 'Northern Vietnam' },
+        { slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
+        { slug: 'noi-la', name: 'Nơi Lạ', region: null },
+      ],
+      [doneTrip()], // đã đi ha-long-bay
+      TODAY,
+    );
+    expect(names).toEqual(['Hội An', 'Cần Thơ', 'Nơi Lạ']);
+  });
+
+  it('chuyến sắp tới CHƯA tính là đã đi — nơi đó vẫn nằm trong danh sách chưa đóng', () => {
+    const names = unstampedNames(
+      [{ slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' }],
+      [
         makeBooking({
           code: 'BK-FUTUREAA',
           departureStartDate: '2026-09-01',
@@ -111,66 +206,7 @@ describe('stampSlots', () => {
       ],
       TODAY,
     );
-    expect(slots).toHaveLength(5);
-    // Sort cụm miền bắc→trung→nam→other như bản đồ cũ.
-    expect(slots.map((s) => s.slug)).toEqual([
-      'ha-long-bay',
-      'sa-pa',
-      'hoi-an',
-      'can-tho',
-      'noi-la',
-    ]);
-    const haLong = slots.find((s) => s.slug === 'ha-long-bay');
-    expect(haLong?.state).toBe('stamped');
-    expect(haLong?.month).toBe('Jul 2026');
-    expect(slots.find((s) => s.slug === 'hoi-an')?.state).toBe('awaiting');
-    expect(slots.find((s) => s.slug === 'sa-pa')?.state).toBe('unexplored');
-  });
-
-  it('hai chuyến cùng nơi → tháng của chuyến kết thúc MUỘN nhất; đã đến thắng sắp-quay-lại', () => {
-    const slots = stampSlots(
-      CATALOG,
-      [
-        doneTrip({
-          code: 'BK-DONEBBBB',
-          departureStartDate: '2026-05-01',
-          departureEndDate: '2026-05-02',
-        }),
-        doneTrip(), // cùng ha-long-bay, kết thúc 23/07 — muộn hơn
-        makeBooking({
-          // sắp quay lại ha-long-bay — vẫn stamped, không tụt về awaiting.
-          code: 'BK-FUTUREAA',
-          departureStartDate: '2026-09-01',
-          departureEndDate: '2026-09-03',
-        }),
-      ],
-      TODAY,
-    );
-    const haLong = slots.find((s) => s.slug === 'ha-long-bay');
-    expect(haLong?.state).toBe('stamped');
-    expect(haLong?.month).toBe('Jul 2026');
-  });
-
-  it('PARTIALLY_REFUNDED đã kết thúc vẫn stamped — MỘT luật với tem/stats cũ', () => {
-    const slots = stampSlots(CATALOG, [doneTrip({ status: 'PARTIALLY_REFUNDED' })], TODAY);
-    expect(slots.find((s) => s.slug === 'ha-long-bay')?.state).toBe('stamped');
-  });
-
-  it('hình/độ xoay deterministic theo SLUG — không đổi khi mã booking đổi', () => {
-    const a = stampSlots(CATALOG, [doneTrip()], TODAY).find((s) => s.slug === 'ha-long-bay');
-    const b = stampSlots(CATALOG, [doneTrip({ code: 'BK-KHACAAAA' })], TODAY).find(
-      (s) => s.slug === 'ha-long-bay',
-    );
-    expect(a?.shape).toBe(b?.shape);
-    expect(a?.rotationDeg).toBe(b?.rotationDeg);
-    expect(a && ['round', 'square'].includes(a.shape ?? '')).toBe(true);
-    expect(a && (a.rotationDeg ?? 0) >= -7 && (a.rotationDeg ?? 0) <= 7).toBe(true);
-  });
-
-  it('không booking nào → toàn bộ unexplored, không ô nào mang month/shape', () => {
-    const slots = stampSlots(CATALOG, [], TODAY);
-    expect(slots.every((s) => s.state === 'unexplored')).toBe(true);
-    expect(slots.every((s) => s.month === undefined)).toBe(true);
+    expect(names).toEqual(['Hội An']);
   });
 });
 
@@ -241,35 +277,6 @@ describe('mrzLines', () => {
   });
 });
 
-// `journeySlugs`/`mapDots`/`passportStamps` đã nghỉ hưu cùng bản đồ chấm +
-// dãy tem rời (addendum §7) — vai trò gộp vào `stampSlots` phía trên.
-
-describe('stampSlots — PENDING/CANCELLED', () => {
-  it('PENDING tương lai vẫn awaiting; CANCELLED không tạo trạng thái nào', () => {
-    const slots = stampSlots(
-      [
-        { slug: 'sa-pa', name: 'Sa Pa', region: 'Northern Vietnam' },
-        { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
-      ],
-      [
-        makeBooking({
-          code: 'BK-PENDFUTU',
-          status: 'PENDING',
-          departureStartDate: '2026-09-10',
-          departureEndDate: '2026-09-11',
-          tourDestinations: [{ slug: 'sa-pa', name: 'Sa Pa', isPrimary: true }],
-        }),
-        makeBooking({
-          code: 'BK-CANCELAA',
-          status: 'CANCELLED',
-          departureStartDate: '2026-09-20',
-          departureEndDate: '2026-09-21',
-          tourDestinations: [{ slug: 'can-tho', name: 'Cần Thơ', isPrimary: true }],
-        }),
-      ],
-      TODAY,
-    );
-    expect(slots.find((s) => s.slug === 'sa-pa')?.state).toBe('awaiting');
-    expect(slots.find((s) => s.slug === 'can-tho')?.state).toBe('unexplored');
-  });
-});
+// `stampSlots` (lưới ô đều) đã nghỉ hưu sau một vòng — user chê "chia ô xếp
+// hàng tầm thường"; thay bằng `pageStamps` + `unstampedNames` phía trên
+// (trang visa mở, tem theo TỪNG CHUYẾN).

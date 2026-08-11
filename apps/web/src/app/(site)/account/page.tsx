@@ -4,14 +4,14 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportCard } from '@/components/passport/passport-card';
-import { StampCollection } from '@/components/passport/stamp-collection';
+import { StampPages } from '@/components/passport/stamp-pages';
 import { TuckCard } from '@/components/passport/tuck-card';
 import { fetchAccountMe } from '@/lib/api/account';
 import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
-import { mrzLines, passportNo, passportStats, stampSlots } from '@/lib/passport';
+import { mrzLines, pageStamps, passportNo, passportStats, unstampedNames } from '@/lib/passport';
 
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
@@ -56,7 +56,8 @@ export default async function AccountPassportPage() {
 
   const name = session.name || session.email;
   const stats = passportStats(bookings, destinations.length);
-  const slots = stampSlots(destinations, bookings);
+  const stamps = pageStamps(bookings);
+  const blank = unstampedNames(destinations, bookings);
   const isEmpty = bookings.length === 0;
 
   return (
@@ -102,15 +103,24 @@ export default async function AccountPassportPage() {
           </div>
         ) : null}
 
-        {/* destinations rỗng (catalog trống hoặc fetch phụ hỏng đã bị
-            `safe()` nuốt) → ẩn cả khối sưu tập: lưới 0 ô vô nghĩa. */}
-        {destinations.length > 0 ? (
+        {/* Trang tem chỉ hiện khi CÓ dấu (thật hoặc ghost) — hộ chiếu trống
+            đã có lời mời phía trên, tờ trang trắng tinh không nói được gì. */}
+        {stamps.length > 0 ? (
           <section className="mt-12">
             <h2 className="mb-4 font-heading text-xl font-semibold">{t.stampsHeading}</h2>
-            <StampCollection
-              slots={slots}
-              caption={t.mapCaption(stats.places, destinations.length)}
+            <StampPages
+              stamps={stamps}
+              caption={
+                destinations.length > 0
+                  ? t.mapCaption(stats.places, destinations.length)
+                  : undefined
+              }
             />
+            {blank.length > 0 ? (
+              <p className="mt-1.5 text-xs text-pretty text-muted-foreground/75">
+                {t.stillBlank(blank.join(' · '))}
+              </p>
+            ) : null}
           </section>
         ) : null}
 

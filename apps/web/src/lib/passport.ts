@@ -42,75 +42,110 @@ function isCompleted(b: Booking, today: string): boolean {
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-export interface StampSlot {
-  slug: string;
-  name: string;
-  /**
-   * `stamped` = đã đi (một luật với `isCompleted` — PARTIALLY_REFUNDED tính,
-   * REFUNDED loại); `awaiting` = có chuyến còn phía trước ĐÃ/SẮP trả tiền
-   * (tone success/warning chưa kết thúc); còn lại `unexplored`.
-   */
-  state: 'stamped' | 'awaiting' | 'unexplored';
-  /** 'Jul 2026' — tháng của chuyến kết thúc MUỘN nhất; chỉ ô stamped. */
-  month?: string;
-  /** Hình + độ xoay của tem — hash theo SLUG (ổn định theo nơi chốn, không
-   *  nhảy khi user đặt thêm chuyến); chỉ ô stamped. */
-  shape?: 'round' | 'square';
-  rotationDeg?: number;
+export interface PageStamp {
+  /** Khoá render — mã booking (mỗi CHUYẾN một tem, unique). */
+  key: string;
+  /** Tên destination primary UPPERCASE (fallback 2 từ đầu tourTitle). */
+  label: string;
+  /** 'Jul 2026' — tháng kết thúc chuyến; ghost thì là tháng khởi hành. */
+  month: string;
+  shape: 'round' | 'square' | 'oval';
+  /** −9..9 độ — mộc đóng tay. */
+  rotationDeg: number;
+  /** Ba cỡ tem — sổ thật không có hai con dấu bằng nhau tăm tắp. */
+  size: 'sm' | 'md' | 'lg';
+  /** Chỉ số mực 0..2 — component map sang lớp màu (quầy biên phòng thật
+   *  chỉ dăm ba màu mực). */
+  ink: 0 | 1 | 2;
+  /** Nấc xô dọc 0..3 — tem trôi khỏi hàng thẳng. */
+  driftY: number;
+  /** Lấn mép tem đứng trước (âm margin) — trang tem chen chúc. */
+  overlap: boolean;
+  /** Chuyến còn phía trước — dấu viền đứt "chờ đóng". */
+  ghost?: boolean;
+}
+
+/** Nhãn tem: destination primary → destination đầu → 2 từ đầu tourTitle. */
+function stampLabel(b: Booking): string {
+  const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
+  if (primary) return primary.name.toUpperCase();
+  return b.tourTitle.split(/\s+/).slice(0, 2).join(' ').toUpperCase();
+}
+
+/** Dáng tem deterministic từ mã booking — mỗi CHUYẾN một con dấu riêng. */
+function stampLook(
+  code: string,
+): Pick<PageStamp, 'shape' | 'rotationDeg' | 'size' | 'ink' | 'driftY' | 'overlap'> {
+  const h = hash(code);
+  const SHAPES = ['round', 'square', 'oval'] as const;
+  const SIZES = ['sm', 'md', 'lg'] as const;
+  return {
+    shape: SHAPES[h % 3] ?? 'round',
+    // (…% 19) − 9 → nguyên trong [−9, 9].
+    rotationDeg: (Math.floor(h / 3) % 19) - 9,
+    size: SIZES[Math.floor(h / 57) % 3] ?? 'md',
+    ink: (Math.floor(h / 171) % 3) as 0 | 1 | 2,
+    driftY: Math.floor(h / 513) % 4,
+    overlap: Math.floor(h / 2052) % 2 === 1,
+  };
 }
 
 /**
- * BỘ SƯU TẬP TEM hợp nhất (addendum §7 — thay `passportStamps` + `mapDots`):
- * mỗi destination catalog một Ô mang tên thật, trạng thái từ booking của
- * user. Sort cụm miền bắc→trung→nam→other (trên xuống như bản đồ thật).
- * Deterministic toàn phần — không Math.random/Date.now.
+ * TRANG VISA MỞ (vòng 11/08 tối — thay lưới `stampSlots` bị user chê "chia ô
+ * xếp hàng tầm thường"): tem đóng theo TỪNG CHUYẾN như cửa khẩu thật — đi
+ * lại một nơi là THÊM con dấu mới chồng lên trang, không "làm mới" dấu cũ.
+ * Chuyến đã đi (một luật `isCompleted` với stats) sort theo endDate — trang
+ * tem dày lên theo trình tự thời gian; chuyến còn phía trước (ĐÃ/SẮP trả
+ * tiền) thành dấu ghost viền đứt đứng cuối. Deterministic toàn phần.
  */
-export function stampSlots(
+export function pageStamps(bookings: Booking[], today: string = todayDateString()): PageStamp[] {
+  const monthOf = (iso: string) => {
+    const d = new Date(iso);
+    return `${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
+  };
+  const done = bookings
+    .filter((b) => isCompleted(b, today))
+    .sort((a, b) => a.departureEndDate.localeCompare(b.departureEndDate))
+    .map((b) => ({
+      key: b.code,
+      label: stampLabel(b),
+      month: monthOf(b.departureEndDate),
+      ...stampLook(b.code),
+    }));
+  const ahead = bookings
+    .filter((b) => {
+      const tone = bookingView(b).tone;
+      return (tone === 'success' || tone === 'warning') && !(b.departureEndDate < today);
+    })
+    .sort((a, b) => a.departureStartDate.localeCompare(b.departureStartDate))
+    .map((b) => ({
+      key: b.code,
+      label: stampLabel(b),
+      month: monthOf(b.departureStartDate),
+      ...stampLook(b.code),
+      ghost: true,
+    }));
+  return [...done, ...ahead];
+}
+
+/**
+ * Tên các destination CHƯA TỪNG đi (chuyến sắp tới chưa tính — tem chưa
+ * đóng) — dòng chữ mờ "still blank" dưới trang tem, thứ tự miền như bản đồ.
+ */
+export function unstampedNames(
   catalog: Array<{ slug: string; name: string; region: string | null }>,
   bookings: Booking[],
   today: string = todayDateString(),
-): StampSlot[] {
-  // endDate MUỘN nhất của chuyến ĐÃ ĐI theo slug — nguồn cho month của tem.
-  const stampedEnd = new Map<string, string>();
-  const awaiting = new Set<string>();
+): string[] {
+  const stamped = new Set<string>();
   for (const b of bookings) {
-    if (isCompleted(b, today)) {
-      for (const d of b.tourDestinations) {
-        const prev = stampedEnd.get(d.slug);
-        if (!prev || prev < b.departureEndDate) stampedEnd.set(d.slug, b.departureEndDate);
-      }
-    } else {
-      const tone = bookingView(b).tone;
-      if ((tone === 'success' || tone === 'warning') && !(b.departureEndDate < today)) {
-        for (const d of b.tourDestinations) awaiting.add(d.slug);
-      }
-    }
+    if (isCompleted(b, today)) for (const d of b.tourDestinations) stamped.add(d.slug);
   }
   const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
   return [...catalog]
     .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
-    .map((d) => {
-      const end = stampedEnd.get(d.slug);
-      if (end) {
-        const h = hash(d.slug);
-        const date = new Date(end);
-        return {
-          slug: d.slug,
-          name: d.name,
-          state: 'stamped',
-          month: `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`,
-          shape: h % 2 === 0 ? 'round' : 'square',
-          // (h % 15) − 7 → nguyên trong [−7, 7] — "đóng tay hơi lệch".
-          rotationDeg: (Math.floor(h / 2) % 15) - 7,
-        } satisfies StampSlot;
-      }
-      return {
-        slug: d.slug,
-        name: d.name,
-        // Đã đến thắng sắp-quay-lại: có tem rồi thì không tụt về awaiting.
-        state: awaiting.has(d.slug) ? 'awaiting' : 'unexplored',
-      } satisfies StampSlot;
-    });
+    .filter((d) => !stamped.has(d.slug))
+    .map((d) => d.name);
 }
 
 export interface PassportStats {
