@@ -151,6 +151,16 @@ export default {
     // giống hệt nhau ở cả hai chế độ.
     hero: c('oklch(0.25 0.015 181.5)', 'oklch(0.17 0.019 182.5)'),
     'hero-foreground': c('oklch(0.921 0.014 174.1)', 'oklch(0.921 0.014 174.1)'),
+    // Cặp "ấn phẩm du lịch" cho khu account Hộ chiếu (spec 11/08) — tái dùng
+    // được cho vé checkout về sau. `paper` = nền giấy ngà một bậc trầm hơn
+    // `background`; `ink` = mực dấu ngọc bích (tem, MRZ, kicker). Biến thể mờ
+    // dùng opacity modifier (`text-ink/55`, `bg-ink/[0.025]`) — cố ý KHÔNG
+    // token soft riêng, cùng lối với on-media/scrim. Đo bằng script contrast
+    // (oklch→OKLab→luminance, 11/08): ink/paper light **7.43** · dark **6.42**
+    // — dư AA cả chữ nhỏ; foreground/paper 13.33 · 10.00 — giá trị đậm trên
+    // giấy vẫn dùng `foreground` như thường.
+    paper: c('oklch(0.965 0.008 174)', 'oklch(0.32 0.02 178)'),
+    ink: c('oklch(0.42 0.06 184)', 'oklch(0.78 0.05 181)'),
     // Tourism-specific semantic colors — rating = vàng hổ phách Wuling (chỉ dùng cho ★).
     //
     // ⚠️ Light L hạ 0.731 → 0.64 ngày 30/07. Ngôi sao là GRAPHIC nên ngưỡng là 3:1
