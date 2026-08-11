@@ -108,12 +108,17 @@ describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đ
     expect(ticketBarcodeWidths('TRV-ABC123')).not.toEqual(ticketBarcodeWidths('TRV-XYZ999'));
   });
 
-  it('độ dài mảng khớp độ dài mã, mỗi bề rộng trong khoảng 1-4px', () => {
+  it('số vạch cố định ~24-32 (đủ dày, không cụt như trước — độc lập độ dài mã), mỗi bề rộng trong khoảng 1-4px', () => {
     const widths = ticketBarcodeWidths('BK-TESTAAAA');
-    expect(widths).toHaveLength('BK-TESTAAAA'.length);
+    expect(widths.length).toBeGreaterThanOrEqual(24);
+    expect(widths.length).toBeLessThanOrEqual(32);
     for (const w of widths) {
       expect(w).toBeGreaterThanOrEqual(1);
       expect(w).toBeLessThanOrEqual(4);
     }
+  });
+
+  it('mã ngắn hơn số vạch vẫn sinh đủ vạch (lặp ký tự theo chu kỳ)', () => {
+    expect(ticketBarcodeWidths('BK-1').length).toBeGreaterThanOrEqual(24);
   });
 });

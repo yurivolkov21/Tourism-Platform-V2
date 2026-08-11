@@ -88,11 +88,24 @@ export function ticketSerial(code: string): string {
 }
 
 /**
- * Bề rộng (px, 1–4) của từng vạch barcode giả, một ký tự mã đặt chỗ → một
- * vạch — DETERMINISTIC, cùng lý do với `ticketSerial`. Không phải barcode
- * quét được thật (không cần máy quét ở capstone này), chỉ mô phỏng đúng
- * "hình" vạch dày-mỏng không đều của barcode ấn phẩm thật.
+ * Số vạch cố định của barcode giả — ĐỘC LẬP với độ dài `code`. Mã đặt chỗ
+ * (~10-11 ký tự) một-ký-tự-một-vạch từng ra barcode cụt ~5 vạch nhìn như lỗi;
+ * số cố định trong khoảng vạch barcode ấn phẩm thật (24-32) để hình luôn trải
+ * gần hết bề ngang cuống bất kể mã dài ngắn.
+ */
+const TICKET_BARCODE_BAR_COUNT = 28;
+
+/**
+ * Bề rộng (px, 1–4) của từng vạch barcode giả — DETERMINISTIC theo mã đặt
+ * chỗ, cùng lý do với `ticketSerial`. Mã ngắn hơn số vạch thì LẶP ký tự theo
+ * chu kỳ (`i % code.length`); trộn thêm chỉ số `i` vào hash để các vòng lặp
+ * lại không tạo cùng một vạch y hệt liên tiếp. Không phải barcode quét được
+ * thật (không cần máy quét ở capstone này), chỉ mô phỏng đúng "hình" vạch
+ * dày-mỏng không đều của barcode ấn phẩm thật.
  */
 export function ticketBarcodeWidths(code: string): number[] {
-  return Array.from(code).map((ch) => (ch.charCodeAt(0) % 4) + 1);
+  return Array.from({ length: TICKET_BARCODE_BAR_COUNT }, (_, i) => {
+    const ch = code[i % code.length] ?? 'A';
+    return ((ch.charCodeAt(0) + i * 7) % 4) + 1;
+  });
 }

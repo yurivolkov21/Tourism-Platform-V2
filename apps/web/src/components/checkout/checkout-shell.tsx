@@ -113,12 +113,13 @@ export function CheckoutShell({
           <TicketTear />
 
           {/* CUỐNG VÉ */}
-          <div className="flex flex-col items-center gap-3 bg-muted/40 px-5 py-6 text-center md:w-[30%] md:justify-center md:px-4">
-            {/* Nhãn TOUR VOUCHER lặp lại, xoay dọc theo mép xé (desktop only —
-                mobile không còn mép dọc để bám theo). */}
+          <div className="relative flex flex-col items-center gap-3 bg-muted/40 px-5 py-6 text-center md:w-[30%] md:justify-center md:px-4 md:pl-6">
+            {/* Nhãn TOUR VOUCHER lặp lại, xoay dọc, ÁP SÁT mép trái cuống —
+                định vị tuyệt đối để không chiếm một cột riêng giữa thân vé và
+                cuống (desktop only — mobile không còn mép dọc để bám theo). */}
             <span
               aria-hidden="true"
-              className="hidden font-mono text-[9px] tracking-[0.3em] text-muted-foreground uppercase md:block md:[writing-mode:vertical-rl]"
+              className="hidden font-mono text-[8px] tracking-[0.2em] text-muted-foreground/70 uppercase md:absolute md:top-1/2 md:left-1.5 md:block md:-translate-y-1/2 md:[writing-mode:vertical-rl]"
             >
               {t.voucherLabel}
             </span>
@@ -131,7 +132,7 @@ export function CheckoutShell({
               </p>
             ) : null}
             <div className="flex flex-wrap items-center justify-center gap-2.5">
-              <p className="font-mono text-xl font-medium tracking-[0.16em] tabular-nums md:text-2xl">
+              <p className="font-mono text-lg font-medium tracking-[0.06em] whitespace-nowrap tabular-nums md:text-xl">
                 {code}
               </p>
               <CopyCodeButton code={code} />
@@ -161,34 +162,37 @@ const TONE_BAR = {
 } as const;
 
 /**
- * Đường xé giữa thân vé và cuống vé: cột/hàng lỗ đục kim thật — chấm tròn nhỏ
- * lặp, MÀU NỀN TRANG (không phải `bg-card`) để đọc như lỗ xuyên qua giấy.
- * Dọc trên desktop (thân bên trái, cuống bên phải), ngang trên mobile (cuống
- * tụt xuống dưới). KHÔNG dashed-border, KHÔNG notch bán nguyệt — cliché của
- * bản trước.
+ * Đường xé giữa thân vé và cuống vé: MỘT đường mảnh ~2px nằm sát ranh giới
+ * thân/cuống, lỗ đục kim là chấm tròn nhỏ lặp tô bằng `--border` (opacity
+ * đầy) — thấy được trên cả `bg-card` sáng lẫn tối, khác bản trước dùng màu
+ * nền TRANG nên tàng hình trên thân vé trắng và bỏ lại một dải trống vô
+ * nghĩa. Dọc trên desktop (thân bên trái, cuống bên phải), ngang trên mobile
+ * (cuống tụt xuống dưới). KHÔNG dashed-border, KHÔNG notch bán nguyệt —
+ * cliché của bản trước.
  */
 function TicketTear() {
   return (
     <div
       data-slot="ticket-tear"
       aria-hidden="true"
-      className="h-3 w-full shrink-0 [background-image:radial-gradient(circle,var(--background)_1.5px,transparent_1.6px)] [background-size:10px_3px] md:h-auto md:w-3 md:[background-size:3px_10px]"
+      className="h-[2px] w-full shrink-0 [background-image:radial-gradient(circle,var(--border)_1px,transparent_1.1px)] [background-size:8px_2px] md:h-auto md:w-[2px] md:[background-size:2px_8px]"
     />
   );
 }
 
 /**
- * Barcode giả: vạch dày-mỏng không đều, DETERMINISTIC theo mã đặt chỗ (xem
- * `ticketBarcodeWidths`) — KHÔNG random, để hình không đổi mỗi lần render.
- * Quiet zone dùng `bg-card` (màu "giấy" của chính thân vé, không phải hex
- * trắng cứng) để giữ tokens-only mà vẫn tương phản cao với vạch `bg-foreground`
- * ở cả hai theme.
+ * Barcode giả: ~28 vạch dày-mỏng không đều, DETERMINISTIC theo mã đặt chỗ
+ * (xem `ticketBarcodeWidths`) — KHÔNG random, để hình không đổi mỗi lần
+ * render. Số vạch cố định (không còn = độ dài `code`) để barcode luôn trải
+ * gần hết bề ngang cuống thay vì cụt ngủn với mã ngắn. Quiet zone dùng
+ * `bg-card` (màu "giấy" của chính thân vé, không phải hex trắng cứng) để giữ
+ * tokens-only mà vẫn tương phản cao với vạch `bg-foreground` ở cả hai theme.
  */
 function TicketBarcode({ code }: { code: string }) {
   const widths = ticketBarcodeWidths(code);
   return (
     <div aria-hidden="true" className="flex flex-col items-center gap-1">
-      <div className="flex h-7 items-stretch gap-px bg-card p-1">
+      <div className="flex h-9 items-stretch gap-px bg-card p-1">
         {widths.map((w, i) => (
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder/thêm bớt
