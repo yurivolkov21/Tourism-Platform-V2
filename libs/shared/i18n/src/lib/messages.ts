@@ -1851,8 +1851,8 @@ export const messages = {
     },
 
     booking: {
-      /** `Reserve` là <button> KHÔNG điều hướng — /tours/[slug]/book chưa tồn tại
-          và luật cấm đẩy người dùng vào 404 (spec §6.6). */
+      /** `Reserve` điều hướng thật tới `/tours/[slug]/book` (trang đã sống —
+          nợ static-first thời trang book chưa tồn tại đã trả, xem BookingRail). */
       reserve: 'Reserve',
       ask: 'Ask about this trip',
       perPerson: 'per person',

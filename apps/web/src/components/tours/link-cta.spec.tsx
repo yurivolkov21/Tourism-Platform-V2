@@ -86,6 +86,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
   it('BookingRail rail + có đợt — CTA hỏi phụ là link', () => {
     render(
       <BookingRail
+        slug="ha-long-bay-cruise"
         departure={DEPARTURE}
         currency="VND"
         basePrice="2400000.00"
@@ -103,6 +104,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
   it('BookingRail rail + KHÔNG đợt — CTA hỏi là link', () => {
     render(
       <BookingRail
+        slug="ha-long-bay-cruise"
         departure={undefined}
         currency="VND"
         basePrice="2400000.00"
@@ -120,6 +122,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
   it('BookingRail bar + KHÔNG đợt — CTA hỏi là link', () => {
     render(
       <BookingRail
+        slug="ha-long-bay-cruise"
         departure={undefined}
         currency="VND"
         basePrice="2400000.00"
@@ -151,10 +154,12 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     expect(asLink.firstElementChild?.className).toBe(asButton.firstElementChild?.className);
   });
 
-  it('`Reserve` VẪN là nút thật — nó không điều hướng, luồng đặt chỗ chưa có', () => {
-    // Mặt còn lại của bất biến: sửa role không được biến mọi thứ thành link.
+  // `/tours/[slug]/book` nay đã sống — `Reserve` phải điều hướng tới đó, không
+  // còn là nút cụt. Kiểm cả hai vị trí render (rail cột phải + bar đáy mobile).
+  it('BookingRail rail + có đợt — nút Reserve là link trỏ trang book', () => {
     render(
       <BookingRail
+        slug="ha-long-bay-cruise"
         departure={DEPARTURE}
         currency="VND"
         basePrice="2400000.00"
@@ -163,8 +168,23 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
         variant="rail"
       />,
     );
-    const reserve = screen.getByRole('button', { name: /reserve/i });
-    expect(reserve.tagName).toBe('BUTTON');
-    expect(reserve).not.toHaveAttribute('href');
+    const reserve = screen.getByRole('link', { name: /reserve/i });
+    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book');
+  });
+
+  it('BookingRail bar + có đợt — nút Reserve là link trỏ trang book', () => {
+    render(
+      <BookingRail
+        slug="ha-long-bay-cruise"
+        departure={DEPARTURE}
+        currency="VND"
+        basePrice="2400000.00"
+        durationDays={2}
+        maxGroupSize={12}
+        variant="bar"
+      />,
+    );
+    const reserve = screen.getByRole('link', { name: /reserve/i });
+    expect(reserve).toHaveAttribute('href', '/tours/ha-long-bay-cruise/book');
   });
 });

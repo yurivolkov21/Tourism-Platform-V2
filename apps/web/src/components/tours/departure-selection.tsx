@@ -98,12 +98,14 @@ export function DeparturesTableConnected({
 }
 
 export function BookingRailConnected({
+  slug,
   currency,
   basePrice,
   durationDays,
   maxGroupSize,
   variant,
 }: {
+  slug: string;
   currency: string;
   basePrice: string;
   durationDays: number;
@@ -114,6 +116,7 @@ export function BookingRailConnected({
   const departure = departures.find((d) => d.id === selectedId);
   return (
     <BookingRail
+      slug={slug}
       departure={departure}
       currency={currency}
       basePrice={basePrice}

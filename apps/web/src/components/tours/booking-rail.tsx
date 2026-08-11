@@ -1,7 +1,6 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { cn } from '@tourism/ui/lib/utils';
 import type { DepartureVM } from '@/lib/api/tours';
@@ -10,11 +9,12 @@ import { departureStatus, discountPercent, formatDateRange, formatMoney } from '
 /**
  * Rail booking — nơi đợt đang chọn được nói lại bằng con số, cộng CTA.
  *
- * `Reserve` là <button> KHÔNG điều hướng: luồng đặt chỗ (`/tours/[slug]/book`)
- * chưa tồn tại, và luật của cụm là không đẩy người dùng vào 404. Đúng tiền lệ nút
- * `Book a tour` trên navbar. CTA phụ `Ask about this trip` → /contact (có thật).
+ * `Reserve` điều hướng tới `/tours/{slug}/book` — trang đó nay đã sống. Trước
+ * đây nó là <button> cụt vì trang book chưa tồn tại lúc dựng static-first; nợ
+ * đó nay đã trả. CTA phụ `Ask about this trip` → /contact (có thật).
  */
 export function BookingRail({
+  slug,
   departure,
   currency,
   basePrice,
@@ -22,6 +22,8 @@ export function BookingRail({
   maxGroupSize,
   variant,
 }: {
+  /** Slug tour — dựng href `/tours/{slug}/book` cho nút Reserve. */
+  slug: string;
   /** Đợt đang chọn; `undefined` khi tour chưa mở đợt nào. */
   departure: DepartureVM | undefined;
   currency: string;
@@ -68,9 +70,9 @@ export function BookingRail({
                 {t.booking.testMode}
               </p>
             </div>
-            <Button type="button" className="shrink-0">
+            <ButtonLink className="shrink-0" href={`/tours/${slug}/book`}>
               {t.booking.reserve}
-            </Button>
+            </ButtonLink>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-3">
@@ -103,9 +105,9 @@ export function BookingRail({
           <PriceBlock departure={departure} currency={currency} />
           <SeatMeter seatsLeft={departure.seatsLeft} maxGroupSize={maxGroupSize} />
 
-          <Button type="button" className="mt-5 w-full">
+          <ButtonLink className="mt-5 w-full" href={`/tours/${slug}/book`}>
             {t.booking.reserve}
-          </Button>
+          </ButtonLink>
           {/* Câu sandbox NGẮN đặt sát nút — chỗ người dùng thật sự phân vân trước
               khi bấm (spec §6.5). Câu dài ở chân bảng đợt. Không banner đỏ. */}
           <p className="mt-3 text-xs text-muted-foreground">{t.booking.testMode}</p>

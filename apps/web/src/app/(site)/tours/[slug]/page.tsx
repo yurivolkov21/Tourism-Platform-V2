@@ -291,6 +291,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
           <aside className="hidden lg:block">
             <BookingRailConnected
+              slug={tour.slug}
               variant="rail"
               currency={tour.currency}
               basePrice={tour.basePrice}
@@ -321,6 +322,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           vá "đệm footer" ở vòng test listing. */}
       <div aria-hidden="true" className="h-24 lg:hidden" />
       <BookingRailConnected
+        slug={tour.slug}
         variant="bar"
         currency={tour.currency}
         basePrice={tour.basePrice}
