@@ -2700,6 +2700,13 @@ export const messages = {
   // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
   // connected accounts + xoá tài khoản. Avatar/đổi email PARK (spec §4) —
   // avatar chữ-cái tĩnh, email read-only kèm chú thích, KHÔNG dựng form ghi.
+  /** Tầng sau của hộ chiếu (M3) — form KHÔNG được lên mặt tiền: nằm sau link
+   *  ⚙, khoác giấy, tái dùng nguyên logic nở-inline/password/delete. */
+  passportSettings: {
+    back: '← Passport',
+    title: 'Traveler details',
+    subtitle: 'The information printed in your passport.',
+  },
   accountProfile: {
     title: 'Profile',
     subtitle: 'Manage your personal info, sign-in, and account.',
