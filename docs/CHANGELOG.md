@@ -8,6 +8,43 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-11 — Khu Account đập-xây-lại thành "Hộ chiếu" bản chốt (branch `feat/account-passport`, ff-only, 34 commit `b2959c5..bf20383`)
+
+Vòng đập-xây-lại account user đã hứa ở entry dưới: thi công inline 10 task theo
+spec `2026-08-11-account-passport-redesign.md`, rồi ~10 vòng góp ý từng-trang
+của user trên giao diện thật (mỗi vòng một commit — spec §7 ghi trọn hành
+trình). Bản chốt trang `/account`: **khung PassportCard** mở trang (viền kép
+laminate, avatar vuông kiểu profile, lưới field Name/Email/Phone/Since/
+Passport no./Type·Code, dải MRZ TD3 THẬT 2 dòng × 44 ký tự check digit 7-3-1
+trong khung — vector mẫu ICAO 9303 nằm trong test) và nút My bookings và
+Settings ở góc phải trên khung; dòng ledger stats mono thay hàng 4 ô; **Travel
+log** = nav Scrollspy dựng dọc sticky theo địa danh, mỗi section ảnh cover
+kèm timeline dọc các CHUYẾN (check mực = đã đi, node rỗng = sắp tới, card
+Collapsible mã booking + link) — vendor 5 component ReUI bản Base UI
+(scrollspy/frame/icon-tile/stepper/timeline, vá 12 lỗi Biome nguồn). Route
+`/account/bookings` khôi phục từ redirect 308 thành trang danh sách thật;
+Settings vào cả menu avatar; khu account về nền thường (gỡ PassportPaper +
+layout khu); tokens paper và ink mới; script `seed-demo-visits.ts` đắp lịch
+sử 2-3 lần đi cho tài khoản demo.
+
+Các thử nghiệm BỊ user BÁC và đã gỡ sạch (bài học "đừng chia ô xếp hàng"):
+caption đánh số (1)-(9) + hàng Zone I mở đầu (đọc như form hành chính), tem
+chữ nhật Schengen đồng loạt, lưới 19 ô đều, trang tem rải + bản đồ chấm +
+stepper theo nơi (ba đời của khu dưới — bản chốt là timeline).
+
+**Review findings tiêu biểu:** final review (opus) 1 Critical + 9 Important —
+hộ chiếu trống ĐÁNH RƠI link Settings (ngõ cụt thật); `text-ink/55` đo 2.62:1
+(hạ xuống trang trí thuần); `Promise.all` sập cả trang vì API phụ (safe()
+fallback); PARTIALLY_REFUNDED mất tem (chốt luật: đã đi thật); hai luật biên
+ngày lệch nhau (thống nhất so CHUỖI UTC); user bắt tại trận: timeline bị
+ScrollArea cắt nửa indicator (ms-10 thua ms-8 variant) và cuộn-lồng-cuộn phải
+kéo tay (gỡ ScrollArea, một ngữ cảnh cuộn). Tests after: 1545 — 1387 unit
+(76 contract, 10 tokens, 1 i18n, 14 ui, 210 api, 1076 web) và 158 api int.
+Sổ nợ mới: `WishlistItem` chưa có image; user-menu literal chưa qua i18n;
+`stamp-pages`/`pageStamps`/`unstampedNames` + `stepper` vendored đang không có
+chỗ dùng (gỡ tạm theo lệnh user — chờ số phận cuối); trang visa/saved user
+chưa review; cover Hà Nội trong DB dev đang null (data, không phải code).
+
 ## 2026-08-11 — Redesign Checkout hướng B + khu Account hướng A (branch `feat/redesign-checkout-account`, ff-only, 27 commit `330452e..05d4d1c`)
 
 Cụm lớn nhất P3b tới nay: 11 task subagent-driven + final review toàn branch +
