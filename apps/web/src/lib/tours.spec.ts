@@ -27,6 +27,7 @@ import {
   formatDateRange,
   formatMoney,
   formatReviewDate,
+  formatTicketDate,
   groupPoliciesByKind,
   priceBucket,
   relatedTours,
@@ -354,6 +355,15 @@ describe('formatDate', () => {
   it('không lệch ngày ở đầu/cuối tháng — tách chuỗi, KHÔNG qua new Date()', () => {
     expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
     expect(formatDate('2026-12-31')).toBe('31 Dec 2026');
+  });
+});
+
+describe('formatTicketDate — ngày ngắn kiểu vé máy bay ("24 AUG"), dùng cho khoảnh khắc primary', () => {
+  it('ngày + tháng viết tắt HOA, KHÔNG năm', () => {
+    expect(formatTicketDate('2026-08-24')).toBe('24 AUG');
+  });
+  it('không đệm 0 ở ngày một chữ số', () => {
+    expect(formatTicketDate('2026-01-05')).toBe('5 JAN');
   });
 });
 

@@ -442,6 +442,15 @@ export const messages = {
       departureLabel: 'Departure',
       travellersLabel: 'Travellers',
       totalLabel: 'Total paid',
+      // Fact mới cho lưới IATA-style (redesign vé) — trước đây provider chỉ
+      // hiện ở trang chi tiết booking, giờ thêm ở vé để đủ 4 fact: Tour ·
+      // Guests · Total paid · Payment.
+      paymentLabel: 'Payment',
+      // Nhãn TRÊN khoảnh khắc primary kiểu boarding-pass ("24 AUG → 26 AUG").
+      // Một nhãn dùng chung cho cả tour một-ngày lẫn nhiều-ngày.
+      dateLabel: 'Tour date',
+      // Dòng mô tả ngắn trong cuống vé, cạnh tên khách — "2 guests".
+      guestsCount: (n: number) => `${n} guest${n > 1 ? 's' : ''}`,
       contactLabel: 'Contact',
       viewTours: 'Browse more tours',
       notFound: 'We couldn’t find that booking.',
@@ -463,6 +472,14 @@ export const messages = {
       nextEmail: 'A confirmation email is on its way to your inbox.',
       nextVoucher: 'Your booking code is your voucher — show it at the meeting point.',
       nextManage: 'View or cancel this trip anytime in Trips.',
+      // Nhãn lặp lại HAI lần trên vé (`CheckoutShell`): dải header ngang +
+      // cuống vé xoay dọc (`writing-mode: vertical-rl`) — cùng một chữ, hai tư
+      // thế, đúng kiểu ấn phẩm vé thật lặp thông tin ở cuống.
+      voucherLabel: 'Tour Voucher',
+      // Dòng 9px sát mép dưới thân vé — bản dịch trung thực của thứ một tấm vé
+      // giấy thật luôn in: không hứa hẹn gì thêm ngoài chính sách đã có.
+      finePrint:
+        'Present this voucher at the meeting point · Non-transferable · Cancellation policy applies',
     },
     // /checkout/cancel.
     cancel: {

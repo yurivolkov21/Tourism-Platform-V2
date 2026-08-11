@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { checkoutMood, computeBookingTotal, PENDING_TTL_MINUTES, pendingExpiry } from './checkout';
+import {
+  checkoutMood,
+  computeBookingTotal,
+  PENDING_TTL_MINUTES,
+  pendingExpiry,
+  ticketBarcodeWidths,
+  ticketSerial,
+} from './checkout';
 
 describe('checkoutMood — tâm trạng màn /checkout/success đọc từ status', () => {
   it('PAID → confirmed', () => {
@@ -71,5 +78,42 @@ describe('computeBookingTotal — tổng tiền, trẻ em CÙNG đơn giá', () 
 
   it('luôn trả 2 chữ số thập phân, kể cả giá tròn', () => {
     expect(computeBookingTotal('100', 1, 0)).toBe('100.00');
+  });
+});
+
+// Vé success dựng theo giải phẫu boarding-pass thật (docs/adr redesign) — cả
+// serial lẫn barcode là "trang trí ấn phẩm" sinh từ CHÍNH mã đặt chỗ, KHÔNG
+// random: random sẽ đổi hình mỗi lần render (SSR/CSR lệch nhau) và trông giả
+// hơn cả dashed-border cliché mà bản trước vừa gỡ.
+describe('ticketSerial — số serial 10 chữ số deterministic từ mã đặt chỗ', () => {
+  it('cùng mã → luôn cùng serial', () => {
+    expect(ticketSerial('TRV-ABC123')).toBe(ticketSerial('TRV-ABC123'));
+  });
+
+  it('khác mã → khác serial', () => {
+    expect(ticketSerial('TRV-ABC123')).not.toBe(ticketSerial('TRV-XYZ999'));
+  });
+
+  it('luôn đúng 10 chữ số (đệm 0 bên trái nếu ngắn)', () => {
+    expect(ticketSerial('BK-TESTAAAA')).toMatch(/^\d{10}$/);
+  });
+});
+
+describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đặt chỗ', () => {
+  it('cùng mã → cùng mảng bề rộng', () => {
+    expect(ticketBarcodeWidths('TRV-ABC123')).toEqual(ticketBarcodeWidths('TRV-ABC123'));
+  });
+
+  it('khác mã → khác mảng bề rộng', () => {
+    expect(ticketBarcodeWidths('TRV-ABC123')).not.toEqual(ticketBarcodeWidths('TRV-XYZ999'));
+  });
+
+  it('độ dài mảng khớp độ dài mã, mỗi bề rộng trong khoảng 1-4px', () => {
+    const widths = ticketBarcodeWidths('BK-TESTAAAA');
+    expect(widths).toHaveLength('BK-TESTAAAA'.length);
+    for (const w of widths) {
+      expect(w).toBeGreaterThanOrEqual(1);
+      expect(w).toBeLessThanOrEqual(4);
+    }
   });
 });

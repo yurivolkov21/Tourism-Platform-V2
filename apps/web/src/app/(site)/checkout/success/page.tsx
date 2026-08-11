@@ -8,7 +8,15 @@ import { CheckoutShell } from '@/components/checkout/checkout-shell';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { checkoutMood } from '@/lib/checkout';
-import { formatDateRange, formatMoney } from '@/lib/tours';
+import { formatDateRange, formatMoney, formatTicketDate } from '@/lib/tours';
+
+/** Nhãn provider — TÁI DÙNG nguyên copy đã có ở `booking.form` (trang checkout
+ *  chọn provider), cùng cách [code]/page.tsx làm — không thêm key i18n mới
+ *  cho hai tên thương hiệu cố định. */
+const PROVIDER_LABEL = {
+  STRIPE: messages.booking.form.stripe,
+  PAYPAL: messages.booking.form.paypal,
+} as const;
 
 export const metadata: Metadata = {
   title: `${messages.booking.success.confirmedTitle} — Tourism`,
@@ -68,6 +76,8 @@ export default async function CheckoutSuccessPage({
   const body =
     mood === 'confirmed' ? t.confirmedBody : mood === 'confirming' ? t.pendingBody : t.settledBody;
 
+  const totalGuests = booking.numAdults + booking.numChildren;
+
   return (
     <CheckoutShell
       tone={mood === 'confirmed' ? 'success' : mood === 'confirming' ? 'warning' : 'muted'}
@@ -75,13 +85,31 @@ export default async function CheckoutSuccessPage({
       body={body}
       code={booking.code}
       codeLabel={t.refLabel}
+      stubName={booking.contactName}
+      stubMeta={`${formatDateRange(booking.departureStartDate, booking.departureEndDate)} · ${t.guestsCount(totalGuests)}`}
     >
+      {/* Khoảnh khắc primary kiểu boarding-pass — cặp ngày to nhất vé, đóng
+          khung mảnh xoay -1deg như dấu mộc. Chỉ một vế khi tour trong ngày. */}
+      <div className="-rotate-1 mx-auto flex flex-col items-center gap-1 rounded-md border px-5 py-2.5">
+        <p className="font-mono text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
+          {t.dateLabel}
+        </p>
+        <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums md:text-3xl">
+          {formatTicketDate(booking.departureStartDate)}
+          {booking.departureStartDate !== booking.departureEndDate ? (
+            <>
+              {' '}
+              <span aria-hidden="true" className="text-muted-foreground">
+                →
+              </span>{' '}
+              {formatTicketDate(booking.departureEndDate)}
+            </>
+          ) : null}
+        </p>
+      </div>
+
       <dl className="grid w-full gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
         <Fact label={t.tourLabel} value={booking.tourTitle} />
-        <Fact
-          label={t.departureLabel}
-          value={formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-        />
         <Fact
           label={t.travellersLabel}
           value={`${messages.booking.page.adultsLine(booking.numAdults)}${
@@ -91,6 +119,7 @@ export default async function CheckoutSuccessPage({
           }`}
         />
         <Fact label={t.totalLabel} value={formatMoney(booking.totalAmount, booking.currency)} />
+        <Fact label={t.paymentLabel} value={PROVIDER_LABEL[booking.paymentProvider]} />
       </dl>
 
       {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
@@ -121,11 +150,15 @@ export default async function CheckoutSuccessPage({
   );
 }
 
+/** Pattern nhãn/giá trị kiểu IATA: nhãn UPPERCASE nhỏ tracking rộng màu nhạt
+ *  đứng TRÊN, giá trị đậm đứng DƯỚI — `tabular-nums` để số thẳng cột. */
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="font-mono text-xs tracking-widest text-muted-foreground uppercase">{label}</dt>
-      <dd className="text-foreground">{value}</dd>
+    <div className="flex flex-col gap-1">
+      <dt className="font-mono text-[10px] tracking-widest text-muted-foreground/80 uppercase">
+        {label}
+      </dt>
+      <dd className="font-medium text-foreground tabular-nums">{value}</dd>
     </div>
   );
 }

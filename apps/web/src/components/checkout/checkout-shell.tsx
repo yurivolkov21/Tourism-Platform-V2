@@ -2,22 +2,26 @@ import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import type { ReactNode } from 'react';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
+import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
 
 /**
  * Khung dùng chung của hai màn quay-về (`/checkout/success`, `/checkout/cancel`)
- * — dựng thành MỘT tấm vé (boarding-pass), tinh thần Flighty: mượn quy ước ấn
- * phẩm sân bay (thân vé + cuống vé ngăn bằng đường xé), không trang trí rởm.
+ * — dựng thành MỘT tấm vé (boarding-pass) theo giải phẫu vé thật (IATA/Apple
+ * Wallet/EasyJet): thân vé ngang, cuống bên PHẢI ~30% ngăn bằng đường xé DỌC
+ * (mobile: cuống tụt xuống dưới, đường xé ngang). Không còn dashed-border +
+ * notch bán nguyệt — cliché "card giả vờ làm vé" của bản trước.
  *
- * Thân vé (title + body + `children` — facts, "what happens next", nút hành
- * động) đứng TRÊN đường xé. Cuống vé (mã đặt chỗ + nút chép + dòng hint) đứng
- * DƯỚI, và CHỈ tồn tại khi có `code` — trang cancel không có mã (booking
- * PENDING không phát mã như một voucher) nên không có cuống, card render như
- * một card thường, KHÔNG đường xé lửng lơ.
+ * Thân vé (header voucher + serial + title/body/`children` + fine print)
+ * đứng bên TRÁI/TRÊN đường xé. Cuống vé (nhãn xoay dọc, mã + nút chép, tóm tắt
+ * khách, hint, barcode) đứng bên PHẢI/DƯỚI, và CHỈ tồn tại khi có `code` —
+ * trang cancel không có mã (booking PENDING không phát mã như một voucher)
+ * nên không có cuống, card render như một card thường, KHÔNG đường xé lửng lơ.
  *
- * `tone` tô một dải mảnh trên đầu vé (không tô cả thẻ): tông màu mã hoá "có
- * cần để mắt tới không", và ở đây thông tin thật nằm ở mã đặt chỗ chứ không ở
- * màu nền — cùng nguyên tắc đã chốt ở vòng thiết kế trước, chỉ đổi CHỖ tô từ
- * một chấm cạnh tiêu đề sang một dải ở đỉnh vé.
+ * `tone` tô dải mảnh trong dải header (không tô cả thẻ): tông màu mã hoá "có
+ * cần để mắt tới không" — thông tin thật nằm ở mã đặt chỗ, không ở màu nền.
+ * Ngọc bích (`primary`) chỉ xuất hiện ở ĐÚNG BA chỗ: dải header (wordmark +
+ * nhãn TOUR VOUCHER), một highlight cạnh nhãn quan trọng nhất trong cuống
+ * (booking reference), và nền cuống nhạt hơn thân.
  */
 export function CheckoutShell({
   tone,
@@ -25,6 +29,8 @@ export function CheckoutShell({
   body,
   code,
   codeLabel,
+  stubName,
+  stubMeta,
   children,
 }: {
   tone: 'success' | 'warning' | 'muted';
@@ -32,67 +38,167 @@ export function CheckoutShell({
   body?: string;
   code?: string;
   codeLabel?: string;
+  /** Tên khách hiện gọn trong cuống — chỉ trang success truyền (cancel không
+      đủ ngữ cảnh để tóm tắt gọn một dòng). */
+  stubName?: string;
+  /** Dòng mô tả ngắn cạnh tên khách trong cuống, vd "24–26 Aug 2026 · 2 guests". */
+  stubMeta?: string;
   children?: ReactNode;
 }) {
+  const t = messages.booking.success;
+
+  if (!code) {
+    return (
+      <section className="mx-auto flex w-full max-w-2xl flex-col px-4 py-16 md:py-24">
+        <div className="overflow-hidden rounded-2xl border bg-card">
+          <div aria-hidden="true" className={cn('h-1.5 w-full', TONE_BAR[tone])} />
+          <div className="flex flex-col items-center gap-6 px-6 py-10 text-center md:px-10 md:py-12">
+            <h1 className="font-heading text-2xl font-semibold text-balance md:text-3xl">
+              {title}
+            </h1>
+            {body ? <p className="max-w-lg text-pretty text-muted-foreground">{body}</p> : null}
+            {children}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col px-4 py-16 md:py-24">
       <div className="overflow-hidden rounded-2xl border bg-card">
-        <div
-          aria-hidden="true"
-          className={cn(
-            'h-1.5 w-full',
-            tone === 'success' && 'bg-success/70',
-            tone === 'warning' && 'bg-warning/70',
-            tone === 'muted' && 'bg-muted',
-          )}
-        />
+        <div className="flex flex-col md:flex-row">
+          {/* THÂN VÉ */}
+          <div className="relative flex flex-1 flex-col md:w-[70%]">
+            {/* Guilloche mờ: sóng celadon opacity thấp, chỉ trong thân — không
+                đè lên vùng cuống/barcode. */}
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:repeating-radial-gradient(circle_at_15%_20%,var(--color-primary)_0px,transparent_2px,transparent_9px)]"
+            />
 
-        <div className="flex flex-col items-center gap-6 px-6 py-10 text-center md:px-10 md:py-12">
-          <h1 className="font-heading text-2xl font-semibold text-balance md:text-3xl">{title}</h1>
-          {body ? <p className="max-w-lg text-pretty text-muted-foreground">{body}</p> : null}
-          {children}
-        </div>
-
-        {code ? (
-          <>
-            <TicketTear />
-            {/* Cuống vé: mã to, mono, giãn cách rộng — cùng vai trò voucher
-                như bản cũ, chỉ đổi chỗ đứng xuống dưới đường xé. */}
-            <div className="flex flex-col items-center gap-2 px-6 pt-1 pb-8 text-center md:px-10">
-              {codeLabel ? (
-                <p className="font-mono text-xs tracking-widest text-muted-foreground uppercase">
-                  {codeLabel}
-                </p>
-              ) : null}
-              <div className="flex flex-wrap items-center justify-center gap-3">
-                <p className="font-mono text-2xl font-medium tracking-[0.2em] md:text-3xl">
-                  {code}
-                </p>
-                <CopyCodeButton code={code} />
+            {/* Dải header mỏng: wordmark serif nhỏ + nhãn TOUR VOUCHER + dải tone theo mood */}
+            <div className="relative border-b bg-primary/5">
+              <div aria-hidden="true" className={cn('h-1 w-full', TONE_BAR[tone])} />
+              <div className="flex items-center justify-between px-5 py-2 md:px-7">
+                <span className="font-heading text-sm font-semibold tracking-tight text-foreground">
+                  tour<span className="text-primary">ism</span>
+                </span>
+                <span className="font-mono text-[9px] font-medium tracking-[0.28em] text-primary uppercase">
+                  {t.voucherLabel}
+                </span>
               </div>
-              <p className="text-xs text-muted-foreground">
-                {messages.booking.success.stubShowCode}
-              </p>
             </div>
-          </>
-        ) : null}
+
+            {/* Serial, sát mép trên thân */}
+            <p className="relative px-5 pt-2 text-right font-mono text-[9px] tracking-widest text-muted-foreground/70 md:px-7">
+              NO. {ticketSerial(code)}
+            </p>
+
+            {/* Nội dung: title/body/children — mật độ nén, khối sát nhau */}
+            <div className="relative flex flex-1 flex-col items-center gap-4 px-5 pt-2 pb-5 text-center md:px-7">
+              <h1 className="font-heading text-2xl font-semibold text-balance md:text-3xl">
+                {title}
+              </h1>
+              {body ? <p className="max-w-lg text-pretty text-muted-foreground">{body}</p> : null}
+              {children}
+            </div>
+
+            {/* Fine print, sát mép dưới thân */}
+            <p className="relative border-t px-5 py-2 text-center font-mono text-[9px] tracking-wide text-balance text-muted-foreground/70 md:px-7">
+              {t.finePrint}
+            </p>
+          </div>
+
+          <TicketTear />
+
+          {/* CUỐNG VÉ */}
+          <div className="flex flex-col items-center gap-3 bg-muted/40 px-5 py-6 text-center md:w-[30%] md:justify-center md:px-4">
+            {/* Nhãn TOUR VOUCHER lặp lại, xoay dọc theo mép xé (desktop only —
+                mobile không còn mép dọc để bám theo). */}
+            <span
+              aria-hidden="true"
+              className="hidden font-mono text-[9px] tracking-[0.3em] text-muted-foreground uppercase md:block md:[writing-mode:vertical-rl]"
+            >
+              {t.voucherLabel}
+            </span>
+
+            {codeLabel ? (
+              <p className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+                {/* Highlight ngọc bích cạnh nhãn quan trọng nhất của cuống — booking reference */}
+                <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary" />
+                {codeLabel}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap items-center justify-center gap-2.5">
+              <p className="font-mono text-xl font-medium tracking-[0.16em] tabular-nums md:text-2xl">
+                {code}
+              </p>
+              <CopyCodeButton code={code} />
+            </div>
+
+            {stubName || stubMeta ? (
+              <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                {stubName ? <p className="font-medium text-foreground">{stubName}</p> : null}
+                {stubMeta ? <p className="tabular-nums">{stubMeta}</p> : null}
+              </div>
+            ) : null}
+
+            <p className="text-xs text-muted-foreground">{t.stubShowCode}</p>
+
+            <TicketBarcode code={code} />
+          </div>
+        </div>
       </div>
     </section>
   );
 }
 
+const TONE_BAR = {
+  success: 'bg-success/70',
+  warning: 'bg-warning/70',
+  muted: 'bg-muted',
+} as const;
+
 /**
- * Đường xé giữa thân vé và cuống vé: viền chấm ngang + hai khuyết tròn hai
- * đầu. Khuyết là `bg-background` (màu nền TRANG, không phải `bg-card`) — thẻ
- * cha có `overflow-hidden` nên nửa khuyết tràn ra ngoài bị cắt đúng ở mép thẻ,
- * cho hiệu ứng "cắn" bán nguyệt sạch ở cả hai theme mà không cần vẽ tay.
+ * Đường xé giữa thân vé và cuống vé: cột/hàng lỗ đục kim thật — chấm tròn nhỏ
+ * lặp, MÀU NỀN TRANG (không phải `bg-card`) để đọc như lỗ xuyên qua giấy.
+ * Dọc trên desktop (thân bên trái, cuống bên phải), ngang trên mobile (cuống
+ * tụt xuống dưới). KHÔNG dashed-border, KHÔNG notch bán nguyệt — cliché của
+ * bản trước.
  */
 function TicketTear() {
   return (
-    <div data-slot="ticket-tear" aria-hidden="true" className="relative">
-      <div className="border-t-2 border-dashed border-border" />
-      <span className="-left-3 absolute top-1/2 size-6 -translate-y-1/2 rounded-full bg-background" />
-      <span className="-right-3 absolute top-1/2 size-6 -translate-y-1/2 rounded-full bg-background" />
+    <div
+      data-slot="ticket-tear"
+      aria-hidden="true"
+      className="h-3 w-full shrink-0 [background-image:radial-gradient(circle,var(--background)_1.5px,transparent_1.6px)] [background-size:10px_3px] md:h-auto md:w-3 md:[background-size:3px_10px]"
+    />
+  );
+}
+
+/**
+ * Barcode giả: vạch dày-mỏng không đều, DETERMINISTIC theo mã đặt chỗ (xem
+ * `ticketBarcodeWidths`) — KHÔNG random, để hình không đổi mỗi lần render.
+ * Quiet zone dùng `bg-card` (màu "giấy" của chính thân vé, không phải hex
+ * trắng cứng) để giữ tokens-only mà vẫn tương phản cao với vạch `bg-foreground`
+ * ở cả hai theme.
+ */
+function TicketBarcode({ code }: { code: string }) {
+  const widths = ticketBarcodeWidths(code);
+  return (
+    <div aria-hidden="true" className="flex flex-col items-center gap-1">
+      <div className="flex h-7 items-stretch gap-px bg-card p-1">
+        {widths.map((w, i) => (
+          <span
+            // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder/thêm bớt
+            key={`${code}-${i}`}
+            className={i % 2 === 0 ? 'bg-foreground' : 'bg-transparent'}
+            style={{ width: `${w}px` }}
+          />
+        ))}
+      </div>
+      <p className="font-mono text-[9px] tracking-widest text-muted-foreground">{code}</p>
     </div>
   );
 }

@@ -328,6 +328,15 @@ export function formatDate(date: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+/** Ngày ngắn kiểu vé máy bay ("24 AUG") — ngày + tháng viết tắt HOA, KHÔNG
+    năm. Dùng riêng cho khoảnh khắc primary trên vé (`/checkout/success`),
+    khác `formatDate` (đủ năm, dùng cho trigger DatePicker). Cùng luật
+    timezone: tách chuỗi YYYY-MM-DD, KHÔNG qua `new Date()`. */
+export function formatTicketDate(date: string): string {
+  const [, m, d] = date.split('-').map(Number) as [number, number, number];
+  return `${d} ${MONTHS[m - 1]?.toUpperCase()}`;
+}
+
 export function formatDateRange(startDate: string, endDate: string): string {
   const [sy, sm, sd] = startDate.split('-').map(Number) as [number, number, number];
   const [ey, em, ed] = endDate.split('-').map(Number) as [number, number, number];

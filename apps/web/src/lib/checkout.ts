@@ -71,3 +71,28 @@ export function pendingExpiry(createdAt: string, at: Date = new Date()): Pending
   if (msLeft <= 0) return { minutesLeft: 0, expired: true };
   return { minutesLeft: Math.floor(msLeft / 60_000), expired: false };
 }
+
+/**
+ * Số serial 10 chữ số cho dòng "NO. …" sát mép trên thân vé (`CheckoutShell`)
+ * — mô phỏng số serial một ấn phẩm vé giấy thật, DETERMINISTIC theo mã đặt
+ * chỗ (KHÔNG random: random đổi hình mỗi lần render, SSR/CSR lệch nhau, và
+ * trông giả hơn cả dashed-border cliché vừa gỡ). Không phải một định danh
+ * thật — `code` đã là định danh; đây thuần là trang trí ấn phẩm.
+ */
+export function ticketSerial(code: string): string {
+  let hash = 0;
+  for (let i = 0; i < code.length; i++) {
+    hash = (hash * 31 + code.charCodeAt(i)) >>> 0;
+  }
+  return String(hash).padStart(10, '0').slice(-10);
+}
+
+/**
+ * Bề rộng (px, 1–4) của từng vạch barcode giả, một ký tự mã đặt chỗ → một
+ * vạch — DETERMINISTIC, cùng lý do với `ticketSerial`. Không phải barcode
+ * quét được thật (không cần máy quét ở capstone này), chỉ mô phỏng đúng
+ * "hình" vạch dày-mỏng không đều của barcode ấn phẩm thật.
+ */
+export function ticketBarcodeWidths(code: string): number[] {
+  return Array.from(code).map((ch) => (ch.charCodeAt(0) % 4) + 1);
+}
