@@ -130,7 +130,7 @@ async function main() {
             tourTitle: tour.title,
             departureStartDate: departure.startDate,
             departureEndDate: departure.endDate,
-            contactName: user.name,
+            contactName: user.name ?? user.email,
             contactEmail: user.email,
             paymentProvider: PaymentProvider.STRIPE,
             paidAt,
