@@ -11,7 +11,7 @@ import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
-import { mrzLines, passportNo, passportStats, pastTrips, travelLog } from '@/lib/passport';
+import { mrzLines, passportNo, passportStats, travelLog } from '@/lib/passport';
 
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
@@ -56,14 +56,14 @@ export default async function AccountPassportPage() {
 
   const name = session.name || session.email;
   const stats = passportStats(bookings, destinations.length);
-  // Sổ hành trình: entries thuần từ lib + ghép ảnh cover của catalog tại đây
-  // (giữ hàm thuần khỏi type Media); trips = các lần đã đi, mới nhất trước.
+  // Sổ hành trình: entries thuần từ lib (mỗi entry mang trips lần 1 → n
+  // nuôi stepper) + ghép ảnh cover của catalog tại đây (giữ hàm thuần khỏi
+  // type Media).
   const coverBySlug = new Map(destinations.map((d) => [d.slug, d.cover]));
   const logEntries = travelLog(destinations, bookings).map((e) => {
     const cover = coverBySlug.get(e.slug);
     return { ...e, cover: cover ? { url: cover.url, alt: cover.alt ?? null } : null };
   });
-  const trips = pastTrips(bookings);
   const isEmpty = bookings.length === 0;
 
   return (
@@ -117,7 +117,7 @@ export default async function AccountPassportPage() {
         {logEntries.length > 0 ? (
           <section className="mt-12">
             <h2 className="mb-5 font-heading text-xl font-semibold">{t.travelLogHeading}</h2>
-            <TravelLog entries={logEntries} trips={trips} />
+            <TravelLog entries={logEntries} />
           </section>
         ) : null}
 

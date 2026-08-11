@@ -148,55 +148,6 @@ export function unstampedNames(
     .map((d) => d.name);
 }
 
-export interface TravelLogEntry {
-  slug: string;
-  name: string;
-  /** Số LẦN đã ghé nơi này (đếm theo chuyến — đi lại là cộng thêm). */
-  visits: number;
-  /** 'Jul 2026' — tháng của lần ghé gần nhất. */
-  lastMonth: string;
-}
-
-/**
- * SỔ HÀNH TRÌNH, cột trái (vòng ReUI 11/08): các địa danh ĐÃ ĐI — chỉ nơi
- * có tem, sort cụm miền như bản đồ; chuyến chạm nhiều nơi tính cho CẢ các
- * nơi đó. Ảnh cover do page tự ghép từ catalog (giữ hàm thuần khỏi type
- * Media). Một luật đã-đi `isCompleted` với stats.
- */
-export function travelLog(
-  catalog: Array<{ slug: string; name: string; region: string | null }>,
-  bookings: Booking[],
-  today: string = todayDateString(),
-): TravelLogEntry[] {
-  const visitsBySlug = new Map<string, { visits: number; lastEnd: string }>();
-  for (const b of bookings) {
-    if (!isCompleted(b, today)) continue;
-    for (const d of b.tourDestinations) {
-      const cur = visitsBySlug.get(d.slug);
-      visitsBySlug.set(d.slug, {
-        visits: (cur?.visits ?? 0) + 1,
-        lastEnd: !cur || cur.lastEnd < b.departureEndDate ? b.departureEndDate : cur.lastEnd,
-      });
-    }
-  }
-  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
-  return [...catalog]
-    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
-    .flatMap((d) => {
-      const v = visitsBySlug.get(d.slug);
-      if (!v) return [];
-      const end = new Date(v.lastEnd);
-      return [
-        {
-          slug: d.slug,
-          name: d.name,
-          visits: v.visits,
-          lastMonth: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
-        },
-      ];
-    });
-}
-
 export interface TravelLogTrip {
   code: string;
   tourTitle: string;
@@ -207,28 +158,67 @@ export interface TravelLogTrip {
   days: number;
 }
 
+export interface TravelLogEntry {
+  slug: string;
+  name: string;
+  /** Số LẦN đã ghé nơi này (đếm theo chuyến — đi lại là cộng thêm). */
+  visits: number;
+  /** 'Jul 2026' — tháng của lần ghé gần nhất. */
+  lastMonth: string;
+  /** Các chuyến đã ghé nơi này, CŨ → MỚI (lần 1 → lần n) — nuôi stepper
+   *  dọc cột phải: mỗi lần đi một step. */
+  trips: TravelLogTrip[];
+}
+
+/** Booking đã đi → một mục chuyến của sổ hành trình. */
+function tripOf(b: Booking): TravelLogTrip {
+  const end = new Date(b.departureEndDate);
+  const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
+  return {
+    code: b.code,
+    tourTitle: b.tourTitle,
+    destName: primary?.name ?? b.tourTitle.split(/\s+/).slice(0, 2).join(' '),
+    month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
+    days:
+      Math.round(
+        (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
+          MS_PER_DAY,
+      ) + 1,
+  };
+}
+
 /**
- * SỔ HÀNH TRÌNH, cột phải: các LẦN đã đi — mỗi chuyến một mục, MỚI NHẤT
- * trước (nhật ký đọc từ gần đây lùi về).
+ * SỔ HÀNH TRÌNH (vòng ReUI 11/08 + stepper): các địa danh ĐÃ ĐI — chỉ nơi
+ * có tem, sort cụm miền như bản đồ; chuyến chạm nhiều nơi tính cho CẢ các
+ * nơi đó, mỗi entry mang danh sách chuyến CŨ → MỚI của nơi mình. Ảnh cover
+ * do page tự ghép từ catalog (giữ hàm thuần khỏi type Media). Một luật
+ * đã-đi `isCompleted` với stats.
  */
-export function pastTrips(bookings: Booking[], today: string = todayDateString()): TravelLogTrip[] {
-  return bookings
+export function travelLog(
+  catalog: Array<{ slug: string; name: string; region: string | null }>,
+  bookings: Booking[],
+  today: string = todayDateString(),
+): TravelLogEntry[] {
+  const tripsBySlug = new Map<string, TravelLogTrip[]>();
+  const done = bookings
     .filter((b) => isCompleted(b, today))
-    .sort((a, b) => b.departureEndDate.localeCompare(a.departureEndDate))
-    .map((b) => {
-      const end = new Date(b.departureEndDate);
-      const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
-      return {
-        code: b.code,
-        tourTitle: b.tourTitle,
-        destName: primary?.name ?? b.tourTitle.split(/\s+/).slice(0, 2).join(' '),
-        month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
-        days:
-          Math.round(
-            (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
-              MS_PER_DAY,
-          ) + 1,
-      };
+    .sort((a, b) => a.departureEndDate.localeCompare(b.departureEndDate));
+  for (const b of done) {
+    const trip = tripOf(b);
+    for (const d of b.tourDestinations) {
+      const list = tripsBySlug.get(d.slug) ?? [];
+      list.push(trip);
+      tripsBySlug.set(d.slug, list);
+    }
+  }
+  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
+  return [...catalog]
+    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
+    .flatMap((d) => {
+      const trips = tripsBySlug.get(d.slug);
+      const last = trips?.at(-1);
+      if (!trips || !last) return [];
+      return [{ slug: d.slug, name: d.name, visits: trips.length, lastMonth: last.month, trips }];
     });
 }
 

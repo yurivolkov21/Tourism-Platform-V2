@@ -6,7 +6,6 @@ import {
   pageStamps,
   passportNo,
   passportStats,
-  pastTrips,
   travelLog,
   unstampedNames,
 } from './passport';
@@ -212,16 +211,18 @@ describe('unstampedNames', () => {
   });
 });
 
-describe('travelLog + pastTrips', () => {
-  // Sổ hành trình (vòng ReUI 11/08): trái = địa danh ĐÃ ĐI (ảnh + tên),
-  // phải = các LẦN đã đi. Một luật đã-đi `isCompleted` với stats/tem.
+describe('travelLog', () => {
+  // Sổ hành trình (vòng ReUI 11/08 + stepper): trái = địa danh ĐÃ ĐI, phải
+  // = stepper dọc các LẦN đã đi NƠI ĐANG CHỌN — mỗi entry mang danh sách
+  // chuyến của nơi đó theo thứ tự thời gian (lần 1 → lần n). Một luật
+  // đã-đi `isCompleted` với stats/tem.
   const CATALOG = [
     { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
     { slug: 'ha-long-bay', name: 'Hạ Long Bay', region: 'Northern Vietnam' },
     { slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
   ];
 
-  it('travelLog: chỉ nơi đã đi, sort miền, đếm số lần + tháng ghé gần nhất', () => {
+  it('chỉ nơi đã đi, sort miền, đếm số lần + tháng ghé gần nhất', () => {
     const entries = travelLog(
       CATALOG,
       [
@@ -251,34 +252,27 @@ describe('travelLog + pastTrips', () => {
     expect(haLong?.lastMonth).toBe('Jul 2026');
   });
 
-  it('pastTrips: mỗi CHUYẾN một mục, mới nhất trước, đủ tên tour/địa danh/tháng/số ngày', () => {
-    const trips = pastTrips(
+  it('mỗi entry mang trips CŨ → MỚI (lần 1 → lần n) đủ tour/tháng/số ngày — nuôi stepper', () => {
+    const entries = travelLog(
+      CATALOG,
       [
+        doneTrip({ tourTitle: 'Ha Long Cruise' }), // kết thúc 23/07 — LẦN 2, 3 ngày
         doneTrip({
           code: 'BK-DONEBBBB',
+          tourTitle: 'Ha Long Kayak',
           departureStartDate: '2026-05-01',
           departureEndDate: '2026-05-02',
-        }),
-        doneTrip({ tourTitle: 'Ha Long Cruise' }), // kết thúc 23/07 — mới hơn, 3 ngày
-        makeBooking({ code: 'BK-FUTUREAA' }), // chưa đi — loại
+        }), // LẦN 1, 2 ngày
       ],
       TODAY,
     );
-    expect(trips).toHaveLength(2);
-    expect(trips[0]?.code).toBe('BK-DONEAAAA');
-    expect(trips[0]?.tourTitle).toBe('Ha Long Cruise');
-    expect(trips[0]?.destName).toBe('Hạ Long Bay');
-    expect(trips[0]?.month).toBe('Jul 2026');
-    expect(trips[0]?.days).toBe(3);
-    expect(trips[1]?.days).toBe(2);
-  });
-
-  it('pastTrips: tour không gắn destination → destName rơi về 2 từ đầu tourTitle', () => {
-    const trips = pastTrips(
-      [doneTrip({ tourDestinations: [], tourTitle: 'Mekong Delta Day Cruise' })],
-      TODAY,
-    );
-    expect(trips[0]?.destName).toBe('Mekong Delta');
+    const trips = entries[0]?.trips;
+    expect(trips?.map((t) => t.code)).toEqual(['BK-DONEBBBB', 'BK-DONEAAAA']);
+    expect(trips?.[0]?.tourTitle).toBe('Ha Long Kayak');
+    expect(trips?.[0]?.month).toBe('May 2026');
+    expect(trips?.[0]?.days).toBe(2);
+    expect(trips?.[1]?.days).toBe(3);
+    expect(trips?.[1]?.destName).toBe('Hạ Long Bay');
   });
 });
 

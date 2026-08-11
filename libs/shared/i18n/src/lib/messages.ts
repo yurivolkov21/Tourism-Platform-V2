@@ -2589,6 +2589,10 @@ export const messages = {
     pastTripsHeading: 'Your visits',
     tripMeta: (dest: string, month: string, days: number) =>
       `${dest} · ${month} · ${days} day${days === 1 ? '' : 's'}`,
+    /** Stepper dọc các lần đã đi (vòng stepper 11/08). */
+    visitStep: (n: number) => `Visit ${n}`,
+    visitPrev: 'Previous',
+    visitNext: 'Next',
     /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
     bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
     bookingsOpen: 'Open →',
