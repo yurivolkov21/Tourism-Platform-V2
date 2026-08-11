@@ -2501,8 +2501,11 @@ export const messages = {
   // Trang `/account/saved` — grid tour đã lưu (wishlist), nút ✕ bỏ lưu (A1:
   // state cục bộ optimistic trên mock, A2 nối `wishlist.set`).
   accountSaved: {
-    title: 'Saved tours',
+    // "Tucked inside" (M1/M8 hộ chiếu): trang saved là NGĂN KẸP trong hộ chiếu
+    // — đổi giọng title theo thế giới quan mới, subtitle giữ.
+    title: 'Tucked inside',
     subtitle: 'Tours you’ve bookmarked to plan later.',
+    back: '← Passport',
     /** Tiêu đề MỤC ở cột trái — cố ý KHÁC `title` của trang. Đặt trùng thì cột
      *  trái và H1 thành hai dòng chữ y hệt nhau cách nhau vài chục px. */
     listHeading: 'Your list',
