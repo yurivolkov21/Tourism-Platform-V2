@@ -8,6 +8,49 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-11 — Redesign Checkout hướng B + khu Account hướng A (branch `feat/redesign-checkout-account`, ff-only, 27 commit `330452e..05d4d1c`)
+
+Cụm lớn nhất P3b tới nay: 11 task subagent-driven + final review toàn branch +
+6 vòng polish theo mắt user trên giao diện thật. **Checkout được user duyệt**;
+khu account thi công đúng spec nhưng **user bác về visual** ("vẫn là trang cũ
+chỉnh lại") — sẽ đập-xây-lại ở vòng design riêng (demo vòng 2 với 3 kiến trúc
+từ-số-0 đang chờ user chấm), phần logic/contract của cụm này vẫn là nền dùng lại.
+
+Nội dung chính: contract `BookingSchema` thêm `tourSlug` và `tourImage` (join
+lúc đọc, phủ 9 call site `toBooking`, kiểu ép compile-error khi quên join, int
+test); trang book lưới 2 cột marketplace (step indicator, 3 card, summary sticky
+badge outline + dòng trấn an hoàn tiền tính mốc THẬT từ policy bậc thang, không
+dark-pattern); form private trip đồng bộ card + DatePicker Calendar/Popover thay
+native date; trang success thành TẤM VÉ theo giải phẫu boarding-pass thật
+(nghiên cứu IATA BCBP + Apple Wallet + Flighty: lưới nhãn-trên-giá-trị-dưới,
+cuống dọc, lỗ đục kim, serial + barcode deterministic từ mã, fine print, băng
+trạng thái mép cuống — khai tử cliché dashed+notch); cancel trấn an trung thực
+("booking still open", không nói giữ ghế); khu account hướng A (3 tab Trips, hub
+gỡ, TripCard status-aware đếm ngược, hủy giáng cấp text-link cạnh policy,
+profile nở-inline, delete-account text-link); nút Reserve trang tour NỐI DÂY
+vào trang book (nút chết từ thời static-first — user phát hiện); đóng nợ
+contrast primary dark bằng viền phân định; book page né navbar fixed.
+
+**Review findings tiêu biểu:** final review (opus) bắt badge "Free cancellation"
+là lời hứa sai policy (spec cấm trước, plan kê sai, test khoá hành vi sai —
+sửa thành trấn an tính mốc thật); TripCard bỏ qua `booking.status` (PENDING
+quá hạn hiện nhầm "Leave a review"); copy "reservation is held" vi phạm
+invariant PENDING-không-giữ-ghế; CTA mobile đứng trước form; tổng tiền tính
+đôi ở 2 component (hợp nhất `computeBookingTotal`). 11/11 task đều qua review
+2 lớp; 5 task cần vòng fix, 4 Approved thẳng.
+
+**Nợ mới ghi sổ:** Trips hero "Leave a review" hiện cả khi đã review (list
+không đọc `reviewedAt` — chống N+1 có hồ sơ) · "Where you've been" chứa
+CANCELLED chưa-đi (grouping tiền tồn) · pill badge tự chế còn ở tour-hero/
+tour-card/booking-rail (ngoài scope, đợt sau đồng bộ theo Badge outline) ·
+site-header edge case slug tour tên "book" · CopyCodeButton kế thừa pattern
+setTimeout-không-cleanup của ShareRow. Nợ ĐÓNG: contrast primary dark 2.91
+(viền thay thế — ADR-0019 xác nhận không thể đạt kép), textarea lý do hủy
+(vòng trước đã trả), Reserve chết.
+
+**Tests after:** CI full xanh (gate + 158 int; đo tại nghiệm thu worktree:
+1334 unit và 158 int); riêng web 1060 test / 89 file sau vòng polish cuối.
+
 ## 2026-08-11 — Khu account: lưới ba toạ độ, hub khối, tách token mực `destructive` (branch `feat/account-sidebar`, 3 commit)
 
 Vòng này có ba lần user bác thiết kế liên tiếp, và bài học lớn nhất là bài học
