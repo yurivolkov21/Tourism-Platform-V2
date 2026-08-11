@@ -102,14 +102,8 @@ export interface PassportStamp {
   label: string;
   /** 'Jul 2026' — tháng kết thúc chuyến. */
   month: string;
-  /**
-   * Ngữ pháp hình tem theo đời thật (gói tu sửa 11/08): nhiều nước đóng
-   * OVAL cho nhập cảnh, CHỮ NHẬT cho xuất cảnh — tem chuyến đã đi là 'rect'
-   * (đã "xuất" khỏi chuyến), tem ghost mời chuyến kế là 'oval' (lời mời
-   * "nhập cảnh" tiếp theo).
-   */
-  shape: 'rect' | 'oval';
-  /** −8..+6 độ — "đóng tay hơi lệch", deterministic từ mã booking. */
+  shape: 'round' | 'square';
+  /** −7..7 độ — "đóng tay hơi lệch", deterministic từ mã booking. */
   rotationDeg: number;
   ghost?: boolean;
 }
@@ -136,14 +130,16 @@ export function passportStamps(
     return {
       label: stampLabel(b),
       month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
-      shape: 'rect',
-      // (h % 15) − 8 → nguyên trong [−8, 6] — biên độ mộc đóng tay đo từ
-      // nghiên cứu tem thật (gói tu sửa 11/08).
-      rotationDeg: (Math.floor(h / 2) % 15) - 8,
+      // Tròn/vuông đan xen theo hash — bộ tem user đã duyệt từ vòng đầu;
+      // vòng tu sửa 11/08 từng thử chữ nhật Schengen đồng loạt và bị bác
+      // (mắt user chấm bộ cũ duyên hơn, chỉ giữ lại chất mực `.stamp-ink`).
+      shape: h % 2 === 0 ? 'round' : 'square',
+      // (h % 15) − 7 → nguyên trong [−7, 7].
+      rotationDeg: (Math.floor(h / 2) % 15) - 7,
     };
   });
   // Tem ghost "chờ chuyến kế" LUÔN đứng cuối — lời mời, không phải dữ liệu.
-  stamps.push({ label: '?', month: '', shape: 'oval', rotationDeg: 3, ghost: true });
+  stamps.push({ label: '?', month: '', shape: 'round', rotationDeg: 3, ghost: true });
   return stamps;
 }
 

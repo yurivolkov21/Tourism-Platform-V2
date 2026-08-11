@@ -8,14 +8,11 @@ import type { PassportStats } from '@/lib/passport';
  */
 export function StatRow({ stats }: { stats: PassportStats }) {
   const t = messages.passportHome;
-  // Caption đánh số nối tiếp data page (gói tu sửa 11/08): Zone I chiếm
-  // (1)-(3), danh tính (4)-(5) ở `PassportHeader` — stats là field (6)-(9)
-  // của cùng cuốn sổ. Đổi số ở đây thì đổi cả bên header cho khớp.
   const CELLS = [
-    { n: 6, value: String(stats.trips), label: t.statTrips },
-    { n: 7, value: String(stats.places), label: t.statPlaces },
-    { n: 8, value: `${stats.exploredPct}%`, label: t.statExplored },
-    { n: 9, value: String(stats.daysOnRoad), label: t.statDays },
+    { value: String(stats.trips), label: t.statTrips },
+    { value: String(stats.places), label: t.statPlaces },
+    { value: `${stats.exploredPct}%`, label: t.statExplored },
+    { value: String(stats.daysOnRoad), label: t.statDays },
   ];
   return (
     <dl className="grid grid-cols-2 border-b border-border/55 md:grid-cols-4">
@@ -29,7 +26,7 @@ export function StatRow({ stats }: { stats: PassportStats }) {
               đổi thứ tự DOM/tab. */}
           <div className="flex flex-col-reverse">
             <dt className="mt-0.5 text-[11.5px] font-semibold tracking-[0.1em] text-muted-foreground uppercase">
-              ({c.n}) {c.label}
+              {c.label}
             </dt>
             <dd className="font-heading text-3xl font-semibold tabular-nums">{c.value}</dd>
           </div>

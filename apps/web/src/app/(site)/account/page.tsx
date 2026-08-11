@@ -98,13 +98,14 @@ export default async function AccountPassportPage({
     <PassportHeader
       name={session.name || session.email}
       sinceYear={sinceYear}
-      passportNo={passportNo(session.id)}
       settingsHref="/account/settings"
     />
   );
-  // Cặp dòng MRZ chuẩn TD3 (2 × 44 ký tự, check digit thật) — in ở dải đáy
-  // section trên nền SÁNG hơn trang giấy, mô phỏng vùng đọc máy trắng trơn
-  // của data page thật (gói tu sửa 11/08).
+  // Cặp dòng MRZ chuẩn TD3 (2 × 44 ký tự, check digit thật) + dòng đồ đạc
+  // Type/Code/Passport No. — in thành dải máy đọc cuối khối danh tính, THU
+  // trong khổ nội dung (không tràn màn hình — góp ý user 11/08 vòng 2).
+  const no = passportNo(session.id);
+  const passportNoDisplay = `${no.slice(0, 2)} ${no.slice(2, 5)} ${no.slice(5)}`;
   const mrz = mrzLines(session.name || session.email, session.id, sinceYear);
 
   return (
@@ -148,14 +149,20 @@ export default async function AccountPassportPage({
                 </div>
               </div>
             )}
-          </div>
-          {/* Vùng đọc máy (Zone VII): nền sáng hơn hẳn phần trang có vân —
-              chính sự tương phản nền này là tín hiệu "thật" của MRZ. Trang
-              trí thuần (aria-hidden), cắt bằng overflow, KHÔNG wrap. */}
-          <div aria-hidden="true" className="border-t border-border/55 bg-background">
-            <div className="mx-auto max-w-5xl overflow-hidden px-4 py-3 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:px-8 md:text-[13px] md:tracking-[0.18em]">
-              <p>{mrz[0]}</p>
-              <p>{mrz[1]}</p>
+            {/* Vùng đọc máy (Zone VII): dải nền SÁNG hơn trang giấy — chính
+                sự tương phản nền là tín hiệu "thật" của MRZ; đồ đạc giấy tờ
+                (Type/Code/Passport No.) đứng làm caption của dải, tránh xa
+                khối danh tính. Trang trí thuần (aria-hidden), cắt bằng
+                overflow, KHÔNG wrap. */}
+            <div aria-hidden="true" className="mt-8">
+              <p className="font-mono text-[9.5px] font-semibold tracking-[0.16em] text-muted-foreground uppercase">
+                {t.zoneType} {t.zoneTypeValue} · {t.zoneCode} {t.zoneCodeValue} · {t.zoneNo}{' '}
+                {passportNoDisplay}
+              </p>
+              <div className="mt-1.5 overflow-hidden rounded-lg border border-border/55 bg-background px-4 py-2.5 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:text-[13px] md:tracking-[0.18em]">
+                <p>{mrz[0]}</p>
+                <p>{mrz[1]}</p>
+              </div>
             </div>
           </div>
         </section>

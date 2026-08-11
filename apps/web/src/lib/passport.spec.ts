@@ -115,16 +115,13 @@ describe('passportStamps', () => {
     expect(stamps[2]?.ghost).toBe(true);
   });
 
-  // Ngữ pháp hình tem theo đời thật (gói tu sửa 11/08): tem chuyến đã đi =
-  // CHỮ NHẬT kiểu Schengen (xuất cảnh), tem ghost = OVAL (lời mời "nhập cảnh"
-  // chuyến kế). Xoay lệch −8..+6 (biên độ mộc đóng tay đo từ nghiên cứu).
-  it('deterministic từ booking.code — tem thật hình rect, xoay trong [−8, 6]', () => {
+  it('deterministic từ booking.code — cùng input cùng output, khác code có thể khác thế', () => {
     const one = passportStamps([doneTrip()], TODAY);
     const two = passportStamps([doneTrip()], TODAY);
     expect(one).toEqual(two);
     const s = one[0];
-    expect(s?.shape).toBe('rect');
-    expect(s && s.rotationDeg >= -8 && s.rotationDeg <= 6).toBe(true);
+    expect(s && s.rotationDeg >= -7 && s.rotationDeg <= 7).toBe(true);
+    expect(s && ['round', 'square'].includes(s.shape)).toBe(true);
   });
 
   it('tour không gắn destination → nhãn rơi về 2 từ đầu tourTitle UPPERCASE', () => {
@@ -135,11 +132,10 @@ describe('passportStamps', () => {
     expect(stamps[0]?.label).toBe('MEKONG DELTA');
   });
 
-  it('0 chuyến hoàn thành → chỉ còn tem ghost, hình oval', () => {
+  it('0 chuyến hoàn thành → chỉ còn tem ghost', () => {
     const stamps = passportStamps([], TODAY);
     expect(stamps).toHaveLength(1);
     expect(stamps[0]?.ghost).toBe(true);
-    expect(stamps[0]?.shape).toBe('oval');
   });
 });
 
