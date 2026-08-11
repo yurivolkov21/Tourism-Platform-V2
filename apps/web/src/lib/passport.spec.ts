@@ -3,8 +3,9 @@ import { makeBooking } from '@/test/fixtures/booking';
 import {
   journeySlugs,
   mapDots,
-  memberNumber,
-  mrzLine,
+  mrzCheckDigit,
+  mrzLines,
+  passportNo,
   passportStamps,
   passportStats,
 } from './passport';
@@ -114,13 +115,16 @@ describe('passportStamps', () => {
     expect(stamps[2]?.ghost).toBe(true);
   });
 
-  it('deterministic từ booking.code — cùng input cùng output, khác code có thể khác thế', () => {
+  // Ngữ pháp hình tem theo đời thật (gói tu sửa 11/08): tem chuyến đã đi =
+  // CHỮ NHẬT kiểu Schengen (xuất cảnh), tem ghost = OVAL (lời mời "nhập cảnh"
+  // chuyến kế). Xoay lệch −8..+6 (biên độ mộc đóng tay đo từ nghiên cứu).
+  it('deterministic từ booking.code — tem thật hình rect, xoay trong [−8, 6]', () => {
     const one = passportStamps([doneTrip()], TODAY);
     const two = passportStamps([doneTrip()], TODAY);
     expect(one).toEqual(two);
     const s = one[0];
-    expect(s && s.rotationDeg >= -7 && s.rotationDeg <= 7).toBe(true);
-    expect(s && ['round', 'square'].includes(s.shape)).toBe(true);
+    expect(s?.shape).toBe('rect');
+    expect(s && s.rotationDeg >= -8 && s.rotationDeg <= 6).toBe(true);
   });
 
   it('tour không gắn destination → nhãn rơi về 2 từ đầu tourTitle UPPERCASE', () => {
@@ -131,32 +135,78 @@ describe('passportStamps', () => {
     expect(stamps[0]?.label).toBe('MEKONG DELTA');
   });
 
-  it('0 chuyến hoàn thành → chỉ còn tem ghost', () => {
+  it('0 chuyến hoàn thành → chỉ còn tem ghost, hình oval', () => {
     const stamps = passportStamps([], TODAY);
     expect(stamps).toHaveLength(1);
     expect(stamps[0]?.ghost).toBe(true);
+    expect(stamps[0]?.shape).toBe('oval');
   });
 });
 
-describe('memberNumber + mrzLine', () => {
-  it('memberNumber deterministic, đúng format NO. XXX XXX', () => {
-    const a = memberNumber('user-abc');
-    expect(a).toBe(memberNumber('user-abc'));
-    expect(a).toMatch(/^NO\. \d{3} \d{3}$/);
-    expect(memberNumber('user-khac')).not.toBe(a);
+describe('mrzCheckDigit', () => {
+  // Ba vector chính chủ từ worked example của ICAO Doc 9303 Part 3 —
+  // trọng số 7-3-1, A=10..Z=35, '<'=0, mod 10.
+  it('đúng ba vector mẫu của ICAO 9303', () => {
+    expect(mrzCheckDigit('L898902C3')).toBe(6);
+    expect(mrzCheckDigit('740812')).toBe(2);
+    expect(mrzCheckDigit('120415')).toBe(9);
   });
 
-  it('mrzLine đúng 44 ký tự, uppercase, bỏ dấu tiếng Việt, pad bằng <', () => {
-    const line = mrzLine('Bosco Wong', 'NO. 214 306', 2026);
-    expect(line).toHaveLength(44);
-    expect(line).toBe(line.toUpperCase());
-    expect(line.startsWith('P<TOURISM<<WONG<<BOSCO')).toBe(true);
-    expect(line).toContain('214306');
-    expect(line).toContain('2026');
-    // Tên có dấu + quá dài: không vỡ 44 ký tự, không còn ký tự có dấu.
-    const long = mrzLine('Nguyễn Thị Minh Khai Đặng Trần', 'NO. 000 001', 2026);
-    expect(long).toHaveLength(44);
-    expect(long).not.toMatch(/[ỄĐẶẦỊ]/);
+  it("filler '<' đóng góp 0 — chuỗi toàn filler có check digit 0", () => {
+    expect(mrzCheckDigit('<'.repeat(14))).toBe(0);
+  });
+});
+
+describe('passportNo', () => {
+  it('deterministic, đúng format TV + 6 chữ số, khác userId khác số', () => {
+    const a = passportNo('user-abc');
+    expect(a).toBe(passportNo('user-abc'));
+    expect(a).toMatch(/^TV\d{6}$/);
+    expect(passportNo('user-khac')).not.toBe(a);
+  });
+});
+
+describe('mrzLines', () => {
+  it('hai dòng đúng 44 ký tự, chỉ [A-Z0-9<], không khoảng trắng', () => {
+    const [l1, l2] = mrzLines('Bosco Wong', 'user-abc', 2026);
+    expect(l1).toHaveLength(44);
+    expect(l2).toHaveLength(44);
+    expect(l1).toMatch(/^[A-Z0-9<]{44}$/);
+    expect(l2).toMatch(/^[A-Z0-9<]{44}$/);
+  });
+
+  it('dòng 1 đúng ngữ pháp TD3: P< + mã TRV + SURNAME<<GIVEN, pad bằng <', () => {
+    const [l1] = mrzLines('Bosco Wong', 'user-abc', 2026);
+    expect(l1.startsWith('P<TRVWONG<<BOSCO<')).toBe(true);
+    expect(l1.endsWith('<')).toBe(true);
+  });
+
+  it('dòng 2 mở bằng số hộ chiếu + check digit, các check digit tự nhất quán', () => {
+    const [, l2] = mrzLines('Bosco Wong', 'user-abc', 2026);
+    const doc = passportNo('user-abc').padEnd(9, '<');
+    expect(l2.startsWith(doc)).toBe(true);
+    // Check digit của từng trường đứng ngay sau trường đó — tự đối chiếu.
+    expect(Number(l2[9])).toBe(mrzCheckDigit(doc));
+    expect(l2.slice(10, 13)).toBe('TRV');
+    const issue = l2.slice(13, 19);
+    expect(Number(l2[19])).toBe(mrzCheckDigit(issue));
+    expect(issue.startsWith('26')).toBe(true); // sinceYear 2026 → YYMMDD
+    const expiry = l2.slice(21, 27);
+    expect(Number(l2[27])).toBe(mrzCheckDigit(expiry));
+    // Composite check digit cuối cùng: tính trên docNo+check + issue+check +
+    // expiry+check + optional+check — đúng các vị trí TD3 quy định.
+    const composite = l2.slice(0, 10) + l2.slice(13, 20) + l2.slice(21, 43);
+    expect(Number(l2[43])).toBe(mrzCheckDigit(composite));
+  });
+
+  it('tên có dấu/tên là email: fold ASCII, ký tự ngoài A-Z thành <, không vỡ 44', () => {
+    const [l1] = mrzLines('Nguyễn Thị Minh Khai Đặng Trần', 'user-abc', 2026);
+    expect(l1).toHaveLength(44);
+    expect(l1).toMatch(/^[A-Z0-9<]{44}$/);
+    expect(l1).toContain('TRAN<<NGUYEN');
+    const [e1] = mrzLines('demo-178@tourism.test', 'user-abc', 2026);
+    expect(e1).toHaveLength(44);
+    expect(e1).toMatch(/^P<TRV[A-Z<]+$/); // @, chấm, số trong tên đều thành <
   });
 });
 

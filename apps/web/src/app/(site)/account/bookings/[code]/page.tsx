@@ -10,6 +10,7 @@ import { ReviewForm } from '@/components/account/review-form';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportPaper } from '@/components/passport/passport-paper';
 import { VisaStamp } from '@/components/passport/visa-stamp';
+import { todayDateString } from '@/lib/account-stats';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { bookingView, toCancellationView } from '@/lib/booking-vm';
@@ -100,6 +101,10 @@ export default async function AccountBookingDetailPage({
   const view = bookingView(booking, cancellation);
   const terminalNote = t.terminalNote[view.statusKey];
   const sec = t.sections;
+  // Ngữ pháp hình mộc theo đời thật (gói tu sửa 11/08): chuyến còn phía
+  // trước = OVAL "nhập cảnh", đã kết thúc = CHỮ NHẬT "xuất cảnh" — so CHUỖI
+  // ngày UTC, một luật với `lib/passport`/`account-stats`.
+  const stampPhase = booking.departureEndDate < todayDateString() ? 'exit' : 'entry';
 
   return (
     <div>
@@ -135,7 +140,7 @@ export default async function AccountBookingDetailPage({
                   </Link>
                 </p>
               </div>
-              <VisaStamp status={booking.status} tone={view.tone} />
+              <VisaStamp status={booking.status} tone={view.tone} phase={stampPhase} />
             </header>
 
             {booking.tourImage ? (
@@ -148,11 +153,12 @@ export default async function AccountBookingDetailPage({
             ) : null}
 
             {/* Lưới nhãn IATA: nhãn UPPERCASE nhỏ TRÊN, giá trị đậm DƯỚI — cùng
-              ngôn ngữ với tấm vé checkout. */}
+              ngôn ngữ với tấm vé checkout. Caption đánh số kiểu ICAO (gói tu
+              sửa 11/08) — mỗi giấy tờ tự đánh số field của nó từ (1). */}
             <dl className="grid grid-cols-2 gap-x-5 gap-y-4 border-b border-dashed border-border px-6 py-5 md:grid-cols-4">
               <div>
                 <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                  {tv.labels.dates}
+                  (1) {tv.labels.dates}
                 </dt>
                 <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
                   {iataDates(booking.departureStartDate, booking.departureEndDate)}
@@ -160,7 +166,7 @@ export default async function AccountBookingDetailPage({
               </div>
               <div>
                 <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                  {tv.labels.travellers}
+                  (2) {tv.labels.travellers}
                 </dt>
                 <dd className="mt-0.5 text-[15px] font-semibold">
                   {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
@@ -168,13 +174,13 @@ export default async function AccountBookingDetailPage({
               </div>
               <div>
                 <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                  {tv.labels.reference}
+                  (3) {tv.labels.reference}
                 </dt>
                 <dd className="mt-0.5 font-mono text-[15px] font-semibold">{booking.code}</dd>
               </div>
               <div>
                 <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                  {tv.labels.total}
+                  (4) {tv.labels.total}
                 </dt>
                 <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
                   {formatMoney(booking.totalAmount, booking.currency)}

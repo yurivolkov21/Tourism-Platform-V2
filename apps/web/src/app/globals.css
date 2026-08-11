@@ -210,3 +210,19 @@ select:-webkit-autofill {
     animation: none;
   }
 }
+
+/* ── Mực tem hộ chiếu (gói tu sửa 11/08) ──
+ * Mô phỏng mực dấu thấm giấy: mask nhiễu feTurbulence (SVG inline data-URI,
+ * không ảnh ngoài) cho mực đứt quãng lấm tấm — alpha dao động 0.35..1 nên chữ
+ * trên tem vẫn đọc được, chỉ "sờn" như mộc đóng vội. `multiply` để mực đè lên
+ * vân giấy như thấm thật — CHỈ ở light theme: nhân màu mực sáng (ink dark
+ * theme) lên nền tối sẽ làm tem gần như biến mất. */
+.stamp-ink {
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.9 0 0 0 0.35'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23g)'/%3E%3C/svg%3E");
+  mask-size: 140px 140px;
+  mask-repeat: repeat;
+}
+
+html:not(.dark) .stamp-ink {
+  mix-blend-mode: multiply;
+}

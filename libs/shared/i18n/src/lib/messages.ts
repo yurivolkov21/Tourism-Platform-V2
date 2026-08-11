@@ -2561,7 +2561,18 @@ export const messages = {
      *  thay band tự chế; danh tính (tên/MRZ/tem) vẫn ở trang giấy bên dưới. */
     heroBreadcrumb: 'Account',
     heroTitle: 'Traveler passport',
-    since: (year: number) => `Traveler since ${year}`,
+    /** Hàng Zone I của data page (gói tu sửa 11/08 — giải phẫu ICAO 9303):
+     *  Type/Code/Passport No. đứng mép trên trang giấy như hộ chiếu thật;
+     *  giá trị P/TRV là "ngữ pháp giấy tờ", không phải copy cần dịch. */
+    zoneType: 'Type',
+    zoneTypeValue: 'P',
+    zoneCode: 'Code',
+    zoneCodeValue: 'TRV',
+    zoneNo: 'Passport no.',
+    /** Caption đánh số kiểu ID cho field danh tính — nhãn tí hon trên,
+     *  giá trị lớn dưới (thay câu 'Traveler since {year}' cũ). */
+    fieldName: 'Name',
+    fieldSince: 'Traveler since',
     settingsLink: 'Settings ⚙',
     journeyHeading: 'Your journey',
     mapHeading: 'Where you’ve set foot',

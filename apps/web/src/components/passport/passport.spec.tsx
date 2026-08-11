@@ -11,18 +11,23 @@ import { VisaStamp } from './visa-stamp';
 // KHÔNG chụp markup: assert thứ user thấy (chữ, href, trạng thái class).
 
 describe('PassportHeader', () => {
-  it('hiện kicker, tên, since, MRZ và link Settings đúng href', () => {
+  // Giải phẫu data page (gói tu sửa 11/08): hàng Zone I + caption đánh số;
+  // MRZ đã dời ra dải riêng đáy section (page render, không thuộc header).
+  it('hiện hàng Zone I, tên, caption Traveler since và link Settings đúng href', () => {
     render(
       <PassportHeader
         name="Bosco Wong"
         sinceYear={2026}
-        mrz="P<TOURISM<<WONG<<BOSCO<<<<<<<<<214306<<2026<<<"
+        passportNo="TV214306"
         settingsHref="/account/settings"
       />,
     );
     expect(screen.getByRole('heading', { name: 'Bosco Wong' })).toBeInTheDocument();
-    expect(screen.getByText(/Traveler since 2026/)).toBeInTheDocument();
-    expect(screen.getByText(/P<TOURISM<<WONG<<BOSCO/)).toBeInTheDocument();
+    // Zone I: số hộ chiếu nhóm 'TV 214 306', nhãn Type/Code/Passport no.
+    expect(screen.getByText('TV 214 306')).toBeInTheDocument();
+    expect(screen.getByText(/Passport no\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Traveler since/i)).toBeInTheDocument();
+    expect(screen.getByText('2026')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /Settings/ })).toHaveAttribute(
       'href',
       '/account/settings',
@@ -31,13 +36,13 @@ describe('PassportHeader', () => {
 });
 
 describe('StampRow', () => {
-  it('render đúng số tem, xoay theo data, ghost nét đứt cuối dãy', () => {
+  it('render đúng số tem, xoay theo data, tem thật rect + mực stamp-ink, ghost oval nét đứt cuối dãy', () => {
     render(
       <StampRow
         stamps={[
-          { label: 'HỘI AN', month: 'Jun 2026', shape: 'round', rotationDeg: -6 },
-          { label: 'HẠ LONG BAY', month: 'Jul 2026', shape: 'square', rotationDeg: 4 },
-          { label: '?', month: '', shape: 'round', rotationDeg: 3, ghost: true },
+          { label: 'HỘI AN', month: 'Jun 2026', shape: 'rect', rotationDeg: -6 },
+          { label: 'HẠ LONG BAY', month: 'Jul 2026', shape: 'rect', rotationDeg: 4 },
+          { label: '?', month: '', shape: 'oval', rotationDeg: 3, ghost: true },
         ]}
       />,
     );
@@ -45,9 +50,15 @@ describe('StampRow', () => {
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveStyle({ transform: 'rotate(-6deg)' });
     expect(screen.getByText('HỘI AN')).toBeInTheDocument();
-    // Tem ghost: nhãn "?" + sub "next stamp" (copy i18n), style dashed/mờ.
+    // Tem thật: chữ nhật Schengen (rounded-lg) + lớp mực nhiễu `.stamp-ink`;
+    // tem 2+ đóng chồng mép lên tem trước (âm margin).
+    expect(items[0]?.className).toContain('rounded-lg');
+    expect(items[0]?.className).toContain('stamp-ink');
+    expect(items[1]?.className).toContain('-ml-3');
+    // Tem ghost: oval, nhãn "?" + sub "next stamp" (copy i18n), dashed/mờ.
     expect(screen.getByText('next stamp')).toBeInTheDocument();
     expect(items[2]?.className).toContain('border-dashed');
+    expect(items[2]?.className).toContain('rounded-[50%]');
   });
 });
 
@@ -96,11 +107,21 @@ describe('VisaStamp', () => {
       },
     ] as const;
     for (const c of CASES) {
-      const { unmount } = render(<VisaStamp status={c.status} tone={c.tone} />);
+      const { unmount } = render(<VisaStamp status={c.status} tone={c.tone} phase="exit" />);
       const el = screen.getByText(c.text);
       expect(el.className).toContain(c.cls);
       unmount();
     }
+  });
+
+  // Ngữ pháp hình theo đời thật (gói tu sửa 11/08): oval = nhập cảnh
+  // (chuyến còn phía trước), chữ nhật = xuất cảnh (đã kết thúc).
+  it('phase entry → mộc oval; phase exit → mộc chữ nhật', () => {
+    const { unmount } = render(<VisaStamp status="PAID" tone="success" phase="entry" />);
+    expect(screen.getByText('CONFIRMED').className).toContain('rounded-[50%]');
+    unmount();
+    render(<VisaStamp status="PAID" tone="success" phase="exit" />);
+    expect(screen.getByText('CONFIRMED').className).toContain('rounded-xl');
   });
 });
 

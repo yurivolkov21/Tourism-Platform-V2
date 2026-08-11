@@ -102,8 +102,14 @@ export interface PassportStamp {
   label: string;
   /** 'Jul 2026' — tháng kết thúc chuyến. */
   month: string;
-  shape: 'round' | 'square';
-  /** −7..7 độ — "đóng tay hơi lệch", deterministic từ mã booking. */
+  /**
+   * Ngữ pháp hình tem theo đời thật (gói tu sửa 11/08): nhiều nước đóng
+   * OVAL cho nhập cảnh, CHỮ NHẬT cho xuất cảnh — tem chuyến đã đi là 'rect'
+   * (đã "xuất" khỏi chuyến), tem ghost mời chuyến kế là 'oval' (lời mời
+   * "nhập cảnh" tiếp theo).
+   */
+  shape: 'rect' | 'oval';
+  /** −8..+6 độ — "đóng tay hơi lệch", deterministic từ mã booking. */
   rotationDeg: number;
   ghost?: boolean;
 }
@@ -130,41 +136,83 @@ export function passportStamps(
     return {
       label: stampLabel(b),
       month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
-      shape: h % 2 === 0 ? 'round' : 'square',
-      // (h % 15) − 7 → nguyên trong [−7, 7].
-      rotationDeg: (Math.floor(h / 2) % 15) - 7,
+      shape: 'rect',
+      // (h % 15) − 8 → nguyên trong [−8, 6] — biên độ mộc đóng tay đo từ
+      // nghiên cứu tem thật (gói tu sửa 11/08).
+      rotationDeg: (Math.floor(h / 2) % 15) - 8,
     };
   });
   // Tem ghost "chờ chuyến kế" LUÔN đứng cuối — lời mời, không phải dữ liệu.
-  stamps.push({ label: '?', month: '', shape: 'round', rotationDeg: 3, ghost: true });
+  stamps.push({ label: '?', month: '', shape: 'oval', rotationDeg: 3, ghost: true });
   return stamps;
 }
 
-/** Số hội viên trang trí — 6 chữ số deterministic từ userId, nhóm 3. */
-export function memberNumber(userId: string): string {
-  const n = hash(userId) % 1_000_000;
-  const s = String(n).padStart(6, '0');
-  return `NO. ${s.slice(0, 3)} ${s.slice(3)}`;
-}
-
 const MRZ_LENGTH = 44;
+/** Mã "nước phát hành" 3 ký tự của hộ chiếu du lịch — Traveler. */
+const MRZ_ISSUER = 'TRV';
 
 /**
- * Dòng MRZ trang trí typography (đúng 44 ký tự như hộ chiếu thật) — CHỈ mang
- * tên hiển thị + số hội viên + năm, không dữ liệu nhạy cảm. Dấu tiếng Việt
- * fold về ASCII (máy đọc MRZ thật cũng vậy), khoảng trắng thành '<'.
+ * Check digit MRZ theo đúng ICAO Doc 9303: giá trị 0-9 giữ nguyên, A=10..Z=35,
+ * filler '<' = 0; nhân trọng số lặp 7-3-1 rồi lấy mod 10. Có thật để dòng MRZ
+ * "đọc được bằng máy" đúng nghĩa — MRZ sai ngữ pháp là thứ lộ "giả" nhanh nhất
+ * với mắt đã quen giấy tờ thật (nghiên cứu 11/08).
  */
-export function mrzLine(name: string, memberNo: string, sinceYear: number): string {
-  const parts = foldAccents(name).toUpperCase().split(/\s+/).filter(Boolean);
-  // Họ đứng cuối theo tên kiểu Á đông hiển thị "Bosco Wong" → 'WONG<<BOSCO'.
+export function mrzCheckDigit(field: string): number {
+  const WEIGHTS = [7, 3, 1];
+  let sum = 0;
+  for (let i = 0; i < field.length; i++) {
+    const c = field.charCodeAt(i);
+    // '0'-'9' → 0-9; 'A'-'Z' → 10-35; mọi thứ khác (thực tế chỉ '<') → 0.
+    const value = c >= 48 && c <= 57 ? c - 48 : c >= 65 && c <= 90 ? c - 55 : 0;
+    sum += value * (WEIGHTS[i % 3] ?? 0);
+  }
+  return sum % 10;
+}
+
+/** Số hộ chiếu trang trí — TV + 6 chữ số deterministic từ userId. */
+export function passportNo(userId: string): string {
+  return `TV${String(hash(userId) % 1_000_000).padStart(6, '0')}`;
+}
+
+/** Tên → trường name MRZ: fold dấu, UPPERCASE, họ đứng cuối tên hiển thị kiểu
+ *  Á đông ("Bosco Wong" → 'WONG<<BOSCO'), mọi ký tự ngoài A-Z thành '<'
+ *  (email/số/gạch nối đều bị máy đọc thật loại y như vậy). */
+function mrzNameField(name: string): string {
+  const parts = foldAccents(name)
+    .toUpperCase()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((p) => p.replace(/[^A-Z]/g, '<'));
   const last = parts.pop() ?? '';
-  const mrzName = [last, parts.join('<')].filter(Boolean).join('<<');
-  const digits = memberNo.replace(/\D/g, '');
-  const raw = `P<TOURISM<<${mrzName}`;
-  const tail = `${digits}<<${sinceYear}<<<`;
-  const room = MRZ_LENGTH - tail.length;
-  const head = raw.length > room ? raw.slice(0, room) : raw.padEnd(room, '<');
-  return `${head}${tail}`;
+  return [last, parts.join('<')].filter(Boolean).join('<<');
+}
+
+/**
+ * Cặp dòng MRZ chuẩn TD3 (gói tu sửa 11/08) — 2 dòng × đúng 44 ký tự, filler
+ * '<' lấp kín, check digit 7-3-1 thật ở đúng vị trí quy định. CHỈ mang dữ
+ * liệu trang trí đã công khai trên trang (tên hiển thị, số hộ chiếu sinh từ
+ * hash userId, năm gia nhập) — KHÔNG ngày sinh/giới tính thật: hai ô đó điền
+ * năm gia nhập (01/01) và '<' (unspecified — hợp lệ theo chuẩn).
+ *
+ * Dòng 1: `P<` + TRV + tên (39 ký tự).
+ * Dòng 2: số hộ chiếu(9) +cd+ TRV + ngày cấp YYMMDD +cd+ '<' + hết hạn
+ * (+10 năm) +cd+ optional(14) +cd+ composite cd — cộng đúng 44.
+ */
+export function mrzLines(name: string, userId: string, sinceYear: number): [string, string] {
+  // Trường tên chiếm phần còn lại của 44 ký tự sau tiền tố `P<` + mã 3 ký tự.
+  const nameRoom = MRZ_LENGTH - 5;
+  const nameField = mrzNameField(name).padEnd(nameRoom, '<').slice(0, nameRoom);
+  const line1 = `P<${MRZ_ISSUER}${nameField}`;
+
+  const doc = passportNo(userId).padEnd(9, '<');
+  const issue = `${String(sinceYear).slice(2)}0101`;
+  const expiry = `${String(sinceYear + 10).slice(2)}0101`;
+  const optional = '<'.repeat(14);
+  // Composite tính trên docNo+cd, issue+cd, expiry+cd, optional+cd — đúng
+  // dải vị trí TD3 (1-10, 14-20, 22-43) của Doc 9303.
+  const head = `${doc}${mrzCheckDigit(doc)}${MRZ_ISSUER}${issue}${mrzCheckDigit(issue)}<${expiry}${mrzCheckDigit(expiry)}${optional}${mrzCheckDigit(optional)}`;
+  const composite = mrzCheckDigit(head.slice(0, 10) + head.slice(13, 20) + head.slice(21, 43));
+  return [line1, `${head}${composite}`];
 }
 
 export interface MapDot {

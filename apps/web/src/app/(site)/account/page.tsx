@@ -19,8 +19,8 @@ import { fetchMyWishlist } from '@/lib/api/wishlist';
 import {
   journeySlugs,
   mapDots,
-  memberNumber,
-  mrzLine,
+  mrzLines,
+  passportNo,
   passportStamps,
   passportStats,
 } from '@/lib/passport';
@@ -98,10 +98,14 @@ export default async function AccountPassportPage({
     <PassportHeader
       name={session.name || session.email}
       sinceYear={sinceYear}
-      mrz={mrzLine(session.name || session.email, memberNumber(session.id), sinceYear)}
+      passportNo={passportNo(session.id)}
       settingsHref="/account/settings"
     />
   );
+  // Cặp dòng MRZ chuẩn TD3 (2 × 44 ký tự, check digit thật) — in ở dải đáy
+  // section trên nền SÁNG hơn trang giấy, mô phỏng vùng đọc máy trắng trơn
+  // của data page thật (gói tu sửa 11/08).
+  const mrz = mrzLines(session.name || session.email, session.id, sinceYear);
 
   return (
     <div>
@@ -144,6 +148,15 @@ export default async function AccountPassportPage({
                 </div>
               </div>
             )}
+          </div>
+          {/* Vùng đọc máy (Zone VII): nền sáng hơn hẳn phần trang có vân —
+              chính sự tương phản nền này là tín hiệu "thật" của MRZ. Trang
+              trí thuần (aria-hidden), cắt bằng overflow, KHÔNG wrap. */}
+          <div aria-hidden="true" className="border-t border-border/55 bg-background">
+            <div className="mx-auto max-w-5xl overflow-hidden px-4 py-3 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:px-8 md:text-[13px] md:tracking-[0.18em]">
+              <p>{mrz[0]}</p>
+              <p>{mrz[1]}</p>
+            </div>
           </div>
         </section>
 
