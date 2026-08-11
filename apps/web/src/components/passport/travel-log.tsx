@@ -75,7 +75,10 @@ export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
       {/* ── Section địa danh + timeline các chuyến ── */}
       <div ref={parentRef} className="min-w-0">
         <ScrollArea className={entries.length > 1 ? 'h-[560px]' : ''}>
-          <div className="space-y-10 pr-3">
+          {/* pl-2: indicator/đường nối của timeline neo âm về mép trái —
+              không đệm là viewport ScrollArea cắt mất nửa vòng check
+              (user bắt 11/08). */}
+          <div className="space-y-10 pr-3 pl-2">
             {entries.map((e) => (
               <section key={e.slug} id={`log-${e.slug}`}>
                 {e.cover ? (
@@ -114,11 +117,21 @@ export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
   );
 }
 
-/** Một node timeline = một chuyến — check mực khi đã đi, tròn rỗng khi chờ. */
+/**
+ * Một node timeline = một chuyến — check mực khi đã đi, tròn rỗng khi chờ.
+ *
+ * `ms-10` phải mang ĐÚNG variant dọc của class gốc (`ms-8` có variant) —
+ * không thì tailwind-merge giữ cả hai và thứ tự stylesheet quyết định,
+ * margin có thể tụt về 32px làm indicator (-left-7, size-6) tràn âm khỏi
+ * khối và bị viewport ScrollArea cắt mất nửa (user bắt 11/08).
+ */
 function VisitNode({ trip, step, done }: { trip: TravelLogTrip; step: number; done: boolean }) {
   const t = messages.passportHome;
   return (
-    <TimelineItem step={step} className="ms-10 pb-8 last:pb-0">
+    <TimelineItem
+      step={step}
+      className="pb-8 last:pb-0 group-data-[orientation=vertical]/timeline:ms-10"
+    >
       <TimelineHeader>
         <TimelineSeparator className="group-data-[orientation=vertical]/timeline:-left-7 group-data-[orientation=vertical]/timeline:h-[calc(100%-1.5rem-0.25rem)] group-data-[orientation=vertical]/timeline:translate-y-7" />
         <div className="flex flex-wrap items-center gap-2">
