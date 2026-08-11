@@ -59,10 +59,12 @@ export function PassportCard({
         className="pointer-events-none absolute inset-[5px] z-10 rounded-xl border border-ink/15"
       />
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:gap-7 md:p-7">
-        {/* Zone V — chân dung 3:4, in chìm vào trang (viền mảnh, không nổi khối). */}
+        {/* Avatar VUÔNG bo góc kiểu trang profile (góp ý user 11/08 — thay ô
+            chân dung 3:4 kiểu giấy tờ); vẫn chữ-cái-đầu chờ cụm avatar upload
+            đang PARK. */}
         <div
           aria-hidden="true"
-          className="flex h-32 w-24 flex-none items-center justify-center rounded-md border border-border bg-muted"
+          className="flex size-28 flex-none items-center justify-center rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
         >
           <span className="font-heading text-5xl font-semibold text-ink/70">
             {name.charAt(0).toUpperCase()}
