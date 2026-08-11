@@ -4,14 +4,13 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportCard } from '@/components/passport/passport-card';
-import { StampPages } from '@/components/passport/stamp-pages';
 import { TuckCard } from '@/components/passport/tuck-card';
 import { fetchAccountMe } from '@/lib/api/account';
 import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
-import { mrzLines, pageStamps, passportNo, passportStats, unstampedNames } from '@/lib/passport';
+import { mrzLines, passportNo, passportStats } from '@/lib/passport';
 
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
@@ -56,8 +55,6 @@ export default async function AccountPassportPage() {
 
   const name = session.name || session.email;
   const stats = passportStats(bookings, destinations.length);
-  const stamps = pageStamps(bookings);
-  const blank = unstampedNames(destinations, bookings);
   const isEmpty = bookings.length === 0;
 
   return (
@@ -103,43 +100,16 @@ export default async function AccountPassportPage() {
           </div>
         ) : null}
 
-        {/* Trang tem chỉ hiện khi CÓ dấu (thật hoặc ghost) — hộ chiếu trống
-            đã có lời mời phía trên, tờ trang trắng tinh không nói được gì. */}
-        {stamps.length > 0 ? (
-          <section className="mt-12">
-            <h2 className="mb-4 font-heading text-xl font-semibold">{t.stampsHeading}</h2>
-            <StampPages
-              stamps={stamps}
-              caption={
-                destinations.length > 0
-                  ? t.mapCaption(stats.places, destinations.length)
-                  : undefined
-              }
-            />
-            {blank.length > 0 ? (
-              <p className="mt-1.5 text-xs text-pretty text-muted-foreground/75">
-                {t.stillBlank(blank.join(' · '))}
-              </p>
-            ) : null}
-          </section>
-        ) : null}
-
-        {isEmpty ? null : (
-          // Hai lối vào "ngăn kẹp": bookings luôn có (đang nhánh không rỗng);
-          // saved chỉ hiện khi có tour đã lưu.
+        {/* Trang tem (StampPages) + thẻ lối vào My bookings đã GỠ TẠM theo
+            góp ý user 11/08 — component/logic tem vẫn sống kèm test trong
+            repo, cắm lại được ngay khi user chốt hướng mới. */}
+        {isEmpty || wishlist.length === 0 ? null : (
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             <TuckCard
-              heading={t.bookingsHeading(paged.total)}
-              href="/account/bookings"
-              cta={t.bookingsOpen}
+              heading={t.savedHeading(wishlist.length)}
+              href="/account/saved"
+              cta={t.savedOpen}
             />
-            {wishlist.length > 0 ? (
-              <TuckCard
-                heading={t.savedHeading(wishlist.length)}
-                href="/account/saved"
-                cta={t.savedOpen}
-              />
-            ) : null}
           </div>
         )}
       </div>
