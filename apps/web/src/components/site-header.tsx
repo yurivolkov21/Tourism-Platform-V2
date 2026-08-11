@@ -44,15 +44,19 @@ const MOBILE_LINKS = [
  *
  * Navbar lúc chưa cuộn dùng `on-media` (chữ sáng) vì nó giả định đang nằm trên
  * một mảng hero tối. Giả định đó đúng với mọi trang nội dung, nhưng SAI với
- * khu account và hai màn checkout — chúng bù khoảng bằng `pt-36` chứ không có
- * hero thật. Hệ quả ở chế độ SÁNG: chữ sáng trên nền sáng, navbar tàng hình
- * cho tới khi người dùng cuộn xuống. Ở chế độ tối thì tình cờ vẫn đọc được nên
- * lỗi này sống sót lâu — chỉ lộ ra khi chụp ảnh nghiệm thu chế độ sáng.
+ * hai màn checkout — chúng bù khoảng bằng `pt-36` chứ không có hero thật. Hệ
+ * quả ở chế độ SÁNG: chữ sáng trên nền sáng, navbar tàng hình cho tới khi
+ * người dùng cuộn xuống. Ở chế độ tối thì tình cờ vẫn đọc được nên lỗi này
+ * sống sót lâu — chỉ lộ ra khi chụp ảnh nghiệm thu chế độ sáng.
+ *
+ * `/account` ĐÃ RỜI danh sách này (góp ý user 11/08): khu hộ chiếu giờ có
+ * "BÌA" — dải `bg-hero` tối ở layout account — nên navbar đứng trên nền tối
+ * y như mọi trang có hero, không cần biến thể riêng nữa.
  *
  * Dùng tiền tố đường dẫn thay vì một context: navbar nằm ở layout `(site)`,
  * TRÊN cây của các layout con, nên context từ dưới không với tới được nó.
  */
-const HERO_LESS_PREFIXES = ['/account', '/checkout'];
+const HERO_LESS_PREFIXES = ['/checkout'];
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);

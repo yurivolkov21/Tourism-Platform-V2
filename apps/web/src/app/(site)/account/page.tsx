@@ -103,13 +103,7 @@ export default async function AccountPassportPage({
 
   return (
     <div>
-      {/* Section GIẤY bleed hết viewport — texture kẻ ngang mờ bằng lớp phủ
-          ink + mask (tokens-only, không oklch trong component). */}
-      <section className="relative border-b border-border/55 bg-paper">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 bg-ink/[0.04] [mask-image:repeating-linear-gradient(0deg,transparent_0_3px,black_3px_4px)]"
-        />
+      <section className="relative border-b border-border/55">
         <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
           {isEmpty ? (
             // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-

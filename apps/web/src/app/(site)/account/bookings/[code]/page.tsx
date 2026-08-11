@@ -5,7 +5,6 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { AccountSection, AccountSections } from '@/components/account/account-section';
 import { BookingActions } from '@/components/account/booking-actions';
 import { ReviewForm } from '@/components/account/review-form';
 import { VisaStamp } from '@/components/passport/visa-stamp';
@@ -101,13 +100,8 @@ export default async function AccountBookingDetailPage({
   const sec = t.sections;
 
   return (
-    <div className="relative border-b border-border/55 bg-paper">
-      {/* Texture giấy — cùng chất liệu với trang hộ chiếu và settings. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 bg-ink/[0.04] [mask-image:repeating-linear-gradient(0deg,transparent_0_3px,black_3px_4px)]"
-      />
-      <div className="relative mx-auto max-w-3xl px-4 py-10 md:px-8">
+    <div>
+      <div className="mx-auto max-w-3xl px-4 py-10 md:px-8">
         <Link
           href="/account"
           className="text-[13.5px] text-muted-foreground transition-colors hover:text-foreground"
@@ -236,19 +230,21 @@ export default async function AccountBookingDetailPage({
 
         {/* Review giữ nguyên slot logic + đích anchor #review từ journey. */}
         {slot === 'hidden' ? null : (
-          <div className="mt-8">
-            <AccountSections>
-              <AccountSection id="review" title={sec.reviewHeading} description={sec.reviewBlurb}>
-                {slot === 'form' ? (
-                  <ReviewForm bookingCode={booking.code} />
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
-                  </p>
-                )}
-              </AccountSection>
-            </AccountSections>
-          </div>
+          // MỘT CỘT theo góp ý user 11/08 — heading đứng trên, nội dung in
+          // thẳng lên giấy, không còn lưới hai-cột/card của AccountSection.
+          <section id="review" className="mt-10 border-t border-border/55 pt-6">
+            <h2 className="font-heading text-lg font-semibold">{sec.reviewHeading}</h2>
+            <p className="mt-0.5 text-sm text-muted-foreground">{sec.reviewBlurb}</p>
+            <div className="mt-3">
+              {slot === 'form' ? (
+                <ReviewForm bookingCode={booking.code} />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
+                </p>
+              )}
+            </div>
+          </section>
         )}
       </div>
     </div>

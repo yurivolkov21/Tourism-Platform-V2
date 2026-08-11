@@ -57,7 +57,7 @@ export function JourneyRow({ booking, today }: { booking: Booking; today?: strin
     <div className="flex items-center gap-3.5 border-t border-border/55 py-3.5 first:border-t-0 first:pt-0">
       <span
         aria-hidden="true"
-        className={`size-[11px] flex-none rounded-full shadow-[0_0_0_4px_var(--background)] ${DOT_CLASS[view.tone] ?? 'bg-muted-foreground'}`}
+        className={`size-[11px] flex-none rounded-full shadow-[0_0_0_4px_var(--paper)] ${DOT_CLASS[view.tone] ?? 'bg-muted-foreground'}`}
       />
       {booking.tourImage ? (
         // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
