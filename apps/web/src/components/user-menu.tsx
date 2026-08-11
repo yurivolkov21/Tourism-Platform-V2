@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@tourism/ui/components/dropdown-menu';
-import { LogOutIcon, TicketIcon, UserIcon } from 'lucide-react';
+import { LogOutIcon, SettingsIcon, TicketIcon, UserIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { authClient, useSession } from '@/lib/auth-client';
 
@@ -102,6 +102,13 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
           <DropdownMenuItem render={<a href="/account/saved" />}>
             <TicketIcon aria-hidden="true" />
             Saved tours
+          </DropdownMenuItem>
+          {/* Settings vào menu theo góp ý user 11/08 (dời khỏi tờ giấy hộ
+              chiếu): đây là chỗ quy ước, mọi trang đều với tới; literal như
+              các mục cạnh nó — component chưa đi qua i18n. */}
+          <DropdownMenuItem render={<a href="/account/settings" />}>
+            <SettingsIcon aria-hidden="true" />
+            Settings
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

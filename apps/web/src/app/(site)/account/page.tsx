@@ -94,13 +94,7 @@ export default async function AccountPassportPage({
   // dựng lại kicker/tên/since bằng tay và ĐÁNH RƠI link ⚙ Settings — một ngõ
   // cụt thật sự khi khách chưa có booking nào nhưng vẫn cần đường vào
   // settings đổi tên.
-  const header = (
-    <PassportHeader
-      name={session.name || session.email}
-      sinceYear={sinceYear}
-      settingsHref="/account/settings"
-    />
-  );
+  const header = <PassportHeader name={session.name || session.email} sinceYear={sinceYear} />;
   // Cặp dòng MRZ chuẩn TD3 (2 × 44 ký tự, check digit thật) + dòng đồ đạc
   // Type/Code/Passport No. — in thành dải máy đọc cuối khối danh tính, THU
   // trong khổ nội dung (không tràn màn hình — góp ý user 11/08 vòng 2).
@@ -111,8 +105,18 @@ export default async function AccountPassportPage({
   return (
     <div>
       {/* Hero chuẩn site (vòng góp ý 11/08) — cùng khuôn faq/contact/tours,
-          navbar đứng trên nền tối như mọi trang; danh tính ở trang giấy dưới. */}
-      <ContentHero breadcrumb={t.heroBreadcrumb} title={t.heroTitle} />
+          navbar đứng trên nền tối như mọi trang; danh tính ở trang giấy dưới.
+          Settings đứng làm ACTION của hero (góp ý cùng ngày: control UI rời
+          tờ giấy — giấy chỉ còn giấy tờ; menu avatar navbar cũng có mục này). */}
+      <ContentHero
+        breadcrumb={t.heroBreadcrumb}
+        title={t.heroTitle}
+        action={
+          <ButtonLink variant="outline" size="sm" href="/account/settings">
+            {t.settingsLink}
+          </ButtonLink>
+        }
+      />
       <PassportPaper>
         <section className="relative border-b border-border/55">
           <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">

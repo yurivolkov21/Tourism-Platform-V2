@@ -88,6 +88,11 @@ describe('UserMenu', () => {
       'href',
       '/account/saved',
     );
+    // Settings vào menu 11/08 (dời khỏi tờ giấy hộ chiếu — chỗ quy ước).
+    expect(screen.getByRole('menuitem', { name: /settings/i })).toHaveAttribute(
+      'href',
+      '/account/settings',
+    );
   });
 
   it('click Sign out → gọi authClient.signOut() rồi push("/") + refresh()', async () => {

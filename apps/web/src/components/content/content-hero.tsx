@@ -2,6 +2,7 @@
 
 import { ChevronRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import type { ReactNode } from 'react';
 import { TopoPattern } from '@/components/topo-pattern';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
@@ -16,12 +17,17 @@ export function ContentHero({
   title,
   meta,
   subtitle,
+  action,
 }: {
   breadcrumb: string;
   title: string;
   /** Dòng "Last updated: …" — trang FAQ không có. */
   meta?: string;
   subtitle?: string;
+  /** Control của trang (nút/link) đứng góc phải ngang hàng breadcrumb —
+   *  thêm 11/08 cho nút Settings khu account; trang không truyền thì bố cục
+   *  y nguyên như cũ. */
+  action?: ReactNode;
 }) {
   return (
     <section className="relative w-full overflow-hidden bg-hero px-4 pt-36 pb-14 text-hero-foreground md:px-16 md:pb-16 lg:px-24 xl:px-32">
@@ -44,21 +50,32 @@ export function ContentHero({
           biến CSS vẫn kế thừa qua display:contents. */}
       <div className="dark contents">
         <div className="relative z-10 mx-auto max-w-7xl">
-          <motion.nav
-            aria-label="Breadcrumb"
-            className="flex items-center gap-1.5 text-sm text-muted-foreground"
-            initial={{ y: -16, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, ...SPRING }}
-          >
-            <a href="/" className="transition-colors hover:text-foreground">
-              Home
-            </a>
-            <ChevronRightIcon className="size-3.5" aria-hidden="true" />
-            <span aria-current="page" className="text-foreground">
-              {breadcrumb}
-            </span>
-          </motion.nav>
+          <div className="flex items-center justify-between gap-4">
+            <motion.nav
+              aria-label="Breadcrumb"
+              className="flex items-center gap-1.5 text-sm text-muted-foreground"
+              initial={{ y: -16, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.1, ...SPRING }}
+            >
+              <a href="/" className="transition-colors hover:text-foreground">
+                Home
+              </a>
+              <ChevronRightIcon className="size-3.5" aria-hidden="true" />
+              <span aria-current="page" className="text-foreground">
+                {breadcrumb}
+              </span>
+            </motion.nav>
+            {action ? (
+              <motion.div
+                initial={{ y: -16, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.1, ...SPRING }}
+              >
+                {action}
+              </motion.div>
+            ) : null}
+          </div>
 
           <motion.h1
             className="mt-6 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance text-foreground md:text-5xl"
