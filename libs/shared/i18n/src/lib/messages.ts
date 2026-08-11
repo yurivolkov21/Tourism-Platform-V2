@@ -2501,6 +2501,7 @@ export const messages = {
   // Trang `/account/saved` — grid tour đã lưu (wishlist), nút ✕ bỏ lưu (A1:
   // state cục bộ optimistic trên mock, A2 nối `wishlist.set`).
   accountSaved: {
+    heroBreadcrumb: 'Saved',
     // "Tucked inside" (M1/M8 hộ chiếu): trang saved là NGĂN KẸP trong hộ chiếu
     // — đổi giọng title theo thế giới quan mới, subtitle giữ.
     title: 'Tucked inside',
@@ -2556,7 +2557,10 @@ export const messages = {
    *  khu account: header passport + tem + stats + bản đồ + journey. Copy
    *  "explored" đếm theo CATALOG thật ("of the map"), không hứa địa lý. */
   passportHome: {
-    kicker: 'Traveler passport · Tourism',
+    /** Hero chuẩn site (ContentHero) — vòng góp ý 11/08: tái dùng hero có sẵn
+     *  thay band tự chế; danh tính (tên/MRZ/tem) vẫn ở trang giấy bên dưới. */
+    heroBreadcrumb: 'Account',
+    heroTitle: 'Traveler passport',
     since: (year: number) => `Traveler since ${year}`,
     settingsLink: 'Settings ⚙',
     journeyHeading: 'Your journey',
@@ -2590,6 +2594,7 @@ export const messages = {
    *  mộc trạng thái đóng nghiêng, lưới nhãn IATA, fine print mono. Cùng vũ trụ
    *  ấn phẩm với tấm vé checkout ("View voucher" mở đúng tấm vé đó). */
   passportVisa: {
+    heroBreadcrumb: 'Booking',
     back: '← Passport',
     kicker: 'Entry · Tour booking',
     labels: {
@@ -2672,6 +2677,7 @@ export const messages = {
   /** Tầng sau của hộ chiếu (M3) — form KHÔNG được lên mặt tiền: nằm sau link
    *  ⚙, khoác giấy, tái dùng nguyên logic nở-inline/password/delete. */
   passportSettings: {
+    heroBreadcrumb: 'Settings',
     back: '← Passport',
     title: 'Traveler details',
     subtitle: 'The information printed in your passport.',

@@ -2,7 +2,7 @@ import { messages } from '@tourism/i18n';
 import Link from 'next/link';
 
 /**
- * Header trang hộ chiếu (M1/M4): kicker + tên serif + "traveler since" + dòng
+ * Header trang hộ chiếu (M1/M4): tên serif + "traveler since" + dòng
  * MRZ trang trí + link ⚙ Settings. RSC thuần — mọi dữ liệu đã tính sẵn ở page
  * (memberNo/mrz từ `lib/passport`), component chỉ xếp chữ.
  *
@@ -22,8 +22,9 @@ export function PassportHeader({
   const t = messages.passportHome;
   return (
     <div className="relative">
-      <p className="text-[11px] font-bold tracking-[0.3em] text-ink uppercase">{t.kicker}</p>
-      <h1 className="mt-2 font-heading text-3xl font-semibold text-balance md:text-4xl">{name}</h1>
+      {/* Kicker cũ đã dời lên ContentHero (vòng góp ý 11/08) — header giấy
+          chỉ còn danh tính, không lặp lại tên khu. */}
+      <h1 className="font-heading text-3xl font-semibold text-balance md:text-4xl">{name}</h1>
       <p className="mt-1 text-[12.5px] tracking-[0.16em] text-muted-foreground uppercase">
         {t.since(sinceYear)}
       </p>

@@ -3,9 +3,11 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { ContentHero } from '@/components/content/content-hero';
 import { DotMap } from '@/components/passport/dot-map';
 import { JourneyRow } from '@/components/passport/journey-row';
 import { PassportHeader } from '@/components/passport/passport-header';
+import { PassportPaper } from '@/components/passport/passport-paper';
 import { SavedTuck } from '@/components/passport/saved-tuck';
 import { StampRow } from '@/components/passport/stamp-row';
 import { StatRow } from '@/components/passport/stat-row';
@@ -103,92 +105,97 @@ export default async function AccountPassportPage({
 
   return (
     <div>
-      <section className="relative border-b border-border/55">
-        <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
-          {isEmpty ? (
-            // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-
-            // tiên bên dưới mới căn giữa.
-            <div>
-              {header}
-              <div className="mt-8 text-center">
-                {/* Tem ghost phóng to ở empty state — lời mời "con tem đầu
+      {/* Hero chuẩn site (vòng góp ý 11/08) — cùng khuôn faq/contact/tours,
+          navbar đứng trên nền tối như mọi trang; danh tính ở trang giấy dưới. */}
+      <ContentHero breadcrumb={t.heroBreadcrumb} title={t.heroTitle} />
+      <PassportPaper>
+        <section className="relative border-b border-border/55">
+          <div className="relative mx-auto max-w-5xl px-4 py-10 md:px-8 md:py-12">
+            {isEmpty ? (
+              // Header căn trái NHƯ nhánh thường; chỉ khối mời-đóng-tem-đầu-
+              // tiên bên dưới mới căn giữa.
+              <div>
+                {header}
+                <div className="mt-8 text-center">
+                  {/* Tem ghost phóng to ở empty state — lời mời "con tem đầu
                     tiên" cần chiếm không gian, không lẫn vào một hàng tem nhỏ
                     như nhánh có dữ liệu. */}
-                <div className="flex justify-center">
-                  <div className="scale-125">
-                    <StampRow stamps={stamps} />
+                  <div className="flex justify-center">
+                    <div className="scale-125">
+                      <StampRow stamps={stamps} />
+                    </div>
                   </div>
+                  <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">
+                    {te.heading}
+                  </h2>
+                  <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
+                    {te.body}
+                  </p>
+                  <ButtonLink href="/tours" className="mt-6">
+                    {te.cta}
+                  </ButtonLink>
                 </div>
-                <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">
-                  {te.heading}
-                </h2>
-                <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
-                  {te.body}
-                </p>
-                <ButtonLink href="/tours" className="mt-6">
-                  {te.cta}
-                </ButtonLink>
               </div>
-            </div>
-          ) : (
-            <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
-              {header}
-              <div className="max-w-[300px] md:pt-7">
-                <StampRow stamps={stamps} />
-              </div>
-            </div>
-          )}
-        </div>
-      </section>
-
-      <div className="mx-auto max-w-5xl px-4 md:px-8">
-        <StatRow stats={stats} />
-
-        {/* Hộ chiếu trống: không còn cột journey → bản đồ đứng GIỮA một cột,
-            không để nó lệch phải cạnh một khoảng trống lớn. */}
-        <div
-          className={
-            isEmpty
-              ? 'mx-auto mt-9 max-w-md'
-              : 'mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]'
-          }
-        >
-          <div>
-            {isEmpty ? null : (
-              <>
-                <h2 className="mb-4 font-heading text-xl font-semibold">{t.journeyHeading}</h2>
-                <div>
-                  {journey.map((booking) => (
-                    <JourneyRow key={booking.id} booking={booking} />
-                  ))}
+            ) : (
+              <div className="grid gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:items-start">
+                {header}
+                <div className="max-w-[300px] md:pt-7">
+                  <StampRow stamps={stamps} />
                 </div>
-                {hasMore ? (
-                  <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
-                    <Link
-                      href={`/account?page=${chunk + 1}`}
-                      className="text-[13.5px] font-semibold text-primary-emphasis hover:underline"
-                    >
-                      {messages.accountBookings.loadMore}
-                    </Link>
-                  </div>
-                ) : null}
-              </>
+              </div>
             )}
           </div>
-          <div>
-            {/* destinations rỗng (catalog thật rỗng, hoặc fetch phụ hỏng đã
+        </section>
+
+        <div className="mx-auto max-w-5xl px-4 md:px-8">
+          <StatRow stats={stats} />
+
+          {/* Hộ chiếu trống: không còn cột journey → bản đồ đứng GIỮA một cột,
+            không để nó lệch phải cạnh một khoảng trống lớn. */}
+          <div
+            className={
+              isEmpty
+                ? 'mx-auto mt-9 max-w-md'
+                : 'mt-9 grid gap-10 lg:grid-cols-[minmax(0,7fr)_minmax(0,5fr)]'
+            }
+          >
+            <div>
+              {isEmpty ? null : (
+                <>
+                  <h2 className="mb-4 font-heading text-xl font-semibold">{t.journeyHeading}</h2>
+                  <div>
+                    {journey.map((booking) => (
+                      <JourneyRow key={booking.id} booking={booking} />
+                    ))}
+                  </div>
+                  {hasMore ? (
+                    <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
+                      <Link
+                        href={`/account?page=${chunk + 1}`}
+                        className="text-[13.5px] font-semibold text-primary-emphasis hover:underline"
+                      >
+                        {messages.accountBookings.loadMore}
+                      </Link>
+                    </div>
+                  ) : null}
+                </>
+              )}
+            </div>
+            <div>
+              {/* destinations rỗng (catalog thật rỗng, hoặc fetch phụ hỏng đã
                 bị `safe()` nuốt lỗi ở trên) → ẩn cả khối bản đồ: caption đếm
                 "0 of our 0 destinations" không nói được gì. */}
-            {destinations.length > 0 ? (
-              <>
-                <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
-                <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
-              </>
-            ) : null}
-            {wishlist.length > 0 ? <SavedTuck total={wishlist.length} /> : null}
+              {destinations.length > 0 ? (
+                <>
+                  <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
+                  <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
+                </>
+              ) : null}
+              {wishlist.length > 0 ? <SavedTuck total={wishlist.length} /> : null}
+            </div>
           </div>
         </div>
-      </div>
+      </PassportPaper>
     </div>
   );
 }
