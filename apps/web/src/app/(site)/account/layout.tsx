@@ -17,10 +17,16 @@ import type { ReactNode } from 'react';
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
   return (
-    // `min-h-full flex-col` + ruột `flex-1`: SiteChrome đặt trang trong
+    // `min-h-dvh` + ruột `flex-1`: SiteChrome đặt trang trong
     // `<main class="flex-1">` — trang ngắn thì main vẫn giãn, và phần giãn đó
-    // từng lộ nền trắng dưới đáy giấy (góp ý user). Giấy phải lấp ĐẦY main.
-    <div className="flex min-h-full w-full flex-col bg-paper">
+    // từng lộ nền trắng dưới đáy giấy (góp ý user). `min-h-full` KHÔNG ăn vì
+    // chuỗi % cao độ không truyền qua flex item của body → neo thẳng viewport:
+    // giấy luôn ≥ một màn hình, main không bao giờ cao hơn được nó.
+    // `-mb-32` trung hoà `mt-32` của SiteFooter (nguồn thật của "dải trắng
+    // trước footer" user chỉ ra: margin đó lộ nền body — trang public trùng
+    // màu nên vô hình, trên giấy thì hiện). Hai margin triệt tiêu → giấy chạm
+    // thẳng viền footer; KHÔNG sửa footer vì mọi trang khác đang dựa vào nó.
+    <div className="-mb-32 flex min-h-dvh w-full flex-col bg-paper">
       {/* Bìa: chỉ là mảng màu — mọi chữ/danh tính nằm ở trang giấy bên dưới.
           `h-40` ≈ vùng navbar (pt-36 cũ) + một hơi thở mép bìa. */}
       <div aria-hidden="true" className="h-40 w-full flex-none bg-hero" />
