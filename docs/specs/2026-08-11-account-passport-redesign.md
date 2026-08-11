@@ -148,3 +148,38 @@ stamp is waiting", "Tucked inside").
 Tier/loyalty (chưa có hệ điểm — để ngỏ, KHÔNG dựng vỏ rỗng) · bản đồ địa lý
 tương tác thật · wishlist tim trên card + form review mới (cụm B) ·
 refundedTotal (cụm C) · đồng bộ pill badge các trang tour (sổ nợ 11/08).
+
+## 7. Addendum 11/08 (chiều) — vòng góp ý từng-trang của user
+
+Sau khi user test bản dựng, khu trải qua các vòng chỉnh đã chốt trực tiếp
+trong phiên (mỗi vòng một commit trên `feat/account-passport`):
+
+1. **Chất liệu ICAO giữ lại**: MRZ TD3 thật 2 dòng × 44 ký tự (check digit
+   7-3-1, vector mẫu ICAO 9303 trong test) + số hộ chiếu `TV######` từ hash
+   userId; mực tem `.stamp-ink` (multiply + mask nhiễu feTurbulence). Các
+   thử nghiệm BỊ BÁC và đã gỡ: caption đánh số (1)-(9), hàng Zone I mở đầu
+   trang, tem chữ nhật Schengen + pictogram máy bay (về bộ tròn/vuông gốc),
+   MRZ tràn màn hình (thu vào khổ nội dung).
+2. **Settings rời tờ giấy**: nút outline ở action `ContentHero` (slot mới,
+   optional) + item trong dropdown avatar navbar. `since`/`settingsLink`
+   theo đó đổi chỗ dùng.
+3. **Nền thường**: gỡ trọn `bg-paper` + texture + gáy + mép trang +
+   layout khu (margin âm/pb đệm) — 4 trang account kết đáy `pb-16/20` như
+   trang content chuẩn; `PassportPaper` và layout khu đã xoá.
+4. **Tái cấu trúc trang `/account` (user duyệt thiết kế trong phiên)**:
+   - **Khung hộ chiếu (PassportCard)** đứng đầu trang: viền kép laminate
+     (border ngoài + hairline lồng), chân dung chữ nhật 3:4 chữ-cái-đầu
+     (chờ avatar upload đang PARK), lưới field nhãn nhỏ KHÔNG đánh số —
+     Name · Email · Phone (ẩn khi trống) · Traveler since · Passport no. ·
+     Type/Code — và dải MRZ nằm TRONG khung ở đáy. Thông tin tài khoản đứng
+     TRƯỚC, đúng kỳ vọng "vào my account thấy thông tin của mình trước".
+   - **Stats 4 ô giữ nguyên**, đứng sau khung.
+   - **Your journey dời TRỌN sang `/account/bookings`** (route khôi phục
+     từ redirect 308 thành trang thật): hero chuẩn + danh sách JourneyRow
+     + load-more `?page=` (pattern chunk dời theo) + empty state riêng.
+   - `/account` phần dưới: tem + bản đồ chấm (2 cột) + hai lối vào dạng
+     thẻ (`TuckCard` generic thay `SavedTuck`): My bookings · N trips và
+     Tucked inside · N saved.
+   - `/account` hết phân trang — fetch bookings một lần kẹp
+     `BOOKINGS_MAX_LIMIT` nuôi stats/tem/bản đồ; thêm fetch `account/me`
+     (bọc safe, lấy phone). `PassportHeader` xoá, thay bằng PassportCard.

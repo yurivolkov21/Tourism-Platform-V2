@@ -2561,18 +2561,23 @@ export const messages = {
      *  thay band tự chế; danh tính (tên/MRZ/tem) vẫn ở trang giấy bên dưới. */
     heroBreadcrumb: 'Account',
     heroTitle: 'Traveler passport',
-    /** Đồ đạc giấy tờ Type/Code/Passport No. (tu sửa 11/08) — MỘT dòng mảnh
-     *  làm caption cho dải MRZ cuối khối danh tính (bản "hàng Zone I mở đầu
-     *  trang + caption đánh số" đã bị user bác vì đọc như form hành chính);
-     *  giá trị P/TRV là "ngữ pháp giấy tờ", không phải copy cần dịch. */
+    /** Khung hộ chiếu — PassportCard (addendum spec §7.4): nhãn field nhỏ
+     *  KHÔNG đánh số (bản đánh số đã bị bác); giá trị P/TRV là "ngữ pháp
+     *  giấy tờ", không phải copy cần dịch. */
     zoneType: 'Type',
     zoneTypeValue: 'P',
     zoneCode: 'Code',
     zoneCodeValue: 'TRV',
-    zoneNo: 'Passport no.',
-    since: (year: number) => `Traveler since ${year}`,
+    fieldName: 'Name',
+    fieldEmail: 'Email',
+    fieldPhone: 'Phone',
+    fieldSince: 'Traveler since',
+    fieldNo: 'Passport no.',
     settingsLink: 'Settings ⚙',
-    journeyHeading: 'Your journey',
+    stampsHeading: 'Stamps',
+    /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
+    bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
+    bookingsOpen: 'Open →',
     mapHeading: 'Where you’ve set foot',
     mapCaption: (n: number, total: number) =>
       n === 0
@@ -2591,6 +2596,17 @@ export const messages = {
     /** Nhãn tem ghost cuối dãy — lời mời chuyến kế, không phải dữ liệu. */
     ghostStampLabel: '?',
     ghostStampSub: 'next stamp',
+  },
+  /** Trang `/account/bookings` (addendum spec §7.4) — "Your journey" dời
+   *  TRỌN từ trang hộ chiếu sang đây; route khôi phục từ redirect 308. */
+  passportBookings: {
+    breadcrumb: 'Bookings',
+    title: 'My bookings',
+    metaTrips: (n: number) => `${n} trip${n === 1 ? '' : 's'}`,
+    back: '← Passport',
+    emptyHeading: 'No trips booked yet',
+    emptyBody: 'Book a tour and it will show up here with dates, status, and your voucher.',
+    emptyCta: 'Browse tours',
   },
   /** Empty state hộ chiếu mới tinh (M4) — trang KHÔNG trống: nó là lời mời
    *  đóng con tem đầu tiên; số 0 hiển thị chính danh, không giấu. */

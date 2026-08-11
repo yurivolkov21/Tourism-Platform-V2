@@ -21,8 +21,10 @@ export function StampRow({ stamps }: { stamps: PassportStamp[] }) {
     key: `${s.label}|${s.month}|${i}`,
     offset: i % 2 === 1,
   }));
+  // justify-start: từ addendum §7.4 dãy tem đứng thành KHỐI riêng có heading
+  // (không còn nép phải cạnh header như bố cục cũ).
   return (
-    <ul className="flex flex-wrap items-start justify-end gap-2 max-md:justify-start">
+    <ul className="flex flex-wrap items-start justify-start gap-2">
       {keyed.map((s) => (
         <li
           key={s.key}

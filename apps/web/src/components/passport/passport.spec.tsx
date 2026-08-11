@@ -3,23 +3,40 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { DotMap } from './dot-map';
 import { JourneyRow } from './journey-row';
-import { PassportHeader } from './passport-header';
+import { PassportCard } from './passport-card';
 import { StampRow } from './stamp-row';
 import { VisaStamp } from './visa-stamp';
 
 // Spec gộp cho bộ component passport (T4) — mỗi component vài ca hành vi,
 // KHÔNG chụp markup: assert thứ user thấy (chữ, href, trạng thái class).
 
-describe('PassportHeader', () => {
-  // Danh tính giữ khuôn giản dị (chốt 11/08 sau khi bản "Zone I + caption
-  // đánh số" bị bác); MRZ + đồ đạc giấy tờ do page render, không thuộc
-  // header. Settings cũng đã rời tờ giấy — sống ở action ContentHero + menu
-  // avatar (assert bên `user-menu.spec.tsx`).
-  it('hiện tên và since — trên giấy không còn control UI nào', () => {
-    render(<PassportHeader name="Bosco Wong" sinceYear={2026} />);
+describe('PassportCard', () => {
+  const CARD_PROPS = {
+    name: 'Bosco Wong',
+    email: 'bosco@example.com',
+    sinceYear: 2026,
+    passportNo: 'TV214306',
+    mrz: [
+      'P<TRVWONG<<BOSCO<<<<<<<<<<<<<<<<<<<<<<<<<<<<',
+      'TV214306<0TRV2601010<3601017<<<<<<<<<<<<<<08',
+    ] as [string, string],
+  };
+
+  // Khung data page (addendum §7.4): thông tin tài khoản đứng đầu — tên,
+  // email, số hộ chiếu nhóm, since, MRZ trong khung; phone ẩn khi null.
+  it('hiện đủ danh tính: tên heading, email, số hộ chiếu nhóm, since, MRZ', () => {
+    render(<PassportCard {...CARD_PROPS} phone="+84 912 345 678" />);
     expect(screen.getByRole('heading', { name: 'Bosco Wong' })).toBeInTheDocument();
-    expect(screen.getByText(/Traveler since 2026/)).toBeInTheDocument();
-    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+    expect(screen.getByText('bosco@example.com')).toBeInTheDocument();
+    expect(screen.getByText('TV 214 306')).toBeInTheDocument();
+    expect(screen.getByText('2026')).toBeInTheDocument();
+    expect(screen.getByText('+84 912 345 678')).toBeInTheDocument();
+    expect(screen.getByText(/P<TRVWONG<<BOSCO/)).toBeInTheDocument();
+  });
+
+  it('phone null → ẩn trọn dòng Phone (fetch phụ hỏng không để ô trống)', () => {
+    render(<PassportCard {...CARD_PROPS} phone={null} />);
+    expect(screen.queryByText(/^Phone$/i)).not.toBeInTheDocument();
   });
 });
 
