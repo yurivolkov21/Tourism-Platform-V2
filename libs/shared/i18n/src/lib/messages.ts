@@ -2528,74 +2528,26 @@ export const messages = {
       body: 'Please try again.',
     },
   },
-  // Trang `/account/bookings` — list mọi booking, mới nhất trước (Task 4,
-  // pha A1 đọc mock). Nhãn status DÙNG CHUNG `booking.list.status` (đã gom
-  // một nguồn từ Task 3 cho badge dashboard) — KHÔNG lặp lại enum ở đây,
-  // tránh hai nguồn cùng dịch một status rồi lệch nhau về sau.
+  // Chỉ còn phần SỐNG sau khi trang `/account/bookings` (Trips) nhập vào
+  // trang hộ chiếu `/account` (spec 2026-08-11, M1) — namespace này giờ nuôi
+  // `JourneyRow` (trang hộ chiếu) và grid nhãn của trang chi tiết booking.
+  // Dọn key mồ côi ngày 11/08 (fixer cuối, xem docs/CHANGELOG.md).
   accountBookings: {
-    // Redesign Trips hướng A (Task 6): H1 đổi từ "My bookings" sang "Trips" —
-    // cùng chữ với nhãn tab `accountNav.bookings`, trang không còn được phép
-    // nói khác tên nó đứng dưới.
-    title: 'Trips',
-    // Redesign 10/08: danh sách nay gom theo BA nhóm thời gian, không còn
-    // "newest first" phẳng — câu phụ đề phải nói đúng thứ trang đang làm.
-    subtitle: 'Every trip you’ve booked with us, grouped by when you travel.',
-    /** Tiêu đề ba nhóm. "On the road now" đứng đầu vì nó là thứ khẩn nhất và
-     *  cũng là thứ danh sách phẳng cũ không nói được. `past` đổi giọng ở
-     *  redesign Trips hướng A (Task 6): "Where you've been" gợi ký ức chuyến
-     *  đi hơn là nhãn trung tính "Past". */
-    groups: {
-      onTheRoad: 'On the road now',
-      upcoming: 'Upcoming',
-      past: 'Where you’ve been',
-    },
-    /** Mô tả một dòng cho cột trái của mỗi nhóm (redesign 10/08). Mọi mục đều
-     *  phải có — mục im lặng cạnh mục đang nói đọc như lỗi tải. */
-    groupBlurbs: {
-      onTheRoad: 'Happening right now.',
-      upcoming: 'Booked and still ahead of you.',
-      past: 'Trips you’ve already taken.',
-    },
-    /** Dòng đếm dưới mô tả. Số ít/số nhiều tách bạch để không ra "1 trips". */
-    tripCount: (n: number) => (n === 1 ? '1 trip' : `${n} trips`),
-    /** Gợi ý ngày kết thúc, chỉ hiện ở nhóm "đang đi". */
-    endsToday: 'ends today',
-    endsTomorrow: 'ends tomorrow',
-    endsInDays: (n: number) => `ends in ${n} days`,
-    /** Eyebrow đếm ngược của `TripCard` hero (Task 6, nhóm "upcoming") — biên
-     *  hai đầu có câu riêng, "N days" chỉ dùng từ ngày thứ hai trở đi. */
+    /** Eyebrow đếm ngược `JourneyRow` (trang hộ chiếu) — biên hai đầu có câu
+     *  riêng, "N days" chỉ dùng từ ngày thứ hai trở đi. */
     inDays: (n: number) => (n === 0 ? 'Departing today' : n === 1 ? 'In 1 day' : `In ${n} days`),
-    /** Eyebrow hero cho nhóm "on the road" — thay `inDays` khi chuyến đã bắt đầu. */
+    /** Eyebrow `JourneyRow` khi chuyến đã bắt đầu — thay `inDays`. */
     endsOn: (d: string) => `Ends ${d}`,
-    /** Hàng action của `TripCard` hero — hai link, không phải nút. */
-    viewBooking: 'View booking',
-    contactUs: 'Contact us',
-    /** `TripCard` row (nhóm "past") — tra qua `bookingView(b).tone`, không
-     *  if/else status rải trong JSX. */
-    cancelledNote: 'Cancelled',
-    refundedNote: 'Cancelled · refunded',
-    leaveReview: 'Leave a review',
-    refLabel: 'Reference',
-    departureLabel: 'Departure',
-    travellersLabel: 'Travellers',
-    totalLabel: 'Total',
-    bookedOn: (date: string) => `Booked ${date}`,
-    // Một nguồn cho cả list VÀ detail (trang detail tái dùng nguyên hàm
-    // này, không tự chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai
-    // trang cùng hiển thị travellers của MỘT booking.
+    // Một nguồn cho cả trang hộ chiếu VÀ trang chi tiết booking (không tự
+    // chế bản thứ hai) — tránh lệch số nhiều/số ít giữa hai nơi cùng hiển
+    // thị travellers của MỘT booking.
     travellers: (adults: number, children: number) =>
       children > 0
         ? `${adults} adult${adults > 1 ? 's' : ''}, ${children} child${children > 1 ? 'ren' : ''}`
         : `${adults} adult${adults > 1 ? 's' : ''}`,
-    viewDetails: 'View details',
-    // A1: nút hiện diện tĩnh, không phân trang thật (mock chỉ 7 dòng) — A2
-    // (Task 6) nối `?page=` thật.
+    // Trang hộ chiếu: nút hiện diện tĩnh cho "Load more" (chunk `?page=`,
+    // xem `AccountPassportPage`).
     loadMore: 'Load more',
-    emptyState: {
-      heading: 'No bookings yet',
-      body: 'Once you book a tour, it’ll show up here.',
-      cta: 'Browse tours',
-    },
   },
   // Trang `/account/bookings/[code]` — grid thông tin + hành động theo
   // `BookingView` (Task 2 `bookingView`, `@/lib/booking-vm`). Mã lạ/không
@@ -2633,8 +2585,6 @@ export const messages = {
     heading: 'Every passport starts blank',
     body: 'Book your first tour and we’ll ink this page — dates, places, and a stamp to prove you were there.',
     cta: 'Browse tours',
-    ghostLabel: 'Your first stamp',
-    ghostSub: 'is waiting',
   },
   /** Trang visa (M2) — chi tiết booking dựng như giấy tờ dán trong hộ chiếu:
    *  mộc trạng thái đóng nghiêng, lưới nhãn IATA, fine print mono. Cùng vũ trụ
@@ -2666,29 +2616,16 @@ export const messages = {
     requestsLine: (requests: string) => `Special requests: ${requests}`.toUpperCase(),
   },
   accountBookingDetail: {
-    back: 'Back to my bookings',
-    tourLabel: 'Tour',
     // Task 7 (redesign hướng A): link cạnh H1 sang trang tour công khai
     // (`/tours/{tourSlug}`) — riêng cho namespace này, KHÔNG tái dùng
     // `view`/`viewTour` của namespace khác (đã có tiền lệ mỗi trang giữ bản
     // copy riêng dù cùng chữ, xem `accountBookings.list.viewTour`).
     viewTour: 'View tour',
-    departureLabel: 'Departure',
-    travellersLabel: 'Travellers',
-    totalLabel: 'Total',
-    refLabel: 'Reference',
-    paymentLabel: 'Payment method',
-    contactLabel: 'Contact',
-    requestsLabel: 'Special requests',
-    /** Ba mục của trang chi tiết (redesign 11/08) — cột trái mỗi mục là tiêu
-     *  đề + một dòng mô tả, giống mọi màn khác trong khu account. */
+    /** Trang visa (M2) chỉ còn dùng đúng hai mục còn sống của bộ ba cũ —
+     *  `bookingHeading`/`contactHeading`/… (redesign 11/08) đã dọn ngày
+     *  11/08 (không còn section riêng cho booking/contact/actions trên
+     *  trang visa, xem `AccountBookingDetailPage`). */
     sections: {
-      bookingHeading: 'This booking',
-      bookingBlurb: 'Reference, dates, and who’s travelling.',
-      contactHeading: 'Contact',
-      contactBlurb: 'Where we’ll reach you about this trip.',
-      actionsHeading: 'Manage',
-      actionsBlurb: 'Pay, cancel, or read the refund rules.',
       reviewHeading: 'Your review',
       reviewBlurb: 'Tell other travellers how it went.',
     },
@@ -2740,9 +2677,6 @@ export const messages = {
     subtitle: 'The information printed in your passport.',
   },
   accountProfile: {
-    title: 'Profile',
-    subtitle: 'Manage your personal info, sign-in, and account.',
-    avatarHint: 'Shown as your initial for now — photo uploads aren’t available yet.',
     details: {
       heading: 'Personal information',
       /** Mô tả cột trái (redesign 11/08). Mọi mục trong khu account đều có một
