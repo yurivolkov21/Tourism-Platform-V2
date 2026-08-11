@@ -391,6 +391,8 @@ export const messages = {
         datesHeading: 'Your dates',
         datesDesc: 'Pick a preferred start date — we’ll plan the rest around it.',
         startDate: 'Preferred start date',
+        // Placeholder trên trigger DatePicker khi chưa chọn ngày nào.
+        startDatePlaceholder: 'Pick a date',
         endHint: (end: string, days: number) => `Ends around ${end} · ${days} days`,
         preferencesHeading: 'Trip preferences',
         preferencesDesc: 'Tell us anything that helps us tailor your private departure.',

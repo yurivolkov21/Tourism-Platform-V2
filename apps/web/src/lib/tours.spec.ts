@@ -23,6 +23,7 @@ import {
   durationBucket,
   facetOptionCounts,
   filterTours,
+  formatDate,
   formatDateRange,
   formatMoney,
   formatReviewDate,
@@ -343,6 +344,16 @@ describe('formatDateRange', () => {
   });
   it('khác năm thì hiện cả hai năm', () => {
     expect(formatDateRange('2026-12-28', '2027-01-05')).toBe('28 Dec 2026 – 5 Jan 2027');
+  });
+});
+
+describe('formatDate', () => {
+  it('in một ngày lịch dạng "D MMM YYYY"', () => {
+    expect(formatDate('2026-08-21')).toBe('21 Aug 2026');
+  });
+  it('không lệch ngày ở đầu/cuối tháng — tách chuỗi, KHÔNG qua new Date()', () => {
+    expect(formatDate('2026-01-01')).toBe('1 Jan 2026');
+    expect(formatDate('2026-12-31')).toBe('31 Dec 2026');
   });
 });
 

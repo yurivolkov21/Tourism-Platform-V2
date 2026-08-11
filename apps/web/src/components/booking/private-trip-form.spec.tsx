@@ -1,5 +1,5 @@
 import { createORPCErrorFromJson } from '@orpc/client';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrivateTripForm } from './private-trip-form';
@@ -87,6 +87,64 @@ describe('PrivateTripForm', () => {
 
     expect(plusAdults).toBeDisabled();
     expect(screen.getByRole('button', { name: /Children \+/ })).toBeDisabled();
+  });
+
+  it('chọn ngày qua DatePicker → trigger đổi hiển thị, submit gửi đúng YYYY-MM-DD', async () => {
+    const user = userEvent.setup();
+    createEnquiry.mockResolvedValue({});
+    render(<PrivateTripForm {...BASE} />);
+
+    // Chốt ngày mục tiêu là ngày CUỐI của tháng đang hiển thị — luôn >= hôm
+    // nay (vì hôm nay không bao giờ vượt quá ngày cuối tháng của chính nó),
+    // nên chắc chắn KHÔNG bị `disabled={{ before: today }}` chặn, bất kể máy
+    // chạy test vào ngày nào trong tháng.
+    const now = new Date();
+    const targetDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    const targetDataDay = targetDate.toLocaleDateString();
+
+    // Trigger được đặt tên qua `<label htmlFor>` của `Field` ("Preferred
+    // start date"), KHÔNG phải nội dung hiển thị bên trong — nội dung đó
+    // (placeholder rồi tới ngày đã chọn) phải đọc qua `textContent`.
+    const trigger = screen.getByLabelText(/Preferred start date/i);
+    expect(trigger).toHaveTextContent(/Pick a date/i);
+
+    await user.click(trigger);
+    // Nút ngày của react-day-picker có aria-label ĐẦY ĐỦ kiểu "Sunday, July
+    // 26th, 2026" (không phải mỗi số ngày) — không lọc qua tên vai trò được.
+    // `data-day` (gắn ở `CalendarDayButton`, `libs/shared/ui`) là định danh
+    // đáng tin cậy duy nhất khớp ĐÚNG MỘT ô, kể cả khi ngày ngoài-tháng trùng số.
+    const dayButton = await waitFor(() => {
+      const btn = document.querySelector<HTMLButtonElement>(`[data-day="${targetDataDay}"]`);
+      if (!btn) throw new Error(`Không tìm thấy ô ngày ${targetDataDay} trên calendar`);
+      return btn;
+    });
+    await user.click(dayButton);
+
+    // Nội dung trigger phải đổi từ placeholder sang ngày đã chọn, dạng
+    // "D MMM YYYY" — ĐÚNG format của `formatDate` (`lib/tours.ts`).
+    const MONTHS = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    const expectedLabel = `${targetDate.getDate()} ${MONTHS[targetDate.getMonth()]} ${targetDate.getFullYear()}`;
+    expect(trigger).toHaveTextContent(expectedLabel);
+
+    await user.type(screen.getByLabelText(/Anything else/i), GOOD_MESSAGE);
+    await user.click(screen.getByRole('button', { name: /Request a quote/i }));
+
+    const expectedISO = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+    expect(createEnquiry).toHaveBeenCalledTimes(1);
+    expect(createEnquiry.mock.calls[0]?.[0]).toMatchObject({ travelDate: expectedISO });
   });
 
   it('throttle và lỗi thật cho hai câu KHÁC nhau', async () => {

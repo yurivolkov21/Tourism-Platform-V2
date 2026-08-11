@@ -320,6 +320,14 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 /** Dải ngày gọn: gộp phần trùng nhau. `startDate`/`endDate` là ngày lịch
     (YYYY-MM-DD) nên tách bằng chuỗi — KHÔNG dựng `new Date()` vì nó diễn giải
     chuỗi này theo UTC rồi hiển thị theo giờ máy, lệch một ngày ở múi giờ âm. */
+/** In một ngày lịch đơn (`YYYY-MM-DD` → "D MMM YYYY"), dùng cho trigger của
+    DatePicker. Cùng luật timezone với `formatDateRange`: tách chuỗi, KHÔNG
+    qua `new Date()`. */
+export function formatDate(date: string): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
 export function formatDateRange(startDate: string, endDate: string): string {
   const [sy, sm, sd] = startDate.split('-').map(Number) as [number, number, number];
   const [ey, em, ed] = endDate.split('-').map(Number) as [number, number, number];
