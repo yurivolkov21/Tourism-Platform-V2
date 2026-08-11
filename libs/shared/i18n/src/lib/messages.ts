@@ -454,6 +454,10 @@ export const messages = {
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
+      // Dòng nhỏ dưới mã trong cuống vé (`CheckoutShell`) — khác `nextVoucher`
+      // (câu đầy đủ trong list "What happens next"): đây là chú thích NGẮN,
+      // ngay cạnh chính mã đó, không cần lặp lại "your booking code is…".
+      stubShowCode: 'Show this code at the meeting point.',
       // Section "What happens next" — chỉ hiện ở mood confirmed.
       nextHeading: 'What happens next',
       nextEmail: 'A confirmation email is on its way to your inbox.',
