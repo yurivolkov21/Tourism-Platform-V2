@@ -35,11 +35,12 @@ export const USER_MENU_SIDE_OFFSET = 28;
 
 // Navbar auth control (convert từ Nexora auth/user-menu.tsx, review navbar):
 // chưa đăng nhập → link "Log in"; đã đăng nhập → avatar tròn mở dropdown
-// (tên/email · My account · My bookings · Sign out). Task 6 (auth-pages-api):
+// (tên/email · My account · Saved tours · Sign out). Task 6 (auth-pages-api):
 // state đọc từ `useSession()` (Better Auth client) thay cho hằng mock tĩnh
-// cũ. Cụm account (Task 3, pha A1): "My account"/"My bookings" nối 2 route
-// TĨNH thật (`/account`, `/account/bookings` — đọc mock nội bộ cụm, chưa
-// wire session/API, đó là việc Task 6/A2) — hết nợ link `#top` cũ.
+// cũ. Fix cuối 11/08: "My bookings" đổi thành "Saved tours" (→
+// `/account/saved`) — "My account" (→ `/account`, trang hộ chiếu) từ redesign
+// M1 đã LÀ cửa vào bookings (Your journey), hai mục trỏ gần như cùng một
+// đích là trùng lặp thật sự, không phải hai lối đi khác nhau.
 export function UserMenu({ linkClassName }: { linkClassName?: string }) {
   const { data, isPending } = useSession();
   const router = useRouter();
@@ -91,9 +92,16 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
             <UserIcon aria-hidden="true" />
             My account
           </DropdownMenuItem>
-          <DropdownMenuItem render={<a href="/account/bookings" />}>
+          {/* Fix cuối 11/08: "My bookings" → "Saved tours" trỏ `/account/saved`
+              — "My account" (route `/account`, trang hộ chiếu) đã LÀ cửa vào
+              bookings (Your journey), hai mục cùng trỏ gần như một đích đọc
+              trùng lặp. Không có key i18n web nào sẵn khớp nghĩa "Saved
+              tours" trong ngữ cảnh menu này (grep: `accountSaved.title` =
+              "Tucked inside", khác giọng) nên giữ literal như `My account`/
+              `Sign out` cạnh nó — component này chưa đi qua i18n. */}
+          <DropdownMenuItem render={<a href="/account/saved" />}>
             <TicketIcon aria-hidden="true" />
-            My bookings
+            Saved tours
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

@@ -57,7 +57,11 @@ export default async function CheckoutSuccessPage({
     return (
       <CheckoutShell tone="muted" title={t.notFound}>
         <div className="flex flex-wrap gap-2.5">
-          <ButtonLink href="/account/bookings">{messages.booking.list.menuLink}</ButtonLink>
+          {/* Fix cuối 11/08: `/account/bookings` (trang Trips cũ) không còn
+              là cửa vào bookings — hộ chiếu `/account` đã thay thế (spec
+              2026-08-11, M1). Nhãn giữ nguyên `booking.list.menuLink`
+              ("My bookings") — vẫn đúng ý dù đích đổi. */}
+          <ButtonLink href="/account">{messages.booking.list.menuLink}</ButtonLink>
           <ButtonLink variant="outline" href="/tours">
             {t.viewTours}
           </ButtonLink>

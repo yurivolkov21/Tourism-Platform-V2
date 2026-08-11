@@ -78,13 +78,15 @@ describe('UserMenu', () => {
     expect(await screen.findByText('Minh Anh')).toBeInTheDocument();
     expect(screen.getByText('minh.anh@example.com')).toBeInTheDocument();
     // Task 3 (cụm account, pha A1): hết nợ `#top` — 2 route tĩnh đã dựng.
+    // Fix cuối 11/08: "My bookings" đổi thành "Saved tours" → `/account/saved`
+    // — "My account" đã là cửa vào bookings (trang hộ chiếu, Your journey).
     expect(screen.getByRole('menuitem', { name: /my account/i })).toHaveAttribute(
       'href',
       '/account',
     );
-    expect(screen.getByRole('menuitem', { name: /my bookings/i })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: /saved tours/i })).toHaveAttribute(
       'href',
-      '/account/bookings',
+      '/account/saved',
     );
   });
 
