@@ -2582,6 +2582,13 @@ export const messages = {
     awaitingStamp: 'next stamp',
     /** Dòng chữ mờ dưới trang tem — các nơi CHƯA từng đóng dấu. */
     stillBlank: (names: string) => `Still blank in this passport: ${names}`,
+    /** SỔ HÀNH TRÌNH (vòng ReUI 11/08): trái = địa danh đã đi (scrollspy +
+     *  ảnh), phải = các lần đã đi (card + icon). */
+    travelLogHeading: 'Travel log',
+    travelLogVisits: (n: number) => `${n} visit${n === 1 ? '' : 's'}`,
+    pastTripsHeading: 'Your visits',
+    tripMeta: (dest: string, month: string, days: number) =>
+      `${dest} · ${month} · ${days} day${days === 1 ? '' : 's'}`,
     /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
     bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
     bookingsOpen: 'Open →',

@@ -4,13 +4,14 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportCard } from '@/components/passport/passport-card';
+import { TravelLog } from '@/components/passport/travel-log';
 import { TuckCard } from '@/components/passport/tuck-card';
 import { fetchAccountMe } from '@/lib/api/account';
 import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
-import { mrzLines, passportNo, passportStats } from '@/lib/passport';
+import { mrzLines, passportNo, passportStats, pastTrips, travelLog } from '@/lib/passport';
 
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
@@ -55,6 +56,14 @@ export default async function AccountPassportPage() {
 
   const name = session.name || session.email;
   const stats = passportStats(bookings, destinations.length);
+  // Sổ hành trình: entries thuần từ lib + ghép ảnh cover của catalog tại đây
+  // (giữ hàm thuần khỏi type Media); trips = các lần đã đi, mới nhất trước.
+  const coverBySlug = new Map(destinations.map((d) => [d.slug, d.cover]));
+  const logEntries = travelLog(destinations, bookings).map((e) => {
+    const cover = coverBySlug.get(e.slug);
+    return { ...e, cover: cover ? { url: cover.url, alt: cover.alt ?? null } : null };
+  });
+  const trips = pastTrips(bookings);
   const isEmpty = bookings.length === 0;
 
   return (
@@ -102,9 +111,16 @@ export default async function AccountPassportPage() {
           </div>
         ) : null}
 
-        {/* Trang tem (StampPages) + thẻ lối vào My bookings đã GỠ TẠM theo
-            góp ý user 11/08 — component/logic tem vẫn sống kèm test trong
-            repo, cắm lại được ngay khi user chốt hướng mới. */}
+        {/* SỔ HÀNH TRÌNH (vòng ReUI 11/08): chỉ hiện khi ĐÃ có chuyến hoàn
+            thành — trái địa danh + ảnh, phải các lần đã đi. (Trang tem
+            StampPages vẫn gỡ tạm từ vòng trước.) */}
+        {logEntries.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="mb-5 font-heading text-xl font-semibold">{t.travelLogHeading}</h2>
+            <TravelLog entries={logEntries} trips={trips} />
+          </section>
+        ) : null}
+
         {isEmpty || wishlist.length === 0 ? null : (
           <div className="mt-10 grid gap-4 sm:grid-cols-2">
             <TuckCard

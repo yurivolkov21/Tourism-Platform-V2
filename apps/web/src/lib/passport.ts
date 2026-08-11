@@ -148,6 +148,90 @@ export function unstampedNames(
     .map((d) => d.name);
 }
 
+export interface TravelLogEntry {
+  slug: string;
+  name: string;
+  /** Số LẦN đã ghé nơi này (đếm theo chuyến — đi lại là cộng thêm). */
+  visits: number;
+  /** 'Jul 2026' — tháng của lần ghé gần nhất. */
+  lastMonth: string;
+}
+
+/**
+ * SỔ HÀNH TRÌNH, cột trái (vòng ReUI 11/08): các địa danh ĐÃ ĐI — chỉ nơi
+ * có tem, sort cụm miền như bản đồ; chuyến chạm nhiều nơi tính cho CẢ các
+ * nơi đó. Ảnh cover do page tự ghép từ catalog (giữ hàm thuần khỏi type
+ * Media). Một luật đã-đi `isCompleted` với stats.
+ */
+export function travelLog(
+  catalog: Array<{ slug: string; name: string; region: string | null }>,
+  bookings: Booking[],
+  today: string = todayDateString(),
+): TravelLogEntry[] {
+  const visitsBySlug = new Map<string, { visits: number; lastEnd: string }>();
+  for (const b of bookings) {
+    if (!isCompleted(b, today)) continue;
+    for (const d of b.tourDestinations) {
+      const cur = visitsBySlug.get(d.slug);
+      visitsBySlug.set(d.slug, {
+        visits: (cur?.visits ?? 0) + 1,
+        lastEnd: !cur || cur.lastEnd < b.departureEndDate ? b.departureEndDate : cur.lastEnd,
+      });
+    }
+  }
+  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
+  return [...catalog]
+    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
+    .flatMap((d) => {
+      const v = visitsBySlug.get(d.slug);
+      if (!v) return [];
+      const end = new Date(v.lastEnd);
+      return [
+        {
+          slug: d.slug,
+          name: d.name,
+          visits: v.visits,
+          lastMonth: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
+        },
+      ];
+    });
+}
+
+export interface TravelLogTrip {
+  code: string;
+  tourTitle: string;
+  /** Tên destination primary (fallback 2 từ đầu tourTitle) — phụ đề card. */
+  destName: string;
+  month: string;
+  /** Độ dài chuyến tính cả hai đầu — cùng công thức daysOnRoad. */
+  days: number;
+}
+
+/**
+ * SỔ HÀNH TRÌNH, cột phải: các LẦN đã đi — mỗi chuyến một mục, MỚI NHẤT
+ * trước (nhật ký đọc từ gần đây lùi về).
+ */
+export function pastTrips(bookings: Booking[], today: string = todayDateString()): TravelLogTrip[] {
+  return bookings
+    .filter((b) => isCompleted(b, today))
+    .sort((a, b) => b.departureEndDate.localeCompare(a.departureEndDate))
+    .map((b) => {
+      const end = new Date(b.departureEndDate);
+      const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
+      return {
+        code: b.code,
+        tourTitle: b.tourTitle,
+        destName: primary?.name ?? b.tourTitle.split(/\s+/).slice(0, 2).join(' '),
+        month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
+        days:
+          Math.round(
+            (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
+              MS_PER_DAY,
+          ) + 1,
+      };
+    });
+}
+
 export interface PassportStats {
   trips: number;
   places: number;
