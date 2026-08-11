@@ -2607,6 +2607,33 @@ export const messages = {
   // Trang `/account/bookings/[code]` — grid thông tin + hành động theo
   // `BookingView` (Task 2 `bookingView`, `@/lib/booking-vm`). Mã lạ/không
   // phải của mình → `notFound()` (page tự gọi, không cần copy riêng ở đây).
+  /** Trang hộ chiếu `/account` (spec 2026-08-11, M1) — mặt tiền duy nhất của
+   *  khu account: header passport + tem + stats + bản đồ + journey. Copy
+   *  "explored" đếm theo CATALOG thật ("of the map"), không hứa địa lý. */
+  passportHome: {
+    kicker: 'Traveler passport · Tourism',
+    since: (year: number) => `Traveler since ${year}`,
+    settingsLink: 'Settings ⚙',
+    journeyHeading: 'Your journey',
+    mapHeading: 'Where you’ve set foot',
+    mapCaption: (n: number, total: number) =>
+      n === 0
+        ? `Your map is waiting for its first color — ${total} destinations to go.`
+        : `${n} of our ${total} destinations — the map is turning jade.`,
+    savedHeading: (n: number) => `Tucked inside · ${n} saved tour${n === 1 ? '' : 's'}`,
+    savedOpen: 'Open →',
+    statTrips: 'Trips',
+    statPlaces: 'Places visited',
+    statExplored: 'of the map explored',
+    statDays: 'Days on the road',
+    /** Động từ hàng journey — chọn theo `bookingView`, một nguồn ba trạng thái. */
+    journeyView: 'View →',
+    journeyPayNow: 'Pay now →',
+    journeyReview: 'Review →',
+    /** Nhãn tem ghost cuối dãy — lời mời chuyến kế, không phải dữ liệu. */
+    ghostStampLabel: '?',
+    ghostStampSub: 'next stamp',
+  },
   accountBookingDetail: {
     back: 'Back to my bookings',
     tourLabel: 'Tour',
