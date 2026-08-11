@@ -178,6 +178,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     // Task 1 (khu Trips T6/T7): tourImage = cover role hero đã seed cho dayTour.
     expect(body.tourImage?.role).toBe('hero');
     expect(body.tourImage?.url).toContain('/image/upload/f_auto,q_auto/tours/hoi-an-hero');
+    // Passport (spec 11/08 §3.1): snapshot đích đến từ seed — dayTour gắn đúng
+    // MỘT destination Hội An primary, assert GIÁ TRỊ chứ không chỉ shape.
+    expect(body.tourDestinations).toEqual([{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }]);
     expect(Number(body.unitPrice)).toBe(39);
     expect(Number(body.totalAmount)).toBe(117); // 39.00 × (2 người lớn + 1 trẻ em)
     // Money API response phải là chuỗi 2 chữ số thập phân ("117.00", KHÔNG "117")
@@ -419,6 +422,16 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(paged.items.every((b) => b.tourSlug === dayTour.slug)).toBe(true);
     expect(
       paged.items.every((b) => b.tourImage?.url.includes('/f_auto,q_auto/tours/hoi-an-hero')),
+    ).toBe(true);
+    // Passport: đường LIST cũng mang snapshot đích đến đúng giá trị seed
+    // (đi qua cùng bookingTourInclude — không lệch với byCode).
+    expect(
+      paged.items.every(
+        (b) =>
+          b.tourDestinations.length === 1 &&
+          b.tourDestinations[0]?.slug === 'hoi-an' &&
+          b.tourDestinations[0]?.isPrimary === true,
+      ),
     ).toBe(true);
 
     const paid = PagedSchema(BookingSchema).parse(

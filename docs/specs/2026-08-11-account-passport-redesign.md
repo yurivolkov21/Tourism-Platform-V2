@@ -42,6 +42,11 @@ ngang hết viewport (kỹ thuật âm-margin như hero các trang public).
 
 ### 3.1 Contract (đường mòn `tourImage` đã đi 11/08)
 
+> **AMENDED (plan T2, 11/08):** tái dùng `DestinationLinkSchema`
+> `{slug, name, isPrimary}` thay vì `{name, region}` như câu dưới — `region`
+> không cần trên booking vì bản đồ join catalog theo slug; `isPrimary` lại cần
+> cho nhãn tem. Join qua hằng `bookingTourInclude` dùng chung 9 call site.
+
 `BookingSchema` thêm **`tourDestinations: z.array(z.object({ name, region }))`**
 — snapshot join lúc đọc từ `tour.destinations` (name ≤120, region nullable ≤80
 theo `DestinationSchema`), KHÔNG cột DB mới, không migration. Phủ cùng cơ chế

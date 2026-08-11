@@ -22,6 +22,9 @@ export function makeBooking(overrides: Partial<Booking> = {}): Booking {
     tourTitle: 'Test Tour',
     tourSlug: 'test-tour',
     tourImage: null,
+    // Passport (spec 11/08): snapshot đích đến — primary đứng đầu, nguồn cho
+    // tem/stats/bản đồ. Test cần tour nhiều đích hoặc rỗng thì đè overrides.
+    tourDestinations: [{ slug: 'ha-long-bay', name: 'Hạ Long Bay', isPrimary: true }],
     departureStartDate: '2026-09-01',
     departureEndDate: '2026-09-02',
     unitPrice: '10.00',

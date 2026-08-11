@@ -5,7 +5,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
-import { resolveTourCover, toBooking } from './bookings.service.js';
+import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import {
   classifyRefundAmount,
@@ -158,7 +158,7 @@ export class RefundsService {
       const row = await tx.booking.update({
         where: { id: booking.id },
         data: { status: nextStatus },
-        include: { tour: { select: { slug: true } } },
+        include: { tour: bookingTourInclude },
       });
       await tx.outbox.create({
         data: {

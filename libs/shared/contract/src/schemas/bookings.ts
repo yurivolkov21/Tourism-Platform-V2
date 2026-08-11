@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { DecimalStringSchema } from './catalog.js';
+import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
 import { MediaItemSchema } from './media.js';
 
 /**
@@ -74,6 +74,11 @@ export const BookingSchema = z.object({
   tourSlug: z.string().min(1).max(160),
   /** Ảnh cover tour cho card Trips (hướng A) — null khi tour chưa có media. */
   tourImage: MediaItemSchema.nullable(),
+  /** Snapshot đích đến của tour lúc ĐỌC (primary đứng đầu — API đảm bảo thứ
+   *  tự) — nguồn cho tem hộ chiếu, stats "places visited" và bản đồ chấm
+   *  (spec 11/08 §3.1). Tái dùng DestinationLinkSchema của catalog, không
+   *  khai schema mới; mảng rỗng hợp lệ khi tour chưa gắn destination. */
+  tourDestinations: z.array(DestinationLinkSchema),
   departureStartDate: z.iso.date(),
   departureEndDate: z.iso.date(),
   unitPrice: DecimalStringSchema,

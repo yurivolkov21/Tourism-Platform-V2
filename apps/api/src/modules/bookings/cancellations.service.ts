@@ -10,7 +10,12 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
-import { calendarDate, resolveTourCover, toBooking } from './bookings.service.js';
+import {
+  bookingTourInclude,
+  calendarDate,
+  resolveTourCover,
+  toBooking,
+} from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
@@ -503,7 +508,7 @@ export class CancellationsService {
   private async decisionResult(requestId: string): Promise<DecideCancellationResult> {
     const row = await prisma.cancellationRequest.findUniqueOrThrow({
       where: { id: requestId },
-      include: { booking: { include: { tour: { select: { slug: true } } } } },
+      include: { booking: { include: { tour: bookingTourInclude } } },
     });
     const tourImage = await resolveTourCover(this.media, row.booking.tourId);
     return {

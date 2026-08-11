@@ -122,6 +122,7 @@ describe('BookingSchema', () => {
       tourTitle: 'Hội An Ancient Town Walking Tour',
       tourSlug: 'hoi-an-ancient-town-walking-tour',
       tourImage: sampleTourImage,
+      tourDestinations: [],
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
       unitPrice: '39.00',
@@ -160,6 +161,54 @@ describe('BookingSchema', () => {
     );
   });
 
+  // Passport (spec 11/08 §3.1): snapshot đích đến của tour lúc đọc — nguồn cho
+  // tem hộ chiếu, stats "places visited" và bản đồ chấm. Tái dùng
+  // DestinationLinkSchema, primary đứng đầu (thứ tự do API đảm bảo, schema chỉ
+  // giữ shape).
+  it('carries tourDestinations as DestinationLink[] (empty array valid, field required)', () => {
+    const withDests = {
+      id: 'a0000001-0000-4000-8000-000000000001',
+      code: 'BK-7Q2M9XKD',
+      status: 'PENDING',
+      tourTitle: 'Hội An Ancient Town Walking Tour',
+      tourSlug: 'hoi-an-ancient-town-walking-tour',
+      tourImage: null,
+      tourDestinations: [
+        { slug: 'hoi-an', name: 'Hội An', isPrimary: true },
+        { slug: 'da-nang', name: 'Đà Nẵng', isPrimary: false },
+      ],
+      departureStartDate: '2026-09-18',
+      departureEndDate: '2026-09-18',
+      unitPrice: '39.00',
+      totalAmount: '117.00',
+      currency: 'USD',
+      numAdults: 2,
+      numChildren: 1,
+      contactName: 'Alice Nguyen',
+      contactEmail: 'alice@example.com',
+      contactPhone: null,
+      specialRequests: null,
+      paymentProvider: 'STRIPE',
+      checkoutUrl: null,
+      paidAt: null,
+      cancelledAt: null,
+      createdAt: '2026-07-18T09:00:00.000Z',
+      cancellationStatus: null,
+      cancellationRequestedAt: null,
+      cancellationDecidedAt: null,
+      refundedTotal: '0.00',
+      reviewedAt: null,
+    };
+    const parsed = BookingSchema.parse(withDests);
+    expect(parsed.tourDestinations).toHaveLength(2);
+    expect(parsed.tourDestinations[0]?.isPrimary).toBe(true);
+    // Mảng rỗng hợp lệ — tour chưa gắn destination nào (dữ liệu seed tối giản).
+    expect(BookingSchema.safeParse({ ...withDests, tourDestinations: [] }).success).toBe(true);
+    // Field BẮT BUỘC — thiếu là lỗi contract, không phải optional.
+    const { tourDestinations: _omit, ...without } = withDests;
+    expect(BookingSchema.safeParse(without).success).toBe(false);
+  });
+
   // Cụm C (spec 07/08 §3): ba field đọc-kèm, tất cả additive.
   it('carries the cancellation timestamps as nullable ISO datetimes', () => {
     const base = {
@@ -169,6 +218,7 @@ describe('BookingSchema', () => {
       tourTitle: 'North to South Classic',
       tourSlug: 'north-to-south-classic',
       tourImage: null,
+      tourDestinations: [],
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       unitPrice: '1290.00',
@@ -214,6 +264,7 @@ describe('BookingSchema', () => {
       tourTitle: 'North to South Classic',
       tourSlug: 'north-to-south-classic',
       tourImage: null,
+      tourDestinations: [],
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
       unitPrice: '1290.00',
@@ -262,6 +313,7 @@ const validBooking = {
   tourTitle: 'Hội An Ancient Town Walking Tour',
   tourSlug: 'hoi-an-ancient-town-walking-tour',
   tourImage: null,
+  tourDestinations: [],
   departureStartDate: '2026-09-18',
   departureEndDate: '2026-09-18',
   unitPrice: '39.00',

@@ -64,6 +64,29 @@ export const calendarDate = (value: Date): string => value.toISOString().slice(0
 type BookingRow = Prisma.BookingModel;
 
 /**
+ * Quan hệ `tour` phải join ở MỌI câu đọc booking: slug (link ngược về trang
+ * tour) + destinations (tem/bản đồ hộ chiếu — spec 11/08 §3.1, primary đứng
+ * đầu cùng quy tắc C1 của catalog). Dùng hằng số này thay vì viết inline để 9
+ * call site không lệch nhau; kiểu intersection của `toBooking` ép compile-error
+ * chỗ nào quên.
+ */
+export const bookingTourInclude = {
+  select: {
+    slug: true,
+    destinations: {
+      select: { isPrimary: true, destination: { select: { slug: true, name: true } } },
+      orderBy: [{ isPrimary: 'desc' }, { destination: { name: 'asc' } }],
+    },
+  },
+} satisfies Prisma.TourDefaultArgs;
+
+/** Shape row `tour` sau join `bookingTourInclude` — nguồn kiểu cho `toBooking`. */
+export type BookingTourJoin = {
+  slug: string;
+  destinations: Array<{ isPrimary: boolean; destination: { slug: string; name: string } }>;
+};
+
+/**
  * Phần ĐỌC KÈM của một booking: dữ liệu không nằm trên chính row `Booking` mà
  * phải truy thêm bảng khác (đơn xin hủy, sổ refund).
  *
@@ -108,7 +131,7 @@ export async function resolveTourCover(
  * nếu quên (Task 1: tourSlug/tourImage giờ là field bắt buộc trên contract,
  * không có sentinel "chưa đọc" hợp lệ như refundedTotal/reviewedAt). */
 export function toBooking(
-  row: BookingRow & { tour: { slug: string } },
+  row: BookingRow & { tour: BookingTourJoin },
   checkoutUrl: string | null,
   tourImage: MediaItem | null,
   extras: BookingReadExtras = {},
@@ -120,6 +143,13 @@ export function toBooking(
     tourTitle: row.tourTitle,
     tourSlug: row.tour.slug,
     tourImage,
+    // Snapshot đích đến lúc đọc (spec passport 11/08 §3.1) — primary đứng đầu
+    // nhờ orderBy trong `bookingTourInclude`, map về đúng DestinationLinkSchema.
+    tourDestinations: row.tour.destinations.map((d) => ({
+      slug: d.destination.slug,
+      name: d.destination.name,
+      isPrimary: d.isPrimary,
+    })),
     departureStartDate: calendarDate(row.departureStartDate),
     departureEndDate: calendarDate(row.departureEndDate),
     unitPrice: money(row.unitPrice),
@@ -225,6 +255,12 @@ export class BookingsService {
             currency: true,
             basePrice: true,
             isPublished: true,
+            // Đích đến cho snapshot `tourDestinations` của booking vừa tạo —
+            // cùng shape/orderBy với `bookingTourInclude` (primary đứng đầu).
+            destinations: {
+              select: { isPrimary: true, destination: { select: { slug: true, name: true } } },
+              orderBy: [{ isPrimary: 'desc' as const }, { destination: { name: 'asc' as const } }],
+            },
           },
         },
       },
@@ -316,7 +352,10 @@ export class BookingsService {
     );
     const tourImage = await resolveTourCover(this.media, departure.tour.id);
     return toBooking(
-      { ...withSession, tour: { slug: departure.tour.slug } },
+      {
+        ...withSession,
+        tour: { slug: departure.tour.slug, destinations: departure.tour.destinations },
+      },
       session.checkoutUrl,
       tourImage,
     );
@@ -332,7 +371,7 @@ export class BookingsService {
   async reCheckout(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: { select: { slug: true } } },
+      include: { tour: bookingTourInclude },
     });
     if (!booking || booking.userId !== userId) return null;
     if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
@@ -358,7 +397,7 @@ export class BookingsService {
     const updated = await prisma.booking.update({
       where: { id: booking.id },
       data: { providerSessionId: session.sessionId },
-      include: { tour: { select: { slug: true } } },
+      include: { tour: bookingTourInclude },
     });
     const tourImage = await resolveTourCover(this.media, booking.tourId);
     return toBooking(updated, session.checkoutUrl, tourImage);
@@ -382,7 +421,7 @@ export class BookingsService {
     if (rows.length === 0) throw new BookingNotPendingError();
     const updated = await prisma.booking.findUniqueOrThrow({
       where: { id: booking.id },
-      include: { tour: { select: { slug: true } } },
+      include: { tour: bookingTourInclude },
     });
     this.logger.log(`Booking ${booking.code} self-cancelled by owner (PENDING → CANCELLED, BK-2)`);
     const tourImage = await resolveTourCover(this.media, booking.tourId);
@@ -405,7 +444,7 @@ export class BookingsService {
       prisma.booking.count({ where }),
       prisma.booking.findMany({
         where,
-        include: { tour: { select: { slug: true } } },
+        include: { tour: bookingTourInclude },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -441,7 +480,7 @@ export class BookingsService {
   async byCode(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: { select: { slug: true } } },
+      include: { tour: bookingTourInclude },
     });
     if (!booking || booking.userId !== userId) return null;
     const latestCancellation = await prisma.cancellationRequest.findFirst({
@@ -498,7 +537,7 @@ export class BookingsService {
       prisma.booking.count({ where }),
       prisma.booking.findMany({
         where,
-        include: { tour: { select: { slug: true } } },
+        include: { tour: bookingTourInclude },
         orderBy: [{ createdAt: 'desc' }, { id: 'asc' }],
         skip: (page - 1) * limit,
         take: limit,
@@ -524,7 +563,7 @@ export class BookingsService {
   async adminByCode(code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: { select: { slug: true } } },
+      include: { tour: bookingTourInclude },
     });
     if (!booking) return null;
     const tourImage = await resolveTourCover(this.media, booking.tourId);
