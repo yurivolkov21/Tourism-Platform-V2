@@ -18,5 +18,9 @@ import type { ReactNode } from 'react';
  * + fetch dữ liệu của chính nó (quyết định từ cụm A, lý do cũ vẫn đúng).
  */
 export default function AccountLayout({ children }: { children: ReactNode }) {
-  return <div className="-mb-32 flex min-h-dvh w-full flex-col bg-paper">{children}</div>;
+  // `pb-20/24`: hơi thở giữa thân trang và footer (góp ý user 11/08 — bản
+  // chuyển sang ContentHero từng làm rơi mất phần đệm đáy của layout cũ).
+  return (
+    <div className="-mb-32 flex min-h-dvh w-full flex-col bg-paper pb-20 md:pb-24">{children}</div>
+  );
 }
