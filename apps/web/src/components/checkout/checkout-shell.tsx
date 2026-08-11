@@ -17,8 +17,12 @@ import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
  * trang cancel không có mã (booking PENDING không phát mã như một voucher)
  * nên không có cuống, card render như một card thường, KHÔNG đường xé lửng lơ.
  *
- * `tone` tô dải mảnh trong dải header (không tô cả thẻ): tông màu mã hoá "có
- * cần để mắt tới không" — thông tin thật nằm ở mã đặt chỗ, không ở màu nền.
+ * `tone` tô một băng màu mảnh ~6px bám ĐÚNG mép cuống (`TicketToneEdge`),
+ * không tô cả thẻ: tông màu mã hoá "có cần để mắt tới không" — thông tin thật
+ * nằm ở mã đặt chỗ, không ở màu nền. Mép cuống là mép PHẢI trên desktop (thân
+ * trái/cuống phải) và mép DƯỚI trên mobile (thân trên/cuống dưới) — băng
+ * "thuộc về" cuống nên bám đúng cạnh ngoài của cuống, không nằm ngang trên
+ * đỉnh vé (bản trước). Nhánh không `code` không có cuống nên không có băng.
  * Ngọc bích (`primary`) chỉ xuất hiện ở ĐÚNG BA chỗ: dải header (wordmark +
  * nhãn TOUR VOUCHER), một highlight cạnh nhãn quan trọng nhất trong cuống
  * (booking reference), và nền cuống nhạt hơn thân.
@@ -48,10 +52,11 @@ export function CheckoutShell({
   const t = messages.booking.success;
 
   if (!code) {
+    // Không có `code` → không còn mép cuống nào để bám băng màu (card thường,
+    // không cuống) — giữ card trơn, KHÔNG dải/băng tone.
     return (
       <section className="mx-auto flex w-full max-w-2xl flex-col px-4 py-16 md:py-24">
         <div className="overflow-hidden rounded-2xl border bg-card">
-          <div aria-hidden="true" className={cn('h-1.5 w-full', TONE_BAR[tone])} />
           <div className="flex flex-col items-center gap-6 px-6 py-10 text-center md:px-10 md:py-12">
             <h1 className="font-heading text-2xl font-semibold text-balance md:text-3xl">
               {title}
@@ -66,7 +71,8 @@ export function CheckoutShell({
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col px-4 py-16 md:py-24">
-      <div className="overflow-hidden rounded-2xl border bg-card">
+      <div className="relative overflow-hidden rounded-2xl border bg-card">
+        <TicketToneEdge tone={tone} />
         <div className="flex flex-col md:flex-row">
           {/* THÂN VÉ */}
           <div className="relative flex flex-1 flex-col md:w-[70%]">
@@ -77,9 +83,10 @@ export function CheckoutShell({
               className="pointer-events-none absolute inset-0 opacity-[0.04] [background-image:repeating-radial-gradient(circle_at_15%_20%,var(--color-primary)_0px,transparent_2px,transparent_9px)]"
             />
 
-            {/* Dải header mỏng: wordmark serif nhỏ + nhãn TOUR VOUCHER + dải tone theo mood */}
+            {/* Dải header mỏng: wordmark serif nhỏ + nhãn TOUR VOUCHER — dải tone
+                theo mood đã dời xuống mép cuống (băng dọc/ngang bám mép cuống,
+                xem `TicketToneEdge`), không còn nằm ngang trên đỉnh vé. */}
             <div className="relative border-b bg-primary/5">
-              <div aria-hidden="true" className={cn('h-1 w-full', TONE_BAR[tone])} />
               <div className="flex items-center justify-between px-5 py-2 md:px-7">
                 <span className="font-heading text-sm font-semibold tracking-tight text-foreground">
                   tour<span className="text-primary">ism</span>
@@ -160,6 +167,29 @@ const TONE_BAR = {
   warning: 'bg-warning/70',
   muted: 'bg-muted',
 } as const;
+
+/**
+ * Băng màu tone theo mood, bám ĐÚNG mép ngoài của cuống vé — thay cho dải
+ * ngang trên đỉnh vé của bản trước. Định vị TUYỆT ĐỐI so với card ngoài cùng
+ * (cha đã set `relative`); không tự bo góc — dựa vào `overflow-hidden` +
+ * `rounded-2xl` của card cha để cắt gọn theo đúng góc bo, tránh băng vuông
+ * chọc ra ngoài viền.
+ *
+ * Mobile (card xếp dọc, cuống ở DƯỚI): nằm ngang, bám mép dưới, full width.
+ * Desktop (`md:`, cuống ở PHẢI): nằm dọc, bám mép phải, full height — override
+ * lại toàn bộ cạnh đã đặt ở mobile (`left-auto`, `h-auto`) thay vì chỉ thêm.
+ */
+function TicketToneEdge({ tone }: { tone: 'success' | 'warning' | 'muted' }) {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        'absolute right-0 bottom-0 left-0 h-1.5 md:top-0 md:left-auto md:h-auto md:w-1.5',
+        TONE_BAR[tone],
+      )}
+    />
+  );
+}
 
 /**
  * Đường xé giữa thân vé và cuống vé: MỘT đường mảnh ~2px nằm sát ranh giới
