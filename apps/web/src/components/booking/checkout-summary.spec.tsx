@@ -115,7 +115,7 @@ describe('CheckoutSummary — breakdown giá', () => {
   // "Instant confirmation" giữ nguyên vì đúng sự thật (booking PAID xác nhận
   // ngay).
   it('chip Flexible cancellation (trung tính) + Instant confirmation luôn hiển thị', () => {
-    render(
+    const { container } = render(
       <CheckoutSummary
         tour={makeTour()}
         departure={null}
@@ -128,6 +128,12 @@ describe('CheckoutSummary — breakdown giá', () => {
     expect(screen.getByText('Flexible cancellation')).toBeInTheDocument();
     expect(screen.queryByText('Free cancellation')).not.toBeInTheDocument();
     expect(screen.getByText('Instant confirmation')).toBeInTheDocument();
+    // Markup chốt: Badge outline + chấm trạng thái nhỏ (KHÔNG còn pill nền
+    // màu tự chế `bg-success/15`/`bg-info/10`) — chấm là tín hiệu màu duy
+    // nhất, không nhuộm cả chữ.
+    expect(container.querySelector('.bg-success.rounded-full')).toBeInTheDocument();
+    expect(container.querySelector('.bg-info.rounded-full')).toBeInTheDocument();
+    expect(container.querySelector('.bg-success\\/15')).not.toBeInTheDocument();
   });
 
   it('cover: null → không render <img> (không vỡ layout)', () => {

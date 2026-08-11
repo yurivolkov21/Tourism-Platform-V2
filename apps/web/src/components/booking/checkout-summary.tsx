@@ -1,5 +1,6 @@
 import type { MediaItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { Badge } from '@tourism/ui/components/badge';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
@@ -180,13 +181,19 @@ export function CheckoutSummary({
           </p>
         </div>
 
+        {/* Badge outline shadcn chuẩn + chấm trạng thái nhỏ — thay pill nền
+            màu loè tự chế (góp ý user: "nhìn giống AI"). Chữ giữ
+            `text-foreground` mặc định của variant outline, chấm màu là tín
+            hiệu trạng thái duy nhất (mẫu "status badge" shadcnspace.com). */}
         <div className="flex flex-wrap gap-2">
-          <span className="rounded-full bg-success/15 px-2.5 py-1 text-xs font-medium text-success">
+          <Badge variant="outline">
+            <span aria-hidden className="size-1.5 rounded-full bg-success" />
             {t.flexibleCancellation}
-          </span>
-          <span className="rounded-full bg-info/10 px-2.5 py-1 text-xs font-medium text-info">
+          </Badge>
+          <Badge variant="outline">
+            <span aria-hidden className="size-1.5 rounded-full bg-info" />
             {t.instantConfirmation}
-          </span>
+          </Badge>
         </div>
 
         <div className="border-t pt-4">
