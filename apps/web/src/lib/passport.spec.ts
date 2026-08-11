@@ -250,6 +250,36 @@ describe('travelLog', () => {
     const haLong = entries[0];
     expect(haLong?.visits).toBe(2);
     expect(haLong?.lastMonth).toBe('Jul 2026');
+    // BK-FUTUREAA (PAID, 09/2026) → node "sắp tới" của chính nơi đó.
+    expect(haLong?.upcoming.map((u) => u.code)).toEqual(['BK-FUTUREAA']);
+    expect(haLong?.upcoming[0]?.month).toBe('Sep 2026');
+  });
+
+  it('nơi CHỈ sắp đi (PAID/PENDING tương lai) vẫn có entry — visits 0, không lastMonth; CANCELLED bỏ', () => {
+    const entries = travelLog(
+      CATALOG,
+      [
+        makeBooking({
+          code: 'BK-PENDFUTU',
+          status: 'PENDING',
+          departureStartDate: '2026-09-10',
+          departureEndDate: '2026-09-11',
+          tourDestinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
+        }),
+        makeBooking({
+          code: 'BK-CANCELAA',
+          status: 'CANCELLED',
+          departureStartDate: '2026-09-20',
+          departureEndDate: '2026-09-21',
+          tourDestinations: [{ slug: 'can-tho', name: 'Cần Thơ', isPrimary: true }],
+        }),
+      ],
+      TODAY,
+    );
+    expect(entries.map((e) => e.slug)).toEqual(['hoi-an']);
+    expect(entries[0]?.visits).toBe(0);
+    expect(entries[0]?.lastMonth).toBeUndefined();
+    expect(entries[0]?.upcoming).toHaveLength(1);
   });
 
   it('mỗi entry mang trips CŨ → MỚI (lần 1 → lần n) đủ tour/tháng/số ngày — nuôi stepper', () => {

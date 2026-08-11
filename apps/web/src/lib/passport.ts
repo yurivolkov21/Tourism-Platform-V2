@@ -163,22 +163,27 @@ export interface TravelLogEntry {
   name: string;
   /** Số LẦN đã ghé nơi này (đếm theo chuyến — đi lại là cộng thêm). */
   visits: number;
-  /** 'Jul 2026' — tháng của lần ghé gần nhất. */
-  lastMonth: string;
-  /** Các chuyến đã ghé nơi này, CŨ → MỚI (lần 1 → lần n) — nuôi stepper
-   *  dọc cột phải: mỗi lần đi một step. */
+  /** 'Jul 2026' — tháng của lần ghé gần nhất; undefined khi chưa đi lần nào
+   *  (entry chỉ có chuyến sắp tới). */
+  lastMonth?: string;
+  /** Các chuyến đã ghé nơi này, CŨ → MỚI (lần 1 → lần n) — mỗi lần một
+   *  node timeline. */
   trips: TravelLogTrip[];
+  /** Chuyến ĐÃ/SẮP trả tiền còn phía trước chạm nơi này (sort theo ngày
+   *  khởi hành; month = tháng khởi hành) — node "Pending" cuối timeline. */
+  upcoming: TravelLogTrip[];
 }
 
-/** Booking đã đi → một mục chuyến của sổ hành trình. */
-function tripOf(b: Booking): TravelLogTrip {
-  const end = new Date(b.departureEndDate);
+/** Booking → một mục chuyến của sổ hành trình; `monthFrom` chọn mốc tháng
+ *  (chuyến đã đi lấy tháng KẾT THÚC, chuyến sắp tới lấy tháng KHỞI HÀNH). */
+function tripOf(b: Booking, monthFrom: 'end' | 'start'): TravelLogTrip {
+  const anchor = new Date(monthFrom === 'end' ? b.departureEndDate : b.departureStartDate);
   const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
   return {
     code: b.code,
     tourTitle: b.tourTitle,
     destName: primary?.name ?? b.tourTitle.split(/\s+/).slice(0, 2).join(' '),
-    month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
+    month: `${MONTHS[anchor.getUTCMonth()]} ${anchor.getUTCFullYear()}`,
     days:
       Math.round(
         (new Date(b.departureEndDate).getTime() - new Date(b.departureStartDate).getTime()) /
@@ -200,25 +205,47 @@ export function travelLog(
   today: string = todayDateString(),
 ): TravelLogEntry[] {
   const tripsBySlug = new Map<string, TravelLogTrip[]>();
+  const upcomingBySlug = new Map<string, TravelLogTrip[]>();
+  const push = (map: Map<string, TravelLogTrip[]>, slug: string, trip: TravelLogTrip) => {
+    const list = map.get(slug) ?? [];
+    list.push(trip);
+    map.set(slug, list);
+  };
   const done = bookings
     .filter((b) => isCompleted(b, today))
     .sort((a, b) => a.departureEndDate.localeCompare(b.departureEndDate));
   for (const b of done) {
-    const trip = tripOf(b);
-    for (const d of b.tourDestinations) {
-      const list = tripsBySlug.get(d.slug) ?? [];
-      list.push(trip);
-      tripsBySlug.set(d.slug, list);
-    }
+    const trip = tripOf(b, 'end');
+    for (const d of b.tourDestinations) push(tripsBySlug, d.slug, trip);
+  }
+  // Chuyến còn phía trước ĐÃ/SẮP trả tiền — một luật với dấu ghost trang tem.
+  const ahead = bookings
+    .filter((b) => {
+      const tone = bookingView(b).tone;
+      return (tone === 'success' || tone === 'warning') && !(b.departureEndDate < today);
+    })
+    .sort((a, b) => a.departureStartDate.localeCompare(b.departureStartDate));
+  for (const b of ahead) {
+    const trip = tripOf(b, 'start');
+    for (const d of b.tourDestinations) push(upcomingBySlug, d.slug, trip);
   }
   const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
   return [...catalog]
     .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
     .flatMap((d) => {
-      const trips = tripsBySlug.get(d.slug);
-      const last = trips?.at(-1);
-      if (!trips || !last) return [];
-      return [{ slug: d.slug, name: d.name, visits: trips.length, lastMonth: last.month, trips }];
+      const trips = tripsBySlug.get(d.slug) ?? [];
+      const upcoming = upcomingBySlug.get(d.slug) ?? [];
+      if (trips.length === 0 && upcoming.length === 0) return [];
+      return [
+        {
+          slug: d.slug,
+          name: d.name,
+          visits: trips.length,
+          lastMonth: trips.at(-1)?.month,
+          trips,
+          upcoming,
+        },
+      ];
     });
 }
 
