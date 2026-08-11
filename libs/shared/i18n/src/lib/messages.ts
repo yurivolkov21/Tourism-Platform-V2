@@ -2633,6 +2633,35 @@ export const messages = {
     ghostLabel: 'Your first stamp',
     ghostSub: 'is waiting',
   },
+  /** Trang visa (M2) — chi tiết booking dựng như giấy tờ dán trong hộ chiếu:
+   *  mộc trạng thái đóng nghiêng, lưới nhãn IATA, fine print mono. Cùng vũ trụ
+   *  ấn phẩm với tấm vé checkout ("View voucher" mở đúng tấm vé đó). */
+  passportVisa: {
+    back: '← Passport',
+    kicker: 'Entry · Tour booking',
+    labels: {
+      dates: 'Dates',
+      travellers: 'Travellers',
+      reference: 'Reference',
+      total: 'Total paid',
+    },
+    /** Chữ trên mộc — MỘT ngôn ngữ dấu cho cả 5 trạng thái, màu mực đi theo
+     *  `bookingView.tone` ở component. */
+    stampByStatus: {
+      PENDING: 'AWAITING PAYMENT',
+      PAID: 'CONFIRMED',
+      CANCELLED: 'CANCELLED',
+      REFUNDED: 'REFUNDED',
+      PARTIALLY_REFUNDED: 'PARTLY REFUNDED',
+    },
+    viewVoucher: 'View voucher',
+    contactUs: 'Contact us',
+    cancelLead: 'Need to change plans?',
+    /** Fine print đáy giấy tờ — thay section Contact cũ, gọn một dòng mono. */
+    fineLine: (name: string, email: string, booked: string, provider: string) =>
+      `Lead traveler: ${name} · ${email} · Booked ${booked} · ${provider}`.toUpperCase(),
+    requestsLine: (requests: string) => `Special requests: ${requests}`.toUpperCase(),
+  },
   accountBookingDetail: {
     back: 'Back to my bookings',
     tourLabel: 'Tour',

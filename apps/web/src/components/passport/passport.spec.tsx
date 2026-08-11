@@ -5,6 +5,7 @@ import { DotMap } from './dot-map';
 import { JourneyRow } from './journey-row';
 import { PassportHeader } from './passport-header';
 import { StampRow } from './stamp-row';
+import { VisaStamp } from './visa-stamp';
 
 // Spec gộp cho bộ component passport (T4) — mỗi component vài ca hành vi,
 // KHÔNG chụp markup: assert thứ user thấy (chữ, href, trạng thái class).
@@ -69,6 +70,29 @@ describe('DotMap', () => {
     expect(dots[1]?.className).toContain('opacity-40');
     expect(dots[2]?.className).toContain('bg-muted');
     expect(screen.getByText(/turning jade/)).toBeInTheDocument();
+  });
+});
+
+describe('VisaStamp', () => {
+  it('mỗi status đúng chữ mộc, màu mực theo tone (success/warning/muted)', () => {
+    const CASES = [
+      { status: 'PAID', tone: 'success', text: 'CONFIRMED', cls: 'text-success' },
+      { status: 'PENDING', tone: 'warning', text: 'AWAITING PAYMENT', cls: 'text-warning' },
+      { status: 'CANCELLED', tone: 'muted', text: 'CANCELLED', cls: 'text-muted-foreground' },
+      { status: 'REFUNDED', tone: 'destructive', text: 'REFUNDED', cls: 'text-muted-foreground' },
+      {
+        status: 'PARTIALLY_REFUNDED',
+        tone: 'destructive',
+        text: 'PARTLY REFUNDED',
+        cls: 'text-muted-foreground',
+      },
+    ] as const;
+    for (const c of CASES) {
+      const { unmount } = render(<VisaStamp status={c.status} tone={c.tone} />);
+      const el = screen.getByText(c.text);
+      expect(el.className).toContain(c.cls);
+      unmount();
+    }
   });
 });
 
