@@ -2575,27 +2575,25 @@ export const messages = {
     fieldNo: 'Passport no.',
     settingsLink: 'Settings ⚙',
     stampsHeading: 'Stamps',
+    /** Sub-label ô "chờ đóng tem" của bộ sưu tập (addendum §7 hướng A). */
+    awaitingStamp: 'next stamp',
     /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
     bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
     bookingsOpen: 'Open →',
-    mapHeading: 'Where you’ve set foot',
     mapCaption: (n: number, total: number) =>
       n === 0
         ? `Your map is waiting for its first color — ${total} destinations to go.`
         : `${n} of our ${total} destinations — the map is turning jade.`,
     savedHeading: (n: number) => `Tucked inside · ${n} saved tour${n === 1 ? '' : 's'}`,
     savedOpen: 'Open →',
-    statTrips: 'Trips',
-    statPlaces: 'Places visited',
-    statExplored: 'of the map explored',
-    statDays: 'Days on the road',
+    /** Dòng ledger nén thay hàng stats 4 ô (user chọn 11/08) — một câu mono
+     *  mảnh dưới khung hộ chiếu. */
+    statLine: (trips: number, places: number, pct: number, days: number) =>
+      `${trips} trip${trips === 1 ? '' : 's'} · ${places} place${places === 1 ? '' : 's'} visited · ${pct}% of the map explored · ${days} day${days === 1 ? '' : 's'} on the road`,
     /** Động từ hàng journey — chọn theo `bookingView`, một nguồn ba trạng thái. */
     journeyView: 'View →',
     journeyPayNow: 'Pay now →',
     journeyReview: 'Review →',
-    /** Nhãn tem ghost cuối dãy — lời mời chuyến kế, không phải dữ liệu. */
-    ghostStampLabel: '?',
-    ghostStampSub: 'next stamp',
   },
   /** Trang `/account/bookings` (addendum spec §7.4) — "Your journey" dời
    *  TRỌN từ trang hộ chiếu sang đây; route khôi phục từ redirect 308. */

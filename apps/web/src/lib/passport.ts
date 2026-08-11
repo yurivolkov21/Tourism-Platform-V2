@@ -40,30 +40,77 @@ function isCompleted(b: Booking, today: string): boolean {
   return ended && (bookingView(b).tone === 'success' || b.status === 'PARTIALLY_REFUNDED');
 }
 
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+export interface StampSlot {
+  slug: string;
+  name: string;
+  /**
+   * `stamped` = đã đi (một luật với `isCompleted` — PARTIALLY_REFUNDED tính,
+   * REFUNDED loại); `awaiting` = có chuyến còn phía trước ĐÃ/SẮP trả tiền
+   * (tone success/warning chưa kết thúc); còn lại `unexplored`.
+   */
+  state: 'stamped' | 'awaiting' | 'unexplored';
+  /** 'Jul 2026' — tháng của chuyến kết thúc MUỘN nhất; chỉ ô stamped. */
+  month?: string;
+  /** Hình + độ xoay của tem — hash theo SLUG (ổn định theo nơi chốn, không
+   *  nhảy khi user đặt thêm chuyến); chỉ ô stamped. */
+  shape?: 'round' | 'square';
+  rotationDeg?: number;
+}
+
 /**
- * Slug đích đến cho bản đồ chấm: `visited` = chuyến hoàn thành; `upcoming` =
- * chuyến còn phía trước ĐÃ hoặc SẮP trả tiền (tone success/warning chưa kết
- * thúc). Trả mảng distinct — `mapDots` tự xử phần visited-thắng-upcoming.
- *
- * `today` mặc định `todayDateString()` — cùng một luật "đã xong" với
- * `isCompleted`/`account-stats.ts` (so chuỗi ngày UTC).
+ * BỘ SƯU TẬP TEM hợp nhất (addendum §7 — thay `passportStamps` + `mapDots`):
+ * mỗi destination catalog một Ô mang tên thật, trạng thái từ booking của
+ * user. Sort cụm miền bắc→trung→nam→other (trên xuống như bản đồ thật).
+ * Deterministic toàn phần — không Math.random/Date.now.
  */
-export function journeySlugs(
+export function stampSlots(
+  catalog: Array<{ slug: string; name: string; region: string | null }>,
   bookings: Booking[],
   today: string = todayDateString(),
-): { visited: string[]; upcoming: string[] } {
-  const visited = new Set<string>();
-  const upcoming = new Set<string>();
+): StampSlot[] {
+  // endDate MUỘN nhất của chuyến ĐÃ ĐI theo slug — nguồn cho month của tem.
+  const stampedEnd = new Map<string, string>();
+  const awaiting = new Set<string>();
   for (const b of bookings) {
-    const tone = bookingView(b).tone;
-    const ended = b.departureEndDate < today;
-    if (tone === 'success' && ended) {
-      for (const d of b.tourDestinations) visited.add(d.slug);
-    } else if ((tone === 'success' || tone === 'warning') && !ended) {
-      for (const d of b.tourDestinations) upcoming.add(d.slug);
+    if (isCompleted(b, today)) {
+      for (const d of b.tourDestinations) {
+        const prev = stampedEnd.get(d.slug);
+        if (!prev || prev < b.departureEndDate) stampedEnd.set(d.slug, b.departureEndDate);
+      }
+    } else {
+      const tone = bookingView(b).tone;
+      if ((tone === 'success' || tone === 'warning') && !(b.departureEndDate < today)) {
+        for (const d of b.tourDestinations) awaiting.add(d.slug);
+      }
     }
   }
-  return { visited: [...visited], upcoming: [...upcoming] };
+  const cluster = (region: string | null) => (region && REGION_CLUSTER[region]) || 'other';
+  return [...catalog]
+    .sort((a, b) => CLUSTER_ORDER[cluster(a.region)] - CLUSTER_ORDER[cluster(b.region)])
+    .map((d) => {
+      const end = stampedEnd.get(d.slug);
+      if (end) {
+        const h = hash(d.slug);
+        const date = new Date(end);
+        return {
+          slug: d.slug,
+          name: d.name,
+          state: 'stamped',
+          month: `${MONTHS[date.getUTCMonth()]} ${date.getUTCFullYear()}`,
+          shape: h % 2 === 0 ? 'round' : 'square',
+          // (h % 15) − 7 → nguyên trong [−7, 7] — "đóng tay hơi lệch".
+          rotationDeg: (Math.floor(h / 2) % 15) - 7,
+        } satisfies StampSlot;
+      }
+      return {
+        slug: d.slug,
+        name: d.name,
+        // Đã đến thắng sắp-quay-lại: có tem rồi thì không tụt về awaiting.
+        state: awaiting.has(d.slug) ? 'awaiting' : 'unexplored',
+      } satisfies StampSlot;
+    });
 }
 
 export interface PassportStats {
@@ -95,52 +142,6 @@ export function passportStats(
     0,
   );
   return { trips: done.length, places, exploredPct, daysOnRoad };
-}
-
-export interface PassportStamp {
-  /** Nhãn in trên tem — destination primary, UPPERCASE. */
-  label: string;
-  /** 'Jul 2026' — tháng kết thúc chuyến. */
-  month: string;
-  shape: 'round' | 'square';
-  /** −7..7 độ — "đóng tay hơi lệch", deterministic từ mã booking. */
-  rotationDeg: number;
-  ghost?: boolean;
-}
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/** Nhãn tem: destination primary → destination đầu → 2 từ đầu tourTitle. */
-function stampLabel(b: Booking): string {
-  const primary = b.tourDestinations.find((d) => d.isPrimary) ?? b.tourDestinations[0];
-  if (primary) return primary.name.toUpperCase();
-  return b.tourTitle.split(/\s+/).slice(0, 2).join(' ').toUpperCase();
-}
-
-export function passportStamps(
-  bookings: Booking[],
-  today: string = todayDateString(),
-): PassportStamp[] {
-  const done = bookings
-    .filter((b) => isCompleted(b, today))
-    .sort((a, b) => a.departureEndDate.localeCompare(b.departureEndDate));
-  const stamps: PassportStamp[] = done.map((b) => {
-    const h = hash(b.code);
-    const end = new Date(b.departureEndDate);
-    return {
-      label: stampLabel(b),
-      month: `${MONTHS[end.getUTCMonth()]} ${end.getUTCFullYear()}`,
-      // Tròn/vuông đan xen theo hash — bộ tem user đã duyệt từ vòng đầu;
-      // vòng tu sửa 11/08 từng thử chữ nhật Schengen đồng loạt và bị bác
-      // (mắt user chấm bộ cũ duyên hơn, chỉ giữ lại chất mực `.stamp-ink`).
-      shape: h % 2 === 0 ? 'round' : 'square',
-      // (h % 15) − 7 → nguyên trong [−7, 7].
-      rotationDeg: (Math.floor(h / 2) % 15) - 7,
-    };
-  });
-  // Tem ghost "chờ chuyến kế" LUÔN đứng cuối — lời mời, không phải dữ liệu.
-  stamps.push({ label: '?', month: '', shape: 'round', rotationDeg: 3, ghost: true });
-  return stamps;
 }
 
 const MRZ_LENGTH = 44;
@@ -211,52 +212,18 @@ export function mrzLines(name: string, userId: string, sinceYear: number): [stri
   return [line1, `${head}${composite}`];
 }
 
-export interface MapDot {
-  /** Khoá render ổn định (fix 11/08) — `name` KHÔNG đảm bảo unique giữa các
-   *  destination, `slug` thì có (đúng nguồn `journeySlugs`). */
-  slug: string;
-  region: 'north' | 'central' | 'south' | 'other';
-  visited: boolean;
-  upcoming: boolean;
-  name: string;
-}
+type RegionCluster = 'north' | 'central' | 'south' | 'other';
 
-/** Giá trị `Destination.region` thật của catalog → cụm miền của bản đồ chấm. */
-const REGION_CLUSTER: Record<string, MapDot['region']> = {
+/** Giá trị `Destination.region` thật của catalog → cụm miền (sort lưới tem). */
+const REGION_CLUSTER: Record<string, RegionCluster> = {
   'Northern Vietnam': 'north',
   'Central Vietnam': 'central',
   'Southern Vietnam': 'south',
 };
 
-const CLUSTER_ORDER: Record<MapDot['region'], number> = {
+const CLUSTER_ORDER: Record<RegionCluster, number> = {
   north: 0,
   central: 1,
   south: 2,
   other: 3,
 };
-
-/**
- * Bản đồ CHẤM cách điệu — mỗi destination catalog một chấm, gom cụm theo miền
- * (bắc trên cùng như bản đồ thật), KHÔNG phải toạ độ địa lý. `visited` thắng
- * `upcoming` khi một nơi có cả hai (đã đến rồi thì thôi mờ).
- */
-export function mapDots(
-  catalog: Array<{ slug: string; name: string; region: string | null }>,
-  visitedSlugs: string[],
-  upcomingSlugs: string[],
-): MapDot[] {
-  const visited = new Set(visitedSlugs);
-  const upcoming = new Set(upcomingSlugs);
-  return catalog
-    .map((d) => {
-      const isVisited = visited.has(d.slug);
-      return {
-        slug: d.slug,
-        region: (d.region && REGION_CLUSTER[d.region]) || 'other',
-        visited: isVisited,
-        upcoming: !isVisited && upcoming.has(d.slug),
-        name: d.name,
-      } satisfies MapDot;
-    })
-    .sort((a, b) => CLUSTER_ORDER[a.region] - CLUSTER_ORDER[b.region]);
-}

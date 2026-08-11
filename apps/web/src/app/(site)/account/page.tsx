@@ -3,24 +3,15 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { ContentHero } from '@/components/content/content-hero';
-import { DotMap } from '@/components/passport/dot-map';
 import { PassportCard } from '@/components/passport/passport-card';
-import { StampRow } from '@/components/passport/stamp-row';
-import { StatRow } from '@/components/passport/stat-row';
+import { StampCollection } from '@/components/passport/stamp-collection';
 import { TuckCard } from '@/components/passport/tuck-card';
 import { fetchAccountMe } from '@/lib/api/account';
 import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
 import { fetchMyWishlist } from '@/lib/api/wishlist';
-import {
-  journeySlugs,
-  mapDots,
-  mrzLines,
-  passportNo,
-  passportStamps,
-  passportStats,
-} from '@/lib/passport';
+import { mrzLines, passportNo, passportStats, stampSlots } from '@/lib/passport';
 
 /**
  * Trang HỘ CHIẾU — cửa của khu account (spec 2026-08-11 + addendum §7.4,
@@ -65,9 +56,7 @@ export default async function AccountPassportPage() {
 
   const name = session.name || session.email;
   const stats = passportStats(bookings, destinations.length);
-  const stamps = passportStamps(bookings);
-  const { visited, upcoming } = journeySlugs(bookings);
-  const dots = mapDots(destinations, visited, upcoming);
+  const slots = stampSlots(destinations, bookings);
   const isEmpty = bookings.length === 0;
 
   return (
@@ -93,67 +82,55 @@ export default async function AccountPassportPage() {
           mrz={mrzLines(name, session.id, sinceYear)}
         />
 
-        <div className="mt-10">
-          <StatRow stats={stats} />
-        </div>
+        {/* Dòng ledger nén thay hàng stats 4 ô (user chọn 11/08) — khít ngay
+            dưới khung, cùng giọng fine-print với giấy tờ. */}
+        <p className="mt-4 font-mono text-xs tracking-[0.06em] text-muted-foreground">
+          {t.statLine(stats.trips, stats.places, stats.exploredPct, stats.daysOnRoad)}
+        </p>
 
         {isEmpty ? (
-          // Hộ chiếu mới tinh: lời mời đóng con tem đầu tiên (tem ghost
-          // phóng to) + bản đồ chờ tô màu đứng giữa một cột.
-          <div className="mt-10 text-center">
-            <div className="flex justify-center">
-              <div className="scale-125">
-                <StampRow stamps={stamps} />
-              </div>
-            </div>
-            <h2 className="mt-10 font-heading text-2xl font-semibold text-balance">{te.heading}</h2>
+          // Hộ chiếu mới tinh: lời mời đóng con tem đầu tiên đứng TRƯỚC lưới
+          // (lưới toàn ô mờ tự thân đã là lời mời khám phá 19 nơi).
+          <div className="mt-12 text-center">
+            <h2 className="font-heading text-2xl font-semibold text-balance">{te.heading}</h2>
             <p className="mx-auto mt-2 max-w-md text-pretty text-sm text-muted-foreground">
               {te.body}
             </p>
             <ButtonLink href="/tours" className="mt-6">
               {te.cta}
             </ButtonLink>
-            {destinations.length > 0 ? (
-              <div className="mx-auto mt-10 max-w-md text-left">
-                <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
-              </div>
+          </div>
+        ) : null}
+
+        {/* destinations rỗng (catalog trống hoặc fetch phụ hỏng đã bị
+            `safe()` nuốt) → ẩn cả khối sưu tập: lưới 0 ô vô nghĩa. */}
+        {destinations.length > 0 ? (
+          <section className="mt-12">
+            <h2 className="mb-4 font-heading text-xl font-semibold">{t.stampsHeading}</h2>
+            <StampCollection
+              slots={slots}
+              caption={t.mapCaption(stats.places, destinations.length)}
+            />
+          </section>
+        ) : null}
+
+        {isEmpty ? null : (
+          // Hai lối vào "ngăn kẹp": bookings luôn có (đang nhánh không rỗng);
+          // saved chỉ hiện khi có tour đã lưu.
+          <div className="mt-10 grid gap-4 sm:grid-cols-2">
+            <TuckCard
+              heading={t.bookingsHeading(paged.total)}
+              href="/account/bookings"
+              cta={t.bookingsOpen}
+            />
+            {wishlist.length > 0 ? (
+              <TuckCard
+                heading={t.savedHeading(wishlist.length)}
+                href="/account/saved"
+                cta={t.savedOpen}
+              />
             ) : null}
           </div>
-        ) : (
-          <>
-            <div className="mt-9 grid gap-10 lg:grid-cols-2">
-              <div>
-                <h2 className="mb-4 font-heading text-xl font-semibold">{t.stampsHeading}</h2>
-                <StampRow stamps={stamps} />
-              </div>
-              <div>
-                {/* destinations rỗng (catalog trống hoặc fetch phụ hỏng đã bị
-                    `safe()` nuốt) → ẩn khối bản đồ: "0 of our 0" vô nghĩa. */}
-                {destinations.length > 0 ? (
-                  <>
-                    <h2 className="mb-4 font-heading text-xl font-semibold">{t.mapHeading}</h2>
-                    <DotMap dots={dots} caption={t.mapCaption(stats.places, destinations.length)} />
-                  </>
-                ) : null}
-              </div>
-            </div>
-            {/* Hai lối vào "ngăn kẹp": bookings luôn có (đang nhánh không
-                rỗng); saved chỉ hiện khi có tour đã lưu. */}
-            <div className="mt-10 grid gap-4 sm:grid-cols-2">
-              <TuckCard
-                heading={t.bookingsHeading(paged.total)}
-                href="/account/bookings"
-                cta={t.bookingsOpen}
-              />
-              {wishlist.length > 0 ? (
-                <TuckCard
-                  heading={t.savedHeading(wishlist.length)}
-                  href="/account/saved"
-                  cta={t.savedOpen}
-                />
-              ) : null}
-            </div>
-          </>
         )}
       </div>
     </div>

@@ -1,10 +1,9 @@
 import { render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { DotMap } from './dot-map';
 import { JourneyRow } from './journey-row';
 import { PassportCard } from './passport-card';
-import { StampRow } from './stamp-row';
+import { StampCollection } from './stamp-collection';
 import { VisaStamp } from './visa-stamp';
 
 // Spec gộp cho bộ component passport (T4) — mỗi component vài ca hành vi,
@@ -40,57 +39,43 @@ describe('PassportCard', () => {
   });
 });
 
-describe('StampRow', () => {
-  it('render đúng số tem, xoay theo data, tem thật mang mực stamp-ink, ghost nét đứt cuối dãy', () => {
+describe('StampCollection', () => {
+  // Bộ sưu tập hợp nhất (addendum §7 hướng A) — thay StampRow + DotMap:
+  // ô stamped là tem mực thật, awaiting viền đứt, unexplored mờ; tên địa
+  // danh là NỘI DUNG (không aria-hidden như chấm cũ).
+  it('ba trạng thái ô đúng dạng: stamped mực + tháng + xoay, awaiting nét đứt, unexplored mờ', () => {
     render(
-      <StampRow
-        stamps={[
-          { label: 'HỘI AN', month: 'Jun 2026', shape: 'round', rotationDeg: -6 },
-          { label: 'HẠ LONG BAY', month: 'Jul 2026', shape: 'square', rotationDeg: 4 },
-          { label: '?', month: '', shape: 'round', rotationDeg: 3, ghost: true },
+      <StampCollection
+        slots={[
+          {
+            slug: 'ha-long-bay',
+            name: 'Hạ Long Bay',
+            state: 'stamped',
+            month: 'Jul 2026',
+            shape: 'round',
+            rotationDeg: -6,
+          },
+          { slug: 'hoi-an', name: 'Hội An', state: 'awaiting' },
+          { slug: 'can-tho', name: 'Cần Thơ', state: 'unexplored' },
         ]}
+        caption="1 of our 19 destinations — the map is turning jade."
       />,
     );
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(3);
-    expect(items[0]).toHaveStyle({ transform: 'rotate(-6deg)' });
-    expect(screen.getByText('HỘI AN')).toBeInTheDocument();
-    // Tem thật: bộ tròn/vuông gốc + lớp mực nhiễu `.stamp-ink` (tu sửa 11/08).
-    expect(items[0]?.className).toContain('rounded-full');
+    // Tem đóng: UPPERCASE + tháng + mực stamp-ink + xoay theo data.
+    expect(screen.getByText('HẠ LONG BAY')).toBeInTheDocument();
+    expect(screen.getByText('Jul 2026')).toBeInTheDocument();
     expect(items[0]?.className).toContain('stamp-ink');
-    expect(items[1]?.className).toContain('rounded-2xl');
-    // Tem ghost: nhãn "?" + sub "next stamp" (copy i18n), style dashed/mờ.
+    expect(items[0]?.className).toContain('rounded-full');
+    expect(items[0]).toHaveStyle({ transform: 'rotate(-6deg)' });
+    // Ô chờ đóng: tên thường + sub "next stamp" + viền đứt.
+    expect(screen.getByText('Hội An')).toBeInTheDocument();
     expect(screen.getByText('next stamp')).toBeInTheDocument();
-    expect(items[2]?.className).toContain('border-dashed');
-  });
-});
-
-describe('DotMap', () => {
-  // aria-hidden (fix 11/08): lưới chấm là trang trí, `figcaption` mới là nội
-  // dung thật — `getAllByRole('listitem')` không còn thấy gì nên query thẳng
-  // DOM bằng `querySelectorAll`.
-  it('mỗi dot đúng trạng thái màu: visited đầy, upcoming mờ, còn lại muted', () => {
-    const { container } = render(
-      <DotMap
-        dots={[
-          {
-            slug: 'ha-long-bay',
-            region: 'north',
-            visited: true,
-            upcoming: false,
-            name: 'Hạ Long Bay',
-          },
-          { slug: 'hoi-an', region: 'central', visited: false, upcoming: true, name: 'Hội An' },
-          { slug: 'can-tho', region: 'south', visited: false, upcoming: false, name: 'Cần Thơ' },
-        ]}
-        caption="2 of our 19 destinations — the map is turning jade."
-      />,
-    );
-    const dots = container.querySelectorAll('li');
-    expect(dots[0]?.className).toContain('bg-primary');
-    expect(dots[0]?.className).not.toContain('opacity-40');
-    expect(dots[1]?.className).toContain('opacity-40');
-    expect(dots[2]?.className).toContain('bg-muted');
+    expect(items[1]?.className).toContain('border-dashed');
+    // Ô chưa khám phá: chỉ tên, giọng mờ.
+    expect(screen.getByText('Cần Thơ')).toBeInTheDocument();
+    expect(items[2]?.className).toContain('text-muted-foreground');
     expect(screen.getByText(/turning jade/)).toBeInTheDocument();
   });
 });

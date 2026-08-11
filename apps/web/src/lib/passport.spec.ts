@@ -1,14 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import {
-  journeySlugs,
-  mapDots,
-  mrzCheckDigit,
-  mrzLines,
-  passportNo,
-  passportStamps,
-  passportStats,
-} from './passport';
+import { mrzCheckDigit, mrzLines, passportNo, passportStats, stampSlots } from './passport';
 
 // Mốc "hôm nay" cố định cho mọi ca — hàm nhận tham số today (chuỗi
 // `YYYY-MM-DD`, so lexicographic như `account-stats.ts`) nên không cần fake
@@ -94,48 +86,91 @@ describe('passportStats', () => {
   });
 });
 
-describe('passportStamps', () => {
-  it('mỗi chuyến hoàn thành một tem nhãn destination primary, sort theo endDate, ghost cuối', () => {
-    const stamps = passportStamps(
+describe('stampSlots', () => {
+  // Bộ sưu tập tem hợp nhất (addendum §7 — thay passportStamps + mapDots):
+  // mỗi destination catalog một Ô, trạng thái theo booking của user.
+  const CATALOG = [
+    { slug: 'ha-long-bay', name: 'Hạ Long Bay', region: 'Northern Vietnam' },
+    { slug: 'sa-pa', name: 'Sa Pa', region: 'Northern Vietnam' },
+    { slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
+    { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
+    { slug: 'noi-la', name: 'Nơi Lạ', region: null },
+  ];
+
+  it('stamped = đã đi (kèm tháng), awaiting = chuyến còn phía trước, còn lại unexplored; sort theo miền', () => {
+    const slots = stampSlots(
+      CATALOG,
       [
-        doneTrip({
-          code: 'BK-DONEBBBB',
-          departureStartDate: '2026-06-01',
-          departureEndDate: '2026-06-01',
+        doneTrip(), // ha-long-bay xong 23/07
+        makeBooking({
+          code: 'BK-FUTUREAA',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
           tourDestinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
         }),
-        doneTrip(), // end 23/07 — đứng SAU chuyến tháng 6
       ],
       TODAY,
     );
-    expect(stamps).toHaveLength(3); // 2 tem thật + 1 ghost
-    expect(stamps[0]?.label).toBe('HỘI AN');
-    expect(stamps[0]?.month).toBe('Jun 2026');
-    expect(stamps[1]?.label).toBe('HẠ LONG BAY');
-    expect(stamps[2]?.ghost).toBe(true);
+    expect(slots).toHaveLength(5);
+    // Sort cụm miền bắc→trung→nam→other như bản đồ cũ.
+    expect(slots.map((s) => s.slug)).toEqual([
+      'ha-long-bay',
+      'sa-pa',
+      'hoi-an',
+      'can-tho',
+      'noi-la',
+    ]);
+    const haLong = slots.find((s) => s.slug === 'ha-long-bay');
+    expect(haLong?.state).toBe('stamped');
+    expect(haLong?.month).toBe('Jul 2026');
+    expect(slots.find((s) => s.slug === 'hoi-an')?.state).toBe('awaiting');
+    expect(slots.find((s) => s.slug === 'sa-pa')?.state).toBe('unexplored');
   });
 
-  it('deterministic từ booking.code — cùng input cùng output, khác code có thể khác thế', () => {
-    const one = passportStamps([doneTrip()], TODAY);
-    const two = passportStamps([doneTrip()], TODAY);
-    expect(one).toEqual(two);
-    const s = one[0];
-    expect(s && s.rotationDeg >= -7 && s.rotationDeg <= 7).toBe(true);
-    expect(s && ['round', 'square'].includes(s.shape)).toBe(true);
-  });
-
-  it('tour không gắn destination → nhãn rơi về 2 từ đầu tourTitle UPPERCASE', () => {
-    const stamps = passportStamps(
-      [doneTrip({ tourDestinations: [], tourTitle: 'Mekong Delta Day Cruise' })],
+  it('hai chuyến cùng nơi → tháng của chuyến kết thúc MUỘN nhất; đã đến thắng sắp-quay-lại', () => {
+    const slots = stampSlots(
+      CATALOG,
+      [
+        doneTrip({
+          code: 'BK-DONEBBBB',
+          departureStartDate: '2026-05-01',
+          departureEndDate: '2026-05-02',
+        }),
+        doneTrip(), // cùng ha-long-bay, kết thúc 23/07 — muộn hơn
+        makeBooking({
+          // sắp quay lại ha-long-bay — vẫn stamped, không tụt về awaiting.
+          code: 'BK-FUTUREAA',
+          departureStartDate: '2026-09-01',
+          departureEndDate: '2026-09-03',
+        }),
+      ],
       TODAY,
     );
-    expect(stamps[0]?.label).toBe('MEKONG DELTA');
+    const haLong = slots.find((s) => s.slug === 'ha-long-bay');
+    expect(haLong?.state).toBe('stamped');
+    expect(haLong?.month).toBe('Jul 2026');
   });
 
-  it('0 chuyến hoàn thành → chỉ còn tem ghost', () => {
-    const stamps = passportStamps([], TODAY);
-    expect(stamps).toHaveLength(1);
-    expect(stamps[0]?.ghost).toBe(true);
+  it('PARTIALLY_REFUNDED đã kết thúc vẫn stamped — MỘT luật với tem/stats cũ', () => {
+    const slots = stampSlots(CATALOG, [doneTrip({ status: 'PARTIALLY_REFUNDED' })], TODAY);
+    expect(slots.find((s) => s.slug === 'ha-long-bay')?.state).toBe('stamped');
+  });
+
+  it('hình/độ xoay deterministic theo SLUG — không đổi khi mã booking đổi', () => {
+    const a = stampSlots(CATALOG, [doneTrip()], TODAY).find((s) => s.slug === 'ha-long-bay');
+    const b = stampSlots(CATALOG, [doneTrip({ code: 'BK-KHACAAAA' })], TODAY).find(
+      (s) => s.slug === 'ha-long-bay',
+    );
+    expect(a?.shape).toBe(b?.shape);
+    expect(a?.rotationDeg).toBe(b?.rotationDeg);
+    expect(a && ['round', 'square'].includes(a.shape ?? '')).toBe(true);
+    expect(a && (a.rotationDeg ?? 0) >= -7 && (a.rotationDeg ?? 0) <= 7).toBe(true);
+  });
+
+  it('không booking nào → toàn bộ unexplored, không ô nào mang month/shape', () => {
+    const slots = stampSlots(CATALOG, [], TODAY);
+    expect(slots.every((s) => s.state === 'unexplored')).toBe(true);
+    expect(slots.every((s) => s.month === undefined)).toBe(true);
   });
 });
 
@@ -206,17 +241,17 @@ describe('mrzLines', () => {
   });
 });
 
-describe('journeySlugs', () => {
-  it('visited = chuyến xong; upcoming = PAID/PENDING chưa kết thúc; CANCELLED bỏ qua', () => {
-    const { visited, upcoming } = journeySlugs(
+// `journeySlugs`/`mapDots`/`passportStamps` đã nghỉ hưu cùng bản đồ chấm +
+// dãy tem rời (addendum §7) — vai trò gộp vào `stampSlots` phía trên.
+
+describe('stampSlots — PENDING/CANCELLED', () => {
+  it('PENDING tương lai vẫn awaiting; CANCELLED không tạo trạng thái nào', () => {
+    const slots = stampSlots(
       [
-        doneTrip(), // xong → visited ha-long-bay
-        makeBooking({
-          code: 'BK-FUTUREAA',
-          departureStartDate: '2026-09-01',
-          departureEndDate: '2026-09-03',
-          tourDestinations: [{ slug: 'hoi-an', name: 'Hội An', isPrimary: true }],
-        }),
+        { slug: 'sa-pa', name: 'Sa Pa', region: 'Northern Vietnam' },
+        { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
+      ],
+      [
         makeBooking({
           code: 'BK-PENDFUTU',
           status: 'PENDING',
@@ -234,34 +269,7 @@ describe('journeySlugs', () => {
       ],
       TODAY,
     );
-    expect(visited).toEqual(['ha-long-bay']);
-    expect(upcoming.sort()).toEqual(['hoi-an', 'sa-pa']);
-  });
-});
-
-describe('mapDots', () => {
-  const catalog = [
-    { slug: 'ha-long-bay', name: 'Hạ Long Bay', region: 'Northern Vietnam' },
-    { slug: 'sa-pa', name: 'Sa Pa', region: 'Northern Vietnam' },
-    { slug: 'hoi-an', name: 'Hội An', region: 'Central Vietnam' },
-    { slug: 'can-tho', name: 'Cần Thơ', region: 'Southern Vietnam' },
-    { slug: 'noi-la', name: 'Nơi Lạ', region: null },
-  ];
-
-  it('mỗi destination một dot, cluster sort bắc→trung→nam→other, cờ visited/upcoming đúng', () => {
-    const dots = mapDots(catalog, ['hoi-an'], ['can-tho']);
-    expect(dots).toHaveLength(5);
-    // Sort theo cụm miền: 2 bắc, rồi trung, nam, other.
-    expect(dots.map((d) => d.region)).toEqual(['north', 'north', 'central', 'south', 'other']);
-    expect(dots.find((d) => d.name === 'Hội An')?.visited).toBe(true);
-    expect(dots.find((d) => d.name === 'Cần Thơ')?.upcoming).toBe(true);
-    expect(dots.find((d) => d.name === 'Sa Pa')?.visited).toBe(false);
-  });
-
-  it('visited thắng upcoming khi một nơi có cả hai', () => {
-    const dots = mapDots(catalog, ['hoi-an'], ['hoi-an']);
-    const hoiAn = dots.find((d) => d.name === 'Hội An');
-    expect(hoiAn?.visited).toBe(true);
-    expect(hoiAn?.upcoming).toBe(false);
+    expect(slots.find((s) => s.slug === 'sa-pa')?.state).toBe('awaiting');
+    expect(slots.find((s) => s.slug === 'can-tho')?.state).toBe('unexplored');
   });
 });
