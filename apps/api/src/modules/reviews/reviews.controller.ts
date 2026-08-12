@@ -10,6 +10,7 @@ import {
   BookingNotFoundError,
   ReviewAlreadyExistsError,
   ReviewNotEligibleError,
+  ReviewPhotoInvalidError,
   ReviewsService,
   ReviewTripNotCompletedError,
   TourNotFoundError,
@@ -59,6 +60,7 @@ export class ReviewsController {
         if (err instanceof ReviewTripNotCompletedError) throw errors.REVIEW_TRIP_NOT_COMPLETED();
         if (err instanceof ReviewNotEligibleError) throw errors.REVIEW_NOT_ELIGIBLE();
         if (err instanceof ReviewAlreadyExistsError) throw errors.REVIEW_ALREADY_EXISTS();
+        if (err instanceof ReviewPhotoInvalidError) throw errors.REVIEW_PHOTO_INVALID();
         throw err;
       }
     });

@@ -43,7 +43,7 @@ afterAll(async () => {
 beforeEach(async () => {
   // Thứ tự truncate theo chiều phụ thuộc FK.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE review_moderation_events, reviews, outbox, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
+    'TRUNCATE media_assets, review_moderation_events, reviews, outbox, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
   );
 });
 
@@ -244,6 +244,71 @@ describe('reviews (int)', () => {
     expect(res.json().code).toBe('BOOKING_FORBIDDEN');
   });
 
+  it('photos hợp lệ → review kèm media, URL dựng từ publicId, đúng thứ tự gửi lên', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'photos-ok@example.com');
+    await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: {
+        bookingCode: 'BK-TESTREV1',
+        rating: 5,
+        body: 'Great trip with lovely photos!',
+        photos: ['tourism/reviews/BK-TESTREV1/pid-b', 'tourism/reviews/BK-TESTREV1/pid-a'],
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const media = res.json().media;
+    // Thứ tự phải khớp NGUYÊN mảng gửi lên (pid-b trước pid-a) — sortOrder
+    // ghi theo vị trí trong mảng lúc tạo, resolveForOwners sort lại theo đó.
+    expect(media.map((m: { publicId: string }) => m.publicId)).toEqual([
+      'tourism/reviews/BK-TESTREV1/pid-b',
+      'tourism/reviews/BK-TESTREV1/pid-a',
+    ]);
+    expect(media[0].url).toContain('/image/upload/');
+    expect(media[0].role).toBe('gallery');
+  });
+
+  it('photos trỏ folder booking KHÁC → 400 REVIEW_PHOTO_INVALID, không tạo review lẫn asset', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'photos-smuggle@example.com');
+    await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: {
+        bookingCode: 'BK-TESTREV1',
+        rating: 5,
+        body: 'Photo smuggling attempt!',
+        photos: ['tourism/reviews/BK-KHAC9999/pid-x'],
+      },
+    });
+
+    expect(res.statusCode).toBe(400);
+    expect(res.json().code).toBe('REVIEW_PHOTO_INVALID');
+    expect(await prisma.review.count()).toBe(0);
+    expect(await prisma.mediaAsset.count()).toBe(0);
+  });
+
+  it('không gửi photos → media rỗng (không vỡ hợp đồng cũ)', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'photos-none@example.com');
+    await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Không có ảnh đính kèm gì cả' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().media).toEqual([]);
+  });
+
   it('duyệt review: rating tour đổi ĐÚNG trong cùng transaction', async () => {
     const { user, cookie } = await signUpAndSignIn(app, 'c@example.com');
     const { tour } = await seedCompletedBooking({
@@ -359,6 +424,42 @@ describe('reviews (int)', () => {
     const fresh = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
     expect(Number(fresh.ratingAvg)).toBe(5);
     expect(fresh.ratingCount).toBe(1);
+  });
+
+  it('list công khai: review approved kèm ảnh → item có media.length === 1', async () => {
+    const { user, cookie } = await signUpAndSignIn(app, 'listbytour-media@example.com');
+    const { tour } = await seedCompletedBooking({
+      endDate: new Date(Date.now() - 864e5),
+      userId: user.id,
+    });
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: {
+        bookingCode: 'BK-TESTREV1',
+        rating: 5,
+        body: 'Ảnh chuyến đi rất đẹp, đáng lưu lại',
+        photos: ['tourism/reviews/BK-TESTREV1/pid-only'],
+      },
+    });
+    const reviewId = created.json().id;
+
+    const admin = await signUpAdmin(app, ADMIN_EMAIL);
+    await app.inject({
+      method: 'POST',
+      url: `/api/admin/reviews/${reviewId}/moderate`,
+      headers: { cookie: admin.cookie },
+      payload: { id: reviewId, approve: true },
+    });
+
+    const res = await app.inject({ method: 'GET', url: `/api/tours/${tour.slug}/reviews` });
+
+    const items = res.json().items;
+    expect(items).toHaveLength(1);
+    expect(items[0].media).toHaveLength(1);
+    expect(items[0].media[0].publicId).toBe('tourism/reviews/BK-TESTREV1/pid-only');
   });
 
   it('list công khai: review khuyết danh xếp SAU review có danh tính', async () => {

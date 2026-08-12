@@ -2,13 +2,23 @@ import { Injectable } from '@nestjs/common';
 import type {
   AdminReview,
   CreateReviewInputSchema,
+  MediaItem,
   MyReview,
   PublicReview,
 } from '@tourism/contract';
 import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
+import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { EmailType, ReviewSource } from '../../generated/prisma/enums.js';
+import {
+  EmailType,
+  MediaOwnerType,
+  MediaRole,
+  MediaType,
+  ReviewSource,
+} from '../../generated/prisma/enums.js';
+import { uploadFolderFor } from '../../lib/upload-signing.js';
+import { MediaService } from '../media/media.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { checkReviewEligibility } from './review-eligibility.js';
@@ -26,17 +36,24 @@ export class ReviewTripNotCompletedError extends Error {}
 export class ReviewAlreadyExistsError extends Error {}
 export class ReviewNotFoundError extends Error {}
 export class TourNotFoundError extends Error {}
+/** Ảnh gửi kèm KHÔNG nằm trong folder booking đang review (ADR-0021 §4). */
+export class ReviewPhotoInvalidError extends Error {}
 
-/** Row Prisma → shape công khai. Không bao giờ trả thẳng row (tránh rò userId). */
-export function toPublicReview(row: {
-  id: string;
-  rating: number;
-  title: string | null;
-  body: string;
-  authorName: string;
-  authorDeleted: boolean;
-  createdAt: Date;
-}): PublicReview {
+/** Row Prisma → shape công khai. Không bao giờ trả thẳng row (tránh rò userId).
+ * `media` truyền TỪ NGOÀI vào (resolve theo lô ở nơi gọi, chống N+1) — hàm
+ * này thuần, không tự query. */
+export function toPublicReview(
+  row: {
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string;
+    authorName: string;
+    authorDeleted: boolean;
+    createdAt: Date;
+  },
+  media: MediaItem[] = [],
+): PublicReview {
   return {
     id: row.id,
     rating: row.rating,
@@ -46,26 +63,30 @@ export function toPublicReview(row: {
     authorName: row.authorDeleted ? null : row.authorName,
     authorDeleted: row.authorDeleted,
     createdAt: row.createdAt.toISOString(),
+    media,
   };
 }
 
 /** Row + tour slug → shape admin. Admin thấy cả review chưa duyệt. */
-export function toAdminReview(row: {
-  id: string;
-  rating: number;
-  title: string | null;
-  body: string;
-  authorName: string;
-  authorDeleted: boolean;
-  createdAt: Date;
-  isApproved: boolean;
-  source: ReviewSource;
-  moderatedAt: Date | null;
-  tour: { slug: string; title: string } | null;
-  moderatedBy: { name: string | null } | null;
-}): AdminReview {
+export function toAdminReview(
+  row: {
+    id: string;
+    rating: number;
+    title: string | null;
+    body: string;
+    authorName: string;
+    authorDeleted: boolean;
+    createdAt: Date;
+    isApproved: boolean;
+    source: ReviewSource;
+    moderatedAt: Date | null;
+    tour: { slug: string; title: string } | null;
+    moderatedBy: { name: string | null } | null;
+  },
+  media: MediaItem[] = [],
+): AdminReview {
   return {
-    ...toPublicReview(row),
+    ...toPublicReview(row, media),
     isApproved: row.isApproved,
     source: row.source,
     tourSlug: row.tour?.slug ?? null,
@@ -86,9 +107,10 @@ export function toMyReview(
     isApproved: boolean;
     tour: { slug: string; title: string } | null;
   },
+  media: MediaItem[] = [],
 ): MyReview {
   return {
-    ...toPublicReview(row),
+    ...toPublicReview(row, media),
     isApproved: row.isApproved,
     // R1: danh tính tour (nullable — review curated có thể không gắn tour).
     tourSlug: row.tour?.slug ?? null,
@@ -98,7 +120,10 @@ export function toMyReview(
 
 @Injectable()
 export class ReviewsService {
-  constructor(private readonly webRevalidation: WebRevalidationService) {}
+  constructor(
+    private readonly webRevalidation: WebRevalidationService,
+    private readonly media: MediaService,
+  ) {}
 
   async create(
     callerId: string,
@@ -130,22 +155,52 @@ export class ReviewsService {
       throw new ReviewNotEligibleError();
     }
 
+    // Ảnh phải nằm trọn trong folder ĐÚNG booking này (ADR-0021 §4) — ký cho
+    // booking nào chỉ đính được vào review của booking đó.
+    const photos = input.photos ?? [];
+    const reviewFolder = `${uploadFolderFor(env.CLOUDINARY_UPLOAD_FOLDER, {
+      purpose: 'REVIEW_PHOTO',
+      bookingCode: input.bookingCode,
+    })}/`;
+    if (photos.some((publicId) => !publicId.startsWith(reviewFolder))) {
+      throw new ReviewPhotoInvalidError();
+    }
+
     try {
-      const row = await prisma.review.create({
-        data: {
-          source: ReviewSource.VERIFIED,
-          tourId: booking.tourId,
-          userId: booking.userId,
-          bookingId: booking.id,
-          // Snapshot tên lúc tạo — review vẫn đọc được sau khi user đổi tên.
-          authorName: booking.user.name ?? 'Anonymous',
-          rating: input.rating,
-          title: input.title ?? null,
-          body: input.body,
-          isApproved: false,
-        },
+      const row = await prisma.$transaction(async (tx) => {
+        const created = await tx.review.create({
+          data: {
+            source: ReviewSource.VERIFIED,
+            tourId: booking.tourId,
+            userId: booking.userId,
+            bookingId: booking.id,
+            // Snapshot tên lúc tạo — review vẫn đọc được sau khi user đổi tên.
+            authorName: booking.user.name ?? 'Anonymous',
+            rating: input.rating,
+            title: input.title ?? null,
+            body: input.body,
+            isApproved: false,
+          },
+        });
+        if (photos.length > 0) {
+          // sortOrder = vị trí trong mảng — ảnh đầu là ảnh đại diện.
+          await tx.mediaAsset.createMany({
+            data: photos.map((publicId, idx) => ({
+              publicId,
+              type: MediaType.IMAGE,
+              ownerType: MediaOwnerType.REVIEW,
+              ownerId: created.id,
+              role: MediaRole.gallery,
+              sortOrder: idx,
+            })),
+          });
+        }
+        return created;
       });
-      return toPublicReview(row);
+      const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(
+        row.id,
+      );
+      return toPublicReview(row, media ?? []);
     } catch (err) {
       // unique(bookingId) → mỗi booking đúng một review.
       if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
@@ -329,28 +384,35 @@ export class ReviewsService {
         });
       }
 
-      // Trả LUÔN shape admin từ trong transaction — không gọi lại query
-      // ngoài tx (tránh đọc trạng thái đã cũ và tránh một round-trip thừa).
-      const fresh = await tx.review.findUniqueOrThrow({
+      // Trả LUÔN row thô từ trong transaction — không gọi lại query ngoài tx
+      // (tránh đọc trạng thái đã cũ và tránh một round-trip thừa). Dựng shape
+      // AdminReview ở NGOÀI tx (sau dòng dưới) vì còn cần media, resolve bằng
+      // MediaService (không chạy trong tx — chỉ đọc, không cần nhất quán
+      // atomic với phần ghi rating ở trên).
+      return await tx.review.findUniqueOrThrow({
         where: { id: input.id },
         include: {
           tour: { select: { slug: true, title: true } },
           moderatedBy: { select: { name: true } },
         },
       });
-      return toAdminReview(fresh);
     });
+
+    const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [result.id])).get(
+      result.id,
+    );
+    const review = toAdminReview(result, media ?? []);
 
     // Bust cache web SAU khi transaction đã commit (spec 03/08 §3): bust
     // trước commit là race — web regenerate đọc data cũ rồi cache 300s.
     // `void`: fire-and-forget, moderate không đợi và không fail theo.
     const tags = moderationRevalidationTags({
-      tourSlug: result.tourSlug,
+      tourSlug: review.tourSlug,
       fromApproved: fromApprovedForRevalidate,
       toApproved: input.approve,
     });
     if (tags) void this.webRevalidation.revalidate(tags);
-    return result;
+    return review;
   }
 
   /**
@@ -392,8 +454,14 @@ export class ReviewsService {
       prisma.review.count({ where }),
     ]);
 
+    // MỘT query media cho cả trang (chống N+1) — cùng khuôn catalog/posts.
+    const mediaMap = await this.media.resolveForOwners(
+      MediaOwnerType.REVIEW,
+      rows.map((r) => r.id),
+    );
+
     return {
-      items: rows.map(toPublicReview),
+      items: rows.map((row) => toPublicReview(row, mediaMap.get(row.id) ?? [])),
       page,
       // Output contract dùng `limit` (PagedSchema chung), không phải
       // `pageSize` — cùng gotcha đã ghi ở adminList() bên dưới.
@@ -442,8 +510,14 @@ export class ReviewsService {
       prisma.review.count({ where }),
     ]);
 
+    // MỘT query media cho cả trang (chống N+1) — cùng khuôn catalog/posts.
+    const mediaMap = await this.media.resolveForOwners(
+      MediaOwnerType.REVIEW,
+      rows.map((r) => r.id),
+    );
+
     return {
-      items: rows.map(toMyReview),
+      items: rows.map((row) => toMyReview(row, mediaMap.get(row.id) ?? [])),
       page,
       // Output contract dùng `limit` (PagedSchema chung), không phải
       // `pageSize` — cùng gotcha đã ghi ở listByTour()/adminList() bên dưới.
@@ -503,8 +577,13 @@ export class ReviewsService {
       }),
       prisma.review.count({ where }),
     ]);
+    // MỘT query media cho cả trang (chống N+1) — cùng khuôn catalog/posts.
+    const mediaMap = await this.media.resolveForOwners(
+      MediaOwnerType.REVIEW,
+      rows.map((r) => r.id),
+    );
     return {
-      items: rows.map(toAdminReview),
+      items: rows.map((row) => toAdminReview(row, mediaMap.get(row.id) ?? [])),
       page: query.page,
       // Output contract dùng `limit` (PagedSchema chung), input query dùng
       // `pageSize` (PageQuerySchema chung) — hai schema khác tên field, map
