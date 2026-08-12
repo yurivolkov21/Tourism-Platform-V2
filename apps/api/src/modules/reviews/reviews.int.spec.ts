@@ -272,6 +272,31 @@ describe('reviews (int)', () => {
     expect(media[0].role).toBe('gallery');
   });
 
+  it('photos trùng publicId (khách bấm gửi 2 lần cùng ảnh) → 200, dedupe còn 1 media', async () => {
+    // Contract cho phép publicId trùng nhau trong mảng photos; MediaAsset có
+    // @@unique([ownerType, ownerId, publicId]) nên createMany với publicId
+    // trùng ném P2002 — catch bọc ngoài từng map NHẦM mọi P2002 thành
+    // ReviewAlreadyExistsError (409) dù review đã rollback. Dedupe TRƯỚC
+    // insert để P2002 chỉ còn nghĩa "unique(bookingId)" đúng như catch dự tính.
+    const { user, cookie } = await signUpAndSignIn(app, 'photos-dup@example.com');
+    await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: {
+        bookingCode: 'BK-TESTREV1',
+        rating: 5,
+        body: 'Gửi trùng publicId do double-click nút Đăng',
+        photos: ['tourism/reviews/BK-TESTREV1/pid-same', 'tourism/reviews/BK-TESTREV1/pid-same'],
+      },
+    });
+
+    expect(res.statusCode).toBe(200);
+    expect(res.json().media).toHaveLength(1);
+  });
+
   it('photos trỏ folder booking KHÁC → 400 REVIEW_PHOTO_INVALID, không tạo review lẫn asset', async () => {
     const { user, cookie } = await signUpAndSignIn(app, 'photos-smuggle@example.com');
     await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });

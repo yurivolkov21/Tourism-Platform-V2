@@ -157,7 +157,17 @@ export class ReviewsService {
 
     // Ảnh phải nằm trọn trong folder ĐÚNG booking này (ADR-0021 §4) — ký cho
     // booking nào chỉ đính được vào review của booking đó.
-    const photos = input.photos ?? [];
+    //
+    // Dedupe TRƯỚC validate/insert, giữ nguyên thứ tự xuất hiện đầu tiên
+    // (Set giữ insertion order → sortOrder "ảnh đầu = đại diện" vẫn đúng).
+    // Contract KHÔNG cấm publicId trùng nhau trong `photos` (double-click nút
+    // Đăng, hoặc client gửi lại do lỗi mạng), nhưng MediaAsset có
+    // `@@unique([ownerType, ownerId, publicId])` — createMany với publicId
+    // trùng sẽ ném P2002. Khối catch bên dưới tóm MỌI P2002 và map thành
+    // ReviewAlreadyExistsError (409) vì lý do phổ biến nhất là unique(bookingId)
+    // — nếu không dedupe ở đây, P2002 do ảnh trùng bị map NHẦM thành
+    // REVIEW_ALREADY_EXISTS dù review vừa tạo đã bị transaction rollback.
+    const photos = [...new Set(input.photos ?? [])];
     const reviewFolder = `${uploadFolderFor(env.CLOUDINARY_UPLOAD_FOLDER, {
       purpose: 'REVIEW_PHOTO',
       bookingCode: input.bookingCode,
