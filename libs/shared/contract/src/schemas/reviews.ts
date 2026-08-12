@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PageQuerySchema } from './common.js';
+import { BookingCodeSchema, PageQuerySchema } from './common.js';
 import { MediaItemSchema, REVIEW_PHOTOS_MAX } from './media.js';
 
 export const RatingSchema = z.int().min(1).max(5);
@@ -20,16 +20,20 @@ export const PublicReviewSchema = z.object({
 });
 
 export const CreateReviewInputSchema = z.object({
-  bookingCode: z.string().regex(/^BK-[A-Z0-9]{8}$/),
+  // Tái dùng BookingCodeSchema (common.ts) thay vì lặp regex tại chỗ — nhất
+  // quán với media.ts (SignUploadInputSchema nhánh REVIEW_PHOTO).
+  bookingCode: BookingCodeSchema,
   rating: RatingSchema,
   title: z.string().trim().max(120).optional(),
   body: z.string().trim().min(10).max(2000),
   /**
    * publicId Cloudinary đã upload xong qua media.signUpload (ADR-0021 §4) —
    * thứ tự mảng = thứ tự hiển thị (ảnh đầu là đại diện). Server kiểm mỗi
-   * publicId thuộc đúng folder reviews/<bookingCode>.
+   * publicId thuộc đúng folder reviews/<bookingCode>. `.max(300)` khớp
+   * varchar(300) của MediaAsset.publicId — thiếu trần này thì chuỗi dài chết
+   * P2000 ở DB (500) thay vì 400 ở tầng validate.
    */
-  photos: z.array(z.string().min(1)).max(REVIEW_PHOTOS_MAX).optional(),
+  photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
 export const ReviewsByTourQuerySchema = PageQuerySchema.extend({

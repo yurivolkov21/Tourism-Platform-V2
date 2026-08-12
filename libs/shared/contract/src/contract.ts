@@ -462,8 +462,10 @@ export const contract = {
       })
       .input(
         z.object({
-          /** publicId Cloudinary đã upload; null = gỡ avatar về chữ-cái-đầu. */
-          publicId: z.string().min(1).nullable(),
+          /** publicId Cloudinary đã upload; null = gỡ avatar về chữ-cái-đầu.
+           * `.max(300)` khớp varchar(300) của MediaAsset.publicId — thiếu trần
+           * này thì chuỗi dài chết P2000 ở DB (500) thay vì 400 ở tầng validate. */
+          publicId: z.string().min(1).max(300).nullable(),
         }),
       )
       .output(z.object({ image: z.url().nullable() }))
