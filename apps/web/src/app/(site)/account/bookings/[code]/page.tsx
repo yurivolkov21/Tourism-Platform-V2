@@ -6,7 +6,6 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
-import { ReviewForm } from '@/components/account/review-form';
 import { ContentHero } from '@/components/content/content-hero';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
@@ -240,9 +239,11 @@ export default async function AccountBookingDetailPage({
             <h2 className="font-heading text-lg font-semibold">{sec.reviewHeading}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">{sec.reviewBlurb}</p>
             <div className="mt-3">
-              {slot === 'form' ? (
-                <ReviewForm bookingCode={booking.code} />
-              ) : (
+              {/* Form rating GỠ TẠM theo lệnh user 12/08 — khu này sẽ được
+                  ghép lại từng mảnh (upload ảnh trước, rồi rating) trong cụm
+                  review-ảnh; `ReviewForm` + test vẫn sống trong repo, anchor
+                  #review giữ nguyên cho nút Review bên My bookings. */}
+              {slot === 'form' ? null : (
                 <p className="text-sm text-muted-foreground">
                   {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
                 </p>
