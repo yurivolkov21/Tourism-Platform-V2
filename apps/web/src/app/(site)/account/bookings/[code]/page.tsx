@@ -115,105 +115,111 @@ export default async function AccountBookingDetailPage({
           {tv.back}
         </Link>
 
-        {/* ── Giấy tờ visa ─────────────────────────────────────────────── */}
-        <article className="mt-4 overflow-hidden rounded-2xl border border-border bg-card">
-          <div aria-hidden="true" className={`h-1.5 ${STRIP_CLASS[view.tone]}`} />
-          <header className="grid gap-4 border-b border-dashed border-border px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-            <div>
-              <p className="text-[11px] font-bold tracking-[0.3em] text-ink uppercase">
-                {tv.kicker}
-              </p>
-              <h1 className="mt-1.5 font-heading text-2xl font-semibold text-balance">
-                {booking.tourTitle}
-              </h1>
-              <p className="mt-1 text-[13px] text-muted-foreground">
-                <Link
-                  href={`/tours/${booking.tourSlug}`}
-                  className="font-semibold text-primary-emphasis underline-offset-4 hover:underline"
-                >
-                  {t.viewTour} →
-                </Link>
-              </p>
-            </div>
-            <VisaStamp status={booking.status} tone={view.tone} />
-          </header>
+        {/* ── Giấy tờ visa — lên khung Frame (góp ý user 12/08: đồng bộ với
+            khối review bên dưới; `dense` bỏ padding panel để dải tone + ảnh
+            vẫn full-bleed trong khung). ── */}
+        <Frame className="mt-4 w-full" dense>
+          <FramePanel className="overflow-hidden">
+            <article className="overflow-hidden bg-card">
+              <div aria-hidden="true" className={`h-1.5 ${STRIP_CLASS[view.tone]}`} />
+              <header className="grid gap-4 border-b border-dashed border-border px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <div>
+                  <p className="text-[11px] font-bold tracking-[0.3em] text-ink uppercase">
+                    {tv.kicker}
+                  </p>
+                  <h1 className="mt-1.5 font-heading text-2xl font-semibold text-balance">
+                    {booking.tourTitle}
+                  </h1>
+                  <p className="mt-1 text-[13px] text-muted-foreground">
+                    <Link
+                      href={`/tours/${booking.tourSlug}`}
+                      className="font-semibold text-primary-emphasis underline-offset-4 hover:underline"
+                    >
+                      {t.viewTour} →
+                    </Link>
+                  </p>
+                </div>
+                <VisaStamp status={booking.status} tone={view.tone} />
+              </header>
 
-          {booking.tourImage ? (
-            // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
-            <img
-              src={booking.tourImage.url}
-              alt={booking.tourImage.alt ?? ''}
-              className="h-48 w-full object-cover"
-            />
-          ) : null}
+              {booking.tourImage ? (
+                // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
+                <img
+                  src={booking.tourImage.url}
+                  alt={booking.tourImage.alt ?? ''}
+                  className="h-48 w-full object-cover"
+                />
+              ) : null}
 
-          {/* Lưới nhãn IATA: nhãn UPPERCASE nhỏ TRÊN, giá trị đậm DƯỚI — cùng
+              {/* Lưới nhãn IATA: nhãn UPPERCASE nhỏ TRÊN, giá trị đậm DƯỚI — cùng
               ngôn ngữ với tấm vé checkout. */}
-          <dl className="grid grid-cols-2 gap-x-5 gap-y-4 border-b border-dashed border-border px-6 py-5 md:grid-cols-4">
-            <div>
-              <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                {tv.labels.dates}
-              </dt>
-              <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
-                {iataDates(booking.departureStartDate, booking.departureEndDate)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                {tv.labels.travellers}
-              </dt>
-              <dd className="mt-0.5 text-[15px] font-semibold">
-                {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                {tv.labels.reference}
-              </dt>
-              <dd className="mt-0.5 font-mono text-[15px] font-semibold">{booking.code}</dd>
-            </div>
-            <div>
-              <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                {tv.labels.total}
-              </dt>
-              <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
-                {formatMoney(booking.totalAmount, booking.currency)}
-              </dd>
-            </div>
-          </dl>
+              <dl className="grid grid-cols-2 gap-x-5 gap-y-4 border-b border-dashed border-border px-6 py-5 md:grid-cols-4">
+                <div>
+                  <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                    {tv.labels.dates}
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
+                    {iataDates(booking.departureStartDate, booking.departureEndDate)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                    {tv.labels.travellers}
+                  </dt>
+                  <dd className="mt-0.5 text-[15px] font-semibold">
+                    {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                    {tv.labels.reference}
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-[15px] font-semibold">{booking.code}</dd>
+                </div>
+                <div>
+                  <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                    {tv.labels.total}
+                  </dt>
+                  <dd className="mt-0.5 font-mono text-[15px] font-semibold tabular-nums">
+                    {formatMoney(booking.totalAmount, booking.currency)}
+                  </dd>
+                </div>
+              </dl>
 
-          {/* Hàng hành động của giấy tờ: voucher CHỈ khi đã trả tiền (tấm vé
+              {/* Hàng hành động của giấy tờ: voucher CHỈ khi đã trả tiền (tấm vé
               bên checkout là vé của booking PAID); Contact luôn có. PENDING
               trả tiền qua `BookingActions` phía dưới — giữ nguyên flow thật. */}
-          <div className="flex flex-wrap items-center gap-3 px-6 py-4">
-            {view.tone === 'success' ? (
-              <ButtonLink href={`/checkout/success?code=${booking.code}`}>
-                {tv.viewVoucher}
-              </ButtonLink>
-            ) : null}
-            <ButtonLink variant="outline" href="/contact">
-              {tv.contactUs}
-            </ButtonLink>
-          </div>
+              <div className="flex flex-wrap items-center gap-3 px-6 py-4">
+                {view.tone === 'success' ? (
+                  <ButtonLink href={`/checkout/success?code=${booking.code}`}>
+                    {tv.viewVoucher}
+                  </ButtonLink>
+                ) : null}
+                <ButtonLink variant="outline" href="/contact">
+                  {tv.contactUs}
+                </ButtonLink>
+              </div>
 
-          <p className="px-6 pb-4 font-mono text-[9.5px] leading-relaxed tracking-[0.06em] text-muted-foreground">
-            {tv.fineLine(
-              booking.contactName,
-              booking.contactEmail,
-              // `createdAt` là ISO datetime đầy đủ — `formatDate` chỉ nhận
-              // calendar date (tách chuỗi, không qua new Date) nên phải cắt
-              // phần ngày trước, không thì ra "NaN AUG" (bug bắt ở nghiệm thu).
-              formatDate(booking.createdAt.slice(0, 10)),
-              PROVIDER_LABEL[booking.paymentProvider],
-            )}
-            {booking.specialRequests ? (
-              <>
-                <br />
-                {tv.requestsLine(booking.specialRequests)}
-              </>
-            ) : null}
-          </p>
-        </article>
+              <p className="px-6 pb-4 font-mono text-[9.5px] leading-relaxed tracking-[0.06em] text-muted-foreground">
+                {tv.fineLine(
+                  booking.contactName,
+                  booking.contactEmail,
+                  // `createdAt` là ISO datetime đầy đủ — `formatDate` chỉ nhận
+                  // calendar date (tách chuỗi, không qua new Date) nên phải cắt
+                  // phần ngày trước, không thì ra "NaN AUG" (bug bắt ở nghiệm thu).
+                  formatDate(booking.createdAt.slice(0, 10)),
+                  PROVIDER_LABEL[booking.paymentProvider],
+                )}
+                {booking.specialRequests ? (
+                  <>
+                    <br />
+                    {tv.requestsLine(booking.specialRequests)}
+                  </>
+                ) : null}
+              </p>
+            </article>
+          </FramePanel>
+        </Frame>
 
         {/* ── Dưới giấy tờ: trạng thái terminal + hành động hủy (flow cũ) ── */}
         <div className="mt-5">
