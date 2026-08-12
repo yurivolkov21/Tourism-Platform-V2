@@ -117,8 +117,14 @@ export function Scrollspy({
       const sectionElement = document.getElementById(sectionId);
       if (!sectionElement) return;
 
+      // Vá bug bản gốc: không có targetRef (bám cuộn WINDOW — cách phần theo
+      // dõi cuộn phía trên vẫn fallback) thì nhánh này ra `undefined` và cú
+      // bấm không cuộn gì cả — chỉ nút đổi màu. Đưa window làm mặc định cho
+      // khớp hai chiều.
       let scrollToElement: HTMLElement | Window | null =
-        targetRef?.current === document ? window : (targetRef?.current as HTMLElement);
+        !targetRef?.current || targetRef.current === document
+          ? window
+          : (targetRef.current as HTMLElement);
 
       if (scrollToElement instanceof HTMLElement) {
         const viewport = scrollToElement.querySelector('[data-slot="scroll-area-viewport"]');
@@ -133,7 +139,12 @@ export function Scrollspy({
         customOffset = parseInt(dataOffset, 10);
       }
 
-      const scrollTop = sectionElement.offsetTop - customOffset;
+      // Với window, `offsetTop` chỉ đúng khi offsetParent là body — dùng
+      // rect + scrollY cho chắc ở mọi cây DOM; vùng cuộn con giữ offsetTop.
+      const scrollTop =
+        scrollToElement === window
+          ? sectionElement.getBoundingClientRect().top + window.scrollY - customOffset
+          : sectionElement.offsetTop - customOffset;
 
       if (scrollToElement && 'scrollTo' in scrollToElement) {
         scrollToElement.scrollTo({
