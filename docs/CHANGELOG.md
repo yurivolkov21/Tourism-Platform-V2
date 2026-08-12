@@ -8,6 +8,47 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-12 — Bề mặt GHI media: avatar + ảnh review lưu thật qua Cloudinary signed upload (branch `feat/media-write-surface`, ff-only, 19 commit `19e5068..7351e6a`)
+
+Trả món nợ static-first của entry dưới, ADR-0021 đi trước code (user duyệt
+rồi mới plan 11 task, thi công subagent-driven). **Contract nở 2 namespace
+mới**: `media.signUpload` (POST `/api/media/upload-signatures` — ký bộ
+`{folder, public_id, timestamp}`, publicId server sinh uuid, folder theo
+purpose, đuôi file whitelist bằng `z.enum` nên chết ngay tầng validate) và
+`account.setAvatar` (PATCH — procedure oRPC ĐẦU TIÊN của namespace account,
+đường ĐÓNG: server kiểm chủ quyền publicId theo segment rồi tự dựng URL ghi
+`User.image`, cấm client set URL tự do); `reviews.create` nhận `photos` ≤5
+(kiểm prefix folder đúng booking, tạo `MediaAsset` ownerType `REVIEW` trong
+CÙNG transaction), `PublicReviewSchema.media` bắt buộc — lan tự nhiên sang
+`mine`/admin, 4 đường đọc (kể cả `moderate`) batch `resolveForOwners` chống
+N+1. **Quyền REVIEW_PHOTO soi CÙNG `checkReviewEligibility`** với
+reviews.create — một nguồn luật, không drift. **Web nối dây, UI giữ
+nguyên**: lib `media-upload` (XHR progress, trả public_id đầy đủ; trần
+dung lượng dời về contract làm MỘT nguồn client+server), AvatarUpload nối
+sign→upload→setAvatar→refresh (hiển thị navbar/hộ chiếu/Settings),
+ReviewComposer lift state giữa hai FramePanel (page là RSC), ảnh review đã
+duyệt hiện trên trang tour + trang vùng. Env Cloudinary bật trong
+`.env.example`; thiếu cặp key API vẫn boot — signUpload trả 503.
+
+**Review findings tiêu biểu:** final review toàn branch bắt 2 Important —
+ảnh trùng publicId làm `createMany` ném P2002 bị map nhầm thành 409
+REVIEW_ALREADY_EXISTS (dedupe giữ thứ tự), và trần throttle public 5/60s
+khít đúng flow 5 ảnh (tách `SIGN_UPLOAD_THROTTLE` 20/60s); task review bắt
+promise treo khi Cloudinary trả 2xx không-JSON (`JSON.parse` ném trong
+callback executor không reject), drop file thứ hai lúc busy không bị chặn,
+`media.int.spec` vỡ DI vì MediaController mới mang ThrottlerGuard, thiếu
+test nhánh upload-fail. Sự cố nghiệm thu: `prisma.config.ts` chỉ đọc
+`.env` nên `migrate dev` áp docker local, Supabase thiếu enum `REVIEW` →
+web build 500; đã `migrate deploy` tường minh và ghi gotcha vào CLAUDE.md.
+Tests after: 1597 — 1421 unit (82 contract, 10 tokens, 1 i18n, 14 ui,
+214 api, 1100 web) và 176 api int. Sổ nợ: rác Cloudinary (ký rồi bỏ) và
+cron reconcile là P4; chữ ký không phủ format/resource_type (enforce đuôi
+thật phía Cloudinary) P4; deploy thật phải API-trước-web (`media` là field
+bắt buộc); gotcha `pnpm --filter @tourism/api test:int -- <file>` KHÔNG
+filter — dùng `pnpm test:int <file>` từ cwd `apps/api`; nhánh `user.image`
+ở navbar/hộ chiếu chưa có test; user chưa test đầu-cuối với key Cloudinary
+thật (điền `.env.local` rồi thử avatar + ảnh review).
+
 ## 2026-08-12 — Vòng quét từng-trang khu Account + booking: accordion, review-ảnh UI, đồng bộ Frame (branch `feat/bookings-inline-detail`, ff-only, 13 commit `850fc05..1be6a6c`)
 
 Nối tiếp bản chốt hộ chiếu: user quét từng trang trên giao diện thật, mỗi góp

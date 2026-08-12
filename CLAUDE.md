@@ -137,6 +137,12 @@ pnpm lint:fix                    # biome tự sửa format + lint
 - Biến env để trống (`KEY=`) là **chuỗi rỗng**, không phải undefined —
   `parseEnv` strip nó để `.default()` vẫn chạy. Nền tảng deploy cũng gửi chuỗi
   rỗng khi ô bị bỏ trống, nên đừng gỡ bước strip này.
+- **`prisma.config.ts` chỉ đọc `.env` (qua `dotenv/config`) — KHÔNG đọc
+  `.env.local`.** Vì repo không có `.env` nên mọi lệnh `prisma migrate/status`
+  rơi về Postgres docker local; DB dev thật (Supabase trong `.env.local`)
+  KHÔNG tự nhận migration. Đã dính 12/08: enum `REVIEW` thiếu trên Supabase →
+  web build SSG chết 500. Sau mỗi migration mới, deploy tường minh từ
+  `apps/api`: `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.local | cut -d= -f2-)" && pnpm prisma migrate deploy`.
 - **TUYỆT ĐỐI không sửa file `migration.sql` đã được apply** — kể cả sửa
   comment. Prisma lưu checksum từng migration; đổi một ký tự là drift, và
   `migrate dev` từ chối chạy tiếp. Đã dính 19/07 khi đợt dịch comment sang
