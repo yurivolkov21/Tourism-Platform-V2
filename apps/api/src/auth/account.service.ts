@@ -1,6 +1,13 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
+import { env } from '../config/env.js';
+import { MediaType } from '../generated/prisma/enums.js';
+import { buildCloudinaryUrl } from '../lib/cloudinary-url.js';
+import { isOwnAvatarPublicId } from '../lib/upload-signing.js';
 import { prisma } from './auth.config.js';
+
+/** publicId không nằm trong folder avatar của CHÍNH user (ADR-0021 §3). */
+export class AvatarPublicIdInvalidError extends Error {}
 
 /**
  * Tombstone account deletion (spec §5, audit H5b) — flow CỦA TA, cố ý KHÔNG
@@ -12,6 +19,27 @@ import { prisma } from './auth.config.js';
  */
 @Injectable()
 export class AccountService {
+  /**
+   * Ghi avatar qua đường ĐÓNG (ADR-0021 §3): server tự dựng URL delivery từ
+   * publicId đã kiểm chủ quyền rồi mới chạm User.image — cố ý KHÔNG mở
+   * updateUser.image từ client vì field đó nhận chuỗi bất kỳ.
+   */
+  async setAvatar(userId: string, publicId: string | null): Promise<string | null> {
+    if (publicId === null) {
+      await prisma.user.update({ where: { id: userId }, data: { image: null } });
+      return null;
+    }
+    if (!isOwnAvatarPublicId(env.CLOUDINARY_UPLOAD_FOLDER, userId, publicId)) {
+      throw new AvatarPublicIdInvalidError();
+    }
+    const { url } = buildCloudinaryUrl(env.CLOUDINARY_CLOUD_NAME, {
+      type: MediaType.IMAGE,
+      publicId,
+    });
+    await prisma.user.update({ where: { id: userId }, data: { image: url } });
+    return url;
+  }
+
   async deleteAccount(userId: string): Promise<void> {
     // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
     // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
