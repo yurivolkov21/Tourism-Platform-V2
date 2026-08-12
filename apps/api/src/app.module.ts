@@ -11,6 +11,7 @@ import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
 import { HealthModule } from './modules/health/health.module.js';
+import { MediaModule } from './modules/media/media.module.js';
 import { NewsletterModule } from './modules/newsletter/newsletter.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
@@ -54,6 +55,11 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     NewsletterModule,
     PostsModule,
     SiteMediaModule,
+    // ADR-0021: media giờ có controller riêng (MediaController, endpoint
+    // media.signUpload) nên phải đứng tên ở đây — trước đây MediaModule chỉ
+    // export MediaService để CatalogModule/PostsModule import ké, không tự
+    // mount route nào nên không cần khai trong AppModule.
+    MediaModule,
   ],
   providers: [
     /**

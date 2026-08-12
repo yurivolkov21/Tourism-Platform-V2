@@ -22,6 +22,11 @@ export default defineConfig({
       BETTER_AUTH_SECRET: 'int-test-secret',
       BETTER_AUTH_URL: 'http://localhost:3001',
       ADMIN_EMAILS: 'bootstrap-admin@tourism.test',
+      // Cặp Cloudinary GIẢ — đủ để resolveUploadConfig() coi là "đã cấu
+      // hình" (Task 4, ADR-0021). SDK chỉ dùng secret để KÝ (HMAC cục bộ),
+      // không gọi mạng thật nên giá trị giả vẫn ký/verify được trong test.
+      CLOUDINARY_API_KEY: 'int-test-key',
+      CLOUDINARY_API_SECRET: 'int-test-secret',
     },
     // Một DB test dùng chung + truncate giữa các test → tuần tự hoá.
     fileParallelism: false,
