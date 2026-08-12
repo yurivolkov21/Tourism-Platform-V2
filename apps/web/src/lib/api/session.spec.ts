@@ -98,6 +98,7 @@ describe('getServerSession', () => {
       email: validUser.email,
       role: 'CUSTOMER',
       phone: '+84901234567',
+      image: null,
     });
   });
 
@@ -173,6 +174,7 @@ describe('requireSession', () => {
       email: validUser.email,
       role: 'CUSTOMER',
       phone: '+84901234567',
+      image: null,
     });
     expect(redirectMock).not.toHaveBeenCalled();
   });

@@ -40,6 +40,7 @@ export function PassportCard({
   passportNo,
   mrz,
   actions,
+  image,
 }: {
   name: string;
   email: string;
@@ -52,6 +53,9 @@ export function PassportCard({
   /** Cụm nút góc phải trên của khung (góp ý 11/08: Settings + My bookings
    *  sống TRONG khung) — page truyền vào, card chỉ lo chỗ đứng. */
   actions?: ReactNode;
+  /** Avatar đã lưu (Task 8, ADR-0021) — có thì thế vào ô chân dung vuông
+   *  thay chữ cái đầu; `undefined`/`null` → vẫn chữ cái đầu như cũ. */
+  image?: string | null;
 }) {
   const t = messages.passportHome;
   const noDisplay = `${passportNo.slice(0, 2)} ${passportNo.slice(2, 5)} ${passportNo.slice(5)}`;
@@ -72,15 +76,21 @@ export function PassportCard({
       ) : null}
       <div className="flex flex-col gap-5 p-6 sm:flex-row sm:gap-7 md:p-7">
         {/* Avatar VUÔNG bo góc kiểu trang profile (góp ý user 11/08 — thay ô
-            chân dung 3:4 kiểu giấy tờ); vẫn chữ-cái-đầu chờ cụm avatar upload
-            đang PARK. */}
+            chân dung 3:4 kiểu giấy tờ); có ảnh đã lưu (Task 8, ADR-0021) thì
+            thế vào, không thì vẫn chữ-cái-đầu. Cả khối `aria-hidden` — tên
+            đứng ngay cạnh đã gánh phần đọc máy, ảnh dùng `alt=""`. */}
         <div
           aria-hidden="true"
-          className="flex size-28 flex-none items-center justify-center rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
+          className="flex size-28 flex-none items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
         >
-          <span className="font-heading text-5xl font-semibold text-ink/70">
-            {name.charAt(0).toUpperCase()}
-          </span>
+          {image ? (
+            // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+            <img src={image} alt="" className="size-full rounded-2xl object-cover" />
+          ) : (
+            <span className="font-heading text-5xl font-semibold text-ink/70">
+              {name.charAt(0).toUpperCase()}
+            </span>
+          )}
         </div>
         {/* Zone II/III — lưới field; Name mở đầu, giá trị lớn hơn các field
             còn lại (tên vẫn làm chủ, như bản header được duyệt). */}

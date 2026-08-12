@@ -55,10 +55,12 @@ export default async function AccountSettingsPage() {
             <p className="text-sm text-muted-foreground">{t.details.blurb}</p>
           </div>
           <div className="md:col-span-2">
-            {/* Avatar đứng đầu nhóm (mảnh 12/08, static-first — preview cục
-                bộ, backend chờ ADR bề mặt ghi media); initial đồng bộ với
-                khung hộ chiếu. */}
-            <AvatarUpload initial={(profile.name || profile.email).charAt(0)} />
+            {/* Avatar đứng đầu nhóm (mảnh 12/08, nối thật Task 8/ADR-0021);
+                initial đồng bộ với khung hộ chiếu. */}
+            <AvatarUpload
+              initial={(profile.name || profile.email).charAt(0)}
+              image={profile.image}
+            />
             <ProfileSummary profile={profile} />
           </div>
         </section>

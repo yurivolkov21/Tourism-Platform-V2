@@ -4,13 +4,15 @@ import { messages } from '@tourism/i18n';
 import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/alert';
 import { Button } from '@tourism/ui/components/button';
 import { CircleAlertIcon, XIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
+import { api, withBrowserAuth } from '@/lib/api/client';
 import { MAX_AVATAR_BYTES, validateAvatar } from '@/lib/avatar';
+import { imageExtensionOf, uploadToCloudinary } from '@/lib/media-upload';
 import { formatBytes } from '@/lib/review-photos';
 
 /**
- * KHỐI UPLOAD AVATAR trong Settings (mảnh 12/08 — UI theo mẫu avatar-upload
- * user chọn, thuần hoá về đồ nhà, KHÔNG cần hook ngoài):
+ * KHỐI UPLOAD AVATAR trong Settings (mảnh 12/08, nối thật 12/08 — ADR-0021):
  *
  * - Vòng tròn avatar viền đứt: bấm hoặc kéo-thả ảnh vào; có ảnh → preview
  *   phủ tròn + nút X gỡ; chưa có → chữ cái đầu (đồng bộ ngôn ngữ initial
@@ -18,18 +20,38 @@ import { formatBytes } from '@/lib/review-photos';
  * - Validate qua `lib/avatar` (thuần, TDD): đúng loại → trần 2MB; lỗi vào
  *   Alert.
  *
- * STATIC-FIRST: preview là Object URL cục bộ, CHƯA gửi server — mảnh backend
- * (ADR bề mặt ghi media + Cloudinary signed upload, chung với ảnh review) sẽ
- * nối `authClient.updateUser({ image })` tại đúng chỗ `onPick`.
+ * Luồng ghi thật (ADR-0021 §3 — đường setAvatar ĐÓNG, KHÔNG dùng
+ * `authClient.updateUser({ image })` của Better Auth): `onPick` ký chữ ký
+ * upload qua `api.media.signUpload` → POST thẳng file lên Cloudinary
+ * (`uploadToCloudinary`, browser → Cloudinary, bytes không qua Nest) →
+ * `api.account.setAvatar({ publicId })` ghi vào DB → `router.refresh()` để
+ * Server Component đọc lại `image` mới từ session/`/api/account/me`. Ưu
+ * tiên hiển thị: `preview` (Object URL cục bộ, đang/vừa upload) → `image`
+ * (đã lưu, prop từ server) → chữ cái đầu — preview được GIỮ NGUYÊN tới khi
+ * `router.refresh()` mang `image` mới về (không tự xoá ngay sau khi
+ * `setAvatar` resolve), tránh nháy về chữ cái đầu trong lúc chờ RSC render
+ * lại.
  */
-export function AvatarUpload({ initial }: { initial: string }) {
+export function AvatarUpload({
+  initial,
+  image,
+}: {
+  initial: string;
+  /** Avatar đã lưu (URL Cloudinary) — `null` = chưa có, tạm hiện chữ cái đầu. */
+  image: string | null;
+}) {
   const t = messages.accountProfile.avatar;
+  const router = useRouter();
   const [preview, setPreview] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [pct, setPct] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function onPick(files: FileList | null) {
+  const displaySrc = preview ?? image;
+
+  async function onPick(files: FileList | null) {
     const file = files?.[0];
     if (!file) return;
     const error = validateAvatar(file);
@@ -39,14 +61,56 @@ export function AvatarUpload({ initial }: { initial: string }) {
       ]);
       return;
     }
+    const ext = imageExtensionOf(file.name);
+    if (!ext) {
+      setErrors([`${file.name}: ${t.errNotImage}`]);
+      return;
+    }
     setErrors([]);
+    const objectUrl = URL.createObjectURL(file);
     setPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev);
-      return URL.createObjectURL(file);
+      return objectUrl;
     });
+    setBusy(true);
+    setPct(0);
+    try {
+      const params = await api.media.signUpload(
+        { purpose: 'AVATAR', ext },
+        { context: withBrowserAuth() },
+      );
+      const publicId = await uploadToCloudinary(file, params, setPct);
+      await api.account.setAvatar({ publicId }, { context: withBrowserAuth() });
+      router.refresh();
+      // Giữ nguyên preview — không revoke ở đây: `image` mới chỉ về sau khi
+      // `refresh()` render lại từ server, xoá ngay sẽ nháy về chữ cái đầu.
+    } catch {
+      // Mọi lỗi (ORPCError của signUpload/setAvatar, hay lỗi mạng của
+      // uploadToCloudinary) đều gộp về một thông báo chung — bảng mã lỗi chi
+      // tiết (AVATAR_PUBLIC_ID_INVALID…) không đáng phơi ra người dùng cuối.
+      setErrors([t.errUpload]);
+      setPreview((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    } finally {
+      setBusy(false);
+    }
   }
 
-  function removeAvatar() {
+  async function removeAvatar() {
+    setErrors([]);
+    setBusy(true);
+    try {
+      await api.account.setAvatar({ publicId: null }, { context: withBrowserAuth() });
+      router.refresh();
+    } catch {
+      setErrors([t.errUpload]);
+    } finally {
+      setBusy(false);
+    }
+    // Thu hồi preview cục bộ nếu có — cả khi gỡ avatar đã lưu lẫn khi đang
+    // kẹt giữa chừng một lần chọn lỗi (preview mồ côi, chưa kịp lưu).
     setPreview((prev) => {
       if (prev) URL.revokeObjectURL(prev);
       return null;
@@ -59,6 +123,7 @@ export function AvatarUpload({ initial }: { initial: string }) {
         <button
           type="button"
           aria-label={t.upload}
+          disabled={busy}
           onClick={() => inputRef.current?.click()}
           onDragEnter={(e) => {
             e.preventDefault();
@@ -74,29 +139,30 @@ export function AvatarUpload({ initial }: { initial: string }) {
             setIsDragging(false);
             onPick(e.dataTransfer.files);
           }}
-          className={`group/avatar relative size-20 cursor-pointer overflow-hidden rounded-full border transition-colors ${
-            preview
+          className={`group/avatar relative size-20 cursor-pointer overflow-hidden rounded-full border transition-colors disabled:cursor-not-allowed disabled:opacity-70 ${
+            displaySrc
               ? 'border-solid border-border'
               : isDragging
                 ? 'border-dashed border-primary bg-primary/5'
                 : 'border-dashed border-muted-foreground/25 bg-muted hover:border-muted-foreground/50'
           }`}
         >
-          {preview ? (
-            // biome-ignore lint/performance/noImgElement: preview là Object URL cục bộ — next/image không áp dụng.
-            <img src={preview} alt="" className="size-full object-cover" />
+          {displaySrc ? (
+            // biome-ignore lint/performance/noImgElement: preview là Object URL cục bộ hoặc URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+            <img src={displaySrc} alt="" className="size-full object-cover" />
           ) : (
             <span className="flex size-full items-center justify-center font-heading text-3xl font-semibold text-ink/70">
               {initial.toUpperCase()}
             </span>
           )}
         </button>
-        {preview ? (
+        {displaySrc ? (
           <Button
             type="button"
             size="icon"
             variant="outline"
             onClick={removeAvatar}
+            disabled={busy}
             aria-label={t.remove}
             className="absolute -top-0.5 -right-0.5 z-10 size-6 rounded-full shadow-sm"
           >
@@ -107,6 +173,7 @@ export function AvatarUpload({ initial }: { initial: string }) {
           ref={inputRef}
           type="file"
           accept="image/*"
+          disabled={busy}
           className="sr-only"
           onChange={(e) => {
             onPick(e.target.files);
@@ -116,8 +183,10 @@ export function AvatarUpload({ initial }: { initial: string }) {
       </div>
 
       <div className="min-w-0">
-        <p className="text-sm font-medium text-foreground">{preview ? t.selected : t.upload}</p>
-        <p className="text-xs text-muted-foreground">{t.hint(formatBytes(MAX_AVATAR_BYTES))}</p>
+        <p className="text-sm font-medium text-foreground">{displaySrc ? t.selected : t.upload}</p>
+        <p className="text-xs text-muted-foreground">
+          {busy ? t.uploading(pct) : t.hint(formatBytes(MAX_AVATAR_BYTES))}
+        </p>
         {errors.length > 0 ? (
           <Alert variant="destructive" className="mt-3">
             <CircleAlertIcon />

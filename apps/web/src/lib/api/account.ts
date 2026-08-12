@@ -6,9 +6,10 @@ import type { SessionUser } from './session';
  * thuần — KHÔNG phải procedure oRPC, `contract.ts` không có namespace
  * `account`; JSDoc ví dụ `api.account.me(...)` ở `client.ts` là suy đoán từ
  * lúc Task 1 chưa chốt shape endpoint này, đừng theo). Trả THẲNG
- * `auth.$Infer.Session.user` (superset — kèm emailVerified/image/timestamps),
- * chỉ khai field UI thật sự đọc, cùng quy ước với `GetSessionApiResponse` ở
- * `session.ts`.
+ * `auth.$Infer.Session.user` (superset — kèm emailVerified/timestamps), chỉ
+ * khai field UI thật sự đọc, cùng quy ước với `GetSessionApiResponse` ở
+ * `session.ts` — `image` đã vào danh sách này (Task 8, ADR-0021): khối
+ * AvatarUpload ở Settings đọc avatar đã lưu qua field này.
  */
 interface AccountMeApiResponse {
   id: string;
@@ -16,6 +17,7 @@ interface AccountMeApiResponse {
   email: string;
   role?: string | null;
   phone?: string | null;
+  image?: string | null;
 }
 
 /**
@@ -47,6 +49,7 @@ export async function fetchAccountMe(cookie: string): Promise<SessionUser> {
     email: user.email,
     role: user.role ?? '',
     phone: user.phone ?? null,
+    image: user.image ?? null,
   };
 }
 

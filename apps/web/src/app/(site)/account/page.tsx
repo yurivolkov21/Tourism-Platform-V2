@@ -79,6 +79,7 @@ export default async function AccountPassportPage() {
           sinceYear={sinceYear}
           passportNo={passportNo(session.id)}
           mrz={mrzLines(name, session.id, sinceYear)}
+          image={me?.image ?? null}
           actions={
             <>
               <ButtonLink variant="outline" size="sm" href="/account/bookings">

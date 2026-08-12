@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, AvatarFallback } from '@tourism/ui/components/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@tourism/ui/components/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -78,6 +78,7 @@ export function UserMenu({ linkClassName }: { linkClassName?: string }) {
         }
       >
         <Avatar className="size-8">
+          {user.image ? <AvatarImage src={user.image} alt="" /> : null}
           <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>

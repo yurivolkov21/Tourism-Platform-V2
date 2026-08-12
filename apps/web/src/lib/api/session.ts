@@ -8,7 +8,9 @@ import { apiOrigin } from './env';
  * BA thật cần cho UI, KHÔNG phải toàn bộ payload user (đối chiếu THẬT §9).
  * `role`/`phone`/`deletedAt` là `additionalFields` do `apps/api/src/auth/
  * auth.config.ts` khai — đo qua `SessionUser = typeof auth.$Infer.Session.user`
- * ở đó, KHÔNG đoán từ type suy diễn của BA client.
+ * ở đó, KHÔNG đoán từ type suy diễn của BA client. `image` là field GỐC của
+ * Better Auth (không phải additionalFields) — Task 8 (ADR-0021) nối UI đọc
+ * thật (navbar/hộ chiếu/Settings), thêm vào đây.
  */
 export interface SessionUser {
   id: string;
@@ -16,6 +18,7 @@ export interface SessionUser {
   email: string;
   role: string;
   phone: string | null;
+  image: string | null;
 }
 
 /**
@@ -23,8 +26,9 @@ export interface SessionUser {
  * chiếu `dist/api/routes/session.d.mts` + `dist/api/routes/session.mjs`):
  * trả `{ session, user } | null` — KHÔNG 401 khi thiếu cookie, endpoint tự
  * `return null` (status 200, body `null`) lúc không đọc được
- * `sessionCookieToken`. Chỉ khai field session.ts THẬT SỰ đọc; các field BA
- * khác (emailVerified/image/createdAt/updatedAt…) bỏ qua có chủ đích.
+ * `sessionCookieToken`. Chỉ khai field session.ts THẬT SỰ đọc — `image` giờ
+ * UI đọc thật (Task 8, ADR-0021) nên đã vào danh sách; các field BA khác
+ * (emailVerified/createdAt/updatedAt…) vẫn bỏ qua có chủ đích.
  */
 interface GetSessionApiResponse {
   session: unknown;
@@ -35,6 +39,7 @@ interface GetSessionApiResponse {
     role?: string | null;
     phone?: string | null;
     deletedAt?: string | null;
+    image?: string | null;
   };
 }
 
@@ -71,6 +76,7 @@ export const getServerSession = cache(async (): Promise<SessionUser | null> => {
       email: user.email,
       role: user.role ?? '',
       phone: user.phone ?? null,
+      image: user.image ?? null,
     };
   } catch {
     return null;

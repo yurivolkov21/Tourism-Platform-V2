@@ -2740,8 +2740,8 @@ export const messages = {
     subtitle: 'The information printed in your passport.',
   },
   accountProfile: {
-    /** Khối upload avatar trong Settings (mảnh 12/08, static-first — backend
-     *  chung ADR bề mặt ghi media với ảnh review). */
+    /** Khối upload avatar trong Settings (mảnh 12/08, nối thật 12/08 — signed
+     *  upload Cloudinary + `account.setAvatar`, ADR-0021). */
     avatar: {
       upload: 'Upload avatar',
       selected: 'Avatar selected',
@@ -2750,6 +2750,8 @@ export const messages = {
       errorsTitle: 'Avatar upload error(s)',
       errNotImage: 'File must be an image.',
       errTooLarge: (size: string) => `File size must be less than ${size}.`,
+      uploading: (pct: number) => `Uploading… ${pct}%`,
+      errUpload: 'Upload failed. Please try again.',
     },
     details: {
       heading: 'Personal information',

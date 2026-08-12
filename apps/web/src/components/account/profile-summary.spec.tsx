@@ -22,6 +22,7 @@ const PROFILE: SessionUser = {
   email: 'minh.anh@example.com',
   role: 'CUSTOMER',
   phone: '0901234567',
+  image: null,
 };
 
 beforeEach(() => {
