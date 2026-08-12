@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { SignOutButton } from '@/components/account/sign-out-button';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportCard } from '@/components/passport/passport-card';
 import { TravelLog } from '@/components/passport/travel-log';
@@ -91,6 +92,7 @@ export default async function AccountPassportPage() {
               <ButtonLink variant="outline" size="sm" href="/account/settings">
                 {t.settingsLink}
               </ButtonLink>
+              <SignOutButton />
             </>
           }
         />

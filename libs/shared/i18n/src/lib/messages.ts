@@ -2601,6 +2601,7 @@ export const messages = {
      *  Settings ở góc phải trên của khung). */
     bookingsLink: 'My bookings',
     savedLink: 'Saved tours',
+    signOutLink: 'Sign out',
     stampsHeading: 'Stamps',
     /** Sub-label (sr-only) của dấu ghost "chờ đóng" trên trang visa mở. */
     awaitingStamp: 'next stamp',
