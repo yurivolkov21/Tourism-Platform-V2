@@ -40,6 +40,7 @@ function item(
       authorName: author,
       authorDeleted: author === null,
       createdAt,
+      media: [],
     },
     tourSlug,
     tourTitle,

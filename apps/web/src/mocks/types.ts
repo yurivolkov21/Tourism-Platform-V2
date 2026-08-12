@@ -2,6 +2,8 @@
 // theo Prisma schema: chỗ nào vượt ra ngoài schema chính là danh sách trường
 // cần thêm khi chốt trang và gắn API (xem memory static-first-page-building).
 
+import type { MediaItem } from '@tourism/contract';
+
 export type MockRegionKey = 'north' | 'central' | 'south';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -47,7 +49,7 @@ export type MockTravellerType = 'FAMILY' | 'COUPLE' | 'FRIENDS' | 'SOLO' | 'BUSI
 export type MockPolicyKind = 'CANCELLATION' | 'BOOKING' | 'GENERAL';
 
 /**
- * Gương `PublicReviewSchema` của `@tourism/contract` — **đúng 7 field, không hơn**.
+ * Gương `PublicReviewSchema` của `@tourism/contract` — **đúng 8 field, không hơn**.
  *
  * Những thứ CỐ TÌNH không có ở đây, vì bản công khai của contract không có, và mỗi
  * cái đều là một UI thường thấy mà ta không được dựng:
@@ -75,6 +77,14 @@ export interface MockReview {
       Bẫy "đừng dựng new Date()" chỉ áp cho date-only; với datetime có Z thì
       `new Date()` là đúng. Xem `formatReviewDate` trong lib/tours.ts. */
   createdAt: string;
+  /**
+   * Ảnh chuyến đi khách đính kèm (ADR-0021) — URL đã dựng, rỗng nếu không có.
+   * Kiểu `MediaItem` THẲNG từ contract (không phải `MockMediaItem` cục bộ):
+   * `MockMediaItem` thiếu 4 field ghi công ADR-0020 nên không gương đủ
+   * `MediaItemSchema` — dùng nó ở đây sẽ làm `MockReview` lệch khỏi
+   * `TourReviewVM` thật, gãy các hàm `lib/tours.ts` nhận `TourReviewVM[]`.
+   */
+  media: MediaItem[];
 }
 
 export interface MockItineraryDay {

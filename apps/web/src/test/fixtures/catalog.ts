@@ -619,6 +619,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 1',
       authorDeleted: false,
       createdAt: '2026-07-18T09:12:00.000Z',
+      media: [],
     },
     {
       id: 'rv-2',
@@ -628,6 +629,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 2',
       authorDeleted: false,
       createdAt: '2026-07-11T14:03:00.000Z',
+      media: [],
     },
     {
       id: 'rv-3',
@@ -637,6 +639,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 3',
       authorDeleted: false,
       createdAt: '2026-07-02T20:41:00.000Z',
+      media: [],
     },
     {
       id: 'rv-4',
@@ -646,6 +649,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 4',
       authorDeleted: false,
       createdAt: '2026-06-24T11:20:00.000Z',
+      media: [],
     },
     {
       id: 'rv-5',
@@ -655,6 +659,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 5',
       authorDeleted: false,
       createdAt: '2026-06-15T08:05:00.000Z',
+      media: [],
     },
     {
       id: 'rv-6',
@@ -664,6 +669,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 6',
       authorDeleted: false,
       createdAt: '2026-06-09T17:32:00.000Z',
+      media: [],
     },
     {
       id: 'rv-7',
@@ -673,6 +679,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-05-30T10:15:00.000Z',
+      media: [],
     },
     {
       id: 'rv-8',
@@ -682,6 +689,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 8',
       authorDeleted: false,
       createdAt: '2026-05-21T13:48:00.000Z',
+      media: [],
     },
     {
       id: 'rv-9',
@@ -691,6 +699,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 9',
       authorDeleted: false,
       createdAt: '2026-05-12T09:59:00.000Z',
+      media: [],
     },
     {
       id: 'rv-10',
@@ -700,6 +709,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 10',
       authorDeleted: false,
       createdAt: '2026-05-03T15:27:00.000Z',
+      media: [],
     },
     {
       id: 'rv-11',
@@ -709,6 +719,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 11',
       authorDeleted: false,
       createdAt: '2026-04-25T07:44:00.000Z',
+      media: [],
     },
     {
       id: 'rv-12',
@@ -718,6 +729,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 12',
       authorDeleted: false,
       createdAt: '2026-04-14T19:06:00.000Z',
+      media: [],
     },
     {
       id: 'rv-13',
@@ -727,6 +739,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 13',
       authorDeleted: false,
       createdAt: '2026-04-02T12:31:00.000Z',
+      media: [],
     },
     {
       id: 'rv-14',
@@ -736,6 +749,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-03-22T16:18:00.000Z',
+      media: [],
     },
   ],
   'northern-highlands-loop': [
@@ -747,6 +761,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 15',
       authorDeleted: false,
       createdAt: '2026-07-14T10:22:00.000Z',
+      media: [],
     },
     {
       id: 'rv-21',
@@ -756,6 +771,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 16',
       authorDeleted: false,
       createdAt: '2026-07-05T18:40:00.000Z',
+      media: [],
     },
     {
       id: 'rv-22',
@@ -765,6 +781,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 17',
       authorDeleted: false,
       createdAt: '2026-06-27T09:11:00.000Z',
+      media: [],
     },
     {
       id: 'rv-23',
@@ -774,6 +791,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 18',
       authorDeleted: false,
       createdAt: '2026-06-18T14:55:00.000Z',
+      media: [],
     },
     {
       id: 'rv-24',
@@ -783,6 +801,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 19',
       authorDeleted: false,
       createdAt: '2026-06-06T11:38:00.000Z',
+      media: [],
     },
     {
       id: 'rv-25',
@@ -792,6 +811,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 20',
       authorDeleted: false,
       createdAt: '2026-05-28T08:20:00.000Z',
+      media: [],
     },
     {
       id: 'rv-26',
@@ -801,6 +821,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-05-17T20:04:00.000Z',
+      media: [],
     },
     {
       id: 'rv-27',
@@ -810,6 +831,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 22',
       authorDeleted: false,
       createdAt: '2026-05-08T13:12:00.000Z',
+      media: [],
     },
     {
       id: 'rv-28',
@@ -819,6 +841,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 23',
       authorDeleted: false,
       createdAt: '2026-04-29T15:47:00.000Z',
+      media: [],
     },
   ],
   'mekong-delta-boats': [
@@ -830,6 +853,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 24',
       authorDeleted: false,
       createdAt: '2026-07-16T07:30:00.000Z',
+      media: [],
     },
     {
       id: 'rv-31',
@@ -839,6 +863,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 25',
       authorDeleted: false,
       createdAt: '2026-07-07T12:19:00.000Z',
+      media: [],
     },
     {
       id: 'rv-32',
@@ -848,6 +873,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 26',
       authorDeleted: false,
       createdAt: '2026-06-25T17:55:00.000Z',
+      media: [],
     },
     {
       id: 'rv-33',
@@ -857,6 +883,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 27',
       authorDeleted: false,
       createdAt: '2026-06-13T09:04:00.000Z',
+      media: [],
     },
     {
       id: 'rv-34',
@@ -866,6 +893,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-05-29T14:26:00.000Z',
+      media: [],
     },
     {
       id: 'rv-35',
@@ -875,6 +903,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 29',
       authorDeleted: false,
       createdAt: '2026-05-16T11:41:00.000Z',
+      media: [],
     },
     {
       id: 'rv-36',
@@ -884,6 +913,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 30',
       authorDeleted: false,
       createdAt: '2026-05-02T16:09:00.000Z',
+      media: [],
     },
   ],
   'hoi-an-lantern-evening': [
@@ -895,6 +925,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 31',
       authorDeleted: false,
       createdAt: '2026-07-19T13:02:00.000Z',
+      media: [],
     },
     {
       id: 'rv-41',
@@ -904,6 +935,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 32',
       authorDeleted: false,
       createdAt: '2026-07-09T19:31:00.000Z',
+      media: [],
     },
     {
       id: 'rv-42',
@@ -913,6 +945,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 33',
       authorDeleted: false,
       createdAt: '2026-06-28T20:14:00.000Z',
+      media: [],
     },
     {
       id: 'rv-43',
@@ -922,6 +955,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 34',
       authorDeleted: false,
       createdAt: '2026-06-14T18:47:00.000Z',
+      media: [],
     },
     {
       id: 'rv-44',
@@ -931,6 +965,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-05-31T17:22:00.000Z',
+      media: [],
     },
   ],
   'hue-imperial-day': [
@@ -942,6 +977,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 36',
       authorDeleted: false,
       createdAt: '2026-07-12T10:44:00.000Z',
+      media: [],
     },
     {
       id: 'rv-51',
@@ -951,6 +987,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 37',
       authorDeleted: false,
       createdAt: '2026-06-30T15:12:00.000Z',
+      media: [],
     },
     {
       id: 'rv-52',
@@ -960,6 +997,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 38',
       authorDeleted: false,
       createdAt: '2026-06-16T09:38:00.000Z',
+      media: [],
     },
     {
       id: 'rv-53',
@@ -969,6 +1007,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 39',
       authorDeleted: false,
       createdAt: '2026-06-01T13:55:00.000Z',
+      media: [],
     },
     {
       id: 'rv-54',
@@ -978,6 +1017,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 40',
       authorDeleted: false,
       createdAt: '2026-05-19T11:07:00.000Z',
+      media: [],
     },
     {
       id: 'rv-55',
@@ -987,6 +1027,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 41',
       authorDeleted: false,
       createdAt: '2026-05-06T16:33:00.000Z',
+      media: [],
     },
   ],
   'saigon-street-food-night': [
@@ -998,6 +1039,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-07-17T21:08:00.000Z',
+      media: [],
     },
     {
       id: 'rv-61',
@@ -1007,6 +1049,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 43',
       authorDeleted: false,
       createdAt: '2026-07-03T20:52:00.000Z',
+      media: [],
     },
     {
       id: 'rv-62',
@@ -1016,6 +1059,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 44',
       authorDeleted: false,
       createdAt: '2026-06-20T21:34:00.000Z',
+      media: [],
     },
     {
       id: 'rv-63',
@@ -1025,6 +1069,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 45',
       authorDeleted: false,
       createdAt: '2026-06-05T22:11:00.000Z',
+      media: [],
     },
     {
       id: 'rv-64',
@@ -1034,6 +1079,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 46',
       authorDeleted: false,
       createdAt: '2026-05-22T20:29:00.000Z',
+      media: [],
     },
   ],
   'ninh-binh-river-caves': [
@@ -1045,6 +1091,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 47',
       authorDeleted: false,
       createdAt: '2026-07-15T08:47:00.000Z',
+      media: [],
     },
     {
       id: 'rv-71',
@@ -1054,6 +1101,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 48',
       authorDeleted: false,
       createdAt: '2026-06-29T10:12:00.000Z',
+      media: [],
     },
     {
       id: 'rv-72',
@@ -1063,6 +1111,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-06-11T09:25:00.000Z',
+      media: [],
     },
     {
       id: 'rv-73',
@@ -1072,6 +1121,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 50',
       authorDeleted: false,
       createdAt: '2026-05-25T14:03:00.000Z',
+      media: [],
     },
   ],
   'sa-pa-terraces-trek': [
@@ -1083,6 +1133,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 51',
       authorDeleted: false,
       createdAt: '2026-07-08T11:19:00.000Z',
+      media: [],
     },
     {
       id: 'rv-81',
@@ -1092,6 +1143,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 52',
       authorDeleted: false,
       createdAt: '2026-06-22T13:41:00.000Z',
+      media: [],
     },
     {
       id: 'rv-82',
@@ -1101,6 +1153,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 53',
       authorDeleted: false,
       createdAt: '2026-06-04T10:08:00.000Z',
+      media: [],
     },
     {
       id: 'rv-83',
@@ -1110,6 +1163,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 54',
       authorDeleted: false,
       createdAt: '2026-05-18T15:52:00.000Z',
+      media: [],
     },
   ],
   'da-nang-coast-ride': [
@@ -1121,6 +1175,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 55',
       authorDeleted: false,
       createdAt: '2026-07-10T09:33:00.000Z',
+      media: [],
     },
     {
       id: 'rv-91',
@@ -1130,6 +1185,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-06-23T12:07:00.000Z',
+      media: [],
     },
     {
       id: 'rv-92',
@@ -1139,6 +1195,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 57',
       authorDeleted: false,
       createdAt: '2026-06-02T14:44:00.000Z',
+      media: [],
     },
     {
       id: 'rv-93',
@@ -1148,6 +1205,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 58',
       authorDeleted: false,
       createdAt: '2026-05-14T10:26:00.000Z',
+      media: [],
     },
   ],
   'hoi-an-cooking-market': [
@@ -1159,6 +1217,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 59',
       authorDeleted: false,
       createdAt: '2026-07-13T11:55:00.000Z',
+      media: [],
     },
     {
       id: 'rv-101',
@@ -1168,6 +1227,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 60',
       authorDeleted: false,
       createdAt: '2026-06-26T13:18:00.000Z',
+      media: [],
     },
     {
       id: 'rv-102',
@@ -1177,6 +1237,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 61',
       authorDeleted: false,
       createdAt: '2026-06-08T12:02:00.000Z',
+      media: [],
     },
     {
       id: 'rv-103',
@@ -1186,6 +1247,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 62',
       authorDeleted: false,
       createdAt: '2026-05-27T14:37:00.000Z',
+      media: [],
     },
   ],
   'can-tho-floating-dawn': [
@@ -1197,6 +1259,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-07-06T06:41:00.000Z',
+      media: [],
     },
     {
       id: 'rv-111',
@@ -1206,6 +1269,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 64',
       authorDeleted: false,
       createdAt: '2026-06-19T07:14:00.000Z',
+      media: [],
     },
     {
       id: 'rv-112',
@@ -1215,6 +1279,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 65',
       authorDeleted: false,
       createdAt: '2026-05-24T08:03:00.000Z',
+      media: [],
     },
     {
       id: 'rv-113',
@@ -1224,6 +1289,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 66',
       authorDeleted: false,
       createdAt: '2026-05-09T06:58:00.000Z',
+      media: [],
     },
   ],
   'north-to-south-classic': [
@@ -1235,6 +1301,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 67',
       authorDeleted: false,
       createdAt: '2026-07-20T15:26:00.000Z',
+      media: [],
     },
     {
       id: 'rv-121',
@@ -1244,6 +1311,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 68',
       authorDeleted: false,
       createdAt: '2026-07-01T17:09:00.000Z',
+      media: [],
     },
     {
       id: 'rv-122',
@@ -1253,6 +1321,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 69',
       authorDeleted: false,
       createdAt: '2026-06-17T12:48:00.000Z',
+      media: [],
     },
     {
       id: 'rv-123',
@@ -1262,6 +1331,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-05-26T14:15:00.000Z',
+      media: [],
     },
     {
       id: 'rv-124',
@@ -1271,6 +1341,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 71',
       authorDeleted: false,
       createdAt: '2026-05-11T11:32:00.000Z',
+      media: [],
     },
   ],
   'phu-quoc-sunset-sail': [
@@ -1282,6 +1353,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 72',
       authorDeleted: false,
       createdAt: '2026-07-04T18:22:00.000Z',
+      media: [],
     },
     {
       id: 'rv-131',
@@ -1291,6 +1363,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 73',
       authorDeleted: false,
       createdAt: '2026-06-21T19:04:00.000Z',
+      media: [],
     },
     {
       id: 'rv-132',
@@ -1300,6 +1373,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 74',
       authorDeleted: false,
       createdAt: '2026-06-07T18:41:00.000Z',
+      media: [],
     },
     {
       id: 'rv-133',
@@ -1309,6 +1383,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 75',
       authorDeleted: false,
       createdAt: '2026-05-20T19:17:00.000Z',
+      media: [],
     },
   ],
   'central-heritage-week': [
@@ -1320,6 +1395,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 76',
       authorDeleted: false,
       createdAt: '2026-07-02T13:37:00.000Z',
+      media: [],
     },
     {
       id: 'rv-141',
@@ -1329,6 +1405,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: null,
       authorDeleted: true,
       createdAt: '2026-06-10T15:21:00.000Z',
+      media: [],
     },
     {
       id: 'rv-142',
@@ -1338,6 +1415,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 78',
       authorDeleted: false,
       createdAt: '2026-05-15T10:49:00.000Z',
+      media: [],
     },
   ],
   'sa-pa-homestay-weekend': [
@@ -1349,6 +1427,7 @@ export const FIXTURE_REVIEWS: Record<string, TourReviewVM[]> = {
       authorName: 'Guest 79',
       authorDeleted: false,
       createdAt: '2026-06-12T16:44:00.000Z',
+      media: [],
     },
   ],
 };

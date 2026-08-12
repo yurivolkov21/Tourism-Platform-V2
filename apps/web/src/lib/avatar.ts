@@ -1,11 +1,14 @@
+import { AVATAR_MAX_BYTES } from '@tourism/contract';
+
 /**
  * Luật chọn ảnh đại diện (mảnh avatar 12/08) — logic thuần tách khỏi
- * component để TDD, cùng khuôn `review-photos.ts`. Trần 2MB theo mẫu UI
- * user chọn; mảnh backend (Cloudinary signed upload — chung ADR bề mặt ghi
- * media với ảnh review) sẽ dùng CÙNG trần này phía server.
+ * component để TDD, cùng khuôn `review-photos.ts`. Trần đọc từ contract
+ * (ADR-0021) — client và server đọc MỘT nguồn trần, đổi số đổi một chỗ;
+ * lời hứa "server sẽ dùng cùng trần" ở bản trước giờ đã thành sự thật.
  */
 
-export const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+/** Re-export từ contract (ADR-0021) — client/server đọc MỘT nguồn trần. */
+export const MAX_AVATAR_BYTES = AVATAR_MAX_BYTES;
 
 export type AvatarError = 'notImage' | 'tooLarge';
 

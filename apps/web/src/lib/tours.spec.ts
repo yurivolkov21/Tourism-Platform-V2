@@ -466,6 +466,7 @@ describe('averageRating', () => {
     authorName: 'A',
     authorDeleted: false,
     createdAt: '2026-07-01T00:00:00.000Z',
+    media: [],
   });
 
   it('làm tròn tới MỘT chữ số thập phân — khớp Decimal(2,1) của cột denormalize', () => {
@@ -495,6 +496,7 @@ describe('tourReviews', () => {
     authorName: authorDeleted ? null : 'A',
     authorDeleted,
     createdAt,
+    media: [],
   });
 
   it('mới nhất trước', () => {

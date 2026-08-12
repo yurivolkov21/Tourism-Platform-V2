@@ -1,12 +1,16 @@
+import { REVIEW_PHOTO_MAX_BYTES, REVIEW_PHOTOS_MAX } from '@tourism/contract';
+
 /**
  * Luật chọn ảnh review (mảnh 1 cụm review-ảnh, 12/08) — logic thuần tách
- * khỏi component upload để TDD được. Trần 5 ảnh · 10MB chốt theo mẫu UI
- * user duyệt; mảnh backend (Cloudinary signed upload) sẽ dùng CÙNG hai trần
- * này ở phía server — đổi số thì đổi một chỗ.
+ * khỏi component upload để TDD được. Hai trần đọc từ contract (ADR-0021) —
+ * client và server đọc MỘT nguồn, đổi số đổi một chỗ; lời hứa "server sẽ
+ * dùng cùng hai trần này" ở bản trước giờ đã thành sự thật.
  */
 
-export const MAX_PHOTOS = 5;
-export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
+/** Re-export từ contract (ADR-0021) — client/server đọc MỘT nguồn trần. */
+export const MAX_PHOTOS = REVIEW_PHOTOS_MAX;
+/** Re-export từ contract (ADR-0021) — client/server đọc MỘT nguồn trần. */
+export const MAX_PHOTO_BYTES = REVIEW_PHOTO_MAX_BYTES;
 
 export type PhotoError = 'notImage' | 'tooLarge' | 'tooMany';
 

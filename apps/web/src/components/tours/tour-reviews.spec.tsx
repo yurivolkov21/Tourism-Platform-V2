@@ -16,6 +16,7 @@ function rv(n: number, overrides: Partial<TourReviewVM> = {}): TourReviewVM {
     authorDeleted: author === null,
     // Ngày giảm dần theo n để thứ tự "mới nhất trước" đoán được trong test.
     createdAt: `2026-0${Math.max(1, 9 - n)}-15T10:00:00.000Z`,
+    media: [],
     ...overrides,
   };
 }
