@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-12 — Vòng quét từng-trang khu Account + booking: accordion, review-ảnh UI, đồng bộ Frame (branch `feat/bookings-inline-detail`, ff-only, 13 commit `850fc05..1be6a6c`)
+
+Nối tiếp bản chốt hộ chiếu: user quét từng trang trên giao diện thật, mỗi góp
+ý một commit. **My bookings** thành accordion xổ-inline theo pattern
+coupon-manager ReUI user tham khảo (ảnh + prompt block trả phí — dựng lại
+bằng đồ nhà, KHÔNG cài code họ): row = icon tile + tên tour + badge trạng
+thái chấm màu theo tone `bookingView` + mã mono · đếm ngược · ngày + giá;
+xổ ra thẻ chi tiết lưới IATA + action theo trạng thái; JourneyRow nghỉ hưu,
+7 test trạng thái port sang (`today` thành prop chuỗi UTC — hết fake timer;
+sửa kèm `daysUntilDeparture` nhận `today`, bản cũ chốt giờ máy). **Cụm
+review-ảnh UI** (static-first, backend chờ ADR bề mặt ghi media): khối
+upload ảnh chuyến đi (dropzone + lưới preview kéo-thả sắp xếp — vendor
+`@reui/sortable` kèm @dnd-kit; luật chọn ảnh `validatePhoto` TDD, trần 5
+ảnh · 10MB) + form rating thay da InputGroup composite (logic giữ nguyên,
+spec sống nguyên) + cả khu bọc `Frame stacked`; textarea kéo giãn được kèm
+bộ đếm n/2000 phơi trần contract. **Đồng bộ khung**: giấy tờ v-doc booking
+lên Frame dense (dải tone dán sát viền — vá thêm padding panel), thẻ lối vào
+nghỉ, Saved tours + Sign out vào cụm nút khung hộ chiếu (SignOutButton
+client, cùng logic ADR-0017 §2); Settings thêm khối avatar upload
+(static-first, `validateAvatar` TDD trần 2MB) và ô mật khẩu mới dùng chung
+`PasswordStrengthField` với register. **Voucher** có hero chuẩn site
+(navbar về đồng bộ — `HERO_LESS_EXCEPTIONS` cho riêng `/checkout/success`;
+book/cancel giữ hero-less đã duyệt). **Site-wide**: gỡ `mt-32` của
+SiteFooter (dải trống lưng chừng user soi F12 — giải phóng 3 chỗ vá quanh
+nó); vá scrollspy vendored: bấm nút không cuộn khi bám window (thiếu
+targetRef → undefined, kiểm chứng máy scrollY 0→2870); script
+`seed-demo-visits.ts` đắp 20 booking PAID quá khứ cho 2 tài khoản demo
+(vá kèm contactName null do gate bắt).
+
+**Review findings tiêu biểu:** gate bắt type lỗi seed (`user.name` null);
+test port bắt countdown lệch mốc (`daysUntilDeparture` giờ máy vs prop
+today); user bắt tại trận: dải tone hở vành khung (dense chưa đủ — panel
+còn padding nội bộ), scrollspy bấm không cuộn. Tests after: 1553 — 1395
+unit (76 contract, 10 tokens, 1 i18n, 14 ui, 210 api, 1084 web) và 158 api
+int. Sổ nợ: avatar + ảnh review đang static-first (preview/mô phỏng, CHƯA
+lưu server) chờ cụm ADR bề mặt ghi media — branch kế tiếp user đã đặt hàng;
+`stamp-pages`/`pageStamps`/`unstampedNames` + `stepper` vendored vẫn gỡ tạm;
+user-menu literal chưa i18n; trang saved + dark mode + mobile user chưa quét.
+
 ## 2026-08-11 — Khu Account đập-xây-lại thành "Hộ chiếu" bản chốt (branch `feat/account-passport`, ff-only, 34 commit `b2959c5..bf20383`)
 
 Vòng đập-xây-lại account user đã hứa ở entry dưới: thi công inline 10 task theo
