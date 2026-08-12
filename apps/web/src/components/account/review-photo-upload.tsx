@@ -14,23 +14,26 @@ import {
   ImageIcon,
   XIcon,
 } from 'lucide-react';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api, withBrowserAuth } from '@/lib/api/client';
+import { imageExtensionOf, uploadToCloudinary } from '@/lib/media-upload';
 import { formatBytes, MAX_PHOTO_BYTES, MAX_PHOTOS, validatePhoto } from '@/lib/review-photos';
 
 /**
- * KHỐI UPLOAD ẢNH CHUYẾN ĐI — mảnh 1 của cụm review-ảnh (12/08, UI theo mẫu
- * image-upload + sortable user chọn, đã thuần hoá):
+ * KHỐI UPLOAD ẢNH CHUYẾN ĐI — mảnh 1 của cụm review-ảnh (12/08 UI, nối thật
+ * Task 9 — ADR-0021):
  *
  * - Dropzone viền đứt (kéo-thả hoặc Browse) → validate qua `lib/review-photos`
  *   (logic thuần, TDD): đúng loại → trần 10MB → trần 5 ảnh; lỗi gom vào Alert.
  * - Lưới preview KÉO-THẢ SẮP XẾP được (ReUI Sortable — ảnh đầu là ảnh đại
  *   diện), mỗi ô có tay nắm + nút xoá hiện khi hover.
- * - Progress card từng file trong lúc "upload".
+ * - Progress card từng file trong lúc upload; upload thật đi thẳng browser →
+ *   Cloudinary (`api.media.signUpload` ký theo `bookingCode` rồi
+ *   `uploadToCloudinary`, bytes không qua Nest).
  *
- * STATIC-FIRST: tiến trình upload đang MÔ PHỎNG (nhích đều ~150ms/bước) —
- * mảnh backend (ADR bề mặt ghi media + Cloudinary signed upload) sẽ thay
- * đúng chỗ `startFakeUpload` bằng tiến trình thật, UI giữ nguyên. Vì thế
- * component chưa nhận props gửi đi đâu cả.
+ * Không tự giữ danh sách publicId cho cha — báo ra ngoài qua `onPhotosChange`
+ * (một `useEffect` theo `photos`), composer (`review-composer.tsx`) là nơi
+ * giữ state và truyền tiếp cho `ReviewForm`.
  */
 
 /** Mã lỗi thuần từ `validatePhoto` → copy i18n — bảng tĩnh, sống ngoài
@@ -52,34 +55,67 @@ interface PendingPhoto {
   preview: string;
   progress: number;
   status: 'uploading' | 'completed';
+  /** publicId Cloudinary — chỉ có khi status đã 'completed'. */
+  publicId?: string;
 }
 
-export function ReviewPhotoUpload() {
+export function ReviewPhotoUpload({
+  bookingCode,
+  onPhotosChange,
+}: {
+  bookingCode: string;
+  /** publicIds theo ĐÚNG thứ tự Sortable hiện tại (ảnh đầu = đại diện) +
+   *  cờ busy khi còn ảnh đang upload — composer chảy thẳng xuống ReviewForm. */
+  onPhotosChange: (s: { publicIds: string[]; busy: boolean }) => void;
+}) {
   const t = messages.reviews.photos;
   const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Mô phỏng tiến trình (static-first) — nhích đều, KHÔNG random để hai lần
-  // chọn cùng file chạy giống nhau; mảnh backend thay bằng upload thật.
-  const startFakeUpload = useCallback((id: string) => {
-    const timer = setInterval(() => {
-      setPhotos((prev) =>
-        prev.map((p) => {
-          if (p.id !== id) return p;
-          const next = Math.min(100, p.progress + 20);
-          return { ...p, progress: next, status: next === 100 ? 'completed' : 'uploading' };
-        }),
-      );
-    }, 150);
-    // Tự dọn sau khi chắc chắn đã cán 100 (5 bước × 150ms, dư một nhịp).
-    setTimeout(() => clearInterval(timer), 1200);
-  }, []);
+  // Upload THẬT thay mô phỏng (ADR-0021): ký theo booking rồi POST thẳng
+  // Cloudinary — lỗi ở bất kỳ bước nào thì gỡ ảnh khỏi hàng chờ + báo Alert.
+  const startUpload = useCallback(
+    async (id: string, file: File) => {
+      try {
+        const ext = imageExtensionOf(file.name);
+        if (!ext) throw new Error('ext');
+        const params = await api.media.signUpload(
+          { purpose: 'REVIEW_PHOTO', ext, bookingCode },
+          { context: withBrowserAuth() },
+        );
+        const publicId = await uploadToCloudinary(file, params, (pct) =>
+          setPhotos((prev) => prev.map((p) => (p.id === id ? { ...p, progress: pct } : p))),
+        );
+        setPhotos((prev) =>
+          prev.map((p) =>
+            p.id === id ? { ...p, publicId, progress: 100, status: 'completed' } : p,
+          ),
+        );
+      } catch {
+        setPhotos((prev) => {
+          const target = prev.find((p) => p.id === id);
+          if (target) URL.revokeObjectURL(target.preview);
+          return prev.filter((p) => p.id !== id);
+        });
+        setErrors((prev) => [...prev, `${file.name}: ${t.errUpload}`]);
+      }
+    },
+    [bookingCode, t.errUpload],
+  );
+
+  // Báo cha: publicIds theo ĐÚNG thứ tự sortable + cờ busy khi còn ảnh dang dở.
+  useEffect(() => {
+    onPhotosChange({
+      publicIds: photos.flatMap((p) => (p.publicId ? [p.publicId] : [])),
+      busy: photos.some((p) => p.status === 'uploading'),
+    });
+  }, [photos, onPhotosChange]);
 
   const addFiles = useCallback(
     (files: FileList | File[]) => {
-      const accepted: PendingPhoto[] = [];
+      const accepted: Array<{ photo: PendingPhoto; file: File }> = [];
       const rejected: string[] = [];
       let count = photos.length;
       for (const file of Array.from(files)) {
@@ -88,23 +124,33 @@ export function ReviewPhotoUpload() {
           rejected.push(`${file.name}: ${errorText(error)}`);
           continue;
         }
+        // validatePhoto chỉ soi MIME type — file không có đuôi hợp lệ (vd
+        // thiếu phần mở rộng) vẫn lọt qua đó nhưng signUpload sẽ từ chối; bắt
+        // ngay ở đây để khách thấy lỗi tức thì thay vì đợi round-trip mạng.
+        if (!imageExtensionOf(file.name)) {
+          rejected.push(`${file.name}: ${errorText('notImage')}`);
+          continue;
+        }
         count += 1;
         accepted.push({
-          id: crypto.randomUUID(),
-          name: file.name,
-          size: file.size,
-          preview: URL.createObjectURL(file),
-          progress: 0,
-          status: 'uploading',
+          photo: {
+            id: crypto.randomUUID(),
+            name: file.name,
+            size: file.size,
+            preview: URL.createObjectURL(file),
+            progress: 0,
+            status: 'uploading',
+          },
+          file,
         });
       }
       if (rejected.length > 0) setErrors((prev) => [...prev, ...rejected]);
       if (accepted.length > 0) {
-        setPhotos((prev) => [...prev, ...accepted]);
-        for (const photo of accepted) startFakeUpload(photo.id);
+        setPhotos((prev) => [...prev, ...accepted.map((a) => a.photo)]);
+        for (const { photo, file } of accepted) startUpload(photo.id, file);
       }
     },
-    [photos.length, startFakeUpload],
+    [photos.length, startUpload],
   );
 
   const removePhoto = useCallback((id: string) => {

@@ -97,6 +97,26 @@ describe('ReviewForm — gửi', () => {
     );
   });
 
+  it('có photos → payload create kèm photos ĐÚNG THỨ TỰ composer truyền vào', async () => {
+    const user = userEvent.setup();
+    render(<ReviewForm bookingCode={CODE} photos={['a', 'b']} />);
+    await user.click(screen.getByRole('radio', { name: '5 stars' }));
+    await user.type(screen.getByLabelText(/your review/i), 'Photos attached to this trip.');
+    await user.click(screen.getByRole('button', { name: /submit review/i }));
+
+    await waitFor(() =>
+      expect(create).toHaveBeenCalledWith(
+        expect.objectContaining({ photos: ['a', 'b'] }),
+        expect.anything(),
+      ),
+    );
+  });
+
+  it('photosBusy → nút submit disabled, chưa xong ảnh thì chưa gửi được', () => {
+    render(<ReviewForm bookingCode={CODE} photosBusy />);
+    expect(screen.getByRole('button', { name: /submit review/i })).toBeDisabled();
+  });
+
   it('409 đã review rồi → copy RIÊNG, không phải câu chung', async () => {
     create.mockRejectedValueOnce(
       createORPCErrorFromJson({

@@ -2136,6 +2136,8 @@ export const messages = {
       errNotImage: 'File must be an image.',
       errTooLarge: (size: string) => `File size must be less than ${size}.`,
       errTooMany: (max: number) => `Maximum ${max} photos allowed.`,
+      /** Lỗi upload thật (Task 9, ADR-0021) — sign/POST Cloudinary thất bại. */
+      errUpload: 'Upload failed. Please try again.',
     },
     heading: 'Rate this trip',
     ratingLabel: 'Your rating',
@@ -2170,6 +2172,9 @@ export const messages = {
       // câu nói đúng chuyện. (`USER_NOT_SYNCED` ở trên thì ngược lại: có ở
       // bảng mà không có trong contract; để lại vì vô hại.)
       REVIEW_TRIP_NOT_COMPLETED: 'You can review this trip once it has finished.',
+      // Task 9: một publicId trong `photos` không hợp lệ (đã xoá/không thuộc
+      // booking này) — server từ chối cả review, khách cần gỡ ảnh rồi gửi lại.
+      REVIEW_PHOTO_INVALID: 'One of the photos could not be attached. Remove them and try again.',
       generic: 'Something went wrong. Please try again.',
     } as Record<string, string>,
   },

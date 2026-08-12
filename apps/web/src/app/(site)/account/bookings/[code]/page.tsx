@@ -7,8 +7,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
-import { ReviewForm } from '@/components/account/review-form';
-import { ReviewPhotoUpload } from '@/components/account/review-photo-upload';
+import { ReviewComposer } from '@/components/account/review-composer';
 import { ContentHero } from '@/components/content/content-hero';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
@@ -251,20 +250,13 @@ export default async function AccountBookingDetailPage({
             <h2 className="font-heading text-lg font-semibold">{sec.reviewHeading}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">{sec.reviewBlurb}</p>
             <div className="mt-3">
-              {/* Mảnh 1+2 cụm review-ảnh (12/08) trong MỘT Frame stacked
-                  (user chỉ định đóng khung ngoài): panel ảnh + panel form
-                  composite dính liền thành một thẻ. Upload còn static-first
-                  (mô phỏng), mảnh backend nối Cloudinary + gắn ảnh vào
-                  submit sau. */}
+              {/* Mảnh 1+2 cụm review-ảnh (12/08 UI, nối thật Task 9 —
+                  ADR-0021): panel ảnh + panel form composite dính liền
+                  thành một thẻ. State (publicIds đã upload + cờ busy) sống
+                  trong `ReviewComposer` (client) vì page này là Server
+                  Component. */}
               {slot === 'form' ? (
-                <Frame stacked className="w-full">
-                  <FramePanel>
-                    <ReviewPhotoUpload />
-                  </FramePanel>
-                  <FramePanel>
-                    <ReviewForm bookingCode={booking.code} />
-                  </FramePanel>
-                </Frame>
+                <ReviewComposer bookingCode={booking.code} />
               ) : (
                 <p className="text-sm text-muted-foreground">
                   {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}

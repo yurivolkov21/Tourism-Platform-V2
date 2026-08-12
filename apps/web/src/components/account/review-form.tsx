@@ -74,8 +74,21 @@ function RatingPicker({ value, onChange }: { value: number; onChange: (n: number
  *
  * Điều kiện hiện form do `reviewSlot()` quyết, và hàm đó soi gương luật của
  * API — nếu hai bên nói khác nhau thì khách gõ hết bài rồi mới bị từ chối.
+ *
+ * `photos`/`photosBusy` (Task 9, ADR-0021) do `ReviewComposer` giữ và truyền
+ * xuống — THỨ TỰ mảng `photos` là thứ tự Sortable ở panel ảnh, ảnh đầu là
+ * ảnh đại diện; form không tự sắp lại. `photosBusy` khoá nút submit trong
+ * lúc còn ảnh đang upload, tránh gửi review thiếu ảnh khách vừa chọn.
  */
-export function ReviewForm({ bookingCode }: { bookingCode: string }) {
+export function ReviewForm({
+  bookingCode,
+  photos = [],
+  photosBusy = false,
+}: {
+  bookingCode: string;
+  photos?: string[];
+  photosBusy?: boolean;
+}) {
   const t = messages.reviews;
   const router = useRouter();
   const [rating, setRating] = useState(0);
@@ -103,6 +116,7 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
           rating,
           ...(title.trim() ? { title: title.trim() } : {}),
           body: body.trim(),
+          ...(photos.length > 0 ? { photos } : {}),
         },
         { context: withBrowserAuth() },
       );
@@ -167,7 +181,12 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
           <InputGroupAddon align="inline-end" className="gap-2 border-none">
             <RatingPicker value={rating} onChange={setRating} />
             <div aria-hidden="true" className="mx-1 h-4 w-px self-center bg-border" />
-            <InputGroupButton type="submit" variant="default" size="sm" disabled={pending}>
+            <InputGroupButton
+              type="submit"
+              variant="default"
+              size="sm"
+              disabled={pending || photosBusy}
+            >
               {pending ? t.submitting : t.submit}
             </InputGroupButton>
           </InputGroupAddon>
