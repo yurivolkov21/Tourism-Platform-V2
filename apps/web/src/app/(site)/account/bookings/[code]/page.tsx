@@ -119,7 +119,10 @@ export default async function AccountBookingDetailPage({
             khối review bên dưới; `dense` bỏ padding panel để dải tone + ảnh
             vẫn full-bleed trong khung). ── */}
         <Frame className="mt-4 w-full" dense>
-          <FramePanel className="overflow-hidden">
+          {/* p-0: dense đã kéo panel sát viền khung nhưng panel vẫn còn
+              padding nội bộ — bỏ nốt để dải tone dán sát viền trên cùng
+              (góp ý user 12/08). */}
+          <FramePanel className="overflow-hidden p-0">
             <article className="overflow-hidden bg-card">
               <div aria-hidden="true" className={`h-1.5 ${STRIP_CLASS[view.tone]}`} />
               <header className="grid gap-4 border-b border-dashed border-border px-6 py-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
