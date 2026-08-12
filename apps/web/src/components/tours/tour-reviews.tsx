@@ -216,6 +216,24 @@ function ReviewBody({ review }: { review: TourReviewVM }) {
 
         {review.title ? <h4 className="mt-2 font-medium text-foreground">{review.title}</h4> : null}
         <p className="mt-1 max-w-[68ch] text-sm text-pretty text-muted-foreground">{review.body}</p>
+
+        {/* Ảnh khách tự đính kèm khi viết review (ADR-0021) — công khai vì review
+            đã qua duyệt. Strip thumbnail đơn giản, không lightbox: đây là bằng
+            chứng đi kèm lời kể, không phải gallery cần phóng to. */}
+        {review.media.length > 0 ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {review.media.map((m) => (
+              // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+              <img
+                key={m.publicId}
+                src={m.url}
+                alt={m.alt ?? ''}
+                loading="lazy"
+                className="h-20 w-28 rounded-md border border-border object-cover"
+              />
+            ))}
+          </div>
+        ) : null}
       </div>
     </article>
   );

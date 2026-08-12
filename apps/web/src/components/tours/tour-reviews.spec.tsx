@@ -1,9 +1,31 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { MediaItem } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import type { TourReviewVM } from '@/lib/api/tours';
 import { averageRating } from '@/lib/tours';
 import { TourReviews } from './tour-reviews';
+
+/** Ảnh review đầy đủ 13 field của `MediaItemSchema` — 4 khoá ghi công (ADR-0020)
+    BẮT BUỘC có mặt dù review photo luôn `author/license/…: null` (khách tự
+    chụp, không phải ảnh nguồn ngoài). */
+function reviewPhoto(n: number, alt: string | null): MediaItem {
+  return {
+    publicId: `reviews/rv-1/${n}`,
+    url: `https://res.cloudinary.com/demo/rv-1-${n}.jpg`,
+    type: 'IMAGE',
+    role: 'body',
+    posterUrl: null,
+    width: 1200,
+    height: 900,
+    alt,
+    sortOrder: n,
+    author: null,
+    license: null,
+    licenseUrl: null,
+    sourceUrl: null,
+  };
+}
 
 function rv(n: number, overrides: Partial<TourReviewVM> = {}): TourReviewVM {
   const author = overrides.authorName === undefined ? `Guest ${n}` : overrides.authorName;
@@ -112,6 +134,23 @@ describe('TourReviews — nhánh dữ liệu của từng review', () => {
   it('rating đọc được thành câu, không phải năm icon rời rạc', () => {
     renderReviews([rv(1, { rating: 4 })]);
     expect(screen.getByRole('img', { name: '4 out of 5 stars' })).toBeInTheDocument();
+  });
+
+  it('review có ảnh đính kèm thì hiện strip thumbnail', () => {
+    renderReviews([
+      rv(1, { media: [reviewPhoto(0, 'Bãi biển lúc bình minh'), reviewPhoto(1, null)] }),
+    ]);
+    const thumbnails = document.querySelectorAll('img');
+    expect(thumbnails).toHaveLength(2);
+    expect(thumbnails[0]).toHaveAttribute('src', 'https://res.cloudinary.com/demo/rv-1-0.jpg');
+    expect(thumbnails[0]).toHaveAttribute('alt', 'Bãi biển lúc bình minh');
+    // Thiếu alt → chuỗi rỗng, không phải "null" hay chữ bịa ra.
+    expect(thumbnails[1]).toHaveAttribute('alt', '');
+  });
+
+  it('review không có ảnh thì KHÔNG hiện strip', () => {
+    renderReviews([rv(1, { media: [] })]);
+    expect(document.querySelectorAll('img')).toHaveLength(0);
   });
 
   it('ngày hiện dạng tháng + năm', () => {

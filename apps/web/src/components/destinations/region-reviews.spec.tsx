@@ -1,7 +1,29 @@
 import { render, screen } from '@testing-library/react';
+import type { MediaItem } from '@tourism/contract';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import type { RegionReview } from '@/lib/regions';
 import { RegionReviews } from './region-reviews';
+
+/** Ảnh review đầy đủ 13 field của `MediaItemSchema` — cùng fixture với
+    `tour-reviews.spec.tsx` (4 khoá ghi công ADR-0020 luôn null: khách tự
+    chụp, không phải ảnh nguồn ngoài). */
+function reviewPhoto(n: number, alt: string | null): MediaItem {
+  return {
+    publicId: `reviews/rv-1/${n}`,
+    url: `https://res.cloudinary.com/demo/rv-1-${n}.jpg`,
+    type: 'IMAGE',
+    role: 'body',
+    posterUrl: null,
+    width: 1200,
+    height: 900,
+    alt,
+    sortOrder: n,
+    author: null,
+    license: null,
+    licenseUrl: null,
+    sourceUrl: null,
+  };
+}
 
 beforeAll(() => {
   // jsdom không hiện thực IntersectionObserver, mà `SectionEyebrow` dùng
@@ -122,6 +144,25 @@ describe('RegionReviews', () => {
   it('in tháng và năm của review, không in ngày', () => {
     render(<RegionReviews regionName="Southern Vietnam" reviews={[SOUTH[0] as RegionReview]} />);
     expect(screen.getByText('July 2026')).toBeInTheDocument();
+  });
+
+  it('review có ảnh đính kèm thì hiện strip thumbnail', () => {
+    const withMedia: RegionReview = {
+      ...(SOUTH[0] as RegionReview),
+      review: {
+        ...(SOUTH[0] as RegionReview).review,
+        media: [reviewPhoto(0, 'Bình minh trên sông')],
+      },
+    };
+    render(<RegionReviews regionName="Southern Vietnam" reviews={[withMedia]} />);
+    const thumbnails = document.querySelectorAll('img');
+    expect(thumbnails).toHaveLength(1);
+    expect(thumbnails[0]).toHaveAttribute('src', 'https://res.cloudinary.com/demo/rv-1-0.jpg');
+  });
+
+  it('review không có ảnh thì KHÔNG hiện strip', () => {
+    render(<RegionReviews regionName="Southern Vietnam" reviews={[SOUTH[0] as RegionReview]} />);
+    expect(document.querySelectorAll('img')).toHaveLength(0);
   });
 
   // Dòng ghi công là thứ giữ khu này khỏi nói sai: review của tour XUYÊN VÙNG

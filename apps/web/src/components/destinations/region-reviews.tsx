@@ -126,6 +126,23 @@ export function RegionReviews({
                     ) : null}
                     <p className="mt-2 text-pretty text-muted-foreground">{review.body}</p>
 
+                    {/* Ảnh khách tự đính kèm khi viết review (ADR-0021) — công khai
+                        vì review đã qua duyệt. Cùng khuôn strip của `TourReviews`. */}
+                    {review.media.length > 0 ? (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {review.media.map((m) => (
+                          // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+                          <img
+                            key={m.publicId}
+                            src={m.url}
+                            alt={m.alt ?? ''}
+                            loading="lazy"
+                            className="h-20 w-28 rounded-md border border-border object-cover"
+                          />
+                        ))}
+                      </div>
+                    ) : null}
+
                     <div className="mt-5 flex items-start gap-3">
                       <Avatar className="size-9 shrink-0">
                         <AvatarFallback>
