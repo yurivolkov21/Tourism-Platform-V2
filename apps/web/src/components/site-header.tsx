@@ -57,6 +57,10 @@ const MOBILE_LINKS = [
  * TRÊN cây của các layout con, nên context từ dưới không với tới được nó.
  */
 const HERO_LESS_PREFIXES = ['/checkout'];
+/** Ngoại lệ trong tiền tố hero-less: `/checkout/success` CÓ hero chuẩn từ
+ *  12/08 (góp ý user — trang voucher đồng bộ với phần còn lại của site);
+ *  book/cancel của checkout vẫn hero-less như user đã duyệt ở cụm checkout. */
+const HERO_LESS_EXCEPTIONS = ['/checkout/success'];
 
 export function SiteHeader() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -80,8 +84,9 @@ export function SiteHeader() {
   // `/book` bằng `startsWith` + `endsWith`, không đụng tới các route `/tours/*`
   // khác.
   const isHeroLess =
-    HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
-    (pathname.startsWith('/tours/') && pathname.endsWith('/book'));
+    !HERO_LESS_EXCEPTIONS.some((prefix) => pathname.startsWith(prefix)) &&
+    (HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+      (pathname.startsWith('/tours/') && pathname.endsWith('/book')));
   const onDarkHero = !isHeroLess;
   const solid = scrolled || !onDarkHero;
 

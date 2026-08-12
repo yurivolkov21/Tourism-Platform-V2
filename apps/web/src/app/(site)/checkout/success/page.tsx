@@ -5,6 +5,7 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
 import { CheckoutShell } from '@/components/checkout/checkout-shell';
+import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { checkoutMood } from '@/lib/checkout';
@@ -54,9 +55,12 @@ export default async function CheckoutSuccessPage({
     : null;
 
   if (!booking) {
+    // Hero gánh luôn phần tiêu đề "không tìm thấy" (12/08 — trang voucher có
+    // hero chuẩn); thân chỉ còn hai lối thoát, khỏi lặp title trong card.
     return (
-      <CheckoutShell tone="muted" title={t.notFound}>
-        <div className="flex flex-wrap gap-2.5">
+      <div>
+        <ContentHero breadcrumb={t.heroBreadcrumb} title={t.notFound} />
+        <div className="mx-auto flex w-full max-w-2xl flex-wrap gap-2.5 px-4 pt-10 pb-16 md:pb-20">
           {/* Fix cuối 11/08: `/account/bookings` (trang Trips cũ) không còn
               là cửa vào bookings — hộ chiếu `/account` đã thay thế (spec
               2026-08-11, M1). Nhãn giữ nguyên `booking.list.menuLink`
@@ -66,7 +70,7 @@ export default async function CheckoutSuccessPage({
             {t.viewTours}
           </ButtonLink>
         </div>
-      </CheckoutShell>
+      </div>
     );
   }
 
@@ -83,74 +87,80 @@ export default async function CheckoutSuccessPage({
   const totalGuests = booking.numAdults + booking.numChildren;
 
   return (
-    <CheckoutShell
-      tone={mood === 'confirmed' ? 'success' : mood === 'confirming' ? 'warning' : 'muted'}
-      title={title}
-      body={body}
-      code={booking.code}
-      codeLabel={t.refLabel}
-      stubName={booking.contactName}
-      stubMeta={`${formatDateRange(booking.departureStartDate, booking.departureEndDate)} · ${t.guestsCount(totalGuests)}`}
-    >
-      {/* Khoảnh khắc primary kiểu boarding-pass — cặp ngày to nhất vé, đóng
+    <div>
+      {/* Hero chuẩn site (12/08 — user yêu cầu đồng bộ navbar): breadcrumb
+          Voucher · title tên tour · meta mã; tấm vé bên dưới vẫn in đủ tiêu
+          đề/mã của chính nó — giấy tờ tự thân đầy đủ, cùng nếp trang visa. */}
+      <ContentHero breadcrumb={t.heroBreadcrumb} title={booking.tourTitle} meta={booking.code} />
+      <CheckoutShell
+        tone={mood === 'confirmed' ? 'success' : mood === 'confirming' ? 'warning' : 'muted'}
+        title={title}
+        body={body}
+        code={booking.code}
+        codeLabel={t.refLabel}
+        stubName={booking.contactName}
+        stubMeta={`${formatDateRange(booking.departureStartDate, booking.departureEndDate)} · ${t.guestsCount(totalGuests)}`}
+      >
+        {/* Khoảnh khắc primary kiểu boarding-pass — cặp ngày to nhất vé, đóng
           khung mảnh xoay -1deg như dấu mộc. Chỉ một vế khi tour trong ngày. */}
-      <div className="-rotate-1 mx-auto flex flex-col items-center gap-1 rounded-md border px-5 py-2.5">
-        <p className="font-mono text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-          {t.dateLabel}
-        </p>
-        <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums md:text-3xl">
-          {formatTicketDate(booking.departureStartDate)}
-          {booking.departureStartDate !== booking.departureEndDate ? (
-            <>
-              {' '}
-              <span aria-hidden="true" className="text-muted-foreground">
-                →
-              </span>{' '}
-              {formatTicketDate(booking.departureEndDate)}
-            </>
-          ) : null}
-        </p>
-      </div>
+        <div className="-rotate-1 mx-auto flex flex-col items-center gap-1 rounded-md border px-5 py-2.5">
+          <p className="font-mono text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
+            {t.dateLabel}
+          </p>
+          <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums md:text-3xl">
+            {formatTicketDate(booking.departureStartDate)}
+            {booking.departureStartDate !== booking.departureEndDate ? (
+              <>
+                {' '}
+                <span aria-hidden="true" className="text-muted-foreground">
+                  →
+                </span>{' '}
+                {formatTicketDate(booking.departureEndDate)}
+              </>
+            ) : null}
+          </p>
+        </div>
 
-      <dl className="grid w-full gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-        <Fact label={t.tourLabel} value={booking.tourTitle} />
-        <Fact
-          label={t.travellersLabel}
-          value={`${messages.booking.page.adultsLine(booking.numAdults)}${
-            booking.numChildren > 0
-              ? `, ${messages.booking.page.childrenLine(booking.numChildren)}`
-              : ''
-          }`}
-        />
-        <Fact label={t.totalLabel} value={formatMoney(booking.totalAmount, booking.currency)} />
-        <Fact label={t.paymentLabel} value={PROVIDER_LABEL[booking.paymentProvider]} />
-      </dl>
+        <dl className="grid w-full gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
+          <Fact label={t.tourLabel} value={booking.tourTitle} />
+          <Fact
+            label={t.travellersLabel}
+            value={`${messages.booking.page.adultsLine(booking.numAdults)}${
+              booking.numChildren > 0
+                ? `, ${messages.booking.page.childrenLine(booking.numChildren)}`
+                : ''
+            }`}
+          />
+          <Fact label={t.totalLabel} value={formatMoney(booking.totalAmount, booking.currency)} />
+          <Fact label={t.paymentLabel} value={PROVIDER_LABEL[booking.paymentProvider]} />
+        </dl>
 
-      {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
+        {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
           xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
           còn lại (confirming chưa có gì để hứa; settled đã kết thúc). */}
-      {mood === 'confirmed' ? (
-        <div className="w-full rounded-xl border p-5 text-left">
-          <h2 className="font-heading text-sm font-semibold text-foreground">{t.nextHeading}</h2>
-          <ul className="mt-3 flex flex-col gap-2">
-            <NextStep text={t.nextEmail} />
-            <NextStep text={t.nextVoucher} />
-            <NextStep text={t.nextManage} />
-          </ul>
-        </div>
-      ) : null}
+        {mood === 'confirmed' ? (
+          <div className="w-full rounded-xl border p-5 text-left">
+            <h2 className="font-heading text-sm font-semibold text-foreground">{t.nextHeading}</h2>
+            <ul className="mt-3 flex flex-col gap-2">
+              <NextStep text={t.nextEmail} />
+              <NextStep text={t.nextVoucher} />
+              <NextStep text={t.nextManage} />
+            </ul>
+          </div>
+        ) : null}
 
-      <div className="flex flex-wrap items-center gap-2.5">
-        <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
-        {mood === 'confirming' ? (
-          <CheckoutAutoRefresh />
-        ) : (
-          <ButtonLink variant="outline" href="/tours">
-            {t.viewTours}
-          </ButtonLink>
-        )}
-      </div>
-    </CheckoutShell>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
+          {mood === 'confirming' ? (
+            <CheckoutAutoRefresh />
+          ) : (
+            <ButtonLink variant="outline" href="/tours">
+              {t.viewTours}
+            </ButtonLink>
+          )}
+        </div>
+      </CheckoutShell>
+    </div>
   );
 }
 

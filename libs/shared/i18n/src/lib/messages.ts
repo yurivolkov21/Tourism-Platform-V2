@@ -431,6 +431,9 @@ export const messages = {
     },
     // /checkout/success.
     success: {
+      /** Hero chuẩn site cho trang voucher (góp ý user 12/08 — navbar về
+       *  đồng bộ, hết kiểu hero-less riêng). */
+      heroBreadcrumb: 'Voucher',
       confirmedTitle: 'Booking confirmed',
       confirmedBody: 'Thank you — your payment went through and your trip is booked.',
       pendingTitle: 'Confirming your payment…',
