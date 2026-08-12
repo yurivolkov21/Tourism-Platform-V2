@@ -4,8 +4,8 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ContentHero } from '@/components/content/content-hero';
-import { JourneyRow } from '@/components/passport/journey-row';
-import { groupBookingsByTime } from '@/lib/account-stats';
+import { BookingAccordion } from '@/components/passport/booking-accordion';
+import { groupBookingsByTime, todayDateString } from '@/lib/account-stats';
 import { BOOKINGS_MAX_LIMIT, BOOKINGS_PAGE_SIZE, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 
@@ -69,11 +69,10 @@ export default async function AccountBookingsPage({
           </div>
         ) : (
           <div className="mt-6">
-            <div>
-              {journey.map((booking) => (
-                <JourneyRow key={booking.id} booking={booking} />
-              ))}
-            </div>
+            {/* Accordion xổ-inline (vòng 12/08, pattern coupon-manager user
+                tham khảo — dựng bằng đồ nhà): row đầu mở sẵn, chi tiết +
+                action ngay tại chỗ, flow phức tạp vẫn ở trang chi tiết. */}
+            <BookingAccordion bookings={journey} today={todayDateString()} />
             {hasMore ? (
               <div className="mt-4 flex justify-end border-t border-border/55 pt-4">
                 <Link

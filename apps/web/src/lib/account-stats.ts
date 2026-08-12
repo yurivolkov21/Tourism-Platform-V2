@@ -27,8 +27,14 @@ const MS_PER_DAY = 86_400_000;
  * Trả về số ÂM khi chuyến đã qua thay vì kẹp về 0: chỗ gọi biết rõ nó muốn
  * hiện gì cho ca đó hơn là hàm này.
  */
-export function daysUntilDeparture(departureStartDate: string): number {
-  const from = Date.parse(`${todayDateString()}T00:00:00.000Z`);
+export function daysUntilDeparture(
+  departureStartDate: string,
+  // `today` nhận từ ngoài khi caller đã có MỘT mốc chung cho cả trang
+  // (BookingAccordion 12/08: client không tự lấy giờ máy — mốc server truyền
+  // xuống, tránh countdown lệch với các phân nhánh started/ended cùng trang).
+  today: string = todayDateString(),
+): number {
+  const from = Date.parse(`${today}T00:00:00.000Z`);
   const to = Date.parse(`${departureStartDate}T00:00:00.000Z`);
   return Math.round((to - from) / MS_PER_DAY);
 }

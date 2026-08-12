@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { JourneyRow } from './journey-row';
+import { BookingAccordion } from './booking-accordion';
 import { PassportCard } from './passport-card';
 import { StampPages } from './stamp-pages';
 import { VisaStamp } from './visa-stamp';
@@ -125,106 +125,87 @@ describe('VisaStamp', () => {
   });
 });
 
-describe('JourneyRow', () => {
-  // Đóng băng đồng hồ: 15/08/2026 — cùng mốc với passport.spec.ts.
-  beforeEach(() => {
-    vi.useFakeTimers();
-    vi.setSystemTime(new Date('2026-08-15T00:00:00.000Z'));
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
+describe('BookingAccordion', () => {
+  // Thay JourneyRow (vòng 12/08 — accordion xổ-inline theo pattern coupon
+  // user tham khảo): CÙNG bộ luật trạng thái, nhưng `today` là PROP chuỗi
+  // UTC truyền từ server — không fake timer. Row đầu mở sẵn nên panel
+  // (action + lưới chi tiết) hiện ngay trong test một booking.
+  const TODAY = '2026-08-15';
+  const one = (over: Partial<Parameters<typeof makeBooking>[0]> = {}) => (
+    <BookingAccordion bookings={[makeBooking(over)]} today={TODAY} />
+  );
 
-  it('PAID tương lai → đếm ngược + View, chấm primary', () => {
-    render(
-      <JourneyRow
-        booking={makeBooking({ departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' })}
-      />,
-    );
+  it('PAID tương lai → đếm ngược ở meta, panel có View details + badge Paid, KHÔNG Pay now', () => {
+    render(one({ departureStartDate: '2026-08-27', departureEndDate: '2026-08-29' }));
     expect(screen.getByText(/In 12 days/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View →' })).toHaveAttribute(
+    expect(screen.getByText('Paid')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View details' })).toHaveAttribute(
       'href',
       '/account/bookings/BK-TESTAAAA',
     );
+    expect(screen.queryByRole('link', { name: 'Pay now' })).not.toBeInTheDocument();
   });
 
   it('PAID đang trên đường → "Ends …" thay đếm ngược', () => {
-    render(
-      <JourneyRow
-        booking={makeBooking({ departureStartDate: '2026-08-14', departureEndDate: '2026-08-16' })}
-      />,
-    );
+    render(one({ departureStartDate: '2026-08-14', departureEndDate: '2026-08-16' }));
     expect(screen.getByText(/Ends /)).toBeInTheDocument();
   });
 
-  // RED trước fix 11/08: kết thúc ĐÚNG HÔM NAY, xét ở giờ THẬT buổi tối
-  // (không phải nửa đêm mà `beforeEach` đóng băng) — so `Date` cũ coi
-  // midnight-của-endDate < giờ-thật-buổi-tối là true → hiện nhầm Review dù
-  // chuyến chưa chắc đã kết thúc trong ngày. Luật mới so CHUỖI ngày UTC.
-  it('PAID kết thúc ĐÚNG HÔM NAY (giờ thật buổi tối) vẫn "đang đi", chưa phải Review', () => {
-    vi.setSystemTime(new Date('2026-08-15T20:00:00.000Z'));
-    render(
-      <JourneyRow
-        booking={makeBooking({ departureStartDate: '2026-08-13', departureEndDate: '2026-08-15' })}
-      />,
-    );
+  // Biên đóng (kế thừa fix 11/08): kết thúc ĐÚNG HÔM NAY vẫn "đang đi" —
+  // so CHUỖI ngày UTC, không lệ thuộc giờ-trong-ngày của máy.
+  it('PAID kết thúc ĐÚNG HÔM NAY vẫn "đang đi", chưa mời Review', () => {
+    render(one({ departureStartDate: '2026-08-13', departureEndDate: '2026-08-15' }));
     expect(screen.getByText(/Ends /)).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
   });
 
-  it('PAID đã đi xong → động từ Review anchor #review', () => {
-    render(
-      <JourneyRow
-        booking={makeBooking({ departureStartDate: '2026-07-21', departureEndDate: '2026-07-23' })}
-      />,
-    );
+  it('PAID đã đi xong → link Review anchor #review + View voucher', () => {
+    render(one({ departureStartDate: '2026-07-21', departureEndDate: '2026-07-23' }));
     expect(screen.getByRole('link', { name: 'Review →' })).toHaveAttribute(
       'href',
       '/account/bookings/BK-TESTAAAA#review',
     );
-  });
-
-  it('PENDING chưa đi → Pay now, KHÔNG phải View', () => {
-    render(
-      <JourneyRow
-        booking={makeBooking({
-          status: 'PENDING',
-          departureStartDate: '2026-08-27',
-          departureEndDate: '2026-08-29',
-        })}
-      />,
+    expect(screen.getByRole('link', { name: 'View voucher' })).toHaveAttribute(
+      'href',
+      '/checkout/success?code=BK-TESTAAAA',
     );
-    expect(screen.getByRole('link', { name: 'Pay now →' })).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: 'View →' })).not.toBeInTheDocument();
   });
 
-  it('CANCELLED → chữ trạng thái hiện trong meta, động từ về View', () => {
+  it('PENDING chưa đi → nút Pay now + badge Awaiting payment', () => {
     render(
-      <JourneyRow
-        booking={makeBooking({
-          status: 'CANCELLED',
-          departureStartDate: '2026-08-27',
-          departureEndDate: '2026-08-29',
-        })}
-      />,
+      one({
+        status: 'PENDING',
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
     );
-    expect(screen.getByText(/Cancelled/)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View →' })).toBeInTheDocument();
-    // PENDING quá hạn KHÔNG mời trả tiền — nhưng ở đây là CANCELLED: không Pay now.
-    expect(screen.queryByRole('link', { name: 'Pay now →' })).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Pay now' })).toBeInTheDocument();
+    expect(screen.getByText('Awaiting payment')).toBeInTheDocument();
   });
 
-  it('REFUNDED → chấm giảm cấp (muted), không Review dù đã qua ngày', () => {
+  it('CANCELLED → badge Cancelled, chỉ còn View details (không Pay now/voucher)', () => {
     render(
-      <JourneyRow
-        booking={makeBooking({
-          status: 'REFUNDED',
-          departureStartDate: '2026-07-21',
-          departureEndDate: '2026-07-23',
-        })}
-      />,
+      one({
+        status: 'CANCELLED',
+        departureStartDate: '2026-08-27',
+        departureEndDate: '2026-08-29',
+      }),
+    );
+    expect(screen.getByText('Cancelled')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Pay now' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'View voucher' })).not.toBeInTheDocument();
+  });
+
+  it('REFUNDED đã qua ngày → không mời Review', () => {
+    render(
+      one({
+        status: 'REFUNDED',
+        departureStartDate: '2026-07-21',
+        departureEndDate: '2026-07-23',
+      }),
     );
     expect(screen.queryByRole('link', { name: 'Review →' })).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View →' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View details' })).toBeInTheDocument();
   });
 });
