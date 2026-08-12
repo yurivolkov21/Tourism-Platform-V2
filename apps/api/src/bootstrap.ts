@@ -51,13 +51,20 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
   // không bao giờ thấy request tới (đo sống bằng Playwright thật mới lộ ra —
   // bootstrap.e2e.spec.ts canh lại để không tái phát, bài học hạ tầng xuyên
   // suốt CLAUDE.md §10). Danh sách khớp ĐÚNG tập verb toàn contract hiện có
-  // (`grep "method: '" contract.ts` = GET/POST + đúng 1 route DELETE) — thêm
-  // verb mới thì cập nhật cả đây lẫn test canh.
+  // (`grep "method: '" contract.ts` = GET/POST + đúng 1 PATCH) cộng 1 route
+  // DELETE thuần REST — thêm verb mới thì cập nhật cả đây lẫn test canh.
+  //
+  // `PATCH` vào danh sách 12/08 vì ĐÚNG lớp lỗi cũ tái phát: cụm ADR-0021
+  // thêm `account.setAvatar` (`PATCH /api/account/avatar`) mà quên chỗ này,
+  // nên avatar upload xong 100% lên Cloudinary rồi chết ở bước ghi
+  // `User.image` — kèm theo là nút gỡ avatar (cùng route). Bài học lặp: mọi
+  // verb mới đều vô hình với int/e2e test vì `app.inject()` không enforce
+  // CORS; chỉ trình duyệt thật (hoặc case preflight tường minh) mới thấy.
   await app.register(import('@fastify/cors'), {
     // Spread: `trustedOrigins` là readonly, @fastify/cors nhận mảng thường.
     origin: [...trustedOrigins],
     credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'DELETE'],
+    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
   });
 
   // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ

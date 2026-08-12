@@ -84,6 +84,30 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
     expect(res.headers['access-control-allow-methods']).toContain('DELETE');
   });
 
+  /**
+   * Đo sống lần hai, CÙNG lớp lỗi với case DELETE ở trên (12/08 — user báo
+   * upload avatar chạy tới 100% rồi báo "Upload failed"): cụm ADR-0021 thêm
+   * `account.setAvatar` = `PATCH /api/account/avatar`, verb PATCH ĐẦU TIÊN của
+   * contract, nhưng allowlist `methods` không được cập nhật kèm. Ảnh lên
+   * Cloudinary xong xuôi, chỉ bước ghi `User.image` bị trình duyệt chặn ngay
+   * tại preflight — server không hề thấy request, mọi int/e2e test khác vẫn
+   * xanh vì `app.inject()` KHÔNG enforce CORS. Case này là thứ duy nhất bắt
+   * được lớp lỗi đó mà không cần mở trình duyệt thật.
+   */
+  it('cho phép preflight PATCH (account.setAvatar — verb PATCH DUY NHẤT của contract)', async () => {
+    const res = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/account/avatar',
+      headers: {
+        origin: allowedOrigin,
+        'access-control-request-method': 'PATCH',
+        'access-control-request-headers': 'content-type',
+      },
+    });
+    expect(res.statusCode).toBeLessThan(300);
+    expect(res.headers['access-control-allow-methods']).toContain('PATCH');
+  });
+
   // ── Helmet (ADR-0010) ────────────────────────────────────────────────────
   it('gắn security header cơ bản (helmet) trên response', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });
