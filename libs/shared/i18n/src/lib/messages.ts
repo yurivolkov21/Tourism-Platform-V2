@@ -2117,6 +2117,23 @@ export const messages = {
   },
   // "Rate this trip" review-creation form on a PAID booking's detail page.
   reviews: {
+    /** Khối upload ảnh chuyến đi (mảnh 1 cụm review-ảnh 12/08 — UI theo mẫu
+     *  user chọn, static-first: upload thật nối ở mảnh backend). */
+    photos: {
+      hint: (max: number, size: string) =>
+        `Add up to ${max} photos from your trip (JPEG, PNG, up to ${size} each). Drag to reorder.`,
+      counter: (n: number, max: number) => `${n}/${max} added`,
+      dropTitle: 'Choose a file or drag & drop here.',
+      dropHint: (size: string) => `JPEG, PNG, up to ${size}.`,
+      browse: 'Browse files',
+      uploading: (pct: number) => `Uploading… ${pct}%`,
+      removePhoto: 'Remove photo',
+      reorderHandle: 'Drag to reorder',
+      errorsTitle: 'Photo upload error(s)',
+      errNotImage: 'File must be an image.',
+      errTooLarge: (size: string) => `File size must be less than ${size}.`,
+      errTooMany: (max: number) => `Maximum ${max} photos allowed.`,
+    },
     heading: 'Rate this trip',
     ratingLabel: 'Your rating',
     ratingValueLabel: (n: number) => `${n} star${n > 1 ? 's' : ''}`,
