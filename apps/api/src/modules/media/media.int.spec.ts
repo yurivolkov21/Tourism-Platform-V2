@@ -1,7 +1,9 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { ThrottlerModule } from '@nestjs/throttler';
 import { MediaItemSchema } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
+import { PUBLIC_WRITE_THROTTLE } from '../../config/throttle.js';
 import { MediaOwnerType } from '../../generated/prisma/enums.js';
 import { MediaModule } from './media.module.js';
 import { MediaService } from './media.service.js';
@@ -63,8 +65,11 @@ describe('media integration (MediaService.resolveForOwners)', () => {
       ],
     });
 
+    // MediaModule giờ mang MediaController có ThrottlerGuard (ADR-0021);
+    // guard resolve provider từ context module test nên phải đăng ký
+    // ThrottlerModule ở đây y như AppModule làm, không thì DI fail.
     const moduleRef = await Test.createTestingModule({
-      imports: [MediaModule],
+      imports: [MediaModule, ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE])],
     }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
     await app.init();
