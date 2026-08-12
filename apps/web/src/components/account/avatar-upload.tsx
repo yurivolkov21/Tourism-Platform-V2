@@ -5,7 +5,7 @@ import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/aler
 import { Button } from '@tourism/ui/components/button';
 import { CircleAlertIcon, XIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { MAX_AVATAR_BYTES, validateAvatar } from '@/lib/avatar';
 import { imageExtensionOf, uploadToCloudinary } from '@/lib/media-upload';
@@ -49,9 +49,25 @@ export function AvatarUpload({
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Thu hồi Object URL còn sống khi unmount (điều hướng SPA không unload
+  // document nên URL không tự chết) — ref bám giá trị mới nhất để cleanup
+  // không phụ thuộc closure cũ.
+  const previewRef = useRef<string | null>(null);
+  previewRef.current = preview;
+  useEffect(() => {
+    return () => {
+      if (previewRef.current) URL.revokeObjectURL(previewRef.current);
+    };
+  }, []);
+
   const displaySrc = preview ?? image;
 
   async function onPick(files: FileList | null) {
+    // Chặn mọi cửa vào khi đang bận — `disabled` của button chỉ chắc chắn
+    // chặn click, còn drop thứ hai giữa lúc upload là tuỳ trình duyệt; hai
+    // onPick chạy đua sẽ revoke preview của nhau và setAvatar chồng lệnh
+    // (finding review Task 8).
+    if (busy) return;
     const file = files?.[0];
     if (!file) return;
     const error = validateAvatar(file);
