@@ -27,6 +27,7 @@ import {
 } from './schemas/catalog.js';
 import { PageQuerySchema } from './schemas/common.js';
 import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
+import { SignedUploadParamsSchema, SignUploadInputSchema } from './schemas/media.js';
 import {
   ResubscribeInputSchema,
   ResubscribeResultSchema,
@@ -201,6 +202,7 @@ export const contract = {
         REVIEW_NOT_ELIGIBLE: { status: 400, message: 'Booking is not eligible for review' },
         REVIEW_TRIP_NOT_COMPLETED: { status: 400, message: 'Trip has not finished yet' },
         REVIEW_ALREADY_EXISTS: { status: 409, message: 'This booking already has a review' },
+        REVIEW_PHOTO_INVALID: { status: 400, message: 'A photo does not belong to this booking' },
       }),
   },
   /**
@@ -428,6 +430,49 @@ export const contract = {
         summary: 'List site brand-chrome media slots (only slots with media)',
       })
       .output(z.array(SiteMediaEntrySchema)),
+  },
+  media: {
+    signUpload: oc
+      .route({
+        method: 'POST',
+        path: '/api/media/upload-signatures',
+        summary: 'Sign a direct-to-Cloudinary upload (ADR-0021)',
+      })
+      .input(SignUploadInputSchema)
+      .output(SignedUploadParamsSchema)
+      .errors({
+        // 503 chứ không 500: thiếu cặp CLOUDINARY_API_KEY/SECRET là trạng
+        // thái cấu hình hợp lệ (CI, môi trường chỉ-đọc) — API vẫn boot.
+        MEDIA_UPLOAD_NOT_CONFIGURED: { status: 503, message: 'Uploads are not configured' },
+        BOOKING_NOT_FOUND: { status: 404, message: 'Booking not found' },
+        BOOKING_FORBIDDEN: { status: 403, message: 'Not your booking' },
+        REVIEW_NOT_ELIGIBLE: { status: 400, message: 'Booking is not eligible for review' },
+        REVIEW_TRIP_NOT_COMPLETED: { status: 400, message: 'Trip has not finished yet' },
+      }),
+  },
+
+  // Namespace account: procedure oRPC ĐẦU TIÊN ở đây — me/delete vẫn là REST
+  // thuần trong AccountController (gắn Better Auth session, không đáng port).
+  account: {
+    setAvatar: oc
+      .route({
+        method: 'PATCH',
+        path: '/api/account/avatar',
+        summary: 'Set or clear own avatar (ADR-0021)',
+      })
+      .input(
+        z.object({
+          /** publicId Cloudinary đã upload; null = gỡ avatar về chữ-cái-đầu. */
+          publicId: z.string().min(1).nullable(),
+        }),
+      )
+      .output(z.object({ image: z.url().nullable() }))
+      .errors({
+        AVATAR_PUBLIC_ID_INVALID: {
+          status: 400,
+          message: 'publicId is not one of your uploaded avatars',
+        },
+      }),
   },
   /**
    * Surface admin (spec P2 §3, W3). Cùng mô hình guard với `bookings`:

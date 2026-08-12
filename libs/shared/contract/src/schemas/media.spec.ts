@@ -1,4 +1,4 @@
-import { MediaItemSchema } from './media.js';
+import { MediaItemSchema, SignUploadInputSchema } from './media.js';
 
 const validItem = {
   publicId: 'tourism/seed/destinations/ha-long/commons-ha-long-01',
@@ -53,5 +53,33 @@ describe('MediaItemSchema — ghi công (ADR-0020)', () => {
     for (const lic of ['CC BY-SA 4.0', 'CC BY 2.0', 'Public domain', 'CC0']) {
       expect(MediaItemSchema.parse({ ...validItem, license: lic }).license).toBe(lic);
     }
+  });
+});
+
+describe('SignUploadInputSchema', () => {
+  it('AVATAR: chỉ cần purpose + ext hợp lệ', () => {
+    expect(SignUploadInputSchema.parse({ purpose: 'AVATAR', ext: 'png' })).toEqual({
+      purpose: 'AVATAR',
+      ext: 'png',
+    });
+  });
+
+  it('REVIEW_PHOTO: bắt buộc bookingCode đúng khuôn BK-XXXXXXXX', () => {
+    expect(() => SignUploadInputSchema.parse({ purpose: 'REVIEW_PHOTO', ext: 'jpg' })).toThrow();
+    const parsed = SignUploadInputSchema.parse({
+      purpose: 'REVIEW_PHOTO',
+      ext: 'jpg',
+      bookingCode: 'BK-ABCD1234',
+    });
+    // Thu hẹp union bằng discriminant `purpose` — `.parse()` nhận `unknown`
+    // nên TS không tự suy ra nhánh từ input, phải check runtime để truy cập
+    // `bookingCode` (chỉ có ở nhánh REVIEW_PHOTO) mà không đỏ typecheck.
+    if (parsed.purpose !== 'REVIEW_PHOTO') throw new Error('expected REVIEW_PHOTO branch');
+    expect(parsed.bookingCode).toBe('BK-ABCD1234');
+  });
+
+  it('đuôi file ngoài whitelist ảnh → loại ngay tầng schema', () => {
+    expect(() => SignUploadInputSchema.parse({ purpose: 'AVATAR', ext: 'exe' })).toThrow();
+    expect(() => SignUploadInputSchema.parse({ purpose: 'AVATAR', ext: 'mp4' })).toThrow();
   });
 });

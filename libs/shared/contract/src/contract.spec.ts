@@ -22,6 +22,8 @@ describe('contract routes', () => {
     [contract.bookings.create, 'POST /api/bookings'],
     [contract.bookings.mine, 'GET /api/bookings'],
     [contract.bookings.byCode, 'GET /api/bookings/{code}'],
+    [contract.media.signUpload, 'POST /api/media/upload-signatures'],
+    [contract.account.setAvatar, 'PATCH /api/account/avatar'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
@@ -42,6 +44,10 @@ describe('contract routes', () => {
     expect(errorMap.DEPARTURE_NOT_AVAILABLE?.status).toBe(400);
     expect(errorMap.SEATS_UNAVAILABLE?.status).toBe(409);
     expect(contract.bookings.byCode['~orpc'].errorMap).toHaveProperty('NOT_FOUND');
+  });
+
+  it('reviews.create declares REVIEW_PHOTO_INVALID (ADR-0021)', () => {
+    expect(contract.reviews.create['~orpc'].errorMap).toHaveProperty('REVIEW_PHOTO_INVALID');
   });
 });
 

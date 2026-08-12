@@ -1,6 +1,12 @@
 import { z } from 'zod';
 import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
+import { BookingCodeSchema } from './common.js';
 import { MediaItemSchema } from './media.js';
+
+// Re-export để mọi chỗ import `BookingCodeSchema` từ `'./bookings.js'` (nguồn
+// gốc lịch sử) không phải đổi gì — định nghĩa thật giờ nằm ở `common.ts` để
+// tránh import vòng với `media.ts` (xem JSDoc tại đó).
+export { BookingCodeSchema };
 
 /**
  * Booking schema (spec P2 §3, W1) — nguồn sự thật DUY NHẤT cho bề mặt booking
@@ -24,9 +30,6 @@ export const BookingStatusSchema = z.enum([
   'PARTIALLY_REFUNDED',
 ]);
 export type BookingStatusValue = z.output<typeof BookingStatusSchema>;
-
-/** `BK-` + 8 ký tự base36 in hoa (xem apps/api bookings/booking-code.ts). */
-export const BookingCodeSchema = z.string().regex(/^BK-[A-Z0-9]{8}$/, 'expected a booking code');
 
 /**
  * Input cho `bookings.create`. Departure được định danh trực tiếp bằng id (tour

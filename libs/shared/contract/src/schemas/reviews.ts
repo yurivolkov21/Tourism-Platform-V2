@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { PageQuerySchema } from './common.js';
+import { MediaItemSchema, REVIEW_PHOTOS_MAX } from './media.js';
 
 export const RatingSchema = z.int().min(1).max(5);
 
@@ -14,6 +15,8 @@ export const PublicReviewSchema = z.object({
   authorName: z.string().nullable(),
   authorDeleted: z.boolean(),
   createdAt: z.iso.datetime(),
+  /** Ảnh chuyến đi khách đính kèm (ADR-0021) — URL đã dựng, rỗng nếu không có. */
+  media: z.array(MediaItemSchema),
 });
 
 export const CreateReviewInputSchema = z.object({
@@ -21,6 +24,12 @@ export const CreateReviewInputSchema = z.object({
   rating: RatingSchema,
   title: z.string().trim().max(120).optional(),
   body: z.string().trim().min(10).max(2000),
+  /**
+   * publicId Cloudinary đã upload xong qua media.signUpload (ADR-0021 §4) —
+   * thứ tự mảng = thứ tự hiển thị (ảnh đầu là đại diện). Server kiểm mỗi
+   * publicId thuộc đúng folder reviews/<bookingCode>.
+   */
+  photos: z.array(z.string().min(1)).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
 export const ReviewsByTourQuerySchema = PageQuerySchema.extend({

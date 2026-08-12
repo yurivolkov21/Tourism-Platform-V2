@@ -28,3 +28,13 @@ export function sortQuerySchema<const K extends readonly [string, ...string[]]>(
 }
 
 export type PageQuery = z.infer<typeof PageQuerySchema>;
+
+/**
+ * `BK-` + 8 ký tự base36 in hoa (xem apps/api bookings/booking-code.ts).
+ * Đặt ở `common.ts` (không phải `bookings.ts`) vì `schemas/media.ts` cũng cần
+ * schema này (REVIEW_PHOTO phải khai booking) — để trong `bookings.ts` sẽ tạo
+ * import vòng `bookings.ts ↔ media.ts` (bookings đã import `MediaItemSchema`
+ * từ `media.ts` cho `tourImage`). `bookings.ts` re-export lại từ đây để mọi
+ * chỗ import `BookingCodeSchema` từ `'./bookings.js'` không phải đổi gì.
+ */
+export const BookingCodeSchema = z.string().regex(/^BK-[A-Z0-9]{8}$/, 'expected a booking code');
