@@ -3,6 +3,7 @@ import { Separator } from '@tourism/ui/components/separator';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
+import { AvatarUpload } from '@/components/account/avatar-upload';
 import { DeleteAccount } from '@/components/account/delete-account';
 import { ProfileSummary } from '@/components/account/profile-summary';
 import { ContentHero } from '@/components/content/content-hero';
@@ -54,6 +55,10 @@ export default async function AccountSettingsPage() {
             <p className="text-sm text-muted-foreground">{t.details.blurb}</p>
           </div>
           <div className="md:col-span-2">
+            {/* Avatar đứng đầu nhóm (mảnh 12/08, static-first — preview cục
+                bộ, backend chờ ADR bề mặt ghi media); initial đồng bộ với
+                khung hộ chiếu. */}
+            <AvatarUpload initial={(profile.name || profile.email).charAt(0)} />
             <ProfileSummary profile={profile} />
           </div>
         </section>

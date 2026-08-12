@@ -2740,6 +2740,17 @@ export const messages = {
     subtitle: 'The information printed in your passport.',
   },
   accountProfile: {
+    /** Khối upload avatar trong Settings (mảnh 12/08, static-first — backend
+     *  chung ADR bề mặt ghi media với ảnh review). */
+    avatar: {
+      upload: 'Upload avatar',
+      selected: 'Avatar selected',
+      hint: (size: string) => `PNG, JPG up to ${size}. Click or drop a photo.`,
+      remove: 'Remove avatar',
+      errorsTitle: 'Avatar upload error(s)',
+      errNotImage: 'File must be an image.',
+      errTooLarge: (size: string) => `File size must be less than ${size}.`,
+    },
     details: {
       heading: 'Personal information',
       /** Mô tả cột trái (redesign 11/08). Mọi mục trong khu account đều có một

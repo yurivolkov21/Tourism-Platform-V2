@@ -7,6 +7,7 @@ import { Label } from '@tourism/ui/components/label';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
+import { PasswordStrengthField } from '@/components/auth/password-strength-field';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
 
@@ -78,16 +79,15 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
           onChange={(event) => setCurrentPassword(event.target.value)}
         />
       </div>
-      <div className="flex flex-col gap-1.5">
-        <Label htmlFor="profile-new-password">{t.newLabel}</Label>
-        <Input
-          id="profile-new-password"
-          type="password"
-          autoComplete="new-password"
-          value={newPassword}
-          onChange={(event) => setNewPassword(event.target.value)}
-        />
-      </div>
+      {/* Ô mật khẩu MỚI dùng chung PasswordStrengthField với register/reset
+          (góp ý user 12/08): vạch điểm + checklist 5 yêu cầu tick dần —
+          chế độ controlled để submit đọc được giá trị thật. */}
+      <PasswordStrengthField
+        id="profile-new-password"
+        label={t.newLabel}
+        value={newPassword}
+        onChange={setNewPassword}
+      />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-confirm-password">{t.confirmLabel}</Label>
         <Input
