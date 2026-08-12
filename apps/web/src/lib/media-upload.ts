@@ -45,15 +45,25 @@ export function uploadToCloudinary(
       if (e.lengthComputable) onProgress?.(Math.round((e.loaded / e.total) * 100));
     });
     xhr.addEventListener('load', () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        const body: unknown = JSON.parse(xhr.responseText);
-        const publicId =
-          typeof body === 'object' && body !== null && 'public_id' in body
-            ? String((body as { public_id: unknown }).public_id)
-            : '';
-        if (publicId) return resolve(publicId);
+      // try/catch bắt buộc: throw trong callback async của executor KHÔNG
+      // reject promise — JSON.parse ném (2xx nhưng body không phải JSON) mà
+      // không bắt là caller await treo vĩnh viễn (finding review Task 7).
+      try {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          const body: unknown = JSON.parse(xhr.responseText);
+          const publicId =
+            typeof body === 'object' && body !== null && 'public_id' in body
+              ? String((body as { public_id: unknown }).public_id)
+              : '';
+          if (publicId) {
+            resolve(publicId);
+            return;
+          }
+        }
+        reject(new Error(`Cloudinary upload failed (${xhr.status})`));
+      } catch {
+        reject(new Error('Cloudinary upload failed (invalid response)'));
       }
-      reject(new Error(`Cloudinary upload failed (${xhr.status})`));
     });
     xhr.addEventListener('error', () => reject(new Error('Cloudinary upload failed (network)')));
     xhr.send(buildUploadFormData(file, params));
