@@ -8,6 +8,33 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-12 — Vá CORS thiếu PATCH: avatar upload xong 100% rồi báo lỗi (branch `fix/cors-patch-avatar`, ff-only, 1 commit `ce691bd`)
+
+Nghiệm thu đầu-cuối với key Cloudinary thật — đúng món nợ ghi ở cuối entry
+dưới — lộ ngay bug hạ tầng: user chọn ảnh, thanh tiến trình chạy tới 100%
+rồi hiện "Upload failed. Please try again.". **Nguyên nhân: `methods` của
+`@fastify/cors` trong `configureHttp` liệt kê `GET/HEAD/POST/DELETE`, thiếu
+`PATCH`** — mà `account.setAvatar` (`PATCH /api/account/avatar`) là verb
+PATCH ĐẦU TIÊN của contract, vừa sinh ra ở cụm ADR-0021 mà không ai cập
+nhật allowlist kèm. Trình duyệt chặn NGAY tại preflight nên server không hề
+thấy request; ảnh thật ra đã nằm yên trên Cloudinary cả 4 lần user thử, chỉ
+bước ghi `User.image` chết. Nút gỡ avatar hỏng cùng lý do (chung route).
+Đúng lớp lỗi của `DELETE` hồi Task 7/A2, tái phát vì cùng một lỗ: **int/e2e
+test gọi qua `app.inject()` nên KHÔNG enforce CORS**, mọi verb mới đều vô
+hình với gate cho tới khi mở trình duyệt thật. Vá một chữ trong allowlist,
+kèm case e2e canh preflight PATCH đối xứng case DELETE sẵn có.
+
+**Cách chẩn:** đo từng biên thay vì đoán — ký upload (200) · POST Cloudinary
+(200, `public_id` đủ prefix folder) · `setAvatar` gọi từ node (200, DB ghi
+đúng) · preflight PATCH (`access-control-allow-methods` không có PATCH →
+thủ phạm). Chốt bằng A/B trong Chromium thật từ origin `localhost:3000`:
+API chưa vá trả `TypeError: Failed to fetch`, instance đã vá chạy trọn
+sign → upload → setAvatar → 200. **Review findings:** không có — diff một
+dòng logic. Tests after: 1598 — 1422 unit (82 contract, 10 tokens, 1 i18n,
+14 ui, 215 api, 1100 web) và 176 api int. Sổ nợ: 4 asset mồ côi của user
+còn trên Cloudinary (4 lần thử thất bại, không có row DB nào trỏ tới) — gộp
+vào món "rác Cloudinary ký-rồi-bỏ" đã hẹn cron reconcile ở P4.
+
 ## 2026-08-12 — Bề mặt GHI media: avatar + ảnh review lưu thật qua Cloudinary signed upload (branch `feat/media-write-surface`, ff-only, 19 commit `19e5068..7351e6a`)
 
 Trả món nợ static-first của entry dưới, ADR-0021 đi trước code (user duyệt
