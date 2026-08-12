@@ -5,12 +5,10 @@ import { cookies } from 'next/headers';
 import { ContentHero } from '@/components/content/content-hero';
 import { PassportCard } from '@/components/passport/passport-card';
 import { TravelLog } from '@/components/passport/travel-log';
-import { TuckCard } from '@/components/passport/tuck-card';
 import { fetchAccountMe } from '@/lib/api/account';
 import { BOOKINGS_MAX_LIMIT, fetchMyBookings } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { fetchDestinations } from '@/lib/api/tours';
-import { fetchMyWishlist } from '@/lib/api/wishlist';
 import { mrzLines, passportNo, passportStats, travelLog } from '@/lib/passport';
 
 /**
@@ -37,10 +35,11 @@ export default async function AccountPassportPage() {
   // ba nguồn phụ bọc `safe()`: destinations/wishlist fallback rỗng, account/me
   // fallback null (mất phone thì ẩn dòng, không kéo sập trang).
   const safe = <T,>(p: Promise<T>, fallback: T): Promise<T> => p.catch(() => fallback);
-  const [paged, destinations, wishlist, me] = await Promise.all([
+  // wishlist ĐÃ RÚT (12/08): thẻ Tucked inside nghỉ — Saved tours giờ là nút
+  // trong khung, không cần đếm số tour đã lưu nữa.
+  const [paged, destinations, me] = await Promise.all([
     fetchMyBookings(cookie, BOOKINGS_MAX_LIMIT),
     safe(fetchDestinations(), []),
-    safe(fetchMyWishlist(cookie), []),
     safe(fetchAccountMe(cookie), null),
   ]);
   const bookings = paged.items;
@@ -84,6 +83,11 @@ export default async function AccountPassportPage() {
               <ButtonLink variant="outline" size="sm" href="/account/bookings">
                 {t.bookingsLink}
               </ButtonLink>
+              {/* Saved tours dời từ thẻ Tucked inside lên đây (góp ý user
+                  12/08) — ba lối vào đứng chung một cụm trong khung. */}
+              <ButtonLink variant="outline" size="sm" href="/account/saved">
+                {t.savedLink}
+              </ButtonLink>
               <ButtonLink variant="outline" size="sm" href="/account/settings">
                 {t.settingsLink}
               </ButtonLink>
@@ -120,16 +124,6 @@ export default async function AccountPassportPage() {
             <TravelLog entries={logEntries} />
           </section>
         ) : null}
-
-        {isEmpty || wishlist.length === 0 ? null : (
-          <div className="mt-10 grid gap-4 sm:grid-cols-2">
-            <TuckCard
-              heading={t.savedHeading(wishlist.length)}
-              href="/account/saved"
-              cta={t.savedOpen}
-            />
-          </div>
-        )}
       </div>
     </div>
   );

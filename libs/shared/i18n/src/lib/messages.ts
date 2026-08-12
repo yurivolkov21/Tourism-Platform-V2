@@ -2600,6 +2600,7 @@ export const messages = {
     /** Nút lối vào bookings trong khung hộ chiếu (góp ý 11/08 — đứng cạnh
      *  Settings ở góc phải trên của khung). */
     bookingsLink: 'My bookings',
+    savedLink: 'Saved tours',
     stampsHeading: 'Stamps',
     /** Sub-label (sr-only) của dấu ghost "chờ đóng" trên trang visa mở. */
     awaitingStamp: 'next stamp',
@@ -2614,15 +2615,10 @@ export const messages = {
     /** Badge cạnh title node timeline (bản timeline 11/08 — thay stepper). */
     tripDuration: (month: string, days: number) => `${month} · ${days} day${days === 1 ? '' : 's'}`,
     viewBooking: 'View booking →',
-    /** Thẻ lối vào trang bookings — cùng khuôn savedHeading/savedOpen. */
-    bookingsHeading: (n: number) => `My bookings · ${n} trip${n === 1 ? '' : 's'}`,
-    bookingsOpen: 'Open →',
     mapCaption: (n: number, total: number) =>
       n === 0
         ? `Your map is waiting for its first color — ${total} destinations to go.`
         : `${n} of our ${total} destinations — the map is turning jade.`,
-    savedHeading: (n: number) => `Tucked inside · ${n} saved tour${n === 1 ? '' : 's'}`,
-    savedOpen: 'Open →',
     /** Dòng ledger nén thay hàng stats 4 ô (user chọn 11/08) — một câu mono
      *  mảnh dưới khung hộ chiếu. */
     statLine: (trips: number, places: number, pct: number, days: number) =>
