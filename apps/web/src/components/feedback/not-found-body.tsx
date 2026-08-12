@@ -36,8 +36,8 @@ function Line({ children, delay }: { children: React.ReactNode; delay: number })
 
 export function NotFoundBody() {
   return (
-    // py-24 chứ không phải py-32: cộng với `mt-32` của footer ra 224px — khớp
-    // nhịp 208px các trang khác đang có (section pb-20 + mt-32).
+    // py-24: khoảng thở hai đầu của trang 404 — từ 12/08 footer hết `mt-32`
+    // nên pb của section là toàn bộ khoảng cách tới footer, 96px là đủ nhịp.
     <section className="w-full px-4 py-24 md:px-16 lg:px-24 xl:px-32">
       <div className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2 lg:gap-16">
         <div className="order-2 max-w-lg lg:order-1">

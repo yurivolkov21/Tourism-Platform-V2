@@ -59,8 +59,13 @@ const SOCIALS = [
 ];
 
 export function SiteFooter() {
+  // KHÔNG margin-top (gỡ `mt-32` 12/08 theo góp ý user): margin đó sơn màu
+  // nền body thành một dải sáng "lưng chừng" trước footer trên mọi trang nền
+  // sáng (account/checkout), và các khu cuối có nền riêng phải vá để che
+  // (region-reviews/day-trips). Khoảng thở trên footer giờ do pb của từng
+  // trang + pt-20 nội bộ footer lo.
   return (
-    <footer className="dark relative mt-32 w-full overflow-hidden border-t bg-background px-4 pt-20 pb-10 text-foreground md:px-16 lg:px-24 xl:px-32">
+    <footer className="dark relative w-full overflow-hidden border-t bg-background px-4 pt-20 pb-10 text-foreground md:px-16 lg:px-24 xl:px-32">
       {/* Watermark khổng lồ kiểu forged: fill mờ, căn giữa đáy, tràn chiều rộng —
           nằm dưới nội dung (z-10 ở container) nên không che link (bài học #8) */}
       <div

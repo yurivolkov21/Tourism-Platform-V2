@@ -99,9 +99,9 @@ export function RegionDayTrips({ tours }: { tours: readonly DayTripTour[] }) {
               trang primary đo 3.03:1 ở dark, dưới ngưỡng 4.5 chữ nhỏ. */}
           <SectionEyebrow>{t.eyebrow}</SectionEyebrow>
           {/* Cascade header (Task 5m) — xem `motion/reveal-header.tsx`. Nhịp nằm
-              trên phần tử CON, không trên `<section>`: spec canh rằng section không
-              mang `style` (nó là khu cuối trang Trung, nền riêng thì `mt-32` của
-              footer hiện ra thành vạch sáng). */}
+              trên phần tử CON, không trên `<section>` (spec canh section không
+              mang `style`; lý do vạch-sáng-mt-32 gốc đã hết — margin footer gỡ
+              12/08). */}
           <RevealHeading className="mt-4 font-heading text-3xl leading-tight font-medium text-balance text-foreground md:text-[40px]/12">
             {t.heading(dayTrips.length)}
           </RevealHeading>

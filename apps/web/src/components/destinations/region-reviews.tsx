@@ -29,10 +29,10 @@ const INLINE_COUNT = 3;
  * tính từ ba review đang hiện là nói dối. Ngoài ra một biểu đồ ở đây chính là thứ
  * user vừa bác ở vòng thiết kế thứ ba.
  *
- * ⚠️ **Nền TRANG, không phải băng phớt.** Đây là khu cuối, và `site-footer.tsx`
- * mang `mt-32` sơn màu `--background`; khu cuối có nền riêng thì 128px đó hiện ra
- * thành một vạch sáng kẹp giữa khu này và footer. Cơ chế `data-flush-footer` từng
- * vá chuyện đó đã xoá (Task 5k) vì cả ba miền giờ kết bằng khu nền-trang.
+ * **Nền TRANG, không phải băng phớt.** Đây là khu cuối trang. (Lịch sử: thời
+ * footer còn `mt-32`, khu cuối nền riêng sẽ lộ 128px vạch sáng — margin đó đã
+ * GỠ 12/08 nên ràng buộc "phải nền trang" không còn là bắt buộc kỹ thuật,
+ * giữ vì đang đẹp.)
  *
  * NGÔN NGỮ HÌNH mượn nguyên của `tours/tour-reviews.tsx` — cùng bộ sao
  * `fill-rating`/`text-rating-muted`, cùng `Avatar`/`AvatarFallback`, cùng
