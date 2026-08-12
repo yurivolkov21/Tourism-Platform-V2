@@ -250,6 +250,19 @@ describe('media.signUpload', () => {
     expect(res.json().code).toBe('BOOKING_NOT_FOUND');
   });
 
+  it('6 lần ký AVATAR liên tiếp CÙNG IP → cả 6 đều 200 (headroom SIGN_UPLOAD_THROTTLE, không dính trần public 5/60s)', async () => {
+    // signUpload là endpoint ĐÃ AUTH, không nên dùng chung trần PUBLIC_WRITE_
+    // THROTTLE (5/60s) — đúng khít mức dùng hợp lệ của MỘT review 5 ảnh, nên
+    // lần ký thứ 6 (đổi ảnh, retry, 2 khách chung NAT) ăn 429 oan.
+    const { cookie } = await signUpAndSignIn('sixsigns@example.com');
+    const fakeIp = '10.2.0.9';
+
+    for (let i = 0; i < 6; i++) {
+      const res = await signUploadReq(fakeIp, { purpose: 'AVATAR', ext: 'png' }, cookie);
+      expect(res.statusCode).toBe(200);
+    }
+  });
+
   it('đuôi file lạ → 400 từ tầng validate contract', async () => {
     const { cookie } = await signUpAndSignIn('badext@example.com');
 

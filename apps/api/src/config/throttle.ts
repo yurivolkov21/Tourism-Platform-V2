@@ -12,3 +12,8 @@
  * ttl tính bằng MILLISECOND (@nestjs/throttler v6+), không phải giây.
  */
 export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
+
+/** Ký upload media (ADR-0021): 5 ảnh/review + đổi ảnh/retry + NAT chung IP —
+ *  trần public 5/60s vừa khít mức dùng hợp lệ nên phải có headroom riêng.
+ *  Endpoint đã authed; 20/60s vẫn chặn được spam ký hàng loạt. */
+export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
