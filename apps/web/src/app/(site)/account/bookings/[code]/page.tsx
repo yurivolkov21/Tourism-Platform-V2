@@ -1,11 +1,13 @@
 import { BookingCodeSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
+import { Frame, FramePanel } from '@tourism/ui/components/reui/frame';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
+import { ReviewForm } from '@/components/account/review-form';
 import { ReviewPhotoUpload } from '@/components/account/review-photo-upload';
 import { ContentHero } from '@/components/content/content-hero';
 import { VisaStamp } from '@/components/passport/visa-stamp';
@@ -240,12 +242,20 @@ export default async function AccountBookingDetailPage({
             <h2 className="font-heading text-lg font-semibold">{sec.reviewHeading}</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">{sec.reviewBlurb}</p>
             <div className="mt-3">
-              {/* Mảnh 1 cụm review-ảnh (12/08): khối upload ảnh đứng trước;
-                  rating (ReviewForm cũ) sẽ ghép lại ở mảnh sau — lối làm
-                  từng-phần user chọn. Upload đang static-first (mô phỏng),
-                  mảnh backend nối Cloudinary thật. */}
+              {/* Mảnh 1+2 cụm review-ảnh (12/08) trong MỘT Frame stacked
+                  (user chỉ định đóng khung ngoài): panel ảnh + panel form
+                  composite dính liền thành một thẻ. Upload còn static-first
+                  (mô phỏng), mảnh backend nối Cloudinary + gắn ảnh vào
+                  submit sau. */}
               {slot === 'form' ? (
-                <ReviewPhotoUpload />
+                <Frame stacked className="w-full">
+                  <FramePanel>
+                    <ReviewPhotoUpload />
+                  </FramePanel>
+                  <FramePanel>
+                    <ReviewForm bookingCode={booking.code} />
+                  </FramePanel>
+                </Frame>
               ) : (
                 <p className="text-sm text-muted-foreground">
                   {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
