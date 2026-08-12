@@ -73,6 +73,32 @@ describe('ReviewComposer — cầu nối state ảnh → form', () => {
     await waitFor(() => expect(refresh).toHaveBeenCalled());
   });
 
+  it('upload thất bại → gỡ ảnh khỏi hàng chờ, hiện Alert errUpload, submit không nhận publicId nào', async () => {
+    upload.mockRejectedValue(new Error('Cloudinary upload failed (network)'));
+    const user = userEvent.setup();
+    const { container } = render(<ReviewComposer bookingCode={CODE} />);
+    const input = container.querySelector('input[type="file"]') as HTMLInputElement;
+
+    await user.upload(input, pngFile());
+
+    // Alert dùng đúng chuỗi errUpload từ @tourism/i18n (`${file.name}: ${errUpload}`).
+    expect(
+      await screen.findByText('trip.png: Upload failed. Please try again.'),
+    ).toBeInTheDocument();
+    // Ảnh lỗi bị gỡ khỏi hàng chờ preview — không còn <img> nào trong DOM.
+    expect(container.querySelector('img')).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('radio', { name: '5 stars' }));
+    await user.type(screen.getByLabelText(/your review/i), 'A trip without photos attached.');
+    await user.click(screen.getByRole('button', { name: /submit review/i }));
+
+    // Submit vẫn chạy được (nút không bị khoá vì busy) nhưng payload không
+    // mang publicId nào — ReviewForm chỉ gắn key `photos` khi mảng > 0 phần
+    // tử (review-form.tsx), nên hàng chờ rỗng nghĩa là key `photos` vắng mặt.
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(create.mock.calls[0]?.[0]).not.toHaveProperty('photos');
+  });
+
   it('còn ảnh đang upload → nút submit disabled cho tới khi xong', async () => {
     let resolveUpload: (publicId: string) => void = () => {};
     upload.mockReturnValueOnce(
