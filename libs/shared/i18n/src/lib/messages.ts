@@ -2143,6 +2143,9 @@ export const messages = {
     bodyPlaceholder: 'Tell other travellers about your experience…',
     /** Ràng buộc contract: body 10–2000 ký tự. Nói rõ con số thay vì "quá ngắn". */
     bodyTooShort: (n: number) => `Please write at least ${n} characters.`,
+    /** Bộ đếm ký tự góc phải textarea (góp ý user 12/08 — phơi trần 2000
+     *  của contract ra cho khách thấy thay vì chặn ngầm). */
+    bodyCounter: (n: number, max: number) => `${n}/${max}`,
     ratingRequired: 'Pick a rating from 1 to 5 stars.',
     submit: 'Submit review',
     submitting: 'Submitting…',

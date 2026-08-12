@@ -136,6 +136,9 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
               onChange={(event) => setTitle(event.target.value)}
               className="h-10 border-none text-base shadow-none focus-visible:ring-0"
             />
+            {/* `resize-y` mở lại tay kéo dọc (base của InputGroupTextarea khoá
+                resize-none) — khách viết dài kéo giãn ra xem lại được (góp ý
+                user 12/08); max-h chặn kéo lố làm vỡ khung. */}
             <InputGroupTextarea
               aria-label={t.bodyLabel}
               placeholder={t.bodyPlaceholder}
@@ -144,8 +147,21 @@ export function ReviewForm({ bookingCode }: { bookingCode: string }) {
               value={body}
               aria-invalid={touched && bodyTooShort}
               onChange={(event) => setBody(event.target.value)}
-              className="min-h-16 border-none text-sm shadow-none focus-visible:ring-0"
+              className="max-h-80 min-h-16 resize-y border-none text-sm shadow-none focus-visible:ring-0"
             />
+            {/* Bộ đếm phơi trần contract — vàng khi chạm 90%, đỏ khi kịch trần
+                (maxLength đã chặn gõ thêm, màu chỉ để giải thích vì sao). */}
+            <span
+              className={`self-end pr-1 pb-1 font-mono text-[11px] tabular-nums ${
+                body.length >= BODY_MAX
+                  ? 'text-destructive-emphasis'
+                  : body.length >= BODY_MAX * 0.9
+                    ? 'text-warning'
+                    : 'text-muted-foreground'
+              }`}
+            >
+              {t.bodyCounter(body.length, BODY_MAX)}
+            </span>
           </div>
 
           <InputGroupAddon align="inline-end" className="gap-2 border-none">
