@@ -59,7 +59,7 @@ Tailwind v4 + token `@tourism/tokens`, `react-markdown` + `remark-gfm`, Vitest.
 | File | Việc |
 | --- | --- |
 | `libs/shared/contract/src/schemas/reviews.ts` | Thêm `sort`/`rating`/`withPhotos` + `ReviewBreakdownSchema` |
-| `libs/shared/contract/src/contract.ts` | `reviews.byTour` đổi output |
+| `libs/shared/contract/src/contract.ts` | `reviews.listByTour` đổi output |
 | `apps/api/src/modules/reviews/reviews.service.ts` | Áp sort/filter + tính `breakdown` |
 | `libs/shared/i18n/src/lib/messages.ts` | Copy mới cho tab, modal, panel |
 | `apps/web/src/app/(site)/tours/[slug]/page.tsx` | Ghép ba khối mới, bỏ `OnThisPage` |
@@ -74,12 +74,12 @@ Tailwind v4 + token `@tourism/tokens`, `react-markdown` + `remark-gfm`, Vitest.
 
 **Files:**
 - Modify: `libs/shared/contract/src/schemas/reviews.ts`
-- Modify: `libs/shared/contract/src/contract.ts` (khối `reviews.byTour`)
-- Modify: `apps/api/src/modules/reviews/reviews.service.ts` (hàm `byTour`, quanh dòng 456)
+- Modify: `libs/shared/contract/src/contract.ts` (khối `reviews.listByTour`)
+- Modify: `apps/api/src/modules/reviews/reviews.service.ts` (hàm `listByTour`, quanh dòng 456)
 - Test: `apps/api/src/modules/reviews/reviews.int.spec.ts`
 
 **Interfaces:**
-- Produces: `ReviewSortSchema`, `ReviewBreakdownSchema`; `reviews.byTour` nhận thêm
+- Produces: `ReviewSortSchema`, `ReviewBreakdownSchema`; `reviews.listByTour` nhận thêm
   `sort?: 'newest'|'oldest'|'highest'|'lowest'`, `rating?: 1..5`, `withPhotos?: boolean`;
   trả thêm `breakdown: Record<'1'|'2'|'3'|'4'|'5', number>`.
 
@@ -89,7 +89,7 @@ Thêm vào `reviews.int.spec.ts` (dùng đúng helper seed sẵn có trong file)
 
 ```ts
 it('sort=highest xếp sao cao trước, tài khoản đã xoá VẪN nằm cuối', async () => {
-  const res = await client.reviews.byTour({ tourSlug, sort: 'highest', pageSize: 50 });
+  const res = await client.reviews.listByTour({ tourSlug, sort: 'highest', pageSize: 50 });
   const ratings = res.items.filter((r) => !r.authorDeleted).map((r) => r.rating);
   expect([...ratings].sort((a, b) => b - a)).toEqual(ratings);
   const deletedIdx = res.items.findIndex((r) => r.authorDeleted);
@@ -97,18 +97,18 @@ it('sort=highest xếp sao cao trước, tài khoản đã xoá VẪN nằm cu�
 });
 
 it('rating=5 chỉ trả review 5 sao', async () => {
-  const res = await client.reviews.byTour({ tourSlug, rating: 5, pageSize: 50 });
+  const res = await client.reviews.listByTour({ tourSlug, rating: 5, pageSize: 50 });
   expect(res.items.every((r) => r.rating === 5)).toBe(true);
 });
 
 it('withPhotos=true chỉ trả review có ảnh', async () => {
-  const res = await client.reviews.byTour({ tourSlug, withPhotos: true, pageSize: 50 });
+  const res = await client.reviews.listByTour({ tourSlug, withPhotos: true, pageSize: 50 });
   expect(res.items.every((r) => r.media.length > 0)).toBe(true);
 });
 
 it('breakdown tính trên tập CHƯA lọc theo sao', async () => {
-  const all = await client.reviews.byTour({ tourSlug, pageSize: 50 });
-  const filtered = await client.reviews.byTour({ tourSlug, rating: 5, pageSize: 50 });
+  const all = await client.reviews.listByTour({ tourSlug, pageSize: 50 });
+  const filtered = await client.reviews.listByTour({ tourSlug, rating: 5, pageSize: 50 });
   expect(filtered.breakdown).toEqual(all.breakdown);
   const sum = Object.values(all.breakdown).reduce((a, b) => a + b, 0);
   expect(sum).toBe(all.total);
@@ -145,7 +145,7 @@ export type ReviewBreakdown = z.output<typeof ReviewBreakdownSchema>;
 ```
 
 ```ts
-// libs/shared/contract/src/contract.ts — reviews.byTour
+// libs/shared/contract/src/contract.ts — reviews.listByTour
 .output(PagedSchema(PublicReviewSchema).extend({ breakdown: ReviewBreakdownSchema }))
 ```
 
@@ -196,7 +196,7 @@ Expected: PASS, 4 test mới xanh.
 
 ```bash
 git add libs/shared/contract/src apps/api/src/modules/reviews
-git commit -m "feat(contract): reviews.byTour nhận sort/rating/withPhotos và trả breakdown theo sao"
+git commit -m "feat(contract): reviews.listByTour nhận sort/rating/withPhotos và trả breakdown theo sao"
 ```
 
 ---

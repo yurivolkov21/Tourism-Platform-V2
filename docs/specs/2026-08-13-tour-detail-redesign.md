@@ -211,7 +211,7 @@ export const ReviewBreakdownSchema = z.object({
   1: z.int().nonnegative(), 2: z.int().nonnegative(), 3: z.int().nonnegative(),
   4: z.int().nonnegative(), 5: z.int().nonnegative(),
 });
-// contract.ts — reviews.byTour
+// contract.ts — reviews.listByTour
 .output(PagedSchema(PublicReviewSchema).extend({ breakdown: ReviewBreakdownSchema }))
 ```
 
