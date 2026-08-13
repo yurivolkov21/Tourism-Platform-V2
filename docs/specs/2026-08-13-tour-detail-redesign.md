@@ -335,8 +335,36 @@ Hai chỗ dựng xong rồi mới thấy thiếu dữ liệu, KHÔNG vá bằng 
    với thẻ thứ ba. Sửa ở tầng DỮ LIỆU (đổi fixture) chứ không cần cột mới —
    contract đã có đủ `kind` + `title`.
 
-## 6. Nghiệm thu
+## 6. Nghiệm thu — ĐÃ CHẠY 13/08
 
-Không khai xong bằng mắt. Chạy bộ so wireframe ⟷ trang thật trên **mọi phần tử
-của cả 5 tab và 2 modal**, và chỉ báo user khi bảng lệch về **0**. Kèm:
-`pnpm gate:int` xanh · build sinh đủ 74 trang tĩnh · 0 lỗi console.
+Không khai xong bằng mắt. Bộ so wireframe ⟷ trang thật chạy trên **38 phần tử
+của cả 5 tab và 2 modal, ở CẢ HAI chế độ màu**, cộng 28 phép kiểm hành vi.
+
+| Hạng mục | Kết quả |
+| --- | --- |
+| Bảng so hình học (38 phần tử × 2 chế độ) | **0 lệch** |
+| Kiểm hành vi (hash, 5 panel trong HTML tĩnh, 2 modal, xổ tháng, lọc review, FAQ) | **28/28** |
+| Lỗi console suốt phiên | **0** |
+| `pnpm gate:int` | xanh — **1518 unit + 180 integration** |
+| Build | **74/74** trang tĩnh |
+
+Ba quy ước của bộ so, ghi lại để lần sau đọc bảng không hiểu nhầm:
+
+1. **Không so chiều cao của khối chứa văn bản.** Nội dung thật dài khác nội dung
+   demo (thân policy 176 ký tự so với 79–103; review 5 bài so với 23), nên chiều
+   cao lệch ở đó là dữ liệu chứ không phải sai số. Chiều cao CHỈ so ở phần tử
+   kích thước cố định: ảnh lớn, dải tab, node timeline, thanh biểu đồ, ô icon.
+2. **Chuẩn hoá hai cặp giá trị đồng nghĩa**: `border-radius` ≥ 999px (wireframe
+   ghi `999px`, Tailwind `rounded-full` sinh `calc(infinity*1px)` = 3.35e7) và
+   `gap: normal` ↔ `gap: 0px` ở flex.
+3. **Không so hộp `.shell`.** Wireframe chia khung thành HAI lớp lồng nhau, app
+   dùng MỘT — hộp trung gian không tồn tại ở cả hai bên. Thứ phải khớp là bề
+   ngang nội dung, và nó khớp: **1056** ở cả hai (`.top`).
+
+### Một khác biệt CÒN LẠI, có chủ ý
+
+Đệm dọc của khung trang: wireframe **80** (2 lớp × 40), app **56** (`py-14`).
+Đệm ngang thì khớp (2 × 24 = 48 = `px-12`). Lý do không áp nốt con số dọc: trên
+wireframe, phía trên `.shell` là thanh chrome giả của khung demo, còn trên trang
+thật là dải hero — khoảng cách hero ⟷ gallery là quyết định của sản phẩm mà bản
+demo không phán được. Nếu muốn nhất quán theo đúng chữ thì đổi `py-14` → `py-20`.

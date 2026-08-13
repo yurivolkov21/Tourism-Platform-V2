@@ -106,7 +106,7 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
             // của thư viện vẫn thắng — cùng lớp lỗi với chiều cao của `TabsList`.
             // Không cần tự bật/tắt: thư viện đã lo bằng
             // `…data-active:after:opacity-100`.
-            className="relative h-[38px] flex-1 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground after:bg-primary data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none group-data-horizontal/tabs:after:bottom-[-1px]"
+            className="relative h-[38px] flex-1 gap-0 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground after:bg-primary data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none group-data-horizontal/tabs:after:bottom-[-1px]"
           >
             {t[key]}
           </TabsTrigger>

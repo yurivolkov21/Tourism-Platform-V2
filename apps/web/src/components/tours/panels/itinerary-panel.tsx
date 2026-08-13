@@ -156,7 +156,7 @@ export function ItineraryPanel({
                   {day.title}
                 </h3>
                 {date ? (
-                  <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-input px-[9px] font-mono text-[11px] leading-none">
+                  <span className="inline-flex h-[22px] items-center gap-1.5 rounded-full border border-input px-[9px] font-mono text-[11px] leading-none font-medium">
                     {formatDayBadge(date)}
                   </span>
                 ) : null}
