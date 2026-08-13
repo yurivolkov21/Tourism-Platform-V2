@@ -6,7 +6,6 @@ import { DepartureDialog } from '@/components/tours/departure-dialog';
 import {
   BookingRailConnected,
   DepartureSelectionProvider,
-  DepartureStripConnected,
 } from '@/components/tours/departure-selection';
 import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
 import { GoodToKnowPanel } from '@/components/tours/panels/good-to-know-panel';
@@ -19,7 +18,6 @@ import { TourMediaPanel } from '@/components/tours/tour-media-panel';
 import { TourTabs } from '@/components/tours/tour-tabs';
 import { fetchTourDetail, fetchTourReviews, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
-import { slugify } from '@/lib/slug';
 import { relatedTours } from '@/lib/tours';
 
 // Cùng cửa sổ revalidate với cụm blog (ADR-0016 §3, 300s) — một hằng số cho
@@ -141,52 +139,24 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
         <TourHero tour={tour} />
 
-        {/* `relative z-10` là BẮT BUỘC, không phải trang trí: lớp vân là phần tử
-            absolute, còn section này nếu để static thì theo thứ tự vẽ của CSS nó
-            nằm DƯỚI phần tử positioned cùng stacking context — tức vân sẽ phủ lên
-            chính các chip khởi hành. Hero không cần thêm vì nội dung nó đã có
-            `relative z-10` sẵn.
-            Dải phải ở trên nếp gấp: dữ liệu đợt khởi hành là thứ Nexora không có
-            (họ hardcode `departures: []`). */}
-        <section
-          aria-labelledby="departure-strip-heading"
-          className="relative z-10 w-full border-t border-hero-foreground/15 px-4 py-6 md:px-16 lg:px-24 xl:px-32"
-        >
-          <div className="dark contents">
-            <div className="mx-auto max-w-7xl">
-              {/* Nhãn trái, link xuống bảng đầy đủ phải — cùng hình dạng "tiêu đề
-                khu vực + điều khiển đuôi" mà listing chốt ở vòng 4. Không có nó
-                thì nửa phải của băng trống hoác đúng kiểu ba bản listing đầu. */}
-              <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
-                <p
-                  id="departure-strip-heading"
-                  className="font-mono text-xs tracking-widest text-muted-foreground uppercase"
-                >
-                  {t.departures.stripHeading}
-                </p>
-                {/* Chỉ hiện khi có đợt: link tới một bảng rỗng là link nói dối. */}
-                {tour.departures.length > 0 ? (
-                  <a
-                    href={`#${slugify(t.sections.departures)}`}
-                    className="text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
-                  >
-                    {t.departures.seeAll(tour.departures.length)}
-                  </a>
-                ) : null}
-              </div>
-              <DepartureStripConnected currency={tour.currency} />
-            </div>
-          </div>
-        </section>
+        {/* KHÔNG có dải khởi hành ở đây. Bản wireframe user duyệt không có nó, và
+            lý do đọc ra ngay trên màn hình: panel đặt chỗ ngay dưới đã có đúng
+            bốn ô ngày đó — giữ cả hai là in cùng một thông tin hai lần cách nhau
+            một màn cuộn. Spec §1 của mình ghi "giữ nguyên dải khởi hành" là ghi
+            sai so với bản đã duyệt; bản duyệt thắng. `DepartureStrip` vẫn còn
+            trong repo, chỉ là trang này không dùng. */}
       </div>
 
-      {/* Khung 1152 với đệm ngang 24 → nội dung ĐÚNG 1104px. Con số đó không
-          phải thẩm mỹ: lưới trên chia 1104 thành 621 | 40 | 443, cột phải GHIM
-          443px (không phải `1.4fr/1fr`) nên ảnh vuông ra 541 chẵn. Tỉ lệ fr chia
-          ra 620.656 | 443.328 và phần lẻ .656 truyền xuống cả trang, làm mọi
-          đường kẻ 1px bị khử răng cưa thành dày-mỏng xen kẽ (đo được ở bản demo:
-          `tabs` bắt đầu tại 911.656). Xem spec §2.1. */}
-      <div className="mx-auto w-full max-w-6xl px-6 py-14">
+      {/* Khung 1152, đệm ngang 48 → nội dung ĐÚNG 1056px.
+          ĐO TỪ WIREFRAME ĐÃ DUYỆT, không phải từ bản ReUI gốc: file wireframe có
+          hai `<div class="shell">` lồng nhau (mỗi cái `padding:40px 24px`) nên
+          đệm cộng dồn 24+24, và bản user duyệt render ở 1056 chứ không phải 1104
+          như spec §2.1 ghi. Bản đã duyệt thắng.
+          1056 chia tiếp ra 573 | 40 | 443 — cột phải vẫn GHIM 443px (không dùng
+          `1.4fr/1fr`, tỉ lệ đó cho số lẻ và làm mọi đường 1px lệch nửa pixel),
+          ảnh vuông ra 573−64−16 = 493 chẵn, và dải 5 tab ra (1056−4×24)/5 = 192
+          chẵn. Mọi con số đều nguyên. */}
+      <div className="mx-auto w-full max-w-6xl px-12 py-14">
         <TourMediaPanel tour={tour} />
 
         {/* MỘT instance duy nhất cho cả trang: cả ô "All N dates" ở panel đặt chỗ
@@ -194,7 +164,10 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             `openAllDates()` trong context. */}
         <DepartureDialog currency={tour.currency} />
 
-        <div className="mt-14">
+        {/* KHÔNG bọc thêm margin ở đây: `TourTabs` đã mang `mt-12` = đúng 48px
+            của `.tabs{margin-top:48px}` trong wireframe. Bọc thêm `mt-14` là
+            cộng thành 104px, dải tab tụt hẳn khỏi nhịp bản thiết kế. */}
+        <div>
           <TourTabs
             panels={{
               overview: <OverviewPanel tour={tour} />,
@@ -211,7 +184,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         </div>
       </div>
 
-      <section aria-labelledby="related-heading" className="mx-auto w-full max-w-6xl px-6 pb-24">
+      <section aria-labelledby="related-heading" className="mx-auto w-full max-w-6xl px-12 pb-24">
         <h2 id="related-heading" className="mb-8 font-heading text-2xl font-medium text-foreground">
           {t.sections.related}
         </h2>

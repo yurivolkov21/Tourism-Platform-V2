@@ -27,7 +27,11 @@ import { TourMediaPanel } from './tour-media-panel';
 // `TourMediaPanel` gọi `useRouter()` cho nút Reserve (role="button" thật, không
 // phải anchor đội lốt — xem doc comment trong component). Cùng khuôn mock với
 // `tour-media-panel.spec.tsx`.
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => '/tours/x',
+  useSearchParams: () => new URLSearchParams(),
+}));
 
 const DEPARTURE = {
   id: 'dep-1',

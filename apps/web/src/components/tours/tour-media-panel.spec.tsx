@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { DepartureSelectionProvider } from '@/components/tours/departure-selection';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
+import { GALLERY_THUMB_SLOTS } from '@/lib/tour-detail';
 import { TourMediaPanel } from './tour-media-panel';
 
 // Mock next/navigation — khuôn giống user-menu.spec.tsx: `Reserve` điều hướng
@@ -12,6 +13,9 @@ import { TourMediaPanel } from './tour-media-panel';
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push }),
+  // `WishlistProvider` (bọc nút Wishlist dưới Reserve) đọc thêm hai hook này.
+  usePathname: () => '/tours/ha-giang-loop-4d',
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 /**
@@ -134,26 +138,35 @@ describe('TourMediaPanel — gallery', () => {
     expect(screen.getByText('7 / 10')).toBeInTheDocument();
   });
 
-  it('không có ảnh thì KHÔNG render khung gallery rỗng', () => {
+  it('chưa có ảnh thì GIỮ nguyên khối gallery, lấp bằng placeholder', () => {
+    // Chính sách static-first của repo (xem `image-placeholder.tsx`): chưa tới
+    // bước tải ảnh thì dùng placeholder, KHÔNG bỏ khối đi. Bỏ khối là bố cục
+    // hai cột 621|40|443 của bản thiết kế đã duyệt biến mất và panel đặt chỗ
+    // trôi sang cột trái — trang đọc ra khác hẳn wireframe.
     const { container } = render(<TourMediaPanel tour={tourWith(0)} />, { wrapper });
-    expect(container.querySelector('[data-slot="tour-gallery"]')).toBeNull();
+    expect(container.querySelector('[data-slot="tour-gallery"]')).not.toBeNull();
+    expect(container.querySelectorAll('[data-slot="thumb-placeholder"]')).toHaveLength(
+      GALLERY_THUMB_SLOTS,
+    );
   });
 
-  it('không có ảnh thì lưới thu về MỘT cột, không chừa hố 443px', () => {
-    // Lưới `1fr 443px` với một con duy nhất đẩy panel vào cột TRÁI và bỏ trống
-    // 443px bên phải — trang đọc ra như đang thiếu ảnh chứ không phải như một
-    // trang không có ảnh. `MediaAsset` hiện rỗng trên DB dev nên đây là nhánh
-    // đang chạy thật, không phải nhánh giả định.
-    const { container } = render(<TourMediaPanel tour={tourWith(0)} />, { wrapper });
-    expect(container.querySelector('[data-media-layout]')).toHaveAttribute(
-      'data-media-layout',
-      'single',
-    );
-    const withPhotos = render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
-    expect(withPhotos.container.querySelector('[data-media-layout]')).toHaveAttribute(
-      'data-media-layout',
-      'split',
-    );
+  it('lưới LUÔN là hai cột, có ảnh hay chưa cũng vậy', () => {
+    for (const count of [0, 3, 10]) {
+      const { container } = render(<TourMediaPanel tour={tourWith(count)} />, { wrapper });
+      expect(container.querySelector('[data-media-layout]')).toHaveAttribute(
+        'data-media-layout',
+        'split',
+      );
+    }
+  });
+
+  it('chưa có ảnh thì KHÔNG có nút mở lightbox và KHÔNG bịa số ảnh', () => {
+    // Placeholder là chỗ trống có hình dạng, không phải ảnh. Gắn nút "Open
+    // gallery" hay nhãn "N photos" lên nó là hứa một thứ không tồn tại.
+    render(<TourMediaPanel tour={tourWith(0)} />, { wrapper });
+    expect(screen.queryByRole('button', { name: /photo/i })).toBeNull();
+    expect(screen.queryByRole('button', { name: /open gallery/i })).toBeNull();
+    expect(screen.queryByText(/\d+ photos?/)).toBeNull();
   });
 });
 

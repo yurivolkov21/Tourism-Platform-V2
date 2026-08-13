@@ -22,6 +22,7 @@ import {
   durationBucket,
   facetOptionCounts,
   filterTours,
+  formatChipDate,
   formatDate,
   formatDateRange,
   formatMoney,
@@ -446,5 +447,19 @@ describe('formatReviewDate', () => {
     // chuỗi đó bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày ở múi giờ âm.
     // Ở đây có múi giờ tường minh nên không có chỗ nào để diễn giải sai.
     expect(formatReviewDate('2026-01-01T23:30:00.000Z')).toBe('January 2026');
+  });
+});
+
+describe('formatChipDate — ngày trên ô chọn đợt của panel đặt chỗ', () => {
+  it('ngày + tháng viết tắt, KHÔNG in hoa và KHÔNG có năm', () => {
+    // Wireframe đã duyệt ghi "14 Sep". Khác `formatTicketDate` ("14 SEP", dùng
+    // cho vé ở /checkout/success) và khác `formatDate` ("14 Sep 2026").
+    expect(formatChipDate('2026-09-14')).toBe('14 Sep');
+    expect(formatChipDate('2026-12-07')).toBe('7 Dec');
+  });
+
+  it('tách chuỗi chứ không qua `new Date()` — date-only ở múi giờ âm lệch một ngày', () => {
+    expect(formatChipDate('2026-01-01')).toBe('1 Jan');
+    expect(formatChipDate('2026-12-31')).toBe('31 Dec');
   });
 });

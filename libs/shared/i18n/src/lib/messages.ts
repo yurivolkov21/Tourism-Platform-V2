@@ -1881,10 +1881,16 @@ export const messages = {
           `tour-media-panel.spec.tsx` đếm đúng 7 nút khớp /photo/i — trộn thêm
           một nhãn "photo" thứ 8 sẽ làm phép đếm đó sai mà không nói lên gì. */
       openGallery: 'Open gallery',
-      selectDeparture: 'Select departure',
+      /** Chữ D hoa — bám đúng bản wireframe đã duyệt ("Select Departure"). */
+      selectDeparture: 'Select Departure',
       allDates: (n: number) => `All ${n} dates`,
       seatsLeft: (n: number) => `${n} seat${n === 1 ? '' : 's'} left`,
       reserve: (n: number) => `Reserve — ${n} seat${n === 1 ? '' : 's'} left`,
+      wishlist: 'Wishlist',
+      /** Badge giảm giá cạnh giá: wireframe ghi "11% OFF", KHÔNG phải "−11%".
+          Con số do `discountPercent()` tính thật (làm tròn XUỐNG — không bao giờ
+          nói quá mức giảm). */
+      percentOff: (n: number) => `${n}% OFF`,
     },
 
     // ── Dải khởi hành + rail booking + bảng đợt ──

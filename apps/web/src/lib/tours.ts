@@ -295,6 +295,23 @@ export function formatDate(date: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+/**
+ * Ngày trên ô chọn đợt của panel đặt chỗ: `"14 Sep"` — ngày + tháng viết tắt,
+ * KHÔNG in hoa, KHÔNG năm. Đây là con chữ bản wireframe đã duyệt dùng.
+ *
+ * Ba biến thể ngày ngắn của repo cố tình khác nhau, đừng gộp: `formatChipDate`
+ * ("14 Sep") cho ô chọn đợt · `formatTicketDate` ("14 SEP") cho khoảnh khắc
+ * primary trên vé `/checkout/success` · `formatDate` ("14 Sep 2026") cho trigger
+ * DatePicker, nơi thiếu năm là mơ hồ thật sự.
+ *
+ * Cùng luật timezone: tách chuỗi `YYYY-MM-DD`, KHÔNG qua `new Date()` — chuỗi
+ * date-only bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày ở múi giờ âm.
+ */
+export function formatChipDate(date: string): string {
+  const [, m, d] = date.split('-').map(Number) as [number, number, number];
+  return `${d} ${MONTHS[m - 1]}`;
+}
+
 /** Ngày ngắn kiểu vé máy bay ("24 AUG") — ngày + tháng viết tắt HOA, KHÔNG
     năm. Dùng riêng cho khoảnh khắc primary trên vé (`/checkout/success`),
     khác `formatDate` (đủ năm, dùng cho trigger DatePicker). Cùng luật

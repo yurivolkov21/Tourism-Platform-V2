@@ -77,7 +77,11 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
           gạch chân của tab đang mở vẽ bằng `after` trên trigger. */}
       <TabsList
         variant="line"
-        className="h-10 w-full gap-6 rounded-none border-b border-border bg-transparent p-0"
+        // `group-data-horizontal/tabs:h-10` chứ không `h-10` trần: lớp gốc của
+        // TabsList khai chiều cao bằng CHÍNH biến thể đó (`…:h-8`), mà
+        // tailwind-merge không dedupe được hai lớp khác tiền tố biến thể — viết
+        // `h-10` trần thì 32px của thư viện vẫn thắng. Wireframe: `.tablist{height:40px}`.
+        className="w-full gap-6 rounded-none border-b border-border bg-transparent p-0 group-data-horizontal/tabs:h-10"
       >
         {TAB_ORDER.map((key) => (
           <TabsTrigger
