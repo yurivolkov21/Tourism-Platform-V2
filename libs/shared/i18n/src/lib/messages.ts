@@ -1656,6 +1656,15 @@ export const messages = {
   // năng tồn tại — luôn đối chiếu contract trước.
   toursPage: {
     breadcrumb: 'Tours',
+
+    // ── Tabs ──
+    tabs: {
+      overview: 'Overview',
+      itinerary: 'Itinerary',
+      departures: 'Departures',
+      reviews: 'Reviews',
+      goodToKnow: 'Good to know',
+    },
     title: 'Every journey we run',
     subtitle:
       'Filter by destination, length, price or pace to find the trip that fits you — every one of them small-group, and led by someone who lives there.',
@@ -1751,6 +1760,15 @@ export const messages = {
   tourDetail: {
     breadcrumb: 'Tours',
 
+    // ── Tabs ──
+    tabs: {
+      overview: 'Overview',
+      itinerary: 'Itinerary',
+      departures: 'Departures',
+      reviews: 'Reviews',
+      goodToKnow: 'Good to know',
+    },
+
     // ── Hero ──
     /** Nhãn đứng trước giá thấp nhất khi khách chưa chọn đợt: "from $189". */
     fromPrice: 'from',
@@ -1804,6 +1822,16 @@ export const messages = {
       emptyBody: 'This trip is new. Ask us anything about it and we will answer from experience.',
     },
 
+    // ── Reviews tab ──
+    reviewsTab: {
+      basedOn: (n: number) => `Based on ${n} verified traveller${n === 1 ? '' : 's'}`,
+      showAll: 'Show all reviews',
+      onlyFinished: 'Only travellers who finished this trip can leave a review.',
+      ordering: 'Newest first · reviews from deleted accounts appear last.',
+      deletedAccount: 'Deleted account',
+      verified: 'Verified traveller',
+    },
+
     // ── Gallery ảnh ──
     gallery: {
       /** Nhãn khu ảnh cho trình đọc màn hình. Không có tiêu đề nhìn thấy: khảm ảnh
@@ -1846,6 +1874,17 @@ export const messages = {
       related: 'You might also like',
     },
 
+    // ── Media panel ──
+    mediaPanel: {
+      photoCount: (n: number) => `${n} photo${n === 1 ? '' : 's'}`,
+      morePhotos: (n: number) => `+${n}`,
+      selectDeparture: 'Select departure',
+      allDates: (n: number) => `All ${n} dates`,
+      seatsLeft: (n: number) => `${n} seat${n === 1 ? '' : 's'} left`,
+      reserve: (n: number) => `Reserve — ${n} seat${n === 1 ? '' : 's'} left`,
+      soldOut: 'Sold out',
+    },
+
     // ── Dải khởi hành + rail booking + bảng đợt ──
     departures: {
       /** Dải chip ngay dưới hero — 4–6 đợt gần nhất. */
@@ -1876,6 +1915,19 @@ export const messages = {
       },
     },
 
+    // ── Departures tab ──
+    departuresTab: {
+      nextDeparture: 'Next departure',
+      datesOpen: 'Dates open',
+      priceRange: 'Price range',
+      seatsLeftTotal: 'Seats left',
+      availabilityByMonth: 'Availability by month',
+      blockLegend: 'Each block is one departure — filled means seats left, hollow means sold out.',
+      seeAllDates: 'See all dates',
+      lowSeason: 'low season',
+      peak: 'peak',
+    },
+
     booking: {
       /** `Reserve` điều hướng thật tới `/tours/[slug]/book` (trang đã sống —
           nợ static-first thời trang book chưa tồn tại đã trả, xem BookingRail). */
@@ -1896,6 +1948,12 @@ export const messages = {
       /** meetingPoint gắn vào Day 1: nó là thông tin của NGÀY ĐẦU, không phải
           của cả tour. */
       meetAt: (place: string) => `Meet at ${place}`,
+      stopsSummary: (day: number, stops: number, from: string, to: string) =>
+        `Day ${day} · ${stops} stop${stops === 1 ? '' : 's'} · ${from}–${to}`,
+      today: 'Today',
+      done: 'Done',
+      included: "What's included",
+      excluded: 'Not included',
     },
 
     // ── Included / Not included ──
@@ -1918,6 +1976,27 @@ export const messages = {
         BOOKING: 'Booking & payment',
         GENERAL: 'General',
       },
+    },
+
+    // ── Dialogs (modals) ──
+    dialogs: {
+      allDatesTitle: 'Choose a departure',
+      onlyOpen: 'Only show dates with seats left',
+      close: 'Close',
+      select: 'Select',
+      selected: 'Selected',
+      noMatch: 'No departures match this filter.',
+      allReviewsTitle: 'Reviews',
+      sortBy: 'Sort reviews by',
+      sortNewest: 'Newest first',
+      sortOldest: 'Oldest first',
+      sortHighest: 'Highest rated',
+      sortLowest: 'Lowest rated',
+      anyRating: 'Any rating',
+      starsOnly: (n: number) => `${n} star${n === 1 ? '' : 's'} only`,
+      withPhotos: 'With photos',
+      showingRange: (a: number, b: number, total: number) => `Showing ${a}–${b} of ${total}`,
+      noReviewsMatch: 'No reviews match these filters.',
     },
   },
   enquiryCta: {
