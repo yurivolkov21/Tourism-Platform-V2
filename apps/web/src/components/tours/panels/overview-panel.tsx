@@ -21,7 +21,14 @@ import type { TourDetailVM } from '@/lib/api/tours';
  *
  * Card chỉ render khi CÓ dữ liệu: `difficulty` nullable trong contract,
  * `suitableFor` có thể rỗng. Lưới `auto-fit` nên 3 hay 4 card đều cân hàng,
- * không chừa ô trống — ở bề ngang 1104 với 4 card ra đúng 264px mỗi card.
+ * không chừa ô trống.
+ *
+ * KHOẢNG CÁCH LÀ 24 (`gap-6`), KHÔNG PHẢI 16 — và đó là số học, không phải gu:
+ * bề ngang nội dung là 1104, nên 4 card cần `(1104 − 3g)/4` nguyên (g chia hết
+ * cho 4) còn 3 card cần `(1104 − 2g)/3` nguyên (g chia hết cho 3). Chỉ bội của
+ * 12 thoả cả hai. Với `gap-4` thì 3 card ra 357.328px và phần lẻ .328 đẩy mọi
+ * đường kẻ 1px bên dưới lệch nửa pixel — đo được ở bản dựng trước khi sửa. Cùng
+ * luật với việc ghim cột phải 443px thay vì `1.4fr` (spec §2.1).
  */
 function FactCard({
   icon,
@@ -63,7 +70,7 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
 
   return (
     <div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6">
         <FactCard
           icon={<ClockIcon aria-hidden="true" />}
           label={t.facts.duration}

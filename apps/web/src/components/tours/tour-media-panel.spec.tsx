@@ -138,6 +138,23 @@ describe('TourMediaPanel — gallery', () => {
     const { container } = render(<TourMediaPanel tour={tourWith(0)} />, { wrapper });
     expect(container.querySelector('[data-slot="tour-gallery"]')).toBeNull();
   });
+
+  it('không có ảnh thì lưới thu về MỘT cột, không chừa hố 443px', () => {
+    // Lưới `1fr 443px` với một con duy nhất đẩy panel vào cột TRÁI và bỏ trống
+    // 443px bên phải — trang đọc ra như đang thiếu ảnh chứ không phải như một
+    // trang không có ảnh. `MediaAsset` hiện rỗng trên DB dev nên đây là nhánh
+    // đang chạy thật, không phải nhánh giả định.
+    const { container } = render(<TourMediaPanel tour={tourWith(0)} />, { wrapper });
+    expect(container.querySelector('[data-media-layout]')).toHaveAttribute(
+      'data-media-layout',
+      'single',
+    );
+    const withPhotos = render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
+    expect(withPhotos.container.querySelector('[data-media-layout]')).toHaveAttribute(
+      'data-media-layout',
+      'split',
+    );
+  });
 });
 
 describe('TourMediaPanel — panel đặt chỗ', () => {

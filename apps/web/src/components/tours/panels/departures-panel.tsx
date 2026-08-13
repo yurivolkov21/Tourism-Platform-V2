@@ -29,11 +29,29 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
   );
 }
 
-/** Khối = một đợt. Đặc = còn chỗ, `--warning` = ≤3 ghế, rỗng = hết chỗ.
-    Rỗng dùng `--border` chứ không `--muted`: muted chỉ hơn nền 1.26:1 nên
-    thanh 6px bị khử răng cưa ăn mòn thành sợi mảnh (bài học ở biểu đồ review). */
+/** Khoảng cách 24 (`gap-6`) ở cả hai lưới card dưới đây là số học: bề ngang nội
+    dung 1104 chỉ chia CHẴN cho cả 3 lẫn 4 cột khi gap là bội của 12. `gap-4` cho
+    ra 357.328px ở bố cục 3 card và phần lẻ .328 làm mọi đường kẻ 1px bên dưới
+    lệch nửa pixel — xem chú thích dài ở `overview-panel.tsx`. */
+
+/**
+ * Khối = một đợt. Đặc = còn chỗ, `--warning` = ≤3 ghế, rỗng = hết chỗ.
+ *
+ * Ba lựa chọn token, mỗi cái đo được trên trang thật (canvas readback, so với
+ * nền trang ở CẢ hai chế độ):
+ *  - `primary-emphasis` chứ không `primary` cho "còn chỗ": primary chỉ đạt
+ *    2.9:1 ở chế độ tối, dưới ngưỡng 3:1 của WCAG 1.4.11. emphasis cho 5.55
+ *    (sáng) / 7.09 (tối).
+ *  - `border` chứ không `muted` cho "hết chỗ": muted chỉ hơn nền 1.2:1 nên hai
+ *    mép thanh 6px bị khử răng cưa ăn mòn, mắt đọc thành sợi mảnh (bài học ở
+ *    biểu đồ review).
+ *  - `warning` cho "≤3 ghế" GIỮ NGUYÊN dù chỉ đạt 1.9:1 ở chế độ sáng: đó là
+ *    token dành riêng cho nghĩa này và đang dùng ở booking-accordion/checkout,
+ *    đổi ở đây là lệch chuẩn cả app. Thông tin không phụ thuộc mình màu — số
+ *    ghế còn in bằng chữ ngay trên cùng hàng.
+ */
 const BLOCK_TONE: Record<ReturnType<typeof departureStatus>, string> = {
-  available: 'bg-primary',
+  available: 'bg-primary-emphasis',
   limited: 'bg-warning',
   'sold-out': 'bg-border',
 };
@@ -81,7 +99,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
 
   return (
     <div>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,200px),1fr))] gap-6">
         {next ? (
           <StatCard
             label={t.departuresTab.nextDeparture}
@@ -169,7 +187,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
       </div>
 
       {tour.policies.length > 0 ? (
-        <div className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-4">
+        <div className="mt-9 grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-6">
           {tour.policies.map((policy) => (
             <PolicyCard key={policy.kind} title={policy.title} body={policy.body} />
           ))}

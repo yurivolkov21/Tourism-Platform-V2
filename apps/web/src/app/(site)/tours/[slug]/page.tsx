@@ -1,27 +1,26 @@
 import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { OnThisPage } from '@/components/content/on-this-page';
 import { TopoPattern } from '@/components/topo-pattern';
+import { DepartureDialog } from '@/components/tours/departure-dialog';
 import {
   BookingRailConnected,
   DepartureSelectionProvider,
   DepartureStripConnected,
-  DeparturesTableConnected,
 } from '@/components/tours/departure-selection';
-import { GoodToKnow } from '@/components/tours/good-to-know';
-import { Inclusions } from '@/components/tours/inclusions';
-import { ItineraryTimeline } from '@/components/tours/itinerary-timeline';
+import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
+import { GoodToKnowPanel } from '@/components/tours/panels/good-to-know-panel';
+import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
+import { OverviewPanel } from '@/components/tours/panels/overview-panel';
+import { ReviewsPanel } from '@/components/tours/panels/reviews-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
-import { GoodFor, WhyThisTrip } from '@/components/tours/tour-facts';
-import { TourGallery } from '@/components/tours/tour-gallery';
 import { TourHero } from '@/components/tours/tour-hero';
-import { TourReviews } from '@/components/tours/tour-reviews';
-import { fetchTourDetail, fetchTourReviews, fetchTours, type TourDetailVM } from '@/lib/api/tours';
+import { TourMediaPanel } from '@/components/tours/tour-media-panel';
+import { TourTabs } from '@/components/tours/tour-tabs';
+import { fetchTourDetail, fetchTourReviews, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
 import { slugify } from '@/lib/slug';
-import { tocFromSections } from '@/lib/toc';
-import { relatedTours, routeChain } from '@/lib/tours';
+import { relatedTours } from '@/lib/tours';
 
 // Cùng cửa sổ revalidate với cụm blog (ADR-0016 §3, 300s) — một hằng số cho
 // mọi trang đọc catalog, đổi là đổi ở một chỗ.
@@ -92,57 +91,22 @@ export async function generateMetadata({
 }
 
 /**
- * Danh sách section CÓ MẶT trên trang này, theo đúng thứ tự render.
+ * TRANG NÀY KHÔNG CÒN MỤC LỤC (`OnThisPage`).
  *
- * Mục lục và các thẻ <section> dùng CHUNG mảng này nên chúng không thể lệch:
- * `tocFromSections` slugify chính chuỗi tiêu đề, và section gắn `id` bằng cùng
- * hàm `slugify`. Section điều kiện (tour không có highlights, không có
- * suitableFor) bị loại khỏi cả hai cùng lúc — rail trỏ vào mục không tồn tại là
- * lỗi im lặng khó thấy nhất của kiểu mục lục dựng tay.
+ * Dải năm tab thay vai mục lục: giữ cả hai là dựng hai bộ điều hướng cho cùng
+ * một tập nội dung, và bộ thứ hai trỏ vào các `<section id>` không còn tồn tại.
+ * `OnThisPage` vẫn sống ở `/blog` — không xoá component.
  *
- * "You might also like" KHÔNG nằm trong danh sách: nó là gợi ý cuối trang, không
- * phải nội dung của tour này.
+ * Anchor cũ (`#itinerary`, `#departures`, `#reviews`, `#good-to-know`) KHÔNG
+ * chết: `TourTabs` đọc hash lúc mount và nghe `hashchange`, nên link đã chia sẻ
+ * mở đúng tab tương ứng thay vì cuộn tới một section. Xem ADR-0022.
  */
-type SectionKey =
-  | 'why'
-  | 'goodFor'
-  | 'itinerary'
-  | 'included'
-  | 'departures'
-  | 'reviews'
-  | 'goodToKnow';
-
-function pageSections(tour: TourDetailVM): { key: SectionKey; heading: string }[] {
-  const s = messages.tourDetail.sections;
-  return [
-    tour.highlights.length > 0 ? { key: 'why' as const, heading: s.why } : null,
-    tour.suitableFor.length > 0 ? { key: 'goodFor' as const, heading: s.goodFor } : null,
-    { key: 'itinerary' as const, heading: s.itinerary },
-    { key: 'included' as const, heading: s.included },
-    { key: 'departures' as const, heading: s.departures },
-    // Reviews đứng NGAY SAU đợt khởi hành, trước "Good to know": uy tín xã hội
-    // thuộc gần chỗ ra quyết định (giá + ngày) hơn là sau phần điều khoản.
-    // Section này luôn có mặt kể cả khi chưa review nào — khác `why`/`goodFor`:
-    // trạng thái rỗng của nó là một lời mời hỏi, có giá trị riêng, không phải
-    // một khung trống.
-    { key: 'reviews' as const, heading: s.reviews },
-    tour.faqs.length > 0 || tour.policies.length > 0
-      ? { key: 'goodToKnow' as const, heading: s.goodToKnow }
-      : null,
-    // Khoá ổn định đi kèm tiêu đề: nội dung từng section chọn theo `key`, không
-    // so sánh chuỗi tiêu đề — sửa một chữ trong copy không được làm nội dung
-    // section biến mất.
-  ].filter((section) => section !== null);
-}
-
 export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const tour = await fetchTourDetail(slug);
   if (!tour) notFound();
 
   const t = messages.tourDetail;
-  const sections = pageSections(tour);
-  const toc = tocFromSections(sections.map(({ heading }) => ({ heading })));
 
   // Cùng slug với `relatedTours()` bên dưới nên tận dụng luôn — danh sách
   // ĐẦY ĐỦ (không phải trang hiện tại) vì gợi ý cuối trang cần xét mọi tour
@@ -216,105 +180,42 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         </section>
       </div>
 
-      {/* Khảm ảnh THAY băng 21:9 full-bleed trước đây: băng đó chiếm 617px ở màn
-          1440 mà không nói được gì ngoài "sẽ có ảnh ở đây". Khảm nằm trong
-          max-w-7xl như mọi nội dung khác — trang đã có hai băng tối liên tiếp
-          (hero + dải khởi hành), thêm băng thứ ba là quá nhiều.
-          Nhãn ô lớn là tên điểm đến chính, KHÔNG phải tên tour: tên tour đã là H1.
+      {/* Khung 1152 với đệm ngang 24 → nội dung ĐÚNG 1104px. Con số đó không
+          phải thẩm mỹ: lưới trên chia 1104 thành 621 | 40 | 443, cột phải GHIM
+          443px (không phải `1.4fr/1fr`) nên ảnh vuông ra 541 chẵn. Tỉ lệ fr chia
+          ra 620.656 | 443.328 và phần lẻ .656 truyền xuống cả trang, làm mọi
+          đường kẻ 1px bị khử răng cưa thành dày-mỏng xen kẽ (đo được ở bản demo:
+          `tabs` bắt đầu tại 911.656). Xem spec §2.1. */}
+      <div className="mx-auto w-full max-w-6xl px-6 py-14">
+        <TourMediaPanel tour={tour} />
 
-          `media={[]}` CỐ Ý, không phải lỗ hổng: `TourDetailSchema` (catalog,
-          P1) CHƯA có field media — ADR-0005 mới đặt nền cho posts/site-media,
-          "tour media" được ghi rõ là module SAU kế thừa hợp đồng đó, chưa làm.
-          `TourGallery` đã tự degrade sạch cho mảng rỗng (return null, không
-          khung/không nút) nên không cần sửa gì ở component — chỉ cần không
-          giả vờ có ảnh. Khi contract có `media`, đổi lại `tour.media` là đủ. */}
-      <TourGallery media={[]} primaryLabel={routeChain(tour.destinations)[0]?.name} />
+        {/* MỘT instance duy nhất cho cả trang: cả ô "All N dates" ở panel đặt chỗ
+            lẫn nút "See all dates" ở tab Departures đều mở modal này qua
+            `openAllDates()` trong context. */}
+        <DepartureDialog currency={tour.currency} />
 
-      <div className="w-full px-4 py-14 md:px-16 md:py-16 lg:px-24 xl:px-32">
-        {/* Ba cột ở xl (rail · main · booking), hai cột ở lg (rail ẩn), một cột ở
-            dưới lg. Rail để ĐẦU trong DOM nhưng `hidden` dưới xl: display:none
-            loại nó khỏi luồng grid, nên ở lg thì main tự thành cột 1 và booking
-            thành cột 2 — không cần đảo order.
-            Bar dính đáy cho mobile là việc của Task 9. */}
-        <div className="mx-auto flex max-w-7xl flex-col gap-12 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-12 xl:grid-cols-[12rem_minmax(0,1fr)_20rem] xl:gap-16">
-          <aside className="hidden xl:block">
-            <div className="xl:sticky xl:top-28">
-              <OnThisPage items={toc} />
-            </div>
-          </aside>
-
-          <main className="min-w-0">
-            <div className="divide-y divide-border">
-              {sections.map(({ key, heading }) => (
-                <section
-                  key={key}
-                  id={slugify(heading)}
-                  aria-labelledby={`${slugify(heading)}-heading`}
-                  className="scroll-mt-28 py-10 first:pt-0"
-                >
-                  <h2
-                    id={`${slugify(heading)}-heading`}
-                    className="font-heading text-2xl leading-snug font-medium text-balance text-foreground"
-                  >
-                    {heading}
-                  </h2>
-
-                  {/* Nội dung chọn theo `key`, không theo chuỗi tiêu đề. Section
-                      nào không có dữ liệu thì đã bị loại khỏi `sections` từ đầu,
-                      nên ở đây không có nhánh rỗng nào. */}
-                  {key === 'why' ? <WhyThisTrip highlights={tour.highlights} /> : null}
-                  {key === 'goodFor' ? <GoodFor suitableFor={tour.suitableFor} /> : null}
-                  {key === 'itinerary' ? (
-                    <ItineraryTimeline days={tour.itinerary} meetingPoint={tour.meetingPoint} />
-                  ) : null}
-                  {key === 'included' ? (
-                    <Inclusions included={tour.included} excluded={tour.excluded} />
-                  ) : null}
-                  {key === 'departures' ? (
-                    <div className="mt-6">
-                      <DeparturesTableConnected
-                        currency={tour.currency}
-                        durationDays={tour.durationDays}
-                      />
-                    </div>
-                  ) : null}
-                  {key === 'reviews' ? (
-                    <TourReviews reviews={reviewsPage.items} ratingAvg={tour.ratingAvg} />
-                  ) : null}
-                  {key === 'goodToKnow' ? (
-                    <GoodToKnow faqs={tour.faqs} policies={tour.policies} />
-                  ) : null}
-                </section>
-              ))}
-            </div>
-          </main>
-
-          <aside className="hidden lg:block">
-            <BookingRailConnected
-              slug={tour.slug}
-              variant="rail"
-              currency={tour.currency}
-              basePrice={tour.basePrice}
-              durationDays={tour.durationDays}
-              maxGroupSize={tour.maxGroupSize}
-            />
-          </aside>
+        <div className="mt-14">
+          <TourTabs
+            panels={{
+              overview: <OverviewPanel tour={tour} />,
+              // `live={false}` cho tới khi trang biết session: chế độ live chỉ
+              // được bật khi khách CÓ booking PAID ở đúng đợt này, mà trang này
+              // là SSG công khai nên không tra được. `today` vẫn truyền vào cho
+              // đủ chữ ký — ở chế độ xem trước nó không được đọc tới.
+              itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
+              departures: <DeparturesPanel tour={tour} />,
+              reviews: <ReviewsPanel tour={tour} page={reviewsPage} />,
+              goodToKnow: <GoodToKnowPanel tour={tour} />,
+            }}
+          />
         </div>
       </div>
 
-      <section
-        aria-labelledby="related-heading"
-        className="w-full px-4 pb-24 md:px-16 lg:px-24 xl:px-32"
-      >
-        <div className="mx-auto max-w-7xl">
-          <h2
-            id="related-heading"
-            className="mb-8 font-heading text-2xl font-medium text-foreground"
-          >
-            {t.sections.related}
-          </h2>
-          <RelatedTours tours={relatedTours(tours, tour.slug, 3)} />
-        </div>
+      <section aria-labelledby="related-heading" className="mx-auto w-full max-w-6xl px-6 pb-24">
+        <h2 id="related-heading" className="mb-8 font-heading text-2xl font-medium text-foreground">
+          {t.sections.related}
+        </h2>
+        <RelatedTours tours={relatedTours(tours, tour.slug, 3)} />
       </section>
 
       {/* Bar đáy dính chỉ có dưới lg (điều kiện nằm trong component). Đệm bên

@@ -78,11 +78,16 @@ export function ReviewsPanel({ tour, page }: { tour: TourDetailVM; page: TourRev
                   rỗng thành sợi mảnh trong khi thanh đã tô đọc đủ 6px — đó là
                   gốc của cảm giác "các đường to nhỏ khác nhau".
                   `display:block` trên phần tô là BẮT BUỘC: span inline không
-                  nhận width/height. */}
+                  nhận width/height.
+                  Phần tô dùng `--primary-emphasis` chứ không `--primary`: đo
+                  trên trang thật, primary/border chỉ đạt 1.77:1 ở chế độ TỐI
+                  (sáng 3.0) — dưới ngưỡng 3:1 của WCAG 1.4.11 cho đối tượng đồ
+                  hoạ mang thông tin. primary-emphasis cho 3.0 (sáng) và 4.32
+                  (tối). */}
               <span className="block h-1.5 overflow-hidden rounded-full bg-border">
                 <span
                   data-testid={`rating-bar-${row.star}`}
-                  className="block h-full rounded-full bg-primary"
+                  className="block h-full rounded-full bg-primary-emphasis"
                   style={{ width: `${row.percent}%` }}
                 />
               </span>

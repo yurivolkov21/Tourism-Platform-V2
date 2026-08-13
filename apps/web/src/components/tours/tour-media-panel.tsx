@@ -51,7 +51,14 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
   const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
 
   return (
-    <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_443px]">
+    // Không có ảnh thì KHÔNG giữ lưới hai cột: một con duy nhất trong
+    // `1fr 443px` rơi vào cột TRÁI và để trống 443px bên phải — trang đọc ra như
+    // đang hỏng chứ không phải như một tour chưa có ảnh. Nhánh này đang chạy
+    // thật (bảng `MediaAsset` còn rỗng trên DB dev), không phải phòng xa.
+    <div
+      data-media-layout={lead ? 'split' : 'single'}
+      className={lead ? 'grid gap-10 lg:grid-cols-[minmax(0,1fr)_443px]' : 'grid max-w-2xl gap-10'}
+    >
       {lead ? (
         <div data-slot="tour-gallery" className="flex items-start gap-4">
           <ul className="flex w-16 shrink-0 flex-col gap-2">

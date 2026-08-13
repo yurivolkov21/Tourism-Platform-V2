@@ -35,7 +35,9 @@ export function GoodToKnowPanel({ tour }: { tour: TourDetailVM }) {
   return (
     <div>
       {tour.policies.length > 0 ? (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-4">
+        // gap-6 (24) chứ không gap-4: 1104 chỉ chia chẵn cho 3 cột khi gap là
+        // bội của 12 — xem chú thích dài ở `overview-panel.tsx`.
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-6">
           {tour.policies.map((policy) => {
             const kindLabel = t.policyKinds[policy.kind];
             // Fixture thật đặt `title` bằng chính tên nhóm ("Cancellation"), và
