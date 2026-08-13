@@ -25,6 +25,11 @@ interface DepartureSelection {
   selectedId: string | undefined;
   select: (id: string) => void;
   departures: DepartureVM[];
+  /** Mã tiền tệ của TOUR (không phải của đợt — `DepartureVM` không có field
+      này). `DepartureDialog` (Task 5) có chữ ký RỖNG PROP, chỉ đọc context, nên
+      đây là kênh DUY NHẤT để nó format giá — cùng luật "không hardcode 'USD'"
+      đã ghi ở `destinations/[region]/page.tsx`. */
+  currency: string;
   /** Trạng thái modal "All dates" (Task 5) — sống Ở ĐÂY, không phải trong
       component gọi mở nó: cả `TourMediaPanel` (Task 4) lẫn tab Departures
       (Task 9) đều cần mở CÙNG MỘT modal, mà trang chỉ render một instance. */
@@ -48,9 +53,11 @@ export function useDepartureSelection(): DepartureSelection {
 
 export function DepartureSelectionProvider({
   departures,
+  currency,
   children,
 }: {
   departures: DepartureVM[];
+  currency: string;
   children: ReactNode;
 }) {
   // Khởi tạo bằng đợt CÒN CHỖ đầu tiên, không phải phần tử [0]: đợt đầu có thể
@@ -66,11 +73,12 @@ export function DepartureSelectionProvider({
       selectedId,
       select: setSelectedId,
       departures,
+      currency,
       allDatesOpen,
       openAllDates: () => setAllDatesOpen(true),
       closeAllDates: () => setAllDatesOpen(false),
     }),
-    [selectedId, departures, allDatesOpen],
+    [selectedId, departures, currency, allDatesOpen],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
