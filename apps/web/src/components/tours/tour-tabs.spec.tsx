@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { act, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -65,6 +65,23 @@ describe('TourTabs', () => {
     render(<TourTabs panels={panels} />);
     await userEvent.click(screen.getByRole('tab', { name: messages.tourDetail.tabs.reviews }));
     expect(window.location.hash).toBe('#reviews');
+  });
+
+  it('link trong trang trỏ tới hash khác thì tab đổi theo', () => {
+    // Thẻ policy ở panel đặt chỗ và link trong card dữ kiện đều là <a href="#...">.
+    // Không nghe `hashchange` thì URL đổi mà tab đứng yên — bấm xong không thấy
+    // gì xảy ra.
+    render(<TourTabs panels={panels} />);
+    // `act` là bắt buộc: sự kiện `hashchange` bắn ngoài React nên setState của
+    // listener không được flush trước khi assert nếu không bọc.
+    act(() => {
+      window.location.hash = '#good-to-know';
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+    expect(screen.getByRole('tab', { name: messages.tourDetail.tabs.goodToKnow })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   it('ghi hash bằng replaceState — không đẻ thêm mục lịch sử để nút Back phải bấm 5 lần', async () => {

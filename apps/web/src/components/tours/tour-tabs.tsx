@@ -51,8 +51,17 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
   // phía server (RSC bọc client island), nơi `window` không tồn tại. Hash lạ
   // rơi về tab đầu — không để trang trống vì một anchor gõ sai.
   useEffect(() => {
-    const fromHash = tabFromHash(window.location.hash);
-    if (fromHash) setValue(fromHash);
+    function syncFromHash() {
+      const fromHash = tabFromHash(window.location.hash);
+      if (fromHash) setValue(fromHash);
+    }
+    syncFromHash();
+    // Nghe `hashchange` chứ không chỉ đọc một lần lúc mount: các link trong
+    // trang trỏ `#itinerary`, `#good-to-know` (thẻ policy ở panel đặt chỗ, link
+    // trong card dữ kiện) phải mở được đúng tab. Không có listener này thì URL
+    // đổi mà tab đứng yên — người dùng bấm rồi thấy không có gì xảy ra.
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
   }, []);
 
   function onValueChange(next: unknown) {
