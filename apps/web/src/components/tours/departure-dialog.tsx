@@ -119,7 +119,10 @@ export function DepartureDialog({
               <div key={group.month}>
                 {/* Nhãn tháng DÍNH khi cuộn — danh sách dài thì người đọc luôn
                     biết mình đang ở tháng nào. */}
-                <p className="sticky top-0 bg-background pt-4 pb-2 font-mono text-[11px] leading-[14px] tracking-[0.12em] text-muted-foreground uppercase">
+                {/* Nền phải TRÙNG mặt của dialog (`bg-popover`, xem `dialog.tsx`), không
+                    phải `bg-background`: nhãn dính mà khác nền là hiện thành một
+                    dải xám kéo ngang — chỗ user chỉ ra khi so hai ảnh. */}
+                <p className="sticky top-0 bg-popover pt-4 pb-2 font-mono text-[11px] leading-[14px] tracking-[0.12em] text-muted-foreground uppercase">
                   {monthLabel(group.month)}
                 </p>
                 {/* Hàng đợt cao 62 (đệm 24 + viền 2 + ngày 20 + 2 + meta 14).
@@ -146,8 +149,15 @@ export function DepartureDialog({
                       )}
                     >
                       <span>
-                        <span className="block text-sm leading-[20px] font-medium tabular-nums">
-                          {t.dateRange(formatDialogDate(d.startDate), formatDialogDate(d.endDate))}
+                        {/* HAI DÒNG, chủ động: "Mon, 14 Sep →" / "Thu, 17 Sep".
+                            Bản duyệt tách dòng như vậy và nó đọc rõ hơn hẳn một
+                            dòng dài. (Ở wireframe hiệu ứng này đến từ việc lớp
+                            `.dates` bị trùng tên với lưới ô ngày ở panel nên ăn
+                            nhầm `display:grid` — ở đây dựng thẳng bằng grid một
+                            cột, không nhờ vào chuyện rò CSS.) */}
+                        <span className="grid text-sm leading-[20px] font-medium tabular-nums">
+                          <span>{formatDialogDate(d.startDate)} →</span>
+                          <span>{formatDialogDate(d.endDate)}</span>
                         </span>
                         <span className="mt-0.5 flex items-center gap-2 text-xs leading-[14px] text-muted-foreground">
                           <i

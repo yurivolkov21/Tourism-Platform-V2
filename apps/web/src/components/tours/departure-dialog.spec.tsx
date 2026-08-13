@@ -76,7 +76,8 @@ describe('DepartureDialog', () => {
     // Khoảng ngày xuất hiện HAI lần — ở hàng và ở chân modal (chân nhắc lại đợt
     // đang chọn, đúng như wireframe) — nên phải khoanh vùng thay vì getByText.
     const row = screen.getByRole('button', { name: /Mon, 14 Sep →/ });
-    expect(row).toHaveTextContent('Mon, 14 Sep → Thu, 17 Sep');
+    expect(row).toHaveTextContent('Mon, 14 Sep →');
+    expect(row).toHaveTextContent('Thu, 17 Sep');
     expect(row).toHaveTextContent('6 of 10 seats left · 4 days');
   });
 
@@ -131,7 +132,9 @@ describe('DepartureDialog', () => {
 
   it('dòng phụ nói TÊN TOUR, không phải nhãn breadcrumb', async () => {
     await open();
-    expect(screen.getByText('Hà Giang Loop · 4 days · max 10 guests')).toBeInTheDocument();
+    expect(
+      screen.getByText('Hà Giang Loop · 4 days · 3 nights · max 10 guests'),
+    ).toBeInTheDocument();
   });
 
   it('chân modal nhắc lại đợt đang chọn kèm giá', async () => {

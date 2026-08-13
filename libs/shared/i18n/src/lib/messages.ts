@@ -1982,8 +1982,17 @@ export const messages = {
       allDatesTitle: 'Choose a departure',
       /** Dòng phụ dưới tiêu đề modal "All dates" — nói lại danh tính tour và ba
           con số cố định của nó, để khách không phải nhớ mình đang ở tour nào. */
-      allDatesSubtitle: (tourTitle: string, days: number, maxGroupSize: number) =>
-        `${tourTitle} · ${days} ${days === 1 ? 'day' : 'days'} · max ${maxGroupSize} guests`,
+      allDatesSubtitle: (tourTitle: string, days: number, maxGroupSize: number) => {
+        // "N nights" chỉ ghép khi tour dài hơn một ngày — tour trong ngày mà ghi
+        // "1 day · 0 nights" là nói một thứ vô nghĩa. Wireframe dùng chữ "riders"
+        // (tour xe máy); ở đây là "guests" vì chuỗi này chạy cho MỌI tour.
+        const nights = days - 1;
+        const length =
+          nights > 0
+            ? `${days} days · ${nights} ${nights === 1 ? 'night' : 'nights'}`
+            : `${days} ${days === 1 ? 'day' : 'days'}`;
+        return `${tourTitle} · ${length} · max ${maxGroupSize} guests`;
+      },
       onlyOpen: 'Only show dates with seats left',
       /** Một hàng đợt: khoảng ngày · ghế còn / sức chứa · thời lượng. */
       dateRange: (start: string, end: string) => `${start} → ${end}`,
