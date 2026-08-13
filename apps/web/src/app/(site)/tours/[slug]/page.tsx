@@ -8,6 +8,7 @@ import {
 } from '@/components/tours/departure-selection';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
+import { TourMediaPanel } from '@/components/tours/tour-media-panel';
 import { fetchTourDetail, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
 import { relatedTours } from '@/lib/tours';
@@ -156,7 +157,9 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           Khung 1152 + đệm ngang 48 → nội dung ĐÚNG 1056px, và `--radius:1rem`
           là base bo góc của wireframe (site dùng 0.375rem). Hai con số này đã đo
           khớp bản duyệt nên giữ lại làm khung cho phần dựng mới. */}
-      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]" />
+      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]">
+        <TourMediaPanel tour={tour} />
+      </div>
 
       <section
         aria-labelledby="related-heading"
