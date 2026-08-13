@@ -1,0 +1,109 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Đóng khung bảng Departures</title><style>@import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap');.tk {
+    --background:oklch(0.977 0.003 174.5); --foreground:oklch(0.275 0.021 196);
+    --card:oklch(0.996 0.002 174);
+    --primary:oklch(0.494 0.067 184.3); --primary-foreground:oklch(0.974 0.007 174.4);
+    --primary-emphasis:oklch(0.494 0.067 184.3);
+    --muted:oklch(0.914 0.01 174.3); --muted-foreground:oklch(0.473 0.022 179.5);
+    --accent-foreground:oklch(0.411 0.053 184.5);
+    --destructive:oklch(0.516 0.136 27.3);
+    --border:oklch(0.781 0.015 180.6); --input:oklch(0.64 0.015 180.6);
+    --success:oklch(0.62 0.17 145); --warning:oklch(0.78 0.15 80);
+    --paper:oklch(0.965 0.008 174); --ink:oklch(0.42 0.06 184);
+    --rating:oklch(0.64 0.13 73.3); --rating-muted:oklch(0.865 0.015 175.7);
+    --price:oklch(0.275 0.021 196); --price-compare:oklch(0.473 0.022 179.5);
+    --radius-sm:0.6rem; --radius-md:0.8rem; --radius-lg:1rem;
+    --font-sans:'Archivo',ui-sans-serif,system-ui,sans-serif;
+    --font-heading:'Literata',ui-serif,Georgia,serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+*{box-sizing:border-box}
+body{margin:0;padding:40px 24px 90px;background:var(--background);color:var(--foreground);font:400 14px/23px var(--font-sans)}
+.wrap{max-width:1056px;margin:0 auto}
+h1{font:500 26px/34px var(--font-heading);margin:0 0 6px}
+.lead{color:var(--muted-foreground);font-size:14px;margin:0 0 30px;max-width:78ch}
+h2{font:500 19px/26px var(--font-heading);margin:52px 0 4px}
+.why{color:var(--muted-foreground);font-size:13px;line-height:21px;margin:0 0 18px;max-width:80ch}
+.why b{color:var(--foreground);font-weight:500}
+.eyeb{font-family:var(--font-mono);font-size:11px;line-height:16px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted-foreground)}
+.sub{color:var(--muted-foreground);font-size:13px;margin-top:4px}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}
+.btn-sm{height:32px;padding:0 14px;border-radius:var(--radius-sm);font:500 13px/1 var(--font-sans);
+  border:1px solid var(--border);background:var(--card);color:var(--foreground);cursor:pointer}
+.btn-sm.primary{background:var(--primary);color:var(--primary-foreground);border-color:var(--primary)}
+.btn-sm[disabled]{color:var(--muted-foreground);opacity:.55;cursor:default}
+.link{border:0;background:none;padding:0;font:500 13px/20px var(--font-sans);color:var(--primary-emphasis);cursor:pointer}
+.link:hover{text-decoration:underline}
+.segs{display:inline-flex;gap:4px}
+.segs i{display:block;width:12px;height:16px;border-radius:6px;border:1px solid;background:var(--muted);border-color:var(--muted)}
+.segs.has i.on{background:var(--primary);border-color:var(--primary)}
+.segs.low i.on{background:var(--warning);border-color:var(--warning)}
+.tl-badge{display:inline-flex;align-items:center;gap:6px;height:22px;padding:0 9px;border-radius:999px;
+  font:500 11px/1 var(--font-sans);border:1px solid var(--input);color:var(--foreground);white-space:nowrap}
+.tl-badge.ok{background:color-mix(in oklab,var(--success) 14%,transparent);border-color:color-mix(in oklab,var(--success) 50%,transparent);color:var(--success)}
+.tl-badge.warn{background:color-mix(in oklab,var(--warning) 18%,transparent);border-color:color-mix(in oklab,var(--warning) 60%,transparent);color:var(--accent-foreground)}
+.tl-badge.sold{background:var(--muted);border-color:var(--border);color:var(--muted-foreground)}
+
+/* ═══ BẢNG — dùng chung cho cả ba kiểu khung ═══ */
+table{width:100%;border-collapse:collapse;table-layout:fixed;--row-pad:16px}
+col.w-chev{width:40px} col.w-date{width:236px} col.w-stat{width:124px} col.w-price{width:128px} col.w-act{width:120px}
+thead th{font-family:var(--font-mono);font-size:10px;line-height:16px;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--muted-foreground);font-weight:400;text-align:left;padding:12px 12px 12px 0;border-bottom:1px solid var(--border)}
+thead th:first-child{padding-left:var(--row-pad)}
+thead th:last-child{padding-right:var(--row-pad)}
+thead th.r{text-align:right;padding-right:12px}
+tbody.mgrp+tbody.mgrp{border-top:1px solid var(--border)}
+.mrow{cursor:pointer}
+.mrow:hover td{background:color-mix(in oklab,var(--muted) 40%,transparent)}
+.mrow td{padding:14px 12px 14px 0;vertical-align:middle}
+.mrow td:first-child{padding-left:var(--row-pad)}
+.mrow td:last-child{padding-right:var(--row-pad)}
+.c-chev{color:var(--muted-foreground)}
+.chev svg{width:16px;height:16px;display:block;transition:transform .18s}
+.mgrp.open .chev svg{transform:rotate(180deg)}
+.c-mo b{display:block;font:500 14px/20px var(--font-sans)}
+.c-mo em{display:block;font-style:normal;font-size:12px;line-height:16px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.c-seats{font-size:13px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.c-price{text-align:right;font-variant-numeric:tabular-nums}
+.c-price b{font:500 14px/20px var(--font-sans)}
+.dsub,.dmore{display:none}
+.mgrp.open .dsub,.mgrp.open .dmore{display:table-row}
+.dsub td{padding:11px 12px 11px 0;vertical-align:middle;border-top:1px solid color-mix(in oklab,var(--border) 55%,transparent)}
+.dsub td:first-child{padding-left:var(--row-pad)}
+.dsub td:last-child{padding-right:var(--row-pad)}
+.dsub:hover td{background:color-mix(in oklab,var(--muted) 28%,transparent)}
+.dsub.on td{background:color-mix(in oklab,var(--primary) 7%,transparent)}
+.d-date b{display:block;font:500 14px/20px var(--font-sans);font-variant-numeric:tabular-nums}
+.d-date b span{color:var(--muted-foreground)}
+.dsub.sold .d-date b{color:var(--muted-foreground);text-decoration:line-through}
+.d-date em,.d-seat em{display:block;font-style:normal;font-size:12px;line-height:16px;color:var(--muted-foreground);font-variant-numeric:tabular-nums}
+.d-seat em{margin-top:5px}
+.d-price{text-align:right;font-variant-numeric:tabular-nums}
+.d-price b{font:500 14px/20px var(--font-sans)}
+.d-price s{margin-left:6px;font-size:12px;color:var(--price-compare)}
+.d-price .save{display:block;font-style:normal;font:500 11px/16px var(--font-sans);color:var(--success)}
+.d-act{text-align:right}
+.dmore td{padding:8px 0 14px}
+.dmore td:first-child{padding-left:var(--row-pad)}
+
+/* ═══ KHUNG ═══ */
+/* G1 — khung trơn. `overflow:hidden` để vệt hover và nền hàng bị cắt theo
+   bán kính, nếu không góc sẽ lòi ra một mẩu vuông. */
+.fr{border:1px solid var(--border);border-radius:var(--radius-md);background:var(--card);overflow:hidden}
+.fr table{--row-pad:20px}
+
+/* G2 — thêm nền cho hàng tiêu đề */
+.fr.hb thead th{background:color-mix(in oklab,var(--muted) 45%,transparent)}
+
+/* G3 — hàng con LÕM xuống nền paper, tách hẳn khỏi hàng tháng */
+.fr.rec .dsub td{background:color-mix(in oklab,var(--muted) 26%,transparent)}
+.fr.rec .dsub:hover td{background:color-mix(in oklab,var(--muted) 45%,transparent)}
+.fr.rec .dsub.on td{background:color-mix(in oklab,var(--primary) 9%,transparent)}
+.fr.rec .dmore td{background:color-mix(in oklab,var(--muted) 26%,transparent)}
+.fr.rec thead th{background:color-mix(in oklab,var(--muted) 45%,transparent)}
+</style></head><body class="tk"><div class="wrap">
+<h1>Tab Departures — phương án đã duyệt 13/08</h1>
+<p class="lead">Bảng nhóm theo tháng, mũi xổ ở cột đầu, khung bao ngoài, hàng đợt lõm một tầng.
+Tháng October là ca minh hoạ 12 đợt — dữ liệu thật hiện 1–2 đợt/tháng. Bấm một dòng tháng để xổ.</p>
+<div class="srow"><div><div class="eyeb">Availability by month</div>
+  <p class="sub">Open a month to pick a date.</p></div>
+  <button class="btn-sm">See all dates →</button></div><div class="fr g3 rec"><table><colgroup><col class="w-chev"><col class="w-date"><col><col class="w-stat"><col class="w-price"><col class="w-act"></colgroup><thead><tr><th></th><th>Month / date</th><th>Seats</th><th>Status</th><th class="r">Price</th><th></th></tr></thead><tbody class="mgrp open"><tr class="mrow" tabindex="0" role="button" aria-expanded="true"><td class="c-chev"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></td><td class="c-mo"><b>August&nbsp;2026</b><em>1 departure · 20 Aug</em></td><td class="c-seats">2 of 10 seats left</td><td class="c-stat"><span class="tl-badge warn">Almost full</span></td><td class="c-price"><b>$329</b></td><td class="c-act"></td></tr><tr class="dsub on"><td class="c-chev"></td><td class="d-date"><b>Thu 20 Aug <span>→</span> Sun 23 Aug</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs low"><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>2 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge warn">Almost full</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr></tbody><tbody class="mgrp"><tr class="mrow" tabindex="0" role="button" aria-expanded="false"><td class="c-chev"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></td><td class="c-mo"><b>September&nbsp;2026</b><em>1 departure · 24 Sep</em></td><td class="c-seats">10 of 10 seats left</td><td class="c-stat"></td><td class="c-price"><b>$329</b></td><td class="c-act"></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Thu 24 Sep <span>→</span> Sun 27 Sep</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><em>10 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge ok">Open</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr></tbody><tbody class="mgrp"><tr class="mrow" tabindex="0" role="button" aria-expanded="false"><td class="c-chev"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></td><td class="c-mo"><b>November&nbsp;2026</b><em>1 departure · 5 Nov</em></td><td class="c-seats">7 of 10 seats left</td><td class="c-stat"></td><td class="c-price"><b>$299</b></td><td class="c-act"></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Thu 05 Nov <span>→</span> Sun 08 Nov</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>7 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge ok">Open</span></td><td class="d-price"><b>$299</b><s>$329</s><em class="save">Save $30</em></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr></tbody><tbody class="mgrp"><tr class="mrow" tabindex="0" role="button" aria-expanded="false"><td class="c-chev"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></td><td class="c-mo"><b>December&nbsp;2026</b><em>1 departure · 17 Dec</em></td><td class="c-seats">10 of 10 seats left</td><td class="c-stat"></td><td class="c-price"><b>$329</b></td><td class="c-act"></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Thu 17 Dec <span>→</span> Sun 20 Dec</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><em>10 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge ok">Open</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr></tbody><tbody class="mgrp"><tr class="mrow" tabindex="0" role="button" aria-expanded="false"><td class="c-chev"><span class="chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></span></td><td class="c-mo"><b>October&nbsp;2026</b><em>12 departures · 1–29 Oct</em></td><td class="c-seats">61 of 120 seats left</td><td class="c-stat"><span class="tl-badge warn">3 sold out</span></td><td class="c-price"><b>$299–$349</b></td><td class="c-act"></td></tr><tr class="dsub sold"><td class="c-chev"></td><td class="d-date"><b>Thu 01 Oct <span>→</span> Sun 04 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs no"><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>No seats left</em></td><td class="d-stat"><span class="tl-badge sold">Sold out</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm" disabled>Sold out</button></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Sat 03 Oct <span>→</span> Tue 06 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>4 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge">Filling up</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr><tr class="dsub sold"><td class="c-chev"></td><td class="d-date"><b>Mon 05 Oct <span>→</span> Thu 08 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs no"><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>No seats left</em></td><td class="d-stat"><span class="tl-badge sold">Sold out</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm" disabled>Sold out</button></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Thu 08 Oct <span>→</span> Sun 11 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>6 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge ok">Open</span></td><td class="d-price"><b>$299</b><s>$329</s><em class="save">Save $30</em></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Sat 10 Oct <span>→</span> Tue 13 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs has"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="off"></i></span><em>9 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge ok">Open</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr><tr class="dsub"><td class="c-chev"></td><td class="d-date"><b>Mon 12 Oct <span>→</span> Thu 15 Oct</b><em>4 days, 3 nights · easyrider</em></td><td class="d-seat"><span class="segs low"><i class="on"></i><i class="on"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i><i class="off"></i></span><em>2 of 10 seats left</em></td><td class="d-stat"><span class="tl-badge warn">Almost full</span></td><td class="d-price"><b>$329</b></td><td class="d-act"><button class="btn-sm primary">Select</button></td></tr><tr class="dmore"><td></td><td colspan="5"><button class="link">See all 12 October dates →</button></td></tr></tbody></table></div></div><script>document.querySelectorAll(".mrow").forEach((r)=>{function t(){var g=r.closest("tbody");var on=g.classList.toggle("open");r.setAttribute("aria-expanded",on?"true":"false");}r.addEventListener("click",t);r.addEventListener("keydown",(e)=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();t();}});});</script></body></html>

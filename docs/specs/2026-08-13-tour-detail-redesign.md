@@ -142,6 +142,62 @@ Khác nhau đúng hai chỗ:
 | Một hàng | 38, pad `16px 0 8px` | 245, pad `18px 0` |
 | Chân | đợt đang chọn ⟷ nút Close | "Showing a–b of N" ⟷ Prev · `1 / 4` · Next |
 
+### 2.6 Tab Departures — CỐ Ý KHÁC BẢN DUYỆT
+
+Đây là chỗ DUY NHẤT của đợt trùng tu không dựng y wireframe, và lý do là kết quả
+thử người dùng chứ không phải ý thích: bản duyệt vẽ mỗi tháng thành một dải khối
+ngang (`.mseats i`), nhóm của user thử mà không đọc ra khối đó là gì.
+
+**Nguyên nhân đo được.** Mỗi khối đáng lẽ là MỘT ĐỢT, nhưng CSS để `flex:1` nên
+khối tự giãn kín cột — bề rộng không mang thông tin gì. Fixture thật là 3–6 đợt
+mỗi tour, **nhiều nhất 2 đợt trong một tháng** (đếm trên
+`apps/api/prisma/fixtures/catalog/tours-*.ts`), nên hầu hết dòng ra MỘT thanh đặc
+kín chiều ngang, trông hệt thanh tiến độ 100%. Nó hỏng ở CẢ HAI đầu: 1 đợt ra
+thanh đầy, 30 đợt (tour chạy tuyến hằng ngày) ra 30 lát 21px không đọc nổi. Việc
+bản duyệt phải kèm một dòng chú thích mới hiểu chính là bằng chứng hình vẽ hỏng.
+
+**Luật thay thế: mọi thứ trên dòng cha phải có chi phí O(1)** — không được dài ra
+theo số đợt.
+
+| Thành phần | Chi phí | Ở đâu |
+| --- | --- | --- |
+| Số tổng hợp (dates open · seats left · price range) | O(1) | dòng tháng |
+| Thanh ghế chia đốt | O(`maxGroupSize`) = 10 | dòng đợt |
+| Ô ngày / dải khối | O(N) — **loại** | không dùng |
+
+Bản duyệt của phương án thay thế:
+[`docs/design/mockups/tour-detail-departures.src.html`](../design/mockups/tour-detail-departures.src.html).
+
+| Thành phần | Số đo |
+| --- | --- |
+| `.dep-stats` | 4 cột đều, gap 16 → 252px mỗi ô (giữ nguyên bản duyệt) |
+| Khung bảng | 1056 rộng, radius **12.8** (`--radius-md`), border 1, nền `--card`, **`overflow:hidden`** |
+| Cột | `40 · auto · 200 · 124 · 128 · 120` (phần dư dồn vào cột NGÀY) |
+| Nhịp thụt hai đầu | `--row-pad: 20px` — mũi xổ và nút Select cách viền khung 20 |
+| Hàng tháng | pad dọc 14, hover `bg-muted/40` phủ TRỌN bề ngang |
+| Hàng đợt | pad dọc 10, nền `bg-muted/25` (lõm hơn hàng cha một tầng), viền trên `border/55` |
+| Hàng đợt đang chọn | nền `bg-primary/10`, nút đổi sang `outline` + chữ "Selected" |
+| Đốt ghế | **12×16px**, gap 4, radius 6, border 1 — port ReUI `stats-13`, đo tận DOM |
+| Huy hiệu | cao 22, radius 999, pad ngang 9, chữ 11 w500 — dùng lại `.tl-badge` của tab Itinerary |
+| Trần dòng xổ | `DEPARTURE_ROWS_PER_MONTH = 6`, phần dư sang modal "All dates" |
+
+Ba quyết định đi kèm, mỗi cái vá một lỗi đã đo được:
+
+1. **Đảo cực thanh ghế.** ReUI `stats-13` là card quản trị: tô đầy = đã dùng hết
+   ("67% assigned"). Bê nguyên cực đó ra trang bán hàng thì đợt chưa ai đặt hiện
+   thanh trắng trơn — đọc ra như tour ế hoặc như widget hỏng. Ở đây tô đầy =
+   **ghế CÒN cho khách**.
+2. **Huy hiệu tháng lấy trạng thái GẮT NHẤT và im lặng khi không có gì đáng nói**
+   (`monthNotice`). Bản đầu gắn "All open" cho tháng 8 trong khi đợt duy nhất của
+   nó còn 2 chỗ — dòng cha nói sai về chính con nó.
+3. **`overflow:hidden` trên khung là bắt buộc.** Nền hàng và vệt hover là hình
+   chữ nhật đặc; không cắt theo bán kính thì bốn góc lòi ra bốn mẩu vuông — cùng
+   lỗi "hai cái tai" đã dính ở modal All dates.
+
+Không port `DataGrid` của ReUI: repo chưa có `@tanstack/react-table`, và bảng này
+cần đúng MỘT tính năng của nó (hàng xổ được) cho 4–6 dòng trên trang SSG. Cơ chế
+giữ nguyên — mỗi tháng một `<tbody>`, hàng đợt nằm cùng `<tbody>` đó.
+
 ## 3. Hành vi
 
 Ràng buộc kiến trúc giữ nguyên theo

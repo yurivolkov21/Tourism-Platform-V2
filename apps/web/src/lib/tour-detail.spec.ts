@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  defaultOpenMonth,
   departureMonths,
   galleryThumbs,
   itineraryDayDate,
   itineraryDayState,
+  monthDateSpan,
   monthLabel,
+  monthNotice,
   monthSeason,
   parseItineraryStops,
   ratingHistogram,
@@ -156,5 +159,90 @@ describe('monthSeason', () => {
 
   it('thấp mùa thắng khi tháng có cả hai đầu lệch: giá vào rẻ là thứ khách quyết định theo', () => {
     expect(monthSeason(309, 369, 329)).toBe('low');
+  });
+});
+
+describe('monthNotice', () => {
+  const dep = (seatsLeft: number) => ({ seatsLeft });
+
+  it('im lặng khi cả tháng còn rộng chỗ — huy hiệu hiện ở MỌI tháng là huy hiệu vô nghĩa', () => {
+    expect(monthNotice([dep(10), dep(7)])).toBeNull();
+  });
+
+  it('lấy trạng thái GẮT NHẤT trong tháng, không phải trạng thái trung bình', () => {
+    // Tháng có một đợt còn 2 chỗ và một đợt còn 10: nói "còn chỗ" là nói thiếu.
+    expect(monthNotice([dep(2), dep(10)])).toEqual({ kind: 'limited' });
+  });
+
+  it('đếm số đợt đã hết chỗ khi tháng còn đợt bán được', () => {
+    expect(monthNotice([dep(0), dep(4), dep(0)])).toEqual({ kind: 'some-sold-out', count: 2 });
+  });
+
+  it('hết sạch cả tháng thì nói hết sạch, không phải "2 sold out"', () => {
+    expect(monthNotice([dep(0), dep(0)])).toEqual({ kind: 'sold-out' });
+  });
+
+  it('hết chỗ thắng sắp hết: một đợt 0 và một đợt 2 vẫn đọc là "1 sold out"', () => {
+    expect(monthNotice([dep(0), dep(2)])).toEqual({ kind: 'some-sold-out', count: 1 });
+  });
+
+  it('tháng rỗng không bao giờ tới đây, nhưng không được ném lỗi', () => {
+    expect(monthNotice([])).toBeNull();
+  });
+});
+
+describe('monthDateSpan', () => {
+  it('một đợt thì in đúng ngày đó, KHÔNG in "20–20 Aug"', () => {
+    expect(monthDateSpan([{ startDate: '2026-08-20' }])).toBe('20 Aug');
+  });
+
+  it('nhiều đợt thì in ngày đầu–ngày cuối, tháng viết một lần', () => {
+    expect(
+      monthDateSpan([
+        { startDate: '2026-10-01' },
+        { startDate: '2026-10-12' },
+        { startDate: '2026-10-29' },
+      ]),
+    ).toBe('1–29 Oct');
+  });
+
+  it('lấy MIN và MAX chứ không lấy phần tử đầu/cuối — mảng chưa chắc đã sắp', () => {
+    expect(monthDateSpan([{ startDate: '2026-10-29' }, { startDate: '2026-10-03' }])).toBe(
+      '3–29 Oct',
+    );
+  });
+
+  it('hai đợt trùng ngày thì gộp lại thành một ngày', () => {
+    expect(monthDateSpan([{ startDate: '2026-10-08' }, { startDate: '2026-10-08' }])).toBe('8 Oct');
+  });
+});
+
+describe('defaultOpenMonth', () => {
+  const months = [
+    { month: '2026-08', items: [{ id: 'a', seatsLeft: 0 }] },
+    { month: '2026-09', items: [{ id: 'b', seatsLeft: 6 }] },
+    { month: '2026-11', items: [{ id: 'c', seatsLeft: 7 }] },
+  ];
+
+  it('mở tháng chứa đợt đang chọn — bảng và panel đặt chỗ phải nói cùng một thứ', () => {
+    expect(defaultOpenMonth(months, 'c')).toBe('2026-11');
+  });
+
+  it('chưa chọn gì thì mở tháng đầu tiên CÒN CHỖ, không phải tháng đầu danh sách', () => {
+    // Mở sẵn một tháng đã bán hết là dẫn khách vào ngõ cụt ngay dòng đầu.
+    expect(defaultOpenMonth(months, undefined)).toBe('2026-09');
+  });
+
+  it('id không khớp đợt nào thì lùi về tháng đầu tiên còn chỗ', () => {
+    expect(defaultOpenMonth(months, 'khong-ton-tai')).toBe('2026-09');
+  });
+
+  it('hết chỗ toàn bộ thì vẫn mở tháng đầu — bảng trống trơn tệ hơn bảng hết chỗ', () => {
+    const soldOut = [{ month: '2026-08', items: [{ id: 'a', seatsLeft: 0 }] }];
+    expect(defaultOpenMonth(soldOut, undefined)).toBe('2026-08');
+  });
+
+  it('không có tháng nào thì trả undefined', () => {
+    expect(defaultOpenMonth([], undefined)).toBeUndefined();
   });
 });

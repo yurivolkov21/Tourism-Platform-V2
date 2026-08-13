@@ -7,6 +7,7 @@ import {
   BookingRailConnected,
   DepartureSelectionProvider,
 } from '@/components/tours/departure-selection';
+import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
 import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
 import { OverviewPanel } from '@/components/tours/panels/overview-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
@@ -186,7 +187,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             // công khai nên không tra được. `today` vẫn truyền cho đủ chữ ký —
             // ở chế độ xem trước nó không được đọc tới.
             itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
-            departures: <PanelPlaceholder name="Departures" />,
+            departures: <DeparturesPanel tour={tour} />,
             reviews: <PanelPlaceholder name="Reviews" />,
             goodToKnow: <PanelPlaceholder name="Good to know" />,
           }}

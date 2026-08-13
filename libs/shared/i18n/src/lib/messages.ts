@@ -1926,7 +1926,12 @@ export const messages = {
       priceRange: 'Price range',
       seatsLeftTotal: 'Seats left',
       availabilityByMonth: 'Availability by month',
-      blockLegend: 'Each block is one departure — filled means seats left, hollow means sold out.',
+      /** Thay cho câu chú thích cũ ("Each block is one departure — filled means
+          seats left…"). Bản duyệt vẽ mỗi đợt thành một khối ngang; nhóm người
+          dùng thử KHÔNG đọc ra khối đó là gì, và việc phải có một dòng chú
+          thích mới hiểu chính là bằng chứng hình vẽ hỏng. Bảng thay nó không
+          cần chú thích — nó chỉ cần nói bấm vào đâu. */
+      openMonthHint: 'Open a month to pick a date.',
       seeAllDates: 'See all dates',
       lowSeason: 'low season',
       peak: 'peak',
@@ -1940,6 +1945,52 @@ export const messages = {
       seatsLeftSub: 'across every open date',
       monthDepartures: (n: number) => `${n} ${n === 1 ? 'departure' : 'departures'}`,
       monthSeatsLeft: (n: number) => `${n} ${n === 1 ? 'seat' : 'seats'} left`,
+
+      // ── Bảng tháng ──
+      /** Tiêu đề cột. Cột đầu (mũi xổ) và cột cuối (nút Select) không có nhãn:
+          biểu tượng tự nói, và nhãn ở đó chỉ làm hàng tiêu đề nặng thêm. */
+      colMonthDate: 'Month / date',
+      colSeats: 'Seats',
+      colStatus: 'Status',
+      colPrice: 'Price',
+      /** Dòng phụ của hàng tháng: "12 departures · 1–29 Oct". Dải ngày do
+          `monthDateSpan` dựng — nó là số liệu O(1), không dài ra theo số đợt. */
+      monthMeta: (departures: string, span: string) => `${departures} · ${span}`,
+      /** Ghế cấp tháng: sức chứa = số đợt × `maxGroupSize`, vì
+          `TourDepartureSchema` không có cột sức chứa riêng. */
+      monthSeatsOf: (left: number, capacity: number) => `${left} of ${capacity} seats left`,
+      /** Mở/đóng một tháng — nhãn cho trình đọc màn hình, nút chỉ có mũi tên. */
+      toggleMonth: (month: string) => `Show departures in ${month}`,
+
+      // ── Huy hiệu ──
+      /** Bốn nhãn ghế trên hàng đợt, suy từ `seatsLeft` qua `departureStatus`
+          + `maxGroupSize`. Contract KHÔNG có `departure.status`. */
+      statusOpen: 'Open',
+      statusFilling: 'Filling up',
+      statusAlmostFull: 'Almost full',
+      statusSoldOut: 'Sold out',
+      /** Huy hiệu cấp tháng — chỉ hiện khi CÓ chuyện đáng nói (xem
+          `monthNotice`). Tháng nào cũng có huy hiệu thì huy hiệu không nói gì. */
+      noticeSomeSoldOut: (n: number) => `${n} sold out`,
+
+      // ── Hàng đợt ──
+      /** Thời lượng lặp lại ở mỗi hàng vì hàng đợt phải đọc độc lập được —
+          khách cuộn tới giữa bảng không nhớ tour dài mấy ngày. */
+      departureMeta: (days: number) => {
+        const nights = days - 1;
+        return nights > 0
+          ? `${days} days, ${nights} ${nights === 1 ? 'night' : 'nights'}`
+          : `${days} ${days === 1 ? 'day' : 'days'}`;
+      },
+      seatsOfCapacity: (left: number, capacity: number) => `${left} of ${capacity} seats left`,
+      noSeatsLeft: 'No seats left',
+      /** Chỉ hiện khi `compareAtPrice` khác null — đây là chỗ DUY NHẤT trên
+          trang nói được "rẻ hơn thường lệ" ở mức từng ngày. */
+      save: (amount: string) => `Save ${amount}`,
+      select: 'Select',
+      selected: 'Selected',
+      /** Phần dư sau `DEPARTURE_ROWS_PER_MONTH` dòng nhường cho modal. */
+      seeAllMonthDates: (n: number, month: string) => `See all ${n} ${month} dates`,
       /** Tour chưa mở đợt nào: nói thẳng và mở một lối đi tiếp, không để tab
           trống trơn. Khác câu ở `booking.box.noDepartures` vì chỗ này không
           đứng cạnh form hỏi nào. */

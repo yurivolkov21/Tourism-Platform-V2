@@ -1,3 +1,5 @@
+import { departureStatus } from './tours';
+
 /** Trần thumb: 7×64 + 6×8 = 496 ≤ 541 (cạnh ảnh vuông). Ô thứ 8 thành 568 > 541. */
 export const GALLERY_THUMB_SLOTS = 7;
 /** Số ô ngày ở panel; phần còn lại đi qua modal "All dates". */
@@ -69,6 +71,94 @@ export function departureMonths<
     bucket.maxPrice = Math.max(bucket.maxPrice, price);
   }
   return out;
+}
+
+/**
+ * Số dòng đợt hiện ra khi xổ một tháng; phần dư nhường cho modal "All dates".
+ *
+ * Vì sao phải chặn: bảng nhóm theo tháng nên một tour chạy tuyến hằng ngày có
+ * thể có 30 đợt trong một tháng. Xổ hết ra là ba card chính sách bị đẩy khỏi
+ * màn hình và tab Departures biến thành một danh sách vô tận — trong khi modal
+ * "All dates" (đã dựng ở R2) sinh ra đúng để chứa danh sách dài.
+ */
+export const DEPARTURE_ROWS_PER_MONTH = 6;
+
+export type MonthNotice =
+  | { kind: 'sold-out' }
+  | { kind: 'some-sold-out'; count: number }
+  | { kind: 'limited' }
+  | null;
+
+/**
+ * Huy hiệu cấp tháng — lấy trạng thái GẮT NHẤT trong tháng, và im lặng khi
+ * không có gì đáng nói.
+ *
+ * Hai luật đắt giá ở đây, cả hai đều là lỗi đã đo được trên wireframe:
+ *
+ * 1. Không lấy trạng thái gộp. Tháng 8 có đúng một đợt còn 2 chỗ mà gắn nhãn
+ *    "All open" là **nói sai** — dòng cha hứa rộng rãi trong khi dòng con duy
+ *    nhất của nó đang "Almost full".
+ * 2. Trả `null` khi mọi đợt đều rộng chỗ. Bốn viên huy hiệu xanh giống hệt
+ *    nhau xếp dọc không truyền tin gì, chỉ làm nhiễu cột.
+ */
+export function monthNotice(items: readonly { seatsLeft: number }[]): MonthNotice {
+  if (items.length === 0) return null;
+  const soldOut = items.filter((d) => d.seatsLeft <= 0).length;
+  if (soldOut === items.length) return { kind: 'sold-out' };
+  if (soldOut > 0) return { kind: 'some-sold-out', count: soldOut };
+  // Ngưỡng "sắp hết" đi qua `departureStatus` để bảng và ô ngày dùng chung
+  // đúng một con số — đổi ngưỡng ở đó là đổi cả hai nơi.
+  const fewest = Math.min(...items.map((d) => d.seatsLeft));
+  return departureStatus(fewest) === 'limited' ? { kind: 'limited' } : null;
+}
+
+/**
+ * Dải ngày của một tháng cho dòng cha: `"20 Aug"` hoặc `"1–29 Oct"`.
+ *
+ * Lấy MIN/MAX chứ không lấy phần tử đầu/cuối mảng: API trả theo `startDate asc`
+ * nhưng hàm này cũng được gọi từ test và từ dữ liệu đã lọc, nên không dựa vào
+ * thứ tự đầu vào. Cùng luật timezone với `formatDateRange`: tách chuỗi
+ * `YYYY-MM-DD`, KHÔNG qua `new Date()`.
+ */
+export function monthDateSpan(items: readonly { startDate: string }[]): string {
+  const days = items.map((d) => Number(d.startDate.slice(8, 10)));
+  const [, m] = (items[0]?.startDate ?? '').split('-').map(Number) as [number, number];
+  const month = SPAN_MONTHS[m - 1] ?? '';
+  const lo = Math.min(...days);
+  const hi = Math.max(...days);
+  return lo === hi ? `${lo} ${month}` : `${lo}–${hi} ${month}`;
+}
+
+const SPAN_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+/**
+ * Tháng mở sẵn khi vào tab: tháng chứa đợt đang chọn ở panel đặt chỗ.
+ *
+ * Nếu bảng mở một tháng khác với đợt panel đang chọn thì hai chỗ trên cùng một
+ * màn hình đang nói hai chuyện. Chưa chọn gì (mọi đợt đều hết chỗ nên provider
+ * để `undefined`) thì lùi về tháng đầu tiên CÒN CHỖ — mở sẵn một tháng đã bán
+ * hết là dẫn khách vào ngõ cụt ngay dòng đầu.
+ */
+export function defaultOpenMonth(
+  months: readonly { month: string; items: readonly { id: string; seatsLeft: number }[] }[],
+  selectedId: string | undefined,
+): string | undefined {
+  const picked = months.find((m) => m.items.some((d) => d.id === selectedId));
+  if (picked) return picked.month;
+  return (months.find((m) => m.items.some((d) => d.seatsLeft > 0)) ?? months[0])?.month;
 }
 
 export function ratingHistogram(breakdown: Record<string, number>) {
