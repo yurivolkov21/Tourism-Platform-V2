@@ -32,7 +32,7 @@ const DEPARTURES: DepartureVM[] = [
     endDate: '2026-09-17',
     seatsLeft: 6,
     effectivePrice: '329.00',
-    compareAtPrice: null,
+    compareAtPrice: '369.00',
   },
   {
     id: 'd2',
@@ -171,6 +171,32 @@ describe('TourMediaPanel — gallery', () => {
 });
 
 describe('TourMediaPanel — panel đặt chỗ', () => {
+  it('giá đi theo ĐỢT ĐANG CHỌN, không đứng yên ở basePrice', async () => {
+    // Mỗi đợt có `effectivePrice` riêng (`priceOverride ?? basePrice`) — đó là
+    // giá khách thật sự trả. Panel treo ở `tour.basePrice` thì chọn đợt cao mùa
+    // xong giá vẫn hiện giá gốc, và con số cạnh nút Reserve nói sai tiền.
+    // `BookingRail` đã đúng từ đầu (`departure.effectivePrice`); panel phải
+    // giống nó.
+    const user = userEvent.setup();
+    render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
+    expect(screen.getByText('$329')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: /12 Oct/ }));
+    expect(screen.getByText('$349')).toBeInTheDocument();
+    expect(screen.queryByText('$329')).toBeNull();
+  });
+
+  it('badge giảm giá tính theo compareAtPrice của CHÍNH đợt đó', async () => {
+    const user = userEvent.setup();
+    render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
+    // đợt d1: 329 so với 369 → giảm 10%
+    expect(screen.getByText('10% OFF')).toBeInTheDocument();
+
+    // đợt d3: 349 không có giá gạch → KHÔNG có badge nào
+    await user.click(screen.getByRole('button', { name: /12 Oct/ }));
+    expect(screen.queryByText(/% OFF/)).toBeNull();
+  });
+
   it('nút Reserve nói đúng số ghế của đợt đang chọn', () => {
     render(<TourMediaPanel tour={tourWith(3)} />, { wrapper });
     expect(screen.getByRole('button', { name: /Reserve — 6 seats left/ })).toBeInTheDocument();

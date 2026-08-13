@@ -156,7 +156,15 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           `1.4fr/1fr`, tỉ lệ đó cho số lẻ và làm mọi đường 1px lệch nửa pixel),
           ảnh vuông ra 573−64−16 = 493 chẵn, và dải 5 tab ra (1056−4×24)/5 = 192
           chẵn. Mọi con số đều nguyên. */}
-      <div className="mx-auto w-full max-w-6xl px-12 py-14">
+      {/* `--radius: 1rem` ĐÈ TẠI ĐÂY, không sửa token toàn site.
+          Wireframe dùng ĐÚNG thang bậc của dự án (`radiusScale` sm .6 · md .8 ·
+          lg 1) nhưng base là 1rem, còn token site là 0.375rem — nên bo góc bản
+          duyệt là 9.6/12.8 trong khi trang ra 3.6/4.8. `tokens.css` sinh mọi bậc
+          bằng `calc(var(--radius) * …)` nên đổi base ở một chỗ là cả cây con
+          khớp, và `rounded-sm`/`rounded-md` vẫn là utility token — không hardcode
+          px. Đè cục bộ thay vì đổi token gốc: 0.375rem là bo góc của cả site,
+          đổi nó là đổi mọi trang. */}
+      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]">
         <TourMediaPanel tour={tour} />
 
         {/* MỘT instance duy nhất cho cả trang: cả ô "All N dates" ở panel đặt chỗ
@@ -184,7 +192,10 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         </div>
       </div>
 
-      <section aria-labelledby="related-heading" className="mx-auto w-full max-w-6xl px-12 pb-24">
+      <section
+        aria-labelledby="related-heading"
+        className="mx-auto w-full max-w-6xl px-12 pb-24 [--radius:1rem]"
+      >
         <h2 id="related-heading" className="mb-8 font-heading text-2xl font-medium text-foreground">
           {t.sections.related}
         </h2>

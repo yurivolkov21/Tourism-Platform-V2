@@ -63,7 +63,14 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
     tour.destinations.find((d) => d.isPrimary)?.name ?? tour.destinations[0]?.name;
 
   const departure = departures.find((d) => d.id === selectedId);
-  const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
+
+  // Giá và badge giảm đi theo ĐỢT ĐANG CHỌN, không treo ở `tour.basePrice`:
+  // `effectivePrice = priceOverride ?? basePrice` là giá khách thật sự trả, và
+  // mỗi đợt có giá riêng (cao mùa/thấp mùa). `BookingRail` đã đúng từ đầu —
+  // panel phải nói cùng một con số với nó và với nút Reserve ngay dưới.
+  const shownPrice = departure?.effectivePrice ?? tour.basePrice;
+  const shownCompareAt = departure ? departure.compareAtPrice : tour.compareAtPrice;
+  const discount = discountPercent(shownPrice, shownCompareAt);
 
   return (
     // Lưới LUÔN hai cột `1fr 443px`, có ảnh hay chưa cũng vậy — đó là bố cục đã
@@ -83,7 +90,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                       type="button"
                       onClick={() => setOpenAt(i)}
                       aria-label={t.gallery.openPhoto(i + 1, photos.length)}
-                      className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-[10px] border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+                      className="group relative size-16 shrink-0 cursor-pointer overflow-hidden rounded-sm border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
                     >
                       <Image
                         src={photo.url}
@@ -109,7 +116,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
               Array.from({ length: GALLERY_THUMB_SLOTS }, (_, i) => (
                 // biome-ignore lint/suspicious/noArrayIndexKey: ô trống thuần trang trí, không mang dữ liệu và không bao giờ sắp lại thứ tự
                 <li key={`slot-${i}`} data-slot="thumb-placeholder">
-                  <ImagePlaceholder className="size-16 rounded-[10px] border" />
+                  <ImagePlaceholder className="size-16 rounded-sm border" />
                 </li>
               ))}
         </ul>
@@ -119,7 +126,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
             type="button"
             onClick={() => setOpenAt(0)}
             aria-label={t.mediaPanel.openGallery}
-            className="relative aspect-square min-w-0 flex-1 cursor-pointer overflow-hidden rounded-[10px] border bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            className="relative aspect-square min-w-0 flex-1 cursor-pointer overflow-hidden rounded-md border bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             <Image
               src={lead.url}
@@ -139,7 +146,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
         ) : (
           <ImagePlaceholder
             label={destinationLabel}
-            className="aspect-square min-w-0 flex-1 rounded-[10px] border"
+            className="aspect-square min-w-0 flex-1 rounded-md border"
           />
         )}
       </div>
@@ -193,18 +200,18 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="flex items-baseline gap-2">
             <span className="text-xl leading-7 font-semibold text-price tabular-nums">
-              {formatMoney(tour.basePrice, tour.currency)}
+              {formatMoney(shownPrice, tour.currency)}
             </span>
-            {tour.compareAtPrice ? (
+            {shownCompareAt ? (
               <>
                 <span className="sr-only">
-                  {t.wasPrice(formatMoney(tour.compareAtPrice, tour.currency))}
+                  {t.wasPrice(formatMoney(shownCompareAt, tour.currency))}
                 </span>
                 <span
                   aria-hidden="true"
                   className="text-sm text-price-compare tabular-nums line-through"
                 >
-                  {formatMoney(tour.compareAtPrice, tour.currency)}
+                  {formatMoney(shownCompareAt, tour.currency)}
                 </span>
               </>
             ) : null}
@@ -250,7 +257,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                       onClick={() => select(d.id)}
                       aria-pressed={selected}
                       className={cn(
-                        'relative flex h-13 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-md border border-input bg-card text-center transition-colors hover:border-primary/60',
+                        'relative flex h-13 cursor-pointer flex-col items-center justify-center gap-0.5 rounded-sm border border-input bg-card text-center transition-colors hover:border-primary/60',
                         selected &&
                           'border-primary bg-[color-mix(in_oklab,var(--primary)_8%,var(--card))]',
                       )}
@@ -324,7 +331,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
                 <a
                   key={policy.title}
                   href="#good-to-know"
-                  className="flex flex-col items-center gap-1.5 rounded-md border border-border bg-card px-2 py-3 text-center text-foreground transition-colors hover:border-input"
+                  className="flex flex-col items-center gap-1.5 rounded-sm border border-border bg-card px-2 py-3 text-center text-foreground transition-colors hover:border-input"
                 >
                   <Icon className="size-4 shrink-0" aria-hidden="true" />
                   {/* leading 14 = line-height `normal` của 12px trong wireframe;
