@@ -25,6 +25,7 @@ import {
   formatChipDate,
   formatDate,
   formatDateRange,
+  formatDialogDate,
   formatMoney,
   formatReviewDate,
   formatTicketDate,
@@ -461,5 +462,22 @@ describe('formatChipDate — ngày trên ô chọn đợt của panel đặt ch�
   it('tách chuỗi chứ không qua `new Date()` — date-only ở múi giờ âm lệch một ngày', () => {
     expect(formatChipDate('2026-01-01')).toBe('1 Jan');
     expect(formatChipDate('2026-12-31')).toBe('31 Dec');
+  });
+});
+
+describe('formatDialogDate — ngày trên hàng của modal "All dates"', () => {
+  it('thứ + ngày HAI CHỮ SỐ + tháng viết tắt, KHÔNG năm', () => {
+    // Khuôn của wireframe đã duyệt: "Mon, 14 Sep" · "Thu, 01 Oct".
+    expect(formatDialogDate('2026-09-14')).toBe('Mon, 14 Sep');
+    expect(formatDialogDate('2026-10-01')).toBe('Thu, 01 Oct');
+  });
+
+  it('ngày một chữ số được đệm 0 — cột ngày phải thẳng hàng', () => {
+    expect(formatDialogDate('2026-11-09')).toBe('Mon, 09 Nov');
+  });
+
+  it('thứ tính theo UTC, không lệch ở múi giờ âm', () => {
+    expect(formatDialogDate('2026-01-01')).toBe('Thu, 01 Jan');
+    expect(formatDialogDate('2026-12-31')).toBe('Thu, 31 Dec');
   });
 });

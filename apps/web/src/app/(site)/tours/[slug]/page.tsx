@@ -2,6 +2,7 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { TopoPattern } from '@/components/topo-pattern';
+import { DepartureDialog } from '@/components/tours/departure-dialog';
 import {
   BookingRailConnected,
   DepartureSelectionProvider,
@@ -159,6 +160,16 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           khớp bản duyệt nên giữ lại làm khung cho phần dựng mới. */}
       <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]">
         <TourMediaPanel tour={tour} />
+
+        {/* MỘT instance duy nhất cho cả trang: ô "All N dates" ở panel và nút
+            "See all dates" ở tab Departures đều mở modal này qua
+            `openAllDates()` trong context. */}
+        <DepartureDialog
+          tourTitle={tour.title}
+          currency={tour.currency}
+          durationDays={tour.durationDays}
+          maxGroupSize={tour.maxGroupSize}
+        />
       </div>
 
       <section

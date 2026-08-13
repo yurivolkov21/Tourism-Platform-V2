@@ -1980,7 +1980,18 @@ export const messages = {
     // ── Dialogs (modals) ──
     dialogs: {
       allDatesTitle: 'Choose a departure',
+      /** Dòng phụ dưới tiêu đề modal "All dates" — nói lại danh tính tour và ba
+          con số cố định của nó, để khách không phải nhớ mình đang ở tour nào. */
+      allDatesSubtitle: (tourTitle: string, days: number, maxGroupSize: number) =>
+        `${tourTitle} · ${days} ${days === 1 ? 'day' : 'days'} · max ${maxGroupSize} guests`,
       onlyOpen: 'Only show dates with seats left',
+      /** Một hàng đợt: khoảng ngày · ghế còn / sức chứa · thời lượng. */
+      dateRange: (start: string, end: string) => `${start} → ${end}`,
+      seatsOf: (left: number, capacity: number) => `${left} of ${capacity} seats left`,
+      rowMeta: (seats: string, days: number) => `${seats} · ${days} ${days === 1 ? 'day' : 'days'}`,
+      soldOut: 'Sold out',
+      /** Chân modal nhắc lại đợt đang chọn — nó nằm xa dải ô ngày phía trên. */
+      currentPick: 'Selected',
       close: 'Close',
       select: 'Select',
       selected: 'Selected',

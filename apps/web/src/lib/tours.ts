@@ -295,6 +295,25 @@ export function formatDate(date: string): string {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+/** Thứ viết tắt, đọc theo UTC — cùng luật timezone với `MONTHS`. */
+const DOW = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+/**
+ * Ngày trên MỘT HÀNG của modal "All dates": `"Mon, 14 Sep"` — thứ + ngày hai
+ * chữ số + tháng viết tắt, KHÔNG năm. Đây là con chữ bản wireframe đã duyệt.
+ *
+ * Ngày đệm 0 (`"Thu, 01 Oct"`) để cột ngày thẳng hàng khi danh sách dài.
+ *
+ * Thứ tính bằng `Date.UTC` rồi `getUTCDay()`, KHÔNG `new Date(chuỗi date-only)`:
+ * chuỗi đó bị hiểu là UTC rồi hiển thị theo giờ máy, lệch một ngày ở múi giờ âm
+ * — và lệch ngày thì lệch luôn cả thứ.
+ */
+export function formatDialogDate(date: string): string {
+  const [y, m, d] = date.split('-').map(Number) as [number, number, number];
+  const dow = DOW[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+  return `${dow}, ${String(d).padStart(2, '0')} ${MONTHS[m - 1]}`;
+}
+
 /**
  * Ngày trên ô chọn đợt của panel đặt chỗ: `"14 Sep"` — ngày + tháng viết tắt,
  * KHÔNG in hoa, KHÔNG năm. Đây là con chữ bản wireframe đã duyệt dùng.
