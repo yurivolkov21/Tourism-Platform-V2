@@ -198,6 +198,45 @@ Không port `DataGrid` của ReUI: repo chưa có `@tanstack/react-table`, và b
 cần đúng MỘT tính năng của nó (hàng xổ được) cho 4–6 dòng trên trang SSG. Cơ chế
 giữ nguyên — mỗi tháng một `<tbody>`, hàng đợt nằm cùng `<tbody>` đó.
 
+### 2.7 Tab Reviews
+
+| Thành phần | Số đo |
+| --- | --- |
+| `.rvtop` | lưới **220px / 804px**, gap **32**, `align-items:start` (1056 − 220 − 32 = 804) |
+| `.big` | font heading **40/44 w500** |
+| `.stars` | cao **20**, chữ 14/20 — cụm sao là `inline-flex`, KHÔNG `flex` |
+| `#rvBasedOn` | 13px, thừa hưởng lh **23** của `.pane` |
+| CTA "Show all reviews" | `.btn-sm`: **32 cao**, đệm ngang 14, chữ 13, bo `--radius-sm` |
+| Ghi chú dưới CTA | 12px/**23**, `max-width:200`, `margin-top:10` |
+| `#rvHist .bar` | cao **27** (12px chữ trên lh 23 + pad 2/2), gap 8 |
+| `.bar .t` · `.track` · `.bar .n` | **18** · `flex:1` (748) cao **6** bo tròn · **22** canh phải |
+| `#rvPreview` | `max-width:768`, `margin-top:28` — **2** review làm mồi |
+| `.rv-item` | pad `18px 0`, viền đáy 1px, mục cuối bỏ viền |
+| `.rv-av` · `.rv-name` · `.rv-when` | **28×28** tròn, 12px/1 · 14/20 w500 · 12/20 muted |
+| `.rv-title` · `.rv-body` | heading **15/22 w500**, mt 8 · **14/22**, mt 4 |
+| `.rv-pics img` | **64×64**, bo `--radius-sm`, viền 1px |
+
+Modal dùng khung chung ở §2.5, khác ở: bề rộng **720**, đầu cao 135 vì có hàng
+`.rv-ctl` (cao 32, gap 12), một hàng 245, chân là "Showing a–b of N" ⟷ Prev ·
+`1 / 4` · Next. Cỡ trang **6** (`REVIEWS_PAGE_SIZE`).
+
+Hai điều bắt buộc về hành vi:
+
+1. **Sort và lọc đi qua server**, không sắp lại ở client — client chỉ nắm một
+   trang, "highest first" tính tại chỗ sẽ mâu thuẫn với trang kế. Đây là lý do
+   contract nở thêm `sort`/`rating`/`withPhotos` ở T1.
+2. **Trang 1 fetch ở SERVER** và truyền vào modal làm `initialPage`: hai review
+   mồi phải nằm trong HTML tĩnh cho crawler, và mở modal ra là có chữ sẵn thay
+   vì nháy một nhịp rỗng. Mở modal ở bản mặc định KHÔNG gọi lại API.
+
+Ba con số phải khớp nhau và đã đo là khớp trên `ha-giang-loop-4d`: `ratingAvg`
+4.4 · `ratingCount` 5 · `breakdown` 3★1 4★1 5★3 (tổng 5, 22/5 = 4.4). Điểm lớn
+lấy từ `tour.ratingAvg` chứ KHÔNG tính lại từ breakdown — tính lại là giấu lỗi
+cập nhật cột chuẩn hoá phía API thay vì để nó lộ ra.
+
+Bề rộng cột biểu đồ là `count/total`, KHÔNG chuẩn hoá theo cột cao nhất: chuẩn
+hoá kiểu đó làm mức phổ biến nhất luôn đầy 100% ở mọi tour.
+
 ## 3. Hành vi
 
 Ràng buộc kiến trúc giữ nguyên theo

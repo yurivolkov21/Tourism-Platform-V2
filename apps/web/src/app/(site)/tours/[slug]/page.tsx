@@ -10,12 +10,14 @@ import {
 import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
 import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
 import { OverviewPanel } from '@/components/tours/panels/overview-panel';
+import { ReviewsPanel } from '@/components/tours/panels/reviews-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
 import { TourMediaPanel } from '@/components/tours/tour-media-panel';
 import { TourTabs } from '@/components/tours/tour-tabs';
-import { fetchTourDetail, fetchTours } from '@/lib/api/tours';
+import { fetchTourDetail, fetchTourReviews, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
+import { REVIEWS_PAGE_SIZE } from '@/lib/tour-detail';
 import { relatedTours } from '@/lib/tours';
 
 // Cùng cửa sổ revalidate với cụm blog (ADR-0016 §3, 300s) — một hằng số cho
@@ -112,7 +114,14 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
   // ĐẦY ĐỦ (không phải trang hiện tại) vì gợi ý cuối trang cần xét mọi tour
   // khác để chọn cùng chuyên mục/destination. Cùng pattern `fetchPosts()` gọi
   // lại ở thân `/blog/[slug]` dù `generateStaticParams` đã gọi một lần.
-  const [tours] = await Promise.all([fetchTours()]);
+  // Trang 1 của review fetch NGAY Ở SERVER, không đợi modal mở: hai review mồi
+  // phải nằm trong HTML tĩnh cho crawler, và modal mở ra là có chữ sẵn thay vì
+  // nháy một nhịp rỗng. Cỡ trang bằng cỡ trang của modal để `initialPage` dùng
+  // lại được nguyên vẹn.
+  const [tours, reviews] = await Promise.all([
+    fetchTours(),
+    fetchTourReviews(slug, { pageSize: REVIEWS_PAGE_SIZE }),
+  ]);
 
   return (
     <DepartureSelectionProvider departures={tour.departures}>
@@ -188,7 +197,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             // ở chế độ xem trước nó không được đọc tới.
             itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
             departures: <DeparturesPanel tour={tour} />,
-            reviews: <PanelPlaceholder name="Reviews" />,
+            reviews: <ReviewsPanel tour={tour} reviews={reviews} />,
             goodToKnow: <PanelPlaceholder name="Good to know" />,
           }}
         />

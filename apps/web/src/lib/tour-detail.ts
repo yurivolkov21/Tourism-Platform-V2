@@ -161,6 +161,40 @@ export function defaultOpenMonth(
   return (months.find((m) => m.items.some((d) => d.seatsLeft > 0)) ?? months[0])?.month;
 }
 
+/** Số review mỗi trang trong modal "Show all reviews" — con số của bản duyệt. */
+export const REVIEWS_PAGE_SIZE = 6;
+
+/**
+ * Cửa sổ "Showing a–b of N" ở chân modal review.
+ *
+ * Ba biên phải đúng, cả ba đều là con số người đọc bắt được ngay nếu sai:
+ * tổng nhỏ hơn một trang (`1–5 of 5`, không phải `1–6`), trang cuối lẻ, và
+ * **trang vượt quá tổng** — cái cuối xảy ra thật: khách đang ở trang 4 rồi bật
+ * bộ lọc sao làm tổng rơi xuống 5, server trả `totalPages = 1` còn state client
+ * vẫn giữ 4. Kẹp ở đây thay vì tin state.
+ */
+export function reviewRange(
+  page: number,
+  pageSize: number,
+  total: number,
+): { from: number; to: number } {
+  if (total <= 0) return { from: 0, to: 0 };
+  const lastPage = Math.max(1, Math.ceil(total / pageSize));
+  const safePage = Math.min(Math.max(1, page), lastPage);
+  const from = (safePage - 1) * pageSize + 1;
+  return { from, to: Math.min(total, from + pageSize - 1) };
+}
+
+/**
+ * Bấm sao ở bộ lọc rating: bấm lại ĐÚNG mức đang chọn thì bỏ lọc.
+ *
+ * Không có luật này thì dải sao là ngõ cụt — chọn rồi không có đường quay về
+ * "Any rating" trừ khi đóng modal. Bản duyệt cũng làm vậy (`rvRating === v ? null : v`).
+ */
+export function toggleStarFilter(current: number | undefined, star: number): number | undefined {
+  return current === star ? undefined : star;
+}
+
 export function ratingHistogram(breakdown: Record<string, number>) {
   const total = Object.values(breakdown).reduce((s, n) => s + n, 0);
   return [5, 4, 3, 2, 1].map((star) => {

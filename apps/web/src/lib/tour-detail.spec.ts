@@ -11,6 +11,8 @@ import {
   monthSeason,
   parseItineraryStops,
   ratingHistogram,
+  reviewRange,
+  toggleStarFilter,
   visibleDepartureChips,
 } from './tour-detail';
 
@@ -244,5 +246,42 @@ describe('defaultOpenMonth', () => {
 
   it('không có tháng nào thì trả undefined', () => {
     expect(defaultOpenMonth([], undefined)).toBeUndefined();
+  });
+});
+
+describe('reviewRange', () => {
+  it('trang 1 của 5 review, cỡ trang 6: nói 1–5, KHÔNG nói 1–6', () => {
+    // Bịa ra "1–6 of 5" là in một con số không tồn tại ở hàng cuối.
+    expect(reviewRange(1, 6, 5)).toEqual({ from: 1, to: 5 });
+  });
+
+  it('trang giữa lấy đúng cửa sổ', () => {
+    expect(reviewRange(2, 6, 23)).toEqual({ from: 7, to: 12 });
+  });
+
+  it('trang cuối cắt theo tổng', () => {
+    expect(reviewRange(4, 6, 23)).toEqual({ from: 19, to: 23 });
+  });
+
+  it('không có review nào thì trả 0–0 chứ không phải 1–0', () => {
+    expect(reviewRange(1, 6, 0)).toEqual({ from: 0, to: 0 });
+  });
+
+  it('trang vượt quá tổng bị kẹp về trang cuối — server đổi bộ lọc có thể làm rơi số trang', () => {
+    expect(reviewRange(9, 6, 5)).toEqual({ from: 1, to: 5 });
+  });
+});
+
+describe('toggleStarFilter', () => {
+  it('bấm một mức sao khi đang không lọc thì bật lọc mức đó', () => {
+    expect(toggleStarFilter(undefined, 4)).toBe(4);
+  });
+
+  it('bấm lại ĐÚNG mức đang chọn thì bỏ lọc — nếu không, không có đường quay lại', () => {
+    expect(toggleStarFilter(4, 4)).toBeUndefined();
+  });
+
+  it('bấm mức khác thì chuyển sang mức đó', () => {
+    expect(toggleStarFilter(4, 2)).toBe(2);
   });
 });

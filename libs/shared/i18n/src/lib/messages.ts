@@ -2077,6 +2077,9 @@ export const messages = {
       sortOldest: 'Oldest first',
       sortHighest: 'Highest rated',
       sortLowest: 'Lowest rated',
+      /** Tên NHÓM năm nút sao cho trình đọc màn hình. Khác `anyRating` — cái đó
+          là TRẠNG THÁI đang hiện bên cạnh, không phải tên của cụm điều khiển. */
+      filterByRating: 'Filter reviews by rating',
       anyRating: 'Any rating',
       starsOnly: (n: number) => `${n} star${n === 1 ? '' : 's'} only`,
       withPhotos: 'With photos',

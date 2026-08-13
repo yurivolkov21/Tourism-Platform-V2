@@ -6,6 +6,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { ChevronDownIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
+import { PANEL_BTN_SM } from '@/components/tours/panel-button';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
 import {
   DEPARTURE_ROWS_PER_MONTH,
@@ -201,7 +202,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           </p>
           <p className="mt-1 text-[13px] text-muted-foreground">{t.openMonthHint}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={openAllDates}>
+        <Button type="button" variant="outline" className={PANEL_BTN_SM} onClick={openAllDates}>
           {t.seeAllDates} →
         </Button>
       </div>
@@ -430,7 +431,7 @@ function DepartureRow({
       <td className="text-right">
         <Button
           type="button"
-          size="sm"
+          className={PANEL_BTN_SM}
           variant={selected ? 'outline' : 'default'}
           disabled={soldOut}
           onClick={onSelect}
