@@ -9,6 +9,11 @@
 >
 > Số đo và hành vi hiện hành nằm ở
 > [spec đã viết lại](../specs/2026-08-13-tour-detail-redesign.md).
+>
+> **Đính chính một khẳng định trong thân file:** bảng nợ cuối plan ghi "Chạy
+> `seed-media` cho tour". **Không có script nào tên vậy** — repo chỉ có
+> `db:seed`, và `prisma/seed.ts` không tạo một row `MediaAsset` nào cho tour.
+> Nợ ảnh tour theo dõi ở [backlog A8](../analysis/2026-08-06-backlog-no-ky-thuat.md).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: dùng `superpowers:subagent-driven-development`
 > (khuyến nghị) hoặc `superpowers:executing-plans` để thi công từng task. Các bước dùng

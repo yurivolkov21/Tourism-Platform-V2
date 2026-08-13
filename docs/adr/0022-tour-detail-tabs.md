@@ -34,8 +34,10 @@ biến mất khỏi HTML mà crawler nhận được.
 ## Quyết định
 
 1. **Năm tab**, không phải bốn: `Overview · Itinerary · Departures · Reviews ·
-   Good to know`. Tab vẫn `flex:1` nên năm tab chia đều 1008/5 ≈ 201px, giữ
-   nguyên ngôn ngữ thị giác của mẫu. `included`/`excluded` nằm **trong tab
+   Good to know`. Tab vẫn `flex:1` nên năm tab chia đều: nội dung 1056, dải tab
+   có `gap:24` → `(1056 − 4×24)/5 = 192px` mỗi tab, số chẵn. (Bản ADR đầu ghi
+   "1008/5 ≈ 201" — sai hai chỗ: lấy nhầm bề ngang nội dung và bỏ quên gap. Đã
+   đo lại trên trang thật: 192.) `included`/`excluded` nằm **trong tab
    Itinerary**, ngay dưới ngày cuối — câu hỏi "bữa nào có sẵn, ngủ ở đâu" phát
    sinh *trong lúc* đọc lịch trình, tách sang tab riêng là bắt nhảy qua lại.
 
@@ -85,16 +87,40 @@ biến mất khỏi HTML mà crawler nhận được.
   rằng nó không sai về chức năng — nó thua ở chỗ *đọc ra như một trang tự chế*.
 - **Editorial cột giữa (`product-detail-6`)**, bản sang nhất trong 6. Loại vì
   phụ thuộc nặng vào ảnh đẹp, mà `MediaAsset` hiện **rỗng hoàn toàn** trên DB
-  dev (script `seed-media` chưa chạy) — chọn nó là chọn một trang loang lổ chỗ
-  trống cho tới khi có ảnh.
+  dev — chọn nó là chọn một trang loang lổ chỗ trống cho tới khi có ảnh.
+  (Bản ADR đầu viết "script `seed-media` chưa chạy". **Không có script nào tên
+  vậy**: repo chỉ có `db:seed`, và `prisma/seed.ts` không tạo một row
+  `MediaAsset` nào cho tour. Đính chính cùng lượt với CHANGELOG.)
 
 ## Nợ mở kèm theo
 
 Ghi ở đây để không thất lạc; chi tiết trong spec `2026-08-13-tour-detail-redesign.md`.
 
-| Món | Vì sao chưa làm |
+| Món | Trạng thái |
 | --- | --- |
-| `seed-media` cho tour | `MediaAsset` rỗng → gallery và ảnh review chưa có gì để hiện |
-| `reviews.byTour` thêm `sort`/`rating`/`withPhotos` + `breakdown` | Modal review và biểu đồ sao đang cần; là đổi contract nên tách riêng |
-| `freeCancellationDays` trên Tour | Muốn thẻ "Free until 10 days out" nói con số thật thay vì đọc-hiểu văn xuôi `policy.body` |
-| `meals`/`accommodation` cho itinerary day | 73 row lịch trình trên 30 tour phải soạn lại; hợp lý nhất là làm cùng màn admin ở P4 |
+| `reviews.byTour` thêm `sort`/`rating`/`withPhotos` + `breakdown` | ✅ **đã trả 13/08** (T1) — modal review chạy trên đó |
+| Ảnh tour | ❌ còn mở. `MediaAsset` rỗng và **không có lệnh nào lấp được**: phải làm lại khâu tuyển ảnh kèm cửa lọc chủ thể mà [ADR-0020](0020-real-images-sourcing.md) bắt buộc — một đợt việc riêng, không phải một câu lệnh |
+| Mô tả cho bốn card dữ kiện (tab Overview) | ❌ còn mở — cần 4 cột nullable trên `Tour`; card đã dựng sẵn, chỉ thiếu chỗ đổ chữ |
+| Tiêu đề riêng cho thẻ policy | ❌ còn mở nhưng **KHÔNG cần cột mới**: contract đã có `kind` + `title`; fixture đang dùng `title` làm nhãn nhóm ("Cancellation") nên hai trong ba thẻ mất dòng eyebrow. Sửa ở tầng dữ liệu |
+| `freeCancellationDays` trên Tour | ❌ còn mở — muốn thẻ "Free until 10 days out" nói con số thật thay vì đọc-hiểu văn xuôi `policy.body` |
+| ~~`meals`/`accommodation` cho itinerary day~~ | **RÚT** — bản duyệt in bữa ăn/chỗ ngủ bằng chữ **đậm trong chính mô tả ngày** (markdown), không cần cột riêng |
+
+## Cập nhật sau thi công (13/08/2026)
+
+Một quyết định trong ADR này **đã đổi khi va vào người dùng thật**, ghi lại để
+người đọc sau không tưởng bản ship lệch ADR do cẩu thả.
+
+**"Bảng đợt khởi hành không lặp lại trong tab"** (mục Hệ quả thứ hai) — bản
+duyệt vẽ mỗi tháng thành một dải khối ngang, mỗi khối là một đợt. Nhóm người
+dùng thử **không đọc ra khối đó là gì**. Nguyên nhân đo được: CSS để `flex:1`
+nên khối giãn kín cột, mà dữ liệu thật là 1–2 đợt/tháng nên hầu hết dòng ra một
+thanh đặc kín — trông hệt thanh tiến độ 100%. Nó hỏng ở cả hai đầu: 1 đợt ra
+thanh đầy, 30 đợt ra 30 lát 21px không đọc nổi.
+
+Thay bằng **bảng nhóm theo tháng, mũi xổ ở cột đầu**: dòng tháng chỉ chứa số
+tổng hợp (chi phí O(1), không dài ra theo số đợt), xổ ra mới là danh sách chọn,
+chặn ở 6 dòng rồi nhường phần dư cho modal "All dates". Nên tab Departures nay
+**có** liệt kê ngày, nhưng chỉ khi khách chủ động xổ và không bao giờ quá 6
+dòng. Modal vẫn là nơi chứa danh sách đầy đủ, đúng tinh thần quyết định gốc.
+
+Số đo và lý do đầy đủ: [spec §2.6](../specs/2026-08-13-tour-detail-redesign.md).

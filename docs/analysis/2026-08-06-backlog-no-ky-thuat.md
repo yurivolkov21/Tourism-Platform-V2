@@ -26,15 +26,25 @@
 
 Đọc mục này trước nếu bạn đang thiết kế lại trang.
 
+| # | Nợ | Bề mặt | Trạng thái |
+| --- | --- | --- | --- |
+| ~~A1~~ | ~~Khu Account cần thiết kế lại~~ | `/account/*` | ✅ **trả 10/08** ([`feat/account-redesign`](../CHANGELOG.md)) rồi đập-xây-lại thành "Hộ chiếu" 11/08 (`bf20383`) |
+| ~~A2~~ | ~~`textarea` lý do huỷ booking bị bỏ sót~~ | Booking detail | ✅ **trả 10/08** cùng A1 — `booking-actions.tsx` gửi `reason` thật, có trần theo `CancelBookingInputSchema.max(1000)` |
+| ~~A3~~ | ~~Nợ tương phản dark chưa đóng~~ | Toàn site, chế độ tối | ✅ **trả 10/08** — và sổ này từng ghi SAI ngưỡng: 2.91/2.57 là cặp BỀ MẶT (WCAG 1.4.11, ngưỡng **3:1**), không phải chữ (4.5:1). Xem [ADR-0019](../adr/0019-color-token-roles.md) |
+| ~~A4~~ | ~~Booking/checkout chưa có thiết kế~~ | Luồng booking | ✅ **trả 07/08** (`4959455`), thiết kế lại hướng B 10/08 (`05d4d1c`) |
+| A5 | **Con dấu tem thư `/contact` ghi "Hà Nội · Sa Pa".** Văn phòng Sa Pa đã bị xoá khỏi dữ liệu (nay là Hà Nội + Hồ Chí Minh) nên đây là **tham chiếu mồ côi**. User chốt 06/08 **giữ nguyên** vì Sa Pa là motif truyện thương hiệu. Ghi lại để lần redesign sau không tưởng là lỗi. | `contact-split.tsx:237` | — (đã chốt giữ) |
+| ~~A6~~ | ~~Khu Account phải thiết kế lại TỪ ĐẦU~~ | `/account/*` | ✅ **trả 11/08** ("Hộ chiếu", `b2959c5..bf20383`). **Bài học quy trình vẫn còn giá trị, đừng xoá:** nghe user nói "làm lại" thì phải bỏ hẳn bản cũ và dựng từ đầu — giữ khung cũ rồi vá góp ý lên trên, ba lần liên tiếp, là cách vòng đó hỏng. Lỗi này **lặp lại ở vòng Tour Details 13/08** và tốn nguyên một đợt thi công |
+| ~~A7~~ | ~~Khu checkout/booking chưa bao giờ được rà cùng khu account~~ | `/checkout/*` | ✅ **trả 10/08** — hai khu rà cùng một lượt (`feat/redesign-checkout-account`) |
+
+### A′. Nợ MỚI từ vòng Tour Details (13/08)
+
 | # | Nợ | Bề mặt | Chặn? |
 | --- | --- | --- | --- |
-| A1 | **Khu Account cần thiết kế lại.** Cụm A merge 06/08 ở mức "dựng tạm" — user duyệt visual với điều kiện rõ ràng là sẽ redesign ở session riêng. 6 route: `/account`, profile, settings, bookings, booking detail, wishlist. | `/account/*` | Chờ session redesign |
-| A2 | **`textarea` lý do huỷ booking bị bỏ sót.** Spec cụm A §3 đòi ô nhập lý do, A1 không dựng; lý do huỷ hiện **hardcode**. Khoá "không-đụng-visual" chặn vá lúc đó → làm khi redesign khu account. | Booking detail | Gộp vào A1 |
-| A3 | **Nợ tương phản dark chưa đóng.** `primary` trên nền tối đo được 2.91 và 2.57 — dưới ngưỡng 4.5:1 mà chính design brief §6 mục 5 đặt ra. Nền dark đã nâng 10% (`121cff6`) nhưng chưa đủ. | Toàn site, chế độ tối | Nên gộp vào vòng redesign |
-| A4 | **Booking/checkout chưa có thiết kế.** Cụm C chờ user chốt bản thiết kế Claude Design; prompt đã giao tại [design/prompts/booking.md](../design/prompts/booking.md), mockup nguồn ở [design/mockups/](../design/mockups/). | Luồng booking | Chặn cụm C |
-| A5 | **Con dấu tem thư `/contact` ghi "Hà Nội · Sa Pa".** Sau 06/08 văn phòng Sa Pa đã bị xoá khỏi dữ liệu (nay là Hà Nội + Hồ Chí Minh), nên đây là **tham chiếu mồ côi** tới dữ liệu không còn. User chốt 06/08 **giữ nguyên** vì Sa Pa là motif truyện thương hiệu (`contact-hero`, `about-timeline`). Ghi lại để lần redesign sau không tưởng là lỗi. | `contact-split.tsx:237` | — (đã chốt giữ) |
-| A6 | **Khu Account phải THIẾT KẾ LẠI TỪ ĐẦU — user đã chốt giao session khác.** Vòng 11/08 (`a471711`) sửa được phần KỶ LUẬT (lưới ba toạ độ 128·536·1312, một khai báo lưới dùng chung cho năm màn, padding về chuẩn site) nhưng user đánh giá kết quả thẩm mỹ là **chắp vá** và dừng lại. Nguyên nhân là lỗi QUY TRÌNH, ghi rõ để session sau không lặp: mỗi lần user nói "làm lại", agent giữ khung cũ rồi vá góp ý mới lên trên, ba lần liên tiếp. **Nghe "làm lại" thì phải bỏ hẳn bản cũ và dựng từ đầu.** Thứ ĐÁNG GIỮ lại từ vòng này: lưới ba toạ độ và `account-section.tsx`, số đo tương phản đã kiểm chứng, và hai lỗi WCAG đã vá (pill `warning` 1.90 · `destructive` dark). Thứ user đã bác: cột dọc có ray + chấm (10/08), hairline ngăn mục (11/08 vòng 1), hub khối + card (11/08 vòng 2) | web `/account/*` | Không chặn |
-| A7 | **Khu checkout/booking chưa bao giờ được rà cùng khu account.** Cụm C merge 08/08 rồi không đụng lại; ba vòng thiết kế 10–11/08 chỉ chạm `/account/*`. Hai khu này dùng chung navbar, token và hằng số `pt-36` nên thiết kế lệch nhau sẽ lộ ngay khi khách đi từ checkout sang account. Session redesign phải rà CẢ HAI | web `/checkout/*` | Không chặn |
+| A8 | **Ảnh tour vẫn rỗng.** `MediaAsset` không có row nào cho tour, và **không có lệnh nào lấp được**: repo chỉ có `db:seed`, `prisma/seed.ts` không tạo `MediaAsset`; script chọn ảnh của [ADR-0020](../adr/0020-real-images-sourcing.md) đã bị gỡ cùng lượt xoá 189 ảnh bị từ chối. Muốn có ảnh phải LÀM LẠI khâu tuyển ảnh kèm cửa lọc chủ thể — một đợt việc riêng. Hệ quả: gallery 7 thumb và nhánh HAI CỘT của `TourMediaPanel` chưa bao giờ render từ dữ liệu thật | `/tours/[slug]` | Chặn việc so bản duyệt ở khối gallery |
+| A9 | **Mô tả cho bốn card dữ kiện (tab Overview).** Card đã dựng sẵn, thiếu chỗ đổ chữ → cao ~110 thay vì 197 của bản duyệt. Cần 4 cột nullable trên `Tour` | `/tours/[slug]` | Không chặn |
+| A10 | **Tiêu đề riêng cho thẻ policy.** Fixture đặt `title` bằng nhãn nhóm (`'Cancellation'` cho `kind: CANCELLATION`) nên hai trong ba thẻ mất dòng eyebrow và tiêu đề lệch tầng. **KHÔNG cần cột mới** — contract đã có `kind` + `title`, sửa ở tầng fixture | `/tours/[slug]` | Không chặn |
+| A11 | **`freeCancellationDays` trên `Tour`** — để thẻ chính sách nói con số thật thay vì bắt đọc-hiểu văn xuôi `policy.body` | `/tours/[slug]` | Không chặn |
+| A12 | **Thu phóng trong lightbox** — bản duyệt có hàng công cụ zoom, bản ship chưa | `/tours/[slug]` | Không chặn |
 
 **Lưu ý quan trọng cho mockup:** khu Location của `/contact` nay là **bản đồ
 MapLibre thật**, không phải ô placeholder — xem [ADR-0018](../adr/0018-web-map-library.md)

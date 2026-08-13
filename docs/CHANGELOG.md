@@ -8,99 +8,128 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-08-13 — Trùng tu Tour Details: 5 tab thay cuộn-dài-có-mục-lục (branch `feat/tour-detail-redesign`, 14 commit `43132e2..9c3178c`, 35 file)
+## 2026-08-13 — Trùng tu Tour Details: 5 tab, dựng LẠI bám wireframe đã duyệt (branch `feat/tour-detail-redesign`, ff-only, 36 commit `43132e2..5a4c1dc`, 63 file, +6966/−2142)
 
-Động cơ user nói thẳng: giao diện cũ "vẫn giống kiểu AI hay làm". Nên vòng
-này KHÔNG tự chế bố cục — dựng lại 6 mẫu `product-detail` của ReUI bằng dữ
-liệu tour thật rồi đo bằng `getComputedStyle`, user chọn `product-detail-1`,
-sau đó ~20 vòng tinh chỉnh trên artifact demo trước khi viết một dòng code
-sản phẩm. [Spec](specs/2026-08-13-tour-detail-redesign.md) ·
-[plan 12 task](plans/2026-08-13-tour-detail-redesign.md) ·
-[ADR-0022](adr/0022-tour-detail-tabs.md).
+Động cơ user nói thẳng ở đầu vòng: giao diện cũ "vẫn giống kiểu AI hay làm".
+Nên vòng này KHÔNG tự chế bố cục — dựng lại 6 mẫu `product-detail` của ReUI
+bằng dữ liệu tour thật rồi đo bằng `getComputedStyle`, user chọn
+`product-detail-1`, sau đó ~20 vòng tinh chỉnh trên artifact demo trước khi
+viết một dòng code sản phẩm. [Spec](specs/2026-08-13-tour-detail-redesign.md) ·
+[ADR-0022](adr/0022-tour-detail-tabs.md) ·
+[wireframe nguồn](design/mockups/tour-detail.src.html).
 
-**Trang đổi hình dạng**: hero + dải khởi hành giữ nguyên → khối gallery 7
-thumb + panel đặt chỗ ghim 443px → **5 tab** (Overview · Itinerary ·
-Departures · Reviews · Good to know) → "You might also like". `OnThisPage`
-rời trang này (tab bar thay vai mục lục; component vẫn sống ở `/blog`), và
-mọi anchor cũ (`#itinerary`, `#departures`…) vẫn mở đúng tab vì `TourTabs`
-đọc hash lúc mount **và** nghe `hashchange`. Năm panel render ĐỦ rồi ẩn bằng
-CSS — trang là SSG nằm trong sitemap, mount có điều kiện là giấu lịch trình
-khỏi crawler.
+**Nhánh này chứa HAI đợt thi công, và đợt đầu đã bị xoá.** Ghi rõ vì lịch sử
+commit đọc ra như làm hai lần cùng một việc. Đợt đầu (14 commit, `43132e2..9c3178c`)
+dựng theo một bản spec **ghi sai số đo**: nó đo từ bản ReUI gốc (1104/621/541)
+chứ không đo từ wireframe user đã duyệt (1056/573/493), và ghi thêm một dải
+khởi hành mà bản duyệt không có. User đối chiếu và kết luận "khác một trời một
+vực". Nên `2b8062a` **xoá trọn phần thân** (gallery + panel đặt chỗ + 5 tab +
+2 modal), giữ hero và "You might also like" vì hai khối đó đã đo khớp; `8530c48`
+viết lại spec bằng số đo **trích bằng máy** từ chính file wireframe và khai tử
+plan cũ. 22 commit còn lại dựng lại từng khối một, mỗi khối đo xong mới sang
+khối kế.
 
-**Contract nở đúng một chỗ** (`reviews.byTour`): `sort` (newest/oldest/
-highest/lowest) · `rating` · `withPhotos` · trả thêm `breakdown` 5 mức sao.
-`breakdown` cố ý KHÔNG áp bộ lọc `rating` (nếu áp thì biểu đồ tự triệt tiêu
-thành một cột) nhưng CÓ áp `withPhotos` — đó là phạm vi người đọc đang xem.
+**Bài học vận hành đã ghi vào [memory](../CLAUDE.md)**: đợt đầu chạy
+subagent-driven (Haiku ở T3, Sonnet ở T4/T5); phần visual không bám wireframe.
+User chốt **không dùng subagent nữa** cho loại việc này. Và file wireframe từng
+nằm trong `.superpowers/` vốn bị gitignore — nay chép sang `docs/design/mockups/`
+để không mất theo lần dọn kế.
 
-**Ba chỗ trung thực với dữ liệu, khác bản wireframe user đã duyệt** — ghi ra
-đây vì đều là "wireframe nói được, dữ liệu thì không": (1) **bỏ huy hiệu
-"Verified rider"** và chữ "verified" trong "Based on N reviews" —
-`PublicReviewSchema` không phơi `source` và `listByTour` trả cả review
-`CURATED` (fixture tour hiện 100% CURATED, không gắn booking nào), nên nhãn
-đó khẳng định điều dữ liệu công khai không xác nhận được; (2) ngày review
-giữ khuôn "August 2026" của `formatReviewDate` thay vì "2 weeks ago" — quy
-ước sẵn có kèm lý do; (3) thẻ policy bỏ nhãn nhóm khi nhãn trùng đúng
-`title` (fixture đặt `title: 'Cancellation'` cho `kind: CANCELLATION`).
+**Trang đổi hình dạng**: hero (giữ) → khối gallery 7 thumb + panel đặt chỗ ghim
+443px → **5 tab** (Overview · Itinerary · Departures · Reviews · Good to know) →
+"You might also like". `OnThisPage` rời trang này (tab bar thay vai mục lục;
+component vẫn sống ở `/blog`), và mọi anchor cũ (`#itinerary`, `#departures`…)
+vẫn mở đúng tab vì `TourTabs` đọc hash lúc mount **và** nghe `hashchange`. Năm
+panel render ĐỦ rồi ẩn bằng CSS — trang là SSG nằm trong sitemap, mount có điều
+kiện là giấu lịch trình khỏi crawler.
 
-**Ba bug pixel bắt bằng trình duyệt thật, không bằng test**: lưới trên phải
-GHIM `443px` chứ không `1.4fr/1fr` (tỉ lệ đó chia 1104 ra 620.656 và phần lẻ
-.656 truyền xuống cả trang, mọi đường 1px bị khử răng cưa thành dày-mỏng xen
-kẽ); các lưới card `auto-fit` phải dùng `gap-6` chứ không `gap-4` (1104 chỉ
-chia chẵn cho cả 3 lẫn 4 cột khi gap là bội của 12 — `gap-4` cho 357.328px ở
-bố cục 3 card); và `TourMediaPanel` phải thu về MỘT cột khi tour chưa có ảnh,
-nếu không panel rơi vào cột trái và để trống 443px bên phải (nhánh đang chạy
-thật: bảng `MediaAsset` còn rỗng).
+**Contract nở đúng một chỗ** (`reviews.byTour`): `sort` (newest/oldest/highest/
+lowest) · `rating` · `withPhotos` · trả thêm `breakdown` 5 mức sao. `breakdown`
+cố ý KHÔNG áp bộ lọc `rating` (áp thì biểu đồ tự triệt tiêu thành một cột)
+nhưng CÓ áp `withPhotos` — đó là phạm vi người đọc đang xem.
 
-**Hai token đổi sau khi đo tương phản bằng canvas readback** (regex bóc số từ
-chuỗi `oklch()`/`lab()` cho ra con số SAI — bẫy đã dính giữa chừng): cột biểu
-đồ review và khối "còn chỗ" ở lịch tháng chuyển `--primary` → `--primary-emphasis`,
-vì primary chỉ đạt 1.77:1 (trên rãnh) và 2.9:1 (trên nền) ở chế độ TỐI, dưới
-ngưỡng 3:1 của WCAG 1.4.11; emphasis cho 3.0/4.32 và 5.55/7.09. `--warning`
-cho khối "≤3 ghế" GIỮ NGUYÊN dù chỉ 1.90:1 ở chế độ sáng — đó là token dành
-riêng cho nghĩa này và đang dùng ở booking-accordion/checkout, đổi ở đây là
-lệch chuẩn cả app; số ghế còn in bằng chữ ngay trên cùng hàng nên thông tin
-không phụ thuộc mình màu.
+**Tab Departures là chỗ DUY NHẤT cố ý khác bản duyệt**, và lý do là kết quả thử
+người dùng chứ không phải ý thích: bản duyệt vẽ mỗi tháng thành một dải khối
+ngang, nhóm của user thử mà không đọc ra khối đó là gì. Đo được nguyên nhân:
+mỗi khối đáng lẽ là một đợt nhưng `flex:1` khiến nó giãn kín cột, mà fixture
+thật chỉ 1–2 đợt/tháng nên hầu hết dòng ra một thanh đặc kín — trông hệt thanh
+tiến độ 100%. Hỏng ở cả hai đầu: 1 đợt ra thanh đầy, 30 đợt ra 30 lát 21px
+không đọc nổi. Thay bằng **bảng nhóm theo tháng có hàng xổ**, theo luật "mọi
+thứ trên dòng cha phải có chi phí O(1)": dòng tháng chỉ chứa số tổng hợp, thanh
+ghế chia đốt (port ReUI `stats-13`, một đốt là một ghế nên luôn đúng
+`maxGroupSize` đốt) tụt xuống dòng đợt, danh sách xổ chặn ở 6 dòng rồi nhường
+cho modal. Thanh ghế **đảo cực** so với bản gốc: tô đầy là ghế CÒN cho khách —
+cực gốc là card quản trị nên đợt chưa ai đặt sẽ ra thanh trắng trơn, đọc như
+tour ế. Bản duyệt của phương án thay thế lưu ở
+[tour-detail-departures.src.html](design/mockups/tour-detail-departures.src.html).
 
-**Nghiệm thu đo được trên production build** (Chromium 1440×1000, API sống):
-lưới ra ĐÚNG `621 | 40 | 443` trên nội dung 1104 · **0 hàng lệch nửa pixel**
-ở 4/5 tab (tab Reviews còn 4 chỗ đều là bề rộng phần trăm THẬT của biểu đồ và
-lớp cắt sao lẻ — đúng như thiết kế) · viền ô ngày 3.13:1 (sáng) / 3.75:1
-(tối) · 0 lỗi console. Modal review nạp qua đường browser
-(`fetchTourReviewsFromBrowser`, KHÔNG gắn `next.revalidate` vì option đó chỉ
-có nghĩa ở server) và sắp/lọc đi qua API chứ không sắp lại ở client — client
-chỉ nắm một trang, "highest first" tính tại chỗ sẽ mâu thuẫn với trang kế.
+**Bốn chỗ trung thực với dữ liệu, khác bản duyệt** — đều là "wireframe nói được,
+dữ liệu thì không": bỏ huy hiệu "Verified rider" (`PublicReviewSchema` không
+phơi `source` và `listByTour` trả cả review `CURATED`) · ngày review giữ khuôn
+"August 2026" của `formatReviewDate` thay vì "2 weeks ago" · thẻ policy bỏ nhãn
+nhóm khi nhãn trùng đúng `title` (fixture đặt `title: 'Cancellation'` cho
+`kind: CANCELLATION`) · card dữ kiện thiếu dòng mô tả nên cao ~110 thay vì 197.
+
+**Bảy lỗi pixel bắt bằng trình duyệt thật, không bằng test.** Bo góc: wireframe
+dùng đúng thang bậc dự án nhưng base `1rem` còn site `0.375rem`, nên phải đè
+`--radius` **tại container trang** thay vì hardcode px; và các biến `--radius-*`
+tính sẵn ở `:root` nên `calc(var(--radius-md) - 4px)` KHÔNG đọc được base cục bộ
+(utility `rounded-md` thì đọc được). Gạch chân tab lệch 5px và ra màu đen vì
+`tailwind-merge` **không khử** hai class khác tiền tố biến thể — phải đè bằng
+đúng tiền tố đó. Nút nhỏ của repo (`size="sm"`) cao 28 trong khi `.btn-sm` bản
+duyệt cao 32 — lệch 4px ở mọi nút của hai tab, gom thành hằng `PANEL_BTN_SM`.
+`text-xs` đặt line-height 16 trong khi chữ trong `.pane` thừa hưởng 23 — biểu đồ
+review hụt 35px. Cụm sao là `flex` nên chiếm trọn 220px cột trái thay vì
+`inline-flex` 68×20. `AccordionTrigger` có sẵn `border border-transparent` cho
+vòng focus nên mỗi nút FAQ cao 58 thay vì 56. Và hover hàng bảng đợt hở đuôi vì
+`<colgroup>` khai 6 cột mà dòng tháng chỉ có 5 `<td>`.
+
+**Hai lỗi thị giác user bắt, một cái là ảo giác.** Modal review giật mỗi lần
+đổi bộ lọc: hai nguyên nhân rời nhau — hộp để `max-h` nên lọc còn 1 kết quả làm
+nó tụt từ 760 xuống ~300 rồi bung lại, và danh sách bị thay bằng dòng
+"Loading…" nên chữ biến mất rồi hiện lại. Ghim `h-` và giữ kết quả cũ (chỉ làm
+mờ) là hết. Còn "thanh 5 sao trông mỏng hơn" thì **đo ra không mỏng hơn**: đọc
+pixel cho 18/18 device px ở 3× trên cả năm hàng. Đó là ảo giác irradiation —
+cạnh tối trên nền sáng (5.55:1) đọc ra mảnh hơn cạnh sáng (1.85:1). User chốt
+giữ nguyên bản duyệt thay vì bẻ số đo để chiều một ảo giác.
+
+**Nghiệm thu (R9) — đo, không nhìn**: bộ so wireframe ⟷ trang thật chạy trên
+**38 phần tử của cả 5 tab và 2 modal, ở CẢ HAI chế độ màu** → **0 lệch**; 28/28
+phép kiểm hành vi (đồng bộ hash, 5 panel nằm trong HTML tĩnh, 2 modal, xổ tháng,
+lọc review, FAQ); **0 lỗi console**; build **74/74** trang tĩnh. Ba quy ước đọc
+bảng ghi ở [spec §6](specs/2026-08-13-tour-detail-redesign.md) — không so chiều
+cao khối chứa văn bản, chuẩn hoá `radius ≥ 999px` và `gap normal ↔ 0px`, bỏ hộp
+`.shell` vì wireframe chia hai lớp còn app dùng một lớp. Còn **một** khác biệt
+có chủ ý: đệm dọc khung trang 56 (`py-14`) so với 80 của wireframe — trên
+wireframe phía trên `.shell` là chrome giả của khung demo chứ không phải hero,
+nên khoảng cách hero ⟷ gallery là quyết định sản phẩm mà bản demo không phán
+được. User chốt giữ 56.
 
 **Dọn xác trang cũ cùng lượt** (user chốt xoá luôn trong nhánh này): 11 file
 component + spec (`tour-gallery`, `tour-reviews`, `good-to-know`, `inclusions`,
-`itinerary-timeline`, `tour-facts`, `departures-table`) và `DeparturesTableConnected`
-— tất cả đều không còn trang nào render sau khi trang tour chuyển sang 5 tab.
-Xoá theo dây: ba hàm thuần chỉ còn chính test của mình gọi (`averageRating`,
-`tourReviews`, `groupPoliciesByKind`), ba mock type hết consumer (`MockReview`,
-`MockTravellerType`, `MockPolicyKind`), và ~25 khoá i18n chết dưới `tourDetail`
-(cả khối `inclusions`, 6/8 khoá `sections`, 8/10 khoá `reviews`, 4 khoá bảng đợt…).
+`itinerary-timeline`, `tour-facts`, `departures-table`) và
+`DeparturesTableConnected`. Xoá theo dây: ba hàm thuần chỉ còn chính test của
+mình gọi, ba mock type hết consumer, và ~25 khoá i18n chết dưới `tourDetail`.
 **`tsc` là lưới an toàn ở đây, không phải grep**: quét thủ công bỏ sót
 `reviews.deletedAuthor` vì `destinations/region-reviews.tsx` mượn khối đó qua
-alias — typecheck bắt ngay, khoá đó đã giữ lại kèm ghi chú vì sao. Hai case a11y
-mất theo `TourReviews`/`DeparturesTable` được thay bằng một case tương đương trên
-`TourMediaPanel` (bất biến "CTA điều hướng là LINK" giữ nguyên độ phủ), và 10
-chú thích trỏ tới file vừa xoá đã sửa để không dẫn người đọc vào đường cụt.
+alias — typecheck bắt ngay, khoá đó đã giữ lại kèm ghi chú vì sao.
 
-**Review findings:** một Important giữa chừng — brief Task 5 cấm `DepartureDialog`
-nhận prop nên `currency` bị đẩy vào context, reviewer chỉ ra tiền lệ ngược
-(ba component `…Connected` đều nhận `currency` qua prop); đã sửa (`3333199`).
-Tests after: 1634 — 1454 unit (82 contract, 10 tokens, 2 i18n, 22 ui, 215
-api, 1123 web) và 180 api int. **Sổ nợ — ĐỌC KỸ MỤC ĐẦU:** `MediaAsset` rỗng
-nên gallery 7 thumb không có gì để hiện, và **KHÔNG có lệnh nào chạy để lấp
-chỗ đó**: repo chỉ có `db:seed`, còn `prisma/seed.ts` không tạo một row
-`MediaAsset` nào cho tour. Script chọn ảnh của [ADR-0020](adr/0020-real-images-sourcing.md)
-đã bị gỡ khỏi nhánh cùng lượt xoá 189 ảnh bị từ chối, nên muốn có ảnh tour
-phải LÀM LẠI khâu tuyển ảnh kèm cửa lọc theo chủ thể mà ADR đó bắt buộc — đây
-là một đợt việc riêng, không phải một câu lệnh. Hệ quả trực tiếp: nhánh HAI
-CỘT của `TourMediaPanel` chưa bao giờ render từ dữ liệu thật (trang đang chạy
-nhánh một cột), nên số `621 | 40 | 443` ở trên đo bằng cách dựng đúng chuỗi
-class đó trong chính stylesheet của trang, và **trang thật hiện lệch bản
-wireframe đã duyệt rõ nhất ở đúng chỗ này** · `freeCancellationDays` · `meals`/`accommodation`
-cho itinerary (73 row/30 tour, để cùng màn admin P4) · thu phóng trong lightbox.
+**Review findings:** một Important giữa chừng — brief Task 5 cấm
+`DepartureDialog` nhận prop nên `currency` bị đẩy vào context, reviewer chỉ ra
+tiền lệ ngược (ba component `…Connected` đều nhận `currency` qua prop); đã sửa
+(`3333199`). Tests after: 1698 — 1518 unit (82 contract, 10 tokens, 2 i18n, 22
+ui, 215 api, 1187 web) và 180 api int.
+
+**Sổ nợ mở — đọc kỹ:** `MediaAsset` rỗng nên gallery 7 thumb không có gì để
+hiện, và **KHÔNG có lệnh nào chạy để lấp chỗ đó**: repo chỉ có `db:seed`, còn
+`prisma/seed.ts` không tạo một row `MediaAsset` nào cho tour; script chọn ảnh
+của [ADR-0020](adr/0020-real-images-sourcing.md) đã bị gỡ khỏi nhánh cùng lượt
+xoá 189 ảnh bị từ chối, nên muốn có ảnh tour phải LÀM LẠI khâu tuyển ảnh kèm
+cửa lọc chủ thể — một đợt việc riêng, không phải một câu lệnh · mô tả cho bốn
+card dữ kiện (cần 4 cột nullable trên `Tour`) · tiêu đề riêng cho thẻ policy
+(**không cần cột mới** — sửa fixture) · `freeCancellationDays` · thu phóng trong
+lightbox. Món `meals`/`accommodation` **rút khỏi sổ nợ**: bản duyệt in bữa ăn và
+chỗ ngủ bằng chữ đậm trong chính mô tả ngày, không cần cột riêng.
 
 ## 2026-08-12 — Vá CORS thiếu PATCH: avatar upload xong 100% rồi báo lỗi (branch `fix/cors-patch-avatar`, ff-only, 1 commit `ce691bd`)
 
