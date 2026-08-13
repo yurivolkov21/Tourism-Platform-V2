@@ -122,7 +122,7 @@ describe('Lightbox — điều hướng', () => {
 
   // KHÔNG cuộn vòng: tới ảnh cuối rồi bấm tiếp mà quay về ảnh đầu làm người xem
   // tưởng mình chưa xem hết. Hành vi này ĐÃ CÓ ở bản cục bộ trong `tour-gallery`
-  // và việc tách ra không được đổi nó.
+  // (đã xoá 13/08) và việc tách ra không được đổi nó.
   it('KHÔNG cuộn vòng: nút bị vô hiệu ở ảnh đầu và ảnh cuối', async () => {
     const user = await open(<Harness count={3} />);
     expect(screen.getByRole('button', { name: 'Back one' })).toBeDisabled();

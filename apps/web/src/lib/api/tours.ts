@@ -23,9 +23,10 @@ export type DestinationVM = ContractOutputs['catalog']['destinations']['list'][n
 /** Một đợt khởi hành trong `TourDetailVM.departures` — tách riêng để component
     nhận dữ liệu THẲNG từ `fetchTourDetail()` (`departure-selection.tsx`/
     `booking-rail.tsx`) khai prop theo VM thay vì mượn `MockTourDeparture`
-    (mocks/tours.ts đã khai tử ở Task 7). `departure-strip.tsx`/`departures-
-    table.tsx` vẫn nhận qua context của `departure-selection.tsx` nên KHÔNG cần
-    đổi — `MockTourDeparture` còn sống ở `mocks/types.ts` đúng vì hai file đó. */
+    (mocks/tours.ts đã khai tử ở Task 7). `departure-strip.tsx` vẫn nhận qua
+    context của `departure-selection.tsx` nên KHÔNG cần đổi — `MockTourDeparture`
+    còn sống ở `mocks/types.ts` đúng vì file đó (`departures-table.tsx` xoá
+    13/08). */
 export type DepartureVM = TourDetailVM['departures'][number];
 /** Một ngày trong `TourDetailVM.itinerary` — cùng lý do tách như `DepartureVM`. */
 export type ItineraryDayVM = TourDetailVM['itinerary'][number];

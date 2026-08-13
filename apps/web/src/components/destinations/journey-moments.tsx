@@ -6,8 +6,9 @@ import { Reveal } from '@/components/motion/reveal';
 import type { MockMoment } from '@/mocks/types';
 
 /** Số ô nhỏ tối đa cạnh ô lớn — cùng khảm 1 lớn + 4 nhỏ mà `TourGallery` đã
-    duyệt (`components/tours/tour-gallery.tsx`), khác ở chỗ đây KHÔNG có
-    lightbox: khu này giới thiệu, không phải gallery tương tác. */
+    duyệt (file đó xoá 13/08 khi trang tour chuyển sang dải 7 thumb của
+    `tour-media-panel.tsx`), khác ở chỗ đây KHÔNG có lightbox: khu này giới
+    thiệu, không phải gallery tương tác. */
 const MAX_THUMBS = 4;
 
 /**
@@ -72,8 +73,8 @@ export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
  * Một ô khoảnh khắc. Là LINK sang chính tour trong `credit`, không phải `<div>`
  * trơ: hover-zoom trên một thứ bấm không đi đâu là hứa hão — chuột báo "tương
  * tác được" rồi bấm vào không có gì xảy ra. Ba component ảnh khác của repo
- * (`tour-gallery`, `about-gallery`, `tour-card`) đều có hover VÌ chúng là link
- * hoặc nút thật.
+ * (`tour-media-panel`, `about-gallery`, `tour-card`) đều có hover VÌ chúng là
+ * link hoặc nút thật.
  */
 function MomentTile({ moment, className }: { moment: MockMoment; className?: string }) {
   return (
@@ -86,8 +87,9 @@ function MomentTile({ moment, className }: { moment: MockMoment; className?: str
         className,
       )}
     >
-      {/* Zoom ảnh theo đúng công thức `tour-gallery.tsx` (khảm cùng họ, bản
-          chuẩn nhất repo): 500ms ease-out, scale 105, có `group-focus-within`
+      {/* Zoom ảnh theo đúng công thức `tour-gallery.tsx` (khảm cùng họ; file
+          gốc xoá 13/08, bản chuẩn nhất repo nay là CHÍNH ĐÂY): 500ms ease-out,
+          scale 105, có `group-focus-within`
           cho bàn phím và ĐỦ guard `motion-reduce`. Cố ý KHÔNG theo
           `about-gallery.tsx` — bản đó thiếu cả `ease-out` lẫn guard. */}
       <ImagePlaceholder className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100" />

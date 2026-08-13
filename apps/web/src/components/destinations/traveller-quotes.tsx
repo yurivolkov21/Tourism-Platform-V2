@@ -118,7 +118,7 @@ function QuoteFigure({ item }: { item: MockTestimonial }) {
         </Avatar>
         <div className="flex flex-col gap-1">
           {/* Hàng sao đọc thành MỘT câu, không phải 5 icon rời — cùng cách
-              `tour-reviews.tsx` đã chốt. */}
+              `tours/review-card.tsx` đã chốt (`tour-reviews.tsx` xoá 13/08). */}
           <div
             role="img"
             aria-label={`${item.rating} out of 5 stars`}

@@ -2,8 +2,6 @@
 // theo Prisma schema: chỗ nào vượt ra ngoài schema chính là danh sách trường
 // cần thêm khi chốt trang và gắn API (xem memory static-first-page-building).
 
-import type { MediaItem } from '@tourism/contract';
-
 export type MockRegionKey = 'north' | 'central' | 'south';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,14 +25,15 @@ export type MockRegionKey = 'north' | 'central' | 'south';
 // xoá (component chi tiết tour, UI tour card) — không có VM tương ứng gọn hơn
 // đáng để đổi:
 //  · `MockDestinationLink` — `components/tours/route-ribbon.tsx`, `lib/tours.ts`
-//  · `MockTourDeparture` — `components/tours/departure-strip.tsx`,
-//    `components/tours/departures-table.tsx`
+//  · `MockTourDeparture` — `components/tours/departure-strip.tsx`
 //  · `MockItineraryDay` — `components/destinations/region-day-trips.tsx`
-//  · `MockMediaItem` — `components/tours/tour-gallery.tsx`, `lib/tours.ts`
-//    (contract CHƯA có field `media`, xem `TourGallery` ở `tours/[slug]/page.tsx`)
-//  · `MockReview` — `lib/tours.spec.ts` (fixture cục bộ)
-//  · `MockTravellerType` — `components/tours/tour-facts.tsx`
-//  · `MockPolicyKind` — `lib/tours.ts`, `components/tours/good-to-know.tsx`
+//  · `MockMediaItem` — `lib/tours.ts` (`tourGallery`)
+//
+// `MockReview`/`MockTravellerType`/`MockPolicyKind` XOÁ ở đợt trùng tu Tour
+// Details 13/08: consumer cuối của cả ba là các component trang tour cũ
+// (`tour-reviews`, `tour-facts`, `good-to-know`) và hàm `averageRating`/
+// `tourReviews`/`groupPoliciesByKind` — tất cả đã xoá cùng lượt khi trang
+// chuyển sang 5 tab. Chỗ từng dùng nay đọc thẳng `TourReviewVM`/`TourDetailVM`.
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Một destination mà tour đi qua (bảng join M:N ở backend). `isPrimary` là
@@ -43,48 +42,6 @@ export interface MockDestinationLink {
   slug: string;
   name: string;
   isPrimary: boolean;
-}
-
-export type MockTravellerType = 'FAMILY' | 'COUPLE' | 'FRIENDS' | 'SOLO' | 'BUSINESS';
-export type MockPolicyKind = 'CANCELLATION' | 'BOOKING' | 'GENERAL';
-
-/**
- * Gương `PublicReviewSchema` của `@tourism/contract` — **đúng 8 field, không hơn**.
- *
- * Những thứ CỐ TÌNH không có ở đây, vì bản công khai của contract không có, và mỗi
- * cái đều là một UI thường thấy mà ta không được dựng:
- *  • `source: VERIFIED | CURATED` chỉ tồn tại ở `AdminReviewSchema` → **không có
- *    badge "Verified traveller"**. Khối i18n port từ Nexora từng có đúng key đó;
- *    nó sẽ hiện một huy hiệu mà dữ liệu công khai không thể xác nhận.
- *  • Không có số đếm theo từng mức sao → **không có histogram phân bố**. Tính từ
- *    trang đang tải là nói dối: nó phản ánh 5 review vừa lấy, không phải toàn bộ.
- *  • Không có avatar, không có vote hữu ích, không có trả lời của nhà vận hành.
- *
- * `ReviewsByTourQuerySchema` cũng chỉ có `page`/`pageSize`/`tourSlug` → **không
- * sort, không lọc theo sao**. Thứ tự do server quyết: `authorDeleted asc →
- * createdAt desc → id desc`.
- */
-export interface MockReview {
-  id: string;
-  /** Số nguyên 1–5 (`RatingSchema`). */
-  rating: number;
-  title: string | null;
-  body: string;
-  /** null khi tác giả đã xoá tài khoản — schema ghi rõ FE render "Deleted account". */
-  authorName: string | null;
-  authorDeleted: boolean;
-  /** ISO **datetime** (có giờ + Z), KHÁC `MockTourDeparture.startDate` là date-only.
-      Bẫy "đừng dựng new Date()" chỉ áp cho date-only; với datetime có Z thì
-      `new Date()` là đúng. Xem `formatReviewDate` trong lib/tours.ts. */
-  createdAt: string;
-  /**
-   * Ảnh chuyến đi khách đính kèm (ADR-0021) — URL đã dựng, rỗng nếu không có.
-   * Kiểu `MediaItem` THẲNG từ contract (không phải `MockMediaItem` cục bộ):
-   * `MockMediaItem` thiếu 4 field ghi công ADR-0020 nên không gương đủ
-   * `MediaItemSchema` — dùng nó ở đây sẽ làm `MockReview` lệch khỏi
-   * `TourReviewVM` thật, gãy các hàm `lib/tours.ts` nhận `TourReviewVM[]`.
-   */
-  media: MediaItem[];
 }
 
 export interface MockItineraryDay {

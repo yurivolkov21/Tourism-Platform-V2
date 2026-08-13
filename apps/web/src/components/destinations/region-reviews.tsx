@@ -34,7 +34,8 @@ const INLINE_COUNT = 3;
  * GỠ 12/08 nên ràng buộc "phải nền trang" không còn là bắt buộc kỹ thuật,
  * giữ vì đang đẹp.)
  *
- * NGÔN NGỮ HÌNH mượn nguyên của `tours/tour-reviews.tsx` — cùng bộ sao
+ * NGÔN NGỮ HÌNH mượn nguyên của `tours/tour-reviews.tsx` (xoá 13/08; bản còn
+ * sống là `tours/review-card.tsx`) — cùng bộ sao
  * `fill-rating`/`text-rating-muted`, cùng `Avatar`/`AvatarFallback`, cùng
  * `formatReviewDate`, cùng cách xử `authorDeleted`. Phát minh kiểu thứ hai cho
  * review là để hai chỗ trong site nói cùng một thứ bằng hai giọng.

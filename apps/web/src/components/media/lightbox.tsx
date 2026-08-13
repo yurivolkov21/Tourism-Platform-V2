@@ -8,7 +8,8 @@ import { type ReactNode, useCallback } from 'react';
 /**
  * Lightbox dùng chung — xem một bộ media theo chỉ số, có bộ đếm và điều hướng.
  *
- * TÁCH từ `tours/tour-gallery.tsx` (Task 5l) khi gallery trang vùng cần đúng hành
+ * TÁCH từ `tours/tour-gallery.tsx` (Task 5l — file đó đã XOÁ 13/08 khi trang
+ * tour chuyển sang `tour-media-panel.tsx`) khi gallery trang vùng cần đúng hành
  * vi này. Bản cục bộ nhận `photos: MockMediaItem[]`, tức khoá vào kiểu dữ liệu
  * riêng của tour; hợp đồng ở đây chỉ nhận `count` + `renderMedia(index)`, nên
  * consumer nào cũng dùng được mà không phải nhồi dữ liệu của mình vào kiểu của

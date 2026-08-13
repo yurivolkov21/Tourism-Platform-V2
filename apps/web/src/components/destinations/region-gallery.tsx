@@ -206,7 +206,8 @@ function GalleryHeader({ region }: { region: MockRegion }) {
  * không thấy mình đang ở đâu. Màu `on-media` chứ không `primary`: nền ô LÀ một
  * dốc từ `--primary`, vẽ vòng primary lên đó là vẽ vô hình.
  *
- * Zoom hover theo công thức chuẩn của repo (`tour-gallery.tsx`), có `motion-reduce`
+ * Zoom hover theo công thức chuẩn của repo (bản gốc `tour-gallery.tsx` đã xoá
+ * 13/08; bản còn sống là `destinations/journey-moments.tsx`), có `motion-reduce`
  * ở CẢ transition lẫn scale — thiếu vế scale thì ô vẫn nhảy, chỉ là nhảy tức thì.
  */
 function GalleryTile({

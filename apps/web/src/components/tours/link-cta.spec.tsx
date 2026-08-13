@@ -1,11 +1,12 @@
 import { render, screen } from '@testing-library/react';
 import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import type { TourDetailVM } from '@/lib/api/tours';
 import { BookingRail } from './booking-rail';
-import { DeparturesTable } from './departures-table';
+import { DepartureSelectionProvider } from './departure-selection';
 import { TourListCard } from './tour-list-card';
-import { TourReviews } from './tour-reviews';
+import { TourMediaPanel } from './tour-media-panel';
 
 /**
  * Một chỗ duy nhất canh bất biến: **CTA điều hướng phải là LINK, không phải nút.**
@@ -22,6 +23,11 @@ import { TourReviews } from './tour-reviews';
  * role=button": khẳng định theo chiều dương thì test vẫn đúng nếu sau này ta đổi
  * cách hiện thực (buttonVariants, `<Link>` của Next, hay upstream sửa lại).
  */
+
+// `TourMediaPanel` gọi `useRouter()` cho nút Reserve (role="button" thật, không
+// phải anchor đội lốt — xem doc comment trong component). Cùng khuôn mock với
+// `tour-media-panel.spec.tsx`.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
 
 const DEPARTURE = {
   id: 'dep-1',
@@ -51,6 +57,15 @@ const CARD = {
   cover: null,
 };
 
+const TOUR_NO_DEPARTURES = {
+  ...CARD,
+  media: [],
+  departures: [],
+  policies: [],
+  ratingAvg: null,
+  ratingCount: 0,
+} as unknown as TourDetailVM;
+
 describe('CTA điều hướng là LINK, không phải nút', () => {
   it('TourListCard — "View tour" trỏ đúng slug', () => {
     render(<TourListCard tour={CARD} />);
@@ -58,23 +73,14 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     expect(cta).toHaveAttribute('href', '/tours/ha-long-bay-cruise');
   });
 
-  it('TourReviews rỗng — "Ask about this trip" trỏ /contact', () => {
-    render(<TourReviews reviews={[]} ratingAvg={null} />);
-    expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
-      'href',
-      '/contact',
-    );
-  });
-
-  it('DeparturesTable rỗng — CTA hỏi là link', () => {
+  // Thay hai case `TourReviews`/`DeparturesTable` xoá cùng hai component đó ở
+  // đợt trùng tu 13/08. `TourMediaPanel` là nơi CTA hỏi còn sống trên trang
+  // tour mới: tour không còn đợt nào thì nút Reserve nhường chỗ cho nó.
+  it('TourMediaPanel không còn đợt — CTA hỏi là link trỏ /contact', () => {
     render(
-      <DeparturesTable
-        departures={[]}
-        currency="VND"
-        durationDays={2}
-        selectedId={undefined}
-        onSelect={() => {}}
-      />,
+      <DepartureSelectionProvider departures={[]}>
+        <TourMediaPanel tour={TOUR_NO_DEPARTURES} />
+      </DepartureSelectionProvider>,
     );
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',

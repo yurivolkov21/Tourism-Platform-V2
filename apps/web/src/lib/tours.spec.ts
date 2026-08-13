@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { MockMediaItem, MockReview } from '@/mocks/types';
+import type { MockMediaItem } from '@/mocks/types';
 // `mocks/tours.ts` đã khai tử ở Task 7 (cụm destinations-api) — TOURS giờ là
 // fixture nội bộ trích nguyên vẹn từ mock cũ, xem đầu file fixture để biết vì
 // sao (mọi slug/con số các test dưới đây đang canh vẫn đúng nguyên xi).
@@ -16,7 +16,6 @@ const EMPTY_FILTERS = {
 } as const;
 
 import {
-  averageRating,
   countActiveFilters,
   departureStatus,
   discountPercent,
@@ -28,7 +27,6 @@ import {
   formatMoney,
   formatReviewDate,
   formatTicketDate,
-  groupPoliciesByKind,
   priceBucket,
   relatedTours,
   routeChain,
@@ -36,7 +34,6 @@ import {
   sortTours,
   tourCategories,
   tourGallery,
-  tourReviews,
 } from './tours';
 
 describe('tourCategories', () => {
@@ -367,24 +364,6 @@ describe('formatTicketDate — ngày ngắn kiểu vé máy bay ("24 AUG"), dùn
   });
 });
 
-describe('groupPoliciesByKind', () => {
-  it('thứ tự nhóm cố định Cancellation → Booking → General', () => {
-    const groups = groupPoliciesByKind([
-      { kind: 'GENERAL', title: 'g', body: 'g' },
-      { kind: 'BOOKING', title: 'b', body: 'b' },
-      { kind: 'CANCELLATION', title: 'c', body: 'c' },
-    ]);
-    expect(groups.map((g) => g.kind)).toEqual(['CANCELLATION', 'BOOKING', 'GENERAL']);
-  });
-  it('nhóm rỗng bị loại khỏi kết quả', () => {
-    const groups = groupPoliciesByKind([{ kind: 'BOOKING', title: 'b', body: 'b' }]);
-    expect(groups.map((g) => g.kind)).toEqual(['BOOKING']);
-  });
-  it('mảng rỗng trả mảng rỗng', () => {
-    expect(groupPoliciesByKind([])).toEqual([]);
-  });
-});
-
 describe('relatedTours', () => {
   it('không bao giờ chứa chính nó', () => {
     const related = relatedTours(TOURS, 'ha-long-bay-cruise', 3);
@@ -454,72 +433,6 @@ describe('tourGallery', () => {
     // Nhánh thật khi biên tập upload ảnh mà quên đánh dấu hero.
     const result = tourGallery([item('gallery', 5), item('gallery', 2)]);
     expect(result.map((m) => m.sortOrder)).toEqual([2, 5]);
-  });
-});
-
-describe('averageRating', () => {
-  const r = (rating: number): MockReview => ({
-    id: `r${rating}`,
-    rating,
-    title: null,
-    body: 'x',
-    authorName: 'A',
-    authorDeleted: false,
-    createdAt: '2026-07-01T00:00:00.000Z',
-    media: [],
-  });
-
-  it('làm tròn tới MỘT chữ số thập phân — khớp Decimal(2,1) của cột denormalize', () => {
-    expect(averageRating([r(5), r(4), r(4)])).toBe(4.3);
-  });
-
-  it('mảng rỗng cho null, KHÔNG phải 0 — chưa ai đánh giá khác bị chấm 0 điểm', () => {
-    expect(averageRating([])).toBeNull();
-  });
-
-  it('một review thì trung bình là chính nó', () => {
-    expect(averageRating([r(4)])).toBe(4);
-  });
-
-  it('không bao giờ vượt 5 hay xuống dưới 1 khi mọi rating hợp lệ', () => {
-    expect(averageRating([r(5), r(5)])).toBe(5);
-    expect(averageRating([r(1), r(1)])).toBe(1);
-  });
-});
-
-describe('tourReviews', () => {
-  const rv = (id: string, createdAt: string, authorDeleted = false): MockReview => ({
-    id,
-    rating: 5,
-    title: null,
-    body: 'x',
-    authorName: authorDeleted ? null : 'A',
-    authorDeleted,
-    createdAt,
-    media: [],
-  });
-
-  it('mới nhất trước', () => {
-    const result = tourReviews([
-      rv('old', '2026-05-01T00:00:00.000Z'),
-      rv('new', '2026-07-01T00:00:00.000Z'),
-    ]);
-    expect(result.map((r) => r.id)).toEqual(['new', 'old']);
-  });
-
-  it('tác giả đã xoá tài khoản CHÌM xuống cuối, kể cả khi review mới hơn', () => {
-    // Đúng thứ tự server: `authorDeleted asc → createdAt desc`. Nếu client sắp
-    // khác server thì trang 1 tĩnh và trang 1 từ API sẽ ra hai danh sách khác nhau.
-    const result = tourReviews([
-      rv('deleted-but-newest', '2026-08-01T00:00:00.000Z', true),
-      rv('kept', '2026-06-01T00:00:00.000Z'),
-    ]);
-    expect(result.map((r) => r.id)).toEqual(['kept', 'deleted-but-newest']);
-  });
-
-  it('trả mảng MỚI — mock là hằng số dùng chung', () => {
-    const input = [rv('a', '2026-07-01T00:00:00.000Z')];
-    expect(tourReviews(input)).not.toBe(input);
   });
 });
 

@@ -1803,24 +1803,18 @@ export const messages = {
     // Cũng không có CTA viết review: `create` cần auth + bookingCode và eligibility
     // đòi booking PAID + chuyến đã kết thúc; luồng booking chưa có trong web.
     reviews: {
-      heading: 'Traveller reviews',
-      /** Nói thẳng đây là review MỚI NHẤT, không gọi là "nổi bật" — contract không
-          có tiêu chí nào để chọn ra cái nổi bật, nên gọi vậy là bịa. */
-      recentLabel: 'Most recent',
-      summary: (average: string, count: number) =>
-        `${average} average from ${count} ${count === 1 ? 'review' : 'reviews'}`,
-      seeAll: (count: number) => `See all ${count} ${count === 1 ? 'review' : 'reviews'}`,
-      dialogTitle: (count: number) => `All ${count} ${count === 1 ? 'review' : 'reviews'}`,
-      close: 'Close reviews',
-      /** Tác giả đã xoá tài khoản — `PublicReviewSchema.authorName` là null và
-          schema ghi rõ FE render đúng chuỗi này. Review vẫn ở lại vì nó là đánh giá
-          thật; chỉ danh tính biến mất. */
-      deletedAuthor: 'Deleted account',
+      /** HAI khoá còn lại của khối này sau đợt trùng tu 13/08 — phần còn lại
+          (heading/recentLabel/summary/seeAll/dialogTitle/emptyTitle…) xoá cùng
+          `tour-reviews.tsx`; tab Reviews và modal dùng `reviewsTab` + `dialogs`.
+          Hai khoá này ở lại vì `destinations/region-reviews.tsx` mượn CHUNG
+          chúng (`messages.tourDetail.reviews`) — đổi tên khối là gãy trang vùng. */
+      /** Nhãn gộp cho cụm năm sao: trình đọc màn hình nghe "4 out of 5 stars"
+          thay vì năm icon vô nghĩa. */
       ratingLabel: (rating: number) => `${rating} out of 5 stars`,
-      /** Trạng thái rỗng: mời hành động chứ không chỉ thông báo. Nhưng KHÔNG mời
-          viết review (chưa có luồng) — mời hỏi, trang /contact có thật. */
-      emptyTitle: 'No reviews yet',
-      emptyBody: 'This trip is new. Ask us anything about it and we will answer from experience.',
+      /** Tác giả đã xoá tài khoản — `PublicReviewSchema.authorName` là null và
+          schema ghi rõ FE render đúng chuỗi này. Review vẫn ở lại vì nó là đánh
+          giá thật; chỉ danh tính biến mất. */
+      deletedAuthor: 'Deleted account',
     },
 
     // ── Reviews tab ──
@@ -1843,10 +1837,6 @@ export const messages = {
 
     // ── Gallery ảnh ──
     gallery: {
-      /** Nhãn khu ảnh cho trình đọc màn hình. Không có tiêu đề nhìn thấy: khảm ảnh
-          nằm ngay dưới hero, nó tự nói nó là gì. */
-      label: 'Photos',
-      viewAll: (n: number) => `View all ${n} photos`,
       /** Tên khả truy cập của từng ô khảm. Nói VỊ TRÍ chứ không nói nội dung: nội
           dung nằm ở `alt` và chỉ hiện thành chú thích trong lightbox — ô khảm bịa
           mô tả ảnh là nói dối về thứ mình không biết. */
@@ -1873,13 +1863,12 @@ export const messages = {
     // rồi slugify chính các chuỗi này thành `id` của <section>. Sửa chữ ở đây là
     // đổi URL fragment — link #cũ mà ai đã chia sẻ sẽ chết.
     sections: {
-      why: 'Why this trip',
-      goodFor: 'Good for',
-      itinerary: 'Itinerary',
-      included: 'What’s included',
+      /** Còn ĐÚNG hai khoá sau đợt trùng tu 13/08: trang tour hết `<section>`
+          có tiêu đề, năm cụm nội dung nay là năm tab (nhãn ở `tabs`). Sáu khoá
+          cũ (`why`/`goodFor`/`itinerary`/`included`/`reviews`/`goodToKnow`) xoá
+          cùng các component render chúng. `departures` vẫn sống vì dải khởi
+          hành dưới hero và trang `/book` còn dùng làm nhãn + nguồn hash. */
       departures: 'All departures',
-      reviews: 'Traveller reviews',
-      goodToKnow: 'Good to know',
       related: 'You might also like',
     },
 
@@ -1896,7 +1885,6 @@ export const messages = {
       allDates: (n: number) => `All ${n} dates`,
       seatsLeft: (n: number) => `${n} seat${n === 1 ? '' : 's'} left`,
       reserve: (n: number) => `Reserve — ${n} seat${n === 1 ? '' : 's'} left`,
-      soldOut: 'Sold out',
     },
 
     // ── Dải khởi hành + rail booking + bảng đợt ──
@@ -1916,17 +1904,6 @@ export const messages = {
       soldOut: 'Sold out',
       seatsLimited: (n: number) => `Only ${n} ${n === 1 ? 'seat' : 'seats'} left`,
       seatsAvailable: (n: number) => `${n} seats available`,
-      /** Nhãn ĐỌC ĐƯỢC cho nút chọn trong bảng đợt: nhãn hiện ra chỉ có "Select"
-          nên nghe trần 4 nút "Select" giống nhau là không biết chọn cái nào. */
-      select: (range: string) => `Select departure ${range}`,
-      selectLabel: 'Select',
-      selected: 'Selected',
-      columns: {
-        dates: 'Dates',
-        length: 'Length',
-        availability: 'Availability',
-        price: 'Price',
-      },
     },
 
     // ── Departures tab ──
@@ -1974,9 +1951,6 @@ export const messages = {
     // ── Itinerary ──
     itinerary: {
       dayLabel: (n: number) => `Day ${n}`,
-      /** meetingPoint gắn vào Day 1: nó là thông tin của NGÀY ĐẦU, không phải
-          của cả tour. */
-      meetAt: (place: string) => `Meet at ${place}`,
       stopsSummary: (day: number, stops: number, from: string, to: string) =>
         `Day ${day} · ${stops} stop${stops === 1 ? '' : 's'} · ${from}–${to}`,
       today: 'Today',
@@ -1985,21 +1959,11 @@ export const messages = {
       excluded: 'Not included',
     },
 
-    // ── Included / Not included ──
-    inclusions: {
-      included: 'Included',
-      excluded: 'Not included',
-      /** Một bên rỗng thì cột đó hiện dấu này và GIỮ nguyên lưới 2 cột — bỏ cột
-          đi là hai tour cạnh nhau có bố cục khác nhau. */
-      empty: '—',
-    },
-
     // ── Good to know: FAQ + policy theo nhóm ──
     goodToKnow: {
       faqHeading: 'Questions travellers ask',
-      policyHeading: 'Policies',
-      /** PolicyKind enum → nhãn nhóm. Thứ tự nhóm do groupPoliciesByKind quyết
-          định (Cancellation trước — đó là thứ khách lo nhất). */
+      /** PolicyKind enum → nhãn nhóm, dùng làm eyebrow của thẻ policy ở tab
+          Good to know và tab Departures. */
       policyKinds: {
         CANCELLATION: 'Cancellation',
         BOOKING: 'Booking & payment',

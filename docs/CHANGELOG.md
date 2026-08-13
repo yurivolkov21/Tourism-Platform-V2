@@ -70,18 +70,31 @@ lớp cắt sao lẻ — đúng như thiết kế) · viền ô ngày 3.13:1 (s�
 có nghĩa ở server) và sắp/lọc đi qua API chứ không sắp lại ở client — client
 chỉ nắm một trang, "highest first" tính tại chỗ sẽ mâu thuẫn với trang kế.
 
+**Dọn xác trang cũ cùng lượt** (user chốt xoá luôn trong nhánh này): 11 file
+component + spec (`tour-gallery`, `tour-reviews`, `good-to-know`, `inclusions`,
+`itinerary-timeline`, `tour-facts`, `departures-table`) và `DeparturesTableConnected`
+— tất cả đều không còn trang nào render sau khi trang tour chuyển sang 5 tab.
+Xoá theo dây: ba hàm thuần chỉ còn chính test của mình gọi (`averageRating`,
+`tourReviews`, `groupPoliciesByKind`), ba mock type hết consumer (`MockReview`,
+`MockTravellerType`, `MockPolicyKind`), và ~25 khoá i18n chết dưới `tourDetail`
+(cả khối `inclusions`, 6/8 khoá `sections`, 8/10 khoá `reviews`, 4 khoá bảng đợt…).
+**`tsc` là lưới an toàn ở đây, không phải grep**: quét thủ công bỏ sót
+`reviews.deletedAuthor` vì `destinations/region-reviews.tsx` mượn khối đó qua
+alias — typecheck bắt ngay, khoá đó đã giữ lại kèm ghi chú vì sao. Hai case a11y
+mất theo `TourReviews`/`DeparturesTable` được thay bằng một case tương đương trên
+`TourMediaPanel` (bất biến "CTA điều hướng là LINK" giữ nguyên độ phủ), và 10
+chú thích trỏ tới file vừa xoá đã sửa để không dẫn người đọc vào đường cụt.
+
 **Review findings:** một Important giữa chừng — brief Task 5 cấm `DepartureDialog`
 nhận prop nên `currency` bị đẩy vào context, reviewer chỉ ra tiền lệ ngược
 (ba component `…Connected` đều nhận `currency` qua prop); đã sửa (`3333199`).
-Tests after: 1688 — 1508 unit (82 contract, 10 tokens, 2 i18n, 22 ui, 215
-api, 1177 web) và 180 api int. **Sổ nợ:** `MediaAsset` còn rỗng nên gallery
+Tests after: 1634 — 1454 unit (82 contract, 10 tokens, 2 i18n, 22 ui, 215
+api, 1123 web) và 180 api int. **Sổ nợ:** `MediaAsset` còn rỗng nên gallery
 7 thumb chưa có gì để hiện (chạy seed-media là thấy ngay, không phải sửa
-code) · 6 component của trang cũ (`tour-gallery`, `tour-reviews`,
-`good-to-know`, `inclusions`, `itinerary-timeline`, `tour-facts`) cùng
-`DeparturesTableConnected` nay mồ côi — test của chúng vẫn xanh nhưng không
-trang nào render, chờ user chốt xoá · `freeCancellationDays` · `meals`/
-`accommodation` cho itinerary (73 row/30 tour, để cùng màn admin P4) · thu
-phóng trong lightbox.
+code) — vì vậy nhánh HAI CỘT của `TourMediaPanel` chưa render được từ dữ liệu
+thật, số `621 | 40 | 443` ở trên đo bằng cách dựng đúng chuỗi class đó trong
+chính stylesheet của trang · `freeCancellationDays` · `meals`/`accommodation`
+cho itinerary (73 row/30 tour, để cùng màn admin P4) · thu phóng trong lightbox.
 
 ## 2026-08-12 — Vá CORS thiếu PATCH: avatar upload xong 100% rồi báo lỗi (branch `fix/cors-patch-avatar`, ff-only, 1 commit `ce691bd`)
 

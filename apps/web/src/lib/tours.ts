@@ -1,8 +1,6 @@
-import type { TourCardVM, TourDetailVM, TourReviewVM } from '@/lib/api/tours';
-import type { MockDestinationLink, MockMediaItem, MockPolicyKind } from '@/mocks/types';
+import type { TourCardVM } from '@/lib/api/tours';
+import type { MockDestinationLink, MockMediaItem } from '@/mocks/types';
 import { foldAccents } from './text';
-
-type Policy = TourDetailVM['policies'][number];
 
 /** Chuyên mục duy nhất kèm số tour — nguồn cho hàng chip lọc. Giữ thứ tự xuất
     hiện trong mảng gốc (không sắp lại) để chip không nhảy chỗ khi thêm tour. */
@@ -202,37 +200,6 @@ export function sortTours<T extends TourCardVM>(
 }
 
 /**
- * Trung bình rating, làm tròn tới MỘT chữ số thập phân — khớp `Decimal(2,1)` của
- * cột `ratingAvg` được denormalize ở backend, nên số ở tầng tĩnh và số từ API
- * không lệch nhau ở chữ số thứ hai.
- *
- * Mảng rỗng trả `null`, KHÔNG phải 0: "chưa ai đánh giá" khác "bị chấm 0 điểm", và
- * cả contract lẫn UI đều phân biệt hai thứ đó.
- */
-export function averageRating(reviews: readonly TourReviewVM[]): number | null {
-  if (reviews.length === 0) return null;
-  const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
-  return Math.round((sum / reviews.length) * 10) / 10;
-}
-
-/**
- * Review theo ĐÚNG thứ tự server trả về: `authorDeleted asc → createdAt desc`.
- *
- * Sao y `ReviewsService.listByTour` chứ không tự chọn thứ tự đẹp hơn: nếu client
- * sắp khác server thì trang 1 ở cụm tĩnh và trang 1 sau khi gắn API sẽ là hai danh
- * sách khác nhau, và không ai nhận ra cho tới lúc so bằng mắt. Review của tài khoản
- * đã xoá chìm xuống cuối — chúng vẫn là đánh giá thật nên không bị bỏ, chỉ không
- * chiếm chỗ trên cùng.
- */
-export function tourReviews(reviews: readonly TourReviewVM[]): TourReviewVM[] {
-  return [...reviews].sort((a, b) => {
-    if (a.authorDeleted !== b.authorDeleted) return a.authorDeleted ? 1 : -1;
-    if (a.createdAt !== b.createdAt) return a.createdAt < b.createdAt ? 1 : -1;
-    return a.id < b.id ? 1 : -1;
-  });
-}
-
-/**
  * Ngày của review: "July 2026".
  *
  * `Intl` + `new Date()` ở đây là ĐÚNG, khác hẳn `formatDateRange`: `createdAt` là
@@ -347,20 +314,6 @@ export function formatDateRange(startDate: string, endDate: string): string {
   // Tour trong ngày: start trùng end, in một ngày thay vì "14–14 Aug".
   if (sd === ed) return `${sd} ${sMonth} ${sy}`;
   return `${sd}–${ed} ${sMonth} ${sy}`;
-}
-
-// Thứ tự cố định: hủy chuyến là thứ khách lo nhất nên đứng đầu.
-const POLICY_ORDER: MockPolicyKind[] = ['CANCELLATION', 'BOOKING', 'GENERAL'];
-
-/** Gom policy theo `kind` với thứ tự cố định. Nhóm rỗng bị loại — không render
-    tiêu đề nhóm trống. */
-export function groupPoliciesByKind(
-  policies: readonly Policy[],
-): { kind: MockPolicyKind; items: Policy[] }[] {
-  return POLICY_ORDER.map((kind) => ({
-    kind,
-    items: policies.filter((p) => p.kind === kind),
-  })).filter((group) => group.items.length > 0);
 }
 
 /** Gợi ý cuối trang: cùng chuyên mục trước, rồi tour chia chung destination,

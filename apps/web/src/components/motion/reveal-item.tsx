@@ -85,8 +85,8 @@ const VIEWPORT = { once: true } as const;
  * đèn lồng miền Trung giờ chạy ngang theo tiến độ cuộn trang, nên một transform ghi
  * lên chính phần tử đang được lái sẽ tranh nhau — nó không bọc nhịp nào cả (xem
  * `LanternsSection` ở `region-gallery.tsx`). Cảnh báo này giữ lại vì nó vẫn đúng cho
- * mọi vùng cuộn lồng KHÁC của repo (`departure-strip.tsx`, `departures-table.tsx`,
- * `route-ribbon.tsx`), và vì phép đo phía trên đắt hơn phép đọc lại nó.
+ * mọi vùng cuộn lồng KHÁC của repo (`departure-strip.tsx`, `route-ribbon.tsx`),
+ * và vì phép đo phía trên đắt hơn phép đọc lại nó.
  */
 
 /** Chỉ hai thẻ, và cả hai đều có nhu cầu THẬT. `div` là mặc định; `h3` cho tiêu đề
