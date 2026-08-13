@@ -2,21 +2,13 @@ import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { TopoPattern } from '@/components/topo-pattern';
-import { DepartureDialog } from '@/components/tours/departure-dialog';
 import {
   BookingRailConnected,
   DepartureSelectionProvider,
 } from '@/components/tours/departure-selection';
-import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
-import { GoodToKnowPanel } from '@/components/tours/panels/good-to-know-panel';
-import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
-import { OverviewPanel } from '@/components/tours/panels/overview-panel';
-import { ReviewsPanel } from '@/components/tours/panels/reviews-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
-import { TourMediaPanel } from '@/components/tours/tour-media-panel';
-import { TourTabs } from '@/components/tours/tour-tabs';
-import { fetchTourDetail, fetchTourReviews, fetchTours } from '@/lib/api/tours';
+import { fetchTourDetail, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
 import { relatedTours } from '@/lib/tours';
 
@@ -89,15 +81,19 @@ export async function generateMetadata({
 }
 
 /**
- * TRANG NÀY KHÔNG CÒN MỤC LỤC (`OnThisPage`).
+ * ⚠️ PHẦN THÂN ĐANG TRỐNG — CỐ Ý, đang dựng lại.
  *
- * Dải năm tab thay vai mục lục: giữ cả hai là dựng hai bộ điều hướng cho cùng
- * một tập nội dung, và bộ thứ hai trỏ vào các `<section id>` không còn tồn tại.
- * `OnThisPage` vẫn sống ở `/blog` — không xoá component.
+ * Toàn bộ khối gallery + panel đặt chỗ + 5 tab đã xoá ngày 13/08 để dựng LẠI TỪ
+ * ĐẦU bám thẳng markup của wireframe đã duyệt
+ * (`docs/design/mockups/tour-detail.src.html`), thay vì vá tiếp lên bản cũ vốn
+ * lệch bản duyệt ở quá nhiều chỗ. Hero và "You might also like" giữ nguyên vì
+ * hai khối đó đã đo khớp.
  *
- * Anchor cũ (`#itinerary`, `#departures`, `#reviews`, `#good-to-know`) KHÔNG
- * chết: `TourTabs` đọc hash lúc mount và nghe `hashchange`, nên link đã chia sẻ
- * mở đúng tab tương ứng thay vì cuộn tới một section. Xem ADR-0022.
+ * Trang KHÔNG có mục lục `OnThisPage` — dải năm tab thay vai nó (giữ cả hai là
+ * dựng hai bộ điều hướng cho cùng một tập nội dung). `OnThisPage` vẫn sống ở
+ * `/blog`, không xoá component. Anchor cũ (`#itinerary`, `#departures`,
+ * `#reviews`, `#good-to-know`) tạm chưa trỏ tới đâu cho tới khi dải tab dựng
+ * lại xong — xem ADR-0022.
  */
 export default async function TourDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -110,7 +106,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
   // ĐẦY ĐỦ (không phải trang hiện tại) vì gợi ý cuối trang cần xét mọi tour
   // khác để chọn cùng chuyên mục/destination. Cùng pattern `fetchPosts()` gọi
   // lại ở thân `/blog/[slug]` dù `generateStaticParams` đã gọi một lần.
-  const [tours, reviewsPage] = await Promise.all([fetchTours(), fetchTourReviews(slug)]);
+  const [tours] = await Promise.all([fetchTours()]);
 
   return (
     <DepartureSelectionProvider departures={tour.departures}>
@@ -156,41 +152,11 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           `1.4fr/1fr`, tỉ lệ đó cho số lẻ và làm mọi đường 1px lệch nửa pixel),
           ảnh vuông ra 573−64−16 = 493 chẵn, và dải 5 tab ra (1056−4×24)/5 = 192
           chẵn. Mọi con số đều nguyên. */}
-      {/* `--radius: 1rem` ĐÈ TẠI ĐÂY, không sửa token toàn site.
-          Wireframe dùng ĐÚNG thang bậc của dự án (`radiusScale` sm .6 · md .8 ·
-          lg 1) nhưng base là 1rem, còn token site là 0.375rem — nên bo góc bản
-          duyệt là 9.6/12.8 trong khi trang ra 3.6/4.8. `tokens.css` sinh mọi bậc
-          bằng `calc(var(--radius) * …)` nên đổi base ở một chỗ là cả cây con
-          khớp, và `rounded-sm`/`rounded-md` vẫn là utility token — không hardcode
-          px. Đè cục bộ thay vì đổi token gốc: 0.375rem là bo góc của cả site,
-          đổi nó là đổi mọi trang. */}
-      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]">
-        <TourMediaPanel tour={tour} />
-
-        {/* MỘT instance duy nhất cho cả trang: cả ô "All N dates" ở panel đặt chỗ
-            lẫn nút "See all dates" ở tab Departures đều mở modal này qua
-            `openAllDates()` trong context. */}
-        <DepartureDialog currency={tour.currency} />
-
-        {/* KHÔNG bọc thêm margin ở đây: `TourTabs` đã mang `mt-12` = đúng 48px
-            của `.tabs{margin-top:48px}` trong wireframe. Bọc thêm `mt-14` là
-            cộng thành 104px, dải tab tụt hẳn khỏi nhịp bản thiết kế. */}
-        <div>
-          <TourTabs
-            panels={{
-              overview: <OverviewPanel tour={tour} />,
-              // `live={false}` cho tới khi trang biết session: chế độ live chỉ
-              // được bật khi khách CÓ booking PAID ở đúng đợt này, mà trang này
-              // là SSG công khai nên không tra được. `today` vẫn truyền vào cho
-              // đủ chữ ký — ở chế độ xem trước nó không được đọc tới.
-              itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
-              departures: <DeparturesPanel tour={tour} />,
-              reviews: <ReviewsPanel tour={tour} page={reviewsPage} />,
-              goodToKnow: <GoodToKnowPanel tour={tour} />,
-            }}
-          />
-        </div>
-      </div>
+      {/* ── CHỖ DỰNG LẠI PHẦN THÂN ──
+          Khung 1152 + đệm ngang 48 → nội dung ĐÚNG 1056px, và `--radius:1rem`
+          là base bo góc của wireframe (site dùng 0.375rem). Hai con số này đã đo
+          khớp bản duyệt nên giữ lại làm khung cho phần dựng mới. */}
+      <div className="mx-auto w-full max-w-6xl px-12 py-14 [--radius:1rem]" />
 
       <section
         aria-labelledby="related-heading"
