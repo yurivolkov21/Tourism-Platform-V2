@@ -1968,6 +1968,14 @@ export const messages = {
         `Day ${day} · ${stops} stop${stops === 1 ? '' : 's'} · ${from}–${to}`,
       today: 'Today',
       done: 'Done',
+      /** Dòng meta dưới điểm hẹn: ngày khởi hành + độ dài chuyến, rồi một mệnh
+          đề trạng thái. Wireframe có thêm "night-bus transfer from Hà Nội on
+          request" — đó là copy RIÊNG của tour Hà Giang, contract không có
+          trường nào chứa nó nên không dựng. */
+      meta: (departing: string, days: number, nights: number) =>
+        `Departing ${departing} · ${days} ${days === 1 ? 'day' : 'days'}, ${nights} ${nights === 1 ? 'night' : 'nights'}`,
+      metaLive: 'trip in progress',
+      metaEnded: 'this departure has finished',
       included: "What's included",
       excluded: 'Not included',
     },

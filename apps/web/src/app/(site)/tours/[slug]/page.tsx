@@ -7,6 +7,7 @@ import {
   BookingRailConnected,
   DepartureSelectionProvider,
 } from '@/components/tours/departure-selection';
+import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
 import { OverviewPanel } from '@/components/tours/panels/overview-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
@@ -180,7 +181,11 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         <TourTabs
           panels={{
             overview: <OverviewPanel tour={tour} />,
-            itinerary: <PanelPlaceholder name="Itinerary" />,
+            // `live={false}` cho tới khi trang biết session: chế độ live chỉ
+            // bật khi khách CÓ booking PAID ở đúng đợt này, mà trang này là SSG
+            // công khai nên không tra được. `today` vẫn truyền cho đủ chữ ký —
+            // ở chế độ xem trước nó không được đọc tới.
+            itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
             departures: <PanelPlaceholder name="Departures" />,
             reviews: <PanelPlaceholder name="Reviews" />,
             goodToKnow: <PanelPlaceholder name="Good to know" />,
