@@ -135,7 +135,7 @@ function OpenOnMount({ children }: { children: ReactNode }) {
 
 function openWrapper({ children }: { children: ReactNode }) {
   return (
-    <DepartureSelectionProvider departures={DEPARTURES} currency="USD">
+    <DepartureSelectionProvider departures={DEPARTURES}>
       <OpenOnMount>{children}</OpenOnMount>
     </DepartureSelectionProvider>
   );
@@ -143,14 +143,14 @@ function openWrapper({ children }: { children: ReactNode }) {
 
 describe('DepartureDialog', () => {
   it('nhóm theo tháng và liệt kê đủ mọi đợt', () => {
-    render(<DepartureDialog />, { wrapper: openWrapper });
+    render(<DepartureDialog currency="USD" />, { wrapper: openWrapper });
     expect(screen.getAllByRole('button', { name: /→/ })).toHaveLength(12);
     expect(screen.getByText('September 2026')).toBeInTheDocument();
   });
 
   it('lọc "only open" bỏ đợt hết chỗ', async () => {
     const user = userEvent.setup();
-    render(<DepartureDialog />, { wrapper: openWrapper });
+    render(<DepartureDialog currency="USD" />, { wrapper: openWrapper });
     // `getAllByLabelText`, KHÔNG `getByLabelText`: Base UI `Checkbox` render
     // MỘT `<span role="checkbox">` thấy được VÀ một `<input>` ẩn cạnh nó, cả
     // hai đều khớp `<label>` bọc ngoài — span khớp qua `aria-labelledby` Base
@@ -162,13 +162,13 @@ describe('DepartureDialog', () => {
 
   it('chọn một đợt thì đóng modal và cập nhật lựa chọn dùng chung', async () => {
     const user = userEvent.setup();
-    render(<DepartureDialog />, { wrapper: openWrapper });
+    render(<DepartureDialog currency="USD" />, { wrapper: openWrapper });
     await user.click(screen.getAllByRole('button', { name: /→/ })[6] as HTMLElement);
     expect(screen.queryByRole('dialog')).toBeNull();
   });
 
   it('đợt hết chỗ không bấm được', () => {
-    render(<DepartureDialog />, { wrapper: openWrapper });
+    render(<DepartureDialog currency="USD" />, { wrapper: openWrapper });
     expect(screen.getByRole('button', { name: /23 Nov/ })).toBeDisabled();
   });
 });

@@ -50,9 +50,7 @@ const DEPARTURES: DepartureVM[] = [
 
 function wrapper({ children }: { children: ReactNode }) {
   return (
-    <DepartureSelectionProvider departures={DEPARTURES} currency="USD">
-      {children}
-    </DepartureSelectionProvider>
+    <DepartureSelectionProvider departures={DEPARTURES}>{children}</DepartureSelectionProvider>
   );
 }
 

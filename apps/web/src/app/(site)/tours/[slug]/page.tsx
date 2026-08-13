@@ -151,7 +151,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
   const [tours, reviewsPage] = await Promise.all([fetchTours(), fetchTourReviews(slug)]);
 
   return (
-    <DepartureSelectionProvider departures={tour.departures} currency={tour.currency}>
+    <DepartureSelectionProvider departures={tour.departures}>
       {/* ── "Departure board": hero + dải khởi hành là MỘT mặt, không hai băng ──
           Ý định từ đầu (Task 9) là hai băng liền màu, cách nhau một hairline, đọc
           thành một bảng có đường chia — thay vì một khối lạ trôi trên nền sáng.

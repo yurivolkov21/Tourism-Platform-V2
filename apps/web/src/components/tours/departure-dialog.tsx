@@ -56,10 +56,14 @@ function departureDurationDays(startDate: string, endDate: string): number {
  * Bộ lọc "only open" NGƯỢC LẠI là state cục bộ: nó không phải thứ nơi khác cần
  * đọc chung, chỉ lọc hiển thị phía client trên `departures` đang có trong context.
  */
-export function DepartureDialog() {
+export function DepartureDialog({ currency }: { currency: string }) {
   const t = messages.tourDetail;
-  const { departures, selectedId, select, currency, allDatesOpen, closeAllDates } =
-    useDepartureSelection();
+  // `currency` đi qua PROP chứ không qua context — đúng mẫu ba component
+  // `…Connected` trong `departure-selection.tsx`: state dùng chung (đợt đang
+  // chọn, trạng thái modal) đi qua context, còn dữ liệu chỉ-để-format đi qua
+  // prop. Nhét `currency` vào context sẽ bắt mọi consumer khác mang theo một
+  // field chúng không dùng.
+  const { departures, selectedId, select, allDatesOpen, closeAllDates } = useDepartureSelection();
   const [onlyOpen, setOnlyOpen] = useState(false);
   // `htmlFor`/`id` tường minh — KHÔNG chỉ bọc `<label>` suông: Biome
   // (`noLabelWithoutControl`) đọc TSX tĩnh nên không thấy `<Checkbox>` render
