@@ -1657,14 +1657,6 @@ export const messages = {
   toursPage: {
     breadcrumb: 'Tours',
 
-    // ── Tabs ──
-    tabs: {
-      overview: 'Overview',
-      itinerary: 'Itinerary',
-      departures: 'Departures',
-      reviews: 'Reviews',
-      goodToKnow: 'Good to know',
-    },
     title: 'Every journey we run',
     subtitle:
       'Filter by destination, length, price or pace to find the trip that fits you — every one of them small-group, and led by someone who lives there.',
@@ -1761,6 +1753,15 @@ export const messages = {
     breadcrumb: 'Tours',
 
     // ── Tabs ──
+    /** Nhãn của dải card dữ kiện ở tab Overview. Giá trị lấy thẳng từ dữ liệu
+        tour nên ở đây CHỈ có nhãn, không có câu mô tả nào. */
+    facts: {
+      duration: 'Duration',
+      nights: (n: number) => `${n} ${n === 1 ? 'night' : 'nights'}`,
+      groupSize: 'Group size',
+      difficulty: 'Difficulty',
+      goodFor: 'Good for',
+    },
     tabs: {
       overview: 'Overview',
       itinerary: 'Itinerary',
