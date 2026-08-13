@@ -1878,6 +1878,11 @@ export const messages = {
     mediaPanel: {
       photoCount: (n: number) => `${n} photo${n === 1 ? '' : 's'}`,
       morePhotos: (n: number) => `+${n}`,
+      /** Tên khả truy cập của ô ảnh CHÍNH (541px). Cố tình KHÔNG dùng chữ
+          "photo": ô này đứng cạnh 7 nút "Open photo N of M" của dải thumb, và
+          `tour-media-panel.spec.tsx` đếm đúng 7 nút khớp /photo/i — trộn thêm
+          một nhãn "photo" thứ 8 sẽ làm phép đếm đó sai mà không nói lên gì. */
+      openGallery: 'Open gallery',
       selectDeparture: 'Select departure',
       allDates: (n: number) => `All ${n} dates`,
       seatsLeft: (n: number) => `${n} seat${n === 1 ? '' : 's'} left`,

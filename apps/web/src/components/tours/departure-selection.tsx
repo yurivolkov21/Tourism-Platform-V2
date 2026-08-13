@@ -25,11 +25,20 @@ interface DepartureSelection {
   selectedId: string | undefined;
   select: (id: string) => void;
   departures: DepartureVM[];
+  /** Trạng thái modal "All dates" (Task 5) — sống Ở ĐÂY, không phải trong
+      component gọi mở nó: cả `TourMediaPanel` (Task 4) lẫn tab Departures
+      (Task 9) đều cần mở CÙNG MỘT modal, mà trang chỉ render một instance. */
+  allDatesOpen: boolean;
+  openAllDates: () => void;
+  closeAllDates: () => void;
 }
 
 const Ctx = createContext<DepartureSelection | null>(null);
 
-function useDepartureSelection(): DepartureSelection {
+/** Export vì `TourMediaPanel` (Task 4) và tab Departures (Task 9) cần đọc
+    trực tiếp — trước đây hàm này private vì chỉ ba `…Connected` dưới đây
+    dùng nội bộ. */
+export function useDepartureSelection(): DepartureSelection {
   const value = useContext(Ctx);
   if (!value) {
     throw new Error('Component chọn đợt phải nằm trong <DepartureSelectionProvider>');
@@ -50,10 +59,18 @@ export function DepartureSelectionProvider({
   const [selectedId, setSelectedId] = useState<string | undefined>(
     () => departures.find((d) => d.seatsLeft > 0)?.id,
   );
+  const [allDatesOpen, setAllDatesOpen] = useState(false);
 
   const value = useMemo<DepartureSelection>(
-    () => ({ selectedId, select: setSelectedId, departures }),
-    [selectedId, departures],
+    () => ({
+      selectedId,
+      select: setSelectedId,
+      departures,
+      allDatesOpen,
+      openAllDates: () => setAllDatesOpen(true),
+      closeAllDates: () => setAllDatesOpen(false),
+    }),
+    [selectedId, departures, allDatesOpen],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
