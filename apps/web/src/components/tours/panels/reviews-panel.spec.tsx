@@ -191,6 +191,34 @@ describe('ReviewsPanel', () => {
     expect(screen.getByRole('button', { name: /Next/ })).toBeDisabled();
   });
 
+  it('đang chờ server thì GIỮ kết quả cũ, không thay bằng chữ "Loading"', async () => {
+    // Thay danh sách bằng một dòng chữ khiến mỗi lần đổi bộ lọc là chữ biến mất
+    // rồi hiện lại — đúng cái giật người dùng báo. Chỉ được làm mờ.
+    const user = userEvent.setup();
+    let release: (v: unknown) => void = () => {};
+    fetchFromBrowser.mockReturnValue(
+      new Promise((r) => {
+        release = r;
+      }),
+    );
+    render(<ReviewsPanel tour={TOUR} reviews={PAGE} />);
+    await open();
+    await user.click(screen.getByRole('button', { name: '4 stars only' }));
+    // Vẫn thấy review cũ TRONG MODAL suốt lúc chờ (tab nền cũng có bản mồi
+    // của chính review đó, nên phải hỏi trong phạm vi dialog).
+    expect(within(screen.getByRole('dialog')).getByText(/A flat tyre/)).toBeInTheDocument();
+    release({ ...PAGE, items: [REVIEWS[2]], total: 1, totalPages: 1 });
+    expect(await screen.findByText(/Four days on the back/)).toBeInTheDocument();
+  });
+
+  it('hộp modal cao CỐ ĐỊNH — lọc đổi số kết quả không được làm nó nảy', async () => {
+    render(<ReviewsPanel tour={TOUR} reviews={PAGE} />);
+    await open();
+    const box = screen.getByRole('dialog');
+    expect(box.className).toContain('h-[min(760px,100%)]');
+    expect(box.className).not.toContain('max-h-[min(760px,100%)]');
+  });
+
   it('bộ lọc không khớp gì thì nói thẳng, không để danh sách trống trơn', async () => {
     const user = userEvent.setup();
     fetchFromBrowser.mockResolvedValue({ ...PAGE, items: [], total: 0, totalPages: 0 });

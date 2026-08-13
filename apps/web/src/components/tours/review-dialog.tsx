@@ -141,7 +141,11 @@ export function ReviewDialog({
         showCloseButton={false}
         // `[--radius:1rem]`: dialog portal ra `body` nên KHÔNG thừa hưởng base
         // bo góc của wireframe từ container trang. Cùng lý do ở DepartureDialog.
-        className="flex max-h-[min(760px,100%)] w-full flex-col gap-0 rounded-lg border border-border p-0 [--radius:1rem] sm:max-w-180"
+        // `h-` chứ KHÔNG `max-h-`: với `max-h`, lọc còn 1 kết quả làm hộp tụt
+        // từ 760 xuống ~300 rồi bung lại khi bỏ lọc — cả modal nảy lên nảy
+        // xuống dưới tay người dùng. Ghim chiều cao thì mọi thao tác lọc chỉ
+        // đổi phần bên trong vùng cuộn.
+        className="flex h-[min(760px,100%)] w-full flex-col gap-0 rounded-lg border border-border p-0 [--radius:1rem] sm:max-w-180"
       >
         {/* `.dlg-head` — pad 20/24/16, có thêm hàng `.rv-ctl` cao 32, gap 12. */}
         <div className="relative border-b border-border px-6 pt-5 pb-4">
@@ -271,10 +275,24 @@ export function ReviewDialog({
 
         {/* `.dlg-scroll` — pad 8/24/16. data-lenis-prevent: Lenis chặn wheel trên
             cả tài liệu nên lăn chuột trong vùng cuộn lồng lại cuộn TRANG CHÍNH. */}
-        <div data-lenis-prevent className="min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-4">
-          {loading ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">{t.loadingReviews}</p>
-          ) : data.items.length === 0 ? (
+        <div
+          data-lenis-prevent
+          aria-busy={loading}
+          // GIỮ NGUYÊN kết quả cũ trong lúc chờ, chỉ làm mờ. Thay danh sách
+          // bằng dòng "Loading…" khiến mỗi lần đổi bộ lọc là chữ biến mất rồi
+          // hiện lại — đúng cái giật mà người dùng thấy. Chuyến đi mạng vẫn
+          // cần (sort/lọc chạy ở server, xem doc-comment đầu file), nhưng nó
+          // không được phép làm trống màn hình.
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto px-6 pt-2 pb-4 transition-opacity duration-150',
+            loading && 'opacity-55',
+          )}
+        >
+          {/* Trình đọc màn hình cần biết đang tải; mắt thì đã thấy độ mờ. */}
+          <p aria-live="polite" className="sr-only">
+            {loading ? t.loadingReviews : ''}
+          </p>
+          {data.items.length === 0 ? (
             <p className="py-8 text-center text-sm text-muted-foreground">{t.noReviewsMatch}</p>
           ) : (
             data.items.map((review) => <ReviewCard key={review.id} review={review} />)
