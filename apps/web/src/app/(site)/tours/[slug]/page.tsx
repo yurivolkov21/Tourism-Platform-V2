@@ -10,6 +10,7 @@ import {
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
 import { TourMediaPanel } from '@/components/tours/tour-media-panel';
+import { TourTabs } from '@/components/tours/tour-tabs';
 import { fetchTourDetail, fetchTours } from '@/lib/api/tours';
 import { absoluteUrl } from '@/lib/site';
 import { relatedTours } from '@/lib/tours';
@@ -170,6 +171,20 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           durationDays={tour.durationDays}
           maxGroupSize={tour.maxGroupSize}
         />
+
+        {/* Năm panel đang dựng lần lượt (R4–R8). Chỗ giữ tạm nói rõ nó là chỗ
+            giữ tạm — KHÔNG để trống, vì `TourTabs` phải render đủ 5 panel vào
+            HTML tĩnh ngay từ bây giờ (ADR-0022) và một panel rỗng trông y hệt
+            một panel hỏng. */}
+        <TourTabs
+          panels={{
+            overview: <PanelPlaceholder name="Overview" />,
+            itinerary: <PanelPlaceholder name="Itinerary" />,
+            departures: <PanelPlaceholder name="Departures" />,
+            reviews: <PanelPlaceholder name="Reviews" />,
+            goodToKnow: <PanelPlaceholder name="Good to know" />,
+          }}
+        />
       </div>
 
       <section
@@ -198,5 +213,14 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         maxGroupSize={tour.maxGroupSize}
       />
     </DepartureSelectionProvider>
+  );
+}
+
+/** Chỗ giữ tạm cho một panel chưa dựng. Xoá dần khi R4–R8 xong. */
+function PanelPlaceholder({ name }: { name: string }) {
+  return (
+    <p className="rounded-md border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
+      Panel “{name}” đang được dựng lại theo wireframe.
+    </p>
   );
 }
