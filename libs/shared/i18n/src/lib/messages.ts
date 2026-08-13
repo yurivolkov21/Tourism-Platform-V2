@@ -1759,8 +1759,15 @@ export const messages = {
       duration: 'Duration',
       nights: (n: number) => `${n} ${n === 1 ? 'night' : 'nights'}`,
       groupSize: 'Group size',
+      /** Sức chứa: wireframe ghi "Max 10 riders" (tour xe máy) — ở đây là
+          "guests" vì chuỗi này chạy cho MỌI tour, kể cả tour đi bộ và du thuyền. */
+      groupSizeValue: (n: number) => `Max ${n} guests`,
       difficulty: 'Difficulty',
       goodFor: 'Good for',
+      /** Hai link nhỏ ở chân card, mỗi cái nhảy sang một tab có câu trả lời đầy
+          đủ. Chỉ gắn cho card CÓ chỗ để tới — hai card còn lại không có. */
+      seeItinerary: 'See the itinerary',
+      howDemanding: 'How demanding is it?',
     },
     tabs: {
       overview: 'Overview',

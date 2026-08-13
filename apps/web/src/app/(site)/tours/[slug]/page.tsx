@@ -7,6 +7,7 @@ import {
   BookingRailConnected,
   DepartureSelectionProvider,
 } from '@/components/tours/departure-selection';
+import { OverviewPanel } from '@/components/tours/panels/overview-panel';
 import { RelatedTours } from '@/components/tours/related-tours';
 import { TourHero } from '@/components/tours/tour-hero';
 import { TourMediaPanel } from '@/components/tours/tour-media-panel';
@@ -178,7 +179,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             một panel hỏng. */}
         <TourTabs
           panels={{
-            overview: <PanelPlaceholder name="Overview" />,
+            overview: <OverviewPanel tour={tour} />,
             itinerary: <PanelPlaceholder name="Itinerary" />,
             departures: <PanelPlaceholder name="Departures" />,
             reviews: <PanelPlaceholder name="Reviews" />,
