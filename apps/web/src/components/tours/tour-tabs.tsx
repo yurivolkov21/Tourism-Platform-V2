@@ -91,9 +91,22 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
             key={key}
             value={key}
             // `.tab`: flex:1 · h38 · pad 2px 0 12px · 14/20 w500 · muted →
-            // foreground khi mở. Gạch chân là `::after` cao 2px ở `bottom:-1px`
-            // để nó ĐÈ lên đường viền đáy của list chứ không nằm dưới nó.
-            className="relative h-[38px] flex-1 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none data-selected:after:absolute data-selected:after:inset-x-0 data-selected:after:-bottom-px data-selected:after:h-0.5 data-selected:after:bg-primary"
+            // foreground khi mở.
+            //
+            // GẠCH CHÂN DÙNG LUÔN `::after` CỦA THƯ VIỆN, chỉ sửa hai thứ, và
+            // phải sửa BẰNG ĐÚNG TIỀN TỐ BIẾN THỂ mà thư viện dùng:
+            //   • vị trí: thư viện đặt `group-data-horizontal/tabs:after:bottom-[-5px]`
+            //     (gạch trôi hẳn 5px dưới list vì biến thể `line` gốc không có
+            //     viền đáy). Wireframe muốn gạch NẰM TRÙNG lên đường kẻ nối dài
+            //     giữa 5 tab → `bottom:-1px`.
+            //   • màu: thư viện dùng `after:bg-foreground` (gần đen); wireframe
+            //     dùng `--primary`.
+            // Viết `data-selected:after:*` như bản trước là KHÔNG ăn:
+            // tailwind-merge không dedupe hai lớp khác tiền tố biến thể nên bản
+            // của thư viện vẫn thắng — cùng lớp lỗi với chiều cao của `TabsList`.
+            // Không cần tự bật/tắt: thư viện đã lo bằng
+            // `…data-active:after:opacity-100`.
+            className="relative h-[38px] flex-1 rounded-none px-0 pt-0.5 pb-3 text-sm leading-[20px] font-medium text-muted-foreground after:bg-primary data-selected:bg-transparent data-selected:text-foreground data-selected:shadow-none group-data-horizontal/tabs:after:bottom-[-1px]"
           >
             {t[key]}
           </TabsTrigger>
