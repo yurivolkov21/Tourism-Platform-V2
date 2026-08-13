@@ -134,11 +134,20 @@ export function DepartureDialog({
                 key={group.month}
                 spacing="sm"
                 stacked
-                // Ghim `--frame-radius` 1rem: mặc định nó là `--radius-xl`, mà
+                dense
+                // `dense`: panel kéo SÁT mép frame và lấy ĐÚNG bán kính của
+                // frame (`--frame-panel-radius: var(--frame-radius)`), nên hai
+                // góc trùng khít. Chế độ lồng mặc định thì panel = 16 − 3 − 1 =
+                // 12: đúng đồng tâm về hình học (hai tâm cung trùng, khe đều 4px
+                // mọi phía — đã đo) nhưng ĐỘ CONG lệch 25%, và mắt đọc ra ngay.
+                // "Đồng tâm" không phải là "trông giống nhau"; muốn hai góc như
+                // một thì phải cho chúng dùng chung một bán kính, và đó chính là
+                // việc của `dense`.
+                //
+                // Ghim `--frame-radius` 1rem vì mặc định nó trỏ `--radius-xl`, mà
                 // biến đó đã chốt giá trị ở `:root` theo base 0.375rem của site
-                // nên không ăn theo `[--radius:1rem]` của modal — frame ra 8.4
-                // trong khi hộp modal 16 và thẻ đợt 12.8, nhìn tọt hẳn vào. Ghim
-                // 16 thì panel tự ra 16 − 3 − 1 = 12, đúng họ bo góc quanh nó.
+                // nên không ăn theo `[--radius:1rem]` của modal — frame sẽ ra 8.4
+                // trong khi hộp modal 16, nhìn tọt hẳn vào.
                 className="mb-3 last:mb-0 [--frame-radius:1rem]"
               >
                 <FrameHeader>
