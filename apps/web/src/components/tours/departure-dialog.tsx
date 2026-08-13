@@ -4,6 +4,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@tourism/ui/components/dialog';
+import { Frame, FrameHeader, FramePanel, FrameTitle } from '@tourism/ui/components/reui/frame';
 import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { useId, useState } from 'react';
@@ -116,92 +117,100 @@ export function DepartureDialog({
             <p className="py-8 text-center text-sm text-muted-foreground">{t.noMatch}</p>
           ) : (
             months.map((group) => (
-              <div key={group.month}>
-                {/* Nhãn tháng DÍNH khi cuộn — danh sách dài thì người đọc luôn
-                    biết mình đang ở tháng nào. */}
-                {/* Nhãn tháng: một dải nền RIÊNG, bo góc TRÊN cho khớp bo góc
-                    của thẻ đợt ngay dưới (`rounded-md` = 12.8).
-
-                    `bg-muted` chứ không phải một giá trị phần trăm gõ cứng: đo
-                    được nó đậm hơn mặt dialog đúng 10.5% ở chế độ SÁNG — mức
-                    user yêu cầu — và ở chế độ TỐI nó tự đảo thành sáng hơn 30%,
-                    đúng ngôn ngữ "bề mặt nổi thì sáng lên" của theme tối. Gõ
-                    cứng `−10%` sẽ làm dải này chìm nghỉm khi sang dark.
-
-                    KHÔNG `sticky`: đo trên cả hai bản thì nhãn chưa bao giờ thật
-                    sự dính (mỗi tháng là một nhóm riêng nên nhãn trôi cùng nhóm),
-                    và user muốn nó cuộn theo nội dung — bỏ hẳn thì hành vi đó
-                    chắc chắn đúng kể cả khi tour có nhiều đợt. */}
-                <p className="rounded-t-md bg-muted px-3 pt-4 pb-2 font-mono text-[11px] leading-[14px] tracking-[0.12em] text-muted-foreground uppercase">
-                  {monthLabel(group.month)}
-                </p>
-                {/* Hàng đợt cao 62 (đệm 24 + viền 2 + ngày 20 + 2 + meta 14).
-                    Wireframe đo ra 86 vì ở đó lớp `.dates` bị TRÙNG TÊN: nó vừa
-                    là lưới 4 cột của ô ngày ở panel, vừa là dòng ngày trong
-                    modal, nên `display:grid` rò sang và đội dòng ngày từ 20 lên
-                    44. Bám theo 86 là chép lại đúng cái lỗi đó, nên ở đây dùng
-                    chiều cao ĐÚNG Ý của bản thiết kế. */}
+              // MỘT `Frame` cho MỖI THÁNG. Đây là thứ đóng lại lỗi thị giác "hai
+              // cái tai": trước đó nhãn tháng là một dải bo góc TRÊN còn thẻ đợt
+              // bo cả bốn góc, nên hai mép dưới của dải lòi ra hai góc 90° cạnh
+              // chỗ thẻ cong vào.
+              //
+              // `Frame` giải bằng BÁN KÍNH ĐỒNG TÂM:
+              // `--frame-panel-radius = --frame-radius − --frame-px − 1px`, nên
+              // góc của panel lồng TRƠN vào góc của frame thay vì chỏi nhau — và
+              // nhãn với thẻ nay là hai phần của MỘT khối, không phải hai khối
+              // rời phải tự canh góc với nhau.
+              //
+              // `stacked`: nhiều đợt trong cùng tháng dính liền thành một dải,
+              // chỉ tháng với tháng mới có khe.
+              <Frame
+                key={group.month}
+                spacing="sm"
+                stacked
+                // Ghim `--frame-radius` 1rem: mặc định nó là `--radius-xl`, mà
+                // biến đó đã chốt giá trị ở `:root` theo base 0.375rem của site
+                // nên không ăn theo `[--radius:1rem]` của modal — frame ra 8.4
+                // trong khi hộp modal 16 và thẻ đợt 12.8, nhìn tọt hẳn vào. Ghim
+                // 16 thì panel tự ra 16 − 3 − 1 = 12, đúng họ bo góc quanh nó.
+                className="mb-3 last:mb-0 [--frame-radius:1rem]"
+              >
+                <FrameHeader>
+                  <FrameTitle className="font-mono text-[11px] leading-[14px] font-normal tracking-[0.12em] text-muted-foreground uppercase">
+                    {monthLabel(group.month)}
+                  </FrameTitle>
+                </FrameHeader>
                 {group.items.map((d) => {
                   const status = departureStatus(d.seatsLeft);
                   const soldOut = status === 'sold-out';
                   const selected = d.id === selectedId;
                   return (
-                    <button
+                    <FramePanel
                       key={d.id}
-                      type="button"
-                      disabled={soldOut}
-                      onClick={() => pick(d)}
+                      fit
                       className={cn(
-                        'mb-2 grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-4 rounded-md border border-border bg-card p-3 text-left transition-colors',
+                        'p-0',
                         selected &&
                           'border-primary bg-[color-mix(in_oklab,var(--primary)_7%,var(--card))]',
-                        soldOut && 'cursor-not-allowed opacity-55',
+                        soldOut && 'opacity-55',
                       )}
                     >
-                      <span>
-                        {/* HAI DÒNG, chủ động: "Mon, 14 Sep →" / "Thu, 17 Sep".
-                            Bản duyệt tách dòng như vậy và nó đọc rõ hơn hẳn một
-                            dòng dài. (Ở wireframe hiệu ứng này đến từ việc lớp
-                            `.dates` bị trùng tên với lưới ô ngày ở panel nên ăn
-                            nhầm `display:grid` — ở đây dựng thẳng bằng grid một
-                            cột, không nhờ vào chuyện rò CSS.) */}
-                        <span className="grid text-sm leading-[20px] font-medium tabular-nums">
-                          <span>{formatDialogDate(d.startDate)} →</span>
-                          <span>{formatDialogDate(d.endDate)}</span>
+                      <button
+                        type="button"
+                        disabled={soldOut}
+                        onClick={() => pick(d)}
+                        className={cn(
+                          'grid w-full cursor-pointer grid-cols-[1fr_auto_auto] items-center gap-4 p-3 text-left',
+                          soldOut && 'cursor-not-allowed',
+                        )}
+                      >
+                        <span>
+                          {/* HAI DÒNG: "Thu, 20 Aug →" / "Sun, 23 Aug" — bản
+                              duyệt tách dòng như vậy và nó đọc rõ hơn hẳn. */}
+                          <span className="grid text-sm leading-[20px] font-medium tabular-nums">
+                            <span>{formatDialogDate(d.startDate)} →</span>
+                            <span>{formatDialogDate(d.endDate)}</span>
+                          </span>
+                          <span className="mt-0.5 flex items-center gap-2 text-xs leading-[14px] text-muted-foreground">
+                            <i
+                              aria-hidden="true"
+                              className={cn('size-[7px] rounded-full', DOT_TONE[status])}
+                            />
+                            {t.rowMeta(
+                              soldOut ? t.soldOut : t.seatsOf(d.seatsLeft, maxGroupSize),
+                              durationDays,
+                            )}
+                          </span>
                         </span>
-                        <span className="mt-0.5 flex items-center gap-2 text-xs leading-[14px] text-muted-foreground">
-                          <i
-                            aria-hidden="true"
-                            className={cn('size-[7px] rounded-full', DOT_TONE[status])}
-                          />
-                          {t.rowMeta(
-                            soldOut ? t.soldOut : t.seatsOf(d.seatsLeft, maxGroupSize),
-                            durationDays,
+                        <span className="text-right text-[15px] leading-[20px] font-semibold text-price tabular-nums">
+                          {formatMoney(d.effectivePrice, currency)}
+                          {d.compareAtPrice ? (
+                            <s className="block text-xs leading-4 font-normal text-price-compare">
+                              {formatMoney(d.compareAtPrice, currency)}
+                            </s>
+                          ) : null}
+                        </span>
+                        <span className="flex items-center gap-1 text-xs leading-none font-medium whitespace-nowrap text-primary-emphasis">
+                          {soldOut ? null : selected ? (
+                            <>
+                              <CheckIcon className="size-3" />
+                              {t.selected}
+                            </>
+                          ) : (
+                            t.select
                           )}
                         </span>
-                      </span>
-                      <span className="text-right text-[15px] leading-[20px] font-semibold text-price tabular-nums">
-                        {formatMoney(d.effectivePrice, currency)}
-                        {d.compareAtPrice ? (
-                          <s className="block text-xs leading-4 font-normal text-price-compare">
-                            {formatMoney(d.compareAtPrice, currency)}
-                          </s>
-                        ) : null}
-                      </span>
-                      <span className="flex items-center gap-1 text-xs leading-none font-medium whitespace-nowrap text-primary-emphasis">
-                        {soldOut ? null : selected ? (
-                          <>
-                            <CheckIcon className="size-3" />
-                            {t.selected}
-                          </>
-                        ) : (
-                          t.select
-                        )}
-                      </span>
-                    </button>
+                      </button>
+                    </FramePanel>
                   );
                 })}
-              </div>
+              </Frame>
             ))
           )}
         </div>
