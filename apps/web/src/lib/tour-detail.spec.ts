@@ -4,6 +4,8 @@ import {
   galleryThumbs,
   itineraryDayDate,
   itineraryDayState,
+  monthLabel,
+  monthSeason,
   parseItineraryStops,
   ratingHistogram,
   visibleDepartureChips,
@@ -125,5 +127,34 @@ describe('parseItineraryStops', () => {
   it('giữ nguyên dấu gạch trong phần việc, chỉ cắt ở dấu phân cách đầu tiên', () => {
     const [stop] = parseItineraryStops('13:30 — Boat option — paid on the day');
     expect(stop).toEqual({ time: '13:30', text: 'Boat option — paid on the day' });
+  });
+});
+
+describe('monthLabel', () => {
+  it('khoá tháng thành nhãn đọc được', () => {
+    expect(monthLabel('2026-09')).toBe('September 2026');
+    expect(monthLabel('2027-01')).toBe('January 2027');
+  });
+
+  it('tháng 1 và tháng 12 KHÔNG lệch sang năm khác vì múi giờ', () => {
+    // `new Date('2026-01-01')` ở múi giờ ÂM lùi về 31/12/2025. Đây là lý do
+    // hàm phải neo UTC — bẫy `formatDateRange` đã né bằng cách tách chuỗi.
+    expect(monthLabel('2026-01')).toBe('January 2026');
+    expect(monthLabel('2026-12')).toBe('December 2026');
+  });
+});
+
+describe('monthSeason', () => {
+  it('rẻ hơn giá gốc là thấp mùa, đắt hơn là cao mùa', () => {
+    expect(monthSeason(309, 369, 329)).toBe('low');
+    expect(monthSeason(329, 349, 329)).toBe('peak');
+  });
+
+  it('đúng bằng giá gốc thì KHÔNG gắn nhãn — nhãn ở mọi tháng là nhãn vô nghĩa', () => {
+    expect(monthSeason(329, 329, 329)).toBeNull();
+  });
+
+  it('thấp mùa thắng khi tháng có cả hai đầu lệch: giá vào rẻ là thứ khách quyết định theo', () => {
+    expect(monthSeason(309, 369, 329)).toBe('low');
   });
 });

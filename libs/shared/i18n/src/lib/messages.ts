@@ -1932,6 +1932,21 @@ export const messages = {
       seeAllDates: 'See all dates',
       lowSeason: 'low season',
       peak: 'peak',
+      /** Dòng phụ dưới mỗi ô thống kê. "N of M" lấy M từ `maxGroupSize` —
+          `TourDepartureSchema` chỉ có `seatsLeft`, không có sức chứa riêng. */
+      nextDepartureSub: (left: number, capacity: number) =>
+        `${left} of ${capacity} ${capacity === 1 ? 'seat' : 'seats'} left`,
+      datesOpenValue: (open: number, total: number) => `${open} / ${total}`,
+      datesOpenSub: (months: number) => `across ${months} ${months === 1 ? 'month' : 'months'}`,
+      priceRangeSub: 'per person, by season',
+      seatsLeftSub: 'across every open date',
+      monthDepartures: (n: number) => `${n} ${n === 1 ? 'departure' : 'departures'}`,
+      monthSeatsLeft: (n: number) => `${n} ${n === 1 ? 'seat' : 'seats'} left`,
+      /** Tour chưa mở đợt nào: nói thẳng và mở một lối đi tiếp, không để tab
+          trống trơn. Khác câu ở `booking.box.noDepartures` vì chỗ này không
+          đứng cạnh form hỏi nào. */
+      empty: 'No upcoming departures for this trip yet.',
+      emptyBody: 'Ask us about private dates — this loop runs on request as well.',
     },
 
     booking: {

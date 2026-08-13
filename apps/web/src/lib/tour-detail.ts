@@ -106,3 +106,42 @@ export function parseItineraryStops(
         : { time: null, text: line };
     });
 }
+
+/**
+ * `"2026-09"` (khoá tháng của `departureMonths`) → `"September 2026"`.
+ *
+ * `timeZone: 'UTC'` BẮT BUỘC: không có nó, `Intl` diễn giải mốc theo giờ máy
+ * chạy và có thể lùi một tháng ở múi giờ ÂM — cùng bẫy mà `formatDateRange`
+ * (`lib/tours.ts`) đã né bằng cách tách chuỗi thay vì `new Date(dateOnlyString)`.
+ */
+const MONTH_LABEL_FMT = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
+export function monthLabel(month: string): string {
+  const [year, m] = month.split('-').map(Number) as [number, number];
+  return MONTH_LABEL_FMT.format(new Date(Date.UTC(year, m - 1, 1)));
+}
+
+/**
+ * Nhãn mùa của một tháng, SUY từ khoảng giá tháng đó so với `basePrice`.
+ *
+ * Không có field "mùa" nào trong contract — giá đợt (`priceOverride`) là dấu
+ * hiệu duy nhất, và nó là dấu hiệu thật: người vận hành hạ giá tháng vắng và
+ * nâng giá tháng cao điểm.
+ *
+ * Tháng lệch cả hai đầu (có đợt rẻ hơn VÀ đợt đắt hơn) đọc là **thấp mùa**: giá
+ * vào rẻ nhất là con số khách quyết định theo. Bằng giá gốc thì không gắn nhãn —
+ * nhãn xuất hiện ở mọi tháng là nhãn không nói gì.
+ */
+export function monthSeason(
+  minPrice: number,
+  maxPrice: number,
+  basePrice: number,
+): 'low' | 'peak' | null {
+  if (minPrice < basePrice) return 'low';
+  if (maxPrice > basePrice) return 'peak';
+  return null;
+}

@@ -8,25 +8,8 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, XIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
-import { departureMonths } from '@/lib/tour-detail';
+import { departureMonths, monthLabel } from '@/lib/tour-detail';
 import { departureStatus, formatDate, formatDateRange, formatMoney } from '@/lib/tours';
-
-/**
- * `"2026-09"` (khoá tháng của `departureMonths`) → `"September 2026"`.
- * `timeZone: 'UTC'` BẮT BUỘC: không có nó, `Intl` diễn giải mốc theo giờ máy
- * chạy và có thể lùi một tháng ở múi giờ ÂM — cùng bẫy mà `formatDateRange`
- * (`lib/tours.ts`) đã né bằng cách tách chuỗi thay vì `new Date(dateOnlyString)`.
- */
-const MONTH_LABEL_FMT = new Intl.DateTimeFormat('en-US', {
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-
-function monthLabel(month: string): string {
-  const [year, m] = month.split('-').map(Number) as [number, number];
-  return MONTH_LABEL_FMT.format(new Date(Date.UTC(year, m - 1, 1)));
-}
 
 /**
  * Thời lượng suy ra từ khoảng ngày CỦA CHÍNH ĐỢT, KHÔNG phải `tour.durationDays`.
