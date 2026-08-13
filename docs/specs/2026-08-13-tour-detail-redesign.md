@@ -237,6 +237,46 @@ cập nhật cột chuẩn hoá phía API thay vì để nó lộ ra.
 Bề rộng cột biểu đồ là `count/total`, KHÔNG chuẩn hoá theo cột cao nhất: chuẩn
 hoá kiểu đó làm mức phổ biến nhất luôn đầy 100% ở mọi tour.
 
+### 2.8 Tab Good to know
+
+| Thành phần | Số đo |
+| --- | --- |
+| `.pol` | 3 cột đều, gap **12** → 344px mỗi thẻ ở bề ngang 1056 |
+| `.pol > div` | viền 1px, radius **12.8**, pad **16**, nền `--card` |
+| `.h3s` | heading **17/24 w500**, `margin:6px 0 8px` |
+| thân thẻ | **13/20** muted |
+| khối FAQ | `max-width:768`, `margin-top:32`; eyebrow `margin-bottom:14` |
+| `.acc-list` | cột dọc, gap **12** |
+| `.acc-item` | viền 1px, radius **12.8**, pad `0 10px`; **mở** → viền `primary 35%` |
+| `.acc-btn` | cao **56**, pad `12px 4px`, gap 12, **14/20 w600** |
+| `.acc-ico` | **32×32**, radius **9.6**, nền `--muted`; **mở** → nền `primary 14%`, chữ `--primary-emphasis` |
+| `.acc-body` | pad `0 4px 16px 48px`, **14/23** muted, `max-width:640` |
+
+Ba luật đi kèm:
+
+1. **Thứ tự thẻ ghim cứng** `CANCELLATION → BOOKING → GENERAL` (`orderPolicies`),
+   không tin thứ tự API trả: ba thẻ nằm cạnh nhau trên một hàng nên thứ tự đổi
+   theo tour là hàng thẻ nhảy chỗ mỗi lần khách sang tour khác.
+2. **Bỏ eyebrow khi nó TRÙNG tiêu đề** (`policyEyebrow`). Fixture thật đặt
+   `title: 'Cancellation'` cho `kind: CANCELLATION`, nên dựng y bản duyệt sẽ in
+   đúng một chuỗi hai lần chồng lên nhau. Hệ quả nhìn thấy được: hai trong ba
+   thẻ mất dòng eyebrow nên tiêu đề của chúng nằm cao hơn thẻ thứ ba — xem sổ
+   nợ contract §5.
+3. **MỘT icon cho mọi câu hỏi**, đúng bản duyệt. Không có field nào phân loại
+   câu hỏi, nên chọn icon theo nội dung là để người viết code đoán ngữ nghĩa.
+
+Hai chỗ dùng component của repo thay vì dựng tay, và cái giá của nó:
+
+- `Accordion` (Base UI) lo sẵn bàn phím + `aria-expanded` + hoạt ảnh chiều cao.
+  Đổi lại nó **đảo hai icon chevron** thay vì xoay một icon như bản duyệt —
+  khác biệt không đọc ra ở 16px, và đây là khuôn đang dùng ở `/faq`.
+- `AccordionTrigger` có sẵn `border border-transparent` cho vòng focus; phải đè
+  `border-0`, nếu không mỗi nút cao **58** thay vì 56 và năm câu hỏi dôi 10px.
+
+Nội dung thật DÀI HƠN bản duyệt: thân policy của `ha-giang-loop-4d` là 176 ký
+tự (4 dòng) so với 79–103 (2 dòng) của wireframe, nên hàng thẻ cao 148 thay vì
+128. Đó là dữ liệu, không phải sai số.
+
 ## 3. Hành vi
 
 Ràng buộc kiến trúc giữ nguyên theo
@@ -267,6 +307,8 @@ công thiếu:
 | Đợt khởi hành | 12 | 4 |
 | Chặng | 4 | 1 → dải chặng co thành một dòng |
 | Review | 23 | 5 |
+| Tiêu đề thẻ policy | tiêu đề riêng ("Free up to 10 days out") | trùng nhãn nhóm ("Cancellation") → **eyebrow bị bỏ** |
+| Mô tả card dữ kiện | có, mỗi card một câu | **không có field** → card cao ~110 thay vì 197 |
 
 Ba chỗ bản ship **cố ý khác wireframe** vì dữ liệu công khai không xác nhận được:
 bỏ huy hiệu "Verified rider" (`listByTour` trả cả review `CURATED`, và
@@ -280,6 +322,18 @@ bỏ huy hiệu "Verified rider" (`listByTour` trả cả review `CURATED`, và
 `withPhotos`, và trả thêm `breakdown` 5 mức sao. `breakdown` cố ý KHÔNG áp bộ lọc
 `rating` (áp thì biểu đồ tự triệt tiêu thành một cột) nhưng CÓ áp `withPhotos` —
 đó là phạm vi người đọc đang xem.
+
+### Sổ nợ — mở tiếp ở R10 (nhánh riêng, sau khi năm tab xong)
+
+Hai chỗ dựng xong rồi mới thấy thiếu dữ liệu, KHÔNG vá bằng cách bịa chữ:
+
+1. **Mô tả cho bốn card dữ kiện** (tab Overview) — bốn cột mô tả nullable trên
+   `Tour`. Card đã dựng sẵn, chỉ thiếu chỗ đổ chữ.
+2. **Tiêu đề riêng cho thẻ policy** — `TourPolicy.title` hiện bị fixture dùng
+   làm nhãn nhóm ("Cancellation") thay vì tiêu đề ("Free up to 10 days out"),
+   nên hai trong ba thẻ mất dòng eyebrow và tiêu đề của chúng nằm lệch tầng so
+   với thẻ thứ ba. Sửa ở tầng DỮ LIỆU (đổi fixture) chứ không cần cột mới —
+   contract đã có đủ `kind` + `title`.
 
 ## 6. Nghiệm thu
 

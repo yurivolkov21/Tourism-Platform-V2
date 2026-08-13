@@ -9,7 +9,9 @@ import {
   monthLabel,
   monthNotice,
   monthSeason,
+  orderPolicies,
   parseItineraryStops,
+  policyEyebrow,
   ratingHistogram,
   reviewRange,
   toggleStarFilter,
@@ -283,5 +285,46 @@ describe('toggleStarFilter', () => {
 
   it('bấm mức khác thì chuyển sang mức đó', () => {
     expect(toggleStarFilter(4, 2)).toBe(2);
+  });
+});
+
+describe('orderPolicies', () => {
+  const p = (kind: string) => ({ kind }) as { kind: 'CANCELLATION' | 'BOOKING' | 'GENERAL' };
+
+  it('luôn xếp Cancellation → Booking → General bất kể API trả thứ tự nào', () => {
+    // Ba thẻ policy nằm cạnh nhau trên một hàng; thứ tự đổi theo tour là hàng
+    // thẻ nhảy chỗ mỗi lần sang tour khác.
+    const out = orderPolicies([p('GENERAL'), p('CANCELLATION'), p('BOOKING')]);
+    expect(out.map((x) => x.kind)).toEqual(['CANCELLATION', 'BOOKING', 'GENERAL']);
+  });
+
+  it('thiếu một nhóm thì chỉ bớt thẻ đó, không chèn chỗ trống', () => {
+    const out = orderPolicies([p('GENERAL'), p('CANCELLATION')]);
+    expect(out.map((x) => x.kind)).toEqual(['CANCELLATION', 'GENERAL']);
+  });
+
+  it('hai policy cùng nhóm thì giữ nguyên thứ tự tương đối của API', () => {
+    const a = { kind: 'GENERAL' as const, title: 'A' };
+    const b = { kind: 'GENERAL' as const, title: 'B' };
+    expect(orderPolicies([a, b])).toEqual([a, b]);
+  });
+
+  it('mảng rỗng trả mảng rỗng', () => {
+    expect(orderPolicies([])).toEqual([]);
+  });
+});
+
+describe('policyEyebrow', () => {
+  it('nhãn nhóm khác tiêu đề thì giữ cả hai', () => {
+    expect(policyEyebrow('General', 'Good to know')).toBe('General');
+  });
+
+  it('nhãn nhóm TRÙNG tiêu đề thì bỏ nhãn — in cùng một chuỗi hai lần là nhiễu', () => {
+    // Fixture thật đặt `title: "Cancellation"` cho `kind: CANCELLATION`.
+    expect(policyEyebrow('Cancellation', 'Cancellation')).toBeNull();
+  });
+
+  it('so sánh bỏ qua hoa thường và khoảng trắng thừa', () => {
+    expect(policyEyebrow('Booking & payment', '  booking & PAYMENT ')).toBeNull();
   });
 });

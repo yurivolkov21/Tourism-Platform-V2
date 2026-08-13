@@ -8,6 +8,7 @@ import {
   DepartureSelectionProvider,
 } from '@/components/tours/departure-selection';
 import { DeparturesPanel } from '@/components/tours/panels/departures-panel';
+import { GoodToKnowPanel } from '@/components/tours/panels/good-to-know-panel';
 import { ItineraryPanel } from '@/components/tours/panels/itinerary-panel';
 import { OverviewPanel } from '@/components/tours/panels/overview-panel';
 import { ReviewsPanel } from '@/components/tours/panels/reviews-panel';
@@ -184,10 +185,8 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
           maxGroupSize={tour.maxGroupSize}
         />
 
-        {/* Năm panel đang dựng lần lượt (R4–R8). Chỗ giữ tạm nói rõ nó là chỗ
-            giữ tạm — KHÔNG để trống, vì `TourTabs` phải render đủ 5 panel vào
-            HTML tĩnh ngay từ bây giờ (ADR-0022) và một panel rỗng trông y hệt
-            một panel hỏng. */}
+        {/* Đủ năm panel. `TourTabs` render CẢ NĂM vào HTML tĩnh rồi ẩn bằng CSS
+            (ADR-0022) — mount có điều kiện là giấu lịch trình khỏi crawler. */}
         <TourTabs
           panels={{
             overview: <OverviewPanel tour={tour} />,
@@ -198,7 +197,7 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
             itinerary: <ItineraryPanel tour={tour} live={false} today={new Date()} />,
             departures: <DeparturesPanel tour={tour} />,
             reviews: <ReviewsPanel tour={tour} reviews={reviews} />,
-            goodToKnow: <PanelPlaceholder name="Good to know" />,
+            goodToKnow: <GoodToKnowPanel tour={tour} />,
           }}
         />
       </div>
@@ -229,14 +228,5 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
         maxGroupSize={tour.maxGroupSize}
       />
     </DepartureSelectionProvider>
-  );
-}
-
-/** Chỗ giữ tạm cho một panel chưa dựng. Xoá dần khi R4–R8 xong. */
-function PanelPlaceholder({ name }: { name: string }) {
-  return (
-    <p className="rounded-md border border-dashed border-border px-4 py-10 text-center text-muted-foreground">
-      Panel “{name}” đang được dựng lại theo wireframe.
-    </p>
   );
 }

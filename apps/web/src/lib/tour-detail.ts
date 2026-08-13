@@ -161,6 +161,39 @@ export function defaultOpenMonth(
   return (months.find((m) => m.items.some((d) => d.seatsLeft > 0)) ?? months[0])?.month;
 }
 
+/**
+ * Thứ tự ba thẻ policy trên hàng ngang của tab Good to know.
+ *
+ * Bám thứ tự bản duyệt (huỷ → thanh toán → chung) và ghim cứng chứ không tin
+ * thứ tự API trả: ba thẻ nằm cạnh nhau trên MỘT hàng, thứ tự đổi theo tour là
+ * hàng thẻ nhảy chỗ mỗi lần khách sang tour khác. Đây cũng là thứ tự từ "thứ
+ * khách lo nhất" xuống "thứ nên biết".
+ */
+const POLICY_ORDER = ['CANCELLATION', 'BOOKING', 'GENERAL'] as const;
+
+export function orderPolicies<T extends { kind: string }>(policies: readonly T[]): T[] {
+  // `sort` của V8 ổn định nên hai policy cùng nhóm giữ nguyên thứ tự API.
+  return [...policies].sort(
+    (a, b) =>
+      POLICY_ORDER.indexOf(a.kind as (typeof POLICY_ORDER)[number]) -
+      POLICY_ORDER.indexOf(b.kind as (typeof POLICY_ORDER)[number]),
+  );
+}
+
+/**
+ * Nhãn nhóm (eyebrow) của một thẻ policy — trả `null` khi nó TRÙNG tiêu đề.
+ *
+ * Fixture thật đặt `title: 'Cancellation'` cho `kind: CANCELLATION`, nên dựng
+ * y bản duyệt sẽ in đúng một chuỗi hai lần chồng lên nhau. Bản duyệt có hai
+ * dòng khác nhau vì nội dung của nó là văn viết tay ("Cancellation" +
+ * "Free up to 10 days out"); dữ liệu thật chưa có dòng tiêu đề riêng đó — xem
+ * sổ nợ contract ở R10.
+ */
+export function policyEyebrow(kindLabel: string, title: string): string | null {
+  const norm = (s: string) => s.trim().toLowerCase();
+  return norm(kindLabel) === norm(title) ? null : kindLabel;
+}
+
 /** Số review mỗi trang trong modal "Show all reviews" — con số của bản duyệt. */
 export const REVIEWS_PAGE_SIZE = 6;
 
