@@ -30,6 +30,14 @@ Tailwind v4 + token `@tourism/tokens`, `react-markdown` + `remark-gfm`, Vitest.
 - **Lưới trên ghim `minmax(0,1fr) 443px`**, không dùng `1.4fr/1fr` (gây lệch nửa pixel toàn trang).
 - **Render đủ 5 panel, ẩn bằng CSS.** Cấm mount có điều kiện (trang là SSG trong sitemap).
 - **KHÔNG sửa `components/media/lightbox.tsx`** — dùng y nguyên.
+- **Ảnh thật dùng `next/image`.** Pre-flight 13/08 phát hiện `ImagePlaceholder` KHÔNG
+  nhận `src` và `next.config.ts` chưa khai `remotePatterns` nào, nên "đổi `media={[]}`
+  thành `tour.media`" là chưa đủ. User chốt: khai `remotePatterns` cho
+  `res.cloudinary.com` (đóng luôn nợ ADR-0020 ghi trong `avatar-upload.tsx`).
+  Việc này gộp vào Task 4 — task đầu tiên cần tới nó.
+- **KHÔNG viết `page.spec.tsx`.** Repo có 0 test ở tầng page (cả 94 spec của web đều ở
+  tầng component); user chốt theo tiền lệ đó. Bước nghiệm thu Playwright ở Task 12 GIỮ
+  NGUYÊN — nó đo được thứ test đơn vị không đo được (lưới 621|40|443, lệch pixel, tương phản).
 - **KHÔNG đụng** `apps/api/prisma/migrations/` và các entry CHANGELOG cũ.
 - Chạy `pnpm gate:int` trước khi khai xong. **Web build cần API sống ở :3001**:
   `cd apps/api && node --env-file-if-exists=.env.local dist/main.js &` rồi kill sau khi xong.
@@ -995,32 +1003,11 @@ git commit -m "feat(web): tab Good to know với thẻ policy và accordion FAQ 
 
 **Files:**
 - Modify: `apps/web/src/app/(site)/tours/[slug]/page.tsx`
-- Test: `apps/web/src/app/(site)/tours/[slug]/page.spec.tsx` (nếu chưa có thì tạo)
 
 **Interfaces:**
 - Consumes: mọi thứ từ Task 4–11.
 
-- [ ] **Step 1: Viết test cho trang**
-
-```tsx
-it('bỏ OnThisPage khỏi trang tour nhưng KHÔNG xoá component (blog vẫn dùng)', async () => {
-  const ui = await TourDetailPage({ params: Promise.resolve({ slug }) });
-  render(ui);
-  expect(screen.queryByRole('navigation', { name: /on this page/i })).toBeNull();
-});
-
-it('gallery đọc tour.media chứ không phải mảng rỗng hardcode', async () => {
-  const ui = await TourDetailPage({ params: Promise.resolve({ slug }) });
-  render(ui);
-  expect(screen.getAllByRole('button', { name: /photo/i }).length).toBeGreaterThan(0);
-});
-```
-
-- [ ] **Step 2: Chạy đỏ**
-
-Run: `cd apps/web && pnpm vitest run "src/app/(site)/tours/[slug]/page.spec.tsx"`
-
-- [ ] **Step 3: Ghép trang**
+- [ ] **Step 1: Ghép trang**
 
 Thay `pageSections()`/`tocFromSections()`/lưới ba cột bằng:
 
@@ -1055,7 +1042,7 @@ Thay `pageSections()`/`tocFromSections()`/lưới ba cột bằng:
 ⚠️ **Giữ nguyên khối JSDoc cảnh báo `loading.tsx`** ở đầu file — nó là lý do slug lạ trả
 404 thật thay vì soft-404.
 
-- [ ] **Step 4: Chạy xanh + gate đầy đủ**
+- [ ] **Step 2: Gate đầy đủ**
 
 ```bash
 cd apps/api && (node --env-file-if-exists=.env.local dist/main.js &) && sleep 12
@@ -1066,7 +1053,7 @@ kill $(ss -ltnp | grep ':3001 ' | grep -oP 'pid=\K[0-9]+' | head -1)
 
 Expected: 18/18 task, web build sinh đủ 74 trang tĩnh.
 
-- [ ] **Step 5: Nghiệm thu đo được bằng trình duyệt thật**
+- [ ] **Step 3: Nghiệm thu đo được bằng trình duyệt thật**
 
 Với dev server đang chạy, mở `/tours/ha-giang-loop-4d3n` và kiểm bằng script Playwright:
 
@@ -1076,7 +1063,7 @@ Với dev server đang chạy, mở `/tours/ha-giang-loop-4d3n` và kiểm bằn
 // viền ô ngày ≥ 3:1 ở CẢ hai chế độ sáng/tối
 ```
 
-- [ ] **Step 6: Commit + docs sweep (luật 13)**
+- [ ] **Step 4: Commit + docs sweep (luật 13)**
 
 ```bash
 git add apps/web/src

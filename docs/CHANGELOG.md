@@ -8,6 +8,81 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-13 — Trùng tu Tour Details: 5 tab thay cuộn-dài-có-mục-lục (branch `feat/tour-detail-redesign`, 14 commit `43132e2..9c3178c`, 35 file)
+
+Động cơ user nói thẳng: giao diện cũ "vẫn giống kiểu AI hay làm". Nên vòng
+này KHÔNG tự chế bố cục — dựng lại 6 mẫu `product-detail` của ReUI bằng dữ
+liệu tour thật rồi đo bằng `getComputedStyle`, user chọn `product-detail-1`,
+sau đó ~20 vòng tinh chỉnh trên artifact demo trước khi viết một dòng code
+sản phẩm. [Spec](specs/2026-08-13-tour-detail-redesign.md) ·
+[plan 12 task](plans/2026-08-13-tour-detail-redesign.md) ·
+[ADR-0022](adr/0022-tour-detail-tabs.md).
+
+**Trang đổi hình dạng**: hero + dải khởi hành giữ nguyên → khối gallery 7
+thumb + panel đặt chỗ ghim 443px → **5 tab** (Overview · Itinerary ·
+Departures · Reviews · Good to know) → "You might also like". `OnThisPage`
+rời trang này (tab bar thay vai mục lục; component vẫn sống ở `/blog`), và
+mọi anchor cũ (`#itinerary`, `#departures`…) vẫn mở đúng tab vì `TourTabs`
+đọc hash lúc mount **và** nghe `hashchange`. Năm panel render ĐỦ rồi ẩn bằng
+CSS — trang là SSG nằm trong sitemap, mount có điều kiện là giấu lịch trình
+khỏi crawler.
+
+**Contract nở đúng một chỗ** (`reviews.byTour`): `sort` (newest/oldest/
+highest/lowest) · `rating` · `withPhotos` · trả thêm `breakdown` 5 mức sao.
+`breakdown` cố ý KHÔNG áp bộ lọc `rating` (nếu áp thì biểu đồ tự triệt tiêu
+thành một cột) nhưng CÓ áp `withPhotos` — đó là phạm vi người đọc đang xem.
+
+**Ba chỗ trung thực với dữ liệu, khác bản wireframe user đã duyệt** — ghi ra
+đây vì đều là "wireframe nói được, dữ liệu thì không": (1) **bỏ huy hiệu
+"Verified rider"** và chữ "verified" trong "Based on N reviews" —
+`PublicReviewSchema` không phơi `source` và `listByTour` trả cả review
+`CURATED` (fixture tour hiện 100% CURATED, không gắn booking nào), nên nhãn
+đó khẳng định điều dữ liệu công khai không xác nhận được; (2) ngày review
+giữ khuôn "August 2026" của `formatReviewDate` thay vì "2 weeks ago" — quy
+ước sẵn có kèm lý do; (3) thẻ policy bỏ nhãn nhóm khi nhãn trùng đúng
+`title` (fixture đặt `title: 'Cancellation'` cho `kind: CANCELLATION`).
+
+**Ba bug pixel bắt bằng trình duyệt thật, không bằng test**: lưới trên phải
+GHIM `443px` chứ không `1.4fr/1fr` (tỉ lệ đó chia 1104 ra 620.656 và phần lẻ
+.656 truyền xuống cả trang, mọi đường 1px bị khử răng cưa thành dày-mỏng xen
+kẽ); các lưới card `auto-fit` phải dùng `gap-6` chứ không `gap-4` (1104 chỉ
+chia chẵn cho cả 3 lẫn 4 cột khi gap là bội của 12 — `gap-4` cho 357.328px ở
+bố cục 3 card); và `TourMediaPanel` phải thu về MỘT cột khi tour chưa có ảnh,
+nếu không panel rơi vào cột trái và để trống 443px bên phải (nhánh đang chạy
+thật: bảng `MediaAsset` còn rỗng).
+
+**Hai token đổi sau khi đo tương phản bằng canvas readback** (regex bóc số từ
+chuỗi `oklch()`/`lab()` cho ra con số SAI — bẫy đã dính giữa chừng): cột biểu
+đồ review và khối "còn chỗ" ở lịch tháng chuyển `--primary` → `--primary-emphasis`,
+vì primary chỉ đạt 1.77:1 (trên rãnh) và 2.9:1 (trên nền) ở chế độ TỐI, dưới
+ngưỡng 3:1 của WCAG 1.4.11; emphasis cho 3.0/4.32 và 5.55/7.09. `--warning`
+cho khối "≤3 ghế" GIỮ NGUYÊN dù chỉ 1.90:1 ở chế độ sáng — đó là token dành
+riêng cho nghĩa này và đang dùng ở booking-accordion/checkout, đổi ở đây là
+lệch chuẩn cả app; số ghế còn in bằng chữ ngay trên cùng hàng nên thông tin
+không phụ thuộc mình màu.
+
+**Nghiệm thu đo được trên production build** (Chromium 1440×1000, API sống):
+lưới ra ĐÚNG `621 | 40 | 443` trên nội dung 1104 · **0 hàng lệch nửa pixel**
+ở 4/5 tab (tab Reviews còn 4 chỗ đều là bề rộng phần trăm THẬT của biểu đồ và
+lớp cắt sao lẻ — đúng như thiết kế) · viền ô ngày 3.13:1 (sáng) / 3.75:1
+(tối) · 0 lỗi console. Modal review nạp qua đường browser
+(`fetchTourReviewsFromBrowser`, KHÔNG gắn `next.revalidate` vì option đó chỉ
+có nghĩa ở server) và sắp/lọc đi qua API chứ không sắp lại ở client — client
+chỉ nắm một trang, "highest first" tính tại chỗ sẽ mâu thuẫn với trang kế.
+
+**Review findings:** một Important giữa chừng — brief Task 5 cấm `DepartureDialog`
+nhận prop nên `currency` bị đẩy vào context, reviewer chỉ ra tiền lệ ngược
+(ba component `…Connected` đều nhận `currency` qua prop); đã sửa (`3333199`).
+Tests after: 1688 — 1508 unit (82 contract, 10 tokens, 2 i18n, 22 ui, 215
+api, 1177 web) và 180 api int. **Sổ nợ:** `MediaAsset` còn rỗng nên gallery
+7 thumb chưa có gì để hiện (chạy seed-media là thấy ngay, không phải sửa
+code) · 6 component của trang cũ (`tour-gallery`, `tour-reviews`,
+`good-to-know`, `inclusions`, `itinerary-timeline`, `tour-facts`) cùng
+`DeparturesTableConnected` nay mồ côi — test của chúng vẫn xanh nhưng không
+trang nào render, chờ user chốt xoá · `freeCancellationDays` · `meals`/
+`accommodation` cho itinerary (73 row/30 tour, để cùng màn admin P4) · thu
+phóng trong lightbox.
+
 ## 2026-08-12 — Vá CORS thiếu PATCH: avatar upload xong 100% rồi báo lỗi (branch `fix/cors-patch-avatar`, ff-only, 1 commit `ce691bd`)
 
 Nghiệm thu đầu-cuối với key Cloudinary thật — đúng món nợ ghi ở cuối entry
