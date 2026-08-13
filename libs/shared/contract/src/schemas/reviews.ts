@@ -36,9 +36,25 @@ export const CreateReviewInputSchema = z.object({
   photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
+/** Kiểu sắp xếp modal "xem tất cả review" — key đầu (`newest`) là mặc định. */
+export const ReviewSortSchema = z.enum(['newest', 'oldest', 'highest', 'lowest']);
+
 export const ReviewsByTourQuerySchema = PageQuerySchema.extend({
   tourSlug: z.string().min(1).max(120),
+  sort: ReviewSortSchema.default('newest'),
+  rating: RatingSchema.optional(),
+  withPhotos: z.boolean().optional(),
 });
+
+/** Số review theo từng mức sao. Khoá là chuỗi vì JSON không có khoá số. */
+export const ReviewBreakdownSchema = z.object({
+  '1': z.int().nonnegative(),
+  '2': z.int().nonnegative(),
+  '3': z.int().nonnegative(),
+  '4': z.int().nonnegative(),
+  '5': z.int().nonnegative(),
+});
+export type ReviewBreakdown = z.output<typeof ReviewBreakdownSchema>;
 
 export type PublicReview = z.infer<typeof PublicReviewSchema>;
 

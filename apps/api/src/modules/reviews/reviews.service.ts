@@ -5,6 +5,8 @@ import type {
   MediaItem,
   MyReview,
   PublicReview,
+  ReviewBreakdown,
+  ReviewSortSchema,
 } from '@tourism/contract';
 import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
@@ -426,43 +428,107 @@ export class ReviewsService {
   }
 
   /**
-   * Review đã duyệt của một tour. Sort [authorDeleted asc, createdAt desc]
-   * chạy thẳng trên index [tourId, isApproved, authorDeleted, createdAt desc]
-   * — review khuyết danh tự trôi xuống dưới, review có danh tính lên trước.
-   * Thêm `id desc` làm tie-breaker cuối: `createdAt` là `timestamp(3)` (độ
-   * phân giải millisecond) nên hai review trùng millisecond thì thứ tự giữa
-   * chúng không ổn định qua các lần query — phân trang có thể lặp một item ở
-   * hai trang hoặc bỏ sót một item. `id` (UUID) là duy nhất nên chốt được thứ
-   * tự tuyệt đối.
+   * Review đã duyệt của một tour — nuôi cả trang tour (vài review đầu) lẫn
+   * modal "xem tất cả review" (sort/lọc sao/lọc có ảnh + breakdown theo sao).
+   *
+   * Khoá CHÍNH của MỌI kiểu sort luôn là `authorDeleted asc` (luật sản phẩm:
+   * review khuyết danh luôn trôi xuống cuối, kể cả khi rating của nó cao nhất
+   * ở sort=highest) — vẫn chạy thẳng trên index
+   * [tourId, isApproved, authorDeleted, createdAt desc] khi sort=newest/oldest
+   * (index không phủ `rating` nên highest/lowest phải scan/sort thêm).
+   * Khoá CUỐI luôn `id desc` làm tie-breaker: `createdAt`/`rating` có thể
+   * trùng giữa nhiều review nên thứ tự giữa chúng không ổn định qua các lần
+   * query nếu thiếu tie-breaker — phân trang có thể lặp một item ở hai trang
+   * hoặc bỏ sót một item. `id` (UUID) là duy nhất nên chốt được thứ tự tuyệt
+   * đối.
+   *
+   * `breakdown` (số review theo từng mức sao) LUÔN tính trên tập CHƯA lọc
+   * theo `rating` (nhưng CÓ áp `withPhotos` nếu bật) — tính sau khi đã lọc
+   * theo sao thì bấm 5★ xong các mức khác về 0, người dùng không bấm lại
+   * được các nút sao khác nữa.
    */
-  async listByTour(
-    tourSlug: string,
-    page: number,
-    pageSize: number,
-  ): Promise<{
+  async listByTour(query: {
+    tourSlug: string;
+    page: number;
+    pageSize: number;
+    sort: z.infer<typeof ReviewSortSchema>;
+    rating?: number;
+    withPhotos?: boolean;
+  }): Promise<{
     items: PublicReview[];
     page: number;
     limit: number;
     total: number;
     totalPages: number;
+    breakdown: ReviewBreakdown;
   }> {
     const tour = await prisma.tour.findFirst({
-      where: { slug: tourSlug, isPublished: true },
+      where: { slug: query.tourSlug, isPublished: true },
       select: { id: true },
     });
     // 404 thay vì "200 rỗng": 200-rỗng che mất bug routing của FE.
     if (!tour) throw new TourNotFoundError();
 
-    const where = { tourId: tour.id, isApproved: true };
-    const [rows, total] = await Promise.all([
+    const sortKey = {
+      newest: { createdAt: 'desc' },
+      oldest: { createdAt: 'asc' },
+      highest: { rating: 'desc' },
+      lowest: { rating: 'asc' },
+    }[query.sort] as Prisma.ReviewOrderByWithRelationInput;
+
+    // MediaAsset là bảng ĐA HÌNH (ownerType/ownerId) — Review KHÔNG có quan
+    // hệ Prisma nào sang nó nên `media: { some: {} }` không compile được.
+    // Lấy trước tập id review CÓ ảnh của ĐÚNG tour này (giới hạn trong review
+    // đã duyệt — không quét toàn bảng media_assets), rồi lọc bằng
+    // `id: { in: ... } }`.
+    const idsWithPhotos = query.withPhotos
+      ? (
+          await prisma.mediaAsset.findMany({
+            where: {
+              ownerType: MediaOwnerType.REVIEW,
+              ownerId: {
+                in: (
+                  await prisma.review.findMany({
+                    where: { tourId: tour.id, isApproved: true },
+                    select: { id: true },
+                  })
+                ).map((r) => r.id),
+              },
+            },
+            select: { ownerId: true },
+            distinct: ['ownerId'],
+          })
+        ).map((m) => m.ownerId)
+      : null;
+
+    const where: Prisma.ReviewWhereInput = {
+      tourId: tour.id,
+      isApproved: true,
+      ...(query.rating ? { rating: query.rating } : {}),
+      ...(idsWithPhotos ? { id: { in: idsWithPhotos } } : {}),
+    };
+    // breakdown dùng where RIÊNG — KHÔNG áp `rating` (xem doc-comment đầu hàm)
+    // nhưng VẪN áp `withPhotos` nếu bật, vì đó là phạm vi review người dùng
+    // đang thật sự xem, khác `rating` (chỉ là một lát cắt của breakdown).
+    const breakdownWhere: Prisma.ReviewWhereInput = {
+      tourId: tour.id,
+      isApproved: true,
+      ...(idsWithPhotos ? { id: { in: idsWithPhotos } } : {}),
+    };
+
+    const [rows, total, grouped] = await Promise.all([
       prisma.review.findMany({
         where,
-        orderBy: [{ authorDeleted: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
+        orderBy: [{ authorDeleted: 'asc' }, sortKey, { id: 'desc' }],
+        skip: (query.page - 1) * query.pageSize,
+        take: query.pageSize,
       }),
       prisma.review.count({ where }),
+      prisma.review.groupBy({ by: ['rating'], where: breakdownWhere, _count: { _all: true } }),
     ]);
+
+    const breakdown: ReviewBreakdown = { '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 };
+    for (const g of grouped) breakdown[String(g.rating) as keyof ReviewBreakdown] = g._count._all;
 
     // MỘT query media cho cả trang (chống N+1) — cùng khuôn catalog/posts.
     const mediaMap = await this.media.resolveForOwners(
@@ -472,12 +538,13 @@ export class ReviewsService {
 
     return {
       items: rows.map((row) => toPublicReview(row, mediaMap.get(row.id) ?? [])),
-      page,
+      page: query.page,
       // Output contract dùng `limit` (PagedSchema chung), không phải
       // `pageSize` — cùng gotcha đã ghi ở adminList() bên dưới.
-      limit: pageSize,
+      limit: query.pageSize,
       total,
-      totalPages: Math.max(1, Math.ceil(total / pageSize)),
+      totalPages: Math.max(1, Math.ceil(total / query.pageSize)),
+      breakdown,
     };
   }
 

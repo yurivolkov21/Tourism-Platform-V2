@@ -1,9 +1,16 @@
 import { randomUUID } from 'node:crypto';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import type { ContractOutputs } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
-import { BookingStatus, ReviewSource } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  MediaOwnerType,
+  MediaRole,
+  MediaType,
+  ReviewSource,
+} from '../../generated/prisma/enums.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { ReviewsService } from './reviews.service.js';
 
@@ -59,6 +66,38 @@ function sessionCookie(res: { headers: Record<string, unknown> }): string {
   if (!pair) throw new Error('Malformed set-cookie');
   return pair;
 }
+
+/**
+ * Trợ giúp gọi `GET /api/tours/:tourSlug/reviews` với query object, mô phỏng
+ * hình dạng lệnh gọi client oRPC (`client.reviews.byTour({...})`) cho test dễ
+ * đọc — repo CHƯA có oRPC test client dùng chung nên bọc quanh `app.inject`
+ * đang dùng khắp file này, giữ nguyên đường HTTP thật thay vì gọi thẳng
+ * service (test phải đi qua contract + controller như request thật).
+ */
+const client = {
+  reviews: {
+    async byTour(query: {
+      tourSlug: string;
+      page?: number;
+      pageSize?: number;
+      sort?: 'newest' | 'oldest' | 'highest' | 'lowest';
+      rating?: number;
+      withPhotos?: boolean;
+    }): Promise<ContractOutputs['reviews']['listByTour']> {
+      const { tourSlug, ...rest } = query;
+      const qs = new URLSearchParams();
+      for (const [key, value] of Object.entries(rest)) {
+        if (value !== undefined) qs.set(key, String(value));
+      }
+      const suffix = qs.toString();
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/tours/${tourSlug}/reviews${suffix ? `?${suffix}` : ''}`,
+      });
+      return res.json() as ContractOutputs['reviews']['listByTour'];
+    },
+  },
+};
 
 /** Đăng ký + đăng nhập một customer thường, trả về user row + cookie session. */
 async function signUpAndSignIn(app: NestFastifyApplication, email: string) {
@@ -207,6 +246,83 @@ async function seedTwoApprovedReviews() {
       isApproved: true,
     },
   });
+  return { tour };
+}
+
+/**
+ * Một tour với 5 review đã duyệt trải đủ 5 mức sao + 1 review 5 sao của tài
+ * khoản đã xoá + ảnh gắn vào ĐÚNG MỘT review — đủ dữ liệu để phủ sort/rating
+ * filter/withPhotos filter/breakdown trong một lần seed.
+ *
+ * Thứ tự tạo CỐ Ý xáo trộn (3,1,5,2,4 thay vì 1..5) — nếu tạo tăng dần theo
+ * sao thì `createdAt DESC` mặc định (chưa cài sort) TÌNH CỜ trùng với thứ tự
+ * `sort=highest`, khiến test RED giả (xanh dù tính năng chưa viết).
+ */
+async function seedReviewsAcrossRatings() {
+  const category = await prisma.tourCategory.create({
+    data: { slug: 'walking', name: 'Walking', order: 1 },
+  });
+  const destination = await prisma.destination.create({
+    data: { slug: 'hoi-an', name: 'Hội An' },
+  });
+  const tour = await prisma.tour.create({
+    data: {
+      slug: 'hoi-an-lantern-evening',
+      title: 'Hội An Old Town & Lantern Evening',
+      categoryId: category.id,
+      durationDays: 1,
+      basePrice: '39.00',
+      currency: 'USD',
+      isPublished: true,
+      destinations: { create: { destinationId: destination.id, isPrimary: true } },
+    },
+  });
+
+  const ratings = [3, 1, 5, 2, 4];
+  const reviews: { id: string; rating: number }[] = [];
+  for (const rating of ratings) {
+    const review = await prisma.review.create({
+      data: {
+        tourId: tour.id,
+        source: ReviewSource.CURATED,
+        rating,
+        body: `Review ${rating} sao cho bài test sort/filter/breakdown`,
+        authorName: `Reviewer ${rating}`,
+        isApproved: true,
+      },
+    });
+    reviews.push(review);
+  }
+
+  // Review 5 sao của tài khoản đã xoá — luật sản phẩm bắt buộc rơi xuống
+  // cuối bất kể sort kiểu gì (kể cả sort=highest đáng lẽ đẩy nó lên đầu).
+  await prisma.review.create({
+    data: {
+      tourId: tour.id,
+      source: ReviewSource.CURATED,
+      rating: 5,
+      body: 'Review 5 sao của tài khoản đã bị xoá',
+      authorName: 'Ghost',
+      authorDeleted: true,
+      isApproved: true,
+    },
+  });
+
+  // Gắn ảnh vào ĐÚNG review 5 sao còn danh tính — withPhotos=true chỉ được
+  // trả về đúng MỘT review này.
+  const withPhotoReview = reviews.find((r) => r.rating === 5);
+  if (!withPhotoReview) throw new Error('seed thiếu review 5 sao để gắn ảnh');
+  await prisma.mediaAsset.create({
+    data: {
+      publicId: `tourism/reviews/sort-filter/${withPhotoReview.id}`,
+      type: MediaType.IMAGE,
+      ownerType: MediaOwnerType.REVIEW,
+      ownerId: withPhotoReview.id,
+      role: MediaRole.gallery,
+      sortOrder: 0,
+    },
+  });
+
   return { tour };
 }
 
@@ -1120,6 +1236,41 @@ describe('reviews (int)', () => {
       await reviewsService.moderate(admin.user.id, { id: curated.id, approve: true });
 
       expect(spy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reviews.byTour — sort/filter/breakdown (Task 1)', () => {
+    let tourSlug: string;
+
+    beforeEach(async () => {
+      const { tour } = await seedReviewsAcrossRatings();
+      tourSlug = tour.slug;
+    });
+
+    it('sort=highest xếp sao cao trước, tài khoản đã xoá VẪN nằm cuối', async () => {
+      const res = await client.reviews.byTour({ tourSlug, sort: 'highest', pageSize: 50 });
+      const ratings = res.items.filter((r) => !r.authorDeleted).map((r) => r.rating);
+      expect([...ratings].sort((a, b) => b - a)).toEqual(ratings);
+      const deletedIdx = res.items.findIndex((r) => r.authorDeleted);
+      if (deletedIdx !== -1) expect(deletedIdx).toBe(res.items.length - 1);
+    });
+
+    it('rating=5 chỉ trả review 5 sao', async () => {
+      const res = await client.reviews.byTour({ tourSlug, rating: 5, pageSize: 50 });
+      expect(res.items.every((r) => r.rating === 5)).toBe(true);
+    });
+
+    it('withPhotos=true chỉ trả review có ảnh', async () => {
+      const res = await client.reviews.byTour({ tourSlug, withPhotos: true, pageSize: 50 });
+      expect(res.items.every((r) => r.media.length > 0)).toBe(true);
+    });
+
+    it('breakdown tính trên tập CHƯA lọc theo sao', async () => {
+      const all = await client.reviews.byTour({ tourSlug, pageSize: 50 });
+      const filtered = await client.reviews.byTour({ tourSlug, rating: 5, pageSize: 50 });
+      expect(filtered.breakdown).toEqual(all.breakdown);
+      const sum = Object.values(all.breakdown).reduce((a, b) => a + b, 0);
+      expect(sum).toBe(all.total);
     });
   });
 });

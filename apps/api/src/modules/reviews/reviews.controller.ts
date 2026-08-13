@@ -29,7 +29,7 @@ export class ReviewsController {
   listByTour() {
     return implement(contract.reviews.listByTour).handler(async ({ input, errors }) => {
       try {
-        return await this.reviews.listByTour(input.tourSlug, input.page, input.pageSize);
+        return await this.reviews.listByTour(input);
       } catch (err) {
         if (err instanceof TourNotFoundError) throw errors.TOUR_NOT_FOUND();
         throw err;

@@ -50,6 +50,7 @@ import {
   ModerateReviewInputSchema,
   MyReviewSchema,
   PublicReviewSchema,
+  ReviewBreakdownSchema,
   ReviewsByTourQuerySchema,
 } from './schemas/reviews.js';
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
@@ -165,7 +166,10 @@ export const contract = {
         summary: 'Approved reviews of a tour',
       })
       .input(ReviewsByTourQuerySchema)
-      .output(PagedSchema(PublicReviewSchema))
+      // `breakdown` = số review theo từng mức sao, tính trên tập CHƯA lọc
+      // theo `rating` — modal "xem tất cả review" cần con số này ổn định để
+      // người dùng bấm qua lại các nút lọc sao mà không thấy nút khác về 0.
+      .output(PagedSchema(PublicReviewSchema).extend({ breakdown: ReviewBreakdownSchema }))
       .errors({ TOUR_NOT_FOUND: { status: 404, message: 'Tour not found' } }),
 
     /**
