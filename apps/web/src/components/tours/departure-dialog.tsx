@@ -119,10 +119,20 @@ export function DepartureDialog({
               <div key={group.month}>
                 {/* Nhãn tháng DÍNH khi cuộn — danh sách dài thì người đọc luôn
                     biết mình đang ở tháng nào. */}
-                {/* Nền phải TRÙNG mặt của dialog (`bg-popover`, xem `dialog.tsx`), không
-                    phải `bg-background`: nhãn dính mà khác nền là hiện thành một
-                    dải xám kéo ngang — chỗ user chỉ ra khi so hai ảnh. */}
-                <p className="sticky top-0 bg-popover pt-4 pb-2 font-mono text-[11px] leading-[14px] tracking-[0.12em] text-muted-foreground uppercase">
+                {/* Nhãn tháng: một dải nền RIÊNG, bo góc TRÊN cho khớp bo góc
+                    của thẻ đợt ngay dưới (`rounded-md` = 12.8).
+
+                    `bg-muted` chứ không phải một giá trị phần trăm gõ cứng: đo
+                    được nó đậm hơn mặt dialog đúng 10.5% ở chế độ SÁNG — mức
+                    user yêu cầu — và ở chế độ TỐI nó tự đảo thành sáng hơn 30%,
+                    đúng ngôn ngữ "bề mặt nổi thì sáng lên" của theme tối. Gõ
+                    cứng `−10%` sẽ làm dải này chìm nghỉm khi sang dark.
+
+                    KHÔNG `sticky`: đo trên cả hai bản thì nhãn chưa bao giờ thật
+                    sự dính (mỗi tháng là một nhóm riêng nên nhãn trôi cùng nhóm),
+                    và user muốn nó cuộn theo nội dung — bỏ hẳn thì hành vi đó
+                    chắc chắn đúng kể cả khi tour có nhiều đợt. */}
+                <p className="rounded-t-md bg-muted px-3 pt-4 pb-2 font-mono text-[11px] leading-[14px] tracking-[0.12em] text-muted-foreground uppercase">
                   {monthLabel(group.month)}
                 </p>
                 {/* Hàng đợt cao 62 (đệm 24 + viền 2 + ngày 20 + 2 + meta 14).
