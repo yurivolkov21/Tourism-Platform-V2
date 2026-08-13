@@ -4,6 +4,7 @@ import {
   galleryThumbs,
   itineraryDayDate,
   itineraryDayState,
+  parseItineraryStops,
   ratingHistogram,
   visibleDepartureChips,
 } from './tour-detail';
@@ -93,5 +94,36 @@ describe('ratingHistogram', () => {
   it('không review nào thì mọi cột 0%, không chia cho 0', () => {
     const rows = ratingHistogram({ '1': 0, '2': 0, '3': 0, '4': 0, '5': 0 });
     expect(rows.every((r) => r.percent === 0)).toBe(true);
+  });
+});
+
+describe('parseItineraryStops', () => {
+  it('tách "HH:MM — việc" thành cột giờ và cột việc', () => {
+    const stops = parseItineraryStops('07:30 — Gear check\n12:30 — Lunch in Yên Minh');
+    expect(stops).toEqual([
+      { time: '07:30', text: 'Gear check' },
+      { time: '12:30', text: 'Lunch in Yên Minh' },
+    ]);
+  });
+
+  it('dòng KHÔNG theo định dạng vẫn giữ nguyên, time = null', () => {
+    // Người soạn nội dung không bị ép theo một khuôn cứng: dòng tự do vẫn hiện
+    // đủ chữ, chỉ là không có cột giờ.
+    const stops = parseItineraryStops('Một ngày thong thả, không lịch cố định');
+    expect(stops).toEqual([{ time: null, text: 'Một ngày thong thả, không lịch cố định' }]);
+  });
+
+  it('bỏ dòng trống, không đẻ ra hàng rỗng', () => {
+    expect(parseItineraryStops('07:30 — A\n\n\n08:00 — B')).toHaveLength(2);
+  });
+
+  it('description null hoặc rỗng thì trả mảng rỗng', () => {
+    expect(parseItineraryStops(null)).toEqual([]);
+    expect(parseItineraryStops('   ')).toEqual([]);
+  });
+
+  it('giữ nguyên dấu gạch trong phần việc, chỉ cắt ở dấu phân cách đầu tiên', () => {
+    const [stop] = parseItineraryStops('13:30 — Boat option — paid on the day');
+    expect(stop).toEqual({ time: '13:30', text: 'Boat option — paid on the day' });
   });
 });

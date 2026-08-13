@@ -78,3 +78,31 @@ export function ratingHistogram(breakdown: Record<string, number>) {
     return { star, count, percent: total === 0 ? 0 : (count / total) * 100 };
   });
 }
+
+/**
+ * Tách `TourItineraryDay.description` thành các mốc trong ngày.
+ *
+ * Fixture viết mỗi dòng theo khuôn `HH:MM — việc` (xem
+ * `apps/api/prisma/fixtures/catalog/tours-*.ts`). Đây là parse một ĐỊNH DẠNG
+ * người soạn nội dung tuân theo, không phải đoán ngữ nghĩa từ từ khoá — nên
+ * an toàn, và có đường lùi rõ ràng: dòng không khớp khuôn vẫn hiện đủ chữ,
+ * chỉ là không có cột giờ.
+ *
+ * Chỉ cắt ở dấu phân cách ĐẦU TIÊN: phần việc có thể chứa dấu gạch dài của
+ * chính nó ("Boat option — paid on the day").
+ */
+export function parseItineraryStops(
+  description: string | null,
+): { time: string | null; text: string }[] {
+  if (!description) return [];
+  return description
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const match = /^(\d{1,2}:\d{2})\s*[—–-]\s*(.+)$/.exec(line);
+      return match?.[1] && match[2]
+        ? { time: match[1], text: match[2].trim() }
+        : { time: null, text: line };
+    });
+}
