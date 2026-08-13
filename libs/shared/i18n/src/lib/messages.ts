@@ -1825,12 +1825,20 @@ export const messages = {
 
     // ── Reviews tab ──
     reviewsTab: {
-      basedOn: (n: number) => `Based on ${n} verified traveller${n === 1 ? '' : 's'}`,
+      /** KHÔNG có chữ "verified" ở đây, và KHÔNG có huy hiệu "Verified rider"
+          trên từng review — dù bản wireframe có. `PublicReviewSchema` không phơi
+          `source`, và `listByTour` trả CẢ review `CURATED` (không gắn booking:
+          xem `fixtures/catalog/reviews.ts`). Gắn nhãn "verified" lên chúng là
+          khẳng định một điều dữ liệu công khai không xác nhận được. */
+      basedOn: (n: number) => `Based on ${n} ${n === 1 ? 'review' : 'reviews'}`,
       showAll: 'Show all reviews',
       onlyFinished: 'Only travellers who finished this trip can leave a review.',
       ordering: 'Newest first · reviews from deleted accounts appear last.',
       deletedAccount: 'Deleted account',
-      verified: 'Verified traveller',
+      /** Chưa ai đánh giá: KHÔNG vẽ biểu đồ năm cột 0% — nó đọc ra như "ai cũng
+          chấm thấp" chứ không phải "chưa có dữ liệu". */
+      emptyTitle: 'No reviews yet',
+      emptyBody: 'This trip is new. Be the first to ride it and tell us how it went.',
     },
 
     // ── Gallery ảnh ──
@@ -2017,7 +2025,17 @@ export const messages = {
       starsOnly: (n: number) => `${n} star${n === 1 ? '' : 's'} only`,
       withPhotos: 'With photos',
       showingRange: (a: number, b: number, total: number) => `Showing ${a}–${b} of ${total}`,
+      /** Khi có bộ lọc: nói rõ tổng là tổng ĐÃ LỌC, không phải tổng review của
+          tour — hai con số khác nhau và người đọc phải biết mình đang xem cái nào. */
+      showingMatching: (a: number, b: number, total: number) =>
+        `Showing ${a}–${b} of ${total} matching`,
       noReviewsMatch: 'No reviews match these filters.',
+      reviewsSubtitle: (tourTitle: string, average: string, count: number) =>
+        `${tourTitle} · ${average} out of 5 · ${count} ${count === 1 ? 'review' : 'reviews'}`,
+      loadingReviews: 'Loading reviews…',
+      prevPage: 'Previous',
+      nextPage: 'Next',
+      pageOf: (page: number, totalPages: number) => `${page} / ${totalPages}`,
     },
   },
   enquiryCta: {

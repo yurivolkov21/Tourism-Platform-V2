@@ -1,5 +1,5 @@
 import { isDefinedError, safe } from '@orpc/client';
-import type { ContractOutputs } from '@tourism/contract';
+import type { ContractInputs, ContractOutputs } from '@tourism/contract';
 import { cache } from 'react';
 import { api } from './client';
 import { TAGS, tourTag } from './tags';
@@ -85,12 +85,39 @@ export const fetchTourDetail = cache(async (slug: string): Promise<TourDetailVM 
  * `limit` như `tours.list`. Gắn `tourTag(slug)`: bust một tour không đụng
  * cache review của tour khác.
  */
+export type TourReviewsPageVM = ContractOutputs['reviews']['listByTour'];
+
+/** Bộ lọc/sắp xếp của modal "Show all reviews" — cùng field với
+    `ReviewsByTourQuerySchema`, để trống thì server áp mặc định (`newest`). */
+export interface TourReviewsQuery {
+  page?: number;
+  pageSize?: number;
+  sort?: ContractInputs['reviews']['listByTour']['sort'];
+  rating?: number;
+  withPhotos?: boolean;
+}
+
 export async function fetchTourReviews(
   slug: string,
-  page = 1,
-): Promise<ContractOutputs['reviews']['listByTour']> {
+  query: TourReviewsQuery = {},
+): Promise<TourReviewsPageVM> {
   return api.reviews.listByTour(
-    { tourSlug: slug, page },
+    { tourSlug: slug, page: 1, ...query },
     { context: { next: { revalidate: REVALIDATE_SEC, tags: [tourTag(slug)] } } },
   );
+}
+
+/**
+ * Cùng endpoint, gọi TỪ BROWSER: modal review nạp lại mỗi lần khách đổi sắp xếp
+ * hoặc bộ lọc, và những lần đó không đi qua server render nào cả.
+ *
+ * KHÔNG gắn `next: { revalidate, tags }` — hai option đó chỉ có nghĩa với
+ * `fetch` phía server của Next; gửi kèm từ browser là rác. Cũng không cần
+ * cookie: review đã duyệt là dữ liệu công khai.
+ */
+export async function fetchTourReviewsFromBrowser(
+  slug: string,
+  query: TourReviewsQuery = {},
+): Promise<TourReviewsPageVM> {
+  return api.reviews.listByTour({ tourSlug: slug, page: 1, ...query });
 }
