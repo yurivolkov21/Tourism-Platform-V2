@@ -89,11 +89,17 @@ chú thích trỏ tới file vừa xoá đã sửa để không dẫn người �
 nhận prop nên `currency` bị đẩy vào context, reviewer chỉ ra tiền lệ ngược
 (ba component `…Connected` đều nhận `currency` qua prop); đã sửa (`3333199`).
 Tests after: 1634 — 1454 unit (82 contract, 10 tokens, 2 i18n, 22 ui, 215
-api, 1123 web) và 180 api int. **Sổ nợ:** `MediaAsset` còn rỗng nên gallery
-7 thumb chưa có gì để hiện (chạy seed-media là thấy ngay, không phải sửa
-code) — vì vậy nhánh HAI CỘT của `TourMediaPanel` chưa render được từ dữ liệu
-thật, số `621 | 40 | 443` ở trên đo bằng cách dựng đúng chuỗi class đó trong
-chính stylesheet của trang · `freeCancellationDays` · `meals`/`accommodation`
+api, 1123 web) và 180 api int. **Sổ nợ — ĐỌC KỸ MỤC ĐẦU:** `MediaAsset` rỗng
+nên gallery 7 thumb không có gì để hiện, và **KHÔNG có lệnh nào chạy để lấp
+chỗ đó**: repo chỉ có `db:seed`, còn `prisma/seed.ts` không tạo một row
+`MediaAsset` nào cho tour. Script chọn ảnh của [ADR-0020](adr/0020-real-images-sourcing.md)
+đã bị gỡ khỏi nhánh cùng lượt xoá 189 ảnh bị từ chối, nên muốn có ảnh tour
+phải LÀM LẠI khâu tuyển ảnh kèm cửa lọc theo chủ thể mà ADR đó bắt buộc — đây
+là một đợt việc riêng, không phải một câu lệnh. Hệ quả trực tiếp: nhánh HAI
+CỘT của `TourMediaPanel` chưa bao giờ render từ dữ liệu thật (trang đang chạy
+nhánh một cột), nên số `621 | 40 | 443` ở trên đo bằng cách dựng đúng chuỗi
+class đó trong chính stylesheet của trang, và **trang thật hiện lệch bản
+wireframe đã duyệt rõ nhất ở đúng chỗ này** · `freeCancellationDays` · `meals`/`accommodation`
 cho itinerary (73 row/30 tour, để cùng màn admin P4) · thu phóng trong lightbox.
 
 ## 2026-08-12 — Vá CORS thiếu PATCH: avatar upload xong 100% rồi báo lỗi (branch `fix/cors-patch-avatar`, ff-only, 1 commit `ce691bd`)
