@@ -12,7 +12,8 @@
       "!**/dist",
       "!**/dist-seed",
       "!**/public",
-      "!libs/shared/ui/src/styles/typeset.css"
+      "!libs/shared/ui/src/styles/typeset.css",
+      "!docs/design/mockups/*.src.html"
     ]
   },
   "formatter": {

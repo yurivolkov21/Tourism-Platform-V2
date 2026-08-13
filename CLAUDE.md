@@ -143,6 +143,13 @@ pnpm lint:fix                    # biome tự sửa format + lint
   KHÔNG tự nhận migration. Đã dính 12/08: enum `REVIEW` thiếu trên Supabase →
   web build SSG chết 500. Sau mỗi migration mới, deploy tường minh từ
   `apps/api`: `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.local | cut -d= -f2-)" && pnpm prisma migrate deploy`.
+- **`docs/design/mockups/*.src.html` bị loại khỏi Biome** (`biome.json` →
+  `files.includes`). Đó là BẢN GHI NGUYÊN VĂN của một vòng thiết kế user đã
+  duyệt — cùng luật bất biến với `migration.sql` và entry CHANGELOG cũ, không
+  được sửa để lint xanh. `tour-detail.src.html` là *mảnh* HTML từ skill
+  brainstorming (không `<!doctype>`, thẻ không cân) nên Biome 2 parse HTML báo
+  lỗi ở EOF. Lý do phải ghi ở đây vì `biome.json` là JSON nghiêm ngặt, không
+  nhận comment.
 - **TUYỆT ĐỐI không sửa file `migration.sql` đã được apply** — kể cả sửa
   comment. Prisma lưu checksum từng migration; đổi một ký tự là drift, và
   `migrate dev` từ chối chạy tiếp. Đã dính 19/07 khi đợt dịch comment sang

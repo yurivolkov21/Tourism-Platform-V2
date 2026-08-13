@@ -1,0 +1,1494 @@
+<h2>Phối màu dự án vào mẫu 1</h2>
+<p class="subtitle">
+  Bố cục và số đo giữ nguyên bản đã duyệt — chỉ thay bảng màu neutral của ReUI bằng token
+  <strong>"Wuling"</strong> của dự án (đọc từ <code>libs/shared/tokens/style-dictionary/tokens.mjs</code>),
+  cộng bộ chữ thật: Literata cho heading, Archivo cho thân, IBM Plex Mono cho giờ và nhãn.
+  <strong>Bấm nút Sáng / Tối</strong> ở góc phải để xem cả hai chế độ.
+</p>
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,500;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+  .fx-wrap { width:100%; border:1px solid #e5e5e5; border-radius:10px; overflow:hidden; }
+  .fx-chrome { display:flex; align-items:center; gap:5px; padding:8px 12px; background:#f5f5f5; border-bottom:1px solid #e5e5e5; }
+  .fx-chrome i { width:9px; height:9px; border-radius:50%; background:#d4d4d4; display:block; }
+  .fx-chrome span { margin-left:8px; font:11px/1 ui-monospace,Menlo,monospace; color:#a3a3a3; }
+  .fx-chrome .sw { margin-left:auto; display:flex; gap:0; border:1px solid #d4d4d4; border-radius:999px; overflow:hidden; }
+  .fx-chrome .sw button { border:0; background:#fff; color:#525252; font:500 11px/1 ui-sans-serif,system-ui,sans-serif; padding:5px 12px; cursor:pointer; }
+  .fx-chrome .sw button.on { background:#171717; color:#fff; }
+
+  /* ═══ TOKEN DỰ ÁN — chép nguyên giá trị từ tokens.mjs ═══ */
+  .tk {
+    --background:oklch(0.977 0.003 174.5); --foreground:oklch(0.275 0.021 196);
+    --card:oklch(0.996 0.002 174);
+    --primary:oklch(0.494 0.067 184.3); --primary-foreground:oklch(0.974 0.007 174.4);
+    --primary-emphasis:oklch(0.494 0.067 184.3);
+    --muted:oklch(0.914 0.01 174.3); --muted-foreground:oklch(0.473 0.022 179.5);
+    --accent-foreground:oklch(0.411 0.053 184.5);
+    --destructive:oklch(0.516 0.136 27.3);
+    --border:oklch(0.781 0.015 180.6); --input:oklch(0.64 0.015 180.6);
+    --success:oklch(0.62 0.17 145); --warning:oklch(0.78 0.15 80);
+    --paper:oklch(0.965 0.008 174); --ink:oklch(0.42 0.06 184);
+    --rating:oklch(0.64 0.13 73.3); --rating-muted:oklch(0.865 0.015 175.7);
+    --price:oklch(0.275 0.021 196); --price-compare:oklch(0.473 0.022 179.5);
+    --radius-sm:0.6rem; --radius-md:0.8rem; --radius-lg:1rem;
+    --font-sans:'Archivo',ui-sans-serif,system-ui,sans-serif;
+    --font-heading:'Literata',ui-serif,Georgia,serif;
+    --font-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  }
+  .tk.dark {
+    --background:oklch(0.275 0.015 181.5); --foreground:oklch(0.921 0.014 174.1);
+    --card:oklch(0.309 0.022 177.6);
+    --primary:oklch(0.53 0.076 181.3); --primary-foreground:oklch(0.974 0.007 174.4);
+    --primary-emphasis:oklch(0.76 0.076 181.3);
+    --muted:oklch(0.367 0.028 178.3); --muted-foreground:oklch(0.748 0.026 174.5);
+    --accent-foreground:oklch(0.822 0.041 180.6);
+    --destructive:oklch(0.579 0.148 26.7);
+    --border:oklch(0.402 0.026 173.6); --input:oklch(0.58 0.026 173.6);
+    --success:oklch(0.7 0.15 145); --warning:oklch(0.82 0.14 80);
+    --paper:oklch(0.32 0.02 178); --ink:oklch(0.78 0.05 181);
+    --rating:oklch(0.78 0.13 75); --rating-muted:oklch(1 0 0 / 0.2);
+    --price:oklch(0.921 0.014 174.1); --price-compare:oklch(0.748 0.026 174.5);
+  }
+
+  .tk * { box-sizing:border-box; margin:0; padding:0; }
+  .tk { font-family:var(--font-sans); color:var(--foreground); background:var(--background); }
+  .tk img { display:block; width:100%; height:100%; object-fit:cover; }
+  .tk h1, .tk h2, .tk h3, .tk .serif { font-family:var(--font-heading); font-weight:500; }
+  .shell { max-width:1152px; margin:0 auto; padding:40px 24px; }
+
+  /* ── HERO (tour-hero.tsx) ──
+     Hero LUÔN tối bất kể theme: page.tsx bọc nó trong `<div class="dark contents">`
+     trên nền `bg-hero`. Nên khối này khai lại token ở bản dark, không theo công
+     tắc Sáng/Tối của trang. */
+  .hero { position:relative; overflow:hidden; padding:64px 24px 56px; color:var(--hero-foreground);
+    --hero:oklch(0.25 0.015 181.5); --hero-foreground:oklch(0.921 0.014 174.1);
+    --muted-foreground:oklch(0.748 0.026 174.5); --foreground:oklch(0.921 0.014 174.1);
+    --primary:oklch(0.53 0.076 181.3); --primary-emphasis:oklch(0.76 0.076 181.3);
+    --border:oklch(0.402 0.026 173.6); background:var(--hero); }
+  .hero::before { content:""; position:absolute; inset:0;
+    background:linear-gradient(to bottom right, color-mix(in oklab, var(--primary) 15%, transparent), transparent 60%); }
+  .hero-in { position:relative; z-index:1; max-width:1104px; margin:0 auto; }
+  .hero-crumb { display:flex; align-items:center; gap:6px; font-size:14px; line-height:20px; color:var(--muted-foreground); }
+  .hero-crumb svg { width:14px; height:14px; opacity:.6; }
+  .hero-crumb .cur { color:var(--foreground); }
+  .hero-row { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px 24px; margin-top:32px; }
+  .hero-eyeb { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:12px; line-height:16px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+  .hero-eyeb i { width:6px; height:6px; background:var(--primary); display:block; }
+  .hero-rate { display:flex; align-items:center; gap:8px; font-size:14px; }
+  .hero-rate svg { width:16px; height:16px; fill:var(--rating); color:var(--rating); }
+  .hero h1 { font-family:var(--font-heading); font-size:44px; line-height:1.12; font-weight:500; max-width:820px; margin-top:12px; letter-spacing:-.01em; }
+  .hero-sum { margin-top:16px; max-width:660px; color:var(--muted-foreground); font-size:15px; line-height:24px; }
+  .hero-ribbon { display:flex; align-items:center; gap:10px; margin-top:32px; font-family:var(--font-mono); font-size:11px; line-height:16px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted-foreground); flex-wrap:wrap; }
+  .hero-ribbon i { width:7px; height:7px; border-radius:999px; border:1.25px solid var(--muted-foreground); display:block; }
+  .hero-ribbon i.on { background:var(--primary); border-color:var(--primary); }
+  .hero-ribbon .ln { width:22px; height:1px; background:var(--border); display:block; }
+  .hero-foot { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:20px 32px; margin-top:32px; border-top:1px solid color-mix(in oklab, var(--muted-foreground) 20%, transparent); padding-top:24px; }
+  .hero-facts { display:flex; flex-wrap:wrap; gap:8px 20px; font-size:14px; color:var(--muted-foreground); }
+  .hero-facts span { display:inline-flex; align-items:center; gap:6px; }
+  .hero-facts svg { width:16px; height:16px; }
+  .hero-price { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px 16px; }
+  .hero-price .row { display:flex; align-items:baseline; gap:8px; }
+  .hero-price .lab { font-size:12px; color:var(--muted-foreground); }
+  .hero-price .amt { font-family:var(--font-heading); font-size:32px; line-height:1; font-weight:600; font-variant-numeric:tabular-nums; }
+  .hero-price .was { font-size:14px; color:var(--price-compare); text-decoration:line-through; font-variant-numeric:tabular-nums; }
+  .hero-badges { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .hero-badges .off { border-radius:999px; background:var(--destructive); color:oklch(1 0 0); padding:4px 10px; font-size:12px; font-weight:500; }
+  .hero-badges .tag { border-radius:999px; border:1px solid color-mix(in oklab, var(--muted-foreground) 35%, transparent); padding:4px 10px; font-size:12px; color:var(--muted-foreground); }
+
+  /* ── Thẻ tour (tour-card.tsx): 5 băng, KHÔNG khung, KHÔNG nền, KHÔNG kẻ chân —
+     đúng chủ ý ghi trong comment của component: khu gợi ý nằm ngay dưới bảng đợt
+     có viền nên thêm khung nữa là bốn thứ viền xếp liên tiếp. Lưới 3 cột. ── */
+  .rel-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:32px 24px; }
+  .tcard { position:relative; display:flex; flex-direction:column; gap:10px; }
+  .tcard-img { position:relative; overflow:hidden; border-radius:var(--radius-lg); aspect-ratio:16/10; background:var(--muted); }
+  .tcard-img img { width:100%; height:100%; object-fit:cover; transition:transform .7s ease-out; }
+  .tcard:hover .tcard-img img { transform:scale(1.05); }
+  .tcard-off { position:absolute; top:10px; left:10px; border-radius:999px; background:var(--destructive); color:oklch(1 0 0); padding:2px 8px; font-size:12px; line-height:16px; font-weight:500; }
+  .tcard-chain { display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10px; line-height:16px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-foreground); white-space:nowrap; overflow:hidden; }
+  .tcard-chain i { width:7px; height:7px; border-radius:999px; border:1.25px solid var(--muted-foreground); opacity:.75; display:block; flex:0 0 7px; }
+  .tcard-chain i.on { background:var(--primary); border-color:var(--primary); opacity:1; }
+  .tcard-chain .ln { width:20px; height:1px; background:var(--border); display:block; flex:0 0 20px; }
+  .tcard-chain .main { color:var(--foreground); }
+  .tcard h3 { font-family:var(--font-heading); font-size:18px; line-height:1.4; font-weight:500; min-height:2lh; overflow:hidden; display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .tcard:hover h3 { color:var(--primary-emphasis); }
+  .tcard-shape { font-size:14px; line-height:20px; color:var(--muted-foreground); }
+  .tcard-foot { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:4px 12px; }
+  .tcard-price { display:flex; align-items:baseline; gap:6px; }
+  .tcard-price .amt { font-family:var(--font-heading); font-size:20px; line-height:1.2; font-weight:600; font-variant-numeric:tabular-nums; }
+  .tcard-price .was { font-size:14px; color:var(--price-compare); text-decoration:line-through; font-variant-numeric:tabular-nums; }
+  .tcard-price .per { font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+  .tcard-rate { display:flex; align-items:center; gap:6px; font-size:14px; white-space:nowrap; }
+  .tcard-rate svg { width:14px; height:14px; fill:var(--rating); color:var(--rating); }
+  .tcard-rate b { font-weight:500; }
+  .tcard-rate span { color:var(--muted-foreground); }
+
+  .crumb { display:flex; align-items:center; gap:8px; font-size:14px; line-height:20px; color:var(--muted-foreground); margin-bottom:32px; }
+  .crumb .cur { color:var(--foreground); font-weight:500; }
+
+  /* Bản gốc dùng minmax(0,1.4fr) minmax(320px,1fr). Tỉ lệ đó chia 1104 ra
+     620.656 | 443.328 — số LẺ. Ảnh chính aspect-ratio:1/1 nên cao 540.656, và
+     cả trang bên dưới thừa hưởng phần lẻ .656 (đo được tabs bắt đầu ở 911.656):
+     mọi đường kẻ 1px rơi lệch pixel, bị khử răng cưa thành dày-mỏng xen kẽ.
+     Ghim cột phải 443px cho ra ĐÚNG 621 | 40 | 443 như số đo bản gốc, mọi thứ
+     về số nguyên. */
+  .top { display:grid; grid-template-columns:minmax(0,1fr) 443px; gap:40px; }
+  @media (max-width:900px) { .top { grid-template-columns:1fr; } }
+  .gal { display:flex; gap:16px; align-items:flex-start; }
+  /* 7 ô là TRẦN HÌNH HỌC, không phải số chọn đại: 7×64 + 6×8 = 496 ≤ 541 (chiều
+     cao ảnh vuông). Ô thứ 8 thành 568 > 541 → dải thumb dài hơn ảnh, vỡ hàng. */
+  .thumbs { display:flex; flex-direction:column; gap:8px; flex:0 0 64px; }
+  .thumbs button { width:64px; height:64px; border-radius:var(--radius-sm); overflow:hidden; border:1px solid var(--border); background:var(--muted); padding:0; cursor:pointer; position:relative; }
+  .thumbs button.on { outline:2px solid var(--primary); outline-offset:1px; }
+  .thumbs button .more { position:absolute; inset:0; background:oklch(0 0 0 / 0.55); color:oklch(1 0 0); display:flex; align-items:center; justify-content:center; font:500 14px/1 var(--font-mono); letter-spacing:-.02em; }
+  .main-img { flex:1; min-width:0; aspect-ratio:1/1; border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--border); background:var(--muted); cursor:zoom-in; position:relative; padding:0; display:block; }
+  .main-img .hint { position:absolute; right:12px; bottom:12px; display:flex; align-items:center; gap:6px; background:oklch(0 0 0 / 0.55); color:oklch(1 0 0); border-radius:999px; padding:6px 12px; font:500 12px/1 var(--font-sans); }
+  .main-img .hint svg { width:14px; height:14px; }
+
+  /* ── Lightbox: khung theo ĐÚNG lightbox.tsx đang có (đếm · đóng · media ·
+     prev/caption/next). Phần thu-phóng là MỚI, chưa có trong repo. ── */
+  /* Tên phải là .lbx chứ KHÔNG phải .lb — `.lb` đã là class nhãn của panel mua
+     ("Select Departure"), và `display:none` ở đây từng nuốt mất cái nhãn đó. */
+  .lbx { position:fixed; inset:0; z-index:9999; background:oklch(0 0 0 / 0.72); display:none; align-items:center; justify-content:center; padding:24px; }
+  .lbx.open { display:flex; }
+
+  /* ── Modal "All dates" ── */
+  .dlg { position:fixed; inset:0; z-index:9998; background:oklch(0 0 0 / 0.6); display:none; align-items:center; justify-content:center; padding:24px; }
+  .dlg.open { display:flex; }
+  .dlg-box { background:var(--background); border:1px solid var(--border); border-radius:var(--radius-lg); width:min(640px,100%); max-height:min(760px,100%); display:flex; flex-direction:column; }
+  .dlg-head { padding:20px 24px 16px; border-bottom:1px solid var(--border); }
+  .dlg-title { font-family:var(--font-heading); font-size:20px; line-height:26px; font-weight:500; }
+  .dlg-sub { font-size:13px; line-height:20px; color:var(--muted-foreground); margin-top:4px; }
+  .dlg-x { position:absolute; top:16px; right:16px; width:32px; height:32px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+  .dlg-filter { display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--muted-foreground); cursor:pointer; }
+  .dlg-filter input { width:16px; height:16px; accent-color:var(--primary); }
+  .dlg-scroll { overflow-y:auto; padding:8px 24px 16px; }
+  .mgroup { font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); padding:16px 0 8px; position:sticky; top:0; background:var(--background); }
+  .drow { display:grid; grid-template-columns:1fr auto auto; align-items:center; gap:16px; padding:12px; border:1px solid var(--border); border-radius:var(--radius-md); margin-bottom:8px; background:var(--card); cursor:pointer; text-align:left; width:100%; font-family:inherit; color:var(--foreground); }
+  .drow:hover:not(.sold) { border-color:var(--primary); }
+  .drow.on { border-color:var(--primary); background:color-mix(in oklab, var(--primary) 7%, var(--card)); }
+  .drow.sold { cursor:not-allowed; opacity:.55; }
+  .drow .dates { font:500 14px/20px var(--font-sans); font-variant-numeric:tabular-nums; }
+  .drow .meta { font-size:12px; color:var(--muted-foreground); margin-top:2px; display:flex; align-items:center; gap:8px; }
+  .drow .meta i { width:7px; height:7px; border-radius:999px; background:var(--success); display:inline-block; }
+  .drow .meta i.low { background:var(--warning); }
+  .drow .meta i.no { background:var(--muted-foreground); }
+  .drow .p { text-align:right; font:600 15px/20px var(--font-sans); color:var(--price); font-variant-numeric:tabular-nums; }
+  .drow .p s { display:block; font:400 12px/16px var(--font-sans); color:var(--price-compare); }
+  .drow .pick { font:500 12px/1 var(--font-sans); color:var(--primary-emphasis); white-space:nowrap; }
+  .dlg-foot { border-top:1px solid var(--border); padding:16px 24px; display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  .dlg-foot .cur { font-size:13px; color:var(--muted-foreground); }
+  .dlg-foot .cur b { color:var(--foreground); font-weight:500; }
+  .dlg-empty { padding:32px 0; text-align:center; color:var(--muted-foreground); font-size:14px; }
+
+  /* ── Modal "Show all reviews" ── */
+  .rv-item { padding:18px 0; border-bottom:1px solid var(--border); }
+  .rv-item:last-child { border-bottom:0; }
+  .rv-top2 { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .rv-who { display:flex; align-items:center; gap:8px; min-width:0; }
+  .rv-av { width:28px; height:28px; border-radius:999px; background:var(--muted); color:var(--muted-foreground); display:flex; align-items:center; justify-content:center; font:500 12px/1 var(--font-sans); flex:0 0 28px; }
+  /* line-height TƯỜNG MINH và CHẴN ở mọi dòng chữ trong thẻ review. Thiếu nó,
+     chiều cao dòng do font tự quyết (Literata/Archivo) ra số lẻ → chiều cao
+     thẻ lẻ → đường kẻ 1px rơi vào nửa pixel và bị khử răng cưa thành "dày mà
+     nhạt", xen kẽ với đường ở toạ độ chẵn nét đanh. Đo được trước khi vá:
+     882.5 · 1058 · 1233.5 · 1483 · 1657.5. */
+  .rv-name { font-size:14px; line-height:20px; font-weight:500; }
+  .rv-name.gone { color:var(--muted-foreground); font-style:italic; font-weight:400; }
+  .rv-when { font-size:12px; line-height:20px; color:var(--muted-foreground); white-space:nowrap; }
+  .rv-title { font-family:var(--font-heading); font-size:15px; line-height:22px; font-weight:500; margin-top:8px; }
+  .rv-body { font-size:14px; line-height:22px; color:var(--foreground); margin-top:4px; }
+  .rv-pics { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .rv-pics img { width:64px; height:64px; object-fit:cover; border-radius:var(--radius-sm); border:1px solid var(--border); cursor:pointer; }
+  .pager { display:flex; align-items:center; gap:8px; }
+  .pager .pg { font-family:var(--font-mono); font-size:12px; color:var(--muted-foreground); }
+  .lb-box { background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); width:min(1024px,100%); max-height:100%; display:flex; flex-direction:column; gap:12px; padding:16px; }
+  .lb-bar { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .lb-count { font:400 12px/1 var(--font-mono); letter-spacing:.12em; color:var(--muted-foreground); }
+  .lb-tools { display:flex; align-items:center; gap:6px; }
+  .lb-btn { width:32px; height:32px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); color:var(--foreground); display:flex; align-items:center; justify-content:center; cursor:pointer; font:500 14px/1 var(--font-sans); }
+  .lb-btn[disabled] { opacity:.4; cursor:not-allowed; }
+  .lb-zoom { font:400 12px/1 var(--font-mono); color:var(--muted-foreground); min-width:44px; text-align:center; }
+  .lb-stage { position:relative; overflow:hidden; border-radius:var(--radius-md); background:var(--muted); aspect-ratio:16/10; cursor:zoom-in; }
+  .lb-stage.zoomed { cursor:grab; }
+  .lb-stage.zoomed:active { cursor:grabbing; }
+  .lb-stage img { width:100%; height:100%; object-fit:contain; transform-origin:center center; transition:transform .18s ease-out; user-select:none; -webkit-user-drag:none; }
+  .lb-stage.dragging img { transition:none; }
+  .lb-foot { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .lb-cap { flex:1; text-align:center; font-size:13px; color:var(--muted-foreground); }
+
+  .panel { display:flex; flex-direction:column; gap:20px; }
+  .cat { display:flex; align-items:center; gap:8px; font-family:var(--font-mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+  .cat .dot { width:4px; height:4px; border-radius:50%; background:var(--muted-foreground); opacity:.5; }
+  .head { display:flex; flex-direction:column; gap:8px; }
+  h1.title { font-size:26px; line-height:32px; letter-spacing:-0.3px; color:var(--foreground); }
+  .rate { display:flex; align-items:center; gap:8px; }
+  .stars { font-size:14px; line-height:20px; letter-spacing:1px; color:var(--rating); display:inline-block; }
+  .stars .off { color:var(--rating-muted); }
+  .rate .v { font-size:12px; color:var(--muted-foreground); }
+  .rate .c { font-size:14px; color:var(--muted-foreground); }
+  .sum { font-size:14px; line-height:23px; color:var(--muted-foreground); display:-webkit-box; -webkit-box-orient:vertical; -webkit-line-clamp:2; overflow:hidden; }
+  /* Ngoài canh CENTER để badge nằm đúng giữa hàng giá; hai con số bên trong
+     vẫn canh baseline với nhau. Trước đây cả badge cũng baseline nên nó bị
+     tụt xuống một chút so với dòng giá. */
+  .price-row { display:flex; align-items:center; gap:10px; }
+  .price-nums { display:flex; align-items:baseline; gap:8px; font-size:20px; line-height:28px; font-weight:600; font-variant-numeric:tabular-nums; color:var(--price); }
+  .price-nums .was { color:var(--price-compare); font-weight:400; text-decoration:line-through; }
+  .off-badge { display:inline-flex; align-items:center; height:20px; padding:2px 8px; border-radius:999px; background:var(--destructive); color:oklch(1 0 0); font-size:12px; line-height:16px; font-weight:500; }
+  .rule { height:1px; background:var(--border); }
+  .sec { display:flex; flex-direction:column; gap:12px; }
+  .lb { font-size:14px; line-height:20px; font-weight:500; }
+  .lb span { color:var(--muted-foreground); font-weight:400; }
+  .link { font-size:14px; color:var(--muted-foreground); text-decoration:underline; text-underline-offset:4px; }
+  .srow { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+
+  /* Dải dữ kiện ĐỌC-THÔI, nay nằm trong tab Overview chứ không ở panel mua:
+     panel mua chỉ nên chứa thứ dùng để quyết định mua (ngày, giá, nút), còn
+     đặc tính chuyến đi là NỘI DUNG. Cố ý không viền/nền kiểu nút để không ai
+     tưởng bấm được. */
+  /* Card theo mẫu playground.md: header có icon + nhãn, gạch ngăn, thân chứa
+     mô tả và link nhỏ màu primary. Trải đều 4 cột TRÀN chiều ngang tab. */
+  .facts { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+  .fcard { border:1px solid var(--border); border-radius:var(--radius-md); background:var(--card); overflow:hidden; display:flex; flex-direction:column; }
+  .fcard-h { border-bottom:1px solid var(--border); padding:12px 16px; display:flex; align-items:center; gap:8px; color:var(--muted-foreground); }
+  .fcard-h svg { width:16px; height:16px; flex:0 0 16px; }
+  .fcard-h span { color:var(--foreground); font-size:14px; line-height:20px; font-weight:500; }
+  .fcard-b { padding:16px; display:flex; flex-direction:column; gap:12px; flex:1; }
+  .fcard-v { font-size:14px; line-height:20px; font-weight:500; }
+  .fcard-b p { font-size:13px; line-height:20px; color:var(--muted-foreground); }
+  .fcard-l { display:inline-flex; align-items:center; gap:4px; color:var(--primary-emphasis); font-size:12px; font-weight:500; background:none; border:0; padding:0; cursor:pointer; font-family:inherit; margin-top:auto; }
+  .fcard-l:hover { text-decoration:underline; }
+  .fcard-l svg { width:10px; height:10px; flex:0 0 10px; }
+  @media (max-width:900px) { .facts { grid-template-columns:1fr 1fr; } }
+
+  /* ── Tab Departures: tổng quan mùa vụ, KHÔNG lặp lại danh sách của modal ── */
+  .dep-stats { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; margin-bottom:28px; }
+  .dep-stat { border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; background:var(--card); }
+  .dep-stat .k { font-family:var(--font-mono); font-size:10px; line-height:16px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+  .dep-stat .v { font-family:var(--font-heading); font-size:22px; line-height:28px; font-weight:500; margin-top:6px; }
+  .dep-stat .s { font-size:12px; line-height:16px; color:var(--muted-foreground); margin-top:2px; }
+  .mrow { display:grid; grid-template-columns:120px 1fr 150px 90px; align-items:center; gap:16px; padding:12px 0; border-bottom:1px solid var(--border); }
+  .mrow:first-of-type { border-top:1px solid var(--border); }
+  .mrow .mo { font:500 14px/20px var(--font-sans); }
+  .mrow .mo em { display:block; font-style:normal; font-size:12px; line-height:16px; color:var(--muted-foreground); }
+  .mseats { display:flex; gap:3px; }
+  .mseats i { flex:1; height:8px; border-radius:2px; background:var(--muted); display:block; }
+  .mseats i.has { background:var(--primary); }
+  .mseats i.low { background:var(--warning); }
+  .mseats i.no { background:var(--border); }
+  .mrow .pr { font-size:13px; line-height:20px; font-variant-numeric:tabular-nums; text-align:right; }
+  .mrow .pr em { font-style:normal; color:var(--muted-foreground); }
+
+  /* 4 ô — vừa đủ một hàng, còn lại đẩy sang modal qua "All dates".
+     Có chỗ nên hiện luôn số ghế còn: đó là câu hỏi kế tiếp ngay sau khi chọn ngày. */
+  .dates { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:8px; padding-top:4px; }
+  .dates label { height:52px; border-radius:var(--radius-sm); border:1px solid var(--input); background:var(--card); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--foreground); position:relative; cursor:pointer; }
+  .dates label b { font:500 14px/1 var(--font-mono); font-variant-numeric:tabular-nums; }
+  .dates label em { font-style:normal; font-size:11px; color:var(--muted-foreground); }
+  .dates label.on { border-color:var(--primary); background:color-mix(in oklab, var(--primary) 8%, var(--card)); }
+  .dates label.low em { color:var(--warning); }
+  .dates .chk { position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%; background:var(--primary); color:var(--primary-foreground); font-size:9px; display:flex; align-items:center; justify-content:center; }
+
+  .btns { display:grid; gap:8px; }
+  .btn { height:36px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; gap:6px; font:500 14px/1 var(--font-sans); border:1px solid transparent; cursor:pointer; }
+  .btn.primary { background:var(--primary); color:var(--primary-foreground); }
+  .tk.dark .btn.primary { border-color:var(--border); }
+  .btn.ghost { background:transparent; color:var(--foreground); border-color:var(--border); }
+  .btn svg { width:16px; height:16px; }
+
+  /* auto-fit chứ không cứng 3 cột: số policy là do người soạn nội dung quyết,
+     tour chỉ có 1–2 policy thì hàng vẫn cân, không để lại ô rỗng. */
+  .trust { display:grid; grid-template-columns:repeat(auto-fit,minmax(0,1fr)); gap:8px; }
+  .trust-card { border:1px solid var(--border); border-radius:var(--radius-sm); padding:12px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; background:var(--card); cursor:pointer; font-family:inherit; color:var(--foreground); text-align:center; }
+  .trust-card:hover { border-color:var(--primary); }
+  .trust svg { width:16px; height:16px; color:var(--primary-emphasis); }
+  .trust span { font-size:12px; font-weight:500; }
+
+  .tabs { margin-top:48px; }
+  .tablist { display:flex; gap:24px; height:40px; border-bottom:1px solid var(--border); }
+  .tab { flex:1; height:38px; display:flex; align-items:center; justify-content:center; font:500 14px/20px var(--font-sans); color:var(--muted-foreground); padding:2px 0 12px; position:relative; cursor:pointer; background:none; border:0; }
+  .tab.on { color:var(--foreground); }
+  .tab.on::after { content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--primary); }
+  .pane { display:none; margin-top:24px; font-size:14px; line-height:23px; }
+  .pane.on { display:block; }
+  .pane.narrow { max-width:768px; }
+
+  .eyeb { font-family:var(--font-mono); font-size:11px; line-height:16px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted-foreground); }
+  .note { border:1px dashed var(--border); border-radius:var(--radius-md); padding:12px 14px; display:flex; gap:10px; align-items:flex-start; }
+  .note svg { width:16px; height:16px; flex:0 0 16px; margin-top:3px; color:var(--primary-emphasis); }
+  .h3s { font-family:var(--font-heading); font-size:17px; line-height:24px; font-weight:500; }
+
+  /* ── Timeline theo mẫu playground.md (reui/timeline + frame + collapsible) ── */
+  .tl { position:relative; }
+  .tl-item { position:relative; padding-left:44px; padding-bottom:28px; }
+  .tl-item:last-child { padding-bottom:0; }
+  .tl-node { position:absolute; left:0; top:0; width:24px; height:24px; border-radius:999px; display:flex; align-items:center; justify-content:center; background:var(--muted); color:var(--muted-foreground); font:500 11px/1 var(--font-mono); }
+  .tl-item.done .tl-node { background:var(--primary); color:var(--primary-foreground); }
+  .tl-item.active .tl-node { background:var(--primary); color:var(--primary-foreground); box-shadow:0 0 0 4px color-mix(in oklab, var(--primary) 20%, transparent); }
+  .tl-item.upcoming .tl-node { background:transparent; border:1.5px solid var(--border); color:var(--muted-foreground); }
+  .tl-line { position:absolute; left:11.5px; top:28px; bottom:4px; width:1px; background:var(--border); }
+  .tl-item.done .tl-line { background:var(--primary); }
+  .tl-head { display:flex; align-items:center; gap:8px; flex-wrap:wrap; min-height:24px; }
+  .tl-title { font-family:var(--font-heading); font-size:16px; line-height:22px; font-weight:500; }
+  .tl-item.dim .tl-title, .tl-item.dim .tl-frame { opacity:.55; }
+  /* Viền badge dùng --input chứ KHÔNG phải --border. Đo ở chế độ tối:
+     border/card = 1.45:1 → hình dạng badge tàng hình, chỉ còn chữ trôi nổi.
+     tokens.mjs ghi rõ hai token này KHÁC LUẬT: --border là đường phân cách
+     trang trí (không thuộc WCAG 1.4.11), --input là ranh giới của thành phần
+     có nghĩa và được cân để đạt 3:1 (đo sẵn trong file: dark 0.58 → card 3.09).
+     Badge là hình dạng mang thông tin nên thuộc nhóm sau. */
+  /* Viền badge dùng --input chứ KHÔNG phải --border. Đo ở chế độ tối:
+     border/nền = 1.45:1 → hình dạng badge tàng hình, chỉ còn chữ trôi nổi.
+     tokens.mjs ghi rõ hai token này KHÁC LUẬT: --border là đường phân cách
+     trang trí (không thuộc WCAG 1.4.11), --input là ranh giới của thành phần
+     có nghĩa và được cân để đạt 3:1. Đo sau khi vá: 3.51 tối / 3.13 sáng. */
+  .tl-badge { display:inline-flex; align-items:center; gap:6px; height:22px; padding:0 9px; border-radius:999px; font:500 11px/1 var(--font-mono); border:1px solid var(--input); color:var(--foreground); }
+  .tl-badge svg { width:11px; height:11px; flex:0 0 11px; }
+  .tl-badge.now { background:var(--primary); border-color:var(--primary); color:var(--primary-foreground); font-family:var(--font-sans); }
+  .tl-badge.done { background:color-mix(in oklab, var(--success) 18%, transparent); border-color:color-mix(in oklab, var(--success) 55%, transparent); color:var(--success); font-family:var(--font-sans); }
+  .tl-frame { margin-top:10px; border:1px solid var(--border); border-radius:var(--radius-md); background:var(--muted); padding:4px; }
+  .tl-trigger { width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--card); border:1px solid var(--border); border-radius:calc(var(--radius-md) - 4px); cursor:pointer; font-family:inherit; color:var(--foreground); }
+  .tl-trigger .who { display:flex; align-items:center; gap:8px; min-width:0; }
+  .tl-trigger .ic { width:20px; height:20px; border-radius:999px; background:var(--muted); color:var(--primary-emphasis); display:flex; align-items:center; justify-content:center; flex:0 0 20px; }
+  .tl-trigger .ic svg { width:12px; height:12px; }
+  .tl-trigger .sum { font-size:12px; line-height:20px; font-weight:500; color:var(--muted-foreground); }
+  .tl-trigger .chev { transition:transform .18s ease; color:var(--muted-foreground); }
+  .tl-item.open .tl-trigger .chev { transform:rotate(90deg); }
+  .tl-panel { display:none; padding:10px 12px 6px; }
+  .tl-item.open .tl-panel { display:block; }
+  .spin { width:12px; height:12px; border-radius:999px; border:2px solid currentColor; border-top-color:transparent; animation:sp .7s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion:reduce) { .spin { animation:none; } }
+
+  .simbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; border:1px dashed var(--border); border-radius:var(--radius-md); padding:10px 12px; margin-bottom:24px; }
+  .simbar .lab { font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--muted-foreground); }
+  .simbar button { height:28px; padding:0 12px; border-radius:999px; border:1px solid var(--border); background:var(--card); font:500 12px/1 var(--font-sans); color:var(--foreground); cursor:pointer; }
+  .simbar button.on { background:var(--primary); border-color:var(--primary); color:var(--primary-foreground); }
+
+  .day { display:grid; grid-template-columns:36px 1fr; gap:20px; }
+  .rail { display:flex; flex-direction:column; align-items:center; gap:6px; height:100%; }
+  .daynum { width:36px; height:36px; border-radius:999px; border:1px solid var(--border); background:var(--background); display:flex; align-items:center; justify-content:center; font:500 12px/1 var(--font-mono); color:var(--primary-emphasis); font-variant-numeric:tabular-nums; }
+  .line { flex:1; width:1px; background:var(--border); min-height:12px; }
+  .dbody { padding-bottom:32px; min-width:0; }
+  /* Tương phản: chữ mốc giờ dùng --foreground chứ KHÔNG phải --muted-foreground.
+     Bản trước để muted nên cả khối chìm vào nền; mốc giờ là nội dung chính của
+     lịch trình, không phải chú thích. Giờ cũng đậm lên và canh cột tabular. */
+  .stop { display:grid; grid-template-columns:60px 1fr; gap:14px; padding:7px 0; align-items:baseline; }
+  .stop + .stop { border-top:1px solid color-mix(in oklab, var(--border) 45%, transparent); }
+  .stop time { font-family:var(--font-mono); font-size:12px; font-weight:500; color:var(--foreground); font-variant-numeric:tabular-nums; }
+  .stop span { font-size:14px; line-height:22px; color:var(--foreground); }
+  /* Markdown: đậm cho địa danh, nghiêng cho ghi chú mềm/tuỳ chọn */
+  .stop strong { font-weight:600; }
+  .stop em { font-style:italic; color:var(--muted-foreground); }
+  /* Pill mượn ngôn ngữ badge hero của trang vùng (region-hero.tsx:126): bo
+     tròn hẳn, viền hổ phách `--rating`, icon nhỏ cùng màu, chữ HOA giãn cách.
+     KHÔNG chép được `bg-on-media/10` và `text-on-media` — tokens.mjs ghi rõ
+     `on-media` dành cho chữ nằm TRÊN ẢNH TỐI và giữ màu sáng ở CẢ HAI theme
+     vì scrim luôn tối; pill nằm trên nền trang nên chữ đó sẽ tàng hình ở chế
+     độ sáng. Thay bằng `--foreground`, nền tint theo `--rating`. */
+  .pill { display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:2px 9px;
+    font:500 10px/16px var(--font-sans); letter-spacing:.1em; text-transform:uppercase;
+    border:1px solid var(--rating); background:color-mix(in oklab, var(--rating) 10%, transparent);
+    color:var(--foreground); margin-left:8px; white-space:nowrap; vertical-align:1px; }
+  .pill svg { width:11px; height:11px; flex:0 0 11px; color:var(--rating); }
+
+  .tbl { width:100%; border-collapse:collapse; }
+  .tbl th { text-align:left; font-family:var(--font-mono); font-size:10px; letter-spacing:.1em; text-transform:uppercase; font-weight:400; color:var(--muted-foreground); padding:0 12px 10px; border-bottom:1px solid var(--border); }
+  .tbl th:last-child, .tbl td:last-child { text-align:right; }
+  .tbl td { padding:14px 12px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:middle; }
+  .tbl tr.on td { background:color-mix(in oklab, var(--primary) 6%, transparent); }
+  .tbl tr.out td { color:var(--muted-foreground); opacity:.6; }
+  .tbl .d { font-weight:500; font-variant-numeric:tabular-nums; }
+  .tbl .sub { font-size:12px; color:var(--muted-foreground); }
+  .seat { display:inline-flex; align-items:center; gap:7px; font-size:13px; }
+  .seat i { width:7px; height:7px; border-radius:999px; background:var(--success); display:block; }
+  .seat i.low { background:var(--warning); }
+  .seat i.no { background:var(--muted-foreground); }
+  .btn-sm { height:32px; padding:0 14px; border-radius:var(--radius-sm); font:500 13px/1 var(--font-sans); border:1px solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+  .btn-sm.primary { background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+  .btn-sm[disabled] { color:var(--muted-foreground); opacity:.6; }
+
+  .rvtop { display:grid; grid-template-columns:minmax(0,220px) minmax(0,1fr); gap:32px; align-items:start; }
+  .big { font-family:var(--font-heading); font-size:40px; line-height:44px; font-weight:500; color:var(--foreground); }
+  .bar { display:flex; align-items:center; gap:8px; font-size:12px; color:var(--muted-foreground); padding:2px 0; }
+  .bar .t { width:18px; font-family:var(--font-mono); }
+  /* Track dùng --border, KHÔNG dùng --muted. Đo: muted/nền trang chỉ 1.26:1 nên
+     hai mép 6px bị khử răng cưa ăn mòn và mắt đọc thanh rỗng thành sợi mảnh,
+     trong khi thanh đã tô (tương phản mạnh) đọc đủ 6px — nhìn ra "to nhỏ không
+     đều" dù hình học giống hệt nhau. */
+  .bar .track { flex:1; height:6px; background:var(--border); border-radius:999px; overflow:hidden; }
+  /* display:block BẮT BUỘC — .track không phải flex container nên .fill là
+     <span> vẫn ở chế độ inline, mà width/height KHÔNG áp cho phần tử inline
+     không-thay-thế. Đo được fillW = 0 ở cả 5 hàng: người xem chỉ thấy track
+     xám, tưởng thanh không có màu. */
+  .bar .fill { display:block; height:100%; background:var(--primary); border-radius:999px; }
+
+  /* Thanh cuộn: chép ĐÚNG quy ước globals.css của dự án — 4px, track tiệp nền
+     nên tàng hình, thumb màu primary. Firefox scope trong @supports -moz để
+     không vô hiệu hoá rule webkit của Chromium. */
+  .tk ::-webkit-scrollbar { width:4px; height:4px; }
+  .tk ::-webkit-scrollbar-track { background:var(--background); }
+  .tk ::-webkit-scrollbar-thumb { background:var(--primary); border-radius:2px; }
+  @supports (-moz-appearance:none) {
+    .tk .dlg-scroll { scrollbar-width:thin; scrollbar-color:var(--primary) var(--background); }
+  }
+
+  /* Hàng điều khiển của modal review */
+  .rv-ctl { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+  .rv-chip { height:32px; padding:0 12px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); font:500 13px/1 var(--font-sans); color:var(--foreground); cursor:pointer; display:inline-flex; align-items:center; gap:7px; }
+  .rv-chip.on { background:var(--primary); border-color:var(--primary); color:var(--primary-foreground); }
+  .rv-chip svg { width:14px; height:14px; }
+  .rv-sep { width:1px; height:24px; background:var(--border); }
+
+  /* Dropdown theo mẫu playground: nút outline có chevron đẩy sát phải bằng
+     ml-auto, menu có nhãn nhóm + item kèm icon. DropdownMenu ĐÃ có sẵn trong
+     libs/shared/ui — chỉ đổi chữ và icon. */
+  .dd { position:relative; }
+  .dd-trigger { width:150px; height:32px; padding:0 10px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--card); color:var(--foreground); font:500 13px/1 var(--font-sans); cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .dd-trigger .chev { margin-left:auto; width:14px; height:14px; color:var(--muted-foreground); transition:transform .15s ease; }
+  .dd.open .dd-trigger .chev { transform:rotate(180deg); }
+  .dd-menu { display:none; position:absolute; top:calc(100% + 6px); left:0; z-index:20; min-width:224px; background:var(--card); border:1px solid var(--border); border-radius:var(--radius-md); padding:4px; box-shadow:0 8px 24px oklch(0 0 0 / 0.12); }
+  .dd.open .dd-menu { display:block; }
+  .dd-label { font-size:12px; line-height:16px; font-weight:500; color:var(--muted-foreground); padding:8px 8px 6px; }
+  .dd-item { width:100%; display:flex; align-items:center; gap:10px; padding:8px; border:0; background:none; border-radius:calc(var(--radius-md) - 4px); font:400 13px/20px var(--font-sans); color:var(--foreground); cursor:pointer; text-align:left; }
+  .dd-item:hover { background:var(--muted); }
+  .dd-item svg { width:16px; height:16px; flex:0 0 16px; color:var(--muted-foreground); }
+  .dd-item .tick { margin-left:auto; width:14px; height:14px; color:var(--primary-emphasis); visibility:hidden; }
+  .dd-item.on .tick { visibility:visible; }
+  .dd-item.on { font-weight:500; }
+
+  /* Rating chọn được — thay cho 6 nút All/1★…5★. Bấm sao thứ N = lọc đúng N
+     sao; bấm lại chính sao đang chọn = bỏ lọc. */
+  .rate-filter { display:inline-flex; align-items:center; gap:10px; }
+  .rate-stars { display:inline-flex; gap:2px; }
+  .rate-stars button { border:0; background:none; padding:0 1px; cursor:pointer; font-size:19px; line-height:24px; color:var(--rating-muted); transition:color .1s ease; }
+  .rate-stars button.lit { color:var(--rating); }
+  .rate-lab { font-size:13px; color:var(--muted-foreground); min-width:96px; }
+  .rate-lab b { color:var(--foreground); font-weight:500; }
+  .bar .n { width:22px; text-align:right; font-variant-numeric:tabular-nums; }
+  .rv { padding:20px 0; border-top:1px solid var(--border); }
+  .who { display:flex; align-items:center; gap:8px; }
+  .ava { width:28px; height:28px; border-radius:999px; background:var(--muted); }
+  .vf { border:1px solid var(--success); color:var(--success); font-size:11px; line-height:16px; padding:1px 7px; border-radius:999px; font-weight:500; display:inline-block; }
+  .rvph { display:flex; gap:8px; margin-top:10px; }
+  .rvph img { width:72px; height:72px; border-radius:var(--radius-sm); border:1px solid var(--border); }
+
+  .pol { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .pol > div { border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; background:var(--card); }
+  /* Accordion theo mẫu playground: MỖI mục là một thẻ riêng có viền + nền card,
+     cách nhau 12px, icon nằm trong ô bo góc, phần trả lời thụt vào ngang mép
+     chữ câu hỏi. Khác hẳn kiểu danh sách gạch ngang cũ. */
+  .acc-list { display:flex; flex-direction:column; gap:12px; }
+  .acc-item { border:1px solid var(--border); background:var(--card); border-radius:var(--radius-md); padding:0 10px; }
+  .acc-item.open { border-color:color-mix(in oklab, var(--primary) 35%, var(--border)); }
+  .acc-btn { width:100%; display:flex; align-items:center; gap:12px; padding:12px 4px; background:none; border:0; font:600 14px/20px var(--font-sans); color:var(--foreground); cursor:pointer; text-align:left; }
+  .acc-ico { width:32px; height:32px; flex:0 0 32px; border-radius:var(--radius-sm); background:var(--muted); color:var(--muted-foreground); display:flex; align-items:center; justify-content:center; }
+  .acc-item.open .acc-ico { background:color-mix(in oklab, var(--primary) 14%, transparent); color:var(--primary-emphasis); }
+  .acc-ico svg { width:16px; height:16px; }
+  .acc-btn .chev { margin-left:auto; width:16px; height:16px; color:var(--muted-foreground); transition:transform .18s ease; }
+  .acc-item.open .acc-btn .chev { transform:rotate(180deg); }
+  .acc-item .acc-body { display:none; padding:0 4px 16px 48px; font-size:14px; line-height:23px; color:var(--muted-foreground); max-width:640px; }
+  .acc-item.open .acc-body { display:block; }
+</style>
+
+<div class="fx-wrap">
+  <div class="fx-chrome"><i></i><i></i><i></i><span>tour detail — token Wuling</span>
+    <span class="sw"><button class="on" data-t="light">Sáng</button><button data-t="dark">Tối</button></span>
+  </div>
+
+  <div class="tk" id="tk">
+
+    <!-- HERO — bản ghép từ tour-hero.tsx đang chạy trên trang thật -->
+    <section class="hero"><div class="hero-in">
+      <nav class="hero-crumb"><span>Home</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg><span>Tours</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg><span>Miền Bắc</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg><span class="cur">Hà Giang Loop by Easyrider 4D3N</span></nav>
+      <div class="hero-row">
+        <p class="hero-eyeb"><i></i>Trekking &amp; Adventure</p>
+        <p class="hero-rate"><svg viewBox="0 0 24 24" stroke="none"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><b>4.4</b><span style="color:var(--muted-foreground)">5 reviews</span></p>
+      </div>
+      <h1>Hà Giang Loop by Easyrider 4D3N</h1>
+      <p class="hero-sum">Four days riding pillion behind a local easyrider over the Mã Pí Lèng pass and across the Đồng Văn karst plateau to the northernmost point.</p>
+      <p class="hero-ribbon"><i class="on"></i><span style="color:var(--foreground)">Hà Giang</span><span class="ln"></span><i></i><span>Đồng Văn</span><span class="ln"></span><i></i><span>Mèo Vạc</span><span class="ln"></span><i></i><span>Lũng Cú</span></p>
+      <div class="hero-foot">
+        <div class="hero-facts">
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>4 days · 3 nights</span>
+          <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg>Max 10 riders</span>
+        </div>
+        <div class="hero-price">
+          <p class="row"><span class="lab">From</span><span class="amt">$329.00</span><span class="was">$369.00</span></p>
+          <div class="hero-badges"><span class="off">−11%</span><span class="tag">Popular</span></div>
+        </div>
+      </div>
+    </div></section>
+
+    <div class="shell">
+    <div class="shell">
+
+
+    <div class="top">
+      <div class="gal">
+        <div class="thumbs" id="thumbs"></div>
+        <button class="main-img" id="mainImg" type="button">
+          <img src="" alt="">
+          <span class="hint"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M11 8v6M8 11h6"/></svg>10 photos</span>
+        </button>
+      </div>
+
+      <div class="panel">
+        <!-- MỘT segment thôi: `category` trong TourCardSchema là `{slug, name}`,
+             không có cấp con. Bản trước ghi "Motorbike • Adventure" là bịa cả
+             dấu chấm phân cách lẫn tên — tên thật của category này là
+             "Trekking & Adventure". -->
+        <div class="cat"><span>Trekking &amp; Adventure</span></div>
+        <div class="head">
+          <h1 class="title">Hà Giang Loop by Easyrider 4D3N</h1>
+          <div class="rate"><span class="stars">★★★★<span class="off">★</span></span><span class="v">4.4</span><span class="c">(5 reviews)</span></div>
+          <p class="sum">Four days riding pillion behind a local easyrider over the Mã Pí Lèng pass and across the Đồng Văn karst plateau to the northernmost point.</p>
+        </div>
+        <div class="price-row">
+          <span class="price-nums"><span>$329.00</span><span class="was">$369.00</span></span>
+          <span class="off-badge">11% OFF</span>
+        </div>
+        <div class="rule"></div>
+        <div class="sec">
+          <div class="srow"><p class="lb">Select Departure</p><button class="link" id="openAll" style="border:0;background:none;cursor:pointer;font-family:inherit">All 12 dates</button></div>
+          <div class="dates" id="chips"></div>
+        </div>
+        <div class="btns">
+          <button class="btn primary" id="reserveBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Reserve — 6 seats left</button>
+          <button class="btn ghost"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>Wishlist</button>
+        </div>
+        <!-- Ba thẻ nay SINH TỪ `policies[]`, không hardcode. Icon chọn theo
+             `kind` — một enum ĐÓNG (CANCELLATION / BOOKING / GENERAL) nên map
+             icon là an toàn; nhãn lấy thẳng `policy.title`. Bấm vào nhảy sang
+             tab "Good to know" nơi có `policy.body` đầy đủ. -->
+        <div class="trust">
+          <button class="trust-card" data-goto="gt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            <span>Cancellation</span></button>
+          <button class="trust-card" data-goto="gt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg>
+            <span>Booking &amp; payment</span></button>
+          <button class="trust-card" data-goto="gt">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+            <span>Good to know</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <div class="tablist" id="tl">
+        <button class="tab" data-p="ov">Overview</button>
+        <button class="tab on" data-p="it">Itinerary</button>
+        <button class="tab" data-p="dp">Departures</button>
+        <button class="tab" data-p="rv">Reviews</button>
+        <button class="tab" data-p="gt">Good to know</button>
+      </div>
+
+      <div class="pane" data-p="ov">
+        <div class="facts">
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span>Duration</span></div>
+            <div class="fcard-b"><p class="fcard-v">4 days · 3 nights</p>
+              <p>Day four is a buffer morning — coffee and a late drop-off at the bus station, no rush.</p>
+              <button class="fcard-l" data-goto="it"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>See the itinerary</button></div>
+          </div>
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span>Group size</span></div>
+            <div class="fcard-b"><p class="fcard-v">Max 10 riders</p>
+              <p>One easyrider driver per passenger, plus a support vehicle carrying everyone's luggage.</p></div>
+          </div>
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 20h4V10H3zM10 20h4V4h-4zM17 20h4v-7h-4z"/></svg><span>Difficulty</span></div>
+            <div class="fcard-b"><p class="fcard-v">Challenging</p>
+              <p>Long days on narrow, winding mountain roads with cool nights at altitude.</p>
+              <button class="fcard-l" data-goto="gt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>How demanding is it?</button></div>
+          </div>
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg><span>Good for</span></div>
+            <div class="fcard-b"><p class="fcard-v">Friends · Solo travellers</p>
+              <p>You ride pillion, so no licence or riding experience is needed.</p></div>
+          </div>
+        </div>
+        <p style="color:var(--muted-foreground);margin-top:28px;max-width:768px">Hà Giang Loop is built for riders who want the plateau without the stress of self-driving. Your easyrider knows every bend, books the tables, and stops wherever the light is good — you sit behind and look at the country instead of the road.</p>
+        <p style="color:var(--muted-foreground);margin-top:12px;max-width:768px">Four days covers Quản Bạ, Đồng Văn, Lũng Cú and the Mã Pí Lèng pass above the Nho Quế river, with a buffer morning on day four before your onward bus.</p>
+        <div style="display:flex;flex-direction:column;gap:9px;margin-top:20px;max-width:768px">
+          <div style="display:flex;gap:9px;font-size:14px"><span style="color:var(--primary-emphasis)">✓</span><span>The Mã Pí Lèng pass above the Nho Quế river, one of Vietnam's great drives</span></div>
+          <div style="display:flex;gap:9px;font-size:14px"><span style="color:var(--primary-emphasis)">✓</span><span>Đồng Văn's quiet stone-house old town</span></div>
+          <div style="display:flex;gap:9px;font-size:14px"><span style="color:var(--primary-emphasis)">✓</span><span>Lũng Cú flag tower, Vietnam's northernmost point</span></div>
+          <div style="display:flex;gap:9px;font-size:14px"><span style="color:var(--primary-emphasis)">✓</span><span>Karst plateau villages that see few outsiders</span></div>
+          <div style="display:flex;gap:9px;font-size:14px"><span style="color:var(--primary-emphasis)">✓</span><span>Riding pillion with a local easyrider who knows every bend</span></div>
+        </div>
+      </div>
+
+      <div class="pane on narrow" data-p="it">
+        <div class="simbar">
+          <span class="lab">Mockup only · xem thử theo vai người dùng</span>
+          <button data-sim="before" class="on">Khách xem trang tour</button>
+          <button data-sim="during">Đã đặt · đang trong chuyến</button>
+          <button data-sim="after">Đã đặt · đã kết thúc</button>
+          <span style="font-size:11px;color:var(--muted-foreground);flex-basis:100%;margin-top:2px">
+            Chỉ vai đầu tiên xuất hiện trên trang tour công khai. Hai vai sau cần
+            <b>đăng nhập và có booking ở đúng đợt này</b> — dựng ở đây để bạn xem hình hài.
+          </span>
+        </div>
+        <div class="note" style="margin-bottom:24px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>
+          <div><div style="font-weight:500">Hotel pickup, Hà Giang city</div>
+          <p style="color:var(--muted-foreground);font-size:13px;margin-top:2px" id="itinMeta"></p></div>
+        </div>
+        <div class="tl" id="itin"></div>
+
+        <div class="rule" style="margin:8px 0 24px"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:28px">
+          <div><div class="eyeb" style="margin-bottom:12px">What's included</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted-foreground)">
+              <div style="display:flex;gap:8px"><span style="color:var(--primary-emphasis)">✓</span>Easyrider driver per passenger (pillion)</div>
+              <div style="display:flex;gap:8px"><span style="color:var(--primary-emphasis)">✓</span>Fuel and helmet</div>
+              <div style="display:flex;gap:8px"><span style="color:var(--primary-emphasis)">✓</span>3 nights homestay/hotel accommodation</div>
+              <div style="display:flex;gap:8px"><span style="color:var(--primary-emphasis)">✓</span>Meals as per itinerary</div>
+              <div style="display:flex;gap:8px"><span style="color:var(--primary-emphasis)">✓</span>Support vehicle for luggage</div>
+            </div></div>
+          <div><div class="eyeb" style="margin-bottom:12px">Not included</div>
+            <div style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted-foreground)">
+              <div style="display:flex;gap:8px"><span style="opacity:.5">×</span>Alcoholic drinks</div>
+              <div style="display:flex;gap:8px"><span style="opacity:.5">×</span>Self-drive motorbike option</div>
+              <div style="display:flex;gap:8px"><span style="opacity:.5">×</span>Tips for drivers</div>
+              <div style="display:flex;gap:8px"><span style="opacity:.5">×</span>Travel insurance</div>
+            </div></div>
+        </div>
+      </div>
+
+      <div class="pane" data-p="dp">
+        <div class="dep-stats" id="depStats"></div>
+
+        <div class="srow" style="margin-bottom:12px">
+          <div><div class="eyeb">Availability by month</div>
+            <p style="color:var(--muted-foreground);font-size:13px;margin-top:4px">Each block is one departure — filled means seats left, hollow means sold out.</p></div>
+          <button class="btn-sm" data-open-all="1">See all dates →</button>
+        </div>
+        <div id="depMonths"></div>
+
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-top:32px">
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="20" height="14" x="2" y="5" rx="2"/><path d="M2 10h20"/></svg><span>Securing a seat</span></div>
+            <div class="fcard-b"><p class="fcard-v">30% deposit</p><p>A 30% deposit secures your driver; the balance is due 10 days before departure.</p></div>
+          </div>
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg><span>Changing your mind</span></div>
+            <div class="fcard-b"><p class="fcard-v">Free until 10 days out</p><p>50% refund within 5–10 days; no refund inside 5 days, as drivers are paid ahead per passenger.</p>
+              <button class="fcard-l" data-goto="gt"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>Read the full policy</button></div>
+          </div>
+          <div class="fcard">
+            <div class="fcard-h"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/></svg><span>Riding as a group</span></div>
+            <div class="fcard-b"><p class="fcard-v">Up to 10 riders</p><p>Every departure caps at 10, with one easyrider driver per passenger.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pane" data-p="rv">
+        <div class="rvtop">
+          <div>
+            <div class="big" id="rvAvg"></div>
+            <div class="stars" id="rvAvgStars" style="margin:6px 0"></div>
+            <p style="color:var(--muted-foreground);font-size:13px" id="rvBasedOn"></p>
+            <button class="btn-sm primary" id="openReviews" style="margin-top:16px">Show all reviews</button>
+            <p style="color:var(--muted-foreground);font-size:12px;margin-top:10px;max-width:200px">Only travellers who finished this trip can leave a review.</p>
+          </div>
+          <div>
+            <div id="rvHist"></div>
+            <p style="color:var(--muted-foreground);font-size:12px;margin-top:12px">Newest first · reviews from deleted accounts appear last.</p>
+          </div>
+        </div>
+        <div style="max-width:768px;margin-top:28px" id="rvPreview"></div>
+      </div>
+
+      <div class="pane" data-p="gt">
+        <div class="pol">
+          <div><div class="eyeb">Cancellation</div><h3 class="h3s" style="margin:6px 0 8px">Free up to 10 days out</h3><p style="color:var(--muted-foreground);font-size:13px;line-height:20px">Free cancellation up to 10 days before departure; 50% refund within 5–10 days; no refund inside 5 days.</p></div>
+          <div><div class="eyeb">Booking &amp; payment</div><h3 class="h3s" style="margin:6px 0 8px">30% deposit secures a driver</h3><p style="color:var(--muted-foreground);font-size:13px;line-height:20px">A 30% deposit secures your driver; the balance is due 10 days before departure.</p></div>
+          <div><div class="eyeb">On the bike</div><h3 class="h3s" style="margin:6px 0 8px">Long sleeves, closed shoes</h3><p style="color:var(--muted-foreground);font-size:13px;line-height:20px">Long sleeves, trousers and closed shoes are required. Helmets provided, or bring your own.</p></div>
+        </div>
+        <div style="max-width:768px;margin-top:32px">
+          <div class="eyeb" style="margin-bottom:14px">Frequently asked</div>
+          <div class="acc-list">
+          <div class="acc-item open"><button class="acc-btn"><span class="acc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Do I need to know how to ride a motorbike?</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-body">No — you ride pillion behind an experienced local easyrider; self-driving is offered separately for licensed, experienced riders only.</div></div>
+          <div class="acc-item"><button class="acc-btn"><span class="acc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>How physically demanding is the loop?</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-body">The riding itself is easy on your body, but roads are narrow, winding and occasionally rough — long days (6–7 h riding) and cool mountain nights make this a challenging itinerary overall.</div></div>
+          <div class="acc-item"><button class="acc-btn"><span class="acc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>What&#39;s the accommodation like?</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-body">A mix of homestays and simple hotels in Đồng Văn and Mèo Vạc — twin or triple rooms, hot water, no air conditioning needed at this altitude.</div></div>
+          <div class="acc-item"><button class="acc-btn"><span class="acc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Is the road safe in the rainy season?</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-body">Drivers ride the loop year-round and adjust the route around landslides and fog; in heavy rain a day may be reshuffled rather than cancelled.</div></div>
+          <div class="acc-item"><button class="acc-btn"><span class="acc-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg></span><span>Who is this trip good for?</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg></button><div class="acc-body">Suited to friends travelling together and solo riders — max 10 riders per group, one driver per passenger.</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+      <section style="margin-top:56px;border-top:1px solid var(--border);padding-top:40px">
+        <div class="srow" style="margin-bottom:24px">
+          <h2 style="font-family:var(--font-heading);font-size:24px;line-height:32px;font-weight:500">You may also like</h2>
+          <a class="link" href="#">See all tours</a>
+        </div>
+        <div class="rel-grid">
+          <article class="tcard">
+            <div class="tcard-img"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Ha_Giang_rizieres_bis.jpg/1280px-Ha_Giang_rizieres_bis.jpg" alt=""></div>
+            <p class="tcard-chain"><i class="on"></i><span class="main">Sa Pa</span><span class="ln"></span><i class=""></i><span class="">Tả Van</span></p>
+            <h3><a href="#" style="color:inherit;text-decoration:none">Sapa Terraces Homestay 2D</a></h3>
+            <p class="tcard-shape">2 days · Moderate</p>
+            <div class="tcard-foot"><span class="tcard-price"><span class="amt">$129.00</span><span class="per">per person</span></span><span class="tcard-rate"><svg viewBox="0 0 24 24" stroke="none"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><b>4.6</b><span>(38)</span></span></div>
+          </article>
+          <article class="tcard">
+            <div class="tcard-img"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg/1280px-S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg" alt=""><span class="tcard-off">−8%</span></div>
+            <p class="tcard-chain"><i class="on"></i><span class="main">Hà Nội</span><span class="ln"></span><i class=""></i><span class="">Ninh Bình</span></p>
+            <h3><a href="#" style="color:inherit;text-decoration:none">Northern Highlights 5D</a></h3>
+            <p class="tcard-shape">5 days · Easy</p>
+            <div class="tcard-foot"><span class="tcard-price"><span class="amt">$479.00</span><span class="was">$520.00</span></span><span class="tcard-rate"><svg viewBox="0 0 24 24" stroke="none"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg><b>4.8</b><span>(126)</span></span></div>
+          </article>
+          <article class="tcard">
+            <div class="tcard-img"><img src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Tham_Ma_pass_-_Dong_Van.jpg/1280px-Tham_Ma_pass_-_Dong_Van.jpg" alt=""></div>
+            <p class="tcard-chain"><i class="on"></i><span class="main">Mai Châu</span></p>
+            <h3><a href="#" style="color:inherit;text-decoration:none">Mai Châu Cycling 2D</a></h3>
+            <p class="tcard-shape">2 days · Easy</p>
+            <div class="tcard-foot"><span class="tcard-price"><span class="amt">$115.00</span><span class="per">per person</span></span><span class="tcard-rate" style="color:var(--muted-foreground)">Not rated yet</span></div>
+          </article>
+        </div>
+      </section>
+
+  </div></div>
+
+  <!-- Modal "Show all reviews": phân trang đúng khả năng của API hiện có -->
+  <div class="dlg tk" id="allReviews">
+    <div class="dlg-box" style="width:min(720px,100%)">
+      <div class="dlg-head" style="position:relative">
+        <p class="dlg-title">Reviews</p>
+        <p class="dlg-sub" id="rvSub"></p>
+        <button class="dlg-x" id="rvX" aria-label="Close">✕</button>
+        <div class="rv-ctl">
+          <div class="dd" id="sortDd">
+            <button class="dd-trigger" id="sortTrigger">
+              <span id="sortLabel">Newest first</span>
+              <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>
+            </button>
+            <div class="dd-menu" id="sortMenu">
+              <p class="dd-label">Sort reviews by</p>
+              <button class="dd-item on" data-sort="newest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                <span>Newest first</span>
+                <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+              <button class="dd-item" data-sort="oldest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 2"/></svg>
+                <span>Oldest first</span>
+                <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+              <button class="dd-item" data-sort="highest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 16 4 4 4-4"/><path d="M7 20V4"/><path d="M14 4h7"/><path d="M14 9h5"/><path d="M14 14h3"/></svg>
+                <span>Highest rated</span>
+                <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+              <button class="dd-item" data-sort="lowest">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m3 8 4-4 4 4"/><path d="M7 4v16"/><path d="M14 4h3"/><path d="M14 9h5"/><path d="M14 14h7"/></svg>
+                <span>Lowest rated</span>
+                <svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></button>
+            </div>
+          </div>
+          <span class="rv-sep"></span>
+          <div class="rate-filter">
+            <span class="rate-stars" id="rateStars"></span>
+            <span class="rate-lab" id="rateLab">Any rating</span>
+          </div>
+          <span class="rv-sep"></span>
+          <button class="rv-chip" id="rvPhotos">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.09-3.09a2 2 0 0 0-2.82 0L6 21"/></svg>
+            With photos</button>
+        </div>
+      </div>
+      <div class="dlg-scroll" id="rvList"></div>
+      <div class="dlg-foot">
+        <p class="cur" id="rvCount"></p>
+        <div class="pager">
+          <button class="btn-sm" id="rvPrev">‹ Prev</button>
+          <span class="pg" id="rvPg"></span>
+          <button class="btn-sm" id="rvNext">Next ›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal "All dates": nhóm theo tháng, mỗi hàng một đợt khởi hành -->
+  <div class="dlg tk" id="allDates">
+    <div class="dlg-box">
+      <div class="dlg-head" style="position:relative">
+        <p class="dlg-title">Choose a departure</p>
+        <p class="dlg-sub">Hà Giang Loop by Easyrider · 4 days · 3 nights · max 10 riders</p>
+        <button class="dlg-x" id="dlgX" aria-label="Close">✕</button>
+        <label class="dlg-filter"><input type="checkbox" id="onlyOpen"> Only show dates with seats left</label>
+      </div>
+      <div class="dlg-scroll" id="dlgList"></div>
+      <div class="dlg-foot">
+        <p class="cur" id="dlgCur"></p>
+        <button class="btn ghost" id="dlgDone" style="width:auto;padding:0 20px">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lightbox: khung y hệt lightbox.tsx đang có; hàng công cụ thu/phóng là MỚI -->
+  <div class="lbx tk" id="lb">
+    <div class="lb-box">
+      <div class="lb-bar">
+        <p class="lb-count" id="lbCount">1 / 10</p>
+        <div class="lb-tools">
+          <button class="lb-btn" id="lbClose" aria-label="Close">✕</button>
+        </div>
+      </div>
+      <div class="lb-stage" id="stage"><img id="lbImg" src="" alt="" draggable="false"></div>
+      <div class="lb-foot">
+        <button class="lb-btn" id="lbPrev" aria-label="Previous">‹</button>
+        <p class="lb-cap" id="lbCap"></p>
+        <button class="lb-btn" id="lbNext" aria-label="Next">›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (() => {
+    var root = document.currentScript.parentElement;
+    var tk = root.querySelector('#tk');
+
+    /* ══ ĐỢT KHỞI HÀNH — MỘT nguồn cho cả ba chỗ: chip ở panel, bảng trong tab
+       Departures, và modal "All dates". Ba chỗ cùng đọc mảng này nên không thể
+       nói lệch nhau; ngoài đời chính là `DepartureSelectionProvider` sẵn có. ══ */
+    var DEPS = [
+      { id:'d1', iso:'2026-09-14', m:'September 2026', s:'Mon, 14 Sep', e:'Thu, 17 Sep', chip:'14 Sep', seats:6,  price:'$329.00', was:'$369.00' },
+      { id:'d2', iso:'2026-09-28', m:'September 2026', s:'Mon, 28 Sep', e:'Thu, 01 Oct', chip:'28 Sep', seats:9,  price:'$329.00', was:'$369.00' },
+      { id:'d3', iso:'2026-10-12', m:'October 2026',   s:'Mon, 12 Oct', e:'Thu, 15 Oct', chip:'12 Oct', seats:3,  price:'$349.00', was:null },
+      { id:'d4', iso:'2026-10-26', m:'October 2026',   s:'Mon, 26 Oct', e:'Thu, 29 Oct', chip:'26 Oct', seats:8,  price:'$329.00', was:null },
+      { id:'d5', iso:'2026-11-09', m:'November 2026',  s:'Mon, 09 Nov', e:'Thu, 12 Nov', chip:'09 Nov', seats:10, price:'$329.00', was:null },
+      { id:'d6', iso:'2026-11-23', m:'November 2026',  s:'Mon, 23 Nov', e:'Thu, 26 Nov', chip:'23 Nov', seats:0,  price:'$329.00', was:null },
+      { id:'d7', iso:'2026-12-07', m:'December 2026',  s:'Mon, 07 Dec', e:'Thu, 10 Dec', chip:'07 Dec', seats:5,  price:'$309.00', was:'$329.00' },
+      { id:'d8', iso:'2026-12-21', m:'December 2026',  s:'Mon, 21 Dec', e:'Thu, 24 Dec', chip:'21 Dec', seats:2,  price:'$369.00', was:null },
+      { id:'d9', iso:'2027-01-04', m:'January 2027',   s:'Mon, 04 Jan', e:'Thu, 07 Jan', chip:'04 Jan', seats:10, price:'$309.00', was:'$329.00' },
+      { id:'d10', iso:'2027-01-18',m:'January 2027',   s:'Mon, 18 Jan', e:'Thu, 21 Jan', chip:'18 Jan', seats:7,  price:'$309.00', was:null },
+      { id:'d11', iso:'2027-02-01',m:'February 2027',  s:'Mon, 01 Feb', e:'Thu, 04 Feb', chip:'01 Feb', seats:0,  price:'$329.00', was:null },
+      { id:'d12', iso:'2027-02-15',m:'February 2027',  s:'Mon, 15 Feb', e:'Thu, 18 Feb', chip:'15 Feb', seats:10, price:'$329.00', was:null }
+    ];
+    var MAX_SEATS = 10, CHIP_SLOTS = 4;
+    var picked = DEPS[0].id;
+    function dep(id) { return DEPS.find((d) => d.id === id); }
+    function seatClass(n) { return n === 0 ? 'no' : n <= 3 ? 'low' : ''; }
+    function seatText(n) { return n === 0 ? 'Sold out' : n + ' of ' + MAX_SEATS + ' seats left'; }
+
+    /* Chip ở panel: 4 đợt CÒN CHỖ gần nhất. Nếu đợt đang chọn nằm ngoài 4 ô đó
+       (người dùng vừa chọn trong modal) thì nó chen vào thay ô cuối — nếu không
+       panel sẽ hiện một đằng, nút Reserve nói một nẻo. */
+    function chipList() {
+      var open = DEPS.filter((d) => d.seats > 0);
+      var four = open.slice(0, CHIP_SLOTS);
+      if (!four.some((d) => d.id === picked)) {
+        var p = dep(picked);
+        if (p && p.seats > 0) four = four.slice(0, CHIP_SLOTS - 1).concat([p]);
+      }
+      return four;
+    }
+    function renderChips() {
+      var host = root.querySelector('#chips');
+      host.innerHTML = chipList().map((d) => '<label class="' + (d.id === picked ? 'on ' : '') + (d.seats <= 3 ? 'low' : '') + '" data-dep="' + d.id + '">' +
+          '<b>' + d.chip + '</b><em>' + d.seats + ' seats left</em>' +
+          (d.id === picked ? '<span class="chk">✓</span>' : '') + '</label>').join('');
+      var p = dep(picked);
+      root.querySelector('#reserveBtn').lastChild.textContent = ' Reserve — ' + p.seats + ' seats left';
+    }
+    /* Tab Departures KHÔNG lặp lại danh sách ngày (đó là việc của modal). Nó
+       tổng hợp: mọi con số dưới đây đều DẪN XUẤT từ chính mảng DEPS, không có
+       chữ nào bịa thêm. */
+    function num(p) { return Number(p.replace(/[^0-9.]/g, '')); }
+    // Nháy KÉP quanh ký hiệu đô-la là BẮT BUỘC ở đây. Dùng nháy đơn sẽ tạo ra
+    // cặp ký tự đô-la-rồi-nháy-đơn, vốn là ký hiệu thay thế đặc biệt của
+    // String.replace (nghĩa: "phần văn bản đứng sau chỗ khớp"). Server ghép nội
+    // dung vào khung trang bằng replace, nên script bị cắt ngay tại đó rồi dính
+    // vào helper của khung — đo được chỉ 9273 trên 14923 ký tự tới trình duyệt.
+    function money(n) { return "$" + n.toFixed(2); }
+    function renderTab() {
+      var open = DEPS.filter((d) => d.seats > 0);
+      var seatsTotal = DEPS.reduce((a, d) => a + d.seats, 0);
+      var prices = DEPS.map((d) => num(d.price));
+      var lo = Math.min.apply(null, prices), hi = Math.max.apply(null, prices);
+      var next = open[0];
+      var months = [];
+      DEPS.forEach((d) => {
+        var m = months.find((x) => x.m === d.m);
+        if (!m) { m = { m: d.m, deps: [] }; months.push(m); }
+        m.deps.push(d);
+      });
+
+      root.querySelector('#depStats').innerHTML = [
+        ['Next departure', next.chip, next.seats + ' of ' + MAX_SEATS + ' seats left'],
+        ['Dates open', open.length + ' / ' + DEPS.length, 'across ' + months.length + ' months'],
+        ['Price range', money(lo) + '–' + money(hi), 'per person, by season'],
+        ['Seats left', String(seatsTotal), 'across every open date']
+      ].map((s) => '<div class="dep-stat"><div class="k">' + s[0] + '</div><div class="v">' + s[1] + '</div><div class="s">' + s[2] + '</div></div>').join('');
+
+      root.querySelector('#depMonths').innerHTML = months.map((mo) => {
+        var ps = mo.deps.map((d) => num(d.price));
+        var mlo = Math.min.apply(null, ps), mhi = Math.max.apply(null, ps);
+        var seats = mo.deps.reduce((a, d) => a + d.seats, 0);
+        var blocks = mo.deps.map((d) => '<i class="' + (d.seats === 0 ? 'no' : d.seats <= 3 ? 'low' : 'has') + '" title="' + d.s + ' · ' + seatText(d.seats) + '"></i>').join('');
+        return '<div class="mrow">' +
+          '<div class="mo">' + mo.m.replace(' 20', '&nbsp;20') + '<em>' + mo.deps.length + ' departure' + (mo.deps.length > 1 ? 's' : '') + '</em></div>' +
+          '<div class="mseats">' + blocks + '</div>' +
+          '<div class="pr" style="text-align:left">' + seats + ' seats left</div>' +
+          '<div class="pr">' + (mlo === mhi ? money(mlo) : money(mlo) + '–' + money(mhi)) +
+            (mlo < num('$329.00') ? '<em> low season</em>' : mhi > num('$329.00') ? '<em> peak</em>' : '') + '</div>' +
+          '</div>';
+      }).join('');
+    }
+    function renderModal() {
+      var onlyOpen = root.querySelector('#onlyOpen').checked;
+      var list = onlyOpen ? DEPS.filter((d) => d.seats > 0) : DEPS;
+      var host = root.querySelector('#dlgList');
+      if (!list.length) { host.innerHTML = '<p class="dlg-empty">No departures match this filter.</p>'; return; }
+      var html = '', month = null;
+      list.forEach((d) => {
+        if (d.m !== month) { month = d.m; html += '<p class="mgroup">' + month + '</p>'; }
+        html += '<button class="drow ' + (d.seats === 0 ? 'sold' : d.id === picked ? 'on' : '') + '"' +
+          (d.seats === 0 ? ' disabled' : ' data-dep="' + d.id + '"') + '>' +
+          '<span><span class="dates">' + d.s + ' → ' + d.e + '</span>' +
+          '<span class="meta"><i class="' + seatClass(d.seats) + '"></i>' + seatText(d.seats) + ' · 4 days</span></span>' +
+          '<span class="p">' + d.price + (d.was ? '<s>' + d.was + '</s>' : '') + '</span>' +
+          '<span class="pick">' + (d.seats === 0 ? '' : d.id === picked ? '✓ Selected' : 'Select') + '</span>' +
+          '</button>';
+      });
+      host.innerHTML = html;
+      var p = dep(picked);
+      root.querySelector('#dlgCur').innerHTML = 'Selected: <b>' + p.s + ' → ' + p.e + '</b> · ' + p.price;
+    }
+    /* ══ LỊCH TRÌNH — trạng thái node bám NGÀY THẬT của đợt đang chọn ══
+       Ngày của Day N = ngày khởi hành + (N-1). Nên đổi đợt ở chip/modal là
+       lịch trình đổi ngày theo, không phải hai nguồn rời nhau. */
+    /* Nội dung mốc giờ viết bằng MARKDOWN: **đậm** cho địa danh (thứ người ta
+       quét mắt tìm), *nghiêng* cho ghi chú mềm/tuỳ chọn. Markdown thoái hoá
+       êm — nội dung cũ không có ký hiệu nào vẫn render y như chữ thường, nên
+       KHÔNG cần migration dữ liệu. */
+    var ITIN = [
+      { d:1, title:'Hà Giang city to the Đồng Văn plateau', stops:[
+        ["07:30","Meet your **easyrider drivers**, gear check in **Hà Giang city**",""],
+        ["08:30","Ride north through **Quản Bạ**, *“Heaven’s Gate”* viewpoint",""],
+        ["11:00","**Twin Mountains** (Núi Đôi) photo stop",""],
+        ["12:30","**Lunch** in **Yên Minh**",""],
+        ["14:00","Climb onto the **Đồng Văn karst plateau**",""],
+        ["17:00","Arrive **Đồng Văn old town**, check in to the **homestay**",""],
+        ["18:30","**Dinner**, then walk the quiet stone-house market square",""]] },
+      { d:2, title:'Lũng Cú and the Mã Pí Lèng pass', stops:[
+        ["07:00","**Breakfast**, then ride to **Lũng Cú flag tower**",""],
+        ["08:30","Climb to **Vietnam’s northernmost point**",""],
+        ["10:30","Ride the **Mã Pí Lèng pass** above the **Nho Quế river**",""],
+        ["12:00","**Lunch** overlooking the canyon",""],
+        ["13:30","Boat option on the **Nho Quế river** — *optional, paid on the day*",""],
+        ["16:00","Continue to **Mèo Vạc**, check in to the **homestay**",""]] },
+      { d:3, title:'Back over the plateau to Hà Giang', stops:[
+        ["07:30","**Breakfast**, then ride south through **Du Già**’s rice valleys",""],
+        ["11:00","**Lunch** in a roadside village",""],
+        ["13:00","Ride back through **Yên Minh** and **Tam Sơn**",""],
+        ["16:30","Detour to a hill market *if timing allows*",""],
+        ["18:00","Arrive **Hà Giang city**, final **dinner** with your drivers",""]] },
+      { d:4, title:'Buffer morning and farewell', stops:[
+        ["07:30","**Breakfast**, farewell to your **easyrider drivers**",""],
+        ["08:30","Return of helmets and gear, group photo",""],
+        ["09:30","Free time in **Hà Giang city**, coffee at a roadside quán",""],
+        ["11:00","Drop-off at the **bus station** for your onward journey",""]] }
+    ];
+    /* Bản mockup chỉ cần đậm/nghiêng. Ngoài đời dùng `react-markdown` +
+       `remark-gfm` — ĐÃ là dependency của apps/web và đang chạy ở blog qua
+       ArticleMarkdown, nên không thêm gói mới. */
+    function md(s) {
+      return s
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    }
+    var SIM = 'before';
+    var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    function addDays(iso, n) { var d = new Date(iso + 'T00:00:00'); d.setDate(d.getDate() + n); return d; }
+    function fmt(d) { return DOW[d.getDay()] + ' ' + d.getDate() + ' ' + MON[d.getMonth()]; }
+    function dayKey(d) { return d.getFullYear() * 10000 + d.getMonth() * 100 + d.getDate(); }
+    // "Hôm nay" giả lập: trước chuyến / đúng ngày 2 / sau chuyến. Ngoài đời là Date thật.
+    function simToday(startIso) {
+      if (SIM === 'during') return addDays(startIso, 1);
+      if (SIM === 'after') return addDays(startIso, 9);
+      return addDays(startIso, -33);
+    }
+    /* Icon chọn theo KIND — một tập đóng (meal/stay/extra) nên map icon an toàn,
+       cùng lối với policy.kind. Nhãn viết ngắn cho hợp kiểu chữ HOA giãn cách. */
+    var PILL_ICON = { meal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 2v7c0 1.1.9 2 2 2h2a2 2 0 0 0 2-2V2"/><path d="M6 2v20"/><path d="M18 2v20"/><path d="M18 12c2 0 3-1 3-4V2"/></svg>', stay: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v10"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>', extra: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>' };
+    function pill(raw) {
+      var parts = raw.split('|'), label = parts[0], kind = parts[1] || 'meal';
+      return '<span class="pill">' + (PILL_ICON[kind] || '') + label + '</span>';
+    }
+    function renderItin() {
+      var p = dep(picked), start = p.iso, today = simToday(start), tk2 = dayKey(today);
+      var first = dayKey(addDays(start, 0)), last = dayKey(addDays(start, ITIN.length - 1));
+      // hasBooking: ngoài đời = session có booking CONFIRMED ở đúng đợt này.
+      // Không có nó thì trang luôn ở chế độ xem trước, kể cả khi chuyến đang chạy —
+      // khách vãng lai không được thấy tick trên chuyến họ không đi.
+      var hasBooking = SIM !== 'before';
+      var live = hasBooking && tk2 >= first && tk2 <= last;
+      var ended = hasBooking && tk2 > last;
+      root.querySelector('#itinMeta').textContent =
+        'Departing ' + fmt(addDays(start, 0)) + ' · ' + ITIN.length + ' days, ' + (ITIN.length - 1) + ' nights' +
+        (live ? ' · trip in progress' : ended ? ' · this departure has finished' : ' · night-bus transfer from Hà Nội on request');
+
+      root.querySelector('#itin').innerHTML = ITIN.map((it, i) => {
+        var date = addDays(start, i), k = dayKey(date);
+        // TRƯỚC chuyến: không tick, không mờ — mọi ngày còn ở phía trước như nhau,
+        // làm mờ hết trông như trang hỏng. Node hiện SỐ NGÀY.
+        var state = !live && !ended ? 'preview' : k < tk2 ? 'done' : k === tk2 ? 'active' : 'upcoming';
+        var node = state === 'done' ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" style="width:12px;height:12px"><path d="M20 6 9 17l-5-5"/></svg>'
+          : state === 'active' ? '<span class="spin"></span>'
+          : state === 'upcoming' ? '' : String(it.d).padStart(2, '0');
+        var badge = state === 'done' ? '<span class="tl-badge done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg> Done</span>'
+          : state === 'active' ? '<span class="tl-badge now"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="12" r="5"/></svg> Today</span>' : '';
+        var times = it.stops.map((s) => s[0]);
+        var open = state === 'active' || (!live && !ended && i === 0);
+        return '<div class="tl-item ' + (state === 'done' ? 'done' : state === 'active' ? 'active' : state === 'upcoming' ? 'upcoming dim' : '') +
+            (open ? ' open' : '') + '" data-day="' + it.d + '">' +
+          (i < ITIN.length - 1 ? '<span class="tl-line"></span>' : '') +
+          '<span class="tl-node">' + node + '</span>' +
+          '<div class="tl-head"><h3 class="tl-title">' + it.title + '</h3>' +
+            '<span class="tl-badge">' + fmt(date) + '</span>' + badge + '</div>' +
+          '<div class="tl-frame"><button class="tl-trigger" data-toggle-day="' + it.d + '">' +
+            '<span class="who"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg></span>' +
+            '<span class="sum">Day ' + it.d + ' · ' + it.stops.length + ' stops · ' + times[0] + '–' + times[times.length - 1] + '</span></span>' +
+            '<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 18 6-6-6-6"/></svg></button>' +
+            '<div class="tl-panel">' + it.stops.map((s) => '<div class="stop"><time>' + s[0] + '</time><span>' + md(s[1]) +
+                '</span></div>').join('') + '</div></div></div>';
+      }).join('');
+    }
+    root.addEventListener('click', (e) => {
+      var t = e.target.closest('[data-toggle-day]');
+      if (t) { t.closest('.tl-item').classList.toggle('open'); return; }
+      var s = e.target.closest('[data-sim]');
+      if (s) {
+        SIM = s.dataset.sim;
+        root.querySelectorAll('[data-sim]').forEach((b) => { b.classList.toggle('on', b === s); });
+        renderItin();
+      }
+    });
+
+    function pick(id) { picked = id; renderChips(); renderTab(); renderItin(); renderModal(); renderItin(); }
+
+    var dlg = root.querySelector('#allDates');
+    function openDlg() { renderModal(); dlg.classList.add('open'); dlg.classList.toggle('dark', tk.classList.contains('dark')); }
+    root.querySelector('#openAll').addEventListener('click', openDlg);
+    // Nút "See all dates →" trong tab Departures mở CÙNG modal — một cửa vào duy nhất.
+    root.addEventListener('click', (e) => { if (e.target.closest('[data-open-all]')) openDlg(); });
+    function closeDlg() { dlg.classList.remove('open'); }
+    root.querySelector('#dlgX').addEventListener('click', closeDlg);
+    root.querySelector('#dlgDone').addEventListener('click', closeDlg);
+    dlg.addEventListener('click', (e) => { if (e.target === dlg) closeDlg(); });
+    root.querySelector('#onlyOpen').addEventListener('change', renderModal);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && dlg.classList.contains('open')) closeDlg(); });
+
+    // Một handler cho CẢ ba chỗ — chip, hàng bảng, hàng modal đều mang data-dep
+    root.addEventListener('click', (e) => {
+      var el = e.target.closest('[data-dep]');
+      if (!el) return;
+      // PHẢI hỏi "có nằm trong modal không" TRƯỚC khi gọi pick(): pick() vẽ lại
+      // danh sách nên chính phần tử vừa bấm bị gỡ khỏi DOM, và lúc đó
+      // dlg.contains(el) trả false — modal sẽ không bao giờ đóng.
+      var fromDialog = dlg.contains(el);
+      pick(el.dataset.dep);
+      if (fromDialog) closeDlg();
+    });
+
+    renderChips(); renderTab(); renderItin();
+
+    /* ══ REVIEWS ══
+       API hiện có: GET /api/tours/{slug}/reviews, input = PageQuerySchema
+       (page + pageSize ≤ 100). KHÔNG có tham số sort, KHÔNG có lọc theo sao,
+       KHÔNG có lọc "có ảnh". Thứ tự do service quyết và cố định:
+       [authorDeleted asc, createdAt desc, id desc] — tức mới nhất trước, và
+       review của tài khoản đã xoá bị đẩy xuống cuối. Modal dưới đây bám ĐÚNG
+       khả năng đó: chỉ phân trang, không bịa bộ lọc.
+       PublicReviewSchema chỉ có: rating · title · body · authorName ·
+       authorDeleted · createdAt · media. KHÔNG có ngày khởi hành, không có
+       hạng gói — nên không dòng meta nào nói hai thứ đó. */
+    var RV_PAGE_SIZE = 6;
+    var rvPage = 1;
+    var RV_NAMES = ['Marta K.','Tom H.','Priya A.','Daniel O.','Lien P.','Jonas B.','Aiko T.','Rafael M.',
+      'Sofia R.','Ben C.','Hoa N.','Marcus L.','Elena V.','Sam W.','Yuki H.','Nora F.','Pavel D.',
+      'Grace A.','Tuan M.','Ivy S.','Karl J.','Mei L.','Oscar P.'];
+    var RV_TITLES = ['The pass is everything people say it is','Bring warmer layers than you think',
+      'Worth paying for the private option','Four days I keep telling people about','Our driver made the trip',
+      'Harder than I expected, in a good way','The homestay night was the highlight','Book it before the crowds find it'];
+    var RV_BODIES = [
+      'Our driver rearranged day two around the weather so we hit Mã Pí Lèng in clear light. The homestay in Đồng Văn was the best night of the trip.',
+      'Great four days and a driver who clearly loves the road. Day two gets cold on the bike before the sun is up — a windproof layer would have made it perfect.',
+      'We booked so we could stop whenever we liked. Support vehicle meant no luggage on the bike, which matters more than I expected on day one.',
+      'The plateau does not photograph the way it feels. Long days but the buffer morning on day four saved us from rushing to the bus.',
+      'Roads are narrow and winding — I would not have wanted to drive it myself. Riding pillion let me actually look at the country.'
+    ];
+    var RV_PICS = [
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/3/35/M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_Vietnam.jpg/1280px-M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_Vietnam.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Tham_Ma_pass_-_Dong_Van.jpg/1280px-Tham_Ma_pass_-_Dong_Van.jpg',
+      'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg/1280px-S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg'
+    ];
+    var RV_I = 0;
+    var REVIEWS = RV_NAMES.map((n, i) => {
+      var deleted = i === 19;   // một review của tài khoản đã xoá, để thấy luật sắp xếp
+      return {
+        idx: i,                      // đại diện createdAt: nhỏ = mới hơn
+        name: deleted ? null : n,
+        deleted: deleted,
+        rating: i % 7 === 3 ? 4 : i % 11 === 5 ? 3 : 5,
+        title: RV_TITLES[i % RV_TITLES.length],
+        body: RV_BODIES[i % RV_BODIES.length],
+        when: i < 3 ? (i + 2) + ' weeks ago' : (i < 12 ? Math.ceil(i / 3) + ' months ago' : '1 year ago'),
+        pics: i % 4 === 0 ? RV_PICS.slice(0, (i % 3) + 1) : []
+      };
+    });
+    // Đúng luật của service: authorDeleted xuống cuối, còn lại giữ thứ tự mới→cũ
+    REVIEWS.sort((a, b) => (a.deleted ? 1 : 0) - (b.deleted ? 1 : 0));
+
+    function starRow(n) {
+      var s = '';
+      for (var i = 1; i <= 5; i++) s += i <= n ? '★' : '<span class="off">★</span>';
+      return '<span class="stars">' + s + '</span>';
+    }
+    function rvCard(r) {
+      return '<div class="rv-item">' +
+        '<div class="rv-top2"><div class="rv-who">' +
+          '<span class="rv-av">' + (r.deleted ? '–' : r.name.charAt(0)) + '</span>' +
+          '<span class="rv-name' + (r.deleted ? ' gone' : '') + '">' + (r.deleted ? 'Deleted account' : r.name) + '</span>' +
+          (r.deleted ? '' : '<span class="vf">Verified rider</span>') +
+        '</div><span class="rv-when">' + r.when + '</span></div>' +
+        '<div style="margin-top:8px">' + starRow(r.rating) + '</div>' +
+        '<p class="rv-title">' + r.title + '</p>' +
+        '<p class="rv-body">' + r.body + '</p>' +
+        (r.pics.length ? '<div class="rv-pics">' + r.pics.map((p) => '<img src="' + p + '" alt="">').join('') + '</div>' : '') +
+        '</div>';
+    }
+    /* Bộ lọc + sắp xếp mô phỏng ĐÚNG hợp đồng đề xuất (xem khối "Contract cần
+       mở rộng" dưới trang): sort ∈ newest|oldest|highest|lowest, rating = 1..5,
+       withPhotos = boolean. Mọi thứ chạy server-side; ở đây làm trên mảng để
+       thấy hành vi. `breakdown` là số đếm theo sao mà API sẽ trả kèm — hiện
+       CHƯA có, đó là phần phải thêm cùng lúc nếu muốn chip hiện số. */
+    var rvSort = 'newest', rvRating = null, rvWithPhotos = false;
+    function breakdown() {
+      var b = { 1:0, 2:0, 3:0, 4:0, 5:0 };
+      REVIEWS.forEach((r) => { b[r.rating]++; });
+      return b;
+    }
+    function rvFiltered() {
+      var list = REVIEWS.filter((r) => {
+        if (rvRating && r.rating !== rvRating) return false;
+        if (rvWithPhotos && r.pics.length === 0) return false;
+        return true;
+      });
+      // Khoá sắp xếp CHÍNH luôn là authorDeleted asc — giữ nguyên luật sản phẩm
+      // đang có (review của tài khoản đã xoá xuống cuối) cho MỌI kiểu sort.
+      // Khoá cuối luôn là id desc để phân trang ổn định, không nhảy hàng.
+      var dir = { newest:['idx',1], oldest:['idx',-1], highest:['rating',-1], lowest:['rating',1] }[rvSort];
+      return list.slice().sort((a, b) => {
+        if (a.deleted !== b.deleted) return a.deleted ? 1 : -1;
+        var k = dir[0], s = dir[1];
+        if (a[k] !== b[k]) return (a[k] - b[k]) * s;
+        return a.idx - b.idx;
+      });
+    }
+    /* Rating chọn được thay cho 6 nút rời: bấm sao thứ N = lọc đúng N sao,
+       bấm lại chính sao đang chọn = bỏ lọc. Nhãn bên cạnh nói rõ trạng thái
+       vì chỉ nhìn sao thì không phân biệt được "đang lọc 3 sao" với "chưa lọc". */
+    var rateHover = 0;
+    // Dựng 5 nút ĐÚNG MỘT LẦN. Trước đây hover vẽ lại cả hàng bằng innerHTML —
+    // phần tử dưới con trỏ bị gỡ khỏi DOM, bắn mouseout, lại vẽ tiếp: vòng lặp
+    // nháy liên tục và nút không bao giờ đứng yên đủ lâu để bấm (Playwright báo
+    // "element was detached from the DOM" 62 lần liên tiếp). Giờ chỉ bật/tắt class.
+    (function buildStars() {
+      var host = root.querySelector('#rateStars'), html = '';
+      for (var s = 1; s <= 5; s++) {
+        html += '<button data-rate="' + s + '" aria-label="Filter by ' + s + ' star' + (s > 1 ? 's' : '') + '">★</button>';
+      }
+      host.innerHTML = html;
+    })();
+    function paintStars() {
+      var shown = rateHover || rvRating || 0;
+      root.querySelectorAll('#rateStars button').forEach((b) => {
+        b.classList.toggle('lit', Number(b.dataset.rate) <= shown);
+      });
+      root.querySelector('#rateLab').innerHTML = rvRating
+        ? '<b>' + rvRating + ' star' + (rvRating > 1 ? 's' : '') + '</b> only'
+        : 'Any rating';
+      root.querySelector('#rvPhotos').classList.toggle('on', rvWithPhotos);
+    }
+    function renderStarChips() { paintStars(); }
+    root.addEventListener('mouseover', (e) => {
+      var s = e.target.closest('[data-rate]');
+      if (s && Number(s.dataset.rate) !== rateHover) { rateHover = Number(s.dataset.rate); paintStars(); }
+    });
+    root.querySelector('#rateStars').addEventListener('mouseleave', () => { rateHover = 0; paintStars(); });
+    function renderReviewsModal() {
+      var list = rvFiltered();
+      var total = list.length, pages = Math.max(1, Math.ceil(total / RV_PAGE_SIZE));
+      rvPage = Math.min(pages, Math.max(1, rvPage));
+      var from = (rvPage - 1) * RV_PAGE_SIZE;
+      root.querySelector('#rvList').innerHTML = total
+        ? list.slice(from, from + RV_PAGE_SIZE).map(rvCard).join('')
+        : '<p class="dlg-empty">No reviews match these filters.</p>';
+      root.querySelector('#rvSub').textContent = 'Hà Giang Loop by Easyrider · 4.4 out of 5 · ' + REVIEWS.length + ' reviews';
+      root.querySelector('#rvCount').textContent = total
+        ? 'Showing ' + (from + 1) + '–' + Math.min(total, from + RV_PAGE_SIZE) + ' of ' + total +
+          (total !== REVIEWS.length ? ' matching' : '')
+        : '0 of ' + REVIEWS.length + ' match';
+      root.querySelector('#rvPg').textContent = rvPage + ' / ' + pages;
+      root.querySelector('#rvPrev').disabled = rvPage === 1;
+      root.querySelector('#rvNext').disabled = rvPage === pages || total === 0;
+      renderStarChips();
+      root.querySelector('#rvList').scrollTop = 0;
+    }
+    var sortDd = root.querySelector('#sortDd');
+    var SORT_LABEL = { newest:'Newest first', oldest:'Oldest first', highest:'Highest rated', lowest:'Lowest rated' };
+    root.addEventListener('click', (e) => {
+      // sao: bấm lại đúng mức đang chọn thì bỏ lọc
+      var s = e.target.closest('[data-rate]');
+      if (s) {
+        var v = Number(s.dataset.rate);
+        rvRating = rvRating === v ? null : v;
+        rvPage = 1; renderReviewsModal(); return;
+      }
+      if (e.target.closest('#rvPhotos')) { rvWithPhotos = !rvWithPhotos; rvPage = 1; renderReviewsModal(); return; }
+      if (e.target.closest('#sortTrigger')) { sortDd.classList.toggle('open'); return; }
+      var it = e.target.closest('[data-sort]');
+      if (it) {
+        rvSort = it.dataset.sort;
+        root.querySelector('#sortLabel').textContent = SORT_LABEL[rvSort];
+        root.querySelectorAll('[data-sort]').forEach((b) => { b.classList.toggle('on', b === it); });
+        sortDd.classList.remove('open');
+        rvPage = 1; renderReviewsModal(); return;
+      }
+      sortDd.classList.remove('open');   // bấm ra ngoài thì đóng menu
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') sortDd.classList.remove('open'); });
+    /* Biểu đồ trong tab đọc CÙNG mảng REVIEWS với modal. Trước đây nó là HTML
+       tĩnh: đếm 3/2/0/0/0 và bề rộng cắm cứng 60%/40% trong khi modal tính ra
+       18/3/2/0/0 — hai nguồn nói khác nhau về cùng một tour. Bề rộng giờ là
+       count/total (tỉ lệ trên TỔNG, đúng nghĩa "bao nhiêu phần trăm người chấm
+       mức này"), không phải tỉ lệ với cột cao nhất. */
+    function renderHistogram() {
+      var b = breakdown(), total = REVIEWS.length;
+      var avg = total ? REVIEWS.reduce((s, r) => s + r.rating, 0) / total : 0;
+      root.querySelector('#rvAvg').textContent = avg.toFixed(1);
+      root.querySelector('#rvAvgStars').innerHTML = starRow(Math.round(avg)).replace(/^<span class="stars">|<\/span>$/g, '');
+      root.querySelector('#rvBasedOn').textContent = 'Based on ' + total + ' verified riders';
+      var html = '';
+      for (var s = 5; s >= 1; s--) {
+        var pct = total ? (b[s] / total) * 100 : 0;
+        html += '<div class="bar"><span class="t">' + s + '★</span>' +
+          '<span class="track"><span class="fill" style="width:' + pct.toFixed(2) + '%"></span></span>' +
+          '<span class="n">' + b[s] + '</span></div>';
+      }
+      root.querySelector('#rvHist').innerHTML = html;
+    }
+    renderHistogram();
+
+    // Trong tab: 2 review đầu làm mồi, phần còn lại đi qua modal
+    root.querySelector('#rvPreview').innerHTML = REVIEWS.slice(0, 2).map(rvCard).join('');
+
+    var rvDlg = root.querySelector('#allReviews');
+    function openRv() { renderReviewsModal(); rvDlg.classList.add('open'); rvDlg.classList.toggle('dark', tk.classList.contains('dark')); }
+    function closeRv() { rvDlg.classList.remove('open'); }
+    root.querySelector('#openReviews').addEventListener('click', openRv);
+    root.querySelector('#rvX').addEventListener('click', closeRv);
+    rvDlg.addEventListener('click', (e) => { if (e.target === rvDlg) closeRv(); });
+    root.querySelector('#rvPrev').addEventListener('click', () => { rvPage--; renderReviewsModal(); });
+    root.querySelector('#rvNext').addEventListener('click', () => { rvPage++; renderReviewsModal(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && rvDlg.classList.contains('open')) closeRv(); });
+
+    /* ── Gallery: 10 ảnh, 7 ô hiện, ô thứ 7 mang "+N" ── */
+    var W = 'https://upload.wikimedia.org/wikipedia/commons/thumb/';
+    var PHOTOS = [
+      { src: W + '3/35/M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_Vietnam.jpg/1280px-M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_Vietnam.jpg', cap: 'Mã Pí Lèng pass above the Nho Quế river · CC BY-SA' },
+      { src: W + '0/0f/Mountain_road_at_M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_H%C3%A0_Giang_Province%2C_Vietnam.jpg/1280px-Mountain_road_at_M%C3%A3_P%C3%AD_L%C3%A8ng_Pass%2C_H%C3%A0_Giang_Province%2C_Vietnam.jpg', cap: 'The road itself, cut into the canyon wall · CC BY-SA' },
+      { src: W + '9/9d/Karst%40SinhLung_DongVan_HaGiang.jpg/1280px-Karst%40SinhLung_DongVan_HaGiang.jpg', cap: 'Karst country at Sính Lủng, Đồng Văn · CC BY-SA' },
+      { src: W + '1/1c/S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg/1280px-S%C3%B4ng_Nho_Qu%E1%BA%BF.jpg', cap: 'The Nho Quế river from the pass · CC BY-SA' },
+      { src: W + '0/00/C%E1%BB%99t_c%E1%BB%9D_L%C5%A9ng_C%C3%BA_-_H%C3%A0_Giang.JPG/1280px-C%E1%BB%99t_c%E1%BB%9D_L%C5%A9ng_C%C3%BA_-_H%C3%A0_Giang.JPG', cap: 'Lũng Cú flag tower, the northernmost point · CC BY-SA' },
+      { src: W + '5/5e/Tham_Ma_pass_-_Dong_Van.jpg/1280px-Tham_Ma_pass_-_Dong_Van.jpg', cap: 'Tham Mã pass switchbacks · CC BY-SA' },
+      { src: W + '2/2f/Ha_Giang_rizieres_bis.jpg/1280px-Ha_Giang_rizieres_bis.jpg', cap: 'Terraces below the plateau · CC BY-SA' },
+      { src: W + 'b/bb/L%C5%A9ng_C%C3%BA_H%C3%A0_Giang_-_panoramio.jpg/1280px-L%C5%A9ng_C%C3%BA_H%C3%A0_Giang_-_panoramio.jpg', cap: 'Lũng Cú village from above · CC BY-SA' },
+      { src: W + 'c/c3/S%C3%B4ng_Nho_Qu%E1%BA%BF_2022_-_NKS.jpg/1280px-S%C3%B4ng_Nho_Qu%E1%BA%BF_2022_-_NKS.jpg', cap: 'Nho Quế in the dry season · CC BY-SA' },
+      { src: W + '4/46/Quang_Trung%2C_tp._H%C3%A0_Giang%2C_Ha_Giang%2C_Vietnam_-_panoramio.jpg/1280px-Quang_Trung%2C_tp._H%C3%A0_Giang%2C_Ha_Giang%2C_Vietnam_-_panoramio.jpg', cap: 'Hà Giang city, where the loop starts and ends · CC BY-SA' }
+    ];
+    var SLOTS = 7;
+    var cur = 0;
+
+    var thumbs = root.querySelector('#thumbs');
+    var mainImg = root.querySelector('#mainImg');
+    var mainPic = mainImg.querySelector('img');
+
+    PHOTOS.slice(0, SLOTS).forEach((p, i) => {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.dataset.i = i;
+      var hiddenCount = PHOTOS.length - SLOTS;
+      // Ô CUỐI cõng "+N" khi còn ảnh chưa hiện — bấm vào vẫn mở lightbox tại
+      // đúng ảnh đó, không phải một "trang xem tất cả" riêng.
+      b.innerHTML = '<img src="' + p.src + '" alt="">' +
+        (i === SLOTS - 1 && hiddenCount > 0 ? '<span class="more">+' + hiddenCount + '</span>' : '');
+      thumbs.appendChild(b);
+    });
+
+    function paintThumbs() {
+      thumbs.querySelectorAll('button').forEach((b) => {
+        b.classList.toggle('on', Number(b.dataset.i) === cur);
+      });
+    }
+    function setMain(i) { cur = i; mainPic.src = PHOTOS[i].src; paintThumbs(); }
+    setMain(0);
+
+    thumbs.addEventListener('click', (e) => {
+      var b = e.target.closest('button'); if (!b) return;
+      var i = Number(b.dataset.i);
+      // Ô "+N": mở thẳng lightbox tại ảnh đầu tiên đang bị ẩn.
+      if (b.querySelector('.more')) { openLb(SLOTS - 1); return; }
+      setMain(i);
+    });
+
+    /* ── Lightbox + thu/phóng ── */
+    var lb = root.querySelector('#lb'), stage = root.querySelector('#stage');
+    var lbImg = root.querySelector('#lbImg'), lbCount = root.querySelector('#lbCount');
+    var lbCap = root.querySelector('#lbCap');
+    var lbPrev = root.querySelector('#lbPrev'), lbNext = root.querySelector('#lbNext');
+
+    function show(i) {
+      cur = Math.min(PHOTOS.length - 1, Math.max(0, i));
+      lbImg.src = PHOTOS[cur].src;
+      lbCount.textContent = (cur + 1) + ' / ' + PHOTOS.length;
+      lbCap.textContent = PHOTOS[cur].cap;
+      // KHÔNG cuộn vòng — nút tắt ở hai đầu, đúng luật của lightbox.tsx hiện có.
+      lbPrev.disabled = cur === 0; lbNext.disabled = cur === PHOTOS.length - 1;
+      // đồng bộ ngược ra dải thumb + ảnh chính
+      if (cur < SLOTS) setMain(cur); else paintThumbs();
+    }
+    function openLb(i) { show(i); lb.classList.add('open'); lb.classList.toggle('dark', tk.classList.contains('dark')); }
+    function closeLb() { lb.classList.remove('open'); }
+
+    mainImg.addEventListener('click', () => { openLb(cur); });
+    root.querySelector('#lbClose').addEventListener('click', closeLb);
+    lb.addEventListener('click', (e) => { if (e.target === lb) closeLb(); });
+    lbPrev.addEventListener('click', () => { show(cur - 1); });
+    lbNext.addEventListener('click', () => { show(cur + 1); });
+
+    // Escape + mũi tên — đúng bộ phím mà lightbox.tsx đang xử lý.
+    document.addEventListener('keydown', (e) => {
+      if (!lb.classList.contains('open')) return;
+      if (e.key === 'Escape') closeLb();
+      if (e.key === 'ArrowRight') show(cur + 1);
+      if (e.key === 'ArrowLeft') show(cur - 1);
+    });
+    root.addEventListener('click', (e) => {
+      var th = e.target.closest('[data-t]');
+      if (th) {
+        tk.classList.toggle('dark', th.dataset.t === 'dark');
+        root.querySelectorAll('[data-t]').forEach((b) => { b.classList.toggle('on', b === th); });
+        return;
+      }
+      // Thẻ policy ở panel mua → nhảy sang tab Good to know
+      var goto = e.target.closest('[data-goto]');
+      if (goto) {
+        var target = root.querySelector('.tab[data-p="' + goto.dataset.goto + '"]');
+        if (target) target.click();
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+      var tab = e.target.closest('.tab');
+      if (tab) {
+        root.querySelectorAll('.tab').forEach((t) => { t.classList.toggle('on', t === tab); });
+        root.querySelectorAll('.pane').forEach((p) => { p.classList.toggle('on', p.dataset.p === tab.dataset.p); });
+        return;
+      }
+      var acc = e.target.closest('.acc-btn');
+      if (acc) {
+        var open = acc.parentElement.classList.toggle('open');
+        // Chevron xoay bằng CSS theo class .open — không còn đổi ký tự +/− nữa.
+      }
+    });
+  })();
+</script>
+
+<div class="section" style="margin-top:24px">
+  <h3>Token nào đi vào đâu</h3>
+  <div style="font-size:13px;line-height:1.75;color:#444">
+    <p><code>--primary</code> ngọc bích → nút Reserve, gạch chân tab đang mở, chip gói đang chọn, thanh histogram, tick ✓.
+    <code>--primary-emphasis</code> → số ngày trong timeline, icon trust, dấu +/− accordion (token này sinh ra đúng cho vai "mực", ADR-0019).</p>
+    <p><code>--price</code> / <code>--price-compare</code> → giá và giá gạch. <code>--rating</code> / <code>--rating-muted</code> → sao đầy và sao rỗng. Bốn token này dự án đã có sẵn, không phải chế thêm.</p>
+    <p><code>--success</code> / <code>--warning</code> → chấm còn chỗ nhiều / sắp hết. <code>--destructive</code> → badge giảm giá (nền đặc + chữ trắng, đúng cách dùng đã đo 4.62:1 ghi trong tokens.mjs).</p>
+    <p><code>--input</code> chứ không phải <code>--border</code> cho viền ô ngày khởi hành — vì đó là <em>điều khiển</em>, phải đạt 3:1 theo WCAG 1.4.11; <code>--border</code> chỉ dành cho đường phân cách. Luật này ghi rõ trong tokens.mjs, mình theo đúng.</p>
+    <p>Chữ: <strong>Literata</strong> cho h1/h3 và tiêu đề review, <strong>Archivo</strong> cho thân và UI, <strong>IBM Plex Mono</strong> cho giờ, số ngày, nhãn eyebrow và header bảng.</p>
+    <p style="margin-top:8px">Ở chế độ tối, nút primary có thêm viền <code>border-border</code> — đây là giải pháp thay thế đã chốt ở ADR-0019 vì không thể đạt đồng thời 3:1 nền và 4.5:1 chữ.</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Ba chỗ vừa sửa</h3>
+  <div style="font-size:13px;line-height:1.75;color:#444">
+    <p><strong>1 · Bỏ hàng Package</strong>, và <code>suitableFor</code> + <code>difficulty</code> nay <strong>dời hẳn xuống tab Overview</strong> (góp ý của bạn). Panel mua giờ chỉ còn thứ dùng để quyết định mua: giá, ngày, nút. Dữ kiện dựng dạng chữ ngăn bằng hairline chứ không phải chip có viền — đây là thông tin đọc-thôi, cho nó hình dạng nút sẽ khiến người dùng bấm vào rồi chẳng có gì xảy ra, đúng lỗi mà hàng Package cũ mắc phải.</p>
+    <p><strong>2 · Badge canh lại.</strong> Hàng giá trước đây canh <code>baseline</code> cho cả badge, nên badge tụt xuống vài pixel so với dòng số. Giờ hàng ngoài canh <code>center</code>, còn hai con số vẫn canh baseline với nhau bên trong.</p>
+    <p><strong>3 · Còn 4 ô ngày.</strong> Đủ một hàng ngang, phần còn lại đi qua <em>“All 12 dates”</em> → modal (bàn sau). Vì mỗi ô rộng gấp đôi trước kia, mình dùng luôn chỗ trống để hiện <strong>số ghế còn</strong> — đó chính là câu hỏi kế tiếp ngay sau khi chọn được ngày. Ô sắp hết chỗ dùng <code>--warning</code>.</p>
+    <p style="margin-top:8px;color:#777">Hai điều mình tự quyết, nói để bạn bác nếu không ưng: (a) 4 ô hiện là 4 đợt <em>còn chỗ</em> gần nhất — không dành slot cho đợt đã hết, vì chỉ có 4 ô thì nên để dành cho ngày đặt được; (b) nhãn đổi từ <code>14/9</code> sang <code>14 Sep</code> cho khỏi lẫn với định dạng ngày/tháng của Mỹ.</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Gallery: 7 ô, dấu “+”, và chuyện thu/phóng</h3>
+  <div style="font-size:13px;line-height:1.75;color:#444">
+    <p><strong>7 ô là trần hình học, không phải số chọn đại.</strong> Ô thumb 64px, gap 8px, cạnh ảnh vuông 541px: 7 ô = 7×64 + 6×8 = <strong>496 ≤ 541</strong> ✓. Ô thứ 8 thành 568 > 541 — dải thumb sẽ dài hơn ảnh và vỡ hàng. Nên 7 vừa đúng là số lớn nhất còn nằm gọn.</p>
+    <p><strong>Dấu “+3” nằm trên ô thứ 7</strong> (bộ demo có 10 ảnh). Bấm vào nó mở thẳng lightbox tại ảnh đang bị ẩn, không nhảy sang một trang “xem tất cả” riêng. Ảnh chính cũng bấm được, có nhãn “10 photos” ở góc.</p>
+    <p><strong>Lightbox dùng ĐÚNG bản đang có, không thêm gì.</strong> <code>components/media/lightbox.tsx</code> là component dùng chung cho <em>cả</em> trang tour lẫn trang vùng (nó vốn được tách ra <em>từ</em> <code>tour-gallery.tsx</code> ở Task 5l). Hành vi: bộ đếm mono ở trên trái, nút đóng ở trên phải, ảnh ở giữa, hàng dưới là prev · caption · next. Phím Esc đóng, ←/→ chuyển ảnh. <strong>Không cuộn vòng</strong> — tới ảnh cuối thì nút next tắt, để người xem biết mình đã xem hết.</p>
+    <p>Việc cần làm ở phía tour chỉ là <strong>đổi <code>media={[]}</code> thành <code>tour.media</code></strong> trong <code>page.tsx</code> và cho dải thumb 7 ô nối vào <code>setOpenAt</code> — bản thân lightbox không phải sửa một dòng nào.</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Contract cần mở rộng cho sort + filter</h3>
+  <p style="font-size:13px;color:#555;line-height:1.7">
+    Modal ở trên chạy đúng theo hợp đồng này. Mình <strong>chưa sửa file trong repo</strong> — bạn dặn chỉ làm khi nói chốt,
+    và đổi contract sẽ kéo theo service, test và web. Đây là diff chính xác để bạn duyệt trước:
+  </p>
+<pre style="background:#0f1a17;color:#e7ece9;padding:14px 16px;border-radius:8px;overflow-x:auto;font:12px/1.6 ui-monospace,Menlo,monospace;margin-top:10px"><code>// libs/shared/contract/src/schemas/reviews.ts
+
+export const ReviewSortSchema = z.enum(['newest', 'oldest', 'highest', 'lowest']);
+
+export const ReviewsByTourQuerySchema = PageQuerySchema.extend({
+  tourSlug: z.string().min(1).max(120),
+  sort: ReviewSortSchema.default('newest'),
+  rating: RatingSchema.optional(),      // lọc đúng MỘT mức sao
+  withPhotos: z.boolean().optional(),   // chỉ review có ảnh đính kèm
+});
+
+// Output: thêm phân bố sao — thứ biểu đồ cột đang thiếu nguồn
+export const ReviewBreakdownSchema = z.object({
+  1: z.int().nonnegative(), 2: z.int().nonnegative(), 3: z.int().nonnegative(),
+  4: z.int().nonnegative(), 5: z.int().nonnegative(),
+});
+// contract.ts — reviews.byTour
+.output(PagedSchema(PublicReviewSchema).extend({ breakdown: ReviewBreakdownSchema }))</code></pre>
+  <div style="font-size:13px;line-height:1.75;color:#444;margin-top:12px">
+    <p><strong>Hai luật phía service phải giữ:</strong> (1) khoá sắp xếp CHÍNH luôn là <code>authorDeleted asc</code> cho <em>mọi</em> kiểu sort —
+    giữ nguyên luật sản phẩm hiện có là review của tài khoản đã xoá nằm cuối; (2) khoá CUỐI luôn là <code>id desc</code> để phân trang ổn định,
+    không nhảy hàng khi hai review trùng ngày hoặc trùng sao.</p>
+    <p><strong><code>breakdown</code> là phần bắt buộc đi kèm</strong>, không phải tuỳ chọn: chip lọc muốn hiện số (5★ 17, 4★ 4…) thì phải có nó,
+    và biểu đồ cột trong tab hiện đang vẽ số liệu <em>không có nguồn</em>. Một <code>groupBy(['rating'])</code> trên cùng <code>where</code> là đủ,
+    và phải tính trên tập CHƯA lọc theo sao — nếu không, chọn 5★ xong thì các chip khác về 0 và không bấm lại được.</p>
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Hai chỗ tự chế đã xử</h3>
+  <div style="font-size:13px;line-height:1.75;color:#444">
+    <p><strong>1 · Eyebrow.</strong> Bản trước ghi <code>Motorbike • Adventure</code> — sai hai lần: <code>TourCardSchema.category</code> là <code>{slug, name}</code>, <em>không có cấp con</em> nên dấu chấm phân cách là bịa; và tên thật của category này là <strong>“Trekking &amp; Adventure”</strong> chứ không phải Motorbike. Giờ để đúng một segment, lấy thẳng <code>category.name</code>.</p>
+    <p><strong>2 · Ba thẻ trust.</strong> Trước đây hardcode “Hotel pickup / Free cancellation / Support vehicle”. Ba chuỗi đó nằm rải trong <code>meetingPoint</code> và <code>included[]</code> dưới dạng <em>văn xuôi tự do</em> — muốn rút ra phải parse chữ, và parse chữ do người soạn nội dung gõ là thứ sẽ hỏng lặng lẽ ở tour thứ 40.</p>
+    <p>Nguồn đúng là <code>policies[]</code>: mỗi policy có <code>kind</code> — một <strong>enum ĐÓNG</strong> (<code>CANCELLATION</code> / <code>BOOKING</code> / <code>GENERAL</code>) nên map icon theo nó là an toàn tuyệt đối — kèm <code>title</code> dùng luôn làm nhãn. Tour này có đúng 3 policy nên vẫn ra 3 thẻ. Lưới đổi sang <code>auto-fit</code> để tour chỉ có 1–2 policy vẫn cân hàng, không chừa ô rỗng. Bấm vào thẻ nhảy sang tab Good to know nơi có <code>policy.body</code> đầy đủ — thẻ giờ có việc để làm, không còn là trang trí.</p>
+    <p style="margin-top:8px;color:#777"><strong>Cái mất, nói thẳng:</strong> nhãn thành “Cancellation” thay vì “Free cancellation” — kém đanh hơn. Câu đanh đó (“miễn phí huỷ trước 10 ngày”) chỉ tồn tại trong <code>policy.body</code> dạng văn xuôi; không có cột nào giữ con số 10. Muốn lấy lại thì phải thêm field có cấu trúc, ví dụ <code>freeCancellationDays: int</code> trên Tour — đổi contract + migration, là một cụm việc riêng. Mình ghi vào sổ nợ chứ không lặng lẽ hardcode lại.</p>
+  </div>
+</div>
+
+<h3 style="margin-top:20px">Phối màu này ổn chưa?</h3>
+<div class="options">
+  <div class="option" data-choice="ok" onclick="toggleSelect(this)"><div class="letter">A</div><div class="content"><h3>Ổn — sang phần chỉnh nội dung</h3><p>Chuyển sang sửa các chỗ hiển thị sai thông tin của trang tour.</p></div></div>
+  <div class="option" data-choice="tweak" onclick="toggleSelect(this)"><div class="letter">B</div><div class="content"><h3>Cần chỉnh vài chỗ màu</h3><p>Nói rõ chỗ nào, mình sửa.</p></div></div>
+  <div class="option" data-choice="dark" onclick="toggleSelect(this)"><div class="letter">C</div><div class="content"><h3>Chế độ tối có vấn đề</h3><p>Bản dark cần cân lại.</p></div></div>
+</div>

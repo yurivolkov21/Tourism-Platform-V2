@@ -1,4 +1,14 @@
-# Trùng tu Tour Details — Implementation Plan
+# Kế hoạch: trùng tu trang Tour Details
+
+> ⚠️ **PLAN NÀY ĐÃ KHAI TỬ (13/08/2026).** Nó dựng theo bản spec cũ vốn ghi sai
+> số đo (1104 thay vì 1056) và ghi thêm một khối wireframe không có (dải khởi
+> hành). Bản thi công theo nó đã bị **xoá trọn phần thân** để dựng lại bám thẳng
+> markup wireframe. Giữ file để không gãy link từ CHANGELOG/README và để đọc lại
+> phần còn đúng: mở rộng contract (Task 1), hàm thuần (Task 2), copy i18n
+> (Task 3) — ba task đó KHÔNG bị xoá và vẫn đang chạy.
+>
+> Số đo và hành vi hiện hành nằm ở
+> [spec đã viết lại](../specs/2026-08-13-tour-detail-redesign.md).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: dùng `superpowers:subagent-driven-development`
 > (khuyến nghị) hoặc `superpowers:executing-plans` để thi công từng task. Các bước dùng

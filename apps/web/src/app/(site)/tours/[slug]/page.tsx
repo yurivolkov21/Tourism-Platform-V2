@@ -160,7 +160,10 @@ export default async function TourDetailPage({ params }: { params: Promise<{ slu
 
       <section
         aria-labelledby="related-heading"
-        className="mx-auto w-full max-w-6xl px-12 pb-24 [--radius:1rem]"
+        // KHÔNG đè `--radius` ở khu này: `TourCard` dùng chung với trang
+        // listing, đè base bo góc ở đây là cùng một card hiện hai kiểu ở hai
+        // trang. Base 1rem của wireframe chỉ áp cho phần thân trang tour.
+        className="mx-auto w-full max-w-6xl px-12 pb-24"
       >
         <h2 id="related-heading" className="mb-8 font-heading text-2xl font-medium text-foreground">
           {t.sections.related}
