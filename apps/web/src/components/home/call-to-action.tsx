@@ -2,8 +2,9 @@
 
 import { MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import { TopoPattern } from '@/components/topo-pattern';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Review #23: convert 100% lối thiết kế forged/CTABanner (quyết định của user —
@@ -12,12 +13,17 @@ import { SPRING, SPRING_HEADING } from '@/lib/motion';
 // nút chính màu accent glow khi hover + scale, nút phụ outline mảnh. Chỉ thay
 // da thịt bằng token + font dự án (Literata heading, không hex, không neon).
 // Toàn bộ nội dung nằm trong scope `dark` — banner luôn tối ở cả hai theme.
-export function CallToAction() {
+export function CallToAction({ bandImage = null }: { bandImage?: SiteMediaItem | null }) {
   return (
     <section className="relative w-full overflow-hidden py-32">
       {/* Nền banner: placeholder + scrim + vệt gradient nhấn primary (forged: neon/10) */}
       <div className="dark absolute inset-0 -z-10">
-        <ImagePlaceholder corner label="Banner — Mekong delta at dusk" className="h-full w-full" />
+        <SlotImage
+          image={bandImage}
+          corner
+          label="Banner — Mekong delta at dusk"
+          className="absolute inset-0 h-full w-full"
+        />
         <div className="absolute inset-0 bg-overlay" />
         <div
           aria-hidden="true"

@@ -19,7 +19,8 @@
     "demo:account": "node --env-file-if-exists=.env.local scripts/demo-account.mjs",
     "media:tree": "node --env-file-if-exists=.env.local scripts/media-tree.mjs",
     "media:scan": "node --env-file-if-exists=.env.local scripts/media-scan.mjs",
-    "media:fetch": "node --env-file-if-exists=.env.local scripts/media-fetch.mjs"
+    "media:fetch": "node --env-file-if-exists=.env.local scripts/media-fetch.mjs",
+    "media:upload": "node --env-file-if-exists=.env.local scripts/media-upload.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

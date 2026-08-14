@@ -9,6 +9,7 @@ import { Testimonials } from '@/components/home/testimonials';
 import { WhyChooseUs } from '@/components/home/why-choose-us';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
+import { siteMediaImage } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { topDestinations } from '@/lib/regions';
 import { REGIONS } from '@/mocks/regions';
@@ -30,9 +31,15 @@ export default async function HomePage() {
     settle(fetchDestinations()),
     settle(fetchTours()),
   ]);
+
+  // Khe brand-chrome: `null` khi chưa có ảnh — SlotImage tự rơi về placeholder.
+  const [heroImage, bandImage] = await Promise.all([
+    siteMediaImage('home-hero'),
+    siteMediaImage('cta-band'),
+  ]);
   return (
     <>
-      <Hero />
+      <Hero heroImage={heroImage} />
       {/* Dải trust ngay dưới hero (vị trí gốc của forged): nền tối nối liền
           hero, ngăn với Stats sáng bên dưới bằng border */}
       <Partners />
@@ -48,7 +55,7 @@ export default async function HomePage() {
       {/* Journal trắng chen giữa Testimonials (muted) và CTA (tối) — nhịp nền
           sáng/tối xen kẽ (review #33) */}
       <Journal posts={postsRes.data ?? []} failed={!postsRes.ok} />
-      <CallToAction />
+      <CallToAction bandImage={bandImage} />
       <Contact />
     </>
   );

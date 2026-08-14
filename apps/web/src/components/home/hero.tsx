@@ -2,13 +2,14 @@
 
 import { CompassIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Convert từ Estate hero-sections.tsx: hero fullscreen ảnh + badge pill +
 // heading giữa + 2 nút (nút phụ có hiệu ứng chữ trượt khi hover).
 // Giữ nguyên timings spring của template; màu/hình sang token + ảnh mock.
-export function Hero() {
+export function Hero({ heroImage = null }: { heroImage?: SiteMediaItem | null }) {
   return (
     <motion.section
       id="top"
@@ -18,9 +19,17 @@ export function Hero() {
       viewport={{ once: true }}
       transition={{ duration: 0.5 }}
     >
-      {/* Placeholder nền (chính sách review #10 — ảnh thật thay sau) + scrim giữ nguyên */}
+      {/* Ảnh nền từ khe `home-hero`; chưa có ảnh thì `SlotImage` tự rơi về
+          placeholder. Scrim `bg-overlay` giữ nguyên và là thứ làm chữ trắng đọc
+          được: đo trên ảnh Sài Gòn bình minh, điểm CHÓI NHẤT trong vùng chữ vẫn
+          cho 5.76:1 sau khi phủ — trên ngưỡng 4.5:1. */}
       <div className="dark absolute inset-0 -z-10">
-        <ImagePlaceholder label="Hero — Ha Long Bay panorama" className="h-full w-full" />
+        <SlotImage
+          image={heroImage}
+          label="Hero — Ha Long Bay panorama"
+          className="absolute inset-0 h-full w-full"
+          priority
+        />
         <div className="absolute inset-0 bg-overlay" />
       </div>
 

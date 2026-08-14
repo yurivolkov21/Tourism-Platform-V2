@@ -3,8 +3,9 @@
 import { QuoteIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
+import { SlotImage } from '@/components/slot-image';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING } from '@/lib/motion';
 
 // About §2 Story (convert 100% lối forged/About, da thịt token + án lệ #25):
@@ -51,7 +52,7 @@ function FadeUp({
   );
 }
 
-export function AboutStory() {
+export function AboutStory({ storyImage = null }: { storyImage?: SiteMediaItem | null }) {
   return (
     <section id="story" className="w-full px-4 py-24 md:px-16 md:py-32 lg:px-24 xl:px-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-16 lg:grid-cols-12">
@@ -64,10 +65,12 @@ export function AboutStory() {
           transition={SPRING}
         >
           <div className="relative h-[600px] overflow-hidden rounded-2xl lg:h-[700px]">
-            <ImagePlaceholder
+            <SlotImage
+              image={storyImage}
               corner
               label="Story — the first minivan, Sa Pa 2014"
-              className="h-full w-full"
+              className="absolute inset-0 h-full w-full"
+              sizes="(min-width: 1024px) 50vw, 100vw"
             />
             <div className="absolute inset-0 bg-linear-to-t from-overlay/60 to-transparent" />
           </div>

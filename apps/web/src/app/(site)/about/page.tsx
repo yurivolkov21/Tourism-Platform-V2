@@ -8,6 +8,7 @@ import { AboutTeam } from '@/components/about/about-team';
 import { AboutTimeline } from '@/components/about/about-timeline';
 import { AboutValues } from '@/components/about/about-values';
 import { settle } from '@/lib/api/resilience';
+import { siteMediaImage } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 
 // Trang About Us (static-first) — dựng TỪNG SECTION theo review của user
@@ -36,10 +37,13 @@ export default async function AboutPage() {
     settle(fetchDestinations()),
   ]);
 
+  // Khe brand-chrome: `null` khi chưa có ảnh — SlotImage tự rơi về placeholder.
+  const storyImage = await siteMediaImage('about-story');
+
   return (
     <>
       <AboutHero />
-      <AboutStory />
+      <AboutStory storyImage={storyImage} />
       <AboutTimeline />
       <AboutNumbers
         tours={toursRes.data ?? []}

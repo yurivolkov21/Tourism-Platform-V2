@@ -6,6 +6,9 @@
 export const TAGS = {
   POSTS: 'posts',
   TOURS: 'tours',
+  /** Chín khe brand-chrome — đổi ảnh một khe thì bust cả cụm, vì chúng luôn
+      được đọc chung một lần gọi. */
+  SITE_MEDIA: 'site-media',
 } as const;
 
 /** Tag theo từng bài — bust một bài không đụng cache list. */
