@@ -41,7 +41,28 @@ export function SlotImage({
   priority?: boolean;
   sizes?: string;
 }) {
+  // Host mà `next.config.ts` khai trong `images.remotePatterns`. Giữ đồng bộ
+  // với file đó — nới ở một nơi mà quên nơi kia thì ảnh biến mất im lặng.
+  const OPTIMISABLE_HOST = 'https://res.cloudinary.com/';
+
   if (!image) return <ImagePlaceholder label={label} className={className} corner={corner} />;
+
+  // `buildCloudinaryUrl` có escape-hatch CỐ Ý (ADR-0005 §2): `publicId` là URL
+  // tuyệt đối thì trả nguyên, không bọc transform. Nhưng `next/image` chỉ nhận
+  // host đã khai trong `remotePatterns`, nên một URL ngoài đi thẳng vào đây sẽ
+  // ném `Invalid src prop … hostname is not configured` — trang chết lúc
+  // prerender (build đỏ) hoặc 500 khi ISR, chỉ vì MỘT row dữ liệu.
+  //
+  // Rơi về `<img>` thường thay vì để nổ: ảnh vẫn hiện, chỉ mất tối ưu của Next.
+  // Mất tối ưu là phiền; sập trang vì một row là hỏng.
+  if (!image.url.startsWith(OPTIMISABLE_HOST)) {
+    return (
+      <div className={className}>
+        {/** biome-ignore lint/performance/noImgElement: host ngoài remotePatterns, next/image sẽ ném lỗi */}
+        <img src={image.url} alt={image.alt ?? ''} className="size-full object-cover" />
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

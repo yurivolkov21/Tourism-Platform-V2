@@ -27,7 +27,7 @@ export const TESTIMONIALS: MockTestimonial[] = [
     name: 'Kenji Watanabe',
     location: 'Osaka, Japan',
     quote:
-      'Twelve people max means you actually talk to everyone. By day two we felt like one family on a junk boat.',
+      'A group small enough that you actually talk to everyone. By day two we felt like one family on a junk boat.',
     rating: 5,
   },
   {

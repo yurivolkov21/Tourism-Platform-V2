@@ -145,6 +145,16 @@ for (const item of plan) {
        SET role = EXCLUDED.role, sort_order = EXCLUDED.sort_order, alt = EXCLUDED.alt,
            author = EXCLUDED.author, license = EXCLUDED.license,
            source_url = EXCLUDED.source_url,
+           -- Số đo cũng PHẢI cập nhật ở nhánh này. Thay ảnh đi qua DO UPDATE,
+           -- nên bỏ sót mấy cột này thì DB giữ kích thước của ảnh CŨ trong khi
+           -- URL đã trỏ ảnh mới — sai lệch câm, không có gì báo. Đo được 14/08:
+           -- cover Hạ Long còn ghi 2816×2112/1674KB của tấm Commons đã bị thay,
+           -- trong khi ảnh thật là 2400×1600. COALESCE để ảnh MƯỢN (không có
+           -- meta vì không upload lại) không xoá mất số đo đang đúng.
+           format = COALESCE(EXCLUDED.format, media_assets.format),
+           width = COALESCE(EXCLUDED.width, media_assets.width),
+           height = COALESCE(EXCLUDED.height, media_assets.height),
+           bytes = COALESCE(EXCLUDED.bytes, media_assets.bytes),
            -- Version PHẢI cập nhật ở nhánh DO UPDATE: chạy lại vì THAY ảnh là
            -- lúc cần nó nhất, mà nhánh này chính là đường đi của lần chạy lại.
            -- Giữ version cũ ở đây thì URL không đổi và mọi tầng cache vẫn phát

@@ -72,6 +72,14 @@ const SITE_SLOT_KEYS = [
   'auth-panel',
   'about-story',
   'about-hero',
+  // Năm ảnh của khối "why choose us" trên Home — đặt tên theo CHỦ THỂ ảnh
+  // (guide/food/river/evening/heritage) chứ không theo câu tiêu đề, để đổi chữ
+  // sau này không làm tên khe lạc nghĩa.
+  'why-guide',
+  'why-food',
+  'why-river',
+  'why-evening',
+  'why-heritage',
 ] as const;
 
 const connectionString =

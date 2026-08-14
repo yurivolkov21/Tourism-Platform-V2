@@ -1,17 +1,18 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import {
-  BadgeDollarSignIcon,
   CompassIcon,
-  HeadsetIcon,
+  LampIcon,
+  LandmarkIcon,
   MinusIcon,
   PlusIcon,
-  ShieldCheckIcon,
-  UsersIcon,
+  ShipIcon,
+  UtensilsIcon,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { SectionEyebrow } from './section-eyebrow';
 
@@ -21,47 +22,76 @@ import { SectionEyebrow } from './section-eyebrow';
 // điều hướng — làm cơ chế accordion-đổi-ảnh hiện hình thay vì ngầm).
 // Review #27: quote guide (từng thêm ở #26) bị gỡ theo review — khoảng
 // trống dưới heading trả về nhịp thở nguyên bản của Estate.
-const DEFAULT_IMAGE_LABEL = 'Golden Bridge, Đà Nẵng';
+const DEFAULT_IMAGE_LABEL = 'Three regions in one country';
 
+// ── Vì sao năm mục này, và vì sao KHÔNG phải năm mục cũ (đổi 14/08) ──
+//
+// Bản cũ trộn hai loại lời hứa: hai mục kể TRẢI NGHIỆM (guide bản địa, nhóm
+// nhỏ) và ba mục nêu CHÍNH SÁCH (huỷ miễn phí, giá minh bạch, hỗ trợ 24/7).
+// Ba mục chính sách hỏng ở cả hai đầu: trang đặt tour nào cũng nói y hệt nên
+// không tạo khác biệt, và **không tồn tại bức ảnh nào minh hoạ được** "không
+// phí ẩn" — trong khi đây là khối mà ảnh chiếm nửa bố cục.
+//
+// Năm mục mới đều là một dạng HIỂU BIẾT BẢN ĐỊA (biết ăn ở đâu, biết đi đường
+// nước, biết lúc nào phố vắng khách) — ăn khớp tiêu đề "Travel Vietnam with
+// people who call it home" — và mỗi mục có một chủ thể ảnh RỜI NHAU: người,
+// đồ ăn, thuyền, đèn đêm, kiến trúc cổ.
+//
+// Chọn theo số đo trên 30 tour thật (summary + highlights + itinerary):
+// ẩm thực 30/30 · sông nước 21/30 · đêm/đèn 19/30 · lối mòn 17/30 · di sản 13/30.
+//
+// Ba mục chính sách KHÔNG bị xoá khỏi sản phẩm — chúng là huy hiệu tin cậy,
+// chỗ đúng là một dải icon gọn, không phải khối kể chuyện có ảnh lớn. Chúng đã
+// chuyển sang `trust-strip.tsx` (đặt ngay trước dải CTA cuối trang), và câu chữ
+// ở đó được viết lại theo dữ liệu — trong đó "Support around the clock" bị BỎ
+// vì chính site khai giờ làm việc Mon–Fri 8:00–18:00.
+//
+// Trường `image` cũ đã GỠ: nó trỏ `/mock/*.jpg` theo ánh xạ địa danh của bản
+// tĩnh, không dòng code nào đọc, và giờ còn sai so với chủ đề mới.
 const ITEMS = [
   {
     icon: CompassIcon,
     title: 'Local guides on every route',
+    slot: 'why-guide',
     description:
       'Every journey is led by someone who grew up on it. Paths, meals, and stories come from lived experience — not a script.',
-    image: '/mock/sapa.jpg',
   },
   {
-    icon: UsersIcon,
-    title: 'Small groups, twelve max',
+    icon: UtensilsIcon,
+    title: 'You eat where they eat',
+    slot: 'why-food',
     description:
-      'Enough people for stories around the table, few enough for silence on the water. You will know every name by day two.',
-    image: '/mock/halong.jpg',
+      'No hotel buffets. You eat the dishes your guide grew up on — bún, phở, bánh — at the places they have gone to for years.',
   },
   {
-    icon: ShieldCheckIcon,
-    title: 'Free cancellation up to 48h',
+    icon: ShipIcon,
+    title: 'The country from the water',
+    slot: 'why-river',
     description:
-      'Plans change. Cancel up to 48 hours before departure for a full refund — no forms, no questions, no phone queue.',
-    image: '/mock/hue.jpg',
+      'Limestone bays in the north, delta canals in the south. Much of Vietnam only makes sense from a boat.',
   },
   {
-    icon: BadgeDollarSignIcon,
-    title: 'Fair pricing, no hidden fees',
+    icon: LampIcon,
+    title: 'Towns worth staying the evening for',
+    slot: 'why-evening',
     description:
-      'What you pay reaches the people who host you. Every fee is itemized before you book — the price you see is the price you pay.',
-    image: '/mock/mekong.jpg',
+      'Day-trippers leave by four. Our evening routes start when the lanterns come on and the streets go back to the people who live there.',
   },
   {
-    icon: HeadsetIcon,
-    title: 'Support around the clock',
+    icon: LandmarkIcon,
+    title: 'Heritage, not a plaque',
+    slot: 'why-heritage',
     description:
-      'A real person answers before, during, and after your trip — in your timezone, within the hour.',
-    image: '/mock/hoian.jpg',
+      'Citadels, tombs and pagodas explained by someone whose own family history runs through them — not read off a sign.',
   },
 ];
 
-export function WhyChooseUs() {
+export function WhyChooseUs({
+  images = {},
+}: {
+  /** khoá khe → ảnh. Khe thiếu ảnh thì SlotImage tự rơi về giữ chỗ. */
+  images?: Record<string, MediaItem | null>;
+}) {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
@@ -152,8 +182,10 @@ export function WhyChooseUs() {
               viewport={{ once: true }}
               transition={SPRING}
             >
-              <ImagePlaceholder
+              <SlotImage
+                image={images['home-why-choose'] ?? null}
                 label={DEFAULT_IMAGE_LABEL}
+                sizes="(min-width: 768px) 50vw, 100vw"
                 className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
                   openIndex === null
                     ? 'scale-100 opacity-100'
@@ -161,9 +193,11 @@ export function WhyChooseUs() {
                 }`}
               />
               {ITEMS.map((item, index) => (
-                <ImagePlaceholder
+                <SlotImage
                   key={item.title}
+                  image={images[item.slot] ?? null}
                   label={item.title}
+                  sizes="(min-width: 768px) 50vw, 100vw"
                   className={`absolute inset-0 h-full w-full transition-all duration-500 ease-in-out ${
                     openIndex === index
                       ? 'scale-100 opacity-100'

@@ -15,7 +15,7 @@ import { FacebookIcon, InstagramIcon, TwitterIcon } from './icons/social';
 const MESSAGES = [
   'Vietnam’s slow-travel journeys, crafted end to end by locals',
   'Autumn sale — 20% off selected Ha Long departures this week',
-  'Small groups of twelve, always led by local guides',
+  'Small groups, always led by local guides',
   'Free cancellation up to 48 hours before departure',
   'New route: Mekong Delta Boats — two days on the river',
 ];

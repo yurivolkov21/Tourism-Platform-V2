@@ -28,7 +28,7 @@ export function ContactCta() {
                 <span className="text-primary-emphasis italic"> when you are.</span>
               </h2>
               <p className="mx-auto max-w-2xl text-muted-foreground">
-                Twelve seats, three regions, and people who grew up on every path. Pick a journey
+                Small groups, three regions, and people who grew up on every path. Pick a journey
                 and let the country set the pace.
               </p>
             </div>

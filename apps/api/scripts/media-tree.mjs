@@ -14,7 +14,7 @@
  * ── Hình dạng và lý do ──
  *
  *   media-inbox/
- *     _site/                       10 khe thương hiệu, KHÔNG thuộc địa danh nào
+ *     _site/                       khe thương hiệu, KHÔNG thuộc địa danh nào
  *       home-hero.jpg              (`home-hero` là tấm nhiều lượt nhìn nhất site)
  *     hoi-an/                      slug ĐỊA DANH
  *       destination.jpg            1 tấm cho /destinations
@@ -38,7 +38,13 @@ import pg from 'pg';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../media-inbox');
 
-/** Mười khe brand-chrome — bản sao danh sách trong `prisma/seed.ts`. */
+/**
+ * Khe brand-chrome — bản sao danh sách trong `prisma/seed.ts`.
+ *
+ * KHÔNG viết số lượng vào chú thích hay tiêu đề: con số đã lệch ba lần (9 → 10
+ * → 15) và mỗi lần đều phải đi sửa nhiều chỗ rời nhau. Ai cần biết bao nhiêu
+ * thì đếm mảng này, hoặc xem bảng đếm của `media:scan` (nó lấy từ DB).
+ */
 const SITE_SLOTS = [
   [
     'home-hero',
@@ -58,9 +64,14 @@ const SITE_SLOTS = [
     'Ảnh nền hero /about (full màn). Chữ nằm NỬA TRÁI, nên chủ thể phải ở nửa PHẢI; góc dưới-phải có chữ "Scroll" trắng nên chỗ đó không được cháy sáng.',
     '2400×1350 (16:9), ngang',
   ],
+  ['why-guide', 'Khối "why choose us" — mục người dẫn đường.', '2400×2030, NGANG (khung 1.18)'],
+  ['why-food', 'Khối "why choose us" — mục ẩm thực.', '2400×2030, NGANG'],
+  ['why-river', 'Khối "why choose us" — mục sông nước.', '2400×2030, NGANG'],
+  ['why-evening', 'Khối "why choose us" — mục phố đêm/đèn lồng.', '2400×2030, NGANG'],
+  ['why-heritage', 'Khối "why choose us" — mục di sản.', '2400×2030, NGANG'],
 ];
 
-const README_SITE = `# Mười khe thương hiệu
+const README_SITE = `# Khe thương hiệu
 
 Ảnh ở đây KHÔNG thuộc địa danh nào — chúng là mặt tiền của site.
 

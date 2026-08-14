@@ -6,6 +6,7 @@ import { Journal } from '@/components/home/journal';
 import { Partners } from '@/components/home/partners';
 import { Stats } from '@/components/home/stats';
 import { Testimonials } from '@/components/home/testimonials';
+import { TrustStrip } from '@/components/home/trust-strip';
 import { WhyChooseUs } from '@/components/home/why-choose-us';
 import { fetchPosts } from '@/lib/api/posts';
 import { settle } from '@/lib/api/resilience';
@@ -39,6 +40,17 @@ export default async function HomePage() {
     siteMediaImage('cta-band'),
   ]);
 
+  // Sáu ảnh của khối "why choose us" (5 mục + 1 mặc định). Đọc CẢ CỤM một lần:
+  // `fetchSiteMedia` bọc trong `cache()` nên sáu lần gọi này chỉ tốn một lượt
+  // mạng, dùng chung với hero và cta-band phía trên.
+  const whyImages = Object.fromEntries(
+    await Promise.all(
+      ['home-why-choose', 'why-guide', 'why-food', 'why-river', 'why-evening', 'why-heritage'].map(
+        async (key) => [key, await siteMediaImage(key)] as const,
+      ),
+    ),
+  );
+
   // Slider khoảnh khắc lấy ảnh từ `cover` của TOUR mà mỗi khoảnh khắc trỏ tới.
   // Dựng bản tra cứu ở server rồi truyền xuống, thay vì đẩy cả danh sách tour
   // qua ranh giới client — `Stats` là client component, mọi prop đều bị
@@ -63,11 +75,14 @@ export default async function HomePage() {
         destinations={topDestinations(REGIONS, destinationsRes.data ?? [], 9)}
         failed={!destinationsRes.ok}
       />
-      <WhyChooseUs />
+      <WhyChooseUs images={whyImages} />
       <Testimonials />
       {/* Journal trắng chen giữa Testimonials (muted) và CTA (tối) — nhịp nền
           sáng/tối xen kẽ (review #33) */}
       <Journal posts={postsRes.data ?? []} failed={!postsRes.ok} />
+      {/* Trả lời ba nỗi lo ngay TRƯỚC lời mời đặt tour — xem chú thích trong
+          `trust-strip.tsx` về việc vì sao ba câu này viết theo dữ liệu. */}
+      <TrustStrip />
       <CallToAction bandImage={bandImage} />
       <Contact />
     </>

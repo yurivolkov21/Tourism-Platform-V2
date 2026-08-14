@@ -17,7 +17,7 @@ export const FAQ_ITEMS: MockFaqItem[] = [
   {
     question: 'How big are the groups, really?',
     answer:
-      'Twelve travellers at most, on every departure, in every season. It is the one number we have never bent.',
+      'It depends on the route and the vehicle — every tour page shows its own cap before you book. What never changes: small enough that your guide knows your name, never a coach.',
   },
   {
     question: 'Do the guides speak English?',

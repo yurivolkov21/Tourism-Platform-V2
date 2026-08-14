@@ -134,7 +134,7 @@ export function AboutGallery({
                   />
                   <GalleryCard
                     title="All of Vietnam"
-                    count={`${totalTours} tours, twelve seats each`}
+                    count={`${totalTours} tours across three regions`}
                     imageLabel="Gallery — the road between all three"
                     className="h-[260px]"
                     delay={0.3}

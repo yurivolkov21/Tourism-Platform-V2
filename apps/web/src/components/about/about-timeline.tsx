@@ -56,10 +56,10 @@ const MILESTONES: Milestone[] = [
   },
   {
     year: '2026',
-    title: 'Still twelve seats',
+    title: 'Still small on purpose',
     description:
       'A new home online, the same old promise: small groups, local pace, no scripts. Growth means deeper roads, not more of them.',
-    imageLabel: '2026 — the team, twelve seats later',
+    imageLabel: '2026 — the team, still small on purpose',
   },
 ];
 

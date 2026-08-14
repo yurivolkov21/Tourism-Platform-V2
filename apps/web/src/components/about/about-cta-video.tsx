@@ -11,7 +11,7 @@ import { ImagePlaceholder } from '@/components/image-placeholder';
 // media thật thì thay ImagePlaceholder bằng nó (nhớ autoPlay muted loop
 // playsInline + poster, và tắt theo prefers-reduced-motion).
 const MARQUEE_ITEMS = [
-  'Twelve seats max',
+  'Small groups',
   'Local guides only',
   'Free cancellation up to 48h',
   'Three regions, one country',

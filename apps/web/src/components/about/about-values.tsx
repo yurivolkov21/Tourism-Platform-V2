@@ -26,9 +26,9 @@ const VALUES = [
   {
     icon: UsersIcon,
     title: 'Small groups',
-    tag: 'Twelve max',
+    tag: 'Small by design',
     description:
-      'Twelve travellers, never more. Enough for stories around the table, few enough for silence on the water.',
+      'Never a coach. Enough for stories around the table, few enough for silence on the water.',
   },
   {
     icon: HandCoinsIcon,

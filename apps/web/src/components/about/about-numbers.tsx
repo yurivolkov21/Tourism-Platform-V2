@@ -56,7 +56,7 @@ export function AboutNumbers({
       value: 560,
       suffix: '+',
       label: 'Departures a year',
-      description: 'Rain or shine, twelve seats',
+      description: 'Rain or shine, small groups',
     },
     {
       value: 45000,

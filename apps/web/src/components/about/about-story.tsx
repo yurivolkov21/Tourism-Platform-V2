@@ -15,7 +15,7 @@ import { SPRING } from '@/lib/motion';
 // địa (quote của Mai hồi sinh từ WhyChooseUs #26→#27). Motion: ảnh SlideIn
 // từ trái, cột phải FadeUp bậc thang — spring nhà 320/70.
 
-const PILLS = ['Local guides only', 'Twelve travellers max', 'Three regions', 'No scripts'];
+const PILLS = ['Local guides only', 'Small groups', 'Three regions', 'No scripts'];
 
 const QUOTES = [
   {
@@ -114,9 +114,9 @@ export function AboutStory({ storyImage = null }: { storyImage?: SiteMediaItem |
           </FadeUp>
           <FadeUp delay={0.3}>
             <p className="mt-4 max-w-[560px] text-sm leading-relaxed text-muted-foreground md:text-base">
-              Eleven years later we are still small on purpose — twelve travellers at most, three
-              regions, and guides who set the pace of their own valleys. Growth, for us, means
-              deeper roads, not more of them.
+              Eleven years later we are still small on purpose — small groups, three regions, and
+              guides who set the pace of their own valleys. Growth, for us, means deeper roads, not
+              more of them.
             </p>
           </FadeUp>
 

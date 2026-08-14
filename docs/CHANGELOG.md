@@ -8,6 +8,70 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-14 — Home đủ ảnh, và ba lời hứa sai bị bắt trên đường (trực tiếp `main`, 16 file, +144/−45)
+
+Đóng trọn phần ảnh của trang chủ: **9/9 thẻ địa danh**, **5/5 slider khoảnh
+khắc**, **6/6 khối "why choose us"**, `cta-band`. Khe site lên **15** (thêm
+`why-guide`/`why-food`/`why-river`/`why-evening`/`why-heritage`).
+
+**Ba lời hứa sai, tìm ra bằng cách đối chiếu chữ với DỮ LIỆU chứ không đọc
+lướt.** Đây là phần đáng giá nhất của đợt này, không phải mấy tấm ảnh:
+
+- **"Small groups, twelve max" — sai ở 14 chỗ.** Đo trên 30 tour: chỉ 11 tour
+  có `maxGroupSize ≤ 12`; **19 tour vượt**, cao nhất **22**. Mà site khẳng định
+  con số đó rất dứt khoát — FAQ viết *"It is the one number we have never
+  bent"*, About viết *"never more"*, cộng ticker, Contact, timeline, và cả một
+  review của khách khen đúng điều đó. Chốt với user: **bỏ hẳn con số** khỏi lời
+  hứa chung, vì `maxGroupSize` là dữ liệu từng tour do admin đặt theo loại xe;
+  số thật đã hiện ở trang chi tiết (`overview-panel` — đã kiểm).
+- **"Support around the clock" — chính site tự phủ nhận.** `mocks/offices.ts`
+  khai giờ làm việc `Mon–Fri · 8:00 am – 6:00 pm (GMT+7)`, `contact-hero` viết
+  *"replies within the hour, Monday to Friday"*. Câu 24/7 đã bị BỎ.
+- **"Free cancellation up to 48h" — không có con số chung.** 15/30 tour đặt mốc
+  bằng NGÀY, 15 tour còn lại bằng GIỜ, mốc khác nhau.
+
+**Năm mục `why-choose-us` thay trọn.** Bản cũ trộn hai loại: hai mục kể trải
+nghiệm, ba mục nêu chính sách. Ba mục chính sách hỏng ở cả hai đầu — trang đặt
+tour nào cũng nói y hệt, và **không tồn tại bức ảnh nào minh hoạ được "không
+phí ẩn"**, trong khi đây là khối mà ảnh chiếm nửa bố cục. Năm mục mới chọn theo
+số đo trên 30 tour (ẩm thực 30/30 · sông nước 21/30 · đêm 19/30 · lối mòn 17/30
+· di sản 13/30), mỗi mục một chủ thể ảnh rời nhau.
+
+**`trust-strip.tsx` mới** — ba huy hiệu chuyển về đây, đặt ngay trước dải CTA
+(chỗ người dùng quyết định). Câu chữ viết theo dữ liệu: *"No booking fees"* là
+câu mạnh nhất vì đúng tuyệt đối (`computeBookingTotal` chỉ nhân giá với số
+khách, mô hình không có dòng phí nào).
+
+**`SlotImage` chặn URL ngoài `res.cloudinary.com`.** `buildCloudinaryUrl` có
+escape-hatch cố ý (ADR-0005 §2) trả nguyên URL tuyệt đối, còn `next.config.ts`
+chỉ khai `remotePatterns` cho Cloudinary — một row dữ liệu dùng escape-hatch đó
+sẽ làm `next/image` ném `Invalid src prop`, giết trang lúc prerender. Nay rơi về
+`<img>` thường: mất tối ưu thì phiền, sập trang vì một row thì hỏng. 4 test mới
+khoá hành vi này.
+
+**`media:upload` cập nhật `width/height/bytes/format` ở nhánh `DO UPDATE`.**
+Thiếu mấy cột này thì THAY ảnh để lại số đo của ảnh cũ trong khi URL đã trỏ ảnh
+mới — sai lệch câm. Đo được: cover Hạ Long còn ghi 2816×2112/1674KB của tấm đã
+bị thay, thật ra là 2400×1600.
+
+**Bỏ mọi con số khe viết cứng** trong `media-tree` — nó đã lệch ba lần
+(9 → 10 → 15), mỗi lần phải sửa vài chỗ rời nhau.
+
+**Nghiệm thu:** `gate:int` xanh 18/18 + 5/5. Smoke 12 route bằng trình duyệt
+thật — tất cả 200, **0 ảnh hỏng, 0 lỗi console, 0 request ≥400**. Tương phản
+caption 9 thẻ địa danh: thấp nhất Cần Thơ 5.17:1, cao nhất Sa Pa 16.19:1, đều
+trên ngưỡng 4.5.
+
+**Nợ mở:** 6 khe site còn trống (`about-story` · `auth-panel` ·
+`home-experiences` · `home-trust` · `content-hero` · `destinations-hero`) ·
+26/30 tour chưa có cover · gallery địa danh mới 5/19 nên gallery 7-thumb của
+trang tour vẫn chưa render từ dữ liệu thật · dải `Partners` chạy tên báo có
+thật kèm nhãn *"featured by travel storytellers worldwide"* — user đã cân nhắc
+và **cố ý giữ** (capstone, ưu tiên hiệu ứng hình ảnh).
+
+Tests after: 1213 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-14 — Ảnh thật lên site: cây thả ảnh media-inbox, ba script fetch/scan/upload, sáu khe đã nối (branch `feat/media-inbox`, ff-only, 7 commit `6e44a04..da0fde4`, 22 file, +1254/−36)
 
 Mở lại khâu ảnh thật sau khi lô 189 ảnh tự động bị từ chối trọn hồi 08/08
