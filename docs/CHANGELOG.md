@@ -8,6 +8,72 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-14 — Ảnh thật lên site: cây thả ảnh media-inbox, ba script fetch/scan/upload, sáu khe đã nối (branch `feat/media-inbox`, ff-only, 7 commit `6e44a04..da0fde4`, 22 file, +1254/−36)
+
+Mở lại khâu ảnh thật sau khi lô 189 ảnh tự động bị từ chối trọn hồi 08/08
+([ADR-0020 bản sửa](adr/0020-real-images-sourcing.md)). Lần này **người chọn,
+máy chỉ khuân**: user gửi link ảnh, script tải về đúng chỗ trong cây, in bảng
+duyệt, rồi mới upload. Đó chính là hai điều bản sửa bắt buộc — cửa lọc theo
+CHỦ THỂ và duyệt mắt đứng TRƯỚC upload — dựng thành quy trình chạy được thay
+vì một lời dặn.
+
+**Ba script tách rời, và việc tách là có chủ đích.** `media:tree` dựng 69 thư
+mục + file hướng dẫn theo DB; `media:fetch` tải từ `LINKS.txt`; `media:scan`
+**chỉ báo cáo, không upload, không ghi DB**; `media:upload` đọc `--json` của
+scan. Ranh giới scan↔upload chính là chỗ con người chen vào — lần trước bảng
+duyệt dựng SAU khi đã đẩy 189 tấm lên CDN nên dọn tốn gấp nhiều lần.
+
+**Luật rơi-về là thứ làm cây sống được với số ảnh có hạn.** Gallery của tour
+rơi về gallery của ĐỊA DANH khi tour chưa có ảnh riêng: một bộ ảnh Hội An tử
+tế phục vụ cả trang địa danh lẫn 6 tour đi qua đó. Không có luật này thì 30
+tour × 8 ảnh = 240 tấm phải tự tìm. Đo được: 5 ảnh thả vào 5 gallery địa danh
+sinh ra 22 chỗ gắn, trong đó 9 chỗ dùng lại file đã có trên CDN.
+
+**Khe thứ 10 `about-hero`.** Hero /about là bề mặt ảnh lớn nhất mà 9 khe
+thương hiệu không có mục nào trỏ tới. Nhân đó bỏ số 9 viết cứng trong bảng
+đếm của `media:scan` — tổng số khe nay đếm từ `site_media_slots`, nơi duy
+nhất biết đủ danh sách.
+
+**Slider khoảnh khắc lấy `cover` của TOUR, không phải của địa danh** — dù mỗi
+khoảnh khắc đều thuộc một nơi. `DestinationSchema.cover` cố ý chỉ có một tấm
+dành cho tile 4/5 DỌC, còn ô slider là 4/3 NGANG; ép hai bề mặt dùng chung
+một ảnh thì một trong hai chắc chắn bị cắt hỏng. Contract giữ nguyên, không
+nở thêm field nào.
+
+**Bốn caption trong `moments.ts` sửa cho khớp ảnh** thay vì đi săn ảnh khớp
+caption. Chúng hứa những thứ ảnh không có ("golden hour", "bếp vườn của chị
+Lan"). Test chỉ khoá trường `credit` (phải nhắc đúng tên tour), `title` tự do.
+
+**Một tấm bị từ chối vì [ADR-0020 §7](adr/0020-real-images-sourcing.md), và
+lý do đáng ghi.** Ảnh Hội An có một phụ nữ nhận diện rõ mặt đứng giữa khung;
+gắn vào caption "Emma, Hội An Lantern Evening" là trình bày người thật thành
+khách hàng bịa — cùng loại với ảnh "đội ngũ" mà §7 đã cấm. Tấm đó chuyển sang
+làm ảnh ĐỊA DANH (không khai gì về cô ấy) và hoá ra vừa khít khung 4/5 dọc
+của tile.
+
+**Đo tương phản trên ảnh thật, không đổi `src` rồi thôi** — đúng dặn dò của
+ADR-0020. Caption thẻ địa danh đạt 4.83:1. Một ảnh hero /about ứng viên bị
+LOẠI nhờ phép đo: badge rơi từ 7.96:1 (nền tối lý tưởng) xuống 2.05:1 trên
+mobile vì quầng mặt trời nằm đúng sau chữ.
+
+**Chặn build khi server đang chạy** (`apps/web/scripts/guard-build.mjs`).
+Build đè lên `.next` trong lúc một tiến trình serve từ đó làm hỏng thư mục
+build IM LẶNG: build vẫn báo thành công, nhưng HTML trỏ tới chunk chưa kịp
+ghi → HTTP 500 → ChunkLoadError → trang lỗi. Dính **ba lần trong ngày**, mỗi
+lần điều tra lại từ đầu vì mọi dấu hiệu bề mặt đều bình thường (`curl /` trả
+200, HTML đúng, gate xanh); chỉ kiểm HTTP code TỪNG asset mới lộ. Guard
+**thất bại thì MỞ** — mọi lỗi khi dò tiến trình đều cho build chạy tiếp, vì
+một guard làm đỏ CI còn tệ hơn con bug nó chặn.
+
+**Nợ mở:** 1 cover tour (Hội An, cần ảnh NGANG) · 7 ảnh địa danh cho Home
+(cần ảnh DỌC) · `home-experiences`/`home-trust`/`content-hero`/`destinations-hero`
+chưa có consumer 1:1 · `auth-panel` dùng chung ở 4 trang auth nên cần một vòng
+riêng · `why-choose-us` giữ 6 ô ảnh trong khi khe chỉ 1 ảnh, ánh xạ 1→6 là
+quyết định thiết kế · ảnh bài blog chưa có nhánh nào trong cây.
+
+Tests after: 1209 web · 215 api · 180 api-int · 86 contract · 22 ui · 10
+tokens · 2 i18n.
+
 ## 2026-08-14 — Trả sổ nợ Tour Details: năm cột nội dung, ba thẻ bị bỏ sót, thu/phóng lightbox (branch `feat/tour-content-debt`, ff-only, 3 commit `cacb8d5..6e17bcc`, 22 file, +1164/−172)
 
 Bốn món trong [sổ nợ A9–A12](analysis/2026-08-06-backlog-no-ky-thuat.md) mở ra
