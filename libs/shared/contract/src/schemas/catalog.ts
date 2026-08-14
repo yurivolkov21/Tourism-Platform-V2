@@ -124,6 +124,32 @@ export const TourDetailSchema = TourCardSchema.extend({
   excluded: z.array(z.string()),
   highlights: z.array(z.string()),
   meetingPoint: z.string().max(300).nullable(),
+  /**
+   * Một câu mô tả dưới mỗi card dữ kiện ở tab Overview (ADR-0023).
+   *
+   * CHỈ có ở detail, KHÔNG có ở `TourCardSchema`: card trong danh sách không
+   * hiện mô tả, thêm vào chỉ làm nặng payload `/tours`.
+   *
+   * Nullable và UI phải chịu được null — 30 tour × 4 câu là việc soạn nội dung
+   * thật, và tour mới tạo ở admin sẽ trống lúc đầu. Card thiếu mô tả vẫn phải
+   * đọc được, chỉ là thấp hơn.
+   */
+  factDurationNote: z.string().max(280).nullable(),
+  factGroupSizeNote: z.string().max(280).nullable(),
+  factDifficultyNote: z.string().max(280).nullable(),
+  factGoodForNote: z.string().max(280).nullable(),
+  /**
+   * Cửa sổ huỷ miễn phí tính bằng NGÀY (ADR-0023 §2).
+   *
+   * `policies[]` vẫn giữ toàn văn chính sách; trường này chỉ tách MỘT con số để
+   * giao diện in thành nhãn ngắn ("Free until 10 days out"). Không suy ra từ
+   * `policy.body`: đã đếm trên 29 policy, regex `up to (\d+) days` chỉ bắt được
+   * 12 — 17 câu còn lại viết khác khuôn.
+   *
+   * `null` cho tour tính cửa sổ bằng GIỜ (14/29 tour hiện tại). Ép 24 giờ thành
+   * "1 ngày" là nói sai: mốc 24 giờ tính từ giờ khởi hành, không phải nửa đêm.
+   */
+  freeCancellationDays: z.int().nonnegative().nullable(),
   itinerary: z.array(TourItineraryDaySchema),
   faqs: z.array(TourFaqSchema),
   policies: z.array(TourPolicySchema),

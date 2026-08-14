@@ -107,13 +107,30 @@ async function insertCatalog(): Promise<number> {
     ],
     [
       'tours',
-      () =>
-        prisma.tour.createMany({
-          // Các mảng fixture là JSON string thuần; module catalog được generate
-          // đã dùng giá trị enum hợp lệ sẵn (difficulty/suitableFor/badges).
-          data: catalog.tours as unknown as Prisma.TourCreateManyInput[],
-          skipDuplicates: true,
-        }),
+      // UPSERT chứ không `createMany({ skipDuplicates })` (ADR-0023): bảng này
+      // giữ NỘI DUNG BÁN HÀNG (mô tả card dữ kiện, cửa sổ huỷ, highlights…) mà
+      // biên tập viên còn sửa. `skipDuplicates` bỏ qua row đã tồn tại, nên
+      // thêm cột mới hay sửa chữ đều KHÔNG bao giờ tới được DB đang chạy.
+      // Đã dính đúng lỗi này ngày 14/08: 5 cột mới của ADR-0023 vẫn null trên
+      // cả hai DB sau khi seed báo thành công.
+      //
+      // Chỉ cập nhật phần NỘI DUNG; `createdAt` và các khoá giữ nguyên.
+      async () => {
+        for (const t of catalog.tours) {
+          const { id, categoryId, createdAt, ...content } = t;
+          await prisma.tour.upsert({
+            where: { id },
+            create: {
+              id,
+              createdAt,
+              category: { connect: { id: categoryId } },
+              ...content,
+            } as unknown as Prisma.TourCreateInput,
+            update: content as unknown as Prisma.TourUpdateInput,
+          });
+        }
+        return { count: catalog.tours.length };
+      },
     ],
     [
       'tourDestinations',
@@ -134,11 +151,25 @@ async function insertCatalog(): Promise<number> {
     ['tourFaqs', () => prisma.tourFaq.createMany({ data: catalog.tourFaqs, skipDuplicates: true })],
     [
       'tourPolicies',
-      () =>
-        prisma.tourPolicy.createMany({
-          data: catalog.tourPolicies as unknown as Prisma.TourPolicyCreateManyInput[],
-          skipDuplicates: true,
-        }),
+      // UPSERT chứ không `createMany({ skipDuplicates })` như các bảng cấu trúc
+      // khác (ADR-0023 §3): tiêu đề và nội dung chính sách là NỘI DUNG BIÊN
+      // TẬP, còn sửa nhiều lần. `skipDuplicates` bỏ qua row đã tồn tại, nên
+      // sửa fixture mà giữ cơ chế đó thì DB đang chạy KHÔNG BAO GIỜ nhận nội
+      // dung mới — người sửa tưởng đã sửa, trang thì vẫn hiện chữ cũ. Cùng
+      // cách `siteMediaSlot`/`posts`/`users` đang làm.
+      async () => {
+        for (const p of catalog.tourPolicies) {
+          const data = { kind: p.kind, order: p.order, title: p.title, body: p.body };
+          await prisma.tourPolicy.upsert({
+            where: { id: p.id },
+            // `connect` thay vì `tourId` trần: `…CreateInput` (dạng upsert dùng)
+            // khai quan hệ chứ không khai khoá ngoại, khác `…CreateManyInput`.
+            create: { id: p.id, tour: { connect: { id: p.tourId } }, ...data },
+            update: data,
+          });
+        }
+        return { count: catalog.tourPolicies.length };
+      },
     ],
     [
       'tourDepartures',

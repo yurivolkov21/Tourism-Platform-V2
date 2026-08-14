@@ -178,6 +178,13 @@ export class CatalogService {
       excluded: tour.excluded,
       highlights: tour.highlights,
       meetingPoint: tour.meetingPoint,
+      // Nội dung bán hàng thêm ở ADR-0023. Bốn câu mô tả card dữ kiện và cửa
+      // sổ huỷ miễn phí — chỉ có ở detail, KHÔNG lên `TourCardSchema`.
+      factDurationNote: tour.factDurationNote,
+      factGroupSizeNote: tour.factGroupSizeNote,
+      factDifficultyNote: tour.factDifficultyNote,
+      factGoodForNote: tour.factGoodForNote,
+      freeCancellationDays: tour.freeCancellationDays,
       itinerary: tour.itinerary.map((day) => ({
         dayNumber: day.dayNumber,
         title: day.title,

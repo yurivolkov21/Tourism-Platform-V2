@@ -38,6 +38,12 @@ const validDetail = {
   excluded: ['Lunch'],
   highlights: ['Lantern-lit old town'],
   meetingPoint: '78 Lê Lợi street',
+  // Nội dung bán hàng ADR-0023 — nullable, nhưng khoá phải CÓ MẶT.
+  factDurationNote: 'One evening, back on the street before midnight.',
+  factGroupSizeNote: 'Twelve seats keeps the group around one table.',
+  factDifficultyNote: null,
+  factGoodForNote: null,
+  freeCancellationDays: 10,
   itinerary: [{ dayNumber: 1, title: 'Old town on foot', description: null }],
   faqs: [{ question: 'Is it kid-friendly?', answer: 'Yes.' }],
   policies: [
@@ -302,5 +308,35 @@ describe('DestinationSchema / TourCategorySchema / HealthSchema', () => {
     };
     expect(HealthSchema.parse(health)).toEqual(health);
     expect(() => HealthSchema.parse({ ...health, status: 'down' })).toThrow();
+  });
+});
+
+describe('TourDetailSchema — nội dung bán hàng (ADR-0023)', () => {
+  it('bốn ghi chú card dữ kiện và cửa sổ huỷ nhận null — dữ liệu thật có tour trống', () => {
+    const parsed = TourDetailSchema.parse({
+      ...validDetail,
+      factDurationNote: null,
+      factGroupSizeNote: null,
+      factDifficultyNote: null,
+      factGoodForNote: null,
+      freeCancellationDays: null,
+    });
+    expect(parsed.factDurationNote).toBeNull();
+    expect(parsed.freeCancellationDays).toBeNull();
+  });
+
+  it('ghi chú dài quá 280 bị từ chối — card cao vống lên là lệch cả hàng bốn card', () => {
+    expect(() =>
+      TourDetailSchema.parse({ ...validDetail, factDurationNote: 'x'.repeat(281) }),
+    ).toThrow();
+  });
+
+  it('cửa sổ huỷ âm bị từ chối', () => {
+    expect(() => TourDetailSchema.parse({ ...validDetail, freeCancellationDays: -1 })).toThrow();
+  });
+
+  it('KHÔNG lên card danh sách — thêm vào chỉ làm nặng payload /tours', () => {
+    expect('factDurationNote' in TourCardSchema.shape).toBe(false);
+    expect('freeCancellationDays' in TourCardSchema.shape).toBe(false);
   });
 });

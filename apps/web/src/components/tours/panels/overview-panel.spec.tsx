@@ -9,6 +9,10 @@ const TOUR = {
   difficulty: 'CHALLENGING',
   suitableFor: ['FRIENDS', 'SOLO'],
   summary: 'Four days riding pillion behind a local easyrider.',
+  factDurationNote: 'Day four is a buffer morning, not a rush.',
+  factGroupSizeNote: 'Ten riders, one driver each.',
+  factDifficultyNote: null,
+  factGoodForNote: null,
   highlights: ['The Mã Pí Lèng pass', 'Đồng Văn old town'],
 } as unknown as TourDetailVM;
 
@@ -77,5 +81,20 @@ describe('OverviewPanel', () => {
     render(<OverviewPanel tour={TOUR} />);
     expect(screen.getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getByText('The Mã Pí Lèng pass')).toBeInTheDocument();
+  });
+
+  it('câu mô tả hiện dưới giá trị của đúng card có dữ liệu', () => {
+    render(<OverviewPanel tour={TOUR} />);
+    expect(screen.getByText('Day four is a buffer morning, not a rush.')).toBeInTheDocument();
+    expect(screen.getByText('Ten riders, one driver each.')).toBeInTheDocument();
+  });
+
+  it('card thiếu mô tả vẫn đọc được, KHÔNG in dòng rỗng', () => {
+    // 30 tour × 4 câu là việc soạn nội dung thật; tour mới ở admin sẽ trống.
+    const { container } = render(<OverviewPanel tour={TOUR} />);
+    for (const p of container.querySelectorAll('[data-testid="fact-card"] p')) {
+      expect(p.textContent?.trim().length ?? 0).toBeGreaterThan(0);
+    }
+    expect(screen.getAllByTestId('fact-card')).toHaveLength(4);
   });
 });

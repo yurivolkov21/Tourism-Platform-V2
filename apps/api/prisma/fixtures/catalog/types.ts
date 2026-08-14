@@ -31,6 +31,17 @@ export interface TourFixture {
   excluded: string[];
   highlights: string[];
   meetingPoint: string;
+  // ── Nội dung bán hàng trang chi tiết (ADR-0023) ──
+  // Một câu dưới mỗi card dữ kiện ở tab Overview. `null` là hợp lệ — UI chịu
+  // được thiếu, card chỉ thấp hơn.
+  factDurationNote: string | null;
+  factGroupSizeNote: string | null;
+  factDifficultyNote: string | null;
+  factGoodForNote: string | null;
+  // Cửa sổ huỷ miễn phí tính bằng NGÀY. `null` cho tour ghi cửa sổ bằng GIỜ
+  // (15/30 tour) — ép 24 giờ thành "1 ngày" là nói sai, mốc đó tính từ giờ
+  // khởi hành chứ không phải nửa đêm.
+  freeCancellationDays: number | null;
   createdAt: string; // ISO
   updatedAt: string; // ISO
 }

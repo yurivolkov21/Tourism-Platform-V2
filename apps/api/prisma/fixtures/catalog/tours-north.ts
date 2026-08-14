@@ -70,6 +70,13 @@ export const tours: TourFixture[] = [
       'A guide who books the tables, not a script',
     ],
     meetingPoint: 'Đông Kinh Nghĩa Thục Square, north edge of Hoàn Kiếm Lake',
+    factDurationNote: 'An evening walk, not a full day — you are back on the street by late night.',
+    factGroupSizeNote:
+      'Twelve seats keeps the group small enough to fit around a street-food table.',
+    factDifficultyNote:
+      'Flat pavement the whole way; the only effort is pacing yourself across the stops.',
+    factGoodForNote: 'Built for people who eat first and sightsee second.',
+    freeCancellationDays: null,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -112,6 +119,13 @@ export const tours: TourFixture[] = [
       'Old Quarter walk from Hàng Gai silk street to Đồng Xuân Market',
     ],
     meetingPoint: 'Hotel pickup — hotels in Hoàn Kiếm, Ba Đình or Tây Hồ districts, Hà Nội',
+    factDurationNote: "One full day across the capital's landmark quarter, back before dinner.",
+    factGroupSizeNote:
+      'Fourteen guests is the cap that keeps a guide audible inside the temple grounds.',
+    factDifficultyNote:
+      'Level ground and short walks between stops, with the coach doing the distance.',
+    factGoodForNote: 'Works for a first day in Hà Nội, whatever the shape of your group.',
+    freeCancellationDays: null,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -154,6 +168,13 @@ export const tours: TourFixture[] = [
       'A slow drive along the river dikes',
     ],
     meetingPoint: '36 Hàng Bún street, Hà Nội (opposite the Long Biên bridge approach)',
+    factDurationNote: 'A day trip out of the city and back, with two workshop stops in between.',
+    factGroupSizeNote:
+      'Twelve places, because the pottery wheels and workshop benches are counted.',
+    factDifficultyNote:
+      'Standing and hands-on work rather than walking — comfortable for most ages.',
+    factGoodForNote: "Hands-on enough for children, calm enough for a couple's day out.",
+    freeCancellationDays: null,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -191,6 +212,11 @@ export const tours: TourFixture[] = [
       'A UNESCO landscape you paddle rather than walk',
     ],
     meetingPoint: 'Hotel pickup, Hoàn Kiếm or Ba Đình district, Hà Nội (2h drive to Ninh Bình)',
+    factDurationNote: 'A long single day: the karst valley and back to Hà Nội the same evening.',
+    factGroupSizeNote: 'Sixteen seats, though the sampans split the group into pairs on the water.',
+    factDifficultyNote: 'The Múa Cave steps are the one real climb; the boat leg is all sitting.',
+    factGoodForNote: 'A good compromise when the group wants scenery without an overnight.',
+    freeCancellationDays: null,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -235,6 +261,11 @@ export const tours: TourFixture[] = [
     ],
     meetingPoint:
       'Hotel pickup in the Hà Nội Old Quarter, or self-transfer to Tuần Châu pier, Hạ Long',
+    factDurationNote: 'One night aboard, so you see the bay at dusk and again at first light.',
+    factGroupSizeNote: 'Twenty-two guests across the boat, with cabins allocated per booking.',
+    factDifficultyNote: 'The bay does the work — kayaking and the cave walk are both optional.',
+    factGoodForNote: 'The classic Hạ Long night out, easy for grandparents and children alike.',
+    freeCancellationDays: 7,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -277,6 +308,11 @@ export const tours: TourFixture[] = [
       "Cycling or free time on Cát Bà town's seafront",
     ],
     meetingPoint: 'Hotel pickup in Hải Phòng, or self-transfer to Bến Bèo pier, Cát Bà',
+    factDurationNote: 'Three days with two nights afloat, deep enough to reach the quiet water.',
+    factGroupSizeNote: 'Twenty on board, small enough that the kayaks go out together.',
+    factDifficultyNote: 'Kayaking and snorkelling are daily, so a basic level of swimming helps.',
+    factGoodForNote: 'Built for people who would rather paddle than photograph from the deck.',
+    freeCancellationDays: 7,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -318,6 +354,11 @@ export const tours: TourFixture[] = [
       'Home-cooked dinner with the family who hosts you',
     ],
     meetingPoint: 'Hotel pickup, Hoàn Kiếm district, Hà Nội',
+    factDurationNote: 'One night in the valley — enough for the walk down and the walk back.',
+    factGroupSizeNote: 'Twelve trekkers, matching the number of beds in the stilt-house homestay.',
+    factDifficultyNote: 'A descent through terraced fields; the return climb is the tiring half.',
+    factGoodForNote: 'Suits people happy to sleep on a mat and eat what the family cooks.',
+    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -355,6 +396,11 @@ export const tours: TourFixture[] = [
       'Views over the Hoàng Liên Sơn range from the highest point in Indochina',
     ],
     meetingPoint: 'Hotel pickup, Hoàn Kiếm district, Hà Nội',
+    factDurationNote: 'Three days with the summit day sitting in the middle, weather permitting.',
+    factGroupSizeNote: 'Twelve places, tied to the cable-car booking made ahead of departure.',
+    factDifficultyNote: 'The cable car removes the climb, but the village walks still add up.',
+    factGoodForNote: "Reaches the roof of Indochina without asking for a mountaineer's legs.",
+    freeCancellationDays: 5,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -398,6 +444,13 @@ export const tours: TourFixture[] = [
     ],
     meetingPoint:
       'Hotel pickup, Hà Giang city (night-bus transfer from Hà Nội arranged on request)',
+    factDurationNote:
+      'Four days on the bike with the fourth kept as a buffer — a late drop-off, not a rush.',
+    factGroupSizeNote: 'Ten riders, because every passenger gets their own easyrider driver.',
+    factDifficultyNote:
+      'Long saddle days on narrow mountain roads; the riding is done for you, the sitting is not.',
+    factGoodForNote: 'For people who want the pass road itself, not a view of it from a coach.',
+    freeCancellationDays: 10,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -434,6 +487,12 @@ export const tours: TourFixture[] = [
       "Easy terrain — Mai Châu's gentlest introduction to the highlands",
     ],
     meetingPoint: 'Hotel pickup, Hoàn Kiếm district, Hà Nội',
+    factDurationNote: 'Two days on a bicycle with one night in the valley between them.',
+    factGroupSizeNote: 'Fourteen bikes, sized on arrival to the riders who booked them.',
+    factDifficultyNote:
+      'Flat valley lanes rather than climbs — distance, not gradient, is the effort.',
+    factGoodForNote: 'A first cycling trip that a family can finish together.',
+    freeCancellationDays: 3,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -476,6 +535,11 @@ export const tours: TourFixture[] = [
       "One trip, three of northern Vietnam's signature landscapes",
     ],
     meetingPoint: 'Hotel pickup, Hoàn Kiếm district, Hà Nội (day 1)',
+    factDurationNote: 'Five days that string the north together, changing base three times.',
+    factGroupSizeNote: 'Sixteen guests, with hotel rooms and the cruise cabin blocked ahead.',
+    factDifficultyNote: 'Coach transfers do the distance; the walking is short and optional.',
+    factGoodForNote: 'The sampler itinerary for a first visit to the north.',
+    freeCancellationDays: 14,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -519,6 +583,11 @@ export const tours: TourFixture[] = [
       'Cái Răng floating market at dawn in the Mekong Delta',
     ],
     meetingPoint: 'Arrival pickup at Nội Bài International Airport, Hà Nội (day 1)',
+    factDurationNote: 'Twelve days spanning all three regions, linked by domestic flights.',
+    factGroupSizeNote: 'Sixteen travellers, kept to one coach and one guide throughout.',
+    factDifficultyNote: 'Early starts and frequent packing are the real demand, not the terrain.',
+    factGoodForNote: 'For travellers with the time to see the whole country in one run.',
+    freeCancellationDays: 30,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -1592,7 +1661,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000001',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 24 hours out',
     body: 'Free cancellation up to 24 hours before the tour start time. Inside 24 hours or no-show, the full amount is non-refundable — kitchens are booked by headcount that evening.',
   },
   {
@@ -1600,7 +1669,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000001',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: 'Paid in full at booking',
     body: 'Full payment is collected at booking to confirm your seats with each kitchen. Group size is capped at 12 to keep every stop personal.',
   },
   {
@@ -1608,7 +1677,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000001',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Walking shoes and an appetite',
     body: 'Wear comfortable walking shoes and come hungry — portions are tasting-sized but the stops add up. Bring cash for extra rounds of bia hơi or market snacks.',
   },
   // ---- Tour #2 ----
@@ -1617,7 +1686,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000002',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 24 hours out',
     body: 'Free cancellation up to 24 hours before pickup. Inside 24 hours or no-show, the full amount is non-refundable.',
   },
   {
@@ -1625,7 +1694,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000002',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit holds your seat',
     body: 'A 30% deposit secures your seat online; the remainder is due before pickup on the day of the tour.',
   },
   {
@@ -1633,7 +1702,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000002',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Modest dress at the memorials',
     body: 'Modest dress is required at the Mausoleum grounds and Temple of Literature — no shorts above the knee or sleeveless tops. Bring water and comfortable shoes.',
   },
   // ---- Tour #3 ----
@@ -1642,7 +1711,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000003',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 24 hours out',
     body: "You can cancel at no charge until 24 hours before pickup — after that cutoff, or if you don't show, the tour is billed in full.",
   },
   {
@@ -1650,7 +1719,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000003',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: 'Paid in full at booking',
     body: 'Full payment is collected at booking; the pottery session and workshop slots are reserved by headcount.',
   },
   {
@@ -1658,7 +1727,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000003',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Clothes you can get clay on',
     body: 'Wear clothes you can get a little clay on — aprons are provided but sleeves can get dusty. Bring cash for extra market purchases.',
   },
   // ---- Tour #4 ----
@@ -1667,7 +1736,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000004',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 48 hours out',
     body: 'Free cancellation up to 48 hours before pickup, given the early departure time. Inside 48 hours or no-show, the full amount is non-refundable.',
   },
   {
@@ -1675,7 +1744,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000004',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: 'Paid in full at booking',
     body: 'Full payment is collected at booking to hold your boat slot at Tràng An, which is allocated by group.',
   },
   {
@@ -1683,7 +1752,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000004',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Sun cover and grippy shoes',
     body: 'Bring sun protection and a hat for the boat leg, and shoes with grip for the Múa Cave steps. Life jackets are compulsory on the sampan.',
   },
   // ---- Tour #5 ----
@@ -1692,7 +1761,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000005',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 7 days out',
     body: 'Free cancellation up to 7 days before departure; 50% refund within 3-7 days; no refund inside 72 hours or no-show, matching the cabin-lock the boat operator requires.',
   },
   {
@@ -1700,7 +1769,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000005',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '20% deposit holds your cabin',
     body: 'A 20% deposit holds your cabin; the balance is due 14 days before sailing.',
   },
   {
@@ -1708,7 +1777,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000005',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'A layer for the evening deck',
     body: 'Bring a light jacket for the evening deck, sun protection for the day, and swimwear for Titop Island; ID is needed for the port checkpoint.',
   },
   // ---- Tour #6 ----
@@ -1717,7 +1786,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000006',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 7 days out',
     body: 'Free cancellation up to 7 days before departure; 50% refund within 3-7 days; no refund inside 72 hours or no-show, matching cabin and bungalow bookings.',
   },
   {
@@ -1725,7 +1794,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000006',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '20% deposit holds your place',
     body: 'A 20% deposit holds your place; the balance is due 14 days before departure.',
   },
   {
@@ -1733,7 +1802,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000006',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Swimwear and reef-safe cream',
     body: 'Bring swimwear, a quick-dry towel, and reef-safe sun cream — kayaking and snorkelling both happen close to the boat.',
   },
   // ---- Tour #7 ----
@@ -1742,7 +1811,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000007',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 5 days out',
     body: 'Free cancellation up to 5 days before departure; 50% refund within 2-5 days; no refund inside 48 hours or no-show, as the homestay is booked ahead by headcount.',
   },
   {
@@ -1750,7 +1819,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000007',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit secures your place',
     body: 'A 30% deposit secures your place; the balance is due 5 days before departure.',
   },
   {
@@ -1758,7 +1827,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000007',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Layers for cool mountain nights',
     body: 'Bring layers for cool mountain nights, trekking shoes with grip, and cash for the homestay. Sa Pa weather changes fast — pack a light rain jacket regardless of season.',
   },
   // ---- Tour #8 ----
@@ -1767,7 +1836,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000008',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 5 days out',
     body: 'Free cancellation up to 5 days before departure; 50% refund within 2-5 days; no refund inside 48 hours or no-show.',
   },
   {
@@ -1775,7 +1844,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000008',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit secures your place',
     body: 'A 30% deposit secures your place; the balance is due 7 days before departure, as the Fansipan cable car ticket is booked ahead.',
   },
   {
@@ -1783,7 +1852,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000008',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'The summit runs colder',
     body: 'Bring layers — the summit is notably colder than the valley — and trekking shoes for the village walks. The cable car can close briefly in high wind.',
   },
   // ---- Tour #9 ----
@@ -1792,7 +1861,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000009',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 10 days out',
     body: 'Free cancellation up to 10 days before departure; 50% refund within 5-10 days; no refund inside 5 days or no-show, as easyrider drivers are booked and paid ahead per passenger.',
   },
   {
@@ -1800,7 +1869,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000009',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit secures your driver',
     body: 'A 30% deposit secures your driver; the balance is due 10 days before departure.',
   },
   {
@@ -1808,7 +1877,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000009',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Long sleeves and closed shoes',
     body: 'Long sleeves, trousers, and closed shoes are required on the bike. Helmets are provided, though you may bring your own if preferred.',
   },
   // ---- Tour #10 ----
@@ -1817,7 +1886,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000010',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 3 days out',
     body: 'Free cancellation up to 3 days before departure; 50% refund within 24-72 hours; no refund inside 24 hours or no-show.',
   },
   {
@@ -1825,7 +1894,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000010',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: 'Paid in full at booking',
     body: 'Full payment is collected at booking to reserve bikes and the homestay for your group.',
   },
   {
@@ -1833,7 +1902,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000010',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Closed shoes for the saddle',
     body: 'Bring closed shoes for cycling and a light layer for the evening. Bicycles are sized on arrival — mention height in advance for a better fit.',
   },
   // ---- Tour #11 ----
@@ -1842,7 +1911,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000011',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 14 days out',
     body: 'Free cancellation up to 14 days before departure; 50% refund within 7-14 days; no refund inside 7 days or no-show, as hotels and the cruise cabin are pre-booked.',
   },
   {
@@ -1850,7 +1919,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000011',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit secures your place',
     body: 'A 30% deposit secures your place; the balance is due 14 days before departure.',
   },
   {
@@ -1858,7 +1927,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000011',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Passport for hotel check-ins',
     body: 'Bring ID/passport for hotel check-ins, modest dress for temple and pagoda stops, and motion sickness tablets if prone to seasickness on the boat legs.',
   },
   // ---- Tour #12 ----
@@ -1867,7 +1936,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000012',
     kind: 'CANCELLATION',
     order: 1,
-    title: 'Cancellation',
+    title: 'Free until 30 days out',
     body: 'Free cancellation up to 30 days before departure; 50% refund within 15-30 days; no refund inside 15 days or no-show, as domestic flights and hotels across three regions are ticketed at booking.',
   },
   {
@@ -1875,7 +1944,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000012',
     kind: 'BOOKING',
     order: 2,
-    title: 'Booking & payment',
+    title: '30% deposit tickets the flights',
     body: 'A 30% deposit is collected at booking to ticket the domestic flights; the balance is due 30 days before departure.',
   },
   {
@@ -1883,7 +1952,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000012',
     kind: 'GENERAL',
     order: 3,
-    title: 'Good to know',
+    title: 'Passport valid 6+ months',
     body: 'A passport valid 6+ months beyond your return date is required. Dress modestly for temples and the Imperial Citadel, and be at each meeting point 15 minutes early given the flight-linked schedule.',
   },
 ];

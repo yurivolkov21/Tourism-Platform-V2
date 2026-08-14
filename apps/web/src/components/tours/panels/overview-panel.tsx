@@ -12,24 +12,26 @@ import type { TourDetailVM } from '@/lib/api/tours';
 
 /**
  * Một card dữ kiện — dựng bám `.fcard` / `.fcard-h` / `.fcard-b` của wireframe:
- * header có icon + nhãn và một đường kẻ ngăn, thân chứa giá trị và (nếu có) một
- * link nhỏ đẩy xuống đáy bằng `margin-top:auto`.
+ * header có icon + nhãn và một đường kẻ ngăn, thân chứa giá trị, câu mô tả, và
+ * (nếu có) một link nhỏ đẩy xuống đáy bằng `margin-top:auto`.
  *
- * ⚠️ THIẾU SO VỚI WIREFRAME — CÓ CHỦ Ý: bản duyệt còn một dòng mô tả dưới mỗi
- * giá trị ("Day four is a buffer morning — coffee and a late drop-off…").
- * `TourDetailSchema` KHÔNG có trường nào chứa câu đó, và bịa ra thì mỗi tour
- * phải viết tay bốn câu. Hệ quả đo được: card cao ~110 thay vì 197 của bản duyệt.
- * Muốn đóng khoảng này thì phải mở contract (ghi trong sổ nợ), không phải sửa CSS.
+ * `note` đến từ bốn cột `fact*Note` mở ở [ADR-0023] — trước đó card thiếu hẳn
+ * dòng này nên cao ~110 thay vì 197 của bản duyệt. **Vẫn nullable**: 30 tour ×
+ * 4 câu là việc soạn nội dung thật và tour mới tạo ở admin sẽ trống lúc đầu,
+ * nên card thiếu mô tả phải đọc được, chỉ là thấp hơn.
  */
 function FactCard({
   icon,
   label,
   value,
+  note,
   link,
 }: {
   icon: ReactNode;
   label: string;
   value: string;
+  /** Một câu mô tả dưới giá trị. `null` là hợp lệ — bỏ hẳn dòng, không in rỗng. */
+  note?: string | null;
   /** Chỉ gắn khi thật sự có chỗ để tới — link chết còn tệ hơn không có link. */
   link?: { href: string; label: string };
 }) {
@@ -44,6 +46,7 @@ function FactCard({
       </div>
       <div className="flex flex-1 flex-col gap-3 p-4">
         <p className="text-sm leading-[20px] font-medium text-foreground">{value}</p>
+        {note ? <p className="text-[13px] leading-5 text-muted-foreground">{note}</p> : null}
         {link ? (
           <a
             href={link.href}
@@ -75,6 +78,7 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
         <FactCard
           icon={<ClockIcon aria-hidden="true" />}
           label={t.facts.duration}
+          note={tour.factDurationNote}
           // Chỉ ghép "N nights" khi tour dài hơn một ngày — tour trong ngày mà
           // ghi "1 day · 0 nights" là nói một thứ vô nghĩa.
           value={
@@ -87,12 +91,14 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
         <FactCard
           icon={<UsersIcon aria-hidden="true" />}
           label={t.facts.groupSize}
+          note={tour.factGroupSizeNote}
           value={t.facts.groupSizeValue(tour.maxGroupSize)}
         />
         {tour.difficulty ? (
           <FactCard
             icon={<SignalIcon aria-hidden="true" />}
             label={t.facts.difficulty}
+            note={tour.factDifficultyNote}
             value={messages.toursPage.difficultyLabels[tour.difficulty]}
             link={{ href: '#good-to-know', label: t.facts.howDemanding }}
           />
@@ -101,13 +107,16 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
           <FactCard
             icon={<HeartIcon aria-hidden="true" />}
             label={t.facts.goodFor}
+            note={tour.factGoodForNote}
             value={tour.suitableFor.map((type) => messages.travellerTypes[type]).join(' · ')}
           />
         ) : null}
       </div>
 
       {/* Wireframe có HAI đoạn mô tả; contract chỉ có `summary` (một đoạn, ≤500
-          ký tự). Đoạn thứ hai của bản duyệt là văn bịa cho demo — không dựng. */}
+          ký tự). Đoạn thứ hai của bản duyệt là văn bịa cho demo — không dựng.
+          KHÁC với bốn câu `fact*Note` phía trên: những câu đó nay có cột thật
+          (ADR-0023), còn đoạn văn thứ hai thì không. */}
       {tour.summary ? <p className="mt-7 max-w-3xl text-muted-foreground">{tour.summary}</p> : null}
 
       {tour.highlights.length > 0 ? (
