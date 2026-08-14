@@ -3,9 +3,10 @@
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
-import { ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon, CreditCardIcon, RotateCcwIcon, UsersIcon } from 'lucide-react';
 import { useId, useState } from 'react';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
+import { FactCard } from '@/components/tours/fact-card';
 import { PANEL_BTN_SM } from '@/components/tours/panel-button';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
 import {
@@ -16,6 +17,7 @@ import {
   monthLabel,
   monthNotice,
   monthSeason,
+  orderPolicies,
 } from '@/lib/tour-detail';
 import { departureStatus, formatChipDate, formatDialogDate, formatMoney } from '@/lib/tours';
 
@@ -333,6 +335,67 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           })}
         </table>
       </div>
+
+      <BookingPolicyCards tour={tour} />
+    </div>
+  );
+}
+
+/**
+ * Ba thẻ chính sách cuối tab — bản duyệt có (`fcard ×3`), bản ship 13/08 BỎ SÓT.
+ * Bộ so R9 không bắt được vì nó chỉ đối chiếu phần tử có mặt ở CẢ HAI bên; phần
+ * tử app thiếu hẳn thì không có gì để so nên nó im lặng. Phép ĐẾM KHỐI theo pane
+ * mới là thứ tìm ra.
+ *
+ * Cùng dữ liệu với tab Good to know, đóng khung lại cho khoảnh khắc chọn ngày:
+ * lúc đang cân nhắc một đợt, câu hỏi là "đặt cọc bao nhiêu, huỷ được tới khi
+ * nào", không phải "mặc gì trên xe". Nên nhãn thẻ nói VAI TRÒ chứ không lặp tên
+ * nhóm policy, và thẻ giữa có link sang tab Good to know cho toàn văn.
+ *
+ * Thẻ thứ ba KHÔNG lấy từ `policies` — nó nói về sức chứa, nên giá trị suy từ
+ * `maxGroupSize` và câu mô tả dùng lại `factGroupSizeNote` (ADR-0023), vốn viết
+ * đúng về chuyện đó.
+ */
+function BookingPolicyCards({ tour }: { tour: TourDetailVM }) {
+  const t = messages.tourDetail.departuresTab;
+  const byKind = Object.fromEntries(orderPolicies(tour.policies).map((p) => [p.kind, p]));
+  const booking = byKind.BOOKING;
+  const cancellation = byKind.CANCELLATION;
+
+  // Không có policy nào thì bỏ hẳn hàng thẻ — một hàng thẻ rỗng tệ hơn không có.
+  if (!booking && !cancellation) return null;
+
+  return (
+    <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {booking ? (
+        <FactCard
+          icon={<CreditCardIcon aria-hidden="true" />}
+          label={t.cardSecuring}
+          value={booking.title}
+          note={booking.body}
+        />
+      ) : null}
+      {cancellation ? (
+        <FactCard
+          icon={<RotateCcwIcon aria-hidden="true" />}
+          label={t.cardChanging}
+          // Con số thắng khi có: "Free until 10 days out" đọc nhanh hơn một câu.
+          // Tour tính cửa sổ bằng GIỜ để `null` → rơi về tiêu đề policy.
+          value={
+            tour.freeCancellationDays === null
+              ? cancellation.title
+              : t.freeUntil(tour.freeCancellationDays)
+          }
+          note={cancellation.body}
+          link={{ href: '#good-to-know', label: t.readFullPolicy }}
+        />
+      ) : null}
+      <FactCard
+        icon={<UsersIcon aria-hidden="true" />}
+        label={t.cardGroup}
+        value={t.groupCap(tour.maxGroupSize)}
+        note={tour.factGroupSizeNote}
+      />
     </div>
   );
 }

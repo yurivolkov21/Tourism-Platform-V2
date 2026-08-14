@@ -1991,6 +1991,19 @@ export const messages = {
       selected: 'Selected',
       /** Phần dư sau `DEPARTURE_ROWS_PER_MONTH` dòng nhường cho modal. */
       seeAllMonthDates: (n: number, month: string) => `See all ${n} ${month} dates`,
+
+      // ── Ba thẻ chính sách cuối tab (bản duyệt có, bản ship 13/08 bỏ sót) ──
+      /** Nhãn thẻ nói VAI TRÒ ở khoảnh khắc đặt chỗ, không lặp lại tên nhóm
+          policy — ba thẻ này là cùng dữ liệu với tab Good to know, đóng khung
+          lại cho lúc khách đang chọn ngày. */
+      cardSecuring: 'Securing a seat',
+      cardChanging: 'Changing your mind',
+      cardGroup: 'Travelling as a group',
+      /** Nhãn nổi bật của thẻ huỷ khi tour CÓ `freeCancellationDays`. Tour tính
+          cửa sổ bằng giờ để null → rơi về `policy.title` như hai thẻ kia. */
+      freeUntil: (days: number) => `Free until ${days} ${days === 1 ? 'day' : 'days'} out`,
+      groupCap: (max: number) => `Up to ${max} ${max === 1 ? 'guest' : 'guests'}`,
+      readFullPolicy: 'Read the full policy',
       /** Tour chưa mở đợt nào: nói thẳng và mở một lối đi tiếp, không để tab
           trống trơn. Khác câu ở `booking.box.noDepartures` vì chỗ này không
           đứng cạnh form hỏi nào. */

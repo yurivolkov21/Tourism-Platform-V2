@@ -38,6 +38,25 @@ const TOUR = {
   basePrice: '329.00',
   durationDays: 4,
   maxGroupSize: 10,
+  freeCancellationDays: 10,
+  factGroupSizeNote: 'Ten riders, one driver each.',
+  policies: [
+    {
+      kind: 'CANCELLATION',
+      title: 'Free until 10 days out',
+      body: 'Free cancellation up to 10 days before departure.',
+    },
+    {
+      kind: 'BOOKING',
+      title: '30% deposit secures your driver',
+      body: 'A 30% deposit secures your driver.',
+    },
+    {
+      kind: 'GENERAL',
+      title: 'Long sleeves and closed shoes',
+      body: 'Long sleeves are required on the bike.',
+    },
+  ],
 } as unknown as TourDetailVM;
 
 function wrap(departures: DepartureVM[] = DEPARTURES, tour: TourDetailVM = TOUR): ReactNode {
@@ -165,5 +184,42 @@ describe('DeparturesPanel', () => {
     render(wrap([]));
     expect(screen.getByText(/No upcoming departures/i)).toBeInTheDocument();
     expect(screen.queryByRole('table')).toBeNull();
+  });
+
+  it('ba thẻ chính sách cuối tab — chỗ bản ship 13/08 bỏ sót', () => {
+    render(wrap());
+    expect(screen.getByText('Securing a seat')).toBeInTheDocument();
+    expect(screen.getByText('Changing your mind')).toBeInTheDocument();
+    expect(screen.getByText('Travelling as a group')).toBeInTheDocument();
+  });
+
+  it('thẻ huỷ in CON SỐ khi tour có freeCancellationDays', () => {
+    render(wrap());
+    expect(screen.getAllByText('Free until 10 days out').length).toBeGreaterThan(0);
+  });
+
+  it('tour tính cửa sổ bằng GIỜ (null) thì rơi về tiêu đề policy, không in "Free until null"', () => {
+    render(
+      wrap(DEPARTURES, {
+        ...TOUR,
+        freeCancellationDays: null,
+        policies: [
+          { kind: 'CANCELLATION', title: 'Free until 24 hours out', body: 'Free up to 24 hours.' },
+        ],
+      } as unknown as TourDetailVM),
+    );
+    expect(screen.getByText('Free until 24 hours out')).toBeInTheDocument();
+    expect(screen.queryByText(/Free until null/)).toBeNull();
+  });
+
+  it('thẻ nhóm suy từ maxGroupSize, KHÔNG lấy từ policies', () => {
+    render(wrap());
+    expect(screen.getByText('Up to 10 guests')).toBeInTheDocument();
+    expect(screen.getByText('Ten riders, one driver each.')).toBeInTheDocument();
+  });
+
+  it('tour không có policy nào thì bỏ hẳn hàng thẻ', () => {
+    render(wrap(DEPARTURES, { ...TOUR, policies: [] } as unknown as TourDetailVM));
+    expect(screen.queryByText('Securing a seat')).toBeNull();
   });
 });
