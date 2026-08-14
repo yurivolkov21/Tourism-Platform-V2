@@ -73,13 +73,17 @@ const { rows: tours } = await client.query(
     WHERE t.is_published = true
     ORDER BY d.slug, t.slug`,
 );
+// Tổng số khe lấy từ DB chứ KHÔNG viết cứng: bảng đếm dưới kia từng ghi "/9"
+// và con số đó lệch ngay khi khe thứ 10 (`about-hero`) ra đời. DB là nơi duy
+// nhất biết đủ danh sách khe.
+const { rows: slotRows } = await client.query('SELECT key FROM site_media_slots');
 await client.end();
 
 const plan = [];
 const warn = [];
 const missing = { slots: [], covers: [], places: [], galleries: [] };
 
-// ── 1. Chín khe thương hiệu ──
+// ── 1. Khe thương hiệu ──
 const siteDir = path.join(ROOT, '_site');
 const siteFiles = await images(siteDir);
 const siteCredits = await credits(siteDir);
@@ -177,7 +181,7 @@ for (const tour of tours) {
   }
 }
 
-for (const key of ['home-hero', 'about-story', 'auth-panel']) {
+for (const key of ['home-hero', 'about-hero', 'about-story', 'auth-panel']) {
   if (!siteFiles.some((f) => f.startsWith(key))) missing.slots.push(key);
 }
 
@@ -207,7 +211,7 @@ say(
 );
 
 const rows = [
-  ['Khe thương hiệu', siteFiles.length, 9],
+  ['Khe thương hiệu', siteFiles.length, slotRows.length],
   ['Cover tour', tours.length - missing.covers.length, tours.length],
   ['Ảnh địa danh', places.length - missing.places.length, places.length],
   ['Bộ gallery địa danh', places.length - missing.galleries.length, places.length],

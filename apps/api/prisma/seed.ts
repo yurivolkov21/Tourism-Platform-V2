@@ -71,6 +71,7 @@ const SITE_SLOT_KEYS = [
   'destinations-hero',
   'auth-panel',
   'about-story',
+  'about-hero',
 ] as const;
 
 const connectionString =

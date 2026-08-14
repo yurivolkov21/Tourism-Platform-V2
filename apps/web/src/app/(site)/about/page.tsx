@@ -38,11 +38,15 @@ export default async function AboutPage() {
   ]);
 
   // Khe brand-chrome: `null` khi chưa có ảnh — SlotImage tự rơi về placeholder.
-  const storyImage = await siteMediaImage('about-story');
+  // Hai lần gọi nhưng MỘT lần qua mạng: `fetchSiteMedia` bọc trong `cache()`.
+  const [heroImage, storyImage] = await Promise.all([
+    siteMediaImage('about-hero'),
+    siteMediaImage('about-story'),
+  ]);
 
   return (
     <>
-      <AboutHero />
+      <AboutHero heroImage={heroImage} />
       <AboutStory storyImage={storyImage} />
       <AboutTimeline />
       <AboutNumbers

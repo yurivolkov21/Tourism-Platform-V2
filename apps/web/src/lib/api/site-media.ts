@@ -10,7 +10,7 @@ export type SiteMediaEntry = ContractOutputs['siteMedia']['list'][number];
 export type SiteMediaItem = SiteMediaEntry['media'][number];
 
 /**
- * Chín khe brand-chrome (`home-hero`, `about-story`, `auth-panel`…).
+ * Các khe brand-chrome (`home-hero`, `about-hero`, `about-story`, `auth-panel`…).
  *
  * `cache()` của React dedupe trong MỘT lần render: trang chủ có bốn khe, không
  * có nó là bốn lần gọi mạng cho cùng một payload.

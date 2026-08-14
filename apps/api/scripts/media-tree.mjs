@@ -14,7 +14,7 @@
  * ── Hình dạng và lý do ──
  *
  *   media-inbox/
- *     _site/                       9 khe thương hiệu, KHÔNG thuộc địa danh nào
+ *     _site/                       10 khe thương hiệu, KHÔNG thuộc địa danh nào
  *       home-hero.jpg              (`home-hero` là tấm nhiều lượt nhìn nhất site)
  *     hoi-an/                      slug ĐỊA DANH
  *       destination.jpg            1 tấm cho /destinations
@@ -38,7 +38,7 @@ import pg from 'pg';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../media-inbox');
 
-/** Chín khe brand-chrome — bản sao danh sách trong `prisma/seed.ts`. */
+/** Mười khe brand-chrome — bản sao danh sách trong `prisma/seed.ts`. */
 const SITE_SLOTS = [
   [
     'home-hero',
@@ -53,9 +53,14 @@ const SITE_SLOTS = [
   ['destinations-hero', 'Ảnh đầu trang /destinations.', '2400×1000, rất ngang'],
   ['auth-panel', 'Cột ảnh cạnh form đăng nhập/đăng ký.', '1200×1600, DỌC'],
   ['about-story', 'Ảnh trong khối kể chuyện ở /about.', '1600×1200, ngang'],
+  [
+    'about-hero',
+    'Ảnh nền hero /about (full màn). Chữ nằm NỬA TRÁI, nên chủ thể phải ở nửa PHẢI; góc dưới-phải có chữ "Scroll" trắng nên chỗ đó không được cháy sáng.',
+    '2400×1350 (16:9), ngang',
+  ],
 ];
 
-const README_SITE = `# Chín khe thương hiệu
+const README_SITE = `# Mười khe thương hiệu
 
 Ảnh ở đây KHÔNG thuộc địa danh nào — chúng là mặt tiền của site.
 
@@ -189,12 +194,28 @@ const { rows: primary } = await client.query(
 const { rows: postCount } = await client.query('SELECT count(*)::int AS n FROM posts');
 await client.end();
 
-/** Ghi file chỉ khi CHƯA có — không bao giờ đè thứ user đã sửa hoặc đã thả. */
-async function put(file, body) {
+let refreshed = 0;
+
+/**
+ * Ghi file. Mặc định KHÔNG đè thứ đã có — `LINKS.txt` là chỗ user dán link vào,
+ * đè nó là xoá mất công của người dùng.
+ *
+ * `refresh: true` chỉ dành cho file HƯỚNG DẪN do máy sinh (`NEEDED.md`,
+ * `README.md`): nội dung suy HOÀN TOÀN từ DB, nên giữ bản cũ không phải là bảo
+ * vệ mà là nói sai. Dính 14/08: thêm khe `about-hero` thành 10, nhưng bảng
+ * trong `_site/NEEDED.md` vẫn liệt kê 9 khe — đúng cái file user mở ra để biết
+ * cần thả ảnh gì.
+ */
+async function put(file, body, { refresh = false } = {}) {
   const dir = path.dirname(file);
   await mkdir(dir, { recursive: true });
   const existing = await readdir(dir);
-  if (existing.includes(path.basename(file))) return false;
+  if (existing.includes(path.basename(file))) {
+    if (!refresh) return false;
+    await writeFile(file, body, 'utf8');
+    refreshed++;
+    return false; // đã có từ trước → không tính là file MỚI
+  }
   await writeFile(file, body, 'utf8');
   return true;
 }
@@ -210,7 +231,7 @@ let files = 0;
 
 await mkdir(path.join(ROOT, '_site'), { recursive: true });
 dirs++;
-if (await put(path.join(ROOT, '_site', 'NEEDED.md'), README_SITE)) files++;
+if (await put(path.join(ROOT, '_site', 'NEEDED.md'), README_SITE, { refresh: true })) files++;
 
 for (const place of places) {
   const tours = byPlace.get(place.slug) ?? [];
@@ -221,6 +242,7 @@ for (const place of places) {
     await put(
       path.join(base, 'NEEDED.md'),
       readmePlace(place.slug, place.name, tours, place.passing),
+      { refresh: true },
     )
   )
     files++;
@@ -228,7 +250,8 @@ for (const place of places) {
     const tourDir = path.join(base, 'tours', tour.slug);
     await mkdir(tourDir, { recursive: true });
     dirs++;
-    if (await put(path.join(tourDir, 'NEEDED.md'), readmeTour(tour, place.slug))) files++;
+    if (await put(path.join(tourDir, 'NEEDED.md'), readmeTour(tour, place.slug), { refresh: true }))
+      files++;
   }
 }
 
@@ -238,13 +261,19 @@ const counts = {
   tours: primary.length,
   posts: postCount[0].n,
 };
-if (await put(path.join(ROOT, 'README.md'), ROOT_README(counts))) files++;
+if (await put(path.join(ROOT, 'README.md'), ROOT_README(counts), { refresh: true })) files++;
+// LINKS.txt KHÔNG refresh — đó là chỗ user dán link, không phải file sinh ra.
 if (await put(path.join(ROOT, 'LINKS.txt'), LINKS_TEMPLATE)) files++;
 
 console.log(`[media-tree] cây ở ${path.relative(process.cwd(), ROOT)}`);
-console.log(`[media-tree] ${dirs} thư mục · ${files} file hướng dẫn mới`);
+console.log(
+  `[media-tree] ${dirs} thư mục · ${files} file hướng dẫn mới · ${refreshed} file cập nhật`,
+);
 console.log(
   `[media-tree] cần: ${counts.slots} khe site · ${counts.tours} cover tour · ` +
     `${counts.places} ảnh địa danh · ${counts.places} bộ gallery`,
 );
-console.log('[media-tree] chạy lại lúc nào cũng được — KHÔNG đè file đã có.');
+console.log(
+  '[media-tree] chạy lại lúc nào cũng được — ảnh đã thả và LINKS.txt KHÔNG bị đụng;\n' +
+    '             riêng NEEDED.md/README.md được dựng lại theo DB mới nhất.',
+);

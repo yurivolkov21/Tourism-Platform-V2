@@ -2,9 +2,10 @@
 
 import { CompassIcon, MoveRightIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { RevealLine } from '@/components/motion/reveal-line';
+import { SlotImage } from '@/components/slot-image';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 
 // About §1 (convert 100% lối forged/Hero, da thịt token + bài học #25):
 // hero fullscreen căn TRÁI — badge pill viền accent, heading 3 dòng reveal
@@ -24,15 +25,21 @@ const HERO_STATS = [
   { value: 98, suffix: '%', label: 'Would go again' },
 ];
 
-export function AboutHero() {
+export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | null }) {
   return (
     <section className="relative flex min-h-screen w-full items-center overflow-hidden text-on-media">
-      {/* Nền: placeholder + gradient trái→phải như forged (chữ nằm bên trái) */}
+      {/* Nền: ảnh khe `about-hero` + gradient trái→phải như forged (chữ nằm bên
+          trái). Gradient này ra ĐỀ BÀI cho tấm ảnh: nửa trái bị phủ tối gần đặc
+          nên chi tiết ở đó vô ích, nửa phải KHÔNG phủ nên chủ thể phải nằm bên
+          đó — và góc dưới-phải còn chữ "Scroll" trắng đè lên vùng trong suốt,
+          ảnh cháy sáng chỗ đó là mất chữ. */}
       <div className="dark absolute inset-0 -z-10">
-        <ImagePlaceholder
+        <SlotImage
+          image={heroImage}
           corner
           label="About hero — guide leading trekkers, Sa Pa"
-          className="h-full w-full"
+          className="absolute inset-0 h-full w-full"
+          priority
         />
         <div className="absolute inset-0 bg-linear-to-r from-overlay via-overlay/60 to-transparent" />
       </div>
