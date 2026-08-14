@@ -107,6 +107,13 @@ for (const item of plan) {
         const res = await cloudinary.v2.uploader.upload(item.file, {
           public_id: publicId,
           overwrite: true,
+          // `overwrite` MỘT MÌNH là chưa đủ: nó thay file trong kho Cloudinary
+          // nhưng KHÔNG đụng tới bản dựng sẵn đang nằm ở CDN biên, nên thay ảnh
+          // xong URL vẫn phát bản cũ. Đo được 14/08: đổi ảnh cover Hạ Long,
+          // upload báo thành công, `publicId` đúng, mà CDN vẫn trả đúng kích
+          // thước tấm cũ (2816×2112 thay vì 2400×1600). Người xem tưởng script
+          // hỏng, thực ra là cache biên.
+          invalidate: true,
           resource_type: 'image',
         });
         meta = res;
@@ -165,4 +172,17 @@ if (failures.length) {
   console.log(`[media-upload] ${failures.length} lỗi:`);
   for (const f of failures) console.log(`   ✗ ${f}`);
 }
-if (!DRY) console.log('[media-upload] build lại web để trang SSG nhận ảnh mới.\n');
+if (!DRY) {
+  console.log('[media-upload] build lại web để trang SSG nhận ảnh mới.');
+  // THAY ảnh (cùng publicId, nội dung khác) có hai tầng cache phải qua, và cả
+  // hai đều IM LẶNG. `invalidate: true` ở trên xử tầng CDN, nhưng nó lan không
+  // đều giữa các node biên — đo được 14/08: CDN đã trả ảnh mới rồi mà lát sau
+  // Next fetch vẫn nhận bản cũ. Next lưu đúng cái nó nhận vào
+  // `.next/cache/images` và giữ theo `minimumCacheTTL`, nên một lần fetch trúng
+  // bản cũ là trang kẹt ảnh cũ rất lâu dù CDN đã sạch.
+  console.log(
+    '[media-upload] Nếu vừa THAY ảnh cho một publicId đã có: đợi CDN lan (~1–3 phút),\n' +
+      '               rồi `rm -rf apps/web/.next/cache/images` TRƯỚC khi build —\n' +
+      '               không thì Next phát lại bản cũ nó đã cache.\n',
+  );
+}
