@@ -1,5 +1,6 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { motion } from 'motion/react';
 import { CountUp } from '@/components/motion/count-up';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
@@ -7,7 +8,14 @@ import { SectionEyebrow } from './section-eyebrow';
 import { StatsSlider } from './stats-slider';
 
 // Convert từ Estate stats.tsx: headline lớn + mô tả + nút + 3 counter có vách ngăn.
-export function Stats({ toursCount }: { toursCount: number | null }) {
+export function Stats({
+  toursCount,
+  momentCovers,
+}: {
+  toursCount: number | null;
+  /** `tourSlug` → cover, cho slider khoảnh khắc bên cột phải. */
+  momentCovers?: Record<string, MediaItem | null>;
+}) {
   return (
     <section id="tours" className="w-full px-4 py-16 md:px-16 md:py-25 lg:px-24 xl:px-32">
       {/* 2 cột (review #9): trái giữ nguyên thiết kế Estate, phải lấp bằng hover-expand gallery */}
@@ -98,7 +106,7 @@ export function Stats({ toursCount }: { toursCount: number | null }) {
           viewport={{ once: true }}
           transition={{ ...SPRING, delay: 0.2 }}
         >
-          <StatsSlider />
+          <StatsSlider covers={momentCovers} />
         </motion.div>
       </div>
     </section>

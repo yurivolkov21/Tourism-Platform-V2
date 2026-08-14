@@ -3,8 +3,8 @@
 import { motion } from 'motion/react';
 import { useEffect, useRef } from 'react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
+import { SlotImage } from '@/components/slot-image';
 import type { DestinationVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { regionOf } from '@/lib/regions';
@@ -117,9 +117,13 @@ export function Gallery({
                       data-region={regionKey ?? undefined}
                       className="group relative block aspect-[4/5] h-[min(52vh,540px)] min-h-[380px] overflow-hidden rounded-xl"
                     >
-                      <ImagePlaceholder
+                      {/* Thẻ là 4/5 DỌC — ảnh `destination.jpg` nên chọn khung
+                          dọc, ảnh ngang vào đây bị cắt cụt hai bên. */}
+                      <SlotImage
+                        image={dest.cover}
                         label={dest.description ?? dest.name}
-                        className="h-full w-full"
+                        className="absolute inset-0 h-full w-full"
+                        sizes="(min-width: 1024px) 30vw, 80vw"
                       />
                       {/* Chip vùng — cặp `secondary`/`secondary-foreground` của
                           brand. Trước ADR-0015 nó lấy `--region-surface`/

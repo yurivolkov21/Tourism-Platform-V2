@@ -13,12 +13,12 @@ import type { MockMoment } from './types.js';
 // chiều: slug tồn tại VÀ credit nhắc đúng tên tour slug đó trỏ tới.
 export const MOMENTS: MockMoment[] = [
   {
-    title: 'Kayaking into the hidden lagoon at golden hour',
+    title: 'Paddling out between the karsts, just the two of us',
     credit: 'Sarah, Hạ Long Bay Overnight Cruise 2D1N',
     tourSlug: 'halong-bay-overnight-cruise',
   },
   {
-    title: 'Sunrise over the terraces from the homestay porch',
+    title: 'The valley opens up on the climb to the homestay',
     credit: 'Daniel, Sa Pa Terraces & Homestay Trek 2D1N',
     tourSlug: 'sapa-terraces-homestay-2d',
   },
@@ -28,12 +28,12 @@ export const MOMENTS: MockMoment[] = [
     tourSlug: 'hoi-an-lantern-evening',
   },
   {
-    title: 'Learning royal recipes with chị Lan in her garden kitchen',
+    title: 'The Ngọ Môn gate before the morning crowds arrive',
     credit: 'Kenji, Huế Imperial City & Royal Tombs',
     tourSlug: 'hue-imperial-day',
   },
   {
-    title: 'Coffee on the boat as the floating market wakes up',
+    title: 'Drifting between the boats as the market wakes up',
     credit: 'Tom, Mekong Delta & Cái Răng Floating Market 2D1N',
     tourSlug: 'mekong-can-tho-2d',
   },

@@ -12,6 +12,7 @@ import { settle } from '@/lib/api/resilience';
 import { siteMediaImage } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { topDestinations } from '@/lib/regions';
+import { MOMENTS } from '@/mocks/moments';
 import { REGIONS } from '@/mocks/regions';
 
 // Home fetch teaser Journal từ API (Task 9) → trang thành ISR, khai tường
@@ -37,13 +38,25 @@ export default async function HomePage() {
     siteMediaImage('home-hero'),
     siteMediaImage('cta-band'),
   ]);
+
+  // Slider khoảnh khắc lấy ảnh từ `cover` của TOUR mà mỗi khoảnh khắc trỏ tới.
+  // Dựng bản tra cứu ở server rồi truyền xuống, thay vì đẩy cả danh sách tour
+  // qua ranh giới client — `Stats` là client component, mọi prop đều bị
+  // serialize vào payload.
+  const momentCovers = Object.fromEntries(
+    MOMENTS.map((m) => [
+      m.tourSlug,
+      toursRes.data?.find((t) => t.slug === m.tourSlug)?.cover ?? null,
+    ]),
+  );
+
   return (
     <>
       <Hero heroImage={heroImage} />
       {/* Dải trust ngay dưới hero (vị trí gốc của forged): nền tối nối liền
           hero, ngăn với Stats sáng bên dưới bằng border */}
       <Partners />
-      <Stats toursCount={toursRes.ok ? toursRes.data.length : null} />
+      <Stats toursCount={toursRes.ok ? toursRes.data.length : null} momentCovers={momentCovers} />
       {/* Fix sau review (31/07): Home giữ ĐÚNG 9 tile như thiết kế đã duyệt — chọn
           9 điểm tourCount cao nhất từ 19 điểm API trả về, /destinations mới đủ 19 */}
       <Gallery

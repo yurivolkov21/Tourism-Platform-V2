@@ -1,8 +1,9 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import { MOMENTS } from '@/mocks/moments';
 
 // Convert từ PrebuiltUI "Image Slider with Indicators" (review #10; #11 đổi
@@ -11,7 +12,11 @@ import { MOMENTS } from '@/mocks/moments';
 // hover / reduced-motion), bấm chấm nhảy slide. Thu ~13% so với cột.
 const SLIDES = MOMENTS;
 
-export function StatsSlider() {
+// Ảnh của mỗi khoảnh khắc lấy từ `cover` của chính TOUR nó trỏ tới, tra theo
+// `tourSlug`. Không dùng ảnh ĐỊA DANH: `DestinationSchema.cover` cố ý chỉ có
+// một tấm dành cho tile 4/5 DỌC, còn ô này là 4/3 NGANG — ép dùng chung thì
+// một trong hai chỗ chắc chắn bị cắt hỏng.
+export function StatsSlider({ covers = {} }: { covers?: Record<string, MediaItem | null> }) {
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const reduced = useReducedMotion();
@@ -39,9 +44,11 @@ export function StatsSlider() {
         >
           {SLIDES.map((moment) => (
             <div key={moment.title} className="w-full shrink-0">
-              <ImagePlaceholder
+              <SlotImage
+                image={covers[moment.tourSlug] ?? null}
                 label={`${moment.title} — ${moment.credit}`}
-                className="aspect-(--aspect-card) w-full"
+                className="relative aspect-(--aspect-card) w-full"
+                sizes="(min-width: 1024px) 45vw, 90vw"
               />
             </div>
           ))}

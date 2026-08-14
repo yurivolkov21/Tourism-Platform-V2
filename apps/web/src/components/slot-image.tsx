@@ -1,6 +1,6 @@
+import type { MediaItem } from '@tourism/contract';
 import Image from 'next/image';
 import { ImagePlaceholder } from '@/components/image-placeholder';
-import type { SiteMediaItem } from '@/lib/api/site-media';
 
 /**
  * Ảnh của một khe brand-chrome, hoặc `ImagePlaceholder` khi khe chưa có ảnh.
@@ -18,6 +18,11 @@ import type { SiteMediaItem } from '@/lib/api/site-media';
  *
  * `image === null` là trạng thái BÌNH THƯỜNG, không phải lỗi: API chỉ trả khe
  * có ảnh, và cả site sẽ còn khe trống trong một thời gian dài.
+ *
+ * Kiểu prop là `MediaItem` của contract — KHÔNG phải kiểu riêng của site-media.
+ * Khe thương hiệu, `cover` của tour và `cover` của địa danh đều là cùng một
+ * lược đồ, nên cùng một component phục vụ cả ba; buộc kiểu hẹp hơn chỉ tạo ra
+ * ép kiểu ở chỗ gọi mà không thêm an toàn nào.
  */
 export function SlotImage({
   image,
@@ -27,7 +32,7 @@ export function SlotImage({
   priority = false,
   sizes = '100vw',
 }: {
-  image: SiteMediaItem | null;
+  image: MediaItem | null;
   /** Nhãn của placeholder khi chưa có ảnh — bỏ qua khi đã có ảnh thật. */
   label?: string;
   className?: string;
