@@ -211,17 +211,28 @@ for (const line of lines) {
     continue;
   }
 
-  // Xin bản đủ lớn ngay từ CDN thay vì tải bản mặc định rồi phóng lên.
+  // DỰNG LẠI query thay vì nối thêm: link user copy từ Unsplash mang sẵn
+  // `w`/`q`/`fit=crop`/`ixid`, nối thêm `&w=2400` thì kết quả phụ thuộc vào
+  // việc imgix lấy tham số đầu hay cuối — và `fit=crop` còn cắt ảnh. Bỏ hết,
+  // chỉ giữ đường dẫn ảnh rồi tự đặt kích thước.
   const sized = url.includes('images.unsplash.com')
-    ? `${url}${url.includes('?') ? '&' : '?'}w=2400&q=80`
+    ? `${url.split('?')[0]}?w=2400&q=80&fm=jpg`
     : url;
 
-  const res = await fetch(sized, { headers: { 'User-Agent': UA } }).catch((e) => ({
-    ok: false,
-    status: e.message,
-  }));
+  // Thử lại khi CDN lỗi 5xx: đo được imgix trả 500 nhất thời cho đúng link mà
+  // ngay sau đó trả 200. Bắt user chạy lại vì một cú nấc của CDN là bắt sai
+  // người — và ta sẽ kéo cỡ 67 tấm, xác suất gặp không nhỏ.
+  let res = null;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    res = await fetch(sized, { headers: { 'User-Agent': UA } }).catch((e) => ({
+      ok: false,
+      status: e.message,
+    }));
+    if (res.ok || !(typeof res.status === 'number' && res.status >= 500)) break;
+    await new Promise((r) => setTimeout(r, 400 * attempt));
+  }
   if (!res.ok) {
-    problems.push(`dòng ${line.n}: tải hỏng (${res.status})`);
+    problems.push(`dòng ${line.n}: tải hỏng (${res.status}) sau 3 lần thử`);
     continue;
   }
   const buf = Buffer.from(await res.arrayBuffer());
