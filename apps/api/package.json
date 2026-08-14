@@ -16,7 +16,9 @@
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "swc src prisma -d dist-seed --ignore '**/*.spec.ts' && node --env-file-if-exists=.env.local dist-seed/prisma/seed.js",
-    "demo:account": "node --env-file-if-exists=.env.local scripts/demo-account.mjs"
+    "demo:account": "node --env-file-if-exists=.env.local scripts/demo-account.mjs",
+    "media:tree": "node --env-file-if-exists=.env.local scripts/media-tree.mjs",
+    "media:scan": "node --env-file-if-exists=.env.local scripts/media-scan.mjs"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

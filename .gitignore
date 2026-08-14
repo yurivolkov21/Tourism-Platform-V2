@@ -46,3 +46,7 @@ pnpm-debug.log*
 
 # File nháp cá nhân để dán code tham khảo
 playground.md
+
+# Chỗ thả ảnh cho khâu media (ADR-0020): ảnh nặng và có giấy phép — repo không
+# phải chỗ giữ chúng. Cây dựng lại được bằng `pnpm --filter @tourism/api media:tree`.
+media-inbox/
