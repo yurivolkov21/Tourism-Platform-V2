@@ -347,6 +347,15 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
         previousLabel={t.gallery.previous}
         nextLabel={t.gallery.next}
         caption={(index) => (hasPhotos ? (photos[index]?.alt ?? null) : null)}
+        // Bật thu/phóng CHỈ ở trang tour (nợ A12). Trang vùng dùng chung
+        // component nhưng chưa đặt hàng tính năng này — thêm hai nút không ai
+        // yêu cầu là tự ý nới phạm vi.
+        zoom={{
+          inLabel: t.gallery.zoomIn,
+          outLabel: t.gallery.zoomOut,
+          valueLabel: t.gallery.zoomLevel,
+          toggleLabel: t.gallery.zoomToggle,
+        }}
         renderMedia={(index) => {
           const photo = photos[index];
           return (

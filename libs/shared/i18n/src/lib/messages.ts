@@ -1854,6 +1854,12 @@ export const messages = {
       previous: 'Previous photo',
       next: 'Next photo',
       close: 'Close photos',
+      /** Thu/phóng trong lightbox (nợ A12). Bản duyệt có sẵn khung CSS cho hàng
+          công cụ này nhưng không có hành vi — hành vi là mới. */
+      zoomIn: 'Zoom in',
+      zoomOut: 'Zoom out',
+      zoomLevel: (percent: number) => `${percent}%`,
+      zoomToggle: 'Zoom photo',
     },
 
     // ── Route ribbon ──

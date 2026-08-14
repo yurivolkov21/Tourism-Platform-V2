@@ -2,8 +2,24 @@
 
 import { Button } from '@tourism/ui/components/button';
 import { Dialog, DialogClose, DialogContent, DialogTitle } from '@tourism/ui/components/dialog';
-import { ChevronLeftIcon, ChevronRightIcon, XIcon } from 'lucide-react';
-import { type ReactNode, useCallback } from 'react';
+import { cn } from '@tourism/ui/lib/utils';
+import { ChevronLeftIcon, ChevronRightIcon, XIcon, ZoomInIcon, ZoomOutIcon } from 'lucide-react';
+import {
+  type ReactNode,
+  type PointerEvent as ReactPointerEvent,
+  useCallback,
+  useRef,
+  useState,
+} from 'react';
+import {
+  canPan,
+  clampPan,
+  nextZoom,
+  type PanOffset,
+  ZOOM_MAX,
+  ZOOM_MIN,
+  zoomPercent,
+} from '@/lib/lightbox';
 
 /**
  * Lightbox dùng chung — xem một bộ media theo chỉ số, có bộ đếm và điều hướng.
@@ -35,6 +51,7 @@ export function Lightbox({
   previousLabel,
   nextLabel,
   caption,
+  zoom,
   renderMedia,
 }: {
   /** Tổng số media. `0` thì không render gì — không dialog rỗng. */
@@ -52,17 +69,71 @@ export function Lightbox({
   /** Chú thích dưới media. Trả `null` là KHÔNG có chú thích — bịa mô tả cho một
       thứ mình không biết còn tệ hơn để trống. */
   caption?: ((index: number) => string | null) | undefined;
+  /**
+   * Bật thu/phóng. CÓ prop này là bật, không có là tắt — không cần cờ riêng.
+   *
+   * Copy đi qua đây vì component không được chứa chuỗi user-facing (xem
+   * doc-comment đầu file), và tắt-theo-mặc-định là đúng: trang vùng dùng cùng
+   * component nhưng chưa yêu cầu thu/phóng, thêm hai nút không ai đặt hàng là
+   * tự ý nới phạm vi.
+   */
+  zoom?:
+    | {
+        inLabel: string;
+        outLabel: string;
+        /** Ví dụ `(p) => \`${p}%\`` — đơn vị do consumer quyết. */
+        valueLabel: (percent: number) => string;
+        /** Nhãn cho chính khung ảnh: bấm (hoặc Enter/Space) để phóng và về gốc. */
+        toggleLabel: string;
+      }
+    | undefined;
   renderMedia: (index: number) => ReactNode;
 }) {
   const current = openAt ?? 0;
+  const [scale, setScale] = useState<number>(ZOOM_MIN);
+  const [pan, setPan] = useState<PanOffset>({ x: 0, y: 0 });
+  const stageRef = useRef<HTMLButtonElement | null>(null);
+  const dragRef = useRef<{ startX: number; startY: number; from: PanOffset } | null>(null);
+  /** Con trỏ có DI CHUYỂN trong lần nhấn này không — phân biệt "rê" với "bấm". */
+  const movedRef = useRef(false);
+  const [dragging, setDragging] = useState(false);
+
+  // Đổi ảnh thì trả zoom về gốc. Giữ nguyên mức phóng khi sang ảnh khác nghĩa là
+  // ảnh kế mở ra ở một góc crop ngẫu nhiên — người xem không hiểu mình đang nhìn
+  // phần nào của tấm nào.
+  const resetZoom = useCallback(() => {
+    setScale(ZOOM_MIN);
+    setPan({ x: 0, y: 0 });
+  }, []);
+
+  /** Kích thước khung sân khấu, đọc thẳng từ DOM tại thời điểm cần — KHÔNG giữ
+      trong state: nó đổi theo cỡ cửa sổ và không có sự kiện nào đáng nghe. */
+  const stageBox = useCallback(() => {
+    const rect = stageRef.current?.getBoundingClientRect();
+    return { width: rect?.width ?? 0, height: rect?.height ?? 0 };
+  }, []);
+
+  const zoomBy = useCallback(
+    (direction: 1 | -1) => {
+      setScale((prev) => {
+        const next = nextZoom(prev, direction);
+        // Thu nhỏ mà giữ nguyên độ dời cũ sẽ để ảnh lệch khỏi tâm; kẹp lại theo
+        // biên MỚI ngay trong cùng một lần đổi.
+        setPan((p) => clampPan(p, next, stageBox()));
+        return next;
+      });
+    },
+    [stageBox],
+  );
 
   // KHÔNG cuộn vòng: tới ảnh cuối rồi bấm tiếp mà quay về ảnh đầu làm người xem
   // tưởng mình chưa xem hết. Nút bị vô hiệu ở hai đầu, đúng như dải khởi hành.
   const go = useCallback(
     (delta: number) => {
+      resetZoom();
       onNavigate(Math.min(count - 1, Math.max(0, current + delta)));
     },
-    [current, count, onNavigate],
+    [current, count, onNavigate, resetZoom],
   );
 
   // Mũi tên bàn phím. Base UI Dialog đã lo Escape và bẫy focus; điều hướng ảnh thì
@@ -81,6 +152,49 @@ export function Lightbox({
       event.preventDefault();
       go(-1);
     }
+    if (!zoom) return;
+    // `+` và `-` là phím thu/phóng quen thuộc; `0` về gốc như mọi trình xem ảnh.
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      zoomBy(1);
+    }
+    if (event.key === '-') {
+      event.preventDefault();
+      zoomBy(-1);
+    }
+    if (event.key === '0') {
+      event.preventDefault();
+      resetZoom();
+    }
+  }
+
+  function onPointerDown(event: ReactPointerEvent<HTMLButtonElement>) {
+    if (!canPan(scale)) return;
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragRef.current = { startX: event.clientX, startY: event.clientY, from: pan };
+    movedRef.current = false;
+    setDragging(true);
+  }
+
+  function onPointerMove(event: ReactPointerEvent<HTMLButtonElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    movedRef.current = true;
+    setPan(
+      clampPan(
+        {
+          x: drag.from.x + (event.clientX - drag.startX),
+          y: drag.from.y + (event.clientY - drag.startY),
+        },
+        scale,
+        stageBox(),
+      ),
+    );
+  }
+
+  function onPointerUp() {
+    dragRef.current = null;
+    setDragging(false);
   }
 
   if (count <= 0) return null;
@@ -101,16 +215,88 @@ export function Lightbox({
           <p aria-live="polite" className="font-mono text-xs tracking-widest text-muted-foreground">
             {counterLabel(current + 1, count)}
           </p>
-          <DialogClose
-            render={
-              <Button variant="ghost" size="icon-sm" aria-label={closeLabel}>
-                <XIcon />
-              </Button>
-            }
-          />
+          {/* `.lb-tools` của bản duyệt — 32×32 mỗi nút, gap 6. */}
+          <div className="flex items-center gap-1.5">
+            {zoom ? (
+              <>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={zoom.outLabel}
+                  disabled={scale <= ZOOM_MIN}
+                  onClick={() => zoomBy(-1)}
+                >
+                  <ZoomOutIcon />
+                </Button>
+                {/* `.lb-zoom` — mono 12, rộng tối thiểu 44 để 100%→300% không
+                    làm hai nút hai bên nhảy chỗ. */}
+                <p className="min-w-11 text-center font-mono text-xs text-muted-foreground tabular-nums">
+                  {zoom.valueLabel(zoomPercent(scale))}
+                </p>
+                <Button
+                  variant="outline"
+                  size="icon-sm"
+                  aria-label={zoom.inLabel}
+                  disabled={scale >= ZOOM_MAX}
+                  onClick={() => zoomBy(1)}
+                >
+                  <ZoomInIcon />
+                </Button>
+              </>
+            ) : null}
+            <DialogClose
+              render={
+                <Button variant="ghost" size="icon-sm" aria-label={closeLabel}>
+                  <XIcon />
+                </Button>
+              }
+            />
+          </div>
         </div>
 
-        {renderMedia(current)}
+        {zoom ? (
+          // `.lb-stage` — cắt phần tràn, con trỏ đổi theo trạng thái, và TẮT
+          // transition khi đang kéo để ảnh bám tay chứ không trôi sau con trỏ.
+          //
+          // `<button>` THẬT chứ không `div role="button"`: con trỏ đã là
+          // `zoom-in` nên chuột được hứa một cú bấm, và lời hứa đó phải tới được
+          // cả bàn phím. Thẻ thật cho Enter/Space miễn phí, không phải tự nối.
+          // An toàn vì `renderMedia` theo hợp đồng là MEDIA — không có phần tử
+          // tương tác nào lồng bên trong.
+          <button
+            type="button"
+            ref={stageRef}
+            aria-label={zoom.toggleLabel}
+            onPointerDown={onPointerDown}
+            onPointerMove={onPointerMove}
+            onPointerUp={onPointerUp}
+            onPointerCancel={onPointerUp}
+            className={cn(
+              'block w-full overflow-hidden rounded-md',
+              canPan(scale) ? (dragging ? 'cursor-grabbing' : 'cursor-grab') : 'cursor-zoom-in',
+            )}
+            // Bấm khi chưa phóng thì phóng lên; đang phóng thì về gốc. Cú THẢ
+            // sau khi kéo cũng bắn `click`, nên phải bỏ qua nó — nếu không, mỗi
+            // lần rê ảnh xong là zoom tự nhảy về 100%.
+            onClick={() => {
+              if (movedRef.current) {
+                movedRef.current = false;
+                return;
+              }
+              if (scale === ZOOM_MIN) zoomBy(1);
+              else resetZoom();
+            }}
+          >
+            <div
+              className={cn('origin-center', dragging ? '' : 'transition-transform duration-150')}
+              style={{ transform: `translate(${pan.x}px, ${pan.y}px) scale(${scale})` }}
+            >
+              {renderMedia(current)}
+            </div>
+          </button>
+        ) : (
+          renderMedia(current)
+        )}
 
         <div className="flex items-center justify-between gap-3">
           <Button

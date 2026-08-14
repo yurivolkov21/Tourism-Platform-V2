@@ -19,11 +19,18 @@ function Harness({
   count = 3,
   openAt: openIndex = 0,
   caption,
+  zoom,
 }: {
   count?: number;
   /** Index mà nút "Open" sẽ mở tới. */
   openAt?: number;
   caption?: (index: number) => string | null;
+  zoom?: {
+    inLabel: string;
+    outLabel: string;
+    valueLabel: (percent: number) => string;
+    toggleLabel: string;
+  };
 }) {
   const [openAt, setOpenAt] = useState<number | null>(null);
   return (
@@ -42,6 +49,7 @@ function Harness({
         previousLabel="Back one"
         nextLabel="On one"
         caption={caption}
+        zoom={zoom}
         renderMedia={(index) => <div data-testid="media">media {index}</div>}
       />
     </>
@@ -186,5 +194,72 @@ describe('Lightbox — chú thích', () => {
   it('không truyền caption thì cũng không có chú thích nào', async () => {
     await open(<Harness count={3} />);
     expect(screen.getByRole('dialog').querySelectorAll('p')).toHaveLength(1);
+  });
+});
+
+describe('Lightbox — thu/phóng (nợ A12)', () => {
+  const zoom = {
+    inLabel: 'Zoom in',
+    outLabel: 'Zoom out',
+    valueLabel: (p: number) => `${p}%`,
+    toggleLabel: 'Zoom photo',
+  };
+
+  const openZoomable = () => open(<Harness count={3} zoom={zoom} />);
+
+  it('KHÔNG truyền prop `zoom` thì không có nút thu/phóng nào', async () => {
+    await open(<Harness count={3} />);
+    expect(screen.queryByRole('button', { name: 'Zoom in' })).toBeNull();
+  });
+
+  it('mở ra ở 100%, nút thu bị vô hiệu — không thu nhỏ hơn ảnh gốc', async () => {
+    await openZoomable();
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Zoom out' })).toBeDisabled();
+  });
+
+  it('bấm phóng đi từng nấc và dừng ở trần, KHÔNG phóng vô hạn', async () => {
+    const user = await openZoomable();
+    const zoomIn = screen.getByRole('button', { name: 'Zoom in' });
+    await user.click(zoomIn);
+    expect(screen.getByText('150%')).toBeInTheDocument();
+    await user.click(zoomIn);
+    await user.click(zoomIn);
+    expect(screen.getByText('300%')).toBeInTheDocument();
+    expect(zoomIn).toBeDisabled();
+  });
+
+  it('đổi ảnh thì zoom về gốc — ảnh kế mở ra ở góc crop ngẫu nhiên là vô nghĩa', async () => {
+    const user = await openZoomable();
+    await user.click(screen.getByRole('button', { name: 'Zoom in' }));
+    expect(screen.getByText('150%')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'On one' }));
+    expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
+  it('phím + và - đổi mức, phím 0 về gốc', async () => {
+    const user = await openZoomable();
+    await user.keyboard('+');
+    expect(screen.getByText('150%')).toBeInTheDocument();
+    await user.keyboard('-');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+    await user.keyboard('++0');
+    expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
+  it('mọi chuỗi thu/phóng cũng đến TỪ PROP', async () => {
+    await open(
+      <Harness
+        count={2}
+        zoom={{
+          inLabel: 'PHONG',
+          outLabel: 'THU',
+          valueLabel: (p: number) => `${p} phần trăm`,
+          toggleLabel: 'BAM DE PHONG',
+        }}
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'PHONG' })).toBeInTheDocument();
+    expect(screen.getByText('100 phần trăm')).toBeInTheDocument();
   });
 });
