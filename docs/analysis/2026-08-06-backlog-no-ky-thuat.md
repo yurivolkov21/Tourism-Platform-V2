@@ -40,11 +40,12 @@
 
 | # | Nợ | Bề mặt | Chặn? |
 | --- | --- | --- | --- |
+| A13 | **Ba thẻ chính sách cuối tab Departures bị bỏ sót ở R6** — bản duyệt có `fcard ×3`, bản ship có 0. Đã vá 14/08 (`ee051c6`). **Ghi lại vì bài học còn giá trị**: bộ so nghiệm thu R9 báo "0 lệch" mà vẫn lọt, do nó chỉ đối chiếu phần tử CÓ Ở CẢ HAI bên — phần tử app thiếu hẳn thì không có gì để so nên nó im lặng. Lần nghiệm thu sau phải có **phép đếm khối theo pane**, không chỉ bảng so thuộc tính | `/tours/[slug]` | ✅ đã vá |
 | A8 | **Ảnh tour vẫn rỗng.** `MediaAsset` không có row nào cho tour, và **không có lệnh nào lấp được**: repo chỉ có `db:seed`, `prisma/seed.ts` không tạo `MediaAsset`; script chọn ảnh của [ADR-0020](../adr/0020-real-images-sourcing.md) đã bị gỡ cùng lượt xoá 189 ảnh bị từ chối. Muốn có ảnh phải LÀM LẠI khâu tuyển ảnh kèm cửa lọc chủ thể — một đợt việc riêng. Hệ quả: gallery 7 thumb và nhánh HAI CỘT của `TourMediaPanel` chưa bao giờ render từ dữ liệu thật | `/tours/[slug]` | Chặn việc so bản duyệt ở khối gallery |
-| A9 | **Mô tả cho bốn card dữ kiện (tab Overview).** Card đã dựng sẵn, thiếu chỗ đổ chữ → cao ~110 thay vì 197 của bản duyệt. Cần 4 cột nullable trên `Tour` | `/tours/[slug]` | Không chặn |
-| A10 | **Tiêu đề riêng cho thẻ policy.** Fixture đặt `title` bằng nhãn nhóm (`'Cancellation'` cho `kind: CANCELLATION`) nên hai trong ba thẻ mất dòng eyebrow và tiêu đề lệch tầng. **KHÔNG cần cột mới** — contract đã có `kind` + `title`, sửa ở tầng fixture | `/tours/[slug]` | Không chặn |
-| A11 | **`freeCancellationDays` trên `Tour`** — để thẻ chính sách nói con số thật thay vì bắt đọc-hiểu văn xuôi `policy.body` | `/tours/[slug]` | Không chặn |
-| A12 | **Thu phóng trong lightbox** — bản duyệt có hàng công cụ zoom, bản ship chưa | `/tours/[slug]` | Không chặn |
+| ~~A9~~ | ~~Mô tả cho bốn card dữ kiện~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 4 cột `fact*Note` + 120 câu; card nay cao **199** so với 197 của bản duyệt |
+| ~~A10~~ | ~~Tiêu đề riêng cho thẻ policy~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 90 tiêu đề, mỗi cái nén câu đầu của `body`; đúng như dự đoán KHÔNG cần cột mới |
+| ~~A11~~ | ~~`freeCancellationDays` trên `Tour`~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — và đo được vì sao KHÔNG parse được từ `body`: regex bắt 12/29 câu, 15/30 tour ghi bằng GIỜ |
+| ~~A12~~ | ~~Thu phóng trong lightbox~~ | `/tours/[slug]` | ✅ **trả 14/08** (`6e17bcc`) — thang rời 1/1.5/2/3, kéo để rê, tắt theo mặc định nên trang vùng không bị thêm nút |
 
 **Lưu ý quan trọng cho mockup:** khu Location của `/contact` nay là **bản đồ
 MapLibre thật**, không phải ô placeholder — xem [ADR-0018](../adr/0018-web-map-library.md)

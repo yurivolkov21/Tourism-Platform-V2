@@ -8,6 +8,78 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-14 — Trả sổ nợ Tour Details: năm cột nội dung, ba thẻ bị bỏ sót, thu/phóng lightbox (branch `feat/tour-content-debt`, ff-only, 3 commit `cacb8d5..6e17bcc`, 22 file, +1164/−172)
+
+Bốn món trong [sổ nợ A9–A12](analysis/2026-08-06-backlog-no-ky-thuat.md) mở ra
+sau vòng trùng tu 13/08, cộng **một chỗ bỏ sót tìm thấy giữa chừng**.
+[ADR-0023](adr/0023-tour-merchandising-fields.md) đi trước code theo luật 5.
+
+**Bỏ sót ở R6, và vì sao nghiệm thu R9 không bắt được.** Bản duyệt có `fcard ×3`
+ở cuối pane Departures; bản ship 13/08 có **0**. Bộ so R9 báo "0 lệch" mà vẫn
+lọt vì nó chỉ đối chiếu **phần tử có mặt ở CẢ HAI bên** — phần tử app thiếu hẳn
+thì không có gì để so nên nó im lặng. Đó là khuyết tật thiết kế của chính bộ so,
+không phải rủi ro ngẫu nhiên. Thứ tìm ra là **phép đếm khối theo pane**, và nó
+xác nhận các pane còn lại đếm khớp hết (`dep-stat ×4`, `tl-item ×4`, `bar ×5`,
+`rv-item ×2`, `acc-item ×5`, `pol ×1`).
+
+**Một migration cho cả năm cột** (`fact*Note` ×4 varchar(280) + `freeCancellationDays`)
+— tách hai migration cho hai cột cùng bảng là tạo drift thừa, mà migration đã
+apply là bản ghi bất biến. Bốn cột RỜI chứ không một cột JSON: bốn card là bốn ô
+cố định của một bố cục đã chốt, nên Zod kiểm được từng trường và admin P4 dựng
+được bốn ô nhập bình thường.
+
+**`freeCancellationDays` KHÔNG parse từ văn xuôi, và có số liệu để chứng minh.**
+Đếm trên 29 policy `CANCELLATION`: regex `up to (\d+) days` chỉ bắt được **12**;
+17 câu còn lại viết khác khuôn ("Cancel at least 24 hours before pickup…",
+"Cancellations more than 48 hours…"). Và **15/30 tour ghi cửa sổ bằng GIỜ** chứ
+không phải ngày — ép 24 giờ thành "1 ngày" là nói sai vì mốc đó tính từ giờ khởi
+hành. Nên cột là `Int?`, tour tính bằng giờ để `null`, thẻ rơi về `policy.title`.
+
+**90 tiêu đề policy.** Fixture đặt `title` bằng ĐÚNG nhãn nhóm cho cả 90 row
+("Cancellation" ×30), nên UI phải bỏ eyebrow để khỏi in một chuỗi hai lần và hai
+trong ba thẻ lệch tầng. Không thêm cột `headline` — đó là lỗi nội dung, không
+phải thiếu trường. Mỗi tiêu đề nén đúng câu đầu của `body`, không thêm dữ kiện.
+Cộng 120 câu mô tả card dữ kiện, mỗi câu bám dữ liệu của chính tour đó.
+
+**Hai bước seed đổi sang `upsert`** (`tours`, `tourPolicies`).
+`createMany({ skipDuplicates })` bỏ qua row đã tồn tại, nên sửa fixture hay thêm
+cột đều **không bao giờ** tới được DB đang chạy. Đã dính đúng lỗi này giữa
+chừng: seed báo thành công mà năm cột mới vẫn `null`. Seed đã có tiền lệ upsert
+cho nội dung biên tập (`siteMediaSlot`/`posts`/`users`).
+
+**Một điều về môi trường chưa từng ghi ở đâu, và nó tốn khá nhiều thời gian để
+tìm ra:** `pnpm db:seed` **luôn** nạp `.env.local` nên **luôn** trỏ Supabase,
+còn API chạy `node dist/main.js` **không nạp file env nào** nên rơi về Postgres
+docker local. Hai bên là hai DB khác nhau — seed xong mà app không đổi là vì
+vậy. Muốn seed local phải truyền `DATABASE_URL` tường minh.
+
+**Thu/phóng lightbox (A12).** Bản duyệt có sẵn CSS cho việc này (`.lb-stage`
+cursor zoom-in, `.zoomed` grab, `.dragging` tắt transition, ô `.lb-zoom`) nhưng
+**không có một dòng JS nào** — hành vi là mới. Thang RỜI RẠC 1/1.5/2/3 chứ không
+liên tục: nút bấm biết mình sẽ tới đâu, con số luôn tròn, hai phiên cho cùng kết
+quả. Kéo để rê khi đã phóng, biên kẹp ở nửa phần thừa mỗi chiều; khung 0×0 (lần
+render đầu) trả 0 chứ không `NaN` — `NaN` đi thẳng vào `transform` là ảnh biến
+mất. Đổi ảnh thì zoom về gốc. **Tắt theo mặc định**: có prop `zoom` là bật, nên
+trang vùng dùng chung component không bị thêm hai nút chưa ai đặt hàng.
+
+**Pre-commit bắt đúng một chỗ a11y.** Khung ảnh ban đầu là `div role="button"`;
+Biome đòi thẻ thật và nó đúng — con trỏ đã là `zoom-in` nên chuột được hứa một
+cú bấm, lời hứa đó phải tới được cả bàn phím. Đổi sang `<button>` được
+Enter/Space miễn phí, kèm một cờ `movedRef` phân biệt "rê" với "bấm": cú thả sau
+khi kéo cũng bắn `click`, không lọc thì mỗi lần rê xong zoom tự nhảy về 100%.
+
+**Đo lại sau khi vá**: card dữ kiện tab Overview cao **199** so với 197 của bản
+duyệt (trước khi có `fact*Note` là ~110); ba thẻ Departures 3/3, lưới
+`341.33 ×3` và `margin-top:32` khớp; thẻ cao 219 so với 177 vì `note` dùng TOÀN
+VĂN `policy.body` thay câu viết tay ngắn của bản duyệt — giữ văn thật thay vì
+cắt cụt chính sách. Lightbox: 100 → 150 → 300%, nút phóng tự tắt ở trần, đổi ảnh
+về 100%, Enter trên khung cũng phóng, 0 lỗi console.
+
+Tests after: 1724 — 1544 unit (86 contract, 10 tokens, 2 i18n, 22 ui, 215 api,
+1209 web) và 180 api int. **Sổ nợ còn lại: đúng một món** — ảnh tour (A8). Nó
+cần bạn duyệt bằng mắt TRƯỚC upload theo [ADR-0020 bản sửa](adr/0020-real-images-sourcing.md),
+nên không uỷ quyền được; đang chốt phương án.
+
 ## 2026-08-13 — Trùng tu Tour Details: 5 tab, dựng LẠI bám wireframe đã duyệt (branch `feat/tour-detail-redesign`, ff-only, 36 commit `43132e2..5a4c1dc`, 63 file, +6966/−2142)
 
 Động cơ user nói thẳng ở đầu vòng: giao diện cũ "vẫn giống kiểu AI hay làm".

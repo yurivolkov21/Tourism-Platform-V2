@@ -100,9 +100,9 @@ Ghi ở đây để không thất lạc; chi tiết trong spec `2026-08-13-tour-
 | --- | --- |
 | `reviews.byTour` thêm `sort`/`rating`/`withPhotos` + `breakdown` | ✅ **đã trả 13/08** (T1) — modal review chạy trên đó |
 | Ảnh tour | ❌ còn mở. `MediaAsset` rỗng và **không có lệnh nào lấp được**: phải làm lại khâu tuyển ảnh kèm cửa lọc chủ thể mà [ADR-0020](0020-real-images-sourcing.md) bắt buộc — một đợt việc riêng, không phải một câu lệnh |
-| Mô tả cho bốn card dữ kiện (tab Overview) | ❌ còn mở — cần 4 cột nullable trên `Tour`; card đã dựng sẵn, chỉ thiếu chỗ đổ chữ |
-| Tiêu đề riêng cho thẻ policy | ❌ còn mở nhưng **KHÔNG cần cột mới**: contract đã có `kind` + `title`; fixture đang dùng `title` làm nhãn nhóm ("Cancellation") nên hai trong ba thẻ mất dòng eyebrow. Sửa ở tầng dữ liệu |
-| `freeCancellationDays` trên Tour | ❌ còn mở — muốn thẻ "Free until 10 days out" nói con số thật thay vì đọc-hiểu văn xuôi `policy.body` |
+| Mô tả cho bốn card dữ kiện (tab Overview) | ✅ **trả 14/08** — [ADR-0023](0023-tour-merchandising-fields.md) mở 4 cột `fact*Note` |
+| Tiêu đề riêng cho thẻ policy | ✅ **trả 14/08** — 90 tiêu đề viết vào fixture, đúng như dự đoán KHÔNG cần cột mới |
+| `freeCancellationDays` trên Tour | ✅ **trả 14/08** — [ADR-0023 §2](0023-tour-merchandising-fields.md) |
 | ~~`meals`/`accommodation` cho itinerary day~~ | **RÚT** — bản duyệt in bữa ăn/chỗ ngủ bằng chữ **đậm trong chính mô tả ngày** (markdown), không cần cột riêng |
 
 ## Cập nhật sau thi công (13/08/2026)
@@ -124,3 +124,13 @@ chặn ở 6 dòng rồi nhường phần dư cho modal "All dates". Nên tab De
 dòng. Modal vẫn là nơi chứa danh sách đầy đủ, đúng tinh thần quyết định gốc.
 
 Số đo và lý do đầy đủ: [spec §2.6](../specs/2026-08-13-tour-detail-redesign.md).
+
+### Bổ sung 14/08 — một khối bị bỏ sót
+
+Tab Departures của bản duyệt có **ba thẻ chính sách ở cuối pane** (`fcard ×3`);
+bản ship 13/08 có **0**. Đã vá ở nhánh `feat/tour-content-debt` (`ee051c6`).
+
+Ghi vào đây vì nó sửa lại một câu ở mục Hệ quả: tab Departures **có** lặp lại
+nội dung chính sách của tab Good to know, và đó là chủ ý của bản duyệt — cùng
+dữ liệu, đóng khung lại cho khoảnh khắc chọn ngày ("đặt cọc bao nhiêu, huỷ được
+tới khi nào"), không phải cho lúc đọc điều khoản.
