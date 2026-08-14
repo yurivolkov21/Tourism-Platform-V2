@@ -105,6 +105,27 @@ Slug tour: \`${tour.slug}\` · địa danh chính: \`${place}\`
 của địa danh.
 `;
 
+const LINKS_TEMPLATE = `# Dán link ảnh vào đây, mỗi dòng một tấm, rồi chạy:
+#   pnpm --filter @tourism/api media:fetch
+#
+# Khuôn:  <link ảnh> | <đích> | [tác giả] | [giấy phép]
+#
+# ⚠ Phải là link ẢNH (\`images.unsplash.com/photo-…\`), KHÔNG phải link TRANG
+#   (\`unsplash.com/photos/…\`) — trang bị Unsplash chặn, đo được HTTP 401.
+#   Lấy link ảnh: chuột phải vào ảnh → "Sao chép địa chỉ hình ảnh".
+#
+# Đích viết được:
+#   _site/home-hero                                  khe thương hiệu
+#   ha-giang/destination                             ảnh địa danh
+#   ha-giang/gallery                                 bộ ảnh chung (tự đánh số 01, 02…)
+#   ha-giang/tours/ha-giang-loop-4d/cover            ảnh đại diện tour
+#   ha-giang/tours/ha-giang-loop-4d/gallery          ảnh riêng của tour
+#
+# Ví dụ:
+# https://images.unsplash.com/photo-1528181304800-259b08848526 | ha-giang/gallery
+# https://images.unsplash.com/photo-1528181304800-259b08848526 | _site/home-hero | Tên tác giả
+`;
+
 const ROOT_README = (counts) => `# media-inbox — chỗ thả ảnh
 
 Thư mục này **không vào git**. Thả ảnh vào đúng chỗ rồi báo để chạy bước quét +
@@ -218,6 +239,7 @@ const counts = {
   posts: postCount[0].n,
 };
 if (await put(path.join(ROOT, 'README.md'), ROOT_README(counts))) files++;
+if (await put(path.join(ROOT, 'LINKS.txt'), LINKS_TEMPLATE)) files++;
 
 console.log(`[media-tree] cây ở ${path.relative(process.cwd(), ROOT)}`);
 console.log(`[media-tree] ${dirs} thư mục · ${files} file hướng dẫn mới`);
