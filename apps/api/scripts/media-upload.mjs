@@ -85,6 +85,8 @@ let rows = 0;
 const failures = [];
 /** file gốc → publicId đã upload, để ảnh mượn không đẩy lên lần hai. */
 const uploadedFiles = new Map();
+/** file gốc → version Cloudinary trả về, để ảnh MƯỢN ghi đúng version bản gốc. */
+const uploadedVersion = new Map();
 
 for (const item of plan) {
   const ownerType = OWNER[item.kind];
@@ -124,6 +126,7 @@ for (const item of plan) {
       }
     }
     uploadedFiles.set(item.file, publicId);
+    if (meta?.version) uploadedVersion.set(item.file, meta.version);
   } else {
     reused++;
   }
@@ -135,13 +138,19 @@ for (const item of plan) {
   await client.query(
     `INSERT INTO media_assets
        (id, public_id, type, owner_type, owner_id, role, format, width, height, bytes,
-        sort_order, alt, author, license, source_url, created_at, updated_at)
+        sort_order, alt, author, license, source_url, version, created_at, updated_at)
      VALUES (gen_random_uuid(), $1, 'IMAGE', $2::"MediaOwnerType", $3, $4::"MediaRole",
-             $5, $6, $7, $8, $9, $10, $11, $12, $13, now(), now())
+             $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
      ON CONFLICT (owner_type, owner_id, public_id) DO UPDATE
        SET role = EXCLUDED.role, sort_order = EXCLUDED.sort_order, alt = EXCLUDED.alt,
            author = EXCLUDED.author, license = EXCLUDED.license,
-           source_url = EXCLUDED.source_url, updated_at = now()`,
+           source_url = EXCLUDED.source_url,
+           -- Version PHẢI cập nhật ở nhánh DO UPDATE: chạy lại vì THAY ảnh là
+           -- lúc cần nó nhất, mà nhánh này chính là đường đi của lần chạy lại.
+           -- Giữ version cũ ở đây thì URL không đổi và mọi tầng cache vẫn phát
+           -- ảnh cũ — đúng cái cột này sinh ra để tránh.
+           version = COALESCE(EXCLUDED.version, media_assets.version),
+           updated_at = now()`,
     [
       publicId,
       ownerType,
@@ -156,6 +165,9 @@ for (const item of plan) {
       item.credit?.author ?? null,
       item.credit?.license ?? null,
       item.credit?.source ?? null,
+      // Ảnh MƯỢN (luật rơi-về) không có `meta` vì không upload lại — nhưng nó
+      // dùng chung publicId với bản gốc nên phiên bản cũng phải là của bản gốc.
+      (meta?.version ?? uploadedVersion.get(item.file))?.toString() ?? null,
     ],
   );
   rows++;

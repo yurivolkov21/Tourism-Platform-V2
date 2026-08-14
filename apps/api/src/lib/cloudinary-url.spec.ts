@@ -13,6 +13,54 @@ describe('buildCloudinaryUrl', () => {
     expect(r.posterUrl).toBeNull();
   });
 
+  // ── Phiên bản trong URL ──
+  // Thay ảnh mà giữ nguyên publicId thì URL không đổi, nên BỐN tầng cache đều
+  // phát bản cũ: CDN Cloudinary, `.next/cache/images`, bản build, và nặng nhất
+  // là cache trình duyệt của người dùng (`max-age=2592000` — 30 NGÀY). Chèn
+  // phiên bản vào URL làm mỗi lần thay ảnh sinh một URL khác, nên cả bốn tầng
+  // tự hết hiệu lực mà không phải xoá tay chỗ nào.
+  it('có version → chèn /v<version>/ trước publicId', () => {
+    const r = buildCloudinaryUrl(CLOUD, {
+      type: MediaType.IMAGE,
+      publicId: 'posts/hero-a',
+      version: '1723600000',
+    });
+    expect(r.url).toBe(
+      'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto/v1723600000/posts/hero-a',
+    );
+  });
+
+  it('không version → URL giữ nguyên như cũ (ảnh cũ chưa có cột này)', () => {
+    const r = buildCloudinaryUrl(CLOUD, { type: MediaType.IMAGE, publicId: 'posts/hero-a' });
+    expect(r.url).toBe(
+      'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto/posts/hero-a',
+    );
+  });
+
+  it('video có version → cả URL video LẪN poster suy ra đều mang version', () => {
+    const r = buildCloudinaryUrl(CLOUD, {
+      type: MediaType.VIDEO,
+      publicId: 'posts/clip',
+      version: '1723600000',
+    });
+    expect(r.url).toBe(
+      'https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto/v1723600000/posts/clip',
+    );
+    expect(r.posterUrl).toBe(
+      'https://res.cloudinary.com/demo-cloud/video/upload/so_0,f_auto,q_auto/v1723600000/posts/clip.jpg',
+    );
+  });
+
+  it('publicId tuyệt đối + version → vẫn trả nguyên, version bị BỎ QUA', () => {
+    const abs = 'https://images.unsplash.com/photo-123';
+    const r = buildCloudinaryUrl(CLOUD, {
+      type: MediaType.IMAGE,
+      publicId: abs,
+      version: '1723600000',
+    });
+    expect(r.url).toBe(abs);
+  });
+
   it('escape-hatch: publicId là URL tuyệt đối → trả nguyên, KHÔNG bọc transform', () => {
     const abs = 'https://images.unsplash.com/photo-123';
     const r = buildCloudinaryUrl(CLOUD, { type: MediaType.IMAGE, publicId: abs });

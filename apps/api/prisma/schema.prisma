@@ -783,6 +783,15 @@ model MediaAsset {
   durationSec Float?         @map("duration_sec")
   posterId    String?        @map("poster_id") @db.VarChar(300)
   bytes       Int?
+  // Phiên bản Cloudinary, chèn vào URL dưới dạng `/v<version>/`. Thay ảnh mà
+  // giữ nguyên publicId thì URL không đổi, nên bốn tầng cache đều phát bản cũ
+  // — nặng nhất là cache TRÌNH DUYỆT người dùng (`max-age` 30 ngày), thứ không
+  // xoá tay được vì nó nằm trên máy người khác. Có version thì mỗi lần thay
+  // ảnh sinh một URL khác, cả bốn tầng tự hết hiệu lực.
+  //
+  // Kiểu String chứ không Int: đây là ĐOẠN URL, không phải số để tính toán;
+  // và Cloudinary version là unix timestamp, để Int32 thì hỏng sau 2038.
+  version     String?        @db.VarChar(20)
   // Alt text sửa được (media library của admin) — web fallback về text suy từ
   // owner khi null.
   alt         String?        @db.VarChar(300)

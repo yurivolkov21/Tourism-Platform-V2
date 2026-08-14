@@ -33,6 +33,9 @@ export class MediaService {
         type: asset.type,
         publicId: asset.publicId,
         posterId: asset.posterId,
+        // Phiên bản đi vào URL để thay ảnh là đổi URL — nếu không, cache trình
+        // duyệt người dùng giữ bản cũ 30 ngày và không ai xoá hộ được.
+        version: asset.version,
       });
       const item: MediaItem = {
         publicId: asset.publicId,
