@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — ReUI contact-5 (bản chép 1:1)</title>
+<!--
+  BẢN CHÉP mẫu https://reui.io/preview/base/contact-5 — dựng 17/08 theo yêu cầu
+  user "làm giống 100%" để làm mốc so sánh TRƯỚC khi điều chỉnh sang token dự án.
+
+  Số đo trích bằng getComputedStyle trên trang gốc (playwright), KHÔNG ước lượng:
+  card 1024×636 radius 14 overflow hidden · padding trong 48 · heading 36/40 w600
+  · input h32 r10 border oklch(0.922) · nút TRÀN NGANG h36 r10 nền oklch(0.205)
+  · label 14/14 w500 · chữ oklch(0.145) · phụ oklch(0.556) · font Inter.
+
+  Ý CHÍNH: MỘT card chia đôi bằng ĐƯỜNG KẺ DỌC 1px — không phải hai card rời.
+  Nửa trái nền xám rất nhạt, nửa phải trắng; chính chênh lệch nền đó thay cho
+  viền và làm hai nửa đọc ra là một khối liền.
+-->
+<style>
+  :root {
+    --line: oklch(0.922 0 0);
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --dark: oklch(0.205 0 0);
+    --paper: oklch(1 0 0);
+    --tint: oklch(0.985 0 0);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 56px 24px; background: #fff;
+    font: 400 14px/20px Inter, system-ui, sans-serif; color: var(--ink);
+    display: flex; justify-content: center;
+  }
+  .card {
+    width: 1024px; height: 636px; border-radius: 14px; overflow: hidden;
+    border: 1px solid var(--line); background: var(--paper); display: flex;
+  }
+  .half { width: 50%; padding: 48px; display: flex; flex-direction: column; }
+  .info { background: var(--tint); border-right: 1px solid var(--line); }
+
+  /* ── Nửa trái: thông tin ── */
+  .eyebrow { font-size: 12px; line-height: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; }
+  h2 { margin: 18px 0 0; font-size: 36px; line-height: 40px; font-weight: 600; letter-spacing: -0.4px; }
+  .lede { margin: 14px 0 0; color: var(--muted); font-size: 15px; line-height: 25px; max-width: 34ch; }
+  .rows { margin-top: 34px; display: flex; flex-direction: column; gap: 18px; }
+  .row { display: flex; gap: 12px; align-items: flex-start; }
+  .row svg { margin-top: 6px; color: var(--muted); }
+  .k { display: block; font-size: 11px; line-height: 14px; font-weight: 500; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); }
+  .v { display: block; font-size: 16px; line-height: 24px; font-weight: 500; margin-top: 2px; }
+  .foot { margin-top: auto; font-size: 14px; color: var(--muted); }
+  .foot b { color: var(--ink); font-weight: 600; }
+
+  /* ── Nửa phải: form ── */
+  h3 { margin: 0; font-size: 20px; line-height: 28px; font-weight: 600; }
+  .sub { margin: 8px 0 0; color: var(--muted); font-size: 14px; line-height: 22px; }
+  .fields { margin-top: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  label { display: block; font-size: 14px; line-height: 14px; font-weight: 500; margin-bottom: 8px; }
+  .input {
+    width: 100%; height: 32px; border: 1px solid var(--line); border-radius: 10px;
+    padding: 4px 10px; color: var(--muted); display: flex; align-items: center;
+  }
+  .area { width: 100%; height: 118px; border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; color: var(--muted); }
+  .btn-dark {
+    margin-top: 20px; width: 100%; height: 36px; border-radius: 10px; border: 0;
+    background: var(--dark); color: oklch(0.985 0 0);
+    font: 500 14px/20px Inter, system-ui, sans-serif;
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .legal { margin-top: 14px; text-align: center; font-size: 13px; color: var(--muted); }
+  .legal b { color: var(--ink); font-weight: 600; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <!-- TRÁI: thông tin -->
+    <section class="half info">
+      <span class="eyebrow">Contact</span>
+      <h2>Let&#39;s Build Your<br>Next Interface</h2>
+      <p class="lede">Tell us what you are building and the team behind ReUI will point you in the right direction.</p>
+
+      <div class="rows">
+        <div class="row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+          <span><span class="k">Email</span><span class="v">hello@reui.io</span></span>
+        </div>
+        <div class="row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span><span class="k">Response time</span><span class="v">Within one business day</span></span>
+        </div>
+        <div class="row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+          <span><span class="k">Studio</span><span class="v">San Francisco, CA</span></span>
+        </div>
+      </div>
+
+      <p class="foot">Prefer to self-serve? <b>Browse the documentation</b></p>
+    </section>
+
+    <!-- PHẢI: form -->
+    <section class="half">
+      <h3>Tell Us About Your Project</h3>
+      <p class="sub">Share a few details and a real person gets back to you soon.</p>
+
+      <div class="fields">
+        <div class="row2">
+          <div><label>First name</label><div class="input">Jordan</div></div>
+          <div><label>Last name</label><div class="input">Reyes</div></div>
+        </div>
+        <div><label>Work email</label><div class="input">jordan@studio.co</div></div>
+        <div><label>Company</label><div class="input">Studio name</div></div>
+        <div><label>Message</label><div class="area">Tell us a little about what you are building.</div></div>
+      </div>
+
+      <button class="btn-dark" type="button">Send Message <span aria-hidden="true">&rarr;</span></button>
+      <p class="legal">Sending this means you accept our <b>Terms</b> and <b>Privacy Policy</b>.</p>
+    </section>
+  </div>
+</body>
+</html>

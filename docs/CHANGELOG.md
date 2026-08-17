@@ -8,6 +8,77 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — /contact §2 gộp về MỘT card, radio thay dropdown, chữ ký tự điền (nhánh `feat/contact-split-panel`, `4f5dc6d`, 10 file, +742/−135)
+
+Đóng phần ảnh + hoàn thiện §2 của `/contact`. Khe site lên **16** (thêm
+`contact-panel`).
+
+**Hai khối rời luôn đọc ra là hai vật thể — cân cỡ cũng không cứu được.** Bản
+sáng 17/08 thêm ảnh dọc cạnh lá thư rồi đóng khung nó thành card thứ hai, và
+sau đó chỉnh cho hai khung bằng kích cỡ. User vẫn bác: *"nhìn nó cứ kỳ kỳ"*.
+Cân kích cỡ giải sai bài toán — vấn đề không phải hai khung LỆCH nhau mà là
+có HAI khung. Mẫu [ReUI contact-2](https://reui.io/preview/base/contact-2)
+giải bằng cách khác hẳn: một card duy nhất chia đôi, một nửa là panel **tràn
+viền** (không padding ngoài, không viền trong), `overflow-hidden` ở card làm
+ảnh chạm sát mép và bo theo góc card.
+
+**Wireframe chép 1:1 TRƯỚC khi đụng code**, số đo trích bằng `getComputedStyle`
+trên chính trang gốc chứ không ước lượng bằng mắt:
+[contact-2](design/mockups/contact-reui-2.src.html) và
+[contact-5](design/mockups/contact-reui-5.src.html), rồi
+[bản ghép](design/mockups/contact-split-panel.src.html) lấy bố cục của -2 và
+hàng thông tin có icon của -5. Đảo vế so với mẫu (panel nằm TRÁI) để giữ thứ
+tự đọc sẵn có của trang.
+
+**Dropdown vùng → 4 radio** (`Anywhere`/`Northern`/`Central`/`Southern`), lưới
+2×2, `<fieldset>` với `<input type="radio">` thật ẩn bằng `sr-only` nên bàn
+phím và trình đọc màn hình dùng được nguyên bản. Đo trên trang thật: thẻ cao
+731 → 792 (**+61px**, nhiều hơn ước tính 26px của tôi vì mỗi ô mang viền và
+padding riêng).
+
+**Chữ ký điền sẵn tên khách đã đăng nhập**, để trống khi chưa. Cờ `filledOnce`
+là phần đáng nói: `useSession` trả về BẤT ĐỒNG BỘ, nên khách hoàn toàn có thể
+gõ xong tên trước khi session tới — không chặn thì lần điền muộn sẽ xoá thứ họ
+vừa gõ. Và khách cố ý xoá trắng ô (gửi hộ người khác) cũng không bị điền lại.
+Nghiệm thu bằng trình duyệt thật với cookie session thật, cả hai trạng thái;
+`customer@tourism.test` trong seed **không đăng nhập được** vì tạo thẳng bằng
+Prisma nên không có mật khẩu Better Auth — phải đăng ký tài khoản mới để đo.
+
+**Doc lệch code, sửa doc:** mô tả khe `contact-panel` trong `media-tree.mjs`
+còn ghi *"DẢI RẤT NGANG, 1600×640 (2.5:1)"* — đó là bố cục cũ. Đo lại: card
+khoá cứng **1024px** ở mọi bề rộng 1280→2560, nên panel luôn **511×790**, tức
+ảnh DỌC 2:3. Để nguyên là gài bẫy người chọn ảnh lần sau.
+
+**Review findings (tự bắt):**
+
+- **Typecheck đỏ vì mock tự chốt kiểu.** `vi.fn(() => ({ data: null }))` khiến
+  TS suy ra kiểu trả về đúng bằng `null`, nên ca "đã đăng nhập" không gán được
+  `{ data: { user } }`. Khuôn đúng của repo là `vi.fn()` trần rồi set trong
+  `beforeEach` (xem `user-menu.spec.tsx`). Nhắc lại lý do phải chạy `gate:int`
+  chứ không chỉ `pnpm test`: bộ test XANH trong khi typecheck ĐỎ.
+- **Thước đo tương phản tự chế cho số VÔ NGHĨA, đã vứt.** Lấy pixel tệ nhất
+  trong ô bao từng dòng chữ thì đo trúng nền ở **khe hở giữa các chữ**, không
+  phải nền dưới nét chữ; cả sáu ứng viên panel đều ra 1.00 y hệt nhau — dấu
+  hiệu lỗi thước chứ không phải phát hiện. Đây là biến thể của cùng một cái bẫy
+  đã mắc ở đợt đo hero. Với chữ lớn trên ảnh, chỉ vùng bám nét chữ mới dùng
+  được.
+- **Ảnh `contact-panel` là bản đồ đường bộ Mỹ.** Ở khung thật phóng 2x đọc rõ
+  ARKANSAS/MISSOURI/MISSISSIPPI và lá cờ Mỹ; tôi từng duyệt tấm này ở kích
+  thước cũ nhỏ hơn nên **rút lại đánh giá đó**. Đã dựng 6 phương án thay bằng
+  ảnh địa danh dự án SẴN CÓ (9 hero đều là ảnh dọc, Hà Nội/Sa Pa/Hội An đúng
+  tỉ lệ 0.67). **User cân nhắc và chốt GIỮ NGUYÊN** — khách du lịch là người
+  nước ngoài, đồ vật quen thuộc cũng hợp, và đây không phải dự án kinh doanh
+  thật.
+
+**Nợ mở:** 25/30 tour chưa có cover · 5 khe site còn trống (`home-experiences`,
+`home-trust`, `content-hero`, `destinations-hero`, `auth-panel`) · gallery địa
+danh mới 5/19 nên nhánh 7-thumb của `TourMediaPanel` vẫn chưa bao giờ render
+từ dữ liệu thật · dải `Partners` vẫn nêu tên báo thật kèm chữ "as featured in"
+(user đã cân nhắc và chọn giữ).
+
+Tests after: 1216 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — Nhánh ảnh bài viết: 9 ảnh bìa lên /blog, một mắt xích thiếu ở view-model (trực tiếp `main`, 9 file, +94/−12)
 
 `/blog` là bề mặt cuối còn trắng trơn. Đóng nó bằng **9/9 ảnh bìa**, và nhân

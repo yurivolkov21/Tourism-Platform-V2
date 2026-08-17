@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — /contact §2 ghép: panel ảnh tràn viền + lá thư</title>
+<!--
+  BẢN GHÉP dựng 17/08 để user duyệt TRƯỚC khi đụng code.
+
+  Lấy gì từ đâu:
+  · Bố cục = ReUI contact-2 — MỘT card chia đôi, một nửa là panel TRÀN VIỀN
+    (không padding ngoài, không viền trong). Đây là thứ giải được cái "kỳ kỳ"
+    của bản 17/08 sáng: hai card rời luôn đọc ra là hai vật thể, dù cân cỡ nào.
+  · Hàng thông tin có icon = ReUI contact-5 (nhãn nhỏ viết hoa trên, giá trị
+    đậm dưới).
+  · Chất liệu = token dự án (jade `--primary`, `--hero`, bo `--radius`), copy
+    thật, dữ liệu liên hệ thật, và lá thư giữ NGUYÊN thiết kế đã duyệt.
+
+  Đảo vế so với ReUI: panel ảnh nằm TRÁI, lá thư nằm PHẢI — giữ đúng thứ tự đọc
+  hiện có của trang, và lá thư vẫn là "chữ ký" của trang nên không bị đẩy đi.
+
+  Ảnh dùng ở đây là ảnh THẬT đã upload (khe `contact-panel`).
+-->
+<style>
+  :root {
+    --background: oklch(0.977 0.003 174.5);
+    --foreground: oklch(0.275 0.021 196);
+    --card: oklch(0.996 0.002 174);
+    --border: oklch(0.781 0.015 180.6);
+    --primary: oklch(0.494 0.067 184.3);
+    --primary-foreground: oklch(0.974 0.007 174.4);
+    --muted-foreground: oklch(0.473 0.022 179.5);
+    --hero: oklch(0.25 0.015 181.5);
+    --radius: 0.375rem;
+    --r-card: calc(var(--radius) * 4);   /* rounded-2xl của card hiện tại */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 56px 24px; background: var(--background);
+    font: 400 15px/24px "Be Vietnam Pro", system-ui, sans-serif; color: var(--foreground);
+    display: flex; justify-content: center;
+  }
+  .card {
+    width: 1184px; border-radius: var(--r-card); overflow: hidden;
+    border: 1px solid var(--border); background: var(--card);
+    display: grid; grid-template-columns: 1fr 1fr;
+    box-shadow: 0 1px 2px oklch(0 0 0 / .05), 0 8px 24px oklch(0 0 0 / .06);
+  }
+
+  /* ══ TRÁI: panel ảnh TRÀN VIỀN ══ */
+  .panel { position: relative; padding: 44px; color: #fff; display: flex; flex-direction: column; overflow: hidden; }
+  .panel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  /* Lớp phủ: đậm ở đáy và trái để chữ đọc được, nhạt dần lên góc trên-phải.
+     Phải ĐO tương phản trên ảnh thật trước khi chốt — luật của ADR-0020. */
+  .panel .scrim {
+    position: absolute; inset: 0;
+    background:
+      linear-gradient(to top, oklch(0.18 0.02 181.5 / .96) 8%, oklch(0.2 0.02 181.5 / .82) 42%, oklch(0.22 0.02 181.5 / .55) 100%),
+      linear-gradient(to right, oklch(0.18 0.02 181.5 / .55), transparent 70%);
+  }
+  .panel > .content { position: relative; display: flex; flex-direction: column; height: 100%; }
+
+  .badge {
+    align-self: flex-start; display: inline-flex; align-items: center; gap: 8px;
+    background: oklch(1 0 0 / .14); border-radius: 999px; padding: 6px 14px;
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+  }
+  .badge::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: oklch(0.72 0.09 178); }
+  .panel h2 {
+    margin: 22px 0 0; font-family: Lora, Georgia, serif; font-weight: 500;
+    font-size: 40px; line-height: 48px; letter-spacing: -0.4px; max-width: 13ch;
+  }
+  .panel h2 em { font-style: italic; color: oklch(0.82 0.07 178); }
+  .panel .lede { margin: 14px 0 0; font-size: 15px; line-height: 26px; color: oklch(1 0 0 / .78); max-width: 34ch; }
+
+  .rows { margin-top: auto; padding-top: 36px; display: flex; flex-direction: column; gap: 20px; }
+  .row { display: flex; gap: 14px; align-items: flex-start; }
+  .row svg { margin-top: 5px; flex: none; color: oklch(0.82 0.07 178); }
+  .k { display: block; font-size: 10.5px; line-height: 14px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: oklch(1 0 0 / .62); }
+  .v { display: block; font-size: 16px; line-height: 24px; font-weight: 500; margin-top: 3px; }
+
+  /* ══ PHẢI: lá thư — GIỮ NGUYÊN thiết kế đã duyệt ══ */
+  .letter { position: relative; padding: 44px; display: flex; flex-direction: column; gap: 22px; }
+  .letter-eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .18em; text-transform: uppercase; color: var(--muted-foreground); }
+  .stamp {
+    position: absolute; top: 36px; right: 36px; transform: rotate(3deg);
+    border: 2px dashed oklch(0.494 0.067 184.3 / .4); border-radius: 4px;
+    padding: 8px 12px; text-align: center; color: var(--primary);
+    font-size: 9px; font-weight: 600; letter-spacing: .1em;
+  }
+  .letter h3 { margin: 0; font-family: Lora, Georgia, serif; font-size: 26px; line-height: 32px; font-weight: 500; }
+  .q { font-size: 13.5px; color: var(--muted-foreground); margin-bottom: 6px; }
+  .blank {
+    display: block; border-bottom: 2px dashed var(--border); padding: 2px 4px;
+    font-family: Lora, Georgia, serif; font-style: italic; font-size: 18px; color: var(--primary);
+  }
+  .blank.ph { color: oklch(0.473 0.022 179.5 / .5); font-style: normal; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .sign { text-align: right; margin-top: 4px; }
+  .send {
+    align-self: flex-start; border: 0; border-radius: 999px; background: var(--primary);
+    color: var(--primary-foreground); padding: 12px 26px; font: 500 14px/20px "Be Vietnam Pro", system-ui, sans-serif;
+  }
+  .ps { font-family: Lora, Georgia, serif; font-style: italic; font-size: 13px; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+  <div class="card">
+
+    <!-- ══ TRÁI: panel ảnh tràn viền ══ -->
+    <aside class="panel">
+      <img src="https://res.cloudinary.com/dbkgeehow/image/upload/f_auto,q_auto/tourism/catalog/site/contact-panel" alt="">
+      <span class="scrim"></span>
+      <div class="content">
+        <span class="badge">We can help</span>
+        <h2>Talk to a human,<br><em>not a hotline.</em></h2>
+        <p class="lede">Tell us your dates and pace. A real person reads every letter and writes back — no bots on this side.</p>
+
+        <div class="rows">
+          <div class="row">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2Z"/></svg>
+            <span><span class="k">Phone</span><span class="v">+84 24 3826 0126</span></span>
+          </div>
+          <div class="row">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg>
+            <span><span class="k">Email</span><span class="v">tourism.platform.online@gmail.com</span></span>
+          </div>
+          <div class="row">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span><span class="k">Response time</span><span class="v">Within the hour · Mon–Fri, 8am–6pm</span></span>
+          </div>
+          <div class="row">
+            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            <span><span class="k">Headquarters</span><span class="v">18 Tam Trinh, Tương Mai, Hà Nội</span></span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ══ PHẢI: lá thư (giữ nguyên) ══ -->
+    <section class="letter">
+      <span class="stamp">HÀ NỘI · SA PA</span>
+      <span class="letter-eyebrow">Write us a letter</span>
+      <h3>Hello tourism,</h3>
+
+      <div class="grid2">
+        <div><p class="q">How many of you?</p><span class="blank ph">2 travellers</span></div>
+        <div><p class="q">When are you free?</p><span class="blank ph">Oct 12 – 18</span></div>
+      </div>
+      <div><p class="q">Where are you dreaming of?</p><span class="blank">Anywhere in Vietnam</span></div>
+      <div><p class="q">What do you love when travelling?</p><span class="blank ph">Easy pace, food markets, a free afternoon now and then…</span></div>
+      <div><p class="q">Where do we write back?</p><span class="blank ph">michael@example.com</span></div>
+
+      <div class="sign">
+        <p class="q" style="margin:0 0 4px">Yours,</p>
+        <span class="blank ph" style="display:inline-block;min-width:220px">Your name</span>
+      </div>
+
+      <button class="send" type="button">Send the letter</button>
+      <p class="ps">P.S. A human reads every letter — no bots on this side.</p>
+    </section>
+
+  </div>
+</body>
+</html>
