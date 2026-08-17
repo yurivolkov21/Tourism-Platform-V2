@@ -8,6 +8,74 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — Ảnh thật cho panel sáu trang auth, và một hằng số biến thành hàm (nhánh `feat/auth-panel-image`, `659b8e0`, 10 file, +181/−21)
+
+Khảo sát "trang nào còn thiếu ảnh" (user hỏi, trừ `/tours` ra) rồi làm cụm rẻ
+nhất trước. Khe `auth-panel` phục vụ SÁU trang bằng một ảnh, nên sửa một lần
+được cả sáu.
+
+**Bảng khe một mình sẽ báo cáo SAI.** DB có 29 khe, 24 có ảnh, 5 trống — nhưng
+đếm trên trang đang chạy thì **4 trong 5 khe trống không trang nào hỏi tới**
+(`destinations-hero`, `home-experiences`, `home-trust`, và `auth-panel` lúc đó).
+Chúng là hàng DB không nối vào đâu. Ngược lại, `/destinations` render 17 ô giữ
+chỗ mà **0 ảnh thật dù 9/19 địa danh đã có cover trong DB** — vì
+`destination-tile.tsx` vẽ `ImagePlaceholder` vô điều kiện, không đọc
+`DestinationSchema.cover`. **Bài học: "thiếu ảnh" và "thiếu dây nối" là hai
+bệnh khác nhau, và chỉ đếm dữ liệu thì không phân biệt được — phải đếm cái
+NGƯỜI DÙNG THẤY.**
+
+**Ảnh khớp sẵn ba chi tiết đã có trên trang.** User tìm được ảnh đỉnh Fansipan
+lúc bình minh (cáp treo, tượng Phật, biển mây). Trang vốn đã ghi caption
+"Sapa Express · departs at dawn", cuống vé "HN → SAPA", và cột trái vẽ tuyến
+trắc địa 1 650 m → 3 143 m lấy đỉnh Fansipan làm điểm đến — không phải sửa chữ
+nào. Duyệt bằng mắt TRƯỚC upload theo ADR-0020 bản sửa: dựng preview đặt ảnh
+vào đúng khe (720×900 ở 1440px, 512×800 ở 1024px) rồi mới đẩy lên CDN.
+
+**Một hằng số chuỗi lặng lẽ biến thành `function`.** Để sáu trang khỏi tự gõ
+`'auth-panel'`, tôi export hằng `AUTH_PANEL_SLOT` từ `auth-screen.tsx`. Trang
+vẫn vẽ ô giữ chỗ, không lỗi, không cảnh báo. Đo ra: `map.size` là 25 và
+`[...map.keys()]` CÓ `auth-panel`, nhưng `map.has(AUTH_PANEL_SLOT)` false trong
+khi `map.has('auth-panel')` true. Nguyên nhân: `auth-screen.tsx` là
+`'use client'`, và khi server component import một export từ module client thì
+bundler thay nó bằng **client-reference proxy** — `typeof` ra `'function'`,
+`JSON.stringify` ra `undefined`. Chuyển hằng sang `lib/api/site-media.ts` (module
+không có `'use client'`) là hết. **Bài học: hằng dùng chung giữa server và
+client phải sống ở module KHÔNG có `'use client'`; và thứ tôi thêm vào để chống
+gõ sai lại đẻ ra một lỗi im lặng tệ hơn chính cái nó phòng.**
+
+**Review findings**
+
+- **Không phải cache, dù triệu chứng giống hệt.** Ô giữ chỗ vẫn còn sau khi đã
+  upload, nên nghi `revalidate: 300` giữ bản 24 khe cũ; xoá `.next/cache` và
+  khởi động lại — vẫn y nguyên. Kiểm API thì nó trả đủ 25 khe kèm `auth-panel`.
+  Hai phép thử đó loại sạch tầng cache và tầng API, chỉ còn tầng trang, và một
+  máy dò in thẳng giá trị ra mới lòi nguyên nhân thật. **Sửa theo phỏng đoán
+  quen tay (xoá cache) tốn hai vòng mà không tiến thêm bước nào.**
+- **Quote đè lên ảnh: đo chứ không nhìn.** Ẩn chữ đi rồi chụp đúng vùng nền sau
+  nó — cách này tránh lỗi đo trúng khe hở giữa các nét chữ đã dính ở đợt màu
+  badge. Chữ 24px là "chữ lớn" theo WCAG nên ngưỡng 3:1; pixel xấu nhất 3.63 ở
+  1920, 3.47 ở 1440, 3.15 ở 1024 — đạt cả ba, không phải đổi scrim.
+- **Lời dặn trong code hết hiệu lực khi đổi nguồn ảnh.** Comment cũ dặn "thêm
+  lại dòng ghi công CC BY cùng lúc với ảnh thật". Lời dặn đó gắn với ảnh
+  Wikimedia CC BY 2.0; ảnh mới theo Unsplash License KHÔNG đòi ghi công trên
+  UI, nên làm theo lời dặn một cách máy móc là thêm một dòng credit không cần
+  thiết. Ghi công vẫn lưu đủ trong DB theo ADR-0020 §3; ảnh Wikimedia cũ đã xoá
+  khỏi `public/images`.
+- **`alt` rỗng ở đây là ĐÚNG, không phải nợ.** Panel là ảnh nền trang trí, nội
+  dung thật (quote + tên người nói) là text riêng ngay cạnh — luật này
+  `slot-image.tsx` đã ghi sẵn. Nhãn mô tả chỉ dùng cho ô giữ chỗ khi khe trống.
+
+**Nợ mở:** `/destinations` là cụm nặng nhất còn lại — 4 trang, 35 ô giữ chỗ, và
+phải NỐI DÂY `cover` trước khi thêm ảnh mới có tác dụng · 10/19 địa danh chưa
+cover, 14/19 chưa gallery · khối "Moments from the journey" còn chạy mock, chưa
+có nguồn dữ liệu thật · 3 khe DB vẫn không trang nào hỏi tới, nên hoặc nối dây
+hoặc xoá cho khỏi nhiễu thống kê · 25/30 tour chưa có cover · trang chữ
+(`/faq`, `/privacy`, `/terms`, `/cancellation-policy`) hiện không ảnh nào và
+khe `content-hero` chưa dùng — chờ user quyết có muốn hero ảnh không.
+
+Tests after: 1258 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — Thẻ tour /tours thành lưới hai cột, và một cái bẫy của `grid-cols-2` (nhánh `feat/tours-card-grid`, `4753248`, 6 file, +358/−143)
 
 User đưa hai mẫu ReUI ([product-grid-1](https://reui.io/preview/base/product-grid-1)
