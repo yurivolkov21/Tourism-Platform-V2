@@ -18,7 +18,19 @@ import { useWishlist } from '@/components/tours/wishlist-store';
  * Nên luật ở đây: có nguồn trạng thái thì hiện tim thật, không có thì KHÔNG
  * hiện gì cả.
  */
-export function WishlistHeart({ tourId, tourTitle }: { tourId: string; tourTitle: string }) {
+export function WishlistHeart({
+  tourId,
+  tourTitle,
+  className,
+}: {
+  tourId: string;
+  tourTitle: string;
+  /** Đè kiểu dáng cho chỗ gọi cần hình khác — thẻ lưới ở /tours đặt nút này
+      NGỒI ĐÈ LÊN ẢNH nên nó cần viền + nền card để tách khỏi ảnh, khác hẳn nút
+      ghost nằm trên nền thẻ ở các chỗ khác. Đi qua `className` chứ không thêm
+      variant mới vào `Button`: đây là một chỗ dùng, chưa phải một kiểu nút. */
+  className?: string;
+}) {
   const wishlist = useWishlist();
   if (!wishlist) return null;
 
@@ -36,6 +48,7 @@ export function WishlistHeart({ tourId, tourTitle }: { tourId: string; tourTitle
       aria-pressed={wished}
       aria-label={t.wishlistLabel(tourTitle)}
       onClick={() => wishlist.toggle(tourId)}
+      className={className}
     >
       <HeartIcon className={wished ? 'fill-current text-primary-emphasis' : undefined} />
     </Button>

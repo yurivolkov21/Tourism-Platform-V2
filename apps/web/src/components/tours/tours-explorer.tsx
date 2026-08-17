@@ -495,7 +495,21 @@ export function ToursExplorer({
               {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình —
                   không thì trang nhảy thẳng H1 → H3 (tiêu đề card). */}
               <h2 className="sr-only">All tours</h2>
-              <div className="flex flex-col gap-5">
+              {/* `minmax(0,1fr)` chứ KHÔNG phải `grid-cols-2`: Tailwind sinh ra
+                  `1fr`, mà `1fr` nghĩa là `minmax(auto, 1fr)` — cận dưới `auto`
+                  lấy min-content. Tiêu đề thẻ là `truncate` (nowrap), min-content
+                  của nó bằng CẢ dòng chữ, nên một tour tên dài kéo cột phình
+                  quá khổ và phép cắt chữ không bao giờ chạy. Đo được trên
+                  wireframe: cột 580 → 670, thẻ cao thêm 60px vì ảnh giữ 3:2.
+
+                  Hai cột bắt đầu từ `lg` (1024) chứ KHÔNG phải `sm` (640). Đo
+                  số tiêu đề bị ellipsis cắt trên 10 tour thật: 1280px→0/10 ·
+                  1024px→6/10 (mất nhiều nhất 17%) · 820px→9/10 (33%) ·
+                  640px→9/10 (42%). Wireframe user duyệt là khung 1184, tức
+                  thẻ 580; ép hai cột xuống 640 thì thẻ còn ~300 và tiêu đề
+                  một-dòng nuốt gần nửa tên tour. Một cột đọc được vẫn hơn hai
+                  cột đúng hình. */}
+              <div className="grid grid-cols-[repeat(1,minmax(0,1fr))] gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
                 {paged.items.map((tour, index) => (
                   <div
                     key={tour.slug}

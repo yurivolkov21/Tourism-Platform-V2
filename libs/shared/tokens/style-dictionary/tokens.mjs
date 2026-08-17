@@ -83,6 +83,28 @@ export default {
     accent: c('oklch(0.914 0.01 174.3)', 'oklch(0.367 0.028 178.3)'),
     'accent-foreground': c('oklch(0.411 0.053 184.5)', 'oklch(0.822 0.041 180.6)'),
     destructive: c('oklch(0.516 0.136 27.3)', 'oklch(0.579 0.148 26.7)'),
+
+    // Badge GIẢM GIÁ trên thẻ tour. Tách khỏi `destructive` vì ngữ nghĩa khác
+    // hẳn: destructive là "xoá/hỏng/nguy hiểm", còn đây là khuyến mãi. Dùng
+    // chung một token cho hai ý nghĩa đối lập thì sớm muộn ai đó chỉnh màu lỗi
+    // và vô tình đổi luôn màu badge sale.
+    //
+    // Màu user chọn 17/08: "giống #E63946". Nhưng ĐO ra thì chính #E63946 đã
+    // KHÔNG đạt chữ trắng (4.17 < 4.5), và user muốn nhạt thêm 3-4% thì càng
+    // tệ — 3.62 ở +3.5%. Đổi sang chữ mực đậm cũng không cứu được (4.07).
+    // Dò L tối đa còn đạt 4.5 với chữ trắng, giữ nguyên chroma/hue của
+    // E63946: L = 0.590 → #DE3040, tương phản 4.56. Tức chỉ TỐI hơn E63946
+    // 2.2% — mắt gần như không phân biệt được, mà chữ thì đọc được.
+    //
+    // Dark dùng CÙNG giá trị, cùng lý lẽ với `on-media`: badge là bề mặt đặc
+    // luôn mang chữ trắng, nền phía sau nó là ảnh chứ không phải nền trang,
+    // nên nó KHÔNG được lật theo theme.
+    sale: c('oklch(0.59 0.208 22.2)', 'oklch(0.59 0.208 22.2)'),
+    // TRẮNG THẬT, không mượn `on-media`. `on-media` là oklch(0.98 …) — trên nền
+    // `sale` nó chỉ đạt 4.33, tức tụt xuống dưới ngưỡng mà cả token `sale` sinh
+    // ra để đạt (chữ trắng 4.56). Chênh lệch 0.23 đủ để phá chính lý do chọn
+    // màu, nên badge phải có foreground riêng.
+    'sale-foreground': c('oklch(1 0 0)', 'oklch(1 0 0)'),
     // `destructive` khi nó LÀ CHỮ, không phải khi nó là bề mặt — cùng một phép
     // tách với `primary-emphasis` (ADR-0019 mục 2), vì đây là CÙNG mâu thuẫn
     // hai vai, phát hiện 11/08 khi đo lại khu account.

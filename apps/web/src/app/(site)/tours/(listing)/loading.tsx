@@ -9,9 +9,13 @@
 // `tours/[slug]/page.tsx`. ĐỪNG chuyển file này lên một cấp.
 //
 // Khối giả phải khớp bố cục THẬT, nếu không nó thành lời hứa sai: bản đầu vẽ
-// chip rail + lưới 3 cột card dọc, trong khi listing sau 4 vòng thiết kế lại là
-// hàng tiêu đề khu vực + MỘT cột TourListCard hàng ngang. Nội dung về là trang
-// nhảy layout — đúng cái mà skeleton tồn tại để tránh.
+// chip rail + lưới 3 cột card dọc, trong khi listing khi đó là hàng tiêu đề khu
+// vực + MỘT cột TourListCard hàng ngang. Nội dung về là trang nhảy layout —
+// đúng cái mà skeleton tồn tại để tránh.
+//
+// Cập nhật 17/08: thẻ đổi sang lưới 2 cột, ảnh 3:2 trên đầu (wireframe
+// `tours-card-grid.src.html`), nên khối giả ở đây đổi theo. Sửa file này là
+// PHẦN CỦA việc đổi thẻ, không phải việc dọn dẹp sau đó.
 
 // Key ổn định thay vì index: danh sách này không bao giờ đổi thứ tự, nhưng
 // dựng sẵn mảng id để khỏi phải tắt luật noArrayIndexKey.
@@ -53,34 +57,27 @@ export default function ToursLoading() {
             <div className="mt-4 border-b" />
           </div>
 
-          {/* Card hàng ngang: ảnh trái bề rộng cố định, thân giữa, rail giá phải
-              — cùng ba khối của TourListCard nên chiều cao hàng khớp sẵn. */}
-          <div className="flex flex-col gap-5">
+          {/* Thẻ lưới: ảnh 3:2 trên đầu rồi năm băng chữ — cùng bố cục
+              TourListCard nên chiều cao khớp sẵn. Ô ảnh KHÔNG vẽ góc khuyết:
+              mask chỉ có ý nghĩa khi có ảnh thật bên dưới, còn ở đây nó chỉ là
+              một hình chữ nhật xám bị gặm mất một góc — trông như lỗi render. */}
+          <div className="grid grid-cols-[repeat(1,minmax(0,1fr))] gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {ROW_KEYS.map((key) => (
-              <div key={key} className="overflow-hidden rounded-2xl border bg-card sm:flex">
-                <div className="aspect-16/10 w-full shrink-0 bg-muted sm:aspect-auto sm:w-60 lg:w-72" />
+              <div key={key} className="rounded-2xl border bg-card p-3">
+                <div className="aspect-3/2 w-full rounded-xl bg-muted" />
 
-                <div className="flex flex-1 flex-col gap-5 p-5 sm:flex-row sm:items-stretch sm:gap-6 sm:p-6">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="h-3 w-56 rounded bg-muted" />
-                    {/* Hai dòng tiêu đề: hợp đồng số dòng của card giữ chỗ 2
-                        dòng kể cả khi tiêu đề chỉ chiếm 1. */}
-                    <div className="h-5 w-3/4 rounded bg-muted" />
-                    <div className="h-5 w-1/2 rounded bg-muted" />
-                    <div className="h-3 w-full rounded bg-muted" />
-                    <div className="h-3 w-2/3 rounded bg-muted" />
-                    <div className="h-3 w-40 rounded bg-muted" />
-                  </div>
+                <div className="flex flex-col gap-2 px-1 pt-3.5 pb-1">
+                  <div className="h-4 w-48 rounded bg-muted" />
+                  {/* MỘT dòng tiêu đề: hợp đồng số dòng của thẻ ghim đúng 1 dòng
+                      rồi cắt bằng ellipsis, không còn giữ chỗ 2 dòng như bản cũ. */}
+                  <div className="h-[1lh] w-3/4 rounded bg-muted text-xl" />
+                  <div className="h-5 w-full rounded bg-muted" />
+                  <div className="h-5 w-2/3 rounded bg-muted" />
+                  <div className="h-6 w-56 rounded bg-muted" />
 
-                  <div className="flex shrink-0 items-end justify-between gap-3 border-t pt-4 sm:w-40 sm:flex-col sm:items-end sm:justify-center sm:border-t-0 sm:border-l sm:pt-0 sm:pl-6">
-                    <div className="space-y-2 sm:text-right">
-                      <div className="h-7 w-24 rounded bg-muted" />
-                      <div className="h-3 w-16 rounded bg-muted" />
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <div className="size-8 rounded-md bg-muted" />
-                      <div className="h-8 w-24 rounded-md bg-muted" />
-                    </div>
+                  <div className="mt-1 flex items-end justify-between gap-3 border-t pt-3">
+                    <div className="h-7 w-32 rounded bg-muted" />
+                    <div className="h-[34px] w-24 rounded-full bg-muted" />
                   </div>
                 </div>
               </div>
