@@ -138,6 +138,11 @@ const SITE_SLOTS = [
     'Head of Operations. Avatar một thành viên ở /about §Team. Khung 270×320 (0.84) ở 1280, 302×320 (0.94) từ 1440 — gần vuông, hơi DỌC. Chốt 17/08: KHÔNG dùng ảnh mặt thật (quyết định user — lộ mặt thật ảnh hưởng riêng tư). Dùng bộ "voxel-bot" của DiceBear (API 10.x — bộ này KHÔNG có ở 9.x), giấy phép CC0 1.0 nên không cần ghi nguồn. Preset "Animated" trên web DiceBear KHÔNG lấy được qua HTTP API: tài liệu ghi API chỉ trả ảnh tĩnh, và đo thực tế thì preset=animated/animated=true/motion=true đều trả SVG không có thẻ animation nào. API cũng chặn PNG ở 256px, nên quy trình là lấy SVG rồi rasterize bằng trình duyệt lên 800px. Khoá khe đặt theo CHỨC DANH chứ không theo tên, để đổi người không phải đổi khe.',
     '512×512, vuông',
   ],
+  [
+    'about-cta-video',
+    'VIDEO nền dải CTA cuối /about ("The road is ready when you are"). Khe VIDEO ĐẦU TIÊN của dự án — thả file .mp4/.webm/.mov vào đây, media:scan và media:upload phân biệt theo ĐUÔI FILE rồi ghi type=VIDEO. Khung 1152×384 (3.00) ở 1280 và 1280×384 (3.33) từ 1440: dải cực dẹt, chỉ giữ khoảng 53% chiều cao giữa khung nên chân trời phải nằm quãng giữa. Có chữ đè giữa khung và scrim overlay/60 phủ toàn bộ. Clip nên 8-12s và LẶP LIỀN MẠCH (khung đầu gần bằng khung cuối) vì nó chạy loop vô hạn; KHÔNG cần tiếng, trình duyệt chặn autoplay có tiếng. buildCloudinaryUrl chặn bề rộng video ở 1600.',
+    '1920×1080 trở lên, 16:9',
+  ],
 ];
 
 const README_SITE = `# Khe thương hiệu

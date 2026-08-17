@@ -1,15 +1,16 @@
 'use client';
 
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import type { MediaItem } from '@tourism/contract';
+import { SlotVideo } from '@/components/slot-video';
 
 // About §7 ứng viên B — convert ShadcnSpace CTA 02 "Video Background" (đang so
 // với CTA 01 aurora): card bo trên 2xl nền VIDEO autoplay + nội dung trắng căn
 // giữa + thanh marquee bo dưới 2xl chạy cam kết thương hiệu.
 // Da thịt: teal-400 → bg-primary; marquee react-fast-marquee → cơ chế
 // .animate-marquee-left hai toa của nhà (hover dừng, reduced-motion tắt);
-// video theo chính sách placeholder — khung <video> sẵn trong comment, khi có
-// media thật thì thay ImagePlaceholder bằng nó (nhớ autoPlay muted loop
-// playsInline + poster, và tắt theo prefers-reduced-motion).
+// Video ĐÃ GẮN 17/08 qua `SlotVideo` (khe `about-cta-video`) — nó lo trọn
+// autoPlay/loop/muted/playsInline + poster + tôn trọng prefers-reduced-motion,
+// đúng như comment cũ ở đây dặn.
 const MARQUEE_ITEMS = [
   'Small groups',
   'Local guides only',
@@ -32,18 +33,22 @@ function PromiseGroup({ hidden = false }: { hidden?: boolean }) {
   );
 }
 
-export function AboutCtaVideo() {
+export function AboutCtaVideo({
+  video = null,
+}: {
+  /** Khe `about-cta-video`; `null` là BÌNH THƯỜNG — rơi về giữ chỗ. */
+  video?: MediaItem | null;
+}) {
   return (
     <section className="w-full px-4 py-8 sm:py-20 md:px-16">
       <div className="mx-auto max-w-7xl">
         {/* Card nền video (placeholder tới khi có media) + scrim + nội dung trắng */}
         <div className="relative flex min-h-96 items-center justify-center overflow-hidden rounded-t-2xl">
           <div className="dark absolute inset-0">
-            {/* Khi có media: <video autoPlay loop muted playsInline poster="..."
-                className="absolute inset-0 h-full w-full object-cover" /> */}
-            <ImagePlaceholder
+            <SlotVideo
+              media={video}
               corner
-              label="Video — drone over Hạ Long at dawn (thay khi có media)"
+              label="Video — drone flying out of a karst cave over the valley"
               className="h-full w-full"
             />
             <div className="absolute inset-0 bg-overlay/60" />

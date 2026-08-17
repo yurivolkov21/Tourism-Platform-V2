@@ -69,6 +69,9 @@ export default async function AboutPage() {
     ),
   );
 
+  // Khe VIDEO nền dải CTA cuối trang.
+  const ctaVideo = await siteMediaImage('about-cta-video');
+
   // 4 avatar đội ngũ. Khoá theo CHỨC DANH, không theo tên người.
   const teamImages = Object.fromEntries(
     await Promise.all(
@@ -105,7 +108,7 @@ export default async function AboutPage() {
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
           §7 CTA riêng — ShadcnSpace CTA 01 (ứng viên còn lại: CTA 02 video) */}
       {/* Đang so CTA 02 (video + marquee) với CTA 01 (aurora — about-cta.tsx) */}
-      <AboutCtaVideo />
+      <AboutCtaVideo video={ctaVideo} />
     </>
   );
 }

@@ -98,6 +98,8 @@ const SITE_SLOT_KEYS = [
   'about-team-routes',
   'about-team-guides',
   'about-team-ops',
+  // Video nền dải CTA cuối /about — khe VIDEO đầu tiên của dự án
+  'about-cta-video',
 ] as const;
 
 const connectionString =
