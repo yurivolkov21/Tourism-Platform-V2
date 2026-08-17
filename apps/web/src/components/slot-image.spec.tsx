@@ -57,3 +57,30 @@ describe('SlotImage', () => {
     expect(img?.getAttribute('src')).toBe('https://images.unsplash.com/photo-123');
   });
 });
+
+describe('SlotImage — hợp đồng định vị', () => {
+  const cloudinary = {
+    url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/x',
+    alt: null,
+  } as never;
+
+  it('ảnh THẬT: bọc ngoài luôn có relative + overflow-hidden', () => {
+    // `next/image` với `fill` bám tổ tiên có position gần nhất. Thiếu
+    // `relative` thì ảnh trải kín viewport — lỗi đã dính ở /about §Team.
+    const { container } = render(
+      <SlotImage image={cloudinary} label="x" className="h-80 w-full" />,
+    );
+    const wrap = container.firstElementChild as HTMLElement;
+    expect(wrap.className).toContain('relative');
+    expect(wrap.className).toContain('overflow-hidden');
+  });
+
+  it('caller vẫn ghi đè được bằng absolute (twMerge)', () => {
+    const { container } = render(
+      <SlotImage image={cloudinary} label="x" className="absolute inset-0" />,
+    );
+    const wrap = container.firstElementChild as HTMLElement;
+    expect(wrap.className).toContain('absolute');
+    expect(wrap.className).not.toContain('relative');
+  });
+});

@@ -1,4 +1,5 @@
 import type { MediaItem } from '@tourism/contract';
+import { cn } from '@tourism/ui/lib/utils';
 import Image from 'next/image';
 import { ImagePlaceholder } from '@/components/image-placeholder';
 
@@ -45,6 +46,14 @@ export function SlotImage({
   // với file đó — nới ở một nơi mà quên nơi kia thì ảnh biến mất im lặng.
   const OPTIMISABLE_HOST = 'https://res.cloudinary.com/';
 
+  // `relative overflow-hidden` KHÔNG phải trang trí — nó là hợp đồng của
+  // component này. `next/image` với `fill` định vị theo tổ tiên CÓ position
+  // gần nhất; caller quên `relative` thì ảnh nhảy ra bám viewport và trải kín
+  // màn hình (đã dính ở /about §Team ngày 17/08: ô 302×320 mà ảnh render
+  // 1440×900, nhìn ra như ô trống). Nhánh giữ chỗ `ImagePlaceholder` vốn ĐÃ có
+  // hai class này, nên lỗi ẩn rất kỹ: chỉ lộ đúng lúc khe được gắn ảnh thật.
+  // Dùng `cn` (twMerge) chứ không nối chuỗi, để caller nào cần
+  // `absolute inset-0` (vd about-story) vẫn ghi đè được.
   if (!image) return <ImagePlaceholder label={label} className={className} corner={corner} />;
 
   // `buildCloudinaryUrl` có escape-hatch CỐ Ý (ADR-0005 §2): `publicId` là URL
@@ -57,7 +66,7 @@ export function SlotImage({
   // Mất tối ưu là phiền; sập trang vì một row là hỏng.
   if (!image.url.startsWith(OPTIMISABLE_HOST)) {
     return (
-      <div className={className}>
+      <div className={cn('relative overflow-hidden', className)}>
         {/** biome-ignore lint/performance/noImgElement: host ngoài remotePatterns, next/image sẽ ném lỗi */}
         <img src={image.url} alt={image.alt ?? ''} className="size-full object-cover" />
       </div>
@@ -65,7 +74,7 @@ export function SlotImage({
   }
 
   return (
-    <div className={className}>
+    <div className={cn('relative overflow-hidden', className)}>
       <Image
         src={image.url}
         // `alt` rỗng là CỐ Ý khi thiếu: đây là ảnh TRANG TRÍ nền, chữ thật nằm
