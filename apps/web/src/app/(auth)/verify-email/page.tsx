@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { OtpForm } from '@/components/auth/otp-form';
+import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /verify-email (plan Task 5) — "boarding check" soát vé email; backend đã
 // gate emailVerified (ADR-0008), nay nối API thật (emailOTP, Task 1).
@@ -15,6 +16,11 @@ interface VerifyEmailPageProps {
 }
 
 export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageProps) {
+  // Ảnh panel lấy ở TRANG (server component) rồi truyền xuống `AuthScreen` —
+  // component đó là `'use client'` vì dùng motion, nên không tự fetch được.
+  // Đây là quy ước đã ghi ở đầu `slot-image.tsx`, áp cho cả chín chỗ dùng khe.
+  const image = await siteMediaImage(AUTH_PANEL_SLOT);
+
   // Đọc `?email=` (register-form Task 3 push tới đây) + `?redirect=` ở SERVER
   // rồi truyền prop xuống OtpForm (client) — không cần useSearchParams/Suspense
   // vì form không tự đọc query (khác nếp /login, /reset-password).
@@ -22,6 +28,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
 
   return (
     <AuthScreen
+      image={image}
       quote="A ticket only counts once it's stamped."
       author="Nguyễn Khánh Minh, Head of Operations"
     >

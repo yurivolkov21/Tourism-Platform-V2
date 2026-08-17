@@ -10,6 +10,25 @@ export type SiteMediaEntry = ContractOutputs['siteMedia']['list'][number];
 export type SiteMediaItem = SiteMediaEntry['media'][number];
 
 /**
+ * Khoá khe panel ảnh của sáu trang auth.
+ *
+ * ── VÌ SAO HẰNG NÀY NẰM Ở ĐÂY, KHÔNG PHẢI Ở `auth-screen.tsx` ──
+ * Đặt nó cạnh component là chỗ trực giác hơn, và tôi đã làm vậy trước — nhưng
+ * `auth-screen.tsx` là `'use client'`. Khi một SERVER component import bất kỳ
+ * export nào từ module client, bundler của Next thay nó bằng **client-reference
+ * proxy**: `typeof` ra `'function'`, `JSON.stringify` ra `undefined`. Hằng
+ * chuỗi vì thế KHÔNG còn là chuỗi, `map.has(HẰNG)` luôn false, và **không có
+ * lỗi nào được ném ra** — trang lặng lẽ vẽ ô giữ chỗ như thể khe chưa có ảnh.
+ *
+ * Đo được: `map.size` 25 và `[...map.keys()]` có `auth-panel`, nhưng
+ * `map.has(AUTH_PANEL_SLOT)` false trong khi `map.has('auth-panel')` true.
+ *
+ * Luật rút ra: hằng dùng chung giữa server và client phải sống ở module KHÔNG
+ * có `'use client'`. File này là chỗ đúng — nó vốn đã là nơi biết về khe.
+ */
+export const AUTH_PANEL_SLOT = 'auth-panel';
+
+/**
  * Các khe brand-chrome (`home-hero`, `about-hero`, `about-story`, `auth-panel`…).
  *
  * `cache()` của React dedupe trong MỘT lần render: trang chủ có bốn khe, không

@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'motion/react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { Logo } from '@/components/logo';
+import { SlotImage } from '@/components/slot-image';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { SPRING } from '@/lib/motion';
 
 // Màn hình auth dùng chung (spec 2026-07-24, redesign vòng 3 — user chốt chất
@@ -10,21 +11,42 @@ import { SPRING } from '@/lib/motion';
 // yên tĩnh, chỉ một quầng sáng lan từ phía ảnh sang (bài học Linear/Clerk) ·
 // PHẢI ảnh Sa Pa + scrim + khung hairline + caption mono cùng họ chữ cuống vé
 // + quote đổi theo trang. Mobile: ẩn panel phải.
-// Task 3c mục 0: toàn site tạm về ImagePlaceholder (user chốt lại — chưa dùng
-// ảnh thật ở bất kỳ trang nào). Ảnh thật "Ray over terrace rice field in Sapa
-// - Trung Chải" (Phi Phi Hoang, CC BY 2.0, Wikimedia Commons) vẫn nằm sẵn ở
-// public/images/auth-sapa-dawn.jpg chờ lúc chốt trang; dòng ghi công CC BY bỏ
-// tạm khỏi UI vì ghi công cho ảnh không hiển thị là sai — thêm lại cùng lúc
-// với ảnh thật.
+// Ảnh thật gắn 17/08 qua khe site `auth-panel` (user duyệt bằng mắt trước
+// upload theo ADR-0020): đỉnh Fansipan lúc bình minh — cáp treo, tượng Phật,
+// biển mây. Ảnh này khớp sẵn ba chi tiết đã có trên trang: caption "Sapa
+// Express · departs at dawn", cuống vé "HN → SAPA", và tuyến trắc địa
+// 1 650 m → 3 143 m ở cột trái, vốn lấy đỉnh Fansipan làm điểm đến.
+//
+// KHÔNG có dòng ghi công trên UI: giấy phép ở đây là Unsplash License, không
+// đòi ghi công (khác CC BY). Kế hoạch cũ định dùng ảnh Wikimedia CC BY 2.0
+// ("Ray over terrace rice field in Sapa", Phi Phi Hoang) — giấy phép ĐÓ mới
+// bắt buộc ghi công, nên lời dặn "thêm lại dòng ghi công" đi cùng ảnh đó và
+// hết hiệu lực khi đổi nguồn. Ghi công vẫn lưu đủ trong DB (`author`,
+// `license`, `source_url`) theo ADR-0020 §3.
+
+// Hằng khoá khe `AUTH_PANEL_SLOT` cố tình KHÔNG nằm ở file này mà ở
+// `lib/api/site-media.ts` — xem lý do đầy đủ tại chỗ khai báo. Tóm tắt: file
+// này là `'use client'`, và hằng export từ module client khi bị server
+// component import sẽ thành client-reference proxy chứ không phải chuỗi.
+
+/**
+ * Nhãn cho Ô GIỮ CHỖ khi khe trống — `SlotImage` bỏ qua nó khi đã có ảnh thật.
+ * `alt` của ảnh thật cố ý để RỖNG: panel này là ảnh nền trang trí, nội dung
+ * thật (quote + tên người nói) là text riêng ngay bên cạnh, nên đọc thêm mô tả
+ * ảnh chỉ làm trình đọc màn hình dài dòng. Luật này ghi ở `slot-image.tsx`.
+ */
+const AUTH_PANEL_LABEL = 'Fansipan summit above the clouds at dawn';
 
 interface AuthScreenProps {
   /** Câu quote trên panel ảnh — đổi theo ngữ cảnh từng trang */
   quote: string;
   author: string;
+  /** Ảnh khe `auth-panel`; `null` là bình thường — khe trống thì về ô giữ chỗ. */
+  image: SiteMediaItem | null;
   children: React.ReactNode;
 }
 
-export function AuthScreen({ quote, author, children }: AuthScreenProps) {
+export function AuthScreen({ quote, author, image, children }: AuthScreenProps) {
   return (
     <div className="grid min-h-screen w-full grid-cols-1 lg:grid-cols-2">
       {/* Trái: logo + card trên BẢN ĐỒ TRẮC ĐỊA (vòng chỉnh theo khảo sát
@@ -98,11 +120,13 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
         </div>
       </div>
 
-      {/* Phải: ảnh Sa Pa (placeholder tạm) — chỉ lg+ */}
+      {/* Phải: ảnh đỉnh Fansipan — chỉ lg+ */}
       <div className="dark relative hidden overflow-hidden bg-background lg:block">
-        <ImagePlaceholder
-          label="Sa Pa terraces at dawn"
+        <SlotImage
+          image={image}
+          label={AUTH_PANEL_LABEL}
           className="absolute inset-0 h-full w-full"
+          sizes="50vw"
         />
         {/* Scrim 2 đầu: đậm dưới chân cho quote, nhẹ mép trên cho caption */}
         <div
@@ -134,10 +158,6 @@ export function AuthScreen({ quote, author, children }: AuthScreenProps) {
           </blockquote>
           <figcaption className="mt-3 text-sm opacity-75">— {author}</figcaption>
         </motion.figure>
-
-        {/* Ghi công CC BY 2.0 tạm bỏ khỏi UI — ảnh đang là placeholder (task 3c
-            mục 0), ghi công cho ảnh không hiển thị là sai; thêm lại cùng lúc
-            với ảnh thật auth-sapa-dawn.jpg. */}
       </div>
     </div>
   );
