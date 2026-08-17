@@ -78,14 +78,23 @@ function postCards(): HTMLElement[] {
   return screen.getAllByRole('link').filter((el) => el.getAttribute('href')?.startsWith('/blog/'));
 }
 
+// Slug địa danh thật của catalog — dùng để tách tag thành hai họ Topic/Place.
+const DESTS = ['can-tho', 'da-nang', 'hanoi', 'hoi-an', 'hue', 'ninh-binh', 'sa-pa'];
+
 function renderBlog(
-  initial: { initialTag?: string; initialQuery?: string; initialPage?: number } = {},
+  initial: {
+    initialTopics?: string[];
+    initialPlaces?: string[];
+    initialLegacyTag?: string;
+    initialQuery?: string;
+    initialPage?: number;
+  } = {},
 ) {
   return render(
     // reducedMotion="always" cho tất định: lưới bài dùng AnimatePresence +
     // blur, không khoá lại thì đếm card lúc đang animate ra số khác.
     <MotionConfig reducedMotion="always">
-      <BlogExplorer posts={POSTS} tags={TAGS} {...initial} />
+      <BlogExplorer posts={POSTS} tags={TAGS} destinationSlugs={DESTS} {...initial} />
     </MotionConfig>,
   );
 }
@@ -158,9 +167,9 @@ describe('BlogExplorer — lọc và phân trang không đánh nhau', () => {
     expect(tag).toBeDefined();
     renderBlog({ initialPage: 2 });
 
-    // Chip tag là <Link> thật (server-render được, crawl được) — không phải
-    // button, nên phải query theo role link. Nhãn hiển thị là `tag.name`.
-    if (tag) await user.click(screen.getByRole('link', { name: tag.name }));
+    // Chip <Link> cũ đã thay bằng ô tick trong sidebar (17/08) — query theo
+    // role checkbox. Neo `^` vì accessible name còn kèm số đếm phía sau.
+    if (tag) await user.click(screen.getByRole('checkbox', { name: new RegExp(`^${tag.name}`) }));
     expect(postCards().length).toBeGreaterThan(0);
     // URL cuối cùng không còn `page=2`.
     const lastCall = replace.mock.calls.at(-1);
@@ -181,7 +190,7 @@ describe('BlogExplorer — lọc và phân trang không đánh nhau', () => {
     const user = userEvent.setup();
     renderBlog();
 
-    await user.click(screen.getByRole('link', { name: 'Sa Pa' }));
+    await user.click(screen.getByRole('checkbox', { name: /^Sa Pa/ }));
 
     await waitFor(() => expect(screen.getByText('1 story')).toBeInTheDocument());
     expect(screen.getByRole('link', { name: /p5/ })).toBeInTheDocument();
@@ -204,5 +213,98 @@ describe('BlogExplorer — lọc và phân trang không đánh nhau', () => {
 
     renderBlog({ initialPage: 2 });
     expect(document.querySelector('.sm\\:col-span-2')).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Filter sidebar hai trục (17/08) — thay hàng chip đơn tuyển cũ
+// ─────────────────────────────────────────────────────────────────────────
+describe('BlogExplorer — sidebar lọc hai trục', () => {
+  const tickFor = (name: string) => screen.getByRole('checkbox', { name: new RegExp(`^${name}`) });
+  // `AnimatePresence` giữ thẻ đang thoát trong DOM thêm một nhịp, kể cả với
+  // reducedMotion="always" — đọc DOM ngay sau click sẽ đếm cả thẻ sắp biến
+  // mất. Đo được lúc dựng: lọc còn 3 bài mà vẫn thấy 4 link.
+  // KHÔNG đếm card sau khi lọc: trong jsdom các thẻ đang exit của
+  // `AnimatePresence` không bao giờ rời DOM (không có animation frame thật) —
+  // quy ước này đã ghi ở test phân trang phía trên. Dòng "N stories" lấy thẳng
+  // từ `visible.length` nên là chỗ khẳng định chính xác và ổn định.
+  const expectStories = (n: number) =>
+    waitFor(() =>
+      expect(screen.getByText(new RegExp(`^${n} (story|stories)$`))).toBeInTheDocument(),
+    );
+
+  it('tag được tách thành hai họ theo slug ĐỊA DANH từ API', () => {
+    renderBlog();
+    // 'sa-pa' trùng slug destination → vào Place; còn lại vào Topic.
+    // Tiêu đề nhóm là <legend> của <fieldset> — role "group" có tên nhóm.
+    expect(screen.getByRole('group', { name: /Topic/ })).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: /Place/ })).toBeInTheDocument();
+    const place = screen.getByRole('group', { name: /Place/ });
+    expect(place).toHaveTextContent('Sa Pa');
+    expect(place).not.toHaveTextContent('Food');
+  });
+
+  it('destinations rỗng → dồn hết về Topic, KHÔNG vỡ và không hiện Place rỗng', () => {
+    render(
+      <MotionConfig reducedMotion="always">
+        <BlogExplorer posts={POSTS} tags={TAGS} destinationSlugs={[]} />
+      </MotionConfig>,
+    );
+    expect(screen.getByRole('group', { name: /Topic/ })).toBeInTheDocument();
+    expect(screen.queryByRole('group', { name: /Place/ })).not.toBeInTheDocument();
+  });
+
+  it('ĐA TUYỂN trong cùng trục là OR — chip cũ chỉ chọn được một', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    await user.click(tickFor('Food'));
+    await expectStories(3); // p1, p2, p9
+    await user.click(tickFor('Nature'));
+    // OR: Food(3) + Nature(2) = 5, không phải giao = 0
+    await expectStories(5);
+  });
+
+  it('bỏ tick thì nới lại kết quả', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    await user.click(tickFor('Food'));
+    await user.click(tickFor('Food'));
+    await expectStories(9); // hết lọc → cả 9 bài
+  });
+
+  it('chip đang lọc hiện ra và bấm × thì gỡ đúng bộ lọc đó', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    await user.click(tickFor('Food'));
+    const chip = screen.getByRole('button', { name: /remove filter food/i });
+    await user.click(chip);
+    expect(screen.queryByRole('button', { name: /remove filter food/i })).not.toBeInTheDocument();
+    await expectStories(9);
+  });
+
+  it('"Clear all" chỉ hiện khi ĐANG lọc', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    expect(screen.queryByRole('button', { name: 'Clear all' })).not.toBeInTheDocument();
+    await user.click(tickFor('Food'));
+    await user.click(screen.getByRole('button', { name: 'Clear all' }));
+    await expectStories(9);
+  });
+
+  it('link CŨ `?tag=sa-pa` vẫn lọc được và vào đúng họ Place', async () => {
+    // Không được để link đã chia sẻ chết khi đổi sang ?topic=/?place=.
+    renderBlog({ initialLegacyTag: 'sa-pa' });
+    expect(screen.getByRole('button', { name: /remove filter sa pa/i })).toBeInTheDocument();
+    await expectStories(1);
+  });
+
+  it('số đếm ĐỔI theo trục kia — đây là chỗ count của API nói dối', async () => {
+    const user = userEvent.setup();
+    renderBlog();
+    const placeSection = () => screen.getByRole('group', { name: /Place/ });
+    expect(placeSection()).toHaveTextContent('1');
+    await user.click(tickFor('Food'));
+    // Bài 'Sa Pa' mang tag packing, không phải food → sau khi lọc Food thì về 0
+    expect(placeSection()).toHaveTextContent('0');
   });
 });
