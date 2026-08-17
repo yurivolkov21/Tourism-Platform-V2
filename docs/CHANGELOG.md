@@ -8,6 +8,86 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — Khe VIDEO đầu tiên: dải CTA /about có nền động, đường ống media học nhận video (nhánh `feat/about-cta-video`, `9413469`→`751db04`, 11 file, +148/−29)
+
+`/about` **hết sạch ô giữ chỗ** — từ 1 ảnh thật / 15 ô lúc sáng nay xuống 18
+ảnh + 1 video + **0 ô**. Khe site lên **29**.
+
+**Hai đầu của hạ tầng video đã nằm sẵn từ lâu mà không ai nối.** Contract khai
+`type: 'IMAGE' | 'VIDEO'` từ ADR-0005, `buildCloudinaryUrl` đã biết dựng URL
+video và suy poster từ frame `so_0`. Chỗ duy nhất còn mù là hai script:
+`media-scan` chỉ quét đuôi ảnh nên video thả vào cây **bị bỏ qua im lặng**, và
+`media-upload` hardcode `resource_type: 'image'`. Nay đuôi file quyết định
+`type`, và `resource_type` đi theo. Đây là kiểu nợ dễ nằm im lâu: mỗi mảnh
+riêng lẻ đều "đã làm xong", chỉ thiếu đúng khúc nối, và không có gì báo cho
+tới lúc ai đó thật sự thả file video vào.
+
+**Video phải tự chặn cỡ vì không ai chặn hộ.** Ảnh đi qua `next/image` nên
+trình duyệt xin đúng cỡ qua `w=`; video đi thẳng thẻ `<video>` nên nguồn bao
+nhiêu thì tải bấy nhiêu. Thêm `w_1600,c_limit` (chỉ thu nhỏ, không phóng to):
+đo trên clip thật, **91MB xuống 4,4MB** — khách đang phải tải gấp 21 lần thứ
+họ thấy trên một dải rộng 1280. Poster suy-từ-video cũng chặn cùng cỡ, 408KB
+xuống 197KB. Hai test URL có sẵn **bắt đúng thay đổi này**, đã cập nhật kèm lý
+do ngay tại chỗ.
+
+**`SlotVideo` là component RIÊNG, và đó là bài học rút thẳng từ lỗi sáng nay.**
+Video không đi qua `next/image`, cần bộ thuộc tính khác hẳn, lại cần một hiệu
+ứng client cho `prefers-reduced-motion`. Nhét thêm nhánh vào `SlotImage` sẽ
+cho ba nhánh chỏi nhau — chính xác thứ đã đẻ ra lỗi định vị `fill` vài giờ
+trước, khi hai nhánh của cùng một component không mang cùng bộ class. Vì vậy
+`SlotVideo` cũng tự mang `relative overflow-hidden` qua `cn`, cùng hợp đồng
+với `SlotImage`.
+
+**`muted` và `playsInline` không phải tuỳ chọn:** thiếu `muted` thì mọi trình
+duyệt chặn autoplay, thiếu `playsInline` thì Safari iOS mở toàn màn hình thay
+vì phát tại chỗ. Reduced-motion xử lý bằng cách để `autoPlay` chạy rồi dừng
+ngay trong effect — trình duyệt bấm play TRƯỚC khi React kịp chạy, nên cách
+duy nhất chặn từ đầu là bỏ `autoPlay` và bắt MỌI người dùng chờ thêm một vòng
+render. Đánh đổi đã chọn: người bật giảm-chuyển-động mất vài khung hình rồi
+đứng ở poster.
+
+**Lo ngại về vòng lặp KHÔNG thành hiện thực, và lý do đáng ghi.** Clip mở đầu
+trong hang tối; tưởng dưới scrim 60% sẽ thành mảng đen suốt 4 giây đầu mỗi
+vòng. Đo lại: khung CTA tỉ lệ **3.33 chỉ giữ dải giữa** của khung 16:9, tức
+đúng cửa hang sáng — vách đá tối nằm ngoài vùng cắt. Bài học ngược với thường
+lệ: ở khung càng dẹt, **vùng cắt có thể CỨU một tấm** chứ không chỉ phá.
+
+**Khối Numbers: không ảnh, và đó là trạng thái CHỐT.** Ô giữ chỗ cũ nằm ở
+`opacity-30` dưới lớp phủ `overlay/70` — chỉ còn khoảng 9% hiện ra, không đóng
+góp gì mà lại là lời hứa "sắp có ảnh" đứng mãi. Gỡ hẳn, ghi comment rõ để lần
+sau không ai mở khe `about-numbers` vì tưởng bị sót.
+
+**Trả một món nợ vừa ghi hôm nay:** trang đăng ký ghi *"four friends"* trong
+khi §Story và mốc 2014 đều ghi *"three guides"*. Sửa thành "three".
+
+**Review findings (tự bắt trên đường):**
+
+- **`guard-build.mjs` báo nhầm vì chính lệnh của tôi.** Guard quét `/proc` tìm
+  tiến trình có cwd `apps/web` và cmdline khớp `next-server|next start`; lệnh
+  tôi chạy lại **chứa đúng chuỗi đó** trong câu `pgrep`, nên nó khớp chính
+  shell của mình. Guard fail-closed nên chỉ chặn build chứ không gây hại. Chưa
+  sửa guard — ghi vào nợ mở.
+- **URL video vẫn ra bản cũ sau khi sửa `cloudinary-url.ts`,** vì HAI tầng
+  cache chồng nhau: API còn chạy `dist` cũ trong bộ nhớ, và Next giữ **fetch
+  cache** trong `.next/cache` theo `revalidate = 300`. Các đợt trước chỉ xoá
+  `.next/cache/images` nên không đủ; thay ảnh/URL do API sinh thì phải
+  `rm -rf .next` trọn VÀ khởi động lại API.
+- **`duration` đọc ra 2,1s trong khi clip dài 13,82s** — chỉ là metadata đọc
+  dở lúc chưa buffer xong. Đã đo lại bằng cách lấy mẫu 18 giây: chạy tới 13s
+  rồi quay về 0,67s, `duration` báo đúng 13,82s. Suýt kết luận sai rằng video
+  lặp sớm.
+
+**Nợ mở:** `guard-build.mjs` khớp cả tiến trình chỉ *nhắc tới* `next start`
+trong cmdline · `alt` rỗng toàn site (`media_assets.alt` null) · thẻ "Southern
+Vietnam" dùng ảnh thúng chai vốn là đặc trưng miền Trung và thẻ "All of
+Vietnam" dùng vịnh Hạ Long vốn là biểu tượng miền Bắc — user đã cân nhắc và
+chốt giữ cả hai · 25/30 tour chưa có cover · gallery địa danh 5/19 · 5/29 khe site
+còn trống (`home-experiences`, `home-trust`, `content-hero`,
+`destinations-hero`, `auth-panel`).
+
+Tests after: 1218 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — /about gần đủ ảnh: Story + Gallery + Timeline + đội ngũ thật, và một lỗi định vị ẩn kỹ ở `SlotImage` (nhánh `feat/about-images`, `d407b59`+`4325bc4`, 15 file, +272/−43)
 
 `/about` từ **1 ảnh thật / 15 ô giữ chỗ** xuống còn **2 ô** (nền Numbers và
