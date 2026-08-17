@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — ReUI filter-sidebar-1 (bản chép 1:1)</title>
+<!--
+  BẢN CHÉP mẫu https://reui.io/preview/base/filter-sidebar-1 — dựng 17/08 theo
+  yêu cầu user "làm giống 100%", để làm mốc so sánh TRƯỚC khi điều chỉnh sang
+  token dự án cho trang /blog.
+
+  Mọi số đo dưới đây TRÍCH BẰNG MÁY (`getComputedStyle` + `getBoundingClientRect`
+  qua Playwright trên chính trang gốc), KHÔNG ước lượng bằng mắt:
+
+  · card  aside 384 rộng · trong 384×893 · radius 14 · nền oklch(1 0 0)
+          KHÔNG có border — viền nhìn thấy là box-shadow ring
+          `oklab(0.145 0 0 / 0.1) 0 0 0 1px`
+  · font  Inter
+  · header      384×44  · flex gap 12 · padding 20 20 0
+                h2 "Filters" 16/24 w600 oklch(0.145) · nút "Clear all" 12/16 w500 oklch(0.556)
+  · ngăn cách   khối 384×41 · padding 20 · đường 344×1 nền oklch(0.922)
+  · hàng chip   384×50 · flex gap 6 · padding 0 20
+                chip cao 22 · padding 2 8 · border 1 oklch(0.922) · bo tròn hẳn
+                nền oklab(0.97 0 0 / 0.4) · chữ 12/16 w500 oklch(0.145)
+                bề rộng đo được: 100 / 90 / 84 / 101
+                chip "Black" có chấm 10×10 nền oklch(0.205), viền oklab(0.922/0.6)
+  · section     padding 0 20 · flex cột
+                h3 14/20 w600 oklch(0.145)
+  · mục chọn    li 344×16 · flex gap 10
+                ô tick 16×16 radius 4
+                  chưa chọn: border 1 oklch(0.922)
+                  đã chọn : border 1 oklch(0.205) + nền oklch(0.205) + dấu tick 14×14
+                label 318×14 · tên 14/14 w400 oklch(0.145) · số 14/14 w400 oklch(0.556)
+  · Price       section 384×40 gap 16
+                thanh 344×4 bo tròn nền oklch(0.97) · phần đã chọn 194×4 nền oklch(0.205)
+                2 núm 12×12 · border 1 oklch(0.708) · nền trắng
+  · Color       ô 28×28 bo tròn · border 1 oklch(0.922)
+                oklch(0.205 0 0) / (0.96 0.012 90) / (0.83 0.04 80)
+                (0.55 0.07 120) / (0.32 0.06 250) / (0.55 0.13 40)
+  · Size        nút 48×28 · padding 0 10 · radius 8 · border 1 oklch(0.922)
+                nền trắng · chữ 12.8/18.3 w500
+  · footer      384×48 · flex gap 8 · padding 0 20 20
+                "Apply filters" 279×28 flex-grow 1 · radius 8 · nền oklch(0.205)
+                  chữ 12.8/18.3 w500 oklch(0.985)
+                "Reset" 57×28 · nền trong suốt · chữ oklch(0.556)
+
+  LƯU Ý khi mang sang /blog: đây là filter cho SHOP (giá, màu, size, thương
+  hiệu). Trang blog không có mấy trục đó — phần dùng lại được là KHUNG XƯƠNG
+  (card, header + clear all, hàng chip đang lọc, section có tiêu đề, danh sách
+  tick có số đếm, footer hai nút), còn nội dung từng section phải thay bằng
+  trục của blog. Bản chép này giữ nguyên nội dung gốc để so 1:1.
+-->
+<!-- Trang gốc nạp Inter làm webfont. Không nạp ở đây thì trình duyệt rơi về
+     system-ui và MỌI bề rộng chữ lệch đi — đo được: h2 "Filters" 58px thay vì
+     46px. Wireframe so 1:1 thì font phải giống trước đã. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --dark: oklch(0.205 0 0);
+    --track: oklch(0.97 0 0);
+    --thumb-bd: oklch(0.708 0 0);
+    --paper: oklch(1 0 0);
+    --chip-bg: oklab(0.97 0 0 / 0.4);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 24px; background: #fff;
+    font: 400 14px/20px Inter, system-ui, sans-serif; color: var(--ink);
+    display: flex; justify-content: center;
+  }
+  button { font: inherit; cursor: pointer; }
+
+  aside { width: 384px; }
+  .card {
+    display: flex; flex-direction: column;
+    border-radius: 14px; background: var(--paper);
+    /* KHÔNG border — viền là shadow ring 1px, đúng như bản gốc */
+    box-shadow: 0 0 0 1px oklab(0.145 0 0 / 0.1);
+  }
+
+  /* ── header ── */
+  .head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 20px 20px 0;
+  }
+  .head h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+  .clear {
+    border: 0; background: none; padding: 0;
+    font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted);
+  }
+
+  /* ── đường ngăn: khối 41 cao = padding 20 + đường 1 + padding 20 ── */
+  .sep { padding: 20px; }
+  .sep i { display: block; height: 1px; background: var(--line); }
+
+  /* ── hàng chip đang lọc ── */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 20px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    height: 22px; padding: 2px 8px;
+    border: 1px solid var(--line); border-radius: 999px; background: var(--chip-bg);
+    font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink);
+  }
+  .chip .dot {
+    width: 10px; height: 10px; border-radius: 999px;
+    background: var(--dark); border: 1px solid oklab(0.922 0 0 / 0.6);
+  }
+  .chip .x { width: 12px; height: 12px; flex: none; color: var(--muted); }
+
+  /* ── section chung ── */
+  section { display: flex; flex-direction: column; gap: 12px; padding: 0 20px; }
+  section h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
+
+  /* ── danh sách tick ── */
+  ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .tick {
+    width: 16px; height: 16px; flex: none; border-radius: 4px;
+    border: 1px solid var(--line); background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tick.on { border-color: var(--dark); background: var(--dark); }
+  .tick svg { width: 14px; height: 14px; color: #fff; }
+  .row label {
+    flex: 1; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 14px; line-height: 14px; font-weight: 400;
+  }
+  .row .n { color: var(--muted); }
+
+  /* ── Price ── */
+  .price-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .price-val { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted); }
+  .price-val b { font-weight: 600; color: var(--ink); }
+  .slider { position: relative; height: 4px; }
+  .slider .track { position: absolute; inset: 0; border-radius: 999px; background: var(--track); }
+  .slider .fill { position: absolute; top: 0; height: 4px; left: 56px; width: 194px; background: var(--dark); }
+  .slider .thumb {
+    position: absolute; top: -4px; width: 12px; height: 12px; border-radius: 999px;
+    background: #fff; border: 1px solid var(--thumb-bd);
+  }
+
+  /* ── Color ── */
+  .swatches { flex-direction: row; gap: 12px; }
+  /* `li` mặc định là list-item nên sinh line-box, cộng khoảng chân chữ dưới nút
+     inline-flex → khối Color cao 64 thay vì 60 của bản gốc. Cho li thành flex
+     là hết. (Đo được lúc so 1:1, chênh đúng 4px.) */
+  .swatches li { display: flex; }
+  .sw {
+    width: 28px; height: 28px; border-radius: 999px; border: 1px solid var(--line);
+    display: inline-flex; align-items: center; justify-content: center; padding: 0;
+  }
+  .sw svg { width: 12px; height: 12px; color: #fff; }
+  /* Ô màu ĐANG CHỌN có vòng ring kép, đo được trên bản gốc:
+     trắng 2px sát ngoài rồi oklch(0.145) 2px nữa — làm bằng box-shadow chồng,
+     KHÔNG phải outline (outline của bản gốc là `none`). */
+  .sw.on { box-shadow: 0 0 0 2px #fff, 0 0 0 4px oklch(0.145 0 0); }
+
+  /* ── Size ── */
+  .sizes { display: flex; gap: 6px; }
+  .size {
+    height: 28px; padding: 0 10px; min-width: 48px;
+    border: 1px solid var(--line); border-radius: 8px; background: var(--paper);
+    font-size: 12.8px; line-height: 18.3px; font-weight: 500; color: var(--ink);
+  }
+
+  /* ── footer ── */
+  .foot { display: flex; gap: 8px; padding: 0 20px 20px; }
+  .apply {
+    flex: 1; height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px;
+    background: var(--dark); color: oklch(0.985 0 0);
+    font-size: 12.8px; line-height: 18.3px; font-weight: 500;
+  }
+  .reset {
+    height: 28px; padding: 0 10px; border: 1px solid transparent; border-radius: 8px;
+    background: none; color: var(--muted);
+    font-size: 12.8px; line-height: 18.3px; font-weight: 500;
+  }
+</style>
+</head>
+<body>
+<aside>
+  <div class="card">
+
+    <div class="head">
+      <h2>Filters</h2>
+      <button class="clear" type="button">Clear all</button>
+    </div>
+
+    <div class="sep"><i></i></div>
+
+    <div class="chips">
+      <button class="chip" type="button">Outerwear
+        <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <button class="chip" type="button">Northline
+        <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <button class="chip" type="button"><span class="dot"></span>Black
+        <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+      <button class="chip" type="button">$40 - $180
+        <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
+    <div class="sep"><i></i></div>
+
+    <section>
+      <h3>Category</h3>
+      <ul>
+        <li class="row">
+          <span class="tick on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7"/></svg></span>
+          <label>Outerwear <span class="n">128</span></label>
+        </li>
+        <li class="row"><span class="tick"></span><label>Knitwear <span class="n">84</span></label></li>
+        <li class="row"><span class="tick"></span><label>Tops <span class="n">156</span></label></li>
+        <li class="row"><span class="tick"></span><label>Bottoms <span class="n">92</span></label></li>
+        <li class="row"><span class="tick"></span><label>Shoes <span class="n">67</span></label></li>
+        <li class="row"><span class="tick"></span><label>Bags <span class="n">42</span></label></li>
+      </ul>
+    </section>
+
+    <div class="sep"><i></i></div>
+
+    <section style="gap:16px">
+      <div class="price-head">
+        <h3>Price</h3>
+        <span class="price-val"><b>$40</b> - <b>$180</b></span>
+      </div>
+      <div class="slider">
+        <span class="track"></span>
+        <span class="fill"></span>
+        <span class="thumb" style="left:56px"></span>
+        <span class="thumb" style="left:250px"></span>
+      </div>
+    </section>
+
+    <div class="sep"><i></i></div>
+
+    <section>
+      <h3>Color</h3>
+      <ul class="swatches">
+        <li><button class="sw on" style="background:oklch(0.205 0 0)" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7"/></svg></button></li>
+        <li><button class="sw" style="background:oklch(0.96 0.012 90)" type="button"></button></li>
+        <li><button class="sw" style="background:oklch(0.83 0.04 80)" type="button"></button></li>
+        <li><button class="sw" style="background:oklch(0.55 0.07 120)" type="button"></button></li>
+        <li><button class="sw" style="background:oklch(0.32 0.06 250)" type="button"></button></li>
+        <li><button class="sw" style="background:oklch(0.55 0.13 40)" type="button"></button></li>
+      </ul>
+    </section>
+
+    <div class="sep"><i></i></div>
+
+    <section>
+      <h3>Size</h3>
+      <div class="sizes">
+        <button class="size" type="button">XS</button>
+        <button class="size" type="button">S</button>
+        <button class="size" type="button">M</button>
+        <button class="size" type="button">L</button>
+        <button class="size" type="button">XL</button>
+        <button class="size" type="button">XXL</button>
+      </div>
+    </section>
+
+    <div class="sep"><i></i></div>
+
+    <section>
+      <h3>Brand</h3>
+      <ul>
+        <li class="row">
+          <span class="tick on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7"/></svg></span>
+          <label>Northline <span class="n">38</span></label>
+        </li>
+        <li class="row"><span class="tick"></span><label>Aster Goods <span class="n">24</span></label></li>
+        <li class="row"><span class="tick"></span><label>Field Supply <span class="n">19</span></label></li>
+        <li class="row"><span class="tick"></span><label>Maven &amp; Co. <span class="n">31</span></label></li>
+      </ul>
+    </section>
+
+    <div class="sep"><i></i></div>
+
+    <div class="foot">
+      <button class="apply" type="button">Apply filters</button>
+      <button class="reset" type="button">Reset</button>
+    </div>
+
+  </div>
+</aside>
+</body>
+</html>

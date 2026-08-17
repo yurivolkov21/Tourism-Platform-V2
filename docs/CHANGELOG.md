@@ -8,6 +8,81 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — /blog đổi sang filter sidebar hai trục, và một lỗi phân loại đội lốt lỗi thẩm mỹ (nhánh `feat/blog-filter-sidebar`, `259f1ef`+`639150d`, 7 file, +816/−171)
+
+User nói `/blog` "thiết kế chưa được ổn lắm" và muốn mượn giao diện
+[ReUI filter-sidebar-1](https://reui.io/preview/base/filter-sidebar-1). Khảo
+sát xong thì thứ đáng sửa hoá ra không phải thẩm mỹ.
+
+**Lỗi thật là LỖI PHÂN LOẠI.** Đo trên 9 bài: mỗi bài có ĐÚNG MỘT tag chủ đề
+và 8/9 bài có một tag địa danh — hai họ rõ rệt. Nhưng `/blog` đổ cả **14 tag
+vào một hàng chip xếp theo bảng chữ cái**, nên "Culture" nằm cạnh "Da Nang".
+Hai loại khái niệm khác hẳn bị trộn, và người đọc phải tự lọc bằng mắt. Sidebar
+sửa được điều đó vì nó có sẵn hai danh sách tick riêng.
+
+**Trục nào đáng có, quyết bằng dữ liệu chứ không bằng mẫu.** Đo phân bố thật
+trước khi thiết kế: tác giả có **đúng 1 người** (9/9 bài) nên section tác giả
+là một ô tick vô nghĩa; thời lượng đọc **không có** trong `PostCardSchema`
+(`content` chỉ có ở trang chi tiết); giá/màu/size không tồn tại. Nên bốn
+section của mẫu ReUI bỏ hết, chỉ giữ KHUNG XƯƠNG.
+
+**`lan-ha-bay` là lỗ của cách phân họ, tìm ra TRƯỚC khi viết code.** User chốt
+tách Topic/Place bằng cách đối chiếu slug tag với slug địa danh từ API (tự
+động, thêm địa danh mới không phải sửa code). Kiểm lại thì `lan-ha-bay` là tag
+địa danh thật mà KHÔNG phải slug destination — catalog có `cat-ba` và
+`ha-long`, không có nó. Chỉ đối chiếu destinations là xếp nhầm nó sang Topic,
+hiện ngay cạnh "Food". Vá bằng danh sách ngoại lệ ngắn có ghi lý do. Lời giải
+triệt để là thêm trường `family` cho tag ở contract — đổi schema nên để ADR
+riêng. **Bài học: kiểm giả định phân loại trên dữ liệu THẬT trước khi code, vì
+một ngoại lệ trong 14 giá trị đủ làm giao diện nói sai.**
+
+**Số đếm của API nói dối sau lần lọc đầu tiên.** `PostTagSchema.count` là tổng
+TOÀN CỤC; giữ nguyên nó sau khi lọc thì người dùng bấm vào một con số khác 0
+rồi nhận về màn hình trống. Trang đã tải sẵn cả 9 bài và lọc phía client nên
+tính lại tại chỗ được. `facetCounts` bỏ qua lựa chọn của CHÍNH trục đang đếm —
+áp cả nó thì mọi mục chưa chọn trong nhóm đều ra 0 và không ai chọn được giá
+trị thứ hai cùng nhóm — nhưng trục kia thì có áp.
+
+**Hai cột không giải được bài toán "50 tag", chỉ chia đôi nó.** User góp ý xếp
+2 cột cho đỡ dài; đo được panel từ 746 xuống 522px. Nhưng 50 mục thành 25
+hàng, ở ~32px/hàng vẫn là ~800px. Thứ thật sự chặn chiều cao là ngưỡng: quá 14
+mục thì section chặn cao 220px và cuộn tại chỗ. Dưới ngưỡng KHÔNG bật cuộn —
+không ai nên phải cuộn để thấy thứ vốn đã vừa màn hình.
+
+**Link cũ `?tag=` phải sống.** /blog đã phát hành link dạng đó qua chip, RSS và
+chia sẻ. `parseFacetParams` nhận nó, chuẩn hoá về đúng họ ngay lúc mount rồi
+mọi thứ phía sau chỉ còn một đường; có `?topic=`/`?place=` mới thì bỏ qua tag
+cũ để tránh hai bộ lọc chồng nhau mà giao diện chỉ hiện được một.
+
+**Review findings (tự bắt trên đường):**
+
+- **Input lồng trong `<label>` của chính nó → click chạy ĐÔI.** Một cú bấm kích
+  hoạt hai lần (trực tiếp + label chuyển tiếp), hàm toggle chạy hai lượt và
+  trạng thái quay về chỗ cũ: giao diện trông như bấm không ăn. Điều làm nó khó
+  lần ra là `checked` vẫn `true` — đó là trạng thái DOM native, KHÔNG chứng
+  minh state React đổi. Sửa bằng id/htmlFor với input là anh em của label.
+- **Đếm card sau khi lọc là không tin được**, và dự án ĐÃ ghi lại điều này ở
+  test phân trang từ trước: trong jsdom thẻ đang exit của `AnimatePresence`
+  không bao giờ rời DOM. Suýt kết luận sai rằng bộ lọc hỏng, trong khi dòng
+  "N stories" đã báo đúng 3. Trên trình duyệt thật thẻ tự biến mất sau ~1s (đã
+  đo). Test nay khẳng định trên "N stories" lấy thẳng từ `visible.length`.
+- **`tabIndex` trên vùng cuộn bị Biome chặn.** Giữ lại kèm `biome-ignore` có lý
+  do: WCAG 2.1.1 đòi vùng cuộn thao tác được bằng bàn phím, không có nó thì
+  người dùng bàn phím không tới được tag nằm dưới vạch cắt 220px. Đổi
+  `div role="group"` sang `fieldset`/`legend` thì luật `useSemanticElements`
+  hết kêu mà markup cũng đúng hơn.
+- **Suppression đặt sai dòng thì vô hiệu.** `biome-ignore` phải nằm ngay trên
+  dòng BỊ BẮT (thuộc tính `tabIndex`), không phải trên thẻ mở.
+
+**Nợ mở:** mobile chưa làm ngăn kéo (user hoãn) nên sidebar chỉ xếp trên lưới ở
+màn hẹp, người đọc phải cuộn qua trọn bộ lọc mới tới bài đầu · thứ tự tag theo
+bảng chữ cái chứ không theo số bài, vì sắp theo số đếm sẽ làm danh sách nhảy
+chỗ mỗi lần lọc · `family` cho tag nên vào contract thay vì danh sách ngoại lệ
+ở web · 25/30 tour chưa có cover · gallery địa danh 5/19 · 5/29 khe site trống.
+
+Tests after: 1243 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — Khe VIDEO đầu tiên: dải CTA /about có nền động, đường ống media học nhận video (nhánh `feat/about-cta-video`, `9413469`→`751db04`, 11 file, +148/−29)
 
 `/about` **hết sạch ô giữ chỗ** — từ 1 ảnh thật / 15 ô lúc sáng nay xuống 18

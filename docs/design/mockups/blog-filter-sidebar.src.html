@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — /blog với filter sidebar (token dự án)</title>
+<!--
+  WIREFRAME dựng 17/08 để user duyệt TRƯỚC khi đụng code. Chưa sửa code nào.
+
+  ── Lấy gì từ đâu ──
+  · Khung xương = ReUI filter-sidebar-1. Bản chép 1:1 nằm ở
+    `filter-sidebar-1.src.html`, số đo trích bằng máy trên trang gốc.
+  · Chất liệu  = TOKEN DỰ ÁN, trích bằng getComputedStyle trên app đang chạy.
+    KHÔNG chép lại từ wireframe contact hồi trước — font thật là Literata
+    (tiêu đề) + Archivo (thân), không phải Lora/Be Vietnam Pro như bản đó đoán.
+  · Nội dung   = 9 bài THẬT từ API, tag và số đếm thật.
+
+  ── Bỏ gì so với mẫu ReUI, và vì sao ──
+  · Price slider  → blog không có giá. Thời lượng đọc cũng không dùng được:
+                    `PostCardSchema` không có field đó, `content` chỉ có ở
+                    trang chi tiết.
+  · Color swatch  → không có gì tương ứng.
+  · Size pills    → không có gì tương ứng.
+  · Brand list    → GIỮ HÌNH, đổi nội dung thành Place.
+  · Footer Apply/Reset → BỎ. Trang đang lọc TỨC THÌ; thêm nút Apply là bắt
+                    người dùng thêm một cú bấm cho thứ vốn tự chạy. "Reset"
+                    cũng trùng "Clear all" ở header.
+  · Section Tác giả → KHÔNG làm: dữ liệu thật chỉ có ĐÚNG MỘT tác giả
+                    ("Seed Admin", 9/9 bài).
+
+  ── Vì sao tách Topic và Place ──
+  Đo trên 9 bài thật: mỗi bài có ĐÚNG MỘT tag chủ đề, và 8/9 bài có một tag địa
+  danh. Hiện `/blog` đổ cả 14 tag vào MỘT hàng chip xếp theo bảng chữ cái nên
+  "Culture" nằm cạnh "Da Nang" — hai loại khái niệm khác hẳn bị trộn. Đó là lỗi
+  phân loại chứ không phải lỗi thẩm mỹ.
+
+  ── Hai cột (góp ý user) ──
+  Bề rộng thật: 384 − 20×2 padding = 344; trừ khe 16 rồi chia đôi = 163/cột.
+  Đo được: panel từ 746 xuống 522, tiết kiệm 224px, không nhãn nào bị cắt.
+  Nhãn vẫn phải `min-width: 0` + ellipsis phòng tag dài sau này, không thì nhãn
+  dài đẩy số đếm văng khỏi cột.
+
+  ── Cuộn khi danh sách dài (chốt 17/08) ──
+  Hai cột chia đôi chiều cao nhưng KHÔNG giải được bài toán "50 tag": 50 mục
+  thành 25 hàng, ở ~32px/hàng vẫn là ~800px. Nên thêm ngưỡng:
+
+      quá 14 mục  →  chặn cao 220px + cuộn trong section
+
+  14 vì mỗi hàng cao 20 + khe 12 = 32; 7 hàng ≈ 212px, làm tròn 220. Dưới
+  ngưỡng thì KHÔNG bật cuộn — 6 chủ đề và 8 địa danh hiện tại hiện đầy đủ,
+  không ai phải cuộn để thấy thứ vốn đã vừa màn hình.
+  Vùng cuộn có `tabindex="0"` + `role="group"` để bàn phím tới được, và lớp mờ
+  dần ở đáy để người dùng biết bên dưới còn nội dung.
+
+  ── Trạng thái đang minh hoạ ở khối A ──
+  Đang chọn Topic = Food. Cột Place vì thế ĐẾM LẠI theo tập bài còn lại: Đà
+  Nẵng 1, Hội An 1, còn lại 0 và bị làm mờ. Đây là chỗ API không lo hộ được —
+  `PostTagSchema.count` là tổng TOÀN CỤC, giữ nguyên nó sau khi lọc là để số
+  đếm nói dối. Trang đã tải sẵn cả 9 bài và lọc phía client nên tính lại được.
+
+  ── Số đo đã trích từ app ──
+  vùng nội dung 1184 · sidebar 384 · khe 32 · lưới còn 768 (2 cột 372)
+  thẻ bài hiện tại 379×403 · chip hiện tại 68×34 pill · ô tìm 320×44 pill
+-->
+<style>
+  :root {
+    /* Token trích từ app đang chạy — lab() là giá trị computed thật */
+    --background: lab(97.371% -1.0125 .0997186);
+    --foreground: lab(16.1209% -6.81375 -2.23075);
+    --card: lab(99.5621% -.674367 .0730872);
+    --border: lab(74.7835% -5.09319 -.107431);
+    --input: lab(58.4275% -5.09691 -.107169);
+    --primary: lab(42.1153% -23.0899 -2.06704);
+    --primary-foreground: lab(97.0751% -2.36407 .237381);
+    --muted: lab(90.1542% -3.37926 .345826);
+    --muted-foreground: lab(39.1452% -7.51059 .00520349);
+    --shadow-card: 0 1px 3px 0 lab(0% 0 0/.08), 0 1px 2px -1px lab(0% 0 0/.08);
+    --radius: 0.375rem;
+    --r-card: 1rem;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px 24px; background: var(--background);
+    font: 400 14px/20px Archivo, system-ui, sans-serif; color: var(--foreground);
+    /* CỘT, không phải hàng: file chứa nhiều khối `.page`; để mặc định `row`
+       thì chúng nằm cạnh nhau và đè lên nhau (đã dính đúng lỗi này lúc dựng). */
+    display: flex; flex-direction: column; align-items: center; gap: 16px;
+  }
+  button { font: inherit; cursor: pointer; }
+  .page { width: 1184px; display: flex; gap: 32px; align-items: flex-start; }
+  .note { width: 1184px; margin: 40px 0 0; font-size: 13px; color: var(--muted-foreground); }
+  .note:first-child { margin-top: 0; }
+
+  /* ══════════ SIDEBAR ══════════ */
+  aside { width: 384px; flex: none; }
+  .panel {
+    display: flex; flex-direction: column;
+    border: 1px solid var(--border); border-radius: var(--r-card);
+    background: var(--card); box-shadow: var(--shadow-card);
+  }
+  .head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 20px 20px 0;
+  }
+  .head h2 { margin: 0; font-size: 16px; line-height: 24px; font-weight: 600; }
+  .clear { border: 0; background: none; padding: 0; font-size: 13px; color: var(--muted-foreground); }
+
+  .sep { padding: 20px; }
+  .sep i { display: block; height: 1px; background: var(--border); }
+
+  /* ô tìm kiếm chuyển VÀO sidebar — hiện đang đứng rời bên phải lưới, tách
+     khỏi mọi thứ khác cùng chức năng thu hẹp kết quả */
+  .search-wrap { padding: 16px 20px 0; }
+  .search {
+    display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 16px;
+    border: 1px solid var(--input); border-radius: 999px;
+    color: var(--muted-foreground); font-size: 14px;
+  }
+  .search svg { width: 16px; height: 16px; flex: none; }
+
+  /* hàng chip ĐANG LỌC — món giá trị nhất mượn từ ReUI: hiện tại chip vừa là
+     bộ chọn vừa là trạng thái, không chỗ nào nói rõ "đang lọc những gì" */
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 16px 20px 0; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; height: 30px; padding: 0 12px;
+    border: 1px solid var(--primary); border-radius: 999px;
+    background: var(--primary); color: var(--primary-foreground);
+    font-size: 13px; font-weight: 500;
+  }
+  .chip .x { width: 12px; height: 12px; opacity: .8; }
+
+  section { display: flex; flex-direction: column; gap: 14px; padding: 0 20px; }
+  section h3 { margin: 0; font-size: 14px; line-height: 20px; font-weight: 600; }
+  .h3row { display: flex; align-items: baseline; justify-content: space-between; }
+  .h3row .more { font-size: 12.5px; color: var(--muted-foreground); }
+
+  ul {
+    list-style: none; margin: 0; padding: 0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px;
+  }
+  .row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .tick {
+    width: 18px; height: 18px; flex: none; border-radius: var(--radius);
+    border: 1px solid var(--border); background: transparent;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .tick.on { border-color: var(--primary); background: var(--primary); }
+  .tick svg { width: 12px; height: 12px; color: var(--primary-foreground); }
+  .row label {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    font-size: 14px;
+  }
+  .row label .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .row .n { flex: none; color: var(--muted-foreground); font-variant-numeric: tabular-nums; }
+  /* mục không còn bài nào sau khi lọc — làm mờ chứ KHÔNG giấu: giấu thì danh
+     sách nhảy chồm mỗi lần tick, và người dùng mất cảm giác về hình dạng dữ liệu */
+  .row.off { opacity: .38; }
+
+  /* VÙNG CUỘN — chỉ bật khi số mục vượt ngưỡng 14 */
+  .scroll {
+    max-height: 220px; overflow-y: auto; padding-right: 6px;
+    mask-image: linear-gradient(to bottom, #000 86%, transparent);
+  }
+  .scroll:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px; }
+  .scroll::-webkit-scrollbar { width: 6px; }
+  .scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 999px; }
+
+  .pad-b { padding-bottom: 20px; }
+
+  /* ══════════ LƯỚI BÀI ══════════ */
+  main { flex: 1; min-width: 0; }
+  .bar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 20px; }
+  .count { font-size: 14px; color: var(--muted-foreground); }
+  .sort { font-size: 13px; color: var(--muted-foreground); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px 24px; }
+  .post .thumb {
+    position: relative; height: 208px; border-radius: var(--r-card); overflow: hidden;
+    background: var(--muted); display: flex; align-items: center; justify-content: center;
+    color: var(--muted-foreground); font-size: 12px;
+  }
+  .post .tag {
+    position: absolute; top: 12px; left: 12px; height: 22px; padding: 0 10px;
+    display: inline-flex; align-items: center; border-radius: 999px;
+    background: var(--primary); color: var(--primary-foreground);
+    font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .post .date { margin: 14px 0 0; font-size: 12.5px; color: var(--muted-foreground); }
+  .post h4 { margin: 6px 0 0; font: 500 20px/26px Literata, Georgia, serif; }
+  .post p { margin: 8px 0 0; font-size: 13.5px; line-height: 21px; color: var(--muted-foreground); }
+  .post .by { margin-top: 12px; font-size: 12.5px; color: var(--muted-foreground); }
+</style>
+</head>
+<body>
+
+<!-- ═══════ A — DỮ LIỆU THẬT: dưới ngưỡng, KHÔNG bật cuộn ═══════ -->
+<p class="note"><strong>A — dữ liệu thật hôm nay (6 chủ đề, 8 địa danh).</strong>
+Dưới ngưỡng 14 mục nên không bật cuộn: hiện đủ, không ai phải cuộn để thấy thứ vốn đã vừa màn hình.</p>
+<div class="page">
+  <aside>
+    <div class="panel">
+      <div class="head">
+        <h2>Filters</h2>
+        <button class="clear" type="button">Clear all</button>
+      </div>
+
+      <div class="search-wrap">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          Search the journal…
+        </div>
+      </div>
+
+      <div class="chips">
+        <button class="chip" type="button">Food
+          <svg class="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="sep"><i></i></div>
+
+      <section>
+        <h3>Topic</h3>
+        <ul>
+          <li class="row"><span class="tick on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="m5 13 4 4L19 7"/></svg></span><label><span class="t">Food</span> <span class="n">2</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Nature</span> <span class="n">2</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Practical</span> <span class="n">2</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Culture</span> <span class="n">1</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Markets</span> <span class="n">1</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Packing</span> <span class="n">1</span></label></li>
+        </ul>
+      </section>
+
+      <div class="sep"><i></i></div>
+
+      <section class="pad-b">
+        <h3>Place</h3>
+        <ul>
+          <li class="row"><span class="tick"></span><label><span class="t">Da Nang</span> <span class="n">1</span></label></li>
+          <li class="row"><span class="tick"></span><label><span class="t">Hoi An</span> <span class="n">1</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Can Tho</span> <span class="n">0</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Hanoi</span> <span class="n">0</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Hue</span> <span class="n">0</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Lan Ha Bay</span> <span class="n">0</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Ninh Binh</span> <span class="n">0</span></label></li>
+          <li class="row off"><span class="tick"></span><label><span class="t">Sa Pa</span> <span class="n">0</span></label></li>
+        </ul>
+      </section>
+    </div>
+  </aside>
+
+  <main>
+    <div class="bar">
+      <span class="count">2 stories · filtered by <strong>Food</strong></span>
+      <span class="sort">Newest first</span>
+    </div>
+    <div class="grid">
+      <article class="post">
+        <div class="thumb"><span class="tag">Food</span>ảnh bìa bài</div>
+        <p class="date">Jul 8, 2026</p>
+        <h4>Eating your way through Hoi An</h4>
+        <p>Cao lầu at a market stall, bánh mì by the river, and the one dessert locals queue for after dark.</p>
+        <p class="by">Seed Admin</p>
+      </article>
+      <article class="post">
+        <div class="thumb"><span class="tag">Food</span>ảnh bìa bài</div>
+        <p class="date">May 2, 2026</p>
+        <h4>Bridges, beaches and bún chả cá</h4>
+        <p>Da Nang between a dragon that breathes fire on weekends and a bowl of fish cake soup.</p>
+        <p class="by">Seed Admin</p>
+      </article>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════ B — KHI BLOG DÀY LÊN: vượt ngưỡng, BẬT cuộn ═══════ -->
+<p class="note"><strong>B — mô phỏng 30 chủ đề và 24 địa danh.</strong>
+Vượt ngưỡng 14 nên mỗi section chặn cao 220px và cuộn tại chỗ; tiêu đề hiện thêm
+tổng số tag để người dùng biết bên dưới còn gì. Panel đứng yên bất kể số tag tăng
+bao nhiêu — nếu để dài tự nhiên thì riêng Topic đã hơn 1100px.</p>
+<div class="page">
+  <aside>
+    <div class="panel">
+      <div class="head">
+        <h2>Filters</h2>
+        <button class="clear" type="button">Clear all</button>
+      </div>
+
+      <div class="search-wrap">
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          Search the journal…
+        </div>
+      </div>
+
+      <div class="sep"><i></i></div>
+
+      <section>
+        <div class="h3row"><h3>Topic</h3><span class="more">30 tags</span></div>
+        <div class="scroll" tabindex="0" role="group" aria-label="Topic filters">
+          <ul>
+            <li class="row"><span class="tick"></span><label><span class="t">Food</span> <span class="n">6</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Nature</span> <span class="n">5</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Practical</span> <span class="n">5</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Culture</span> <span class="n">4</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Markets</span> <span class="n">4</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Packing</span> <span class="n">4</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Coffee</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Street food</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Festivals</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Trekking</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Beaches</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Homestays</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Night markets</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Motorbike</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Craft villages</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Temples</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Rice terraces</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Caves</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Diving</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Islands</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Museums</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Nightlife</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Photography</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Budget</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Family travel</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Solo travel</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Rainy season</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Transport</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Etiquette</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Souvenirs</span> <span class="n">1</span></label></li>
+          </ul>
+        </div>
+      </section>
+
+      <div class="sep"><i></i></div>
+
+      <section class="pad-b">
+        <div class="h3row"><h3>Place</h3><span class="more">24 tags</span></div>
+        <div class="scroll" tabindex="0" role="group" aria-label="Place filters">
+          <ul>
+            <li class="row"><span class="tick"></span><label><span class="t">Hanoi</span> <span class="n">5</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Hoi An</span> <span class="n">4</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Sa Pa</span> <span class="n">4</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Da Nang</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Hue</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Ninh Binh</span> <span class="n">3</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Can Tho</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Lan Ha Bay</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Ha Giang</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Phu Quoc</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Da Lat</span> <span class="n">2</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Mai Chau</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Cat Ba</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Con Dao</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Phong Nha</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Quy Nhon</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Vung Tau</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Ben Tre</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Ho Chi Minh City</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Nha Trang</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Hai Phong</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Tam Coc</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Moc Chau</span> <span class="n">1</span></label></li>
+            <li class="row"><span class="tick"></span><label><span class="t">Bac Ha</span> <span class="n">1</span></label></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </aside>
+
+  <main>
+    <div class="bar">
+      <span class="count">54 stories</span>
+      <span class="sort">Newest first</span>
+    </div>
+    <div class="grid">
+      <article class="post">
+        <div class="thumb"><span class="tag">Trekking</span>ảnh bìa bài</div>
+        <p class="date">Aug 14, 2026</p>
+        <h4>Three days on the Ha Giang loop</h4>
+        <p>When to hire a rider, when to take the bars yourself, and the one stop worth the detour.</p>
+        <p class="by">Seed Admin</p>
+      </article>
+      <article class="post">
+        <div class="thumb"><span class="tag">Coffee</span>ảnh bìa bài</div>
+        <p class="date">Aug 2, 2026</p>
+        <h4>Egg coffee and the shops with no sign</h4>
+        <p>Four places in Hanoi that locals keep going back to, none of them on a tourist map.</p>
+        <p class="by">Seed Admin</p>
+      </article>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>
