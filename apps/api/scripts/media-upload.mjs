@@ -116,7 +116,9 @@ for (const item of plan) {
           // thước tấm cũ (2816×2112 thay vì 2400×1600). Người xem tưởng script
           // hỏng, thực ra là cache biên.
           invalidate: true,
-          resource_type: 'image',
+          // Video phải khai `resource_type: 'video'` — Cloudinary lưu và
+          // transcode ở kho khác hẳn ảnh; gửi nhầm 'image' là hỏng ngay.
+          resource_type: item.mediaType === 'VIDEO' ? 'video' : 'image',
         });
         meta = res;
         uploaded++;
@@ -139,7 +141,7 @@ for (const item of plan) {
     `INSERT INTO media_assets
        (id, public_id, type, owner_type, owner_id, role, format, width, height, bytes,
         sort_order, alt, author, license, source_url, version, created_at, updated_at)
-     VALUES (gen_random_uuid(), $1, 'IMAGE', $2::"MediaOwnerType", $3, $4::"MediaRole",
+     VALUES (gen_random_uuid(), $1, $15::"MediaType", $2::"MediaOwnerType", $3, $4::"MediaRole",
              $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, now(), now())
      ON CONFLICT (owner_type, owner_id, public_id) DO UPDATE
        SET role = EXCLUDED.role, sort_order = EXCLUDED.sort_order, alt = EXCLUDED.alt,
@@ -178,6 +180,7 @@ for (const item of plan) {
       // Ảnh MƯỢN (luật rơi-về) không có `meta` vì không upload lại — nhưng nó
       // dùng chung publicId với bản gốc nên phiên bản cũng phải là của bản gốc.
       (meta?.version ?? uploadedVersion.get(item.file))?.toString() ?? null,
+      item.mediaType ?? 'IMAGE',
     ],
   );
   rows++;

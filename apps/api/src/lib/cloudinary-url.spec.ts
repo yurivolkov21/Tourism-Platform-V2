@@ -44,10 +44,10 @@ describe('buildCloudinaryUrl', () => {
       version: '1723600000',
     });
     expect(r.url).toBe(
-      'https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto/v1723600000/posts/clip',
+      'https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto,w_1600,c_limit/v1723600000/posts/clip',
     );
     expect(r.posterUrl).toBe(
-      'https://res.cloudinary.com/demo-cloud/video/upload/so_0,f_auto,q_auto/v1723600000/posts/clip.jpg',
+      'https://res.cloudinary.com/demo-cloud/video/upload/so_0,f_auto,q_auto,w_1600,c_limit/v1723600000/posts/clip.jpg',
     );
   });
 
@@ -67,6 +67,10 @@ describe('buildCloudinaryUrl', () => {
     expect(r.url).toBe(abs);
   });
 
+  // URL video mang thêm `w_1600,c_limit` từ 17/08: video đi thẳng thẻ `<video>`
+  // nên không có ai xin đúng cỡ hộ như `next/image` làm với ảnh. Nguồn 4K phục
+  // vụ cho dải rộng 1280 là bắt khách tải gấp ~9 lần số điểm ảnh họ thấy — đo
+  // trên clip CTA thật: 91MB xuống 4,4MB. `c_limit` chỉ thu nhỏ, không phóng to.
   it('video → URL video + posterUrl từ posterId', () => {
     const r = buildCloudinaryUrl(CLOUD, {
       type: MediaType.VIDEO,
@@ -74,7 +78,7 @@ describe('buildCloudinaryUrl', () => {
       posterId: 'posts/clip-poster',
     });
     expect(r.url).toBe(
-      'https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto/posts/clip',
+      'https://res.cloudinary.com/demo-cloud/video/upload/f_auto,q_auto,w_1600,c_limit/posts/clip',
     );
     expect(r.posterUrl).toBe(
       'https://res.cloudinary.com/demo-cloud/image/upload/f_auto,q_auto/posts/clip-poster',
@@ -84,7 +88,7 @@ describe('buildCloudinaryUrl', () => {
   it('video không posterId → poster là frame đầu (so_0) của chính video', () => {
     const r = buildCloudinaryUrl(CLOUD, { type: MediaType.VIDEO, publicId: 'posts/clip' });
     expect(r.posterUrl).toBe(
-      'https://res.cloudinary.com/demo-cloud/video/upload/so_0,f_auto,q_auto/posts/clip.jpg',
+      'https://res.cloudinary.com/demo-cloud/video/upload/so_0,f_auto,q_auto,w_1600,c_limit/posts/clip.jpg',
     );
   });
 });

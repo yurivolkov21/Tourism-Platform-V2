@@ -44,17 +44,24 @@ export function buildCloudinaryUrl(
   // Đoạn phiên bản nằm SAU transform và TRƯỚC publicId — đúng thứ tự Cloudinary
   // quy định; đảo lại là 404.
   const v = asset.version ? `v${asset.version}/` : '';
-  const url = `${BASE}/${cloudName}/${resource}/upload/f_auto,q_auto/${v}${asset.publicId}`;
+  // Video chặn bề rộng 1600 (`c_limit` = chỉ thu nhỏ, KHÔNG phóng to). Ảnh thì
+  // không cần vì `next/image` đã tự xin đúng cỡ qua `w=`; video đi thẳng thẻ
+  // `<video>` nên không có ai chặn hộ. Nguồn 4K phục vụ cho dải rộng 1280 là
+  // bắt khách tải gấp ~9 lần số điểm ảnh họ thật sự thấy.
+  const transform =
+    asset.type === MediaType.VIDEO ? 'f_auto,q_auto,w_1600,c_limit' : 'f_auto,q_auto';
+  const url = `${BASE}/${cloudName}/${resource}/upload/${transform}/${v}${asset.publicId}`;
   if (asset.type !== MediaType.VIDEO) {
     return { url, posterUrl: null };
   }
   const posterUrl =
     asset.posterId && !isAbsoluteUrl(asset.posterId)
       ? // posterId là asset RIÊNG, có phiên bản riêng — không mượn version của video
+        // (poster rời đi qua next/image nên KHÔNG cần chặn cỡ ở đây)
         `${BASE}/${cloudName}/image/upload/f_auto,q_auto/${asset.posterId}`
       : asset.posterId && isAbsoluteUrl(asset.posterId)
         ? asset.posterId
         : // poster suy từ chính video nên dùng CHUNG version với nó
-          `${BASE}/${cloudName}/video/upload/so_0,f_auto,q_auto/${v}${asset.publicId}.jpg`;
+          `${BASE}/${cloudName}/video/upload/so_0,f_auto,q_auto,w_1600,c_limit/${v}${asset.publicId}.jpg`;
   return { url, posterUrl };
 }

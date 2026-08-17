@@ -25,6 +25,13 @@ import pg from 'pg';
 
 const ROOT = path.resolve(import.meta.dirname, '../../../media-inbox');
 const IMAGE = /\.(jpe?g|webp|png)$/i;
+// Video đi CHUNG đường ống với ảnh: contract đã có `type: 'IMAGE' | 'VIDEO'`
+// và `buildCloudinaryUrl` đã biết dựng URL video + poster từ frame `so_0`, nên
+// chỗ duy nhất còn thiếu là hai script này chưa nhận đuôi video.
+const VIDEO = /\.(mp4|webm|mov)$/i;
+const MEDIA = /\.(jpe?g|webp|png|mp4|webm|mov)$/i;
+/** Đuôi file quyết định `type` ghi vào DB — không đoán bằng gì khác. */
+const mediaTypeOf = (file) => (VIDEO.test(file) ? 'VIDEO' : 'IMAGE');
 const AS_JSON = process.argv.includes('--json');
 
 const say = (...a) => {
@@ -35,7 +42,7 @@ const say = (...a) => {
 async function images(dir) {
   const entries = await readdir(dir, { withFileTypes: true }).catch(() => []);
   return entries
-    .filter((e) => e.isFile() && IMAGE.test(e.name))
+    .filter((e) => e.isFile() && MEDIA.test(e.name))
     .map((e) => e.name)
     .sort((a, b) => a.localeCompare(b, 'en'));
 }
@@ -91,11 +98,12 @@ const siteDir = path.join(ROOT, '_site');
 const siteFiles = await images(siteDir);
 const siteCredits = await credits(siteDir);
 for (const file of siteFiles) {
-  const key = file.replace(IMAGE, '');
+  const key = file.replace(MEDIA, '');
   plan.push({
     kind: 'site-slot',
     key,
     file: path.join(siteDir, file),
+    mediaType: mediaTypeOf(file),
     credit: siteCredits.get(file) ?? null,
   });
 }
