@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — ReUI product-grid-1 (bản chép 1:1)</title>
+<!--
+  BẢN CHÉP mẫu https://reui.io/preview/base/product-grid-1 — dựng 17/08 theo
+  yêu cầu user "làm giống 100%", làm mốc so sánh với product-card-5 trước khi
+  chọn hướng cho thẻ tour ở /tours.
+
+  Số đo TRÍCH BẰNG MÁY (getComputedStyle + getBoundingClientRect qua Playwright
+  trên chính trang gốc), KHÔNG ước lượng:
+
+  · section 1152 · padding 48 24 · lưới 1104 · gap 32 · cols 536px 536px
+  · thẻ 536×734 · flex cột gap 16 · padding 0 0 16 · radius 14 · nền trắng
+    shadow ring nhẹ (không border)
+  · KHỐI ẢNH 536×536 — aspect-ratio 1/1, tức ảnh chiếm 73% chiều cao thẻ.
+    Bọc ngoài radius 14 14 0 0, khối trong radius 10, nền oklab(0.97 0 0 / .5)
+  · badge góc trên-trái: 63×20 · padding 2 5 · bo tròn hẳn · 12/16 w500 trắng
+    "20% Off" nền oklch(0.577 0.245 27.325) đỏ · "New" nền oklch(0.205)
+  · nút tim góc trên-phải: 28×28 · radius 8 · nền oklch(0.97 0 0)
+  · thân 536×166 · flex gap 12 · padding 0 16
+      danh mục   12/16 w500 oklch(0.556)
+      ô màu      18×18 tròn · gap 8 · border 1 oklab(0.922 0 0 / .7)
+      tên màu    12/16 w400 oklch(0.556)
+      tiêu đề    16/22 w500 oklch(0.145)
+      mô tả      14/20 w400 oklch(0.556) — cao 40 = ĐÚNG 2 dòng
+      giá        16/24 w600 oklch(0.145) + giá gạch 16/24 w400 oklch(0.556)
+  · font Inter
+
+  ── Ghi chú cho việc chọn hướng ở /tours ──
+  Đây là LƯỚI nhiều thẻ, cùng loại với danh sách tour. Nhưng nó dựa rất nặng
+  vào ảnh: 536/734 = 73% chiều cao thẻ là ảnh. Dữ liệu thật hiện chỉ có 5/30
+  tour có cover, nên 25 thẻ sẽ là ô giữ chỗ vuông to đùng.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --dark: oklch(0.205 0 0);
+    --red: oklch(0.577 0.245 27.325);
+    --media: oklab(0.97 0 0 / 0.5);
+    --chip: oklch(0.97 0 0);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: oklch(1 0 0); font: 400 14px/20px Inter, system-ui, sans-serif; color: var(--ink); }
+  main { display: flex; justify-content: center; }
+  section { width: 1152px; padding: 48px 24px; }
+  .grid { display: grid; grid-template-columns: 536px 536px; gap: 32px; }
+
+  .card {
+    display: flex; flex-direction: column; gap: 16px; padding: 0 0 16px;
+    border-radius: 14px; background: oklch(1 0 0);
+    box-shadow: 0 0 0 1px oklab(0.145 0 0 / 0.08), 0 1px 2px oklab(0.145 0 0 / 0.05);
+  }
+  .media {
+    position: relative; aspect-ratio: 1 / 1; border-radius: 14px 14px 0 0;
+    overflow: hidden; background: var(--media);
+  }
+  .media .ph {
+    position: absolute; inset: 0; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 12px;
+    background: repeating-linear-gradient(45deg, transparent 0 14px, var(--line) 14px 15px);
+  }
+  .badge {
+    position: absolute; top: 12px; left: 12px; height: 20px; padding: 2px 5px;
+    display: inline-flex; align-items: center; border-radius: 999px;
+    font-size: 12px; line-height: 16px; font-weight: 500; color: #fff;
+  }
+  .badge.off { background: var(--red); }
+  .badge.new { background: var(--dark); color: oklch(0.985 0 0); }
+  .heart {
+    position: absolute; top: 12px; right: 12px; width: 28px; height: 28px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid transparent; border-radius: 8px; background: var(--chip);
+  }
+  .heart svg { width: 16px; height: 16px; color: var(--ink); }
+
+  .body { display: flex; flex-direction: column; gap: 12px; padding: 0 16px; }
+  .cat { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--muted); }
+  /* Hàng màu cao 24 dù ô màu chỉ 18 và tên màu 16 — đo được trên bản gốc.
+     Không ghim chiều cao thì thân thẻ hụt 6px và cả thẻ lệch theo. */
+  .colors { display: flex; align-items: center; gap: 12px; height: 24px; }
+  .swatches { display: flex; gap: 8px; }
+  .sw { width: 18px; height: 18px; border-radius: 999px; border: 1px solid oklab(0.922 0 0 / 0.7); }
+  .colorname { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .titlewrap { display: flex; flex-direction: column; gap: 4px; }
+  .title { font-size: 16px; line-height: 22px; font-weight: 500; }
+  .desc { font-size: 14px; line-height: 20px; color: var(--muted); }
+  .price { display: flex; align-items: center; gap: 8px; }
+  .now { font-size: 16px; line-height: 24px; font-weight: 600; }
+  .was { font-size: 16px; line-height: 24px; font-weight: 400; color: var(--muted); text-decoration: line-through; }
+</style>
+</head>
+<body>
+<main>
+  <section>
+    <div class="grid">
+
+      <article class="card">
+        <div class="media">
+          <div class="ph">ảnh sản phẩm 536×536</div>
+          <span class="badge off">20% Off</span>
+          <span class="heart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9Z"/></svg></span>
+        </div>
+        <div class="body">
+          <span class="cat">Daypacks</span>
+          <div class="colors">
+            <span class="swatches">
+              <span class="sw" style="background:lab(26.8019 1.35387 -4.68303)"></span>
+              <span class="sw" style="background:lab(84.7909 0.928015 1.59738)"></span>
+              <span class="sw" style="background:lab(15.6723 8.86232 -32.2945)"></span>
+              <span class="sw" style="background:lab(31.9931 -20.7654 33.7379)"></span>
+            </span>
+            <span class="colorname">Charcoal</span>
+          </div>
+          <div class="titlewrap">
+            <span class="title">Wayfarer Daypack</span>
+            <p class="desc" style="margin:0">Everyday 18 L pack with a padded laptop sleeve and a side-zip opening to the main compartment.</p>
+          </div>
+          <div class="price"><span class="now">$148</span><span class="was">$185</span></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <div class="ph">ảnh sản phẩm 536×536</div>
+          <span class="badge new">New</span>
+          <span class="heart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9Z"/></svg></span>
+        </div>
+        <div class="body">
+          <span class="cat">Weekenders</span>
+          <div class="colors">
+            <span class="swatches">
+              <span class="sw" style="background:lab(2.51107 0.242703 -0.886115)"></span>
+              <span class="sw" style="background:lab(96.5286 -0.0991821 0.364268)"></span>
+              <span class="sw" style="background:lab(37.8822 37.1699 52.2718)"></span>
+            </span>
+            <span class="colorname">Black</span>
+          </div>
+          <div class="titlewrap">
+            <span class="title">Sundown Weekender</span>
+            <p class="desc" style="margin:0">48-hour duffel with full-grain leather pulls, a top-load main compartment, and a hidden shoe pocket.</p>
+          </div>
+          <div class="price"><span class="now">$224</span></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <div class="ph">ảnh sản phẩm 536×536</div>
+          <span class="badge off">23% Off</span>
+          <span class="heart"><svg viewBox="0 0 24 24" fill="currentColor" stroke="none" style="color:oklch(0.577 0.245 27.325)"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9Z"/></svg></span>
+        </div>
+        <div class="body">
+          <span class="cat">Totes</span>
+          <div class="colors">
+            <span class="swatches">
+              <span class="sw" style="background:lab(84 0.9 1.6)"></span>
+              <span class="sw" style="background:lab(2.5 0.24 -0.89)"></span>
+              <span class="sw" style="background:lab(37.9 37.2 52.3)"></span>
+              <span class="sw" style="background:lab(32 -20.8 33.7)"></span>
+            </span>
+            <span class="colorname">Cognac</span>
+          </div>
+          <div class="titlewrap">
+            <span class="title">Saddle Tote</span>
+            <p class="desc" style="margin:0">Waxed canvas tote with a padded laptop sleeve, a hidden zip pocket, and stitched leather handles.</p>
+          </div>
+          <div class="price"><span class="now">$98</span><span class="was">$128</span></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="media">
+          <div class="ph">ảnh sản phẩm 536×536</div>
+          <span class="heart"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9Z"/></svg></span>
+        </div>
+        <div class="body">
+          <span class="cat">Travel Packs</span>
+          <div class="colors">
+            <span class="swatches">
+              <span class="sw" style="background:lab(15.7 8.9 -32.3)"></span>
+              <span class="sw" style="background:lab(32 -20.8 33.7)"></span>
+              <span class="sw" style="background:lab(84.8 0.93 1.6)"></span>
+            </span>
+            <span class="colorname">Forest</span>
+          </div>
+          <div class="titlewrap">
+            <span class="title">Outpost 45L Pack</span>
+            <p class="desc" style="margin:0">Carry-on travel pack with clamshell access, a stowable hipbelt, and ventilated back panels.</p>
+          </div>
+          <div class="price"><span class="now">$268</span></div>
+        </div>
+      </article>
+
+    </div>
+  </section>
+</main>
+</body>
+</html>

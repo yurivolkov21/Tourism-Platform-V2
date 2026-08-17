@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Wireframe — ReUI product-card-5 (bản chép 1:1)</title>
+<!--
+  BẢN CHÉP mẫu https://reui.io/preview/base/product-card-5 — dựng 17/08 theo
+  yêu cầu user "làm giống 100%", làm mốc so sánh với product-grid-1.
+
+  Số đo TRÍCH BẰNG MÁY trên chính trang gốc, KHÔNG ước lượng:
+
+  · card 1024×648 · padding 24 · radius 14 · nền trắng · shadow ring nhẹ
+  · lưới trong 976×600 · gap 32 · cols 425.3px / 518.7px (trái chữ, phải ảnh)
+  · CỘT TRÁI 425×600 · flex gap 20 · padding 20 0
+      cụm đầu 425×142 gap 8: hàng meta 20 · tiêu đề 30 · mô tả 48 (14/24 w400
+        oklch(0.556)) · hàng đánh giá 20
+      hàng giá 425×28 gap 8: badge "18% OFF" 64×20 padding 2 5 bo tròn hẳn nền
+        oklch(0.577 0.245 27.325) 12/16 w500 trắng · giá 20/28 w600 oklch(0.145)
+        · giá gạch 20/28 w400 oklch(0.556)
+      danh sách đặc điểm ul 425×76 gap 8 · li 20 gap 6 · icon 16 · 14/20 w400
+      khối biến thể 425×134 gap 12 padding 8 0 0:
+        nhãn "Finish" 14/20 w500 + link "Tech Specs" 14/20 w400 oklch(0.556)
+        5 pill 79×38 radius 10 border 1 oklch(0.922); pill ĐANG CHỌN có
+          border oklab(0.205 0 0 / .3) và nền oklab(0.205 0 0 / .05)
+        CTA: "Add to Bag" 317×36 radius 10 nền oklch(0.205) chữ oklch(0.985)
+          + "Wishlist" 100×36 border oklch(0.922) nền trắng, cả hai 14/20 w500
+  · CỘT PHẢI 519×600 — ảnh, radius 10, nền oklch(0.97 0 0)
+    Góc khuyết KHÔNG phải clip-path mà là SVG mask; path gốc lấy nguyên văn:
+      M 0.04 0 H 0.74 Q 0.79 0 0.825 0.035 L 0.965 0.175 Q 1 0.21 1 0.26
+      V 0.96 Q 1 1 0.96 1 H 0.26 Q 0.21 1 0.175 0.965 L 0.035 0.825
+      Q 0 0.79 0 0.74 V 0.04 Q 0 0 0.04 0 Z
+    (maskContentUnits="objectBoundingBox" — toạ độ 0..1, co giãn theo khung)
+  · font Inter
+
+  ── Ghi chú cho việc chọn hướng ở /tours ──
+  Mẫu này là MỘT thẻ đơn khổ lớn kiểu trưng bày sản phẩm, KHÔNG phải đơn vị
+  của một lưới: nó có variant picker, danh sách đặc điểm và nút "Add to Bag"
+  ngay trên thẻ. Dùng cho 30 tour nghĩa là 30 thẻ 1024×648 xếp chồng.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --dark: oklch(0.205 0 0);
+    --red: oklch(0.577 0.245 27.325);
+    --media: oklch(0.97 0 0);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 40px; background: oklch(1 0 0);
+    font: 400 14px/20px Inter, system-ui, sans-serif; color: var(--ink);
+    display: flex; justify-content: center;
+  }
+  button { font: inherit; cursor: pointer; }
+
+  .card {
+    width: 1024px; padding: 24px; border-radius: 14px; background: oklch(1 0 0);
+    box-shadow: 0 0 0 1px oklab(0.145 0 0 / 0.08), 0 1px 2px oklab(0.145 0 0 / 0.05);
+  }
+  .inner { display: grid; grid-template-columns: 425.3px 518.7px; gap: 32px; height: 600px; }
+
+  /* ── cột trái ── */
+  .left { display: flex; flex-direction: column; gap: 20px; padding: 20px 0; }
+  .head { display: flex; flex-direction: column; gap: 8px; }
+  .meta { display: flex; align-items: center; gap: 8px; height: 20px; }
+  .cat { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); }
+  .cat svg { width: 14px; height: 14px; }
+  .pop {
+    display: inline-flex; align-items: center; height: 20px; padding: 2px 6px;
+    border-radius: 6px; background: oklch(0.97 0.06 80); color: oklch(0.5 0.12 60);
+    font-size: 12px; line-height: 16px; font-weight: 500;
+  }
+  h1 { margin: 0; font-size: 22px; line-height: 30px; font-weight: 600; }
+  .desc { margin: 0; font-size: 14px; line-height: 24px; color: var(--muted); }
+  .rating { display: flex; align-items: center; gap: 8px; height: 20px; font-size: 14px; }
+  .stars { color: oklch(0.82 0.17 85); letter-spacing: 1px; }
+  .rating .n { font-weight: 500; }
+  .rating .c { color: var(--muted); }
+
+  .pricerow { display: flex; align-items: center; gap: 8px; height: 28px; }
+  .off {
+    display: inline-flex; align-items: center; height: 20px; padding: 2px 5px;
+    border-radius: 999px; background: var(--red); color: #fff;
+    font-size: 12px; line-height: 16px; font-weight: 500;
+  }
+  .now { font-size: 20px; line-height: 28px; font-weight: 600; }
+  .was { font-size: 20px; line-height: 28px; font-weight: 400; color: var(--muted); text-decoration: line-through; }
+
+  ul.feats { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  ul.feats li { display: flex; align-items: center; gap: 6px; height: 20px; font-size: 14px; color: var(--muted); }
+  ul.feats svg { width: 16px; height: 16px; flex: none; }
+
+  .variants { display: grid; gap: 12px; padding: 8px 0 0; margin-top: auto; }
+  .vlabel { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 20px; }
+  .vlabel p { margin: 0; font-size: 14px; font-weight: 500; }
+  .vlabel a { font-size: 14px; color: var(--muted); text-decoration: none; }
+  .pills { display: grid; grid-template-columns: repeat(5, 78.66px); gap: 8px; }
+  .pill {
+    position: relative; height: 38px; display: flex; align-items: center; justify-content: center;
+    border: 1px solid var(--line); border-radius: 10px; background: transparent; font-size: 14px;
+  }
+  .pill.on { border-color: oklab(0.205 0 0 / 0.3); background: oklab(0.205 0 0 / 0.05); }
+  .pill.on::after {
+    content: ""; position: absolute; top: -7px; right: -7px; width: 16px; height: 16px;
+    border-radius: 999px; background: var(--dark);
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='4'><path d='m5 13 4 4L19 7'/></svg>");
+    background-size: 11px; background-position: center; background-repeat: no-repeat;
+  }
+  .cta { display: grid; grid-template-columns: 317.3px 100px; gap: 8px; }
+  .cta button { height: 36px; padding: 0 10px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; font-size: 14px; font-weight: 500; }
+  .cta .bag { border: 1px solid transparent; background: var(--dark); color: oklch(0.985 0 0); }
+  .cta .wish { border: 1px solid var(--line); background: oklch(1 0 0); color: var(--ink); }
+  .cta svg { width: 16px; height: 16px; }
+
+  /* ── cột phải: ảnh có góc khuyết bằng SVG mask, đúng như bản gốc ── */
+  .right { border-radius: 10px; background: var(--media); overflow: hidden; -webkit-mask: url(#notch); mask: url(#notch); }
+  .right .ph {
+    width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+    color: var(--muted); font-size: 12px;
+    background: repeating-linear-gradient(45deg, transparent 0 16px, var(--line) 16px 17px);
+  }
+  svg.defs { position: absolute; width: 0; height: 0; }
+</style>
+</head>
+<body>
+<svg class="defs" aria-hidden="true">
+  <mask id="notch" maskContentUnits="objectBoundingBox">
+    <path d="M 0.04 0 H 0.74 Q 0.79 0 0.825 0.035 L 0.965 0.175 Q 1 0.21 1 0.26 V 0.96 Q 1 1 0.96 1 H 0.26 Q 0.21 1 0.175 0.965 L 0.035 0.825 Q 0 0.79 0 0.74 V 0.04 Q 0 0 0.04 0 Z" fill="white"/>
+  </mask>
+</svg>
+
+<div class="card">
+  <div class="inner">
+
+    <div class="left">
+      <div class="head">
+        <div class="meta">
+          <span class="cat">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.6 13.4 12 4.8H4v8l8.6 8.6a2 2 0 0 0 2.8 0l5.2-5.2a2 2 0 0 0 0-2.8Z"/><circle cx="7.5" cy="7.5" r="1"/></svg>
+            Audio
+          </span>
+          <span class="pop">Popular 6 left</span>
+        </div>
+        <h1>AirBuds White</h1>
+        <p class="desc">White wireless earbuds with open-fit comfort, fast pairing, and a slim pocket charging case.</p>
+        <div class="rating">
+          <span class="stars">★★★★★</span>
+          <span class="n">4.7</span>
+          <span class="c">362 reviews</span>
+        </div>
+      </div>
+
+      <div class="pricerow">
+        <span class="off">18% OFF</span>
+        <span class="now">$119.00</span>
+        <span class="was">$149.00</span>
+      </div>
+
+      <ul class="feats">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>Open-Fit Comfort</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>Low-Latency Pairing</li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m5 13 4 4L19 7"/></svg>Slim Charging Case</li>
+      </ul>
+
+      <div class="variants">
+        <div class="vlabel"><p>Finish</p><a href="#specs">Tech Specs</a></div>
+        <div class="pills">
+          <span class="pill on">Pearl</span>
+          <span class="pill">Frost</span>
+          <span class="pill">Cloud</span>
+          <span class="pill">Sand</span>
+          <span class="pill">Mist</span>
+        </div>
+        <div class="cta">
+          <button class="bag" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18M16 10a4 4 0 0 1-8 0"/></svg>
+            Add to Bag
+          </button>
+          <button class="wish" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-4.5-9-9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c-2 4.5-9 9-9 9Z"/></svg>
+            Wishlist
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="right"><div class="ph">ảnh sản phẩm 519×600</div></div>
+
+  </div>
+</div>
+</body>
+</html>

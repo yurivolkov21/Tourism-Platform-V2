@@ -8,6 +8,90 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — Thẻ tour /tours thành lưới hai cột, và một cái bẫy của `grid-cols-2` (nhánh `feat/tours-card-grid`, `4753248`, 6 file, +358/−143)
+
+User đưa hai mẫu ReUI ([product-grid-1](https://reui.io/preview/base/product-grid-1)
+và [product-card-5](https://reui.io/preview/base/product-card-5)) rồi phân vân
+chọn cái nào. Chép 1:1 cả hai để so thì câu trả lời tự lộ: product-card-5 là
+MỘT thẻ đơn khổ 1024×648 kiểu trưng bày, có variant picker và nút "Add to Bag"
+ngay trên thẻ — dùng cho 30 tour nghĩa là 30 thẻ khổng lồ xếp chồng. User chốt
+lấy KHUNG XƯƠNG của product-grid-1 và KIỂU ẢNH khuyết góc của product-card-5.
+
+**Ghép hai mẫu làm lộ một xung đột không mẫu nào có một mình.** Mask cắt mọi
+thứ nằm trong phần tử nó áp lên, kể cả con nằm đè. Mà vết khuyết của
+product-card-5 nằm đúng GÓC TRÊN-PHẢI — chính chỗ product-grid-1 đặt nút
+wishlist. Đo trên khung 554×369: vết cắt bắt đầu ở x=410 mép trên và y=96 mép
+phải, nên nút tim (x 512..542, y 12..42) nằm TRỌN trong vùng bị cắt và biến
+mất sạch. Lời giải là bọc thêm một lớp `position: relative`, chỉ khung ảnh
+mang mask, badge và tim thành ANH EM của nó — nút tim vì thế ngồi trong phần
+khuyết, trên nền thẻ, hoá ra đọc ra như thể vết khuyết sinh ra để chứa nó.
+
+**`grid-cols-2` của Tailwind không chặn được chiều rộng.** `1fr` nghĩa là
+`minmax(auto, 1fr)`, mà cận dưới `auto` lấy min-content; tiêu đề đặt
+`white-space: nowrap` có min-content bằng CẢ dòng chữ, nên cột phình ra để
+chứa nó thay vì cắt nó. Ba triệu chứng cùng một gốc, phát hiện lúc dựng
+wireframe: cột 580 → 670, thẻ cao thêm 60px (ảnh giữ tỉ lệ 3:2 nên rộng ra là
+cao lên), và số tiêu đề bị ellipsis cắt là 0 vì hộp đã nở vừa chữ. Ghim
+`minmax(0,1fr)` thì phép cắt mới thật sự chạy. **Bài học: một phép cắt chữ
+không bao giờ kích hoạt thường không phải lỗi của phép cắt, mà là hộp chứa nó
+đang tự nở.**
+
+**Chiều cao cố định, không phải `min-height`.** User chốt "tiêu đề 1 dòng, mô
+tả 2 dòng thì nhớ cố định, tránh trường hợp tiêu đề dài 2 dòng thì card lại
+giãn ra". `min-h` chỉ chặn chiều HỤT; chặn chiều PHÌNH phải là `height` cố
+định cộng cắt chữ. Nghiệm thu bằng cách ép tiêu đề 948px và tóm tắt gấp 30 lần
+vào một thẻ: thẻ đứng nguyên 602px và cả 10 thẻ vẫn bằng nhau.
+
+**Màu badge: đo xong thì phải làm NGƯỢC yêu cầu của user.** User muốn "giống
+#E63946 nhưng nhạt hơn 3-4%". Đo ra thì chính #E63946 đã không đạt chữ trắng
+(4.17 < 4.5), nhạt thêm 3.5% còn 3.62, và đổi sang chữ mực đậm cũng không cứu
+(4.07). Giá trị nhạt NHẤT còn đạt trong cùng chroma/hue là `oklch(0.59 0.208
+22.2)` = #DE3040 (4.56) — tức TỐI hơn bản gốc 2.2%, ngược chiều user xin. Đã
+báo user kèm số đo và đề nghị đổi lại nếu chấp nhận mất chuẩn đọc. Token `sale`
+tách khỏi `destructive` vì ngữ nghĩa đối lập (xoá/nguy hiểm ≠ khuyến mãi), và
+`sale-foreground` là trắng thật chứ không mượn `on-media` — `on-media` kéo
+tương phản xuống 4.33, phá đúng lý do chọn màu.
+
+**Điểm ngắt hai cột do đo mà đổi, không do mẫu.** Wireframe user duyệt là khung
+1184 (thẻ 580), nhưng `sm:` mặc định bật hai cột từ 640px. Đếm tiêu đề bị
+ellipsis cắt trên 10 tour thật: 1280px → 0/10 · 1024px → 6/10 (mất nhiều nhất
+17%) · 820px → 9/10 (33%) · 640px → 9/10 (42%). Chuyển sang `lg:` (1024) thì
+dưới ngưỡng là một cột và số bị cắt về 0/10. Một cột đọc được hơn hai cột đúng
+hình.
+
+**Review findings**
+
+- **Cổng 3000 đang chạy `next start` — bản build ĐÓNG BĂNG.** Đo trang thật ra
+  thẻ 1184×230 tiêu đề 2 dòng, tức thẻ CŨ, trong khi code đã đổi. Suýt đi tìm
+  lỗi trong component. Kiểm `ps` mới thấy tiến trình là `sh -c next start`.
+  Cùng họ với sự cố `pnpm start` của API ngày 16/08 (rơi về Postgres docker,
+  ảnh biến mất mà trang vẫn trông bình thường). Đã chuyển sang `next dev`, giữ
+  nguyên cổng. **Đo một trang do server nào phục vụ là một phần của phép đo.**
+- **Nhánh badge `isFeatured` bị wireframe bỏ sót.** Wireframe chỉ vẽ badge giảm
+  giá, nhưng thẻ đang chạy có nhánh thứ hai: không giảm giá mà `isFeatured` thì
+  hiện "Featured". Dựng "giống 100% wireframe" một cách máy móc là đánh rơi một
+  tính năng đang chạy. Đã bổ sung nhánh này vào CẢ wireframe lẫn component, và
+  có test cho ca cả hai cùng đúng (giảm giá thắng).
+- **`titlesClipped: 0` trên dữ liệu thật KHÔNG chứng minh phép cắt chạy.** Nó
+  chỉ nói không tour nào có tên đủ dài. Phải bơm tiêu đề dài vào DOM rồi đo lại
+  mới là bằng chứng. Cùng họ với bài học viewport Playwright ngày 15/08: kết
+  quả giống nhau trong mọi điều kiện là dấu hiệu dụng cụ hỏng, không phải phát
+  hiện.
+- **Skeleton `loading.tsx` phải sửa CÙNG đợt.** Chính comment trong file nói
+  khối giả lệch bố cục thật là lời hứa sai, và nó từng bị đúng lỗi đó một lần.
+  Ô ảnh trong skeleton cố ý KHÔNG vẽ góc khuyết: không có ảnh thật bên dưới thì
+  nó chỉ là hình chữ nhật xám bị gặm mất một góc, trông như lỗi render.
+
+**Nợ mở:** thẻ mới bỏ dòng chuỗi chặng (Hà Nội → Ninh Bình → …) vì wireframe đã
+duyệt không có và thẻ hẹp đi một nửa — đã nêu để user quyết, địa danh chính vẫn
+còn ở băng dữ kiện · ở đúng 1024px vẫn còn 6/10 tiêu đề bị cắt tới 17% · 25/30
+tour chưa có cover nên phần lớn thẻ vẫn là ô giữ chỗ · gallery địa danh 5/19 ·
+5/29 khe site trống · `family` cho tag nên vào contract · /blog chưa có ngăn kéo
+mobile.
+
+Tests after: 1253 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — /blog đổi sang filter sidebar hai trục, và một lỗi phân loại đội lốt lỗi thẩm mỹ (nhánh `feat/blog-filter-sidebar`, `259f1ef`+`639150d`, 7 file, +816/−171)
 
 User nói `/blog` "thiết kế chưa được ổn lắm" và muốn mượn giao diện
