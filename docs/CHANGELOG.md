@@ -8,6 +8,98 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — /about gần đủ ảnh: Story + Gallery + Timeline + đội ngũ thật, và một lỗi định vị ẩn kỹ ở `SlotImage` (nhánh `feat/about-images`, `d407b59`+`4325bc4`, 15 file, +272/−43)
+
+`/about` từ **1 ảnh thật / 15 ô giữ chỗ** xuống còn **2 ô** (nền Numbers và
+video CTA). Khe site lên **28**.
+
+**ĐÍNH CHÍNH entry 17/08 phía dưới — số đo panel `/contact` trong đó SAI.**
+Entry đó ghi *"card khoá 1024px ở MỌI bề rộng 1280→2560, nên panel luôn
+511×790"*. Nguyên nhân: `context.newPage()` của Playwright **không nhận tham
+số** — tôi truyền `{viewport}` vào đó nên nó bị bỏ qua lặng lẽ và MỌI lần đo
+đều chạy ở mặc định 1280×720. Vì mọi lần đo đều cùng một bề rộng nên kết quả
+"giống nhau ở mọi viewport" trông rất thuyết phục. Số đúng: panel cao cố định
+790 nhưng rộng theo card, tỉ lệ trải **0.65 ở 1280 · 0.75 ở 1440 · 0.81 từ
+1920 · 0.36 ở tablet 768**. Trớ trêu là 0.81 mới đúng cho desktop rộng — con
+số ban đầu đúng, "sửa" thành 0.65 mới là bước lùi. Entry cũ giữ nguyên theo
+luật bất biến; `media-tree.mjs` đã sửa. **Bài học: một thước đo cho kết quả
+giống hệt nhau ở mọi điều kiện là dấu hiệu thước hỏng, không phải phát hiện.**
+
+**Lỗi thật, và nó ẩn được lâu vì hai nhánh của cùng một component không giống
+nhau.** `SlotImage` bọc `next/image` với `fill`, mà `fill` định vị theo tổ
+tiên CÓ `position` gần nhất. Nhánh giữ chỗ (`ImagePlaceholder`) vốn tự mang
+`relative overflow-hidden`; nhánh ảnh thật thì không, nó chỉ đổ thẳng
+`className` của caller. Nên caller nào quên `relative` vẫn chạy êm suốt thời
+gian khe còn trống, và **chỉ vỡ đúng lúc gắn ảnh thật vào**. Lộ ra ở §Team:
+ô 302×320 mà ảnh render **1440×900** — đúng bằng viewport, nhìn ra như ô
+trắng. Vá bằng `cn('relative overflow-hidden', className)`; dùng `cn`
+(twMerge) chứ không nối chuỗi để caller cần `absolute inset-0` như
+`about-story` vẫn ghi đè được. Hai test khoá cả hai chiều đó.
+
+**Nhãn ảnh phải nói cùng một thứ với ảnh.** Nhãn của `ImagePlaceholder` thành
+`alt` khi khe có ảnh, nên đổi ảnh mà quên nhãn là để alt nói dối. Đổi hai:
+mốc 2017 từ *"lanterns on the Thu Bồn river"* sang *"bánh mì, Hội An"*, mốc
+2021 từ *"Cái Răng floating market at dawn"* sang *"island dusk over Phú
+Quốc"*.
+
+**Hai lần đổi chủ đề, và lý do đáng ghi hơn kết quả.** Mốc 2017 bỏ đèn lồng vì
+ba cớ cộng lại: ở dải 512×208 tường đèn lồng thành mảng màu rối không có điểm
+nhìn; trùng đăng ký với hero Hội An trên trang chủ; và chữ của mốc nói
+*"lantern rivers"* — đèn thả trên sông, không phải đèn treo bán. Bánh mì neo
+được miền Trung qua bánh mì Phượng Hội An. **Phở thì không dùng ở mốc này** —
+đó là món Hà Nội, đặt vào mốc "mở miền Trung" là lệch vùng. Mốc 2021 bỏ chợ
+nổi vì kho ảnh miễn phí gần như không có tấm dùng được; lối ra nằm sẵn trong
+chính copy của mốc: *"island dusk after"*.
+
+**Ứng viên 2026 bị loại vì trùng lần thứ ba.** Tấm user gửi là Hanoi Train
+Street — nơi đã dùng ở thẻ Hà Nội trang chủ VÀ bìa bài *"Crossing Hanoi"*.
+Chuyện trùng hai lần đó chính entry 17/08 phía dưới đã ghi là nợ mở, nên thêm
+lần ba là làm nặng thêm món nợ vừa ghi nhận. Đổi sang nhóm nhỏ đi trên bờ
+ruộng sen giữa núi đá.
+
+**Đội ngũ chuyển sang NGƯỜI THẬT** (4 thành viên nhóm capstone). Ba việc đi
+kèm, không phải chỉ thay chuỗi:
+- Tên cũ còn nằm ở **5 trang auth** dưới dạng tác giả câu trích. Không đổi thì
+  site hiện lẫn lộn hai bộ tên.
+- Bỏ hết quan hệ gia đình trong phần giới thiệu (*"The elder brother"*, *"The
+  younger brother"*, *"The neighbour"*). Gán quan hệ anh em bịa cho nhân vật
+  hư cấu là một chuyện; gán cho người có tên thật là chuyện khác. Câu *"two
+  brothers and a neighbour"* ở §Story giữ nguyên vì nó không nêu tên ai.
+- Bỏ con số *"560 departures"* khỏi dòng của Head of Operations — số cứng nằm
+  trong copy, đúng loại lỗi entry 14/08 đã ghi.
+
+**Avatar: KHÔNG dùng mặt thật** (quyết định user — riêng tư). Dùng DiceBear,
+bộ `voxel-bot` ở **API 10.x** (bộ này không có ở 9.x), giấy phép CC0 1.0 nên
+không cần ghi nguồn. Hai điều đo được: API chặn PNG ở **256px** nên phải lấy
+SVG rồi rasterize bằng trình duyệt lên 800px; và preset **"Animated" KHÔNG lấy
+được qua HTTP API** — tài liệu ghi API chỉ trả ảnh tĩnh, thử
+`preset=animated`/`animated=true`/`motion=true` đều trả SVG không có thẻ
+animation nào.
+
+**Hover: bỏ ý skeleton, giữ ý "rê vào thì rõ".** User đề xuất skeleton mặc
+định, hover mới hiện ảnh. Không làm, vì hai lẽ: skeleton là tín hiệu ĐANG TẢI
+nên dùng làm trạng thái vĩnh viễn là dạy sai người dùng; và **hover không tồn
+tại trên máy cảm ứng** nên khách mobile sẽ mất hẳn nội dung. Bản đã ship: xám
+lúc thường, bừng màu khi rê — và `[@media(hover:hover)]` bọc riêng phần xám,
+vì không bọc thì avatar trên điện thoại xám VĨNH VIỄN (không có hover để gỡ
+ra). Đo cả hai chiều: desktop `grayscale(1)` → `grayscale(0)`; cảm ứng `none`.
+
+**Chạy lại `media:upload` là vô hại — đo chứ không đoán.** Script upload cả 39
+file mỗi lần chạy chứ không lọc, nên có lo nó đổi `version` của mọi ảnh cũ và
+bust sạch CDN. Chụp version trước/sau: **0 đổi, 47 giữ nguyên, 1 mới**.
+Cloudinary trả lại đúng version cũ khi bytes không đổi.
+
+**Nợ mở:** trang đăng ký ghi *"four friends"* trong khi §Story và mốc 2014 đều
+ghi *"three guides"* — mâu thuẫn có sẵn, sửa một chữ · `alt` rỗng toàn site vì
+`SlotImage` đọc alt từ `media_assets.alt` mà cột đó null cho mọi ảnh (với ảnh
+trang trí cạnh chữ mô tả thì alt rỗng hợp chuẩn, nên không gấp) · thẻ
+"Southern Vietnam" dùng ảnh thúng chai — đặc trưng miền TRUNG, user cân nhắc
+và chốt giữ · thẻ "All of Vietnam" dùng vịnh Hạ Long, biểu tượng miền Bắc ·
+25/30 tour chưa có cover · gallery địa danh 5/19 · 2 ô /about còn trống.
+
+Tests after: 1218 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — /contact §2 gộp về MỘT card, radio thay dropdown, chữ ký tự điền (nhánh `feat/contact-split-panel`, `4f5dc6d`, 10 file, +742/−135)
 
 Đóng phần ảnh + hoàn thiện §2 của `/contact`. Khe site lên **16** (thêm
