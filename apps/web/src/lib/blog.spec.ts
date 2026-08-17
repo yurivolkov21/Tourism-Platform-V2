@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import type { JournalPost } from './api/posts';
 import {
   adjacentPosts,
+  facetCounts,
+  filterPostsByFacets,
   filterPostsByTag,
   HOME_TEASER_COUNT,
   homeTeaserPosts,
   latestPosts,
+  parseFacetParams,
   relatedPosts,
   searchPosts,
+  serializeFacetParams,
   sortPostsByDate,
+  splitTagFamilies,
 } from './blog.js';
 
 // Factory dựng post theo shape JournalPost (VM sau Task 5) — `category` là tag
@@ -205,5 +210,147 @@ describe('latestPosts', () => {
     const many = [post('a', '2026-01-01', 'Food'), post('b', '2026-05-01', 'Food')];
     latestPosts(many, 1);
     expect(many.map((p) => p.slug)).toEqual(['a', 'b']);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lọc theo HAI TRỤC (Topic / Place) — nền cho filter sidebar /blog (17/08)
+// ─────────────────────────────────────────────────────────────────────────
+
+// 19 slug địa danh thật từ API, cắt gọn cho test.
+const DESTS = ['can-tho', 'da-nang', 'ha-long', 'hanoi', 'hoi-an', 'hue', 'ninh-binh', 'sa-pa'];
+
+const tag = (slug: string) => ({ slug, name: slug });
+const p = (slug: string, date: string, tags: string[]) =>
+  post(slug, date, tags[0] ?? 'x', tags.map(tag));
+
+describe('splitTagFamilies', () => {
+  it('tag trùng slug địa danh → Place, còn lại → Topic', () => {
+    const { topics, places } = splitTagFamilies(
+      [tag('food'), tag('hoi-an'), tag('packing'), tag('sa-pa')],
+      DESTS,
+    );
+    expect(topics.map((t) => t.slug)).toEqual(['food', 'packing']);
+    expect(places.map((t) => t.slug)).toEqual(['hoi-an', 'sa-pa']);
+  });
+
+  it('NGOẠI LỆ: địa danh không có trong destinations vẫn phải vào Place', () => {
+    // `lan-ha-bay` là tag địa danh thật của blog nhưng KHÔNG phải slug
+    // destination (danh sách có `cat-ba` và `ha-long`, không có nó). Đo được
+    // 17/08 — nếu chỉ đối chiếu destinations thì nó rơi nhầm sang Topic và
+    // hiện cạnh "Food" trong sidebar.
+    const { topics, places } = splitTagFamilies([tag('food'), tag('lan-ha-bay')], DESTS);
+    expect(topics.map((t) => t.slug)).toEqual(['food']);
+    expect(places.map((t) => t.slug)).toEqual(['lan-ha-bay']);
+  });
+
+  it('destinations rỗng (API hắt hơi) → mọi tag về Topic, KHÔNG ném', () => {
+    const { topics, places } = splitTagFamilies([tag('food'), tag('hoi-an')], []);
+    expect(topics.map((t) => t.slug)).toEqual(['food', 'hoi-an']);
+    expect(places).toEqual([]);
+  });
+});
+
+describe('filterPostsByFacets', () => {
+  const posts = [
+    p('a', '2026-07-08', ['food', 'hoi-an']),
+    p('b', '2026-05-02', ['food', 'da-nang']),
+    p('c', '2026-06-25', ['markets', 'can-tho']),
+    p('d', '2026-06-08', ['practical']),
+  ];
+
+  it('không chọn gì → trả nguyên danh sách', () => {
+    expect(filterPostsByFacets(posts, {}).map((x) => x.slug)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('trong CÙNG một trục là OR', () => {
+    expect(filterPostsByFacets(posts, { topics: ['food', 'markets'] }).map((x) => x.slug)).toEqual([
+      'a',
+      'b',
+      'c',
+    ]);
+  });
+
+  it('giữa HAI trục là AND', () => {
+    expect(
+      filterPostsByFacets(posts, { topics: ['food'], places: ['hoi-an'] }).map((x) => x.slug),
+    ).toEqual(['a']);
+  });
+
+  it('giao rỗng → mảng rỗng, không phải "rơi về tất cả"', () => {
+    expect(filterPostsByFacets(posts, { topics: ['markets'], places: ['hoi-an'] })).toEqual([]);
+  });
+
+  it('bài không có tag địa danh biến mất khi lọc theo Place', () => {
+    // Bài 'd' chỉ có tag chủ đề. Đúng về logic, nhưng ghi lại thành test để
+    // không ai "sửa" thành fallback lọt lưới.
+    expect(filterPostsByFacets(posts, { places: ['can-tho'] }).map((x) => x.slug)).toEqual(['c']);
+  });
+});
+
+describe('facetCounts', () => {
+  const posts = [
+    p('a', '2026-07-08', ['food', 'hoi-an']),
+    p('b', '2026-05-02', ['food', 'da-nang']),
+    p('c', '2026-06-25', ['markets', 'can-tho']),
+  ];
+
+  it('đếm cho một trục thì BỎ QUA lựa chọn của chính trục đó', () => {
+    // Nếu áp cả lựa chọn của chính nó thì mọi mục chưa chọn đều ra 0 và
+    // người dùng không bao giờ chọn thêm được giá trị thứ hai cùng nhóm.
+    const c = facetCounts(posts, { topics: ['food'] }, 'topics');
+    expect(c.get('food')).toBe(2);
+    expect(c.get('markets')).toBe(1);
+  });
+
+  it('trục kia thì CÓ áp — đây là chỗ số đếm của API nói dối', () => {
+    // `PostTagSchema.count` là tổng toàn cục; sau khi chọn Topic=food thì
+    // can-tho phải về 0 chứ không còn là 1.
+    const c = facetCounts(posts, { topics: ['food'] }, 'places');
+    expect(c.get('hoi-an')).toBe(1);
+    expect(c.get('da-nang')).toBe(1);
+    expect(c.get('can-tho')).toBe(0);
+  });
+
+  it('tag chưa từng xuất hiện → 0 chứ không undefined', () => {
+    expect(facetCounts(posts, {}, 'places').get('sa-pa')).toBe(0);
+  });
+});
+
+describe('parseFacetParams', () => {
+  it('đọc topic và place dạng danh sách phẩy', () => {
+    expect(parseFacetParams({ topic: 'food,markets', place: 'hoi-an' })).toEqual({
+      topics: ['food', 'markets'],
+      places: ['hoi-an'],
+      legacyTag: undefined,
+    });
+  });
+
+  it('bỏ khoảng trắng và phần tử rỗng', () => {
+    expect(parseFacetParams({ topic: ' food , , markets ' }).topics).toEqual(['food', 'markets']);
+  });
+
+  it('link CŨ `?tag=` vẫn chạy — không được để link đã chia sẻ chết', () => {
+    expect(parseFacetParams({ tag: 'sa-pa' })).toEqual({
+      topics: [],
+      places: [],
+      legacyTag: 'sa-pa',
+    });
+  });
+
+  it('có topic/place mới thì BỎ QUA tag cũ — tránh hai bộ lọc chồng nhau', () => {
+    expect(parseFacetParams({ topic: 'food', tag: 'sa-pa' }).legacyTag).toBeUndefined();
+  });
+});
+
+describe('serializeFacetParams', () => {
+  it('nối bằng dấu phẩy, bỏ trục rỗng', () => {
+    expect(serializeFacetParams({ topics: ['food', 'markets'], places: [] })).toEqual({
+      topic: 'food,markets',
+    });
+  });
+
+  it('không chọn gì → object rỗng, URL sạch', () => {
+    expect(serializeFacetParams({ topics: [], places: [] })).toEqual({});
   });
 });

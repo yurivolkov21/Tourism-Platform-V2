@@ -76,3 +76,148 @@ export function homeTeaserPosts(posts: readonly JournalPost[]): JournalPost[] {
 export function latestPosts(posts: readonly JournalPost[], count: number): JournalPost[] {
   return sortPostsByDate(posts).slice(0, Math.max(0, count));
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Lọc HAI TRỤC cho filter sidebar /blog (17/08)
+//
+// Contract chỉ trả MỘT mảng `tags` phẳng, không có trường nào nói tag đó
+// thuộc họ nào. Nhưng đo trên 9 bài thật: mỗi bài có đúng một tag chủ đề và
+// 8/9 bài có một tag địa danh — hai họ rõ rệt đang bị đổ chung một hàng chip
+// xếp theo bảng chữ cái, nên "Culture" nằm cạnh "Da Nang".
+//
+// Cách phân họ (user chốt 17/08): đối chiếu slug tag với slug ĐỊA DANH lấy từ
+// API, thay vì hardcode danh sách ở web — thêm địa danh mới thì không phải sửa
+// code. Nhược điểm đã đo được và vá bằng `PLACE_TAGS_NOT_DESTINATIONS` bên
+// dưới. Lời giải triệt để là thêm trường `family` cho tag ở contract, nhưng đó
+// là đổi schema nên để ADR riêng.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Tag ở dạng tối thiểu — dùng chung cho `PostTag` (có count) lẫn tag trên bài. */
+export interface TagLike {
+  slug: string;
+  name: string;
+}
+
+/**
+ * Tag ĐỊA DANH không phải slug destination.
+ *
+ * `lan-ha-bay` là vịnh cạnh Cát Bà; catalog có `cat-ba` và `ha-long` nhưng
+ * không có nó, nên chỉ đối chiếu destinations là xếp nhầm nó sang Topic và
+ * hiện ngay cạnh "Food" trong sidebar. Giữ danh sách này NGẮN và có lý do:
+ * mỗi dòng thêm vào đây là một chỗ dữ liệu và catalog lệch nhau.
+ */
+const PLACE_TAGS_NOT_DESTINATIONS: ReadonlySet<string> = new Set(['lan-ha-bay']);
+
+/** Tách tag thành hai họ. `destinationSlugs` rỗng (API lỗi) → dồn hết về Topic. */
+export function splitTagFamilies<T extends TagLike>(
+  tags: readonly T[],
+  destinationSlugs: readonly string[],
+): { topics: T[]; places: T[] } {
+  const dests = new Set(destinationSlugs);
+  const isPlace = (slug: string) => dests.has(slug) || PLACE_TAGS_NOT_DESTINATIONS.has(slug);
+  return {
+    topics: tags.filter((t) => !isPlace(t.slug)),
+    places: tags.filter((t) => isPlace(t.slug)),
+  };
+}
+
+/** Lựa chọn đang bật ở mỗi trục. */
+export interface Facets {
+  topics?: readonly string[];
+  places?: readonly string[];
+}
+
+const hasAnyTag = (post: JournalPost, slugs: readonly string[]) =>
+  post.tags.some((t) => slugs.includes(t.slug));
+
+/**
+ * Lọc theo nhiều trục: trong CÙNG một trục là OR, giữa hai trục là AND.
+ *
+ * Đây là ngữ nghĩa chuẩn của faceted search và cũng là thứ người dùng chờ đợi:
+ * chọn thêm "Markets" cạnh "Food" là NỚI kết quả ra, còn chọn thêm một địa
+ * danh là THU hẹp lại.
+ */
+export function filterPostsByFacets(posts: readonly JournalPost[], facets: Facets): JournalPost[] {
+  const topics = facets.topics ?? [];
+  const places = facets.places ?? [];
+  return posts.filter(
+    (post) =>
+      (topics.length === 0 || hasAnyTag(post, topics)) &&
+      (places.length === 0 || hasAnyTag(post, places)),
+  );
+}
+
+/**
+ * Số bài cho từng tag, tính TRONG tập kết quả — nhưng BỎ QUA lựa chọn của
+ * chính trục đang đếm.
+ *
+ * Vì sao bỏ qua: nếu áp cả lựa chọn của chính nó thì mọi mục chưa chọn trong
+ * nhóm đó đều ra 0, và người dùng không bao giờ chọn thêm được giá trị thứ hai
+ * cùng nhóm. Trục KIA thì có áp — đó chính là chỗ `PostTagSchema.count` của
+ * API nói dối: nó là tổng TOÀN CỤC, giữ nguyên sau khi lọc thì người dùng bấm
+ * vào một con số khác 0 rồi nhận về màn hình trống.
+ */
+export function facetCounts(
+  posts: readonly JournalPost[],
+  facets: Facets,
+  group: 'topics' | 'places',
+): FacetCounts {
+  const others: Facets = group === 'topics' ? { places: facets.places } : { topics: facets.topics };
+  const counts = new Map<string, number>();
+  for (const post of filterPostsByFacets(posts, others)) {
+    for (const t of post.tags) counts.set(t.slug, (counts.get(t.slug) ?? 0) + 1);
+  }
+  // Trả bọc mỏng thay vì Map trần: tag chưa xuất hiện phải ra 0 chứ không
+  // `undefined` — chỗ gọi in thẳng con số ra giao diện, `undefined` sẽ render
+  // thành chữ "undefined". Bọc bằng object hiển nhiên, KHÔNG dùng Proxy: một
+  // Map bị Proxy chặn `get` là thứ người đọc sau không đoán được.
+  return { get: (slug) => counts.get(slug) ?? 0 };
+}
+
+/** Tra số đếm theo slug; tag chưa xuất hiện trả 0. */
+export interface FacetCounts {
+  get(slug: string): number;
+}
+
+/** Trạng thái lọc đọc từ URL, kèm tag của link CŨ nếu có. */
+export interface ParsedFacets {
+  topics: string[];
+  places: string[];
+  /** `?tag=` của link cũ — chỉ dùng khi CHƯA có topic/place mới. */
+  legacyTag: string | undefined;
+}
+
+const splitList = (raw?: string): string[] =>
+  (raw ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+/**
+ * Đọc trạng thái lọc từ query. Giữ `?tag=` của link cũ chạy được — /blog đã
+ * phát hành link dạng đó (chip, RSS, chia sẻ), đổi sang `?topic=`/`?place=`
+ * mà bỏ rơi nó là làm chết mọi link đã tồn tại.
+ */
+export function parseFacetParams(params: {
+  topic?: string;
+  place?: string;
+  tag?: string;
+}): ParsedFacets {
+  const topics = splitList(params.topic);
+  const places = splitList(params.place);
+  // Có trục mới thì bỏ qua tag cũ — để cả hai cùng chạy sẽ thành hai bộ lọc
+  // chồng nhau mà giao diện chỉ hiển thị được một.
+  const legacyTag = topics.length === 0 && places.length === 0 ? params.tag?.trim() : undefined;
+  return { topics, places, legacyTag: legacyTag || undefined };
+}
+
+/** Ngược lại của `parseFacetParams` — trục rỗng thì bỏ hẳn khỏi URL cho sạch. */
+export function serializeFacetParams(facets: {
+  topics: readonly string[];
+  places: readonly string[];
+}): { topic?: string; place?: string } {
+  const out: { topic?: string; place?: string } = {};
+  if (facets.topics.length > 0) out.topic = facets.topics.join(',');
+  if (facets.places.length > 0) out.place = facets.places.join(',');
+  return out;
+}
