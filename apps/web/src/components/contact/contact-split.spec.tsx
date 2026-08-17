@@ -29,6 +29,17 @@ const { success, error, warning } = vi.hoisted(() => ({
 }));
 vi.mock('sonner', () => ({ toast: { success, error, warning } }));
 
+// Mock session — khuôn giống user-menu.spec.tsx: `vi.fn()` trần rồi set trạng
+// thái trong beforeEach. KHÔNG đặt impl mặc định trong `vi.fn(() => …)` vì
+// TS suy ra kiểu trả về là `{ data: null }`, khiến test đăng-nhập-rồi không
+// gán được `{ data: { user } }` (đã đỏ typecheck vì lỗi này).
+const { useSessionMock } = vi.hoisted(() => ({ useSessionMock: vi.fn() }));
+vi.mock('@/lib/auth-client', () => ({ useSession: useSessionMock }));
+
+// Mặc định cấp file: CHƯA đăng nhập. Cần vì mọi describe trong file đều render
+// ContactSplit, mà `vi.fn()` trần trả `undefined` → destructure `{ data }` ném.
+beforeEach(() => useSessionMock.mockReturnValue({ data: null }));
+
 // Mock client API — spec chỉ kiểm submit gọi ĐÚNG payload, không gọi API thật.
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
 vi.mock('@/lib/api/client', () => ({ api: { enquiries: { create } } }));
@@ -42,11 +53,11 @@ async function fillValidLetter(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Your name'), 'Minh Anh');
 }
 
-/** Select region combobox không phải <select> gốc — mở popup + bấm option
-    theo tiền lệ ToursExplorer (dòng ~191). */
+/** Region đổi từ dropdown sang NHÓM RADIO 17/08 (4 lựa chọn thì hiện hết).
+    Không còn popup để mở — bấm thẳng vào radio. Điều test khẳng định vẫn y
+    nguyên: chọn miền nào thì `payload.interests` mang đúng miền đó. */
 async function pickRegion(user: ReturnType<typeof userEvent.setup>, regionName: RegExp) {
-  await user.click(screen.getByRole('combobox', { name: /Where are you dreaming of/i }));
-  await user.click(await screen.findByRole('option', { name: regionName }));
+  await user.click(screen.getByRole('radio', { name: regionName }));
 }
 
 describe('ContactSplit — honeypot ẩn khỏi accessibility tree', () => {
@@ -180,5 +191,31 @@ describe('ContactSplit — submit', () => {
       message: 'Slow mornings, street food, and a boat ride at sunset.',
       interests: ['north'],
     });
+  });
+});
+
+describe('ContactSplit — điền sẵn chữ ký từ session', () => {
+  it('CHƯA đăng nhập → ô chữ ký để TRỐNG', () => {
+    render(<ContactSplit />);
+    expect(screen.getByLabelText('Your name')).toHaveValue('');
+  });
+
+  it('đã đăng nhập → chữ ký điền sẵn tên thật', async () => {
+    useSessionMock.mockReturnValue({ data: { user: { name: 'Minh Anh' } } });
+    render(<ContactSplit />);
+    await waitFor(() => expect(screen.getByLabelText('Your name')).toHaveValue('Minh Anh'));
+  });
+
+  it('khách đã gõ tay rồi session mới tới → KHÔNG ghi đè', async () => {
+    // Đây là tình huống thật, không phải phòng xa: `useSession` trả về bất
+    // đồng bộ, nên khách hoàn toàn có thể gõ xong trước khi session tới.
+    const user = userEvent.setup();
+    const { rerender } = render(<ContactSplit />);
+    await user.type(screen.getByLabelText('Your name'), 'Người khác');
+
+    useSessionMock.mockReturnValue({ data: { user: { name: 'Minh Anh' } } });
+    rerender(<ContactSplit />);
+
+    await waitFor(() => expect(screen.getByLabelText('Your name')).toHaveValue('Người khác'));
   });
 });

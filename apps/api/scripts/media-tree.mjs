@@ -69,6 +69,11 @@ const SITE_SLOTS = [
   ['why-river', 'Khối "why choose us" — mục sông nước.', '2400×2030, NGANG'],
   ['why-evening', 'Khối "why choose us" — mục phố đêm/đèn lồng.', '2400×2030, NGANG'],
   ['why-heritage', 'Khối "why choose us" — mục di sản.', '2400×2030, NGANG'],
+  [
+    'contact-panel',
+    'Nền panel tràn viền ở /contact §2 (nửa TRÁI của card). Đo 17/08: card khoá 1024px ở MỌI bề rộng 1280→2560, nên panel luôn 511×790 — ảnh DỌC. Scrim phủ đậm từ đáy lên (chữ liên hệ nằm đó) và nhạt dần lên góc trên-phải, nên chi tiết chỉ còn đọc được ở NỬA TRÊN: đặt chủ thể ở đó, đáy để trống cũng không sao. Tránh ảnh có chữ/địa danh nước ngoài — dễ đọc ra ở kích thước này.',
+    '1600×2400 (2:3), DỌC',
+  ],
 ];
 
 const README_SITE = `# Khe thương hiệu

@@ -80,6 +80,9 @@ const SITE_SLOT_KEYS = [
   'why-river',
   'why-evening',
   'why-heritage',
+  // Ảnh chân khung thông tin ở /contact §2 — khe riêng chứ không mượn
+  // `content-hero`: khe đó dùng chung 11 trang, gắn ảnh vào là đổi cả 11.
+  'contact-panel',
 ] as const;
 
 const connectionString =

@@ -4,6 +4,7 @@ import { ContactFaq } from '@/components/contact/contact-faq';
 import { ContactHero } from '@/components/contact/contact-hero';
 import { ContactLocation } from '@/components/contact/contact-location';
 import { ContactSplit } from '@/components/contact/contact-split';
+import { siteMediaImage } from '@/lib/api/site-media';
 
 // Trang Contact (static-first) — kế hoạch 5 section user duyệt 24/07:
 // §1 Hero ngắn (Nexora ContentHero) · §2 Split form+info (ShadcnSpace Contact
@@ -16,11 +17,14 @@ export const metadata: Metadata = {
   description: 'Tell us your dates and pace — a real person replies within the hour.',
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  // Khe `contact-panel`: `null` khi chưa có ảnh — SlotImage tự rơi về giữ chỗ.
+  const panelImage = await siteMediaImage('contact-panel');
+
   return (
     <>
       <ContactHero />
-      <ContactSplit />
+      <ContactSplit panelImage={panelImage} />
       <ContactLocation />
       <ContactFaq />
       <ContactCta />

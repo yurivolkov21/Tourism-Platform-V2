@@ -1,22 +1,14 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
-import { Separator } from '@tourism/ui/components/separator';
-import { CompassIcon } from 'lucide-react';
+import { CheckIcon, ClockIcon, CompassIcon, MailIcon, MapPinIcon, PhoneIcon } from 'lucide-react';
 import { motion } from 'motion/react';
-import { type FormEvent, useState } from 'react';
-import { PARTNERS } from '@/components/home/partners';
-import { SectionEyebrow } from '@/components/home/section-eyebrow';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { SlotImage } from '@/components/slot-image';
 import { api } from '@/lib/api/client';
 import { classifySubmitError, submitToast } from '@/lib/api/submit';
+import { useSession } from '@/lib/auth-client';
 import { buildEnquiryPayload, type ContactFormState, validateEnquiry } from '@/lib/enquiry-form';
 import { SPRING } from '@/lib/motion';
 import { EMAIL, PHONE } from '@/lib/site';
@@ -57,10 +49,31 @@ const INITIAL_STATE: ContactFormState = {
   website: '',
 };
 
-export function ContactSplit() {
+export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | null }) {
   const [state, setState] = useState<ContactFormState>(INITIAL_STATE);
   const [errors, setErrors] = useState<ReturnType<typeof validateEnquiry>>({});
   const [pending, setPending] = useState(false);
+
+  // Khách đã đăng nhập thì điền sẵn CHỮ KÝ bằng tên thật (17/08).
+  //
+  // Chỉ chữ ký, KHÔNG đụng lời chào "Hello tourism,": lá thư là của khách gửi
+  // cho công ty, đổi lời chào thành tên khách sẽ thành ra khách tự chào mình
+  // rồi tự ký tên ở ngay dưới.
+  //
+  // `filledOnce` chặn hai tình huống thật, không phải phòng xa:
+  //  1. `useSession` trả về BẤT ĐỒNG BỘ — khách gõ tay xong session mới tới thì
+  //     điền đè sẽ xoá mất chữ họ vừa gõ.
+  //  2. Khách CỐ Ý xoá tên đi (gửi hộ người khác) — effect chạy lại vì lý do
+  //     khác mà điền lại thì hoá ra tranh bàn phím với người dùng.
+  const { data: session } = useSession();
+  const filledOnce = useRef(false);
+  useEffect(() => {
+    const name = session?.user?.name;
+    if (!name || filledOnce.current) return;
+    filledOnce.current = true;
+    // Chỉ điền khi ô còn TRỐNG — không ghi đè thứ khách đã gõ.
+    setState((s) => (s.name ? s : { ...s, name }));
+  }, [session]);
 
   // Submit: validate CLIENT bằng chính schema contract trước (chặn request rõ
   // ràng hỏng); server vẫn là chốt cuối. Honeypot dính → server trả 200 giả,
@@ -97,97 +110,95 @@ export function ContactSplit() {
 
   return (
     <section id="enquiry" className="w-full px-4 py-20 md:px-16 md:py-28 lg:px-24 xl:px-32">
-      <div className="mx-auto grid max-w-7xl grid-cols-12 gap-8 md:gap-0">
-        {/* Trái: info */}
-        <div className="col-span-12 flex flex-col gap-8 md:col-span-6 md:gap-12">
-          <motion.div
-            className="flex flex-col gap-5"
-            initial={{ x: -40, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={SPRING}
-          >
-            <SectionEyebrow>We can help</SectionEyebrow>
-            <h2 className="max-w-md font-heading text-3xl leading-tight font-medium text-foreground md:text-4xl">
+      {/* MỘT card chia đôi (đổi 17/08, wireframe `docs/design/mockups/contact-split-panel.src.html`).
+          Lịch sử ngắn để khỏi lặp lại: sáng nay từng đóng khung cột trái thành
+          card thứ hai — user bác vì "hai khung nhìn kỳ". Hai khối rời luôn đọc
+          ra là hai vật thể dù cân cỡ nào; mẫu ReUI contact-2 giải bằng cách cho
+          chúng vào CHUNG một card, một nửa là panel TRÀN VIỀN. `overflow-hidden`
+          ở card là thứ làm ảnh chạm sát mép và bo theo góc card. */}
+      <div className="mx-auto grid max-w-7xl overflow-hidden rounded-2xl border bg-card shadow-(--shadow-card) md:grid-cols-2">
+        {/* ── TRÁI: panel ảnh tràn viền ── */}
+        <motion.aside
+          className="dark relative flex min-h-104 flex-col overflow-hidden p-8 text-on-media md:min-h-0 md:p-11"
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={SPRING}
+        >
+          <SlotImage
+            image={panelImage}
+            label="Contact — the people who answer"
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="absolute inset-0 h-full w-full"
+          />
+          {/* Scrim bằng TOKEN chứ không màu cứng: đậm ở đáy và mép trái để chữ
+              đọc được, nhạt dần lên góc trên-phải. Đo trên wireframe: chữ thấp
+              nhất 6.79:1, cao nhất 15.31:1 — đều trên ngưỡng 4.5. */}
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-linear-to-t from-hero via-hero/85 to-hero/40"
+          />
+          <span
+            aria-hidden="true"
+            className="absolute inset-0 bg-linear-to-r from-hero/60 via-transparent to-transparent"
+          />
+
+          <div className="relative flex h-full flex-col">
+            <span className="inline-flex items-center gap-2 self-start rounded-full bg-foreground/15 px-3.5 py-1.5 text-[11px] font-semibold tracking-[0.14em] uppercase">
+              <span aria-hidden="true" className="size-1.5 rounded-full bg-primary-emphasis" />
+              We can help
+            </span>
+
+            <h2 className="mt-6 max-w-[15ch] font-heading text-[34px] leading-tight font-medium text-balance md:text-[40px]/12">
               Let’s plan your dates
               <span className="text-primary-emphasis italic"> before the seats go.</span>
             </h2>
-          </motion.div>
-
-          <motion.div
-            className="flex flex-col justify-between gap-6 sm:flex-row"
-            initial={{ x: -40, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1, ...SPRING }}
-          >
-            <div className="flex flex-col gap-1">
-              <p className="text-sm text-muted-foreground">Phone</p>
-              <a
-                href={`tel:${PHONE.replace(/\s/g, '')}`}
-                className="text-base font-medium text-primary-emphasis"
-              >
-                {PHONE}
-              </a>
-            </div>
-            <div className="flex flex-col gap-1">
-              <p className="text-sm text-muted-foreground">Email</p>
-              <a href={`mailto:${EMAIL}`} className="text-base font-medium text-primary-emphasis">
-                {EMAIL}
-              </a>
-            </div>
-          </motion.div>
-
-          <motion.div
-            className="flex flex-col gap-1"
-            initial={{ x: -40, opacity: 0 }}
-            whileInView={{ x: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.15, ...SPRING }}
-          >
-            <p className="text-sm text-muted-foreground">Headquarters</p>
-            <p className="text-base font-medium text-primary-emphasis">
-              {OFFICES[0]?.addressLines.join(', ')}
+            <p className="mt-4 max-w-[36ch] text-sm leading-relaxed text-foreground/75 md:text-base">
+              Tell us your dates and pace. A real person reads every letter and writes back — no
+              bots on this side.
             </p>
-          </motion.div>
 
-          <Separator />
-
-          {/* Mini-marquee "Featured by" — tái dùng danh sách + cơ chế marquee nhà */}
-          <motion.div
-            className="flex flex-col gap-5"
-            initial={{ y: 30, opacity: 0 }}
-            whileInView={{ y: 0, opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2, ...SPRING }}
-          >
-            <p className="text-sm text-muted-foreground">Featured by</p>
-            <div className="relative max-w-md overflow-hidden">
-              <div className="animate-marquee-left flex w-max">
-                {[false, true].map((hidden) => (
-                  <span
-                    key={String(hidden)}
-                    aria-hidden={hidden || undefined}
-                    className="flex shrink-0 items-center"
-                  >
-                    {PARTNERS.slice(0, 6).map((name) => (
-                      <span
-                        key={name}
-                        className="mr-8 text-sm font-semibold tracking-widest whitespace-nowrap text-muted-foreground/60 uppercase"
-                      >
-                        {name}
-                      </span>
-                    ))}
-                  </span>
-                ))}
-              </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-10 bg-linear-to-r from-background to-transparent" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-10 bg-linear-to-l from-background to-transparent" />
-            </div>
-          </motion.div>
-        </div>
-
-        <div className="hidden md:col-span-1 md:block" />
+            {/* Hàng thông tin lấy lối của ReUI contact-5: nhãn nhỏ viết hoa ở
+                trên, giá trị đậm ở dưới. `mt-auto` ghim cụm này xuống đáy panel. */}
+            <dl className="mt-auto flex flex-col gap-5 pt-10">
+              {[
+                { icon: PhoneIcon, k: 'Phone', v: PHONE, href: `tel:${PHONE.replace(/\s/g, '')}` },
+                { icon: MailIcon, k: 'Email', v: EMAIL, href: `mailto:${EMAIL}` },
+                {
+                  icon: ClockIcon,
+                  k: 'Response time',
+                  v: 'Within the hour · Mon–Fri, 8am–6pm',
+                },
+                {
+                  icon: MapPinIcon,
+                  k: 'Headquarters',
+                  v: OFFICES[0]?.addressLines.join(', ') ?? '',
+                },
+              ].map((row) => (
+                <div key={row.k} className="flex items-start gap-3.5">
+                  <row.icon
+                    className="mt-1 size-4 shrink-0 text-primary-emphasis"
+                    aria-hidden="true"
+                  />
+                  <div>
+                    <dt className="text-[10.5px] font-semibold tracking-[0.12em] text-foreground/60 uppercase">
+                      {row.k}
+                    </dt>
+                    <dd className="mt-0.5 text-base leading-6 font-medium">
+                      {row.href ? (
+                        <a href={row.href} className="transition-opacity hover:opacity-80">
+                          {row.v}
+                        </a>
+                      ) : (
+                        row.v
+                      )}
+                    </dd>
+                  </div>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </motion.aside>
 
         {/* Phải: "LÁ THƯ" — chữ ký của trang (đặt cược táo bạo ở MỘT chỗ =
             chính form, vì luận đề trang là "not a hotline"). Bản 1 kiểu
@@ -195,14 +206,14 @@ export function ContactSplit() {
             RÀNG — mở "Hello tourism," + từng dòng nhãn-câu-hỏi + chỗ điền
             gạch nét đứt mực jade italic, chữ ký "Yours," + tem + tái bút. */}
         <motion.div
-          className="col-span-12 md:col-span-5"
+          className="relative"
           initial={{ x: 40, opacity: 0 }}
           whileInView={{ x: 0, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.1, ...SPRING }}
         >
           <form
-            className="relative flex flex-col gap-6 rounded-2xl border bg-card p-6 shadow-(--shadow-card) md:p-9"
+            className="relative flex h-full flex-col gap-6 p-8 md:p-11"
             onSubmit={handleSubmit}
             noValidate
           >
@@ -278,33 +289,59 @@ export function ContactSplit() {
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="cl-region" className={LETTER_LABEL}>
-                Where are you dreaming of?
-              </label>
-              <Select
-                value={state.region || null}
-                onValueChange={(value) => setState((s) => ({ ...s, region: value ?? '' }))}
-              >
-                <SelectTrigger
-                  id="cl-region"
-                  className={`${LETTER_BLANK} h-auto w-full justify-between rounded-none py-1 font-heading text-lg text-primary-emphasis italic shadow-none focus-visible:ring-0`}
-                >
-                  <SelectValue placeholder="Anywhere in Vietnam" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectGroup>
-                    {/* Option mock từ REGIONS — nợ API categories như Nexora */}
-                    <SelectItem value="any">Anywhere in Vietnam</SelectItem>
-                    {REGIONS.map((region) => (
-                      <SelectItem key={region.key} value={region.key}>
-                        {region.name}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+            {/* Bốn lựa chọn thì HIỆN HẾT, không giấu sau dropdown (đổi 17/08).
+                Ngưỡng thường dùng là ≤5 thì bày ra; ở đây đúng 4. Lợi lớn nhất
+                không phải bớt một cú bấm, mà là ba miền TỰ HIỆN RA — khách nước
+                ngoài chưa chắc biết Việt Nam chia ba miền, dropdown thì giấu
+                điều đó sau một cú bấm.
+
+                `fieldset` + `input[type=radio]` THẬT, không phải div giả: có
+                điều hướng phím mũi tên và trình đọc màn hình đọc đúng nhóm.
+                Cùng bài học với bộ lọc sao ở modal reviews (Biome chặn
+                `span role="group"`).
+
+                Tạo kiểu theo lối ô tick tay trên thư in sẵn — viền nét đứt như
+                mọi chỗ điền khác, chọn rồi thì đổi màu mực jade — chứ KHÔNG
+                dùng chấm tròn radio mặc định, nó lạc hẳn khỏi ngôn ngữ lá thư.
+
+                `any` map sang `interests: []` ở `buildEnquiryPayload`, nên chọn
+                sẵn nó không đổi dữ liệu gửi đi mà bỏ được trạng thái trống. */}
+            <fieldset className="flex flex-col gap-1.5">
+              <legend className={LETTER_LABEL}>Where are you dreaming of?</legend>
+              <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {[{ key: 'any', name: 'Anywhere in Vietnam' }, ...REGIONS].map((option) => {
+                  const checked = (state.region || 'any') === option.key;
+                  return (
+                    <label
+                      key={option.key}
+                      className={`flex cursor-pointer items-center gap-2.5 rounded-sm border-2 border-dashed px-3 py-2 transition-colors ${
+                        checked
+                          ? 'border-primary bg-primary/5 text-primary-emphasis'
+                          : 'border-border text-muted-foreground hover:border-primary/50'
+                      } focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-2`}
+                    >
+                      <input
+                        type="radio"
+                        name="region"
+                        value={option.key}
+                        checked={checked}
+                        onChange={() => setState((s) => ({ ...s, region: option.key }))}
+                        className="sr-only"
+                      />
+                      <span
+                        aria-hidden="true"
+                        className={`flex size-4 shrink-0 items-center justify-center rounded-[3px] border-2 ${
+                          checked ? 'border-primary' : 'border-border'
+                        }`}
+                      >
+                        {checked ? <CheckIcon className="size-3 text-primary-emphasis" /> : null}
+                      </span>
+                      <span className="font-heading text-[15px] italic">{option.name}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             <div className="flex flex-col gap-1.5">
               <label htmlFor="cl-loves" className={LETTER_LABEL}>
