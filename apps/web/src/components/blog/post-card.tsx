@@ -1,6 +1,6 @@
 import { ArrowUpRightIcon } from 'lucide-react';
 import Link from 'next/link';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import type { JournalPost } from '@/lib/api/posts';
 
 // Card bài viết dùng chung cho Home (teaser 3 bài, section Journal) và lưới
@@ -36,9 +36,11 @@ export function PostCard({
         {/* Trợ năng: KHÔNG dùng post.title làm label (trùng y hệt <h3> ngay
             dưới, trình đọc màn hình đọc tiêu đề bài hai lần liên tiếp) —
             cùng lỗi đã sửa ở PostHero, mô tả theo chuyên mục thay vào đó. */}
-        <ImagePlaceholder
+        <SlotImage
+          image={post.cover}
           label={`${post.category} · story photo`}
-          className="h-full w-full transition-transform duration-700 group-hover:scale-105"
+          sizes="(min-width: 1024px) 40vw, 100vw"
+          className="absolute inset-0 h-full w-full transition-transform duration-700 group-hover:scale-105"
         />
         <div className="absolute inset-0 bg-linear-to-t from-overlay/60 to-transparent" />
         <span className="absolute top-4 left-4 rounded-full bg-primary px-3 py-1 text-[10px] font-semibold tracking-widest text-primary-foreground uppercase">

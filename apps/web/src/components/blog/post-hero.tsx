@@ -1,6 +1,6 @@
 import { ChevronRightIcon, ClockIcon } from 'lucide-react';
 import Link from 'next/link';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import type { JournalPost } from '@/lib/api/posts';
 
 // Hero bài viết: ảnh cover thật + scrim tối. Bọc scope `dark` vì navbar chưa
@@ -22,9 +22,12 @@ export function PostHero({ post }: { post: JournalPost }) {
           Review Task 4 (Minor, trợ năng): KHÔNG dùng post.title làm label —
           nó trùng y hệt <h1> ngay bên dưới nên trình đọc màn hình đọc tiêu đề
           bài hai lần liên tiếp. Dùng mô tả riêng cho ảnh cover thay vào đó. */}
-      <ImagePlaceholder
+      <SlotImage
+        image={post.cover}
         corner
         label={`${post.category} · cover image`}
+        priority
+        sizes="100vw"
         className="absolute inset-0 -z-20 h-full w-full"
       />
       <div

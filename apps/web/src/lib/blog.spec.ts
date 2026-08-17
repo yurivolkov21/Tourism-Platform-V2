@@ -22,6 +22,8 @@ const post = (
   slug,
   title: slug,
   excerpt: '',
+  // Bài chưa có ảnh là trạng thái HỢP LỆ — SlotImage tự rơi về giữ chỗ.
+  cover: null,
   date,
   readMinutes: 5,
   category,

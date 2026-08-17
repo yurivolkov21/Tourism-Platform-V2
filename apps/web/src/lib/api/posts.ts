@@ -1,5 +1,5 @@
 import { isDefinedError, safe } from '@orpc/client';
-import type { PostCard, PostDetail, PostTag } from '@tourism/contract';
+import type { MediaItem, PostCard, PostDetail, PostTag } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cache } from 'react';
 import { api } from './client';
@@ -23,6 +23,8 @@ export interface JournalPost {
   category: string;
   /** `author.name` DTO, hoặc `messages.blog.fallbackAuthor` khi null. */
   author: string;
+  /** Ảnh bìa — `null` khi bài chưa có ảnh; card/hero tự rơi về giữ chỗ. */
+  cover: MediaItem | null;
   tags: { slug: string; name: string }[];
 }
 
@@ -49,6 +51,7 @@ function mapCommon(dto: PostCard): JournalPost {
     readMinutes: deriveReadMinutes(dto.excerpt ?? ''),
     category: firstTag?.name ?? messages.blog.fallbackCategory,
     author: dto.author.name ?? messages.blog.fallbackAuthor,
+    cover: dto.cover,
     tags: dto.tags,
   };
 }

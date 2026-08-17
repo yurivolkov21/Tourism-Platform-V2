@@ -45,6 +45,10 @@ const MIN = {
   destination: [1200, 800],
   cover: [1200, 800],
   gallery: [1200, 800],
+  // Ảnh bài viết phải qua BA khung: thẻ nổi bật 2.03, thẻ thường 1.69, và hero
+  // trang bài 3.87. Khung 3.87 cắt rất mạnh trên–dưới nên cần bề ngang lớn;
+  // 1600 là sàn để hero 1440px không phải phóng lên.
+  'post-cover': [1600, 900],
 };
 
 const UA = 'Mozilla/5.0 (X11; Linux x86_64) tourism-v2 media-fetch';
@@ -107,6 +111,12 @@ function resolveTarget(target) {
   // <địa danh>/destination
   if (parts.length === 2 && parts[1] === 'destination') {
     return { dir: path.join(ROOT, parts[0]), name: 'destination', kind: 'destination' };
+  }
+  // posts/<slug>/cover — ảnh bài viết. Nhánh này KHÔNG nằm dưới địa danh: một
+  // bài có thể nói về nhiều nơi (hoặc không nơi nào, như bài "when to come"),
+  // nên xếp nó vào cây địa danh là ép một quan hệ không có thật.
+  if (parts.length === 3 && parts[0] === 'posts' && parts[2] === 'cover') {
+    return { dir: path.join(ROOT, 'posts', parts[1]), name: 'cover', kind: 'post-cover' };
   }
   // <địa danh>/tours/<tour>/cover | .../gallery
   if (parts.length === 4 && parts[1] === 'tours') {

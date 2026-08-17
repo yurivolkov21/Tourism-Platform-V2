@@ -77,11 +77,14 @@ const { rows: tours } = await client.query(
 // và con số đó lệch ngay khi khe thứ 10 (`about-hero`) ra đời. DB là nơi duy
 // nhất biết đủ danh sách khe.
 const { rows: slotRows } = await client.query('SELECT key FROM site_media_slots');
+const { rows: posts } = await client.query(
+  "SELECT id, slug, title FROM posts WHERE status = 'PUBLISHED' ORDER BY slug",
+);
 await client.end();
 
 const plan = [];
 const warn = [];
-const missing = { slots: [], covers: [], places: [], galleries: [] };
+const missing = { slots: [], covers: [], places: [], galleries: [], posts: [] };
 
 // ── 1. Khe thương hiệu ──
 const siteDir = path.join(ROOT, '_site');
@@ -181,6 +184,28 @@ for (const tour of tours) {
   }
 }
 
+// ── 6. Ảnh bìa bài viết ──
+// Nhánh `posts/` KHÔNG nằm dưới địa danh: một bài có thể nói về nhiều nơi hoặc
+// không nơi nào. Không có luật rơi-về ở đây — bài không có ảnh thì thẻ giữ chỗ.
+for (const post of posts) {
+  const dir = path.join(ROOT, 'posts', post.slug);
+  const credit = await credits(dir);
+  const flat = await images(dir);
+  const cover = flat.find((f) => f.replace(IMAGE, '') === 'cover');
+  if (cover) {
+    plan.push({
+      kind: 'post',
+      ownerId: post.id,
+      slug: post.slug,
+      role: 'hero',
+      file: path.join(dir, cover),
+      credit: credit.get(cover) ?? null,
+    });
+  } else {
+    missing.posts.push(post.slug);
+  }
+}
+
 for (const key of ['home-hero', 'about-hero', 'about-story', 'auth-panel']) {
   if (!siteFiles.some((f) => f.startsWith(key))) missing.slots.push(key);
 }
@@ -215,6 +240,7 @@ const rows = [
   ['Cover tour', tours.length - missing.covers.length, tours.length],
   ['Ảnh địa danh', places.length - missing.places.length, places.length],
   ['Bộ gallery địa danh', places.length - missing.galleries.length, places.length],
+  ['Ảnh bìa bài viết', posts.length - missing.posts.length, posts.length],
 ];
 for (const [label, have, total] of rows) {
   const bar = '█'.repeat(Math.round((have / total) * 20)).padEnd(20, '·');

@@ -121,6 +121,27 @@ Slug tour: \`${tour.slug}\` · địa danh chính: \`${place}\`
 của địa danh.
 `;
 
+const readmePost = (post) => `# ${post.title}
+
+Slug bài: \`${post.slug}\`
+
+| Chỗ | File | Dùng ở đâu | Cỡ tối thiểu |
+| --- | --- | --- | --- |
+| Ảnh bìa | \`cover.jpg\` | Thẻ trên \`/blog\` · hero đầu trang bài | 2400×1350 (16:9), NGANG |
+
+Một tấm này phải sống sót qua **ba khung** khác nhau, nên chủ thể phải nằm ở
+**dải giữa theo chiều ngang** và đừng để chi tiết quan trọng sát mép trên/dưới:
+
+| Chỗ | Khung | Tỉ lệ |
+| --- | --- | --- |
+| Thẻ nổi bật (bài mới nhất) | 781×384 | 2.03 |
+| Thẻ thường | 379×224 | 1.69 |
+| Hero trang bài | 1440×372 | **3.87** — cắt trên/dưới mạnh nhất |
+
+Lưu ý: hero trang bài có lớp phủ rất dày (\`background/90\` ở giữa), nên ảnh ở đó
+chỉ hiện mờ như một lớp vân. Phần lớn giá trị của tấm này nằm ở **thẻ trên /blog**.
+`;
+
 const LINKS_TEMPLATE = `# Dán link ảnh vào đây, mỗi dòng một tấm, rồi chạy:
 #   pnpm --filter @tourism/api media:fetch
 #
@@ -155,7 +176,7 @@ upload; script quét **bỏ qua thư mục rỗng**, nên bổ sung dần bao nh
 | 1 | Khe thương hiệu (\`_site/\`) | ${counts.slots} | Trang chủ, /about, màn đăng nhập |
 | 2 | \`cover.jpg\` của tour | ${counts.tours} | /tours · trang chủ · gợi ý · wishlist · checkout · hộ chiếu · hero chi tiết |
 | 3 | \`destination.jpg\` | ${counts.places} | /destinations và 3 trang miền |
-| 4 | Ảnh bài viết (chưa dựng cây — làm sau) | ${counts.posts} | /blog |
+| 4 | Ảnh bài viết (\`posts/<slug>/cover.jpg\`) | ${counts.posts} | /blog |
 | 5 | \`gallery/\` của địa danh | ${counts.places} bộ | Gallery trang chi tiết tour (nhờ luật rơi-về, phủ hết ${counts.tours} tour) |
 
 **${counts.slots + counts.tours + counts.places + counts.posts} tấm** cho bốn hạng đầu là đủ để site hết vẻ bản nháp.
@@ -202,7 +223,9 @@ const { rows: primary } = await client.query(
     WHERE t.is_published = true
     ORDER BY d.slug, t.slug`,
 );
-const { rows: postCount } = await client.query('SELECT count(*)::int AS n FROM posts');
+const { rows: posts } = await client.query(
+  "SELECT slug, title FROM posts WHERE status = 'PUBLISHED' ORDER BY slug",
+);
 await client.end();
 
 let refreshed = 0;
@@ -266,11 +289,22 @@ for (const place of places) {
   }
 }
 
+// ── Nhánh bài viết ──
+// KHÔNG nằm dưới địa danh: một bài có thể nói về nhiều nơi, hoặc không nơi nào
+// (bài "when to come, and when not to" là về thời tiết cả nước). Ép nó vào cây
+// địa danh là dựng một quan hệ không có thật.
+for (const post of posts) {
+  const dir = path.join(ROOT, 'posts', post.slug);
+  await mkdir(dir, { recursive: true });
+  dirs++;
+  if (await put(path.join(dir, 'NEEDED.md'), readmePost(post), { refresh: true })) files++;
+}
+
 const counts = {
   slots: SITE_SLOTS.length,
   places: places.length,
   tours: primary.length,
-  posts: postCount[0].n,
+  posts: posts.length,
 };
 if (await put(path.join(ROOT, 'README.md'), ROOT_README(counts), { refresh: true })) files++;
 // LINKS.txt KHÔNG refresh — đó là chỗ user dán link, không phải file sinh ra.
@@ -282,7 +316,7 @@ console.log(
 );
 console.log(
   `[media-tree] cần: ${counts.slots} khe site · ${counts.tours} cover tour · ` +
-    `${counts.places} ảnh địa danh · ${counts.places} bộ gallery`,
+    `${counts.places} ảnh địa danh · ${counts.places} bộ gallery · ${counts.posts} ảnh bài viết`,
 );
 console.log(
   '[media-tree] chạy lại lúc nào cũng được — ảnh đã thả và LINKS.txt KHÔNG bị đụng;\n' +

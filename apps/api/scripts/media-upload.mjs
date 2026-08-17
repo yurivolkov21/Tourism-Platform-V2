@@ -69,7 +69,7 @@ await client.connect();
 const { rows: slotRows } = await client.query('SELECT id, key FROM site_media_slots');
 const slotId = new Map(slotRows.map((r) => [r.key, r.id]));
 
-const OWNER = { 'site-slot': 'SITE', destination: 'DESTINATION', tour: 'TOUR' };
+const OWNER = { 'site-slot': 'SITE', destination: 'DESTINATION', tour: 'TOUR', post: 'POST' };
 
 /** `publicId` ổn định, suy từ đích — chạy lại là ghi đè đúng chỗ. */
 function publicIdFor(item) {
