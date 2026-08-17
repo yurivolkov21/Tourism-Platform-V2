@@ -1,10 +1,11 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { TiltCard } from '@/components/motion/tilt-card';
+import { SlotImage } from '@/components/slot-image';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // About §3 Timeline (convert 100% cơ chế prompt2app/build-process): trục dọc
@@ -23,6 +24,8 @@ interface Milestone {
   description: string;
   /** Nhãn ảnh minh hoạ — chiếm ô trống đối diện chữ (góp ý user, kiểu Nexora) */
   imageLabel: string;
+  /** Khoá khe ảnh. Nhãn ở trên thành alt text nên hai thứ phải NÓI CÙNG MỘT ẢNH. */
+  slot: string;
   /** Vùng mốc này mở ra — chỉ còn là DỮ LIỆU (đổ ra `data-region`), không còn
       chọn màu; mốc 2026 không mở vùng nào nên để trống. */
   region?: 'north' | 'central' | 'south';
@@ -35,7 +38,8 @@ const MILESTONES: Milestone[] = [
     title: 'Three guides, one minivan',
     description:
       'It starts in Sa Pa: two brothers and a neighbour borrow a minivan and take eight strangers across the terraces they grew up on. Nobody calls it a company yet.',
-    imageLabel: '2014 — the borrowed minivan, Sa Pa',
+    imageLabel: '2014 — terraced fields above Sa Pa at first light',
+    slot: 'about-timeline-2014',
     region: 'north',
   },
   {
@@ -43,7 +47,8 @@ const MILESTONES: Milestone[] = [
     title: 'The centre opens',
     description:
       'Huế and Hội An join the map — imperial kitchens, lantern rivers, and our first guides who grew up inside the citadel walls.',
-    imageLabel: '2017 — lanterns on the Thu Bồn river',
+    imageLabel: '2017 — bánh mì, Hội An',
+    slot: 'about-timeline-2017',
     region: 'central',
   },
   {
@@ -51,7 +56,8 @@ const MILESTONES: Milestone[] = [
     title: 'South to the delta',
     description:
       'Mekong boatmen become colleagues. Floating markets before sunrise, island dusk after — the map finally runs the whole country.',
-    imageLabel: '2021 — Cái Răng floating market at dawn',
+    imageLabel: '2021 — island dusk over Phú Quốc',
+    slot: 'about-timeline-2021',
     region: 'south',
   },
   {
@@ -59,7 +65,8 @@ const MILESTONES: Milestone[] = [
     title: 'Still small on purpose',
     description:
       'A new home online, the same old promise: small groups, local pace, no scripts. Growth means deeper roads, not more of them.',
-    imageLabel: '2026 — the team, still small on purpose',
+    imageLabel: '2026 — a small group on a delta path',
+    slot: 'about-timeline-2026',
   },
 ];
 
@@ -84,7 +91,15 @@ function MilestoneText({ milestone }: { milestone: Milestone }) {
 // trượt vào từ phía mình đứng, vạch accent màu vùng ở đáy. Motion ảnh (§3 lần
 // 3): bọc TiltCard 3D nghiêng theo chuột (đồng bộ card Destinations — gốc
 // pixels/TiltImage của PrebuiltUI) + zoom mềm khi hover.
-function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left' | 'right' }) {
+function MilestoneImage({
+  milestone,
+  side,
+  image,
+}: {
+  milestone: Milestone;
+  side: 'left' | 'right';
+  image: MediaItem | null;
+}) {
   return (
     <motion.div
       data-region={milestone.region}
@@ -96,9 +111,11 @@ function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left
     >
       <TiltCard className="h-full w-full">
         <div className="group relative h-full w-full overflow-hidden rounded-xl">
-          <ImagePlaceholder
+          <SlotImage
+            image={image}
             label={milestone.imageLabel}
             className="h-full w-full transition-transform duration-700 group-hover:scale-105"
+            sizes="(min-width: 768px) 50vw, 100vw"
           />
           <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
         </div>
@@ -107,7 +124,12 @@ function MilestoneImage({ milestone, side }: { milestone: Milestone; side: 'left
   );
 }
 
-export function AboutTimeline() {
+export function AboutTimeline({
+  images = {},
+}: {
+  /** khoá khe → ảnh. Cùng khuôn `why-choose-us` và `about-gallery`. */
+  images?: Record<string, MediaItem | null>;
+}) {
   const segmentRefs = useRef<HTMLDivElement[]>([]);
   const [progress, setProgress] = useState<number[]>([0, 0, 0]);
 
@@ -155,9 +177,9 @@ export function AboutTimeline() {
             <>
               {/* Cột trái: ảnh M1 · chữ M2 · ảnh M3 · chữ M4 */}
               <div className="flex flex-col items-end">
-                <MilestoneImage milestone={m1} side="left" />
+                <MilestoneImage milestone={m1} side="left" image={images[m1.slot] ?? null} />
                 <MilestoneText milestone={m2} />
-                <MilestoneImage milestone={m3} side="left" />
+                <MilestoneImage milestone={m3} side="left" image={images[m3.slot] ?? null} />
                 <MilestoneText milestone={m4} />
               </div>
 
@@ -189,9 +211,9 @@ export function AboutTimeline() {
               {/* Cột phải: chữ M1 · ảnh M2 · chữ M3 · ảnh M4 */}
               <div className="flex flex-col items-start">
                 <MilestoneText milestone={m1} />
-                <MilestoneImage milestone={m2} side="right" />
+                <MilestoneImage milestone={m2} side="right" image={images[m2.slot] ?? null} />
                 <MilestoneText milestone={m3} />
-                <MilestoneImage milestone={m4} side="right" />
+                <MilestoneImage milestone={m4} side="right" image={images[m4.slot] ?? null} />
               </div>
             </>
           )}
@@ -210,7 +232,12 @@ export function AboutTimeline() {
               </h3>
               <p className="mt-3 text-sm/6 text-muted-foreground">{milestone.description}</p>
               <div className="relative mt-5 h-44 w-full overflow-hidden rounded-xl">
-                <ImagePlaceholder label={milestone.imageLabel} className="h-full w-full" />
+                <SlotImage
+                  image={images[milestone.slot] ?? null}
+                  label={milestone.imageLabel}
+                  className="h-full w-full"
+                  sizes="100vw"
+                />
                 <span aria-hidden="true" className="absolute inset-x-0 bottom-0 h-1 bg-primary" />
               </div>
             </div>

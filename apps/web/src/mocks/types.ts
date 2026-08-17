@@ -140,6 +140,9 @@ export interface MockTeamMember {
   role: string;
   /** Một câu "chữ ký" hiển thị dưới chức danh */
   line: string;
+  /** Khoá khe ảnh. Đặt theo CHỨC DANH chứ không theo tên, để đổi người không
+      phải đổi khe (và không phải upload lại ảnh vào khoá mới). */
+  slot: string;
 }
 
 export interface MockMoment {

@@ -83,6 +83,21 @@ const SITE_SLOT_KEYS = [
   // Ảnh chân khung thông tin ở /contact §2 — khe riêng chứ không mượn
   // `content-hero`: khe đó dùng chung 11 trang, gắn ảnh vào là đổi cả 11.
   'contact-panel',
+  // 4 ô bento Gallery ở /about §"The country we call the office"
+  'about-gallery-north',
+  'about-gallery-central',
+  'about-gallery-south',
+  'about-gallery-all',
+  // 4 mốc Timeline ở /about §"Twelve years, counted the slow way"
+  'about-timeline-2014',
+  'about-timeline-2017',
+  'about-timeline-2021',
+  'about-timeline-2026',
+  // 4 avatar đội ngũ ở /about §Team — khoá theo chức danh, không theo tên người
+  'about-team-ceo',
+  'about-team-routes',
+  'about-team-guides',
+  'about-team-ops',
 ] as const;
 
 const connectionString =

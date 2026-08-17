@@ -13,7 +13,7 @@ export default function ResetPasswordPage() {
   return (
     <AuthScreen
       quote="New key, same door — the mountains didn't move."
-      author="Minh Quân, Head of Routes"
+      author="Huỳnh Đại Nghĩa, Head of Routes"
     >
       {/* Task 4: ResetPasswordForm đọc `token` qua useSearchParams — cùng lý
           do Suspense của /login (Task 3): Next 16 bắt buộc bọc Suspense

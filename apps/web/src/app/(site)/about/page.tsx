@@ -44,11 +44,45 @@ export default async function AboutPage() {
     siteMediaImage('about-story'),
   ]);
 
+  // 4 khe bento Gallery — khuôn giống `whyImages` ở trang chủ: gom thành bản
+  // tra cứu khoá→ảnh rồi truyền một prop, thay vì bốn prop rời.
+  const galleryImages = Object.fromEntries(
+    await Promise.all(
+      [
+        'about-gallery-north',
+        'about-gallery-central',
+        'about-gallery-south',
+        'about-gallery-all',
+      ].map(async (key) => [key, await siteMediaImage(key)] as const),
+    ),
+  );
+
+  // 4 mốc Timeline — cùng khuôn.
+  const timelineImages = Object.fromEntries(
+    await Promise.all(
+      [
+        'about-timeline-2014',
+        'about-timeline-2017',
+        'about-timeline-2021',
+        'about-timeline-2026',
+      ].map(async (key) => [key, await siteMediaImage(key)] as const),
+    ),
+  );
+
+  // 4 avatar đội ngũ. Khoá theo CHỨC DANH, không theo tên người.
+  const teamImages = Object.fromEntries(
+    await Promise.all(
+      ['about-team-ceo', 'about-team-routes', 'about-team-guides', 'about-team-ops'].map(
+        async (key) => [key, await siteMediaImage(key)] as const,
+      ),
+    ),
+  );
+
   return (
     <>
       <AboutHero heroImage={heroImage} />
       <AboutStory storyImage={storyImage} />
-      <AboutTimeline />
+      <AboutTimeline images={timelineImages} />
       <AboutNumbers
         tours={toursRes.data ?? []}
         destinations={destinationsRes.data ?? []}
@@ -64,8 +98,9 @@ export default async function AboutPage() {
         tours={toursRes.data ?? []}
         destinations={destinationsRes.data ?? []}
         failed={!toursRes.ok || !destinationsRes.ok}
+        images={galleryImages}
       />
-      <AboutTeam />
+      <AboutTeam images={teamImages} />
       {/* §6 Partners BỎ khỏi About (review: dải tối chen giữa Team trắng và
           CTA trắng làm CTA bị cô lập — trust đã có ở Home + khối Numbers);
           §7 CTA riêng — ShadcnSpace CTA 01 (ứng viên còn lại: CTA 02 video) */}

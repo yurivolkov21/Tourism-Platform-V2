@@ -13,7 +13,7 @@ export default function TwoFactorPage() {
   return (
     <AuthScreen
       quote="Good climbers double-check the knots. So do we."
-      author="Minh Quân, Head of Routes"
+      author="Huỳnh Đại Nghĩa, Head of Routes"
     >
       <TwoFactorForm />
     </AuthScreen>

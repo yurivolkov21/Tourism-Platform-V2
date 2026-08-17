@@ -23,7 +23,7 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
   return (
     <AuthScreen
       quote="A ticket only counts once it's stamped."
-      author="Ngọc Lan, Head of Operations"
+      author="Nguyễn Khánh Minh, Head of Operations"
     >
       <OtpForm
         stub="BOARDING CHECK · EMAIL · GATE: VERIFY"

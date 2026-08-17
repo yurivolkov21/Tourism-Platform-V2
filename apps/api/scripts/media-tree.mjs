@@ -58,7 +58,11 @@ const SITE_SLOTS = [
   ['content-hero', 'Ảnh đầu các trang nội dung dài (pháp lý, FAQ).', '1600×600, ngang'],
   ['destinations-hero', 'Ảnh đầu trang /destinations.', '2400×1000, rất ngang'],
   ['auth-panel', 'Cột ảnh cạnh form đăng nhập/đăng ký.', '1200×1600, DỌC'],
-  ['about-story', 'Ảnh trong khối kể chuyện ở /about.', '1600×1200, ngang'],
+  [
+    'about-story',
+    'Ảnh cột trái khối kể chuyện ở /about. Đo 17/08 (mô tả cũ ghi "ngang" là SAI): cao cố định 700 (600 ở hẹp), rộng theo cột nên tỉ lệ trải từ 0.44 ở 1024 · 0.56 ở 1280 · 0.65 ở 1440 · 0.71 từ 1920, riêng tablet 768 thì layout xếp chồng và ô LẬT NGANG thành 640×600 (1.07). Ảnh DỌC, phải sống được cả ở 1.07. Không có chữ đè lên (scrim chỉ tối ở đáy), nhưng hộp ngọc "12+ Years on the road" đè lên GÓC DƯỚI-PHẢI nên chừa góc đó.',
+    '1600×2400 (2:3), DỌC',
+  ],
   [
     'about-hero',
     'Ảnh nền hero /about (full màn). Chữ nằm NỬA TRÁI, nên chủ thể phải ở nửa PHẢI; góc dưới-phải có chữ "Scroll" trắng nên chỗ đó không được cháy sáng.',
@@ -71,8 +75,68 @@ const SITE_SLOTS = [
   ['why-heritage', 'Khối "why choose us" — mục di sản.', '2400×2030, NGANG'],
   [
     'contact-panel',
-    'Nền panel tràn viền ở /contact §2 (nửa TRÁI của card). Đo 17/08: card khoá 1024px ở MỌI bề rộng 1280→2560, nên panel luôn 511×790 — ảnh DỌC. Scrim phủ đậm từ đáy lên (chữ liên hệ nằm đó) và nhạt dần lên góc trên-phải, nên chi tiết chỉ còn đọc được ở NỬA TRÊN: đặt chủ thể ở đó, đáy để trống cũng không sao. Tránh ảnh có chữ/địa danh nước ngoài — dễ đọc ra ở kích thước này.',
+    'Nền panel tràn viền ở /contact §2 (nửa TRÁI của card). Đo lại 17/08 (lần đo đầu SAI — xem chú thích dưới): panel cao cố định 790 nhưng rộng theo card, nên tỉ lệ TRẢI DÀI: 511×790 (0.65) ở 1280 · 591×790 (0.75) ở 1440 · 639×790 (0.81) từ 1920 trở lên (card chặn ở 1280) · 319×893 (0.36) ở tablet 768. Chọn ảnh sống được từ 0.36 tới 0.81, tức chủ thể phải nằm gọn ở DẢI GIỮA theo chiều ngang. Scrim phủ đậm từ đáy lên (chữ liên hệ nằm đó) và nhạt dần lên góc trên-phải, nên chi tiết chỉ đọc được ở NỬA TRÊN. Tránh ảnh có chữ/địa danh nước ngoài — dễ đọc ra ở kích thước này.',
     '1600×2400 (2:3), DỌC',
+  ],
+  [
+    'about-gallery-north',
+    'Ô LỚN bên trái của bento Gallery ở /about. Đo 17/08: 564×544 (1.04) ở 1280, 628×544 (1.15) từ 1440 — gần VUÔNG. Có scrim tối từ 40% chiều cao đổ xuống và tên vùng + số tour nằm ở GÓC DƯỚI-TRÁI, nên để chủ thể ở nửa trên và giữ góc đó cho êm.',
+    '1800×1600, gần vuông',
+  ],
+  [
+    'about-gallery-central',
+    'Ô NGANG bên phải của bento Gallery ở /about. 564×260 (2.17) ở 1280, 628×260 (2.42) từ 1440 — RẤT NGANG, cắt trên/dưới mạnh nhất bộ bốn nên chủ thể bắt buộc nằm ở dải giữa. Cùng luật scrim + chữ góc dưới-trái.',
+    '1800×750 (2.4:1), rất ngang',
+  ],
+  [
+    'about-gallery-south',
+    'Ô VUÔNG dưới-trái của bento Gallery ở /about. 270×260 (1.04) ở 1280, 302×260 (1.16) từ 1440. Ô nhỏ nên tránh ảnh nhiều chi tiết vụn — ở cỡ này không ai đọc ra.',
+    '1200×1040, gần vuông',
+  ],
+  [
+    'about-gallery-all',
+    'Ô VUÔNG dưới-phải của bento Gallery ở /about ("All of Vietnam"). Cùng cỡ với ô miền Nam: 270×260 → 302×260. Đây là thẻ có chữ DÀI nhất ("N tours across three regions") nên nền ở góc dưới-trái càng cần tối và êm.',
+    '1200×1040, gần vuông',
+  ],
+  [
+    'about-timeline-2014',
+    'Mốc 2014 "Three guides, one minivan" — ruộng bậc thang miền Bắc. Ô ảnh của một mốc trên trục thời gian ở /about. Đo 17/08: 512×208 (tỉ lệ 2.46) GIỐNG NHAU ở mọi bề rộng — dải RẤT NGANG, cắt trên/dưới rất mạnh nên chủ thể bắt buộc nằm ở dải giữa. KHÔNG có chữ đè lên nên ảnh được phép nhiều chi tiết, nhưng ở 208px cao thì ảnh rối sẽ thành nhiễu — ưu tiên hình khối lớn.',
+    '1600×650 (2.46:1), rất ngang',
+  ],
+  [
+    'about-timeline-2017',
+    'Mốc 2017 "The centre opens" — Huế/Hội An. Chốt 17/08: dùng ẩm thực (bánh mì) thay đèn lồng, vì tường đèn lồng ở 208px cao thành mảng màu rối VÀ trùng đăng ký với hero Hội An trên Home. Bánh mì neo miền Trung qua bánh mì Phượng Hội An; phở thì KHÔNG dùng ở mốc này — đó là món Hà Nội, lệch vùng. Ô ảnh của một mốc trên trục thời gian ở /about. Đo 17/08: 512×208 (tỉ lệ 2.46) GIỐNG NHAU ở mọi bề rộng — dải RẤT NGANG, cắt trên/dưới rất mạnh nên chủ thể bắt buộc nằm ở dải giữa. KHÔNG có chữ đè lên nên ảnh được phép nhiều chi tiết, nhưng ở 208px cao thì ảnh rối sẽ thành nhiễu — ưu tiên hình khối lớn.',
+    '1600×650 (2.46:1), rất ngang',
+  ],
+  [
+    'about-timeline-2021',
+    'Mốc 2021 "South to the delta". Chốt 17/08: dùng ĐẢO lúc chạng vạng thay chợ nổi — chính copy của mốc đã có "island dusk after", và kho ảnh miễn phí gần như không có chợ nổi dùng được. Ô ảnh của một mốc trên trục thời gian ở /about. Đo 17/08: 512×208 (tỉ lệ 2.46) GIỐNG NHAU ở mọi bề rộng — dải RẤT NGANG, cắt trên/dưới rất mạnh nên chủ thể bắt buộc nằm ở dải giữa. KHÔNG có chữ đè lên nên ảnh được phép nhiều chi tiết, nhưng ở 208px cao thì ảnh rối sẽ thành nhiễu — ưu tiên hình khối lớn.',
+    '1600×650 (2.46:1), rất ngang',
+  ],
+  [
+    'about-timeline-2026',
+    'Mốc 2026 "Still small on purpose" — nói về ĐỘI NGŨ vẫn nhỏ, KHÔNG phải "toàn Việt Nam" (thẻ đó nằm ở bento Gallery). Ảnh nên là nhóm nhỏ đang đi, chụp từ sau lưng. TRÁNH Hanoi Train Street: nơi đó đã dùng ở thẻ Hà Nội trang chủ và bìa bài "Crossing Hanoi". Ô ảnh của một mốc trên trục thời gian ở /about. Đo 17/08: 512×208 (tỉ lệ 2.46) GIỐNG NHAU ở mọi bề rộng — dải RẤT NGANG, cắt trên/dưới rất mạnh nên chủ thể bắt buộc nằm ở dải giữa. KHÔNG có chữ đè lên nên ảnh được phép nhiều chi tiết, nhưng ở 208px cao thì ảnh rối sẽ thành nhiễu — ưu tiên hình khối lớn.',
+    '1600×650 (2.46:1), rất ngang',
+  ],
+  [
+    'about-team-ceo',
+    'Nhóm trưởng / CEO. Avatar một thành viên ở /about §Team. Khung 270×320 (0.84) ở 1280, 302×320 (0.94) từ 1440 — gần vuông, hơi DỌC. Chốt 17/08: KHÔNG dùng ảnh mặt thật (quyết định user — lộ mặt thật ảnh hưởng riêng tư). Dùng bộ "voxel-bot" của DiceBear (API 10.x — bộ này KHÔNG có ở 9.x), giấy phép CC0 1.0 nên không cần ghi nguồn. Preset "Animated" trên web DiceBear KHÔNG lấy được qua HTTP API: tài liệu ghi API chỉ trả ảnh tĩnh, và đo thực tế thì preset=animated/animated=true/motion=true đều trả SVG không có thẻ animation nào. API cũng chặn PNG ở 256px, nên quy trình là lấy SVG rồi rasterize bằng trình duyệt lên 800px. Khoá khe đặt theo CHỨC DANH chứ không theo tên, để đổi người không phải đổi khe.',
+    '512×512, vuông',
+  ],
+  [
+    'about-team-routes',
+    'Head of Routes. Avatar một thành viên ở /about §Team. Khung 270×320 (0.84) ở 1280, 302×320 (0.94) từ 1440 — gần vuông, hơi DỌC. Chốt 17/08: KHÔNG dùng ảnh mặt thật (quyết định user — lộ mặt thật ảnh hưởng riêng tư). Dùng bộ "voxel-bot" của DiceBear (API 10.x — bộ này KHÔNG có ở 9.x), giấy phép CC0 1.0 nên không cần ghi nguồn. Preset "Animated" trên web DiceBear KHÔNG lấy được qua HTTP API: tài liệu ghi API chỉ trả ảnh tĩnh, và đo thực tế thì preset=animated/animated=true/motion=true đều trả SVG không có thẻ animation nào. API cũng chặn PNG ở 256px, nên quy trình là lấy SVG rồi rasterize bằng trình duyệt lên 800px. Khoá khe đặt theo CHỨC DANH chứ không theo tên, để đổi người không phải đổi khe.',
+    '512×512, vuông',
+  ],
+  [
+    'about-team-guides',
+    'Head of Guides. Avatar một thành viên ở /about §Team. Khung 270×320 (0.84) ở 1280, 302×320 (0.94) từ 1440 — gần vuông, hơi DỌC. Chốt 17/08: KHÔNG dùng ảnh mặt thật (quyết định user — lộ mặt thật ảnh hưởng riêng tư). Dùng bộ "voxel-bot" của DiceBear (API 10.x — bộ này KHÔNG có ở 9.x), giấy phép CC0 1.0 nên không cần ghi nguồn. Preset "Animated" trên web DiceBear KHÔNG lấy được qua HTTP API: tài liệu ghi API chỉ trả ảnh tĩnh, và đo thực tế thì preset=animated/animated=true/motion=true đều trả SVG không có thẻ animation nào. API cũng chặn PNG ở 256px, nên quy trình là lấy SVG rồi rasterize bằng trình duyệt lên 800px. Khoá khe đặt theo CHỨC DANH chứ không theo tên, để đổi người không phải đổi khe.',
+    '512×512, vuông',
+  ],
+  [
+    'about-team-ops',
+    'Head of Operations. Avatar một thành viên ở /about §Team. Khung 270×320 (0.84) ở 1280, 302×320 (0.94) từ 1440 — gần vuông, hơi DỌC. Chốt 17/08: KHÔNG dùng ảnh mặt thật (quyết định user — lộ mặt thật ảnh hưởng riêng tư). Dùng bộ "voxel-bot" của DiceBear (API 10.x — bộ này KHÔNG có ở 9.x), giấy phép CC0 1.0 nên không cần ghi nguồn. Preset "Animated" trên web DiceBear KHÔNG lấy được qua HTTP API: tài liệu ghi API chỉ trả ảnh tĩnh, và đo thực tế thì preset=animated/animated=true/motion=true đều trả SVG không có thẻ animation nào. API cũng chặn PNG ở 256px, nên quy trình là lấy SVG rồi rasterize bằng trình duyệt lên 800px. Khoá khe đặt theo CHỨC DANH chứ không theo tên, để đổi người không phải đổi khe.',
+    '512×512, vuông',
   ],
 ];
 

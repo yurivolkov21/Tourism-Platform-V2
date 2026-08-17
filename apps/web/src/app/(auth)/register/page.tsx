@@ -13,7 +13,7 @@ export default function RegisterPage() {
   return (
     <AuthScreen
       quote="In 2014 this was four friends and one rented minivan. There is always room for one more."
-      author="Đức Anh, co-founder"
+      author="Giang Tử Dương, co-founder"
     >
       {/* Cùng lý do Suspense với /login: RegisterForm cũng đọc `redirect` qua
           useSearchParams (nút Google) — xem ghi chú đầy đủ ở login/page.tsx. */}

@@ -12,7 +12,7 @@ export default function ForgotPasswordPage() {
   return (
     <AuthScreen
       quote="Losing the trail is part of the trek. A guide walks you back."
-      author="Thu Hà, Head of Guides"
+      author="Mạnh Duy An, Head of Guides"
     >
       <ForgotPasswordForm />
     </AuthScreen>

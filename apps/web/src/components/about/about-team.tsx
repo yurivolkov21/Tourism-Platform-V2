@@ -1,10 +1,11 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { GlobeIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { LinkedinIcon } from '@/components/icons/social';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { TEAM } from '@/mocks/team';
 
@@ -17,7 +18,12 @@ import { TEAM } from '@/mocks/team';
 // đích tối giản. Nội dung CHỈ founder (quyết định user 23/07); anchor #team
 // là đích nút hero §1.
 
-export function AboutTeam() {
+export function AboutTeam({
+  images = {},
+}: {
+  /** khoá khe → ảnh. Cùng khuôn `about-gallery` / `about-timeline`. */
+  images?: Record<string, MediaItem | null>;
+}) {
   return (
     <section id="team" className="w-full bg-background px-4 py-24 md:px-16 md:py-32">
       <div className="mx-auto flex max-w-7xl flex-col items-center">
@@ -52,11 +58,19 @@ export function AboutTeam() {
               viewport={{ once: true }}
               transition={{ ...SPRING, delay: index * 0.1 }}
             >
-              {/* Portrait lớn — hover chuyển grayscale (Team 01); hiệu ứng chỉ
-                  thấy rõ khi thay placeholder bằng ảnh chân dung thật */}
-              <ImagePlaceholder
+              {/* Ảnh xám nhạt lúc thường, RÊ VÀO thì bừng màu (đổi 17/08 theo
+                  góp ý user — bản cũ làm ngược: màu sẵn rồi hover mới xám).
+                  `[@media(hover:hover)]:grayscale` là phần quan trọng: chỉ máy
+                  CÓ hover mới bị xám. Trên điện thoại không có hover, nếu để
+                  xám mặc định thì avatar vĩnh viễn không bao giờ lên màu.
+                  Cũng vì lý do đó KHÔNG dùng skeleton làm trạng thái thường:
+                  skeleton là tín hiệu "đang tải", và nội dung chỉ-hiện-khi-hover
+                  thì khách mobile mất hẳn. */}
+              <SlotImage
+                image={images[member.slot] ?? null}
                 label={`Portrait — ${member.name}`}
-                className="h-80 w-full rounded-xl transition-all duration-300 group-hover:grayscale"
+                className="h-80 w-full rounded-xl transition-all duration-500 [@media(hover:hover)]:grayscale group-hover:grayscale-0"
+                sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
               />
               <figcaption className="flex w-full flex-col items-center gap-4">
                 <div className="flex flex-col items-center gap-1.5 text-center">

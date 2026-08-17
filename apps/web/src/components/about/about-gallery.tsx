@@ -1,9 +1,10 @@
 'use client';
 
+import type { MediaItem } from '@tourism/contract';
 import { motion } from 'motion/react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
 import { toursInRegion } from '@/lib/regions';
@@ -27,12 +28,22 @@ interface GalleryCardProps {
   title: string;
   count: string;
   imageLabel: string;
+  /** Ảnh khe; `null` là BÌNH THƯỜNG — SlotImage tự rơi về giữ chỗ. */
+  image?: MediaItem | null;
   region?: string;
   className?: string;
   delay?: number;
 }
 
-function GalleryCard({ title, count, imageLabel, region, className, delay = 0 }: GalleryCardProps) {
+function GalleryCard({
+  title,
+  count,
+  imageLabel,
+  image = null,
+  region,
+  className,
+  delay = 0,
+}: GalleryCardProps) {
   return (
     <motion.div
       data-region={region}
@@ -42,9 +53,11 @@ function GalleryCard({ title, count, imageLabel, region, className, delay = 0 }:
       viewport={{ once: true, margin: '-50px' }}
       transition={{ ...SPRING, delay }}
     >
-      <ImagePlaceholder
+      <SlotImage
+        image={image}
         label={imageLabel}
         className="h-full w-full transition-transform duration-500 group-hover:scale-105"
+        sizes="(min-width: 768px) 50vw, 100vw"
       />
       <div className="absolute bottom-0 z-10 flex flex-col gap-1 pb-6 ps-6 text-on-media md:pb-8 md:ps-8">
         <span className="flex items-center gap-2">
@@ -64,10 +77,13 @@ export function AboutGallery({
   tours,
   destinations,
   failed,
+  images = {},
 }: {
   tours: TourCardVM[];
   destinations: DestinationVM[];
   failed: boolean;
+  /** khoá khe → ảnh. Khuôn giống `why-choose-us`: page fetch, component nhận. */
+  images?: Record<string, MediaItem | null>;
 }) {
   const [north, central, south] = REGIONS;
 
@@ -111,6 +127,7 @@ export function AboutGallery({
                 title={north.name}
                 count={`${regionTourCount('north')} tours`}
                 imageLabel="Gallery — terraces under moving mist, Sa Pa"
+                image={images['about-gallery-north'] ?? null}
                 region="north"
                 className="h-[420px] md:h-[544px]"
               />
@@ -119,6 +136,7 @@ export function AboutGallery({
                   title={central.name}
                   count={`${regionTourCount('central')} tours`}
                   imageLabel="Gallery — lantern night on the Hoài river"
+                  image={images['about-gallery-central'] ?? null}
                   region="central"
                   className="h-[260px]"
                   delay={0.1}
@@ -128,6 +146,7 @@ export function AboutGallery({
                     title={south.name}
                     count={`${regionTourCount('south')} tours`}
                     imageLabel="Gallery — floating market, Cần Thơ"
+                    image={images['about-gallery-south'] ?? null}
                     region="south"
                     className="h-[260px]"
                     delay={0.2}
@@ -136,6 +155,7 @@ export function AboutGallery({
                     title="All of Vietnam"
                     count={`${totalTours} tours across three regions`}
                     imageLabel="Gallery — the road between all three"
+                    image={images['about-gallery-all'] ?? null}
                     className="h-[260px]"
                     delay={0.3}
                   />
