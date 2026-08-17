@@ -8,6 +8,56 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-17 — Nhánh ảnh bài viết: 9 ảnh bìa lên /blog, một mắt xích thiếu ở view-model (trực tiếp `main`, 9 file, +94/−12)
+
+`/blog` là bề mặt cuối còn trắng trơn. Đóng nó bằng **9/9 ảnh bìa**, và nhân
+đó mở nhánh ảnh bài viết mà cây thả ảnh còn nợ từ đợt đầu (README của cây tự
+ghi *"chưa dựng cây — làm sau"*).
+
+**Ba script đều chưa biết gì về bài viết** — `media:fetch` từ chối đích
+`posts/…`, `media:tree` không dựng thư mục nào, `media:scan` không lập kế
+hoạch. Mở cả ba, cộng `ownerType: POST` cho bước upload.
+
+**Nhánh `posts/` KHÔNG nằm dưới địa danh.** Một bài có thể nói về nhiều nơi,
+hoặc không nơi nào — bài *"when to come, and when not to"* là về thời tiết cả
+nước. Xếp nó vào cây địa danh là dựng một quan hệ không có thật. Cũng vì vậy
+**không có luật rơi-về** ở nhánh này: bài thiếu ảnh thì thẻ giữ chỗ, không
+mượn của ai.
+
+**Mắt xích thiếu, và nó nằm ở chỗ ít ai nghĩ tới.** `PostCardSchema.cover` đã
+có trong contract từ [ADR-0020](adr/0020-real-images-sourcing.md) §6, enum
+`MediaOwnerType.POST` đã có trong schema — nhưng view-model `JournalPost` của
+web **bỏ rơi `cover`**: `mapCommon()` không chép field đó sang. Nghĩa là dù DB
+có ảnh, component cũng không bao giờ thấy. Hạ tầng đủ hai đầu mà đứt ở khúc
+giữa; chỉ lộ ra khi đi lần từng chặng.
+
+**Một ảnh bìa phải sống sót qua BA khung**, đo trên trang thật: thẻ nổi bật
+781×384 (**2.03**), thẻ thường 379×224 (**1.69**), hero trang bài 1440×372
+(**3.87**). Khung 3.87 cắt trên/dưới mạnh nhất nên chủ thể phải nằm ở dải
+giữa. Luật này ghi thẳng vào `NEEDED.md` của từng bài để lần sau khỏi đo lại;
+sàn cỡ riêng cho loại đích này là 1600×900.
+
+**Đo được và ghi lại, chưa sửa:** lớp phủ hero trang bài là
+`from-background via-background/90 to-background/60` — 90% ở giữa. Ảnh gắn vào
+chỉ hiện mờ như một lớp vân; phần lớn giá trị của tấm bìa nằm ở **thẻ trên
+/blog**. Nới lớp phủ là đổi thiết kế nên để user quyết, không tự làm.
+
+**Ảnh chèn trong thân bài: CHƯA cần.** `react-markdown` + `remarkGfm` render
+`![alt](url)` sẵn, nên rào cản không phải kỹ thuật. Nhưng đo nội dung thật:
+mỗi bài **~300 từ, 4–5 mục, 2 phút đọc** — thêm 3–4 ảnh vào 300 từ thì ảnh
+nhiều hơn chữ. Ngưỡng đáng làm: bài dài lên 800+ từ, hoặc riêng hai bài ẩm
+thực (gọi tên món cụ thể nên ảnh THÊM thông tin chứ không trang trí).
+
+**Nợ mở:** `content-hero` vẫn là khe không có consumer — `ContentHero` chưa
+bao giờ có ô ảnh (chỉ `bg-hero` + gradient + topo) và nó dùng chung ở **11
+trang**, nên thêm ảnh ở đó là quyết định 11-trang chứ không phải việc của
+/blog · ảnh bài *"Crossing Hanoi"* trùng chủ thể (Train Street) với thẻ địa
+danh Hà Nội ở trang chủ · ảnh bài Đà Nẵng rất tối nên gần như biến mất dưới
+lớp phủ hero · 25/30 tour chưa có cover · 5 khe site còn trống.
+
+Tests after: 1213 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-14 — Home đủ ảnh, và ba lời hứa sai bị bắt trên đường (trực tiếp `main`, 16 file, +144/−45)
 
 Đóng trọn phần ảnh của trang chủ: **9/9 thẻ địa danh**, **5/5 slider khoảnh
