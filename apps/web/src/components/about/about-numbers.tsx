@@ -3,7 +3,6 @@
 import { motion } from 'motion/react';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { CountUp } from '@/components/motion/count-up';
 import { TopoPattern } from '@/components/topo-pattern';
 import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
@@ -72,14 +71,14 @@ export function AboutNumbers({
       id="numbers"
       className="dark relative w-full overflow-hidden border-y bg-background px-4 py-24 text-foreground md:px-16 md:py-32"
     >
-      {/* Nền ảnh mờ + scrim (góp ý §4 lần 2) — công thức CTA banner lai
-          watermark; placeholder thay ảnh thật khi chốt trang */}
+      {/* Nền: scrim + lớp topo, KHÔNG có ảnh.
+          Chốt 17/08 (quyết định user): khối này không gắn ảnh nền. Ô giữ chỗ cũ
+          nằm ở `opacity-30` DƯỚI lớp phủ `overlay/70`, tức chỉ còn khoảng 9%
+          hiện ra — nó không đóng góp gì về thị giác mà lại là lời hứa "sắp có
+          ảnh" đứng mãi ở đó. Khối đã đủ chất liệu rồi: chữ số khổng lồ + lớp
+          trắc địa. Vì vậy KHÔNG mở khe `about-numbers` — thiếu ảnh ở đây là
+          trạng thái CHỐT, không phải việc còn dở. */}
       <div aria-hidden="true" className="absolute inset-0">
-        <ImagePlaceholder
-          corner
-          label="Numbers backdrop — mountain road at dusk"
-          className="h-full w-full opacity-30"
-        />
         <div className="absolute inset-0 bg-overlay/70" />
         {/* Gia vị topo (demo 25/07): lớp trắc địa rất nhạt giữa ảnh và watermark */}
         <TopoPattern className="bg-foreground opacity-[0.04]" />
