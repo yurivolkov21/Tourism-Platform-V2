@@ -8,6 +8,76 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-18 — `/destinations` từ 0 lên 9 ảnh mà không upload tấm nào, và ba vòng đo mới ra đúng lớp phủ (nhánh `feat/destination-cover-wiring`, `9897d92`, 8 file, +204/−14)
+
+Khảo sát hôm trước chỉ ra `/destinations` render 17 ô giữ chỗ trong khi 9/19
+địa danh ĐÃ có cover nằm sẵn trong DB. Bệnh là THIẾU DÂY NỐI, không phải thiếu
+ảnh: `destination-tile.tsx` vẽ `ImagePlaceholder` vô điều kiện, không đọc
+`DestinationSchema.cover`. Nối xong: 9 ảnh thật hiện ra, ô giữ chỗ 17 → 8,
+không upload thêm tấm nào.
+
+**Nối dây kéo theo một quyết định thiết kế, không chỉ đổi component.** Thẻ này
+CỐ Ý bỏ lớp phủ tối và dùng `text-foreground` theo theme, vì nền vốn là ô giữ
+chỗ màu phẳng — phủ tối lên màu phẳng vẫn ra màu phẳng, vòng trước đã dựng thử
+rồi bác. File còn để sẵn lời dặn "khi có ảnh thật thì mới quay lại mẫu
+phủ-tối cộng chữ trắng". Nay 9 ô có ảnh và 10 ô chưa, nên thẻ phải chạy CẢ HAI
+cùng lúc; dùng một cách xử lý cho cả hai là hỏng một nửa số ô.
+
+**Ba vòng đo mới ra đúng lớp phủ, và cả ba lần sai theo kiểu khác nhau.**
+
+| Cách phủ | Tên ô xấu nhất (light, nghỉ) | Kết |
+| --- | --- | --- |
+| `bg-overlay/55` | 1.72 | trượt xa |
+| `bg-overlay` một lớp | 2.92 | vẫn trượt |
+| phủ phẳng hai lớp (0.75) | 5.90 | đạt, nhưng dìm ảnh |
+| gradient hai lớp | 5.29 | đạt, ảnh còn sống |
+
+Lần một: `--overlay` đã là `oklch(0 0 0 / 0.5)`, TỰ MANG alpha, mà cú pháp
+`/NN` của Tailwind NHÂN vào alpha đó — nên `bg-overlay/55` ra ~27% đen chứ
+không phải 55%. Chính file này đã ghi sẵn "một lớp `bg-overlay` KHÔNG chia mới
+đạt ~4.6:1"; viết `/55` là đi ngược điều file đã đo.
+Lần hai: một lớp không chia vẫn chỉ 2.92, vì con số 4.6:1 kia đo trên ô giữ
+chỗ màu PHẲNG chứ không phải ảnh. Tính ngược từ luminance ảnh Hội An (~0.585):
+muốn 4.5:1 với chữ `on-media` thì cần alpha ≥ 0.71 — một lớp không bao giờ tới.
+Lần ba là lỗi THẨM MỸ chứ không phải lỗi số: phủ phẳng 0.75 đạt chuẩn nhưng
+dìm cả tấm ảnh thành nâu đục — vừa gắn ảnh vào đã làm nó biến mất thì gắn làm
+gì. Vì caption nằm GIỮA ô, hai gradient `trong → overlay → trong` dồn độ đậm
+đúng dải chữ và trả độ trong cho mép trên/dưới. User chốt gradient.
+**Bài học: một con số đo được vẫn có thể áp sai chỗ — 4.6:1 kia đúng, nhưng
+đúng cho NỀN KHÁC.**
+
+**Khối Moments mở 5 khe site mới**, khe site lên 34. Tên khe đặt theo CHỦ THỂ
+trong khung hình (`moment-halong-kayak`, `moment-hue-gate`…) chứ không theo câu
+caption — cùng lý lẽ cụm `why-*`: đổi chữ sau này không làm tên khe lạc nghĩa.
+Mỗi khoảnh khắc TỰ KHAI khoá khe của mình thay vì suy từ vị trí trong mảng;
+suy theo index thì sắp xếp lại `MOMENTS` là ảnh gắn nhầm chỗ mà không gì báo —
+đúng lý lẽ `tourSlug` ghi tay đã dùng ở chính file đó.
+
+**Review findings**
+
+- **Comment trong file là kết quả đo, phải đọc trước khi sửa.** Cả hai lỗi lớp
+  phủ đầu tiên đều đã có lời cảnh báo nằm sẵn cách chỗ sửa vài dòng. Đọc code
+  xung quanh trước khi viết đè rẻ hơn ba vòng đo.
+- **Khe trống và khe lỗi cho cùng kết quả, nên không bọc `settle()`.** Ảnh
+  Moments giải bằng `fetchSiteMedia().catch(() => new Map())`: cả hai đường đều
+  ra `null` → ô giữ chỗ, nên thêm một lớp settle chỉ là nghi thức.
+- **`JourneyMoments` là server component nhưng vẫn KHÔNG tự fetch.** File ghi
+  rõ nó nhận dữ liệu qua prop để test được với fixture nhỏ; tự fetch là tiện
+  hơn vài dòng nhưng mất luôn tính chất đó. Ảnh giải ở trang rồi truyền xuống.
+- **Bộ canh khoá khe thêm ngay, không đợi.** Gõ sai khoá thì `map.get()` trả
+  undefined và ô lặng lẽ về giữ chỗ, KHÔNG lỗi nào — đúng kiểu hỏng đã dính ở
+  panel auth hôm trước, nên lần này canh từ đầu.
+
+**Nợ mở:** 5 khe Moments vừa mở vẫn TRỐNG, cần user duyệt ảnh · 10/19 địa danh
+chưa cover, 14/19 chưa gallery · 3 khe DB vẫn không trang nào hỏi tới
+(`content-hero`, `destinations-hero`, `home-experiences`, `home-trust`) · 25/30
+tour chưa cover — làm gallery THEO ĐỊA DANH thì phần tour rút từ ~120 ảnh
+xuống còn 25 cover, vì gallery tour tự mượn gallery địa danh · trang chữ chưa
+quyết có hero ảnh không.
+
+Tests after: 1264 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-17 — Ảnh thật cho panel sáu trang auth, và một hằng số biến thành hàm (nhánh `feat/auth-panel-image`, `659b8e0`, 10 file, +181/−21)
 
 Khảo sát "trang nào còn thiếu ảnh" (user hỏi, trừ `/tours` ra) rồi làm cụm rẻ
