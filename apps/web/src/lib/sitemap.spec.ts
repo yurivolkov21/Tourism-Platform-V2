@@ -26,7 +26,7 @@ const FIXTURE_POSTS: Pick<JournalPost, 'slug' | 'date'>[] = [
 // Task 10: mock tours đã khai tử khỏi sitemap (nguồn thật giờ là `fetchTours()`
 // đọc DB) — fixture giờ NỘI BỘ trong spec này (30 slug thật, chép lại từ
 // `apps/api/prisma/fixtures/catalog/tours-{north,central,south}.ts`: 12 north
-// + 9 central + 9 south = 30) thay vì đọc từ `@/mocks/tours` (16 tour cũ).
+// + 9 central + 8 south = 29) thay vì đọc từ `@/mocks/tours` (16 tour cũ).
 const FIXTURE_TOURS: Pick<TourCardVM, 'slug'>[] = [
   // north (12)
   { slug: 'hanoi-old-quarter-food-night' },
@@ -60,7 +60,6 @@ const FIXTURE_TOURS: Pick<TourCardVM, 'slug'>[] = [
   { slug: 'da-lat-highlands-3d' },
   { slug: 'phu-quoc-island-hopping-day' },
   { slug: 'phu-quoc-honeymoon-4d' },
-  { slug: 'con-dao-history-nature-3d' },
 ];
 
 const entries = sitemapEntries(FIXTURE_TOURS, FIXTURE_POSTS, REGIONS);
@@ -113,16 +112,17 @@ describe('sitemapEntries', () => {
     expect(regionUrls).toEqual(REGIONS.map((r) => `${siteUrl()}/destinations/${r.slug}`));
   });
 
-  // 10 trang tĩnh + 30 tour + 9 bài + 3 vùng. Con số này là chốt chặn cuối: nếu ai
+  // 10 trang tĩnh + 29 tour + 9 bài + 3 vùng. Con số này là chốt chặn cuối: nếu ai
   // thêm một họ URL mà quên cập nhật đây thì test đỏ ngay.
-  // Task 10: 38 (bản mock 16 tour) − 16 + 30 (tour thật từ DB, xem FIXTURE_TOURS) = 52.
-  it('tổng 52 URL', () => {
-    expect(entries).toHaveLength(52);
+  // Task 10: 38 (bản mock 16 tour) − 16 + 30 (tour thật từ DB) = 52; 18/08 gỡ tour
+  // Côn Đảo (quyết định biên tập của user) nên còn 29 tour → 51.
+  it('tổng 51 URL', () => {
+    expect(entries).toHaveLength(51);
   });
 
-  it('phủ đủ 30 tour, đúng theo slug của FIXTURE_TOURS', () => {
+  it('phủ đủ 29 tour, đúng theo slug của FIXTURE_TOURS', () => {
     const tourUrls = urls.filter((url) => /\/tours\/[^/]+$/.test(url));
-    expect(tourUrls).toHaveLength(30);
+    expect(tourUrls).toHaveLength(29);
     for (const tour of FIXTURE_TOURS) expect(tourUrls).toContain(`${siteUrl()}/tours/${tour.slug}`);
   });
 

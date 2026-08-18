@@ -134,7 +134,7 @@ describe('mock regions', () => {
 // mock `TOURS` (mock đó đã khai tử ở Task 7 — spec canh moments không phải
 // consumer chặn việc đó).
 //
-// Copy TAY 30 slug/title từ `apps/api/prisma/fixtures/catalog/tours-{north,
+// Copy TAY 29 slug/title từ `apps/api/prisma/fixtures/catalog/tours-{north,
 // central,south}.ts` (12 Bắc + 9 Trung + 9 Nam, đúng thứ tự khai báo trong
 // fixture). KHÔNG import trực tiếp từ `apps/api` — web và api là hai app tách
 // biệt, không package chung. Đây là bản SAO TĨNH: ai đổi fixture (thêm/xoá/đổi
@@ -172,7 +172,6 @@ const REAL_TOUR_ROSTER: { slug: string; title: string }[] = [
   { slug: 'da-lat-highlands-3d', title: 'Đà Lạt Highlands, Waterfalls & Farms 3D2N' },
   { slug: 'phu-quoc-island-hopping-day', title: 'Phú Quốc 4-Island Hopping & Snorkelling' },
   { slug: 'phu-quoc-honeymoon-4d', title: 'Phú Quốc Honeymoon Hideaway 4D3N' },
-  { slug: 'con-dao-history-nature-3d', title: 'Côn Đảo History & Nature 3D2N' },
 ];
 
 describe('mock moments', () => {

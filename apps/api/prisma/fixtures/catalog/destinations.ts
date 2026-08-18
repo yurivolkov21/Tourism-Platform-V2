@@ -10,8 +10,11 @@
  * Vietnam' | 'Central Vietnam' | 'Southern Vietnam'. Đà Lạt xếp Nam theo nếp
  * phân 3 vùng của site (Tây Nguyên không có vùng riêng — spec §3 chốt).
  *
- * `isActive: true` cho toàn bộ 19 (khác bộ cũ có Côn Đảo inactive — bộ này là
- * dữ liệu mới, tour Côn Đảo mới (#30) đang mở bán).
+ * `isActive: true` cho toàn bộ 18.
+ *
+ * Côn Đảo bị GỠ 18/08/2026 theo quyết định biên tập của user: nơi này là đảo tù
+ * chính trị thời chiến, không phù hợp để giới thiệu như điểm du lịch trong sản
+ * phẩm này. Gỡ CẢ địa danh lẫn tour #30, không phải chỉ ẩn đi.
  */
 
 export const destinations = [
@@ -230,18 +233,6 @@ export const destinations = [
     region: 'Southern Vietnam',
     description:
       "Vietnam's largest island, ringed by white-sand beaches and pepper farms, with the coral reefs of the An Thới archipelago just offshore.",
-    isActive: true,
-    createdAt: '2026-07-31T08:00:00.000Z',
-    updatedAt: '2026-07-31T08:00:00.000Z',
-  },
-  {
-    id: 'c0000002-0000-4000-8000-000000000019',
-    slug: 'con-dao',
-    name: 'Côn Đảo',
-    country: 'Vietnam',
-    region: 'Southern Vietnam',
-    description:
-      'A remote former prison archipelago now known for turtle-nesting beaches and clear diving water, its wartime history preserved at the old colonial prison.',
     isActive: true,
     createdAt: '2026-07-31T08:00:00.000Z',
     updatedAt: '2026-07-31T08:00:00.000Z',

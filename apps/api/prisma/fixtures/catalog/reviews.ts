@@ -18,7 +18,6 @@ import type { TourReviewFixture } from './types.js';
  *   #18 `my-son-sunrise-halfday` (Mỹ Sơn Sanctuary at Sunrise)
  *   #20 `quy-nhon-coastal-3d` (Quy Nhơn Coastal Escape 3D2N)
  *   #26 `ben-tre-coconut-day` (Bến Tre Coconut Country Day Trip)
- *   #30 `con-dao-history-nature-3d` (Côn Đảo History & Nature 3D2N)
  *
  * Rating đa số 4–5, rải vài 3 kèm lời chê hợp lý (khách sạn xa chợ, hàng quán
  * chèo kéo commission, thời tiết, chờ đợi) — không tour nào toàn điểm 3.
