@@ -8,6 +8,43 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-18 — CI đỏ vì bộ gỡ khối tự viết xoá lem 8 tour (nhánh `fix/restore-south-tours`, `5b39827`, 1 file, +350/−38)
+
+`main` đỏ ở `55cdf9c`: `db:seed` gãy với `tour_destinations_tour_id_fkey`. Lỗi
+của tôi ở chính commit gỡ Côn Đảo ngay trên.
+
+**Bộ gỡ khối cắt chuỗi theo mốc text, và mốc text ăn lem sang hàng xóm.** Nó
+tìm UUID rồi lùi về `rfind('\n  {')`, tiến tới `find('\n  },')` — với một khối
+nằm cạnh khối khác thì ranh giới đó nhảy qua cả phần tử bên cạnh. Hậu quả: mảng
+`tours` của `tours-south.ts` từ 9 phần tử về **0** thay vì còn 8, trong khi
+`tourDestinations` vẫn trỏ tới 8 tour vừa biến mất.
+
+Sửa bằng phép ĐẾM NGOẶC (bỏ qua ngoặc nằm trong chuỗi) để tách đúng từng phần
+tử cấp cao nhất, rồi lọc theo DANH TÍNH thay vì theo vị trí text. Kết quả khớp
+chính xác con số đã đo trên DB lúc xoá: tours −1 · tourDestinations −1 ·
+tourItineraryDays −3 · tourPolicies −3 · tourFaqs −4 · tourDepartures −3.
+
+**Vì sao gate ở máy không bắt được — và đây mới là bài học thật.** `pnpm
+gate:int` KHÔNG chạy `db:seed`; DB local lúc đó đã có sẵn dữ liệu nên mọi truy
+vấn vẫn đúng, typecheck cũng xanh vì file vẫn hợp lệ cú pháp. CI thì seed từ DB
+RỖNG, và đó là chỗ duy nhất tham chiếu treo lộ ra. Lần này đã chạy đúng phép
+kiểm đó trước khi push: DROP/CREATE DATABASE → `migrate deploy` → `db:seed` từ
+đầu (507 dòng, 29 tour, 84 review, không lỗi).
+
+**Hai luật rút ra:**
+
+1. **Sửa fixture bằng cắt chuỗi là sai công cụ.** Fixture là dữ liệu có cấu
+   trúc; phải tách theo cấu trúc. Ba lần quét text liên tiếp trong cùng một
+   commit (theo slug, theo UUID, theo tên hiển thị) đều "có vẻ" đúng vì mỗi lần
+   đều làm số lần nhắc giảm — không lần nào đo thứ đáng đo là **số phần tử còn
+   lại**.
+2. **Với thay đổi động tới fixture seed, gate xanh KHÔNG đủ để khai xong** —
+   phải seed lại từ DB rỗng. Đây là khoảng mù thật của `gate:int`, không phải
+   sơ suất một lần.
+
+Tests after: 1264 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-18 — Gỡ Côn Đảo khỏi catalogue, và nối nốt dây ảnh mà vòng trước bỏ lọt (nhánh `feat/remove-con-dao`, `4d2eae6`+`798b184`, 12 file, +79/−723)
 
 Hai việc trong một nhánh, và cái thứ hai là hậu quả của một thiếu sót ở vòng
