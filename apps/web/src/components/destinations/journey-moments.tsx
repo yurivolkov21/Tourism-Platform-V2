@@ -1,9 +1,19 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
-import { ImagePlaceholder } from '@/components/image-placeholder';
 import { Reveal } from '@/components/motion/reveal';
+import { SlotImage } from '@/components/slot-image';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import type { MockMoment } from '@/mocks/types';
+
+/**
+ * Một khoảnh khắc ĐÃ được gắn ảnh của khe tương ứng.
+ *
+ * Ảnh giải ở TRANG rồi truyền xuống, không để component tự gọi mạng: file này
+ * cố ý nhận dữ liệu qua prop để test được với fixture nhỏ (ghi ngay dưới), và
+ * một component tự fetch thì mất luôn tính chất đó.
+ */
+export type MomentVM = MockMoment & { image: SiteMediaItem | null };
 
 /** Số ô nhỏ tối đa cạnh ô lớn — cùng khảm 1 lớn + 4 nhỏ mà `TourGallery` đã
     duyệt (file đó xoá 13/08 khi trang tour chuyển sang dải 7 thumb của
@@ -24,7 +34,7 @@ const MAX_THUMBS = 4;
  *
  * Nhận dữ liệu qua PROP, không tự import mock — để test được với fixture nhỏ.
  */
-export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
+export function JourneyMoments({ moments }: { moments: MomentVM[] }) {
   const t = messages.destinationsPage.moments;
   const [lead, ...rest] = moments;
   const thumbs = rest.slice(0, MAX_THUMBS);
@@ -76,7 +86,7 @@ export function JourneyMoments({ moments }: { moments: MockMoment[] }) {
  * (`tour-media-panel`, `about-gallery`, `tour-card`) đều có hover VÌ chúng là
  * link hoặc nút thật.
  */
-function MomentTile({ moment, className }: { moment: MockMoment; className?: string }) {
+function MomentTile({ moment, className }: { moment: MomentVM; className?: string }) {
   return (
     <a
       href={`/tours/${moment.tourSlug}`}
@@ -92,7 +102,11 @@ function MomentTile({ moment, className }: { moment: MockMoment; className?: str
           scale 105, có `group-focus-within`
           cho bàn phím và ĐỦ guard `motion-reduce`. Cố ý KHÔNG theo
           `about-gallery.tsx` — bản đó thiếu cả `ease-out` lẫn guard. */}
-      <ImagePlaceholder className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100" />
+      <SlotImage
+        image={moment.image}
+        className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+        sizes="(min-width: 640px) 50vw, 100vw"
+      />
 
       {/* Lớp phủ đậm thêm khi hover — caption nổi rõ hơn lúc con trỏ ở trên ô.
           `--overlay` đã mang alpha sẵn nên `/25` là ~0.12 hiệu dụng: đủ thấy,

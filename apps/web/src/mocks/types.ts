@@ -148,6 +148,15 @@ export interface MockTeamMember {
 export interface MockMoment {
   /** Khoảnh khắc trải nghiệm của khách trên hành trình (slider ở Stats) */
   title: string;
+  /**
+   * Khoá khe site nuôi ảnh của ô này (`moment-*`, khai trong `SITE_SLOT_KEYS`
+   * của seed).
+   *
+   * Ghi TƯỜNG MINH chứ không suy từ vị trí trong mảng — cùng lý lẽ đã áp cho
+   * `tourSlug` ngay dưới: suy theo index thì sắp xếp lại `MOMENTS` là ảnh gắn
+   * nhầm khoảnh khắc, và không có gì báo lỗi cả.
+   */
+  slot: string;
   /** "Tên khách, tên tour" */
   credit: string;
   /**

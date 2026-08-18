@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { ArrowRightIcon } from 'lucide-react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import type { DestinationVM } from '@/lib/api/tours';
 
 /**
@@ -30,6 +30,16 @@ export function DestinationTile({
   variant: 'feature' | 'photo';
 }) {
   const t = messages.destinationsPage;
+  /**
+   * HAI CHẾ ĐỘ ĐỌC, không phải một. Comment bên dưới (vòng thiết kế Task 4c) đã
+   * dặn trước: nền phẳng thì bỏ scrim và dùng cặp token theo-theme, còn "khi có
+   * ảnh thật thì mới quay lại mẫu phủ-tối + chữ trắng". Nay khe có ảnh cho 9/19
+   * địa danh, nên thẻ phải phục vụ CẢ HAI trạng thái cùng lúc — dùng một cách
+   * xử lý cho cả hai là hỏng một nửa: `text-foreground` (mực đậm ở light) đè
+   * lên ảnh thì mất hút, còn phủ tối lên ô giữ chỗ màu phẳng thì ra tấm xám
+   * chết đúng như vòng trước đã dựng thử rồi bác.
+   */
+  const hasImage = destination.cover !== null;
 
   return (
     <a
@@ -46,8 +56,15 @@ export function DestinationTile({
           giữa ô, đâm thẳng vào caption `<h3>` cũng căn giữa — đã chụp màn hình
           thấy hai thứ chồng lên nhau.
           Vẫn KHÔNG truyền `label`: tên địa điểm đã có ở `<h3>`, in thêm ở góc
-          là lặp cùng một chữ hai lần trên một ô. */}
-      <ImagePlaceholder corner className="absolute inset-0 h-full w-full" />
+          là lặp cùng một chữ hai lần trên một ô. `SlotImage` giữ nguyên hợp
+          đồng prop của `ImagePlaceholder` nên chỗ này không phải sắp lại gì;
+          `alt` để rỗng vì tên địa danh đã nằm ở `<h3>` ngay trên ảnh. */}
+      <SlotImage
+        image={destination.cover}
+        corner
+        className="absolute inset-0 h-full w-full"
+        sizes="(min-width: 640px) 33vw, 100vw"
+      />
 
       {/* Scrim HAI LỚP — lệch khỏi công thức `bg-overlay/25 → /55` của Nexora vì
           nền ở đây là `ImagePlaceholder` (`--muted`, RẤT SÁNG ở light mode), khác
@@ -70,14 +87,47 @@ export function DestinationTile({
           (`bg-muted` + `text-foreground`): sáng trên nền sáng ở light, tối trên
           nền tối ở dark — hệ token bảo đảm đọc được ở CẢ HAI theme mà không cần
           scrim. Khi có ảnh thật thì mới quay lại mẫu phủ-tối + chữ trắng. */}
-      <div
-        aria-hidden="true"
-        className="absolute inset-0 bg-foreground/0 transition-colors duration-500 group-hover:bg-foreground/5 motion-reduce:transition-none"
-      />
+      {hasImage ? (
+        /* CÓ ẢNH THẬT → quay lại mẫu phủ-tối + chữ sáng, đúng như vòng trước
+           dặn. Ba điều dưới đây đều rút ra từ SỐ ĐO, không phải ước lượng.
+
+           1. KHÔNG chia alpha. `--overlay` đã là `oklch(0 0 0 / 0.5)`, tự mang
+              alpha sẵn, mà cú pháp `/NN` của Tailwind NHÂN vào alpha đó — nên
+              `bg-overlay/55` chỉ còn ~27% đen chứ không phải 55%. Đo được hậu
+              quả: tên ô sáng nhất (Hội An) chỉ 1.72:1 ở light.
+
+           2. MỘT lớp vẫn chưa đủ. Ở ~0.5 alpha, ô Hội An đạt 2.92:1 — dưới cả
+              ngưỡng 3:1. Tính ngược: ảnh đó luminance ~0.585, muốn 4.5:1 với
+              chữ `on-media` thì cần alpha ≥ 0.71. Hai lớp chồng cho
+              0.5 + 0.5×(1−0.5) = 0.75, vừa đủ và còn biên.
+
+           3. GRADIENT chứ không phủ phẳng. Phủ phẳng 0.75 đạt chuẩn (5.90:1)
+              nhưng dìm cả tấm ảnh thành nâu đục — vừa mới gắn ảnh vào đã làm
+              nó biến mất thì vô nghĩa. Caption nằm GIỮA ô, nên hai gradient
+              `transparent → overlay → transparent` dồn độ đậm đúng dải chữ và
+              trả lại độ trong cho mép trên/dưới. Đo bản gradient: xấu nhất
+              5.29:1 (light nghỉ) — vẫn trên 4.5 ở cả bốn trạng thái. */
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-linear-to-b from-transparent via-overlay to-transparent"
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 bg-linear-to-b from-transparent via-overlay to-transparent"
+          />
+        </>
+      ) : (
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-foreground/0 transition-colors duration-500 group-hover:bg-foreground/5 motion-reduce:transition-none"
+        />
+      )}
 
       <div
         className={cn(
-          'absolute inset-0 flex flex-col items-center justify-center p-4 text-center text-foreground',
+          'absolute inset-0 flex flex-col items-center justify-center p-4 text-center',
+          hasImage ? 'text-on-media' : 'text-foreground',
           variant === 'feature' ? 'p-5' : 'p-4',
         )}
       >
@@ -102,7 +152,12 @@ export function DestinationTile({
                   muted-foreground/muted không dành cho nhau — đo được 3.35:1
                   (light) và 4.06:1 (dark), dưới ngưỡng AA 4.5 cho chữ 12px.
                   Hạ alpha giữ được thứ bậc so với tên mà vẫn đủ tương phản. */}
-              <span className="text-xs text-pretty text-foreground/80">
+              <span
+                className={cn(
+                  'text-xs text-pretty',
+                  hasImage ? 'text-on-media/90' : 'text-foreground/80',
+                )}
+              >
                 {destination.description}
               </span>
               <span className="inline-flex items-center gap-1 text-sm font-medium">

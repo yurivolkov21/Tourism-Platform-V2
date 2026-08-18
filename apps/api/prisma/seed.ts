@@ -98,6 +98,17 @@ const SITE_SLOT_KEYS = [
   'about-team-routes',
   'about-team-guides',
   'about-team-ops',
+  // 5 ô khối "Moments from the journey" ở /destinations. Đặt tên theo CHỦ THỂ
+  // trong khung hình (kayak/thung lũng/sông/cổng/chợ nổi) chứ không theo câu
+  // caption — cùng lý lẽ với cụm `why-*`: đổi chữ sau này không làm tên khe
+  // lạc nghĩa. Mỗi khoảnh khắc TỰ KHAI khoá khe của mình ở `mocks/moments.ts`
+  // thay vì suy ra từ vị trí trong mảng: suy theo index thì sắp xếp lại mảng
+  // là ảnh gắn nhầm chỗ mà không có gì báo.
+  'moment-halong-kayak',
+  'moment-sapa-valley',
+  'moment-hoian-river',
+  'moment-hue-gate',
+  'moment-mekong-market',
   // Video nền dải CTA cuối /about — khe VIDEO đầu tiên của dự án
   'about-cta-video',
 ] as const;

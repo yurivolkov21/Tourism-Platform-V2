@@ -188,6 +188,20 @@ describe('mock moments', () => {
     }
   });
 
+  /**
+   * Khoá khe ảnh: gõ sai thì `map.get()` trả undefined và ô lặng lẽ về giữ chỗ
+   * — KHÔNG có lỗi nào. Đúng lỗi đã dính ở panel auth ngày 17/08, nên canh
+   * ngay từ đây thay vì đợi phát hiện bằng mắt.
+   */
+  it('mỗi moment có slot riêng, không trùng, đúng tiền tố `moment-`', () => {
+    const slots = MOMENTS.map((m) => m.slot);
+    expect(new Set(slots).size, 'slot bị trùng giữa các moment').toBe(MOMENTS.length);
+    for (const slot of slots) {
+      expect(slot, 'slot rỗng').not.toBe('');
+      expect(slot.startsWith('moment-'), slot).toBe(true);
+    }
+  });
+
   it('credit có nhắc đúng tour mà tourSlug trỏ tới', () => {
     // Chống lệch âm thầm: đổi credit mà quên đổi slug (hoặc ngược lại) thì
     // caption nói một tour còn link dẫn sang tour khác.

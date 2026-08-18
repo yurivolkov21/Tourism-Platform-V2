@@ -16,25 +16,30 @@ export const MOMENTS: MockMoment[] = [
     title: 'Kayaking through the cave into the hidden lagoon',
     credit: 'Sarah, Hạ Long Bay Overnight Cruise 2D1N',
     tourSlug: 'halong-bay-overnight-cruise',
+    slot: 'moment-halong-kayak',
   },
   {
     title: 'The valley opens up on the climb to the homestay',
     credit: 'Daniel, Sa Pa Terraces & Homestay Trek 2D1N',
     tourSlug: 'sapa-terraces-homestay-2d',
+    slot: 'moment-sapa-valley',
   },
   {
     title: 'Boats on the Hoài river, hours before the lanterns',
     credit: 'Emma, Hội An Old Town & Lantern Evening',
     tourSlug: 'hoi-an-lantern-evening',
+    slot: 'moment-hoian-river',
   },
   {
     title: 'The Ngọ Môn gate before the morning crowds arrive',
     credit: 'Kenji, Huế Imperial City & Royal Tombs',
     tourSlug: 'hue-imperial-day',
+    slot: 'moment-hue-gate',
   },
   {
     title: 'Drifting between the boats as the market wakes up',
     credit: 'Tom, Mekong Delta & Cái Răng Floating Market 2D1N',
     tourSlug: 'mekong-can-tho-2d',
+    slot: 'moment-mekong-market',
   },
 ];

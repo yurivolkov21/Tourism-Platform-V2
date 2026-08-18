@@ -9,6 +9,7 @@ import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { Reveal } from '@/components/motion/reveal';
 import { TopoPattern } from '@/components/topo-pattern';
 import { contentState, settle } from '@/lib/api/resilience';
+import { fetchSiteMedia } from '@/lib/api/site-media';
 import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 import { destinationsInRegion, featuredInRegion, toursInRegion } from '@/lib/regions';
 import { absoluteUrl } from '@/lib/site';
@@ -72,6 +73,13 @@ export default async function DestinationsPage() {
     settle(fetchTours()),
     settle(fetchDestinations()),
   ]);
+
+  // Ảnh khối Moments giải Ở ĐÂY rồi truyền xuống: `JourneyMoments` cố ý nhận
+  // dữ liệu qua prop để test được với fixture nhỏ. KHÔNG bọc `settle()` —
+  // khe trống và khe lỗi cho cùng kết quả (`null` → ô giữ chỗ), nên một lần
+  // gọi hỏng chỉ làm ảnh vắng chứ không hỏng trang; bọc thêm chỉ là nghi thức.
+  const siteMedia = await fetchSiteMedia().catch(() => new Map());
+  const moments = MOMENTS.map((m) => ({ ...m, image: siteMedia.get(m.slot)?.[0] ?? null }));
   // `isEmpty` cố tình luôn false: trang này không có màn rỗng riêng cho khu 2
   // (khác listing) — 3 vùng luôn có ít nhất một destination trong seed thật.
   const state = contentState({ failed: !toursRes.ok || !destinationsRes.ok, isEmpty: false });
@@ -155,7 +163,7 @@ export default async function DestinationsPage() {
 
       {/* ── Khu 3 · Moments from the journey — băng tối, khảm ảnh + caption ── */}
       <Reveal>
-        <JourneyMoments moments={MOMENTS} />
+        <JourneyMoments moments={moments} />
       </Reveal>
 
       {/* ── Khu 4 · Loved by travellers — carousel MỘT trích dẫn một lúc (kiểu
