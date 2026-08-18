@@ -8,6 +8,69 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-18 — Lấp 5 khe Moments bằng ảnh SẴN CÓ, viết lại caption theo ảnh (nhánh `feat/moments-images`, `4da65a8`, 3 file, +74/−32)
+
+`/destinations` hết ô giữ chỗ: khối Moments từ **0/5 lên 5/5 ảnh thật**, và
+KHÔNG phải đi tìm tấm nào mới.
+
+**Đảo chiều quy trình.** Bản cũ viết caption trước rồi mới đi tìm ảnh khớp, và
+ba trong năm cảnh (hang Hạ Long, thung lũng Sa Pa, chợ nổi Cái Răng) không có
+tấm nào trong kho — Hạ Long, Sa Pa, Huế, Cần Thơ đều là địa danh CHƯA có ảnh
+nào tải về. Nay chọn từ ảnh đang có trước, rồi sửa caption cho khớp thứ trong
+ảnh. Mục Hội An giữ NGUYÊN văn vì `hoi-an/gallery/01.jpg` đúng là thuyền đậu
+bên sông Hoài giữa ban ngày, tức "hours before the lanterns" theo nghĩa đen.
+
+| khe | ảnh nguồn (đã sống trên CDN) | tour |
+| --- | --- | --- |
+| `moment-lanha-kayak` | `cat-ba/gallery/01.jpg` — mũi kayak trên nước lục | Lan Hạ & Cát Bà Kayak Cruise |
+| `moment-hagiang-valley` | `ha-giang/gallery/02.jpg` — đường uốn qua thung lũng | Hà Giang Loop by Easyrider |
+| `moment-hoian-river` | `hoi-an/gallery/01.jpg` — thuyền bên sông Hoài | Hội An Old Town & Lantern Evening |
+| `moment-myson-towers` | `hoi-an/gallery/17.jpg` — tháp gạch Chăm | Mỹ Sơn Sanctuary at Sunrise |
+| `moment-bentre-canal` | `ben-tre/gallery/03.jpg` — luồng dừa nước | Bến Tre Coconut Country Day Trip |
+
+**Upload không đưa tấm nào chưa duyệt lên CDN** — cả 5 đã được duyệt mắt và
+đang sống dưới dạng ảnh gallery địa danh, nên tinh thần ADR-0020 đã thoả từ
+trước. Đo trước/sau để chứng minh: 218 → 223 publicId phân biệt, đúng 5 khe
+mới, **0 version đổi, 0 mất**. (Con số 494→499 là số ROW — một ảnh gallery
+địa danh được nhiều tour mượn nên nhiều row dùng chung một publicId; đừng lẫn
+hai đơn vị này khi đọc log `media:upload`, nó in "177 file" là số file GỬI đi,
+không phải số ảnh thay đổi.)
+
+**Đổi tên 4 khe theo địa danh CÓ ảnh.** Khoá khe cũng là `publicId` trên
+Cloudinary; giữ tên `moment-hue-gate` mà nhét tháp Chăm vào là gài bẫy người
+đọc sau. Khe cũ chưa có row media nào nên đổi tên miễn phí — vẫn 34 khe site.
+
+**Vá scrim caption, theo số đo.** Đây là lúc khe có ảnh THẬT nên khuyết cũ mới
+lộ, và nó KHÔNG nằm ở đáy ô như tưởng: gradient `to-transparent` phủ đúng chiều
+cao khung caption (116px với `pt-10`), nên ở DÒNG TIÊU ĐỀ TRÊN CÙNG alpha chỉ
+còn 0,5·(1−70/116) ≈ 0,20 — gần như không che gì. Đo tỉ lệ pixel nền quá sáng
+để chữ trắng đạt AA, trên chính 5 ảnh sắp gắn:
+
+| ô | hiện tại | sau vá |
+| --- | --- | --- |
+| Hà Giang | 17,4% | 2,9% |
+| Hội An | 10,0% | 0,2% |
+| Lan Hạ (ô lớn) | 8,3% | 1,4% |
+| Mỹ Sơn | 3,2% | 0,1% |
+| Bến Tre | 0,0% | 0,0% |
+
+Hai lớp gradient chồng (alpha 1−(1−a)²) cộng `pt-16` kéo dải phủ lên 140px. Giá
+phải trả là ảnh bị dìm trung bình 11% → 22%; đã cân `pt-20` nhưng chỉ hơn 1,6
+điểm mà dìm thêm nữa nên dừng ở `pt-16`. Lớp thứ hai đặt TRONG khung caption và
+`inset-0` chứ không phải một chiều cao cố định — để nó tự khớp khi tiêu đề rơi
+từ 2 dòng xuống 1.
+
+**Một sai số đo tự bắt được giữa đường:** vòng đầu tôi lấy 42% chiều cao ô làm
+dải phủ, phóng đại độ tối ở dòng tiêu đề gấp ~1,7 lần và suýt kết luận "chỉ cần
+đổi ảnh là xong". Hình học phải đọc từ CODE (`p-4 pt-10`, `text-sm`=14/20,
+`text-xs`=12/16), không ước lượng theo tỉ lệ ô.
+
+Nghiệm thu trên trang thật: 5/5 `<img>` có `naturalWidth > 0`, `currentSrc` trỏ
+đúng 5 `publicId` mới.
+
+Tests after: 1264 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-18 — CI đỏ vì bộ gỡ khối tự viết xoá lem 8 tour (nhánh `fix/restore-south-tours`, `5b39827`, 1 file, +350/−38)
 
 `main` đỏ ở `55cdf9c`: `db:seed` gãy với `tour_destinations_tour_id_fkey`. Lỗi
