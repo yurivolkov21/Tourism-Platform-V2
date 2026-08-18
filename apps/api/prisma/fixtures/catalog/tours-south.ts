@@ -35,7 +35,356 @@ import type {
  * chiếu ngược từ log seed về đúng tour.
  */
 
-export const tours: TourFixture[] = [];
+export const tours: TourFixture[] = [
+  {
+    id: 'd0000002-0000-4000-8000-000000000022',
+    slug: 'vung-tau-coastal-2d',
+    title: 'Vũng Tàu Coastal Escape 2D1N',
+    summary:
+      'Two easy days on the closest beach to Sài Gòn — seafood by the water, a dawn climb to the Lighthouse, and an afternoon you set the pace for.',
+    categoryId: 'b0000001-0000-4000-8000-000000000002',
+    durationDays: 2,
+    maxGroupSize: 16,
+    basePrice: '129.00',
+    compareAtPrice: '149.00',
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: true,
+    suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
+    badges: ['BEST_VALUE'],
+    included: [
+      'Private van from/to Sài Gòn',
+      '1 night 3★ hotel near Front Beach (twin-share)',
+      'Breakfast day 2',
+      'English-speaking guide',
+      'Lighthouse and Hồ Mây tickets',
+      'Bottled water',
+    ],
+    excluded: [
+      'Lunches & dinner (guide books the tables, you pick the menu)',
+      'Single-room supplement $25',
+      'Personal expenses',
+    ],
+    highlights: [
+      'Front Beach and Back Beach in one loop',
+      'Sunrise from the 102-year-old Lighthouse',
+      'Seafood dinner at Gành Hào with the tide under your table',
+      'Cable ride up Hồ Mây if the sky is clear',
+      'Hydrofoil-speed return via the new expressway',
+    ],
+    meetingPoint: 'Pick-up at your hotel in District 1, Hồ Chí Minh City',
+    factDurationNote: 'Two days on the coast with one night by the sea.',
+    factGroupSizeNote:
+      'Sixteen seats, with hotel pickup arranged across District 1 and District 3.',
+    factDifficultyNote: 'Beach time and a short headland walk; nothing demanding.',
+    factGoodForNote: 'An easy weekend out of Sài Gòn for any size of group.',
+    freeCancellationDays: null,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000023',
+    slug: 'saigon-cu-chi-day',
+    title: 'Sài Gòn City & Củ Chi Tunnels',
+    summary:
+      'Reunification Palace and Notre-Dame Cathedral by morning, then a crawl through the Củ Chi tunnel network that outlasted an army.',
+    categoryId: 'b0000001-0000-4000-8000-000000000001',
+    durationDays: 1,
+    maxGroupSize: 16,
+    basePrice: '49.00',
+    compareAtPrice: '56.00',
+    currency: 'USD',
+    difficulty: 'MODERATE',
+    isPublished: true,
+    isFeatured: false,
+    suitableFor: ['FAMILY', 'FRIENDS', 'SOLO'],
+    badges: ['POPULAR'],
+    included: [
+      'English-speaking guide',
+      'Private air-conditioned vehicle',
+      'Reunification Palace entrance',
+      'Củ Chi Tunnels entrance',
+      'Lunch',
+      'Bottled water',
+    ],
+    excluded: ['Shooting range ammunition (optional, paid on site)', 'Tips', 'Personal expenses'],
+    highlights: [
+      'Reunification Palace, seat of the fallen Sài Gòn government',
+      'Notre-Dame Cathedral and the Central Post Office, French Quarter classics',
+      "Bến Thành Market's covered stalls",
+      'The Củ Chi tunnel network, widened for foreign visitors',
+      'Optional rifle range at the tunnel site (own cost)',
+    ],
+    meetingPoint: 'Hotel pickup, District 1, Hồ Chí Minh City',
+    factDurationNote: 'One day out to the tunnels and back into the city by evening.',
+    factGroupSizeNote: 'Sixteen seats, though the tunnel-entrance quota is what fixes the number.',
+    factDifficultyNote: 'The crawl through the tunnels is optional — anyone can wait above ground.',
+    factGoodForNote: 'History-first, and honest about the war it describes.',
+    freeCancellationDays: null,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000024',
+    slug: 'saigon-after-dark-vespa',
+    title: 'Sài Gòn After Dark by Vespa',
+    summary:
+      "Ride pillion on a vintage Vespa through Sài Gòn's night market alleys, District 4 street food and the neon Thủ Thiêm skyline.",
+    categoryId: 'b0000001-0000-4000-8000-000000000001',
+    durationDays: 1,
+    maxGroupSize: 8,
+    basePrice: '65.00',
+    compareAtPrice: '75.00',
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: false,
+    suitableFor: ['COUPLE', 'FRIENDS', 'SOLO'],
+    badges: ['NEW'],
+    included: [
+      'Vespa + driver per passenger (pillion)',
+      'Helmet',
+      '5 street-food tastings',
+      'One drink at a rooftop stop',
+      'English-speaking lead rider',
+    ],
+    excluded: ['Extra drinks beyond the included round', 'Personal purchases', 'Tips'],
+    highlights: [
+      'Riding pillion on a classic Vespa through the city at night',
+      "District 4's late-night street-food alleys",
+      'Bánh tráng nướng ("Vietnamese pizza") cooked streetside',
+      'Thủ Thiêm bridge skyline view over the Sài Gòn River',
+      'A local rider as your guide, not a script',
+    ],
+    meetingPoint: 'Vespa garage, 88 Nguyễn Huệ walking street, District 1',
+    factDurationNote: 'An evening on the back of a Vespa, ending well after dinner.',
+    factGroupSizeNote: 'Eight riders, because each one needs a rider and a bike of their own.',
+    factDifficultyNote: 'You are a passenger the whole way; the effort is staying out late.',
+    factGoodForNote: 'Made for people who want the city at night, not the museum version.',
+    freeCancellationDays: null,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000025',
+    slug: 'mekong-can-tho-2d',
+    title: 'Mekong Delta & Cái Răng Floating Market 2D1N',
+    summary:
+      'A dawn boat through the stacked sampans of Cái Răng floating market, then canals and orchards before a night in Cần Thơ.',
+    categoryId: 'b0000001-0000-4000-8000-000000000002',
+    durationDays: 2,
+    maxGroupSize: 16,
+    basePrice: '139.00',
+    compareAtPrice: '159.00',
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: false,
+    suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
+    badges: ['POPULAR'],
+    included: [
+      'Private van from/to Sài Gòn',
+      '1 night hotel in Cần Thơ (twin-share)',
+      'All meals as per itinerary',
+      'Cái Răng floating market boat',
+      'Cồn Sơn rowboat',
+      'English-speaking guide',
+    ],
+    excluded: ['Drinks beyond meals', 'Single-room supplement', 'Tips'],
+    highlights: [
+      'Cái Răng floating market at its dawn busiest',
+      'Hủ tiếu Mỹ Tho, bowl-in-hand, break on the drive down',
+      'Cồn Sơn islet orchards by rowboat',
+      'Ninh Kiều wharf at night, riverside promenade',
+      'A home-style lẩu mắm (fermented fish hotpot) dinner',
+    ],
+    meetingPoint: 'Hotel pickup, District 1, Hồ Chí Minh City',
+    factDurationNote:
+      'Two days with the floating market on the second dawn — the only time it is real.',
+    factGroupSizeNote: 'Sixteen seats, with the Cần Thơ hotel held by headcount.',
+    factDifficultyNote: 'An early boat and a warm open deck; the walking is minimal.',
+    factGoodForNote: 'Works for families who can manage one very early morning.',
+    freeCancellationDays: 5,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000026',
+    slug: 'ben-tre-coconut-day',
+    title: 'Bến Tre Coconut Country Day Trip',
+    summary:
+      'Coconut-candy kitchens, a horse-cart ride and a canal paddle through the green delta province built on coconut groves.',
+    categoryId: 'b0000001-0000-4000-8000-000000000001',
+    durationDays: 1,
+    maxGroupSize: 14,
+    basePrice: '45.00',
+    compareAtPrice: null,
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: false,
+    suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
+    badges: [],
+    included: [
+      'English-speaking guide',
+      'Private air-conditioned vehicle',
+      'Coconut-candy workshop entrance',
+      'Horse-cart and sampan rides',
+      'Lunch',
+      'Bottled water',
+    ],
+    excluded: ['Personal purchases at the workshop', 'Tips', 'Personal expenses'],
+    highlights: [
+      'Hand-rolled coconut candy at a family workshop',
+      'Horse-cart ride through a coconut-palm village',
+      'Sampan paddle down a narrow canal',
+      'Honey-tea tasting with a live bee demonstration',
+      'Monkey Bridge crossing, delta-style',
+    ],
+    meetingPoint: 'Hotel pickup, District 1, Hồ Chí Minh City',
+    factDurationNote: 'A single day among the coconut canals, back in the city by evening.',
+    factGroupSizeNote: 'Fourteen places, with the workshop and boat crew booked for the day.',
+    factDifficultyNote: 'Rowing boats, a horse cart and short flat walks between them.',
+    factGoodForNote: 'Gentle enough for grandparents, busy enough for children.',
+    freeCancellationDays: null,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000027',
+    slug: 'da-lat-highlands-3d',
+    title: 'Đà Lạt Highlands, Waterfalls & Farms 3D2N',
+    summary:
+      'Pine forest, waterfalls and flower farms in the Central Highlands — a cable car over Trúc Lâm and Langbiang at altitude.',
+    categoryId: 'b0000001-0000-4000-8000-000000000004',
+    durationDays: 3,
+    maxGroupSize: 14,
+    basePrice: '219.00',
+    compareAtPrice: '249.00',
+    currency: 'USD',
+    difficulty: 'MODERATE',
+    isPublished: true,
+    isFeatured: true,
+    suitableFor: ['COUPLE', 'FRIENDS', 'SOLO'],
+    badges: ['POPULAR'],
+    included: [
+      'Private van from/to Sài Gòn',
+      '2 nights hotel in Đà Lạt (twin-share)',
+      'Breakfast daily',
+      'Datanla Waterfall and cable car tickets',
+      'Langbiang jeep ride',
+      'English-speaking guide',
+    ],
+    excluded: [
+      'Lunches & dinners (guide recommends, you choose)',
+      'Alpine-slide extra rides',
+      'Tips',
+    ],
+    highlights: [
+      'Datanla Waterfall canyoning-style descent by alpine slide',
+      'Cable car over pine forest to Trúc Lâm Zen Monastery',
+      'Flower and strawberry farms above Đà Lạt',
+      'Langbiang peak by jeep, highlands panorama',
+      'Đà Lạt night market, warm sữa đậu nành and bánh tráng nướng',
+    ],
+    meetingPoint: 'Hotel pickup, District 1, Hồ Chí Minh City, or Liên Khương Airport arrival hall',
+    factDurationNote: 'Three days in the highlands, cool enough to need a jacket every evening.',
+    factGroupSizeNote: 'Fourteen guests, with the room block held five days out.',
+    factDifficultyNote: 'Waterfall steps and the Langbiang trail are the two efforts of the trip.',
+    factGoodForNote: 'For people who like a hill town better than a beach.',
+    freeCancellationDays: 5,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000028',
+    slug: 'phu-quoc-island-hopping-day',
+    title: 'Phú Quốc 4-Island Hopping & Snorkelling',
+    summary:
+      'A speedboat loop through the An Thới archipelago — snorkelling on coral reefs, a swim at Bãi Sao, and grilled squid on the water.',
+    categoryId: 'b0000001-0000-4000-8000-000000000001',
+    durationDays: 1,
+    maxGroupSize: 16,
+    basePrice: '59.00',
+    compareAtPrice: '69.00',
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: false,
+    suitableFor: ['FAMILY', 'COUPLE', 'FRIENDS'],
+    badges: ['BEST_VALUE'],
+    included: [
+      'Speedboat with licensed captain',
+      'Snorkelling gear',
+      'Lunch: grilled seafood on the boat/beach',
+      'Life jackets',
+      'Hotel pickup, Dương Đông and nearby areas',
+    ],
+    excluded: ['Diving upgrade (certified divers, extra fee)', 'Drinks beyond lunch', 'Tips'],
+    highlights: [
+      'Snorkelling coral reefs off the An Thới islands',
+      "Bãi Sao's white sand and turquoise shallows",
+      'Squid-fishing gear demo, grilled catch for lunch',
+      "Hòn Móng Tay's tiny beach, barely a boat-length wide",
+      'A full loop of four islands in one day',
+    ],
+    meetingPoint: 'Hotel pickup, Dương Đông town, Phú Quốc',
+    factDurationNote: 'One day island-hopping by boat, returning to the same pier at dusk.',
+    factGroupSizeNote: 'Sixteen seats on the boat, with lunch counted per head.',
+    factDifficultyNote: 'Snorkelling from the boat; you can stay aboard and still have the day.',
+    factGoodForNote: 'An easy first taste of the island for any group.',
+    freeCancellationDays: null,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+  {
+    id: 'd0000002-0000-4000-8000-000000000029',
+    slug: 'phu-quoc-honeymoon-4d',
+    title: 'Phú Quốc Honeymoon Hideaway 4D3N',
+    summary:
+      "A private beach bungalow, a sunset sail, a pepper-farm afternoon and a couples' spa evening on Vietnam's largest island.",
+    categoryId: 'b0000001-0000-4000-8000-000000000005',
+    durationDays: 4,
+    maxGroupSize: 6,
+    basePrice: '579.00',
+    compareAtPrice: '649.00',
+    currency: 'USD',
+    difficulty: 'EASY',
+    isPublished: true,
+    isFeatured: true,
+    suitableFor: ['COUPLE'],
+    badges: ['EXCLUSIVE'],
+    included: [
+      'Airport transfers (arrival and departure)',
+      '3 nights beachfront bungalow (honeymoon suite)',
+      'Daily breakfast',
+      'Sunset sailing cruise',
+      "One couples' spa treatment",
+      'Private guide for the pepper-farm afternoon',
+    ],
+    excluded: [
+      'Domestic flights to/from Phú Quốc',
+      'Lunches & dinners beyond breakfast',
+      'Additional spa treatments',
+    ],
+    highlights: [
+      'Private beachfront bungalow, three nights',
+      'Sunset sailing cruise with sparkling wine',
+      "Couples' spa treatment",
+      'Pepper farm and fish-sauce village visit',
+      'A private beach picnic at Bãi Sao',
+    ],
+    meetingPoint: 'Arrival pickup at Phú Quốc International Airport',
+    factDurationNote: 'Four days with nothing scheduled before late morning.',
+    factGroupSizeNote: 'Six guests at most — this is a bungalow itinerary, not a group tour.',
+    factDifficultyNote: 'No walking to speak of; the spa slot is the busiest part of the day.',
+    factGoodForNote: 'Two people, a bungalow, and a turn-down surprise if you tell us the date.',
+    freeCancellationDays: 14,
+    createdAt: '2026-07-31T09:00:00.000Z',
+    updatedAt: '2026-07-31T09:00:00.000Z',
+  },
+];
 
 export const tourDestinations: TourDestinationFixture[] = [
   {
@@ -86,7 +435,6 @@ export const tourDestinations: TourDestinationFixture[] = [
 ];
 
 export const tourItineraryDays: TourItineraryDayFixture[] = [
-  // ---- Tour #22 — Vũng Tàu Coastal Escape 2D1N (spec §5, chuẩn 100%) ----
   {
     id: 'f0000002-0000-4000-8000-000000000201',
     tourId: 'd0000002-0000-4000-8000-000000000022',
@@ -117,7 +465,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '16:30 — Drop-off at your hotel in Sài Gòn',
     ].join('\n'),
   },
-  // ---- Tour #23 — Sài Gòn City & Củ Chi Tunnels ----
   {
     id: 'f0000002-0000-4000-8000-000000000203',
     tourId: 'd0000002-0000-4000-8000-000000000023',
@@ -134,7 +481,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '16:30 — Drop-off at your hotel',
     ].join('\n'),
   },
-  // ---- Tour #24 — Sài Gòn After Dark by Vespa ----
   {
     id: 'f0000002-0000-4000-8000-000000000204',
     tourId: 'd0000002-0000-4000-8000-000000000024',
@@ -151,7 +497,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '22:15 — Drop-off at the Vespa garage',
     ].join('\n'),
   },
-  // ---- Tour #25 — Mekong Delta & Cái Răng Floating Market 2D1N ----
   {
     id: 'f0000002-0000-4000-8000-000000000205',
     tourId: 'd0000002-0000-4000-8000-000000000025',
@@ -182,7 +527,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '16:00 — Drop-off at your hotel in Sài Gòn',
     ].join('\n'),
   },
-  // ---- Tour #26 — Bến Tre Coconut Country Day Trip ----
   {
     id: 'f0000002-0000-4000-8000-000000000207',
     tourId: 'd0000002-0000-4000-8000-000000000026',
@@ -199,7 +543,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '16:00 — Drive back to Sài Gòn, drop-off by ~18:00',
     ].join('\n'),
   },
-  // ---- Tour #27 — Đà Lạt Highlands, Waterfalls & Farms 3D2N ----
   {
     id: 'f0000002-0000-4000-8000-000000000208',
     tourId: 'd0000002-0000-4000-8000-000000000027',
@@ -244,7 +587,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '18:00 — Drop-off at your hotel in Sài Gòn',
     ].join('\n'),
   },
-  // ---- Tour #28 — Phú Quốc 4-Island Hopping & Snorkelling ----
   {
     id: 'f0000002-0000-4000-8000-000000000211',
     tourId: 'd0000002-0000-4000-8000-000000000028',
@@ -261,7 +603,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
       '16:30 — Return to An Thới harbour, drop-off at your hotel',
     ].join('\n'),
   },
-  // ---- Tour #29 — Phú Quốc Honeymoon Hideaway 4D3N ----
   {
     id: 'f0000002-0000-4000-8000-000000000212',
     tourId: 'd0000002-0000-4000-8000-000000000029',
@@ -317,7 +658,6 @@ export const tourItineraryDays: TourItineraryDayFixture[] = [
 ];
 
 export const tourFaqs: TourFaqFixture[] = [
-  // ---- Tour #22 (spec §5: 4 câu đúng 4 chủ đề — mùa/nước, trẻ nhỏ, single supplement, mưa) ----
   {
     id: 'd2000002-0000-4000-8000-000000000201',
     tourId: 'd0000002-0000-4000-8000-000000000022',
@@ -350,7 +690,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'The beach blocks swap for the Hồ Mây cable car and covered hilltop park; the seafood dinner and night market go ahead rain or shine.',
   },
-  // ---- Tour #23 ----
   {
     id: 'd2000002-0000-4000-8000-000000000205',
     tourId: 'd0000002-0000-4000-8000-000000000023',
@@ -383,7 +722,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'The tour runs rain or shine — the Palace and Cathedral stops are largely covered, and Củ Chi provides ponchos for the outdoor trail sections.',
   },
-  // ---- Tour #24 ----
   {
     id: 'd2000002-0000-4000-8000-000000000209',
     tourId: 'd0000002-0000-4000-8000-000000000024',
@@ -416,7 +754,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'Light rain does not cancel the ride — ponchos are carried on the Vespas; heavy storms move the food stops indoors and skip the bridge photo stop.',
   },
-  // ---- Tour #25 ----
   {
     id: 'd2000002-0000-4000-8000-000000000213',
     tourId: 'd0000002-0000-4000-8000-000000000025',
@@ -449,7 +786,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       "We pair solo travellers of the same gender in the Cần Thơ hotel's twin-share room at no extra cost; a private room is available for a small fee on request.",
   },
-  // ---- Tour #26 ----
   {
     id: 'd2000002-0000-4000-8000-000000000217',
     tourId: 'd0000002-0000-4000-8000-000000000026',
@@ -473,7 +809,6 @@ export const tourFaqs: TourFaqFixture[] = [
     question: 'Can lunch be made vegetarian?',
     answer: 'Yes, flag it when booking — the restaurant prepares a full vegetable and tofu set.',
   },
-  // ---- Tour #27 ----
   {
     id: 'd2000002-0000-4000-8000-000000000220',
     tourId: 'd0000002-0000-4000-8000-000000000027',
@@ -506,7 +841,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'The alpine slide closes in heavy rain for safety — on wet days we swap it for extra time at the flower farms and the Trúc Lâm cable car, both partly covered.',
   },
-  // ---- Tour #28 ----
   {
     id: 'd2000002-0000-4000-8000-000000000224',
     tourId: 'd0000002-0000-4000-8000-000000000028',
@@ -539,7 +873,6 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'Yes — both beach stops offer plenty of swim and sand time, and the boat ride and lunch are enjoyable on their own.',
   },
-  // ---- Tour #29 ----
   {
     id: 'd2000002-0000-4000-8000-000000000228',
     tourId: 'd0000002-0000-4000-8000-000000000029',
@@ -572,11 +905,9 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'Yes — mention the occasion at booking and we arrange a welcome cake and flowers in the room ahead of your arrival.',
   },
-  // ---- Tour #30 ----
 ];
 
 export const tourPolicies: TourPolicyFixture[] = [
-  // ---- Tour #22 (spec §5: 72h/50%/no-show · giữ chỗ 20%/đủ trước 7 ngày · kem chống nắng/xe quận 1-3) ----
   {
     id: 'd3000002-0000-4000-8000-000000000201',
     tourId: 'd0000002-0000-4000-8000-000000000022',
@@ -601,7 +932,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Sunscreen and swimwear',
     body: 'Bring sunscreen and swimwear; hotel pickup is available within District 1 and District 3.',
   },
-  // ---- Tour #23 ----
   {
     id: 'd3000002-0000-4000-8000-000000000204',
     tourId: 'd0000002-0000-4000-8000-000000000023',
@@ -626,7 +956,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Closed shoes for the tunnels',
     body: "Wear closed shoes and clothes you don't mind getting dusty in the tunnels; anyone uneasy in tight spaces can skip the crawl and wait at the surface pavilion.",
   },
-  // ---- Tour #24 ----
   {
     id: 'd3000002-0000-4000-8000-000000000207',
     tourId: 'd0000002-0000-4000-8000-000000000024',
@@ -651,7 +980,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Closed-toe shoes for the Vespa',
     body: 'Closed-toe shoes are required for the Vespa ride; a light jacket is worth carrying even on wet-season evenings.',
   },
-  // ---- Tour #25 ----
   {
     id: 'd3000002-0000-4000-8000-000000000210',
     tourId: 'd0000002-0000-4000-8000-000000000025',
@@ -676,7 +1004,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'A hat and a rain jacket',
     body: 'Bring a hat and a light rain jacket for the open boat; motion-sickness tablets are worth packing for the early crossing.',
   },
-  // ---- Tour #26 ----
   {
     id: 'd3000002-0000-4000-8000-000000000213',
     tourId: 'd0000002-0000-4000-8000-000000000026',
@@ -701,7 +1028,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Closed shoes and a hat',
     body: 'Wear closed shoes for the horse-cart step-up and bring a hat — most of the day is outdoors in the sun.',
   },
-  // ---- Tour #27 ----
   {
     id: 'd3000002-0000-4000-8000-000000000216',
     tourId: 'd0000002-0000-4000-8000-000000000027',
@@ -726,7 +1052,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Đà Lạt nights run cool',
     body: 'Đà Lạt nights are cool year-round — pack a light jacket; comfortable shoes for the waterfall steps and the Langbiang trail.',
   },
-  // ---- Tour #28 ----
   {
     id: 'd3000002-0000-4000-8000-000000000219',
     tourId: 'd0000002-0000-4000-8000-000000000028',
@@ -751,7 +1076,6 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Reef-safe sunscreen only',
     body: 'Reef-safe sunscreen only — regular sunscreen is not allowed on the boat; bring a rash guard if you sunburn easily.',
   },
-  // ---- Tour #29 ----
   {
     id: 'd3000002-0000-4000-8000-000000000222',
     tourId: 'd0000002-0000-4000-8000-000000000029',
@@ -776,11 +1100,9 @@ export const tourPolicies: TourPolicyFixture[] = [
     title: 'Tell us about the occasion',
     body: 'Let us know your anniversary or honeymoon date at booking — a welcome cake and flowers can be arranged in the room.',
   },
-  // ---- Tour #30 ----
 ];
 
 export const tourDepartures: TourDepartureFixture[] = [
-  // ---- Tour #22 (giãn ~tháng: 08-15/09-19/10-17/11-21, 4 thứ Bảy — chốt controller 31/07 vì spec §5 tự mâu thuẫn (4 đợt cách tuần không thể tới 21/11) — ưu tiên mốc cuối sát ngày bảo vệ để demo còn đợt tương lai; một đợt promo 119.00) ----
   {
     id: 'e0000002-0000-4000-8000-000000000201',
     tourId: 'd0000002-0000-4000-8000-000000000022',
@@ -833,7 +1155,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #23 ----
   {
     id: 'e0000002-0000-4000-8000-000000000205',
     tourId: 'd0000002-0000-4000-8000-000000000023',
@@ -899,7 +1220,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #24 ----
   {
     id: 'e0000002-0000-4000-8000-000000000210',
     tourId: 'd0000002-0000-4000-8000-000000000024',
@@ -952,7 +1272,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // đợt bổ sung qua mốc bảo vệ (final review 31/07)
   {
     id: 'e0000002-0000-4000-8000-000000000237',
     tourId: 'd0000002-0000-4000-8000-000000000024',
@@ -966,7 +1285,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #25 ----
   {
     id: 'e0000002-0000-4000-8000-000000000214',
     tourId: 'd0000002-0000-4000-8000-000000000025',
@@ -1019,7 +1337,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #26 ----
   {
     id: 'e0000002-0000-4000-8000-000000000218',
     tourId: 'd0000002-0000-4000-8000-000000000026',
@@ -1072,7 +1389,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // đợt bổ sung qua mốc bảo vệ (final review 31/07)
   {
     id: 'e0000002-0000-4000-8000-000000000238',
     tourId: 'd0000002-0000-4000-8000-000000000026',
@@ -1086,7 +1402,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #27 ----
   {
     id: 'e0000002-0000-4000-8000-000000000222',
     tourId: 'd0000002-0000-4000-8000-000000000027',
@@ -1139,7 +1454,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #28 ----
   {
     id: 'e0000002-0000-4000-8000-000000000226',
     tourId: 'd0000002-0000-4000-8000-000000000028',
@@ -1205,7 +1519,6 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #29 ----
   {
     id: 'e0000002-0000-4000-8000-000000000231',
     tourId: 'd0000002-0000-4000-8000-000000000029',
@@ -1245,5 +1558,4 @@ export const tourDepartures: TourDepartureFixture[] = [
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
-  // ---- Tour #30 ----
 ];
