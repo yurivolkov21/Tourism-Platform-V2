@@ -104,11 +104,17 @@ const SITE_SLOT_KEYS = [
   // lạc nghĩa. Mỗi khoảnh khắc TỰ KHAI khoá khe của mình ở `mocks/moments.ts`
   // thay vì suy ra từ vị trí trong mảng: suy theo index thì sắp xếp lại mảng
   // là ảnh gắn nhầm chỗ mà không có gì báo.
-  'moment-halong-kayak',
-  'moment-sapa-valley',
+  // Tên khe đặt theo ĐỊA DANH CÓ ẢNH, không theo ý tưởng ban đầu. Bốn khe đổi
+  // tên ngày 18/08 vì Hạ Long / Sa Pa / Huế / Cần Thơ không có tấm nào trong
+  // kho, còn Lan Hạ / Hà Giang / Mỹ Sơn / Bến Tre thì có sẵn và hợp cảnh. Giữ
+  // tên cũ mà nhét ảnh nơi khác vào là gài bẫy người đọc sau: khoá khe cũng là
+  // `publicId` trên Cloudinary, tra `moment-hue-gate` mà ra tháp Chăm thì mất
+  // cả buổi mới hiểu. Khe cũ không có row media nào nên đổi tên là miễn phí.
+  'moment-lanha-kayak',
+  'moment-hagiang-valley',
   'moment-hoian-river',
-  'moment-hue-gate',
-  'moment-mekong-market',
+  'moment-myson-towers',
+  'moment-bentre-canal',
   // Video nền dải CTA cuối /about — khe VIDEO đầu tiên của dự án
   'about-cta-video',
 ] as const;

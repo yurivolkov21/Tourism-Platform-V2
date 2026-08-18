@@ -119,10 +119,38 @@ function MomentTile({ moment, className }: { moment: MomentVM; className?: strin
       {/* Caption đè lên ảnh: `title` là chú thích, `credit` là dòng nhỏ dưới —
           cùng khuôn scrim `from-overlay` + `text-on-media` mà `home/gallery.tsx`
           đã dùng cho caption đáy ảnh (token cố định, không phải theo theme,
-          đúng chỗ vì nền là ảnh/scrim tối chứ không phải nền trang). */}
-      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-overlay to-transparent p-4 pt-10 text-on-media">
-        <p className="text-sm font-medium text-pretty">{moment.title}</p>
-        <p className="mt-1 text-xs opacity-85">{moment.credit}</p>
+          đúng chỗ vì nền là ảnh/scrim tối chứ không phải nền trang).
+
+          HAI lớp gradient + `pt-16` (trước là MỘT lớp + `pt-10`) — đổi khi khe
+          có ảnh THẬT, và đổi theo số đo chứ không theo cảm giác.
+
+          Chỗ hỏng nằm ở DÒNG TIÊU ĐỀ TRÊN CÙNG, không phải ở đáy ô. Gradient
+          `to-transparent` phủ đúng chiều cao cái div này (pt + 2×20 + 4 + 16 +
+          16 = 116px với `pt-10`), nên alpha ở dòng chữ trên chỉ còn
+          0.5·(1−70/116) ≈ 0.20 — gần như không che gì. Đo trên 5 ảnh sắp gắn:
+          tỉ lệ pixel nền quá sáng để chữ trắng đạt AA lên tới 17.4% ở ô Hà
+          Giang, 10.0% ở Hội An, 8.3% ở ô lớn Lan Hạ.
+
+          Hai lớp chồng cho alpha 1−(1−a)² và `pt-16` kéo dải phủ lên 140px, đẩy
+          alpha ở dòng đó lên ~0.37. Đo lại: 17.4% → 2.9% (tệ nhất), bốn ô còn
+          lại ≤1.4%. Cái giá là ảnh bị dìm trung bình 11% → 22% — đã cân với
+          `pt-20` (chỉ hơn 1.6 điểm mà dìm thêm nữa) nên dừng ở `pt-16`.
+
+          Vì sao KHÔNG chia alpha kiểu `bg-overlay/40`: `--overlay` đã là
+          `oklch(0 0 0 / 0.5)`, cú pháp `/NN` của Tailwind NHÂN vào alpha sẵn có
+          nên chỉ làm nhạt đi. Cùng cái bẫy đã dính ở `destination-tile.tsx`. */}
+      <div className="absolute inset-x-0 bottom-0 bg-linear-to-t from-overlay to-transparent p-4 pt-16 text-on-media">
+        {/* Lớp thứ hai nằm TRONG khung caption và `inset-0`, nên nó luôn cao
+            đúng bằng khung — không phải một chiều cao cố định phải chỉnh lại
+            mỗi khi tiêu đề rơi từ 2 dòng xuống 1. Chữ được nâng lên bằng
+            `relative` vì lớp này là anh em ĐỨNG SAU trong cùng stacking
+            context. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 bg-linear-to-t from-overlay to-transparent"
+        />
+        <p className="relative text-sm font-medium text-pretty">{moment.title}</p>
+        <p className="relative mt-1 text-xs opacity-85">{moment.credit}</p>
       </div>
     </a>
   );

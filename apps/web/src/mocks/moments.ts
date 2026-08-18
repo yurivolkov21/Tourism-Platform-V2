@@ -3,26 +3,34 @@ import type { MockMoment } from './types.js';
 // Khoảnh khắc trải nghiệm của khách (review #11 — thay danh mục tour trong
 // slider Stats): bằng chứng sống đứng cạnh số liệu social proof. Đây là ứng
 // viên schema mới khi gắn API (bảng trip moments / UGC gallery).
-// 3 tourSlug đã sửa (cruise/Sa Pa/Mekong) trỏ lại tour THẬT sau khi catalogue
-// lên API (Task 4, cụm destinations-api) — bản cũ trỏ slug mock đã chết
-// (`ha-long-bay-cruise`, `sa-pa-terraces-trek`, `mekong-delta-boats`), bấm vào
-// ra 404. `hoi-an-lantern-evening`/`hue-imperial-day` là slug THẬT sẵn từ
-// trước — giữ nguyên, KHÔNG đổi. Toàn bộ `credit` (cả 5) đổi theo tiêu đề
-// THẬT của tour trong `apps/api/prisma/fixtures/catalog/` (không còn tiêu đề
-// rút gọn của mock `tours.ts` đã chết) — test `mocks.spec.ts` canh cả hai
-// chiều: slug tồn tại VÀ credit nhắc đúng tên tour slug đó trỏ tới.
+//
+// ── Vòng 18/08: viết lại 4/5 mục cho KHỚP ẢNH CÓ THẬT ──
+// Bản trước đặt caption trước rồi mới đi tìm ảnh, và ba trong năm cảnh
+// (hang Hạ Long, thung lũng Sa Pa, chợ nổi Cái Răng) không có tấm nào trong
+// kho — Hạ Long / Sa Pa / Huế / Cần Thơ đều là địa danh KHÔNG có ảnh nào đã
+// tải về. Chờ tìm đủ ảnh cho một caption đã viết sẵn là hướng tốn thời gian
+// nhất mà lại chặn cả phần còn lại, nên đảo chiều: chọn từ ảnh ĐANG CÓ trước,
+// rồi sửa caption + `tourSlug` + `credit` theo đúng thứ trong ảnh.
+//
+// Đổi cả ba trường một lượt là BẮT BUỘC, không phải cho gọn: `mocks.spec.ts`
+// canh hai chiều — `tourSlug` phải nằm trong roster tour thật, và `credit`
+// phải NHẮC ĐÚNG tiêu đề của chính tour đó. Sửa caption mà quên slug thì
+// caption kể một tour còn link dẫn sang tour khác.
+//
+// Mục Hội An giữ NGUYÊN văn: `hoi-an/gallery/01.jpg` đúng là thuyền đậu bên
+// sông Hoài giữa ban ngày, tức là "hours before the lanterns" theo nghĩa đen.
 export const MOMENTS: MockMoment[] = [
   {
-    title: 'Kayaking through the cave into the hidden lagoon',
-    credit: 'Sarah, Hạ Long Bay Overnight Cruise 2D1N',
-    tourSlug: 'halong-bay-overnight-cruise',
-    slot: 'moment-halong-kayak',
+    title: 'Paddling out under the karst wall, the water goes green',
+    credit: 'Sarah, Lan Hạ Bay & Cát Bà Kayak Cruise 3D2N',
+    tourSlug: 'lan-ha-kayak-cruise-3d',
+    slot: 'moment-lanha-kayak',
   },
   {
-    title: 'The valley opens up on the climb to the homestay',
-    credit: 'Daniel, Sa Pa Terraces & Homestay Trek 2D1N',
-    tourSlug: 'sapa-terraces-homestay-2d',
-    slot: 'moment-sapa-valley',
+    title: 'The road bends once more and the whole valley opens up',
+    credit: 'Daniel, Hà Giang Loop by Easyrider 4D3N',
+    tourSlug: 'ha-giang-loop-4d',
+    slot: 'moment-hagiang-valley',
   },
   {
     title: 'Boats on the Hoài river, hours before the lanterns',
@@ -31,15 +39,15 @@ export const MOMENTS: MockMoment[] = [
     slot: 'moment-hoian-river',
   },
   {
-    title: 'The Ngọ Môn gate before the morning crowds arrive',
-    credit: 'Kenji, Huế Imperial City & Royal Tombs',
-    tourSlug: 'hue-imperial-day',
-    slot: 'moment-hue-gate',
+    title: 'The Chăm brick towers at Mỹ Sơn, before the crowds arrive',
+    credit: 'Kenji, Mỹ Sơn Sanctuary at Sunrise',
+    tourSlug: 'my-son-sunrise-halfday',
+    slot: 'moment-myson-towers',
   },
   {
-    title: 'Drifting between the boats as the market wakes up',
-    credit: 'Tom, Mekong Delta & Cái Răng Floating Market 2D1N',
-    tourSlug: 'mekong-can-tho-2d',
-    slot: 'moment-mekong-market',
+    title: 'Drifting into the coconut canals as the palms close overhead',
+    credit: 'Tom, Bến Tre Coconut Country Day Trip',
+    tourSlug: 'ben-tre-coconut-day',
+    slot: 'moment-bentre-canal',
   },
 ];
