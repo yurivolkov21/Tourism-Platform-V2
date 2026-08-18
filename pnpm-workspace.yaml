@@ -124,3 +124,18 @@ overrides:
   # js-yaml >=4.0.0 <4.3.1: kéo về qua cosmiconfig (shadcn CLI) →
   # libs/shared/ui. Bản trước override là 4.3.0.
   js-yaml@>=4.0.0 <4.3.1: ^4.3.1
+  # Đợt vá Dependabot 18/08 (1 alert high) — dep bắc cầu, scoped như các batch trên.
+  # deepmerge-ts < 8.0.0 (GHSA-ggr8-5vv4-36mx — stack exhaustion khi merge object
+  # đệ quy): đường vào là prisma CLI → @prisma/config, bị GHIM CỨNG '7.1.5' (không
+  # phải range) nên không tự lên được → phải override, và override này ÉP QUA
+  # major 7→8.
+  # An toàn được vì bề mặt API dùng thực tế RẤT hẹp: @prisma/config chỉ lấy đúng
+  # named export `deepmerge` rồi truyền làm `merger` cho c12 (đã đọc dist/index.js,
+  # 3 lần nhắc đều là một chỗ gọi đó) — không đụng tới phần types/record mà v8 đổi.
+  # Chứng minh bằng CHẠY THẬT chứ không suy đoán: prisma generate + migrate status
+  # + gate:int (build API, 180 int test dùng Prisma) đều xanh sau khi ép.
+  # Mức độ thực tế: @prisma/config chỉ chạy lúc đọc file cấu hình ở CLI/build, KHÔNG
+  # nằm trên đường phục vụ request, và input là prisma.config.ts của chính mình chứ
+  # không phải dữ liệu người dùng — vá để sạch alert, không phải vì đang bị với tới.
+  # Nếu ngày nào prisma CLI gãy vì dòng này: gỡ ra và chấp nhận alert.
+  deepmerge-ts@<8.0.0: ^8.0.1
