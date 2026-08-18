@@ -9,7 +9,7 @@ import { XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { formatMoney } from '@/lib/tours';
 
@@ -41,6 +41,11 @@ function EmptyState() {
  *
  * Vì sao không tái dùng `TourCard`: `WishlistItemSchema` chỉ mang tiêu đề,
  * giá, số ngày và rating. Muốn nhét nó vào `TourCardVM` thì phải BỊA những
+ * ẢNH nối dây 18/08: đây là chỗ CUỐI CÙNG còn vẽ ô giữ chỗ vô điều kiện, và
+ * khác các chỗ khác về BẢN CHẤT — không phải quên nối, mà `WishlistItemSchema`
+ * chưa có trường ảnh nào. Phải nở contract (`cover`) và cho `wishlist.service`
+ * lấy ảnh theo LÔ qua `MediaService` mới nối được.
+ *
  * field còn lại — trước đây `wishlistToTourCardVM` điền `category: {slug:'',
  * name:''}`, `maxGroupSize: 1`, `isFeatured: false`. Hiện tại `TourCard` tình
  * cờ không render ba field đó nên chưa ai thấy, nhưng nó là một quả mìn hẹn
@@ -61,7 +66,11 @@ function SavedTourCard({ item, onRemove }: { item: WishlistItem; onRemove: () =>
     // lưới 2-3 cột thay vì chỉ dựa vào khoảng cách `gap-6`.
     <div className="group relative flex flex-col gap-2.5 rounded-xl border border-border/60 p-3">
       <div className="overflow-hidden rounded-lg">
-        <ImagePlaceholder className="aspect-16/10 w-full" />
+        <SlotImage
+          image={item.cover}
+          className="aspect-16/10 w-full"
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        />
       </div>
       <h3 className="min-h-[2lh] overflow-hidden font-heading text-lg leading-snug font-medium text-foreground transition-colors group-hover:text-primary-emphasis [-webkit-box-orient:vertical] [-webkit-line-clamp:2] [display:-webkit-box]">
         {/* Cả card là MỘT vùng bấm qua `after:inset-0`, cùng thủ thuật TourCard
@@ -114,7 +123,11 @@ export function UnavailableCard({ item, onRemove }: { item: WishlistItem; onRemo
     // trạng thái để tránh mọc thêm ngôn ngữ màu thứ hai cho cùng một ý.
     <div className="relative flex flex-col gap-2.5 rounded-xl border border-border/60 p-3 opacity-60">
       <div className="relative overflow-hidden rounded-lg">
-        <ImagePlaceholder className="aspect-16/10 w-full" />
+        <SlotImage
+          image={item.cover}
+          className="aspect-16/10 w-full"
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+        />
         <span className="absolute top-2.5 left-2.5 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
           {t.unavailable}
         </span>

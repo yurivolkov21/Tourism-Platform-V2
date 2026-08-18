@@ -28,6 +28,9 @@ function makeItem(overrides: Partial<WishlistItem> = {}): WishlistItem {
     durationDays: 1,
     ratingAvg: 4.8,
     ratingCount: 132,
+    // Mặc định KHÔNG ảnh: nhánh ô giữ chỗ là nhánh dễ vỡ hơn, nên để test
+    // chạy qua nó theo mặc định; ca có ảnh truyền `cover` qua `overrides`.
+    cover: null,
     addedAt: '2026-07-28T14:00:00.000Z',
     unavailable: false,
     ...overrides,

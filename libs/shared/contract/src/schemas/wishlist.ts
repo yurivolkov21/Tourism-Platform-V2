@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MediaItemSchema } from './media.js';
 
 /** Một mục trong wishlist — dữ liệu tour rút gọn kèm cờ khả dụng. */
 export const WishlistItemSchema = z.object({
@@ -15,6 +16,11 @@ export const WishlistItemSchema = z.object({
   // `isPublished` rồi để FE tự suy diễn — hậu quả là item chết, bấm vào 404.
   // Ở đây trả cờ ngữ nghĩa để FE hiển thị "không còn khả dụng" tử tế.
   unavailable: z.boolean(),
+  // Ảnh bìa — role `hero`, cùng khuôn `TourCardSchema.cover`. Thêm 18/08 vì
+  // `saved-grid.tsx` là chỗ CUỐI CÙNG còn vẽ ô giữ chỗ vô điều kiện: nó nhận
+  // `WishlistItem` mà lược đồ này chưa có đường nào ra ảnh, nên khác hẳn các
+  // chỗ khác (quên nối dây) — ở đây là THIẾU DỮ LIỆU thật.
+  cover: MediaItemSchema.nullable(),
 });
 export type WishlistItem = z.output<typeof WishlistItemSchema>;
 

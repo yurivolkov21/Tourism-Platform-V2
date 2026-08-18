@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { StarIcon } from 'lucide-react';
-import { ImagePlaceholder } from '@/components/image-placeholder';
+import { SlotImage } from '@/components/slot-image';
 import type { TourCardVM } from '@/lib/api/tours';
 import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
 
@@ -18,6 +18,18 @@ import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
  * gốc rễ cảm giác "trống hoác" là CÁI KHUNG, không phải số phần tử bên trong. Khu
  * gợi ý này nằm ngay dưới bảng đợt có viền và rail booking có viền; thêm khung nữa
  * là bốn thứ có viền xếp liên tiếp trong một màn hình.
+ *
+ * ẢNH nối dây 18/08: trước đó file này vẽ `ImagePlaceholder` VÔ ĐIỀU KIỆN dù
+ * `TourCardVM` đã mang `cover` — đúng lỗi `destination-tile.tsx` từng mắc, và
+ * lần này nặng hơn vì `TourCard` dùng ở NĂM chỗ: khu gợi ý cuối trang tour,
+ * `region-tours`, `region-day-trips`, tab đánh giá, và lưới đã lưu. User phát
+ * hiện bằng mắt ở trang vùng. Bài học lặp lại: nối được dây ở MỘT component
+ * không có nghĩa mọi component cùng loại đã được nối — phải rà theo dữ liệu
+ * (`grep` chỗ nào nhận VM có `cover` mà vẫn vẽ ô giữ chỗ), không rà theo trang.
+ *
+ * Chip giảm giá đổi từ `bg-destructive` sang token `sale`: hai thứ có ngữ nghĩa
+ * đối lập (xoá/nguy hiểm ≠ khuyến mãi) và `TourListCard` đã dùng `sale` từ
+ * 17/08 — để lệch thì hai thẻ tour cùng sản phẩm hiện hai sắc đỏ khác nhau.
  *
  * KHÔNG nút tim: wishlist chưa nối (contract có `wishlist.check` batch, UI chưa
  * dùng). Một cái tim không làm gì là hứa thứ sản phẩm không giữ — cùng lý do nút
@@ -57,12 +69,14 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
       <div className="relative overflow-hidden rounded-xl">
         {/* Nhãn ảnh là tên destination chính, KHÔNG phải tour.title — title đã là
             <h3> ngay dưới, lặp lại là trình đọc màn hình đọc hai lần. */}
-        <ImagePlaceholder
+        <SlotImage
+          image={tour.cover}
           label={chain[0]?.name}
           className="aspect-16/10 w-full transition-transform duration-700 ease-out group-hover:scale-105 group-focus-within:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
         />
         {discount !== null ? (
-          <span className="absolute top-2.5 left-2.5 rounded-full bg-destructive px-2 py-0.5 text-xs font-medium text-white">
+          <span className="absolute top-2.5 left-2.5 rounded-full bg-sale px-2 py-0.5 text-xs font-medium text-sale-foreground">
             −{discount}%
           </span>
         ) : null}

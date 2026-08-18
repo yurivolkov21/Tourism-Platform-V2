@@ -1,11 +1,19 @@
 import { Injectable } from '@nestjs/common';
 import type { WishlistItem } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
+import { MediaOwnerType } from '../../generated/prisma/enums.js';
+import { pickCover } from '../catalog/catalog.service.js';
+import { MediaService } from '../media/media.service.js';
 
 export class TourNotFoundError extends Error {}
 
 @Injectable()
 export class WishlistService {
+  // `MediaService` tiêm vào để lấy ảnh bìa theo LÔ — cùng cách `catalog.service`
+  // làm. Không truy vấn ảnh trong vòng lặp: một trang wishlist tới 24 item thì
+  // đó là 24 lượt đi DB thay vì một.
+  constructor(private readonly media: MediaService) {}
+
   /**
    * Idempotent theo thiết kế: `wished: true` dùng upsert (thêm lại tour đã
    * có → no-op, KHÔNG 409), `wished: false` dùng deleteMany (xoá thứ không
@@ -67,6 +75,13 @@ export class WishlistService {
       prisma.wishlist.count({ where }),
     ]);
 
+    // Một lượt duy nhất cho cả trang, kể cả khi rỗng (`resolveForOwners` với
+    // mảng rỗng trả Map rỗng, không đánh DB).
+    const coverMap = await this.media.resolveForOwners(
+      MediaOwnerType.TOUR,
+      rows.map((row) => row.tourId),
+    );
+
     const items: WishlistItem[] = rows.map((row) => ({
       tourId: row.tourId,
       slug: row.tour.slug,
@@ -79,6 +94,7 @@ export class WishlistService {
       addedAt: row.createdAt.toISOString(),
       // Cờ ngữ nghĩa thay vì tuồn `isPublished` ra ngoài.
       unavailable: !row.tour.isPublished,
+      cover: pickCover(coverMap.get(row.tourId)),
     }));
 
     return { items, page, limit: pageSize, total, totalPages: Math.ceil(total / pageSize) };
