@@ -8,6 +8,58 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-18 — Vá alert deepmerge-ts: ép qua major khi thượng nguồn ghim cứng (nhánh `fix/deepmerge-ts-advisory`, `09e604f`, 2 file, +135/−4)
+
+GHSA-ggr8-5vv4-36mx (high) — `deepmerge-ts < 8.0.0` cạn stack khi merge object
+đệ quy. Phát hiện tình cờ: output của `git push` đợt trước có nhắc một link
+Dependabot, kiểm thì thấy alert đang mở.
+
+**Thượng nguồn ghim CỨNG nên không có đường tự lên.** `@prisma/config@7.8.0`
+khai `deepmerge-ts: "7.1.5"` — một phiên bản chính xác, không phải range. Tức
+`pnpm update` không bao giờ chạm tới được; chỉ còn hai lựa chọn: chờ Prisma phát
+hành, hoặc override. Bản vá duy nhất là 8.0.0, nên override này **ép qua major
+7→8**.
+
+**Ép major mà vẫn an toàn, vì bề mặt API dùng thật rất hẹp.** Đọc
+`dist/index.js` của `@prisma/config`: cả ba lần nhắc `deepmerge` đều là MỘT
+chỗ gọi — lấy named export rồi truyền làm `merger` cho c12. Phần types/record
+mà v8 thay đổi không nằm trên đường đó. **Đọc code thượng nguồn rẻ hơn đoán
+theo số major.**
+
+**Chứng minh bằng chạy thật, đúng cách đã dùng cho `brace-expansion` 2→5.**
+`prisma validate` in "Loaded Prisma config from prisma.config.ts" — tức đã đi
+qua đúng chỗ gọi `deepmerge` — rồi báo schema hợp lệ; `prisma generate` sinh
+client; `prisma migrate status` nói schema up to date; `gate:int` xanh 18 task
+cộng 180 int test dùng Prisma. Lockfile sau đó chỉ còn `deepmerge-ts@8.0.1`.
+
+**Review findings**
+
+- **Suýt đặt override sai file.** Bản đầu tôi thêm `pnpm.overrides` vào
+  `package.json`, cài lại thì phiên bản KHÔNG đổi. Nhìn lockfile mới thấy khối
+  `overrides` đã tồn tại với react/react-dom/@hono — tức repo giữ chúng ở
+  `pnpm-workspace.yaml`. Và đó là lựa chọn có lý do: YAML cho phép comment, nên
+  mỗi override đều mang theo lý lẽ của nó, thứ `package.json` không làm được.
+  **Một thay đổi không có tác dụng thì hãy hỏi "mình có đang sửa đúng file
+  không", trước khi hỏi "cú pháp có sai không".**
+- **Override phải CÓ PHẠM VI.** Repo dùng dạng `pkg@<dải dính>: ^bản vá` để
+  không ghim vĩnh viễn các bản sau. Bản đầu tôi viết `deepmerge-ts: '^8.0.1'`
+  trần — đúng kết quả hôm nay, nhưng khoá cứng tương lai.
+- **Mức độ thực tế thấp, và nói rõ điều đó cũng là một phần của bản vá.**
+  `@prisma/config` chỉ chạy lúc đọc file cấu hình ở CLI/build, không nằm trên
+  đường phục vụ request, input là `prisma.config.ts` của chính mình. Vá để sạch
+  alert, không phải vì đang bị với tới — ghi ra để sau này ai đọc còn biết mức
+  ưu tiên thật nếu dòng override này gãy.
+- **Alert chưa tự đóng ngay sau khi gate xanh.** GitHub chỉ quét lại khi
+  lockfile mới lên remote, nên số alert vẫn là 1 cho tới lúc push.
+
+**Nợ mở:** 5 khe Moments vừa mở vẫn trống · 10/19 địa danh chưa cover, 14/19
+chưa gallery · 3 khe DB vẫn mồ côi · 25/30 tour chưa cover · trang chữ chưa
+quyết có hero ảnh không · pnpm báo có bản 11.22.0 (đang 11.9.0) — không nâng,
+theo chính sách freeze.
+
+Tests after: 1264 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-18 — `/destinations` từ 0 lên 9 ảnh mà không upload tấm nào, và ba vòng đo mới ra đúng lớp phủ (nhánh `feat/destination-cover-wiring`, `9897d92`, 8 file, +204/−14)
 
 Khảo sát hôm trước chỉ ra `/destinations` render 17 ô giữ chỗ trong khi 9/19
