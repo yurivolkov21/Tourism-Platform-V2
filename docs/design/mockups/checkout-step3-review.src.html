@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Checkout — step 3 Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* Số đo trích bằng getComputedStyle trên https://reui.io/preview/base/checkout-7
+     tại viewport 1440 — KHÔNG ước lượng. Xem bảng trong CHANGELOG cùng ngày. */
+  :root {
+    --ink: #000;
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --solid: oklch(0.205 0 0);
+    --on-solid: oklch(0.985 0 0);
+    --page: #fafafa;
+    --card: #fff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.5;
+  }
+  .page { max-width: 960px; margin: 0 auto; padding: 40px; }
+
+  .back { font-size: 12.8px; color: var(--muted); text-decoration: none; display: inline-block; }
+  .head { display: flex; align-items: flex-end; justify-content: space-between; gap: 40px; margin-top: 10px; }
+  h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.6px; margin: 0; }
+  .meta { font-size: 14px; color: var(--muted); margin: 4px 0 0; white-space: nowrap; }
+
+  /* Thanh bước: 4 vạch 132×4 bo tròn, nhãn NẰM DƯỚI vạch (đúng mẫu gốc). */
+  .steps { display: grid; grid-template-columns: repeat(4, 132px); gap: 16px; }
+  .step .bar { height: 4px; border-radius: 999px; background: var(--line); }
+  .step.on .bar { background: var(--solid); }
+  .step .label { margin-top: 10px; font-size: 14px; font-weight: 600; color: var(--muted); }
+  .step.on .label { font-size: 16px; color: var(--ink); }
+
+  .grid { display: grid; grid-template-columns: 608px 352px; margin-top: 32px; }
+  .col-left { padding-right: 40px; }
+  aside { border-left: 1px solid var(--line); padding-left: 40px; }
+
+  h2 { font-size: 14px; font-weight: 600; margin: 0; }
+  .sub { font-size: 14px; color: var(--muted); margin: 4px 0 0; }
+
+  /* Thẻ chọn đợt — mẫu thẻ-lựa-chọn của solution-billing-8, mặc token của
+     checkout-7 (bo 10, viền 1px, nền trắng). */
+  .options { list-style: none; margin: 16px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .opt {
+    width: 100%; display: flex; align-items: center; gap: 12px; text-align: left;
+    padding: 14px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); font: inherit; cursor: pointer;
+  }
+  .opt.sel { border-color: var(--solid); box-shadow: 0 0 0 1px var(--solid); }
+  .opt.off { opacity: 0.55; cursor: default; }
+  .dot { width: 16px; height: 16px; flex: none; border: 1px solid var(--line); border-radius: 999px; display: grid; place-items: center; }
+  .opt.sel .dot { border-color: var(--solid); background: var(--solid); }
+  .opt.sel .dot::after { content: ""; width: 6px; height: 6px; border-radius: 999px; background: var(--on-solid); }
+  .opt .main { flex: 1; min-width: 0; }
+  .opt .date { display: block; font-weight: 500; font-variant-numeric: tabular-nums; }
+  .opt .seats { display: block; font-size: 12.8px; color: var(--muted); }
+  .opt .price { text-align: right; flex: none; }
+  .opt .was { font-size: 12.8px; color: var(--muted); text-decoration: line-through; margin-right: 6px; }
+  .opt .now { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .opt .per { display: block; font-size: 12.8px; color: var(--muted); }
+
+  .foot { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; }
+  .secure { font-size: 12.8px; color: var(--muted); }
+  .cta { height: 36px; border: 0; border-radius: 10px; background: var(--solid); color: var(--on-solid); font: 500 14px Inter, sans-serif; padding: 0 10px 0 12px; cursor: pointer; }
+
+  /* Cột phải — giữ ĐẦU tóm tắt của repo (ảnh bìa + tên tour + đánh giá) vì
+     checkout-7 chỉ có tên món dạng chữ, không đủ cho một chuyến đi. */
+  aside h2 { font-size: 16px; }
+  .trip { display: flex; gap: 12px; margin-top: 16px; }
+  .cover { width: 64px; height: 64px; flex: none; border-radius: 10px; background: var(--line); display: grid; place-items: center; font-size: 11px; color: var(--muted); }
+  .trip .name { font-weight: 500; }
+  .trip .where { font-size: 12.8px; color: var(--muted); margin-top: 2px; }
+  .stars { font-size: 12.8px; color: var(--muted); margin-top: 6px; }
+  .rule { border: 0; border-top: 1px solid var(--line); margin: 20px 0; }
+  .row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+  .row .k { font-size: 14px; color: var(--muted); }
+  .row .v { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; }
+  .total .k { font-size: 16px; font-weight: 600; }
+  .total .v { font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .note { font-size: 12.8px; color: var(--muted); margin: 12px 0 0; }
+
+  /* ── Thêm cho bước 2–4, cùng bộ token đã đo ở checkout-7 ── */
+  .fields { display: grid; grid-template-columns: 276px 276px; gap: 16px; margin-top: 16px; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field.wide { grid-column: 1 / -1; }
+  .field label { font-size: 14px; font-weight: 500; }
+  .field .opt-tag { color: var(--muted); font-weight: 400; }
+  .field input, .field textarea {
+    height: 32px; border: 1px solid var(--line); border-radius: 10px; background: transparent;
+    padding: 0 10px; font: 400 14px Inter, sans-serif; color: var(--ink);
+  }
+  .field textarea { height: 76px; padding: 8px 10px; resize: none; line-height: 1.45; }
+
+  /* Bộ tăng giảm số người — khung cao 32/bo 10 như input, hai nút vuông hai đầu. */
+  .count { display: flex; align-items: center; justify-content: space-between;
+    height: 32px; border: 1px solid var(--line); border-radius: 10px; padding: 0 4px; }
+  .count button { width: 24px; height: 24px; border: 0; border-radius: 7px; background: transparent;
+    font: 500 16px Inter, sans-serif; color: var(--ink); cursor: pointer; line-height: 1; }
+  .count button[disabled] { color: var(--line); cursor: default; }
+  .count .n { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .hint { font-size: 12.8px; color: var(--muted); margin: 8px 0 0; }
+
+  /* Khối chỉ-đọc của bước Review. */
+  .group { border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+    padding: 14px; margin-top: 8px; }
+  .group + .group { margin-top: 8px; }
+  .group .gh { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .group .gt { font-size: 14px; font-weight: 600; }
+  .group .edit { font-size: 12.8px; color: var(--muted); text-decoration: underline; }
+  .kv { display: flex; justify-content: space-between; gap: 16px; font-size: 14px; margin-top: 4px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { text-align: right; font-variant-numeric: tabular-nums; }
+  .notice { border: 1px solid var(--line); border-radius: 10px; background: var(--card);
+    padding: 12px 14px; margin-top: 16px; font-size: 12.8px; color: var(--muted); }
+
+  /* Thẻ chọn nhà cung cấp — KHÔNG có ô thẻ tín dụng, luồng là redirect. */
+  .pay .opt { padding: 16px 14px; }
+  .pay .opt .main .t { display: block; font-weight: 500; }
+  .pay .opt .main .d { display: block; font-size: 12.8px; color: var(--muted); }
+  .brand { font-size: 12.8px; font-weight: 600; color: var(--muted); letter-spacing: 0.2px; }
+
+  .btn-ghost { height: 36px; border: 0; background: transparent; border-radius: 10px;
+    font: 500 14px Inter, sans-serif; color: var(--ink); padding: 0 10px; cursor: pointer; }
+  .actions { display: flex; align-items: center; gap: 4px; }
+
+  .step.done .bar { background: var(--solid); }
+</style>
+</head>
+<body>
+  <div class="page">
+    <a class="back" href="#">← Back to tour</a>
+
+    <div class="head">
+      <div>
+        <h1>Checkout</h1>
+        <p class="meta">4 days · 3 travellers</p>
+      </div>
+      <div class="steps">
+        <div class="step done"><div class="bar"></div><div class="label">Dates</div></div>
+        <div class="step done"><div class="bar"></div><div class="label">Travellers</div></div>
+        <div class="step on"><div class="bar"></div><div class="label">Review</div></div>
+        <div class="step"><div class="bar"></div><div class="label">Pay</div></div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="col-left">
+        <h2>Review</h2>
+        <p class="sub">Check everything before you pay. Nothing is charged yet.</p>
+
+        <div class="group">
+          <div class="gh"><span class="gt">Departure</span><a class="edit" href="#">Edit</a></div>
+          <div class="kv"><span class="k">Dates</span><span class="v">12 – 15 Sep 2026</span></div>
+          <div class="kv"><span class="k">Duration</span><span class="v">4 days · 3 nights</span></div>
+          <div class="kv"><span class="k">Price per person</span><span class="v">$295.00</span></div>
+        </div>
+
+        <div class="group">
+          <div class="gh"><span class="gt">Travellers</span><a class="edit" href="#">Edit</a></div>
+          <div class="kv"><span class="k">Adults</span><span class="v">2</span></div>
+          <div class="kv"><span class="k">Children</span><span class="v">1</span></div>
+        </div>
+
+        <div class="group">
+          <div class="gh"><span class="gt">Contact</span><a class="edit" href="#">Edit</a></div>
+          <div class="kv"><span class="k">Name</span><span class="v">Yuri Volkov</span></div>
+          <div class="kv"><span class="k">Email</span><span class="v">yuri@example.com</span></div>
+          <div class="kv"><span class="k">Phone</span><span class="v">+84 90 123 4567</span></div>
+          <div class="kv"><span class="k">Special requests</span><span class="v">—</span></div>
+        </div>
+
+        <p class="notice">Free cancellation until 13 Aug 2026 — 30 days before departure. After that
+        date, our cancellation policy applies.</p>
+
+        <div class="foot">
+          <span class="secure">Secure encrypted checkout</span>
+          <span class="actions">
+            <button class="btn-ghost" type="button">Back</button>
+            <button class="cta" type="button">Continue →</button>
+          </span>
+        </div>
+      </div>
+
+      <aside>
+        <h2>Trip summary</h2>
+        <div class="trip">
+          <div class="cover">cover</div>
+          <div>
+            <div class="name">Hà Giang Loop by Easyrider 4D3N</div>
+            <div class="where">4 days · Hà Giang</div>
+            <div class="stars">★ 4.8 · 126 reviews</div>
+          </div>
+        </div>
+
+        <hr class="rule" />
+        <div class="row"><span class="k">Departure</span><span class="v">12 – 15 Sep</span></div>
+        <div class="row"><span class="k">Adults × 2</span><span class="v">$590.00</span></div>
+        <div class="row"><span class="k">Children × 1</span><span class="v">$295.00</span></div>
+        <hr class="rule" />
+        <div class="total"><span class="k">Total</span><span class="v">$885.00</span></div>
+        <p class="note">Taxes and fees included. Free cancellation until 13 Aug 2026.</p>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>
