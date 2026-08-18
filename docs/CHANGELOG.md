@@ -8,6 +8,82 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-18 — Gỡ Côn Đảo khỏi catalogue, và nối nốt dây ảnh mà vòng trước bỏ lọt (nhánh `feat/remove-con-dao`, `4d2eae6`+`798b184`, 12 file, +79/−723)
+
+Hai việc trong một nhánh, và cái thứ hai là hậu quả của một thiếu sót ở vòng
+trước.
+
+**Gỡ Côn Đảo — quyết định BIÊN TẬP, không phải vấn đề kỹ thuật.** Côn Đảo là
+đảo tù chính trị thời chiến; user không muốn giới thiệu nơi này như một điểm du
+lịch. Gỡ trọn vẹn cả tour lẫn địa danh, không ẩn và không `isActive: false`.
+
+Đáng ghi là tôi đã CAN hai lần trước đó và cả hai lần đều can sai chỗ. Lần đầu
+user muốn xoá vì không tìm được ảnh; tôi can bằng lý lẽ "đừng đổi dữ liệu để
+chữa một khiếm khuyết hiển thị — ô giữ chỗ sinh ra cho đúng việc đó", rồi đi
+tìm ảnh hộ. Lần hai user nghi ảnh không đúng địa danh; tôi kiểm và chứng minh
+được là đúng (tiêu đề tiếng Việt của chính tác giả, thẻ địa danh, và một ảnh
+Wikimedia độc lập cho cùng dáng núi). Nhưng lý do THẬT chưa bao giờ nằm ở ảnh.
+**Bài học: hỏi "vì sao muốn bỏ" TRƯỚC khi bảo vệ "cách rẻ hơn để giữ".**
+
+Gỡ ở bốn tầng, mỗi tầng kiểm riêng. Chỗ suýt sót: các khối itinerary/policy/FAQ
+tham chiếu tour bằng **UUID chứ không phải slug**, nên lượt quét theo slug bỏ
+lọt 5 khối — typecheck vẫn xanh vì chúng hợp lệ cú pháp, chỉ grep lại theo tên
+"Côn Đảo" mới lộ. DB xoá trong một transaction: chênh đúng 14 dòng phụ thuộc
+(3 departure · 3 itinerary · 3 policy · 4 FAQ · 1 tour_destinations) cộng tour
+và địa danh; `media_assets`, `reviews`, `bookings` KHÔNG đổi dòng nào. Test có
+số ghim cứng phải sửa theo: sitemap 52 → 51 URL, 30 → 29 tour — đúng như chốt
+chặn đó được thiết kế để bắt.
+
+**Nối dây ảnh: hai chỗ, hai bệnh khác nhau.** User phát hiện bằng mắt rằng thẻ
+tour ở trang vùng vẫn là ô giữ chỗ dù ảnh đã lên CDN.
+
+`tour-card.tsx` **quên nối dây** — nhận `TourCardVM` vốn đã mang `cover` nhưng
+vẽ `ImagePlaceholder` vô điều kiện, đúng lỗi `destination-tile.tsx` mắc hôm
+trước. Lần này nặng hơn vì `TourCard` dùng ở NĂM chỗ (gợi ý cuối trang tour,
+`region-tours`, `region-day-trips`, tab đánh giá, lưới đã lưu).
+
+`saved-grid.tsx` **thiếu dữ liệu**, không phải quên nối: `WishlistItemSchema`
+chưa có trường ảnh nào nên không có gì để nối. Phải nở contract thêm `cover` và
+cho `wishlist.service` lấy ảnh theo LÔ qua `MediaService.resolveForOwners` —
+một lượt cho cả trang; làm sai chỗ này thì trang 24 item là 24 lượt đi DB.
+
+**Review findings**
+
+- **Rà theo TRANG là cách đã bỏ lọt chính lỗi này.** Vòng trước nối xong
+  `destination-tile` thì `/destinations` trông đã ổn, nên coi như xong — trong
+  khi `TourCard` vẫn hỏng ở trang vùng. Lần này rà theo DỮ LIỆU: liệt kê mọi
+  component nhận VM có `cover` rồi đối chiếu số `<ImagePlaceholder>` với số thẻ
+  ảnh thật. Sau khi sửa chỉ còn `slot-image`, `slot-video`, `tour-media-panel`
+  giữ placeholder, và cả ba là nhánh dự phòng đúng nghĩa.
+- **Phép đếm ảnh của tôi từng nói dối.** Có lúc báo "trang Bến Tre 0 ảnh" trong
+  khi HTML có URL Cloudinary và URL đó trả HTTP 200 kèm 780KB. Nguyên nhân:
+  đếm quá sớm, ảnh chưa tải xong. Sửa bằng cuộn chậm hơn và điều kiện
+  `naturalWidth > 0`. Suýt đi tìm lỗi trong một thứ không hỏng.
+- **API chết giữa chừng, và fallback che mất.** `ECONNREFUSED 127.0.0.1:3001`
+  làm trang tour trả 500 còn các trang khác rơi về fallback nên trông như mất
+  ảnh. Tách tầng (API trả gì · HTML có gì · URL ảnh trả gì) mới thấy.
+- **4 test e2e đỏ vì Postgres local tắt, không phải vì thay đổi này.** Kiểm
+  bằng cách `git stash` rồi chạy lại — vẫn đỏ. `docker compose up -d` là xanh.
+  Quy đúng nguyên nhân rẻ hơn nhiều so với sửa mò.
+- **Chip giảm giá của `TourCard` lệch token.** Nó dùng `bg-destructive` trong
+  khi `TourListCard` đã chuyển sang `sale` từ 17/08 — hai thẻ tour của cùng sản
+  phẩm hiện hai sắc đỏ khác nhau. Đồng bộ luôn vì đang sửa đúng file đó.
+
+**Ảnh: xong trọn bộ catalogue.** Sau các lô Unsplash+ của user (Hà Nội, Hội An,
+TP.HCM, Đà Nẵng, Ninh Bình và 9 địa danh còn lại) cộng tấm Fansipan dùng lại từ
+panel auth: **29/29 cover tour · 18/18 bìa địa danh · 18/18 gallery địa danh**.
+Đo trên trang thật: ba trang vùng từ 6 ô giữ chỗ mỗi trang về 0, `/tours` 1 → 0,
+trang tour 3 → 0, trang chủ 25/25 ảnh.
+
+**Nợ mở:** 5 khe Moments ở `/destinations` vẫn trống — chỗ duy nhất còn ô giữ
+chỗ · 4 khe site mồ côi (`content-hero`, `destinations-hero`, `home-experiences`,
+`home-trust`) không trang nào hỏi tới · trang chữ chưa quyết có hero ảnh không ·
+`RegionTile` ở `region-gallery` vẫn dùng nền gradient thay vì ảnh thật, là lựa
+chọn thiết kế cũ chưa rà lại.
+
+Tests after: 1264 web · 219 api · 180 api-int · 86 contract · 22 ui · 10
+tokens và 2 i18n.
+
 ## 2026-08-18 — Vá alert deepmerge-ts: ép qua major khi thượng nguồn ghim cứng (nhánh `fix/deepmerge-ts-advisory`, `09e604f`, 2 file, +135/−4)
 
 GHSA-ggr8-5vv4-36mx (high) — `deepmerge-ts < 8.0.0` cạn stack khi merge object
