@@ -8,6 +8,27 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Cột ghế bảng đợt khởi hành rộng theo sức chứa (nhánh `fix/departures-seats-column`, 1 commit, 2 file)
+
+User báo tab Departures: tour từ ~11 chỗ trở lên thì thanh ghế tràn sang cột
+Status. Nguyên nhân: cột Seats ghim cứng 200px (trừ `pr-3` còn 188) mà thanh
+`inline-flex` mỗi đốt 12 + khe 4 → chứa được đúng 11 đốt; dữ liệu thật có 16
+(Vũng Tàu, Grand Journey), 20 (Lan Hạ) và 22 chỗ (Hạ Long cruise) — 22 tràn tới
+tận cột Price. Contract chỉ ép `positive()` (DB mặc định 20) nên admin P4 đặt
+40 cũng hợp lệ. Sửa: `seatsColumnWidth(n) = min(16·n + 32, 400)` — cột ghế
+rộng theo sức chứa, thêm 20px thở trước Status (user góp ý vòng 2: "sát quá",
+cột Month/Date đang dư nên nhường), kẹp trần 400 để tour 40 chỗ không nuốt cột
+ngày; Status 124 → 112 (huy hiệu dài nhất "Almost full" ~90). Lưới an toàn: dưới
+`xl` kẹp 30% bảng và thanh ghế đổi `inline-flex` → `flex` để đốt CO ĐỀU thay vì
+tràn — không viewport nào tràn được nữa, vẫn "một đốt = một ghế". Bẫy đo được:
+Chromium coi `min(px, %)` trên ô bảng `table-fixed` là `auto` (327px thay vì
+264) — chỉ px trần / % / `var()` được tôn trọng, nên bề rộng đi qua biến CSS
+trên `<th>` (ô hàng đầu quyết cột). Đo khung 1054: 22 chỗ → Seats 384 / Date
+270, 16 chỗ → 288 / 366; ở 1024 đốt co 8,3px, 820 co 5,5px. 2 test mới.
+
+Tests after: 1379 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Phân trang ba explorer: hết hở trắng, cuộn về đầu lưới, và cuộn phải đi qua Lenis (nhánh `fix/blog-pagination-gap`, 3 commit, 13 file, +297/−14)
 
 User báo `/blog` sang trang 2 thì "footer bị đẩy lên, lộ khoảng trắng, rồi tự
