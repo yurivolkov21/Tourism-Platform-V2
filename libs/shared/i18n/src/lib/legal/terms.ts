@@ -3,7 +3,7 @@ import type { LegalDoc } from './legal-page.js';
 /**
  * Terms & Conditions — điều khoản đặt tour bám đúng luồng thật của nền tảng
  * (enquiry → xác nhận, cọc/số dư, thanh toán Stripe/PayPal, dịch vụ do nhà
- * cung cấp thực hiện). Tên vận hành "Tourism"; luật áp dụng là luật Việt Nam.
+ * cung cấp thực hiện). Tên vận hành "Nexora" (đổi 19/08, trước là "Tourism"); luật áp dụng là luật Việt Nam.
  * Chi tiết huỷ/hoàn nằm ở Cancellation & Refund Policy riêng.
  */
 export const termsDoc: LegalDoc = {
@@ -11,9 +11,9 @@ export const termsDoc: LegalDoc = {
   breadcrumb: 'Terms & Conditions',
   updated: 'Last updated: 25 July 2026',
   reviewNote:
-    'This document is sample content for a student capstone project, not legal advice. Tourism does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
+    'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
-    'These Terms & Conditions govern the booking and provision of tours and travel services by Tourism (“we”, “us”, “our”). They form a binding agreement between us and the person making the booking (“you”), who accepts these terms on behalf of everyone in the booking.',
+    'These Terms & Conditions govern the booking and provision of tours and travel services by Nexora (“we”, “us”, “our”). They form a binding agreement between us and the person making the booking (“you”), who accepts these terms on behalf of everyone in the booking.',
     'Please read them carefully before you book. By placing a booking you confirm that you have read, understood, and agree to these terms.',
   ],
   sections: [
@@ -128,7 +128,7 @@ export const termsDoc: LegalDoc = {
     {
       heading: 'Contact us',
       paragraphs: [
-        'For any question about these terms or your booking, contact us at tourism.platform.online@gmail.com, by phone at +84 24 3826 0126, or by post at Tourism, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
+        'For any question about these terms or your booking, contact us at tourism.platform.online@gmail.com, by phone at +84 24 3826 0126, or by post at Nexora, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
       ],
     },
   ],

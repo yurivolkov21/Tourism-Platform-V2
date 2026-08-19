@@ -6,7 +6,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /register (plan Task 3) — quote "minivan 2014" bám chuyện sáng lập ở /about.
 export const metadata: Metadata = {
-  title: 'Create an account — Tourism',
+  title: 'Create an account — Nexora',
   description: 'One account for every valley, coast and city ahead.',
 };
 

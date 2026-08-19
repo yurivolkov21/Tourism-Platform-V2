@@ -10,7 +10,7 @@ import { tourCategories } from '@/lib/tours';
 export const revalidate = 300; // ADR-0016 §3 — khớp REVALIDATE_SEC của fetchTours/fetchDestinations
 
 export const metadata: Metadata = {
-  title: 'Tours — Tourism',
+  title: 'Tours — Nexora',
   description: messages.toursPage.subtitle,
   // Canonical: mẫu /blog bỏ sót cái này so với Nexora. Trang listing có
   // ?categories=&destinations=&page= nên càng cần trỏ về bản không tham số.

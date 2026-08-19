@@ -6,7 +6,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /reset-password (plan Task 4) — quầy "reissue ticket": phát vé mới, chuyến cũ.
 export const metadata: Metadata = {
-  title: 'Reset password — Tourism',
+  title: 'Reset password — Nexora',
   description: 'Pick a new password and get back on board.',
 };
 

@@ -116,7 +116,7 @@ export function SiteHeader() {
             : 'w-full md:px-16 lg:px-24 xl:px-32'
         }`}
       >
-        <a href="/" aria-label="tourism — home">
+        <a href="/" aria-label="Nexora — home">
           {/* Trên hero (chưa cuộn) logo phải sáng: ép màu qua class dark-scope */}
           <span className={solid ? '' : 'dark'}>
             <Logo />

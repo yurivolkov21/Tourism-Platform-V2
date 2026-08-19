@@ -67,9 +67,9 @@ export async function generateMetadata({
   } catch {
     booking = null;
   }
-  if (!booking) return { title: 'Booking not found — Tourism' };
+  if (!booking) return { title: 'Booking not found — Nexora' };
   return {
-    title: `${booking.tourTitle} — ${booking.code} — Tourism`,
+    title: `${booking.tourTitle} — ${booking.code} — Nexora`,
     robots: { index: false },
   };
 }

@@ -107,7 +107,7 @@ export function AboutStory({ storyImage = null }: { storyImage?: SiteMediaItem |
 
           <FadeUp delay={0.2}>
             <p className="mt-6 max-w-[560px] text-sm leading-relaxed text-muted-foreground md:text-base">
-              tourism started in 2014 with a simple bet: the person who grew up on a path shows it
+              Nexora started in 2014 with a simple bet: the person who grew up on a path shows it
               better than any brochure. Three guides, one borrowed minivan, and the misty terraces
               of the north.
             </p>

@@ -4,7 +4,7 @@ import { resilience } from './resilience.js';
 
 export const messages = {
   brand: {
-    name: 'Tourism',
+    name: 'Nexora',
     tagline: 'Boutique heritage journeys across Vietnam',
   },
   // Assistive-tech-only copy (skip links, screen-reader hints, new-tab warnings).
@@ -15,7 +15,7 @@ export const messages = {
   },
   // Home + About trust band (real live stats + accepted payment methods).
   trustBand: {
-    eyebrow: 'Why travelers choose Tourism',
+    eyebrow: 'Why travelers choose Nexora',
     heading: 'Boutique journeys, trusted by travelers across Vietnam.',
     stats: {
       tours: 'Curated tours',
@@ -66,7 +66,7 @@ export const messages = {
       dashboard: {
         eyebrow: 'My account',
         greeting: (name: string) => `Welcome back, ${name}`,
-        subtitle: 'Your journeys with Tourism, all in one place.',
+        subtitle: 'Your journeys with Nexora, all in one place.',
         traveller: 'Traveller',
         memberSince: (date: string) => `Member since ${date}`,
         stats: {
@@ -1648,7 +1648,7 @@ export const messages = {
   },
   // AI concierge chat panel (spec 2026-07-14-ai-concierge-chat).
   chatBot: {
-    title: 'Tourism Concierge',
+    title: 'Nexora Concierge',
     disclaimer: 'AI assistant — it can make mistakes. Tap WhatsApp for a human.',
     greeting:
       'Hi! I can help you find a tour, answer questions about itineraries and policies, or pass your details to our team. What are you planning?',
@@ -1691,9 +1691,8 @@ export const messages = {
       label: 'Send an enquiry',
       hint: 'Tell us about your trip and get a tailored quote.',
     },
-    prefillGeneric: 'Hi Tourism! I have a question about planning a trip.',
-    prefillTour: (title: string, url: string) =>
-      `Hi Tourism! I’m interested in “${title}” — ${url}`,
+    prefillGeneric: 'Hi Nexora! I have a question about planning a trip.',
+    prefillTour: (title: string, url: string) => `Hi Nexora! I’m interested in “${title}” — ${url}`,
   },
   contact: {
     heading: 'Contact us',
@@ -2429,7 +2428,7 @@ export const messages = {
     // Đường lùi khi DTO thiếu dữ liệu (Task 5 — lib/api/posts.ts toJournalPost):
     // author.name null → fallbackAuthor; không có tag nào → fallbackCategory.
     // User-facing nên khai ở đây (luật 7), không hardcode trong lib.
-    fallbackAuthor: 'Tourism guides',
+    fallbackAuthor: 'Nexora guides',
     fallbackCategory: 'Journal',
   },
   footer: {

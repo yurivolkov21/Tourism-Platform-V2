@@ -7,7 +7,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // /login — trang MẪU của cụm auth (spec/plan 2026-07-24): AuthScreen split +
 // TicketCard. Duyệt layout ở trang này xong mới nhân ra 5 trang còn lại.
 export const metadata: Metadata = {
-  title: 'Log in — Tourism',
+  title: 'Log in — Nexora',
   description: 'Log in to pick up where the map left off.',
 };
 

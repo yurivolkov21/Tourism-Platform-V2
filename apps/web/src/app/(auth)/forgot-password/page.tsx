@@ -5,7 +5,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 
 // /forgot-password (plan Task 4) — quầy "lost ticket desk" của nhà ga.
 export const metadata: Metadata = {
-  title: 'Forgot password — Tourism',
+  title: 'Forgot password — Nexora',
   description: 'Tell us your email and we will send a reset link.',
 };
 

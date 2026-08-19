@@ -13,7 +13,7 @@ import { siteMediaImage } from '@/lib/api/site-media';
 // §5 CTA 01 aurora (hồi sinh — tránh trùng CTA 02 video của /about).
 // Section Contact trên Home GIỮ nguyên (Nexora cũng chạy song song).
 export const metadata: Metadata = {
-  title: 'Contact — Tourism',
+  title: 'Contact — Nexora',
   description: 'Tell us your dates and pace — a real person replies within the hour.',
 };
 

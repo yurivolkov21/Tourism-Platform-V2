@@ -20,7 +20,9 @@ export function Logo({ className }: { className?: string }) {
       </svg>
       {/* text-foreground tường minh để wordmark đọc token theo scope (vd span.dark trên hero) */}
       <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-        tour<span className="text-primary-emphasis">ism</span>
+        {/* Wordmark "nexora" (đổi từ "tourism" 19/08 — user lấy lại tên Nexora của
+            bản tiền nhiệm): giữ lối chữ thường + hai tông, phần nhấn là đuôi "ora". */}
+        nex<span className="text-primary-emphasis">ora</span>
       </span>
     </span>
   );

@@ -75,7 +75,7 @@ export function SiteFooter() {
         className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-center overflow-hidden select-none"
       >
         <span className="footer-watermark translate-y-6 font-heading text-[22vw] leading-none font-semibold tracking-tighter">
-          tourism
+          nexora
         </span>
       </div>
 
@@ -89,7 +89,7 @@ export function SiteFooter() {
             viewport={{ once: true }}
             transition={SPRING}
           >
-            <a href="/" aria-label="tourism — home" className="mb-6 inline-block select-none">
+            <a href="/" aria-label="Nexora — home" className="mb-6 inline-block select-none">
               <Logo />
             </a>
             <p className="mb-8 max-w-xs text-sm/5.5 text-muted-foreground">
@@ -145,7 +145,7 @@ export function SiteFooter() {
           {/* Ghi công ảnh tạm bỏ khỏi UI — toàn site đang dùng ImagePlaceholder
               (static-first), ghi công cho ảnh không hiển thị là sai. Thêm lại
               cùng lúc với ảnh thật (cùng cách đã làm ở auth-screen.tsx). */}
-          <p className="text-xs text-muted-foreground/70">© 2026 tourism. All rights reserved.</p>
+          <p className="text-xs text-muted-foreground/70">© 2026 Nexora. All rights reserved.</p>
 
           <div className="flex items-center gap-3">
             {SOCIALS.map(({ Icon, label }) => (

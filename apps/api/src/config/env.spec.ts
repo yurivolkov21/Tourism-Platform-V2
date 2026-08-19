@@ -94,7 +94,7 @@ describe('parseEnv', () => {
     expect(env.BETTER_AUTH_SECRET).toBe('dev-secret-change-me'); // default áp dụng
     expect(env.STRIPE_SECRET_KEY).toBeUndefined(); // optional vẫn undefined
     expect(env.RESEND_API_KEY).toBeUndefined();
-    expect(env.EMAIL_FROM).toBe('Tourism <noreply@tourism.test>');
+    expect(env.EMAIL_FROM).toBe('Nexora <noreply@tourism.test>');
     // Và ở production, DATABASE_URL rỗng vẫn phải bị chặn (rơi về default
     // localhost rồi bị guard bắt) — không được lọt qua vì đã bị strip.
     expect(() => parseEnv({ NODE_ENV: 'production', DATABASE_URL: '' })).toThrow(/DATABASE_URL/);
@@ -212,7 +212,7 @@ describe('parseEnv', () => {
     expect(env.PAYPAL_CLIENT_SECRET).toBeUndefined();
     expect(env.PAYPAL_WEBHOOK_ID).toBeUndefined();
     expect(env.RESEND_API_KEY).toBeUndefined();
-    expect(env.EMAIL_FROM).toBe('Tourism <noreply@tourism.test>');
+    expect(env.EMAIL_FROM).toBe('Nexora <noreply@tourism.test>');
   });
 
   it('requires at least one FULL payment provider config in production', () => {

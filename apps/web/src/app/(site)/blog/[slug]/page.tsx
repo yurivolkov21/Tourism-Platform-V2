@@ -34,12 +34,12 @@ export async function generateMetadata({
   const { slug } = await params;
   // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
   const post = await fetchPostDetail(slug);
-  if (!post) return { title: 'Post not found — Tourism' };
+  if (!post) return { title: 'Post not found — Nexora' };
   // excerpt có thể là '' (VM map null → '' — xem lib/api/posts.ts) — bỏ hẳn
   // field description thay vì phát chuỗi rỗng, để Next tự fallback im lặng
   // thay vì render <meta description=""> vô nghĩa.
   return {
-    title: `${post.title} — Tourism`,
+    title: `${post.title} — Nexora`,
     ...(post.excerpt ? { description: post.excerpt } : {}),
     openGraph: {
       title: post.title,

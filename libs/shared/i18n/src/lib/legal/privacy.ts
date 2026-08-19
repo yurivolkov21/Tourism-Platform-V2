@@ -3,7 +3,7 @@ import type { LegalDoc } from './legal-page.js';
 /**
  * Privacy Statement — bám đúng cách nền tảng thực sự xử lý dữ liệu (auth tài
  * khoản qua Supabase, enquiry, booking, thanh toán Stripe/PayPal, email giao
- * dịch qua Resend, media qua Cloudinary). Tên vận hành "Tourism"; thông tin
+ * dịch qua Resend, media qua Cloudinary). Tên vận hành "Nexora" (đổi 19/08, trước là "Tourism"); thông tin
  * liên hệ khớp footer của site.
  */
 export const privacyDoc: LegalDoc = {
@@ -11,9 +11,9 @@ export const privacyDoc: LegalDoc = {
   breadcrumb: 'Privacy Statement',
   updated: 'Last updated: 25 July 2026',
   reviewNote:
-    'This document is sample content for a student capstone project, not legal advice. Tourism does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
+    'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
-    'This Privacy Statement explains how Tourism (“we”, “us”, “our”) collects, uses, shares, and protects your personal information when you use this website, make an enquiry, or book a tour with us.',
+    'This Privacy Statement explains how Nexora (“we”, “us”, “our”) collects, uses, shares, and protects your personal information when you use this website, make an enquiry, or book a tour with us.',
     'We are the controller of the personal information described here. If you have any questions, contact us at tourism.platform.online@gmail.com.',
   ],
   sections: [
@@ -102,7 +102,7 @@ export const privacyDoc: LegalDoc = {
     {
       heading: 'Contact us',
       paragraphs: [
-        'For any privacy question or to exercise your rights, contact us at tourism.platform.online@gmail.com, by phone at +84 24 3826 0126, or by post at Tourism, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
+        'For any privacy question or to exercise your rights, contact us at tourism.platform.online@gmail.com, by phone at +84 24 3826 0126, or by post at Nexora, 184 Lê Đại Hành, Phú Thọ, Hồ Chí Minh City, Vietnam.',
       ],
     },
   ],

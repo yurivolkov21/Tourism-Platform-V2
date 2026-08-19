@@ -99,7 +99,7 @@ export function WhyChooseUs({
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-12 md:grid-cols-2 md:gap-16 lg:gap-24">
         {/* Cột trái: heading + accordion */}
         <div className="flex flex-col">
-          <SectionEyebrow>Why tourism</SectionEyebrow>
+          <SectionEyebrow>Why Nexora</SectionEyebrow>
           <motion.h2
             className="mt-4 max-w-100 font-heading text-3xl leading-tight font-medium text-foreground md:text-[40px]/12"
             initial={{ y: 50, opacity: 0 }}

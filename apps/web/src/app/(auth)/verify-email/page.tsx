@@ -6,7 +6,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // /verify-email (plan Task 5) — "boarding check" soát vé email; backend đã
 // gate emailVerified (ADR-0008), nay nối API thật (emailOTP, Task 1).
 export const metadata: Metadata = {
-  title: 'Verify your email — Tourism',
+  title: 'Verify your email — Nexora',
   description: 'We mailed you six digits — enter them to confirm your address.',
 };
 

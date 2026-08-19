@@ -66,16 +66,16 @@ export async function generateMetadata({
   const { slug } = await params;
   // React cache() dedupe: cùng slug với thân trang bên dưới chỉ tốn một fetch.
   const tour = await fetchTourDetail(slug);
-  if (!tour) return { title: 'Tour not found — Tourism' };
+  if (!tour) return { title: 'Tour not found — Nexora' };
 
   // summary nullable — mô tả rơi về một câu dựng từ field có thật, không để
   // description rỗng (crawler sẽ tự bốc một đoạn bất kỳ trên trang).
   const description =
     tour.summary ??
-    `A ${tour.durationDays}-day ${tour.category.name.toLowerCase()} trip with Tourism.`;
+    `A ${tour.durationDays}-day ${tour.category.name.toLowerCase()} trip with Nexora.`;
 
   return {
-    title: `${tour.title} — Tourism`,
+    title: `${tour.title} — Nexora`,
     description,
     // Canonical: mẫu /blog bỏ sót cái này so với Nexora. Trang tour có thể tới
     // kèm query param theo dõi nên càng cần.

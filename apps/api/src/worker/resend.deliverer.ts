@@ -135,7 +135,7 @@ export function renderEmail(
   const greeting = `<p>Hi ${f('name') ?? 'there'},</p>`;
   const title = f('title');
   const money = f('amount') && f('currency') ? `${f('amount')} ${f('currency')}` : undefined;
-  const footer = '<p>— The Tourism team</p>';
+  const footer = '<p>— The Nexora team</p>';
   const wrap = (...lines: (string | undefined)[]) =>
     lines.filter((line): line is string => Boolean(line)).join('\n');
 
@@ -226,7 +226,7 @@ export function renderEmail(
       // sinh sẵn lúc enqueue; ở đây chỉ ghép URL, không tự tính lại token.
       const unsubscribeUrl = buildUnsubscribeUrl(frontendUrl, payload);
       return {
-        subject: 'Welcome to the Tourism newsletter',
+        subject: 'Welcome to the Nexora newsletter',
         html: wrap(
           greeting,
           '<p>Thanks for subscribing — expect fresh tours and travel ideas in your inbox.</p>',

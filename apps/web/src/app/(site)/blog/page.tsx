@@ -10,7 +10,7 @@ import { parseFacetParams } from '@/lib/blog';
 export const revalidate = 300; // ADR-0016 §3
 
 export const metadata: Metadata = {
-  title: 'Journal — Tourism',
+  title: 'Journal — Nexora',
   description:
     'Notes from the road, written by the local guides who lead our trips — food, packing, seasons, and the places we keep going back to.',
   // Khai báo feed để trình duyệt/trình đọc feed tự phát hiện được — không thì

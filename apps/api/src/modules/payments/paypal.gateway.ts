@@ -80,7 +80,7 @@ export class PayPalGateway implements PaymentGateway {
       payment_source: {
         paypal: {
           experience_context: {
-            brand_name: 'Tourism',
+            brand_name: 'Nexora',
             user_action: 'PAY_NOW',
             return_url: input.successUrl,
             cancel_url: input.cancelUrl,

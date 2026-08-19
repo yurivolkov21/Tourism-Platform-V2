@@ -6,7 +6,7 @@ import { AUTH_PANEL_SLOT, siteMediaImage } from '@/lib/api/site-media';
 // PARK theo ADR-0017 §5b — API chưa bật plugin twoFactor, trang giữ TĨNH làm
 // UI dự phòng (nợ có kế hoạch, không nối API ở Task 5 này).
 export const metadata: Metadata = {
-  title: 'Two-factor check — Tourism',
+  title: 'Two-factor check — Nexora',
   description: 'Enter the six-digit code from your authenticator app.',
 };
 

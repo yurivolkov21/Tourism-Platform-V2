@@ -9,7 +9,7 @@ import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.page.title} — Tourism`,
+  title: `${messages.booking.page.title} — Nexora`,
   robots: { index: false, follow: false },
 };
 

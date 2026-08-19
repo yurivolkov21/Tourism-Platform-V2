@@ -24,7 +24,7 @@ import { requireSession } from '@/lib/api/session';
  *   không đổi một dòng.
  */
 export const metadata: Metadata = {
-  title: `${messages.passportSettings.title} — Tourism`,
+  title: `${messages.passportSettings.title} — Nexora`,
   description: messages.passportSettings.subtitle,
   robots: { index: false },
 };

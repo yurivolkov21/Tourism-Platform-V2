@@ -62,7 +62,7 @@ const EnvSchema = z
     // Email (P2 W5) — RESEND_API_KEY set → worker bind ResendDeliverer, không
     // set → giữ ConsoleDeliverer (dev boots không cần email, pattern Nexora).
     RESEND_API_KEY: z.string().min(1).optional(),
-    EMAIL_FROM: z.string().min(1).default('Tourism <noreply@tourism.test>'),
+    EMAIL_FROM: z.string().min(1).default('Nexora <noreply@tourism.test>'),
     // Observability (ADR-0010) — SENTRY_DSN set → captureException đẩy lỗi 500
     // lên Sentry; không set → no-op (interim: Logger.error → platform stdout).
     // Optional mọi env: capstone chưa provision DSN. Cài @sentry/node là follow-up.

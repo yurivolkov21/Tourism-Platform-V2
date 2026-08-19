@@ -12,7 +12,7 @@ import { requireSession } from '@/lib/api/session';
 import { checkoutMood } from '@/lib/checkout';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.success.confirmedTitle} — Tourism`,
+  title: `${messages.booking.success.confirmedTitle} — Nexora`,
   // Trang per-user sau thanh toán: không có gì để index, và `robots.ts` cũng đã
   // disallow `/checkout/`. Khai ở đây thêm một lớp cho chắc.
   robots: { index: false, follow: false },

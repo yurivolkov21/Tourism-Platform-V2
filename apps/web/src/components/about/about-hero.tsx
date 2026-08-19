@@ -77,8 +77,8 @@ export function AboutHero({ heroImage = null }: { heroImage?: SiteMediaItem | nu
           transition={{ duration: 0.7, delay: 0.85 }}
         >
           <p className="max-w-md text-base leading-relaxed text-foreground/60">
-            tourism began as three guides and one minivan in Sa Pa. Today we run small-group
-            journeys across all three regions — still no scripts, still no rush.
+            Nexora began as three guides and one minivan in Sa Pa. Today we run small-group journeys
+            across all three regions — still no scripts, still no rush.
           </p>
           <div className="flex items-center gap-4">
             <motion.a

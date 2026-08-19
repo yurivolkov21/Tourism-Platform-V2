@@ -35,7 +35,7 @@ export async function GET() {
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<rss version="2.0">',
     '  <channel>',
-    '    <title>Tourism — Journal</title>',
+    '    <title>Nexora — Journal</title>',
     `    <link>${escapeXml(absoluteUrl('/blog'))}</link>`,
     '    <description>Notes from the road, written by our local guides.</description>',
     '    <language>en</language>',

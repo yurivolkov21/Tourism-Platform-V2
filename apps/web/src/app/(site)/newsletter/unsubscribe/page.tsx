@@ -16,7 +16,7 @@ import { parseUnsubscribeParams } from '@/lib/unsubscribe';
 // KHÔNG vào sitemap (utility route per-token, không có giá trị index — cùng
 // lý do các trang auth bị loại khỏi `lib/sitemap.ts`).
 export const metadata: Metadata = {
-  title: `${messages.unsubscribePage.title} — Tourism`,
+  title: `${messages.unsubscribePage.title} — Nexora`,
   description: messages.unsubscribePage.subtitle,
   robots: { index: false },
 };

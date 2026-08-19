@@ -62,12 +62,12 @@ export async function generateMetadata({
   const region = regionBySlug(REGIONS, slug);
   // Slug lạ: TRẢ title "not found", KHÔNG gọi `notFound()` ở đây — cùng khuôn
   // `/tours/[slug]` và `/blog/[slug]`. Chính thân trang mới là nơi 404.
-  if (!region) return { title: 'Region not found — Tourism' };
+  if (!region) return { title: 'Region not found — Nexora' };
 
   const description = messages.regionPage.regions[region.key].intro;
 
   return {
-    title: `${region.name} — Tourism`,
+    title: `${region.name} — Nexora`,
     description,
     alternates: { canonical: `/destinations/${region.slug}` },
     openGraph: {

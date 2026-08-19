@@ -4,7 +4,7 @@ import { LegalArticle } from '@/components/legal/legal-article';
 
 // Cùng khung với /terms — chỉ đổi LegalDoc.
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.cancellation.title} — Tourism`,
+  title: `${messages.pageMeta.cancellation.title} — Nexora`,
   description: messages.pageMeta.cancellation.description,
 };
 

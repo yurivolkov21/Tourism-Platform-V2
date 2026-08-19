@@ -5,7 +5,7 @@ import { LegalArticle } from '@/components/legal/legal-article';
 // Trang pháp lý MẪU của cụm — layout chốt ở đây rồi mới nhân sang
 // /privacy và /cancellation-policy. Nội dung là LegalDoc trong @tourism/i18n.
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.terms.title} — Tourism`,
+  title: `${messages.pageMeta.terms.title} — Nexora`,
   description: messages.pageMeta.terms.description,
 };
 

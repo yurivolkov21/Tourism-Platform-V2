@@ -11,7 +11,7 @@ export const cancellationDoc: LegalDoc = {
   breadcrumb: 'Cancellation & Refund Policy',
   updated: 'Last updated: 25 July 2026',
   reviewNote:
-    'This document is sample content for a student capstone project, not legal advice. Tourism does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
+    'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
     'We want you to book with confidence. This policy explains how to cancel a booking, what to expect, and how refunds are handled. It applies alongside our Terms & Conditions and any cancellation terms shown on the specific tour you booked.',
     'Plans change — if you need to cancel, get in touch as early as you can. The sooner you tell us, the more we are usually able to refund.',

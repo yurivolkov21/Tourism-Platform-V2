@@ -203,7 +203,7 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
         {/* Phải: "LÁ THƯ" — chữ ký của trang (đặt cược táo bạo ở MỘT chỗ =
             chính form, vì luận đề trang là "not a hotline"). Bản 1 kiểu
             mad-libs (blank giữa câu) bị chê rối mắt → bản 2: bố cục thư RÕ
-            RÀNG — mở "Hello tourism," + từng dòng nhãn-câu-hỏi + chỗ điền
+            RÀNG — mở "Hello Nexora," + từng dòng nhãn-câu-hỏi + chỗ điền
             gạch nét đứt mực jade italic, chữ ký "Yours," + tem + tái bút. */}
         <motion.div
           className="relative"
@@ -254,10 +254,10 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
             </p>
 
             {/* Thân thư — bố cục RÕ RÀNG (điều chỉnh #2: bản mad-libs bị chê
-                rối mắt): mở thư "Hello tourism," rồi TỪNG DÒNG một nhãn-câu-hỏi
+                rối mắt): mở thư "Hello Nexora," rồi TỪNG DÒNG một nhãn-câu-hỏi
                 + một chỗ điền gạch nét đứt; giữ hồn thư ở tem, mực jade italic,
                 chữ ký "Yours," và tái bút. */}
-            <p className="font-heading text-xl text-card-foreground md:text-2xl">Hello tourism,</p>
+            <p className="font-heading text-xl text-card-foreground md:text-2xl">Hello Nexora,</p>
 
             <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
               <div className="flex flex-col gap-1.5">

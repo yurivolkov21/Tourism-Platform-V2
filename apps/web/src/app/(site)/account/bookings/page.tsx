@@ -20,7 +20,7 @@ import { requireSession } from '@/lib/api/session';
  * kẹp trần — link cộng dồn danh sách, không cần JS client, URL chia sẻ được.
  */
 export const metadata: Metadata = {
-  title: 'My bookings — Tourism',
+  title: 'My bookings — Nexora',
   robots: { index: false },
 };
 

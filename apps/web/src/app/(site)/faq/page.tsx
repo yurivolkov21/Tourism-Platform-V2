@@ -7,7 +7,7 @@ import { slugify } from '@/lib/slug';
 import type { TocItem } from '@/lib/toc';
 
 export const metadata: Metadata = {
-  title: `${messages.pageMeta.faq.title} — Tourism`,
+  title: `${messages.pageMeta.faq.title} — Nexora`,
   description: messages.pageMeta.faq.description,
 };
 

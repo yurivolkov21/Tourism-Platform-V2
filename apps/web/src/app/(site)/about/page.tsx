@@ -19,7 +19,7 @@ import { fetchDestinations, fetchTours } from '@/lib/api/tours';
 // (forged/Stats — lưới hairline + watermark) · §5 Team (ShadcnSpace Team 01,
 // chỉ founder) · §6 Partners + §7 CTA (tái dùng Home). ĐỦ 7 khối.
 export const metadata: Metadata = {
-  title: 'About us — Tourism',
+  title: 'About us — Nexora',
   description: 'Small-group tours across Vietnam, led by people who grew up there.',
 };
 

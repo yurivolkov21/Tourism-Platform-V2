@@ -2,8 +2,10 @@ import { cancellationDoc, privacyDoc, termsDoc } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { slugify } from './slug.js';
 
-// Nội dung pháp lý port từ Nexora nên phải có lưới canh: brand cũ sót lại là
-// lỗi thấy ngay trên trang, còn slug trùng thì gãy anchor TOC rất âm thầm.
+// Nội dung pháp lý port từ bản tiền nhiệm nên phải có lưới canh brand: 19/08 user
+// lấy LẠI tên "Nexora" cho v2, nên brand tạm "Tourism" (viết hoa — tên riêng,
+// không bắt chữ thường "tourism" nghĩa chung) mới là thứ không được sót; còn
+// slug trùng thì gãy anchor TOC rất âm thầm.
 const DOCS = [
   ['terms', termsDoc],
   ['privacy', privacyDoc],
@@ -11,8 +13,9 @@ const DOCS = [
 ] as const;
 
 describe('nội dung pháp lý', () => {
-  it.each(DOCS)('%s không còn nhắc brand cũ Nexora', (_name, doc) => {
-    expect(JSON.stringify(doc)).not.toMatch(/Nexora/i);
+  it.each(DOCS)('%s không còn nhắc brand tạm "Tourism"', (_name, doc) => {
+    expect(JSON.stringify(doc)).not.toMatch(/\bTourism\b/);
+    expect(JSON.stringify(doc)).toMatch(/Nexora/);
   });
 
   it.each(DOCS)('%s có slug section duy nhất (anchor TOC phụ thuộc)', (_name, doc) => {

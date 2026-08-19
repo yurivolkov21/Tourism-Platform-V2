@@ -105,7 +105,7 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
         >
           FAN SI PAN · 3 143 M
         </span>
-        <a href="/" aria-label="tourism — home" className="relative z-10 w-fit select-none">
+        <a href="/" aria-label="Nexora — home" className="relative z-10 w-fit select-none">
           <Logo />
         </a>
         {/* `py-2` (trước là `py-10`, rồi `py-4`): đệm này LỒNG trong `py-5`

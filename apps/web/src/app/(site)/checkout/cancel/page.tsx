@@ -10,7 +10,7 @@ import { requireSession } from '@/lib/api/session';
 import { checkoutMood, pendingExpiry } from '@/lib/checkout';
 
 export const metadata: Metadata = {
-  title: `${messages.booking.cancel.title} — Tourism`,
+  title: `${messages.booking.cancel.title} — Nexora`,
   robots: { index: false, follow: false },
 };
 

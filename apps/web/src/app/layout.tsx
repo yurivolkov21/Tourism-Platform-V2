@@ -28,7 +28,7 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Tourism',
+  title: 'Nexora',
   description: 'Book tours across Vietnam',
 };
 
