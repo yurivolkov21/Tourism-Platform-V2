@@ -8,6 +8,23 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Khép đợt rà toàn site: 31 route rà máy + rà tay (nhánh `fix/page-sweep-round-2`, 1 commit, 1 file)
+
+Sau ba vá lẻ (Book a tour, 2 `<h1>` trang tour, ...), rà tự động phần còn lại —
+`/destinations` + 3 vùng, `/blog` + bài, `/about`, `/contact`, `/faq`, 3 pháp lý,
+unsubscribe, 6 auth, 404 ×2, `/enquire` — với cùng một lưới: ảnh vỡ, ô giữ chỗ,
+ô gradient sót, số `<h1>`, link chết (`#`, `#top` ngoài social), anchor không
+đích, lỗi console, chữ "Tourism" sót, title. Tất cả sạch; hai lỗi console ở 404
+tour là artefact dev của Next/React. Một món: 404 chung có `<title>` "Nexora"
+trần trong khi 404 của tour/bài/vùng đều "… not found — Nexora" → `not-found.tsx`
+export `metadata` tĩnh (thử chèn `<title>` tay trước: ra HAI thẻ và trình duyệt
+lấy thẻ đầu của layout — bỏ). Khu account/checkout/wizard cần đăng nhập nên user
+rà tay: ổn. User chốt từ đây gom sửa của một đợt rà vào một nhánh, merge một lần
+để không chờ CI nhiều lượt.
+
+Tests after: 1408 web · 219 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Rà `/tours` + `/tours/[slug]`: một `<h1>` mỗi trang (nhánh `fix/tour-detail-double-h1`, 1 commit, 2 file)
 
 Rà tự động `/tours` (10 card, 0 ảnh vỡ, 0 ô giữ chỗ, `priceFrom` sống sau khi
