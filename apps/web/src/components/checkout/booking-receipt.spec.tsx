@@ -133,3 +133,87 @@ describe('BookingReceipt — ảnh bìa tour', () => {
     expect(container.querySelectorAll('img')).toHaveLength(1);
   });
 });
+
+/**
+ * Kế thừa từ `checkout-shell.spec.tsx` (xoá 19/08 cùng `CheckoutShell`). Ba
+ * `it()` của file đó chuyển thành: cuống có/không voucher, và title/body/children
+ * vẫn render. Ca "không có code" không còn thuộc component — booking null giờ
+ * do TRANG xử lý bằng một nhánh sớm, vì không có booking thì không có hoá đơn
+ * nào để dựng.
+ */
+describe('BookingReceipt — mã đã là voucher hay chưa', () => {
+  /** Đây là bất biến CHỐNG NÓI DỐI, không phải chuyện thẩm mỹ. Booking PENDING
+   *  KHÔNG giữ ghế nào (invariant #1 của API), nên in barcode — thứ nghĩa là
+   *  "quét tôi ở cổng" — cho một booking chưa trả tiền là hứa một cái chưa có.
+   *  Repo đã bị đúng lớp lỗi này: câu "Your reservation is held" bị bác ở final
+   *  review cụm C vì ngụ ý giữ chỗ. */
+  it('CHƯA trả tiền → không barcode, không serial, và đổi dòng hint', () => {
+    const { container } = render(
+      <BookingReceipt
+        booking={makeBooking({ status: 'PENDING', paidAt: null })}
+        mood="confirming"
+      />,
+    );
+    expect(container.querySelector('[data-slot="barcode"]')).toBeNull();
+    expect(screen.queryByText(/^NO\. \d{10}$/)).toBeNull();
+    expect(screen.getByText(t.stubNotYetVoucher)).toBeInTheDocument();
+    expect(screen.queryByText(t.stubShowCode)).toBeNull();
+  });
+
+  it('ĐÃ trả tiền → có barcode, serial và dòng chìa-mã-ở-điểm-hẹn', () => {
+    const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
+    expect(container.querySelector('[data-slot="barcode"]')).not.toBeNull();
+    expect(screen.getByText(/^NO\. \d{10}$/)).toBeInTheDocument();
+    expect(screen.getByText(t.stubShowCode)).toBeInTheDocument();
+  });
+
+  /** Chưa trả mà in "Total paid" là nói dối bằng nhãn. */
+  it('chưa trả tiền thì nhãn tổng KHÔNG phải "Total paid"', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({ status: 'PENDING', paidAt: null })}
+        mood="confirming"
+      />,
+    );
+    expect(screen.getByText(messages.checkoutSummary.totalLabel)).toBeInTheDocument();
+    expect(screen.queryByText(t.totalLabel)).toBeNull();
+  });
+});
+
+describe('BookingReceipt — đè tiêu đề và chèn nội dung riêng của trang', () => {
+  it('title/body đè giá trị suy từ mood', () => {
+    render(
+      <BookingReceipt
+        booking={makeBooking({ status: 'PENDING', paidAt: null })}
+        mood="confirming"
+        title="Payment cancelled"
+        body="No charge was made."
+      />,
+    );
+    expect(
+      screen.getByRole('heading', { level: 2, name: 'Payment cancelled' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('No charge was made.')).toBeInTheDocument();
+    // Tiêu đề suy từ mood KHÔNG được rò ra khi đã bị đè.
+    expect(screen.queryByText(t.pendingTitle)).toBeNull();
+  });
+
+  it('children render bên trong hoá đơn', () => {
+    render(
+      <BookingReceipt booking={makeBooking()} mood="confirmed">
+        <p>Released in about 42 minutes.</p>
+      </BookingReceipt>,
+    );
+    expect(screen.getByText('Released in about 42 minutes.')).toBeInTheDocument();
+  });
+});
+
+/** Đo trên trang thật thấy hai `<h1>` cùng lúc (ContentHero + receipt), nên
+ *  khoá lại: tiêu đề của hoá đơn là h2, `h1` thuộc về hero của trang. */
+describe('BookingReceipt — thứ bậc tiêu đề', () => {
+  it('tiêu đề hoá đơn là h2, KHÔNG phải h1', () => {
+    const { container } = render(<BookingReceipt booking={makeBooking()} mood="confirmed" />);
+    expect(container.querySelectorAll('h1')).toHaveLength(0);
+    expect(container.querySelectorAll('h2')).toHaveLength(1);
+  });
+});

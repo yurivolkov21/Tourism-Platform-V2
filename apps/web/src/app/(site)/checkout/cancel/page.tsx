@@ -3,10 +3,11 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import { CheckoutShell } from '@/components/checkout/checkout-shell';
+import { BookingReceipt } from '@/components/checkout/booking-receipt';
+import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { pendingExpiry } from '@/lib/checkout';
+import { checkoutMood, pendingExpiry } from '@/lib/checkout';
 
 export const metadata: Metadata = {
   title: `${messages.booking.cancel.title} — Tourism`,
@@ -41,32 +42,56 @@ export default async function CheckoutCancelPage({
   // tab khác) thì không in số phút — in số cho một thứ đã kết thúc là nói dối.
   const expiry = booking && booking.status === 'PENDING' ? pendingExpiry(booking.createdAt) : null;
 
-  return (
-    <CheckoutShell
-      tone="warning"
-      title={t.title}
-      body={t.heldNote}
-      code={booking?.code}
-      codeLabel={booking ? messages.booking.success.refLabel : undefined}
-    >
-      {expiry && !expiry.expired ? (
-        <p className="text-sm text-muted-foreground">
-          {/* Một câu, không đếm ngược — thiết kế đã chốt là KHÔNG có đồng hồ
-              chạy lùi trên bất kỳ màn nào của luồng này. */}
-          {t.expiresIn(expiry.minutesLeft)}
-        </p>
-      ) : null}
-
-      <div className="flex flex-wrap items-center justify-center gap-2.5">
-        {booking ? (
-          <ButtonLink href={`/account/bookings/${booking.code}`}>{t.manage}</ButtonLink>
-        ) : (
+  // Không tra được booking (thiếu mã, mã sai shape, hoặc không phải của khách
+  // này) → không có gì để dựng hoá đơn. Vẫn KHÔNG `notFound()`: khách vừa rời
+  // cổng thanh toán, một trang 404 trần ở đây là khoảnh khắc tệ nhất.
+  if (!booking) {
+    return (
+      <div>
+        <ContentHero breadcrumb={messages.booking.success.heroBreadcrumb} title={t.title} />
+        <div className="mx-auto flex w-full max-w-3xl flex-wrap gap-2.5 px-4 pt-10 pb-16 md:pb-20">
           <ButtonLink href="/account/bookings">{messages.booking.list.menuLink}</ButtonLink>
-        )}
-        <ButtonLink variant="outline" href="/tours">
-          {t.backToTours}
-        </ButtonLink>
+          <ButtonLink variant="outline" href="/tours">
+            {t.backToTours}
+          </ButtonLink>
+        </div>
       </div>
-    </CheckoutShell>
+    );
+  }
+
+  return (
+    <div>
+      {/* Cùng khuôn `/checkout/success` từ 19/08 (user chốt): hai màn quay-về
+          của cùng một luồng mà dùng hai ngôn ngữ thị giác thì màn huỷ trông lạc
+          lõng. `ContentHero` cũng là thứ cho navbar mảng tối — `/checkout` nằm
+          trong `HERO_LESS_PREFIXES`, nhưng `/checkout/cancel` KHÔNG nằm trong
+          `HERO_LESS_EXCEPTIONS`, nên navbar ở đây vẫn dùng kiểu đã-cuộn (nền
+          đặc) và hero không làm hỏng gì. */}
+      <ContentHero breadcrumb={messages.booking.success.heroBreadcrumb} title={booking.tourTitle} />
+
+      <div className="py-10 md:py-14">
+        <BookingReceipt
+          booking={booking}
+          mood={checkoutMood(booking)}
+          title={t.title}
+          body={t.heldNote}
+        >
+          {expiry && !expiry.expired ? (
+            <p className="text-sm text-muted-foreground">
+              {/* Một câu, không đếm ngược — thiết kế đã chốt là KHÔNG có đồng hồ
+                  chạy lùi trên bất kỳ màn nào của luồng này. */}
+              {t.expiresIn(expiry.minutesLeft)}
+            </p>
+          ) : null}
+        </BookingReceipt>
+
+        <div className="mx-auto mt-8 flex w-full max-w-3xl flex-wrap items-center gap-2.5 px-4 print:hidden">
+          <ButtonLink href={`/account/bookings/${booking.code}`}>{t.manage}</ButtonLink>
+          <ButtonLink variant="outline" href="/tours">
+            {t.backToTours}
+          </ButtonLink>
+        </div>
+      </div>
+    </div>
   );
 }

@@ -25,8 +25,9 @@ import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
  * `CheckoutShell` ghi rõ bản trước nó bị bác vì đúng combo đó ("cliché card giả
  * vờ làm vé"). Đường xé ở đây là hàng chấm — cùng công thức `TicketTear`.
  *
- * `CheckoutShell` KHÔNG bị xoá: `/checkout/cancel` vẫn dùng, và nó truyền `code`
- * nên dùng nhánh vé đầy đủ (user chốt 19/08 giữ nguyên trang đó).
+ * `CheckoutShell` (tấm vé) đã XOÁ hẳn: user chốt 19/08 cho `/checkout/cancel`
+ * dùng chung khuôn này, nên nó hết consumer. Hai màn quay-về của cùng một
+ * luồng mà dùng hai ngôn ngữ thị giác thì màn huỷ trông lạc lõng.
  */
 const TONE = {
   confirmed: 'border-b-success',
@@ -45,7 +46,22 @@ const PROVIDER_LABEL = {
   PAYPAL: messages.booking.form.paypal,
 } as const;
 
-export function BookingReceipt({ booking, mood }: { booking: Booking; mood: CheckoutMood }) {
+export function BookingReceipt({
+  booking,
+  mood,
+  title,
+  body,
+  children,
+}: {
+  booking: Booking;
+  mood: CheckoutMood;
+  /** Đè tiêu đề suy từ `mood`. `/checkout/cancel` cần vì ở đó booking là
+   *  PENDING nhưng câu đúng là "Payment cancelled", không phải "Confirming…". */
+  title?: string;
+  body?: string;
+  /** Nội dung riêng của trang, chèn TRƯỚC cuống (vd dòng hạn của trang huỷ). */
+  children?: React.ReactNode;
+}) {
   const t = messages.booking.success;
   const ts = messages.checkoutSummary;
 
@@ -55,6 +71,17 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
       : mood === 'confirming'
         ? t.statusConfirming
         : t.statusSettled;
+
+  /**
+   * Mã ĐÃ là voucher hay chưa — SUY từ dữ liệu, không nhận qua prop.
+   *
+   * Đây là chỗ dễ nói dối nhất trên trang: chưa trả tiền thì mã chỉ để trả
+   * tiếp, KHÔNG phải giấy vào cổng, và booking PENDING KHÔNG giữ ghế nào
+   * (invariant #1 của API). Nên khi chưa trả: bỏ barcode (barcode nghĩa là
+   * "quét tôi ở cổng") và đổi dòng hint. Suy từ `paidAt` thay vì cho caller
+   * truyền vào để không ai đặt sai giá trị.
+   */
+  const isVoucher = booking.paidAt !== null;
 
   // `formatDate` ("5 Sep 2026") chứ KHÔNG `formatTicketDate` ("5 SEP"): hàm kia
   // cố ý bỏ năm vì nó dành cho khoảnh khắc primary CỠ LỚN trên tấm vé, nơi năm
@@ -95,14 +122,21 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
             >
               {statusLabel}
             </span>
-            <h1 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">
-              {mood === 'confirmed'
-                ? t.confirmedTitle
-                : mood === 'confirming'
-                  ? t.pendingTitle
-                  : t.settledTitle}
-            </h1>
-            <p className="text-sm text-muted-foreground">{t.receiptSentTo(booking.contactEmail)}</p>
+            {/* `h2`, KHÔNG `h1`: `ContentHero` của cả hai trang quay-về đã có `h1`
+                (tên tour). Đo trên trang thật thấy hai `h1` cùng lúc — trình đọc
+                màn hình báo hai tiêu đề cấp một cho một tài liệu. Cỡ chữ giữ
+                nguyên; đây là sửa NGỮ NGHĨA, không phải thị giác. */}
+            <h2 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">
+              {title ??
+                (mood === 'confirmed'
+                  ? t.confirmedTitle
+                  : mood === 'confirming'
+                    ? t.pendingTitle
+                    : t.settledTitle)}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {body ?? t.receiptSentTo(booking.contactEmail)}
+            </p>
           </div>
 
           <dl className="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-4 gap-y-1.5 text-xs sm:text-right">
@@ -198,7 +232,9 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
             <Row k={ts.childrenLine(booking.numChildren)} v={childrenAmount} />
           ) : null}
           <div className="mt-3 flex items-baseline justify-between border-t pt-3">
-            <dt className="font-semibold">{t.totalLabel}</dt>
+            {/* "Total paid" chỉ đúng khi đã trả. Chưa trả thì dùng nhãn trung
+                tính sẵn có của `checkoutSummary` thay vì khai key mới. */}
+            <dt className="font-semibold">{isVoucher ? t.totalLabel : ts.totalLabel}</dt>
             <dd className="font-heading text-lg font-semibold tabular-nums">
               {formatMoney(booking.totalAmount, booking.currency)}
             </dd>
@@ -206,7 +242,15 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
           <p className="mt-1 text-right text-xs text-muted-foreground">{ts.taxesNote}</p>
         </dl>
 
-        <Stub booking={booking} mood={mood} departed={departed} departure={departure} />
+        {children ? <div className="px-4 pb-1">{children}</div> : null}
+
+        <Stub
+          booking={booking}
+          mood={mood}
+          departed={departed}
+          departure={departure}
+          isVoucher={isVoucher}
+        />
       </div>
 
       <p className="mt-3 text-center text-sm text-muted-foreground">{t.needHelp}</p>
@@ -250,11 +294,13 @@ function Stub({
   mood,
   departed,
   departure,
+  isVoucher,
 }: {
   booking: Booking;
   mood: CheckoutMood;
   departed: boolean;
   departure: string;
+  isVoucher: boolean;
 }) {
   const t = messages.booking.success;
   const widths = ticketBarcodeWidths(booking.code);
@@ -272,7 +318,9 @@ function Stub({
     >
       <div>
         <p className="font-medium">{departed ? t.departedOn(departure) : t.departsOn(departure)}</p>
-        <p className="text-xs text-muted-foreground">{t.stubShowCode}</p>
+        <p className="text-xs text-muted-foreground">
+          {isVoucher ? t.stubShowCode : t.stubNotYetVoucher}
+        </p>
       </div>
 
       <div className="flex flex-col items-start gap-1.5 sm:items-end">
@@ -286,25 +334,31 @@ function Stub({
           </p>
           <CopyCodeButton code={booking.code} />
         </div>
-        {/* Quiet zone `bg-card` (màu giấy của thân), không phải trắng cứng —
+        {/* Barcode CHỈ khi mã đã là voucher: một mã vạch nói "quét tôi ở cổng",
+            in nó cho booking chưa trả tiền là hứa một thứ chưa có.
+            Quiet zone `bg-card` (màu giấy của thân), không phải trắng cứng —
             giữ tokens-only mà vẫn tương phản cao ở cả hai theme. */}
-        <div
-          data-slot="barcode"
-          aria-hidden="true"
-          className="flex h-10 max-w-full items-stretch overflow-hidden bg-card px-2.5 py-1.5"
-        >
-          {widths.map((w, i) => (
-            <span
-              // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder
-              key={`${booking.code}-${i}`}
-              className={i % 2 === 0 ? 'bg-foreground' : 'bg-transparent'}
-              style={{ width: `${w}px` }}
-            />
-          ))}
-        </div>
-        <p className="font-mono text-[9px] tracking-widest text-muted-foreground">
-          NO. {ticketSerial(booking.code)}
-        </p>
+        {isVoucher ? (
+          <div
+            data-slot="barcode"
+            aria-hidden="true"
+            className="flex h-10 max-w-full items-stretch overflow-hidden bg-card px-2.5 py-1.5"
+          >
+            {widths.map((w, i) => (
+              <span
+                // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder
+                key={`${booking.code}-${i}`}
+                className={i % 2 === 0 ? 'bg-foreground' : 'bg-transparent'}
+                style={{ width: `${w}px` }}
+              />
+            ))}
+          </div>
+        ) : null}
+        {isVoucher ? (
+          <p className="font-mono text-[9px] tracking-widest text-muted-foreground">
+            NO. {ticketSerial(booking.code)}
+          </p>
+        ) : null}
       </div>
     </div>
   );

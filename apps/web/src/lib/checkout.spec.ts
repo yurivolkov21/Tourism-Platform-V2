@@ -122,9 +122,10 @@ describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đ
    * canh bằng test thay vì để trong một comment rồi có người nâng lên cho
    * "dày hơn nữa" và làm tràn.
    *
-   * Cuống vé dọc (`CheckoutShell`): card `max-w-2xl` 672 trừ `px-4` còn 640;
-   * cuống chiếm 30% = 192; trừ `md:px-4` hai bên còn **160px**. Vạch vẽ DÍNH
-   * LIỀN (không `gap`) nên bề ngang = tổng bề rộng + 8px quiet zone.
+   * Trần 160px đến từ cuống vé DỌC của `CheckoutShell` — component đó đã xoá
+   * 19/08, nhưng trần được GIỮ LẠI có chủ đích: cuống ngang của `BookingReceipt`
+   * rộng rãi hơn nhiều, nên một trần chật hơn là biên an toàn miễn phí, và bỏ
+   * nó đi thì chẳng còn gì canh khi có người nâng số vạch.
    *
    * Chỉ canh trên mã HỢP LỆ (`BK-` + 8 ký tự, theo `BookingCodeSchema`). Mã
    * ngắn hơn như `BK-1` cho tổng lớn hơn hẳn vì chu kỳ lặp ngắn rơi vào toàn

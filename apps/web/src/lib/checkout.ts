@@ -73,7 +73,7 @@ export function pendingExpiry(createdAt: string, at: Date = new Date()): Pending
 }
 
 /**
- * Số serial 10 chữ số cho dòng "NO. …" sát mép trên thân vé (`CheckoutShell`)
+ * Số serial 10 chữ số cho dòng "NO. …" ở cuống hoá đơn (`BookingReceipt`)
  * — mô phỏng số serial một ấn phẩm vé giấy thật, DETERMINISTIC theo mã đặt
  * chỗ (KHÔNG random: random đổi hình mỗi lần render, SSR/CSR lệch nhau, và
  * trông giả hơn cả dashed-border cliché vừa gỡ). Không phải một định danh

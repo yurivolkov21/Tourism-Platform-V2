@@ -548,6 +548,13 @@ export const messages = {
       departedOn: (date: string) => `Departed ${date}`,
       print: 'Print',
       needHelp: 'Need help with this booking?',
+      // Dòng cuống khi booking CHƯA trả tiền (trang /checkout/cancel dùng chung
+      // khuôn receipt từ 19/08). KHÔNG được dùng `stubShowCode` ở đây: câu đó
+      // bảo khách chìa mã ra ở điểm hẹn, tức ngụ ý mã đã là voucher và ghế đã
+      // được giữ — sai thẳng invariant #1 (booking PENDING KHÔNG giữ seat nào).
+      // Repo đã bị đúng lớp lỗi này một lần: câu "Your reservation is held" bị
+      // bác ở final review cụm C vì ngụ ý giữ chỗ.
+      stubNotYetVoucher: 'This code becomes your voucher once payment is complete.',
       // Nhãn pill trạng thái — NGẮN, vì nó đứng cạnh tiêu đề vốn đã nói đủ câu.
       statusPaid: 'Paid',
       statusConfirming: 'Confirming',
