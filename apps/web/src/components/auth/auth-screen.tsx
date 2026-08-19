@@ -108,7 +108,11 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
         <a href="/" aria-label="tourism — home" className="relative z-10 w-fit select-none">
           <Logo />
         </a>
-        <div className="relative z-10 flex flex-1 items-center justify-center py-10">
+        {/* `py-4` (trước là `py-10`): đệm này LỒNG trong `py-8` của cột nên
+            cộng dồn 144px dọc — đo 19/08 ở 1920×945, card /register 777px
+            đã tràn 4px và mỗi dòng lỗi thêm 22px. Card căn giữa bằng flex
+            nên đệm chỉ có tác dụng khi chật; giữ 16px làm lề an toàn. */}
+        <div className="relative z-10 flex flex-1 items-center justify-center py-4">
           <motion.div
             className="w-full max-w-md"
             initial={{ y: 30, opacity: 0 }}

@@ -100,7 +100,7 @@ export function ResetPasswordForm() {
 
   return (
     <TicketCard stub="REISSUE TICKET · GATE: RESET">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Fresh ticket,

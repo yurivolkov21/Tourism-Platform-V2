@@ -77,7 +77,16 @@ export function PasswordStrengthField({
 
   return (
     <div className="flex flex-col gap-1.5">
-      <Label htmlFor={id}>{label}</Label>
+      {/* Chữ trạng thái ("Weak password"…) đứng CÙNG HÀNG với nhãn, mép phải —
+          trước là một dòng riêng dưới vạch điểm (+22px). Cắt để card
+          /register nằm gọn một khung hình (đo 19/08); thông tin giữ nguyên,
+          màu vạch vẫn nói cùng điều đó ngay dưới ô nhập. */}
+      <div className="flex items-baseline justify-between gap-3">
+        <Label htmlFor={id}>{label}</Label>
+        <span className="text-xs font-medium text-foreground" aria-live="polite">
+          {statusText(score)}
+        </span>
+      </div>
       <InputGroup>
         <InputGroupInput
           id={id}
@@ -114,8 +123,6 @@ export function PasswordStrengthField({
           />
         ))}
       </div>
-
-      <p className="text-xs font-medium text-foreground">{statusText(score)}</p>
 
       {/* Checklist yêu cầu — tick jade khi đạt. Lưới 2 cột (user chốt 06/08:
           1 cột 5 dòng kéo giãn chiều cao form đăng ký) — item lẻ cuối tự
