@@ -8,6 +8,19 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Rà trang Home: nút "Book a tour" navbar là link thật (nhánh `fix/navbar-book-link`, 1 commit, 2 file)
+
+Đợt user rà từng trang. Rà tự động Home (1440×900, cuộn hết): 25 ảnh, 0 vỡ, 0 ô
+giữ chỗ, 0 lỗi console, một `<h1>`, 59 link đều trỏ route thật — trừ 7 icon mạng
+xã hội `#top` (user chốt GIỮ, chờ URL thật — sổ nợ A16). User bắt bằng mắt: nút
+**"Book a tour"** trên navbar không làm gì — `<button type="button">` không
+handler từ bản static-first. Nay là link tới `/tours` (chọn tour để đặt; Reserve
+nằm ở trang chi tiết), giữ skin hai chế độ nền; `site-header.spec.tsx` mới khoá
+CTA là link `/tours` + 4 link chính đúng route.
+
+Tests after: 1407 web · 219 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Dọn sổ nợ nhỏ P3b: 774 dòng i18n mồ côi, `TourCard.priceFrom` (nhánh `chore/p3b-debt-sweep`, 1 commit, 20 file)
 
 **B1 mở rộng.** Sổ nợ ghi "khối `contact.*` mồ côi ~90 dòng"; quét có hệ thống
