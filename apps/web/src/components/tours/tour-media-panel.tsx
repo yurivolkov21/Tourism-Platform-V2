@@ -309,7 +309,7 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
         ) : (
           <>
             <p className="text-sm leading-[20px] text-muted-foreground">{t.departures.none}</p>
-            <ButtonLink className="h-9 w-full rounded-sm" href="/contact">
+            <ButtonLink className="h-9 w-full rounded-sm" href={`/tours/${tour.slug}/enquire`}>
               {t.booking.ask}
             </ButtonLink>
           </>

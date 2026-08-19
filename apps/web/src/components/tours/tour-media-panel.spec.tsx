@@ -183,7 +183,10 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     );
   });
 
-  it('tour không còn đợt nào: CTA hỏi là link /contact, không có nút Reserve cụt', () => {
+  /** Đích đổi 19/08: `/contact` → `/tours/{slug}/enquire`. Form liên hệ chung
+   *  không biết khách đang hỏi tour nào; route mới là form hỏi báo giá của
+   *  CHÍNH tour đó, và nó công khai nên khách chưa đăng nhập vẫn gửi được. */
+  it('tour không còn đợt nào: CTA hỏi trỏ /enquire của tour đó, không có nút Reserve cụt', () => {
     render(
       <DepartureSelectionProvider departures={[]}>
         <TourMediaPanel tour={tourWith(0, { departures: [] } as Partial<TourDetailVM>)} />
@@ -192,7 +195,7 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     expect(screen.queryByRole('button', { name: /Reserve/ })).toBeNull();
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',
-      '/contact',
+      '/tours/ha-giang-loop-4d/enquire',
     );
   });
 });

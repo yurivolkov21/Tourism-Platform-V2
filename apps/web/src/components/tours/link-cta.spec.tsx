@@ -74,7 +74,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     );
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',
-      '/contact',
+      '/tours/ha-long-bay-cruise/enquire',
     );
   });
 
@@ -92,7 +92,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     );
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',
-      '/contact',
+      '/tours/ha-long-bay-cruise/enquire',
     );
   });
 
@@ -110,7 +110,7 @@ describe('CTA điều hướng là LINK, không phải nút', () => {
     );
     expect(screen.getByRole('link', { name: /ask about this trip/i })).toHaveAttribute(
       'href',
-      '/contact',
+      '/tours/ha-long-bay-cruise/enquire',
     );
   });
 

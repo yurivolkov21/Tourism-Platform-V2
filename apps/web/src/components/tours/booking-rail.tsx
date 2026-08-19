@@ -11,7 +11,10 @@ import { departureStatus, discountPercent, formatDateRange, formatMoney } from '
  *
  * `Reserve` điều hướng tới `/tours/{slug}/book` — trang đó nay đã sống. Trước
  * đây nó là <button> cụt vì trang book chưa tồn tại lúc dựng static-first; nợ
- * đó nay đã trả. CTA phụ `Ask about this trip` → /contact (có thật).
+ * đó nay đã trả. CTA phụ `Ask about this trip` → `/tours/{slug}/enquire`
+ * (đổi 19/08, trước là `/contact`): form liên hệ chung không biết khách đang
+ * hỏi tour nào, nên đội vận hành phải hỏi lại vòng nữa. Cả BA nhánh render
+ * đều đổi — bỏ sót một nhánh thì lỗi chỉ lộ ở đúng tour hết đợt.
  */
 export function BookingRail({
   slug,
@@ -77,7 +80,7 @@ export function BookingRail({
         ) : (
           <div className="flex items-center justify-between gap-3">
             <p className="min-w-0 text-sm text-muted-foreground">{t.departures.none}</p>
-            <ButtonLink variant="outline" className="shrink-0" href="/contact">
+            <ButtonLink variant="outline" className="shrink-0" href={`/tours/${slug}/enquire`}>
               {t.booking.ask}
             </ButtonLink>
           </div>
@@ -112,7 +115,7 @@ export function BookingRail({
               khi bấm (spec §6.5). Câu dài ở chân bảng đợt. Không banner đỏ. */}
           <p className="mt-3 text-xs text-muted-foreground">{t.booking.testMode}</p>
 
-          <ButtonLink variant="ghost" className="mt-2 w-full" href="/contact">
+          <ButtonLink variant="ghost" className="mt-2 w-full" href={`/tours/${slug}/enquire`}>
             {t.booking.ask}
           </ButtonLink>
         </>
@@ -129,7 +132,7 @@ export function BookingRail({
             </span>
             <span className="text-xs">{t.booking.perPerson}</span>
           </p>
-          <ButtonLink className="mt-5 w-full" href="/contact">
+          <ButtonLink className="mt-5 w-full" href={`/tours/${slug}/enquire`}>
             {t.booking.ask}
           </ButtonLink>
         </>
