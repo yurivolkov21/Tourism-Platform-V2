@@ -17,6 +17,7 @@ const CARD: TourCardVM = {
   title: 'Ha Long Bay Cruise',
   summary: 'Two days on the water.',
   basePrice: '2400000.00',
+  priceFrom: '2400000.00',
   compareAtPrice: null,
   currency: 'VND',
   durationDays: 2,

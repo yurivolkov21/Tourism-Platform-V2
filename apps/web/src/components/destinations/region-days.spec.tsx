@@ -29,6 +29,7 @@ function tour(slug: string, title: string, durationDays: number): TourCardVM {
     title,
     summary: null,
     basePrice: '199.00',
+    priceFrom: '199.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays,

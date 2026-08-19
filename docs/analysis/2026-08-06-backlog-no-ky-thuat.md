@@ -53,11 +53,18 @@ và ghi chú đã thêm vào [design brief §5](../design/claude-design-brief.md
 
 ---
 
+## A″. Nợ MỚI 19/08 (sweep sửa lỗi)
+
+| # | Nợ | Bề mặt | Trạng thái |
+| --- | --- | --- | --- |
+| ~~A14~~ | ~~Thẻ `/tours` in `basePrice` "from $129" trong khi chi tiết có đợt $119~~ | `/tours`, card khắp nơi | ✅ **trả 19/08** — contract `TourCard.priceFrom` (min effectivePrice đợt OPEN sắp tới, API tính một query/trang), card dùng `priceFrom ?? basePrice` (rơi về để API deploy sau web không vỡ trang) |
+| A15 | Hero `/register` vẫn cuộn ở laptop 768p nếu mọi ô đều hiện lỗi **và** viewport < 681 | `/register` | — (đã nén tối đa trong thiết kế hiện tại; dưới đó cần đổi bố cục) |
+
 ## B. Dọn dẹp dữ liệu / nội dung
 
 | # | Nợ | Chi tiết | Chặn? |
 | --- | --- | --- | --- |
-| B1 | **Khối `contact.*` trong `@tourism/i18n` mồ côi TRỌN** | 8 khoá (`heading`, `breadcrumb`, `subtitle`, `intro`, `inquiry`, `info`, `ctaBand`, `faq`) cộng `footer.phone` và `footer.email` — **0 consumer**, đã grep xác nhận. `contact/page.tsx` tự hardcode `metadata` riêng. Cụm 06/08 đã xoá 4 khoá văn phòng nhưng để lại phần còn lại vì xoá ~90 dòng là thay đổi riêng có bán kính ảnh hưởng riêng. **Cẩn thận:** comment `// Kept for the site footer's Information column.` từng nói dối (đã sửa ở `1e8270f`) — `site-footer.tsx` chưa bao giờ import `messages`. | — |
+| ~~B1~~ | ~~Khối `contact.*` trong `@tourism/i18n` mồ côi TRỌN~~ | ✅ **trả 19/08** (`chore/p3b-debt-sweep`) — và mở rộng: quét mọi khoá cấp-1 của `messages` theo `messages.<khoá>` ở apps/web + libs/ui (bỏ spec) lộ **21 khối mồ côi / 774 dòng** (auth · hero · features · about · footer · fieldErrors · contact …) — nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc khối mới; xoá hết. GIỮ `mobile` (P5), `chatBot`/`contactLauncher` (P6), `brand`. Nợ còn lại thuộc họ này: copy Home/user-menu đang literal trong component (luật 7) — là một "i18n sweep" riêng, không phải nợ nhỏ | — |
 | B2 | **`mocks/regions.ts` vẫn sống, CỐ Ý** | Khung 3 miền (key/slug/name) không có endpoint tương ứng. Không phải nợ cần trả, ghi để khỏi ai "dọn nhầm". | — |
 | B3 | **Mock không có endpoint: `faq` · `testimonials` · `moments` · `team` · `offices`** | [ADR-0016](../adr/0016-web-data-layer.md) chốt sống tiếp như nội dung biên tập tĩnh. `offices` nay là **nguồn sự thật của địa chỉ toàn site** (từ 06/08), đừng xoá. | — |
 
@@ -92,7 +99,7 @@ Gom lại đây cho đủ mặt; chi tiết ở entry CHANGELOG tương ứng.
 | E2 | Gắn API cho `/faq` — ứng viên bảng `faqs` | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | E3 | 5 nợ contract cụm Tours (media tour · next-departure trên card · sort rating · filter price/duration/difficulty · suitableFor+badges) — #2–#5 cần ADR mới | [spec 27/07](../specs/2026-07-27-tours-pages-design.md) §8 |
 | E4 | Media thật thay `ImagePlaceholder` toàn site — CÓ chủ đích, chờ user | [README dòng P3b](../README.md) |
-| E5 | `user-menu` label hardcode (`auth.menu.*` mồ côi) · `connected-accounts` một dòng cứng · `saved-grid` 401 thiếu nhánh `sessionExpired` · Load-more cap 50 không lối thoát · terminal-note "số tiền đã hoàn" không nguồn · DENIED không hiện lý do | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
+| E5 | ~~`connected-accounts` một dòng cứng~~ (đã qua i18n) · ~~`saved-grid` 401 thiếu nhánh `sessionExpired`~~ (có, có test) · ~~terminal-note "số tiền đã hoàn" không nguồn~~ (`refundedTotal` trên contract) · ~~DENIED không hiện lý do~~ (CỐ Ý — `decisionNote` không mở ra contract khách, ghi ở `booking-vm.ts`) — rà 19/08. **Còn:** `user-menu` label literal (họ "i18n sweep", xem B1) · Load-more cap 50 không lối thoát | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
 | E6 | Two-factor PARK | [ADR-0017](../adr/0017-web-session-better-auth.md) §5b |
 | E7 | PayPal checkout UI chưa đo trong cụm (env dev thiếu webhook id) | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
 

@@ -32,6 +32,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Two days aboard a traditional junk boat with kayaking, a cave visit, and fresh seafood dinners under lantern light.',
     basePrice: '189.00',
+    priceFrom: '189.00',
     compareAtPrice: '236.00',
     currency: 'USD',
     durationDays: 2,
@@ -64,6 +65,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     title: 'Phú Quốc Reef Days',
     summary: null,
     basePrice: '340.00',
+    priceFrom: '340.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 3,
@@ -92,6 +94,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Eight days riding the far north — hairpin passes above the terraces, hill-tribe markets, and nights in village homestays.',
     basePrice: '1480.00',
+    priceFrom: '1480.00',
     compareAtPrice: '1690.00',
     currency: 'USD',
     durationDays: 8,
@@ -125,6 +128,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Walk the mist-covered terraces with a local guide, sleep in a village homestay, and wake to valley sunrise.',
     basePrice: '145.00',
+    priceFrom: '145.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 3,
@@ -153,6 +157,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Wander the old town as thousands of lanterns light up, then eat your way through the night market.',
     basePrice: '59.00',
+    priceFrom: '59.00',
     compareAtPrice: '72.00',
     currency: 'USD',
     durationDays: 1,
@@ -181,6 +186,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Walk the Meridian Gate into the Imperial City, then finish with a royal-style lunch by the Perfume River.',
     basePrice: '75.00',
+    priceFrom: '75.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 1,
@@ -209,6 +215,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Catch the dawn floating market at Cái Răng, drift through coconut canals, and stay the night with a farming family.',
     basePrice: '129.00',
+    priceFrom: '129.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 2,
@@ -242,6 +249,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Cross the Golden Bridge at Bà Nà Hills, then ride the Hải Vân pass with photo stops over the coast.',
     basePrice: '89.00',
+    priceFrom: '89.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 1,
@@ -275,6 +283,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Row through flooded caves under karst peaks, then climb the two-hundred steps to the Múa viewpoint.',
     basePrice: '68.00',
+    priceFrom: '68.00',
     compareAtPrice: '85.00',
     currency: 'USD',
     durationDays: 1,
@@ -303,6 +312,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Six stops on the back of a scooter, from a broken-rice stall to a dessert cart that only opens after ten.',
     basePrice: '45.00',
+    priceFrom: '45.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 1,
@@ -331,6 +341,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Shop the morning market with a chef, then cook five central-Vietnamese dishes in a garden kitchen.',
     basePrice: '62.00',
+    priceFrom: '62.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 1,
@@ -359,6 +370,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Two days on the water with a trader family — the wholesale market before sunrise, the retail one after.',
     basePrice: '118.00',
+    priceFrom: '118.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 2,
@@ -387,6 +399,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     summary:
       'Twelve days end to end — the bay, the imperial city, the lantern town, and the delta, by train and road.',
     basePrice: '1290.00',
+    priceFrom: '1290.00',
     compareAtPrice: '1450.00',
     currency: 'USD',
     durationDays: 12,
@@ -429,6 +442,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     title: 'Sa Pa Homestay Weekend',
     summary: 'A short version of the terraces trek for anyone with only a weekend to spend.',
     basePrice: '132.00',
+    priceFrom: '132.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 2,
@@ -456,6 +470,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     title: 'Phú Quốc Sunset Sail',
     summary: 'Four hours on a wooden sailing boat, out past the fish farms and back after dark.',
     basePrice: '78.00',
+    priceFrom: '78.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 1,
@@ -483,6 +498,7 @@ export const FIXTURE_TOURS: TourCardVM[] = [
     title: 'Central Heritage Week',
     summary: 'Six days between three UNESCO sites, moving at the pace of someone who lives there.',
     basePrice: '740.00',
+    priceFrom: '740.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 6,

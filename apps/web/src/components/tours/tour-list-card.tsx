@@ -85,7 +85,11 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
   const href = `/tours/${tour.slug}`;
   const chain = routeChain(tour.destinations);
   const primary = chain[0];
-  const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
+  // `priceFrom` thay `basePrice` — xem ghi chú ở `tour-card.tsx` (19/08).
+  // `?? basePrice`: field mới (additive) — API deploy SAU web, hoặc API dev chạy
+  // bản build cũ, thì card vẫn ra số thay vì vỡ trang /tours vì một field.
+  const from = tour.priceFrom ?? tour.basePrice;
+  const discount = discountPercent(from, tour.compareAtPrice);
 
   const chips = [
     tour.category.name,
@@ -211,7 +215,7 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
               </span>
             ) : null}
             <span className="font-heading text-[22px] leading-7 font-semibold tabular-nums">
-              {formatMoney(tour.basePrice, tour.currency)}
+              {formatMoney(from, tour.currency)}
             </span>
             <span className="text-[11.5px] text-muted-foreground">{t.perPerson}</span>
           </span>

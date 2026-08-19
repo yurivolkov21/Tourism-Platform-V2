@@ -43,6 +43,7 @@ function tour(
     title,
     summary: null,
     basePrice,
+    priceFrom: basePrice,
     compareAtPrice: null,
     currency: 'USD',
     durationDays,

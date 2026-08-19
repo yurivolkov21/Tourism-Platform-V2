@@ -156,6 +156,11 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     // serializer money khác (bookings/refunds/money.ts đều .toFixed(2)). CAT-R1:
     // so-bằng-Number ở trên KHÔNG thấy được mất format này.
     expect(card?.basePrice).toMatch(/^\d+\.\d{2}$/);
+    // priceFrom (19/08): min effectivePrice trên đợt OPEN sắp tới. Day tour có
+    // `open60` (= basePrice 39) + `openOverride90` (59) + một đợt quá khứ → min là
+    // basePrice 39.00, đợt quá khứ/override đắt hơn không kéo con số đi đâu.
+    expect(card?.priceFrom).toBe(Number(dayTour.basePrice).toFixed(2));
+    expect(card?.priceFrom).toMatch(/^\d+\.\d{2}$/);
     // C1: card trả CẢ mảng destinations (primary đứng đầu), không còn field đơn.
     expect(card?.destinations).toHaveLength(1);
     expect(card?.destinations[0]).toMatchObject({ slug: 'hoi-an', isPrimary: true });

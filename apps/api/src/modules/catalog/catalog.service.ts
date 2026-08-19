@@ -63,7 +63,28 @@ const SORT_COLUMN = {
  * Mặc định `null` để chỗ gọi nào chưa cần ảnh vẫn biên dịch được và trả về
  * "không có ảnh" một cách tường minh, thay vì thiếu khoá.
  */
-export function toTourCard(tour: TourCardRow, cover: MediaItem | null = null): TourCard {
+/**
+ * Giá "from" thật — `min(priceOverride ?? basePrice)` trên các đợt OPEN sắp tới
+ * của tour; không có đợt → `basePrice`. Nhận MẢNG priceOverride (đã lọc theo
+ * tour) để list tính một lần cho cả trang và detail dùng lại departures đã load.
+ */
+export function priceFrom(
+  basePrice: Prisma.Decimal,
+  overrides: readonly (Prisma.Decimal | null)[],
+): string {
+  let min = overrides.length > 0 ? null : basePrice;
+  for (const o of overrides) {
+    const v = o ?? basePrice;
+    if (min === null || v.lt(min)) min = v;
+  }
+  return money(min ?? basePrice);
+}
+
+export function toTourCard(
+  tour: TourCardRow,
+  cover: MediaItem | null = null,
+  from: string = money(tour.basePrice),
+): TourCard {
   return {
     cover,
     id: tour.id,
@@ -72,6 +93,7 @@ export function toTourCard(tour: TourCardRow, cover: MediaItem | null = null): T
     summary: tour.summary,
     basePrice: money(tour.basePrice),
     compareAtPrice: tour.compareAtPrice ? money(tour.compareAtPrice) : null,
+    priceFrom: from,
     currency: tour.currency,
     durationDays: tour.durationDays,
     difficulty: tour.difficulty,
@@ -132,13 +154,35 @@ export class CatalogService {
     ]);
 
     // MỘT query media cho cả trang (chống N+1) — không gọi trong `map()`.
-    const coverMap = await this.media.resolveForOwners(
-      MediaOwnerType.TOUR,
-      tours.map((t) => t.id),
-    );
+    const ids = tours.map((t) => t.id);
+    const [coverMap, upcoming] = await Promise.all([
+      this.media.resolveForOwners(MediaOwnerType.TOUR, ids),
+      // MỘT query đợt cho cả trang → `priceFrom` (giá "from" thật). Chỉ lấy hai
+      // cột cần, lọc đúng như detail (OPEN + chưa khởi hành).
+      prisma.tourDeparture.findMany({
+        where: {
+          tourId: { in: ids },
+          status: DepartureStatus.OPEN,
+          startDate: { gte: startOfTodayUtc() },
+        },
+        select: { tourId: true, priceOverride: true },
+      }),
+    ]);
+    const overridesByTour = new Map<string, (Prisma.Decimal | null)[]>();
+    for (const d of upcoming) {
+      const list = overridesByTour.get(d.tourId) ?? [];
+      list.push(d.priceOverride);
+      overridesByTour.set(d.tourId, list);
+    }
 
     return {
-      items: tours.map((tour) => toTourCard(tour, pickCover(coverMap.get(tour.id)))),
+      items: tours.map((tour) =>
+        toTourCard(
+          tour,
+          pickCover(coverMap.get(tour.id)),
+          priceFrom(tour.basePrice, overridesByTour.get(tour.id) ?? []),
+        ),
+      ),
       page,
       limit,
       total,
@@ -170,7 +214,14 @@ export class CatalogService {
     const media = (await this.media.resolveForOwners(MediaOwnerType.TOUR, [tour.id])).get(tour.id);
 
     return {
-      ...toTourCard(tour, pickCover(media)),
+      ...toTourCard(
+        tour,
+        pickCover(media),
+        priceFrom(
+          tour.basePrice,
+          tour.departures.map((d) => d.priceOverride),
+        ),
+      ),
       media: media ?? [],
       suitableFor: tour.suitableFor,
       badges: tour.badges,

@@ -56,6 +56,15 @@ export const TourCardSchema = z.object({
   summary: z.string().max(500).nullable(),
   basePrice: DecimalStringSchema,
   compareAtPrice: DecimalStringSchema.nullable(),
+  /**
+   * Giá "from" THẬT của tour = `min(effectivePrice)` trên các đợt OPEN sắp tới
+   * (`effectivePrice = priceOverride ?? basePrice`); không còn đợt nào thì rơi về
+   * `basePrice`. Thêm 19/08 (sổ nợ cùng ngày): thẻ /tours in `basePrice` "from
+   * $129" trong khi trang chi tiết có đợt thấp điểm $119 — card không biết đợt.
+   * Tính ở API (một query cho cả trang, không N+1) chứ không ở web, vì list
+   * không mang `departures`. Vẫn là DecimalString — tiền không bao giờ là số.
+   */
+  priceFrom: DecimalStringSchema,
   currency: z.string().length(3),
   durationDays: z.int().positive(),
   difficulty: TourDifficultySchema.nullable(),

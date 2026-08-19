@@ -59,7 +59,13 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
   const chain = routeChain(tour.destinations);
   const stops = chain.slice(0, VISIBLE_STOPS);
   const hiddenStops = chain.slice(VISIBLE_STOPS);
-  const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
+  // `priceFrom` (19/08): giá "from" THẬT = đợt rẻ nhất sắp tới (API tính), không
+  // còn `basePrice` — card từng nói "from $129" trong khi chi tiết có đợt $119.
+  // Giá gạch vẫn là neo tour: cùng quy tắc `resolveDepartureAnchors` ở chi tiết.
+  // `?? basePrice`: field mới (additive) — API deploy SAU web, hoặc API dev chạy
+  // bản build cũ, thì card vẫn ra số thay vì vỡ trang /tours vì một field.
+  const from = tour.priceFrom ?? tour.basePrice;
+  const discount = discountPercent(from, tour.compareAtPrice);
 
   return (
     // `data-tour-card` là móc cho luật transition-delay theo chặng trong
@@ -167,7 +173,7 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
       <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
         <span className="flex items-baseline gap-1.5">
           <span className="font-heading text-xl font-semibold text-foreground tabular-nums">
-            {formatMoney(tour.basePrice, tour.currency)}
+            {formatMoney(from, tour.currency)}
           </span>
           {tour.compareAtPrice ? (
             <span className="text-sm text-price-compare tabular-nums line-through">

@@ -9,6 +9,7 @@ const BASE: TourCardVM = {
   title: 'Mekong Delta Boats',
   summary: 'Catch the dawn floating market at Cái Răng.',
   basePrice: '129.00',
+  priceFrom: '129.00',
   compareAtPrice: null,
   currency: 'USD',
   durationDays: 2,
@@ -152,5 +153,20 @@ describe('TourCard — dải chặng khi tour đi nhiều nơi', () => {
     );
     // Nhãn ảnh cũng là điểm đến chính → xuất hiện 2 lần nếu sắp đúng.
     expect(screen.getAllByText('Cần Thơ')).toHaveLength(2);
+  });
+});
+
+// 19/08: card in `priceFrom` (giá đợt rẻ nhất, API tính) chứ không `basePrice`.
+describe('TourCard — giá "from" là priceFrom', () => {
+  it('priceFrom thấp hơn basePrice → in priceFrom và % giảm tính trên priceFrom', () => {
+    render(
+      <TourCard
+        tour={make({ basePrice: '129.00', priceFrom: '119.00', compareAtPrice: '149.00' })}
+      />,
+    );
+    expect(screen.getByText('$119')).toBeInTheDocument();
+    expect(screen.queryByText('$129')).toBeNull();
+    // floor((149-119)/149*100) = 20
+    expect(screen.getByText(/−20%/)).toBeInTheDocument();
   });
 });

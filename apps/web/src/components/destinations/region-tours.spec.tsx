@@ -41,6 +41,7 @@ function tour(
     title,
     summary: null,
     basePrice: '199.00',
+    priceFrom: '199.00',
     compareAtPrice: null,
     currency: 'USD',
     durationDays: 3,
