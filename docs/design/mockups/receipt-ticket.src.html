@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Receipt + vé — hợp nhất (bước 1: khung và đường xé)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* HỢP NHẤT receipt + tấm vé boarding-pass — dựng theo TỪNG BƯỚC, mỗi bước
+     user duyệt xong mới đi tiếp (yêu cầu 19/08). Xuất phát từ
+     `receipt-booking.src.html` (pha 2 đã duyệt), file đó giữ nguyên làm mốc.
+
+       ✔ BƯỚC 1 — khung và đường xé   ← ĐANG Ở ĐÂY
+       ☐ BƯỚC 2 — nền cuống + băng màu trạng thái
+       ☐ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial
+       ☐ BƯỚC 4 — @media print
+
+     ── Bước 1 đổi ĐÚNG một thứ ──
+     Đường 1px ngăn dải chân trở thành ĐƯỜNG XÉ. Không đụng gì khác.
+
+     Dùng lại NGUYÊN cách xé đã được duyệt trong repo (`TicketTear` ở
+     `checkout-shell.tsx`): hàng chấm tròn 1px, nhịp 8px, dải cao 2px. CỐ Ý
+     KHÔNG dùng `border: dashed` và CỐ Ý không thêm notch bán nguyệt ở hai đầu
+     — JSDoc của `CheckoutShell` ghi rõ bản trước nó đã bị bác vì đúng combo
+     đó: "dashed-border + notch bán nguyệt — cliché card giả vờ làm vé".
+
+     Vì sao dải chân là chỗ ĐÚNG để thành cuống, chứ không phải trang trí gắn
+     thêm: nó vốn đã tràn hết bề rộng card (720, thoát khỏi padding 16), có nền
+     riêng, và ngăn bằng một đường ở MÉP DƯỚI — đúng giải phẫu của một phần xé
+     rời. Bước này chỉ nâng cái đường sẵn có thành ẩn dụ.
+
+     ── Phần dưới đây giữ nguyên từ pha 2 ──
+     Nắn bản sao ReUI receipt-1 sang dữ liệu THẬT của dự án.
+     Bản sao đối chiếu (pha 1): `receipt-1-reference.src.html` — giữ nguyên,
+     đừng sửa; nó là thước để đo bản này có trôi khỏi mẫu hay không.
+
+     TOÀN BỘ khung dọc giữ y nguyên pha 1 (line-height 1.375, card flex gap 16,
+     kẻ 1px margin 8, hàng 64px, bo 14). Chỉ NỘI DUNG đổi.
+
+     ── Bốn khối của mẫu bị thay vì dự án không có dữ liệu ──
+     · SHIP TO / BILL TO → TRAVELLERS / TRIP. Không có địa chỉ nào để in: không
+       giao gì cả. Hai cột đó đổi sang thứ một chuyến đi thật sự cần.
+     · PAYMENT giữ cột nhưng BỎ số thẻ và hạn thẻ — Stripe/PayPal là hosted,
+       repo KHÔNG BAO GIỜ thấy dữ liệu thẻ. Chỉ còn nhà cung cấp + `paidAt`.
+     · Subtotal / Shipping / Discount / Estimated Tax → bỏ hết. `totalAmount` là
+       MỘT số duy nhất; không có coupon trong schema, không có phí ship, và
+       thuế không tách dòng. Thay bằng bảng tách theo khách — đúng cách
+       `computeBookingTotal` tính (đơn giá × (người lớn + trẻ em)).
+     · Dải chân giao hàng → ngày khởi hành + lối vào booking.
+
+     ── Ba nút của mẫu: chỉ giữ những nút CÓ THẬT ──
+     Bỏ `Download`: repo không sinh PDF, vẽ nút đó là hứa suông.
+     Bỏ `Email`: thư BOOKING_CONFIRMATION đã tự gửi trong cùng transaction lúc
+     thanh toán (`bookings.service.ts` → outbox → `resend.deliverer.ts`), nhưng
+     KHÔNG có endpoint gửi lại, nên nút "Email" sẽ là nút chết.
+     Giữ `Copy code` (đã có `CopyCodeButton`) và `Print` (trình duyệt lo).
+     Chính vì thư là THẬT nên câu "A copy … was sent to" ở đây nói đúng. */
+  :root {
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --solid: oklch(0.205 0 0);
+    --on-solid: oklch(0.985 0 0);
+    --paid: lab(66.9756 -58.27 19.5419);
+    --band: oklab(0.97 0 0 / 0.5);
+    --card: #fff;
+    --page: #fff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px; line-height: 1.375;
+  }
+  .wrap { width: 720px; margin: 0 auto; padding: 48px 0; }
+
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .brandmark { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 32px; height: 32px; border-radius: 10px; background: var(--solid); color: var(--on-solid);
+    display: grid; place-items: center; font-size: 14px; font-weight: 600; }
+  .brandmark .n { font-weight: 500; line-height: 19.25px; }
+  .brandmark .u { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .acts { display: flex; align-items: center; gap: 8px; }
+  .btn { height: 28px; border-radius: 8px; font: 500 12.8px/18.29px Inter, sans-serif; padding: 0 10px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .btn.dark { background: var(--solid); color: var(--on-solid); border: 0; }
+  .btn.ghost { background: #fff; color: #000; border: 1px solid var(--line); }
+
+  .card { border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+    display: flex; flex-direction: column; gap: 16px; padding: 16px 0 0; }
+  .sect { padding: 0 16px; }
+  .rule { height: 1px; background: var(--line); margin: 8px 16px; }
+
+  .head { display: flex; gap: 16px; justify-content: space-between; padding-bottom: 4px; }
+  .headL { display: flex; flex-direction: column; gap: 8px; }
+  .pill { align-self: flex-start; height: 20px; padding: 0 10px; border-radius: 999px;
+    background: var(--paid); color: #fff; font-size: 12px; line-height: 20px; font-weight: 500; }
+  h1 { font-size: 30px; line-height: 41.25px; font-weight: 500; letter-spacing: -0.75px; margin: 0; }
+  .sub { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0; }
+  .sub b { color: var(--ink); font-weight: 500; }
+  .meta { display: grid; grid-template-columns: auto auto; gap: 6px 16px; align-content: start; text-align: right; }
+  .meta .k { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink); }
+  .meta .v { font-size: 12px; line-height: 16px; color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  .cols { display: grid; grid-template-columns: 216px 216px 216px; gap: 20px; }
+  .lab { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 1.92px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .who { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .ln { font-size: 14px; line-height: 19.25px; color: var(--muted); }
+
+  .items { display: flex; flex-direction: column; gap: 16px; }
+  .item { display: flex; align-items: flex-start; gap: 16px; height: 64px; }
+  .thumb { width: 64px; height: 64px; flex: none; background: var(--line); border-radius: 6px;
+    display: grid; place-items: center; font-size: 10px; color: var(--muted); }
+  .item .body { flex: 1; min-width: 0; }
+  .brand { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.3px;
+    text-transform: uppercase; color: var(--muted); }
+  .item .nm { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .item .mt { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .item .pr { text-align: right; flex: none; }
+  .item .pr .amt { font-size: 14px; line-height: 20px; font-weight: 600; }
+  .item .pr .ea { font-size: 12px; line-height: 16px; color: var(--muted); }
+
+  .totals { margin-left: auto; width: 288px; display: flex; flex-direction: column; gap: 8px; }
+  .tr { height: 20px; display: flex; align-items: center; justify-content: space-between; }
+  .tr .k { font-size: 14px; line-height: 20px; color: var(--muted); }
+  .tr .v { font-size: 14px; line-height: 20px; }
+  .tr.grand { height: auto; border-top: 1px solid var(--line); padding-top: 16px; }
+  .tr.grand .k, .tr.grand .v { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ink); }
+  .taxnote { font-size: 12px; line-height: 16px; color: var(--muted); text-align: right; }
+
+  /* Đường xé thay cho `border-top: 1px` — cùng công thức `TicketTear`:
+     chấm tròn 1px, nhịp 8px.
+
+     Vẽ bằng background XẾP LỚP ngay trên mép dải chân, KHÔNG phải một thẻ
+     riêng: thẻ riêng sẽ thành con của `.card` (vốn là flex column `gap:16px`)
+     nên nó tự ăn thêm 16px khoảng cách — đo được card phồng 628 → 645. Đường
+     xé phải DÍNH mép cuống mới đọc ra là chỗ xé; cách nhau 16px thì nó chỉ là
+     một dải chấm lơ lửng. */
+  .band { padding: 16px;
+    background:
+      radial-gradient(circle, var(--line) 1px, transparent 1.1px) top left / 8px 2px repeat-x,
+      var(--band);
+    border-radius: 0 0 13px 13px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  .band .t { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .band .s { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .band .link { font-size: 14px; line-height: 19.25px; font-weight: 500; margin-top: 5px;
+    display: inline-block; color: var(--ink); text-decoration: none; }
+  .band .help { font-size: 14px; line-height: 19.25px; color: var(--muted); white-space: nowrap; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brandmark">
+        <div class="logo">T</div>
+        <div>
+          <div class="n">Tourism</div>
+          <div class="u">tourism.platform</div>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="btn dark" type="button">⧉ Copy code</button>
+        <button class="btn ghost" type="button">⎙ Print</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sect head">
+        <div class="headL">
+          <span class="pill">✓ Paid</span>
+          <h1>Booking confirmed</h1>
+          <p class="sub">A copy of this receipt was sent to <b>elena.moreau@example.com</b>.</p>
+        </div>
+        <div class="meta">
+          <span class="k">Booking</span><span class="v">BK-7Q4K2M8P</span>
+          <span class="k">Date</span><span class="v">19 Aug 2026</span>
+        </div>
+      </div>
+
+      <div class="sect cols">
+        <div>
+          <div class="lab">Travellers</div>
+          <div class="who">Elena Moreau</div>
+          <div class="ln">elena.moreau@example.com</div>
+          <div class="ln">+84 90 123 4567</div>
+          <div class="ln">2 adults, 1 child</div>
+        </div>
+        <div>
+          <div class="lab">Trip</div>
+          <div class="who">5 Sep 2026</div>
+          <div class="ln">1 day · Max 14 guests</div>
+          <div class="ln">Hà Nội</div>
+        </div>
+        <div>
+          <div class="lab">Payment</div>
+          <div class="who">Card (Stripe)</div>
+          <div class="ln">Test mode — no real charge</div>
+          <div class="ln" style="margin-top: 8px">Paid 19 Aug 2026 at 09:42</div>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="sect items">
+        <div class="item">
+          <div class="thumb">cover</div>
+          <div class="body">
+            <div class="brand">Hà Nội</div>
+            <div class="nm">Hanoi Heritage in a Day</div>
+            <div class="mt">5 Sep 2026 · 3 travellers</div>
+          </div>
+          <!-- ĐƠN GIÁ, không phải tổng: mẫu gốc có ba món nên giá dòng khác
+               tổng, còn ở đây chỉ một tour — in tổng ở dòng hàng thì $147
+               xuất hiện hai lần trên cùng một màn mà không nói thêm gì. -->
+          <div class="pr"><div class="amt">$49.00</div><div class="ea">per traveller</div></div>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="sect">
+        <div class="totals">
+          <div class="tr"><span class="k">Adults × 2</span><span class="v">$98.00</span></div>
+          <div class="tr"><span class="k">Children × 1</span><span class="v">$49.00</span></div>
+          <div class="tr grand"><span class="k">Total paid</span><span class="v">$147.00</span></div>
+          <div class="taxnote">Includes all taxes and fees.</div>
+        </div>
+      </div>
+
+      <div class="band">
+        <div>
+          <div class="t">Departs 5 Sep 2026</div>
+          <div class="s">Show your booking code at the meeting point.</div>
+          <a class="link" href="#">View booking →</a>
+        </div>
+        <div class="help">Need help with this booking?</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
