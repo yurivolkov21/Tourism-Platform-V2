@@ -410,6 +410,73 @@ export const messages = {
         rateLimited: 'Too many requests — please wait a minute and try again.',
       },
     },
+    // Wizard 4 bước của `/tours/[slug]/book` (18/08). CỐ Ý chỉ khai thứ MỚI —
+    // nhãn ô, gợi ý, tên nhà cung cấp… đã có ở `form` ngay trên và dùng lại
+    // nguyên vẹn. Khai trùng một câu ở hai khoá là cách chắc chắn để sau này
+    // sửa một chỗ và quên chỗ kia.
+    wizard: {
+      title: 'Checkout',
+      // Dòng meta ngắn dưới tiêu đề — cố ý NGẮN, danh tính tour đã nằm ở cột
+      // tóm tắt bên phải; in lại đầy đủ ở đây làm dòng xuống hai hàng và đẩy
+      // lệch thanh bước (đo được lúc dựng wireframe).
+      meta: (days: number, travellers: number) =>
+        `${days} day${days > 1 ? 's' : ''} · ${travellers} traveller${travellers > 1 ? 's' : ''}`,
+      stepsAria: 'Checkout steps',
+      steps: {
+        dates: 'Dates',
+        travellers: 'Travellers',
+        review: 'Review',
+        pay: 'Pay',
+      },
+      dates: {
+        heading: 'Dates',
+        sub: 'Choose a departure. Prices are per adult.',
+      },
+      travellers: {
+        heading: 'Travellers',
+        sub: 'Who is going, and where we send the confirmation.',
+        // Nói THẲNG chuyện trẻ em cùng giá người lớn. Quyết định 18/08 là không
+        // làm giá riêng cho trẻ em; im lặng về nó thì khách chỉ phát hiện lúc
+        // nhìn tổng tiền, và đó là lúc tệ nhất để ngạc nhiên.
+        childRateNote: 'Children are charged at the adult rate.',
+      },
+      review: {
+        heading: 'Review',
+        sub: 'Check everything before you pay. Nothing is charged yet.',
+        departure: 'Departure',
+        dates: 'Dates',
+        duration: 'Duration',
+        pricePerPerson: 'Price per person',
+        travellers: 'Travellers',
+        contact: 'Contact',
+        name: 'Name',
+        email: 'Email',
+        phone: 'Phone',
+        requests: 'Special requests',
+        none: '—',
+        edit: 'Edit',
+        includedHeading: "What's included",
+        notIncludedHeading: 'NOT INCLUDED',
+      },
+      pay: {
+        heading: 'Payment',
+        sub: 'Choose how to pay. You will be redirected to finish, then brought back here.',
+        // KHÔNG có ô nhập thẻ ở bước này — thẻ nhập trên trang của nhà cung cấp.
+        testModeNote:
+          "Test mode — no real payment is taken. Card details are entered on the provider's own page, never here.",
+      },
+      back: 'Back',
+      continue: 'Continue',
+      secureNote: 'Secure encrypted checkout',
+      payCta: (total: string) => `Pay ${total}`,
+      // Tour hết sạch chỗ: KHÔNG dựng wizard rỗng. Thay hành vi tự-rơi-về-Private
+      // của `BookingModes` (gỡ 18/08 khi hai nhánh tách trang).
+      soldOut: {
+        heading: 'This trip is fully booked',
+        body: 'Every scheduled departure is sold out. We can still run it on your own dates — tell us when, and we’ll quote within 24h.',
+        cta: 'Request a private trip',
+      },
+    },
     // Friendly EN for each error code (form + API). Keep the keys in sync with BookingFormError.
     errors: {
       MISSING_TOUR: 'That tour is no longer available.',
