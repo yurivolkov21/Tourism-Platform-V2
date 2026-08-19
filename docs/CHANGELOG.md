@@ -8,6 +8,85 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Wizard 4 bước cho trang đặt chỗ, tách `/enquire`, và vòng thiết kế receipt (nhánh `feat/checkout-wizard`, 16 commit, 32 file, +2.614/−868)
+
+Trang `/tours/[slug]/book` từ MỘT form dài thành wizard bốn bước
+**Dates → Travellers → Review → Pay**, dựng theo bốn wireframe user duyệt 18/08.
+Nhánh "chuyến riêng" tách sang route CÔNG KHAI `/tours/[slug]/enquire`.
+
+**Nợ tôi tự tạo rồi tự trả trong cùng đợt.** Route `/enquire` vừa sinh ra đã
+mang một lỗi: `site-header.tsx` phải dò `startsWith('/tours/') && endsWith('/book')`
+để biết trang nào không có hero, và `/enquire` không nằm trong danh sách nên
+navbar dùng chữ sáng trên nền sáng — tàng hình ở light mode cho tới khi cuộn.
+Đo được: chữ `lab(97.7…)`. Đây đúng là bệnh của luật đi-theo-đường-dẫn: nó rách
+ngay khi có route mới mà không có gì báo. User chốt cho hai trang một hero thật,
+nên đoạn dò đường dẫn ĐÃ XOÁ và luật navbar về đồng nhất — đo lại bằng pixel
+sau navbar: `/book`, `/enquire`, `/tours/[slug]` đều `rgb(28,43,40)`, 14:1.
+Comment ở `site-header.tsx` nay ghi rõ: **danh sách hero-less chỉ nên NGẮN đi**;
+hai lần trước (`/account` 11/08, `/book` 19/08) đều giải bằng cách cho trang một
+hero thật rồi rút khỏi danh sách, không phải thêm đường dẫn vào.
+
+**Điều đắt nhất của wizard được canh bằng test riêng**: MỘT state cho cả bốn
+bước, bốn thân bước không tự giữ gì. Đó là thứ làm nút Back giữ được dữ liệu, và
+hỏng nó thì lỗi chỉ lộ khi có người bấm Back — muộn. Nghiệm thu cả trong test
+lẫn trên trang thật (đi 4 bước, Back hai lần, ô phone vẫn còn `0901234567`).
+
+**Bước Pay có một test chốt chặn** khẳng định KHÔNG `input`/`textarea`/`select`
+nào tồn tại: mẫu ReUI gốc có sẵn khối Name-on-card/CVC và nó rất dễ bị chép lại
+ở một lần sửa sau. Luồng là redirect — số thẻ gõ trên trang của Stripe/PayPal.
+
+**Trước khi xoá `booking-form.spec.tsx` đã đối chiếu từng `it()`** — 9/11 chuyển
+sang spec mới, 2 chết theo thiết kế (heading ba card, công tắc mode). Cụm booking
+11 → 20 `it()`. Xoá một file test là cách dễ nhất để tổng số test vẫn tăng mà độ
+phủ lại tụt.
+
+**Hai lỗi chỉ lộ khi ghép vào trang thật, test không bắt được**: tiêu đề trang và
+tiêu đề wizard chồng nhau; `CheckoutSummary` tự bọc card trong khi `<aside>` đã
+có `border-l` — hai lớp khung.
+
+**Giá riêng cho trẻ em: CỐ Ý BỎ** (user giao quyết định). Căn cứ nặng nhất là đối
+chiếu Nexora theo luật 10 — Nexora CÓ `childPriceRatio` nhưng mặc định 1, không
+chỗ nào truyền giá trị khác, không cột DB nào rót vào; nên bỏ không phải thụt
+lùi. Ba lý do còn lại: nó nằm trên đường tiền mà 10 file test đang canh; dự án
+không doanh thu; còn bốn phase trong hai tháng trước freeze. Hình dạng tối thiểu
+nếu sau này muốn làm đã ghi ở bản đồ docs. Giao diện nói thật thay vì im lặng:
+bước Travellers ghi rõ trẻ em tính cùng giá người lớn.
+
+**Vòng thiết kế trang receipt** chạy theo hai pha user yêu cầu. Pha 1 dựng bản
+sao TRUNG THÀNH của ReUI `receipt-1`; bản đầu bị bác vì cao hơn gốc 246px — tôi
+đo kiểu chữ mà KHÔNG đo hình học, và `line-height: 1.5` (gốc dùng 1.375) làm mỗi
+dòng dày thêm 2px, nhân ~40 dòng ra đúng khoảng đó. Dựng lại bằng một bộ so hình
+học lấy toạ độ 15 mốc trên cả hai bản rồi lặp tới khi hội tụ: **lệch lớn nhất
+2px**, và 5 đường kẻ trùng khít từng hàng pixel. Phép quét pixel còn chặn một sai
+lầm suýt mắc — tôi tưởng mẫu gốc có kẻ ngang giữa dòng email và `SHIP TO`; quét
+cột pixel cho thấy KHÔNG có, sửa theo mắt là tự tay làm lệch 17px.
+
+Pha 2 nắn sang dữ liệu thật, rồi hợp nhất với tấm vé qua **bốn bước có review**:
+khung/đường xé · nền cuống + băng trạng thái · ruột cuống · in ấn. Cách hợp nhất
+chốt được là **giữ receipt làm tài liệu, biến dải chân thành cuống vé** — dải đó
+vốn đã tràn hết bề rộng card và ngăn bằng một đường ở mép dưới, tức đúng giải
+phẫu một phần xé rời. Cố ý KHÔNG dùng `border: dashed` và KHÔNG thêm notch bán
+nguyệt: JSDoc `CheckoutShell` ghi rõ bản trước nó bị bác vì đúng combo đó.
+
+**Rủi ro in ấn nặng hơn tưởng**: vạch mã vạch vẽ bằng `background`, nên trình
+duyệt tắt background graphics là mã vạch BIẾN MẤT — tờ giấy vô dụng ở chính nơi
+nó tồn tại để phục vụ. Vá bằng `print-color-adjust: exact` đặt đúng vào mã vạch
+và pill, không ép cả trang. Mô phỏng kịch bản xấu nhất: 32/64 phần tử còn mực.
+
+Ba lỗi tự bắt được nhờ ĐỌC ẢNH thay vì tin code: đường xé dựng thành thẻ riêng
+thì ăn luôn `gap:16px` của card nên lơ lửng cách cuống 16px; mã vạch có `gap`
+đều giữa mọi phần tử nên đọc thành dãy sọc trang trí (mã vạch thật thì vạch và
+khoảng trắng dính liền, và 14 vạch là quá thưa — nâng lên 32); và `border` dạng
+rút gọn trong `@media print` ghi đè luôn `border-bottom` mang màu trạng thái.
+
+Nợ để lại, có chủ đích: `/checkout/success` CHƯA đổi sang receipt — wireframe đã
+chốt nhưng cài đặt là đợt sau. `/checkout/cancel` giữ `CheckoutShell` (user
+chốt), và nó truyền `code` nên dùng nhánh vé đầy đủ, không để lại nửa component
+chết. Khi cài đặt sẽ cần nâng `TICKET_BARCODE_BAR_COUNT` 28 → 64.
+
+Tests after: 1281 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-18 — Lấp 5 khe Moments bằng ảnh SẴN CÓ, viết lại caption theo ảnh (nhánh `feat/moments-images`, `4da65a8`, 3 file, +74/−32)
 
 `/destinations` hết ô giữ chỗ: khối Moments từ **0/5 lên 5/5 ảnh thật**, và
