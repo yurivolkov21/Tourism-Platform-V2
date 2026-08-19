@@ -108,17 +108,40 @@ describe('ticketBarcodeWidths — vạch barcode giả deterministic theo mã đ
     expect(ticketBarcodeWidths('TRV-ABC123')).not.toEqual(ticketBarcodeWidths('TRV-XYZ999'));
   });
 
-  it('số vạch cố định ~24-32 (đủ dày, không cụt như trước — độc lập độ dài mã), mỗi bề rộng trong khoảng 1-4px', () => {
+  it('52 phần tử, mỗi bề rộng trong khoảng 1-4px', () => {
     const widths = ticketBarcodeWidths('BK-TESTAAAA');
-    expect(widths.length).toBeGreaterThanOrEqual(24);
-    expect(widths.length).toBeLessThanOrEqual(32);
+    expect(widths).toHaveLength(52);
     for (const w of widths) {
       expect(w).toBeGreaterThanOrEqual(1);
       expect(w).toBeLessThanOrEqual(4);
     }
   });
 
+  /**
+   * Số phần tử bị RÀNG BUỘC BỞI BỀ NGANG CUỐNG, không phải chọn cho đẹp — nên
+   * canh bằng test thay vì để trong một comment rồi có người nâng lên cho
+   * "dày hơn nữa" và làm tràn.
+   *
+   * Cuống vé dọc (`CheckoutShell`): card `max-w-2xl` 672 trừ `px-4` còn 640;
+   * cuống chiếm 30% = 192; trừ `md:px-4` hai bên còn **160px**. Vạch vẽ DÍNH
+   * LIỀN (không `gap`) nên bề ngang = tổng bề rộng + 8px quiet zone.
+   *
+   * Chỉ canh trên mã HỢP LỆ (`BK-` + 8 ký tự, theo `BookingCodeSchema`). Mã
+   * ngắn hơn như `BK-1` cho tổng lớn hơn hẳn vì chu kỳ lặp ngắn rơi vào toàn
+   * ký tự cho vạch dày — nhưng mã đó không tồn tại được, nên bắt nó là tự trói
+   * mình vào một ràng buộc giả.
+   */
+  it('tổng bề ngang khi vẽ dính liền phải lọt trong 160px của cuống vé dọc', () => {
+    const QUIET_ZONE = 8;
+    const STUB_INNER_WIDTH = 160;
+    // Bốn mã hợp lệ, gồm cả mã cho tổng lớn nhất tìm được khi quét 200k mã.
+    for (const code of ['BK-TESTAAAA', 'BK-RGXA2GLQ', 'BK-ZZZZZZZZ', 'BK-00000000']) {
+      const total = ticketBarcodeWidths(code).reduce((a, b) => a + b, 0) + QUIET_ZONE;
+      expect(total, code).toBeLessThanOrEqual(STUB_INNER_WIDTH);
+    }
+  });
+
   it('mã ngắn hơn số vạch vẫn sinh đủ vạch (lặp ký tự theo chu kỳ)', () => {
-    expect(ticketBarcodeWidths('BK-1').length).toBeGreaterThanOrEqual(24);
+    expect(ticketBarcodeWidths('BK-1')).toHaveLength(52);
   });
 });

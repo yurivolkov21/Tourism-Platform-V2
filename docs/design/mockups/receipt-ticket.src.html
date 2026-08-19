@@ -59,11 +59,15 @@
      `ticketSerial` (hash·31 cộng dồn, lấy 10 chữ số cuối). Với mã BK-7Q4K2M8P
      ra serial 1873798728 — dán sẵn ở đây để wireframe khớp với thứ code sẽ sinh.
 
-     ⚠ SỐ VẠCH phải nâng từ 28 lên 64 khi cài đặt (`TICKET_BARCODE_BAR_COUNT`).
+     ⚠ SỐ VẠCH nâng từ 28 lên 52 khi cài đặt (`TICKET_BARCODE_BAR_COUNT`).
+     Bản wireframe ban đầu vẽ 64 và con số đó SAI: lúc cài đặt mới đo ra rằng
+     64 phần tử tràn khỏi cuống vé dọc của `/checkout/cancel` (rộng 160px trong
+     khi 64 vạch ra ~172px). Quét 200k mã hợp lệ tìm trần thật: 52 cho xấu nhất
+     148px. Đã sửa file này về 52 để mockup không nói khác thứ đang chạy.
      Đây là thay đổi DUY NHẤT chạm vào code dùng chung, và nó cần thật: 28 phần
      tử chỉ cho 14 vạch, thưa tới mức đọc thành dãy sọc trang trí chứ không phải
-     mã vạch. 64 phần tử cho 32 vạch, trải 164px ở bề rộng tự nhiên — vừa cuống
-     ngang, và khỏi cần prop tỉ lệ nào. Hàm `ticketBarcodeWidths` giữ nguyên
+     mã vạch. 52 phần tử cho 26 vạch, trải ~141px ở bề rộng tự nhiên — vừa cả
+     cuống ngang lẫn cuống dọc, và khỏi cần prop tỉ lệ nào. Hàm `ticketBarcodeWidths` giữ nguyên
      công thức, chỉ đổi hằng số đếm; vé cũ sẽ bị thay bởi chính bản này nên
      không có consumer nào khác chịu ảnh hưởng.
 
@@ -370,7 +374,7 @@
         <div class="stub">
           <span class="cap">Booking reference</span>
           <span class="code">BK-7Q4K2M8P</span>
-          <div class="barcode" aria-hidden="true"><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span></div>
+          <div class="barcode" aria-hidden="true"><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span></div>
           <span class="serial">NO. 1873798728</span>
         </div>
       </div>

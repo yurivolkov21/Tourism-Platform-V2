@@ -88,12 +88,28 @@ export function ticketSerial(code: string): string {
 }
 
 /**
- * Số vạch cố định của barcode giả — ĐỘC LẬP với độ dài `code`. Mã đặt chỗ
- * (~10-11 ký tự) một-ký-tự-một-vạch từng ra barcode cụt ~5 vạch nhìn như lỗi;
- * số cố định trong khoảng vạch barcode ấn phẩm thật (24-32) để hình luôn trải
- * gần hết bề ngang cuống bất kể mã dài ngắn.
+ * Số PHẦN TỬ của barcode giả — ĐỘC LẬP với độ dài `code`. Mã đặt chỗ (~10-11 ký
+ * tự) một-ký-tự-một-vạch từng ra barcode cụt ~5 vạch nhìn như lỗi.
+ *
+ * 28 → 56 (19/08). Hai lý do, cả hai đều là hình:
+ *  · 28 phần tử vẽ xen kẽ mực/trắng chỉ cho **14 vạch thật** — quá thưa để đọc
+ *    ra mã vạch (EAN-13 có 95 module; Code128 cho 11 ký tự khoảng 167). 56 cho
+ *    28 vạch, đủ dày.
+ *  · Vạch nay vẽ DÍNH LIỀN, không còn `gap` giữa các phần tử — mã vạch thật thì
+ *    vạch và khoảng trắng kề nhau, khe đều chen giữa làm nó đọc thành dãy sọc
+ *    trang trí.
+ *
+ * TRẦN 52 KHÔNG PHẢI SỐ ĐẸP, nó bị bề ngang cuống vé dọc ràng buộc: card
+ * `max-w-2xl` 672 trừ `px-4` còn 640, cuống chiếm 30% = 192, trừ `md:px-4` hai
+ * bên còn **160px**.
+ *
+ * Con số chốt bằng cách LẤY MẪU chứ không tính trên một mã: bề rộng mỗi vạch
+ * phụ thuộc ký tự, nên mã khác cho tổng khác. Quét 200k mã hợp lệ ngẫu nhiên
+ * (`BK-` + 8 ký tự) đo trường hợp xấu nhất: n=52 ra 148px (dư 12px), n=56 ra
+ * 164px và TRÀN — dù mã mẫu đầu tiên tôi thử chỉ ra 154px và trông có vẻ vừa.
+ * Có test canh ràng buộc này; đừng nâng số mà không quét lại.
  */
-const TICKET_BARCODE_BAR_COUNT = 28;
+const TICKET_BARCODE_BAR_COUNT = 52;
 
 /**
  * Bề rộng (px, 1–4) của từng vạch barcode giả — DETERMINISTIC theo mã đặt

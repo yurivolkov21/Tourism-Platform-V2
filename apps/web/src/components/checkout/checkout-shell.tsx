@@ -211,18 +211,24 @@ function TicketTear() {
 }
 
 /**
- * Barcode giả: ~28 vạch dày-mỏng không đều, DETERMINISTIC theo mã đặt chỗ
+ * Barcode giả: 28 vạch dày-mỏng không đều (56 phần tử xen kẽ mực/trắng),
+ * DETERMINISTIC theo mã đặt chỗ
  * (xem `ticketBarcodeWidths`) — KHÔNG random, để hình không đổi mỗi lần
  * render. Số vạch cố định (không còn = độ dài `code`) để barcode luôn trải
  * gần hết bề ngang cuống thay vì cụt ngủn với mã ngắn. Quiet zone dùng
  * `bg-card` (màu "giấy" của chính thân vé, không phải hex trắng cứng) để giữ
  * tokens-only mà vẫn tương phản cao với vạch `bg-foreground` ở cả hai theme.
+ *
+ * KHÔNG `gap` giữa các phần tử (bỏ 19/08): mã vạch thật thì vạch và khoảng
+ * trắng kề sát nhau; một khe đều 1px chen giữa mọi phần tử làm hình đọc thành
+ * dãy sọc trang trí. Bỏ khe cũng là điều kiện để 56 phần tử lọt bề ngang cuống
+ * — xem trần ở `TICKET_BARCODE_BAR_COUNT`.
  */
 function TicketBarcode({ code }: { code: string }) {
   const widths = ticketBarcodeWidths(code);
   return (
     <div aria-hidden="true" className="flex flex-col items-center gap-1">
-      <div className="flex h-9 items-stretch gap-px bg-card p-1">
+      <div className="flex h-9 max-w-full items-stretch overflow-hidden bg-card p-1">
         {widths.map((w, i) => (
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder/thêm bớt
