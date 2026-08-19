@@ -3,6 +3,7 @@
 import { messages } from '@tourism/i18n';
 import { ChevronRightIcon, ClockIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import { useOptionalDepartureSelection } from '@/components/tours/departure-selection';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
 import type { TourDetailVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
@@ -27,10 +28,19 @@ const MAX_CHIPS = 2;
 
 export function TourHero({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail;
-  // "from" = đợt rẻ nhất còn chỗ + giá gạch của chính đợt đó (sweep giá 19/08)
-  // — trước đây in `basePrice` 129 dù có đợt 119, và gạch theo neo tour trong
-  // khi khối chọn ngày gạch theo neo đợt: hai "giá gốc" trên cùng một trang.
-  const price = heroPrice(tour);
+  // Giá ở hero BÁM ĐỢT ĐANG CHỌN (user chốt 19/08 — "khách chỉ hiểu một giá":
+  // chọn 19 Sep thì hero lẫn khối chọn ngày cùng nói $129 −13%, chọn 17 Oct
+  // thì cùng $119 −20%; giữ giá rẻ nhất cố định trên hero trong khi bên dưới
+  // đổi theo đợt là hai con số cho một quyết định). Không có provider (`/book`,
+  // `/enquire` qua `TourHeroBoard`) hoặc chưa chọn được đợt nào → rơi về
+  // `heroPrice` = "from" đợt rẻ nhất còn chỗ. Nhãn "from" CHỈ hiện ở nhánh
+  // rơi về — bám đợt thì đó là giá của đúng ngày đó, không phải "từ".
+  const selection = useOptionalDepartureSelection();
+  const selected = selection?.departures.find((d) => d.id === selection.selectedId);
+  const price = selected
+    ? { price: selected.effectivePrice, compareAtPrice: selected.compareAtPrice }
+    : heroPrice(tour);
+  const isFrom = !selected;
   const discount = discountPercent(price.price, price.compareAtPrice);
 
   const badgeBudget = discount !== null ? MAX_CHIPS - 1 : MAX_CHIPS;
@@ -170,7 +180,9 @@ export function TourHero({ tour }: { tour: TourDetailVM }) {
 
             <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
               <p className="flex items-baseline gap-2">
-                <span className="text-xs text-muted-foreground">{t.fromPrice}</span>
+                <span className="text-xs text-muted-foreground">
+                  {isFrom ? t.fromPrice : t.booking.perPerson}
+                </span>
                 <span className="font-heading text-3xl font-semibold text-foreground tabular-nums">
                   {formatMoney(price.price, tour.currency)}
                 </span>

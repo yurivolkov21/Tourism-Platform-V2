@@ -40,6 +40,15 @@ const Ctx = createContext<DepartureSelection | null>(null);
 /** Export vì `TourMediaPanel` (Task 4) và tab Departures (Task 9) cần đọc
     trực tiếp — trước đây hàm này private vì chỉ ba `…Connected` dưới đây
     dùng nội bộ. */
+/**
+ * Bản KHÔNG ném khi thiếu provider — cho `TourHero`, vốn còn được
+ * `TourHeroBoard` dựng ở `/book` và `/enquire` (không có provider): ở đó hero
+ * rơi về giá "from" (đợt rẻ nhất), ở trang chi tiết thì bám đợt đang chọn.
+ */
+export function useOptionalDepartureSelection(): DepartureSelection | null {
+  return useContext(Ctx);
+}
+
 export function useDepartureSelection(): DepartureSelection {
   const value = useContext(Ctx);
   if (!value) {
