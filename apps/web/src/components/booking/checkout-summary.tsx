@@ -1,10 +1,14 @@
+'use client';
+
 import type { MediaItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
+import { motion } from 'motion/react';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import type { DepartureVM } from '@/lib/api/tours';
 import { computeBookingTotal } from '@/lib/checkout';
+import { SPRING } from '@/lib/motion';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
 /** Dữ liệu tour cần cho card tóm tắt — CHỈ những field card này thật sự vẽ,
@@ -226,9 +230,18 @@ export function CheckoutSummary({
               ) : null}
               <div className="flex items-baseline justify-between border-t pt-3 tabular-nums">
                 <span className="text-lg font-semibold text-foreground">{t.totalLabel}</span>
-                <span className="text-lg font-semibold text-foreground">
+                {/* `key` theo số tiền: mỗi lần tổng đổi (thêm người, đổi đợt) con số
+                    mới trượt lên 6px vào chỗ — đủ để mắt bắt được "đã cập nhật"
+                    (nhóm motion 2, 19/08). Không opacity — số có trong HTML SSR. */}
+                <motion.span
+                  key={totalAmount}
+                  initial={{ y: 6 }}
+                  animate={{ y: 0 }}
+                  transition={SPRING}
+                  className="inline-block text-lg font-semibold text-foreground"
+                >
                   {formatMoney(totalAmount, currency)}
-                </span>
+                </motion.span>
               </div>
               <p className="text-xs text-muted-foreground">{t.taxesNote}</p>
             </div>

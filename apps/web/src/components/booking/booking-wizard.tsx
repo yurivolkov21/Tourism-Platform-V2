@@ -2,6 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
+import { motion } from 'motion/react';
 import { useState } from 'react';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import type { DepartureVM } from '@/lib/api/tours';
@@ -16,6 +17,7 @@ import {
   stepErrors,
 } from '@/lib/booking-form';
 import { computeBookingTotal } from '@/lib/checkout';
+import { SPRING } from '@/lib/motion';
 import { formatMoney } from '@/lib/tours';
 import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
 import { StepDates } from './steps/step-dates';
@@ -85,6 +87,11 @@ export function BookingWizard({
     : null;
   const index = BOOKING_STEPS.indexOf(step);
   const isLast = step === 'pay';
+  // Hướng đổi bước (nhóm motion 2, 19/08): tiến → bước mới TRƯỢT VÀO TỪ PHẢI,
+  // lùi/Edit về bước trước → từ trái. Chỉ animate bước VÀO (transform-only, cùng
+  // luật SSG của reveal-item), bước cũ unmount ngay — không AnimatePresence: chờ
+  // exit thì cột trống một nhịp, popLayout thì hai bước chồng chữ lên nhau ~200ms.
+  const [direction, setDirection] = useState<1 | -1>(1);
 
   const set = <K extends keyof BookingFormState>(key: K, value: BookingFormState[K]) => {
     setState((s) => ({ ...s, [key]: value }));
@@ -95,12 +102,14 @@ export function BookingWizard({
 
   const goBack = () => {
     setSubmitError(null);
+    setDirection(-1);
     setStep(BOOKING_STEPS[Math.max(0, index - 1)] as BookingStep);
   };
 
   /** Về đúng bước cần sửa từ link `Edit` của màn Review. */
   const goEdit = (target: BookingStep) => {
     setSubmitError(null);
+    setDirection(BOOKING_STEPS.indexOf(target) < index ? -1 : 1);
     setStep(target);
   };
 
@@ -137,6 +146,7 @@ export function BookingWizard({
       void submit();
       return;
     }
+    setDirection(1);
     setStep(BOOKING_STEPS[index + 1] as BookingStep);
   }
 
@@ -154,46 +164,55 @@ export function BookingWizard({
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[minmax(0,1fr)_352px] lg:gap-0">
         <div className="lg:pr-10">
-          {step === 'dates' ? (
-            <StepDates
-              state={state}
-              errors={shownErrors}
-              set={set}
-              selected={selected}
-              currency={currency}
-              departures={departures}
-            />
-          ) : null}
-          {step === 'travellers' ? (
-            <StepTravellers
-              state={state}
-              errors={shownErrors}
-              set={set}
-              selected={selected}
-              currency={currency}
-              maxGroupSize={maxGroupSize}
-            />
-          ) : null}
-          {step === 'review' ? (
-            <StepReview
-              state={state}
-              errors={shownErrors}
-              set={set}
-              selected={selected}
-              currency={currency}
-              durationDays={durationDays}
-              onEdit={goEdit}
-            />
-          ) : null}
-          {step === 'pay' ? (
-            <StepPay
-              state={state}
-              errors={shownErrors}
-              set={set}
-              selected={selected}
-              currency={currency}
-            />
-          ) : null}
+          {/* `key={step}` remount → `initial` chạy lại mỗi lần đổi bước; chỉ `x`,
+              không opacity (bước đầu SSR trong HTML, JS chết vẫn đọc được). */}
+          <motion.div
+            key={step}
+            initial={{ x: 24 * direction }}
+            animate={{ x: 0 }}
+            transition={SPRING}
+          >
+            {step === 'dates' ? (
+              <StepDates
+                state={state}
+                errors={shownErrors}
+                set={set}
+                selected={selected}
+                currency={currency}
+                departures={departures}
+              />
+            ) : null}
+            {step === 'travellers' ? (
+              <StepTravellers
+                state={state}
+                errors={shownErrors}
+                set={set}
+                selected={selected}
+                currency={currency}
+                maxGroupSize={maxGroupSize}
+              />
+            ) : null}
+            {step === 'review' ? (
+              <StepReview
+                state={state}
+                errors={shownErrors}
+                set={set}
+                selected={selected}
+                currency={currency}
+                durationDays={durationDays}
+                onEdit={goEdit}
+              />
+            ) : null}
+            {step === 'pay' ? (
+              <StepPay
+                state={state}
+                errors={shownErrors}
+                set={set}
+                selected={selected}
+                currency={currency}
+              />
+            ) : null}
+          </motion.div>
 
           {submitError ? (
             <p role="alert" className="mt-4 text-sm text-destructive">

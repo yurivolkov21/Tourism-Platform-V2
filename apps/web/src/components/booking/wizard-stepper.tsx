@@ -1,6 +1,10 @@
+'use client';
+
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
+import { motion } from 'motion/react';
 import { BOOKING_STEPS, type BookingStep } from '@/lib/booking-form';
+import { SPRING } from '@/lib/motion';
 
 /**
  * Thanh bước của wizard đặt chỗ — bốn vạch ngang kèm nhãn dưới.
@@ -30,10 +34,18 @@ export function WizardStepper({ current }: { current: BookingStep }) {
         const active = index === currentIndex;
         return (
           <li key={step} {...(active ? { 'aria-current': 'step' } : {})}>
-            <div
-              aria-hidden="true"
-              className={cn('h-1 rounded-full', done ? 'bg-foreground' : 'bg-border')}
-            />
+            {/* Vạch tiến độ: rãnh `bg-border` + lớp đầy `bg-foreground` scale ngang
+                từ mép trái (nhóm motion 2, 19/08). `initial={false}`: lần render
+                đầu đứng đúng trạng thái, không "chạy" lúc tải trang — chỉ chạy khi
+                đổi bước. Transform-only nên reduced-motion tự tắt qua MotionConfig. */}
+            <div aria-hidden="true" className="h-1 overflow-hidden rounded-full bg-border">
+              <motion.div
+                className="h-full origin-left rounded-full bg-foreground"
+                initial={false}
+                animate={{ scaleX: done ? 1 : 0 }}
+                transition={SPRING}
+              />
+            </div>
             <span
               className={cn(
                 'mt-2.5 block font-semibold',
