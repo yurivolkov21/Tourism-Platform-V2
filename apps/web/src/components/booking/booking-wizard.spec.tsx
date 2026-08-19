@@ -53,8 +53,6 @@ const BASE = {
   defaultName: 'Elena Moreau',
   defaultEmail: 'elena.moreau@example.com',
   summaryTour: makeSummaryTour(),
-  included: ['English-speaking guide', 'Bottled water'],
-  excluded: ['Travel insurance'],
 };
 
 const tw = messages.booking.wizard;

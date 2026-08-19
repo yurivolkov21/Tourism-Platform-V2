@@ -58,8 +58,6 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
             defaultName={session.name ?? ''}
             defaultEmail={session.email}
             summaryTour={summaryTour}
-            included={tour.included}
-            excluded={tour.excluded}
           />
         ) : (
           <SoldOut slug={tour.slug} />

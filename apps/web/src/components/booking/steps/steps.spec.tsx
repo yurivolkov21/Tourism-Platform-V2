@@ -96,21 +96,8 @@ describe('StepReview', () => {
     onEdit: vi.fn(),
   };
 
-  it('render khối đã-bao-gồm khi tour có dữ liệu', () => {
-    render(<StepReview {...REVIEW} included={['Guide', 'Water']} excluded={['Insurance']} />);
-    expect(screen.getByText('Guide')).toBeInTheDocument();
-    expect(screen.getByText('Insurance')).toBeInTheDocument();
-    expect(screen.getByText(messages.booking.wizard.review.notIncludedHeading)).toBeInTheDocument();
-  });
-
-  /** Không dựng một cái hộp có tiêu đề mà rỗng ruột. */
-  it('cả hai mảng rỗng → BỎ HẲN khối, không để hộp trống', () => {
-    render(<StepReview {...REVIEW} included={[]} excluded={[]} />);
-    expect(screen.queryByText(messages.booking.wizard.review.includedHeading)).toBeNull();
-  });
-
   it('không có ô nhập nào — đây là màn đọc lại', () => {
-    render(<StepReview {...REVIEW} included={['Guide']} excluded={[]} />);
+    render(<StepReview {...REVIEW} />);
     expect(screen.queryAllByRole('textbox')).toHaveLength(0);
   });
 });

@@ -455,8 +455,6 @@ export const messages = {
         requests: 'Special requests',
         none: '—',
         edit: 'Edit',
-        includedHeading: "What's included",
-        notIncludedHeading: 'NOT INCLUDED',
       },
       pay: {
         heading: 'Payment',

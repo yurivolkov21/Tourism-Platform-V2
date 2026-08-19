@@ -48,8 +48,6 @@ export function BookingWizard({
   defaultName,
   defaultEmail,
   summaryTour,
-  included,
-  excluded,
 }: {
   departures: DepartureVM[];
   maxGroupSize: number;
@@ -58,8 +56,6 @@ export function BookingWizard({
   defaultName: string;
   defaultEmail: string;
   summaryTour: CheckoutSummaryTour;
-  included: string[];
-  excluded: string[];
 }) {
   const t = messages.booking.wizard;
 
@@ -183,8 +179,6 @@ export function BookingWizard({
               selected={selected}
               currency={currency}
               durationDays={durationDays}
-              included={included}
-              excluded={excluded}
               onEdit={goEdit}
             />
           ) : null}

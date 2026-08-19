@@ -11,24 +11,19 @@ import type { StepShared } from './types';
  * giờ tự chặn được. Muốn sửa gì thì bấm `Edit` để quay về đúng bước chứ không
  * sửa tại chỗ — hai chỗ nhập cho cùng một ô là hai chỗ phải giữ đồng bộ.
  *
- * Khối "What's included / Not included" là thứ user chốt thêm ở vòng 2. Dữ liệu
- * lấy từ `TourDetailSchema.included/excluded` vốn đã có sẵn (cả 29 tour đều
- * đầy), nên khối này KHÔNG kéo theo thay đổi schema nào. Vẫn phòng trường hợp
- * rỗng: mảng rỗng thì bỏ hẳn khối thay vì để lại một hộp có tiêu đề mà không có
- * gì bên trong.
+ * KHÔNG có khối "What's included / Not included" ở đây. Nó từng được thêm ở vòng
+ * 2 rồi GỠ ở vòng 3 (19/08) theo yêu cầu user — giữ màn checkout gọn. Dữ liệu
+ * `TourDetailSchema.included/excluded` vẫn còn nguyên và vẫn hiện ở trang chi
+ * tiết tour; đây chỉ là quyết định về chỗ đặt, không phải mất dữ liệu.
  */
 export function StepReview({
   state,
   selected,
   currency,
   durationDays,
-  included,
-  excluded,
   onEdit,
 }: StepShared & {
   durationDays: number;
-  included: string[];
-  excluded: string[];
   onEdit: (step: BookingStep) => void;
 }) {
   const t = messages.booking.wizard.review;
@@ -61,43 +56,6 @@ export function StepReview({
         <Row k={t.phone} v={state.contactPhone || t.none} />
         <Row k={t.requests} v={state.specialRequests || t.none} />
       </Group>
-
-      {included.length > 0 || excluded.length > 0 ? (
-        <Group title={t.includedHeading}>
-          {included.length > 0 ? (
-            <ul className="mt-1.5 flex flex-col gap-1.5">
-              {included.map((item) => (
-                <li key={item} className="flex gap-2 text-sm">
-                  <span
-                    aria-hidden="true"
-                    className="w-3.5 shrink-0 text-center text-muted-foreground"
-                  >
-                    ✓
-                  </span>
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          ) : null}
-          {excluded.length > 0 ? (
-            <>
-              <p className="mt-3 text-xs font-semibold text-muted-foreground">
-                {t.notIncludedHeading}
-              </p>
-              <ul className="mt-1.5 flex flex-col gap-1.5">
-                {excluded.map((item) => (
-                  <li key={item} className="flex gap-2 text-sm text-muted-foreground">
-                    <span aria-hidden="true" className="w-3.5 shrink-0 text-center">
-                      ✕
-                    </span>
-                    <span>{item}</span>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
-        </Group>
-      ) : null}
 
       {/* Dùng LẠI đúng component của cột tóm tắt, không chép câu sang đây: các
           chuỗi i18n cố ý bỏ lửng để nối link chính sách ("… — see our"), nên
