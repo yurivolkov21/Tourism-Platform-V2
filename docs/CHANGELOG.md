@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Footer phản ánh đúng bản đồ route (nhánh `fix/footer-links`, 1 commit, 2 file)
+
+User để ý footer "để các mục không liên quan": 'Destinations' còn trỏ
+`/#gallery` (trang /destinations có từ 30/07), bốn mục Company 'Our guides /
+Careers / Press / Partners' trỏ `#top` — link chết cho trang không tồn tại,
+'Booking help' trùng FAQ, bottom bar là chữ trơ "Privacy · Terms · Cookies" không
+bấm được và không có trang Cookies. Sửa thành ba nhóm đúng route: Explore
+(Tours · Destinations · Journal · About us · Traveller reviews — anchor `/#reviews`
+thật) · **Your account** (My bookings · Saved tours · Profile · Settings · Log in;
+`/account/*` qua `proxy.ts` nên để cho mọi khách được) · Support (Contact us ·
+FAQ · Cancellation policy · Terms · Privacy); Privacy/Terms ở bottom bar thành
+link, bỏ Cookies. Social icon vẫn `#top` giữ chỗ — chưa có tài khoản thật, URL
+bịa còn tệ hơn. Test mới: **mọi link chữ trong footer phải thuộc bản đồ route
+thật** (23 route/anchor liệt kê trong spec) — thêm route thì thêm vào đó, link
+chết là đỏ ngay chứ không đợi khách bấm phải.
+
+Tests after: 1402 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
+## 2026-08-19 — Ba trang vùng hết ô giữ chỗ: 15 ô "… in photos" có ảnh thật (nhánh `feat/region-gallery-images`, 1 commit, 8 file, +225/−44)
+
+Section `RegionGallery` (Bắc 6 ô peaks · Trung 6 lanterns · Nam 3 panorama) là
+chỗ cuối cùng trên ba trang vùng còn nền gradient — CHANGELOG 18/08 đã ghi là
+"lựa chọn thiết kế cũ chưa rà lại". User chọn đường A (như đợt Moments 18/08):
+**không tìm tấm nào mới**, lấy lại ảnh gallery địa danh đã duyệt và đang sống
+trên CDN, chọn theo HÌNH Ô rồi viết caption theo ảnh. Mình dựng contact sheet
+133 ảnh cục bộ (Sa Pa/Hạ Long/Huế/Cần Thơ không có ảnh trong inbox), chọn 15
+tấm — ưu tiên phủ nhiều địa danh (Bắc 5/7, Trung 3/5, Nam 3/6), ảnh dọc cho ô
+dọc, ảnh 1.86 cho ô 16/9 — dựng bảng cắt đúng tỉ lệ ô cho user duyệt trước khi
+upload (ADR-0020). 15 khe site mới `region-gallery-<vùng>-<n>` khoá theo VÙNG +
+VỊ TRÍ Ô (hình ô là bất biến của bố cục đã duyệt; đổi ảnh giữ khoá, caption ở
+i18n `galleryTiles` cùng chỉ số); thêm vào `SITE_SLOT_KEYS`, chạy lại seed trên
+Supabase dev (upsert, 49 khe), `media:upload` (publicId cố định, ảnh cũ không
+đổi), `NEEDED.md` +15 dòng. Code: `RegionTile` nhận `image` — đổi ruột, giữ bố
+cục/trợ năng/lightbox; page fetch 6/6/3 khe qua `siteMediaImage` (một lần gọi
+nhờ `cache()`); 7 test mới. Sổ nợ 18/08 về `RegionTile` gradient: **đã trả**.
+
+**Bẫy gặp lại, và đã ghi một lần ở 17/08:** page (server) import `TILE_COUNT`
+từ `region-gallery.tsx` (`'use client'`) → hằng thành client-reference proxy →
+`TILE_COUNT[variant]` là `undefined` → `Array.from({length: undefined})` = `[]`
+→ trang render bình thường, chỉ… không có ảnh, không một dòng lỗi. Phát hiện vì
+HTML SSR thiếu publicId dù API đã trả đủ 15 khe. Dời `TILE_COUNT`/`GalleryVariant`
+sang `lib/region-theme.ts` (module không client), `region-gallery.tsx` re-export
+để consumer/spec cũ không đổi. Đo sau: Bắc 6/6 · Trung 6/6 · Nam 3/3 ảnh load.
+
+Tests after: 1399 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Thẻ địa danh ở gallery trang chủ có đích thật (nhánh `fix/home-gallery-links`, 1 commit, 2 file)
 
 User hỏi: bấm thẻ ở section "From the northern mists to the southern delta" thì
