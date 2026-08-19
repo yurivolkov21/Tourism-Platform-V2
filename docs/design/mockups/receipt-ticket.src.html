@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Receipt + vé — hợp nhất (bước 3: ruột cuống)</title>
+<title>Receipt + vé — hợp nhất (bước 4: in ấn)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -13,8 +13,8 @@
 
        ✔ BƯỚC 1 — khung và đường xé
        ✔ BƯỚC 2 — nền cuống + băng màu trạng thái
-       ✔ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial   ← ĐANG Ở ĐÂY
-       ☐ BƯỚC 4 — @media print
+       ✔ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial
+       ✔ BƯỚC 4 — @media print   ← ĐANG Ở ĐÂY
 
      ── Bước 1 đổi ĐÚNG một thứ ──
      Đường 1px ngăn dải chân trở thành ĐƯỜNG XÉ. Không đụng gì khác.
@@ -59,14 +59,36 @@
      `ticketSerial` (hash·31 cộng dồn, lấy 10 chữ số cuối). Với mã BK-7Q4K2M8P
      ra serial 1873798728 — dán sẵn ở đây để wireframe khớp với thứ code sẽ sinh.
 
-     Vạch vẽ ở 2× bề rộng: ở cuống DỌC cũ, 28 vạch 1-4px trải ~99px trên một
-     cuống rộng ~200px là vừa; cuống NGANG của ta rộng 688px nên 99px trông như
-     con tem. Nhân đôi thành 171px. Khi cài đặt thì thêm một prop tỉ lệ cho
-     `TicketBarcode`, KHÔNG sửa `ticketBarcodeWidths` — hàm đó đang được vé cũ
-     dùng chung.
+     ⚠ SỐ VẠCH phải nâng từ 28 lên 64 khi cài đặt (`TICKET_BARCODE_BAR_COUNT`).
+     Đây là thay đổi DUY NHẤT chạm vào code dùng chung, và nó cần thật: 28 phần
+     tử chỉ cho 14 vạch, thưa tới mức đọc thành dãy sọc trang trí chứ không phải
+     mã vạch. 64 phần tử cho 32 vạch, trải 164px ở bề rộng tự nhiên — vừa cuống
+     ngang, và khỏi cần prop tỉ lệ nào. Hàm `ticketBarcodeWidths` giữ nguyên
+     công thức, chỉ đổi hằng số đếm; vé cũ sẽ bị thay bởi chính bản này nên
+     không có consumer nào khác chịu ảnh hưởng.
 
      "Need help with this booking?" RỜI khỏi cuống, xuống dưới card: cuống chỉ
      mang thứ cần ở điểm hẹn. Người soát vé không cần đường dây hỗ trợ.
+
+     ── Bước 4: sống sót khi in ──
+     Receipt có nhiệm vụ IN RA ĐƯỢC, và mặc định của trình duyệt là KHÔNG in
+     background. Nếu bỏ mặc thì tờ giấy hỏng theo ba tầng, nặng dần:
+
+      1. MÃ VẠCH BIẾN MẤT HOÀN TOÀN. Vạch vẽ bằng `background` trên `<span>`,
+         nên tắt background là còn tờ giấy trắng. Đây không phải chuyện thẩm mỹ:
+         cả cuống tồn tại để chìa ra ở điểm hẹn. Vá bằng `print-color-adjust:
+         exact` đặt ĐÚNG vào vùng mã vạch — ép in nền cho riêng chỗ đó, không
+         ép cả trang (ép cả trang thì tốn mực mà vẫn không giải quyết gì thêm).
+      2. Cuống mất nền xám nên hết ranh giới với thân. Vá bằng viền 1px — viền
+         LUÔN in, khác background.
+      3. Băng trạng thái là `border-bottom` nên vẫn in, nhưng in máy đen trắng
+         thì ba tông thành ba sắc xám gần giống nhau. Vá bằng cách in kèm chữ
+         trạng thái — pill ở đầu trang vốn đã nói bằng chữ, nên chỉ cần đảm bảo
+         pill cũng in được (cùng `print-color-adjust`).
+
+     Cùng đợt: giấu hai nút Copy code / Print (bấm vào giấy không được), và
+     `break-inside: avoid` để cuống không bị cắt đôi sang trang sau — một cuống
+     bị xé ngang giữa mã vạch thì đúng nghĩa vô dụng.
 
      ── Phần dưới đây giữ nguyên từ pha 2 ──
      Nắn bản sao ReUI receipt-1 sang dữ liệu THẬT của dự án.
@@ -216,12 +238,44 @@
     font-variant-numeric: tabular-nums; }
   /* Quiet zone dùng màu "giấy" của thân vé, không phải trắng cứng — cùng lý do
      `TicketBarcode` nêu: giữ tương phản cao ở cả hai theme. */
-  .barcode { display: flex; align-items: stretch; gap: 1px; height: 36px;
-    background: var(--card); padding: 4px; }
+  /* Mã vạch: vạch và khoảng trắng DÍNH LIỀN, không `gap`.
+     Bản trước có `gap: 1px` giữa mọi phần tử — mã vạch thật không có khe đều
+     chen giữa, và chính cái khe đó làm nó đọc thành "dãy sọc trang trí".
+     Cùng lý do: 28 phần tử chỉ cho 14 vạch thật, quá thưa (EAN-13 có 95 module,
+     Code128 cho 11 ký tự khoảng 167). Nâng lên 64 phần tử = 32 vạch, bề ngang
+     164px ở bề rộng TỰ NHIÊN — nên bỏ luôn mẹo nhân đôi của bước 3.
+     Quiet zone hai bên là bắt buộc ở mã vạch thật, nên padding ngang > dọc. */
+  .barcode { display: flex; align-items: stretch; height: 40px;
+    background: var(--card); padding: 5px 10px; }
   .barcode span:nth-child(odd) { background: var(--ink); }
   .barcode span:nth-child(even) { background: transparent; }
   .stub .serial { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     font-size: 9px; line-height: 14px; letter-spacing: 1.5px; color: var(--muted); }
+
+  @media print {
+    /* Nút bấm vô nghĩa trên giấy. */
+    .acts { display: none; }
+    .wrap { padding: 0; width: auto; }
+    /* Không để trang cắt đôi card, và tuyệt đối không cắt đôi cuống. */
+    .card, .band { break-inside: avoid; }
+    /* Cuống mất nền xám khi tắt background → viền giữ lại ranh giới. Viền LUÔN
+       in, đó là lý do dùng viền thay vì trông chờ vào nền.
+
+       Khai TỪNG CẠNH chứ không dùng `border` rút gọn: bản đầu tôi viết
+       `border: 1px solid` và nó ghi đè luôn `border-bottom` đang mang màu
+       trạng thái — băng tone biến mất khỏi bản in mà nhìn ảnh mới thấy. */
+    .band {
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      border-top: 1px dashed var(--line);
+    }
+    /* Ép in nền CHỈ ở hai chỗ mà nền mang THÔNG TIN, không ép cả trang:
+       mã vạch (không có nền thì không còn mã) và pill trạng thái. */
+    .barcode, .barcode span, .pill {
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+  }
 
   /* Ngoài card: đường dây hỗ trợ không thuộc về cuống. */
   .afterword { margin-top: 12px; text-align: center;
@@ -316,7 +370,7 @@
         <div class="stub">
           <span class="cap">Booking reference</span>
           <span class="code">BK-7Q4K2M8P</span>
-          <div class="barcode" aria-hidden="true"><span style="width:6px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:4px"></span></div>
+          <div class="barcode" aria-hidden="true"><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:3px"></span><span style="width:4px"></span><span style="width:4px"></span><span style="width:1px"></span><span style="width:2px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span><span style="width:1px"></span><span style="width:3px"></span></div>
           <span class="serial">NO. 1873798728</span>
         </div>
       </div>
