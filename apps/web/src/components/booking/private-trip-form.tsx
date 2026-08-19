@@ -61,7 +61,7 @@ export function PrivateTripForm({
 }) {
   const t = messages.booking.form;
   const tpriv = t.private;
-  // Mượn ĐÚNG string heading của nhánh scheduled (`BookingForm`) cho hai
+  // Mượn ĐÚNG string heading của nhánh scheduled (nay là `BookingWizard`) cho hai
   // card dưới đây — chính là việc "đồng nhất ngôn ngữ" user yêu cầu, không
   // phải bịa heading mới nghe giông giống.
   const tp = messages.booking.page;
@@ -140,7 +140,7 @@ export function PrivateTripForm({
     <form onSubmit={onSubmit} className="flex max-w-2xl flex-col gap-8" noValidate>
       {/* Card 1 — Trip details: gộp ngày mong muốn + số người, CÙNG nhãn
           "Trip details" (`tp.steps.trip`) và CÙNG khuôn `rounded-2xl border
-          bg-card p-6` mà `BookingForm` dùng cho card đầu tiên của nhánh
+          bg-card p-6` mà nhánh scheduled dùng cho card đầu tiên của nhánh
           scheduled — đây chính là chỗ user chê lệch tông. */}
       <div className="rounded-2xl border bg-card p-6">
         <h2 className="font-heading text-lg font-semibold">{tp.steps.trip}</h2>

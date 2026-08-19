@@ -1,9 +1,10 @@
 import { messages } from '@tourism/i18n';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BookingModes } from '@/components/booking/booking-modes';
+import { BookingWizard } from '@/components/booking/booking-wizard';
 import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
@@ -38,6 +39,11 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
     ratingAvg: tour.ratingAvg,
     ratingCount: tour.ratingCount,
   };
+
+  // Còn ít nhất một đợt đặt được không. `BookingModes` cũ tự rơi về nhánh Private
+  // khi hết sạch chỗ; nay hai nhánh ở hai trang nên hành vi đó phải dựng lại
+  // TƯỜNG MINH ở đây, nếu không khách vào đây gặp một wizard rỗng.
+  const bookable = tour.departures.some((d) => d.seatsLeft > 0);
 
   return (
     // `pt-36` mượn ĐÚNG hằng số `account/layout.tsx` dùng để né navbar `fixed`
@@ -74,59 +80,42 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
       </header>
 
       <div className="mt-10">
-        {/* `steps` chỉ render bên trong `BookingModes` khi mode là scheduled
-            (Finding 4, vòng review 1) — Private là form hỏi báo giá, không có
-            bước thanh toán nào để chỉ. */}
-        <BookingModes
-          tourId={tour.id}
-          departures={tour.departures}
-          maxGroupSize={tour.maxGroupSize}
-          currency={tour.currency}
-          defaultName={session.name ?? ''}
-          defaultEmail={session.email}
-          summaryTour={summaryTour}
-          steps={<BookingSteps />}
-        />
+        {bookable ? (
+          <BookingWizard
+            departures={tour.departures}
+            maxGroupSize={tour.maxGroupSize}
+            currency={tour.currency}
+            durationDays={tour.durationDays}
+            defaultName={session.name ?? ''}
+            defaultEmail={session.email}
+            summaryTour={summaryTour}
+            included={tour.included}
+            excluded={tour.excluded}
+          />
+        ) : (
+          <SoldOut slug={tour.slug} />
+        )}
       </div>
     </div>
   );
 }
 
 /**
- * Chỉ báo hai bước ở đầu trang — RSC thuần, nội bộ file này (không đáng tách
- * riêng cho một khối tĩnh chỉ hai chấm). ① Trip details là bước ĐANG ở trên
- * trang này; ② Payment KHÔNG xảy ra trong app — nó là trang hosted của
- * Stripe/PayPal sau khi submit, nên chấm mờ + kèm ghi chú nhỏ giải thích.
+ * Tour đã bán hết mọi đợt — KHÔNG dựng wizard rỗng.
+ *
+ * Thay hành vi tự-rơi-về-Private của `BookingModes` (gỡ 19/08 khi hai nhánh
+ * tách trang). Khách vẫn tới được nhánh khả thi, chỉ khác đường đi: một khối
+ * giải thích cộng CTA sang `/enquire` — trang công khai, không cần đăng nhập.
  */
-function BookingSteps() {
-  const t = messages.booking.page;
+function SoldOut({ slug }: { slug: string }) {
+  const t = messages.booking.wizard.soldOut;
   return (
-    <div className="flex flex-col gap-1.5">
-      {/* aria-label riêng cho steps (NHÓM 6c, final review) — trước đây mượn
-          tạm `t.title` ("Complete your booking"), sai ngữ nghĩa cho một danh
-          sách bước. */}
-      <ol className="flex items-center gap-3" aria-label={t.stepsAria}>
-        <li aria-current="step" className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground"
-          >
-            1
-          </span>
-          <span className="text-sm font-medium text-foreground">{t.steps.trip}</span>
-        </li>
-        <li aria-hidden="true" className="h-px w-8 shrink-0 bg-border sm:w-16" />
-        <li className="flex items-center gap-2">
-          <span
-            aria-hidden="true"
-            className="grid size-6 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground"
-          >
-            2
-          </span>
-          <span className="text-sm font-medium text-muted-foreground">{t.steps.payment}</span>
-        </li>
-      </ol>
-      <p className="pl-9 text-xs text-muted-foreground">{t.paymentStepNote}</p>
+    <div className="rounded-2xl border bg-card p-8 text-center">
+      <h2 className="font-heading text-xl font-semibold">{t.heading}</h2>
+      <p className="mx-auto mt-2 max-w-prose text-sm text-pretty text-muted-foreground">{t.body}</p>
+      <ButtonLink className="mt-6" href={`/tours/${slug}/enquire`}>
+        {t.cta}
+      </ButtonLink>
     </div>
   );
 }

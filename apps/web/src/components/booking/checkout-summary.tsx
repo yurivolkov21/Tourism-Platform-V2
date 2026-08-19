@@ -85,7 +85,7 @@ export function computeCancellationAssurance(
 /** Dòng trấn an dưới CTA — lắp câu từ `messages` + link `cancellation policy`
     trỏ `/cancellation-policy`, KHÔNG bịa link riêng cho từng nhánh (một đích
     duy nhất, đúng chính sách thật đang sống ở đó). */
-function CancellationAssuranceLine({ departure }: { departure: DepartureVM }) {
+export function CancellationAssuranceLine({ departure }: { departure: DepartureVM }) {
   const t = messages.checkoutSummary.cancellationAssurance;
   const assurance = computeCancellationAssurance(departure.startDate);
 
@@ -112,7 +112,7 @@ function CancellationAssuranceLine({ departure }: { departure: DepartureVM }) {
 
 /**
  * Card tóm tắt đơn ở cột phải trang `/tours/[slug]/book` (checkout hướng B —
- * marketplace). KHÔNG `'use client'`: thuần render, để `BookingForm` (client)
+ * marketplace). KHÔNG `'use client'`: thuần render, để `BookingWizard` (client)
  * import và bọc `cta` (nút submit) vào form của chính nó — `cta` nằm TRONG
  * `<form>` cha, component này không tự dựng `<form>`/`<button>` submit riêng.
  *
@@ -133,7 +133,15 @@ export function CheckoutSummary({
   numAdults: number;
   numChildren: number;
   currency: string;
-  cta: ReactNode;
+  /**
+   * Nút hành động đặt ngay dưới bảng giá — TUỲ CHỌN từ 19/08.
+   *
+   * Wizard 4 bước đặt CTA ở thanh chân của cột trái (đúng wireframe), nên nó
+   * không truyền `cta`; các chỗ dùng cũ vẫn truyền như thường. Để bắt buộc thì
+   * wizard phải nhét vào một `<></>` rỗng — một prop giả để làm vừa lòng type,
+   * và đó là kiểu nói dối nhỏ mà về sau không ai hiểu vì sao có.
+   */
+  cta?: ReactNode;
 }): ReactNode {
   const t = messages.checkoutSummary;
 
@@ -225,7 +233,7 @@ export function CheckoutSummary({
           )}
         </div>
 
-        {cta}
+        {cta ?? null}
 
         {/* Trấn an TRUNG THỰC ngay dưới CTA — chỉ hiện khi đã có đợt để tính
             mốc thật; `departure: null` không bịa mốc. */}
