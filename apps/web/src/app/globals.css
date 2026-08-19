@@ -226,3 +226,41 @@ select:-webkit-autofill {
 html:not(.dark) .stamp-ink {
   mix-blend-mode: multiply;
 }
+
+/* ─────────────────────────────────────────────────────────────────────────────
+ * IN ẤN — chỉ phục vụ hoá đơn `/checkout/success` (19/08).
+ *
+ * Mặc định của trình duyệt là KHÔNG in background, và hậu quả nặng nhất KHÔNG
+ * phải thẩm mỹ: vạch mã vạch trong cuống vé vẽ bằng `background`, nên tắt
+ * background là mã vạch BIẾN MẤT HOÀN TOÀN — tờ giấy thành vô dụng ở đúng nơi
+ * nó tồn tại để phục vụ (điểm hẹn).
+ *
+ * `print-color-adjust: exact` ép in nền cho ĐÚNG hai chỗ mà nền MANG THÔNG TIN:
+ * mã vạch và pill trạng thái. Cố ý không ép cả trang — làm vậy chỉ tốn mực mà
+ * không giải quyết thêm gì, và biến mọi nền trang trí thành mảng màu đặc.
+ *
+ * Cuống mất nền xám thì viền giữ ranh giới: viền LUÔN in, khác background. Khai
+ * TỪNG CẠNH chứ không dùng `border` rút gọn — rút gọn sẽ ghi đè `border-bottom`
+ * đang mang màu trạng thái (đã dính đúng lỗi này lúc dựng wireframe).
+ * ───────────────────────────────────────────────────────────────────────────── */
+@media print {
+  [data-slot="barcode"],
+  [data-slot="barcode"] span,
+  [data-slot="receipt-status"] {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* Không để trang cắt đôi hoá đơn, và tuyệt đối không cắt đôi cuống: một cuống
+     bị xé ngang giữa mã vạch thì đúng nghĩa vô dụng. */
+  [data-slot="receipt"],
+  [data-slot="stub"] {
+    break-inside: avoid;
+  }
+
+  [data-slot="stub"] {
+    border-left: 1px solid var(--border);
+    border-right: 1px solid var(--border);
+    border-top: 1px dashed var(--border);
+  }
+}

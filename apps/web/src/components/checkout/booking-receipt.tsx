@@ -78,10 +78,16 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
     <div className="mx-auto w-full max-w-3xl px-4">
       {/* Card: KHÔNG padding hai bên — mỗi khối tự mang `px-4`, còn cuống thì
           tràn hết bề rộng nên phải nằm ngoài padding đó (đúng khung wireframe). */}
-      <div className="flex flex-col gap-4 overflow-hidden rounded-2xl border bg-card pt-4">
+      <div
+        data-slot="receipt"
+        className="flex flex-col gap-4 overflow-hidden rounded-2xl border bg-card pt-4"
+      >
         <div className="flex flex-col gap-4 px-4 pb-1 sm:flex-row sm:justify-between">
           <div className="flex flex-col items-start gap-2">
-            <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', PILL[mood])}>
+            <span
+              data-slot="receipt-status"
+              className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', PILL[mood])}
+            >
               {statusLabel}
             </span>
             <h1 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">

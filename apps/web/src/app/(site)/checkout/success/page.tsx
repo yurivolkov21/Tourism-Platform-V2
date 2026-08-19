@@ -3,21 +3,13 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
-import { CheckoutShell } from '@/components/checkout/checkout-shell';
+import { PrintButton } from '@/components/checkout/print-button';
 import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { checkoutMood } from '@/lib/checkout';
-import { formatDateRange, formatMoney, formatTicketDate } from '@/lib/tours';
-
-/** Nhãn provider — TÁI DÙNG nguyên copy đã có ở `booking.form` (trang checkout
- *  chọn provider), cùng cách [code]/page.tsx làm — không thêm key i18n mới
- *  cho hai tên thương hiệu cố định. */
-const PROVIDER_LABEL = {
-  STRIPE: messages.booking.form.stripe,
-  PAYPAL: messages.booking.form.paypal,
-} as const;
 
 export const metadata: Metadata = {
   title: `${messages.booking.success.confirmedTitle} — Tourism`,
@@ -88,91 +80,56 @@ export default async function CheckoutSuccessPage({
 
   return (
     <div>
-      {/* Hero chuẩn site (12/08 — user yêu cầu đồng bộ navbar): breadcrumb
-          Voucher · title tên tour · meta mã; tấm vé bên dưới vẫn in đủ tiêu
-          đề/mã của chính nó — giấy tờ tự thân đầy đủ, cùng nếp trang visa. */}
-      <ContentHero breadcrumb={t.heroBreadcrumb} title={booking.tourTitle} meta={booking.code} />
-      <CheckoutShell
-        tone={mood === 'confirmed' ? 'success' : mood === 'confirming' ? 'warning' : 'muted'}
-        title={title}
-        body={body}
-        code={booking.code}
-        codeLabel={t.refLabel}
-        stubName={booking.contactName}
-        stubMeta={`${formatDateRange(booking.departureStartDate, booking.departureEndDate)} · ${t.guestsCount(totalGuests)}`}
-      >
-        {/* Khoảnh khắc primary kiểu boarding-pass — cặp ngày to nhất vé, đóng
-          khung mảnh xoay -1deg như dấu mộc. Chỉ một vế khi tour trong ngày. */}
-        <div className="-rotate-1 mx-auto flex flex-col items-center gap-1 rounded-md border px-5 py-2.5">
-          <p className="font-mono text-[9px] tracking-[0.28em] text-muted-foreground uppercase">
-            {t.dateLabel}
-          </p>
-          <p className="font-mono text-2xl font-semibold tracking-tight tabular-nums md:text-3xl">
-            {formatTicketDate(booking.departureStartDate)}
-            {booking.departureStartDate !== booking.departureEndDate ? (
-              <>
-                {' '}
-                <span aria-hidden="true" className="text-muted-foreground">
-                  →
-                </span>{' '}
-                {formatTicketDate(booking.departureEndDate)}
-              </>
-            ) : null}
-          </p>
-        </div>
+      {/* GIỮ `ContentHero` — nó không chỉ là trang trí: `/checkout/success` nằm
+          trong `HERO_LESS_EXCEPTIONS` của `site-header.tsx`, tức navbar ở đây
+          giả định có mảng tối phía sau. Gỡ hero đi là navbar tàng hình ở light
+          mode, đúng lỗi `/enquire` đã dính 19/08.
 
-        <dl className="grid w-full gap-x-6 gap-y-4 text-sm sm:grid-cols-2">
-          <Fact label={t.tourLabel} value={booking.tourTitle} />
-          <Fact
-            label={t.travellersLabel}
-            value={`${messages.booking.page.adultsLine(booking.numAdults)}${
-              booking.numChildren > 0
-                ? `, ${messages.booking.page.childrenLine(booking.numChildren)}`
-                : ''
-            }`}
-          />
-          <Fact label={t.totalLabel} value={formatMoney(booking.totalAmount, booking.currency)} />
-          <Fact label={t.paymentLabel} value={PROVIDER_LABEL[booking.paymentProvider]} />
-        </dl>
+          Nhưng BỎ `meta`: nó vốn in mã đặt chỗ, mà receipt bên dưới đã in mã ở
+          bảng meta VÀ ở cuống — giữ nữa là ba lần trên một màn.
 
-        {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
-          xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
-          còn lại (confirming chưa có gì để hứa; settled đã kết thúc). */}
-        {mood === 'confirmed' ? (
-          <div className="w-full rounded-xl border p-5 text-left">
-            <h2 className="font-heading text-sm font-semibold text-foreground">{t.nextHeading}</h2>
-            <ul className="mt-3 flex flex-col gap-2">
-              <NextStep text={t.nextEmail} />
-              <NextStep text={t.nextVoucher} />
-              <NextStep text={t.nextManage} />
-            </ul>
+          Nút Print đi vào slot `action` sẵn có của hero thay vì đẻ thêm một
+          hàng nút riêng. */}
+      <ContentHero
+        breadcrumb={t.heroBreadcrumb}
+        title={booking.tourTitle}
+        action={<PrintButton />}
+      />
+
+      <div className="py-10 md:py-14">
+        <BookingReceipt booking={booking} mood={mood} />
+
+        <div className="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-6 px-4">
+          {/* "What happens next" — chỉ hiện ở mood confirmed: đây là ba việc SẼ
+              xảy ra sau một lần thanh toán thành công, không có nghĩa ở hai mood
+              còn lại (confirming chưa có gì để hứa; settled đã kết thúc). Khối
+              này KHÔNG có trong wireframe receipt, nhưng nó là nội dung có thật
+              và wireframe không phủ nhận nó — giữ. */}
+          {mood === 'confirmed' ? (
+            <div className="rounded-xl border p-5 print:hidden">
+              <h2 className="font-heading text-sm font-semibold text-foreground">
+                {t.nextHeading}
+              </h2>
+              <ul className="mt-3 flex flex-col gap-2">
+                <NextStep text={t.nextEmail} />
+                <NextStep text={t.nextVoucher} />
+                <NextStep text={t.nextManage} />
+              </ul>
+            </div>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2.5 print:hidden">
+            <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
+            {mood === 'confirming' ? (
+              <CheckoutAutoRefresh />
+            ) : (
+              <ButtonLink variant="outline" href="/tours">
+                {t.viewTours}
+              </ButtonLink>
+            )}
           </div>
-        ) : null}
-
-        <div className="flex flex-wrap items-center gap-2.5">
-          <ButtonLink href={`/account/bookings/${booking.code}`}>{t.viewBooking}</ButtonLink>
-          {mood === 'confirming' ? (
-            <CheckoutAutoRefresh />
-          ) : (
-            <ButtonLink variant="outline" href="/tours">
-              {t.viewTours}
-            </ButtonLink>
-          )}
         </div>
-      </CheckoutShell>
-    </div>
-  );
-}
-
-/** Pattern nhãn/giá trị kiểu IATA: nhãn UPPERCASE nhỏ tracking rộng màu nhạt
- *  đứng TRÊN, giá trị đậm đứng DƯỚI — `tabular-nums` để số thẳng cột. */
-function Fact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex flex-col gap-1">
-      <dt className="font-mono text-[10px] tracking-widest text-muted-foreground/80 uppercase">
-        {label}
-      </dt>
-      <dd className="font-medium text-foreground tabular-nums">{value}</dd>
+      </div>
     </div>
   );
 }
