@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { RouteRibbon } from '@/components/tours/route-ribbon';
 import type { TourDetailVM } from '@/lib/api/tours';
 import { SPRING, SPRING_HEADING } from '@/lib/motion';
+import { heroPrice } from '@/lib/tour-detail';
 import { discountPercent, formatMoney } from '@/lib/tours';
 
 // Hero riêng cho trang chi tiết — KHÔNG tái dùng ToursHero: cái đó mang eyebrow
@@ -26,7 +27,11 @@ const MAX_CHIPS = 2;
 
 export function TourHero({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail;
-  const discount = discountPercent(tour.basePrice, tour.compareAtPrice);
+  // "from" = đợt rẻ nhất còn chỗ + giá gạch của chính đợt đó (sweep giá 19/08)
+  // — trước đây in `basePrice` 129 dù có đợt 119, và gạch theo neo tour trong
+  // khi khối chọn ngày gạch theo neo đợt: hai "giá gốc" trên cùng một trang.
+  const price = heroPrice(tour);
+  const discount = discountPercent(price.price, price.compareAtPrice);
 
   const badgeBudget = discount !== null ? MAX_CHIPS - 1 : MAX_CHIPS;
   const shownBadges = tour.badges.slice(0, badgeBudget);
@@ -167,21 +172,21 @@ export function TourHero({ tour }: { tour: TourDetailVM }) {
               <p className="flex items-baseline gap-2">
                 <span className="text-xs text-muted-foreground">{t.fromPrice}</span>
                 <span className="font-heading text-3xl font-semibold text-foreground tabular-nums">
-                  {formatMoney(tour.basePrice, tour.currency)}
+                  {formatMoney(price.price, tour.currency)}
                 </span>
-                {tour.compareAtPrice ? (
+                {price.compareAtPrice ? (
                   <>
                     {/* Con số hiện ra bị aria-hidden, và trình đọc màn hình nghe
                         câu đầy đủ "was $236" — nghe trần hai giá cạnh nhau thì
                         không biết giá nào đang có hiệu lực. */}
                     <span className="sr-only">
-                      {t.wasPrice(formatMoney(tour.compareAtPrice, tour.currency))}
+                      {t.wasPrice(formatMoney(price.compareAtPrice, tour.currency))}
                     </span>
                     <span
                       aria-hidden="true"
                       className="text-sm text-price-compare tabular-nums line-through"
                     >
-                      {formatMoney(tour.compareAtPrice, tour.currency)}
+                      {formatMoney(price.compareAtPrice, tour.currency)}
                     </span>
                   </>
                 ) : null}

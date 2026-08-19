@@ -1,6 +1,7 @@
 import { isDefinedError, safe } from '@orpc/client';
 import type { ContractInputs, ContractOutputs } from '@tourism/contract';
 import { cache } from 'react';
+import { resolveDepartureAnchors } from '@/lib/tour-detail';
 import { api } from './client';
 import { TAGS, tourTag } from './tags';
 
@@ -77,7 +78,10 @@ export const fetchTourDetail = cache(async (slug: string): Promise<TourDetailVM 
     if (isDefinedError(error) && error.code === 'NOT_FOUND') return null;
     throw error;
   }
-  return data;
+  // Một giá gạch duy nhất cho mỗi đợt (sweep giá 19/08) — áp Ở ĐÂY để mọi bề
+  // mặt của trang chi tiết (hero, panel ảnh, rail, strip, bảng, modal) cùng
+  // đọc một con số; lý do đầy đủ ở `resolveDepartureAnchors`.
+  return resolveDepartureAnchors(data);
 });
 
 /**

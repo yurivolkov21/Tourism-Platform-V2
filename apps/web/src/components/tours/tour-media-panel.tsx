@@ -22,7 +22,12 @@ import { Lightbox } from '@/components/media/lightbox';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
 import { useWishlist, WishlistProvider } from '@/components/tours/wishlist-store';
 import type { TourDetailVM } from '@/lib/api/tours';
-import { GALLERY_THUMB_SLOTS, galleryThumbs, visibleDepartureChips } from '@/lib/tour-detail';
+import {
+  GALLERY_THUMB_SLOTS,
+  galleryThumbs,
+  heroPrice,
+  visibleDepartureChips,
+} from '@/lib/tour-detail';
 import { discountPercent, formatChipDate, formatMoney, tourGallery } from '@/lib/tours';
 
 type PolicyKind = TourDetailVM['policies'][number]['kind'];
@@ -74,8 +79,11 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
   // (nó chỉ là mock), nhưng `effectivePrice = priceOverride ?? basePrice` là giá
   // khách thật sự trả và mỗi đợt một khác — `BookingRail` đã bám đúng từ đầu,
   // panel phải nói cùng con số với nó và với nhãn trên nút Reserve.
-  const shownPrice = departure?.effectivePrice ?? tour.basePrice;
-  const shownCompareAt = departure ? departure.compareAtPrice : tour.compareAtPrice;
+  // Chưa chọn đợt (mọi đợt hết chỗ) → cùng con số với hero (`heroPrice`), không
+  // phải base/neo tour trần — sweep giá 19/08.
+  const fallback = heroPrice(tour);
+  const shownPrice = departure?.effectivePrice ?? fallback.price;
+  const shownCompareAt = departure ? departure.compareAtPrice : fallback.compareAtPrice;
   const discount = discountPercent(shownPrice, shownCompareAt);
 
   // Lightbox mở được cả khi chưa có ảnh: khi đó nó trưng đúng số Ô ẢNH người

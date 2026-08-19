@@ -3,6 +3,7 @@ import {
   defaultOpenMonth,
   departureMonths,
   galleryThumbs,
+  heroPrice,
   itineraryDayDate,
   itineraryDayState,
   monthDateSpan,
@@ -13,6 +14,7 @@ import {
   parseItineraryStops,
   policyEyebrow,
   ratingHistogram,
+  resolveDepartureAnchors,
   reviewRange,
   toggleStarFilter,
   visibleDepartureChips,
@@ -326,5 +328,123 @@ describe('policyEyebrow', () => {
 
   it('so sánh bỏ qua hoa thường và khoảng trắng thừa', () => {
     expect(policyEyebrow('Booking & payment', '  booking & PAYMENT ')).toBeNull();
+  });
+});
+
+// Sweep giá 19/08 — hai neo giá chồng nhau (tour 149 → base 129 → đợt thấp điểm
+// 119 neo 129) khiến hero nói "from $129 was $149 −13%" còn khối chọn ngày nói
+// "$119 was $129 7% off". Quy tắc thống nhất: mỗi đợt có ĐÚNG MỘT giá gạch =
+// neo cao nhất áp cho nó (max của neo đợt và neo tour); hero "from" = đợt rẻ
+// nhất còn chỗ, kèm neo của chính đợt đó.
+const PRICED_TOUR = {
+  basePrice: '129.00',
+  compareAtPrice: '149.00',
+  departures: [
+    {
+      id: 'sep',
+      startDate: '2026-09-19',
+      effectivePrice: '129.00',
+      compareAtPrice: null,
+      seatsLeft: 16,
+    },
+    {
+      id: 'oct',
+      startDate: '2026-10-17',
+      effectivePrice: '119.00',
+      compareAtPrice: '129.00',
+      seatsLeft: 6,
+    },
+    {
+      id: 'nov',
+      startDate: '2026-11-21',
+      effectivePrice: '129.00',
+      compareAtPrice: null,
+      seatsLeft: 13,
+    },
+  ],
+};
+
+describe('resolveDepartureAnchors', () => {
+  it('đợt không có neo riêng → nhận neo tour; đợt có neo riêng thấp hơn neo tour → lấy neo tour (cao nhất)', () => {
+    const t = resolveDepartureAnchors(PRICED_TOUR);
+    expect(t.departures.map((d) => d.compareAtPrice)).toEqual(['149.00', '149.00', '149.00']);
+  });
+
+  it('neo đợt CAO HƠN neo tour (đợt cao điểm) → giữ neo đợt', () => {
+    const t = resolveDepartureAnchors({
+      ...PRICED_TOUR,
+      departures: [
+        {
+          id: 'peak',
+          startDate: '2026-12-30',
+          effectivePrice: '199.00',
+          compareAtPrice: '229.00',
+          seatsLeft: 4,
+        },
+      ],
+    });
+    expect(t.departures[0]?.compareAtPrice).toBe('229.00');
+  });
+
+  it('neo không cao hơn giá thật → null (không gạch giá "giảm 0%")', () => {
+    const t = resolveDepartureAnchors({
+      basePrice: '129.00',
+      compareAtPrice: '129.00',
+      departures: [
+        {
+          id: 'a',
+          startDate: '2026-09-19',
+          effectivePrice: '129.00',
+          compareAtPrice: null,
+          seatsLeft: 1,
+        },
+        {
+          id: 'b',
+          startDate: '2026-09-20',
+          effectivePrice: '139.00',
+          compareAtPrice: '139.00',
+          seatsLeft: 1,
+        },
+      ],
+    });
+    expect(t.departures.map((d) => d.compareAtPrice)).toEqual([null, null]);
+  });
+
+  it('tour không có neo, đợt không có neo → null; các field khác giữ nguyên', () => {
+    const t = resolveDepartureAnchors({ ...PRICED_TOUR, compareAtPrice: null });
+    expect(t.departures[0]?.compareAtPrice).toBeNull();
+    expect(t.departures[1]?.compareAtPrice).toBe('129.00');
+    expect(t.basePrice).toBe('129.00');
+  });
+});
+
+describe('heroPrice', () => {
+  it('"from" = đợt RẺ NHẤT còn chỗ, kèm neo của đợt đó (sau resolve)', () => {
+    expect(heroPrice(resolveDepartureAnchors(PRICED_TOUR))).toEqual({
+      price: '119.00',
+      compareAtPrice: '149.00',
+    });
+  });
+
+  it('bỏ qua đợt hết chỗ khi tìm giá rẻ nhất', () => {
+    const t = resolveDepartureAnchors({
+      ...PRICED_TOUR,
+      departures: PRICED_TOUR.departures.map((d) => (d.id === 'oct' ? { ...d, seatsLeft: 0 } : d)),
+    });
+    expect(heroPrice(t).price).toBe('129.00');
+  });
+
+  it('không có đợt nào (hoặc toàn hết chỗ) → rơi về basePrice + neo tour', () => {
+    expect(heroPrice({ ...PRICED_TOUR, departures: [] })).toEqual({
+      price: '129.00',
+      compareAtPrice: '149.00',
+    });
+  });
+
+  it('neo tour không cao hơn base → compareAtPrice null', () => {
+    expect(heroPrice({ basePrice: '129.00', compareAtPrice: '120.00', departures: [] })).toEqual({
+      price: '129.00',
+      compareAtPrice: null,
+    });
   });
 });

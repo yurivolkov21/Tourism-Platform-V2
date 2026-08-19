@@ -302,3 +302,68 @@ export function monthSeason(
   if (maxPrice > basePrice) return 'peak';
   return null;
 }
+
+/**
+ * Giá gạch DUY NHẤT của một đợt — sweep giá 19/08.
+ *
+ * Dữ liệu có HAI neo chồng nhau: `tour.compareAtPrice` (giá niêm yết, vd 149
+ * trên base 129) và `departure.compareAtPrice` (seed đặt = base cho đợt thấp
+ * điểm: 119 neo 129). Trước sweep, hero gạch theo neo tour ("from $129 was $149
+ * −13%") còn khối chọn ngày/rail/bảng gạch theo neo đợt ("$119 was $129 −7%")
+ * — cùng một tour mà hai "giá gốc", và đợt rẻ hơn lại hiện % giảm nhỏ hơn.
+ *
+ * Quy tắc: mỗi đợt có ĐÚNG MỘT giá gạch = **neo cao nhất áp được** cho nó,
+ * `max(neo đợt, neo tour)`, và chỉ giữ khi thật sự cao hơn giá khách trả
+ * (không có chuyện gạch "giảm 0%"). Neo tour là giá niêm yết đã công bố nên
+ * áp cho mọi đợt là trung thực; đợt cao điểm có neo riêng cao hơn thì giữ neo
+ * riêng. Áp MỘT LẦN ở `fetchTourDetail` để hero, panel ảnh, rail, strip, bảng
+ * Departures và modal All dates cùng đọc một con số — không sửa lẻ từng chỗ.
+ */
+export function resolveDepartureAnchors<
+  D extends { effectivePrice: string; compareAtPrice: string | null },
+  T extends { compareAtPrice: string | null; departures: readonly D[] },
+>(tour: T): T {
+  const tourAnchor = tour.compareAtPrice === null ? null : Number(tour.compareAtPrice);
+  return {
+    ...tour,
+    departures: tour.departures.map((d) => {
+      const own = d.compareAtPrice === null ? null : Number(d.compareAtPrice);
+      const candidates = [own, tourAnchor].filter((v): v is number => v !== null);
+      const anchor = candidates.length > 0 ? Math.max(...candidates) : null;
+      const compareAtPrice =
+        anchor !== null && anchor > Number(d.effectivePrice) ? anchor.toFixed(2) : null;
+      return { ...d, compareAtPrice };
+    }),
+  };
+}
+
+/**
+ * Giá "from" ở hero = đợt RẺ NHẤT còn chỗ (hoà thì đợt sớm hơn — thứ tự mảng),
+ * kèm giá gạch của CHÍNH đợt đó — nên hero nói đúng con số khách sẽ thấy khi
+ * chọn đợt rẻ nhất. Không có đợt (hoặc toàn hết chỗ) → `basePrice` + neo tour.
+ * Trước sweep hero in `basePrice` (129) dù có đợt 119: "from" mà không phải
+ * giá thấp nhất là nói sai.
+ */
+export function heroPrice(tour: {
+  basePrice: string;
+  compareAtPrice: string | null;
+  departures: readonly {
+    effectivePrice: string;
+    compareAtPrice: string | null;
+    seatsLeft: number;
+  }[];
+}): { price: string; compareAtPrice: string | null } {
+  let cheapest: { effectivePrice: string; compareAtPrice: string | null } | null = null;
+  for (const d of tour.departures) {
+    if (d.seatsLeft <= 0) continue;
+    if (cheapest === null || Number(d.effectivePrice) < Number(cheapest.effectivePrice)) {
+      cheapest = d;
+    }
+  }
+  if (cheapest) return { price: cheapest.effectivePrice, compareAtPrice: cheapest.compareAtPrice };
+  const anchor =
+    tour.compareAtPrice !== null && Number(tour.compareAtPrice) > Number(tour.basePrice)
+      ? tour.compareAtPrice
+      : null;
+  return { price: tour.basePrice, compareAtPrice: anchor };
+}
