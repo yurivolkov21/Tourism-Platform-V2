@@ -1,7 +1,11 @@
+'use client';
+
 import { ChevronRightIcon, ClockIcon } from 'lucide-react';
+import { motion } from 'motion/react';
 import Link from 'next/link';
 import { SlotImage } from '@/components/slot-image';
 import type { JournalPost } from '@/lib/api/posts';
+import { SPRING, SPRING_HEADING } from '@/lib/motion';
 
 // Hero bài viết: ảnh cover thật + scrim tối. Bọc scope `dark` vì navbar chưa
 // cuộn dùng chữ on-media — hero sáng làm navbar tàng hình (pattern chốt ở
@@ -36,9 +40,16 @@ export function PostHero({ post }: { post: JournalPost }) {
       />
 
       <div className="relative z-10 mx-auto max-w-7xl">
-        <nav
+        {/* Nhịp vào CÙNG SỐ với `ContentHero` (nhóm motion 5, 19/08): breadcrumb
+            hạ xuống (−16, delay .1) → h1 trồi lên (40, SPRING_HEADING, .2) → meta
+            (20, .3). Đây là hero màn đầu nên dùng `animate` lúc mount, cùng lệ
+            với các hero khác — không phải `whileInView`. */}
+        <motion.nav
           aria-label="Breadcrumb"
           className="flex items-center gap-1.5 text-sm text-muted-foreground"
+          initial={{ y: -16, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.1, ...SPRING }}
         >
           <Link href="/" className="transition-colors hover:text-foreground">
             Home
@@ -51,13 +62,23 @@ export function PostHero({ post }: { post: JournalPost }) {
           <span aria-current="page" className="text-foreground">
             {post.category}
           </span>
-        </nav>
+        </motion.nav>
 
-        <h1 className="mt-6 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance md:text-5xl">
+        <motion.h1
+          className="mt-6 max-w-3xl font-heading text-4xl leading-tight font-medium text-balance md:text-5xl"
+          initial={{ y: 40, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ ...SPRING_HEADING, delay: 0.2 }}
+        >
           {post.title}
-        </h1>
+        </motion.h1>
 
-        <div className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
+        <motion.div
+          className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground"
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ ...SPRING, delay: 0.3 }}
+        >
           <span className="text-foreground">{post.author}</span>
           <span aria-hidden="true">·</span>
           <time dateTime={post.date}>{DATE_FMT.format(new Date(post.date))}</time>
@@ -69,7 +90,7 @@ export function PostHero({ post }: { post: JournalPost }) {
           {/* Nhánh "Updated …" cũ đọc post.updated — cắt có chủ đích: contract
               PostDetail không có updatedAt, JournalPost/JournalPostDetail
               không mang field này (lib/api/posts.ts). */}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

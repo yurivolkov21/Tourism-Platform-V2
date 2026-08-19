@@ -2,8 +2,10 @@ import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
+import { RevealItem } from '@/components/motion/reveal-item';
 import type { CheckoutMood } from '@/lib/checkout';
 import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
+import { STAGGER } from '@/lib/motion';
 import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
 
 /**
@@ -114,78 +116,85 @@ export function BookingReceipt({
         data-slot="receipt"
         className="flex flex-col gap-4 overflow-hidden rounded-2xl border bg-card pt-4"
       >
-        <div className="flex flex-col gap-4 px-4 pb-1 sm:flex-row sm:justify-between">
-          <div className="flex flex-col items-start gap-2">
-            <span
-              data-slot="receipt-status"
-              className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', PILL[mood])}
-            >
-              {statusLabel}
-            </span>
-            {/* `h2`, KHÔNG `h1`: `ContentHero` của cả hai trang quay-về đã có `h1`
+        {/* Hoá đơn "in ra" từng khối (nhóm motion 4, 19/08): đầu phiếu → ba cột →
+            tổng → cuống, mỗi khối trồi lên cách nhau một nhịp STAGGER. Transform-
+            only nên bản in (`print`) và JS-tắt đều thấy đủ chữ. */}
+        <RevealItem enter="rise">
+          <div className="flex flex-col gap-4 px-4 pb-1 sm:flex-row sm:justify-between">
+            <div className="flex flex-col items-start gap-2">
+              <span
+                data-slot="receipt-status"
+                className={cn('rounded-full px-2.5 py-0.5 text-xs font-medium', PILL[mood])}
+              >
+                {statusLabel}
+              </span>
+              {/* `h2`, KHÔNG `h1`: `ContentHero` của cả hai trang quay-về đã có `h1`
                 (tên tour). Đo trên trang thật thấy hai `h1` cùng lúc — trình đọc
                 màn hình báo hai tiêu đề cấp một cho một tài liệu. Cỡ chữ giữ
                 nguyên; đây là sửa NGỮ NGHĨA, không phải thị giác. */}
-            <h2 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">
-              {title ??
-                (mood === 'confirmed'
-                  ? t.confirmedTitle
-                  : mood === 'confirming'
-                    ? t.pendingTitle
-                    : t.settledTitle)}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {body ?? t.receiptSentTo(booking.contactEmail)}
-            </p>
-          </div>
+              <h2 className="font-heading text-2xl font-medium tracking-tight text-balance md:text-3xl">
+                {title ??
+                  (mood === 'confirmed'
+                    ? t.confirmedTitle
+                    : mood === 'confirming'
+                      ? t.pendingTitle
+                      : t.settledTitle)}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {body ?? t.receiptSentTo(booking.contactEmail)}
+              </p>
+            </div>
 
-          <dl className="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-4 gap-y-1.5 text-xs sm:text-right">
-            <dt className="font-medium">{t.bookingMetaLabel}</dt>
-            <dd className="font-mono text-muted-foreground">{booking.code}</dd>
-            <dt className="font-medium">{t.dateMetaLabel}</dt>
-            <dd className="font-mono text-muted-foreground">
-              {formatDate((booking.paidAt ?? booking.createdAt).slice(0, 10))}
-            </dd>
-          </dl>
-        </div>
+            <dl className="grid shrink-0 grid-cols-[auto_auto] items-baseline gap-x-4 gap-y-1.5 text-xs sm:text-right">
+              <dt className="font-medium">{t.bookingMetaLabel}</dt>
+              <dd className="font-mono text-muted-foreground">{booking.code}</dd>
+              <dt className="font-medium">{t.dateMetaLabel}</dt>
+              <dd className="font-mono text-muted-foreground">
+                {formatDate((booking.paidAt ?? booking.createdAt).slice(0, 10))}
+              </dd>
+            </dl>
+          </div>
+        </RevealItem>
 
         {/* Ba cột — thay `SHIP TO`/`BILL TO`/`PAYMENT` của mẫu gốc. Dự án không
             giao gì nên không có địa chỉ nào để in; hai cột đó đổi sang thứ một
             chuyến đi thật sự cần. */}
-        <div className="grid gap-5 px-4 sm:grid-cols-3">
-          <Column label={t.travellersLabel}>
-            <p className="font-medium">{booking.contactName}</p>
-            <p className="text-muted-foreground">{booking.contactEmail}</p>
-            {booking.contactPhone ? (
-              <p className="text-muted-foreground">{booking.contactPhone}</p>
-            ) : null}
-            <p className="text-muted-foreground">
-              {ts.adultsLine(booking.numAdults)}
-              {booking.numChildren > 0 ? `, ${ts.childrenLine(booking.numChildren)}` : ''}
-            </p>
-          </Column>
-
-          <Column label={t.tripLabel}>
-            <p className="font-medium tabular-nums">{departure}</p>
-            <p className="text-muted-foreground">{booking.tourTitle}</p>
-            {booking.tourDestinations.length > 0 ? (
+        <RevealItem enter="rise" delay={STAGGER.grid}>
+          <div className="grid gap-5 px-4 sm:grid-cols-3">
+            <Column label={t.travellersLabel}>
+              <p className="font-medium">{booking.contactName}</p>
+              <p className="text-muted-foreground">{booking.contactEmail}</p>
+              {booking.contactPhone ? (
+                <p className="text-muted-foreground">{booking.contactPhone}</p>
+              ) : null}
               <p className="text-muted-foreground">
-                {booking.tourDestinations.map((d) => d.name).join(' · ')}
+                {ts.adultsLine(booking.numAdults)}
+                {booking.numChildren > 0 ? `, ${ts.childrenLine(booking.numChildren)}` : ''}
               </p>
-            ) : null}
-          </Column>
+            </Column>
 
-          <Column label={t.paymentLabel}>
-            <p className="font-medium">{PROVIDER_LABEL[booking.paymentProvider]}</p>
-            {/* Sandbox disclosure — dùng LẠI key đã có, không bịa key trùng nghĩa. */}
-            <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
-            {booking.paidAt ? (
-              <p className="pt-1 text-muted-foreground">
-                {t.paidAtLine(formatDate(booking.paidAt.slice(0, 10)))}
-              </p>
-            ) : null}
-          </Column>
-        </div>
+            <Column label={t.tripLabel}>
+              <p className="font-medium tabular-nums">{departure}</p>
+              <p className="text-muted-foreground">{booking.tourTitle}</p>
+              {booking.tourDestinations.length > 0 ? (
+                <p className="text-muted-foreground">
+                  {booking.tourDestinations.map((d) => d.name).join(' · ')}
+                </p>
+              ) : null}
+            </Column>
+
+            <Column label={t.paymentLabel}>
+              <p className="font-medium">{PROVIDER_LABEL[booking.paymentProvider]}</p>
+              {/* Sandbox disclosure — dùng LẠI key đã có, không bịa key trùng nghĩa. */}
+              <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
+              {booking.paidAt ? (
+                <p className="pt-1 text-muted-foreground">
+                  {t.paidAtLine(formatDate(booking.paidAt.slice(0, 10)))}
+                </p>
+              ) : null}
+            </Column>
+          </div>
+        </RevealItem>
 
         <div className="mx-4 h-px bg-border" />
 
@@ -226,31 +235,35 @@ export function BookingReceipt({
 
         <div className="mx-4 h-px bg-border" />
 
-        <dl className="ml-auto w-full max-w-xs px-4 pb-1">
-          <Row k={ts.adultsLine(booking.numAdults)} v={adultsAmount} />
-          {booking.numChildren > 0 ? (
-            <Row k={ts.childrenLine(booking.numChildren)} v={childrenAmount} />
-          ) : null}
-          <div className="mt-3 flex items-baseline justify-between border-t pt-3">
-            {/* "Total paid" chỉ đúng khi đã trả. Chưa trả thì dùng nhãn trung
+        <RevealItem enter="rise" delay={2 * STAGGER.grid}>
+          <dl className="ml-auto w-full max-w-xs px-4 pb-1">
+            <Row k={ts.adultsLine(booking.numAdults)} v={adultsAmount} />
+            {booking.numChildren > 0 ? (
+              <Row k={ts.childrenLine(booking.numChildren)} v={childrenAmount} />
+            ) : null}
+            <div className="mt-3 flex items-baseline justify-between border-t pt-3">
+              {/* "Total paid" chỉ đúng khi đã trả. Chưa trả thì dùng nhãn trung
                 tính sẵn có của `checkoutSummary` thay vì khai key mới. */}
-            <dt className="font-semibold">{isVoucher ? t.totalLabel : ts.totalLabel}</dt>
-            <dd className="font-heading text-lg font-semibold tabular-nums">
-              {formatMoney(booking.totalAmount, booking.currency)}
-            </dd>
-          </div>
-          <p className="mt-1 text-right text-xs text-muted-foreground">{ts.taxesNote}</p>
-        </dl>
+              <dt className="font-semibold">{isVoucher ? t.totalLabel : ts.totalLabel}</dt>
+              <dd className="font-heading text-lg font-semibold tabular-nums">
+                {formatMoney(booking.totalAmount, booking.currency)}
+              </dd>
+            </div>
+            <p className="mt-1 text-right text-xs text-muted-foreground">{ts.taxesNote}</p>
+          </dl>
+        </RevealItem>
 
         {children ? <div className="px-4 pb-1">{children}</div> : null}
 
-        <Stub
-          booking={booking}
-          mood={mood}
-          departed={departed}
-          departure={departure}
-          isVoucher={isVoucher}
-        />
+        <RevealItem enter="rise" delay={3 * STAGGER.grid}>
+          <Stub
+            booking={booking}
+            mood={mood}
+            departed={departed}
+            departure={departure}
+            isVoucher={isVoucher}
+          />
+        </RevealItem>
       </div>
 
       <p className="mt-3 text-center text-sm text-muted-foreground">{t.needHelp}</p>

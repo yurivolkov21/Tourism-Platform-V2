@@ -1,8 +1,22 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingReceipt } from './booking-receipt';
+
+// jsdom không có IntersectionObserver — hoá đơn nay "in ra" từng khối bằng
+// `RevealItem` (motion `whileInView`, nhóm motion 4 — 19/08). Stub CỤC BỘ theo
+// quy ước đã ghi ở `reveal-item.spec.tsx`/`gallery.spec.tsx`.
+beforeAll(() => {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
 
 const t = messages.booking.success;
 
