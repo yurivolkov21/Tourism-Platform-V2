@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Receipt + vé — hợp nhất (bước 2: nền cuống và băng trạng thái)</title>
+<title>Receipt + vé — hợp nhất (bước 3: ruột cuống)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -12,8 +12,8 @@
      `receipt-booking.src.html` (pha 2 đã duyệt), file đó giữ nguyên làm mốc.
 
        ✔ BƯỚC 1 — khung và đường xé
-       ✔ BƯỚC 2 — nền cuống + băng màu trạng thái   ← ĐANG Ở ĐÂY
-       ☐ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial
+       ✔ BƯỚC 2 — nền cuống + băng màu trạng thái
+       ✔ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial   ← ĐANG Ở ĐÂY
        ☐ BƯỚC 4 — @media print
 
      ── Bước 1 đổi ĐÚNG một thứ ──
@@ -48,6 +48,25 @@
 
         Ba trạng thái map thẳng sang `mood` sẵn có của trang success:
           confirmed → success · confirming → warning · settled → muted
+
+     ── Bước 3: cuống có ruột thật ──
+     Thêm vào cuống đúng ba thứ mà receipt thiếu và tấm vé có: MÃ cỡ lớn dạng
+     mono, BARCODE, và SERIAL. Đây là toàn bộ lý do hợp nhất — mọi thứ khác của
+     tấm vé đều đã trùng với receipt (xem phân tích 19/08).
+
+     Barcode và serial dựng bằng ĐÚNG thuật toán đang chạy trong repo, không vẽ
+     vạch bịa: `ticketBarcodeWidths` (28 vạch cố định, rộng ((mã[i]+i·7)%4)+1) và
+     `ticketSerial` (hash·31 cộng dồn, lấy 10 chữ số cuối). Với mã BK-7Q4K2M8P
+     ra serial 1873798728 — dán sẵn ở đây để wireframe khớp với thứ code sẽ sinh.
+
+     Vạch vẽ ở 2× bề rộng: ở cuống DỌC cũ, 28 vạch 1-4px trải ~99px trên một
+     cuống rộng ~200px là vừa; cuống NGANG của ta rộng 688px nên 99px trông như
+     con tem. Nhân đôi thành 171px. Khi cài đặt thì thêm một prop tỉ lệ cho
+     `TicketBarcode`, KHÔNG sửa `ticketBarcodeWidths` — hàm đó đang được vé cũ
+     dùng chung.
+
+     "Need help with this booking?" RỜI khỏi cuống, xuống dưới card: cuống chỉ
+     mang thứ cần ở điểm hẹn. Người soát vé không cần đường dây hỗ trợ.
 
      ── Phần dưới đây giữ nguyên từ pha 2 ──
      Nắn bản sao ReUI receipt-1 sang dữ liệu THẬT của dự án.
@@ -88,7 +107,11 @@
        success/warning ở `tokens.mjs`, muted dùng chính màu kẻ. */
     --tone-success: oklch(0.62 0.17 145);
     --tone-warning: oklch(0.78 0.15 80);
-    --tone-muted: oklch(0.922 0 0);
+    /* Đậm hơn `--line` một bậc (user chốt 19/08): để bằng màu kẻ thì băng biến
+       mất hẳn ở trạng thái settled, và người xem đọc thành LỖI RENDER chứ không
+       phải "trung tính có chủ đích". L=0.70 để nặng ngang success (0.62) và
+       warning (0.78) mà vẫn không màu. */
+    --tone-muted: oklch(0.7 0 0);
     --card: #fff;
     --page: #fff;
   }
@@ -179,7 +202,30 @@
   .band .s { font-size: 12px; line-height: 16px; color: var(--muted); }
   .band .link { font-size: 14px; line-height: 19.25px; font-weight: 500; margin-top: 5px;
     display: inline-block; color: var(--ink); text-decoration: none; }
-  .band .help { font-size: 14px; line-height: 19.25px; color: var(--muted); white-space: nowrap; }
+
+  /* ── Ruột cuống, cột phải ── */
+  .stub { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+  .stub .cap { display: flex; align-items: center; gap: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 10px; line-height: 16px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); }
+  .stub .cap::before { content: ""; width: 6px; height: 6px; border-radius: 999px;
+    background: var(--tone-success); }
+  .stub .code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 20px; line-height: 26px; font-weight: 500; letter-spacing: 0.06em;
+    font-variant-numeric: tabular-nums; }
+  /* Quiet zone dùng màu "giấy" của thân vé, không phải trắng cứng — cùng lý do
+     `TicketBarcode` nêu: giữ tương phản cao ở cả hai theme. */
+  .barcode { display: flex; align-items: stretch; gap: 1px; height: 36px;
+    background: var(--card); padding: 4px; }
+  .barcode span:nth-child(odd) { background: var(--ink); }
+  .barcode span:nth-child(even) { background: transparent; }
+  .stub .serial { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 9px; line-height: 14px; letter-spacing: 1.5px; color: var(--muted); }
+
+  /* Ngoài card: đường dây hỗ trợ không thuộc về cuống. */
+  .afterword { margin-top: 12px; text-align: center;
+    font-size: 14px; line-height: 19.25px; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -264,12 +310,19 @@
       <div class="band">
         <div>
           <div class="t">Departs 5 Sep 2026</div>
-          <div class="s">Show your booking code at the meeting point.</div>
+          <div class="s">Show this code at the meeting point.</div>
           <a class="link" href="#">View booking →</a>
         </div>
-        <div class="help">Need help with this booking?</div>
+        <div class="stub">
+          <span class="cap">Booking reference</span>
+          <span class="code">BK-7Q4K2M8P</span>
+          <div class="barcode" aria-hidden="true"><span style="width:6px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:4px"></span><span style="width:8px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:6px"></span><span style="width:2px"></span><span style="width:8px"></span><span style="width:2px"></span><span style="width:2px"></span><span style="width:4px"></span><span style="width:6px"></span><span style="width:8px"></span><span style="width:4px"></span></div>
+          <span class="serial">NO. 1873798728</span>
+        </div>
       </div>
     </div>
+
+    <p class="afterword">Need help with this booking?</p>
   </div>
 </body>
 </html>
