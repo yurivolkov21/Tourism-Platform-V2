@@ -8,32 +8,14 @@ import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { Lightbox } from '@/components/media/lightbox';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { STAGGER } from '@/lib/motion';
-import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
+import { type GalleryVariant, SIGNATURE_BAND_BG, TILE_COUNT } from '@/lib/region-theme';
 import type { MockRegion } from '@/mocks/types';
 
-export type GalleryVariant = 'peaks' | 'lanterns' | 'panorama';
-
-/**
- * Số ô mỗi biến thể dùng. Nhãn lấy từ `regions[key].galleryTiles` — **mỗi vùng
- * một danh sách RIÊNG, dài đúng bằng con số ở đây**.
- *
- * ⚠️ Trước 30/07 nhãn cắt từ MỘT danh sách `galleryTiles` dùng chung 10 mục, và
- * điều đó sai hai lần: ba vùng cắt cùng đầu danh sách nên **chú thích giống hệt
- * nhau** (user yêu cầu ba gallery khác nhau), và vài nhãn thuộc vùng KHÁC — trang
- * miền Bắc chú thích "Lantern-lit old town" (Hội An, miền Trung) và "Riverside
- * floating market" (Cần Thơ, miền Nam). Cùng họ lỗi với 7 địa danh bịa mà §7 đã
- * cắt, chỉ nhẹ hơn: chú thích mô tả một cảnh KHÔNG có trong vùng đang xem.
- * Danh sách chung đã xoá khỏi i18n — đừng dựng lại.
- *
- * Rơi từ 8 · 10 · 3 (bản 5k) xuống 6 · 6 · 3: user duyệt bản đó và nêu *"ảnh
- * gallery quá nhỏ"*. Trong cùng một bề ngang, ít ô là điều kiện DUY NHẤT để mỗi ô
- * to ra — bốn cột 280px thành ba cột 413px, mười ô 176px thành sáu ô 380px.
- *
- * `export` để spec khoá con số lại chứ không đọc lại chính hằng số của mình: đây
- * là quyết định thiết kế user đã duyệt, đổi nó là đổi thứ họ nhìn thấy.
- */
-export const TILE_COUNT: Record<GalleryVariant, number> = { peaks: 6, lanterns: 6, panorama: 3 };
+// `GalleryVariant`/`TILE_COUNT` nay sống ở `lib/region-theme.ts` (module không
+// 'use client') và re-export từ đây — xem lý do (bẫy client-reference proxy) ở đó.
+export { type GalleryVariant, TILE_COUNT } from '@/lib/region-theme';
 
 /**
  * Ba cột của `peaks`. `pad` là khoảng lệch DỌC (chỉ từ `sm` trở lên), `heights`
@@ -92,9 +74,13 @@ const PEAK_MOBILE_HEIGHT = 'h-44';
 export function RegionGallery({
   region,
   variant,
+  images = [],
 }: {
   region: MockRegion;
   variant: GalleryVariant;
+  /** Ảnh 15 khe `region-gallery-<vùng>-<n>` theo thứ tự ô (page fetch, 19/08);
+      thiếu/ngắn hơn thì ô đó giữ gradient — trang không vỡ khi khe trống. */
+  images?: readonly (SiteMediaItem | null)[];
 }) {
   const t = messages.regionPage;
   const lb = t.galleryLightbox;
@@ -126,6 +112,8 @@ export function RegionGallery({
           label={labels[index] ?? ''}
           decorative
           withIcon
+          image={images[index] ?? null}
+          sizes="(min-width: 1024px) 60vw, 100vw"
           className="aspect-16/10 w-full rounded-lg"
         />
       )}
@@ -138,7 +126,13 @@ export function RegionGallery({
   // hai bố cục user đã duyệt — bị đụng ở từng dòng mà không đổi hành vi gì.
   if (variant === 'lanterns') {
     return (
-      <LanternsSection region={region} labels={labels} onOpen={setOpenAt} lightbox={lightbox} />
+      <LanternsSection
+        region={region}
+        labels={labels}
+        images={images}
+        onOpen={setOpenAt}
+        lightbox={lightbox}
+      />
     );
   }
 
@@ -150,9 +144,9 @@ export function RegionGallery({
       <div className="mx-auto max-w-7xl">
         <GalleryHeader region={region} />
         {variant === 'peaks' ? (
-          <PeaksLayout labels={labels} onOpen={setOpenAt} />
+          <PeaksLayout labels={labels} images={images} onOpen={setOpenAt} />
         ) : (
-          <PanoramaLayout labels={labels} onOpen={setOpenAt} />
+          <PanoramaLayout labels={labels} images={images} onOpen={setOpenAt} />
         )}
       </div>
       {lightbox}
@@ -217,9 +211,13 @@ function GalleryTile({
   className,
   peakRow,
   panoramaLead = false,
+  image = null,
+  sizes,
 }: {
   label: string;
   index: number;
+  image?: SiteMediaItem | null;
+  sizes?: string;
   onOpen: (index: number) => void;
   className?: string;
   /** Chỉ `peaks` truyền — spec đọc nó để canh hai hàng lệch pha. */
@@ -245,6 +243,8 @@ function GalleryTile({
         label={label}
         decorative
         withIcon
+        image={image}
+        sizes={sizes}
         className="h-full w-full transition-transform duration-500 ease-out group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
       />
     </button>
@@ -256,9 +256,11 @@ function GalleryTile({
     mobile có thể cho. */
 function PeaksLayout({
   labels,
+  images,
   onOpen,
 }: {
   labels: readonly string[];
+  images: readonly (SiteMediaItem | null)[];
   onOpen: (index: number) => void;
 }) {
   return (
@@ -294,6 +296,8 @@ function PeaksLayout({
                   key={label}
                   label={label}
                   index={index}
+                  image={images[index] ?? null}
+                  sizes="(min-width: 640px) 33vw, 100vw"
                   onOpen={onOpen}
                   peakRow={row}
                   className={cn('w-full', PEAK_MOBILE_HEIGHT, height)}
@@ -373,10 +377,12 @@ function PeaksLayout({
 function LanternsSection({
   region,
   labels,
+  images,
   onOpen,
   lightbox,
 }: {
   region: MockRegion;
+  images: readonly (SiteMediaItem | null)[];
   labels: readonly string[];
   onOpen: (index: number) => void;
   lightbox: ReactNode;
@@ -493,6 +499,8 @@ function LanternsSection({
                 <GalleryTile
                   label={label}
                   index={index}
+                  image={images[index] ?? null}
+                  sizes="(min-width: 640px) 380px, 280px"
                   onOpen={onOpen}
                   className="aspect-4/5 max-h-[calc(100vh-24rem)] w-[280px] shrink-0 sm:w-[380px]"
                 />
@@ -525,9 +533,11 @@ function LanternsSection({
  */
 function PanoramaLayout({
   labels,
+  images,
   onOpen,
 }: {
   labels: readonly string[];
+  images: readonly (SiteMediaItem | null)[];
   onOpen: (index: number) => void;
 }) {
   const [lead, ...rest] = labels;
@@ -548,6 +558,8 @@ function PanoramaLayout({
         <GalleryTile
           label={lead}
           index={0}
+          image={images[0] ?? null}
+          sizes="(min-width: 1024px) 1024px, 100vw"
           onOpen={onOpen}
           className="aspect-16/9 w-full"
           panoramaLead
@@ -560,6 +572,8 @@ function PanoramaLayout({
               key={label}
               label={label}
               index={index + 1}
+              image={images[index + 1] ?? null}
+              sizes="(min-width: 640px) 50vw, 100vw"
               onOpen={onOpen}
               className={cn('h-56 w-full sm:h-72', index === 0 ? 'sm:col-span-3' : 'sm:col-span-2')}
             />

@@ -1,5 +1,7 @@
+import type { MediaItem } from '@tourism/contract';
 import { cn } from '@tourism/ui/lib/utils';
 import { ImageIcon } from 'lucide-react';
+import { SlotImage } from '@/components/slot-image';
 
 /**
  * Ô giữ chỗ ảnh CHO TRANG VÙNG. Đây là cơ chế dự phòng của chính Nexora
@@ -11,13 +13,17 @@ import { ImageIcon } from 'lucide-react';
  * xám sọc chéo cạnh nhau đọc thành "vùng ảnh hỏng" chứ không thành gallery —
  * đúng lỗi đã đo ở `destination-tile.tsx`. Gradient có màu thì đọc được là chủ ý.
  *
- * Khi có ảnh thật: thêm prop `src` và render `next/image`, KHÔNG phải đổi bố cục.
+ * Khi có ảnh thật (19/08 — 15 khe `region-gallery-*`): truyền `image` và ô
+ * render `SlotImage` bên trong ĐÚNG khung/bo góc cũ, KHÔNG đổi bố cục; `image`
+ * null thì vẫn là gradient + icon như trước — cây trang không biết ô nào có ảnh.
  */
 export function RegionTile({
   label,
   className,
   decorative = false,
   withIcon = !decorative,
+  image = null,
+  sizes,
 }: {
   /** Mô tả cảnh trong ô. Là `aria-label` ở chế độ thường, và là `alt` khi ô này
       thành ảnh thật. Ở chế độ `decorative` nó KHÔNG ra HTML — vẫn giữ prop vì nó
@@ -39,7 +45,26 @@ export function RegionTile({
       Hai prop rời nhau vì đây là hai mối quan tâm rời nhau: `decorative` lo TRỢ
       NĂNG, `withIcon` lo THỊ GIÁC. */
   withIcon?: boolean;
+  /** Ảnh thật của ô (khe site `region-gallery-<vùng>-<n>`); null = giữ gradient. */
+  image?: MediaItem | null;
+  /** Gợi ý `sizes` cho next/image khi có ảnh — theo bề rộng ô thật của biến thể. */
+  sizes?: string;
 }) {
+  // Có ảnh: cùng hai nhánh trợ năng bên dưới, chỉ thay ruột. `SlotImage` tự
+  // `relative overflow-hidden`; `alt` rỗng vì nhãn đã ở `aria-label`/caption.
+  if (image) {
+    const img = <SlotImage image={image} className="size-full" sizes={sizes} />;
+    return decorative ? (
+      <div aria-hidden="true" className={cn('overflow-hidden rounded-xl', className)}>
+        {img}
+      </div>
+    ) : (
+      <div role="img" aria-label={label} className={cn('overflow-hidden rounded-xl', className)}>
+        {img}
+      </div>
+    );
+  }
+
   // Nền (gradient) giống hệt nhau ở cả hai chế độ — chỉ khác trợ năng VÀ icon.
   //
   // Dốc ngọc bích: `--primary` (tông giữa) → `--hero` (mảng tối nhất của brand).

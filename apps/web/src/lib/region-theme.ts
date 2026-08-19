@@ -19,10 +19,27 @@ export type RegionSectionKey =
   | 'seasons'
   | 'reviews';
 
+/** Ba biến thể của section "… in photos" trên trang vùng (`RegionGallery`). */
+export type GalleryVariant = 'peaks' | 'lanterns' | 'panorama';
+
+/**
+ * Số ô mỗi biến thể. Nằm Ở ĐÂY (module không `'use client'`) chứ không trong
+ * `region-gallery.tsx`: page vùng (server component) cần con số này để fetch
+ * đúng bấy nhiêu khe `region-gallery-*`, mà hằng export từ module client khi
+ * server import sẽ thành client-reference proxy (`TILE_COUNT[variant]` →
+ * `undefined`, `Array.from({length: undefined})` → `[]` — đo được 19/08: trang
+ * render không lỗi, chỉ… không có ảnh). Cùng bẫy đã ghi ở `AUTH_PANEL_SLOT`.
+ * `region-gallery.tsx` re-export để spec/consumer cũ không đổi import.
+ *
+ * Con số là quyết định thiết kế user duyệt (8·10·3 → 6·6·3, "ảnh gallery quá
+ * nhỏ") — `region-gallery.spec.tsx` khoá lại.
+ */
+export const TILE_COUNT: Record<GalleryVariant, number> = { peaks: 6, lanterns: 6, panorama: 3 };
+
 export interface RegionTheme {
   /** Thứ tự khu GIỮA hero và footer. Hero/footer do layout lo. */
   sections: readonly RegionSectionKey[];
-  galleryVariant: 'peaks' | 'lanterns' | 'panorama';
+  galleryVariant: GalleryVariant;
   introVariant: 'aside' | 'row' | 'stacked';
 }
 

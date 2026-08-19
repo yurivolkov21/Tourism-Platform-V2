@@ -117,6 +117,27 @@ const SITE_SLOT_KEYS = [
   'moment-bentre-canal',
   // Video nền dải CTA cuối /about — khe VIDEO đầu tiên của dự án
   'about-cta-video',
+  // 15 ô section "… in photos" của ba trang vùng (`RegionGallery`, thêm
+  // 19/08): Bắc 6 ô (biến thể peaks) · Trung 6 (lanterns) · Nam 3 (panorama).
+  // Khoá theo VÙNG + VỊ TRÍ Ô (không theo địa danh/chủ thể như `moment-*`) vì
+  // hình ô là bất biến của bố cục đã duyệt (ô 3 miền Bắc cao ~vuông, ô 4 rất
+  // dẹt…) — ảnh chọn theo hình ô, đổi ảnh vẫn giữ khoá; caption đi theo ảnh ở
+  // i18n `regions[key].galleryTiles`, cùng chỉ số 1-based với khoá.
+  'region-gallery-north-1',
+  'region-gallery-north-2',
+  'region-gallery-north-3',
+  'region-gallery-north-4',
+  'region-gallery-north-5',
+  'region-gallery-north-6',
+  'region-gallery-central-1',
+  'region-gallery-central-2',
+  'region-gallery-central-3',
+  'region-gallery-central-4',
+  'region-gallery-central-5',
+  'region-gallery-central-6',
+  'region-gallery-south-1',
+  'region-gallery-south-2',
+  'region-gallery-south-3',
 ] as const;
 
 const connectionString =

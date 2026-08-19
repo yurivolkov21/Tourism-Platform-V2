@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react';
+import type { MediaItem } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { RegionTile } from './region-tile';
 
@@ -69,5 +70,44 @@ describe('RegionTile', () => {
     const { container } = render(<RegionTile label="Terraced rice fields" withIcon />);
     expect(screen.getByRole('img', { name: 'Terraced rice fields' })).toBeInTheDocument();
     expect(container.querySelectorAll('svg')).toHaveLength(1);
+  });
+});
+
+// 19/08: 15 khe `region-gallery-*` có ảnh thật — ô đổi ruột, giữ bố cục/trợ năng.
+const IMAGE = {
+  publicId: 'tourism/catalog/site/region-gallery-north-1',
+  url: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/v1/tourism/catalog/site/region-gallery-north-1',
+  type: 'IMAGE',
+  role: 'hero',
+  posterUrl: null,
+  width: 2400,
+  height: 1600,
+  alt: null,
+  sortOrder: 0,
+} as unknown as MediaItem;
+
+describe('RegionTile — có ảnh thật', () => {
+  it('render <img> thay gradient, KHÔNG còn icon giữ chỗ', () => {
+    const { container } = render(<RegionTile label="Lan Hạ Bay" image={IMAGE} />);
+    expect(container.querySelector('img')).not.toBeNull();
+    expect(container.querySelector('svg')).toBeNull();
+  });
+
+  it('không decorative → vẫn là role="img" mang nhãn (nhãn là thông tin duy nhất của ô)', () => {
+    render(<RegionTile label="Lan Hạ Bay" image={IMAGE} />);
+    expect(screen.getByRole('img', { name: 'Lan Hạ Bay' })).toBeInTheDocument();
+  });
+
+  it('decorative → aria-hidden, không role img (nút cha đã mang tên)', () => {
+    const { container } = render(<RegionTile label="Lan Hạ Bay" image={IMAGE} decorative />);
+    expect(screen.queryByRole('img')).toBeNull();
+    expect(container.firstElementChild).toHaveAttribute('aria-hidden', 'true');
+    expect(container.querySelector('img')).not.toBeNull();
+  });
+
+  it('image null → gradient + icon như cũ (khe trống không vỡ)', () => {
+    const { container } = render(<RegionTile label="Lan Hạ Bay" image={null} />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('svg')).not.toBeNull();
   });
 });

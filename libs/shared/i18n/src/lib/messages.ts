@@ -1147,13 +1147,17 @@ export const messages = {
         /** Nhãn ô gallery — 6 ô cho biến thể `peaks`. Mỗi nhãn neo vào một chi tiết CÓ
            THẬT: địa điểm của vùng, highlight, hoặc chặng trong itinerary
            `northern-highlands-loop` (Mường Hoa · Ô Quy Hồ · Bắc Hà). */
+        // Caption viết THEO ẢNH đã gắn vào 6 khe `region-gallery-north-*` (19/08,
+        // đảo chiều như đợt Moments: chọn ảnh có sẵn trước, sửa chữ sau) — không
+        // còn Ô Quy Hồ / Bắc Hà vì kho không có ảnh Sa Pa/Hạ Long; đổi ảnh thì
+        // phải đổi caption cùng chỉ số.
         galleryTiles: [
-          'Limestone islands in Hạ Long Bay',
-          'Rice terraces above the Mường Hoa valley',
-          'Flooded caves below the karst at Ninh Bình',
-          'The road over Ô Quy Hồ',
-          'Sunday morning at the Bắc Hà market',
-          'A junk at anchor for the night',
+          'Junks among the karst islands of Lan Hạ Bay',
+          'Rowing into the flooded caves at Tràng An',
+          'The Mưa Cave viewpoint above the paddies, Ninh Bình',
+          'Terraced valleys along the Hà Giang loop',
+          'Lantern-lit Train Street in Hanoi’s Old Quarter',
+          'Paddies at dusk in the Mai Châu valley',
         ],
         highlights: [
           {
@@ -1190,13 +1194,15 @@ export const messages = {
           'Step inside the walled citadel of Huế, wander the lantern-lit lanes of Hội An, and explore the Chăm temples of Mỹ Sơn. Browse our trips below.',
         /** Nhãn ô gallery — 6 ô cho biến thể `lanterns`. Nguồn: timeline di sản, highlight,
            và itinerary `central-heritage-week` (Hải Vân · Mỹ Sơn). */
+        // Caption theo ảnh 6 khe `region-gallery-central-*` (19/08) — kho không có
+        // ảnh Huế nên hai ô Huế nhường cho Đà Nẵng/Phong Nha; xem ghi chú ở north.
         galleryTiles: [
-          'The citadel walls at Huế',
-          'Royal tombs along the Perfume river',
-          'Lanterns on the Hội An riverfront',
-          'The coast road over the Hải Vân pass',
-          'Chăm brick towers at Mỹ Sơn',
+          'Boats along the Hội An riverfront',
+          'Lanterns over the Thu Bồn river, Hội An',
           'The Golden Bridge above Bà Nà',
+          'Lady Buddha on the Sơn Trà peninsula, Đà Nẵng',
+          'Coracles waiting on Mỹ Khê beach',
+          'Daylight at the mouth of a Phong Nha cave',
         ],
         highlights: [
           {
@@ -1254,10 +1260,12 @@ export const messages = {
           'Drift the Mekong’s waterways from Cần Thơ, eat your way through Sài Gòn after dark, and unwind on the reefs of Phú Quốc. Browse our trips below.',
         /** Nhãn ô gallery — 3 ô cho biến thể `panorama`, lấy từ mô tả ba địa điểm và
            highlight của vùng. */
+        // Caption theo ảnh 3 khe `region-gallery-south-*` (19/08); ô lớn 16/9 là
+        // ảnh Phú Quốc từ trên cao (tỉ lệ 1.86 — khớp ô), xem ghi chú ở north.
         galleryTiles: [
-          'A floating market at first light near Cần Thơ',
-          'Street food after dark in Sài Gòn',
-          'Clear reefs off Phú Quốc',
+          'The fishing harbour at Phú Quốc from above',
+          'The Sài Gòn skyline at dusk',
+          'Sampans in the Bến Tre canals',
         ],
         highlights: [
           {

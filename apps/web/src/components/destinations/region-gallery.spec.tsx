@@ -461,3 +461,46 @@ describe('RegionGallery — hình khối của panorama', () => {
     expect(spans[0]).not.toBe(spans[1]);
   });
 });
+
+// 19/08: ảnh 15 khe `region-gallery-*` truyền qua prop `images` theo thứ tự ô.
+describe('RegionGallery — ảnh thật theo khe', () => {
+  const img = (n: number) =>
+    ({
+      publicId: `tourism/catalog/site/region-gallery-north-${n}`,
+      url: `https://res.cloudinary.com/demo/image/upload/v1/region-gallery-north-${n}`,
+      type: 'IMAGE',
+      role: 'hero',
+      posterUrl: null,
+      width: 2400,
+      height: 1600,
+      alt: null,
+      sortOrder: 0,
+    }) as never;
+
+  it('peaks: 6 ảnh → 6 ô đều có <img>, đúng URL theo chỉ số ô', () => {
+    const images = Array.from({ length: 6 }, (_, i) => img(i + 1));
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" images={images} />);
+    const tiles = [...container.querySelectorAll('[data-gallery-tile]')];
+    expect(tiles).toHaveLength(6);
+    for (const [i, tile] of tiles.entries()) {
+      const src = tile.querySelector('img')?.getAttribute('src') ?? '';
+      expect(decodeURIComponent(src)).toContain(`region-gallery-north-${i + 1}`);
+    }
+  });
+
+  it('thiếu ảnh (mảng ngắn / null) → ô đó giữ gradient, các ô khác vẫn có ảnh', () => {
+    const { container } = render(
+      <RegionGallery region={NORTH} variant="peaks" images={[img(1), null, img(3)]} />,
+    );
+    const tiles = [...container.querySelectorAll('[data-gallery-tile]')];
+    expect(tiles[0]?.querySelector('img')).not.toBeNull();
+    expect(tiles[1]?.querySelector('img')).toBeNull();
+    expect(tiles[2]?.querySelector('img')).not.toBeNull();
+    expect(tiles[5]?.querySelector('img')).toBeNull();
+  });
+
+  it('không truyền images → y như trước: toàn gradient', () => {
+    const { container } = render(<RegionGallery region={NORTH} variant="peaks" />);
+    expect(container.querySelector('[data-gallery-tile] img')).toBeNull();
+  });
+});

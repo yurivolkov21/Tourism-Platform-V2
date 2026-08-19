@@ -14,13 +14,14 @@ import { RegionSignatureTimeline } from '@/components/destinations/region-signat
 import { RegionTours } from '@/components/destinations/region-tours';
 import { LoadErrorState } from '@/components/feedback/load-error-state';
 import { contentState, settle } from '@/lib/api/resilience';
+import { siteMediaImage } from '@/lib/api/site-media';
 import {
   fetchDestinations,
   fetchTourReviews,
   fetchTours,
   type TourReviewVM,
 } from '@/lib/api/tours';
-import { type RegionSectionKey, regionTheme } from '@/lib/region-theme';
+import { type RegionSectionKey, regionTheme, TILE_COUNT } from '@/lib/region-theme';
 import {
   destinationsInRegion,
   longestTourInRegion,
@@ -160,6 +161,16 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   const tours = toursInRegion(REGIONS, allDestinations, allTours, region.key);
   const glance = regionGlance(tours);
   const copy = t.regions[region.key];
+  // Ảnh 6/6/3 ô của section "… in photos" (19/08) — khe `region-gallery-<vùng>-<n>`,
+  // n 1-based theo thứ tự ô của biến thể (xem `SITE_SLOT_KEYS` ở seed).
+  // `siteMediaImage` đi qua `fetchSiteMedia` có `cache()` nên 6 lần hỏi = 1 lần
+  // gọi mạng; khe trống → null → ô giữ gradient, không settle riêng: cùng luật
+  // "khe vắng ≠ lỗi" của mọi khe site.
+  const galleryImages = await Promise.all(
+    Array.from({ length: TILE_COUNT[theme.galleryVariant] }, (_, i) =>
+      siteMediaImage(`region-gallery-${region.key}-${i + 1}`),
+    ),
+  );
   // Miền Bắc KHÔNG có khối `signature` (khu riêng của nó là mùa và "mấy ngày"), nên
   // phải hỏi trước khi lấy — `t.regions[key]` là union ba hình dạng, không phải một
   // kiểu duy nhất.
@@ -297,7 +308,9 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
           />
         );
       case 'gallery':
-        return <RegionGallery region={region} variant={theme.galleryVariant} />;
+        return (
+          <RegionGallery region={region} variant={theme.galleryVariant} images={galleryImages} />
+        );
       case 'tours':
         return state === 'error' ? (
           dataErrorPanel()
