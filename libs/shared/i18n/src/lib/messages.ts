@@ -528,6 +528,30 @@ export const messages = {
       // gì để đợi; câu chữ vì thế không hứa hẹn gì, chỉ chỉ đường.
       settledTitle: 'This booking is already settled',
       settledBody: 'There’s nothing left to pay here. Open the booking to see where it stands.',
+      // ── Receipt thay tấm vé ở /checkout/success (19/08) ──
+      // CỐ Ý chỉ khai thứ MỚI. Dùng lại nguyên: travellersLabel · paymentLabel ·
+      // totalLabel ('Total paid') · refLabel · stubShowCode · copyCode ở ngay
+      // cụm này, và checkoutSummary.adultsLine/childrenLine/taxesNote cho bảng
+      // tiền — khai trùng một câu ở hai khoá là cách chắc chắn để sau này sửa
+      // một chỗ rồi quên chỗ kia.
+      receiptSentTo: (email: string) => `A copy of this receipt was sent to ${email}.`,
+      // Hai nhãn của bảng meta góc phải. 'Booking' đứng cạnh mã, khác
+      // `refLabel` ('Booking reference') vốn là nhãn của mã CỠ LỚN trong cuống.
+      bookingMetaLabel: 'Booking',
+      dateMetaLabel: 'Date',
+      // Nhãn cột giữa. Khác `departureLabel` ('Departure'): cột này gộp cả ngày
+      // đi, thời lượng và điểm đến, không chỉ mỗi đợt khởi hành.
+      tripLabel: 'Trip',
+      paidAtLine: (when: string) => `Paid ${when}`,
+      perTraveller: 'per traveller',
+      departsOn: (date: string) => `Departs ${date}`,
+      departedOn: (date: string) => `Departed ${date}`,
+      print: 'Print',
+      needHelp: 'Need help with this booking?',
+      // Nhãn pill trạng thái — NGẮN, vì nó đứng cạnh tiêu đề vốn đã nói đủ câu.
+      statusPaid: 'Paid',
+      statusConfirming: 'Confirming',
+      statusSettled: 'Settled',
       // Nút chép mã (CopyCodeButton) — nhãn đổi trong 2 giây sau khi bấm.
       copyCode: 'Copy code',
       copied: 'Copied',
