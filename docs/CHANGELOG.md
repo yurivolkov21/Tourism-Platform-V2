@@ -8,6 +8,44 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Vòng motion cho năm nhóm trang còn tĩnh (4 nhánh `feat/motion-*`, 4 commit, 26 file, +727/−413)
+
+User nhớ "vài trang thiết kế lại chưa có motion". Rà 31 route theo code (motion/react,
+`Reveal*`, keyframe `animate-*-in`; bỏ qua hover `transition-*`): Home/About/Contact/
+Destinations+3 vùng/Tours listing/Blog/FAQ/6 trang auth + `ContentHero` đã đủ;
+**năm nhóm tĩnh** đều là trang dựng lại gần đây từ wireframe chưa qua vòng motion.
+Làm theo thứ tự khách đi qua nhiều nhất, mỗi nhóm một nhánh, toàn bộ bằng vật liệu
+sẵn có (`RevealItem` rise/slide/bloom, `SPRING`, `STAGGER.grid`, `REVEAL_EASE`),
+transform-only trừ hero mount — cùng luật SSG của `reveal-item.tsx`:
+
+1. **`/tours/[slug]`** — đổi tab: keyframe CSS `pane-in` trên panel `:not([hidden])`
+   (fade + trượt 10px, 360ms): panel `keepMounted` chỉ bật/tắt `hidden` (ADR-0022),
+   mà toggle `display:none` → hiển thị KHỞI ĐỘNG LẠI animation CSS, nên không cần
+   state/AnimatePresence; 4 card dữ kiện, 4 stat card, thẻ policy, 2 review mồi, 3
+   tour liên quan trồi bậc thang; hàng bảng Departures dùng lại `tour-card-in` khi
+   tháng xổ ra (`<tr hidden>` cùng cơ chế). Đo: pane opacity 0→1/y 10→0, stat card y
+   lệch pha, hàng bảng `animationName: tour-card-in`.
+2. **Wizard `/book`** — bước mới trượt vào theo HƯỚNG (tiến từ phải 24px, lùi/Edit từ
+   trái), chỉ animate bước VÀO, bước cũ unmount ngay — cố ý không AnimatePresence:
+   `wait` để cột trống một nhịp, `popLayout` chồng chữ hai bước ~200ms; vạch stepper
+   scale ngang từ trái khi đổi bước (`initial={false}` — không chạy lúc tải); tổng
+   tiền trượt lên 6px mỗi lần đổi (`key` theo số tiền).
+3. **Khu Account "Hộ chiếu"** — tấm hộ chiếu `bloom`; nhật ký từng năm, booking
+   accordion từng mục, thẻ đã lưu `rise` bậc thang (wrapper ngoài `AccordionItem` —
+   Base UI nối item qua context); **chữ ký mới `stamp`** (scale 1.22→1, −6°→0°) cho
+   con dấu visa ở chi tiết booking — biên độ mạnh có chủ đích, đây là khoảnh khắc
+   kể chuyện chứ không phải ô lưới.
+4. **Hoá đơn checkout** — "in ra" 4 khối nối nhau (đầu phiếu → 3 cột → tổng → cuống);
+   bản in/JS tắt vẫn đủ chữ vì transform-only.
+5. **Hero bài blog** — vào cùng đúng số với `ContentHero` (breadcrumb −16/.1 → h1
+   40/.2 → meta 20/.3, `animate` lúc mount như mọi hero). Pháp lý đã có `ContentHero`,
+   thân bài đọc dài **cố ý để yên**; `/enquire` là form, cố ý tĩnh.
+
+7 spec thêm stub `IntersectionObserver` CỤC BỘ (quy ước `reveal-item.spec.tsx`).
+
+Tests after: 1404 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Tên thương hiệu về lại "Nexora" (nhánh `feat/brand-nexora`, 1 commit, 48 file, +80/−76)
 
 User quyết định dùng lại tên **Nexora** của bản tiền nhiệm thay cho tên tạm
