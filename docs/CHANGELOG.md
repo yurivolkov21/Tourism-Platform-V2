@@ -8,6 +8,39 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Dọn sổ nợ nhỏ P3b: 774 dòng i18n mồ côi, `TourCard.priceFrom` (nhánh `chore/p3b-debt-sweep`, 1 commit, 20 file)
+
+**B1 mở rộng.** Sổ nợ ghi "khối `contact.*` mồ côi ~90 dòng"; quét có hệ thống
+(mỗi khoá cấp-1 của `messages`, grep `messages.<khoá>` ở apps/web + libs/ui, bỏ
+spec) lộ **21 khối / 774 dòng** không consumer — `auth` (230 dòng, nháp form
+static-first trước khi có `authForms`), `about`, `contact`, `footer`, `hero`,
+`features`, `fieldErrors` (bản cũ, nay là `formErrors`), `trustBand`… — toàn
+nháp static-first hoặc port Nexora đã bị thay bằng copy trong component/khối
+mới. Xoá hết; **giữ** `mobile` (P5), `chatBot`/`contactLauncher` (P6), `brand`
+vì đó là copy cho phase tới, không phải nháp. Cách quét ghi ở đầu `messages.ts`
+để lần sau không phải dò lại. Nợ còn lại thuộc họ này nhưng là việc riêng:
+copy Home/user-menu đang literal trong component (luật 7) — một "i18n sweep".
+
+**A14 (sổ nợ cùng ngày).** Thẻ `/tours` in `basePrice` "from $129" trong khi chi
+tiết có đợt thấp điểm $119 — list không mang departures nên card không biết.
+Contract `TourCard.priceFrom` = `min(priceOverride ?? basePrice)` trên đợt OPEN
+sắp tới, API tính **một query cho cả trang** (hai cột, lọc y như detail; không
+N+1), không đợt → `basePrice`; detail dùng lại departures đã load. Card dùng
+`priceFrom ?? basePrice` và tính % giảm trên `priceFrom` — rơi về có chủ đích:
+field additive, API deploy SAU web (hoặc API dev chạy bản build cũ — script
+`dev` là build-một-lần) thì card vẫn ra số thay vì vỡ trang vì một field. Int
+test `catalog` assert `priceFrom` = basePrice khi override đắt hơn; card test.
+
+**E5 rà lại:** 4/6 đã trả ở đợt redesign account (connected-accounts qua i18n ·
+saved-grid có nhánh 401 riêng · `refundedTotal` trên contract · DENIED không
+hiện lý do là CỐ Ý — `decisionNote` không mở cho khách); còn `user-menu` label
+literal và load-more cap 50. **A5** tem thư "Hà Nội · Sa Pa" không đụng — user
+chốt 06/08 giữ làm motif. Backlog cập nhật (thêm mục A″: A14 ✅, A15 register
+<681px).
+
+Tests after: 1405 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Vòng motion cho năm nhóm trang còn tĩnh (4 nhánh `feat/motion-*`, 4 commit, 26 file, +727/−413)
 
 User nhớ "vài trang thiết kế lại chưa có motion". Rà 31 route theo code (motion/react,
