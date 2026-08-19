@@ -8,6 +8,19 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Rà `/tours` + `/tours/[slug]`: một `<h1>` mỗi trang (nhánh `fix/tour-detail-double-h1`, 1 commit, 2 file)
+
+Rà tự động `/tours` (10 card, 0 ảnh vỡ, 0 ô giữ chỗ, `priceFrom` sống sau khi
+user restart API — card Vũng Tàu "from $119 −20%") và 4 trang chi tiết qua đủ 5
+tab: 0 link chết, anchor card dữ kiện là hash tab thật, Reserve đúng ghế đợt
+đang chọn. Một lỗi: **2 `<h1>`/trang** — `TourHero` giữ `<h1>` và
+`TourMediaPanel` lặp tiêu đề cũng bằng `<h1>` (cùng họ lỗi receipt đã vá cùng
+ngày). Panel dùng `<p>` cùng lớp chữ (không đổi pixel), test "panel không có
+heading cấp 1".
+
+Tests after: 1408 web · 219 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Rà trang Home: nút "Book a tour" navbar là link thật (nhánh `fix/navbar-book-link`, 1 commit, 2 file)
 
 Đợt user rà từng trang. Rà tự động Home (1440×900, cuộn hết): 25 ảnh, 0 vỡ, 0 ô
