@@ -2,7 +2,7 @@
 
 import { messages } from '@tourism/i18n';
 import { cn } from '@tourism/ui/lib/utils';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
@@ -11,6 +11,7 @@ import { TourCard } from '@/components/tours/tour-card';
 import type { TourCardVM } from '@/lib/api/tours';
 import { STAGGER } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
+import { scrollToListTop } from '@/lib/scroll-to-list-top';
 
 /**
  * Số tour mỗi trang. **6 chứ không phải 8** (user chốt 29/07).
@@ -67,6 +68,7 @@ export function RegionTours({
   const t = messages.regionPage;
   const [active, setActive] = useState<string>(ALL);
   const [page, setPage] = useState(1);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   // Lọc bằng `some()`: một tour chạm nhiều địa điểm, và chặng PHỤ vẫn tính là
   // "tour này đi qua đó". Lọc theo điểm đến chính sẽ giấu mất `ha-long-bay-cruise`
@@ -154,7 +156,10 @@ export function RegionTours({
           <>
             {/* Cùng lưới `related-tours.tsx`: gap-y lớn hơn gap-x vì card không
                 có khung, hai hàng cần khoảng thở dọc rộng hơn. */}
-            <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              ref={gridRef}
+              className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3"
+            >
               {/* ── Nhịp NHÀ, không phải chữ ký miền (Task 5n) ──
                   Đây là khu user chốt phải GIỐNG HỆT ở cả ba miền ("hero · lưới 6
                   tour card · footer" là ba thứ duy nhất giống nhau), nên nó KHÔNG
@@ -180,7 +185,13 @@ export function RegionTours({
                 totalPages={paged.totalPages}
                 total={paged.total}
                 pageSize={REGION_PAGE_SIZE}
-                onChange={setPage}
+                onChange={(next) => {
+                  setPage(next);
+                  // Cuộn về đầu lưới khi đổi trang (bệnh chung 3 explorer, đo
+                  // 19/08 — ở Southern trang 2 ngắn hơn, footer nhảy lên 422px
+                  // ngay dưới mắt) — xem `scrollToListTop`. Đổi tab thì không.
+                  scrollToListTop(gridRef.current);
+                }}
               />
             ) : null}
           </>

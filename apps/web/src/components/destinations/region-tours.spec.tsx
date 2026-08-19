@@ -191,6 +191,24 @@ describe('RegionTours', () => {
   // Trước đây KHÔNG test nào bấm nút chuyển trang: gỡ hẳn `onChange={setPage}`
   // thành `onChange={() => {}}` mà cả bộ vẫn xanh. Test này chạy qua đúng sợi
   // dây đó.
+  // Bệnh chung 3 explorer (đo 19/08 — ở Southern trang 2 ngắn hơn, footer
+  // nhảy lên 422px ngay dưới mắt): đổi trang phải cuộn về đầu lưới.
+  it('bấm Next → cuộn về đầu lưới; đổi tab địa điểm thì KHÔNG cuộn', async () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    const user = userEvent.setup();
+    render(<RegionTours tours={MANY_TOURS} places={PLACES} />);
+
+    await user.click(screen.getByRole('button', { name: 'Next page' }));
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+
+    scrollTo.mockClear();
+    await user.click(screen.getByRole('button', { name: PLACES[0]?.name ?? '', pressed: false }));
+    expect(scrollTo).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
   it('bấm Next sang trang 2, bấm Previous quay lại trang 1', async () => {
     const user = userEvent.setup();
     render(<RegionTours tours={MANY_TOURS} places={PLACES} />);

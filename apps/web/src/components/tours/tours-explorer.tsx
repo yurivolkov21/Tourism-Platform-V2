@@ -30,6 +30,7 @@ import { ToursHero } from '@/components/tours/tours-hero';
 import { WishlistProvider } from '@/components/tours/wishlist-store';
 import type { DestinationVM, TourCardVM } from '@/lib/api/tours';
 import { paginate } from '@/lib/paginate';
+import { scrollToListTop } from '@/lib/scroll-to-list-top';
 import {
   countActiveFilters,
   EMPTY_TOUR_FILTERS,
@@ -119,6 +120,7 @@ export function ToursExplorer({
     initial.sort && initial.sort in SORT_MAP ? (initial.sort as SortValue) : 'newest',
   );
   const [page, setPage] = useState(Math.max(1, initial.page ?? 1));
+  const gridRef = useRef<HTMLDivElement>(null);
   const [pageSize, setPageSize] = useState(
     initial.limit && PAGE_SIZES.includes(initial.limit as (typeof PAGE_SIZES)[number])
       ? initial.limit
@@ -509,7 +511,10 @@ export function ToursExplorer({
                   thẻ 580; ép hai cột xuống 640 thì thẻ còn ~300 và tiêu đề
                   một-dòng nuốt gần nửa tên tour. Một cột đọc được vẫn hơn hai
                   cột đúng hình. */}
-              <div className="grid grid-cols-[repeat(1,minmax(0,1fr))] gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
+              <div
+                ref={gridRef}
+                className="grid grid-cols-[repeat(1,minmax(0,1fr))] gap-6 lg:grid-cols-[repeat(2,minmax(0,1fr))]"
+              >
                 {paged.items.map((tour, index) => (
                   <div
                     key={tour.slug}
@@ -526,7 +531,13 @@ export function ToursExplorer({
                 totalPages={paged.totalPages}
                 total={matched.length}
                 pageSize={pageSize}
-                onChange={setPage}
+                onChange={(next) => {
+                  setPage(next);
+                  // Cuộn về đầu lưới khi đổi trang (bệnh chung 3 explorer, đo
+                  // 19/08) — xem `scrollToListTop`. Đổi số/trang bên dưới KHÔNG
+                  // cuộn: người dùng đang cầm ô chọn ngay đây.
+                  scrollToListTop(gridRef.current);
+                }}
                 onPageSizeChange={(size) => {
                   setPageSize(size);
                   // Đổi số/trang mà giữ nguyên page là ra màn hình trắng: đang

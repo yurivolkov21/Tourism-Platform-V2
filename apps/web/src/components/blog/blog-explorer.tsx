@@ -17,6 +17,7 @@ import {
 } from '@/lib/blog';
 import { SPRING } from '@/lib/motion';
 import { paginate } from '@/lib/paginate';
+import { scrollToListTop } from '@/lib/scroll-to-list-top';
 
 // Lọc + tìm chạy phía client để gõ tới đâu thấy tới đó, nhưng trạng thái vẫn
 // được ghi vào URL (?tag=&q=&page=) nên link chia sẻ được và F5 không mất bộ lọc.
@@ -95,13 +96,7 @@ export function BlogExplorer({
   const gridRef = useRef<HTMLDivElement>(null);
   function goToPage(next: number) {
     setPage(next);
-    const top = gridRef.current?.getBoundingClientRect().top;
-    if (top === undefined) return;
-    // Trừ navbar pill fixed: 128px (article-body/faq dùng `scroll-mt-28` =
-    // 112 cho TIÊU ĐỀ có lề trên; ở đây thẻ mở đầu bằng ẢNH sát mép nên chừa
-    // thêm 16px kẻo mép ảnh chui dưới bóng pill — đo ảnh chụp 19/08). Cùng API
-    // `window.scrollTo` với ScrollToTop (đã sống chung với Lenis).
-    window.scrollTo({ top: window.scrollY + top - 128, behavior: 'smooth' });
+    scrollToListTop(gridRef.current);
   }
 
   // Ghi URL bằng `history.replaceState`, KHÔNG `router.replace`: cái sau kích

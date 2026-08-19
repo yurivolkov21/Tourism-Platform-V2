@@ -198,6 +198,25 @@ describe('ToursExplorer — phân trang', () => {
     await user.click(screen.getByRole('button', { name: '2' }));
     expect(replace).toHaveBeenCalledWith(null, '', '/tours?page=2');
   });
+
+  // Bệnh chung 3 explorer (đo 19/08): đổi trang thì lưới thay tại chỗ nhưng
+  // khung hình đứng nguyên ở thanh phân trang — phải cuộn về đầu lưới.
+  it('bấm số trang → cuộn về đầu lưới; đổi bộ lọc thì KHÔNG cuộn', async () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    const user = userEvent.setup();
+    renderExplorer();
+
+    await user.click(screen.getByRole('button', { name: '2' }));
+    expect(scrollTo).toHaveBeenCalledTimes(1);
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+
+    scrollTo.mockClear();
+    await openFilters(user);
+    await user.click(screen.getByRole('checkbox', { name: /^Trekking, / }));
+    expect(scrollTo).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
 });
 
 describe('ToursExplorer — sắp xếp', () => {
