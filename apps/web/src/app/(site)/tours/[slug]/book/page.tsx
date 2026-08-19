@@ -1,11 +1,10 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingWizard } from '@/components/booking/booking-wizard';
 import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary';
+import { TourHeroBoard } from '@/components/tours/tour-hero-board';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
 
@@ -26,8 +25,6 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
   const tour = await fetchTourDetail(slug);
   if (!tour) notFound();
 
-  const t = messages.booking.page;
-
   // Card tóm tắt (T2/T3) chỉ cần lát cắt nhỏ của `tour` — xem lý do tách ở
   // JSDoc `CheckoutSummaryTour`.
   const summaryTour: CheckoutSummaryTour = {
@@ -45,25 +42,13 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
   const bookable = tour.departures.some((d) => d.seatsLeft > 0);
 
   return (
-    // `pt-36` mượn ĐÚNG hằng số `account/layout.tsx` dùng để né navbar `fixed`
-    // (site-header.tsx: `fixed top-(--banner-offset)`) — trang này không có
-    // hero thật để ăn khoảng đó, thiếu bước bù thì breadcrumb/tiêu đề chui
-    // dưới navbar khi cuộn lên đầu trang (lộ ra ở ảnh nghiệm thu book-light.png).
-    <div className="mx-auto w-full max-w-6xl px-4 pt-36 pb-10 md:px-8 md:pb-14">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link href="/tours" className="transition-colors hover:text-foreground">
-          {messages.tourDetail.sections.departures}
-        </Link>
-        <ChevronRightIcon className="size-3.5" aria-hidden="true" />
-        <Link href={`/tours/${tour.slug}`} className="transition-colors hover:text-foreground">
-          {t.backToTour}
-        </Link>
-      </nav>
+    // Hero THẬT từ 19/08 (user chốt) thay cho `pt-36` bù khoảng: hero tự mang
+    // `pt-36` nên navbar `fixed` có nền tối để đứng lên, và `site-header.tsx`
+    // không còn phải dò đường dẫn để nhận ra trang này.
+    <>
+      <TourHeroBoard tour={tour} />
 
-      <div className="mt-8">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-10 pb-10 md:px-8 md:pb-14">
         {bookable ? (
           <BookingWizard
             departures={tour.departures}
@@ -80,7 +65,7 @@ export default async function BookTourPage({ params }: { params: Promise<{ slug:
           <SoldOut slug={tour.slug} />
         )}
       </div>
-    </div>
+    </>
   );
 }
 

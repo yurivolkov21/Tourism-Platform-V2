@@ -1,12 +1,10 @@
 import { messages } from '@tourism/i18n';
-import { ChevronRightIcon } from 'lucide-react';
 import type { Metadata } from 'next';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PrivateTripForm } from '@/components/booking/private-trip-form';
+import { TourHeroBoard } from '@/components/tours/tour-hero-board';
 import { getServerSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
-import { routeChain } from '@/lib/tours';
 
 export const metadata: Metadata = {
   title: `${messages.booking.form.private.submit} — Tourism`,
@@ -34,41 +32,11 @@ export default async function EnquireTourPage({ params }: { params: Promise<{ sl
   const [session, tour] = await Promise.all([getServerSession(), fetchTourDetail(slug)]);
   if (!tour) notFound();
 
-  const t = messages.booking.page;
-
   return (
-    // `pt-36` mượn ĐÚNG hằng số `/book` dùng để né navbar `fixed` — cùng lý do,
-    // trang này cũng không có hero để ăn khoảng đó.
-    <div className="mx-auto w-full max-w-6xl px-4 pt-36 pb-10 md:px-8 md:pb-14">
-      <nav
-        aria-label="Breadcrumb"
-        className="flex items-center gap-1.5 text-sm text-muted-foreground"
-      >
-        <Link href="/tours" className="transition-colors hover:text-foreground">
-          {messages.tourDetail.sections.departures}
-        </Link>
-        <ChevronRightIcon className="size-3.5" aria-hidden="true" />
-        <Link href={`/tours/${tour.slug}`} className="transition-colors hover:text-foreground">
-          {t.backToTour}
-        </Link>
-      </nav>
+    <>
+      <TourHeroBoard tour={tour} />
 
-      <header className="mt-6 flex flex-col gap-3">
-        <h1 className="font-heading text-3xl font-semibold text-balance">{tour.title}</h1>
-        <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-          {routeChain(tour.destinations).map((d) => (
-            <li key={d.slug} className="after:ml-2 after:content-['·'] last:after:content-['']">
-              {d.name}
-            </li>
-          ))}
-        </ol>
-        <p className="text-sm text-muted-foreground">
-          {messages.tourDetail.durationValue(tour.durationDays)} ·{' '}
-          {messages.tourDetail.groupSize(tour.maxGroupSize)}
-        </p>
-      </header>
-
-      <div className="mt-10">
+      <div className="mx-auto w-full max-w-6xl px-4 pt-10 pb-10 md:px-8 md:pb-14">
         <PrivateTripForm
           tourId={tour.id}
           maxGroupSize={tour.maxGroupSize}
@@ -76,6 +44,6 @@ export default async function EnquireTourPage({ params }: { params: Promise<{ sl
           defaultEmail={session?.email ?? ''}
         />
       </div>
-    </div>
+    </>
   );
 }

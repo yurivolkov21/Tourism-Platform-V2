@@ -44,14 +44,20 @@ const MOBILE_LINKS = [
  *
  * Navbar lúc chưa cuộn dùng `on-media` (chữ sáng) vì nó giả định đang nằm trên
  * một mảng hero tối. Giả định đó đúng với mọi trang nội dung, nhưng SAI với
- * hai màn checkout — chúng bù khoảng bằng `pt-36` chứ không có hero thật. Hệ
- * quả ở chế độ SÁNG: chữ sáng trên nền sáng, navbar tàng hình cho tới khi
- * người dùng cuộn xuống. Ở chế độ tối thì tình cờ vẫn đọc được nên lỗi này
- * sống sót lâu — chỉ lộ ra khi chụp ảnh nghiệm thu chế độ sáng.
+ * trang bù khoảng bằng `pt-36` mà không có hero thật. Hệ quả ở chế độ SÁNG:
+ * chữ sáng trên nền sáng, navbar tàng hình cho tới khi người dùng cuộn xuống.
+ * Ở chế độ tối thì tình cờ vẫn đọc được nên lỗi này sống sót lâu — chỉ lộ ra
+ * khi chụp ảnh nghiệm thu chế độ sáng.
  *
- * `/account` ĐÃ RỜI danh sách này (góp ý user 11/08): khu hộ chiếu giờ có
- * "BÌA" — dải `bg-hero` tối ở layout account — nên navbar đứng trên nền tối
- * y như mọi trang có hero, không cần biến thể riêng nữa.
+ * **Danh sách này chỉ nên NGẮN đi, đừng dài thêm.** Hai lần trước đều giải
+ * bằng cách cho trang một hero thật rồi rút nó khỏi đây, chứ không phải thêm
+ * đường dẫn vào:
+ *  · `/account` rời 11/08 — khu hộ chiếu có "BÌA" (dải `bg-hero` tối).
+ *  · `/tours/[slug]/book` rời 19/08 — trang đặt chỗ nay dùng `TourHeroBoard`,
+ *    và `/tours/[slug]/enquire` sinh ra cùng ngày cũng dùng nó nên KHÔNG bao
+ *    giờ phải vào đây. Chính lần đó cho thấy vì sao luật đi-theo-đường-dẫn là
+ *    sai hướng: `/enquire` ra đời là rách ngay, navbar tàng hình ở light mode
+ *    (đo được: chữ `lab(97.7…)` trên nền sáng) mà không có gì báo.
  *
  * Dùng tiền tố đường dẫn thay vì một context: navbar nằm ở layout `(site)`,
  * TRÊN cây của các layout con, nên context từ dưới không với tới được nó.
@@ -77,16 +83,11 @@ export function SiteHeader() {
   // Trang không có hero thì navbar dùng LUÔN kiểu "đã cuộn" (nền đặc, chữ
   // `foreground`) ngay từ đầu — không có mảng tối nào để chữ sáng đứng lên.
   //
-  // Final review (NHÓM 4c): `/tours/[slug]/book` cũng không có hero (cùng
-  // `pt-36` bù khoảng như khu account/checkout) nhưng KHÔNG rơi vào tiền tố
-  // `/tours` trần — tour detail (`/tours/[slug]`) CÓ hero thật, thêm tiền tố
-  // trần sẽ làm chữ navbar tối trên hero tối ở đó. Chỉ khớp đúng route con
-  // `/book` bằng `startsWith` + `endsWith`, không đụng tới các route `/tours/*`
-  // khác.
+  // Nhánh riêng cho `/tours/*/book` đã XOÁ 19/08: trang đó có hero thật rồi.
+  // Giờ chỉ còn so tiền tố, không còn khớp route con bằng `endsWith`.
   const isHeroLess =
     !HERO_LESS_EXCEPTIONS.some((prefix) => pathname.startsWith(prefix)) &&
-    (HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
-      (pathname.startsWith('/tours/') && pathname.endsWith('/book')));
+    HERO_LESS_PREFIXES.some((prefix) => pathname.startsWith(prefix));
   const onDarkHero = !isHeroLess;
   const solid = scrolled || !onDarkHero;
 
