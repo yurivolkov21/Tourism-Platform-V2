@@ -42,6 +42,34 @@
   }
 }
 
+/* ── Tab pane của trang tour "vào" khi đổi tab (nhóm motion 1, 19/08) ──
+ * Panel `keepMounted` chỉ bật/tắt `hidden` (ADR-0022 — 5 panel phải ở trong
+ * HTML cho crawler). Toggle `display:none` → hiển thị KHỞI ĐỘNG LẠI animation
+ * CSS, nên một keyframe trên `:not([hidden])` là đủ để mỗi lần đổi tab nội dung
+ * trượt nhẹ lên + hiện dần, không cần state/AnimatePresence ở React. Cùng nhịp
+ * REVEAL_EASE (0.16,1,0.3,1) của `lib/motion.ts`. Hàng bảng Departures khi mở
+ * tháng dùng lại `tour-card-in` (cũng `<tr hidden>` bật/tắt, cùng cơ chế). */
+@keyframes pane-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.animate-pane-in:not([hidden]) {
+  animation: pane-in 0.36s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pane-in:not([hidden]) {
+    animation: none;
+  }
+}
+
 /* ── Dải chặng của TourCard: hành trình "sáng dần" khi hover ──
  * CSS ở đây lo NHỊP, Tailwind lo GIÁ TRỊ (`group-hover:border-primary`…). Tách
  * vậy vì transition-delay theo chỉ số không viết gọn được bằng utility, còn màu

@@ -1,7 +1,9 @@
 import { messages } from '@tourism/i18n';
 import { CheckIcon, ClockIcon, HeartIcon, SignalIcon, UsersIcon } from 'lucide-react';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { FactCard } from '@/components/tours/fact-card';
 import type { TourDetailVM } from '@/lib/api/tours';
+import { STAGGER } from '@/lib/motion';
 
 /**
  * Tab 1 — dải bốn card dữ kiện, mô tả, rồi danh sách điểm nhấn.
@@ -17,41 +19,49 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
   return (
     <div>
       <div data-slot="facts" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <FactCard
-          icon={<ClockIcon aria-hidden="true" />}
-          label={t.facts.duration}
-          note={tour.factDurationNote}
-          // Chỉ ghép "N nights" khi tour dài hơn một ngày — tour trong ngày mà
-          // ghi "1 day · 0 nights" là nói một thứ vô nghĩa.
-          value={
-            nights > 0
-              ? `${t.durationValue(tour.durationDays)} · ${t.facts.nights(nights)}`
-              : t.durationValue(tour.durationDays)
-          }
-          link={{ href: '#itinerary', label: t.facts.seeItinerary }}
-        />
-        <FactCard
-          icon={<UsersIcon aria-hidden="true" />}
-          label={t.facts.groupSize}
-          note={tour.factGroupSizeNote}
-          value={t.facts.groupSizeValue(tour.maxGroupSize)}
-        />
-        {tour.difficulty ? (
+        <RevealItem enter="rise" delay={0 * STAGGER.grid} className="h-full">
           <FactCard
-            icon={<SignalIcon aria-hidden="true" />}
-            label={t.facts.difficulty}
-            note={tour.factDifficultyNote}
-            value={messages.toursPage.difficultyLabels[tour.difficulty]}
-            link={{ href: '#good-to-know', label: t.facts.howDemanding }}
+            icon={<ClockIcon aria-hidden="true" />}
+            label={t.facts.duration}
+            note={tour.factDurationNote}
+            // Chỉ ghép "N nights" khi tour dài hơn một ngày — tour trong ngày mà
+            // ghi "1 day · 0 nights" là nói một thứ vô nghĩa.
+            value={
+              nights > 0
+                ? `${t.durationValue(tour.durationDays)} · ${t.facts.nights(nights)}`
+                : t.durationValue(tour.durationDays)
+            }
+            link={{ href: '#itinerary', label: t.facts.seeItinerary }}
           />
+        </RevealItem>
+        <RevealItem enter="rise" delay={1 * STAGGER.grid} className="h-full">
+          <FactCard
+            icon={<UsersIcon aria-hidden="true" />}
+            label={t.facts.groupSize}
+            note={tour.factGroupSizeNote}
+            value={t.facts.groupSizeValue(tour.maxGroupSize)}
+          />
+        </RevealItem>
+        {tour.difficulty ? (
+          <RevealItem enter="rise" delay={2 * STAGGER.grid} className="h-full">
+            <FactCard
+              icon={<SignalIcon aria-hidden="true" />}
+              label={t.facts.difficulty}
+              note={tour.factDifficultyNote}
+              value={messages.toursPage.difficultyLabels[tour.difficulty]}
+              link={{ href: '#good-to-know', label: t.facts.howDemanding }}
+            />
+          </RevealItem>
         ) : null}
         {tour.suitableFor.length > 0 ? (
-          <FactCard
-            icon={<HeartIcon aria-hidden="true" />}
-            label={t.facts.goodFor}
-            note={tour.factGoodForNote}
-            value={tour.suitableFor.map((type) => messages.travellerTypes[type]).join(' · ')}
-          />
+          <RevealItem enter="rise" delay={3 * STAGGER.grid} className="h-full">
+            <FactCard
+              icon={<HeartIcon aria-hidden="true" />}
+              label={t.facts.goodFor}
+              note={tour.factGoodForNote}
+              value={tour.suitableFor.map((type) => messages.travellerTypes[type]).join(' · ')}
+            />
+          </RevealItem>
         ) : null}
       </div>
 
@@ -62,17 +72,21 @@ export function OverviewPanel({ tour }: { tour: TourDetailVM }) {
       {tour.summary ? <p className="mt-7 max-w-3xl text-muted-foreground">{tour.summary}</p> : null}
 
       {tour.highlights.length > 0 ? (
-        <ul className="mt-5 flex max-w-3xl flex-col gap-2.5">
-          {tour.highlights.map((highlight) => (
-            <li key={highlight} className="flex gap-2.5">
-              <CheckIcon
-                className="mt-1 size-3.5 shrink-0 text-primary-emphasis"
-                aria-hidden="true"
-              />
-              <span>{highlight}</span>
-            </li>
-          ))}
-        </ul>
+        // Highlights vào như MỘT khối (không stagger từng dòng): danh sách 4–6 câu
+        // ngắn, từng dòng nối nhau thì đọc ra như đang tải chậm.
+        <RevealItem enter="rise" delay={STAGGER.grid} className="mt-5">
+          <ul className="flex max-w-3xl flex-col gap-2.5">
+            {tour.highlights.map((highlight) => (
+              <li key={highlight} className="flex gap-2.5">
+                <CheckIcon
+                  className="mt-1 size-3.5 shrink-0 text-primary-emphasis"
+                  aria-hidden="true"
+                />
+                <span>{highlight}</span>
+              </li>
+            ))}
+          </ul>
+        </RevealItem>
       ) : null}
     </div>
   );

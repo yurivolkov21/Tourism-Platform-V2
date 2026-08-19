@@ -5,10 +5,12 @@ import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { ChevronDownIcon, CreditCardIcon, RotateCcwIcon, UsersIcon } from 'lucide-react';
 import { type CSSProperties, useId, useState } from 'react';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
 import { FactCard } from '@/components/tours/fact-card';
 import { PANEL_BTN_SM } from '@/components/tours/panel-button';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
+import { STAGGER } from '@/lib/motion';
 import {
   DEPARTURE_ROWS_PER_MONTH,
   defaultOpenMonth,
@@ -190,6 +192,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           gap 16 → ở bề ngang 1056 ra 252px mỗi ô. */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
+          index={0}
           label={t.nextDeparture}
           // `formatChipDate` ("20 Aug") chứ không phải `formatDialogDate`
           // ("Thu, 20 Aug"): ô thống kê là con số liếc qua, mà thứ trong tuần
@@ -198,11 +201,13 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           sub={next ? t.nextDepartureSub(next.seatsLeft, capacity) : ''}
         />
         <StatCard
+          index={1}
           label={t.datesOpen}
           value={t.datesOpenValue(openTotal, departures.length)}
           sub={t.datesOpenSub(months.length)}
         />
         <StatCard
+          index={2}
           label={t.priceRange}
           value={
             lo === hi
@@ -211,7 +216,12 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           }
           sub={t.priceRangeSub}
         />
-        <StatCard label={t.seatsLeftTotal} value={String(seatsTotal)} sub={t.seatsLeftSub} />
+        <StatCard
+          index={3}
+          label={t.seatsLeftTotal}
+          value={String(seatsTotal)}
+          sub={t.seatsLeftSub}
+        />
       </div>
 
       <div className="mt-7 mb-3 flex items-center justify-between gap-3">
@@ -336,9 +346,10 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
                     kiện: cùng luật với năm panel của `TourTabs` (ADR-0022) — ngày
                     khởi hành nằm trong HTML tĩnh cho crawler, và xổ ra không tốn
                     một vòng render nào. `hidden` cũng cắt luôn tab order. */}
-                {shown.map((departure) => (
+                {shown.map((departure, rowIndex) => (
                   <DepartureRow
                     key={departure.id}
+                    rowIndex={rowIndex}
                     departure={departure}
                     capacity={capacity}
                     currency={tour.currency}
@@ -433,9 +444,24 @@ function BookingPolicyCards({ tour }: { tour: TourDetailVM }) {
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub: string }) {
+function StatCard({
+  label,
+  value,
+  sub,
+  index = 0,
+}: {
+  label: string;
+  value: string;
+  sub: string;
+  /** Vị trí trong hàng 4 thẻ — quyết nhịp bậc thang (nhóm motion 1, 19/08). */
+  index?: number;
+}) {
   return (
-    <div className="rounded-md border border-border bg-card p-4">
+    <RevealItem
+      enter="rise"
+      delay={index * STAGGER.grid}
+      className="rounded-md border border-border bg-card p-4"
+    >
       <p className="font-mono text-[10px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
         {label}
       </p>
@@ -443,7 +469,7 @@ function StatCard({ label, value, sub }: { label: string; value: string; sub: st
         {value}
       </p>
       <p className="mt-0.5 text-xs leading-4 text-muted-foreground">{sub}</p>
-    </div>
+    </RevealItem>
   );
 }
 
@@ -459,6 +485,7 @@ function DepartureRow({
   durationDays,
   selected,
   hidden,
+  rowIndex = 0,
   onSelect,
 }: {
   departure: DepartureVM;
@@ -467,6 +494,8 @@ function DepartureRow({
   durationDays: number;
   selected: boolean;
   hidden: boolean;
+  /** Thứ tự trong tháng — bậc thang `--card-index` khi tháng xổ ra (nhóm motion 1). */
+  rowIndex?: number;
   onSelect: () => void;
 }) {
   const t = messages.tourDetail.departuresTab;
@@ -480,8 +509,12 @@ function DepartureRow({
     <tr
       hidden={hidden}
       data-selected={selected || undefined}
+      // `animate-tour-card-in` khởi động lại mỗi lần `hidden` tắt (display:none →
+      // table-row) — hàng đợt "vào" bậc thang khi mở tháng; `backwards` giữ hàng
+      // vô hình cho tới lượt mình (nhóm motion 1, 19/08).
+      style={{ '--card-index': rowIndex } as CSSProperties}
       className={cn(
-        'bg-muted/25 data-selected:bg-primary/10 [&>td:first-child]:pl-(--row-pad) [&>td:last-child]:pr-(--row-pad) [&>td]:border-t [&>td]:border-border/55 [&>td]:py-2.5 [&>td]:pr-3 [&>td]:align-middle',
+        'animate-tour-card-in bg-muted/25 data-selected:bg-primary/10 [&>td:first-child]:pl-(--row-pad) [&>td:last-child]:pr-(--row-pad) [&>td]:border-t [&>td]:border-border/55 [&>td]:py-2.5 [&>td]:pr-3 [&>td]:align-middle',
         !selected && 'hover:bg-muted/45',
       )}
     >

@@ -29,7 +29,7 @@ export function FactCard({
   return (
     <div
       data-testid="fact-card"
-      className="flex flex-col overflow-hidden rounded-md border border-border bg-card"
+      className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-card"
     >
       <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-muted-foreground [&_svg]:size-4">
         {icon}

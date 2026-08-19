@@ -4,10 +4,12 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { useState } from 'react';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { PANEL_BTN_SM } from '@/components/tours/panel-button';
 import { ReviewCard, StarRow } from '@/components/tours/review-card';
 import { ReviewDialog } from '@/components/tours/review-dialog';
 import type { TourDetailVM, TourReviewsPageVM } from '@/lib/api/tours';
+import { STAGGER } from '@/lib/motion';
 import { ratingHistogram } from '@/lib/tour-detail';
 
 /** Số review làm mồi trong tab; phần còn lại đi qua modal. Con số bản duyệt. */
@@ -111,8 +113,11 @@ export function ReviewsPanel({
       {/* Hai review mồi. Khung 768 giống `.pane.narrow` của tab Itinerary: dòng
           văn dài quá 768 là đọc mỏi mắt, mà đây là khối chữ dày nhất tab này. */}
       <div className="mt-7 max-w-3xl">
-        {reviews.items.slice(0, PREVIEW_COUNT).map((review) => (
-          <ReviewCard key={review.id} review={review} />
+        {reviews.items.slice(0, PREVIEW_COUNT).map((review, index) => (
+          // Hai review mồi trồi lên nối nhau (nhóm motion 1, 19/08).
+          <RevealItem key={review.id} enter="rise" delay={index * STAGGER.grid}>
+            <ReviewCard review={review} />
+          </RevealItem>
         ))}
       </div>
 

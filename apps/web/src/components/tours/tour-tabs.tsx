@@ -120,7 +120,9 @@ export function TourTabs({ panels }: { panels: Record<TabKey, ReactNode> }) {
           keepMounted
           data-narrow={NARROW_PANES.has(key) ? 'true' : undefined}
           // `.pane { margin-top:24px; font-size:14px; line-height:23px }`
-          className={`mt-6 text-sm leading-[23px] ${NARROW_PANES.has(key) ? 'max-w-3xl' : ''}`}
+          // `animate-pane-in`: keyframe ở globals.css, khởi động lại mỗi lần
+          // panel thôi `hidden` (nhóm motion 1, 19/08).
+          className={`animate-pane-in mt-6 text-sm leading-[23px] ${NARROW_PANES.has(key) ? 'max-w-3xl' : ''}`}
         >
           {panels[key]}
         </TabsContent>

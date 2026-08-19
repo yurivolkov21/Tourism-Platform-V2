@@ -7,7 +7,9 @@ import {
 } from '@tourism/ui/components/accordion';
 import { cn } from '@tourism/ui/lib/utils';
 import { CircleQuestionMarkIcon } from 'lucide-react';
+import { RevealItem } from '@/components/motion/reveal-item';
 import type { TourDetailVM } from '@/lib/api/tours';
+import { STAGGER } from '@/lib/motion';
 import { orderPolicies, policyEyebrow } from '@/lib/tour-detail';
 
 /**
@@ -32,31 +34,39 @@ export function GoodToKnowPanel({ tour }: { tour: TourDetailVM }) {
         // `.pol` — 3 cột đều, gap 12. Xuống 1 cột ở mobile vì thẻ có văn bản
         // dài; ba cột 13px trên màn hẹp là ba cột chữ vụn.
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {policies.map((policy) => {
+          {policies.map((policy, index) => {
             const eyebrow = policyEyebrow(t.policyKinds[policy.kind], policy.title);
             return (
-              <div
+              // Thẻ policy trồi lên theo bậc thang (nhóm motion 1, 19/08) —
+              // wrapper mang nhịp, thẻ bên trong giữ `data-testid` spec đang đọc.
+              <RevealItem
                 key={policy.kind + policy.title}
-                data-testid="policy-card"
-                className="rounded-md border border-border bg-card p-4"
+                enter="rise"
+                delay={index * STAGGER.grid}
+                className="h-full"
               >
-                {eyebrow ? (
-                  <p className="font-mono text-[11px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
-                    {eyebrow}
-                  </p>
-                ) : null}
-                {/* Lề trên 6px là khoảng cách VỚI eyebrow; bỏ eyebrow mà giữ
-                    lề là để lại 6px chết ở đỉnh thẻ. */}
-                <h3
-                  className={cn(
-                    'mb-2 font-heading text-[17px] leading-6 font-medium text-foreground',
-                    eyebrow && 'mt-1.5',
-                  )}
+                <div
+                  data-testid="policy-card"
+                  className="h-full rounded-md border border-border bg-card p-4"
                 >
-                  {policy.title}
-                </h3>
-                <p className="text-[13px] leading-5 text-muted-foreground">{policy.body}</p>
-              </div>
+                  {eyebrow ? (
+                    <p className="font-mono text-[11px] leading-4 tracking-[0.12em] text-muted-foreground uppercase">
+                      {eyebrow}
+                    </p>
+                  ) : null}
+                  {/* Lề trên 6px là khoảng cách VỚI eyebrow; bỏ eyebrow mà giữ
+                    lề là để lại 6px chết ở đỉnh thẻ. */}
+                  <h3
+                    className={cn(
+                      'mb-2 font-heading text-[17px] leading-6 font-medium text-foreground',
+                      eyebrow && 'mt-1.5',
+                    )}
+                  >
+                    {policy.title}
+                  </h3>
+                  <p className="text-[13px] leading-5 text-muted-foreground">{policy.body}</p>
+                </div>
+              </RevealItem>
             );
           })}
         </div>

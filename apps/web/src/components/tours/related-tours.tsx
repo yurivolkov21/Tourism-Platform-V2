@@ -1,5 +1,7 @@
+import { RevealItem } from '@/components/motion/reveal-item';
 import { TourCard } from '@/components/tours/tour-card';
 import type { TourCardVM } from '@/lib/api/tours';
+import { STAGGER } from '@/lib/motion';
 
 /**
  * Gợi ý cuối trang. Danh sách do `relatedTours()` chọn: cùng chuyên mục trước,
@@ -18,8 +20,12 @@ export function RelatedTours({ tours }: { tours: TourCardVM[] }) {
     // gap-y lớn hơn gap-x: card không có khung nên hai hàng cần khoảng thở dọc
     // rộng hơn để không đọc thành một khối chữ liền.
     <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3">
-      {tours.map((tour) => (
-        <TourCard key={tour.slug} tour={tour} />
+      {tours.map((tour, index) => (
+        // Ba card liên quan trồi lên bậc thang khi cuộn tới (nhóm motion 1, 19/08)
+        // — cùng nhịp lưới Home/Journal; `h-full` để card kéo đều hàng.
+        <RevealItem key={tour.slug} enter="rise" delay={index * STAGGER.grid} className="h-full">
+          <TourCard tour={tour} />
+        </RevealItem>
       ))}
     </div>
   );
