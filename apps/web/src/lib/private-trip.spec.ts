@@ -1,4 +1,5 @@
 import { CreateEnquiryInputSchema } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
   buildPrivateTripPayload,
@@ -42,6 +43,40 @@ describe('validatePrivateTrip', () => {
 
   it('người lớn tối thiểu 1', () => {
     expect(validatePrivateTrip({ ...STATE, numAdults: 0 }).numAdults).toBeTruthy();
+  });
+
+  /** Sweep 19/08: mỗi ô nói ĐÚNG lỗi của mình. */
+  describe('copy lỗi theo từng ô', () => {
+    const t = messages.formErrors;
+
+    it('tên trống → required; 1 ký tự → tooShort', () => {
+      expect(validatePrivateTrip({ ...STATE, contactName: '' }).contactName).toBe(t.name.required);
+      expect(validatePrivateTrip({ ...STATE, contactName: 'A' }).contactName).toBe(t.name.tooShort);
+    });
+
+    it('email trống → required; sai shape → invalid', () => {
+      expect(validatePrivateTrip({ ...STATE, contactEmail: '' }).contactEmail).toBe(
+        t.email.required,
+      );
+      expect(validatePrivateTrip({ ...STATE, contactEmail: 'elena@' }).contactEmail).toBe(
+        t.email.invalid,
+      );
+    });
+
+    it('lời nhắn trống → required; dưới 10 → tooShort; trên 2000 → tooLong', () => {
+      expect(validatePrivateTrip({ ...STATE, message: '' }).message).toBe(t.message.required);
+      expect(validatePrivateTrip({ ...STATE, message: 'hi' }).message).toBe(t.message.tooShort);
+      expect(validatePrivateTrip({ ...STATE, message: 'x'.repeat(2001) }).message).toBe(
+        t.message.tooLong,
+      );
+    });
+
+    it('phone quá 30 ký tự → phone.invalid; trống thì thôi', () => {
+      expect(validatePrivateTrip({ ...STATE, contactPhone: '1'.repeat(31) }).contactPhone).toBe(
+        t.phone.invalid,
+      );
+      expect(validatePrivateTrip({ ...STATE, contactPhone: '' }).contactPhone).toBeUndefined();
+    });
   });
 
   /** Enquiry KHÔNG bắt buộc ngày — khách có thể chỉ muốn hỏi trước. */

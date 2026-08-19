@@ -1,7 +1,10 @@
+import { ORPCError } from '@orpc/client';
+import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
   BOOKING_STEPS,
   type BookingFormState,
+  bookingSubmitErrorCopy,
   buildBookingInput,
   canLeaveStep,
   partyCap,
@@ -88,6 +91,37 @@ describe('validateBookingForm', () => {
       validateBookingForm({ ...STATE, specialRequests: 'x'.repeat(1000) }).specialRequests,
     ).toBeUndefined();
   });
+
+  /** Sweep 19/08: mỗi ô nói ĐÚNG lỗi của mình — hết câu gộp "valid name and
+   *  email" cho cả phone sai lẫn requests quá dài. */
+  describe('copy lỗi theo từng ô', () => {
+    const t = messages.formErrors;
+
+    it('tên trống → name.required', () => {
+      expect(validateBookingForm({ ...STATE, contactName: '' }).contactName).toBe(t.name.required);
+    });
+
+    it('email trống → email.required; sai shape → email.invalid', () => {
+      expect(validateBookingForm({ ...STATE, contactEmail: '' }).contactEmail).toBe(
+        t.email.required,
+      );
+      expect(validateBookingForm({ ...STATE, contactEmail: 'elena@' }).contactEmail).toBe(
+        t.email.invalid,
+      );
+    });
+
+    it('phone 1–5 ký tự → phone.invalid', () => {
+      expect(validateBookingForm({ ...STATE, contactPhone: '123' }).contactPhone).toBe(
+        t.phone.invalid,
+      );
+    });
+
+    it('requests quá 1000 → specialRequests.tooLong', () => {
+      expect(
+        validateBookingForm({ ...STATE, specialRequests: 'x'.repeat(1001) }).specialRequests,
+      ).toBe(t.specialRequests.tooLong);
+    });
+  });
 });
 
 describe('buildBookingInput — state form → CreateBookingInput', () => {
@@ -163,5 +197,36 @@ describe('logic bước của wizard đặt chỗ', () => {
   it('bước review không có trường riêng nên luôn qua được', () => {
     expect(canLeaveStep('review', STATE)).toBe(true);
     expect(canLeaveStep('review', { ...STATE, departureId: null })).toBe(true);
+  });
+});
+
+describe('bookingSubmitErrorCopy — lỗi API khi tạo booking', () => {
+  const t = messages.booking.errors;
+
+  it('SEATS_UNAVAILABLE (409) → câu hết ghế, không phải checkout failed', () => {
+    const err = new ORPCError('SEATS_UNAVAILABLE', { status: 409 });
+    expect(bookingSubmitErrorCopy(err)).toBe(t.SEATS_NOT_AVAILABLE);
+  });
+
+  it('DEPARTURE_NOT_AVAILABLE (400) → câu đợt đã đóng', () => {
+    const err = new ORPCError('DEPARTURE_NOT_AVAILABLE', { status: 400 });
+    expect(bookingSubmitErrorCopy(err)).toBe(t.DEPARTURE_NOT_OPEN);
+  });
+
+  it('401 → hết phiên; 429 → throttle', () => {
+    expect(bookingSubmitErrorCopy(new ORPCError('UNAUTHORIZED', { status: 401 }))).toBe(
+      t.UNAUTHORIZED,
+    );
+    expect(bookingSubmitErrorCopy(new ORPCError('TOO_MANY_REQUESTS', { status: 429 }))).toBe(
+      messages.accountActionErrors.throttle,
+    );
+  });
+
+  it('CHECKOUT_FAILED (502), lỗi lạ, hoặc không phải ORPCError → CHECKOUT_FAILED', () => {
+    expect(bookingSubmitErrorCopy(new ORPCError('CHECKOUT_FAILED', { status: 502 }))).toBe(
+      t.CHECKOUT_FAILED,
+    );
+    expect(bookingSubmitErrorCopy(new Error('boom'))).toBe(t.CHECKOUT_FAILED);
+    expect(bookingSubmitErrorCopy(undefined)).toBe(t.CHECKOUT_FAILED);
   });
 });

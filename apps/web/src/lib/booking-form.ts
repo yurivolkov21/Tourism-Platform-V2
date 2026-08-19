@@ -1,3 +1,4 @@
+import { ORPCError } from '@orpc/client';
 import { type CreateBookingInput, CreateBookingInputSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 
@@ -55,22 +56,31 @@ export function partyCap(
  */
 export function validateBookingForm(state: BookingFormState): BookingFormErrors {
   const t = messages.booking.errors;
+  // Sweep 19/08: lỗi TỪNG Ô dùng `formErrors` (required/invalid/tooLong tách
+  // câu) — trước đó mọi ô liên hệ đều nhận một câu `INVALID_CONTACT` (đã gỡ) "valid
+  // name and email", kể cả khi thứ sai là phone hay requests quá dài.
+  const f = messages.formErrors;
+  const shape = CreateBookingInputSchema.shape;
   const errors: BookingFormErrors = {};
 
   if (!state.departureId) errors.departureId = t.MISSING_DEPARTURE;
   if (state.numAdults < 1) errors.numAdults = t.INVALID_PARTY_SIZE;
-  if (!state.contactName.trim()) errors.contactName = t.INVALID_CONTACT;
+
+  const name = state.contactName.trim();
+  if (!name) errors.contactName = f.name.required;
+  else if (!shape.contactName.safeParse(name).success) errors.contactName = f.name.tooLong;
 
   const email = state.contactEmail.trim();
-  if (!email || !CreateBookingInputSchema.shape.contactEmail.safeParse(email).success) {
-    errors.contactEmail = t.INVALID_CONTACT;
-  }
+  if (!email) errors.contactEmail = f.email.required;
+  else if (!shape.contactEmail.safeParse(email).success) errors.contactEmail = f.email.invalid;
 
-  // Phone optional: bỏ trống thì thôi, có thì phải đủ 6 ký tự.
+  // Phone optional: bỏ trống thì thôi, có thì 6–30 ký tự (đúng schema).
   const phone = state.contactPhone.trim();
-  if (phone && (phone.length < 6 || phone.length > 30)) errors.contactPhone = t.INVALID_CONTACT;
+  if (phone && !shape.contactPhone.safeParse(phone).success) errors.contactPhone = f.phone.invalid;
 
-  if (state.specialRequests.trim().length > 1000) errors.specialRequests = t.INVALID_CONTACT;
+  if (state.specialRequests.trim().length > 1000) {
+    errors.specialRequests = f.specialRequests.tooLong;
+  }
 
   return errors;
 }
@@ -155,4 +165,24 @@ export function stepErrors(step: BookingStep, state: BookingFormState): BookingF
 /** Bước hiện tại đã sạch lỗi chưa — điều kiện để nút Continue hoạt động. */
 export function canLeaveStep(step: BookingStep, state: BookingFormState): boolean {
   return Object.keys(stepErrors(step, state)).length === 0;
+}
+
+/**
+ * Copy lỗi khi `bookings.create` thất bại (sweep 19/08). Trước đó wizard nuốt
+ * MỌI lỗi thành `CHECKOUT_FAILED` "couldn't start the payment session" — kể
+ * cả khi API nói rõ hết ghế (`SEATS_UNAVAILABLE` 409), đợt đóng
+ * (`DEPARTURE_NOT_AVAILABLE` 400), hết phiên (401) hay throttle (429), dù
+ * `booking.errors` đã có sẵn câu cho từng ca. Khớp theo `code`/`status` của
+ * `ORPCError` — cùng nguồn sự thật với `classifyActionError` ở
+ * `booking-actions.tsx` và `classifySubmitError`.
+ */
+export function bookingSubmitErrorCopy(error: unknown): string {
+  const t = messages.booking.errors;
+  if (error instanceof ORPCError) {
+    if (error.status === 401) return t.UNAUTHORIZED;
+    if (error.status === 429) return messages.accountActionErrors.throttle;
+    if (error.code === 'SEATS_UNAVAILABLE') return t.SEATS_NOT_AVAILABLE;
+    if (error.code === 'DEPARTURE_NOT_AVAILABLE') return t.DEPARTURE_NOT_OPEN;
+  }
+  return t.CHECKOUT_FAILED;
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { mapAuthError } from './auth-errors';
+import { fieldOfAuthError, mapAuthError } from './auth-errors';
 
 describe('mapAuthError', () => {
   it('status 401 -> invalidCredentials', () => {
@@ -50,5 +50,54 @@ describe('mapAuthError', () => {
   it('null hoặc undefined -> generic', () => {
     expect(mapAuthError(null)).toBe('generic');
     expect(mapAuthError(undefined)).toBe('generic');
+  });
+
+  // Sweep 19/08: mã BA nói rõ ô nào sai — không gom vào generic nữa.
+  it('code INVALID_EMAIL (400) -> invalidEmail', () => {
+    expect(mapAuthError({ status: 400, code: 'INVALID_EMAIL' })).toBe('invalidEmail');
+  });
+
+  it('code PASSWORD_TOO_SHORT / PASSWORD_TOO_LONG -> passwordTooShort / passwordTooLong', () => {
+    expect(mapAuthError({ status: 400, code: 'PASSWORD_TOO_SHORT' })).toBe('passwordTooShort');
+    expect(mapAuthError({ status: 400, code: 'PASSWORD_TOO_LONG' })).toBe('passwordTooLong');
+  });
+
+  it('code INVALID_PASSWORD (đổi mật khẩu, mật khẩu hiện tại sai) -> wrongCurrentPassword', () => {
+    expect(mapAuthError({ status: 400, code: 'INVALID_PASSWORD' })).toBe('wrongCurrentPassword');
+  });
+
+  it('code CREDENTIAL_ACCOUNT_NOT_FOUND (tài khoản chỉ Google) -> noPasswordAccount', () => {
+    expect(mapAuthError({ status: 400, code: 'CREDENTIAL_ACCOUNT_NOT_FOUND' })).toBe(
+      'noPasswordAccount',
+    );
+  });
+
+  it('401 vẫn thắng dù code là INVALID_EMAIL_OR_PASSWORD (không lộ ô nào sai khi đăng nhập)', () => {
+    expect(mapAuthError({ status: 401, code: 'INVALID_EMAIL_OR_PASSWORD' })).toBe(
+      'invalidCredentials',
+    );
+  });
+});
+
+describe('fieldOfAuthError', () => {
+  it('lỗi thuộc ô email -> email', () => {
+    expect(fieldOfAuthError('invalidEmail')).toBe('email');
+    expect(fieldOfAuthError('emailExists')).toBe('email');
+  });
+
+  it('lỗi thuộc ô mật khẩu (mới) -> password', () => {
+    expect(fieldOfAuthError('passwordTooShort')).toBe('password');
+    expect(fieldOfAuthError('passwordTooLong')).toBe('password');
+  });
+
+  it('mật khẩu hiện tại sai -> currentPassword', () => {
+    expect(fieldOfAuthError('wrongCurrentPassword')).toBe('currentPassword');
+  });
+
+  it('lỗi cấp form (không quy được cho ô nào) -> null', () => {
+    expect(fieldOfAuthError('invalidCredentials')).toBeNull();
+    expect(fieldOfAuthError('tooManyRequests')).toBeNull();
+    expect(fieldOfAuthError('generic')).toBeNull();
+    expect(fieldOfAuthError('noPasswordAccount')).toBeNull();
   });
 });

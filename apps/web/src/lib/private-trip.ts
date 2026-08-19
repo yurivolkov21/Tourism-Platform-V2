@@ -31,18 +31,33 @@ export type PrivateTripErrors = Partial<Record<keyof PrivateTripState, string>>;
  */
 export function validatePrivateTrip(state: PrivateTripState): PrivateTripErrors {
   const t = messages.booking.errors;
+  // Sweep 19/08: lỗi từng ô lấy từ `formErrors`, tách required/tooShort/
+  // invalid/tooLong — zod chỉ nói "too_small" cho cả trống lẫn thiếu, nên tự
+  // soi độ dài thô để chọn câu (cùng khuôn `validateEnquiry`).
+  const f = messages.formErrors;
   const errors: PrivateTripErrors = {};
   const shape = CreateEnquiryInputSchema.shape;
 
-  if (!shape.name.safeParse(state.contactName).success) errors.contactName = t.INVALID_CONTACT;
-  if (!shape.email.safeParse(state.contactEmail.trim()).success) {
-    errors.contactEmail = t.INVALID_CONTACT;
+  const name = state.contactName.trim();
+  if (!name) errors.contactName = f.name.required;
+  else if (!shape.name.safeParse(name).success) {
+    errors.contactName = name.length < 2 ? f.name.tooShort : f.name.tooLong;
   }
-  if (!shape.message.safeParse(state.message).success) errors.message = t.INVALID_CONTACT;
+
+  const email = state.contactEmail.trim();
+  if (!email) errors.contactEmail = f.email.required;
+  else if (!shape.email.safeParse(email).success) errors.contactEmail = f.email.invalid;
+
+  const message = state.message.trim();
+  if (!message) errors.message = f.message.required;
+  else if (!shape.message.safeParse(message).success) {
+    errors.message = message.length < 10 ? f.message.tooShort : f.message.tooLong;
+  }
+
   if (state.numAdults < 1) errors.numAdults = t.INVALID_PARTY_SIZE;
 
   const phone = state.contactPhone.trim();
-  if (phone && !shape.phone.safeParse(phone).success) errors.contactPhone = t.INVALID_CONTACT;
+  if (phone && !shape.phone.safeParse(phone).success) errors.contactPhone = f.phone.invalid;
 
   return errors;
 }
