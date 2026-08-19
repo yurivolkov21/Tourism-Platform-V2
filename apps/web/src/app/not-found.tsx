@@ -1,4 +1,5 @@
 import { resilience } from '@tourism/i18n';
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { NotFoundBody } from '@/components/feedback/not-found-body';
 import { ImagePlaceholder } from '@/components/image-placeholder';
@@ -17,6 +18,12 @@ const PILL_PRIMARY =
   'inline-flex items-center gap-2 rounded-full bg-primary px-7 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/80';
 const PILL_OUTLINE =
   'inline-flex items-center gap-2 rounded-full border border-border px-7 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted';
+
+// Title riêng cho 404 chung (rà 19/08: tab chỉ ghi "Nexora" trần trong khi 404
+// của tour/bài/vùng đều có "… not found — Nexora"). Next cho `not-found.tsx`
+// export `metadata` tĩnh — đi đúng đường metadata thay vì chèn <title> tay
+// (chèn tay ra HAI thẻ <title>, trình duyệt lấy thẻ đầu = của layout).
+export const metadata: Metadata = { title: `${resilience.notFound.title} — Nexora` };
 
 export default function NotFound() {
   const t = resilience.notFound;
