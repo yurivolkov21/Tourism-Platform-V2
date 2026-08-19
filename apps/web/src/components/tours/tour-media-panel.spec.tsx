@@ -199,3 +199,12 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
     );
   });
 });
+
+// 19/08: trang tour từng có HAI `<h1>` (hero + panel) — panel chỉ lặp tiêu đề
+// bằng mắt, không được là heading cấp một thứ hai.
+describe('TourMediaPanel — không phải <h1> thứ hai', () => {
+  it('tiêu đề trong panel KHÔNG phải heading (hero đã giữ <h1>)', () => {
+    render(<TourMediaPanel tour={tourWith(10)} />, { wrapper });
+    expect(screen.queryByRole('heading', { level: 1 })).toBeNull();
+  });
+});

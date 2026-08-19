@@ -171,9 +171,14 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
 
         {/* .head */}
         <div className="flex flex-col gap-2">
-          <h1 className="font-heading text-[26px] leading-8 font-medium tracking-[-0.3px] text-foreground">
+          {/* `<p>`, KHÔNG phải `<h1>` (rà 19/08 đo được 2 `<h1>`/trang): tiêu đề
+              tài liệu đã là `<h1>` của `TourHero` ngay trên; đây là lặp lại bằng
+              mắt ở đầu khối ảnh+đặt chỗ. Hai `<h1>` là hai "tiêu đề cấp một" với
+              trình đọc màn hình — cùng lỗi đã vá ở receipt 19/08. Giữ nguyên lớp
+              chữ nên không đổi một pixel. */}
+          <p className="font-heading text-[26px] leading-8 font-medium tracking-[-0.3px] text-foreground">
             {tour.title}
-          </h1>
+          </p>
 
           {/* ratingAvg null = CHƯA AI đánh giá, khác 0 điểm — cùng luật TourHero. */}
           {tour.ratingAvg === null ? (
