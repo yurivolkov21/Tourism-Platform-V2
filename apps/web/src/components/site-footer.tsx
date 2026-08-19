@@ -13,39 +13,41 @@ import { NewsletterForm } from './newsletter-form';
 // stroke góc phải của Estate). Motion phủ theo yêu cầu user: các cột trồi lên
 // stagger khi vào viewport, social hover nhấc lên + scale (y bản gốc).
 // Tối ở CẢ hai theme qua scope `dark`.
+// Ba nhóm link phản ánh ĐÚNG bản đồ route của site (rà 19/08 theo góp ý user:
+// bản cũ còn 'Destinations' → `/#gallery` dù /destinations đã có từ 30/07, và
+// bốn mục Company 'Our guides/Careers/Press/Partners' trỏ `#top` — link chết
+// cho trang không tồn tại). Luật: mỗi href là một route/anchor CÓ THẬT; không
+// có trang thì không có link. `/account/*` đi qua `proxy.ts` — chưa đăng nhập
+// thì về /login rồi quay lại, nên để được ở footer cho mọi khách.
 const LINK_GROUPS: { title: string; links: [string, string][] }[] = [
   {
     title: 'Explore',
     links: [
-      // 'Tours' trỏ TRANG thật, không còn trỏ `/#tours` — cái anchor đó nằm trên
-      // section Stats ở trang chủ, hợp lý khi chưa có /tours, nay thì sai hẳn.
       ['Tours', '/tours'],
-      // Hai mục dưới vẫn là anchor trang chủ CÓ THẬT (`#gallery`, `#reviews`):
-      // /destinations chưa tồn tại, còn Reviews mãi là section của Home (quyết
-      // định review navbar #3). Không đổi tới khi có trang riêng.
-      ['Destinations', '/#gallery'],
-      ['Reviews', '/#reviews'],
-      ['Contact', '/contact'],
+      ['Destinations', '/destinations'],
       ['Journal', '/blog'],
+      ['About us', '/about'],
+      // Reviews vẫn là section của Home (quyết định review navbar #3) — anchor thật.
+      ['Traveller reviews', '/#reviews'],
     ],
   },
   {
-    title: 'Company',
+    title: 'Your account',
     links: [
-      ['About us', '/about'],
-      ['Our guides', '#top'],
-      ['Careers', '#top'],
-      ['Press', '#top'],
-      ['Partners', '#top'],
+      ['My bookings', '/account/bookings'],
+      ['Saved tours', '/account/saved'],
+      ['Profile', '/account/profile'],
+      ['Settings', '/account/settings'],
+      ['Log in', '/login'],
     ],
   },
   {
     title: 'Support',
     links: [
+      ['Contact us', '/contact'],
       ['FAQ', '/faq'],
-      ['Booking help', '/faq'],
       ['Cancellation policy', '/cancellation-policy'],
-      ['Terms', '/terms'],
+      ['Terms of service', '/terms'],
       ['Privacy policy', '/privacy'],
     ],
   },
@@ -160,7 +162,17 @@ export function SiteFooter() {
             ))}
           </div>
 
-          <p className="text-xs text-muted-foreground/70">Privacy · Terms · Cookies</p>
+          {/* Hai link pháp lý THẬT thay chuỗi chữ trơ "Privacy · Terms · Cookies":
+              không có trang Cookies nên không hứa. */}
+          <p className="flex items-center gap-2 text-xs text-muted-foreground/70">
+            <a href="/privacy" className="transition-colors hover:text-foreground">
+              Privacy
+            </a>
+            <span aria-hidden="true">·</span>
+            <a href="/terms" className="transition-colors hover:text-foreground">
+              Terms
+            </a>
+          </p>
         </motion.div>
       </div>
     </footer>
