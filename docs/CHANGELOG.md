@@ -8,6 +8,62 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Sweep bắt lỗi form: mọi ô nhập nói đúng lỗi của mình (nhánh `feat/form-validation-sweep`, 5 commit, 32 file, +1.213/−82)
+
+Rà toàn bộ form có submit ở web theo yêu cầu user: bấm gửi khi trống thì từng ô
+phải tự báo, sai gì báo đúng nấy, và **tuyệt đối không dùng validate HTML**
+(`required`, bong bóng `type=email`). Contact/newsletter/review/dialog huỷ đã
+đúng khuôn từ trước (validate bằng schema contract + lỗi inline + `noValidate`)
+nên giữ nguyên; phần còn lại thiếu ở ba mức.
+
+**Cụm auth không validate gì ở client.** Login/register/forgot/reset/OTP gửi
+thẳng lên Better Auth, 400 quay về, `mapAuthError` gom thành "Something went
+wrong" — khách không biết ô nào sai. Reset-password còn tệ hơn: ô *Confirm* chưa
+nối state, gõ gì cũng qua. Nay có `lib/auth-form.ts` (thuần, TDD, 21 test) theo
+ĐÚNG khuôn `validateEnquiry`: dùng schema contract thay vì khai lại rule
+(`EmailSchema` mới, `PasswordSchema` soi gương ngưỡng 8–128 của Better Auth —
+đối chiếu `sign-up.mjs` gói pin, không đoán), rồi tự soi giá trị thô để chọn
+câu required/invalid/tooShort vì zod nói `too_small` cho cả hai. Login cố ý chỉ
+bắt trống + định dạng email; đúng/sai mật khẩu là việc của server và 401 vẫn ở
+khối lỗi chung để không lộ ô nào sai.
+
+**`mapAuthError` bỏ sót năm mã server nói rõ chuyện gì.** `INVALID_PASSWORD`
+(đổi mật khẩu nhưng mật khẩu HIỆN TẠI sai), `PASSWORD_TOO_SHORT/LONG`,
+`INVALID_EMAIL`, `CREDENTIAL_ACCOUNT_NOT_FOUND` đều rơi vào `generic`. Thêm
+năm key + `fieldOfAuthError` để lỗi server rơi xuống ĐÚNG ô (email đã tồn tại
+→ dưới ô email, mật khẩu ngắn → dưới ô mật khẩu). So `code` BẰNG chứ không
+`includes`: `INVALID_EMAIL` là tiền tố của `INVALID_EMAIL_OR_PASSWORD`.
+
+**Hai form đặt chỗ nói một câu cho mọi lỗi.** `INVALID_CONTACT` "Please enter a
+valid name and email." trả lời cả phone sai lẫn lời nhắn quá ngắn; và wizard
+nuốt MỌI lỗi `bookings.create` thành `CHECKOUT_FAILED` dù i18n đã có sẵn câu cho
+hết ghế / đợt đóng / hết phiên — có copy mà không ai dùng. Khối `formErrors`
+mới trong i18n dùng chung cho auth + hồ sơ + hai form đặt chỗ; `INVALID_CONTACT`
+gỡ hẳn; `bookingSubmitErrorCopy` khớp `code`/`status` của `ORPCError` cùng
+nguồn sự thật với `classifyActionError`.
+
+A11y đi kèm: mọi ô có lỗi mang `aria-invalid` + `aria-describedby` trỏ tới
+`<FieldError id>`; gõ lại vào ô đang lỗi thì lỗi của RIÊNG ô đó biến mất.
+
+**Vòng 2 cùng nhánh — card `/register` tràn khung hình.** User phát hiện thanh
+cuộn "vài pixel" ở trạng thái thường và card dài ra theo mỗi dòng lỗi. Đo bằng
+Chromium headless trên dev server ở 1920×945: card 777px trong ngân sách 773
+(tràn 4px), thêm 3 lỗi thành 843. Thủ phạm là khoảng thở lồng nhau chứ không
+phải nội dung: `py-10` của wrapper LỒNG trong `py-8` của cột (144px dọc), 8
+`gap-5` (160px), và một dòng chữ trạng thái mật khẩu đứng riêng (22px). Ba
+chỉnh không đổi visual/thứ tự: `py-10`→`py-4`, `gap-5`→`gap-4` ở cả 5 form auth
+cho nhịp thống nhất, chữ trạng thái lên cùng hàng nhãn mép phải. Sau chỉnh:
+725px thường / 791px với 3 lỗi, cả hai KHÔNG cuộn (dư ~30px). Nói thật giới hạn:
+1536×864 vẫn cuộn ~150px — checklist 5 yêu cầu + Google + terms không cỡ nào
+dưới ~850px vừa mà không đổi thiết kế; dừng ở "vừa 1080p" như user yêu cầu.
+
+Sổ nợ để lại: `home/contact.tsx` (form trang chủ) vẫn là mock no-op từ
+static-first — chưa nối API nên chưa có validate; `maxLength` trên textarea
+review/lý do huỷ giữ nguyên (cap gõ + bộ đếm, không phải bắt lỗi HTML).
+
+Tests after: 1357 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Receipt thay tấm vé ở CẢ hai màn quay-về (nhánh `feat/receipt-success`, 9 commit, 14 file, +977/−439)
 
 `/checkout/success` và `/checkout/cancel` nay dùng chung một khuôn hoá đơn kiêm
