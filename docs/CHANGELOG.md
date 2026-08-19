@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Form liên hệ trang chủ nối `enquiries.create` (nhánh `feat/home-contact-api`, 1 commit, 3 file, +352/−17)
+
+Trả món nợ ghi ngay ở entry dưới: `home/contact.tsx` là mock no-op còn sót từ
+static-first (submit `preventDefault` rồi thôi — bề mặt duy nhất trên site còn
+nuốt input của khách trong im lặng). Nối theo ĐÚNG khuôn `contact-split.tsx`
+theo yêu cầu user, không mở khuôn mới: dùng chung `ContactFormState` +
+`validateEnquiry` + `buildEnquiryPayload` (không khai lại rule), honeypot
+`website`, toast phân loại qua `submitToast`/`classifySubmitError`, điền sẵn
+tên từ session với cùng chốt `filledOnce`, `noValidate` + lỗi inline từng ô.
+
+Khác biệt DUY NHẤT với /contact, và có lý do: ô *Region* từ text tự do sang
+`<select>` bốn lựa chọn (Anywhere + 3 miền). `buildEnquiryPayload` map
+`region` → `interests[0]` theo key vùng; nhận chuỗi khách gõ ("Northern
+Vietnam", "north", "miền Bắc") thì `interests` thành rác không lọc được. Ô
+*Travel dates* giữ text tự do vì contract vốn không có ngày-khoảng; ghép vào
+cuối message như /contact vẫn làm. Toast có bản `homeContact` riêng vì copy
+"letter" của /contact là ẩn dụ lá thư; lỗi từng ô dùng chung `contactForm.errors`.
+
+Một lỗi chỉ lộ khi chụp ảnh thật: `Input`/`Textarea` của `@tourism/ui` tự vẽ
+ring đỏ khi `aria-invalid`, mà ở form này viền là của WRAPPER — kết quả hai lớp
+đỏ lồng nhau. Trạng thái lỗi chuyển sang viền wrapper (`ContactField` nhận
+`error`), `BARE_FIELD` gỡ luôn `aria-invalid:*`; input chỉ giữ `aria-invalid`
+cho máy đọc. Spec mới 9 case, gồm cả ca chốt "region Anywhere → `interests: []`,
+KHÔNG gửi `'any'`" (cùng finding cũ của contact-split).
+
+Tests after: 1366 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Sweep bắt lỗi form: mọi ô nhập nói đúng lỗi của mình (nhánh `feat/form-validation-sweep`, 5 commit, 32 file, +1.213/−82)
 
 Rà toàn bộ form có submit ở web theo yêu cầu user: bấm gửi khi trống thì từng ô
@@ -58,7 +86,8 @@ cho nhịp thống nhất, chữ trạng thái lên cùng hàng nhãn mép phả
 dưới ~850px vừa mà không đổi thiết kế; dừng ở "vừa 1080p" như user yêu cầu.
 
 Sổ nợ để lại: `home/contact.tsx` (form trang chủ) vẫn là mock no-op từ
-static-first — chưa nối API nên chưa có validate; `maxLength` trên textarea
+static-first — chưa nối API nên chưa có validate (**đã trả cùng ngày**, entry
+ngay trên); `maxLength` trên textarea
 review/lý do huỷ giữ nguyên (cap gõ + bộ đếm, không phải bắt lỗi HTML).
 
 Tests after: 1357 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
