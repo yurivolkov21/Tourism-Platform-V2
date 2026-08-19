@@ -134,6 +134,7 @@ export function BlogFilterSidebar({
   onTogglePlace,
   onQueryChange,
   onClearAll,
+  resultCount,
 }: {
   topics: readonly TagLike[];
   places: readonly TagLike[];
@@ -146,6 +147,10 @@ export function BlogFilterSidebar({
   onTogglePlace: (slug: string) => void;
   onQueryChange: (value: string) => void;
   onClearAll: () => void;
+  /** Số bài sau lọc — hiện ở hàng đầu cạnh "Filters" (dời từ dòng riêng trên
+      lưới, 19/08 theo góp ý user). `aria-live` để trình đọc màn hình nghe số
+      đổi khi tick. */
+  resultCount: number;
 }) {
   const byName = (slugs: readonly string[], pool: readonly TagLike[]) =>
     slugs.map((s) => pool.find((t) => t.slug === s)).filter((t): t is TagLike => Boolean(t));
@@ -159,7 +164,12 @@ export function BlogFilterSidebar({
     <aside className="w-full lg:w-96 lg:shrink-0">
       <div className="flex flex-col rounded-2xl border bg-card shadow-(--shadow-card)">
         <div className="flex items-center justify-between gap-3 px-5 pt-5">
-          <h2 className="text-base leading-6 font-semibold">Filters</h2>
+          <div className="flex items-baseline gap-2">
+            <h2 className="text-base leading-6 font-semibold">Filters</h2>
+            <span aria-live="polite" className="text-[13px] text-muted-foreground tabular-nums">
+              {resultCount} {resultCount === 1 ? 'story' : 'stories'}
+            </span>
+          </div>
           {anyActive ? (
             <button
               type="button"

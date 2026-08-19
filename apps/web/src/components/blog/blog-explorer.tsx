@@ -82,6 +82,28 @@ export function BlogExplorer({
   const [query, setQuery] = useState(initialQuery ?? '');
   const [page, setPage] = useState(Math.max(1, initialPage ?? 1));
 
+  // Đổi trang qua thanh phân trang → cuộn về ĐẦU LƯỚI (bug user báo 19/08:
+  // "sang trang 2 footer bị đẩy lên, lộ khoảng trắng"). Đo bằng Chromium:
+  // không phải load chậm — bài đã ở client hết. Lưới co ngay từ 1832 → 829px
+  // (trang 2 chỉ 3 bài) nhưng viewport vẫn đứng ở toạ độ thanh phân trang CŨ,
+  // giờ là vùng footer; đồng thời 6 ghost đang thoát (popLayout →
+  // `position:absolute` tại chỗ cũ ~600ms) kéo chiều cao cuộn của trang theo,
+  // nên dưới footer hở ~320px trắng cho tới khi ghost unmount. Cuộn về đầu
+  // lưới là hành vi mọi phân trang; `overflow-clip` ở lưới chặn ghost kéo
+  // chiều cao (xem chỗ render). CHỈ khi bấm phân trang — lọc/tìm cũng
+  // setPage(1) nhưng người dùng đang đứng ở sidebar, cuộn họ đi là giật.
+  const gridRef = useRef<HTMLDivElement>(null);
+  function goToPage(next: number) {
+    setPage(next);
+    const top = gridRef.current?.getBoundingClientRect().top;
+    if (top === undefined) return;
+    // Trừ navbar pill fixed: 128px (article-body/faq dùng `scroll-mt-28` =
+    // 112 cho TIÊU ĐỀ có lề trên; ở đây thẻ mở đầu bằng ẢNH sát mép nên chừa
+    // thêm 16px kẻo mép ảnh chui dưới bóng pill — đo ảnh chụp 19/08). Cùng API
+    // `window.scrollTo` với ScrollToTop (đã sống chung với Lenis).
+    window.scrollTo({ top: window.scrollY + top - 128, behavior: 'smooth' });
+  }
+
   // Ghi URL bằng `history.replaceState`, KHÔNG `router.replace`: cái sau kích
   // hoạt một vòng RSC mỗi lần bấm dù trang này lọc hoàn toàn ở client — đúng vấn
   // đề đã sửa cho ToursExplorer ở `29df3bb` ("gỡ RSC round-trip khỏi bộ lọc").
@@ -172,15 +194,14 @@ export function BlogExplorer({
         onTogglePlace={togglePlace}
         onQueryChange={changeQuery}
         onClearAll={clearAll}
+        resultCount={visible.length}
       />
 
       <div className="min-w-0 flex-1">
-        <p aria-live="polite" className="text-sm text-muted-foreground">
-          {visible.length} {visible.length === 1 ? 'story' : 'stories'}
-        </p>
-
+        {/* Dòng "N stories" đã dời vào hàng đầu của sidebar (cạnh "Filters",
+            19/08 theo góp ý user) — ở đây nó chiếm riêng một dòng trên lưới. */}
         {visible.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-dashed p-12 text-center">
+          <div className="rounded-2xl border border-dashed p-12 text-center">
             <h2 className="font-heading text-xl font-medium text-foreground">Nothing here yet</h2>
             <p className="mt-2 text-pretty text-muted-foreground">
               Try another topic or a different word.
@@ -198,7 +219,16 @@ export function BlogExplorer({
             {/* H2 ẩn khỏi thị giác nhưng đọc được cho trình đọc màn hình — /blog
               trước đây nhảy thẳng H1 → H3 (tiêu đề card), không có H2 nào. */}
             <h2 className="sr-only">All stories</h2>
-            <div className="mt-8 grid grid-cols-1 gap-6 [&:has(a:hover)_a:not(:hover)]:opacity-55 [&:has(a:hover)_a:not(:hover)]:grayscale motion-safe:[&_a]:transition-[opacity,filter] motion-safe:[&_a]:duration-300 sm:grid-cols-2">
+            {/* `overflow-clip` + clip-margin: thẻ đang thoát của popLayout là
+                `position:absolute` ở toạ độ CŨ — khi lưới co (trang 2 ít bài),
+                chúng thò ra ngoài lưới, đè lên thanh phân trang/footer và KÉO
+                chiều cao cuộn của trang thêm ~320px trong ~600ms (bug 19/08).
+                `clip` (không phải `hidden`) không tạo scroll container; margin
+                16px chừa chỗ cho focus ring của link ở mép lưới. */}
+            <div
+              ref={gridRef}
+              className="relative grid grid-cols-1 gap-6 overflow-clip [overflow-clip-margin:16px] [&:has(a:hover)_a:not(:hover)]:opacity-55 [&:has(a:hover)_a:not(:hover)]:grayscale motion-safe:[&_a]:transition-[opacity,filter] motion-safe:[&_a]:duration-300 sm:grid-cols-2"
+            >
               <AnimatePresence mode="popLayout" initial={false}>
                 {paged.items.map((post, index) => (
                   <motion.div
@@ -231,7 +261,7 @@ export function BlogExplorer({
               totalPages={paged.totalPages}
               total={visible.length}
               pageSize={PAGE_SIZE}
-              onChange={setPage}
+              onChange={goToPage}
             />
           </>
         )}

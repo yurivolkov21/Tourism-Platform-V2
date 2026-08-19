@@ -146,6 +146,41 @@ describe('BlogExplorer — phân trang', () => {
     expect(replace).toHaveBeenCalledWith(null, '', '/blog?page=2');
   });
 
+  // Bug 19/08 (user báo): sang trang 2 thì "footer bị đẩy lên, lộ khoảng
+  // trắng". Đo bằng Chromium: KHÔNG phải load chậm — toàn bộ bài đã ở client.
+  // Lưới co ngay về 3 bài (829px thay vì 1832) nhưng viewport vẫn đứng ở toạ
+  // độ thanh phân trang cũ (~1440), giờ là vùng footer; 6 thẻ cũ bị popLayout
+  // ép `position:absolute` ở chỗ cũ trong ~600ms và KÉO chiều cao cuộn của
+  // trang theo (2340 → 2020 khi chúng unmount) → dưới footer là 320px trắng
+  // cho tới khi ghost biến mất. Sửa gốc: đổi trang thì cuộn về ĐẦU LƯỚI (như
+  // mọi phân trang), và ghost không được kéo chiều cao trang.
+  it('bấm sang trang 2 → cuộn về đầu lưới (window.scrollTo), lọc thì KHÔNG', async () => {
+    const scrollTo = vi.fn();
+    vi.stubGlobal('scrollTo', scrollTo);
+    const user = userEvent.setup();
+    renderBlog();
+
+    await user.click(screen.getByRole('button', { name: '2' }));
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
+    expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'smooth' }));
+
+    // Lọc/tìm cũng setPage(1) — nhưng người dùng đang ĐỨNG ở sidebar, cuộn họ
+    // đi là giật; chỉ đổi trang qua thanh phân trang mới cuộn.
+    scrollTo.mockClear();
+    await user.click(screen.getByRole('button', { name: '1' }));
+    await waitFor(() => expect(scrollTo).toHaveBeenCalledTimes(1));
+    scrollTo.mockClear();
+    await user.type(screen.getByRole('searchbox'), 'x');
+    expect(scrollTo).not.toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it('lưới KHÔNG cho ghost đang thoát kéo chiều cao trang — overflow clip', () => {
+    renderBlog();
+    const grid = screen.getByRole('heading', { name: 'All stories' }).nextElementSibling;
+    expect(grid?.className).toMatch(/overflow-clip/);
+  });
+
   it('page=1 KHÔNG ghi vào URL — nó là mặc định', async () => {
     const user = userEvent.setup();
     renderBlog({ initialPage: 2 });
@@ -232,6 +267,16 @@ describe('BlogExplorer — sidebar lọc hai trục', () => {
     waitFor(() =>
       expect(screen.getByText(new RegExp(`^${n} (story|stories)$`))).toBeInTheDocument(),
     );
+
+  it('dòng "N stories" nằm TRONG khung sidebar (hàng đầu, cạnh Filters), không đứng riêng một dòng trên lưới', () => {
+    renderBlog();
+    const count = screen.getByText(/^9 stories$/);
+    // Cùng khung card với tiêu đề "Filters".
+    const filtersHeading = screen.getByRole('heading', { name: 'Filters' });
+    expect(count.closest('aside')).not.toBeNull();
+    expect(count.closest('aside')).toBe(filtersHeading.closest('aside'));
+    expect(count).toHaveAttribute('aria-live', 'polite');
+  });
 
   it('tag được tách thành hai họ theo slug ĐỊA DANH từ API', () => {
     renderBlog();
