@@ -8,6 +8,29 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Card `/register` vừa laptop 768p (nhánh `fix/register-fit-768p`, 1 commit, 4 file)
+
+Trả nốt giới hạn ghi ở entry sweep bắt lỗi form: ở 1366×768 (viewport Chrome
+≈681px) card đăng ký còn cuộn 168px thường / 234px khi hiện 3 lỗi. Ngân sách
+card kể cả lỗi ≈557px, nên đây là một vòng nén thiết kế chứ không chỉ bớt đệm.
+Sáu điều chỉnh theo mức xâm lấn tăng dần, mỗi cái đo bằng Chromium headless
+trên dev server: (1) `auth-screen` cột `py-5` + wrapper `py-2`, (2)
+`ticket-card` `p-6/p-8` + cuống `py-3` — hai cái này áp cả sáu trang auth;
+(3) heading register giữ `text-2xl` ở mọi cỡ → một dòng thay vì hai (−42);
+(4) **Full name + Email cùng hàng** từ `sm`, mobile vẫn dọc, hai dòng lỗi
+chia chung một hàng (−68/−90); (5) `gap-3` RIÊNG register — form dày nhất,
+các form auth khác giữ `gap-4`; (6) checklist mật khẩu từ lưới 2 cột × 3 hàng
+(user chốt 06/08) sang **một hàng pill** `8+ chars · a–z · A–Z · 0–9 · !@#`,
+icon tick/x giữ, câu đầy đủ ở `title` + sr-only nên spec/reader không đổi
+(−36) — khối duy nhất còn cắt được chừng ấy mà không mất thông tin; user duyệt
+qua ảnh trước khi merge. Kết quả: 1366×681 card 535 thường / 579 với 3 lỗi,
+KHÔNG cuộn ở cả ba cỡ đo (1366×681 · 1536×760 · 1920×945). Ảnh hưởng chéo:
+`PasswordStrengthField` dùng chung nên /reset-password và đổi mật khẩu trong
+hồ sơ cũng nhận hàng pill.
+
+Tests after: 1366 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Form liên hệ trang chủ nối `enquiries.create` (nhánh `feat/home-contact-api`, 1 commit, 3 file, +352/−17)
 
 Trả món nợ ghi ngay ở entry dưới: `home/contact.tsx` là mock no-op còn sót từ
@@ -83,7 +106,8 @@ chỉnh không đổi visual/thứ tự: `py-10`→`py-4`, `gap-5`→`gap-4` ở
 cho nhịp thống nhất, chữ trạng thái lên cùng hàng nhãn mép phải. Sau chỉnh:
 725px thường / 791px với 3 lỗi, cả hai KHÔNG cuộn (dư ~30px). Nói thật giới hạn:
 1536×864 vẫn cuộn ~150px — checklist 5 yêu cầu + Google + terms không cỡ nào
-dưới ~850px vừa mà không đổi thiết kế; dừng ở "vừa 1080p" như user yêu cầu.
+dưới ~850px vừa mà không đổi thiết kế; dừng ở "vừa 1080p" như user yêu cầu
+(**đã giải cùng ngày** bằng một vòng nén thiết kế, entry phía trên).
 
 Sổ nợ để lại: `home/contact.tsx` (form trang chủ) vẫn là mock no-op từ
 static-first — chưa nối API nên chưa có validate (**đã trả cùng ngày**, entry
