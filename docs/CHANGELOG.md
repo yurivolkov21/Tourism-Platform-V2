@@ -8,6 +8,20 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Thẻ địa danh ở gallery trang chủ có đích thật (nhánh `fix/home-gallery-links`, 1 commit, 2 file)
+
+User hỏi: bấm thẻ ở section "From the northern mists to the southern delta" thì
+chỉ cuộn xuống form Contact — "chủ ý hay chưa gắn link?". Không phải chủ ý:
+`href="#contact"` là chỗ để tạm từ bản static-first (chưa có trang đích) rồi bị
+bỏ quên qua cả đợt nối API destinations. Đích đúng theo tiền lệ
+`destination-tile.tsx` ở /destinations: `/tours?destinations=<slug>` (danh sách
+tour lọc theo địa danh — không có trang riêng từng địa danh, trang vùng là cấp
+trên). Kiểm sống `/tours?destinations=sa-pa` → 200, lọc còn 2 tour. Test mới
+khoá href và khẳng định không còn `a[href="#contact"]` trong gallery.
+
+Tests after: 1392 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Một giá gốc duy nhất trên trang tour, hero bám đợt đang chọn (nhánh `fix/tour-price-anchor`, 2 commit, 8 file)
 
 User hỏi: hero in "from $129 was $149 −13%" mà khối chọn ngày lại "$119 was
