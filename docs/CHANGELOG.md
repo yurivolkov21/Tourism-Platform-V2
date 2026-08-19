@@ -8,6 +8,67 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Receipt thay tấm vé ở CẢ hai màn quay-về (nhánh `feat/receipt-success`, 9 commit, 14 file, +977/−439)
+
+`/checkout/success` và `/checkout/cancel` nay dùng chung một khuôn hoá đơn kiêm
+cuống vé, dựng theo wireframe đã duyệt. `CheckoutShell` (tấm vé boarding-pass)
+**xoá hẳn** cùng `TicketTear`/`TicketBarcode`/`TicketToneEdge` — hết consumer.
+`ticketSerial`/`ticketBarcodeWidths` ở lại vì `BookingReceipt` vẫn dùng.
+
+**Đợt này vá một LỜI HỨA SAI đang sống, và đó mới là phần đáng nhớ.** Trang
+cancel trước đó in barcode cùng câu "Show this code at the meeting point" cho
+một booking PENDING — tức ngụ ý mã đã là voucher và ghế đã được giữ, sai thẳng
+invariant #1 của API (PENDING KHÔNG giữ seat nào). Repo đã bị ĐÚNG lớp lỗi này
+một lần: câu "Your reservation is held" bị bác ở final review cụm C vì cùng lý
+do, và chính comment ghi lại chuyện đó đã giúp nhận ra lần này. Nên
+`BookingReceipt` tự SUY `isVoucher` từ `paidAt` chứ không nhận qua prop — caller
+không đặt sai được: chưa trả thì bỏ barcode (barcode nghĩa là "quét tôi ở
+cổng"), đổi dòng hint, và nhãn tổng dùng `Total` thay vì `Total paid` (in "Total
+paid" cho khoản chưa trả là nói dối bằng nhãn).
+
+**Con số 64 vạch trong wireframe hoá ra SAI, và chỉ lộ khi cài đặt.** Lúc dựng
+wireframe tôi tính bề ngang mã vạch trên ĐÚNG MỘT MÃ (154px, trông vừa). Bề rộng
+mỗi vạch phụ thuộc ký tự nên mã khác cho tổng khác: quét 200k mã hợp lệ thấy xấu
+nhất 164px, TRÀN cuống vé dọc 160px của trang cancel. Hạ xuống **52 phần tử (26
+vạch)** cho xấu nhất 148px. Bài học ghi vào test chứ không vào comment: có case
+canh chính RÀNG BUỘC BỀ NGANG, và chỉ canh trên mã HỢP LỆ theo `BookingCodeSchema`
+— mã ngắn như `BK-1` cho tổng lớn hơn hẳn nhưng không tồn tại được, bắt nó là tự
+trói vào ràng buộc giả. Wireframe đã sửa về 52 để mockup không nói khác thứ chạy.
+
+Cùng đợt bỏ `gap` giữa các phần tử mã vạch: mã vạch thật thì vạch và khoảng
+trắng kề sát, một khe đều 1px chen giữa làm hình đọc thành dãy sọc trang trí.
+
+**Hai lỗi chỉ lộ khi ĐO trang thật, test không bắt được.** (1) Dòng `Date` và
+`Paid` in "19 AUG" vì tôi dùng `formatTicketDate` — hàm đó cố ý bỏ năm vì dành
+cho khoảnh khắc primary CỠ LỚN trên vé, còn đây là HOÁ ĐƠN và JSDoc của
+`formatDate` nói đúng chỗ này: thiếu năm là mơ hồ thật sự. (2) Cả hai trang có
+**hai thẻ `h1`** (`ContentHero` một, receipt một) nên trình đọc màn hình báo hai
+tiêu đề cấp một; hạ tiêu đề hoá đơn xuống `h2` và thêm test khoá lại.
+
+**In ấn được xử lý như một yêu cầu, không phải trang trí.** Mặc định trình duyệt
+KHÔNG in background, và vạch mã vạch vẽ bằng `background` — tắt background là mã
+vạch biến mất, tờ giấy vô dụng ở chính nơi nó tồn tại để phục vụ.
+`print-color-adjust: exact` đặt vào ĐÚNG hai chỗ mà nền mang thông tin (mã vạch,
+pill trạng thái), không ép cả trang. Đo bản in mô phỏng kịch bản xấu: 26/52 phần
+tử còn mực, viền cuống `dashed 1px`, băng tone `3px`.
+
+Không có nút "Download PDF": repo không sinh PDF ở đâu cả nên nút đó sẽ chết.
+Hộp thoại in của trình duyệt đều có Save as PDF, nên nhu cầu lưu hoá đơn vẫn
+được phục vụ mà không phải hứa tính năng chưa có. Nút `Print` đi vào slot
+`action` sẵn có của `ContentHero` thay vì đẻ thêm một hàng nút.
+
+Nghiệm thu chạy trên dữ liệu THẬT qua `demo:account`, đủ ba mood. Mood `settled`
+ban đầu không kiểm được vì `checkoutMood` chỉ trả nó khi CANCELLED/REFUNDED mà
+script không tạo ca đó — ép một booking demo sang CANCELLED rồi đo, thay vì khai
+là đã phủ.
+
+Ba test của `checkout-shell.spec` chuyển sang thành năm; ca "không có code" rời
+khỏi component vì không có booking thì không có hoá đơn nào để dựng — trang tự
+lo bằng nhánh sớm, đã nghiệm thu cả hai nhánh.
+
+Tests after: 1298 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Wizard 4 bước cho trang đặt chỗ, tách `/enquire`, và vòng thiết kế receipt (nhánh `feat/checkout-wizard`, 16 commit, 32 file, +2.614/−868)
 
 Trang `/tours/[slug]/book` từ MỘT form dài thành wizard bốn bước
