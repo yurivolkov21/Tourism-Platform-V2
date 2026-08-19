@@ -8,8 +8,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
+import { type RegisterErrors, validateRegister } from '@/lib/auth-form';
 import { safeRedirect } from '@/lib/safe-redirect';
+import { FieldError, invalidProps } from './field-error';
 import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';
 
@@ -18,6 +20,11 @@ import { TicketCard } from './ticket-card';
 // link về /login. Task 3 (auth-pages-api): nối state/handler gọi authClient
 // thật — visual/markup/motion GIỮ NGUYÊN. Checkbox Terms là gate client sẵn
 // có: submit khoá (disabled) tới khi tick, không cần copy lỗi riêng.
+//
+// Sweep bắt lỗi form 19/08: `validateRegister` chặn trống/sai định dạng/mật
+// khẩu ngoài 8–128 NGAY DƯỚI ô trước khi gọi API; `noValidate` tắt bong bóng
+// trình duyệt; lỗi server có ô (email đã tồn tại, INVALID_EMAIL,
+// PASSWORD_TOO_SHORT…) hiện dưới đúng ô đó qua `fieldOfAuthError`.
 export function RegisterForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -28,19 +35,36 @@ export function RegisterForm() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<RegisterErrors>({});
+
+  const clearField = (key: keyof RegisterErrors) =>
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!agreedToTerms) return;
     setFormError(null);
+    const found = validateRegister({ name, email, password });
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
     // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
     // nút kẹt pending vĩnh viễn và khách không thấy lỗi gì cả.
     try {
-      const { error } = await authClient.signUp.email({ name, email, password });
+      const { error } = await authClient.signUp.email({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+      });
       if (error) {
-        setFormError(mapAuthError(error));
+        const key = mapAuthError(error);
+        const field = fieldOfAuthError(key);
+        if (field === 'email' || field === 'password') {
+          setFieldErrors({ [field]: messages.authForms.errors[key] });
+        } else {
+          setFormError(key);
+        }
         return;
       }
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
@@ -71,7 +95,7 @@ export function RegisterForm() {
 
   return (
     <TicketCard stub="NEW TRAVELLER · SEAT --/-- · GATE: REGISTER">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Claim your seat
@@ -103,8 +127,13 @@ export function RegisterForm() {
             type="text"
             placeholder="Tran Mai Anh"
             value={name}
-            onChange={(e) => setName(e.target.value)}
+            onChange={(e) => {
+              setName(e.target.value);
+              clearField('name');
+            }}
+            {...invalidProps('register-name-error', fieldErrors.name)}
           />
+          <FieldError id="register-name-error">{fieldErrors.name}</FieldError>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="register-email">Email</Label>
@@ -113,8 +142,13 @@ export function RegisterForm() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearField('email');
+            }}
+            {...invalidProps('register-email-error', fieldErrors.email)}
           />
+          <FieldError id="register-email-error">{fieldErrors.email}</FieldError>
         </div>
         {/* Password + chấm độ mạnh (playground.md user cung cấp, đã token hoá) */}
         <PasswordStrengthField
@@ -122,7 +156,11 @@ export function RegisterForm() {
           label="Password"
           placeholder="Password"
           value={password}
-          onChange={setPassword}
+          onChange={(value) => {
+            setPassword(value);
+            clearField('password');
+          }}
+          error={fieldErrors.password}
         />
 
         <label

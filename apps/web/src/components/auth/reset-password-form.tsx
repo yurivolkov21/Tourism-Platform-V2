@@ -7,7 +7,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
+import { type ResetPasswordErrors, validateResetPassword } from '@/lib/auth-form';
+import { FieldError, invalidProps } from './field-error';
 import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';
 
@@ -16,14 +18,24 @@ import { TicketCard } from './ticket-card';
 // gắn khi redirect từ email (Better Auth); đọc qua `useSearchParams` — cùng
 // kỹ thuật `redirect` của login-form (Task 3), nên page.tsx phải bọc
 // `<Suspense>` quanh component này (Next 16 static prerender).
+//
+// Sweep 19/08: ô "Confirm new password" trước đây KHÔNG nối state — gõ gì
+// cũng được, không so khớp. Nay `validateResetPassword` bắt trống/8–128/
+// không khớp NGAY DƯỚI ô trước khi gọi API; lỗi server PASSWORD_TOO_* về
+// ô mật khẩu qua `fieldOfAuthError`; token hỏng vẫn ở khối lỗi cấp form.
 export function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
 
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ResetPasswordErrors>({});
+
+  const clearField = (key: keyof ResetPasswordErrors) =>
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -31,6 +43,9 @@ export function ResetPasswordForm() {
     // sớm bên dưới) — ép kiểu ở đây để khỏi lặp null-check vô nghĩa.
     if (!token) return;
     setFormError(null);
+    const found = validateResetPassword({ password, confirm });
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
     // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
@@ -38,7 +53,12 @@ export function ResetPasswordForm() {
     try {
       const { error } = await authClient.resetPassword({ newPassword: password, token });
       if (error) {
-        setFormError(mapAuthError(error));
+        const key = mapAuthError(error);
+        if (fieldOfAuthError(key) === 'password') {
+          setFieldErrors({ password: messages.authForms.errors[key] });
+        } else {
+          setFormError(key);
+        }
         return;
       }
       toast.success(messages.authForms.resetPassword.toast.title, {
@@ -80,7 +100,7 @@ export function ResetPasswordForm() {
 
   return (
     <TicketCard stub="REISSUE TICKET · GATE: RESET">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Fresh ticket,
@@ -96,12 +116,28 @@ export function ResetPasswordForm() {
           label="New password"
           placeholder="Password"
           value={password}
-          onChange={setPassword}
+          onChange={(value) => {
+            setPassword(value);
+            clearField('password');
+          }}
+          error={fieldErrors.password}
         />
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="reset-confirm">Confirm new password</Label>
-          <Input id="reset-confirm" type="password" placeholder="Type it once more" />
+          <Input
+            id="reset-confirm"
+            type="password"
+            placeholder="Type it once more"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => {
+              setConfirm(e.target.value);
+              clearField('confirm');
+            }}
+            {...invalidProps('reset-confirm-error', fieldErrors.confirm)}
+          />
+          <FieldError id="reset-confirm-error">{fieldErrors.confirm}</FieldError>
         </div>
 
         {formError && (

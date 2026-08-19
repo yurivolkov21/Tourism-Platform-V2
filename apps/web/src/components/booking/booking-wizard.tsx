@@ -10,6 +10,7 @@ import {
   type BookingFormErrors,
   type BookingFormState,
   type BookingStep,
+  bookingSubmitErrorCopy,
   buildBookingInput,
   canLeaveStep,
   stepErrors,
@@ -116,9 +117,11 @@ export function BookingWizard({
         return;
       }
       window.location.assign(booking.checkoutUrl);
-    } catch {
+    } catch (error) {
       // Giữ NGUYÊN dữ liệu đã nhập — khách vừa đi hết bốn bước, xoá là tàn nhẫn.
-      setSubmitError(messages.booking.errors.CHECKOUT_FAILED);
+      // Sweep 19/08: nói ĐÚNG lỗi API (hết ghế / đợt đóng / hết phiên /
+      // throttle) thay vì gom hết thành "couldn't start the payment session".
+      setSubmitError(bookingSubmitErrorCopy(error));
       setSubmitting(false);
     }
   }

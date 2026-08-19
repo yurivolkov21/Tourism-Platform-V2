@@ -66,8 +66,53 @@ describe('ResetPasswordForm — submit', () => {
 
   async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
     await user.type(screen.getByLabelText('New password'), 'Sup3r$ecret');
+    await user.type(screen.getByLabelText('Confirm new password'), 'Sup3r$ecret');
     await user.click(screen.getByRole('button', { name: 'Save and board again' }));
   }
+
+  // Sweep 19/08: ô Confirm nay được nối và so khớp; hai ô trống báo lỗi riêng.
+  it('cả hai ô trống → hai lỗi required riêng dưới từng ô, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<ResetPasswordForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Save and board again' }));
+
+    expect(await screen.findByText(messages.formErrors.newPassword.required)).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.confirmPassword.required)).toBeInTheDocument();
+    expect(resetPassword).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('New password')).toHaveAttribute('aria-invalid', 'true');
+  });
+
+  it('confirm không khớp → lỗi mismatch dưới ô Confirm, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<ResetPasswordForm />);
+
+    await user.type(screen.getByLabelText('New password'), 'Sup3r$ecret');
+    await user.type(screen.getByLabelText('Confirm new password'), 'Sup3r$ecre');
+    await user.click(screen.getByRole('button', { name: 'Save and board again' }));
+
+    expect(
+      await screen.findByText(messages.formErrors.confirmPassword.mismatch),
+    ).toBeInTheDocument();
+    expect(resetPassword).not.toHaveBeenCalled();
+  });
+
+  it('server PASSWORD_TOO_SHORT → lỗi hiện dưới ô mật khẩu (không phải khối chung)', async () => {
+    resetPassword.mockResolvedValueOnce({
+      data: null,
+      error: { status: 400, code: 'PASSWORD_TOO_SHORT' },
+    });
+    const user = userEvent.setup();
+    render(<ResetPasswordForm />);
+
+    await fillAndSubmit(user);
+
+    expect(await screen.findByText(messages.authForms.errors.passwordTooShort)).toBeInTheDocument();
+    expect(screen.getByLabelText('New password')).toHaveAttribute(
+      'aria-describedby',
+      'reset-password-error',
+    );
+  });
 
   it('hợp lệ → gọi authClient.resetPassword đúng payload (newPassword + token)', async () => {
     resetPassword.mockResolvedValueOnce({ data: {}, error: null });

@@ -12,7 +12,9 @@ import { type FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { OTP_LENGTH, validateOtp } from '@/lib/auth-form';
 import { safeRedirect } from '@/lib/safe-redirect';
+import { FieldError } from './field-error';
 import { TicketCard } from './ticket-card';
 
 // Form OTP dùng chung cho /verify-email và /two-factor: 6 ô input-otp chia
@@ -59,6 +61,9 @@ export function OtpForm({
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+  // Sweep 19/08: mã trống/chưa đủ 6 số bắt ở client (`validateOtp`) — trước
+  // đó submit trống vẫn gọi API rồi nhận `invalidOtp` như thể khách gõ sai.
+  const [otpError, setOtpError] = useState<string | undefined>();
 
   // Live mode CHỈ bật khi caller truyền prop `email` (kể cả giá trị null) —
   // xem doc-comment ở khai báo `OtpFormProps.email`.
@@ -77,6 +82,9 @@ export function OtpForm({
     if (!isLiveMode || !email) return;
 
     setFormError(null);
+    const found = validateOtp(otp);
+    setOtpError(found);
+    if (found) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
     // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
@@ -145,7 +153,7 @@ export function OtpForm({
 
   return (
     <TicketCard stub={stub}>
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             {heading}
@@ -153,8 +161,17 @@ export function OtpForm({
           <p className="mt-1.5 text-sm text-muted-foreground">{description}</p>
         </div>
 
-        <div className="flex justify-center py-1">
-          <InputOTP maxLength={6} value={otp} onChange={setOtp}>
+        <div className="flex flex-col items-center gap-2 py-1">
+          <InputOTP
+            maxLength={OTP_LENGTH}
+            value={otp}
+            onChange={(value) => {
+              setOtp(value);
+              setOtpError(undefined);
+            }}
+            aria-invalid={Boolean(otpError)}
+            aria-describedby={otpError ? 'otp-error' : undefined}
+          >
             <InputOTPGroup>
               <InputOTPSlot index={0} className="size-11 text-base" />
               <InputOTPSlot index={1} className="size-11 text-base" />
@@ -167,6 +184,7 @@ export function OtpForm({
               <InputOTPSlot index={5} className="size-11 text-base" />
             </InputOTPGroup>
           </InputOTP>
+          <FieldError id="otp-error">{otpError}</FieldError>
         </div>
 
         {formError && (

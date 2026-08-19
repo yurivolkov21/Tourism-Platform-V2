@@ -10,6 +10,7 @@ import { Label } from '@tourism/ui/components/label';
 import { cn } from '@tourism/ui/lib/utils';
 import { CheckIcon, EyeIcon, EyeOffIcon, XIcon } from 'lucide-react';
 import { useState } from 'react';
+import { FieldError, invalidProps } from './field-error';
 
 // Ô password + chấm độ mạnh (convert từ playground.md của user — gốc FlyonUI):
 // eye toggle ẩn/hiện, 5 vạch điểm, checklist 5 yêu cầu tick dần. Convert theo
@@ -17,7 +18,10 @@ import { useState } from 'react';
 // orange/amber/green-500 ngoài palette): yếu = destructive, giữa = spark
 // (hổ phách), mạnh = primary (jade); đạt-yêu-cầu tick primary. Ngưỡng độ dài
 // hạ 12 → 8 ký tự cho khớp copy "At least 8 characters" của cụm auth.
-// Validate submit thật vẫn là nợ spec — đây là chỉ báo UX phía client.
+// Chấm điểm CHỈ là chỉ báo UX; ràng buộc thật khi submit (trống, 8–128 ký
+// tự — soi gương Better Auth) do form cha kiểm bằng `validateRegister`/
+// `validateResetPassword`/`validateChangePassword` rồi truyền xuống prop
+// `error` (sweep 19/08) — field này chỉ hiển thị, không tự quyết.
 const REQUIREMENTS = [
   { regex: /.{8,}/, text: 'At least 8 characters' },
   { regex: /[a-z]/, text: '1 lowercase letter' },
@@ -51,6 +55,9 @@ interface PasswordStrengthFieldProps {
       như cũ (reset-password-form chưa wire, vẫn dùng bản uncontrolled). */
   value?: string;
   onChange?: (value: string) => void;
+  /** Lỗi từ form cha (trống/ngắn/dài, hoặc mã server PASSWORD_TOO_*) — hiện
+   *  ngay dưới ô nhập, TRÊN vạch điểm, để lỗi và checklist không lẫn nhau. */
+  error?: string;
 }
 
 export function PasswordStrengthField({
@@ -59,6 +66,7 @@ export function PasswordStrengthField({
   placeholder,
   value,
   onChange,
+  error,
 }: PasswordStrengthFieldProps) {
   const [internalPassword, setInternalPassword] = useState('');
   const [visible, setVisible] = useState(false);
@@ -77,6 +85,7 @@ export function PasswordStrengthField({
           placeholder={placeholder}
           value={password}
           onChange={(e) => (onChange ?? setInternalPassword)(e.target.value)}
+          {...invalidProps(`${id}-error`, error)}
         />
         <InputGroupAddon align="inline-end">
           <InputGroupButton
@@ -91,6 +100,7 @@ export function PasswordStrengthField({
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
+      <FieldError id={`${id}-error`}>{error}</FieldError>
 
       {/* 5 vạch điểm — đổi màu cả dải theo mức, vạch chưa đạt giữ màu nền */}
       <div className="mt-1 flex h-1 w-full gap-1" aria-hidden="true">

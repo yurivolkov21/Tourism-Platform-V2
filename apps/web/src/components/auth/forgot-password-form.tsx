@@ -5,6 +5,8 @@ import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { type FormEvent, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
+import { validateForgotPassword } from '@/lib/auth-form';
+import { FieldError, invalidProps } from './field-error';
 import { TicketCard } from './ticket-card';
 
 // Ruột form /forgot-password (Task 4 — auth-pages-api): nối `authClient
@@ -13,15 +15,23 @@ import { TicketCard } from './ticket-card';
 // tồn tại hay không) — cấm mọi nhánh so `error` ở đây, kẻo lộ email nào có
 // tài khoản qua UI. Chỉ một lỗi THẬT (promise reject — mạng đứt, DNS hỏng…)
 // mới hiện khối lỗi `generic` inline, ở lại form để khách thử lại.
+//
+// Sweep 19/08: email trống/sai định dạng bắt Ở CLIENT (`validateForgotPassword`)
+// — đây là kiểm ĐỊNH DẠNG, không phải kiểm tồn tại, nên không mâu thuẫn với
+// anti-enumeration ở trên. `noValidate` tắt bong bóng trình duyệt.
 export function ForgotPasswordForm() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [pending, setPending] = useState(false);
   const [networkError, setNetworkError] = useState(false);
+  const [emailError, setEmailError] = useState<string | undefined>();
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setNetworkError(false);
+    const found = validateForgotPassword(email);
+    setEmailError(found);
+    if (found) return;
     setPending(true);
     try {
       await authClient.requestPasswordReset({
@@ -64,7 +74,7 @@ export function ForgotPasswordForm() {
           </p>
         </div>
       ) : (
-        <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
           <div>
             <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
               Lost your ticket?
@@ -82,8 +92,13 @@ export function ForgotPasswordForm() {
               type="email"
               placeholder="you@example.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                setEmailError(undefined);
+              }}
+              {...invalidProps('forgot-email-error', emailError)}
             />
+            <FieldError id="forgot-email-error">{emailError}</FieldError>
           </div>
 
           {networkError && (

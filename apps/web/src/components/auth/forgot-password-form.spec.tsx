@@ -22,6 +22,30 @@ describe('ForgotPasswordForm — anti-enumeration', () => {
     vi.clearAllMocks();
   });
 
+  // Sweep 19/08: kiểm ĐỊNH DẠNG ở client (không phải kiểm tồn tại — không
+  // mâu thuẫn anti-enumeration).
+  it('email trống → required inline, KHÔNG gọi API, KHÔNG sang sent', async () => {
+    const user = userEvent.setup();
+    render(<ForgotPasswordForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Send the reset link' }));
+
+    expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
+    expect(screen.queryByText('Check your inbox')).not.toBeInTheDocument();
+  });
+
+  it('email sai định dạng → invalid inline, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<ForgotPasswordForm />);
+
+    await user.type(screen.getByLabelText('Email'), 'nope');
+    await user.click(screen.getByRole('button', { name: 'Send the reset link' }));
+
+    expect(await screen.findByText(messages.formErrors.email.invalid)).toBeInTheDocument();
+    expect(requestPasswordReset).not.toHaveBeenCalled();
+  });
+
   it('resolve {error: null} (email tồn tại) → chuyển state sent', async () => {
     requestPasswordReset.mockResolvedValueOnce({ data: {}, error: null });
     const user = userEvent.setup();

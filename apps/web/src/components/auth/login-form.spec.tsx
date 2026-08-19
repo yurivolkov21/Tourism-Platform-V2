@@ -39,6 +39,49 @@ describe('LoginForm — submit', () => {
     searchParamsGet.mockReturnValue(null);
   });
 
+  // Sweep bắt lỗi form 19/08: validate client, không HTML `required`.
+  it('bấm submit khi cả hai ô trống → lỗi required DƯỚI TỪNG Ô, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+
+    expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.password.required)).toBeInTheDocument();
+    expect(signInEmail).not.toHaveBeenCalled();
+    // a11y: ô nhập trỏ tới đúng dòng lỗi của mình.
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-invalid', 'true');
+    expect(screen.getByLabelText('Email')).toHaveAttribute('aria-describedby', 'login-email-error');
+    // Không dùng validation gốc của trình duyệt.
+    expect(screen.getByLabelText('Email')).not.toBeRequired();
+    expect(screen.getByLabelText('Email').closest('form')).toHaveAttribute('novalidate');
+  });
+
+  it('email sai định dạng → câu invalid (khác required), KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.type(screen.getByLabelText('Email'), 'minh@');
+    await user.type(screen.getByLabelText('Password'), 'x');
+    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+
+    expect(await screen.findByText(messages.formErrors.email.invalid)).toBeInTheDocument();
+    expect(signInEmail).not.toHaveBeenCalled();
+  });
+
+  it('gõ lại vào ô đang lỗi → lỗi của ô đó biến mất', async () => {
+    const user = userEvent.setup();
+    render(<LoginForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
+
+    await user.type(screen.getByLabelText('Email'), 'm');
+    expect(screen.queryByText(messages.formErrors.email.required)).not.toBeInTheDocument();
+    // Ô còn lại vẫn giữ lỗi của nó.
+    expect(screen.getByText(messages.formErrors.password.required)).toBeInTheDocument();
+  });
+
   it('hợp lệ → gọi authClient.signIn.email đúng payload', async () => {
     signInEmail.mockResolvedValueOnce({ data: { user: { id: '1' } }, error: null });
     const user = userEvent.setup();

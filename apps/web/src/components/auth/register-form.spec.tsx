@@ -59,6 +59,35 @@ describe('RegisterForm — submit', () => {
     searchParamsGet.mockReturnValue(null);
   });
 
+  // Sweep bắt lỗi form 19/08.
+  it('tick Terms rồi submit trống → ba lỗi required riêng, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Create my account' }));
+
+    expect(await screen.findByText(messages.formErrors.name.required)).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.email.required)).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.password.required)).toBeInTheDocument();
+    expect(signUpEmail).not.toHaveBeenCalled();
+    expect(screen.getByLabelText('Email').closest('form')).toHaveAttribute('novalidate');
+  });
+
+  it('mật khẩu 7 ký tự → tooShort dưới ô mật khẩu, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<RegisterForm />);
+
+    await user.type(screen.getByLabelText('Full name'), 'Tran Mai Anh');
+    await user.type(screen.getByLabelText('Email'), 'anh@example.com');
+    await user.type(screen.getByLabelText('Password'), 'short7!');
+    await user.click(screen.getByRole('checkbox'));
+    await user.click(screen.getByRole('button', { name: 'Create my account' }));
+
+    expect(await screen.findByText(messages.formErrors.password.tooShort)).toBeInTheDocument();
+    expect(signUpEmail).not.toHaveBeenCalled();
+  });
+
   it('hợp lệ + tick Terms → gọi authClient.signUp.email đúng payload', async () => {
     signUpEmail.mockResolvedValueOnce({ data: { user: { id: '1' } }, error: null });
     const user = userEvent.setup();

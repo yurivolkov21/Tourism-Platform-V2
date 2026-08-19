@@ -1,6 +1,7 @@
 import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { PrivateTripForm } from './private-trip-form';
 
@@ -37,7 +38,19 @@ describe('PrivateTripForm', () => {
     // Ngưỡng min 10 là của contract (chặn "hi"/"test"). Bắt ở client để khách
     // không đi hết một round-trip mới biết enquiry bị từ chối.
     expect(createEnquiry).not.toHaveBeenCalled();
-    expect(await screen.findByText(/valid name and email/i)).toBeInTheDocument();
+    // Sweep 19/08: câu lỗi nói đúng ô + đúng lý do (tooShort của message),
+    // không còn câu gộp "valid name and email".
+    expect(await screen.findByText(messages.formErrors.message.tooShort)).toBeInTheDocument();
+  });
+
+  it('lời nhắn trống → required (khác câu tooShort), KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<PrivateTripForm {...BASE} />);
+
+    await user.click(screen.getByRole('button', { name: /Request a quote/i }));
+
+    expect(createEnquiry).not.toHaveBeenCalled();
+    expect(await screen.findByText(messages.formErrors.message.required)).toBeInTheDocument();
   });
 
   it('hợp lệ → gửi payload đúng shape, groupSize là TỔNG người đi', async () => {

@@ -7,15 +7,17 @@ import { Label } from '@tourism/ui/components/label';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
+import { FieldError, invalidProps } from '@/components/auth/field-error';
 import { PasswordStrengthField } from '@/components/auth/password-strength-field';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
+import { type ChangePasswordErrors, validateChangePassword } from '@/lib/auth-form';
 
-/** 'mismatch' — validate CLIENT thuần (confirm ≠ new), không đụng API. 401
- *  giữa chừng có UI riêng (message + link đăng nhập lại, spec §5), tách khỏi
- *  `mapAuthError` (bản đó map 401 → 'invalidCredentials', sai ngữ nghĩa ở
- *  đây — đây không phải màn đăng nhập). */
-type PasswordErrorKind = 'sessionExpired' | 'mismatch' | AuthErrorKey;
+/** 401 giữa chừng có UI riêng (message + link đăng nhập lại, spec §5), tách
+ *  khỏi `mapAuthError` (bản đó map 401 → 'invalidCredentials', sai ngữ nghĩa
+ *  ở đây — đây không phải màn đăng nhập). Lỗi TỪNG Ô (trống, ngắn, không
+ *  khớp — sweep 19/08) không đi qua đây mà nằm ở `fieldErrors`. */
+type PasswordErrorKind = 'sessionExpired' | AuthErrorKey;
 
 /**
  * Đổi mật khẩu (spec §3) — Task 7 (A2): nối
@@ -35,21 +37,41 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [errorKind, setErrorKind] = useState<PasswordErrorKind | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<ChangePasswordErrors>({});
+
+  const clearField = (key: keyof ChangePasswordErrors) =>
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorKind(null);
-    if (newPassword !== confirmPassword) {
-      setErrorKind('mismatch');
-      return;
-    }
+    // Sweep 19/08: ba ô kiểm ở client (trống / mới 8–128 / xác nhận khớp)
+    // trước khi gọi API — trước đó chỉ so khớp, ô trống vẫn gửi đi rồi nhận
+    // 400 chung chung.
+    const found = validateChangePassword({ currentPassword, newPassword, confirmPassword });
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật — KHÁC error envelope
     // ({error}) ở nhánh dưới (bài học pending-kẹt cụm auth).
     try {
       const { error } = await authClient.changePassword({ currentPassword, newPassword });
       if (error) {
-        setErrorKind(error.status === 401 ? 'sessionExpired' : mapAuthError(error));
+        if (error.status === 401) {
+          setErrorKind('sessionExpired');
+          return;
+        }
+        // INVALID_PASSWORD (mật khẩu hiện tại sai) → dưới ô hiện tại;
+        // PASSWORD_TOO_* → dưới ô mật khẩu mới; còn lại ở khối lỗi chung.
+        const key = mapAuthError(error);
+        const field = fieldOfAuthError(key);
+        if (field === 'currentPassword') {
+          setFieldErrors({ currentPassword: messages.authForms.errors[key] });
+        } else if (field === 'password') {
+          setFieldErrors({ newPassword: messages.authForms.errors[key] });
+        } else {
+          setErrorKind(key);
+        }
         return;
       }
       toast.success(messages.accountProfile.toast.passwordUpdatedTitle);
@@ -76,8 +98,13 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
           type="password"
           autoComplete="current-password"
           value={currentPassword}
-          onChange={(event) => setCurrentPassword(event.target.value)}
+          onChange={(event) => {
+            setCurrentPassword(event.target.value);
+            clearField('currentPassword');
+          }}
+          {...invalidProps('profile-current-password-error', fieldErrors.currentPassword)}
         />
+        <FieldError id="profile-current-password-error">{fieldErrors.currentPassword}</FieldError>
       </div>
       {/* Ô mật khẩu MỚI dùng chung PasswordStrengthField với register/reset
           (góp ý user 12/08): vạch điểm + checklist 5 yêu cầu tick dần —
@@ -86,7 +113,11 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
         id="profile-new-password"
         label={t.newLabel}
         value={newPassword}
-        onChange={setNewPassword}
+        onChange={(value) => {
+          setNewPassword(value);
+          clearField('newPassword');
+        }}
+        error={fieldErrors.newPassword}
       />
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="profile-confirm-password">{t.confirmLabel}</Label>
@@ -95,8 +126,13 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
           type="password"
           autoComplete="new-password"
           value={confirmPassword}
-          onChange={(event) => setConfirmPassword(event.target.value)}
+          onChange={(event) => {
+            setConfirmPassword(event.target.value);
+            clearField('confirmPassword');
+          }}
+          {...invalidProps('profile-confirm-password-error', fieldErrors.confirmPassword)}
         />
+        <FieldError id="profile-confirm-password-error">{fieldErrors.confirmPassword}</FieldError>
       </div>
 
       {errorKind ? (
@@ -108,16 +144,7 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
           // để TypeScript THU HẸP `errorKind` — không có nó thì `errorKind` vẫn
           // mang cả 'sessionExpired', vốn không phải khoá của `authForms.errors`.
           // Ternary nội tuyến trước đây thu hẹp sẵn; truyền prop thì mất.
-          //
-          // `mismatch` là lỗi do MÌNH kiểm ở client (hai ô mật khẩu mới không
-          // khớp), không đến từ server, nên cũng không nằm trong bảng đó.
-          fallback={
-            errorKind === 'sessionExpired'
-              ? null
-              : errorKind === 'mismatch'
-                ? t.mismatch
-                : messages.authForms.errors[errorKind]
-          }
+          fallback={errorKind === 'sessionExpired' ? null : messages.authForms.errors[errorKind]}
         />
       ) : null}
 

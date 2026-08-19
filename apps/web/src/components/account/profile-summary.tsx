@@ -9,9 +9,11 @@ import { type FormEvent, type ReactNode, useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
 import { ChangePasswordForm } from '@/components/account/change-password-form';
+import { FieldError, invalidProps } from '@/components/auth/field-error';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { validateProfileName, validateProfilePhone } from '@/lib/auth-form';
 
 type EditableField = 'name' | 'phone' | 'password';
 type ProfileErrorKind = 'sessionExpired' | AuthErrorKey;
@@ -88,10 +90,14 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   const [phone, setPhone] = useState(profile.phone ?? '');
   const [pending, setPending] = useState(false);
   const [errorKind, setErrorKind] = useState<ProfileErrorKind | null>(null);
+  // Sweep 19/08: lỗi của ô đang mở (tên trống/quá dài, phone 6–30) — kiểm ở
+  // client trước khi gọi `updateUser`; mỗi lần chỉ MỘT dòng mở nên một slot đủ.
+  const [fieldError, setFieldError] = useState<string | undefined>();
 
   function close() {
     setOpen(null);
     setErrorKind(null);
+    setFieldError(undefined);
     // Trả ô nhập về giá trị đã lưu — bấm Cancel rồi mở lại mà vẫn thấy chữ
     // vừa gõ dở thì người dùng tưởng nó đã được lưu.
     setName(profile.name);
@@ -101,6 +107,14 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
   async function save(event: FormEvent<HTMLFormElement>, patch: { name?: string; phone?: string }) {
     event.preventDefault();
     setErrorKind(null);
+    const found =
+      patch.name !== undefined
+        ? validateProfileName(patch.name)
+        : patch.phone !== undefined
+          ? validateProfilePhone(patch.phone)
+          : undefined;
+    setFieldError(found);
+    if (found) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
     // KHÁC error envelope ({error}) ở nhánh dưới.
@@ -130,7 +144,10 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
       className="h-auto px-0"
       aria-expanded={open === field}
       aria-label={s.editAria(label)}
-      onClick={() => setOpen(field)}
+      onClick={() => {
+        setFieldError(undefined);
+        setOpen(field);
+      }}
     >
       {s.edit}
     </Button>
@@ -159,7 +176,11 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
           /* `noValidate`: nếu sau này thêm `required`/`type=email` mà quên cái
              này thì validate GỐC của trình duyệt chặn submit trước khi
              `onSubmit` kịp chạy — đúng bug đã dính ở form đặt chỗ (4959455). */
-          <form noValidate className="mt-3 flex flex-col gap-3" onSubmit={(e) => save(e, { name })}>
+          <form
+            noValidate
+            className="mt-3 flex flex-col gap-3"
+            onSubmit={(e) => save(e, { name: name.trim() })}
+          >
             <div className="flex flex-col gap-1.5">
               {/* Nhãn nhìn thấy đã nằm ở cột trái của dòng; giữ <Label> cho
                   trình đọc màn hình nhưng ẩn khỏi thị giác để khỏi lặp. */}
@@ -171,8 +192,13 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
                 value={name}
                 autoComplete="name"
                 className="max-w-80"
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  setFieldError(undefined);
+                }}
+                {...invalidProps('profile-name-error', fieldError)}
               />
+              <FieldError id="profile-name-error">{fieldError}</FieldError>
             </div>
             {errorNode}
             <div className="flex items-center gap-2">
@@ -203,7 +229,7 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
           <form
             noValidate
             className="mt-3 flex flex-col gap-3"
-            onSubmit={(e) => save(e, { phone })}
+            onSubmit={(e) => save(e, { phone: phone.trim() })}
           >
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="profile-phone" className="sr-only">
@@ -215,8 +241,13 @@ export function ProfileSummary({ profile }: { profile: SessionUser }) {
                 value={phone}
                 autoComplete="tel"
                 className="max-w-80"
-                onChange={(event) => setPhone(event.target.value)}
+                onChange={(event) => {
+                  setPhone(event.target.value);
+                  setFieldError(undefined);
+                }}
+                {...invalidProps('profile-phone-error', fieldError)}
               />
+              <FieldError id="profile-phone-error">{fieldError}</FieldError>
               <p className="text-sm text-muted-foreground">{s.phoneHint}</p>
             </div>
             {errorNode}

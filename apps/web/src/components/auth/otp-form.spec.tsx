@@ -71,6 +71,28 @@ describe('OtpForm — verify-email (có email)', () => {
     vi.clearAllMocks();
   });
 
+  // Sweep 19/08: mã trống/chưa đủ bắt ở client.
+  it('submit khi chưa gõ gì → required inline, KHÔNG gọi verifyEmail', async () => {
+    const user = userEvent.setup();
+    render(<OtpForm {...baseProps} email="minh@example.com" />);
+
+    await user.click(screen.getByRole('button', { name: 'Stamp my ticket' }));
+
+    expect(await screen.findByText(messages.formErrors.otp.required)).toBeInTheDocument();
+    expect(verifyEmail).not.toHaveBeenCalled();
+  });
+
+  it('mới gõ 3 số → incomplete inline, KHÔNG gọi verifyEmail', async () => {
+    const user = userEvent.setup();
+    render(<OtpForm {...baseProps} email="minh@example.com" />);
+
+    await typeOtp(user, '123');
+    await user.click(screen.getByRole('button', { name: 'Stamp my ticket' }));
+
+    expect(await screen.findByText(messages.formErrors.otp.incomplete)).toBeInTheDocument();
+    expect(verifyEmail).not.toHaveBeenCalled();
+  });
+
   it('submit đủ 6 số → gọi authClient.emailOtp.verifyEmail đúng payload', async () => {
     verifyEmail.mockResolvedValueOnce({ data: {}, error: null });
     const user = userEvent.setup();

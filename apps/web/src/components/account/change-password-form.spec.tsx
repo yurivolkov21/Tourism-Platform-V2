@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChangePasswordForm } from './change-password-form';
 
@@ -79,10 +80,39 @@ describe('ChangePasswordForm', () => {
 
     await fillAndSubmit(user, { current: 'SaiRoi123!' });
 
-    expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument();
+    // Sweep 19/08: INVALID_PASSWORD nay có câu riêng, hiện DƯỚI ô mật khẩu
+    // hiện tại — trước đó rơi vào generic "Something went wrong".
+    expect(
+      await screen.findByText(messages.authForms.errors.wrongCurrentPassword),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Current password')).toHaveAttribute('aria-invalid', 'true');
     expect((screen.getByLabelText('Current password') as HTMLInputElement).value).toBe(
       'SaiRoi123!',
     );
+  });
+
+  it('bấm Update với ba ô trống → ba lỗi required riêng, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<ChangePasswordForm />);
+
+    await user.click(screen.getByRole('button', { name: 'Update password' }));
+
+    expect(
+      await screen.findByText(messages.formErrors.currentPassword.required),
+    ).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.newPassword.required)).toBeInTheDocument();
+    expect(screen.getByText(messages.formErrors.confirmPassword.required)).toBeInTheDocument();
+    expect(changePassword).not.toHaveBeenCalled();
+  });
+
+  it('mật khẩu mới dưới 8 ký tự → tooShort dưới ô mới, KHÔNG gọi API', async () => {
+    const user = userEvent.setup();
+    render(<ChangePasswordForm />);
+
+    await fillAndSubmit(user, { next: 'short7', confirm: 'short7' });
+
+    expect(await screen.findByText(messages.formErrors.newPassword.tooShort)).toBeInTheDocument();
+    expect(changePassword).not.toHaveBeenCalled();
   });
 
   it('lỗi mạng thật (promise reject) → generic inline, nút hết pending', async () => {

@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { SessionUser } from '@/lib/api/session';
 import { ProfileSummary } from './profile-summary';
@@ -59,6 +60,30 @@ describe('ProfileSummary — đọc trước, sửa sau', () => {
 });
 
 describe('ProfileSummary — sửa từng dòng', () => {
+  // Sweep 19/08: tên trống / phone ngắn bắt ở client, không gọi updateUser.
+  it('xoá trắng tên rồi Save → required inline, KHÔNG gọi updateUser', async () => {
+    const user = userEvent.setup();
+    render(<ProfileSummary profile={PROFILE} />);
+    await user.click(screen.getByRole('button', { name: 'Edit Full name' }));
+    await user.clear(screen.getByRole('textbox'));
+    await user.click(screen.getByRole('button', { name: 'Save name' }));
+
+    expect(await screen.findByText(messages.formErrors.name.required)).toBeInTheDocument();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
+  it('phone 3 ký tự → phone.invalid inline, KHÔNG gọi updateUser', async () => {
+    const user = userEvent.setup();
+    render(<ProfileSummary profile={PROFILE} />);
+    await user.click(screen.getByRole('button', { name: 'Edit Phone' }));
+    await user.clear(screen.getByRole('textbox'));
+    await user.type(screen.getByRole('textbox'), '123');
+    await user.click(screen.getByRole('button', { name: 'Save phone' }));
+
+    expect(await screen.findByText(messages.formErrors.phone.invalid)).toBeInTheDocument();
+    expect(updateUser).not.toHaveBeenCalled();
+  });
+
   it('bấm Edit ở dòng tên → mở ĐÚNG một ô nhập', async () => {
     const user = userEvent.setup();
     render(<ProfileSummary profile={PROFILE} />);

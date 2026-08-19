@@ -8,8 +8,10 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
+import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
+import { type LoginErrors, validateLogin } from '@/lib/auth-form';
 import { safeRedirect } from '@/lib/safe-redirect';
+import { FieldError, invalidProps } from './field-error';
 import { TicketCard } from './ticket-card';
 
 // Ruột form /login (Task 2 — trang MẪU của cụm auth): heading accent italic,
@@ -18,6 +20,12 @@ import { TicketCard } from './ticket-card';
 // authClient thật — visual/markup/motion GIỮ NGUYÊN, chỉ thêm state + khối
 // lỗi inline (khuôn `role="alert"` + `text-xs text-destructive-emphasis` mượn từ
 // contact-split.tsx — repo chưa có khuôn lỗi form auth trước đây).
+//
+// Sweep bắt lỗi form 19/08: validate CLIENT trước khi gọi API (`validateLogin`
+// — trống/sai định dạng báo NGAY DƯỚI ô), `noValidate` tắt bong bóng của
+// trình duyệt (luật: không dùng `required`/HTML validation), lỗi server có ô
+// (`fieldOfAuthError`) hiện dưới ô đó, còn lại (401, throttle, mạng) ở khối
+// lỗi cấp form như cũ.
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -27,10 +35,19 @@ export function LoginForm() {
   const [rememberMe, setRememberMe] = useState(false);
   const [pending, setPending] = useState(false);
   const [formError, setFormError] = useState<AuthErrorKey | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<LoginErrors>({});
+
+  // Gõ lại vào ô đang lỗi thì xoá lỗi của RIÊNG ô đó (khuôn `set` của
+  // private-trip-form) — lỗi cũ treo mãi khi khách đã sửa là gây nhiễu.
+  const clearField = (key: keyof LoginErrors) =>
+    setFieldErrors((e) => (e[key] ? { ...e, [key]: undefined } : e));
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setFormError(null);
+    const found = validateLogin({ email, password });
+    setFieldErrors(found);
+    if (Object.keys(found).length > 0) return;
     setPending(true);
     // @better-fetch reject promise khi fetch throw thật (API sập/offline) —
     // KHÁC với error envelope ({ error }) ở nhánh dưới. Không try/catch thì
@@ -38,7 +55,14 @@ export function LoginForm() {
     try {
       const { error } = await authClient.signIn.email({ email, password, rememberMe });
       if (error) {
-        setFormError(mapAuthError(error));
+        const key = mapAuthError(error);
+        const field = fieldOfAuthError(key);
+        // Login chỉ có hai ô; `currentPassword` không tồn tại ở đây → về cấp form.
+        if (field === 'email' || field === 'password') {
+          setFieldErrors({ [field]: messages.authForms.errors[key] });
+        } else {
+          setFormError(key);
+        }
         return;
       }
       router.push(safeRedirect(searchParams.get('redirect')));
@@ -70,7 +94,7 @@ export function LoginForm() {
 
   return (
     <TicketCard stub="HN → SAPA · SEAT 07/12 · GATE: LOGIN">
-      <form className="flex flex-col gap-5" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-5" onSubmit={handleSubmit} noValidate>
         <div>
           <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
             Welcome back
@@ -104,8 +128,13 @@ export function LoginForm() {
             type="email"
             placeholder="you@example.com"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              clearField('email');
+            }}
+            {...invalidProps('login-email-error', fieldErrors.email)}
           />
+          <FieldError id="login-email-error">{fieldErrors.email}</FieldError>
         </div>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="login-password">Password</Label>
@@ -114,8 +143,13 @@ export function LoginForm() {
             type="password"
             placeholder="••••••••"
             value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              clearField('password');
+            }}
+            {...invalidProps('login-password-error', fieldErrors.password)}
           />
+          <FieldError id="login-password-error">{fieldErrors.password}</FieldError>
         </div>
 
         <div className="flex items-center justify-between text-sm">
