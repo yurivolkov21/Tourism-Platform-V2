@@ -228,7 +228,12 @@ function TicketBarcode({ code }: { code: string }) {
   const widths = ticketBarcodeWidths(code);
   return (
     <div aria-hidden="true" className="flex flex-col items-center gap-1">
-      <div className="flex h-9 max-w-full items-stretch overflow-hidden bg-card p-1">
+      {/* `data-slot="barcode"` để CSS in ở `globals.css` bám vào: nếu không,
+          tắt background graphics là vạch biến mất y như trang success. */}
+      <div
+        data-slot="barcode"
+        className="flex h-9 max-w-full items-stretch overflow-hidden bg-card p-1"
+      >
         {widths.map((w, i) => (
           <span
             // biome-ignore lint/suspicious/noArrayIndexKey: mảng deterministic từ `code`, không reorder/thêm bớt

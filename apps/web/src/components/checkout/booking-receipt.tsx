@@ -4,7 +4,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { CopyCodeButton } from '@/components/checkout/copy-code-button';
 import type { CheckoutMood } from '@/lib/checkout';
 import { ticketBarcodeWidths, ticketSerial } from '@/lib/checkout';
-import { formatDateRange, formatMoney, formatTicketDate } from '@/lib/tours';
+import { formatDate, formatDateRange, formatMoney } from '@/lib/tours';
 
 /**
  * Hoá đơn kiêm cuống vé cho `/checkout/success` — thay `CheckoutShell` (tấm vé
@@ -56,9 +56,14 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
         ? t.statusConfirming
         : t.statusSettled;
 
+  // `formatDate` ("5 Sep 2026") chứ KHÔNG `formatTicketDate` ("5 SEP"): hàm kia
+  // cố ý bỏ năm vì nó dành cho khoảnh khắc primary CỠ LỚN trên tấm vé, nơi năm
+  // là thừa. Đây là HOÁ ĐƠN — JSDoc của `formatDate` nói đúng chỗ này: thiếu
+  // năm là mơ hồ thật sự. Chuyến nhiều ngày dùng `formatDateRange` vốn đã có
+  // năm, nên nếu ngày-đơn bỏ năm thì hai ca còn lệch nhau ngay trên một trang.
   const isDayTrip = booking.departureStartDate === booking.departureEndDate;
   const departure = isDayTrip
-    ? formatTicketDate(booking.departureStartDate)
+    ? formatDate(booking.departureStartDate)
     : formatDateRange(booking.departureStartDate, booking.departureEndDate);
 
   // Đã đi rồi thì nói "Departed", chưa đi thì "Departs" — một dòng chỉ đúng một
@@ -105,7 +110,7 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
             <dd className="font-mono text-muted-foreground">{booking.code}</dd>
             <dt className="font-medium">{t.dateMetaLabel}</dt>
             <dd className="font-mono text-muted-foreground">
-              {formatTicketDate((booking.paidAt ?? booking.createdAt).slice(0, 10))}
+              {formatDate((booking.paidAt ?? booking.createdAt).slice(0, 10))}
             </dd>
           </dl>
         </div>
@@ -142,7 +147,7 @@ export function BookingReceipt({ booking, mood }: { booking: Booking; mood: Chec
             <p className="text-muted-foreground">{messages.tourDetail.booking.testMode}</p>
             {booking.paidAt ? (
               <p className="pt-1 text-muted-foreground">
-                {t.paidAtLine(formatTicketDate(booking.paidAt.slice(0, 10)))}
+                {t.paidAtLine(formatDate(booking.paidAt.slice(0, 10)))}
               </p>
             ) : null}
           </Column>
