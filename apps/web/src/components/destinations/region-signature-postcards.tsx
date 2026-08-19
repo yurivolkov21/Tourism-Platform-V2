@@ -3,6 +3,7 @@ import { RegionTile } from '@/components/destinations/region-tile';
 import { SectionEyebrow } from '@/components/home/section-eyebrow';
 import { RevealHeading, RevealLede } from '@/components/motion/reveal-header';
 import { RevealItem } from '@/components/motion/reveal-item';
+import type { SiteMediaItem } from '@/lib/api/site-media';
 import { STAGGER } from '@/lib/motion';
 import { SIGNATURE_BAND_BG } from '@/lib/region-theme';
 
@@ -28,12 +29,16 @@ export function RegionSignaturePostcards({
   body,
   postcards,
   emphasis = false,
+  images = [],
 }: {
   eyebrow: string;
   heading: string;
   body: string;
   postcards: readonly { title: string; caption: string }[];
   emphasis?: boolean;
+  /** Ảnh khe `region-signature-<vùng>-<n>` theo thứ tự bưu thiếp (19/08);
+      thiếu → bưu thiếp đó giữ gradient. */
+  images?: readonly (SiteMediaItem | null)[];
 }) {
   return (
     <section
@@ -127,6 +132,8 @@ export function RegionSignaturePostcards({
                 <RegionTile
                   label={card.title}
                   decorative
+                  image={images[i] ?? null}
+                  sizes="(min-width: 640px) 33vw, 100vw"
                   className="absolute inset-0 rounded-none"
                 />
                 {/* Scrim từ đáy lên — caption đọc được (đo 11.19:1) mà ô vẫn thấy

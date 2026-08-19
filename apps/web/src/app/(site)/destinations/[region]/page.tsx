@@ -175,6 +175,16 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
   // phải hỏi trước khi lấy — `t.regions[key]` là union ba hình dạng, không phải một
   // kiểu duy nhất.
   const signature = 'signature' in copy ? copy.signature : null;
+  // 3 bưu thiếp khối Signature (chỉ trang có `postcards` — Nam); khe
+  // `region-signature-<vùng>-<n>`, cùng luật với `galleryImages` ở trên.
+  const signatureImages =
+    signature && 'postcards' in signature
+      ? await Promise.all(
+          signature.postcards.map((_, i) =>
+            siteMediaImage(`region-signature-${region.key}-${i + 1}`),
+          ),
+        )
+      : [];
 
   // Chuyến dài nhất RIÊNG của vùng — nuôi ô "Longest trip" của hàng số liệu trong
   // hero.
@@ -339,6 +349,7 @@ export default async function RegionPage({ params }: { params: Promise<{ region:
             heading={signature.heading}
             body={signature.body}
             postcards={signature.postcards}
+            images={signatureImages}
           />
         ) : null;
       case 'days':

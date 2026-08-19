@@ -138,6 +138,13 @@ const SITE_SLOT_KEYS = [
   'region-gallery-south-1',
   'region-gallery-south-2',
   'region-gallery-south-3',
+  // 3 bưu thiếp khối "Signature" trang Nam (`RegionSignaturePostcards`, thêm
+  // 19/08, cùng luật khoá theo vị trí như `region-gallery-*`; tiêu đề/caption
+  // ở i18n `regions.south.signature.postcards` cùng chỉ số). Bắc/Trung không
+  // có khối này (intro chữ / timeline chữ).
+  'region-signature-south-1',
+  'region-signature-south-2',
+  'region-signature-south-3',
 ] as const;
 
 const connectionString =

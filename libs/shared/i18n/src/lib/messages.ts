@@ -1290,7 +1290,9 @@ export const messages = {
           postcards: [
             { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
             { title: 'Sài Gòn', caption: 'City energy & history' },
-            { title: 'Phú Quốc', caption: 'Island beaches' },
+            // 'Island sunsets' (trước 'Island beaches'): caption đi theo ảnh khe
+            // `region-signature-south-3` — kho chưa có ảnh bãi biển Phú Quốc.
+            { title: 'Phú Quốc', caption: 'Island sunsets' },
           ],
         },
         /** Xem ghi chú ở `north.season`. Mùa VẮT QUA NĂM (12 → 4): mảng liệt kê

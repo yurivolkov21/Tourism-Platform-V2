@@ -59,3 +59,50 @@ describe('RegionSignaturePostcards', () => {
     expect(cards(container)[0]?.className).toContain('aspect-4/5');
   });
 });
+
+// 19/08: 3 khe `region-signature-south-*` — bưu thiếp nhận ảnh theo chỉ số.
+describe('RegionSignaturePostcards — ảnh thật theo khe', () => {
+  const img = (n: number) =>
+    ({
+      publicId: `tourism/catalog/site/region-signature-south-${n}`,
+      url: `https://res.cloudinary.com/demo/image/upload/v1/region-signature-south-${n}`,
+      type: 'IMAGE',
+      role: 'hero',
+      posterUrl: null,
+      width: 1600,
+      height: 2133,
+      alt: null,
+      sortOrder: 0,
+    }) as never;
+  const CARDS = [
+    { title: 'The Mekong Delta', caption: 'Floating markets & waterways' },
+    { title: 'Sài Gòn', caption: 'City energy & history' },
+    { title: 'Phú Quốc', caption: 'Island sunsets' },
+  ];
+
+  it('3 ảnh → 3 bưu thiếp đều có <img> đúng URL theo chỉ số', () => {
+    const { container } = render(
+      <RegionSignaturePostcards
+        eyebrow="Signature"
+        heading="Life on the water"
+        body="…"
+        postcards={CARDS}
+        images={[img(1), img(2), img(3)]}
+      />,
+    );
+    const imgs = [...container.querySelectorAll('figure img')];
+    expect(imgs).toHaveLength(3);
+    for (const [i, el] of imgs.entries()) {
+      expect(decodeURIComponent(el.getAttribute('src') ?? '')).toContain(
+        `region-signature-south-${i + 1}`,
+      );
+    }
+  });
+
+  it('không truyền images → gradient như cũ, không <img>', () => {
+    const { container } = render(
+      <RegionSignaturePostcards eyebrow="S" heading="H" body="B" postcards={CARDS} />,
+    );
+    expect(container.querySelector('figure img')).toBeNull();
+  });
+});
