@@ -15,6 +15,7 @@ const validCard = {
   title: 'Hội An Ancient Town Walking Tour',
   summary: 'A guided half-day stroll.',
   basePrice: '39.00',
+  priceFrom: '39.00',
   compareAtPrice: '49.00',
   currency: 'USD',
   durationDays: 1,
@@ -113,6 +114,15 @@ describe('TourCardSchema', () => {
     expect(() => TourCardSchema.parse({ ...validCard, basePrice: 39 })).toThrow();
     expect(() => TourCardSchema.parse({ ...validCard, basePrice: 'free' })).toThrow();
     expect(() => TourCardSchema.parse({ ...validCard, basePrice: '-1.00' })).toThrow();
+  });
+
+  // 19/08: `priceFrom` là giá "from" thật (min đợt OPEN sắp tới) — DecimalString,
+  // BẮT BUỘC như basePrice: card không có field này là card không nói được giá.
+  it('priceFrom là DecimalString bắt buộc', () => {
+    expect(TourCardSchema.parse({ ...validCard, priceFrom: '29.00' }).priceFrom).toBe('29.00');
+    expect(() => TourCardSchema.parse({ ...validCard, priceFrom: 29 })).toThrow();
+    const { priceFrom: _omit, ...withoutFrom } = validCard;
+    expect(() => TourCardSchema.parse(withoutFrom)).toThrow();
   });
 
   it('rejects unknown difficulty and malformed id', () => {
