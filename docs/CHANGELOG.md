@@ -8,6 +8,24 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Ba bưu thiếp khối Signature trang Nam có ảnh thật (nhánh `feat/region-signature-images`, 1 commit, 6 file)
+
+Ngay sau đợt "in photos", user chỉ ra khối **Signature "Life on the water"** của
+trang Nam (`RegionSignaturePostcards`, 3 bưu thiếp 3/4 dọc) vẫn là gradient —
+đợt trước mình chỉ rà section gallery. Cùng cách A: 3 khe
+`region-signature-south-1..3` (seed → 52 khe site), ảnh lấy lại từ gallery địa
+danh đã duyệt/đang sống trên CDN: `ben-tre/06` (sampan trong rạch dừa) ·
+`ho-chi-minh-city/14` (nhà thờ Tân Định giữa phố — đúng "City energy &
+history") · `phu-quoc/04` (tháp đồng hồ lúc hoàng hôn). Caption Phú Quốc đổi
+"Island beaches" → "Island sunsets" vì caption đi theo ảnh, kho chưa có ảnh bãi
+biển Phú Quốc. Component nhận `images` theo chỉ số bưu thiếp, page fetch chỉ
+khi vùng có `postcards`; `NEEDED.md` +3; 2 test mới. Rà lại: Bắc/Trung không có
+khối tương đương (intro chữ / timeline chữ) → **ba trang vùng không còn ô giữ
+chỗ nào**.
+
+Tests after: 1404 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Footer phản ánh đúng bản đồ route (nhánh `fix/footer-links`, 1 commit, 2 file)
 
 User để ý footer "để các mục không liên quan": 'Destinations' còn trỏ
