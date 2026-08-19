@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { describe, expect, it } from 'vitest';
 import { DepartureSelectionProvider } from '@/components/tours/departure-selection';
 import type { DepartureVM, TourDetailVM } from '@/lib/api/tours';
-import { DeparturesPanel } from './departures-panel';
+import { DeparturesPanel, seatsColumnWidth } from './departures-panel';
 
 const DEPARTURES = [
   {
@@ -221,5 +221,16 @@ describe('DeparturesPanel', () => {
   it('tour không có policy nào thì bỏ hẳn hàng thẻ', () => {
     render(wrap(DEPARTURES, { ...TOUR, policies: [] } as unknown as TourDetailVM));
     expect(screen.queryByText('Securing a seat')).toBeNull();
+  });
+});
+
+describe('seatsColumnWidth — cột ghế theo sức chứa', () => {
+  it('16·n + 32: 10 chỗ = 192, 16 = 288, 22 = 384', () => {
+    expect(seatsColumnWidth(10)).toBe(192);
+    expect(seatsColumnWidth(16)).toBe(288);
+    expect(seatsColumnWidth(22)).toBe(384);
+  });
+  it('kẹp trần 400 khi admin đặt sức chứa lớn (đốt tự co, không nuốt cột ngày)', () => {
+    expect(seatsColumnWidth(40)).toBe(400);
   });
 });

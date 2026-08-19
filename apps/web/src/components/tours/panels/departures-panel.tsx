@@ -4,7 +4,7 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { cn } from '@tourism/ui/lib/utils';
 import { ChevronDownIcon, CreditCardIcon, RotateCcwIcon, UsersIcon } from 'lucide-react';
-import { useId, useState } from 'react';
+import { type CSSProperties, useId, useState } from 'react';
 import { useDepartureSelection } from '@/components/tours/departure-selection';
 import { FactCard } from '@/components/tours/fact-card';
 import { PANEL_BTN_SM } from '@/components/tours/panel-button';
@@ -39,13 +39,19 @@ import { departureStatus, formatChipDate, formatDialogDate, formatMoney } from '
 function SeatMeter({ seatsLeft, capacity }: { seatsLeft: number; capacity: number }) {
   const tone = departureStatus(seatsLeft);
   return (
-    <span aria-hidden="true" className="inline-flex gap-1">
+    // `flex` (không `inline-flex`): container ôm đúng bề rộng ô, đốt là flex
+    // item nên khi cột hẹp hơn 16×capacity thì chúng CO ĐỀU thay vì thanh tràn
+    // sang cột Status (bug user báo 19/08 với tour 16 chỗ; dữ liệu có tới 22).
+    // Bình thường cột đã rộng đúng theo `capacity` (xem <colgroup>) nên đốt
+    // giữ nguyên 12px — co chỉ là lưới an toàn ở viewport hẹp. `min-w-1` chặn
+    // co về 0.
+    <span aria-hidden="true" className="flex gap-1">
       {Array.from({ length: capacity }, (_, i) => (
         <span
           // biome-ignore lint/suspicious/noArrayIndexKey: dãy ghế tĩnh đúng `capacity` đốt, vị trí LÀ danh tính — không reorder, không chèn giữa
           key={i}
           className={cn(
-            'block h-4 w-3 rounded-[6px] border',
+            'block h-4 w-3 min-w-1 rounded-[6px] border',
             i < seatsLeft
               ? tone === 'limited'
                 ? 'border-warning bg-warning'
@@ -56,6 +62,17 @@ function SeatMeter({ seatsLeft, capacity }: { seatsLeft: number; capacity: numbe
       ))}
     </span>
   );
+}
+
+/**
+ * Bề rộng cột ghế theo sức chứa: 16·n (đốt 12 + khe 4) + 32 (pr-3 12px + 20px
+ * thở trước cột Status — user 19/08: sát quá; cột Month/Date đang dư nên nhường).
+ * Kẹp trần 400 (~23 chỗ đủ cỡ đốt): contract chỉ ép `positive()`, admin có thể
+ * đặt 40 chỗ, không kẹp thì cột ghế nuốt hết cột ngày — quá trần thì đốt tự co
+ * đều trong `SeatMeter`, vẫn giữ "một đốt = một ghế".
+ */
+export function seatsColumnWidth(capacity: number): number {
+  return Math.min(capacity * 16 + 32, 400);
 }
 
 const BADGE_BASE =
@@ -216,12 +233,23 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
         <table className="w-full table-fixed border-collapse [--row-pad:20px]">
           {/* Phần dư dồn vào cột NGÀY vì đó là ô dài nhất ("Thu, 20 Aug →
               Sun, 23 Aug"); các cột còn lại ghim cứng. Để phần dư ở cột ghế
-              (bản trước) thì thanh 10 đốt trôi lạc giữa 406px trống. */}
+              (bản trước) thì thanh 10 đốt trôi lạc giữa 406px trống.
+
+              Cột GHẾ rộng THEO SỨC CHỨA (sửa 19/08): bản 200px cứng chỉ chứa
+              được 11 đốt (16×n−4 + pr-3), tour 16 chỗ tràn sang cột Status,
+              22 chỗ tràn tới cột Price. Bề rộng theo `seatsColumnWidth` ở xl+;
+              dưới xl kẹp 30% bảng (bằng ~200px cũ ở 820) và đốt tự co đều (xem
+              `SeatMeter`). Cột Status 124 → 112: huy hiệu dài nhất "Almost
+              full" ~90px, phần dư trả cho cột ngày. */}
           <colgroup>
             <col className="w-10" />
             <col />
-            <col className="w-[200px]" />
-            <col className="w-[124px]" />
+            {/* Bề rộng cột ghế đặt trên <th> (bên dưới) qua biến CSS, không phải
+                <col>: với `table-fixed`, ô hàng đầu quyết bề rộng cột, và
+                Chromium coi `min(px, %)` trên ô bảng là `auto` (đo: 327px thay
+                vì 264) — chỉ px trần, % trần hoặc var() được tôn trọng. */}
+            <col />
+            <col className="w-28" />
             <col className="w-32" />
             <col className="w-[120px]" />
           </colgroup>
@@ -229,7 +257,12 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
             <tr className="[&>th:first-child]:pl-(--row-pad) [&>th:last-child]:pr-(--row-pad) [&>th]:border-b [&>th]:border-border [&>th]:bg-muted/45 [&>th]:py-3 [&>th]:pr-3 [&>th]:text-left [&>th]:font-mono [&>th]:text-[10px] [&>th]:leading-4 [&>th]:font-normal [&>th]:tracking-[0.12em] [&>th]:text-muted-foreground [&>th]:uppercase">
               <th />
               <th>{t.colMonthDate}</th>
-              <th>{t.colSeats}</th>
+              <th
+                style={{ '--seats-w': `${seatsColumnWidth(capacity)}px` } as CSSProperties}
+                className="w-(--seats-w) max-xl:w-[30%]"
+              >
+                {t.colSeats}
+              </th>
               <th>{t.colStatus}</th>
               <th className="text-right!">{t.colPrice}</th>
               <th />
