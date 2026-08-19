@@ -38,3 +38,21 @@ export type PageQuery = z.infer<typeof PageQuerySchema>;
  * chỗ import `BookingCodeSchema` từ `'./bookings.js'` không phải đổi gì.
  */
 export const BookingCodeSchema = z.string().regex(/^BK-[A-Z0-9]{8}$/, 'expected a booking code');
+
+/**
+ * Email hợp lệ, trần 200 ký tự — MỘT định nghĩa cho mọi form (enquiry,
+ * newsletter, booking) và cho validate client của cụm auth (Better Auth tự
+ * kiểm bằng `z.email()` phía server, ta soi gương ở client để báo lỗi
+ * "email không hợp lệ" trước khi round-trip).
+ */
+export const EmailSchema = z.email().max(200);
+
+/**
+ * Mật khẩu — soi gương ĐÚNG mặc định của Better Auth 1.6 (`minPasswordLength`
+ * 8 / `maxPasswordLength` 128, `apps/api/src/auth/auth.config.ts` không ghi
+ * đè). Server vẫn là chốt cuối; client dùng để báo "quá ngắn" tại ô nhập thay
+ * vì ăn 400 `PASSWORD_TOO_SHORT` rồi hiện lỗi chung chung.
+ */
+export const PASSWORD_MIN_LENGTH = 8;
+export const PASSWORD_MAX_LENGTH = 128;
+export const PasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);

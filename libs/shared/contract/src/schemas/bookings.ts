@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
-import { BookingCodeSchema } from './common.js';
+import { BookingCodeSchema, EmailSchema } from './common.js';
 import { MediaItemSchema } from './media.js';
 
 // Re-export để mọi chỗ import `BookingCodeSchema` từ `'./bookings.js'` (nguồn
@@ -42,7 +42,7 @@ export const CreateBookingInputSchema = z.object({
   numAdults: z.int().min(1),
   numChildren: z.int().min(0).default(0),
   contactName: z.string().min(1).max(120),
-  contactEmail: z.email().max(200),
+  contactEmail: EmailSchema,
   // min 6: parity Nexora `@Length(6,30)` — chặn số điện thoại 1–5 ký tự.
   contactPhone: z.string().min(6).max(30).optional(),
   specialRequests: z.string().min(1).max(1000).optional(),
@@ -90,7 +90,7 @@ export const BookingSchema = z.object({
   numAdults: z.int().min(1),
   numChildren: z.int().min(0),
   contactName: z.string().min(1).max(120),
-  contactEmail: z.email().max(200),
+  contactEmail: EmailSchema,
   contactPhone: z.string().max(30).nullable(),
   specialRequests: z.string().max(1000).nullable(),
   paymentProvider: PaymentProviderSchema,
@@ -259,7 +259,7 @@ export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
   tourTitle: z.string().min(1).max(160),
   departureStartDate: z.iso.date(),
   contactName: z.string().min(1).max(120),
-  contactEmail: z.email().max(200),
+  contactEmail: EmailSchema,
 });
 
 export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestSchema>;

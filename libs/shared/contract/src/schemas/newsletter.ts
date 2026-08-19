@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EmailSchema } from './common.js';
 
 /**
  * Đăng ký nhận bản tin (spec §4.4, nửa đầu) — endpoint GHI công khai thứ hai
@@ -6,7 +7,7 @@ import { z } from 'zod';
  * honeypot không reject, throttle riêng theo IP.
  */
 export const SubscribeInputSchema = z.object({
-  email: z.email().max(200),
+  email: EmailSchema,
   source: z.string().trim().max(40).optional(),
   /**
    * HONEYPOT — cùng cơ chế với enquiry: không reject, controller trả kết quả

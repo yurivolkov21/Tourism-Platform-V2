@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EmailSchema } from './common.js';
 
 /**
  * Form liên hệ công khai (spec §4.3) — endpoint GHI đầu tiên khách CHƯA đăng
@@ -8,7 +9,7 @@ import { z } from 'zod';
 export const CreateEnquiryInputSchema = z.object({
   // min 2: chặn tên 1 ký tự — giữ parity Nexora `@MinLength(2)`.
   name: z.string().trim().min(2).max(120),
-  email: z.email().max(200),
+  email: EmailSchema,
   phone: z.string().trim().max(30).optional(),
   // min 10: chặn "hi"/"test" — ngưỡng Nexora dùng, giữ nguyên.
   message: z.string().trim().min(10).max(2000),
