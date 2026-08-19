@@ -31,6 +31,13 @@ field additive, API deploy SAU web (hoặc API dev chạy bản build cũ — sc
 `dev` là build-một-lần) thì card vẫn ra số thay vì vỡ trang vì một field. Int
 test `catalog` assert `priceFrom` = basePrice khi override đắt hơn; card test.
 
+**CI đỏ một nhịp (`fa4f8e7` → vá `fix/contract-spec-pricefrom`).** Mình chạy build
+contract mà KHÔNG chạy test contract: fixture `catalog.spec.ts` thiếu `priceFrom`
+→ 9 test ZodError. Bài học đúng luật #11: gate là `turbo run build typecheck test`
+cho MỌI package, không phải chạy lẻ từng mảnh vừa sửa — đợt này đã chạy đủ (15
+task xanh) trước khi vá lên. Thêm test "priceFrom bắt buộc" để field này không
+rơi khỏi fixture lần nữa.
+
 **E5 rà lại:** 4/6 đã trả ở đợt redesign account (connected-accounts qua i18n ·
 saved-grid có nhánh 401 riêng · `refundedTotal` trên contract · DENIED không
 hiện lý do là CỐ Ý — `decisionNote` không mở cho khách); còn `user-menu` label
@@ -38,7 +45,7 @@ literal và load-more cap 50. **A5** tem thư "Hà Nội · Sa Pa" không đụn
 chốt 06/08 giữ làm motif. Backlog cập nhật (thêm mục A″: A14 ✅, A15 register
 <681px).
 
-Tests after: 1405 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+Tests after: 1405 web · 219 api · 180 api-int · 87 contract · 22 ui · 10 tokens
 và 2 i18n.
 
 ## 2026-08-19 — Vòng motion cho năm nhóm trang còn tĩnh (4 nhánh `feat/motion-*`, 4 commit, 26 file, +727/−413)
