@@ -138,19 +138,22 @@ export function SiteHeader() {
         <div className="hidden items-center gap-2 md:flex">
           <AnimatedThemeToggler className={iconButtonClass} />
           <UserMenu linkClassName={`px-2 text-sm ${linkClass}`} />
-          <button
-            type="button"
+          {/* LINK thật tới /tours (user báo 19/08: nút không làm gì — tàn dư
+              `<button>` static-first không handler). "Book a tour" = chọn tour
+              để đặt, nên đích là catalogue; trang chi tiết mới có nút Reserve. */}
+          <a
+            href="/tours"
             // `solid`, KHÔNG phải `scrolled`: nền `bg-card` gần-trắng chỉ nổi khi
             // đứng trên hero tối. Trên trang không hero ở chế độ sáng nó là
             // trắng-trên-trắng, nên dùng nút primary đặc.
-            className={`cursor-pointer rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-500 ${
+            className={`inline-flex cursor-pointer items-center rounded-full px-6 py-2.5 text-sm font-medium transition-all duration-500 ${
               solid
                 ? 'bg-primary text-primary-foreground hover:bg-primary/90'
                 : 'bg-card text-card-foreground hover:bg-card/85'
             }`}
           >
             Book a tour
-          </button>
+          </a>
         </div>
 
         <div className="flex items-center gap-1 md:hidden">
