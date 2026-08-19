@@ -79,3 +79,16 @@ describe('Gallery — data-region phải là KHOÁ vùng, không phải tên hi�
     }
   });
 });
+
+describe('Gallery — thẻ địa danh dẫn tới danh sách tour lọc theo địa danh', () => {
+  // Bản static-first để tạm `href="#contact"` (bấm thẻ chỉ cuộn xuống form
+  // liên hệ) và bị bỏ quên — user hỏi 19/08 "chủ ý hay chưa gắn link?". Đích
+  // đúng cùng tiền lệ `destination-tile.tsx`: `/tours?destinations=<slug>`.
+  it('mỗi thẻ là link tới /tours?destinations=<slug>, không còn #contact', () => {
+    render(<Gallery destinations={DESTINATIONS} failed={false} />);
+    for (const dest of DESTINATIONS) {
+      expect(cardFor(dest.name)).toHaveAttribute('href', `/tours?destinations=${dest.slug}`);
+    }
+    expect(document.querySelector('a[href="#contact"]')).toBeNull();
+  });
+});

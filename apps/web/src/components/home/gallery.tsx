@@ -112,8 +112,13 @@ export function Gallery({
                 const regionKey = regionOf(REGIONS, dest);
                 return (
                   <TiltCard key={dest.slug} className="shrink-0">
+                    {/* Đích = danh sách tour lọc theo địa danh — cùng tiền lệ
+                        `destination-tile.tsx` ở /destinations. Bản static-first
+                        để tạm `#contact` và bị bỏ quên tới 19/08 (user hỏi
+                        "chủ ý hay chưa gắn link?"). Không có trang riêng cho
+                        từng địa danh; trang vùng là cấp trên (3 miền). */}
                     <a
-                      href="#contact"
+                      href={`/tours?destinations=${dest.slug}`}
                       data-region={regionKey ?? undefined}
                       className="group relative block aspect-[4/5] h-[min(52vh,540px)] min-h-[380px] overflow-hidden rounded-xl"
                     >
