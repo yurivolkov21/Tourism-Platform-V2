@@ -105,3 +105,54 @@ export function buildBookingInput(state: BookingFormState): CreateBookingInput {
     ...(requests ? { specialRequests: requests } : {}),
   };
 }
+
+/** Bốn bước của wizard, ĐÚNG thứ tự khách đi qua. */
+export const BOOKING_STEPS = ['dates', 'travellers', 'review', 'pay'] as const;
+
+export type BookingStep = (typeof BOOKING_STEPS)[number];
+
+/**
+ * Trường nào thuộc bước nào — NGUỒN DUY NHẤT của việc xếp bước.
+ *
+ * Cố ý dùng `Record` đủ khoá thay vì bốn mảng rời: thêm một trường mới vào
+ * `BookingFormState` mà quên xếp bước thì TypeScript báo ngay tại đây, còn mảng
+ * rời sẽ im lặng để trường đó rơi ra ngoài mọi bước — và một ô không thuộc bước
+ * nào là ô không bao giờ được kiểm.
+ *
+ * `review` không sở hữu trường nào: nó chỉ đọc lại thứ ba bước kia đã thu.
+ */
+const FIELD_STEP: Record<keyof BookingFormState, BookingStep> = {
+  departureId: 'dates',
+  numAdults: 'travellers',
+  numChildren: 'travellers',
+  contactName: 'travellers',
+  contactEmail: 'travellers',
+  contactPhone: 'travellers',
+  specialRequests: 'travellers',
+  paymentProvider: 'pay',
+};
+
+export function stepOf(field: keyof BookingFormState): BookingStep {
+  return FIELD_STEP[field];
+}
+
+/**
+ * Lỗi của RIÊNG một bước — lọc {@link validateBookingForm} theo {@link FIELD_STEP}.
+ *
+ * Vì sao không đổ hết lỗi lên bước hiện tại: khách đang ở bước chọn ngày mà
+ * thấy "email không hợp lệ" thì không sửa được, ô email còn chưa hiện ra. Lỗi
+ * phải nằm cùng chỗ với ô gây ra nó.
+ */
+export function stepErrors(step: BookingStep, state: BookingFormState): BookingFormErrors {
+  const all = validateBookingForm(state);
+  const out: BookingFormErrors = {};
+  for (const key of Object.keys(all) as (keyof BookingFormState)[]) {
+    if (FIELD_STEP[key] === step) out[key] = all[key];
+  }
+  return out;
+}
+
+/** Bước hiện tại đã sạch lỗi chưa — điều kiện để nút Continue hoạt động. */
+export function canLeaveStep(step: BookingStep, state: BookingFormState): boolean {
+  return Object.keys(stepErrors(step, state)).length === 0;
+}

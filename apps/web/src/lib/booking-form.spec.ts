@@ -1,8 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BOOKING_STEPS,
   type BookingFormState,
   buildBookingInput,
+  canLeaveStep,
   partyCap,
+  stepErrors,
+  stepOf,
   validateBookingForm,
 } from './booking-form';
 
@@ -117,5 +121,47 @@ describe('buildBookingInput — state form → CreateBookingInput', () => {
 
   it('ném khi chưa chọn đợt — gọi build trước khi validate là lỗi lập trình', () => {
     expect(() => buildBookingInput({ ...STATE, departureId: null })).toThrow();
+  });
+});
+
+describe('logic bước của wizard đặt chỗ', () => {
+  it('bốn bước, đúng thứ tự khách đi qua', () => {
+    expect(BOOKING_STEPS).toEqual(['dates', 'travellers', 'review', 'pay']);
+  });
+
+  it('mỗi trường thuộc đúng một bước', () => {
+    expect(stepOf('departureId')).toBe('dates');
+    expect(stepOf('numAdults')).toBe('travellers');
+    expect(stepOf('numChildren')).toBe('travellers');
+    expect(stepOf('contactName')).toBe('travellers');
+    expect(stepOf('contactEmail')).toBe('travellers');
+    expect(stepOf('contactPhone')).toBe('travellers');
+    expect(stepOf('specialRequests')).toBe('travellers');
+    expect(stepOf('paymentProvider')).toBe('pay');
+  });
+
+  /** Lỗi phải HIỆN Ở ĐÚNG BƯỚC chứa ô hỏng. Đổ hết lỗi lên bước hiện tại thì
+   *  khách thấy "email không hợp lệ" trong lúc đang chọn ngày — không sửa được
+   *  vì ô đó còn chưa hiện ra. */
+  it('stepErrors chỉ trả lỗi của trường thuộc bước đó', () => {
+    const broken: BookingFormState = { ...STATE, departureId: null, contactEmail: 'sai' };
+    expect(Object.keys(stepErrors('dates', broken))).toEqual(['departureId']);
+    expect(Object.keys(stepErrors('travellers', broken))).toEqual(['contactEmail']);
+    expect(stepErrors('pay', broken)).toEqual({});
+  });
+
+  it('canLeaveStep chặn khi bước hiện tại còn lỗi, cho qua khi sạch', () => {
+    expect(canLeaveStep('dates', { ...STATE, departureId: null })).toBe(false);
+    expect(canLeaveStep('dates', STATE)).toBe(true);
+    expect(canLeaveStep('travellers', { ...STATE, contactName: '  ' })).toBe(false);
+    expect(canLeaveStep('travellers', STATE)).toBe(true);
+  });
+
+  /** Review không sở hữu trường nào nên không bao giờ tự chặn — nhưng nó vẫn
+   *  phải chặn khi bước TRƯỚC còn hỏng, và chuyện đó do wizard lo bằng cách
+   *  không cho nhảy cóc, không phải do hàm này. */
+  it('bước review không có trường riêng nên luôn qua được', () => {
+    expect(canLeaveStep('review', STATE)).toBe(true);
+    expect(canLeaveStep('review', { ...STATE, departureId: null })).toBe(true);
   });
 });
