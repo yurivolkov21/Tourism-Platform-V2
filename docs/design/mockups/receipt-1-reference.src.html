@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>ReUI receipt-1 — bản sao đối chiếu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  /* PHA 1 — bản sao TRUNG THÀNH của https://reui.io/preview/base/receipt-1,
+     giữ nguyên nội dung shop của mẫu, để đối chiếu độ khớp trước khi nắn sang
+     dữ liệu dự án ở pha 2.
+
+     ── Vòng 2: dựng lại vì bản đầu CAO HƠN gốc 246px ──
+     Bản đầu đo kiểu chữ mà KHÔNG đo hình học, nên trông "hao hao" mà sai nhịp.
+     Thủ phạm chính là `line-height: 1.5` đặt cho cả trang: mẫu gốc dùng 1.375
+     (14px→19.25px, 30px→41.25px) và giữ 16px cho chữ 12px. Mỗi dòng dày thêm
+     2px, nhân với ~40 dòng là ra đúng khoảng chênh đó.
+
+     Khung dọc lấy từ số đo, KHÔNG suy diễn:
+      · card  `display:flex; flex-direction:column; gap:16px; padding:16px 0 0`
+        — KHÔNG padding hai bên; mỗi khối tự mang `padding: 0 16px`, còn dải
+        chân thì tràn hết bề rộng nên phải nằm ngoài padding đó.
+      · kẻ ngang là div CAO 1px rộng 688, `margin: 0` — mọi khoảng cách quanh
+        nó đến từ `gap` của card, không từ margin của chính nó.
+      · hàng món cao đúng 64px (bằng thumb), xếp `flex` `gap:16px`.
+      · hàng tổng cao 20px, `gap:8px`; dòng Total có kẻ trên và `padding-top`.
+      · bo góc card 14px — đọc ra từ `border-radius` đáy của dải chân. */
+  :root {
+    --ink: oklch(0.145 0 0);
+    --muted: oklch(0.556 0 0);
+    --line: oklch(0.922 0 0);
+    --solid: oklch(0.205 0 0);
+    --on-solid: oklch(0.985 0 0);
+    --paid: lab(66.9756 -58.27 19.5419);
+    --band: oklab(0.97 0 0 / 0.5);
+    --card: #fff;
+    --page: #fff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: Inter, system-ui, sans-serif; font-size: 14px;
+    /* 1.375 — KHÔNG phải 1.5. Đây là con số làm hỏng cả bản dựng đầu. */
+    line-height: 1.375;
+  }
+  .wrap { width: 720px; margin: 0 auto; padding: 48px 0; }
+
+  /* ── Hàng đầu, NGOÀI card ── */
+  .top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+  .brandmark { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 32px; height: 32px; border-radius: 10px; background: var(--solid); color: var(--on-solid);
+    display: grid; place-items: center; font-size: 14px; font-weight: 600; }
+  .brandmark .n { font-weight: 500; line-height: 19.25px; }
+  .brandmark .u { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .acts { display: flex; align-items: center; gap: 8px; }
+  .btn { height: 28px; border-radius: 8px; font: 500 12.8px/18.29px Inter, sans-serif; padding: 0 10px;
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .btn.dark { background: var(--solid); color: var(--on-solid); border: 0; }
+  .btn.ghost { background: #fff; color: #000; border: 1px solid var(--line); }
+  .btn.icon { width: 28px; padding: 0; justify-content: center; }
+
+  /* ── Card ── */
+  .card { border: 1px solid var(--line); border-radius: 14px; background: var(--card);
+    display: flex; flex-direction: column; gap: 16px; padding: 16px 0 0; }
+  .sect { padding: 0 16px; }
+  /* Kẻ ngang tự nó cao 1px, nhưng vùng nó chiếm trong dòng chảy là 17px:
+     đo được cols→items và items→totals đều cách 50px, mà `gap` của card chỉ
+     cho 16+16. Phần 16 còn lại là margin dọc của chính đường kẻ. */
+  .rule { height: 1px; background: var(--line); margin: 8px 16px; }
+
+  /* ── Đầu card ── */
+  /* +4px đáy: thẻ bọc khối đầu ở bản gốc là một grid `gap:4px` nên nó cao
+     101px trong khi ruột chỉ 97px. Bù đúng 4px đó thay vì dựng lại cả grid. */
+  .head { display: flex; gap: 16px; justify-content: space-between; padding-bottom: 4px; }
+  .headL { display: flex; flex-direction: column; gap: 8px; }
+  .pill { align-self: flex-start; height: 20px; padding: 0 10px; border-radius: 999px;
+    background: var(--paid); color: #fff; font-size: 12px; line-height: 20px; font-weight: 500; }
+  h1 { font-size: 30px; line-height: 41.25px; font-weight: 500; letter-spacing: -0.75px; margin: 0; }
+  .sub { font-size: 14px; line-height: 20px; color: var(--muted); margin: 0; }
+  .sub b { color: var(--ink); font-weight: 500; }
+  .meta { display: grid; grid-template-columns: auto auto; gap: 6px 16px; align-content: start; text-align: right; }
+  .meta .k { font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink); }
+  .meta .v { font-size: 12px; line-height: 16px; color: var(--muted);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+  /* ── Ba cột 216 · gap 20 ── */
+  .cols { display: grid; grid-template-columns: 216px 216px 216px; gap: 20px; }
+  .lab { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 1.92px;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .who { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .ln { font-size: 14px; line-height: 19.25px; color: var(--muted); }
+  .pay { display: flex; align-items: flex-start; gap: 8px; }
+  .paycard { width: 28px; height: 20px; border: 1px solid var(--line); border-radius: 4px; flex: none; }
+
+  /* ── Dòng hàng: cao ĐÚNG 64px, xếp gap 16 ── */
+  .items { display: flex; flex-direction: column; gap: 16px; }
+  .item { display: flex; align-items: flex-start; gap: 16px; height: 64px; }
+  .thumb { width: 64px; height: 64px; flex: none; background: var(--line); }
+  .item .body { flex: 1; min-width: 0; }
+  .brand { font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.3px;
+    text-transform: uppercase; color: var(--muted); }
+  .item .nm { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .item .mt { font-size: 12px; line-height: 16px; color: var(--muted); }
+  .item .pr { text-align: right; flex: none; }
+  .item .pr .amt { font-size: 14px; line-height: 20px; font-weight: 600; }
+  .item .pr .ea { font-size: 12px; line-height: 16px; color: var(--muted); }
+
+  /* ── Tổng: hàng 20px, gap 8 ── */
+  .totals { margin-left: auto; width: 288px; display: flex; flex-direction: column; gap: 8px; }
+  .tr { height: 20px; display: flex; align-items: center; justify-content: space-between; }
+  .tr .k { font-size: 14px; line-height: 20px; color: var(--muted); }
+  .tr .v { font-size: 14px; line-height: 20px; }
+  .tr.discount .v { color: var(--paid); }
+  .tr.grand { height: auto; border-top: 1px solid var(--line); padding-top: 16px; }
+  .tr.grand .k, .tr.grand .v { font-size: 16px; line-height: 24px; font-weight: 600; color: var(--ink); }
+
+  /* ── Dải chân: tràn hết bề rộng card (720), nên KHÔNG nằm trong `.sect` ── */
+  .band { background: var(--band); padding: 16px; border-top: 1px solid var(--line);
+    border-radius: 0 0 13px 13px;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  .band .t { font-size: 14px; line-height: 19.25px; font-weight: 500; }
+  .band .s { font-size: 12px; line-height: 16px; color: var(--muted); }
+  /* 5px chứ không phải 8: ruột dải chân ở bản gốc cao đúng 60px
+     (19.25 + 16 + margin + 19.25), nên margin chỉ còn 5,5 → lấy 5. */
+  .band .link { font-size: 14px; line-height: 19.25px; font-weight: 500; margin-top: 5px;
+    display: inline-block; color: var(--ink); text-decoration: none; }
+  .band .help { font-size: 14px; line-height: 19.25px; color: var(--muted); white-space: nowrap; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div class="brandmark">
+        <div class="logo">U</div>
+        <div>
+          <div class="n">ReUI</div>
+          <div class="u">reui.io</div>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="btn dark" type="button">↓ Download</button>
+        <button class="btn ghost" type="button">✉ Email</button>
+        <button class="btn ghost icon" type="button">⎙</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="sect head">
+        <div class="headL">
+          <span class="pill">✓ Paid</span>
+          <h1>Thanks For Your Order</h1>
+          <p class="sub">A copy of this receipt was sent to <b>jordan@example.com</b>.</p>
+        </div>
+        <div class="meta">
+          <span class="k">Order</span><span class="v">HLD-2026-18042</span>
+          <span class="k">Receipt</span><span class="v">RCT-2026-018042</span>
+          <span class="k">Date</span><span class="v">May 18, 2026</span>
+        </div>
+      </div>
+
+      <div class="sect cols">
+        <div>
+          <div class="lab">Ship To</div>
+          <div class="who">Jordan Reeves</div>
+          <div class="ln">180 Bedford Avenue</div>
+          <div class="ln">Apt 4F</div>
+          <div class="ln">Brooklyn, NY 11211</div>
+          <div class="ln">United States</div>
+        </div>
+        <div>
+          <div class="lab">Bill To</div>
+          <div class="who">Jordan Reeves</div>
+          <div class="ln">180 Bedford Avenue</div>
+          <div class="ln">Apt 4F</div>
+          <div class="ln">Brooklyn, NY 11211</div>
+          <div class="ln">United States</div>
+        </div>
+        <div>
+          <div class="lab">Payment</div>
+          <div class="pay">
+            <div class="paycard"></div>
+            <div>
+              <div class="who">Visa · 4242</div>
+              <div class="ln">Expires 04 / 28</div>
+            </div>
+          </div>
+          <div class="ln" style="margin-top: 8px">Charged May 18, 2026 at 9:42 AM</div>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="sect items">
+        <div class="item">
+          <div class="thumb"></div>
+          <div class="body">
+            <div class="brand">Halden</div>
+            <div class="nm">Field Shell Jacket</div>
+            <div class="mt">Olive · M · Qty 1</div>
+          </div>
+          <div class="pr"><div class="amt">$185.00</div></div>
+        </div>
+        <div class="item">
+          <div class="thumb"></div>
+          <div class="body">
+            <div class="brand">Halden</div>
+            <div class="nm">Compass Down Vest</div>
+            <div class="mt">Slate · M · Qty 1</div>
+          </div>
+          <div class="pr"><div class="amt">$228.00</div></div>
+        </div>
+        <div class="item">
+          <div class="thumb"></div>
+          <div class="body">
+            <div class="brand">Halden</div>
+            <div class="nm">Linen Field Shirt</div>
+            <div class="mt">Sand · M · Qty 2</div>
+          </div>
+          <div class="pr"><div class="amt">$256.00</div><div class="ea">$128.00 each</div></div>
+        </div>
+      </div>
+
+      <div class="rule"></div>
+
+      <div class="sect">
+        <div class="totals">
+          <div class="tr"><span class="k">Subtotal</span><span class="v">$669.00</span></div>
+          <div class="tr"><span class="k">Shipping</span><span class="v">$12.00</span></div>
+          <div class="tr discount"><span class="k">Discount (WELCOME15)</span><span class="v">−$100.35</span></div>
+          <div class="tr"><span class="k">Estimated Tax</span><span class="v">$51.27</span></div>
+          <div class="tr grand"><span class="k">Total</span><span class="v">$631.92</span></div>
+        </div>
+      </div>
+
+      <div class="band">
+        <div>
+          <div class="t">🚚 Arrives May 22, 2026 to May 25, 2026</div>
+          <div class="s">UPS Ground · Standard, 3 - 5 business days</div>
+          <a class="link" href="#">Track Shipment →</a>
+        </div>
+        <div class="help">⊗ Need help with this order?</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
