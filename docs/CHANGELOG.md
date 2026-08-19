@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Một giá gốc duy nhất trên trang tour, hero bám đợt đang chọn (nhánh `fix/tour-price-anchor`, 2 commit, 8 file)
+
+User hỏi: hero in "from $129 was $149 −13%" mà khối chọn ngày lại "$119 was
+$129 7% off" — "rốt cuộc giá gốc ở đâu?". Soi dữ liệu thật: 22/29 tour có HAI
+neo chồng nhau — `tour.compareAtPrice` (niêm yết 149 trên base 129) và
+`departure.compareAtPrice` (seed đặt = base cho đợt thấp điểm: 119 neo 129).
+Mỗi bề mặt lấy một neo: hero theo neo tour + `basePrice` (sai kép — "from" mà
+không phải giá thấp nhất khi có đợt 119); panel ảnh/rail/strip/bảng theo neo
+đợt (Sep/Nov không gạch gì dù hero vừa hứa −13%; Oct rẻ hơn lại "giảm ít hơn").
+
+Sửa hai tầng. (1) `resolveDepartureAnchors` áp MỘT LẦN ở `fetchTourDetail`: mỗi
+đợt có ĐÚNG MỘT giá gạch = neo cao nhất áp được `max(neo đợt, neo tour)`, chỉ
+giữ khi thật sự cao hơn giá trả — neo tour là giá niêm yết đã công bố nên áp
+cho mọi đợt là trung thực, đợt cao điểm có neo riêng cao hơn giữ neo riêng; mọi
+bề mặt đọc cùng dữ liệu nên tự đồng bộ. (2) Hero: vòng 1 làm "from" = đợt rẻ
+nhất còn chỗ (`heroPrice`); **user bác ở vòng 2** — "khách chỉ hiểu một giá,
+giữ giá rẻ nhất cố định trên hero trong khi bên dưới đổi theo đợt là hai con
+số cho một quyết định, chọn nhầm ngày là rắc rối". Nên hero BÁM ĐỢT ĐANG CHỌN
+qua `useOptionalDepartureSelection` (không ném khi thiếu provider — `/book`,
+`/enquire` dựng hero qua `TourHeroBoard`), nhãn "from" bỏ khi đang bám đợt (đó
+là giá của đúng ngày đó) → "per person"; "from" + đợt rẻ nhất chỉ còn khi không
+có bộ chọn hoặc mọi đợt hết chỗ. Đo: chọn 19 Sep → hero lẫn panel cùng "$129
+was $149 −13%"; 17 Oct → cùng "$119 was $149 −20%". 8 test lib + 4 test hero.
+
+Sổ nợ: thẻ ở `/tours` vẫn in `basePrice` "from $129 −13%" — contract list không
+mang departures nên không biết đợt 119; muốn khớp cần thêm `minPrice` vào
+contract list (việc API, đợt khác).
+
+Tests after: 1391 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Cột ghế bảng đợt khởi hành rộng theo sức chứa (nhánh `fix/departures-seats-column`, 1 commit, 2 file)
 
 User báo tab Departures: tour từ ~11 chỗ trở lên thì thanh ghế tràn sang cột
