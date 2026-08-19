@@ -2,6 +2,7 @@
 
 import Lenis from 'lenis';
 import { useEffect } from 'react';
+import { setLenis } from '@/lib/smooth-scroll';
 
 // Convert từ template Estate: smooth scroll toàn trang bằng Lenis.
 // Tôn trọng prefers-reduced-motion — người dùng giảm chuyển động thì không bật.
@@ -16,6 +17,11 @@ export function LenisScroll() {
       syncTouch: false,
       anchors: true,
     });
+
+    // Đăng ký để mọi cuộn lập trình (phân trang, nút lên đầu) đi QUA Lenis —
+    // không thì chúng tranh vô-lăng với quán tính con lăn và thua (đo 19/08,
+    // xem `lib/smooth-scroll.ts`).
+    setLenis(lenis);
 
     let frame = requestAnimationFrame(function raf(time) {
       lenis.raf(time);
@@ -41,6 +47,7 @@ export function LenisScroll() {
     syncLock();
 
     return () => {
+      setLenis(null);
       observer.disconnect();
       cancelAnimationFrame(frame);
       lenis.destroy();

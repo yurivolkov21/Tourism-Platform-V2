@@ -12,15 +12,17 @@
  * `scroll-mt-28` (112) cho TIÊU ĐỀ vốn có lề trên; thẻ trong lưới mở đầu bằng
  * ẢNH sát mép nên chừa thêm 16px kẻo mép ảnh chui dưới bóng pill (đo ảnh chụp).
  *
- * Dùng `window.scrollTo` (cùng API với `ScrollToTop`, đã sống chung với Lenis)
- * chứ không `scrollIntoView` — cái sau tự chọn cả trục ngang (ghi chú ở
- * `region-gallery.tsx`). CHỈ gọi khi bấm phân trang; lọc/tìm cũng về trang 1
- * nhưng người dùng đang đứng ở bộ lọc, cuộn họ đi là giật.
+ * Cuộn qua `smoothScrollTo` (đi qua Lenis khi nó đang cầm lái — không thì
+ * "lúc được lúc không", xem `smooth-scroll.ts`) chứ không `scrollIntoView` —
+ * cái sau tự chọn cả trục ngang (ghi chú ở `region-gallery.tsx`). CHỈ gọi khi
+ * bấm phân trang; lọc/tìm cũng về trang 1 nhưng người dùng đang đứng ở bộ
+ * lọc, cuộn họ đi là giật.
  */
+import { smoothScrollTo } from './smooth-scroll';
+
 export const NAV_OFFSET = 128;
 
 export function scrollToListTop(el: HTMLElement | null, offset: number = NAV_OFFSET): void {
   if (!el) return;
-  const top = el.getBoundingClientRect().top + window.scrollY - offset;
-  window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  smoothScrollTo(el.getBoundingClientRect().top + window.scrollY - offset);
 }

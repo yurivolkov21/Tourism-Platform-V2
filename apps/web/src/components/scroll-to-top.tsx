@@ -2,6 +2,7 @@
 
 import { ArrowUpIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { smoothScrollTo } from '@/lib/smooth-scroll';
 
 // Convert từ Nexora layout/scroll-to-top.tsx (review #32): nút tròn nổi góc
 // phải-dưới, hiện sau khi cuộn quá 500px, bấm cuộn mượt về đầu trang. Khác
@@ -21,7 +22,9 @@ export function ScrollToTop() {
     <button
       type="button"
       aria-label="Back to top"
-      onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      // Qua `smoothScrollTo` (Lenis-aware) — `window.scrollTo` trần bị quán tính
+      // con lăn của Lenis ghi đè, bấm lúc đang trôi thì không lên (đo 19/08).
+      onClick={() => smoothScrollTo(0)}
       className={`fixed right-5 bottom-6 z-(--z-sticky) flex size-11 cursor-pointer items-center justify-center rounded-full bg-background text-foreground shadow-(--shadow-dropdown) ring-1 ring-border transition-all duration-300 hover:text-primary-emphasis hover:ring-primary/40 ${
         visible ? 'opacity-100' : 'pointer-events-none translate-y-2 opacity-0'
       }`}
