@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8" />
-<title>Receipt + vé — hợp nhất (bước 1: khung và đường xé)</title>
+<title>Receipt + vé — hợp nhất (bước 2: nền cuống và băng trạng thái)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
@@ -11,8 +11,8 @@
      user duyệt xong mới đi tiếp (yêu cầu 19/08). Xuất phát từ
      `receipt-booking.src.html` (pha 2 đã duyệt), file đó giữ nguyên làm mốc.
 
-       ✔ BƯỚC 1 — khung và đường xé   ← ĐANG Ở ĐÂY
-       ☐ BƯỚC 2 — nền cuống + băng màu trạng thái
+       ✔ BƯỚC 1 — khung và đường xé
+       ✔ BƯỚC 2 — nền cuống + băng màu trạng thái   ← ĐANG Ở ĐÂY
        ☐ BƯỚC 3 — ruột cuống: mã lớn, barcode, serial
        ☐ BƯỚC 4 — @media print
 
@@ -29,6 +29,25 @@
      thêm: nó vốn đã tràn hết bề rộng card (720, thoát khỏi padding 16), có nền
      riêng, và ngăn bằng một đường ở MÉP DƯỚI — đúng giải phẫu của một phần xé
      rời. Bước này chỉ nâng cái đường sẵn có thành ẩn dụ.
+
+     ── Bước 2 đổi hai thứ ──
+     1. NỀN CUỐNG đậm lên: `oklab(0.97 0 0 / 0.5)` phủ trên trắng chỉ ra ~0.985,
+        gần như không thấy — đường xé lúc đó chia đôi một mặt phẳng đồng màu nên
+        không đọc ra HAI mảnh giấy. Đổi sang màu đặc `oklch(0.97 0 0)`. Đây cũng
+        đúng quan hệ mà tấm vé hiện tại dùng: thân `bg-card`, cuống `bg-muted/40`.
+
+     2. BĂNG MÀU TRẠNG THÁI bám mép NGOÀI của cuống. Ở tấm vé hiện tại cuống nằm
+        bên phải nên băng bám mép phải; cuống của ta nằm dưới đáy nên băng bám
+        mép dưới — cùng luật "băng thuộc về cuống", chỉ khác trục.
+
+        Vì sao băng này không thừa dù đã có pill `✓ Paid`: JSDoc `CheckoutShell`
+        nói rõ tông màu mã hoá "CÓ CẦN ĐỂ MẮT TỚI KHÔNG", không phải lặp lại
+        trạng thái. Nên nó đáng giá nhất ở `warning` (đang xác nhận thanh toán —
+        khách cần quay lại) và `muted` (đã huỷ/hoàn tiền — đừng ra điểm hẹn).
+        Ở `success` nó chỉ là một vệt xanh trầm, cố ý không tranh với pill.
+
+        Ba trạng thái map thẳng sang `mood` sẵn có của trang success:
+          confirmed → success · confirming → warning · settled → muted
 
      ── Phần dưới đây giữ nguyên từ pha 2 ──
      Nắn bản sao ReUI receipt-1 sang dữ liệu THẬT của dự án.
@@ -63,7 +82,13 @@
     --solid: oklch(0.205 0 0);
     --on-solid: oklch(0.985 0 0);
     --paid: lab(66.9756 -58.27 19.5419);
-    --band: oklab(0.97 0 0 / 0.5);
+    /* Nền cuống — màu ĐẶC, không phủ alpha (xem lý do ở đầu file). */
+    --band: oklch(0.97 0 0);
+    /* Băng trạng thái. Giá trị lấy từ token thật của repo:
+       success/warning ở `tokens.mjs`, muted dùng chính màu kẻ. */
+    --tone-success: oklch(0.62 0.17 145);
+    --tone-warning: oklch(0.78 0.15 80);
+    --tone-muted: oklch(0.922 0 0);
     --card: #fff;
     --page: #fff;
   }
@@ -143,7 +168,13 @@
       radial-gradient(circle, var(--line) 1px, transparent 1.1px) top left / 8px 2px repeat-x,
       var(--band);
     border-radius: 0 0 13px 13px;
+    /* Băng trạng thái = mép dưới của cuống. Dùng `border-bottom` chứ không phải
+       một thẻ tuyệt đối: border tự bám theo `border-radius` nên hai góc dưới
+       cong đúng cùng bán kính, khỏi phải cắt bằng `overflow: hidden`. */
+    border-bottom: 3px solid var(--tone-success);
     display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; }
+  .band.warning { border-bottom-color: var(--tone-warning); }
+  .band.muted { border-bottom-color: var(--tone-muted); }
   .band .t { font-size: 14px; line-height: 19.25px; font-weight: 500; }
   .band .s { font-size: 12px; line-height: 16px; color: var(--muted); }
   .band .link { font-size: 14px; line-height: 19.25px; font-weight: 500; margin-top: 5px;
