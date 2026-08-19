@@ -8,7 +8,6 @@ import { BookingWizard } from '@/components/booking/booking-wizard';
 import type { CheckoutSummaryTour } from '@/components/booking/checkout-summary';
 import { requireSession } from '@/lib/api/session';
 import { fetchTourDetail } from '@/lib/api/tours';
-import { routeChain } from '@/lib/tours';
 
 export const metadata: Metadata = {
   title: `${messages.booking.page.title} — Tourism`,
