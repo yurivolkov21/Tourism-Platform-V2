@@ -58,6 +58,7 @@ và ghi chú đã thêm vào [design brief §5](../design/claude-design-brief.md
 | # | Nợ | Bề mặt | Trạng thái |
 | --- | --- | --- | --- |
 | ~~A14~~ | ~~Thẻ `/tours` in `basePrice` "from $129" trong khi chi tiết có đợt $119~~ | `/tours`, card khắp nơi | ✅ **trả 19/08** — contract `TourCard.priceFrom` (min effectivePrice đợt OPEN sắp tới, API tính một query/trang), card dùng `priceFrom ?? basePrice` (rơi về để API deploy sau web không vỡ trang) |
+| A16 | **7 icon mạng xã hội (3 top-bar + 4 footer) trỏ `#top`** — user chốt 19/08 GIỮ NGUYÊN, sẽ gắn URL thật khi có tài khoản; điền vào mảng `SOCIALS` ở `top-bar.tsx` + `site-footer.tsx` (spec footer đã loại social khỏi kiểm link chết) | Home, mọi trang | — (chờ URL) |
 | A15 | Hero `/register` vẫn cuộn ở laptop 768p nếu mọi ô đều hiện lỗi **và** viewport < 681 | `/register` | — (đã nén tối đa trong thiết kế hiện tại; dưới đó cần đổi bố cục) |
 
 ## B. Dọn dẹp dữ liệu / nội dung
