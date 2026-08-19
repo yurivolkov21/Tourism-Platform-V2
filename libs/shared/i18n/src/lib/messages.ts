@@ -2790,6 +2790,30 @@ export const messages = {
       },
     },
   },
+  // Form "Tell us your dates" ở TRANG CHỦ (home/contact.tsx) — nối
+  // `enquiries.create` 19/08 cùng khuôn contact-split (validate client
+  // `validateEnquiry`, honeypot, toast). Lỗi từng ô DÙNG CHUNG
+  // `contactForm.errors`; toast có bản riêng vì copy "letter" của /contact là
+  // ẩn dụ lá thư, không hợp với form trang chủ.
+  homeContact: {
+    regionLabel: 'Region',
+    regionAny: 'Anywhere in Vietnam',
+    submitting: 'Sending…',
+    toast: {
+      success: {
+        title: 'Request sent — thank you!',
+        body: 'Our local experts will draft two or three routes and reply within about 24 hours.',
+      },
+      error: {
+        title: "Your request didn't send",
+        body: 'Something went wrong on our side. Please try again, or email us directly.',
+      },
+      throttle: {
+        title: 'Sending a little fast',
+        body: 'Give it about a minute before your next request.',
+      },
+    },
+  },
   // Form newsletter ở footer (site-footer.tsx, spec §3) — LUÔN toast một kiểu
   // dù email đã tồn tại hay chưa (anti-enumeration của contract, giữ nguyên ở
   // FE: không thêm nhánh copy nào phân biệt hai trường hợp).
