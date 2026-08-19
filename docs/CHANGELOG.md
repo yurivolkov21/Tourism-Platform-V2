@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Phân trang ba explorer: hết hở trắng, cuộn về đầu lưới, và cuộn phải đi qua Lenis (nhánh `fix/blog-pagination-gap`, 3 commit, 13 file, +297/−14)
+
+User báo `/blog` sang trang 2 thì "footer bị đẩy lên, lộ khoảng trắng, rồi tự
+hết". Đo bằng Chromium headless trên dev server thay vì đoán: **không phải load
+chậm** — cả 9 bài đã ở client. Lưới co ngay 1832 → 829px (trang 2 chỉ 3 bài) nên
+footer nhảy lên ~1000px, nhưng khung hình vẫn đứng ở toạ độ thanh phân trang cũ,
+giờ là vùng footer; đồng thời `AnimatePresence mode="popLayout"` ép 6 thẻ cũ
+thành `position:absolute` tại chỗ cũ trong ~600ms để fade-out, và vì lưới không
+`relative`, khối chứa của chúng là `body` → chúng KÉO chiều cao cuộn của trang
+(2340 thay vì 2020) và đè lên footer; ghost unmount thì trang tụt về, trình duyệt
+kẹp scroll → "trở lại bình thường". Sửa gốc hai điểm: đổi trang thì cuộn về ĐẦU
+LƯỚI (hành vi mọi phân trang; chỉ khi bấm thanh phân trang — lọc/tìm cũng về
+trang 1 nhưng người dùng đang đứng ở sidebar), và lưới `relative overflow-clip`
+để ghost không kéo chiều cao trang hay đè footer (áp cả khi lọc). Đo sau: docH
+đúng ngay tại t=50ms, cuộn mượt về đầu lưới. Cùng đợt dời dòng "N stories" vào
+hàng đầu của khung filter cạnh "Filters" (góp ý user) — hết chiếm riêng một dòng.
+
+Rà tiếp hai nơi phân trang còn lại: `/tours` và `/destinations/[region]` không
+có ghost (không dùng AnimatePresence) nhưng cùng bệnh đứng-ở-nút-chuyển-trang;
+ở Southern trang 2 ngắn hơn, footer nhảy lên 422px ngay dưới mắt. Gom
+`lib/scroll-to-list-top.ts` dùng chung ba explorer (offset 128px vì thẻ mở đầu
+bằng ảnh sát mép — `scroll-mt-28` của tiêu đề không đủ, đo ảnh).
+
+**Rồi user để ý "lúc được lúc không" ở /tours** — thí nghiệm có đối chứng 5 lần:
+bấm số trang khi con lăn CÒN quán tính (ngay / sau 150ms) thì đứng nguyên; đợi
+~2,5s cho lắng rồi bấm thì chạy. Nguyên nhân: **Lenis** (smooth scroll toàn
+site) bắt con lăn và tự ghi `scrollY` mỗi frame tới khi animation của nó xong;
+`window.scrollTo({behavior:'smooth'})` là tài xế thứ hai cùng cầm vô-lăng và
+thua. `ScrollToTop` dùng `window.scrollTo` mang cùng lỗi ngầm. Sửa gốc:
+`lib/smooth-scroll.ts` — cuộn lập trình ĐI QUA `lenis.scrollTo` khi Lenis đang
+cầm lái, rơi về native khi không có (reduced-motion không khởi tạo Lenis);
+`LenisScroll` đăng ký/huỷ instance; module không import `lenis` để chỗ dùng
+không kéo thư viện. Đối chứng lại: 5/5 ca về đầu lưới. Test: 3 case blog
+(cuộn/không cuộn, overflow-clip, count trong sidebar) + 1 tours + 1 region + 3
+helper cuộn + 3 helper Lenis.
+
+Tests after: 1377 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Card `/register` vừa laptop 768p (nhánh `fix/register-fit-768p`, 1 commit, 4 file)
 
 Trả nốt giới hạn ghi ở entry sweep bắt lỗi form: ở 1366×768 (viewport Chrome
