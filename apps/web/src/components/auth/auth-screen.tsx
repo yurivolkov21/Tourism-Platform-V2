@@ -57,7 +57,7 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
           ăn theo theme. Đè lên là TUYẾN HÀNH TRÌNH chấm chấm + nhãn cao độ
           mono: 1 650 m (ga Sa Pa, điểm khởi hành) → 3 143 m (đỉnh Fansipan,
           điểm đến) — đồng bộ vé HN → SAPA và câu "where the map left off". */}
-      <div className="relative flex flex-col overflow-hidden px-6 py-8 md:px-12">
+      <div className="relative flex flex-col overflow-hidden px-6 py-5 md:px-12">
         <div
           aria-hidden="true"
           className="pointer-events-none absolute inset-0 bg-primary opacity-[0.14] dark:opacity-[0.22] [mask-image:url(/images/auth-topo.svg)] [mask-position:center] [mask-size:cover]"
@@ -108,11 +108,11 @@ export function AuthScreen({ quote, author, image, children }: AuthScreenProps) 
         <a href="/" aria-label="tourism — home" className="relative z-10 w-fit select-none">
           <Logo />
         </a>
-        {/* `py-4` (trước là `py-10`): đệm này LỒNG trong `py-8` của cột nên
-            cộng dồn 144px dọc — đo 19/08 ở 1920×945, card /register 777px
-            đã tràn 4px và mỗi dòng lỗi thêm 22px. Card căn giữa bằng flex
-            nên đệm chỉ có tác dụng khi chật; giữ 16px làm lề an toàn. */}
-        <div className="relative z-10 flex flex-1 items-center justify-center py-4">
+        {/* `py-2` (trước là `py-10`, rồi `py-4`): đệm này LỒNG trong `py-5`
+            của cột nên cộng dồn — đo 19/08: ở 1920×945 card /register 777px
+            đã tràn 4px, ở laptop 1366×681 tràn 168px. Card căn giữa bằng flex
+            nên đệm chỉ có tác dụng khi chật; giữ 8px làm lề an toàn. */}
+        <div className="relative z-10 flex flex-1 items-center justify-center py-2">
           <motion.div
             className="w-full max-w-md"
             initial={{ y: 30, opacity: 0 }}

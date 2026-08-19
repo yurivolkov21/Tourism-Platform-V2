@@ -17,10 +17,12 @@ export function TicketCard({ stub, children }: TicketCardProps) {
         className="absolute inset-y-4 left-0 w-4 -translate-x-1/2 [background:radial-gradient(circle_at_center,var(--background)_3px,transparent_3.5px)] [background-size:100%_18px]"
       />
 
-      <div className="p-7 md:p-9">{children}</div>
+      {/* p-6/p-8 (trước p-7/p-9): −8px dọc, một phần của vòng nén để card
+          /register vừa laptop 768p (19/08). */}
+      <div className="p-6 md:p-8">{children}</div>
 
       {/* Cuống vé: ngăn bằng nét đứt như đường xé, kèm vạch barcode giả lập */}
-      <div className="flex items-center justify-between gap-4 border-t border-dashed px-7 py-3.5 md:px-9">
+      <div className="flex items-center justify-between gap-4 border-t border-dashed px-6 py-3 md:px-8">
         {/* nowrap + size 10px: chừa chỗ cho barcode mà không gãy dòng ở max-w-md */}
         <p className="font-mono text-[10px] tracking-[0.18em] whitespace-nowrap text-muted-foreground uppercase">
           {stub}

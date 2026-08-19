@@ -22,12 +22,19 @@ import { FieldError, invalidProps } from './field-error';
 // tự — soi gương Better Auth) do form cha kiểm bằng `validateRegister`/
 // `validateResetPassword`/`validateChangePassword` rồi truyền xuống prop
 // `error` (sweep 19/08) — field này chỉ hiển thị, không tự quyết.
+// `short` là nhãn NHÌN THẤY (hàng pill một dòng — vòng nén 19/08 cho card
+// /register vừa laptop 768p, thay lưới 2 cột 3 hàng 56px); `text` là câu đầy
+// đủ cho trình đọc màn hình và tooltip `title`.
 const REQUIREMENTS = [
-  { regex: /.{8,}/, text: 'At least 8 characters' },
-  { regex: /[a-z]/, text: '1 lowercase letter' },
-  { regex: /[A-Z]/, text: '1 uppercase letter' },
-  { regex: /[0-9]/, text: '1 number' },
-  { regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/, text: '1 special character' },
+  { regex: /.{8,}/, short: '8+ chars', text: 'At least 8 characters' },
+  { regex: /[a-z]/, short: 'a–z', text: '1 lowercase letter' },
+  { regex: /[A-Z]/, short: 'A–Z', text: '1 uppercase letter' },
+  { regex: /[0-9]/, short: '0–9', text: '1 number' },
+  {
+    regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
+    short: '!@#',
+    text: '1 special character',
+  },
 ] as const;
 
 /** Màu vạch theo điểm: 0 nền · ≤1 đỏ · ≤3 hổ phách · 4 jade nhạt · 5 jade */
@@ -72,7 +79,11 @@ export function PasswordStrengthField({
   const [visible, setVisible] = useState(false);
   const password = value ?? internalPassword;
 
-  const checks = REQUIREMENTS.map((req) => ({ met: req.regex.test(password), text: req.text }));
+  const checks = REQUIREMENTS.map((req) => ({
+    met: req.regex.test(password),
+    text: req.text,
+    short: req.short,
+  }));
   const score = checks.filter((c) => c.met).length;
 
   return (
@@ -124,16 +135,16 @@ export function PasswordStrengthField({
         ))}
       </div>
 
-      {/* Checklist yêu cầu — tick jade khi đạt. Lưới 2 cột (user chốt 06/08:
-          1 cột 5 dòng kéo giãn chiều cao form đăng ký) — item lẻ cuối tự
-          chiếm ô trái hàng chót. */}
-      <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+      {/* Checklist yêu cầu — MỘT hàng pill (vòng nén 19/08; trước là lưới 2
+          cột 3 hàng do user chốt 06/08, rồi 5 dòng trước đó): mỗi pill icon
+          tick/x + nhãn ngắn, câu đầy đủ ở `title` + sr-only. Tick jade khi đạt. */}
+      <ul className="flex flex-wrap gap-x-3 gap-y-1">
         {checks.map((check) => (
-          <li key={check.text} className="flex items-center gap-2">
+          <li key={check.text} className="flex items-center gap-1" title={check.text}>
             {check.met ? (
-              <CheckIcon aria-hidden="true" className="size-3.5 text-primary-emphasis" />
+              <CheckIcon aria-hidden="true" className="size-3 text-primary-emphasis" />
             ) : (
-              <XIcon aria-hidden="true" className="size-3.5 text-muted-foreground" />
+              <XIcon aria-hidden="true" className="size-3 text-muted-foreground" />
             )}
             <span
               className={cn(
@@ -141,8 +152,9 @@ export function PasswordStrengthField({
                 check.met ? 'text-primary-emphasis' : 'text-muted-foreground',
               )}
             >
-              {check.text}
+              <span aria-hidden="true">{check.short}</span>
               <span className="sr-only">
+                {check.text}
                 {check.met ? ' — requirement met' : ' — requirement not met'}
               </span>
             </span>

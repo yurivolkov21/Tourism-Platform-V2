@@ -95,13 +95,19 @@ export function RegisterForm() {
 
   return (
     <TicketCard stub="NEW TRAVELLER · SEAT --/-- · GATE: REGISTER">
-      <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      {/* gap-3 (các form auth khác gap-4): register là form dày nhất — 8 khối;
+          nhịp 12px là điểm mà card vừa laptop 768p KỂ CẢ khi hiện đủ lỗi (đo
+          19/08: 1366×681, 3 lỗi → 663px, dư 18px). */}
+      <form className="flex flex-col gap-3" onSubmit={handleSubmit} noValidate>
+        {/* Heading giữ text-2xl ở mọi cỡ (không lên 3xl ở md) — vòng nén
+            19/08 cho vừa laptop 768p: 3xl xuống dòng thành 2 dòng 72px, 2xl
+            một dòng. Login/forgot vẫn 3xl vì card ngắn hơn nhiều. */}
         <div>
-          <h1 className="font-heading text-2xl font-medium text-card-foreground md:text-3xl">
+          <h1 className="font-heading text-2xl font-medium text-card-foreground">
             Claim your seat
             <span className="text-primary-emphasis italic"> on the next trip.</span>
           </h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">One account for every trip ahead.</p>
+          <p className="mt-1 text-sm text-muted-foreground">One account for every trip ahead.</p>
         </div>
 
         <button
@@ -120,35 +126,39 @@ export function RegisterForm() {
           <span aria-hidden="true" className="h-px flex-1 bg-border" />
         </div>
 
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="register-name">Full name</Label>
-          <Input
-            id="register-name"
-            type="text"
-            placeholder="Tran Mai Anh"
-            value={name}
-            onChange={(e) => {
-              setName(e.target.value);
-              clearField('name');
-            }}
-            {...invalidProps('register-name-error', fieldErrors.name)}
-          />
-          <FieldError id="register-name-error">{fieldErrors.name}</FieldError>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          <Label htmlFor="register-email">Email</Label>
-          <Input
-            id="register-email"
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              clearField('email');
-            }}
-            {...invalidProps('register-email-error', fieldErrors.email)}
-          />
-          <FieldError id="register-email-error">{fieldErrors.email}</FieldError>
+        {/* Name + email cùng hàng từ sm (vòng nén 19/08): −68px dọc, và hai
+            dòng lỗi của cặp này chia chung một hàng. Mobile vẫn xếp dọc. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="register-name">Full name</Label>
+            <Input
+              id="register-name"
+              type="text"
+              placeholder="Tran Mai Anh"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                clearField('name');
+              }}
+              {...invalidProps('register-name-error', fieldErrors.name)}
+            />
+            <FieldError id="register-name-error">{fieldErrors.name}</FieldError>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="register-email">Email</Label>
+            <Input
+              id="register-email"
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearField('email');
+              }}
+              {...invalidProps('register-email-error', fieldErrors.email)}
+            />
+            <FieldError id="register-email-error">{fieldErrors.email}</FieldError>
+          </div>
         </div>
         {/* Password + chấm độ mạnh (playground.md user cung cấp, đã token hoá) */}
         <PasswordStrengthField
