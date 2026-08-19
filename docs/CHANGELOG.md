@@ -8,6 +8,26 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-19 — Tên thương hiệu về lại "Nexora" (nhánh `feat/brand-nexora`, 1 commit, 48 file, +80/−76)
+
+User quyết định dùng lại tên **Nexora** của bản tiền nhiệm thay cho tên tạm
+"Tourism". Đổi ở MỌI chuỗi user-facing: wordmark `Logo` (`nex|ora`, giữ lối chữ
+thường hai tông), `aria-label` navbar/footer/auth, watermark + © footer,
+`messages.brand.name` và các câu có tên ("Why travelers choose…", "Your journeys
+with…", Concierge, "Hi Nexora!", "Hello Nexora," ở thư /contact, "Why Nexora" ở
+Home, copy /about), 33 title metadata `— Nexora`, RSS, ba văn bản pháp lý (+ địa
+chỉ bưu điện), email Resend (chữ ký, subject newsletter), PayPal `brand_name`,
+`EMAIL_FROM` mặc định + `.env.example`. Spec pháp lý đảo guard: trước cấm sót
+"Nexora" (khi brand là Tourism), nay cấm sót "Tourism" viết hoa (tên riêng —
+không bắt "tourism" nghĩa chung). **Cố ý không đổi:** scope package `@tourism/*`,
+email `tourism.platform.online@gmail.com` và `*@tourism.test`, folder Cloudinary
+`tourism/…` (đổi là đứt publicId), partner "Vietnam Tourism Board", comment
+tiếng Việt (lịch sử). Ghi chú môi trường: container Postgres docker local đã tắt
+từ trước (không do đợt này) làm 4 e2e api đỏ khi chạy tay — bật lại là xanh.
+
+Tests after: 1404 web · 219 api · 180 api-int · 86 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Ba bưu thiếp khối Signature trang Nam có ảnh thật (nhánh `feat/region-signature-images`, 1 commit, 6 file)
 
 Ngay sau đợt "in photos", user chỉ ra khối **Signature "Life on the water"** của
