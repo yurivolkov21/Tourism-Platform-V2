@@ -305,7 +305,68 @@ export const messages = {
       invalidOtp: "That code didn't match. Try again.",
       invalidToken: 'This link has expired or was already used.',
       notAvailable: 'Google sign-in is not available yet.',
+      // Sweep bắt lỗi form 19/08: bốn mã Better Auth từng bị gom vào `generic`
+      // dù server nói rõ chuyện gì — `INVALID_EMAIL`, `PASSWORD_TOO_SHORT/LONG`
+      // (đăng ký / đặt lại / đổi mật khẩu), `INVALID_PASSWORD` (đổi mật khẩu
+      // nhưng mật khẩu HIỆN TẠI sai), `CREDENTIAL_ACCOUNT_NOT_FOUND` (tài
+      // khoản chỉ có Google, chưa từng đặt mật khẩu).
+      invalidEmail: 'Enter a valid email address, e.g. you@example.com.',
+      passwordTooShort: 'Your password needs at least 8 characters.',
+      passwordTooLong: 'Keep your password under 128 characters.',
+      wrongCurrentPassword: 'That isn’t your current password. Try again.',
+      noPasswordAccount:
+        'This account signs in with Google and has no password yet — use “Forgot password” to set one.',
       generic: 'Something went wrong. Please try again.',
+    },
+  },
+  // Lỗi TỪNG Ô NHẬP kiểm ở client (sweep 19/08) — dùng chung cho cụm auth,
+  // hồ sơ tài khoản và hai form đặt chỗ (wizard + chuyến riêng). Copy nói
+  // đúng ô nào sai và sai vì sao — không dùng câu gộp "valid name and email"
+  // cho mọi trường hợp nữa. Ngưỡng bám ĐÚNG contract/Better Auth: name ≥2
+  // (enquiry) hoặc ≥1 (booking/profile), password 8–128, phone 6–30,
+  // message ≥10, requests ≤1000. `contactForm.errors`/`newsletterForm.errors`
+  // giữ nguyên bản riêng đã có test — chỉ hai form đó dùng.
+  formErrors: {
+    name: {
+      required: 'Enter your name.',
+      tooShort: 'A first name is enough — just 2 characters or more.',
+      tooLong: 'Keep your name under 120 characters.',
+    },
+    email: {
+      required: 'Enter your email address.',
+      invalid: 'Enter a valid email address, e.g. you@example.com.',
+    },
+    phone: {
+      invalid: 'Enter a phone number between 6 and 30 characters, or leave it blank.',
+    },
+    message: {
+      required: 'Tell us a little about your trip.',
+      tooShort: 'A few more words would help — at least 10 characters.',
+      tooLong: 'Keep your message under 2000 characters.',
+    },
+    specialRequests: {
+      tooLong: 'Keep special requests under 1000 characters.',
+    },
+    password: {
+      required: 'Enter your password.',
+      tooShort: 'Use at least 8 characters.',
+      tooLong: 'Keep it under 128 characters.',
+    },
+    newPassword: {
+      required: 'Enter a new password.',
+      tooShort: 'Use at least 8 characters.',
+      tooLong: 'Keep it under 128 characters.',
+    },
+    currentPassword: {
+      required: 'Enter your current password.',
+    },
+    confirmPassword: {
+      required: 'Type your new password once more.',
+      mismatch: 'New password and confirmation do not match.',
+    },
+    otp: {
+      required: 'Enter the 6-digit code from your email.',
+      incomplete: 'The code has 6 digits — a few are still missing.',
     },
   },
   // Booking flow (book → pay → confirm). Login-required; Stripe + PayPal. EN-only (ADR-0005).
@@ -481,7 +542,6 @@ export const messages = {
       MISSING_DEPARTURE: 'Please choose a departure date.',
       INVALID_PARTY_SIZE: 'Please enter 1–20 adults and up to 20 children.',
       INVALID_PROVIDER: 'Please choose a payment method.',
-      INVALID_CONTACT: 'Please enter a valid name and email.',
       SEATS_NOT_AVAILABLE: 'Sorry — those seats just sold out. Try a different departure.',
       DEPARTURE_NOT_OPEN: 'That departure is no longer open for booking.',
       DEPARTURE_DEPARTED: 'That departure has already started.',
@@ -3093,7 +3153,8 @@ export const messages = {
       newLabel: 'New password',
       confirmLabel: 'Confirm new password',
       submit: 'Update password',
-      mismatch: 'New password and confirmation do not match.',
+      // `mismatch` chuyển sang `formErrors.confirmPassword.mismatch` (sweep
+      // 19/08 — dùng chung với /reset-password); không giữ bản sao ở đây.
     },
     connected: {
       heading: 'Connected accounts',
