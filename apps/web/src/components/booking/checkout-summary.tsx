@@ -158,7 +158,11 @@ export function CheckoutSummary({
     : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border bg-card">
+    // KHÔNG khung card (đổi 19/08): wizard đặt cột này trong một `<aside>` đã có
+    // `border-l` làm ranh giới, nên card lồng vào là hai lớp khung chồng nhau —
+    // thấy rõ ở ảnh nghiệm thu bước 1. Ảnh bìa tự bo góc thay vì nhờ
+    // `overflow-hidden` của thẻ cha.
+    <div>
       {tour.cover ? (
         // `<img>` thường, KHÔNG `next/image`: `next.config.ts` chưa khai
         // `images.remotePatterns` cho host media thật (vd res.cloudinary.com)
@@ -168,11 +172,11 @@ export function CheckoutSummary({
         <img
           src={tour.cover.url}
           alt={tour.cover.alt ?? ''}
-          className="aspect-16/9 w-full object-cover"
+          className="aspect-16/9 w-full rounded-xl object-cover"
         />
       ) : null}
 
-      <div className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-4 pt-4">
         <div>
           <h2 className="font-heading text-lg font-semibold text-foreground">{t.heading}</h2>
           <p className="mt-2 font-medium text-foreground">{tour.title}</p>
