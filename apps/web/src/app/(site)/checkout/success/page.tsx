@@ -66,17 +66,10 @@ export default async function CheckoutSuccessPage({
     );
   }
 
+  // `mood` là thứ DUY NHẤT trang còn tự tính; tiêu đề, câu mô tả và tổng số
+  // khách đã chuyển hẳn vào `BookingReceipt` (nó cần cả ba để dựng pill, h1 và
+  // dòng khách) — giữ lại ở đây là hai nguồn cho cùng một sự thật.
   const mood = checkoutMood(booking);
-  const title =
-    mood === 'confirmed'
-      ? t.confirmedTitle
-      : mood === 'confirming'
-        ? t.pendingTitle
-        : t.settledTitle;
-  const body =
-    mood === 'confirmed' ? t.confirmedBody : mood === 'confirming' ? t.pendingBody : t.settledBody;
-
-  const totalGuests = booking.numAdults + booking.numChildren;
 
   return (
     <div>
