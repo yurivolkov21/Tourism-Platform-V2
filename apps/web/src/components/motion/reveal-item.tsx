@@ -53,6 +53,11 @@ const ENTER = {
   // sang trái bị cắt bởi mép cửa sổ, còn tràn sang phải thì làm cả body cuộn ngang.
   slide: { initial: { x: -AMPLITUDE.slide }, settled: { x: 0 } },
   bloom: { initial: { scale: AMPLITUDE.bloom }, settled: { scale: 1 } },
+  // `stamp` (khu Account "Hộ chiếu", nhóm motion 3 — 19/08): con dấu visa ĐÓNG
+  // XUỐNG — từ to hơn (1.22) và lệch nghiêng (−6°) về đúng chỗ. Biên độ MẠNH có
+  // chủ đích: đây là khoảnh khắc kể chuyện (trạng thái booking được "đóng dấu"),
+  // không phải nhịp vào của một ô lưới. Vẫn transform-only.
+  stamp: { initial: { scale: 1.22, rotate: -6 }, settled: { scale: 1, rotate: 0 } },
 } as const;
 
 /** Ba chữ ký, gọi bằng TÊN chứ không bằng con số — chỗ gọi không gõ được `y: 40`. */

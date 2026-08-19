@@ -21,6 +21,8 @@ import {
 } from '@tourism/ui/components/reui/timeline';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import Link from 'next/link';
+import { RevealItem } from '@/components/motion/reveal-item';
+import { STAGGER } from '@/lib/motion';
 import type { TravelLogEntry, TravelLogTrip } from '@/lib/passport';
 
 /**
@@ -76,36 +78,40 @@ export function TravelLog({ entries }: { entries: TravelLogEntryWithCover[] }) {
       <div className="min-w-0">
         {/* pl-2: indicator/đường nối của timeline neo âm về mép trái. */}
         <div className="space-y-12 pl-2">
-          {entries.map((e) => (
-            <section key={e.slug} id={`log-${e.slug}`}>
-              {e.cover ? (
-                // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
-                <img
-                  src={e.cover.url}
-                  alt={e.cover.alt ?? ''}
-                  className="h-40 w-full rounded-2xl border border-border object-cover"
-                />
-              ) : (
-                <div aria-hidden="true" className="h-40 w-full rounded-2xl bg-muted" />
-              )}
-              <div className="mt-2.5 mb-5 flex items-baseline justify-between gap-3">
-                <h3 className="font-heading text-lg font-semibold">{e.name}</h3>
-                <p className="text-xs whitespace-nowrap text-muted-foreground">
-                  {t.travelLogVisits(e.visits)}
-                  {e.lastMonth ? ` · ${e.lastMonth}` : ''}
-                </p>
-              </div>
-              <Timeline defaultValue={e.trips.length}>
-                {[...e.trips, ...e.upcoming].map((trip, index) => (
-                  <VisitNode
-                    key={trip.code}
-                    trip={trip}
-                    step={index + 1}
-                    done={index < e.trips.length}
+          {entries.map((e, index) => (
+            // Mỗi năm/địa danh của nhật ký trồi lên theo bậc thang khi cuộn tới
+            // (nhóm motion 3, 19/08); `section` giữ `id` cho Scrollspy.
+            <RevealItem key={e.slug} enter="rise" delay={Math.min(index, 3) * STAGGER.grid}>
+              <section id={`log-${e.slug}`}>
+                {e.cover ? (
+                  // biome-ignore lint/performance/noImgElement: repo không dùng next/image (chưa cấu hình remotePatterns — tiền lệ trip-card/checkout-summary).
+                  <img
+                    src={e.cover.url}
+                    alt={e.cover.alt ?? ''}
+                    className="h-40 w-full rounded-2xl border border-border object-cover"
                   />
-                ))}
-              </Timeline>
-            </section>
+                ) : (
+                  <div aria-hidden="true" className="h-40 w-full rounded-2xl bg-muted" />
+                )}
+                <div className="mt-2.5 mb-5 flex items-baseline justify-between gap-3">
+                  <h3 className="font-heading text-lg font-semibold">{e.name}</h3>
+                  <p className="text-xs whitespace-nowrap text-muted-foreground">
+                    {t.travelLogVisits(e.visits)}
+                    {e.lastMonth ? ` · ${e.lastMonth}` : ''}
+                  </p>
+                </div>
+                <Timeline defaultValue={e.trips.length}>
+                  {[...e.trips, ...e.upcoming].map((trip, index) => (
+                    <VisitNode
+                      key={trip.code}
+                      trip={trip}
+                      step={index + 1}
+                      done={index < e.trips.length}
+                    />
+                  ))}
+                </Timeline>
+              </section>
+            </RevealItem>
           ))}
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
+import { RevealItem } from '@/components/motion/reveal-item';
 
 /**
  * KHUNG HỘ CHIẾU — data page đóng khung (addendum spec §7.4, user duyệt
@@ -60,71 +61,76 @@ export function PassportCard({
   const t = messages.passportHome;
   const noDisplay = `${passportNo.slice(0, 2)} ${passportNo.slice(2, 5)} ${passportNo.slice(5)}`;
   return (
-    <article className="relative overflow-hidden rounded-2xl border border-border bg-card">
-      {/* Hairline laminate lồng trong — phủ trọn trang dữ liệu như lớp ép
+    // Tấm hộ chiếu NỞ RA (`bloom`) khi vào khung nhìn — nhịp không hướng cho vật
+    // thể đứng một mình đầu trang (nhóm motion 3, 19/08); wrapper mang nhịp, thẻ
+    // `<article>` giữ nguyên markup spec đang đọc.
+    <RevealItem enter="bloom">
+      <article className="relative overflow-hidden rounded-2xl border border-border bg-card">
+        {/* Hairline laminate lồng trong — phủ trọn trang dữ liệu như lớp ép
           nhựa thật (đè cả lên dải MRZ là đúng đời). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-[5px] z-10 rounded-xl border border-ink/15"
-      />
-      {/* Cụm nút: mobile là hàng căn phải đầu khung, ≥sm ghim góc phải trên
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-[5px] z-10 rounded-xl border border-ink/15"
+        />
+        {/* Cụm nút: mobile là hàng căn phải đầu khung, ≥sm ghim góc phải trên
           (z trên lớp laminate để bấm được). */}
-      {actions ? (
-        <div className="relative z-20 flex flex-wrap justify-end gap-2 px-5 pt-5 sm:absolute sm:top-6 sm:right-6 sm:p-0">
-          {actions}
-        </div>
-      ) : null}
-      <div className="flex flex-col gap-5 p-6 sm:flex-row sm:gap-7 md:p-7">
-        {/* Avatar VUÔNG bo góc kiểu trang profile (góp ý user 11/08 — thay ô
+        {actions ? (
+          <div className="relative z-20 flex flex-wrap justify-end gap-2 px-5 pt-5 sm:absolute sm:top-6 sm:right-6 sm:p-0">
+            {actions}
+          </div>
+        ) : null}
+        <div className="flex flex-col gap-5 p-6 sm:flex-row sm:gap-7 md:p-7">
+          {/* Avatar VUÔNG bo góc kiểu trang profile (góp ý user 11/08 — thay ô
             chân dung 3:4 kiểu giấy tờ); có ảnh đã lưu (Task 8, ADR-0021) thì
             thế vào, không thì vẫn chữ-cái-đầu. Cả khối `aria-hidden` — tên
             đứng ngay cạnh đã gánh phần đọc máy, ảnh dùng `alt=""`. */}
-        <div
-          aria-hidden="true"
-          className="flex size-28 flex-none items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
-        >
-          {image ? (
-            // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
-            <img src={image} alt="" className="size-full rounded-2xl object-cover" />
-          ) : (
-            <span className="font-heading text-5xl font-semibold text-ink/70">
-              {name.charAt(0).toUpperCase()}
-            </span>
-          )}
-        </div>
-        {/* Zone II/III — lưới field; Name mở đầu, giá trị lớn hơn các field
+          <div
+            aria-hidden="true"
+            className="flex size-28 flex-none items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
+          >
+            {image ? (
+              // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+              <img src={image} alt="" className="size-full rounded-2xl object-cover" />
+            ) : (
+              <span className="font-heading text-5xl font-semibold text-ink/70">
+                {name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+          {/* Zone II/III — lưới field; Name mở đầu, giá trị lớn hơn các field
             còn lại (tên vẫn làm chủ, như bản header được duyệt). */}
-        <div className="min-w-0 flex-1">
-          <p className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-            {t.fieldName}
-          </p>
-          <h1 className="mt-0.5 truncate font-heading text-2xl font-semibold md:text-3xl">
-            {name}
-          </h1>
-          <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
-            <Field label={t.fieldNo} value={noDisplay} mono />
-            <Field label={t.fieldSince} value={String(sinceYear)} mono />
-            <Field
-              label={`${t.zoneType} · ${t.zoneCode}`}
-              value={`${t.zoneTypeValue} · ${t.zoneCodeValue}`}
-              mono
-            />
-            <div className="col-span-2 sm:col-span-2">
-              <Field label={t.fieldEmail} value={email} />
+          <div className="min-w-0 flex-1">
+            <p className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+              {t.fieldName}
+            </p>
+            <h1 className="mt-0.5 truncate font-heading text-2xl font-semibold md:text-3xl">
+              {name}
+            </h1>
+            <div className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 sm:grid-cols-3">
+              <Field label={t.fieldNo} value={noDisplay} mono />
+              <Field label={t.fieldSince} value={String(sinceYear)} mono />
+              <Field
+                label={`${t.zoneType} · ${t.zoneCode}`}
+                value={`${t.zoneTypeValue} · ${t.zoneCodeValue}`}
+                mono
+              />
+              <div className="col-span-2 sm:col-span-2">
+                <Field label={t.fieldEmail} value={email} />
+              </div>
+              {phone ? <Field label={t.fieldPhone} value={phone} /> : null}
             </div>
-            {phone ? <Field label={t.fieldPhone} value={phone} /> : null}
           </div>
         </div>
-      </div>
-      {/* Zone VII — vùng máy đọc ở đáy khung, nền trầm hơn mặt card một bậc
+        {/* Zone VII — vùng máy đọc ở đáy khung, nền trầm hơn mặt card một bậc
           để tách "vùng máy đọc" khỏi phần nhân thân. Trang trí thuần. */}
-      <div
-        aria-hidden="true"
-        className="overflow-hidden border-t border-border/70 bg-background px-6 py-3 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:px-7 md:text-[13px] md:tracking-[0.18em]"
-      >
-        <p>{mrz[0]}</p>
-        <p>{mrz[1]}</p>
-      </div>
-    </article>
+        <div
+          aria-hidden="true"
+          className="overflow-hidden border-t border-border/70 bg-background px-6 py-3 font-mono text-[10.5px] leading-[1.8] tracking-[0.08em] whitespace-nowrap text-ink/70 select-none md:px-7 md:text-[13px] md:tracking-[0.18em]"
+        >
+          <p>{mrz[0]}</p>
+          <p>{mrz[1]}</p>
+        </div>
+      </article>
+    </RevealItem>
   );
 }

@@ -9,8 +9,10 @@ import { XIcon } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import { AccountActionError } from '@/components/account/account-action-error';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { SlotImage } from '@/components/slot-image';
 import { api, withBrowserAuth } from '@/lib/api/client';
+import { STAGGER } from '@/lib/motion';
 import { formatMoney } from '@/lib/tours';
 
 const REMOVE_BUTTON_CLASS =
@@ -205,21 +207,21 @@ export function SavedGrid({ initialItems }: { initialItems: WishlistItem[] }) {
         <AccountActionError expired redirectTo="/account/saved" fallback={null} className="mb-4" />
       ) : null}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {items.map((item) =>
-          item.unavailable ? (
-            <UnavailableCard
-              key={item.tourId}
-              item={item}
-              onRemove={() => handleRemove(item.tourId)}
-            />
-          ) : (
-            <SavedTourCard
-              key={item.tourId}
-              item={item}
-              onRemove={() => handleRemove(item.tourId)}
-            />
-          ),
-        )}
+        {items.map((item, index) => (
+          // Thẻ đã lưu trồi lên bậc thang — cùng nhịp lưới /tours (nhóm motion 3, 19/08).
+          <RevealItem
+            key={item.tourId}
+            enter="rise"
+            delay={Math.min(index, 5) * STAGGER.grid}
+            className="h-full"
+          >
+            {item.unavailable ? (
+              <UnavailableCard item={item} onRemove={() => handleRemove(item.tourId)} />
+            ) : (
+              <SavedTourCard item={item} onRemove={() => handleRemove(item.tourId)} />
+            )}
+          </RevealItem>
+        ))}
       </div>
     </>
   );

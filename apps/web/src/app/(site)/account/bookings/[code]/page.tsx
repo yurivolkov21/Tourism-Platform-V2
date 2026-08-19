@@ -9,6 +9,7 @@ import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
 import { ReviewComposer } from '@/components/account/review-composer';
 import { ContentHero } from '@/components/content/content-hero';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
@@ -141,7 +142,11 @@ export default async function AccountBookingDetailPage({
                     </Link>
                   </p>
                 </div>
-                <VisaStamp status={booking.status} tone={view.tone} />
+                {/* Con dấu "đóng xuống" (`stamp`: 1.22→1, −6°→0°) — nhóm motion 3,
+                    19/08; wrapper xoay về 0 còn con dấu bên trong giữ nghiêng 4° của nó. */}
+                <RevealItem enter="stamp" delay={0.15}>
+                  <VisaStamp status={booking.status} tone={view.tone} />
+                </RevealItem>
               </header>
 
               {booking.tourImage ? (

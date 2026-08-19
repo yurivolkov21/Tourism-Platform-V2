@@ -13,8 +13,10 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import { IconTile } from '@tourism/ui/components/reui/icon-tile';
 import { PlaneIcon } from 'lucide-react';
 import Link from 'next/link';
+import { RevealItem } from '@/components/motion/reveal-item';
 import { daysUntilDeparture } from '@/lib/account-stats';
 import { bookingView } from '@/lib/booking-vm';
+import { STAGGER } from '@/lib/motion';
 import { formatDateRange, formatMoney } from '@/lib/tours';
 
 /**
@@ -55,7 +57,7 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
   const first = bookings[0]?.code;
   return (
     <Accordion multiple={false} defaultValue={first ? [first] : []} className="gap-3">
-      {bookings.map((booking) => {
+      {bookings.map((booking, bookingIndex) => {
         const view = bookingView(booking);
         const started = booking.departureStartDate <= today;
         const ended = booking.departureEndDate < today;
@@ -71,107 +73,115 @@ export function BookingAccordion({ bookings, today }: { bookings: Booking[]; tod
         const canReview = view.tone === 'success' && ended;
 
         return (
-          <AccordionItem
-            key={booking.id}
-            value={booking.code}
-            className="rounded-2xl border border-border bg-card px-4 not-last:border-b md:px-5"
+          // Từng mục trồi lên bậc thang (nhóm motion 3, 19/08); wrapper ngoài
+          // AccordionItem — Base UI nối item qua context nên không đòi là con trực tiếp.
+          <RevealItem
+            key={booking.code}
+            enter="rise"
+            delay={Math.min(bookingIndex, 4) * STAGGER.grid}
           >
-            <AccordionTrigger className="items-center gap-3 py-3.5 hover:no-underline">
-              <IconTile variant="frame" size="default" aria-hidden="true">
-                <PlaneIcon />
-              </IconTile>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <span className="truncate font-heading text-[15px] font-semibold">
-                    {booking.tourTitle}
-                  </span>
-                  <Badge
-                    variant="outline"
-                    className={`gap-1.5 ${BADGE_TONE[view.tone] ?? BADGE_TONE.muted}`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className={`size-1.5 rounded-full ${DOT_CLASS[view.tone] ?? DOT_CLASS.muted}`}
-                    />
-                    {bl.status[booking.status]}
-                  </Badge>
+            <AccordionItem
+              key={booking.id}
+              value={booking.code}
+              className="rounded-2xl border border-border bg-card px-4 not-last:border-b md:px-5"
+            >
+              <AccordionTrigger className="items-center gap-3 py-3.5 hover:no-underline">
+                <IconTile variant="frame" size="default" aria-hidden="true">
+                  <PlaneIcon />
+                </IconTile>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <span className="truncate font-heading text-[15px] font-semibold">
+                      {booking.tourTitle}
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`gap-1.5 ${BADGE_TONE[view.tone] ?? BADGE_TONE.muted}`}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`size-1.5 rounded-full ${DOT_CLASS[view.tone] ?? DOT_CLASS.muted}`}
+                      />
+                      {bl.status[booking.status]}
+                    </Badge>
+                  </div>
+                  <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
+                    <span className="font-mono text-xs">{booking.code}</span>
+                    {' · '}
+                    {lead ? `${lead} · ` : ''}
+                    {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+                  </p>
                 </div>
-                <p className="mt-0.5 truncate text-[12.5px] text-muted-foreground">
-                  <span className="font-mono text-xs">{booking.code}</span>
-                  {' · '}
-                  {lead ? `${lead} · ` : ''}
-                  {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-                </p>
-              </div>
-              <span className="mr-1 hidden flex-none font-mono text-[13px] font-semibold tabular-nums sm:block">
-                {formatMoney(booking.totalAmount, booking.currency)}
-              </span>
-            </AccordionTrigger>
-            <AccordionContent className="pb-4 [&_a]:no-underline">
-              {/* Thẻ chi tiết trắng lồng trong row — đảo nền như mẫu coupon
+                <span className="mr-1 hidden flex-none font-mono text-[13px] font-semibold tabular-nums sm:block">
+                  {formatMoney(booking.totalAmount, booking.currency)}
+                </span>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4 [&_a]:no-underline">
+                {/* Thẻ chi tiết trắng lồng trong row — đảo nền như mẫu coupon
                   (row nhạt, ruột đậm tương phản). */}
-              <div className="rounded-xl border border-border/70 bg-background p-4 md:p-5">
-                <dl className="grid grid-cols-2 gap-x-5 gap-y-4 md:grid-cols-4">
-                  <div>
-                    <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                      {tv.labels.dates}
-                    </dt>
-                    <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
-                      {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                      {tv.labels.travellers}
-                    </dt>
-                    <dd className="mt-0.5 text-[14px] font-semibold">
-                      {tb.travellers(booking.numAdults, booking.numChildren)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                      {tv.labels.reference}
-                    </dt>
-                    <dd className="mt-0.5 font-mono text-[14px] font-semibold">{booking.code}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
-                      {tv.labels.total}
-                    </dt>
-                    <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
-                      {formatMoney(booking.totalAmount, booking.currency)}
-                    </dd>
-                  </div>
-                </dl>
-                <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-dashed border-border pt-4">
-                  {canPay ? (
-                    <ButtonLink size="sm" href={detailHref}>
-                      {messages.accountBookingDetail.actions.payNow}
+                <div className="rounded-xl border border-border/70 bg-background p-4 md:p-5">
+                  <dl className="grid grid-cols-2 gap-x-5 gap-y-4 md:grid-cols-4">
+                    <div>
+                      <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                        {tv.labels.dates}
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
+                        {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                        {tv.labels.travellers}
+                      </dt>
+                      <dd className="mt-0.5 text-[14px] font-semibold">
+                        {tb.travellers(booking.numAdults, booking.numChildren)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                        {tv.labels.reference}
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-[14px] font-semibold">{booking.code}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[9.5px] font-bold tracking-[0.14em] text-muted-foreground uppercase">
+                        {tv.labels.total}
+                      </dt>
+                      <dd className="mt-0.5 font-mono text-[14px] font-semibold tabular-nums">
+                        {formatMoney(booking.totalAmount, booking.currency)}
+                      </dd>
+                    </div>
+                  </dl>
+                  <div className="mt-4 flex flex-wrap items-center gap-3 border-t border-dashed border-border pt-4">
+                    {canPay ? (
+                      <ButtonLink size="sm" href={detailHref}>
+                        {messages.accountBookingDetail.actions.payNow}
+                      </ButtonLink>
+                    ) : null}
+                    <ButtonLink variant="outline" size="sm" href={detailHref}>
+                      {bl.viewDetails}
                     </ButtonLink>
-                  ) : null}
-                  <ButtonLink variant="outline" size="sm" href={detailHref}>
-                    {bl.viewDetails}
-                  </ButtonLink>
-                  {view.tone === 'success' ? (
-                    <Link
-                      href={`/checkout/success?code=${booking.code}`}
-                      className="text-[13px] font-semibold text-primary-emphasis hover:underline"
-                    >
-                      {tv.viewVoucher}
-                    </Link>
-                  ) : null}
-                  {canReview ? (
-                    <Link
-                      href={`${detailHref}#review`}
-                      className="text-[13px] font-semibold text-primary-emphasis hover:underline"
-                    >
-                      {messages.passportHome.journeyReview}
-                    </Link>
-                  ) : null}
+                    {view.tone === 'success' ? (
+                      <Link
+                        href={`/checkout/success?code=${booking.code}`}
+                        className="text-[13px] font-semibold text-primary-emphasis hover:underline"
+                      >
+                        {tv.viewVoucher}
+                      </Link>
+                    ) : null}
+                    {canReview ? (
+                      <Link
+                        href={`${detailHref}#review`}
+                        className="text-[13px] font-semibold text-primary-emphasis hover:underline"
+                      >
+                        {messages.passportHome.journeyReview}
+                      </Link>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-            </AccordionContent>
-          </AccordionItem>
+              </AccordionContent>
+            </AccordionItem>
+          </RevealItem>
         );
       })}
     </Accordion>

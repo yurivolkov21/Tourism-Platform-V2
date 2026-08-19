@@ -2,8 +2,23 @@ import { createORPCErrorFromJson } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import type { WishlistItem } from '@tourism/contract';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SavedGrid } from './saved-grid';
+
+// jsdom không có IntersectionObserver — component nay bọc `RevealItem` (motion
+// `whileInView`, nhóm motion 3 — 19/08). Stub CỤC BỘ theo quy ước đã ghi ở
+// `reveal-item.spec.tsx`/`gallery.spec.tsx`: dời lên vitest.setup.ts là gãy
+// test ở file khác.
+beforeAll(() => {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
 
 // Mock client oRPC — spec chỉ kiểm gọi ĐÚNG payload `wishlist.set`, không gọi
 // API thật (cùng khuôn `newsletter-form.spec.tsx`/`booking-actions.spec.tsx`).

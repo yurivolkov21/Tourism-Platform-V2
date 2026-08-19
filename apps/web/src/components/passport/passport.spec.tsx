@@ -1,10 +1,25 @@
 import { render, screen } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { BookingAccordion } from './booking-accordion';
 import { PassportCard } from './passport-card';
 import { StampPages } from './stamp-pages';
 import { VisaStamp } from './visa-stamp';
+
+// jsdom không có IntersectionObserver — component nay bọc `RevealItem` (motion
+// `whileInView`, nhóm motion 3 — 19/08). Stub CỤC BỘ theo quy ước đã ghi ở
+// `reveal-item.spec.tsx`/`gallery.spec.tsx`: dời lên vitest.setup.ts là gãy
+// test ở file khác.
+beforeAll(() => {
+  vi.stubGlobal(
+    'IntersectionObserver',
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+});
 
 // Spec gộp cho bộ component passport (T4) — mỗi component vài ca hành vi,
 // KHÔNG chụp markup: assert thứ user thấy (chữ, href, trạng thái class).
