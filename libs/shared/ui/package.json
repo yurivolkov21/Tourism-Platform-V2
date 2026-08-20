@@ -32,6 +32,8 @@
     "@shadcn/react": "^0.2.1",
     "@stepperize/react": "^7.0.0",
     "@tourism/tokens": "workspace:*",
+    "@types/canvas-confetti": "^1.9.0",
+    "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",

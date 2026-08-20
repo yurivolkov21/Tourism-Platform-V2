@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 import { BookingReceipt } from '@/components/checkout/booking-receipt';
 import { CheckoutAutoRefresh } from '@/components/checkout/checkout-auto-refresh';
 import { PrintButton } from '@/components/checkout/print-button';
+import { SuccessCelebration } from '@/components/checkout/success-celebration';
 import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
@@ -90,6 +91,9 @@ export default async function CheckoutSuccessPage({
       />
 
       <div className="py-10 md:py-14">
+        {/* Pháo giấy CHỈ ở mood confirmed (PAID) — confirming là đơn chưa
+            thanh toán xong, settled là chuyện đã cũ (spec confetti 20/08). */}
+        {mood === 'confirmed' ? <SuccessCelebration bookingCode={booking.code} /> : null}
         <BookingReceipt booking={booking} mood={mood} />
 
         <div className="mx-auto mt-8 flex w-full max-w-3xl flex-col gap-6 px-4">
