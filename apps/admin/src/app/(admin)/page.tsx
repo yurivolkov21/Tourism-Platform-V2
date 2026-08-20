@@ -1,18 +1,42 @@
-import { messages } from '@tourism/i18n';
-import { Card, CardDescription, CardHeader, CardTitle } from '@tourism/ui/components/card';
+// Vòng redesign shell 20/08: TÁI HIỆN 100% block `dashboard-01` của shadcn
+// (user chốt — cài qua CLI kèm data mẫu) ngay trên admin thật, nằm TRONG
+// cổng gác (admin)/layout. Bước sau mới gọt: nav thật 15 mục, user thật,
+// dọn data mẫu — đừng "thuần hóa" trước khi user chấm bản 1:1.
 
-const t = messages.admin.dashboardPlaceholder;
+import { SidebarInset, SidebarProvider } from '@tourism/ui/components/sidebar';
+import { AppSidebar } from '@/components/app-sidebar';
+import { ChartAreaInteractive } from '@/components/chart-area-interactive';
+import { DataTable } from '@/components/data-table';
+import { SectionCards } from '@/components/section-cards';
+import { SiteHeader } from '@/components/site-header';
 
-/** Dashboard placeholder (spec P4a §3) — số liệu thật là việc của P4d. */
-export default function DashboardPage() {
+import data from './data.json';
+
+export default function Page() {
   return (
-    <div className="mx-auto max-w-2xl">
-      <Card>
-        <CardHeader>
-          <CardTitle className="font-heading text-2xl">{t.title}</CardTitle>
-          <CardDescription>{t.body}</CardDescription>
-        </CardHeader>
-      </Card>
-    </div>
+    <SidebarProvider
+      style={
+        {
+          '--sidebar-width': 'calc(var(--spacing) * 72)',
+          '--header-height': 'calc(var(--spacing) * 12)',
+        } as React.CSSProperties
+      }
+    >
+      <AppSidebar variant="inset" />
+      <SidebarInset>
+        <SiteHeader />
+        <div className="flex flex-1 flex-col">
+          <div className="@container/main flex flex-1 flex-col gap-2">
+            <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+              <SectionCards />
+              <div className="px-4 lg:px-6">
+                <ChartAreaInteractive />
+              </div>
+              <DataTable data={data} />
+            </div>
+          </div>
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

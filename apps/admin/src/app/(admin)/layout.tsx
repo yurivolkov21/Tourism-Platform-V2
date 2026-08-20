@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { AppShell } from '@/components/shell/app-shell';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { getServerSession } from '@/lib/api/session';
 
@@ -20,5 +19,7 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
 
   // decision.kind === 'allow' ⇒ session không null (path '/' không public).
   if (!session) redirect('/login');
-  return <AppShell user={session}>{children}</AppShell>;
+  // Shell nằm trong từng trang (block dashboard-01 tự mang SidebarProvider) —
+  // layout chỉ còn là CỔNG GÁC. AppShell cũ sẽ dọn ở bước gọt sau khi chốt.
+  return <>{children}</>;
 }
