@@ -68,6 +68,8 @@ async function signUpAndSignIn(email: string) {
     url: '/api/auth/sign-up/email',
     payload: { email, password: PASSWORD, name: 'Test User' },
   });
+  // requireEmailVerification (siết 20/08): verify qua DB trước khi đăng nhập.
+  await prisma.user.update({ where: { email }, data: { emailVerified: true } });
   const signIn = await app.inject({
     method: 'POST',
     url: '/api/auth/sign-in/email',

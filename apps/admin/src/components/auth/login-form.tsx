@@ -68,11 +68,15 @@ export function LoginForm() {
       if (error) {
         // INVALID_EMAIL_OR_PASSWORD → câu riêng; còn lại câu chung. So sánh
         // code CHÍNH XÁC (bài học prefix INVALID_EMAIL của web).
+        // Siết verify 20/08: admin chưa verify → chỉ dẫn về flow OTP của www
+        // (admin không có UI nhập OTP riêng — ADR-0026 §2).
         setErrors({
           form:
             error.code === 'INVALID_EMAIL_OR_PASSWORD'
               ? t.errors.invalidCredentials
-              : t.errors.generic,
+              : error.code === 'EMAIL_NOT_VERIFIED'
+                ? t.errors.emailNotVerified
+                : t.errors.generic,
         });
         return;
       }

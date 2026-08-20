@@ -6,13 +6,15 @@ import { LoginForm } from './login-form';
 
 // Mock authClient — spec chỉ kiểm submit gọi ĐÚNG method/payload, không gọi
 // API thật (cùng khuôn mock client với contact-split.spec.tsx).
-const { signInEmail, signInSocial } = vi.hoisted(() => ({
+const { signInEmail, signInSocial, sendVerificationOtp } = vi.hoisted(() => ({
   signInEmail: vi.fn(),
   signInSocial: vi.fn(),
+  sendVerificationOtp: vi.fn().mockResolvedValue({ data: {}, error: null }),
 }));
 vi.mock('@/lib/auth-client', () => ({
   authClient: {
     signIn: { email: signInEmail, social: signInSocial },
+    emailOtp: { sendVerificationOtp },
   },
 }));
 
@@ -36,7 +38,27 @@ async function fillCredentials(user: ReturnType<typeof userEvent.setup>) {
 describe('LoginForm — submit', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    sendVerificationOtp.mockResolvedValue({ data: {}, error: null });
     searchParamsGet.mockReturnValue(null);
+  });
+
+  it('EMAIL_NOT_VERIFIED (siết 20/08) → gửi OTP mới + sang /verify-email giữ redirect', async () => {
+    signInEmail.mockResolvedValueOnce({ data: null, error: { code: 'EMAIL_NOT_VERIFIED' } });
+    searchParamsGet.mockReturnValue('/account');
+    const user = userEvent.setup();
+    render(<LoginForm />);
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+
+    await waitFor(() =>
+      expect(push).toHaveBeenCalledWith(
+        '/verify-email?email=minh%40example.com&redirect=%2Faccount',
+      ),
+    );
+    expect(sendVerificationOtp).toHaveBeenCalledWith({
+      email: 'minh@example.com',
+      type: 'email-verification',
+    });
   });
 
   // Sweep bắt lỗi form 19/08: validate client, không HTML `required`.

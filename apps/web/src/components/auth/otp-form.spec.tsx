@@ -105,7 +105,7 @@ describe('OtpForm — verify-email (có email)', () => {
     expect(verifyEmail).toHaveBeenCalledWith({ email: 'minh@example.com', otp: '123456' });
   });
 
-  it('thành công → toast success + push(safeRedirect) + refresh', async () => {
+  it('thành công → toast + về /LOGIN (siết 20/08: verify KHÔNG phát session)', async () => {
     verifyEmail.mockResolvedValueOnce({ data: {}, error: null });
     const user = userEvent.setup();
     render(<OtpForm {...baseProps} email="minh@example.com" />);
@@ -113,12 +113,12 @@ describe('OtpForm — verify-email (có email)', () => {
     await typeOtp(user, '123456');
     await user.click(screen.getByRole('button', { name: 'Stamp my ticket' }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/login?redirect=%2F'));
     expect(toastSuccess).toHaveBeenCalledTimes(1);
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('redirect param an toàn → push đúng đích đó', async () => {
+  it('redirect param an toàn → mang theo qua /login để đăng nhập xong đi tiếp', async () => {
     verifyEmail.mockResolvedValueOnce({ data: {}, error: null });
     const user = userEvent.setup();
     render(<OtpForm {...baseProps} email="minh@example.com" redirect="/account" />);
@@ -126,7 +126,7 @@ describe('OtpForm — verify-email (có email)', () => {
     await typeOtp(user, '123456');
     await user.click(screen.getByRole('button', { name: 'Stamp my ticket' }));
 
-    await waitFor(() => expect(push).toHaveBeenCalledWith('/account'));
+    await waitFor(() => expect(push).toHaveBeenCalledWith('/login?redirect=%2Faccount'));
   });
 
   it('OTP sai (mock error) → text invalidOtp hiện inline, KHÔNG reset countdown resend', async () => {

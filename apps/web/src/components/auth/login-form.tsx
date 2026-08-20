@@ -6,6 +6,7 @@ import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
+import { toast } from 'sonner';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
 import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
@@ -55,6 +56,21 @@ export function LoginForm() {
     try {
       const { error } = await authClient.signIn.email({ email, password, rememberMe });
       if (error) {
+        // Siết verify 20/08: chưa verify thì KHÔNG phải lỗi để đứng nhìn —
+        // gửi OTP mới rồi đưa thẳng sang /verify-email (giữ redirect đích).
+        if (error.code === 'EMAIL_NOT_VERIFIED') {
+          const t = messages.authForms.verifyEmail.loginBlocked;
+          // Fire-and-forget: OTP cũ (signup) có thể đã quá hạn 10 phút.
+          authClient.emailOtp
+            .sendVerificationOtp({ email, type: 'email-verification' })
+            .catch(() => {});
+          toast.info(t.title, { description: t.body });
+          const redirect = safeRedirect(searchParams.get('redirect'));
+          router.push(
+            `/verify-email?email=${encodeURIComponent(email)}&redirect=${encodeURIComponent(redirect)}`,
+          );
+          return;
+        }
         const key = mapAuthError(error);
         const field = fieldOfAuthError(key);
         // Login chỉ có hai ô; `currentPassword` không tồn tại ở đây → về cấp form.

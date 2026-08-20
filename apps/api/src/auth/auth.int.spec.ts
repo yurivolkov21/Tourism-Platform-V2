@@ -150,6 +150,11 @@ describe('auth integration (Better Auth + tombstone)', () => {
 
   it('c. sign-in/email returns a session cookie that passes the AuthGuard probe', async () => {
     await signUp(app, 'carol@example.com', 'Carol');
+    // requireEmailVerification (siết 20/08): verify qua DB rồi mới login được.
+    await prisma.user.update({
+      where: { email: 'carol@example.com' },
+      data: { emailVerified: true },
+    });
 
     const signIn = await app.inject({
       method: 'POST',
@@ -176,7 +181,15 @@ describe('auth integration (Better Auth + tombstone)', () => {
     const email = 'dave@example.com';
     const signUpRes = await signUp(app, email, 'Dave');
     expect(signUpRes.statusCode).toBe(200);
-    const cookie = sessionCookie(signUpRes); // autoSignIn mặc định của BA
+    // requireEmailVerification (siết 20/08): autoSignIn đã TẮT — verify qua DB
+    // rồi đăng nhập tường minh thay vì lấy cookie từ response signup.
+    await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+    const signInRes = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: PASSWORD },
+    });
+    const cookie = sessionCookie(signInRes);
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) throw new Error('sign-up did not create user');

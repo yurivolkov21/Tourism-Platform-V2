@@ -98,6 +98,25 @@ deploy cùng chỗ `REVALIDATE_SECRET`/`FRONTEND_URL`.
   kế hoạch trong spec bước 7. Bật plugin (schema + TOTP/recovery flow) là
   ADR/spec riêng khi thật cần.
 
+### 6. AMEND 20/08/2026 — siết `requireEmailVerification` (đảo quyết định 08/2026)
+
+Tester lách được bước OTP: đăng ký xong chuyển route thẳng là có session dùng
+được (hệ quả của `requireEmailVerification: false` + autoSignIn mặc định).
+User quyết siết theo nguyên tắc **"bỏ qua verify = chưa có tài khoản để
+dùng"** (KHÔNG chặn trang public — chặn theo emailVerified toàn site phá SSG
+của ADR-0016 và tạo nghịch lý khách-ẩn-danh-xem-được):
+
+- API: `requireEmailVerification: true` + `autoSignIn: false` — signup không
+  phát session; login chưa verify → 403 `EMAIL_NOT_VERIFIED`. Đo bằng
+  `require-verification.int.spec.ts` (kèm đo: verify-email KHÔNG tự đăng
+  nhập → web đưa về /login sau verify).
+- Web: form login bắt `EMAIL_NOT_VERIFIED` → gửi OTP mới + đưa sang
+  `/verify-email` giữ redirect; OtpForm verify xong về `/login?redirect=…`;
+  banner warning cho session TÀN DƯ chưa verify (tạo trước đợt siết).
+- Admin: form login hiện chỉ dẫn verify bên www (admin không có UI OTP).
+- SEC-1 GIỮ NGUYÊN (promote sau verify) — giờ còn được cộng hưởng: chưa
+  verify thì thậm chí không đăng nhập được.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

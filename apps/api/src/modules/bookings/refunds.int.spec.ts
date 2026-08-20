@@ -98,7 +98,16 @@ describe('refunds integration (admin refund ledger)', () => {
       payload: { email, password: PASSWORD, name },
     });
     expect(res.statusCode).toBe(200);
-    return sessionCookie(res);
+    // requireEmailVerification (siết 20/08): signup không phát session —
+    // verify qua DB (test này không nhắm flow OTP) rồi đăng nhập lấy cookie.
+    await prisma.user.update({ where: { email }, data: { emailVerified: true } });
+    const signIn = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email, password: PASSWORD },
+    });
+    expect(signIn.statusCode).toBe(200);
+    return sessionCookie(signIn);
   }
 
   /** Admin session: signup ADMIN_EMAILS rồi promote thẳng DB (ADR-0008 — signup

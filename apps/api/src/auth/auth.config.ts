@@ -48,7 +48,14 @@ export const auth = betterAuth({
   trustedOrigins: [...trustedOrigins],
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    // SIẾT 20/08 (đảo quyết định 03/08 "GIỮ false" — tester lách được OTP):
+    // chưa verify thì login bị chặn (403 EMAIL_NOT_VERIFIED, form web/admin
+    // bắt code này dẫn về /verify-email). Kèm autoSignIn: false — signup
+    // KHÔNG phát session; bỏ qua OTP là khách vãng lai, không mang danh tài
+    // khoản. Đo bằng require-verification.int.spec.ts: verify-email KHÔNG
+    // tự đăng nhập → web đưa về /login sau verify.
+    requireEmailVerification: true,
+    autoSignIn: false,
     sendResetPassword: async ({ user, url }) => {
       // AUTH-2: ghi outbox thay console.log. dedupeKey bounded theo VarChar(200).
       await prisma.outbox.create({

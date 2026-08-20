@@ -1,3 +1,4 @@
+import { VerifyEmailBanner } from '@/components/auth/verify-email-banner';
 import { ScrollToTop } from '@/components/scroll-to-top';
 import { SiteFooter } from '@/components/site-footer';
 import { SiteHeader } from '@/components/site-header';
@@ -12,6 +13,8 @@ export function SiteChrome({ children }: { children: React.ReactNode }) {
   return (
     <>
       <TopBar />
+      {/* Dải verify cho session CŨ chưa xác thực (siết 20/08) — thường null. */}
+      <VerifyEmailBanner />
       <SiteHeader />
       <main className="flex-1">{children}</main>
       <SiteFooter />

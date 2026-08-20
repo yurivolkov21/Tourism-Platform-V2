@@ -56,7 +56,19 @@ export const messages = {
       submitting: 'Verifying…',
       toast: {
         title: 'Email verified',
-        body: 'Welcome aboard — you’re all set to travel.',
+        // Siết 20/08: verify KHÔNG tự đăng nhập (đo int test) — nhắc bước kế.
+        body: 'Welcome aboard — log in to start travelling.',
+      },
+      // Login bị chặn vì chưa verify (EMAIL_NOT_VERIFIED) → toast này rồi
+      // đưa sang /verify-email kèm OTP mới.
+      loginBlocked: {
+        title: 'Verify your email first',
+        body: 'We just sent you a fresh code.',
+      },
+      // Dải nhắc cho session CŨ chưa verify (tạo trước đợt siết 20/08).
+      banner: {
+        text: 'Please verify your email to keep your account active.',
+        action: 'Verify now',
       },
       // Panel khi thiếu `?email=` — khuôn theo `resetPassword.invalidToken`.
       noEmail: {
@@ -2479,6 +2491,7 @@ export const messages = {
         emailInvalid: 'Enter a valid email address, e.g. you@example.com.',
         passwordRequired: 'Enter your password.',
         invalidCredentials: 'Incorrect email or password.',
+        emailNotVerified: 'Verify your email on nexora-travel.agency first, then sign in here.',
         generic: 'Something went wrong. Please try again.',
       },
       backToSite: 'Back to nexora-travel.agency',

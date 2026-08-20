@@ -89,6 +89,16 @@ describe('LoginForm', () => {
     );
   });
 
+  it('EMAIL_NOT_VERIFIED (siết 20/08) → chỉ dẫn verify bên www, không câu chung', async () => {
+    signInEmail.mockResolvedValue({ error: { code: 'EMAIL_NOT_VERIFIED' } });
+    render(<LoginForm />);
+    await userEvent.type(screen.getByLabelText('Email'), 'a@b.co');
+    await userEvent.type(screen.getByLabelText('Password'), 'secret123');
+    await userEvent.click(screen.getByRole('button', { name: /sign in/i }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(/Verify your email/i);
+    expect(push).not.toHaveBeenCalled();
+  });
+
   it('lỗi mạng (reject) → câu chung, không sập', async () => {
     signInEmail.mockRejectedValue(new Error('network'));
     render(<LoginForm />);

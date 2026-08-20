@@ -101,7 +101,9 @@ export function OtpForm({
       toast.success(messages.authForms.verifyEmail.toast.title, {
         description: messages.authForms.verifyEmail.toast.body,
       });
-      router.push(safeRedirect(redirect));
+      // Siết 20/08 (đo int test d): verify KHÔNG phát session → về /login,
+      // mang theo đích cũ để đăng nhập xong đi tiếp đúng chỗ.
+      router.push(`/login?redirect=${encodeURIComponent(safeRedirect(redirect))}`);
       router.refresh();
     } catch {
       setFormError('generic');
