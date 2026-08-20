@@ -135,8 +135,10 @@ Admin (P4), mobile, AI, monitoring trả phí, CDN riêng. Preview deploy có se
 - **Resend webhooks**: endpoint nhận `email.delivered/bounced/complained` để
   outbox biết số phận mail sau khi `SENT` (giờ SENT = "Resend nhận", không phải
   "tới inbox"). Kèm cân nhắc **Audience sync** (subscribers → Resend Audience).
-- **Template email in-code**: đang gửi HTML tự dựng trong `email/`; cân nhắc
-  react-email (Resend khuyến nghị) — quyết bằng ADR nếu làm.
+- ~~**Template email in-code**~~ ✅ **trả 20/08** ([ADR-0025](../adr/0025-transactional-email-react-email.md),
+  merge `6a3725b`) — react-email v6, hệ Barebone port từ Nexora cũ. Nợ con còn
+  lại: payload outbox chưa mang ảnh hero tour + rating sao nên mail booking/
+  review chưa có hai khối đó như bản cũ (cần mở rộng producer nếu muốn).
 - **Preview deploy Vercel không đăng nhập được** (origin động ngoài
   `TRUSTED_ORIGINS`) — chấp nhận, preview chỉ xem UI.
 - **Dev/prod chung DB Supabase**: seed/reset từ máy dev đụng dữ liệu chạy thật;

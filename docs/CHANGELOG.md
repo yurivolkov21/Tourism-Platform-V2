@@ -8,6 +8,24 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Rà tiến độ + đồng bộ docs về hiện thực (sweep docs-only)
+
+User hỏi "có bỏ lỡ gì không" → rà bằng ĐO chứ không nhớ:
+[báo cáo tiến độ 20/08](analysis/2026-08-20-progress-report.md) (31 route ·
+36 endpoint · 1.947 test · ảnh phủ đủ query từ DB — 29/29 tour, 18/18 địa
+danh, 9/9 bài, 48/52 khe với 4 khe trống là seed-only chưa ai đọc). Kết luận:
+không còn món chặn; kế tiếp P4 admin. Docs lệch hiện thực được kéo về:
+CLAUDE.md roadmap (P3b ✅ + deploy v1 ✅ + cảnh báo "sửa gì cũng là sửa đồ
+đang chạy"), README khép dòng P3b/Hộ chiếu (2 dòng còn ghi 🔶 chờ dù đã merge
+11/08), backlog gạch A8+E4 (nợ ảnh — số liệu 17/08 đã lỗi thời) và thêm mục F
+(nợ sau deploy: Resend webhooks · payload mail thiếu hero/rating · preview
+origin · dev/prod chung DB · Render ngủ 15′), spec deploy §10 gạch món
+react-email. Hai rủi ro trước bảo vệ nêu ở báo cáo: dev/prod chung DB và
+Render free ngủ 15 phút.
+
+Tests after: không đổi (1408 web · 238 api · 180 api-int · 87 contract ·
+22 ui · 10 tokens · 2 i18n) — sweep docs-only.
+
 ## 2026-08-20 — Email giao dịch render react-email, hệ Barebone port từ Nexora cũ (nhánh `feat/email-react-templates`, 1 commit `6a3725b`, 10 file)
 
 User xem mail thật sau deploy và chê "trắng, chán" → [ADR-0025](adr/0025-transactional-email-react-email.md):

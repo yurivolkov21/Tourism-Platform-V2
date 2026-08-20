@@ -15,7 +15,9 @@ test/sandbox mode. Rebuild nâng cấp từ Nexora; repo cũ tại
 
 Stack đã chốt + lý do: [docs/adr/0001-tech-stack.md](docs/adr/0001-tech-stack.md).
 Roadmap: P0 khung xương ✅ → P1 API lõi ✅ → P2 money-path ✅ → P3a API khách ✅
-→ P3b web (đang) → P4 admin → P5 mobile → P6 AI concierge → P7 polish UI →
+→ P3b web ✅ → **deploy v1 ✅ 20/08** (site sống tại `www.nexora-travel.agency`,
+ADR-0024 — push main là Vercel/Render tự deploy, sửa gì cũng là sửa đồ ĐANG
+CHẠY) → P4 admin (kế tiếp) → P5 mobile → P6 AI concierge → P7 polish UI →
 freeze 15/10.
 
 ## Quy ước làm việc (bất di bất dịch trừ khi user nói khác)

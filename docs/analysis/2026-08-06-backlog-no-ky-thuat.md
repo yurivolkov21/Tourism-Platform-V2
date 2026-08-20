@@ -41,7 +41,7 @@
 | # | Nợ | Bề mặt | Chặn? |
 | --- | --- | --- | --- |
 | A13 | **Ba thẻ chính sách cuối tab Departures bị bỏ sót ở R6** — bản duyệt có `fcard ×3`, bản ship có 0. Đã vá 14/08 (`ee051c6`). **Ghi lại vì bài học còn giá trị**: bộ so nghiệm thu R9 báo "0 lệch" mà vẫn lọt, do nó chỉ đối chiếu phần tử CÓ Ở CẢ HAI bên — phần tử app thiếu hẳn thì không có gì để so nên nó im lặng. Lần nghiệm thu sau phải có **phép đếm khối theo pane**, không chỉ bảng so thuộc tính | `/tours/[slug]` | ✅ đã vá |
-| A8 | ~~**Ảnh tour vẫn rỗng**, không có lệnh nào lấp được~~ — **đường ống đã dựng xong 14/08** (nhánh `feat/media-inbox`, CHANGELOG cùng ngày): cây `media-inbox/` + 4 lệnh `media:tree`/`fetch`/`scan`/`upload`; user gửi link, máy khuân, duyệt mắt trước upload. **Nợ còn lại giờ là NỘI DUNG chứ không phải công cụ** (cập nhật cuối 17/08): 5/30 tour có cover, **9/19 địa danh có ảnh**, 5/19 địa danh có gallery, **15 khe site thì 10 đã có ảnh**, và **9/9 ảnh bìa bài viết đã đủ** (nhánh `posts/` mở 17/08). Gallery 7 thumb và nhánh HAI CỘT của `TourMediaPanel` vẫn **chưa render từ dữ liệu thật** vì chưa địa danh nào đủ ~7 ảnh | `/tours/[slug]` | 🚧 công cụ xong, còn thiếu ảnh |
+| ~~A8~~ | ~~Ảnh tour vẫn rỗng~~ — công cụ xong 14/08 (`feat/media-inbox`), nội dung phủ dần các đợt 14–19/08 | `/tours/[slug]` + toàn site | ✅ **trả — đo DB 20/08**: 29/29 tour hero+gallery (276 ảnh) · 18/18 địa danh hero (137 ảnh gallery) · 9/9 bài viết · 48/52 khe site (**4 khe trống `content-hero`/`destinations-hero`/`home-experiences`/`home-trust` là khe seed-only, CHƯA bề mặt nào đọc** — không phải lỗ hổng). Nợ mềm còn lại: gallery phân bố lệch **1–17 ảnh/nơi** — nơi mỏng thì khối gallery dày (7 thumb, hai cột) tự rơi nhánh gọn; muốn dày thêm là việc nội dung, không chặn gì |
 | ~~A9~~ | ~~Mô tả cho bốn card dữ kiện~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 4 cột `fact*Note` + 120 câu; card nay cao **199** so với 197 của bản duyệt |
 | ~~A10~~ | ~~Tiêu đề riêng cho thẻ policy~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — 90 tiêu đề, mỗi cái nén câu đầu của `body`; đúng như dự đoán KHÔNG cần cột mới |
 | ~~A11~~ | ~~`freeCancellationDays` trên `Tour`~~ | `/tours/[slug]` | ✅ **trả 14/08** (`cacb8d5`) — và đo được vì sao KHÔNG parse được từ `body`: regex bắt 12/29 câu, 15/30 tour ghi bằng GIỜ |
@@ -99,10 +99,25 @@ Gom lại đây cho đủ mặt; chi tiết ở entry CHANGELOG tương ứng.
 | E1 | `EnquiryCta` component dùng chung (cuối trang FAQ) | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | E2 | Gắn API cho `/faq` — ứng viên bảng `faqs` | [spec 25/07](../specs/2026-07-25-legal-utility-pages-design.md) |
 | E3 | 5 nợ contract cụm Tours (media tour · next-departure trên card · sort rating · filter price/duration/difficulty · suitableFor+badges) — #2–#5 cần ADR mới | [spec 27/07](../specs/2026-07-27-tours-pages-design.md) §8 |
-| E4 | Media thật thay `ImagePlaceholder` toàn site — CÓ chủ đích, chờ user | [README dòng P3b](../README.md) |
+| ~~E4~~ | ~~Media thật thay `ImagePlaceholder` toàn site~~ — ✅ trả theo A8 (đo DB 20/08, mọi bề mặt đang dùng đều có ảnh thật) | [README dòng P3b](../README.md) |
 | E5 | ~~`connected-accounts` một dòng cứng~~ (đã qua i18n) · ~~`saved-grid` 401 thiếu nhánh `sessionExpired`~~ (có, có test) · ~~terminal-note "số tiền đã hoàn" không nguồn~~ (`refundedTotal` trên contract) · ~~DENIED không hiện lý do~~ (CỐ Ý — `decisionNote` không mở ra contract khách, ghi ở `booking-vm.ts`) — rà 19/08. **Còn:** `user-menu` label literal (họ "i18n sweep", xem B1) · Load-more cap 50 không lối thoát | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
 | E6 | Two-factor PARK | [ADR-0017](../adr/0017-web-session-better-auth.md) §5b |
 | E7 | PayPal checkout UI chưa đo trong cụm (env dev thiếu webhook id) | [CHANGELOG 06/08 cụm A](../CHANGELOG.md) |
+
+---
+
+## F. Nợ sau deploy v1 + email (ghi 20/08)
+
+Chi tiết đầy đủ ở [spec deploy v1 §10](../specs/2026-08-19-deploy-v1-design.md);
+gom đầu mối ở đây cho đủ mặt.
+
+| # | Nợ | Chi tiết | Chặn? |
+| --- | --- | --- | --- |
+| F1 | Resend webhooks (`email.delivered/bounced/complained`) + cân nhắc Audience sync | outbox hiện coi `SENT` = "Resend nhận", không phải "tới inbox" | — |
+| F2 | Payload outbox chưa mang **ảnh hero tour** và **rating sao** | mail BOOKING_CONFIRMATION/REVIEW_APPROVED của hệ Barebone (ADR-0025) degrade về monogram thay vì ảnh + hàng sao như Nexora cũ; muốn có phải mở rộng producer (bookings/reviews service) | — |
+| F3 | Preview deploy Vercel không đăng nhập được (origin động ngoài `TRUSTED_ORIGINS`) | chấp nhận — preview chỉ xem UI | — |
+| F4 | Dev/prod **chung DB Supabase** — seed/reset từ máy dev đụng dữ liệu chạy thật | nếu tách: spec deploy §2 có sẵn đường | ⚠ rủi ro thao tác |
+| F5 | Render free ngủ 15′ → lần mở đầu chờ ~50s | nếu vướng trước bảo vệ: cron ping hoặc plan trả phí nhỏ | — |
 
 ---
 
