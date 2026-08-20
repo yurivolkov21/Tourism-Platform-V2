@@ -2,7 +2,12 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EmailType } from '../generated/prisma/enums.js';
 import { defaultHttpPost, type HttpPost } from '../lib/provider-http.js';
 import type { EmailDeliverer } from './deliverer.js';
+import { buildUnsubscribeUrl, renderEmail } from './emails/render-email.js';
 import { resolveRecipient } from './recipient.js';
+
+// Re-export cho spec + mọi consumer cũ: render giờ sống ở emails/ (ADR-0025)
+// nhưng "renderEmail của deliverer" vẫn là cùng một hàm.
+export { renderEmail } from './emails/render-email.js';
 
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails';
 
@@ -25,11 +30,11 @@ export interface ResendDelivererOptions {
  * key thì giữ ConsoleDeliverer của P1, dev boot không cần email — pattern
  * Nexora).
  *
- * Render cố ý tối giản: subject theo từng type + vài dòng HTML lấy từ các field
- * trong outbox payload (P2 chưa dùng react-email — template đẹp để P3 lo). Lỗi
- * thì THROW để OutboxService.drainOnce đếm attempt rồi retry / park FAILED theo
- * state machine của nó; HTTP đi qua seam {@link HttpPost} inject được (D2: unit
- * test chạy offline).
+ * Render đi qua react-email (ADR-0025, thay bản HTML trần của P2): layout
+ * Nexora chung + copy giữ nguyên văn, xem `emails/render-email.tsx`. Lỗi
+ * thì THROW để OutboxService.drainOnce đếm attempt rồi retry / park FAILED
+ * theo state machine của nó; HTTP đi qua seam {@link HttpPost} inject được
+ * (D2: unit test chạy offline).
  */
 @Injectable()
 export class ResendDeliverer implements EmailDeliverer {
@@ -57,7 +62,7 @@ export class ResendDeliverer implements EmailDeliverer {
       // park row FAILED kèm message này cho operator triage.
       throw new Error(`outbox payload for ${type} has no recipient email`);
     }
-    const { subject, html } = renderEmail(type, fields, this.options.frontendUrl);
+    const { subject, html, text } = await renderEmail(type, fields, this.options.frontendUrl);
 
     /**
      * List-Unsubscribe (RFC 2369) — vá review Task 6 Khoản 2. CHỈ áp cho
@@ -88,6 +93,8 @@ export class ResendDeliverer implements EmailDeliverer {
         to: [to],
         subject,
         html,
+        // Bản plain-text đi kèm (deliverability) — render từ chính HTML.
+        text,
         ...resendHeaders,
       }),
     });
@@ -100,230 +107,8 @@ export class ResendDeliverer implements EmailDeliverer {
   }
 }
 
-/**
- * Render thuần theo từng type — export cho unit test. Toàn bộ copy English-only
- * (CLAUDE.md #7); các field trong payload đều được HTML-escape (tên người liên
- * hệ do user nhập).
- */
-export function renderEmail(
-  type: EmailType,
-  payload: Record<string, unknown>,
-  /** Chỉ dùng cho NEWSLETTER_WELCOME (link huỷ đăng ký) — các type khác bỏ qua tham số này. */
-  frontendUrl?: string,
-): { subject: string; html: string } {
-  const f = (key: string): string | undefined => {
-    const value = payload[key];
-    return typeof value === 'string' && value.length > 0 ? escapeHtml(value) : undefined;
-  };
-  /**
-   * Giá trị cho SUBJECT — subject là plain text, KHÔNG phải HTML.
-   *
-   * Dùng `f()` ở subject là sai: khách tên `O'Brien` sẽ hiện thành
-   * `O&#39;Brien` trong hộp thư. Các subject cũ không lộ ra vì chúng chỉ
-   * dùng chuỗi cố định hoặc mã booking (`BK-XXXX`, escape là no-op) —
-   * ENQUIRY_ADMIN_ALERT là case đầu tiên nhét field tự do vào subject.
-   *
-   * Vẫn phải cắt CR/LF: ký tự xuống dòng trong header là đường header
-   * injection (chèn thêm Bcc/To vào email).
-   */
-  const subjectText = (key: string): string | undefined => {
-    const value = payload[key];
-    if (typeof value !== 'string' || value.length === 0) return undefined;
-    return value.replaceAll(/[\r\n]+/g, ' ').trim();
-  };
-  const code = f('code') ?? 'your booking';
-  const greeting = `<p>Hi ${f('name') ?? 'there'},</p>`;
-  const title = f('title');
-  const money = f('amount') && f('currency') ? `${f('amount')} ${f('currency')}` : undefined;
-  const footer = '<p>— The Nexora team</p>';
-  const wrap = (...lines: (string | undefined)[]) =>
-    lines.filter((line): line is string => Boolean(line)).join('\n');
-
-  switch (type) {
-    case EmailType.BOOKING_CONFIRMATION:
-      return {
-        subject: `Booking ${code} confirmed`,
-        html: wrap(
-          greeting,
-          `<p>Your booking <strong>${code}</strong>${title ? ` for <strong>${title}</strong>` : ''} is confirmed.</p>`,
-          money ? `<p>Amount paid: <strong>${money}</strong>.</p>` : undefined,
-          footer,
-        ),
-      };
-    case EmailType.BOOKING_REFUNDED:
-      return {
-        subject: `Refund issued for booking ${code}`,
-        html: wrap(
-          greeting,
-          `<p>We have issued a refund${money ? ` of <strong>${money}</strong>` : ''} on booking <strong>${code}</strong>${title ? ` (${title})` : ''}.</p>`,
-          f('reason') ? `<p>Reason: ${f('reason')}.</p>` : undefined,
-          footer,
-        ),
-      };
-    case EmailType.REVIEW_APPROVED:
-      return {
-        subject: 'Your review is now live',
-        html: wrap(
-          greeting,
-          `<p>Your review${title ? ` of <strong>${title}</strong>` : ''} has been approved and published.</p>`,
-          footer,
-        ),
-      };
-    case EmailType.ENQUIRY_RECEIVED:
-      return {
-        subject: 'We received your enquiry',
-        html: wrap(
-          greeting,
-          `<p>Thanks for reaching out${title ? ` about <strong>${title}</strong>` : ''} — we will get back to you shortly.</p>`,
-          footer,
-        ),
-      };
-    // Alert nội bộ: gửi tới hộp thư admin, KHÔNG gửi cho khách. Payload mang
-    // sẵn mọi thứ admin cần để phân loại lead mà không phải mở CRM.
-    case EmailType.ENQUIRY_ADMIN_ALERT:
-      return {
-        subject: `New enquiry from ${subjectText('name') ?? 'a visitor'}`,
-        html: `<p>New enquiry received.</p>
-<p><strong>Name:</strong> ${f('name')}<br/>
-<strong>Email:</strong> ${f('email')}<br/>
-<strong>Tour:</strong> ${f('tourTitle') ?? 'General enquiry'}</p>
-<p>${f('message')}</p>`,
-      };
-    case EmailType.CANCELLATION_REQUESTED:
-      return {
-        subject: `Cancellation request received for booking ${code}`,
-        html: wrap(
-          greeting,
-          `<p>We received your cancellation request for booking <strong>${code}</strong>${title ? ` (${title})` : ''}. Our team will review it and follow up.</p>`,
-          f('reason') ? `<p>Your reason: ${f('reason')}.</p>` : undefined,
-          footer,
-        ),
-      };
-    case EmailType.CANCELLATION_APPROVED:
-      return {
-        subject: `Cancellation approved for booking ${code}`,
-        html: wrap(
-          greeting,
-          `<p>Your cancellation of booking <strong>${code}</strong>${title ? ` (${title})` : ''} has been approved${money ? ` and <strong>${money}</strong> has been refunded` : ''}.</p>`,
-          f('note') ? `<p>Note from our team: ${f('note')}.</p>` : undefined,
-          footer,
-        ),
-      };
-    case EmailType.CANCELLATION_DENIED:
-      return {
-        subject: `Cancellation request denied for booking ${code}`,
-        html: wrap(
-          greeting,
-          `<p>Unfortunately we could not approve your cancellation request for booking <strong>${code}</strong>${title ? ` (${title})` : ''}.</p>`,
-          f('note') ? `<p>Note from our team: ${f('note')}.</p>` : undefined,
-          footer,
-        ),
-      };
-    case EmailType.NEWSLETTER_WELCOME: {
-      // Link huỷ đăng ký — vá review Task 6 Khoản 2 (GDPR/CAN-SPAM đòi hỏi
-      // mọi email bản tin phải có đường huỷ tới được từ hộp thư thật).
-      // `subscriberId`/`unsubscribeToken` do NewsletterService.subscribe()
-      // sinh sẵn lúc enqueue; ở đây chỉ ghép URL, không tự tính lại token.
-      const unsubscribeUrl = buildUnsubscribeUrl(frontendUrl, payload);
-      return {
-        subject: 'Welcome to the Nexora newsletter',
-        html: wrap(
-          greeting,
-          '<p>Thanks for subscribing — expect fresh tours and travel ideas in your inbox.</p>',
-          unsubscribeUrl
-            ? `<p><a href="${escapeHtml(unsubscribeUrl)}">Unsubscribe</a></p>`
-            : undefined,
-          footer,
-        ),
-      };
-    }
-    case EmailType.EMAIL_CHANGED:
-      return {
-        subject: 'Your email address was changed',
-        html: wrap(
-          greeting,
-          '<p>The email address on your account was just changed. If this was not you, please contact support immediately.</p>',
-          footer,
-        ),
-      };
-    // AUTH-2 (ADR-0008) — link do Better Auth sinh, truyền qua payload.url; `f()`
-    // escape (an toàn HTML, `&amp;` trong href là chuẩn, client decode lại).
-    case EmailType.PASSWORD_RESET:
-      return {
-        subject: 'Reset your password',
-        html: wrap(
-          greeting,
-          f('url')
-            ? `<p>We received a request to reset your password: <a href="${f('url')}">reset your password</a>.</p>`
-            : '<p>We received a request to reset your password.</p>',
-          '<p>If you did not request this, you can safely ignore this email.</p>',
-          footer,
-        ),
-      };
-    case EmailType.EMAIL_VERIFICATION:
-      return {
-        subject: 'Verify your email',
-        html: wrap(
-          greeting,
-          f('url')
-            ? `<p>Please confirm your email address: <a href="${f('url')}">verify your email</a>.</p>`
-            : '<p>Please confirm your email address.</p>',
-          footer,
-        ),
-      };
-    // ADR-0017 §5a — plugin emailOTP đè flow link mặc định: verify email giờ
-    // gửi mã 6 số thay vì URL. Mã hiện to-rõ (không phải link) để khách gõ lại
-    // vào form OTP trên web.
-    case EmailType.EMAIL_OTP:
-      return {
-        subject: 'Your verification code',
-        html: wrap(
-          greeting,
-          f('otp')
-            ? `<p>Your verification code is: <strong style="font-size: 24px; letter-spacing: 4px;">${f('otp')}</strong></p>`
-            : '<p>Your verification code is ready.</p>',
-          '<p>This code expires in 10 minutes.</p>',
-          footer,
-        ),
-      };
-    default: {
-      // Chốt exhaustiveness — EmailType mới sẽ fail ầm ĩ ở đây (và test
-      // enum-coverage của spec fail trước).
-      const exhaustive: never = type;
-      throw new Error(`No email template for type ${String(exhaustive)}`);
-    }
-  }
-}
-
-/**
- * Ghép URL trang xác nhận huỷ đăng ký (vá review Task 6 Khoản 2). CHỈ ghép
- * khi có ĐỦ `frontendUrl` lẫn cặp `subscriberId`/`unsubscribeToken` trong
- * payload — thiếu một trong ba (email cũ trước bản vá này, hoặc payload test
- * tối giản không mang hai field mới) thì bỏ qua, KHÔNG throw: đây là một
- * nhánh degrade êm, không phải lỗi chặn gửi email.
- */
-function buildUnsubscribeUrl(
-  frontendUrl: string | undefined,
-  payload: Record<string, unknown>,
-): string | undefined {
-  const id = payload.subscriberId;
-  const token = payload.unsubscribeToken;
-  if (!frontendUrl || typeof id !== 'string' || typeof token !== 'string') return undefined;
-  if (id.length === 0 || token.length === 0) return undefined;
-  return `${frontendUrl}/newsletter/unsubscribe?id=${id}&token=${token}`;
-}
-
 function asRecord(payload: unknown): Record<string, unknown> {
   return typeof payload === 'object' && payload !== null
     ? (payload as Record<string, unknown>)
     : {};
-}
-
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;');
 }

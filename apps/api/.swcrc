@@ -1,19 +1,40 @@
-{
-  "$schema": "https://swc.rs/schema.json",
-  "jsc": {
-    "parser": {
-      "syntax": "typescript",
-      "decorators": true
+[
+  {
+    "test": "\\.tsx$",
+    "jsc": {
+      "parser": {
+        "syntax": "typescript",
+        "tsx": true
+      },
+      "transform": {
+        "react": {
+          "runtime": "automatic"
+        }
+      },
+      "target": "es2023"
     },
-    "transform": {
-      "legacyDecorator": true,
-      "decoratorMetadata": true
+    "module": {
+      "type": "es6"
     },
-    "target": "es2023",
-    "keepClassNames": true
+    "sourceMaps": true
   },
-  "module": {
-    "type": "es6"
-  },
-  "sourceMaps": true
-}
+  {
+    "test": "\\.ts$",
+    "jsc": {
+      "parser": {
+        "syntax": "typescript",
+        "decorators": true
+      },
+      "transform": {
+        "legacyDecorator": true,
+        "decoratorMetadata": true
+      },
+      "target": "es2023",
+      "keepClassNames": true
+    },
+    "module": {
+      "type": "es6"
+    },
+    "sourceMaps": true
+  }
+]

@@ -33,14 +33,14 @@ function stub(response: HttpPostResponse = { status: 200, body: '{"id":"email-1"
 
 describe('renderEmail type → subject mapping', () => {
   const cases: Array<[EmailType, RegExp]> = [
-    [EmailType.BOOKING_CONFIRMATION, /Booking BK-1 confirmed/],
-    [EmailType.BOOKING_REFUNDED, /Refund issued for booking BK-1/],
+    [EmailType.BOOKING_CONFIRMATION, /Booking confirmed — BK-1 · Ha Long Bay Cruise/],
+    [EmailType.BOOKING_REFUNDED, /Refund on its way — BK-1/],
     [EmailType.REVIEW_APPROVED, /review/i],
     [EmailType.ENQUIRY_RECEIVED, /enquiry/i],
     [EmailType.ENQUIRY_ADMIN_ALERT, /New enquiry from/],
-    [EmailType.CANCELLATION_REQUESTED, /Cancellation request received for booking BK-1/],
-    [EmailType.CANCELLATION_APPROVED, /Cancellation approved for booking BK-1/],
-    [EmailType.CANCELLATION_DENIED, /Cancellation request denied for booking BK-1/],
+    [EmailType.CANCELLATION_REQUESTED, /reviewing your cancellation request — BK-1/],
+    [EmailType.CANCELLATION_APPROVED, /Cancellation approved — BK-1/],
+    [EmailType.CANCELLATION_DENIED, /About your cancellation request — BK-1/],
     [EmailType.NEWSLETTER_WELCOME, /newsletter/i],
     [EmailType.EMAIL_CHANGED, /email address/i],
     [EmailType.PASSWORD_RESET, /reset your password/i],
@@ -48,19 +48,51 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.EMAIL_OTP, /verification code/i],
   ];
 
-  it.each(cases)('%s has a dedicated subject', (type, expected) => {
-    const { subject } = renderEmail(type, BOOKING_PAYLOAD);
+  it.each(cases)('%s has a dedicated subject', async (type, expected) => {
+    const { subject } = await renderEmail(type, BOOKING_PAYLOAD);
     expect(subject).toMatch(expected);
   });
 
   it('covers every EmailType enum value', () => {
     expect(new Set(cases.map(([type]) => type)).size).toBe(Object.values(EmailType).length);
   });
+
+  // ADR-0025: mọi loại mail đều đi qua EmailLayout — wordmark "nexora" phải
+  // có mặt trong HTML của CẢ 13 type (đổi layout mà rơi mất một type sẽ đỏ).
+  it.each(cases)('%s render trong layout Nexora chung', async (type) => {
+    const { html } = await renderEmail(type, BOOKING_PAYLOAD);
+    expect(html).toContain('nex');
+    expect(html).toContain('ora');
+    expect(html).toMatch(/<!DOCTYPE html/i);
+  });
+
+  it('alert nội bộ ENQUIRY_ADMIN_ALERT mang footer nội bộ, không phải câu cho khách', async () => {
+    // Mail gửi ADMIN — dòng "why you got this" phải là bản nội bộ.
+    const { html } = await renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: 'hi',
+      tourTitle: null,
+    });
+    expect(html).toContain('Internal alert for the Nexora team');
+    expect(html).not.toContain('receiving this because');
+  });
+
+  it('mail gửi khách có dòng "why you got this" ở footer (chuẩn hệ Barebone)', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    expect(html).toContain('receiving this because of a booking');
+  });
+
+  it('renderEmail trả kèm bản text thuần (deliverability, 2 part như Nexora cũ)', async () => {
+    const { text } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    expect(text).toContain('BK-1');
+    expect(text).not.toContain('<');
+  });
 });
 
 describe('renderEmail payload rendering', () => {
-  it('renders name, tour title and money fields into the confirmation html', () => {
-    const { html } = renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+  it('renders name, tour title and money fields into the confirmation html', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     expect(html).toContain('Alice');
     expect(html).toContain('Ha Long Bay Cruise');
     expect(html).toContain('117.00');
@@ -68,30 +100,33 @@ describe('renderEmail payload rendering', () => {
     expect(html).toContain('BK-1');
   });
 
-  it('renders the refund reason when present', () => {
-    const { html } = renderEmail(EmailType.BOOKING_REFUNDED, {
+  it('renders the refund reason when present', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_REFUNDED, {
       ...BOOKING_PAYLOAD,
       reason: 'overbooked',
     });
     expect(html).toContain('overbooked');
   });
 
-  it('renders the denial note when present', () => {
-    const { html } = renderEmail(EmailType.CANCELLATION_DENIED, {
+  it('renders the denial note when present', async () => {
+    const { html } = await renderEmail(EmailType.CANCELLATION_DENIED, {
       ...BOOKING_PAYLOAD,
       note: 'Departure is within 24h',
     });
     expect(html).toContain('Departure is within 24h');
   });
 
-  it('renders the OTP code to-rõ trong body EMAIL_OTP', () => {
-    const { html } = renderEmail(EmailType.EMAIL_OTP, { email: 'otp@example.com', otp: '123456' });
+  it('renders the OTP code to-rõ trong body EMAIL_OTP', async () => {
+    const { html } = await renderEmail(EmailType.EMAIL_OTP, {
+      email: 'otp@example.com',
+      otp: '123456',
+    });
     expect(html).toContain('123456');
     expect(html).toMatch(/expires in 10 minutes/i);
   });
 
-  it('escapes HTML in user-supplied fields', () => {
-    const { html } = renderEmail(EmailType.BOOKING_CONFIRMATION, {
+  it('escapes HTML in user-supplied fields', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, {
       ...BOOKING_PAYLOAD,
       name: '<script>alert(1)</script>',
     });
@@ -99,24 +134,24 @@ describe('renderEmail payload rendering', () => {
     expect(html).toContain('&lt;script&gt;');
   });
 
-  it('degrades gracefully on missing optional fields', () => {
-    const { subject, html } = renderEmail(EmailType.NEWSLETTER_WELCOME, {
+  it('degrades gracefully on missing optional fields', async () => {
+    const { subject, html } = await renderEmail(EmailType.NEWSLETTER_WELCOME, {
       email: 'x@example.com',
     });
     expect(subject.length).toBeGreaterThan(0);
     expect(html.length).toBeGreaterThan(0);
   });
 
-  it('renders the reset link in the PASSWORD_RESET html (AUTH-2)', () => {
-    const { html } = renderEmail(EmailType.PASSWORD_RESET, {
+  it('renders the reset link in the PASSWORD_RESET html (AUTH-2)', async () => {
+    const { html } = await renderEmail(EmailType.PASSWORD_RESET, {
       email: 'x@example.com',
       url: 'https://tourism.test/reset?t=abc',
     });
     expect(html).toContain('https://tourism.test/reset?t=abc');
   });
 
-  it('renders the verify link in the EMAIL_VERIFICATION html (AUTH-2)', () => {
-    const { html } = renderEmail(EmailType.EMAIL_VERIFICATION, {
+  it('renders the verify link in the EMAIL_VERIFICATION html (AUTH-2)', async () => {
+    const { html } = await renderEmail(EmailType.EMAIL_VERIFICATION, {
       email: 'x@example.com',
       url: 'https://tourism.test/verify?t=abc',
     });
@@ -138,7 +173,7 @@ describe('ResendDeliverer.deliver', () => {
     const body = JSON.parse(call?.body ?? '{}');
     expect(body.from).toBe(OPTS.from);
     expect(body.to).toEqual(['buyer@example.com']);
-    expect(body.subject).toBe('Booking BK-1 confirmed');
+    expect(body.subject).toBe('Booking confirmed — BK-1 · Ha Long Bay Cruise');
     expect(body.html).toContain('Alice');
   });
 
@@ -187,10 +222,10 @@ describe('ResendDeliverer.deliver', () => {
     expect(body.to).toEqual([BOOKING_PAYLOAD.email]);
   });
 
-  it('subject KHÔNG escape HTML nhưng body thì CÓ', () => {
+  it('subject KHÔNG escape HTML nhưng body thì CÓ', async () => {
     // Subject là plain text: escape ở đó khiến khách tên O'Brien hiện thành
     // `O&#39;Brien` trong hộp thư admin. Body là HTML nên bắt buộc escape.
-    const { subject, html } = renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+    const { subject, html } = await renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
       name: "O'Brien & <Sons>",
       email: 'obrien@example.com',
       message: '<script>alert(1)</script>',
@@ -198,17 +233,17 @@ describe('ResendDeliverer.deliver', () => {
     });
 
     expect(subject).toBe("New enquiry from O'Brien & <Sons>");
-    expect(subject).not.toContain('&#39;');
+    expect(subject).not.toMatch(/&#x?27;|&#39;/);
 
     // Body: thẻ script phải bị vô hiệu hoá, không lọt nguyên văn.
     expect(html).not.toContain('<script>');
     expect(html).toContain('&lt;script&gt;');
-    expect(html).toContain('&#39;');
+    expect(html).toMatch(/&#x?27;|&#39;/);
   });
 
-  it('cắt CR/LF khỏi subject — chặn header injection', () => {
+  it('cắt CR/LF khỏi subject — chặn header injection', async () => {
     // Xuống dòng trong header là đường chèn thêm Bcc/To vào email.
-    const { subject } = renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+    const { subject } = await renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
       name: 'Jane\r\nBcc: attacker@evil.com',
       email: 'jane@example.com',
       message: 'hi',

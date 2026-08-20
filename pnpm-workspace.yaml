@@ -6,6 +6,9 @@ packages:
 allowBuilds:
   '@prisma/engines': true
   '@swc/core': true
+  # esbuild: dep bắc cầu của react-email (CLI — không dùng); binary đến từ
+  # optional dep @esbuild/linux-x64 nên install script không cần chạy.
+  esbuild: false
   prisma: true
   # sharp: Next.js image optimization (next/image) — cần build native binary.
   sharp: true
