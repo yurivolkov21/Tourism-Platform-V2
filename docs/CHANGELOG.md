@@ -8,6 +8,33 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Siết verify email: bỏ qua OTP là chưa có tài khoản để dùng (nhánh `feat/require-email-verification`, 1 commit `3bab8e2`, 18 file)
+
+Tester trong nhóm user lách được bước OTP (đăng ký xong chuyển route thẳng
+vẫn có session) → user quyết siết theo phương án "bỏ qua verify = khách vãng
+lai", KHÔNG chặn trang public (chặn theo emailVerified toàn site phá SSG
+ADR-0016 và tạo nghịch lý khách-ẩn-danh-xem-được). Chi tiết ở
+[ADR-0017 §6 AMEND](adr/0017-web-session-better-auth.md) — đảo quyết định
+"GIỮ false" của 03/08.
+
+TDD đúng nghĩa: `require-verification.int.spec.ts` viết TRƯỚC (đỏ 2/4 với cờ
+cũ), đo được cả chốt UX **verify-email KHÔNG tự đăng nhập** → web đưa về
+/login sau verify. API: `requireEmailVerification: true` + `autoSignIn:
+false`; login chưa verify → 403 `EMAIL_NOT_VERIFIED`. Web: form login bắt
+code này → gửi OTP MỚI (mã signup có thể quá hạn 10') + sang `/verify-email`
+giữ redirect; OtpForm xong → `/login?redirect=…`; dải warning
+`VerifyEmailBanner` cho session TÀN DƯ chưa verify (loài tự tuyệt chủng —
+session hết hạn 7 ngày và không sinh mới được). Admin: form login chỉ dẫn
+verify bên www. SEC-1 giữ nguyên, nay cộng hưởng (chưa verify còn không đăng
+nhập nổi). Vá 9 file int spec cũ (92 test signup-rồi-dùng-cookie-ngay) —
+verify qua DB trong helper vì các test đó không nhắm flow OTP. Một bẫy test
+đáng ghi: `vi.clearAllMocks` KHÔNG xả hàng đợi `mockResolvedValueOnce` —
+test mới fail giữa chừng làm mock Once rò sang test sau, 2 test cũ đỏ oan.
+User test tay 2 luồng chính trên dev: đạt.
+
+Tests after: 1416 web · 238 api · 184 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 17 admin.
+
 ## 2026-08-20 — Pháo giấy trang thanh toán thành công (nhánh `feat/checkout-confetti`, 1 commit, 6 file)
 
 User duyệt ý tưởng confetti "side cannons" của MagicUI cho `/checkout/success`
