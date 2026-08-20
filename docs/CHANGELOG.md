@@ -8,6 +8,32 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — P4a: scaffold app admin riêng + cổng đăng nhập (nhánh `feat/p4a-admin-scaffold`, 1 commit `a59381b`, 27 file)
+
+Mở P4 theo [ADR-0026](adr/0026-p4-admin-app.md) + [spec P4a](specs/2026-08-20-p4a-admin-scaffold-design.md)
+(sau [khảo sát Nexora cũ](analysis/2026-08-20-admin-parity-nexora.md): 40
+trang · 18 vùng · ~60 endpoint admin). `apps/admin` mới: Next 16.3.0 + React
+19.2.4 (đúng bản workspace ghim — KHÔNG đuổi mới nhất, luật một-React), cổng
+3002, tái dùng tokens/ui/i18n (khối copy `admin` mới trong `@tourism/i18n`).
+Cổng đăng nhập 3 nhánh đo E2E THẬT bằng browser trên dev: chưa đăng nhập →
+`/login?redirect=…` (proxy kiểm cookie 2 tên như bài học I-1 của web);
+CUSTOMER đăng nhập đúng mật khẩu → màn `/not-authorized` nói rõ (layout gác
+bằng hàm thuần `decideAdminAccess`, fail-closed role lạ/rỗng); ADMIN → shell
+sidebar 3 nhóm × 15 mục phủ 18 vùng (mục chưa mở badge "Soon" disabled, không
+link chết) + nav-user. Smoke dùng user tạo tạm mật khẩu ngẫu nhiên và XOÁ
+sạch khỏi DB sau chụp (dev/prod chung DB — không để account ADMIN trôi nổi);
+user seed `admin@tourism.test` hoá ra là tác giả posts trong seed, FK chặn
+đúng lúc — không đụng. Bẫy đo được: `@tourism/ui` nền Base UI dùng `render`
+prop, KHÔNG có `asChild` kiểu Radix; app con cần `.gitignore` riêng
+(`next-env.d.ts` do Next sinh làm Biome pre-commit đỏ); Next 16 tự sinh
+`AGENTS.md`/`CLAUDE.md` trong app — commit như web. 14 test mới (ma trận
+gate 7 + form login 5 + validate 2), gate:int 21/21 task. Còn lại của P4a:
+deploy tay (Vercel project admin + domain + `TRUSTED_ORIGINS`) — hướng dẫn
+từng bước như deploy v1, xong sẽ ghi tiếp vào entry này hoặc entry mới.
+
+Tests after: 1408 web · 238 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+· 2 i18n và 14 admin.
+
 ## 2026-08-20 — Rà tiến độ + đồng bộ docs về hiện thực (sweep docs-only)
 
 User hỏi "có bỏ lỡ gì không" → rà bằng ĐO chứ không nhớ:

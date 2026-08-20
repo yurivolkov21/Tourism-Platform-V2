@@ -1,7 +1,7 @@
 # ADR-0026 — P4 Admin: app riêng `apps/admin`, dùng chung session Better Auth qua subdomain
 
 - **Ngày:** 2026-08-20
-- **Trạng thái:** Đề xuất (chờ user duyệt cùng spec khung P4)
+- **Trạng thái:** Chấp nhận (user duyệt 20/08; P4a merge `a59381b` cùng ngày)
 - **Liên quan:** [khảo sát admin Nexora 20/08](../analysis/2026-08-20-admin-parity-nexora.md)
   (đầu vào chính), [ADR-0017 §4](0017-web-session-better-auth.md) (cookie
   cùng registrable domain), [ADR-0024](0024-deploy-targets.md) (subdomain
