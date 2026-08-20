@@ -25,14 +25,17 @@ import { FieldError, invalidProps } from './field-error';
 // `short` là nhãn NHÌN THẤY (hàng pill một dòng — vòng nén 19/08 cho card
 // /register vừa laptop 768p, thay lưới 2 cột 3 hàng 56px); `text` là câu đầy
 // đủ cho trình đọc màn hình và tooltip `title`.
+// Nhãn `short` đổi 20/08 (user xem bản live: `a–z`/`!@#` đọc như ký tự lỗi,
+// "form đăng kí phải rõ ràng") — vẫn MỘT hàng pill (điều kiện vừa laptop 768p)
+// nhưng là TỪ THẬT; câu đầy đủ vẫn ở `text` cho tooltip + trình đọc màn hình.
 const REQUIREMENTS = [
   { regex: /.{8,}/, short: '8+ chars', text: 'At least 8 characters' },
-  { regex: /[a-z]/, short: 'a–z', text: '1 lowercase letter' },
-  { regex: /[A-Z]/, short: 'A–Z', text: '1 uppercase letter' },
-  { regex: /[0-9]/, short: '0–9', text: '1 number' },
+  { regex: /[a-z]/, short: 'lowercase', text: '1 lowercase letter' },
+  { regex: /[A-Z]/, short: 'uppercase', text: '1 uppercase letter' },
+  { regex: /[0-9]/, short: 'number', text: '1 number' },
   {
     regex: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/,
-    short: '!@#',
+    short: 'symbol',
     text: '1 special character',
   },
 ] as const;
@@ -138,7 +141,9 @@ export function PasswordStrengthField({
       {/* Checklist yêu cầu — MỘT hàng pill (vòng nén 19/08; trước là lưới 2
           cột 3 hàng do user chốt 06/08, rồi 5 dòng trước đó): mỗi pill icon
           tick/x + nhãn ngắn, câu đầy đủ ở `title` + sr-only. Tick jade khi đạt. */}
-      <ul className="flex flex-wrap gap-x-3 gap-y-1">
+      {/* gap-x-2 (không phải 3): 5 nhãn từ-thật vừa MỘT dòng trong card 445px —
+          đo 20/08; gap-3 làm "symbol" rơi lẻ xuống dòng hai. */}
+      <ul className="flex flex-wrap gap-x-2 gap-y-1">
         {checks.map((check) => (
           <li key={check.text} className="flex items-center gap-1" title={check.text}>
             {check.met ? (
