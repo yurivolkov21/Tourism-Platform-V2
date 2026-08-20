@@ -8,6 +8,17 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Login admin: ghim sóng BOLD + logo topbar to (nhánh `fix/admin-login-visibility`, 1 commit, 2 file)
+
+User xem bản live chê nền "khó nhận biết" + logo nhỏ. Vòng chỉnh có một bài
+học ĐO TỪ SHADER thay vì mò màu: GradientWaves đặt `alpha = fogDepth/dist` —
+vùng xa TRONG SUỐT, lộ nền trắng của trang (demo reactbits.dev "đậm" vì nền
+họ TỐI, không phải sóng họ đậm); hai vòng đầu chỉnh brightness/màu pastel đều
+vô ích. Thuốc đúng: TĂNG `fogDepth` 15→28 (nới vùng đặc màu) + crest mang
+`secondary` thay vì trắng + thân sóng `ink`, amplitude 3.2 — user chấm mức
+BOLD trong cặp so sánh, param `?waves=` demo đã gỡ. Logo topbar bỏ override
+thu nhỏ, mark h-7. gate:int 21/21.
+
 ## 2026-08-20 — P4a khép: deploy admin sống + redesign login 2 vòng (nhánh `feat/p4-admin-login-redesign`, 1 commit `8727003`, 14 file)
 
 **Deploy P4a (tay, sau merge `a59381b`)**: Vercel project `admin` (root
