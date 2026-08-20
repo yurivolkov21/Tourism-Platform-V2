@@ -47,12 +47,18 @@ export function LoginWaves() {
     setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   }, []);
 
+  // Mức BOLD — user chấm 20/08 sau vòng so đậm/nhạt. Bài học ĐO TỪ SHADER:
+  // `alpha = fogDepth/dist` nên vùng xa TRONG SUỐT (lộ nền trắng của trang;
+  // demo gốc "đậm" vì nền TỐI) — độ rõ đến từ TĂNG fogDepth (nới vùng đặc
+  // màu) + crest mang secondary thay vì trắng, không phải từ brightness.
   return (
     <GradientWaves
-      horizonColor={c.paper}
-      waveColor={c.primary}
-      crestColor={c.card}
       {...CUSTOMIZE}
+      horizonColor={c.primary}
+      waveColor={c.ink}
+      crestColor={c.secondary}
+      fogDepth={28}
+      amplitude={3.2}
       speed={reducedMotion ? 0 : CUSTOMIZE.speed}
       mouseInteraction={!reducedMotion}
     />

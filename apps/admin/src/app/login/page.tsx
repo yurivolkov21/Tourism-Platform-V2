@@ -22,7 +22,7 @@ const SITE_URL = 'https://www.nexora-travel.agency';
 export default function LoginPage() {
   return (
     <main className="relative flex min-h-svh w-full flex-col overflow-hidden bg-background">
-      {/* Nền gradient-waves (mẫu React Bits user chọn) — canvas token-màu. */}
+      {/* Nền GradientWaves (React Bits, WebGL) — màu token, mức BOLD user chấm. */}
       <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
         <LoginWaves />
       </div>
@@ -30,7 +30,8 @@ export default function LoginPage() {
       {/* Topbar theo mẫu: mark + wordmark trái · pill hành động phải. */}
       <header className="relative z-20 flex w-full items-center justify-between px-6 py-5">
         {/* Mark "Slidex" + wordmark — cùng Logo với web (user nhắc 20/08). */}
-        <Logo className="[&>span]:text-[0.9375rem]" />
+        {/* Cỡ mặc định + mark nới h-7 — user góp ý 20/08: logo topbar quá nhỏ. */}
+        <Logo className="[&>svg]:h-7" />
         <div className="flex items-center gap-2 rounded-full bg-muted/60 py-1.5 pr-1.5 pl-4 text-sm text-muted-foreground ring-1 ring-border/40">
           <span className="hidden sm:inline">{t.lookingForSite}</span>
           {/* ButtonLink chứ không phải Button render=<a>: giữ role link thật
