@@ -8,6 +8,44 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — P4a khép: deploy admin sống + redesign login 2 vòng (nhánh `feat/p4-admin-login-redesign`, 1 commit `8727003`, 14 file)
+
+**Deploy P4a (tay, sau merge `a59381b`)**: Vercel project `admin` (root
+`apps/admin`, env import) + domain `admin.nexora-travel.agency` (Vercel DNS,
+TLS tự cấp) + `TRUSTED_ORIGINS` thêm origin admin trên Render — smoke từ
+ngoài: `/` 307 về `/login` đúng redirect param, CORS preflight 204 với
+origin admin, cookie chung nghiệm thu tay (đăng nhập admin ↔ www thấy nhau).
+URL `*.vercel.app` bị Vercel Authentication chế độ `all_except_custom_domains`
+— GIỮ: thêm một lớp cho back-office, domain thật vẫn do cổng login mình gác.
+
+**Redesign login theo nếp copy-link-scan-wireframe**: vòng 1 bám ReUI
+`auth-1` (2 cột, card ảnh Ninh Bình) → user chê input xuyên thấu nền; vòng 2
+đổi mẫu `auth-8` (mockup lưu `docs/design/mockups/admin-login/`): card ĐẶC
+giữa màn (khung muted bọc card trắng, input `bg-card`), topbar pill "Looking
+for the main site?", caption tagline. Nền: user chọn **GradientWaves của
+React Bits** — cài component GỐC qua registry shadcn
+(`@react-bits/GradientWaves-TS-TW` → `@tourism/ui`, WebGL/ogl, dep mới
+`ogl`); wrapper `login-waves.tsx` nhuộm màu token (hex từ
+`@tourism/tokens/theme`) + `prefers-reduced-motion` (speed 0), thông số giữ
+đúng mặc định panel Customize (khối hằng khớp 1-1 nhãn panel). **Logo Slidex
+đồng bộ**: port `logo.tsx` sang admin (login + shell hết ô "N" tự chế); mail
+cũng thay — mark xuất PNG 4.7KB lên CDN (`tourism/brand/nexora-mark`) vì
+Gmail lột inline SVG, thay cả mini-header lẫn monogram; sửa phụ tagline
+footer mail bị `toLowerCase` nuốt chữ hoa "Vietnam".
+
+Bẫy đo được: (1) registry component dính 3 lỗi `noUncheckedIndexedAccess`
+(đúng gotcha CLAUDE.md) — vá guard + hàm `uni()`, `any`→`unknown`;
+(2) `Button render={<a>}` của Base UI cảnh báo nativeButton → dùng
+`ButtonLink` (JSDoc của nó giải thích vụ role link); (3) Next 16 dev CHẶN
+cross-origin: chụp headless qua `127.0.0.1` làm chunk 403 → trang không
+hydrate — phải dùng `localhost`; (4) Google OAuth `redirect_uri_mismatch`
+trên prod: client ID tái dùng từ Nexora cũ chỉ cho redirect về hệ cũ —
+hướng dẫn user thêm origin + redirect URI mới trên Google Console (kết quả
+ghi khi user xác nhận).
+
+Tests after: 1408 web · 238 api · 180 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n và 16 admin (gate:int 21/21).
+
 ## 2026-08-20 — P4a: scaffold app admin riêng + cổng đăng nhập (nhánh `feat/p4a-admin-scaffold`, 1 commit `a59381b`, 27 file)
 
 Mở P4 theo [ADR-0026](adr/0026-p4-admin-app.md) + [spec P4a](specs/2026-08-20-p4a-admin-scaffold-design.md)
