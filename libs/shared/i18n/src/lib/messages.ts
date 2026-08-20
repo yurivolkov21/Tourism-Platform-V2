@@ -2457,6 +2457,63 @@ export const messages = {
     sessionExpired: 'Your session has expired.',
     loginLink: 'Log in again',
   },
+  // ── P4 Admin (apps/admin — ADR-0026) ──────────────────────────────────
+  // Copy back-office cũng English-only (luật #7); consumer là app admin.
+  admin: {
+    login: {
+      title: 'Nexora back office',
+      subtitle: 'Sign in with your team account to continue.',
+      email: 'Email',
+      password: 'Password',
+      submit: 'Sign in',
+      submitting: 'Signing in…',
+      errors: {
+        emailRequired: 'Enter your email address.',
+        emailInvalid: 'Enter a valid email address, e.g. you@example.com.',
+        passwordRequired: 'Enter your password.',
+        invalidCredentials: 'Incorrect email or password.',
+        generic: 'Something went wrong. Please try again.',
+      },
+      backToSite: 'Back to nexora-travel.agency',
+    },
+    notAuthorized: {
+      title: 'Not authorized',
+      body: 'This area is for the Nexora team. Your account doesn’t have admin access.',
+      signOut: 'Sign out',
+      backToSite: 'Go to the main site',
+    },
+    shell: {
+      // Nhãn sidebar — 18 vùng theo khảo sát 20/08, nhóm 3 cụm.
+      groups: {
+        operations: 'Operations',
+        content: 'Content',
+        system: 'System',
+      },
+      soon: 'Soon',
+      dashboard: 'Dashboard',
+      bookings: 'Bookings',
+      cancellations: 'Cancellations',
+      reviews: 'Reviews',
+      enquiries: 'Enquiries',
+      subscribers: 'Subscribers',
+      tours: 'Tours',
+      departures: 'Departures',
+      categories: 'Categories',
+      destinations: 'Destinations',
+      posts: 'Posts',
+      media: 'Media library',
+      appearance: 'Appearance',
+      outbox: 'Outbox',
+      paymentEvents: 'Payment events',
+      users: 'Users',
+      signOut: 'Sign out',
+      viewSite: 'View site',
+    },
+    dashboardPlaceholder: {
+      title: 'Welcome to the back office',
+      body: 'Metrics land here in a later phase. The first live areas are on their way.',
+    },
+  },
 } as const;
 
 export type Messages = typeof messages;

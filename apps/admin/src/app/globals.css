@@ -1,0 +1,7 @@
+/* ADR-0026 §3: admin dùng CHUNG theme shadcn + tokens qua @tourism/ui —
+ * không mở hệ thẩm mỹ mới. */
+@import "@tourism/ui/globals.css";
+
+/* Tailwind v4: quét class bên trong gói UI dùng chung (workspace symlink
+ * không tự nằm trong content-detection mặc định) — cùng nếp apps/web. */
+@source "../../../../libs/shared/ui/src";
