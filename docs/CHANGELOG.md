@@ -8,6 +8,34 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Email giao dịch render react-email, hệ Barebone port từ Nexora cũ (nhánh `feat/email-react-templates`, 1 commit `6a3725b`, 10 file)
+
+User xem mail thật sau deploy và chê "trắng, chán" → [ADR-0025](adr/0025-transactional-email-react-email.md):
+chọn react-email v6 in-code, LOẠI Resend Templates dashboard sau khi đối chiếu
+docs chính thức (chỉ thay biến `{{{VAR}}}` không if/else — 13 loại mail đầy
+khối tuỳ chọn sẽ bùng nổ template con; thiếu biến không fallback = mail không
+gửi, outbox FAILED âm thầm; template sống ngoài repo — không test, không CI).
+Vòng 1 tự dựng layout tối giản → user loại; vòng 2 khảo mẫu đúng nếp
+design-research (gallery react.email + kho Nexora cũ) và phát hiện
+`email.templates.ts` của repo cũ chính là port "Barebone" (MIT, react.email)
+user đã duyệt 13/07 → port nguyên hệ: khung trắng 640 (N-square + wordmark) ·
+card xám căn giữa heading serif · data card nhãn/giá-trị hairline (booking
+hiện cả ngày khởi hành — payload có sẵn) · quote card · pill trạng thái · nút
+CTA route thật derive từ `FRONTEND_URL` · footer "why you got this" +
+unsubscribe; copy bản cũ giữ lại ("You're going, Alice!"); field v2 thiếu
+(hero tour, rating sao) degrade monogram, không bịa. Kèm bản plain-text mỗi
+mail (2 part). Kỹ thuật: `renderEmail` async (render() streaming React);
+`.swcrc` tách config theo đuôi file (`.tsx` parser tsx + react automatic,
+`.ts` giữ decorator); bỏ `escapeHtml` tự chế (React escape, subject vẫn cắt
+CR/LF); khối `brand` của `@tourism/i18n` có consumer đầu tiên (tagline
+footer); `pnpm-workspace.yaml` chốt `esbuild: false` (dep bắc cầu react-email,
+binary từ optional dep). Hai vòng duyệt visual qua artifact preview 13 mail.
+Bẫy đo được: nhiều text node JSX liền nhau bị React chèn `<!-- -->` — chuỗi
+hiển thị phải gộp MỘT template literal.
+
+Tests after: 1408 web · 238 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-20 — Deploy v1 bước 4–7: lên sóng thật + smoke 5/5 (làm tay trên dashboard, sweep docs-only)
 
 Khép [spec deploy v1](specs/2026-08-19-deploy-v1-design.md) (ADR-0024 →
