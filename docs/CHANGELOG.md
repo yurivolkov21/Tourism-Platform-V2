@@ -8,6 +8,32 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Deploy v1 bước 3: code chuẩn bị prod (nhánh `feat/deploy-v1-prep`, 1 commit, 9 file)
+
+Theo [spec deploy v1](specs/2026-08-19-deploy-v1-design.md) §3 (ADR-0024).
+`COOKIE_DOMAIN` (env optional) bật `advanced.crossSubDomainCookies` — đường
+CHUẨN ADR-0017 §4, dev không set nên hành vi giữ nguyên từng byte.
+`WORKER_INLINE='true'` (giá trị lạ ném lúc boot): ruột vòng worker tách ra
+`worker/start-worker.ts` dùng chung hai entrypoint — `dist/worker.js` (process
+riêng, kiến trúc gốc) và INLINE trong tiến trình API (Render free không có
+Background Worker — user chốt 20/08). Hai bẫy ĐO ĐƯỢC khi làm: bắt SIGTERM tay
+cho worker inline thì đua với shutdown hook của Nest và thua (process thoát
+trước khi pg-boss stop graceful xong) → dừng phải đi qua hook `onClose` của
+Fastify để được await trong `app.close()`; và `addHook` sau `listen` ném
+`FST_ERR_INSTANCE_ALREADY_LISTENING` → hook đăng ký TRƯỚC listen với ref
+`stopWorker` gán SAU listen (worker khởi động sau listen cho health check thấy
+cổng ngay). Smoke trên DB docker: health 200 · loops started · SIGTERM →
+stopped → thoát sạch. Kèm: `render.yaml` một service Docker (env `sync:false`),
+mẫu `.env.production` hai app (gitignored — user điền rồi import "Add from
+.env"/"Import .env" thay vì điền tay từng ô; rà đủ 26/26 biến schema, sanity
+check 15 PASS không in giá trị), `.env.example` +2 key, 3 test env mới.
+Bước 1–2 (user làm tay): domain gỡ khỏi 2 project Nexora cũ — DNS ở VERCEL
+nameservers (mua qua Vercel, hạn 07/2027); DB prod dùng chung Supabase v2
+(kiểm: 29 tour · 52 khe · 12 migration; ⚠ dev/prod chung DB).
+
+Tests after: 1408 web · 222 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-19 — Khép đợt rà toàn site: 31 route rà máy + rà tay (nhánh `fix/page-sweep-round-2`, 1 commit, 1 file)
 
 Sau ba vá lẻ (Book a tour, 2 `<h1>` trang tour, ...), rà tự động phần còn lại —
