@@ -8,6 +8,21 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Checklist mật khẩu: từ thật thay viết tắt (nhánh `fix/password-checklist-labels`, 1 commit, 1 file)
+
+User xem bản live sau deploy và bắt lại một quyết định của vòng nén 768p
+(19/08): nhãn pill `a–z · A–Z · 0–9 · !@#` đọc như KÝ TỰ LỖI với người dùng
+thường — "mình test thì biết nghĩa, nhưng phán đoán của mình không đại diện
+cho người dùng". Đổi sang từ thật `8+ chars · lowercase · uppercase · number ·
+symbol`, vẫn MỘT dòng (điều kiện vừa laptop 768p): "8+ characters" nguyên chữ
+làm "symbol" gãy xuống dòng hai lẻ loi nên chốt `8+ chars` + `gap-x-2`. Đo
+worst-case 1366×681 (3 lỗi + checklist): overflow 0, pill 1 dòng. Câu đầy đủ
+giữ ở tooltip + sr-only. Đây là fix đầu tiên đi theo vòng ĐỜI mới: merge →
+push → Vercel tự deploy — không còn "xong trên dev" là hết chuyện.
+
+Tests after: 1408 web · 222 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n.
+
 ## 2026-08-20 — Deploy v1 bước 3: code chuẩn bị prod (nhánh `feat/deploy-v1-prep`, 1 commit, 9 file)
 
 Theo [spec deploy v1](specs/2026-08-19-deploy-v1-design.md) §3 (ADR-0024).
