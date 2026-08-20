@@ -90,7 +90,21 @@ New project từ repo, **Root Directory `apps/web`**, framework Next, install
 (cùng giá trị API). Deploy → gắn domain `www` + apex → kiểm 200 và ảnh.
 Lưu ý `guard-build.mjs` chỉ chặn khi có server cục bộ — không ảnh hưởng Vercel.
 
-## 7. Email + webhook + smoke (🖱 tay) — BƯỚC 7
+## 7. Email + webhook + smoke (🖱 tay) — BƯỚC 7 ✅ (smoke §0 đạt 5/5, 20/08)
+
+> **Kết quả 20/08:** bước 4–6 xong trong ngày 19–20/08 (API
+> `api.nexora-travel.agency` health 200; web `www.nexora-travel.agency` gắn
+> domain, Vercel tự deploy theo push main). Bẫy ĐO ĐƯỢC ở bước 7: API key
+> Resend tạo TRƯỚC khi verify domain bị Resend từ chối
+> `HTTP 400 "The associated domain with your API key is not verified"` — mọi
+> mail (OTP, welcome) kẹt PENDING→FAILED trong outbox dù worker inline drain
+> đúng nhịp; fix = tạo key MỚI sau khi domain verified, thay trên Render.
+> Hàng FAILED (hết 5 attempts) không tự sống lại — OTP thì bấm resend, welcome
+> thì subscribe lại. Smoke chốt bằng dữ liệu prod: `EMAIL_OTP SENT` · user
+> `email_verified:true` + promote `ADMIN` (SEC-1 chạy) · booking `PAID` +
+> `payment_events` ghi `payment.completed` (webhook Stripe sống) ·
+> `BOOKING_CONFIRMATION`/`ENQUIRY_RECEIVED`/`ENQUIRY_ADMIN_ALERT`/`NEWSLETTER_WELCOME`
+> đều `SENT`.
 
 Resend: Add domain `nexora-travel.agency` → thêm record SPF/DKIM/DMARC → verified →
 `EMAIL_FROM` trên Render. Stripe dashboard (test mode): webhook endpoint
@@ -115,3 +129,19 @@ tự (`PAYPAL_WEBHOOK_ID`). Chạy smoke §0, ghi kết quả vào CHANGELOG.
 
 Admin (P4), mobile, AI, monitoring trả phí, CDN riêng. Preview deploy có session
 (cần origin động) — ghi sổ nợ.
+
+## 10. Sổ nợ sau deploy (ghi 20/08, làm khi tới lượt)
+
+- **Resend webhooks**: endpoint nhận `email.delivered/bounced/complained` để
+  outbox biết số phận mail sau khi `SENT` (giờ SENT = "Resend nhận", không phải
+  "tới inbox"). Kèm cân nhắc **Audience sync** (subscribers → Resend Audience).
+- **Template email in-code**: đang gửi HTML tự dựng trong `email/`; cân nhắc
+  react-email (Resend khuyến nghị) — quyết bằng ADR nếu làm.
+- **Preview deploy Vercel không đăng nhập được** (origin động ngoài
+  `TRUSTED_ORIGINS`) — chấp nhận, preview chỉ xem UI.
+- **Dev/prod chung DB Supabase**: seed/reset từ máy dev đụng dữ liệu chạy thật;
+  nếu tách sau này thì theo §2 (project riêng + migrate deploy + seed + media
+  upsert).
+- **Render free ngủ 15′**: lần đầu mở site sau khoảng lặng, trang SSR/ISR gọi
+  API có thể chờ ~50s; nếu thành vấn đề trước bảo vệ → cron ping hoặc plan trả
+  phí nhỏ.

@@ -8,6 +8,31 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Deploy v1 bước 4–7: lên sóng thật + smoke 5/5 (làm tay trên dashboard, sweep docs-only)
+
+Khép [spec deploy v1](specs/2026-08-19-deploy-v1-design.md) (ADR-0024 →
+"Đã triển khai"). Bước 4–6: API Docker lên Render free (`nexora-api`,
+Singapore, worker inline, health 200), DNS `api` CNAME trong Vercel DNS
+(domain mua qua Vercel), web lên Vercel (root `apps/web`) gắn
+`www.nexora-travel.agency` + apex; Vercel tự deploy theo push main — đã
+kiểm bằng vòng nhãn checklist mật khẩu. Bước 7: Resend verify domain,
+Stripe Workbench tạo event destination trỏ `api…/api/payments/stripe/webhook`.
+Bẫy đo được: (1) API key Resend tạo TRƯỚC khi domain verified → mọi mail 400
+`"The associated domain with your API key is not verified"`, outbox kẹt
+PENDING→FAILED dù worker drain đúng nhịp; fix = key MỚI sau verify. (2) Hàng
+outbox FAILED (hết 5 attempts) không tự sống lại — OTP bấm resend, welcome
+subscribe lại. (3) PayPal secret copy khi chưa bấm reveal → giá trị cụt;
+sanity check PASS/FAIL (không in secret) bắt được. Smoke chốt bằng dữ liệu
+prod: `EMAIL_OTP SENT` · user verified + promote ADMIN (SEC-1) · booking
+PAID với `payment_events.payment.completed` (webhook Stripe sống) ·
+BOOKING_CONFIRMATION/ENQUIRY_RECEIVED/ENQUIRY_ADMIN_ALERT/NEWSLETTER_WELCOME
+đều SENT; user xác nhận nhận đủ mail ở inbox thật. Sổ nợ sau deploy ghi ở
+spec §10 (Resend webhooks + Audience, react-email, preview origin, dev/prod
+chung DB, Render ngủ 15′).
+
+Tests after: 1408 web · 222 api · 180 api-int · 87 contract · 22 ui · 10 tokens
+và 2 i18n (không đổi — sweep docs-only).
+
 ## 2026-08-20 — Checklist mật khẩu: từ thật thay viết tắt (nhánh `fix/password-checklist-labels`, 1 commit, 1 file)
 
 User xem bản live sau deploy và bắt lại một quyết định của vòng nén 768p

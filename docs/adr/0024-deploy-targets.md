@@ -1,7 +1,9 @@
 # ADR-0024 — Nơi deploy v1: web Vercel · API + worker Render · DB Supabase · domain `nexora-travel.agency`
 
 - **Ngày:** 2026-08-19
-- **Trạng thái:** Chấp nhận (chờ user xác nhận từng bước triển khai — xem spec)
+- **Trạng thái:** Đã triển khai 20/08/2026 — smoke §0 của spec đạt cả 5 mục
+  (web/API sống trên domain, OTP + xác minh email + cookie `.nexora-travel.agency`,
+  booking Stripe sandbox PAID qua webhook, contact + newsletter gửi mail thật)
 - **Liên quan:** [ADR-0001](0001-tech-stack.md) (đã dự kiến Vercel Hobby + Render/Railway),
   [ADR-0010](0010-infra-hardening.md), [ADR-0017 §4](0017-web-session-better-auth.md)
   (cookie cùng registrable domain là ràng buộc deploy), [ADR-0016](0016-web-data-layer.md)
