@@ -1,0 +1,47 @@
+<body .group/body.overflow-x-hidden.overscroll-none.antialiased.[--announcement-height:0px].[--blocks-sidebar-width:256px].[--customizer-sidebar-width:240px].[--footer-height:--spacing(14)]>
+  <div>
+  <title> "ReUI"
+  <meta>
+  <link>
+  <meta>
+  <link>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <link>
+  <next-route-announcer>
+  <div .geist_b24c070c-module__ta_e_q__variable.inter_86f0310e-module__z5LeqG__variable.noto_sans_e26db54b-module__duQNOG__variable.nunito_sans_a5bd7630-module__sUzrsq__variable.figtree_57df2a42-module__C15RPG__variable.roboto_4cfa3e9-module__6fr2eG__variable.raleway_5920d140-module__vFhFra__variable.dm_sans_ed1f1058-module__VZVpXG__variable>
+    <div .@container.flex.min-h-screen.w-full.items-start.justify-center>
+      <div .bg-background.relative.min-h-dvh.w-full.overflow-hidden>
+        <div .relative.flex.min-h-dvh.w-full.flex-col>
+          <div .pointer-events-none.absolute.inset-0.overflow-hidden>
+            <div .bg-background.absolute.inset-0>
+            <img .absolute.inset-0.h-full.w-full.object-cover.object-center.dark:brightness-[0.65].dark:saturate-[0.4]>
+            <div .bg-background/45.dark:bg-background/60.absolute.inset-0>
+          <header .relative.z-20.flex.w-full.items-center.justify-between.px-6.py-5>
+            <div .inline-flex.items-center.gap-2>
+              <div .cn-item.group/item.flex-wrap.transition-colors.duration-100.outline-none.focus-visible:border-ring.focus-visible:ring-[3px]>
+              <span .text-[0.9375rem].font-medium> "ReUI"
+            <div .bg-background/55.ring-border/30.text-muted-foreground.flex.items-center.gap-2.rounded-full.px-4>
+              <span .text-foreground.hidden.sm:inline> "New here?"
+              <button .cn-button.group/button.inline-flex.shrink-0.items-center.justify-center.whitespace-nowrap.transition-all> "Create an account"
+          <main .relative.z-10.flex.flex-1.items-center.justify-center.px-6.pb-12>
+            <div .flex.w-full.max-w-md.flex-col.items-center.gap-6>
+              <div .relative.flex.flex-col.bg-muted/50.gap-(--frame-gap).px-(--frame-px).py-(--frame-py).rounded-(--frame-radius)>
+              <p .text-foreground.max-w-sm.text-center.text-xs.font-medium.text-balance> "Joining 14,000+ product teams shipping faster with ReUI"
+  <section>

@@ -2461,10 +2461,17 @@ export const messages = {
   // Copy back-office cũng English-only (luật #7); consumer là app admin.
   admin: {
     login: {
-      title: 'Nexora back office',
-      subtitle: 'Sign in with your team account to continue.',
+      // Copy theo wireframe ReUI auth-8 (vòng redesign 20/08 v2 — mockup lưu
+      // ở docs/design/mockups/admin-login/): card đặc giữa màn, topbar pill.
+      title: 'Sign in to Nexora',
+      subtitle: 'Pick up where you left off.',
+      lookingForSite: 'Looking for the main site?',
+      visitSite: 'Visit nexora-travel.agency',
       email: 'Email',
       password: 'Password',
+      forgotPassword: 'Forgot password?',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
       submit: 'Sign in',
       submitting: 'Signing in…',
       errors: {

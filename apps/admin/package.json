@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@tourism/i18n": "workspace:*",
+    "@tourism/tokens": "workspace:*",
     "@tourism/ui": "workspace:*",
     "better-auth": "1.6.23",
     "lucide-react": "^1.25.0",

@@ -4,12 +4,16 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
+import { Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { safeRedirect } from '@/lib/safe-redirect';
 
 const t = messages.admin.login;
+
+/** Quên mật khẩu là flow của www (admin không có reset riêng — ADR-0026 §2). */
+const FORGOT_PASSWORD_URL = 'https://www.nexora-travel.agency/forgot-password';
 
 /** Regex email cùng ngưỡng contract (EmailSchema) — chỉ chặn sớm phía form. */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -34,16 +38,18 @@ export function validateAdminLogin(email: string, password: string): FieldErrors
 }
 
 /**
- * Form đăng nhập admin (spec P4a §2): gọi `authClient.signIn.email`, thành
- * công theo `redirect` param (đã qua safeRedirect — chống open redirect).
- * KHÔNG có register/forgot — hai việc đó là của www (link ở trang login).
- * Tuyệt đối không dùng HTML validation (nếp form toàn dự án).
+ * Form đăng nhập admin — bố cục theo wireframe ReUI auth-1 (vòng 20/08):
+ * hàng label Password kèm link "Forgot password?" căn phải, input mật khẩu
+ * có nút 👁 hiện/ẩn. Logic GIỮ NGUYÊN vòng P4a (spec §2): gọi
+ * `authClient.signIn.email`, thành công theo `redirect` param đã qua
+ * safeRedirect; KHÔNG HTML validation (nếp form toàn dự án).
  */
 export function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<FieldErrors>({});
   const [submitting, setSubmitting] = useState(false);
 
@@ -82,13 +88,14 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={onSubmit} noValidate className="grid gap-4">
+    <form onSubmit={onSubmit} noValidate className="flex flex-col gap-4">
       <div className="grid gap-1.5">
         <Label htmlFor="admin-email">{t.email}</Label>
         <Input
           id="admin-email"
           type="email"
           autoComplete="email"
+          className="bg-card"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           aria-invalid={Boolean(errors.email)}
@@ -101,16 +108,35 @@ export function LoginForm() {
         ) : null}
       </div>
       <div className="grid gap-1.5">
-        <Label htmlFor="admin-password">{t.password}</Label>
-        <Input
-          id="admin-password"
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          aria-invalid={Boolean(errors.password)}
-          aria-describedby={errors.password ? 'admin-password-error' : undefined}
-        />
+        <div className="flex items-center justify-between">
+          <Label htmlFor="admin-password">{t.password}</Label>
+          <a
+            href={FORGOT_PASSWORD_URL}
+            className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+          >
+            {t.forgotPassword}
+          </a>
+        </div>
+        <div className="relative">
+          <Input
+            id="admin-password"
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            className="bg-card pr-10"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            aria-invalid={Boolean(errors.password)}
+            aria-describedby={errors.password ? 'admin-password-error' : undefined}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={showPassword ? t.hidePassword : t.showPassword}
+            className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-muted-foreground hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+          </button>
+        </div>
         {errors.password ? (
           <p id="admin-password-error" className="text-sm text-destructive">
             {errors.password}
@@ -122,7 +148,7 @@ export function LoginForm() {
           {errors.form}
         </p>
       ) : null}
-      <Button type="submit" disabled={submitting}>
+      <Button type="submit" disabled={submitting} className="w-full">
         {submitting ? t.submitting : t.submit}
       </Button>
     </form>

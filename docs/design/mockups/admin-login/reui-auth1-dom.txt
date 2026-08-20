@@ -1,0 +1,38 @@
+<body .group/body.overflow-x-hidden.overscroll-none.antialiased.[--announcement-height:0px].[--blocks-sidebar-width:256px].[--customizer-sidebar-width:240px].[--footer-height:--spacing(14)]>
+  <div>
+  <title> "ReUI"
+  <meta>
+  <link>
+  <meta>
+  <link>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <meta>
+  <link>
+  <next-route-announcer>
+  <div .geist_b24c070c-module__ta_e_q__variable.inter_86f0310e-module__z5LeqG__variable.noto_sans_e26db54b-module__duQNOG__variable.nunito_sans_a5bd7630-module__sUzrsq__variable.figtree_57df2a42-module__C15RPG__variable.roboto_4cfa3e9-module__6fr2eG__variable.raleway_5920d140-module__vFhFra__variable.dm_sans_ed1f1058-module__VZVpXG__variable>
+    <div .@container.flex.min-h-screen.w-full.items-start.justify-center>
+      <div .bg-background.relative.flex.min-h-svh.w-full.items-center.justify-center.overflow-hidden>
+        <div .pointer-events-none.absolute.inset-0.overflow-hidden>
+        <div .relative.z-10.flex.w-full.items-center.justify-center>
+          <div .mx-auto.grid.w-full.max-w-[76rem].items-center.justify-center.gap-8.lg:grid-cols-[minmax(0,400px)_minmax(0,450px)]>
+            <section .flex.min-w-0.flex-col.justify-between.py-4.sm:py-6.lg:py-8>
+              <div .flex.flex-1.flex-col.justify-center>
+            <section .hidden.min-w-0.items-center.justify-center.lg:flex.lg:justify-end>
+              <div .cn-card.group/card.flex.flex-col.bg-background.w-full.gap-0.overflow-hidden>
+  <section>

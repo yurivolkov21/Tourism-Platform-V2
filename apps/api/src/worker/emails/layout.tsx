@@ -7,6 +7,7 @@ import {
   Container,
   Head,
   Html,
+  Img,
   Link,
   Preview,
   Row,
@@ -37,6 +38,13 @@ const c = theme.colors.light;
  * "họ" với bộ font web (ADR-0013 #6): Literata → Georgia (serif có nét
  * chuyển), Archivo → Helvetica/Arial (grotesque).
  */
+/**
+ * Mark "Slidex" hai viên kim cương — PNG trên CDN (user nhắc 20/08: mail
+ * cũng phải dùng logo dự án). PHẢI là <img> vì Gmail lột inline SVG; PNG
+ * xuất từ logo.tsx với màu token light ghim cứng (email luôn palette light).
+ */
+const MARK_URL = 'https://res.cloudinary.com/dbkgeehow/image/upload/tourism/brand/nexora-mark.png';
+
 export const SERIF = "Literata, Georgia, 'Times New Roman', serif";
 export const SANS = "Archivo, -apple-system, 'Segoe UI', Helvetica, Arial, sans-serif";
 
@@ -244,27 +252,18 @@ export function CodeBox({ code }: { code: string }) {
   );
 }
 
-/** Ô vuông chữ "N" — mark tối giản sống được trong email (Gmail lột SVG). */
-function Monogram({ size, radius, fontSize }: { size: number; radius: number; fontSize: number }) {
+/** Mark "Slidex" giữa card — PNG từ CDN, tỉ lệ gốc 46:33. */
+function Monogram({ width }: { width: number }) {
+  const height = Math.round((width * 33) / 46);
   return (
     <Section style={{ margin: '0 0 20px' }}>
-      <span
-        style={{
-          display: 'inline-block',
-          width: `${size}px`,
-          height: `${size}px`,
-          backgroundColor: c.primary,
-          borderRadius: `${radius}px`,
-          color: c['primary-foreground'],
-          fontFamily: SANS,
-          fontSize: `${fontSize}px`,
-          fontWeight: 700,
-          lineHeight: `${size}px`,
-          textAlign: 'center' as const,
-        }}
-      >
-        N
-      </span>
+      <Img
+        src={MARK_URL}
+        width={width}
+        height={height}
+        alt="Nexora"
+        style={{ display: 'inline-block' }}
+      />
     </Section>
   );
 }
@@ -316,23 +315,13 @@ export function EmailShell({
             <Section style={{ padding: '16px 24px 12px' }}>
               <Row>
                 <Column style={{ textAlign: 'left' as const }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: '26px',
-                      height: '26px',
-                      backgroundColor: c.primary,
-                      borderRadius: '7px',
-                      color: c['primary-foreground'],
-                      fontFamily: SANS,
-                      fontSize: '13px',
-                      fontWeight: 700,
-                      lineHeight: '26px',
-                      textAlign: 'center' as const,
-                    }}
-                  >
-                    N
-                  </span>
+                  <Img
+                    src={MARK_URL}
+                    width={33}
+                    height={24}
+                    alt=""
+                    style={{ display: 'inline-block' }}
+                  />
                 </Column>
                 <Column style={{ textAlign: 'right' as const }}>
                   <span
@@ -359,7 +348,7 @@ export function EmailShell({
                   textAlign: 'center' as const,
                 }}
               >
-                {top ?? <Monogram size={48} radius={12} fontSize={22} />}
+                {top ?? <Monogram width={56} />}
                 <Text
                   style={{
                     margin: '0 0 12px',
@@ -390,7 +379,9 @@ export function EmailShell({
                   color: c['muted-foreground'],
                 }}
               >
-                {`${messages.brand.name} — ${messages.brand.tagline.toLowerCase()}.`}
+                {/* Hạ chữ đầu tagline cho hợp giữa câu — KHÔNG toLowerCase cả chuỗi
+                  (từng nuốt chữ hoa "Vietnam"). */}
+                {`${messages.brand.name} — ${messages.brand.tagline.charAt(0).toLowerCase()}${messages.brand.tagline.slice(1)}.`}
               </Text>
               <Text
                 style={{

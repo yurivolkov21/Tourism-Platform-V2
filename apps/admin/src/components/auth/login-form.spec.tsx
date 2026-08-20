@@ -71,6 +71,24 @@ describe('LoginForm', () => {
     expect(refresh).toHaveBeenCalled();
   });
 
+  it('nút 👁 đảo type input mật khẩu (wireframe auth-1)', async () => {
+    render(<LoginForm />);
+    const input = screen.getByLabelText('Password');
+    expect(input).toHaveAttribute('type', 'password');
+    await userEvent.click(screen.getByRole('button', { name: /show password/i }));
+    expect(input).toHaveAttribute('type', 'text');
+    await userEvent.click(screen.getByRole('button', { name: /hide password/i }));
+    expect(input).toHaveAttribute('type', 'password');
+  });
+
+  it('link Forgot password trỏ flow của www, không phải route admin', () => {
+    render(<LoginForm />);
+    expect(screen.getByRole('link', { name: /forgot password/i })).toHaveAttribute(
+      'href',
+      'https://www.nexora-travel.agency/forgot-password',
+    );
+  });
+
   it('lỗi mạng (reject) → câu chung, không sập', async () => {
     signInEmail.mockRejectedValue(new Error('network'));
     render(<LoginForm />);

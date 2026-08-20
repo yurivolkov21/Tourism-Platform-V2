@@ -17,6 +17,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@tourism/ui/components/sidebar';
+import { Logo } from '@/components/logo';
 import type { SessionUser } from '@/lib/api/session';
 import { NAV_GROUPS } from '@/lib/nav';
 import { NavUser } from './nav-user';
@@ -33,11 +34,10 @@ export function AppShell({ user, children }: { user: SessionUser; children: Reac
     <SidebarProvider>
       <Sidebar collapsible="icon">
         <SidebarHeader>
-          {/* Wordmark hai tông — cùng nhận diện Logo của web, không mang SVG
-              mark sang cho gọn sidebar hẹp. */}
-          <a href="/" className="px-2 py-1.5 font-heading text-lg font-semibold tracking-tight">
-            nex<span className="text-primary-emphasis">ora</span>
-            <span className="ml-2 text-xs font-normal text-muted-foreground">back office</span>
+          {/* Logo "Slidex" dùng chung với web (user nhắc 20/08) + chip vai trò. */}
+          <a href="/" className="flex items-center px-2 py-1.5">
+            <Logo className="[&>span]:text-lg" />
+            <span className="ml-2 text-xs text-muted-foreground">back office</span>
           </a>
         </SidebarHeader>
         <SidebarContent>
