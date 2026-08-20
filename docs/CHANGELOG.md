@@ -8,6 +8,32 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-20 — Pháo giấy trang thanh toán thành công (nhánh `feat/checkout-confetti`, 1 commit, 6 file)
+
+User duyệt ý tưởng confetti "side cannons" của MagicUI cho `/checkout/success`
+(Stripe/PayPal redirect về đây với `?code=`). Island `SuccessCelebration`:
+gọi `confetti()` GLOBAL của canvas-confetti theo đúng mẫu Side Cannons —
+hai mép bắn chéo ~3 giây, màu lễ hội từ token (primary/rating/sale/info/
+success); CHỈ render ở mood `confirmed` (PAID — không ăn mừng đơn PENDING),
+guard sessionStorage theo mã booking, tôn trọng reduced-motion. 5 test mới.
+Component `@magicui/confetti` cài vào `@tourism/ui` (registry đã khai sẵn);
+island cuối cùng KHÔNG dùng wrapper `<Confetti>` của nó — giữ lại trong lib
+cho ConfettiButton về sau.
+
+Ba bài học ĐO ĐƯỢC, tốn nguyên buổi truy vết: (1) **guard phải ghi Ở KHUNG
+BẮN ĐẦU** — StrictMode dev mount đôi hủy rAF trước khung đầu, ghi guard lúc
+effect chạy là mount#2 thấy guard rồi bỏ, pháo không bao giờ nổ trong dev;
+(2) **Turbopack dev không hot-reload đáng tin với file trong libs/ lẫn
+island** — nhiều vòng đo trúng bundle CŨ, từ nay đổi code xong phải restart
+dev server rồi mới tin số đo; (3) **headless chromium không composite canvas
+của canvas-confetti** (đường component lẫn global, dù lib vẽ được khi test
+cô lập cùng browser) — nghiệm thu CUỐI bằng mắt user trên Chrome thật:
+pháo nổ, kể cả booking mới user tự tạo. Demo E2E tự dựng user + booking ép
+PAID rồi DỌN SẠCH khỏi DB (dev/prod chung) sau mỗi lượt.
+
+Tests after: 1413 web · 238 api · 180 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 16 admin.
+
 ## 2026-08-20 — Login admin: ghim sóng BOLD + logo topbar to (nhánh `fix/admin-login-visibility`, 1 commit, 2 file)
 
 User xem bản live chê nền "khó nhận biết" + logo nhỏ. Vòng chỉnh có một bài
