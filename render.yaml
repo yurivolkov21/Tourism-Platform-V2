@@ -1,0 +1,64 @@
+# Blueprint Render cho API v2 (deploy v1 — ADR-0024, spec 2026-08-19-deploy-v1).
+#
+# MỘT service duy nhất: Web Service Docker chạy API + worker INLINE
+# (WORKER_INLINE=true) — Render free không có Background Worker. Nếu sau này
+# nâng plan: thêm service worker thứ hai dùng CÙNG image với
+# dockerCommand `node dist/worker.js` và đặt WORKER_INLINE=false ở service này.
+#
+# Env `sync: false` = khai báo tên, GIÁ TRỊ điền trên dashboard (hoặc import
+# file .env — apps/api/.env.production là bản mẫu để user fill, gitignored).
+services:
+  - type: web
+    name: nexora-api
+    runtime: docker
+    plan: free
+    region: singapore
+    dockerfilePath: apps/api/Dockerfile
+    # Build context là ROOT repo — Dockerfile copy pnpm-workspace + libs/shared.
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: '3001'
+      - key: WORKER_INLINE
+        value: 'true'
+      - key: DATABASE_URL
+        sync: false
+      - key: BETTER_AUTH_SECRET
+        sync: false
+      - key: BETTER_AUTH_URL
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: TRUSTED_ORIGINS
+        sync: false
+      - key: COOKIE_DOMAIN
+        sync: false
+      - key: ADMIN_EMAILS
+        sync: false
+      - key: REVALIDATE_SECRET
+        sync: false
+      - key: NEWSLETTER_UNSUBSCRIBE_SECRET
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: PAYPAL_CLIENT_ID
+        sync: false
+      - key: PAYPAL_CLIENT_SECRET
+        sync: false
+      - key: PAYPAL_WEBHOOK_ID
+        sync: false

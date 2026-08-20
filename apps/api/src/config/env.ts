@@ -47,6 +47,18 @@ const EnvSchema = z
     // Base URL của web app (P3) — đích redirect success/cancel cho checkout
     // session (P2 W1). Prod PHẢI set domain thật.
     FRONTEND_URL: z.url().default('http://localhost:3000'),
+    // Deploy v1 (ADR-0024): web + API dưới CÙNG registrable domain → cookie
+    // session phải mang `domain` cha (vd `.nexora-travel.agency`) để đi kèm
+    // fetch từ `www.` sang `api.`. Chỉ set ở prod; dev same-site không cần —
+    // auth.config chỉ bật crossSubDomainCookies khi biến này có giá trị.
+    COOKIE_DOMAIN: z.string().min(1).optional(),
+    // Render free không có Background Worker: 'true' → main.ts khởi động vòng
+    // worker (pg-boss: outbox drain/purge + booking sweep) TRONG CÙNG tiến
+    // trình API. Có worker riêng thì bỏ trống và deploy dist/worker.js như cũ.
+    WORKER_INLINE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
     // Google OAuth — optional; auth.config chỉ bật socialProviders.google khi có ĐỦ cặp.
     GOOGLE_CLIENT_ID: z.string().min(1).optional(),
     GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),

@@ -22,7 +22,16 @@ Cần sẵn: tài khoản Vercel (có project Nexora cũ), Render, Supabase (t�
 Việc duy nhất của bước 1: **gỡ domain khỏi project Vercel cũ** (Settings →
 Domains → Remove) — Vercel không cho một domain gắn hai project cùng account.
 
-## 2. DB prod (🖱 tay + ⌨) — BƯỚC 2
+> **Cập nhật 20/08 (bước 1–2 đã xong):** (a) domain do **Vercel quản DNS**
+> (nameservers Vercel, mua qua Vercel, hạn 07/2027) — mọi record (api CNAME,
+> SPF/DKIM Resend) thêm ở trang Domains của Vercel, KHÔNG phải registrar ngoài;
+> đã gỡ domain khỏi 2 project Nexora cũ (web + admin; `admin.` giữ chờ P4).
+> (b) DB prod = **dùng chung Supabase `tourism-platform-v2`** (session pooler
+> 5432, 29 tour · 52 khe · 12 migration — kiểm 20/08). ⚠ Dev/prod chung DB:
+> seed/reset từ máy dev đụng thẳng dữ liệu chạy thật. (c) Render **free** +
+> `WORKER_INLINE=true` — chấp nhận ngủ 15′/thức ~50s.
+
+## 2. DB prod (🖱 tay + ⌨) — BƯỚC 2 ✅ (kiểm 20/08, không cần seed thêm)
 
 Quyết: project Supabase **riêng** cho prod (khuyến nghị — dev seed/reset không
 đụng prod) hay dùng chung project dev (nhanh, rủi ro). Sau quyết:
@@ -33,6 +42,16 @@ Media: `media:upload` đã upsert theo publicId → chạy lại với `DATABASE
 để ghi `media_assets` (file trên CDN dùng chung, không upload lại bản mới).
 
 ## 3. Code chuẩn bị prod (⌨) — BƯỚC 3 (một nhánh, gate đầy đủ, user duyệt merge)
+
+> Triển khai 20/08 (nhánh `feat/deploy-v1-prep`): thêm `.env.production` MẪU ở
+> hai app (gitignored, user điền secret rồi import — Render "Add from .env",
+> Vercel "Import .env"); `render.yaml` một service duy nhất (worker inline).
+> Bẫy đã đo khi làm: (1) bắt SIGTERM tay cho worker inline thì ĐUA với shutdown
+> hook của Nest và thua — dừng phải đi qua hook `onClose` của Fastify để được
+> await trong `app.close()`; (2) `addHook` sau `listen` ném
+> FST_ERR_INSTANCE_ALREADY_LISTENING — hook đăng ký TRƯỚC listen với ref
+> `stopWorker` gán SAU listen (worker khởi động sau listen để health check
+> thấy cổng ngay).
 
 - `auth.config.ts`: `advanced.crossSubDomainCookies` bật theo env
   `COOKIE_DOMAIN` (vd `.nexora-travel.agency`), chỉ khi có giá trị; dev không set.

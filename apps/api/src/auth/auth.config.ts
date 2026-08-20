@@ -100,6 +100,19 @@ export const auth = betterAuth({
     database: {
       generateId: false,
     },
+    // Deploy v1 (ADR-0024 · ADR-0017 §4 đường CHUẨN): COOKIE_DOMAIN có giá trị
+    // (vd `.nexora-travel.agency`) → cookie session mang domain cha để browser
+    // gửi kèm fetch cross-subdomain www→api; sameSite giữ `lax` (không phải
+    // `none` — cùng registrable domain là same-site). Dev không set biến này
+    // nên spread rỗng, hành vi giữ nguyên từng byte.
+    ...(env.COOKIE_DOMAIN
+      ? {
+          crossSubDomainCookies: {
+            enabled: true,
+            domain: env.COOKIE_DOMAIN,
+          },
+        }
+      : {}),
   },
   plugins: [
     emailOTP({

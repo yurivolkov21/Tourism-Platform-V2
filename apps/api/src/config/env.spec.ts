@@ -324,3 +324,24 @@ describe('parseCommaList', () => {
     expect(parseCommaList('')).toEqual([]);
   });
 });
+// Deploy v1 (ADR-0024): hai khoá mới của bước chuẩn bị prod.
+describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
+  it('mặc định: COOKIE_DOMAIN undefined, WORKER_INLINE false', () => {
+    const cfg = parseEnv({});
+    expect(cfg.COOKIE_DOMAIN).toBeUndefined();
+    expect(cfg.WORKER_INLINE).toBe(false);
+  });
+
+  it("WORKER_INLINE='true' → boolean true; giá trị lạ → ném (không im lặng coi là false)", () => {
+    expect(parseEnv({ WORKER_INLINE: 'true' }).WORKER_INLINE).toBe(true);
+    expect(parseEnv({ WORKER_INLINE: 'false' }).WORKER_INLINE).toBe(false);
+    expect(() => parseEnv({ WORKER_INLINE: 'yes' })).toThrow();
+  });
+
+  it('COOKIE_DOMAIN rỗng (KEY=) coi như unset — cùng luật strip chuỗi rỗng', () => {
+    expect(parseEnv({ COOKIE_DOMAIN: '' }).COOKIE_DOMAIN).toBeUndefined();
+    expect(parseEnv({ COOKIE_DOMAIN: '.nexora-travel.agency' }).COOKIE_DOMAIN).toBe(
+      '.nexora-travel.agency',
+    );
+  });
+});
