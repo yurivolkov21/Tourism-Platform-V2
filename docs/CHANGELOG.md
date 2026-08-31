@@ -8,6 +8,42 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-31 — P4b F3: hàng đợi cancellations + vòng vá review (nhánh `feat/p4b-cancellations`, 2 commit `2da536e..9c38df6`, ~30 file)
+
+Tính năng thứ ba theo nếp session-per-feature. Session thi công dựng:
+`/cancellations` trên kit (URL-state, server component) + server action
+decide approve/deny theo đúng khuôn F2 (codec lỗi derive từ i18n, signal 30s,
+confirm nêu 3 hệ quả, có test khoá) + tự tổng quát hoá `table-query.ts` khi
+consumer thứ hai xuất hiện (đúng spec §2.1 — mũi review B xác minh tái lập
+1-1, 22 test cũ giữ nguyên). Nghiệm thu review 8 mũi → 10 findings, user
+duyệt vá tại chỗ (`9c38df6`), lại đụng cả contract + API vì fix gốc rễ nằm ở
+tầng dữ liệu:
+
+- **Tiền vào queue**: `AdminCancellationRequestSchema` thêm
+  totalAmount/refundedTotal/currency (groupBy một query chống N+1) — dialog
+  approve HIỆN số tiền sẽ hoàn (phần còn lại), hết bấm lệnh tiền mù. Đây
+  cũng là câu trả lời cho câu hỏi vận hành của user: approve luôn hoàn TOÀN
+  BỘ phần còn lại; muốn thu phí huỷ thì deny + refund partial thủ công.
+- **Lỗi trạng-thái-cũ tự refresh**: NOT_FOUND/ALREADY_DECIDED/NOT_REFUNDABLE
+  đóng dialog + toast + kéo queue tươi (copy hứa "queue has been refreshed"
+  thì UI làm thật — admin B hết bấm lặp trên hàng đã quyết); REFUND_FAILED
+  retryable ở lại dialog; `useTransition` khoá nút tới khi refresh xong; MỘT
+  dialog mỗi hàng (50 hàng từng mount 100 cây dialog).
+- **Page mồ côi**: cả hai bảng redirect về trang cuối còn thật khi tập kết
+  quả co dưới chân URL — hết "bảng rỗng cạnh Page 2 of 2".
+- **Kit hoá nốt phần chép verbatim** (~270 dòng): StatusFilterTabs +
+  DataTableBody + ColumnVisibilityMenu vào `components/kit`;
+  `createWriteErrorCodec` (refund + decide cùng dùng); `resolvePagePatch`
+  (luật reset-page một bản); cảnh báo bẫy `limit` vs `pageSize` của F4 ghi
+  thẳng vào JSDoc `TablePaging`.
+- Lặt vặt: ô Decision fallback gạch ngang khi decidedAt null; badge
+  cancellation một luật màu ở cả queue lẫn booking detail; sidebar mở thẳng
+  `?status=REQUESTED` (hàng đợi = việc cần làm) + pageTitle so pathname bỏ
+  query; nhãn dialog dùng chung hằng với header cột.
+
+Tests after: 1416 web · 238 api · 185 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 140 admin.
+
 ## 2026-08-31 — P4b F2: refund money-path + vòng vá review (nhánh `feat/p4b-bookings-refund`, 2 commit `0a20cdc..8951e68`, ~20 file)
 
 Tính năng thứ hai theo nếp session-per-feature. Session thi công dựng: server
