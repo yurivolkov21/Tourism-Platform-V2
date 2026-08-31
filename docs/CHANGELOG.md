@@ -8,6 +8,38 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-31 — Shell admin theo block dashboard-01 (nhánh `feat/p4-admin-shell-dashboard01`, 7 commit `7e1a9e1..efc8b5c`, 21 file)
+
+Vòng redesign shell sau login theo quy trình quen: user chọn block chính chủ
+shadcn `dashboard-01`, cài qua CLI (components.json mới cho admin, CLI tự
+chọn biến thể Base UI + đổi icon tabler→lucide) và **tái hiện 1:1 NGAY trong
+cổng gác thật** (không wireframe), rồi gọt từng bước — mỗi bước user nghiệm
+thu trên localhost mới đi tiếp (nếp mới: agent chỉ báo cáo text, user tự
+kiểm; agent cũng KHÔNG tự restart dev server nữa — ba lần treo vì `pnpm dev`
+chạy từ root không có script `dev`).
+
+Sáu bước gọt: (1) sidebar logo Slidex + 15 mục/3 nhóm thật từ `lib/nav.ts`
+(giữ Quick Create + ô mail theo ý user; bỏ chip "back office"; wordmark
+"Nexora" viết hoa N — áp cả web); (2) nav-user ăn session thật, avatar tròn
+đồng nhất 4 tầng (override vuông lộ góc → bỏ hẳn); (3) header đổi tiêu đề
+theo trang, tra MỘT nguồn `lib/nav.ts` khớp tiền tố dài nhất; (4) 4 card +
+chart giữ kiểu, số demo dọn sạch — nhãn theo 4 metric thật chờ P4d
+(doanh thu PAID · bookings PAID · reviews chờ · enquiries NEW), giá trị "—"
+và "Awaiting live data", KHÔNG bịa số; (5) data-table: 68 dòng demo → rỗng,
+3 tab demo + Add Section bỏ, header cột theo nghĩa bảng recent-bookings
+(Code/Tour/Status/Guests/Amount/Customer), máy móc TanStack và dnd và
+Columns và phân trang GIỮ làm xương CRUD kit P4b; (6) dọn xác AppShell P4a
+và nav-documents/nav-secondary và key i18n `dashboardPlaceholder`.
+
+Hai fix đáng ghi: card status hai màu lệch demo vì Card nova có
+`CardFooter border-t + bg-muted/50` — override cục bộ, không đụng Card dùng
+chung; **Sign out không bấm được** (user phát hiện) vì viết `onSelect` idiom
+Radix trong khi menu `@tourism/ui` là Base UI chỉ nhận `onClick` — user-menu
+web đúng từ đầu, đối chiếu là ra.
+
+Tests after: 1416 web · 238 api · 184 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 17 admin.
+
 ## 2026-08-20 — Siết verify email: bỏ qua OTP là chưa có tài khoản để dùng (nhánh `feat/require-email-verification`, 1 commit `3bab8e2`, 18 file)
 
 Tester trong nhóm user lách được bước OTP (đăng ký xong chuyển route thẳng
