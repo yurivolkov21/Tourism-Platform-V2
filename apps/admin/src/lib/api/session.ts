@@ -4,7 +4,7 @@ import { apiOrigin } from './env';
 
 /**
  * Session user tối giản cho admin — port từ `apps/web/src/lib/api/session.ts`
- * (ADR-0017 §3), rút còn field shell/nav-user cần. `role` là additionalField
+ * (ADR-0017 §3), rút còn field sidebar/nav-user cần. `role` là additionalField
  * do `apps/api/src/auth/auth.config.ts` khai.
  */
 export interface SessionUser {

@@ -2529,10 +2529,6 @@ export const messages = {
       signOut: 'Sign out',
       viewSite: 'View site',
     },
-    dashboardPlaceholder: {
-      title: 'Welcome to the back office',
-      body: 'Metrics land here in a later phase. The first live areas are on their way.',
-    },
     // Dashboard chờ số thật (vòng gọt bước 4, 21/08): khung card/chart của
     // dashboard-01 giữ nguyên, label theo 4 metric SẼ CÓ ở P4d (map từ
     // admin-stats của Nexora cũ); demo số đã dọn — không bịa số.

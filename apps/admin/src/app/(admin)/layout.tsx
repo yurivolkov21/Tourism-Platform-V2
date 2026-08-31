@@ -20,6 +20,6 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   // decision.kind === 'allow' ⇒ session không null (path '/' không public).
   if (!session) redirect('/login');
   // Shell nằm trong từng trang (block dashboard-01 tự mang SidebarProvider) —
-  // layout chỉ còn là CỔNG GÁC. AppShell cũ sẽ dọn ở bước gọt sau khi chốt.
+  // layout chỉ còn là CỔNG GÁC (AppShell P4a đã xoá ở vòng gọt 21/08).
   return <>{children}</>;
 }
