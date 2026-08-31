@@ -18,7 +18,7 @@ export function Logo({ className }: { className?: string }) {
         />
       </svg>
       <span className="font-heading text-xl font-semibold tracking-tight text-foreground">
-        nex<span className="text-primary-emphasis">ora</span>
+        Nex<span className="text-primary-emphasis">ora</span>
       </span>
     </span>
   );

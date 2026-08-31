@@ -9,10 +9,16 @@ import { ChartAreaInteractive } from '@/components/chart-area-interactive';
 import { DataTable } from '@/components/data-table';
 import { SectionCards } from '@/components/section-cards';
 import { SiteHeader } from '@/components/site-header';
+import { getServerSession } from '@/lib/api/session';
 
 import data from './data.json';
 
-export default function Page() {
+export default async function Page() {
+  // Layout (admin) đã gác session + role — ở đây chỉ đọc để đổ vào nav-user
+  // (vòng gọt bước 2, 21/08). Null chỉ xảy ra khi race hết hạn giữa hai
+  // request — rơi về layout xử lý ở lần điều hướng kế.
+  const session = await getServerSession();
+  if (!session) return null;
   return (
     <SidebarProvider
       style={
@@ -22,7 +28,7 @@ export default function Page() {
         } as React.CSSProperties
       }
     >
-      <AppSidebar variant="inset" />
+      <AppSidebar variant="inset" user={session} />
       <SidebarInset>
         <SiteHeader />
         <div className="flex flex-1 flex-col">

@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { Avatar, AvatarFallback, AvatarImage } from '@tourism/ui/components/avatar';
 import {
   DropdownMenu,
@@ -16,24 +17,24 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from '@tourism/ui/components/sidebar';
-import {
-  BellIcon,
-  CircleUserRoundIcon,
-  CreditCardIcon,
-  EllipsisVerticalIcon,
-  LogOutIcon,
-} from 'lucide-react';
+import { EllipsisVerticalIcon, ExternalLinkIcon, LogOutIcon } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import type { SessionUser } from '@/lib/api/session';
+import { authClient } from '@/lib/auth-client';
 
-export function NavUser({
-  user,
-}: {
-  user: {
-    name: string;
-    email: string;
-    avatar: string;
-  };
-}) {
+const SITE_URL = 'https://www.nexora-travel.agency';
+
+/**
+ * Nav-user thật (vòng gọt bước 2, 21/08): khung + style GIỮ NGUYÊN của block
+ * dashboard-01, ruột thay bằng session user + menu View site / Sign out
+ * (hành vi của shell P4a). Account/Billing/Notifications mẫu đã bỏ — admin
+ * chưa có các trang đó (quản hồ sơ là việc của www).
+ */
+export function NavUser({ user }: { user: SessionUser }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const t = messages.admin.shell;
+  const initial = (user.name || user.email).slice(0, 1).toUpperCase();
   return (
     <SidebarMenu>
       <SidebarMenuItem>
@@ -41,9 +42,9 @@ export function NavUser({
           <DropdownMenuTrigger
             render={<SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />}
           >
-            <Avatar className="size-8 rounded-lg grayscale">
-              <AvatarImage src={user.avatar} alt={user.name} />
-              <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+            <Avatar className="size-8">
+              {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
+              <AvatarFallback>{initial}</AvatarFallback>
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
@@ -61,8 +62,8 @@ export function NavUser({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                   <Avatar className="size-8">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                    {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
+                    <AvatarFallback>{initial}</AvatarFallback>
                   </Avatar>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">{user.name}</span>
@@ -73,23 +74,23 @@ export function NavUser({
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <CircleUserRoundIcon />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
+              <DropdownMenuItem render={<a href={SITE_URL} target="_blank" rel="noreferrer" />}>
+                <ExternalLinkIcon />
+                {t.viewSite}
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={async () => {
+                // Sign out xong về /login — layout gác đọc session server-side,
+                // cần điều hướng hẳn (cùng nếp shell P4a).
+                await authClient.signOut();
+                router.push('/login');
+                router.refresh();
+              }}
+            >
               <LogOutIcon />
-              Log out
+              {t.signOut}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
