@@ -80,8 +80,11 @@ export function NavUser({ user }: { user: SessionUser }) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
+            {/* Base UI Menu.Item KHÔNG có `onSelect` (idiom Radix) — phải dùng
+                `onClick` như user-menu web; viết onSelect thì prop bị nuốt,
+                bấm chỉ đóng menu (bug user báo 21/08). */}
             <DropdownMenuItem
-              onSelect={async () => {
+              onClick={async () => {
                 // Sign out xong về /login — layout gác đọc session server-side,
                 // cần điều hướng hẳn (cùng nếp shell P4a).
                 await authClient.signOut();

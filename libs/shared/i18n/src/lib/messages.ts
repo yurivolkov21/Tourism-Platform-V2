@@ -2548,6 +2548,9 @@ export const messages = {
         title: 'Revenue over time',
         description: 'Numbers arrive with the stats service (P4d).',
       },
+      table: {
+        tab: 'Recent bookings',
+      },
     },
   },
 } as const;

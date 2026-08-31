@@ -37,6 +37,7 @@ import {
   tableFeatures,
   useTable,
 } from '@tanstack/react-table';
+import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Button } from '@tourism/ui/components/button';
 import {
@@ -84,6 +85,14 @@ import {
   TableRow,
 } from '@tourism/ui/components/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@tourism/ui/components/tabs';
+
+// Vòng gọt bước 5 (21/08, cùng phép với bước 4): KHUNG data-table của
+// dashboard-01 (TanStack + dnd + columns menu + pagination) GIỮ NGUYÊN —
+// đây là xương CRUD kit của P4b; data demo 68 dòng + tab/nút demo DỌN SẠCH.
+// Header cột đổi theo bảng "recent bookings" SẼ nối ở P4d; schema/cell demo
+// bên dưới thay trọn khi P4b dựng bảng thật từng vùng.
+const t = messages.admin.dashboard;
+
 import {
   ChevronDownIcon,
   ChevronLeftIcon,
@@ -95,7 +104,6 @@ import {
   EllipsisVerticalIcon,
   GripVerticalIcon,
   LoaderIcon,
-  PlusIcon,
   TrendingUpIcon,
 } from 'lucide-react';
 import * as React from 'react';
@@ -178,14 +186,14 @@ const columns = columnHelper.columns([
     enableHiding: false,
   }),
   columnHelper.accessor('header', {
-    header: 'Header',
+    header: 'Code',
     cell: ({ row }) => {
       return <TableCellViewer item={row.original} />;
     },
     enableHiding: false,
   }),
   columnHelper.accessor('type', {
-    header: 'Section Type',
+    header: 'Tour',
     cell: ({ row }) => (
       <div className="w-32">
         <Badge variant="outline" className="px-1.5 text-muted-foreground">
@@ -208,7 +216,7 @@ const columns = columnHelper.columns([
     ),
   }),
   columnHelper.accessor('target', {
-    header: () => <div className="w-full text-right">Target</div>,
+    header: () => <div className="w-full text-right">Guests</div>,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
@@ -232,7 +240,7 @@ const columns = columnHelper.columns([
     ),
   }),
   columnHelper.accessor('limit', {
-    header: () => <div className="w-full text-right">Limit</div>,
+    header: () => <div className="w-full text-right">Amount</div>,
     cell: ({ row }) => (
       <form
         onSubmit={(e) => {
@@ -256,7 +264,7 @@ const columns = columnHelper.columns([
     ),
   }),
   columnHelper.accessor('reviewer', {
-    header: 'Reviewer',
+    header: 'Customer',
     cell: ({ row }) => {
       const isAssigned = row.original.reviewer !== 'Assign reviewer';
       if (isAssigned) {
@@ -393,36 +401,18 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
         <Label htmlFor="view-selector" className="sr-only">
           View
         </Label>
-        <Select
-          defaultValue="outline"
-          items={[
-            { label: 'Outline', value: 'outline' },
-            { label: 'Past Performance', value: 'past-performance' },
-            { label: 'Key Personnel', value: 'key-personnel' },
-            { label: 'Focus Documents', value: 'focus-documents' },
-          ]}
-        >
+        <Select defaultValue="outline" items={[{ label: t.table.tab, value: 'outline' }]}>
           <SelectTrigger className="flex w-fit @4xl/main:hidden" size="sm" id="view-selector">
             <SelectValue placeholder="Select a view" />
           </SelectTrigger>
           <SelectContent>
             <SelectGroup>
-              <SelectItem value="outline">Outline</SelectItem>
-              <SelectItem value="past-performance">Past Performance</SelectItem>
-              <SelectItem value="key-personnel">Key Personnel</SelectItem>
-              <SelectItem value="focus-documents">Focus Documents</SelectItem>
+              <SelectItem value="outline">{t.table.tab}</SelectItem>
             </SelectGroup>
           </SelectContent>
         </Select>
-        <TabsList className="hidden **:data-[slot=badge]:size-5 **:data-[slot=badge]:rounded-full **:data-[slot=badge]:bg-muted-foreground/30 **:data-[slot=badge]:px-1 @4xl/main:flex">
-          <TabsTrigger value="outline">Outline</TabsTrigger>
-          <TabsTrigger value="past-performance">
-            Past Performance <Badge variant="secondary">3</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="key-personnel">
-            Key Personnel <Badge variant="secondary">2</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="focus-documents">Focus Documents</TabsTrigger>
+        <TabsList className="hidden @4xl/main:flex">
+          <TabsTrigger value="outline">{t.table.tab}</TabsTrigger>
         </TabsList>
         <div className="flex items-center gap-2">
           <DropdownMenu>
@@ -449,10 +439,6 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <Button variant="outline" size="sm">
-            <PlusIcon />
-            <span className="hidden lg:inline">Add Section</span>
-          </Button>
         </div>
       </div>
       <TabsContent
@@ -491,7 +477,7 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
                 ) : (
                   <TableRow>
                     <TableCell colSpan={columns.length} className="h-24 text-center">
-                      No results.
+                      {t.awaiting}
                     </TableCell>
                   </TableRow>
                 )}
@@ -579,15 +565,6 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
             </div>
           </div>
         </div>
-      </TabsContent>
-      <TabsContent value="past-performance" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="key-personnel" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
-      </TabsContent>
-      <TabsContent value="focus-documents" className="flex flex-col px-4 lg:px-6">
-        <div className="aspect-video w-full flex-1 rounded-lg border border-dashed"></div>
       </TabsContent>
     </Tabs>
   );
