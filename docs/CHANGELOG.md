@@ -8,6 +8,40 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-31 — P4b F1: vùng bookings đọc + vòng vá review (nhánh `feat/p4b-bookings-read`, 4 commit `8807961..80d35cd`, ~30 file)
+
+Tính năng ĐẦU TIÊN thi công theo quy trình mới "một tính năng = một session":
+session gốc viết spec + phát prompt, session thi công làm F1 trên branch,
+quay về session gốc nghiệm thu. Nghiệm thu chạy review 8 mũi song song
+(line-by-line · removed-behavior · cross-file · reuse · simplification ·
+efficiency · altitude · conventions) trên diff, verify trực tiếp trên code
+→ 10 findings, user duyệt vá tại chỗ (commit `a8f8bb6`).
+
+Phần thi công (session F1): client oRPC admin port từ web (cookie forward,
+no-store, timeout 10s) + `/bookings` bảng kit (trạng thái trên URL —
+searchParams → fetch server-side → TanStack chỉ lo ẩn/hiện cột) + chi tiết
+`/bookings/[code]` read-only + kit `components/kit/` (frame/pagination) mọc
+từ consumer đầu tiên đúng spec §2.1; TDD 39 test mới cho logic thuần
+(parse searchParams, mapper hiển thị, fetch options). Quy ước sạch tuyệt đối
+(tokens-only, i18n, comment Việt, phạm vi đúng F1).
+
+Vòng vá 10 findings đáng nhớ: admin CHƯA có `error.tsx`/`not-found.tsx` nào
+(401 giữa chừng/timeout/API sập nổ trang lỗi thô — thêm hai lưới ở root);
+`/bookings/foo` 500 thay vì 404 (soi định dạng `BK-` tại client); nhãn
+"Price per adult" sai nghĩa (API nhân unitPrice với TỔNG khách — đổi "per
+person"); clamp page hiển thị (`?page=99` từng in "1961–5 of 5 · Page 99 of
+1"); `parse` throw trong event handler → `safeParse`; `formatGuests` chế bản
+thứ hai của `travellers()` i18n đã lệch số nhiều ngay lúc viết → dùng chung;
+gỡ cụm TanStack `manualPagination`/`rowCount` không ai đọc; gỡ `cache()` có
+docstring tả call site không tồn tại; session + fetch lên `Promise.all`;
+thêm landmark `<nav>` phân trang. Cùng đợt: user duyệt AMEND spec P4b thêm
+F5 (stat card 3 vùng — mở namespace `admin.stats`) và F6 (reports/export
+CSV + trang in, 0 dependency mới) — admin thành công cụ thống kê/báo cáo,
+không chỉ xem và CRUD.
+
+Tests after: 1416 web · 238 api · 184 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 56 admin.
+
 ## 2026-08-31 — Shell admin theo block dashboard-01 (nhánh `feat/p4-admin-shell-dashboard01`, 7 commit `7e1a9e1..efc8b5c`, 21 file)
 
 Vòng redesign shell sau login theo quy trình quen: user chọn block chính chủ
