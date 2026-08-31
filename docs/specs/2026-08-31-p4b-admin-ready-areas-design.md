@@ -2,11 +2,14 @@
 
 31/08/2026 · tiếp nối ADR-0026 (app admin riêng) và vòng shell dashboard-01
 (CHANGELOG 31/08). Đầu vào: [khảo sát parity 20/08](../analysis/2026-08-20-admin-parity-nexora.md).
+AMEND cùng ngày sau nghiệm thu F1: thêm F5 (stat card 3 vùng) + F6
+(reports/export) theo yêu cầu bổ sung của user — xem §1 và §3.
 
 ## 1. Mục tiêu & phạm vi
 
-Ba vùng admin ĐẦU TIÊN có dữ liệu thật, dựng trên API **đã sống sẵn** — P4b
-không thêm endpoint nào. Bảy endpoint trong `contract.ts` §admin:
+Ba vùng admin ĐẦU TIÊN có dữ liệu thật, dựng trên API **đã sống sẵn** — F1–F4
+không thêm endpoint nào (F5/F6 bổ sung sau thì có, xem đoạn AMEND dưới). Bảy
+endpoint trong `contract.ts` §admin:
 
 | Vùng | Endpoint | Ghi chú |
 | --- | --- | --- |
@@ -14,9 +17,14 @@ không thêm endpoint nào. Bảy endpoint trong `contract.ts` §admin:
 | Cancellations | `admin.cancellations.list` · `decide` | decide một cửa approve/deny; approve = refund + CANCELLED + nhả ghế atomic |
 | Reviews | `admin.reviews.list` · `moderate` | moderate = transaction 4-trong-1 (flip + audit + recompute rating + email) |
 
-Ngoài phạm vi P4b: mọi vùng cần endpoint mới (enquiries, subscribers, outbox,
-payment-events, dashboard-stats, catalog CRUD, media, users) — thuộc P4c–P4f
-theo thứ tự ADR-0026.
+**Mở rộng 31/08 (user duyệt sau nghiệm thu F1):** P4b nhận thêm HAI tính năng
+có endpoint mới — F5 stats + F6 reports/export (xem §3) — để admin là công cụ
+thống kê/báo cáo thực thụ chứ không chỉ xem và CRUD. Đây là ngoại lệ CÓ CHỦ
+ĐÍCH của tiền đề "P4b không thêm endpoint": `admin.stats` vốn là việc P4d,
+kéo lên vì 3 trang vùng cần stat card; P4d sau này chỉ còn nối dashboard.
+
+Ngoài phạm vi P4b: enquiries, subscribers, outbox, payment-events, catalog
+CRUD, media, users — thuộc P4c–P4f theo thứ tự ADR-0026.
 
 ## 2. Quyết định thiết kế
 
@@ -89,6 +97,41 @@ merge rebase+ff, docs sweep.
 - `/reviews`: hàng đợi (mặc định tất cả, filter approved/pending), nội dung
   review + rating + ảnh (nếu có) + tour; approve/unapprove + confirm nhắc hệ
   quả (recompute rating + email cho khách). `lib/nav.ts`: Reviews enabled.
+
+### F5 — Stat card 3 trang vùng (branch `feat/p4b-area-stats`)
+
+Mẫu user chốt (ảnh 31/08): nhãn · số lớn · pill delta ↑/↓ · "vs X prior
+28 days". Kỳ so sánh mặc định: 28 ngày gần nhất vs 28 ngày liền trước.
+
+- Contract: namespace `admin.stats` MỚI — một endpoint mỗi vùng
+  (`admin.stats.bookings` / `cancellations` / `reviews`), mỗi cái trả bộ
+  metric của vùng kèm giá trị kỳ trước (đủ để client tính delta, KHÔNG tính
+  delta phía client bằng logic riêng — server trả cả hai số). API: service
+  aggregate bằng Prisma trên bảng thật, `AuthGuard` + `@Roles(ADMIN)` như 7
+  endpoint admin hiện có, TDD int test cho từng aggregate.
+- Bộ số: bookings → Revenue · Paid bookings · New bookings · Cancellation
+  rate; cancellations → Pending queue · Approved 28d · Denied 28d; reviews →
+  Pending · Approved 28d · Average rating.
+- UI: component `StatCard` vào `components/kit/` (một mẫu cho mọi vùng, style
+  ăn theo section-cards dashboard-01), hàng card gắn TRÊN bảng của
+  `/bookings`, `/cancellations`, `/reviews`.
+- Dashboard (4 card + chart trang `/`) KHÔNG thuộc F5 — P4d nối vào cùng
+  service sau (user chốt 31/08).
+
+### F6 — Reports & export (branch `feat/p4b-reports-export`)
+
+Đường 0-dependency (user chốt 31/08 — freeze dep 15/10): CSV + trang in,
+KHÔNG thêm thư viện xlsx/PDF.
+
+- Contract: `AdminBookingsListQuerySchema` thêm `from`/`to` (khoảng ngày
+  `createdAt`) — thành luôn bộ lọc ngày trên UI bảng bookings.
+- Export CSV: route handler trong admin (hoặc endpoint API — quyết khi làm,
+  ghi lý do) stream ĐÚNG tập đang lọc của bảng bookings; nút "Export CSV"
+  cạnh toolbar. Escape CSV tử tế (dấu phẩy/quote/newline trong tên khách).
+- Trang `/reports`: chọn tháng → tổng hợp (doanh thu, bookings theo trạng
+  thái, refund, cancellations, reviews trong tháng — ăn từ `admin.stats` +
+  query theo `from`/`to`) + nút CSV + layout `@media print` sạch để browser
+  Print ra PDF. `lib/nav.ts` thêm mục Reports (nhóm Operations).
 
 ## 4. Definition of done (mỗi tính năng)
 
