@@ -2533,6 +2533,22 @@ export const messages = {
       title: 'Welcome to the back office',
       body: 'Metrics land here in a later phase. The first live areas are on their way.',
     },
+    // Dashboard chờ số thật (vòng gọt bước 4, 21/08): khung card/chart của
+    // dashboard-01 giữ nguyên, label theo 4 metric SẼ CÓ ở P4d (map từ
+    // admin-stats của Nexora cũ); demo số đã dọn — không bịa số.
+    dashboard: {
+      cards: {
+        revenue: 'Total revenue',
+        paidBookings: 'Paid bookings',
+        pendingReviews: 'Reviews to moderate',
+        newEnquiries: 'New enquiries',
+      },
+      awaiting: 'Awaiting live data',
+      chart: {
+        title: 'Revenue over time',
+        description: 'Numbers arrive with the stats service (P4d).',
+      },
+    },
   },
 } as const;
 
