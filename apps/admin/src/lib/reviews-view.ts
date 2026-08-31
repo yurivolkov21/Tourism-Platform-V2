@@ -49,7 +49,6 @@ export interface ReviewRowVM {
   sourceLabel: string;
   /** `null` khi review không gắn tour (CURATED) — bảng tự chọn câu thay thế. */
   tourTitle: string | null;
-  tourSlug: string | null;
   approved: boolean;
   stateLabel: string;
   submitted: string;
@@ -57,6 +56,21 @@ export interface ReviewRowVM {
   moderated: string | null;
   /** `null` khi không biết ai duyệt (admin cũ đã bị xoá — FK SetNull). */
   moderatedBy: string | null;
+}
+
+/**
+ * URL Cloudinary gốc → thumbnail vuông 128px (đủ cho ô 32/64px kể cả retina).
+ * `buildCloudinaryUrl` phía API chỉ gắn `f_auto,q_auto` KHÔNG giới hạn cỡ —
+ * ảnh khách chụp điện thoại tới 10MB/tấm, trang 50 hàng × 5 ảnh từng kéo
+ * hàng trăm MB chỉ để vẽ ô 32px (review F4 31/08). URL không theo khuôn
+ * (host lạ/dữ liệu cũ) thì trả nguyên vẹn — thà nặng còn hơn vỡ ảnh.
+ */
+const CLOUDINARY_UPLOAD_MARKER = '/upload/f_auto,q_auto/';
+
+export function reviewPhotoThumb(url: string): string {
+  return url.includes(CLOUDINARY_UPLOAD_MARKER)
+    ? url.replace(CLOUDINARY_UPLOAD_MARKER, '/upload/f_auto,q_auto,w_128,h_128,c_fill/')
+    : url;
 }
 
 /** Review của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -67,7 +81,10 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     ratingLabel: t.list.ratingLabel(review.rating),
     title: review.title,
     body: review.body,
-    photos: review.media.map((photo) => ({ url: photo.url, alt: photo.alt ?? '' })),
+    photos: review.media.map((photo) => ({
+      url: reviewPhotoThumb(photo.url),
+      alt: photo.alt ?? '',
+    })),
     photosLabel: review.media.length > 0 ? t.list.photos(review.media.length) : null,
     // Tài khoản đã xoá → API trả `authorName` null (GDPR erasure, audit H5b).
     // Một ô trống trơn ở cột tác giả đọc ra như render hỏng, nên nói thẳng.
@@ -76,7 +93,6 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     source: review.source,
     sourceLabel: t.source[review.source],
     tourTitle: review.tourTitle,
-    tourSlug: review.tourSlug,
     approved: review.isApproved,
     stateLabel: review.isApproved ? t.state.approved : t.state.pending,
     submitted: formatDateTime(review.createdAt),

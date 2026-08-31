@@ -25,10 +25,12 @@ export const moderateErrorCopy = codec.copy;
 
 /**
  * Mã TRẠNG-THÁI-CŨ: lệnh không sửa được tại chỗ vì thế giới đã đổi dưới chân
- * dialog. Vùng này chỉ có MỘT (review đã biến mất — tài khoản tác giả hoặc
- * tour bị xoá đều cascade xuống review). UI xử: đóng dialog + toast + refresh
- * hàng đợi — copy hứa "the queue has been refreshed" nên UI PHẢI làm thật
- * (bài học review F3 31/08).
+ * dialog. Vùng này chỉ có MỘT — review đã biến mất khỏi DB (hard-delete row
+ * user hoặc xoá tour mới cascade xuống review; LƯU Ý: khách tự xoá tài khoản
+ * là SOFT-delete tombstone, review Ở LẠI queue với `authorDeleted` — xem
+ * `AccountService`, đừng tưởng nó biến mất). UI xử: đóng dialog + toast +
+ * refresh hàng đợi — copy hứa "the queue has been refreshed" nên UI PHẢI làm
+ * thật (bài học review F3 31/08).
  */
 export function isStaleStateCode(code: ModerateFailureCode): boolean {
   return code === 'REVIEW_NOT_FOUND';
@@ -42,11 +44,11 @@ export function isStaleStateCode(code: ModerateFailureCode): boolean {
 export type ModerateTarget = Pick<
   ReviewRowVM,
   | 'id'
-  | 'rating'
   | 'ratingLabel'
   | 'title'
   | 'body'
   | 'photos'
+  | 'photosLabel'
   | 'authorLabel'
   | 'authorDeleted'
   | 'source'
@@ -55,37 +57,42 @@ export type ModerateTarget = Pick<
 >;
 
 /**
- * Hệ quả THẬT của một lần bấm, theo `ReviewsService.moderate` (transaction
- * 4-trong-1: flip + audit + recompute rating + enqueue email). Trả về danh
+ * Hệ quả THẬT của một lần bấm, theo `ReviewsService.moderate` (flip + audit +
+ * recompute rating + enqueue email + bust cache web sau commit). Trả về danh
  * sách câu để dialog chỉ việc in — KHÔNG có ternary nào rải trong JSX.
  *
- * Hai trong bốn việc CÓ ĐIỀU KIỆN, và cả hai điều kiện đọc được từ chính
- * `AdminReviewSchema`:
+ * MỌI dòng đều có điều kiện đọc được từ chính `AdminReviewSchema`:
  *
- * - ③ recompute rating chỉ chạy khi review gắn tour (`locked.tourId`) — ở đây
- *   soi qua `tourTitle`, thứ admin thấy trên bảng.
- * - ④ email chỉ enqueue ở lần false→true VÀ chỉ khi review có user thật.
- *   CURATED không có tài khoản nào sau lưng; tác giả đã xoá tài khoản thì
- *   email trong DB là địa chỉ tombstone (`deleted+…@tombstone.local`, xem
- *   `AccountService`) — thư có được enqueue cũng không tới ai. Cả hai ca đều
- *   phải nói ra: hứa "khách sẽ nhận email" rồi không ai nhận là nói dối chính
- *   operator vừa bấm nút.
+ * - publish/hide: chỉ nói "trang tour" khi review GẮN tour — review mồ côi
+ *   không hiện ở đâu trên site, hứa "lên trang tour" là nói dối (review F4).
+ * - ③ recompute rating chỉ chạy khi review gắn tour; câu unapprove nói thẳng
+ *   ca review-duy-nhất: rating tour BIẾN MẤT, không chỉ "tính lại".
+ * - ④ email chỉ enqueue ở lần false→true, có user thật và tài khoản CHƯA xoá
+ *   (server gate `!deletedAt` từ vòng vá F4 — không còn thư nào bay tới địa
+ *   chỉ tombstone). Ca dữ liệu hiếm VERIFIED với userId null (import/backfill)
+ *   sẽ không email được dù câu hứa có — chấp nhận, ghi ở đây làm dấu.
  */
 export function moderateConsequences(target: ModerateTarget, approve: boolean): string[] {
   const copy = approve ? t.approveDialog.consequences : t.unapproveDialog.consequences;
   const rating = target.tourTitle ? copy.rating(target.tourTitle) : copy.noRating;
 
   if (!approve) {
-    return [t.unapproveDialog.consequences.hide, rating, t.unapproveDialog.consequences.noEmail];
+    const hide = target.tourTitle
+      ? t.unapproveDialog.consequences.hide
+      : t.unapproveDialog.consequences.hideNoTour;
+    return [hide, rating, t.unapproveDialog.consequences.noEmail];
   }
 
+  const publish = target.tourTitle
+    ? t.approveDialog.consequences.publish
+    : t.approveDialog.consequences.publishNoTour;
   const email = target.authorDeleted
     ? t.approveDialog.consequences.noEmailDeleted
     : target.source === 'CURATED'
       ? t.approveDialog.consequences.noEmailCurated
       : t.approveDialog.consequences.email;
 
-  return [t.approveDialog.consequences.publish, rating, email];
+  return [publish, rating, email];
 }
 
 /**

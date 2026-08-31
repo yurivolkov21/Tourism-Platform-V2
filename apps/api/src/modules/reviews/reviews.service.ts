@@ -276,7 +276,7 @@ export class ReviewsService {
         // CHỈ dùng cho metadata email, KHÔNG dùng cho gate ③ (xem `locked`
         // trong transaction bên dưới) — không cần nhất quán atomic với phần
         // ghi rating.
-        user: { select: { email: true, name: true } },
+        user: { select: { email: true, name: true, deletedAt: true } },
         tour: { select: { title: true } },
       },
     });
@@ -304,6 +304,22 @@ export class ReviewsService {
 
       const fromApproved = locked.isApproved;
       fromApprovedForRevalidate = fromApproved;
+
+      // Guard trạng-thái-trùng (review F4 31/08): tab cũ bấm approve lên
+      // review ĐÃ approved (hoặc unapprove lên đã unapproved) là lệnh không
+      // mang thông tin — no-op trả trạng thái hiện tại, KHÔNG ghi đè
+      // moderatedBy thành người-không-quyết-gì, KHÔNG đẩy event from===to
+      // vào audit trail append-only, không email, không đụng rating.
+      if (fromApproved === input.approve) {
+        return await tx.review.findUniqueOrThrow({
+          where: { id: input.id },
+          include: {
+            tour: { select: { slug: true, title: true } },
+            moderatedBy: { select: { name: true } },
+          },
+        });
+      }
+
       const justApproved = !fromApproved && input.approve;
 
       // ① trạng thái + dấu vết
@@ -377,8 +393,12 @@ export class ReviewsService {
 
       // ④ email — chỉ ở lần chuyển false→true; dedupeKey chặn gửi lại khi
       // unapprove rồi approve lần nữa (quy ước <event>:<entityId>). Bỏ qua
-      // khi review không gắn với user thật (CURATED) vì không có ai để gửi.
-      if (justApproved && existing.user?.email) {
+      // khi review không gắn user thật (CURATED — không có ai để gửi) VÀ khi
+      // tài khoản đã tự xoá: soft-delete chỉ tombstone hoá email
+      // (`deleted+…@tombstone.local`, xem account.service) — gửi vào đó là
+      // bounce vĩnh viễn + retry rác, và UI đã hứa "No email goes out"
+      // (review F4 31/08).
+      if (justApproved && existing.user?.email && !existing.user.deletedAt) {
         await tx.outbox.createMany({
           data: [
             {

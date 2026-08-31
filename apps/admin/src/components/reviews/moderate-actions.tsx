@@ -60,11 +60,17 @@ export function ModerateActions({
 }) {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
-  const [open, setOpen] = useState(false);
+  /**
+   * Chiều lệnh bị ĐÓNG BĂNG vào state đúng LÚC BẤM nút (`null` = dialog
+   * đóng) — không derive lại mỗi render từ prop server: queue có thể refresh
+   * trong lúc dialog đang mở (hàng khác vừa quyết xong, hay admin B đụng cùng
+   * hàng) và một dialog "Approve" tự lật thành "Unapprove" nghĩa là cú click
+   * operator định là duyệt lại gửi lệnh gỡ (review F4 31/08). Nếu chiều đã
+   * đóng băng thành ra cũ, server no-op guard đỡ nốt (không ghi gì).
+   */
+  const [frozenApprove, setFrozenApprove] = useState<boolean | null>(null);
 
   // Một hàng chỉ có MỘT chiều đi tiếp: đang chờ thì duyệt, đang hiện thì gỡ.
-  // Suy ra ở ĐÚNG một chỗ rồi truyền xuống, để nút và lệnh gửi đi không bao
-  // giờ nói hai chuyện khác nhau.
   const approve = !review.approved;
 
   /** Sau MỌI kết cục đã-chạm-server: kéo queue tươi về, khoá nút tới khi xong. */
@@ -82,16 +88,16 @@ export function ModerateActions({
         variant={approve ? 'default' : 'outline'}
         size="sm"
         disabled={isRefreshing}
-        onClick={() => setOpen(true)}
+        onClick={() => setFrozenApprove(approve)}
       >
         {approve ? t.approve : t.unapprove}
       </Button>
-      {open ? (
+      {frozenApprove !== null ? (
         <ModerateDialog
           review={review}
           moderate={moderate}
-          approve={approve}
-          onClose={() => setOpen(false)}
+          approve={frozenApprove}
+          onClose={() => setFrozenApprove(null)}
           onSettled={refreshQueue}
         />
       ) : null}
@@ -206,6 +212,9 @@ function ModerateDialog({
           <p className="max-h-40 overflow-y-auto whitespace-pre-wrap">{review.body}</p>
           {review.photos.length > 0 ? (
             <div className="flex flex-wrap gap-2">
+              {/* Trình đọc màn hình phải BIẾT review kèm ảnh trước khi duyệt
+                  công khai chúng — alt từng ảnh thường rỗng (review F4). */}
+              <span className="sr-only">{review.photosLabel}</span>
               {review.photos.map((photo) => (
                 // `<img>` thường chứ không `next/image` — cùng lý do đã ghi ở
                 // `review-card.tsx` của web: ảnh nhỏ cố định, không cần loader.
@@ -217,6 +226,10 @@ function ModerateDialog({
                   key={photo.url}
                   src={photo.url}
                   alt={photo.alt}
+                  width={64}
+                  height={64}
+                  loading="lazy"
+                  decoding="async"
                   className="size-16 rounded-sm border border-border object-cover"
                 />
               ))}

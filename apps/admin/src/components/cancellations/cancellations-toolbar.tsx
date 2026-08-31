@@ -3,7 +3,7 @@
 import { CancellationRequestStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { useRouter } from 'next/navigation';
-import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
 
 /**
@@ -16,9 +16,6 @@ const t = messages.admin.cancellations.list;
 
 /** Nguồn danh sách trạng thái = enum contract, không chép tay lần hai. */
 const STATUSES = CancellationRequestStatusSchema.options;
-
-/** Giá trị tab "tất cả" — Select/Tabs cần một value thật, URL thì bỏ trống. */
-const ALL = 'ALL';
 
 const TAB_ITEMS = [
   { label: t.all, value: ALL },

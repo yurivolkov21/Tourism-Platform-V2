@@ -7,7 +7,7 @@ import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
 
 /**
@@ -21,9 +21,6 @@ const t = messages.admin.bookings.list;
 
 /** Nguồn danh sách trạng thái = enum contract, không chép tay lần hai. */
 const STATUSES = BookingStatusSchema.options;
-
-/** Giá trị tab "tất cả" — Select/Tabs cần một value thật, URL thì bỏ trống. */
-const ALL = 'ALL';
 
 const TAB_ITEMS = [
   { label: t.all, value: ALL },

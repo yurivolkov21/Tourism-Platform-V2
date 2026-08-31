@@ -640,6 +640,11 @@ model Review {
   @@index([tourId, isApproved, authorDeleted, createdAt(sort: Desc)])
   @@index([userId])
   @@index([isApproved, isFeatured])
+  // Hàng đợi moderation admin (review F4 31/08): tab Pending/Approved lọc
+  // isApproved + sort createdAt desc, id desc — index cũ [isApproved,
+  // isFeatured] không phủ sort, mỗi lần đổi tab/phân trang là seq scan + sort.
+  // Nhánh search (contains 3 cột) chưa index trgm — ghi sổ, chờ dữ liệu lớn.
+  @@index([isApproved, createdAt(sort: Desc), id(sort: Desc)])
   @@map("reviews")
 }
 

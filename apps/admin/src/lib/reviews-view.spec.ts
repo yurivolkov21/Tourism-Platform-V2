@@ -58,7 +58,6 @@ describe('toReviewRow', () => {
       source: 'VERIFIED',
       sourceLabel: messages.admin.reviews.source.VERIFIED,
       tourTitle: 'Ha Long Bay Cruise',
-      tourSlug: 'ha-long-bay-cruise',
       approved: false,
       stateLabel: messages.admin.reviews.state.pending,
       submitted: '30 Aug 2026, 09:30 UTC',
@@ -112,11 +111,9 @@ describe('toReviewRow', () => {
     const row = toReviewRow({
       ...PENDING,
       source: 'CURATED',
-      tourSlug: null,
       tourTitle: null,
     });
     expect(row.tourTitle).toBeNull();
-    expect(row.tourSlug).toBeNull();
     expect(row.sourceLabel).toBe(messages.admin.reviews.source.CURATED);
   });
 

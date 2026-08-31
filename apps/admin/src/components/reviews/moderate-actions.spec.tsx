@@ -24,11 +24,11 @@ vi.mock('next/navigation', () => ({
 
 const PENDING: ModerateTarget = {
   id: '11111111-1111-4111-8111-111111111111',
-  rating: 5,
   ratingLabel: messages.admin.reviews.list.ratingLabel(5),
   title: 'Trip of a lifetime',
   body: 'The guide knew every cove and the kayaking was the highlight.',
   photos: [{ url: 'https://res.cloudinary.com/demo/image/upload/one.jpg', alt: 'Sunrise' }],
+  photosLabel: messages.admin.reviews.list.photos(1),
   authorLabel: 'Ada Lovelace',
   authorDeleted: false,
   source: 'VERIFIED',
@@ -132,6 +132,26 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
     expect(screen.getByText(messages.admin.reviews.list.ratingLabel(5))).toBeInTheDocument();
     expect(screen.getByText(/kayaking was the highlight/)).toBeInTheDocument();
     expect(screen.getByAltText('Sunrise')).toBeInTheDocument();
+  });
+});
+
+describe('ModerateActions — chiều lệnh đóng băng lúc mở dialog (review F4 31/08)', () => {
+  it('queue refresh làm prop approved lật trong lúc dialog mở → dialog GIỮ chiều Approve', async () => {
+    // Khoá chống tái hiện: bản đầu derive `approve` mỗi render — dialog đang
+    // mở tự biến thành Unapprove và cú click gửi lệnh ngược ý định.
+    const user = userEvent.setup();
+    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: true });
+    const view = render(<ModerateActions review={PENDING} moderate={moderate} />);
+    await user.click(screen.getByRole('button', { name: t.approve }));
+    expect(await screen.findByText(t.approveDialog.title)).toBeInTheDocument();
+
+    // Refresh mang bản approved về (admin khác vừa duyệt) — dialog KHÔNG lật.
+    view.rerender(<ModerateActions review={APPROVED} moderate={moderate} />);
+    expect(screen.getByText(t.approveDialog.title)).toBeInTheDocument();
+    expect(screen.queryByText(t.unapproveDialog.title)).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: t.approveDialog.submit }));
+    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, approve: true });
   });
 });
 

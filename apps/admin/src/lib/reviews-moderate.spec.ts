@@ -65,11 +65,11 @@ const t = messages.admin.reviews.moderate;
 
 const PENDING: ModerateTarget = {
   id: '11111111-1111-4111-8111-111111111111',
-  rating: 5,
   ratingLabel: messages.admin.reviews.list.ratingLabel(5),
   title: 'Trip of a lifetime',
   body: 'The guide knew every cove.',
   photos: [],
+  photosLabel: null,
   authorLabel: 'Ada Lovelace',
   authorDeleted: false,
   source: 'VERIFIED',
@@ -116,13 +116,18 @@ describe('moderateConsequences — nhánh unapprove', () => {
     ]);
   });
 
-  it('không gắn tour → không rating nào đổi, và vẫn KHÔNG có email nào', () => {
+  it('không gắn tour → câu hide/publish KHÔNG hứa "trang tour", không rating đổi, không email', () => {
+    // Khoá vòng vá review F4: review mồ côi không hiện ở đâu trên site —
+    // "Removes the review from the tour page" là nói dối operator.
     const consequences = moderateConsequences({ ...APPROVED, tourTitle: null }, false);
     expect(consequences).toEqual([
-      t.unapproveDialog.consequences.hide,
+      t.unapproveDialog.consequences.hideNoTour,
       t.unapproveDialog.consequences.noRating,
       t.unapproveDialog.consequences.noEmail,
     ]);
+    expect(moderateConsequences({ ...APPROVED, tourTitle: null, approved: false }, true)[0]).toBe(
+      t.approveDialog.consequences.publishNoTour,
+    );
   });
 
   it('bỏ duyệt KHÔNG bao giờ hứa email, kể cả với tác giả còn tài khoản', () => {

@@ -21,6 +21,14 @@ import { Tabs, TabsList, TabsTrigger } from '@tourism/ui/components/tabs';
  * thế nào (safeParse enum, dựng href). Giá trị "tất cả" cũng do vùng đặt
  * (Select/Tabs cần một value thật, URL thì bỏ trống).
  */
+/**
+ * Giá trị tab "tất cả" — hợp đồng riêng với component này (Select/Tabs cần
+ * một value thật, URL thì bỏ trống). Ở KIT chứ không ở từng toolbar: ba vùng
+ * từng chép tay `'ALL'`, vùng thứ tư gõ `'all'` là filter chọn nhầm im lặng
+ * (review F4 31/08). Chữ HOA để không đụng member enum contract nào.
+ */
+export const ALL_FILTER_VALUE = 'ALL';
+
 export interface StatusFilterItem {
   label: string;
   value: string;

@@ -498,6 +498,60 @@ describe('reviews (int)', () => {
     );
   });
 
+  it('moderate trạng-thái-trùng là NO-OP: không ghi đè moderatedBy, không event rác (review F4 31/08)', async () => {
+    // Khoá chống tái hiện: tab cũ của admin B bấm approve lên review admin A
+    // đã duyệt — trước đây server ghi đè moderatedBy thành B (người không
+    // quyết gì) và đẩy event from===to vào audit trail append-only.
+    const { reviewId } = await createAndApprove(app);
+    const before = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+
+    const second = await signUpAdmin(app, 'second-admin@tourism.test');
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/reviews/${reviewId}/moderate`,
+      headers: { cookie: second.cookie },
+      payload: { id: reviewId, approve: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().isApproved).toBe(true); // trả trạng thái hiện tại
+
+    const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+    expect(after.moderatedById).toBe(before.moderatedById); // vẫn là A
+    expect(after.moderatedAt?.toISOString()).toBe(before.moderatedAt?.toISOString());
+    expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(1);
+  });
+
+  it('duyệt review của tài khoản ĐÃ XOÁ (tombstone) → KHÔNG xếp email (review F4 31/08)', async () => {
+    // Xoá tài khoản là soft-delete: email thành deleted+…@tombstone.local —
+    // gửi vào đó là bounce vĩnh viễn; UI cũng hứa "No email goes out".
+    const { user, cookie } = await signUpAndSignIn(app, 'tombstone-author@example.com');
+    await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/reviews',
+      headers: { cookie },
+      payload: { bookingCode: 'BK-TESTREV1', rating: 5, body: 'Review trước khi xoá tài khoản' },
+    });
+    const reviewId = created.json().id;
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { deletedAt: new Date(), email: `deleted+${randomUUID()}@tombstone.local` },
+    });
+
+    const admin = await signUpAdmin(app, ADMIN_EMAIL);
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/admin/reviews/${reviewId}/moderate`,
+      headers: { cookie: admin.cookie },
+      payload: { id: reviewId, approve: true },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().isApproved).toBe(true); // duyệt vẫn ăn — chỉ email là không
+    expect(await prisma.outbox.count({ where: { dedupeKey: `review-approved:${reviewId}` } })).toBe(
+      0,
+    );
+  });
+
   it('unapprove rồi approve lại → KHÔNG gửi mail lần hai', async () => {
     const { reviewId, adminCookie } = await createAndApprove(app);
 

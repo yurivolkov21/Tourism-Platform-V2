@@ -35,6 +35,15 @@ const REVIEW_CONTEXT_COPY = {
   author: 'Author',
 } as const;
 
+// MỘT chữ cho tác giả đã xoá tài khoản ở CẢ ba bề mặt (trang tour, tab
+// reviews, queue admin) — bản thứ ba từng bị chép tay ở admin (review F4).
+const DELETED_ACCOUNT_COPY = 'Deleted account';
+
+// MỘT câu a11y cho cụm sao ở mọi bề mặt — bản admin từng rụng chữ "stars"
+// ngay khi sinh (review F4): screen reader phải nghe cùng một câu ở admin
+// lẫn web.
+const RATING_LABEL_COPY = (rating: number) => `${rating} out of 5 stars`;
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -1379,11 +1388,11 @@ export const messages = {
           chúng (`messages.tourDetail.reviews`) — đổi tên khối là gãy trang vùng. */
       /** Nhãn gộp cho cụm năm sao: trình đọc màn hình nghe "4 out of 5 stars"
           thay vì năm icon vô nghĩa. */
-      ratingLabel: (rating: number) => `${rating} out of 5 stars`,
+      ratingLabel: RATING_LABEL_COPY,
       /** Tác giả đã xoá tài khoản — `PublicReviewSchema.authorName` là null và
           schema ghi rõ FE render đúng chuỗi này. Review vẫn ở lại vì nó là đánh
           giá thật; chỉ danh tính biến mất. */
-      deletedAuthor: 'Deleted account',
+      deletedAuthor: DELETED_ACCOUNT_COPY,
     },
 
     // ── Reviews tab ──
@@ -1397,7 +1406,7 @@ export const messages = {
       showAll: 'Show all reviews',
       onlyFinished: 'Only travellers who finished this trip can leave a review.',
       ordering: 'Newest first · reviews from deleted accounts appear last.',
-      deletedAccount: 'Deleted account',
+      deletedAccount: DELETED_ACCOUNT_COPY,
       /** Chưa ai đánh giá: KHÔNG vẽ biểu đồ năm cột 0% — nó đọc ra như "ai cũng
           chấm thấp" chứ không phải "chưa có dữ liệu". */
       emptyTitle: 'No reviews yet',
@@ -2924,9 +2933,9 @@ export const messages = {
         },
         /** Tác giả đã xoá tài khoản (`authorName` về null): review Ở LẠI vì
          *  nó là đánh giá thật, chỉ danh tính biến mất — cùng chữ với web. */
-        deletedAuthor: 'Deleted account',
-        /** Cụm sao đọc thành MỘT câu cho trình đọc màn hình. */
-        ratingLabel: (rating: number) => `${rating} out of 5`,
+        deletedAuthor: DELETED_ACCOUNT_COPY,
+        /** Cụm sao đọc thành MỘT câu cho trình đọc màn hình — cùng câu với web. */
+        ratingLabel: RATING_LABEL_COPY,
         /** Ảnh khách đính kèm (ADR-0021) — thumbnail đứng ngay cạnh chữ. */
         photos: (count: number) => `${count} ${count === 1 ? 'photo' : 'photos'}`,
         /** Review CURATED có thể không gắn tour nào (`tourSlug` null). */
@@ -2961,9 +2970,10 @@ export const messages = {
         /** Nhãn cụm nút của MỘT hàng — cả trang toàn nút "Approve" giống hệt
          *  nhau thì trình đọc màn hình không phân biệt nổi hàng nào. */
         actionsLabel: (author: string) => `Moderate the review by ${author}`,
-        // Bốn nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một
-        // chữ — bài học travellers F1, nếp CANCELLATION_CONTEXT_COPY).
-        review: REVIEW_CONTEXT_COPY.review,
+        // Nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một chữ —
+        // bài học travellers F1, nếp CANCELLATION_CONTEXT_COPY). KHÔNG có
+        // alias `review` ở đây: dialog in nguyên văn review, không có dòng
+        // nhãn nào dùng nó (key chết bị dọn ở review F4 31/08).
         rating: REVIEW_CONTEXT_COPY.rating,
         tour: REVIEW_CONTEXT_COPY.tour,
         author: REVIEW_CONTEXT_COPY.author,
@@ -2977,6 +2987,10 @@ export const messages = {
           body: 'Approving publishes the review and runs everything below in one go, straight away.',
           consequences: {
             publish: 'Publishes the review on the tour page for everyone to see.',
+            /** Review không gắn tour thì KHÔNG hiện ở đâu — không hứa "lên
+             *  trang tour" (review F4 31/08). */
+            publishNoTour:
+              'Marks the review as approved. It is not attached to a tour, so it does not appear anywhere on the site yet.',
             rating: (tour: string) =>
               `Recalculates the star rating of ${tour} from every approved review, this one included.`,
             noRating: 'No tour rating changes — this review is not attached to a tour.',
@@ -2994,8 +3008,12 @@ export const messages = {
           body: 'Unapproving takes the review off the public site and runs everything below in one go, straight away.',
           consequences: {
             hide: 'Removes the review from the tour page.',
+            /** Không gắn tour thì vốn không hiện ở đâu — gỡ duyệt chỉ đổi cờ. */
+            hideNoTour: 'Marks the review as not approved. It was not shown anywhere on the site.',
+            /** Nói thẳng ca review-duy-nhất: rating tour BIẾN MẤT chứ không chỉ
+             *  "tính lại" (review F4 31/08 — hệ quả nhìn thấy từ ngoài site). */
             rating: (tour: string) =>
-              `Recalculates the star rating of ${tour} without this review.`,
+              `Recalculates the star rating of ${tour} without this review — if it was the only approved review, the tour loses its star rating until another one is approved.`,
             noRating: 'No tour rating changes — this review is not attached to a tour.',
             /** Service chỉ enqueue email ở lần false→true — bỏ duyệt thì im
              *  lặng. Nói ra để operator biết khách KHÔNG hề được báo. */

@@ -68,7 +68,10 @@ function buildColumns(moderate: ModerateAction) {
       header: t.columns.rating,
       cell: ({ row }) => (
         <div className="flex items-center gap-1 whitespace-nowrap">
-          <StarIcon className="size-3.5 fill-current text-muted-foreground" aria-hidden="true" />
+          {/* Token `rating` chuyên dụng (vàng) — cùng màu sao với 8 component
+              web (`filledStarClass` của reui/rating.tsx); sao xám từng làm
+              admin và site nhìn như hai hệ (review F4 31/08). */}
+          <StarIcon className="size-3.5 fill-rating text-rating" aria-hidden="true" />
           <span>{row.original.rating}</span>
           {/* Con số trần không nói lên thang điểm — trình đọc màn hình nghe
               trọn câu "5 out of 5" thay vì "5". */}
@@ -140,6 +143,10 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
               key={photo.url}
               src={photo.url}
               alt={photo.alt}
+              width={32}
+              height={32}
+              loading="lazy"
+              decoding="async"
               className="size-8 rounded-sm border border-border object-cover"
             />
           ))}
@@ -158,22 +165,11 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
 function ModerationCell({ row, moderate }: { row: ReviewRowVM; moderate: ModerateAction }) {
   return (
     <div className="grid gap-1">
-      <ModerateActions
-        review={{
-          id: row.id,
-          rating: row.rating,
-          ratingLabel: row.ratingLabel,
-          title: row.title,
-          body: row.body,
-          photos: row.photos,
-          authorLabel: row.authorLabel,
-          authorDeleted: row.authorDeleted,
-          source: row.source,
-          tourTitle: row.tourTitle,
-          approved: row.approved,
-        }}
-        moderate={moderate}
-      />
+      {/* Truyền thẳng `row` (thoả cấu trúc ModerateTarget) — object literal
+          11 field từng chép tay ở đây vừa tạo tham chiếu mới mỗi render (chặn
+          memo về sau) vừa phải sửa tay mỗi khi Pick đổi (review F4 31/08).
+          "Dialog dựa vào gì" đã do chính kiểu ModerateTarget diễn đạt. */}
+      <ModerateActions review={row} moderate={moderate} />
       <div className="grid gap-0.5 text-xs text-muted-foreground">
         <span className="whitespace-nowrap">{row.moderated ?? t.neverModerated}</span>
         {row.moderatedBy ? <span className="truncate">{row.moderatedBy}</span> : null}
