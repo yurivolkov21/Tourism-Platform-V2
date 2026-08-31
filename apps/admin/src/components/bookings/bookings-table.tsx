@@ -26,9 +26,11 @@ import {
 import { ChevronDownIcon, Columns3Icon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
+import { BookingsSearch, BookingsStatusTabs } from '@/components/bookings/bookings-toolbar';
+import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
-import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
+import { type BookingsQuery, bookingsHref, PAGE_SIZE_OPTIONS } from '@/lib/bookings-query';
 import { type BookingRowVM, statusBadgeVariant } from '@/lib/bookings-view';
 
 /**
@@ -145,75 +147,78 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
   });
 
   return (
-    <div className="flex w-full flex-col gap-4">
-      <div className="flex items-center justify-end px-4 lg:px-6">
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-            <Columns3Icon data-icon="inline-start" />
-            {messages.admin.table.columns}
-            <ChevronDownIcon data-icon="inline-end" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            {table
-              .getAllColumns()
-              .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {COLUMN_LABELS[column.id] ?? column.id}
-                </DropdownMenuCheckboxItem>
+    <DataTableFrame
+      views={<BookingsStatusTabs query={query} />}
+      actions={
+        <>
+          <BookingsSearch query={query} />
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
+              <Columns3Icon data-icon="inline-start" />
+              {messages.admin.table.columns}
+              <ChevronDownIcon data-icon="inline-end" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              {table
+                .getAllColumns()
+                .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuCheckboxItem
+                    key={column.id}
+                    checked={column.getIsVisible()}
+                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
+                  >
+                    {COLUMN_LABELS[column.id] ?? column.id}
+                  </DropdownMenuCheckboxItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </>
+      }
+      footer={
+        <TablePagination
+          page={query.page}
+          totalPages={totalPages}
+          total={total}
+          pageSize={query.limit}
+          pageSizeOptions={PAGE_SIZE_OPTIONS}
+          hrefForPage={(page) => bookingsHref(query, { page })}
+          hrefForPageSize={(limit) => bookingsHref(query, { limit })}
+        />
+      }
+    >
+      <Table>
+        <TableHeader className="sticky top-0 z-10 bg-muted">
+          {table.getHeaderGroups().map((headerGroup) => (
+            <TableRow key={headerGroup.id}>
+              {headerGroup.headers.map((header) => (
+                <TableHead key={header.id} colSpan={header.colSpan}>
+                  {header.isPlaceholder ? null : <FlexRender header={header} />}
+                </TableHead>
               ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="px-4 lg:px-6">
-        <div className="overflow-hidden rounded-lg border">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted">
-              {table.getHeaderGroups().map((headerGroup) => (
-                <TableRow key={headerGroup.id}>
-                  {headerGroup.headers.map((header) => (
-                    <TableHead key={header.id} colSpan={header.colSpan}>
-                      {header.isPlaceholder ? null : <FlexRender header={header} />}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHeader>
-            <TableBody>
-              {table.getRowModel().rows.length ? (
-                table.getRowModel().rows.map((row) => (
-                  <TableRow key={row.id}>
-                    {row.getVisibleCells().map((cell) => (
-                      <TableCell key={cell.id}>
-                        <FlexRender cell={cell} />
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={columns.length} className="h-24 text-center">
-                    {t.empty}
+            </TableRow>
+          ))}
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.length ? (
+            table.getRowModel().rows.map((row) => (
+              <TableRow key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <TableCell key={cell.id}>
+                    <FlexRender cell={cell} />
                   </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      <TablePagination
-        page={query.page}
-        totalPages={totalPages}
-        total={total}
-        pageSize={query.limit}
-        hrefForPage={(page) => bookingsHref(query, { page })}
-      />
-    </div>
+                ))}
+              </TableRow>
+            ))
+          ) : (
+            <TableRow>
+              <TableCell colSpan={columns.length} className="h-24 text-center">
+                {t.empty}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </DataTableFrame>
   );
 }

@@ -2559,6 +2559,7 @@ export const messages = {
       previousPage: 'Go to previous page',
       nextPage: 'Go to next page',
       lastPage: 'Go to last page',
+      rowsPerPage: 'Rows per page',
       columns: 'Columns',
     },
     // Vùng bookings đọc (spec P4b §3-F1) — bảng có filter/tìm kiếm/phân trang
@@ -2569,7 +2570,6 @@ export const messages = {
         all: 'All',
         searchLabel: 'Search bookings',
         searchPlaceholder: 'Code, name or email',
-        search: 'Search',
         clear: 'Clear',
         empty: 'No bookings match these filters.',
         columns: {

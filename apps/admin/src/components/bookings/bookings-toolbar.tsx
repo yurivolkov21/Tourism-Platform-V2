@@ -5,107 +5,132 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
-import { cn } from '@tourism/ui/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@tourism/ui/components/select';
+import { Tabs, TabsList, TabsTrigger } from '@tourism/ui/components/tabs';
 import { SearchIcon } from 'lucide-react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
 
 /**
- * Thanh lọc của `/bookings`: tab trạng thái + ô tìm kiếm. Cả hai chỉ làm MỘT
- * việc — đổi URL; server component đọc lại `searchParams` rồi fetch (spec P4b
- * §2.2), nên không có state danh sách nào ở client.
+ * Hai mẩu điều khiển của `/bookings`, lắp vào hai khe của `DataTableFrame`:
+ * tab lọc trạng thái (khe trái) và ô tìm kiếm (khe phải).
  *
- * Tab là `<Link>` (không phải nút set-state): mỗi bộ lọc là một địa chỉ chia
- * sẻ được, và chuyển tab không cần JS chạy xong mới thấy kết quả.
+ * Tab dùng ĐÚNG `Tabs/TabsList/TabsTrigger` như block dashboard-01 — kể cả
+ * cặp "TabsList ở màn rộng · Select ở màn hẹp" (`@4xl/main`) — để hai bảng
+ * nhìn là một hệ (user chốt 31/08). Chúng chỉ làm một việc: đổi URL; server
+ * component đọc lại `searchParams` rồi fetch (spec P4b §2.2), không có state
+ * danh sách nào ở client.
  */
 const t = messages.admin.bookings.list;
 
 /** Nguồn danh sách trạng thái = enum contract, không chép tay lần hai. */
 const STATUSES = BookingStatusSchema.options;
 
-export function BookingsToolbar({ query }: { query: BookingsQuery }) {
+/** Giá trị tab "tất cả" — Select/Tabs cần một value thật, URL thì bỏ trống. */
+const ALL = 'ALL';
+
+const TAB_ITEMS = [
+  { label: t.all, value: ALL },
+  ...STATUSES.map((status) => ({ label: messages.admin.bookings.status[status], value: status })),
+];
+
+export function BookingsStatusTabs({ query }: { query: BookingsQuery }) {
+  const router = useRouter();
+  const value = query.status ?? ALL;
+
+  function go(next: string) {
+    router.push(
+      bookingsHref(query, { status: next === ALL ? null : BookingStatusSchema.parse(next) }),
+    );
+  }
+
+  return (
+    <>
+      <Label htmlFor="status-selector" className="sr-only">
+        {t.filterLabel}
+      </Label>
+      {/* Màn hẹp: select gọn — cùng cặp @4xl/main của block dashboard-01. */}
+      <Select value={value} onValueChange={(next) => go(String(next))} items={TAB_ITEMS}>
+        <SelectTrigger className="flex w-fit @4xl/main:hidden" size="sm" id="status-selector">
+          <SelectValue placeholder={t.all} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            {TAB_ITEMS.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+
+      {/* Ẩn/hiện đặt ở ROOT chứ không ở TabsList: root là con trực tiếp của
+          hàng `justify-between`, để nó luôn hiện thì màn hẹp có một khối rỗng
+          chen giữa select và cụm hành động. */}
+      <Tabs
+        value={value}
+        onValueChange={(next) => go(String(next))}
+        aria-label={t.filterLabel}
+        className="hidden @4xl/main:flex"
+      >
+        <TabsList>
+          {TAB_ITEMS.map((item) => (
+            <TabsTrigger key={item.value} value={item.value}>
+              {item.label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+      </Tabs>
+    </>
+  );
+}
+
+export function BookingsSearch({ query }: { query: BookingsQuery }) {
   const router = useRouter();
 
-  function onSearch(event: React.FormEvent<HTMLFormElement>) {
+  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
     router.push(bookingsHref(query, { search: String(form.get('q') ?? '') }));
   }
 
   return (
-    <div className="flex flex-col gap-3 px-4 lg:flex-row lg:items-center lg:justify-between lg:px-6">
-      <nav aria-label={t.filterLabel} className="flex flex-wrap items-center gap-1">
-        <FilterTab href={bookingsHref(query, { status: null })} active={!query.status}>
-          {t.all}
-        </FilterTab>
-        {STATUSES.map((status) => (
-          <FilterTab
-            key={status}
-            href={bookingsHref(query, { status })}
-            active={query.status === status}
-          >
-            {messages.admin.bookings.status[status]}
-          </FilterTab>
-        ))}
-      </nav>
-
-      <form onSubmit={onSearch} className="flex items-center gap-2">
-        <Label htmlFor="bookings-search" className="sr-only">
-          {t.searchLabel}
-        </Label>
-        <div className="relative">
-          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            id="bookings-search"
-            name="q"
-            type="search"
-            // Không kiểm soát bằng state: `key` ép React dựng lại ô sau mỗi
-            // lần điều hướng, nên ô luôn khớp URL mà không cần effect đồng bộ.
-            key={query.search ?? ''}
-            defaultValue={query.search ?? ''}
-            placeholder={t.searchPlaceholder}
-            className="h-8 w-full pl-8 lg:w-64"
-          />
-        </div>
-        <Button type="submit" variant="outline" size="sm">
-          {t.search}
+    <form onSubmit={onSubmit} className="flex items-center gap-2">
+      <Label htmlFor="bookings-search" className="sr-only">
+        {t.searchLabel}
+      </Label>
+      <div className="relative">
+        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          id="bookings-search"
+          name="q"
+          type="search"
+          // Không kiểm soát bằng state: `key` ép React dựng lại ô sau mỗi lần
+          // điều hướng, nên ô luôn khớp URL mà không cần effect đồng bộ.
+          key={query.search ?? ''}
+          defaultValue={query.search ?? ''}
+          placeholder={t.searchPlaceholder}
+          className="w-40 pl-8 lg:w-56"
+        />
+      </div>
+      {query.search ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => router.push(bookingsHref(query, { search: null }))}
+        >
+          {t.clear}
         </Button>
-        {query.search ? (
-          <Link
-            href={bookingsHref(query, { search: null })}
-            className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-          >
-            {t.clear}
-          </Link>
-        ) : null}
-      </form>
-    </div>
-  );
-}
-
-/** Một tab lọc — link, `aria-current` cho tab đang chọn. */
-function FilterTab({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? 'page' : undefined}
-      className={cn(
-        'rounded-md px-2.5 py-1 text-sm font-medium transition-colors',
-        active
-          ? 'bg-muted text-foreground'
-          : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
-      )}
-    >
-      {children}
-    </Link>
+      ) : null}
+    </form>
   );
 }

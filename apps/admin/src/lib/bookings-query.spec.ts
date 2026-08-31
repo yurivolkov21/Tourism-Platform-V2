@@ -57,10 +57,22 @@ describe('parseBookingsSearchParams', () => {
     expect(parsed.search).toHaveLength(120);
   });
 
-  it('gộp cả ba param cùng lúc', () => {
-    expect(parseBookingsSearchParams({ page: '4', status: 'REFUNDED', q: 'ann' })).toEqual({
+  it('limit hợp lệ được giữ — ô "Rows per page" cũng là trạng thái trên URL', () => {
+    expect(parseBookingsSearchParams({ limit: '50' })).toEqual({ page: 1, limit: 50 });
+  });
+
+  it('limit rác hoặc vượt trần 100 của contract rơi về mặc định 20', () => {
+    for (const limit of ['abc', '0', '-5', '2.5', '101', '9999']) {
+      expect(parseBookingsSearchParams({ limit })).toEqual({ page: 1, limit: 20 });
+    }
+  });
+
+  it('gộp cả bốn param cùng lúc', () => {
+    expect(
+      parseBookingsSearchParams({ page: '4', status: 'REFUNDED', q: 'ann', limit: '10' }),
+    ).toEqual({
       page: 4,
-      limit: 20,
+      limit: 10,
       status: 'REFUNDED',
       search: 'ann',
     });
@@ -107,5 +119,19 @@ describe('bookingsHref', () => {
 
   it('ký tự đặc biệt trong search được encode', () => {
     expect(bookingsHref(base, { search: 'a b&c' })).toBe('/bookings?q=a+b%26c');
+  });
+
+  it('đổi số dòng/trang ĐẶT LẠI trang về 1 — trang 5 cỡ 10 không còn nghĩa ở cỡ 50', () => {
+    expect(bookingsHref({ ...base, page: 5 }, { limit: 50 })).toBe('/bookings?limit=50');
+  });
+
+  it('limit mặc định (20) không nằm trên URL', () => {
+    expect(bookingsHref({ ...base, limit: 50 }, { limit: 20 })).toBe('/bookings');
+  });
+
+  it('limit đang khác mặc định thì đi theo mọi link khác (đổi trang, đổi filter)', () => {
+    expect(bookingsHref({ page: 1, limit: 10, status: 'PAID' }, { page: 2 })).toBe(
+      '/bookings?status=PAID&limit=10&page=2',
+    );
   });
 });

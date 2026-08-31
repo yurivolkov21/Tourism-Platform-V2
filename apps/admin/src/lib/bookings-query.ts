@@ -10,6 +10,12 @@ import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract'
 /** `limit` mặc định của `AdminBookingsListQuerySchema` — giữ khớp với server. */
 export const ADMIN_BOOKINGS_PAGE_SIZE = 20;
 
+/** Trần `limit` của contract (`z.int().max(100)`) — vượt là 400 ở server. */
+const PAGE_SIZE_MAX = 100;
+
+/** Các mức cho ô "Rows per page" — cùng dãy với kit data-table dashboard-01. */
+export const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50] as const;
+
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
 
@@ -36,13 +42,17 @@ function first(value: string | string[] | undefined): string | undefined {
  */
 export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
   const page = Number(first(raw.page));
+  const limit = Number(first(raw.limit));
   const status = BookingStatusSchema.safeParse(first(raw.status));
   const search = first(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
 
   return {
     // Number.isInteger loại luôn NaN/1.5/Infinity — chỉ số nguyên ≥ 1 sống sót.
     page: Number.isInteger(page) && page >= 1 ? page : 1,
-    limit: ADMIN_BOOKINGS_PAGE_SIZE,
+    limit:
+      Number.isInteger(limit) && limit >= 1 && limit <= PAGE_SIZE_MAX
+        ? limit
+        : ADMIN_BOOKINGS_PAGE_SIZE,
     ...(status.success ? { status: status.data } : {}),
     ...(search ? { search } : {}),
   };
@@ -54,27 +64,31 @@ export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
  */
 export interface BookingsHrefPatch {
   page?: number;
+  limit?: number;
   status?: BookingStatusValue | null;
   search?: string | null;
 }
 
 /**
- * Dựng href mới từ trạng thái hiện tại + sửa đổi. Đổi filter luôn ĐẶT LẠI
- * trang về 1 (trang 5 của bộ lọc cũ hầu như chắc chắn rỗng ở bộ lọc mới), trừ
- * khi chính patch nói rõ trang nào. `page=1` không xuất hiện trên URL — mặc
- * định thì không cần viết ra.
+ * Dựng href mới từ trạng thái hiện tại + sửa đổi. Đổi filter HOẶC số dòng mỗi
+ * trang đều ĐẶT LẠI trang về 1 (trang 5 của bộ lọc/cỡ trang cũ hầu như chắc
+ * chắn rỗng ở bộ mới), trừ khi chính patch nói rõ trang nào. `page=1` và
+ * `limit` mặc định không xuất hiện trên URL — mặc định thì không cần viết ra.
  */
 export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): string {
   const status = patch.status === undefined ? current.status : (patch.status ?? undefined);
   const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
   const search = rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined;
+  const limit = patch.limit ?? current.limit;
 
-  const filtersChanged = patch.status !== undefined || patch.search !== undefined;
-  const page = patch.page ?? (filtersChanged ? 1 : current.page);
+  const scopeChanged =
+    patch.status !== undefined || patch.search !== undefined || patch.limit !== undefined;
+  const page = patch.page ?? (scopeChanged ? 1 : current.page);
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (search) params.set('q', search);
+  if (limit !== ADMIN_BOOKINGS_PAGE_SIZE) params.set('limit', String(limit));
   if (page > 1) params.set('page', String(page));
 
   const query = params.toString();

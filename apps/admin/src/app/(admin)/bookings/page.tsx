@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { AdminShell } from '@/components/admin-shell';
 import { BookingsTable } from '@/components/bookings/bookings-table';
-import { BookingsToolbar } from '@/components/bookings/bookings-toolbar';
 import { fetchAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { parseBookingsSearchParams, type RawSearchParams } from '@/lib/bookings-query';
@@ -37,7 +36,6 @@ export default async function BookingsPage({
 
   return (
     <AdminShell user={session}>
-      <BookingsToolbar query={query} />
       <BookingsTable
         rows={paged.items.map(toBookingRow)}
         query={query}

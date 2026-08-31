@@ -2,6 +2,15 @@
 
 import { messages } from '@tourism/i18n';
 import { buttonVariants } from '@tourism/ui/components/button';
+import { Label } from '@tourism/ui/components/label';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@tourism/ui/components/select';
 import { cn } from '@tourism/ui/lib/utils';
 import {
   ChevronLeftIcon,
@@ -10,16 +19,18 @@ import {
   ChevronsRightIcon,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 /**
- * Thanh phân trang cho bảng đọc-từ-server (kit P4b §2.1 — bookings dựng
- * trước, cancellations/reviews tiêu thụ lại).
+ * Thanh phân trang cho bảng đọc-từ-server (kit P4b §2.1). Bố cục + class giữ
+ * ĐÚNG bản của block `dashboard-01` (`components/data-table.tsx`): câu tổng
+ * bên trái, cụm "Rows per page" · "Page X of Y" · bốn nút nhảy trang bên
+ * phải — để bảng vùng và bảng dashboard nhìn là một hệ (user chốt 31/08).
  *
- * Điều hướng bằng `<Link>` chứ không phải nút gọi `table.nextPage()`: trạng
- * thái trang nằm TRÊN URL (§2.2), nên một cái link vừa đúng ngữ nghĩa vừa mở
- * được tab mới, và trang chỉ cần render lại từ server. Nút ở biên (không đi
- * tiếp được) render thành `<span>` mờ — link chết là thứ nghiệm thu P4a đã
- * cấm.
+ * Khác duy nhất về CƠ CHẾ, không về hình: trạng thái trang nằm TRÊN URL
+ * (§2.2) nên nút nhảy trang là `<Link>` — mở tab mới được, và server render
+ * lại thay vì table client tự cắt. Biên (không đi tiếp được) render thành
+ * `<span>` mờ chứ không phải link chết (nghiệm thu P4a §0.3).
  */
 const t = messages.admin.table;
 
@@ -31,8 +42,12 @@ export interface TablePaginationProps {
   total: number;
   /** Số row của một trang. */
   pageSize: number;
+  /** Các mức chọn được cho "Rows per page". */
+  pageSizeOptions: readonly number[];
   /** Href của một trang bất kỳ — do vùng tự dựng (vd `bookingsHref`). */
   hrefForPage: (page: number) => string;
+  /** Href khi đổi số dòng mỗi trang — vùng tự quyết (thường kèm về trang 1). */
+  hrefForPageSize: (pageSize: number) => string;
 }
 
 function PageLink({
@@ -70,8 +85,11 @@ export function TablePagination({
   totalPages,
   total,
   pageSize,
+  pageSizeOptions,
   hrefForPage,
+  hrefForPageSize,
 }: TablePaginationProps) {
+  const router = useRouter();
   const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
   const isFirst = page <= 1;
@@ -84,6 +102,29 @@ export function TablePagination({
         {t.summary(from, to, total)}
       </div>
       <div className="flex w-full items-center gap-8 lg:w-fit">
+        <div className="hidden items-center gap-2 lg:flex">
+          <Label htmlFor="rows-per-page" className="text-sm font-medium">
+            {t.rowsPerPage}
+          </Label>
+          <Select
+            value={`${pageSize}`}
+            onValueChange={(value) => router.push(hrefForPageSize(Number(value)))}
+            items={pageSizeOptions.map((size) => ({ label: `${size}`, value: `${size}` }))}
+          >
+            <SelectTrigger size="sm" className="w-20" id="rows-per-page">
+              <SelectValue placeholder={`${pageSize}`} />
+            </SelectTrigger>
+            <SelectContent side="top">
+              <SelectGroup>
+                {pageSizeOptions.map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="flex w-fit items-center justify-center text-sm font-medium">
           {t.page(page, Math.max(totalPages, 1))}
         </div>
