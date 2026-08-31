@@ -101,3 +101,8 @@ export const AdminReviewsQuerySchema = PageQuerySchema.extend({
 });
 
 export type AdminReview = z.infer<typeof AdminReviewSchema>;
+
+/** Input của `admin.reviews.moderate` — server action admin re-parse bằng
+ * CHÍNH schema này trước khi gửi, nên cần kiểu tường minh (cùng nếp
+ * `AdminRefundInput`/`DecideCancellationInput` của bookings.ts). */
+export type ModerateReviewInput = z.output<typeof ModerateReviewInputSchema>;

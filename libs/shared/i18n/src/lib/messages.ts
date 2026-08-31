@@ -24,6 +24,17 @@ const CANCELLATION_CONTEXT_COPY = {
   customer: 'Customer',
 } as const;
 
+// Bốn nhãn ngữ cảnh của vùng reviews dùng ở CẢ header cột lẫn dialog duyệt —
+// cùng luật một-khái-niệm-một-chữ với CANCELLATION_CONTEXT_COPY ở trên.
+// "Author" chứ không "Customer": review CURATED không có khách nào sau lưng,
+// và AdminReviewSchema cố ý KHÔNG phơi PII khách (email/tên booking).
+const REVIEW_CONTEXT_COPY = {
+  review: 'Review',
+  rating: 'Rating',
+  tour: 'Tour',
+  author: 'Author',
+} as const;
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -2877,6 +2888,135 @@ export const messages = {
             `${code} is cancelled and the remaining balance is on its way back.`,
           deniedTitle: 'Cancellation denied',
           deniedBody: (code: string) => `${code} is unchanged and the customer has been told.`,
+        },
+      },
+    },
+    /**
+     * Vùng reviews (spec P4b §3-F4) — hàng đợi moderation cộng MỘT hành vi
+     * ghi: `admin.reviews.moderate` (approve/unapprove một cửa).
+     *
+     * Moderate là transaction 4-TRONG-1 (`ReviewsService.moderate`): flip
+     * trạng thái + audit trail + recompute rating tour + enqueue email cho
+     * khách. HAI hệ quả sau CÓ ĐIỀU KIỆN — rating chỉ đổi khi review gắn
+     * tour, email chỉ gửi ở lần false→true và chỉ khi sau review có một tài
+     * khoản thật — nên dưới `consequences` có cả câu cho ca KHÔNG xảy ra;
+     * dialog chọn câu theo đúng hàng đang mở (`moderateConsequences`, thuần,
+     * có test). Hứa suông "khách sẽ nhận email" cho một review CURATED là
+     * nói dối chính operator đang bấm nút.
+     */
+    reviews: {
+      list: {
+        filterLabel: 'Filter by state',
+        all: 'All',
+        searchLabel: 'Search reviews',
+        searchPlaceholder: 'Text, title or author',
+        clear: 'Clear',
+        empty: 'No reviews match these filters.',
+        columns: {
+          review: REVIEW_CONTEXT_COPY.review,
+          rating: REVIEW_CONTEXT_COPY.rating,
+          tour: REVIEW_CONTEXT_COPY.tour,
+          author: REVIEW_CONTEXT_COPY.author,
+          state: 'State',
+          submitted: 'Submitted',
+          /** Cột cuối: nút duyệt/bỏ duyệt + dấu vết lần quyết định gần nhất. */
+          moderation: 'Moderation',
+        },
+        /** Tác giả đã xoá tài khoản (`authorName` về null): review Ở LẠI vì
+         *  nó là đánh giá thật, chỉ danh tính biến mất — cùng chữ với web. */
+        deletedAuthor: 'Deleted account',
+        /** Cụm sao đọc thành MỘT câu cho trình đọc màn hình. */
+        ratingLabel: (rating: number) => `${rating} out of 5`,
+        /** Ảnh khách đính kèm (ADR-0021) — thumbnail đứng ngay cạnh chữ. */
+        photos: (count: number) => `${count} ${count === 1 ? 'photo' : 'photos'}`,
+        /** Review CURATED có thể không gắn tour nào (`tourSlug` null). */
+        noTour: 'Not attached to a tour',
+        /** Dấu vết lần duyệt gần nhất — `moderatedAt` null khi chưa ai đụng. */
+        moderated: (when: string) => `Moderated ${when}`,
+        moderatedBy: (who: string) => `by ${who}`,
+        neverModerated: 'Never moderated',
+      },
+      /** `isApproved` là boolean nên vùng này có ĐÚNG hai nhãn trạng thái. */
+      state: {
+        approved: 'Approved',
+        pending: 'Pending',
+      },
+      /** `AdminReviewSchema.source` — VERIFIED có booking thật sau lưng,
+       *  CURATED là nội dung biên tập (không tài khoản, nên không email). */
+      source: {
+        VERIFIED: 'Verified',
+        CURATED: 'Curated',
+      },
+      /**
+       * Duyệt/bỏ duyệt — hành vi GHI thứ ba của admin. Contract khai ĐÚNG
+       * MỘT mã lỗi cho `admin.reviews.moderate` (REVIEW_NOT_FOUND) và khối
+       * `errors` dưới đây là NGUỒN duy nhất của tập mã phía admin
+       * (`reviews-moderate.ts` derive từ keys, không chép danh sách lần hai
+       * — nếp F2/F3). Mã tầng vận chuyển (401/403/input hỏng/lỗi lạ) KHÔNG
+       * ở đây: chúng dùng chung `admin.errors.write`.
+       */
+      moderate: {
+        approve: 'Approve',
+        unapprove: 'Unapprove',
+        /** Nhãn cụm nút của MỘT hàng — cả trang toàn nút "Approve" giống hệt
+         *  nhau thì trình đọc màn hình không phân biệt nổi hàng nào. */
+        actionsLabel: (author: string) => `Moderate the review by ${author}`,
+        // Bốn nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một
+        // chữ — bài học travellers F1, nếp CANCELLATION_CONTEXT_COPY).
+        review: REVIEW_CONTEXT_COPY.review,
+        rating: REVIEW_CONTEXT_COPY.rating,
+        tour: REVIEW_CONTEXT_COPY.tour,
+        author: REVIEW_CONTEXT_COPY.author,
+        noteLabel: 'Moderation note (optional)',
+        /** Note đi vào `ReviewModerationEvent` (audit A8), KHÔNG vào email —
+         *  nói rõ để operator không viết lời nhắn cho khách vào ô này. */
+        notePlaceholder: 'Kept in the moderation history — the author never sees it.',
+        cancel: 'Cancel',
+        approveDialog: {
+          title: 'Approve this review?',
+          body: 'Approving publishes the review and runs everything below in one go, straight away.',
+          consequences: {
+            publish: 'Publishes the review on the tour page for everyone to see.',
+            rating: (tour: string) =>
+              `Recalculates the star rating of ${tour} from every approved review, this one included.`,
+            noRating: 'No tour rating changes — this review is not attached to a tour.',
+            email: 'Emails the author to tell them their review is live.',
+            noEmailCurated:
+              'No email goes out — a curated review has no customer account behind it.',
+            noEmailDeleted: 'No email goes out — the author has deleted their account.',
+          },
+          warning: 'Everything the review says goes public, photos included.',
+          submit: 'Approve review',
+          submitting: 'Approving…',
+        },
+        unapproveDialog: {
+          title: 'Unapprove this review?',
+          body: 'Unapproving takes the review off the public site and runs everything below in one go, straight away.',
+          consequences: {
+            hide: 'Removes the review from the tour page.',
+            rating: (tour: string) =>
+              `Recalculates the star rating of ${tour} without this review.`,
+            noRating: 'No tour rating changes — this review is not attached to a tour.',
+            /** Service chỉ enqueue email ở lần false→true — bỏ duyệt thì im
+             *  lặng. Nói ra để operator biết khách KHÔNG hề được báo. */
+            noEmail: 'The author is not told — no email goes out when a review is taken down.',
+          },
+          warning: 'The review stays in this queue and can be approved again at any time.',
+          submit: 'Unapprove review',
+          submitting: 'Unapproving…',
+        },
+        /** Mã TRẠNG-THÁI-CŨ duy nhất của vùng: review đã biến mất dưới chân
+         *  dialog (tài khoản tác giả bị xoá, tour bị xoá — cả hai cascade).
+         *  UI đóng dialog + toast + refresh THẬT: copy hứa thì phải làm
+         *  (bài học review F3 31/08). */
+        errors: {
+          REVIEW_NOT_FOUND: 'This review no longer exists. The queue below has been refreshed.',
+        },
+        toast: {
+          approvedTitle: 'Review approved',
+          approvedBody: (author: string) => `The review by ${author} is live on the site.`,
+          unapprovedTitle: 'Review unapproved',
+          unapprovedBody: (author: string) => `The review by ${author} is off the site.`,
         },
       },
     },

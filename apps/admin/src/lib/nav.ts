@@ -62,7 +62,18 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: CalendarX2,
       },
-      { key: 'reviews', label: t.reviews, href: '/reviews', enabled: false, icon: Star },
+      // Vùng thật thứ ba (P4b F4) — hàng đợi moderation + duyệt/bỏ duyệt.
+      {
+        key: 'reviews',
+        label: t.reviews,
+        // Mở thẳng phần CHỜ DUYỆT (việc cần làm), không phải cả kho review đã
+        // duyệt từ đời nào; tab "All" trong trang vẫn xem được tất cả — cùng
+        // nếp `/cancellations?status=REQUESTED`. Header khớp tiêu đề theo
+        // PATHNAME nên query ở đây không làm lệch chữ trên thanh trên cùng.
+        href: '/reviews?status=pending',
+        enabled: true,
+        icon: Star,
+      },
       {
         key: 'enquiries',
         label: t.enquiries,
