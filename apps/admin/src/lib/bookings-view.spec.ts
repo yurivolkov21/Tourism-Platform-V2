@@ -94,7 +94,7 @@ describe('guestCount', () => {
 
 describe('formatGuests', () => {
   it('có trẻ em thì tách rõ hai vế', () => {
-    expect(formatGuests({ numAdults: 2, numChildren: 1 })).toBe('2 adults · 1 child');
+    expect(formatGuests({ numAdults: 2, numChildren: 1 })).toBe('2 adults, 1 child');
   });
 
   it('không trẻ em thì chỉ nói người lớn', () => {
@@ -102,7 +102,8 @@ describe('formatGuests', () => {
   });
 
   it('nhiều trẻ em dùng số nhiều đúng', () => {
-    expect(formatGuests({ numAdults: 2, numChildren: 3 })).toBe('2 adults · 3 children');
+    // Cùng nguồn `accountBookings.travellers` với web — một booking một câu.
+    expect(formatGuests({ numAdults: 2, numChildren: 3 })).toBe('2 adults, 3 children');
   });
 });
 
@@ -114,7 +115,7 @@ describe('toBookingRow', () => {
       status: 'PAID',
       statusLabel: 'Paid',
       guests: 3,
-      guestsLabel: '2 adults · 1 child',
+      guestsLabel: '2 adults, 1 child',
       amount: '$1,497.00',
       customerName: 'Ann Nguyen',
       customerEmail: 'ann@example.com',

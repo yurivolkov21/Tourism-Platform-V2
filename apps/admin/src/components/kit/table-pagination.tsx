@@ -90,11 +90,15 @@ export function TablePagination({
   hrefForPageSize,
 }: TablePaginationProps) {
   const router = useRouter();
-  const from = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const to = Math.min(page * pageSize, total);
-  const isFirst = page <= 1;
-  // `totalPages` = 0 khi không có kết quả nào — khi đó cũng không đi tiếp được.
-  const isLast = page >= totalPages;
+  // URL là input tự do: `?page=99` với 1 trang kết quả vẫn tới được đây (server
+  // echo lại page và trả items rỗng). Clamp TRƯỚC khi tính hiển thị/href, kẻo
+  // in "1961–5 of 5 · Page 99 of 1" cạnh bảng trống.
+  const lastPage = Math.max(totalPages, 1);
+  const shownPage = Math.min(Math.max(page, 1), lastPage);
+  const from = total === 0 ? 0 : (shownPage - 1) * pageSize + 1;
+  const to = Math.min(shownPage * pageSize, total);
+  const isFirst = shownPage <= 1;
+  const isLast = shownPage >= lastPage;
 
   return (
     <div className="flex items-center justify-between px-4">
@@ -108,7 +112,12 @@ export function TablePagination({
           </Label>
           <Select
             value={`${pageSize}`}
-            onValueChange={(value) => router.push(hrefForPageSize(Number(value)))}
+            onValueChange={(value) => {
+              // Chỉ điều hướng với số hợp lệ — Base UI có thể phát value lạ
+              // (null khi reset), Number(null)=0 sẽ treo `?limit=0` lên URL.
+              const size = Number(value);
+              if (Number.isInteger(size) && size > 0) router.push(hrefForPageSize(size));
+            }}
             items={pageSizeOptions.map((size) => ({ label: `${size}`, value: `${size}` }))}
           >
             <SelectTrigger size="sm" className="w-20" id="rows-per-page">
@@ -126,9 +135,16 @@ export function TablePagination({
           </Select>
         </div>
         <div className="flex w-fit items-center justify-center text-sm font-medium">
-          {t.page(page, Math.max(totalPages, 1))}
+          {t.page(shownPage, lastPage)}
         </div>
-        <div className="ml-auto flex items-center gap-2 lg:ml-0">
+        {/* Landmark cho screen reader — cùng vai `<nav aria-label>` của
+            `@tourism/ui` pagination. KHÔNG dùng thẳng bộ component đó:
+            `PaginationLink` là `<a>` thuần (full reload — chính JSDoc
+            `ButtonLink` chỉ định next/link thì dùng `buttonVariants`, đúng
+            cái `PageLink` làm), kiểu ghost cũng lệch bộ nút outline của
+            dashboard-01, và ở đây không có link số trang nên `aria-current`
+            không có chỗ đứng. */}
+        <nav aria-label={t.pagination} className="ml-auto flex items-center gap-2 lg:ml-0">
           <PageLink
             href={hrefForPage(1)}
             label={t.firstPage}
@@ -137,21 +153,21 @@ export function TablePagination({
           >
             <ChevronsLeftIcon />
           </PageLink>
-          <PageLink href={hrefForPage(page - 1)} label={t.previousPage} disabled={isFirst}>
+          <PageLink href={hrefForPage(shownPage - 1)} label={t.previousPage} disabled={isFirst}>
             <ChevronLeftIcon />
           </PageLink>
-          <PageLink href={hrefForPage(page + 1)} label={t.nextPage} disabled={isLast}>
+          <PageLink href={hrefForPage(shownPage + 1)} label={t.nextPage} disabled={isLast}>
             <ChevronRightIcon />
           </PageLink>
           <PageLink
-            href={hrefForPage(Math.max(totalPages, 1))}
+            href={hrefForPage(lastPage)}
             label={t.lastPage}
             disabled={isLast}
             className="hidden lg:flex"
           >
             <ChevronsRightIcon />
           </PageLink>
-        </div>
+        </nav>
       </div>
     </div>
   );

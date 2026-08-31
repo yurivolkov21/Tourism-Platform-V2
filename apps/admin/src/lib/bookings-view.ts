@@ -69,10 +69,14 @@ export function guestCount({ numAdults, numChildren }: GuestParty): number {
   return numAdults + numChildren;
 }
 
-/** Diễn giải thành phần đoàn: "2 adults · 1 child"; không trẻ em thì bỏ vế sau. */
+/**
+ * Diễn giải thành phần đoàn: "2 adults, 1 child"; không trẻ em thì bỏ vế sau.
+ * Dùng CHUNG `accountBookings.travellers` — JSDoc bên i18n nói rõ "một nguồn
+ * cho mọi nơi in travellers của MỘT booking, không tự chế bản thứ hai"; bản
+ * chế riêng đầu tiên của F1 đã lệch luật số nhiều ngay lúc viết (review 31/08).
+ */
 export function formatGuests({ numAdults, numChildren }: GuestParty): string {
-  const adults = t.guests.adults(numAdults);
-  return numChildren > 0 ? `${adults} · ${t.guests.children(numChildren)}` : adults;
+  return messages.accountBookings.travellers(numAdults, numChildren);
 }
 
 /** Nhãn trạng thái booking theo enum contract. */

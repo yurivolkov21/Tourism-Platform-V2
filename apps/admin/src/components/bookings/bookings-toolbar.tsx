@@ -46,9 +46,11 @@ export function BookingsStatusTabs({ query }: { query: BookingsQuery }) {
   const value = query.status ?? ALL;
 
   function go(next: string) {
-    router.push(
-      bookingsHref(query, { status: next === ALL ? null : BookingStatusSchema.parse(next) }),
-    );
+    // `safeParse` chứ không `parse`: cùng nếp khoan dung với đường URL
+    // (`parseBookingsSearchParams`) — value lạ từ Select/Tabs (kể cả `null`
+    // khi bị reset) rơi êm về "All" thay vì ném ZodError giữa event handler.
+    const parsed = BookingStatusSchema.safeParse(next);
+    router.push(bookingsHref(query, { status: parsed.success ? parsed.data : null }));
   }
 
   return (

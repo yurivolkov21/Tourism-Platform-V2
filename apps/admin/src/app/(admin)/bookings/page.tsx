@@ -24,15 +24,18 @@ export default async function BookingsPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  // Layout (admin) đã gác session + role; đọc lại ở đây chỉ để đổ vào nav-user.
-  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
-  // lần điều hướng kế (cùng nếp trang dashboard).
-  const session = await getServerSession();
-  if (!session) return null;
-
   const query = parseBookingsSearchParams(await searchParams);
   const cookie = (await cookies()).toString();
-  const paged = await fetchAdminBookings(cookie, query);
+  // Session (chỉ để đổ vào nav-user — layout đã gác role) và trang dữ liệu
+  // là hai request độc lập: chạy song song kẻo TTFB thành 2 RTT nối tiếp
+  // trên MỌI click phân trang/lọc (nếp Promise.all như enquire/page.tsx web).
+  const [session, paged] = await Promise.all([
+    getServerSession(),
+    fetchAdminBookings(cookie, query),
+  ]);
+  // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
+  // lần điều hướng kế (cùng nếp trang dashboard).
+  if (!session) return null;
 
   return (
     <AdminShell user={session}>

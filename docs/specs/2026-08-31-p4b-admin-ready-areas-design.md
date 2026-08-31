@@ -26,6 +26,10 @@ theo thứ tự ADR-0026.
    quát hoá. Xương có sẵn: `apps/admin/src/components/data-table.tsx`
    (TanStack v9 + dnd-kit, đã dọn demo ở vòng shell — cột
    Code/Tour/Status/Guests/Amount/Customer đặt sẵn cho bookings).
+   *Nợ ghi nhận sau F1 (review 31/08):* kit `components/kit/` mới có bảng
+   bookings tiêu thụ; bảng demo dashboard (`data-table.tsx`, trang `/`) vẫn
+   giữ bản copy pagination/copy hardcode riêng — dọn khi P4d thay nó bằng
+   bảng recent-bookings thật (đằng nào cũng viết lại trên kit lúc đó).
 2. **List page = server component, trạng thái trên URL.** `searchParams`
    (page/status/q) → fetch oRPC server-side → truyền data xuống table client.
    TanStack chạy `manualPagination` — phân trang/filter đổi URL (router.push),

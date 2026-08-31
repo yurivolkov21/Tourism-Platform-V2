@@ -42,12 +42,15 @@ export async function generateMetadata({
 }
 
 export default async function BookingDetailPage({ params }: { params: Promise<{ code: string }> }) {
-  const session = await getServerSession();
-  if (!session) return null;
-
   const { code } = await params;
   const cookie = (await cookies()).toString();
-  const booking = await fetchAdminBookingByCode(cookie, code);
+  // Session (nav-user) và chi tiết booking độc lập nhau — song song cho khỏi
+  // tốn 2 RTT nối tiếp (review 31/08, cùng nếp trang danh sách).
+  const [session, booking] = await Promise.all([
+    getServerSession(),
+    fetchAdminBookingByCode(cookie, code),
+  ]);
+  if (!session) return null;
   if (!booking) notFound();
 
   return (

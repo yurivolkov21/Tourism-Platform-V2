@@ -41,8 +41,8 @@ import { type BookingRowVM, statusBadgeVariant } from '@/lib/bookings-view';
  * - Drag-row TẮT: thứ tự hàng do server quyết (mới nhất trước), kéo thả không
  *   mang nghĩa gì ở vùng thật (§2.2).
  * - Không checkbox chọn hàng: chưa có hành vi hàng loạt nào để chọn cho.
- * - `manualPagination`: `data` CHÍNH LÀ một trang server đã cắt; table chỉ
- *   nhận thêm `rowCount` để biết còn trang nào không.
+ * - Không pagination state ở table: `data` CHÍNH LÀ một trang server đã cắt,
+ *   `TablePagination` đọc thẳng props từ URL — table chỉ lo ẩn/hiện cột.
  * - Không sort/filter client: cả hai là việc của API, row model client chỉ
  *   nhìn thấy một trang nên mọi phép nó làm đều sai phạm vi.
  *
@@ -134,14 +134,10 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
     features: serverTableFeatures,
     data: rows,
     columns,
-    // Server đã cắt trang; `rowCount` là tổng TOÀN BỘ kết quả, không phải
-    // độ dài `rows` (thiếu nó thì table tưởng chỉ có một trang).
-    manualPagination: true,
-    rowCount: total,
-    state: {
-      pagination: { pageIndex: query.page - 1, pageSize: query.limit },
-      columnVisibility,
-    },
+    // KHÔNG có pagination state ở table: trang/limit sống trên URL và
+    // `TablePagination` nhận thẳng props — nhét thêm vào table là nuôi một
+    // bản sao chết (review 31/08 gỡ `manualPagination`/`rowCount`).
+    state: { columnVisibility },
     getRowId: (row) => row.code,
     onColumnVisibilityChange: setColumnVisibility,
   });
@@ -212,7 +208,12 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
+              {/* Đếm cột ĐANG HIỆN, không phải cột định nghĩa — admin ẩn bớt
+                  cột rồi lọc ra tập rỗng thì colSpan cứng sẽ thừa cột ma. */}
+              <TableCell
+                colSpan={table.getVisibleLeafColumns().length}
+                className="h-24 text-center"
+              >
                 {t.empty}
               </TableCell>
             </TableRow>

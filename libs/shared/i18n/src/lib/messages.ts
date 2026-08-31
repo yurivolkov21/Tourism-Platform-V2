@@ -2561,6 +2561,22 @@ export const messages = {
       lastPage: 'Go to last page',
       rowsPerPage: 'Rows per page',
       columns: 'Columns',
+      /** aria-label cho landmark `<nav>` bọc cụm nút phân trang. */
+      pagination: 'Pagination',
+    },
+    /**
+     * Copy cho hai tấm lưới đỡ lỗi của admin (`app/error.tsx` +
+     * `app/not-found.tsx` — review F1 31/08): lỗi đọc API (401 phiên chết
+     * giữa chừng, timeout, API sập) và địa chỉ không tồn tại.
+     */
+    errors: {
+      title: 'Something went wrong',
+      body: 'The back office could not load this view. Your session may have expired, or the API is unreachable.',
+      retry: 'Try again',
+      signIn: 'Sign in again',
+      notFoundTitle: 'Nothing at this address',
+      notFoundBody: 'This page does not exist — the link may be stale or the record was removed.',
+      backHome: 'Back to dashboard',
     },
     // Vùng bookings đọc (spec P4b §3-F1) — bảng có filter/tìm kiếm/phân trang
     // trên URL + trang chi tiết read-only. Nút refund thuộc F2, chưa có copy.
@@ -2588,10 +2604,10 @@ export const messages = {
         REFUNDED: 'Refunded',
         PARTIALLY_REFUNDED: 'Partially refunded',
       },
-      guests: {
-        adults: (n: number) => `${n} adult${n === 1 ? '' : 's'}`,
-        children: (n: number) => `${n} child${n === 1 ? '' : 'ren'}`,
-      },
+      // Diễn giải đoàn khách dùng CHUNG `accountBookings.travellers` (một
+      // nguồn cho mọi bề mặt in travellers của một booking — xem JSDoc bên
+      // đó); khối `guests` riêng từng ở đây là bản chép thứ hai, đã xoá
+      // (review F1 31/08).
       detail: {
         back: 'Back to bookings',
         empty: '—',
@@ -2612,7 +2628,9 @@ export const messages = {
         payment: {
           heading: 'Payment',
           provider: 'Provider',
-          unitPrice: 'Price per adult',
+          // "per person": API tính totalAmount = unitPrice × (adults + children)
+          // (pricing.ts) — ghi "per adult" là bịa ra một phép nhân không khớp.
+          unitPrice: 'Price per person',
           total: 'Total',
           paidAt: 'Paid at',
           cancelledAt: 'Cancelled at',
