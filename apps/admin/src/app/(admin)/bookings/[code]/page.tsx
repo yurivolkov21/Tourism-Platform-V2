@@ -8,6 +8,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
+import { RefundPanel } from '@/components/bookings/refund-panel';
 import { fetchAdminBookingByCode } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import {
@@ -18,17 +19,19 @@ import {
   statusBadgeVariant,
   statusLabel,
 } from '@/lib/bookings-view';
+import { refundBookingAction } from './actions';
 
 /**
- * `/bookings/[code]` — chi tiết READ-ONLY theo `AdminBookingDetailSchema`
- * (spec P4b §3-F1): khách · đợt · tiền · lịch sử cancellation append-only.
+ * `/bookings/[code]` — chi tiết theo `AdminBookingDetailSchema` (spec P4b
+ * §3-F1): khách · đợt · tiền · lịch sử cancellation append-only, cộng ô
+ * Refunds (F2) là hành vi GHI duy nhất của trang.
  *
- * CHƯA có nút refund — đó là F2, và nó là money-path nên phải đi kèm confirm
- * hai bước + map đủ 5 mã lỗi contract (§3-F2). Trang này cố ý không hiện
- * `refundedTotal`: `admin.bookings.byCode` KHÔNG đọc sổ refund (xem
- * `BookingsService.adminByCode` — mọi call site trừ `bookings.byCode` để
- * '0.00'), nên in con số đó ra là nói dối admin khi booking đã hoàn một
- * phần. Sổ cái refund thật lên trang cùng F2.
+ * Trang vẫn KHÔNG in `refundedTotal`, kể cả sau khi có refund: `admin
+ * .bookings.byCode` không đọc sổ refund (xem `BookingsService.adminByCode` —
+ * mọi call site trừ `bookings.byCode` để '0.00'), nên con số đó là số CHẾT,
+ * in ra là nói dối admin khi booking đã hoàn một phần. Sổ cái thật chỉ về
+ * theo output của `admin.bookings.refund`, và `RefundPanel` chỉ in cái đó —
+ * xem `ledgerNote` cho câu nói thay khi chưa có sổ trong tay.
  */
 const t = messages.admin.bookings.detail;
 
@@ -124,6 +127,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             </CardContent>
           </Card>
         </div>
+
+        {/* Ô refund đứng TRƯỚC lịch sử huỷ: nó là hành động, phần dưới là
+            dấu vết. Server action truyền xuống như một prop — client
+            component không tự import đường server nào (xem RefundPanel). */}
+        <RefundPanel booking={booking} refund={refundBookingAction} />
 
         <Card>
           <CardHeader>

@@ -1,6 +1,8 @@
 import { isDefinedError, safe } from '@orpc/client';
 import {
   type AdminBookingDetail,
+  type AdminRefundInput,
+  type AdminRefundResult,
   type Booking,
   BookingCodeSchema,
   type Paged,
@@ -9,9 +11,8 @@ import type { BookingsQuery } from '@/lib/bookings-query';
 import { api, withAdminAuth } from './client';
 
 /**
- * Hai đường đọc của vùng bookings (spec P4b §3-F1) — bọc mỏng
- * `admin.bookings.list` / `byCode`. P4b KHÔNG thêm endpoint nào; refund (F2)
- * sẽ nối vào chính module này.
+ * Ba đường của vùng bookings — bọc mỏng `admin.bookings.list` / `byCode`
+ * (đọc, F1) và `refund` (ghi, F2). P4b KHÔNG thêm endpoint nào.
  */
 
 /**
@@ -51,4 +52,20 @@ export async function fetchAdminBookingByCode(
     throw error;
   }
   return data;
+}
+
+/**
+ * Refund (một phần) do admin phát — money-path (spec P4b §3-F2, ledger
+ * ADR-0009). Bọc mỏng đúng như hai hàm đọc: KHÔNG nuốt lỗi ở đây.
+ *
+ * Sáu mã lỗi của contract (NOT_FOUND + năm mã 422/502) phải tới được UI
+ * nguyên vẹn để mỗi mã có một câu riêng (bất biến spec §2.4), nên hàm này để
+ * `ORPCError` ném thẳng lên; server action mới là chỗ phân loại
+ * (`classifyRefundError`) — vì đó là biên cuối cùng còn giữ được kiểu lỗi.
+ */
+export async function refundAdminBooking(
+  cookie: string,
+  input: AdminRefundInput,
+): Promise<AdminRefundResult> {
+  return api.admin.bookings.refund(input, { context: withAdminAuth(cookie) });
 }

@@ -2578,8 +2578,8 @@ export const messages = {
       notFoundBody: 'This page does not exist — the link may be stale or the record was removed.',
       backHome: 'Back to dashboard',
     },
-    // Vùng bookings đọc (spec P4b §3-F1) — bảng có filter/tìm kiếm/phân trang
-    // trên URL + trang chi tiết read-only. Nút refund thuộc F2, chưa có copy.
+    // Vùng bookings (spec P4b §3-F1/F2) — bảng có filter/tìm kiếm/phân trang
+    // trên URL, trang chi tiết, và refund (khối `refund` cuối khối này).
     bookings: {
       list: {
         filterLabel: 'Filter by status',
@@ -2649,6 +2649,101 @@ export const messages = {
             DENIED: 'Denied',
             REFUNDED: 'Approved — refunded',
           },
+        },
+      },
+      /**
+       * Refund — hành vi GHI đầu tiên của admin (spec P4b §3-F2), money-path.
+       *
+       * Bất biến §2.4: NĂM mã lỗi của contract có NĂM câu riêng dưới `errors`.
+       * Không gộp, không nuốt thành "Something went wrong" — người đọc là
+       * operator, và mỗi mã nói một chuyện khác nhau về việc tiền đã đi hay
+       * chưa (đặc biệt REFUND_FAILED 502: provider từ chối, ledger chưa ghi
+       * gì). Ba mã còn lại (401/403/lỗi lạ) là của tầng vận chuyển, không
+       * phải của contract refund.
+       */
+      refund: {
+        heading: 'Refunds',
+        cta: 'Issue refund',
+        /** Trạng thái ngoài PAID/PARTIALLY_REFUNDED — nút không hiện, câu này thay chỗ. */
+        unavailable: 'Only a paid or partially refunded booking can be refunded.',
+        form: {
+          title: 'Issue a refund',
+          body: 'Step 1 of 2 — choose how much goes back to the customer.',
+          modeLabel: 'Amount',
+          modeFull: 'Full remaining balance',
+          modePartial: 'A specific amount',
+          amountLabel: 'Amount to refund',
+          /** Trần client CHỈ là booking total: phần đã hoàn không có trong
+           *  `byCode`, nên trần thật (remainder) chỉ server biết — xem JSDoc
+           *  `validateRefundAmount`. */
+          amountHint: (currency: string, total: string) =>
+            `${currency} — up to the ${total} total.`,
+          reasonLabel: 'Reason (optional)',
+          reasonPlaceholder: 'Included in the refund email to the customer.',
+          cancel: 'Cancel',
+          next: 'Review refund',
+        },
+        confirm: {
+          title: 'Confirm this refund',
+          body: 'Step 2 of 2 — check the amount before the money moves.',
+          booking: 'Booking',
+          customer: 'Customer',
+          amount: 'Amount',
+          /** Nhánh full: số tiền do server tính (total − đã hoàn), client không biết. */
+          amountFull: 'Full remaining balance',
+          reason: 'Reason',
+          warning:
+            'This calls the payment provider straight away and cannot be undone from the back office.',
+          back: 'Back',
+          submit: 'Refund now',
+          submitting: 'Refunding…',
+        },
+        /** Lỗi validate phía client — bản sao luật contract, chặn trước khi bắn. */
+        validation: {
+          required: 'Enter an amount to refund.',
+          format: 'Digits only, e.g. 120.50.',
+          zero: 'Refund amount must be greater than zero.',
+          overTotal: (total: string) => `Refund amount cannot exceed the ${total} booking total.`,
+        },
+        errors: {
+          NOT_FOUND: 'This booking no longer exists. Reload the list.',
+          NOT_REFUNDABLE:
+            'This booking is not refundable — it needs a captured payment and a PAID or PARTIALLY REFUNDED status. Reload to see where it stands now.',
+          OVER_TOTAL:
+            'This amount plus the refunds already issued would go over the booking total. Refund the full remaining balance instead, or enter a smaller amount.',
+          ZERO_OR_NEGATIVE: 'Refund amount must be greater than zero.',
+          NOTHING_LEFT: 'This booking is already fully refunded — nothing is left to send back.',
+          REFUND_FAILED:
+            'The payment provider rejected the refund, so nothing was recorded. Check the provider dashboard before trying again.',
+          UNAUTHORIZED: 'Your session expired. Sign in again, then reissue the refund.',
+          FORBIDDEN: 'Your account no longer has admin access.',
+          GENERIC:
+            'The refund did not go through. Check the booking status before trying again — it may or may not have reached the provider.',
+        },
+        toast: {
+          title: 'Refund issued',
+          body: (amount: string) => `${amount} is on its way back to the customer.`,
+        },
+        /**
+         * Sổ cái: `admin.bookings.byCode` KHÔNG đọc bảng refund (và
+         * `refundedTotal` của nó luôn '0.00' — xem `toBooking`), nên trang chỉ
+         * có ledger THẬT sau khi chính nó phát một refund. Copy dưới đây nói
+         * đúng chuyện đó thay vì in một con số không tồn tại.
+         */
+        ledger: {
+          heading: 'Refund ledger',
+          amount: 'Amount',
+          issued: 'Issued',
+          reference: 'Provider reference',
+          total: (amount: string) => `${amount} refunded in total`,
+          /** PENDING/PAID: chưa từng có refund row nào — trạng thái bảo đảm điều đó. */
+          none: 'No refunds on this booking.',
+          /** PARTIALLY_REFUNDED/REFUNDED: chắc chắn CÓ refund, nhưng endpoint không trả số. */
+          onRecord:
+            'This booking has refunds on record. The admin detail endpoint does not return the ledger, so amounts show up here once you issue a refund from this page.',
+          /** CANCELLED: có thể mang auto-refund (overbook/orphaned capture) — hoặc không. */
+          unknown:
+            'A cancelled booking may carry an automatic refund. The admin detail endpoint does not return the ledger, so nothing is shown here.',
         },
       },
     },
