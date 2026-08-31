@@ -7,6 +7,15 @@ import { resilience } from './resilience.js';
 // (bài học F1: hai bản travellers lệch số nhiều ngay lúc viết).
 const REFUND_ZERO_COPY = 'Refund amount must be greater than zero.';
 
+// MỘT bộ nhãn cho enum CancellationRequestStatus, dùng ở CẢ hai chỗ in nó:
+// hàng đợi `/cancellations` (F3) và lịch sử append-only trên trang chi tiết
+// booking (F1). Hai bản chép tay là hai bản sẽ trôi lệch (bài học travellers).
+const CANCELLATION_STATUS_COPY = {
+  REQUESTED: 'Awaiting review',
+  DENIED: 'Denied',
+  REFUNDED: 'Approved — refunded',
+} as const;
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -2664,12 +2673,9 @@ export const messages = {
           requested: 'Requested',
           decided: 'Decided',
           // Enum CancellationRequestStatus — lịch sử append-only nên một
-          // booking có thể mang nhiều dòng DENIED trước dòng cuối.
-          status: {
-            REQUESTED: 'Awaiting review',
-            DENIED: 'Denied',
-            REFUNDED: 'Approved — refunded',
-          },
+          // booking có thể mang nhiều dòng DENIED trước dòng cuối. Nhãn dùng
+          // CHUNG với hàng đợi `/cancellations` (hằng trên đầu file).
+          status: CANCELLATION_STATUS_COPY,
         },
       },
       /**
@@ -2763,6 +2769,96 @@ export const messages = {
           total: (amount: string) => `${amount} refunded in total`,
           /** Bảng refund của booking này thật sự rỗng — số từ DB, không phải đoán. */
           none: 'No refunds on this booking.',
+        },
+      },
+    },
+    /**
+     * Vùng cancellations (spec P4b §3-F3) — hàng đợi request của khách cộng
+     * MỘT hành vi ghi: `admin.cancellations.decide` (approve/deny một cửa).
+     *
+     * Approve là money-path: refund phần còn lại + booking CANCELLED + nhả
+     * ghế, tất cả nguyên tử trong một advisory lock (CancellationsService
+     * .approve). Vì thế copy xác nhận phải NÓI ĐỦ ba hệ quả — admin bấm
+     * "Approve" không được phép ngạc nhiên vì tiền đã đi.
+     */
+    cancellations: {
+      list: {
+        filterLabel: 'Filter by status',
+        all: 'All',
+        empty: 'No cancellation requests match this filter.',
+        columns: {
+          booking: 'Booking',
+          tour: 'Tour',
+          customer: 'Customer',
+          reason: 'Reason',
+          status: 'Status',
+          requested: 'Requested',
+          /** Cột cuối: nút quyết định khi còn mở, dấu vết quyết định khi đã đóng. */
+          decision: 'Decision',
+        },
+        decidedAt: (when: string) => `Decided ${when}`,
+        note: (note: string) => `Note: ${note}`,
+      },
+      /** Nhãn enum dùng CHUNG với lịch sử trên trang chi tiết booking. */
+      status: CANCELLATION_STATUS_COPY,
+      /**
+       * Quyết định — hành vi GHI thứ hai của admin. BỐN mã contract dưới
+       * `errors` là NGUỒN duy nhất của tập mã phía admin
+       * (`cancellations-decide.ts` derive từ keys, không chép danh sách lần
+       * hai — nếp `REFUND_CONTRACT_CODES` của F2). Mã tầng vận chuyển
+       * (401/403/input hỏng/lỗi lạ) KHÔNG ở đây: chúng dùng chung
+       * `admin.errors.write`.
+       */
+      decide: {
+        approve: 'Approve',
+        deny: 'Deny',
+        /** Nhãn cho cụm nút của một hàng — trình đọc màn hình cần biết hàng nào. */
+        actionsLabel: (code: string) => `Decide the cancellation request for ${code}`,
+        booking: 'Booking',
+        tour: 'Tour',
+        customer: 'Customer',
+        reason: 'Customer reason',
+        noteLabel: 'Decision note (optional)',
+        notePlaceholder: 'Included in the email to the customer.',
+        cancel: 'Cancel',
+        approveDialog: {
+          title: 'Approve this cancellation?',
+          body: 'Approving runs all three changes below in one go, straight away.',
+          /** Ba hệ quả của nhánh approve — đọc từ summary contract + service. */
+          consequences: {
+            refund:
+              'Refunds the full remaining balance to the customer through the payment provider.',
+            cancelled: 'Marks the booking as cancelled.',
+            seats: 'Releases the seats back to the departure.',
+          },
+          warning:
+            'The refund cannot be undone from the back office, and the decision is final — the customer would have to book again.',
+          submit: 'Approve and refund',
+          submitting: 'Approving…',
+        },
+        denyDialog: {
+          title: 'Deny this cancellation?',
+          body: 'Denying closes the request and emails the customer. The booking is left exactly as it is — no refund, no seats released.',
+          warning:
+            'The decision is final: the customer has to send a new request to be reviewed again.',
+          submit: 'Deny request',
+          submitting: 'Denying…',
+        },
+        errors: {
+          NOT_FOUND: 'This cancellation request no longer exists. Reload the queue.',
+          ALREADY_DECIDED:
+            'This request has already been decided — a decision is final. Reload the queue to see the outcome.',
+          NOT_REFUNDABLE:
+            'The booking has no refundable balance left, so it cannot be approved — it may already have been refunded. Open the booking to check, or deny the request instead.',
+          REFUND_FAILED:
+            'The payment provider rejected the refund, so nothing changed and the request is still awaiting review. Check the provider dashboard before trying again.',
+        },
+        toast: {
+          approvedTitle: 'Cancellation approved',
+          approvedBody: (code: string) =>
+            `${code} is cancelled and the remaining balance is on its way back.`,
+          deniedTitle: 'Cancellation denied',
+          deniedBody: (code: string) => `${code} is unchanged and the customer has been told.`,
         },
       },
     },

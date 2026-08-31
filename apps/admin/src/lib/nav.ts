@@ -51,11 +51,12 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: 'dashboard', label: t.dashboard, href: '/', enabled: true, icon: LayoutDashboard },
       // Vùng thật đầu tiên đã có dữ liệu (P4b F1) — header tự đổi theo trang.
       { key: 'bookings', label: t.bookings, href: '/bookings', enabled: true, icon: Ticket },
+      // Vùng thật thứ hai (P4b F3) — hàng đợi cancellation + quyết định.
       {
         key: 'cancellations',
         label: t.cancellations,
         href: '/cancellations',
-        enabled: false,
+        enabled: true,
         icon: CalendarX2,
       },
       { key: 'reviews', label: t.reviews, href: '/reviews', enabled: false, icon: Star },

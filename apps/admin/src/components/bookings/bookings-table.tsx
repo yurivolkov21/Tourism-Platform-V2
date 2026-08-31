@@ -30,8 +30,9 @@ import { BookingsSearch, BookingsStatusTabs } from '@/components/bookings/bookin
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
-import { type BookingsQuery, bookingsHref, PAGE_SIZE_OPTIONS } from '@/lib/bookings-query';
+import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
 import { type BookingRowVM, statusBadgeVariant } from '@/lib/bookings-view';
+import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 
 /**
  * Bảng `/bookings` — bản THẬT ĐẦU TIÊN mọc từ xương data-table của

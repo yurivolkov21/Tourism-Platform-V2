@@ -4,8 +4,9 @@ import { AdminShell } from '@/components/admin-shell';
 import { BookingsTable } from '@/components/bookings/bookings-table';
 import { fetchAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
-import { parseBookingsSearchParams, type RawSearchParams } from '@/lib/bookings-query';
+import { parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
+import type { RawSearchParams } from '@/lib/table-query';
 
 /**
  * `/bookings` — vùng admin ĐẦU TIÊN có dữ liệu thật (spec P4b §3-F1).

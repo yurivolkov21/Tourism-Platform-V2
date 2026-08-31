@@ -1,26 +1,25 @@
 import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
+import {
+  appendPaging,
+  firstParam,
+  parsePaging,
+  type RawSearchParams,
+  tableHref,
+} from './table-query';
 
 /**
  * Trạng thái danh sách `/bookings` sống TRÊN URL (spec P4b §2.2): server
  * component đọc `searchParams` → input contract; bảng client đổi trang/filter
  * bằng cách điều hướng sang URL mới, KHÔNG fetch từ browser. Hai hàm thuần ở
  * đây là toàn bộ luật dịch giữa hai đầu — test phủ mọi nhánh clamp/lọc.
+ *
+ * Phân trang (clamp page/limit, ghi query) dùng CHUNG `table-query.ts` với
+ * vùng cancellations — tách ở F3 khi vùng thứ hai tiêu thụ đúng luật ấy
+ * (§2.1). Ở lại đây: filter riêng của bookings (status + search) và đường dẫn.
  */
-
-/** `limit` mặc định của `AdminBookingsListQuerySchema` — giữ khớp với server. */
-export const ADMIN_BOOKINGS_PAGE_SIZE = 20;
-
-/** Trần `limit` của contract (`z.int().max(100)`) — vượt là 400 ở server. */
-const PAGE_SIZE_MAX = 100;
-
-/** Các mức cho ô "Rows per page" — cùng dãy với kit data-table dashboard-01. */
-export const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50] as const;
 
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
-
-/** Hình dạng `searchParams` Next trao cho trang: một key có thể lặp thành mảng. */
-export type RawSearchParams = Record<string, string | string[] | undefined>;
 
 /** Input đã sạch cho `admin.bookings.list` (khớp AdminBookingsListQuerySchema). */
 export interface BookingsQuery {
@@ -30,29 +29,17 @@ export interface BookingsQuery {
   search?: string;
 }
 
-/** Param lặp (`?page=2&page=9`) — lấy giá trị đầu, đúng nếp Next đọc query. */
-function first(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 /**
  * URL là thứ NGƯỜI gõ được: mọi giá trị rác phải rơi về mặc định an toàn chứ
  * không được ném lên tận API (400 vô nghĩa với admin). Page rác → 1, status
  * ngoài enum → bỏ filter, `q` rỗng → không lọc, `q` quá dài → cắt đúng trần.
  */
 export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
-  const page = Number(first(raw.page));
-  const limit = Number(first(raw.limit));
-  const status = BookingStatusSchema.safeParse(first(raw.status));
-  const search = first(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
+  const status = BookingStatusSchema.safeParse(firstParam(raw.status));
+  const search = firstParam(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
 
   return {
-    // Number.isInteger loại luôn NaN/1.5/Infinity — chỉ số nguyên ≥ 1 sống sót.
-    page: Number.isInteger(page) && page >= 1 ? page : 1,
-    limit:
-      Number.isInteger(limit) && limit >= 1 && limit <= PAGE_SIZE_MAX
-        ? limit
-        : ADMIN_BOOKINGS_PAGE_SIZE,
+    ...parsePaging(raw),
     ...(status.success ? { status: status.data } : {}),
     ...(search ? { search } : {}),
   };
@@ -88,9 +75,7 @@ export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (search) params.set('q', search);
-  if (limit !== ADMIN_BOOKINGS_PAGE_SIZE) params.set('limit', String(limit));
-  if (page > 1) params.set('page', String(page));
+  appendPaging(params, { page, limit });
 
-  const query = params.toString();
-  return query ? `/bookings?${query}` : '/bookings';
+  return tableHref('/bookings', params);
 }
