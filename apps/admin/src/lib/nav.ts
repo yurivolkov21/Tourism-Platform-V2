@@ -49,7 +49,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: t.groups.operations,
     items: [
       { key: 'dashboard', label: t.dashboard, href: '/', enabled: true, icon: LayoutDashboard },
-      { key: 'bookings', label: t.bookings, href: '/bookings', enabled: false, icon: Ticket },
+      // Vùng thật đầu tiên đã có dữ liệu (P4b F1) — header tự đổi theo trang.
+      { key: 'bookings', label: t.bookings, href: '/bookings', enabled: true, icon: Ticket },
       {
         key: 'cancellations',
         label: t.cancellations,

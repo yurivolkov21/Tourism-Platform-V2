@@ -2548,6 +2548,92 @@ export const messages = {
         tab: 'Recent bookings',
       },
     },
+    // Copy DÙNG CHUNG của kit bảng admin (spec P4b §2.1 — kit mọc từ vùng
+    // bookings, ba vùng sau tiêu thụ lại): phân trang server + menu cột.
+    table: {
+      // Câu tổng đứng trước, nút điều hướng chỉ mang nhãn đọc-màn-hình (mũi
+      // tên đã đủ nghĩa cho mắt thường).
+      summary: (from: number, to: number, total: number) => `${from}–${to} of ${total}`,
+      page: (page: number, totalPages: number) => `Page ${page} of ${totalPages}`,
+      firstPage: 'Go to first page',
+      previousPage: 'Go to previous page',
+      nextPage: 'Go to next page',
+      lastPage: 'Go to last page',
+      columns: 'Columns',
+    },
+    // Vùng bookings đọc (spec P4b §3-F1) — bảng có filter/tìm kiếm/phân trang
+    // trên URL + trang chi tiết read-only. Nút refund thuộc F2, chưa có copy.
+    bookings: {
+      list: {
+        filterLabel: 'Filter by status',
+        all: 'All',
+        searchLabel: 'Search bookings',
+        searchPlaceholder: 'Code, name or email',
+        search: 'Search',
+        clear: 'Clear',
+        empty: 'No bookings match these filters.',
+        columns: {
+          code: 'Code',
+          tour: 'Tour',
+          status: 'Status',
+          guests: 'Guests',
+          amount: 'Amount',
+          customer: 'Customer',
+        },
+      },
+      status: {
+        PENDING: 'Pending',
+        PAID: 'Paid',
+        CANCELLED: 'Cancelled',
+        REFUNDED: 'Refunded',
+        PARTIALLY_REFUNDED: 'Partially refunded',
+      },
+      guests: {
+        adults: (n: number) => `${n} adult${n === 1 ? '' : 's'}`,
+        children: (n: number) => `${n} child${n === 1 ? '' : 'ren'}`,
+      },
+      detail: {
+        back: 'Back to bookings',
+        empty: '—',
+        booked: 'Booked',
+        customer: {
+          heading: 'Customer',
+          name: 'Name',
+          email: 'Email',
+          phone: 'Phone',
+          requests: 'Special requests',
+        },
+        departure: {
+          heading: 'Departure',
+          tour: 'Tour',
+          dates: 'Dates',
+          guests: 'Guests',
+        },
+        payment: {
+          heading: 'Payment',
+          provider: 'Provider',
+          unitPrice: 'Price per adult',
+          total: 'Total',
+          paidAt: 'Paid at',
+          cancelledAt: 'Cancelled at',
+        },
+        cancellations: {
+          heading: 'Cancellation history',
+          empty: 'No cancellation requests for this booking.',
+          reason: 'Reason',
+          note: 'Decision note',
+          requested: 'Requested',
+          decided: 'Decided',
+          // Enum CancellationRequestStatus — lịch sử append-only nên một
+          // booking có thể mang nhiều dòng DENIED trước dòng cuối.
+          status: {
+            REQUESTED: 'Awaiting review',
+            DENIED: 'Denied',
+            REFUNDED: 'Approved — refunded',
+          },
+        },
+      },
+    },
   },
 } as const;
 
