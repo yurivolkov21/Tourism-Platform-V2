@@ -8,6 +8,42 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-31 — P4b F2: refund money-path + vòng vá review (nhánh `feat/p4b-bookings-refund`, 2 commit `0a20cdc..8951e68`, ~20 file)
+
+Tính năng thứ hai theo nếp session-per-feature. Session thi công dựng: server
+action `refundBookingAction` (tự đọc cookie, quyền chặn ở AuthGuard API) +
+dialog confirm 2 bước + 6 mã lỗi contract mỗi mã một câu + TDD. Nghiệm thu
+review 8 mũi → 10 findings, user duyệt vá tại chỗ (`8951e68`) — vòng vá này
+ĐỤNG CẢ contract + API vì fix gốc rễ nằm ở tầng dữ liệu:
+
+- **Sổ cái thật từ `byCode`**: `AdminBookingDetailSchema` thêm `refunds[]`,
+  `adminByCode` điền `refundedTotal` aggregate — ledger in từ DB ngay khi mở
+  trang (kể cả auto-refund overbook), trần validate = phần CÒN HOÀN ĐƯỢC.
+  Trước đó UI phải "giải thích endpoint thiếu gì" bằng 3 câu i18n — lỗ tầng
+  dữ liệu vá bằng tầng copy, và câu "No refunds" có thể nói dối ở crash
+  window của auto-refund.
+- **Chống refund đúp**: trần 30s riêng cho lệnh ghi tiền (signal per-call
+  qua context, link đọc giữ 10s); kết cục KHÔNG RÕ (GENERIC) → đóng dialog,
+  toast lỗi, refresh — hết nút "Refund now" nạp đạn sẵn sau lỗi mập mờ
+  (idempotency key phía API đổi theo ledger nên provider không đỡ được).
+- **Hết thành-công-báo-thất-bại**: `try` chỉ ôm lời gọi tiền; `refresh()`
+  rời action (client refresh sau toast); `formatAmount` không nổ RangeError.
+  **Hết lỗi tàng hình**: dialog không đóng được khi đang bắn, khối lỗi đứng
+  ngoài hai bước, panel props-driven (bỏ state dính đè prop refresh).
+- **Nền cho F3/F4**: `lib/api/write-error.ts` dùng chung — `isDefinedError`
+  thật của oRPC (mã trùng tên không giả được phán quyết contract), copy
+  transport một chỗ `admin.errors.write`; `REFUND_CONTRACT_CODES` derive từ
+  keys i18n (một nguồn — ba danh sách chép tay từng lệch "NĂM/SÁU mã" ngay
+  trong một PR); action re-parse input → `INVALID_INPUT` riêng; lỗi validate
+  derive (gõ sửa là tự biến), hiểu dấu phẩy thập phân; trang cắt subset 5
+  field (giấu `decisionNote` khỏi Flight payload).
+
+Mỗi lỗi có test khoá chống tái hiện: admin 56 → 95 test, api-int 184 → 185.
+User test tay happy-path refund trên dev: đạt.
+
+Tests after: 1416 web · 238 api · 185 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 95 admin.
+
 ## 2026-08-31 — P4b F1: vùng bookings đọc + vòng vá review (nhánh `feat/p4b-bookings-read`, 4 commit `8807961..80d35cd`, ~30 file)
 
 Tính năng ĐẦU TIÊN thi công theo quy trình mới "một tính năng = một session":
