@@ -2,6 +2,11 @@
 // đây — không rải chuỗi inline.
 import { resilience } from './resilience.js';
 
+// MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
+// server (errors.ZERO_OR_NEGATIVE) — hằng chung để hai chỗ không trôi lệch
+// (bài học F1: hai bản travellers lệch số nhiều ngay lúc viết).
+const REFUND_ZERO_COPY = 'Refund amount must be greater than zero.';
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -2577,6 +2582,22 @@ export const messages = {
       notFoundTitle: 'Nothing at this address',
       notFoundBody: 'This page does not exist — the link may be stale or the record was removed.',
       backHome: 'Back to dashboard',
+      /**
+       * Copy DÙNG CHUNG cho mã lỗi TẦNG VẬN CHUYỂN của mọi hành vi ghi admin
+       * (refund F2, decide F3, moderate F4…) — tách khỏi mã CONTRACT của từng
+       * endpoint (review F2 31/08): mỗi vùng chỉ khai câu cho mã riêng của
+       * nó, còn "hết phiên/mất quyền/không rõ" là một giọng cho cả admin.
+       */
+      write: {
+        UNAUTHORIZED: 'Your session expired. Sign in again, then retry the action.',
+        FORBIDDEN: 'Your account no longer has admin access.',
+        /** Request hỏng từ client — CHƯA từng rời lớp validate, không đụng gì. */
+        INVALID_INPUT:
+          'The request was invalid and never reached the payment provider. Reload the page and try again.',
+        /** Không biết đã đi tới đâu — câu này cố ý mập mờ đúng mức. */
+        GENERIC:
+          'The action did not confirm. Check the fresh data on this page before trying again — it may or may not have gone through.',
+      },
     },
     // Vùng bookings (spec P4b §3-F1/F2) — bảng có filter/tìm kiếm/phân trang
     // trên URL, trang chi tiết, và refund (khối `refund` cuối khối này).
@@ -2654,12 +2675,14 @@ export const messages = {
       /**
        * Refund — hành vi GHI đầu tiên của admin (spec P4b §3-F2), money-path.
        *
-       * Bất biến §2.4: NĂM mã lỗi của contract có NĂM câu riêng dưới `errors`.
-       * Không gộp, không nuốt thành "Something went wrong" — người đọc là
-       * operator, và mỗi mã nói một chuyện khác nhau về việc tiền đã đi hay
-       * chưa (đặc biệt REFUND_FAILED 502: provider từ chối, ledger chưa ghi
-       * gì). Ba mã còn lại (401/403/lỗi lạ) là của tầng vận chuyển, không
-       * phải của contract refund.
+       * Bất biến §2.4: SÁU mã lỗi của contract (NOT_FOUND + 5 mã ledger
+       * 422/502) có SÁU câu riêng dưới `errors` — khối đó là NGUỒN duy nhất
+       * của tập mã contract phía admin (`refund.ts` derive từ keys, không chép
+       * danh sách lần hai). Không gộp, không nuốt thành "Something went wrong"
+       * — người đọc là operator, và mỗi mã nói một chuyện khác nhau về việc
+       * tiền đã đi hay chưa (đặc biệt REFUND_FAILED 502: provider từ chối,
+       * ledger chưa ghi gì). Mã tầng vận chuyển (401/403/input hỏng/lỗi lạ)
+       * KHÔNG ở đây — chúng dùng chung `admin.errors.write`.
        */
       refund: {
         heading: 'Refunds',
@@ -2673,11 +2696,10 @@ export const messages = {
           modeFull: 'Full remaining balance',
           modePartial: 'A specific amount',
           amountLabel: 'Amount to refund',
-          /** Trần client CHỈ là booking total: phần đã hoàn không có trong
-           *  `byCode`, nên trần thật (remainder) chỉ server biết — xem JSDoc
-           *  `validateRefundAmount`. */
-          amountHint: (currency: string, total: string) =>
-            `${currency} — up to the ${total} total.`,
+          /** Trần là phần CÒN HOÀN ĐƯỢC (total − đã hoàn) — `byCode` trả
+           *  `refundedTotal` thật từ review F2 31/08, hết cảnh đoán theo total. */
+          amountHint: (currency: string, remaining: string) =>
+            `${currency} — up to the ${remaining} still refundable.`,
           reasonLabel: 'Reason (optional)',
           reasonPlaceholder: 'Included in the refund email to the customer.',
           cancel: 'Cancel',
@@ -2698,37 +2720,40 @@ export const messages = {
           submit: 'Refund now',
           submitting: 'Refunding…',
         },
-        /** Lỗi validate phía client — bản sao luật contract, chặn trước khi bắn. */
+        /** Lỗi validate phía client — bản sao luật contract, chặn trước khi
+         *  bắn. `zero` cố ý là CÙNG câu với `errors.ZERO_OR_NEGATIVE` (một
+         *  luật một câu, dù chặn ở client hay server) — xem hằng dưới cùng
+         *  khối admin. */
         validation: {
           required: 'Enter an amount to refund.',
           format: 'Digits only, e.g. 120.50.',
-          zero: 'Refund amount must be greater than zero.',
-          overTotal: (total: string) => `Refund amount cannot exceed the ${total} booking total.`,
+          zero: REFUND_ZERO_COPY,
+          overRemaining: (remaining: string) =>
+            `Refund amount cannot exceed the ${remaining} still refundable on this booking.`,
         },
+        /** CHỈ 6 mã contract của `admin.bookings.refund` — tập keys này là
+         *  nguồn sự thật cho `REFUND_CONTRACT_CODES` phía admin. Mã transport
+         *  ở `admin.errors.write`. */
         errors: {
           NOT_FOUND: 'This booking no longer exists. Reload the list.',
           NOT_REFUNDABLE:
             'This booking is not refundable — it needs a captured payment and a PAID or PARTIALLY REFUNDED status. Reload to see where it stands now.',
           OVER_TOTAL:
             'This amount plus the refunds already issued would go over the booking total. Refund the full remaining balance instead, or enter a smaller amount.',
-          ZERO_OR_NEGATIVE: 'Refund amount must be greater than zero.',
+          ZERO_OR_NEGATIVE: REFUND_ZERO_COPY,
           NOTHING_LEFT: 'This booking is already fully refunded — nothing is left to send back.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing was recorded. Check the provider dashboard before trying again.',
-          UNAUTHORIZED: 'Your session expired. Sign in again, then reissue the refund.',
-          FORBIDDEN: 'Your account no longer has admin access.',
-          GENERIC:
-            'The refund did not go through. Check the booking status before trying again — it may or may not have reached the provider.',
         },
         toast: {
           title: 'Refund issued',
           body: (amount: string) => `${amount} is on its way back to the customer.`,
         },
         /**
-         * Sổ cái: `admin.bookings.byCode` KHÔNG đọc bảng refund (và
-         * `refundedTotal` của nó luôn '0.00' — xem `toBooking`), nên trang chỉ
-         * có ledger THẬT sau khi chính nó phát một refund. Copy dưới đây nói
-         * đúng chuyện đó thay vì in một con số không tồn tại.
+         * Sổ cái: từ review F2 31/08 `admin.bookings.byCode` TRẢ ledger thật
+         * (`refunds` + `refundedTotal`), nên bảng in số từ DB ngay khi mở
+         * trang — hai câu "giải thích endpoint thiếu gì" (onRecord/unknown)
+         * đã bị xoá cùng lỗ dữ liệu sinh ra chúng.
          */
         ledger: {
           heading: 'Refund ledger',
@@ -2736,14 +2761,8 @@ export const messages = {
           issued: 'Issued',
           reference: 'Provider reference',
           total: (amount: string) => `${amount} refunded in total`,
-          /** PENDING/PAID: chưa từng có refund row nào — trạng thái bảo đảm điều đó. */
+          /** Bảng refund của booking này thật sự rỗng — số từ DB, không phải đoán. */
           none: 'No refunds on this booking.',
-          /** PARTIALLY_REFUNDED/REFUNDED: chắc chắn CÓ refund, nhưng endpoint không trả số. */
-          onRecord:
-            'This booking has refunds on record. The admin detail endpoint does not return the ledger, so amounts show up here once you issue a refund from this page.',
-          /** CANCELLED: có thể mang auto-refund (overbook/orphaned capture) — hoặc không. */
-          unknown:
-            'A cancelled booking may carry an automatic refund. The admin detail endpoint does not return the ledger, so nothing is shown here.',
         },
       },
     },

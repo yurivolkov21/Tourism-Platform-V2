@@ -49,11 +49,14 @@ export class AdminBookingsController {
       const booking = await this.bookings.adminByCode(input.code);
       if (!booking) throw errors.NOT_FOUND();
       // W4: admin detail mang theo toàn bộ trail cancellation D1-B (các history
-      // row DENIED sống sót qua các lần request lại), cũ nhất trước.
-      return {
-        ...booking,
-        cancellationRequests: await this.cancellations.historyForBooking(booking.id, booking.code),
-      };
+      // row DENIED sống sót qua các lần request lại), cũ nhất trước. Từ review
+      // F2 31/08 mang thêm sổ cái refund — trang chi tiết in số THẬT ngay khi
+      // mở, không phải chờ chính nó phát một refund.
+      const [cancellationRequests, refunds] = await Promise.all([
+        this.cancellations.historyForBooking(booking.id, booking.code),
+        this.refunds.historyForBooking(booking.code),
+      ]);
+      return { ...booking, cancellationRequests, refunds };
     });
   }
 

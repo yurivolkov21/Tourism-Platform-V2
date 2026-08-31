@@ -26,12 +26,10 @@ import { refundBookingAction } from './actions';
  * §3-F1): khách · đợt · tiền · lịch sử cancellation append-only, cộng ô
  * Refunds (F2) là hành vi GHI duy nhất của trang.
  *
- * Trang vẫn KHÔNG in `refundedTotal`, kể cả sau khi có refund: `admin
- * .bookings.byCode` không đọc sổ refund (xem `BookingsService.adminByCode` —
- * mọi call site trừ `bookings.byCode` để '0.00'), nên con số đó là số CHẾT,
- * in ra là nói dối admin khi booking đã hoàn một phần. Sổ cái thật chỉ về
- * theo output của `admin.bookings.refund`, và `RefundPanel` chỉ in cái đó —
- * xem `ledgerNote` cho câu nói thay khi chưa có sổ trong tay.
+ * Từ vòng vá review 31/08, `admin.bookings.byCode` trả sổ cái THẬT
+ * (`refunds` + `refundedTotal` aggregate từ DB) — `RefundPanel` in ledger
+ * ngay khi mở trang và dùng phần-còn-hoàn-được làm trần validate; sau mỗi
+ * refund client `router.refresh()` kéo sự thật mới về.
  */
 const t = messages.admin.bookings.detail;
 
@@ -130,8 +128,22 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
         {/* Ô refund đứng TRƯỚC lịch sử huỷ: nó là hành động, phần dưới là
             dấu vết. Server action truyền xuống như một prop — client
-            component không tự import đường server nào (xem RefundPanel). */}
-        <RefundPanel booking={booking} refund={refundBookingAction} />
+            component không tự import đường server nào (xem RefundPanel).
+            Cắt ĐÚNG subset panel cần chứ không đưa cả detail qua ranh giới
+            client: detail mang decisionNote nội bộ và mọi field mới sau này
+            sẽ tự trôi xuống browser không qua cửa review (review 31/08). */}
+        <RefundPanel
+          booking={{
+            code: booking.code,
+            status: booking.status,
+            totalAmount: booking.totalAmount,
+            refundedTotal: booking.refundedTotal,
+            currency: booking.currency,
+            contactName: booking.contactName,
+            refunds: booking.refunds,
+          }}
+          refund={refundBookingAction}
+        />
 
         <Card>
           <CardHeader>

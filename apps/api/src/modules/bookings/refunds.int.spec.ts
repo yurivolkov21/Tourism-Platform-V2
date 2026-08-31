@@ -1,6 +1,11 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { AdminRefundResultSchema, BookingSchema, PagedSchema } from '@tourism/contract';
+import {
+  AdminBookingDetailSchema,
+  AdminRefundResultSchema,
+  BookingSchema,
+  PagedSchema,
+} from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -429,6 +434,28 @@ describe('refunds integration (admin refund ledger)', () => {
     });
     expect(missing.statusCode).toBe(404);
     expect(missing.json()).toMatchObject({ code: 'NOT_FOUND' });
+  });
+
+  it('admin.bookings.byCode mang sổ cái THẬT: refunds append-order + refundedTotal aggregate (review F2 31/08)', async () => {
+    // Khoá chống tái hiện lỗ dữ liệu F2: detail admin từng KHÔNG trả ledger
+    // (refundedTotal luôn '0.00'), UI phải "giải thích endpoint thiếu gì" và
+    // validate theo total thay vì phần còn hoàn được.
+    const admin = await signUpAdmin();
+    const booking = await createPaidBooking(await signUpUser('ledger-detail@example.com'));
+    await postRefund(admin, booking.code, { amount: '30.00' });
+    await postRefund(admin, booking.code, { amount: '20.50' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/admin/bookings/${booking.code}`,
+      headers: { cookie: admin },
+    });
+    expect(res.statusCode).toBe(200);
+    const detail = AdminBookingDetailSchema.parse(res.json());
+    expect(detail.refunds).toHaveLength(2);
+    expect(detail.refunds.map((r) => Number(r.amount))).toEqual([30, 20.5]); // cũ nhất trước
+    expect(detail.refundedTotal).toBe('50.50');
+    expect(detail.status).toBe('PARTIALLY_REFUNDED');
   });
 
   it('historyForBooking (direct service call — admin view lands later): append order, typed not-found', async () => {

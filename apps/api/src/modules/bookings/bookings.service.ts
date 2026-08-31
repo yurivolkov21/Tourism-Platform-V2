@@ -566,8 +566,15 @@ export class BookingsService {
       include: { tour: bookingTourInclude },
     });
     if (!booking) return null;
+    // `refundedTotal` THẬT (review F2 31/08 — trước đây để '0.00' mặc định):
+    // admin dùng nó làm trần validate refund (total − đã hoàn), số sai là
+    // validate sai. Cùng aggregate với `byCode` khách phía trên.
+    const refunded = await prisma.refund.aggregate({
+      where: { bookingId: booking.id },
+      _sum: { amount: true },
+    });
     const tourImage = await resolveTourCover(this.media, booking.tourId);
-    return toBooking(booking, null, tourImage);
+    return toBooking(booking, null, tourImage, { refundedTotal: refunded._sum.amount });
   }
 
   /**

@@ -15,13 +15,30 @@ const t = messages.admin.bookings;
  * trăm): back-office đối chiếu với sổ cái refund từng cent. `Number()` chỉ
  * dùng ở bước format cuối, nguồn sự thật vẫn là chuỗi thập phân của contract.
  */
+// Constructor `Intl.NumberFormat` đắt hơn `.format()` một-hai bậc; từ F2 hàm
+// này nằm trong render path client (dialog refund render lại theo từng phím
+// gõ) nên cache theo currency — tập hữu hạn, sống trọn đời module.
+const AMOUNT_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
 export function formatAmount(amount: string, currency: string): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(Number(amount));
+  let formatter = AMOUNT_FORMATTERS.get(currency);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      // Contract chỉ ép `length(3)`, không ép ISO-4217 — currency lạ mà để
+      // RangeError nổ trong render/toast là biến một refund THÀNH CÔNG thành
+      // màn báo lỗi (review F2 31/08). In thô còn hơn nổ.
+      return `${amount} ${currency}`;
+    }
+    AMOUNT_FORMATTERS.set(currency, formatter);
+  }
+  return formatter.format(Number(amount));
 }
 
 /** Tháng viết tắt — đọc bằng tay để KHÔNG đụng `new Date()` (xem dưới). */

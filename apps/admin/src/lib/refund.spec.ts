@@ -4,10 +4,11 @@ import { describe, expect, it } from 'vitest';
 import {
   canRefund,
   classifyRefundError,
-  ledgerNote,
-  REFUND_FAILURE_CODES,
+  normalizeAmountInput,
+  REFUND_CONTRACT_CODES,
+  type RefundFailureCode,
   refundErrorCopy,
-  sumRefunds,
+  remainingRefundable,
   validateRefundAmount,
 } from './refund';
 
@@ -26,8 +27,34 @@ describe('canRefund', () => {
   });
 });
 
+describe('normalizeAmountInput', () => {
+  it('dấu phẩy thập phân kiểu bàn phím non-US → chấm ("120,50" → "120.50")', () => {
+    expect(normalizeAmountInput('120,50')).toBe('120.50');
+    expect(normalizeAmountInput('  7,5 ')).toBe('7.5');
+  });
+
+  it('KHÔNG đoán dấu nghìn: đã có chấm hoặc nhiều phẩy thì giữ nguyên cho validate từ chối', () => {
+    expect(normalizeAmountInput('1,200.50')).toBe('1,200.50');
+    expect(normalizeAmountInput('1,2,3')).toBe('1,2,3');
+  });
+});
+
+describe('remainingRefundable', () => {
+  it('total − đã hoàn, theo cent (không float)', () => {
+    expect(remainingRefundable('120.00', '0.00')).toBe('120.00');
+    expect(remainingRefundable('120.00', '100.00')).toBe('20.00');
+    expect(remainingRefundable('0.30', '0.10')).toBe('0.20');
+  });
+
+  it('không bao giờ âm — dữ liệu lệch thì trần là 0, không phải số âm', () => {
+    expect(remainingRefundable('50.00', '60.00')).toBe('0.00');
+  });
+});
+
 describe('validateRefundAmount', () => {
-  const base = { totalAmount: '120.00', currency: 'USD' } as const;
+  // Trần là phần CÒN HOÀN ĐƯỢC (vòng vá review 31/08) — booking 120 đã hoàn
+  // 20, trần 100: nhập số biết trước sẽ ăn OVER_TOTAL phải bị chặn TẠI form.
+  const base = { remaining: '100.00', currency: 'USD' } as const;
 
   it('mode full KHÔNG cần amount — server tự tính phần còn lại', () => {
     expect(validateRefundAmount({ ...base, mode: 'full', amount: '' })).toBeUndefined();
@@ -35,13 +62,13 @@ describe('validateRefundAmount', () => {
   });
 
   it('partial mà bỏ trống → đòi nhập, không bắn request rỗng', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '   ' })).toBe(
+    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '' })).toBe(
       t.validation.required,
     );
   });
 
   it('sai định dạng DecimalStringSchema → câu định dạng riêng', () => {
-    for (const amount of ['abc', '12,50', '-5', '1.2.3', '$10']) {
+    for (const amount of ['abc', '1,200.50', '-5', '1.2.3', '$10']) {
       expect(validateRefundAmount({ ...base, mode: 'partial', amount })).toBe(t.validation.format);
     }
   });
@@ -56,30 +83,47 @@ describe('validateRefundAmount', () => {
     expect(validateRefundAmount({ ...base, mode: 'partial', amount: '0.005' })).toBeUndefined();
   });
 
-  it('vượt total → câu có kèm số tiền trần', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '120.01' })).toBe(
-      t.validation.overTotal('$120.00'),
+  it('vượt phần còn hoàn được → câu kèm đúng số trần (không phải total)', () => {
+    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '100.01' })).toBe(
+      t.validation.overRemaining('$100.00'),
     );
   });
 
-  it('đúng bằng total hợp lệ ở client — remainder thật chỉ server biết', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '120.00' })).toBeUndefined();
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '119.99' })).toBeUndefined();
+  it('đúng bằng trần hoặc dưới trần → hợp lệ; server vẫn là phán quyết cuối', () => {
+    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '100.00' })).toBeUndefined();
+    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '99.99' })).toBeUndefined();
+  });
+});
+
+describe('REFUND_CONTRACT_CODES', () => {
+  it('derive từ keys khối i18n errors — một nguồn, đủ 6 mã contract', () => {
+    // Khoá chống tái hiện bug review 31/08: ba danh sách chép tay từng lệch
+    // nhau ("NĂM mã" vs sáu). Giờ tập mã LÀ tập câu — thêm/bớt một bên là
+    // bên kia tự khớp, còn test này khoá đúng 6 mã của contract hiện tại.
+    expect([...REFUND_CONTRACT_CODES].sort()).toEqual([
+      'NOTHING_LEFT',
+      'NOT_FOUND',
+      'NOT_REFUNDABLE',
+      'OVER_TOTAL',
+      'REFUND_FAILED',
+      'ZERO_OR_NEGATIVE',
+    ]);
   });
 });
 
 describe('classifyRefundError', () => {
-  it('giữ NGUYÊN 5 mã lỗi ledger của contract, không nuốt thành GENERIC', () => {
-    for (const code of [
-      'NOT_REFUNDABLE',
-      'OVER_TOTAL',
-      'ZERO_OR_NEGATIVE',
-      'NOTHING_LEFT',
-      'REFUND_FAILED',
-      'NOT_FOUND',
-    ] as const) {
-      expect(classifyRefundError(new ORPCError(code))).toBe(code);
+  it('giữ NGUYÊN 6 mã contract (defined error thật của oRPC), không nuốt thành GENERIC', () => {
+    for (const code of REFUND_CONTRACT_CODES) {
+      expect(classifyRefundError(new ORPCError(code, { defined: true }))).toBe(code);
     }
+  });
+
+  it('ORPCError trùng TÊN mã contract nhưng KHÔNG phải defined error → không được giả làm phán quyết contract', () => {
+    // Khoá chống tái hiện: bản đầu so `code` trần bằng Set chép tay — một
+    // lỗi tầng khác mang code 'NOT_FOUND' được phán như contract nói
+    // "booking không tồn tại" trong khi thực tế không ai biết. Giờ phải có
+    // con dấu `defined` của oRPC mới được tin.
+    expect(classifyRefundError(new ORPCError('NOT_FOUND'))).toBe('GENERIC');
   });
 
   it('401/403 là lỗi tầng phiên, không phải mã contract', () => {
@@ -97,9 +141,16 @@ describe('classifyRefundError', () => {
 });
 
 describe('refundErrorCopy', () => {
-  it('mỗi mã một câu KHÁC nhau — bất biến spec §2.4', () => {
-    const copies = REFUND_FAILURE_CODES.map(refundErrorCopy);
-    expect(new Set(copies).size).toBe(REFUND_FAILURE_CODES.length);
+  it('mỗi mã một câu KHÁC nhau — bất biến spec §2.4, phủ cả mã transport', () => {
+    const codes: RefundFailureCode[] = [
+      ...REFUND_CONTRACT_CODES,
+      'UNAUTHORIZED',
+      'FORBIDDEN',
+      'INVALID_INPUT',
+      'GENERIC',
+    ];
+    const copies = codes.map(refundErrorCopy);
+    expect(new Set(copies).size).toBe(codes.length);
     expect(copies.every((copy) => copy.length > 0)).toBe(true);
   });
 
@@ -107,31 +158,9 @@ describe('refundErrorCopy', () => {
     expect(refundErrorCopy('REFUND_FAILED')).toBe(t.errors.REFUND_FAILED);
     expect(refundErrorCopy('REFUND_FAILED')).toMatch(/nothing was recorded/i);
   });
-});
 
-describe('sumRefunds', () => {
-  it('sổ rỗng → 0.00', () => {
-    expect(sumRefunds([])).toBe('0.00');
-  });
-
-  it('cộng theo cent, không qua float (0.10 + 0.20 = 0.30)', () => {
-    expect(sumRefunds([{ amount: '0.10' }, { amount: '0.20' }])).toBe('0.30');
-    expect(sumRefunds([{ amount: '10' }, { amount: '5.5' }])).toBe('15.50');
-  });
-});
-
-describe('ledgerNote', () => {
-  it('PENDING/PAID: trạng thái BẢO ĐẢM chưa có refund row nào', () => {
-    expect(ledgerNote('PENDING')).toBe(t.ledger.none);
-    expect(ledgerNote('PAID')).toBe(t.ledger.none);
-  });
-
-  it('PARTIALLY_REFUNDED/REFUNDED: chắc chắn có refund — nhưng byCode không trả số', () => {
-    expect(ledgerNote('PARTIALLY_REFUNDED')).toBe(t.ledger.onRecord);
-    expect(ledgerNote('REFUNDED')).toBe(t.ledger.onRecord);
-  });
-
-  it('CANCELLED: KHÔNG khẳng định có hay không (auto-refund overbook có thể đã chạy)', () => {
-    expect(ledgerNote('CANCELLED')).toBe(t.ledger.unknown);
+  it('INVALID_INPUT khẳng định request CHƯA từng rời lớp validate — khác hẳn GENERIC mập mờ', () => {
+    expect(refundErrorCopy('INVALID_INPUT')).toMatch(/never reached/i);
+    expect(refundErrorCopy('GENERIC')).toMatch(/may or may not/i);
   });
 });

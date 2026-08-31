@@ -21,9 +21,11 @@ import { apiOrigin } from './env';
  * ADR-0016 §1) và timeout 10s.
  */
 
-/** Context per-call: chỉ mang cookie phiên của admin đang đăng nhập. */
+/** Context per-call: cookie phiên admin + (tuỳ chọn) signal riêng của call. */
 export interface AdminApiContext {
   cookie: string;
+  /** Đè trần timeout mặc định 10s — dùng cho lệnh GHI tiền (xem chỗ tạo link). */
+  signal?: AbortSignal;
 }
 
 /** Bọc cookie thành context: `api.admin.bookings.list(input, { context: withAdminAuth(c) })`. */
@@ -58,7 +60,11 @@ const link = new OpenAPILink<AdminApiContext>(contract, {
   fetch: (request, init, { context }) =>
     globalThis.fetch(request, {
       ...withAdminOptions(request, init ?? {}, context),
-      signal: AbortSignal.timeout(10_000),
+      // Tôn trọng signal PER-CALL nếu caller đặt (qua context) — 10s chỉ là
+      // mặc định cho đường ĐỌC. Money-path ghi (refund gọi provider bên
+      // trong request) cần trần dài hơn: abort trong lúc API đã commit là
+      // hạt giống refund đúp (review F2 31/08).
+      signal: context?.signal ?? AbortSignal.timeout(10_000),
     }),
 });
 

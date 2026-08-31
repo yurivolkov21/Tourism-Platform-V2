@@ -304,6 +304,11 @@ export type DecideCancellationResult = z.output<typeof DecideCancellationResultS
  */
 export const AdminBookingDetailSchema = BookingSchema.extend({
   cancellationRequests: z.array(CancellationRequestSchema),
+  // Sổ cái refund THẬT (review F2 31/08): trước đây detail admin không mang
+  // ledger nên UI phải "giải thích endpoint thiếu gì" thay vì in số — lỗ tầng
+  // dữ liệu vá bằng tầng copy. Kèm theo, `refundedTotal` của BookingSchema
+  // được adminByCode điền thật (trước để '0.00'), là trần validate phía admin.
+  refunds: z.array(RefundSchema),
 });
 
 export type AdminBookingDetail = z.output<typeof AdminBookingDetailSchema>;

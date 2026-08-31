@@ -67,5 +67,12 @@ export async function refundAdminBooking(
   cookie: string,
   input: AdminRefundInput,
 ): Promise<AdminRefundResult> {
-  return api.admin.bookings.refund(input, { context: withAdminAuth(cookie) });
+  // Trần 30s RIÊNG cho lệnh ghi tiền (mặc định link là 10s cho đường đọc):
+  // refund gọi provider BÊN TRONG request; abort trong lúc API đã commit
+  // ledger là kịch bản mở màn refund đúp (review F2 31/08). 30s ôm được p99
+  // của provider; quá nữa thì đúng là không rõ — GENERIC xử theo lối
+  // "đóng dialog + refresh" phía panel.
+  return api.admin.bookings.refund(input, {
+    context: { cookie, signal: AbortSignal.timeout(30_000) },
+  });
 }

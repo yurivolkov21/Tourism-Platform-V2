@@ -25,110 +25,119 @@ import {
   TableRow,
 } from '@tourism/ui/components/table';
 import { Textarea } from '@tourism/ui/components/textarea';
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
+import { isUncertainOutcome } from '@/lib/api/write-error';
 import { formatAmount, formatDateTime } from '@/lib/bookings-view';
 import {
   canRefund,
-  ledgerNote,
+  normalizeAmountInput,
+  type RefundAction,
+  type RefundActionResult,
   type RefundFailureCode,
   type RefundMode,
   refundErrorCopy,
-  sumRefunds,
+  remainingRefundable,
   validateRefundAmount,
 } from '@/lib/refund';
 
 /**
  * Ô "Refunds" của `/bookings/[code]` (spec P4b §3-F2) — hành vi GHI đầu tiên
- * của admin, nên nó là money-path từ đầu tới cuối:
+ * của admin, money-path từ đầu tới cuối:
  *
- * - Nút chỉ hiện với trạng thái còn hoàn được (`canRefund`).
- * - Confirm HAI bước (§2.4): bước 1 nhập, bước 2 đọc lại số tiền rồi mới bắn.
- * - Mọi mã lỗi của contract hiện NGUYÊN NGHĨA, mỗi mã một câu.
- * - Sổ cái chỉ in số THẬT do server trả về; không có số thì nói tại sao.
+ * - PROPS-DRIVEN (review 31/08): sổ cái + refundedTotal + status đều từ server
+ *   (`byCode` nay trả ledger thật). KHÔNG có bản sao state client nào đè lên
+ *   prop — refund xong thì `router.refresh()` kéo sự thật mới về; bản F1 đầu
+ *   giữ `status ?? booking.status` từng đè vĩnh viễn dữ liệu tươi.
+ * - Confirm HAI bước (§2.4); dialog KHÔNG đóng được khi đang bắn (Esc/click
+ *   ngoài bị nuốt) — đóng được là thông báo lỗi thành tàng hình.
+ * - Mọi mã lỗi hiện NGUYÊN NGHĨA. Riêng kết cục KHÔNG RÕ (GENERIC — không
+ *   biết đã tới provider chưa): đóng dialog + toast + refresh, ép nhìn sổ
+ *   cái tươi trước khi thử lại — bấm-lại-mù là công thức refund đúp, vì
+ *   idempotency key phía API đổi theo ledger.
  *
- * Component KHÔNG tự import server action: nó nhận `refund` từ trang (server
- * component truyền action xuống). Nhờ vậy test dựng được panel với một hàm
- * giả mà không phải mock `next/headers`, và panel không dính vào một đường
- * gọi cụ thể nào.
+ * Component KHÔNG tự import server action: nhận `refund` từ trang — test dựng
+ * panel với hàm giả, không mock `next/headers`.
  */
 const t = messages.admin.bookings.refund;
 
-/** Phần booking mà panel thật sự cần — nhận subset để test khỏi dựng cả Booking. */
+/** Phần booking mà panel thật sự cần — trang cắt ĐÚNG các field này (không
+ *  đưa cả AdminBookingDetail qua ranh giới client — có decisionNote nội bộ). */
 export interface RefundTarget {
   code: string;
   status: BookingStatusValue;
   totalAmount: string;
+  refundedTotal: string;
   currency: string;
   contactName: string;
+  refunds: Refund[];
 }
 
-/**
- * Kết quả server action. Cố ý KHÔNG ném lỗi qua ranh giới action: `ORPCError`
- * không sống sót qua đó (Next che lỗi server ở production), nên action phân
- * loại xong mới trả mã xuống — client chỉ việc tra copy.
- */
-export type RefundActionResult =
-  | { ok: true; status: BookingStatusValue; refunds: Refund[] }
-  | { ok: false; code: RefundFailureCode };
-
-export type RefundAction = (input: {
-  code: string;
-  amount?: string;
-  reason?: string;
-}) => Promise<RefundActionResult>;
-
 export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund: RefundAction }) {
-  /**
-   * Sổ cái CHỈ có sau khi chính trang này phát một refund: `admin.bookings
-   * .byCode` không đọc bảng refund. `null` = chưa có gì thật để in — lúc đó
-   * `ledgerNote` nói theo trạng thái chứ không in số bịa.
-   */
-  const [ledger, setLedger] = useState<Refund[] | null>(null);
-  /** Trạng thái sau refund (server trả về) — prop `booking` còn cũ cho tới khi
-   *  `router.refresh()` xong, mà nút refund thì phải tắt NGAY. */
-  const [status, setStatus] = useState<BookingStatusValue | null>(null);
-  const current = status ?? booking.status;
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  const refundable = canRefund(booking.status);
+  const remaining = remainingRefundable(booking.totalAmount, booking.refundedTotal);
+
+  /** Sau MỌI kết cục đã-chạm-server: kéo sự thật mới về (ledger, status, trần). */
+  function refreshBooking() {
+    startRefresh(() => router.refresh());
+  }
 
   function onDone(result: Extract<RefundActionResult, { ok: true }>) {
-    // Server action đã gọi `refresh()` của `next/cache`, nên RSC payload mới
-    // về CÙNG response của action (một roundtrip — không cần
-    // `router.refresh()` ở đây). Hai state này vì vậy chỉ là bản vá tức thì
-    // cho khoảnh khắc trước khi payload ấy được áp — và `ledger` còn là chỗ
-    // GIỮ sổ cái, thứ mà payload server không mang theo được.
-    setLedger(result.refunds);
-    setStatus(result.status);
-    // Row cuối là row vừa được append (`historyForBooking` sắp xếp createdAt
-    // asc) — số tiền THẬT server vừa ghi, kể cả nhánh full mà client không tự
-    // tính được.
+    // Row cuối là row vừa append (`historyForBooking` sắp xếp createdAt asc) —
+    // số tiền THẬT server vừa ghi, kể cả nhánh full mà client không tự tính.
     const issued = result.refunds.at(-1);
     toast.success(t.toast.title, {
       description: issued ? t.toast.body(formatAmount(issued.amount, issued.currency)) : undefined,
     });
+    refreshBooking();
   }
 
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
         <CardTitle>{t.heading}</CardTitle>
-        {canRefund(current) ? (
-          <RefundDialog booking={{ ...booking, status: current }} refund={refund} onDone={onDone} />
+        {refundable ? (
+          <RefundDialog
+            code={booking.code}
+            contactName={booking.contactName}
+            currency={booking.currency}
+            remaining={remaining}
+            disabled={isRefreshing}
+            refund={refund}
+            onDone={onDone}
+            onUncertain={refreshBooking}
+          />
         ) : null}
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
-        {canRefund(current) ? null : <p className="text-muted-foreground">{t.unavailable}</p>}
-        {ledger && ledger.length > 0 ? (
-          <LedgerTable refunds={ledger} currency={booking.currency} />
+        {refundable ? null : <p className="text-muted-foreground">{t.unavailable}</p>}
+        {booking.refunds.length > 0 ? (
+          <LedgerTable
+            refunds={booking.refunds}
+            refundedTotal={booking.refundedTotal}
+            currency={booking.currency}
+          />
         ) : (
-          <p className="text-muted-foreground">{ledgerNote(current)}</p>
+          <p className="text-muted-foreground">{t.ledger.none}</p>
         )}
       </CardContent>
     </Card>
   );
 }
 
-/** Sổ cái refund append-only — chỉ render khi có row THẬT từ server. */
-function LedgerTable({ refunds, currency }: { refunds: Refund[]; currency: string }) {
+/** Sổ cái refund append-only — row và tổng đều là số THẬT server trả. */
+function LedgerTable({
+  refunds,
+  refundedTotal,
+  currency,
+}: {
+  refunds: Refund[];
+  refundedTotal: string;
+  currency: string;
+}) {
   return (
     <div className="grid gap-2">
       <div className="overflow-hidden rounded-lg border">
@@ -155,8 +164,10 @@ function LedgerTable({ refunds, currency }: { refunds: Refund[]; currency: strin
           </TableBody>
         </Table>
       </div>
+      {/* Tổng là `refundedTotal` server aggregate — không cộng lại phía client
+          (hai công thức tiền là hai công thức sẽ lệch, review 31/08). */}
       <p className="font-medium tabular-nums">
-        {t.ledger.total(formatAmount(sumRefunds(refunds), currency))}
+        {t.ledger.total(formatAmount(refundedTotal, currency))}
       </p>
     </div>
   );
@@ -164,46 +175,64 @@ function LedgerTable({ refunds, currency }: { refunds: Refund[]; currency: strin
 
 /** Dialog hai bước; state nhập sống ở đây nên đóng dialog là quên sạch. */
 function RefundDialog({
-  booking,
+  code,
+  contactName,
+  currency,
+  remaining,
+  disabled,
   refund,
   onDone,
+  onUncertain,
 }: {
-  booking: RefundTarget;
+  code: string;
+  contactName: string;
+  currency: string;
+  /** Trần thật: total − refundedTotal, cả hai từ server. */
+  remaining: string;
+  disabled: boolean;
   refund: RefundAction;
   onDone: (result: Extract<RefundActionResult, { ok: true }>) => void;
+  /** Kết cục không rõ — trang cần refresh để admin nhìn sổ cái tươi. */
+  onUncertain: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'form' | 'confirm'>('form');
   const [mode, setMode] = useState<RefundMode>('full');
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
-  const [fieldError, setFieldError] = useState<string | null>(null);
+  /** Chỉ bật sau lần bấm "Review refund" đầu — lỗi validate là DERIVED từ
+   *  input hiện tại, nên gõ sửa xong là câu lỗi tự biến (bản đầu giữ lỗi
+   *  trong state, sửa đúng rồi mà câu cũ vẫn treo — review 31/08). */
+  const [showValidation, setShowValidation] = useState(false);
   const [failure, setFailure] = useState<RefundFailureCode | null>(null);
   const [pending, setPending] = useState(false);
+
+  const normalized = normalizeAmountInput(amount);
+  const fieldError = showValidation
+    ? validateRefundAmount({ mode, amount: normalized, remaining, currency })
+    : undefined;
 
   function reset() {
     setStep('form');
     setMode('full');
     setAmount('');
     setReason('');
-    setFieldError(null);
+    setShowValidation(false);
     setFailure(null);
   }
 
   function onOpenChange(next: boolean) {
+    // Đang bắn thì KHÔNG cho đóng (Esc/click ngoài): reset giữa chừng là
+    // thông báo lỗi về sau ghi vào một dialog đã đóng — admin tưởng xong.
+    if (pending) return;
     setOpen(next);
     if (!next) reset();
   }
 
   /** Bước 1 → 2: validate bản sao luật contract; hỏng thì ở lại, không bắn. */
   function toConfirm() {
-    const error = validateRefundAmount({
-      mode,
-      amount,
-      totalAmount: booking.totalAmount,
-      currency: booking.currency,
-    });
-    setFieldError(error ?? null);
+    setShowValidation(true);
+    const error = validateRefundAmount({ mode, amount: normalized, remaining, currency });
     if (error) return;
     setFailure(null);
     setStep('confirm');
@@ -213,32 +242,48 @@ function RefundDialog({
     if (pending) return;
     setPending(true);
     setFailure(null);
+    let failureCode: RefundFailureCode;
     try {
       const result = await refund({
-        code: booking.code,
+        code,
         // Nhánh full cố ý KHÔNG gửi amount: server refund đúng phần còn lại
-        // (total − SUM(refunds)), con số mà client không có cách nào biết.
-        ...(mode === 'partial' ? { amount: amount.trim() } : {}),
+        // theo ledger tại thời điểm xử lý — số cuối cùng là của server.
+        ...(mode === 'partial' ? { amount: normalized } : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
-      if (!result.ok) {
-        setFailure(result.code);
+      if (result.ok) {
+        setPending(false);
+        setOpen(false);
+        reset();
+        onDone(result);
         return;
       }
-      onOpenChange(false);
-      onDone(result);
+      failureCode = result.code;
     } catch {
       // Action ném (mạng đứt, action chết giữa chừng): không biết tiền đã đi
-      // hay chưa — câu GENERIC nói đúng chừng đó, không hứa "chưa ghi gì".
-      setFailure('GENERIC');
-    } finally {
-      setPending(false);
+      // hay chưa — cùng lối xử với GENERIC bên dưới.
+      failureCode = 'GENERIC';
     }
+    setPending(false);
+    if (isUncertainOutcome(failureCode)) {
+      // Kết cục KHÔNG RÕ: đóng dialog, toast lỗi, refresh — admin phải thấy
+      // sổ cái tươi trước khi cân nhắc bấm lại (chống refund đúp, review
+      // 31/08). Mã contract (chắc chắn chưa mất tiền, trừ REFUND_FAILED đã
+      // nói rõ) thì ở lại dialog cho sửa tại chỗ.
+      setOpen(false);
+      reset();
+      toast.error(refundErrorCopy('GENERIC'));
+      onUncertain();
+      return;
+    }
+    setFailure(failureCode);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger render={<Button type="button" variant="outline" size="sm" />}>
+      <DialogTrigger
+        render={<Button type="button" variant="outline" size="sm" disabled={disabled} />}
+      >
         {t.cta}
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
@@ -252,13 +297,7 @@ function RefundDialog({
             <div className="grid gap-4">
               <div className="grid gap-2">
                 <span className="text-sm font-medium">{t.form.modeLabel}</span>
-                <RadioGroup
-                  value={mode}
-                  onValueChange={(next) => {
-                    setMode(next as RefundMode);
-                    setFieldError(null);
-                  }}
-                >
+                <RadioGroup value={mode} onValueChange={(next) => setMode(next as RefundMode)}>
                   {/* `id` của Label phải là `<radio-id>-label`: Base UI render
                       radio thành <span role="radio"> và tự trỏ
                       `aria-labelledby="<id>-label"`. Thiếu id đó là trỏ vào
@@ -291,13 +330,11 @@ function RefundDialog({
                     autoComplete="off"
                     value={amount}
                     aria-invalid={fieldError != null}
+                    aria-describedby={fieldError ? 'refund-amount-error' : undefined}
                     onChange={(event) => setAmount(event.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {t.form.amountHint(
-                      booking.currency,
-                      formatAmount(booking.totalAmount, booking.currency),
-                    )}
+                    {t.form.amountHint(currency, formatAmount(remaining, currency))}
                   </p>
                 </div>
               ) : null}
@@ -315,7 +352,11 @@ function RefundDialog({
               </div>
 
               {fieldError ? (
-                <p role="alert" className="text-sm text-destructive-emphasis">
+                <p
+                  id="refund-amount-error"
+                  role="alert"
+                  className="text-sm text-destructive-emphasis"
+                >
                   {fieldError}
                 </p>
               ) : null}
@@ -338,14 +379,12 @@ function RefundDialog({
             </DialogHeader>
 
             <dl className="grid gap-2 text-sm">
-              <ConfirmRow label={t.confirm.booking} value={booking.code} />
-              <ConfirmRow label={t.confirm.customer} value={booking.contactName} />
+              <ConfirmRow label={t.confirm.booking} value={code} />
+              <ConfirmRow label={t.confirm.customer} value={contactName} />
               <ConfirmRow
                 label={t.confirm.amount}
                 value={
-                  mode === 'partial'
-                    ? formatAmount(amount.trim(), booking.currency)
-                    : t.confirm.amountFull
+                  mode === 'partial' ? formatAmount(normalized, currency) : t.confirm.amountFull
                 }
               />
               {reason.trim() ? <ConfirmRow label={t.confirm.reason} value={reason.trim()} /> : null}
@@ -353,18 +392,15 @@ function RefundDialog({
 
             <p className="text-sm text-destructive-emphasis">{t.confirm.warning}</p>
 
-            {failure ? (
-              <p role="alert" className="text-sm text-destructive-emphasis">
-                {refundErrorCopy(failure)}
-              </p>
-            ) : null}
-
             <DialogFooter>
               <Button
                 type="button"
                 variant="ghost"
                 disabled={pending}
-                onClick={() => setStep('form')}
+                onClick={() => {
+                  setFailure(null);
+                  setStep('form');
+                }}
               >
                 {t.confirm.back}
               </Button>
@@ -374,6 +410,15 @@ function RefundDialog({
             </DialogFooter>
           </>
         )}
+
+        {/* Lỗi server đứng NGOÀI hai nhánh bước — dù đang ở bước nào cũng
+            thấy (bản đầu chỉ render ở bước confirm: bấm Back là câu lỗi bốc
+            hơi — review 31/08). */}
+        {failure ? (
+          <p role="alert" className="text-sm text-destructive-emphasis">
+            {refundErrorCopy(failure)}
+          </p>
+        ) : null}
       </DialogContent>
     </Dialog>
   );

@@ -1,16 +1,20 @@
-import { ORPCError } from '@orpc/client';
-import { type BookingStatusValue, DecimalStringSchema } from '@tourism/contract';
+import { type BookingStatusValue, DecimalStringSchema, type Refund } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import {
+  classifyWriteError,
+  type TransportFailureCode,
+  transportErrorCopy,
+} from './api/write-error';
 import { formatAmount } from './bookings-view';
 
 /**
  * Logic THUẦN của refund (spec P4b §3-F2) — money-path, nên mọi luật đứng
  * ngoài React và có test riêng: cổng trạng thái, validate amount phía client
- * (bản sao luật contract), phân loại lỗi server và cộng sổ cái.
+ * (bản sao luật contract, trần theo phần CÒN HOÀN ĐƯỢC), phân loại lỗi server.
  *
  * Nguyên tắc xuyên suốt: client KHÔNG bao giờ tự quyết thay server. Nó chỉ
- * chặn sớm những gì contract đã nói chắc chắn (định dạng, > 0, ≤ total) rồi
- * hiện NGUYÊN NGHĨA phán quyết của server cho từng mã lỗi.
+ * chặn sớm những gì contract đã nói chắc chắn (định dạng, > 0, ≤ remainder)
+ * rồi hiện NGUYÊN NGHĨA phán quyết của server cho từng mã lỗi.
  */
 
 const t = messages.admin.bookings.refund;
@@ -26,6 +30,20 @@ const t = messages.admin.bookings.refund;
  */
 export function canRefund(status: BookingStatusValue): boolean {
   return status === 'PAID' || status === 'PARTIALLY_REFUNDED';
+}
+
+/**
+ * Chuẩn hoá chuỗi tiền người dùng gõ TRƯỚC khi validate/gửi: trim + dấu phẩy
+ * thập phân → chấm. `inputMode="decimal"` trên bàn phím non-US phát ra `,` —
+ * bắt admin học lại dấu chấm là lỗi của form, không phải của họ. Chỉ đổi khi
+ * có ĐÚNG MỘT dấu phẩy và không có chấm (kiểu "120,50"); "1,200.50" giữ
+ * nguyên cho validate từ chối — đoán nghĩa dấu nghìn là việc quá tay.
+ */
+export function normalizeAmountInput(raw: string): string {
+  const trimmed = raw.trim();
+  const commas = trimmed.split(',').length - 1;
+  if (commas === 1 && !trimmed.includes('.')) return trimmed.replace(',', '.');
+  return trimmed;
 }
 
 /**
@@ -47,14 +65,23 @@ function fromCents(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
+/**
+ * Phần CÒN HOÀN ĐƯỢC = total − refundedTotal (cả hai là decimal string THẬT
+ * từ server — `adminByCode` điền `refundedTotal` từ aggregate ledger, review
+ * F2 31/08). Đây là trần validate và là số in ở hint ô amount.
+ */
+export function remainingRefundable(totalAmount: string, refundedTotal: string): string {
+  return fromCents(Math.max(0, toCents(totalAmount) - toCents(refundedTotal)));
+}
+
 export type RefundMode = 'full' | 'partial';
 
 export interface RefundAmountInput {
   mode: RefundMode;
-  /** Chuỗi thô người dùng gõ (chưa trim) — chỉ có nghĩa ở mode 'partial'. */
+  /** Chuỗi ĐÃ qua `normalizeAmountInput` — chỉ có nghĩa ở mode 'partial'. */
   amount: string;
-  /** `booking.totalAmount` — trần DUY NHẤT client biết chắc. */
-  totalAmount: string;
+  /** Phần còn hoàn được (`remainingRefundable`) — trần thật, không phải total. */
+  remaining: string;
   currency: string;
 }
 
@@ -62,112 +89,62 @@ export interface RefundAmountInput {
  * Validate amount trước khi bắn — trả câu lỗi i18n, `undefined` là hợp lệ.
  *
  * Mode `full` KHÔNG gửi amount: contract cho phép bỏ trống để server refund
- * đúng phần còn lại (total − SUM(refunds)). Đó cũng là lý do client không
- * được tự điền total vào ô: với booking PARTIALLY_REFUNDED, phần đã hoàn
- * KHÔNG có trong `admin.bookings.byCode` (`refundedTotal` luôn '0.00' ở mọi
- * call site trừ `bookings.byCode`), nên trần thật chỉ server biết. Client vì
- * vậy chặn tới đúng `totalAmount` — chặt hơn thế là đoán mò, và OVER_TOTAL
- * của server mới là phán quyết cuối.
+ * đúng phần còn lại. Trần client là `remaining` (total − refundedTotal, cả
+ * hai server trả) — hết cảnh cho nhập một số biết trước sẽ ăn OVER_TOTAL ở
+ * booking đã hoàn một phần. Server vẫn là phán quyết cuối.
  */
 export function validateRefundAmount(input: RefundAmountInput): string | undefined {
   if (input.mode === 'full') return undefined;
 
-  const amount = input.amount.trim();
+  const amount = input.amount;
   if (amount.length === 0) return t.validation.required;
   // Dùng CHÍNH schema của contract, không chép lại regex lần thứ hai.
   if (!DecimalStringSchema.safeParse(amount).success) return t.validation.format;
 
   const cents = toCents(amount);
   if (cents <= 0) return t.validation.zero;
-  if (cents > toCents(input.totalAmount)) {
-    return t.validation.overTotal(formatAmount(input.totalAmount, input.currency));
+  if (cents > toCents(input.remaining)) {
+    return t.validation.overRemaining(formatAmount(input.remaining, input.currency));
   }
   return undefined;
 }
 
 /**
- * Mã lỗi refund như UI phân biệt: SÁU mã của contract (5 mã ledger 422/502 +
- * NOT_FOUND) giữ nguyên tên, cộng ba mã tầng vận chuyển. Thứ tự trong mảng là
- * thứ tự khai báo ở contract — mảng tồn tại để test soi được "mỗi mã một câu".
+ * Tập mã CONTRACT của `admin.bookings.refund` — derive từ keys khối i18n
+ * `refund.errors` (nguồn DUY NHẤT, review F2 31/08: ba danh sách chép tay
+ * từng lệch nhau ngay trong một PR). Thêm mã vào contract → thêm câu vào
+ * i18n là mọi nơi tự khớp; quên thì test "mỗi mã một câu" đỏ.
  */
-export const REFUND_FAILURE_CODES = [
-  'NOT_FOUND',
-  'NOT_REFUNDABLE',
-  'OVER_TOTAL',
-  'ZERO_OR_NEGATIVE',
-  'NOTHING_LEFT',
-  'REFUND_FAILED',
-  'UNAUTHORIZED',
-  'FORBIDDEN',
-  'GENERIC',
-] as const;
+export const REFUND_CONTRACT_CODES = new Set(
+  Object.keys(t.errors) as (keyof typeof t.errors)[],
+) as ReadonlySet<keyof typeof t.errors>;
 
-export type RefundFailureCode = (typeof REFUND_FAILURE_CODES)[number];
+export type RefundContractCode = keyof typeof t.errors;
+export type RefundFailureCode = RefundContractCode | TransportFailureCode;
 
-/** Sáu mã đến từ `contract.admin.bookings.refund.errors` — nhận diện theo `code`. */
-const CONTRACT_CODES = new Set<string>([
-  'NOT_FOUND',
-  'NOT_REFUNDABLE',
-  'OVER_TOTAL',
-  'ZERO_OR_NEGATIVE',
-  'NOTHING_LEFT',
-  'REFUND_FAILED',
-]);
-
-/**
- * Lỗi ném ra từ client oRPC → mã UI. Chạy phía SERVER (trong server action):
- * `ORPCError` không sống sót qua ranh giới action, nên action phân loại xong
- * mới trả mã xuống client.
- *
- * Ưu tiên `code` của contract hơn `status`: hai mã 422 khác nhau cùng status,
- * và chính sự phân biệt đó là bất biến spec §2.4.
- */
+/** Lỗi ném từ client oRPC → mã UI. Chạy phía SERVER (xem `classifyWriteError`). */
 export function classifyRefundError(error: unknown): RefundFailureCode {
-  if (error instanceof ORPCError) {
-    if (CONTRACT_CODES.has(error.code)) return error.code as RefundFailureCode;
-    if (error.status === 401) return 'UNAUTHORIZED';
-    if (error.status === 403) return 'FORBIDDEN';
-  }
-  return 'GENERIC';
+  return classifyWriteError(error, REFUND_CONTRACT_CODES);
 }
 
 /** Mã → câu cho admin. Mỗi mã một câu, không có nhánh gộp (bất biến §2.4). */
 export function refundErrorCopy(code: RefundFailureCode): string {
-  return t.errors[code];
+  return REFUND_CONTRACT_CODES.has(code as RefundContractCode)
+    ? t.errors[code as RefundContractCode]
+    : transportErrorCopy(code as TransportFailureCode);
 }
 
 /**
- * Câu giải thích ô sổ cái khi trang CHƯA có ledger thật trong tay.
- *
- * `admin.bookings.byCode` không đọc bảng refund (và `refundedTotal` nó trả về
- * luôn là '0.00' — xem `toBooking`), nên trang chi tiết chỉ có sổ cái thật sau
- * khi chính nó phát một refund. Ba câu chứ không phải một, vì trạng thái nói
- * được ba chuyện KHÁC nhau và không được nói quá:
- *
- * - PENDING/PAID: bảo đảm chưa có refund row nào (mọi refund đều đẩy status
- *   sang PARTIALLY_REFUNDED/REFUNDED/CANCELLED).
- * - PARTIALLY_REFUNDED/REFUNDED: chắc chắn CÓ, chỉ là không biết bao nhiêu.
- * - CANCELLED: có thể mang auto-refund (overbook / orphaned capture — xem
- *   `PaymentsService.refundOverbooked`) hoặc không mang gì. Không đoán.
+ * Kết quả server action refund. Sống ở LIB (không phải trong component) vì nó
+ * là hợp đồng vận chuyển giữa `actions.ts` (server) và panel (client) — tầng
+ * server không import từ tầng trình bày (review F2 31/08).
  */
-export function ledgerNote(status: BookingStatusValue): string {
-  switch (status) {
-    case 'PENDING':
-    case 'PAID':
-      return t.ledger.none;
-    case 'PARTIALLY_REFUNDED':
-    case 'REFUNDED':
-      return t.ledger.onRecord;
-    case 'CANCELLED':
-      return t.ledger.unknown;
-  }
-}
+export type RefundActionResult =
+  | { ok: true; status: BookingStatusValue; refunds: Refund[] }
+  | { ok: false; code: RefundFailureCode };
 
-/**
- * Tổng đã hoàn theo sổ cái refund THẬT do `admin.bookings.refund` trả về
- * (`historyForBooking` — toàn bộ row của booking, không phải mỗi lần vừa
- * phát). Cộng bằng cent vì đây là con số admin đối chiếu với provider.
- */
-export function sumRefunds(refunds: readonly { amount: string }[]): string {
-  return fromCents(refunds.reduce((total, refund) => total + toCents(refund.amount), 0));
-}
+export type RefundAction = (input: {
+  code: string;
+  amount?: string;
+  reason?: string;
+}) => Promise<RefundActionResult>;
