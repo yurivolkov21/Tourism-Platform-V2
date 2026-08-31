@@ -1,9 +1,5 @@
 import { messages } from '@tourism/i18n';
-import {
-  classifyWriteError,
-  type TransportFailureCode,
-  transportErrorCopy,
-} from './api/write-error';
+import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 
 /**
  * Logic THUẦN của quyết định cancellation (spec P4b §3-F3). Approve là
@@ -14,28 +10,31 @@ import {
 const t = messages.admin.cancellations.decide;
 
 /**
- * Tập mã CONTRACT của `admin.cancellations.decide` — derive từ keys khối i18n
- * `decide.errors` (nguồn DUY NHẤT, nếp F2: ba danh sách chép tay từng lệch
- * nhau ngay trong một PR). Thêm mã vào contract → thêm câu vào i18n là mọi
- * nơi tự khớp; quên thì test đối chiếu với `errorMap` của contract đỏ.
+ * Codec lỗi từ khối i18n `decide.errors` (nguồn DUY NHẤT của tập mã contract
+ * — test đối chiếu với `errorMap` của contract). Bộ ba codes/classify/copy
+ * từng bị chép nguyên từ refund.ts → nâng lên `createWriteErrorCodec` ở review
+ * F3 31/08.
  */
-export const DECIDE_CONTRACT_CODES = new Set(
-  Object.keys(t.errors) as (keyof typeof t.errors)[],
-) as ReadonlySet<keyof typeof t.errors>;
+const codec = createWriteErrorCodec(t.errors);
+
+export const DECIDE_CONTRACT_CODES = codec.codes;
 
 export type DecideContractCode = keyof typeof t.errors;
 export type DecideFailureCode = DecideContractCode | TransportFailureCode;
 
-/** Lỗi ném từ client oRPC → mã UI. Chạy phía SERVER (xem `classifyWriteError`). */
-export function classifyDecideError(error: unknown): DecideFailureCode {
-  return classifyWriteError(error, DECIDE_CONTRACT_CODES);
-}
+export const classifyDecideError = codec.classify;
+export const decideErrorCopy = codec.copy;
 
-/** Mã → câu cho admin. Mỗi mã một câu, không có nhánh gộp (bất biến §2.4). */
-export function decideErrorCopy(code: DecideFailureCode): string {
-  return DECIDE_CONTRACT_CODES.has(code as DecideContractCode)
-    ? t.errors[code as DecideContractCode]
-    : transportErrorCopy(code as TransportFailureCode);
+/**
+ * Mã TRẠNG-THÁI-CŨ: lệnh không sửa được tại chỗ vì thế giới đã đổi dưới chân
+ * dialog (request bị quyết bởi người khác, biến mất, hay booking hết phần
+ * hoàn được). UI xử: đóng dialog + toast + refresh queue — copy của ba mã này
+ * hứa "the queue has been refreshed" nên UI PHẢI làm thật (review F3 31/08).
+ * REFUND_FAILED không thuộc nhóm này: provider từ chối, request còn nguyên
+ * REQUESTED, thử lại tại chỗ là hợp lệ.
+ */
+export function isStaleStateCode(code: DecideFailureCode): boolean {
+  return code === 'NOT_FOUND' || code === 'ALREADY_DECIDED' || code === 'NOT_REFUNDABLE';
 }
 
 /**

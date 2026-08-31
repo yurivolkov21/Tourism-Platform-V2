@@ -55,7 +55,10 @@ export const NAV_GROUPS: NavGroup[] = [
       {
         key: 'cancellations',
         label: t.cancellations,
-        href: '/cancellations',
+        // Mở thẳng HÀNG ĐỢI (?status=REQUESTED — việc cần làm), không phải
+        // lịch sử trộn lẫn; tab "All" trong trang vẫn xem được tất cả (review
+        // F3 31/08). Header khớp tiêu đề theo PATHNAME, bỏ query khi so.
+        href: '/cancellations?status=REQUESTED',
         enabled: true,
         icon: CalendarX2,
       },

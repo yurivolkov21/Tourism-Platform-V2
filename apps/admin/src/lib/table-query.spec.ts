@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { appendPaging, firstParam, parsePaging, tableHref } from './table-query';
+import { appendPaging, firstParam, parsePaging, resolvePagePatch, tableHref } from './table-query';
 
 /**
  * Phần DÙNG CHUNG của trạng thái-trên-URL (spec P4b §2.2) — tách ra ở F3 khi
@@ -58,5 +58,22 @@ describe('appendPaging + tableHref', () => {
     expect(tableHref('/cancellations', params)).toBe(
       '/cancellations?status=REQUESTED&limit=50&page=3',
     );
+  });
+});
+
+describe('resolvePagePatch', () => {
+  // Luật reset-page nâng lên kit ở review F3 31/08 — trước đó chép đôi ở
+  // bookingsHref/cancellationsHref và hai bản có thể trôi lệch nhau.
+  const current = { page: 5, limit: 20 };
+
+  it('đổi scope (filter/limit) → về trang 1, trừ khi patch nói rõ trang', () => {
+    expect(resolvePagePatch(current, {}, true)).toEqual({ page: 1, limit: 20 });
+    expect(resolvePagePatch(current, { limit: 50 }, true)).toEqual({ page: 1, limit: 50 });
+    expect(resolvePagePatch(current, { page: 3 }, true)).toEqual({ page: 3, limit: 20 });
+  });
+
+  it('không đổi scope → giữ nguyên trang hiện tại', () => {
+    expect(resolvePagePatch(current, {}, false)).toEqual({ page: 5, limit: 20 });
+    expect(resolvePagePatch(current, { page: 2 }, false)).toEqual({ page: 2, limit: 20 });
   });
 });

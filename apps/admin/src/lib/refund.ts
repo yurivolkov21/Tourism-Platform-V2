@@ -1,10 +1,6 @@
 import { type BookingStatusValue, DecimalStringSchema, type Refund } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import {
-  classifyWriteError,
-  type TransportFailureCode,
-  transportErrorCopy,
-} from './api/write-error';
+import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import { formatAmount } from './bookings-view';
 
 /**
@@ -110,29 +106,20 @@ export function validateRefundAmount(input: RefundAmountInput): string | undefin
 }
 
 /**
- * Tập mã CONTRACT của `admin.bookings.refund` — derive từ keys khối i18n
- * `refund.errors` (nguồn DUY NHẤT, review F2 31/08: ba danh sách chép tay
- * từng lệch nhau ngay trong một PR). Thêm mã vào contract → thêm câu vào
- * i18n là mọi nơi tự khớp; quên thì test "mỗi mã một câu" đỏ.
+ * Codec lỗi từ khối i18n `refund.errors` — nguồn DUY NHẤT của tập mã contract
+ * (review F2 31/08: ba danh sách chép tay từng lệch nhau ngay trong một PR).
+ * Bộ ba codes/classify/copy nâng lên `createWriteErrorCodec` ở review F3 để
+ * decide/moderate không chép khuôn.
  */
-export const REFUND_CONTRACT_CODES = new Set(
-  Object.keys(t.errors) as (keyof typeof t.errors)[],
-) as ReadonlySet<keyof typeof t.errors>;
+const codec = createWriteErrorCodec(t.errors);
+
+export const REFUND_CONTRACT_CODES = codec.codes;
 
 export type RefundContractCode = keyof typeof t.errors;
 export type RefundFailureCode = RefundContractCode | TransportFailureCode;
 
-/** Lỗi ném từ client oRPC → mã UI. Chạy phía SERVER (xem `classifyWriteError`). */
-export function classifyRefundError(error: unknown): RefundFailureCode {
-  return classifyWriteError(error, REFUND_CONTRACT_CODES);
-}
-
-/** Mã → câu cho admin. Mỗi mã một câu, không có nhánh gộp (bất biến §2.4). */
-export function refundErrorCopy(code: RefundFailureCode): string {
-  return REFUND_CONTRACT_CODES.has(code as RefundContractCode)
-    ? t.errors[code as RefundContractCode]
-    : transportErrorCopy(code as TransportFailureCode);
-}
+export const classifyRefundError = codec.classify;
+export const refundErrorCopy = codec.copy;
 
 /**
  * Kết quả server action refund. Sống ở LIB (không phải trong component) vì nó

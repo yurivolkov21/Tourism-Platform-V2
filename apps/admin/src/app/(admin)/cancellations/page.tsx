@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { CancellationsTable } from '@/components/cancellations/cancellations-table';
 import { fetchAdminCancellations } from '@/lib/api/cancellations';
 import { getServerSession } from '@/lib/api/session';
-import { parseCancellationsSearchParams } from '@/lib/cancellations-query';
+import { cancellationsHref, parseCancellationsSearchParams } from '@/lib/cancellations-query';
 import { toCancellationRow } from '@/lib/cancellations-view';
 import type { RawSearchParams } from '@/lib/table-query';
 import { decideCancellationAction } from './actions';
@@ -41,6 +42,13 @@ export default async function CancellationsPage({
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang bookings).
   if (!session) return null;
+
+  // Page mồ côi (review F3 31/08): queue CO LẠI sau mỗi decide — admin đứng ở
+  // trang 3 khi tập kết quả chỉ còn 2 trang là bảng rỗng cạnh thanh phân
+  // trang nói ngược lại. Đưa về trang cuối còn thật thay vì render nghịch lý.
+  if (paged.total > 0 && query.page > paged.totalPages) {
+    redirect(cancellationsHref(query, { page: paged.totalPages }));
+  }
 
   return (
     <AdminShell user={session}>

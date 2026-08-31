@@ -1,33 +1,13 @@
 'use client';
 
-import {
-  type ColumnVisibilityState,
-  createColumnHelper,
-  FlexRender,
-  useTable,
-} from '@tanstack/react-table';
+import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { Button } from '@tourism/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@tourism/ui/components/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@tourism/ui/components/table';
-import { ChevronDownIcon, Columns3Icon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import { CancellationsStatusTabs } from '@/components/cancellations/cancellations-toolbar';
 import { DecideActions } from '@/components/cancellations/decide-actions';
+import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
@@ -37,10 +17,11 @@ import { type CancellationRowVM, cancellationStatusBadgeVariant } from '@/lib/ca
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 
 /**
- * Hàng đợi `/cancellations` (spec P4b §3-F3) — vùng thật THỨ HAI, dựng trên
- * cùng kit với bảng bookings (`DataTableFrame` + `TablePagination` +
- * `serverTableFeatures`): drag-row tắt, không checkbox, không sort/filter
- * client, TanStack chỉ lo ẩn/hiện cột. Trang/filter sống trên URL (§2.2).
+ * Hàng đợi `/cancellations` (spec P4b §3-F3) — vùng thật THỨ HAI, dựng trọn
+ * trên kit (`DataTableFrame` + `DataTableBody` + `ColumnVisibilityMenu` +
+ * `TablePagination` + `serverTableFeatures` — vỏ bảng/menu cột nâng lên kit ở
+ * review F3 31/08, hết chép verbatim từ bookings): drag-row tắt, không
+ * checkbox, TanStack chỉ lo ẩn/hiện cột. Trang/filter sống trên URL (§2.2).
  *
  * Cột cuối là chỗ DUY NHẤT khác bảng bookings: hàng còn mở thì mang cụm
  * approve/deny (hành vi ghi), hàng đã quyết thì mang dấu vết quyết định —
@@ -53,15 +34,13 @@ const t = messages.admin.cancellations.list;
 
 const columnHelper = createColumnHelper<typeof serverTableFeatures, CancellationRowVM>();
 
-/** Nhãn cột cho menu ẩn/hiện — `column.id` là tên field, không phải copy. */
+/** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry (review F3). */
 const COLUMN_LABELS: Record<string, string> = {
-  bookingCode: t.columns.booking,
   tourTitle: t.columns.tour,
   customerName: t.columns.customer,
   reason: t.columns.reason,
   statusLabel: t.columns.status,
   requested: t.columns.requested,
-  decision: t.columns.decision,
 };
 
 /**
@@ -148,6 +127,9 @@ function DecisionCell({ row, decide }: { row: CancellationRowVM; decide: DecideA
           tourTitle: row.tourTitle,
           customerName: row.customerName,
           reason: row.reason,
+          totalAmount: row.totalAmount,
+          refundedTotal: row.refundedTotal,
+          currency: row.currency,
         }}
         decide={decide}
       />
@@ -155,7 +137,11 @@ function DecisionCell({ row, decide }: { row: CancellationRowVM; decide: DecideA
   }
   return (
     <div className="grid gap-0.5 text-xs text-muted-foreground">
-      {row.decided ? <span className="whitespace-nowrap">{t.decidedAt(row.decided)}</span> : null}
+      {/* Mốc quyết định LUÔN render — decidedAt nullable theo contract, thiếu
+          thì gạch ngang thay vì ô trống trơn nhìn như render hỏng (review F3). */}
+      <span className="whitespace-nowrap">
+        {row.decided ? t.decidedAt(row.decided) : messages.admin.bookings.detail.empty}
+      </span>
       {row.decisionNote ? (
         <span className="max-w-48 truncate" title={row.decisionNote}>
           {t.note(row.decisionNote)}
@@ -199,29 +185,7 @@ export function CancellationsTable({
   return (
     <DataTableFrame
       views={<CancellationsStatusTabs query={query} />}
-      actions={
-        <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-            <Columns3Icon data-icon="inline-start" />
-            {messages.admin.table.columns}
-            <ChevronDownIcon data-icon="inline-end" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
-            {table
-              .getAllColumns()
-              .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
-              .map((column) => (
-                <DropdownMenuCheckboxItem
-                  key={column.id}
-                  checked={column.getIsVisible()}
-                  onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                >
-                  {COLUMN_LABELS[column.id] ?? column.id}
-                </DropdownMenuCheckboxItem>
-              ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+      actions={<ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />}
       footer={
         <TablePagination
           page={query.page}
@@ -234,42 +198,7 @@ export function CancellationsTable({
         />
       }
     >
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} colSpan={header.colSpan}>
-                  {header.isPlaceholder ? null : <FlexRender header={header} />}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    <FlexRender cell={cell} />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              {/* Đếm cột ĐANG HIỆN, không phải cột định nghĩa (nếp bookings). */}
-              <TableCell
-                colSpan={table.getVisibleLeafColumns().length}
-                className="h-24 text-center"
-              >
-                {t.empty}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      <DataTableBody table={table} empty={t.empty} />
     </DataTableFrame>
   );
 }

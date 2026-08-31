@@ -14,7 +14,7 @@ import { formatCalendarDate, formatDateTime } from './bookings-view';
 const t = messages.admin.cancellations;
 
 /** Nhãn trạng thái theo enum contract (dùng chung với lịch sử trang booking). */
-export function cancellationStatusLabel(status: CancellationRequestStatusValue): string {
+function cancellationStatusLabel(status: CancellationRequestStatusValue): string {
   return t.status[status];
 }
 
@@ -64,6 +64,11 @@ export interface CancellationRowVM {
   decided: string | null;
   decisionNote: string | null;
   pending: boolean;
+  /** Tiền cho dialog approve (review F3 31/08): total + đã hoàn từ server —
+   *  client tính phần-còn-lại để admin THẤY số trước khi bấm. */
+  totalAmount: string;
+  refundedTotal: string;
+  currency: string;
 }
 
 /** Request của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -85,5 +90,8 @@ export function toCancellationRow(request: AdminCancellationRequest): Cancellati
     decided: request.decidedAt ? formatDateTime(request.decidedAt) : null,
     decisionNote: request.decisionNote,
     pending: canDecide(request.status),
+    totalAmount: request.totalAmount,
+    refundedTotal: request.refundedTotal,
+    currency: request.currency,
   };
 }

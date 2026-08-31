@@ -4,6 +4,7 @@ import {
   firstParam,
   parsePaging,
   type RawSearchParams,
+  resolvePagePatch,
   tableHref,
 } from './table-query';
 
@@ -66,16 +67,17 @@ export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): 
   const status = patch.status === undefined ? current.status : (patch.status ?? undefined);
   const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
   const search = rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined;
-  const limit = patch.limit ?? current.limit;
 
+  // Luật reset-page nằm MỘT chỗ ở kit (`resolvePagePatch`) — vùng chỉ khai
+  // filter nào tính là "đổi scope" (review F3 31/08).
   const scopeChanged =
     patch.status !== undefined || patch.search !== undefined || patch.limit !== undefined;
-  const page = patch.page ?? (scopeChanged ? 1 : current.page);
+  const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
   if (status) params.set('status', status);
   if (search) params.set('q', search);
-  appendPaging(params, { page, limit });
+  appendPaging(params, paging);
 
   return tableHref('/bookings', params);
 }

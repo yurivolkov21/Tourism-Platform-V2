@@ -43,6 +43,29 @@ export function transportErrorCopy(code: TransportFailureCode): string {
 }
 
 /**
+ * Codec trọn gói cho MỘT hành vi ghi (review F3 31/08 — refund và decide từng
+ * chép nguyên bộ ba derive-codes/classify/copy từng biểu thức; F4 sẽ là bản
+ * thứ ba nếu không nâng lên đây): đưa vào khối i18n `errors` của endpoint
+ * (CHỈ mã contract) là có đủ tập mã + phân loại + tra câu, một nguồn duy nhất.
+ */
+export function createWriteErrorCodec<T extends Record<string, string>>(errors: T) {
+  type ContractCode = keyof T & string;
+  const codes = new Set(Object.keys(errors) as ContractCode[]) as ReadonlySet<ContractCode>;
+  return {
+    /** Tập mã contract — test đối chiếu với `errorMap` thật của contract. */
+    codes,
+    /** Lỗi ném từ client oRPC → mã UI. Chạy phía SERVER (trong server action). */
+    classify: (error: unknown): ContractCode | TransportFailureCode =>
+      classifyWriteError(error, codes),
+    /** Mã → câu cho admin. Mỗi mã một câu, không nhánh gộp (bất biến §2.4). */
+    copy: (code: ContractCode | TransportFailureCode): string =>
+      codes.has(code as ContractCode)
+        ? errors[code as ContractCode]
+        : transportErrorCopy(code as TransportFailureCode),
+  };
+}
+
+/**
  * Mã "kết cục không rõ" — request có thể ĐÃ tới provider/API rồi mới đứt.
  * UI phải đối xử khác với mã contract (đóng dialog + refresh cho nhìn dữ
  * liệu tươi trước khi thử lại, thay vì mời bấm lại tại chỗ): bấm lại mù sau

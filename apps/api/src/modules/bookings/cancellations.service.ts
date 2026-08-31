@@ -58,19 +58,27 @@ type CancellationRow = Prisma.CancellationRequestModel;
 /** Booking context admin cần để quyết định mà không phải lookup lần hai — toàn
  * cột SNAPSHOT (tourTitle/departureStartDate đóng băng lúc create, audit H3). */
 const BOOKING_CONTEXT = {
+  id: true,
   code: true,
   tourTitle: true,
   departureStartDate: true,
   contactName: true,
   contactEmail: true,
+  // Tiền (review F3 31/08): approve hoàn PHẦN CÒN LẠI — queue phải mang total
+  // + đã-hoàn để admin THẤY con số trước khi bấm, không quyết mù.
+  totalAmount: true,
+  currency: true,
 } as const;
 
 type BookingContext = {
+  id: string;
   code: string;
   tourTitle: string;
   departureStartDate: Date;
   contactName: string;
   contactEmail: string;
+  totalAmount: Prisma.Decimal;
+  currency: string;
 };
 
 /** Row → public contract shape (customer surface + history trong admin byCode). */
@@ -86,9 +94,10 @@ function toCancellationRequest(row: CancellationRow, bookingCode: string): Cance
   };
 }
 
-/** Row + booking context → shape cho admin-queue. */
+/** Row + booking context + tổng đã hoàn (aggregate ledger) → shape admin-queue. */
 function toAdminCancellationRequest(
   row: CancellationRow & { booking: BookingContext },
+  refundedTotal: Prisma.Decimal | null,
 ): AdminCancellationRequest {
   return {
     ...toCancellationRequest(row, row.booking.code),
@@ -96,6 +105,9 @@ function toAdminCancellationRequest(
     departureStartDate: calendarDate(row.booking.departureStartDate),
     contactName: row.booking.contactName,
     contactEmail: row.booking.contactEmail,
+    totalAmount: row.booking.totalAmount.toFixed(2),
+    refundedTotal: (refundedTotal ?? new Prisma.Decimal(0)).toFixed(2),
+    currency: row.booking.currency,
   };
 }
 
@@ -236,8 +248,18 @@ export class CancellationsService {
         include: { booking: { select: BOOKING_CONTEXT } },
       }),
     ]);
+    // MỘT groupBy cho cả trang (chống N+1): tổng đã hoàn theo booking — client
+    // tính phần-còn-lại cho dialog approve (review F3 31/08).
+    const sums = await prisma.refund.groupBy({
+      by: ['bookingId'],
+      where: { bookingId: { in: rows.map((row) => row.booking.id) } },
+      _sum: { amount: true },
+    });
+    const refundedByBooking = new Map(sums.map((sum) => [sum.bookingId, sum._sum.amount]));
     return {
-      items: rows.map(toAdminCancellationRequest),
+      items: rows.map((row) =>
+        toAdminCancellationRequest(row, refundedByBooking.get(row.booking.id) ?? null),
+      ),
       page,
       limit,
       total,
@@ -510,9 +532,15 @@ export class CancellationsService {
       where: { id: requestId },
       include: { booking: { include: { tour: bookingTourInclude } } },
     });
-    const tourImage = await resolveTourCover(this.media, row.booking.tourId);
+    const [tourImage, refunded] = await Promise.all([
+      resolveTourCover(this.media, row.booking.tourId),
+      prisma.refund.aggregate({
+        where: { bookingId: row.booking.id },
+        _sum: { amount: true },
+      }),
+    ]);
     return {
-      request: toAdminCancellationRequest({ ...row, booking: row.booking }),
+      request: toAdminCancellationRequest({ ...row, booking: row.booking }, refunded._sum.amount),
       booking: toBooking(row.booking, null, tourImage),
     };
   }

@@ -18,9 +18,13 @@ function pageTitle(pathname: string): string {
   let best = items.find((item) => item.href === '/');
   let bestLength = 0;
   for (const item of items) {
-    if (item.href !== '/' && pathname.startsWith(item.href) && item.href.length > bestLength) {
+    // So theo PATHNAME thuần: href của nav có thể mang query (vd
+    // `/cancellations?status=REQUESTED` mở thẳng hàng đợi) nhưng
+    // `usePathname()` không bao giờ chứa query — so cả chuỗi là trượt.
+    const path = item.href.split('?')[0] ?? item.href;
+    if (path !== '/' && pathname.startsWith(path) && path.length > bestLength) {
       best = item;
-      bestLength = item.href.length;
+      bestLength = path.length;
     }
   }
   if (pathname === '/') best = items.find((item) => item.href === '/');

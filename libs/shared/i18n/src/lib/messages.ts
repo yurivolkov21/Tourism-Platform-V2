@@ -16,6 +16,14 @@ const CANCELLATION_STATUS_COPY = {
   REFUNDED: 'Approved — refunded',
 } as const;
 
+// Ba nhãn ngữ cảnh của vùng cancellations dùng ở CẢ header cột lẫn dialog
+// quyết định — một khái niệm một chữ (review F3 31/08, bài học travellers).
+const CANCELLATION_CONTEXT_COPY = {
+  booking: 'Booking',
+  tour: 'Tour',
+  customer: 'Customer',
+} as const;
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -2787,9 +2795,9 @@ export const messages = {
         all: 'All',
         empty: 'No cancellation requests match this filter.',
         columns: {
-          booking: 'Booking',
-          tour: 'Tour',
-          customer: 'Customer',
+          booking: CANCELLATION_CONTEXT_COPY.booking,
+          tour: CANCELLATION_CONTEXT_COPY.tour,
+          customer: CANCELLATION_CONTEXT_COPY.customer,
           reason: 'Reason',
           status: 'Status',
           requested: 'Requested',
@@ -2814,10 +2822,16 @@ export const messages = {
         deny: 'Deny',
         /** Nhãn cho cụm nút của một hàng — trình đọc màn hình cần biết hàng nào. */
         actionsLabel: (code: string) => `Decide the cancellation request for ${code}`,
-        booking: 'Booking',
-        tour: 'Tour',
-        customer: 'Customer',
+        // Ba nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một chữ —
+        // bài học travellers F1); riêng reason đổi giọng có chủ ý.
+        booking: CANCELLATION_CONTEXT_COPY.booking,
+        tour: CANCELLATION_CONTEXT_COPY.tour,
+        customer: CANCELLATION_CONTEXT_COPY.customer,
         reason: 'Customer reason',
+        /** Dòng số tiền trong dialog approve — con số THẬT từ queue (review F3). */
+        refundAmount: 'Refund amount',
+        /** Phần còn lại sẽ hoàn = total − đã hoàn, cả hai server trả. */
+        refundAmountValue: (remaining: string) => `${remaining} (the full remaining balance)`,
         noteLabel: 'Decision note (optional)',
         notePlaceholder: 'Included in the email to the customer.',
         cancel: 'Cancel',
@@ -2844,12 +2858,16 @@ export const messages = {
           submit: 'Deny request',
           submitting: 'Denying…',
         },
+        /** Ba mã đầu là lỗi TRẠNG-THÁI-CŨ: UI đóng dialog + toast + tự refresh
+         *  queue (review F3 31/08 — copy từng bảo "reload" mà UI không làm);
+         *  REFUND_FAILED là lỗi retryable duy nhất nên ở lại dialog. */
         errors: {
-          NOT_FOUND: 'This cancellation request no longer exists. Reload the queue.',
+          NOT_FOUND:
+            'This cancellation request no longer exists. The queue below has been refreshed.',
           ALREADY_DECIDED:
-            'This request has already been decided — a decision is final. Reload the queue to see the outcome.',
+            'This request was already decided — a decision is final. The queue below has been refreshed with the outcome.',
           NOT_REFUNDABLE:
-            'The booking has no refundable balance left, so it cannot be approved — it may already have been refunded. Open the booking to check, or deny the request instead.',
+            'The booking has no refundable balance left, so it cannot be approved — it may already have been refunded. The queue has been refreshed; open the booking to check, or deny the request instead.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing changed and the request is still awaiting review. Check the provider dashboard before trying again.',
         },

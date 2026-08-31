@@ -1,32 +1,12 @@
 'use client';
 
-import {
-  type ColumnVisibilityState,
-  createColumnHelper,
-  FlexRender,
-  useTable,
-} from '@tanstack/react-table';
+import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { Button } from '@tourism/ui/components/button';
-import {
-  DropdownMenu,
-  DropdownMenuCheckboxItem,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@tourism/ui/components/dropdown-menu';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@tourism/ui/components/table';
-import { ChevronDownIcon, Columns3Icon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import { BookingsSearch, BookingsStatusTabs } from '@/components/bookings/bookings-toolbar';
+import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
@@ -54,9 +34,8 @@ const t = messages.admin.bookings.list;
 
 const columnHelper = createColumnHelper<typeof serverTableFeatures, BookingRowVM>();
 
-/** Nhãn cột cho menu ẩn/hiện — `column.id` là tên field, không phải copy. */
+/** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry (review F3). */
 const COLUMN_LABELS: Record<string, string> = {
-  code: t.columns.code,
   tourTitle: t.columns.tour,
   statusLabel: t.columns.status,
   guests: t.columns.guests,
@@ -149,27 +128,7 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
       actions={
         <>
           <BookingsSearch query={query} />
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-              <Columns3Icon data-icon="inline-start" />
-              {messages.admin.table.columns}
-              <ChevronDownIcon data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              {table
-                .getAllColumns()
-                .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
-                .map((column) => (
-                  <DropdownMenuCheckboxItem
-                    key={column.id}
-                    checked={column.getIsVisible()}
-                    onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                  >
-                    {COLUMN_LABELS[column.id] ?? column.id}
-                  </DropdownMenuCheckboxItem>
-                ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />
         </>
       }
       footer={
@@ -184,43 +143,8 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
         />
       }
     >
-      <Table>
-        <TableHeader className="sticky top-0 z-10 bg-muted">
-          {table.getHeaderGroups().map((headerGroup) => (
-            <TableRow key={headerGroup.id}>
-              {headerGroup.headers.map((header) => (
-                <TableHead key={header.id} colSpan={header.colSpan}>
-                  {header.isPlaceholder ? null : <FlexRender header={header} />}
-                </TableHead>
-              ))}
-            </TableRow>
-          ))}
-        </TableHeader>
-        <TableBody>
-          {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row) => (
-              <TableRow key={row.id}>
-                {row.getVisibleCells().map((cell) => (
-                  <TableCell key={cell.id}>
-                    <FlexRender cell={cell} />
-                  </TableCell>
-                ))}
-              </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              {/* Đếm cột ĐANG HIỆN, không phải cột định nghĩa — admin ẩn bớt
-                  cột rồi lọc ra tập rỗng thì colSpan cứng sẽ thừa cột ma. */}
-              <TableCell
-                colSpan={table.getVisibleLeafColumns().length}
-                className="h-24 text-center"
-              >
-                {t.empty}
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
+      {/* Thân bảng + empty state nằm ở kit (`DataTableBody`, review F3 31/08). */}
+      <DataTableBody table={table} empty={t.empty} />
     </DataTableFrame>
   );
 }

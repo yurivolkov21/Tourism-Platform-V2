@@ -9,19 +9,21 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@tourism/ui/components/dialog';
 import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
 import { isUncertainOutcome } from '@/lib/api/write-error';
+import { formatAmount } from '@/lib/bookings-view';
 import {
   type DecideAction,
   type DecideFailureCode,
   decideErrorCopy,
+  isStaleStateCode,
 } from '@/lib/cancellations-decide';
+import { remainingRefundable } from '@/lib/refund';
 
 /**
  * Cụm quyết định của MỘT hàng đang mở trong `/cancellations` (spec P4b
@@ -29,19 +31,17 @@ import {
  * (refund phần còn lại + booking CANCELLED + nhả ghế, nguyên tử trong một
  * advisory lock phía API).
  *
- * Giữ nguyên các bất biến đã chốt qua review F2 ở `refund-panel.tsx`:
- * - Confirm trước khi bắn (§2.4); dialog KHÔNG đóng được khi đang bắn
- *   (Esc/click ngoài bị nuốt) — đóng được là thông báo lỗi thành tàng hình.
- * - Mọi mã contract hiện NGUYÊN NGHĨA và Ở LẠI dialog cho đọc/sửa tại chỗ.
- * - Kết cục KHÔNG RÕ (GENERIC): đóng dialog + toast + `router.refresh()`, ép
- *   nhìn dữ liệu tươi trước khi thử lại — bấm-lại-mù trên một lệnh đã có thể
- *   chạm provider là công thức refund đúp.
- *
- * KHÁC refund một điểm CÓ CHỦ Ý: chỉ MỘT bước, không phải hai. Dialog refund
- * có bước 1 vì admin phải soạn số tiền; ở đây không có gì để soạn (số tiền do
- * server tính — luôn là phần còn lại), nên bước đầu sẽ chỉ là một màn hình
- * bấm-Next vô nghĩa. Dialog này CHÍNH LÀ bước xác nhận, mở ra đã thấy đủ hệ
- * quả + ngữ cảnh hàng.
+ * Bất biến giữ từ F2 (`refund-panel.tsx`) + vòng vá review F3 31/08:
+ * - Confirm trước khi bắn (§2.4); dialog KHÔNG đóng được khi đang bắn.
+ * - MỘT dialog cho mỗi hàng, nhánh approve/deny là STATE chứ không phải hai
+ *   instance (trang 50 hàng từng mount 100 cây dialog).
+ * - Dialog approve hiện SỐ TIỀN sẽ hoàn (phần còn lại, số thật server trả) —
+ *   không bấm lệnh tiền mù.
+ * - Lỗi TRẠNG-THÁI-CŨ (NOT_FOUND/ALREADY_DECIDED/NOT_REFUNDABLE) và kết cục
+ *   KHÔNG RÕ (GENERIC): đóng dialog + toast + refresh — copy hứa "queue has
+ *   been refreshed" thì UI làm thật. REFUND_FAILED (retryable) ở lại dialog.
+ * - `useTransition` quanh `router.refresh()`: hai nút bị khoá cho tới khi
+ *   sự thật mới về — hàng vừa quyết không còn cửa sổ bấm-tiếp (nếp F2).
  *
  * Component KHÔNG tự import server action: nhận `decide` từ trang — test dựng
  * cụm nút với hàm giả, không mock `next/headers`.
@@ -55,7 +55,13 @@ export interface DecideTarget {
   tourTitle: string;
   customerName: string;
   reason: string;
+  /** Tiền từ server (review F3): dialog approve tính phần-còn-lại từ đây. */
+  totalAmount: string;
+  refundedTotal: string;
+  currency: string;
 }
+
+type DecideVariant = 'approve' | 'deny';
 
 export function DecideActions({
   request,
@@ -64,13 +70,48 @@ export function DecideActions({
   request: DecideTarget;
   decide: DecideAction;
 }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
+  /** Nhánh đang mở — `null` là dialog đóng. Một dialog, hai nút mở. */
+  const [variant, setVariant] = useState<DecideVariant | null>(null);
+
+  /** Sau MỌI kết cục đã-chạm-server: kéo queue tươi về, khoá nút tới khi xong. */
+  function refreshQueue() {
+    startRefresh(() => router.refresh());
+  }
+
   return (
     // `<fieldset>` (role=group ngầm) chứ không phải div trần: aria-label chỉ
     // có nghĩa trên một role thật, và nhóm hai nút của MỘT hàng cần tên riêng
     // để trình đọc màn hình không đọc ra 20 nút "Approve" giống hệt nhau.
     <fieldset aria-label={t.actionsLabel(request.bookingCode)} className="flex items-center gap-2">
-      <DecideDialog request={request} decide={decide} approve />
-      <DecideDialog request={request} decide={decide} approve={false} />
+      <Button
+        type="button"
+        variant="default"
+        size="sm"
+        disabled={isRefreshing}
+        onClick={() => setVariant('approve')}
+      >
+        {t.approve}
+      </Button>
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        disabled={isRefreshing}
+        onClick={() => setVariant('deny')}
+      >
+        {t.deny}
+      </Button>
+      {variant ? (
+        <DecideDialog
+          request={request}
+          decide={decide}
+          variant={variant}
+          onClose={() => setVariant(null)}
+          onSettled={refreshQueue}
+        />
+      ) : null}
     </fieldset>
   );
 }
@@ -78,31 +119,34 @@ export function DecideActions({
 function DecideDialog({
   request,
   decide,
-  approve,
+  variant,
+  onClose,
+  onSettled,
 }: {
   request: DecideTarget;
   decide: DecideAction;
-  /** Nhánh nào — quyết cả copy lẫn giá trị gửi lên contract. */
-  approve: boolean;
+  variant: DecideVariant;
+  onClose: () => void;
+  /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
+  onSettled: () => void;
 }) {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const approve = variant === 'approve';
   const [note, setNote] = useState('');
   const [failure, setFailure] = useState<DecideFailureCode | null>(null);
   const [pending, setPending] = useState(false);
 
+  // Nhánh approve/deny là DỮ LIỆU, không phải ternary rải trong JSX (review
+  // F3 31/08 — sáu ternary từng rải trong 130 dòng).
   const copy = approve ? t.approveDialog : t.denyDialog;
-  const noteId = `decide-note-${approve ? 'approve' : 'deny'}-${request.id}`;
+  const submitVariant = approve ? 'default' : 'destructive';
+  const noteId = `decide-note-${request.id}`;
+  const remaining = remainingRefundable(request.totalAmount, request.refundedTotal);
 
   function onOpenChange(next: boolean) {
     // Đang bắn thì KHÔNG cho đóng (Esc/click ngoài): reset giữa chừng là
     // thông báo lỗi về sau ghi vào một dialog đã đóng — admin tưởng xong.
     if (pending) return;
-    setOpen(next);
-    if (!next) {
-      setNote('');
-      setFailure(null);
-    }
+    if (!next) onClose();
   }
 
   async function submit() {
@@ -121,16 +165,13 @@ function DecideDialog({
       });
       if (result.ok) {
         setPending(false);
-        setOpen(false);
-        setNote('');
+        onClose();
         toast.success(result.approved ? t.toast.approvedTitle : t.toast.deniedTitle, {
           description: result.approved
             ? t.toast.approvedBody(result.bookingCode)
             : t.toast.deniedBody(result.bookingCode),
         });
-        // Hàng vừa quyết phải rời khỏi trạng thái "đang mở" ngay — sự thật
-        // mới do server trả ở lần render sau, client không giữ bản sao nào.
-        router.refresh();
+        onSettled();
         return;
       }
       failureCode = result.code;
@@ -140,25 +181,21 @@ function DecideDialog({
       failureCode = 'GENERIC';
     }
     setPending(false);
-    if (isUncertainOutcome(failureCode)) {
-      setOpen(false);
-      setNote('');
-      // In câu của CHÍNH mã vừa nhận (hôm nay chỉ GENERIC rơi vào nhánh này,
-      // nhưng đừng khoá cứng một mã vào một nhánh phân loại).
+    // Lỗi trạng-thái-cũ VÀ kết cục không rõ đều đóng + toast + refresh: thế
+    // giới đã đổi dưới chân dialog, admin phải nhìn queue tươi trước khi làm
+    // gì tiếp (chống bấm-lặp trên hàng đã quyết — review F3 31/08). Chỉ
+    // REFUND_FAILED (retryable, chưa ghi gì) ở lại dialog.
+    if (isStaleStateCode(failureCode) || isUncertainOutcome(failureCode)) {
+      onClose();
       toast.error(decideErrorCopy(failureCode));
-      router.refresh();
+      onSettled();
       return;
     }
     setFailure(failureCode);
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger
-        render={<Button type="button" variant={approve ? 'default' : 'outline'} size="sm" />}
-      >
-        {approve ? t.approve : t.deny}
-      </DialogTrigger>
+    <Dialog open onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
@@ -172,6 +209,14 @@ function DecideDialog({
           <DecideRow label={t.tour} value={request.tourTitle} />
           <DecideRow label={t.customer} value={request.customerName} />
           <DecideRow label={t.reason} value={request.reason} />
+          {approve ? (
+            // Con số THẬT trước khi bấm (review F3): phần còn lại = total −
+            // đã hoàn, cả hai server trả qua queue schema.
+            <DecideRow
+              label={t.refundAmount}
+              value={t.refundAmountValue(formatAmount(remaining, request.currency))}
+            />
+          ) : null}
         </dl>
 
         {approve ? (
@@ -214,12 +259,7 @@ function DecideDialog({
           {/* Nút deny tô destructive dù BADGE trạng thái DENIED thì không: badge
               kể một kết cục đã rồi (trung tính), còn nút là một hành động
               chung cuộc sắp xảy ra với tiền/kỳ vọng của khách. */}
-          <Button
-            type="button"
-            variant={approve ? 'default' : 'destructive'}
-            disabled={pending}
-            onClick={submit}
-          >
+          <Button type="button" variant={submitVariant} disabled={pending} onClick={submit}>
             {pending ? copy.submitting : copy.submit}
           </Button>
         </DialogFooter>

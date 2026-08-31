@@ -5,28 +5,17 @@ import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
-import { Tabs, TabsList, TabsTrigger } from '@tourism/ui/components/tabs';
 import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
 
 /**
  * Hai mẩu điều khiển của `/bookings`, lắp vào hai khe của `DataTableFrame`:
- * tab lọc trạng thái (khe trái) và ô tìm kiếm (khe phải).
- *
- * Tab dùng ĐÚNG `Tabs/TabsList/TabsTrigger` như block dashboard-01 — kể cả
- * cặp "TabsList ở màn rộng · Select ở màn hẹp" (`@4xl/main`) — để hai bảng
- * nhìn là một hệ (user chốt 31/08). Chúng chỉ làm một việc: đổi URL; server
- * component đọc lại `searchParams` rồi fetch (spec P4b §2.2), không có state
- * danh sách nào ở client.
+ * tab lọc trạng thái (khe trái — cặp Select/Tabs responsive nằm ở kit
+ * `StatusFilterTabs`, nâng lên ở review F3 31/08) và ô tìm kiếm (khe phải).
+ * Chúng chỉ làm một việc: đổi URL; server component đọc lại `searchParams`
+ * rồi fetch (spec P4b §2.2), không có state danh sách nào ở client.
  */
 const t = messages.admin.bookings.list;
 
@@ -54,44 +43,13 @@ export function BookingsStatusTabs({ query }: { query: BookingsQuery }) {
   }
 
   return (
-    <>
-      <Label htmlFor="status-selector" className="sr-only">
-        {t.filterLabel}
-      </Label>
-      {/* Màn hẹp: select gọn — cùng cặp @4xl/main của block dashboard-01. */}
-      <Select value={value} onValueChange={(next) => go(String(next))} items={TAB_ITEMS}>
-        <SelectTrigger className="flex w-fit @4xl/main:hidden" size="sm" id="status-selector">
-          <SelectValue placeholder={t.all} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {TAB_ITEMS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-
-      {/* Ẩn/hiện đặt ở ROOT chứ không ở TabsList: root là con trực tiếp của
-          hàng `justify-between`, để nó luôn hiện thì màn hẹp có một khối rỗng
-          chen giữa select và cụm hành động. */}
-      <Tabs
-        value={value}
-        onValueChange={(next) => go(String(next))}
-        aria-label={t.filterLabel}
-        className="hidden @4xl/main:flex"
-      >
-        <TabsList>
-          {TAB_ITEMS.map((item) => (
-            <TabsTrigger key={item.value} value={item.value}>
-              {item.label}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-      </Tabs>
-    </>
+    <StatusFilterTabs
+      items={TAB_ITEMS}
+      value={value}
+      label={t.filterLabel}
+      selectId="bookings-status-selector"
+      onSelect={go}
+    />
   );
 }
 

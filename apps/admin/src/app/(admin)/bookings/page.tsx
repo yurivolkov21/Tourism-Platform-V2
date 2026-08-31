@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { BookingsTable } from '@/components/bookings/bookings-table';
 import { fetchAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
-import { parseBookingsSearchParams } from '@/lib/bookings-query';
+import { bookingsHref, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
 import type { RawSearchParams } from '@/lib/table-query';
 
@@ -37,6 +38,13 @@ export default async function BookingsPage({
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang dashboard).
   if (!session) return null;
+
+  // Page mồ côi (review F3 31/08 — luật chung với /cancellations): tập kết
+  // quả co lại dưới chân URL thì đưa về trang cuối còn thật, không render
+  // bảng rỗng cạnh thanh phân trang nói ngược lại.
+  if (paged.total > 0 && query.page > paged.totalPages) {
+    redirect(bookingsHref(query, { page: paged.totalPages }));
+  }
 
   return (
     <AdminShell user={session}>

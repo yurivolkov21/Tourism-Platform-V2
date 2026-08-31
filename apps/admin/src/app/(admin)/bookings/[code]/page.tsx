@@ -19,6 +19,7 @@ import {
   statusBadgeVariant,
   statusLabel,
 } from '@/lib/bookings-view';
+import { cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
 import { refundBookingAction } from './actions';
 
 /**
@@ -182,7 +183,11 @@ function CancellationRow({ request }: { request: CancellationRequest }) {
   return (
     <li className="grid gap-1 border-l-2 border-border pl-3 text-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <Badge variant="outline">{t.cancellations.status[request.status]}</Badge>
+        {/* Cùng luật màu với hàng đợi /cancellations (review F3 31/08) — một
+            trạng thái một màu ở mọi màn. */}
+        <Badge variant={cancellationStatusBadgeVariant(request.status)}>
+          {t.cancellations.status[request.status]}
+        </Badge>
         <span className="text-muted-foreground">
           {t.cancellations.requested} {formatDateTime(request.createdAt)}
         </span>

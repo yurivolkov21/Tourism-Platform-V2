@@ -20,6 +20,10 @@ const REQUESTED: AdminCancellationRequest = {
   departureStartDate: '2026-09-14',
   contactName: 'Ada Lovelace',
   contactEmail: 'ada@example.com',
+  // Tiền cho dialog approve (review F3): total + đã hoàn — server trả thật.
+  totalAmount: '120.00',
+  refundedTotal: '20.00',
+  currency: 'USD',
 };
 
 describe('toCancellationRow', () => {
@@ -41,6 +45,9 @@ describe('toCancellationRow', () => {
       decided: null,
       decisionNote: null,
       pending: true,
+      totalAmount: '120.00',
+      refundedTotal: '20.00',
+      currency: 'USD',
     });
   });
 

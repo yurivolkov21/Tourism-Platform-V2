@@ -260,6 +260,12 @@ export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
   departureStartDate: z.iso.date(),
   contactName: z.string().min(1).max(120),
   contactEmail: EmailSchema,
+  // Tiền của booking (review F3 31/08): approve = refund PHẦN CÒN LẠI, mà
+  // trước đây queue không mang con số nào — admin bấm lệnh tiền mù. total +
+  // đã-hoàn đủ để client tính phần còn lại; currency đi kèm để format.
+  totalAmount: DecimalStringSchema,
+  refundedTotal: DecimalStringSchema,
+  currency: z.string().length(3),
 });
 
 export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestSchema>;

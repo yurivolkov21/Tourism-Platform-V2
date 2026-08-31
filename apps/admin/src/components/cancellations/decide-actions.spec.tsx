@@ -28,6 +28,10 @@ const REQUEST: DecideTarget = {
   tourTitle: 'Ha Long Bay Cruise',
   customerName: 'Ada Lovelace',
   reason: 'Family emergency — cannot travel.',
+  // Booking 120 đã hoàn 20 → phần còn lại 100 (dialog approve phải HIỆN số này).
+  totalAmount: '120.00',
+  refundedTotal: '20.00',
+  currency: 'USD',
 };
 
 beforeEach(() => {
@@ -51,6 +55,24 @@ describe('DecideActions — confirm nêu rõ hệ quả (spec §3-F3)', () => {
     expect(screen.getByText(t.approveDialog.consequences.cancelled)).toBeInTheDocument();
     expect(screen.getByText(t.approveDialog.consequences.seats)).toBeInTheDocument();
     expect(screen.getByText(t.approveDialog.warning)).toBeInTheDocument();
+  });
+
+  it('approve hiện SỐ TIỀN sẽ hoàn — phần còn lại = total − đã hoàn (review F3)', async () => {
+    // Khoá chống tái hiện: bản đầu bấm lệnh tiền mà không thấy con số nào.
+    const user = userEvent.setup();
+    render(<DecideActions request={REQUEST} decide={vi.fn()} />);
+    await open(user, 'approve');
+
+    expect(await screen.findByText(t.refundAmountValue('$100.00'))).toBeInTheDocument();
+  });
+
+  it('deny KHÔNG hiện dòng số tiền — không có gì được hoàn', async () => {
+    const user = userEvent.setup();
+    render(<DecideActions request={REQUEST} decide={vi.fn()} />);
+    await open(user, 'deny');
+
+    expect(await screen.findByText(t.denyDialog.body)).toBeInTheDocument();
+    expect(screen.queryByText(t.refundAmount)).not.toBeInTheDocument();
   });
 
   it('deny nói rõ booking KHÔNG đổi — không có ba hệ quả tiền/ghế nào', async () => {
@@ -136,19 +158,38 @@ describe('DecideActions — kết quả server', () => {
     expect(screen.queryByText(t.approveDialog.warning)).not.toBeInTheDocument();
   });
 
-  it('mỗi mã contract hiện ĐÚNG câu của nó, dialog Ở LẠI (bất biến §2.4)', async () => {
-    for (const code of DECIDE_CONTRACT_CODES) {
+  it('REFUND_FAILED (retryable duy nhất) hiện đúng câu và dialog Ở LẠI (bất biến §2.4)', async () => {
+    const user = userEvent.setup();
+    const decide = vi.fn().mockResolvedValue({ ok: false, code: 'REFUND_FAILED' });
+    render(<DecideActions request={REQUEST} decide={decide} />);
+    await open(user, 'approve');
+    await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.errors.REFUND_FAILED);
+    // Dialog còn mở: provider từ chối nhưng request còn nguyên — thử lại tại
+    // chỗ là hợp lệ, ngữ cảnh + note giữ nguyên.
+    expect(screen.getByText(t.approveDialog.warning)).toBeInTheDocument();
+    expect(success).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('lỗi TRẠNG-THÁI-CŨ (NOT_FOUND/ALREADY_DECIDED/NOT_REFUNDABLE): đóng + toast đúng câu + refresh', async () => {
+    // Khoá chống tái hiện (review F3): copy hứa "the queue has been refreshed"
+    // mà bản đầu không refresh — admin B bấm lặp vô hạn trên hàng đã quyết.
+    for (const code of [...DECIDE_CONTRACT_CODES].filter((c) => c !== 'REFUND_FAILED')) {
       const user = userEvent.setup();
       const decide = vi.fn().mockResolvedValue({ ok: false, code });
       const view = render(<DecideActions request={REQUEST} decide={decide} />);
       await open(user, 'approve');
       await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
-      expect(await screen.findByRole('alert')).toHaveTextContent(t.errors[code]);
-      // Dialog còn mở: admin sửa/đọc tại chỗ, không mất ngữ cảnh.
-      expect(screen.getByText(t.approveDialog.warning)).toBeInTheDocument();
+      expect(errorToast).toHaveBeenCalledWith(t.errors[code]);
+      expect(refresh).toHaveBeenCalled();
+      expect(screen.queryByText(t.approveDialog.warning)).not.toBeInTheDocument();
       expect(success).not.toHaveBeenCalled();
       view.unmount();
+      errorToast.mockReset();
+      refresh.mockReset();
     }
   });
 
@@ -179,7 +220,7 @@ describe('DecideActions — kết quả server', () => {
 
   it('đang bắn thì Esc KHÔNG đóng được dialog — lỗi về sau không được phép tàng hình', async () => {
     const user = userEvent.setup();
-    let settle: (value: { ok: false; code: 'ALREADY_DECIDED' }) => void = () => {};
+    let settle: (value: { ok: false; code: 'REFUND_FAILED' }) => void = () => {};
     const decide = vi.fn().mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -193,8 +234,8 @@ describe('DecideActions — kết quả server', () => {
     await user.keyboard('{Escape}');
     expect(screen.getByText(t.approveDialog.warning)).toBeInTheDocument();
 
-    settle({ ok: false, code: 'ALREADY_DECIDED' });
-    expect(await screen.findByRole('alert')).toHaveTextContent(t.errors.ALREADY_DECIDED);
+    settle({ ok: false, code: 'REFUND_FAILED' });
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.errors.REFUND_FAILED);
   });
 
   it('bấm hai lần liên tiếp chỉ bắn MỘT lệnh — approve là money-path', async () => {

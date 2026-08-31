@@ -528,6 +528,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(page.items.map((r) => r.bookingCode).sort()).toEqual(
       [aliceBooking.code, bobBooking.code].sort(),
     );
+    // Tiền trong queue (review F3 31/08): total + đã-hoàn THẬT để dialog
+    // approve hiện phần-còn-lại — admin không bấm lệnh tiền mù.
+    // Booking của Alice đã bị DENY (không refund) → refundedTotal 0.
+    const aliceItem = page.items.find((r) => r.bookingCode === aliceBooking.code);
+    expect(aliceItem?.totalAmount).toBe('117.00');
+    expect(aliceItem?.refundedTotal).toBe('0.00');
+    expect(aliceItem?.currency).toBe('USD');
     expect(page.items.every((r) => r.tourTitle.length > 0 && r.contactEmail.length > 0)).toBe(true);
 
     const open = await app.inject({

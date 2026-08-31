@@ -29,7 +29,17 @@ export function firstParam(value: string | string[] | undefined): string | undef
   return Array.isArray(value) ? value[0] : value;
 }
 
-/** Phần phân trang của mọi query bảng admin. */
+/**
+ * Phần phân trang của mọi query bảng admin.
+ *
+ * ⚠️ CẢNH BÁO CHO F4 (reviews): field tên `limit` vì HAI schema hiện tại
+ * (bookings/cancellations) cùng dùng tên đó — nhưng `AdminReviewsQuerySchema`
+ * extend `PageQuerySchema` với tên **`pageSize`**. Spread thẳng `{ page,
+ * limit }` vào input reviews sẽ bị Zod STRIP IM LẶNG (object không strict):
+ * pageSize rơi về default, "Rows per page" thành nút chết, không lỗi nào đỏ.
+ * Vùng reviews PHẢI map tường minh: `{ page: paging.page, pageSize:
+ * paging.limit }`.
+ */
 export interface TablePaging {
   page: number;
   limit: number;
@@ -64,4 +74,22 @@ export function appendPaging(params: URLSearchParams, paging: TablePaging): void
 export function tableHref(pathname: string, params: URLSearchParams): string {
   const query = params.toString();
   return query ? `${pathname}?${query}` : pathname;
+}
+
+/**
+ * Luật chung của mọi hàm `*Href` (nâng từ cặp bản chép bookings/cancellations
+ * ở review F3 31/08): đổi filter HOẶC số dòng mỗi trang đều ĐẶT LẠI trang về
+ * 1 (trang 5 của bộ lọc cũ hầu như chắc chắn rỗng ở bộ mới), trừ khi chính
+ * patch nói rõ trang nào. `scopeChanged` do vùng tính (nó biết filter của nó
+ * là gì); hàm này chỉ giữ MỘT bản của luật để hai vùng không trôi lệch.
+ */
+export function resolvePagePatch(
+  current: TablePaging,
+  patch: { page?: number; limit?: number },
+  scopeChanged: boolean,
+): TablePaging {
+  return {
+    limit: patch.limit ?? current.limit,
+    page: patch.page ?? (scopeChanged ? 1 : current.page),
+  };
 }
