@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-08-31 — P4b F4: hàng đợi moderation review + vòng vá (nhánh `feat/p4b-reviews`, 2 commit `ee0cb20..5f0010f`, ~30 file)
+
+Tính năng thứ tư, thi công TỐT nhất bốn vòng (bẫy pageSize-vs-limit né đúng
+có test khoá qua chính schema contract, kit dùng đủ, quy ước sạch, deviation
+contract chỉ là type alias khai minh bạch). Nghiệm thu review 8 mũi → 10
+findings, user duyệt vá theo 3 đoạn nhỏ (`5f0010f`) — lần này phần nặng nằm
+ở NGỮ NGHĨA moderation và đụng cả service API + migration:
+
+- **API an toàn trạng thái**: guard trạng-thái-trùng cho `moderate` (no-op —
+  tab cũ bấm approve lên review đã duyệt không còn ghi đè `moderatedBy`
+  thành người-không-quyết-gì hay đẩy event from===to vào audit trail); gate
+  email thêm `!deletedAt` — hết xếp thư tới `deleted+…@tombstone.local`
+  (xoá tài khoản là soft-delete, gate cũ chỉ soi user?.email). 2 int test.
+- **Dialog không lật chiều**: `approve` đóng băng vào state LÚC BẤM — queue
+  refresh giữa lúc dialog mở (hàng khác vừa quyết, admin B đụng cùng hàng)
+  từng lật dialog Approve thành Unapprove, cú click gửi lệnh ngược ý định.
+- **Copy hệ quả hết nói quá**: nhánh không-gắn-tour cho publish/hide; câu
+  rating khi unapprove nói thẳng ca review-duy-nhất → tour MẤT cụm sao trên
+  site tới khi review khác được duyệt; sr-only báo số ảnh trước khi duyệt
+  công khai (alt thường rỗng).
+- **Ảnh + index**: `reviewPhotoThumb` chèn `w_128,h_128,c_fill` + lazy +
+  width/height (hết kéo ảnh gốc 10MB vẽ ô 32px); migration MỚI
+  `reviews_moderation_queue_index` phủ tab/sort hàng đợi, đã deploy Supabase
+  tường minh theo gotcha prisma.config; trgm cho search ghi sổ chờ dữ liệu.
+- **Đồng bộ với web**: sao rating token `fill-rating` (vàng như 8 component
+  web), `ratingLabel` cùng câu "out of 5 stars" (hoist `RATING_LABEL_COPY`),
+  "Deleted account" một hằng cho 3 bề mặt; `ALL_FILTER_VALUE` lên kit; dọn
+  field/key chết (tourSlug, moderate.review) + JSDoc tả cascade sai.
+- **Nợ ghi sổ, xử ở ĐẦU F5**: nâng máy confirm-write (ModerateDialog ≅
+  DecideDialog) thành kit `ConfirmWriteDialog` + kit `TableSearchForm` — bản
+  chép thế hệ ba đã đủ consumer để tổng quát hoá.
+
+Tests after: 1416 web · 238 api · 187 api-int · 87 contract · 22 ui ·
+10 tokens · 2 i18n · 200 admin.
+
 ## 2026-08-31 — P4b F3: hàng đợi cancellations + vòng vá review (nhánh `feat/p4b-cancellations`, 2 commit `2da536e..9c38df6`, ~30 file)
 
 Tính năng thứ ba theo nếp session-per-feature. Session thi công dựng:
