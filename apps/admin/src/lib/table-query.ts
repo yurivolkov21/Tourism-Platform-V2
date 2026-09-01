@@ -24,6 +24,24 @@ const PAGE_SIZE_MAX = 100;
 /** Các mức cho ô "Rows per page" — cùng dãy với kit data-table dashboard-01. */
 export const PAGE_SIZE_OPTIONS = [10, 20, 30, 40, 50] as const;
 
+/**
+ * `URLSearchParams` → hình dạng `searchParams` mà Next trao cho trang (F6).
+ *
+ * Route handler chỉ có `request.nextUrl.searchParams`, còn mọi hàm parse của
+ * vùng nhận `RawSearchParams`. `Object.fromEntries` KHÔNG dùng được: nó giữ
+ * giá trị CUỐI của một param lặp, trong khi trang (qua `firstParam`) giữ giá
+ * trị ĐẦU — hai đường sẽ lọc theo hai thứ khác nhau, và cả lời hứa "file tải
+ * về đúng bằng cái đang thấy" tan ngay tại đó.
+ */
+export function rawSearchParamsFrom(params: URLSearchParams): RawSearchParams {
+  const raw: RawSearchParams = {};
+  for (const key of new Set(params.keys())) {
+    const values = params.getAll(key);
+    raw[key] = values.length > 1 ? values : values[0];
+  }
+  return raw;
+}
+
 /** Param lặp (`?page=2&page=9`) — lấy giá trị đầu, đúng nếp Next đọc query. */
 export function firstParam(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;

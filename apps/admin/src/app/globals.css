@@ -1,3 +1,9 @@
+/* biome-ignore-all lint/complexity/noImportantStyles: khối `@media print` cuối
+ * file phải THẮNG các utility Tailwind có specificity cao hơn (gradient của
+ * stat card đến từ `*:data-[slot=card]:bg-linear-to-t`, chữ phụ từ
+ * `.text-muted-foreground`). Đua specificity với chúng chỉ đẻ ra selector dài
+ * và giòn; `!important` trong một stylesheet in là đúng chỗ nó sinh ra để
+ * dùng — cả file này không có quy tắc màn hình nào để nó làm hỏng. */
 /* ADR-0026 §3: admin dùng CHUNG theme shadcn + tokens qua @tourism/ui —
  * không mở hệ thẩm mỹ mới. */
 @import "@tourism/ui/globals.css";

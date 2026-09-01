@@ -7,6 +7,7 @@ import { getServerSession } from '@/lib/api/session';
 import { bookingsCsvRows } from '@/lib/bookings-csv';
 import { parseBookingsSearchParams } from '@/lib/bookings-query';
 import { CSV_CONTENT_TYPE, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
  * `GET /bookings/export` — tải CSV của ĐÚNG tập đang lọc (spec P4b §3-F6).
@@ -39,9 +40,7 @@ export async function GET(request: NextRequest) {
     return new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 });
   }
 
-  const query = parseBookingsSearchParams(
-    Object.fromEntries(request.nextUrl.searchParams.entries()),
-  );
+  const query = parseBookingsSearchParams(rawSearchParamsFrom(request.nextUrl.searchParams));
   const cookie = (await cookies()).toString();
   const result = await fetchAllAdminBookings(cookie, query);
 

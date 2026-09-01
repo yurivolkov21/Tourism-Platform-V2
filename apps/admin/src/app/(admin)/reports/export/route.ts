@@ -7,6 +7,7 @@ import { getServerSession } from '@/lib/api/session';
 import { CSV_CONTENT_TYPE, csvDocument, csvFilename, isoDay } from '@/lib/csv';
 import { parseReportsSearchParams } from '@/lib/reports-query';
 import { reportCsvRows } from '@/lib/reports-view';
+import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
  * `GET /reports/export` — tải CSV của đúng tháng đang xem (spec P4b §3-F6).
@@ -31,7 +32,7 @@ export async function GET(request: NextRequest) {
   }
 
   const { month } = parseReportsSearchParams(
-    Object.fromEntries(request.nextUrl.searchParams.entries()),
+    rawSearchParamsFrom(request.nextUrl.searchParams),
     new Date(),
   );
   const cookie = (await cookies()).toString();

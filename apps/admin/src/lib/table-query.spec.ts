@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { appendPaging, firstParam, parsePaging, resolvePagePatch, tableHref } from './table-query';
+import {
+  appendPaging,
+  firstParam,
+  parsePaging,
+  rawSearchParamsFrom,
+  resolvePagePatch,
+  tableHref,
+} from './table-query';
 
 /**
  * Phần DÙNG CHUNG của trạng thái-trên-URL (spec P4b §2.2) — tách ra ở F3 khi
@@ -75,5 +82,31 @@ describe('resolvePagePatch', () => {
   it('không đổi scope → giữ nguyên trang hiện tại', () => {
     expect(resolvePagePatch(current, {}, false)).toEqual({ page: 5, limit: 20 });
     expect(resolvePagePatch(current, { page: 2 }, false)).toEqual({ page: 2, limit: 20 });
+  });
+});
+
+/**
+ * Cầu nối cho route handler (F6): `URLSearchParams` → cùng hình dạng
+ * `searchParams` mà Next trao cho trang, để trang và file tải về đọc URL bằng
+ * ĐÚNG một bộ luật.
+ */
+describe('rawSearchParamsFrom', () => {
+  it('param đơn thành chuỗi', () => {
+    expect(rawSearchParamsFrom(new URLSearchParams('status=PAID&q=ann'))).toEqual({
+      status: 'PAID',
+      q: 'ann',
+    });
+  });
+
+  it('param LẶP thành mảng — `Object.fromEntries` giữ giá trị CUỐI, trang giữ giá trị ĐẦU', () => {
+    // Đây chính là chỗ file tải về có thể lệch khỏi bảng đang xem nếu dùng
+    // `Object.fromEntries`: hai đường sẽ lọc theo hai trang khác nhau.
+    expect(rawSearchParamsFrom(new URLSearchParams('page=2&page=9'))).toEqual({
+      page: ['2', '9'],
+    });
+  });
+
+  it('query rỗng → object rỗng', () => {
+    expect(rawSearchParamsFrom(new URLSearchParams())).toEqual({});
   });
 });
