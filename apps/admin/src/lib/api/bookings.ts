@@ -27,6 +27,63 @@ export async function fetchAdminBookings(
 }
 
 /**
+ * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính `admin.bookings.list`
+ * (spec P4b §3-F6 — nguồn của nút Export CSV).
+ *
+ * ## Vì sao lặp trang từ admin, không phải một endpoint stream ở API
+ *
+ * Cân nhắc hai đường, chọn đường này:
+ *
+ * - CSV là chuyện TRÌNH BÀY, không phải chuyện dữ liệu. `admin.bookings.list`
+ *   đã trả đúng tập cần; thêm một endpoint `text/csv` vào API nghĩa là mở
+ *   endpoint KHÔNG-JSON đầu tiên của một contract oRPC toàn JSON, cộng guard
+ *   riêng, cộng int test riêng — tất cả chỉ để đổi định dạng.
+ * - Route handler admin đã có sẵn cookie forward (nếp `session.ts`) và chạy
+ *   trên server, nên không có bí mật nào rời khỏi server.
+ * - Giá phải trả: N round-trip thay vì một stream, và cả tập nằm trong RAM
+ *   một lúc. Ở cỡ back-office này (hàng trăm booking) đó là 1–2 request; trần
+ *   `EXPORT_MAX_ROWS` chặn trường hợp tập phình to, và route handler TỪ CHỐI
+ *   (413) chứ không cắt bớt im lặng — một file thiếu hàng mà không ai biết là
+ *   thứ tệ hơn hẳn một thông báo.
+ *
+ * Ngày nào tập dữ liệu thật sự lớn (chục nghìn booking) thì đường đúng là
+ * endpoint stream ở API — lúc đó đọc lại đoạn này trước khi làm.
+ */
+export const EXPORT_PAGE_SIZE = 100; // trần `limit` của contract
+export const EXPORT_MAX_ROWS = 5000;
+
+/** Kết quả gom: hoặc cả tập, hoặc lời từ chối kèm con số để báo cho người bấm. */
+export type AdminBookingsExport =
+  | { kind: 'rows'; bookings: Booking[] }
+  | { kind: 'too-large'; total: number; max: number };
+
+export async function fetchAllAdminBookings(
+  cookie: string,
+  query: BookingsQuery,
+): Promise<AdminBookingsExport> {
+  // Trang đầu trả luôn `total` — biết ngay có nên đi tiếp hay không.
+  const first = await fetchAdminBookings(cookie, {
+    ...query,
+    page: 1,
+    limit: EXPORT_PAGE_SIZE,
+  });
+  if (first.total > EXPORT_MAX_ROWS) {
+    return { kind: 'too-large', total: first.total, max: EXPORT_MAX_ROWS };
+  }
+
+  const bookings = [...first.items];
+  for (let page = 2; page <= first.totalPages; page++) {
+    const next = await fetchAdminBookings(cookie, { ...query, page, limit: EXPORT_PAGE_SIZE });
+    bookings.push(...next.items);
+    // `totalPages` được chốt ở trang đầu; nếu ai đó tạo booking mới giữa
+    // chừng thì trang cuối có thể ngắn hơn — dừng ở đây là ĐÚNG, file mô tả
+    // tập tại thời điểm bắt đầu xuất chứ không phải một tập đang trôi.
+    if (next.items.length === 0) break;
+  }
+  return { kind: 'rows', bookings };
+}
+
+/**
  * Chi tiết một booking theo code, kèm toàn bộ lịch sử cancellation (D1-B).
  * `null` = không có booking này để trang gọi `notFound()`; lỗi khác ném lại
  * cho error boundary (cùng khuôn `fetchBookingByCode` của web). KHÔNG bọc

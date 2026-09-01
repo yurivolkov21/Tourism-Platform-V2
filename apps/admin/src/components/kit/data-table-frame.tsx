@@ -29,9 +29,12 @@ export interface DataTableFrameProps {
 export function DataTableFrame({ views, actions, children, footer }: DataTableFrameProps) {
   return (
     <div className="flex w-full flex-col justify-start gap-6">
-      <div className="flex items-center justify-between px-4 lg:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-2 px-4 lg:px-6">
         {views}
-        <div className="flex items-center gap-2">{actions}</div>
+        {/* `flex-wrap` từ F6: khe hành động của `/bookings` nay mang thêm hai
+            ô ngày và nút export, đủ để tràn ở màn hẹp — xuống dòng còn hơn
+            đẩy ngang cả hàng điều khiển ra khỏi khung. */}
+        <div className="flex flex-wrap items-center justify-end gap-2">{actions}</div>
       </div>
       <div className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6">
         <div className="overflow-hidden rounded-lg border">{children}</div>

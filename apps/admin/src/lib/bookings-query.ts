@@ -1,4 +1,5 @@
 import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
+import { z } from 'zod';
 import {
   appendPaging,
   firstParam,
@@ -22,12 +23,45 @@ import {
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
 
+/**
+ * Ngày lịch `YYYY-MM-DD` — CÙNG schema mà contract dùng cho `from`/`to`, nên
+ * cái gì lọt qua đây thì server cũng nhận (và ngược lại): không có bản regex
+ * thứ hai để trôi lệch. Nó loại cả ngày không tồn tại (`2026-02-31`) lẫn mốc
+ * ISO có giờ, đúng thứ ô `<input type="date">` không bao giờ sinh ra nhưng
+ * người gõ URL thì có.
+ */
+const DateParamSchema = z.iso.date();
+
 /** Input đã sạch cho `admin.bookings.list` (khớp AdminBookingsListQuerySchema). */
 export interface BookingsQuery {
   page: number;
   limit: number;
   status?: BookingStatusValue;
   search?: string;
+  /** Ngày lịch `YYYY-MM-DD`, TÍNH VÀO khoảng (biên nửa-mở do API dịch). */
+  from?: string;
+  /** Ngày lịch `YYYY-MM-DD`, cũng TÍNH VÀO — trọn ngày đó. */
+  to?: string;
+}
+
+/** Ngày hợp lệ hoặc `undefined` — mọi thứ khác rơi im lặng như status rác. */
+function validDate(value: string | undefined): string | undefined {
+  const parsed = DateParamSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
+}
+
+/**
+ * Khoảng ngày đã sạch. Khoảng NGƯỢC (`from > to`) giữ `from` và BỎ `to`:
+ * contract trả 400 cho khoảng ngược, mà một trang admin nổ 500 vì người ta gõ
+ * nhầm ngày là quá đắt. Bỏ CẢ HAI thì bảng lặng lẽ hiện mọi booking trong khi
+ * URL vẫn mang hai ngày — bỏ đúng đầu bị loại để ô "đến ngày" trống, người gõ
+ * thấy ngay cái vừa bị vứt.
+ */
+function dateRange(rawFrom: string | undefined, rawTo: string | undefined) {
+  const from = validDate(rawFrom);
+  const to = validDate(rawTo);
+  const keepTo = to && (!from || from <= to) ? to : undefined;
+  return { ...(from ? { from } : {}), ...(keepTo ? { to: keepTo } : {}) };
 }
 
 /**
@@ -43,6 +77,7 @@ export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
     ...parsePaging(raw),
     ...(status.success ? { status: status.data } : {}),
     ...(search ? { search } : {}),
+    ...dateRange(firstParam(raw.from), firstParam(raw.to)),
   };
 }
 
@@ -55,6 +90,9 @@ export interface BookingsHrefPatch {
   limit?: number;
   status?: BookingStatusValue | null;
   search?: string | null;
+  /** `null` hoặc chuỗi rỗng (ô date bị xoá trắng) đều là XOÁ đầu đó. */
+  from?: string | null;
+  to?: string | null;
 }
 
 /**
@@ -64,20 +102,61 @@ export interface BookingsHrefPatch {
  * `limit` mặc định không xuất hiện trên URL — mặc định thì không cần viết ra.
  */
 export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): string {
-  const status = patch.status === undefined ? current.status : (patch.status ?? undefined);
-  const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
-  const search = rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined;
+  const { status, search, from, to } = resolveFilters(current, patch);
 
   // Luật reset-page nằm MỘT chỗ ở kit (`resolvePagePatch`) — vùng chỉ khai
   // filter nào tính là "đổi scope" (review F3 31/08).
   const scopeChanged =
-    patch.status !== undefined || patch.search !== undefined || patch.limit !== undefined;
+    patch.status !== undefined ||
+    patch.search !== undefined ||
+    patch.from !== undefined ||
+    patch.to !== undefined ||
+    patch.limit !== undefined;
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
-  if (search) params.set('q', search);
+  appendFilters(params, { status, search, from, to });
   appendPaging(params, paging);
 
   return tableHref('/bookings', params);
+}
+
+/** Bộ lọc sau khi áp patch — dùng chung bởi `bookingsHref` và link export. */
+function resolveFilters(current: BookingsQuery, patch: BookingsHrefPatch) {
+  const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
+  const pick = (patched: string | null | undefined, currentValue: string | undefined) =>
+    patched === undefined ? currentValue : (patched ?? undefined);
+
+  return {
+    status: patch.status === undefined ? current.status : (patch.status ?? undefined),
+    search: rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined,
+    // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
+    // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
+    ...dateRange(pick(patch.from, current.from), pick(patch.to, current.to)),
+  };
+}
+
+/** Ghi bốn filter của vùng vào query — thứ tự cố định để href ổn định. */
+function appendFilters(
+  params: URLSearchParams,
+  filters: { status?: string; search?: string; from?: string; to?: string },
+): void {
+  if (filters.status) params.set('status', filters.status);
+  if (filters.search) params.set('q', filters.search);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+}
+
+/**
+ * Link tải CSV của ĐÚNG tập đang lọc (spec P4b §3-F6) — trỏ tới route handler
+ * `/bookings/export`.
+ *
+ * CỐ Ý bỏ `page`/`limit`: file là CẢ TẬP đang lọc, không phải trang đang xem.
+ * Xuất "trang 3, 20 dòng" thì con số trong file không khớp với bất cứ câu hỏi
+ * nào mà người xuất đang hỏi.
+ */
+export function bookingsExportHref(query: BookingsQuery): string {
+  const params = new URLSearchParams();
+  appendFilters(params, query);
+  return tableHref('/bookings/export', params);
 }

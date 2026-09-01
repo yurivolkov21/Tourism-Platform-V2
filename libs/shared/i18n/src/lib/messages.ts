@@ -2565,6 +2565,7 @@ export const messages = {
       posts: 'Posts',
       media: 'Media library',
       appearance: 'Appearance',
+      reports: 'Reports',
       outbox: 'Outbox',
       paymentEvents: 'Payment events',
       users: 'Users',
@@ -2660,6 +2661,75 @@ export const messages = {
       },
     },
     /**
+     * Trang báo cáo tháng (spec P4b §3-F6) — bề mặt admin đầu tiên được thiết
+     * kế để IN RA GIẤY (browser Print → PDF), nên copy ở đây phải tự đứng
+     * vững khi không còn sidebar, không còn tooltip, không còn chỗ nào để hỏi.
+     *
+     * Vì vậy `definitions` nói thẳng ba định nghĩa dễ hiểu nhầm nhất ngay
+     * trên bản in: doanh thu là GROSS neo theo ngày trả tiền, hoàn tiền là
+     * dòng tiền đi ra chứ không phải phép trừ vào doanh thu, và phân rã trạng
+     * thái là ảnh chụp HÔM NAY của lứa booking tháng đó. Một tờ giấy không
+     * kèm định nghĩa là một tờ giấy sẽ bị đọc sai.
+     */
+    reports: {
+      title: 'Monthly report',
+      /** Nhãn ô chọn tháng (sr-only — chữ trong ô đã tự nói). */
+      monthLabel: 'Report month',
+      print: 'Print',
+      exportCsv: 'Export CSV',
+      /** Dòng phụ đề: kỳ báo cáo, cả hai đầu là ngày TÍNH VÀO. */
+      period: (from: string, to: string) => `${from} – ${to}`,
+      generatedAt: (at: string) => `Generated ${at}`,
+      cards: {
+        revenue: 'Revenue',
+        paidBookings: 'Paid bookings',
+        newBookings: 'New bookings',
+        refunded: 'Refunds paid out',
+      },
+      bookingsTable: {
+        heading: 'Bookings created this month',
+        status: 'Status',
+        count: 'Bookings',
+        total: 'Total',
+        /** Bảng luôn đủ hàng, kể cả tháng trắng — nhưng vẫn cần một lời. */
+        empty: 'No bookings were created in this month.',
+      },
+      operationsTable: {
+        heading: 'Money and operations',
+        metric: 'Metric',
+        value: 'Value',
+        revenue: 'Revenue (gross)',
+        paidBookings: 'Paid bookings',
+        newBookings: 'New bookings',
+        refundedTotal: 'Refunds paid out',
+        refunds: 'Refund payments',
+        cancellationsApproved: 'Cancellations approved',
+        cancellationsDenied: 'Cancellations denied',
+        reviewsApproved: 'Reviews approved',
+      },
+      definitions: {
+        heading: 'How to read these numbers',
+        revenue:
+          'Revenue counts money taken in this month (by payment date) and is gross — refunds are not subtracted from it.',
+        refunds:
+          'Refunds paid out is money that left this month; a refund may belong to a booking paid in an earlier month.',
+        statuses:
+          'The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.',
+      },
+      /** Nhãn cột/hàng của file CSV báo cáo — hai cột Metric/Value. */
+      csv: {
+        metric: 'Metric',
+        value: 'Value',
+        month: 'Month',
+        periodFrom: 'Period start (UTC)',
+        periodTo: 'Period end, exclusive (UTC)',
+        generatedAt: 'Generated at (UTC)',
+        currency: 'Currency',
+        /** Tiền tố cho các hàng phân rã trạng thái: "Bookings — PAID". */
+        statusRow: (status: string) => `Bookings — ${status}`,
+      },
+    },
+    /**
      * Copy cho hai tấm lưới đỡ lỗi của admin (`app/error.tsx` +
      * `app/not-found.tsx` — review F1 31/08): lỗi đọc API (401 phiên chết
      * giữa chừng, timeout, API sập) và địa chỉ không tồn tại.
@@ -2707,6 +2777,54 @@ export const messages = {
           amount: 'Amount',
           customer: 'Customer',
         },
+        /**
+         * Bộ lọc khoảng ngày + nút export (spec P4b §3-F6). Ngày lọc theo
+         * lúc booking được TẠO, và nói rõ điều đó: "từ ngày nào" của một
+         * booking có thể là ngày đặt hoặc ngày khởi hành, hai thứ khác hẳn.
+         */
+        dateFilterLabel: 'Filter by booking date',
+        dateFrom: 'Booked from',
+        dateTo: 'Booked to',
+        clearDates: 'Clear dates',
+        /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
+        exportCsv: 'Export CSV',
+        /**
+         * Tập lọc vượt trần xuất file. Câu này là BODY của một response
+         * 413 — người bấm nút thấy nó thay cho file, nên nó phải nói được
+         * việc cần làm tiếp theo mà không cần bất kỳ ngữ cảnh nào khác.
+         */
+        exportTooLarge: (total: number, max: number) =>
+          `This filter matches ${total} bookings and the export is capped at ${max}. Narrow the date range or the status filter, then export again.`,
+      },
+      /**
+       * Nhãn cột của file CSV (spec P4b §3-F6) — English như mọi copy
+       * user-facing (luật 7), và tách khỏi `list.columns` vì file mang NHIỀU
+       * cột hơn bảng: bảng gộp "2 adults, 1 child" cho mắt người, file tách
+       * từng số cho công thức của Excel.
+       *
+       * Giá trị trong file là DỮ LIỆU chứ không phải chữ hiển thị: tiền là
+       * '117.00' (không phải '$117.00' — Excel đọc ký hiệu tiền thành text),
+       * ngày giờ là ISO UTC, trạng thái là chính member enum. Ai mở file cũng
+       * lọc/tính được ngay.
+       */
+      csv: {
+        code: 'Booking code',
+        status: 'Status',
+        tour: 'Tour',
+        departureStart: 'Departure start',
+        departureEnd: 'Departure end',
+        adults: 'Adults',
+        children: 'Children',
+        guests: 'Guests',
+        unitPrice: 'Price per person',
+        totalAmount: 'Total amount',
+        currency: 'Currency',
+        customer: 'Customer',
+        email: 'Email',
+        phone: 'Phone',
+        createdAt: 'Booked at (UTC)',
+        paidAt: 'Paid at (UTC)',
+        cancelledAt: 'Cancelled at (UTC)',
       },
       status: {
         PENDING: 'Pending',

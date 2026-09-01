@@ -5,7 +5,12 @@ import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import Link from 'next/link';
 import * as React from 'react';
-import { BookingsSearch, BookingsStatusTabs } from '@/components/bookings/bookings-toolbar';
+import {
+  BookingsDateRange,
+  BookingsExportLink,
+  BookingsSearch,
+  BookingsStatusTabs,
+} from '@/components/bookings/bookings-toolbar';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
@@ -127,8 +132,12 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
       views={<BookingsStatusTabs query={query} />}
       actions={
         <>
+          <BookingsDateRange query={query} />
           <BookingsSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />
+          {/* Export đứng CUỐI hàng: nó là hành động trên kết quả của mọi bộ
+              lọc bên trái, nên đọc từ trái sang phải là "lọc… rồi tải về". */}
+          <BookingsExportLink query={query} />
         </>
       }
       footer={

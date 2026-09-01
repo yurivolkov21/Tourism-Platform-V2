@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bookingsHref, parseBookingsSearchParams } from './bookings-query';
+import { bookingsExportHref, bookingsHref, parseBookingsSearchParams } from './bookings-query';
 
 /**
  * Trạng thái danh sách bookings nằm TRÊN URL (spec P4b §2.2): searchParams là
@@ -67,6 +67,47 @@ describe('parseBookingsSearchParams', () => {
     }
   });
 
+  // ── F6: khoảng ngày createdAt (spec P4b §3-F6) ─────────────────────────
+  it('from/to đúng dạng YYYY-MM-DD đi thẳng xuống contract', () => {
+    expect(parseBookingsSearchParams({ from: '2026-09-01', to: '2026-09-30' })).toEqual({
+      page: 1,
+      limit: 20,
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+  });
+
+  it('ngày sai định dạng hoặc không tồn tại bị BỎ — cùng mức khoan dung với status rác', () => {
+    for (const from of ['01/09/2026', '2026-9-1', '2026-02-31', 'yesterday', '']) {
+      expect(parseBookingsSearchParams({ from })).toEqual({ page: 1, limit: 20 });
+    }
+    expect(parseBookingsSearchParams({ to: '2026-13-01' })).toEqual({ page: 1, limit: 20 });
+  });
+
+  it('mốc ISO có giờ bị bỏ — contract chỉ nhận ngày lịch', () => {
+    expect(parseBookingsSearchParams({ from: '2026-09-01T00:00:00.000Z' })).toEqual({
+      page: 1,
+      limit: 20,
+    });
+  });
+
+  it('khoảng NGƯỢC (from > to) giữ from và bỏ to — không bao giờ gửi 400 lên API', () => {
+    // Bỏ CẢ HAI thì bảng lặng lẽ hiện mọi booking trong khi URL vẫn mang hai
+    // ngày; bỏ `to` để ô ngày kết thúc trống — người gõ thấy ngay cái bị loại.
+    expect(parseBookingsSearchParams({ from: '2026-09-30', to: '2026-09-01' })).toEqual({
+      page: 1,
+      limit: 20,
+      from: '2026-09-30',
+    });
+  });
+
+  it('from === to là hợp lệ (trọn một ngày)', () => {
+    expect(parseBookingsSearchParams({ from: '2026-09-15', to: '2026-09-15' })).toMatchObject({
+      from: '2026-09-15',
+      to: '2026-09-15',
+    });
+  });
+
   it('gộp cả bốn param cùng lúc', () => {
     expect(
       parseBookingsSearchParams({ page: '4', status: 'REFUNDED', q: 'ann', limit: '10' }),
@@ -132,6 +173,67 @@ describe('bookingsHref', () => {
   it('limit đang khác mặc định thì đi theo mọi link khác (đổi trang, đổi filter)', () => {
     expect(bookingsHref({ page: 1, limit: 10, status: 'PAID' }, { page: 2 })).toBe(
       '/bookings?status=PAID&limit=10&page=2',
+    );
+  });
+
+  // ── F6 ────────────────────────────────────────────────────────────────
+  it('đặt khoảng ngày ĐẶT LẠI trang về 1 và đi cùng các filter khác', () => {
+    expect(bookingsHref({ ...base, page: 4, status: 'PAID' }, { from: '2026-09-01' })).toBe(
+      '/bookings?status=PAID&from=2026-09-01',
+    );
+    expect(bookingsHref({ ...base, from: '2026-09-01' }, { to: '2026-09-30' })).toBe(
+      '/bookings?from=2026-09-01&to=2026-09-30',
+    );
+  });
+
+  it('null xoá một đầu của khoảng, đầu kia ở lại', () => {
+    const current = { ...base, from: '2026-09-01', to: '2026-09-30' };
+    expect(bookingsHref(current, { from: null })).toBe('/bookings?to=2026-09-30');
+    expect(bookingsHref(current, { to: null })).toBe('/bookings?from=2026-09-01');
+  });
+
+  it('chuỗi rỗng (ô date bị xoá trắng) cũng là xoá', () => {
+    expect(bookingsHref({ ...base, from: '2026-09-01' }, { from: '' })).toBe('/bookings');
+  });
+
+  it('ngày rác từ patch bị bỏ thay vì ném lên URL', () => {
+    expect(bookingsHref(base, { from: '2026-02-31' })).toBe('/bookings');
+  });
+
+  it('đổi trang giữ nguyên khoảng ngày', () => {
+    expect(bookingsHref({ ...base, from: '2026-09-01', to: '2026-09-30' }, { page: 2 })).toBe(
+      '/bookings?from=2026-09-01&to=2026-09-30&page=2',
+    );
+  });
+});
+
+/**
+ * Link "Export CSV" trỏ tới route handler xuất ĐÚNG tập đang lọc — nên nó
+ * mang mọi filter và CỐ Ý bỏ phân trang: file là cả tập, không phải trang
+ * đang xem.
+ */
+describe('bookingsExportHref', () => {
+  const base = { page: 1, limit: 20 } as const;
+
+  it('không filter → đường trần', () => {
+    expect(bookingsExportHref(base)).toBe('/bookings/export');
+  });
+
+  it('mang theo status/q/from/to', () => {
+    expect(
+      bookingsExportHref({
+        ...base,
+        status: 'PAID',
+        search: 'ann',
+        from: '2026-09-01',
+        to: '2026-09-30',
+      }),
+    ).toBe('/bookings/export?status=PAID&q=ann&from=2026-09-01&to=2026-09-30');
+  });
+
+  it('KHÔNG mang page/limit — xuất cả tập, không phải trang đang xem', () => {
+    expect(bookingsExportHref({ page: 7, limit: 50, status: 'PAID' })).toBe(
+      '/bookings/export?status=PAID',
     );
   });
 });
