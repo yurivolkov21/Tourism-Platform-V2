@@ -25,3 +25,37 @@
   animation: none;
   mix-blend-mode: normal;
 }
+
+/* ── Thanh cuộn custom (review #24 của web, convert từ forged; nâng lên gói UI
+ * dùng chung 01/09 khi admin cần đúng thanh cuộn ấy — user chốt).
+ *
+ * Mảnh 4px, track tiệp màu nền nên "tàng hình", chỉ còn thumb màu primary nổi
+ * như một vệt sáng. Chỉ dùng token nên tự đổi theo theme sáng/tối, và vì cả
+ * hai app đều `@import "@tourism/ui/globals.css"` nên định nghĩa này có ĐÚNG
+ * MỘT bản — chép sang từng app là hai bản sẽ trôi lệch nhau.
+ *
+ * Không scope vào `html`: quy tắc áp cho MỌI vùng cuộn, kể cả khung bảng
+ * `overflow-auto` của admin và sidebar — đó mới là "giống web" theo nghĩa
+ * người dùng nhìn thấy. ── */
+::-webkit-scrollbar {
+  width: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 2px;
+}
+
+/* Firefox không hiểu ::-webkit-scrollbar — cho bản thin + màu tương đương.
+ * Scope bằng @supports kiểu -moz để KHÔNG đụng Chromium: nếu đặt
+ * scrollbar-color toàn cục, Chromium sẽ bỏ qua các rule webkit 4px ở trên. */
+@supports (-moz-appearance: none) {
+  html {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary) var(--background);
+  }
+}
