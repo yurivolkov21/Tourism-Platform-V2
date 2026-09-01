@@ -39,6 +39,12 @@ describe('StatCard', () => {
     expect(screen.getByText('Up 33.3% on the previous period')).toBeInTheDocument();
   });
 
+  it('con số nhìn thấy được ẩn khỏi trình đọc màn hình — nếu không nó đọc % hai lần', () => {
+    render(<StatCard {...UP} />);
+
+    expect(screen.getByText('33.3%')).toHaveAttribute('aria-hidden', 'true');
+  });
+
   it('chiều và hướng tốt/xấu phơi ra thành data-attribute — tô màu là hệ quả, không phải nguồn', () => {
     const { rerender } = render(<StatCard {...UP} />);
     expect(screen.getByTestId('stat-delta')).toHaveAttribute('data-trend', 'up');

@@ -60,12 +60,11 @@ import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-m
  *
  * **reviews**
  * - `pending` — ẢNH CHỤP như trên: `current` = số review `is_approved =
- *   false` bây giờ; `previous` = "đã gửi trước mốc đầu kỳ VÀ chưa moderate
- *   tính đến mốc đó". ⚠️ Khác cancellations, moderation ĐẢO NGƯỢC ĐƯỢC và
- *   `moderated_at` chỉ giữ lần quyết định GẦN NHẤT — nên con số `previous`
- *   chính xác cho review được moderate nhiều nhất một lần (gần như toàn bộ)
- *   và có thể lệch với review bị duyệt rồi gỡ. Bảng `review_moderation_events`
- *   có đủ lịch sử để dựng lại chính xác nếu ngày nào đó cần.
+ *   false` bây giờ (đúng bằng số hàng `/reviews?status=pending` hiện ra);
+ *   `previous` = trạng thái duyệt suy ngược về mốc đầu kỳ. ⚠️ Khác
+ *   cancellations, `moderated_at` KHÔNG phải dấu "đã có quyết định" — review
+ *   ra đời đã duyệt sẵn thì nó vẫn null — nên phép dựng lại phải đọc cả
+ *   `is_approved`; chi tiết + ca xấp xỉ còn lại ở `pendingReviewsAt`.
  * - `approved` — đếm theo `moderated_at` trong kỳ, `is_approved = true`.
  * - `averageRating` — `AVG(rating)` trên review GỬI trong kỳ (`created_at`),
  *   KHÔNG lọc theo trạng thái duyệt và KHÔNG lọc theo nguồn. Cố ý: lọc
@@ -195,12 +194,34 @@ export class StatsService {
     });
   }
 
-  /** Hàng đợi moderation tại mốc `at` — cùng phép dựng lại, cảnh báo ở JSDoc lớp. */
+  /**
+   * Hàng đợi moderation tại mốc `at`. KHÔNG dựng lại được bằng riêng dấu thời
+   * gian như cancellations: ở đó `decided_at` được ghi ĐÚNG KHI có quyết
+   * định, còn `moderated_at` null chỉ nghĩa là "chưa ai bấm nút" — mà một
+   * review có thể ra đời ĐÃ DUYỆT SẴN (seed dựng 84 testimonial CURATED với
+   * `is_approved = true`, `moderated_at` null). Bản đầu của F5 chỉ nhìn
+   * `moderated_at` nên đếm cả 84 cái đó là hàng đợi của 28 ngày trước, và
+   * card `/reviews` vẽ một cú "dọn sạch hàng đợi" hoàn toàn bịa.
+   *
+   * Nên trạng thái tại mốc suy từ `is_approved` CỘNG với lúc quyết định gần
+   * nhất rơi vào đâu:
+   * - quyết định gần nhất TRƯỚC mốc (hoặc chưa từng có) ⇒ trạng thái tại mốc
+   *   chính là trạng thái bây giờ → đang chờ khi và chỉ khi giờ vẫn chưa duyệt;
+   * - quyết định gần nhất SAU mốc ⇒ tại mốc nó chưa mang kết quả đó; đang
+   *   duyệt bây giờ ⇒ lúc ấy còn chờ.
+   *
+   * Vẫn là XẤP XỈ ở đúng một ca: review bị moderate NHIỀU LẦN sau mốc (duyệt
+   * rồi gỡ) — `moderated_at` chỉ giữ lần cuối. `review_moderation_events` có
+   * đủ lịch sử nếu ngày nào cần chính xác tuyệt đối.
+   */
   private pendingReviewsAt(at: Date): Promise<number> {
     return prisma.review.count({
       where: {
         createdAt: { lt: at },
-        OR: [{ moderatedAt: null }, { moderatedAt: { gte: at } }],
+        OR: [
+          { isApproved: false, OR: [{ moderatedAt: null }, { moderatedAt: { lt: at } }] },
+          { isApproved: true, moderatedAt: { gte: at } },
+        ],
       },
     });
   }

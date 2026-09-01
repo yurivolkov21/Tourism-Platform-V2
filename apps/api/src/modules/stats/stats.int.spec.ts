@@ -522,6 +522,49 @@ describe('admin stats integration (F5)', () => {
     });
   });
 
+  /**
+   * Dựng lại hàng đợi moderation ở mốc đầu kỳ KHÔNG được chỉ nhìn dấu thời
+   * gian: `moderated_at` null nghĩa là "chưa ai bấm nút", KHÔNG phải "đang
+   * chờ" — seed sản xuất tạo 84 testimonial CURATED với `is_approved = true`
+   * và `moderated_at` null, và bản đầu của F5 đếm cả 84 cái đó là hàng đợi
+   * của 28 ngày trước (đo được: current 0 / previous 84).
+   */
+  describe('stats.reviews — dựng lại hàng đợi ở mốc đầu kỳ', () => {
+    it('review DUYỆT NGAY LÚC TẠO (moderated_at null) KHÔNG phải hàng đợi cũ', async () => {
+      await prisma.review.createMany({
+        data: [
+          review(11, {
+            rating: 5,
+            isApproved: true,
+            createdAt: daysAgo(60),
+            moderatedAt: null,
+            curated: true,
+          }),
+        ],
+      });
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      expect(stats.pending).toEqual({ current: 0, previous: 0 });
+    });
+
+    it('review CHƯA DUYỆT, quyết định gần nhất TRƯỚC mốc: vẫn là hàng đợi lúc ấy', async () => {
+      // Gỡ duyệt (hoặc từ chối) 35 ngày trước rồi để đó — hôm nay vẫn nằm
+      // trong hàng đợi, và 28 ngày trước cũng vậy.
+      await prisma.review.createMany({
+        data: [
+          review(12, {
+            rating: 2,
+            isApproved: false,
+            createdAt: daysAgo(60),
+            moderatedAt: daysAgo(35),
+            curated: true,
+          }),
+        ],
+      });
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      expect(stats.pending).toEqual({ current: 1, previous: 1 });
+    });
+  });
+
   describe('stats.reviews — kỳ rỗng', () => {
     it('không có review nào: đếm 0 và điểm trung bình null (không phải 0 sao)', async () => {
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());

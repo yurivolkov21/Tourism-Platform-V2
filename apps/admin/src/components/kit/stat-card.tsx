@@ -90,9 +90,10 @@ export function StatCard({ label, value, caption, delta, deltaGood }: StatCardPr
               {/* Đứng yên thì không có mũi tên nào đúng — chỉ còn con số. */}
               {delta.direction === 'up' ? <TrendingUpIcon aria-hidden="true" /> : null}
               {delta.direction === 'down' ? <TrendingDownIcon aria-hidden="true" /> : null}
-              {delta.percent}
-              {/* Mũi tên + "33.3%" đọc lên thành "33.3 phần trăm" — không nói
-                  được là tăng hay giảm so với cái gì. */}
+              {/* Con số + câu sr-only nói CÙNG một chuyện; để cả hai lộ ra
+                  thì trình đọc màn hình đọc phần trăm hai lần. Mắt lấy con
+                  số, tai lấy câu. */}
+              <span aria-hidden="true">{delta.percent}</span>
               <span className="sr-only">{delta.srLabel}</span>
             </Badge>
           </CardAction>
