@@ -1,0 +1,157 @@
+import type { AdminMonthlyReport, BookingStatusValue } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { formatAmount, formatCalendarDate, statusLabel } from './bookings-view';
+import type { StatCardVM } from './stats-view';
+
+/**
+ * Mapper hiển thị báo cáo tháng (spec P4b §3-F6) — THUẦN, ngoài React, nên
+ * từng con chữ trên bản in và từng ô trong file CSV đều test được.
+ *
+ * Ranh giới giống hệt F5: server đã cộng xong, client chỉ ĐỊNH DẠNG. Không có
+ * phép cộng nào ở tầng này — kể cả tổng cột trạng thái, thứ đã có sẵn ở
+ * `newBookings` của server (contract bảo đảm hai con số bằng nhau, nên bảng in
+ * cả hai và chúng kiểm chéo lẫn nhau ngay trên giấy).
+ *
+ * Hai đích, hai hàm: MÀN HÌNH/GIẤY nhận chữ đã định dạng ('$1,240.50'), FILE
+ * nhận dữ liệu thô ('1240.50'). Cùng lý do đã ghi ở `bookings-csv.ts` — Excel
+ * đọc '$1,240.50' thành text và mọi phép SUM chết.
+ */
+
+const t = messages.admin.reports;
+
+/** Một hàng của bảng phân rã trạng thái. */
+export interface ReportStatusRowVM {
+  status: BookingStatusValue;
+  label: string;
+  count: string;
+}
+
+/** Một hàng của bảng metric/value. */
+export interface ReportSummaryRowVM {
+  key: string;
+  label: string;
+  value: string;
+}
+
+/** Đếm có dấu phân cách hàng nghìn — cùng nếp `stats-view.ts`. */
+const COUNT_FORMATTER = new Intl.NumberFormat('en-US');
+const formatCount = (value: number): string => COUNT_FORMATTER.format(value);
+
+/**
+ * "1 Sep 2026 – 30 Sep 2026" — ngày cuối TÍNH VÀO.
+ *
+ * `to` của server là mốc chặn NỬA-MỞ (00:00 ngày 1 tháng sau, không tính
+ * vào), nên in thẳng nó lên tiêu đề là nói với admin rằng báo cáo phủ luôn
+ * ngày đầu tháng sau — sai đúng một ngày, và là kiểu sai không ai soi ra khi
+ * nhìn một tờ giấy. Lùi 1ms rồi lấy phần ngày.
+ */
+export function reportPeriodLabel(report: AdminMonthlyReport): string {
+  const lastDay = new Date(new Date(report.to).getTime() - 1).toISOString().slice(0, 10);
+  return t.period(formatCalendarDate(report.from.slice(0, 10)), formatCalendarDate(lastDay));
+}
+
+/**
+ * Bốn card đầu trang. Dùng LẠI `StatCardVM` của kit F5 nhưng KHÔNG có `delta`:
+ * hai tháng lịch dài khác nhau (28/29/30/31 ngày), nên một pill "±x%" ở đây sẽ
+ * là phép so hai kỳ lệch độ dài — đúng thứ bất biến của stat card cấm. Caption
+ * mang chính kỳ báo cáo, để mỗi card tự nói nó đo cái gì.
+ */
+export function toReportStatCards(report: AdminMonthlyReport): StatCardVM[] {
+  const caption = reportPeriodLabel(report);
+  const money = (amount: string) => formatAmount(amount, report.currency);
+
+  return [
+    { key: 'revenue', label: t.cards.revenue, value: money(report.revenue), caption },
+    {
+      key: 'paidBookings',
+      label: t.cards.paidBookings,
+      value: formatCount(report.paidBookings),
+      caption,
+    },
+    {
+      key: 'newBookings',
+      label: t.cards.newBookings,
+      value: formatCount(report.newBookings),
+      caption,
+    },
+    { key: 'refunded', label: t.cards.refunded, value: money(report.refundedTotal), caption },
+  ];
+}
+
+/** Bảng phân rã lứa booking tạo trong tháng — đủ mọi trạng thái, kể cả 0. */
+export function toReportStatusRows(report: AdminMonthlyReport): ReportStatusRowVM[] {
+  return report.bookingsByStatus.map(({ status, count }) => ({
+    status,
+    label: statusLabel(status),
+    count: formatCount(count),
+  }));
+}
+
+/** Bảng metric/value: tiền + vận hành, đã định dạng cho mắt người. */
+export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
+  const o = t.operationsTable;
+  const money = (amount: string) => formatAmount(amount, report.currency);
+
+  return [
+    { key: 'revenue', label: o.revenue, value: money(report.revenue) },
+    { key: 'paidBookings', label: o.paidBookings, value: formatCount(report.paidBookings) },
+    { key: 'newBookings', label: o.newBookings, value: formatCount(report.newBookings) },
+    { key: 'refundedTotal', label: o.refundedTotal, value: money(report.refundedTotal) },
+    { key: 'refunds', label: o.refunds, value: formatCount(report.refunds) },
+    {
+      key: 'cancellationsApproved',
+      label: o.cancellationsApproved,
+      value: formatCount(report.cancellationsApproved),
+    },
+    {
+      key: 'cancellationsDenied',
+      label: o.cancellationsDenied,
+      value: formatCount(report.cancellationsDenied),
+    },
+    {
+      key: 'reviewsApproved',
+      label: o.reviewsApproved,
+      value: formatCount(report.reviewsApproved),
+    },
+  ];
+}
+
+/**
+ * File CSV của báo cáo: hai cột `Metric,Value`.
+ *
+ * Hình dạng dọc (mỗi metric một hàng) chứ không phải một hàng rộng: người mở
+ * file này đọc từng con số hoặc dán vài tháng cạnh nhau, và một header 15 cột
+ * thì phải cuộn ngang mới biết mình đang nhìn ô nào.
+ *
+ * Bốn hàng đầu là SIÊU DỮ LIỆU kỳ. File rời khỏi màn hình rồi vẫn phải tự nói
+ * được nó là tháng nào và chốt lúc nào — không có siêu dữ liệu thì hai file
+ * tải ở hai tháng khác nhau trông y hệt nhau.
+ *
+ * Giá trị là DỮ LIỆU THÔ: tiền '1240.50' (không ký hiệu, không phân cách
+ * nghìn), mốc thời gian ISO UTC, trạng thái là member enum.
+ */
+export function reportCsvRows(report: AdminMonthlyReport): string[][] {
+  const c = t.csv;
+  const o = t.operationsTable;
+
+  return [
+    [c.metric, c.value],
+    [c.month, report.month],
+    [c.periodFrom, report.from],
+    [c.periodTo, report.to],
+    [c.generatedAt, report.generatedAt],
+    [c.currency, report.currency],
+    [o.revenue, report.revenue],
+    [o.paidBookings, String(report.paidBookings)],
+    [o.newBookings, String(report.newBookings)],
+    ...report.bookingsByStatus.map(({ status, count }): string[] => [
+      c.statusRow(status),
+      String(count),
+    ]),
+    [o.refundedTotal, report.refundedTotal],
+    [o.refunds, String(report.refunds)],
+    [o.cancellationsApproved, String(report.cancellationsApproved)],
+    [o.cancellationsDenied, String(report.cancellationsDenied)],
+    [o.reviewsApproved, String(report.reviewsApproved)],
+  ];
+}

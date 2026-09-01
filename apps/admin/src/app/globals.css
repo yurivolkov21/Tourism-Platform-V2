@@ -5,3 +5,80 @@
 /* Tailwind v4: quét class bên trong gói UI dùng chung (workspace symlink
  * không tự nằm trong content-detection mặc định) — cùng nếp apps/web. */
 @source "../../../../libs/shared/ui/src";
+
+/* ── Bản in (spec P4b §3-F6) ────────────────────────────────────────────────
+ * "Xuất PDF" của trang /reports chính là Print của trình duyệt — đường
+ * 0-dependency user chốt 31/08 (không thêm thư viện PDF nào trước freeze
+ * 15/10). Nên bản in phải tự đứng vững, không phải một ảnh chụp màn hình.
+ *
+ * NGOẠI LỆ CÓ CHỦ ĐÍCH với luật tokens-only (CLAUDE.md #6), giới hạn TRONG
+ * đúng khối này: bản in không có theme. Token màu đi theo theme đang bật trên
+ * màn hình, mà trình duyệt MẶC ĐỊNH KHÔNG in nền — nên ở theme tối, chữ sáng
+ * sẽ rơi lên giấy trắng và biến cả tờ báo cáo thành vô hình. Mực đen trên nền
+ * trắng là yêu cầu vật lý của giấy, không phải một lựa chọn thẩm mỹ mới; hai
+ * màu tuyệt đối dưới đây được khai một lần ở đầu khối và mọi quy tắc còn lại
+ * ăn theo, đúng tinh thần "một nguồn" của luật gốc.
+ */
+@media print {
+  :root {
+    --print-ink: black;
+    --print-paper: white;
+  }
+
+  @page {
+    margin: 14mm;
+  }
+
+  /* Khung điều hướng không đi theo tờ giấy: sidebar, topbar, và mọi thứ tự
+   * khai `print:hidden` (thanh chọn tháng + hai nút của /reports). */
+  [data-slot="sidebar"],
+  [data-slot="sidebar-inset"] > header {
+    display: none !important;
+  }
+
+  /* Inset của block dashboard-01 mang margin/bo góc/đổ bóng cho màn hình. */
+  [data-slot="sidebar-inset"] {
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  html,
+  body,
+  [data-slot="sidebar-inset"] {
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+  }
+
+  /* Card của hàng stat: gradient + bóng chỉ có nghĩa trên màn hình; trên giấy
+   * cái giữ được ranh giới là một đường viền thật. */
+  [data-slot="card"] {
+    background: var(--print-paper) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    border: 1px solid var(--print-ink) !important;
+  }
+
+  /* Nền xám của hàng tiêu đề bảng không in ra (trình duyệt bỏ nền) — đường kẻ
+   * mới là thứ giữ cột thẳng hàng trên giấy. */
+  table,
+  th,
+  td {
+    background: var(--print-paper) !important;
+    color: var(--print-ink) !important;
+    border-color: var(--print-ink) !important;
+  }
+
+  /* Chữ phụ (`text-muted-foreground`) là màu nhạt có chủ đích trên màn hình;
+   * in ra sẽ mờ tới mức không đọc được. Trên giấy nó vẫn là chữ. */
+  .text-muted-foreground {
+    color: var(--print-ink) !important;
+  }
+
+  /* Không cắt một card hay một bảng làm đôi qua hai trang giấy. */
+  [data-slot="card"],
+  table,
+  section {
+    break-inside: avoid;
+  }
+}

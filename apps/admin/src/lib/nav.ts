@@ -4,6 +4,7 @@ import {
   CalendarX2,
   Compass,
   CreditCard,
+  FileBarChart,
   FileText,
   Image,
   LayoutDashboard,
@@ -74,6 +75,10 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: Star,
       },
+      // Báo cáo tháng (P4b F6) — nhóm Operations, cạnh ba vùng nó tổng hợp.
+      // Href mang sẵn `?month=` KHÔNG được: "tháng hiện tại" phải do trang tự
+      // tính lúc mở, còn một href cứng sẽ hoá cũ ngay đầu tháng sau.
+      { key: 'reports', label: t.reports, href: '/reports', enabled: true, icon: FileBarChart },
       {
         key: 'enquiries',
         label: t.enquiries,
