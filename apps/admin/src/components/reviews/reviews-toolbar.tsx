@@ -1,12 +1,9 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
-import { Input } from '@tourism/ui/components/input';
-import { Label } from '@tourism/ui/components/label';
-import { SearchIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { TableSearchForm } from '@/components/kit/table-search-form';
 import { parseReviewState, type ReviewsQuery, reviewsHref } from '@/lib/reviews-query';
 
 /**
@@ -54,41 +51,15 @@ export function ReviewsStateTabs({ query }: { query: ReviewsQuery }) {
 export function ReviewsSearch({ query }: { query: ReviewsQuery }) {
   const router = useRouter();
 
-  function onSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const form = new FormData(event.currentTarget);
-    router.push(reviewsHref(query, { search: String(form.get('q') ?? '') }));
-  }
-
   return (
-    <form onSubmit={onSubmit} className="flex items-center gap-2">
-      <Label htmlFor="reviews-search" className="sr-only">
-        {t.searchLabel}
-      </Label>
-      <div className="relative">
-        <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          id="reviews-search"
-          name="q"
-          type="search"
-          // Không kiểm soát bằng state: `key` ép React dựng lại ô sau mỗi lần
-          // điều hướng, nên ô luôn khớp URL mà không cần effect đồng bộ.
-          key={query.search ?? ''}
-          defaultValue={query.search ?? ''}
-          placeholder={t.searchPlaceholder}
-          className="w-40 pl-8 lg:w-56"
-        />
-      </div>
-      {query.search ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push(reviewsHref(query, { search: null }))}
-        >
-          {t.clear}
-        </Button>
-      ) : null}
-    </form>
+    <TableSearchForm
+      inputId="reviews-search"
+      label={t.searchLabel}
+      placeholder={t.searchPlaceholder}
+      clearLabel={t.clear}
+      value={query.search}
+      onSearch={(term) => router.push(reviewsHref(query, { search: term }))}
+      onClear={() => router.push(reviewsHref(query, { search: null }))}
+    />
   );
 }
