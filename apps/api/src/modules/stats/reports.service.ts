@@ -1,0 +1,83 @@
+import { Injectable } from '@nestjs/common';
+import { type AdminMonthlyReport, BookingStatusSchema } from '@tourism/contract';
+import type { BookingStatus } from '../../generated/prisma/enums.js';
+import {
+  bookingsCreatedByStatus,
+  bookingsSlice,
+  decisionsSlice,
+  refundsSlice,
+  revenueCurrency,
+  reviewApprovals,
+} from './stats-aggregates.js';
+import { grossAmount, monthWindow } from './stats-math.js';
+
+/**
+ * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn của trang `/reports`, nút
+ * CSV của nó và bản in PDF.
+ *
+ * ## Quan hệ với `StatsService`
+ *
+ * Hai bề mặt, MỘT bộ định nghĩa. Các câu aggregate là chung
+ * (`stats-aggregates.ts`) nên "doanh thu" ở đây và trên stat card `/bookings`
+ * là đúng một phép tính: `SUM(total_amount)` của booking có `paid_at` trong
+ * kỳ, GROSS. Cái khác nhau chỉ là hình dạng câu trả lời — stat card so hai kỳ
+ * dài bằng nhau, báo cáo cộng tổng một kỳ đóng (lý do đầy đủ ở JSDoc
+ * `schemas/reports.ts`).
+ *
+ * Định nghĩa từng metric kể ở JSDoc `StatsService`; ba con số chỉ báo cáo mới
+ * có được ghi ngay dưới đây.
+ *
+ * ## Ba con số riêng của báo cáo
+ *
+ * - `bookingsByStatus` — lứa booking TẠO trong tháng, phân rã theo trạng thái
+ *   HIỆN TẠI của chúng. Là ẢNH CHỤP: một booking tạo tháng 5 rồi bị huỷ tháng
+ *   7 sẽ đếm vào ô CANCELLED của báo cáo tháng 5 kể từ tháng 7 trở đi. Cố ý —
+ *   câu hỏi mà bảng này trả lời là "lứa khách tháng 5 rốt cuộc ra sao", không
+ *   phải "tháng 5 nhìn thấy gì". Tổng luôn bằng `newBookings`.
+ * - `refundedTotal` / `refunds` — sổ cái tiền ĐI RA theo `refunds.created_at`.
+ *   KHÔNG trừ vào `revenue` và không cần cùng tháng với booking gốc.
+ * - `generatedAt` — lúc chốt sổ. Là thứ DUY NHẤT trong response đổi giữa hai
+ *   lần đọc cùng một tháng; mọi con số còn lại phải đứng yên.
+ *
+ * ## Cửa sổ
+ *
+ * `[00:00 ngày 1, 00:00 ngày 1 tháng sau)` UTC, nửa-mở (`monthWindow`) — hai
+ * tháng liền kề khít nhau, không row nào bị đếm hai lần. KHÔNG neo vào "bây
+ * giờ": tháng 7 là tháng 7 dù đọc lúc nào.
+ */
+@Injectable()
+export class ReportsService {
+  async monthly(month: string): Promise<AdminMonthlyReport> {
+    const { from, to } = monthWindow(month);
+    const [bookings, byStatus, currency, refunds, decisions, reviewsApproved] = await Promise.all([
+      bookingsSlice(from, to),
+      bookingsCreatedByStatus(from, to),
+      revenueCurrency(from, to),
+      refundsSlice(from, to),
+      decisionsSlice(from, to),
+      reviewApprovals(from, to),
+    ]);
+
+    return {
+      month,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      generatedAt: new Date().toISOString(),
+      currency,
+      revenue: grossAmount(bookings.revenue),
+      paidBookings: bookings.paid,
+      newBookings: bookings.created,
+      // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và
+      // thứ tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
+      bookingsByStatus: BookingStatusSchema.options.map((status) => ({
+        status,
+        count: byStatus.get(status as BookingStatus) ?? 0,
+      })),
+      refundedTotal: grossAmount(refunds.total),
+      refunds: refunds.count,
+      cancellationsApproved: decisions.approved,
+      cancellationsDenied: decisions.denied,
+      reviewsApproved,
+    };
+  }
+}

@@ -1,5 +1,7 @@
 import { Module } from '@nestjs/common';
+import { AdminReportsController } from './admin-reports.controller.js';
 import { AdminStatsController } from './admin-stats.controller.js';
+import { ReportsService } from './reports.service.js';
 import { StatsService } from './stats.service.js';
 
 /**
@@ -9,10 +11,14 @@ import { StatsService } from './stats.service.js';
  * theo cycle `forwardRef` của money-path.
  *
  * `exports` để P4d nối dashboard vào cùng service này thay vì khai bộ thứ hai.
+ *
+ * F6 thêm `ReportsService` + controller báo cáo tháng vào ĐÂY chứ không mở
+ * module mới: hai bề mặt dùng chung một bộ câu aggregate (`stats-aggregates.ts`)
+ * và cùng một khái niệm "đọc thuần, không bất biến ghi nào để canh".
  */
 @Module({
-  controllers: [AdminStatsController],
-  providers: [StatsService],
-  exports: [StatsService],
+  controllers: [AdminStatsController, AdminReportsController],
+  providers: [StatsService, ReportsService],
+  exports: [StatsService, ReportsService],
 })
 export class StatsModule {}

@@ -20,6 +20,7 @@ import {
   resolveGateway,
 } from '../payments/gateway.js';
 import { mintBookingCode } from './booking-code.js';
+import { createdAtRange } from './bookings-date-range.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 
 /** Departure không tồn tại / không OPEN / đã departed / tour unpublished — cố
@@ -516,12 +517,19 @@ export class BookingsService {
    * TẤT CẢ booking, mới nhất trước, status filter optional + `search`
    * free-text khớp case-insensitive theo code / contact email / contact name.
    * Được guard bằng @Roles('ADMIN') ở controller.
+   *
+   * F6 thêm khoảng ngày `from`/`to` theo `createdAt` — biên NỬA-MỞ, cả hai
+   * đầu tính vào khoảng ngày lịch; phép đổi ngày → mốc và lý do dùng `lt`
+   * thay vì `lte 23:59:59` nằm ở `bookings-date-range.ts`. Ba bộ lọc CỘNG
+   * dồn (AND), không cái nào thay thế cái nào.
    */
   async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {
-    const { page, limit, status, search } = query;
+    const { page, limit, status, search, from, to } = query;
     const term = search?.trim();
+    const createdAt = createdAtRange(from, to);
     const where: Prisma.BookingWhereInput = {
       ...(status ? { status } : {}),
+      ...(createdAt ? { createdAt } : {}),
       ...(term
         ? {
             OR: [

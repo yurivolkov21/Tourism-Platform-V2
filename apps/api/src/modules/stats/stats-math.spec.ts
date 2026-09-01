@@ -1,5 +1,12 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
+import {
+  average,
+  grossAmount,
+  monthWindow,
+  ratePercent,
+  statsPeriod,
+  statsWindow,
+} from './stats-math.js';
 
 /**
  * TDD suite (spec P4b §3-F5, viết TRƯỚC) cho phần THUẦN của stats: cửa sổ hai
@@ -78,5 +85,35 @@ describe('average', () => {
 
   it('a window with no rows has no average — null, not 0', () => {
     expect(average(null)).toBeNull();
+  });
+});
+
+/**
+ * F6 — cửa sổ THÁNG của báo cáo (spec P4b §3-F6). Khác `statsWindow` ở chỗ nó
+ * không neo vào "bây giờ": tháng 7 là tháng 7 dù đọc lúc nào, nên cùng một
+ * `?month=` phải cho cùng một khoảng mãi mãi.
+ */
+describe('monthWindow', () => {
+  it('cắt trọn một tháng lịch UTC, biên nửa-mở [đầu tháng, đầu tháng sau)', () => {
+    const w = monthWindow('2026-09');
+    expect(w.from.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+    expect(w.to.toISOString()).toBe('2026-10-01T00:00:00.000Z');
+  });
+
+  it('tháng 12 nhảy sang năm sau', () => {
+    const w = monthWindow('2026-12');
+    expect(w.from.toISOString()).toBe('2026-12-01T00:00:00.000Z');
+    expect(w.to.toISOString()).toBe('2027-01-01T00:00:00.000Z');
+  });
+
+  it('tháng 2 dài đúng bằng chính nó — 28 ngày, và 29 ngày ở năm nhuận', () => {
+    expect(monthWindow('2026-02').to.toISOString()).toBe('2026-03-01T00:00:00.000Z');
+    expect(monthWindow('2024-02').to.toISOString()).toBe('2024-03-01T00:00:00.000Z');
+    const leap = monthWindow('2024-02');
+    expect((leap.to.getTime() - leap.from.getTime()) / DAY).toBe(29);
+  });
+
+  it('hai tháng liền kề khít nhau — không row nào bị đếm hai lần', () => {
+    expect(monthWindow('2026-09').to).toEqual(monthWindow('2026-10').from);
   });
 });

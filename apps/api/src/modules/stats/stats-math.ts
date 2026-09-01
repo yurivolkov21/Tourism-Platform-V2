@@ -89,3 +89,31 @@ export function ratePercent(part: number, whole: number): string | null {
 export function average(value: number | null): string | null {
   return value === null ? null : value.toFixed(2);
 }
+
+/**
+ * Cửa sổ của MỘT tháng lịch (spec P4b §3-F6) — `[00:00 ngày 1, 00:00 ngày 1
+ * tháng sau)`, mốc UTC, biên nửa-mở như mọi khoảng khác của module này.
+ *
+ * KHÔNG neo vào "bây giờ" (khác `statsWindow`): tháng 7 là tháng 7 dù đọc lúc
+ * nào, nên cùng một `?month=` phải cho cùng một khoảng mãi mãi — đó là điều
+ * kiện để hai bản in cùng tháng ở hai ngày khác nhau đọc ra cùng con số.
+ *
+ * Độ dài tháng do chính lịch quyết (28/29/30/31): `Date.UTC` với tháng +1 tự
+ * cuộn sang năm sau, nên tháng 12 không cần ca riêng.
+ */
+export interface MonthWindow {
+  /** 00:00 ngày đầu tháng — TÍNH VÀO. */
+  from: Date;
+  /** 00:00 ngày đầu tháng sau — KHÔNG tính vào. */
+  to: Date;
+}
+
+/** `YYYY-MM` (đã qua `ReportMonthSchema`) → cửa sổ tháng. */
+export function monthWindow(month: string): MonthWindow {
+  const [year, monthNumber] = month.split('-').map(Number) as [number, number];
+  return {
+    from: new Date(Date.UTC(year, monthNumber - 1, 1)),
+    // Tháng 13 tự cuộn thành tháng 1 năm sau — đúng theo spec Date.UTC.
+    to: new Date(Date.UTC(year, monthNumber, 1)),
+  };
+}

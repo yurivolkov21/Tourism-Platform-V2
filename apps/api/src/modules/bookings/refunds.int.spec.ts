@@ -415,6 +415,111 @@ describe('refunds integration (admin refund ledger)', () => {
     ).toEqual([pending.code]);
   });
 
+  /**
+   * F6 — lọc theo khoảng NGÀY `createdAt` (spec P4b §3-F6). Booking được tạo
+   * qua API thật (createdAt = bây giờ) rồi ĐẨY NGƯỢC mốc bằng update: đó là
+   * cách duy nhất dựng được ba ngày khác nhau mà vẫn đi qua money-path thật.
+   */
+  describe('admin.bookings.list — khoảng ngày from/to', () => {
+    /** `YYYY-MM-DD` của một Date theo UTC — cùng thước với API. */
+    const isoDay = (date: Date): string => date.toISOString().slice(0, 10);
+
+    /** Một booking với `createdAt` bị đẩy ngược N ngày; trả về code. */
+    async function bookingCreatedDaysAgo(daysAgo: number): Promise<string> {
+      const booking = await createBooking(await signUpUser(`day${daysAgo}@example.com`));
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { createdAt: new Date(Date.now() - daysAgo * 86_400_000) },
+      });
+      return booking.code;
+    }
+
+    /** Ba booking ở ba ngày cách nhau, mới nhất trước (orderBy createdAt desc). */
+    async function seedThreeDays() {
+      return {
+        old: await bookingCreatedDaysAgo(10),
+        mid: await bookingCreatedDaysAgo(5),
+        recent: await bookingCreatedDaysAgo(1),
+      };
+    }
+
+    const listCodes = async (admin: string, query: string) => {
+      const res = await app.inject({
+        method: 'GET',
+        url: `/api/admin/bookings${query}`,
+        headers: { cookie: admin },
+      });
+      expect(res.statusCode).toBe(200);
+      return PagedSchema(BookingSchema)
+        .parse(res.json())
+        .items.map((b) => b.code);
+    };
+
+    it('from cắt phần cũ, to cắt phần mới, cả hai cùng lúc giữ đúng khúc giữa', async () => {
+      const admin = await signUpAdmin();
+      const { old, mid, recent } = await seedThreeDays();
+      const day = (n: number) => isoDay(new Date(Date.now() - n * 86_400_000));
+
+      expect(await listCodes(admin, `?from=${day(7)}`)).toEqual([recent, mid]);
+      expect(await listCodes(admin, `?to=${day(3)}`)).toEqual([mid, old]);
+      expect(await listCodes(admin, `?from=${day(7)}&to=${day(3)}`)).toEqual([mid]);
+    });
+
+    it('cả hai đầu ĐỀU tính vào khoảng — from === to là trọn một ngày', async () => {
+      const admin = await signUpAdmin();
+      const { mid } = await seedThreeDays();
+      const midDay = isoDay(new Date(Date.now() - 5 * 86_400_000));
+      // Biên nửa-mở [00:00 ngày mid, 00:00 ngày sau): row nằm giữa ngày phải
+      // lọt vào, và một lỗi lệch-một-ngày ở đầu nào cũng làm mảng này rỗng.
+      expect(await listCodes(admin, `?from=${midDay}&to=${midDay}`)).toEqual([mid]);
+    });
+
+    it('lọc ngày ĐI CÙNG status/search chứ không thay thế nhau', async () => {
+      const admin = await signUpAdmin();
+      const { mid } = await seedThreeDays();
+      const from = isoDay(new Date(Date.now() - 7 * 86_400_000));
+      const to = isoDay(new Date(Date.now() - 3 * 86_400_000));
+
+      expect(await listCodes(admin, `?from=${from}&to=${to}&status=PENDING`)).toEqual([mid]);
+      expect(await listCodes(admin, `?from=${from}&to=${to}&status=PAID`)).toEqual([]);
+      expect(await listCodes(admin, `?from=${from}&to=${to}&search=${mid.toLowerCase()}`)).toEqual([
+        mid,
+      ]);
+    });
+
+    it('khoảng ngược (from > to) → 400, không phải một tập rỗng im lặng', async () => {
+      const admin = await signUpAdmin();
+      await seedThreeDays();
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/admin/bookings?from=2026-09-30&to=2026-09-01',
+        headers: { cookie: admin },
+      });
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('ngày rác → 400 (contract chặn), và phân trang vẫn coerce số như cũ', async () => {
+      const admin = await signUpAdmin();
+      await seedThreeDays();
+      const bad = await app.inject({
+        method: 'GET',
+        url: '/api/admin/bookings?from=30-09-2026',
+        headers: { cookie: admin },
+      });
+      expect(bad.statusCode).toBe(400);
+
+      // Khoá chống hồi quy của `.refine`: nếu nó bọc mất `.shape`, plugin
+      // coerce không còn thấy page/limit là số và câu này thành 400.
+      const paged = await app.inject({
+        method: 'GET',
+        url: '/api/admin/bookings?page=1&limit=2',
+        headers: { cookie: admin },
+      });
+      expect(paged.statusCode).toBe(200);
+      expect(PagedSchema(BookingSchema).parse(paged.json()).limit).toBe(2);
+    });
+  });
+
   it("admin.bookings.byCode: reads ANY user's booking; unknown code → 404", async () => {
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('someone@example.com'));
