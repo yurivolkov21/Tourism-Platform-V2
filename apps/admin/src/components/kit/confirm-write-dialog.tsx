@@ -13,8 +13,8 @@ import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
 import type * as React from 'react';
 import { useState } from 'react';
-import { toast } from 'sonner';
-import { isUncertainOutcome, type TransportFailureCode } from '@/lib/api/write-error';
+import type { TransportFailureCode } from '@/lib/api/write-error';
+import { useConfirmWrite } from '@/lib/use-confirm-write';
 
 /**
  * MÁY xác nhận cho MỌI hành vi ghi của admin (kit P4b — sổ nợ ghi ở CHANGELOG
@@ -107,46 +107,17 @@ export function ConfirmWriteDialog<Code extends string>({
   onSettled,
 }: ConfirmWriteDialogProps<Code>) {
   const [note, setNote] = useState('');
-  const [failure, setFailure] = useState<Code | TransportFailureCode | null>(null);
-  const [pending, setPending] = useState(false);
+  // Vòng đời lệnh ghi nằm ở hook dùng chung (vòng vá review F5 — RefundDialog
+  // hai-bước của F2 cũng chạy CÙNG máy này qua hook, hết bản chép thứ ba).
+  const { pending, failure, onOpenChange, run } = useConfirmWrite<Code>({
+    isStale,
+    errorCopy,
+    onClose,
+    onSettled,
+  });
 
-  function onOpenChange(next: boolean) {
-    // Đang bắn thì KHÔNG cho đóng (Esc/click ngoài).
-    if (pending) return;
-    if (!next) onClose();
-  }
-
-  async function submit() {
-    if (pending) return;
-    setPending(true);
-    setFailure(null);
-    let failureCode: Code | TransportFailureCode;
-    try {
-      const result = await onSubmit(note.trim());
-      if (result.ok) {
-        setPending(false);
-        onClose();
-        toast.success(result.toast.title, { description: result.toast.description });
-        onSettled();
-        return;
-      }
-      failureCode = result.code;
-    } catch {
-      // Lệnh ném (mạng đứt, action chết giữa chừng): không biết đã tới đâu —
-      // cùng lối xử với GENERIC bên dưới.
-      failureCode = 'GENERIC';
-    }
-    setPending(false);
-    // Trạng-thái-cũ VÀ kết cục không rõ đều đóng + toast + refresh: thế giới
-    // đã đổi dưới chân dialog, admin phải nhìn dữ liệu tươi trước khi làm gì
-    // tiếp. Mã còn lại ở lại dialog.
-    if (isStale(failureCode) || isUncertainOutcome(failureCode)) {
-      onClose();
-      toast.error(errorCopy(failureCode));
-      onSettled();
-      return;
-    }
-    setFailure(failureCode);
+  function submit() {
+    void run(() => onSubmit(note.trim()));
   }
 
   return (

@@ -39,6 +39,10 @@
  * người dùng nhìn thấy. ── */
 ::-webkit-scrollbar {
   width: 4px;
+  /* height cho thanh cuộn NGANG — thiếu nó thì mọi bảng admin overflow-x
+     (table-container của kit) hiện một vệt --primary dày ~15px mặc định
+     (vòng vá review F5); web không lộ vì scroller ngang đeo scrollbar-none. */
+  height: 4px;
 }
 
 ::-webkit-scrollbar-track {

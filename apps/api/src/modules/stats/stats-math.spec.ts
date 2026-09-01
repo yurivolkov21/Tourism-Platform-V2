@@ -1,5 +1,5 @@
 import { Prisma } from '../../generated/prisma/client.js';
-import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
+import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
 
 /**
  * TDD suite (spec P4b §3-F5, viết TRƯỚC) cho phần THUẦN của stats: cửa sổ hai
@@ -44,13 +44,13 @@ describe('statsPeriod', () => {
   });
 });
 
-describe('money', () => {
+describe('grossAmount', () => {
   it('keeps two decimals, never a float', () => {
-    expect(money(new Prisma.Decimal('1240.5'))).toBe('1240.50');
+    expect(grossAmount(new Prisma.Decimal('1240.5'))).toBe('1240.50');
   });
 
   it('an empty window sums to 0.00, not null — nothing earned IS an answer', () => {
-    expect(money(null)).toBe('0.00');
+    expect(grossAmount(null)).toBe('0.00');
   });
 });
 

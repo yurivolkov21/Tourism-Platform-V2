@@ -26,6 +26,14 @@ export interface AdminApiContext {
   cookie: string;
   /** Đè trần timeout mặc định 10s — dùng cho lệnh GHI tiền (xem chỗ tạo link). */
   signal?: AbortSignal;
+  /**
+   * Đè luật `no-store` mặc định bằng Data Cache có TTL + tag (vòng vá review
+   * F5 — stats bị refetch trên MỌI click phân trang/lọc và nằm thẳng trên
+   * đường useTransition khoá nút). CHỈ dùng cho dữ liệu GIỐNG NHAU với mọi
+   * admin (cache của Next chia sẻ giữa các request, key KHÔNG gồm cookie) —
+   * stats nền tảng thoả, dữ liệu theo phiên thì tuyệt đối không.
+   */
+  cacheFor?: { seconds: number; tags: string[] };
 }
 
 /** Bọc cookie thành context: `api.admin.bookings.list(input, { context: withAdminAuth(c) })`. */
@@ -48,6 +56,15 @@ export function withAdminOptions(
   if (!context) return { ...init, cache: 'no-store' };
   const headers = new Headers(request.headers);
   headers.set('cookie', context.cookie);
+  if (context.cacheFor) {
+    // Data Cache với TTL + tag thay cho no-store — xem cảnh báo ở JSDoc
+    // `cacheFor` (chỉ cho dữ liệu không theo phiên).
+    return {
+      ...init,
+      headers,
+      next: { revalidate: context.cacheFor.seconds, tags: context.cacheFor.tags },
+    } as RequestInit;
+  }
   return { ...init, headers, cache: 'no-store' };
 }
 

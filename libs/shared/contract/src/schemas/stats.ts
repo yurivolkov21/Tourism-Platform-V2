@@ -59,7 +59,7 @@ export type DecimalMetric = z.output<typeof DecimalMetricSchema>;
  * query đã sinh ra con số là chuyện làm được, không phải đoán.
  *
  * Mọi mốc là ISO UTC. Hai kỳ dài BẰNG NHAU và khít nhau:
- * `[previousFrom, currentFrom)` là kỳ trước, `[currentFrom, generatedAt]` là
+ * `[previousFrom, currentFrom)` là kỳ trước, `[currentFrom, generatedAt)` là
  * kỳ này.
  */
 export const StatsPeriodSchema = z.object({

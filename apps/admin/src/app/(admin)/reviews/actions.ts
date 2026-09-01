@@ -5,8 +5,10 @@ import {
   type ModerateReviewInput,
   ModerateReviewInputSchema,
 } from '@tourism/contract';
+import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { moderateReview } from '@/lib/api/reviews';
+import { ADMIN_STATS_TAG } from '@/lib/api/stats';
 import { classifyModerateError, type ModerateActionResult } from '@/lib/reviews-moderate';
 
 /**
@@ -45,5 +47,7 @@ export async function moderateReviewAction(
   }
   // Đọc kết cục từ RESPONSE của server (`review.isApproved`), không từ input
   // đã gửi: trạng thái cuối cùng là chuyện của server, client chỉ kể lại.
+  // Số liệu stat card đổi theo lệnh ghi này (vòng vá review F5).
+  updateTag(ADMIN_STATS_TAG);
   return { ok: true, approved: review.isApproved };
 }

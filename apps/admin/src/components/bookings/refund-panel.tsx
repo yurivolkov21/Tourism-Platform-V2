@@ -27,20 +27,18 @@ import {
 import { Textarea } from '@tourism/ui/components/textarea';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { toast } from 'sonner';
-import { isUncertainOutcome } from '@/lib/api/write-error';
 import { formatAmount, formatDateTime } from '@/lib/bookings-view';
 import {
   canRefund,
   normalizeAmountInput,
   type RefundAction,
-  type RefundActionResult,
-  type RefundFailureCode,
+  type RefundContractCode,
   type RefundMode,
   refundErrorCopy,
   remainingRefundable,
   validateRefundAmount,
 } from '@/lib/refund';
+import { useConfirmWrite } from '@/lib/use-confirm-write';
 
 /**
  * Ô "Refunds" của `/bookings/[code]` (spec P4b §3-F2) — hành vi GHI đầu tiên
@@ -85,16 +83,6 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
     startRefresh(() => router.refresh());
   }
 
-  function onDone(result: Extract<RefundActionResult, { ok: true }>) {
-    // Row cuối là row vừa append (`historyForBooking` sắp xếp createdAt asc) —
-    // số tiền THẬT server vừa ghi, kể cả nhánh full mà client không tự tính.
-    const issued = result.refunds.at(-1);
-    toast.success(t.toast.title, {
-      description: issued ? t.toast.body(formatAmount(issued.amount, issued.currency)) : undefined,
-    });
-    refreshBooking();
-  }
-
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between gap-3">
@@ -107,8 +95,7 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
             remaining={remaining}
             disabled={isRefreshing}
             refund={refund}
-            onDone={onDone}
-            onUncertain={refreshBooking}
+            onSettled={refreshBooking}
           />
         ) : null}
       </CardHeader>
@@ -181,8 +168,7 @@ function RefundDialog({
   remaining,
   disabled,
   refund,
-  onDone,
-  onUncertain,
+  onSettled,
 }: {
   code: string;
   contactName: string;
@@ -191,9 +177,8 @@ function RefundDialog({
   remaining: string;
   disabled: boolean;
   refund: RefundAction;
-  onDone: (result: Extract<RefundActionResult, { ok: true }>) => void;
-  /** Kết cục không rõ — trang cần refresh để admin nhìn sổ cái tươi. */
-  onUncertain: () => void;
+  /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
+  onSettled: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'form' | 'confirm'>('form');
@@ -204,8 +189,28 @@ function RefundDialog({
    *  input hiện tại, nên gõ sửa xong là câu lỗi tự biến (bản đầu giữ lỗi
    *  trong state, sửa đúng rồi mà câu cũ vẫn treo — review 31/08). */
   const [showValidation, setShowValidation] = useState(false);
-  const [failure, setFailure] = useState<RefundFailureCode | null>(null);
-  const [pending, setPending] = useState(false);
+
+  // Vòng đời lệnh ghi (pending/failure/ba lối ra) nằm ở hook DÙNG CHUNG với
+  // ConfirmWriteDialog — vòng vá review F5: đây từng là bản chép thứ ba bị
+  // bỏ quên ngoài kit, ngay trên đường tiền thật. isStale luôn false vì thiết
+  // kế F2: mọi mã contract của refund đều đọc/sửa được tại chỗ (kể cả
+  // REFUND_FAILED — retryable); chỉ kết cục KHÔNG RÕ mới đóng + refresh
+  // (chống refund đúp — idempotency key phía API đổi theo ledger).
+  const {
+    pending,
+    failure,
+    onOpenChange: guardedOpenChange,
+    run,
+    clearFailure,
+  } = useConfirmWrite<RefundContractCode>({
+    isStale: () => false,
+    errorCopy: refundErrorCopy,
+    onClose: () => {
+      setOpen(false);
+      reset();
+    },
+    onSettled,
+  });
 
   const normalized = normalizeAmountInput(amount);
   const fieldError = showValidation
@@ -218,15 +223,16 @@ function RefundDialog({
     setAmount('');
     setReason('');
     setShowValidation(false);
-    setFailure(null);
+    clearFailure();
   }
 
+  /** Mở là việc của trigger; đóng đi qua guard của hook (pending thì nuốt). */
   function onOpenChange(next: boolean) {
-    // Đang bắn thì KHÔNG cho đóng (Esc/click ngoài): reset giữa chừng là
-    // thông báo lỗi về sau ghi vào một dialog đã đóng — admin tưởng xong.
-    if (pending) return;
-    setOpen(next);
-    if (!next) reset();
+    if (next) {
+      setOpen(true);
+      return;
+    }
+    guardedOpenChange(false);
   }
 
   /** Bước 1 → 2: validate bản sao luật contract; hỏng thì ở lại, không bắn. */
@@ -234,16 +240,12 @@ function RefundDialog({
     setShowValidation(true);
     const error = validateRefundAmount({ mode, amount: normalized, remaining, currency });
     if (error) return;
-    setFailure(null);
+    clearFailure();
     setStep('confirm');
   }
 
-  async function submit() {
-    if (pending) return;
-    setPending(true);
-    setFailure(null);
-    let failureCode: RefundFailureCode;
-    try {
+  function submit() {
+    void run(async () => {
       const result = await refund({
         code,
         // Nhánh full cố ý KHÔNG gửi amount: server refund đúng phần còn lại
@@ -251,32 +253,20 @@ function RefundDialog({
         ...(mode === 'partial' ? { amount: normalized } : {}),
         ...(reason.trim() ? { reason: reason.trim() } : {}),
       });
-      if (result.ok) {
-        setPending(false);
-        setOpen(false);
-        reset();
-        onDone(result);
-        return;
-      }
-      failureCode = result.code;
-    } catch {
-      // Action ném (mạng đứt, action chết giữa chừng): không biết tiền đã đi
-      // hay chưa — cùng lối xử với GENERIC bên dưới.
-      failureCode = 'GENERIC';
-    }
-    setPending(false);
-    if (isUncertainOutcome(failureCode)) {
-      // Kết cục KHÔNG RÕ: đóng dialog, toast lỗi, refresh — admin phải thấy
-      // sổ cái tươi trước khi cân nhắc bấm lại (chống refund đúp, review
-      // 31/08). Mã contract (chắc chắn chưa mất tiền, trừ REFUND_FAILED đã
-      // nói rõ) thì ở lại dialog cho sửa tại chỗ.
-      setOpen(false);
-      reset();
-      toast.error(refundErrorCopy('GENERIC'));
-      onUncertain();
-      return;
-    }
-    setFailure(failureCode);
+      if (!result.ok) return { ok: false, code: result.code };
+      // Row cuối là row vừa append (`historyForBooking` sắp xếp createdAt
+      // asc) — số tiền THẬT server vừa ghi, kể cả nhánh full.
+      const issued = result.refunds.at(-1);
+      return {
+        ok: true,
+        toast: {
+          title: t.toast.title,
+          description: issued
+            ? t.toast.body(formatAmount(issued.amount, issued.currency))
+            : undefined,
+        },
+      };
+    });
   }
 
   return (
@@ -398,7 +388,7 @@ function RefundDialog({
                 variant="ghost"
                 disabled={pending}
                 onClick={() => {
-                  setFailure(null);
+                  clearFailure();
                   setStep('form');
                 }}
               >

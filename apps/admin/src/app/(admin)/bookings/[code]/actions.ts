@@ -5,8 +5,10 @@ import {
   AdminRefundInputSchema,
   type AdminRefundResult,
 } from '@tourism/contract';
+import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { refundAdminBooking } from '@/lib/api/bookings';
+import { ADMIN_STATS_TAG } from '@/lib/api/stats';
 import { classifyRefundError, type RefundActionResult } from '@/lib/refund';
 
 /**
@@ -45,5 +47,8 @@ export async function refundBookingAction(input: AdminRefundInput): Promise<Refu
   }
   // `booking.status` là projection server suy lại từ ledger — client dùng để
   // tắt nút ngay trong lúc `router.refresh()` chạy.
+  // Số liệu stat card đổi theo lệnh ghi này — hết hạn cache tag NGAY để
+  // admin thấy số tươi sau chính hành động của mình (vòng vá review F5).
+  updateTag(ADMIN_STATS_TAG);
   return { ok: true, status: result.booking.status, refunds: result.refunds };
 }

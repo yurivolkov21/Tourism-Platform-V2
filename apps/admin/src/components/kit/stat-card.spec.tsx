@@ -19,7 +19,7 @@ const BASE: StatCardProps = {
 
 const UP: StatCardProps = {
   ...BASE,
-  delta: { direction: 'up', percent: '33.3%', srLabel: 'Up 33.3% on the previous period' },
+  delta: { direction: 'up', amount: '33.3%', srLabel: 'Up 33.3% on the previous period' },
   deltaGood: true,
 };
 

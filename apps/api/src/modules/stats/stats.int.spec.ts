@@ -222,16 +222,17 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với bảy endpoint admin còn lại', () => {
-    it('ẩn danh → 401', async () => {
-      const res = await app.inject({ method: 'GET', url: '/api/admin/stats/bookings' });
-      expect(res.statusCode).toBe(401);
-    });
-
-    it('khách thường → 403', async () => {
-      const res = await get('bookings', customerCookie);
-      expect(res.statusCode).toBe(403);
-    });
+  describe('guard — cùng lớp với bảy endpoint admin còn lại, phủ CẢ BA path', () => {
+    // Tham số hoá cả ba (vòng vá review F5): guard đặt ở cấp class, nhưng
+    // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
+    for (const area of ['bookings', 'cancellations', 'reviews'] as const) {
+      it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
+        const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
+        expect(anon.statusCode).toBe(401);
+        const customer = await get(area, customerCookie);
+        expect(customer.statusCode).toBe(403);
+      });
+    }
   });
 
   describe('stats.bookings', () => {
@@ -260,6 +261,16 @@ describe('admin stats integration (F5)', () => {
             total: '300.00',
             createdAt: daysAgo(5),
             paidAt: null,
+          }),
+          // Đã thu tiền rồi hoàn ĐỦ qua đường refund trực tiếp — status là
+          // REFUNDED, KHÔNG BAO GIỜ đụng CANCELLED (deriveStatusAfterRefund).
+          // Vẫn là tử số của tỉ lệ huỷ (vòng vá review F5): tiền đã về hết,
+          // khách không đi.
+          booking(8, {
+            status: BookingStatus.REFUNDED,
+            total: '80.00',
+            createdAt: daysAgo(12),
+            paidAt: daysAgo(12),
           }),
           // ── Kỳ TRƯỚC (28–56 ngày) ──
           booking(4, {
@@ -298,26 +309,28 @@ describe('admin stats integration (F5)', () => {
       expect(res.statusCode).toBe(200);
       const stats = AdminBookingsStatsSchema.parse(res.json());
 
-      // 100 + 200 (booking 2 hoàn toàn có thể bị huỷ sau, tiền vẫn đã đi vào)
-      expect(stats.revenue.current).toBe('300.00');
+      // 100 + 200 + 80 (booking 2 huỷ sau, booking 8 hoàn đủ sau — revenue
+      // là GROSS, tiền vẫn đã đi vào trong kỳ)
+      expect(stats.revenue.current).toBe('380.00');
       expect(stats.revenue.previous).toBe('200.00');
     });
 
     it('paidBookings đếm ĐÚNG tập đã sinh ra revenue', async () => {
       const stats = AdminBookingsStatsSchema.parse((await get('bookings', adminCookie)).json());
-      expect(stats.paidBookings).toEqual({ current: 2, previous: 2 });
+      expect(stats.paidBookings).toEqual({ current: 3, previous: 2 });
     });
 
     it('newBookings đếm theo createdAt, MỌI trạng thái', async () => {
       const stats = AdminBookingsStatsSchema.parse((await get('bookings', adminCookie)).json());
-      expect(stats.newBookings).toEqual({ current: 3, previous: 3 });
+      expect(stats.newBookings).toEqual({ current: 4, previous: 3 });
     });
 
-    it('cancellationRate chỉ tính trên booking ĐÃ TRẢ TIỀN — checkout bỏ dở không phải huỷ', async () => {
+    it('cancellationRate đếm CANCELLED lẫn REFUNDED trên tập đã trả tiền — checkout bỏ dở không tính (vòng vá F5)', async () => {
       const stats = AdminBookingsStatsSchema.parse((await get('bookings', adminCookie)).json());
-      // Kỳ này: 1 huỷ / 2 đã trả tiền. Kỳ trước: 0 / 2 — booking 6 CANCELLED
-      // nhưng chưa từng trả tiền nên không nằm trong mẫu số lẫn tử số.
-      expect(stats.cancellationRate).toEqual({ current: '50.0', previous: '0.0' });
+      // Kỳ này: 2 (booking 2 huỷ qua queue + booking 8 hoàn đủ qua refund
+      // trực tiếp) / 3 đã trả tiền = 66.7. Kỳ trước: 0 / 2 — booking 6
+      // CANCELLED nhưng chưa từng trả tiền nên không ở mẫu số lẫn tử số.
+      expect(stats.cancellationRate).toEqual({ current: '66.7', previous: '0.0' });
     });
 
     it('nói ra đồng tiền đã cộng — client không đoán ký hiệu cho một con số tiền', async () => {
@@ -495,20 +508,61 @@ describe('admin stats integration (F5)', () => {
             createdAt: daysAgo(50),
             moderatedAt: daysAgo(2),
           }),
+          // Duyệt trong kỳ này RỒI BỊ GỠ trong kỳ này (vòng vá review F5):
+          // lượt duyệt vẫn phải được đếm — audit trail không bị xoá ngược.
+          // createdAt ngoài cả hai kỳ để không đụng averageRating; CURATED để
+          // khỏi cần booking thật (block này không seed booking 8).
+          review(8, {
+            rating: 3,
+            isApproved: false,
+            createdAt: daysAgo(70),
+            moderatedAt: daysAgo(1),
+            curated: true,
+          }),
+        ],
+      });
+      // `approved` đếm trên audit trail (vòng vá review F5) — bơm event khớp
+      // mốc moderatedAt của từng review đã duyệt, actor null là hợp lệ
+      // (FK SetNull). Review 8 có CẢ lượt duyệt lẫn lượt gỡ trong kỳ này.
+      const event = (
+        n: number,
+        seq: number,
+        toApproved: boolean,
+        createdAt: Date,
+      ): Prisma.ReviewModerationEventCreateManyInput => ({
+        id: `e9500005-0000-4000-8000-${String(n * 10 + seq).padStart(12, '0')}`,
+        reviewId: `e9500004-0000-4000-8000-${String(n).padStart(12, '0')}`,
+        fromApproved: !toApproved,
+        toApproved,
+        createdAt,
+      });
+      await prisma.reviewModerationEvent.createMany({
+        data: [
+          event(3, 1, true, daysAgo(5)),
+          event(4, 1, true, daysAgo(33)),
+          event(5, 1, true, daysAgo(1)),
+          event(6, 1, true, daysAgo(65)),
+          event(7, 1, true, daysAgo(2)),
+          event(8, 1, true, daysAgo(6)),
+          event(8, 2, false, daysAgo(1)),
         ],
       });
     });
 
     it('pending là ẢNH CHỤP hàng đợi: bây giờ so với lúc đầu kỳ', async () => {
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
-      // Bây giờ: review 1, 2. Đầu kỳ: review 1, 3, 7 (đã gửi, chưa moderate
-      // tại mốc ấy).
-      expect(stats.pending).toEqual({ current: 2, previous: 3 });
+      // Bây giờ: review 1, 2, 8 (8 vừa bị gỡ duyệt nên quay lại hàng đợi).
+      // Đầu kỳ: review 1, 3, 7 (đã gửi, chưa moderate tại mốc ấy); review 8
+      // tại mốc ấy đang approved (flip cuối nằm SAU mốc → đảo ngược ra true).
+      expect(stats.pending).toEqual({ current: 3, previous: 3 });
     });
 
-    it('approved đếm theo moderatedAt trong từng kỳ', async () => {
+    it('approved đếm LƯỢT DUYỆT trên audit trail — un-approve về sau không xoá ngược (vòng vá F5)', async () => {
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
-      expect(stats.approved).toEqual({ current: 3, previous: 1 });
+      // Kỳ này: event duyệt của review 3, 5, 7, 8 — review 8 đã bị gỡ sau đó
+      // nhưng LƯỢT duyệt vẫn đứng nguyên; event gỡ (toApproved=false) không
+      // trừ đi đâu cả. Kỳ trước: review 4.
+      expect(stats.approved).toEqual({ current: 4, previous: 1 });
     });
 
     it('averageRating tính trên review GỬI trong kỳ, kể cả cái còn chờ duyệt', async () => {

@@ -25,11 +25,23 @@ export type StatDeltaDirection = 'up' | 'down' | 'flat';
 
 export interface StatDelta {
   direction: StatDeltaDirection;
-  /** ĐỘ LỚN thay đổi ('33.3%') — chiều nằm ở mũi tên, không lặp lại dấu. */
-  percent: string;
+  /** ĐỘ LỚN thay đổi KÈM đơn vị ('33.3%', '2.0 pp', '0.23', 'New') — chiều
+   *  nằm ở mũi tên, không lặp lại dấu. */
+  amount: string;
   /** Câu đầy đủ cho trình đọc màn hình: mũi tên một mình không thành câu. */
   srLabel: string;
 }
+
+/**
+ * Cách in độ lớn delta — theo ĐƠN VỊ của metric (vòng vá review F5):
+ * - `relative`: % thay đổi tương đối — cho đếm và tiền ("doanh thu ↑33.3%").
+ * - `percentage-points`: hiệu số ĐIỂM phần trăm — cho metric vốn LÀ phần
+ *   trăm. "Cancellation rate 4.0% ↑100.0%" đọc thành tăng gấp đôi/chạm trần;
+ *   sự thật là "+2.0 pp".
+ * - `points`: hiệu số thô — cho thang chặn hai đầu (sao 1..5), nơi % trên
+ *   thang gần như vô nghĩa.
+ */
+type DeltaDisplay = 'relative' | 'percentage-points' | 'points';
 
 /** Một card — hình dạng khớp ĐÚNG props của `StatCard` ở kit. */
 export interface StatCardVM {
@@ -60,37 +72,55 @@ const formatPercent = (value: string): string => `${value}%`;
 /** Điểm sao: in NGUYÊN chuỗi server trả (đã 2 chữ số thập phân). */
 const formatRating = (value: string): string => value;
 
+/** Tô màu phán quyết theo polarity — đứng yên/trung tính thì không tô gì. */
+function toneOf(
+  direction: StatDeltaDirection,
+  polarity: StatPolarity,
+): Pick<StatCardVM, 'deltaGood'> {
+  return polarity === 'neutral' || direction === 'flat'
+    ? {}
+    : { deltaGood: polarity === 'up-good' ? direction === 'up' : direction === 'down' };
+}
+
 /**
  * Pill delta từ hai con số ĐÃ Ở DẠNG SỐ.
  *
- * Trả `undefined` (không có pill) khi `previous` bằng 0: phần trăm thay đổi
- * so với 0 không tồn tại, và "+∞%" hay "+100%" đều là bịa. Thông tin không
- * mất — caption vẫn nói "vs 0 prior 28 days".
+ * `previous === 0` không có % tương đối ("+∞%" là bịa), nhưng KHÔNG được im
+ * lặng (vòng vá review F5): hàng đợi 0 → 40 là chuyển động đáng báo nhất của
+ * trang mà bản đầu render y hệt 40 → 40. Nay: 0 → N dương hiện pill "New"
+ * (kèm tô màu theo polarity); 0 → 0 mới thật sự không có gì để nói.
  */
 function buildDelta(
   current: number,
   previous: number,
   polarity: StatPolarity,
+  display: DeltaDisplay = 'relative',
 ): Pick<StatCardVM, 'delta' | 'deltaGood'> {
-  if (previous === 0) return {};
+  if (previous === 0) {
+    if (current === 0) return {};
+    return {
+      delta: { direction: 'up', amount: t.trend.newLabel, srLabel: t.trend.fromZero },
+      ...toneOf('up', polarity),
+    };
+  }
 
   const direction: StatDeltaDirection =
     current > previous ? 'up' : current < previous ? 'down' : 'flat';
-  const percent = `${(Math.abs((current - previous) / previous) * 100).toFixed(1)}%`;
+  const diff = Math.abs(current - previous);
+  const amount =
+    display === 'relative'
+      ? `${((diff / previous) * 100).toFixed(1)}%`
+      : display === 'percentage-points'
+        ? t.trend.percentagePoints(diff.toFixed(1))
+        : diff.toFixed(2);
   const srLabel =
     direction === 'up'
-      ? t.trend.up(percent)
+      ? t.trend.up(amount)
       : direction === 'down'
-        ? t.trend.down(percent)
+        ? t.trend.down(amount)
         : t.trend.flat;
 
-  return {
-    delta: { direction, percent, srLabel },
-    // Đứng yên thì không có gì tốt hay xấu để tô, cũng như metric trung tính.
-    ...(polarity === 'neutral' || direction === 'flat'
-      ? {}
-      : { deltaGood: polarity === 'up-good' ? direction === 'up' : direction === 'down' }),
-  };
+  return { delta: { direction, amount, srLabel }, ...toneOf(direction, polarity) };
 }
 
 /** Card của một metric ĐẾM (kỳ này vs kỳ trước, cùng cửa sổ). */
@@ -126,6 +156,7 @@ function decimalCard(
   polarity: StatPolarity,
   days: number,
   format: (value: string) => string,
+  display: DeltaDisplay,
 ): StatCardVM {
   const value = metric.current === null ? t.noValue : format(metric.current);
   const previous = metric.previous === null ? t.noValue : format(metric.previous);
@@ -136,7 +167,9 @@ function decimalCard(
     label,
     value,
     caption: t.comparison(previous, days),
-    ...(comparable ? buildDelta(Number(metric.current), Number(metric.previous), polarity) : {}),
+    ...(comparable
+      ? buildDelta(Number(metric.current), Number(metric.previous), polarity, display)
+      : {}),
   };
 }
 
@@ -165,6 +198,8 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
       'up-bad',
       days,
       formatPercent,
+      // Metric VỐN là % → delta theo điểm phần trăm, không phải % của %.
+      'percentage-points',
     ),
   ];
 }
@@ -205,6 +240,8 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
       'up-good',
       days,
       formatRating,
+      // Thang sao chặn hai đầu → delta là hiệu số thô (0.23), không phải %.
+      'points',
     ),
   ];
 }

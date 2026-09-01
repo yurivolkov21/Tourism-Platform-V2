@@ -5,8 +5,10 @@ import {
   DecideCancellationInputSchema,
   type DecideCancellationResult,
 } from '@tourism/contract';
+import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { decideCancellation } from '@/lib/api/cancellations';
+import { ADMIN_STATS_TAG } from '@/lib/api/stats';
 import { classifyDecideError, type DecideActionResult } from '@/lib/cancellations-decide';
 
 /**
@@ -42,6 +44,8 @@ export async function decideCancellationAction(
     // production thành digest trống) — phân loại tại đây, trả mã trần xuống.
     return { ok: false, code: classifyDecideError(error) };
   }
+  // Số liệu stat card đổi theo lệnh ghi này (vòng vá review F5).
+  updateTag(ADMIN_STATS_TAG);
   // Đọc kết cục từ RESPONSE của server (`request.status`), không từ input đã
   // gửi: nhánh nào thật sự chạy là chuyện của server, client chỉ kể lại.
   return {

@@ -3,12 +3,19 @@ import type {
   AdminCancellationsStats,
   AdminReviewsStats,
 } from '@tourism/contract';
-import { api, withAdminAuth } from './client';
+import { api } from './client';
 
 /**
- * Ba đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`, cùng
- * nếp cookie-forward + `no-store` như các fetcher khác (`cache: 'no-store'` là
- * VÔ ĐIỀU KIỆN ở `client.ts`, back-office luôn đọc số tươi).
+ * Ba đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`.
+ *
+ * KHÁC các fetcher list: cache 60s theo tag (vòng vá review F5). `no-store`
+ * từng bắt refetch trọn bộ stats trên MỌI click phân trang/lọc/refresh-sau-ghi
+ * dù hàng card không phụ thuộc searchParams — và vì refresh nằm trong
+ * `useTransition`, nó kéo dài luôn thời gian khoá nút Approve/Deny. Cửa sổ đo
+ * là 28 ngày nên 60s staleness là số lẻ thứ năm sau dấu phẩy; còn "tươi ngay
+ * sau khi CHÍNH MÌNH ghi" thì ba server action gọi `updateTag(ADMIN_STATS_TAG)`.
+ * An toàn chia sẻ cache giữa admin: stats là số nền tảng, không theo phiên
+ * (xem cảnh báo `cacheFor` ở client.ts).
  *
  * `undefined` ở vị trí input là ĐÚNG chữ ký: ba procedure này không khai
  * `.input()` (cửa sổ 28 ngày là hằng của sản phẩm, không phải tham số) — cùng
@@ -20,16 +27,25 @@ import { api, withAdminAuth } from './client';
  * sống nhiều tuần mà không ai biết.
  */
 
+/** Tag Data Cache của cả ba endpoint stats — action ghi nào đổi số thì update. */
+export const ADMIN_STATS_TAG = 'admin-stats';
+
+const STATS_CACHE_SECONDS = 60;
+
+function statsContext(cookie: string) {
+  return { cookie, cacheFor: { seconds: STATS_CACHE_SECONDS, tags: [ADMIN_STATS_TAG] } };
+}
+
 export async function fetchAdminBookingsStats(cookie: string): Promise<AdminBookingsStats> {
-  return api.admin.stats.bookings(undefined, { context: withAdminAuth(cookie) });
+  return api.admin.stats.bookings(undefined, { context: statsContext(cookie) });
 }
 
 export async function fetchAdminCancellationsStats(
   cookie: string,
 ): Promise<AdminCancellationsStats> {
-  return api.admin.stats.cancellations(undefined, { context: withAdminAuth(cookie) });
+  return api.admin.stats.cancellations(undefined, { context: statsContext(cookie) });
 }
 
 export async function fetchAdminReviewsStats(cookie: string): Promise<AdminReviewsStats> {
-  return api.admin.stats.reviews(undefined, { context: withAdminAuth(cookie) });
+  return api.admin.stats.reviews(undefined, { context: statsContext(cookie) });
 }

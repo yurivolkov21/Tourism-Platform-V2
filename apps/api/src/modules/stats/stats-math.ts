@@ -59,8 +59,13 @@ export function statsPeriod(window: StatsWindow): StatsPeriod {
  * `_sum` tiền của Prisma → chuỗi thập phân contract. `null` (kỳ không có row
  * nào) thành '0.00' chứ không null: "không thu được đồng nào" là một câu trả
  * lời thật, khác hẳn "không tính được".
+ *
+ * Tên KHÔNG phải `money` (đổi ở vòng vá review F5): `payments/money.ts` đã
+ * có `toAmountValue(amount, currency)` — bản CHUẨN biết currency zero-decimal
+ * (JPY/VND). Hàm này cứng 2 số lẻ, đủ cho nền tảng một-đồng-USD hiện tại;
+ * ngày có đồng thứ hai thì chuyển sang bản payments, đừng vá thêm ở đây.
  */
-export function money(value: Prisma.Decimal | null): string {
+export function grossAmount(value: Prisma.Decimal | null): string {
   return value ? value.toFixed(2) : '0.00';
 }
 

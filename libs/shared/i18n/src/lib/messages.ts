@@ -2629,11 +2629,18 @@ export const messages = {
       snapshotComparison: (previous: string, days: number) => `vs ${previous} ${days} days ago`,
       /** Kỳ này không tính được (không mẫu số / không có dữ liệu) — không phải 0. */
       noValue: '—',
-      /** Pill delta chỉ có mũi tên + con số; trình đọc màn hình cần một câu. */
+      /** Pill delta chỉ có mũi tên + độ lớn; trình đọc màn hình cần một câu.
+       *  `amount` ĐÃ kèm đơn vị ('33.3%', '2.0 pp', '0.23') — up/down không
+       *  tự thêm gì (vòng vá review F5: delta theo đơn vị của metric). */
       trend: {
-        up: (percent: string) => `Up ${percent} on the previous period`,
-        down: (percent: string) => `Down ${percent} on the previous period`,
+        up: (amount: string) => `Up ${amount} on the previous period`,
+        down: (amount: string) => `Down ${amount} on the previous period`,
         flat: 'Unchanged on the previous period',
+        /** Điểm phần trăm — cho metric vốn là %. */
+        percentagePoints: (points: string) => `${points} pp`,
+        /** Kỳ trước bằng 0 — không có % tương đối nhưng PHẢI có tín hiệu. */
+        newLabel: 'New',
+        fromZero: 'Up from zero in the previous period',
       },
       bookings: {
         revenue: 'Revenue',

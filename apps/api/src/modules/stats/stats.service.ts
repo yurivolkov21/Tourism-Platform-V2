@@ -5,8 +5,9 @@ import type {
   AdminReviewsStats,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
+import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
-import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
+import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
 
 /**
  * Số liệu vùng admin (spec P4b §3-F5) — ba bộ metric cho ba trang vùng.
@@ -38,8 +39,13 @@ import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-m
  * - `newBookings` — đếm theo `created_at`, MỌI trạng thái (kể cả PENDING bỏ
  *   dở). Đây là nhu cầu đổ vào, không phải doanh thu.
  * - `cancellationRate` — PHẦN TRĂM booking ĐÃ TRẢ TIỀN trong kỳ mà tới thời
- *   điểm đọc đang ở `CANCELLED`. Mẫu số CHÍNH LÀ `paidBookings`, nên hai con
- *   số trên cùng hàng card kiểm chéo được nhau. Vì sao mẫu số là "đã trả
+ *   điểm đọc đang ở `CANCELLED` HOẶC `REFUNDED`. Hai trạng thái chứ không
+ *   một (vòng vá review F5): huỷ qua queue cho `CANCELLED`, nhưng hoàn ĐỦ
+ *   tiền qua đường refund trực tiếp cho `REFUNDED` mà không bao giờ đụng
+ *   `CANCELLED` (`deriveStatusAfterRefund`) — đếm thiếu nhánh đó là card in
+ *   0% trong khi tiền đã về hết. `PARTIALLY_REFUNDED` KHÔNG tính: goodwill
+ *   refund một phần, khách vẫn đi. Mẫu số CHÍNH LÀ `paidBookings`, nên hai
+ *   con số trên cùng hàng card kiểm chéo được nhau. Vì sao mẫu số là "đã trả
  *   tiền" chứ không phải mọi booking: `CANCELLED` còn là trạng thái của
  *   checkout bỏ dở (PENDING hết TTL 65′) — lấy mẫu số rộng thì con số này
  *   biến thành tỉ lệ bỏ giỏ hàng, không phải tỉ lệ huỷ. `null` khi kỳ không
@@ -65,7 +71,13 @@ import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-m
  *   cancellations, `moderated_at` KHÔNG phải dấu "đã có quyết định" — review
  *   ra đời đã duyệt sẵn thì nó vẫn null — nên phép dựng lại phải đọc cả
  *   `is_approved`; chi tiết + ca xấp xỉ còn lại ở `pendingReviewsAt`.
- * - `approved` — đếm theo `moderated_at` trong kỳ, `is_approved = true`.
+ * - `approved` — SỐ LƯỢT DUYỆT thực hiện trong kỳ, đếm trên audit trail
+ *   `review_moderation_events` (`to_approved = true`, `created_at` trong
+ *   kỳ) chứ KHÔNG trên trạng thái hiện tại của review (vòng vá review F5):
+ *   đếm theo `is_approved && moderated_at` thì một cú un-approve hôm nay
+ *   XOÁ NGƯỢC lượt duyệt khỏi kỳ đã đóng — hai admin chụp cùng một kỳ ra
+ *   hai số khác nhau. Event là bất biến append-only nên số này đứng yên;
+ *   guard no-op (vòng vá F4) bảo đảm không có event from===to làm nhiễu.
  * - `averageRating` — `AVG(rating)` trên review GỬI trong kỳ (`created_at`),
  *   KHÔNG lọc theo trạng thái duyệt và KHÔNG lọc theo nguồn. Cố ý: lọc
  *   "đã duyệt" sẽ khiến một hàng đợi tồn đọng tự kéo tụt kỳ này so với kỳ
@@ -83,19 +95,21 @@ import { average, money, ratePercent, statsPeriod, statsWindow } from './stats-m
  */
 @Injectable()
 export class StatsService {
-  /** Bộ số vùng `/bookings`. Mọi aggregate chạy song song — một RTT. */
+  /** Bộ số vùng `/bookings`. Mọi aggregate PHÁT song song (Promise.all —
+   *  5 query độc lập trên pool sau vòng gộp groupBy, không phải một
+   *  round-trip). */
   async adminBookings(): Promise<AdminBookingsStats> {
     const window = statsWindow(new Date());
     const [current, previous, currency] = await Promise.all([
       this.bookingsSlice(window.currentFrom, window.generatedAt),
       this.bookingsSlice(window.previousFrom, window.currentFrom),
-      this.revenueCurrency(window.previousFrom),
+      this.revenueCurrency(window.previousFrom, window.generatedAt),
     ]);
 
     return {
       period: statsPeriod(window),
       currency,
-      revenue: { current: money(current.revenue), previous: money(previous.revenue) },
+      revenue: { current: grossAmount(current.revenue), previous: grossAmount(previous.revenue) },
       paidBookings: { current: current.paid, previous: previous.paid },
       newBookings: { current: current.created, previous: previous.created },
       cancellationRate: {
@@ -145,38 +159,52 @@ export class StatsService {
 
   /**
    * Đồng tiền của các booking vừa được cộng — đọc từ booking trả tiền GẦN
-   * NHẤT trong hai kỳ, rơi về 'USD' (mặc định cột `bookings.currency`) khi
-   * hai kỳ trống trơn. Nền tảng là một-đồng-tiền nên câu này luôn có nghĩa;
-   * xem cảnh báo group-by ở JSDoc field `currency` bên contract.
+   * NHẤT trong ĐÚNG hai kỳ `[from, to)` (chặn cả hai đầu, vòng vá review F5:
+   * thiếu `lt` thì một row `paid_at` tương lai — seed/backfill/lệch đồng hồ —
+   * quyết đồng tiền cho một tổng nó không góp đồng nào). Rơi về 'USD'
+   * (mặc định cột `bookings.currency`, đúng cho DB bootstrap trống) khi hai
+   * kỳ không có booking nào; xem cảnh báo group-by ở JSDoc field `currency`
+   * bên contract.
    */
-  private async revenueCurrency(from: Date): Promise<string> {
+  private async revenueCurrency(from: Date, to: Date): Promise<string> {
     const latest = await prisma.booking.findFirst({
-      where: { paidAt: { gte: from } },
+      where: { paidAt: { gte: from, lt: to } },
       orderBy: { paidAt: 'desc' },
       select: { currency: true },
     });
     return latest?.currency ?? 'USD';
   }
 
-  /** Ba con số booking của MỘT kỳ `[from, to)`. */
+  /** Ba con số booking của MỘT kỳ `[from, to)` — HAI query thay vì ba (vòng
+   *  vá review F5): một `groupBy` theo status trên tập đã-trả-tiền trả cả
+   *  revenue + đếm + tử số tỉ lệ huỷ, cộng một count theo createdAt. */
   private async bookingsSlice(from: Date, to: Date) {
-    const paidInWindow = { paidAt: { gte: from, lt: to } };
-    const [paid, created, cancelledOfPaid] = await Promise.all([
-      prisma.booking.aggregate({
-        where: paidInWindow,
+    const [byStatus, created] = await Promise.all([
+      prisma.booking.groupBy({
+        by: ['status'],
+        where: { paidAt: { gte: from, lt: to } },
         _sum: { totalAmount: true },
         _count: { _all: true },
       }),
       prisma.booking.count({ where: { createdAt: { gte: from, lt: to } } }),
-      prisma.booking.count({ where: { ...paidInWindow, status: BookingStatus.CANCELLED } }),
     ]);
 
-    return {
-      revenue: paid._sum.totalAmount,
-      paid: paid._count._all,
-      created,
-      cancelledOfPaid,
-    };
+    let revenue: Prisma.Decimal | null = null;
+    let paid = 0;
+    let cancelledOfPaid = 0;
+    for (const group of byStatus) {
+      if (group._sum.totalAmount) {
+        revenue = revenue ? revenue.add(group._sum.totalAmount) : group._sum.totalAmount;
+      }
+      paid += group._count._all;
+      // CANCELLED (huỷ qua queue) + REFUNDED (hoàn đủ qua refund trực tiếp —
+      // không bao giờ đụng CANCELLED) — xem định nghĩa đầu file.
+      if (group.status === BookingStatus.CANCELLED || group.status === BookingStatus.REFUNDED) {
+        cancelledOfPaid += group._count._all;
+      }
+    }
+
+    return { revenue, paid, created, cancelledOfPaid };
   }
 
   /**
@@ -226,25 +254,29 @@ export class StatsService {
     });
   }
 
-  /** Hai con số quyết định của MỘT kỳ `[from, to)`. */
+  /** Hai con số quyết định của MỘT kỳ `[from, to)` — MỘT `groupBy` thay hai
+   *  count chỉ khác nhau ở status (vòng vá review F5). */
   private async decisionsSlice(from: Date, to: Date) {
-    const decidedInWindow = { decidedAt: { gte: from, lt: to } };
-    const [approved, denied] = await Promise.all([
-      prisma.cancellationRequest.count({
-        where: { ...decidedInWindow, status: CancellationRequestStatus.REFUNDED },
-      }),
-      prisma.cancellationRequest.count({
-        where: { ...decidedInWindow, status: CancellationRequestStatus.DENIED },
-      }),
-    ]);
-    return { approved, denied };
+    const byStatus = await prisma.cancellationRequest.groupBy({
+      by: ['status'],
+      where: { decidedAt: { gte: from, lt: to } },
+      _count: { _all: true },
+    });
+    const countOf = (status: CancellationRequestStatus) =>
+      byStatus.find((group) => group.status === status)?._count._all ?? 0;
+    return {
+      approved: countOf(CancellationRequestStatus.REFUNDED),
+      denied: countOf(CancellationRequestStatus.DENIED),
+    };
   }
 
   /** Hai con số review của MỘT kỳ `[from, to)`. */
   private async reviewsSlice(from: Date, to: Date) {
     const [approved, submitted] = await Promise.all([
-      prisma.review.count({
-        where: { isApproved: true, moderatedAt: { gte: from, lt: to } },
+      // Đếm LƯỢT duyệt trên audit trail, không đếm trạng thái hiện tại —
+      // un-approve về sau không được xoá ngược lịch sử (định nghĩa đầu file).
+      prisma.reviewModerationEvent.count({
+        where: { toApproved: true, createdAt: { gte: from, lt: to } },
       }),
       prisma.review.aggregate({
         where: { createdAt: { gte: from, lt: to } },

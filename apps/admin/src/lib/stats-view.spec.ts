@@ -74,7 +74,7 @@ describe('toBookingsStatCards', () => {
     const paid = card(toBookingsStatCards(BOOKINGS), 'paid');
     expect(paid.delta).toEqual({
       direction: 'up',
-      percent: '33.3%',
+      amount: '33.3%',
       srLabel: t.trend.up('33.3%'),
     });
     expect(paid.deltaGood).toBe(true);
@@ -101,16 +101,41 @@ describe('toBookingsStatCards', () => {
     expect(card(cards, 'paid').value).toBe('12,400');
   });
 
-  it('kỳ trước bằng 0: KHÔNG có pill — phần trăm thay đổi không tồn tại', () => {
-    // Caption vẫn nói "vs 0 prior 28 days", nên thông tin không mất; cái bị
-    // từ chối là một con số % chia cho 0.
+  it('kỳ trước bằng 0, kỳ này dương: pill "New" — 0 → N phải CÓ tín hiệu (vòng vá F5)', () => {
+    // % so với 0 vẫn không tồn tại, nhưng im lặng thì "hàng đợi 0 → 40"
+    // render y hệt "40 → 40" — chuyển động đáng báo nhất bị nuốt.
     const cards = toBookingsStatCards({
       ...BOOKINGS,
       paidBookings: { current: 12, previous: 0 },
     });
     const paid = card(cards, 'paid');
-    expect(paid.delta).toBeUndefined();
+    expect(paid.delta).toEqual({
+      direction: 'up',
+      amount: t.trend.newLabel,
+      srLabel: t.trend.fromZero,
+    });
+    expect(paid.deltaGood).toBe(true); // up-good: có khách trả tiền là tốt
     expect(paid.caption).toBe(t.comparison('0', 28));
+  });
+
+  it('cả hai kỳ bằng 0: không có gì để nói — không pill', () => {
+    const cards = toBookingsStatCards({
+      ...BOOKINGS,
+      paidBookings: { current: 0, previous: 0 },
+    });
+    expect(card(cards, 'paid').delta).toBeUndefined();
+  });
+
+  it('cancellationRate: delta theo ĐIỂM phần trăm, không phải % của % (vòng vá F5)', () => {
+    // 2.0% → 4.0% từng in "↑100.0%" — đọc thành tăng gấp đôi/chạm trần.
+    const cards = toBookingsStatCards({
+      ...BOOKINGS,
+      cancellationRate: { current: '4.0', previous: '2.0' },
+    });
+    const rate = card(cards, 'cancellationRate');
+    expect(rate.delta?.amount).toBe(t.trend.percentagePoints('2.0'));
+    expect(rate.delta?.direction).toBe('up');
+    expect(rate.deltaGood).toBe(false); // tỉ lệ huỷ tăng là xấu
   });
 
   it('metric không tính được: giá trị là "—" và không có pill', () => {
@@ -194,6 +219,8 @@ describe('toReviewsStatCards', () => {
     const rating = card(toReviewsStatCards(REVIEWS), 'averageRating');
     expect(rating.value).toBe('4.60');
     expect(rating.deltaGood).toBe(true);
+    // Thang sao chặn hai đầu → hiệu số thô, không phải % (vòng vá F5).
+    expect(rating.delta?.amount).toBe('0.40');
     expect(rating.caption).toBe(t.comparison('4.20', 28));
   });
 
