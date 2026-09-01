@@ -1,4 +1,5 @@
 import {
+  AdminBookingsListQuerySchema,
   BookingSchema,
   BookingsListQuerySchema,
   CreateBookingInputSchema,
@@ -379,5 +380,58 @@ describe('BookingSchema.reviewedAt — cụm B nửa 2', () => {
 
   it('từ chối chuỗi không phải datetime', () => {
     expect(() => BookingSchema.parse({ ...validBooking, reviewedAt: '2026-08-01' })).toThrow();
+  });
+});
+
+/**
+ * F6 — khoảng ngày `createdAt` cho bảng `/bookings` (spec P4b §3-F6). Đây là
+ * thay đổi contract DUY NHẤT mà F6 được phép làm với schema list, nên nó phải
+ * đứng vững cả ở nhánh xấu: định dạng rác và khoảng ngược.
+ */
+describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
+  it('from/to là optional: query trống vẫn hợp lệ và không mang field ngày nào', () => {
+    const parsed = AdminBookingsListQuerySchema.parse({});
+    expect(parsed).toMatchObject({ page: 1, limit: 20 });
+    expect(parsed.from).toBeUndefined();
+    expect(parsed.to).toBeUndefined();
+  });
+
+  it('nhận ngày lịch YYYY-MM-DD, từ chối mốc ISO có giờ và ngày không tồn tại', () => {
+    expect(AdminBookingsListQuerySchema.parse({ from: '2026-09-01' }).from).toBe('2026-09-01');
+    expect(AdminBookingsListQuerySchema.parse({ to: '2026-09-30' }).to).toBe('2026-09-30');
+    expect(
+      AdminBookingsListQuerySchema.safeParse({ from: '2026-09-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+    expect(AdminBookingsListQuerySchema.safeParse({ from: '2026-02-31' }).success).toBe(false);
+    expect(AdminBookingsListQuerySchema.safeParse({ to: '30-09-2026' }).success).toBe(false);
+  });
+
+  it('from > to là 400 chứ không phải tập rỗng im lặng', () => {
+    expect(
+      AdminBookingsListQuerySchema.safeParse({ from: '2026-09-30', to: '2026-09-01' }).success,
+    ).toBe(false);
+    // Bằng nhau = đúng một ngày, hợp lệ (biên nửa-mở nằm ở tầng service).
+    expect(
+      AdminBookingsListQuerySchema.safeParse({ from: '2026-09-01', to: '2026-09-01' }).success,
+    ).toBe(true);
+  });
+
+  it('giữ nguyên phần phân trang/filter cũ khi có thêm ngày (shape không bị refine nuốt)', () => {
+    const parsed = AdminBookingsListQuerySchema.parse({
+      page: 3,
+      limit: 50,
+      status: 'PAID',
+      search: 'ada',
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    expect(parsed).toEqual({
+      page: 3,
+      limit: 50,
+      status: 'PAID',
+      search: 'ada',
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
   });
 });

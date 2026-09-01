@@ -43,6 +43,7 @@ import {
   PostsListQuerySchema,
   PostTagSchema,
 } from './schemas/posts.js';
+import { AdminMonthlyReportQuerySchema, AdminMonthlyReportSchema } from './schemas/reports.js';
 import {
   AdminReviewSchema,
   AdminReviewsQuerySchema,
@@ -653,6 +654,31 @@ export const contract = {
           summary: 'Moderation queue + ratings for the last 28 days and the 28 before that',
         })
         .output(AdminReviewsStatsSchema),
+    },
+    /**
+     * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV
+     * của nó và bản in PDF bằng chính trình duyệt.
+     *
+     * Đứng RIÊNG chứ không phải `admin.stats.*` với input `{from,to}`: lý do
+     * đầy đủ ở JSDoc đầu `schemas/reports.ts` (stats là CẶP số của hai kỳ dài
+     * bằng nhau — tháng thì không bằng nhau; báo cáo là tổng tuyệt đối của
+     * một kỳ đóng cộng những con số stat card không có). Các câu aggregate
+     * vẫn dùng chung một bản bên API (`stats-aggregates.ts`), nên định nghĩa
+     * doanh thu vẫn chỉ có một.
+     *
+     * KHÔNG khai lỗi nghiệp vụ: tháng không có dữ liệu là một báo cáo TOÀN
+     * SỐ 0, không phải 404 — "tháng 7 không bán được gì" là câu trả lời thật.
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    reports: {
+      monthly: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/reports/monthly',
+          summary: 'Revenue, bookings, refunds, cancellations and reviews for one calendar month',
+        })
+        .input(AdminMonthlyReportQuerySchema)
+        .output(AdminMonthlyReportSchema),
     },
   },
 };

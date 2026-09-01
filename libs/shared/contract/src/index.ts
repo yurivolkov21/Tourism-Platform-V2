@@ -6,6 +6,7 @@ export * from './schemas/enquiries.js';
 export * from './schemas/media.js';
 export * from './schemas/newsletter.js';
 export * from './schemas/posts.js';
+export * from './schemas/reports.js';
 export * from './schemas/reviews.js';
 export * from './schemas/site-media.js';
 export * from './schemas/stats.js';

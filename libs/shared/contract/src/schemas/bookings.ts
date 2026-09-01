@@ -212,13 +212,35 @@ export type AdminRefundResult = z.output<typeof AdminRefundResultSchema>;
  * Query cho `admin.bookings.list` (port nhẹ từ DTO list admin của Nexora):
  * pagination + filter `status` + `search` free-text khớp không phân biệt hoa
  * thường theo booking code, contact email và contact name.
+ *
+ * `from`/`to` (thêm ở F6, spec P4b §3-F6) lọc theo `createdAt` và là NGÀY
+ * LỊCH `YYYY-MM-DD`, không phải mốc ISO có giờ: đây là thứ admin gõ vào hai ô
+ * date trên toolbar và là thứ in ra tiêu đề báo cáo. Cả hai đầu ĐỀU tính vào
+ * khoảng — "01/09 → 30/09" nghĩa là trọn ngày 30 cũng nằm trong; phép đổi ra
+ * biên nửa-mở `[from 00:00Z, to+1d 00:00Z)` nằm ở API (`bookings-date-range.ts`,
+ * cùng nếp nửa-mở của StatsService) chứ không rải ra client.
+ *
+ * `from > to` là 400 chứ KHÔNG phải một tập rỗng im lặng: khoảng ngược là lỗi
+ * gõ, và trả về "0 booking" cho một lỗi gõ là câu trả lời nói dối. UI admin
+ * không bao giờ gửi được khoảng ngược (`parseBookingsSearchParams` bỏ `to` khi
+ * nó đứng trước `from`) — luật này canh cho mọi caller khác.
  */
-export const AdminBookingsListQuerySchema = z.object({
-  page: z.int().min(1).default(1),
-  limit: z.int().min(1).max(100).default(20),
-  status: BookingStatusSchema.optional(),
-  search: z.string().min(1).max(120).optional(),
-});
+export const AdminBookingsListQuerySchema = z
+  .object({
+    page: z.int().min(1).default(1),
+    limit: z.int().min(1).max(100).default(20),
+    status: BookingStatusSchema.optional(),
+    search: z.string().min(1).max(120).optional(),
+    from: z.iso.date().optional(),
+    to: z.iso.date().optional(),
+  })
+  // `.refine` trên ZodObject của Zod 4 GIỮ NGUYÊN `.shape` (check gắn thêm,
+  // không bọc lớp mới) — điều kiện sống còn của `ZodSmartCoercionPlugin` bên
+  // API: nó đi theo shape để ép "2" thành number cho page/limit.
+  .refine(({ from, to }) => !(from && to) || from <= to, {
+    message: 'from must be on or before to',
+    path: ['to'],
+  });
 
 export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchema>;
 
