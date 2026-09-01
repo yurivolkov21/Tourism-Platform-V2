@@ -8,6 +8,41 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-01 — P4b F5: stat card 28 ngày cho ba trang vùng + vòng vá (nhánh `feat/p4b-area-stats`, 5 commit `e4f6a1a..f9e47b6`, ~50 file)
+
+Tính năng user đặt hàng (AMEND spec 31/08) — contract `admin.stats` MỚI (3
+endpoint, mỗi metric mang CẢ kỳ này + kỳ trước, client không tự chế delta),
+`StatsService` module riêng có JSDoc định nghĩa TỪNG metric đối soát được
+(revenue neo `paid_at`, gross; cancellationRate mẫu số = paidBookings), kit
+`StatCard` (style ăn section-cards, polarity một nguồn ở `stats-view.ts`) gắn
+`/bookings` `/cancellations` `/reviews`. Session thi công cũng TRẢ NỢ kit từ
+F4 (`ConfirmWriteDialog` + `TableSearchForm` — mũi review B xác minh tái lập
+1-1, không test nào mất) và nâng scrollbar custom lên `@tourism/ui` (một
+nguồn cho cả web + admin). Nghiệm thu review 8 mũi → 10 findings, user duyệt
+vá theo 3 đoạn (`f9e47b6`):
+
+- **Metric hết nói dối**: `cancellationRate` đếm cả `REFUNDED` (hoàn đủ qua
+  refund trực tiếp không bao giờ đụng `CANCELLED` — card từng in 0% khi 30%
+  tiền đã về); `Approved 28d` của reviews đếm LƯỢT DUYỆT trên audit trail
+  `review_moderation_events` (un-approve hôm nay hết xoá ngược kỳ đã đóng);
+  `revenueCurrency` chặn cả hai đầu cửa sổ. Int test khoá từng ngữ nghĩa,
+  guard 401/403 phủ cả 3 endpoint.
+- **Delta đúng đơn vị**: metric vốn là %/sao hết ăn pill tương đối —
+  cancellationRate ra điểm phần trăm ("↑2.0 pp" thay "↑100.0%"),
+  averageRating ra hiệu số thô; 0 → N hiện pill "New" (hàng đợi 0 → 40 từng
+  render y hệt 40 → 40).
+- **Kit một máy confirm-write**: nhánh success ra khỏi `try` (onSettled ném
+  hết sinh toast lỗi cạnh toast thành công); vòng đời lệnh ghi rút thành hook
+  `useConfirmWrite` — `RefundDialog` hai-bước của F2 (bản chép thứ ba bị bỏ
+  quên trên đường tiền thật) giờ chạy cùng một máy.
+- **Hiệu năng**: stats cache 60s theo tag + `updateTag` ở 3 action ghi (hết
+  refetch mỗi click, hết kéo dài thời gian khoá nút); gộp query `groupBy`
+  fan-out 13→9; scrollbar thêm `height` (thanh ngang bảng admin hết thành
+  vệt primary dày); `money()` → `grossAmount` hết trùng tên payments.
+
+Tests after: 1416 web · 249 api · 205 api-int · 101 contract · 22 ui ·
+10 tokens · 2 i18n · 243 admin.
+
 ## 2026-08-31 — P4b F4: hàng đợi moderation review + vòng vá (nhánh `feat/p4b-reviews`, 2 commit `ee0cb20..5f0010f`, ~30 file)
 
 Tính năng thứ tư, thi công TỐT nhất bốn vòng (bẫy pageSize-vs-limit né đúng
