@@ -16,6 +16,7 @@ import { NewsletterModule } from './modules/newsletter/newsletter.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { SiteMediaModule } from './modules/site-media/site-media.module.js';
+import { StatsModule } from './modules/stats/stats.module.js';
 import { WishlistModule } from './modules/wishlist/wishlist.module.js';
 
 @Module({
@@ -60,6 +61,9 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     // export MediaService để CatalogModule/PostsModule import ké, không tự
     // mount route nào nên không cần khai trong AppModule.
     MediaModule,
+    // F5: số liệu vùng admin (spec P4b §3-F5) — module riêng vì cửa sổ
+    // 28-ngày-đôi là khái niệm dùng chung cho ba vùng và cho dashboard P4d.
+    StatsModule,
   ],
   providers: [
     /**

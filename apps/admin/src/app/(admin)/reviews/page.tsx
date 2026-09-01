@@ -2,11 +2,14 @@ import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
+import { StatCardRow } from '@/components/kit/stat-card';
 import { ReviewsTable } from '@/components/reviews/reviews-table';
 import { fetchAdminReviews } from '@/lib/api/reviews';
 import { getServerSession } from '@/lib/api/session';
+import { fetchAdminReviewsStats } from '@/lib/api/stats';
 import { parseReviewsSearchParams, reviewsHref } from '@/lib/reviews-query';
 import { toReviewRow } from '@/lib/reviews-view';
+import { toReviewsStatCards } from '@/lib/stats-view';
 import type { RawSearchParams } from '@/lib/table-query';
 import { moderateReviewAction } from './actions';
 
@@ -17,6 +20,9 @@ import { moderateReviewAction } from './actions';
  * `searchParams` (page/status/q) → input contract → fetch oRPC kèm cookie
  * forward → truyền một trang đã format xuống bảng client. Không có fetch nào
  * từ browser; đổi trang/lọc là điều hướng URL.
+ *
+ * Hàng stat card (spec §3-F5) đứng TRÊN bảng, fetch cùng đợt `Promise.all`
+ * với list — số liệu là ngữ cảnh của bảng, không phải một trang khác.
  *
  * Server action `moderateReviewAction` truyền xuống như một prop — client
  * component không tự import đường server nào (nếp F2).
@@ -35,9 +41,12 @@ export default async function ReviewsPage({
   // Session (chỉ để đổ vào nav-user — layout đã gác role) và trang dữ liệu là
   // hai request độc lập: chạy song song kẻo TTFB thành 2 RTT nối tiếp trên
   // MỌI click phân trang/lọc.
-  const [session, paged] = await Promise.all([
+  const [session, paged, stats] = await Promise.all([
     getServerSession(),
     fetchAdminReviews(cookie, query),
+    // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
+    // một RTT vào MỌI click phân trang/lọc chỉ để vẽ lại hàng card.
+    fetchAdminReviewsStats(cookie),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp hai trang kia).
@@ -53,6 +62,7 @@ export default async function ReviewsPage({
 
   return (
     <AdminShell user={session}>
+      <StatCardRow cards={toReviewsStatCards(stats)} />
       <ReviewsTable
         rows={paged.items.map(toReviewRow)}
         query={query}

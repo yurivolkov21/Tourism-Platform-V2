@@ -1,0 +1,86 @@
+import { STATS_WINDOW_DAYS, type StatsPeriod } from '@tourism/contract';
+import type { Prisma } from '../../generated/prisma/client.js';
+
+/**
+ * Phần THUẦN của stats (spec P4b §3-F5): cắt cửa sổ hai kỳ và biến kết quả
+ * aggregate của Prisma thành đúng chuỗi contract. Đứng ngoài service để test
+ * được từng nhánh mà không cần DB — aggregate thật ở `stats.int.spec.ts`.
+ */
+
+const DAY_MS = 86_400_000;
+
+/** Hai mốc cắt + thời điểm chốt sổ, đơn vị `Date` để đưa thẳng vào Prisma. */
+export interface StatsWindow {
+  /** Đầu kỳ NÀY. Kỳ này là `[currentFrom, generatedAt]`. */
+  currentFrom: Date;
+  /** Đầu kỳ TRƯỚC. Kỳ trước là `[previousFrom, currentFrom)`. */
+  previousFrom: Date;
+  /** Thời điểm chốt sổ — mọi query của MỘT response dùng chung một mốc. */
+  generatedAt: Date;
+}
+
+/**
+ * Cắt hai cửa sổ 28 ngày KHÍT NHAU và DÀI BẰNG NHAU, neo vào thời điểm gọi.
+ *
+ * Vì sao neo vào `now` chứ không căn nửa đêm UTC: căn nửa đêm thì kỳ này là
+ * "27 ngày trọn + phần đã trôi của hôm nay" trong khi kỳ trước là 28 ngày
+ * trọn — mọi metric sẽ trông như đang tụt, mỗi sáng lại tụt sâu nhất. Hai cửa
+ * sổ bằng nhau là điều kiện để pill delta nói thật.
+ *
+ * Múi giờ: phép tính chạy trên epoch millisecond nên không có múi giờ nào
+ * tham gia; mọi mốc phơi ra ngoài đều là ISO UTC. Cột thời gian trong Postgres
+ * là `timestamp` (không tz) và mọi đường ghi đều ghi UTC (`now()` với session
+ * TimeZone=UTC ở cả docker lẫn Supabase, hoặc `Date` của JS qua Prisma) — nên
+ * so sánh ở đây là so sánh cùng một thước.
+ */
+export function statsWindow(now: Date): StatsWindow {
+  const end = now.getTime();
+  const span = STATS_WINDOW_DAYS * DAY_MS;
+  return {
+    // `new Date(now)` chứ không dùng lại tham chiếu: caller giữ Date của họ,
+    // hàm này không được phép sửa nó.
+    generatedAt: new Date(end),
+    currentFrom: new Date(end - span),
+    previousFrom: new Date(end - 2 * span),
+  };
+}
+
+/** Cửa sổ → khối `period` của contract (ISO UTC, kèm độ dài cửa sổ). */
+export function statsPeriod(window: StatsWindow): StatsPeriod {
+  return {
+    windowDays: STATS_WINDOW_DAYS,
+    currentFrom: window.currentFrom.toISOString(),
+    previousFrom: window.previousFrom.toISOString(),
+    generatedAt: window.generatedAt.toISOString(),
+  };
+}
+
+/**
+ * `_sum` tiền của Prisma → chuỗi thập phân contract. `null` (kỳ không có row
+ * nào) thành '0.00' chứ không null: "không thu được đồng nào" là một câu trả
+ * lời thật, khác hẳn "không tính được".
+ */
+export function money(value: Prisma.Decimal | null): string {
+  return value ? value.toFixed(2) : '0.00';
+}
+
+/**
+ * Tỉ lệ dạng PHẦN TRĂM 0..100, một chữ số thập phân ('8.3').
+ *
+ * Mẫu số 0 → `null`, KHÔNG phải '0.0': không có booking nào để mà huỷ thì tỉ
+ * lệ huỷ không tồn tại, và vẽ "0%" cạnh một pill delta sẽ bịa ra một cú cải
+ * thiện không có thật.
+ */
+export function ratePercent(part: number, whole: number): string | null {
+  if (whole <= 0) return null;
+  return ((part / whole) * 100).toFixed(1);
+}
+
+/**
+ * `_avg` của Prisma (Int → `number`) → chuỗi hai chữ số thập phân. `null` (kỳ
+ * không có row nào) đi thẳng ra `null` — điểm trung bình của tập rỗng không
+ * phải 0 sao.
+ */
+export function average(value: number | null): string | null {
+  return value === null ? null : value.toFixed(2);
+}

@@ -24,6 +24,9 @@ describe('contract routes', () => {
     [contract.bookings.byCode, 'GET /api/bookings/{code}'],
     [contract.media.signUpload, 'POST /api/media/upload-signatures'],
     [contract.account.setAvatar, 'PATCH /api/account/avatar'],
+    [contract.admin.stats.bookings, 'GET /api/admin/stats/bookings'],
+    [contract.admin.stats.cancellations, 'GET /api/admin/stats/cancellations'],
+    [contract.admin.stats.reviews, 'GET /api/admin/stats/reviews'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
@@ -48,6 +51,15 @@ describe('contract routes', () => {
 
   it('reviews.create declares REVIEW_PHOTO_INVALID (ADR-0021)', () => {
     expect(contract.reviews.create['~orpc'].errorMap).toHaveProperty('REVIEW_PHOTO_INVALID');
+  });
+
+  // F5: đọc thuần, không có phán quyết nghiệp vụ nào để mà khai lỗi riêng —
+  // chỉ 401/403 của guard (AllExceptionsFilter lo) và 500. Test này chốt ý
+  // định đó, để một mã lỗi thêm vào sau là quyết định có ý thức.
+  it('admin.stats procedures declare no business errors', () => {
+    for (const procedure of Object.values(contract.admin.stats)) {
+      expect(procedure['~orpc'].errorMap).toEqual({});
+    }
   });
 });
 

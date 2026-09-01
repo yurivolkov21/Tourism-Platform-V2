@@ -1,0 +1,106 @@
+import { messages } from '@tourism/i18n';
+import { Badge } from '@tourism/ui/components/badge';
+import {
+  Card,
+  CardAction,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@tourism/ui/components/card';
+import { cn } from '@tourism/ui/lib/utils';
+import { TrendingDownIcon, TrendingUpIcon } from 'lucide-react';
+import type { StatCardVM } from '@/lib/stats-view';
+
+/**
+ * Stat card của kit admin (spec P4b §3-F5 — mẫu user chốt 31/08: nhãn · số
+ * lớn · pill delta ↑/↓ · caption "vs X prior 28 days").
+ *
+ * Kiểu dáng bê nguyên `section-cards.tsx` của block dashboard-01 đang chạy ở
+ * trang `/` (gradient `from-primary/5`, container query `@[250px]/card` cho cỡ
+ * chữ, `CardFooter` override `border-t-0` vì Card nova có gạch) — cùng lý do
+ * đã ghi ở `DataTableFrame`: ba vùng phải nhìn là MỘT hệ, và P4d nối dashboard
+ * vào chính component này thay vì giữ bản demo riêng.
+ *
+ * Card KHÔNG tính gì. Chiều mũi tên, độ lớn %, hướng tốt/xấu và caption đều do
+ * `stats-view.ts` (thuần, có test) nấu sẵn từ HAI con số server trả.
+ */
+
+const t = messages.admin.stats;
+
+/** Số card → số cột ở màn rộng. Class phải TĨNH để Tailwind quét thấy. */
+const GRID_COLUMNS: Record<number, string> = {
+  1: '@5xl/main:grid-cols-1',
+  2: '@5xl/main:grid-cols-2',
+  3: '@5xl/main:grid-cols-3',
+  4: '@5xl/main:grid-cols-4',
+};
+
+/**
+ * Hàng card đứng TRÊN bảng của một trang vùng. `<section>` có tên (không phải
+ * div trần): trang có hai khối số liệu (hàng card + bảng) nên trình đọc màn
+ * hình cần nhảy giữa chúng được.
+ */
+export function StatCardRow({ cards }: { cards: StatCardVM[] }) {
+  return (
+    <section
+      aria-label={t.regionLabel}
+      className={cn(
+        'grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 dark:*:data-[slot=card]:bg-card',
+        GRID_COLUMNS[cards.length] ?? GRID_COLUMNS[4],
+      )}
+    >
+      {cards.map(({ key, ...card }) => (
+        <StatCard key={key} {...card} />
+      ))}
+    </section>
+  );
+}
+
+/** Tông màu của pill — hệ quả của `deltaGood`, không phải một prop thứ ba. */
+const TONE_CLASS = {
+  good: 'text-success',
+  bad: 'text-destructive-emphasis',
+  neutral: 'text-muted-foreground',
+} as const;
+
+/** Props = VM trừ `key` — `key` là của React, không phải dữ liệu của card. */
+export type StatCardProps = Omit<StatCardVM, 'key'>;
+
+export function StatCard({ label, value, caption, delta, deltaGood }: StatCardProps) {
+  const tone = deltaGood === undefined ? 'neutral' : deltaGood ? 'good' : 'bad';
+
+  return (
+    <Card className="@container/card">
+      <CardHeader>
+        <CardDescription>{label}</CardDescription>
+        <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+          {value}
+        </CardTitle>
+        {delta ? (
+          <CardAction>
+            <Badge
+              variant="outline"
+              // `data-*` là nguồn: test soi chiều/tông ở đây, CSS chỉ ăn theo.
+              data-testid="stat-delta"
+              data-trend={delta.direction}
+              data-tone={tone}
+              className={TONE_CLASS[tone]}
+            >
+              {/* Đứng yên thì không có mũi tên nào đúng — chỉ còn con số. */}
+              {delta.direction === 'up' ? <TrendingUpIcon aria-hidden="true" /> : null}
+              {delta.direction === 'down' ? <TrendingDownIcon aria-hidden="true" /> : null}
+              {delta.percent}
+              {/* Mũi tên + "33.3%" đọc lên thành "33.3 phần trăm" — không nói
+                  được là tăng hay giảm so với cái gì. */}
+              <span className="sr-only">{delta.srLabel}</span>
+            </Badge>
+          </CardAction>
+        ) : null}
+      </CardHeader>
+      <CardFooter className="flex-col items-start gap-1.5 border-t-0 bg-transparent text-sm">
+        <div className="text-muted-foreground">{caption}</div>
+      </CardFooter>
+    </Card>
+  );
+}

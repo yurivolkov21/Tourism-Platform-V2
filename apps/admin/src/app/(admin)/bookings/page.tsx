@@ -3,10 +3,13 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { BookingsTable } from '@/components/bookings/bookings-table';
+import { StatCardRow } from '@/components/kit/stat-card';
 import { fetchAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
+import { fetchAdminBookingsStats } from '@/lib/api/stats';
 import { bookingsHref, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
+import { toBookingsStatCards } from '@/lib/stats-view';
 import type { RawSearchParams } from '@/lib/table-query';
 
 /**
@@ -16,6 +19,9 @@ import type { RawSearchParams } from '@/lib/table-query';
  * oRPC kèm cookie forward → truyền một trang đã format xuống bảng client
  * (§2.2). Không có fetch nào từ browser, nên đổi trang/lọc là điều hướng URL
  * chứ không phải state.
+ *
+ * Hàng stat card (spec §3-F5) đứng TRÊN bảng, fetch cùng đợt `Promise.all`
+ * với list — số liệu là ngữ cảnh của bảng, không phải một trang khác.
  */
 export const metadata: Metadata = {
   title: 'Bookings — Nexora back office',
@@ -31,9 +37,12 @@ export default async function BookingsPage({
   // Session (chỉ để đổ vào nav-user — layout đã gác role) và trang dữ liệu
   // là hai request độc lập: chạy song song kẻo TTFB thành 2 RTT nối tiếp
   // trên MỌI click phân trang/lọc (nếp Promise.all như enquire/page.tsx web).
-  const [session, paged] = await Promise.all([
+  const [session, paged, stats] = await Promise.all([
     getServerSession(),
     fetchAdminBookings(cookie, query),
+    // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
+    // một RTT vào MỌI click phân trang/lọc chỉ để vẽ lại hàng card.
+    fetchAdminBookingsStats(cookie),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang dashboard).
@@ -48,6 +57,7 @@ export default async function BookingsPage({
 
   return (
     <AdminShell user={session}>
+      <StatCardRow cards={toBookingsStatCards(stats)} />
       <BookingsTable
         rows={paged.items.map(toBookingRow)}
         query={query}

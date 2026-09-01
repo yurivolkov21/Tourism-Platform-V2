@@ -55,6 +55,11 @@ import {
 } from './schemas/reviews.js';
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
+  AdminBookingsStatsSchema,
+  AdminCancellationsStatsSchema,
+  AdminReviewsStatsSchema,
+} from './schemas/stats.js';
+import {
   CheckWishlistInputSchema,
   CheckWishlistResultSchema,
   SetWishlistInputSchema,
@@ -607,6 +612,47 @@ export const contract = {
         .input(ModerateReviewInputSchema)
         .output(AdminReviewSchema)
         .errors({ REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' } }),
+    },
+    /**
+     * Số liệu vùng (spec P4b §3-F5) — MỘT endpoint cho mỗi trang vùng, mỗi
+     * cái trả bộ metric của vùng đó kèm giá trị kỳ liền trước (xem
+     * `schemas/stats.ts`: server trả cả hai số, client không tự chế delta).
+     *
+     * Vì sao ba endpoint chứ không một `admin.stats.all`: mỗi trang vùng chỉ
+     * cần bộ của nó, và trang đó fetch stats SONG SONG với list (Promise.all)
+     * — gộp làm một sẽ bắt `/reviews` chờ luôn cả aggregate tiền của
+     * bookings. P4d dashboard cần nhiều bộ thì gọi song song ba cái.
+     *
+     * KHÔNG có input: cửa sổ 28-ngày là hằng của sản phẩm (mẫu card user chốt
+     * 31/08), không phải tham số. Ngày nào cần chọn kỳ thì thêm input optional
+     * — thêm field optional là thay đổi tương thích ngược, bỏ nó thì không.
+     *
+     * KHÔNG khai lỗi nghiệp vụ: đọc thuần, không phán quyết gì. Guard
+     * `AuthGuard` + `@Roles(ADMIN)` ở controller cho 401/403 như bảy endpoint
+     * admin còn lại — contract không mang metadata auth.
+     */
+    stats: {
+      bookings: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/bookings',
+          summary: 'Bookings KPIs for the last 28 days and the 28 before that',
+        })
+        .output(AdminBookingsStatsSchema),
+      cancellations: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/cancellations',
+          summary: 'Cancellation queue + decisions for the last 28 days and the 28 before that',
+        })
+        .output(AdminCancellationsStatsSchema),
+      reviews: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/reviews',
+          summary: 'Moderation queue + ratings for the last 28 days and the 28 before that',
+        })
+        .output(AdminReviewsStatsSchema),
     },
   },
 };

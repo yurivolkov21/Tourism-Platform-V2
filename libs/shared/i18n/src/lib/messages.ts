@@ -2607,6 +2607,52 @@ export const messages = {
       pagination: 'Pagination',
     },
     /**
+     * Hàng stat card đứng TRÊN bảng của ba trang vùng (spec P4b §3-F5 — mẫu
+     * user chốt 31/08: nhãn · số lớn · pill delta ↑/↓ · "vs X prior 28 days").
+     * Copy DÙNG CHUNG ở đây vì cả ba vùng in cùng một hình dạng card; nhãn
+     * riêng của từng vùng nằm trong ba khối con.
+     *
+     * Số ngày là THAM SỐ, không viết cứng "28": server trả `period.windowDays`
+     * và mọi câu chữ ăn theo nó — đổi cửa sổ ở một chỗ là cả UI đổi theo,
+     * không có chuỗi nào nói dối về kỳ mà nó đang mô tả.
+     */
+    stats: {
+      /** aria-label cho landmark bọc hàng card — trang có hai vùng số liệu. */
+      regionLabel: 'Key numbers',
+      /** Caption của metric ĐẾM TRONG một cửa sổ ("vs $900.00 prior 28 days"). */
+      comparison: (previous: string, days: number) => `vs ${previous} prior ${days} days`,
+      /**
+       * Caption của metric ẢNH CHỤP (hàng đợi đang mở): con số ấy KHÔNG đếm
+       * trong một kỳ, nó là số của MỘT MỐC — nên "prior 28 days" sẽ nói sai
+       * về chính thứ đang hiện.
+       */
+      snapshotComparison: (previous: string, days: number) => `vs ${previous} ${days} days ago`,
+      /** Kỳ này không tính được (không mẫu số / không có dữ liệu) — không phải 0. */
+      noValue: '—',
+      /** Pill delta chỉ có mũi tên + con số; trình đọc màn hình cần một câu. */
+      trend: {
+        up: (percent: string) => `Up ${percent} on the previous period`,
+        down: (percent: string) => `Down ${percent} on the previous period`,
+        flat: 'Unchanged on the previous period',
+      },
+      bookings: {
+        revenue: 'Revenue',
+        paid: 'Paid bookings',
+        created: 'New bookings',
+        cancellationRate: 'Cancellation rate',
+      },
+      cancellations: {
+        pendingQueue: 'Pending queue',
+        approved: (days: number) => `Approved ${days}d`,
+        denied: (days: number) => `Denied ${days}d`,
+      },
+      reviews: {
+        pending: 'Pending',
+        approved: (days: number) => `Approved ${days}d`,
+        averageRating: 'Average rating',
+      },
+    },
+    /**
      * Copy cho hai tấm lưới đỡ lỗi của admin (`app/error.tsx` +
      * `app/not-found.tsx` — review F1 31/08): lỗi đọc API (401 phiên chết
      * giữa chừng, timeout, API sập) và địa chỉ không tồn tại.
