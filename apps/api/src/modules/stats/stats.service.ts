@@ -7,8 +7,9 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { CancellationRequestStatus } from '../../generated/prisma/enums.js';
 import {
-  bookingsSlice,
+  bookingsCreatedCount,
   decisionsSlice,
+  paidBookingsSlice,
   revenueCurrency,
   reviewApprovals,
 } from './stats-aggregates.js';
@@ -110,9 +111,11 @@ export class StatsService {
    *  round-trip). */
   async adminBookings(): Promise<AdminBookingsStats> {
     const window = statsWindow(new Date());
-    const [current, previous, currency] = await Promise.all([
-      bookingsSlice(window.currentFrom, window.generatedAt),
-      bookingsSlice(window.previousFrom, window.currentFrom),
+    const [current, previous, createdNow, createdBefore, currency] = await Promise.all([
+      paidBookingsSlice(window.currentFrom, window.generatedAt),
+      paidBookingsSlice(window.previousFrom, window.currentFrom),
+      bookingsCreatedCount(window.currentFrom, window.generatedAt),
+      bookingsCreatedCount(window.previousFrom, window.currentFrom),
       revenueCurrency(window.previousFrom, window.generatedAt),
     ]);
 
@@ -121,7 +124,7 @@ export class StatsService {
       currency,
       revenue: { current: grossAmount(current.revenue), previous: grossAmount(previous.revenue) },
       paidBookings: { current: current.paid, previous: previous.paid },
-      newBookings: { current: current.created, previous: previous.created },
+      newBookings: { current: createdNow, previous: createdBefore },
       cancellationRate: {
         current: ratePercent(current.cancelledOfPaid, current.paid),
         previous: ratePercent(previous.cancelledOfPaid, previous.paid),

@@ -2,6 +2,7 @@ import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
+  reportBookingsTotal,
   reportCsvRows,
   reportPeriodLabel,
   toReportStatCards,
@@ -98,6 +99,14 @@ describe('toReportStatusRows', () => {
       label: messages.admin.bookings.status.PENDING,
       count: '2',
     });
+  });
+
+  it('tổng hàng chân bảng định dạng GIỐNG các hàng trên — cùng một cột số', () => {
+    // Bản đầu F6 in thẳng `report.newBookings` nên cột đọc ra "1,230 / 4 /
+    // 1234" (review F6). Số ở chân bảng vẫn là số của SERVER, chỉ đi qua đúng
+    // bộ định dạng mà các hàng trên đang dùng.
+    expect(reportBookingsTotal({ ...report, newBookings: 1234 })).toBe('1,234');
+    expect(reportBookingsTotal({ ...report, newBookings: 0 })).toBe('0');
   });
 
   it('trạng thái 0 vẫn có hàng — số 0 là một câu trả lời', () => {

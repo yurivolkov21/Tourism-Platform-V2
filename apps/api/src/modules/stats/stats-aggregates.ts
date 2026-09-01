@@ -19,19 +19,22 @@ import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma
  * Mọi khoảng đều NỬA-MỞ `gte … lt` nên hai kỳ liền kề không đếm chung row nào.
  */
 
-/** Ba con số booking của MỘT khoảng: doanh thu + đếm + tử số tỉ lệ huỷ. */
-export async function bookingsSlice(from: Date, to: Date) {
-  const [byStatus, created] = await Promise.all([
-    // MỘT groupBy theo status trên tập đã-trả-tiền trả cả revenue + đếm + tử
-    // số tỉ lệ huỷ (gộp ở vòng vá review F5), cộng một count theo createdAt.
-    prisma.booking.groupBy({
-      by: ['status'],
-      where: { paidAt: { gte: from, lt: to } },
-      _sum: { totalAmount: true },
-      _count: { _all: true },
-    }),
-    prisma.booking.count({ where: { createdAt: { gte: from, lt: to } } }),
-  ]);
+/**
+ * Ba con số của tập ĐÃ TRẢ TIỀN trong khoảng: doanh thu + đếm + tử số tỉ lệ
+ * huỷ. MỘT `groupBy` theo status trả cả ba (gộp ở vòng vá review F5).
+ *
+ * Chỉ đụng `paid_at` — phần "tạo trong khoảng" là câu hỏi khác và có hàm
+ * riêng, vì hai consumer cần nó ở hai hình dạng khác nhau
+ * (`bookingsCreatedCount` cho stat card, `bookingsCreatedByStatus` cho báo
+ * cáo tháng).
+ */
+export async function paidBookingsSlice(from: Date, to: Date) {
+  const byStatus = await prisma.booking.groupBy({
+    by: ['status'],
+    where: { paidAt: { gte: from, lt: to } },
+    _sum: { totalAmount: true },
+    _count: { _all: true },
+  });
 
   let revenue: Prisma.Decimal | null = null;
   let paid = 0;
@@ -48,7 +51,12 @@ export async function bookingsSlice(from: Date, to: Date) {
     }
   }
 
-  return { revenue, paid, created, cancelledOfPaid };
+  return { revenue, paid, cancelledOfPaid };
+}
+
+/** Số booking TẠO trong khoảng, mọi trạng thái — stat card chỉ cần con số. */
+export function bookingsCreatedCount(from: Date, to: Date): Promise<number> {
+  return prisma.booking.count({ where: { createdAt: { gte: from, lt: to } } });
 }
 
 /**
@@ -57,6 +65,12 @@ export async function bookingsSlice(from: Date, to: Date) {
  *
  * Trả về Map thưa (chỉ trạng thái có row); phần điền 0 cho đủ enum là việc
  * của tầng dựng response, vì chính contract mới là chỗ hứa "đủ mọi trạng thái".
+ *
+ * Báo cáo tháng lấy LUÔN `newBookings` từ tổng của map này thay vì gọi thêm
+ * `bookingsCreatedCount` (vòng vá review F6): hai query riêng chụp hai
+ * khoảnh khắc hơi khác nhau, nên một booking sinh ra ở giữa sẽ làm bảng in
+ * năm hàng cộng lại một đằng còn hàng Total một nẻo — đúng cột mà người đọc
+ * dùng để kiểm chéo.
  */
 export async function bookingsCreatedByStatus(
   from: Date,

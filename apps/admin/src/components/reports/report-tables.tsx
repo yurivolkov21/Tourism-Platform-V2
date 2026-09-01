@@ -9,7 +9,7 @@ import {
   TableHeader,
   TableRow,
 } from '@tourism/ui/components/table';
-import { toReportStatusRows, toReportSummaryRows } from '@/lib/reports-view';
+import { reportBookingsTotal, toReportStatusRows, toReportSummaryRows } from '@/lib/reports-view';
 
 /**
  * Hai bảng của báo cáo tháng (spec P4b §3-F6) — server component, không state,
@@ -55,7 +55,9 @@ export function ReportTables({ report }: { report: AdminMonthlyReport }) {
                     của client: contract bảo đảm hai con số bằng nhau, nên in cả
                     hai là để chúng kiểm chéo nhau ngay trên giấy. */}
                 <TableCell>{t.bookingsTable.total}</TableCell>
-                <TableCell className="text-right tabular-nums">{report.newBookings}</TableCell>
+                <TableCell className="text-right tabular-nums">
+                  {reportBookingsTotal(report)}
+                </TableCell>
               </TableRow>
             </TableFooter>
           </Table>

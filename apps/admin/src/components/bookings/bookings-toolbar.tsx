@@ -2,14 +2,21 @@
 
 import { BookingStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { DownloadIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import * as React from 'react';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { type BookingsQuery, bookingsExportHref, bookingsHref } from '@/lib/bookings-query';
+import {
+  type BookingsHrefPatch,
+  type BookingsQuery,
+  bookingsExportHref,
+  bookingsHref,
+} from '@/lib/bookings-query';
 
 /**
  * Bốn mẩu điều khiển của `/bookings`, lắp vào hai khe của `DataTableFrame`:
@@ -86,6 +93,30 @@ export function BookingsSearch({ query }: { query: BookingsQuery }) {
  */
 export function BookingsDateRange({ query }: { query: BookingsQuery }) {
   const router = useRouter();
+  // Nonce ĐẶT LẠI ô nhập (vòng vá review F6). Xem `go` bên dưới: có một ca mà
+  // URL không đổi nhưng ô vẫn phải quay về giá trị đang lọc, và `key` theo
+  // URL một mình không kéo nổi nó về.
+  const [resetNonce, setResetNonce] = React.useState(0);
+
+  /**
+   * Đổi một đầu của khoảng. Trình duyệt chỉ phát `change` khi ô date đủ ba
+   * phần (hoặc bị xoá trắng), nên không có cảnh mỗi phím gõ một lần đẩy URL.
+   *
+   * Ca phải xử riêng: giá trị vừa gõ bị luật khoảng-ngược của `bookingsHref`
+   * VỨT ĐI, và URL đích trùng URL hiện tại. `router.push` lúc đó là no-op nên
+   * React không dựng lại ô, và ô đứng đó khoe một bộ lọc không tồn tại —
+   * người đọc màn hình tin là bảng đang lọc tới ngày đó. Bump nonce để ô snap
+   * về đúng thứ URL đang nói. (`min`/`max` chỉ làm value :invalid, KHÔNG chặn
+   * gõ tay, nên ca này tới được.)
+   */
+  function go(patch: BookingsHrefPatch) {
+    const next = bookingsHref(query, patch);
+    if (next === bookingsHref(query, {})) {
+      setResetNonce((nonce) => nonce + 1);
+      return;
+    }
+    router.push(next);
+  }
 
   return (
     // `<fieldset>` chứ không phải div trần: hai ô là MỘT bộ lọc, và nhãn
@@ -102,11 +133,12 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
         aria-label={t.dateFrom}
         title={t.dateFrom}
         // `key` ép React dựng lại ô sau mỗi lần điều hướng nên ô luôn khớp
-        // URL mà không cần effect đồng bộ (cùng nếp `TableSearchForm`).
-        key={`from-${query.from ?? ''}`}
+        // URL mà không cần effect đồng bộ (cùng nếp `TableSearchForm`); nonce
+        // là đường kéo về cho ca URL-không-đổi (xem `go`).
+        key={`from-${query.from ?? ''}-${resetNonce}`}
         defaultValue={query.from ?? ''}
         max={query.to}
-        onChange={(event) => router.push(bookingsHref(query, { from: event.target.value }))}
+        onChange={(event) => go({ from: event.target.value })}
       />
       <span aria-hidden="true" className="text-muted-foreground">
         –
@@ -120,14 +152,28 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
         className="w-36"
         aria-label={t.dateTo}
         title={t.dateTo}
-        key={`to-${query.to ?? ''}`}
+        key={`to-${query.to ?? ''}-${resetNonce}`}
         defaultValue={query.to ?? ''}
-        // Lịch native tự chặn ngày trước `from` — người dùng không dựng được
-        // khoảng ngược ngay từ đầu, còn `parseBookingsSearchParams` lo nốt
-        // đường URL gõ tay.
+        // Lịch native làm mờ ngày trước `from` trong bảng chọn — nhưng nó chỉ
+        // đánh dấu value :invalid chứ KHÔNG chặn gõ tay, nên `go` vẫn phải lo
+        // nốt, cùng luật khoan dung với đường URL.
         min={query.from}
-        onChange={(event) => router.push(bookingsHref(query, { to: event.target.value }))}
+        onChange={(event) => go({ to: event.target.value })}
       />
+      {/* Xoá cả hai đầu trong một cú bấm — nếp `TableSearchForm`. Không có nó
+          thì bỏ lọc nghĩa là focus từng ô rồi bấm Delete, thứ mà ô date của
+          Chrome không hề gợi ý; nó cũng là lối thoát cho ca ô bị kéo về ở
+          `go` (review F6). */}
+      {query.from || query.to ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => go({ from: null, to: null })}
+        >
+          {t.clearDates}
+        </Button>
+      ) : null}
     </fieldset>
   );
 }

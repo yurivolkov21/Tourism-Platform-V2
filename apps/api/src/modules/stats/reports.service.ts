@@ -3,8 +3,8 @@ import { type AdminMonthlyReport, BookingStatusSchema } from '@tourism/contract'
 import type { BookingStatus } from '../../generated/prisma/enums.js';
 import {
   bookingsCreatedByStatus,
-  bookingsSlice,
   decisionsSlice,
+  paidBookingsSlice,
   refundsSlice,
   revenueCurrency,
   reviewApprovals,
@@ -33,7 +33,8 @@ import { grossAmount, monthWindow } from './stats-math.js';
  *   HIỆN TẠI của chúng. Là ẢNH CHỤP: một booking tạo tháng 5 rồi bị huỷ tháng
  *   7 sẽ đếm vào ô CANCELLED của báo cáo tháng 5 kể từ tháng 7 trở đi. Cố ý —
  *   câu hỏi mà bảng này trả lời là "lứa khách tháng 5 rốt cuộc ra sao", không
- *   phải "tháng 5 nhìn thấy gì". Tổng luôn bằng `newBookings`.
+ *   phải "tháng 5 nhìn thấy gì". `newBookings` LÀ tổng của chính bảng phân rã
+ *   này (một query, một khoảnh khắc) — bất biến theo cấu trúc.
  * - `refundedTotal` / `refunds` — sổ cái tiền ĐI RA theo `refunds.created_at`.
  *   KHÔNG trừ vào `revenue` và không cần cùng tháng với booking gốc.
  * - `generatedAt` — lúc chốt sổ. Là thứ DUY NHẤT trong response đổi giữa hai
@@ -49,8 +50,8 @@ import { grossAmount, monthWindow } from './stats-math.js';
 export class ReportsService {
   async monthly(month: string): Promise<AdminMonthlyReport> {
     const { from, to } = monthWindow(month);
-    const [bookings, byStatus, currency, refunds, decisions, reviewsApproved] = await Promise.all([
-      bookingsSlice(from, to),
+    const [paid, created, currency, refunds, decisions, reviewsApproved] = await Promise.all([
+      paidBookingsSlice(from, to),
       bookingsCreatedByStatus(from, to),
       revenueCurrency(from, to),
       refundsSlice(from, to),
@@ -58,21 +59,27 @@ export class ReportsService {
       reviewApprovals(from, to),
     ]);
 
+    // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và thứ
+    // tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
+    const bookingsByStatus = BookingStatusSchema.options.map((status) => ({
+      status,
+      count: created.get(status as BookingStatus) ?? 0,
+    }));
+
     return {
       month,
       from: from.toISOString(),
       to: to.toISOString(),
       generatedAt: new Date().toISOString(),
       currency,
-      revenue: grossAmount(bookings.revenue),
-      paidBookings: bookings.paid,
-      newBookings: bookings.created,
-      // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và
-      // thứ tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
-      bookingsByStatus: BookingStatusSchema.options.map((status) => ({
-        status,
-        count: byStatus.get(status as BookingStatus) ?? 0,
-      })),
+      revenue: grossAmount(paid.revenue),
+      paidBookings: paid.paid,
+      // Tổng của CHÍNH phân rã ở trên, không phải một COUNT thứ hai (vòng vá
+      // review F6): contract hứa hai con số bằng nhau và bản in đặt chúng
+      // cạnh nhau để kiểm chéo, nên bất biến ấy phải đúng theo CẤU TRÚC chứ
+      // không nhờ may mắn hai query chụp cùng một khoảnh khắc.
+      newBookings: bookingsByStatus.reduce((sum, row) => sum + row.count, 0),
+      bookingsByStatus,
       refundedTotal: grossAmount(refunds.total),
       refunds: refunds.count,
       cancellationsApproved: decisions.approved,

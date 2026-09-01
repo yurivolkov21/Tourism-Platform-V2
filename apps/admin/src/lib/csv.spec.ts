@@ -79,10 +79,25 @@ describe('toCsv', () => {
 });
 
 describe('csvDocument', () => {
+  // Khoá theo CODEPOINT, không theo chính hằng `CSV_BOM` (review F6): so hai
+  // vế cùng dùng hằng đó thì test vẫn xanh kể cả khi nó thành chuỗi rỗng —
+  // mà U+FEFF là ký tự VÔ HÌNH trong source, đúng thứ một lần đổi encoding
+  // hay một công cụ strip-BOM có thể nuốt mà không ai thấy.
+  it('CSV_BOM đúng là U+FEFF, một ký tự', () => {
+    expect([...CSV_BOM]).toHaveLength(1);
+    expect(CSV_BOM.codePointAt(0)).toBe(0xfeff);
+  });
+
   it('mở đầu bằng BOM UTF-8 — không có nó Excel đọc "Hội An" thành ký tự rác', () => {
     const doc = csvDocument([['Tour'], ['Hội An']]);
-    expect(doc.startsWith(CSV_BOM)).toBe(true);
-    expect(doc).toBe(`${CSV_BOM}Tour\r\nHội An\r\n`);
+    expect(doc.codePointAt(0)).toBe(0xfeff);
+    expect(doc).toBe(`\uFEFFTour\r\nHội An\r\n`);
+  });
+
+  it('ba byte EF BB BF thật sự nằm ở đầu file khi đi qua UTF-8', () => {
+    // Đây mới là thứ Excel đọc: byte trên đĩa, không phải ký tự trong JS.
+    const bytes = new TextEncoder().encode(csvDocument([['Tour']]));
+    expect([...bytes.slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
   });
 });
 

@@ -87,6 +87,16 @@ export function toReportStatusRows(report: AdminMonthlyReport): ReportStatusRowV
   }));
 }
 
+/**
+ * Tổng ở chân bảng phân rã — vẫn là `newBookings` của SERVER (contract bảo
+ * đảm nó bằng tổng các hàng), chỉ đi qua ĐÚNG bộ định dạng mà các hàng trên
+ * đang dùng. Bản đầu F6 in thẳng con số thô nên cùng một cột đọc ra
+ * "1,230 / 4 / 1234" (review F6).
+ */
+export function reportBookingsTotal(report: AdminMonthlyReport): string {
+  return formatCount(report.newBookings);
+}
+
 /** Bảng metric/value: tiền + vận hành, đã định dạng cho mắt người. */
 export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
   const o = t.operationsTable;

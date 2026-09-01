@@ -46,11 +46,18 @@ export async function fetchAdminBookings(
  *   (413) chứ không cắt bớt im lặng — một file thiếu hàng mà không ai biết là
  *   thứ tệ hơn hẳn một thông báo.
  *
+ * Vì sao trần là 2000 chứ không lớn hơn (hạ từ 5000 ở vòng vá review F6):
+ * cả vòng lặp chạy TRONG MỘT route handler, mà admin deploy lên Vercel
+ * (ADR-0026) nơi function có trần thời lượng. 2000 dòng = tối đa 20 round-trip
+ * sang API trên Render; 5000 là 50 round-trip và đủ để chạm trần đó — kết cục
+ * là request bị cắt giữa chừng, trình duyệt nhận một response hỏng thay vì
+ * file, và KHÔNG tái hiện được ở localhost.
+ *
  * Ngày nào tập dữ liệu thật sự lớn (chục nghìn booking) thì đường đúng là
  * endpoint stream ở API — lúc đó đọc lại đoạn này trước khi làm.
  */
 export const EXPORT_PAGE_SIZE = 100; // trần `limit` của contract
-export const EXPORT_MAX_ROWS = 5000;
+export const EXPORT_MAX_ROWS = 2000;
 
 /** Kết quả gom: hoặc cả tập, hoặc lời từ chối kèm con số để báo cho người bấm. */
 export type AdminBookingsExport =
