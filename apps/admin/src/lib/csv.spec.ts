@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { CSV_BOM, csvDocument, csvFilename, escapeCsvValue, isoDay, toCsv } from './csv';
+import {
+  CSV_BOM,
+  csvAttachmentHeaders,
+  csvDocument,
+  csvFilename,
+  escapeCsvValue,
+  isoDay,
+  toCsv,
+} from './csv';
 
 /**
  * Dựng CSV (spec P4b §3-F6) — đường 0-dependency: không thư viện xlsx/PDF nào
@@ -120,5 +128,22 @@ describe('csvFilename', () => {
     expect(csvFilename('book"ings\r\n', '2026-09-01')).toBe('book-ings-2026-09-01.csv');
     expect(csvFilename('report 2026/09', '2026-09-01')).toBe('report-2026-09-2026-09-01.csv');
     expect(csvFilename('Nexora Bookings', '2026-09-01')).toBe('nexora-bookings-2026-09-01.csv');
+  });
+});
+
+/**
+ * Header của một response tải file — nâng từ hai bản chép verbatim ở hai route
+ * export (review F6). Ba dòng này là hợp đồng với trình duyệt: thiếu
+ * `content-disposition` thì file mở ngay trong tab thay vì tải về, thiếu
+ * `no-store` thì proxy/trình duyệt có thể phát lại một ảnh chụp cũ cho lần
+ * bấm sau.
+ */
+describe('csvAttachmentHeaders', () => {
+  it('ép TẢI VỀ đúng tên file, khai charset, và cấm mọi tầng cache', () => {
+    expect(csvAttachmentHeaders('nexora-bookings-2026-09-01.csv')).toEqual({
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': 'attachment; filename="nexora-bookings-2026-09-01.csv"',
+      'cache-control': 'no-store',
+    });
   });
 });

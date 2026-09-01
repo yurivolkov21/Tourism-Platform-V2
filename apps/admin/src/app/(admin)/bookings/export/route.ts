@@ -2,11 +2,11 @@ import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
-import { fetchAllAdminBookings } from '@/lib/api/bookings';
+import { type AdminBookingsExport, fetchAllAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { bookingsCsvRows } from '@/lib/bookings-csv';
 import { parseBookingsSearchParams } from '@/lib/bookings-query';
-import { CSV_CONTENT_TYPE, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
@@ -42,7 +42,19 @@ export async function GET(request: NextRequest) {
 
   const query = parseBookingsSearchParams(rawSearchParamsFrom(request.nextUrl.searchParams));
   const cookie = (await cookies()).toString();
-  const result = await fetchAllAdminBookings(cookie, query);
+
+  // API sập/timeout giữa vòng lặp gom trang: KHÔNG để lỗi ném ra khỏi handler.
+  // Route handler không chạy qua `app/error.tsx`, nên một ORPCError lọt ra
+  // thành trang 500 HTML mặc định của Next — admin bấm nút Export rồi bị đá
+  // khỏi bảng đang lọc sang một trang trắng, mất luôn bộ lọc vừa dựng và
+  // không có câu nào nói "thử lại". 502 vì đây đúng là upstream hỏng.
+  let result: AdminBookingsExport;
+  try {
+    result = await fetchAllAdminBookings(cookie, query);
+  } catch (error) {
+    console.error('[admin] bookings export failed', error);
+    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+  }
 
   // Tập quá lớn: TỪ CHỐI kèm con số, không cắt bớt im lặng. Một file thiếu
   // hàng mà người xuất tưởng là đủ còn tệ hơn hẳn một lời từ chối.
@@ -52,12 +64,6 @@ export async function GET(request: NextRequest) {
 
   const filename = csvFilename('nexora-bookings', isoDay(new Date()));
   return new Response(csvDocument(bookingsCsvRows(result.bookings)), {
-    headers: {
-      'content-type': CSV_CONTENT_TYPE,
-      'content-disposition': `attachment; filename="${filename}"`,
-      // Dữ liệu back-office, và mỗi lần bấm là một ảnh chụp khác — không có
-      // gì ở đây được phép nằm lại trong cache trình duyệt/proxy.
-      'cache-control': 'no-store',
-    },
+    headers: csvAttachmentHeaders(filename),
   });
 }

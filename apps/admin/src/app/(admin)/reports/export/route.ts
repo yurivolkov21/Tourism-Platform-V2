@@ -1,10 +1,11 @@
+import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
 import { getServerSession } from '@/lib/api/session';
-import { CSV_CONTENT_TYPE, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
 import { parseReportsSearchParams } from '@/lib/reports-query';
 import { reportCsvRows } from '@/lib/reports-view';
 import { rawSearchParamsFrom } from '@/lib/table-query';
@@ -36,17 +37,23 @@ export async function GET(request: NextRequest) {
     new Date(),
   );
   const cookie = (await cookies()).toString();
-  const report = await fetchAdminMonthlyReport(cookie, month);
+
+  // Cùng lý do với `/bookings/export`: route handler không đi qua
+  // `app/error.tsx`, nên API hỏng mà không bắt ở đây sẽ thành trang 500 HTML
+  // thay vì một câu nói rõ là chưa tải được gì.
+  let report: AdminMonthlyReport;
+  try {
+    report = await fetchAdminMonthlyReport(cookie, month);
+  } catch (error) {
+    console.error('[admin] monthly report export failed', error);
+    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+  }
 
   // Tên file mang CẢ tháng báo cáo lẫn ngày xuất: hai bản tải cùng một tháng ở
   // hai ngày khác nhau là hai ảnh chụp khác nhau (phân rã trạng thái đổi theo
   // thời gian — xem `definitions.statuses`), nên chúng không được trùng tên.
   const filename = csvFilename(`nexora-report-${report.month}`, isoDay(new Date()));
   return new Response(csvDocument(reportCsvRows(report)), {
-    headers: {
-      'content-type': CSV_CONTENT_TYPE,
-      'content-disposition': `attachment; filename="${filename}"`,
-      'cache-control': 'no-store',
-    },
+    headers: csvAttachmentHeaders(filename),
   });
 }

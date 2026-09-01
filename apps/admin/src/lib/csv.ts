@@ -82,6 +82,26 @@ export function isoDay(now: Date): string {
 }
 
 /**
+ * Header của một response tải CSV — nâng từ hai bản chép verbatim ở hai route
+ * export (vòng vá review F6).
+ *
+ * Ba dòng này là hợp đồng với trình duyệt, không phải trang trí: thiếu
+ * `content-disposition` thì file mở ngay trong tab thay vì tải về; thiếu
+ * `no-store` thì proxy hoặc chính trình duyệt có thể phát lại ảnh chụp cũ cho
+ * lần bấm sau, mà mỗi lần bấm là một ảnh chụp KHÁC của dữ liệu back-office.
+ *
+ * `filename` phải đi qua `csvFilename` trước — nó là thứ duy nhất làm sạch
+ * chuỗi trước khi chuỗi ấy nằm trong một header HTTP.
+ */
+export function csvAttachmentHeaders(filename: string): Record<string, string> {
+  return {
+    'content-type': CSV_CONTENT_TYPE,
+    'content-disposition': `attachment; filename="${filename}"`,
+    'cache-control': 'no-store',
+  };
+}
+
+/**
  * Tên file tải về. Phần `name` được LÀM SẠCH về `[a-z0-9-]`: nó đi thẳng vào
  * header `Content-Disposition`, nơi một dấu nháy hay xuống dòng lọt vào là
  * một lỗ header injection — không phải chỉ là tên xấu.

@@ -2743,6 +2743,18 @@ export const messages = {
       notFoundBody: 'This page does not exist — the link may be stale or the record was removed.',
       backHome: 'Back to dashboard',
       /**
+       * Export không dựng được vì API không trả lời. Đây là BODY của một
+       * response 502 mà người bấm nút Export nhận THAY CHO file, nên nó phải
+       * nói đủ hai điều: KHÔNG có gì được tải về, và việc cần làm tiếp theo.
+       *
+       * Cố ý KHÔNG dùng chung `write.GENERIC`: câu đó mập mờ có chủ đích
+       * ("may or may not have gone through") vì nó nói về hành vi GHI. Export
+       * chỉ ĐỌC — không có gì để lỡ đi qua, và mượn giọng mập mờ ở đây sẽ làm
+       * operator hoảng về một thứ chưa hề xảy ra.
+       */
+      exportFailed:
+        'The export could not be built — the back office could not reach the API. Nothing was downloaded; go back and try again.',
+      /**
        * Copy DÙNG CHUNG cho mã lỗi TẦNG VẬN CHUYỂN của mọi hành vi ghi admin
        * (refund F2, decide F3, moderate F4…) — tách khỏi mã CONTRACT của từng
        * endpoint (review F2 31/08): mỗi vùng chỉ khai câu cho mã riêng của
