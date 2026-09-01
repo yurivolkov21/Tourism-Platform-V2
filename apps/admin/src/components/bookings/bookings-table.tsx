@@ -136,8 +136,9 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
           <BookingsSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />
           {/* Export đứng CUỐI hàng: nó là hành động trên kết quả của mọi bộ
-              lọc bên trái, nên đọc từ trái sang phải là "lọc… rồi tải về". */}
-          <BookingsExportLink query={query} />
+              lọc bên trái, nên đọc từ trái sang phải là "lọc… rồi tải về".
+              `total` để nút tự tắt khi tập vượt trần export (vòng vá F6). */}
+          <BookingsExportLink query={query} total={total} />
         </>
       }
       footer={

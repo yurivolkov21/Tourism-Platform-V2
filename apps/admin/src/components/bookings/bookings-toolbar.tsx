@@ -16,6 +16,7 @@ import {
   type BookingsQuery,
   bookingsExportHref,
   bookingsHref,
+  EXPORT_MAX_ROWS,
 } from '@/lib/bookings-query';
 
 /**
@@ -103,19 +104,28 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
    * phần (hoặc bị xoá trắng), nên không có cảnh mỗi phím gõ một lần đẩy URL.
    *
    * Ca phải xử riêng: giá trị vừa gõ bị luật khoảng-ngược của `bookingsHref`
-   * VỨT ĐI, và URL đích trùng URL hiện tại. `router.push` lúc đó là no-op nên
-   * React không dựng lại ô, và ô đứng đó khoe một bộ lọc không tồn tại —
-   * người đọc màn hình tin là bảng đang lọc tới ngày đó. Bump nonce để ô snap
-   * về đúng thứ URL đang nói. (`min`/`max` chỉ làm value :invalid, KHÔNG chặn
-   * gõ tay, nên ca này tới được.)
+   * VỨT ĐI — điều hướng lúc đó chỉ tổ hại (URL không đổi, hoặc tệ hơn: nhảy
+   * về trang 1 mà chẳng lọc thêm gì), còn ô thì đứng đó khoe một bộ lọc
+   * không tồn tại vì React không dựng lại nó. Bump nonce để ô snap về đúng
+   * thứ URL đang nói. (`min`/`max` chỉ làm value :invalid, KHÔNG chặn gõ
+   * tay, nên ca này tới được.)
+   *
+   * Phát hiện "patch bị vứt" bằng cách so PHẦN LỌC với `page` GHIM CÙNG MỘT
+   * GIÁ TRỊ ở cả hai vế (vòng vá review F6 lần 2): bản đầu so `next` với
+   * href-hiện-tại trần, nhưng hai vế đó tính `page` theo hai luật khác nhau
+   * — patch (dù bị vứt) vẫn làm `scopeChanged=true` nên vế patch mất `page`
+   * khỏi URL, còn vế `{}` giữ trang hiện tại. Từ trang 2+ hai chuỗi khác
+   * nhau CHỈ VÌ page, guard trượt, và bug "ô khoe bộ lọc ma" tái hiện y
+   * nguyên (bảng nhảy về trang 1, `to` vẫn bị vứt, ô không remount).
    */
   function go(patch: BookingsHrefPatch) {
-    const next = bookingsHref(query, patch);
-    if (next === bookingsHref(query, {})) {
+    const filtersUnchanged =
+      bookingsHref(query, { ...patch, page: 1 }) === bookingsHref(query, { page: 1 });
+    if (filtersUnchanged) {
       setResetNonce((nonce) => nonce + 1);
       return;
     }
-    router.push(next);
+    router.push(bookingsHref(query, patch));
   }
 
   return (
@@ -183,8 +193,28 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
  * `next/link` hay một nút gọi fetch: đích là route handler trả
  * `Content-Disposition: attachment`, và điều hướng phía client sẽ biến một cú
  * tải file thành một cú render trang hỏng.
+ *
+ * `total` (server đã đếm cho footer phân trang) quyết định nút SỐNG hay TẮT
+ * (vòng vá review F6): tập vượt trần `EXPORT_MAX_ROWS` là chuyện biết được
+ * TRƯỚC cú click, mà một `<a>` nhận 413 là một cú điều hướng thật — admin bị
+ * đá khỏi bảng đang lọc sang một trang text chỉ để đọc lời từ chối. Disable
+ * kèm chính câu 413 làm tooltip thì lời từ chối đến trước, bảng còn nguyên.
+ * (Các nhánh lỗi không đoán trước được — API sập giữa chừng — vẫn là điều
+ * hướng; đó là giá của một cú tải file bằng `<a>` thật.)
  */
-export function BookingsExportLink({ query }: { query: BookingsQuery }) {
+export function BookingsExportLink({ query, total }: { query: BookingsQuery; total: number }) {
+  if (total > EXPORT_MAX_ROWS) {
+    return (
+      // Span bọc để tooltip sống: nút disabled mang `pointer-events-none`,
+      // tự nó không bao giờ nhận hover.
+      <span title={t.exportTooLarge(total, EXPORT_MAX_ROWS)}>
+        <Button type="button" variant="outline" size="sm" disabled>
+          <DownloadIcon data-icon="inline-start" aria-hidden="true" />
+          {t.exportCsv}
+        </Button>
+      </span>
+    );
+  }
   return (
     <ButtonLink variant="outline" size="sm" href={bookingsExportHref(query)}>
       <DownloadIcon data-icon="inline-start" aria-hidden="true" />

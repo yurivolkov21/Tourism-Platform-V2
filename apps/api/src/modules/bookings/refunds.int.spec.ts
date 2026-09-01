@@ -10,7 +10,12 @@ import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, DepartureStatus, EmailType } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  DepartureStatus,
+  EmailType,
+  MediaOwnerType,
+} from '../../generated/prisma/enums.js';
 import {
   FAKE_SIGNATURE_HEADER,
   FAKE_VALID_SIGNATURE,
@@ -413,6 +418,49 @@ describe('refunds integration (admin refund ledger)', () => {
         .parse(searched.json())
         .items.map((b) => b.code),
     ).toEqual([pending.code]);
+  });
+
+  it('admin.bookings.list: includeMedia=false bỏ hẳn bước resolve ảnh — tourImage null (F6)', async () => {
+    // Đường export CSV gom từng trang của cả tập mà file không có cột ảnh —
+    // cờ này (vòng vá review F6) cắt một query media mỗi trang. Seed cover
+    // thật để chứng minh null là do CỜ chứ không phải do thiếu media.
+    const admin = await signUpAdmin();
+    await createPaidBooking(await signUpUser('media-flag@example.com'));
+    await prisma.mediaAsset.create({
+      data: {
+        publicId: 'tours/refunds-hero',
+        type: 'IMAGE',
+        ownerType: MediaOwnerType.TOUR,
+        ownerId: tour.id,
+        role: 'hero',
+      },
+    });
+
+    const withMedia = await app.inject({
+      method: 'GET',
+      url: '/api/admin/bookings',
+      headers: { cookie: admin },
+    });
+    const bare = await app.inject({
+      method: 'GET',
+      url: '/api/admin/bookings?includeMedia=false',
+      headers: { cookie: admin },
+    });
+
+    // Mặc định giữ nguyên hành vi cũ (bảng /bookings vẫn có cover)…
+    expect(
+      PagedSchema(BookingSchema)
+        .parse(withMedia.json())
+        .items.every((b) => b.tourImage?.url.includes('tours/refunds-hero')),
+    ).toBe(true);
+    // …còn cờ tắt thì tourImage null cho MỌI item, mọi field khác giữ nguyên.
+    const bareItems = PagedSchema(BookingSchema).parse(bare.json()).items;
+    expect(bareItems.length).toBeGreaterThan(0);
+    expect(bareItems.every((b) => b.tourImage === null)).toBe(true);
+
+    // media_assets không nằm trong TRUNCATE của beforeEach — tự dọn để không
+    // đổi tiền đề của các test phía sau.
+    await prisma.mediaAsset.deleteMany({ where: { ownerId: tour.id } });
   });
 
   /**

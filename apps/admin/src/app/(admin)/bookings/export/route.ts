@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { type AdminBookingsExport, fetchAllAdminBookings } from '@/lib/api/bookings';
-import { getServerSession } from '@/lib/api/session';
+import { lookupServerSession } from '@/lib/api/session';
 import { bookingsCsvRows } from '@/lib/bookings-csv';
 import { parseBookingsSearchParams } from '@/lib/bookings-query';
 import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
@@ -29,9 +29,23 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * Trả 401/403 dạng text chứ không redirect: đây là một cú tải file, và
  * redirect sang `/login` chỉ làm trình duyệt lưu một file HTML tên .csv.
  */
+
+// Trần thời lượng TƯỜNG MINH (vòng vá review F6 lần 2): vòng gom trang giữ
+// ngân sách chung 45s (`EXPORT_TIME_BUDGET_MS`) — khai 60s ở đây để khi quá
+// ngân sách, abort kịp ném vào `catch` bên dưới và admin nhận 502 CÓ LỜI,
+// thay vì Vercel giết function trước và trình duyệt nhận một response cụt.
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const t = messages.admin.bookings.list;
-  const session = await getServerSession();
+  const lookup = await lookupServerSession();
+  // Check phiên cũng đi QUA API — API sập thì phải nói thật là API sập (vòng
+  // vá review F6): gộp nó vào "chưa đăng nhập" là bảo admin đi đăng nhập lại
+  // vô ích, và nhánh 502 phía dưới không bao giờ chạy đúng kịch bản của nó.
+  if (lookup.kind === 'unreachable') {
+    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+  }
+  const session = lookup.kind === 'ok' ? lookup.user : null;
   const decision = decideAdminAccess(session ? { role: session.role } : null, '/bookings/export');
   if (decision.kind === 'login') {
     return new Response(messages.admin.errors.write.UNAUTHORIZED, { status: 401 });
@@ -61,6 +75,26 @@ export async function GET(request: NextRequest) {
   if (result.kind === 'too-large') {
     return new Response(t.exportTooLarge(result.total, result.max), { status: 413 });
   }
+
+  // Vết cho một cú xuất PII hàng loạt (vòng vá review F6): mọi hành vi GHI
+  // của admin đều quy được về người (`refunds.admin_id`,
+  // `review_moderation_events`), còn cú ĐỌC này mang tên/email/phone của cả
+  // tập lọc — "ai tải, lúc nào, bộ lọc gì" phải trả lời được khi điều tra.
+  // Log CÓ CẤU TRÚC và không chép PII: search chỉ ghi là có/không, vì chính
+  // nó thường là một địa chỉ email.
+  console.info(
+    '[admin] bookings export',
+    JSON.stringify({
+      adminId: session?.id ?? null,
+      rows: result.bookings.length,
+      filters: {
+        status: query.status ?? null,
+        search: query.search ? '<set>' : null,
+        from: query.from ?? null,
+        to: query.to ?? null,
+      },
+    }),
+  );
 
   const filename = csvFilename('nexora-bookings', isoDay(new Date()));
   return new Response(csvDocument(bookingsCsvRows(result.bookings)), {

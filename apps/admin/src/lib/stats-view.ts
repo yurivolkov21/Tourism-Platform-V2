@@ -62,9 +62,11 @@ export interface StatCardVM {
  */
 type StatPolarity = 'up-good' | 'up-bad' | 'neutral';
 
-/** Đếm: có dấu phân cách hàng nghìn ('12,400'). */
+/** Đếm: có dấu phân cách hàng nghìn ('12,400'). EXPORT vì `reports-view.ts`
+ *  dùng chung — hai bề mặt số liệu phải đếm bằng một bộ định dạng (vòng vá
+ *  review F6: bản chép bên reports từng có thể trôi lệch mà không test nào đỏ). */
 const COUNT_FORMATTER = new Intl.NumberFormat('en-US');
-const formatCount = (value: number): string => COUNT_FORMATTER.format(value);
+export const formatCount = (value: number): string => COUNT_FORMATTER.format(value);
 
 /** Tỉ lệ server trả dạng phần trăm 0..100 ('8.3') — chỉ gắn thêm ký hiệu. */
 const formatPercent = (value: string): string => `${value}%`;

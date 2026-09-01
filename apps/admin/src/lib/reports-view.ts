@@ -1,7 +1,7 @@
 import type { AdminMonthlyReport, BookingStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount, formatCalendarDate, statusLabel } from './bookings-view';
-import type { StatCardVM } from './stats-view';
+import { formatCount, type StatCardVM } from './stats-view';
 
 /**
  * Mapper hiển thị báo cáo tháng (spec P4b §3-F6) — THUẦN, ngoài React, nên
@@ -33,9 +33,84 @@ export interface ReportSummaryRowVM {
   value: string;
 }
 
-/** Đếm có dấu phân cách hàng nghìn — cùng nếp `stats-view.ts`. */
-const COUNT_FORMATTER = new Intl.NumberFormat('en-US');
-const formatCount = (value: number): string => COUNT_FORMATTER.format(value);
+/**
+ * MỘT bảng mô tả cho danh sách metric của bảng vận hành — nguồn CHUNG của
+ * `toReportSummaryRows` (màn hình/giấy) và `reportCsvRows` (file). Trước vòng
+ * vá review F6 hai hàm khai hai danh sách rời phải giữ đồng bộ bằng tay:
+ * thêm một metric vào bảng mà quên CSV thì màn hình có, file thiếu, và không
+ * test nào đỏ. Giờ mỗi metric khai MỘT lần với hai cách đọc: `display` cho
+ * mắt ('$1,240.50'), `raw` cho Excel ('1240.50' — lý do ở JSDoc
+ * `reportCsvRows`).
+ *
+ * Tách hai nhóm vì CSV chèn bảng phân rã trạng thái vào GIỮA: nhóm bookings
+ * (doanh thu + đếm booking) đứng trước phân rã, nhóm vận hành (hoàn tiền,
+ * quyết định huỷ, duyệt review) đứng sau — đúng thứ tự người đọc dò một tờ
+ * báo cáo.
+ */
+interface SummaryMetric {
+  key: string;
+  label: string;
+  raw: (report: AdminMonthlyReport) => string;
+  display: (report: AdminMonthlyReport) => string;
+}
+
+const o = t.operationsTable;
+const moneyMetric = (report: AdminMonthlyReport, amount: string) =>
+  formatAmount(amount, report.currency);
+
+const BOOKINGS_METRICS: SummaryMetric[] = [
+  {
+    key: 'revenue',
+    label: o.revenue,
+    raw: (r) => r.revenue,
+    display: (r) => moneyMetric(r, r.revenue),
+  },
+  {
+    key: 'paidBookings',
+    label: o.paidBookings,
+    raw: (r) => String(r.paidBookings),
+    display: (r) => formatCount(r.paidBookings),
+  },
+  {
+    key: 'newBookings',
+    label: o.newBookings,
+    raw: (r) => String(r.newBookings),
+    display: (r) => formatCount(r.newBookings),
+  },
+];
+
+const OPERATIONS_METRICS: SummaryMetric[] = [
+  {
+    key: 'refundedTotal',
+    label: o.refundedTotal,
+    raw: (r) => r.refundedTotal,
+    display: (r) => moneyMetric(r, r.refundedTotal),
+  },
+  {
+    key: 'refunds',
+    label: o.refunds,
+    raw: (r) => String(r.refunds),
+    display: (r) => formatCount(r.refunds),
+  },
+  {
+    key: 'cancellationsApproved',
+    label: o.cancellationsApproved,
+    raw: (r) => String(r.cancellationsApproved),
+    display: (r) => formatCount(r.cancellationsApproved),
+  },
+  {
+    key: 'cancellationsDenied',
+    label: o.cancellationsDenied,
+    raw: (r) => String(r.cancellationsDenied),
+    display: (r) => formatCount(r.cancellationsDenied),
+  },
+  {
+    key: 'reviewsApproved',
+    label: o.reviewsApproved,
+    raw: (r) => String(r.reviewsApproved),
+    display: (r) => formatCount(r.reviewsApproved),
+  },
+];
 
 /**
  * "1 Sep 2026 – 30 Sep 2026" — ngày cuối TÍNH VÀO.
@@ -99,31 +174,11 @@ export function reportBookingsTotal(report: AdminMonthlyReport): string {
 
 /** Bảng metric/value: tiền + vận hành, đã định dạng cho mắt người. */
 export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
-  const o = t.operationsTable;
-  const money = (amount: string) => formatAmount(amount, report.currency);
-
-  return [
-    { key: 'revenue', label: o.revenue, value: money(report.revenue) },
-    { key: 'paidBookings', label: o.paidBookings, value: formatCount(report.paidBookings) },
-    { key: 'newBookings', label: o.newBookings, value: formatCount(report.newBookings) },
-    { key: 'refundedTotal', label: o.refundedTotal, value: money(report.refundedTotal) },
-    { key: 'refunds', label: o.refunds, value: formatCount(report.refunds) },
-    {
-      key: 'cancellationsApproved',
-      label: o.cancellationsApproved,
-      value: formatCount(report.cancellationsApproved),
-    },
-    {
-      key: 'cancellationsDenied',
-      label: o.cancellationsDenied,
-      value: formatCount(report.cancellationsDenied),
-    },
-    {
-      key: 'reviewsApproved',
-      label: o.reviewsApproved,
-      value: formatCount(report.reviewsApproved),
-    },
-  ];
+  return [...BOOKINGS_METRICS, ...OPERATIONS_METRICS].map(({ key, label, display }) => ({
+    key,
+    label,
+    value: display(report),
+  }));
 }
 
 /**
@@ -142,7 +197,7 @@ export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRo
  */
 export function reportCsvRows(report: AdminMonthlyReport): string[][] {
   const c = t.csv;
-  const o = t.operationsTable;
+  const metricRow = ({ label, raw }: SummaryMetric): string[] => [label, raw(report)];
 
   return [
     [c.metric, c.value],
@@ -151,17 +206,11 @@ export function reportCsvRows(report: AdminMonthlyReport): string[][] {
     [c.periodTo, report.to],
     [c.generatedAt, report.generatedAt],
     [c.currency, report.currency],
-    [o.revenue, report.revenue],
-    [o.paidBookings, String(report.paidBookings)],
-    [o.newBookings, String(report.newBookings)],
+    ...BOOKINGS_METRICS.map(metricRow),
     ...report.bookingsByStatus.map(({ status, count }): string[] => [
       c.statusRow(status),
       String(count),
     ]),
-    [o.refundedTotal, report.refundedTotal],
-    [o.refunds, String(report.refunds)],
-    [o.cancellationsApproved, String(report.cancellationsApproved)],
-    [o.cancellationsDenied, String(report.cancellationsDenied)],
-    [o.reviewsApproved, String(report.reviewsApproved)],
+    ...OPERATIONS_METRICS.map(metricRow),
   ];
 }

@@ -27,10 +27,20 @@ import { DecimalStringSchema } from './catalog.js';
  * kể định nghĩa từng metric.
  */
 
-/** Tháng lịch `YYYY-MM` — đơn vị URL-state của `/reports` và của báo cáo. */
+/**
+ * Tháng lịch `YYYY-MM` — đơn vị URL-state của `/reports` và của báo cáo.
+ *
+ * Năm bị KHOÁ vào 1900–2099 (vòng vá review F6) vì `?month=` là thứ người gõ
+ * được và `Date.UTC` có hai hành vi legacy ở biên: năm 0–99 bị ánh xạ thành
+ * 1900+năm (`0050-06` âm thầm thành tháng 6/1950 — nhãn nói một đằng, số liệu
+ * một nẻo), còn `9999-12` sinh mốc cuối kỳ ở năm 10000 mà `toISOString()` in
+ * thành `+010000-…`, thứ `z.iso.datetime()` của chính response từ chối — một
+ * URL gõ tay nổ thành trang lỗi. Cùng trần với `CalendarDateSchema` bên
+ * `bookings.ts` — hai bộ lọc ngày của admin chung MỘT luật năm.
+ */
 export const ReportMonthSchema = z
   .string()
-  .regex(/^\d{4}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM');
+  .regex(/^(19|20)\d{2}-(0[1-9]|1[0-2])$/, 'month must be YYYY-MM between 1900 and 2099');
 
 export type ReportMonth = z.output<typeof ReportMonthSchema>;
 

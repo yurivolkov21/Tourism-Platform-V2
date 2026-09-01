@@ -406,6 +406,17 @@ describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
     expect(AdminBookingsListQuerySchema.safeParse({ to: '30-09-2026' }).success).toBe(false);
   });
 
+  it('năm bị khoá 1900–2099 (CalendarDateSchema) — to+1d không bao giờ rơi ra năm 10000', () => {
+    // API dựng biên nửa-mở bằng `to + 1 ngày`; `9999-12-31 + 1d` là một Date
+    // năm 10000 mà toISOString in `+010000-…`, rơi thẳng xuống driver
+    // Postgres không qua schema nào chặn (vòng vá review F6).
+    expect(AdminBookingsListQuerySchema.safeParse({ to: '9999-12-31' }).success).toBe(false);
+    expect(AdminBookingsListQuerySchema.safeParse({ from: '0050-06-01' }).success).toBe(false);
+    expect(AdminBookingsListQuerySchema.safeParse({ from: '1899-12-31' }).success).toBe(false);
+    expect(AdminBookingsListQuerySchema.parse({ to: '2099-12-31' }).to).toBe('2099-12-31');
+    expect(AdminBookingsListQuerySchema.parse({ from: '1900-01-01' }).from).toBe('1900-01-01');
+  });
+
   it('from > to là 400 chứ không phải tập rỗng im lặng', () => {
     expect(
       AdminBookingsListQuerySchema.safeParse({ from: '2026-09-30', to: '2026-09-01' }).success,
@@ -432,6 +443,8 @@ describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
       search: 'ada',
       from: '2026-09-01',
       to: '2026-09-30',
+      // Mặc định của cờ F6 — bảng /bookings không truyền gì vẫn có ảnh.
+      includeMedia: true,
     });
   });
 });

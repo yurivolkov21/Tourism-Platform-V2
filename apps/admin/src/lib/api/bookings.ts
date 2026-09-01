@@ -7,8 +7,12 @@ import {
   BookingCodeSchema,
   type Paged,
 } from '@tourism/contract';
-import type { BookingsQuery } from '@/lib/bookings-query';
+import { type BookingsQuery, EXPORT_MAX_ROWS } from '@/lib/bookings-query';
 import { api, withAdminAuth } from './client';
+
+// Re-export cho route/spec của đường export — bản gốc sống ở lib thuần
+// `bookings-query.ts` vì nút Export (client) cũng cần đọc trần này.
+export { EXPORT_MAX_ROWS };
 
 /**
  * Ba đường của vùng bookings — bọc mỏng `admin.bookings.list` / `byCode`
@@ -46,18 +50,32 @@ export async function fetchAdminBookings(
  *   (413) chứ không cắt bớt im lặng — một file thiếu hàng mà không ai biết là
  *   thứ tệ hơn hẳn một thông báo.
  *
- * Vì sao trần là 2000 chứ không lớn hơn (hạ từ 5000 ở vòng vá review F6):
- * cả vòng lặp chạy TRONG MỘT route handler, mà admin deploy lên Vercel
- * (ADR-0026) nơi function có trần thời lượng. 2000 dòng = tối đa 20 round-trip
- * sang API trên Render; 5000 là 50 round-trip và đủ để chạm trần đó — kết cục
- * là request bị cắt giữa chừng, trình duyệt nhận một response hỏng thay vì
- * file, và KHÔNG tái hiện được ở localhost.
+ * ## Ngân sách của vòng gom (vòng vá review F6 lần 2)
+ *
+ * Rủi ro thật của "nhiều round-trip trong một route handler" đo bằng GIÂY chứ
+ * không bằng dòng — trần 2000 dòng một mình không ngừa được nó (bản đầu hạ
+ * 5000→2000 là chữa đúng bệnh nhưng sai đơn vị). Ba chốt hiện tại:
+ *
+ * - **Song song theo đợt** (`EXPORT_CONCURRENCY`): `totalPages` biết ngay sau
+ *   trang đầu và trang 2..N không phụ thuộc nhau, nên 20 trang là ~4 đợt thay
+ *   vì 20 lượt nối đuôi. Không phải MỘT `Promise.all` cả cụm: API trên Render
+ *   dùng chung DB với đường khách, nện 19 request cùng lúc là tự bóp mình.
+ * - **Một mốc thời gian CHUNG** (`EXPORT_TIME_BUDGET_MS`, thay cho timeout
+ *   10s/lượt của link): 45s cho cả vòng, dưới `maxDuration = 60` mà hai route
+ *   export khai — quá ngân sách thì abort ném vào `catch` của route và admin
+ *   nhận 502 CÓ LỜI, chứ không phải đợi platform giết function giữa chừng và
+ *   trả về một response cụt (thứ không bao giờ tái hiện được ở localhost).
+ * - **`includeMedia: false`**: file không có cột ảnh, nên khỏi bắt API resolve
+ *   media cho từng trang chỉ để vứt payload đi.
  *
  * Ngày nào tập dữ liệu thật sự lớn (chục nghìn booking) thì đường đúng là
  * endpoint stream ở API — lúc đó đọc lại đoạn này trước khi làm.
  */
 export const EXPORT_PAGE_SIZE = 100; // trần `limit` của contract
-export const EXPORT_MAX_ROWS = 2000;
+/** Số trang gọi song song mỗi đợt — đủ nhanh mà không nện API thành bãi. */
+export const EXPORT_CONCURRENCY = 5;
+/** Ngân sách CHUNG cho cả vòng gom — phải nhỏ hơn `maxDuration` của route. */
+export const EXPORT_TIME_BUDGET_MS = 45_000;
 
 /** Kết quả gom: hoặc cả tập, hoặc lời từ chối kèm con số để báo cho người bấm. */
 export type AdminBookingsExport =
@@ -68,24 +86,46 @@ export async function fetchAllAdminBookings(
   cookie: string,
   query: BookingsQuery,
 ): Promise<AdminBookingsExport> {
+  // MỘT mốc cho CẢ vòng (không phải 10s/lượt của link): xem "Ngân sách" trên.
+  const budget = AbortSignal.timeout(EXPORT_TIME_BUDGET_MS);
+  const fetchPage = (page: number) =>
+    api.admin.bookings.list(
+      { ...query, page, limit: EXPORT_PAGE_SIZE, includeMedia: false },
+      { context: { cookie, signal: budget } },
+    );
+
   // Trang đầu trả luôn `total` — biết ngay có nên đi tiếp hay không.
-  const first = await fetchAdminBookings(cookie, {
-    ...query,
-    page: 1,
-    limit: EXPORT_PAGE_SIZE,
-  });
+  const first = await fetchPage(1);
   if (first.total > EXPORT_MAX_ROWS) {
     return { kind: 'too-large', total: first.total, max: EXPORT_MAX_ROWS };
   }
 
-  const bookings = [...first.items];
-  for (let page = 2; page <= first.totalPages; page++) {
-    const next = await fetchAdminBookings(cookie, { ...query, page, limit: EXPORT_PAGE_SIZE });
-    bookings.push(...next.items);
-    // `totalPages` được chốt ở trang đầu; nếu ai đó tạo booking mới giữa
-    // chừng thì trang cuối có thể ngắn hơn — dừng ở đây là ĐÚNG, file mô tả
-    // tập tại thời điểm bắt đầu xuất chứ không phải một tập đang trôi.
-    if (next.items.length === 0) break;
+  // Dedupe theo `code` (vòng vá review F6 lần 2): offset pagination trên một
+  // list "mới nhất trước" đang TRÔI — một booking mới chen vào giữa hai lượt
+  // đẩy mọi hàng lùi một vị trí, và hàng cuối trang trước quay lại đầu trang
+  // sau. Không dedupe thì file có một mã nằm hai lần mà chẳng ai hay. (Chiều
+  // ngược lại — một hàng bị đẩy RA khỏi lưới trang — thì không cứu được từ
+  // client: file mô tả tập tại thời điểm bắt đầu xuất, và sổ sách kiểu này
+  // luôn ghi rõ `generatedAt` thay vì hứa bất động.)
+  const seen = new Set<string>();
+  const bookings: Booking[] = [];
+  const collect = (items: Booking[]) => {
+    for (const item of items) {
+      if (seen.has(item.code)) continue;
+      seen.add(item.code);
+      bookings.push(item);
+    }
+  };
+  collect(first.items);
+
+  // Trang 2..N theo ĐỢT `EXPORT_CONCURRENCY` trang song song; `totalPages`
+  // chốt ở trang đầu — tập trôi giữa chừng không kéo dài được vòng lặp.
+  for (let start = 2; start <= first.totalPages; start += EXPORT_CONCURRENCY) {
+    const last = Math.min(start + EXPORT_CONCURRENCY - 1, first.totalPages);
+    const batch = await Promise.all(
+      Array.from({ length: last - start + 1 }, (_, i) => fetchPage(start + i)),
+    );
+    for (const paged of batch) collect(paged.items);
   }
   return { kind: 'rows', bookings };
 }

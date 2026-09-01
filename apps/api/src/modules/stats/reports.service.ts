@@ -5,6 +5,7 @@ import {
   bookingsCreatedByStatus,
   decisionsSlice,
   paidBookingsSlice,
+  refundCurrency,
   refundsSlice,
   revenueCurrency,
   reviewApprovals,
@@ -50,14 +51,16 @@ import { grossAmount, monthWindow } from './stats-math.js';
 export class ReportsService {
   async monthly(month: string): Promise<AdminMonthlyReport> {
     const { from, to } = monthWindow(month);
-    const [paid, created, currency, refunds, decisions, reviewsApproved] = await Promise.all([
-      paidBookingsSlice(from, to),
-      bookingsCreatedByStatus(from, to),
-      revenueCurrency(from, to),
-      refundsSlice(from, to),
-      decisionsSlice(from, to),
-      reviewApprovals(from, to),
-    ]);
+    const [paid, created, paidCurrency, refunds, refundsCurrency, decisions, reviewsApproved] =
+      await Promise.all([
+        paidBookingsSlice(from, to),
+        bookingsCreatedByStatus(from, to),
+        revenueCurrency(from, to),
+        refundsSlice(from, to),
+        refundCurrency(from, to),
+        decisionsSlice(from, to),
+        reviewApprovals(from, to),
+      ]);
 
     // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và thứ
     // tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
@@ -71,7 +74,12 @@ export class ReportsService {
       from: from.toISOString(),
       to: to.toISOString(),
       generatedAt: new Date().toISOString(),
-      currency,
+      // Nhãn tiền phục vụ CẢ `revenue` LẪN `refundedTotal` (contract), nên
+      // hỏi lần lượt hai nguồn: payment của tháng trước, rồi sổ hoàn của
+      // tháng (vòng vá review F6 — tháng chỉ có refund cho booking trả tiền
+      // từ tháng trước từng bị dán nhãn 'USD' cho tiền EUR). Cả hai rỗng —
+      // tức mọi con số tiền đều 0.00 — thì 'USD' mới là mặc định vô hại.
+      currency: paidCurrency ?? refundsCurrency ?? 'USD',
       revenue: grossAmount(paid.revenue),
       paidBookings: paid.paid,
       // Tổng của CHÍNH phân rã ở trên, không phải một COUNT thứ hai (vòng vá

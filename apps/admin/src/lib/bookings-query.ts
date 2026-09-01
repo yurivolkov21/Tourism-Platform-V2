@@ -1,5 +1,8 @@
-import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
-import { z } from 'zod';
+import {
+  BookingStatusSchema,
+  type BookingStatusValue,
+  CalendarDateSchema,
+} from '@tourism/contract';
 import {
   appendPaging,
   firstParam,
@@ -24,13 +27,24 @@ import {
 const SEARCH_MAX_LENGTH = 120;
 
 /**
- * Ngày lịch `YYYY-MM-DD` — CÙNG schema mà contract dùng cho `from`/`to`, nên
- * cái gì lọt qua đây thì server cũng nhận (và ngược lại): không có bản regex
- * thứ hai để trôi lệch. Nó loại cả ngày không tồn tại (`2026-02-31`) lẫn mốc
- * ISO có giờ, đúng thứ ô `<input type="date">` không bao giờ sinh ra nhưng
- * người gõ URL thì có.
+ * Trần số dòng của Export CSV (lý do chọn 2000 ở JSDoc `fetchAllAdminBookings`).
+ * Sống ở lib THUẦN này chứ không phải `api/bookings.ts` (vòng vá review F6):
+ * cả vòng gom server LẪN nút Export client cần nó — nút phải biết trần để
+ * disable TRƯỚC cú click thay vì để admin bị đá sang trang 413 — mà
+ * `api/bookings.ts` khởi tạo oRPC client ngay lúc import nên không nhét vào
+ * bundle client được.
  */
-const DateParamSchema = z.iso.date();
+export const EXPORT_MAX_ROWS = 2000;
+
+/**
+ * Ngày lịch `YYYY-MM-DD` — IMPORT thẳng schema mà contract dùng cho
+ * `from`/`to` (hết bản khai lại cục bộ, vòng vá review F6), nên cái gì lọt
+ * qua đây thì server cũng nhận và ngược lại: ngày không tồn tại
+ * (`2026-02-31`), mốc ISO có giờ, lẫn năm ngoài trần 1900–2099 đều rơi im
+ * lặng như status rác — đúng thứ ô `<input type="date">` không bao giờ sinh
+ * ra nhưng người gõ URL thì có.
+ */
+const DateParamSchema = CalendarDateSchema;
 
 /** Input đã sạch cho `admin.bookings.list` (khớp AdminBookingsListQuerySchema). */
 export interface BookingsQuery {

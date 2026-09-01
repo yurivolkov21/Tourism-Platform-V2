@@ -186,6 +186,11 @@ describe('admin monthly report integration (F6)', () => {
     expect((await get('2026-5', adminCookie)).statusCode).toBe(400);
     expect((await get('2026-13', adminCookie)).statusCode).toBe(400);
     expect((await get('2026-05-01', adminCookie)).statusCode).toBe(400);
+    // Năm ngoài trần 1900–2099 cũng là 400 (vòng vá review F6): `9999-12`
+    // từng sinh mốc năm 10000 làm chính output schema từ chối response (trang
+    // lỗi thay vì "tháng trống"), `0050-06` từng âm thầm thành tháng 6/1950.
+    expect((await get('9999-12', adminCookie)).statusCode).toBe(400);
+    expect((await get('0050-06', adminCookie)).statusCode).toBe(400);
   });
 
   it('tháng trống là một báo cáo TOÀN SỐ 0, không phải 404', async () => {
@@ -206,6 +211,41 @@ describe('admin monthly report integration (F6)', () => {
     // Phân rã trạng thái vẫn đủ hàng — "0" là một con số, không phải dòng thiếu.
     expect(empty.bookingsByStatus.map((row) => row.status)).toEqual(BookingStatusSchema.options);
     expect(empty.bookingsByStatus.every((row) => row.count === 0)).toBe(true);
+  });
+
+  it('tháng CHỈ có refund (không payment nào) lấy đồng tiền từ chính sổ hoàn, không phải USD', async () => {
+    // Kịch bản bình thường của một tháng vắng: hoàn tiền cho booking EUR đã
+    // trả từ tháng trước. Fallback 'USD' cũ dán nhãn đô cho tiền EUR trên
+    // chính tờ báo cáo đem in (vòng vá review F6) — giờ nhãn hỏi lần lượt
+    // payment của tháng rồi sổ hoàn, 'USD' chỉ dành cho tháng mọi số đều 0.
+    await prisma.booking.createMany({
+      data: [
+        {
+          ...booking(1, {
+            status: BookingStatus.REFUNDED,
+            total: '90.00',
+            createdAt: at('2026-04-05T00:00:00.000Z'),
+            paidAt: at('2026-04-06T00:00:00.000Z'), // trả tiền THÁNG 4 — ngoài kỳ
+          }),
+          currency: 'EUR',
+        },
+      ],
+    });
+    await prisma.refund.create({
+      data: {
+        id: 'e9600003-0000-4000-8000-000000000009',
+        bookingId: bookingId(1),
+        amount: '75.00',
+        currency: 'EUR',
+        createdAt: at('2026-05-10T00:00:00.000Z'),
+      },
+    });
+
+    const may = await report('2026-05');
+    expect(may.revenue).toBe('0.00');
+    expect(may.paidBookings).toBe(0);
+    expect(may.refundedTotal).toBe('75.00');
+    expect(may.currency).toBe('EUR');
   });
 
   describe('với dữ liệu ở cả ba tháng', () => {

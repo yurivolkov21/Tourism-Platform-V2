@@ -4,7 +4,7 @@ import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
-import { getServerSession } from '@/lib/api/session';
+import { lookupServerSession } from '@/lib/api/session';
 import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
 import { parseReportsSearchParams } from '@/lib/reports-query';
 import { reportCsvRows } from '@/lib/reports-view';
@@ -23,7 +23,13 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * định, không phụ thuộc lượng dữ liệu.
  */
 export async function GET(request: NextRequest) {
-  const session = await getServerSession();
+  const lookup = await lookupServerSession();
+  // Cùng lý do với `/bookings/export` (vòng vá review F6): API sập thì check
+  // phiên trượt TRƯỚC — không phân loại thì admin nhận nhầm "phiên hết hạn".
+  if (lookup.kind === 'unreachable') {
+    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+  }
+  const session = lookup.kind === 'ok' ? lookup.user : null;
   const decision = decideAdminAccess(session ? { role: session.role } : null, '/reports/export');
   if (decision.kind === 'login') {
     return new Response(messages.admin.errors.write.UNAUTHORIZED, { status: 401 });

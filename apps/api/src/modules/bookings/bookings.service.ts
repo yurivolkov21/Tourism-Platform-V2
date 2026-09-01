@@ -524,7 +524,7 @@ export class BookingsService {
    * dồn (AND), không cái nào thay thế cái nào.
    */
   async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {
-    const { page, limit, status, search, from, to } = query;
+    const { page, limit, status, search, from, to, includeMedia } = query;
     const term = search?.trim();
     const createdAt = createdAtRange(from, to);
     const where: Prisma.BookingWhereInput = {
@@ -552,14 +552,19 @@ export class BookingsService {
       }),
     ]);
 
-    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`).
-    const coverMap = await this.media.resolveForOwners(
-      MediaOwnerType.TOUR,
-      rows.map((row) => row.tourId),
-    );
+    // MỘT query media cho cả trang (chống N+1, cùng khuôn `catalog.listTours`)
+    // — và KHÔNG query nào khi caller nói không cần ảnh (`includeMedia=false`,
+    // vòng vá review F6): đường export CSV gom tới 20 trang liên tiếp, mỗi
+    // trang một query media trả cùng một tập ảnh chỉ để bị vứt.
+    const coverMap = includeMedia
+      ? await this.media.resolveForOwners(
+          MediaOwnerType.TOUR,
+          rows.map((row) => row.tourId),
+        )
+      : null;
 
     return {
-      items: rows.map((row) => toBooking(row, null, pickCover(coverMap.get(row.tourId)))),
+      items: rows.map((row) => toBooking(row, null, pickCover(coverMap?.get(row.tourId)))),
       page,
       limit,
       total,

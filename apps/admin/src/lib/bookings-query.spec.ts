@@ -84,6 +84,15 @@ describe('parseBookingsSearchParams', () => {
     expect(parseBookingsSearchParams({ to: '2026-13-01' })).toEqual({ page: 1, limit: 20 });
   });
 
+  it('năm ngoài trần 1900–2099 của contract cũng rơi im lặng — không bao giờ dựng href 400', () => {
+    // Cùng CalendarDateSchema với contract (vòng vá review F6): nếu chỉ server
+    // siết thì admin vẫn dựng được href hợp lệ-theo-luật-cũ và cú click chết 400.
+    for (const value of ['9999-12-31', '0050-06-01', '1899-12-31']) {
+      expect(parseBookingsSearchParams({ from: value })).toEqual({ page: 1, limit: 20 });
+      expect(parseBookingsSearchParams({ to: value })).toEqual({ page: 1, limit: 20 });
+    }
+  });
+
   it('mốc ISO có giờ bị bỏ — contract chỉ nhận ngày lịch', () => {
     expect(parseBookingsSearchParams({ from: '2026-09-01T00:00:00.000Z' })).toEqual({
       page: 1,

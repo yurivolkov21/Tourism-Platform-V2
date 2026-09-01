@@ -31,6 +31,19 @@ describe('ReportMonthSchema', () => {
     expect(ReportMonthSchema.safeParse('2026-09-01').success).toBe(false);
     expect(ReportMonthSchema.safeParse('').success).toBe(false);
   });
+
+  it('năm bị khoá 1900–2099 — hai bẫy legacy của Date.UTC không tới được service', () => {
+    // `9999-12` sinh mốc cuối kỳ năm 10000 → `toISOString()` in `+010000-…`
+    // → chính output schema của response từ chối → trang lỗi cho một URL gõ
+    // tay. `0050-06` thì Date.UTC ánh xạ 50 → 1950: nhãn nói "June 0050",
+    // số liệu là tháng 6/1950 (vòng vá review F6).
+    expect(ReportMonthSchema.safeParse('9999-12').success).toBe(false);
+    expect(ReportMonthSchema.safeParse('0050-06').success).toBe(false);
+    expect(ReportMonthSchema.safeParse('1899-12').success).toBe(false);
+    expect(ReportMonthSchema.safeParse('2100-01').success).toBe(false);
+    expect(ReportMonthSchema.parse('1900-01')).toBe('1900-01');
+    expect(ReportMonthSchema.parse('2099-12')).toBe('2099-12');
+  });
 });
 
 describe('AdminMonthlyReportQuerySchema', () => {

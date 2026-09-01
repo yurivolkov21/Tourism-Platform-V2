@@ -121,7 +121,10 @@ export class StatsService {
 
     return {
       period: statsPeriod(window),
-      currency,
+      // Cửa sổ không có payment nào → 'USD' (mặc định cột `bookings.currency`).
+      // Stat card chỉ dán nhãn `revenue` nên một nguồn là đủ; báo cáo tháng
+      // mới phải hỏi thêm sổ hoàn (xem `ReportsService`).
+      currency: currency ?? 'USD',
       revenue: { current: grossAmount(current.revenue), previous: grossAmount(previous.revenue) },
       paidBookings: { current: current.paid, previous: previous.paid },
       newBookings: { current: createdNow, previous: createdBefore },

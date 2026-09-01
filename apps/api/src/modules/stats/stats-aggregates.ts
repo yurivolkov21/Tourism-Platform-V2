@@ -88,16 +88,38 @@ export async function bookingsCreatedByStatus(
  * Đồng tiền của các booking vừa được cộng — đọc từ booking trả tiền GẦN NHẤT
  * trong ĐÚNG khoảng `[from, to)` (chặn cả hai đầu, vòng vá review F5: thiếu
  * `lt` thì một row `paid_at` tương lai quyết đồng tiền cho một tổng nó không
- * góp đồng nào). Rơi về 'USD' (mặc định cột `bookings.currency`) khi khoảng
- * không có booking nào.
+ * góp đồng nào).
+ *
+ * Trả `null` khi khoảng không có booking nào — KHÔNG tự rơi về 'USD' (vòng vá
+ * review F6): consumer mới biết nó còn nguồn nào khác để hỏi trước khi đành
+ * dùng mặc định. Báo cáo tháng dán nhãn cả `refundedTotal`, mà tháng có hoàn
+ * tiền nhưng không có payment là chuyện bình thường (hoàn cho booking trả
+ * tiền tháng trước) — fallback 'USD' ở đây từng dán nhãn đô cho tiền EUR.
  */
-export async function revenueCurrency(from: Date, to: Date): Promise<string> {
+export async function revenueCurrency(from: Date, to: Date): Promise<string | null> {
   const latest = await prisma.booking.findFirst({
     where: { paidAt: { gte: from, lt: to } },
     orderBy: { paidAt: 'desc' },
     select: { currency: true },
   });
-  return latest?.currency ?? 'USD';
+  return latest?.currency ?? null;
+}
+
+/**
+ * Đồng tiền của các dòng HOÀN trong khoảng — đọc từ dòng hoàn gần nhất (sổ
+ * cái `refunds` mang cột `currency` riêng, chép từ booking lúc hoàn). Nguồn
+ * dự phòng cho nhãn tiền của báo cáo tháng khi kỳ không có payment nào; cùng
+ * giới hạn đã ghi ở `grossAmount`: nền tảng hiện một-đồng-tiền, ngày có đồng
+ * thứ hai trong CÙNG một kỳ thì tổng phải group theo currency chứ không chỉ
+ * đổi nhãn.
+ */
+export async function refundCurrency(from: Date, to: Date): Promise<string | null> {
+  const latest = await prisma.refund.findFirst({
+    where: { createdAt: { gte: from, lt: to } },
+    orderBy: { createdAt: 'desc' },
+    select: { currency: true },
+  });
+  return latest?.currency ?? null;
 }
 
 /** Hai con số quyết định cancellation của MỘT khoảng (theo `decidedAt`). */

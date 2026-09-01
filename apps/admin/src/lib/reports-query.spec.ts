@@ -36,7 +36,18 @@ describe('parseReportsSearchParams', () => {
   });
 
   it('month rác rơi về tháng hiện tại — URL là thứ người gõ', () => {
-    for (const month of ['2026-13', '2026-00', '2026-9', 'September', '2026-09-01', '']) {
+    // Hai giá trị cuối là bẫy năm của Date.UTC (vòng vá review F6): contract
+    // khoá năm 1900–2099 nên ở đây chúng chỉ là "rác" như mọi rác khác.
+    for (const month of [
+      '2026-13',
+      '2026-00',
+      '2026-9',
+      'September',
+      '2026-09-01',
+      '',
+      '9999-12',
+      '0050-06',
+    ]) {
       expect(parseReportsSearchParams({ month }, NOW)).toEqual({ month: '2026-09' });
     }
   });

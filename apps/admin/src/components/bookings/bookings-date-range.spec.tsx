@@ -55,6 +55,20 @@ describe('BookingsDateRange', () => {
     expect(screen.getByLabelText(t.dateTo)).toHaveValue('');
   });
 
+  it('khoảng ngược từ TRANG 2+ cũng vậy — không được nhảy về trang 1 mà chẳng lọc thêm gì', async () => {
+    // Vòng vá review F6 lần 2: guard bản đầu so `next` với href-hiện-tại
+    // trần, nhưng patch (dù bị vứt) vẫn reset page nên từ page>1 hai chuỗi
+    // khác nhau CHỈ VÌ page — push chạy thật (bảng nhảy trang, `to` vẫn bị
+    // vứt) và ô lại khoe bộ lọc ma. Guard giờ ghim page ở cả hai vế.
+    const user = userEvent.setup();
+    render(<BookingsDateRange query={{ ...BASE, page: 3, from: '2026-09-01' }} />);
+
+    await user.type(screen.getByLabelText(t.dateTo), '2026-08-15');
+
+    expect(push).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(t.dateTo)).toHaveValue('');
+  });
+
   it('nút xoá chỉ hiện khi có ngày, và xoá CẢ HAI đầu trong một cú bấm', async () => {
     const user = userEvent.setup();
     const { rerender } = render(<BookingsDateRange query={BASE} />);
