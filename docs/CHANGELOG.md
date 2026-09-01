@@ -8,6 +8,43 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-01 — P4b F6: báo cáo tháng + Export CSV, đóng P4b 6/6 (nhánh `feat/p4b-reports-export`, 8 commit `0f773e2..1c46b4b`, ~50 file)
+
+Tính năng cuối P4b (user đặt hàng 31/08, 0 dependency mới — CSV tự dựng,
+"PDF" là `window.print()` + `@media print`): lọc khoảng ngày `from`/`to` trên
+`/bookings` (hai ô date native, URL-state), nút Export CSV của ĐÚNG tập đang
+lọc qua route handler TỰ gác quyền (`decideAdminAccess` — route không đi qua
+layout), trang `/reports?month=YYYY-MM` in được + CSV, chạy trên endpoint MỚI
+`admin.reports.monthly` (endpoint riêng thay vì tham số hoá `admin.stats`:
+cửa sổ đôi 28 ngày phải DÀI BẰNG NHAU, tháng 28/31 ngày phá bất biến đó —
+JSDoc `schemas/reports.ts`). Aggregate tách ra `stats-aggregates.ts` cho
+StatsService + ReportsService dùng chung — doanh thu vẫn MỘT định nghĩa.
+Session thi công tự vá 3 vòng (route export đọc URL đúng luật trang, hạ trần
+export 5000→2000, 502 có lời). Nghiệm thu review 8 mũi → 10 findings
+(9 CONFIRMED · 1 PLAUSIBLE), user duyệt vá theo 3 đoạn (`1c46b4b`):
+
+- **Chặn năm 1900–2099 ở contract**: `?month=9999-12` từng sinh mốc năm 10000
+  làm chính output schema từ chối response (trang lỗi thay vì "tháng trống"),
+  `0050-06` âm thầm thành 1950 (luật year 0–99 của `Date.UTC`); `from`/`to`
+  bookings cùng trần qua `CalendarDateSchema` mới — admin import thẳng, hết
+  bản khai lại. Nhãn tiền báo cáo hỏi lần lượt payment tháng → sổ hoàn
+  (`refundCurrency` mới) → USD: tháng chỉ có refund EUR hết bị dán nhãn đô.
+- **Đường export chịu được đời thật**: guard nonce ô date đúng từ trang 2+
+  (so phần lọc với page ghim cả hai vế); vòng gom song song theo đợt 5 trang
+  và MỘT `AbortSignal` 45s chung + `maxDuration 60` (quá ngân sách là 502 có
+  lời, không phải response cụt của Vercel); dedupe theo `code` (offset
+  pagination trên tập đang trôi); cờ contract `includeMedia=false` cắt 20
+  query media/payload ảnh chỉ để vứt.
+- **Nói thật + để vết**: session phân loại `ok/none/unreachable` — API sập là
+  502 `exportFailed`, hết 401 "phiên hết hạn" giả; nút Export tự tắt kèm câu
+  413 làm tooltip khi `total` vượt trần (biết TRƯỚC cú click); audit log xuất
+  PII (adminId + bộ lọc + số hàng, `search` chỉ ghi có/không); danh sách 8
+  metric của bảng vận hành và CSV gộp về MỘT bảng mô tả (`raw`/`display`),
+  `formatCount` dùng chung stats-view.
+
+Tests after: 1417 web · 259 api · 223 api-int · 114 contract · 22 ui ·
+10 tokens · 2 i18n · 331 admin.
+
 ## 2026-09-01 — P4b F5: stat card 28 ngày cho ba trang vùng + vòng vá (nhánh `feat/p4b-area-stats`, 5 commit `e4f6a1a..f9e47b6`, ~50 file)
 
 Tính năng user đặt hàng (AMEND spec 31/08) — contract `admin.stats` MỚI (3
