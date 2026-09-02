@@ -142,3 +142,21 @@ overrides:
   # không phải dữ liệu người dùng — vá để sạch alert, không phải vì đang bị với tới.
   # Nếu ngày nào prisma CLI gãy vì dòng này: gỡ ra và chấp nhận alert.
   deepmerge-ts@<8.0.0: ^8.0.1
+  # 02/09 — ba alert mới (#27 #28 #29, đều high), đều là dependency bắc cầu
+  # KHÔNG nằm trên đường phục vụ request; vá theo cùng nếp scoped override
+  # (chỉ áp trong dải dính lỗ hổng, không ghim chết bản sau).
+  #
+  # Alert #28 #29 (browserslist ≤4.28.6 — prototype write qua
+  # browserslist-stats.json lạ, tăng bộ nhớ không giới hạn): kéo vào qua
+  # shadcn CLI → @babel/core → @babel/helper-compilation-targets (^4.24.0).
+  # Chỉ chạy lúc gõ `shadcn add` trên máy dev; Next đóng gói browserslist
+  # riêng nên bundle web/admin không dính. Nâng shadcn 4.20 không đảm bảo
+  # re-resolve (khai ^4.26.2) → override cho chắc.
+  browserslist@<4.28.7: ^4.28.7
+  # Alert #27 (mysql2 <3.22.0 — downgrade auth plugin lộ mật khẩu plaintext):
+  # prisma CLI 7.8.0 GHIM CỨNG `mysql2: 3.15.3` (7.9.x, 7.10.0 vẫn vậy; 8.0
+  # còn rc, sát freeze 15/10) dù DB là Postgres — parseEnv từ chối `mysql://`
+  # (có test), không file nào require mysql2. Code chết trong node_modules,
+  # override để sạch alert; better-auth chỉ khai peer optional ^3.0.0 nên
+  # 3.22+ vẫn thoả.
+  mysql2@<3.22.0: ^3.22.0
