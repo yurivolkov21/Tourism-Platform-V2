@@ -8,6 +8,22 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-02 — Vá 3 alert Dependabot (3 high, đều bắc cầu) (nhánh `fix/deps-dependabot-0902`, ff-only, 1 commit)
+
+Hai override SCOPED thêm vào `pnpm-workspace.yaml` theo nếp 04/08 (chỉ áp
+trong dải dính lỗ hổng, không ghim chết bản sau), comment tại chỗ ghi đủ đường
+kéo vào và mức độ thực tế: `browserslist@<4.28.7 → ^4.28.7` (alert #28 #29 —
+prototype write qua `browserslist-stats.json`, tăng bộ nhớ không giới hạn;
+kéo vào qua shadcn CLI → @babel/core, chỉ chạy lúc `shadcn add` trên máy dev,
+Next đóng gói browserslist riêng) và `mysql2@<3.22.0 → ^3.22.0` (alert #27 —
+downgrade auth plugin lộ mật khẩu; prisma CLI 7.8.0 ghim cứng 3.15.3 và
+7.9/7.10 vẫn vậy, 8.0 còn rc sát freeze; DB là Postgres, `parseEnv` từ chối
+`mysql://`, không file nào require mysql2 — code chết trong node_modules).
+Lock lên 4.28.8 / 3.24.2; `pnpm audit` về 0.
+
+**Tests after:** `gate:int --force` không cache — 21/21 task, 263/263 int;
+`prisma generate` + `migrate status` trên docker DB xanh với cây mới.
+
 ## 2026-09-02 — P4c F8: Payment events (sổ webhook, read-only) + vòng vá (nhánh `feat/p4c-payment-events`, 3 commit `3e48516..b73a4e1`, ~49 file, không migration)
 
 Tính năng thứ hai P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)
