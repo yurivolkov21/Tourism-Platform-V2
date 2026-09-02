@@ -2,6 +2,7 @@ import type {
   AdminBookingsStats,
   AdminCancellationsStats,
   AdminOutboxStats,
+  AdminPaymentEventsStats,
   AdminReviewsStats,
   CountMetric,
   DecimalMetric,
@@ -296,5 +297,39 @@ export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
           }
         : {}),
     },
+  ];
+}
+
+/**
+ * Ba card của `/payment-events` (spec P4c §3-F8). `received`/`linked` là cặp
+ * hai kỳ theo receivedAt — TRUNG TÍNH cả hai: nhiều webhook hơn chỉ là nhiều
+ * lượt thanh toán/echo hơn, không có phán quyết tốt/xấu. `unprocessed` là
+ * ảnh chụp: số đơn, callout đỏ khi > 0 (row đã nhận mà handler chưa xong là
+ * thứ cần người soi nếu nó không tự biến mất sau lượt retry của provider).
+ */
+export function toPaymentEventsStatCards(stats: AdminPaymentEventsStats): StatCardVM[] {
+  const days = stats.period.windowDays;
+
+  return [
+    countCard('received', t.paymentEvents.received(days), stats.received, 'neutral', days),
+    {
+      key: 'unprocessed',
+      label: t.paymentEvents.unprocessed,
+      value: formatCount(stats.unprocessed),
+      caption:
+        stats.unprocessed > 0
+          ? t.paymentEvents.unprocessedCaption
+          : t.paymentEvents.unprocessedCaptionNone,
+      ...(stats.unprocessed > 0
+        ? {
+            callout: {
+              label: t.paymentEvents.needsAttention,
+              srLabel: t.paymentEvents.needsAttentionSr(formatCount(stats.unprocessed)),
+              tone: 'bad' as const,
+            },
+          }
+        : {}),
+    },
+    countCard('linked', t.paymentEvents.linked(days), stats.linked, 'neutral', days),
   ];
 }

@@ -2,6 +2,7 @@ import type {
   AdminBookingsStats,
   AdminCancellationsStats,
   AdminOutboxStats,
+  AdminPaymentEventsStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { api, withAdminAuth } from './client';
@@ -59,4 +60,19 @@ export async function fetchAdminReviewsStats(cookie: string): Promise<AdminRevie
  */
 export async function fetchAdminOutboxStats(cookie: string): Promise<AdminOutboxStats> {
   return api.admin.stats.outbox(undefined, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * F8 — CÓ cache 60s theo tag như ba vùng đầu, KHÁC outbox: kẻ đổi sổ
+ * payment events là WEBHOOK của provider (không có worker drain mỗi phút,
+ * không có hành vi ghi admin nào), nên "tươi ngay sau khi chính mình ghi"
+ * không đặt ra, còn 60s trễ cho một sổ chỉ đọc là chấp nhận được — và nó
+ * giữ hàng card khỏi refetch trên mọi click phân trang/lọc (vòng vá F5).
+ * Ảnh chụp `unprocessed` có thể lệch bảng tối đa 60s; caption đã nói đây là
+ * con số provider tự dọn bằng retry, không phải hàng đợi admin phải bấm.
+ */
+export async function fetchAdminPaymentEventsStats(
+  cookie: string,
+): Promise<AdminPaymentEventsStats> {
+  return api.admin.stats.paymentEvents(undefined, { context: statsContext(cookie) });
 }

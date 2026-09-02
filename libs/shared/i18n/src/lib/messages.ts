@@ -2706,6 +2706,22 @@ export const messages = {
         needsAttention: 'Needs attention',
         needsAttentionSr: (count: string) => `${count} failed emails need an operator`,
       },
+      /**
+       * Vùng payment events (spec P4c §3-F8). `received`/`linked` đếm trong
+       * kỳ theo receivedAt (có kỳ trước thật — sổ không purge); `unprocessed`
+       * là ẢNH CHỤP: row đã nhận mà handler chưa xong.
+       */
+      paymentEvents: {
+        received: (days: number) => `Received ${days}d`,
+        unprocessed: 'Unprocessed now',
+        /** Ảnh chụp không có delta — caption nói row ấy đang ở đâu. */
+        unprocessedCaption: 'Received, handler not finished — the provider will retry',
+        unprocessedCaptionNone: 'Every delivery has been handled',
+        linked: (days: number) => `Linked to a booking ${days}d`,
+        /** Pill đỏ trên card Unprocessed khi > 0 — không mũi tên, chỉ là lời gọi. */
+        needsAttention: 'Needs attention',
+        needsAttentionSr: (count: string) => `${count} payment events are still unprocessed`,
+      },
     },
     /**
      * Trang báo cáo tháng (spec P4b §3-F6) — bề mặt admin đầu tiên được thiết
@@ -3294,6 +3310,90 @@ export const messages = {
           title: 'Email re-queued',
           body: (key: string) =>
             `${key} is back in the queue — the worker sends it within about a minute.`,
+        },
+      },
+    },
+    /**
+     * Vùng payment events (spec P4c §3-F8) — sổ webhook Stripe/PayPal, HOÀN
+     * TOÀN đọc: không dialog, không mã lỗi ghi. Drawer gọi `byId` khi mở
+     * (list không mang payload) nên có ba trạng thái tải; `NOT_FOUND` là mã
+     * contract duy nhất — row không xoá được từ admin, chỉ biến mất nếu có
+     * ai dọn DB tay.
+     */
+    paymentEvents: {
+      list: {
+        filterLabel: 'Filter by provider',
+        all: 'All providers',
+        typeLabel: 'Filter by event type',
+        typeAll: 'All types',
+        searchLabel: 'Search payment events',
+        /** Khớp `eventId` — thứ operator dán từ dashboard Stripe/PayPal. */
+        searchPlaceholder: 'Provider event id',
+        clear: 'Clear search',
+        /** Toggle URL `?unprocessed=true` — "chỉ hàng chưa xong", không phải "trạng thái". */
+        unprocessedOnly: 'Unprocessed only',
+        empty: 'No payment events match this filter.',
+        columns: {
+          provider: 'Provider',
+          type: 'Type',
+          amount: 'Amount',
+          booking: 'Booking',
+          received: 'Received',
+          processed: 'Processed',
+          actions: 'Actions',
+        },
+        /** Event không gắn booking (hoặc booking không còn) — chữ thay ô trống. */
+        noBooking: 'Not linked',
+        /** Badge ở cột Processed khi `processedAt` null. */
+        unprocessed: 'Unprocessed',
+        /**
+         * Tooltip của badge — nghĩa CHÍNH XÁC của `processedAt` null theo
+         * `PaymentsService.beginEvent`: đã ghi sổ, handler chưa chạy xong,
+         * lượt retry của provider sẽ chạy lại (idempotent cấp booking).
+         */
+        unprocessedHint:
+          'Received and recorded, but the handler has not finished — the provider will retry this delivery.',
+        view: 'Details',
+        viewLabel: (eventId: string) => `View details of ${eventId}`,
+      },
+      /** Nhãn enum PaymentProvider — `Record` đủ member để thêm provider là đỏ typecheck. */
+      provider: {
+        STRIPE: 'Stripe',
+        PAYPAL: 'PayPal',
+      },
+      /**
+       * Nhãn bốn type trung lập của gateway (`PAYMENT_EVENT_TYPES`). Cột DB là
+       * chuỗi tự do nên VM rơi về chuỗi thô khi gặp type lạ — không có nhãn
+       * "Unknown" ở đây vì chuỗi thô ("payment.chargeback") nói nhiều hơn.
+       */
+      type: {
+        'payment.completed': 'Payment completed',
+        'payment.failed': 'Payment failed',
+        'payment.expired': 'Checkout expired',
+        other: 'Other',
+      },
+      /** Drawer chi tiết: field bảng + payload provider nguyên văn (đã redact credential). */
+      detail: {
+        title: 'Payment event',
+        description: (eventId: string) => `Event ${eventId}`,
+        provider: 'Provider',
+        type: 'Type',
+        amount: 'Amount',
+        booking: 'Booking',
+        received: 'Received',
+        processed: 'Processed',
+        payload: 'Provider payload (JSON)',
+        loading: 'Loading payload…',
+        /**
+         * Lỗi tải payload — giọng ĐỌC, không mượn `errors.write` (câu đó cố ý
+         * mập mờ "có thể đã đi qua" vì nói về hành vi ghi; ở đây không có gì
+         * để lỡ đi qua). `NOT_FOUND` là mã contract; ba mã còn lại là transport.
+         */
+        errors: {
+          NOT_FOUND: 'This payment event no longer exists — the list may be out of date.',
+          UNAUTHORIZED: 'Your session has expired. Sign in again to load the payload.',
+          FORBIDDEN: 'Your account no longer has admin access.',
+          GENERIC: 'The payload could not be loaded. Close the panel and try again.',
         },
       },
     },

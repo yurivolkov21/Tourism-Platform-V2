@@ -2,6 +2,7 @@ import type {
   AdminBookingsStats,
   AdminCancellationsStats,
   AdminOutboxStats,
+  AdminPaymentEventsStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -11,6 +12,7 @@ import {
   toBookingsStatCards,
   toCancellationsStatCards,
   toOutboxStatCards,
+  toPaymentEventsStatCards,
   toReviewsStatCards,
 } from './stats-view';
 
@@ -57,6 +59,13 @@ const OUTBOX: AdminOutboxStats = {
   sent: 40,
   queued: 3,
   failed: 2,
+};
+
+const PAYMENT_EVENTS: AdminPaymentEventsStats = {
+  period,
+  received: { current: 40, previous: 32 },
+  unprocessed: 2,
+  linked: { current: 30, previous: 30 },
 };
 
 /** Lấy một card theo khoá — test đọc theo tên chứ không theo vị trí mảng. */
@@ -294,5 +303,52 @@ describe('toOutboxStatCards (F7)', () => {
 
   it('ba card theo đúng thứ tự spec §3-F7: sent · queued · failed', () => {
     expect(toOutboxStatCards(OUTBOX).map((c) => c.key)).toEqual(['sent', 'queued', 'failed']);
+  });
+});
+
+describe('toPaymentEventsStatCards (F8)', () => {
+  it('received: cặp hai kỳ TRUNG TÍNH — nhiều webhook hơn không tốt cũng không xấu', () => {
+    const received = card(toPaymentEventsStatCards(PAYMENT_EVENTS), 'received');
+    expect(received.label).toBe(t.paymentEvents.received(28));
+    expect(received.value).toBe('40');
+    expect(received.caption).toBe(t.comparison('32', 28));
+    expect(received.delta).toMatchObject({ direction: 'up', amount: '25.0%' });
+    expect(received.deltaGood).toBeUndefined();
+  });
+
+  it('unprocessed > 0: ẢNH CHỤP một số đơn, CALLOUT đỏ qua khe riêng, không delta', () => {
+    const unprocessed = card(toPaymentEventsStatCards(PAYMENT_EVENTS), 'unprocessed');
+    expect(unprocessed.value).toBe('2');
+    expect(unprocessed.caption).toBe(t.paymentEvents.unprocessedCaption);
+    expect(unprocessed.delta).toBeUndefined();
+    expect(unprocessed.callout).toEqual({
+      label: t.paymentEvents.needsAttention,
+      srLabel: t.paymentEvents.needsAttentionSr('2'),
+      tone: 'bad',
+    });
+  });
+
+  it('unprocessed = 0: không callout, caption nói mọi delivery đã xong', () => {
+    const unprocessed = card(
+      toPaymentEventsStatCards({ ...PAYMENT_EVENTS, unprocessed: 0 }),
+      'unprocessed',
+    );
+    expect(unprocessed.callout).toBeUndefined();
+    expect(unprocessed.caption).toBe(t.paymentEvents.unprocessedCaptionNone);
+  });
+
+  it('linked: cặp trung tính; hai kỳ bằng nhau → pill "flat" không tô màu', () => {
+    const linked = card(toPaymentEventsStatCards(PAYMENT_EVENTS), 'linked');
+    expect(linked.label).toBe(t.paymentEvents.linked(28));
+    expect(linked.delta?.direction).toBe('flat');
+    expect(linked.deltaGood).toBeUndefined();
+  });
+
+  it('ba card theo đúng thứ tự spec §3-F8: received · unprocessed · linked', () => {
+    expect(toPaymentEventsStatCards(PAYMENT_EVENTS).map((c) => c.key)).toEqual([
+      'received',
+      'unprocessed',
+      'linked',
+    ]);
   });
 });
