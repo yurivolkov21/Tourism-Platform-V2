@@ -8,6 +8,42 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-02 — P4c F8: Payment events (sổ webhook, read-only) + vòng vá (nhánh `feat/p4c-payment-events`, 3 commit `3e48516..b73a4e1`, ~49 file, không migration)
+
+Tính năng thứ hai P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)
+§3-F8, có mục AMEND): contract `admin.paymentEvents.list/byId` +
+`admin.stats.paymentEvents`, service/controller trong `modules/payments`
+(list bỏ `payload`, `bookingCode` join tay vì cột không FK), trang
+`/payment-events` (tab provider, Select type, tìm eventId, toggle
+"Unprocessed only", badge + tooltip cho `processedAt` null), drawer JSON nâng
+lên kit `components/kit/json-drawer.tsx` (consumer thứ hai — outbox dùng lại),
+payload tải khi mở qua server action đọc `getPaymentEventAction`. Nghiệm thu
+review 8 mũi → 10 findings (9 CONFIRMED · 1 PLAUSIBLE), user duyệt vá một mạch
+(`b73a4e1`):
+
+- **Drawer**: trạng thái tải gắn `id` (đổi hàng A→B không lộ JSON của A ở
+  frame đầu, kết quả A về muộn không ghi đè); loader ném → câu lỗi GENERIC
+  thay vì treo "Loading…". Lỗi đọc đi qua `createWriteErrorCodec` với option
+  mới `transportCopy` (i18n tách `detail.errors` chỉ mã contract /
+  `detail.transportErrors`, test đối chiếu `errorMap`).
+- **Stat card**: contract thêm `stuck` + `PAYMENT_EVENT_STUCK_MINUTES = 5` —
+  card Unprocessed chỉ kêu đỏ khi có row chưa xong quá 5 phút (webhook vừa tới
+  mà handler đang chạy là bình thường), `unprocessed` giữ nghĩa khớp bảng;
+  admin bỏ cache 60s (cùng luật outbox: kẻ đổi sổ ngoài `updateTag`, bảng đọc
+  tươi); `paymentEventsSlice` một `aggregate` thay hai `count`.
+- **Lọc type tự do**: parser admin nhận chuỗi như contract (cột varchar),
+  Select thêm mục tạm cho giá trị ngoài tuple; `PaymentEventTypeSchema` xuất
+  từ contract; int test có row `payment.chargeback`.
+- **Redact dùng chung** `apps/api/src/lib/redact.ts` cho outbox + payment
+  events (che theo tên khoá mọi độ sâu, tập khoá hợp hai vùng,
+  `Object.create(null)`); badge bỏ `title` trùng tooltip; kit
+  `components/kit/booking-link.tsx` thay ba bản chép link booking
+  (cancellations, bảng, drawer); VM bỏ `bookingHref`/`unprocessed`; thêm spec
+  render `OutboxDetailSheet`.
+
+Tests after: 1417 web · 281 api · 263 api-int · 143 contract · 22 ui ·
+10 tokens · 2 i18n · 473 admin.
+
 ## 2026-09-02 — P4c F7: Outbox (hàng đợi email, retry) + vòng vá (nhánh `feat/p4c-outbox`, 3 commit `dea5566..ae5221a`, ~50 file, migration `20260902090000_outbox_status_skipped`)
 
 Tính năng đầu P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md) §3-F7):
