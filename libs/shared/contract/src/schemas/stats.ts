@@ -141,3 +141,20 @@ export const AdminOutboxStatsSchema = z.object({
   failed: z.int().nonnegative(),
 });
 export type AdminOutboxStats = z.output<typeof AdminOutboxStatsSchema>;
+
+/**
+ * Bộ số vùng `/payment-events` (spec P4c §3-F8). Hai metric neo `receivedAt`
+ * nên có CẶP hai kỳ; `unprocessed` là ẢNH CHỤP — row `processedAt` null ngay
+ * bây giờ — không có mốc "lúc đầu kỳ" để dựng lại (processedAt chỉ ghi khi
+ * xong, không ghi lúc bắt đầu chờ), contract khai số đơn (cùng luật F5/F7).
+ */
+export const AdminPaymentEventsStatsSchema = z.object({
+  period: StatsPeriodSchema,
+  /** Webhook đã NHẬN (verify chữ ký xong) trong kỳ — mọi provider, mọi type. */
+  received: CountMetricSchema,
+  /** Row `processedAt` null ngay bây giờ — đúng bằng `/payment-events?unprocessed=true`. */
+  unprocessed: z.int().nonnegative(),
+  /** Trong số nhận trong kỳ, bao nhiêu gắn được `bookingId` (event `other` thường không). */
+  linked: CountMetricSchema,
+});
+export type AdminPaymentEventsStats = z.output<typeof AdminPaymentEventsStatsSchema>;

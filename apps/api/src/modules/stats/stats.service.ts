@@ -3,6 +3,7 @@ import type {
   AdminBookingsStats,
   AdminCancellationsStats,
   AdminOutboxStats,
+  AdminPaymentEventsStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
@@ -12,6 +13,7 @@ import {
   decisionsSlice,
   outboxSentCount,
   paidBookingsSlice,
+  paymentEventsSlice,
   revenueCurrency,
   reviewApprovals,
 } from './stats-aggregates.js';
@@ -120,6 +122,32 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   kia): kẻ đổi hàng đợi là worker drain mỗi phút, không phải một server
  *   action có `updateTag` — cache là card cãi nhau với bảng ngay bên dưới.
  *
+ * **paymentEvents** (F8, spec P4c §3-F8)
+ * - `received` — số webhook ĐÃ VERIFY chữ ký và được ghi sổ, theo
+ *   `received_at` trong kỳ, MỌI provider và MỌI type (kể cả `other`: một
+ *   `PAYMENT.CAPTURE.REFUNDED` echo về cũng là một delivery đã nhận). Đây là
+ *   thông lượng webhook, không phải số thanh toán thành công — con số đó là
+ *   `paidBookings`. Query đối chứng:
+ *   `SELECT COUNT(*) FROM payment_events WHERE received_at >= $from AND received_at < $to`.
+ *   Có kỳ trước: `received_at` ghi một lần lúc nhận, không purge, nên kỳ
+ *   28–56 ngày trước dựng lại được thật (khác outbox).
+ * - `unprocessed` — ẢNH CHỤP: số row `processed_at IS NULL` ngay bây giờ,
+ *   đúng bằng `/payment-events?unprocessed=true`. "Đã nhận, handler chưa
+ *   xong" — lượt trước crash giữa chừng, provider retry sẽ chạy lại
+ *   (`PaymentsService.beginEvent`). Row như vậy còn tồn tại sau vài phút là
+ *   dấu hiệu cần người soi. Không có "lúc đầu kỳ": `processed_at` chỉ ghi lúc
+ *   xong, không ghi lúc bắt đầu chờ, nên không dựng lại được — số đơn.
+ * - `linked` — trong tập `received` cùng kỳ, bao nhiêu row có `booking_id`
+ *   (gateway rút từ metadata/custom_id của provider). Hiệu `received −
+ *   linked` là webhook không quy được về đơn nào: event `other`, hoặc
+ *   `payment_intent.payment_failed` không mang metadata session — đọc cùng
+ *   nhau để thấy tỉ lệ "webhook mồ côi". Cột không có FK nên `booking_id` có
+ *   thể trỏ tới booking đã không còn — ở đây vẫn đếm là "gắn" (nó ĐÃ gắn lúc
+ *   nhận); còn list thì in `bookingCode` null cho row đó.
+ *   Admin cache 60s theo tag (khác outbox): kẻ đổi sổ là webhook, không có
+ *   hành vi ghi admin nào cần `updateTag`, và 60s trễ trên một sổ chỉ đọc là
+ *   chấp nhận được.
+ *
  * ## Index
  *
  * CỐ Ý chưa thêm index nào cho bốn cột lọc theo thời gian (`bookings.paid_at`,
@@ -222,6 +250,25 @@ export class StatsService {
       sent,
       queued: countOf(OutboxStatus.PENDING),
       failed: countOf(OutboxStatus.FAILED),
+    };
+  }
+
+  /** Bộ số vùng `/payment-events` (F8) — hai lát kỳ + một count ảnh chụp, song song. */
+  async adminPaymentEvents(): Promise<AdminPaymentEventsStats> {
+    const window = statsWindow(new Date());
+    const [current, previous, unprocessed] = await Promise.all([
+      paymentEventsSlice(window.currentFrom, window.generatedAt),
+      paymentEventsSlice(window.previousFrom, window.currentFrom),
+      // Ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
+      // `/payment-events?unprocessed=true`, kể cả row rất cũ.
+      prisma.paymentEvent.count({ where: { processedAt: null } }),
+    ]);
+
+    return {
+      period: statsPeriod(window),
+      received: { current: current.received, previous: previous.received },
+      unprocessed,
+      linked: { current: current.linked, previous: previous.linked },
     };
   }
 

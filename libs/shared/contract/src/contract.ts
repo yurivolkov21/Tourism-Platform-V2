@@ -43,6 +43,12 @@ import {
   OutboxRowSchema,
 } from './schemas/outbox.js';
 import {
+  AdminPaymentEventByIdInputSchema,
+  AdminPaymentEventsListQuerySchema,
+  PaymentEventDetailSchema,
+  PaymentEventRowSchema,
+} from './schemas/payment-events.js';
+import {
   PostCardSchema,
   PostDetailSchema,
   PostsListQuerySchema,
@@ -64,6 +70,7 @@ import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
   AdminOutboxStatsSchema,
+  AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
 } from './schemas/stats.js';
 import {
@@ -668,6 +675,16 @@ export const contract = {
           summary: 'Emails sent in the last 28 days (and the 28 before) + queue snapshot',
         })
         .output(AdminOutboxStatsSchema),
+      // F8 (spec P4c): received/linked là cặp hai kỳ (neo receivedAt);
+      // unprocessed là ảnh chụp một số đơn.
+      paymentEvents: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/payment-events',
+          summary:
+            'Webhooks received/linked in the last 28 days (and the 28 before) + unprocessed snapshot',
+        })
+        .output(AdminPaymentEventsStatsSchema),
     },
     /**
      * Outbox email (spec P4c §3-F7) — bề mặt triage cho hàng đợi email mà
@@ -706,6 +723,38 @@ export const contract = {
           },
         })
         .output(OutboxRowSchema),
+    },
+    /**
+     * Payment events (spec P4c §3-F8) — sổ webhook Stripe/PayPal, một row mỗi
+     * delivery đã verify chữ ký (`PaymentsService.beginEvent`). HOÀN TOÀN
+     * ĐỌC: không endpoint ghi (§2.2) — kẻ duy nhất đổi row là chính webhook.
+     *
+     * `list` KHÔNG mang payload (mỗi event Stripe ~3KB JSON); drawer gọi
+     * `byId` khi mở. Payload đã redact khoá credential ở mapper API (Stripe
+     * `payment_intent.*` mang `client_secret`), còn PII khách (email, tên)
+     * hiện nguyên — admin đã thấy ở bảng bookings (§2.3).
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    paymentEvents: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/payment-events',
+          summary:
+            'List payment webhook events (admin, paged, provider/type/eventId/unprocessed filters)',
+        })
+        .input(AdminPaymentEventsListQuerySchema)
+        .output(PagedSchema(PaymentEventRowSchema)),
+      byId: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/payment-events/{id}',
+          summary: 'One payment webhook event with its full provider payload',
+        })
+        .input(AdminPaymentEventByIdInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Payment event not found' } })
+        .output(PaymentEventDetailSchema),
     },
     /**
      * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV

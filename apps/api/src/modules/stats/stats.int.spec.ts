@@ -4,6 +4,7 @@ import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
   AdminOutboxStatsSchema,
+  AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
@@ -216,7 +217,7 @@ describe('admin stats integration (F5)', () => {
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox CASCADE',
+      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox, payment_events CASCADE',
     );
   });
 
@@ -225,10 +226,16 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ BỐN path', () => {
-    // Tham số hoá cả ba (vòng vá review F5): guard đặt ở cấp class, nhưng
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ NĂM path', () => {
+    // Tham số hoá cả năm (vòng vá review F5): guard đặt ở cấp class, nhưng
     // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
-    for (const area of ['bookings', 'cancellations', 'reviews', 'outbox'] as const) {
+    for (const area of [
+      'bookings',
+      'cancellations',
+      'reviews',
+      'outbox',
+      'payment-events',
+    ] as const) {
       it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
         const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
         expect(anon.statusCode).toBe(401);
@@ -707,6 +714,69 @@ describe('admin stats integration (F5)', () => {
     it('bảng trống: sent 0/0, hàng đợi 0 — con số thật, không phải lỗi', async () => {
       const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
       expect(stats).toMatchObject({ sent: 0, queued: 0, failed: 0 });
+    });
+  });
+
+  describe('stats.paymentEvents (F8)', () => {
+    /** Một row payment_events với mốc đặt tay — `receivedAt` là thứ hai cặp neo vào. */
+    const paymentEvent = (
+      n: number,
+      row: { receivedAt: Date; processedAt: Date | null; linked: boolean },
+    ): Prisma.PaymentEventCreateManyInput => ({
+      id: `e9500008-0000-4000-8000-${String(n).padStart(12, '0')}`,
+      provider: n % 2 === 0 ? PaymentProvider.PAYPAL : PaymentProvider.STRIPE,
+      eventId: `stats-evt-${n}`,
+      type: row.linked ? 'payment.completed' : 'other',
+      payload: { id: `stats-evt-${n}` },
+      // Cột không có FK: bookingId hợp lệ về dạng là đủ để đếm "linked".
+      bookingId: row.linked ? bookingId(n) : null,
+      receivedAt: row.receivedAt,
+      processedAt: row.processedAt,
+    });
+
+    beforeEach(async () => {
+      await prisma.paymentEvent.createMany({
+        data: [
+          // ── Kỳ NÀY: 3 nhận, 2 trong đó gắn booking, 1 chưa xử lý xong ──
+          paymentEvent(1, { receivedAt: daysAgo(2), processedAt: null, linked: true }),
+          paymentEvent(2, { receivedAt: daysAgo(10), processedAt: daysAgo(10), linked: true }),
+          paymentEvent(3, { receivedAt: daysAgo(20), processedAt: daysAgo(20), linked: false }),
+          // ── Kỳ TRƯỚC: 2 nhận, 1 gắn booking ──
+          paymentEvent(4, { receivedAt: daysAgo(30), processedAt: daysAgo(30), linked: true }),
+          paymentEvent(5, { receivedAt: daysAgo(40), processedAt: daysAgo(40), linked: false }),
+          // ── Ngoài cả hai kỳ, nhưng CHƯA xử lý → vẫn vào ảnh chụp unprocessed ──
+          paymentEvent(6, { receivedAt: daysAgo(70), processedAt: null, linked: true }),
+        ],
+      });
+    });
+
+    it('received/linked đếm theo receivedAt ở CẢ HAI kỳ — hàng ngoài kỳ không tính', async () => {
+      const stats = AdminPaymentEventsStatsSchema.parse(
+        (await get('payment-events', adminCookie)).json(),
+      );
+      expect(stats.received).toEqual({ current: 3, previous: 2 });
+      expect(stats.linked).toEqual({ current: 2, previous: 1 });
+      expect(stats.period.windowDays).toBe(28);
+    });
+
+    it('unprocessed là ẢNH CHỤP bây giờ, không phân biệt tuổi hàng', async () => {
+      const stats = AdminPaymentEventsStatsSchema.parse(
+        (await get('payment-events', adminCookie)).json(),
+      );
+      expect(stats.unprocessed).toBe(2);
+    });
+  });
+
+  describe('stats.paymentEvents — kỳ rỗng', () => {
+    it('bảng trống: cặp 0/0 và ảnh chụp 0 — con số thật, không phải lỗi', async () => {
+      const stats = AdminPaymentEventsStatsSchema.parse(
+        (await get('payment-events', adminCookie)).json(),
+      );
+      expect(stats).toMatchObject({
+        received: { current: 0, previous: 0 },
+        unprocessed: 0,
+        linked: { current: 0, previous: 0 },
+      });
     });
   });
 });

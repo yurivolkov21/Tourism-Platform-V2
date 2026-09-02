@@ -183,3 +183,18 @@ export function outboxSentCount(from: Date, to: Date): Promise<number> {
     where: { status: OutboxStatus.SENT, processedAt: { gte: from, lt: to } },
   });
 }
+
+/**
+ * Webhook đã NHẬN trong khoảng (theo `receivedAt`) và bao nhiêu trong đó gắn
+ * được booking (`bookingId` not null) — F8, spec P4c §3-F8. Hai `count` phát
+ * song song thay vì một `groupBy`: "gắn booking hay không" không phải một
+ * cột để group, và bảng chưa tới cỡ mà hai lượt đếm là chuyện đáng bàn.
+ */
+export async function paymentEventsSlice(from: Date, to: Date) {
+  const received = { receivedAt: { gte: from, lt: to } };
+  const [total, linked] = await Promise.all([
+    prisma.paymentEvent.count({ where: received }),
+    prisma.paymentEvent.count({ where: { ...received, bookingId: { not: null } } }),
+  ]);
+  return { received: total, linked };
+}

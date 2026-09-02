@@ -43,4 +43,11 @@ export class AdminStatsController {
   outbox() {
     return implement(contract.admin.stats.outbox).handler(() => this.stats.adminOutbox());
   }
+
+  @Implement(contract.admin.stats.paymentEvents)
+  paymentEvents() {
+    return implement(contract.admin.stats.paymentEvents).handler(() =>
+      this.stats.adminPaymentEvents(),
+    );
+  }
 }

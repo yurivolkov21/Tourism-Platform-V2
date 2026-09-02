@@ -1,6 +1,8 @@
 import { forwardRef, Module, type Provider } from '@nestjs/common';
 import { env } from '../../config/env.js';
 import { BookingsModule } from '../bookings/bookings.module.js';
+import { AdminPaymentEventsController } from './admin-payment-events.controller.js';
+import { AdminPaymentEventsService } from './admin-payment-events.service.js';
 import { FakeGateway } from './fake.gateway.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway } from './gateway.js';
 import { PaymentsService } from './payments.service.js';
@@ -71,11 +73,16 @@ const gatewayProviders: Provider[] =
  * với BookingsModule là có thật và cố ý — BookingsService cần `PAYMENT_GATEWAYS`
  * (checkout khi create), PaymentsService cần `BookingsService.claimSeatsForPaid`
  * (claim PAID khi có webhook) — nên `forwardRef` ở CẢ HAI import.
+ *
+ * F8 (spec P4c §3-F8, §2.1 "mỗi vùng một module — payments thêm admin-*"):
+ * {@link AdminPaymentEventsController} + {@link AdminPaymentEventsService} đọc
+ * sổ `payment_events` cho admin. Đọc thuần, không chạm gateway lẫn
+ * PaymentsService — chỉ ở chung nhà vì cùng bảng.
  */
 @Module({
   imports: [forwardRef(() => BookingsModule)],
-  controllers: [WebhooksController],
-  providers: [...gatewayProviders, PaymentsService],
+  controllers: [WebhooksController, AdminPaymentEventsController],
+  providers: [...gatewayProviders, PaymentsService, AdminPaymentEventsService],
   exports: [PAYMENT_GATEWAYS],
 })
 export class PaymentsModule {}
