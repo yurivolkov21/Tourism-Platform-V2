@@ -55,6 +55,7 @@ nguyên, di chuyển nguyên văn 03/08) ·
 
 | Phase | Spec | Trạng thái |
 | --- | --- | --- |
+| **P4c vận hành** | [2026-09-02-p4c-operations-design](specs/2026-09-02-p4c-operations-design.md) — bốn vùng có DB mà 0 endpoint admin: **F7** outbox (retry FAILED) · **F8** payment events (read-only) · **F9** enquiries + notes (+ migration `enquiry_status_events`) · **F10** subscribers (unsubscribe + CSV); mỗi vùng contract mới + stat card 28d theo nếp F5; không xoá dữ liệu | 🔧 mở 02/09 — F7 đang thi công |
 | P4b polish | [2026-09-01-bookings-export-selection-design](specs/2026-09-01-bookings-export-selection-design.md) — Export theo lựa chọn cho `/bookings` (cột checkbox, nút Export vào bảng, `sel=` khoá trong trang đang xem, 409 khi trang đã đổi) + Quick Create trắng/hover teal; đi cùng [ADR-0027](adr/0027-admin-surface-palette.md) | ✅ đã merge 02/09 (`32dce27`, kèm vòng vá 10 findings — xem CHANGELOG) |
 | P1 API lõi | [2026-07-18-p1-api-core](specs/2026-07-18-p1-api-core.md) | ✅ đã merge |
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
