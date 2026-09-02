@@ -16,5 +16,9 @@
     "ui": "@tourism/ui/components",
     "lib": "@/lib",
     "hooks": "@/hooks"
+  },
+  "registries": {
+    "@ss-components": "https://shadcnstudio.com/r/components/{style}/{name}.json",
+    "@shadcn-space": "https://shadcnspace.com/r/{name}.json"
   }
 }

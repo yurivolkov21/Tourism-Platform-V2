@@ -33,14 +33,18 @@ export function NavMain() {
             <SidebarMenuItem className="flex items-center gap-2">
               <SidebarMenuButton
                 tooltip="Quick Create"
-                className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
+                className="min-w-8 bg-sidebar-cta text-sidebar-cta-foreground duration-200 ease-linear hover:bg-sidebar-primary hover:text-sidebar-primary-foreground active:bg-sidebar-primary active:text-sidebar-primary-foreground"
               >
                 <CirclePlusIcon />
                 <span>Quick Create</span>
               </SidebarMenuButton>
+              {/* Cùng bệnh với badge: `outline` mang `bg-background`, tức
+                  một ô vuông TRẮNG trên vỏ tối. Ở đây nền nhạt của sidebar
+                  gánh vai đó, và thứ định danh nút là ICON (đo 11.56) chứ
+                  không phải nét viền — nên viền chỉ còn giữ hình. */}
               <Button
                 size="icon"
-                className="size-8 group-data-[collapsible=icon]:opacity-0"
+                className="size-8 border-sidebar-border bg-sidebar-accent text-sidebar-foreground group-data-[collapsible=icon]:opacity-0 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground"
                 variant="outline"
               >
                 <MailIcon />
@@ -72,7 +76,14 @@ export function NavMain() {
                         <span>{item.label}</span>
                       </SidebarMenuButton>
                       <SidebarMenuBadge>
-                        <Badge variant="outline" className="text-[10px]">
+                        {/* Badge `outline` mặc định là `border-border` +
+                            `text-foreground` — token của vùng SÁNG, nên trên
+                            vỏ tối nó thành viền sáng bọc quanh chữ tàng hình
+                            (lỗi user bắt 01/09). Đo: chữ 8.39 (ADR-0027). */}
+                        <Badge
+                          variant="outline"
+                          className="border-sidebar-border text-[10px] text-sidebar-foreground/70"
+                        >
                           {t.soon}
                         </Badge>
                       </SidebarMenuBadge>

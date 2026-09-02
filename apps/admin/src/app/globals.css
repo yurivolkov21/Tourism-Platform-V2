@@ -12,6 +12,115 @@
  * không tự nằm trong content-detection mặc định) — cùng nếp apps/web. */
 @source "../../../../libs/shared/ui/src";
 
+/* ── Bề mặt riêng của admin (ADR-0027) ──────────────────────────────────────
+ * Vỏ tối + ruột trắng lạnh. Khoanh vào `[data-admin-surface]` — thuộc tính do
+ * `(admin)/layout.tsx` đặt — chứ KHÔNG sửa `libs/shared/tokens`: nguồn ấy dùng
+ * chung với `apps/web` đang chạy thật tại www.nexora-travel.agency, sửa nó là
+ * đổi màu luôn trang khách.
+ *
+ * Trang `login`, `not-authorized`, `not-found` nằm NGOÀI nhóm route `(admin)`
+ * nên tự động không nhận lớp này — đúng yêu cầu "trừ trang login ra", không
+ * cần một ngoại lệ nào phải nhớ.
+ *
+ * NGOẠI LỆ CÓ CHỦ ĐÍCH với luật tokens-only (CLAUDE.md #6), cùng họ với khối
+ * `@media print` bên dưới: đây là nơi ĐỊNH NGHĨA token, không phải nơi tiêu
+ * thụ. Mọi component vẫn chỉ nói `bg-background`/`text-foreground` như cũ.
+ *
+ * Giá trị tuyệt đối, không rẽ nhánh theme: admin chỉ có MỘT diện mạo cố định
+ * (user chốt 01/09 — "ở admin không cần làm sáng tối như bản web"). Để câu
+ * đó đúng, `app/layout.tsx` KHÔNG còn script gắn `.dark` theo OS (vòng vá
+ * review 02/09): lớp này chỉ khai ~23 token trong khi `.dark` của tokens.css
+ * khai 48, nên máy để dark mode từng nhận nền bị ép sáng còn
+ * `--accent-foreground`/`--secondary-foreground` vẫn gần trắng — chữ trắng
+ * trên nền trắng ở badge và hover menu.
+ *
+ * Selector thứ hai `body:has([data-admin-surface])` (cùng vòng vá): mọi
+ * Popover/DropdownMenu/Select/Dialog của `@tourism/ui` và toast Sonner render
+ * qua Portal ra `document.body`, tức NGOÀI cây có thuộc tính — không có vế
+ * này thì lịch, menu Columns, dialog xác nhận và toast vẽ bằng palette web
+ * (hue 174) cạnh bảng palette admin (hue 250). `:has()` chạy trên mọi trình
+ * duyệt kể từ 2023; trang `login`/`not-authorized` không mang thuộc tính nên
+ * `body:has()` không khớp — ngoại lệ vẫn tự động, không cần danh sách.
+ *
+ * Mọi con số dưới đây đã đo, bảng đầy đủ ở ADR-0027 §Số đo.
+ */
+[data-admin-surface],
+body:has([data-admin-surface]) {
+  /* Ruột: trung tính lạnh hue 250. Điểm trắng thật nằm ở `--card`. */
+  --background: oklch(0.995 0.0015 250);
+  --foreground: oklch(0.262 0.014 250);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.262 0.014 250);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.262 0.014 250);
+
+  --muted: oklch(0.962 0.004 250);
+  --muted-foreground: oklch(0.502 0.012 250);
+  --secondary: oklch(0.962 0.004 250);
+  --accent: oklch(0.962 0.004 250);
+
+  /* Nét kẻ nhạt hẳn đi — một bảng admin có vài chục nét, khối xám ấy cộng lại
+   * kéo tông cả trang xuống (ADR-0027 §Bối cảnh mục 3). */
+  --border: oklch(0.902 0.005 250);
+  /* `--input` KHÔNG nhạt theo: viền là thứ DUY NHẤT cho biết một ô nhập ở đâu,
+   * nên nó chịu ngưỡng 3:1 phi-văn-bản (đo 3.06 trên nền, 3.11 trên card). */
+  --input: oklch(0.66 0.012 250);
+
+  /* Vá lỗi CÓ SẴN, không do ADR-0027 gây ra: `text-success` đo 3.37 trên card
+   * cũ — đã trượt 4.5 từ trước.
+   *
+   * Hạ tiếp xuống 0.48 (01/09, vòng nút approve/deny): token này nay còn phải
+   * làm mực TRÊN CHÍNH NỀN NHẠT CỦA NÓ (`bg-success/10`, hover `/20` — khuôn
+   * `button-23`). Nền càng đậm thì mực càng phải tối: ở 0.52 hover chỉ còn
+   * 4.28 ❌. Chọn 0.48 chứ không phải 0.50 (4.56, sát mép) để có biên —
+   * xấu nhất 4.93 ✅, và trên card trơn lên 5.99.
+   *
+   * Đây chính là bài toán ADR-0019 giải cho `destructive` bằng cách tách
+   * `destructive-emphasis`. Ở đây KHÔNG cần tách vì trong admin `success` chỉ
+   * đóng đúng vai MỰC (stat card + nút approve) — không chỗ nào dùng nó làm
+   * bề mặt đặc. `apps/web` thì có (`bg-success`), nên bên đó là bài toán khác,
+   * để nguyên. */
+  --success: oklch(0.48 0.17 145);
+
+  /* Vỏ: mượn độ tối của bộ dark web (L ~0.29) nhưng kéo hue về 252 cho khớp
+   * ruột. Bản mượn nguyên hue 178 đã dựng và bị loại — vỏ ngả rêu cạnh ruột
+   * ngả xanh, cãi nhau thấy rõ ở chỗ giáp ranh. */
+  --sidebar: oklch(0.288 0.018 252);
+  --sidebar-foreground: oklch(0.93 0.008 250);
+  --sidebar-accent: oklch(0.372 0.024 252);
+  --sidebar-accent-foreground: oklch(0.955 0.006 250);
+  --sidebar-border: oklch(0.392 0.022 252);
+
+  /* Nút CTA trong sidebar. KHÔNG dùng lại `--primary` (L 0.494) được: trên vỏ
+   * tối nó chỉ đo 2.39 — dưới ngưỡng 3:1. Và không L nào của teal đồng thời
+   * đạt nút/nền ≥3 với chữ-gần-trắng/nút ≥4.5 (đúng thế kẹt ADR-0019 mô tả).
+   * Lối ra là LẬT CHIỀU CHỮ — thứ ADR-0019 không làm được ở dark vì ở đó cả
+   * nền lẫn card đều tối, còn ở đây vỏ tối mà nút được phép sáng:
+   * teal L 0.68 + mực tối → nút/nền 5.11, chữ/nút 5.55. */
+  --sidebar-primary: oklch(0.68 0.076 181.3);
+  --sidebar-primary-foreground: oklch(0.262 0.014 250);
+  --sidebar-ring: oklch(0.68 0.076 181.3);
+
+  /* Nút CTA trong sidebar: TRẮNG lúc nghỉ, teal khi hover (user chốt 01/09).
+   * Không tái dùng `--sidebar-primary` cho trạng thái nghỉ vì nó đang nhuộm
+   * viên kim cương sau của logo — đổi nó thành trắng là mất thế hai tông của
+   * mark (ADR-0027 §Hệ quả).
+   *
+   * Đo: trắng/vỏ 14.19 · mực/trắng 15.43 · teal/vỏ 5.11 · mực/teal 5.55 — nên
+   * MỘT màu chữ duy nhất dùng được cho cả hai trạng thái, không phải lật màu
+   * chữ giữa chừng. */
+  --sidebar-cta: oklch(1 0 0);
+  --sidebar-cta-foreground: oklch(0.262 0.014 250);
+}
+
+/* Tailwind v4 chỉ sinh utility cho biến nằm trong `@theme`. Hai token trên là
+ * của RIÊNG admin nên `@tourism/tokens` không khai hộ — khai ở đây, cùng khuôn
+ * `@theme inline` mà file tokens sinh ra dùng. */
+@theme inline {
+  --color-sidebar-cta: var(--sidebar-cta);
+  --color-sidebar-cta-foreground: var(--sidebar-cta-foreground);
+}
+
 /* ── Bản in (spec P4b §3-F6) ────────────────────────────────────────────────
  * "Xuất PDF" của trang /reports chính là Print của trình duyệt — đường
  * 0-dependency user chốt 31/08 (không thêm thư viện PDF nào trước freeze

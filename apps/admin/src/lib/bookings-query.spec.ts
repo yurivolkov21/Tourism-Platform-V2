@@ -246,3 +246,27 @@ describe('bookingsExportHref', () => {
     );
   });
 });
+
+/**
+ * Chọn hàng để export (01/09). Ràng buộc nền: phân trang là điều hướng THẬT
+ * nên tích không sống qua trang — việc chọn khoá trong trang đang xem. Nhờ đó
+ * `page`+`limit` chính là phạm vi của tập đã tích, và route chỉ cần lấy đúng
+ * một trang rồi giao theo mã.
+ */
+describe('bookingsExportHref — chọn hàng', () => {
+  it('không chọn gì: URL như cũ — cả tập đang lọc, KHÔNG mang page/limit', () => {
+    const href = bookingsExportHref({ page: 3, limit: 20, status: 'PAID' });
+
+    expect(href).toBe('/bookings/export?status=PAID');
+  });
+
+  it('có chọn: mang page+limit+sel để route khoanh đúng trang đang xem', () => {
+    const href = bookingsExportHref({ page: 3, limit: 20, status: 'PAID' }, ['BK-A', 'BK-B']);
+
+    expect(href).toBe('/bookings/export?status=PAID&page=3&limit=20&sel=BK-A%2CBK-B');
+  });
+
+  it('mảng chọn RỖNG cũng là "không chọn gì" — đừng đẻ ra một sel= trống', () => {
+    expect(bookingsExportHref({ page: 1, limit: 20 }, [])).toBe('/bookings/export');
+  });
+});

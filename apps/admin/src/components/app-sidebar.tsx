@@ -30,7 +30,7 @@ export function AppSidebar({
               render={<a href="/" />}
             >
               {/* Chip "back office" đã bỏ — user chê không hợp (21/08). */}
-              <Logo className="[&>span]:text-base" />
+              <Logo tone="sidebar" className="[&>span]:text-base" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

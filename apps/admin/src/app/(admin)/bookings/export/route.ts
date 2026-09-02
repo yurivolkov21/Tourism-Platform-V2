@@ -2,10 +2,15 @@ import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
-import { type AdminBookingsExport, fetchAllAdminBookings } from '@/lib/api/bookings';
+import {
+  type AdminBookingsExport,
+  EXPORT_TIME_BUDGET_MS,
+  fetchAdminBookings,
+  fetchAllAdminBookings,
+} from '@/lib/api/bookings';
 import { lookupServerSession } from '@/lib/api/session';
 import { bookingsCsvRows } from '@/lib/bookings-csv';
-import { parseBookingsSearchParams } from '@/lib/bookings-query';
+import { EXPORT_SELECTION_PARAM, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
@@ -56,6 +61,75 @@ export async function GET(request: NextRequest) {
 
   const query = parseBookingsSearchParams(rawSearchParamsFrom(request.nextUrl.searchParams));
   const cookie = (await cookies()).toString();
+
+  // Mã các hàng admin đã tích trên trang đang xem (spec 01/09). Có nó thì đây
+  // là cú xuất CÓ CHỌN, và đường đi khác hẳn export-all bên dưới: chỉ lấy ĐÚNG
+  // MỘT trang rồi giao theo mã.
+  //
+  // Lấy được một trang là đủ vì việc chọn khoá trong trang đang xem — phân
+  // trang là điều hướng thật nên tích không sống qua trang — và
+  // `bookingsExportHref` đã đính kèm `page`/`limit` cho đúng ca này. Nhờ vậy
+  // xuất 3 hàng không phải đi bộ qua tối đa `EXPORT_MAX_ROWS` hàng như
+  // `fetchAllAdminBookings`.
+  //
+  // Bộ lọc vẫn áp vì nó nằm trong cùng `query`: một hàng đã tích mà không còn
+  // khớp lọc thì đơn giản không có trong trang server trả về.
+  const selected = (request.nextUrl.searchParams.get(EXPORT_SELECTION_PARAM) ?? '')
+    .split(',')
+    .map((code) => code.trim())
+    .filter(Boolean);
+
+  if (selected.length > 0) {
+    let page: Awaited<ReturnType<typeof fetchAdminBookings>>;
+    try {
+      // Cùng hai chốt ngân sách với export-all (`fetchAllAdminBookings`): không
+      // ảnh, và một mốc thời gian để quá hạn là 502 có lời chứ không phải
+      // response cụt (vòng vá review 02/09 — bản đầu bỏ cả hai).
+      page = await fetchAdminBookings(
+        cookie,
+        { ...query, includeMedia: false },
+        AbortSignal.timeout(EXPORT_TIME_BUDGET_MS),
+      );
+    } catch (error) {
+      console.error('[admin] bookings export (selection) failed', error);
+      return new Response(messages.admin.errors.exportFailed, { status: 502 });
+    }
+
+    const wanted = new Set(selected);
+    const rows = page.items.filter((item) => wanted.has(item.code));
+
+    // Thiếu BẤT KỲ hàng nào đã chỉ đích danh: trang đã đổi dưới chân admin
+    // (hàng bị huỷ rơi khỏi bộ lọc, booking mới chen vào đẩy hàng sang trang
+    // sau). Trả một file ít dòng hơn số hàng đã tích là NÓI DỐI — người tải
+    // tưởng mình có đủ — cùng lý do nhánh export-all từ chối bằng 413 thay vì
+    // cắt bớt. Bản đầu chỉ chặn ca trượt SẠCH (0 hàng), để lọt ca trượt một
+    // phần (vòng vá review 02/09). `wanted.size` chứ không phải
+    // `selected.length`: mã lặp trên URL không được tính là hai hàng.
+    if (rows.length !== wanted.size) {
+      return new Response(messages.admin.errors.exportSelectionStale, { status: 409 });
+    }
+
+    // Cùng một vết như export-all: cú đọc này mang PII, "ai tải, lúc nào, bộ
+    // lọc gì" phải trả lời được khi điều tra. `mode` để phân biệt hai đường.
+    console.info(
+      '[admin] bookings export',
+      JSON.stringify({
+        adminId: session?.id ?? null,
+        rows: rows.length,
+        mode: 'selection',
+        filters: {
+          status: query.status ?? null,
+          search: query.search ? '<set>' : null,
+          from: query.from ?? null,
+          to: query.to ?? null,
+        },
+      }),
+    );
+
+    return new Response(csvDocument(bookingsCsvRows(rows)), {
+      headers: csvAttachmentHeaders(csvFilename('nexora-bookings', isoDay(new Date()))),
+    });
+  }
 
   // API sập/timeout giữa vòng lặp gom trang: KHÔNG để lỗi ném ra khỏi handler.
   // Route handler không chạy qua `app/error.tsx`, nên một ORPCError lọt ra

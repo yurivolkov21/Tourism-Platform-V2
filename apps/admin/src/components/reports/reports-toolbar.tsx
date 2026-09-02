@@ -14,6 +14,7 @@ import {
 } from '@tourism/ui/components/select';
 import { DownloadIcon, PrinterIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { TOOLBAR_BUTTON, TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
 import { reportsExportHref, reportsHref } from '@/lib/reports-query';
 
 /**
@@ -47,7 +48,7 @@ export function ReportsToolbar({ month, options }: ReportsToolbarProps) {
           onValueChange={(next) => router.push(reportsHref(String(next)))}
           items={options}
         >
-          <SelectTrigger className="w-48" size="sm" id="reports-month">
+          <SelectTrigger className={`w-48 ${TOOLBAR_SELECT}`} size="default" id="reports-month">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -64,11 +65,11 @@ export function ReportsToolbar({ month, options }: ReportsToolbarProps) {
       <div className="flex flex-wrap items-center justify-end gap-2">
         {/* Nút in chỉ gọi hộp thoại in của trình duyệt — "xuất PDF" của F6 là
             chính nó (đường 0-dependency: không thư viện PDF nào được thêm). */}
-        <Button variant="outline" size="sm" onClick={() => window.print()}>
+        <Button variant="outline" className={TOOLBAR_BUTTON} onClick={() => window.print()}>
           <PrinterIcon data-icon="inline-start" aria-hidden="true" />
           {t.print}
         </Button>
-        <ButtonLink variant="outline" size="sm" href={reportsExportHref(month)}>
+        <ButtonLink variant="outline" className={TOOLBAR_BUTTON} href={reportsExportHref(month)}>
           <DownloadIcon data-icon="inline-start" aria-hidden="true" />
           {t.exportCsv}
         </ButtonLink>

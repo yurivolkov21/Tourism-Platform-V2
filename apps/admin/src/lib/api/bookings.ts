@@ -25,9 +25,14 @@ export { EXPORT_MAX_ROWS };
  */
 export async function fetchAdminBookings(
   cookie: string,
-  query: BookingsQuery,
+  // `includeMedia`/`signal` chỉ đường export-có-chọn dùng (vòng vá review
+  // 02/09): nó lấy MỘT trang rồi giao theo mã, và cũng không cần ảnh.
+  query: BookingsQuery & { includeMedia?: boolean },
+  signal?: AbortSignal,
 ): Promise<Paged<Booking>> {
-  return api.admin.bookings.list(query, { context: withAdminAuth(cookie) });
+  return api.admin.bookings.list(query, {
+    context: signal ? { cookie, signal } : withAdminAuth(cookie),
+  });
 }
 
 /**

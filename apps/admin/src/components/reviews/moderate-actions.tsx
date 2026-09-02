@@ -1,10 +1,10 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ConfirmWriteDialog } from '@/components/kit/confirm-write-dialog';
+import { DecisionButton } from '@/components/kit/decision-button';
 import {
   isStaleStateCode,
   type ModerateAction,
@@ -71,15 +71,16 @@ export function ModerateActions({
     // có nghĩa trên một role thật, và cả trang toàn nút "Approve" giống hệt
     // nhau thì trình đọc màn hình không phân biệt nổi hàng nào.
     <fieldset aria-label={t.actionsLabel(review.authorLabel)} className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant={approve ? 'default' : 'outline'}
-        size="sm"
+      {/* Khuôn `button-23` (kit `DecisionButton`, user chốt 01/09). Unapprove
+          lấy tông `deny`: gỡ một review đang hiện là cú CHẶN LẠI, dù nó không
+          phải một lời từ chối — khiên gạch nói đúng điều đó. */}
+      <DecisionButton
+        tone={approve ? 'approve' : 'deny'}
         disabled={isRefreshing}
         onClick={() => setFrozenApprove(approve)}
       >
         {approve ? t.approve : t.unapprove}
-      </Button>
+      </DecisionButton>
       {frozenApprove !== null ? (
         <ModerateDialog
           review={review}

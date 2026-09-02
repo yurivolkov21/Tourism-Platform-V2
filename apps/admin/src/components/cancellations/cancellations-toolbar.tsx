@@ -2,6 +2,7 @@
 
 import { CancellationRequestStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
@@ -17,11 +18,27 @@ const t = messages.admin.cancellations.list;
 /** Nguồn danh sách trạng thái = enum contract, không chép tay lần hai. */
 const STATUSES = CancellationRequestStatusSchema.options;
 
+/**
+ * Icon cho từng trạng thái (user chốt 01/09) — cùng luật với `/bookings`:
+ * `Record` trên enum để quên một member là đỏ ở typecheck.
+ *
+ * REFUNDED ở bảng này là "Approved — refunded", tức KẾT QUẢ ĐÃ DUYỆT của một
+ * yêu cầu; nên nó lấy dấu tích đối lại dấu X của DENIED, chứ không lấy mũi
+ * tên hoàn tiền như `/bookings`. Cặp duyệt/từ chối mới là thứ mắt cần tách ở
+ * đây.
+ */
+const STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ClockIcon> = {
+  REQUESTED: ClockIcon,
+  REFUNDED: CircleCheckIcon,
+  DENIED: CircleXIcon,
+};
+
 const TAB_ITEMS = [
-  { label: t.all, value: ALL },
+  { label: t.all, value: ALL, icon: ListIcon },
   ...STATUSES.map((status) => ({
     label: messages.admin.cancellations.status[status],
     value: status,
+    icon: STATUS_ICONS[status],
   })),
 ];
 

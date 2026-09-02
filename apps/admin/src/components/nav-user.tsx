@@ -40,7 +40,7 @@ export function NavUser({ user }: { user: SessionUser }) {
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger
-            render={<SidebarMenuButton size="lg" className="aria-expanded:bg-muted" />}
+            render={<SidebarMenuButton size="lg" className="aria-expanded:bg-sidebar-accent" />}
           >
             <Avatar className="size-8">
               {user.image ? <AvatarImage src={user.image} alt={user.name} /> : null}
@@ -48,7 +48,7 @@ export function NavUser({ user }: { user: SessionUser }) {
             </Avatar>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{user.name}</span>
-              <span className="truncate text-xs text-foreground/70">{user.email}</span>
+              <span className="truncate text-xs text-sidebar-foreground/70">{user.email}</span>
             </div>
             <EllipsisVerticalIcon className="ml-auto size-4" />
           </DropdownMenuTrigger>

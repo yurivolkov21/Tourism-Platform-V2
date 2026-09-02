@@ -1,10 +1,10 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { ConfirmWriteDialog, type ConfirmWriteRow } from '@/components/kit/confirm-write-dialog';
+import { DecisionButton } from '@/components/kit/decision-button';
 import { formatAmount } from '@/lib/bookings-view';
 import {
   type DecideAction,
@@ -74,24 +74,15 @@ export function DecideActions({
     // có nghĩa trên một role thật, và nhóm hai nút của MỘT hàng cần tên riêng
     // để trình đọc màn hình không đọc ra 20 nút "Approve" giống hệt nhau.
     <fieldset aria-label={t.actionsLabel(request.bookingCode)} className="flex items-center gap-2">
-      <Button
-        type="button"
-        variant="default"
-        size="sm"
-        disabled={isRefreshing}
-        onClick={() => setVariant('approve')}
-      >
+      {/* Cặp nút khuôn `button-23` (kit `DecisionButton`, user chốt 01/09):
+          màu và kiểu cựa của icon cùng nói một điều — khiên tích nảy lên cho
+          cú đi tới, khiên gạch lắc đầu cho cú chặn lại. */}
+      <DecisionButton tone="approve" disabled={isRefreshing} onClick={() => setVariant('approve')}>
         {t.approve}
-      </Button>
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        disabled={isRefreshing}
-        onClick={() => setVariant('deny')}
-      >
+      </DecisionButton>
+      <DecisionButton tone="deny" disabled={isRefreshing} onClick={() => setVariant('deny')}>
         {t.deny}
-      </Button>
+      </DecisionButton>
       {variant ? (
         <DecideDialog
           request={request}

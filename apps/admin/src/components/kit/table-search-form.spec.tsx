@@ -35,6 +35,26 @@ describe('TableSearchForm', () => {
     expect(screen.getByLabelText('Search bookings')).toHaveValue('ada');
   });
 
+  it('điều hướng (đổi value) đặt lại cả trạng thái focus — placeholder không đè lên nhãn nổi', async () => {
+    // Vòng vá review 02/09: remount ô qua `key` gỡ node đang focus mà KHÔNG
+    // bắn blur; `focused` từng nằm ở cha nên kẹt true, và ô mới (chưa focus,
+    // nhãn ở vị trí nghỉ) lại hiện placeholder đè lên nhãn. Nay key bọc cả
+    // cụm ô + state của nó.
+    const user = userEvent.setup();
+    const { rerender } = render(<TableSearchForm {...PROPS} value={undefined} />);
+
+    await user.click(screen.getByLabelText('Search bookings'));
+    expect(screen.getByLabelText('Search bookings')).toHaveAttribute(
+      'placeholder',
+      'Code, name or email',
+    );
+
+    rerender(<TableSearchForm {...PROPS} value="ada" />);
+    rerender(<TableSearchForm {...PROPS} value={undefined} />);
+
+    expect(screen.getByLabelText('Search bookings')).toHaveAttribute('placeholder', ' ');
+  });
+
   it('submit gửi NGUYÊN VĂN chuỗi đang gõ — trim là việc của *Href', async () => {
     const user = userEvent.setup();
     render(<TableSearchForm {...PROPS} value={undefined} />);
@@ -55,6 +75,31 @@ describe('TableSearchForm', () => {
     await user.click(screen.getByRole('button', { name: 'Clear' }));
 
     expect(onClear).toHaveBeenCalled();
+  });
+
+  /**
+   * Nhãn nổi (`input-24`) và placeholder tranh nhau ĐÚNG MỘT chỗ trong ô, nên
+   * ô phải nhường qua nhường lại: lúc nghỉ chỗ đó là của nhãn, lúc focus nhãn
+   * trôi lên viền và trả chỗ cho gợi ý.
+   */
+  it('lúc nghỉ ô KHÔNG khoe gợi ý — chỗ đó đang là của nhãn nổi', () => {
+    render(<TableSearchForm {...PROPS} value={undefined} />);
+
+    // Một dấu CÁCH chứ không phải rỗng: mẹo nhãn nổi đứng trên
+    // `:placeholder-shown`, không có placeholder là nhãn kẹt trên viền.
+    expect(screen.getByLabelText('Search bookings')).toHaveAttribute('placeholder', ' ');
+  });
+
+  it('focus vào ô thì gợi ý hiện ra, rời ô thì trả chỗ lại cho nhãn', async () => {
+    const user = userEvent.setup();
+    render(<TableSearchForm {...PROPS} value={undefined} />);
+    const field = screen.getByLabelText('Search bookings');
+
+    await user.click(field);
+    expect(field).toHaveAttribute('placeholder', 'Code, name or email');
+
+    await user.tab();
+    expect(field).toHaveAttribute('placeholder', ' ');
   });
 
   it('điều hướng sang bộ lọc khác thì ô nhập theo URL, không giữ chữ cũ', () => {

@@ -18,7 +18,11 @@ vi.mock('next/navigation', () => ({
 describe('BookingsExportLink', () => {
   it('tập trong trần → là một <a> thật trỏ route export, mang đủ filter', () => {
     render(
-      <BookingsExportLink query={{ page: 1, limit: 20, status: 'PAID' }} total={EXPORT_MAX_ROWS} />,
+      <BookingsExportLink
+        query={{ page: 1, limit: 20, status: 'PAID' }}
+        total={EXPORT_MAX_ROWS}
+        selected={[]}
+      />,
     );
 
     const link = screen.getByRole('link', { name: t.exportCsv });
@@ -27,7 +31,7 @@ describe('BookingsExportLink', () => {
 
   it('tập vượt trần → nút TẮT kèm chính câu 413 làm tooltip, không có <a> nào để bấm', () => {
     const total = EXPORT_MAX_ROWS + 400;
-    render(<BookingsExportLink query={{ page: 1, limit: 20 }} total={total} />);
+    render(<BookingsExportLink query={{ page: 1, limit: 20 }} total={total} selected={[]} />);
 
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: t.exportCsv })).toBeDisabled();

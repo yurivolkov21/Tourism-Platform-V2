@@ -59,7 +59,6 @@ import {
 } from '@tourism/ui/components/drawer';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
@@ -84,7 +83,7 @@ import {
   TableHeader,
   TableRow,
 } from '@tourism/ui/components/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@tourism/ui/components/tabs';
+import { Tabs, TabsContent } from '@tourism/ui/components/tabs';
 
 // Vòng gọt bước 5 (21/08, cùng phép với bước 4): KHUNG data-table của
 // dashboard-01 (TanStack + dnd + columns menu + pagination) GIỮ NGUYÊN —
@@ -93,23 +92,67 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@tourism/ui/components
 // bên dưới thay trọn khi P4b dựng bảng thật từng vùng.
 const t = messages.admin.dashboard;
 
+/**
+ * Nhãn + icon cho menu Columns của bảng dashboard (01/09 — dùng lại kit
+ * `ColumnVisibilityMenu` như ba bảng vùng, thay bản chép rời của block
+ * `dashboard-01` vốn in thẳng `column.id` thô: "header", "reviewer"…).
+ *
+ * Khoá là `column.id` của block demo, nhưng NHÃN mượn nguyên của
+ * `/bookings`: bảng này đang bày đúng dữ liệu booking ("Recent bookings"),
+ * nên copy có sẵn ở đó là copy đúng — chép tay lần hai chỉ để hai bản trôi
+ * lệch. Icon cũng đúng bộ glyph ấy, cùng khái niệm thì cùng hình.
+ */
+const bookingColumns = messages.admin.bookings.list.columns;
+
+const COLUMN_LABELS: Record<string, string> = {
+  header: bookingColumns.code,
+  type: bookingColumns.tour,
+  status: bookingColumns.status,
+  target: bookingColumns.guests,
+  limit: bookingColumns.amount,
+  reviewer: bookingColumns.customer,
+};
+
+const COLUMN_ICONS = {
+  header: HashIcon,
+  type: MapPinIcon,
+  status: TagIcon,
+  target: UsersIcon,
+  limit: BanknoteIcon,
+  reviewer: UserIcon,
+};
+
+/**
+ * Khung nhìn của bảng dashboard. Đúng MỘT mục — block `dashboard-01` gốc
+ * cũng vậy. Giữ nguyên số mục chứ không bịa thêm: P4d mới là lúc bảng này
+ * nối số thật và biết mình cần mấy khung nhìn.
+ */
+const VIEW_ITEMS = [{ label: t.table.tab, value: ALL_FILTER_VALUE, icon: ListIcon }];
+
 import {
-  ChevronDownIcon,
+  BanknoteIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronsLeftIcon,
   ChevronsRightIcon,
   CircleCheckIcon,
-  Columns3Icon,
   EllipsisVerticalIcon,
   GripVerticalIcon,
+  HashIcon,
+  ListIcon,
   LoaderIcon,
+  MapPinIcon,
+  TagIcon,
   TrendingUpIcon,
+  UserIcon,
+  UsersIcon,
 } from 'lucide-react';
 import * as React from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 import { toast } from 'sonner';
 import { z } from 'zod';
+import { ColumnVisibilityMenu } from '@/components/kit/data-table-body';
+import { ALL_FILTER_VALUE, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 // New in v9: declare the features this table uses — anything you don't
@@ -359,6 +402,7 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
     pageIndex: 0,
     pageSize: 10,
   });
+  const [view, setView] = React.useState(ALL_FILTER_VALUE);
   const sortableId = React.useId();
   const sensors = useSensors(
     useSensor(MouseSensor, {}),
@@ -396,53 +440,21 @@ export function DataTable({ data: initialData }: { data: z.infer<typeof schema>[
     }
   }
   return (
-    <Tabs defaultValue="outline" className="w-full flex-col justify-start gap-6">
+    <Tabs value={view} className="w-full flex-col justify-start gap-6">
       <div className="flex items-center justify-between px-4 lg:px-6">
-        <Label htmlFor="view-selector" className="sr-only">
-          View
-        </Label>
-        <Select defaultValue="outline" items={[{ label: t.table.tab, value: 'outline' }]}>
-          <SelectTrigger className="flex w-fit @4xl/main:hidden" size="sm" id="view-selector">
-            <SelectValue placeholder="Select a view" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectItem value="outline">{t.table.tab}</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-        <TabsList className="hidden @4xl/main:flex">
-          <TabsTrigger value="outline">{t.table.tab}</TabsTrigger>
-        </TabsList>
+        <StatusFilterTabs
+          items={VIEW_ITEMS}
+          value={view}
+          label={t.table.viewLabel}
+          selectId="view-selector"
+          onSelect={setView}
+        />
         <div className="flex items-center gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="outline" size="sm" />}>
-              <Columns3Icon data-icon="inline-start" />
-              Columns
-              <ChevronDownIcon data-icon="inline-end" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32">
-              {table
-                .getAllColumns()
-                .filter((column) => typeof column.accessorFn !== 'undefined' && column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) => column.toggleVisibility(!!value)}
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </div>
       </div>
       <TabsContent
-        value="outline"
+        value={ALL_FILTER_VALUE}
         className="relative flex flex-col gap-4 overflow-auto px-4 lg:px-6"
       >
         <div className="overflow-hidden rounded-lg border">

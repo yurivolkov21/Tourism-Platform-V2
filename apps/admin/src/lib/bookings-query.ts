@@ -162,15 +162,37 @@ function appendFilters(
 }
 
 /**
- * Link tải CSV của ĐÚNG tập đang lọc (spec P4b §3-F6) — trỏ tới route handler
- * `/bookings/export`.
- *
- * CỐ Ý bỏ `page`/`limit`: file là CẢ TẬP đang lọc, không phải trang đang xem.
- * Xuất "trang 3, 20 dòng" thì con số trong file không khớp với bất cứ câu hỏi
- * nào mà người xuất đang hỏi.
+ * Tên tham số mang danh sách mã đã tích. Khai ở đây để route export và bên
+ * dựng URL đọc CÙNG MỘT chuỗi — gõ tay hai lần là hai bản trôi lệch trong im
+ * lặng, và triệu chứng sẽ là "bấm Export mà vẫn ra cả tập".
  */
-export function bookingsExportHref(query: BookingsQuery): string {
+export const EXPORT_SELECTION_PARAM = 'sel';
+
+/**
+ * Link tải CSV (spec P4b §3-F6) — trỏ tới route handler `/bookings/export`.
+ *
+ * KHÔNG chọn hàng nào: cố ý bỏ `page`/`limit`, vì file là CẢ TẬP đang lọc chứ
+ * không phải trang đang xem. Xuất "trang 3, 20 dòng" thì con số trong file
+ * không khớp với bất cứ câu hỏi nào mà người xuất đang hỏi.
+ */
+export function bookingsExportHref(query: BookingsQuery, selected?: readonly string[]): string {
   const params = new URLSearchParams();
   appendFilters(params, query);
+  // Có hàng được tích thì URL phải mang THÊM `page`+`limit` — ngược hẳn ca
+  // export-all bên trên vốn cố ý bỏ chúng đi.
+  //
+  // Vì sao ngược: việc chọn hàng khoá trong TRANG ĐANG XEM (bảng ĐẶT LẠI tích
+  // mỗi khi query đổi — xem `BookingsTable`), nên `page`+`limit` chính là
+  // phạm vi của tập đã tích. Route nhờ đó chỉ lấy đúng một trang rồi giao
+  // theo mã, thay vì đi bộ qua tối đa `EXPORT_MAX_ROWS` hàng.
+  //
+  // Mảng rỗng tính là KHÔNG chọn: `sel=` trống sẽ khiến route rẽ vào nhánh
+  // "có chọn" rồi không khớp hàng nào và trả 409 — một lời từ chối cho thứ
+  // admin không hề làm.
+  if (selected?.length) {
+    params.set('page', String(query.page));
+    params.set('limit', String(query.limit));
+    params.set(EXPORT_SELECTION_PARAM, selected.join(','));
+  }
   return tableHref('/bookings/export', params);
 }

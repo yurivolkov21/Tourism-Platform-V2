@@ -15,19 +15,28 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@tourism/ui/components/chart';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
-import { ToggleGroup, ToggleGroupItem } from '@tourism/ui/components/toggle-group';
 import * as React from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
 
 const t = messages.admin.dashboard;
 
+/**
+ * Ba cửa sổ thời gian của biểu đồ. Value giữ nguyên `90d`/`30d`/`7d` — chúng
+ * là khoá logic mà `filteredData` bên dưới đọc, không phải chuỗi hiển thị.
+ *
+ * CỐ Ý không icon (`icon` là tuỳ chọn ở kit): ba mục chỉ khác nhau ở ĐỘ DÀI
+ * của cùng một thứ, nên không có ba glyph nào tách được chúng — đắp cùng một
+ * icon lịch lên cả ba là thêm nhiễu mà không thêm nghĩa. Cùng lý do đã bỏ
+ * icon ở bộ chọn dải này mà giữ ở bộ lọc trạng thái, nơi mỗi mục là một khái
+ * niệm riêng.
+ */
+const RANGE_ITEMS = [
+  { label: t.chart.range90d, value: '90d' },
+  { label: t.chart.range30d, value: '30d' },
+  { label: t.chart.range7d, value: '7d' },
+];
+
+import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export const description = 'An interactive area chart';
@@ -85,46 +94,22 @@ export function ChartAreaInteractive() {
           <span className="@[540px]/card:hidden">{t.awaiting}</span>
         </CardDescription>
         <CardAction>
-          <ToggleGroup
-            multiple={false}
-            value={timeRange ? [timeRange] : []}
-            onValueChange={(value) => {
-              setTimeRange(value[0] ?? '90d');
-            }}
-            variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:px-4! @[767px]/card:flex"
-          >
-            <ToggleGroupItem value="90d">Last 3 months</ToggleGroupItem>
-            <ToggleGroupItem value="30d">Last 30 days</ToggleGroupItem>
-            <ToggleGroupItem value="7d">Last 7 days</ToggleGroupItem>
-          </ToggleGroup>
-          <Select
+          {/* Dùng lại `StatusFilterTabs` của kit (01/09) thay cặp
+              ToggleGroup-outline + Select tự dựng của block `dashboard-01`:
+              cụm này là một BỘ CHỌN DẢI y hệt bộ lọc trạng thái ở ba bảng
+              vùng, nên nó phải trông y hệt — kể cả viên pill trượt.
+
+              Đổi lại một điểm: kit lật giữa dải nút và Select ở `@4xl/main`,
+              còn bản cũ ở `@[767px]/card`. Chấp nhận, và đó là cái ĐÚNG hơn —
+              mọi bộ chọn trong admin giờ lật cùng một chỗ thay vì mỗi cái
+              một ngưỡng. */}
+          <StatusFilterTabs
+            items={RANGE_ITEMS}
             value={timeRange}
-            onValueChange={(value) => {
-              if (value !== null) {
-                setTimeRange(value);
-              }
-            }}
-          >
-            <SelectTrigger
-              className="flex w-40 **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate @[767px]/card:hidden"
-              size="sm"
-              aria-label="Select a value"
-            >
-              <SelectValue placeholder="Last 3 months" />
-            </SelectTrigger>
-            <SelectContent className="rounded-xl">
-              <SelectItem value="90d" className="rounded-lg">
-                Last 3 months
-              </SelectItem>
-              <SelectItem value="30d" className="rounded-lg">
-                Last 30 days
-              </SelectItem>
-              <SelectItem value="7d" className="rounded-lg">
-                Last 7 days
-              </SelectItem>
-            </SelectContent>
-          </Select>
+            label={t.chart.rangeLabel}
+            selectId="chart-range-selector"
+            onSelect={setTimeRange}
+          />
         </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">

@@ -2586,9 +2586,26 @@ export const messages = {
       chart: {
         title: 'Revenue over time',
         description: 'Numbers arrive with the stats service (P4d).',
+        /**
+         * Cửa sổ thời gian của biểu đồ. Ba chuỗi này TRƯỚC 01/09 nằm cứng
+         * trong `chart-area-interactive.tsx` (di sản block `dashboard-01`);
+         * đưa về đây khi cụm nút đó chuyển sang dùng `StatusFilterTabs` —
+         * copy user-facing thì ở i18n, luật 7.
+         */
+        rangeLabel: 'Select a time range',
+        range90d: 'Last 3 months',
+        range30d: 'Last 30 days',
+        range7d: 'Last 7 days',
       },
       table: {
         tab: 'Recent bookings',
+        /**
+         * Nhãn cả cụm chọn khung nhìn (01/09 — bảng dashboard dùng lại
+         * `StatusFilterTabs` của kit). Hiện chỉ có MỘT khung nhìn; câu này
+         * tồn tại vì cụm điều khiển phải tự giới thiệu cho trình đọc màn
+         * hình, kể cả khi nó mới có một lựa chọn.
+         */
+        viewLabel: 'Select a view',
       },
     },
     // Copy DÙNG CHUNG của kit bảng admin (spec P4b §2.1 — kit mọc từ vùng
@@ -2604,6 +2621,13 @@ export const messages = {
       lastPage: 'Go to last page',
       rowsPerPage: 'Rows per page',
       columns: 'Columns',
+      /**
+       * Tiêu đề nhóm BÊN TRONG menu cột (khuôn `dropdown-menu-12`, user chốt
+       * 01/09). Không lặp lại chữ trên nút bấm ("Columns") — người ta vừa bấm
+       * vào đó xong; câu này nói việc menu LÀM được, thứ mà một danh sách
+       * checkbox không tự nói ra.
+       */
+      columnsMenuLabel: 'Show or hide columns',
       /** aria-label cho landmark `<nav>` bọc cụm nút phân trang. */
       pagination: 'Pagination',
     },
@@ -2755,6 +2779,14 @@ export const messages = {
       exportFailed:
         'The export could not be built — the back office could not reach the API. Nothing was downloaded; go back and try again.',
       /**
+       * BODY của response 409 khi `sel` không khớp hàng nào — trang đã đổi
+       * dưới chân admin (hàng bị huỷ, bộ lọc khác, dữ liệu mới chen vào). Trả
+       * một CSV chỉ có dòng tiêu đề là NÓI DỐI: người tải tưởng tập rỗng là
+       * sự thật. Câu này phải nói được việc cần làm tiếp theo.
+       */
+      exportSelectionStale:
+        'Those rows are no longer on this page — the list changed since you selected them. Go back, pick the rows again, then export.',
+      /**
        * Copy DÙNG CHUNG cho mã lỗi TẦNG VẬN CHUYỂN của mọi hành vi ghi admin
        * (refund F2, decide F3, moderate F4…) — tách khỏi mã CONTRACT của từng
        * endpoint (review F2 31/08): mỗi vùng chỉ khai câu cho mã riêng của
@@ -2777,6 +2809,13 @@ export const messages = {
       list: {
         filterLabel: 'Filter by status',
         all: 'All',
+        /**
+         * Ô tìm kiếm dùng NHÃN NỔI (`input-24`, user chốt 01/09), nên hai
+         * chuỗi này chia nhau MỘT chỗ trong ô: `searchLabel` là thứ nhìn
+         * thấy lúc nghỉ (không còn sr-only), `searchPlaceholder` chỉ hiện khi
+         * ô được focus. Vì vậy label phải tự đứng được một mình — người ta
+         * đọc nó TRƯỚC khi biết ô tìm được theo những gì.
+         */
         searchLabel: 'Search bookings',
         searchPlaceholder: 'Code, name or email',
         clear: 'Clear',
@@ -2798,8 +2837,32 @@ export const messages = {
         dateFrom: 'Booked from',
         dateTo: 'Booked to',
         clearDates: 'Clear dates',
+        /**
+         * Ô ngày là ô CHỮ (kiểu `date-picker-04`), nên gợi ý trong ô phải
+         * làm luôn việc thứ hai: nói ra dạng ngày mà ô đọc được. Đổi nó thì
+         * đổi cả `formatDateLabel` — hai thứ này là một lời hứa.
+         */
+        datePlaceholder: 'January 01, 2026',
+        /** Nút lịch nằm trong ô — không có chữ, chỉ máy đọc màn hình nghe. */
+        pickDateFrom: 'Open calendar to pick the start date',
+        pickDateTo: 'Open calendar to pick the end date',
         /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
         exportCsv: 'Export CSV',
+        /**
+         * Nhãn nút khi ĐANG có hàng được tích (01/09). Nói rõ số hàng vì người
+         * bấm phải biết mình sắp tải về cái gì TRƯỚC cú bấm — để nguyên
+         * "Export CSV" trong lúc tích 3 hàng là một lời hứa mơ hồ về chính thứ
+         * vừa được chọn.
+         */
+        exportSelected: (n: number) => `Export ${n} ${n === 1 ? 'row' : 'rows'}`,
+        /**
+         * Checkbox ở hàng tiêu đề. Nói "on this page" vì đó là SỰ THẬT chứ
+         * không phải rào trước: phân trang là điều hướng thật nên tích không
+         * sống qua trang. Hứa "select all" rồi mất sạch khi sang trang là nói
+         * dối bằng nhãn.
+         */
+        selectAllRows: 'Select all rows on this page',
+        selectRow: (code: string) => `Select booking ${code}`,
         /**
          * Tập lọc vượt trần xuất file. Câu này là BODY của một response
          * 413 — người bấm nút thấy nó thay cho file, nên nó phải nói được
@@ -3100,6 +3163,7 @@ export const messages = {
       list: {
         filterLabel: 'Filter by state',
         all: 'All',
+        /** Nhãn nổi + gợi ý-khi-focus — cùng luật với `bookings.list`. */
         searchLabel: 'Search reviews',
         searchPlaceholder: 'Text, title or author',
         clear: 'Clear',

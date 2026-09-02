@@ -3,7 +3,7 @@
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { StarIcon } from 'lucide-react';
+import { CalendarIcon, MapPinIcon, StarIcon, TagIcon, UserIcon } from 'lucide-react';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
@@ -42,6 +42,15 @@ const COLUMN_LABELS: Record<string, string> = {
   tourTitle: t.columns.tour,
   stateLabel: t.columns.state,
   submitted: t.columns.submitted,
+};
+
+/** Icon menu Columns — cùng bộ glyph với hai bảng kia (xem `bookings-table`). */
+const COLUMN_ICONS = {
+  authorLabel: UserIcon,
+  rating: StarIcon,
+  tourTitle: MapPinIcon,
+  stateLabel: TagIcon,
+  submitted: CalendarIcon,
 };
 
 /**
@@ -209,7 +218,7 @@ export function ReviewsTable({ rows, query, total, totalPages, moderate }: Revie
       actions={
         <>
           <ReviewsSearch query={query} />
-          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />
+          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }
       footer={

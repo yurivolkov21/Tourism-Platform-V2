@@ -35,21 +35,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
+    // KHÔNG có script gắn `.dark` theo OS/localStorage như web (gỡ ở vòng vá
+    // review 02/09): admin chỉ có MỘT diện mạo cố định (ADR-0027, user chốt
+    // 01/09) và không có toggle theme nào. Giữ script thì `.dark` (48 token)
+    // rò qua lớp đè `[data-admin-surface]` (~23 token) trên máy để dark mode —
+    // nền bị ép sáng còn chữ accent/secondary vẫn gần trắng.
     <html
       lang="en"
       className={`${sans.variable} ${heading.variable} ${mono.variable} h-full antialiased`}
-      suppressHydrationWarning
     >
-      <head>
-        {/* Áp theme đã lưu TRƯỚC paint đầu (cùng script với web) — không có
-            thì trang dark chớp trắng mỗi lần tải. */}
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: script tĩnh nội bộ, không có input người dùng
-          dangerouslySetInnerHTML={{
-            __html: `try{var t=localStorage.getItem('theme');if(t==='dark'||(!t&&matchMedia('(prefers-color-scheme: dark)').matches))document.documentElement.classList.add('dark')}catch(e){}`,
-          }}
-        />
-      </head>
       <body className="min-h-full bg-background text-foreground">
         {children}
         <Toaster position="top-center" />

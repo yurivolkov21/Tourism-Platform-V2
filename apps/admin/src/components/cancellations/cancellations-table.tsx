@@ -3,6 +3,7 @@
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
+import { CalendarIcon, MapPinIcon, MessageSquareTextIcon, TagIcon, UserIcon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import { CancellationsStatusTabs } from '@/components/cancellations/cancellations-toolbar';
@@ -41,6 +42,15 @@ const COLUMN_LABELS: Record<string, string> = {
   reason: t.columns.reason,
   statusLabel: t.columns.status,
   requested: t.columns.requested,
+};
+
+/** Icon menu Columns — cùng bộ glyph với hai bảng kia (xem `bookings-table`). */
+const COLUMN_ICONS = {
+  tourTitle: MapPinIcon,
+  customerName: UserIcon,
+  reason: MessageSquareTextIcon,
+  statusLabel: TagIcon,
+  requested: CalendarIcon,
 };
 
 /**
@@ -185,7 +195,7 @@ export function CancellationsTable({
   return (
     <DataTableFrame
       views={<CancellationsStatusTabs query={query} />}
-      actions={<ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} />}
+      actions={<ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />}
       footer={
         <TablePagination
           page={query.page}
