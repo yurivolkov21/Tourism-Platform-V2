@@ -5,8 +5,10 @@ import {
 } from '@tourism/contract';
 import {
   appendPaging,
+  clampSearch,
   firstParam,
   parsePaging,
+  pickPatch,
   type RawSearchParams,
   resolvePagePatch,
   tableHref,
@@ -85,7 +87,7 @@ function dateRange(rawFrom: string | undefined, rawTo: string | undefined) {
  */
 export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
   const status = BookingStatusSchema.safeParse(firstParam(raw.status));
-  const search = firstParam(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
+  const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
 
   return {
     ...parsePaging(raw),
@@ -137,16 +139,14 @@ export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): 
 
 /** Bộ lọc sau khi áp patch — dùng chung bởi `bookingsHref` và link export. */
 function resolveFilters(current: BookingsQuery, patch: BookingsHrefPatch) {
-  const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
-  const pick = (patched: string | null | undefined, currentValue: string | undefined) =>
-    patched === undefined ? currentValue : (patched ?? undefined);
-
+  // Luật patch (`undefined` giữ / `null` xoá) và clamp search là của kit
+  // (`table-query.ts`, vòng vá review F7) — vùng chỉ ghép filter của mình.
   return {
-    status: patch.status === undefined ? current.status : (patch.status ?? undefined),
-    search: rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined,
+    status: pickPatch(patch.status, current.status),
+    search: clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH),
     // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
     // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
-    ...dateRange(pick(patch.from, current.from), pick(patch.to, current.to)),
+    ...dateRange(pickPatch(patch.from, current.from), pickPatch(patch.to, current.to)),
   };
 }
 

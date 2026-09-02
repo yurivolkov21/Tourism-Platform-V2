@@ -10,6 +10,22 @@ export const PageQuerySchema = z.object({
   pageSize: z.int().min(1).max(100).default(20),
 });
 
+/**
+ * Phân trang của MỌI list ADMIN (`page` + `limit`, trần 100, mặc định 20) —
+ * một bản duy nhất (vòng vá review F7: bookings/cancellations/outbox từng
+ * khai inline bốn lần, và `apps/admin/src/lib/table-query.ts` giữ hằng gương
+ * `ADMIN_PAGE_SIZE`/`PAGE_SIZE_MAX` phải khớp tay). Khác `PageQuerySchema`
+ * (đường khách, field tên `pageSize`) — hai tên field là NỢ cũ, đừng gộp mù:
+ * đổi tên field là đổi URL đang chạy.
+ *
+ * Dùng `.extend(...)` để nối filter của vùng — Zod 4 giữ `.shape` nên
+ * `ZodSmartCoercionPlugin` bên API vẫn ép được "2" → 2 cho page/limit.
+ */
+export const AdminPageQuerySchema = z.object({
+  page: z.int().min(1).default(1),
+  limit: z.int().min(1).max(100).default(20),
+});
+
 /** Ô tìm kiếm tự do; trim sẵn để service khỏi phải nhớ. */
 export const SearchQuerySchema = z.object({
   search: z.string().trim().min(1).max(160).optional(),

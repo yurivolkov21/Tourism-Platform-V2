@@ -4,7 +4,7 @@ import type {
   AdminOutboxStats,
   AdminReviewsStats,
 } from '@tourism/contract';
-import { api } from './client';
+import { api, withAdminAuth } from './client';
 
 /**
  * Ba đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`.
@@ -51,7 +51,12 @@ export async function fetchAdminReviewsStats(cookie: string): Promise<AdminRevie
   return api.admin.stats.reviews(undefined, { context: statsContext(cookie) });
 }
 
-/** F7: cùng cache 60s + tag — `retryOutboxAction` update tag sau khi xếp lại hàng. */
+/**
+ * F7 — KHÔNG cache (vòng vá review F7), khác ba vùng trên: hai ảnh chụp
+ * queued/failed hứa "đúng bằng số hàng của bảng bên dưới", mà kẻ đổi hàng đợi
+ * là WORKER drain mỗi phút — không server action nào gọi được `updateTag` hộ
+ * nó. Cache 60s ở đây là card cãi nhau với bảng ngay giữa lúc triage sự cố.
+ */
 export async function fetchAdminOutboxStats(cookie: string): Promise<AdminOutboxStats> {
-  return api.admin.stats.outbox(undefined, { context: statsContext(cookie) });
+  return api.admin.stats.outbox(undefined, { context: withAdminAuth(cookie) });
 }

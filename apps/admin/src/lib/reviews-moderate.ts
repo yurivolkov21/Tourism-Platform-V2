@@ -13,7 +13,8 @@ const t = messages.admin.reviews.moderate;
  * Codec lỗi từ khối i18n `moderate.errors` (nguồn DUY NHẤT của tập mã contract
  * — test đối chiếu với `errorMap` thật của contract).
  */
-const codec = createWriteErrorCodec(t.errors);
+// Mã trạng-thái-cũ khai NGAY trong codec (vòng vá review F7) — hết predicate tay.
+const codec = createWriteErrorCodec(t.errors, { stale: ['REVIEW_NOT_FOUND'] });
 
 export const MODERATE_CONTRACT_CODES = codec.codes;
 
@@ -32,9 +33,7 @@ export const moderateErrorCopy = codec.copy;
  * refresh hàng đợi — copy hứa "the queue has been refreshed" nên UI PHẢI làm
  * thật (bài học review F3 31/08).
  */
-export function isStaleStateCode(code: ModerateFailureCode): boolean {
-  return code === 'REVIEW_NOT_FOUND';
-}
+export const isStaleStateCode = codec.isStale;
 
 /**
  * Phần review mà dialog thật sự cần — bảng cắt ĐÚNG các field này từ

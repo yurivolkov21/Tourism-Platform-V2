@@ -3,7 +3,8 @@ import userEvent from '@testing-library/user-event';
 import { OUTBOX_MAX_ATTEMPTS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { RetryAction, type RetryTargetRow } from './retry-action';
+import type { OutboxRowVM } from '@/lib/outbox-view';
+import { RetryAction } from './retry-action';
 
 /**
  * Nút Retry của một hàng FAILED trong `/outbox` (spec P4c §3-F7) — consumer
@@ -28,12 +29,23 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: () => refresh() }),
 }));
 
-const ROW: RetryTargetRow = {
+/** Nút nhận NGUYÊN VM của hàng (vòng vá review F7) — dựng đủ, không cắt subset. */
+const ROW: OutboxRowVM = {
   id: '11111111-1111-4111-8111-111111111111',
+  type: 'BOOKING_CONFIRMATION',
   typeLabel: messages.admin.outbox.type.BOOKING_CONFIRMATION,
   recipient: 'ada@example.com',
-  dedupeKey: 'booking-confirmation:BK-ABCD1234',
+  status: 'FAILED',
+  statusLabel: messages.admin.outbox.status.FAILED,
+  attempts: OUTBOX_MAX_ATTEMPTS,
+  attemptsLabel: `${OUTBOX_MAX_ATTEMPTS}/${OUTBOX_MAX_ATTEMPTS}`,
   lastError: 'Resend: 401 invalid api key',
+  created: '1 Sep 2026, 10:00 UTC',
+  processed: null,
+  dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+  payload: { code: 'BK-ABCD1234', email: 'ada@example.com' },
+  retried: false,
+  canRetry: true,
 };
 
 beforeEach(() => {

@@ -2,8 +2,10 @@ import type { AdminReviewsQuerySchema } from '@tourism/contract';
 import type { z } from 'zod';
 import {
   appendPaging,
+  clampSearch,
   firstParam,
   parsePaging,
+  pickPatch,
   type RawSearchParams,
   resolvePagePatch,
   tableHref,
@@ -66,7 +68,7 @@ export interface ReviewsQuery {
  */
 export function parseReviewsSearchParams(raw: RawSearchParams): ReviewsQuery {
   const state = parseReviewState(firstParam(raw.status));
-  const search = firstParam(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
+  const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
 
   return {
     ...parsePaging(raw),
@@ -92,9 +94,8 @@ export interface ReviewsHrefPatch {
  * trang đều ĐẶT LẠI trang về 1 (luật chung nằm ở kit `resolvePagePatch`).
  */
 export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): string {
-  const state = patch.state === undefined ? current.state : (patch.state ?? undefined);
-  const rawSearch = patch.search === undefined ? current.search : (patch.search ?? undefined);
-  const search = rawSearch?.trim().slice(0, SEARCH_MAX_LENGTH) || undefined;
+  const state = pickPatch(patch.state, current.state);
+  const search = clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH);
 
   const scopeChanged =
     patch.state !== undefined || patch.search !== undefined || patch.limit !== undefined;

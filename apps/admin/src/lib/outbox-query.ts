@@ -6,8 +6,10 @@ import {
 } from '@tourism/contract';
 import {
   appendPaging,
+  clampSearch,
   firstParam,
   parsePaging,
+  pickPatch,
   type RawSearchParams,
   resolvePagePatch,
   tableHref,
@@ -18,9 +20,9 @@ import {
  * `bookings-query.ts`): server component đọc `searchParams` → input contract;
  * bảng client đổi trang/filter bằng điều hướng, KHÔNG fetch từ browser.
  *
- * Ba filter: `status` (tab), `type` (Select từ enum EmailType), `q` (tìm
- * `dedupeKey` contains — cách tra "email của đơn BK-XXXX đâu rồi"). Phân
- * trang dùng chung `table-query.ts`.
+ * Ba filter: `status` (tab), `type` (Select từ enum EmailType), `q` (tìm mã
+ * booking/email trong payload + dedupeKey — cách tra "email của đơn BK-XXXX
+ * đâu rồi"). Phân trang + luật patch/clamp dùng chung `table-query.ts`.
  */
 
 /** Trần `search` của contract (`z.string().max(120)`). */
@@ -42,7 +44,7 @@ export interface OutboxQuery {
 export function parseOutboxSearchParams(raw: RawSearchParams): OutboxQuery {
   const status = OutboxStatusSchema.safeParse(firstParam(raw.status));
   const type = EmailTypeSchema.safeParse(firstParam(raw.type));
-  const search = firstParam(raw.q)?.trim().slice(0, SEARCH_MAX_LENGTH);
+  const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
 
   return {
     ...parsePaging(raw),
@@ -64,20 +66,15 @@ export interface OutboxHrefPatch {
   search?: string | null;
 }
 
-/** `undefined` giữ giá trị hiện tại, `null` xoá, còn lại là giá trị mới. */
-function pick<T>(patched: T | null | undefined, current: T | undefined): T | undefined {
-  return patched === undefined ? current : (patched ?? undefined);
-}
-
 /**
  * Dựng href mới từ trạng thái hiện tại + sửa đổi. Đổi filter HOẶC số dòng mỗi
  * trang đều ĐẶT LẠI trang về 1 (luật ở kit `resolvePagePatch`), trừ khi
  * chính patch nói rõ trang nào. Thứ tự param cố định để href ổn định.
  */
 export function outboxHref(current: OutboxQuery, patch: OutboxHrefPatch): string {
-  const status = pick(patch.status, current.status);
-  const type = pick(patch.type, current.type);
-  const search = pick(patch.search, current.search)?.trim().slice(0, SEARCH_MAX_LENGTH);
+  const status = pickPatch(patch.status, current.status);
+  const type = pickPatch(patch.type, current.type);
+  const search = clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH);
 
   const scopeChanged =
     patch.status !== undefined ||

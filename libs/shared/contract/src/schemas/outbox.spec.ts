@@ -29,8 +29,8 @@ const validRow = {
 };
 
 describe('enums', () => {
-  it('OutboxStatus có đúng ba trạng thái của worker', () => {
-    expect(OutboxStatusSchema.options).toEqual(['PENDING', 'SENT', 'FAILED']);
+  it('OutboxStatus có bốn trạng thái của worker — SKIPPED thêm ở vòng vá review F7', () => {
+    expect(OutboxStatusSchema.options).toEqual(['PENDING', 'SENT', 'FAILED', 'SKIPPED']);
   });
 
   it('EmailType phủ mọi loại email mà worker biết gửi', () => {
@@ -119,18 +119,16 @@ describe('AdminOutboxStatsSchema', () => {
     generatedAt: '2026-09-01T00:00:00.000Z',
   };
 
-  it('sent là cặp số hai kỳ; queued/failed là ẢNH CHỤP một số đơn', () => {
-    const stats = {
-      period,
-      sent: { current: 40, previous: 35 },
-      queued: 3,
-      failed: 1,
-    };
+  it('cả ba con số đều là số ĐƠN — sent không có kỳ trước (purge 30 ngày), queued/failed là ảnh chụp', () => {
+    const stats = { period, sent: 40, queued: 3, failed: 1 };
     expect(AdminOutboxStatsSchema.parse(stats)).toEqual(stats);
-    // Ảnh chụp KHÔNG có kỳ trước — đưa cặp số vào là sai hình.
+    // Đưa cặp số vào là sai hình: kỳ trước của sent là số bịa (vòng vá F7),
+    // ảnh chụp thì không có kỳ trước để mà so.
     expect(
       AdminOutboxStatsSchema.safeParse({ ...stats, queued: { current: 3, previous: 2 } }).success,
     ).toBe(false);
-    expect(AdminOutboxStatsSchema.safeParse({ ...stats, sent: 40 }).success).toBe(false);
+    expect(
+      AdminOutboxStatsSchema.safeParse({ ...stats, sent: { current: 40, previous: 35 } }).success,
+    ).toBe(false);
   });
 });

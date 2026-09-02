@@ -5,10 +5,8 @@ import {
   AdminOutboxRetryInputSchema,
   type OutboxRow,
 } from '@tourism/contract';
-import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { retryOutboxRow } from '@/lib/api/outbox';
-import { ADMIN_STATS_TAG } from '@/lib/api/stats';
 import { classifyRetryError, type RetryActionResult } from '@/lib/outbox-retry';
 
 /**
@@ -35,7 +33,8 @@ export async function retryOutboxAction(input: AdminOutboxRetryInput): Promise<R
     // `ORPCError` không sống sót qua ranh giới action — phân loại tại đây.
     return { ok: false, code: classifyRetryError(error) };
   }
-  // Card Queued/Failed đổi theo lệnh ghi này.
-  updateTag(ADMIN_STATS_TAG);
+  // KHÔNG `updateTag`: stats outbox không cache (vòng vá review F7 — worker
+  // mới là kẻ đổi hàng đợi), `router.refresh()` của client kéo cả card lẫn
+  // bảng tươi cùng lúc.
   return { ok: true, dedupeKey: row.dedupeKey };
 }

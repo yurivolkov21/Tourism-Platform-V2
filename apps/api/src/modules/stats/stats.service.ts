@@ -98,16 +98,17 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   review đã duyệt của tour đó — `Tour.ratingAvg`), và khác một cách có chủ
  *   đích. `null` khi kỳ không có review nào.
  *
- * **outbox** (F7, spec P4c §3-F7)
- * - `sent` — số row `SENT` có `processed_at` TRONG kỳ. Neo `processed_at`
+ * **outbox** (F7, spec P4c §3-F7 — siết ở vòng vá review F7)
+ * - `sent` — số row `SENT` có `processed_at` TRONG KỲ NÀY. Neo `processed_at`
  *   chứ không `created_at`: email xếp hàng tuần trước mà hôm nay mới đi (sau
- *   một cú retry) là email giao hôm nay. Query đối chứng:
+ *   một cú retry) là email giao hôm nay. CHỈ `SENT`: row `SKIPPED` (worker
+ *   cố ý không gửi vì người nhận đã huỷ đăng ký) có `processed_at` nhưng
+ *   chưa từng tới Resend — trước vòng vá chúng bị đánh SENT nên con số này
+ *   từng nói dối. Query đối chứng:
  *   `SELECT COUNT(*) FROM outbox WHERE status = 'SENT' AND processed_at >= $from AND processed_at < $to`.
- *   ⚠️ Purge cron xoá row SENT cũ hơn 30 ngày (`OutboxService.purgeSent`),
- *   nên `previous` (kỳ 28–56 ngày trước) BỊ CẮT một phần bởi retention: con
- *   số kỳ trước là cận dưới, không phải sự thật đầy đủ. Vì vậy polarity
- *   card là NEUTRAL và caption vẫn ghi kỳ trước — đọc để lấy hướng, đừng so
- *   sổ. (Ngày nào retention đổi thì ghi chú này đổi theo.)
+ *   KHÔNG có kỳ trước: purge cron xoá row SENT/SKIPPED cũ hơn 30 ngày
+ *   (`OutboxService.purgeSent`), nên kỳ 28–56 ngày trước gần như trống —
+ *   một cặp ở đây là pill "↑1200%" bịa mỗi ngày. Contract khai số đơn.
  * - `queued` — ẢNH CHỤP: số row `PENDING` ngay bây giờ, đúng bằng số hàng
  *   `/outbox?status=PENDING`. Không có "lúc đầu kỳ": trạng thái PENDING không
  *   để lại dấu thời gian nào khi rời đi, nên không dựng lại được — contract
@@ -115,14 +116,20 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  * - `failed` — ẢNH CHỤP: số row `FAILED` ngay bây giờ (đúng bằng
  *   `/outbox?status=FAILED`). Đây là con số "cần người": hàng FAILED chỉ
  *   rời trạng thái đó khi admin retry.
+ *   Cả hai ảnh chụp đọc TƯƠI mỗi request (admin KHÔNG cache 60s như ba vùng
+ *   kia): kẻ đổi hàng đợi là worker drain mỗi phút, không phải một server
+ *   action có `updateTag` — cache là card cãi nhau với bảng ngay bên dưới.
  *
  * ## Index
  *
- * CỐ Ý chưa thêm index nào cho ba cột lọc mới (`bookings.paid_at`,
- * `cancellation_requests.decided_at`, `reviews.moderated_at`). Ở cỡ dữ liệu
- * hiện tại (hàng trăm row) seq scan rẻ hơn cả việc bảo trì index, và một
- * migration mới phải deploy tay lên Supabase dùng chung dev/prod. Ngưỡng để
- * xem lại: khi một trong ba bảng vượt ~10k row.
+ * CỐ Ý chưa thêm index nào cho bốn cột lọc theo thời gian (`bookings.paid_at`,
+ * `cancellation_requests.decided_at`, `reviews.moderated_at`,
+ * `outbox.processed_at` — index sẵn có `[status, created_at]` chỉ phủ vế
+ * status). Ở cỡ dữ liệu hiện tại (hàng trăm row) seq scan rẻ hơn cả việc bảo
+ * trì index, và một migration mới phải deploy tay lên Supabase dùng chung
+ * dev/prod. Ngưỡng để xem lại: khi một trong bốn bảng vượt ~10k row — `outbox`
+ * là bảng ghi kiểu hàng đợi (mỗi booking/enquiry/newsletter một row) nên sẽ
+ * chạm ngưỡng trước, dù retention 30 ngày che bớt khi nhìn `count(*)`.
  */
 @Injectable()
 export class StatsService {
@@ -193,23 +200,28 @@ export class StatsService {
     };
   }
 
-  /** Bộ số vùng `/outbox` (F7). */
+  /** Bộ số vùng `/outbox` (F7) — hai query: một count kỳ này, một groupBy ảnh chụp. */
   async adminOutbox(): Promise<AdminOutboxStats> {
     const window = statsWindow(new Date());
-    const [sentNow, sentBefore, queued, failed] = await Promise.all([
+    const [sent, snapshot] = await Promise.all([
       outboxSentCount(window.currentFrom, window.generatedAt),
-      outboxSentCount(window.previousFrom, window.currentFrom),
-      // Hai ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
+      // Hai ảnh chụp trong MỘT groupBy (cùng bảng, cùng shape — nếp gộp của
+      // `paidBookingsSlice`): card phải khớp ĐÚNG số hàng của
       // `/outbox?status=PENDING` và `?status=FAILED`.
-      prisma.outbox.count({ where: { status: OutboxStatus.PENDING } }),
-      prisma.outbox.count({ where: { status: OutboxStatus.FAILED } }),
+      prisma.outbox.groupBy({
+        by: ['status'],
+        where: { status: { in: [OutboxStatus.PENDING, OutboxStatus.FAILED] } },
+        _count: { _all: true },
+      }),
     ]);
+    const countOf = (status: OutboxStatus) =>
+      snapshot.find((group) => group.status === status)?._count._all ?? 0;
 
     return {
       period: statsPeriod(window),
-      sent: { current: sentNow, previous: sentBefore },
-      queued,
-      failed,
+      sent,
+      queued: countOf(OutboxStatus.PENDING),
+      failed: countOf(OutboxStatus.FAILED),
     };
   }
 

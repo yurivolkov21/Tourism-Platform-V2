@@ -30,6 +30,9 @@ export function outboxStatusBadgeVariant(
       return 'destructive';
     case 'PENDING':
       return 'secondary';
+    // Cố ý không gửi — không phải thành công, không phải lỗi: viền trơn.
+    case 'SKIPPED':
+      return 'outline';
     default:
       return 'default';
   }
@@ -45,14 +48,35 @@ export function canRetry(status: OutboxStatusValue): boolean {
 }
 
 /**
- * Cột Attempts. PENDING/FAILED: "n/max" — đã dùng bao nhiêu lượt trên trần
- * của worker. SENT thì "0/5" vô nghĩa (email đã đi): `attempts` ở hàng SENT
- * là số lần HỎNG trước khi đi được, nên nói đúng chuyện đó — "First try" hay
- * "After 2 failed tries". Quyết định tự chọn của F7 (spec để ngỏ).
+ * Row từng được admin retry? Retry đặt `attempts = 0` nhưng GIỮ `lastError`,
+ * và worker chỉ ghi đè lỗi khi lượt mới cũng hỏng — nên "attempts 0 mà còn
+ * lỗi" là dấu vết duy nhất (contract ghi rõ, vòng vá review F7). FAILED thì
+ * không tính: hàng FAILED luôn có lỗi và attempts = trần.
  */
-function attemptsLabel(status: OutboxStatusValue, attempts: number): string {
-  if (status !== 'SENT') return t.list.attempts(attempts, OUTBOX_MAX_ATTEMPTS);
-  return attempts === 0 ? t.list.sentFirstTry : t.list.sentAfterRetries(attempts);
+export function wasRetried(row: Pick<OutboxRow, 'status' | 'attempts' | 'lastError'>): boolean {
+  return row.status !== 'FAILED' && row.attempts === 0 && row.lastError !== null;
+}
+
+/**
+ * Cột Attempts — nói đúng LỊCH SỬ giao hàng, không chỉ con số:
+ * - PENDING/FAILED: "n/max" — đã dùng bao nhiêu lượt trên trần của worker;
+ *   PENDING vừa được xếp lại thì "Re-queued by an operator" thay cho "0/5"
+ *   (0/5 kèm một lỗi đỏ đọc như hàng mới mà lỗi còn nguyên).
+ * - SENT: `attempts` là số lần HỎNG trước khi đi được — "First try" / "After
+ *   2 failed tries"; nhưng SENT sau một cú retry thì attempts đã về 0, in
+ *   "First try" cho hàng phải can thiệp tay là nói dối (vòng vá review F7)
+ *   → "Sent after a manual retry".
+ * - SKIPPED: worker cố ý không gửi — nói thẳng lý do.
+ */
+function attemptsLabel(row: Pick<OutboxRow, 'status' | 'attempts' | 'lastError'>): string {
+  if (row.status === 'SKIPPED') return t.list.skipped;
+  const retried = wasRetried(row);
+  if (row.status === 'SENT') {
+    if (retried) return t.list.sentAfterRetry;
+    return row.attempts === 0 ? t.list.sentFirstTry : t.list.sentAfterRetries(row.attempts);
+  }
+  if (retried) return t.list.requeued;
+  return t.list.attempts(row.attempts, OUTBOX_MAX_ATTEMPTS);
 }
 
 /** Một hàng của bảng `/outbox` — cũng là dữ liệu của drawer chi tiết. */
@@ -71,8 +95,14 @@ export interface OutboxRowVM {
   created: string;
   processed: string | null;
   dedupeKey: string;
-  /** Payload thụt lề 2 khoảng — drawer in trong khối mono cuộn (spec §2.3). */
-  payloadJson: string;
+  /**
+   * Payload THÔ (đã redact ở API) — drawer tự thụt lề khi mở. Không nấu sẵn
+   * chuỗi cho cả trang (vòng vá review F7): 100 payload thụt lề đi vào RSC
+   * flight mỗi lần đổi trang chỉ để một row được mở.
+   */
+  payload: OutboxRow['payload'];
+  /** Row từng được admin xếp lại — bảng/drawer nhắc bằng nhãn Attempts. */
+  retried: boolean;
   canRetry: boolean;
 }
 
@@ -86,12 +116,13 @@ export function toOutboxRowVM(row: OutboxRow): OutboxRowVM {
     status: row.status,
     statusLabel: t.status[row.status],
     attempts: row.attempts,
-    attemptsLabel: attemptsLabel(row.status, row.attempts),
+    attemptsLabel: attemptsLabel(row),
     lastError: row.lastError,
     created: formatDateTime(row.createdAt),
     processed: row.processedAt ? formatDateTime(row.processedAt) : null,
     dedupeKey: row.dedupeKey,
-    payloadJson: JSON.stringify(row.payload, null, 2),
+    payload: row.payload,
+    retried: wasRetried(row),
     canRetry: canRetry(row.status),
   };
 }

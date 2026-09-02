@@ -1,18 +1,9 @@
 'use client';
 
-import { Label } from '@tourism/ui/components/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
 import { ToggleGroup, ToggleGroupItem } from '@tourism/ui/components/toggle-group';
 import { motion, useReducedMotion } from 'motion/react';
 import type * as React from 'react';
-import { TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
+import { ToolbarSelect } from '@/components/kit/toolbar-select';
 
 /**
  * Bộ lọc trạng thái của bảng admin (kit P4b — nâng từ cặp bản chép
@@ -82,28 +73,16 @@ export function StatusFilterTabs({
 
   return (
     <>
-      <Label htmlFor={selectId} className="sr-only">
-        {label}
-      </Label>
-      {/* Màn hẹp: select gọn — cùng cặp @4xl/main của block dashboard-01. */}
-      <Select value={value} onValueChange={(next) => onSelect(String(next))} items={items}>
-        <SelectTrigger
-          className={`flex w-fit @4xl/main:hidden ${TOOLBAR_SELECT}`}
-          size="default"
-          id={selectId}
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {items.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
+      {/* Màn hẹp: select gọn — cùng cặp @4xl/main của block dashboard-01;
+          chính kit `ToolbarSelect` (vòng vá review F7, hết bản chép). */}
+      <ToolbarSelect
+        id={selectId}
+        label={label}
+        value={value}
+        items={items}
+        onSelect={onSelect}
+        className="flex @4xl/main:hidden"
+      />
 
       {/* Ẩn/hiện đặt ở ROOT chứ không ở trong: root là con trực tiếp của hàng
           `justify-between`, để nó luôn hiện thì màn hẹp có một khối rỗng chen

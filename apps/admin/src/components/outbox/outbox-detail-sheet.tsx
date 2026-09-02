@@ -9,6 +9,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@tourism/ui/components/sheet';
+import * as React from 'react';
 import { type OutboxRowVM, outboxStatusBadgeVariant } from '@/lib/outbox-view';
 
 /**
@@ -37,6 +38,10 @@ export function OutboxDetailSheet({
   row: OutboxRowVM | null;
   onClose: () => void;
 }) {
+  // Thụt lề ĐÚNG row đang mở, một lần (vòng vá review F7): bản đầu nấu sẵn
+  // chuỗi cho cả trang ở server và đẩy vào RSC flight dù chỉ một row được xem.
+  const payloadJson = React.useMemo(() => (row ? JSON.stringify(row.payload, null, 2) : ''), [row]);
+
   return (
     <Sheet open={row !== null} onOpenChange={(open) => (open ? undefined : onClose())}>
       {/* Rộng hơn mặc định `sm:max-w-sm`: JSON thụt lề 2 khoảng ở 24rem gãy
@@ -87,7 +92,7 @@ export function OutboxDetailSheet({
                   `overflow-auto` cho cả hai chiều: chuỗi dài không gãy cấu trúc
                   thụt lề. */}
               <pre className="max-h-[60vh] overflow-auto rounded-md border bg-muted/40 p-3 font-mono text-xs">
-                {row.payloadJson}
+                {payloadJson}
               </pre>
             </section>
           </>

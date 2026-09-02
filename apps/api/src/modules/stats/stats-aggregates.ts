@@ -173,9 +173,10 @@ export async function refundsSlice(from: Date, to: Date) {
 /**
  * Email đã GIAO trong khoảng — đếm row `SENT` theo `processedAt` (F7, spec
  * P4c §3-F7). Neo `processedAt` chứ không `createdAt`: hàng xếp từ tuần trước
- * mà mãi hôm nay mới đi (sau khi admin retry) là email của hôm nay. Chỉ
- * `SENT` — `processedAt` chỉ được ghi ở nhánh SENT nên lọc status là để câu
- * query nói rõ ý, không phải để sửa kết quả.
+ * mà mãi hôm nay mới đi (sau khi admin retry) là email của hôm nay. Lọc
+ * `SENT` là ĐIỀU KIỆN THẬT chứ không phải trang trí (vòng vá review F7): row
+ * `SKIPPED` cũng có `processedAt` — worker cố ý không gửi vì người nhận đã
+ * huỷ đăng ký — và không được đếm vào "đã giao".
  */
 export function outboxSentCount(from: Date, to: Date): Promise<number> {
   return prisma.outbox.count({

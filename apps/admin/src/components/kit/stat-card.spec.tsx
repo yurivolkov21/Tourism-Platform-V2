@@ -61,6 +61,22 @@ describe('StatCard', () => {
     expect(screen.getByTestId('stat-delta')).toHaveAttribute('data-tone', 'neutral');
   });
 
+  it('callout (card ảnh chụp): pill trạng thái có tông, KHÔNG mũi tên, testid riêng — không phải delta', () => {
+    // Vòng vá review F7: card Failed từng mượn `delta.direction='flat'` để
+    // lấy tông đỏ; nay có khe riêng để "flat" vẫn chỉ nghĩa là "không đổi".
+    render(
+      <StatCard
+        {...BASE}
+        callout={{ label: 'Needs attention', srLabel: '2 failed emails', tone: 'bad' }}
+      />,
+    );
+    expect(screen.queryByTestId('stat-delta')).toBeNull();
+    const pill = screen.getByTestId('stat-callout');
+    expect(pill).toHaveAttribute('data-tone', 'bad');
+    expect(pill).not.toHaveAttribute('data-trend');
+    expect(screen.getByText('2 failed emails')).toHaveClass('sr-only');
+  });
+
   it('không so sánh được thì KHÔNG có pill', () => {
     render(<StatCard {...BASE} value={messages.admin.stats.noValue} />);
 

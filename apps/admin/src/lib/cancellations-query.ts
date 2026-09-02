@@ -6,6 +6,7 @@ import {
   appendPaging,
   firstParam,
   parsePaging,
+  pickPatch,
   type RawSearchParams,
   resolvePagePatch,
   tableHref,
@@ -60,7 +61,7 @@ export function cancellationsHref(
   current: CancellationsQuery,
   patch: CancellationsHrefPatch,
 ): string {
-  const status = patch.status === undefined ? current.status : (patch.status ?? undefined);
+  const status = pickPatch(patch.status, current.status);
 
   // Luật reset-page nằm MỘT chỗ ở kit (`resolvePagePatch`, review F3 31/08).
   const scopeChanged = patch.status !== undefined || patch.limit !== undefined;

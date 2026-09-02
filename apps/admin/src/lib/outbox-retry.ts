@@ -15,7 +15,14 @@ const t = messages.admin.outbox.retry;
  * Codec lỗi từ khối i18n `retry.errors` (nguồn DUY NHẤT của tập mã contract —
  * test đối chiếu với `errorMap` của contract).
  */
-const codec = createWriteErrorCodec(t.errors);
+/**
+ * CẢ HAI mã contract đều là trạng-thái-cũ: hàng đã biến mất (purge) hoặc đã
+ * rời FAILED (admin khác retry trước, hay worker vừa gửi được). Không có mã
+ * "thử lại tại chỗ": retry không đi qua provider nào để mà bị từ chối — nếu
+ * hàng còn FAILED thì câu UPDATE luôn ăn. Khai ngay trong codec (vòng vá
+ * review F7) — không còn predicate tay.
+ */
+const codec = createWriteErrorCodec(t.errors, { stale: ['NOT_FOUND', 'NOT_FAILED'] });
 
 export const RETRY_CONTRACT_CODES = codec.codes;
 
@@ -24,16 +31,7 @@ export type RetryFailureCode = RetryContractCode | TransportFailureCode;
 
 export const classifyRetryError = codec.classify;
 export const retryErrorCopy = codec.copy;
-
-/**
- * CẢ HAI mã contract đều là trạng-thái-cũ: hàng đã biến mất (purge) hoặc đã
- * rời FAILED (admin khác retry trước, hay worker vừa gửi được). Không có mã
- * "thử lại tại chỗ": retry không đi qua provider nào để mà bị từ chối — nếu
- * hàng còn FAILED thì câu UPDATE luôn ăn.
- */
-export function isStaleStateCode(code: RetryFailureCode): boolean {
-  return code === 'NOT_FOUND' || code === 'NOT_FAILED';
-}
+export const isStaleStateCode = codec.isStale;
 
 /**
  * Kết quả server action retry — hợp đồng vận chuyển giữa `actions.ts` (server)

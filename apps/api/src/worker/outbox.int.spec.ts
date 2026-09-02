@@ -84,6 +84,30 @@ describe('outbox worker integration', () => {
       }
     });
 
+    it('người nhận newsletter đã huỷ đăng ký → SKIPPED (không phải SENT), deliverer KHÔNG được gọi', async () => {
+      // Vòng vá review F7: trước đây nhánh skip đánh SENT nên card "Sent" và
+      // badge của admin đếm cả email chưa từng tới Resend.
+      await prisma.subscriber.create({
+        data: { email: 'gone@example.com', unsubscribedAt: new Date() },
+      });
+      const skipped = await prisma.outbox.create({
+        data: {
+          type: EmailType.NEWSLETTER_WELCOME,
+          payload: { email: 'gone@example.com' },
+          dedupeKey: 'newsletter-welcome:gone',
+        },
+      });
+
+      const result = await outbox.drainOnce();
+
+      expect(result).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 1 });
+      expect(deliverer.calls).toEqual([]);
+      const row = await prisma.outbox.findUniqueOrThrow({ where: { id: skipped.id } });
+      expect(row.status).toBe(OutboxStatus.SKIPPED);
+      expect(row.processedAt).toBeInstanceOf(Date);
+      await prisma.subscriber.deleteMany({ where: { email: 'gone@example.com' } });
+    });
+
     it('respects batchSize', async () => {
       await seed('enquiry-received:b1', {
         createdAt: new Date(Date.now() - 2000),
@@ -185,11 +209,22 @@ describe('outbox worker integration', () => {
           createdAt: days(40),
         },
       });
+      // SKIPPED dọn cùng lịch với SENT (vòng vá review F7).
+      const oldSkipped = await prisma.outbox.create({
+        data: {
+          type: EmailType.NEWSLETTER_WELCOME,
+          payload: {},
+          dedupeKey: 'purge:old-skipped',
+          status: OutboxStatus.SKIPPED,
+          processedAt: days(40),
+        },
+      });
 
       const purged = await outbox.purgeSent(30);
 
-      expect(purged).toBe(1);
+      expect(purged).toBe(2);
       expect(await prisma.outbox.findUnique({ where: { id: oldSent.id } })).toBeNull();
+      expect(await prisma.outbox.findUnique({ where: { id: oldSkipped.id } })).toBeNull();
       expect(await prisma.outbox.findUnique({ where: { id: recentSent.id } })).not.toBeNull();
       expect(await prisma.outbox.findUnique({ where: { id: oldFailed.id } })).not.toBeNull();
     });

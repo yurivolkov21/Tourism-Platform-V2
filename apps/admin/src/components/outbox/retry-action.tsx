@@ -10,11 +10,11 @@ import {
   isStaleStateCode,
   type RetryAction as RetryActionFn,
   type RetryContractCode,
-  type RetryTarget,
   retryConfirmRows,
   retryDialogCopy,
   retryErrorCopy,
 } from '@/lib/outbox-retry';
+import type { OutboxRowVM } from '@/lib/outbox-view';
 
 /**
  * Nút Retry của MỘT hàng FAILED trong `/outbox` (spec P4c §3-F7) — hành vi
@@ -34,12 +34,12 @@ import {
  */
 const t = messages.admin.outbox.retry;
 
-/** Phần hàng mà nút thật sự cần — bảng cắt ĐÚNG các field này từ VM. */
-export interface RetryTargetRow extends RetryTarget {
-  id: string;
-}
-
-export function RetryAction({ row, retry }: { row: RetryTargetRow; retry: RetryActionFn }) {
+/**
+ * Nhận NGUYÊN `OutboxRowVM` (vòng vá review F7): VM thuần đã có đủ id/typeLabel/
+ * recipient/dedupeKey/lastError, một interface con + một object literal cắt
+ * tay ở bảng chỉ là hai chỗ nữa phải sửa khi dialog cần thêm field.
+ */
+export function RetryAction({ row, retry }: { row: OutboxRowVM; retry: RetryActionFn }) {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
   const [open, setOpen] = useState(false);

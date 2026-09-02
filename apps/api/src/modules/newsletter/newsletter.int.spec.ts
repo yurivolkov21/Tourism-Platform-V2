@@ -414,7 +414,10 @@ describe('newsletter unsubscribe (int)', () => {
     const row = await prisma.outbox.findFirstOrThrow({
       where: { dedupeKey: `newsletter-welcome:${email}` },
     });
-    expect(row.status).toBe(OutboxStatus.SENT);
+    // SKIPPED, không phải SENT (vòng vá review F7): email chưa từng tới
+    // Resend thì không được đếm là "đã giao" ở card admin.
+    expect(row.status).toBe(OutboxStatus.SKIPPED);
+    expect(row.processedAt).toBeInstanceOf(Date);
   });
 });
 

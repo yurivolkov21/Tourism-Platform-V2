@@ -128,8 +128,13 @@ export type AdminReviewsStats = z.output<typeof AdminReviewsStatsSchema>;
  */
 export const AdminOutboxStatsSchema = z.object({
   period: StatsPeriodSchema,
-  /** Email đã giao trong kỳ (`processedAt`, status SENT). */
-  sent: CountMetricSchema,
+  /**
+   * Email đã giao trong KỲ NÀY (`processedAt`, status SENT — KHÔNG đếm
+   * SKIPPED). Một số đơn, KHÔNG có kỳ trước (vòng vá review F7): purge cron
+   * xoá row SENT cũ hơn 30 ngày nên kỳ 28–56 ngày trước gần như trống — một
+   * cặp ở đây là một pill "↑1200%" bịa mỗi ngày.
+   */
+  sent: z.int().nonnegative(),
   /** Row PENDING ngay bây giờ — đúng bằng số hàng `/outbox?status=PENDING`. */
   queued: z.int().nonnegative(),
   /** Row FAILED ngay bây giờ — đúng bằng số hàng `/outbox?status=FAILED`. */

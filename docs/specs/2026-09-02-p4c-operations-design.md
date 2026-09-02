@@ -110,9 +110,21 @@ session gốc nghiệm thu (review 8 mũi → vá → merge rebase+ff → docs s
   echo qua response, chọn một và ghi lý do) · Last error (truncate, title
   đầy đủ) · Created · Processed · hành động Retry (chỉ FAILED). Drawer xem
   chi tiết: payload JSON + lastError đầy đủ.
-- **Stat card** `admin.stats.outbox`: Sent 28d (`processedAt`, có delta,
-  polarity neutral) · Queued now (PENDING, ảnh chụp) · Failed now (FAILED,
-  ảnh chụp, polarity up-bad qua tone đỏ khi > 0 — quyết trong stats-view).
+- **Stat card** `admin.stats.outbox`: Sent 28d (`processedAt`, status SENT)
+  · Queued now (PENDING, ảnh chụp) · Failed now (FAILED, ảnh chụp, callout đỏ
+  khi > 0). *AMEND 02/09 sau review F7:* cả ba là số ĐƠN, không delta — purge
+  30 ngày xoá gần hết kỳ 28–56 ngày trước nên "vs kỳ trước" của Sent là số
+  bịa; card Failed dùng khe `callout` của StatCard (không mượn `delta`);
+  stats outbox KHÔNG cache 60s vì kẻ đổi hàng đợi là worker, không phải
+  server action.
+- *AMEND 02/09 (review F7):* thêm trạng thái **`SKIPPED`** (migration
+  `20260902090000_outbox_status_skipped`) cho row worker cố ý không gửi (người
+  nhận newsletter đã huỷ đăng ký) — trước đó bị đánh SENT nên "Sent" nói dối;
+  purge dọn SKIPPED cùng lịch SENT. `payload`/`dedupeKey` của email auth
+  (PASSWORD_RESET, EMAIL_OTP…) được **redact** ở mapper API: chúng mang token
+  reset/mã OTP, admin không được cầm credential của admin khác. Ô tìm khớp
+  thêm `payload.code`/`email`/`to` (dedupeKey thật là `<event>:<uuid>`, không
+  mang mã `BK-…`).
 - `nav.ts`: Outbox enabled, href `/outbox?status=FAILED`.
 - Test: int cho list (filter/search/paging + 401/403), retry (FAILED→PENDING
   attempts 0; SENT/PENDING → NOT_FAILED; không tồn tại → NOT_FOUND), stats

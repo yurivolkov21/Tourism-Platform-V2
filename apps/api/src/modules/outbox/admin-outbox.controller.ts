@@ -36,9 +36,10 @@ export class AdminOutboxController {
         return await this.outbox.retry(user.id, input.id);
       } catch (error) {
         if (error instanceof OutboxRowNotFoundError) throw errors.NOT_FOUND();
-        if (error instanceof OutboxRowNotFailedError) {
-          throw errors.NOT_FAILED({ message: error.message });
-        }
+        // Message của CONTRACT, không phải câu service ghép (vòng vá review
+        // F7): admin đọc copy i18n theo mã, còn tài liệu API phải khớp thứ
+        // thật sự phát ra. Trạng thái thật nằm trong log nếu cần điều tra.
+        if (error instanceof OutboxRowNotFailedError) throw errors.NOT_FAILED();
         throw error;
       }
     });

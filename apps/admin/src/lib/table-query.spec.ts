@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   appendPaging,
+  clampSearch,
   firstParam,
   parsePaging,
+  pickPatch,
   rawSearchParamsFrom,
   resolvePagePatch,
   tableHref,
@@ -108,5 +110,23 @@ describe('rawSearchParamsFrom', () => {
 
   it('query rỗng → object rỗng', () => {
     expect(rawSearchParamsFrom(new URLSearchParams())).toEqual({});
+  });
+});
+
+describe('clampSearch — luật ô tìm kiếm dùng chung (vòng vá review F7)', () => {
+  it('trim, cắt đúng trần, rỗng → undefined (không lọc)', () => {
+    expect(clampSearch('  ada  ', 120)).toBe('ada');
+    expect(clampSearch('a'.repeat(130), 120)).toBe('a'.repeat(120));
+    expect(clampSearch('   ', 120)).toBeUndefined();
+    expect(clampSearch(undefined, 120)).toBeUndefined();
+  });
+});
+
+describe('pickPatch — undefined giữ / null xoá / còn lại là giá trị mới', () => {
+  it('ba ý nghĩa, ba kết quả', () => {
+    expect(pickPatch(undefined, 'PAID')).toBe('PAID');
+    expect(pickPatch(null, 'PAID')).toBeUndefined();
+    expect(pickPatch('FAILED', 'PAID')).toBe('FAILED');
+    expect(pickPatch(undefined, undefined)).toBeUndefined();
   });
 });

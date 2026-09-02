@@ -9,6 +9,7 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
+import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
 import {
   bookingTourInclude,
@@ -256,15 +257,12 @@ export class CancellationsService {
       _sum: { amount: true },
     });
     const refundedByBooking = new Map(sums.map((sum) => [sum.bookingId, sum._sum.amount]));
-    return {
-      items: rows.map((row) =>
+    return toPaged(
+      rows.map((row) =>
         toAdminCancellationRequest(row, refundedByBooking.get(row.booking.id) ?? null),
       ),
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
+      { page, limit, total },
+    );
   }
 
   /**

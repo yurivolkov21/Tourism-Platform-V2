@@ -4,6 +4,7 @@ import {
   EmailTypeSchema,
   OUTBOX_MAX_ATTEMPTS,
   OutboxRowSchema,
+  OutboxStatusSchema,
   PagedSchema,
 } from '@tourism/contract';
 import { AppModule } from '../../app.module.js';
@@ -66,6 +67,9 @@ describe('admin outbox integration (F7)', () => {
     };
   }
 
+  /** Link reset của "admin khác" — chuỗi này KHÔNG được xuất hiện trong response nào. */
+  const RESET_URL = 'https://admin.nexora.test/reset-password?token=TOP-SECRET-RESET-TOKEN';
+
   const list = (query: string, cookie: string) =>
     app.inject({ method: 'GET', url: `/api/admin/outbox${query}`, headers: { cookie } });
 
@@ -123,13 +127,13 @@ describe('admin outbox integration (F7)', () => {
       data: [
         // n = số phút trước → n nhỏ = mới nhất. Thứ tự mong đợi: 1,2,3,4,5.
         row(1, {
-          dedupeKey: 'booking-confirmation:BK-OUTB0001',
+          dedupeKey: 'booking-confirmed:f7000001-0000-4000-8000-000000000001',
           status: OutboxStatus.FAILED,
           attempts: MAX_ATTEMPTS,
           lastError: 'Resend: 401 invalid api key',
         }),
         row(2, {
-          dedupeKey: 'review-approved:rv-0002',
+          dedupeKey: 'review-approved:f7000001-0000-4000-8000-000000000002',
           type: EmailType.REVIEW_APPROVED,
           status: OutboxStatus.SENT,
           attempts: 1,
@@ -137,22 +141,32 @@ describe('admin outbox integration (F7)', () => {
           processedAt: at(1),
         }),
         row(3, {
-          dedupeKey: 'booking-confirmation:BK-OUTB0003',
+          dedupeKey: 'booking-confirmed:f7000001-0000-4000-8000-000000000003',
           status: OutboxStatus.PENDING,
         }),
         row(4, {
-          dedupeKey: 'enquiry-admin-alert:e-0004',
+          dedupeKey: 'enquiry-admin-alert:f7000001-0000-4000-8000-000000000004',
           type: EmailType.ENQUIRY_ADMIN_ALERT,
           payload: { email: 'lead@example.com', to: 'ops@nexora.test' },
           status: OutboxStatus.SENT,
           processedAt: at(3),
         }),
         row(5, {
-          dedupeKey: 'booking-confirmation:BK-OUTB0005',
+          dedupeKey: 'booking-confirmed:f7000001-0000-4000-8000-000000000005',
           status: OutboxStatus.FAILED,
           attempts: MAX_ATTEMPTS,
           lastError: 'Resend: 429 rate limited',
           createdAt: new Date(Date.now() - 3 * DAY),
+        }),
+        // Email auth mang CREDENTIAL trong payload lẫn dedupeKey (vòng vá
+        // review F7) — endpoint phải che trước khi trả về.
+        row(6, {
+          dedupeKey: `pwreset:${rowId(6)}:${RESET_URL}`,
+          type: EmailType.PASSWORD_RESET,
+          payload: { email: 'other-admin@example.com', url: RESET_URL },
+          status: OutboxStatus.SENT,
+          processedAt: at(5),
+          createdAt: new Date(Date.now() - 4 * DAY),
         }),
       ],
     });
@@ -164,8 +178,11 @@ describe('admin outbox integration (F7)', () => {
     await prisma.$disconnect();
   });
 
-  it('enum EmailType của contract soi gương đúng enum Prisma', () => {
+  it('enum EmailType và OutboxStatus của contract soi gương đúng enum Prisma', () => {
     expect([...EmailTypeSchema.options]).toEqual(Object.values(EmailType));
+    // Thêm member (SKIPPED ở vòng vá F7) mà quên contract là output schema của
+    // chính endpoint list nổ 500 — test này bắt trước (review F7 mũi C).
+    expect([...OutboxStatusSchema.options]).toEqual(Object.values(OutboxStatus));
   });
 
   it('MAX_ATTEMPTS của worker là chính hằng contract — một nguồn cho cột "3/5"', () => {
@@ -192,8 +209,8 @@ describe('admin outbox integration (F7)', () => {
   describe('list', () => {
     it('không filter: mọi row, mới nhất trước, đủ shape contract + recipient rút từ payload', async () => {
       const paged = await listOk('');
-      expect(paged.total).toBe(5);
-      expect(paged.items.map((item) => item.id)).toEqual([1, 2, 3, 4, 5].map(rowId));
+      expect(paged.total).toBe(6);
+      expect(paged.items.map((item) => item.id)).toEqual([1, 2, 3, 4, 5, 6].map(rowId));
       // `to` thắng `email` — cùng luật worker gửi.
       expect(paged.items[3]?.recipient).toBe('ops@nexora.test');
       expect(paged.items[0]).toMatchObject({
@@ -217,17 +234,39 @@ describe('admin outbox integration (F7)', () => {
       expect(paged.items.map((item) => item.id)).toEqual([rowId(2)]);
     });
 
-    it('search khớp dedupeKey contains — cách tra "email của đơn này đâu"', async () => {
-      const paged = await listOk('?search=BK-OUTB0005');
-      expect(paged.items.map((item) => item.id)).toEqual([rowId(5)]);
+    it('search tra được MÃ BOOKING trong payload (dedupeKey thật không mang mã) — ca vụ 20/08', async () => {
+      // Vòng vá review F7: bản đầu chỉ khớp dedupeKey `<event>:<uuid>` nên gõ
+      // BK-… luôn rỗng. Nay khớp payload.code, không phân biệt hoa/thường.
+      expect((await listOk('?search=BK-OUTB0005')).items.map((item) => item.id)).toEqual([
+        rowId(5),
+      ]);
+      expect((await listOk('?search=bk-outb0005')).items.map((item) => item.id)).toEqual([
+        rowId(5),
+      ]);
+    });
+
+    it('search tra được theo EMAIL (payload.email / payload.to) và theo dedupeKey', async () => {
+      expect((await listOk('?search=ops@nexora.test')).items.map((item) => item.id)).toEqual([
+        rowId(4),
+      ]);
+      expect((await listOk('?search=Guest3@')).items.map((item) => item.id)).toEqual([rowId(3)]);
       // Kết hợp với status: giao của hai tập.
-      const both = await listOk('?search=booking-confirmation&status=PENDING');
+      const both = await listOk('?search=booking-confirmed&status=PENDING');
       expect(both.items.map((item) => item.id)).toEqual([rowId(3)]);
+    });
+
+    it('email auth: url/otp trong payload và dedupeKey bị CHE — response không mang credential', async () => {
+      const res = await list('?type=PASSWORD_RESET', adminCookie);
+      expect(res.statusCode).toBe(200);
+      expect(res.body).not.toContain('TOP-SECRET-RESET-TOKEN');
+      const [item] = PagedSchema(OutboxRowSchema).parse(res.json()).items;
+      expect(item).toMatchObject({ id: rowId(6), dedupeKey: 'pwreset:[redacted]' });
+      expect(item?.payload).toEqual({ email: 'other-admin@example.com', url: '[redacted]' });
     });
 
     it('phân trang: page/limit ép từ query string, totalPages đúng', async () => {
       const page2 = await listOk('?limit=2&page=2');
-      expect(page2).toMatchObject({ page: 2, limit: 2, total: 5, totalPages: 3 });
+      expect(page2).toMatchObject({ page: 2, limit: 2, total: 6, totalPages: 3 });
       expect(page2.items.map((item) => item.id)).toEqual([rowId(3), rowId(4)]);
     });
 

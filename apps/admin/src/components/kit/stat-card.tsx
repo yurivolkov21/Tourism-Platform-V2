@@ -67,7 +67,7 @@ const TONE_CLASS = {
 /** Props = VM trừ `key` — `key` là của React, không phải dữ liệu của card. */
 export type StatCardProps = Omit<StatCardVM, 'key'>;
 
-export function StatCard({ label, value, caption, delta, deltaGood }: StatCardProps) {
+export function StatCard({ label, value, caption, delta, deltaGood, callout }: StatCardProps) {
   const tone = deltaGood === undefined ? 'neutral' : deltaGood ? 'good' : 'bad';
 
   return (
@@ -95,6 +95,22 @@ export function StatCard({ label, value, caption, delta, deltaGood }: StatCardPr
                   câu. */}
               <span aria-hidden="true">{delta.amount}</span>
               <span className="sr-only">{delta.srLabel}</span>
+            </Badge>
+          </CardAction>
+        ) : callout ? (
+          <CardAction>
+            {/* Pill TRẠNG THÁI cho card ảnh chụp (không có kỳ trước) — khác
+                pill delta: không mũi tên, không "vs …", `data-testid` riêng
+                để không ai đọc nhầm nó thành "xu hướng đứng yên" (vòng vá
+                review F7: card Failed từng mượn `delta.direction='flat'`). */}
+            <Badge
+              variant="outline"
+              data-testid="stat-callout"
+              data-tone={callout.tone}
+              className={TONE_CLASS[callout.tone]}
+            >
+              <span aria-hidden="true">{callout.label}</span>
+              <span className="sr-only">{callout.srLabel ?? callout.label}</span>
             </Badge>
           </CardAction>
         ) : null}

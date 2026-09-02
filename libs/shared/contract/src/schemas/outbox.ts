@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { AdminPageQuerySchema } from './common.js';
 
 /**
  * Vùng outbox email cho admin (spec P4c §3-F7) — bề mặt ĐỌC + MỘT hành vi ghi
@@ -6,11 +7,16 @@ import { z } from 'zod';
  *
  * Contract KHÔNG biết gì về worker: retry chỉ là "đưa hàng về PENDING", worker
  * tự nhặt ở lượt kế. Không có endpoint xoá — FAILED giữ lại để triage (spec
- * §2.4), SENT có purge cron dọn.
+ * §2.4), SENT/SKIPPED có purge cron dọn.
  */
 
-/** Soi gương enum `OutboxStatus` của Prisma — trạng thái vòng đời một row. */
-export const OutboxStatusSchema = z.enum(['PENDING', 'SENT', 'FAILED']);
+/**
+ * Soi gương enum `OutboxStatus` của Prisma — trạng thái vòng đời một row.
+ * `SKIPPED` (vòng vá review F7): worker CỐ Ý không gửi (người nhận đã huỷ
+ * đăng ký newsletter) — trước đây bị đánh SENT nên card "Sent" và badge nói
+ * dối; giờ là trạng thái riêng, không đếm vào email đã giao.
+ */
+export const OutboxStatusSchema = z.enum(['PENDING', 'SENT', 'FAILED', 'SKIPPED']);
 export type OutboxStatusValue = z.output<typeof OutboxStatusSchema>;
 
 /**
@@ -48,15 +54,17 @@ export type EmailTypeValue = z.output<typeof EmailTypeSchema>;
 export const OUTBOX_MAX_ATTEMPTS = 5;
 
 /**
- * Query cho `admin.outbox.list`. Cùng hình phân trang với mọi list admin
+ * Query cho `admin.outbox.list`. Phân trang dùng chung `AdminPageQuerySchema`
  * (field gõ kiểu thuần — ZodSmartCoercionPlugin ép query string ở server).
- * `search` khớp `dedupeKey` contains: dedupeKey mang mã booking/id enquiry
- * (docs/conventions/outbox-dedupe-key.md) nên đó là cách tra "email của đơn
- * BK-XXXX đâu rồi" mà vụ 20/08 phải soi bằng SQL tay.
+ *
+ * `search` khớp KHÔNG phân biệt hoa/thường trên BỐN chỗ: `dedupeKey`,
+ * `payload.code` (mã booking `BK-XXXX`), `payload.email` và `payload.to`.
+ * Vòng vá review F7: bản đầu chỉ khớp `dedupeKey`, mà key thật theo quy ước
+ * `docs/conventions/outbox-dedupe-key.md` là `<event>:<uuid>` — KHÔNG bao giờ
+ * chứa mã người đọc, nên đúng câu hỏi của vụ 20/08 ("email của đơn BK-XXXX
+ * đâu rồi") lại không tra được.
  */
-export const AdminOutboxListQuerySchema = z.object({
-  page: z.int().min(1).default(1),
-  limit: z.int().min(1).max(100).default(20),
+export const AdminOutboxListQuerySchema = AdminPageQuerySchema.extend({
   status: OutboxStatusSchema.optional(),
   type: EmailTypeSchema.optional(),
   search: z.string().min(1).max(120).optional(),
@@ -66,17 +74,32 @@ export type AdminOutboxListQuery = z.output<typeof AdminOutboxListQuerySchema>;
 /**
  * Một row outbox cho admin. `recipient` là email đích rút từ payload bằng
  * ĐÚNG luật worker gửi (`worker/recipient.ts`: `to` thắng `email`) — null khi
- * payload không có địa chỉ nào. `payload` là JSON nguyên văn: dữ liệu để soi,
- * không phải giao diện (spec §2.3), drawer in thụt lề chứ không map thành form.
+ * payload không có địa chỉ nào. `payload` là JSON để soi, không phải giao
+ * diện (spec §2.3), drawer in thụt lề chứ không map thành form.
+ *
+ * `payload` và `dedupeKey` đã qua REDACT ở API (vòng vá review F7): email
+ * PASSWORD_RESET mang URL có token, EMAIL_OTP mang mã — và cả hai còn nằm
+ * trong dedupeKey. Bề mặt admin không được là nơi một admin cầm được link
+ * reset của admin khác; khoá `url`/`otp`/`token` thành `[redacted]`, dedupeKey
+ * của các loại đó chỉ còn tiền tố. Xem `outbox-row.ts` bên API.
  */
 export const OutboxRowSchema = z.object({
   id: z.uuid(),
   type: EmailTypeSchema,
   status: OutboxStatusSchema,
-  /** Số lần giao THẤT BẠI đã ghi nhận (row SENT ở lần đầu mang 0). */
+  /**
+   * Số lần giao THẤT BẠI đã ghi nhận. Retry đặt lại 0 (ngân sách mới đủ
+   * `OUTBOX_MAX_ATTEMPTS`), nên row SENT với attempts 0 có hai nghĩa — đọc
+   * cùng `lastError` để phân biệt (xem dưới).
+   */
   attempts: z.int().nonnegative(),
   dedupeKey: z.string().min(1).max(200),
-  /** Lỗi của lượt giao gần nhất — retry GIỮ lại cho tới khi worker ghi đè. */
+  /**
+   * Lỗi của lượt giao gần nhất. Retry GIỮ lại và worker chỉ ghi đè khi lượt
+   * mới cũng hỏng — nên `lastError != null` trên row PENDING/SENT có
+   * `attempts = 0` là DẤU VẾT DUY NHẤT rằng row từng được retry (không có
+   * cột retriedAt; vòng vá review F7 ghi rõ để UI diễn giải đúng).
+   */
   lastError: z.string().max(1000).nullable(),
   createdAt: z.iso.datetime(),
   /** Mốc SENT; null khi chưa giao xong (PENDING/FAILED). */

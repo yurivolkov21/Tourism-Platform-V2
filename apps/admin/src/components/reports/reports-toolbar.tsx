@@ -1,20 +1,13 @@
 'use client';
 
+import { ReportMonthSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { Label } from '@tourism/ui/components/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
 import { DownloadIcon, PrinterIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { TOOLBAR_BUTTON, TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
+import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
+import { ToolbarSelect } from '@/components/kit/toolbar-select';
 import { reportsExportHref, reportsHref } from '@/lib/reports-query';
 
 /**
@@ -40,27 +33,19 @@ export function ReportsToolbar({ month, options }: ReportsToolbarProps) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 lg:px-6 print:hidden">
       <div className="flex items-center gap-2">
-        <Label htmlFor="reports-month" className="sr-only">
-          {t.monthLabel}
-        </Label>
-        <Select
+        {/* Kit `ToolbarSelect` (vòng vá review F7); `safeParse` tháng ở đây chứ
+            không đẩy giá trị lạ lên URL (nếp bookings, review F1). */}
+        <ToolbarSelect
+          id="reports-month"
+          label={t.monthLabel}
           value={month}
-          onValueChange={(next) => router.push(reportsHref(String(next)))}
           items={options}
-        >
-          <SelectTrigger className={`w-48 ${TOOLBAR_SELECT}`} size="default" id="reports-month">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              {options.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectGroup>
-          </SelectContent>
-        </Select>
+          className="w-48"
+          onSelect={(next) => {
+            const parsed = ReportMonthSchema.safeParse(next);
+            if (parsed.success) router.push(reportsHref(parsed.data));
+          }}
+        />
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {/* Nút in chỉ gọi hộp thoại in của trình duyệt — "xuất PDF" của F6 là

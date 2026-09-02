@@ -1,8 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import type { AdminOutboxListQuery, OutboxRow, Paged } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import type { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { OutboxStatus } from '../../generated/prisma/enums.js';
+import { toPaged } from '../../lib/paged.js';
 import { toOutboxRow } from './outbox-row.js';
 
 export class OutboxRowNotFoundError extends Error {
@@ -18,6 +19,9 @@ export class OutboxRowNotFailedError extends Error {
     this.name = 'OutboxRowNotFailedError';
   }
 }
+
+/** Mã Prisma "record to update not found" — câu UPDATE có guard trượt. */
+const PRISMA_NOT_FOUND = 'P2025';
 
 /**
  * Bề mặt outbox cho admin (spec P4c §3-F7): đọc bảng `outbox` và MỘT hành vi
@@ -35,15 +39,30 @@ export class AdminOutboxService {
   /**
    * Một trang outbox, MỚI NHẤT trước (`createdAt desc` — spec §3-F7; `id`
    * phụ để thứ tự ổn định khi hai row cùng mốc). Bỏ trống filter → mọi row.
-   * `search` khớp `dedupeKey` contains, phân biệt hoa/thường — key là chuỗi
-   * máy sinh theo quy ước cố định, không phải văn bản người gõ.
+   *
+   * `search` (vòng vá review F7) khớp KHÔNG phân biệt hoa/thường trên bốn
+   * chỗ: `dedupeKey`, `payload.code` (mã booking `BK-XXXX`), `payload.email`,
+   * `payload.to`. Bản đầu chỉ khớp dedupeKey — mà key thật là
+   * `<event>:<uuid>`, không mang mã người đọc — nên đúng câu hỏi "email của
+   * đơn BK-XXXX đâu rồi" (vụ 20/08) lại tra không ra. Bốn vế `contains` trên
+   * cột không index (JSON path + LIKE) — ghi sổ: outbox có retention 30 ngày
+   * nên bảng nhỏ; vượt ~10k row thì xem `pg_trgm`.
    */
   async list(query: AdminOutboxListQuery): Promise<Paged<OutboxRow>> {
     const { page, limit, status, type, search } = query;
     const where: Prisma.OutboxWhereInput = {
       ...(status ? { status } : {}),
       ...(type ? { type } : {}),
-      ...(search ? { dedupeKey: { contains: search } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { dedupeKey: { contains: search, mode: 'insensitive' } },
+              { payload: { path: ['code'], string_contains: search, mode: 'insensitive' } },
+              { payload: { path: ['email'], string_contains: search, mode: 'insensitive' } },
+              { payload: { path: ['to'], string_contains: search, mode: 'insensitive' } },
+            ],
+          }
+        : {}),
     };
     const [total, rows] = await Promise.all([
       prisma.outbox.count({ where }),
@@ -54,38 +73,46 @@ export class AdminOutboxService {
         take: limit,
       }),
     ]);
-    return {
-      items: rows.map(toOutboxRow),
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
+    return toPaged(rows.map(toOutboxRow), { page, limit, total });
   }
 
   /**
    * FAILED → PENDING, `attempts = 0`, GIỮ `lastError` (worker ghi đè ở lượt
-   * kế; xoá đi là mất manh mối duy nhất nếu lần gửi lại cũng hỏng).
+   * kế; xoá đi là mất manh mối duy nhất nếu lần gửi lại cũng hỏng — và cũng
+   * là dấu vết duy nhất rằng row từng được retry, xem JSDoc contract).
    *
-   * Guard `status: FAILED` nằm trên chính câu UPDATE (`updateMany`, nếp
-   * worker): hai admin bấm retry cùng lúc thì chỉ một câu ăn, câu kia thấy
-   * 0 row. 0 row có hai nghĩa — tra lại để nói đúng: không có hàng →
-   * NOT_FOUND; có nhưng không còn FAILED → NOT_FAILED (kèm trạng thái thật).
+   * MỘT câu `update` có guard `status: FAILED` ngay trong `where` (vòng vá
+   * review F7 — bản đầu là `updateMany` + đọc lại, hai câu không nguyên tử:
+   * worker có thể gửi xong giữa hai câu và response trả về một row SENT kèm
+   * toast "đã xếp lại"; row bị purge ở khe đó thì `findUniqueOrThrow` nổ
+   * P2025 thành 500). Hai admin bấm cùng lúc: chỉ một câu ăn, câu kia nhận
+   * P2025 → tra lại để nói đúng: không có hàng → NOT_FOUND; có nhưng không
+   * còn FAILED → NOT_FAILED (kèm trạng thái thật).
    *
    * Log có cấu trúc quy về NGƯỜI (spec §2.2) — KHÔNG log payload (§2.3: có
-   * thể chứa email khách).
+   * thể chứa email khách, và với email auth là cả credential).
    */
   async retry(adminId: string, id: string): Promise<OutboxRow> {
-    const { count } = await prisma.outbox.updateMany({
-      where: { id, status: OutboxStatus.FAILED },
-      data: { status: OutboxStatus.PENDING, attempts: 0 },
-    });
-    if (count === 0) {
-      const existing = await prisma.outbox.findUnique({ where: { id }, select: { status: true } });
-      if (!existing) throw new OutboxRowNotFoundError(id);
-      throw new OutboxRowNotFailedError(existing.status);
+    let row: Prisma.OutboxGetPayload<Record<string, never>>;
+    try {
+      row = await prisma.outbox.update({
+        where: { id, status: OutboxStatus.FAILED },
+        data: { status: OutboxStatus.PENDING, attempts: 0 },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === PRISMA_NOT_FOUND
+      ) {
+        const existing = await prisma.outbox.findUnique({
+          where: { id },
+          select: { status: true },
+        });
+        if (!existing) throw new OutboxRowNotFoundError(id);
+        throw new OutboxRowNotFailedError(existing.status);
+      }
+      throw error;
     }
-    const row = await prisma.outbox.findUniqueOrThrow({ where: { id } });
     this.logger.log(
       `[admin] outbox retry ${JSON.stringify({ adminId, outboxId: row.id, type: row.type })}`,
     );

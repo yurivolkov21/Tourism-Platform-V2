@@ -15,7 +15,7 @@ const FAILED: OutboxRow = {
   type: 'BOOKING_CONFIRMATION',
   status: 'FAILED',
   attempts: 5,
-  dedupeKey: 'booking-confirmation:BK-ABCD1234',
+  dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
   lastError: 'Resend: 401 invalid api key',
   createdAt: '2026-09-01T10:00:00.000Z',
   processedAt: null,
@@ -37,8 +37,9 @@ describe('toOutboxRowVM', () => {
       lastError: 'Resend: 401 invalid api key',
       created: '1 Sep 2026, 10:00 UTC',
       processed: null,
-      dedupeKey: 'booking-confirmation:BK-ABCD1234',
-      payloadJson: JSON.stringify(FAILED.payload, null, 2),
+      dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+      payload: FAILED.payload,
+      retried: false,
       canRetry: true,
     });
   });
@@ -76,8 +77,42 @@ describe('toOutboxRowVM', () => {
     expect(toOutboxRowVM({ ...FAILED, recipient: null }).recipient).toBeNull();
   });
 
-  it('payload vô hướng vẫn thành JSON in được', () => {
-    expect(toOutboxRowVM({ ...FAILED, payload: 'plain' }).payloadJson).toBe('"plain"');
+  it('payload đi THÔ — drawer tự thụt lề đúng row đang mở (vòng vá review F7)', () => {
+    expect(toOutboxRowVM({ ...FAILED, payload: 'plain' }).payload).toBe('plain');
+  });
+
+  it('dấu vết retry: attempts 0 mà còn lastError → PENDING "Re-queued", SENT "Sent after a manual retry"', () => {
+    // Vòng vá review F7: retry đặt attempts=0 giữ lastError; bản đầu in
+    // "0/5"/"First try" cho hàng phải can thiệp tay 6 lượt.
+    const requeued = toOutboxRowVM({ ...FAILED, status: 'PENDING', attempts: 0 });
+    expect(requeued.retried).toBe(true);
+    expect(requeued.attemptsLabel).toBe(t.list.requeued);
+
+    const sentAfter = toOutboxRowVM({
+      ...FAILED,
+      status: 'SENT',
+      attempts: 0,
+      processedAt: '2026-09-01T10:05:00.000Z',
+    });
+    expect(sentAfter.retried).toBe(true);
+    expect(sentAfter.attemptsLabel).toBe(t.list.sentAfterRetry);
+
+    // FAILED luôn có lỗi và attempts = trần — không phải dấu vết retry.
+    expect(toOutboxRowVM(FAILED).retried).toBe(false);
+  });
+
+  it('SKIPPED: nói thẳng lý do không gửi, badge viền trơn, không retry được', () => {
+    const vm = toOutboxRowVM({
+      ...FAILED,
+      status: 'SKIPPED',
+      attempts: 0,
+      lastError: null,
+      processedAt: '2026-09-01T10:05:00.000Z',
+    });
+    expect(vm.attemptsLabel).toBe(t.list.skipped);
+    expect(vm.statusLabel).toBe(t.status.SKIPPED);
+    expect(vm.canRetry).toBe(false);
+    expect(outboxStatusBadgeVariant('SKIPPED')).toBe('outline');
   });
 });
 

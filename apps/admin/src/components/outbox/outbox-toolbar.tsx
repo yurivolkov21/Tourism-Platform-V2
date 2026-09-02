@@ -2,20 +2,11 @@
 
 import { EmailTypeSchema, OutboxStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { Label } from '@tourism/ui/components/label';
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@tourism/ui/components/select';
-import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
+import { BanIcon, CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { TOOLBAR_SELECT } from '@/components/kit/toolbar-metrics';
+import { ToolbarSelect } from '@/components/kit/toolbar-select';
 import { type OutboxQuery, outboxHref } from '@/lib/outbox-query';
 
 /**
@@ -38,6 +29,8 @@ const STATUS_ICONS: Record<(typeof STATUSES)[number], typeof ClockIcon> = {
   PENDING: ClockIcon,
   SENT: CircleCheckIcon,
   FAILED: CircleXIcon,
+  // Cố ý không gửi (người nhận đã huỷ đăng ký) — vạch chéo, không phải X đỏ.
+  SKIPPED: BanIcon,
 };
 
 const TAB_ITEMS = [
@@ -77,9 +70,10 @@ export function OutboxStatusTabs({ query }: { query: OutboxQuery }) {
 }
 
 /**
- * Lọc theo loại email — Select (13 giá trị thì tab không vừa một hàng). Cùng
- * primitive và số đo `TOOLBAR_SELECT` với nhánh mobile của `StatusFilterTabs`
- * để hai control đứng cạnh nhau nhìn là một hệ.
+ * Lọc theo loại email — Select (13 giá trị thì tab không vừa một hàng). Kit
+ * `ToolbarSelect` (vòng vá review F7 — bản chép thứ ba của cùng khối Select
+ * được nâng lên kit) nên đứng cạnh nhánh mobile của `StatusFilterTabs` là
+ * cùng một control.
  */
 export function OutboxTypeSelect({ query }: { query: OutboxQuery }) {
   const router = useRouter();
@@ -91,29 +85,13 @@ export function OutboxTypeSelect({ query }: { query: OutboxQuery }) {
   }
 
   return (
-    <>
-      <Label htmlFor="outbox-type-selector" className="sr-only">
-        {t.list.typeLabel}
-      </Label>
-      <Select value={value} onValueChange={(next) => go(String(next))} items={TYPE_ITEMS}>
-        <SelectTrigger
-          className={`w-fit ${TOOLBAR_SELECT}`}
-          size="default"
-          id="outbox-type-selector"
-        >
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectGroup>
-            {TYPE_ITEMS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectGroup>
-        </SelectContent>
-      </Select>
-    </>
+    <ToolbarSelect
+      id="outbox-type-selector"
+      label={t.list.typeLabel}
+      value={value}
+      items={TYPE_ITEMS}
+      onSelect={go}
+    />
   );
 }
 

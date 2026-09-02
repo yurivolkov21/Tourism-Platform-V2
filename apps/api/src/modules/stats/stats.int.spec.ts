@@ -678,13 +678,21 @@ describe('admin stats integration (F5)', () => {
           outboxRow(7, { status: OutboxStatus.PENDING, createdAt: daysAgo(90), processedAt: null }),
           outboxRow(8, { status: OutboxStatus.FAILED, createdAt: daysAgo(5), processedAt: null }),
           outboxRow(9, { status: OutboxStatus.FAILED, createdAt: daysAgo(60), processedAt: null }),
+          // ── SKIPPED trong kỳ: có processedAt nhưng chưa từng tới Resend ──
+          outboxRow(10, {
+            status: OutboxStatus.SKIPPED,
+            createdAt: daysAgo(4),
+            processedAt: daysAgo(4),
+          }),
         ],
       });
     });
 
-    it('sent đếm theo processedAt trong từng kỳ — hàng ngoài cả hai kỳ không tính', async () => {
+    it('sent đếm SENT theo processedAt trong KỲ NÀY — hàng kỳ trước/ngoài kỳ và SKIPPED không tính', async () => {
+      // Vòng vá review F7: một số đơn (purge 30 ngày xoá gần hết kỳ trước nên
+      // không có cặp), và SKIPPED (worker cố ý không gửi) không phải "đã giao".
       const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
-      expect(stats.sent).toEqual({ current: 2, previous: 1 });
+      expect(stats.sent).toBe(2);
     });
 
     it('queued/failed là ẢNH CHỤP bây giờ, không phân biệt tuổi hàng', async () => {
@@ -698,7 +706,7 @@ describe('admin stats integration (F5)', () => {
   describe('stats.outbox — kỳ rỗng', () => {
     it('bảng trống: sent 0/0, hàng đợi 0 — con số thật, không phải lỗi', async () => {
       const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
-      expect(stats).toMatchObject({ sent: { current: 0, previous: 0 }, queued: 0, failed: 0 });
+      expect(stats).toMatchObject({ sent: 0, queued: 0, failed: 0 });
     });
   });
 });

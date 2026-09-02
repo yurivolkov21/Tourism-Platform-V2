@@ -54,7 +54,7 @@ const REVIEWS: AdminReviewsStats = {
 
 const OUTBOX: AdminOutboxStats = {
   period,
-  sent: { current: 40, previous: 35 },
+  sent: 40,
   queued: 3,
   failed: 2,
 };
@@ -253,12 +253,14 @@ describe('toReviewsStatCards', () => {
 });
 
 describe('toOutboxStatCards (F7)', () => {
-  it('sent là thông lượng TRUNG TÍNH: có pill delta nhưng không tô tốt/xấu', () => {
+  it('sent là số ĐƠN của kỳ này: không pill delta, caption nói nó đo gì (kỳ trước bị purge)', () => {
+    // Vòng vá review F7: purge 30 ngày xoá gần hết kỳ 28–56 ngày trước — một
+    // cặp ở đây từng in "↑1200% vs 3 prior 28 days" mỗi ngày.
     const sent = card(toOutboxStatCards(OUTBOX), 'sent');
     expect(sent.label).toBe(t.outbox.sent(28));
     expect(sent.value).toBe('40');
-    expect(sent.caption).toBe(t.comparison('35', 28));
-    expect(sent.delta?.direction).toBe('up');
+    expect(sent.caption).toBe(t.outbox.sentCaption(28));
+    expect(sent.delta).toBeUndefined();
     expect(sent.deltaGood).toBeUndefined();
   });
 
@@ -269,22 +271,24 @@ describe('toOutboxStatCards (F7)', () => {
     expect(queued.caption).toBe(t.outbox.queuedCaption);
   });
 
-  it('failed > 0: pill đỏ "Needs attention" KHÔNG mũi tên — lời gọi người, không phải xu hướng', () => {
+  it('failed > 0: CALLOUT đỏ "Needs attention" — lời gọi người qua khe riêng, KHÔNG mượn delta', () => {
+    // Vòng vá review F7: bản đầu bịa `delta.direction='flat'` để mượn tông đỏ,
+    // mà "flat" nghĩa là "không đổi so kỳ trước" — P4d đọc chung VM sẽ hiểu sai.
     const failed = card(toOutboxStatCards(OUTBOX), 'failed');
     expect(failed.value).toBe('2');
     expect(failed.caption).toBe(t.outbox.failedCaption);
-    expect(failed.delta).toEqual({
-      direction: 'flat',
-      amount: t.outbox.needsAttention,
+    expect(failed.delta).toBeUndefined();
+    expect(failed.callout).toEqual({
+      label: t.outbox.needsAttention,
       srLabel: t.outbox.needsAttentionSr('2'),
+      tone: 'bad',
     });
-    expect(failed.deltaGood).toBe(false);
   });
 
-  it('failed = 0: không pill, caption nói không có gì chờ retry', () => {
+  it('failed = 0: không pill, không callout, caption nói không có gì chờ retry', () => {
     const failed = card(toOutboxStatCards({ ...OUTBOX, failed: 0 }), 'failed');
     expect(failed.delta).toBeUndefined();
-    expect(failed.deltaGood).toBeUndefined();
+    expect(failed.callout).toBeUndefined();
     expect(failed.caption).toBe(t.outbox.failedCaptionNone);
   });
 

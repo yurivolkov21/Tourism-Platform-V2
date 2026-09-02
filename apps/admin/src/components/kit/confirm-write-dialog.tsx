@@ -51,7 +51,11 @@ export interface ConfirmWriteCopy {
   submit: string;
   submitting: string;
   cancel: string;
-  /** Vắng (cùng với `noteId`) = lệnh không mang ghi chú — ô note không render (F7 retry). */
+  /**
+   * Vắng (cùng với `noteId`) = lệnh không mang ghi chú — ô note không render
+   * (F7 retry). Kiểu props ép HAI thứ đi cùng nhau: có `noteId` thì phải có
+   * `noteLabel` (xem `ConfirmWriteDialogProps`).
+   */
   noteLabel?: string;
   notePlaceholder?: string;
 }
@@ -71,24 +75,38 @@ export type ConfirmWriteResult<Code extends string> =
   | { ok: true; toast: { title: string; description: string } }
   | { ok: false; code: Code | TransportFailureCode };
 
-export interface ConfirmWriteDialogProps<Code extends string> {
-  copy: ConfirmWriteCopy;
+/**
+ * Hai hình thái, phân biệt bằng `noteId` (vòng vá review F7): lệnh CÓ ghi chú
+ * (decide/moderate — note là audit) phải có `noteLabel` đi cùng, và `onSubmit`
+ * nhận note; lệnh KHÔNG ghi chú (retry) không được lỡ tay để ô biến mất — bản
+ * đầu để `noteId?` rời, một typo prop ở decide-actions là textarea biến mất
+ * im lặng và mọi quyết định huỷ ghi audit note rỗng trong khi typecheck xanh.
+ */
+type ConfirmWriteNoteProps<Code extends string> =
+  | {
+      /** `id` của ô note — mỗi hàng một id, tránh trùng khi nhiều dialog cùng DOM. */
+      noteId: string;
+      copy: ConfirmWriteCopy & { noteLabel: string };
+      /** Bắn lệnh. Nhận note ĐÃ trim (có thể rỗng). Ném ⇒ kit coi như `GENERIC`. */
+      onSubmit: (note: string) => Promise<ConfirmWriteResult<Code>>;
+    }
+  | {
+      /** BỎ TRỐNG khi lệnh không có ghi chú (retry outbox F7): kit không render ô. */
+      noteId?: undefined;
+      copy: ConfirmWriteCopy & { noteLabel?: undefined };
+      /** Bắn lệnh — không có note để mà nhận. Ném ⇒ kit coi như `GENERIC`. */
+      onSubmit: () => Promise<ConfirmWriteResult<Code>>;
+    };
+
+export type ConfirmWriteDialogProps<Code extends string> = ConfirmWriteNoteProps<Code> & {
   rows: ConfirmWriteRow[];
   /** Phần riêng của vùng, nằm giữa ngữ cảnh và ô note (danh sách hệ quả,
    *  nguyên văn review, ảnh đính kèm…). */
   extra?: React.ReactNode;
-  /**
-   * `id` của ô note — mỗi hàng một id, tránh trùng khi nhiều dialog cùng DOM.
-   * BỎ TRỐNG khi lệnh không có ghi chú (retry outbox F7): kit không render ô,
-   * `onSubmit` nhận chuỗi rỗng. Một ô note không đi đâu là một lời hứa suông.
-   */
-  noteId?: string;
   /** Nút xác nhận: `destructive` khi lệnh lấy đi thứ đang hiện ra ngoài. */
   submitVariant?: 'default' | 'destructive';
   /** Bề ngang DialogContent — vùng nào in nguyên văn nội dung thì cần rộng hơn. */
   contentClassName?: string;
-  /** Bắn lệnh. Nhận note ĐÃ trim (có thể rỗng). Ném ⇒ kit coi như `GENERIC`. */
-  onSubmit: (note: string) => Promise<ConfirmWriteResult<Code>>;
   /** Mã nào là TRẠNG-THÁI-CŨ (thế giới đã đổi dưới chân dialog) — vùng khai. */
   isStale: (code: Code | TransportFailureCode) => boolean;
   /** Mã → câu cho admin (codec của vùng, xem `createWriteErrorCodec`). */
@@ -96,21 +114,20 @@ export interface ConfirmWriteDialogProps<Code extends string> {
   onClose: () => void;
   /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
   onSettled: () => void;
-}
+};
 
-export function ConfirmWriteDialog<Code extends string>({
-  copy,
-  rows,
-  extra,
-  noteId,
-  submitVariant = 'default',
-  contentClassName = 'sm:max-w-md',
-  onSubmit,
-  isStale,
-  errorCopy,
-  onClose,
-  onSettled,
-}: ConfirmWriteDialogProps<Code>) {
+export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialogProps<Code>) {
+  const {
+    copy,
+    rows,
+    extra,
+    submitVariant = 'default',
+    contentClassName = 'sm:max-w-md',
+    isStale,
+    errorCopy,
+    onClose,
+    onSettled,
+  } = props;
   const [note, setNote] = useState('');
   // Vòng đời lệnh ghi nằm ở hook dùng chung (vòng vá review F5 — RefundDialog
   // hai-bước của F2 cũng chạy CÙNG máy này qua hook, hết bản chép thứ ba).
@@ -122,7 +139,11 @@ export function ConfirmWriteDialog<Code extends string>({
   });
 
   function submit() {
-    void run(() => onSubmit(note.trim()));
+    // Rẽ theo hình thái props: có ô note thì giao note đã trim, không thì
+    // gọi trần — TS ép mỗi nhánh khớp đúng chữ ký của `onSubmit` nhánh ấy.
+    // So `!== undefined` (không phải truthiness): discriminant của union là
+    // `noteId?: undefined`, chuỗi rỗng vẫn là nhánh có note.
+    void run(() => (props.noteId !== undefined ? props.onSubmit(note.trim()) : props.onSubmit()));
   }
 
   return (
@@ -146,11 +167,11 @@ export function ConfirmWriteDialog<Code extends string>({
 
         {extra}
 
-        {noteId ? (
+        {props.noteId ? (
           <div className="grid gap-1.5">
-            <Label htmlFor={noteId}>{copy.noteLabel}</Label>
+            <Label htmlFor={props.noteId}>{props.copy.noteLabel}</Label>
             <Textarea
-              id={noteId}
+              id={props.noteId}
               rows={3}
               maxLength={500}
               placeholder={copy.notePlaceholder}

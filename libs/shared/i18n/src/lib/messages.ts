@@ -2690,6 +2690,12 @@ export const messages = {
        */
       outbox: {
         sent: (days: number) => `Sent ${days}d`,
+        /**
+         * Sent là số ĐƠN của kỳ này, không có "vs kỳ trước" (vòng vá review
+         * F7): purge 30 ngày xoá gần hết kỳ 28–56 ngày trước.
+         */
+        sentCaption: (days: number) =>
+          `Delivered in the last ${days} days — skipped emails not counted`,
         queued: 'Queued now',
         /** Ảnh chụp không có delta — caption thay cho dòng "vs …". */
         queuedCaption: 'Waiting for the next worker run',
@@ -3180,8 +3186,12 @@ export const messages = {
         typeLabel: 'Filter by email type',
         typeAll: 'All types',
         searchLabel: 'Search outbox',
-        /** dedupeKey mang mã booking/id enquiry — đó là thứ operator đang cầm. */
-        searchPlaceholder: 'Dedupe key, e.g. BK-ABCD1234',
+        /**
+         * Tìm trên mã booking/email trong payload VÀ dedupeKey (vòng vá review
+         * F7: dedupeKey thật là `<event>:<uuid>`, không mang mã BK-… — thứ
+         * operator đang cầm nằm trong payload).
+         */
+        searchPlaceholder: 'Booking code, email or dedupe key',
         clear: 'Clear search',
         empty: 'No outbox rows match this filter.',
         columns: {
@@ -3200,6 +3210,15 @@ export const messages = {
         sentFirstTry: 'First try',
         sentAfterRetries: (failed: number) =>
           failed === 1 ? 'After 1 failed try' : `After ${failed} failed tries`,
+        /**
+         * Retry đặt attempts về 0 nhưng GIỮ lastError — đó là dấu vết duy nhất
+         * rằng row từng được xếp lại (vòng vá review F7). Hai nhãn này đọc dấu
+         * vết ấy thay vì nói dối "First try"/"0/5".
+         */
+        sentAfterRetry: 'Sent after a manual retry',
+        requeued: 'Re-queued by an operator',
+        /** SKIPPED: worker cố ý không gửi — người nhận đã huỷ đăng ký. */
+        skipped: 'Not sent — recipient unsubscribed',
         /** Payload không có `to`/`email` — hiện chữ thay vì ô trống trơn. */
         noRecipient: 'No recipient in payload',
         view: 'Details',
@@ -3210,6 +3229,7 @@ export const messages = {
         PENDING: 'Queued',
         SENT: 'Sent',
         FAILED: 'Failed',
+        SKIPPED: 'Skipped',
       },
       /** Nhãn enum EmailType — `Record` đủ member để thêm loại email mới là đỏ typecheck. */
       type: {

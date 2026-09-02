@@ -161,18 +161,7 @@ function buildColumns(retry: RetryActionFn, onView: (row: OutboxRowVM) => void) 
           >
             {t.view}
           </Button>
-          {row.original.canRetry ? (
-            <RetryAction
-              row={{
-                id: row.original.id,
-                typeLabel: row.original.typeLabel,
-                recipient: row.original.recipient,
-                dedupeKey: row.original.dedupeKey,
-                lastError: row.original.lastError,
-              }}
-              retry={retry}
-            />
-          ) : null}
+          {row.original.canRetry ? <RetryAction row={row.original} retry={retry} /> : null}
         </div>
       ),
       enableHiding: false,

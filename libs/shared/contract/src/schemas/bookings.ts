@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
-import { BookingCodeSchema, EmailSchema } from './common.js';
+import { AdminPageQuerySchema, BookingCodeSchema, EmailSchema } from './common.js';
 import { MediaItemSchema } from './media.js';
 
 // Re-export để mọi chỗ import `BookingCodeSchema` từ `'./bookings.js'` (nguồn
@@ -244,22 +244,19 @@ export const CalendarDateSchema = z.iso
     message: 'date must be between 1900 and 2099',
   });
 
-export const AdminBookingsListQuerySchema = z
-  .object({
-    page: z.int().min(1).default(1),
-    limit: z.int().min(1).max(100).default(20),
-    status: BookingStatusSchema.optional(),
-    search: z.string().min(1).max(120).optional(),
-    from: CalendarDateSchema.optional(),
-    to: CalendarDateSchema.optional(),
-    /**
-     * `false` = trả `tourImage: null` thay vì resolve ảnh cover (vòng vá
-     * review F6). Dành cho đường export CSV: nó gom TỪNG TRANG của cả tập mà
-     * file thì không có cột ảnh — mỗi trang một query media + payload phồng
-     * chỉ để vứt đi. Bảng `/bookings` giữ mặc định `true`.
-     */
-    includeMedia: z.boolean().default(true),
-  })
+export const AdminBookingsListQuerySchema = AdminPageQuerySchema.extend({
+  status: BookingStatusSchema.optional(),
+  search: z.string().min(1).max(120).optional(),
+  from: CalendarDateSchema.optional(),
+  to: CalendarDateSchema.optional(),
+  /**
+   * `false` = trả `tourImage: null` thay vì resolve ảnh cover (vòng vá
+   * review F6). Dành cho đường export CSV: nó gom TỪNG TRANG của cả tập mà
+   * file thì không có cột ảnh — mỗi trang một query media + payload phồng
+   * chỉ để vứt đi. Bảng `/bookings` giữ mặc định `true`.
+   */
+  includeMedia: z.boolean().default(true),
+})
   // `.refine` trên ZodObject của Zod 4 GIỮ NGUYÊN `.shape` (check gắn thêm,
   // không bọc lớp mới) — điều kiện sống còn của `ZodSmartCoercionPlugin` bên
   // API: nó đi theo shape để ép "2" thành number cho page/limit.
@@ -322,9 +319,7 @@ export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestS
  * Query cho `admin.cancellations.list`. Bỏ trống `status` → TẤT CẢ request (nhất
  * quán với `admin.bookings.list`; queue đang mở là `?status=REQUESTED`).
  */
-export const AdminCancellationsListQuerySchema = z.object({
-  page: z.int().min(1).default(1),
-  limit: z.int().min(1).max(100).default(20),
+export const AdminCancellationsListQuerySchema = AdminPageQuerySchema.extend({
   status: CancellationRequestStatusSchema.optional(),
 });
 

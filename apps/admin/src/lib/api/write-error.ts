@@ -48,12 +48,28 @@ export function transportErrorCopy(code: TransportFailureCode): string {
  * thứ ba nếu không nâng lên đây): đưa vào khối i18n `errors` của endpoint
  * (CHỈ mã contract) là có đủ tập mã + phân loại + tra câu, một nguồn duy nhất.
  */
-export function createWriteErrorCodec<T extends Record<string, string>>(errors: T) {
+export function createWriteErrorCodec<T extends Record<string, string>>(
+  errors: T,
+  options: {
+    /**
+     * Mã TRẠNG-THÁI-CŨ của vùng — thế giới đã đổi dưới chân dialog (hàng
+     * biến mất, đã có người quyết trước, đã rời trạng thái cho phép). UI đóng
+     * dialog + toast + refresh thay vì mời bấm lại. Khai ở đây cùng chỗ với
+     * tập mã (vòng vá review F7: ba vùng từng tự viết `isStaleStateCode`
+     * bằng tay — thêm mã thứ ba vào i18n thì codec cập nhật mà predicate
+     * tay thì không, dialog đứng im không refresh).
+     */
+    stale?: ReadonlyArray<keyof T & string>;
+  } = {},
+) {
   type ContractCode = keyof T & string;
   const codes = new Set(Object.keys(errors) as ContractCode[]) as ReadonlySet<ContractCode>;
+  const stale = new Set<string>(options.stale ?? []);
   return {
     /** Tập mã contract — test đối chiếu với `errorMap` thật của contract. */
     codes,
+    /** Mã có phải trạng-thái-cũ (đóng dialog + refresh) — theo `options.stale`. */
+    isStale: (code: ContractCode | TransportFailureCode): boolean => stale.has(code),
     /** Lỗi ném từ client oRPC → mã UI. Chạy phía SERVER (trong server action). */
     classify: (error: unknown): ContractCode | TransportFailureCode =>
       classifyWriteError(error, codes),

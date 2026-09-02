@@ -161,10 +161,13 @@ enum EmailType {
 }
 
 /// Vòng đời row outbox (ADR-0007). PENDING → SENT, hoặc → FAILED sau khi retry.
+/// SKIPPED (vòng vá review F7): worker CỐ Ý không gửi — người nhận newsletter
+/// đã huỷ đăng ký. Trước đây bị đánh SENT, làm "email đã giao" nói dối.
 enum OutboxStatus {
   PENDING
   SENT
   FAILED
+  SKIPPED
 }
 
 /// Vòng đời bài blog editorial. DRAFT → PUBLISHED.

@@ -93,12 +93,15 @@ export class OutboxService {
         NEWSLETTER_EMAIL_TYPES.has(row.type) &&
         (await this.isUnsubscribedRecipient(row.payload))
       ) {
-        // Bỏ qua NGAY, không gọi deliverer — đánh dấu SENT để row không kẹt
-        // ở đầu hàng đợi PENDING (batch luôn lấy cũ nhất trước, xem
-        // `orderBy: createdAt asc` ở trên) và chặn các email khác phía sau.
+        // Bỏ qua NGAY, không gọi deliverer — đánh dấu SKIPPED (trạng thái
+        // riêng, vòng vá review F7: trước là SENT nên card "Sent" của admin đếm
+        // cả email chưa từng tới Resend) để row không kẹt ở đầu hàng đợi
+        // PENDING (batch luôn lấy cũ nhất trước, xem `orderBy: createdAt asc`
+        // ở trên) và chặn các email khác phía sau. `processedAt` vẫn ghi: purge
+        // dọn SKIPPED cùng lịch với SENT.
         await prisma.outbox.updateMany({
           where: { id: row.id, status: OutboxStatus.PENDING },
-          data: { status: OutboxStatus.SENT, processedAt: new Date() },
+          data: { status: OutboxStatus.SKIPPED, processedAt: new Date() },
         });
         result.skippedUnsubscribed += 1;
         continue;
@@ -154,15 +157,22 @@ export class OutboxService {
   }
 
   /**
-   * Retention (audit M5): xóa row SENT có processedAt cũ hơn `olderThanDays`.
-   * FAILED giữ vĩnh viễn cho triage. Trả về số row đã xóa.
+   * Retention (audit M5): xóa row SENT/SKIPPED có processedAt cũ hơn
+   * `olderThanDays` — SKIPPED cùng lịch với SENT (vòng vá review F7: đó là
+   * "đã xử lý xong, không có gì để triage"). FAILED giữ vĩnh viễn cho triage.
+   * Trả về số row đã xóa.
    */
   async purgeSent(olderThanDays = 30): Promise<number> {
     const cutoff = new Date(Date.now() - olderThanDays * 86_400_000);
     const { count } = await prisma.outbox.deleteMany({
-      where: { status: OutboxStatus.SENT, processedAt: { lt: cutoff } },
+      where: {
+        status: { in: [OutboxStatus.SENT, OutboxStatus.SKIPPED] },
+        processedAt: { lt: cutoff },
+      },
     });
-    if (count > 0) this.logger.log(`Outbox purge: removed ${count} SENT rows > ${olderThanDays}d`);
+    if (count > 0) {
+      this.logger.log(`Outbox purge: removed ${count} SENT/SKIPPED rows > ${olderThanDays}d`);
+    }
     return count;
   }
 

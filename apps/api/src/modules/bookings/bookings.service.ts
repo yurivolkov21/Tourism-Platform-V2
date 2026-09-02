@@ -11,6 +11,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { toPaged } from '../../lib/paged.js';
 import { pickCover } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 import {
@@ -563,13 +564,10 @@ export class BookingsService {
         )
       : null;
 
-    return {
-      items: rows.map((row) => toBooking(row, null, pickCover(coverMap?.get(row.tourId)))),
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-    };
+    return toPaged(
+      rows.map((row) => toBooking(row, null, pickCover(coverMap?.get(row.tourId)))),
+      { page, limit, total },
+    );
   }
 
   /** Bất kỳ booking nào theo code — admin surface, cố ý KHÔNG scope theo owner. */

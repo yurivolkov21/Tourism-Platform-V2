@@ -54,6 +54,12 @@ export interface StatCardVM {
   delta?: StatDelta;
   /** Vắng = metric trung tính, pill không tô màu phán quyết nào. */
   deltaGood?: boolean;
+  /**
+   * Pill trạng thái cho card ẢNH CHỤP (không có kỳ trước nên không có
+   * `delta`): nhãn + tông. Kit render `data-testid="stat-callout"`, khác hẳn
+   * pill delta — vòng vá review F7, thay cho mẹo mượn `direction: 'flat'`.
+   */
+  callout?: { label: string; srLabel?: string; tone: 'good' | 'bad' | 'neutral' };
 }
 
 /**
@@ -250,18 +256,22 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
 }
 
 /**
- * Ba card của `/outbox` (spec P4c §3-F7). Chỉ `sent` là cặp hai kỳ; hai card
- * còn lại là ẢNH CHỤP một số đơn (contract khai số, không khai cặp) nên KHÔNG
- * có pill delta — caption nói thẳng con số ấy đang chờ gì thay vì "vs …".
+ * Ba card của `/outbox` (spec P4c §3-F7). Cả ba là số ĐƠN, không card nào có
+ * pill delta (vòng vá review F7): `sent` không có kỳ trước vì purge 30 ngày
+ * xoá gần hết kỳ 28–56 ngày (một cặp ở đây là "↑1200%" bịa mỗi ngày);
+ * `queued`/`failed` là ảnh chụp. Caption nói thẳng con số đo gì thay vì
+ * "vs …".
  */
 export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
   const days = stats.period.windowDays;
 
   return [
-    // Gửi nhiều hơn vừa là nền tảng bận rộn hơn vừa chẳng nói gì về chất
-    // lượng — trung tính. (Kỳ trước còn bị purge 30 ngày cắt bớt — xem JSDoc
-    // `StatsService`; thêm lý do để không tô phán quyết lên nó.)
-    countCard('sent', t.outbox.sent(days), stats.sent, 'neutral', days),
+    {
+      key: 'sent',
+      label: t.outbox.sent(days),
+      value: formatCount(stats.sent),
+      caption: t.outbox.sentCaption(days),
+    },
     {
       key: 'queued',
       label: t.outbox.queued,
@@ -269,9 +279,8 @@ export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
       caption: t.outbox.queuedCaption,
     },
     // Failed > 0 là lời gọi NGƯỜI (chỉ admin retry mới đưa hàng rời FAILED):
-    // pill đỏ không mũi tên — không phải xu hướng, là trạng thái cần xử.
-    // Đây là chỗ spec để "quyết trong stats-view": tone đỏ đi qua chính cơ
-    // chế `deltaGood=false` của kit, không mở prop mới cho một consumer.
+    // pill đỏ dạng CALLOUT — trạng thái cần xử, không phải xu hướng. Kit có
+    // khe riêng cho nó (`callout`), không mượn `delta` nữa.
     {
       key: 'failed',
       label: t.outbox.failed,
@@ -279,12 +288,11 @@ export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
       caption: stats.failed > 0 ? t.outbox.failedCaption : t.outbox.failedCaptionNone,
       ...(stats.failed > 0
         ? {
-            delta: {
-              direction: 'flat' as const,
-              amount: t.outbox.needsAttention,
+            callout: {
+              label: t.outbox.needsAttention,
               srLabel: t.outbox.needsAttentionSr(formatCount(stats.failed)),
+              tone: 'bad' as const,
             },
-            deltaGood: false,
           }
         : {}),
     },

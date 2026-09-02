@@ -210,7 +210,7 @@ describe('ConfirmWriteDialog — khoá trong lúc bắn', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
-  it('không truyền noteId (retry outbox F7): không có ô note, onSubmit nhận chuỗi rỗng', async () => {
+  it('không truyền noteId (retry outbox F7): không có ô note, onSubmit gọi TRẦN (không note)', async () => {
     const onSubmit = vi.fn(async () => ({
       ok: true as const,
       toast: { title: 'Done', description: 'ok' },
@@ -229,6 +229,7 @@ describe('ConfirmWriteDialog — khoá trong lúc bắn', () => {
     );
     expect(screen.queryByRole('textbox')).toBeNull();
     await userEvent.click(screen.getByRole('button', { name: 'Do it' }));
-    expect(onSubmit).toHaveBeenCalledWith('');
+    // Kiểu props (vòng vá review F7) ép: không noteId ⇒ onSubmit không nhận note.
+    expect(onSubmit).toHaveBeenCalledWith();
   });
 });

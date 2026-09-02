@@ -48,6 +48,28 @@ export function firstParam(value: string | string[] | undefined): string | undef
 }
 
 /**
+ * Ô tìm kiếm từ URL/patch → giá trị sạch cho contract: trim, cắt đúng trần
+ * `max` của vùng (vượt trần là 400 ở server — thà cắt còn hơn vỡ), rỗng →
+ * `undefined` (không lọc). Một bản (vòng vá review F7 — bookings/reviews/
+ * cancellations/outbox từng chép `?.trim().slice(0, MAX)` bốn lần, mỗi bản
+ * xử "rỗng" hơi khác nhau).
+ */
+export function clampSearch(raw: string | undefined, max: number): string | undefined {
+  const trimmed = raw?.trim().slice(0, max);
+  return trimmed ? trimmed : undefined;
+}
+
+/**
+ * Luật patch của mọi hàm `*Href`: `undefined` = GIỮ giá trị hiện tại, `null`
+ * = XOÁ filter, còn lại là giá trị mới. Hai ý nghĩa khác nhau nên không gộp
+ * được — và là một bản duy nhất ở kit (vòng vá review F7: ba vùng viết ternary
+ * inline, một vùng viết lambda cục bộ — bốn cách nói cùng một luật).
+ */
+export function pickPatch<T>(patched: T | null | undefined, current: T | undefined): T | undefined {
+  return patched === undefined ? current : (patched ?? undefined);
+}
+
+/**
  * Phần phân trang của mọi query bảng admin.
  *
  * ⚠️ CẢNH BÁO CHO F4 (reviews): field tên `limit` vì HAI schema hiện tại

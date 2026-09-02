@@ -15,7 +15,10 @@ const t = messages.admin.cancellations.decide;
  * từng bị chép nguyên từ refund.ts → nâng lên `createWriteErrorCodec` ở review
  * F3 31/08.
  */
-const codec = createWriteErrorCodec(t.errors);
+// Mã trạng-thái-cũ khai NGAY trong codec (vòng vá review F7) — hết predicate tay.
+const codec = createWriteErrorCodec(t.errors, {
+  stale: ['NOT_FOUND', 'ALREADY_DECIDED', 'NOT_REFUNDABLE'],
+});
 
 export const DECIDE_CONTRACT_CODES = codec.codes;
 
@@ -33,9 +36,7 @@ export const decideErrorCopy = codec.copy;
  * REFUND_FAILED không thuộc nhóm này: provider từ chối, request còn nguyên
  * REQUESTED, thử lại tại chỗ là hợp lệ.
  */
-export function isStaleStateCode(code: DecideFailureCode): boolean {
-  return code === 'NOT_FOUND' || code === 'ALREADY_DECIDED' || code === 'NOT_REFUNDABLE';
-}
+export const isStaleStateCode = codec.isStale;
 
 /**
  * Kết quả server action decide. Sống ở LIB (không phải trong component) vì nó
