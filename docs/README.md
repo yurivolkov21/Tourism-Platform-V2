@@ -55,7 +55,7 @@ nguyên, di chuyển nguyên văn 03/08) ·
 
 | Phase | Spec | Trạng thái |
 | --- | --- | --- |
-| P4b polish | [2026-09-01-bookings-export-selection-design](specs/2026-09-01-bookings-export-selection-design.md) — Export theo lựa chọn cho `/bookings` (cột checkbox, nút Export vào bảng, `sel=` khoá trong trang đang xem, 409 khi trang đã đổi) + Quick Create trắng/hover teal; đi cùng [ADR-0027](adr/0027-admin-surface-palette.md) | 🔧 vòng polish UI 01–02/09 (nhánh `fix/p4b-ui-polish`) |
+| P4b polish | [2026-09-01-bookings-export-selection-design](specs/2026-09-01-bookings-export-selection-design.md) — Export theo lựa chọn cho `/bookings` (cột checkbox, nút Export vào bảng, `sel=` khoá trong trang đang xem, 409 khi trang đã đổi) + Quick Create trắng/hover teal; đi cùng [ADR-0027](adr/0027-admin-surface-palette.md) | ✅ đã merge 02/09 (`32dce27`, kèm vòng vá 10 findings — xem CHANGELOG) |
 | P1 API lõi | [2026-07-18-p1-api-core](specs/2026-07-18-p1-api-core.md) | ✅ đã merge |
 | P2 Money-path | [2026-07-18-p2-money-path](specs/2026-07-18-p2-money-path.md) | ✅ đã merge |
 | P3a API khách hàng | [2026-07-19-p3a-customer-api](specs/2026-07-19-p3a-customer-api.md) | ✅ đã merge (A+B+C). ⚠️ **Bất biến rating của gate ③ đã ĐẢO 31/07**: spec/code lúc merge lọc `source === VERIFIED` (loại CURATED) khi recompute `Tour.ratingAvg`; quyết định 31/07 đảo lại — mọi review đã duyệt có `tourId` (kể cả CURATED) đều tính, vì capstone không có khách thật nên CURATED là nguồn sao duy nhất. Đọc doc-comment `moderate()` trong `apps/api/src/modules/reviews/reviews.service.ts`, đừng đọc spec này như hiện trạng cho phần này |
@@ -108,7 +108,7 @@ nguyên, di chuyển nguyên văn 03/08) ·
 
 | Kế hoạch | Phủ | Trạng thái |
 | --- | --- | --- |
-| [P4b polish: Export theo lựa chọn `/bookings`](plans/2026-09-01-bookings-export-selection.md) | task-by-task cho spec cùng ngày | 🔧 vòng polish UI 01–02/09 (nhánh `fix/p4b-ui-polish`) |
+| [P4b polish: Export theo lựa chọn `/bookings`](plans/2026-09-01-bookings-export-selection.md) | task-by-task cho spec cùng ngày | ✅ đã merge 02/09 (`32dce27`, kèm vòng vá 10 findings — xem CHANGELOG) |
 | [P3b: Wizard 4 bước trang đặt chỗ + tách `/enquire`](plans/2026-08-19-checkout-wizard.md) | 9 task | ✅ đã merge 19/08 |
 | [P3b: Receipt thay tấm vé ở hai màn quay-về](plans/2026-08-19-receipt-success.md) | 5 task | ✅ đã merge 19/08 |
 | [P3a-A: Nền chung + Reviews](plans/2026-07-19-p3a-a-foundation-reviews.md) | W0 + W1 (6 task) | ✅ đã merge |

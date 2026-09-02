@@ -8,6 +8,45 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-02 — P4b polish: bề mặt admin, chọn hàng export, date picker + vòng vá (nhánh `fix/p4b-ui-polish`, 1 commit `32dce27`, 34 file)
+
+Vòng chỉnh chi tiết F1–F6 do user cầm ở session riêng (01/09, không commit
+— nghiệm thu trên working tree): [ADR-0027](adr/0027-admin-surface-palette.md)
+vỏ tối/ruột trắng lạnh khoanh vào `[data-admin-surface]` (không đụng
+`@tourism/tokens` dùng chung với web); [spec + plan export theo lựa
+chọn](specs/2026-09-01-bookings-export-selection-design.md) — nút Export vào
+ô tiêu đề bảng, cột checkbox, `sel=` khoá trong trang đang xem (route lấy MỘT
+trang rồi giao theo mã, không đổi contract), 409 khi trang đã đổi; ô ngày
+kiểu `date-picker-04` (Calendar/Popover có sẵn), nhãn nổi ô tìm kiếm, pill
+trạng thái có icon, `DecisionButton` vào kit (2 consumer), `motion` (cùng
+bản web) vào admin. Review 8 mũi → 10 findings (8 CONFIRMED · 2 PLAUSIBLE),
+user duyệt vá một mạch (cùng commit):
+
+- **Tiền đề "tích chết theo trang" sai**: đổi page/filter là soft navigation
+  cùng segment nên React giữ `useState` của bảng, và v9
+  `getIsSomeRowsSelected` đếm KEY chứ không đếm hàng — checkbox tiêu đề kẹt
+  `mixed` không gỡ được. Bảng nay tự đặt lại tích khi query đổi, ô "một phần"
+  đếm hàng đang hiện, `selectableTableFeatures` tách khỏi bộ chung. Export có
+  chọn trả 409 khi thiếu BẤT KỲ hàng nào đã tích (bản đầu chỉ chặn ca 0
+  hàng), kèm `includeMedia=false` + ngân sách 45s như export-all.
+- **Cơ chế đè token hở hai chỗ** (ADR-0027 §AMEND 02/09): script pre-paint
+  vẫn gắn `.dark` theo OS trong khi lớp đè khai 23/48 token — máy dark mode
+  từng có chữ gần-trắng trên nền gần-trắng ở badge/hover menu → gỡ script
+  (admin một diện mạo cố định); overlay portal ra `body` thoát khỏi lớp đè →
+  selector thêm `body:has([data-admin-surface])`, login vẫn tự miễn nhiễm.
+- **Ba component mới**: nút Export dừng vòng xáo khi nhãn đổi và tên khả truy
+  cập là nhãn thật (không còn "░▒#$%" cho screen reader); ô ngày — bấm icon
+  lịch không blur, focus đi vào lịch không chốt (hết "lịch đóng ngay khi vừa
+  mở"); `parseTypedDate` chặn ISO một phần khỏi `new Date` (UTC lệch một ngày
+  ở múi giờ âm); ô tìm kiếm `key` bọc cả cụm ô + state `focused`.
+- **Docs/luật 13**: spec + plan 01/09 vào bản đồ; plan sửa dòng "không thêm
+  dependency". Nợ ghi sổ: kit import full `motion/react` cho một viên pill
+  (LazyMotion/CSS thuần khi P4d chạm kit); highlight hàng đã tích, bản đồ
+  icon chép 6 file, registry `{style}` — chưa động.
+
+Tests after: 1417 web · 259 api · 223 api-int · 114 contract · 22 ui ·
+10 tokens · 2 i18n · 374 admin.
+
 ## 2026-09-01 — P4b F6: báo cáo tháng + Export CSV, đóng P4b 6/6 (nhánh `feat/p4b-reports-export`, 8 commit `0f773e2..1c46b4b`, ~50 file)
 
 Tính năng cuối P4b (user đặt hàng 31/08, 0 dependency mới — CSV tự dựng,
