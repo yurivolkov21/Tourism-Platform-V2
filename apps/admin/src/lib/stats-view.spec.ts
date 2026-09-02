@@ -1,9 +1,10 @@
-import type {
-  AdminBookingsStats,
-  AdminCancellationsStats,
-  AdminOutboxStats,
-  AdminPaymentEventsStats,
-  AdminReviewsStats,
+import {
+  type AdminBookingsStats,
+  type AdminCancellationsStats,
+  type AdminOutboxStats,
+  type AdminPaymentEventsStats,
+  type AdminReviewsStats,
+  PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
@@ -65,6 +66,7 @@ const PAYMENT_EVENTS: AdminPaymentEventsStats = {
   period,
   received: { current: 40, previous: 32 },
   unprocessed: 2,
+  stuck: 1,
   linked: { current: 30, previous: 30 },
 };
 
@@ -316,21 +318,33 @@ describe('toPaymentEventsStatCards (F8)', () => {
     expect(received.deltaGood).toBeUndefined();
   });
 
-  it('unprocessed > 0: ẢNH CHỤP một số đơn, CALLOUT đỏ qua khe riêng, không delta', () => {
+  it('có row KẸT: ẢNH CHỤP số đơn = unprocessed (khớp bảng), CALLOUT đỏ + caption nói số kẹt, không delta', () => {
     const unprocessed = card(toPaymentEventsStatCards(PAYMENT_EVENTS), 'unprocessed');
     expect(unprocessed.value).toBe('2');
-    expect(unprocessed.caption).toBe(t.paymentEvents.unprocessedCaption);
+    expect(unprocessed.caption).toBe(
+      t.paymentEvents.stuckCaption('1', PAYMENT_EVENT_STUCK_MINUTES),
+    );
     expect(unprocessed.delta).toBeUndefined();
     expect(unprocessed.callout).toEqual({
       label: t.paymentEvents.needsAttention,
-      srLabel: t.paymentEvents.needsAttentionSr('2'),
+      srLabel: t.paymentEvents.needsAttentionSr('1', PAYMENT_EVENT_STUCK_MINUTES),
       tone: 'bad',
     });
   });
 
+  it('unprocessed > 0 nhưng KHÔNG row nào kẹt (handler đang chạy): không callout, caption "provider sẽ retry"', () => {
+    const unprocessed = card(
+      toPaymentEventsStatCards({ ...PAYMENT_EVENTS, stuck: 0 }),
+      'unprocessed',
+    );
+    expect(unprocessed.value).toBe('2');
+    expect(unprocessed.callout).toBeUndefined();
+    expect(unprocessed.caption).toBe(t.paymentEvents.unprocessedCaption);
+  });
+
   it('unprocessed = 0: không callout, caption nói mọi delivery đã xong', () => {
     const unprocessed = card(
-      toPaymentEventsStatCards({ ...PAYMENT_EVENTS, unprocessed: 0 }),
+      toPaymentEventsStatCards({ ...PAYMENT_EVENTS, unprocessed: 0, stuck: 0 }),
       'unprocessed',
     );
     expect(unprocessed.callout).toBeUndefined();

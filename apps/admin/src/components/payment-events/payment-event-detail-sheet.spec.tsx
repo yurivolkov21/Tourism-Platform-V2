@@ -22,10 +22,8 @@ const ROW: PaymentEventRowVM = {
   typeLabel: t.type['payment.completed'],
   amount: '$117.00',
   bookingCode: 'BK-ABCD1234',
-  bookingHref: '/bookings/BK-ABCD1234',
   received: '1 Sep 2026, 10:00 UTC',
   processed: '1 Sep 2026, 10:00 UTC',
-  unprocessed: false,
 };
 
 const PAYLOAD = { id: 'evt_1Pabc123', data: { object: { amount_total: 11700 } } };
@@ -92,7 +90,7 @@ describe('PaymentEventDetailSheet', () => {
     const load = loader({ ok: false, code: 'GENERIC' });
     render(
       <PaymentEventDetailSheet
-        row={{ ...ROW, processed: null, unprocessed: true, bookingCode: null, bookingHref: null }}
+        row={{ ...ROW, processed: null, bookingCode: null }}
         onClose={vi.fn()}
         load={load}
       />,
@@ -149,5 +147,54 @@ describe('PaymentEventDetailSheet', () => {
       JSON.stringify({ marker: 'second' }, null, 2),
     );
     expect(load).toHaveBeenCalledTimes(2);
+  });
+
+  it('đổi hàng: frame ĐẦU của hàng mới đã là "đang tải", không lộ JSON của hàng cũ', async () => {
+    const load = vi.fn(
+      async (input: { id: string }): Promise<PaymentEventLoadResult> => ({
+        ok: true,
+        event: {
+          id: input.id,
+          provider: 'STRIPE',
+          eventId: input.id,
+          type: 'other',
+          amount: null,
+          currency: null,
+          bookingCode: null,
+          receivedAt: '2026-09-01T10:00:00.000Z',
+          processedAt: null,
+          payload: { marker: input.id },
+        },
+      }),
+    );
+    const { rerender } = render(
+      <PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />,
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId('json-drawer-json').textContent).toContain(ROW.id),
+    );
+    const secondId = '22222222-2222-4222-8222-222222222222';
+    rerender(
+      <PaymentEventDetailSheet
+        row={{ ...ROW, id: secondId, eventId: 'second' }}
+        onClose={vi.fn()}
+        load={load}
+      />,
+    );
+    // Đồng bộ ngay sau rerender — effect chưa chạy — đã phải là nhãn chờ.
+    expect(screen.getByText(t.detail.loading)).toBeInTheDocument();
+    expect(screen.queryByTestId('json-drawer-json')).not.toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByTestId('json-drawer-json').textContent).toContain(secondId),
+    );
+  });
+
+  it('loader NÉM (action đứt giữa chừng) → câu lỗi GENERIC, không treo ở "Loading…"', async () => {
+    const load = vi.fn(async (_input: { id: string }): Promise<PaymentEventLoadResult> => {
+      throw new Error('network');
+    });
+    render(<PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />);
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.detail.transportErrors.GENERIC);
+    expect(screen.queryByText(t.detail.loading)).not.toBeInTheDocument();
   });
 });

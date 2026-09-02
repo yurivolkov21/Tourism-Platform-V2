@@ -1,13 +1,9 @@
 import { PAYMENT_EVENT_TYPES } from '@tourism/contract';
 import { type PaymentEvent, Prisma } from '../../generated/prisma/client.js';
 import { PaymentProvider } from '../../generated/prisma/enums.js';
+import { REDACTED } from '../../lib/redact.js';
 import type { VerifiedEvent } from './gateway.js';
-import {
-  REDACTED,
-  redactPayload,
-  toPaymentEventDetail,
-  toPaymentEventRow,
-} from './payment-event-row.js';
+import { toPaymentEventDetail, toPaymentEventRow } from './payment-event-row.js';
 
 /**
  * Mapper THUẦN row Prisma `payment_events` → `PaymentEventRow`/`Detail` của
@@ -134,25 +130,17 @@ describe('redact credential trong payload provider', () => {
     expect(JSON.stringify(detail)).not.toContain('TOPSECRETVALUE');
   });
 
-  it('che theo TÊN khoá ở mọi độ sâu, kể cả trong mảng; khoá không bí mật cùng tên bố mẹ giữ nguyên', () => {
-    expect(
-      redactPayload({
-        links: [{ href: 'https://api.paypal.com/x', access_token: 'abc' }],
-        nested: { deeper: { api_key: 'k', password: 'p', token: 't', note: 'keep' } },
-        // `secret` là chuỗi con của tên nhưng KHÔNG phải khoá bí mật — không che.
-        secret_reason: 'visible',
-      }),
-    ).toEqual({
+  it('payload đi qua máy che dùng chung: PayPal links[].access_token bị che, href giữ (luật ở lib/redact.spec)', () => {
+    const detail = toPaymentEventDetail(
+      {
+        ...base,
+        payload: { links: [{ href: 'https://api.paypal.com/x', access_token: 'abc' }] },
+      },
+      null,
+    );
+    expect(detail.payload).toEqual({
       links: [{ href: 'https://api.paypal.com/x', access_token: REDACTED }],
-      nested: { deeper: { api_key: REDACTED, password: REDACTED, token: REDACTED, note: 'keep' } },
-      secret_reason: 'visible',
     });
-  });
-
-  it('payload vô hướng/null/mảng ngoài cùng đi qua nguyên vẹn (FakeGateway ghi `{fake:true}`, luôn là object)', () => {
-    expect(redactPayload('plain')).toBe('plain');
-    expect(redactPayload(null)).toBeNull();
-    expect(redactPayload([1, { token: 'x' }])).toEqual([1, { token: REDACTED }]);
   });
 
   it('email/tên khách trong customer_details KHÔNG bị che — PII hiện theo spec §2.3 (bảng bookings đã hiện)', () => {

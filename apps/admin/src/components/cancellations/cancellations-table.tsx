@@ -4,10 +4,10 @@ import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanst
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { CalendarIcon, MapPinIcon, MessageSquareTextIcon, TagIcon, UserIcon } from 'lucide-react';
-import Link from 'next/link';
 import * as React from 'react';
 import { CancellationsStatusTabs } from '@/components/cancellations/cancellations-toolbar';
 import { DecideActions } from '@/components/cancellations/decide-actions';
+import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
@@ -66,12 +66,10 @@ function buildColumns(decide: DecideAction) {
       // Link chéo sang chi tiết booking (§3-F3): quyết xong thường muốn soi
       // ngay sổ cái refund. Cột này không ẩn được — nó là đường ra duy nhất.
       cell: ({ row }) => (
-        <Link
-          href={row.original.bookingHref}
-          className="font-medium text-foreground underline-offset-4 hover:underline"
-        >
-          {row.original.bookingCode}
-        </Link>
+        <BookingLink
+          code={row.original.bookingCode}
+          fallback={messages.admin.bookings.detail.empty}
+        />
       ),
       enableHiding: false,
     }),

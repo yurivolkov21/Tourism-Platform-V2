@@ -1,5 +1,6 @@
 import type { PaymentEventDetail, PaymentEventRow } from '@tourism/contract';
 import type { PaymentEvent } from '../../generated/prisma/client.js';
+import { redactDeep } from '../../lib/redact.js';
 
 /**
  * Row Prisma `payment_events` → `PaymentEventRow` / `PaymentEventDetail` của
@@ -28,46 +29,13 @@ import type { PaymentEvent } from '../../generated/prisma/client.js';
  * - PII khách (`customer_details.email/name`, `payer`) HIỆN theo spec §2.3:
  *   admin đã thấy email ở bảng bookings; chỉ cấm chép vào log server.
  *
- * Nên: che theo TÊN khoá ở MỌI độ sâu (khác outbox chỉ che tầng ngoài —
- * payload provider lồng `data.object.*`), một tập tên credential thông dụng
- * để event/provider mới mang `client_secret`/`access_token` cũng tự được che
- * mà không phải nhớ thêm vào danh sách. Redact ở MAPPER (một chỗ, cả `byId`
- * đi qua) chứ không ở UI.
+ * Nên: che theo TÊN khoá ở MỌI độ sâu (payload provider lồng `data.object.*`)
+ * bằng máy che DÙNG CHUNG `lib/redact.ts` (vòng vá review F8 — outbox cũng
+ * đi qua nó; tập khoá là hợp của hai vùng, nên `url` của hosted checkout
+ * cũng bị che dù không phải credential — chấp nhận: một luật cho cả hai bề
+ * mặt đáng hơn một URL Stripe đã null sau khi session xong). Redact ở MAPPER
+ * (một chỗ, cả `byId` đi qua) chứ không ở UI.
  */
-
-/** Khoá payload có thể mang credential — che ở mọi độ sâu, mọi provider. */
-export const SECRET_PAYLOAD_KEYS: ReadonlySet<string> = new Set([
-  'client_secret',
-  'secret',
-  'access_token',
-  'refresh_token',
-  'api_key',
-  'password',
-  'token',
-]);
-
-export const REDACTED = '[redacted]';
-
-/**
- * Che khoá bí mật đệ quy. Object mới được dựng thay vì sửa tại chỗ — payload
- * Prisma trả có thể được cache/đọc lại ở nơi khác.
- */
-export function redactPayload(payload: PaymentEvent['payload']): PaymentEventDetail['payload'] {
-  // Cùng một tập giá trị JSON, hai cách gõ: Prisma khai `JsonArray` là
-  // interface kế thừa Array nên TS không khớp nó với union đệ quy `JSONType`
-  // của `z.json()`. Cast là khớp DANH NGHĨA, không đổi giá trị.
-  return redactValue(payload) as PaymentEventDetail['payload'];
-}
-
-function redactValue(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(redactValue);
-  if (value === null || typeof value !== 'object') return value;
-  const out: Record<string, unknown> = {};
-  for (const [key, child] of Object.entries(value)) {
-    out[key] = SECRET_PAYLOAD_KEYS.has(key) ? REDACTED : redactValue(child);
-  }
-  return out;
-}
 
 /** Phần row mà bảng cần — list SELECT bỏ `payload` nên nhận kiểu không có nó. */
 export type PaymentEventListRow = Omit<PaymentEvent, 'payload'>;
@@ -95,5 +63,10 @@ export function toPaymentEventDetail(
   row: PaymentEvent,
   bookingCode: string | null,
 ): PaymentEventDetail {
-  return { ...toPaymentEventRow(row, bookingCode), payload: redactPayload(row.payload) };
+  return {
+    ...toPaymentEventRow(row, bookingCode),
+    // Cùng một tập giá trị JSON, hai cách gõ: máy che trả `unknown`, contract
+    // khai union đệ quy `JSONType` của `z.json()`. Cast là khớp DANH NGHĨA.
+    payload: redactDeep(row.payload) as PaymentEventDetail['payload'],
+  };
 }

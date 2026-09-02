@@ -2717,10 +2717,17 @@ export const messages = {
         /** Ảnh chụp không có delta — caption nói row ấy đang ở đâu. */
         unprocessedCaption: 'Received, handler not finished — the provider will retry',
         unprocessedCaptionNone: 'Every delivery has been handled',
+        /**
+         * Caption khi có row KẸT (chưa xong quá `PAYMENT_EVENT_STUCK_MINUTES`
+         * phút — vòng vá review F8): provider đã retry mà vẫn không xong.
+         */
+        stuckCaption: (count: string, minutes: number) =>
+          `${count} stuck for more than ${minutes} min — the provider's retries did not finish`,
         linked: (days: number) => `Linked to a booking ${days}d`,
-        /** Pill đỏ trên card Unprocessed khi > 0 — không mũi tên, chỉ là lời gọi. */
+        /** Pill đỏ trên card Unprocessed CHỈ khi có row kẹt — không mũi tên, chỉ là lời gọi. */
         needsAttention: 'Needs attention',
-        needsAttentionSr: (count: string) => `${count} payment events are still unprocessed`,
+        needsAttentionSr: (count: string, minutes: number) =>
+          `${count} payment events have been unprocessed for more than ${minutes} minutes`,
       },
     },
     /**
@@ -3350,6 +3357,9 @@ export const messages = {
          * Tooltip của badge — nghĩa CHÍNH XÁC của `processedAt` null theo
          * `PaymentsService.beginEvent`: đã ghi sổ, handler chưa chạy xong,
          * lượt retry của provider sẽ chạy lại (idempotent cấp booking).
+         * Chỉ đi qua `TooltipContent` (vòng vá review F8: bản đầu đặt thêm
+         * `title` cùng chuỗi → trình đọc màn hình đọc hai lần, hover hiện
+         * hai bong bóng).
          */
         unprocessedHint:
           'Received and recorded, but the handler has not finished — the provider will retry this delivery.',
@@ -3385,12 +3395,19 @@ export const messages = {
         payload: 'Provider payload (JSON)',
         loading: 'Loading payload…',
         /**
-         * Lỗi tải payload — giọng ĐỌC, không mượn `errors.write` (câu đó cố ý
-         * mập mờ "có thể đã đi qua" vì nói về hành vi ghi; ở đây không có gì
-         * để lỡ đi qua). `NOT_FOUND` là mã contract; ba mã còn lại là transport.
+         * Mã CONTRACT của `admin.paymentEvents.byId` — CHỈ mã contract ở
+         * khối này (codec derive tập mã từ khoá, test đối chiếu `errorMap`).
          */
         errors: {
           NOT_FOUND: 'This payment event no longer exists — the list may be out of date.',
+        },
+        /**
+         * Câu transport giọng ĐỌC, không mượn `errors.write` (câu đó cố ý
+         * mập mờ "có thể đã đi qua" vì nói về hành vi ghi; ở đây không có gì
+         * để lỡ đi qua). Tách khỏi `errors` để tập mã contract không lẫn mã
+         * transport (vòng vá review F8).
+         */
+        transportErrors: {
           UNAUTHORIZED: 'Your session has expired. Sign in again to load the payload.',
           FORBIDDEN: 'Your account no longer has admin access.',
           GENERIC: 'The payload could not be loaded. Close the panel and try again.',

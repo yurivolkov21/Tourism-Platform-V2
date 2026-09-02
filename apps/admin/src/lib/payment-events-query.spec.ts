@@ -23,16 +23,19 @@ describe('parsePaymentEventsSearchParams', () => {
     expect(parsePaymentEventsSearchParams({ provider: 'SQUARE' })).toEqual({ page: 1, limit: 20 });
   });
 
-  it('type chỉ nhận bốn type gateway biết (Select liệt kê đúng tập đó); chuỗi lạ bị BỎ', () => {
+  it('type là CHUỖI TỰ DO như contract: type lạ vẫn lọc (cột DB không phải enum); trim, rỗng bỏ, cắt trần 100', () => {
     expect(parsePaymentEventsSearchParams({ type: 'payment.failed' })).toEqual({
       page: 1,
       limit: 20,
       type: 'payment.failed',
     });
-    expect(parsePaymentEventsSearchParams({ type: 'checkout.session.completed' })).toEqual({
+    expect(parsePaymentEventsSearchParams({ type: ' payment.chargeback ' })).toEqual({
       page: 1,
       limit: 20,
+      type: 'payment.chargeback',
     });
+    expect(parsePaymentEventsSearchParams({ type: '  ' })).toEqual({ page: 1, limit: 20 });
+    expect(parsePaymentEventsSearchParams({ type: 'x'.repeat(130) }).type).toHaveLength(100);
   });
 
   it('q → search: trim, rỗng thì không lọc, quá dài cắt đúng trần 120', () => {

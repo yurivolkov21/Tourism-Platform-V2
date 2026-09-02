@@ -1,8 +1,8 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import Link from 'next/link';
 import * as React from 'react';
+import { BookingLink } from '@/components/kit/booking-link';
 import { JsonDrawer, JsonDrawerField, JsonDrawerFields } from '@/components/kit/json-drawer';
 import { UnprocessedBadge } from '@/components/payment-events/unprocessed-badge';
 import {
@@ -19,8 +19,14 @@ import type { PaymentEventRowVM } from '@/lib/payment-events-view';
  * prop — client component không tự import server action, nếp F2) và đi qua
  * ba trạng thái tải của kit. Các field bảng thì có sẵn trong VM, hiện ngay.
  *
- * Kết quả về muộn của hàng đã đóng/đã đổi bị bỏ qua (so id lúc về với id
- * đang mở) — bấm nhanh hai hàng không được để hàng cũ ghi đè hàng mới.
+ * Trạng thái tải GẮN VỚI ID (vòng vá review F8): `state.id` là hàng mà
+ * kết quả thuộc về; render chỉ tin nó khi trùng `rowId` đang mở, còn lại coi
+ * như đang tải. Nhờ đó (a) đổi từ hàng A sang hàng B không có một frame in
+ * JSON của A dưới tiêu đề B (effect chạy SAU paint, `setState(loading)`
+ * trong effect là quá muộn cho frame đầu), (b) kết quả A về muộn không ghi
+ * đè B — cùng lưới `current` chặn set sau cleanup. Loader ném (server action
+ * đứt mạng, action throw) đi vào nhánh lỗi GENERIC thay vì để drawer treo ở
+ * "Loading…" vô hạn.
  *
  * Bảng giữ MỘT instance, truyền hàng đang mở qua `row` — 50 hàng không mount
  * 50 sheet.
@@ -28,9 +34,9 @@ import type { PaymentEventRowVM } from '@/lib/payment-events-view';
 const t = messages.admin.paymentEvents;
 
 type LoadState =
-  | { status: 'loading' }
-  | { status: 'ready'; payload: unknown }
-  | { status: 'error'; message: string };
+  | { id: string; status: 'loading' }
+  | { id: string; status: 'ready'; payload: unknown }
+  | { id: string; status: 'error'; message: string };
 
 export function PaymentEventDetailSheet({
   row,
@@ -42,25 +48,32 @@ export function PaymentEventDetailSheet({
   onClose: () => void;
   load: PaymentEventLoader;
 }) {
-  const [state, setState] = React.useState<LoadState>({ status: 'loading' });
+  const [state, setState] = React.useState<LoadState | null>(null);
   const rowId = row?.id ?? null;
 
   React.useEffect(() => {
     if (rowId === null) return;
     let current = true;
-    setState({ status: 'loading' });
-    load({ id: rowId }).then((result: PaymentEventLoadResult) => {
-      if (!current) return;
-      setState(
-        result.ok
-          ? { status: 'ready', payload: result.event.payload }
-          : { status: 'error', message: loadErrorCopy(result.code) },
-      );
-    });
+    load({ id: rowId })
+      .then((result: PaymentEventLoadResult) => {
+        if (!current) return;
+        setState(
+          result.ok
+            ? { id: rowId, status: 'ready', payload: result.event.payload }
+            : { id: rowId, status: 'error', message: loadErrorCopy(result.code) },
+        );
+      })
+      .catch(() => {
+        if (!current) return;
+        setState({ id: rowId, status: 'error', message: loadErrorCopy('GENERIC') });
+      });
     return () => {
       current = false;
     };
   }, [rowId, load]);
+
+  // Chỉ tin state của ĐÚNG hàng đang mở; state của hàng khác là "đang tải".
+  const view: LoadState | null = state && state.id === rowId ? state : null;
 
   return (
     <JsonDrawer
@@ -69,9 +82,9 @@ export function PaymentEventDetailSheet({
       title={t.detail.title}
       description={row ? t.detail.description(row.eventId) : ''}
       jsonLabel={t.detail.payload}
-      json={state.status === 'ready' ? state.payload : undefined}
+      json={view?.status === 'ready' ? view.payload : undefined}
       loadingLabel={t.detail.loading}
-      error={state.status === 'error' ? state.message : null}
+      error={view?.status === 'error' ? view.message : null}
     >
       {row ? (
         <JsonDrawerFields>
@@ -83,18 +96,7 @@ export function PaymentEventDetailSheet({
           />
           <JsonDrawerField
             label={t.detail.booking}
-            value={
-              row.bookingHref && row.bookingCode ? (
-                <Link
-                  href={row.bookingHref}
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
-                >
-                  {row.bookingCode}
-                </Link>
-              ) : (
-                <span className="text-muted-foreground">{t.list.noBooking}</span>
-              )
-            }
+            value={<BookingLink code={row.bookingCode} fallback={t.list.noBooking} />}
           />
           <JsonDrawerField label={t.detail.received} value={row.received} />
           <JsonDrawerField

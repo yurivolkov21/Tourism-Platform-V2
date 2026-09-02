@@ -33,14 +33,12 @@ describe('toPaymentEventRowVM', () => {
       typeLabel: t.type['payment.completed'],
       amount: '$117.00',
       bookingCode: 'BK-ABCD1234',
-      bookingHref: '/bookings/BK-ABCD1234',
       received: '1 Sep 2026, 10:00 UTC',
       processed: '1 Sep 2026, 10:00 UTC',
-      unprocessed: false,
     });
   });
 
-  it('event `other` chưa xử lý: amount/booking null giữ null (bảng tự chọn chữ thay), unprocessed = true', () => {
+  it('event `other` chưa xử lý: amount/booking/processed null giữ null (bảng tự chọn chữ thay)', () => {
     const vm = toPaymentEventRowVM({
       ...COMPLETED,
       type: 'other',
@@ -53,9 +51,7 @@ describe('toPaymentEventRowVM', () => {
       typeLabel: t.type.other,
       amount: null,
       bookingCode: null,
-      bookingHref: null,
       processed: null,
-      unprocessed: true,
     });
   });
 

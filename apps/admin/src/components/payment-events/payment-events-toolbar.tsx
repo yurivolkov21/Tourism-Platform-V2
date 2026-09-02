@@ -1,11 +1,14 @@
 'use client';
 
-import { PAYMENT_EVENT_TYPES, PaymentProviderSchema } from '@tourism/contract';
+import {
+  PAYMENT_EVENT_TYPES,
+  PaymentEventTypeSchema,
+  PaymentProviderSchema,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Toggle } from '@tourism/ui/components/toggle';
 import { CircleDashedIcon, CreditCardIcon, ListIcon, WalletIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { z } from 'zod';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
@@ -24,7 +27,6 @@ const t = messages.admin.paymentEvents;
 
 /** Nguồn danh sách = enum/tuple contract, không chép tay lần hai. */
 const PROVIDERS = PaymentProviderSchema.options;
-const PaymentEventTypeSchema = z.enum(PAYMENT_EVENT_TYPES);
 
 /** Icon theo provider — `Record` trên enum để quên một member là đỏ ở typecheck. */
 const PROVIDER_ICONS: Record<(typeof PROVIDERS)[number], typeof CreditCardIcon> = {
@@ -68,18 +70,25 @@ export function PaymentEventsProviderTabs({ query }: { query: PaymentEventsQuery
 }
 
 /**
- * Lọc theo type — Select (quyết định tự chọn F8): tập type HỮU HẠN bốn giá
- * trị của gateway (`PAYMENT_EVENT_TYPES`), đủ nhỏ để liệt kê và đủ khác nhau
- * để operator chọn thay vì gõ; ô tìm dành cho eventId — thứ không liệt kê
- * được.
+ * Lọc theo type — Select (quyết định tự chọn F8): tập type gateway biết
+ * (`PAYMENT_EVENT_TYPES`) đủ nhỏ để liệt kê và đủ khác nhau để operator chọn
+ * thay vì gõ; ô tìm dành cho eventId — thứ không liệt kê được.
+ *
+ * Cột DB là chuỗi tự do (vòng vá review F8): một `?type=` NGOÀI tuple vẫn
+ * lọc thật ở API, nên Select phải HIỆN đúng giá trị đó — thêm một mục tạm
+ * (nhãn = chuỗi thô) thay vì nhảy về "All" trong khi bảng đang lọc theo thứ
+ * khác. Giá trị đi thẳng lên URL; trần độ dài do `payment-events-query` cắt.
  */
 export function PaymentEventsTypeSelect({ query }: { query: PaymentEventsQuery }) {
   const router = useRouter();
   const value = query.type ?? ALL;
+  const items =
+    query.type && !PaymentEventTypeSchema.safeParse(query.type).success
+      ? [...TYPE_ITEMS, { label: query.type, value: query.type }]
+      : TYPE_ITEMS;
 
   function go(next: string) {
-    const parsed = PaymentEventTypeSchema.safeParse(next);
-    router.push(paymentEventsHref(query, { type: parsed.success ? parsed.data : null }));
+    router.push(paymentEventsHref(query, { type: next === ALL ? null : next }));
   }
 
   return (
@@ -87,7 +96,7 @@ export function PaymentEventsTypeSelect({ query }: { query: PaymentEventsQuery }
       id="payment-events-type-selector"
       label={t.list.typeLabel}
       value={value}
-      items={TYPE_ITEMS}
+      items={items}
       onSelect={go}
     />
   );

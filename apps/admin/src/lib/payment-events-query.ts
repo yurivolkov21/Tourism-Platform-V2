@@ -1,10 +1,4 @@
-import {
-  PAYMENT_EVENT_TYPES,
-  type PaymentEventTypeValue,
-  PaymentProviderSchema,
-  type PaymentProviderValue,
-} from '@tourism/contract';
-import { z } from 'zod';
+import { PaymentProviderSchema, type PaymentProviderValue } from '@tourism/contract';
 import {
   appendPaging,
   clampSearch,
@@ -22,7 +16,10 @@ import {
  * contract; bảng client đổi trang/filter bằng điều hướng, KHÔNG fetch từ
  * browser.
  *
- * Bốn filter: `provider` (tab), `type` (Select từ `PAYMENT_EVENT_TYPES`),
+ * Bốn filter: `provider` (tab), `type` (Select liệt kê `PAYMENT_EVENT_TYPES`
+ * nhưng nhận CHUỖI TỰ DO như contract — vòng vá review F8: cột DB là
+ * varchar, gateway thêm type thứ năm thì `?type=` gõ tay vẫn phải lọc được;
+ * Select tự thêm một mục cho giá trị ngoài tuple để không hiện nhầm "All"),
  * `q` (tìm eventId), `unprocessed` (toggle — `?unprocessed=true`). Phân trang
  * + luật patch/clamp dùng chung `table-query.ts`.
  */
@@ -30,41 +27,37 @@ import {
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
 
-/**
- * Admin CHỈ nhận bốn type gateway biết dù contract cho chuỗi tự do: Select
- * liệt kê đúng tập này, và một `?type=` gõ tay ngoài tập sẽ chọn nhầm mục
- * "All" trên Select trong khi bảng lọc theo thứ khác — cùng lỗi mà kit
- * `ALL_FILTER_VALUE` từng chặn ở F4. Giá trị lạ rơi về không lọc.
- */
-const PaymentEventTypeParamSchema = z.enum(PAYMENT_EVENT_TYPES);
+/** Trần `type` của contract (`z.string().max(100)` — cột `varchar(100)`). */
+const TYPE_MAX_LENGTH = 100;
 
 /** Input đã sạch cho `admin.paymentEvents.list` (khớp AdminPaymentEventsListQuerySchema). */
 export interface PaymentEventsQuery {
   page: number;
   limit: number;
   provider?: PaymentProviderValue;
-  type?: PaymentEventTypeValue;
+  /** Chuỗi tự do đã trim/cắt trần — thường là một trong `PAYMENT_EVENT_TYPES`. */
+  type?: string;
   search?: string;
   /** Chỉ có mặt khi `true` — cờ "chỉ hàng chưa xong", không phải trạng thái hai chiều. */
   unprocessed?: true;
 }
 
 /**
- * URL là thứ NGƯỜI gõ được: page rác → 1, provider/type ngoài tập → bỏ
- * filter, `q` rỗng → không lọc, `q` quá dài → cắt đúng trần, `unprocessed`
+ * URL là thứ NGƯỜI gõ được: page rác → 1, provider ngoài enum → bỏ filter,
+ * `type`/`q` rỗng → không lọc, quá dài → cắt đúng trần, `unprocessed`
  * chỉ nhận đúng chữ `true` (một cờ boolean không có "1"/"yes" — đó là chỗ
  * mà hai người đọc URL hiểu hai kiểu). Không ném 400 lên API.
  */
 export function parsePaymentEventsSearchParams(raw: RawSearchParams): PaymentEventsQuery {
   const provider = PaymentProviderSchema.safeParse(firstParam(raw.provider));
-  const type = PaymentEventTypeParamSchema.safeParse(firstParam(raw.type));
+  const type = clampSearch(firstParam(raw.type), TYPE_MAX_LENGTH);
   const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
   const unprocessed = firstParam(raw.unprocessed) === 'true';
 
   return {
     ...parsePaging(raw),
     ...(provider.success ? { provider: provider.data } : {}),
-    ...(type.success ? { type: type.data } : {}),
+    ...(type ? { type } : {}),
     ...(search ? { search } : {}),
     ...(unprocessed ? { unprocessed: true } : {}),
   };
@@ -79,7 +72,7 @@ export interface PaymentEventsHrefPatch {
   page?: number;
   limit?: number;
   provider?: PaymentProviderValue | null;
-  type?: PaymentEventTypeValue | null;
+  type?: string | null;
   search?: string | null;
   unprocessed?: boolean | null;
 }
@@ -94,7 +87,7 @@ export function paymentEventsHref(
   patch: PaymentEventsHrefPatch,
 ): string {
   const provider = pickPatch(patch.provider, current.provider);
-  const type = pickPatch(patch.type, current.type);
+  const type = clampSearch(pickPatch(patch.type, current.type), TYPE_MAX_LENGTH);
   const search = clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH);
   const unprocessed = pickPatch(patch.unprocessed, current.unprocessed) === true;
 

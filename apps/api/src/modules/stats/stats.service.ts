@@ -1,10 +1,11 @@
 import { Injectable } from '@nestjs/common';
-import type {
-  AdminBookingsStats,
-  AdminCancellationsStats,
-  AdminOutboxStats,
-  AdminPaymentEventsStats,
-  AdminReviewsStats,
+import {
+  type AdminBookingsStats,
+  type AdminCancellationsStats,
+  type AdminOutboxStats,
+  type AdminPaymentEventsStats,
+  type AdminReviewsStats,
+  PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { CancellationRequestStatus, OutboxStatus } from '../../generated/prisma/enums.js';
@@ -144,18 +145,27 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   nhau để thấy tỉ lệ "webhook mồ côi". Cột không có FK nên `booking_id` có
  *   thể trỏ tới booking đã không còn — ở đây vẫn đếm là "gắn" (nó ĐÃ gắn lúc
  *   nhận); còn list thì in `bookingCode` null cho row đó.
- *   Admin cache 60s theo tag (khác outbox): kẻ đổi sổ là webhook, không có
- *   hành vi ghi admin nào cần `updateTag`, và 60s trễ trên một sổ chỉ đọc là
- *   chấp nhận được.
+ * - `stuck` — trong `unprocessed`, row có `received_at` cũ hơn
+ *   `PAYMENT_EVENT_STUCK_MINUTES` phút (vòng vá review F8). Null trong vài
+ *   giây đầu là handler ĐANG chạy — bình thường; còn đó sau ngưỡng, tức
+ *   provider đã retry ít nhất một lượt mà vẫn không xong, mới là "kẹt". Card
+ *   chỉ kêu đỏ theo số này; `unprocessed` giữ nguyên nghĩa "khớp bảng".
+ *   Admin KHÔNG cache (cùng luật outbox, vòng vá review F8): kẻ đổi sổ là
+ *   webhook ngoài vòng `updateTag`, mà bảng bên dưới đọc tươi mỗi lần điều
+ *   hướng — card cache 60s đứng cạnh bảng tươi là hai con số "unprocessed"
+ *   khác nhau trên cùng một màn hình.
  *
  * ## Index
  *
- * CỐ Ý chưa thêm index nào cho bốn cột lọc theo thời gian (`bookings.paid_at`,
+ * CỐ Ý chưa thêm index nào cho các cột lọc theo thời gian (`bookings.paid_at`,
  * `cancellation_requests.decided_at`, `reviews.moderated_at`,
  * `outbox.processed_at` — index sẵn có `[status, created_at]` chỉ phủ vế
- * status). Ở cỡ dữ liệu hiện tại (hàng trăm row) seq scan rẻ hơn cả việc bảo
- * trì index, và một migration mới phải deploy tay lên Supabase dùng chung
- * dev/prod. Ngưỡng để xem lại: khi một trong bốn bảng vượt ~10k row — `outbox`
+ * status; `payment_events.received_at` — index sẵn có `[provider, received_at]`
+ * chỉ dùng được khi lọc provider, còn ảnh chụp `processed_at IS NULL` là ứng
+ * viên cho một partial index khi tới ngưỡng). Ở cỡ dữ liệu hiện tại (hàng
+ * trăm row) seq scan rẻ hơn cả việc bảo trì index, và một migration mới phải
+ * deploy tay lên Supabase dùng chung
+ * dev/prod. Ngưỡng để xem lại: khi một trong năm bảng vượt ~10k row — `outbox`
  * là bảng ghi kiểu hàng đợi (mỗi booking/enquiry/newsletter một row) nên sẽ
  * chạm ngưỡng trước, dù retention 30 ngày che bớt khi nhìn `count(*)`.
  */
@@ -255,19 +265,26 @@ export class StatsService {
 
   /** Bộ số vùng `/payment-events` (F8) — hai lát kỳ + một count ảnh chụp, song song. */
   async adminPaymentEvents(): Promise<AdminPaymentEventsStats> {
-    const window = statsWindow(new Date());
-    const [current, previous, unprocessed] = await Promise.all([
+    const now = new Date();
+    const window = statsWindow(now);
+    const stuckBefore = new Date(now.getTime() - PAYMENT_EVENT_STUCK_MINUTES * 60_000);
+    const [current, previous, unprocessed, stuck] = await Promise.all([
       paymentEventsSlice(window.currentFrom, window.generatedAt),
       paymentEventsSlice(window.previousFrom, window.currentFrom),
       // Ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
       // `/payment-events?unprocessed=true`, kể cả row rất cũ.
       prisma.paymentEvent.count({ where: { processedAt: null } }),
+      // "Kẹt" = chưa xong VÀ đã nhận từ trước ngưỡng — xem JSDoc lớp.
+      prisma.paymentEvent.count({
+        where: { processedAt: null, receivedAt: { lt: stuckBefore } },
+      }),
     ]);
 
     return {
       period: statsPeriod(window),
       received: { current: current.received, previous: previous.received },
       unprocessed,
+      stuck,
       linked: { current: current.linked, previous: previous.linked },
     };
   }

@@ -5,8 +5,13 @@ import {
   PAYMENT_EVENT_TYPES,
   PaymentEventDetailSchema,
   PaymentEventRowSchema,
+  PaymentEventTypeSchema,
 } from './payment-events.js';
-import { AdminPaymentEventsStatsSchema, STATS_WINDOW_DAYS } from './stats.js';
+import {
+  AdminPaymentEventsStatsSchema,
+  PAYMENT_EVENT_STUCK_MINUTES,
+  STATS_WINDOW_DAYS,
+} from './stats.js';
 
 /**
  * Contract vùng payment events (spec P4c §3-F8) — sổ webhook Stripe/PayPal,
@@ -27,6 +32,13 @@ const validRow = {
   receivedAt: '2026-09-01T10:00:00.000Z',
   processedAt: '2026-09-01T10:00:01.000Z',
 };
+
+describe('PaymentEventTypeSchema', () => {
+  it('enum của đúng tuple — Select admin hỏi "gateway có biết type này không" qua nó', () => {
+    expect([...PaymentEventTypeSchema.options]).toEqual([...PAYMENT_EVENT_TYPES]);
+    expect(PaymentEventTypeSchema.safeParse('payment.chargeback').success).toBe(false);
+  });
+});
 
 describe('PAYMENT_EVENT_TYPES', () => {
   it('là bốn type trung lập provider mà gateway phát ra — nguồn của Select lọc admin', () => {
@@ -145,14 +157,20 @@ describe('AdminPaymentEventsStatsSchema', () => {
     generatedAt: '2026-09-01T00:00:00.000Z',
   };
 
-  it('received/linked là CẶP hai kỳ (neo receivedAt); unprocessed là ẢNH CHỤP một số đơn', () => {
+  it('received/linked là CẶP hai kỳ (neo receivedAt); unprocessed/stuck là ẢNH CHỤP số đơn', () => {
     const stats = {
       period,
       received: { current: 40, previous: 35 },
       unprocessed: 2,
+      stuck: 1,
       linked: { current: 30, previous: 28 },
     };
     expect(AdminPaymentEventsStatsSchema.parse(stats)).toEqual(stats);
+    // `stuck` là BẮT BUỘC (vòng vá review F8) — thiếu nó card không biết khi nào kêu đỏ.
+    expect(AdminPaymentEventsStatsSchema.safeParse({ ...stats, stuck: undefined }).success).toBe(
+      false,
+    );
+    expect(PAYMENT_EVENT_STUCK_MINUTES).toBe(5);
     // Ảnh chụp không có kỳ trước để so — một cặp ở đây là số bịa (luật F5/F7).
     expect(
       AdminPaymentEventsStatsSchema.safeParse({

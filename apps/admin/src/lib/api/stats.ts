@@ -63,16 +63,16 @@ export async function fetchAdminOutboxStats(cookie: string): Promise<AdminOutbox
 }
 
 /**
- * F8 — CÓ cache 60s theo tag như ba vùng đầu, KHÁC outbox: kẻ đổi sổ
- * payment events là WEBHOOK của provider (không có worker drain mỗi phút,
- * không có hành vi ghi admin nào), nên "tươi ngay sau khi chính mình ghi"
- * không đặt ra, còn 60s trễ cho một sổ chỉ đọc là chấp nhận được — và nó
- * giữ hàng card khỏi refetch trên mọi click phân trang/lọc (vòng vá F5).
- * Ảnh chụp `unprocessed` có thể lệch bảng tối đa 60s; caption đã nói đây là
- * con số provider tự dọn bằng retry, không phải hàng đợi admin phải bấm.
+ * F8 — KHÔNG cache, cùng luật outbox (vòng vá review F8; bản đầu cache 60s
+ * theo tag). Kẻ đổi sổ là WEBHOOK của provider — ngoài mọi `updateTag` của
+ * admin — mà bảng bên dưới đọc tươi ở mỗi lần điều hướng: card "Unprocessed
+ * now" cache 60s đứng cạnh một bảng tươi là hai con số khác nhau về cùng
+ * một thứ trên cùng một màn hình, đúng chỗ contract hứa "đúng bằng
+ * `?unprocessed=true`". Hai query đếm mỗi lần render là giá chấp nhận được
+ * cho một bảng cỡ này.
  */
 export async function fetchAdminPaymentEventsStats(
   cookie: string,
 ): Promise<AdminPaymentEventsStats> {
-  return api.admin.stats.paymentEvents(undefined, { context: statsContext(cookie) });
+  return api.admin.stats.paymentEvents(undefined, { context: withAdminAuth(cookie) });
 }

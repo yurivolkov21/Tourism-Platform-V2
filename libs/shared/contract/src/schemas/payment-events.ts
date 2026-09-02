@@ -34,6 +34,14 @@ export const PAYMENT_EVENT_TYPES = [
 export type PaymentEventTypeValue = (typeof PAYMENT_EVENT_TYPES)[number];
 
 /**
+ * Enum của tuple trên — cho nơi cần hỏi "type này gateway có biết không"
+ * (Select của admin liệt kê đúng tập này; một type ngoài tập vẫn lọc được,
+ * chỉ không có nhãn i18n). Khai MỘT lần ở contract (vòng vá review F8: hai
+ * file admin từng tự `z.enum(PAYMENT_EVENT_TYPES)` riêng).
+ */
+export const PaymentEventTypeSchema = z.enum(PAYMENT_EVENT_TYPES);
+
+/**
  * Query cho `admin.paymentEvents.list`. Phân trang dùng chung
  * `AdminPageQuerySchema`; field gõ kiểu THUẦN (`unprocessed: z.boolean()`,
  * không `z.coerce`) — ZodSmartCoercionPlugin bên API ép "true"/"false" của

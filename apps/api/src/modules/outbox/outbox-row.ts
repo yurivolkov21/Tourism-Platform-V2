@@ -1,6 +1,7 @@
 import type { OutboxRow } from '@tourism/contract';
 import type { Outbox } from '../../generated/prisma/client.js';
 import { EmailType } from '../../generated/prisma/enums.js';
+import { REDACTED, redactDeep } from '../../lib/redact.js';
 import { resolveRecipient } from '../../worker/recipient.js';
 
 /**
@@ -20,17 +21,15 @@ import { resolveRecipient } from '../../worker/recipient.js';
  * `email-otp:<email>:<otp>`). Bề mặt admin KHÔNG được là nơi một admin cầm
  * được link reset của admin khác (row SENT sống 30 ngày). Nên:
  *
- * - `payload`: mọi khoá trong `SECRET_PAYLOAD_KEYS` thành `[redacted]` cho
- *   MỌI loại email (khoá theo TÊN, không theo type: loại email mới mang `url`
- *   thì tự động được che, không phải nhớ thêm vào danh sách).
+ * - `payload`: đi qua máy che dùng chung `lib/redact.ts` (vòng vá review F8
+ *   — trước đó outbox tự che tầng ngoài với ba khoá riêng): mọi khoá trong
+ *   `SECRET_KEYS` thành `[redacted]` ở MỌI độ sâu, MỌI loại email (khoá theo
+ *   TÊN, không theo type: loại email mới mang `url` thì tự động được che).
  * - `dedupeKey`: với loại trong `CREDENTIAL_EMAIL_TYPES` chỉ giữ tiền tố
  *   sự kiện (`pwreset`, `email-otp`) — phần sau là chính credential.
  *
  * Redact ở MAPPER (một chỗ, mọi endpoint outbox đi qua) chứ không ở UI.
  */
-
-/** Khoá payload có thể mang credential — che ở mọi loại email. */
-export const SECRET_PAYLOAD_KEYS: ReadonlySet<string> = new Set(['url', 'otp', 'token']);
 
 /** Loại email mà `dedupeKey` nhúng credential (xem `auth.config.ts`). */
 export const CREDENTIAL_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([
@@ -39,23 +38,6 @@ export const CREDENTIAL_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([
   EmailType.EMAIL_VERIFICATION,
   EmailType.EMAIL_CHANGED,
 ]);
-
-export const REDACTED = '[redacted]';
-
-/** Che khoá bí mật ở TẦNG NGOÀI của payload (payload outbox là record phẳng). */
-export function redactPayload(payload: Outbox['payload']): OutboxRow['payload'] {
-  if (payload === null || typeof payload !== 'object' || Array.isArray(payload)) {
-    // Cùng một tập giá trị JSON, hai cách gõ: Prisma khai `JsonArray` là
-    // interface kế thừa Array nên TS không khớp nó với union đệ quy `JSONType`
-    // của `z.json()`. Cast là khớp DANH NGHĨA, không đổi giá trị.
-    return payload as OutboxRow['payload'];
-  }
-  const out: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload)) {
-    out[key] = SECRET_PAYLOAD_KEYS.has(key) ? REDACTED : value;
-  }
-  return out as OutboxRow['payload'];
-}
 
 /** Giữ tiền tố sự kiện, che phần mang credential — chỉ cho loại email auth. */
 export function redactDedupeKey(type: EmailType, dedupeKey: string): string {
@@ -75,6 +57,8 @@ export function toOutboxRow(row: Outbox): OutboxRow {
     createdAt: row.createdAt.toISOString(),
     processedAt: row.processedAt ? row.processedAt.toISOString() : null,
     recipient: resolveRecipient(row.payload) ?? null,
-    payload: redactPayload(row.payload),
+    // Cùng một tập giá trị JSON, hai cách gõ: máy che trả `unknown`, contract
+    // khai union đệ quy `JSONType` của `z.json()`. Cast là khớp DANH NGHĨA.
+    payload: redactDeep(row.payload) as OutboxRow['payload'],
   };
 }

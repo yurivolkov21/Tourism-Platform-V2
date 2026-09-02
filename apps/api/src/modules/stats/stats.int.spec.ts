@@ -53,6 +53,7 @@ const tour = requireFixtureTour(PUBLISHED_SLUG);
 const DAY = 86_400_000;
 /** Mốc "cách đây N ngày" — mọi fixture đặt xa biên 28/56 ngày để không rung. */
 const daysAgo = (days: number): Date => new Date(Date.now() - days * DAY);
+const minutesAgo = (minutes: number): Date => new Date(Date.now() - minutes * 60_000);
 
 /** Lấy cookie pair (name=value) từ set-cookie của inject response. */
 function sessionCookie(res: { headers: Record<string, unknown> }): string {
@@ -738,7 +739,9 @@ describe('admin stats integration (F5)', () => {
       await prisma.paymentEvent.createMany({
         data: [
           // ── Kỳ NÀY: 3 nhận, 2 trong đó gắn booking, 1 chưa xử lý xong ──
-          paymentEvent(1, { receivedAt: daysAgo(2), processedAt: null, linked: true }),
+          // Row 1 vừa tới (1 phút): chưa xong là handler ĐANG chạy — đếm
+          // vào unprocessed nhưng KHÔNG "kẹt" (ngưỡng 5 phút, vòng vá F8).
+          paymentEvent(1, { receivedAt: minutesAgo(1), processedAt: null, linked: true }),
           paymentEvent(2, { receivedAt: daysAgo(10), processedAt: daysAgo(10), linked: true }),
           paymentEvent(3, { receivedAt: daysAgo(20), processedAt: daysAgo(20), linked: false }),
           // ── Kỳ TRƯỚC: 2 nhận, 1 gắn booking ──
@@ -759,11 +762,13 @@ describe('admin stats integration (F5)', () => {
       expect(stats.period.windowDays).toBe(28);
     });
 
-    it('unprocessed là ẢNH CHỤP bây giờ, không phân biệt tuổi hàng', async () => {
+    it('unprocessed là ẢNH CHỤP bây giờ, không phân biệt tuổi hàng; stuck chỉ đếm row quá ngưỡng', async () => {
       const stats = AdminPaymentEventsStatsSchema.parse(
         (await get('payment-events', adminCookie)).json(),
       );
       expect(stats.unprocessed).toBe(2);
+      // Row 6 (70 ngày, chưa xong) kẹt; row 1 (1 phút) đang chạy — không kẹt.
+      expect(stats.stuck).toBe(1);
     });
   });
 
@@ -775,6 +780,7 @@ describe('admin stats integration (F5)', () => {
       expect(stats).toMatchObject({
         received: { current: 0, previous: 0 },
         unprocessed: 0,
+        stuck: 0,
         linked: { current: 0, previous: 0 },
       });
     });

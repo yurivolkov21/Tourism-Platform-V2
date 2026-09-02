@@ -25,6 +25,16 @@ import { DecimalStringSchema } from './catalog.js';
 export const STATS_WINDOW_DAYS = 28;
 
 /**
+ * Ngưỡng "kẹt" của payment event chưa xử lý (vòng vá review F8): row
+ * `processedAt` null là chuyện BÌNH THƯỜNG trong vài giây sau khi nhận
+ * (handler đang chạy), chỉ khi nó còn đó sau ngần này phút — provider đã
+ * retry ít nhất một lượt mà vẫn không xong — mới là thứ cần người soi.
+ * Stripe/PayPal retry lượt đầu trong ~vài phút; 5 phút là mốc đủ chắc để
+ * card không kêu đỏ với mọi webhook vừa tới.
+ */
+export const PAYMENT_EVENT_STUCK_MINUTES = 5;
+
+/**
  * Cặp số của MỘT metric. Factory chứ không chép ba lần: mọi metric có ĐÚNG
  * hình dạng này, và `previous` là BẮT BUỘC — thiếu nó thì client không còn
  * cách nào ngoài tự chế delta, đúng thứ luật #1 cấm.
@@ -154,6 +164,12 @@ export const AdminPaymentEventsStatsSchema = z.object({
   received: CountMetricSchema,
   /** Row `processedAt` null ngay bây giờ — đúng bằng `/payment-events?unprocessed=true`. */
   unprocessed: z.int().nonnegative(),
+  /**
+   * Trong `unprocessed`, bao nhiêu row đã nhận từ hơn `PAYMENT_EVENT_STUCK_MINUTES`
+   * phút trước — "kẹt", không phải "đang chạy". Card chỉ kêu đỏ khi số này
+   * > 0 (vòng vá review F8); `unprocessed` vẫn là con số bảng khớp.
+   */
+  stuck: z.int().nonnegative(),
   /** Trong số nhận trong kỳ, bao nhiêu gắn được `bookingId` (event `other` thường không). */
   linked: CountMetricSchema,
 });

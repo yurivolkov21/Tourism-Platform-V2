@@ -151,6 +151,23 @@ session gốc nghiệm thu (review 8 mũi → vá → merge rebase+ff → docs s
   null, delta neutral).
 - `nav.ts`: Payment events enabled.
 - Test: int list/byId/filters/401/403 + stats; unit mapper.
+- *AMEND 02/09 (review F8):*
+  - Stats thêm **`stuck`** (row chưa xong đã nhận quá
+    `PAYMENT_EVENT_STUCK_MINUTES` = 5 phút): card Unprocessed CHỈ kêu đỏ theo
+    `stuck`, `unprocessed` giữ nghĩa "khớp bảng" — row vừa tới mà handler
+    đang chạy là bình thường. Admin **không cache** stats vùng này (cùng luật
+    outbox): kẻ đổi sổ là webhook ngoài `updateTag`, bảng thì đọc tươi.
+  - Filter `type` nhận **chuỗi tự do** như contract (cột varchar): `?type=`
+    ngoài tuple vẫn lọc; Select thêm một mục tạm cho giá trị đó thay vì
+    hiện nhầm "All". `PaymentEventTypeSchema` xuất từ contract.
+  - Redact payload **dùng chung** `apps/api/src/lib/redact.ts` cho cả outbox
+    và payment events: che theo tên khoá ở mọi độ sâu, tập khoá là hợp của
+    hai vùng; object dựng bằng `Object.create(null)`.
+  - Drawer: trạng thái tải gắn id (không lộ JSON hàng cũ ở frame đầu), loader
+    ném → lỗi GENERIC; lỗi đọc đi qua `createWriteErrorCodec` với
+    `transportCopy` (i18n tách `detail.errors` chỉ mã contract /
+    `detail.transportErrors`). Kit mới `components/kit/booking-link.tsx`
+    (dùng cho cancellations + payment events); VM bỏ `bookingHref`/`unprocessed`.
 
 ### F9 — Enquiries + notes (branch `feat/p4c-enquiries`)
 

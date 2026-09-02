@@ -29,6 +29,17 @@ describe('createWriteErrorCodec', () => {
     expect(codec.isStale('UNAUTHORIZED')).toBe(false);
   });
 
+  it('transportCopy: câu riêng cho mã transport vùng khai, mã không khai rơi về câu chung', () => {
+    const codec = createWriteErrorCodec(ERRORS, {
+      transportCopy: { UNAUTHORIZED: 'Sign in to read.', GENERIC: 'Could not load.' },
+    });
+    expect(codec.copy('UNAUTHORIZED')).toBe('Sign in to read.');
+    expect(codec.copy('GENERIC')).toBe('Could not load.');
+    expect(codec.copy('FORBIDDEN')).toBe(createWriteErrorCodec(ERRORS).copy('FORBIDDEN'));
+    // Mã contract không bị câu transport đè.
+    expect(codec.copy('NOT_FOUND')).toBe('Gone.');
+  });
+
   it('không khai stale → không mã nào là trạng-thái-cũ', () => {
     expect(createWriteErrorCodec(ERRORS).isStale('NOT_FOUND')).toBe(false);
   });

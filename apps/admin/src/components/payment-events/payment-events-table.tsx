@@ -11,8 +11,8 @@ import {
   TagIcon,
   TicketIcon,
 } from 'lucide-react';
-import Link from 'next/link';
 import * as React from 'react';
+import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
@@ -107,18 +107,8 @@ function buildColumns(onView: (row: PaymentEventRowVM) => void) {
     columnHelper.accessor('bookingCode', {
       header: t.columns.booking,
       // Link chéo sang chi tiết booking: từ một webhook lạ soi ngay đơn nó
-      // chạm tới (cùng nếp cột Booking của `/cancellations`).
-      cell: ({ row }) =>
-        row.original.bookingHref && row.original.bookingCode ? (
-          <Link
-            href={row.original.bookingHref}
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            {row.original.bookingCode}
-          </Link>
-        ) : (
-          <span className="text-xs text-muted-foreground">{t.noBooking}</span>
-        ),
+      // chạm tới (kit `BookingLink` — cùng cột Booking của `/cancellations`).
+      cell: ({ row }) => <BookingLink code={row.original.bookingCode} fallback={t.noBooking} />,
     }),
     columnHelper.accessor('received', {
       header: t.columns.received,

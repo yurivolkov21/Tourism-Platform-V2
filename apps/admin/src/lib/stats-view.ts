@@ -1,11 +1,12 @@
-import type {
-  AdminBookingsStats,
-  AdminCancellationsStats,
-  AdminOutboxStats,
-  AdminPaymentEventsStats,
-  AdminReviewsStats,
-  CountMetric,
-  DecimalMetric,
+import {
+  type AdminBookingsStats,
+  type AdminCancellationsStats,
+  type AdminOutboxStats,
+  type AdminPaymentEventsStats,
+  type AdminReviewsStats,
+  type CountMetric,
+  type DecimalMetric,
+  PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount } from './bookings-view';
@@ -257,6 +258,33 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
 }
 
 /**
+ * Card ẢNH CHỤP (số đơn, không delta) có thể mang CALLOUT — pill đỏ dạng
+ * "lời gọi người", không phải xu hướng; kit có khe riêng (`callout`) nên
+ * không mượn `delta`. Gộp ở vòng vá review F8: card Failed của outbox và
+ * Unprocessed của payment events từng chép nguyên khối này.
+ *
+ * `callout.when` tách khỏi `count` có chủ đích: payment events kêu đỏ theo
+ * số row KẸT chứ không theo mọi row chưa xong (xem `toPaymentEventsStatCards`).
+ */
+function snapshotCard(
+  key: string,
+  label: string,
+  count: number,
+  caption: { some: string; none: string },
+  callout?: { when: boolean; label: string; srLabel: string },
+): StatCardVM {
+  return {
+    key,
+    label,
+    value: formatCount(count),
+    caption: count > 0 ? caption.some : caption.none,
+    ...(callout?.when
+      ? { callout: { label: callout.label, srLabel: callout.srLabel, tone: 'bad' as const } }
+      : {}),
+  };
+}
+
+/**
  * Ba card của `/outbox` (spec P4c §3-F7). Cả ba là số ĐƠN, không card nào có
  * pill delta (vòng vá review F7): `sent` không có kỳ trước vì purge 30 ngày
  * xoá gần hết kỳ 28–56 ngày (một cặp ở đây là "↑1200%" bịa mỗi ngày);
@@ -279,24 +307,18 @@ export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
       value: formatCount(stats.queued),
       caption: t.outbox.queuedCaption,
     },
-    // Failed > 0 là lời gọi NGƯỜI (chỉ admin retry mới đưa hàng rời FAILED):
-    // pill đỏ dạng CALLOUT — trạng thái cần xử, không phải xu hướng. Kit có
-    // khe riêng cho nó (`callout`), không mượn `delta` nữa.
-    {
-      key: 'failed',
-      label: t.outbox.failed,
-      value: formatCount(stats.failed),
-      caption: stats.failed > 0 ? t.outbox.failedCaption : t.outbox.failedCaptionNone,
-      ...(stats.failed > 0
-        ? {
-            callout: {
-              label: t.outbox.needsAttention,
-              srLabel: t.outbox.needsAttentionSr(formatCount(stats.failed)),
-              tone: 'bad' as const,
-            },
-          }
-        : {}),
-    },
+    // Failed > 0 là lời gọi NGƯỜI (chỉ admin retry mới đưa hàng rời FAILED).
+    snapshotCard(
+      'failed',
+      t.outbox.failed,
+      stats.failed,
+      { some: t.outbox.failedCaption, none: t.outbox.failedCaptionNone },
+      {
+        when: stats.failed > 0,
+        label: t.outbox.needsAttention,
+        srLabel: t.outbox.needsAttentionSr(formatCount(stats.failed)),
+      },
+    ),
   ];
 }
 
@@ -304,32 +326,34 @@ export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
  * Ba card của `/payment-events` (spec P4c §3-F8). `received`/`linked` là cặp
  * hai kỳ theo receivedAt — TRUNG TÍNH cả hai: nhiều webhook hơn chỉ là nhiều
  * lượt thanh toán/echo hơn, không có phán quyết tốt/xấu. `unprocessed` là
- * ảnh chụp: số đơn, callout đỏ khi > 0 (row đã nhận mà handler chưa xong là
- * thứ cần người soi nếu nó không tự biến mất sau lượt retry của provider).
+ * ảnh chụp: số đơn khớp bảng; callout đỏ CHỈ khi có row KẸT (`stuck` — chưa
+ * xong quá `PAYMENT_EVENT_STUCK_MINUTES` phút, vòng vá review F8): row vừa
+ * tới mà handler đang chạy là chuyện bình thường, kêu đỏ với nó là card
+ * "khóc sói" mỗi lần có người thanh toán.
  */
 export function toPaymentEventsStatCards(stats: AdminPaymentEventsStats): StatCardVM[] {
   const days = stats.period.windowDays;
+  const stuck = formatCount(stats.stuck);
 
   return [
     countCard('received', t.paymentEvents.received(days), stats.received, 'neutral', days),
-    {
-      key: 'unprocessed',
-      label: t.paymentEvents.unprocessed,
-      value: formatCount(stats.unprocessed),
-      caption:
-        stats.unprocessed > 0
-          ? t.paymentEvents.unprocessedCaption
-          : t.paymentEvents.unprocessedCaptionNone,
-      ...(stats.unprocessed > 0
-        ? {
-            callout: {
-              label: t.paymentEvents.needsAttention,
-              srLabel: t.paymentEvents.needsAttentionSr(formatCount(stats.unprocessed)),
-              tone: 'bad' as const,
-            },
-          }
-        : {}),
-    },
+    snapshotCard(
+      'unprocessed',
+      t.paymentEvents.unprocessed,
+      stats.unprocessed,
+      {
+        some:
+          stats.stuck > 0
+            ? t.paymentEvents.stuckCaption(stuck, PAYMENT_EVENT_STUCK_MINUTES)
+            : t.paymentEvents.unprocessedCaption,
+        none: t.paymentEvents.unprocessedCaptionNone,
+      },
+      {
+        when: stats.stuck > 0,
+        label: t.paymentEvents.needsAttention,
+        srLabel: t.paymentEvents.needsAttentionSr(stuck, PAYMENT_EVENT_STUCK_MINUTES),
+      },
+    ),
     countCard('linked', t.paymentEvents.linked(days), stats.linked, 'neutral', days),
   ];
 }

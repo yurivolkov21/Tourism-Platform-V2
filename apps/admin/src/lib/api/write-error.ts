@@ -60,11 +60,20 @@ export function createWriteErrorCodec<T extends Record<string, string>>(
      * tay thì không, dialog đứng im không refresh).
      */
     stale?: ReadonlyArray<keyof T & string>;
+    /**
+     * Câu RIÊNG cho mã transport của vùng — mặc định là giọng ghi chung
+     * `errors.write` ("có thể đã đi qua"). Một đường ĐỌC (drawer payment
+     * events, vòng vá review F8) không có gì để lỡ đi qua nên khai giọng đọc
+     * ở đây thay vì chép lại bộ ba classify/copy bằng tay bên ngoài codec.
+     * Mã không khai rơi về câu chung.
+     */
+    transportCopy?: Partial<Record<TransportFailureCode, string>>;
   } = {},
 ) {
   type ContractCode = keyof T & string;
   const codes = new Set(Object.keys(errors) as ContractCode[]) as ReadonlySet<ContractCode>;
   const stale = new Set<string>(options.stale ?? []);
+  const transport = options.transportCopy ?? {};
   return {
     /** Tập mã contract — test đối chiếu với `errorMap` thật của contract. */
     codes,
@@ -77,7 +86,8 @@ export function createWriteErrorCodec<T extends Record<string, string>>(
     copy: (code: ContractCode | TransportFailureCode): string =>
       codes.has(code as ContractCode)
         ? errors[code as ContractCode]
-        : transportErrorCopy(code as TransportFailureCode),
+        : (transport[code as TransportFailureCode] ??
+          transportErrorCopy(code as TransportFailureCode)),
   };
 }
 

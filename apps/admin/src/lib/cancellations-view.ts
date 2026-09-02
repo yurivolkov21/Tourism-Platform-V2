@@ -49,9 +49,8 @@ export function canDecide(status: CancellationRequestStatusValue): boolean {
 /** Một hàng của bảng `/cancellations`. */
 export interface CancellationRowVM {
   id: string;
+  /** Mã booking — kit `BookingLink` dựng link chéo (§3-F3) — soi sổ cái ngay sau khi quyết. */
   bookingCode: string;
-  /** Link chéo sang chi tiết booking (§3-F3) — soi sổ cái ngay sau khi quyết. */
-  bookingHref: string;
   tourTitle: string;
   departure: string;
   customerName: string;
@@ -76,7 +75,6 @@ export function toCancellationRow(request: AdminCancellationRequest): Cancellati
   return {
     id: request.id,
     bookingCode: request.bookingCode,
-    bookingHref: `/bookings/${request.bookingCode}`,
     tourTitle: request.tourTitle,
     // Queue chỉ mang ngày BẮT ĐẦU đợt (contract không trả ngày kết thúc) —
     // in đúng thứ có thật thay vì bịa một khoảng.

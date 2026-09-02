@@ -181,7 +181,7 @@ describe('admin payment events integration (F8)', () => {
     await prisma.paymentEvent.deleteMany();
     await prisma.paymentEvent.createMany({
       data: [
-        // n = số phút trước → n nhỏ = mới nhất. Thứ tự mong đợi: 1..6.
+        // n = số phút trước → n nhỏ = mới nhất. Thứ tự mong đợi: 1..7.
         event(1, {
           eventId: 'evt_stripe_completed_1',
           amount: '117.00',
@@ -228,6 +228,14 @@ describe('admin payment events integration (F8)', () => {
           receivedAt: new Date(Date.now() - 3 * DAY),
           processedAt: new Date(Date.now() - 3 * DAY),
         }),
+        // Type NGOÀI tuple `PAYMENT_EVENT_TYPES` — cột DB là chuỗi tự do,
+        // list vẫn trả và filter vẫn lọc được (vòng vá review F8).
+        event(7, {
+          eventId: 'evt_stripe_chargeback_7',
+          type: 'payment.chargeback',
+          receivedAt: new Date(Date.now() - 4 * DAY),
+          processedAt: new Date(Date.now() - 4 * DAY),
+        }),
       ],
     });
   });
@@ -264,8 +272,8 @@ describe('admin payment events integration (F8)', () => {
       const res = await list('', adminCookie);
       expect(res.statusCode).toBe(200);
       const paged = PagedRowsSchema.parse(res.json());
-      expect(paged.total).toBe(6);
-      expect(paged.items.map((item) => item.id)).toEqual([1, 2, 3, 4, 5, 6].map(rowId));
+      expect(paged.total).toBe(7);
+      expect(paged.items.map((item) => item.id)).toEqual([1, 2, 3, 4, 5, 6, 7].map(rowId));
       expect(paged.items[0]).toMatchObject({
         provider: 'STRIPE',
         eventId: 'evt_stripe_completed_1',
@@ -294,9 +302,12 @@ describe('admin payment events integration (F8)', () => {
       expect(paged.items.map((item) => item.id)).toEqual([rowId(2), rowId(5)]);
     });
 
-    it('type lọc đúng chuỗi type trung lập', async () => {
+    it('type lọc đúng chuỗi type — cả type NGOÀI tuple gateway biết (cột chuỗi tự do)', async () => {
       const paged = await listOk('?type=payment.completed');
       expect(paged.items.map((item) => item.id)).toEqual([rowId(1), rowId(2)]);
+      const free = await listOk('?type=payment.chargeback');
+      expect(free.items.map((item) => item.id)).toEqual([rowId(7)]);
+      expect(free.items[0]?.type).toBe('payment.chargeback');
     });
 
     it('search khớp eventId contains, không phân biệt hoa/thường; kết hợp với provider là giao', async () => {
@@ -315,12 +326,12 @@ describe('admin payment events integration (F8)', () => {
       const only = await listOk('?unprocessed=true');
       expect(only.items.map((item) => item.id)).toEqual([rowId(3), rowId(5)]);
       expect(only.items.every((item) => item.processedAt === null)).toBe(true);
-      expect((await listOk('?unprocessed=false')).total).toBe(6);
+      expect((await listOk('?unprocessed=false')).total).toBe(7);
     });
 
     it('phân trang: page/limit ép từ query string, totalPages đúng', async () => {
       const page2 = await listOk('?limit=2&page=2');
-      expect(page2).toMatchObject({ page: 2, limit: 2, total: 6, totalPages: 3 });
+      expect(page2).toMatchObject({ page: 2, limit: 2, total: 7, totalPages: 4 });
       expect(page2.items.map((item) => item.id)).toEqual([rowId(3), rowId(4)]);
     });
 

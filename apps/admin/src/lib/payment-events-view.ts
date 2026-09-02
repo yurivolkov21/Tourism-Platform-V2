@@ -42,13 +42,11 @@ export interface PaymentEventRowVM {
   typeLabel: string;
   /** null = event không mang tiền; bảng in chữ thay thế. */
   amount: string | null;
+  /** Mã booking — kit `BookingLink` tự dựng href; null = không gắn/booking không còn. */
   bookingCode: string | null;
-  /** Link chéo sang `/bookings/[code]` — null khi không gắn booking. */
-  bookingHref: string | null;
   received: string;
+  /** null = `processedAt` null: đã nhận, handler chưa xong (badge + tooltip). */
   processed: string | null;
-  /** `processedAt` null — đã nhận, handler chưa xong (badge + tooltip). */
-  unprocessed: boolean;
 }
 
 /** Row của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -62,9 +60,7 @@ export function toPaymentEventRowVM(row: PaymentEventRow): PaymentEventRowVM {
     typeLabel: typeLabel(row.type),
     amount: formatEventAmount(row.amount, row.currency),
     bookingCode: row.bookingCode,
-    bookingHref: row.bookingCode ? `/bookings/${row.bookingCode}` : null,
     received: formatDateTime(row.receivedAt),
     processed: row.processedAt ? formatDateTime(row.processedAt) : null,
-    unprocessed: row.processedAt === null,
   };
 }

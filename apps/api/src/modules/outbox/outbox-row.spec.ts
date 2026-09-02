@@ -1,6 +1,7 @@
 import type { Outbox } from '../../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../../generated/prisma/enums.js';
-import { REDACTED, redactDedupeKey, redactPayload, toOutboxRow } from './outbox-row.js';
+import { REDACTED } from '../../lib/redact.js';
+import { redactDedupeKey, toOutboxRow } from './outbox-row.js';
 
 /**
  * Mapper THUẦN row Prisma → `OutboxRow` của contract (spec P4c §3-F7). Ba chỗ
@@ -100,16 +101,14 @@ describe('redact credential (vòng vá review F7)', () => {
     expect(JSON.stringify(row)).not.toContain('482913');
   });
 
-  it('khoá bí mật bị che theo TÊN ở mọi loại email; dedupeKey chỉ che ở loại auth', () => {
-    expect(redactPayload({ code: 'BK-1', url: 'https://x/manage?token=t' })).toEqual({
-      code: 'BK-1',
-      url: REDACTED,
+  it('payload đi qua máy che dùng chung (mọi độ sâu, mọi loại email); dedupeKey chỉ che ở loại auth', () => {
+    const row = toOutboxRow({
+      ...base,
+      payload: { code: 'BK-1', manage: { url: 'https://x/manage?token=t' } },
     });
+    expect(row.payload).toEqual({ code: 'BK-1', manage: { url: REDACTED } });
     expect(redactDedupeKey(EmailType.BOOKING_CONFIRMATION, 'booking-confirmed:uuid')).toBe(
       'booking-confirmed:uuid',
     );
-    // Payload vô hướng/mảng không có khoá để che — đi nguyên vẹn.
-    expect(redactPayload('plain')).toBe('plain');
-    expect(redactPayload(null)).toBeNull();
   });
 });

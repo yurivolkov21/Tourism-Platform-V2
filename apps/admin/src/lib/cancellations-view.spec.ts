@@ -31,9 +31,6 @@ describe('toCancellationRow', () => {
     expect(toCancellationRow(REQUESTED)).toEqual({
       id: REQUESTED.id,
       bookingCode: 'BK-ABCD1234',
-      // Link chéo sang trang chi tiết booking (§3-F3) — admin quyết xong
-      // thường muốn soi sổ cái ngay.
-      bookingHref: '/bookings/BK-ABCD1234',
       tourTitle: 'Ha Long Bay Cruise',
       departure: '14 Sep 2026',
       customerName: 'Ada Lovelace',
