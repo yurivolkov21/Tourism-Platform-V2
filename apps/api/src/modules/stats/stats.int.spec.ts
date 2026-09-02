@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminOutboxStatsSchema,
   AdminReviewsStatsSchema,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
@@ -13,6 +14,8 @@ import {
   BookingStatus,
   CancellationRequestStatus,
   DepartureStatus,
+  EmailType,
+  OutboxStatus,
   PaymentProvider,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
@@ -222,10 +225,10 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với bảy endpoint admin còn lại, phủ CẢ BA path', () => {
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ BỐN path', () => {
     // Tham số hoá cả ba (vòng vá review F5): guard đặt ở cấp class, nhưng
     // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
-    for (const area of ['bookings', 'cancellations', 'reviews'] as const) {
+    for (const area of ['bookings', 'cancellations', 'reviews', 'outbox'] as const) {
       it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
         const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
         expect(anon.statusCode).toBe(401);
@@ -624,6 +627,78 @@ describe('admin stats integration (F5)', () => {
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
       expect(stats.pending).toEqual({ current: 0, previous: 0 });
       expect(stats.averageRating).toEqual({ current: null, previous: null });
+    });
+  });
+
+  describe('stats.outbox (F7)', () => {
+    /** Một row outbox với mốc đặt tay — `processedAt` là thứ `sent` neo vào. */
+    const outboxRow = (
+      n: number,
+      row: { status: OutboxStatus; createdAt: Date; processedAt: Date | null },
+    ): Prisma.OutboxCreateManyInput => ({
+      id: `e9500007-0000-4000-8000-${String(n).padStart(12, '0')}`,
+      type: EmailType.BOOKING_CONFIRMATION,
+      payload: { code: `BK-STAT${n}` },
+      dedupeKey: `stats-outbox:${n}`,
+      status: row.status,
+      attempts: row.status === OutboxStatus.FAILED ? 5 : 0,
+      lastError: row.status === OutboxStatus.FAILED ? 'boom' : null,
+      createdAt: row.createdAt,
+      processedAt: row.processedAt,
+    });
+
+    beforeEach(async () => {
+      await prisma.outbox.createMany({
+        data: [
+          // ── SENT theo processedAt: 2 kỳ này, 1 kỳ trước, 1 ngoài cả hai ──
+          outboxRow(1, {
+            status: OutboxStatus.SENT,
+            createdAt: daysAgo(10),
+            processedAt: daysAgo(10),
+          }),
+          // Tạo kỳ TRƯỚC nhưng giao kỳ NÀY → sent neo processedAt, thuộc kỳ này.
+          outboxRow(2, {
+            status: OutboxStatus.SENT,
+            createdAt: daysAgo(30),
+            processedAt: daysAgo(2),
+          }),
+          outboxRow(3, {
+            status: OutboxStatus.SENT,
+            createdAt: daysAgo(40),
+            processedAt: daysAgo(40),
+          }),
+          outboxRow(4, {
+            status: OutboxStatus.SENT,
+            createdAt: daysAgo(70),
+            processedAt: daysAgo(70),
+          }),
+          // ── Ảnh chụp: 3 PENDING (kể cả một cái rất cũ), 2 FAILED ──
+          outboxRow(5, { status: OutboxStatus.PENDING, createdAt: daysAgo(1), processedAt: null }),
+          outboxRow(6, { status: OutboxStatus.PENDING, createdAt: daysAgo(3), processedAt: null }),
+          outboxRow(7, { status: OutboxStatus.PENDING, createdAt: daysAgo(90), processedAt: null }),
+          outboxRow(8, { status: OutboxStatus.FAILED, createdAt: daysAgo(5), processedAt: null }),
+          outboxRow(9, { status: OutboxStatus.FAILED, createdAt: daysAgo(60), processedAt: null }),
+        ],
+      });
+    });
+
+    it('sent đếm theo processedAt trong từng kỳ — hàng ngoài cả hai kỳ không tính', async () => {
+      const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
+      expect(stats.sent).toEqual({ current: 2, previous: 1 });
+    });
+
+    it('queued/failed là ẢNH CHỤP bây giờ, không phân biệt tuổi hàng', async () => {
+      const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
+      expect(stats.queued).toBe(3);
+      expect(stats.failed).toBe(2);
+      expect(stats.period.windowDays).toBe(28);
+    });
+  });
+
+  describe('stats.outbox — kỳ rỗng', () => {
+    it('bảng trống: sent 0/0, hàng đợi 0 — con số thật, không phải lỗi', async () => {
+      const stats = AdminOutboxStatsSchema.parse((await get('outbox', adminCookie)).json());
+      expect(stats).toMatchObject({ sent: { current: 0, previous: 0 }, queued: 0, failed: 0 });
     });
   });
 });

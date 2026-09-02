@@ -13,6 +13,7 @@ import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MediaModule } from './modules/media/media.module.js';
 import { NewsletterModule } from './modules/newsletter/newsletter.module.js';
+import { OutboxModule } from './modules/outbox/outbox.module.js';
 import { PostsModule } from './modules/posts/posts.module.js';
 import { ReviewsModule } from './modules/reviews/reviews.module.js';
 import { SiteMediaModule } from './modules/site-media/site-media.module.js';
@@ -64,6 +65,9 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     // F5: số liệu vùng admin (spec P4b §3-F5) — module riêng vì cửa sổ
     // 28-ngày-đôi là khái niệm dùng chung cho ba vùng và cho dashboard P4d.
     StatsModule,
+    // F7 (spec P4c): vùng outbox admin — list + retry, KHÔNG kéo WorkerModule
+    // (retry chỉ đưa hàng về PENDING, worker tự nhặt ở lượt drain kế).
+    OutboxModule,
   ],
   providers: [
     /**

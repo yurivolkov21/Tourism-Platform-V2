@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import { OUTBOX_MAX_ATTEMPTS } from '@tourism/contract';
 import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
@@ -7,8 +8,12 @@ import { resolveRecipient } from './recipient.js';
 
 /** Mỗi lượt drain lấy tối đa bấy nhiêu row PENDING (oldest-first). */
 const DRAIN_BATCH_SIZE = 50;
-/** Quá số lần thử này thì row bị park FAILED chờ operator (giữ để triage). */
-export const MAX_ATTEMPTS = 5;
+/**
+ * Quá số lần thử này thì row bị park FAILED chờ operator (giữ để triage).
+ * Giá trị sống ở CONTRACT từ F7 (spec P4c §3-F7): cột "3/5" của trang
+ * `/outbox` đọc cùng hằng đó — đây chỉ là tên cũ giữ cho worker/test.
+ */
+export const MAX_ATTEMPTS = OUTBOX_MAX_ATTEMPTS;
 /** Trần cột `last_error` (VarChar(1000)). */
 const LAST_ERROR_MAX = 1000;
 

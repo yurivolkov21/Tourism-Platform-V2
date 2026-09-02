@@ -38,6 +38,11 @@ import {
   UnsubscribeResultSchema,
 } from './schemas/newsletter.js';
 import {
+  AdminOutboxListQuerySchema,
+  AdminOutboxRetryInputSchema,
+  OutboxRowSchema,
+} from './schemas/outbox.js';
+import {
   PostCardSchema,
   PostDetailSchema,
   PostsListQuerySchema,
@@ -58,6 +63,7 @@ import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminOutboxStatsSchema,
   AdminReviewsStatsSchema,
 } from './schemas/stats.js';
 import {
@@ -654,6 +660,52 @@ export const contract = {
           summary: 'Moderation queue + ratings for the last 28 days and the 28 before that',
         })
         .output(AdminReviewsStatsSchema),
+      // F7 (spec P4c): sent là đếm trong kỳ; queued/failed là ảnh chụp một số đơn.
+      outbox: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/outbox',
+          summary: 'Emails sent in the last 28 days (and the 28 before) + queue snapshot',
+        })
+        .output(AdminOutboxStatsSchema),
+    },
+    /**
+     * Outbox email (spec P4c §3-F7) — bề mặt triage cho hàng đợi email mà
+     * worker drain mỗi phút (ADR-0007). Vụ Resend key 20/08 phải soi bảng
+     * này bằng SQL tay; đây là lý do vùng tồn tại.
+     *
+     * `retry` KHÔNG gọi worker: chỉ đặt hàng FAILED về PENDING (attempts về
+     * 0, GIỮ `lastError` cho tới khi worker ghi đè), lượt drain kế tự nhặt.
+     * Guard `status = FAILED` nằm trên chính câu UPDATE: hàng đang PENDING/
+     * SENT → 0 row → `NOT_FAILED` (409 — thế giới đã đổi dưới chân dialog);
+     * id lạ → `NOT_FOUND`. Không có xoá (spec §2.4).
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    outbox: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/outbox',
+          summary: 'List outbox rows (admin, paged, status/type/dedupeKey filters)',
+        })
+        .input(AdminOutboxListQuerySchema)
+        .output(PagedSchema(OutboxRowSchema)),
+      retry: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/outbox/{id}/retry',
+          summary: 'Re-queue a FAILED row (PENDING, attempts reset) for the next worker drain',
+        })
+        .input(AdminOutboxRetryInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Outbox row not found' },
+          NOT_FAILED: {
+            status: 409,
+            message: 'Only a FAILED outbox row can be retried',
+          },
+        })
+        .output(OutboxRowSchema),
     },
     /**
      * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV

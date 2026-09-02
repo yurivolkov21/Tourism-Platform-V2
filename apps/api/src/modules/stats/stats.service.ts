@@ -2,13 +2,15 @@ import { Injectable } from '@nestjs/common';
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminOutboxStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import { CancellationRequestStatus } from '../../generated/prisma/enums.js';
+import { CancellationRequestStatus, OutboxStatus } from '../../generated/prisma/enums.js';
 import {
   bookingsCreatedCount,
   decisionsSlice,
+  outboxSentCount,
   paidBookingsSlice,
   revenueCurrency,
   reviewApprovals,
@@ -96,6 +98,24 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   review đã duyệt của tour đó — `Tour.ratingAvg`), và khác một cách có chủ
  *   đích. `null` khi kỳ không có review nào.
  *
+ * **outbox** (F7, spec P4c §3-F7)
+ * - `sent` — số row `SENT` có `processed_at` TRONG kỳ. Neo `processed_at`
+ *   chứ không `created_at`: email xếp hàng tuần trước mà hôm nay mới đi (sau
+ *   một cú retry) là email giao hôm nay. Query đối chứng:
+ *   `SELECT COUNT(*) FROM outbox WHERE status = 'SENT' AND processed_at >= $from AND processed_at < $to`.
+ *   ⚠️ Purge cron xoá row SENT cũ hơn 30 ngày (`OutboxService.purgeSent`),
+ *   nên `previous` (kỳ 28–56 ngày trước) BỊ CẮT một phần bởi retention: con
+ *   số kỳ trước là cận dưới, không phải sự thật đầy đủ. Vì vậy polarity
+ *   card là NEUTRAL và caption vẫn ghi kỳ trước — đọc để lấy hướng, đừng so
+ *   sổ. (Ngày nào retention đổi thì ghi chú này đổi theo.)
+ * - `queued` — ẢNH CHỤP: số row `PENDING` ngay bây giờ, đúng bằng số hàng
+ *   `/outbox?status=PENDING`. Không có "lúc đầu kỳ": trạng thái PENDING không
+ *   để lại dấu thời gian nào khi rời đi, nên không dựng lại được — contract
+ *   khai một số đơn thay vì bịa một cặp.
+ * - `failed` — ẢNH CHỤP: số row `FAILED` ngay bây giờ (đúng bằng
+ *   `/outbox?status=FAILED`). Đây là con số "cần người": hàng FAILED chỉ
+ *   rời trạng thái đó khi admin retry.
+ *
  * ## Index
  *
  * CỐ Ý chưa thêm index nào cho ba cột lọc mới (`bookings.paid_at`,
@@ -170,6 +190,26 @@ export class StatsService {
       pending: { current: pendingNow, previous: pendingThen },
       approved: { current: current.approved, previous: previous.approved },
       averageRating: { current: current.rating, previous: previous.rating },
+    };
+  }
+
+  /** Bộ số vùng `/outbox` (F7). */
+  async adminOutbox(): Promise<AdminOutboxStats> {
+    const window = statsWindow(new Date());
+    const [sentNow, sentBefore, queued, failed] = await Promise.all([
+      outboxSentCount(window.currentFrom, window.generatedAt),
+      outboxSentCount(window.previousFrom, window.currentFrom),
+      // Hai ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
+      // `/outbox?status=PENDING` và `?status=FAILED`.
+      prisma.outbox.count({ where: { status: OutboxStatus.PENDING } }),
+      prisma.outbox.count({ where: { status: OutboxStatus.FAILED } }),
+    ]);
+
+    return {
+      period: statsPeriod(window),
+      sent: { current: sentNow, previous: sentBefore },
+      queued,
+      failed,
     };
   }
 

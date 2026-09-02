@@ -1,6 +1,10 @@
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  CancellationRequestStatus,
+  OutboxStatus,
+} from '../../generated/prisma/enums.js';
 
 /**
  * Các câu AGGREGATE dùng chung của bề mặt số liệu admin — một khoảng
@@ -164,4 +168,17 @@ export async function refundsSlice(from: Date, to: Date) {
     _count: { _all: true },
   });
   return { total: result._sum.amount, count: result._count._all };
+}
+
+/**
+ * Email đã GIAO trong khoảng — đếm row `SENT` theo `processedAt` (F7, spec
+ * P4c §3-F7). Neo `processedAt` chứ không `createdAt`: hàng xếp từ tuần trước
+ * mà mãi hôm nay mới đi (sau khi admin retry) là email của hôm nay. Chỉ
+ * `SENT` — `processedAt` chỉ được ghi ở nhánh SENT nên lọc status là để câu
+ * query nói rõ ý, không phải để sửa kết quả.
+ */
+export function outboxSentCount(from: Date, to: Date): Promise<number> {
+  return prisma.outbox.count({
+    where: { status: OutboxStatus.SENT, processedAt: { gte: from, lt: to } },
+  });
 }

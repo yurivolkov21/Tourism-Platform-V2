@@ -28,6 +28,9 @@ describe('contract routes', () => {
     [contract.admin.stats.cancellations, 'GET /api/admin/stats/cancellations'],
     [contract.admin.stats.reviews, 'GET /api/admin/stats/reviews'],
     [contract.admin.reports.monthly, 'GET /api/admin/reports/monthly'],
+    [contract.admin.outbox.list, 'GET /api/admin/outbox'],
+    [contract.admin.outbox.retry, 'POST /api/admin/outbox/{id}/retry'],
+    [contract.admin.stats.outbox, 'GET /api/admin/stats/outbox'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
@@ -52,6 +55,17 @@ describe('contract routes', () => {
 
   it('reviews.create declares REVIEW_PHOTO_INVALID (ADR-0021)', () => {
     expect(contract.reviews.create['~orpc'].errorMap).toHaveProperty('REVIEW_PHOTO_INVALID');
+  });
+
+  // F7: retry chỉ hợp lệ trên hàng FAILED — hai mã, hai câu riêng phía admin.
+  it('admin.outbox.retry declares NOT_FOUND (404) and NOT_FAILED (409)', () => {
+    const errorMap = contract.admin.outbox.retry['~orpc'].errorMap as Record<
+      string,
+      { status?: number } | undefined
+    >;
+    expect(errorMap.NOT_FOUND?.status).toBe(404);
+    expect(errorMap.NOT_FAILED?.status).toBe(409);
+    expect(contract.admin.outbox.list['~orpc'].errorMap).toEqual({});
   });
 
   // F5: đọc thuần, không có phán quyết nghiệp vụ nào để mà khai lỗi riêng —

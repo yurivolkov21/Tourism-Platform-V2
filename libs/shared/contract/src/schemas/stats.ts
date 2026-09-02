@@ -119,3 +119,20 @@ export const AdminReviewsStatsSchema = z.object({
   averageRating: DecimalMetricSchema,
 });
 export type AdminReviewsStats = z.output<typeof AdminReviewsStatsSchema>;
+
+/**
+ * Bộ số vùng `/outbox` (spec P4c §3-F7). Chỉ `sent` là số ĐẾM TRONG kỳ (theo
+ * `processedAt`) nên mới có cặp hai kỳ; `queued`/`failed` là ẢNH CHỤP hàng
+ * đợi ngay bây giờ — một số đơn, card không có delta (cùng luật F5: không có
+ * mốc thời gian để dựng lại "lúc đầu kỳ" thì không bịa một kỳ trước).
+ */
+export const AdminOutboxStatsSchema = z.object({
+  period: StatsPeriodSchema,
+  /** Email đã giao trong kỳ (`processedAt`, status SENT). */
+  sent: CountMetricSchema,
+  /** Row PENDING ngay bây giờ — đúng bằng số hàng `/outbox?status=PENDING`. */
+  queued: z.int().nonnegative(),
+  /** Row FAILED ngay bây giờ — đúng bằng số hàng `/outbox?status=FAILED`. */
+  failed: z.int().nonnegative(),
+});
+export type AdminOutboxStats = z.output<typeof AdminOutboxStatsSchema>;
