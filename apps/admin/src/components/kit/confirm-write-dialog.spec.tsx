@@ -209,4 +209,26 @@ describe('ConfirmWriteDialog — khoá trong lúc bắn', () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('không truyền noteId (retry outbox F7): không có ô note, onSubmit nhận chuỗi rỗng', async () => {
+    const onSubmit = vi.fn(async () => ({
+      ok: true as const,
+      toast: { title: 'Done', description: 'ok' },
+    }));
+    const { noteLabel: _label, notePlaceholder: _placeholder, ...copy } = COPY;
+    render(
+      <ConfirmWriteDialog<TestCode>
+        copy={copy}
+        rows={ROWS}
+        onSubmit={onSubmit}
+        isStale={() => false}
+        errorCopy={() => 'x'}
+        onClose={onClose}
+        onSettled={onSettled}
+      />,
+    );
+    expect(screen.queryByRole('textbox')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: 'Do it' }));
+    expect(onSubmit).toHaveBeenCalledWith('');
+  });
 });

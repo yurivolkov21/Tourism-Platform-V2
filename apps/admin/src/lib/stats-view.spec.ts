@@ -1,6 +1,7 @@
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminOutboxStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -9,6 +10,7 @@ import {
   type StatCardVM,
   toBookingsStatCards,
   toCancellationsStatCards,
+  toOutboxStatCards,
   toReviewsStatCards,
 } from './stats-view';
 
@@ -48,6 +50,13 @@ const REVIEWS: AdminReviewsStats = {
   pending: { current: 3, previous: 7 },
   approved: { current: 9, previous: 4 },
   averageRating: { current: '4.60', previous: '4.20' },
+};
+
+const OUTBOX: AdminOutboxStats = {
+  period,
+  sent: { current: 40, previous: 35 },
+  queued: 3,
+  failed: 2,
 };
 
 /** Lấy một card theo khoá — test đọc theo tên chứ không theo vị trí mảng. */
@@ -240,5 +249,46 @@ describe('toReviewsStatCards', () => {
       'approved',
       'averageRating',
     ]);
+  });
+});
+
+describe('toOutboxStatCards (F7)', () => {
+  it('sent là thông lượng TRUNG TÍNH: có pill delta nhưng không tô tốt/xấu', () => {
+    const sent = card(toOutboxStatCards(OUTBOX), 'sent');
+    expect(sent.label).toBe(t.outbox.sent(28));
+    expect(sent.value).toBe('40');
+    expect(sent.caption).toBe(t.comparison('35', 28));
+    expect(sent.delta?.direction).toBe('up');
+    expect(sent.deltaGood).toBeUndefined();
+  });
+
+  it('queued là ẢNH CHỤP một số đơn: không pill, caption nói nó đang chờ gì', () => {
+    const queued = card(toOutboxStatCards(OUTBOX), 'queued');
+    expect(queued.value).toBe('3');
+    expect(queued.delta).toBeUndefined();
+    expect(queued.caption).toBe(t.outbox.queuedCaption);
+  });
+
+  it('failed > 0: pill đỏ "Needs attention" KHÔNG mũi tên — lời gọi người, không phải xu hướng', () => {
+    const failed = card(toOutboxStatCards(OUTBOX), 'failed');
+    expect(failed.value).toBe('2');
+    expect(failed.caption).toBe(t.outbox.failedCaption);
+    expect(failed.delta).toEqual({
+      direction: 'flat',
+      amount: t.outbox.needsAttention,
+      srLabel: t.outbox.needsAttentionSr('2'),
+    });
+    expect(failed.deltaGood).toBe(false);
+  });
+
+  it('failed = 0: không pill, caption nói không có gì chờ retry', () => {
+    const failed = card(toOutboxStatCards({ ...OUTBOX, failed: 0 }), 'failed');
+    expect(failed.delta).toBeUndefined();
+    expect(failed.deltaGood).toBeUndefined();
+    expect(failed.caption).toBe(t.outbox.failedCaptionNone);
+  });
+
+  it('ba card theo đúng thứ tự spec §3-F7: sent · queued · failed', () => {
+    expect(toOutboxStatCards(OUTBOX).map((c) => c.key)).toEqual(['sent', 'queued', 'failed']);
   });
 });

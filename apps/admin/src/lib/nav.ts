@@ -123,7 +123,16 @@ export const NAV_GROUPS: NavGroup[] = [
     key: 'system',
     label: t.groups.system,
     items: [
-      { key: 'outbox', label: t.outbox, href: '/outbox', enabled: false, icon: Send },
+      // Vùng thật đầu tiên của P4c (F7) — mở thẳng hàng FAILED (việc cần
+      // người), cùng nếp `/cancellations?status=REQUESTED`; tab "All" trong
+      // trang vẫn xem được tất cả.
+      {
+        key: 'outbox',
+        label: t.outbox,
+        href: '/outbox?status=FAILED',
+        enabled: true,
+        icon: Send,
+      },
       {
         key: 'payment-events',
         label: t.paymentEvents,

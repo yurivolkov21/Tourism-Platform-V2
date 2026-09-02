@@ -1,6 +1,7 @@
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminOutboxStats,
   AdminReviewsStats,
   CountMetric,
   DecimalMetric,
@@ -245,5 +246,47 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
       // Thang sao chặn hai đầu → delta là hiệu số thô (0.23), không phải %.
       'points',
     ),
+  ];
+}
+
+/**
+ * Ba card của `/outbox` (spec P4c §3-F7). Chỉ `sent` là cặp hai kỳ; hai card
+ * còn lại là ẢNH CHỤP một số đơn (contract khai số, không khai cặp) nên KHÔNG
+ * có pill delta — caption nói thẳng con số ấy đang chờ gì thay vì "vs …".
+ */
+export function toOutboxStatCards(stats: AdminOutboxStats): StatCardVM[] {
+  const days = stats.period.windowDays;
+
+  return [
+    // Gửi nhiều hơn vừa là nền tảng bận rộn hơn vừa chẳng nói gì về chất
+    // lượng — trung tính. (Kỳ trước còn bị purge 30 ngày cắt bớt — xem JSDoc
+    // `StatsService`; thêm lý do để không tô phán quyết lên nó.)
+    countCard('sent', t.outbox.sent(days), stats.sent, 'neutral', days),
+    {
+      key: 'queued',
+      label: t.outbox.queued,
+      value: formatCount(stats.queued),
+      caption: t.outbox.queuedCaption,
+    },
+    // Failed > 0 là lời gọi NGƯỜI (chỉ admin retry mới đưa hàng rời FAILED):
+    // pill đỏ không mũi tên — không phải xu hướng, là trạng thái cần xử.
+    // Đây là chỗ spec để "quyết trong stats-view": tone đỏ đi qua chính cơ
+    // chế `deltaGood=false` của kit, không mở prop mới cho một consumer.
+    {
+      key: 'failed',
+      label: t.outbox.failed,
+      value: formatCount(stats.failed),
+      caption: stats.failed > 0 ? t.outbox.failedCaption : t.outbox.failedCaptionNone,
+      ...(stats.failed > 0
+        ? {
+            delta: {
+              direction: 'flat' as const,
+              amount: t.outbox.needsAttention,
+              srLabel: t.outbox.needsAttentionSr(formatCount(stats.failed)),
+            },
+            deltaGood: false,
+          }
+        : {}),
+    },
   ];
 }

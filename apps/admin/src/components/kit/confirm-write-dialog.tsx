@@ -51,8 +51,9 @@ export interface ConfirmWriteCopy {
   submit: string;
   submitting: string;
   cancel: string;
-  noteLabel: string;
-  notePlaceholder: string;
+  /** Vắng (cùng với `noteId`) = lệnh không mang ghi chú — ô note không render (F7 retry). */
+  noteLabel?: string;
+  notePlaceholder?: string;
 }
 
 /** Một dòng ngữ cảnh (nhãn · giá trị) trong dialog. Nhãn là duy nhất trong một dialog. */
@@ -76,8 +77,12 @@ export interface ConfirmWriteDialogProps<Code extends string> {
   /** Phần riêng của vùng, nằm giữa ngữ cảnh và ô note (danh sách hệ quả,
    *  nguyên văn review, ảnh đính kèm…). */
   extra?: React.ReactNode;
-  /** `id` của ô note — mỗi hàng một id, tránh trùng khi nhiều dialog cùng DOM. */
-  noteId: string;
+  /**
+   * `id` của ô note — mỗi hàng một id, tránh trùng khi nhiều dialog cùng DOM.
+   * BỎ TRỐNG khi lệnh không có ghi chú (retry outbox F7): kit không render ô,
+   * `onSubmit` nhận chuỗi rỗng. Một ô note không đi đâu là một lời hứa suông.
+   */
+  noteId?: string;
   /** Nút xác nhận: `destructive` khi lệnh lấy đi thứ đang hiện ra ngoài. */
   submitVariant?: 'default' | 'destructive';
   /** Bề ngang DialogContent — vùng nào in nguyên văn nội dung thì cần rộng hơn. */
@@ -141,17 +146,19 @@ export function ConfirmWriteDialog<Code extends string>({
 
         {extra}
 
-        <div className="grid gap-1.5">
-          <Label htmlFor={noteId}>{copy.noteLabel}</Label>
-          <Textarea
-            id={noteId}
-            rows={3}
-            maxLength={500}
-            placeholder={copy.notePlaceholder}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
+        {noteId ? (
+          <div className="grid gap-1.5">
+            <Label htmlFor={noteId}>{copy.noteLabel}</Label>
+            <Textarea
+              id={noteId}
+              rows={3}
+              maxLength={500}
+              placeholder={copy.notePlaceholder}
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+          </div>
+        ) : null}
 
         <p className="text-sm text-destructive-emphasis">{copy.warning}</p>
 

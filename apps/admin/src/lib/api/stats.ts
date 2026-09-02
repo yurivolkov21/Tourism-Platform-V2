@@ -1,6 +1,7 @@
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminOutboxStats,
   AdminReviewsStats,
 } from '@tourism/contract';
 import { api } from './client';
@@ -27,7 +28,7 @@ import { api } from './client';
  * sống nhiều tuần mà không ai biết.
  */
 
-/** Tag Data Cache của cả ba endpoint stats — action ghi nào đổi số thì update. */
+/** Tag Data Cache của cả bốn endpoint stats — action ghi nào đổi số thì update. */
 export const ADMIN_STATS_TAG = 'admin-stats';
 
 const STATS_CACHE_SECONDS = 60;
@@ -48,4 +49,9 @@ export async function fetchAdminCancellationsStats(
 
 export async function fetchAdminReviewsStats(cookie: string): Promise<AdminReviewsStats> {
   return api.admin.stats.reviews(undefined, { context: statsContext(cookie) });
+}
+
+/** F7: cùng cache 60s + tag — `retryOutboxAction` update tag sau khi xếp lại hàng. */
+export async function fetchAdminOutboxStats(cookie: string): Promise<AdminOutboxStats> {
+  return api.admin.stats.outbox(undefined, { context: statsContext(cookie) });
 }

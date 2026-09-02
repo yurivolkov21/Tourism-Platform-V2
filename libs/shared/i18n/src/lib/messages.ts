@@ -2683,6 +2683,23 @@ export const messages = {
         approved: (days: number) => `Approved ${days}d`,
         averageRating: 'Average rating',
       },
+      /**
+       * Vùng outbox (spec P4c §3-F7). Chỉ `sent` đếm trong kỳ; hai card còn
+       * lại là ẢNH CHỤP hàng đợi — không có kỳ trước, caption nói thẳng con
+       * số ấy đang chờ gì.
+       */
+      outbox: {
+        sent: (days: number) => `Sent ${days}d`,
+        queued: 'Queued now',
+        /** Ảnh chụp không có delta — caption thay cho dòng "vs …". */
+        queuedCaption: 'Waiting for the next worker run',
+        failed: 'Failed now',
+        failedCaption: 'Parked after too many attempts — needs an operator',
+        failedCaptionNone: 'Nothing is waiting for a retry',
+        /** Pill đỏ trên card Failed khi > 0 — không có mũi tên, chỉ là lời gọi. */
+        needsAttention: 'Needs attention',
+        needsAttentionSr: (count: string) => `${count} failed emails need an operator`,
+      },
     },
     /**
      * Trang báo cáo tháng (spec P4b §3-F6) — bề mặt admin đầu tiên được thiết
@@ -3143,6 +3160,120 @@ export const messages = {
             `${code} is cancelled and the remaining balance is on its way back.`,
           deniedTitle: 'Cancellation denied',
           deniedBody: (code: string) => `${code} is unchanged and the customer has been told.`,
+        },
+      },
+    },
+    /**
+     * Vùng outbox (spec P4c §3-F7) — hàng đợi email mà worker drain mỗi phút,
+     * cộng MỘT hành vi ghi: `admin.outbox.retry` (đưa hàng FAILED về hàng đợi).
+     *
+     * Retry KHÔNG gửi email ngay: nó chỉ đặt lại trạng thái, worker nhặt ở
+     * lượt kế (~1 phút). Copy xác nhận phải nói đúng chuyện đó — và nói cả
+     * hệ quả nếu nguyên nhân gốc (key provider hỏng…) chưa được sửa: hàng sẽ
+     * lại FAILED sau đủ số lần thử. HAI mã contract dưới `retry.errors` là
+     * NGUỒN duy nhất của tập mã phía admin (`outbox-retry.ts` derive từ keys).
+     */
+    outbox: {
+      list: {
+        filterLabel: 'Filter by status',
+        all: 'All',
+        typeLabel: 'Filter by email type',
+        typeAll: 'All types',
+        searchLabel: 'Search outbox',
+        /** dedupeKey mang mã booking/id enquiry — đó là thứ operator đang cầm. */
+        searchPlaceholder: 'Dedupe key, e.g. BK-ABCD1234',
+        clear: 'Clear search',
+        empty: 'No outbox rows match this filter.',
+        columns: {
+          type: 'Type',
+          recipient: 'Recipient',
+          status: 'Status',
+          attempts: 'Attempts',
+          lastError: 'Last error',
+          created: 'Created',
+          processed: 'Processed',
+          actions: 'Actions',
+        },
+        /** "3/5" — số lần đã thử trên trần của worker (`OUTBOX_MAX_ATTEMPTS`). */
+        attempts: (used: number, max: number) => `${used}/${max}`,
+        /** Hàng SENT: attempts là số lần HỎNG trước khi đi được. 0 = đi ngay lần đầu. */
+        sentFirstTry: 'First try',
+        sentAfterRetries: (failed: number) =>
+          failed === 1 ? 'After 1 failed try' : `After ${failed} failed tries`,
+        /** Payload không có `to`/`email` — hiện chữ thay vì ô trống trơn. */
+        noRecipient: 'No recipient in payload',
+        view: 'Details',
+        viewLabel: (key: string) => `View details of ${key}`,
+      },
+      /** Nhãn enum OutboxStatus — PENDING đọc là "đang xếp hàng", không phải "chờ duyệt". */
+      status: {
+        PENDING: 'Queued',
+        SENT: 'Sent',
+        FAILED: 'Failed',
+      },
+      /** Nhãn enum EmailType — `Record` đủ member để thêm loại email mới là đỏ typecheck. */
+      type: {
+        BOOKING_CONFIRMATION: 'Booking confirmation',
+        BOOKING_REFUNDED: 'Booking refunded',
+        REVIEW_APPROVED: 'Review approved',
+        ENQUIRY_RECEIVED: 'Enquiry received',
+        ENQUIRY_ADMIN_ALERT: 'Enquiry alert (team)',
+        CANCELLATION_REQUESTED: 'Cancellation requested',
+        CANCELLATION_APPROVED: 'Cancellation approved',
+        CANCELLATION_DENIED: 'Cancellation denied',
+        NEWSLETTER_WELCOME: 'Newsletter welcome',
+        EMAIL_CHANGED: 'Email changed',
+        PASSWORD_RESET: 'Password reset',
+        EMAIL_VERIFICATION: 'Email verification',
+        EMAIL_OTP: 'Email verification code',
+      },
+      /** Drawer chi tiết một hàng: payload JSON nguyên văn + lỗi đầy đủ. */
+      detail: {
+        title: 'Outbox row',
+        description: (key: string) => `Dedupe key ${key}`,
+        type: 'Type',
+        recipient: 'Recipient',
+        status: 'Status',
+        attempts: 'Attempts',
+        created: 'Created',
+        processed: 'Processed',
+        lastError: 'Last error',
+        noError: 'No error recorded.',
+        payload: 'Payload (JSON)',
+      },
+      retry: {
+        action: 'Retry',
+        actionLabel: (key: string) => `Retry ${key}`,
+        type: 'Type',
+        recipient: 'Recipient',
+        dedupeKey: 'Dedupe key',
+        lastError: 'Last error',
+        cancel: 'Cancel',
+        dialog: {
+          title: 'Retry this email?',
+          body: 'The row goes back to the queue exactly as it is — same recipient, same content.',
+          /** Ba hệ quả — đọc từ summary contract + JSDoc service. */
+          consequences: {
+            requeue: 'Moves the row back to the queue and resets its attempts to 0.',
+            worker: 'The worker picks it up on its next run, within about a minute.',
+            lastError: 'The last error stays on the row until the new attempt overwrites it.',
+          },
+          warning: (max: number) =>
+            `If the cause (for example the email provider key) is not fixed yet, the retry fails again and the row is parked after ${max} attempts.`,
+          submit: 'Retry now',
+          submitting: 'Retrying…',
+        },
+        /** Cả hai là lỗi TRẠNG-THÁI-CŨ: UI đóng dialog + toast + refresh bảng. */
+        errors: {
+          NOT_FOUND:
+            'This outbox row no longer exists — it may have been purged. The list below has been refreshed.',
+          NOT_FAILED:
+            'This row is no longer marked as failed — it may already be back in the queue or sent. The list below has been refreshed.',
+        },
+        toast: {
+          title: 'Email re-queued',
+          body: (key: string) =>
+            `${key} is back in the queue — the worker sends it within about a minute.`,
         },
       },
     },
