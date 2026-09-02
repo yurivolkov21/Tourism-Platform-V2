@@ -8,6 +8,46 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-02 — P4c F7: Outbox (hàng đợi email, retry) + vòng vá (nhánh `feat/p4c-outbox`, 3 commit `dea5566..ae5221a`, ~50 file, migration `20260902090000_outbox_status_skipped`)
+
+Tính năng đầu P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md) §3-F7):
+contract `admin.outbox.list/retry` + `admin.stats.outbox`, module API
+`modules/outbox` (guard cấp class, int test 401/403), trang `/outbox` (tab
+trạng thái, Select loại email, tìm kiếm, drawer payload, retry qua
+`ConfirmWriteDialog` — consumer đầu tiên không có ô note), `OUTBOX_MAX_ATTEMPTS`
+một nguồn ở contract (worker import lại), `recipient` tái dùng đúng
+`worker/recipient.ts`. Thi công đúng khuôn P4b, ba quyết định tự chọn có
+JSDoc. Nghiệm thu review 8 mũi → 10 findings (8 CONFIRMED · 2 PLAUSIBLE),
+user duyệt vá một mạch (`ae5221a`):
+
+- **Bảo mật**: payload PASSWORD_RESET mang URL có token, EMAIL_OTP mang mã,
+  và `auth.config.ts` nhét cả hai vào `dedupeKey` — trang `/outbox` từng phơi
+  cho mọi admin. Mapper API nay che `url`/`otp`/`token` (theo tên khoá, mọi
+  loại email) và cắt dedupeKey của email auth còn tiền tố; int test khẳng
+  định token không xuất hiện trong response.
+- **Trượt mục tiêu**: ô tìm chỉ khớp `dedupeKey` mà key thật là
+  `<event>:<uuid>` — gõ `BK-…` như placeholder gợi ý luôn rỗng (fixture test
+  bịa format nên xanh). Nay khớp `payload.code`/`email`/`to` + dedupeKey,
+  không phân biệt hoa/thường; fixture theo quy ước thật.
+- **Stat card nói dối ba cách**: "Sent 28d" đếm cả hàng newsletter bị skip
+  (worker đánh SENT không gửi) → trạng thái **`SKIPPED`** mới (migration, đã
+  deploy Supabase), purge dọn cùng SENT; kỳ trước của Sent bị purge 30 ngày
+  xoá gần hết → `sent` thành số đơn không delta; Queued/Failed cache 60s trong
+  khi worker đổi hàng đợi mỗi phút → stats outbox không cache; card Failed
+  mượn `delta: 'flat'` để lấy tông đỏ → StatCard thêm khe `callout`.
+- **Retry**: một câu `update` có guard `status = FAILED` (hết khe hở đọc lại
+  ngoài UPDATE, hết P2025 thành 500); nhãn Attempts đọc dấu vết retry
+  (`attempts 0` + `lastError`) — "Re-queued by an operator" / "Sent after a
+  manual retry" thay vì "0/5"/"First try" cho hàng phải can thiệp 6 lượt.
+- **Kit đến ngưỡng §2.1**: `ConfirmWriteDialog` union `noteId`+`noteLabel`
+  (audit note không thể biến mất mà typecheck xanh); `createWriteErrorCodec`
+  nhận `stale` (ba `isStaleStateCode` tay bỏ); `ToolbarSelect` nâng từ ba bản
+  chép; `clampSearch`/`pickPatch` ở `table-query`; `AdminPageQuerySchema` ở
+  contract; `toPaged` ở API; commit đầu reword cho có câu tiếng Việt (luật 12).
+
+Tests after: 1417 web · 267 api · 245 api-int · 130 contract · 22 ui ·
+10 tokens · 2 i18n · 425 admin.
+
 ## 2026-09-02 — P4b polish: bề mặt admin, chọn hàng export, date picker + vòng vá (nhánh `fix/p4b-ui-polish`, 1 commit `32dce27`, 34 file)
 
 Vòng chỉnh chi tiết F1–F6 do user cầm ở session riêng (01/09, không commit
