@@ -7,6 +7,7 @@ import {
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
+  AdminSubscribersStatsSchema,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
@@ -175,7 +176,7 @@ describe('admin stats integration (F5)', () => {
 
   beforeAll(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE tour_categories, destinations, users, payment_events, outbox, enquiries CASCADE',
+      'TRUNCATE TABLE tour_categories, destinations, users, payment_events, outbox, enquiries, subscribers CASCADE',
     );
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
     await prisma.destination.createMany({ data: catalog.destinations });
@@ -220,7 +221,7 @@ describe('admin stats integration (F5)', () => {
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox, payment_events, enquiries CASCADE',
+      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox, payment_events, enquiries, subscribers CASCADE',
     );
   });
 
@@ -229,7 +230,7 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ SÁU path', () => {
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ BẢY path', () => {
     // Tham số hoá cả sáu (vòng vá review F5): guard đặt ở cấp class, nhưng
     // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
     for (const area of [
@@ -239,6 +240,7 @@ describe('admin stats integration (F5)', () => {
       'outbox',
       'payment-events',
       'enquiries',
+      'subscribers',
     ] as const) {
       it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
         const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
@@ -882,6 +884,85 @@ describe('admin stats integration (F5)', () => {
         created: { current: 0, previous: 0 },
         won: { current: 0, previous: 0 },
         open: 0,
+      });
+    });
+  });
+
+  describe('stats.subscribers (F10)', () => {
+    /** Một địa chỉ với mốc đăng ký + mốc rút consent đặt tay. */
+    const subscriber = (
+      n: number,
+      row: { createdAt: Date; unsubscribedAt?: Date },
+    ): Prisma.SubscriberCreateManyInput => ({
+      id: `fa50000b-0000-4000-8000-${String(n).padStart(12, '0')}`,
+      email: `stat-sub-${n}@example.com`,
+      createdAt: row.createdAt,
+      updatedAt: row.createdAt,
+      unsubscribedAt: row.unsubscribedAt ?? null,
+    });
+
+    beforeEach(async () => {
+      await prisma.subscriber.createMany({
+        data: [
+          // Hai metric neo HAI cột khác nhau, nên fixture cố ý cho mỗi hàng
+          // một tổ hợp riêng: hàng đổi chỗ giữa `created` và `unsubscribed`
+          // sẽ làm sai đúng một con số thay vì trôi cả bộ.
+          //
+          // ── Đăng ký KỲ NÀY: 2 ──
+          subscriber(1, { createdAt: daysAgo(3) }),
+          subscriber(2, { createdAt: daysAgo(20), unsubscribedAt: daysAgo(2) }),
+          // ── Đăng ký KỲ TRƯỚC: 1 — nhưng huỷ ở KỲ NÀY ──
+          subscriber(3, { createdAt: daysAgo(40), unsubscribedAt: daysAgo(5) }),
+          // ── Huỷ ở KỲ TRƯỚC: 1 (đăng ký từ lâu, ngoài cả hai kỳ) ──
+          subscriber(4, { createdAt: daysAgo(90), unsubscribedAt: daysAgo(45) }),
+          // Ngoài cả hai kỳ mà vẫn CÒN NHẬN TIN → chỉ vào ảnh chụp `active`.
+          subscriber(5, { createdAt: daysAgo(90) }),
+          // Ngoài cả hai kỳ ở CẢ HAI cột — không được lọt vào con số nào.
+          subscriber(6, { createdAt: daysAgo(90), unsubscribedAt: daysAgo(70) }),
+        ],
+      });
+    });
+
+    it('created đếm theo createdAt ở CẢ HAI kỳ, kể cả địa chỉ sau đó đã huỷ', async () => {
+      const stats = AdminSubscribersStatsSchema.parse(
+        (await get('subscribers', adminCookie)).json(),
+      );
+      // Hàng 2 đăng ký trong kỳ rồi huỷ ngay trong kỳ: vẫn là một lượt đăng ký
+      // của kỳ (lọc theo trạng thái hiện tại sẽ ra 1).
+      expect(stats.created).toEqual({ current: 2, previous: 1 });
+      expect(stats.period.windowDays).toBe(28);
+    });
+
+    it('unsubscribed đếm theo unsubscribedAt — cột KHÁC, hai kỳ độc lập với created', async () => {
+      const stats = AdminSubscribersStatsSchema.parse(
+        (await get('subscribers', adminCookie)).json(),
+      );
+      // Hàng 3 đăng ký kỳ TRƯỚC nhưng huỷ kỳ NÀY: hai metric không được đọc
+      // chung một cột.
+      expect(stats.unsubscribed).toEqual({ current: 2, previous: 1 });
+    });
+
+    it('active là ẢNH CHỤP unsubscribedAt null bây giờ, không phân biệt tuổi hàng', async () => {
+      const stats = AdminSubscribersStatsSchema.parse(
+        (await get('subscribers', adminCookie)).json(),
+      );
+      // Hàng 1 (đăng ký 3 ngày trước) + hàng 5 (90 ngày trước) — bốn hàng còn
+      // lại đều đã có mốc rút consent.
+      expect(stats.active).toBe(2);
+      // Khớp ĐÚNG số hàng của `/subscribers?active=true` (lời hứa ở contract).
+      expect(await prisma.subscriber.count({ where: { unsubscribedAt: null } })).toBe(2);
+    });
+  });
+
+  describe('stats.subscribers — kỳ rỗng', () => {
+    it('bảng trống: cặp 0/0 và ảnh chụp 0 — con số thật, không phải lỗi', async () => {
+      const stats = AdminSubscribersStatsSchema.parse(
+        (await get('subscribers', adminCookie)).json(),
+      );
+      expect(stats).toMatchObject({
+        created: { current: 0, previous: 0 },
+        unsubscribed: { current: 0, previous: 0 },
+        active: 0,
       });
     });
   });

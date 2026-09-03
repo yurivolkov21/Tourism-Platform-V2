@@ -12,7 +12,7 @@ import { StatsService } from './stats.service.js';
  * (getAllAndOverride handler→class), nên ẩn danh → 401, không phải admin →
  * 403 — cả hai TRƯỚC khi oRPC chạm tới bất cứ thứ gì.
  *
- * Sáu handler mỏng đúng nghĩa: không input để parse, không lỗi nghiệp vụ để
+ * Bảy handler mỏng đúng nghĩa: không input để parse, không lỗi nghiệp vụ để
  * dịch (contract không khai mã nào — đọc thuần thì không có phán quyết nào để
  * báo). Toàn bộ định nghĩa metric nằm ở JSDoc `StatsService`.
  */
@@ -54,5 +54,10 @@ export class AdminStatsController {
   @Implement(contract.admin.stats.enquiries)
   enquiries() {
     return implement(contract.admin.stats.enquiries).handler(() => this.stats.adminEnquiries());
+  }
+
+  @Implement(contract.admin.stats.subscribers)
+  subscribers() {
+    return implement(contract.admin.stats.subscribers).handler(() => this.stats.adminSubscribers());
   }
 }

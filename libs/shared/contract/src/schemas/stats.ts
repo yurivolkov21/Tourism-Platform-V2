@@ -217,3 +217,53 @@ export const AdminEnquiriesStatsSchema = z.object({
   open: z.int().nonnegative(),
 });
 export type AdminEnquiriesStats = z.output<typeof AdminEnquiriesStatsSchema>;
+
+/**
+ * Bộ số vùng `/subscribers` (spec P4c §3-F10). Hai metric neo vào một MỐC
+ * THỜI GIAN nên có cặp hai kỳ; `active` là ẢNH CHỤP danh sách ngay bây giờ —
+ * số đơn, card không có delta (cùng luật F5/F7/F8/F9).
+ */
+export const AdminSubscribersStatsSchema = z.object({
+  period: StatsPeriodSchema,
+  /**
+   * Địa chỉ ĐĂNG KÝ trong kỳ (`createdAt`) — kể cả những địa chỉ đã huỷ sau
+   * đó. Tên là `created` chứ không phải `new` vì cùng lý do với `enquiries`:
+   * card đọc là "New 28d" nhưng con số này không lọc theo trạng thái hiện
+   * tại (một người đăng ký hôm kia rồi huỷ hôm nay VẪN là một lượt đăng ký
+   * của kỳ). Có kỳ trước thật: bảng không purge.
+   *
+   * Hàng chỉ sinh ra một lần cho mỗi địa chỉ (`upsert` theo email, xem
+   * `NewsletterService.subscribe`), nên đây là số NGƯỜI mới, không phải số
+   * lượt bấm nút — kể cả khi ai đó điền form mười lần.
+   */
+  created: CountMetricSchema,
+  /**
+   * Địa chỉ HUỶ trong kỳ (`unsubscribedAt`).
+   *
+   * ⚠️ Con số của một kỳ ĐÃ ĐÓNG có thể GIẢM về sau, và điều đó là cố ý chấp
+   * nhận chứ không phải sót: `unsubscribed_at` là một cột trạng thái, và
+   * `NewsletterService.resubscribe` (khách bấm link HMAC trong email của
+   * chính họ) đặt nó về null — lượt huỷ ấy biến mất khỏi mọi kỳ. Đây đúng
+   * họ vấn đề của `approved` (F5) và `won` (F9), nhưng hai vùng đó chữa được
+   * bằng bảng audit còn ở đây thì KHÔNG: P4c không thêm migration nào cho
+   * F10 (spec §3-F10), nên ngày cần một con số bất động thì việc phải làm là
+   * một bảng `subscriber_consent_events` append-only chứ không phải sửa câu
+   * query này.
+   *
+   * Trong thực tế đường quay lại rất hẹp (khách phải còn giữ email cũ và bấm
+   * đúng link trong đó), nên sai số là nhỏ và luôn theo MỘT chiều: con số đã
+   * in ra chỉ giảm, không bao giờ phình.
+   */
+  unsubscribed: CountMetricSchema,
+  /**
+   * Địa chỉ CÒN NHẬN TIN ngay bây giờ (`unsubscribedAt` null) — đúng bằng số
+   * hàng của `/subscribers?active=true`. Ảnh chụp: không dựng lại được "lúc
+   * đầu kỳ" từ riêng hai mốc (một hàng huỷ rồi đăng ký lại xoá sạch dấu vết
+   * của lượt huỷ), nên contract khai số đơn thay vì bịa một cặp.
+   *
+   * KHÔNG có callout đỏ: đây là con số người ta MUỐN thấy lớn, không phải
+   * một hàng đợi chờ người xử lý — khác hẳn `outbox.failed`.
+   */
+  active: z.int().nonnegative(),
+});
+export type AdminSubscribersStats = z.output<typeof AdminSubscribersStatsSchema>;

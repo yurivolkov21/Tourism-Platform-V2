@@ -40,6 +40,10 @@ import {
 } from './schemas/enquiries.js';
 import { SignedUploadParamsSchema, SignUploadInputSchema } from './schemas/media.js';
 import {
+  AdminSubscribersListQuerySchema,
+  AdminSubscribersListResultSchema,
+  AdminSubscriberUnsubscribeInputSchema,
+  AdminSubscriberUnsubscribeResultSchema,
   ResubscribeInputSchema,
   ResubscribeResultSchema,
   SubscribeInputSchema,
@@ -84,6 +88,7 @@ import {
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
+  AdminSubscribersStatsSchema,
 } from './schemas/stats.js';
 import {
   CheckWishlistInputSchema,
@@ -707,6 +712,16 @@ export const contract = {
             'Enquiries received and won in the last 28 days (and the 28 before) + open snapshot',
         })
         .output(AdminEnquiriesStatsSchema),
+      // F10 (spec P4c): created/unsubscribed là cặp hai kỳ (neo `created_at`
+      // và `unsubscribed_at`); active là ảnh chụp một số đơn.
+      subscribers: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/subscribers',
+          summary:
+            'Newsletter sign-ups and opt-outs in the last 28 days (and the 28 before) + active snapshot',
+        })
+        .output(AdminSubscribersStatsSchema),
     },
     /**
      * Outbox email (spec P4c §3-F7) — bề mặt triage cho hàng đợi email mà
@@ -792,10 +807,11 @@ export const contract = {
      * (CRM nhỏ, admin biết mình làm gì), nhưng dialog xác nhận phải nêu rõ
      * `from → to` trước khi bắn.
      *
-     * Cả hai lệnh ghi trả về DETAIL đầy đủ chứ không chỉ row: nơi gọi chúng
-     * là trang chi tiết, và sự thật sau lệnh ghi gồm cả dòng vừa được nối
-     * vào timeline. Client vẫn `router.refresh()`, nhưng khi ấy nó là lớp
-     * dự phòng chứ không phải nguồn tin duy nhất.
+     * Cả hai lệnh ghi trả kết quả GỌN, không phải detail (vòng vá review
+     * F9): `setStatus` trả `{id, name, status, changed}` — `changed: false`
+     * là no-op phải phân biệt được; `addNote` trả `{id}`. Trang chi tiết
+     * `router.refresh()` là nguồn sự thật của màn hình, nên chở cả thread
+     * note qua dây chỉ để ném đi là một lượt đọc thừa NẰM TRONG transaction.
      *
      * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
      */
@@ -835,6 +851,56 @@ export const contract = {
         .input(AdminEnquiryAddNoteInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
         .output(AdminEnquiryAddNoteResultSchema),
+    },
+    /**
+     * Subscribers newsletter (spec P4c §3-F10) — danh sách nhận tin mà form
+     * footer CÔNG KHAI của web ghi vào, cộng MỘT hành vi ghi: gỡ một địa chỉ
+     * khỏi danh sách khi chính khách nhờ (trả lời email, gọi điện) mà họ
+     * không tự bấm được link trong thư.
+     *
+     * `unsubscribe` KHÔNG đi qua token HMAC của đường khách: token đó tồn tại
+     * để chứng minh "người bấm cầm được hộp thư này" khi KHÔNG có phiên nào —
+     * còn ở đây admin đã qua `AuthGuard` + `@Roles(ADMIN)`, và dòng log
+     * `[admin] subscriber unsubscribe {adminId, subscriberId}` là thứ quy
+     * hành vi về người. Bắt admin tự ghép token là dựng lại một cái khoá cho
+     * cánh cửa đã có khoá khác.
+     *
+     * Guard `unsubscribedAt: null` nằm trên chính câu UPDATE (cùng khuôn
+     * `outbox.retry` và `NewsletterService.unsubscribe`): 0 row + hàng còn đó
+     * → `ALREADY_UNSUBSCRIBED` (409 — thế giới đã đổi dưới chân dialog, và
+     * mốc rút consent CŨ không được đè); id lạ → `NOT_FOUND`.
+     *
+     * KHÔNG có `resubscribe` phía admin (spec §3-F10): đăng ký hộ người khác
+     * là đúng thứ mà việc thiếu double opt-in khiến không kiểm chứng được —
+     * consent phải đi từ link trong hộp thư của chính chủ. Không có xoá
+     * (§2.4): huỷ là ghi mốc, không phải mất hàng.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    subscribers: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/subscribers',
+          summary: 'List newsletter subscribers (admin, paged, active/email/source filters)',
+        })
+        .input(AdminSubscribersListQuerySchema)
+        .output(AdminSubscribersListResultSchema),
+      unsubscribe: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/subscribers/{id}/unsubscribe',
+          summary: "Remove one address from the newsletter list on the subscriber's behalf",
+        })
+        .input(AdminSubscriberUnsubscribeInputSchema)
+        .errors({
+          NOT_FOUND: { status: 404, message: 'Subscriber not found' },
+          ALREADY_UNSUBSCRIBED: {
+            status: 409,
+            message: 'This address has already left the newsletter list',
+          },
+        })
+        .output(AdminSubscriberUnsubscribeResultSchema),
     },
     /**
      * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV

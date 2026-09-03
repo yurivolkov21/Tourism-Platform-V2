@@ -6,6 +6,7 @@ import {
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
+  type AdminSubscribersStats,
   OPEN_ENQUIRY_STATUSES,
   PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
@@ -21,6 +22,7 @@ import {
   paymentEventsSlice,
   revenueCurrency,
   reviewApprovals,
+  subscribersSlice,
 } from './stats-aggregates.js';
 import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
 
@@ -192,6 +194,37 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   NEW, tức một kẻ đổi bảng ngoài mọi `updateTag` của admin; bảng bên dưới
  *   đọc tươi nên card cache 60s sẽ cãi nhau với chính tab NEW.
  *
+ * **subscribers** (F10, spec P4c §3-F10)
+ * - `created` — số địa chỉ ĐĂNG KÝ trong kỳ theo `created_at`, không lọc
+ *   theo trạng thái hiện tại: một người đăng ký hôm kia rồi huỷ hôm nay vẫn
+ *   là một lượt đăng ký của kỳ (cùng luật đặt tên với `enquiries.created` —
+ *   card đọc "New 28d" nhưng con số không phải "đang active"). Hàng chỉ sinh
+ *   MỘT lần cho mỗi địa chỉ (`upsert` theo email ở `NewsletterService.subscribe`)
+ *   nên đây là số NGƯỜI mới, không phải số lượt bấm nút. Query đối chứng:
+ *   `SELECT COUNT(*) FROM subscribers WHERE created_at >= $from AND created_at < $to`.
+ *   Có kỳ trước thật: bảng không purge.
+ * - `unsubscribed` — số địa chỉ RÚT CONSENT trong kỳ theo `unsubscribed_at`.
+ *   Cột KHÁC `created_at`, nên một địa chỉ đăng ký kỳ trước mà huỷ kỳ này
+ *   được đếm ở hai kỳ khác nhau của hai metric khác nhau — đó là đúng.
+ *   ⚠️ ĐÂY LÀ CON SỐ DUY NHẤT CỦA CẢ BỀ MẶT STATS KHÔNG BẤT ĐỘNG: khách bấm
+ *   link resubscribe trong email cũ của họ (`NewsletterService.resubscribe`)
+ *   đặt cột này về null và lượt huỷ biến khỏi một kỳ đã đóng. Đúng họ vấn đề
+ *   của `approved` (F5) và `won` (F9), nhưng hai vùng đó chữa bằng bảng audit
+ *   còn F10 thì không thêm migration nào (spec §3-F10). Sai số nhỏ và luôn
+ *   MỘT chiều (số đã in ra chỉ giảm); ngày cần bất động thì việc phải làm là
+ *   một bảng `subscriber_consent_events` append-only, không phải sửa câu
+ *   query này. Query đối chứng:
+ *   `SELECT COUNT(*) FROM subscribers WHERE unsubscribed_at >= $from AND unsubscribed_at < $to`.
+ * - `active` — ẢNH CHỤP: số hàng `unsubscribed_at IS NULL` ngay bây giờ, đúng
+ *   bằng số hàng của `/subscribers?active=true`. Không dựng lại được "lúc đầu
+ *   kỳ" từ riêng hai mốc (một hàng huỷ rồi đăng ký lại xoá sạch dấu vết lượt
+ *   huỷ), nên contract khai số đơn. KHÔNG có callout đỏ: đây là con số người
+ *   ta MUỐN thấy lớn, khác hẳn hàng đợi `outbox.failed`.
+ *   Admin KHÔNG cache (cùng luật outbox/payment events/enquiries): bảng này
+ *   có BA kẻ ghi và chỉ một là admin — form footer công khai (`subscribe`) và
+ *   đường HMAC trong email khách (`unsubscribe`/`resubscribe`) đều đổi cả ba
+ *   con số ngoài mọi `updateTag`.
+ *
  * ## Index
  *
  * CỐ Ý chưa thêm index nào cho các cột lọc theo thời gian (`bookings.paid_at`,
@@ -349,6 +382,25 @@ export class StatsService {
       created: { current: createdNow, previous: createdBefore },
       won: { current: wonNow, previous: wonBefore },
       open,
+    };
+  }
+
+  /** Bộ số vùng `/subscribers` (F10) — hai lát kỳ + một count ảnh chụp, song song. */
+  async adminSubscribers(): Promise<AdminSubscribersStats> {
+    const window = statsWindow(new Date());
+    const [current, previous, active] = await Promise.all([
+      subscribersSlice(window.currentFrom, window.generatedAt),
+      subscribersSlice(window.previousFrom, window.currentFrom),
+      // Ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
+      // `/subscribers?active=true`.
+      prisma.subscriber.count({ where: { unsubscribedAt: null } }),
+    ]);
+
+    return {
+      period: statsPeriod(window),
+      created: { current: current.created, previous: previous.created },
+      unsubscribed: { current: current.unsubscribed, previous: previous.unsubscribed },
+      active,
     };
   }
 

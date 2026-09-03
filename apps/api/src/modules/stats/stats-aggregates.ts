@@ -233,3 +233,29 @@ export async function enquiryWonCount(from: Date, to: Date): Promise<number> {
   `);
   return Number(row?.won ?? 0);
 }
+
+/**
+ * Hai con số của danh sách nhận tin trong khoảng — F10, spec P4c §3-F10.
+ *
+ * MỘT hàm chứ không hai vì đây là một câu hỏi ("kỳ này danh sách vào/ra bao
+ * nhiêu"), nhưng hai QUERY vì hai metric neo hai cột khác nhau: `created_at`
+ * (lượt đăng ký) và `unsubscribed_at` (lượt rút consent). Không gộp được vào
+ * một `aggregate` như `paymentEventsSlice` — ở đó hai con số cùng một vế
+ * WHERE, còn ở đây mỗi con số có vế riêng.
+ *
+ * Một hàng đăng ký RỒI huỷ trong cùng một kỳ được đếm vào CẢ HAI, đúng như
+ * nó đã xảy ra hai lần.
+ *
+ * ⚠️ `unsubscribed` KHÔNG bất động: `resubscribe` (khách bấm link HMAC trong
+ * email của chính họ) đặt `unsubscribed_at` về null, và lượt huỷ ấy biến khỏi
+ * kỳ đã đóng. Không chữa được ở đây — xem JSDoc `AdminSubscribersStatsSchema`
+ * ở contract cho lý do đầy đủ và việc phải làm nếu ngày nào cần con số bất
+ * động (một bảng audit consent, cùng bài học F5/F9).
+ */
+export async function subscribersSlice(from: Date, to: Date) {
+  const [created, unsubscribed] = await Promise.all([
+    prisma.subscriber.count({ where: { createdAt: { gte: from, lt: to } } }),
+    prisma.subscriber.count({ where: { unsubscribedAt: { gte: from, lt: to } } }),
+  ]);
+  return { created, unsubscribed };
+}
