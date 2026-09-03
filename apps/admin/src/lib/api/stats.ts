@@ -5,32 +5,41 @@ import type {
   AdminOutboxStats,
   AdminPaymentEventsStats,
   AdminReviewsStats,
+  AdminSubscribersStats,
 } from '@tourism/contract';
 import { api, withAdminAuth } from './client';
 
 /**
- * Ba đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`.
+ * Bảy đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`.
  *
- * KHÁC các fetcher list: cache 60s theo tag (vòng vá review F5). `no-store`
- * từng bắt refetch trọn bộ stats trên MỌI click phân trang/lọc/refresh-sau-ghi
- * dù hàng card không phụ thuộc searchParams — và vì refresh nằm trong
- * `useTransition`, nó kéo dài luôn thời gian khoá nút Approve/Deny. Cửa sổ đo
- * là 28 ngày nên 60s staleness là số lẻ thứ năm sau dấu phẩy; còn "tươi ngay
- * sau khi CHÍNH MÌNH ghi" thì ba server action gọi `updateTag(ADMIN_STATS_TAG)`.
- * An toàn chia sẻ cache giữa admin: stats là số nền tảng, không theo phiên
- * (xem cảnh báo `cacheFor` ở client.ts).
+ * ## Vùng nào cache, vùng nào không — LUẬT CHUNG
  *
- * `undefined` ở vị trí input là ĐÚNG chữ ký: ba procedure này không khai
+ * Cache theo tag CHỈ khi MỌI kẻ ghi bảng đều là server action của admin. Ba
+ * vùng của P4b (bookings/cancellations/reviews) đúng như vậy nên cache 60s
+ * theo `ADMIN_STATS_TAG`; bốn vùng của P4c thì không, và mỗi cái ghi lý do
+ * riêng ở JSDoc của mình (worker · webhook provider · form "Inquire Now" ·
+ * form footer + link HMAC trong email khách).
+ *
+ * Vì sao ba vùng kia CÓ cache (vòng vá review F5): `no-store` từng bắt refetch
+ * trọn bộ stats trên MỌI click phân trang/lọc/refresh-sau-ghi dù hàng card
+ * không phụ thuộc searchParams — và vì refresh nằm trong `useTransition`, nó
+ * kéo dài luôn thời gian khoá nút Approve/Deny. Cửa sổ đo là 28 ngày nên 60s
+ * staleness là số lẻ thứ năm sau dấu phẩy; còn "tươi ngay sau khi CHÍNH MÌNH
+ * ghi" thì server action gọi `updateTag(ADMIN_STATS_TAG)`. An toàn chia sẻ
+ * cache giữa admin: stats là số nền tảng, không theo phiên (xem cảnh báo
+ * `cacheFor` ở client.ts).
+ *
+ * `undefined` ở vị trí input là ĐÚNG chữ ký: bảy procedure này không khai
  * `.input()` (cửa sổ 28 ngày là hằng của sản phẩm, không phải tham số) — cùng
  * cách gọi `catalog.destinations.list` bên web.
  *
- * KHÔNG nuốt lỗi ở đây: trang gọi ba fetcher trong một `Promise.all`, nên một
- * endpoint stats hỏng sẽ rơi vào `app/error.tsx` y như khi list hỏng. Cố ý —
- * "vẫn hiện bảng, âm thầm giấu hàng card" nghĩa là một endpoint chết có thể
- * sống nhiều tuần mà không ai biết.
+ * KHÔNG nuốt lỗi ở đây: trang gọi fetcher stats cùng `Promise.all` với list,
+ * nên một endpoint stats hỏng sẽ rơi vào `app/error.tsx` y như khi list hỏng.
+ * Cố ý — "vẫn hiện bảng, âm thầm giấu hàng card" nghĩa là một endpoint chết
+ * có thể sống nhiều tuần mà không ai biết.
  */
 
-/** Tag Data Cache của cả bốn endpoint stats — action ghi nào đổi số thì update. */
+/** Tag Data Cache của ba endpoint stats CÓ cache — action ghi nào đổi số thì update. */
 export const ADMIN_STATS_TAG = 'admin-stats';
 
 const STATS_CACHE_SECONDS = 60;
@@ -88,4 +97,18 @@ export async function fetchAdminPaymentEventsStats(
  */
 export async function fetchAdminEnquiriesStats(cookie: string): Promise<AdminEnquiriesStats> {
   return api.admin.stats.enquiries(undefined, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * F10 — KHÔNG cache, cùng luật outbox/payment events/enquiries. Bảng
+ * `subscribers` có BA kẻ ghi và chỉ MỘT trong ba là server action của admin:
+ * form footer công khai (`subscribe`) đổi `created` và `active`, còn link
+ * HMAC trong email khách (`unsubscribe`/`resubscribe`) đổi `unsubscribed` và
+ * `active` — không đường nào trong hai đường đó gọi `updateTag` được. Card
+ * "Active now" hứa khớp ĐÚNG số hàng của `?active=true`, mà bảng bên dưới
+ * đọc tươi mỗi lần điều hướng: cache 60s ở đây là hai con số khác nhau về
+ * cùng một thứ trên cùng một màn hình.
+ */
+export async function fetchAdminSubscribersStats(cookie: string): Promise<AdminSubscribersStats> {
+  return api.admin.stats.subscribers(undefined, { context: withAdminAuth(cookie) });
 }

@@ -5,6 +5,7 @@ import {
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
+  type AdminSubscribersStats,
   PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -17,6 +18,7 @@ import {
   toOutboxStatCards,
   toPaymentEventsStatCards,
   toReviewsStatCards,
+  toSubscribersStatCards,
 } from './stats-view';
 
 /**
@@ -69,6 +71,13 @@ const ENQUIRIES: AdminEnquiriesStats = {
   created: { current: 12, previous: 8 },
   won: { current: 3, previous: 5 },
   open: 7,
+};
+
+const SUBSCRIBERS: AdminSubscribersStats = {
+  period,
+  created: { current: 24, previous: 15 },
+  unsubscribed: { current: 6, previous: 4 },
+  active: 180,
 };
 
 const PAYMENT_EVENTS: AdminPaymentEventsStats = {
@@ -412,5 +421,58 @@ describe('toEnquiriesStatCards (F9)', () => {
 
   it('ba card theo đúng thứ tự spec §3-F9: created · won · open', () => {
     expect(toEnquiriesStatCards(ENQUIRIES).map((c) => c.key)).toEqual(['created', 'won', 'open']);
+  });
+});
+
+describe('toSubscribersStatCards (F10)', () => {
+  it('created: cặp hai kỳ, NHIỀU HƠN LÀ TỐT (danh sách lớn lên)', () => {
+    const created = card(toSubscribersStatCards(SUBSCRIBERS), 'created');
+    expect(created.label).toBe(t.subscribers.created(28));
+    expect(created.value).toBe('24');
+    expect(created.delta?.direction).toBe('up');
+    expect(created.deltaGood).toBe(true);
+  });
+
+  it('unsubscribed: cặp hai kỳ, NHIỀU HƠN LÀ XẤU — tăng thì pill tô đỏ', () => {
+    const unsubscribed = card(toSubscribersStatCards(SUBSCRIBERS), 'unsubscribed');
+    expect(unsubscribed.label).toBe(t.subscribers.unsubscribed(28));
+    expect(unsubscribed.value).toBe('6');
+    expect(unsubscribed.delta?.direction).toBe('up');
+    // Đây là chỗ polarity của hai card cạnh nhau đối lập nhau: cùng một mũi
+    // tên đi lên, một cái xanh và một cái đỏ.
+    expect(unsubscribed.deltaGood).toBe(false);
+  });
+
+  it('unsubscribed GIẢM là TỐT — ít người rời danh sách hơn kỳ trước', () => {
+    const unsubscribed = card(
+      toSubscribersStatCards({ ...SUBSCRIBERS, unsubscribed: { current: 2, previous: 9 } }),
+      'unsubscribed',
+    );
+    expect(unsubscribed.delta?.direction).toBe('down');
+    expect(unsubscribed.deltaGood).toBe(true);
+  });
+
+  it('active là ẢNH CHỤP: số đơn, KHÔNG delta và KHÔNG callout (đây là số muốn thấy LỚN)', () => {
+    const active = card(toSubscribersStatCards(SUBSCRIBERS), 'active');
+    expect(active.label).toBe(t.subscribers.active);
+    expect(active.value).toBe('180');
+    expect(active.caption).toBe(t.subscribers.activeCaption);
+    expect(active.delta).toBeUndefined();
+    expect(active.callout).toBeUndefined();
+  });
+
+  it('active = 0: caption đổi giọng, vẫn KHÔNG callout đỏ', () => {
+    const active = card(toSubscribersStatCards({ ...SUBSCRIBERS, active: 0 }), 'active');
+    expect(active.value).toBe('0');
+    expect(active.caption).toBe(t.subscribers.activeCaptionNone);
+    expect(active.callout).toBeUndefined();
+  });
+
+  it('ba card theo đúng thứ tự spec §3-F10: created · unsubscribed · active', () => {
+    expect(toSubscribersStatCards(SUBSCRIBERS).map((c) => c.key)).toEqual([
+      'created',
+      'unsubscribed',
+      'active',
+    ]);
   });
 });

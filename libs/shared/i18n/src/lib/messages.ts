@@ -2748,6 +2748,22 @@ export const messages = {
         openCaption: (statuses: string) => `Leads still to work — ${statuses}`,
         openCaptionNone: 'Nothing left in the pipeline',
       },
+      /**
+       * Vùng subscribers (spec P4c §3-F10). `created`/`unsubscribed` đếm
+       * trong kỳ nhưng neo HAI cột khác nhau (`created_at` / `unsubscribed_at`)
+       * — caption nói rõ cột nào, vì "New" và "Unsubscribed" cạnh nhau rất dễ
+       * bị đọc thành hai lát của cùng một tập. `active` là ẢNH CHỤP danh
+       * sách, KHÔNG có callout đỏ: đây là con số người ta muốn thấy LỚN.
+       */
+      subscribers: {
+        /** "New" là "đăng ký mới trong kỳ", kể cả địa chỉ sau đó đã huỷ. */
+        created: (days: number) => `New ${days}d`,
+        unsubscribed: (days: number) => `Unsubscribed ${days}d`,
+        active: 'Active now',
+        /** Ảnh chụp không có delta — caption thay cho dòng "vs …". */
+        activeCaption: 'Addresses that still receive the newsletter',
+        activeCaptionNone: 'Nobody is on the list right now',
+      },
     },
     /**
      * Trang báo cáo tháng (spec P4b §3-F6) — bề mặt admin đầu tiên được thiết
@@ -3366,6 +3382,120 @@ export const messages = {
         toast: {
           title: 'Note added',
           body: 'The note is now part of this enquiry’s thread.',
+        },
+      },
+    },
+    /**
+     * Vùng subscribers (spec P4c §3-F10) — danh sách nhận tin mà form footer
+     * CÔNG KHAI của web ghi vào, cộng MỘT hành vi ghi: gỡ một địa chỉ khỏi
+     * danh sách THAY khách.
+     *
+     * Giọng của cả khối phải nhớ một điều: hàng ở đây là NGƯỜI đã đồng ý
+     * nhận thư, và lệnh ghi là rút lại sự đồng ý ấy. Nên copy nói "leave the
+     * list" chứ không phải "delete", và dialog nêu thẳng chuyện admin KHÔNG
+     * đăng ký lại hộ được — chỉ chính chủ hộp thư mới làm được, bằng link
+     * trong email của họ. HAI mã contract dưới `unsubscribe.errors` là NGUỒN
+     * duy nhất của tập mã phía admin (`subscribers-unsubscribe.ts` derive từ
+     * keys).
+     */
+    subscribers: {
+      list: {
+        filterLabel: 'Filter by status',
+        /**
+         * Ba tab = ba trạng thái của cờ `active` ở contract. "All" tồn tại vì
+         * nó là cách DUY NHẤT thấy trọn lịch sử một địa chỉ trên một màn hình
+         * — và là tập mà nút Export dựng file "cả danh sách".
+         */
+        all: 'All',
+        active: 'Active',
+        unsubscribed: 'Unsubscribed',
+        searchLabel: 'Search subscribers',
+        /** Chỉ khớp email — bảng này không có cột chữ nào khác để tìm. */
+        searchPlaceholder: 'Email address',
+        clear: 'Clear search',
+        empty: 'No subscribers match this filter.',
+        columns: {
+          email: 'Email',
+          source: 'Source',
+          subscribed: 'Subscribed at',
+          unsubscribed: 'Unsubscribed at',
+          actions: 'Actions',
+        },
+        /**
+         * Hàng không khai nguồn — hình dạng của MỌI hàng thật hôm nay (form
+         * footer gọi `subscribe({email})` không kèm `source`). Nói "Direct
+         * sign-up" chứ không để ô trống: ô trống đọc thành "dữ liệu bị mất",
+         * còn đây là một sự thật bình thường.
+         */
+        noSource: 'Direct sign-up',
+        /** Hàng còn nhận tin — cột "Unsubscribed at" chưa có gì để in. */
+        stillSubscribed: 'Still subscribed',
+        sourceLabel: 'Filter by source',
+        sourceAll: 'All sources',
+        /**
+         * Xuất ĐÚNG tập đang lọc (cả ba tab), không phải trang đang xem —
+         * cùng lời hứa với nút Export của `/bookings`.
+         */
+        exportCsv: 'Export CSV',
+        /**
+         * BODY của một response 413 — người bấm nút thấy nó thay cho file,
+         * nên nó phải nói được việc cần làm tiếp theo mà không cần ngữ cảnh
+         * nào khác.
+         */
+        exportTooLarge: (total: number, max: number) =>
+          `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs or the source filter, then export again.`,
+      },
+      /**
+       * Nhãn cột của file CSV. Giá trị trong file là DỮ LIỆU chứ không phải
+       * chữ hiển thị: mốc thời gian là ISO UTC, và ô trống là ô TRỐNG (không
+       * phải "Direct sign-up"/"Still subscribed" — hai câu đó nấu cho mắt
+       * người và sẽ phá lọc/pivot của người mở file).
+       */
+      csv: {
+        email: 'Email',
+        source: 'Source',
+        subscribedAt: 'Subscribed at (UTC)',
+        unsubscribedAt: 'Unsubscribed at (UTC)',
+      },
+      unsubscribe: {
+        action: 'Unsubscribe',
+        actionLabel: (email: string) => `Unsubscribe ${email}`,
+        email: 'Email',
+        source: 'Source',
+        subscribed: 'Subscribed',
+        cancel: 'Cancel',
+        dialog: {
+          title: 'Remove this address from the newsletter?',
+          body: 'Do this when the person asked you to — by reply, by phone — and could not use the unsubscribe link in their email.',
+          /** Ba hệ quả — đọc từ summary contract + JSDoc service. */
+          consequences: {
+            stops: 'Stops every newsletter to this address from the next send on.',
+            kept: 'The address stays on record with the date it left — nothing is deleted.',
+            /** Lý do KHÔNG có nút "resubscribe" ở back-office này. */
+            oneWay:
+              'You cannot sign them back up: only they can, from the link in an email they already have.',
+          },
+          warning:
+            'Check the address below before you confirm — this is the wrong one to get wrong, and undoing it is not yours to do.',
+          submit: 'Unsubscribe',
+          submitting: 'Removing…',
+        },
+        /** Cả hai là lỗi TRẠNG-THÁI-CŨ: UI đóng dialog + toast + refresh bảng. */
+        errors: {
+          NOT_FOUND:
+            'This address is no longer on the list — the record may have been removed. The list below has been refreshed.',
+          ALREADY_UNSUBSCRIBED:
+            'This address had already left the newsletter — its original opt-out date has been kept. The list below has been refreshed.',
+        },
+        toast: {
+          title: 'Address unsubscribed',
+          /**
+           * Kể lại DÒNG VỪA GHI, không chỉ "xong": mốc rút consent là thứ duy
+           * nhất lệnh này tạo ra và là thứ phải chỉ được vào khi có ai hỏi
+           * ngày nào địa chỉ ấy rời danh sách. Email đọc từ hàng admin vừa
+           * bấm (response cố ý không chở PII về — xem contract).
+           */
+          body: (email: string, at: string) => `${email} left the newsletter on ${at}.`,
         },
       },
     },

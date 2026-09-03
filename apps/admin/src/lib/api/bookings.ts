@@ -7,12 +7,19 @@ import {
   BookingCodeSchema,
   type Paged,
 } from '@tourism/contract';
-import { type BookingsQuery, EXPORT_MAX_ROWS } from '@/lib/bookings-query';
+import type { BookingsQuery } from '@/lib/bookings-query';
+import {
+  EXPORT_MAX_ROWS,
+  EXPORT_PAGE_SIZE,
+  EXPORT_TIME_BUDGET_MS,
+  fetchAllPages,
+  type PagedExport,
+} from '@/lib/export-pages';
 import { api, withAdminAuth } from './client';
 
-// Re-export cho route/spec của đường export — bản gốc sống ở lib thuần
-// `bookings-query.ts` vì nút Export (client) cũng cần đọc trần này.
-export { EXPORT_MAX_ROWS };
+// Re-export cho route/spec của đường export — bản gốc sống ở `export-pages.ts`
+// (dùng chung với subscribers từ F10).
+export { EXPORT_MAX_ROWS, EXPORT_PAGE_SIZE, EXPORT_TIME_BUDGET_MS };
 
 /**
  * Ba đường của vùng bookings — bọc mỏng `admin.bookings.list` / `byCode`
@@ -36,103 +43,44 @@ export async function fetchAdminBookings(
 }
 
 /**
+ * Kết quả gom của vùng bookings: hoặc cả tập, hoặc lời từ chối kèm con số để
+ * báo cho người bấm. Nhánh từ-chối lấy NGUYÊN từ `PagedExport` để trần và
+ * hình dạng của nó chỉ được khai một chỗ; nhánh thành công đổi tên field
+ * thành `bookings`.
+ */
+export type AdminBookingsExport =
+  | { kind: 'rows'; bookings: Booking[] }
+  | Extract<PagedExport<Booking>, { kind: 'too-large' }>;
+
+/**
  * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính `admin.bookings.list`
  * (spec P4b §3-F6 — nguồn của nút Export CSV).
  *
- * ## Vì sao lặp trang từ admin, không phải một endpoint stream ở API
+ * Vòng lặp, ba chốt ngân sách (đợt song song · một mốc thời gian chung · trần
+ * dòng) và luật dedupe nằm ở `lib/export-pages.ts` — nâng lên dùng chung ở
+ * F10, khi subscribers thành consumer thứ hai của đúng vòng lặp mà vùng này
+ * đã trả giá hai vòng review để viết đúng. Ở đây chỉ còn phần RIÊNG của
+ * bookings: gọi endpoint nào, với bộ lọc gì, dedupe theo cột nào.
  *
- * Cân nhắc hai đường, chọn đường này:
- *
- * - CSV là chuyện TRÌNH BÀY, không phải chuyện dữ liệu. `admin.bookings.list`
- *   đã trả đúng tập cần; thêm một endpoint `text/csv` vào API nghĩa là mở
- *   endpoint KHÔNG-JSON đầu tiên của một contract oRPC toàn JSON, cộng guard
- *   riêng, cộng int test riêng — tất cả chỉ để đổi định dạng.
- * - Route handler admin đã có sẵn cookie forward (nếp `session.ts`) và chạy
- *   trên server, nên không có bí mật nào rời khỏi server.
- * - Giá phải trả: N round-trip thay vì một stream, và cả tập nằm trong RAM
- *   một lúc. Ở cỡ back-office này (hàng trăm booking) đó là 1–2 request; trần
- *   `EXPORT_MAX_ROWS` chặn trường hợp tập phình to, và route handler TỪ CHỐI
- *   (413) chứ không cắt bớt im lặng — một file thiếu hàng mà không ai biết là
- *   thứ tệ hơn hẳn một thông báo.
- *
- * ## Ngân sách của vòng gom (vòng vá review F6 lần 2)
- *
- * Rủi ro thật của "nhiều round-trip trong một route handler" đo bằng GIÂY chứ
- * không bằng dòng — trần 2000 dòng một mình không ngừa được nó (bản đầu hạ
- * 5000→2000 là chữa đúng bệnh nhưng sai đơn vị). Ba chốt hiện tại:
- *
- * - **Song song theo đợt** (`EXPORT_CONCURRENCY`): `totalPages` biết ngay sau
- *   trang đầu và trang 2..N không phụ thuộc nhau, nên 20 trang là ~4 đợt thay
- *   vì 20 lượt nối đuôi. Không phải MỘT `Promise.all` cả cụm: API trên Render
- *   dùng chung DB với đường khách, nện 19 request cùng lúc là tự bóp mình.
- * - **Một mốc thời gian CHUNG** (`EXPORT_TIME_BUDGET_MS`, thay cho timeout
- *   10s/lượt của link): 45s cho cả vòng, dưới `maxDuration = 60` mà hai route
- *   export khai — quá ngân sách thì abort ném vào `catch` của route và admin
- *   nhận 502 CÓ LỜI, chứ không phải đợi platform giết function giữa chừng và
- *   trả về một response cụt (thứ không bao giờ tái hiện được ở localhost).
- * - **`includeMedia: false`**: file không có cột ảnh, nên khỏi bắt API resolve
- *   media cho từng trang chỉ để vứt payload đi.
- *
- * Ngày nào tập dữ liệu thật sự lớn (chục nghìn booking) thì đường đúng là
- * endpoint stream ở API — lúc đó đọc lại đoạn này trước khi làm.
+ * `includeMedia: false` là chốt của riêng vùng này: file không có cột ảnh,
+ * nên khỏi bắt API resolve media cho từng trang chỉ để vứt payload đi.
  */
-export const EXPORT_PAGE_SIZE = 100; // trần `limit` của contract
-/** Số trang gọi song song mỗi đợt — đủ nhanh mà không nện API thành bãi. */
-export const EXPORT_CONCURRENCY = 5;
-/** Ngân sách CHUNG cho cả vòng gom — phải nhỏ hơn `maxDuration` của route. */
-export const EXPORT_TIME_BUDGET_MS = 45_000;
-
-/** Kết quả gom: hoặc cả tập, hoặc lời từ chối kèm con số để báo cho người bấm. */
-export type AdminBookingsExport =
-  | { kind: 'rows'; bookings: Booking[] }
-  | { kind: 'too-large'; total: number; max: number };
-
 export async function fetchAllAdminBookings(
   cookie: string,
   query: BookingsQuery,
 ): Promise<AdminBookingsExport> {
-  // MỘT mốc cho CẢ vòng (không phải 10s/lượt của link): xem "Ngân sách" trên.
-  const budget = AbortSignal.timeout(EXPORT_TIME_BUDGET_MS);
-  const fetchPage = (page: number) =>
-    api.admin.bookings.list(
-      { ...query, page, limit: EXPORT_PAGE_SIZE, includeMedia: false },
-      { context: { cookie, signal: budget } },
-    );
-
-  // Trang đầu trả luôn `total` — biết ngay có nên đi tiếp hay không.
-  const first = await fetchPage(1);
-  if (first.total > EXPORT_MAX_ROWS) {
-    return { kind: 'too-large', total: first.total, max: EXPORT_MAX_ROWS };
-  }
-
-  // Dedupe theo `code` (vòng vá review F6 lần 2): offset pagination trên một
-  // list "mới nhất trước" đang TRÔI — một booking mới chen vào giữa hai lượt
-  // đẩy mọi hàng lùi một vị trí, và hàng cuối trang trước quay lại đầu trang
-  // sau. Không dedupe thì file có một mã nằm hai lần mà chẳng ai hay. (Chiều
-  // ngược lại — một hàng bị đẩy RA khỏi lưới trang — thì không cứu được từ
-  // client: file mô tả tập tại thời điểm bắt đầu xuất, và sổ sách kiểu này
-  // luôn ghi rõ `generatedAt` thay vì hứa bất động.)
-  const seen = new Set<string>();
-  const bookings: Booking[] = [];
-  const collect = (items: Booking[]) => {
-    for (const item of items) {
-      if (seen.has(item.code)) continue;
-      seen.add(item.code);
-      bookings.push(item);
-    }
-  };
-  collect(first.items);
-
-  // Trang 2..N theo ĐỢT `EXPORT_CONCURRENCY` trang song song; `totalPages`
-  // chốt ở trang đầu — tập trôi giữa chừng không kéo dài được vòng lặp.
-  for (let start = 2; start <= first.totalPages; start += EXPORT_CONCURRENCY) {
-    const last = Math.min(start + EXPORT_CONCURRENCY - 1, first.totalPages);
-    const batch = await Promise.all(
-      Array.from({ length: last - start + 1 }, (_, i) => fetchPage(start + i)),
-    );
-    for (const paged of batch) collect(paged.items);
-  }
-  return { kind: 'rows', bookings };
+  const result = await fetchAllPages(
+    (page, signal) =>
+      api.admin.bookings.list(
+        { ...query, page, limit: EXPORT_PAGE_SIZE, includeMedia: false },
+        { context: { cookie, signal } },
+      ),
+    // Mã booking là khoá tự nhiên của hàng — cùng khoá mà cột checkbox dùng.
+    (booking) => booking.code,
+  );
+  // Giữ tên field `bookings` của hợp đồng cũ: route handler và spec của nó
+  // đọc `result.bookings`, và đổi tên ở đây không mua thêm gì.
+  return result.kind === 'rows' ? { kind: 'rows', bookings: result.items } : result;
 }
 
 /**

@@ -5,6 +5,7 @@ import {
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
+  type AdminSubscribersStats,
   type CountMetric,
   type DecimalMetric,
   OPEN_ENQUIRY_STATUSES,
@@ -384,6 +385,30 @@ export function toEnquiriesStatCards(stats: AdminEnquiriesStats): StatCardVM[] {
       // thêm một trạng thái mở là caption tự đúng, không kể tay ở i18n.
       some: t.enquiries.openCaption(OPEN_ENQUIRY_STATUSES.map(enquiryStatusLabel).join(', ')),
       none: t.enquiries.openCaptionNone,
+    }),
+  ];
+}
+
+/**
+ * Ba card của `/subscribers` (spec P4c §3-F10). Đây là hàng card DUY NHẤT có
+ * hai polarity ĐỐI LẬP cạnh nhau: `created` up-good (danh sách lớn lên là
+ * tốt) và `unsubscribed` up-BAD — cùng một mũi tên đi lên, một cái xanh một
+ * cái đỏ. Cố ý, vì đó đúng là ý nghĩa của hai con số; để `unsubscribed`
+ * trung tính sẽ đọc thành "rời danh sách nhiều hơn cũng chẳng sao".
+ *
+ * `active` là ảnh chụp KHÔNG có callout đỏ — khác `outbox.failed`: đây là con
+ * số người ta MUỐN thấy lớn, không phải một hàng đợi chờ người xử lý. Dùng
+ * `snapshotCard` cho caption đổi theo 0/khác-0, bỏ tham số callout.
+ */
+export function toSubscribersStatCards(stats: AdminSubscribersStats): StatCardVM[] {
+  const days = stats.period.windowDays;
+
+  return [
+    countCard('created', t.subscribers.created(days), stats.created, 'up-good', days),
+    countCard('unsubscribed', t.subscribers.unsubscribed(days), stats.unsubscribed, 'up-bad', days),
+    snapshotCard('active', t.subscribers.active, stats.active, {
+      some: t.subscribers.activeCaption,
+      none: t.subscribers.activeCaptionNone,
     }),
   ];
 }
