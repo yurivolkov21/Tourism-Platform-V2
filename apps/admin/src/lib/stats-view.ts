@@ -1,6 +1,7 @@
 import {
   type AdminBookingsStats,
   type AdminCancellationsStats,
+  type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
@@ -355,5 +356,30 @@ export function toPaymentEventsStatCards(stats: AdminPaymentEventsStats): StatCa
       },
     ),
     countCard('linked', t.paymentEvents.linked(days), stats.linked, 'neutral', days),
+  ];
+}
+
+/**
+ * Ba card của `/enquiries` (spec P4c §3-F9). `created`/`won` là cặp hai kỳ và
+ * CÓ hướng: lead mới đổ vào nhiều hơn là nhu cầu tốt hơn, lượt thắng nhiều
+ * hơn là bán được nhiều hơn — khác `received`/`linked` của payment events
+ * (thông lượng webhook không có chiều tốt/xấu).
+ *
+ * `open` là ảnh chụp KHÔNG có callout đỏ — khác `outbox.failed`: hàng chờ CRM
+ * là trạng thái bình thường của một đường bán hàng đang sống (0 lead đang mở
+ * còn đáng lo hơn 20), trong khi một row FAILED chỉ rời trạng thái đó khi có
+ * người can thiệp. Dùng `snapshotCard` cho caption đổi theo 0/khác-0, bỏ
+ * tham số callout.
+ */
+export function toEnquiriesStatCards(stats: AdminEnquiriesStats): StatCardVM[] {
+  const days = stats.period.windowDays;
+
+  return [
+    countCard('created', t.enquiries.created(days), stats.created, 'up-good', days),
+    countCard('won', t.enquiries.won(days), stats.won, 'up-good', days),
+    snapshotCard('open', t.enquiries.open, stats.open, {
+      some: t.enquiries.openCaption,
+      none: t.enquiries.openCaptionNone,
+    }),
   ];
 }

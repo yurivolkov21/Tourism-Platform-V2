@@ -1,6 +1,7 @@
 import {
   type AdminBookingsStats,
   type AdminCancellationsStats,
+  type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
@@ -12,6 +13,7 @@ import {
   type StatCardVM,
   toBookingsStatCards,
   toCancellationsStatCards,
+  toEnquiriesStatCards,
   toOutboxStatCards,
   toPaymentEventsStatCards,
   toReviewsStatCards,
@@ -60,6 +62,13 @@ const OUTBOX: AdminOutboxStats = {
   sent: 40,
   queued: 3,
   failed: 2,
+};
+
+const ENQUIRIES: AdminEnquiriesStats = {
+  period,
+  created: { current: 12, previous: 8 },
+  won: { current: 3, previous: 5 },
+  open: 7,
 };
 
 const PAYMENT_EVENTS: AdminPaymentEventsStats = {
@@ -364,5 +373,43 @@ describe('toPaymentEventsStatCards (F8)', () => {
       'unprocessed',
       'linked',
     ]);
+  });
+});
+
+describe('toEnquiriesStatCards (F9)', () => {
+  it('created: cặp hai kỳ, NHIỀU HƠN LÀ TỐT (lead mới đổ vào là nhu cầu)', () => {
+    const created = card(toEnquiriesStatCards(ENQUIRIES), 'created');
+    expect(created.label).toBe(t.enquiries.created(28));
+    expect(created.value).toBe('12');
+    expect(created.delta?.direction).toBe('up');
+    expect(created.deltaGood).toBe(true);
+  });
+
+  it('won: cặp hai kỳ, ÍT HƠN LÀ XẤU — giảm thì pill tô đỏ, không trung tính', () => {
+    const won = card(toEnquiriesStatCards(ENQUIRIES), 'won');
+    expect(won.label).toBe(t.enquiries.won(28));
+    expect(won.value).toBe('3');
+    expect(won.delta?.direction).toBe('down');
+    expect(won.deltaGood).toBe(false);
+  });
+
+  it('open là ẢNH CHỤP: số đơn, KHÔNG delta và KHÔNG callout đỏ (hàng chờ CRM là bình thường)', () => {
+    const open = card(toEnquiriesStatCards(ENQUIRIES), 'open');
+    expect(open.label).toBe(t.enquiries.open);
+    expect(open.value).toBe('7');
+    expect(open.caption).toBe(t.enquiries.openCaption);
+    expect(open.delta).toBeUndefined();
+    expect(open.callout).toBeUndefined();
+  });
+
+  it('open = 0: caption đổi giọng, vẫn KHÔNG callout', () => {
+    const open = card(toEnquiriesStatCards({ ...ENQUIRIES, open: 0 }), 'open');
+    expect(open.value).toBe('0');
+    expect(open.caption).toBe(t.enquiries.openCaptionNone);
+    expect(open.callout).toBeUndefined();
+  });
+
+  it('ba card theo đúng thứ tự spec §3-F9: created · won · open', () => {
+    expect(toEnquiriesStatCards(ENQUIRIES).map((c) => c.key)).toEqual(['created', 'won', 'open']);
   });
 });

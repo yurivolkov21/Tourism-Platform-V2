@@ -2729,6 +2729,20 @@ export const messages = {
         needsAttentionSr: (count: string, minutes: number) =>
           `${count} payment events have been unprocessed for more than ${minutes} minutes`,
       },
+      /**
+       * Vùng enquiries (spec P4c §3-F9). `created`/`won` đếm trong kỳ (won
+       * neo mốc của EVENT audit, không phải `updatedAt` — xem JSDoc
+       * StatsService); `open` là ẢNH CHỤP hàng chờ, KHÔNG có callout đỏ:
+       * lead đang mở là trạng thái bình thường của một đường bán hàng.
+       */
+      enquiries: {
+        /** "New" ở đây là "mới đến trong kỳ", KHÔNG phải trạng thái NEW. */
+        created: (days: number) => `New ${days}d`,
+        won: (days: number) => `Won ${days}d`,
+        open: 'Open now',
+        openCaption: 'Leads still to work — new, contacted or quoted',
+        openCaptionNone: 'Nothing left in the pipeline',
+      },
     },
     /**
      * Trang báo cáo tháng (spec P4b §3-F6) — bề mặt admin đầu tiên được thiết
@@ -3189,6 +3203,156 @@ export const messages = {
             `${code} is cancelled and the remaining balance is on its way back.`,
           deniedTitle: 'Cancellation denied',
           deniedBody: (code: string) => `${code} is unchanged and the customer has been told.`,
+        },
+      },
+    },
+    /**
+     * Vùng enquiries (spec P4c §3-F9) — CRM nhỏ trên form "Inquire Now" công
+     * khai, cộng HAI hành vi ghi: `setStatus` (đổi trạng thái, nối một dòng
+     * audit) và `addNote` (nối một note vào thread append-only).
+     *
+     * Hai luật copy của vùng này:
+     * - Dialog đổi trạng thái phải NÊU RÕ `from → to` (spec §3-F9): chuyển
+     *   là tự do giữa năm giá trị nên không có luật máy nào chặn nhầm — câu
+     *   chữ là lớp bảo vệ duy nhất trước một cú bấm nhầm hàng.
+     * - Thread note nói thẳng là KHÔNG SỬA, KHÔNG XOÁ trước khi người ta gõ,
+     *   không phải sau khi đã gửi.
+     *
+     * Mã contract nằm dưới `setStatus.errors` / `addNote.errors` — NGUỒN duy
+     * nhất của tập mã phía admin (`enquiries-write.ts` derive từ keys).
+     */
+    enquiries: {
+      list: {
+        filterLabel: 'Filter by status',
+        all: 'All',
+        searchLabel: 'Search enquiries',
+        /** Khớp `name` HOẶC `email` — hai thứ operator cầm khi khách gọi lại. */
+        searchPlaceholder: 'Name or email',
+        clear: 'Clear search',
+        empty: 'No enquiries match this filter.',
+        columns: {
+          name: 'Name',
+          email: 'Email',
+          tour: 'Tour',
+          travelDate: 'Travel date',
+          group: 'Group',
+          status: 'Status',
+          notes: 'Notes',
+          created: 'Created',
+        },
+        /** Enquiry chung (không gắn tour) hoặc tour đã bị xoá. */
+        noTour: 'General enquiry',
+        /** Số khách khách tự khai — null khi form bỏ trống. */
+        groupSize: (size: number) => (size === 1 ? '1 traveller' : `${size} travellers`),
+        /** Đếm note của hàng — 0 nghĩa là chưa ai chạm vào lead này. */
+        notesCount: (count: number) => (count === 1 ? '1 note' : `${count} notes`),
+        /**
+         * Chip lọc theo tour. KHÔNG có Select trên toolbar (quyết định tự
+         * chọn F9 — chưa có endpoint list tour cho admin tới P4e), nhưng
+         * `?tourId=` gõ tay/đi từ trang khác vẫn lọc thật, nên phải có một
+         * chỗ NHÌN THẤY và gỡ được: một filter vô hình là một bảng "thiếu
+         * hàng" không giải thích được.
+         */
+        tourFilter: (label: string) => `Tour: ${label}`,
+        tourFilterClear: 'Clear tour filter',
+        /** Khi tập lọc rỗng thì không có hàng nào để lấy tên tour. */
+        tourFilterUnknown: 'selected tour',
+        viewLabel: (name: string) => `Open the enquiry from ${name}`,
+      },
+      /** Nhãn enum EnquiryStatus — `Record` đủ member để thêm trạng thái là đỏ typecheck. */
+      status: {
+        NEW: 'New',
+        CONTACTED: 'Contacted',
+        QUOTED: 'Quoted',
+        WON: 'Won',
+        LOST: 'Lost',
+      },
+      detail: {
+        back: 'Back to enquiries',
+        /** Nhãn dưới tên lead trên đầu trang. */
+        received: 'Received',
+        updated: 'Last touched',
+        lead: {
+          heading: 'Lead',
+          email: 'Email',
+          phone: 'Phone',
+          nationality: 'Nationality',
+          tour: 'Tour',
+          travelDate: 'Travel date',
+          groupSize: 'Group size',
+          budgetTier: 'Budget',
+          interests: 'Interests',
+        },
+        message: {
+          heading: 'Message',
+        },
+        notes: {
+          heading: 'Internal notes',
+          /** Nói TRƯỚC khi người ta gõ, không phải sau khi đã gửi. */
+          hint: 'Notes are internal, permanent and visible to every admin — they cannot be edited or deleted.',
+          empty: 'No notes yet. The first one is below.',
+          label: 'Add a note',
+          placeholder: 'What happened on this lead?',
+          /** "1840 / 2000" — trần đọc từ contract, không viết cứng. */
+          counter: (used: number, max: number) => `${used} / ${max}`,
+          submit: 'Add note',
+          submitting: 'Adding…',
+          /** Nút bị khoá khi ô rỗng — câu này giải thích vì sao. */
+          emptyHint: 'Write something first.',
+          by: (author: string) => `by ${author}`,
+        },
+        history: {
+          heading: 'Status history',
+          empty: 'This enquiry has never changed status.',
+          /** Một dòng audit: "New → Contacted". */
+          change: (from: string, to: string) => `${from} → ${to}`,
+          by: (admin: string) => `by ${admin}`,
+          /** `adminId` SetNull — tài khoản đã bị xoá, dòng audit vẫn còn. */
+          unknownAdmin: 'by a removed account',
+        },
+      },
+      setStatus: {
+        heading: 'Status',
+        /** Nhãn ô Select trên trang chi tiết (sr-only — chữ trong ô đã tự nói). */
+        label: 'Move this enquiry to',
+        action: 'Update status',
+        cancel: 'Cancel',
+        lead: 'Lead',
+        from: 'From',
+        to: 'To',
+        dialog: {
+          title: 'Change the status of this enquiry?',
+          body: 'The move is recorded in the status history with your name and the time.',
+          /** Ba hệ quả — đọc từ summary contract + JSDoc service. */
+          consequences: {
+            audit: 'Adds one line to the status history — that line cannot be edited or removed.',
+            stats: 'Moving to Won counts towards the "Won" figure for this period.',
+            free: 'Any status can move to any other — there is no fixed order to follow.',
+          },
+          warning:
+            'The status history is append-only: a wrong move stays on the record and has to be corrected with another move.',
+          submit: 'Change status',
+          submitting: 'Changing…',
+        },
+        /** Mã CONTRACT của `admin.enquiries.setStatus` — trạng-thái-cũ: đóng dialog + refresh. */
+        errors: {
+          NOT_FOUND:
+            'This enquiry no longer exists — it may have been removed. The page has been refreshed.',
+        },
+        toast: {
+          title: 'Status updated',
+          body: (name: string, status: string) => `${name} is now ${status}.`,
+        },
+      },
+      addNote: {
+        /** Mã CONTRACT của `admin.enquiries.addNote`. */
+        errors: {
+          NOT_FOUND:
+            'This enquiry no longer exists — it may have been removed, and the note was not saved.',
+        },
+        toast: {
+          title: 'Note added',
+          body: 'The note is now part of this enquiry’s thread.',
         },
       },
     },

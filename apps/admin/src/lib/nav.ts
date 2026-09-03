@@ -79,11 +79,14 @@ export const NAV_GROUPS: NavGroup[] = [
       // Href mang sẵn `?month=` KHÔNG được: "tháng hiện tại" phải do trang tự
       // tính lúc mở, còn một href cứng sẽ hoá cũ ngay đầu tháng sau.
       { key: 'reports', label: t.reports, href: '/reports', enabled: true, icon: FileBarChart },
+      // Vùng thật thứ ba của P4c (F9) — CRM lead. Mở thẳng hàng NEW (việc
+      // cần làm: lead chưa ai chạm tới), cùng nếp `/cancellations?status=REQUESTED`
+      // và `/outbox?status=FAILED`; tab "All" trong trang vẫn xem được tất cả.
       {
         key: 'enquiries',
         label: t.enquiries,
-        href: '/enquiries',
-        enabled: false,
+        href: '/enquiries?status=NEW',
+        enabled: true,
         icon: MessageSquare,
       },
       {

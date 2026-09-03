@@ -1,6 +1,7 @@
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminEnquiriesStats,
   AdminOutboxStats,
   AdminPaymentEventsStats,
   AdminReviewsStats,
@@ -75,4 +76,17 @@ export async function fetchAdminPaymentEventsStats(
   cookie: string,
 ): Promise<AdminPaymentEventsStats> {
   return api.admin.stats.paymentEvents(undefined, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * F9 — CÓ cache 60s theo tag, quay lại luật của F2–F5 (khác hai vùng P4c ở
+ * trên): cả ba con số của vùng này chỉ đổi khi CHÍNH admin bấm nút
+ * (`setStatus` là kẻ duy nhất đẻ ra event WON và là kẻ duy nhất đưa lead ra
+ * khỏi hàng chờ), và hai server action của trang chi tiết đều gọi
+ * `updateTag(ADMIN_STATS_TAG)` ngay sau khi ghi xong. Không có worker lẫn
+ * webhook nào đổi bảng sau lưng như outbox/payment events, nên cache không
+ * bao giờ cãi nhau với bảng bên dưới.
+ */
+export async function fetchAdminEnquiriesStats(cookie: string): Promise<AdminEnquiriesStats> {
+  return api.admin.stats.enquiries(undefined, { context: statsContext(cookie) });
 }
