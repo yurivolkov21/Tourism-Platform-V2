@@ -131,4 +131,18 @@ describe('fetchAllPages', () => {
 
     expect(result).toEqual({ kind: 'rows', items: [] });
   });
+
+  it('tập ĐỔI KÍCH THƯỚC giữa chừng (`total` trang sau ≠ trang đầu) → `changed`, không giao file thiếu', async () => {
+    // Hàng mới chen đầu list "mới nhất trước" đẩy hàng cũ nhất ra khỏi cửa sổ
+    // trang — không hàng nào lặp để dedupe bắt, chỉ `total` nói lên điều đó.
+    const fetchPage = vi.fn(async (page: number) =>
+      paged({
+        items: [row(`r${page}`)],
+        page,
+        total: page === 1 ? 150 : 250,
+        totalPages: 2,
+      }),
+    );
+    expect(await collect(fetchPage)).toEqual({ kind: 'changed', total: 150, now: 250 });
+  });
 });

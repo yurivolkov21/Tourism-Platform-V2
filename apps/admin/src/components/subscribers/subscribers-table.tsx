@@ -150,9 +150,13 @@ export function SubscribersTable({
   unsubscribe,
 }: SubscribersTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
+  // Deps là GIÁ TRỊ NGUYÊN THUỶ (vòng vá review F10): `query` là object mới
+  // mỗi lần server render nên memo theo nó không bao giờ trúng.
+  const { page, limit, active, search, source } = query;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: memo theo từng field của `query`, không theo object
   const columns = React.useMemo(
     () => buildColumns(query, total, unsubscribe),
-    [query, total, unsubscribe],
+    [page, limit, active, search, source, total, unsubscribe],
   );
 
   const table = useTable({

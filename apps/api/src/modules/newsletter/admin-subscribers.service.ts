@@ -10,6 +10,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { LIST_SELECT, toSubscriberRow } from './subscriber-row.js';
+import { claimUnsubscribe } from './unsubscribe-claim.js';
 
 export class SubscriberNotFoundError extends Error {
   constructor(id: string) {
@@ -61,11 +62,11 @@ export class AdminSubscribersService {
    * `sources` đọc distinct TOÀN BẢNG, KHÔNG theo `where` đang áp — xem JSDoc
    * `AdminSubscribersListResultSchema` ở contract: một Select tự cắt bỏ các
    * lựa chọn khác ngay khi vừa chọn một cái là ngõ cụt. Câu này chạy SONG
-   * SONG với hai câu kia (`Promise.all`), nên nó không nối thêm round-trip
-   * vào thời gian chờ của trang.
+   * SONG với hai câu kia (`Promise.all`) và CHỈ khi `includeSources` (vòng vá
+   * review F10): vòng export gọi list 20 lượt mà không cần nó.
    */
   async list(query: AdminSubscribersListQuery): Promise<AdminSubscribersListResult> {
-    const { page, limit, active, search, source } = query;
+    const { page, limit, active, search, source, includeSources } = query;
     const term = search ? escapeLike(search) : undefined;
     const where: Prisma.SubscriberWhereInput = {
       ...(active === true ? { unsubscribedAt: null } : {}),
@@ -82,7 +83,7 @@ export class AdminSubscribersService {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      this.distinctSources(),
+      includeSources ? this.distinctSources() : Promise.resolve([]),
     ]);
     return { ...toPaged(rows.map(toSubscriberRow), { page, limit, total }), sources };
   }
@@ -91,41 +92,24 @@ export class AdminSubscribersService {
    * Gỡ MỘT địa chỉ khỏi danh sách thay khách (họ trả lời email hoặc gọi điện
    * mà không tự bấm được link trong thư).
    *
-   * MỘT câu `updateMany` mang luôn guard `unsubscribedAt: null` — đúng cách
-   * `NewsletterService.unsubscribe` của đường khách làm, và cùng lý do
-   * (ADR-0009 "atomic claim"): đọc-rồi-ghi hai round-trip mở ra cửa sổ để hai
-   * lệnh cùng thấy `null` rồi cùng ghi, mà ở đây cái mất không phải là một
-   * bản ghi thừa — là MỐC RÚT CONSENT bị đè bằng giờ của người bấm sau. Mốc
-   * đó là bằng chứng pháp lý (GDPR/CAN-SPAM), nên "đã huỷ rồi" phải là 409
-   * chứ không phải một lệnh ghi vô hại.
+   * Luật claim (MỘT `updateMany` có guard, ADR-0009; `count === 0` phân biệt
+   * "đã huỷ" với "không tồn tại" bằng một `findUnique` chỉ trên nhánh hỏng)
+   * DÙNG CHUNG với đường khách qua `claimUnsubscribe` (vòng vá review F10 —
+   * bản đầu chép lại nguyên khối). Khác nhau chỉ ở kết cục: đường khách coi
+   * "đã huỷ" là idempotent, còn với người bấm nút ở đây đó là thế giới đã đổi
+   * dưới chân dialog → 409, và mốc rút consent cũ (bằng chứng pháp lý
+   * GDPR/CAN-SPAM) KHÔNG bị đè bằng giờ của người bấm sau.
    *
-   * `count === 0` có HAI nghĩa và chúng KHÁC nhau với người bấm: hàng đã rời
-   * danh sách từ trước (409 — thế giới đã đổi dưới chân dialog) hay id không
-   * còn (404). Phân biệt bằng một `findUnique` SAU đó, đúng nếp
-   * `NewsletterService.unsubscribe` — câu đọc ấy chỉ chạy trên nhánh hỏng,
-   * nên đường thành công vẫn đúng một round-trip.
-   *
-   * Trả về mốc VỪA GHI chứ không đọc lại: `count === 1` nghĩa là chính câu
-   * UPDATE này thắng, nên giá trị nó đặt cũng là giá trị đang nằm trong hàng.
+   * Trả về mốc VỪA GHI chứ không đọc lại: `claimed` nghĩa là chính câu UPDATE
+   * này thắng, nên giá trị nó đặt cũng là giá trị đang nằm trong hàng.
    */
   async unsubscribe(
     admin: { id: string },
     input: AdminSubscriberUnsubscribeInput,
   ): Promise<AdminSubscriberUnsubscribeResult> {
-    const unsubscribedAt = new Date();
-    const { count } = await prisma.subscriber.updateMany({
-      where: { id: input.id, unsubscribedAt: null },
-      data: { unsubscribedAt },
-    });
-
-    if (count === 0) {
-      const exists = await prisma.subscriber.findUnique({
-        where: { id: input.id },
-        select: { id: true },
-      });
-      if (!exists) throw new SubscriberNotFoundError(input.id);
-      throw new SubscriberAlreadyUnsubscribedError(input.id);
-    }
+    const claim = await claimUnsubscribe(input.id);
+    if (claim.kind === 'missing') throw new SubscriberNotFoundError(input.id);
+    if (claim.kind === 'already') throw new SubscriberAlreadyUnsubscribedError(input.id);
 
     // KHÔNG log email (spec §2.3, cùng luật payload outbox): địa chỉ là PII và
     // dòng log này chỉ cần trả lời "ai gỡ hàng nào, lúc nào" — `subscriberId`
@@ -137,7 +121,7 @@ export class AdminSubscribersService {
         subscriberId: input.id,
       })}`,
     );
-    return { id: input.id, unsubscribedAt: unsubscribedAt.toISOString() };
+    return { id: input.id, unsubscribedAt: claim.at.toISOString() };
   }
 
   /**

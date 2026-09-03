@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
-import { EXPORT_MAX_ROWS } from '@/lib/bookings-query';
+import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import { BookingsExportLink } from './bookings-toolbar';
 
 /**

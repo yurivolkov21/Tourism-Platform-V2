@@ -8,18 +8,8 @@ import {
   type Paged,
 } from '@tourism/contract';
 import type { BookingsQuery } from '@/lib/bookings-query';
-import {
-  EXPORT_MAX_ROWS,
-  EXPORT_PAGE_SIZE,
-  EXPORT_TIME_BUDGET_MS,
-  fetchAllPages,
-  type PagedExport,
-} from '@/lib/export-pages';
+import { EXPORT_PAGE_SIZE, fetchAllPages, type PagedExport } from '@/lib/export-pages';
 import { api, withAdminAuth } from './client';
-
-// Re-export cho route/spec của đường export — bản gốc sống ở `export-pages.ts`
-// (dùng chung với subscribers từ F10).
-export { EXPORT_MAX_ROWS, EXPORT_PAGE_SIZE, EXPORT_TIME_BUDGET_MS };
 
 /**
  * Ba đường của vùng bookings — bọc mỏng `admin.bookings.list` / `byCode`
@@ -43,16 +33,6 @@ export async function fetchAdminBookings(
 }
 
 /**
- * Kết quả gom của vùng bookings: hoặc cả tập, hoặc lời từ chối kèm con số để
- * báo cho người bấm. Nhánh từ-chối lấy NGUYÊN từ `PagedExport` để trần và
- * hình dạng của nó chỉ được khai một chỗ; nhánh thành công đổi tên field
- * thành `bookings`.
- */
-export type AdminBookingsExport =
-  | { kind: 'rows'; bookings: Booking[] }
-  | Extract<PagedExport<Booking>, { kind: 'too-large' }>;
-
-/**
  * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính `admin.bookings.list`
  * (spec P4b §3-F6 — nguồn của nút Export CSV).
  *
@@ -68,8 +48,8 @@ export type AdminBookingsExport =
 export async function fetchAllAdminBookings(
   cookie: string,
   query: BookingsQuery,
-): Promise<AdminBookingsExport> {
-  const result = await fetchAllPages(
+): Promise<PagedExport<Booking>> {
+  return fetchAllPages(
     (page, signal) =>
       api.admin.bookings.list(
         { ...query, page, limit: EXPORT_PAGE_SIZE, includeMedia: false },
@@ -78,9 +58,6 @@ export async function fetchAllAdminBookings(
     // Mã booking là khoá tự nhiên của hàng — cùng khoá mà cột checkbox dùng.
     (booking) => booking.code,
   );
-  // Giữ tên field `bookings` của hợp đồng cũ: route handler và spec của nó
-  // đọc `result.bookings`, và đổi tên ở đây không mua thêm gì.
-  return result.kind === 'rows' ? { kind: 'rows', bookings: result.items } : result;
 }
 
 /**

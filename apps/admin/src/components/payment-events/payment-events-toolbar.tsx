@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
+import { fromFreeValue, ToolbarSelect, toFreeValue } from '@/components/kit/toolbar-select';
 import { type PaymentEventsQuery, paymentEventsHref } from '@/lib/payment-events-query';
 
 /**
@@ -43,9 +43,11 @@ const TAB_ITEMS = [
   })),
 ];
 
+// Giá trị thật mang tiền tố của kit (`toFreeValue`) để type tự do từ DB không
+// bao giờ đụng sentinel "All" (vòng vá review F10).
 const TYPE_ITEMS = [
   { label: t.list.typeAll, value: ALL },
-  ...PAYMENT_EVENT_TYPES.map((type) => ({ label: t.type[type], value: type })),
+  ...PAYMENT_EVENT_TYPES.map((type) => ({ label: t.type[type], value: toFreeValue(type) })),
 ];
 
 export function PaymentEventsProviderTabs({ query }: { query: PaymentEventsQuery }) {
@@ -81,14 +83,14 @@ export function PaymentEventsProviderTabs({ query }: { query: PaymentEventsQuery
  */
 export function PaymentEventsTypeSelect({ query }: { query: PaymentEventsQuery }) {
   const router = useRouter();
-  const value = query.type ?? ALL;
+  const value = query.type === undefined ? ALL : toFreeValue(query.type);
   const items =
     query.type && !PaymentEventTypeSchema.safeParse(query.type).success
-      ? [...TYPE_ITEMS, { label: query.type, value: query.type }]
+      ? [...TYPE_ITEMS, { label: query.type, value: toFreeValue(query.type) }]
       : TYPE_ITEMS;
 
   function go(next: string) {
-    router.push(paymentEventsHref(query, { type: next === ALL ? null : next }));
+    router.push(paymentEventsHref(query, { type: fromFreeValue(next) }));
   }
 
   return (

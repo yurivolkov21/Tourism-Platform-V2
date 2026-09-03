@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { DatePickerField } from '@/components/bookings/date-picker-field';
-import { ExportButton } from '@/components/bookings/export-button';
+import { ExportButton } from '@/components/kit/export-button';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
@@ -23,8 +23,8 @@ import {
   type BookingsQuery,
   bookingsExportHref,
   bookingsHref,
-  EXPORT_MAX_ROWS,
 } from '@/lib/bookings-query';
+import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 
 /**
  * Bốn mẩu điều khiển của `/bookings`, lắp vào hai khe của `DataTableFrame`:

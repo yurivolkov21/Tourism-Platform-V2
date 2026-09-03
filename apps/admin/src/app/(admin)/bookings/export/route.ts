@@ -1,17 +1,17 @@
+import type { Booking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
-import { decideAdminAccess } from '@/lib/admin-gate';
-import {
-  type AdminBookingsExport,
-  EXPORT_TIME_BUDGET_MS,
-  fetchAdminBookings,
-  fetchAllAdminBookings,
-} from '@/lib/api/bookings';
-import { lookupServerSession } from '@/lib/api/session';
+import { fetchAdminBookings, fetchAllAdminBookings } from '@/lib/api/bookings';
 import { bookingsCsvRows } from '@/lib/bookings-csv';
 import { EXPORT_SELECTION_PARAM, parseBookingsSearchParams } from '@/lib/bookings-query';
-import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import { EXPORT_TIME_BUDGET_MS, type PagedExport } from '@/lib/export-pages';
+import {
+  csvExportResponse,
+  exportFailedResponse,
+  guardExportAccess,
+  logExportAudit,
+} from '@/lib/export-route';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 
 /**
@@ -23,16 +23,9 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * nhất là bỏ phân trang (`bookingsExportHref` không mang page/limit — file là
  * CẢ tập, không phải trang đang xem).
  *
- * ## Gác quyền phải làm TẠI ĐÂY
- *
- * Route handler KHÔNG chạy qua `(admin)/layout.tsx` — layout chỉ bọc page.
- * Nếu ở đây không tự gọi `getServerSession` + `decideAdminAccess` thì mọi
- * người đăng nhập (kể cả khách thường) tải được toàn bộ booking của mọi
- * người: đúng cái lỗ mà layout đang bịt cho các trang. Proxy chỉ kiểm cookie
- * TỒN TẠI, không kiểm role.
- *
- * Trả 401/403 dạng text chứ không redirect: đây là một cú tải file, và
- * redirect sang `/login` chỉ làm trình duyệt lưu một file HTML tên .csv.
+ * Gác quyền, audit và headers CSV là phần chung của mọi route export —
+ * `lib/export-route.ts` (vòng vá review F10; lý do route phải tự gác: layout
+ * không bọc route handler, proxy chỉ kiểm cookie tồn tại).
  */
 
 // Trần thời lượng TƯỜNG MINH (vòng vá review F6 lần 2): vòng gom trang giữ
@@ -43,24 +36,18 @@ export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const t = messages.admin.bookings.list;
-  const lookup = await lookupServerSession();
-  // Check phiên cũng đi QUA API — API sập thì phải nói thật là API sập (vòng
-  // vá review F6): gộp nó vào "chưa đăng nhập" là bảo admin đi đăng nhập lại
-  // vô ích, và nhánh 502 phía dưới không bao giờ chạy đúng kịch bản của nó.
-  if (lookup.kind === 'unreachable') {
-    return new Response(messages.admin.errors.exportFailed, { status: 502 });
-  }
-  const session = lookup.kind === 'ok' ? lookup.user : null;
-  const decision = decideAdminAccess(session ? { role: session.role } : null, '/bookings/export');
-  if (decision.kind === 'login') {
-    return new Response(messages.admin.errors.write.UNAUTHORIZED, { status: 401 });
-  }
-  if (decision.kind === 'deny') {
-    return new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 });
-  }
+  const gate = await guardExportAccess('/bookings/export');
+  if (!gate.ok) return gate.response;
+  const adminId = gate.session.id;
 
   const query = parseBookingsSearchParams(rawSearchParamsFrom(request.nextUrl.searchParams));
   const cookie = (await cookies()).toString();
+  const filters = {
+    status: query.status ?? null,
+    search: query.search ? '<set>' : null,
+    from: query.from ?? null,
+    to: query.to ?? null,
+  };
 
   // Mã các hàng admin đã tích trên trang đang xem (spec 01/09). Có nó thì đây
   // là cú xuất CÓ CHỌN, và đường đi khác hẳn export-all bên dưới: chỉ lấy ĐÚNG
@@ -92,7 +79,8 @@ export async function GET(request: NextRequest) {
       );
     } catch (error) {
       console.error('[admin] bookings export (selection) failed', error);
-      return new Response(messages.admin.errors.exportFailed, { status: 502 });
+      logExportAudit('bookings', { adminId, outcome: 'failed', mode: 'selection', filters });
+      return exportFailedResponse();
     }
 
     const wanted = new Set(selected);
@@ -106,29 +94,19 @@ export async function GET(request: NextRequest) {
     // phần (vòng vá review 02/09). `wanted.size` chứ không phải
     // `selected.length`: mã lặp trên URL không được tính là hai hàng.
     if (rows.length !== wanted.size) {
+      logExportAudit('bookings', { adminId, outcome: 'stale', mode: 'selection', filters });
       return new Response(messages.admin.errors.exportSelectionStale, { status: 409 });
     }
 
-    // Cùng một vết như export-all: cú đọc này mang PII, "ai tải, lúc nào, bộ
-    // lọc gì" phải trả lời được khi điều tra. `mode` để phân biệt hai đường.
-    console.info(
-      '[admin] bookings export',
-      JSON.stringify({
-        adminId: session?.id ?? null,
-        rows: rows.length,
-        mode: 'selection',
-        filters: {
-          status: query.status ?? null,
-          search: query.search ? '<set>' : null,
-          from: query.from ?? null,
-          to: query.to ?? null,
-        },
-      }),
-    );
-
-    return new Response(csvDocument(bookingsCsvRows(rows)), {
-      headers: csvAttachmentHeaders(csvFilename('nexora-bookings', isoDay(new Date()))),
+    // `mode` để phân biệt hai đường trong vết audit.
+    logExportAudit('bookings', {
+      adminId,
+      outcome: 'ok',
+      rows: rows.length,
+      mode: 'selection',
+      filters,
     });
+    return csvExportResponse('nexora-bookings', bookingsCsvRows(rows));
   }
 
   // API sập/timeout giữa vòng lặp gom trang: KHÔNG để lỗi ném ra khỏi handler.
@@ -136,42 +114,28 @@ export async function GET(request: NextRequest) {
   // thành trang 500 HTML mặc định của Next — admin bấm nút Export rồi bị đá
   // khỏi bảng đang lọc sang một trang trắng, mất luôn bộ lọc vừa dựng và
   // không có câu nào nói "thử lại". 502 vì đây đúng là upstream hỏng.
-  let result: AdminBookingsExport;
+  let result: PagedExport<Booking>;
   try {
     result = await fetchAllAdminBookings(cookie, query);
   } catch (error) {
     console.error('[admin] bookings export failed', error);
-    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+    logExportAudit('bookings', { adminId, outcome: 'failed', filters });
+    return exportFailedResponse();
   }
 
   // Tập quá lớn: TỪ CHỐI kèm con số, không cắt bớt im lặng. Một file thiếu
   // hàng mà người xuất tưởng là đủ còn tệ hơn hẳn một lời từ chối.
   if (result.kind === 'too-large') {
+    logExportAudit('bookings', { adminId, outcome: 'too-large', rows: result.total, filters });
     return new Response(t.exportTooLarge(result.total, result.max), { status: 413 });
   }
+  // Tập đổi kích thước giữa vòng gom (vòng vá review F10): cùng lý do — không
+  // giao một file thiếu hàng cũ nhất mà người tải tưởng là đủ.
+  if (result.kind === 'changed') {
+    logExportAudit('bookings', { adminId, outcome: 'changed', filters });
+    return new Response(messages.admin.errors.exportListChanged, { status: 409 });
+  }
 
-  // Vết cho một cú xuất PII hàng loạt (vòng vá review F6): mọi hành vi GHI
-  // của admin đều quy được về người (`refunds.admin_id`,
-  // `review_moderation_events`), còn cú ĐỌC này mang tên/email/phone của cả
-  // tập lọc — "ai tải, lúc nào, bộ lọc gì" phải trả lời được khi điều tra.
-  // Log CÓ CẤU TRÚC và không chép PII: search chỉ ghi là có/không, vì chính
-  // nó thường là một địa chỉ email.
-  console.info(
-    '[admin] bookings export',
-    JSON.stringify({
-      adminId: session?.id ?? null,
-      rows: result.bookings.length,
-      filters: {
-        status: query.status ?? null,
-        search: query.search ? '<set>' : null,
-        from: query.from ?? null,
-        to: query.to ?? null,
-      },
-    }),
-  );
-
-  const filename = csvFilename('nexora-bookings', isoDay(new Date()));
-  return new Response(csvDocument(bookingsCsvRows(result.bookings)), {
-    headers: csvAttachmentHeaders(filename),
-  });
+  logExportAudit('bookings', { adminId, outcome: 'ok', rows: result.items.length, filters });
+  return csvExportResponse('nexora-bookings', bookingsCsvRows(result.items));
 }

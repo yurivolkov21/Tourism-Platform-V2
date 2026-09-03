@@ -5,7 +5,7 @@ import { CircleSlashIcon, ListIcon, MailCheckIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
+import { fromFreeValue, ToolbarSelect, toFreeValue } from '@/components/kit/toolbar-select';
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 
 /**
@@ -71,11 +71,10 @@ export function SubscribersStatusTabs({ query }: { query: SubscribersQuery }) {
  * cách filter `type` của payment events xử, để ô không hiện nhầm "All sources"
  * trong khi bảng đang lọc thật.
  *
- * GIỚI HẠN đã biết: một `source` viết đúng chữ `ALL` sẽ trùng với giá trị
- * sentinel của kit (`ALL_FILTER_VALUE`) và không chọn được từ ô này (URL
- * `?source=ALL` vẫn lọc thật). Chấp nhận: `source` do CHÍNH code của ta ghi
- * khi thêm một đường đăng ký mới, nên đây là một cái tên cần tránh, không
- * phải một chuỗi từ ngoài vào.
+ * Giá trị thật đi qua `toFreeValue`/`fromFreeValue` của kit (vòng vá review
+ * F10): `source` là chuỗi tự do mà đường subscribe CÔNG KHAI ghi được, nên
+ * một hàng `source = 'ALL'` từng trùng sentinel của kit — mục đó xoá filter
+ * và ô hiện nhầm "All sources" trong khi bảng đang lọc thật.
  */
 export function SubscribersSourceSelect({
   query,
@@ -93,19 +92,17 @@ export function SubscribersSourceSelect({
 
   const items = [
     { label: t.sourceAll, value: ALL },
-    ...(unknown ? [{ label: current, value: current }] : []),
-    ...sources.map((source) => ({ label: source, value: source })),
+    ...(unknown ? [{ label: current, value: toFreeValue(current) }] : []),
+    ...sources.map((source) => ({ label: source, value: toFreeValue(source) })),
   ];
 
   return (
     <ToolbarSelect
       id="subscribers-source-selector"
       label={t.sourceLabel}
-      value={current ?? ALL}
+      value={current === undefined ? ALL : toFreeValue(current)}
       items={items}
-      onSelect={(next) =>
-        router.push(subscribersHref(query, { source: next === ALL ? null : next }))
-      }
+      onSelect={(next) => router.push(subscribersHref(query, { source: fromFreeValue(next) }))}
     />
   );
 }

@@ -235,16 +235,17 @@ export async function enquiryWonCount(from: Date, to: Date): Promise<number> {
 }
 
 /**
- * Hai con số của danh sách nhận tin trong khoảng — F10, spec P4c §3-F10.
+ * Cả NĂM con số của danh sách nhận tin trong MỘT lượt quét — F10, spec P4c
+ * §3-F10 (vòng vá review F10: bản đầu là 5 `COUNT(*)` rời, tức 5 seq scan
+ * trên một bảng không index ở mỗi lần render vì vùng này không cache).
+ * `COUNT(*) FILTER (WHERE …)` cho mỗi vế — Prisma `aggregate` không diễn đạt
+ * được nhiều vế WHERE khác nhau, nên đi đường raw SQL như `enquiryWonCount`.
+ * Bonus: năm con số chụp cùng một khoảnh khắc thay vì năm snapshot lệch nhau.
  *
- * MỘT hàm chứ không hai vì đây là một câu hỏi ("kỳ này danh sách vào/ra bao
- * nhiêu"), nhưng hai QUERY vì hai metric neo hai cột khác nhau: `created_at`
- * (lượt đăng ký) và `unsubscribed_at` (lượt rút consent). Không gộp được vào
- * một `aggregate` như `paymentEventsSlice` — ở đó hai con số cùng một vế
- * WHERE, còn ở đây mỗi con số có vế riêng.
- *
- * Một hàng đăng ký RỒI huỷ trong cùng một kỳ được đếm vào CẢ HAI, đúng như
- * nó đã xảy ra hai lần.
+ * Hai metric kỳ neo HAI cột khác nhau: `created_at` (lượt đăng ký) và
+ * `unsubscribed_at` (lượt rút consent). Một hàng đăng ký RỒI huỷ trong cùng
+ * một kỳ được đếm vào CẢ HAI, đúng như nó đã xảy ra hai lần. `active` là ảnh
+ * chụp `unsubscribed_at IS NULL` toàn bảng — KHÔNG theo bộ lọc nào của trang.
  *
  * ⚠️ `unsubscribed` KHÔNG bất động: `resubscribe` (khách bấm link HMAC trong
  * email của chính họ) đặt `unsubscribed_at` về null, và lượt huỷ ấy biến khỏi
@@ -252,10 +253,38 @@ export async function enquiryWonCount(from: Date, to: Date): Promise<number> {
  * ở contract cho lý do đầy đủ và việc phải làm nếu ngày nào cần con số bất
  * động (một bảng audit consent, cùng bài học F5/F9).
  */
-export async function subscribersSlice(from: Date, to: Date) {
-  const [created, unsubscribed] = await Promise.all([
-    prisma.subscriber.count({ where: { createdAt: { gte: from, lt: to } } }),
-    prisma.subscriber.count({ where: { unsubscribedAt: { gte: from, lt: to } } }),
-  ]);
-  return { created, unsubscribed };
+export async function subscribersStats(window: {
+  previousFrom: Date;
+  currentFrom: Date;
+  generatedAt: Date;
+}) {
+  const { previousFrom, currentFrom, generatedAt } = window;
+  const [row] = await prisma.$queryRaw<
+    {
+      created_current: bigint;
+      created_previous: bigint;
+      unsubscribed_current: bigint;
+      unsubscribed_previous: bigint;
+      active: bigint;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      COUNT(*) FILTER (WHERE created_at >= ${currentFrom} AND created_at < ${generatedAt}) AS created_current,
+      COUNT(*) FILTER (WHERE created_at >= ${previousFrom} AND created_at < ${currentFrom}) AS created_previous,
+      COUNT(*) FILTER (WHERE unsubscribed_at >= ${currentFrom} AND unsubscribed_at < ${generatedAt}) AS unsubscribed_current,
+      COUNT(*) FILTER (WHERE unsubscribed_at >= ${previousFrom} AND unsubscribed_at < ${currentFrom}) AS unsubscribed_previous,
+      COUNT(*) FILTER (WHERE unsubscribed_at IS NULL) AS active
+    FROM subscribers
+  `);
+  return {
+    created: {
+      current: Number(row?.created_current ?? 0),
+      previous: Number(row?.created_previous ?? 0),
+    },
+    unsubscribed: {
+      current: Number(row?.unsubscribed_current ?? 0),
+      previous: Number(row?.unsubscribed_previous ?? 0),
+    },
+    active: Number(row?.active ?? 0),
+  };
 }

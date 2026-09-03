@@ -29,29 +29,25 @@ export async function fetchAdminSubscribers(
   return api.admin.subscribers.list(query, { context: withAdminAuth(cookie) });
 }
 
-/** Kết quả gom cho nút Export — hình dạng chung của mọi vùng có export. */
-export type AdminSubscribersExport = PagedExport<SubscriberRow>;
-
 /**
  * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính
  * `admin.subscribers.list` (nguồn của `/subscribers/export`).
  *
  * Vòng lặp và ba chốt ngân sách nằm ở `lib/export-pages.ts` dùng chung với
  * bookings — ở đây chỉ còn phần riêng của vùng: bộ lọc nào và dedupe theo
- * cột nào. Khác bookings, không có `includeMedia` để tắt: hàng này vốn đã là
- * năm cột.
- *
- * `sources` của mỗi trang bị BỎ: file CSV không có ô nào cho danh sách nguồn
- * — nó là siêu dữ liệu của toolbar, không phải của tập dữ liệu.
+ * cột nào. `includeSources: false` là chốt riêng của vùng này, cùng khuôn
+ * `includeMedia: false` của bookings (vòng vá review F10): file không có ô
+ * nào cho danh sách nguồn, nên khỏi bắt API `GROUP BY` toàn bảng 20 lần chỉ
+ * để vứt đi.
  */
 export async function fetchAllAdminSubscribers(
   cookie: string,
   query: SubscribersQuery,
-): Promise<AdminSubscribersExport> {
+): Promise<PagedExport<SubscriberRow>> {
   return fetchAllPages(
     (page, signal) =>
       api.admin.subscribers.list(
-        { ...query, page, limit: EXPORT_PAGE_SIZE },
+        { ...query, page, limit: EXPORT_PAGE_SIZE, includeSources: false },
         { context: { cookie, signal } },
       ),
     (row) => row.id,

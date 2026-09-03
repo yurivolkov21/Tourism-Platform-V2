@@ -22,7 +22,7 @@ import {
   paymentEventsSlice,
   revenueCurrency,
   reviewApprovals,
-  subscribersSlice,
+  subscribersStats,
 } from './stats-aggregates.js';
 import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
 
@@ -237,10 +237,16 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  * chính là câu query của metric `won`, và một bảng mới thì thêm index lúc
  * tạo không tốn gì (`enquiries.created_at` thì vẫn không có index riêng:
  * index sẵn có `[status, created_at]` phủ vế status của ảnh chụp `open`).
- * Ở cỡ dữ liệu hiện tại (hàng
+ * `subscribers` (F10) là bảng KHÔNG có index nào ngoài `email @unique`, và
+ * vùng này không cache: mỗi lần render `/subscribers` là một lượt quét cho
+ * stats (đã gộp thành MỘT câu `FILTER`) cộng `count`/`findMany`/`GROUP BY
+ * source` của list. Bảng này lớn theo số người ghé web chứ không theo số
+ * booking — ứng viên đầu tiên chạm ngưỡng; index đáng thêm khi tới:
+ * partial `(created_at DESC) WHERE unsubscribed_at IS NULL` (tab mặc định)
+ * và `(unsubscribed_at)` (metric kỳ). Ở cỡ dữ liệu hiện tại (hàng
  * trăm row) seq scan rẻ hơn cả việc bảo trì index, và một migration mới phải
  * deploy tay lên Supabase dùng chung
- * dev/prod. Ngưỡng để xem lại: khi một trong năm bảng vượt ~10k row — `outbox`
+ * dev/prod. Ngưỡng để xem lại: khi một trong sáu bảng vượt ~10k row — `outbox`
  * là bảng ghi kiểu hàng đợi (mỗi booking/enquiry/newsletter một row) nên sẽ
  * chạm ngưỡng trước, dù retention 30 ngày che bớt khi nhìn `count(*)`.
  */
@@ -388,20 +394,11 @@ export class StatsService {
   /** Bộ số vùng `/subscribers` (F10) — hai lát kỳ + một count ảnh chụp, song song. */
   async adminSubscribers(): Promise<AdminSubscribersStats> {
     const window = statsWindow(new Date());
-    const [current, previous, active] = await Promise.all([
-      subscribersSlice(window.currentFrom, window.generatedAt),
-      subscribersSlice(window.previousFrom, window.currentFrom),
-      // Ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG số hàng của
-      // `/subscribers?active=true`.
-      prisma.subscriber.count({ where: { unsubscribedAt: null } }),
-    ]);
-
-    return {
-      period: statsPeriod(window),
-      created: { current: current.created, previous: previous.created },
-      unsubscribed: { current: current.unsubscribed, previous: previous.unsubscribed },
-      active,
-    };
+    // MỘT câu cho cả năm con số (vòng vá review F10); `active` là ảnh chụp
+    // toàn bảng — khớp ĐÚNG số hàng của `/subscribers?active=true` khi không
+    // có bộ lọc nào khác.
+    const stats = await subscribersStats(window);
+    return { period: statsPeriod(window), ...stats };
   }
 
   /**

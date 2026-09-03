@@ -29,19 +29,6 @@ import {
 const SEARCH_MAX_LENGTH = 120;
 
 /**
- * Trần số dòng của Export CSV — bản gốc ở `lib/export-pages.ts` từ F10 (cùng
- * trần cho mọi vùng có nút Export), re-export ở đây để nơi gọi cũ không đổi.
- *
- * Nó phải ở một lib THUẦN chứ không phải `api/bookings.ts` (vòng vá review
- * F6): cả vòng gom server LẪN nút Export client cần nó — nút phải biết trần
- * để disable TRƯỚC cú click thay vì để admin bị đá sang trang 413 — mà
- * `api/bookings.ts` khởi tạo oRPC client ngay lúc import nên không nhét vào
- * bundle client được. `export-pages.ts` cũng thuần đúng nghĩa đó: không
- * import gì ngoài kiểu của contract.
- */
-export { EXPORT_MAX_ROWS } from './export-pages';
-
-/**
  * Ngày lịch `YYYY-MM-DD` — IMPORT thẳng schema mà contract dùng cho
  * `from`/`to` (hết bản khai lại cục bộ, vòng vá review F6), nên cái gì lọt
  * qua đây thì server cũng nhận và ngược lại: ngày không tồn tại

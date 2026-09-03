@@ -251,6 +251,28 @@ session gốc nghiệm thu (review 8 mũi → vá → merge rebase+ff → docs s
 - `nav.ts`: Subscribers enabled.
 - Test: int list/unsubscribe (guard + đã huỷ)/401/403 + stats; unit CSV
   rows + href + mapper.
+- *AMEND 03/09 (review F10):*
+  - **Mặc định tab Active ở tầng parse**: `/subscribers` trần = Active; tab
+    All phải viết tường minh `?active=all` (bản đầu đặt mặc định ở nav nên
+    bookmark trần rơi vào All và Export dựng cả địa chỉ đã rút consent). Nav
+    trỏ `/subscribers` literal — không import lib vùng vào chunk client chung.
+  - `list` có **`includeSources`** (mặc định bật; export tắt) — cùng khuôn
+    `includeMedia`: GROUP BY toàn bảng không chạy 20 lần cho một file không
+    có cột nguồn.
+  - `fetchAllPages` trả **`changed`** khi `total` trang sau ≠ trang đầu →
+    route 409 "xuất lại" thay vì giao file thiếu hàng cũ nhất im lặng.
+  - Dùng chung: `lib/export-route.ts` (gác quyền 502→401→403, audit có
+    `outcome` cho cả 413/409/502, response CSV) cho ba route export;
+    `newsletter/unsubscribe-claim.ts` cho cả đường khách lẫn admin;
+    `ExportButton` sang `components/kit`; `ToolbarSelect` có
+    `toFreeValue`/`fromFreeValue` để giá trị tự do từ DB không đụng sentinel
+    "All" (áp cho cả Select type của payment events).
+  - Stats vùng này là **một câu `COUNT(*) FILTER`** cho cả năm con số; mục
+    Index của StatsService ghi `subscribers` (bảng không index, ứng viên đầu
+    tiên chạm ngưỡng); caption "Active now" nói rõ đếm toàn danh sách.
+  - Chấp nhận có ghi chú: card "Unsubscribed 28d" đếm trên trạng thái (không
+    bảng audit consent — P4c không thêm migration; JSDoc contract nêu việc
+    phải làm khi cần con số bất động).
 
 ## 4. Definition of done (mỗi tính năng)
 

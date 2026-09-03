@@ -1,14 +1,14 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { ExportButton } from '@/components/bookings/export-button';
+import { ExportButton } from '@/components/kit/export-button';
 import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import { type SubscribersQuery, subscribersExportHref } from '@/lib/subscribers-query';
 
 /**
- * Nút Export CSV của `/subscribers` (spec P4c §3-F10) — dùng LẠI nguyên
- * `ExportButton` mà `/bookings` đã dựng (user chốt 01/09: nút sống trong ô
- * tiêu đề bảng, và hai vùng có export thì phải là cùng một nút).
+ * Nút Export CSV của `/subscribers` (spec P4c §3-F10) — kit `ExportButton`
+ * (user chốt 01/09: nút sống trong ô tiêu đề bảng, và hai vùng có export thì
+ * phải là cùng một nút).
  *
  * Khác `/bookings` đúng một điều: KHÔNG có xuất theo-lựa-chọn. Vùng này không
  * có cột checkbox — spec F10 chỉ hứa "tập đang lọc", và việc chọn tay từng

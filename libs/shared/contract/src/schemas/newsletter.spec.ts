@@ -30,8 +30,15 @@ describe('SUBSCRIBER_SOURCE_MAX_LENGTH', () => {
 });
 
 describe('AdminSubscribersListQuerySchema', () => {
-  it('mặc định trang 1 · 20 dòng, không filter', () => {
-    expect(AdminSubscribersListQuerySchema.parse({})).toEqual({ page: 1, limit: 20 });
+  it('mặc định trang 1 · 20 dòng, không filter, `includeSources` BẬT (trang bảng); export tắt nó', () => {
+    expect(AdminSubscribersListQuerySchema.parse({})).toEqual({
+      page: 1,
+      limit: 20,
+      includeSources: true,
+    });
+    expect(AdminSubscribersListQuerySchema.parse({ includeSources: false }).includeSources).toBe(
+      false,
+    );
   });
 
   it('`active` là BA trạng thái: true (đang nhận) · false (đã huỷ) · vắng (mọi row)', () => {
@@ -66,6 +73,7 @@ describe('AdminSubscribersListQuerySchema', () => {
       'active',
       'search',
       'source',
+      'includeSources',
     ]);
   });
 });

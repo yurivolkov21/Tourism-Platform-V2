@@ -6,7 +6,8 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import * as React from 'react';
 
 /**
- * Nút Export của `/bookings`, dựng theo `button-27` ("Encrypt") của Shadcn
+ * Nút Export CSV của back-office (kit từ vòng vá review F10 — consumer thứ
+ * hai là `/subscribers`), dựng theo `button-27` ("Encrypt") của Shadcn
  * Space — user chốt 01/09. Registry khai ở `components.json`
  * (`@shadcn-space`), kéo lại bản gốc bằng
  * `pnpm dlx shadcn@latest view @shadcn-space/button-27`.

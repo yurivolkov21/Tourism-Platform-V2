@@ -55,10 +55,17 @@ export const EXPORT_CONCURRENCY = 5;
 /** Ngân sách CHUNG cho cả vòng gom — phải nhỏ hơn `maxDuration` của route. */
 export const EXPORT_TIME_BUDGET_MS = 45_000;
 
-/** Kết quả gom: hoặc cả tập, hoặc lời từ chối kèm con số để báo cho người bấm. */
+/**
+ * Kết quả gom: cả tập, hoặc một trong hai lời từ chối kèm con số để báo cho
+ * người bấm — `too-large` (vượt trần) và `changed` (tập ĐỔI KÍCH THƯỚC giữa
+ * chừng, vòng vá review F10: hàng mới chen đầu list "mới nhất trước" đẩy
+ * hàng cũ nhất ra khỏi cửa sổ trang mà không hàng nào lặp để dedupe bắt —
+ * file thiếu đúng những hàng cũ nhất và người xuất tưởng là đủ).
+ */
 export type PagedExport<T> =
   | { kind: 'rows'; items: T[] }
-  | { kind: 'too-large'; total: number; max: number };
+  | { kind: 'too-large'; total: number; max: number }
+  | { kind: 'changed'; total: number; now: number };
 
 /**
  * Gom MỌI trang của một list admin đang lọc.
@@ -70,9 +77,10 @@ export type PagedExport<T> =
  * `keyOf` là khoá dedupe: offset pagination trên một list "mới nhất trước"
  * đang TRÔI — một hàng mới chen vào giữa hai lượt đẩy mọi hàng lùi một vị
  * trí, và hàng cuối trang trước quay lại đầu trang sau. Không dedupe thì file
- * có một khoá nằm hai lần mà chẳng ai hay. (Chiều ngược lại — một hàng bị đẩy
- * RA khỏi lưới trang — thì không cứu được từ client: file mô tả tập tại thời
- * điểm bắt đầu xuất.)
+ * có một khoá nằm hai lần mà chẳng ai hay. Chiều ngược lại — hàng bị đẩy RA
+ * khỏi lưới trang — không cứu được từ client nhưng PHÁT HIỆN được: mọi trang
+ * sau mang `total` khác trang đầu là tập đã đổi → `changed`, route trả 409
+ * mời xuất lại (vòng vá review F10).
  */
 export async function fetchAllPages<T>(
   fetchPage: (page: number, signal: AbortSignal) => Promise<Paged<T>>,
@@ -105,7 +113,12 @@ export async function fetchAllPages<T>(
     const batch = await Promise.all(
       Array.from({ length: last - start + 1 }, (_, index) => fetchPage(start + index, budget)),
     );
-    for (const paged of batch) collect(paged.items);
+    for (const paged of batch) {
+      if (paged.total !== first.total) {
+        return { kind: 'changed', total: first.total, now: paged.total };
+      }
+      collect(paged.items);
+    }
   }
   return { kind: 'rows', items };
 }

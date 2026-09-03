@@ -1,11 +1,13 @@
 import type { AdminMonthlyReport } from '@tourism/contract';
-import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
-import { decideAdminAccess } from '@/lib/admin-gate';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
-import { lookupServerSession } from '@/lib/api/session';
-import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import {
+  csvExportResponse,
+  exportFailedResponse,
+  guardExportAccess,
+  logExportAudit,
+} from '@/lib/export-route';
 import { parseReportsSearchParams } from '@/lib/reports-query';
 import { reportCsvRows } from '@/lib/reports-view';
 import { rawSearchParamsFrom } from '@/lib/table-query';
@@ -23,20 +25,8 @@ import { rawSearchParamsFrom } from '@/lib/table-query';
  * định, không phụ thuộc lượng dữ liệu.
  */
 export async function GET(request: NextRequest) {
-  const lookup = await lookupServerSession();
-  // Cùng lý do với `/bookings/export` (vòng vá review F6): API sập thì check
-  // phiên trượt TRƯỚC — không phân loại thì admin nhận nhầm "phiên hết hạn".
-  if (lookup.kind === 'unreachable') {
-    return new Response(messages.admin.errors.exportFailed, { status: 502 });
-  }
-  const session = lookup.kind === 'ok' ? lookup.user : null;
-  const decision = decideAdminAccess(session ? { role: session.role } : null, '/reports/export');
-  if (decision.kind === 'login') {
-    return new Response(messages.admin.errors.write.UNAUTHORIZED, { status: 401 });
-  }
-  if (decision.kind === 'deny') {
-    return new Response(messages.admin.errors.write.FORBIDDEN, { status: 403 });
-  }
+  const gate = await guardExportAccess('/reports/export');
+  if (!gate.ok) return gate.response;
 
   const { month } = parseReportsSearchParams(
     rawSearchParamsFrom(request.nextUrl.searchParams),
@@ -52,14 +42,14 @@ export async function GET(request: NextRequest) {
     report = await fetchAdminMonthlyReport(cookie, month);
   } catch (error) {
     console.error('[admin] monthly report export failed', error);
-    return new Response(messages.admin.errors.exportFailed, { status: 502 });
+    logExportAudit('reports', { adminId: gate.session.id, outcome: 'failed', filters: { month } });
+    return exportFailedResponse();
   }
 
   // Tên file mang CẢ tháng báo cáo lẫn ngày xuất: hai bản tải cùng một tháng ở
   // hai ngày khác nhau là hai ảnh chụp khác nhau (phân rã trạng thái đổi theo
   // thời gian — xem `definitions.statuses`), nên chúng không được trùng tên.
-  const filename = csvFilename(`nexora-report-${report.month}`, isoDay(new Date()));
-  return new Response(csvDocument(reportCsvRows(report)), {
-    headers: csvAttachmentHeaders(filename),
-  });
+  // Vết audit cho cả báo cáo (vòng vá review F10 — route này từng không ghi).
+  logExportAudit('reports', { adminId: gate.session.id, outcome: 'ok', filters: { month } });
+  return csvExportResponse(`nexora-report-${report.month}`, reportCsvRows(report));
 }

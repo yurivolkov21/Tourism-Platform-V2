@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { EmailType } from '../../generated/prisma/enums.js';
+import { claimUnsubscribe } from './unsubscribe-claim.js';
 import { makeUnsubscribeToken, verifyUnsubscribeToken } from './unsubscribe-token.js';
 
 /**
@@ -112,15 +113,11 @@ export class NewsletterService {
     if (!verifyUnsubscribeToken(id, token, env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
       throw new InvalidUnsubscribeTokenError();
     }
-    const { count } = await prisma.subscriber.updateMany({
-      where: { id, unsubscribedAt: null },
-      data: { unsubscribedAt: new Date() },
-    });
-    if (count === 1) return;
-
-    const exists = await prisma.subscriber.findUnique({ where: { id }, select: { id: true } });
-    if (!exists) throw new InvalidUnsubscribeTokenError();
-    // exists nhưng count === 0 → đã unsubscribe từ trước, no-op idempotent.
+    // Luật claim dùng chung với đường admin (`unsubscribe-claim.ts`, vòng vá
+    // review F10); ở đây `already` là no-op idempotent — giữ đúng mốc khách
+    // thật sự rút consent — còn `missing` là lỗi.
+    const claim = await claimUnsubscribe(id);
+    if (claim.kind === 'missing') throw new InvalidUnsubscribeTokenError();
   }
 
   /**

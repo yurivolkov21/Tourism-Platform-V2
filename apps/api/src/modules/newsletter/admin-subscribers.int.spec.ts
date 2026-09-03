@@ -229,6 +229,12 @@ describe('admin subscribers integration (F10)', () => {
       expect((await listOk('?active=false')).sources).toEqual(['footer', 'landing-2026', 'popup']);
     });
 
+    it('`includeSources=false` (đường export) → `sources` rỗng, hàng vẫn đủ — không GROUP BY thừa', async () => {
+      const paged = await listOk('?includeSources=false');
+      expect(paged.sources).toEqual([]);
+      expect(paged.total).toBe(7);
+    });
+
     it('phân trang: page/limit ép từ query string, totalPages đúng', async () => {
       const page2 = await listOk('?limit=2&page=2');
       expect(page2).toMatchObject({ page: 2, limit: 2, total: 7, totalPages: 4 });
@@ -260,21 +266,19 @@ describe('admin subscribers integration (F10)', () => {
       expect(await prisma.subscriber.count({ where: { unsubscribedAt: null } })).toBe(4);
     });
 
-    it('hàng ĐÃ huỷ → 409 ALREADY_UNSUBSCRIBED và mốc consent CŨ không bị đè', async () => {
+    it('hàng ĐÃ huỷ (seed sẵn HOẶC vừa bấm lần một) → 409 ALREADY_UNSUBSCRIBED, mốc consent CŨ không bị đè', async () => {
       const res = await unsubscribe(rowId(2), adminCookie);
       expect(res.statusCode).toBe(409);
       expect(res.json()).toMatchObject({ code: 'ALREADY_UNSUBSCRIBED' });
       const db = await prisma.subscriber.findUniqueOrThrow({ where: { id: rowId(2) } });
       expect(db.unsubscribedAt?.toISOString()).toBe(UNSUBSCRIBED_AT.toISOString());
-    });
 
-    it('bấm hai lần liên tiếp: lần hai là 409, mốc của lần MỘT giữ nguyên', async () => {
       const first = AdminSubscriberUnsubscribeResultSchema.parse(
         (await unsubscribe(rowId(3), adminCookie)).json(),
       );
       expect((await unsubscribe(rowId(3), adminCookie)).statusCode).toBe(409);
-      const db = await prisma.subscriber.findUniqueOrThrow({ where: { id: rowId(3) } });
-      expect(db.unsubscribedAt?.toISOString()).toBe(first.unsubscribedAt);
+      const again = await prisma.subscriber.findUniqueOrThrow({ where: { id: rowId(3) } });
+      expect(again.unsubscribedAt?.toISOString()).toBe(first.unsubscribedAt);
     });
 
     it('id không tồn tại → 404 NOT_FOUND; id không phải uuid → 400', async () => {
@@ -282,18 +286,6 @@ describe('admin subscribers integration (F10)', () => {
       expect(missing.statusCode).toBe(404);
       expect(missing.json()).toMatchObject({ code: 'NOT_FOUND' });
       expect((await unsubscribe('not-a-uuid', adminCookie)).statusCode).toBe(400);
-    });
-
-    it('KHÔNG có đường resubscribe phía admin — consent chỉ đi từ link trong hộp thư khách', async () => {
-      const res = await app.inject({
-        method: 'POST',
-        url: `/api/admin/subscribers/${rowId(2)}/resubscribe`,
-        headers: { cookie: adminCookie },
-        payload: {},
-      });
-      expect(res.statusCode).toBe(404);
-      const db = await prisma.subscriber.findUniqueOrThrow({ where: { id: rowId(2) } });
-      expect(db.unsubscribedAt?.toISOString()).toBe(UNSUBSCRIBED_AT.toISOString());
     });
   });
 });

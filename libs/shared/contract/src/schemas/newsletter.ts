@@ -148,6 +148,14 @@ export const AdminSubscribersListQuerySchema = AdminPageQuerySchema.extend({
   active: z.boolean().optional(),
   search: z.string().min(1).max(120).optional(),
   source: z.string().min(1).max(SUBSCRIBER_SOURCE_MAX_LENGTH).optional(),
+  /**
+   * Có tính `sources` (GROUP BY toàn bảng) không — cùng khuôn `includeMedia`
+   * của bookings (vòng vá review F10): vòng export gọi list 20 lượt và vứt
+   * `sources` của từng trang, mỗi lượt là một lần quét cột không index lên DB
+   * dùng chung đường khách. Tắt thì `sources` là mảng rỗng. Mặc định bật cho
+   * trang bảng — nơi duy nhất cần nó.
+   */
+  includeSources: z.boolean().default(true),
 });
 export type AdminSubscribersListQuery = z.output<typeof AdminSubscribersListQuerySchema>;
 

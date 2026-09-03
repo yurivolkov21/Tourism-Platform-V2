@@ -2760,8 +2760,14 @@ export const messages = {
         created: (days: number) => `New ${days}d`,
         unsubscribed: (days: number) => `Unsubscribed ${days}d`,
         active: 'Active now',
-        /** Ảnh chụp không có delta — caption thay cho dòng "vs …". */
-        activeCaption: 'Addresses that still receive the newsletter',
+        /**
+         * Ảnh chụp không có delta — caption thay cho dòng "vs …". Nói rõ
+         * "whole list" (vòng vá review F10): card đếm TOÀN bảng, còn bảng
+         * bên dưới có thể đang lọc theo email/nguồn — hai con số khác nhau
+         * về cùng một vị từ là chuyện phải nói trước.
+         */
+        activeCaption:
+          'Addresses that still receive the newsletter — whole list, not the current filter',
         activeCaptionNone: 'Nobody is on the list right now',
       },
     },
@@ -2867,6 +2873,13 @@ export const messages = {
        */
       exportSelectionStale:
         'Those rows are no longer on this page — the list changed since you selected them. Go back, pick the rows again, then export.',
+      /**
+       * 409 của export-all khi tập đổi kích thước giữa vòng gom trang (vòng vá
+       * review F10): hàng mới chen đầu list đẩy hàng cũ nhất ra khỏi cửa sổ
+       * — không giao file thiếu hàng mà người tải tưởng là đủ.
+       */
+      exportListChanged:
+        'The list changed while the file was being built, so it was not saved. Export again.',
       /**
        * Copy DÙNG CHUNG cho mã lỗi TẦNG VẬN CHUYỂN của mọi hành vi ghi admin
        * (refund F2, decide F3, moderate F4…) — tách khỏi mã CONTRACT của từng
@@ -3443,7 +3456,7 @@ export const messages = {
          * nào khác.
          */
         exportTooLarge: (total: number, max: number) =>
-          `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs or the source filter, then export again.`,
+          `This filter matches ${total} subscribers and the export is capped at ${max}. Narrow it with the status tabs, the source filter or the email search, then export again.`,
       },
       /**
        * Nhãn cột của file CSV. Giá trị trong file là DỮ LIỆU chứ không phải

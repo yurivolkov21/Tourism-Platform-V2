@@ -18,7 +18,6 @@ import {
   Ticket,
   Users,
 } from 'lucide-react';
-import { SUBSCRIBERS_DEFAULT_HREF } from './subscribers-query';
 
 /**
  * Bản đồ sidebar (spec P4a §3) — phủ đủ 18 vùng của khảo sát 20/08 trong 15
@@ -90,15 +89,16 @@ export const NAV_GROUPS: NavGroup[] = [
         enabled: true,
         icon: MessageSquare,
       },
-      // Vùng thứ tư (và cuối) của P4c — F10, danh sách nhận tin. Mở thẳng tab
-      // Active: danh sách đang thật sự nhận thư là câu hỏi thường ngày, còn
-      // "ai vừa rời đi" là câu hỏi thỉnh thoảng; tab "All" trong trang vẫn
-      // xem được tất cả. Href đọc từ `SUBSCRIBERS_DEFAULT_HREF` (cùng hằng mà
-      // hàm dựng URL của vùng dùng) để nav và bảng không trôi lệch.
+      // Vùng thứ tư (và cuối) của P4c — F10, danh sách nhận tin. Đường trơn
+      // = tab Active (mặc định nằm ở `parseSubscribersSearchParams`, vòng vá
+      // review F10): danh sách đang thật sự nhận thư là câu hỏi thường ngày,
+      // còn "ai vừa rời đi"/All là tab trong trang. Chuỗi literal như mọi mục
+      // khác — nav là chunk client dùng chung, không kéo lib của vùng (và qua
+      // nó cả barrel contract) vào đây chỉ để đọc một hằng.
       {
         key: 'subscribers',
         label: t.subscribers,
-        href: SUBSCRIBERS_DEFAULT_HREF,
+        href: '/subscribers',
         enabled: true,
         icon: Mail,
       },

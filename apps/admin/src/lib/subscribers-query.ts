@@ -25,6 +25,13 @@ import {
  * muốn xem — nên nó phải ghi được ra URL, ngược hẳn với `unprocessed` của
  * payment events (cờ tắt thì không có gì để viết). Mọi phép so ở đây vì thế
  * là `=== true` / `=== false`, không bao giờ truthy.
+ *
+ * MẶC ĐỊNH là Active ở TẦNG PARSE (vòng vá review F10): URL không nói gì
+ * (`/subscribers` trần — bookmark, redirect sau đăng nhập) là tab Active,
+ * còn tab All phải được viết TƯỜNG MINH `?active=all`. Bản đầu chỉ đặt mặc
+ * định ở href của nav, nên một bookmark trần rơi vào All và nút Export ở đó
+ * dựng file gồm cả địa chỉ đã rút consent — tập PII rộng nhất, không ai cố
+ * ý chọn. Cùng luật cho trang lẫn route export (chung một hàm parse).
  */
 
 /** Trần `search` của contract (`z.string().max(120)`). */
@@ -40,21 +47,17 @@ export interface SubscribersQuery {
   source?: string;
 }
 
-/**
- * Điểm vào mặc định của vùng — mục nav trỏ thẳng tab Active (danh sách đang
- * thật sự nhận thư là câu hỏi thường ngày; "ai vừa rời đi" là câu hỏi thỉnh
- * thoảng). Cùng nếp `/cancellations?status=REQUESTED` và `/outbox?status=FAILED`,
- * chỉ khác ở chỗ đây không phải một hàng đợi cần dọn.
- */
-export const SUBSCRIBERS_DEFAULT_HREF = '/subscribers?active=true';
+/** Giá trị URL của tab All — tường minh, vì vắng mặt nghĩa là Active. */
+const ACTIVE_ALL_PARAM = 'all';
 
 /**
- * URL là thứ NGƯỜI gõ được: page rác → 1, `active` ngoài "true"/"false" → bỏ
- * filter (về tab All), `q`/`source` rỗng → không lọc và quá dài thì cắt đúng
- * trần. Không ném 400 lên API.
+ * URL là thứ NGƯỜI gõ được: page rác → 1, `active` vắng/"true"/rác → tab
+ * Active (mặc định), "false" → tab Unsubscribed, "all" → mọi hàng; `q`/`source`
+ * rỗng → không lọc và quá dài thì cắt đúng trần. Không ném 400 lên API.
  *
  * `active` cố ý KHÔNG nhận "1"/"yes"/"on": một cờ ba trạng thái mà mỗi người
- * viết URL một kiểu là chỗ hai người đọc cùng một link ra hai bảng khác nhau.
+ * viết URL một kiểu là chỗ hai người đọc cùng một link ra hai bảng khác nhau
+ * — rác rơi về mặc định AN TOÀN (tập hẹp nhất), không rơi về All.
  */
 export function parseSubscribersSearchParams(raw: RawSearchParams): SubscribersQuery {
   const active = firstParam(raw.active);
@@ -63,7 +66,7 @@ export function parseSubscribersSearchParams(raw: RawSearchParams): SubscribersQ
 
   return {
     ...parsePaging(raw),
-    ...(active === 'true' || active === 'false' ? { active: active === 'true' } : {}),
+    ...(active === ACTIVE_ALL_PARAM ? {} : { active: active !== 'false' }),
     ...(search ? { search } : {}),
     ...(source ? { source } : {}),
   };
@@ -97,7 +100,7 @@ export function subscribersHref(current: SubscribersQuery, patch: SubscribersHre
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
-  appendFilters(params, { ...current, ...resolveFilters(current, patch) });
+  appendFilters(params, resolveFilters(current, patch));
   appendPaging(params, paging);
 
   return tableHref('/subscribers', params);
@@ -128,11 +131,17 @@ function resolveFilters(
   };
 }
 
-/** Ghi ba filter vào query theo THỨ TỰ CỐ ĐỊNH — href ổn định giữa hai render. */
-function appendFilters(params: URLSearchParams, query: SubscribersQuery): void {
-  // `!== undefined` chứ không truthy: `active=false` là tab Unsubscribed, và
-  // một phép truthy ở đây làm tab ấy không bao giờ ghi được ra URL.
-  if (query.active !== undefined) params.set('active', String(query.active));
+/**
+ * Ghi ba filter vào query theo THỨ TỰ CỐ ĐỊNH — href ổn định giữa hai render.
+ * Gương của `parseSubscribersSearchParams`: Active (mặc định) không viết ra
+ * URL, Unsubscribed là `active=false`, All là `active=all` TƯỜNG MINH.
+ */
+function appendFilters(
+  params: URLSearchParams,
+  query: Pick<SubscribersQuery, 'active' | 'search' | 'source'>,
+): void {
+  if (query.active === undefined) params.set('active', ACTIVE_ALL_PARAM);
+  else if (query.active === false) params.set('active', 'false');
   if (query.search) params.set('q', query.search);
   if (query.source) params.set('source', query.source);
 }
