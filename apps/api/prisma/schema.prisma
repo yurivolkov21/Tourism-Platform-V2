@@ -219,6 +219,7 @@ model User {
   enquiryNotes          EnquiryNote[]
   chatConversations     ChatConversation[]
   moderationEvents      ReviewModerationEvent[]
+  enquiryStatusEvents   EnquiryStatusEvent[]
 
   @@index([role])
   @@map("users")
@@ -722,8 +723,9 @@ model Enquiry {
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
-  tour  Tour?         @relation(fields: [tourId], references: [id], onDelete: SetNull)
-  notes EnquiryNote[]
+  tour         Tour?                @relation(fields: [tourId], references: [id], onDelete: SetNull)
+  notes        EnquiryNote[]
+  statusEvents EnquiryStatusEvent[]
 
   @@index([status, createdAt])
   @@index([tourId])
@@ -747,6 +749,34 @@ model EnquiryNote {
 
   @@index([enquiryId, createdAt])
   @@map("enquiry_notes")
+}
+
+/// Audit trail append-only cho MỖI lần đổi trạng thái một enquiry (spec P4c
+/// §2.5, §3-F9). Sinh ra cùng lý do với `ReviewModerationEvent`: "Won 28d"
+/// phải đếm được LƯỢT chuyển sang WON trong kỳ, chứ không đoán qua
+/// `Enquiry.updatedAt` — cột đó bị mọi lần ghi khác đè, và một lần đổi trạng
+/// thái hôm nay sẽ xóa ngược con số của một kỳ đã đóng.
+///
+/// `adminId` SetNull (không cascade): xóa tài khoản admin KHÔNG được phép xóa
+/// lịch sử. Tên người quyết đọc qua join `admin` — cùng nếp
+/// `Review.moderatedBy` (khác `EnquiryNote.authorName` snapshot: ở đó tên là
+/// một phần NỘI DUNG của thread người đọc).
+model EnquiryStatusEvent {
+  id         String        @id @default(uuid(7)) @db.Uuid
+  enquiryId  String        @map("enquiry_id") @db.Uuid
+  adminId    String?       @map("admin_id") @db.Uuid
+  fromStatus EnquiryStatus @map("from_status")
+  toStatus   EnquiryStatus @map("to_status")
+  createdAt  DateTime      @default(now()) @map("created_at")
+
+  enquiry Enquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  admin   User?   @relation(fields: [adminId], references: [id], onDelete: SetNull)
+
+  // Timeline của MỘT enquiry (trang chi tiết) …
+  @@index([enquiryId, createdAt])
+  // … và "bao nhiêu lượt sang WON trong kỳ" (stat card F9).
+  @@index([toStatus, createdAt])
+  @@map("enquiry_status_events")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

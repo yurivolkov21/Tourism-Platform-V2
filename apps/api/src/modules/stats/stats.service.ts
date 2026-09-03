@@ -2,9 +2,11 @@ import { Injectable } from '@nestjs/common';
 import {
   type AdminBookingsStats,
   type AdminCancellationsStats,
+  type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
+  OPEN_ENQUIRY_STATUSES,
   PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
@@ -12,6 +14,8 @@ import { CancellationRequestStatus, OutboxStatus } from '../../generated/prisma/
 import {
   bookingsCreatedCount,
   decisionsSlice,
+  enquiriesCreatedCount,
+  enquiryWonCount,
   outboxSentCount,
   paidBookingsSlice,
   paymentEventsSlice,
@@ -155,6 +159,36 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   hướng — card cache 60s đứng cạnh bảng tươi là hai con số "unprocessed"
  *   khác nhau trên cùng một màn hình.
  *
+ * **enquiries** (F9, spec P4c §3-F9)
+ * - `created` — số lead GỬI trong kỳ theo `created_at`, MỌI trạng thái. Card
+ *   đọc là "New 28d" nhưng con số này KHÔNG lọc `status = NEW`: một lead gửi
+ *   hôm kia mà hôm nay đã WON vẫn là lead mới của kỳ. Query đối chứng:
+ *   `SELECT COUNT(*) FROM enquiries WHERE created_at >= $from AND created_at < $to`.
+ *   Có kỳ trước thật: bảng không purge (lead là dữ liệu kinh doanh, giữ vĩnh
+ *   viễn — khác `outbox`).
+ * - `won` — SỐ LƯỢT chuyển sang WON trong kỳ, đếm trên audit trail
+ *   `enquiry_status_events` (`to_status = 'WON'`, `created_at` của EVENT).
+ *   KHÔNG đếm `enquiries WHERE status = 'WON' AND updated_at IN kỳ`, vì hai
+ *   lý do đều làm hỏng một kỳ đã đóng: (a) `updated_at` bị MỌI lệnh ghi khác
+ *   đè — thêm một note không đụng cột này nhưng một lần đổi trạng thái về sau
+ *   thì có, nên một lead thắng tháng trước bị sửa hôm nay sẽ nhảy sang kỳ
+ *   này; (b) trạng thái HIỆN TẠI không kể được chuyện "thắng rồi mất lại" —
+ *   lead ấy vẫn phải giữ nguyên lượt thắng của kỳ nó thắng. Đây đúng bài học
+ *   `approved` của reviews (F5), lần này có bảng audit ngay từ đầu. Guard
+ *   no-op ở `setStatus` bảo đảm không có event `from === to` làm nhiễu.
+ *   Query đối chứng:
+ *   `SELECT COUNT(*) FROM enquiry_status_events WHERE to_status = 'WON' AND created_at >= $from AND created_at < $to`.
+ * - `open` — ẢNH CHỤP: số lead đang ở `OPEN_ENQUIRY_STATUSES` (NEW +
+ *   CONTACTED + QUOTED) ngay bây giờ; WON/LOST là chung cuộc. Không có "lúc
+ *   đầu kỳ" dựng lại được từ riêng dấu thời gian (một lead có thể đi qua
+ *   nhiều trạng thái, và `enquiry_status_events` chỉ có từ F9 trở đi nên
+ *   lịch sử trước đó trống) — contract khai số đơn. KHÔNG có callout đỏ:
+ *   hàng chờ CRM là trạng thái bình thường của một đường bán hàng đang sống,
+ *   khác `outbox.failed` (chỉ rời FAILED khi có người can thiệp).
+ *   Vùng này CÓ cache 60s bên admin (khác outbox/payment events): kẻ đổi cả
+ *   ba con số là chính server action của admin, và nó gọi
+ *   `updateTag(ADMIN_STATS_TAG)` sau mỗi lệnh ghi thành công.
+ *
  * ## Index
  *
  * CỐ Ý chưa thêm index nào cho các cột lọc theo thời gian (`bookings.paid_at`,
@@ -162,7 +196,12 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  * `outbox.processed_at` — index sẵn có `[status, created_at]` chỉ phủ vế
  * status; `payment_events.received_at` — index sẵn có `[provider, received_at]`
  * chỉ dùng được khi lọc provider, còn ảnh chụp `processed_at IS NULL` là ứng
- * viên cho một partial index khi tới ngưỡng). Ở cỡ dữ liệu hiện tại (hàng
+ * viên cho một partial index khi tới ngưỡng). NGOẠI LỆ DUY NHẤT là bảng mới
+ * của F9: `enquiry_status_events` sinh ra kèm `[to_status, created_at]` — đó
+ * chính là câu query của metric `won`, và một bảng mới thì thêm index lúc
+ * tạo không tốn gì (`enquiries.created_at` thì vẫn không có index riêng:
+ * index sẵn có `[status, created_at]` phủ vế status của ảnh chụp `open`).
+ * Ở cỡ dữ liệu hiện tại (hàng
  * trăm row) seq scan rẻ hơn cả việc bảo trì index, và một migration mới phải
  * deploy tay lên Supabase dùng chung
  * dev/prod. Ngưỡng để xem lại: khi một trong năm bảng vượt ~10k row — `outbox`
@@ -286,6 +325,27 @@ export class StatsService {
       unprocessed,
       stuck,
       linked: { current: current.linked, previous: previous.linked },
+    };
+  }
+
+  /** Bộ số vùng `/enquiries` (F9) — hai lát kỳ + một count ảnh chụp, song song. */
+  async adminEnquiries(): Promise<AdminEnquiriesStats> {
+    const window = statsWindow(new Date());
+    const [createdNow, createdBefore, wonNow, wonBefore, open] = await Promise.all([
+      enquiriesCreatedCount(window.currentFrom, window.generatedAt),
+      enquiriesCreatedCount(window.previousFrom, window.currentFrom),
+      enquiryWonCount(window.currentFrom, window.generatedAt),
+      enquiryWonCount(window.previousFrom, window.currentFrom),
+      // Ảnh chụp đọc thẳng trạng thái: card phải khớp ĐÚNG tổng số hàng của
+      // ba tab NEW/CONTACTED/QUOTED trên chính trang đó.
+      prisma.enquiry.count({ where: { status: { in: [...OPEN_ENQUIRY_STATUSES] } } }),
+    ]);
+
+    return {
+      period: statsPeriod(window),
+      created: { current: createdNow, previous: createdBefore },
+      won: { current: wonNow, previous: wonBefore },
+      open,
     };
   }
 

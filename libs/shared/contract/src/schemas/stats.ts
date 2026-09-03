@@ -174,3 +174,40 @@ export const AdminPaymentEventsStatsSchema = z.object({
   linked: CountMetricSchema,
 });
 export type AdminPaymentEventsStats = z.output<typeof AdminPaymentEventsStatsSchema>;
+
+/**
+ * Bộ số vùng `/enquiries` (spec P4c §3-F9). Hai metric neo vào một MỐC THỜI
+ * GIAN nên có cặp hai kỳ; `open` là ẢNH CHỤP hàng chờ ngay bây giờ — số đơn,
+ * card không có delta (cùng luật F5/F7/F8).
+ */
+export const AdminEnquiriesStatsSchema = z.object({
+  period: StatsPeriodSchema,
+  /**
+   * Lead GỬI trong kỳ (`createdAt`) — mọi trạng thái.
+   *
+   * Tên là `created` chứ KHÔNG phải `new`: card đọc là "New 28d" nhưng con số
+   * này KHÔNG lọc `status = NEW` (một lead gửi hôm kia mà hôm nay đã WON vẫn
+   * là lead mới của kỳ). Đặt tên theo trạng thái ở đây là mời người đọc sau
+   * "sửa" nó thành một câu query khác hẳn.
+   */
+  created: CountMetricSchema,
+  /**
+   * Số LƯỢT chuyển sang WON trong kỳ — đếm trên audit trail
+   * `enquiry_status_events` (`to_status = WON`, `created_at` của EVENT), chứ
+   * KHÔNG trên `enquiries.updated_at` (spec §2.5, bài học F5): một lead WON
+   * hôm nay bị sửa sang LOST tuần sau sẽ tự xoá mình khỏi con số của một kỳ
+   * đã đóng nếu đếm theo trạng thái hiện tại.
+   */
+  won: CountMetricSchema,
+  /**
+   * Lead đang MỞ ngay bây giờ (`OPEN_ENQUIRY_STATUSES` — NEW + CONTACTED +
+   * QUOTED). Ảnh chụp: trạng thái không để lại mốc thời gian khi rời đi nên
+   * không dựng lại được "lúc đầu kỳ" — số đơn thay vì bịa một cặp.
+   *
+   * KHÔNG có callout đỏ: hàng chờ CRM là trạng thái bình thường của một
+   * đường bán hàng đang sống, khác `outbox.failed` (chỉ rời FAILED khi có
+   * người can thiệp).
+   */
+  open: z.int().nonnegative(),
+});
+export type AdminEnquiriesStats = z.output<typeof AdminEnquiriesStatsSchema>;

@@ -3,6 +3,7 @@ import type { Prisma } from '../../generated/prisma/client.js';
 import {
   BookingStatus,
   CancellationRequestStatus,
+  EnquiryStatus,
   OutboxStatus,
 } from '../../generated/prisma/enums.js';
 
@@ -197,4 +198,28 @@ export async function paymentEventsSlice(from: Date, to: Date) {
     _count: { _all: true, bookingId: true },
   });
   return { received: result._count._all, linked: result._count.bookingId };
+}
+
+/**
+ * Lead GỬI trong khoảng (theo `createdAt`), MỌI trạng thái — F9, spec P4c
+ * §3-F9. KHÔNG lọc `status = NEW`: card đọc là "New 28d" nhưng nó là "mới
+ * đến trong kỳ", còn một lead gửi hôm kia mà hôm nay đã WON vẫn là lead mới
+ * của kỳ (xem JSDoc field `created` ở contract).
+ */
+export function enquiriesCreatedCount(from: Date, to: Date): Promise<number> {
+  return prisma.enquiry.count({ where: { createdAt: { gte: from, lt: to } } });
+}
+
+/**
+ * SỐ LƯỢT chuyển sang WON trong khoảng — đếm trên audit trail
+ * `enquiry_status_events` theo `created_at` của EVENT, KHÔNG trên
+ * `enquiries.status`/`updated_at` (spec §2.5, đúng bài học `reviewApprovals`
+ * ở F5): một lead thắng tuần này rồi mất lại tuần sau vẫn phải giữ nguyên
+ * con số của kỳ đã đóng — trạng thái hiện tại thì không kể được chuyện đó.
+ * Guard no-op của `setStatus` bảo đảm không có event `from === to` làm nhiễu.
+ */
+export function enquiryWonCount(from: Date, to: Date): Promise<number> {
+  return prisma.enquiryStatusEvent.count({
+    where: { toStatus: EnquiryStatus.WON, createdAt: { gte: from, lt: to } },
+  });
 }

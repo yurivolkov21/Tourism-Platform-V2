@@ -31,6 +31,14 @@ describe('contract routes', () => {
     [contract.admin.outbox.list, 'GET /api/admin/outbox'],
     [contract.admin.outbox.retry, 'POST /api/admin/outbox/{id}/retry'],
     [contract.admin.stats.outbox, 'GET /api/admin/stats/outbox'],
+    [contract.admin.paymentEvents.list, 'GET /api/admin/payment-events'],
+    [contract.admin.paymentEvents.byId, 'GET /api/admin/payment-events/{id}'],
+    [contract.admin.stats.paymentEvents, 'GET /api/admin/stats/payment-events'],
+    [contract.admin.enquiries.list, 'GET /api/admin/enquiries'],
+    [contract.admin.enquiries.byId, 'GET /api/admin/enquiries/{id}'],
+    [contract.admin.enquiries.setStatus, 'POST /api/admin/enquiries/{id}/status'],
+    [contract.admin.enquiries.addNote, 'POST /api/admin/enquiries/{id}/notes'],
+    [contract.admin.stats.enquiries, 'GET /api/admin/stats/enquiries'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {
@@ -66,6 +74,24 @@ describe('contract routes', () => {
     expect(errorMap.NOT_FOUND?.status).toBe(404);
     expect(errorMap.NOT_FAILED?.status).toBe(409);
     expect(contract.admin.outbox.list['~orpc'].errorMap).toEqual({});
+  });
+
+  // F9: ba endpoint đụng tới MỘT lead cụ thể đều khai NOT_FOUND (404) và chỉ
+  // thế — chuyển trạng thái là TỰ DO giữa năm giá trị nên không có mã "không
+  // chuyển được"; `list` thì không có phán quyết nào. Test chốt ý định đó: mã
+  // thứ hai thêm vào sau phải là một quyết định có ý thức (và kéo theo một
+  // câu i18n, vì codec bên admin derive tập mã từ chính khối đó).
+  it('admin.enquiries: byId/setStatus/addNote khai ĐÚNG NOT_FOUND (404); list không khai lỗi', () => {
+    for (const procedure of [
+      contract.admin.enquiries.byId,
+      contract.admin.enquiries.setStatus,
+      contract.admin.enquiries.addNote,
+    ]) {
+      const errorMap = procedure['~orpc'].errorMap as Record<string, { status?: number }>;
+      expect(Object.keys(errorMap)).toEqual(['NOT_FOUND']);
+      expect(errorMap.NOT_FOUND?.status).toBe(404);
+    }
+    expect(contract.admin.enquiries.list['~orpc'].errorMap).toEqual({});
   });
 
   // F5: đọc thuần, không có phán quyết nghiệp vụ nào để mà khai lỗi riêng —

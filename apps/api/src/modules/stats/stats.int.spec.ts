@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
@@ -16,6 +17,7 @@ import {
   CancellationRequestStatus,
   DepartureStatus,
   EmailType,
+  EnquiryStatus,
   OutboxStatus,
   PaymentProvider,
   ReviewSource,
@@ -173,7 +175,7 @@ describe('admin stats integration (F5)', () => {
 
   beforeAll(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE tour_categories, destinations, users, payment_events, outbox CASCADE',
+      'TRUNCATE TABLE tour_categories, destinations, users, payment_events, outbox, enquiries CASCADE',
     );
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
     await prisma.destination.createMany({ data: catalog.destinations });
@@ -218,7 +220,7 @@ describe('admin stats integration (F5)', () => {
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox, payment_events CASCADE',
+      'TRUNCATE TABLE bookings, refunds, cancellation_requests, reviews, review_moderation_events, outbox, payment_events, enquiries CASCADE',
     );
   });
 
@@ -227,8 +229,8 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ NĂM path', () => {
-    // Tham số hoá cả năm (vòng vá review F5): guard đặt ở cấp class, nhưng
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ SÁU path', () => {
+    // Tham số hoá cả sáu (vòng vá review F5): guard đặt ở cấp class, nhưng
     // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
     for (const area of [
       'bookings',
@@ -236,6 +238,7 @@ describe('admin stats integration (F5)', () => {
       'reviews',
       'outbox',
       'payment-events',
+      'enquiries',
     ] as const) {
       it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
         const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
@@ -782,6 +785,99 @@ describe('admin stats integration (F5)', () => {
         unprocessed: 0,
         stuck: 0,
         linked: { current: 0, previous: 0 },
+      });
+    });
+  });
+  describe('stats.enquiries (F9)', () => {
+    const enquiryId = (n: number) => `e9500009-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+    /** Một lead với mốc tạo + trạng thái HIỆN TẠI đặt tay. */
+    const enquiry = (
+      n: number,
+      row: { createdAt: Date; status: EnquiryStatus },
+    ): Prisma.EnquiryCreateManyInput => ({
+      id: enquiryId(n),
+      name: `Stat lead ${n}`,
+      email: `stat-lead-${n}@example.com`,
+      message: `Message body for stat lead ${n}.`,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.createdAt,
+    });
+
+    /** Một dòng audit — `createdAt` của EVENT là thứ metric `won` neo vào. */
+    const statusEvent = (
+      n: number,
+      row: { toStatus: EnquiryStatus; createdAt: Date },
+    ): Prisma.EnquiryStatusEventCreateManyInput => ({
+      id: `e950000a-0000-4000-8000-${String(n).padStart(12, '0')}`,
+      enquiryId: enquiryId(n),
+      adminId: null,
+      fromStatus: EnquiryStatus.QUOTED,
+      toStatus: row.toStatus,
+      createdAt: row.createdAt,
+    });
+
+    beforeEach(async () => {
+      await prisma.enquiry.createMany({
+        data: [
+          // ── Tạo trong KỲ NÀY: 2 ──
+          enquiry(1, { createdAt: daysAgo(3), status: EnquiryStatus.NEW }),
+          enquiry(2, { createdAt: daysAgo(20), status: EnquiryStatus.CONTACTED }),
+          // ── Tạo ở KỲ TRƯỚC: 1 ──
+          enquiry(3, { createdAt: daysAgo(40), status: EnquiryStatus.QUOTED }),
+          // ── Ngoài cả hai kỳ, nhưng vẫn ĐANG MỞ → vào ảnh chụp `open` ──
+          enquiry(4, { createdAt: daysAgo(90), status: EnquiryStatus.NEW }),
+          // Chung cuộc — KHÔNG vào `open`.
+          enquiry(5, { createdAt: daysAgo(80), status: EnquiryStatus.WON }),
+          enquiry(6, { createdAt: daysAgo(80), status: EnquiryStatus.LOST }),
+        ],
+      });
+      await prisma.enquiryStatusEvent.createMany({
+        data: [
+          // WON trong KỲ NÀY: 2 — một trên lead giờ đã LOST (thắng rồi mất
+          // lại). Đếm theo TRẠNG THÁI HIỆN TẠI sẽ bỏ sót đúng dòng này.
+          statusEvent(5, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(2) }),
+          statusEvent(6, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(5) }),
+          // WON ở KỲ TRƯỚC: 1.
+          statusEvent(3, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(45) }),
+          // Ngoài cả hai kỳ — không tính vào kỳ nào.
+          statusEvent(4, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(70) }),
+          // Không phải WON — không được lọt vào con số nào.
+          statusEvent(1, { toStatus: EnquiryStatus.LOST, createdAt: daysAgo(1) }),
+          statusEvent(2, { toStatus: EnquiryStatus.CONTACTED, createdAt: daysAgo(4) }),
+        ],
+      });
+    });
+
+    it('created đếm theo createdAt ở CẢ HAI kỳ, MỌI trạng thái (không lọc status NEW)', async () => {
+      const stats = AdminEnquiriesStatsSchema.parse((await get('enquiries', adminCookie)).json());
+      expect(stats.created).toEqual({ current: 2, previous: 1 });
+      expect(stats.period.windowDays).toBe(28);
+    });
+
+    it('won đếm trên EVENT audit, không trên trạng thái hiện tại — lead thắng-rồi-mất vẫn tính', async () => {
+      const stats = AdminEnquiriesStatsSchema.parse((await get('enquiries', adminCookie)).json());
+      // Lead 6 hiện LOST nhưng ĐÃ có một lượt sang WON trong kỳ: đếm theo
+      // `enquiries.status` sẽ ra 1, đếm theo event ra 2 — đây là chỗ đó.
+      expect(stats.won).toEqual({ current: 2, previous: 1 });
+    });
+
+    it('open là ẢNH CHỤP NEW+CONTACTED+QUOTED bây giờ, không phân biệt tuổi lead', async () => {
+      const stats = AdminEnquiriesStatsSchema.parse((await get('enquiries', adminCookie)).json());
+      // Lead 1 (NEW) + 2 (CONTACTED) + 3 (QUOTED) + 4 (NEW, 90 ngày) = 4;
+      // lead 5 (WON) và 6 (LOST) là chung cuộc.
+      expect(stats.open).toBe(4);
+    });
+  });
+
+  describe('stats.enquiries — kỳ rỗng', () => {
+    it('bảng trống: cặp 0/0 và ảnh chụp 0 — con số thật, không phải lỗi', async () => {
+      const stats = AdminEnquiriesStatsSchema.parse((await get('enquiries', adminCookie)).json());
+      expect(stats).toMatchObject({
+        created: { current: 0, previous: 0 },
+        won: { current: 0, previous: 0 },
+        open: 0,
       });
     });
   });

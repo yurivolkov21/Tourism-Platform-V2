@@ -26,7 +26,16 @@ import {
   ToursListQuerySchema,
 } from './schemas/catalog.js';
 import { PageQuerySchema } from './schemas/common.js';
-import { CreateEnquiryInputSchema, EnquiryResultSchema } from './schemas/enquiries.js';
+import {
+  AdminEnquiriesListQuerySchema,
+  AdminEnquiryAddNoteInputSchema,
+  AdminEnquiryByIdInputSchema,
+  AdminEnquirySetStatusInputSchema,
+  CreateEnquiryInputSchema,
+  EnquiryDetailSchema,
+  EnquiryResultSchema,
+  EnquiryRowSchema,
+} from './schemas/enquiries.js';
 import { SignedUploadParamsSchema, SignUploadInputSchema } from './schemas/media.js';
 import {
   ResubscribeInputSchema,
@@ -69,6 +78,7 @@ import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
@@ -685,6 +695,16 @@ export const contract = {
             'Webhooks received/linked in the last 28 days (and the 28 before) + unprocessed snapshot',
         })
         .output(AdminPaymentEventsStatsSchema),
+      // F9 (spec P4c): created/won là cặp hai kỳ (won neo mốc của EVENT audit,
+      // không phải `updatedAt`); open là ảnh chụp một số đơn.
+      enquiries: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/enquiries',
+          summary:
+            'Enquiries received and won in the last 28 days (and the 28 before) + open snapshot',
+        })
+        .output(AdminEnquiriesStatsSchema),
     },
     /**
      * Outbox email (spec P4c §3-F7) — bề mặt triage cho hàng đợi email mà
@@ -755,6 +775,64 @@ export const contract = {
         .input(AdminPaymentEventByIdInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Payment event not found' } })
         .output(PaymentEventDetailSchema),
+    },
+    /**
+     * Enquiries (spec P4c §3-F9) — CRM nhỏ trên bảng `enquiries` mà form
+     * "Inquire Now" công khai ghi vào (ADR-0003), cộng thread note nội bộ.
+     *
+     * Vùng đầu tiên của P4c có HAI hành vi ghi, và cả hai đều để lại VẾT
+     * (§2.2): `setStatus` chạy MỘT transaction "update + append
+     * `enquiry_status_events`" nên "Won 28d" đếm được LƯỢT chuyển thật thay
+     * vì đoán qua `updatedAt` (§2.5); `addNote` mang `authorId`/`authorName`
+     * của phiên vào một thread APPEND-ONLY (không sửa, không xoá).
+     *
+     * Chuyển trạng thái TỰ DO giữa năm giá trị — không luật máy nào chặn
+     * (CRM nhỏ, admin biết mình làm gì), nhưng dialog xác nhận phải nêu rõ
+     * `from → to` trước khi bắn.
+     *
+     * Cả hai lệnh ghi trả về DETAIL đầy đủ chứ không chỉ row: nơi gọi chúng
+     * là trang chi tiết, và sự thật sau lệnh ghi gồm cả dòng vừa được nối
+     * vào timeline. Client vẫn `router.refresh()`, nhưng khi ấy nó là lớp
+     * dự phòng chứ không phải nguồn tin duy nhất.
+     *
+     * Guard `AuthGuard` + `@Roles(ADMIN)` ở controller như mọi endpoint admin.
+     */
+    enquiries: {
+      list: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/enquiries',
+          summary: 'List enquiries (admin, paged, status/name-email/tour filters)',
+        })
+        .input(AdminEnquiriesListQuerySchema)
+        .output(PagedSchema(EnquiryRowSchema)),
+      byId: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/enquiries/{id}',
+          summary: 'One enquiry with its message, notes and status history',
+        })
+        .input(AdminEnquiryByIdInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
+        .output(EnquiryDetailSchema),
+      setStatus: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/enquiries/{id}/status',
+          summary: 'Move an enquiry to another status (appends an audit event)',
+        })
+        .input(AdminEnquirySetStatusInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
+        .output(EnquiryDetailSchema),
+      addNote: oc
+        .route({
+          method: 'POST',
+          path: '/api/admin/enquiries/{id}/notes',
+          summary: 'Append an internal note to the enquiry thread',
+        })
+        .input(AdminEnquiryAddNoteInputSchema)
+        .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
+        .output(EnquiryDetailSchema),
     },
     /**
      * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV
