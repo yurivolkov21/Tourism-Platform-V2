@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { enquiriesHref, parseEnquiriesSearchParams } from './enquiries-query';
+import {
+  enquiriesBackHref,
+  enquiriesHref,
+  enquiryDetailHref,
+  parseEnquiriesSearchParams,
+} from './enquiries-query';
 
 /**
  * Trạng thái bảng `/enquiries` sống TRÊN URL (spec P4c §3-F9, cùng khuôn
@@ -98,5 +103,36 @@ describe('enquiriesHref', () => {
       'http://x',
     );
     expect(url.searchParams.get('q')).toHaveLength(120);
+  });
+});
+
+describe('enquiryDetailHref + enquiriesBackHref — đường về đúng trang bảng (vòng vá review F9)', () => {
+  const ID = '0198c000-0000-7000-8000-000000000001';
+
+  it('bảng KHÁC mặc định → link chi tiết mang ?back=; đúng mặc định thì href trơn', () => {
+    expect(enquiryDetailHref(ID, '/enquiries?status=NEW&q=hang&page=2')).toBe(
+      `/enquiries/${ID}?back=${encodeURIComponent('/enquiries?status=NEW&q=hang&page=2')}`,
+    );
+    expect(enquiryDetailHref(ID, '/enquiries?status=NEW')).toBe(`/enquiries/${ID}`);
+  });
+
+  it('back nội bộ của bảng → giữ nguyên; vắng → mục nav mặc định', () => {
+    expect(enquiriesBackHref('/enquiries?status=WON&page=3')).toBe('/enquiries?status=WON&page=3');
+    expect(enquiriesBackHref('/enquiries')).toBe('/enquiries');
+    expect(enquiriesBackHref(undefined)).toBe('/enquiries?status=NEW');
+    expect(enquiriesBackHref(['/enquiries?status=LOST', '/x'])).toBe('/enquiries?status=LOST');
+  });
+
+  it('back trỏ đi nơi khác (open redirect, vùng khác, đường con) → rơi về mặc định', () => {
+    for (const bad of [
+      'https://evil.example/enquiries',
+      '//evil.example',
+      '/bookings',
+      '/enquiries/0198c000-0000-7000-8000-000000000002',
+      '/enquiriesx',
+      '',
+    ]) {
+      expect(enquiriesBackHref(bad)).toBe('/enquiries?status=NEW');
+    }
   });
 });

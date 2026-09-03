@@ -166,8 +166,10 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   `SELECT COUNT(*) FROM enquiries WHERE created_at >= $from AND created_at < $to`.
  *   Có kỳ trước thật: bảng không purge (lead là dữ liệu kinh doanh, giữ vĩnh
  *   viễn — khác `outbox`).
- * - `won` — SỐ LƯỢT chuyển sang WON trong kỳ, đếm trên audit trail
- *   `enquiry_status_events` (`to_status = 'WON'`, `created_at` của EVENT).
+ * - `won` — số LEAD có lượt chuyển sang WON trong kỳ (`DISTINCT enquiry_id`,
+ *   vòng vá review F9: bấm nhầm rồi sửa lại là hai lượt của một lead), đếm
+ *   trên audit trail `enquiry_status_events` (`to_status = 'WON'`,
+ *   `created_at` của EVENT).
  *   KHÔNG đếm `enquiries WHERE status = 'WON' AND updated_at IN kỳ`, vì hai
  *   lý do đều làm hỏng một kỳ đã đóng: (a) `updated_at` bị MỌI lệnh ghi khác
  *   đè — thêm một note không đụng cột này nhưng một lần đổi trạng thái về sau
@@ -177,7 +179,7 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   `approved` của reviews (F5), lần này có bảng audit ngay từ đầu. Guard
  *   no-op ở `setStatus` bảo đảm không có event `from === to` làm nhiễu.
  *   Query đối chứng:
- *   `SELECT COUNT(*) FROM enquiry_status_events WHERE to_status = 'WON' AND created_at >= $from AND created_at < $to`.
+ *   `SELECT COUNT(DISTINCT enquiry_id) FROM enquiry_status_events WHERE to_status = 'WON' AND created_at >= $from AND created_at < $to`.
  * - `open` — ẢNH CHỤP: số lead đang ở `OPEN_ENQUIRY_STATUSES` (NEW +
  *   CONTACTED + QUOTED) ngay bây giờ; WON/LOST là chung cuộc. Không có "lúc
  *   đầu kỳ" dựng lại được từ riêng dấu thời gian (một lead có thể đi qua
@@ -185,9 +187,10 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *   lịch sử trước đó trống) — contract khai số đơn. KHÔNG có callout đỏ:
  *   hàng chờ CRM là trạng thái bình thường của một đường bán hàng đang sống,
  *   khác `outbox.failed` (chỉ rời FAILED khi có người can thiệp).
- *   Vùng này CÓ cache 60s bên admin (khác outbox/payment events): kẻ đổi cả
- *   ba con số là chính server action của admin, và nó gọi
- *   `updateTag(ADMIN_STATS_TAG)` sau mỗi lệnh ghi thành công.
+ *   Admin KHÔNG cache (cùng luật outbox/payment events — vòng vá review F9):
+ *   `created` và `open` đổi mỗi khi form "Inquire Now" CÔNG KHAI ghi một lead
+ *   NEW, tức một kẻ đổi bảng ngoài mọi `updateTag` của admin; bảng bên dưới
+ *   đọc tươi nên card cache 60s sẽ cãi nhau với chính tab NEW.
  *
  * ## Index
  *

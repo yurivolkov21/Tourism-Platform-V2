@@ -2740,7 +2740,12 @@ export const messages = {
         created: (days: number) => `New ${days}d`,
         won: (days: number) => `Won ${days}d`,
         open: 'Open now',
-        openCaption: 'Leads still to work — new, contacted or quoted',
+        /**
+         * Nhận danh sách nhãn dựng từ `OPEN_ENQUIRY_STATUSES` (vòng vá review
+         * F9) — không kể tay ba trạng thái ở đây để thêm một trạng thái mở
+         * là caption tự đúng theo.
+         */
+        openCaption: (statuses: string) => `Leads still to work — ${statuses}`,
         openCaptionNone: 'Nothing left in the pipeline',
       },
     },
@@ -3251,12 +3256,12 @@ export const messages = {
          * chọn F9 — chưa có endpoint list tour cho admin tới P4e), nhưng
          * `?tourId=` gõ tay/đi từ trang khác vẫn lọc thật, nên phải có một
          * chỗ NHÌN THẤY và gỡ được: một filter vô hình là một bảng "thiếu
-         * hàng" không giải thích được.
+         * hàng" không giải thích được. Chữ CỐ ĐỊNH (vòng vá review F9): tên
+         * tour từng suy từ hàng đầu của trang nên đổi theo tab — nhãn của
+         * một filter không được là hàm của tập kết quả.
          */
-        tourFilter: (label: string) => `Tour: ${label}`,
+        tourFilter: 'Filtered by tour',
         tourFilterClear: 'Clear tour filter',
-        /** Khi tập lọc rỗng thì không có hàng nào để lấy tên tour. */
-        tourFilterUnknown: 'selected tour',
         viewLabel: (name: string) => `Open the enquiry from ${name}`,
       },
       /** Nhãn enum EnquiryStatus — `Record` đủ member để thêm trạng thái là đỏ typecheck. */
@@ -3342,6 +3347,14 @@ export const messages = {
         toast: {
           title: 'Status updated',
           body: (name: string, status: string) => `${name} is now ${status}.`,
+          /**
+           * NO-OP (`changed = false`, vòng vá review F9): lead đã ở trạng thái
+           * đó — thường là tab cũ, người khác đã đổi trước. Không nói "updated"
+           * cho một cú bấm không để lại dòng audit nào.
+           */
+          unchangedTitle: 'No change made',
+          unchanged: (name: string, status: string) =>
+            `${name} was already ${status} — someone may have moved it before you. The page has been refreshed.`,
         },
       },
       addNote: {

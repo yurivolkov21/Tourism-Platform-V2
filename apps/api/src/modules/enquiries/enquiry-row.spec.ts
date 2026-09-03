@@ -1,5 +1,5 @@
 import { EnquiryStatus } from '../../generated/prisma/enums.js';
-import { toEnquiryDetail, toEnquiryRow } from './enquiry-row.js';
+import { accountDisplayName, toEnquiryDetail, toEnquiryRow } from './enquiry-row.js';
 
 /**
  * Mapper THUẦN row Prisma `enquiries` → `EnquiryRow`/`EnquiryDetail` của
@@ -17,8 +17,9 @@ function baseRow() {
     id: ID,
     name: 'Ada Lovelace',
     email: 'ada@example.com',
+    // `phone` chỉ detail mới chở; list select không có — mapper row bỏ qua.
     phone: '+84 90 000 0000',
-    tour: { title: 'Hoi An Lantern Evening', slug: 'hoi-an-lantern-evening' },
+    tour: { title: 'Hoi An Lantern Evening' },
     travelDate: new Date('2026-12-24T00:00:00.000Z'),
     groupSize: 4,
     budgetTier: 'luxury',
@@ -30,14 +31,12 @@ function baseRow() {
 }
 
 describe('toEnquiryRow', () => {
-  it('row đầy đủ: tour thành cặp title/slug, travelDate ra NGÀY trần, notesCount từ _count', () => {
+  it('row đầy đủ: tour thành title, travelDate ra NGÀY trần, notesCount từ _count — KHÔNG phone/slug', () => {
     expect(toEnquiryRow(baseRow())).toEqual({
       id: ID,
       name: 'Ada Lovelace',
       email: 'ada@example.com',
-      phone: '+84 90 000 0000',
       tourTitle: 'Hoi An Lantern Evening',
-      tourSlug: 'hoi-an-lantern-evening',
       travelDate: '2026-12-24',
       groupSize: 4,
       budgetTier: 'luxury',
@@ -48,22 +47,19 @@ describe('toEnquiryRow', () => {
     });
   });
 
-  it('enquiry chung (không tour) → CẢ HAI field tour null, không phải một cái', () => {
-    const row = toEnquiryRow({ ...baseRow(), tour: null });
-    expect(row.tourTitle).toBeNull();
-    expect(row.tourSlug).toBeNull();
+  it('enquiry chung (không tour) → tourTitle null', () => {
+    expect(toEnquiryRow({ ...baseRow(), tour: null }).tourTitle).toBeNull();
   });
 
   it('field optional của form vắng mặt → null, không bịa chuỗi rỗng hay 0', () => {
     expect(
       toEnquiryRow({
         ...baseRow(),
-        phone: null,
         travelDate: null,
         groupSize: null,
         budgetTier: null,
       }),
-    ).toMatchObject({ phone: null, travelDate: null, groupSize: null, budgetTier: null });
+    ).toMatchObject({ travelDate: null, groupSize: null, budgetTier: null });
   });
 
   it('travelDate là cột DATE: ra "YYYY-MM-DD" theo UTC, không kèm giờ và không lùi một ngày', () => {
@@ -160,5 +156,20 @@ describe('toEnquiryDetail', () => {
     expect(detail.interests).toEqual([]);
     expect(detail.notes).toEqual([]);
     expect(detail.statusEvents).toEqual([]);
+  });
+});
+
+describe('accountDisplayName', () => {
+  it('name có chữ → name; null, rỗng, toàn dấu cách → email (vòng vá review F9: `??` từng cho "" lọt)', () => {
+    expect(accountDisplayName({ name: 'Grace Hopper', email: 'grace@example.com' })).toBe(
+      'Grace Hopper',
+    );
+    expect(accountDisplayName({ name: null, email: 'grace@example.com' })).toBe(
+      'grace@example.com',
+    );
+    expect(accountDisplayName({ name: '', email: 'grace@example.com' })).toBe('grace@example.com');
+    expect(accountDisplayName({ name: '   ', email: 'grace@example.com' })).toBe(
+      'grace@example.com',
+    );
   });
 });

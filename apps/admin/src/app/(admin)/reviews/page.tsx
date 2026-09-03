@@ -10,7 +10,7 @@ import { fetchAdminReviewsStats } from '@/lib/api/stats';
 import { parseReviewsSearchParams, reviewsHref } from '@/lib/reviews-query';
 import { toReviewRow } from '@/lib/reviews-view';
 import { toReviewsStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { moderateReviewAction } from './actions';
 
 /**
@@ -56,9 +56,8 @@ export default async function ReviewsPage({
   // đang lọc theo trạng thái — admin đứng ở trang 3 của bộ lọc "Pending" mà
   // giờ chỉ còn 2 trang là bảng rỗng cạnh thanh phân trang nói ngược lại.
   // Đưa về trang cuối còn thật thay vì render nghịch lý.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(reviewsHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => reviewsHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>

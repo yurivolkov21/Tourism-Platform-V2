@@ -1,12 +1,7 @@
 import type { EnquiryDetail, EnquiryRow } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import {
-  enquiryStatusBadgeVariant,
-  toEnquiryDetailVM,
-  toEnquiryRowVM,
-  tourFilterLabel,
-} from './enquiries-view';
+import { enquiryStatusBadgeVariant, toEnquiryDetailVM, toEnquiryRowVM } from './enquiries-view';
 
 /**
  * Mapper hiển thị vùng `/enquiries` (spec P4c §3-F9) — THUẦN, ngoài React nên
@@ -14,15 +9,14 @@ import {
  */
 const t = messages.admin.enquiries;
 
-const TOUR_ID = '0198c000-0000-7000-8000-0000000000aa';
+/** URL bảng đang đứng — link chi tiết mang nó về qua `?back=`. */
+const LIST = '/enquiries?status=NEW&page=2';
 
 const row: EnquiryRow = {
   id: '0198c000-0000-7000-8000-000000000001',
   name: 'Ada Lovelace',
   email: 'ada@example.com',
-  phone: '+84 90 000 0000',
   tourTitle: 'Hoi An Lantern Evening',
-  tourSlug: 'hoi-an-lantern-evening',
   travelDate: '2026-12-24',
   groupSize: 4,
   budgetTier: 'luxury',
@@ -49,12 +43,12 @@ describe('enquiryStatusBadgeVariant', () => {
 });
 
 describe('toEnquiryRowVM', () => {
-  it('row đầy đủ: nhãn trạng thái/tour/ngày/đoàn/note đã nấu sẵn, href chi tiết dựng từ id', () => {
-    expect(toEnquiryRowVM(row)).toEqual({
+  it('row đầy đủ: nhãn trạng thái/tour/ngày/đoàn/note đã nấu sẵn, href chi tiết mang ?back= về bảng', () => {
+    expect(toEnquiryRowVM(row, LIST)).toEqual({
       id: row.id,
       name: 'Ada Lovelace',
       email: 'ada@example.com',
-      href: `/enquiries/${row.id}`,
+      href: `/enquiries/${row.id}?back=${encodeURIComponent(LIST)}`,
       tourTitle: 'Hoi An Lantern Evening',
       travelDate: '24 Dec 2026',
       groupSize: '4 travellers',
@@ -68,46 +62,33 @@ describe('toEnquiryRowVM', () => {
   });
 
   it('enquiry chung: tourTitle null → VM in chữ "General enquiry" thay vì ô trống', () => {
-    expect(toEnquiryRowVM({ ...row, tourTitle: null, tourSlug: null }).tourTitle).toBe(
-      t.list.noTour,
-    );
+    expect(toEnquiryRowVM({ ...row, tourTitle: null }, LIST).tourTitle).toBe(t.list.noTour);
   });
 
   it('field optional vắng → null, bảng tự in gạch (VM không bịa "0" hay chuỗi rỗng)', () => {
-    const vm = toEnquiryRowVM({ ...row, travelDate: null, groupSize: null, budgetTier: null });
+    const vm = toEnquiryRowVM(
+      { ...row, travelDate: null, groupSize: null, budgetTier: null },
+      LIST,
+    );
     expect(vm.travelDate).toBeNull();
     expect(vm.groupSize).toBeNull();
     expect(vm.budgetTier).toBeNull();
   });
 
   it('groupSize 1 dùng số ít — "1 traveller", không phải "1 travellers"', () => {
-    expect(toEnquiryRowVM({ ...row, groupSize: 1 }).groupSize).toBe('1 traveller');
+    expect(toEnquiryRowVM({ ...row, groupSize: 1 }, LIST).groupSize).toBe('1 traveller');
   });
 
   it('notesLabel số ít/số nhiều, và 0 note vẫn có nhãn đọc được', () => {
-    expect(toEnquiryRowVM({ ...row, notesCount: 1 }).notesLabel).toBe('1 note');
-    expect(toEnquiryRowVM({ ...row, notesCount: 0 }).notesLabel).toBe('0 notes');
-  });
-});
-
-describe('tourFilterLabel', () => {
-  it('không lọc theo tour → null (không có chip nào để vẽ)', () => {
-    expect(tourFilterLabel([row], undefined)).toBeNull();
-  });
-
-  it('lọc theo tour → tên tour đọc từ hàng đầu tiên (mọi hàng cùng một tour)', () => {
-    expect(tourFilterLabel([row], TOUR_ID)).toBe('Hoi An Lantern Evening');
-  });
-
-  it('tập lọc RỖNG (hoặc hàng không có tên tour) → chữ thay thế, không in uuid thô ra màn hình', () => {
-    expect(tourFilterLabel([], TOUR_ID)).toBe(t.list.tourFilterUnknown);
-    expect(tourFilterLabel([{ ...row, tourTitle: null }], TOUR_ID)).toBe(t.list.tourFilterUnknown);
+    expect(toEnquiryRowVM({ ...row, notesCount: 1 }, LIST).notesLabel).toBe('1 note');
+    expect(toEnquiryRowVM({ ...row, notesCount: 0 }, LIST).notesLabel).toBe('0 notes');
   });
 });
 
 describe('toEnquiryDetailVM', () => {
   const detail: EnquiryDetail = {
     ...row,
+    phone: '+84 90 000 0000',
     message: 'We would like a private tour for four.',
     nationality: 'United Kingdom',
     interests: ['food', 'photography'],
@@ -150,7 +131,6 @@ describe('toEnquiryDetailVM', () => {
       phone: null,
       nationality: null,
       tourTitle: null,
-      tourSlug: null,
       travelDate: null,
       groupSize: null,
       budgetTier: null,

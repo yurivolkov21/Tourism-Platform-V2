@@ -10,7 +10,7 @@ import { fetchAdminCancellationsStats } from '@/lib/api/stats';
 import { cancellationsHref, parseCancellationsSearchParams } from '@/lib/cancellations-query';
 import { toCancellationRow } from '@/lib/cancellations-view';
 import { toCancellationsStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { decideCancellationAction } from './actions';
 
 /**
@@ -55,9 +55,8 @@ export default async function CancellationsPage({
   // Page mồ côi (review F3 31/08): queue CO LẠI sau mỗi decide — admin đứng ở
   // trang 3 khi tập kết quả chỉ còn 2 trang là bảng rỗng cạnh thanh phân
   // trang nói ngược lại. Đưa về trang cuối còn thật thay vì render nghịch lý.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(cancellationsHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => cancellationsHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>

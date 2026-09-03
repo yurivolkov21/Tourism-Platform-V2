@@ -3,6 +3,7 @@ import {
   appendPaging,
   clampSearch,
   firstParam,
+  orphanPageHref,
   parsePaging,
   pickPatch,
   rawSearchParamsFrom,
@@ -128,5 +129,23 @@ describe('pickPatch — undefined giữ / null xoá / còn lại là giá trị 
     expect(pickPatch(null, 'PAID')).toBeUndefined();
     expect(pickPatch('FAILED', 'PAID')).toBe('FAILED');
     expect(pickPatch(undefined, undefined)).toBeUndefined();
+  });
+});
+
+describe('orphanPageHref — trang mồ côi dùng chung sáu trang (vòng vá review F9)', () => {
+  const href = (page: number) => `/x?page=${page}`;
+
+  it('page vượt totalPages và tập có hàng → href trang cuối còn thật', () => {
+    expect(orphanPageHref({ total: 41, totalPages: 3 }, { page: 5 }, href)).toBe('/x?page=3');
+  });
+
+  it('page trong phạm vi → null (không redirect)', () => {
+    expect(orphanPageHref({ total: 41, totalPages: 3 }, { page: 3 }, href)).toBeNull();
+    expect(orphanPageHref({ total: 41, totalPages: 3 }, { page: 1 }, href)).toBeNull();
+  });
+
+  it('tập RỖNG → null dù page > totalPages (0): không có trang nào để về, redirect là vòng lặp', () => {
+    expect(orphanPageHref({ total: 0, totalPages: 0 }, { page: 1 }, href)).toBeNull();
+    expect(orphanPageHref({ total: 0, totalPages: 0 }, { page: 7 }, href)).toBeNull();
   });
 });

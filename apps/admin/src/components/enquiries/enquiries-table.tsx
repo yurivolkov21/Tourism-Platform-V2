@@ -156,17 +156,9 @@ export interface EnquiriesTableProps {
   query: EnquiriesQuery;
   total: number;
   totalPages: number;
-  /** Tên tour đang lọc (server tính bằng `tourFilterLabel`); null = không lọc. */
-  tourFilter: string | null;
 }
 
-export function EnquiriesTable({
-  rows,
-  query,
-  total,
-  totalPages,
-  tourFilter,
-}: EnquiriesTableProps) {
+export function EnquiriesTable({ rows, query, total, totalPages }: EnquiriesTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
 
   const table = useTable({
@@ -184,7 +176,7 @@ export function EnquiriesTable({
       views={<EnquiriesStatusTabs query={query} />}
       actions={
         <>
-          <EnquiriesTourFilter query={query} label={tourFilter} />
+          <EnquiriesTourFilter query={query} />
           <EnquiriesSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>

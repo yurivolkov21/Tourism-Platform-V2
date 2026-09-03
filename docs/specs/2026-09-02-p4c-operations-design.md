@@ -201,6 +201,32 @@ session gốc nghiệm thu (review 8 mũi → vá → merge rebase+ff → docs s
 - Test: int list/byId/setStatus (audit row + no-op) /addNote/401/403 +
   stats (won đếm trên events, không trên `updatedAt`); unit mapper/href/
   consequences copy.
+- *AMEND 03/09 (review F9):*
+  - `setStatus` trả **`{ id, name, status, changed }`** thay vì cả detail:
+    no-op (`changed: false`) phải phân biệt được — toast nói "không có gì
+    đổi", log server không ghi chuyển trạng thái; transaction chỉ giữ hai câu
+    ghi, không đọc lại detail trong lúc cầm `FOR UPDATE`. `addNote` trả
+    **`{ id }`** — không đọc lại ngoài transaction (một `NOT_FOUND` ở bước đọc
+    từng biến note đã lưu thành "not saved"). Trang chi tiết `router.refresh()`
+    là nguồn sự thật, không `updateTag`.
+  - Stats vùng này **không cache** (cùng luật outbox/payment events): form
+    "Inquire Now" công khai ghi lead NEW ngoài mọi `updateTag`. Luật chung:
+    cache theo tag chỉ khi mọi kẻ ghi bảng là server action của admin.
+  - **`won` đếm `DISTINCT enquiry_id`** (lead, không phải lượt bấm) —
+    `previous` = 0 trong 56 ngày đầu vì bảng audit mới có từ 03/09.
+  - `authorName`/`adminName` qua **`accountDisplayName`** (`trim() ||
+    email`): tên rỗng từng lọt DB rồi làm `byId` vỡ `min(1)` vĩnh viễn.
+  - `EnquiryRow` bỏ `phone` (PII, chỉ detail) và `tourSlug` (chưa có link);
+    hai `select` sống cạnh mapper, kiểu row derive bằng `Prisma.EnquiryGetPayload`.
+  - Link chi tiết mang **`?back=`** (đường nội bộ `/enquiries…`, validate
+    chống open redirect) để "Back to enquiries" về đúng tab/trang/ô tìm; chip
+    tour lọc là chữ cố định (tên tour không suy từ hàng đầu của trang nữa).
+  - Dùng chung: `apps/api/src/lib/calendar-date.ts` (bốn bản `slice(0, 10)`
+    gộp một), `apps/api/src/lib/like.ts` `escapeLike` cho mọi `contains`
+    (Prisma không escape `%`/`_`), kit `components/kit/timeline.tsx` (lịch sử
+    huỷ booking + thread note + lịch sử trạng thái), `orphanPageHref` ở
+    `table-query` cho sáu trang; caption "Open now" dựng từ
+    `OPEN_ENQUIRY_STATUSES`.
 
 ### F10 — Subscribers (branch `feat/p4c-subscribers`)
 

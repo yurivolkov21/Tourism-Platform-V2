@@ -397,7 +397,8 @@ describe('toEnquiriesStatCards (F9)', () => {
     const open = card(toEnquiriesStatCards(ENQUIRIES), 'open');
     expect(open.label).toBe(t.enquiries.open);
     expect(open.value).toBe('7');
-    expect(open.caption).toBe(t.enquiries.openCaption);
+    // Caption kể đúng ba trạng thái mở, dựng từ hằng contract chứ không kể tay.
+    expect(open.caption).toBe(t.enquiries.openCaption('New, Contacted, Quoted'));
     expect(open.delta).toBeUndefined();
     expect(open.callout).toBeUndefined();
   });

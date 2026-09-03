@@ -120,15 +120,13 @@ export const EnquiryRowSchema = z.object({
   id: z.uuid(),
   name: z.string().min(1).max(120),
   email: EmailSchema,
-  /** Khách không bắt buộc để lại số — null là câu trả lời thật. */
-  phone: z.string().max(30).nullable(),
   /**
    * Tour mà lead hỏi — join `tour`. null khi enquiry là câu hỏi chung HOẶC
-   * tour đã bị xoá (`onDelete: SetNull` trên `Enquiry.tourId`).
+   * tour đã bị xoá (`onDelete: SetNull` trên `Enquiry.tourId`). Chỉ TITLE:
+   * bảng không có link sang web (vòng vá review F9 — `tourSlug` từng đi qua
+   * dây mà không ai đọc; P4e có link thì thêm lại ở đúng lúc có consumer).
    */
   tourTitle: z.string().max(200).nullable(),
-  /** Đi cùng `tourTitle` (cả hai có hoặc cả hai null) — admin link sang web. */
-  tourSlug: z.string().max(120).nullable(),
   /** Ngày khởi hành khách MONG MUỐN — cột `date`, không có giờ. */
   travelDate: z.iso.date().nullable(),
   groupSize: z.int().min(1).max(100).nullable(),
@@ -180,6 +178,12 @@ export type EnquiryStatusEventItem = z.output<typeof EnquiryStatusEventSchema>;
  * thái (cũ trước, cùng lý do).
  */
 export const EnquiryDetailSchema = EnquiryRowSchema.extend({
+  /**
+   * Khách không bắt buộc để lại số — null là câu trả lời thật. CHỈ ở detail
+   * (vòng vá review F9): bảng không có cột Phone, mà đây là PII — 20 hàng
+   * mỗi trang không việc gì phải chở số điện thoại không màn hình nào in.
+   */
+  phone: z.string().max(30).nullable(),
   message: z.string().min(1).max(2000),
   nationality: z.string().max(80).nullable(),
   /** Multi-select TỰ DO của form công khai — mảng có thể rỗng, không có enum. */
@@ -205,6 +209,26 @@ export const AdminEnquirySetStatusInputSchema = z.object({
 export type AdminEnquirySetStatusInput = z.output<typeof AdminEnquirySetStatusInputSchema>;
 
 /**
+ * Kết quả `admin.enquiries.setStatus` — CHỈ những gì toast cần kể, không phải
+ * cả detail (vòng vá review F9: trang chi tiết `router.refresh()` sau đó,
+ * nên detail trong response là ~100KB thread note đi qua dây để bị ném đi,
+ * và lượt đọc đó từng nằm TRONG transaction đang giữ `FOR UPDATE`).
+ *
+ * `changed = false` là NO-OP: lead đã ở đúng trạng thái đó rồi (tab cũ của
+ * một admin khác bấm lại) — không dòng audit nào được nối. UI phải nói ĐÚNG
+ * chuyện đó thay vì "Status updated": một cú bấm không để lại dấu vết mà
+ * toast bảo đã đổi là admin đi tìm dòng lịch sử không tồn tại.
+ */
+export const AdminEnquirySetStatusResultSchema = z.object({
+  id: z.uuid(),
+  name: z.string().min(1).max(120),
+  /** Trạng thái THẬT sau lệnh — đọc từ DB, không phải echo input. */
+  status: EnquiryStatusSchema,
+  changed: z.boolean(),
+});
+export type AdminEnquirySetStatusResult = z.output<typeof AdminEnquirySetStatusResultSchema>;
+
+/**
  * Input của `admin.enquiries.addNote`. `trim()` TRƯỚC `min(1)`: một note toàn
  * dấu cách là một dòng trống vĩnh viễn trong thread append-only, nên nó phải
  * là 400 chứ không phải một row.
@@ -214,3 +238,12 @@ export const AdminEnquiryAddNoteInputSchema = z.object({
   body: z.string().trim().min(1).max(ENQUIRY_NOTE_MAX_LENGTH),
 });
 export type AdminEnquiryAddNoteInput = z.output<typeof AdminEnquiryAddNoteInputSchema>;
+
+/**
+ * Kết quả `admin.enquiries.addNote`: id của note vừa nối — đủ để client biết
+ * "đã vào thread" (vòng vá review F9: bản đầu trả cả detail rồi đọc lại
+ * NGOÀI transaction, nên một `NOT_FOUND` ở bước đọc biến một note ĐÃ LƯU
+ * thành câu "the note was not saved"). Thread tươi thì `router.refresh()` lo.
+ */
+export const AdminEnquiryAddNoteResultSchema = z.object({ id: z.uuid() });
+export type AdminEnquiryAddNoteResult = z.output<typeof AdminEnquiryAddNoteResultSchema>;

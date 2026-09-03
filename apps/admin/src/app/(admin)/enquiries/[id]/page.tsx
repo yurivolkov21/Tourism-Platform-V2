@@ -10,15 +10,18 @@ import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { EnquiryNoteForm } from '@/components/enquiries/note-form';
 import { EnquiryStatusPanel } from '@/components/enquiries/status-panel';
+import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminEnquiry } from '@/lib/api/enquiries';
 import { getServerSession } from '@/lib/api/session';
 import { formatDateTime } from '@/lib/bookings-view';
+import { enquiriesBackHref } from '@/lib/enquiries-query';
 import {
   type EnquiryDetailVM,
   enquiryStatusBadgeVariant,
   enquiryStatusLabel,
   toEnquiryDetailVM,
 } from '@/lib/enquiries-view';
+import type { RawSearchParams } from '@/lib/table-query';
 import { addEnquiryNoteAction, setEnquiryStatusAction } from './actions';
 
 /**
@@ -46,10 +49,19 @@ export const metadata: Metadata = {
   title: 'Enquiry — Nexora back office',
 };
 
-export default async function EnquiryDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function EnquiryDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { id } = await params;
   const parsed = AdminEnquiryByIdInputSchema.safeParse({ id });
   if (!parsed.success) notFound();
+  // Đường VỀ đúng trang bảng đã mở lead này (vòng vá review F9) — chỉ nhận
+  // đường nội bộ `/enquiries…`, còn lại về mục nav mặc định.
+  const backHref = enquiriesBackHref((await searchParams).back);
 
   const cookie = (await cookies()).toString();
   // Session (nav-user) và chi tiết lead độc lập nhau — song song cho khỏi tốn
@@ -67,7 +79,7 @@ export default async function EnquiryDetailPage({ params }: { params: Promise<{ 
     <AdminShell user={session}>
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         <Link
-          href="/enquiries"
+          href={backHref}
           className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ChevronLeftIcon className="size-4" />
@@ -182,40 +194,36 @@ export default async function EnquiryDetailPage({ params }: { params: Promise<{ 
   );
 }
 
-/** Thread append-only, CŨ TRƯỚC — đọc như một cuộc trò chuyện. */
+/** Thread append-only, CŨ TRƯỚC — đọc như một cuộc trò chuyện (kit `Timeline`). */
 function NoteThread({ notes }: { notes: EnquiryDetailVM['notes'] }) {
-  if (notes.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t.detail.notes.empty}</p>;
-  }
   return (
-    <ol className="grid gap-4">
+    <Timeline empty={t.detail.notes.empty}>
       {notes.map((note) => (
-        <li key={note.id} className="grid gap-1 border-l-2 border-border pl-3 text-sm">
+        <TimelineItem key={note.id}>
           <div className="flex flex-wrap items-center gap-2 text-muted-foreground">
             <span>{note.author}</span>
             <span>· {note.at}</span>
           </div>
           <p className="whitespace-pre-wrap break-words">{note.body}</p>
-        </li>
+        </TimelineItem>
       ))}
-    </ol>
+    </Timeline>
   );
 }
 
-/** Lịch sử trạng thái append-only, cũ trước — cùng luật đọc với thread note. */
+/** Lịch sử trạng thái append-only, cũ trước — cùng khung với thread note. */
 function StatusHistory({ events }: { events: EnquiryDetailVM['statusEvents'] }) {
-  if (events.length === 0) {
-    return <p className="text-sm text-muted-foreground">{t.detail.history.empty}</p>;
-  }
   return (
-    <ol className="grid gap-3">
+    <Timeline empty={t.detail.history.empty}>
       {events.map((event) => (
-        <li key={event.id} className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium">{event.change}</span>
-          <span className="text-muted-foreground">{event.author}</span>
-          <span className="text-muted-foreground">· {event.at}</span>
-        </li>
+        <TimelineItem key={event.id}>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="font-medium">{event.change}</span>
+            <span className="text-muted-foreground">{event.author}</span>
+            <span className="text-muted-foreground">· {event.at}</span>
+          </div>
+        </TimelineItem>
       ))}
-    </ol>
+    </Timeline>
   );
 }

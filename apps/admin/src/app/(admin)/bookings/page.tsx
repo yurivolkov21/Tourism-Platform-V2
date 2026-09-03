@@ -10,7 +10,7 @@ import { fetchAdminBookingsStats } from '@/lib/api/stats';
 import { bookingsHref, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
 import { toBookingsStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 
 /**
  * `/bookings` — vùng admin ĐẦU TIÊN có dữ liệu thật (spec P4b §3-F1).
@@ -51,9 +51,8 @@ export default async function BookingsPage({
   // Page mồ côi (review F3 31/08 — luật chung với /cancellations): tập kết
   // quả co lại dưới chân URL thì đưa về trang cuối còn thật, không render
   // bảng rỗng cạnh thanh phân trang nói ngược lại.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(bookingsHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => bookingsHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>

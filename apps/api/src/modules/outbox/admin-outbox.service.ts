@@ -3,6 +3,7 @@ import type { AdminOutboxListQuery, OutboxRow, Paged } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { OutboxStatus } from '../../generated/prisma/enums.js';
+import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { toOutboxRow } from './outbox-row.js';
 
@@ -56,7 +57,9 @@ export class AdminOutboxService {
       ...(search
         ? {
             OR: [
-              { dedupeKey: { contains: search, mode: 'insensitive' } },
+              // Escape `%`/`_` (vòng vá review F9) — chỉ cột text; JSON
+              // `string_contains` đi đường khác của Prisma, không phải LIKE.
+              { dedupeKey: { contains: escapeLike(search), mode: 'insensitive' } },
               { payload: { path: ['code'], string_contains: search, mode: 'insensitive' } },
               { payload: { path: ['email'], string_contains: search, mode: 'insensitive' } },
               { payload: { path: ['to'], string_contains: search, mode: 'insensitive' } },

@@ -49,9 +49,7 @@ const adminRow = {
   id: '0198c000-0000-7000-8000-000000000001',
   name: 'Ada Lovelace',
   email: 'ada@example.com',
-  phone: '+84 90 000 0000',
   tourTitle: 'Hoi An Lantern Evening',
-  tourSlug: 'hoi-an-lantern-evening',
   travelDate: '2026-12-24',
   groupSize: 4,
   budgetTier: 'luxury',
@@ -111,9 +109,7 @@ describe('EnquiryRowSchema', () => {
     expect(
       EnquiryRowSchema.safeParse({
         ...adminRow,
-        phone: null,
         tourTitle: null,
-        tourSlug: null,
         travelDate: null,
         groupSize: null,
         budgetTier: null,
@@ -127,15 +123,18 @@ describe('EnquiryRowSchema', () => {
     ).toBe(false);
   });
 
-  it('KHÔNG mang message: bảng đọc bảy cột, không chở 2000 ký tự mỗi hàng', () => {
-    const parsed = EnquiryRowSchema.parse({ ...adminRow, message: 'should be stripped' });
-    expect(parsed).not.toHaveProperty('message');
+  it('row KHÔNG có phone/tourSlug/message (vòng vá review F9: bảng không có cột nào in chúng)', () => {
+    for (const key of ['phone', 'tourSlug', 'message']) {
+      expect(EnquiryRowSchema.shape).not.toHaveProperty(key);
+    }
+    expect(EnquiryDetailSchema.shape).toHaveProperty('phone');
   });
 });
 
 describe('EnquiryDetailSchema', () => {
   const detail = {
     ...adminRow,
+    phone: '+84 90 000 0000',
     message: 'We would like a private tour for four.',
     nationality: 'United Kingdom',
     interests: ['food'],

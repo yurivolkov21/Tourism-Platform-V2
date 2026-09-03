@@ -7,10 +7,12 @@ import {
   type AdminReviewsStats,
   type CountMetric,
   type DecimalMetric,
+  OPEN_ENQUIRY_STATUSES,
   PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount } from './bookings-view';
+import { enquiryStatusLabel } from './enquiries-view';
 
 /**
  * Mapper hiển thị hàng stat card (spec P4b §3-F5) — THUẦN, nằm ngoài React
@@ -378,7 +380,9 @@ export function toEnquiriesStatCards(stats: AdminEnquiriesStats): StatCardVM[] {
     countCard('created', t.enquiries.created(days), stats.created, 'up-good', days),
     countCard('won', t.enquiries.won(days), stats.won, 'up-good', days),
     snapshotCard('open', t.enquiries.open, stats.open, {
-      some: t.enquiries.openCaption,
+      // Danh sách trạng thái mở dựng từ HẰNG contract (vòng vá review F9) —
+      // thêm một trạng thái mở là caption tự đúng, không kể tay ở i18n.
+      some: t.enquiries.openCaption(OPEN_ENQUIRY_STATUSES.map(enquiryStatusLabel).join(', ')),
       none: t.enquiries.openCaptionNone,
     }),
   ];

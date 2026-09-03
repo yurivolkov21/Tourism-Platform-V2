@@ -96,3 +96,32 @@ export function enquiriesHref(current: EnquiriesQuery, patch: EnquiriesHrefPatch
 
   return tableHref('/enquiries', params);
 }
+
+/** Điểm về mặc định của trang chi tiết — đúng mục nav (việc cần làm). */
+const DEFAULT_BACK_HREF = '/enquiries?status=NEW';
+
+/**
+ * Href sang trang chi tiết, mang theo trạng thái bảng hiện tại trong `back`
+ * (vòng vá review F9): link "Back to enquiries" từng hardcode `/enquiries`
+ * nên xử lý xong một lead là mất tab/trang/ô tìm — với dòng làm việc "duyệt
+ * hết hàng NEW" đó là mỗi lead một lần mất chỗ. `back` chỉ được ghi khi
+ * KHÁC mặc định, để URL chi tiết mở từ nav vẫn trơn.
+ */
+export function enquiryDetailHref(id: string, listHref: string): string {
+  const params = new URLSearchParams();
+  if (listHref !== DEFAULT_BACK_HREF) params.set('back', listHref);
+  return tableHref(`/enquiries/${id}`, params);
+}
+
+/**
+ * Điểm về của trang chi tiết đọc từ `?back=`. Chỉ nhận ĐƯỜNG DẪN NỘI BỘ của
+ * chính bảng (`/enquiries` + query tuỳ ý): một `back` trỏ đi nơi khác —
+ * `//evil`, `/bookings`, `https://…` — là open redirect hoặc nhầm vùng, rơi
+ * về mặc định. Không parse lại query bên trong: URL đó là do
+ * `enquiriesHref` dựng, bảng sẽ tự clamp khi nhận.
+ */
+export function enquiriesBackHref(raw: string | string[] | undefined): string {
+  const value = firstParam(raw);
+  if (value && /^\/enquiries(\?[^/#]*)?$/.test(value)) return value;
+  return DEFAULT_BACK_HREF;
+}

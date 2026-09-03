@@ -46,7 +46,7 @@ export class AdminEnquiriesController {
   setStatus(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.enquiries.setStatus).handler(async ({ input, errors }) => {
       try {
-        return await this.enquiries.setStatus({ id: user.id, name: user.name }, input);
+        return await this.enquiries.setStatus({ id: user.id }, input);
       } catch (error) {
         if (error instanceof EnquiryNotFoundError) throw errors.NOT_FOUND();
         throw error;

@@ -133,3 +133,23 @@ export function resolvePagePatch(
     page: patch.page ?? (scopeChanged ? 1 : current.page),
   };
 }
+
+/**
+ * Trang MỒ CÔI: tập kết quả co lại (duyệt xong, retry xong, provider xử lý
+ * xong…) trong khi URL vẫn trỏ trang vượt quá `totalPages`. Trả href của
+ * trang cuối còn thật để page `redirect`, hoặc `null` khi không có gì phải
+ * làm. Guard `total > 0` có chủ đích: tập rỗng có `totalPages` = 0 và trang
+ * 1 > 0 — không có trang nào để về, redirect ở đó là vòng lặp vô tận.
+ *
+ * Nâng lên kit ở vòng vá review F9: sáu trang từng chép nguyên câu `if`
+ * này, hai chi tiết dễ sai (guard tập rỗng, redirect chứ không `notFound`)
+ * mà không test nào bắt được file bị bỏ sót.
+ */
+export function orphanPageHref(
+  paged: { total: number; totalPages: number },
+  current: { page: number },
+  hrefForPage: (page: number) => string,
+): string | null {
+  if (paged.total > 0 && current.page > paged.totalPages) return hrefForPage(paged.totalPages);
+  return null;
+}

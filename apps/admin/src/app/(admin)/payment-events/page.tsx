@@ -10,7 +10,7 @@ import { fetchAdminPaymentEventsStats } from '@/lib/api/stats';
 import { parsePaymentEventsSearchParams, paymentEventsHref } from '@/lib/payment-events-query';
 import { toPaymentEventRowVM } from '@/lib/payment-events-view';
 import { toPaymentEventsStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { getPaymentEventAction } from './actions';
 
 /**
@@ -44,9 +44,8 @@ export default async function PaymentEventsPage({
 
   // Page mồ côi: tập "Unprocessed only" co lại khi provider retry xong — đưa
   // về trang cuối còn thật thay vì bảng rỗng cạnh thanh phân trang nói ngược.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(paymentEventsHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => paymentEventsHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>

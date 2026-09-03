@@ -79,14 +79,13 @@ export async function fetchAdminPaymentEventsStats(
 }
 
 /**
- * F9 — CÓ cache 60s theo tag, quay lại luật của F2–F5 (khác hai vùng P4c ở
- * trên): cả ba con số của vùng này chỉ đổi khi CHÍNH admin bấm nút
- * (`setStatus` là kẻ duy nhất đẻ ra event WON và là kẻ duy nhất đưa lead ra
- * khỏi hàng chờ), và hai server action của trang chi tiết đều gọi
- * `updateTag(ADMIN_STATS_TAG)` ngay sau khi ghi xong. Không có worker lẫn
- * webhook nào đổi bảng sau lưng như outbox/payment events, nên cache không
- * bao giờ cãi nhau với bảng bên dưới.
+ * F9 — KHÔNG cache, cùng luật outbox/payment events (vòng vá review F9; bản
+ * đầu cache 60s với lý do "chỉ admin bấm nút mới đổi số" — sai: form
+ * "Inquire Now" CÔNG KHAI ghi lead NEW, tức đổi cả `created` lẫn `open`,
+ * và đường đó không gọi `updateTag` nào). Luật chung để vùng sau khỏi suy
+ * luận lại: cache theo tag CHỈ khi mọi kẻ ghi bảng đều là server action của
+ * admin (F2–F5); có kẻ ghi ngoài — worker, webhook, form khách — thì không.
  */
 export async function fetchAdminEnquiriesStats(cookie: string): Promise<AdminEnquiriesStats> {
-  return api.admin.stats.enquiries(undefined, { context: statsContext(cookie) });
+  return api.admin.stats.enquiries(undefined, { context: withAdminAuth(cookie) });
 }

@@ -112,7 +112,7 @@ describe('EnquiryNoteForm', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it('action NÉM: coi như kết cục KHÔNG RÕ, giữ đoạn văn, không toast thành công', async () => {
+  it('action NÉM: coi như kết cục KHÔNG RÕ — giữ đoạn văn, không toast thành công, và REFRESH như GENERIC', async () => {
     const user = userEvent.setup();
     const addNote = vi.fn(async () => {
       throw new TypeError('fetch failed');
@@ -125,6 +125,9 @@ describe('EnquiryNoteForm', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(messages.admin.errors.write.GENERIC);
     expect(textarea()).toHaveValue('Called the lead.');
     expect(success).not.toHaveBeenCalled();
+    // Note có thể ĐÃ lưu trước khi kết nối đứt — kéo thread tươi về để admin
+    // thấy nó trước khi bấm lại (vòng vá review F9).
+    expect(refresh).toHaveBeenCalled();
   });
 
   it('bấm đúp chỉ bắn MỘT lệnh — `pending` là cổng, không chỉ để đổi chữ nút', async () => {

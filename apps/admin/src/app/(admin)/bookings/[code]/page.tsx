@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { RefundPanel } from '@/components/bookings/refund-panel';
+import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminBookingByCode } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import {
@@ -151,17 +152,14 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
             <CardTitle>{t.cancellations.heading}</CardTitle>
           </CardHeader>
           <CardContent>
-            {booking.cancellationRequests.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.cancellations.empty}</p>
-            ) : (
-              // Lịch sử append-only (D1-B): cũ nhất trước, các dòng DENIED sống
-              // sót qua mọi lần khách xin lại — đó là dấu vết, không phải rác.
-              <ol className="grid gap-4">
-                {booking.cancellationRequests.map((request) => (
-                  <CancellationRow key={request.id} request={request} />
-                ))}
-              </ol>
-            )}
+            {/* Lịch sử append-only (D1-B): cũ nhất trước, các dòng DENIED sống
+                sót qua mọi lần khách xin lại — đó là dấu vết, không phải rác.
+                Khung là kit `Timeline` (vòng vá review F9). */}
+            <Timeline empty={t.cancellations.empty}>
+              {booking.cancellationRequests.map((request) => (
+                <CancellationRow key={request.id} request={request} />
+              ))}
+            </Timeline>
           </CardContent>
         </Card>
       </div>
@@ -181,7 +179,7 @@ function Row({ label, value }: { label: string; value: string | null }) {
 
 function CancellationRow({ request }: { request: CancellationRequest }) {
   return (
-    <li className="grid gap-1 border-l-2 border-border pl-3 text-sm">
+    <TimelineItem>
       <div className="flex flex-wrap items-center gap-2">
         {/* Cùng luật màu với hàng đợi /cancellations (review F3 31/08) — một
             trạng thái một màu ở mọi màn. */}
@@ -207,6 +205,6 @@ function CancellationRow({ request }: { request: CancellationRequest }) {
           {request.decisionNote}
         </p>
       ) : null}
-    </li>
+    </TimelineItem>
   );
 }

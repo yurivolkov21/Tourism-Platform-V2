@@ -1,4 +1,5 @@
 import { BookingStatus } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
 
 export type EligibilityInput = {
   bookingStatus: BookingStatus;
@@ -28,9 +29,8 @@ export type EligibilityResult =
  * đó), `calendarDay(now)` bắt kịp `calendarDay(departureEndDate)` và review
  * được cho phép ngay, không cần chờ qua nửa đêm giờ VN.
  */
-function calendarDay(d: Date): string {
-  return d.toISOString().slice(0, 10);
-}
+/** Một tên gọi cho ngày UTC — máy thật là `calendarDate` dùng chung của API. */
+const calendarDay = calendarDate;
 
 /**
  * Quyết định một booking có được viết review không.

@@ -95,22 +95,18 @@ export function EnquiriesSearch({ query }: { query: EnquiriesQuery }) {
  * admin chưa có endpoint list tour tới P4e). `?tourId=` chỉ đến từ URL gõ tay
  * hoặc một trang khác link sang, nhưng nó vẫn lọc thật — nên nó phải NHÌN
  * THẤY được và gỡ được: một filter vô hình là một bảng thiếu hàng không giải
- * thích được. Không lọc theo tour thì không render gì.
+ * thích được. Không lọc theo tour thì không render gì. Chữ trên chip CỐ ĐỊNH
+ * (vòng vá review F9): tên tour từng suy từ hàng đầu của trang nên đổi chữ
+ * theo tab đang xem — nhãn của filter không được là hàm của tập kết quả; tên
+ * thật chờ endpoint tour của P4e.
  */
-export function EnquiriesTourFilter({
-  query,
-  label,
-}: {
-  query: EnquiriesQuery;
-  /** Tên tour do server tính (`tourFilterLabel`); null = không có filter nào. */
-  label: string | null;
-}) {
+export function EnquiriesTourFilter({ query }: { query: EnquiriesQuery }) {
   const router = useRouter();
-  if (!label) return null;
+  if (!query.tourId) return null;
 
   return (
     <Badge variant="secondary" className="gap-1 py-1 pr-1 pl-2">
-      <span className="max-w-40 truncate">{t.list.tourFilter(label)}</span>
+      <span>{t.list.tourFilter}</span>
       <Button
         type="button"
         variant="ghost"

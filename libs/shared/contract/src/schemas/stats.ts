@@ -192,11 +192,17 @@ export const AdminEnquiriesStatsSchema = z.object({
    */
   created: CountMetricSchema,
   /**
-   * Số LƯỢT chuyển sang WON trong kỳ — đếm trên audit trail
-   * `enquiry_status_events` (`to_status = WON`, `created_at` của EVENT), chứ
-   * KHÔNG trên `enquiries.updated_at` (spec §2.5, bài học F5): một lead WON
-   * hôm nay bị sửa sang LOST tuần sau sẽ tự xoá mình khỏi con số của một kỳ
-   * đã đóng nếu đếm theo trạng thái hiện tại.
+   * Số LEAD có ít nhất một lượt chuyển sang WON trong kỳ — đếm
+   * `DISTINCT enquiry_id` trên audit trail `enquiry_status_events`
+   * (`to_status = WON`, `created_at` của EVENT), chứ KHÔNG trên
+   * `enquiries.updated_at` (spec §2.5, bài học F5): một lead WON hôm nay bị
+   * sửa sang LOST tuần sau sẽ tự xoá mình khỏi con số của một kỳ đã đóng nếu
+   * đếm theo trạng thái hiện tại. DISTINCT (vòng vá review F9): chuyển tự do
+   * năm trạng thái nên "bấm nhầm WON → sửa → WON thật" là hai lượt của MỘT
+   * lead; card đứng cạnh "New 28d" (đếm lead) thì cũng phải đếm lead.
+   *
+   * Bảng audit chỉ có từ F9 (03/09/2026): `previous` là 0 trong 56 ngày đầu
+   * sau deploy — cùng hiện tượng `approved` của reviews ở F5.
    */
   won: CountMetricSchema,
   /**

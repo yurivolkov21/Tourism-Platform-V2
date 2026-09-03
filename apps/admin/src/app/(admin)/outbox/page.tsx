@@ -10,7 +10,7 @@ import { fetchAdminOutboxStats } from '@/lib/api/stats';
 import { outboxHref, parseOutboxSearchParams } from '@/lib/outbox-query';
 import { toOutboxRowVM } from '@/lib/outbox-view';
 import { toOutboxStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { retryOutboxAction } from './actions';
 
 /**
@@ -43,9 +43,8 @@ export default async function OutboxPage({
 
   // Page mồ côi: tab FAILED co lại sau mỗi retry (và purge dọn SENT) — đưa về
   // trang cuối còn thật thay vì bảng rỗng cạnh thanh phân trang nói ngược lại.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(outboxHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => outboxHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>

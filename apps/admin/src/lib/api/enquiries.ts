@@ -1,8 +1,10 @@
 import { isDefinedError, safe } from '@orpc/client';
 import type {
   AdminEnquiryAddNoteInput,
+  AdminEnquiryAddNoteResult,
   AdminEnquiryByIdInput,
   AdminEnquirySetStatusInput,
+  AdminEnquirySetStatusResult,
   EnquiryDetail,
   EnquiryRow,
   Paged,
@@ -50,11 +52,11 @@ export async function fetchAdminEnquiry(
   return data;
 }
 
-/** Đổi trạng thái — server chạy update + audit trong CÙNG một transaction. */
+/** Đổi trạng thái — server chạy update + audit trong CÙNG một transaction; `changed: false` là no-op. */
 export async function setAdminEnquiryStatus(
   cookie: string,
   input: AdminEnquirySetStatusInput,
-): Promise<EnquiryDetail> {
+): Promise<AdminEnquirySetStatusResult> {
   return api.admin.enquiries.setStatus(input, { context: withAdminAuth(cookie) });
 }
 
@@ -62,6 +64,6 @@ export async function setAdminEnquiryStatus(
 export async function addAdminEnquiryNote(
   cookie: string,
   input: AdminEnquiryAddNoteInput,
-): Promise<EnquiryDetail> {
+): Promise<AdminEnquiryAddNoteResult> {
   return api.admin.enquiries.addNote(input, { context: withAdminAuth(cookie) });
 }

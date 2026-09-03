@@ -11,6 +11,8 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
+import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { pickCover } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
@@ -58,10 +60,6 @@ export class BookingNotPendingError extends Error {
 
 /** Prisma Decimal → string không mất mát ("39.00"). Money KHÔNG BAO GIỜ thành float. */
 const money = (value: Prisma.Decimal): string => value.toFixed(2);
-
-/** Prisma `@db.Date` (Date nửa đêm UTC) → calendar date "YYYY-MM-DD".
- * Export cho cancellation surface (cùng quy ước serialize). */
-export const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 type BookingRow = Prisma.BookingModel;
 
@@ -534,9 +532,9 @@ export class BookingsService {
       ...(term
         ? {
             OR: [
-              { code: { contains: term, mode: 'insensitive' } },
-              { contactEmail: { contains: term, mode: 'insensitive' } },
-              { contactName: { contains: term, mode: 'insensitive' } },
+              { code: { contains: escapeLike(term), mode: 'insensitive' } },
+              { contactEmail: { contains: escapeLike(term), mode: 'insensitive' } },
+              { contactName: { contains: escapeLike(term), mode: 'insensitive' } },
             ],
           }
         : {}),

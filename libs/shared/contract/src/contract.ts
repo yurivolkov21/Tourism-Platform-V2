@@ -29,8 +29,10 @@ import { PageQuerySchema } from './schemas/common.js';
 import {
   AdminEnquiriesListQuerySchema,
   AdminEnquiryAddNoteInputSchema,
+  AdminEnquiryAddNoteResultSchema,
   AdminEnquiryByIdInputSchema,
   AdminEnquirySetStatusInputSchema,
+  AdminEnquirySetStatusResultSchema,
   CreateEnquiryInputSchema,
   EnquiryDetailSchema,
   EnquiryResultSchema,
@@ -823,7 +825,7 @@ export const contract = {
         })
         .input(AdminEnquirySetStatusInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
-        .output(EnquiryDetailSchema),
+        .output(AdminEnquirySetStatusResultSchema),
       addNote: oc
         .route({
           method: 'POST',
@@ -832,7 +834,7 @@ export const contract = {
         })
         .input(AdminEnquiryAddNoteInputSchema)
         .errors({ NOT_FOUND: { status: 404, message: 'Enquiry not found' } })
-        .output(EnquiryDetailSchema),
+        .output(AdminEnquiryAddNoteResultSchema),
     },
     /**
      * Báo cáo THÁNG (spec P4b §3-F6) — nguồn của trang `/reports`, nút CSV

@@ -86,6 +86,7 @@ describe('EnquiryStatusPanel', () => {
       ok: true as const,
       name: NAME,
       status: 'WON' as const,
+      changed: true,
     }));
     render(<EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={setStatus} />);
 
@@ -102,6 +103,7 @@ describe('EnquiryStatusPanel', () => {
       ok: true as const,
       name: 'Grace Hopper',
       status: 'LOST' as const,
+      changed: true,
     }));
     render(<EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={setStatus} />);
 
@@ -111,6 +113,27 @@ describe('EnquiryStatusPanel', () => {
     expect(success).toHaveBeenCalledWith(t.toast.title, {
       description: t.toast.body('Grace Hopper', status.LOST),
     });
+    expect(screen.queryByText(t.dialog.title)).not.toBeInTheDocument();
+    expect(refresh).toHaveBeenCalled();
+  });
+
+  it('NO-OP (changed=false — người khác đã đổi trước): toast nói "không có gì đổi", vẫn đóng + refresh', async () => {
+    const user = userEvent.setup();
+    const setStatus = vi.fn(async () => ({
+      ok: true as const,
+      name: 'Grace Hopper',
+      status: 'WON' as const,
+      changed: false,
+    }));
+    render(<EnquiryStatusPanel id={ID} name={NAME} status="NEW" setStatus={setStatus} />);
+
+    await openDialog(user, status.WON);
+    await user.click(await screen.findByRole('button', { name: t.dialog.submit }));
+
+    expect(success).toHaveBeenCalledWith(t.toast.unchangedTitle, {
+      description: t.toast.unchanged('Grace Hopper', status.WON),
+    });
+    expect(success).not.toHaveBeenCalledWith(t.toast.title, expect.anything());
     expect(screen.queryByText(t.dialog.title)).not.toBeInTheDocument();
     expect(refresh).toHaveBeenCalled();
   });
@@ -149,6 +172,7 @@ describe('EnquiryStatusPanel', () => {
       ok: true as const,
       name: NAME,
       status: 'NEW' as const,
+      changed: true,
     }));
     render(<EnquiryStatusPanel id={ID} name={NAME} status="WON" setStatus={setStatus} />);
 

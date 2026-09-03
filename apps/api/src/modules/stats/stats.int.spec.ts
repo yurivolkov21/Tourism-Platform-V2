@@ -808,10 +808,10 @@ describe('admin stats integration (F5)', () => {
     /** Một dòng audit — `createdAt` của EVENT là thứ metric `won` neo vào. */
     const statusEvent = (
       n: number,
-      row: { toStatus: EnquiryStatus; createdAt: Date },
+      row: { toStatus: EnquiryStatus; createdAt: Date; lead?: number },
     ): Prisma.EnquiryStatusEventCreateManyInput => ({
       id: `e950000a-0000-4000-8000-${String(n).padStart(12, '0')}`,
-      enquiryId: enquiryId(n),
+      enquiryId: enquiryId(row.lead ?? n),
       adminId: null,
       fromStatus: EnquiryStatus.QUOTED,
       toStatus: row.toStatus,
@@ -839,6 +839,9 @@ describe('admin stats integration (F5)', () => {
           // lại). Đếm theo TRẠNG THÁI HIỆN TẠI sẽ bỏ sót đúng dòng này.
           statusEvent(5, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(2) }),
           statusEvent(6, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(5) }),
+          // Lead 5 sang WON LẦN THỨ HAI trong kỳ (bấm nhầm → sửa → WON thật):
+          // hai event, MỘT lead — DISTINCT (vòng vá review F9).
+          statusEvent(7, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(6), lead: 5 }),
           // WON ở KỲ TRƯỚC: 1.
           statusEvent(3, { toStatus: EnquiryStatus.WON, createdAt: daysAgo(45) }),
           // Ngoài cả hai kỳ — không tính vào kỳ nào.
@@ -856,10 +859,11 @@ describe('admin stats integration (F5)', () => {
       expect(stats.period.windowDays).toBe(28);
     });
 
-    it('won đếm trên EVENT audit, không trên trạng thái hiện tại — lead thắng-rồi-mất vẫn tính', async () => {
+    it('won đếm LEAD trên EVENT audit (DISTINCT), không trên trạng thái hiện tại — lead thắng-rồi-mất vẫn tính', async () => {
       const stats = AdminEnquiriesStatsSchema.parse((await get('enquiries', adminCookie)).json());
       // Lead 6 hiện LOST nhưng ĐÃ có một lượt sang WON trong kỳ: đếm theo
-      // `enquiries.status` sẽ ra 1, đếm theo event ra 2 — đây là chỗ đó.
+      // `enquiries.status` sẽ ra 1; lead 5 có HAI event WON trong kỳ: đếm
+      // lượt sẽ ra 3 — đếm lead DISTINCT ra 2.
       expect(stats.won).toEqual({ current: 2, previous: 1 });
     });
 

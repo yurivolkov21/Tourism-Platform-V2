@@ -5,12 +5,10 @@ import {
   AdminEnquiryAddNoteInputSchema,
   type AdminEnquirySetStatusInput,
   AdminEnquirySetStatusInputSchema,
-  type EnquiryDetail,
+  type AdminEnquirySetStatusResult,
 } from '@tourism/contract';
-import { updateTag } from 'next/cache';
 import { cookies } from 'next/headers';
 import { addAdminEnquiryNote, setAdminEnquiryStatus } from '@/lib/api/enquiries';
-import { ADMIN_STATS_TAG } from '@/lib/api/stats';
 import {
   type AddNoteActionResult,
   classifyAddNoteError,
@@ -34,9 +32,8 @@ import {
  * - `cookies()` gọi NGOÀI `try`, và `try` chỉ ôm ĐÚNG lời gọi API: một lỗi
  *   sau-commit không được phép biến một lệnh ghi đã ăn thành thông báo
  *   thất bại.
- * - `updateTag(ADMIN_STATS_TAG)` sau MỖI lệnh thành công: cả ba con số của
- *   `/enquiries` chỉ đổi vì chính hai action này (khác outbox/payment events
- *   — ở đó worker/webhook mới là kẻ đổi bảng nên stats không cache).
+ * - KHÔNG `updateTag`: stats vùng này không cache (vòng vá review F9 — form
+ *   khách công khai cũng ghi bảng), nên không có tag nào để huỷ.
  * - KHÔNG `revalidatePath`/`refresh()` ở đây: trang chi tiết là server
  *   component ĐỘNG (đọc `cookies()`), nên không có bản cache nào để huỷ —
  *   thứ vẽ lại nó là `router.refresh()` mà client gọi SAU khi đã báo xong
@@ -50,19 +47,18 @@ export async function setEnquiryStatusAction(
   if (!parsed.success) return { ok: false, code: 'INVALID_INPUT' };
 
   const cookie = (await cookies()).toString();
-  let detail: EnquiryDetail;
+  let result: AdminEnquirySetStatusResult;
   try {
-    detail = await setAdminEnquiryStatus(cookie, parsed.data);
+    result = await setAdminEnquiryStatus(cookie, parsed.data);
   } catch (error) {
     // `ORPCError` không sống sót qua ranh giới action (Next che lỗi server ở
     // production thành digest trống) — phân loại tại đây, trả mã trần xuống.
     return { ok: false, code: classifySetStatusError(error) };
   }
-  updateTag(ADMIN_STATS_TAG);
-  // Trạng thái đọc từ RESPONSE, không từ input đã gửi: no-op trùng trạng thái
-  // cũng trả về đúng trạng thái thật, nên toast không bao giờ kể chuyện khác
-  // với server.
-  return setStatusSuccess(detail);
+  // Trạng thái + cờ `changed` đọc từ RESPONSE, không từ input đã gửi: no-op
+  // trùng trạng thái trả đúng trạng thái thật và `changed: false`, nên toast
+  // không bao giờ kể chuyện khác với server.
+  return setStatusSuccess(result);
 }
 
 export async function addEnquiryNoteAction(
@@ -77,11 +73,5 @@ export async function addEnquiryNoteAction(
   } catch (error) {
     return { ok: false, code: classifyAddNoteError(error) };
   }
-  // Thêm note KHÔNG đổi con số nào của hàng card (`created`/`won`/`open` đều
-  // không đếm note) — nhưng nó đổi cột "Notes" của bảng, mà bảng thì đọc tươi
-  // mỗi lần điều hướng. Vẫn `updateTag` cho cùng một luật với `setStatus`:
-  // rẻ (một tag), và ngày nào card có thêm metric đếm note thì không phải
-  // nhớ quay lại đây.
-  updateTag(ADMIN_STATS_TAG);
   return { ok: true };
 }

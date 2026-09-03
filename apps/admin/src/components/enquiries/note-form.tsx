@@ -64,9 +64,10 @@ export function EnquiryNoteForm({ id, addNote }: { id: string; addNote: AddNoteA
       // không được quy thành "note không lưu được".
       result = await addNote({ id, body: trimmed });
     } catch {
-      setPending(false);
-      setFailure('GENERIC');
-      return;
+      // Action NÉM là kết cục KHÔNG RÕ y như mã GENERIC — đi CÙNG một lối ra
+      // (vòng vá review F9: nhánh này từng không refresh, nên note đã lưu mà
+      // kết nối đứt thì admin không thấy, bấm lại → note đúp vĩnh viễn).
+      result = { ok: false, code: 'GENERIC' };
     }
     setPending(false);
 

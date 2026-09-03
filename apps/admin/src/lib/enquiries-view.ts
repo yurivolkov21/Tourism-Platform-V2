@@ -1,6 +1,7 @@
 import type { EnquiryDetail, EnquiryRow, EnquiryStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatCalendarDate, formatDateTime } from './bookings-view';
+import { enquiryDetailHref } from './enquiries-query';
 
 /**
  * Mapper hiển thị vùng `/enquiries` (spec P4c §3-F9) — THUẦN, ngoài React nên
@@ -48,7 +49,7 @@ export interface EnquiryRowVM {
   id: string;
   name: string;
   email: string;
-  /** Trang chi tiết — cột Name là link, dựng từ id ngay tại VM. */
+  /** Trang chi tiết — cột Name là link; mang `?back=` về đúng trang bảng đang đứng. */
   href: string;
   /** Đã rơi về "General enquiry" khi lead không gắn tour — bảng không phải rẽ nhánh. */
   tourTitle: string;
@@ -63,13 +64,17 @@ export interface EnquiryRowVM {
   created: string;
 }
 
-/** Row của contract → hàng bảng đã format sẵn (server component gọi). */
-export function toEnquiryRowVM(row: EnquiryRow): EnquiryRowVM {
+/**
+ * Row của contract → hàng bảng đã format sẵn (server component gọi).
+ * `listHref` là URL bảng hiện tại (`enquiriesHref(query, {})`) để link chi
+ * tiết mang đường về.
+ */
+export function toEnquiryRowVM(row: EnquiryRow, listHref: string): EnquiryRowVM {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    href: `/enquiries/${row.id}`,
+    href: enquiryDetailHref(row.id, listHref),
     tourTitle: row.tourTitle ?? t.list.noTour,
     travelDate: row.travelDate ? formatCalendarDate(row.travelDate) : null,
     groupSize: groupSizeLabel(row.groupSize),
@@ -80,19 +85,6 @@ export function toEnquiryRowVM(row: EnquiryRow): EnquiryRowVM {
     notesLabel: t.list.notesCount(row.notesCount),
     created: formatDateTime(row.createdAt),
   };
-}
-
-/**
- * Nhãn cho chip "đang lọc theo tour". `tourId` là uuid, và admin chưa có
- * endpoint tra tên tour (quyết định tự chọn F9 — tới P4e), nên tên đọc từ
- * chính hàng đầu tiên của tập đang lọc: mọi hàng trong đó cùng một tour.
- * Tập rỗng (lọc tour + trạng thái không có lead nào) thì không có tên nào để
- * đọc — in chữ thay thế chứ KHÔNG in uuid thô: một chuỗi 36 ký tự trên
- * toolbar không nói gì với ai, còn chip thì vẫn phải hiện để gỡ được.
- */
-export function tourFilterLabel(rows: EnquiryRow[], tourId: string | undefined): string | null {
-  if (!tourId) return null;
-  return rows[0]?.tourTitle ?? t.list.tourFilterUnknown;
 }
 
 /** Một dòng `<dt>/<dd>` của thẻ lead — chỉ field CÓ giá trị mới vào danh sách. */

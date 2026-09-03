@@ -11,6 +11,7 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
 import { MediaService } from '../media/media.service.js';
 
 /**
@@ -26,9 +27,6 @@ export const pickCover = (media: MediaItem[] | undefined): MediaItem | null =>
  * serializer money khác trong repo (`.toFixed(2)`); money KHÔNG BAO GIỜ thành float.
  */
 const money = (value: Prisma.Decimal): string => value.toFixed(2);
-
-/** Prisma `@db.Date` (Date nửa đêm UTC) → ngày lịch "YYYY-MM-DD". */
-const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
 
 /** Nửa đêm UTC hôm nay — cận dưới cho departure "upcoming". */
 const startOfTodayUtc = (): Date => new Date(new Date().toISOString().slice(0, 10));

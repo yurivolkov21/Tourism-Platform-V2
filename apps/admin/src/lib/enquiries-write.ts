@@ -1,4 +1,4 @@
-import type { EnquiryDetail, EnquiryStatusValue } from '@tourism/contract';
+import type { AdminEnquirySetStatusResult, EnquiryStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import { enquiryStatusLabel } from './enquiries-view';
@@ -46,10 +46,11 @@ export const isAddNoteStale = addNoteCodec.isStale;
  * Kết quả server action đổi trạng thái — hợp đồng vận chuyển giữa `actions.ts`
  * (server) và dialog (client), sống ở lib để tầng server không import tầng
  * trình bày. Nhánh thành công trả trạng thái ĐỌC TỪ RESPONSE (không phải từ
- * input đã gửi) để toast kể đúng chuyện server vừa làm.
+ * input đã gửi) để toast kể đúng chuyện server vừa làm — kể cả `changed`
+ * (vòng vá review F9): no-op thì toast nói "không có gì đổi", không "updated".
  */
 export type SetStatusActionResult =
-  | { ok: true; name: string; status: EnquiryStatusValue }
+  | { ok: true; name: string; status: EnquiryStatusValue; changed: boolean }
   | { ok: false; code: SetStatusFailureCode };
 
 export type SetStatusAction = (input: {
@@ -62,9 +63,24 @@ export type AddNoteActionResult = { ok: true } | { ok: false; code: AddNoteFailu
 
 export type AddNoteAction = (input: { id: string; body: string }) => Promise<AddNoteActionResult>;
 
-/** Detail → trạng thái/tên mà nhánh thành công của action cần kể lại. */
-export function setStatusSuccess(detail: EnquiryDetail): SetStatusActionResult {
-  return { ok: true, name: detail.name, status: detail.status };
+/** Response contract → nhánh thành công của action (đúng ba thứ toast cần). */
+export function setStatusSuccess(result: AdminEnquirySetStatusResult): SetStatusActionResult {
+  return { ok: true, name: result.name, status: result.status, changed: result.changed };
+}
+
+/** Toast của nhánh thành công — hai giọng: đã đổi / không có gì đổi (no-op). */
+export function setStatusToast(result: {
+  name: string;
+  status: EnquiryStatusValue;
+  changed: boolean;
+}): { title: string; description: string } {
+  const status = enquiryStatusLabel(result.status);
+  return result.changed
+    ? { title: t.setStatus.toast.title, description: t.setStatus.toast.body(result.name, status) }
+    : {
+        title: t.setStatus.toast.unchangedTitle,
+        description: t.setStatus.toast.unchanged(result.name, status),
+      };
 }
 
 /**

@@ -1,5 +1,5 @@
 import { prisma } from '../../auth/auth.config.js';
-import type { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import {
   BookingStatus,
   CancellationRequestStatus,
@@ -211,15 +211,25 @@ export function enquiriesCreatedCount(from: Date, to: Date): Promise<number> {
 }
 
 /**
- * SỐ LƯỢT chuyển sang WON trong khoảng — đếm trên audit trail
- * `enquiry_status_events` theo `created_at` của EVENT, KHÔNG trên
- * `enquiries.status`/`updated_at` (spec §2.5, đúng bài học `reviewApprovals`
- * ở F5): một lead thắng tuần này rồi mất lại tuần sau vẫn phải giữ nguyên
- * con số của kỳ đã đóng — trạng thái hiện tại thì không kể được chuyện đó.
- * Guard no-op của `setStatus` bảo đảm không có event `from === to` làm nhiễu.
+ * Số LEAD có ít nhất một lượt chuyển sang WON trong khoảng — đếm
+ * `DISTINCT enquiry_id` trên audit trail `enquiry_status_events` theo
+ * `created_at` của EVENT, KHÔNG trên `enquiries.status`/`updated_at` (spec
+ * §2.5, đúng bài học `reviewApprovals` ở F5): một lead thắng tuần này rồi mất
+ * lại tuần sau vẫn phải giữ nguyên con số của kỳ đã đóng — trạng thái hiện
+ * tại thì không kể được chuyện đó.
+ *
+ * DISTINCT (vòng vá review F9): chuyển tự do năm trạng thái nên "bấm nhầm WON
+ * → sửa LOST → WON thật" là hai event của MỘT lead; card "Won 28d" đứng cạnh
+ * "New 28d" (đếm lead) nên cũng phải đếm lead, không đếm lượt bấm. Prisma
+ * `count` không có DISTINCT trên cột → một câu SQL, index `[to_status,
+ * created_at]` vẫn phủ được vế WHERE.
  */
-export function enquiryWonCount(from: Date, to: Date): Promise<number> {
-  return prisma.enquiryStatusEvent.count({
-    where: { toStatus: EnquiryStatus.WON, createdAt: { gte: from, lt: to } },
-  });
+export async function enquiryWonCount(from: Date, to: Date): Promise<number> {
+  const [row] = await prisma.$queryRaw<{ won: bigint }[]>(Prisma.sql`
+    SELECT COUNT(DISTINCT enquiry_id) AS won
+    FROM enquiry_status_events
+    WHERE to_status = ${EnquiryStatus.WON}::"EnquiryStatus"
+      AND created_at >= ${from} AND created_at < ${to}
+  `);
+  return Number(row?.won ?? 0);
 }

@@ -9,14 +9,10 @@ import type {
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
 import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
-import {
-  bookingTourInclude,
-  calendarDate,
-  resolveTourCover,
-  toBooking,
-} from './bookings.service.js';
+import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
@@ -166,7 +162,7 @@ export class CancellationsService {
         `booking is ${booking.status}; only a PAID booking can be cancelled by request`,
       );
     }
-    if (calendarDate(booking.departureStartDate) < new Date().toISOString().slice(0, 10)) {
+    if (calendarDate(booking.departureStartDate) < calendarDate(new Date())) {
       throw new BookingNotCancellableError('the departure has already started');
     }
 

@@ -8,9 +8,9 @@ import { fetchAdminEnquiries } from '@/lib/api/enquiries';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminEnquiriesStats } from '@/lib/api/stats';
 import { enquiriesHref, parseEnquiriesSearchParams } from '@/lib/enquiries-query';
-import { toEnquiryRowVM, tourFilterLabel } from '@/lib/enquiries-view';
+import { toEnquiryRowVM } from '@/lib/enquiries-view';
 import { toEnquiriesStatCards } from '@/lib/stats-view';
-import type { RawSearchParams } from '@/lib/table-query';
+import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 
 /**
  * `/enquiries` — CRM lead của form "Inquire Now" (spec P4c §3-F9).
@@ -45,19 +45,18 @@ export default async function EnquiriesPage({
 
   // Page mồ côi: tab NEW co lại sau mỗi lần đổi trạng thái — đưa về trang cuối
   // còn thật thay vì bảng rỗng cạnh thanh phân trang nói ngược lại.
-  if (paged.total > 0 && query.page > paged.totalPages) {
-    redirect(enquiriesHref(query, { page: paged.totalPages }));
-  }
+  const orphan = orphanPageHref(paged, query, (page) => enquiriesHref(query, { page }));
+  if (orphan) redirect(orphan);
 
   return (
     <AdminShell user={session}>
       <StatCardRow cards={toEnquiriesStatCards(stats)} />
       <EnquiriesTable
-        rows={paged.items.map(toEnquiryRowVM)}
+        // Mỗi link chi tiết mang đường VỀ đúng trang bảng này (tab/trang/ô tìm).
+        rows={paged.items.map((row) => toEnquiryRowVM(row, enquiriesHref(query, {})))}
         query={query}
         total={paged.total}
         totalPages={paged.totalPages}
-        tourFilter={tourFilterLabel(paged.items, query.tourId)}
       />
     </AdminShell>
   );

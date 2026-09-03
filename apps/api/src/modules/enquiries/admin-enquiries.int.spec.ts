@@ -1,6 +1,8 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import {
+  AdminEnquiryAddNoteResultSchema,
+  AdminEnquirySetStatusResultSchema,
   EnquiryDetailSchema,
   EnquiryRowSchema,
   EnquiryStatusSchema,
@@ -256,18 +258,19 @@ describe('admin enquiries integration (F9)', () => {
       expect(paged.items[0]).toMatchObject({
         name: 'Ada Lovelace',
         email: 'ada@example.com',
-        phone: '+84 90 000 0001',
         tourTitle: tour.title,
-        tourSlug: PUBLISHED_SLUG,
         travelDate: '2026-12-24',
         groupSize: 4,
         budgetTier: 'luxury',
         status: 'NEW',
         notesCount: 0,
       });
-      // Message tới 2000 ký tự — bảng không cần, list không chở (spec §3-F9).
+      // Message tới 2000 ký tự — bảng không cần, list không chở (spec §3-F9);
+      // phone là PII không cột nào in (vòng vá review F9).
       expect(res.body).not.toContain('"message"');
       expect(res.body).not.toContain('"interests"');
+      expect(res.body).not.toContain('"phone"');
+      expect(res.body).not.toContain('"tourSlug"');
     });
 
     it('enquiry chung: CẢ HAI field tour null, các field optional vắng mặt cũng null', async () => {
@@ -275,8 +278,6 @@ describe('admin enquiries integration (F9)', () => {
       const generic = paged.items.find((item) => item.id === rowId(6));
       expect(generic).toMatchObject({
         tourTitle: null,
-        tourSlug: null,
-        phone: null,
         travelDate: null,
         groupSize: null,
         budgetTier: null,
@@ -289,6 +290,11 @@ describe('admin enquiries integration (F9)', () => {
         rowId(1),
         rowId(6),
       ]);
+    });
+
+    it('search: `%` và `_` là ký tự THƯỜNG, không phải wildcard (escapeLike — vòng vá review F9)', async () => {
+      expect((await listOk('?search=%25')).total).toBe(0);
+      expect((await listOk('?search=a_a')).total).toBe(0);
     });
 
     it('search khớp name HOẶC email contains, không phân biệt hoa/thường', async () => {
@@ -402,8 +408,13 @@ describe('admin enquiries integration (F9)', () => {
       const before = Date.now();
       const res = await setStatus(rowId(1), 'QUOTED', adminCookie);
       expect(res.statusCode).toBe(200);
-      const detail = EnquiryDetailSchema.parse(res.json());
-      expect(detail.status).toBe('QUOTED');
+      const result = AdminEnquirySetStatusResultSchema.parse(res.json());
+      expect(result).toEqual({
+        id: rowId(1),
+        name: 'Ada Lovelace',
+        status: 'QUOTED',
+        changed: true,
+      });
 
       const events = await prisma.enquiryStatusEvent.findMany({ where: { enquiryId: rowId(1) } });
       expect(events).toHaveLength(1);
@@ -413,7 +424,8 @@ describe('admin enquiries integration (F9)', () => {
         adminId,
       });
       expect(events[0]?.createdAt.getTime()).toBeGreaterThanOrEqual(before - 1000);
-      // Response mang luôn dòng vừa nối — trang chi tiết không phải chờ refresh.
+      // Dòng vừa nối đọc được qua byId với tên admin qua JOIN.
+      const detail = EnquiryDetailSchema.parse((await byId(rowId(1), adminCookie)).json());
       expect(detail.statusEvents).toEqual([
         expect.objectContaining({ fromStatus: 'NEW', toStatus: 'QUOTED', adminName: ADMIN_NAME }),
       ]);
@@ -428,20 +440,23 @@ describe('admin enquiries integration (F9)', () => {
       });
     });
 
-    it('CÙNG trạng thái → no-op có chủ đích: 200, KHÔNG event nào, updatedAt không đổi', async () => {
+    it('CÙNG trạng thái → no-op có chủ đích: 200 với changed=false, KHÔNG event nào, updatedAt không đổi', async () => {
       const before = await prisma.enquiry.findUniqueOrThrow({ where: { id: rowId(2) } });
       const res = await setStatus(rowId(2), 'CONTACTED', adminCookie);
       expect(res.statusCode).toBe(200);
-      expect(EnquiryDetailSchema.parse(res.json()).status).toBe('CONTACTED');
+      expect(AdminEnquirySetStatusResultSchema.parse(res.json())).toMatchObject({
+        status: 'CONTACTED',
+        changed: false,
+      });
       expect(await prisma.enquiryStatusEvent.count({ where: { enquiryId: rowId(2) } })).toBe(0);
       const after = await prisma.enquiry.findUniqueOrThrow({ where: { id: rowId(2) } });
       expect(after.updatedAt.getTime()).toBe(before.updatedAt.getTime());
     });
 
-    it('hai lần đổi liên tiếp → hai event, CŨ TRƯỚC trong response', async () => {
+    it('hai lần đổi liên tiếp → hai event, CŨ TRƯỚC trong byId', async () => {
       await setStatus(rowId(1), 'CONTACTED', adminCookie);
-      const res = await setStatus(rowId(1), 'WON', adminCookie);
-      const detail = EnquiryDetailSchema.parse(res.json());
+      expect((await setStatus(rowId(1), 'WON', adminCookie)).statusCode).toBe(200);
+      const detail = EnquiryDetailSchema.parse((await byId(rowId(1), adminCookie)).json());
       expect(detail.statusEvents.map((event) => `${event.fromStatus}→${event.toStatus}`)).toEqual([
         'NEW→CONTACTED',
         'CONTACTED→WON',
@@ -461,8 +476,10 @@ describe('admin enquiries integration (F9)', () => {
     it('nối note với authorId/authorName lấy từ PHIÊN, không phải từ input', async () => {
       const res = await addNote(rowId(1), '  Called the lead, sending a quote.  ', adminCookie);
       expect(res.statusCode).toBe(200);
-      const detail = EnquiryDetailSchema.parse(res.json());
+      const created = AdminEnquiryAddNoteResultSchema.parse(res.json());
+      const detail = EnquiryDetailSchema.parse((await byId(rowId(1), adminCookie)).json());
       expect(detail.notes).toHaveLength(1);
+      expect(detail.notes[0]?.id).toBe(created.id);
       expect(detail.notes[0]).toMatchObject({
         authorName: ADMIN_NAME,
         // Contract trim TRƯỚC min(1) — row lưu đúng phần có chữ.
@@ -475,9 +492,21 @@ describe('admin enquiries integration (F9)', () => {
 
     it('thread APPEND-ONLY: note thứ hai nối XUỐNG DƯỚI, note đầu còn nguyên', async () => {
       await addNote(rowId(1), 'first', adminCookie);
-      const res = await addNote(rowId(1), 'second', adminCookie);
-      const detail = EnquiryDetailSchema.parse(res.json());
+      expect((await addNote(rowId(1), 'second', adminCookie)).statusCode).toBe(200);
+      const detail = EnquiryDetailSchema.parse((await byId(rowId(1), adminCookie)).json());
       expect(detail.notes.map((note) => note.body)).toEqual(['first', 'second']);
+    });
+
+    it('admin có name RỖNG → authorName rơi về email, byId vẫn đọc được (vòng vá review F9)', async () => {
+      await prisma.user.update({ where: { id: adminId }, data: { name: '' } });
+      try {
+        expect((await addNote(rowId(1), 'unnamed admin', adminCookie)).statusCode).toBe(200);
+        const res = await byId(rowId(1), adminCookie);
+        expect(res.statusCode).toBe(200);
+        expect(EnquiryDetailSchema.parse(res.json()).notes[0]?.authorName).toBe(ADMIN_EMAIL);
+      } finally {
+        await prisma.user.update({ where: { id: adminId }, data: { name: ADMIN_NAME } });
+      }
     });
 
     it('body rỗng / chỉ dấu cách / quá 2000 ký tự → 400, không ghi row nào', async () => {

@@ -15,6 +15,7 @@ import {
   setStatusConfirmRows,
   setStatusDialogCopy,
   setStatusErrorCopy,
+  setStatusToast,
 } from '@/lib/enquiries-write';
 
 /**
@@ -101,15 +102,10 @@ export function EnquiryStatusPanel({
           onSubmit={async () => {
             const result = await setStatus({ id, status: target });
             if (!result.ok) return { ok: false, code: result.code };
-            return {
-              ok: true,
-              // Tên + trạng thái đọc từ RESPONSE — cùng nếp "kể lại chuyện
-              // server làm", không kể lại chuyện mình vừa gửi đi.
-              toast: {
-                title: t.toast.title,
-                description: t.toast.body(result.name, enquiryStatusLabel(result.status)),
-              },
-            };
+            // Tên + trạng thái + `changed` đọc từ RESPONSE — cùng nếp "kể lại
+            // chuyện server làm": no-op (tab cũ, người khác đổi trước) thì
+            // toast nói "không có gì đổi", không phải "Status updated".
+            return { ok: true, toast: setStatusToast(result) };
           }}
           isStale={isSetStatusStale}
           errorCopy={setStatusErrorCopy}
