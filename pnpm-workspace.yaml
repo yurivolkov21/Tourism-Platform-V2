@@ -40,7 +40,11 @@ minimumReleaseAgeExclude:
   - next@16.3.0
   - postcss@8.5.23
   - undici@7.29.0
-  - fast-uri@3.1.5 || 4.1.2
+  - fast-uri@3.1.7 || 4.1.3
+  - qs@6.16.0
+  # Đợt vá 03/09: fastify 5.12.1 + fast-uri 4.1.3 xuất bản cùng ngày với
+  # advisory — cửa sổ minimumReleaseAge sẽ chặn, exclude như các đợt trước.
+  - fastify@5.12.1
   - ip-address@10.2.1 || 10.2.2 || 10.3.1
   - hono@4.12.34
   - brace-expansion@5.0.9
@@ -108,8 +112,19 @@ overrides:
   # ghim vĩnh viễn các bản sau. Toàn bộ là dep bắc cầu (fastify→fast-uri ·
   # shadcn/MCP-sdk→ip-address+hono; @hono/node-server GIỮ ghim 1.x theo quyết định 23/07 đã dismiss · jsdom/vitest/dotenvx→undici · tooling→
   # postcss). Chi tiết: CHANGELOG 03/08.
-  fast-uri@>=3.0.0 <3.1.5: ^3.1.5
-  fast-uri@>=4.0.0 <4.1.2: ^4.1.2
+  # 03/09: `pnpm audit` (DB npm) ghi dòng 3.x dính CÙNG bốn GHSA (<3.1.6) dù
+  # Dependabot chỉ liệt kê 4.x — vá cả hai dòng, đừng tin một nguồn.
+  fast-uri@>=3.0.0 <3.1.6: ^3.1.6
+  # 03/09 — bốn alert fast-uri mới (#32–#35, high: host confusion / SSRF qua
+  # chuẩn hoá IPv6 và percent-decoding), CVE công bố 02/09 SAU đợt vá cùng
+  # ngày; dải dính nới tới <4.1.3. Đường kéo: fastify → fast-json-stringify
+  # (^4.0.0). Dòng 3.x giữ nguyên: advisory chỉ ghi >=4.0.0.
+  fast-uri@>=4.0.0 <4.1.3: ^4.1.3
+  # 03/09 — qs (GHSA-x5fp-wj9c-mxmx, GHSA-4mjr-xmp4-gh2g, moderate) `pnpm audit`
+  # thấy trước khi Dependabot kịp mở alert; đường kéo @orpc/nest → express →
+  # qs/body-parser. API không dùng express (adapter Fastify) nên qs là code
+  # chết trong store, vá để sạch audit.
+  qs@<6.16.0: ^6.16.0
   hono@<4.12.34: ^4.12.34
   ip-address@<=10.3.0: ^10.3.1
   ip-address@>=10.1.1 <=10.2.0: ^10.2.1
@@ -142,6 +157,17 @@ overrides:
   # không phải dữ liệu người dùng — vá để sạch alert, không phải vì đang bị với tới.
   # Nếu ngày nào prisma CLI gãy vì dòng này: gỡ ra và chấp nhận alert.
   deepmerge-ts@<8.0.0: ^8.0.1
+  # 03/09 — bốn alert fastify (#30 #31 #36 #37, moderate; CVE công bố 02/09
+  # 15:13 UTC, SAU đợt vá 13:04 cùng ngày): X-Forwarded-* spoofing dưới
+  # trustProxy dạng hop-count — ĐÚNG dạng API đang dùng (`trustProxy: 1`,
+  # bootstrap.ts) nên request.ip cho rate limit giả mạo được; và schema
+  # validation bypass với body schema primitive (không áp dụng: API validate
+  # bằng zod/oRPC, không dùng fastify schema). Vá duy nhất là 5.12.1.
+  # Vì sao override thay vì chỉ nâng dep trực tiếp: @nestjs/platform-fastify
+  # GHIM CỨNG fastify (11.1.28 → 5.10.0, 11.2.3 mới nhất → 5.11.3, vẫn
+  # dính), nên nâng `apps/api` lên 5.12.1 mà không override là HAI fastify
+  # trong store — adapter Nest chạy bản cũ. Scoped: bản sau 5.12.1 tự do.
+  fastify@>=5.0.0 <5.12.1: 5.12.1
   # 02/09 — ba alert mới (#27 #28 #29, đều high), đều là dependency bắc cầu
   # KHÔNG nằm trên đường phục vụ request; vá theo cùng nếp scoped override
   # (chỉ áp trong dải dính lỗ hổng, không ghim chết bản sau).

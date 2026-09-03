@@ -43,8 +43,9 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
      * KHÔNG gắn ThrottlerGuard toàn cục — từng controller công khai tự gắn
      * `@UseGuards(ThrottlerGuard)`, xem `config/throttle.ts`.
      *
-     * Đếm theo `req.ip`, mà `trustProxy: true` đã bật ở `main.ts` — thiếu nó
-     * thì mọi client dùng chung IP của proxy và trần này khoá sạch cả site.
+     * Đếm theo `req.ip`, mà `trustProxy` (danh sách proxy được tin, xem
+     * `bootstrap.ts`) đã bật ở adapter — thiếu nó thì mọi client dùng chung
+     * IP của proxy và trần này khoá sạch cả site.
      */
     ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE]),
     HealthModule,

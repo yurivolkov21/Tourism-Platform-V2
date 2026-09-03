@@ -8,6 +8,39 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-03 — Vá 8 alert Dependabot mới (4 high fast-uri · 4 moderate fastify) + 2 `pnpm audit` thấy thêm (nhánh `fix/deps-dependabot-0903`, ff-only, 1 commit)
+
+Gốc rễ: cả 8 advisory được công bố **02/09 15:13–15:44 UTC — SAU** đợt vá cùng
+ngày (13:04), không phải hồi quy. Chúng nhắm vào fastify (framework HTTP của
+API, ghim cứng 5.10.0) và fast-uri (bộ parse URI của nó); alert kiểu này sẽ
+còn xuất hiện mỗi khi có CVE mới, việc đúng là một nhịp `pnpm audit` đều đặn
+chứ không phải "sửa một lần là hết".
+
+- **fastify → 5.12.1** (`apps/api` nâng dep trực tiếp + override scoped
+  `fastify@>=5.0.0 <5.12.1: 5.12.1`, vì `@nestjs/platform-fastify` ghim cứng
+  fastify — 11.1.28 → 5.10.0, bản 11.2.3 mới nhất cũng chỉ 5.11.3 — không
+  override là hai fastify trong store, adapter Nest chạy bản cũ). Hai advisory:
+  X-Forwarded-* spoofing dưới `trustProxy` dạng hop-count — **đúng dạng API
+  đang dùng (`trustProxy: 1`)** nên `req.ip` cho rate limit giả mạo được; và
+  schema validation bypass với body schema primitive (không áp dụng — API
+  validate bằng zod/oRPC). 5.12.1 **bỏ hẳn dạng số** khỏi option → adapter đổi
+  sang danh sách địa chỉ proxy được tin qua env mới `TRUST_PROXY` (mặc định
+  `loopback,linklocal,uniquelocal` — ingress Render/Railway nối từ mạng riêng);
+  `bootstrap.spec.ts` pin cả hai chiều: proxy nội bộ forward → IP khách thật,
+  client công khai tự gửi XFF → bị bỏ qua.
+- **fast-uri**: hai override cũ nới dải (`<3.1.6 → ^3.1.6`, `<4.1.3 → ^4.1.3`;
+  lock 3.1.7 / 4.1.3) — `pnpm audit` (DB npm) ghi dòng 3.x dính cùng bốn GHSA
+  dù Dependabot chỉ liệt kê 4.x; vá cả hai, không tin một nguồn.
+- **qs** (`<6.16.0 → ^6.16.0`): `pnpm audit` thấy trước khi Dependabot mở
+  alert; đường @orpc/nest → express → qs, API không dùng express nên là code
+  chết trong store.
+- `minimumReleaseAgeExclude` thêm fastify 5.12.1 / fast-uri 3.1.7 / qs 6.16.0
+  (bản vá xuất bản cùng ngày với advisory). `pnpm audit` về 0.
+
+**Tests after:** `gate:int --force` không cache — 21/21 task, 295/295 int,
+api unit 296 (thêm 4 test trustProxy); API tạm build + boot thật trên fastify
+5.12.1 cho web prerender.
+
 ## 2026-09-03 — P4c F9: Enquiries + notes (CRM lead, hai hành vi ghi có audit) + vòng vá (nhánh `feat/p4c-enquiries`, 3 commit `f59499f..a8a3894`, ~45 file, migration `20260903013002_enquiry_status_events` đã deploy Supabase)
 
 Tính năng thứ ba P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)

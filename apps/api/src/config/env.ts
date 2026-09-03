@@ -44,6 +44,13 @@ const EnvSchema = z
     ADMIN_EMAILS: z.string().default('admin@tourism.test'),
     // Origin được phép gọi Better Auth (CSRF) — mặc định web (3000) + admin (3002).
     TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002'),
+    // Proxy nào được tin `X-Forwarded-*` (03/09, fastify 5.12.1 bỏ dạng
+    // hop-count vì spoof được — GHSA-3m5p-2c4r-xxw2). Danh sách IP/CIDR hoặc
+    // tên dải của @fastify/proxy-addr: mặc định tin MỌI hop từ địa chỉ NỘI
+    // BỘ (loopback + link-local + RFC1918/fc00::/7 — ingress Render/Railway
+    // nối vào service qua mạng riêng) và dừng ở địa chỉ công khai đầu tiên
+    // = IP khách thật. Nền tảng nào proxy nối từ IP công khai thì set IP đó.
+    TRUST_PROXY: z.string().min(1).default('loopback,linklocal,uniquelocal'),
     // Base URL của web app (P3) — đích redirect success/cancel cho checkout
     // session (P2 W1). Prod PHẢI set domain thật.
     FRONTEND_URL: z.url().default('http://localhost:3000'),
@@ -231,6 +238,9 @@ export const adminEmails: readonly string[] = parseCommaList(env.ADMIN_EMAILS).m
 
 /** TRUSTED_ORIGINS đã parse cho Better Auth. */
 export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIGINS);
+
+/** Luật `trustProxy` của Fastify — chuỗi IP/CIDR/tên dải, xem `TRUST_PROXY`. */
+export const trustProxy: string = env.TRUST_PROXY;
 
 /**
  * Địa chỉ admin ĐẦU TIÊN — dùng làm người nhận (`to`) cho email nội bộ như

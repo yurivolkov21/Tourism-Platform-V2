@@ -12,10 +12,11 @@ async function bootstrap() {
   // `req.rawBody` (Buffer) cho body JSON — verify signature webhook BẮT BUỘC
   // thấy raw bytes (JSON re-serialize sẽ phá HMAC của Stripe/PayPal).
   //
-  // trustProxy: deploy nằm sau reverse proxy của nền tảng (Render/Railway).
-  // Không bật thì `req.ip` là IP của proxy — MỌI client dùng chung một địa
-  // chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài request của một
-  // người. Phải có TRƯỚC khi gắn throttle, không phải sau.
+  // trustProxy (luật ở `bootstrap.ts`, env `TRUST_PROXY`): deploy nằm sau
+  // reverse proxy của nền tảng (Render/Railway). Không bật thì `req.ip` là IP
+  // của proxy — MỌI client dùng chung một địa chỉ, nên rate limit theo IP sẽ
+  // khoá sạch cả site sau vài request của một người. Phải có TRƯỚC khi gắn
+  // throttle, không phải sau.
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, createFastifyAdapter(), {
     rawBody: true,
   });

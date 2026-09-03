@@ -1,19 +1,25 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { trustedOrigins } from './config/env.js';
+import { trustedOrigins, trustProxy } from './config/env.js';
 
 /**
  * Adapter Fastify dùng chung cho `main.ts` VÀ test — một nguồn sự thật.
  *
- * `trustProxy: 1`: deploy nằm sau ĐÚNG MỘT reverse proxy của nền tảng
- * (Render/Railway). Không bật thì `req.ip` là IP của proxy — MỌI client dùng
- * chung một địa chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài
- * request của một người.
+ * `trustProxy`: deploy nằm sau reverse proxy của nền tảng (Render/Railway).
+ * Không bật thì `req.ip` là IP của proxy — MỌI client dùng chung một địa
+ * chỉ, nên rate limit theo IP sẽ khoá sạch cả site sau vài request của một
+ * người.
  *
- * Vì sao `1` chứ KHÔNG `true`: `true` tin toàn bộ chuỗi `X-Forwarded-For` do
- * client gửi, nên `req.ip` lấy entry trái nhất mà kẻ tấn công tự đặt được →
- * throttle chống spam (enquiry/newsletter) bị bypass bằng cách đổi header mỗi
- * request. `1` chỉ tin ĐÚNG một hop (proxy nền tảng), trả về IP client thật mà
- * proxy thấy. Giả định ingress *append* XFF (chuẩn Render/Railway), không overwrite.
+ * Luật là DANH SÁCH ĐỊA CHỈ proxy được tin (`TRUST_PROXY`, mặc định các dải
+ * nội bộ), KHÔNG phải `true` và KHÔNG phải hop-count:
+ * - `true` tin toàn bộ chuỗi `X-Forwarded-For` do client gửi → `req.ip` là
+ *   entry trái nhất mà kẻ tấn công tự đặt được → throttle chống spam bị
+ *   bypass bằng cách đổi header mỗi request.
+ * - `1` (hop-count, dùng tới 02/09) chỉ đếm số hop mà không nhìn địa chỉ:
+ *   fastify 5.12.1 (GHSA-3m5p-2c4r-xxw2) chứng minh guard chống spoof của nó
+ *   luôn đúng với mọi hop ≥ 1, và BỎ HẲN dạng số khỏi option.
+ * Với danh sách địa chỉ, XFF chỉ được tin khi hop đang xét đến TỪ một proxy
+ * trong danh sách; một client nối thẳng từ IP công khai mà tự gửi XFF thì
+ * `req.ip` vẫn là địa chỉ socket của nó (test ở `bootstrap.spec.ts`).
  *
  * Vì sao là factory chứ không hard-code hai nơi: trước đây `main.ts` và
  * file test mỗi bên tự dựng adapter riêng, nên gỡ `trustProxy` khỏi
@@ -22,7 +28,7 @@ import { trustedOrigins } from './config/env.js';
  * chữa tận gốc.
  */
 export function createFastifyAdapter(): FastifyAdapter {
-  return new FastifyAdapter({ trustProxy: 1 });
+  return new FastifyAdapter({ trustProxy });
 }
 
 /**
