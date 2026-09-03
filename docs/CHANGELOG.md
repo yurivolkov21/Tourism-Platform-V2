@@ -8,6 +8,48 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-03 — P4c F10: Subscribers (danh sách nhận tin, unsubscribe + CSV) + vòng vá — KHÉP P4c (nhánh `feat/p4c-subscribers`, 3 commit `7ed7bde..c8a7279`, ~40 file, không migration)
+
+Tính năng cuối P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)
+§3-F10, có mục AMEND): contract `admin.subscribers.list/unsubscribe` +
+`admin.stats.subscribers` (mở rộng `newsletter.ts`), module API
+`modules/newsletter` thêm controller/service admin (controller riêng để không
+thừa kế `@Public()` của đường khách), trang `/subscribers` (tab Active/
+Unsubscribed/All, Select nguồn từ `sources` distinct của chính response, tìm
+email, nút Unsubscribe có `ConfirmWriteDialog`, Export CSV qua route
+`/subscribers/export`), vòng gom trang export nâng lên `lib/export-pages.ts`
+dùng chung với bookings. Nghiệm thu review 8 mũi → 10 findings (8 CONFIRMED ·
+2 PLAUSIBLE), user duyệt vá một mạch (`c8a7279`):
+
+- **Mặc định tab Active ở tầng parse**: bản đầu chỉ đặt mặc định ở href nav,
+  nên `/subscribers` trần (bookmark) rơi vào All và nút Export dựng file gồm cả
+  địa chỉ đã rút consent. Nay URL trần = Active, All viết tường minh
+  `?active=all`, route export dùng chung hàm parse; nav trỏ literal (hết kéo
+  barrel contract vào chunk client chung).
+- **Export**: `list` có `includeSources` (export tắt → không GROUP BY toàn bảng
+  20 lần); `fetchAllPages` phát hiện tập đổi kích thước giữa chừng và trả
+  `changed` → route 409 "xuất lại" thay vì giao file thiếu hàng cũ nhất im
+  lặng; `lib/export-route.ts` gom gác quyền 502→401→403 + audit có `outcome`
+  (cả 413/409/502) + response CSV cho ba route (reports trước đó không audit);
+  copy nút Export nhắc cả ô tìm email; `ExportButton` sang kit.
+- **Dùng chung**: `newsletter/unsubscribe-claim.ts` một luật claim cho đường
+  khách lẫn admin; `ToolbarSelect` có `toFreeValue`/`fromFreeValue` để giá trị
+  tự do từ DB không đụng sentinel "All" (áp cả Select type payment events).
+- **Stats** một câu `COUNT(*) FILTER` cho năm con số thay 5 count rời; mục
+  Index ghi `subscribers` (bảng không index — ứng viên đầu tiên chạm ngưỡng);
+  caption "Active now" nói rõ đếm toàn danh sách.
+- **Dọn**: bỏ spread chết ở `subscribersHref`, bỏ union đổi tên `bookings`
+  (route đọc `items` như subscribers), `EXPORT_MAX_ROWS` một nhà, memo cột theo
+  giá trị nguyên thuỷ, gộp int test trùng, thêm spec `subscribers-export-link`.
+- Chấp nhận có ghi chú: card "Unsubscribed 28d" đếm trên trạng thái (không
+  bảng audit consent — P4c không thêm migration).
+
+**P4c khép 03/09**: bốn vùng F7–F10 đủ, 40 findings vá, hai migration
+(`outbox_status_skipped`, `enquiry_status_events`) đã deploy Supabase.
+
+Tests after: 1417 web · 300 api · 316 api-int · 186 contract · 22 ui ·
+10 tokens · 2 i18n · 598 admin.
+
 ## 2026-09-03 — Vá 8 alert Dependabot mới (4 high fast-uri · 4 moderate fastify) + 2 `pnpm audit` thấy thêm (nhánh `fix/deps-dependabot-0903`, ff-only, 1 commit)
 
 Gốc rễ: cả 8 advisory được công bố **02/09 15:13–15:44 UTC — SAU** đợt vá cùng
