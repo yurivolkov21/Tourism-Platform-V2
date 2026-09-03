@@ -1,0 +1,29 @@
+name: Audit
+
+# `pnpm audit` theo LỊCH, tách khỏi gate của main (03/09/2026): CVE mới được
+# công bố bất kể repo có đổi gì hay không — ngày 02/09 có 8 alert nổ SAU đợt vá
+# cùng ngày. Đưa audit vào `gate` là làm main đỏ vì việc không phải của commit
+# vừa push; để nó ở workflow riêng thì tab Actions đỏ đúng chỗ, còn gate vẫn
+# nói đúng chuyện code. Dependabot security updates đã bật nhưng không mở được
+# PR cho lock pnpm có override, nên đây là lưới thay thế.
+on:
+  schedule:
+    # 09:00 thứ Hai giờ VN (02:00 UTC) — đầu tuần làm việc, trước khi bắt đầu
+    # feature mới.
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4 # đọc packageManager từ package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Đỏ từ moderate trở lên — cùng ngưỡng Dependabot dùng để mở alert. Không
+      # `--prod`: dev-tooling (vitest/jsdom/shadcn CLI) cũng từng là nguồn alert.
+      - run: pnpm audit --audit-level=moderate
