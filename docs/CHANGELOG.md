@@ -8,6 +8,49 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-03 — P4c F9: Enquiries + notes (CRM lead, hai hành vi ghi có audit) + vòng vá (nhánh `feat/p4c-enquiries`, 3 commit `f59499f..a8a3894`, ~45 file, migration `20260903013002_enquiry_status_events` đã deploy Supabase)
+
+Tính năng thứ ba P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)
+§3-F9, có mục AMEND): bảng audit `enquiry_status_events` (append-only,
+`adminId`), contract `admin.enquiries.list/byId/setStatus/addNote` +
+`admin.stats.enquiries`, module API `modules/enquiries` thêm controller/service
+admin (`setStatus` = `FOR UPDATE` + update + insert event trong một transaction,
+no-op khi cùng trạng thái), trang `/enquiries` (tab năm trạng thái, tìm
+tên/email, chip `tourId`) và `/enquiries/[id]` (thẻ lead, message nguyên văn,
+đổi trạng thái qua `ConfirmWriteDialog` nêu from → to, thread note append-only,
+lịch sử trạng thái), stat card New/Won/Open. Nghiệm thu review 8 mũi → 10
+findings (7 CONFIRMED · 3 PLAUSIBLE), user duyệt vá một mạch (`a8a3894`):
+
+- **Tên tài khoản rỗng**: `admin.name ?? admin.email` cho `''` lọt vào
+  `author_name` trong khi contract `min(1)` — một note là `byId` 500 vĩnh
+  viễn (thread không xoá được). Nay `accountDisplayName` (`trim() || email`)
+  dùng cho cả note lẫn audit; int test có ca admin `name = ''`.
+- **Stats cache lệch bảng**: vùng cache 60s với lý do "chỉ admin bấm nút mới
+  đổi số", nhưng form "Inquire Now" công khai ghi lead NEW ngoài mọi
+  `updateTag`. Nay không cache (cùng luật outbox/payment events), hai action bỏ
+  `updateTag`; JSDoc ghi luật chung: cache theo tag chỉ khi mọi kẻ ghi bảng là
+  server action admin.
+- **Hai lệnh ghi**: `setStatus` trả `{ id, name, status, changed }` (no-op có
+  toast riêng, không log giả, transaction không đọc lại detail trong lúc cầm
+  lock); `addNote` trả `{ id }` — bản đầu đọc lại ngoài transaction nên một
+  `NOT_FOUND` ở bước đọc biến note đã lưu thành "not saved". Nhánh catch của
+  note-form nay refresh như GENERIC (tránh note đúp).
+- **Đường về + chip tour**: link chi tiết mang `?back=` (validate chỉ nhận
+  `/enquiries…`) để "Back to enquiries" về đúng tab/trang/ô tìm; chip tour là
+  chữ cố định thay vì tên suy từ hàng đầu của trang.
+- **Won 28d đếm lead** (`COUNT(DISTINCT enquiry_id)`), không đếm lượt bấm;
+  `previous` = 0 trong 56 ngày đầu vì bảng audit mới.
+- **Dọn field/dùng chung**: `EnquiryRow` bỏ `phone` (PII, chỉ detail) và
+  `tourSlug`; hai `select` sống cạnh mapper với kiểu `Prisma.EnquiryGetPayload`;
+  `apps/api/src/lib/like.ts` `escapeLike` cho mọi `contains` (Prisma không escape
+  `%`/`_` — áp cả bookings và outbox), `apps/api/src/lib/calendar-date.ts` gộp
+  bốn bản, kit `components/kit/timeline.tsx` (lịch sử huỷ booking + hai timeline
+  enquiries), `orphanPageHref` ở `table-query` thay sáu bản chép, caption "Open
+  now" dựng từ `OPEN_ENQUIRY_STATUSES`.
+
+Tests after: 1417 web · 292 api · 295 api-int · 168 contract · 22 ui ·
+10 tokens · 2 i18n · 539 admin.
+
 ## 2026-09-02 — Vá 3 alert Dependabot (3 high, đều bắc cầu) (nhánh `fix/deps-dependabot-0902`, ff-only, 1 commit)
 
 Hai override SCOPED thêm vào `pnpm-workspace.yaml` theo nếp 04/08 (chỉ áp
