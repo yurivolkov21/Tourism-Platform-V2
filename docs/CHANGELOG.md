@@ -8,6 +8,92 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Ân hạn 24 giờ, và gỡ BỐN lời hứa "48 giờ" chỏi chính sách (nhánh `fix/p4c-backend-logic`, 3 commit, ~15 file, KHÔNG migration)
+
+Đợt này sinh ra từ một câu hỏi của user lúc nghiệm thu, rồi lộ thêm một lỗ
+nặng hơn khi rà lại **toàn bộ** cam kết với khách (user yêu cầu docs sweep +
+đọc lại điều khoản trước khi làm tiếp).
+
+### Lỗ nặng nhất: site hứa "miễn phí huỷ trước 48 GIỜ" ở bốn nơi
+
+| Nơi | Câu |
+| --- | --- |
+| `top-bar.tsx` — chạy trên **mọi trang** | *"Free cancellation up to 48 hours before departure"* |
+| `about-values.tsx` | *"Cancel up to 48 hours before departure for a full refund — no forms, no phone queue"* |
+| `about-cta-video.tsx` | *"Free cancellation up to 48h"* |
+| `mocks/faq.ts` | *"…for a full refund… Inside 48 hours we rebook you to a later date instead"* |
+
+Chính sách nói **dưới 7 ngày = 0%**. 48 giờ = 2 ngày. Thanh trên cùng hứa hoàn
+**100%** ở đúng cái mốc chính sách trả **0%** — và nếu khách khiếu nại, một câu
+hiển thị trên mọi trang sẽ được đọc là cam kết.
+
+FAQ còn hứa thêm *"we rebook you to a later date"* — **luồng đổi ngày KHÔNG hề
+tồn tại**. Hai chỗ nói *"no forms"* trong khi huỷ CÓ form bắt nhập lý do và CÓ
+xét duyệt tay.
+
+Bốn câu ấy là khẩu hiệu viết TRƯỚC khi có bất kỳ chính sách nào — nên đổi mô
+hình hoàn tiền cũng không chữa được, phải sửa chính chúng. Nay không câu nào
+mang con số giờ, đúng bài học `trust-strip.tsx` đã học từ trước ("một con số
+chung là nói sai" — đo 30 tour thấy mốc khác nhau). Một component đã được sửa
+từ lâu, bốn cái còn lại thì không, và không ai biết cho tới lượt rà này.
+
+### Bậc 25% đang VÔ HÌNH ở checkout
+
+`computeCancellationAssurance` hardcode `30` và `15`, chỉ ba nhánh. Dải 25% mới
+không lọt qua được: khách đặt tour còn 10 ngày đọc *"This departure is close"*
+trong khi chính sách nói rõ họ được hoàn 25%. Nay đọc thẳng từ
+`REFUND_POLICY_TIERS`, và nhánh `closeWindow` chỉ còn đúng nghĩa của nó — bậc
+0%, thật sự không hoàn.
+
+### Ân hạn 24 giờ sau thanh toán
+
+User phát hiện: **người đặt muộn không bao giờ với tới bậc 100%.**
+
+| Đặt | Khởi hành | Huỷ | Hoàn |
+| --- | --- | --- | --- |
+| 1/7 | 19/9 | 2/7 | **100%** |
+| 4/9 | 19/9 | 5/9 | **50%** |
+
+Cùng một hành vi — đổi ý ngay hôm sau — khác nhau 50 điểm, và khách không làm
+gì sai. Gốc rễ: bảng bậc chỉ đo *còn bao xa tới khởi hành*, không đo *đã giữ
+chỗ bao lâu* — mà người giữ chỗ mười phút rồi trả lại không gây tổn thất cho ai.
+
+Luật thêm (ADR-0030 §3c): huỷ trong **24 giờ** kể từ `paidAt` → **100%**, KHÔNG
+chặn theo ngày khởi hành. `refundPercentForRequest` thành **điểm vào duy nhất**
+mà cả khách lẫn admin dùng. Dialog xin huỷ nói rõ vì sao được 100% — không có
+câu ấy thì con số trông như may mắn và khách không biết cửa sổ sắp hết.
+
+Bất biến có test quét mọi tổ hợp: **ân hạn chỉ có lợi**, không bao giờ hạ kết
+quả so với bảng bậc thuần.
+
+### Đã cân nhắc rồi loại: chuyển hẳn sang neo theo lúc thanh toán
+
+User đề xuất bỏ mô hình neo-khởi-hành. Loại, vì thử trên một ca thật: đặt 1/1,
+khởi hành 1/12, huỷ 1/6 → quá 24 giờ → **0%**, trong khi mô hình hiện tại cho
+100% vì còn sáu tháng. Khách báo sớm thừa thãi thời gian bán lại chỗ mà không
+được đồng nào — mô hình mới **khắc nghiệt hơn**, chỉ là với nhóm khách khác.
+
+Hai mô hình đo hai thứ: neo khởi hành đo **tổn thất thật của mình**, neo thanh
+toán đo **thời gian khách giữ chỗ** — thứ không liên quan tới tổn thất. Ân hạn
+vì thế là lớp phủ chỉ-có-lợi, không phải vật thay thế.
+
+*(Đề xuất kèm theo của user — "trong 48 giờ hoàn 100%, trong 24 giờ hoàn 75%"
+— không chạy được: 24 giờ nằm TRONG 48 giờ, nên huỷ ở giờ thứ 10 thoả cả hai
+vế. Cửa sổ hẹp hơn phải rộng rãi hơn.)*
+
+### Còn treo
+
+**Chốt chặn đặt chỗ 3 ngày** — user chốt tách đợt riêng. Ý: không cho đặt khi
+còn dưới 3 ngày tới khởi hành, khách muốn đi gấp thì rẽ vào form "Inquire Now"
+(phễu đã có sẵn, vùng `/enquiries` bên admin). Nó **chặn từ đầu** thay vì đền
+bù về sau, và cần ADR riêng vì đổi luật ĐẶT CHỖ chứ không phải luật hoàn tiền.
+
+**Đợt B** — API tính tiền theo bậc + stepper nhiều bước cho luồng approve
+(ADR-0029 + ADR-0030 đã chốt, chưa thi công).
+
+Tests after: 1418 web · 311 api · 329 api-int · 217 contract · 733 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 9: 7 ân hạn, 2 `computeCancellationAssurance`.
+
 ## 2026-09-04 — Chính sách hoàn tiền thành bậc CƯỠNG CHẾ: một nguồn cho cả văn bản công khai lẫn phép tính (nhánh `fix/p4c-backend-logic`, 2 commit `f3d0da5..ad1c43f`, ~20 file, KHÔNG migration)
 
 Đợt **A** của [ADR-0030](adr/0030-refund-policy-tiers.md); phần API tính tiền +
