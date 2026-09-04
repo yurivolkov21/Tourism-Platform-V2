@@ -191,25 +191,33 @@ describe('computeCancellationAssurance', () => {
   it('hôm nay đúng 30 ngày trước departure → full, cutoff = start - 30d', () => {
     // 2026-08-31 → 2026-09-30 = đúng 30 ngày.
     const result = computeCancellationAssurance(START, new Date('2026-08-31T12:00:00.000Z'));
-    expect(result).toEqual({ kind: 'full', cutoffDate: '2026-08-31' });
+    expect(result).toEqual({ kind: 'full', percent: 100, cutoffDate: '2026-08-31' });
   });
 
-  it('hôm nay 29 ngày trước departure (vừa lọt mốc) → partial, cutoff = start - 15d', () => {
+  it('hôm nay 29 ngày trước departure (vừa lọt mốc) → partial 50%, cutoff = start - 15d', () => {
     // 2026-09-01 → 2026-09-30 = 29 ngày, dưới 30 nên rơi vào nhánh 50%.
     const result = computeCancellationAssurance(START, new Date('2026-09-01T12:00:00.000Z'));
-    expect(result).toEqual({ kind: 'partial', cutoffDate: '2026-09-15' });
+    expect(result).toEqual({ kind: 'partial', percent: 50, cutoffDate: '2026-09-15' });
   });
 
-  it('hôm nay đúng 15 ngày trước departure → partial (biên dưới của khoảng 15–29)', () => {
+  it('hôm nay đúng 15 ngày trước departure → partial 50% (biên dưới của khoảng 15–29)', () => {
     // 2026-09-15 → 2026-09-30 = đúng 15 ngày.
     const result = computeCancellationAssurance(START, new Date('2026-09-15T12:00:00.000Z'));
-    expect(result).toEqual({ kind: 'partial', cutoffDate: '2026-09-15' });
+    expect(result).toEqual({ kind: 'partial', percent: 50, cutoffDate: '2026-09-15' });
   });
 
-  it('hôm nay 14 ngày trước departure (vừa lọt mốc) → closeWindow, không cutoffDate', () => {
-    // 2026-09-16 → 2026-09-30 = 14 ngày, dưới 15 nên không còn hứa 50%.
+  it('NGÀY 14 nay có bậc riêng 25% — bản cũ đẩy nó vào closeWindow', () => {
+    // Trước ADR-0030 hàm này hardcode 30/15 nên dải 7–14 hoàn toàn vô hình:
+    // khách còn 14 ngày đọc "This departure is close" trong khi chính sách nói
+    // rõ họ được hoàn 25%.
     const result = computeCancellationAssurance(START, new Date('2026-09-16T12:00:00.000Z'));
-    expect(result).toEqual({ kind: 'closeWindow', cutoffDate: null });
+    expect(result).toEqual({ kind: 'partial', percent: 25, cutoffDate: '2026-09-23' });
+  });
+
+  it('hôm nay 6 ngày trước departure → closeWindow, KHÔNG cutoffDate', () => {
+    // Bậc 0% mới thật sự là "không hứa gì" — nhánh này nay đúng nghĩa của nó.
+    const result = computeCancellationAssurance(START, new Date('2026-09-24T12:00:00.000Z'));
+    expect(result).toEqual({ kind: 'closeWindow', percent: 0, cutoffDate: null });
   });
 
   it('departure đã qua (diff âm) → vẫn closeWindow, không ném lỗi', () => {

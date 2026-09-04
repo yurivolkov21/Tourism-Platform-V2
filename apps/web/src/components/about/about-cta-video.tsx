@@ -14,7 +14,8 @@ import { SlotVideo } from '@/components/slot-video';
 const MARQUEE_ITEMS = [
   'Small groups',
   'Local guides only',
-  'Free cancellation up to 48h',
+  // Vá 04/09 cùng lý do `top-bar.tsx`: không mang con số giờ nào.
+  'Free cancellation on most tours',
   'Three regions, one country',
   'No scripts, no rush',
 ];

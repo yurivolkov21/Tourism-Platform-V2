@@ -11,8 +11,12 @@ export const FAQ_ITEMS: MockFaqItem[] = [
   },
   {
     question: 'What if I need to cancel?',
+    // Vá 04/09 — câu cũ hứa HAI thứ site không làm được: hoàn 100% ở mốc 48
+    // giờ (chính sách nói dưới 7 ngày là 0%) và "rebook you to a later date"
+    // (KHÔNG có luồng đổi ngày nào tồn tại). Nay nói đúng thứ có thật, và trỏ
+    // về bảng bậc thay vì nhắc lại một con số sẽ trôi lệch.
     answer:
-      'Cancel up to 48 hours before departure for a full refund — no forms, no phone queue. Inside 48 hours we rebook you to a later date instead.',
+      'Request it from your account and we handle it — no phone queue. How much you get back follows our published refund schedule: the earlier you tell us, the more comes back, and anything cancelled within 24 hours of paying is refunded in full. Want to move dates instead? Contact us and we will see what the tour allows.',
   },
   {
     question: 'How big are the groups, really?',

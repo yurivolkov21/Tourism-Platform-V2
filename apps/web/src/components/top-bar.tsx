@@ -16,7 +16,11 @@ const MESSAGES = [
   'Vietnam’s slow-travel journeys, crafted end to end by locals',
   'Autumn sale — 20% off selected Ha Long departures this week',
   'Small groups, always led by local guides',
-  'Free cancellation up to 48 hours before departure',
+  // KHÔNG ghi "48 hours" (vá 04/09): chính sách thật nói dưới 7 ngày là KHÔNG
+  // hoàn đồng nào, nên câu cũ hứa 100% ở đúng cái mốc chính sách trả 0% — và
+  // nó chạy trên MỌI trang. Cùng bài học `trust-strip.tsx` đã học: mốc huỷ
+  // khác nhau theo từng tour, một con số chung là nói sai.
+  'Free cancellation on most tours — see the refund schedule',
   'New route: Mekong Delta Boats — two days on the river',
 ];
 

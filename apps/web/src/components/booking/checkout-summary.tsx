@@ -1,6 +1,7 @@
 'use client';
 
 import type { MediaItem } from '@tourism/contract';
+import { REFUND_POLICY_TIERS } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { motion } from 'motion/react';
@@ -23,12 +24,14 @@ export interface CheckoutSummaryTour {
   ratingCount: number;
 }
 
-/** Ba mức trấn an hủy/hoàn tiền — đối chiếu ĐÚNG mốc thật của
-    `legal/cancellation.ts` (§ "Refund guidelines"), không bịa số khác. */
+/** Ba mức trấn an hủy/hoàn tiền, suy từ `REFUND_POLICY_TIERS` (ADR-0030) —
+    một nguồn với văn bản công khai, không bịa số khác. */
 export type CancellationAssuranceKind = 'full' | 'partial' | 'closeWindow';
 
 export interface CancellationAssurance {
   kind: CancellationAssuranceKind;
+  /** Phần trăm của bậc đang áp — câu chữ lấy số từ đây, không viết cứng. */
+  percent: number;
   /** Ngày cắt (YYYY-MM-DD) cho `full`/`partial`; `null` ở `closeWindow` —
    *  không có mốc nào để nói, câu closeWindow không mang ngày. */
   cutoffDate: string | null;
@@ -59,12 +62,13 @@ function subtractDays(dateStr: string, days: number): string {
  * THUẦN, `now` truyền vào được để test không phụ thuộc đồng hồ thật (cùng
  * khuôn `pendingExpiry` ở `lib/checkout.ts`).
  *
- * Ba nhánh đúng "Refund guidelines" của `legal/cancellation.ts`:
- * - `diffDays >= 30` → `full`, cắt ở `startDate − 30 ngày`.
- * - `diffDays >= 15` → `partial` (khoảng 15–29 ngày của policy), cắt ở
- *   `startDate − 15 ngày`.
- * - còn lại (< 15 ngày, gồm cả mốc 14 ngày mà policy để lửng giữa "15–29" và
- *   "fewer than 14") → `closeWindow` — KHÔNG hứa số, an toàn hơn là đoán.
+ * Từ ADR-0030 các mốc ĐỌC TỪ `REFUND_POLICY_TIERS` chứ không viết cứng. Bản
+ * cũ hardcode 30 và 15, nên khi bảng bậc mọc thêm dải **25% ở 7–14 ngày** thì
+ * dải ấy hoàn toàn vô hình ở đây: khách đặt tour còn 10 ngày đọc "This
+ * departure is close" trong khi chính sách nói rõ họ được hoàn 25%.
+ *
+ * Nhánh cuối (`closeWindow`) nay chỉ còn đúng nghĩa của nó: rơi vào bậc 0%,
+ * tức thật sự không hoàn — không phải "chúng tôi không biết nói gì".
  *
  * `now` lấy theo giờ ĐỊA PHƯƠNG của khách (`getFullYear/Month/Date`, không
  * phải `getUTCFullYear`) — đó là ngày lịch khách đang thấy trên máy mình;
@@ -81,9 +85,15 @@ export function computeCancellationAssurance(
   const todayDay = utcDayIndex(now.getFullYear(), now.getMonth() + 1, now.getDate());
   const diffDays = startDay - todayDay;
 
-  if (diffDays >= 30) return { kind: 'full', cutoffDate: subtractDays(startDate, 30) };
-  if (diffDays >= 15) return { kind: 'partial', cutoffDate: subtractDays(startDate, 15) };
-  return { kind: 'closeWindow', cutoffDate: null };
+  // Bậc RỘNG RÃI NHẤT mà khoảng cách này còn với tới — cùng phép tra của
+  // `refundPercentForDays`, chỉ khác là ở đây còn cần biết mốc CẮT để in ngày.
+  const tier = REFUND_POLICY_TIERS.find((entry) => diffDays >= entry.minDaysBefore);
+  if (!tier || tier.percent === 0) return { kind: 'closeWindow', percent: 0, cutoffDate: null };
+  return {
+    kind: tier.percent === 100 ? 'full' : 'partial',
+    percent: tier.percent,
+    cutoffDate: subtractDays(startDate, tier.minDaysBefore),
+  };
 }
 
 /** Dòng trấn an dưới CTA — lắp câu từ `messages` + link `cancellation policy`
@@ -97,7 +107,7 @@ export function CancellationAssuranceLine({ departure }: { departure: DepartureV
     assurance.kind === 'full' && assurance.cutoffDate !== null
       ? t.full(formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
       : assurance.kind === 'partial' && assurance.cutoffDate !== null
-        ? t.partial(formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
+        ? t.partial(assurance.percent, formatDateRange(assurance.cutoffDate, assurance.cutoffDate))
         : t.closeWindow;
 
   return (

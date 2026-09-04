@@ -47,9 +47,12 @@ const VALUES = [
   {
     icon: CalendarCheckIcon,
     title: 'Free cancellation',
-    tag: '48 hours',
+    // Vá 04/09: "48 hours" hứa hoàn 100% ở mốc mà chính sách trả 0%, và "no
+    // forms, no phone queue" nói sai luôn cả luồng thật — huỷ CÓ form bắt nhập
+    // lý do và CÓ đội ngũ xem xét. Nay nói đúng thứ mình làm được.
+    tag: 'Clear schedule',
     description:
-      'Plans change. Cancel up to 48 hours before departure for a full refund — no forms, no phone queue.',
+      'Plans change. Cancel from your account and get back what our published refund schedule says — no phone queue, no haggling.',
   },
   {
     icon: BadgeDollarSignIcon,

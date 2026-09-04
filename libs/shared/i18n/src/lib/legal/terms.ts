@@ -49,7 +49,7 @@ export const termsDoc: LegalDoc = {
       heading: 'Cancellations and refunds by you',
       paragraphs: [
         'If you need to cancel, request it from your account (open the booking under “My bookings” and choose “Request cancellation”) or contact our team. Our team reviews each request and arranges any refund to your original payment method.',
-        `${refundTierSentence()} We count whole calendar days from the date you send the request to your departure date. Where a tour advertises free cancellation up to a set number of days before departure, that promise applies instead and can only improve on this schedule. Some payments — non-refundable deposits or third-party fees — may sit outside it; the full details are in our Cancellation & Refund Policy.`,
+        `${refundTierSentence()} Cancel within 24 hours of paying and you get a full refund regardless of that schedule. Otherwise we count whole calendar days from the date you send the request to your departure date. Where a tour advertises free cancellation up to a set number of days before departure, that promise applies instead and can only improve on this schedule. Some payments — non-refundable deposits or third-party fees — may sit outside it; the full details are in our Cancellation & Refund Policy.`,
       ],
     },
     {

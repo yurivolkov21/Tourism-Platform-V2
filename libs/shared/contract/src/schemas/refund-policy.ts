@@ -124,3 +124,47 @@ export function daysBeforeDeparture(requestedAt: Date, departureStartDate: strin
   const to = Date.parse(`${departureStartDate}T00:00:00.000Z`);
   return Math.round((to - from) / DAY_MS);
 }
+
+/**
+ * Cửa sổ ÂN HẠN sau khi thanh toán (ADR-0030 §3c) — huỷ trong ngần này giờ kể
+ * từ `paidAt` thì hoàn 100%, bất kể còn bao nhiêu ngày tới khởi hành.
+ *
+ * Chữa lỗ "người đặt muộn không bao giờ với tới bậc 100%": bảng bậc chỉ đo còn
+ * bao xa tới khởi hành, không đo khách đã giữ chỗ bao lâu — mà người giữ chỗ
+ * mười phút rồi trả lại không gây tổn thất cho ai. Trong 24 giờ đầu chưa có
+ * chi phí nhà cung cấp nào được cam kết, và đó chính là lý do bảng bậc tồn tại.
+ */
+export const REFUND_GRACE_HOURS = 24;
+
+/** Mọi thứ cần để quyết phần trăm hoàn của MỘT yêu cầu huỷ. */
+export interface RefundRequestContext {
+  /** Lúc khách GỬI yêu cầu — không phải lúc admin quyết (xem `daysBeforeDeparture`). */
+  requestedAt: Date;
+  /** ISO; `null` = booking chưa trả tiền, nên không có ân hạn (không có gì để hoàn). */
+  paidAt: string | null;
+  departureStartDate: string;
+  freeCancellationDays: number | null;
+}
+
+/** Yêu cầu có nằm trong cửa sổ ân hạn không. Đúng mốc 24 giờ vẫn TÍNH VÀO. */
+export function isWithinGracePeriod(paidAt: string | null, requestedAt: Date): boolean {
+  if (paidAt === null) return false;
+  const elapsed = requestedAt.getTime() - Date.parse(paidAt);
+  // `>= 0` chặn ca đồng hồ lệch cho ra khoảng âm rồi lọt cửa vô tình.
+  return elapsed >= 0 && elapsed <= REFUND_GRACE_HOURS * 3_600_000;
+}
+
+/**
+ * Phần trăm hoàn của một yêu cầu huỷ — ĐIỂM VÀO DUY NHẤT mà cả khách lẫn admin
+ * dùng, nên hai bên không thể nhìn hai con số khác nhau.
+ *
+ * Ân hạn là LỚP PHỦ chỉ có lợi: nó trả về 100, tức trần của bảng bậc, nên
+ * không bao giờ hạ kết quả xuống. Bất biến ấy có test quét mọi tổ hợp.
+ */
+export function refundPercentForRequest(context: RefundRequestContext): number {
+  if (isWithinGracePeriod(context.paidAt, context.requestedAt)) return 100;
+  return refundPercentForBooking(
+    daysBeforeDeparture(context.requestedAt, context.departureStartDate),
+    context.freeCancellationDays,
+  );
+}

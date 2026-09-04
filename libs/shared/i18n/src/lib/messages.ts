@@ -541,6 +541,10 @@ export const messages = {
       /** Đã hoàn một phần từ trước thì con số trên là phần CÒN LẠI. */
       refundEstimateAlreadyRefunded: (amount: string) =>
         `${amount} has already been refunded on this booking, and is taken into account above.`,
+      /** Đang trong cửa sổ ân hạn — nói rõ vì sao được 100%, kẻo con số trông
+       *  như may mắn và khách không biết cửa sổ ấy sắp hết. */
+      refundEstimateGrace:
+        'You are still within 24 hours of paying, so this cancellation is refunded in full.',
       refundEstimateLink: 'See the full refund schedule',
       requestTitle: 'Need to cancel?',
       requestBody:
@@ -591,7 +595,10 @@ export const messages = {
     cancellationAssurance: {
       policyLinkLabel: 'cancellation policy',
       full: (date: string) => `Full refund available until ${date} — see our`,
-      partial: (date: string) => `50% refund available until ${date} — see our`,
+      // % lấy từ bậc đang áp (ADR-0030) chứ không viết cứng 50: bảng bậc nay
+      // có cả dải 25%, và bản cũ hardcode nên dải ấy vô hình ở checkout.
+      partial: (percent: number, date: string) =>
+        `${percent}% refund available until ${date} — see our`,
       closeWindow: 'This departure is close — review our',
       closeWindowSuffix: 'before booking.',
     },

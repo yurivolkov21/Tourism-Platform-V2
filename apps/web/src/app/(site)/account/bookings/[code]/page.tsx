@@ -251,6 +251,7 @@ export default async function AccountBookingDetailPage({
               // dùng, nên hai bên không thể nói hai con số khác nhau.
               refund={{
                 departureStartDate: booking.departureStartDate,
+                paidAt: booking.paidAt,
                 freeCancellationDays: booking.freeCancellationDays,
                 totalAmount: booking.totalAmount,
                 refundedTotal: booking.refundedTotal,

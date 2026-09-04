@@ -1,7 +1,11 @@
 'use client';
 
 import { ORPCError } from '@orpc/client';
-import { daysBeforeDeparture, refundPercentForBooking } from '@tourism/contract';
+import {
+  daysBeforeDeparture,
+  isWithinGracePeriod,
+  refundPercentForRequest,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   AlertDialog,
@@ -424,8 +428,18 @@ export function BookingActions({
  */
 function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
   const t = messages.booking.detail;
-  const days = daysBeforeDeparture(new Date(), booking.departureStartDate);
-  const percent = refundPercentForBooking(days, booking.freeCancellationDays);
+  const now = new Date();
+  const days = daysBeforeDeparture(now, booking.departureStartDate);
+  // ĐIỂM VÀO DUY NHẤT, dùng chung với màn quyết định của admin — đã gồm cả cửa
+  // sổ ân hạn 24h (ADR-0030 §3c), nên khách đặt sát ngày rồi đổi ý vẫn thấy
+  // 100% chứ không phải một con số thấp rồi bất ngờ ở bước sau.
+  const percent = refundPercentForRequest({
+    requestedAt: now,
+    paidAt: booking.paidAt,
+    departureStartDate: booking.departureStartDate,
+    freeCancellationDays: booking.freeCancellationDays,
+  });
+  const inGrace = isWithinGracePeriod(booking.paidAt, now);
   // Bậc tính trên TỔNG rồi trừ phần đã hoàn — không thì hoàn đúp (ADR-0030 §7).
   const gross = (Number(booking.totalAmount) * percent) / 100;
   const already = Number(booking.refundedTotal);
@@ -435,6 +449,9 @@ function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
     <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
       <p className="font-medium text-foreground">{t.refundEstimateHeading}</p>
       <p className="text-muted-foreground">{t.refundEstimateDays(days)}</p>
+      {/* Nói RÕ vì sao được 100%: không có câu này thì con số trông như may
+          mắn, và khách không biết mình đang trong một cửa sổ sắp hết. */}
+      {inGrace ? <p className="text-muted-foreground">{t.refundEstimateGrace}</p> : null}
       <p className="text-muted-foreground">
         {t.refundEstimateAmount(percent, formatMoney(net.toFixed(2), booking.currency))}
       </p>
@@ -456,6 +473,8 @@ function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
 /** Phần booking mà ước tính cần — cắt đúng chừng này, không nhận cả entity. */
 export interface RefundEstimateInput {
   departureStartDate: string;
+  /** ISO; `null` = chưa trả tiền, nên không có ân hạn. */
+  paidAt: string | null;
   freeCancellationDays: number | null;
   totalAmount: string;
   refundedTotal: string;

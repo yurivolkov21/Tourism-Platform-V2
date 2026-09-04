@@ -50,6 +50,13 @@ export const cancellationDoc: LegalDoc = {
       ],
     },
     {
+      heading: 'Changed your mind? The first 24 hours are free',
+      paragraphs: [
+        'If you cancel within 24 hours of paying, you get a full refund — whatever the schedule above would otherwise say, and however close your departure is.',
+        'This exists because the schedule measures one thing only: how close your departure is, which is what determines the costs we have already committed to guides, hotels and transport. It does not measure how long you have held the booking — and someone who books and changes their mind the same evening has cost us nothing. Without this window, booking a tour that leaves in two weeks would mean you could never get a full refund, no matter how quickly you told us.',
+      ],
+    },
+    {
       heading: 'How we count the days',
       paragraphs: [
         'We count whole calendar days between the date you send your cancellation request and your departure date. The time of day does not matter — a request sent late in the evening counts the same as one sent that morning.',
