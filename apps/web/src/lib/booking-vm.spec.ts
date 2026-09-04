@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
-import { bookingView, type CancellationView, toCancellationView } from './booking-vm';
+import {
+  bookingView,
+  type CancellationView,
+  refundSummary,
+  toCancellationView,
+} from './booking-vm';
 
 describe('bookingView', () => {
   it('PENDING → warning + [payNow, cancelPending]', () => {
@@ -87,5 +92,65 @@ describe('toCancellationView', () => {
 
   it('REFUNDED (không thể xảy ra trên PAID theo booking-states.md, phòng thủ) → undefined', () => {
     expect(toCancellationView('REFUNDED')).toBeUndefined();
+  });
+});
+
+/**
+ * Dòng tiền trên trang chi tiết booking của khách. Tới 04/09 trang ấy KHÔNG hề
+ * nói số tiền đã hoàn — sau một lần duyệt huỷ hoàn một phần, khách chỉ thấy
+ * chữ "Cancelled", còn con số nằm trong hộp mail.
+ */
+describe('refundSummary', () => {
+  it('chưa từng trả tiền → KHÔNG kể gì, kể cả khi đã huỷ', () => {
+    // PENDING hết hạn hay khách tự huỷ trước khi trả là "chưa bao giờ có giao
+    // dịch", không phải "hoàn 0 đồng" — nói về hoàn tiền ở đây là bịa ra một
+    // giao dịch chưa từng có.
+    expect(refundSummary(makeBooking({ status: 'CANCELLED', paidAt: null }))).toBeNull();
+  });
+
+  it('đã trả tiền, chưa hoàn gì, chưa huỷ → KHÔNG kể gì', () => {
+    expect(refundSummary(makeBooking({ status: 'PAID', refundedTotal: '0.00' }))).toBeNull();
+  });
+
+  it('huỷ mà KHÔNG hoàn đồng nào → vẫn phải kể (bậc 0% ở ca huỷ sát ngày)', () => {
+    // Im lặng thì khách tự đoán rồi ngồi đợi một khoản không bao giờ tới —
+    // cùng lý do với câu tương ứng trong mail duyệt huỷ.
+    expect(refundSummary(makeBooking({ status: 'CANCELLED', refundedTotal: '0.00' }))).toEqual({
+      kind: 'none',
+    });
+  });
+
+  it('hoàn một phần → mang CẢ số đã hoàn lẫn tổng', () => {
+    // Chỉ in số đã hoàn thì khách dễ tưởng đó là toàn bộ.
+    const summary = refundSummary(
+      makeBooking({ status: 'CANCELLED', totalAmount: '29.00', refundedTotal: '10.00' }),
+    );
+
+    expect(summary).toEqual({ kind: 'partial', amount: '10.00', total: '29.00' });
+  });
+
+  it('hoàn đủ → `full`, không phải `partial`', () => {
+    expect(
+      refundSummary(
+        makeBooking({ status: 'REFUNDED', totalAmount: '29.00', refundedTotal: '29.00' }),
+      ),
+    ).toEqual({ kind: 'full', amount: '29.00' });
+  });
+
+  it("'0' và '0.00' là cùng một số tiền — so bằng số, không bằng chuỗi", () => {
+    // Sổ rỗng trả '0', API trả '0.00'; cả hai đều xuất hiện thật.
+    expect(refundSummary(makeBooking({ status: 'CANCELLED', refundedTotal: '0' }))).toEqual({
+      kind: 'none',
+    });
+  });
+
+  it('lẻ cent vượt tổng vẫn là `full`, không rơi xuống `partial`', () => {
+    // Trần thật do trigger DB canh; một ca làm tròn không được biến "đã hoàn
+    // đủ" thành "hoàn một phần" trên mặt khách.
+    expect(
+      refundSummary(
+        makeBooking({ status: 'REFUNDED', totalAmount: '29.00', refundedTotal: '29.01' }),
+      ),
+    ).toEqual({ kind: 'full', amount: '29.01' });
   });
 });

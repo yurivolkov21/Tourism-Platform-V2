@@ -2397,6 +2397,21 @@ export const messages = {
     requestsLine: (requests: string) => `Special requests: ${requests}`.toUpperCase(),
   },
   accountBookingDetail: {
+    /**
+     * Chuyện gì đã xảy ra với tiền, in ngay trên giấy tờ booking. Trước 04/09
+     * khách hoàn một phần chỉ thấy chữ "Cancelled" — bằng chứng duy nhất về số
+     * tiền nằm trong hộp mail.
+     */
+    refundLine: {
+      full: (amount: string) => `${amount} has been refunded to your original payment method.`,
+      /** Nói CẢ hai số: chỉ in số đã hoàn thì khách dễ tưởng đó là toàn bộ. */
+      partial: (amount: string, total: string) =>
+        `${amount} of ${total} has been refunded to your original payment method.`,
+      /** Huỷ mà không hoàn đồng nào cũng phải nói ra, kẻo khách ngồi đợi. */
+      none: 'No refund was due on this booking.',
+      timing: 'It can take 5–10 business days to appear on your statement.',
+      schedule: 'See the refund schedule',
+    },
     // Task 7 (redesign hướng A): link cạnh H1 sang trang tour công khai
     // (`/tours/{tourSlug}`) — riêng cho namespace này, KHÔNG tái dùng
     // `view`/`viewTour` của namespace khác (đã có tiền lệ mỗi trang giữ bản

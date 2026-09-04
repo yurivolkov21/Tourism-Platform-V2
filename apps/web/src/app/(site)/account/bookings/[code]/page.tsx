@@ -13,9 +13,9 @@ import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { bookingView, toCancellationView } from '@/lib/booking-vm';
+import { bookingView, refundSummary, toCancellationView } from '@/lib/booking-vm';
 import { reviewSlot } from '@/lib/review';
-import { formatDate, formatMoney } from '@/lib/tours';
+import { formatDate, formatMoney, formatMoneyExact } from '@/lib/tours';
 
 /** Nhãn provider — TÁI DÙNG copy `booking.form` như trước, không key mới. */
 const PROVIDER_LABEL = {
@@ -100,6 +100,7 @@ export default async function AccountBookingDetailPage({
   const cancellation = toCancellationView(booking.cancellationStatus);
   const view = bookingView(booking, cancellation);
   const terminalNote = t.terminalNote[view.statusKey];
+  const refund = refundSummary(booking);
   const sec = t.sections;
 
   return (
@@ -192,6 +193,8 @@ export default async function AccountBookingDetailPage({
                   </dd>
                 </div>
               </dl>
+
+              {refund ? <RefundLine refund={refund} currency={booking.currency} /> : null}
 
               {/* Hàng hành động của giấy tờ: voucher CHỈ khi đã trả tiền (tấm vé
               bên checkout là vé của booking PAID); Contact luôn có. PENDING
@@ -290,6 +293,49 @@ export default async function AccountBookingDetailPage({
           </section>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Dòng tiền trên giấy tờ booking — cùng ngôn ngữ dashed-border với lưới IATA
+ * phía trên, vì nó là một mục nữa của CÙNG bản ghi chứ không phải ghi chú rời.
+ *
+ * `formatMoneyExact` chứ không `formatMoney`: `formatMoney` cắt phần lẻ (giá
+ * tour tròn trăm, chuyện biên tập), mà ở đây là số tiền THẬT khách đối chiếu
+ * được với sao kê — in "$25" cho một khoản $24.50 là nói sai.
+ */
+function RefundLine({
+  refund,
+  currency,
+}: {
+  refund: NonNullable<ReturnType<typeof refundSummary>>;
+  currency: string;
+}) {
+  const t = messages.accountBookingDetail.refundLine;
+  return (
+    <div className="border-b border-dashed border-border px-6 py-4 text-[13px] text-muted-foreground">
+      <p>
+        {refund.kind === 'full'
+          ? t.full(formatMoneyExact(refund.amount, currency))
+          : refund.kind === 'partial'
+            ? t.partial(
+                formatMoneyExact(refund.amount, currency),
+                formatMoneyExact(refund.total, currency),
+              )
+            : t.none}
+      </p>
+      <p className="mt-0.5">
+        {refund.kind === 'none' ? (
+          // Không hoàn đồng nào thì câu tiếp theo phải là LÝ DO tra ở đâu,
+          // không phải lời hứa về thời gian chờ.
+          <Link href="/cancellation-policy" className="underline-offset-4 hover:underline">
+            {t.schedule}
+          </Link>
+        ) : (
+          t.timing
+        )}
+      </p>
     </div>
   );
 }
