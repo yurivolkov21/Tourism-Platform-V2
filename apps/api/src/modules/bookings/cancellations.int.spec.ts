@@ -553,4 +553,87 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(mine).toHaveLength(1);
     expect(mine[0]).toMatchObject({ id: aliceReq.id, status: 'DENIED' });
   });
+
+  /**
+   * Bộ lọc khoảng ngày (ADR-0028 §AMEND) — theo `createdAt`, ngày khách GỬI
+   * yêu cầu. Hai điều phải khoá: biên nửa-mở cắt đúng, và hàng REQUESTED
+   * (`decidedAt` null) VẪN nằm trong tập lọc — đó là lý do không dùng
+   * `decidedAt` làm cột lọc.
+   */
+  it('admin.cancellations.list: lọc theo khoảng ngày tạo, hàng đang mở KHÔNG bị loại', async () => {
+    const admin = await signUpAdmin();
+    const may = await signUpUser('may@example.com', 'May');
+    const june = await signUpUser('june@example.com', 'June');
+    const openOld = await signUpUser('openold@example.com', 'OpenOld');
+
+    const mayBooking = await createPaidBooking(may);
+    const juneBooking = await createPaidBooking(june);
+    const openBooking = await createPaidBooking(openOld);
+
+    const mayReq = CancellationRequestSchema.parse((await postCancel(may, mayBooking.code)).json());
+    const juneReq = CancellationRequestSchema.parse(
+      (await postCancel(june, juneBooking.code)).json(),
+    );
+    const openReq = CancellationRequestSchema.parse(
+      (await postCancel(openOld, openBooking.code)).json(),
+    );
+    // Một cái đã quyết, một cái CÒN MỞ — cả hai cùng nằm trong tháng 5.
+    expect((await postDecide(admin, mayReq.id, { approve: false })).statusCode).toBe(200);
+
+    // Lùi `createdAt` về mốc cố định: chính khoảng ngày là thứ đang được kiểm,
+    // nên fixture không được trôi theo đồng hồ.
+    await prisma.cancellationRequest.update({
+      where: { id: mayReq.id },
+      data: { createdAt: new Date('2026-05-10T12:00:00.000Z') },
+    });
+    await prisma.cancellationRequest.update({
+      where: { id: openReq.id },
+      // Giây áp chót của ngày cuối kỳ — ca mà mốc `23:59:59` sẽ bỏ rơi.
+      data: { createdAt: new Date('2026-05-31T23:59:59.500Z') },
+    });
+    await prisma.cancellationRequest.update({
+      where: { id: juneReq.id },
+      // 00:00 ngày 1/6 — NGOÀI kỳ, đúng mốc chặn nửa-mở.
+      data: { createdAt: new Date('2026-06-01T00:00:00.000Z') },
+    });
+
+    const may5 = await app.inject({
+      method: 'GET',
+      url: '/api/admin/cancellations?from=2026-05-01&to=2026-05-31',
+      headers: { cookie: admin },
+    });
+    expect(may5.statusCode).toBe(200);
+    const page = PagedSchema(AdminCancellationRequestSchema).parse(may5.json());
+    expect(page.items.map((r) => r.id).sort()).toEqual([mayReq.id, openReq.id].sort());
+    // Hàng còn MỞ vẫn ở đây — nếu lọc theo `decidedAt` thì nó đã biến mất.
+    expect(page.items.find((r) => r.id === openReq.id)?.status).toBe('REQUESTED');
+
+    // Cộng dồn với filter status, không cái nào thay cái nào.
+    const openOnly = await app.inject({
+      method: 'GET',
+      url: '/api/admin/cancellations?from=2026-05-01&to=2026-05-31&status=REQUESTED',
+      headers: { cookie: admin },
+    });
+    expect(
+      PagedSchema(AdminCancellationRequestSchema)
+        .parse(openOnly.json())
+        .items.map((r) => r.id),
+    ).toEqual([openReq.id]);
+
+    // Không tham số = KHÔNG lọc ngày (mặc định của vùng), thấy cả ba.
+    const all = await app.inject({
+      method: 'GET',
+      url: '/api/admin/cancellations',
+      headers: { cookie: admin },
+    });
+    expect(PagedSchema(AdminCancellationRequestSchema).parse(all.json()).total).toBe(3);
+
+    // Khoảng ngược là 400, không phải tập rỗng im lặng.
+    const reversed = await app.inject({
+      method: 'GET',
+      url: '/api/admin/cancellations?from=2026-05-31&to=2026-05-01',
+      headers: { cookie: admin },
+    });
+    expect(reversed.statusCode).toBe(400);
+  });
 });

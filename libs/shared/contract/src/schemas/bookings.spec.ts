@@ -1,5 +1,6 @@
 import {
   AdminBookingsListQuerySchema,
+  AdminCancellationsListQuerySchema,
   BookingSchema,
   BookingsListQuerySchema,
   CreateBookingInputSchema,
@@ -446,5 +447,44 @@ describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
       // Mặc định của cờ F6 — bảng /bookings không truyền gì vẫn có ảnh.
       includeMedia: true,
     });
+  });
+});
+
+describe('AdminCancellationsListQuerySchema — bộ lọc ngày (ADR-0028 §AMEND)', () => {
+  it('mặc định KHÔNG lọc ngày — khác /bookings, và đó là chủ đích', () => {
+    // Trang này là hàng đợi việc phải làm: mặc định phải thấy đủ mọi request
+    // đang mở, kể cả cái khách gửi từ tháng trước.
+    const parsed = AdminCancellationsListQuerySchema.parse({});
+    expect(parsed).toMatchObject({ page: 1, limit: 20 });
+    expect(parsed.from).toBeUndefined();
+    expect(parsed.to).toBeUndefined();
+  });
+
+  it('nhận ngày lịch, cùng schema và cùng trần năm với /bookings', () => {
+    expect(AdminCancellationsListQuerySchema.parse({ from: '2026-09-01' }).from).toBe('2026-09-01');
+    expect(
+      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+    expect(AdminCancellationsListQuerySchema.safeParse({ from: '2026-02-31' }).success).toBe(false);
+    expect(AdminCancellationsListQuerySchema.safeParse({ to: '9999-12-31' }).success).toBe(false);
+  });
+
+  it('from > to là 400, y hệt /bookings', () => {
+    expect(
+      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-30', to: '2026-09-01' }).success,
+    ).toBe(false);
+    expect(
+      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-01', to: '2026-09-01' }).success,
+    ).toBe(true);
+  });
+
+  it('`.refine` KHÔNG nuốt shape — điều kiện sống của ZodSmartCoercionPlugin', () => {
+    // Plugin đi theo `.shape` để ép "2" thành number cho page/limit; bọc thêm
+    // một lớp là mọi query string của vùng này rơi xuống 400.
+    expect(AdminCancellationsListQuerySchema.shape.page).toBeDefined();
+    expect(AdminCancellationsListQuerySchema.shape.status).toBeDefined();
+    expect(
+      AdminCancellationsListQuerySchema.parse({ page: 2, status: 'REQUESTED', from: '2026-09-01' }),
+    ).toMatchObject({ page: 2, status: 'REQUESTED', from: '2026-09-01' });
   });
 });

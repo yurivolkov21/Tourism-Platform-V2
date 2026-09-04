@@ -318,10 +318,30 @@ export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestS
 /**
  * Query cho `admin.cancellations.list`. Bỏ trống `status` → TẤT CẢ request (nhất
  * quán với `admin.bookings.list`; queue đang mở là `?status=REQUESTED`).
+ *
+ * `from`/`to` (ADR-0028 §AMEND) lọc theo `createdAt` — ngày khách GỬI yêu cầu,
+ * cùng cột bảng đang sắp xếp. KHÔNG lọc theo `decidedAt` dù nó khớp tuyệt đối
+ * với hai card Approved/Denied: hàng `REQUESTED` có `decidedAt` null, nên lọc
+ * theo cột ấy sẽ quét sạch hàng đợi ĐANG MỞ khỏi bảng — tức xoá mất lý do tồn
+ * tại của trang.
+ *
+ * Bỏ trống cả hai = KHÔNG lọc ngày, và đó là MẶC ĐỊNH của vùng — khác
+ * `/bookings` (mặc định trọn tháng hiện tại). Trang này là hàng đợi việc phải
+ * làm: mặc định phải thấy đủ mọi request đang mở, kể cả cái khách gửi từ tháng
+ * trước. Vì URL trần chính là "xem tất cả" nên ở đây KHÔNG có sentinel
+ * `?dates=all`.
  */
 export const AdminCancellationsListQuerySchema = AdminPageQuerySchema.extend({
   status: CancellationRequestStatusSchema.optional(),
-});
+  from: CalendarDateSchema.optional(),
+  to: CalendarDateSchema.optional(),
+})
+  // `.refine` giữ nguyên `.shape` của ZodObject (điều kiện sống còn của
+  // `ZodSmartCoercionPlugin` bên API) — xem ghi chú ở `AdminBookingsListQuerySchema`.
+  .refine(({ from, to }) => !(from && to) || from <= to, {
+    message: 'from must be on or before to',
+    path: ['to'],
+  });
 
 export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsListQuerySchema>;
 

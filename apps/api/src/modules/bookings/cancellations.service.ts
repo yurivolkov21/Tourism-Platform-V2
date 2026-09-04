@@ -13,6 +13,7 @@ import { calendarDate } from '../../lib/calendar-date.js';
 import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
+import { createdAtRange } from './bookings-date-range.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
@@ -233,8 +234,17 @@ export class CancellationsService {
   /** Admin queue: phân trang, mới nhất trước, status filter optional (bỏ trống
    * → all — nhất quán với admin.bookings.list; open queue là ?status=REQUESTED). */
   async adminList(query: AdminCancellationsListQuery): Promise<Paged<AdminCancellationRequest>> {
-    const { page, limit, status } = query;
-    const where: Prisma.CancellationRequestWhereInput = status ? { status } : {};
+    const { page, limit, status, from, to } = query;
+    // Khoảng ngày theo `createdAt` — ngày khách GỬI yêu cầu (ADR-0028 §AMEND).
+    // KHÔNG theo `decidedAt`: hàng REQUESTED có `decidedAt` null nên lọc theo
+    // cột ấy sẽ quét sạch hàng đợi đang mở khỏi bảng. Phép đổi ngày → mốc và
+    // lý do dùng biên nửa-mở nằm ở `bookings-date-range.ts`, dùng CHUNG với
+    // `/bookings` nên hai vùng cắt cùng một nhát.
+    const createdAt = createdAtRange(from, to);
+    const where: Prisma.CancellationRequestWhereInput = {
+      ...(status ? { status } : {}),
+      ...(createdAt ? { createdAt } : {}),
+    };
     const [total, rows] = await Promise.all([
       prisma.cancellationRequest.count({ where }),
       prisma.cancellationRequest.findMany({
