@@ -1,5 +1,6 @@
 import { STATS_WINDOW_DAYS, type StatsPeriod } from '@tourism/contract';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { startOfDayUtc } from '../../lib/calendar-date.js';
 
 /**
  * Phần THUẦN của stats (spec P4b §3-F5): cắt cửa sổ hai kỳ và biến kết quả
@@ -53,6 +54,60 @@ export function statsWindow(now: Date): StatsWindow {
     currentTo: new Date(end),
     currentFrom: new Date(end - span),
     previousFrom: new Date(end - 2 * span),
+  };
+}
+
+/**
+ * Cắt cửa sổ theo KHOẢNG NGÀY admin đang lọc ở bảng `/bookings` (ADR-0028).
+ *
+ * Luật duy nhất, áp cho cả bốn nhánh: **kỳ trước dài đúng bằng kỳ này và lùi
+ * liền kề**. Đó là bất biến khiến pill delta nói thật (`schemas/stats.ts`
+ * luật #1) — và nó giữ được với MỌI khoảng admin kéo ra, kể cả khoảng lẻ.
+ * Kỳ trước KHÔNG phải "tháng lịch liền trước": lọc 05/09–12/09 mà so với 31
+ * ngày của tháng 8 là một pill `↓74%` bịa từ hư không.
+ *
+ * | Đầu vào | Kỳ này | Kỳ trước |
+ * | --- | --- | --- |
+ * | `from` + `to` | `[from 00:00, to+1d 00:00)` | dài bằng, lùi liền kề |
+ * | chỉ `from` | `[from 00:00, now)` | dài bằng, lùi liền kề |
+ * | chỉ `to` | `STATS_WINDOW_DAYS` ngày kết ở `to+1d` | dài bằng, lùi liền kề |
+ * | không có gì | y hệt `statsWindow` — cửa sổ TRƯỢT 28 ngày | |
+ *
+ * Biên NỬA-MỞ, cùng công thức `createdAtRange` mà bảng dùng, nên card và bảng
+ * cắt CÙNG MỘT NHÁT: `to` tính TRỌN NGÀY nên mốc chặn là 00:00 hôm sau với
+ * dấu `lt`. KHÔNG bao giờ `23:59:59` — cột thời gian là `timestamp`
+ * microsecond, `lte 23:59:59` bỏ rơi gần trọn một giây cuối ngày (ADR-0028
+ * §3 có bảng đối chiếu).
+ *
+ * Ca "chỉ `to`" không có đầu nào để đo độ dài, nên lấy đúng
+ * `STATS_WINDOW_DAYS` kết ở `to` — một mặc định khai báo được, thay vì một
+ * cửa sổ mở vô hạn về quá khứ. Hai ca một-đầu tồn tại thật:
+ * `parseBookingsSearchParams` giữ `from` và bỏ `to` khi khoảng ngược, và
+ * admin gõ được một ô.
+ *
+ * Múi giờ: mốc UTC như mọi cửa sổ khác của module — xem `statsWindow`.
+ */
+export function statsWindowFromRange(
+  from: string | undefined,
+  to: string | undefined,
+  now: Date,
+): StatsWindow {
+  if (!from && !to) return statsWindow(now);
+
+  // Trọn ngày `to`: chặn ở 00:00 ngày kế tiếp. Không có `to` thì kỳ chạy tới
+  // đúng lúc chốt sổ.
+  const currentTo = to ? new Date(startOfDayUtc(to).getTime() + DAY_MS) : new Date(now.getTime());
+  const currentFrom = from
+    ? startOfDayUtc(from)
+    : new Date(currentTo.getTime() - STATS_WINDOW_DAYS * DAY_MS);
+  const span = currentTo.getTime() - currentFrom.getTime();
+
+  return {
+    // `new Date(now)` chứ không dùng lại tham chiếu — cùng lý do ở `statsWindow`.
+    generatedAt: new Date(now.getTime()),
+    currentTo,
+    currentFrom,
+    previousFrom: new Date(currentFrom.getTime() - span),
   };
 }
 

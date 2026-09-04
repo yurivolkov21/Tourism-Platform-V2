@@ -24,15 +24,12 @@
  * rẻ ở cỡ dữ liệu hiện tại; ngưỡng xem lại giống StatsService: ~10k row.
  */
 
+import { startOfDayUtc } from '../../lib/calendar-date.js';
+
 const DAY_MS = 86_400_000;
 
 /** Khoảng đưa thẳng vào `where.createdAt`; `undefined` = không lọc ngày. */
 export type CreatedAtRange = { gte?: Date; lt?: Date } | undefined;
-
-/** `YYYY-MM-DD` → mốc 00:00:00.000 UTC của ngày đó. */
-export function startOfDayUtc(date: string): Date {
-  return new Date(`${date}T00:00:00.000Z`);
-}
 
 /**
  * Contract đã canh định dạng và luật `from <= to` (400 khi ngược), nên hàm

@@ -9,3 +9,17 @@
  * đọc theo giờ VN) thì đổi ở đây, bốn nơi cùng theo.
  */
 export const calendarDate = (value: Date): string => value.toISOString().slice(0, 10);
+
+/**
+ * Ngày lịch "YYYY-MM-DD" → mốc 00:00:00.000 UTC của ngày đó — phép NGƯỢC của
+ * `calendarDate`.
+ *
+ * MỘT bản cho cả API (ADR-0028): bộ lọc ngày của `/bookings` và cửa sổ stat
+ * card cùng vùng ấy phải cắt CÙNG MỘT NHÁT, và hai bản chép là hai nhát sẽ
+ * trôi lệch. Người tiêu thụ: `bookings-date-range.ts` (where của bảng) và
+ * `stats-math.ts` (cửa sổ của card).
+ *
+ * Luôn `.000` chứ KHÔNG `00:00:01`: một giây trễ ở đầu kỳ bỏ rơi mọi row rơi
+ * vào giây đầu tiên của ngày. Cặp mốc đúng là nửa-mở — xem `createdAtRange`.
+ */
+export const startOfDayUtc = (date: string): Date => new Date(`${date}T00:00:00.000Z`);
