@@ -110,6 +110,10 @@ const DAY_MS = 86_400_000;
  * Năm viết MỘT lần ở cuối khi hai đầu cùng năm, và viết đủ hai lần khi kỳ vắt
  * qua giao thừa: lọc tháng 1 thì kỳ trước rơi vào tháng 12 năm ngoái, và một
  * nhãn 'Dec 2 – Jan 1' không nói ra điều đó là nhãn đánh đố.
+ *
+ * TIỀN ĐIỀU KIỆN: hai mốc phải đọc được. `Intl.format` của một `Invalid Date`
+ * ném `RangeError`, nên đừng gọi thẳng hàm này với dữ liệu dây — cổng kiểm là
+ * `isPickedPeriod`, và nó canh cả ba mốc.
  */
 export function statsRangeLabel(fromIso: string, toIso: string): string {
   const from = new Date(fromIso);
@@ -123,14 +127,38 @@ export function statsRangeLabel(fromIso: string, toIso: string): string {
     : `${DAY_FORMAT.format(from)}, ${fromYear} – ${DAY_FORMAT.format(to)}, ${toYear}`;
 }
 
+/** Mốc ISO đọc được thành một thời điểm thật hay không. */
+const isInstant = (iso: string | undefined): boolean => !Number.isNaN(Date.parse(iso ?? ''));
+
 /**
  * Kỳ này có phải do ADMIN chọn không.
  *
- * Dấu hiệu là `currentTo === generatedAt`: cửa sổ TRƯỢT kết đúng lúc chốt sổ
+ * Dấu hiệu là `currentTo !== generatedAt`: cửa sổ TRƯỢT kết đúng lúc chốt sổ
  * (xem `statsWindow` bên API), còn kỳ đã chọn thì cuối kỳ là một mốc lịch
  * đứng yên. Client KHÔNG tự cắt cửa sổ nào — nó chỉ đọc hai mốc server trả.
+ *
+ * Kiểm CẢ BA mốc đọc được không, chứ không chỉ so hai chuỗi. Lý do là lệch
+ * phiên bản lúc deploy (ADR-0024): Vercel dựng xong admin trước khi Render
+ * dựng xong API, nên vài phút liền bản admin MỚI đứng cạnh bản API CŨ — bản
+ * chưa biết `currentTo`. Client oRPC KHÔNG validate response theo output
+ * schema, nên một field thiếu đi thẳng tới đây và `Intl.format` của một
+ * `Invalid Date` ném `RangeError`, làm 500 nguyên trang `/bookings`.
+ *
+ * Ngả về "không phải kỳ đã chọn" là hành vi TRƯỚC ADR-0028: caption "prior N
+ * days", không có dòng khoảng ngày. Vẫn đúng, chỉ là kém cụ thể hơn — đúng
+ * thứ một trang admin nên làm khi phía dưới nó vừa lùi một phiên bản.
+ *
+ * Ba mốc chứ không một: `previousFrom`/`currentFrom` mới là cặp caption đọc,
+ * nên kiểm mỗi `currentTo` thì lỗi chỉ dời xuống một dòng.
  */
-const isPickedPeriod = (period: StatsPeriod): boolean => period.currentTo !== period.generatedAt;
+function isPickedPeriod(period: StatsPeriod): boolean {
+  return (
+    isInstant(period.currentTo) &&
+    isInstant(period.currentFrom) &&
+    isInstant(period.previousFrom) &&
+    period.currentTo !== period.generatedAt
+  );
+}
 
 /**
  * Dòng khoảng ngày cho CẢ hàng card. `undefined` khi cửa sổ đang trượt: in

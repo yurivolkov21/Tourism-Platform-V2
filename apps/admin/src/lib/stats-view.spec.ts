@@ -558,6 +558,38 @@ describe('kỳ do admin chọn (ADR-0028)', () => {
     });
   });
 
+  /**
+   * Lệch phiên bản khi deploy (ADR-0024): Vercel dựng xong admin trước khi
+   * Render dựng xong API, nên bản admin MỚI đứng cạnh bản API CŨ vài phút.
+   * API cũ trả `period` không có `currentTo` — client oRPC không validate
+   * output nên field thiếu đi thẳng tới đây.
+   *
+   * Cây phải NGẢ VỀ hành vi trước ADR-0028 (caption "prior N days", không có
+   * dòng khoảng ngày), không được ném RangeError làm 500 cả trang.
+   */
+  describe('API cũ trả period thiếu mốc — lệch phiên bản lúc deploy', () => {
+    /** Ép kiểu vì đây là dữ liệu DÂY, không phải dữ liệu đã qua schema. */
+    const stale = { ...period, currentTo: undefined } as unknown as typeof period;
+
+    it('statsPeriodLabel im lặng thay vì ném RangeError', () => {
+      expect(() => statsPeriodLabel(stale)).not.toThrow();
+      expect(statsPeriodLabel(stale)).toBeUndefined();
+    });
+
+    it('caption ngả về "prior N days" thay vì làm sập trang', () => {
+      const cards = toBookingsStatCards({ ...BOOKINGS, period: stale });
+      expect(cards[0]?.caption).toBe(t.comparison('$900.00', 28));
+    });
+
+    it('mốc rác ở BẤT KỲ đầu nào cũng ngả về câu cũ, không riêng currentTo', () => {
+      // `previousFrom` mới là mốc caption đọc — thiếu nó mà vẫn coi là "kỳ đã
+      // chọn" thì lỗi chỉ dời xuống một dòng.
+      const broken = { ...period, currentTo: '2026-10-01T00:00:00.000Z', previousFrom: 'nonsense' };
+      expect(() => toBookingsStatCards({ ...BOOKINGS, period: broken })).not.toThrow();
+      expect(statsPeriodLabel(broken)).toBeUndefined();
+    });
+  });
+
   it('sáu vùng còn lại KHÔNG đổi: chúng chưa có bộ lọc ngày nào', () => {
     // Nếu một ngày nào đó vùng khác mọc bộ lọc, test này đỏ và người sửa sẽ
     // đọc ADR-0028 trước khi dựng cửa sổ thứ hai.
