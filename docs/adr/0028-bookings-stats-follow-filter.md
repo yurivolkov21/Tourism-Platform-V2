@@ -319,3 +319,95 @@ bảng bên dưới lúc ấy cũng đang nói về tháng 7.
 `search` cho `/cancellations`: contract chưa có, và đợt này không thêm. Tra
 theo mã booking là nhu cầu thật nhưng nó là một tính năng riêng, không phải hệ
 quả của việc cho card ăn theo bộ lọc.
+
+## AMEND 2 04/09 (đợt điều chỉnh #4) — vùng thứ ba: `/reviews`
+
+Vùng thứ ba, và là vùng đầu tiên **chưa có bộ lọc ngày nào cả** — hai lần
+trước chỉ phải nối card vào một ô lọc đã tồn tại. Nên ở đây khuôn được áp đủ
+cả hai vế: dựng bộ lọc, rồi cho card ăn theo.
+
+### 1. Cột lọc: `review.created_at` — ngày review được GỬI
+
+Cùng cột bảng đang sắp xếp (`orderBy [createdAt desc, id desc]`), cùng họ lý
+do với hai vùng trước.
+
+⚠️ **Ở vùng này độ lệch "một khoảng, hai cột" (§6) SÂU hơn hẳn, và phải nói
+ra.** Card `approved` đếm LƯỢT DUYỆT trên audit trail, neo `event.created_at`;
+bảng và `averageRating` neo `review.created_at`. Một review gửi tháng 6 mà tới
+tháng 9 mới duyệt sẽ đếm vào Approved của tháng 9 nhưng **không bao giờ xuất
+hiện** trong bảng lọc tháng 6.
+
+Ở `/cancellations` sai số ấy nhỏ vì vòng đời một request chỉ vài ngày. Một
+review thì có thể nằm hàng đợi vô thời hạn, nên độ lệch ở đây không có trần.
+
+Vẫn chọn `created_at`, vì hai phương án kia tệ hơn:
+
+- Neo card `approved` theo `review.created_at` là **phá chính bản chất của
+  nó**: nó đo CÔNG VIỆC ĐÃ LÀM trong kỳ, không đo lô hàng nào được xử.
+- Lọc bảng theo `moderated_at` là quét sạch mọi review CHƯA duyệt khỏi bảng
+  (`moderated_at` null), tức xoá mất hàng đợi — đúng cái bẫy đã bác ở
+  `/cancellations` §1.
+
+Cách sống chung: card `approved` giữ nguyên nhãn nói rõ nó đếm lượt duyệt, và
+`submitted` (§4) đứng ngay cạnh làm mẫu số neo ĐÚNG cột của bảng. Hai con số
+cạnh nhau, một cái đo dòng vào một cái đo dòng ra, thì chuyện chúng không khớp
+là điều đọc ra được chứ không phải một lỗi ngầm.
+
+### 2. Mặc định KHÔNG lọc ngày — theo `/cancellations`, không theo `/bookings`
+
+Cùng lập luận đã ghi ở AMEND 1 §2: `/reviews` là **hàng đợi việc phải làm**,
+tồn tại để được dọn sạch. Mặc định lọc tháng hiện tại sẽ giấu mất một review
+gửi tháng 8 mà tới giờ vẫn chờ duyệt.
+
+Nên ở đây cũng KHÔNG có sentinel `?dates=all`: URL trần chính là xem tất cả.
+
+### 3. Ảnh chụp `pending` theo luật AMEND 1 §3 — nhưng dựng lại là XẤP XỈ
+
+`current` = ảnh chụp tại `window.currentTo`, `previous` tại
+`window.currentFrom`. `pendingReviewsAt(at)` đã nhận bất kỳ mốc nào nên không
+tốn mã mới.
+
+Khác `/cancellations` ở một điểm phải ghi: phép dựng lại ở đó **chính xác**
+(quyết định cancellation là chung cuộc, `decided_at` ghi một lần), còn ở đây
+nó **xấp xỉ**. `moderated_at` chỉ giữ lần quyết định CUỐI, nên đúng một ca cho
+sai: review hiện đang chưa duyệt, mà sau mốc đã đi qua **cả một lượt duyệt lẫn
+một lượt gỡ** — lúc ấy tại mốc nó đang chờ, nhưng công thức đếm nó là không
+chờ.
+
+Ca ấy đòi hai sự kiện moderation sau mốc, trong đó có một lượt GỠ duyệt — hành
+vi hiếm. Chấp nhận, không dựng bản chính xác trong đợt này.
+
+⚠️ Nhưng ghi rõ chiều xấu đi: trước ADR này `pendingReviewsAt` chỉ được gọi với
+mốc 28 ngày trước, còn từ nay `currentTo` có thể lùi hàng tháng — tức tập "sự
+kiện sau mốc" lớn dần theo độ xa của bộ lọc. Ngày nào cần chính xác tuyệt đối
+thì `review_moderation_events` có đủ lịch sử: trạng thái tại mốc là
+`to_approved` của sự kiện cuối cùng TRƯỚC mốc, và trạng thái lúc sinh ra khi
+chưa có sự kiện nào.
+
+### 4. Card thứ tư: `submitted` — mẫu số đang thiếu
+
+Ba card hiện có kể được *còn tồn bao nhiêu · xử bao nhiêu · chất lượng thế
+nào*, nhưng thiếu vế đầu: **nhận về bao nhiêu**. Không có nó thì "duyệt 12" là
+một con số không đọc được — 12 trên 12 hay 12 trên 300 là hai tình trạng khác
+hẳn.
+
+`submitted` = `COUNT(*)` review có `created_at` trong kỳ. Nó cũng làm lộ ra tập
+mà `averageRating` đang tính trên: **cùng một tập**, cùng một cột neo. Hai card
+ấy vì thế đứng cạnh nhau.
+
+Không chọn "lượt GỠ duyệt" làm card thứ tư dù nó đối xứng với `approved` và
+hiện đang vô hình: đó là hành vi hiếm, nên card sẽ đứng yên ở 0 gần như mọi
+lúc — một ô màn hình không kể gì. Audit trail vẫn giữ đủ dữ liệu nếu ngày nào
+cần.
+
+### 5. Không đụng tới, cố ý
+
+`source` (VERIFIED/CURATED) và `rating` đã được `adminList` lọc thật nhưng
+chưa có đường nào từ UI tới. Đó là việc của TOOLBAR, không phải của stat card,
+và trộn vào đây sẽ làm một AMEND về kỳ thống kê gánh thêm một tính năng lọc —
+tách đợt sau.
+
+Hệ quả cần nhớ khi làm đợt ấy: `averageRating` **cố ý** không lọc theo nguồn,
+nên khi toolbar có bộ lọc source, card ấy sẽ không ăn theo nó. Hoặc chấp nhận
+và nói rõ trên nhãn, hoặc lúc đó mới quyết cho nó ăn theo.
+
