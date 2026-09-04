@@ -136,8 +136,16 @@ nguyên.
 Hiển thị (user chốt 04/09 — "hiển thị rõ khoảng thời gian từ ngày nào đến ngày
 nào"):
 
-- **một dòng cho cả hàng card**, không lặp 4 lần: `Sep 1 – Sep 30, 2026`;
-- **caption từng card**: `vs $12,400 · Aug 2 – Aug 31`.
+- **một dòng cho cả hàng card**, không lặp 4 lần: `Showing Sep 1 – Sep 30, 2026`;
+- **caption từng card**: `vs $12,400 · Aug 2 – Aug 31, 2026`.
+
+Nhãn khoảng in ngày CUỐI CÙNG nằm trong kỳ, không in mốc chặn: mốc là
+`2026-10-01T00:00:00Z` nhưng ngày cuối là 30/09 — in thẳng mốc là nói dối
+đúng một ngày ở mọi khoảng. Năm viết một lần ở cuối khi hai đầu cùng năm, và
+đủ hai lần khi kỳ vắt qua giao thừa (`Dec 2, 2025 – Jan 1, 2026`): lọc tháng
+1 thì kỳ trước rơi vào tháng 12 năm ngoái, và một nhãn `Dec 2 – Jan 1` không
+nói ra điều đó là nhãn đánh đố. Ngày đọc theo **UTC**, cùng thước với cột
+`Created` của bảng.
 
 Ở chế độ không lọc, caption giữ nguyên câu cũ `vs $12,400 prior 28 days`: lúc
 ấy cửa sổ **trượt** theo đồng hồ, in ngày cụ thể sẽ cũ đi từng phút.

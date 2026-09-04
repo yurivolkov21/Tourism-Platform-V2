@@ -10,6 +10,7 @@ import {
   type DecimalMetric,
   OPEN_ENQUIRY_STATUSES,
   PAYMENT_EVENT_STUCK_MINUTES,
+  type StatsPeriod,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatAmount } from './bookings-view';
@@ -83,6 +84,77 @@ export const formatCount = (value: number): string => COUNT_FORMATTER.format(val
 
 /** Tỉ lệ server trả dạng phần trăm 0..100 ('8.3') — chỉ gắn thêm ký hiệu. */
 const formatPercent = (value: string): string => `${value}%`;
+
+/**
+ * Ngày trong nhãn khoảng. UTC là BẮT BUỘC chứ không phải mặc định tuỳ tiện:
+ * mốc `2026-09-01T00:00:00Z` đọc theo giờ máy ở múi âm sẽ lùi thành 31/08, và
+ * nhãn phải khớp cột `Created` của bảng ngay dưới — cùng thước đo với sổ
+ * audit của API (xem `stats-math.ts`), không phải đồng hồ người đang xem.
+ */
+const DAY_FORMAT = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: 'UTC',
+});
+const YEAR_FORMAT = new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone: 'UTC' });
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Nhãn khoảng ngày cho một kỳ `[fromIso, toIso)` — 'Sep 1 – Sep 30, 2026'.
+ *
+ * `toIso` là mốc chặn KHÔNG tính vào (biên nửa-mở của cả module — ADR-0028
+ * §3), nên nhãn lùi một ngày để in ngày CUỐI CÙNG thật sự nằm trong kỳ. In
+ * thẳng `toIso` là nói dối đúng một ngày ở mọi khoảng.
+ *
+ * Năm viết MỘT lần ở cuối khi hai đầu cùng năm, và viết đủ hai lần khi kỳ vắt
+ * qua giao thừa: lọc tháng 1 thì kỳ trước rơi vào tháng 12 năm ngoái, và một
+ * nhãn 'Dec 2 – Jan 1' không nói ra điều đó là nhãn đánh đố.
+ */
+export function statsRangeLabel(fromIso: string, toIso: string): string {
+  const from = new Date(fromIso);
+  // Ngày cuối TÍNH VÀO = mốc chặn lùi một ngày.
+  const to = new Date(Date.parse(toIso) - DAY_MS);
+  const fromYear = YEAR_FORMAT.format(from);
+  const toYear = YEAR_FORMAT.format(to);
+
+  return fromYear === toYear
+    ? `${DAY_FORMAT.format(from)} – ${DAY_FORMAT.format(to)}, ${toYear}`
+    : `${DAY_FORMAT.format(from)}, ${fromYear} – ${DAY_FORMAT.format(to)}, ${toYear}`;
+}
+
+/**
+ * Kỳ này có phải do ADMIN chọn không.
+ *
+ * Dấu hiệu là `currentTo === generatedAt`: cửa sổ TRƯỢT kết đúng lúc chốt sổ
+ * (xem `statsWindow` bên API), còn kỳ đã chọn thì cuối kỳ là một mốc lịch
+ * đứng yên. Client KHÔNG tự cắt cửa sổ nào — nó chỉ đọc hai mốc server trả.
+ */
+const isPickedPeriod = (period: StatsPeriod): boolean => period.currentTo !== period.generatedAt;
+
+/**
+ * Dòng khoảng ngày cho CẢ hàng card. `undefined` khi cửa sổ đang trượt: in
+ * một ngày cụ thể ở đó sẽ cũ đi từng phút, còn "28 ngày gần nhất" thì bốn
+ * caption đã nói rồi.
+ */
+export function statsPeriodLabel(period: StatsPeriod): string | undefined {
+  return isPickedPeriod(period)
+    ? t.periodLabel(statsRangeLabel(period.currentFrom, period.currentTo))
+    : undefined;
+}
+
+/**
+ * Câu caption so sánh của MỘT bộ số. Kỳ trượt giữ "prior N days"; kỳ đã chọn
+ * in thẳng khoảng ngày của kỳ TRƯỚC — `[previousFrom, currentFrom)`.
+ *
+ * Trả về một hàm cùng chữ ký `t.comparison` để `countCard`/`decimalCard`
+ * không phải biết chuyện này: chúng nhận một câu, không nhận một chế độ.
+ */
+function comparisonCaption(period: StatsPeriod): (previous: string, days: number) => string {
+  if (!isPickedPeriod(period)) return t.comparison;
+  const range = statsRangeLabel(period.previousFrom, period.currentFrom);
+  return (previous) => t.comparisonRange(previous, range);
+}
 
 /** Điểm sao: in NGUYÊN chuỗi server trả (đã 2 chữ số thập phân). */
 const formatRating = (value: string): string => value;
@@ -172,6 +244,7 @@ function decimalCard(
   days: number,
   format: (value: string) => string,
   display: DeltaDisplay,
+  caption: (previous: string, days: number) => string = t.comparison,
 ): StatCardVM {
   const value = metric.current === null ? t.noValue : format(metric.current);
   const previous = metric.previous === null ? t.noValue : format(metric.previous);
@@ -181,7 +254,7 @@ function decimalCard(
     key,
     label,
     value,
-    caption: t.comparison(previous, days),
+    caption: caption(previous, days),
     ...(comparable
       ? buildDelta(Number(metric.current), Number(metric.previous), polarity, display)
       : {}),
@@ -192,6 +265,10 @@ function decimalCard(
 export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
   const days = stats.period.windowDays;
   const revenue = stats.revenue;
+  // Vùng DUY NHẤT có bộ lọc ngày (ADR-0028), nên cũng là vùng duy nhất có hai
+  // chế độ caption. Dựng MỘT lần cho cả bốn card: bốn lần gọi là bốn lần
+  // format cùng một khoảng.
+  const caption = comparisonCaption(stats.period);
 
   return [
     {
@@ -199,11 +276,11 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
       label: t.bookings.revenue,
       // Đồng tiền do SERVER nói đã cộng — client không có hằng số USD nào.
       value: formatAmount(revenue.current, stats.currency),
-      caption: t.comparison(formatAmount(revenue.previous, stats.currency), days),
+      caption: caption(formatAmount(revenue.previous, stats.currency), days),
       ...buildDelta(Number(revenue.current), Number(revenue.previous), 'up-good'),
     },
-    countCard('paid', t.bookings.paid, stats.paidBookings, 'up-good', days),
-    countCard('created', t.bookings.created, stats.newBookings, 'up-good', days),
+    countCard('paid', t.bookings.paid, stats.paidBookings, 'up-good', days, caption),
+    countCard('created', t.bookings.created, stats.newBookings, 'up-good', days, caption),
     // Tỉ lệ huỷ TĂNG là xấu — đây là chỗ duy nhất client "biết" hướng, và nó
     // biết vì đó là ngữ nghĩa của metric, không phải vì tự tính gì.
     decimalCard(
@@ -215,6 +292,7 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
       formatPercent,
       // Metric VỐN là % → delta theo điểm phần trăm, không phải % của %.
       'percentage-points',
+      caption,
     ),
   ];
 }

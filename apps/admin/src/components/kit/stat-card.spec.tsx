@@ -101,4 +101,18 @@ describe('StatCardRow', () => {
     expect(screen.getByText('Revenue')).toBeInTheDocument();
     expect(screen.getByText('Paid bookings')).toBeInTheDocument();
   });
+
+  // ADR-0028 — khoảng ngày nói MỘT lần cho cả hàng, không lặp trong bốn
+  // caption. Chỉ `/bookings` truyền; sáu vùng còn lại không có bộ lọc ngày.
+  it('in dòng khoảng ngày khi được đưa', () => {
+    render(
+      <StatCardRow cards={[{ key: 'revenue', ...BASE }]} period="Showing Sep 1 – Sep 30, 2026" />,
+    );
+    expect(screen.getByText('Showing Sep 1 – Sep 30, 2026')).toBeInTheDocument();
+  });
+
+  it('không có khoảng thì KHÔNG thêm dòng nào — sáu vùng kia không đổi', () => {
+    const { container } = render(<StatCardRow cards={[{ key: 'revenue', ...BASE }]} />);
+    expect(container.querySelector('[data-testid="stat-period"]')).toBeNull();
+  });
 });

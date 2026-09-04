@@ -12,6 +12,8 @@ import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
   type StatCardVM,
+  statsPeriodLabel,
+  statsRangeLabel,
   toBookingsStatCards,
   toCancellationsStatCards,
   toEnquiriesStatCards,
@@ -475,5 +477,91 @@ describe('toSubscribersStatCards (F10)', () => {
       'unsubscribed',
       'active',
     ]);
+  });
+});
+
+/**
+ * ADR-0028 — kỳ do admin chọn. Card in ĐÚNG khoảng đang lọc, và caption nói
+ * thẳng ngày thay vì "prior N days": kỳ này không trôi theo đồng hồ nên một
+ * con số ngày là thứ đối soát được.
+ */
+describe('kỳ do admin chọn (ADR-0028)', () => {
+  /** Lọc trọn tháng 9, đọc ngày 04/09 → currentTo TÁCH khỏi generatedAt. */
+  const filtered = {
+    windowDays: 30,
+    currentFrom: '2026-09-01T00:00:00.000Z',
+    currentTo: '2026-10-01T00:00:00.000Z',
+    previousFrom: '2026-08-02T00:00:00.000Z',
+    generatedAt: '2026-09-04T10:30:00.000Z',
+  };
+
+  describe('statsRangeLabel', () => {
+    it('prints the last day INSIDE the range, not the exclusive edge', () => {
+      // Mốc cuối là 00:00 ngày 1/10 và KHÔNG tính vào — in ra "Oct 1" sẽ nói
+      // dối về đúng một ngày ở mọi khoảng.
+      expect(statsRangeLabel('2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z')).toBe(
+        'Sep 1 – Sep 30, 2026',
+      );
+    });
+
+    it('spells both years out when the range straddles a new year', () => {
+      expect(statsRangeLabel('2025-12-02T00:00:00.000Z', '2026-01-02T00:00:00.000Z')).toBe(
+        'Dec 2, 2025 – Jan 1, 2026',
+      );
+    });
+
+    it('reads dates in UTC — the same ledger the API and the table use', () => {
+      // 00:00Z ngày 1 đọc theo giờ máy ở múi âm sẽ lùi thành ngày 31 tháng
+      // trước; nhãn phải khớp cột Created của bảng, không khớp đồng hồ người xem.
+      expect(statsRangeLabel('2026-09-01T00:00:00.000Z', '2026-09-02T00:00:00.000Z')).toBe(
+        'Sep 1 – Sep 1, 2026',
+      );
+    });
+  });
+
+  describe('statsPeriodLabel', () => {
+    it('names the filtered range for the whole card row', () => {
+      expect(statsPeriodLabel(filtered)).toBe(t.periodLabel('Sep 1 – Sep 30, 2026'));
+    });
+
+    it('says nothing for a SLIDING window — a printed date would go stale', () => {
+      expect(statsPeriodLabel(period)).toBeUndefined();
+    });
+  });
+
+  describe('toBookingsStatCards', () => {
+    it('captions every card with the real previous dates', () => {
+      const cards = toBookingsStatCards({ ...BOOKINGS, period: filtered });
+      const range = 'Aug 2 – Aug 31, 2026';
+      expect(cards.map((card) => card.caption)).toEqual([
+        t.comparisonRange('$900.00', range),
+        t.comparisonRange('9', range),
+        t.comparisonRange('20', range),
+        t.comparisonRange('5.0%', range),
+      ]);
+    });
+
+    it('keeps the "prior N days" wording while the window is still sliding', () => {
+      const cards = toBookingsStatCards(BOOKINGS);
+      expect(cards[0]?.caption).toBe(t.comparison('$900.00', 28));
+    });
+
+    it('leaves the numbers and the delta pills untouched — only the wording moves', () => {
+      const filteredCards = toBookingsStatCards({ ...BOOKINGS, period: filtered });
+      const slidingCards = toBookingsStatCards(BOOKINGS);
+      expect(filteredCards.map((card) => card.value)).toEqual(
+        slidingCards.map((card) => card.value),
+      );
+      expect(filteredCards.map((card) => card.delta)).toEqual(
+        slidingCards.map((card) => card.delta),
+      );
+    });
+  });
+
+  it('sáu vùng còn lại KHÔNG đổi: chúng chưa có bộ lọc ngày nào', () => {
+    // Nếu một ngày nào đó vùng khác mọc bộ lọc, test này đỏ và người sửa sẽ
+    // đọc ADR-0028 trước khi dựng cửa sổ thứ hai.
+    expect(toReviewsStatCards(REVIEWS)[0]?.caption).toBe(t.snapshotComparison('7', 28));
+    expect(toEnquiriesStatCards(ENQUIRIES)[0]?.caption).toBe(t.comparison('8', 28));
   });
 });

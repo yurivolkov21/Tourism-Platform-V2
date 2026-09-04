@@ -2682,6 +2682,21 @@ export const messages = {
       /** Caption của metric ĐẾM TRONG một cửa sổ ("vs $900.00 prior 28 days"). */
       comparison: (previous: string, days: number) => `vs ${previous} prior ${days} days`,
       /**
+       * Caption khi kỳ do ADMIN chọn (ADR-0028) — in thẳng khoảng ngày của
+       * kỳ TRƯỚC thay vì "prior N days".
+       *
+       * Vì sao hai câu chứ không một: cửa sổ trượt trôi theo đồng hồ nên một
+       * ngày cụ thể in ra sẽ cũ đi từng phút, còn kỳ đã chọn thì đứng yên và
+       * là thứ admin đem đối soát — lúc đó "prior 30 days" bắt người ta tự
+       * đếm lùi để biết mình đang so với cái gì.
+       */
+      comparisonRange: (previous: string, range: string) => `vs ${previous} · ${range}`,
+      /**
+       * Dòng khoảng ngày đứng trên CẢ hàng card — nói một lần thay vì lặp
+       * trong bốn caption. Chỉ hiện khi kỳ do admin chọn.
+       */
+      periodLabel: (range: string) => `Showing ${range}`,
+      /**
        * Caption của metric ẢNH CHỤP (hàng đợi đang mở): con số ấy KHÔNG đếm
        * trong một kỳ, nó là số của MỘT MỐC — nên "prior 28 days" sẽ nói sai
        * về chính thứ đang hiện.

@@ -41,18 +41,47 @@ const GRID_COLUMNS: Record<number, string> = {
  * div trần): trang có hai khối số liệu (hàng card + bảng) nên trình đọc màn
  * hình cần nhảy giữa chúng được.
  */
-export function StatCardRow({ cards }: { cards: StatCardVM[] }) {
-  return (
-    <section
-      aria-label={t.regionLabel}
+export function StatCardRow({
+  cards,
+  period,
+}: {
+  cards: StatCardVM[];
+  /**
+   * Khoảng ngày mà CẢ hàng card tính trên đó ("Showing Sep 1 – Sep 30, 2026")
+   * — chỉ có khi kỳ do admin chọn (ADR-0028). Đứng ở đây thay vì lặp trong
+   * bốn caption: một khoảng thì nói một lần.
+   *
+   * `undefined` với cửa sổ TRƯỢT, và với sáu vùng chưa có bộ lọc ngày — lúc
+   * đó không render node nào, bố cục giữ nguyên như trước.
+   */
+  period?: string;
+}) {
+  const grid = (
+    <div
       className={cn(
-        'grid grid-cols-1 gap-4 px-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs lg:px-6 @xl/main:grid-cols-2 dark:*:data-[slot=card]:bg-card',
+        'grid grid-cols-1 gap-4 *:data-[slot=card]:bg-linear-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs @xl/main:grid-cols-2',
         GRID_COLUMNS[cards.length] ?? GRID_COLUMNS[4],
+        'dark:*:data-[slot=card]:bg-card',
       )}
     >
       {cards.map(({ key, ...card }) => (
         <StatCard key={key} {...card} />
       ))}
+    </div>
+  );
+
+  // Không có khoảng: giữ NGUYÊN cây DOM cũ (section chính là lưới) để sáu vùng
+  // kia không đổi một pixel nào.
+  return period ? (
+    <section aria-label={t.regionLabel} className="grid gap-2 px-4 lg:px-6">
+      <p data-testid="stat-period" className="text-sm text-muted-foreground">
+        {period}
+      </p>
+      {grid}
+    </section>
+  ) : (
+    <section aria-label={t.regionLabel} className="px-4 lg:px-6">
+      {grid}
     </section>
   );
 }

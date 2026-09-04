@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats } from '@/lib/api/stats';
 import { bookingsHref, parseBookingsSearchParams } from '@/lib/bookings-query';
 import { toBookingRow } from '@/lib/bookings-view';
-import { toBookingsStatCards } from '@/lib/stats-view';
+import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 
 /**
@@ -62,7 +62,7 @@ export default async function BookingsPage({
 
   return (
     <AdminShell user={session}>
-      <StatCardRow cards={toBookingsStatCards(stats)} />
+      <StatCardRow cards={toBookingsStatCards(stats)} period={statsPeriodLabel(stats.period)} />
       <BookingsTable
         rows={paged.items.map(toBookingRow)}
         query={query}
