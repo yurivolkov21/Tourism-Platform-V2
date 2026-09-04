@@ -485,6 +485,26 @@ describe('toSubscribersStatCards (F10)', () => {
  * thẳng ngày thay vì "prior N days": kỳ này không trôi theo đồng hồ nên một
  * con số ngày là thứ đối soát được.
  */
+/**
+ * Bất biến chữ nghĩa của caption (user báo 04/09): giữa hai CON SỐ phải có
+ * thứ gì đó không phải khoảng trắng, kẻo `vs 0 28 days ago` đọc thành "028".
+ * Ca này chỉ xảy ra ở caption ảnh chụp — các câu còn lại đều có chữ chen giữa.
+ */
+describe('caption không để hai con số dính nhau', () => {
+  const TWO_NUMBERS_ADJACENT = /\d\s+\d/;
+
+  it('caption ảnh chụp tách hai số bằng dấu phân cách', () => {
+    expect(t.snapshotComparison('0', 28)).toBe('vs 0 · 28 days ago');
+    expect(t.snapshotComparison('0', 28)).not.toMatch(TWO_NUMBERS_ADJACENT);
+  });
+
+  it('ba caption còn lại vốn đã có chữ chen giữa — khoá lại để đừng ai gỡ', () => {
+    expect(t.comparison('0', 28)).not.toMatch(TWO_NUMBERS_ADJACENT);
+    expect(t.snapshotComparisonAt('0', 'May 1, 2026')).not.toMatch(TWO_NUMBERS_ADJACENT);
+    expect(t.comparisonRange('0', 'Aug 2 – Aug 31, 2026')).not.toMatch(TWO_NUMBERS_ADJACENT);
+  });
+});
+
 describe('kỳ do admin chọn (ADR-0028)', () => {
   /** Lọc trọn tháng 9, đọc ngày 04/09 → currentTo TÁCH khỏi generatedAt. */
   const filtered = {

@@ -2700,8 +2700,14 @@ export const messages = {
        * Caption của metric ẢNH CHỤP (hàng đợi đang mở): con số ấy KHÔNG đếm
        * trong một kỳ, nó là số của MỘT MỐC — nên "prior 28 days" sẽ nói sai
        * về chính thứ đang hiện.
+       *
+       * Dấu `·` giữa hai phần là BẮT BUỘC, không phải trang trí (user báo
+       * 04/09): đây là caption DUY NHẤT của cả bề mặt stats có hai con số
+       * đứng cạnh nhau, và `vs 0 28 days ago` đọc thành "028". Các câu khác
+       * đều có chữ chen giữa (`prior`, `on`). Cùng dấu phân cách với
+       * `comparisonRange` nên hai caption của một hàng card vẫn là một hệ.
        */
-      snapshotComparison: (previous: string, days: number) => `vs ${previous} ${days} days ago`,
+      snapshotComparison: (previous: string, days: number) => `vs ${previous} · ${days} days ago`,
       /**
        * Cùng metric ảnh chụp nhưng kỳ do ADMIN chọn (ADR-0028 §AMEND): mốc so
        * sánh là một NGÀY cụ thể (đầu kỳ) chứ không phải "N ngày trước" — kỳ
