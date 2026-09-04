@@ -154,9 +154,29 @@ ADR này **không** cho hoàn tiền tự do trên booking đã huỷ vì bất 
 Nó cho hoàn **phần dư** của chính booking ấy, trần vẫn là `total_amount`, vẫn
 do trigger canh. Không có đường nào ở đây trả cho khách nhiều hơn số họ đã trả.
 
-Và nó **không** đụng tới câu hỏi hoàn tiền THIỆN CHÍ (hoàn một phần cho booking
-không có yêu cầu huỷ, khách vẫn đi tour). Đó là đường W3 trên `/bookings`, một
-quyết định riêng chưa chốt.
+### AMEND 04/09 — chốt câu hỏi hoàn tiền THIỆN CHÍ: GIỮ, nhưng ẩn khi có request mở
+
+Bản đầu để ngỏ. Nay chốt khi thi công: **`Issue refund` ở `/bookings/[code]`
+được GIỮ, nhưng TỰ ẨN khi booking đang có yêu cầu huỷ chờ xử lý.**
+
+Vì sao phải chốt bây giờ chứ không hoãn thêm: §1–§3 chỉ **CHỮA** ca đã lỡ —
+approve chịu được dư 0 nên record kẹt tự lành, gate W3 nới nên phần dư hoàn
+tiếp được. Nhưng không mục nào **CHẶN** ca mới. Vá xong mà để nguyên nút ấy là
+để nguyên cái bẫy: admin vẫn hoàn đủ tiền bằng đường W3 trên một booking đang
+có request mở, và ghế lại rò y như cũ.
+
+Vì sao ẩn chứ không gỡ hẳn: hoàn thiện chí là nghiệp vụ THẬT (khách phàn nàn
+chất lượng, hoàn một phần, khách vẫn đi tour) và nó chỉ mâu thuẫn với đường W4
+đúng một ca — khi có request đang mở. Ẩn đúng ca ấy thì hết chồng lấn mà không
+mất nghiệp vụ nào.
+
+Gán theo TRẠNG THÁI, không theo trang: điều kiện là "booking có
+`cancellationRequests` nào đang `REQUESTED`", thứ không giả mạo được và đã nằm
+sẵn trong `AdminBookingDetail`. Gán theo "đến từ trang nào" là một tham số URL
+ai cũng gõ được, không phải một ranh giới thật.
+
+Đường đúng ở ca ấy là **Approve** trên `/cancellations/[code]` — vì chỉ nó mới
+đóng request, huỷ booking và nhả ghế.
 
 ## Phương án đã cân nhắc rồi loại
 
