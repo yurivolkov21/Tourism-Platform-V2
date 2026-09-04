@@ -1,3 +1,5 @@
+import { CalendarDateSchema } from '@tourism/contract';
+
 /**
  * Phần DÙNG CHUNG của các bảng admin đọc-từ-server (spec P4b §2.2): trạng
  * thái danh sách sống TRÊN URL, server component đọc `searchParams` → input
@@ -108,6 +110,36 @@ export function parsePaging(raw: RawSearchParams): TablePaging {
 export function appendPaging(params: URLSearchParams, paging: TablePaging): void {
   if (paging.limit !== ADMIN_PAGE_SIZE) params.set('limit', String(paging.limit));
   if (paging.page > 1) params.set('page', String(paging.page));
+}
+
+/**
+ * Khoảng ngày đã sạch, dùng chung cho mọi vùng có hai ô ngày (`/bookings` và
+ * `/cancellations` — nâng lên kit khi có consumer thứ hai, ADR-0028 §AMEND).
+ *
+ * Hai luật, cả hai đều là quyết định chứ không phải tiện tay:
+ *
+ * 1. **Ngày rác rơi im lặng** — `2026-02-31`, mốc ISO có giờ, năm ngoài trần
+ *    1900–2099 đều thành `undefined`. URL là thứ NGƯỜI gõ được, và một trang
+ *    admin nổ 400 vì gõ nhầm ngày là quá đắt. `CalendarDateSchema` import
+ *    thẳng từ contract nên cái gì lọt qua đây thì server cũng nhận.
+ * 2. **Khoảng NGƯỢC giữ `from`, bỏ `to`.** Bỏ cả hai thì bảng lặng lẽ hiện
+ *    mọi hàng trong khi URL vẫn mang hai ngày; bỏ đúng đầu bị loại để ô "đến
+ *    ngày" trống, người gõ thấy ngay cái vừa bị vứt.
+ */
+export function parseDateRange(
+  rawFrom: string | undefined,
+  rawTo: string | undefined,
+): { from?: string; to?: string } {
+  const from = validCalendarDate(rawFrom);
+  const to = validCalendarDate(rawTo);
+  const keepTo = to && (!from || from <= to) ? to : undefined;
+  return { ...(from ? { from } : {}), ...(keepTo ? { to: keepTo } : {}) };
+}
+
+/** Ngày lịch hợp lệ hoặc `undefined` — mọi thứ khác rơi im lặng như status rác. */
+function validCalendarDate(value: string | undefined): string | undefined {
+  const parsed = CalendarDateSchema.safeParse(value);
+  return parsed.success ? parsed.data : undefined;
 }
 
 /** Ghép đường dẫn với query — query rỗng thì không kèm dấu `?` cụt lủn. */

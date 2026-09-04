@@ -11,7 +11,15 @@ import { TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics';
 import { formatDateLabel, parseIsoDate, parseTypedDate, toIsoDate } from '@/lib/date-field';
 
 /**
- * Một ô chọn ngày kiểu `date-picker-04` của Shadcn Studio (user chốt 01/09):
+ * Một ô chọn ngày của kit admin — kiểu `date-picker-04` của Shadcn Studio
+ * (user chốt 01/09).
+ *
+ * Ở KIT từ 04/09 khi có consumer thứ hai (`/cancellations`, ADR-0028 §AMEND);
+ * trước đó nó nằm trong `components/bookings/`. Component vốn đã hoàn toàn
+ * tổng quát — props chỉ là nhãn, `value` ISO và `onCommit` — nên lần nâng này
+ * không phải sửa gì ngoài đường import.
+ *
+ * Mô tả gốc:
  * ô chữ đọc được ("September 01, 2026") mang sẵn nút lịch nhỏ NẰM TRONG ô,
  * mở ra Popover chứa Calendar. Registry đã khai ở `components.json`
  * (`@ss-components`), nên kéo lại bản gốc bất cứ lúc nào bằng

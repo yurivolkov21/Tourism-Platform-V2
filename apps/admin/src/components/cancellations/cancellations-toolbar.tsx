@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
 import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
 
 /**
@@ -60,6 +61,38 @@ export function CancellationsStatusTabs({ query }: { query: CancellationsQuery }
       label={t.filterLabel}
       selectId="cancellations-status-selector"
       onSelect={go}
+    />
+  );
+}
+
+/**
+ * Khoảng ngày YÊU CẦU (ADR-0028 §AMEND) — vỏ mỏng quanh kit `ToolbarDateRange`,
+ * consumer thứ hai của nó sau `/bookings`. Vùng chỉ giữ nhãn, tiền tố id và
+ * cách dựng href; hai ô cùng guard "patch bị vứt" nằm ở kit.
+ *
+ * Lọc theo `createdAt` — ngày khách GỬI, nên chữ nói "Requested from/to" chứ
+ * không phải "Booked". Cột ấy là chủ đích: hàng `REQUESTED` có `decidedAt`
+ * null nên lọc theo ngày quyết sẽ quét sạch hàng đợi đang mở khỏi bảng.
+ */
+export function CancellationsDateRange({ query }: { query: CancellationsQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarDateRange
+      idPrefix="cancellations"
+      label={t.dateFilterLabel}
+      labels={{
+        from: t.dateFrom,
+        to: t.dateTo,
+        openFrom: t.pickDateFrom,
+        openTo: t.pickDateTo,
+        placeholder: t.datePlaceholder,
+        clear: t.clearDates,
+      }}
+      from={query.from}
+      to={query.to}
+      hrefFor={(patch) => cancellationsHref(query, patch)}
+      onNavigate={router.push}
     />
   );
 }

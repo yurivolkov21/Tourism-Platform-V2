@@ -72,3 +72,65 @@ describe('cancellationsHref', () => {
     );
   });
 });
+
+/**
+ * Bộ lọc khoảng ngày (ADR-0028 §AMEND) — theo `createdAt`, ngày khách GỬI yêu
+ * cầu. Khác `/bookings` ở đúng một chỗ và đó là chủ đích: **không độn mặc
+ * định**. Trang này là hàng đợi việc phải làm, mặc định phải thấy đủ mọi
+ * request đang mở kể cả cái gửi từ tháng trước — nên URL trần CHÍNH LÀ "xem
+ * tất cả", và không có sentinel `?dates=all` nào.
+ */
+describe('cancellations — bộ lọc khoảng ngày', () => {
+  it('URL trần KHÔNG mang ngày nào: mặc định là xem tất cả', () => {
+    const query = parseCancellationsSearchParams({});
+    expect(query.from).toBeUndefined();
+    expect(query.to).toBeUndefined();
+  });
+
+  it('đọc đúng hai ngày trên URL', () => {
+    expect(parseCancellationsSearchParams({ from: '2026-05-01', to: '2026-05-31' })).toMatchObject({
+      from: '2026-05-01',
+      to: '2026-05-31',
+    });
+  });
+
+  it('ngày rác rơi im lặng, không ném lên API', () => {
+    // Cùng luật khoan dung với /bookings: URL là thứ người gõ được, và 400 là
+    // câu trả lời vô nghĩa với admin.
+    expect(parseCancellationsSearchParams({ from: '2026-02-31' }).from).toBeUndefined();
+    expect(parseCancellationsSearchParams({ to: '31-05-2026' }).to).toBeUndefined();
+    expect(parseCancellationsSearchParams({ from: '9999-12-31' }).from).toBeUndefined();
+  });
+
+  it('khoảng NGƯỢC giữ `from`, bỏ `to` — người gõ thấy ngay cái vừa bị vứt', () => {
+    const query = parseCancellationsSearchParams({ from: '2026-05-31', to: '2026-05-01' });
+    expect(query.from).toBe('2026-05-31');
+    expect(query.to).toBeUndefined();
+  });
+
+  it('href mang ngày, và đổi ngày ĐẶT LẠI trang về 1', () => {
+    expect(
+      cancellationsHref({ page: 4, limit: 20, from: '2026-05-01' }, { to: '2026-05-31' }),
+    ).toBe('/cancellations?from=2026-05-01&to=2026-05-31');
+  });
+
+  it('xoá trắng một ô ngày là XOÁ đầu đó — `null` và chuỗi rỗng như nhau', () => {
+    // Không có sentinel nào để phát: URL không còn ngày CHÍNH LÀ xem tất cả.
+    const current = { page: 1, limit: 20, from: '2026-05-01', to: '2026-05-31' };
+    expect(cancellationsHref(current, { from: null, to: null })).toBe('/cancellations');
+    expect(cancellationsHref(current, { from: '', to: '' })).toBe('/cancellations');
+  });
+
+  it('ngày cộng dồn với status, không cái nào thay cái nào', () => {
+    expect(
+      cancellationsHref({ page: 1, limit: 20, status: 'REQUESTED' }, { from: '2026-05-01' }),
+    ).toBe('/cancellations?status=REQUESTED&from=2026-05-01');
+  });
+
+  it('ngày rác từ patch bị vứt ở đây, không ném lên URL', () => {
+    // Một href sinh ra 400 là một cú click chết.
+    expect(cancellationsHref({ page: 1, limit: 20 }, { from: '2026-02-31' })).toBe(
+      '/cancellations',
+    );
+  });
+});

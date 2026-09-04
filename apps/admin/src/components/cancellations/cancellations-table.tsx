@@ -3,15 +3,27 @@
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { CalendarIcon, MapPinIcon, MessageSquareTextIcon, TagIcon, UserIcon } from 'lucide-react';
+import { ButtonLink } from '@tourism/ui/components/button-link';
+import {
+  CalendarIcon,
+  CalendarOffIcon,
+  MapPinIcon,
+  MessageSquareTextIcon,
+  TagIcon,
+  UserIcon,
+} from 'lucide-react';
 import * as React from 'react';
-import { CancellationsStatusTabs } from '@/components/cancellations/cancellations-toolbar';
+import {
+  CancellationsDateRange,
+  CancellationsStatusTabs,
+} from '@/components/cancellations/cancellations-toolbar';
 import { DecideActions } from '@/components/cancellations/decide-actions';
 import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
+import { formatCalendarDate, formatDateRange } from '@/lib/bookings-view';
 import type { DecideAction } from '@/lib/cancellations-decide';
 import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
 import { type CancellationRowVM, cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
@@ -193,7 +205,12 @@ export function CancellationsTable({
   return (
     <DataTableFrame
       views={<CancellationsStatusTabs query={query} />}
-      actions={<ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />}
+      actions={
+        <>
+          <CancellationsDateRange query={query} />
+          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
+        </>
+      }
       footer={
         <TablePagination
           page={query.page}
@@ -206,7 +223,45 @@ export function CancellationsTable({
         />
       }
     >
-      <DataTableBody table={table} empty={t.empty} />
+      <DataTableBody table={table} empty={<CancellationsEmpty query={query} />} />
     </DataTableFrame>
+  );
+}
+
+/**
+ * Ô rỗng của bảng. Đang lọc ngày thì nói THẲNG khoảng đang lọc và mở sẵn một
+ * lối thoát — cùng lưới an toàn với `/bookings` (vòng chỉnh UI 04/09), và nay
+ * cần ở đây vì vùng này cũng có hai ô ngày.
+ *
+ * Rủi ro nhẹ hơn `/bookings` (vùng này mặc định KHÔNG lọc ngày, nên bảng rỗng
+ * thường là rỗng thật), nhưng vẫn có thật: admin đặt khoảng rồi đổi tab trạng
+ * thái, bảng rỗng, và thủ phạm là hai ô ngày họ đặt từ lúc trước.
+ */
+function CancellationsEmpty({ query }: { query: CancellationsQuery }) {
+  if (!query.from && !query.to) return <>{t.empty}</>;
+
+  // Ba dạng câu cho ba hình dạng khoảng — 'between X.' cho khoảng một đầu là
+  // câu cụt và đọc thành 'đúng ngày X'.
+  const message =
+    query.from && query.to
+      ? t.emptyInRange(formatDateRange(query.from, query.to))
+      : query.from
+        ? t.emptyFrom(formatCalendarDate(query.from))
+        : t.emptyTo(formatCalendarDate(query.to as string));
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p>{message}</p>
+      {/* Link chứ không nút: đổi bộ lọc là ĐIỀU HƯỚNG ở vùng này (spec P4b
+          §2.2), và một link thì mở tab mới / copy được như mọi filter khác. */}
+      <ButtonLink
+        variant="outline"
+        size="sm"
+        href={cancellationsHref(query, { from: null, to: null })}
+      >
+        <CalendarOffIcon data-icon="inline-start" aria-hidden="true" />
+        {t.showAllDates}
+      </ButtonLink>
+    </div>
   );
 }

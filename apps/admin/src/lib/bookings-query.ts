@@ -1,12 +1,9 @@
-import {
-  BookingStatusSchema,
-  type BookingStatusValue,
-  CalendarDateSchema,
-} from '@tourism/contract';
+import { BookingStatusSchema, type BookingStatusValue } from '@tourism/contract';
 import {
   appendPaging,
   clampSearch,
   firstParam,
+  parseDateRange,
   parsePaging,
   pickPatch,
   type RawSearchParams,
@@ -27,16 +24,6 @@ import {
 
 /** Trần `search` của contract (`z.string().max(120)`). */
 const SEARCH_MAX_LENGTH = 120;
-
-/**
- * Ngày lịch `YYYY-MM-DD` — IMPORT thẳng schema mà contract dùng cho
- * `from`/`to` (hết bản khai lại cục bộ, vòng vá review F6), nên cái gì lọt
- * qua đây thì server cũng nhận và ngược lại: ngày không tồn tại
- * (`2026-02-31`), mốc ISO có giờ, lẫn năm ngoài trần 1900–2099 đều rơi im
- * lặng như status rác — đúng thứ ô `<input type="date">` không bao giờ sinh
- * ra nhưng người gõ URL thì có.
- */
-const DateParamSchema = CalendarDateSchema;
 
 /** Input đã sạch cho `admin.bookings.list` (khớp AdminBookingsListQuerySchema). */
 export interface BookingsQuery {
@@ -82,26 +69,6 @@ function currentMonthRange(now: Date): { from: string; to: string } {
   return { from: `${prefix}-01`, to: `${prefix}-${pad(lastDay)}` };
 }
 
-/** Ngày hợp lệ hoặc `undefined` — mọi thứ khác rơi im lặng như status rác. */
-function validDate(value: string | undefined): string | undefined {
-  const parsed = DateParamSchema.safeParse(value);
-  return parsed.success ? parsed.data : undefined;
-}
-
-/**
- * Khoảng ngày đã sạch. Khoảng NGƯỢC (`from > to`) giữ `from` và BỎ `to`:
- * contract trả 400 cho khoảng ngược, mà một trang admin nổ 500 vì người ta gõ
- * nhầm ngày là quá đắt. Bỏ CẢ HAI thì bảng lặng lẽ hiện mọi booking trong khi
- * URL vẫn mang hai ngày — bỏ đúng đầu bị loại để ô "đến ngày" trống, người gõ
- * thấy ngay cái vừa bị vứt.
- */
-function dateRange(rawFrom: string | undefined, rawTo: string | undefined) {
-  const from = validDate(rawFrom);
-  const to = validDate(rawTo);
-  const keepTo = to && (!from || from <= to) ? to : undefined;
-  return { ...(from ? { from } : {}), ...(keepTo ? { to: keepTo } : {}) };
-}
-
 /**
  * URL là thứ NGƯỜI gõ được: mọi giá trị rác phải rơi về mặc định an toàn chứ
  * không được ném lên tận API (400 vô nghĩa với admin). Page rác → 1, status
@@ -110,7 +77,7 @@ function dateRange(rawFrom: string | undefined, rawTo: string | undefined) {
 export function parseBookingsSearchParams(raw: RawSearchParams, now: Date): BookingsQuery {
   const status = BookingStatusSchema.safeParse(firstParam(raw.status));
   const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
-  const dates = dateRange(firstParam(raw.from), firstParam(raw.to));
+  const dates = parseDateRange(firstParam(raw.from), firstParam(raw.to));
 
   return {
     ...parsePaging(raw),
@@ -205,7 +172,7 @@ function resolveFilters(current: BookingsQuery, patch: BookingsHrefPatch) {
     search: clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH),
     // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
     // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
-    ...dateRange(pickPatch(patch.from, current.from), pickPatch(patch.to, current.to)),
+    ...parseDateRange(pickPatch(patch.from, current.from), pickPatch(patch.to, current.to)),
   };
 }
 

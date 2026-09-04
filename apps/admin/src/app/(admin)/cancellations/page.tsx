@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/api/session';
 import { fetchAdminCancellationsStats } from '@/lib/api/stats';
 import { cancellationsHref, parseCancellationsSearchParams } from '@/lib/cancellations-query';
 import { toCancellationRow } from '@/lib/cancellations-view';
-import { toCancellationsStatCards } from '@/lib/stats-view';
+import { statsPeriodLabel, toCancellationsStatCards } from '@/lib/stats-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { decideCancellationAction } from './actions';
 
@@ -46,7 +46,11 @@ export default async function CancellationsPage({
     fetchAdminCancellations(cookie, query),
     // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
     // một RTT vào MỌI click phân trang/lọc chỉ để vẽ lại hàng card.
-    fetchAdminCancellationsStats(cookie),
+    //
+    // ADR-0028 §AMEND: card ăn CHÍNH khoảng ngày mà bảng đang lọc. Vùng này
+    // mặc định KHÔNG lọc ngày, nên `undefined` ở cả hai đầu là ca thường gặp
+    // — lúc đó server dùng cửa sổ trượt 28 ngày như trước.
+    fetchAdminCancellationsStats(cookie, { from: query.from, to: query.to }),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang bookings).
@@ -60,7 +64,10 @@ export default async function CancellationsPage({
 
   return (
     <AdminShell user={session}>
-      <StatCardRow cards={toCancellationsStatCards(stats)} />
+      <StatCardRow
+        cards={toCancellationsStatCards(stats)}
+        period={statsPeriodLabel(stats.period)}
+      />
       <CancellationsTable
         rows={paged.items.map(toCancellationRow)}
         query={query}

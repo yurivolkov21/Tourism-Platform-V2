@@ -184,6 +184,23 @@ function comparisonCaption(period: StatsPeriod): (previous: string, days: number
   return (previous) => t.comparisonRange(previous, range);
 }
 
+/**
+ * Caption của metric ẢNH CHỤP. Con số so sánh là số của MỘT MỐC (đầu kỳ), nên
+ * kỳ trượt nói "N days ago" còn kỳ đã chọn nói thẳng tên ngày — kỳ đứng yên
+ * thì gọi được tên nó (ADR-0028 §AMEND).
+ */
+function snapshotCaption(period: StatsPeriod): (previous: string, days: number) => string {
+  if (!isPickedPeriod(period)) return t.snapshotComparison;
+  const at = statsInstantLabel(period.currentFrom);
+  return (previous) => t.snapshotComparisonAt(previous, at);
+}
+
+/** Nhãn MỘT mốc ('May 1, 2026') — cho caption của card ảnh chụp. */
+function statsInstantLabel(iso: string): string {
+  const at = new Date(iso);
+  return `${DAY_FORMAT.format(at)}, ${YEAR_FORMAT.format(at)}`;
+}
+
 /** Điểm sao: in NGUYÊN chuỗi server trả (đã 2 chữ số thập phân). */
 const formatRating = (value: string): string => value;
 
@@ -328,20 +345,40 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
 /** Ba card của `/cancellations`. */
 export function toCancellationsStatCards(stats: AdminCancellationsStats): StatCardVM[] {
   const days = stats.period.windowDays;
+  const picked = isPickedPeriod(stats.period);
+  const caption = comparisonCaption(stats.period);
 
   return [
     // Hàng đợi là ẢNH CHỤP một mốc, không phải số đếm trong kỳ — caption phải
-    // nói đúng chuyện đó ("vs 2 28 days ago").
+    // nói đúng chuyện đó ("vs 2 28 days ago", hoặc "vs 12 on May 1, 2026" khi
+    // kỳ do admin chọn).
     countCard(
       'pendingQueue',
       t.cancellations.pendingQueue,
       stats.pendingQueue,
       'up-bad',
       days,
-      t.snapshotComparison,
+      snapshotCaption(stats.period),
     ),
-    countCard('approved', t.cancellations.approved(days), stats.approved, 'neutral', days),
-    countCard('denied', t.cancellations.denied(days), stats.denied, 'neutral', days),
+    // Nhãn BỎ hậu tố "Nd" khi kỳ do admin chọn: "Approved 31d" đọc thành "31
+    // ngày gần nhất", tức một cửa sổ trượt — nhưng lọc tháng 5 là một kỳ đứng
+    // yên, và dòng khoảng ngày trên hàng card đã nói rõ kỳ nào.
+    countCard(
+      'approved',
+      picked ? t.cancellations.approvedInPeriod : t.cancellations.approved(days),
+      stats.approved,
+      'neutral',
+      days,
+      caption,
+    ),
+    countCard(
+      'denied',
+      picked ? t.cancellations.deniedInPeriod : t.cancellations.denied(days),
+      stats.denied,
+      'neutral',
+      days,
+      caption,
+    ),
   ];
 }
 

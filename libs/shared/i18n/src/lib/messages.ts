@@ -2702,6 +2702,12 @@ export const messages = {
        * về chính thứ đang hiện.
        */
       snapshotComparison: (previous: string, days: number) => `vs ${previous} ${days} days ago`,
+      /**
+       * Cùng metric ảnh chụp nhưng kỳ do ADMIN chọn (ADR-0028 §AMEND): mốc so
+       * sánh là một NGÀY cụ thể (đầu kỳ) chứ không phải "N ngày trước" — kỳ
+       * đã chọn thì đứng yên, nên nói được tên ngày.
+       */
+      snapshotComparisonAt: (previous: string, date: string) => `vs ${previous} on ${date}`,
       /** Kỳ này không tính được (không mẫu số / không có dữ liệu) — không phải 0. */
       noValue: '—',
       /** Pill delta chỉ có mũi tên + độ lớn; trình đọc màn hình cần một câu.
@@ -2727,6 +2733,14 @@ export const messages = {
         pendingQueue: 'Pending queue',
         approved: (days: number) => `Approved ${days}d`,
         denied: (days: number) => `Denied ${days}d`,
+        /**
+         * Nhãn khi kỳ do ADMIN chọn — BỎ hậu tố "Nd" (ADR-0028 §AMEND).
+         * "Approved 31d" đọc thành "31 ngày gần nhất", tức một cửa sổ TRƯỢT;
+         * nhưng lọc tháng 5 là một kỳ đứng yên, và khoảng ngày đã nói ở dòng
+         * ngay trên hàng card rồi.
+         */
+        approvedInPeriod: 'Approved',
+        deniedInPeriod: 'Denied',
       },
       reviews: {
         pending: 'Pending',
@@ -3216,6 +3230,27 @@ export const messages = {
         filterLabel: 'Filter by status',
         all: 'All',
         empty: 'No cancellation requests match this filter.',
+        /**
+         * Bộ lọc khoảng ngày (ADR-0028 §AMEND) — theo ngày khách GỬI yêu cầu,
+         * nên chữ phải nói "requested", không phải "booked" như `/bookings`.
+         */
+        dateFilterLabel: 'Filter by request date',
+        dateFrom: 'Requested from',
+        dateTo: 'Requested to',
+        clearDates: 'Clear dates',
+        datePlaceholder: 'January 01, 2026',
+        pickDateFrom: 'Open calendar to pick the start date',
+        pickDateTo: 'Open calendar to pick the end date',
+        /**
+         * Ô rỗng KHI ĐANG lọc ngày — nói thẳng khoảng đang lọc và mở sẵn lối
+         * thoát. Ở đây rủi ro nhẹ hơn `/bookings` (vùng này mặc định không lọc
+         * ngày) nhưng vẫn có thật khi admin đã đặt khoảng rồi đổi tab trạng
+         * thái: bảng rỗng mà thủ phạm là hai ô ngày họ đặt từ lúc trước.
+         */
+        emptyInRange: (range: string) => `No cancellation requests were made between ${range}.`,
+        emptyFrom: (date: string) => `No cancellation requests were made on or after ${date}.`,
+        emptyTo: (date: string) => `No cancellation requests were made on or before ${date}.`,
+        showAllDates: 'Show requests from all dates',
         columns: {
           booking: CANCELLATION_CONTEXT_COPY.booking,
           tour: CANCELLATION_CONTEXT_COPY.tour,

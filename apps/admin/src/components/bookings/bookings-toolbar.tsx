@@ -2,7 +2,6 @@
 
 import { BookingStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { Button } from '@tourism/ui/components/button';
 import {
   ChartPieIcon,
   CircleCheckIcon,
@@ -12,18 +11,11 @@ import {
   RotateCcwIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import * as React from 'react';
-import { DatePickerField } from '@/components/bookings/date-picker-field';
 import { ExportButton } from '@/components/kit/export-button';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
-import {
-  type BookingsHrefPatch,
-  type BookingsQuery,
-  bookingsExportHref,
-  bookingsHref,
-} from '@/lib/bookings-query';
+import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
+import { type BookingsQuery, bookingsExportHref, bookingsHref } from '@/lib/bookings-query';
 import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 
 /**
@@ -107,105 +99,31 @@ export function BookingsSearch({ query }: { query: BookingsQuery }) {
 }
 
 /**
- * Khoảng ngày ĐẶT BOOKING (spec P4b §3-F6) — hai ô `DatePickerField`, tức kiểu
- * `date-picker-04` của Shadcn Studio (user chốt 01/09, thay cho cặp
- * `<input type="date">` native trước đó). Riêng ô này không cần gói mới:
- * `Calendar` và `Popover` đã nằm sẵn trong `@tourism/ui`. (Gói `motion` mà
- * nút Export/pill/nút quyết định cùng vòng kéo vào admin thì có ghi sổ —
- * ADR-0027 §AMEND 02/09.)
- *
- * Đổi ngày là ĐIỀU HƯỚNG ngay, cùng nếp với tab trạng thái — nhưng "ngay" bây
- * giờ tính theo lúc CHỐT (chọn trên lịch / rời ô / Enter) chứ không theo từng
- * phím, vì ô chữ tự do không có sẵn ranh giới `change` mà ô date native cho
- * không. Chi tiết nằm ở `DatePickerField`.
- *
- * CỐ Ý chưa nâng lên `components/kit/`: bookings vẫn là vùng DUY NHẤT có bộ
- * lọc ngày (`/cancellations` và `/reviews` không khai `from`/`to` trong
- * contract), và luật §2.1 là kit mọc từ vùng thật chứ không dựng abstraction
- * trước. Vùng thứ hai xuất hiện thì nâng lên.
+ * Khoảng ngày ĐẶT BOOKING (spec P4b §3-F6) — vỏ mỏng quanh kit
+ * `ToolbarDateRange`. Vùng chỉ giữ phần của mình: nhãn, tiền tố id, và cách
+ * dựng href. Guard "patch bị vứt" cùng hai ô đã lên kit ở 04/09 khi
+ * `/cancellations` thành consumer thứ hai (ADR-0028 §AMEND).
  */
 export function BookingsDateRange({ query }: { query: BookingsQuery }) {
   const router = useRouter();
-  // Nonce ĐẶT LẠI ô nhập (vòng vá review F6). Xem `go` bên dưới: có một ca mà
-  // URL không đổi nhưng ô vẫn phải quay về giá trị đang lọc, và `key` theo
-  // URL một mình không kéo nổi nó về.
-  const [resetNonce, setResetNonce] = React.useState(0);
-
-  /**
-   * Đổi một đầu của khoảng.
-   *
-   * Ca phải xử riêng: giá trị vừa chốt bị luật khoảng-ngược của `bookingsHref`
-   * VỨT ĐI — điều hướng lúc đó chỉ tổ hại (URL không đổi, hoặc tệ hơn: nhảy
-   * về trang 1 mà chẳng lọc thêm gì), còn ô thì đứng đó khoe một bộ lọc
-   * không tồn tại vì React không dựng lại nó. Bump nonce để ô snap về đúng
-   * thứ URL đang nói. (Lịch làm mờ ngày ngoài khoảng, nhưng ô CHỮ vẫn gõ tay
-   * được, nên ca này tới được — y như hồi `min`/`max` của ô date native chỉ
-   * làm value :invalid chứ không chặn gõ.)
-   *
-   * Phát hiện "patch bị vứt" bằng cách so PHẦN LỌC với `page` GHIM CÙNG MỘT
-   * GIÁ TRỊ ở cả hai vế (vòng vá review F6 lần 2): bản đầu so `next` với
-   * href-hiện-tại trần, nhưng hai vế đó tính `page` theo hai luật khác nhau
-   * — patch (dù bị vứt) vẫn làm `scopeChanged=true` nên vế patch mất `page`
-   * khỏi URL, còn vế `{}` giữ trang hiện tại. Từ trang 2+ hai chuỗi khác
-   * nhau CHỈ VÌ page, guard trượt, và bug "ô khoe bộ lọc ma" tái hiện y
-   * nguyên (bảng nhảy về trang 1, `to` vẫn bị vứt, ô không remount).
-   */
-  function go(patch: BookingsHrefPatch) {
-    const filtersUnchanged =
-      bookingsHref(query, { ...patch, page: 1 }) === bookingsHref(query, { page: 1 });
-    if (filtersUnchanged) {
-      setResetNonce((nonce) => nonce + 1);
-      return;
-    }
-    router.push(bookingsHref(query, patch));
-  }
 
   return (
-    // `<fieldset>` chứ không phải div trần: hai ô là MỘT bộ lọc, và nhãn
-    // chung ("Filter by booking date") chỉ gắn được vào phần tử có role —
-    // fieldset mang sẵn role `group` mà không cần thuộc tính ARIA nào.
-    <fieldset aria-label={t.dateFilterLabel} className="flex items-center gap-1.5">
-      <DatePickerField
-        id="bookings-from"
-        label={t.dateFrom}
-        openLabel={t.pickDateFrom}
-        placeholder={t.datePlaceholder}
-        // `key` ép React dựng lại ô sau mỗi lần điều hướng nên ô luôn khớp
-        // URL mà không cần effect đồng bộ (cùng nếp `TableSearchForm`); nonce
-        // là đường kéo về cho ca URL-không-đổi (xem `go`).
-        key={`from-${query.from ?? ''}-${resetNonce}`}
-        value={query.from ?? ''}
-        onCommit={(iso) => go({ from: iso || null })}
-      />
-      <span aria-hidden="true" className="text-muted-foreground">
-        –
-      </span>
-      <DatePickerField
-        id="bookings-to"
-        label={t.dateTo}
-        openLabel={t.pickDateTo}
-        placeholder={t.datePlaceholder}
-        key={`to-${query.to ?? ''}-${resetNonce}`}
-        // KHÔNG `min`/`max` chéo nhau (vòng vá review polish 2): mặc định tháng
-        // hiện tại làm ô kia luôn có giá trị, nên lùi tháng bằng ô 'đến ngày'
-        // bị lịch xám chặn; khoảng ngược đã có `dateRange` lo.
-        value={query.to ?? ''}
-        onCommit={(iso) => go({ to: iso || null })}
-      />
-      {/* Xoá cả hai đầu trong một cú bấm — nếp `TableSearchForm`. Không có nó
-          thì bỏ lọc nghĩa là quét trắng từng ô rồi rời ô, và nó cũng là lối
-          thoát cho ca ô bị kéo về ở `go` (review F6). */}
-      {query.from || query.to ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className={TOOLBAR_BUTTON}
-          onClick={() => go({ from: null, to: null })}
-        >
-          {t.clearDates}
-        </Button>
-      ) : null}
-    </fieldset>
+    <ToolbarDateRange
+      idPrefix="bookings"
+      label={t.dateFilterLabel}
+      labels={{
+        from: t.dateFrom,
+        to: t.dateTo,
+        openFrom: t.pickDateFrom,
+        openTo: t.pickDateTo,
+        placeholder: t.datePlaceholder,
+        clear: t.clearDates,
+      }}
+      from={query.from}
+      to={query.to}
+      hrefFor={(patch) => bookingsHref(query, patch)}
+      onNavigate={router.push}
+    />
   );
 }
 

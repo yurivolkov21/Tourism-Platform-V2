@@ -590,7 +590,45 @@ describe('kỳ do admin chọn (ADR-0028)', () => {
     });
   });
 
-  it('sáu vùng còn lại KHÔNG đổi: chúng chưa có bộ lọc ngày nào', () => {
+  /** `/cancellations` là vùng thứ hai có bộ lọc ngày (ADR-0028 §AMEND). */
+  describe('toCancellationsStatCards', () => {
+    /** Lọc trọn tháng 5, đọc ngày 04/09 → kỳ ĐỨNG YÊN, không phải cửa sổ trượt. */
+    const may = {
+      windowDays: 31,
+      currentFrom: '2026-05-01T00:00:00.000Z',
+      currentTo: '2026-06-01T00:00:00.000Z',
+      previousFrom: '2026-03-31T00:00:00.000Z',
+      generatedAt: '2026-09-04T10:30:00.000Z',
+    };
+
+    it('card ẢNH CHỤP nói tên NGÀY đầu kỳ, không nói "N days ago"', () => {
+      // Kỳ đã chọn thì đứng yên nên gọi được tên nó; "31 days ago" tính từ
+      // hôm nay sẽ trỏ vào một mốc chẳng liên quan gì tới tháng 5.
+      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
+      expect(cards[0]?.caption).toBe(t.snapshotComparisonAt('2', 'May 1, 2026'));
+    });
+
+    it('bỏ hậu tố "Nd" khỏi nhãn khi kỳ do admin chọn', () => {
+      // "Approved 31d" đọc thành một cửa sổ TRƯỢT 31 ngày — sai hẳn nghĩa.
+      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
+      expect(cards[1]?.label).toBe(t.cancellations.approvedInPeriod);
+      expect(cards[2]?.label).toBe(t.cancellations.deniedInPeriod);
+    });
+
+    it('hai card đếm-trong-kỳ dùng caption khoảng ngày như /bookings', () => {
+      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
+      expect(cards[1]?.caption).toBe(t.comparisonRange('8', 'Mar 31 – Apr 30, 2026'));
+    });
+
+    it('cửa sổ TRƯỢT giữ NGUYÊN chữ cũ — vùng này mặc định không lọc ngày', () => {
+      const cards = toCancellationsStatCards(CANCELLATIONS);
+      expect(cards[0]?.caption).toBe(t.snapshotComparison('2', 28));
+      expect(cards[1]?.label).toBe(t.cancellations.approved(28));
+      expect(cards[1]?.caption).toBe(t.comparison('8', 28));
+    });
+  });
+
+  it('năm vùng còn lại KHÔNG đổi: chúng chưa có bộ lọc ngày nào', () => {
     // Nếu một ngày nào đó vùng khác mọc bộ lọc, test này đỏ và người sửa sẽ
     // đọc ADR-0028 trước khi dựng cửa sổ thứ hai.
     expect(toReviewsStatCards(REVIEWS)[0]?.caption).toBe(t.snapshotComparison('7', 28));
