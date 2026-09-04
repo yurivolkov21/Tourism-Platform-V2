@@ -8,6 +8,152 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Điều chỉnh backend #1: stat card `/bookings` ăn theo bộ lọc ngày, chốt cột lọc, trả 3 mục kit còn treo (nhánh `fix/p4c-backend-logic`, 9 commit `9f89886..ab1da85`, ~25 file, KHÔNG migration)
+
+Đợt điều chỉnh backend ĐẦU TIÊN sau vòng chỉnh UI — user báo trước là sẽ còn
+nhiều đợt nữa. Đóng **mục 3 và mục 4** của "Bàn giao — còn treo" 04/09 (entry
+ngay dưới), cộng ba mục kit nhỏ để lại từ vòng vá review polish 2.
+
+Quyết định + lý do đầy đủ ở [ADR-0028](adr/0028-bookings-stats-follow-filter.md)
+(đi TRƯỚC code theo luật 5); [plan 8 task](plans/2026-09-04-bookings-stats-follow-filter.md);
+AMEND ở [spec P4b §3-F5](specs/2026-08-31-p4b-admin-ready-areas-design.md) (nơi
+khai sinh cửa sổ 28 ngày) và [spec P4c §1](specs/2026-09-02-p4c-operations-design.md)
+(bốn vùng F7–F10 KHÔNG đổi).
+
+### Vấn đề: hai vùng trên cùng màn hình đo hai kỳ khác nhau
+
+Vòng chỉnh UI đặt bộ lọc bảng về trọn tháng hiện tại, còn hàng card vẫn là cửa
+sổ TRƯỢT 28 ngày. Đọc ngày 04/09 thì card tính 08/08–04/09 còn bảng tính
+01/09–30/09. Không con số nào sai, nhưng người trực đọc "Revenue $12,400" rồi
+nhìn xuống bảng tháng 9 sẽ cộng nhẩm ra một câu chuyện không tồn tại. User chốt
+phương án (b) trong ba phương án đã liệt: **cho card nhận bộ lọc**.
+
+### Contract: `admin.stats.bookings` mọc `.input({ from?, to? })`
+
+Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field của `admin.bookings.list`
+— `?from=`/`?to=` trên URL nuôi cả bảng lẫn card, không có bản dịch thứ hai để
+trôi lệch. Cả hai optional nên `?dates=all` (sentinel admin cố ý bỏ lọc) và
+P4d dashboard sau này rơi về cửa sổ trượt 28 ngày mà không cần tham số thứ ba.
+Khoảng ngược là 400, cùng luật với list. **Sáu endpoint `admin.stats.*` còn
+lại không đổi** — trang của chúng chưa có bộ lọc ngày nào.
+
+### Kỳ trước: dài ĐÚNG BẰNG kỳ này, lùi liền kề — không phải tháng lịch trước
+
+Đây là chỗ phải đọc kỹ nhất. Bất biến của F5 là "server trả cả hai số, và pill
+delta chỉ nói thật khi hai kỳ dài bằng nhau" — chính lý do `schemas/reports.ts`
+viện ra để tách `admin.reports.monthly`. Cửa sổ lùi-liền-kề GIỮ bất biến ấy với
+mọi khoảng admin kéo ra: lọc 01/09–30/09 thì so với 02/08–31/08. So với "tháng
+lịch liền trước" thì hỏng ngay khi khoảng lẻ — 05/09–12/09 (8 ngày) đặt cạnh 31
+ngày của tháng 8 là một pill `↓74%` bịa từ hư không.
+
+Bốn nhánh của `statsWindowFromRange` (hàm thuần, `stats-math.ts`): hai đầu ·
+chỉ `from` (kết ở now) · chỉ `to` (lấy đúng `STATS_WINDOW_DAYS` kết ở `to`, vì
+không có đầu nào để đo độ dài) · không đầu nào (rơi về đúng `statsWindow`).
+Hai ca một-đầu tồn tại thật: `parseBookingsSearchParams` giữ `from` bỏ `to` khi
+khoảng ngược, và admin gõ được một ô.
+
+### Biên: nửa-mở, KHÔNG `00:00:01` / `23:59:59`
+
+User đề xuất cặp mốc `00:00:01` và `23:59:59` — trông đúng, và sẽ còn được đề
+xuất lại, nên ADR-0028 §3 có nguyên một bảng đối chiếu. Hai kẽ hở thật: mốc đầu
+bỏ rơi trọn giây đầu tiên của ngày, còn `created_at` là `timestamp`
+**microsecond** nên `lte 23:59:59` bỏ rơi mọi row từ `.000001` tới `.999999` —
+gần trọn một giây của ngày cuối kỳ, đúng khung giờ khách đặt tour nhiều. Mốc
+thật dùng là `[from 00:00:00.000, to+1d 00:00:00.000)`, đúng công thức
+`createdAtRange` mà bảng đang dùng, nên card và bảng cắt CÙNG MỘT NHÁT.
+`startOfDayUtc` vì thế lên `lib/calendar-date.ts` — một bản cho cả hai nơi.
+Không có giờ giấc nào đi qua hợp đồng: contract chỉ nhận `YYYY-MM-DD`.
+
+Int spec khoá đúng kẽ hở đó bằng một fixture lúc `2026-05-31T23:59:59.500Z` —
+nó PHẢI được đếm.
+
+### `StatsPeriod` thêm `currentTo`; caption in ngày thật
+
+Tới nay cuối kỳ luôn bằng `generatedAt` nên một field là đủ; có bộ lọc thì hai
+mốc rời nhau. Hai mốc TRÙNG nhau nay chính là dấu hiệu "cửa sổ đang trượt", và
+client đọc đúng dấu hiệu ấy để chọn câu chữ — nó vẫn KHÔNG tự cắt cửa sổ nào.
+
+Kỳ do admin chọn: một dòng `Showing Sep 1 – Sep 30, 2026` trên cả hàng (một
+khoảng thì nói một lần), và caption từng card đổi thành
+`vs $900.00 · Aug 2 – Aug 31, 2026`. Nhãn in ngày CUỐI CÙNG nằm trong kỳ chứ
+không in mốc chặn — mốc là 00:00 ngày 1/10 nhưng ngày cuối là 30/09, in thẳng
+mốc là nói dối đúng một ngày ở mọi khoảng. Năm viết đủ hai lần khi kỳ vắt qua
+giao thừa. Đọc theo UTC, cùng thước với cột `Created` của bảng.
+
+`windowDays` không còn trả thẳng hằng số mà đo từ chính cửa sổ, **sàn 1**:
+contract khai `z.int().positive()`, mà lọc `?from=` bằng ngày hôm nay cho một
+span vài giờ sẽ làm tròn thành 0 và response tự nó không parse nổi.
+
+### Chốt: giữ cột `createdAt`, KHÔNG thêm `dateField`
+
+Mục 4 còn treo hỏi có nên đổi hai ô ngày sang ngày khởi hành. User chốt không,
+và lý do là nghiệp vụ chứ không phải kỹ thuật: *"chúng ta đang thống kê các
+dòng bookings xuất hiện trong 1 tháng chứ không phải theo ngày khởi hành; một
+khách có thể đặt tour từ tháng 9 và tour khởi hành tháng 10, thống kê phải theo
+ngày đặt thì mới chính xác."* Đây cũng là cột bảng đang sắp xếp và cột
+`newBookings` đang đếm.
+
+⚠️ **Điều KHÔNG được suy ra:** ăn theo bộ lọc không có nghĩa bốn con số cùng
+đếm trên một cột. `revenue`/`paidBookings`/`cancellationRate` vẫn neo `paid_at`,
+`newBookings` neo `created_at`. Booking tạo 28/08 mà trả tiền 02/09 VÀO
+`revenue` tháng 9 nhưng KHÔNG có trong bảng tháng 9 — đúng, vì doanh thu là
+ngày tiền về. Ba trong bốn card cố ý không khớp bảng, và luôn vậy từ F5. Nay
+ghi thẳng vào JSDoc `StatsService` để lần sau không ai đọc thành lỗi.
+
+### Cache stats giữ nguyên
+
+Data Cache của Next key theo URL, mà `from`/`to` nằm trên query string → mỗi
+khoảng một entry, `ADMIN_STATS_TAG` vẫn `updateTag` được cả cụm. Không phải bỏ
+cache như bốn vùng P4c (ở đó lý do là kẻ ghi nằm ngoài admin, không phải chuyện
+tham số).
+
+### Ba mục kit còn treo — trả hết
+
+- **`unknownItem` lên `ToolbarFilterMenu`.** Hai vùng tự dựng "nhóm mục lạ" và
+  đặt nó ở HAI vị trí khác nhau (`/payment-events` sau tập chính quy,
+  `/subscribers` trước danh sách nguồn). Kit nay chốt: **CUỐI CÙNG**, dưới một
+  separator — thứ tự đọc là "tất cả → chính quy → ngoại lệ". ⚠️ Thay đổi NHÌN
+  THẤY ở `/subscribers`: mục nguồn lạ chuyển từ đầu xuống cuối. Nút trigger nay
+  dò cả `unknownItem` nên vẫn đọc ra đúng giá trị lạ (bài học review F10).
+- **`LabelValueRow` tách khỏi 6 bản chép** (`/bookings/[code]`,
+  `/enquiries/[id]`, dialog Refund, `ConfirmWriteDialog`, và hai bản trong
+  `JsonDrawer`). Sáu bản khác nhau đúng hai thứ: bề rộng cột nhãn và việc nhãn
+  có tự ngắt dòng. Bề rộng là biến thể khai sẵn (sm/md/lg) chứ không phải chuỗi
+  lúc chạy — Tailwind quét class tĩnh. `value` nhận `ReactNode` nên tông mờ và
+  số thô của `PayloadRow` đi vào chính giá trị, kit không mọc prop cho một
+  consumer. Bất biến `wrap-anywhere` + `minmax(0,1fr)` nay khoá bằng test thay
+  vì bằng trí nhớ — bản chép thứ 5 từng lọt trọn một vòng vá tràn chữ vì không
+  ai biết nó tồn tại.
+- **Gọt JSDoc kể lịch sử ở 5 file `*-menu.tsx`.** Chúng đang kể trình tự các
+  đợt thi công ("đợt 1 … đợt 2 … đợt 3", "Trước 03/09 là `ToolbarSelect`") —
+  lịch sử là việc của CHANGELOG và git. Giữ nguyên mọi lý do kỹ thuật còn hiệu
+  lực. Không đổi dòng code nào.
+
+### Chưa làm, cố ý
+
+Chưa thêm index cho `paid_at` dù cửa sổ nay lùi được rất xa (`?from=2020-01-01`).
+Cùng ngưỡng đã khai ở JSDoc `StatsService`: xem lại khi `bookings` vượt ~10k
+row. Ghi ở ADR-0028 §Hệ quả để lần chạm ngưỡng đầu tiên biết chỗ mà tìm.
+
+Sáu vùng stats còn lại nay không đối xứng với `bookings` (một cái có input, sáu
+cái không). Chấp nhận: thêm input không ai gửi là nợ, không phải tính năng.
+
+### Nghiệm thu
+
+`pnpm gate:int` xanh, chạy trên API dev đang sống ở `:3001` (không dựng API
+tạm). Chưa qua review 8 mũi — session gốc nghiệm thu bằng `git diff` rồi mới
+merge.
+
+Tests after: 1417 web · 311 api · 322 api-int · 190 contract · 704 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 43 so với entry trước: 11 api (`statsWindowFromRange`
+bốn nhánh, hai kỳ bằng nhau ở khoảng lẻ, tháng nhuận, một ngày, không sửa Date
+của caller, `windowDays` đo từ cửa sổ và sàn 1), 6 api-int (cắt đúng khoảng kể
+cả row `23:59:59.500`, kỳ trước lùi liền kề, `currentTo` tách `generatedAt`,
+không tham số rơi về 28 ngày, 400 cho khoảng ngược và ngày rác), 4 contract
+(hai đầu optional, khoảng ngược, từ chối mốc có giờ, ngày không tồn tại), 22
+admin (9 `stats-view`, 2 kit `stat-card`, 5 kit `toolbar-filter-menu`, 6 kit
+`label-value-row`).
+
 ## 2026-09-04 — Vòng chỉnh UI admin sau P4c: bốn ô lọc thành MỘT menu kit theo `dropdown-menu-10`, vá tràn chữ ở dialog ghi, drawer Details đổi vỏ + hai chế độ xem payload + nhãn và giá trị payload đọc được, `/bookings` mặc định lọc theo tháng (nhánh `fix/p4c-ui-polish`, 1 commit `b2eb60b`, ~46 file, không migration)
 
 Vòng thiết kế chạy bằng bản demo, không có spec riêng: file
