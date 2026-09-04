@@ -86,6 +86,23 @@ merge rebase+ff, docs sweep.
 
 ### F3 — Cancellations (branch `feat/p4b-cancellations`)
 
+*AMEND 04/09 (nhánh `fix/p4c-backend-logic`, đợt điều chỉnh backend #2):* vùng
+này mọc **bộ lọc khoảng ngày** theo `createdAt` (ngày khách GỬI yêu cầu — không
+phải `decidedAt`, vì hàng `REQUESTED` có `decidedAt` null nên lọc theo cột ấy
+sẽ quét sạch hàng đợi đang mở khỏi bảng). `admin.cancellations.list` và
+`admin.stats.cancellations` cùng nhận `{from?, to?}`.
+
+Mặc định **KHÔNG lọc ngày** — cố ý khác `/bookings`: trang này là hàng đợi việc
+phải làm, mặc định lọc tháng hiện tại sẽ giấu mất request tháng trước còn đang
+`REQUESTED`. Vì URL trần chính là "xem tất cả" nên ở đây **không có sentinel
+`?dates=all`**.
+
+Card `Pending queue` là ẢNH CHỤP nên không đếm-trong-kỳ được; nó chuyển thành
+**cuối kỳ vs đầu kỳ**, dựng chính xác bằng `pendingRequestsAt` sẵn có (quyết
+định cancellation là chung cuộc nên không cần bảng audit). Chưa lọc thì
+`currentTo === now`, tức hành vi không đổi. Lý do đầy đủ ở
+[ADR-0028 §AMEND](../adr/0028-bookings-stats-follow-filter.md).
+
 - `/cancellations`: hàng đợi từ kit (filter status REQUESTED/DENIED/REFUNDED),
   hàng nào REQUESTED có approve/deny + confirm nêu rõ hệ quả approve (refund
   phần còn lại + huỷ booking + nhả ghế); lỗi ALREADY_DECIDED/NOT_REFUNDABLE/

@@ -240,3 +240,82 @@ phát minh cửa sổ thứ hai.
 | **Bỏ** kỳ trước khi đang lọc (card thành số đơn) | An toàn nhưng mất pill delta ở **màn hình mặc định** — vì mặc định giờ CHÍNH LÀ có lọc (tháng này). Card mất hết xu hướng đúng lúc cần nhất. |
 | Thêm `dateField=created\|departure` | Một tham số không ai chọn là một nhánh không ai test. "Tháng này có chuyến nào khởi hành" là câu hỏi của bề mặt lịch khởi hành, không phải sổ booking. |
 | Dùng lại `admin.reports.monthly` cho hàng card | Hình dạng response khác hẳn (tổng tuyệt đối, không cặp hai kỳ, không ảnh chụp) và chỉ nhận trọn tháng — không phủ được khoảng lẻ. |
+
+---
+
+## AMEND 04/09 (cùng ngày, đợt điều chỉnh #2) — vùng thứ hai: `/cancellations`
+
+ADR gốc đã hẹn: "ngày một vùng khác mọc bộ lọc ngày thì **lặp lại đúng khuôn
+này**, đừng phát minh cửa sổ thứ hai". Đây là lần đầu áp dụng, và nó lộ ra hai
+chỗ khuôn gốc **không phủ** — ghi lại để vùng thứ ba khỏi suy luận lại.
+
+### 1. Cột lọc: `createdAt` — ngày khách GỬI yêu cầu
+
+Cùng cột bảng đang sắp xếp, và cùng họ lý do với `/bookings`.
+
+Không dùng `decidedAt` dù nó khớp tuyệt đối với hai card Approved/Denied: hàng
+`REQUESTED` có `decidedAt` **null**, nên lọc theo cột ấy sẽ **quét sạch hàng đợi
+đang mở khỏi bảng** ngay khi admin bật bộ lọc. Đó là xoá mất lý do tồn tại của
+trang.
+
+Hệ quả là cùng loại lệch đã chấp nhận ở §6: một khoảng, vẫn hai cột neo —
+Approved/Denied đếm theo `decided_at` còn bảng lọc theo `created_at`. Ở đây sai
+số NHỎ hơn `/bookings` nhiều vì vòng đời một request rất ngắn (khách gửi, admin
+quyết trong vài ngày), nhưng ở biên tháng thì vẫn có.
+
+### 2. Mặc định KHÔNG lọc ngày — cố ý KHÁC `/bookings`
+
+`/bookings` mặc định trọn tháng hiện tại. `/cancellations` mặc định **không lọc
+gì cả**. Hai trang không đối xứng, và đó là chủ đích:
+
+- `/bookings` là **sổ** — người ta đọc nó theo kỳ, và "tháng này" là kỳ mặc
+  định đúng đắn.
+- `/cancellations` là **hàng đợi việc phải làm** — nó tồn tại để được DỌN SẠCH.
+  Mặc định lọc tháng hiện tại sẽ giấu mất một request khách gửi tháng 8 mà tới
+  giờ vẫn `REQUESTED`: không ai xoá nó, nhưng cũng không ai còn thấy nó. Một
+  hàng đợi mà màn hình mặc định không hiện đủ là một hàng đợi sẽ có mục bị bỏ
+  quên.
+
+Hệ quả kỹ thuật dễ chịu: **không cần sentinel `?dates=all`**. Ở `/bookings`
+sentinel ấy phải có vì URL trần bị độn tháng hiện tại, nên không có nó thì
+không ai về lại được "xem tất cả". Ở đây URL trần CHÍNH LÀ xem tất cả — hai ô
+ngày trống là trạng thái nghỉ, và xoá trắng chúng là đường về hiển nhiên.
+
+Chưa lọc thì stat card giữ nguyên cửa sổ trượt 28 ngày như trước ADR này —
+đúng nhánh "thiếu cả hai đầu" của `statsWindowFromRange`, không có mã mới.
+
+### 3. Metric ẢNH CHỤP dưới một kỳ đã chọn: **cuối kỳ vs đầu kỳ**
+
+Khuôn gốc chỉ nói về metric ĐẾM TRONG KỲ (cả bốn card của `/bookings` đều
+vậy). `/cancellations` có `pendingQueue` là **ảnh chụp**: `current` = số hàng
+`REQUESTED` *ngay bây giờ*, `previous` = hàng đợi dựng lại tại đầu kỳ. Lọc
+tháng 7 mà card vẫn nói "hàng đợi bây giờ" thì nó tái lập đúng nghịch lý ADR
+này sinh ra để dẹp — hai vùng trên một màn hình đo hai kỳ khác nhau.
+
+Luật mới, áp cho mọi metric ảnh chụp về sau: **`current` là ảnh chụp tại
+`window.currentTo`, `previous` tại `window.currentFrom`.** Card đọc thành "hàng
+đợi đã dịch chuyển thế nào trong kỳ bạn đang xem".
+
+Ba điều khiến luật này áp được ở đây mà không tốn gì:
+
+- `pendingRequestsAt(at)` **đã tồn tại** và dựng lại được hàng đợi tại BẤT KỲ
+  mốc nào — không cần cột mới, không migration.
+- Dựng lại **chính xác** chứ không xấp xỉ, vì quyết định cancellation là chung
+  cuộc: `decided_at` ghi một lần, append-only (spec P2 D1-B). Đây là thứ
+  reviews (F5) và enquiries (F9) phải dựng bảng audit mới có, còn subscribers
+  (F10) tới giờ vẫn không có.
+- Với cửa sổ TRƯỢT, `currentTo === generatedAt === now`, nên
+  `pendingRequestsAt(currentTo)` cho ra **đúng** `count(status = REQUESTED)` —
+  hành vi khi chưa lọc không đổi một con số nào.
+
+⚠️ **Lời hứa bị nới, có chủ đích.** JSDoc `StatsService` hứa `pendingQueue.current`
+"đúng bằng số hàng của `/cancellations?status=REQUESTED`". Lời hứa ấy nay chỉ
+còn đúng **khi chưa lọc ngày** — và đó chính là lúc nó có nghĩa. Đang xem tháng
+7 thì con số đúng phải là hàng đợi cuối tháng 7, không phải hàng đợi hôm nay;
+bảng bên dưới lúc ấy cũng đang nói về tháng 7.
+
+### 4. Không đụng tới, cố ý
+
+`search` cho `/cancellations`: contract chưa có, và đợt này không thêm. Tra
+theo mã booking là nhu cầu thật nhưng nó là một tính năng riêng, không phải hệ
+quả của việc cho card ăn theo bộ lọc.
