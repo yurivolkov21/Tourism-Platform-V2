@@ -13,20 +13,12 @@ import {
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@tourism/ui/components/radio-group';
-import {
-  Stepper,
-  StepperIndicator,
-  StepperItem,
-  StepperNav,
-  StepperSeparator,
-  StepperTitle,
-  StepperTrigger,
-} from '@tourism/ui/components/stepper';
 import { Textarea } from '@tourism/ui/components/textarea';
-import { BanknoteIcon, CheckIcon, FileTextIcon, ScaleIcon, ShieldCheckIcon } from 'lucide-react';
+import { BanknoteIcon, FileTextIcon, ScaleIcon, ShieldCheckIcon } from 'lucide-react';
 import { useState } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { LabelValueRow } from '@/components/kit/label-value-row';
+import { WizardPanel, WizardSteps } from '@/components/kit/wizard-steps';
 import { type ApproveRefundContext, policyRefund } from '@/lib/approve-refund';
 import { formatAmount, formatCalendarDate, formatDateTime } from '@/lib/bookings-view';
 import {
@@ -83,13 +75,8 @@ const STEPS = [
 
 type StepId = (typeof STEPS)[number]['id'];
 
-/**
- * Bản mảng thường cho `<Stepper steps>`. Ở MODULE SCOPE vì component chốt định
- * nghĩa stepper đúng một lần bằng ref: dựng mảng mới trong render là mảng thứ
- * hai trở đi bị lặng lẽ bỏ qua, và nếu có ngày nào nội dung STEPS đổi theo dữ
- * liệu thì lỗi ấy sẽ không có gì báo.
- */
-const STEPPER_STEPS = [...STEPS];
+/** `id` vùng nội dung — mỗi tab trỏ `aria-controls` vào đây. */
+const PANEL_ID = 'approve-wizard-panel';
 
 /** Mọi thứ stepper cần — cắt ĐÚNG chừng này, không nhận cả `AdminBookingDetail`. */
 export interface ApproveTarget extends ApproveRefundContext {
@@ -203,66 +190,52 @@ export function ApproveStepperDialog({
           <DialogDescription>{t.approveDialog.body}</DialogDescription>
         </DialogHeader>
 
-        <Stepper
-          value={step}
-          onValueChange={(next) => goTo(next as StepId)}
-          steps={STEPPER_STEPS}
-          // Bước đã qua đổi icon thành dấu tích: chỗ mình đã đi qua và chỗ còn
-          // lại phải phân biệt được bằng HÌNH, không chỉ bằng màu.
-          indicators={{ completed: <CheckIcon className="size-4" /> }}
-        >
-          <StepperNav>
-            {STEPS.map((entry, entryIndex) => (
-              <StepperItem
-                key={entry.id}
-                stepId={entry.id}
-                // Không nhảy cóc: bước chưa tới thì không bấm được. Đang bắn
-                // lệnh thì khoá tất — đổi bước giữa chừng là mất ngữ cảnh của
-                // câu trả lời sắp về.
-                disabled={pending || entryIndex > furthest}
-                className="not-last:flex-1"
-              >
-                <StepperTrigger className="flex flex-col gap-2">
-                  <StepperIndicator className="size-9 rounded-full">{entry.icon}</StepperIndicator>
-                  <StepperTitle className="text-xs">{entry.title}</StepperTitle>
-                </StepperTrigger>
-                {entryIndex < STEPS.length - 1 ? <StepperSeparator className="mb-6" /> : null}
-              </StepperItem>
-            ))}
-          </StepperNav>
-        </Stepper>
+        <WizardSteps
+          steps={STEPS}
+          active={step}
+          reached={furthest}
+          // Đang bắn lệnh thì khoá cả thanh: đổi bước giữa chừng là câu trả lời
+          // sắp về ghi vào một ngữ cảnh không còn nữa.
+          disabled={pending}
+          onSelect={(next) => goTo(next as StepId)}
+          panelId={PANEL_ID}
+        />
 
-        {step === 'request' ? <RequestStep request={request} /> : null}
-        {step === 'policy' ? <PolicyStep request={request} policy={policy} money={money} /> : null}
-        {step === 'amount' ? (
-          <AmountStep
-            policyAmount={money(policy.amount)}
-            remaining={money(policy.remaining)}
-            nothingLeft={Number(policy.remaining) === 0}
-            override={override}
-            amountInput={amountInput}
-            amountError={amountError}
-            onModeChange={(next) => {
-              setOverride(next);
-              // Bỏ công tắc vượt bậc là bỏ luôn con số đã gõ: giữ lại một số
-              // vô hình rồi bật lại công tắc là cách đưa nó vào payload mà
-              // không ai nhìn nó lần nữa.
-              if (!next) setAmountInput('');
-            }}
-            onAmountChange={setAmountInput}
-          />
-        ) : null}
-        {step === 'confirm' ? (
-          <ConfirmStep
-            amount={money(chosenAmount)}
-            override={override}
-            policyAmount={money(policy.amount)}
-            note={note}
-            noteId={`approve-note-${request.id}`}
-            noteInvalid={noteTouched && noteMissing}
-            onNoteChange={setNote}
-          />
-        ) : null}
+        <WizardPanel stepId={step} panelId={PANEL_ID}>
+          {step === 'request' ? <RequestStep request={request} /> : null}
+          {step === 'policy' ? (
+            <PolicyStep request={request} policy={policy} money={money} />
+          ) : null}
+          {step === 'amount' ? (
+            <AmountStep
+              policyAmount={money(policy.amount)}
+              remaining={money(policy.remaining)}
+              nothingLeft={Number(policy.remaining) === 0}
+              override={override}
+              amountInput={amountInput}
+              amountError={amountError}
+              onModeChange={(next) => {
+                setOverride(next);
+                // Bỏ công tắc vượt bậc là bỏ luôn con số đã gõ: giữ lại một số
+                // vô hình rồi bật lại công tắc là cách đưa nó vào payload mà
+                // không ai nhìn nó lần nữa.
+                if (!next) setAmountInput('');
+              }}
+              onAmountChange={setAmountInput}
+            />
+          ) : null}
+          {step === 'confirm' ? (
+            <ConfirmStep
+              amount={money(chosenAmount)}
+              override={override}
+              policyAmount={money(policy.amount)}
+              note={note}
+              noteId={`approve-note-${request.id}`}
+              noteInvalid={noteTouched && noteMissing}
+              onNoteChange={setNote}
+            />
+          ) : null}
+        </WizardPanel>
 
         {failure ? (
           <p role="alert" className="text-sm text-destructive-emphasis">
@@ -270,35 +243,36 @@ export function ApproveStepperDialog({
           </p>
         ) : null}
 
+        {/* Ba con: Back trái · tiến độ giữa · Continue phải, đúng dáng
+            stepper-03. Trên mobile `DialogFooter` xếp cột NGƯỢC nên nút chính
+            lên trên, và dòng tiến độ ẩn đi cho khỏi chen vào giữa hai nút. */}
         <DialogFooter className="sm:justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            disabled={pending}
+            onClick={() =>
+              index === 0 ? onOpenChange(false) : goTo(STEPS[index - 1]?.id ?? 'request')
+            }
+          >
+            {index === 0 ? t.cancel : w.back}
+          </Button>
           <p className="hidden text-sm text-muted-foreground sm:block">
             {w.progress(index + 1, STEPS.length)}
           </p>
-          <div className="flex gap-2">
+          {step === 'confirm' ? (
+            <Button type="button" disabled={pending} onClick={submit}>
+              {pending ? t.approveDialog.submitting : t.approveDialog.submit}
+            </Button>
+          ) : (
             <Button
               type="button"
-              variant="ghost"
-              disabled={pending}
-              onClick={() =>
-                index === 0 ? onOpenChange(false) : goTo(STEPS[index - 1]?.id ?? 'request')
-              }
+              disabled={pending || !canAdvance}
+              onClick={() => goTo(STEPS[index + 1]?.id ?? 'confirm')}
             >
-              {index === 0 ? t.cancel : w.back}
+              {w.next}
             </Button>
-            {step === 'confirm' ? (
-              <Button type="button" disabled={pending} onClick={submit}>
-                {pending ? t.approveDialog.submitting : t.approveDialog.submit}
-              </Button>
-            ) : (
-              <Button
-                type="button"
-                disabled={pending || !canAdvance}
-                onClick={() => goTo(STEPS[index + 1]?.id ?? 'confirm')}
-              >
-                {w.next}
-              </Button>
-            )}
-          </div>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
