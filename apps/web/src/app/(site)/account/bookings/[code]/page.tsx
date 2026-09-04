@@ -250,7 +250,12 @@ export default async function AccountBookingDetailPage({
               // (ADR-0030 §3b) — cùng phép tính mà màn quyết định của admin
               // dùng, nên hai bên không thể nói hai con số khác nhau.
               refund={{
+                code: booking.code,
+                tourTitle: booking.tourTitle,
                 departureStartDate: booking.departureStartDate,
+                departureEndDate: booking.departureEndDate,
+                numAdults: booking.numAdults,
+                numChildren: booking.numChildren,
                 paidAt: booking.paidAt,
                 freeCancellationDays: booking.freeCancellationDays,
                 totalAmount: booking.totalAmount,

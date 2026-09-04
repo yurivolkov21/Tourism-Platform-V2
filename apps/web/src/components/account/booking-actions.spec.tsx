@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingView } from '@/lib/booking-vm';
-import { BookingActions } from './booking-actions';
+import { BookingActions, type RefundEstimateInput } from './booking-actions';
 
 /**
  * BookingActions CHỈ render theo `BookingView.actions` (bảng quyết định
@@ -406,6 +406,129 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
 
     expect(
       await screen.findByText('This booking can’t be cancelled online. Contact us for help.'),
+    ).toBeInTheDocument();
+  });
+});
+
+/**
+ * Khối tóm tắt trong dialog xin huỷ (ADR-0030 §3b; thiết kế lại 04/09 — rộng
+ * ra, chia hai nửa, thêm "what happens next").
+ *
+ * Trước vòng này khối ước tính hoàn tiền KHÔNG có test nào, nên nó bước vào
+ * production chỉ với con mắt. Bậc hoàn tiền là LUẬT TIỀN: nó phải bị canh.
+ *
+ * Mọi ca dựng ngày khởi hành TƯƠNG ĐỐI so với hôm nay, vì bậc đo khoảng cách
+ * tới khởi hành — ghim ngày cứng thì spec tự hỏng vào một sáng nào đó.
+ */
+describe('CancelRequestDialog — khối tóm tắt', () => {
+  const PAID_VIEW: BookingView = {
+    tone: 'success',
+    statusKey: 'PAID',
+    actions: ['requestCancellation'],
+  };
+
+  /** Ngày lịch UTC cách hôm nay đúng `days` ngày — cùng phép đếm của contract. */
+  function departureIn(days: number): string {
+    const date = new Date();
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+  }
+
+  function refundFor(overrides: Partial<RefundEstimateInput> = {}): RefundEstimateInput {
+    return {
+      code: 'BK-20260904-WXYZ',
+      tourTitle: 'Ha Long Bay Overnight Cruise',
+      departureStartDate: departureIn(40),
+      departureEndDate: departureIn(42),
+      numAdults: 2,
+      numChildren: 1,
+      // Ngoài cửa sổ ân hạn, để bậc theo ngày là thứ DUY NHẤT quyết con số.
+      paidAt: new Date(Date.now() - 10 * 86_400_000).toISOString(),
+      freeCancellationDays: null,
+      totalAmount: '1000.00',
+      refundedTotal: '0',
+      currency: 'USD',
+      ...overrides,
+    };
+  }
+
+  async function openDialog(overrides: Partial<RefundEstimateInput> = {}) {
+    const user = userEvent.setup();
+    render(
+      <BookingActions view={PAID_VIEW} code="BK-20260904-WXYZ" refund={refundFor(overrides)} />,
+    );
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+  }
+
+  it('nói RÕ đang huỷ booking nào — tên tour, đợt, số khách, mã', async () => {
+    // Bản đầu chỉ có con số hoàn mà không hề nói nó thuộc booking nào; khách
+    // có nhiều booking thì đó là một dialog không xác nhận được điều gì.
+    await openDialog();
+
+    expect(screen.getByText('Ha Long Bay Overnight Cruise')).toBeInTheDocument();
+    expect(screen.getByText('BK-20260904-WXYZ')).toBeInTheDocument();
+    expect(screen.getByText('2 adults, 1 child')).toBeInTheDocument();
+  });
+
+  it.each([
+    [40, 100, '$1,000.00'],
+    [20, 50, '$500.00'],
+    [10, 25, '$250.00'],
+    [3, 0, '$0.00'],
+  ])('còn %i ngày → %i%% và số tiền %s', async (days, percent, amount) => {
+    await openDialog({
+      departureStartDate: departureIn(days),
+      departureEndDate: departureIn(days),
+    });
+
+    expect(screen.getByText(amount)).toBeInTheDocument();
+    expect(screen.getByText(`${percent}% of $1,000.00`)).toBeInTheDocument();
+  });
+
+  it('KHÔNG làm tròn cent — 50% của $1,199 là $599.50, không phải $600', async () => {
+    // `formatMoney` của trang tour cắt phần lẻ (giá tour tròn trăm, chuyện biên
+    // tập). Dùng nhầm nó ở đây là hứa với khách một con số họ không nhận được,
+    // và họ đối chiếu được với sao kê.
+    await openDialog({ departureStartDate: departureIn(20), totalAmount: '1199.00' });
+
+    expect(screen.getByText('$599.50')).toBeInTheDocument();
+    expect(screen.queryByText('$600')).toBeNull();
+  });
+
+  it('trong 24 giờ đầu sau thanh toán → 100% dù khởi hành đã cận kề', async () => {
+    // Bất biến của §3c: ân hạn là lớp phủ CHỈ CÓ LỢI, nó đè lên bậc theo ngày.
+    await openDialog({
+      departureStartDate: departureIn(3),
+      departureEndDate: departureIn(3),
+      paidAt: new Date(Date.now() - 3_600_000).toISOString(),
+    });
+
+    expect(screen.getByText('$1,000.00')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'You are still within 24 hours of paying, so this cancellation is refunded in full.',
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it('đã hoàn một phần → con số lớn là phần CÒN LẠI, và nói ra phần đã hoàn', async () => {
+    // Bậc tính trên TỔNG rồi trừ phần đã hoàn — không trừ là hoàn đúp.
+    await openDialog({ refundedTotal: '150.00' });
+
+    expect(screen.getByText('$850.00')).toBeInTheDocument();
+    expect(screen.getByText('$150.00 already refunded')).toBeInTheDocument();
+  });
+
+  it('"what happens next" hiện cả khi trang chưa truyền ước tính', async () => {
+    // Ba câu ấy đúng với MỌI yêu cầu huỷ đã trả tiền — chúng không phụ thuộc
+    // vào con số, nên không được biến mất cùng con số.
+    const user = userEvent.setup();
+    render(<BookingActions view={PAID_VIEW} code="BK-20260904-WXYZ" />);
+    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+
+    expect(screen.getByText('What happens next')).toBeInTheDocument();
+    expect(
+      screen.getByText('Any refund goes back to the card or PayPal account you paid with.'),
     ).toBeInTheDocument();
   });
 });

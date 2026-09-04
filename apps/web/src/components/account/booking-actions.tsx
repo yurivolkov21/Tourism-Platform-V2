@@ -29,7 +29,7 @@ import { AccountActionError } from '@/components/account/account-action-error';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import type { BookingAction, BookingView } from '@/lib/booking-vm';
-import { formatMoney } from '@/lib/tours';
+import { formatDateRange, formatMoneyExact } from '@/lib/tours';
 
 /** Trần `reason` của contract (`CancelBookingInputSchema.max(1000)`). */
 const REASON_MAX = 1000;
@@ -152,13 +152,28 @@ function CancelRequestDialog({
             </Button>
           }
         />
-        <AlertDialogContent>
+        {/* Rộng gấp đôi mặc định (`sm:max-w-sm` = 24rem): dialog này phải chứa
+            được cả thứ đang huỷ lẫn số tiền lấy lại, cạnh nhau. Nhồi hai khối
+            ấy vào một cột hẹp thì con số — thứ người ta mở dialog ra để xem —
+            bị đẩy xuống dưới màn hình.
+
+            Tiền tố `data-[size=default]:` là BẮT BUỘC, không phải trang trí:
+            luật gốc là `data-[size=default]:sm:max-w-sm`, và một `sm:max-w-2xl`
+            trần thua nó về specificity (attribute selector) — tailwind-merge
+            cũng không gộp hai lớp khác tập biến thể, nên lớp mới sẽ nằm im
+            trong DOM mà dialog vẫn 24rem. Đo được bằng `twMerge` trước khi
+            viết. Cùng tiền tố thì tailwind-merge thay thẳng luật cũ.
+
+            `max-h`+`overflow-y-auto`: `AlertDialogContent` neo `top-1/2` và
+            KHÔNG có trần chiều cao — nội dung dài trên laptop màn thấp sẽ tràn
+            ra cả hai đầu màn hình mà không cuộn được, tức mất luôn nút gửi. */}
+        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto data-[size=default]:sm:max-w-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>{t.requestTitle}</AlertDialogTitle>
             <AlertDialogDescription>{t.requestBody}</AlertDialogDescription>
           </AlertDialogHeader>
 
-          {refund ? <RefundEstimate booking={refund} /> : null}
+          {refund ? <CancelSummary booking={refund} /> : null}
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3">
@@ -183,6 +198,8 @@ function CancelRequestDialog({
               </p>
             ) : null}
           </div>
+
+          <WhatHappensNext />
 
           {error}
 
@@ -357,6 +374,8 @@ export function BookingActions({
                         </Button>
                       }
                     />
+                    {/* Giữ khổ hẹp mặc định: booking chưa trả tiền thì không có
+                        tiền để bày, dialog này chỉ là một câu hỏi có/không. */}
                     <AlertDialogContent>
                       <AlertDialogHeader>
                         <AlertDialogTitle>{t.cancelConfirmTitle}</AlertDialogTitle>
@@ -416,23 +435,24 @@ export function BookingActions({
 }
 
 /**
- * Ước tính hoàn tiền, hiện NGAY TRONG dialog xin huỷ (ADR-0030 §3b).
+ * Tóm tắt trong dialog xin huỷ — CHIA HAI NỬA vì đó là hai câu hỏi khác nhau
+ * người ta đang hỏi cùng lúc: *tôi đang huỷ đúng cái chưa* và *tôi lấy lại
+ * được bao nhiêu*. Bản đầu (04/09) chỉ có nửa sau, và dialog không hề nói nó
+ * đang nói về booking nào.
  *
- * Trước đây khách bấm gửi rồi mới biết được hoàn bao nhiêu — mà chính sách thì
- * cố định, tính được ngay. Con số ở đây do `refundPercentForBooking` +
- * `daysBeforeDeparture` của contract tính, tức ĐÚNG hàm mà màn quyết định của
- * admin dùng: khách và admin không thể nhìn hai con số khác nhau.
+ * Con số hoàn là NEO THỊ GIÁC của cả dialog: đó là thứ người ta mở nó ra để
+ * biết. Mọi dòng quanh nó chỉ làm một việc — giải thích vì sao là con số đó
+ * (bao nhiêu phần trăm, bậc nào, còn mấy ngày), nên không dòng nào được to
+ * ngang nó.
  *
- * Đếm ngày từ BÂY GIỜ vì yêu cầu chưa gửi; khi đã gửi thì mốc chính thức là
- * `CancellationRequest.createdAt` — cùng ngày lịch, nên con số không đổi.
+ * Phép tính đi qua `refundPercentForRequest` — ĐIỂM VÀO DUY NHẤT dùng chung
+ * với màn quyết định của admin, nên khách và admin không thể nhìn hai con số
+ * khác nhau.
  */
-function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
+function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
   const t = messages.booking.detail;
   const now = new Date();
   const days = daysBeforeDeparture(now, booking.departureStartDate);
-  // ĐIỂM VÀO DUY NHẤT, dùng chung với màn quyết định của admin — đã gồm cả cửa
-  // sổ ân hạn 24h (ADR-0030 §3c), nên khách đặt sát ngày rồi đổi ý vẫn thấy
-  // 100% chứ không phải một con số thấp rồi bất ngờ ở bước sau.
   const percent = refundPercentForRequest({
     requestedAt: now,
     paidAt: booking.paidAt,
@@ -440,39 +460,83 @@ function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
     freeCancellationDays: booking.freeCancellationDays,
   });
   const inGrace = isWithinGracePeriod(booking.paidAt, now);
-  // Bậc tính trên TỔNG rồi trừ phần đã hoàn — không thì hoàn đúp (ADR-0030 §7).
-  const gross = (Number(booking.totalAmount) * percent) / 100;
+  // Bậc tính trên TỔNG rồi trừ phần đã hoàn (ADR-0030 §7) — không thì hoàn đúp.
   const already = Number(booking.refundedTotal);
-  const net = Math.max(0, gross - already);
+  const net = Math.max(0, (Number(booking.totalAmount) * percent) / 100 - already);
 
   return (
-    <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
-      <p className="font-medium text-foreground">{t.refundEstimateHeading}</p>
-      <p className="text-muted-foreground">{t.refundEstimateDays(days)}</p>
-      {/* Nói RÕ vì sao được 100%: không có câu này thì con số trông như may
-          mắn, và khách không biết mình đang trong một cửa sổ sắp hết. */}
-      {inGrace ? <p className="text-muted-foreground">{t.refundEstimateGrace}</p> : null}
-      <p className="text-muted-foreground">
-        {t.refundEstimateAmount(percent, formatMoney(net.toFixed(2), booking.currency))}
-      </p>
-      {already > 0 ? (
-        <p className="text-muted-foreground">
-          {t.refundEstimateAlreadyRefunded(formatMoney(already.toFixed(2), booking.currency))}
+    // Viền chia đôi, KHÔNG dùng nền để tách: dialog là `bg-popover`, và
+    // `--card`/`--popover` trong bộ token này có thể trùng nhau — đường kẻ dựng
+    // bằng màu nền sẽ biến mất im lặng ở một trong hai theme.
+    <div className="grid overflow-hidden rounded-lg border border-border sm:grid-cols-2">
+      <div className="flex flex-col gap-1 p-4">
+        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+          {t.cancelSummaryBooking}
         </p>
-      ) : null}
-      <Link
-        href="/cancellation-policy"
-        className="w-fit text-sm underline-offset-4 hover:underline"
-      >
-        {t.refundEstimateLink}
-      </Link>
+        <p className="font-medium text-foreground">{booking.tourTitle}</p>
+        <p className="text-sm text-muted-foreground">
+          {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+        </p>
+        <p className="text-sm text-muted-foreground">
+          {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
+        </p>
+        <p className="mt-auto pt-2 font-mono text-xs text-muted-foreground">{booking.code}</p>
+      </div>
+
+      {/* Nền nhạt chỉ ở nửa PHẢI — một chỗ nhấn duy nhất, và nó mã hoá đúng
+          thế đối lập của dialog: trái là thứ mất đi, phải là thứ nhận lại. */}
+      <div className="flex flex-col gap-1 border-t border-border bg-muted/50 p-4 sm:border-t-0 sm:border-l">
+        {/* Neo thị giác: con số đứng một mình, nhãn nhỏ ngay dưới. */}
+        <p className="text-3xl font-semibold tabular-nums text-foreground">
+          {formatMoneyExact(net.toFixed(2), booking.currency)}
+        </p>
+        <p className="text-sm text-muted-foreground">{t.cancelSummaryGetBack}</p>
+        <p className="mt-2 text-sm text-muted-foreground">
+          {t.cancelSummaryOfTotal(percent, formatMoneyExact(booking.totalAmount, booking.currency))}
+        </p>
+        <p className="text-sm text-muted-foreground">{t.refundEstimateDays(days)}</p>
+        {inGrace ? <p className="text-sm text-muted-foreground">{t.refundEstimateGrace}</p> : null}
+        {already > 0 ? (
+          <p className="text-sm text-muted-foreground">
+            {t.cancelSummaryAlready(formatMoneyExact(already.toFixed(2), booking.currency))}
+          </p>
+        ) : null}
+        <Link
+          href="/cancellation-policy"
+          className="mt-auto w-fit pt-2 text-sm underline-offset-4 hover:underline"
+        >
+          {t.refundEstimateLink}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Ba việc xảy ra SAU khi bấm gửi. Ở đây vì đây là lúc người ta cần biết —
+ * không phải trong một trang chính sách họ sẽ không mở giữa lúc đang huỷ.
+ */
+function WhatHappensNext() {
+  const t = messages.booking.detail;
+  return (
+    <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
+      <p className="font-medium text-foreground">{t.cancelNextHeading}</p>
+      <p>{t.cancelNextReview}</p>
+      <p>{t.cancelNextMethod}</p>
+      <p>{t.cancelNextTiming}</p>
     </div>
   );
 }
 
 /** Phần booking mà ước tính cần — cắt đúng chừng này, không nhận cả entity. */
 export interface RefundEstimateInput {
+  /** Mã + tên tour + đợt: người ta phải NHẬN RA thứ mình sắp huỷ. */
+  code: string;
+  tourTitle: string;
   departureStartDate: string;
+  departureEndDate: string;
+  numAdults: number;
+  numChildren: number;
   /** ISO; `null` = chưa trả tiền, nên không có ân hạn. */
   paidAt: string | null;
   freeCancellationDays: number | null;

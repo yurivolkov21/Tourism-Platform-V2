@@ -271,6 +271,41 @@ export function formatMoney(amount: string, currency: string): string {
   }).format(Number(amount));
 }
 
+/**
+ * Tiền giữ ĐỦ hai số lẻ — dùng cho SỐ TIỀN THẬT, khác `formatMoney` ở trên
+ * (giá tour làm tròn về đơn vị, chuyện biên tập).
+ *
+ * Ranh giới là: làm tròn một mức GIÁ chỉ làm nó dễ đọc, còn làm tròn một số
+ * tiền HOÀN là hứa sai. 50% của $1,199 là $599.50; in thành "$600" là nói với
+ * khách một con số họ sẽ không nhận được, và họ có thể đối chiếu với sao kê.
+ *
+ * Cache theo currency vì hàm này nằm trong render path của dialog xin huỷ —
+ * dialog render lại theo từng phím gõ trong ô lý do (cùng lý do với
+ * `formatAmount` bên admin). Tập currency hữu hạn, sống trọn đời module.
+ */
+const EXACT_FORMATTERS = new Map<string, Intl.NumberFormat>();
+
+export function formatMoneyExact(amount: string, currency: string): string {
+  let formatter = EXACT_FORMATTERS.get(currency);
+  if (!formatter) {
+    try {
+      formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      });
+    } catch {
+      // Contract chỉ ép `length(3)`, không ép ISO-4217. Một currency lạ mà để
+      // RangeError nổ trong render là mất luôn cái dialog xin huỷ — in thô còn
+      // hơn không huỷ được.
+      return `${amount} ${currency}`;
+    }
+    EXACT_FORMATTERS.set(currency, formatter);
+  }
+  return formatter.format(Number(amount));
+}
+
 export type DepartureStatus = 'sold-out' | 'limited' | 'available';
 
 /** Trạng thái đợt khởi hành là SUY DIỄN Ở TẦNG UI từ `seatsLeft`, KHÔNG phải

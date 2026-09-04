@@ -527,20 +527,32 @@ export const messages = {
        * chính bảng bậc ở contract tính, cùng hàm mà màn admin dùng, nên hai
        * bên không thể nói hai số khác nhau.
        */
-      refundEstimateHeading: 'What you get back',
+      /**
+       * Khối tóm tắt trong dialog xin huỷ. Chia hai nửa vì đó là hai câu hỏi
+       * khác nhau người ta đang hỏi cùng lúc: "tôi đang huỷ đúng cái chưa" và
+       * "tôi lấy lại được bao nhiêu". Nhãn viết theo thứ NGƯỜI nhận ra, không
+       * theo tên field.
+       */
+      cancelSummaryBooking: 'Booking',
+      cancelSummaryGetBack: 'back to you',
+      /** Đặt DƯỚI con số lớn: nó giải thích con số, không thay thế con số. */
+      cancelSummaryOfTotal: (percent: number, total: string) => `${percent}% of ${total}`,
+      /** Đã hoàn một phần từ trước — con số lớn là phần CÒN LẠI. */
+      cancelSummaryAlready: (amount: string) => `${amount} already refunded`,
+      /**
+       * Ba việc xảy ra SAU khi bấm gửi. Có ở đây vì đây là lúc người ta cần
+       * biết, chứ không phải trong một trang chính sách họ sẽ không mở.
+       */
+      cancelNextHeading: 'What happens next',
+      cancelNextReview: 'Our team reviews your request, usually within 2 business days.',
+      cancelNextMethod: 'Any refund goes back to the card or PayPal account you paid with.',
+      cancelNextTiming: 'It typically takes 5–10 business days to appear on your statement.',
       refundEstimateDays: (days: number) =>
         days === 0
           ? 'Your tour departs today.'
           : days < 0
             ? 'Your tour has already started.'
             : `Your tour departs in ${days} ${days === 1 ? 'day' : 'days'}.`,
-      refundEstimateAmount: (percent: number, amount: string) =>
-        percent === 0
-          ? 'Under our refund schedule this request does not qualify for a refund.'
-          : `Under our refund schedule you get back ${percent}% — ${amount}.`,
-      /** Đã hoàn một phần từ trước thì con số trên là phần CÒN LẠI. */
-      refundEstimateAlreadyRefunded: (amount: string) =>
-        `${amount} has already been refunded on this booking, and is taken into account above.`,
       /** Đang trong cửa sổ ân hạn — nói rõ vì sao được 100%, kẻo con số trông
        *  như may mắn và khách không biết cửa sổ ấy sắp hết. */
       refundEstimateGrace:
