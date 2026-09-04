@@ -430,8 +430,21 @@ function BookingPolicyCards({ tour }: { tour: TourDetailVM }) {
               ? cancellation.title
               : t.freeUntil(tour.freeCancellationDays)
           }
-          note={cancellation.body}
-          link={{ href: '#good-to-know', label: t.readFullPolicy }}
+          // Có badge thì phải nói nốt VẾ SAU (ADR-0030 §3b): badge cũ dừng ở
+          // đúng hạn chót, nên khách lỡ một ngày bị bất ngờ — trong khi thứ họ
+          // rơi vào là bảng bậc đã công bố, không phải hư không. Link đổi
+          // hướng về chính bảng ấy; tour không có badge thì giữ nguyên đường
+          // cũ về policy riêng của tour.
+          note={
+            tour.freeCancellationDays === null
+              ? cancellation.body
+              : `${cancellation.body} ${t.afterFreeWindow}`
+          }
+          link={
+            tour.freeCancellationDays === null
+              ? { href: '#good-to-know', label: t.readFullPolicy }
+              : { href: '/cancellation-policy', label: t.viewRefundSchedule }
+          }
         />
       ) : null}
       <FactCard

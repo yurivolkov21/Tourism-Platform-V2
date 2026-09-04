@@ -82,6 +82,16 @@ export const BookingSchema = z.object({
    *  (spec 11/08 §3.1). Tái dùng DestinationLinkSchema của catalog, không
    *  khai schema mới; mảng rỗng hợp lệ khi tour chưa gắn destination. */
   tourDestinations: z.array(DestinationLinkSchema),
+  /**
+   * Cửa sổ huỷ miễn phí của TOUR, join sống từ quan hệ như `tourSlug` (không
+   * phải snapshot lúc mua — booking không có cột này).
+   *
+   * Có mặt để khách BIẾT TRƯỚC mình được hoàn bao nhiêu khi bấm xin huỷ
+   * (ADR-0030 §3b): badge nâng ngưỡng 100% của tour, nên thiếu nó thì ước tính
+   * sẽ nói THẤP hơn thực tế — mà nói thấp còn tệ hơn không nói. Cùng con số
+   * mà màn quyết định của admin dùng, nên hai bên không thể lệch.
+   */
+  freeCancellationDays: z.int().nonnegative().nullable(),
   departureStartDate: z.iso.date(),
   departureEndDate: z.iso.date(),
   unitPrice: DecimalStringSchema,

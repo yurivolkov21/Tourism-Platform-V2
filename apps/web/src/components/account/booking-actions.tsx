@@ -1,6 +1,7 @@
 'use client';
 
 import { ORPCError } from '@orpc/client';
+import { daysBeforeDeparture, refundPercentForBooking } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   AlertDialog,
@@ -24,6 +25,7 @@ import { AccountActionError } from '@/components/account/account-action-error';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import type { BookingAction, BookingView } from '@/lib/booking-vm';
+import { formatMoney } from '@/lib/tours';
 
 /** Trần `reason` của contract (`CancelBookingInputSchema.max(1000)`). */
 const REASON_MAX = 1000;
@@ -106,10 +108,13 @@ function CancelRequestDialog({
   label,
   pending,
   error,
+  refund,
   onSubmit,
 }: {
   label: string;
   pending: boolean;
+  /** Ước tính hoàn tiền; vắng khi trang chưa truyền booking (spec jsdom cũ). */
+  refund?: RefundEstimateInput;
   /** Lỗi render BÊN TRONG dialog. Để ngoài thì nó nằm sau lớp modal: `getByText`
    *  vẫn thấy nhưng `getByRole` thì không, tức người dùng bàn phím và trình đọc
    *  màn hình KHÔNG với tới được — kể cả link "đăng nhập lại". */
@@ -148,6 +153,8 @@ function CancelRequestDialog({
             <AlertDialogTitle>{t.requestTitle}</AlertDialogTitle>
             <AlertDialogDescription>{t.requestBody}</AlertDialogDescription>
           </AlertDialogHeader>
+
+          {refund ? <RefundEstimate booking={refund} /> : null}
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3">
@@ -217,9 +224,12 @@ function CancelRequestDialog({
 export function BookingActions({
   view,
   code,
+  refund,
   onAction,
 }: {
   view: BookingView;
+  /** Ước tính hoàn tiền cho dialog xin huỷ (ADR-0030 §3b). */
+  refund?: RefundEstimateInput;
   /** Mã booking — cần để hành động thật gọi đúng route. Optional vì spec
    *  jsdom truyền `onAction` giả lập, không cần mã thật. */
   code?: string;
@@ -366,6 +376,7 @@ export function BookingActions({
                   key={action}
                   label={t.requestCancellation}
                   pending={pending}
+                  refund={refund}
                   error={errorInDialog ? errorNode : null}
                   onSubmit={(reason) => handleClick?.(action, reason)}
                 />
@@ -382,6 +393,7 @@ export function BookingActions({
                   key={action}
                   label={t.resubmitCancellation}
                   pending={pending}
+                  refund={refund}
                   error={errorInDialog ? errorNode : null}
                   onSubmit={(reason) => handleClick?.(action, reason)}
                 />
@@ -397,4 +409,55 @@ export function BookingActions({
       {errorInDialog ? null : errorNode}
     </>
   );
+}
+
+/**
+ * Ước tính hoàn tiền, hiện NGAY TRONG dialog xin huỷ (ADR-0030 §3b).
+ *
+ * Trước đây khách bấm gửi rồi mới biết được hoàn bao nhiêu — mà chính sách thì
+ * cố định, tính được ngay. Con số ở đây do `refundPercentForBooking` +
+ * `daysBeforeDeparture` của contract tính, tức ĐÚNG hàm mà màn quyết định của
+ * admin dùng: khách và admin không thể nhìn hai con số khác nhau.
+ *
+ * Đếm ngày từ BÂY GIỜ vì yêu cầu chưa gửi; khi đã gửi thì mốc chính thức là
+ * `CancellationRequest.createdAt` — cùng ngày lịch, nên con số không đổi.
+ */
+function RefundEstimate({ booking }: { booking: RefundEstimateInput }) {
+  const t = messages.booking.detail;
+  const days = daysBeforeDeparture(new Date(), booking.departureStartDate);
+  const percent = refundPercentForBooking(days, booking.freeCancellationDays);
+  // Bậc tính trên TỔNG rồi trừ phần đã hoàn — không thì hoàn đúp (ADR-0030 §7).
+  const gross = (Number(booking.totalAmount) * percent) / 100;
+  const already = Number(booking.refundedTotal);
+  const net = Math.max(0, gross - already);
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-lg border border-border/60 bg-muted/40 p-3 text-sm">
+      <p className="font-medium text-foreground">{t.refundEstimateHeading}</p>
+      <p className="text-muted-foreground">{t.refundEstimateDays(days)}</p>
+      <p className="text-muted-foreground">
+        {t.refundEstimateAmount(percent, formatMoney(net.toFixed(2), booking.currency))}
+      </p>
+      {already > 0 ? (
+        <p className="text-muted-foreground">
+          {t.refundEstimateAlreadyRefunded(formatMoney(already.toFixed(2), booking.currency))}
+        </p>
+      ) : null}
+      <Link
+        href="/cancellation-policy"
+        className="w-fit text-sm underline-offset-4 hover:underline"
+      >
+        {t.refundEstimateLink}
+      </Link>
+    </div>
+  );
+}
+
+/** Phần booking mà ước tính cần — cắt đúng chừng này, không nhận cả entity. */
+export interface RefundEstimateInput {
+  departureStartDate: string;
+  freeCancellationDays: number | null;
+  totalAmount: string;
+  refundedTotal: string;
+  currency: string;
 }

@@ -521,6 +521,27 @@ export const messages = {
       cancelled: 'Booking cancelled.',
       requestToast: 'Cancellation requested — we’ll email you.',
       // PAID cancellation/refund request (admin processes refunds)
+      /**
+       * Ước tính hoàn tiền hiện NGAY TRONG dialog xin huỷ (ADR-0030 §3b) —
+       * khách biết trước khi bấm, không phải chờ đội ngũ trả lời. Con số do
+       * chính bảng bậc ở contract tính, cùng hàm mà màn admin dùng, nên hai
+       * bên không thể nói hai số khác nhau.
+       */
+      refundEstimateHeading: 'What you get back',
+      refundEstimateDays: (days: number) =>
+        days === 0
+          ? 'Your tour departs today.'
+          : days < 0
+            ? 'Your tour has already started.'
+            : `Your tour departs in ${days} ${days === 1 ? 'day' : 'days'}.`,
+      refundEstimateAmount: (percent: number, amount: string) =>
+        percent === 0
+          ? 'Under our refund schedule this request does not qualify for a refund.'
+          : `Under our refund schedule you get back ${percent}% — ${amount}.`,
+      /** Đã hoàn một phần từ trước thì con số trên là phần CÒN LẠI. */
+      refundEstimateAlreadyRefunded: (amount: string) =>
+        `${amount} has already been refunded on this booking, and is taken into account above.`,
+      refundEstimateLink: 'See the full refund schedule',
       requestTitle: 'Need to cancel?',
       requestBody:
         'Paid bookings are cancelled by our team. Send a request and we’ll get back to you about a refund.',
@@ -1579,6 +1600,14 @@ export const messages = {
       /** Nhãn nổi bật của thẻ huỷ khi tour CÓ `freeCancellationDays`. Tour tính
           cửa sổ bằng giờ để null → rơi về `policy.title` như hai thẻ kia. */
       freeUntil: (days: number) => `Free until ${days} ${days === 1 ? 'day' : 'days'} out`,
+      /**
+       * Vế SAU của lời hứa miễn phí (ADR-0030 §3b). Badge cũ dừng ở đúng hạn
+       * chót nên khách lỡ một ngày bị bất ngờ — mà cái họ rơi vào không phải
+       * hư không, nó là bảng bậc đã công bố. Câu này nói ra điều đó, và link
+       * đổi hướng về chính bảng ấy thay vì tab policy riêng của tour.
+       */
+      afterFreeWindow: 'After that, our standard refund schedule applies.',
+      viewRefundSchedule: 'See the refund schedule',
       groupCap: (max: number) => `Up to ${max} ${max === 1 ? 'guest' : 'guests'}`,
       readFullPolicy: 'Read the full policy',
       /** Tour chưa mở đợt nào: nói thẳng và mở một lối đi tiếp, không để tab

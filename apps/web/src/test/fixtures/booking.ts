@@ -21,6 +21,7 @@ export function makeBooking(overrides: Partial<Booking> = {}): Booking {
     status: 'PAID',
     tourTitle: 'Test Tour',
     tourSlug: 'test-tour',
+    freeCancellationDays: null,
     tourImage: null,
     // Passport (spec 11/08): snapshot đích đến — primary đứng đầu, nguồn cho
     // tem/stats/bản đồ. Test cần tour nhiều đích hoặc rỗng thì đè overrides.

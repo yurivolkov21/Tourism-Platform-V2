@@ -14,6 +14,7 @@ const booking: Booking = {
   status: 'PAID',
   tourTitle: 'Hội An Ancient Town Walking Tour',
   tourSlug: 'hoi-an-ancient-town-walking-tour',
+  freeCancellationDays: null,
   tourImage: null,
   tourDestinations: [],
   departureStartDate: '2026-09-18',

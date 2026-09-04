@@ -1,4 +1,5 @@
 import type { LegalDoc } from './legal-page.js';
+import { refundTierSentence } from './refund-tiers.js';
 
 /**
  * Terms & Conditions — điều khoản đặt tour bám đúng luồng thật của nền tảng
@@ -48,7 +49,7 @@ export const termsDoc: LegalDoc = {
       heading: 'Cancellations and refunds by you',
       paragraphs: [
         'If you need to cancel, request it from your account (open the booking under “My bookings” and choose “Request cancellation”) or contact our team. Our team reviews each request and arranges any refund to your original payment method.',
-        'As a general guide, cancellations 30 or more days before departure are refunded in full less any non-recoverable supplier costs; 15–29 days before, around half; and fewer than 14 days before, the booking is usually non-refundable. These are guidelines — the exact outcome depends on the tour and any supplier costs already committed, and some payments (such as non-refundable deposits or third-party fees) may not be recoverable. The full details are in our Cancellation & Refund Policy.',
+        `${refundTierSentence()} We count whole calendar days from the date you send the request to your departure date. Where a tour advertises free cancellation up to a set number of days before departure, that promise applies instead and can only improve on this schedule. Some payments — non-refundable deposits or third-party fees — may sit outside it; the full details are in our Cancellation & Refund Policy.`,
       ],
     },
     {

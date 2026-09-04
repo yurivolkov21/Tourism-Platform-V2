@@ -27,11 +27,11 @@ i18n** — không có dạng máy đọc được. Màn quyết định không h
 không hiện bậc nào áp dụng. Hai admin xử hai ca giống hệt nhau ra hai con số
 khác nhau, và không ai đối chiếu được với thứ đã hứa.
 
-**3. Badge "Free until N days" của tour tạo vực 100 điểm.** Đo trên seed thật,
-30 tour: 15 tour `freeCancellationDays = null`, 15 tour có mốc **3 · 5×4 · 7×3 ·
-10 · 14×3 · 21 · 30**. Một tour hứa "Free until 5 days" thì ngày 5 hoàn 100%,
-ngày 4 rơi vào bậc "dưới 14 ngày" = 0%. **Rơi trọn 100 điểm trong một ngày.**
-Vực này tồn tại từ trước; hôm nay con người đang lấp nó.
+**3. Badge "Free until N days" dừng nửa chừng.** Đo trên seed thật, 30 tour:
+15 tour `freeCancellationDays = null`, 15 tour có mốc **3 · 5×4 · 7×3 · 10 ·
+14×3 · 21 · 30**. Badge nói rõ hạn chót nhưng KHÔNG nói sau hạn thì sao, nên
+khách lỡ một ngày bị bất ngờ. (Bản đầu ADR này gọi đây là "vực 100 điểm" và
+định chữa bằng cách sửa seed — sai, xem §3.)
 
 **4. Quyết định không lưu căn cứ.** Admin duyệt 50% thì hệ thống không ghi vì
 sao 50%. Khách khiếu nại sáu tháng sau thì không dựng lại được.
@@ -76,24 +76,53 @@ Ba lý do cho dải 25% mới:
   phải xử lý riêng cho booking cũ. Nếu ngày nào cần SIẾT một mốc thì đó là một
   quyết định khác hẳn, cần đường xử lý cho booking đã tồn tại.
 
-### 3. `freeCancellationDays` nâng ngưỡng 100%, và không được thấp hơn biên 0%
+### 3. `freeCancellationDays` NÂNG ngưỡng 100% — và đó là toàn bộ luật
 
 Tour có badge thì **ngưỡng hoàn 100% của tour ấy là `freeCancellationDays`**,
-thay cho mốc 30 ngày mặc định. Dưới ngưỡng thì bảng bậc áp bình thường. Đây
-đúng điều `/cancellation-policy` đã hứa: *"where they differ, the tour-specific
-terms apply"*.
+thay cho mốc 30 ngày mặc định. Dưới ngưỡng thì bảng bậc áp bình thường. Đúng
+điều `/cancellation-policy` đã hứa: *"where they differ, the tour-specific terms
+apply"*.
 
-⚠️ Nhưng badge là lời hứa **nhị phân**, còn bậc là **thang** — ghép hai thứ ấy
-sinh ra vực ở §Bối cảnh (3). Chữa bằng một **ràng buộc dữ liệu**, không phải
-bằng code:
+Bất biến duy nhất cần canh, và nó đã có test:
 
-> `freeCancellationDays` **không được nhỏ hơn 7** — biên của bậc 0%.
+> Với MỌI số ngày, tour có badge hoàn **≥** tour không badge.
+> Badge chỉ NÂNG, không bao giờ HẠ.
 
-Một tour hứa miễn phí huỷ tới trước 3 ngày, trong khi site nói dưới 7 ngày
-không hoàn, là **tự mâu thuẫn ngay từ lúc nhập liệu**. Ràng buộc này khiến mọi
-tour có badge rơi từ 100% xuống 25% chứ không xuống 0%.
+**Sửa lỗi của bản đầu ADR này.** Bản đầu khai một sàn
+`MIN_FREE_CANCELLATION_DAYS = 7` với lý do "chặn vực 100 điểm ở tour hứa mốc 3
+hoặc 5", và bắt sửa 5 tour trong seed. Cả hai vế đều sai, phát hiện khi viết
+test:
 
-Seed hiện có **5 tour vi phạm** (một tour mốc 3, bốn tour mốc 5) — nâng lên 7.
+1. **Sàn 7 không xoá được vực.** Đo thật: badge 7 thì ngày 6 vẫn rơi vào bậc
+   `<7` = 0%, tức vực vẫn 100 điểm. Phải từ **8** trở lên ngày trước hạn mới
+   chạm dải 25%.
+2. **Nâng sàn là SIẾT quyền của khách, không phải nới.** `freeCancellationDays`
+   là số ngày TỐI THIỂU để được miễn phí, nên nâng 5 → 8 lấy mất của khách
+   quyền huỷ miễn phí ở ngày 5, 6 và 7 — trên 8 tour. Đó đúng thứ §2 vừa cấm:
+   *chỉ nới rộng hơn, không siết ở đâu.*
+
+Và cái gọi là "vực" thực ra **không phải mâu thuẫn với chính sách** — nó là
+**hạn chót**. Khách lỡ hạn rơi về đúng bậc chuẩn của ngày hôm đó, tức bằng
+đúng thứ một tour KHÔNG có badge sẽ trả. Họ không thiệt hơn ai; họ chỉ mất
+phần thưởng thêm. Áp tư duy "thang bậc" lên một lời hứa vốn nhị phân là chỗ
+suy luận đã trượt.
+
+Nên: **không có ràng buộc sàn, không đụng seed.**
+
+### 3b. Cái đáng chữa là BẤT NGỜ, không phải con số
+
+Rủi ro thật không nằm ở mức %, mà ở chỗ khách không biết trước. Chữa ở đúng
+hai nơi khách đọc, và không đổi một con số nào:
+
+- **Badge trên trang tour nói nốt vế sau.** Hiện chỉ có *"Free until 5 days
+  out"*, dừng ngay chỗ dễ hiểu nhầm là "sau đó thì sao?". Thêm một câu dẫn về
+  `/cancellation-policy`.
+- **Màn khách gửi yêu cầu huỷ hiện luôn kết quả**: còn bao nhiêu ngày, bậc nào
+  áp dụng, hoàn bao nhiêu phần trăm và bao nhiêu tiền — TRƯỚC khi bấm gửi.
+
+Việc thứ hai dùng lại đúng `refundPercentForBooking` + `daysBeforeDeparture` mà
+màn admin dùng, nên khách và admin **không thể** nhìn hai con số khác nhau.
+Đây cũng là lý do §6 đặt bảng bậc ở contract chứ không ở i18n.
 
 ### 4. Đếm ngày từ lúc KHÁCH GỬI yêu cầu, theo NGÀY LỊCH
 
@@ -145,7 +174,7 @@ là lỗ (2) ở §Bối cảnh: hôm nay chúng đã lệch, vì bậc chỉ s�
 
 Bậc tính trên `totalAmount`, rồi **trừ những gì đã hoàn**:
 
-```
+```text
 refund = max(0, tier% × totalAmount − alreadyRefunded)
 ```
 
@@ -171,8 +200,8 @@ badge.
 | --- | --- |
 | Contract | Hằng bậc + hàm thuần tra bậc theo số ngày |
 | i18n | `/cancellation-policy` và `/terms` sinh câu từ hằng; đổi lời "guidelines" → dứt khoát; bỏ "less non-recoverable supplier costs" |
-| Seed | 5 tour nâng `freeCancellationDays` lên ≥ 7 |
-| Ràng buộc | Chặn `freeCancellationDays` dưới biên 0% |
+| Seed | **KHÔNG đụng** — nâng badge là siết quyền khách (§3) |
+| Web | Badge trang tour thêm câu dẫn về chính sách; màn huỷ của khách hiện % và số tiền trước khi gửi (§3b) |
 
 Phần API tính tiền và stepper là **đợt sau** (user chốt tách): văn bản pháp lý
 đáng được đọc kỹ riêng, không trộn vào một diễn biến kỹ thuật.
@@ -193,6 +222,7 @@ huỷ — đường W3 ở `/bookings`, một quyết định riêng chưa chố
 | Giữ "guidelines", để admin tự gõ số | Đây là bản đầu ADR-0029, user bác 04/09. Ô nhập tự do là ô gõ nhầm được; và hai admin xử hai ca giống nhau ra hai con số khác nhau thì chính sách chỉ là chữ. |
 | Giữ nguyên 100/50/0, chỉ vá lỗ ngày 14 | Ít sửa văn bản nhất, nhưng giữ nguyên hai vực 50 điểm, và tour có badge vẫn rơi thẳng 100% → 0%. |
 | Thang mịn 100/75/50/25/0 | Công bằng nhất với khách, ít vực nhất. Loại vì năm bậc khó nhớ khi giải thích cho khách, và lợi ích thêm không tương xứng với độ phức tạp ở quy mô này. |
-| Bỏ badge `freeCancellationDays`, chỉ dùng bậc | Sạch nhất về khái niệm — hết hai nguồn, hết vực. Loại vì 15 tour đang quảng cáo điều đó trên trang tour, và gỡ một lời hứa đã in là làm khách thiệt. |
-| Để badge thắng, chấp nhận vực 100 điểm | Đúng chữ nghĩa của badge nhưng khách huỷ muộn một ngày mất trọn tiền — đúng loại ca sinh khiếu nại và chargeback. Ràng buộc dữ liệu ở §3 rẻ hơn nhiều. |
+| Bỏ badge `freeCancellationDays`, chỉ dùng bậc | Sạch nhất về khái niệm — hết hai nguồn. Loại vì 15 tour đang quảng cáo điều đó trên trang tour, và gỡ một lời hứa đã in là làm khách thiệt. |
+| Đặt sàn cho `freeCancellationDays` (bản đầu ADR này khai sàn 7) | Loại sau khi ĐO: sàn 7 không xoá được vực (ngày 6 vẫn 0%), và nâng sàn là SIẾT quyền khách trên 8 tour — trái thẳng luật "chỉ nới, không siết" của §2. Xem §3. |
+| Ép badge trùng biên bậc `{7, 15, 30}` | Cùng bệnh: mọi lần dịch badge đều siết quyền của khách ở ít nhất một tour, để đổi lấy một sự gọn gàng mà khách không nhìn thấy. |
 | Đếm ngày từ lúc admin QUYẾT | Khách chịu hậu quả của việc mình xử chậm. Trái thẳng lời hứa "báo sớm thì hoàn nhiều" đã in trên chính trang chính sách. |

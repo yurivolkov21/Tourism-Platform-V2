@@ -73,6 +73,9 @@ type BookingRow = Prisma.BookingModel;
 export const bookingTourInclude = {
   select: {
     slug: true,
+    // Khách cần biết trước mình được hoàn bao nhiêu (ADR-0030 §3b) — badge
+    // nâng ngưỡng 100% nên thiếu nó thì ước tính nói thấp hơn thực tế.
+    freeCancellationDays: true,
     destinations: {
       select: { isPrimary: true, destination: { select: { slug: true, name: true } } },
       orderBy: [{ isPrimary: 'desc' }, { destination: { name: 'asc' } }],
@@ -83,6 +86,7 @@ export const bookingTourInclude = {
 /** Shape row `tour` sau join `bookingTourInclude` — nguồn kiểu cho `toBooking`. */
 export type BookingTourJoin = {
   slug: string;
+  freeCancellationDays: number | null;
   destinations: Array<{ isPrimary: boolean; destination: { slug: string; name: string } }>;
 };
 
@@ -142,6 +146,7 @@ export function toBooking(
     status: row.status,
     tourTitle: row.tourTitle,
     tourSlug: row.tour.slug,
+    freeCancellationDays: row.tour.freeCancellationDays,
     tourImage,
     // Snapshot đích đến lúc đọc (spec passport 11/08 §3.1) — primary đứng đầu
     // nhờ orderBy trong `bookingTourInclude`, map về đúng DestinationLinkSchema.
@@ -255,6 +260,9 @@ export class BookingsService {
             currency: true,
             basePrice: true,
             isPublished: true,
+            // Cùng lý do với `bookingTourInclude` — khách phải biết trước mình
+            // được hoàn bao nhiêu (ADR-0030 §3b).
+            freeCancellationDays: true,
             // Đích đến cho snapshot `tourDestinations` của booking vừa tạo —
             // cùng shape/orderBy với `bookingTourInclude` (primary đứng đầu).
             destinations: {
@@ -354,7 +362,11 @@ export class BookingsService {
     return toBooking(
       {
         ...withSession,
-        tour: { slug: departure.tour.slug, destinations: departure.tour.destinations },
+        tour: {
+          slug: departure.tour.slug,
+          freeCancellationDays: departure.tour.freeCancellationDays,
+          destinations: departure.tour.destinations,
+        },
       },
       session.checkoutUrl,
       tourImage,

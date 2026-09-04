@@ -25,6 +25,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     status: 'PAID',
     tourTitle: 'Ha Long Bay Cruise',
     tourSlug: 'ha-long-bay-cruise',
+    freeCancellationDays: null,
     tourImage: null,
     tourDestinations: [],
     departureStartDate: '2026-09-14',

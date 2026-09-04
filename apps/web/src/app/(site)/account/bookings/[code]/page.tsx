@@ -243,7 +243,20 @@ export default async function AccountBookingDetailPage({
             <p className="text-sm text-muted-foreground">{tv.cancelLead}</p>
           ) : null}
           <div className="mt-1.5">
-            <BookingActions view={view} code={booking.code} />
+            <BookingActions
+              view={view}
+              code={booking.code}
+              // Khách thấy mình được hoàn bao nhiêu TRƯỚC khi bấm gửi
+              // (ADR-0030 §3b) — cùng phép tính mà màn quyết định của admin
+              // dùng, nên hai bên không thể nói hai con số khác nhau.
+              refund={{
+                departureStartDate: booking.departureStartDate,
+                freeCancellationDays: booking.freeCancellationDays,
+                totalAmount: booking.totalAmount,
+                refundedTotal: booking.refundedTotal,
+                currency: booking.currency,
+              }}
+            />
           </div>
         </div>
 
