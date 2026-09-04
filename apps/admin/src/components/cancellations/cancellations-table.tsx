@@ -7,7 +7,6 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import {
   CalendarIcon,
   CalendarOffIcon,
-  ChevronRightIcon,
   MapPinIcon,
   MessageSquareTextIcon,
   TagIcon,
@@ -18,6 +17,7 @@ import {
   CancellationsDateRange,
   CancellationsStatusTabs,
 } from '@/components/cancellations/cancellations-toolbar';
+import { ReviewRequestButton } from '@/components/cancellations/review-request-button';
 import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
@@ -155,15 +155,11 @@ function buildColumns(query: CancellationsQuery) {
 function DecisionCell({ row, query }: { row: CancellationRowVM; query: CancellationsQuery }) {
   if (row.pending) {
     return (
-      <ButtonLink
-        variant="outline"
-        size="sm"
+      <ReviewRequestButton
         href={cancellationDetailHref(query, row.bookingCode)}
-        aria-label={t.reviewFor(row.bookingCode)}
-      >
-        {t.review}
-        <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
-      </ButtonLink>
+        label={t.review}
+        ariaLabel={t.reviewFor(row.bookingCode)}
+      />
     );
   }
   return (

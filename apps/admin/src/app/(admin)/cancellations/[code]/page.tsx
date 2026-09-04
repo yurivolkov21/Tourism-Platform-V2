@@ -80,45 +80,54 @@ export default async function CancellationDetailPage({
         <BookingDetailHeader booking={booking} />
         <BookingSummaryCards booking={booking} />
 
-        {/* Khối quyết định đứng TRƯỚC sổ và lịch sử: nó là việc phải làm, phần
-            dưới là bằng chứng để làm việc ấy. */}
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.heading}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <p className="text-sm text-muted-foreground">
-              {open ? t.open : booking.cancellationRequests.length > 0 ? t.closed : t.none}
-            </p>
-            {open ? (
-              // Cắt ĐÚNG subset cụm nút cần chứ không đưa cả detail qua ranh
-              // giới client (review 31/08) — cùng luật với `RefundPanel`.
-              <DecideActions
-                request={{
-                  id: open.id,
-                  bookingCode: booking.code,
-                  tourTitle: booking.tourTitle,
-                  customerName: booking.contactName,
-                  reason: open.reason,
-                  totalAmount: booking.totalAmount,
-                  refundedTotal: booking.refundedTotal,
-                  currency: booking.currency,
-                }}
-                decide={decideCancellationAction}
-              />
-            ) : null}
-          </CardContent>
-        </Card>
+        {/* Hai cột (user chốt 04/09): BẰNG CHỨNG bên trái, VIỆC PHẢI LÀM bên
+            phải. Sổ hoàn tiền và lịch sử huỷ là hai bảng nên chúng cần bề
+            ngang — 2/3; khối quyết định là một cụm nút nên 1/3 là đủ, và đứng
+            riêng một cột thì nó không bị hai bảng dài đẩy xuống dưới màn hình.
+            Hai bảng KHÔNG gộp: một cái là sổ tiền, một cái là dấu vết quyết
+            định — gộp lại là trộn hai loại bản ghi. */}
+        <div className="grid gap-4 lg:grid-cols-3">
+          <div className="flex flex-col gap-4 lg:col-span-2">
+            {/* Sổ hoàn tiền THUẦN ĐỌC — bằng chứng để quyết, không phải chỗ
+                phát lệnh tiền. Đường hoàn tiền của màn này là Approve. */}
+            <RefundLedger
+              refunds={booking.refunds}
+              refundedTotal={booking.refundedTotal}
+              currency={booking.currency}
+            />
+            <CancellationHistoryCard requests={booking.cancellationRequests} />
+          </div>
 
-        {/* Sổ hoàn tiền THUẦN ĐỌC — bằng chứng để quyết, không phải chỗ phát
-            lệnh tiền. Đường hoàn tiền của màn này là Approve. */}
-        <RefundLedger
-          refunds={booking.refunds}
-          refundedTotal={booking.refundedTotal}
-          currency={booking.currency}
-        />
-
-        <CancellationHistoryCard requests={booking.cancellationRequests} />
+          {/* `lg:sticky` để cụm quyết định còn trong tầm mắt khi cột trái dài
+              ra — một booking xin huỷ nhiều lần thì lịch sử cuộn khá xa. */}
+          <Card className="h-fit lg:sticky lg:top-4">
+            <CardHeader>
+              <CardTitle>{t.heading}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <p className="text-sm text-muted-foreground">
+                {open ? t.open : booking.cancellationRequests.length > 0 ? t.closed : t.none}
+              </p>
+              {open ? (
+                // Cắt ĐÚNG subset cụm nút cần chứ không đưa cả detail qua ranh
+                // giới client (review 31/08) — cùng luật với `RefundPanel`.
+                <DecideActions
+                  request={{
+                    id: open.id,
+                    bookingCode: booking.code,
+                    tourTitle: booking.tourTitle,
+                    customerName: booking.contactName,
+                    reason: open.reason,
+                    totalAmount: booking.totalAmount,
+                    refundedTotal: booking.refundedTotal,
+                    currency: booking.currency,
+                  }}
+                  decide={decideCancellationAction}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </AdminShell>
   );
