@@ -1,0 +1,445 @@
+<title>Nhãn Payload Payment Events</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: oklch(0.985 0.002 250); --panel: oklch(1 0 0);
+    --ink: oklch(0.262 0.014 250); --ink-soft: oklch(0.502 0.012 250);
+    --ink-faint: oklch(0.62 0.010 250); --rule: oklch(0.905 0.005 250);
+    --rule-soft: oklch(0.945 0.004 250); --teal: oklch(0.494 0.067 184.3);
+    --amber: oklch(0.55 0.13 68); --rose: oklch(0.52 0.16 20);
+    --sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Literata", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: oklch(0.21 0.014 252); --panel: oklch(0.256 0.016 252);
+      --ink: oklch(0.945 0.006 250); --ink-soft: oklch(0.74 0.010 250);
+      --ink-faint: oklch(0.62 0.012 250); --rule: oklch(0.352 0.020 252);
+      --rule-soft: oklch(0.302 0.018 252); --teal: oklch(0.74 0.076 181.3);
+      --amber: oklch(0.79 0.11 72); --rose: oklch(0.74 0.13 22);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: oklch(0.21 0.014 252); --panel: oklch(0.256 0.016 252);
+    --ink: oklch(0.945 0.006 250); --ink-soft: oklch(0.74 0.010 250);
+    --ink-faint: oklch(0.62 0.012 250); --rule: oklch(0.352 0.020 252);
+    --rule-soft: oklch(0.302 0.018 252); --teal: oklch(0.74 0.076 181.3);
+    --amber: oklch(0.79 0.11 72); --rose: oklch(0.74 0.13 22);
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--ground); color: var(--ink);
+         font-family: var(--sans); font-size: 15px; line-height: 1.6;
+         -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 48px 24px 96px;
+          display: flex; flex-direction: column; gap: 52px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+             text-transform: uppercase; color: var(--teal); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px, 4.4vw, 42px);
+       line-height: 1.14; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .lede { margin: 0; max-width: 66ch; color: var(--ink-soft); font-size: 16px; }
+  .masthead { display: flex; flex-direction: column; gap: 14px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 6px;
+          font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+  section { display: flex; flex-direction: column; gap: 18px; }
+  .sec-head { display: flex; flex-direction: column; gap: 6px; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 0; }
+  .sec-head p { margin: 0; color: var(--ink-soft); max-width: 70ch; font-size: 14.5px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0; }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  code { color: var(--ink-soft); }
+
+  .opts { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(310px, 1fr)); align-items: start; }
+  .opt { display: flex; flex-direction: column; gap: 12px; }
+  .opt-head { display: flex; align-items: baseline; gap: 9px; }
+  .opt-head .key { font-family: var(--mono); font-size: 11px; font-weight: 500;
+                   color: oklch(0.99 0 0); background: var(--ink-soft);
+                   border-radius: 4px; padding: 2px 6px; line-height: 1.3; }
+  .opt.pick .opt-head .key { background: var(--teal); }
+  .opt > p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+  .verdict { font-size: 13px; }
+  .verdict b.good { color: var(--teal); } .verdict b.bad { color: var(--rose); }
+
+  .spec { background: oklch(0.995 0.0015 250); color: oklch(0.262 0.014 250);
+          --s-rule: oklch(0.902 0.005 250); --s-soft: oklch(0.502 0.012 250);
+          --s-muted: oklch(0.962 0.004 250);
+          border: 1px solid var(--rule); border-radius: 14px; padding: 16px; }
+  .fields { display: grid; gap: 8px; margin: 0; font-size: 13.5px; }
+  .fields .row { display: grid; grid-template-columns: 10rem minmax(0, 1fr); gap: 10px; }
+  .fields dt { color: var(--s-soft); margin: 0; overflow-wrap: anywhere; }
+  .fields dd { margin: 0; overflow-wrap: anywhere; }
+  .fields dd.muted { color: var(--s-soft); }
+  .fields dd .raw { color: var(--s-soft); font-family: var(--mono); font-size: 11.5px; }
+  mark { background: oklch(0.93 0.09 92); color: oklch(0.262 0.014 250); border-radius: 3px; padding: 0 2px; }
+
+  .switch-row { display: flex; align-items: center; gap: 10px; font-size: 14px; }
+  .switch-row label { cursor: pointer; user-select: none; }
+  input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--teal); cursor: pointer; }
+
+  table.gloss { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.gloss th, table.gloss td { text-align: left; padding: 9px 12px;
+                                   border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  table.gloss thead th { border-top: 0; font-size: 11px; font-weight: 600;
+                         letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  table.gloss td:first-child { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); width: 15rem; }
+  .scroll-x { overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px; background: var(--panel); }
+
+  .findings { display: flex; flex-direction: column; }
+  .finding { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 20px;
+             padding: 16px 0; border-top: 1px solid var(--rule-soft); }
+  .finding:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .finding .tag { font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+                  letter-spacing: 0.06em; text-transform: uppercase; padding: 3px 0 0; color: var(--ink-faint); }
+  .finding .tag.warn { color: var(--rose); } .finding .tag.ok { color: var(--teal); }
+  .finding .body { display: flex; flex-direction: column; gap: 5px; }
+  .finding .body b { font-weight: 600; font-size: 14.5px; }
+  .finding .body p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 76ch; }
+
+  .ask { background: var(--panel); border: 1px solid var(--rule);
+         border-left: 3px solid var(--amber); border-radius: 4px 12px 12px 4px;
+         padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .ask h2 { font-size: 19px; }
+  .ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .ask li { color: var(--ink-soft); font-size: 14.5px; }
+  .ask li b { color: var(--ink); font-weight: 600; }
+  .spec-note { font-size: 12px; color: var(--ink-faint); margin: 0;
+               display: flex; align-items: center; gap: 7px; }
+  .spec-note::before { content: ""; width: 22px; height: 1px; background: var(--rule); flex: none; }
+  .foot { font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+          border-top: 1px solid var(--rule-soft); padding-top: 18px; }
+  @media (max-width: 620px) {
+    .finding { grid-template-columns: 1fr; gap: 6px; }
+    .fields .row { grid-template-columns: 1fr; gap: 2px; }
+    .wrap { gap: 42px; padding: 32px 18px 72px; }
+  }
+</style>
+
+<div class="wrap">
+  <header class="masthead">
+    <p class="eyebrow">Chỉnh giao diện admin · đợt 5</p>
+    <h1>Nhãn Payload Payment Events</h1>
+    <p class="lede">
+      Cột trái của khối <em>Provider payload</em> hiện đang là tên trường của Stripe/PayPal,
+      đọc bằng máy. Ba phương án dưới đây chạy trên <b>đúng một payload</b> — webhook
+      <code>checkout.session.completed</code> thật mà dự án nhận — để so trực tiếp.
+    </p>
+    <div class="meta">
+      <span><b>Nhánh</b> fix/p4c-ui-polish</span>
+      <span><b>Chưa commit</b></span>
+      <span><b>Ngày</b> 03/09/2026</span>
+      <span><b>Chỉ ảnh hưởng</b> chế độ Simple</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="sec-head">
+      <h2>Ba phương án</h2>
+      <p>
+        Tất cả đều <b>không bỏ sót field nào</b> — chỉ đổi cách gọi tên. Bật ô bên dưới để
+        xem thêm phương án đổi cả <em>giá trị</em>; nó cộng được vào bất kỳ phương án nào.
+      </p>
+    </div>
+
+    <div class="switch-row">
+      <input type="checkbox" id="values">
+      <label for="values">Đổi cả giá trị sang dạng người đọc (tiền · thời gian · có/không)</label>
+    </div>
+
+    <div class="opts">
+      <div class="opt">
+        <div class="opt-head"><span class="key">A</span><h3>Bỏ khúc bao bì</h3></div>
+        <p>Cắt tiền tố <code>data › object</code> của Stripe (và <code>resource</code> của PayPal).
+          Máy làm, không có từ điển nào.</p>
+        <div class="spec"><div data-view="a"></div></div>
+        <p class="verdict"><b class="good">Được:</b> ngắn hẳn, hết chữ vô nghĩa.
+          <b class="bad">Còn:</b> vẫn là chữ của Stripe — "Livemode", "Payment intent".</p>
+      </div>
+
+      <div class="opt pick">
+        <div class="opt-head"><span class="key">B</span><h3>A, và gọi đúng tên đời thường</h3></div>
+        <p>Thêm từ điển cho các trường Stripe/PayPal <b>thật sự gửi về</b>; trường lạ vẫn rơi
+          về cách đọc bằng máy.</p>
+        <div class="spec"><div data-view="b"></div></div>
+        <p class="verdict"><b class="good">Được:</b> đọc là hiểu, không cần biết Stripe.
+          <b class="bad">Giá:</b> một bảng ~20 dòng phải nuôi.</p>
+      </div>
+
+      <div class="opt">
+        <div class="opt-head"><span class="key">C</span><h3>B, và thêm dòng giải thích</h3></div>
+        <p>Như B, cộng một câu ngắn dưới các trường dễ hiểu nhầm — nói field đó
+          <em>dùng để làm gì</em>.</p>
+        <div class="spec"><div data-view="c"></div></div>
+        <p class="verdict"><b class="good">Được:</b> tự giải thích, khỏi hỏi ai.
+          <b class="bad">Giá:</b> panel dài thêm ~40%.</p>
+      </div>
+    </div>
+    <p class="spec-note">Ô <mark>vàng</mark> là chỗ khác nhau so với bản đang chạy.</p>
+  </section>
+
+  <section>
+    <div class="sec-head">
+      <h2>Từ điển sẽ phải nuôi (phương án B và C)</h2>
+      <p>
+        Đây là TOÀN BỘ trường mà hai cổng thanh toán gửi về trong ba loại event dự án nhận
+        (<code>checkout.session.completed</code> · <code>.expired</code> ·
+        <code>payment_intent.payment_failed</code> · <code>CHECKOUT.ORDER.APPROVED</code>).
+        Trường nào không có trong bảng vẫn hiện bình thường, chỉ là đọc bằng máy.
+      </p>
+    </div>
+    <div class="scroll-x">
+      <table class="gloss">
+        <thead><tr><th>Trường của provider</th><th>Gọi là</th><th>Nghĩa</th></tr></thead>
+        <tbody id="glossBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Bốn điều cần nói thẳng</h2></div>
+    <div class="findings">
+      <div class="finding">
+        <div class="tag warn">Quan trọng</div>
+        <div class="body">
+          <b>Cột PHẢI đang sai nghĩa nặng hơn cột trái.</b>
+          <p>
+            <code>amount_total: 11700</code> là <b>đơn vị nhỏ nhất</b> — 117,00 USD, không phải
+            11.700. Chính dự án đã đổi bằng <code>fromMinorUnits()</code> ở
+            <code>stripe.gateway.ts</code> trước khi ghi cột <code>amount</code>. Một người
+            non-coding đọc "11700" sẽ hiểu sai số tiền, và đó tệ hơn đọc JSON thô vì con số
+            trông như đã được trình bày tử tế. <code>created: 1756876800</code> cũng vậy —
+            đó là giây Unix, không phải mã đơn.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag warn">Rủi ro</div>
+        <div class="body">
+          <b>Nếu đổi giá trị thì phải giữ số thô bên cạnh.</b>
+          <p>
+            Đây là bề mặt tiền. Đoán sai đơn vị một lần là in ra một con số sai trên màn hình
+            đối soát. Nên bản bật-giá-trị ở trên in <b>cả hai</b>: "117,00 USD" rồi
+            <code>11700</code> nhạt bên cạnh — người đọc thấy được, người đối soát kiểm được.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag">Nhất quán</div>
+        <div class="body">
+          <b>Từ điển ở đây KHÔNG mâu thuẫn với điều tôi nói đợt trước.</b>
+          <p>
+            Đợt trước tôi bỏ từ điển cho payload <em>của mình</em> — vì khoá ấy đổi mỗi khi ta
+            thêm tính năng, và một bảng tra phải nhớ cập nhật là bảng sẽ mục. Trường Stripe/PayPal
+            thì ngược lại: ta không sở hữu, không thêm bớt, và nó chỉ đổi khi provider đổi API.
+            Trường lạ vẫn rơi êm về cách đọc bằng máy nên không có gì mất.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag ok">Nhỏ mà đáng</div>
+        <div class="body">
+          <b>Chữ "Provider payload" cũng nên đổi.</b>
+          <p>
+            Đó là tiêu đề của khối, và bản thân nó đã là chữ kỹ thuật. Đề xuất:
+            <b>"What the payment provider sent"</b>. Bên <code>/outbox</code> thì
+            "Payload" → <b>"Email contents"</b>.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="ask">
+    <h2>Cần bạn chốt hai điều</h2>
+    <ol>
+      <li><b>Phương án nào?</b> Tôi nghiêng về <b>B</b>: nó giải đúng vấn đề bạn nêu mà
+        không làm panel dài thêm. C tử tế hơn nhưng mỗi field thêm một dòng chữ, cuộn nhiều.</li>
+      <li><b>Có đổi giá trị không?</b> Tôi khuyên <b>có</b>, và bắt buộc kèm số thô. Tiền và
+        thời gian là hai thứ mà để nguyên dạng máy thì người đọc chắc chắn hiểu sai.</li>
+    </ol>
+  </div>
+
+  <p class="foot">Chưa commit · chưa sửa file nào cho đợt này · nhánh <b>fix/p4c-ui-polish</b>.</p>
+</div>
+
+<script>
+  // Payload mẫu: đúng shape webhook `checkout.session.completed` mà dự án nhận
+  // (xem `stripe.gateway.ts` — metadata.bookingId/bookingCode do ta tự đặt).
+  const EVENT = {
+    id: "evt_3Qa1bC2dEfGhIjKl",
+    object: "event",
+    type: "checkout.session.completed",
+    created: 1756876800,
+    livemode: false,
+    data: {
+      object: {
+        id: "cs_test_a1B2c3D4e5",
+        object: "checkout.session",
+        amount_total: 11700,
+        currency: "usd",
+        payment_status: "paid",
+        status: "complete",
+        payment_intent: "pi_3Qa1bC2dEfGh",
+        client_reference_id: null,
+        expires_at: 1756963200,
+        customer_details: { email: "mai.tran@example.com" },
+        metadata: { bookingId: "1f0a7c92", bookingCode: "BK-7QK2M4" }
+      }
+    }
+  };
+
+  // Khúc bao bì: không mang nghĩa nào, cắt khỏi nhãn (phương án A trở đi).
+  const ENVELOPE = [["data", "object"], ["resource"]];
+
+  const GLOSS = {
+    "amount_total":        ["Amount charged",      "Tổng tiền khách trả cho đơn này"],
+    "currency":            ["Currency",            "Đơn vị tiền của số trên"],
+    "payment_status":      ["Payment status",      "Stripe đã thu được tiền hay chưa"],
+    "status":              ["Checkout status",     "Khách đã đi hết trang thanh toán chưa"],
+    "payment_intent":      ["Payment reference",   "Mã Stripe dùng khi hoàn tiền"],
+    "client_reference_id": ["Our reference",       "Mã của ta gửi kèm — thường để trống"],
+    "expires_at":          ["Link expires",        "Sau mốc này link thanh toán hết hạn"],
+    "customer_details":    ["Customer",            "Thông tin khách Stripe thu được"],
+    "email":               ["Email",               "Địa chỉ khách dùng để thanh toán"],
+    "metadata":            ["Our notes",           "Dữ liệu ta gắn kèm lúc tạo phiên"],
+    "bookingId":           ["Booking id",          "Định danh đơn trong hệ thống ta"],
+    "bookingCode":         ["Booking code",        "Mã đơn khách nhìn thấy (BK-…)"],
+    "livemode":            ["Live mode",           "Tiền thật hay chế độ thử"],
+    "created":             ["Received at",         "Lúc cổng thanh toán tạo sự kiện"],
+    "type":                ["Event",               "Chuyện gì vừa xảy ra"],
+    "id":                  ["Reference",           "Mã của bản ghi này bên provider"],
+    "object":              ["Kind",                "Loại bản ghi bên provider"],
+    "event_type":          ["Event",               "Chuyện gì vừa xảy ra (PayPal)"],
+    "custom_id":           ["Booking id",          "Định danh đơn ta gắn vào đơn PayPal"],
+    "currency_code":       ["Currency",            "Đơn vị tiền (PayPal)"],
+    "value":               ["Amount charged",      "Tổng tiền khách trả (PayPal)"],
+    "create_time":         ["Received at",         "Lúc PayPal tạo sự kiện"],
+    "email_address":       ["Email",               "Địa chỉ khách bên PayPal"]
+  };
+
+  // Trường nào cần đổi giá trị, và đổi kiểu gì.
+  const MINOR_UNITS = new Set(["amount_total"]);
+  const UNIX_SECONDS = new Set(["created", "expires_at"]);
+
+  function humanize(key) {
+    const s = String(key).replace(/[_-]+/g, " ")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2").trim().toLowerCase();
+    return s.charAt(0).toUpperCase() + s.slice(1);
+  }
+
+  function stripEnvelope(path) {
+    for (const env of ENVELOPE) {
+      if (env.every((seg, i) => path[i] === seg)) return path.slice(env.length);
+    }
+    return path;
+  }
+
+  function money(minor, currency) {
+    const v = (minor / 100).toLocaleString("en-US", { minimumFractionDigits: 2 });
+    return `${v} ${String(currency || "").toUpperCase()}`.trim();
+  }
+  function when(seconds) {
+    return new Date(seconds * 1000).toLocaleString("en-GB", {
+      day: "2-digit", month: "short", year: "numeric",
+      hour: "2-digit", minute: "2-digit", timeZone: "UTC"
+    }) + " UTC";
+  }
+
+  function flatten(value, path = [], out = []) {
+    if (value !== null && typeof value === "object") {
+      const entries = Array.isArray(value)
+        ? value.map((v, i) => [String(i), v])
+        : Object.entries(value);
+      if (entries.length === 0) { out.push({ path, value: "(empty)", empty: true }); return out; }
+      for (const [k, v] of entries) flatten(v, [...path, k], out);
+      return out;
+    }
+    out.push({ path, value });
+    return out;
+  }
+
+  function label(path, mode) {
+    const trimmed = mode === "raw" ? path : stripEnvelope(path);
+    const changed = mode !== "raw" && trimmed.length !== path.length;
+    const parts = trimmed.map((seg) =>
+      (mode === "b" || mode === "c") && GLOSS[seg] ? GLOSS[seg][0] : humanize(seg)
+    );
+    const glossed = mode !== "raw" && mode !== "a" &&
+      trimmed.some((seg) => GLOSS[seg]);
+    return { text: parts.join(" › "), highlight: changed || glossed };
+  }
+
+  function renderValue(entry, useValues) {
+    const key = entry.path.at(-1);
+    const v = entry.value;
+    if (entry.empty) return { html: "(empty)", muted: true };
+    if (v === null) return { html: "—", muted: true };
+
+    if (useValues) {
+      if (MINOR_UNITS.has(key)) {
+        const cur = EVENT.data.object.currency;
+        return { html: `<mark>${money(v, cur)}</mark> <span class="raw">${v}</span>`, muted: false };
+      }
+      if (UNIX_SECONDS.has(key)) {
+        return { html: `<mark>${when(v)}</mark> <span class="raw">${v}</span>`, muted: false };
+      }
+      if (v === true) return { html: "<mark>Yes</mark>", muted: false };
+      if (v === false) return { html: "<mark>No</mark>", muted: false };
+    } else {
+      if (v === true) return { html: "Yes", muted: false };
+      if (v === false) return { html: "No", muted: false };
+    }
+    return { html: String(v), muted: false };
+  }
+
+  const entries = flatten(EVENT);
+
+  function paint() {
+    const useValues = document.getElementById("values").checked;
+    for (const mode of ["a", "b", "c"]) {
+      const dl = document.createElement("dl");
+      dl.className = "fields";
+      for (const entry of entries) {
+        const row = document.createElement("div");
+        row.className = "row";
+        const dt = document.createElement("dt");
+        const lab = label(entry.path, mode);
+        dt.innerHTML = lab.highlight ? `<mark>${lab.text}</mark>` : lab.text;
+
+        const dd = document.createElement("dd");
+        const val = renderValue(entry, useValues);
+        dd.innerHTML = val.html;
+        if (val.muted) dd.className = "muted";
+        row.append(dt, dd);
+        dl.appendChild(row);
+
+        if (mode === "c") {
+          const key = entry.path.at(-1);
+          const note = GLOSS[key]?.[1];
+          if (note) {
+            const hint = document.createElement("div");
+            hint.className = "row";
+            hint.innerHTML = `<dt></dt><dd class="muted" style="font-size:12px"><mark>${note}</mark></dd>`;
+            dl.appendChild(hint);
+          }
+        }
+      }
+      document.querySelector(`[data-view="${mode}"]`).replaceChildren(dl);
+    }
+  }
+
+  document.getElementById("values").addEventListener("change", paint);
+  paint();
+
+  const body = document.getElementById("glossBody");
+  for (const [key, [name, meaning]] of Object.entries(GLOSS)) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>${key}</td><td>${name}</td><td>${meaning}</td>`;
+    body.appendChild(tr);
+  }
+</script>

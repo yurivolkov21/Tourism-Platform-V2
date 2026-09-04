@@ -8,6 +8,323 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Vòng chỉnh UI admin sau P4c: bốn ô lọc thành MỘT menu kit theo `dropdown-menu-10`, vá tràn chữ ở dialog ghi, drawer Details đổi vỏ + hai chế độ xem payload + nhãn và giá trị payload đọc được, `/bookings` mặc định lọc theo tháng (nhánh `fix/p4c-ui-polish`, 1 commit `b2eb60b`, ~46 file, không migration)
+
+Vòng thiết kế chạy bằng bản demo, không có spec riêng: file
+[`design/mockups/outbox-type-menu.src.html`](design/mockups/outbox-type-menu.src.html)
+CHÍNH LÀ bản ghi (cùng lệ với cụm `/contact` và checkout của P3b). User chốt
+qua ba đợt trong một phiên.
+
+**Đợt 1 — `/outbox`.** `/outbox` có BỐN control hình dropdown, nên bản demo
+đánh số cả bốn để user chỉ đúng cái: tab trạng thái · lọc loại email · menu
+Columns · rows-per-page. Chốt: ô lọc loại email, theo phương án dựng menu bám
+khuôn `@ss-components/dropdown-menu-10` (`align="end"`, rộng `w-66`,
+separator chia nhóm) mà KHÔNG đụng `libs/shared/ui`. Lý do đáng đổi: 13 loại
+email cộng mục "All" là danh sách dài nhất cả admin và chúng chia đúng năm họ
+— thứ một Select phẳng không nói ra được.
+
+Ba chỗ bản registry không lo hộ, phải tự vá và mỗi chỗ có một test canh:
+
+- **dm-10 dùng `DropdownMenuItem` trơn, không có trạng thái chọn.** Đây là bộ
+  LỌC nên phải `RadioGroup` — chép y nguyên là mất dấu hiệu "đang lọc cái nào",
+  thứ một Select vốn hiển nhiên có.
+- **`MenuRadioItem` của Base UI mặc định `closeOnClick = false`** (hợp cho menu
+  bấm nhiều lần như menu Columns). Ở đây chọn xong là ĐIỀU HƯỚNG, nên phải bật
+  tường minh — không thì menu treo lại trên trang vừa mở.
+- **Khe `DropdownMenuShortcut` cố ý bỏ trống.** Thứ đáng nằm ở đó là số hàng
+  theo từng mục, mà không endpoint stats nào trả con số ấy — thêm là sửa
+  `apps/api` cộng contract, ngoài phạm vi. Đo thêm: `Shortcut` dùng `ml-auto`
+  còn `RadioItem` đặt dấu tích ở `absolute right-2` với `pr-8`, nên dùng cả hai
+  sẽ đè nhau — muốn dùng khe ấy là phải sửa `libs/shared/ui` dùng chung với web.
+
+**Đợt 2 — `/payment-events` và `/subscribers`.** Consumer thứ ba xuất hiện nên
+hình dạng lên kit `components/kit/toolbar-filter-menu.tsx` và cả ba vùng tiêu
+thụ lại (đúng đường `ToolbarSelect` đã đi ở vòng vá review F7; luật kit ≥2
+consumer, spec P4c §2 mục 6). Hai bất biến của vòng vá trước được giữ nguyên và
+nay có test riêng: tiền tố `v:` (`toFreeValue` — một hàng `source`/`type` bằng
+`'ALL'` không được biến thành mục xoá filter, review F10) và mục TẠM cho giá
+trị ngoài tập (review F8). Giá trị lạ đứng ở nhóm riêng dưới separator, mang
+dấu chấm hỏi — nó không thuộc tập chính quy và menu nói đúng điều đó.
+
+**Đợt 3 — ô tháng `/reports`, cộng đối chiếu bộ icon.** Ô tháng là consumer
+DUY NHẤT không có mục "tất cả" (một báo cáo luôn thuộc đúng một tháng), nên
+`allItem` của kit nới thành tuỳ chọn; không có nó thì nhóm đầu cũng không cần
+separator. Separator cắt ở mỗi lần ĐỔI NĂM qua `groupMonthOptions` (logic thuần
+trong `lib/reports-query.ts`, 4 test) — gom theo ĐOẠN LIÊN TIẾP chứ không theo
+khoá, vì `monthOptions` chèn tháng đang xem lên đầu nên cùng một năm có thể
+thành hai đoạn rời nhau, và gom lại sẽ kéo tháng ấy xuống dưới. Bản Select cũ
+ghim `w-48`, bản menu để nút tự co như ba nút kia: thanh `/reports` là
+`justify-between` nên ô tháng đứng một mình bên trái, co giãn vào khoảng trống
+chứ không đẩy nút Print/Export.
+
+User dặn dùng đúng bộ icon dự án đã dùng xuyên suốt. Đối chiếu bằng
+`git grep` vốn glyph ở `main` cho ra 11 glyph tôi tự đặt mới; năm khái niệm
+trong đó dự án ĐÃ có glyph, nên đổi hết sang bản có sẵn: `TicketCheck` thành
+`Ticket` (booking — user-menu web, cột bookingCode), `Banknote` thành
+`RotateCcw` (trạng thái REFUNDED — tab bookings), `CalendarX` thành
+`CircleDashed` (chưa xử lý — tab enquiries), `ThumbsUp`/`ThumbsDown` thành
+`ShieldCheck`/`ShieldX` (duyệt/từ chối — `decision-button.tsx`), `CircleHelp`
+thành `CircleQuestionMark` (panel good-to-know web). `AtSign` cũng bỏ vì trùng
+cột `recipient` của menu Columns ngay trên cùng trang, thay bằng `PenLine`.
+Còn bảy glyph mới thật sự vì dự án chưa có gì cho khái niệm đó — `BellRing`
+`KeyRound` `Megaphone` `RectangleEllipsis` `Shapes` `Tags` `TimerOff` — cả bảy
+vẫn là `lucide-react`, không thêm nguồn icon nào.
+
+**Đợt 4 — vá tràn chữ ở dialog xác nhận ghi.** User chụp màn hình dialog
+Retry của `/outbox`: dòng `Last error` chạy vượt hẳn mép phải dialog. Nguyên
+nhân KHÔNG phải dialog hẹp mà là hai thứ cộng lại. `grid-cols-[8rem_1fr]`:
+`1fr` trần là `minmax(auto,1fr)` và `auto` lấy **min-content**, nên một token
+không dấu cách — JSON nguyên văn của Resend,
+`{"statusCode":401,"name":"validation_error",…}` — làm phình cột. Và
+`break-words` (`overflow-wrap: break-word`) trông như đã lo chuyện này nhưng
+KHÔNG tính vào min-content, nên nó không cứu được cột đã phình. Vá bằng
+`minmax(0,1fr)` (cột co được dưới min-content) cộng `wrap-anywhere`
+(`overflow-wrap: anywhere` — Tailwind 4.1+, bản repo 4.3.3; nó CÓ tính vào
+min-content).
+
+Cùng cấu trúc ấy có ở bốn chỗ, vá cả bốn vì hai chỗ đầu in ĐÚNG chuỗi lỗi đó:
+kit `confirm-write-dialog` (mọi dialog ghi của admin), kit `json-drawer`
+(drawer Details của cùng hàng outbox — cả `JsonDrawerField` lẫn khối chữ
+nguyên văn `JsonDrawerText`), và hai bản chép ở vùng là `refund-panel` và
+trang chi tiết `/enquiries/[id]` (nơi này rủi ro thật vì email dài cũng là
+token không dấu cách).
+
+Đi kèm là trần chiều cao `max-h-[85dvh] overflow-y-auto` đắp ở kit
+`ConfirmWriteDialog`: vá tràn ngang mà bỏ chiều cao là đổi một lỗi lấy một lỗi
+khác — `lastError` trần 1000 ký tự, ngắt dòng xong thành khối cao, mà
+`DialogContent` căn giữa bằng `-translate-y-1/2` và không có trần cao nào, nên
+nút Cancel/Confirm sẽ trôi khỏi màn hình không cuộn tới được. Đắp ở kit admin
+chứ KHÔNG sửa `DialogContent` của `@tourism/ui` — file đó dùng chung với
+`apps/web` đang chạy thật. `dvh` chứ không `vh` vì thanh địa chỉ mobile.
+
+Hai test mới đo bằng CLASS chứ không bằng hình học, và ghi rõ lý do trong
+spec: jsdom không có layout engine nên `offsetWidth` luôn 0, không assert tràn
+được; class chính LÀ hợp đồng ở đây, và cái bẫy `break-words` đủ tinh vi để
+đáng khoá lại.
+
+**Đợt 5 — drawer *Details*: đổi vỏ, cộng chế độ xem cho người không đọc JSON.**
+User báo hai chuyện: chuyển động panel "chưa thật sự thiết kế tốt", và sheet
+"khá hẹp". Đo ra thì lời phàn nàn về chuyển động có gốc rất cụ thể — `Sheet`
+KHÔNG thật sự trượt vào: nó chỉ `translate-x-[2.5rem]`, tức nhích **40px** rồi
+mờ dần, 200ms `ease-in-out`. Một tấm cao hết màn rộng 576px mà dịch 40px thì
+mắt đọc ra là "pop" tại chỗ chứ không phải panel đi vào từ mép phải.
+
+Đổi sang `Drawer` cấu hình theo `@shadcn-space/drawer-02` (user chốt qua bản
+demo có panel chạy thật, [`design/mockups/details-drawer.src.html`](design/mockups/details-drawer.src.html)):
+trượt TRỌN từ ngoài mép màn, 450ms `cubic-bezier(0.22,1,0.36,1)`, kéo-để-đóng
+với tốc độ ăn theo lực vẩy; rộng 576 lên **626px**; panel NỔI cách mép 16px
+thay vì dính mép. Thứ đáng giá nhất về mặt dùng là cái thứ ba: đầu panel nay
+ĐỨNG YÊN, trước đó cuộn xuống đọc payload là mất luôn tiêu đề và dedupe key —
+không còn biết đang xem hàng nào.
+
+Không thêm dependency nào. drawer-02 khai `canvas-confetti` nhưng chỉ để bắn
+pháo giấy lúc đủ tiền free-ship, ta không lấy file; và `Drawer` của
+`@tourism/ui` vốn đã là bản đầy đủ (swipe, `--drawer-content-width`,
+`--drawer-inset`, xếp chồng) nên đây là đổi cách LẮP chứ không phải thay thư
+viện. Vỏ chia hai lớp: `Popup` ngoài trong suốt (phải trải hết chiều cao cho
+phép tính vuốt chạy đúng), hình hài panel đắp lên lớp trong
+`data-slot=drawer-content`.
+
+Cùng đợt, khối payload có **hai chế độ xem** — lý do user đưa ra: back-office
+này không phải ai cũng đọc được JSON. **Simple** là mặc định (người không biết
+mà bấm cũng phải xem được), **Developer** giữ nguyên khối JSON thụt lề cũ.
+Simple trải payload thành danh sách nhãn · giá trị **PHẲNG** — user chốt dứt
+khoát là không lồng thụt vào, vì khối lồng cũng bắt người đọc dựng lại cây
+trong đầu y như JSON. Đường dẫn nằm gọn trong nhãn
+("Data › Object › Metadata › Booking code"). Logic ở hàm thuần
+`lib/payload-fields.ts` (10 test): nhãn sinh bằng MÁY từ chính khoá JSON
+(`bookingId` → "Booking id") chứ không phải từ điển dịch tay — thêm loại email
+mới là nó tự chạy; boolean đọc thành Yes/No; `null` ra gạch ngang còn chuỗi
+rỗng ra "(empty)" vì hai chuyện đó khác nhau; mảng đánh số từ 1. Và nó KHÔNG
+lọc bớt field nào, kể cả object rỗng lồng bên trong — một bề mặt vận hành mà
+giấu field là bề mặt nói dối (spec P4c §2 mục 3 có mục AMEND ghi lại điều này).
+
+Nhãn khối bỏ chữ "(JSON)" ở cả hai vùng: chế độ nay do cụm nút nói ra, và ở
+chế độ Simple thì chữ ấy là sai. (Đợt 6 bên dưới đổi tiếp hai nhãn này sang
+chữ đời thường.) Nhãn đọc-màn-hình
+của nút đóng cũng về `@tourism/i18n` — trước đó nó nằm cứng trong
+`SheetContent` của `@tourism/ui`, còn drawer mới tự dựng nút đóng.
+
+**Đợt 6 — nhãn payload payment events, cho người không đọc code.** User mở
+drawer `/payment-events` và chỉ ra cột TRÁI của khối *Provider payload*: chỉ
+người biết chút code mới hiểu. Gốc rễ: payload vùng này là **nguyên văn
+webhook** (`payload: verified.raw` ở `payments.service.ts`), nên nhãn chính là
+tên trường do Stripe/PayPal đặt. Dựng ba phương án trên đúng một payload thật
+([`design/mockups/payload-labels.src.html`](design/mockups/payload-labels.src.html)),
+user chốt **B**:
+
+- **Cắt khúc bao bì.** Mọi dòng Stripe mở đầu bằng `data › object` (PayPal là
+  `resource`) — vỏ bọc webhook, không mang nghĩa nào. Cắt khỏi NHÃN; `path`
+  giữ nguyên vì nó là khoá React và là sự thật về vị trí.
+- **Từ điển cho trường provider** (`messages.admin.paymentEvents.detail.payloadFields`,
+  31 mục — đúng tập trường mà ba event Stripe và một event PayPal dự án nhận
+  thực sự gửi về). Trường lạ vẫn rơi êm về cách đọc bằng máy.
+
+Khoá từ điển tra theo HAI cách, đường dẫn đầy đủ trước rồi mới tới tên trường
+trần. Cần cả hai vì sau khi cắt bao bì thì `id` của sự kiện và `data.object.id`
+của phiên checkout đọc ra **cùng một chữ** — hai dòng cùng tên khác giá trị.
+Có test riêng cho đúng ca đó.
+
+Vì sao ở đây LÀ từ điển được, trong khi payload `/outbox` cố ý không có (đợt 5):
+tên trường này do người khác sở hữu, ta không thêm bớt, và nó chỉ đổi khi
+provider đổi API — không mục theo tính năng của mình. Bảng thiếu một mục cũng
+không gãy gì.
+
+`toPayloadFields` nhận thêm tham số `PayloadHints` (6 test mới); kit
+`JsonDrawer` nhận thêm prop `payloadHints`. **Prop này chỉ có MỘT consumer** —
+ngoại lệ có chủ ý so với luật "kit chỉ nhận prop mới khi có ≥2 consumer", vì
+đường còn lại là fork khối payload ra vùng, thứ user cấm dứt khoát 31/08. Nó
+là dữ liệu thuần và có fallback rõ (không truyền thì đọc bằng máy như cũ), nên
+không mở ra nhánh hành vi nào để mà mục.
+
+Cùng đợt, hai tiêu đề khối cũng bỏ chữ kỹ thuật: "Provider payload" →
+**"What the payment provider sent"**, và bên `/outbox` "Payload" →
+**"Email contents"**.
+
+**Đợt 7 — diễn giải GIÁ TRỊ, giữ số thô bên cạnh.** Cùng vấn đề, phía cột
+phải, và nguy hơn: `amount_total: 11700` là **đơn vị nhỏ nhất** (117,00 USD),
+`created: 1756876800` là giây Unix. Người non-coding đọc hai con số đó sẽ hiểu
+sai — và tệ hơn đọc JSON thô, vì sau khi nhãn đã đẹp thì con số càng trông như
+đã được trình bày tử tế. User chốt làm, kèm điều kiện giữ số gốc.
+
+Cái bẫy đắt nhất là **tiền tệ không có đơn vị nhỏ**: chia 100 cho VND là sai
+đúng 100 lần. `apps/api` giải bằng danh sách `ZERO_DECIMAL_CURRENCIES` chép
+tay, nhưng admin không với tới được (khác app) và chép bản thứ hai là bản sẽ
+lệch. Lối ra: **đọc số chữ số minor từ ICU** —
+`Intl.NumberFormat(...).resolvedOptions().maximumFractionDigits` cho 2 với
+USD/EUR, **0 với VND/JPY**, 3 với KWD. Không bảng nào phải nuôi, và nó còn
+ĐÚNG HƠN danh sách nhị phân bên api, thứ coi mọi tiền tệ không-zero là 2 chữ số
+nên sai với KWD.
+
+Mọi ca không chắc đều rơi về in thô — thà hiện `11700` trơ còn hơn in một con
+số sai trên bề mặt đối soát: không tìm thấy tiền tệ trong tầm, mã tiền tệ sai
+hình dạng, giá trị không phải số nguyên hữu hạn. Tiền tệ lấy ở tầng GẦN NHẤT
+bao quanh số tiền (một số tiền thuộc về chính object cũng mang currency của
+nó), có test riêng cho ca lồng hai tầng khác currency.
+
+Trường nào là tiền / là thời gian do vùng KHAI TƯỜNG MINH, không đoán theo
+tên: `resource.purchase_units.0.amount` của PayPal là một OBJECT chứa `value`
+dạng chuỗi decimal — đã đọc được sẵn, "đổi" nó là làm hỏng; `create_time` của
+PayPal cũng đã là ISO. (An toàn kép: phép diễn giải chỉ chạy trên số.)
+
+Giá trị đã đổi LUÔN in kèm số thô nhạt bên cạnh (`$117.00` · `11700`) — đây là
+bề mặt đối soát, không có số gốc là bắt người ta tin phép đổi của ta.
+Dùng lại `formatAmount`/`formatDateTime` của `bookings-view` để số tiền trong
+drawer đọc ra cùng một kiểu với cột Amount của bảng.
+
+⚠️ Một biên đã đo và ghi lại: ICU không phân biệt "mã ba chữ cái chưa được
+gán" với "mã có thật" — `zzz` vẫn ăn mặc định 2 chữ số. Chấp nhận vì provider
+chỉ gửi mã thật và số thô nằm ngay bên cạnh.
+
+⚠️ **Chưa qua kiểm chứng bởi người ngoài.** Mục tiêu của đợt 6–7 là "người
+non-coding đọc có hiểu không", mà cả người viết lẫn người duyệt đều đã biết
+sẵn hai cột ấy nói gì — nhìn vào là hiểu, nên không tự đánh giá đúng được
+(user nêu 03/09). Sẽ có thành viên khác trong nhóm thử rồi mới kết luận. Nếu
+phải sửa thì rẻ: toàn bộ chữ nằm ở `messages.admin.paymentEvents.detail.payloadFields`
+và `messages.admin.payload`, còn trường nào là tiền/thời gian thì khai ở
+`PAYLOAD_HINTS` của vùng — đổi câu chữ không phải đụng component nào.
+
+**Đợt 8 — `/bookings` mặc định lọc theo THÁNG HIỆN TẠI.** URL trần trước đây
+hiện mọi booking từ đầu thời gian — một tập lớn dần vô hạn. User chốt 04/09
+mặc định là trọn tháng dương lịch của hôm nay (4/9 → 01/09–30/09; 14/10 →
+01/10–31/10), với lý do đắt hơn cả chuyện hiệu năng: **tool admin này còn dùng
+để xuất file báo cáo hàng tháng**, nên mặc định theo tháng khớp đúng việc chính
+nó phục vụ, và nút Export từ nay dựng ra đúng file của tháng thay vì cả tập.
+
+Mặc định đặt ở **tầng parse** (`parseBookingsSearchParams(raw, now)`), không ở
+hàm dựng href — đúng đường F10 subscribers đã trả giá: bản đầu bên đó đặt mặc
+định lúc điều hướng, nên URL trần từ bookmark rơi về "tất cả" và file export
+khác hẳn cái đang thấy trên màn hình. Trang và route export ở đây gọi CÙNG một
+hàm nên không đường nào lệch được. `now` là THAM SỐ chứ không đọc trong hàm:
+hàm vẫn thuần và test được mọi tháng.
+
+Ba trạng thái, "cái cụ thể hơn thắng": có ngày trên URL (dù chỉ một đầu) → dùng
+đúng thứ người ta viết, KHÔNG độn nốt đầu kia; `?dates=all` → không lọc;
+URL trần → tháng này. Ngày rác và `dates` rác đều rơi về **tháng này** chứ
+không về "tất cả" — mở toang cả tập vì một ký tự gõ nhầm là đắt hơn nhiều.
+Ngày cuối tháng tính bằng lịch (`Date.UTC(y, m + 1, 0)`), không bảng chép tay,
+nên năm nhuận tự đúng.
+
+Đường về "xem tất cả" là **xoá trắng hai ô ngày** → URL mang `?dates=all`
+(user chốt). Không có sentinel này thì không ai về được: xoá xong ra URL trần,
+rồi bị parse độn lại đúng cái vừa xoá. Sentinel bookmark được và truyền sang
+route export được — cùng cách F10 viết `?active=all`.
+
+**Lưới an toàn cho ca tra cứu.** Ba bộ lọc cộng dồn AND, nên khách gọi báo mã
+booking tạo từ tháng trước là bảng RỖNG — người trực sẽ kết luận "không có
+booking đó", trong khi thủ phạm là hai ô ngày họ chưa từng đụng. Nên ô rỗng
+nay nói thẳng khoảng ngày đang lọc và mở sẵn một link "xem toàn bộ" ngay tại
+chỗ. Kit `DataTableBody.empty` nới từ `string` sang `ReactNode` để đặt được
+link ấy — chuỗi vẫn là `ReactNode` nên chín vùng còn lại không phải đổi gì.
+
+⚠️ **Hai điều đã nêu, user biết và chấp nhận:** (a) hai ô lọc theo `createdAt`
+— ngày TẠO booking, không phải ngày khởi hành; booking tạo 20/8 cho chuyến
+15/9 sẽ không nằm trong mặc định tháng 9. Đổi sang cột khởi hành là đụng
+contract + `apps/api`, ngoài phạm vi nhánh này. (b) Hàng stat card dùng cửa sổ
+CỐ ĐỊNH 28 ngày (`STATS_WINDOW_DAYS`), không ăn theo bộ lọc — ngày 4/9 thì card
+tính 8/8–4/9 còn bảng tính 1/9–30/9. Không sai (card có caption ghi rõ kỳ của
+nó) nhưng hai con số cạnh nhau trả lời hai câu hỏi khác nhau.
+
+`ToolbarSelect` KHÔNG bị thay: nó ở lại kit với hai consumer còn lại là nhánh
+mobile của `StatusFilterTabs` và ô đổi trạng thái `/enquiries` — cái sau là
+control GHI chứ không phải lọc. Hai control cùng sống, mỗi cái một việc.
+
+### Nghiệm thu 04/09 — review 8 mũi → 10 findings (8 CONFIRMED · 2 PLAUSIBLE), vá bốn phần trong `b2eb60b`
+
+- **Cụm mặc định tháng `/bookings`**: xoá ngày bằng chuỗi rỗng nay phát cờ
+  `dates=all` như `null` (test cũ từng khoá kỳ vọng sai); link "Back to
+  bookings" trỏ `?dates=all` để booking vừa xem không biến khỏi bảng; bỏ
+  `min`/`max` chéo hai ô ngày (mặc định tháng làm lịch xám chặn lùi tháng);
+  ô rỗng có câu riêng cho khoảng một đầu; audit export ghi `dates: all|range`.
+- **Dialog/drawer**: trần chiều cao `DIALOG_FRAME` không che nút đóng nữa
+  (`showCloseButton={false}` — nút X `absolute` trong phần tử cuộn từng trôi
+  khuất) và áp cho dialog Refund; ruột drawer giữ qua animation đóng 450ms;
+  vá nốt bản chép thứ 5 của khối dt/dd ở `/bookings/[code]`.
+- **Nhãn/giá trị payload**: từ điển chỉ tra ĐƯỜNG DẪN đầy đủ (khoá trần từng
+  áp mọi độ sâu — `resource.id` PayPal đọc thành "Event reference"), nhãn
+  trung lập cho `data.object` (không còn giả định checkout session); KWD in đủ
+  ba chữ số thay vì làm tròn qua `formatAmount`; cache `Intl.NumberFormat`;
+  drawer chỉ nấu biểu diễn đang xem.
+- **Kit**: giao ước giá trị lọc (sentinel All + tiền tố `v:`) về
+  `kit/filter-value.ts`; spec vùng bỏ assertion chép của kit; spec P4c §2.6
+  ghi ngoại lệ prop dữ-liệu-thuần một consumer. Để lại (nhỏ, có ghi):
+  `unknownItem` chưa lên kit (hai vùng đặt mục lạ ở hai vị trí), JSDoc kể
+  lịch sử ở 5 file, `LabelValueRow` chưa tách.
+
+### Bàn giao — còn treo, gom một chỗ
+
+Session chỉnh UI khép 04/09. Bốn thứ chưa xong, cố ý để lại:
+
+1. **Chưa qua review 8 mũi.** Session gốc nghiệm thu bằng `git diff HEAD` rồi
+   mới vá và merge. **15 file mới đã đánh dấu `git add -N`** để chúng hiện
+   trong diff ấy (`git diff HEAD` không thấy file untracked) — `git reset` là
+   gỡ được, chưa có commit nào vượt trước `origin/main`.
+2. **Nhãn payload chưa qua mắt người ngoài** (đợt 6–7). Thành viên khác trong
+   nhóm sẽ thử rồi mới kết luận; sửa thì rẻ vì toàn bộ chữ nằm ở
+   `messages.admin.paymentEvents.detail.payloadFields` + `messages.admin.payload`.
+3. **Bốn stat card của `/bookings` KHÔNG ăn theo bộ lọc** — và sau đợt 8 thì
+   hai vùng trên cùng màn hình lệch nhau: card là cửa sổ TRƯỢT 28 ngày
+   `[now−28d, now)`, bảng là THÁNG LỊCH. User hỏi tận nơi 04/09; ba đường xử
+   lý, chi phí rất khác: (a) chỉ sửa caption cho nói rõ "28 ngày gần nhất" —
+   rẻ, làm được trong nhánh này; (b) cho card nhận bộ lọc — phải thêm
+   `.input()` vào `admin.stats.bookings` ở contract + sửa `stats.service.ts`,
+   tức **đụng `apps/api` và `libs/shared/contract`**, cần nhánh riêng; (c) đổi
+   cửa sổ card sang tháng lịch — cũng đụng `apps/api`, và làm hỏng phép so
+   "kỳ trước cùng độ dài" ở mốc giao tháng. **Chưa chốt cái nào.**
+4. **Ô ngày `/bookings` lọc theo `createdAt`, không phải ngày khởi hành.**
+   Booking tạo 20/8 cho chuyến 15/9 không nằm trong mặc định tháng 9. Đổi cột
+   là đụng contract + `apps/api` — cùng nhóm với mục 3.
+
+Bảy glyph lucide mới (bell-ring · key-round · megaphone · rectangle-ellipsis ·
+shapes · tags · timer-off) user đã xem danh sách và chốt GIỮ — không phải nợ.
+
+Tests after (sau vá): 1417 web · 300 api · 316 api-int (không đụng `apps/api`) ·
+186 contract · 22 ui · 10 tokens · 2 i18n · 682 admin (thêm 84: 10 kit
+`toolbar-filter-menu`, 7 outbox, 5 payment events, 7 subscribers, 6 reports
+menu, 4 `groupMonthOptions`, 2 kit `confirm-write-dialog`, 26
+`payload-fields`, 5 kit `json-drawer`, 2 drawer payment events, 12
+`bookings-query`).
+
 ## 2026-09-03 — P4c F10: Subscribers (danh sách nhận tin, unsubscribe + CSV) + vòng vá — KHÉP P4c (nhánh `feat/p4c-subscribers`, 3 commit `7ed7bde..c8a7279`, ~40 file, không migration)
 
 Tính năng cuối P4c ([spec P4c](specs/2026-09-02-p4c-operations-design.md)

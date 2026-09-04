@@ -58,6 +58,15 @@ cho P4c:
    thụt lề, mono, cuộn — KHÔNG map thành form. Nếu payload có địa chỉ email
    khách thì vẫn hiện (admin đã thấy email ở bảng bookings), nhưng KHÔNG
    copy payload vào log server.
+   *AMEND 03/09 (vòng chỉnh UI sau khi P4c khép, nhánh `fix/p4c-ui-polish`):*
+   khối payload nay có **hai chế độ xem** — **Simple** (danh sách nhãn · giá
+   trị PHẲNG, mặc định) và **Developer** (JSON nguyên văn như mô tả trên).
+   Lý do user đưa ra: back-office này không phải ai cũng đọc được JSON. Điều
+   luật này nói vẫn đúng và không bị nới: Simple KHÔNG map payload thành form
+   và KHÔNG lọc bớt field nào — nó chỉ đổi cách trình bày, mọi lá đều ra một
+   dòng (`lib/payload-fields.ts`, hàm thuần có test). Cùng đợt, vỏ panel đổi
+   từ `Sheet` sang `Drawer` khuôn `@shadcn-space/drawer-02`. Chi tiết ở
+   CHANGELOG 03/09.
 4. **Không xoá.** Nexora có `DELETE` cho outbox và subscribers; v2 cố ý bỏ:
    outbox SENT đã có purge cron dọn, FAILED giữ lại để triage (chính lý do
    `MAX_ATTEMPTS` park nó thay vì xoá), subscriber huỷ = set `unsubscribedAt`
@@ -77,6 +86,21 @@ cho P4c:
    thứ → F8 nâng nó lên `components/kit/json-drawer.tsx` (F7 để ở vùng).
    Bảng có cột checkbox thì dùng `selectableTableFeatures`, không thì
    `serverTableFeatures` (đừng đăng ký thứ không ai đọc).
+   *AMEND 03/09 (vòng chỉnh UI sau khi P4c khép, nhánh `fix/p4c-ui-polish`):*
+   ba ô **Select lọc** mô tả ở §3-F7 (loại email), §3-F8 (type) và §3-F10
+   (source) — cộng ô tháng `/reports` của P4b-F6 — nay là kit MỚI
+   `components/kit/toolbar-filter-menu.tsx`, dựng theo khuôn
+   `@ss-components/dropdown-menu-10` (user chốt qua bản demo
+   [`design/mockups/outbox-type-menu.src.html`](../design/mockups/outbox-type-menu.src.html)).
+   Consumer thứ ba là thứ đẩy nó lên kit, đúng ngưỡng ≥2 của mục này.
+   `ToolbarSelect` ở lại kit cho hai nơi còn lại: nhánh mobile của
+   `StatusFilterTabs` và ô đổi trạng thái §3-F9 (control GHI, không phải lọc).
+   Chi tiết ở CHANGELOG 03/09.
+   *Ngoại lệ ghi rõ (review polish 2):* kit được nhận prop **dữ liệu thuần có
+   fallback** với MỘT consumer (`JsonDrawer.payloadHints`, `DataTableBody.empty:
+   ReactNode`) — đường còn lại là fork khối kit ra vùng, thứ user cấm 31/08;
+   prop **hành vi/nhánh render** vẫn cần ≥2 consumer. Giao ước giá trị lọc
+   (sentinel All + tiền tố `v:`) sống ở `kit/filter-value.ts`.
 7. **`nav.ts` đã có sẵn bốn mục `enabled: false`** (outbox, paymentEvents,
    enquiries, subscribers) — mỗi feature chỉ lật `enabled: true` của mục
    mình, không sắp lại nhóm.

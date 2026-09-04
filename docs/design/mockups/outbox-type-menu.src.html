@@ -1,0 +1,619 @@
+<title>Dropdown vùng Outbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* ── Token trang demo. Bảng màu mượn nguyên ADR-0027 (hue 250 lạnh + teal
+       184) để bản demo đọc ra cùng một thế giới với admin thật. ────────── */
+  :root {
+    --ground: oklch(0.985 0.002 250);
+    --panel: oklch(1 0 0);
+    --ink: oklch(0.262 0.014 250);
+    --ink-soft: oklch(0.502 0.012 250);
+    --ink-faint: oklch(0.62 0.010 250);
+    --rule: oklch(0.905 0.005 250);
+    --rule-soft: oklch(0.945 0.004 250);
+    --teal: oklch(0.494 0.067 184.3);
+    --teal-wash: oklch(0.962 0.014 184.3);
+    --shell: oklch(0.288 0.018 252);
+    --shell-ink: oklch(0.93 0.008 250);
+    --amber: oklch(0.55 0.13 68);
+    --amber-wash: oklch(0.965 0.026 68);
+    --rose: oklch(0.52 0.16 20);
+    --rose-wash: oklch(0.966 0.021 20);
+
+    --sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Literata", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    color-scheme: light;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: oklch(0.21 0.014 252);
+      --panel: oklch(0.256 0.016 252);
+      --ink: oklch(0.945 0.006 250);
+      --ink-soft: oklch(0.74 0.010 250);
+      --ink-faint: oklch(0.62 0.012 250);
+      --rule: oklch(0.352 0.020 252);
+      --rule-soft: oklch(0.302 0.018 252);
+      --teal: oklch(0.74 0.076 181.3);
+      --teal-wash: oklch(0.30 0.026 184.3);
+      --shell: oklch(0.175 0.012 252);
+      --shell-ink: oklch(0.90 0.008 250);
+      --amber: oklch(0.79 0.11 72);
+      --amber-wash: oklch(0.31 0.030 68);
+      --rose: oklch(0.74 0.13 22);
+      --rose-wash: oklch(0.30 0.032 20);
+      color-scheme: dark;
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ground: oklch(0.21 0.014 252);
+    --panel: oklch(0.256 0.016 252);
+    --ink: oklch(0.945 0.006 250);
+    --ink-soft: oklch(0.74 0.010 250);
+    --ink-faint: oklch(0.62 0.012 250);
+    --rule: oklch(0.352 0.020 252);
+    --rule-soft: oklch(0.302 0.018 252);
+    --teal: oklch(0.74 0.076 181.3);
+    --teal-wash: oklch(0.30 0.026 184.3);
+    --shell: oklch(0.175 0.012 252);
+    --shell-ink: oklch(0.90 0.008 250);
+    --amber: oklch(0.79 0.11 72);
+    --amber-wash: oklch(0.31 0.030 68);
+    --rose: oklch(0.74 0.13 22);
+    --rose-wash: oklch(0.30 0.032 20);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 24px 96px;
+    display: flex;
+    flex-direction: column;
+    gap: 56px;
+  }
+
+  /* ── Đầu trang ─────────────────────────────────────────────────────── */
+  .masthead { display: flex; flex-direction: column; gap: 14px; }
+  .eyebrow {
+    font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--teal);
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(30px, 4.4vw, 42px);
+    line-height: 1.14; margin: 0; text-wrap: balance; letter-spacing: -0.01em;
+  }
+  .lede { margin: 0; max-width: 62ch; color: var(--ink-soft); font-size: 16px; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+  }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ── Khối mục ──────────────────────────────────────────────────────── */
+  section { display: flex; flex-direction: column; gap: 18px; }
+  .sec-head { display: flex; flex-direction: column; gap: 6px; }
+  h2 {
+    font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 0;
+    letter-spacing: -0.005em;
+  }
+  .sec-head p { margin: 0; color: var(--ink-soft); max-width: 66ch; font-size: 14.5px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0; }
+
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  code { color: var(--ink-soft); }
+
+  /* ── Khung mẫu: bên trong LUÔN là palette admin sáng thật ───────────── */
+  .spec {
+    --s-bg: oklch(0.995 0.0015 250);
+    --s-card: oklch(1 0 0);
+    --s-ink: oklch(0.262 0.014 250);
+    --s-soft: oklch(0.502 0.012 250);
+    --s-muted: oklch(0.962 0.004 250);
+    --s-rule: oklch(0.902 0.005 250);
+    --s-input: oklch(0.66 0.012 250);
+    --s-teal: oklch(0.494 0.067 184.3);
+    background: var(--s-bg);
+    color: var(--s-ink);
+    border: 1px solid var(--rule);
+    border-radius: 14px;
+    padding: 22px;
+    overflow-x: auto;
+  }
+  .spec-note {
+    font-size: 12px; color: var(--ink-faint); margin: 0;
+    display: flex; align-items: center; gap: 7px;
+  }
+  .spec-note::before {
+    content: ""; width: 22px; height: 1px; background: var(--rule); flex: none;
+  }
+
+  /* ── Hàng điều khiển admin dựng lại 1:1 ─────────────────────────────── */
+  .toolbar {
+    display: flex; flex-wrap: wrap; align-items: center;
+    justify-content: space-between; gap: 12px; min-width: 720px;
+  }
+  .toolbar-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+
+  .tabs {
+    display: flex; align-items: center; gap: 2px; padding: 4px;
+    background: var(--s-muted); border-radius: 10px;
+  }
+  .tab {
+    display: inline-flex; align-items: center; gap: 6px; height: 36px;
+    padding: 0 12px; border-radius: 7px; font-size: 13.5px; font-weight: 500;
+    color: var(--s-soft); background: transparent; border: 0; white-space: nowrap;
+  }
+  .tab[aria-selected="true"] {
+    background: var(--s-card); color: var(--s-ink);
+    box-shadow: 0 1px 2px oklch(0.262 0.014 250 / 0.10);
+  }
+
+  .ctl {
+    display: inline-flex; align-items: center; gap: 8px; height: 44px;
+    padding: 0 16px; border-radius: 8px; font-size: 14px; font-weight: 500;
+    background: var(--s-card); color: var(--s-ink);
+    border: 1px solid var(--s-rule); white-space: nowrap;
+  }
+  .ctl.field { border-color: var(--s-input); font-weight: 400; padding: 0 12px; }
+  .ctl.field span { color: var(--s-soft); }
+  .ctl.ghost { background: transparent; border-color: transparent; color: var(--s-soft); }
+  .ctl svg { width: 16px; height: 16px; flex: none; }
+  .ctl .chev { margin-left: 2px; opacity: 0.6; }
+
+  /* Vòng đánh dấu ứng viên ①②③④ */
+  .target { position: relative; }
+  .target::after {
+    content: attr(data-n);
+    position: absolute; top: -9px; right: -9px;
+    width: 20px; height: 20px; border-radius: 50%;
+    background: var(--teal); color: oklch(0.99 0 0);
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    display: grid; place-items: center; line-height: 1;
+  }
+  .target.picked::after { background: var(--amber); }
+
+  .legend { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .legend li {
+    display: grid; grid-template-columns: 22px 1fr; gap: 12px;
+    align-items: start; font-size: 14px;
+  }
+  .legend .n {
+    width: 20px; height: 20px; border-radius: 50%; margin-top: 2px;
+    background: var(--rule); color: var(--ink-soft);
+    font-family: var(--mono); font-size: 11px;
+    display: grid; place-items: center; line-height: 1;
+  }
+  .legend li.picked .n { background: var(--amber); color: oklch(0.99 0 0); }
+  .legend b { font-weight: 600; }
+  .legend span { color: var(--ink-soft); }
+
+  /* ── Menu mở sẵn (đây mới là thứ cần nhìn) ──────────────────────────── */
+  .options {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    align-items: start;
+  }
+  .option { display: flex; flex-direction: column; gap: 12px; }
+  .option-head { display: flex; align-items: baseline; gap: 9px; }
+  .option-head .key {
+    font-family: var(--mono); font-size: 11px; font-weight: 500;
+    color: oklch(0.99 0 0); background: var(--ink-soft);
+    border-radius: 4px; padding: 2px 6px; line-height: 1.3;
+  }
+  .option-head h3 { font-size: 15px; }
+  .option > p { margin: 0; font-size: 13.5px; color: var(--ink-soft); }
+
+  .menu {
+    background: var(--s-card); border: 1px solid var(--s-rule);
+    border-radius: 10px; padding: 4px;
+    box-shadow: 0 10px 26px -12px oklch(0.262 0.014 250 / 0.30),
+                0 2px 6px -2px oklch(0.262 0.014 250 / 0.10);
+    font-size: 14px; color: var(--s-ink);
+  }
+  .menu.w66 { width: 264px; }
+  .menu.w56 { width: 224px; }
+  .menu-label {
+    padding: 6px 8px 5px; font-size: 12px; font-weight: 600;
+    color: var(--s-soft); letter-spacing: 0.01em;
+  }
+  .mi {
+    position: relative; display: flex; align-items: center; gap: 6px;
+    padding: 5px 32px 5px 6px; border-radius: 6px; line-height: 1.45;
+  }
+  .mi.plain { padding-right: 8px; }
+  .mi svg { width: 16px; height: 16px; flex: none; color: var(--s-soft); }
+  .mi .tick {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+    width: 16px; height: 16px; color: var(--s-ink);
+  }
+  .mi.on { background: var(--s-muted); }
+  .mi.hot { background: var(--s-muted); }
+  .shortcut {
+    margin-left: auto; font-family: var(--mono); font-size: 11.5px;
+    letter-spacing: 0.06em; color: var(--s-soft);
+  }
+  .shortcut.clash { background: var(--rose-wash); color: var(--rose); border-radius: 3px; padding: 0 3px; }
+  .sep { height: 1px; background: var(--s-rule); margin: 4px -0px; }
+
+  /* Select đóng-mở: nhóm có tiêu đề */
+  .sel-group-label {
+    padding: 6px 8px 4px; font-size: 11px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; color: var(--s-soft);
+  }
+
+  /* ── Bảng đo / ràng buộc ───────────────────────────────────────────── */
+  .findings { display: flex; flex-direction: column; gap: 0; }
+  .finding {
+    display: grid; grid-template-columns: 92px 1fr; gap: 20px;
+    padding: 16px 0; border-top: 1px solid var(--rule-soft);
+  }
+  .finding:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .finding .tag {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    padding: 3px 0 0; color: var(--ink-faint);
+  }
+  .finding .tag.block { color: var(--rose); }
+  .finding .tag.ok { color: var(--teal); }
+  .finding .body { display: flex; flex-direction: column; gap: 5px; }
+  .finding .body b { font-weight: 600; font-size: 14.5px; }
+  .finding .body p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 72ch; }
+
+  /* ── Khối chốt ─────────────────────────────────────────────────────── */
+  .ask {
+    background: var(--panel); border: 1px solid var(--rule);
+    border-left: 3px solid var(--amber);
+    border-radius: 4px 12px 12px 4px; padding: 22px 24px;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .ask h2 { font-size: 19px; }
+  .ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .ask li { color: var(--ink-soft); font-size: 14.5px; }
+  .ask li b { color: var(--ink); font-weight: 600; }
+
+  .foot {
+    font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+    border-top: 1px solid var(--rule-soft); padding-top: 18px;
+  }
+
+  @media (max-width: 620px) {
+    .finding { grid-template-columns: 1fr; gap: 6px; }
+    .wrap { gap: 44px; padding: 32px 18px 72px; }
+  }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <g id="i-list" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h.01M3 18h.01M3 6h.01M8 12h13M8 18h13M8 6h13"/></g>
+    <g id="i-clock" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></g>
+    <g id="i-check-circle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/></g>
+    <g id="i-x-circle" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m15 9-6 6M9 9l6 6"/></g>
+    <g id="i-ban" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></g>
+    <g id="i-columns" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18M15 3v18"/></g>
+    <g id="i-chevron" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></g>
+    <g id="i-search" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></g>
+    <g id="i-check" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></g>
+    <g id="i-mail" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></g>
+    <g id="i-at" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8"/></g>
+    <g id="i-tag" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1"/></g>
+    <g id="i-hash" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18"/></g>
+    <g id="i-file-warning" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M12 9v4M12 17h.01"/></g>
+    <g id="i-calendar" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></g>
+    <g id="i-calendar-check" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18m-9 6 2 2 4-4"/></g>
+    <g id="i-ticket" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v14"/></g>
+    <g id="i-undo" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></g>
+    <g id="i-message" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/></g>
+    <g id="i-megaphone" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></g>
+    <g id="i-shield" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></g>
+  </defs>
+</svg>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Chỉnh giao diện admin · đợt 1</p>
+    <h1>Dropdown vùng Outbox</h1>
+    <p class="lede">
+      Trang <code>/outbox</code> có <b>bốn</b> control hình dropdown, không phải một.
+      Trang này dựng lại hàng điều khiển thật, đặt <code>@ss-components/dropdown-menu-10</code>
+      cạnh nó, và bày ba phương án cho ứng viên khả dĩ nhất — để bạn chỉ vào cái mình muốn
+      trước khi tôi động vào code.
+    </p>
+    <div class="meta">
+      <span><b>Nhánh</b> fix/p4c-ui-polish</span>
+      <span><b>Chưa commit</b></span>
+      <span><b>Ngày</b> 03/09/2026</span>
+      <span><b>Vùng</b> apps/admin · libs/shared/ui</span>
+    </div>
+  </header>
+
+  <!-- ══ 1. Hàng điều khiển hiện tại ══════════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Hàng điều khiển <code>/outbox</code> hôm nay</h2>
+      <p>
+        Dựng lại nguyên khối từ code đang chạy: <code>DataTableFrame</code> — khe trái là tab
+        trạng thái, khe phải là lọc loại · ô tìm · menu cột. Số đo lấy từ
+        <code>toolbar-metrics.ts</code> (44px cho mọi control).
+      </p>
+    </div>
+
+    <div class="spec">
+      <div class="toolbar">
+        <div class="tabs target" data-n="1">
+          <button class="tab" aria-selected="true"><svg><use href="#i-list"/></svg>All</button>
+          <button class="tab"><svg><use href="#i-clock"/></svg>Queued</button>
+          <button class="tab"><svg><use href="#i-check-circle"/></svg>Sent</button>
+          <button class="tab"><svg><use href="#i-x-circle"/></svg>Failed</button>
+          <button class="tab"><svg><use href="#i-ban"/></svg>Skipped</button>
+        </div>
+        <div class="toolbar-actions">
+          <span class="ctl target picked" data-n="2">All types<svg class="chev"><use href="#i-chevron"/></svg></span>
+          <span class="ctl field"><svg><use href="#i-search"/></svg><span>Booking code, email or dedupe key</span></span>
+          <span class="ctl ghost">Clear</span>
+          <span class="ctl target" data-n="3"><svg><use href="#i-columns"/></svg>Columns<svg class="chev"><use href="#i-chevron"/></svg></span>
+        </div>
+      </div>
+    </div>
+
+    <ul class="legend">
+      <li>
+        <span class="n">1</span>
+        <span><b>Lọc trạng thái</b> — toggle group ở desktop, nhưng ở màn hẹp nó <em>co thành
+        một Select</em> (kit <code>StatusFilterTabs</code>). Nên nó cũng là "thanh dropdown", chỉ là ở mobile.</span>
+      </li>
+      <li class="picked">
+        <span class="n">2</span>
+        <span><b>Lọc loại email</b> — kit <code>ToolbarSelect</code>, <b>14 mục phẳng</b>, không nhóm,
+        không icon. Danh sách dài nhất trong cả admin. <b>Đây là cái tôi đoán bạn nói tới.</b></span>
+      </li>
+      <li>
+        <span class="n">3</span>
+        <span><b>Menu Columns</b> — đã dựng theo <code>dropdown-menu-12</code> (bạn chốt 01/09),
+        nằm trong kit <code>data-table-body</code> và <b>10 vùng dùng chung</b>.</span>
+      </li>
+      <li>
+        <span class="n">4</span>
+        <span><b>Rows per page</b> — Select nhỏ <code>w-20</code> ở thanh phân trang, 4 con số.
+        Không có gì để nhóm.</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- ══ 2. dropdown-menu-10 nguyên bản ═══════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Registry item nói gì</h2>
+      <p>
+        <code>@ss-components/dropdown-menu-10</code> — <i>"End-aligned dropdown menu with browser
+        actions and keyboard shortcuts"</i>. Đây là một <b>file demo</b>, không phải component:
+        nó chỉ phụ thuộc <code>button</code> + <code>dropdown-menu</code>, cả hai đã có sẵn.
+        Ta mượn <em>hình dạng</em>, không ship file — đúng như đã làm với <code>dropdown-menu-12</code>.
+      </p>
+    </div>
+
+    <div class="spec">
+      <div style="display:flex; gap:28px; align-items:flex-start; flex-wrap:wrap;">
+        <span class="ctl" style="height:36px; padding:0 14px;">Align End<svg class="chev"><use href="#i-chevron"/></svg></span>
+        <div class="menu w66">
+          <div class="mi plain">New Tab<span class="shortcut">⌘ + T</span></div>
+          <div class="mi plain">New Window<span class="shortcut">⌘ + N</span></div>
+          <div class="sep"></div>
+          <div class="mi plain">New Incognito Window<span class="shortcut">⌘ + ⇧ + N</span></div>
+          <div class="mi plain">History<span class="shortcut">⌘ + Y</span></div>
+          <div class="mi plain">Downloads<span class="shortcut">⌥ + ⇧ + L</span></div>
+        </div>
+        <div style="flex:1; min-width:240px; display:flex; flex-direction:column; gap:10px; font-size:13.5px; color:var(--s-soft);">
+          <p style="margin:0;"><b style="color:var(--s-ink)">Nó mang lại ba thứ:</b></p>
+          <p style="margin:0;">1. Bề rộng <code>w-66</code> (264px) thay vì <code>w-56</code> (224px).</p>
+          <p style="margin:0;">2. <code>DropdownMenuSeparator</code> — chia danh sách dài thành nhóm.</p>
+          <p style="margin:0;">3. <code>DropdownMenuShortcut</code> — một khe chữ nhỏ căn phải trên mỗi dòng.</p>
+          <p style="margin:0;">Và <b>không</b> mang icon — khác hẳn <code>dropdown-menu-12</code>.</p>
+        </div>
+      </div>
+    </div>
+    <p class="spec-note">Bản registry nguyên văn, chưa động vào.</p>
+  </section>
+
+  <!-- ══ 3. Ba phương án cho ② ════════════════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Ba phương án cho ② — lọc loại email</h2>
+      <p>
+        13 loại email chia đúng <b>năm họ</b> (booking · cancellation · enquiry · marketing ·
+        account), nên chỗ này thật sự có gì để nhóm. Cả ba bản dưới đây đều dùng nhãn i18n thật
+        và menu vẽ ở trạng thái <b>đang mở</b>, vì hình dạng lúc mở mới là thứ cần chốt.
+      </p>
+    </div>
+
+    <div class="options">
+
+      <!-- A -->
+      <div class="option">
+        <div class="option-head"><span class="key">A</span><h3>Select có nhóm</h3></div>
+        <p>Giữ nguyên kit <code>ToolbarSelect</code>, chỉ thêm <code>SelectGroup</code> +
+          tiêu đề nhóm. Không đụng dm-10.</p>
+        <div class="spec" style="padding:14px;">
+          <div class="menu w56">
+            <div class="mi on">All types<svg class="tick"><use href="#i-check"/></svg></div>
+            <div class="sel-group-label">Bookings</div>
+            <div class="mi">Booking confirmation</div>
+            <div class="mi">Booking refunded</div>
+            <div class="sel-group-label">Cancellations</div>
+            <div class="mi">Cancellation requested</div>
+            <div class="mi">Cancellation approved</div>
+            <div class="mi">Cancellation denied</div>
+            <div class="sel-group-label">Account</div>
+            <div class="mi">Password reset</div>
+            <div class="mi">Email verification</div>
+          </div>
+        </div>
+        <p><b style="color:var(--teal)">Được:</b> 6 vùng dùng chung một control vẫn y một kiểu.
+          <b style="color:var(--rose)">Mất:</b> không dùng dm-10, và Select vẫn hẹp.</p>
+      </div>
+
+      <!-- B -->
+      <div class="option">
+        <div class="option-head"><span class="key">B</span><h3>Menu theo dm-10</h3></div>
+        <p>Đổi sang <code>DropdownMenu</code> + <code>RadioGroup</code>, bề rộng
+          <code>w-66</code>, separator chia họ, icon mỗi họ.</p>
+        <div class="spec" style="padding:14px;">
+          <div class="menu w66">
+            <div class="menu-label">Filter by email type</div>
+            <div class="mi on"><svg><use href="#i-list"/></svg>All types<svg class="tick"><use href="#i-check"/></svg></div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-ticket"/></svg>Booking confirmation</div>
+            <div class="mi"><svg><use href="#i-undo"/></svg>Booking refunded</div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-message"/></svg>Cancellation requested</div>
+            <div class="mi"><svg><use href="#i-check-circle"/></svg>Cancellation approved</div>
+            <div class="mi"><svg><use href="#i-x-circle"/></svg>Cancellation denied</div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-megaphone"/></svg>Newsletter welcome</div>
+            <div class="mi"><svg><use href="#i-shield"/></svg>Password reset</div>
+          </div>
+        </div>
+        <p><b style="color:var(--teal)">Được:</b> rộng, có nhóm, ăn nhịp với menu Columns bên cạnh.
+          <b style="color:var(--rose)">Mất:</b> khe <code>Shortcut</code> — chữ ký của dm-10 — bỏ trống.</p>
+      </div>
+
+      <!-- C -->
+      <div class="option">
+        <div class="option-head"><span class="key">C</span><h3>B, và dùng khe phải</h3></div>
+        <p>Như B, nhưng <code>DropdownMenuShortcut</code> chở <b>người nhận</b> —
+          thứ operator thật sự cần phân biệt.</p>
+        <div class="spec" style="padding:14px;">
+          <div class="menu w66">
+            <div class="menu-label">Filter by email type</div>
+            <div class="mi on"><svg><use href="#i-list"/></svg>All types<svg class="tick"><use href="#i-check"/></svg></div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-ticket"/></svg>Booking confirmation<span class="shortcut">Guest</span></div>
+            <div class="mi"><svg><use href="#i-undo"/></svg>Booking refunded<span class="shortcut">Guest</span></div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-message"/></svg>Enquiry received<span class="shortcut">Guest</span></div>
+            <div class="mi hot"><svg><use href="#i-message"/></svg>Enquiry alert<span class="shortcut clash">Team</span><svg class="tick"><use href="#i-check"/></svg></div>
+            <div class="sep"></div>
+            <div class="mi"><svg><use href="#i-shield"/></svg>Password reset<span class="shortcut">Guest</span></div>
+          </div>
+        </div>
+        <p><b style="color:var(--rose)">Cảnh báo:</b> dòng bôi hồng là chỗ khe phải
+          <b>đè lên dấu tích</b> — xem mục đo bên dưới. Sửa được, nhưng phải sửa có chủ ý.</p>
+      </div>
+
+    </div>
+    <p class="spec-note">Icon trong B/C là gợi ý, chưa chốt — bạn muốn bỏ icon cho sát dm-10 cũng được.</p>
+  </section>
+
+  <!-- ══ 4. Điều đã đo ════════════════════════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Đã kiểm — sáu điều đáng biết trước khi sửa</h2>
+    </div>
+
+    <div class="findings">
+      <div class="finding">
+        <div class="tag ok">Dependency</div>
+        <div class="body">
+          <b>Không phải cài gì cả.</b>
+          <p><code>DropdownMenuShortcut</code>, <code>DropdownMenuSeparator</code>,
+            <code>DropdownMenuRadioGroup</code>, <code>DropdownMenuRadioItem</code> đều đã được
+            <code>@tourism/ui</code> export sẵn. dm-10 chỉ khai <code>button</code> +
+            <code>dropdown-menu</code> — cả hai có rồi. Không thêm package nào.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="tag block">Va chạm</div>
+        <div class="body">
+          <b>Khe <code>Shortcut</code> và dấu tích tranh nhau mép phải.</b>
+          <p><code>DropdownMenuShortcut</code> đẩy mình sang phải bằng <code>ml-auto</code>;
+            còn <code>RadioItem</code>/<code>CheckboxItem</code> của repo đặt dấu tích ở
+            <code>absolute right-2</code> và chừa chỗ bằng <code>pr-8</code>. Hai thứ đó rơi vào
+            cùng một chỗ. Muốn có phương án C thì phải đắp <code>mr-*</code> cho shortcut hoặc
+            dời dấu tích sang trái — <b>và đó là đổi ở <code>libs/shared/ui</code>, dùng chung với web.</b></p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="tag">Kit</div>
+        <div class="body">
+          <b><code>ToolbarSelect</code> có 6 nơi dùng, nhưng chỉ Outbox dài.</b>
+          <p>Outbox 14 mục · reports ~12 tháng · payment events 5 · enquiries 4 · subscribers vài
+            nguồn · nhánh mobile của <code>StatusFilterTabs</code> 4–6. Luật kit (P4c §2.6) là
+            "prop mới cần ≥2 consumer thật; một vùng cần riêng thì để ở vùng" — nên nếu chỉ Outbox
+            đổi sang menu, <b>thứ mới đó nằm ở <code>components/outbox/</code></b>, không lên kit.
+            Đó không phải fork rút gọn kit — nó là một control khác hẳn.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="tag">Ngữ nghĩa</div>
+        <div class="body">
+          <b>Select giữ <em>giá trị</em>; menu liệt kê <em>hành động</em>.</b>
+          <p>dm-10 dùng <code>DropdownMenuItem</code> trơn, không có trạng thái chọn — chép y
+            nguyên là mất luôn dấu hiệu "đang lọc theo cái nào". Nên B/C phải dùng
+            <code>RadioGroup</code>, giữ hình dạng dm-10 nhưng lấy lại dấu tích. Trigger cũng phải
+            tự nói giá trị đang chọn, không thể chỉ ghi "Type".</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="tag">Nhất quán</div>
+        <div class="body">
+          <b>dm-10 không có icon, hàng điều khiển thì có ở khắp nơi.</b>
+          <p>Tab trạng thái mỗi mục một icon; menu Columns mỗi dòng một icon (dm-12, bạn chốt
+            01/09). Một menu trơn đặt giữa hai thứ đó sẽ lệch. Đó là lý do B/C tôi vẽ kèm icon —
+            nhưng đây đúng là chỗ "gu", bạn chốt.</p>
+        </div>
+      </div>
+
+      <div class="finding">
+        <div class="tag">Ngoài tầm</div>
+        <div class="body">
+          <b>Không có số đếm theo loại để đổ vào khe phải.</b>
+          <p>Thứ hợp lý nhất cho <code>Shortcut</code> là số hàng của mỗi loại, nhưng
+            <code>admin.outbox.stats</code> chỉ trả sent/queued/failed — thêm đếm-theo-loại là sửa
+            <code>apps/api</code> + contract, nằm ngoài phạm vi đợt này. Vì vậy C mượn "người nhận"
+            (Guest/Team), thứ suy được ngay ở client từ một map tĩnh.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 5. Cần chốt ══════════════════════════════════════════════════ -->
+  <div class="ask">
+    <h2>Cần bạn chốt hai điều</h2>
+    <ol>
+      <li><b>Ứng viên nào?</b> Tôi đọc "thanh Dropdown" là <b>②, lọc loại email</b> — nó là cái
+        duy nhất trên trang thật sự trông như một <em>thanh</em> và thật sự có vấn đề (14 mục phẳng).
+        Nếu bạn nói tới ③ menu Columns thì khác hẳn: nó đang theo dm-12 bạn chốt 01/09 và
+        <b>10 vùng dùng chung</b> — đổi là đổi cả 10.</li>
+      <li><b>Phương án nào?</b> Tôi nghiêng về <b>B</b>: dùng đúng thứ dm-10 mang lại (rộng +
+        nhóm) mà không phải đụng <code>libs/shared/ui</code>. <b>C</b> đẹp hơn nhưng phải sửa
+        <code>DropdownMenuShortcut</code>/<code>RadioItem</code> dùng chung với web —
+        đáng làm, chỉ là cần bạn biết cái giá.</li>
+    </ol>
+  </div>
+
+  <p class="foot">
+    Chưa commit · chưa sửa file nào · nhánh <b>fix/p4c-ui-polish</b> đã tạo, working tree sạch.
+  </p>
+
+</div>

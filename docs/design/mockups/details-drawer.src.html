@@ -1,0 +1,723 @@
+<title>Drawer Details Outbox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Literata:opsz,wght@7..72,400;7..72,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Palette ADR-0027 (hue 250 lạnh + teal 184) — cùng thế giới với bản demo
+     dropdown hôm nay, để hai vòng đọc ra là một loạt. */
+  :root {
+    --ground: oklch(0.985 0.002 250);
+    --panel: oklch(1 0 0);
+    --ink: oklch(0.262 0.014 250);
+    --ink-soft: oklch(0.502 0.012 250);
+    --ink-faint: oklch(0.62 0.010 250);
+    --rule: oklch(0.905 0.005 250);
+    --rule-soft: oklch(0.945 0.004 250);
+    --teal: oklch(0.494 0.067 184.3);
+    --amber: oklch(0.55 0.13 68);
+    --rose: oklch(0.52 0.16 20);
+    --sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --serif: "Literata", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: oklch(0.21 0.014 252); --panel: oklch(0.256 0.016 252);
+      --ink: oklch(0.945 0.006 250); --ink-soft: oklch(0.74 0.010 250);
+      --ink-faint: oklch(0.62 0.012 250); --rule: oklch(0.352 0.020 252);
+      --rule-soft: oklch(0.302 0.018 252); --teal: oklch(0.74 0.076 181.3);
+      --amber: oklch(0.79 0.11 72); --rose: oklch(0.74 0.13 22);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: oklch(0.21 0.014 252); --panel: oklch(0.256 0.016 252);
+    --ink: oklch(0.945 0.006 250); --ink-soft: oklch(0.74 0.010 250);
+    --ink-faint: oklch(0.62 0.012 250); --rule: oklch(0.352 0.020 252);
+    --rule-soft: oklch(0.302 0.018 252); --teal: oklch(0.74 0.076 181.3);
+    --amber: oklch(0.79 0.11 72); --rose: oklch(0.74 0.13 22);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--ink);
+    font-family: var(--sans); font-size: 15px; line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 48px 24px 96px;
+          display: flex; flex-direction: column; gap: 52px; }
+
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: 0.14em;
+             text-transform: uppercase; color: var(--teal); }
+  h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(30px, 4.4vw, 42px);
+       line-height: 1.14; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+  .lede { margin: 0; max-width: 64ch; color: var(--ink-soft); font-size: 16px; }
+  .masthead { display: flex; flex-direction: column; gap: 14px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px 20px; margin-top: 6px;
+          font-family: var(--mono); font-size: 12px; color: var(--ink-faint); }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  section { display: flex; flex-direction: column; gap: 18px; }
+  .sec-head { display: flex; flex-direction: column; gap: 6px; }
+  h2 { font-family: var(--serif); font-weight: 600; font-size: 22px; margin: 0; }
+  .sec-head p { margin: 0; color: var(--ink-soft); max-width: 68ch; font-size: 14.5px; }
+  h3 { font-size: 14px; font-weight: 600; margin: 0; }
+  code, .mono { font-family: var(--mono); font-size: 0.88em; }
+  code { color: var(--ink-soft); }
+
+  /* ── Bảng đo ─────────────────────────────────────────────────────── */
+  .measure { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .measure th, .measure td { text-align: left; padding: 11px 14px;
+                             border-top: 1px solid var(--rule-soft); vertical-align: top; }
+  .measure thead th { border-top: 0; font-size: 11px; font-weight: 600;
+                      letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+  .measure tbody tr td:first-child { color: var(--ink-soft); width: 12rem; }
+  .measure .now { color: var(--ink-soft); }
+  .measure .new { font-weight: 500; }
+  .measure .new b { color: var(--teal); font-weight: 600; }
+  .scroll-x { overflow-x: auto; border: 1px solid var(--rule); border-radius: 12px;
+              background: var(--panel); }
+
+  /* ── Nút mở demo ─────────────────────────────────────────────────── */
+  .btn-row { display: flex; flex-wrap: wrap; gap: 10px; }
+  button.demo {
+    font: inherit; font-size: 14px; font-weight: 500; cursor: pointer;
+    height: 44px; padding: 0 18px; border-radius: 8px;
+    border: 1px solid var(--rule); background: var(--panel); color: var(--ink);
+  }
+  button.demo:hover { border-color: var(--ink-faint); }
+  button.demo.primary { background: var(--teal); border-color: var(--teal); color: oklch(0.99 0 0); }
+  button.demo:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+
+  /* ── Panel demo (dựng lại đúng số đo hai bên) ────────────────────── */
+  .scrim {
+    position: fixed; inset: 0; z-index: 40; background: oklch(0.262 0.014 250 / 0.55);
+    opacity: 0; pointer-events: none; transition: opacity 220ms ease;
+  }
+  .scrim[data-on] { opacity: 1; pointer-events: auto; }
+
+  .stage-panel {
+    position: fixed; z-index: 41; display: flex; flex-direction: column;
+    background: oklch(1 0 0); color: oklch(0.262 0.014 250);
+    --s-rule: oklch(0.902 0.005 250);
+    --s-soft: oklch(0.502 0.012 250);
+    --s-muted: oklch(0.962 0.004 250);
+    --s-teal: oklch(0.494 0.067 184.3);
+  }
+
+  /* Sheet hiện tại: opacity + nhích 40px, 200ms ease-in-out, dính mép, bo 0 */
+  #sheetPanel {
+    inset: 0 0 0 auto; width: min(100%, 576px); border-left: 1px solid var(--s-rule);
+    box-shadow: 0 10px 15px -3px oklch(0.262 0.014 250 / 0.1);
+    opacity: 0; transform: translateX(40px);
+    transition: opacity 200ms ease-in-out, transform 200ms ease-in-out;
+    pointer-events: none;
+  }
+  #sheetPanel[data-on] { opacity: 1; transform: translateX(0); pointer-events: auto; }
+
+  /* Drawer 02: trượt TRỌN từ ngoài màn, 450ms ease-out-quint, nổi cách mép 16px */
+  #drawerPanel {
+    top: 16px; bottom: 16px; right: 16px; width: min(calc(100% - 32px), 626px);
+    border: 1px solid var(--s-rule); border-radius: 16px;
+    box-shadow: 0 25px 50px -12px oklch(0.262 0.014 250 / 0.35);
+    transform: translateX(calc(100% + 18px));
+    transition: transform 450ms cubic-bezier(0.22, 1, 0.36, 1);
+    overflow: hidden;
+  }
+  #drawerPanel[data-on] { transform: translateX(0); }
+  #drawerPanel[data-drag] { transition: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    #sheetPanel, #drawerPanel, .scrim { transition-duration: 0.01ms !important; }
+  }
+
+  .p-head { display: flex; align-items: flex-start; justify-content: space-between;
+            gap: 12px; padding: 20px 24px; border-bottom: 1px solid var(--s-rule); flex: none; }
+  .p-head h4 { margin: 0; font-family: var(--serif); font-size: 17px; font-weight: 600; }
+  .p-head .key { margin: 4px 0 0; font-family: var(--mono); font-size: 11.5px;
+                 color: var(--s-soft); overflow-wrap: anywhere; }
+  .p-close { font: inherit; cursor: pointer; border: 0; background: transparent;
+             color: var(--s-soft); font-size: 20px; line-height: 1; padding: 4px 8px;
+             border-radius: 6px; }
+  .p-close:hover { background: var(--s-muted); }
+  .p-body { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px;
+            display: flex; flex-direction: column; gap: 18px; }
+  .p-foot { flex: none; padding: 14px 24px; border-top: 1px solid var(--s-rule);
+            font-size: 12px; color: var(--s-soft); }
+  /* Sheet hiện tại KHÔNG có vùng cuộn riêng — cả panel cuộn, đầu trôi mất. */
+  #sheetPanel .p-body { overflow-y: visible; }
+  #sheetPanel.scrolls { overflow-y: auto; }
+
+  .grab { position: absolute; inset: 0 auto 0 0; width: 14px; cursor: grab; }
+  .grab::after { content: ""; position: absolute; top: 50%; left: 5px;
+                 width: 4px; height: 44px; margin-top: -22px; border-radius: 2px;
+                 background: var(--s-rule); }
+
+  /* ── Field rows + JSON ───────────────────────────────────────────── */
+  .fields { display: grid; gap: 8px; margin: 0; font-size: 14px; }
+  .fields .row { display: grid; grid-template-columns: 9rem minmax(0, 1fr); gap: 10px; }
+  .fields dt { color: var(--s-soft); margin: 0; }
+  .fields dd { margin: 0; overflow-wrap: anywhere; }
+  .fields dd.muted { color: var(--s-soft); }
+  .nest { margin: 4px 0 0; padding: 0 0 0 14px; border-left: 2px solid var(--s-rule); }
+  .nest-head { font-size: 12px; font-weight: 600; letter-spacing: 0.04em;
+               text-transform: uppercase; color: var(--s-soft); margin: 10px 0 4px; }
+  pre.json { margin: 0; max-height: 320px; overflow: auto; border: 1px solid var(--s-rule);
+             border-radius: 8px; background: var(--s-muted); padding: 12px;
+             font-family: var(--mono); font-size: 12px; line-height: 1.55; }
+
+  .seg { display: inline-flex; gap: 2px; padding: 4px; background: var(--s-muted);
+         border-radius: 10px; }
+  .seg button { font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer;
+                height: 34px; padding: 0 14px; border: 0; border-radius: 7px;
+                background: transparent; color: var(--s-soft); }
+  .seg button[aria-pressed="true"] { background: oklch(1 0 0); color: oklch(0.262 0.014 250);
+                                     box-shadow: 0 1px 2px oklch(0.262 0.014 250 / 0.1); }
+
+  .section-label { display: flex; align-items: center; justify-content: space-between;
+                   gap: 12px; }
+
+  /* ── Khung mẫu chế độ xem (nhúng thẳng vào trang) ────────────────── */
+  .spec { background: oklch(0.995 0.0015 250); color: oklch(0.262 0.014 250);
+          --s-rule: oklch(0.902 0.005 250); --s-soft: oklch(0.502 0.012 250);
+          --s-muted: oklch(0.962 0.004 250);
+          border: 1px solid var(--rule); border-radius: 14px; padding: 20px;
+          display: flex; flex-direction: column; gap: 14px; }
+  .spec-grid { display: grid; gap: 20px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+  .spec-note { font-size: 12px; color: var(--ink-faint); margin: 0;
+               display: flex; align-items: center; gap: 7px; }
+  .spec-note::before { content: ""; width: 22px; height: 1px; background: var(--rule); flex: none; }
+
+  /* ── Findings ────────────────────────────────────────────────────── */
+  .findings { display: flex; flex-direction: column; }
+  .finding { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 20px;
+             padding: 16px 0; border-top: 1px solid var(--rule-soft); }
+  .finding:last-child { border-bottom: 1px solid var(--rule-soft); }
+  .finding .tag { font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+                  letter-spacing: 0.06em; text-transform: uppercase;
+                  padding: 3px 0 0; color: var(--ink-faint); }
+  .finding .tag.ok { color: var(--teal); }
+  .finding .tag.warn { color: var(--rose); }
+  .finding .body { display: flex; flex-direction: column; gap: 5px; }
+  .finding .body b { font-weight: 600; font-size: 14.5px; }
+  .finding .body p { margin: 0; color: var(--ink-soft); font-size: 14px; max-width: 74ch; }
+
+  .ask { background: var(--panel); border: 1px solid var(--rule);
+         border-left: 3px solid var(--amber); border-radius: 4px 12px 12px 4px;
+         padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; }
+  .ask h2 { font-size: 19px; }
+  .ask ol { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; }
+  .ask li { color: var(--ink-soft); font-size: 14.5px; }
+  .ask li b { color: var(--ink); font-weight: 600; }
+
+  .foot { font-family: var(--mono); font-size: 12px; color: var(--ink-faint);
+          border-top: 1px solid var(--rule-soft); padding-top: 18px; }
+
+  @media (max-width: 620px) {
+    .finding { grid-template-columns: 1fr; gap: 6px; }
+    .wrap { gap: 42px; padding: 32px 18px 72px; }
+    .fields .row { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Chỉnh giao diện admin · đợt 4</p>
+    <h1>Drawer Details Outbox</h1>
+    <p class="lede">
+      Hai việc trong một vòng: đổi vỏ panel <em>Details</em> sang khuôn
+      <code>@shadcn-space/drawer-02</code>, và thêm chế độ xem dễ đọc cho payload để
+      người không đọc code vẫn hiểu. Panel dưới đây <b>chạy thật</b> — bấm để cảm
+      chuyển động, kéo mép trái để đóng.
+    </p>
+    <div class="meta">
+      <span><b>Nhánh</b> fix/p4c-ui-polish</span>
+      <span><b>Chưa commit</b></span>
+      <span><b>Ngày</b> 03/09/2026</span>
+      <span><b>Ảnh hưởng</b> /outbox và /payment-events</span>
+    </div>
+  </header>
+
+  <!-- ══ 1. Chuyển động + kích thước ═══════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Vỏ panel — đo được, không cảm tính</h2>
+      <p>
+        Số ở cột phải là của <code>Drawer</code> đã có sẵn trong <code>@tourism/ui</code>,
+        cấu hình theo drawer-02. Không cài thêm gì: <code>Drawer</code>,
+        <code>ScrollArea</code>, <code>Separator</code>, <code>ToggleGroup</code> đều đã có.
+      </p>
+    </div>
+
+    <div class="scroll-x">
+      <table class="measure">
+        <thead>
+          <tr><th>Thứ</th><th>Sheet hiện tại</th><th>Drawer 02</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Quãng đường vào</td>
+            <td class="now">nhích <b>40px</b> + mờ dần</td>
+            <td class="new">trượt <b>trọn</b> từ ngoài mép màn</td>
+          </tr>
+          <tr>
+            <td>Thời lượng · nhịp</td>
+            <td class="now">200ms <code>ease-in-out</code></td>
+            <td class="new"><b>450ms</b> <code>cubic-bezier(.22,1,.36,1)</code></td>
+          </tr>
+          <tr>
+            <td>Kéo để đóng</td>
+            <td class="now">không có</td>
+            <td class="new"><b>có</b> — đóng nhanh chậm theo lực vẩy</td>
+          </tr>
+          <tr>
+            <td>Bề ngang (≥sm)</td>
+            <td class="now">576px <code>sm:max-w-xl</code></td>
+            <td class="new"><b>626px</b> <code>39.125rem</code></td>
+          </tr>
+          <tr>
+            <td>Dáng</td>
+            <td class="now">dính mép phải, vuông góc</td>
+            <td class="new"><b>nổi</b>, cách mép 16px, bo 16px</td>
+          </tr>
+          <tr>
+            <td>Cuộn</td>
+            <td class="now">cả panel cuộn — tiêu đề trôi mất</td>
+            <td class="new">đầu và chân <b>đứng yên</b>, chỉ ruột cuộn</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="btn-row">
+      <button class="demo" type="button" data-open="sheet">Mở Sheet hiện tại</button>
+      <button class="demo primary" type="button" data-open="drawer">Mở Drawer 02</button>
+    </div>
+    <p class="spec-note">Cuộn thử trong cả hai để thấy khác biệt ở phần đầu panel.</p>
+  </section>
+
+  <!-- ══ 2. Hai chế độ xem ═════════════════════════════════════════ -->
+  <section>
+    <div class="sec-head">
+      <h2>Hai chế độ xem payload</h2>
+      <p>
+        Dữ liệu dưới đây đúng <b>shape thật</b> lấy từ code: payload
+        <code>BOOKING_REFUNDED</code> của <code>refunds.service.ts</code> (phẳng, 8 khoá) và
+        một payload payment event lồng nhiều tầng. Bấm để đổi chế độ.
+      </p>
+    </div>
+
+    <div class="spec-grid">
+      <div class="spec">
+        <div class="section-label">
+          <h3>Outbox — payload phẳng</h3>
+          <div class="seg" data-seg="a">
+            <button type="button" aria-pressed="true" data-mode="read">Readable</button>
+            <button type="button" aria-pressed="false" data-mode="json">JSON</button>
+          </div>
+        </div>
+        <div data-view="a"></div>
+      </div>
+
+      <div class="spec">
+        <div class="section-label">
+          <h3>Payment event — lồng nhau</h3>
+          <div class="seg" data-seg="b">
+            <button type="button" aria-pressed="true" data-mode="read">Readable</button>
+            <button type="button" aria-pressed="false" data-mode="json">JSON</button>
+          </div>
+        </div>
+        <div data-view="b"></div>
+      </div>
+    </div>
+    <p class="spec-note">Chế độ mặc định là Readable — người không đọc code không phải biết mà bấm.</p>
+  </section>
+
+  <!-- ══ 3. Đã kiểm ════════════════════════════════════════════════ -->
+  <section>
+    <div class="sec-head"><h2>Đã kiểm — năm điều trước khi sửa</h2></div>
+    <div class="findings">
+      <div class="finding">
+        <div class="tag ok">Dependency</div>
+        <div class="body">
+          <b>Không cài gì cả — kể cả confetti.</b>
+          <p>
+            drawer-02 khai <code>canvas-confetti</code>, nhưng chỉ để bắn pháo giấy lúc đạt
+            ngưỡng free shipping — thứ một drawer back-office không có. Ta chỉ mượn hình
+            dạng, không lấy file. (Gói ấy vốn đã có sẵn trong repo cho <code>apps/web</code>,
+            nên kể cả muốn cũng không phải dependency mới.)
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag ok">Có sẵn</div>
+        <div class="body">
+          <b><code>Drawer</code> trong <code>@tourism/ui</code> đã là bản đầy đủ.</b>
+          <p>
+            Có <code>swipeDirection</code>, <code>--drawer-content-width</code>,
+            <code>--drawer-inset</code>, hiệu ứng xếp chồng, đóng theo lực vẩy. drawer-02
+            chỉ là một <em>cấu hình</em> của chính nó — nên đây là đổi cách lắp, không phải
+            thay thư viện.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag">Kit</div>
+        <div class="body">
+          <b>Sửa ở kit <code>JsonDrawer</code> — hai vùng cùng đổi.</b>
+          <p>
+            <code>/outbox</code> và <code>/payment-events</code> dùng chung kit này, nên cả
+            hai được vỏ mới và cả hai được chế độ xem mới. Payment events có thêm ba trạng
+            thái tải (đang tải · có dữ liệu · lỗi) — chế độ xem phải sống chung được với cả ba.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag warn">Đáng lưu ý</div>
+        <div class="body">
+          <b>Readable KHÔNG được giấu bớt dữ liệu.</b>
+          <p>
+            Payload payment event là webhook thật của Stripe/PayPal, lồng sâu và dài. Chế độ
+            Readable trải phẳng theo tầng, giữ ĐỦ mọi khoá — nó chỉ đổi cách trình bày, không
+            lọc. Một bề mặt vận hành mà giấu bớt field là bề mặt nói dối.
+          </p>
+        </div>
+      </div>
+      <div class="finding">
+        <div class="tag">Chữ</div>
+        <div class="body">
+          <b>Nhãn khoá đổi sang chữ người đọc được.</b>
+          <p>
+            <code>bookingId</code> → "Booking id", <code>unsubscribeToken</code> → "Unsubscribe
+            token". Đây là phép biến đổi máy móc từ chính khoá JSON, KHÔNG phải từ điển dịch
+            tay — thêm loại email mới là nó tự chạy, không ai phải nhớ cập nhật.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ 4. Cần chốt ═══════════════════════════════════════════════ -->
+  <div class="ask">
+    <h2>Cần bạn chốt ba điều</h2>
+    <ol>
+      <li><b>Vỏ panel</b> — đổi sang Drawer 02 như bản chạy ở trên chứ? Nếu thấy 626px vẫn
+        hẹp thì nói số bạn muốn, đó chỉ là một biến CSS.</li>
+      <li><b>Tên hai chế độ</b> — tôi đang để <em>Readable</em> / <em>JSON</em>. Có thể đổi
+        thành <em>Details</em> / <em>Raw</em>, hoặc <em>Simple</em> / <em>Developer</em>.
+        Chữ hiển thị nên vào <code>@tourism/i18n</code> nên chốt sớm thì đỡ sửa hai lần.</li>
+      <li><b>Chỗ đặt nút chuyển</b> — hiện nằm ngay trên khối payload (như trong demo). Cách
+        khác là đặt ở đầu panel, cạnh tiêu đề, để nó điều khiển cả các field phía trên. Tôi
+        nghiêng về giữ nguyên: các field phía trên vốn đã dễ đọc, chỉ khối payload mới cần
+        đổi cách xem.</li>
+    </ol>
+  </div>
+
+  <p class="foot">Chưa commit · chưa sửa file nào cho đợt này · nhánh <b>fix/p4c-ui-polish</b>.</p>
+</div>
+
+<div class="scrim" id="scrim"></div>
+
+<aside class="stage-panel" id="sheetPanel" aria-hidden="true">
+  <div class="p-head">
+    <div>
+      <h4>Outbox row</h4>
+      <p class="key">Dedupe key refund:1f0a…:9c31</p>
+    </div>
+    <button class="p-close" type="button" aria-label="Đóng">×</button>
+  </div>
+  <div class="p-body" data-panel-body="sheet"></div>
+</aside>
+
+<aside class="stage-panel" id="drawerPanel" aria-hidden="true">
+  <div class="grab" id="grab" title="Kéo sang phải để đóng"></div>
+  <div class="p-head">
+    <div>
+      <h4>Outbox row</h4>
+      <p class="key">Dedupe key refund:1f0a…:9c31</p>
+    </div>
+    <button class="p-close" type="button" aria-label="Đóng">×</button>
+  </div>
+  <div class="p-body" data-panel-body="drawer"></div>
+  <div class="p-foot">Đầu và chân đứng yên · chỉ vùng này cuộn</div>
+</aside>
+
+<script>
+  // ── Dữ liệu mẫu: ĐÚNG shape thật đọc từ code, giá trị là ví dụ ────────
+  const FLAT = {
+    bookingId: "1f0a7c92-4b31-4f88-9d2e-6a5b0c7d81ff",
+    code: "BK-7QK2M4",
+    email: "mai.tran@example.com",
+    name: "Mai Tran",
+    title: "Ha Long Bay Cruise — 2 days",
+    amount: "418.00",
+    currency: "USD",
+    reason: null
+  };
+
+  const NESTED = {
+    id: "evt_3Qa1bC2dEfGhIjKl",
+    type: "payment_intent.succeeded",
+    livemode: false,
+    created: 1756876800,
+    data: {
+      object: {
+        id: "pi_3Qa1bC2dEfGhIjKl",
+        amount: 41800,
+        currency: "usd",
+        status: "succeeded",
+        metadata: { bookingCode: "BK-7QK2M4", travellers: "2" },
+        charges: {
+          total_count: 1,
+          data: [
+            {
+              id: "ch_3Qa1bC2dEfGh",
+              paid: true,
+              receipt_email: "mai.tran@example.com",
+              billing_details: { name: "Mai Tran", address: { city: "Da Nang", country: "VN" } }
+            }
+          ]
+        }
+      }
+    }
+  };
+
+  // ── Khoá JSON → chữ người đọc được. Máy móc, không từ điển tay. ──────
+  function humanize(key) {
+    const spaced = String(key)
+      .replace(/[_-]+/g, " ")
+      .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+      .trim()
+      .toLowerCase();
+    return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+  }
+
+  function formatScalar(v) {
+    if (v === null) return { text: "—", muted: true };
+    if (v === true) return { text: "Yes", muted: false };
+    if (v === false) return { text: "No", muted: false };
+    if (v === "") return { text: "(empty)", muted: true };
+    return { text: String(v), muted: false };
+  }
+
+  /** Dựng khối Readable: object → hàng nhãn·giá trị, lồng thì thụt vào. */
+  function readable(value) {
+    const dl = document.createElement("dl");
+    dl.className = "fields";
+
+    const isPlain = (v) => v !== null && typeof v === "object";
+
+    function walk(obj, target) {
+      const entries = Array.isArray(obj)
+        ? obj.map((v, i) => [`Item ${i + 1}`, v])
+        : Object.entries(obj).map(([k, v]) => [humanize(k), v]);
+
+      if (entries.length === 0) {
+        const p = document.createElement("p");
+        p.className = "fields";
+        p.style.color = "var(--s-soft)";
+        p.style.margin = "0";
+        p.textContent = Array.isArray(obj) ? "(no items)" : "(no fields)";
+        target.appendChild(p);
+        return;
+      }
+
+      for (const [label, v] of entries) {
+        if (isPlain(v)) {
+          const head = document.createElement("p");
+          head.className = "nest-head";
+          head.textContent = label;
+          target.appendChild(head);
+          const box = document.createElement("div");
+          box.className = "nest";
+          walk(v, box);
+          target.appendChild(box);
+        } else {
+          const row = document.createElement("div");
+          row.className = "row";
+          const dt = document.createElement("dt");
+          dt.textContent = label;
+          const dd = document.createElement("dd");
+          const f = formatScalar(v);
+          dd.textContent = f.text;
+          if (f.muted) dd.className = "muted";
+          row.append(dt, dd);
+          target.appendChild(row);
+        }
+      }
+    }
+
+    walk(value, dl);
+    return dl;
+  }
+
+  function jsonBlock(value) {
+    const pre = document.createElement("pre");
+    pre.className = "json";
+    pre.textContent = JSON.stringify(value, null, 2);
+    return pre;
+  }
+
+  const DATA = { a: FLAT, b: NESTED };
+  const MODE = { a: "read", b: "read" };
+
+  function paint(which) {
+    const host = document.querySelector(`[data-view="${which}"]`);
+    host.replaceChildren(
+      MODE[which] === "read" ? readable(DATA[which]) : jsonBlock(DATA[which])
+    );
+  }
+
+  for (const seg of document.querySelectorAll("[data-seg]")) {
+    const which = seg.dataset.seg;
+    seg.addEventListener("click", (e) => {
+      const btn = e.target.closest("button[data-mode]");
+      if (!btn) return;
+      MODE[which] = btn.dataset.mode;
+      for (const b of seg.querySelectorAll("button")) {
+        b.setAttribute("aria-pressed", String(b === btn));
+      }
+      paint(which);
+    });
+    paint(which);
+  }
+
+  // ── Panel demo (bản chạy thử) ──────────────────────────────────────────────────────
+  function panelBody(kind) {
+    const wrap = document.createElement("div");
+    wrap.style.display = "flex";
+    wrap.style.flexDirection = "column";
+    wrap.style.gap = "18px";
+
+    const fields = document.createElement("dl");
+    fields.className = "fields";
+    for (const [k, v] of [
+      ["Type", "Booking refunded"],
+      ["Recipient", "mai.tran@example.com"],
+      ["Status", "Failed"],
+      ["Attempts", "5/5"],
+      ["Created", "20 Aug 2026, 06:22 UTC"],
+      ["Processed", "—"],
+    ]) {
+      const row = document.createElement("div");
+      row.className = "row";
+      const dt = document.createElement("dt");
+      dt.textContent = k;
+      const dd = document.createElement("dd");
+      dd.textContent = v;
+      row.append(dt, dd);
+      fields.appendChild(row);
+    }
+    wrap.appendChild(fields);
+
+    const label = document.createElement("div");
+    label.className = "section-label";
+    const h = document.createElement("h3");
+    h.textContent = "Payload";
+    label.appendChild(h);
+    if (kind === "drawer") {
+      const seg = document.createElement("div");
+      seg.className = "seg";
+      seg.innerHTML =
+        '<button type="button" aria-pressed="true">Readable</button>' +
+        '<button type="button" aria-pressed="false">JSON</button>';
+      let mode = "read";
+      seg.addEventListener("click", (e) => {
+        const b = e.target.closest("button");
+        if (!b) return;
+        mode = b.textContent === "JSON" ? "json" : "read";
+        for (const x of seg.querySelectorAll("button")) {
+          x.setAttribute("aria-pressed", String(x === b));
+        }
+        slot.replaceChildren(mode === "read" ? readable(FLAT) : jsonBlock(FLAT));
+      });
+      label.appendChild(seg);
+    }
+    wrap.appendChild(label);
+
+    const slot = document.createElement("div");
+    slot.replaceChildren(kind === "drawer" ? readable(FLAT) : jsonBlock(FLAT));
+    wrap.appendChild(slot);
+
+    // Cho panel đủ cao để cuộn thấy khác biệt.
+    const filler = document.createElement("p");
+    filler.style.color = "var(--s-soft)";
+    filler.style.fontSize = "13px";
+    filler.textContent =
+      kind === "sheet"
+        ? "Cuộn xuống — tiêu đề panel trôi mất theo, vì cả panel là một vùng cuộn."
+        : "Cuộn xuống — tiêu đề và chân panel đứng yên, chỉ vùng này chạy.";
+    wrap.appendChild(filler);
+    const tall = document.createElement("div");
+    tall.style.height = "420px";
+    wrap.appendChild(tall);
+
+    return wrap;
+  }
+
+  const scrim = document.getElementById("scrim");
+  const panels = {
+    sheet: document.getElementById("sheetPanel"),
+    drawer: document.getElementById("drawerPanel"),
+  };
+  let openKind = null;
+
+  function open(kind) {
+    if (openKind) close();
+    openKind = kind;
+    const p = panels[kind];
+    p.querySelector("[data-panel-body]").replaceChildren(panelBody(kind));
+    if (kind === "sheet") p.classList.add("scrolls");
+    p.setAttribute("aria-hidden", "false");
+    scrim.setAttribute("data-on", "");
+    requestAnimationFrame(() => p.setAttribute("data-on", ""));
+  }
+
+  function close() {
+    if (!openKind) return;
+    const p = panels[openKind];
+    p.removeAttribute("data-on");
+    p.removeAttribute("data-drag");
+    p.style.transform = "";
+    p.setAttribute("aria-hidden", "true");
+    scrim.removeAttribute("data-on");
+    openKind = null;
+  }
+
+  for (const b of document.querySelectorAll("[data-open]")) {
+    b.addEventListener("click", () => open(b.dataset.open));
+  }
+  for (const b of document.querySelectorAll(".p-close")) {
+    b.addEventListener("click", close);
+  }
+  scrim.addEventListener("click", close);
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") close();
+  });
+
+  // Kéo mép trái để đóng — đúng thứ Sheet không có.
+  const grab = document.getElementById("grab");
+  const drawer = panels.drawer;
+  let startX = null;
+  grab.addEventListener("pointerdown", (e) => {
+    startX = e.clientX;
+    grab.setPointerCapture(e.pointerId);
+    drawer.setAttribute("data-drag", "");
+  });
+  grab.addEventListener("pointermove", (e) => {
+    if (startX === null) return;
+    const dx = Math.max(0, e.clientX - startX);
+    drawer.style.transform = `translateX(${dx}px)`;
+  });
+  grab.addEventListener("pointerup", (e) => {
+    if (startX === null) return;
+    const dx = Math.max(0, e.clientX - startX);
+    startX = null;
+    drawer.removeAttribute("data-drag");
+    drawer.style.transform = "";
+    if (dx > 120) close();
+  });
+</script>
