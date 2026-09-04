@@ -3237,6 +3237,13 @@ export const messages = {
         all: 'All',
         empty: 'No cancellation requests match this filter.',
         /**
+         * Cột Decision của hàng đợi không còn hai nút tiền (user chốt 04/09):
+         * một yêu cầu huỷ được quyết trên trang RIÊNG của nó, nơi nhìn đủ sổ
+         * hoàn tiền, ngày khởi hành và số tiền — không phải từ một hàng bảng.
+         */
+        review: 'Review request',
+        reviewFor: (code: string) => `Review the cancellation request for ${code}`,
+        /**
          * Bộ lọc khoảng ngày (ADR-0028 §AMEND) — theo ngày khách GỬI yêu cầu,
          * nên chữ phải nói "requested", không phải "booked" như `/bookings`.
          */
@@ -3280,6 +3287,26 @@ export const messages = {
        * (401/403/input hỏng/lỗi lạ) KHÔNG ở đây: chúng dùng chung
        * `admin.errors.write`.
        */
+      /**
+       * Trang chi tiết RIÊNG của vùng huỷ — `/cancellations/[code]` (user chốt
+       * 04/09: hai vùng hai route, dùng chung kiểu thiết kế). Các khối ngữ
+       * cảnh mượn nguyên chữ của `bookings.detail`; ở đây chỉ khai phần mà
+       * chỉ trang này có.
+       */
+      detail: {
+        back: 'Back to cancellations',
+        /** Khối quyết định — thay cho hai nút vốn nằm trong bảng. */
+        heading: 'Decision',
+        /** Còn mở: nói rõ đang chờ ai làm gì trước khi bày hai nút. */
+        open: 'This request is awaiting your decision.',
+        /**
+         * Đã quyết rồi: trang vẫn mở được (hàng đợi có tab Denied/Approved),
+         * nên phải nói rõ không còn gì để bấm — quyết định là chung cuộc.
+         */
+        closed: 'This request has already been decided — a decision is final.',
+        /** Booking chưa từng có yêu cầu huỷ nào (URL gõ tay). */
+        none: 'This booking has no cancellation request.',
+      },
       decide: {
         approve: 'Approve',
         deny: 'Deny',

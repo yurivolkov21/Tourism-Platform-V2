@@ -7,6 +7,7 @@ import { ButtonLink } from '@tourism/ui/components/button-link';
 import {
   CalendarIcon,
   CalendarOffIcon,
+  ChevronRightIcon,
   MapPinIcon,
   MessageSquareTextIcon,
   TagIcon,
@@ -17,15 +18,17 @@ import {
   CancellationsDateRange,
   CancellationsStatusTabs,
 } from '@/components/cancellations/cancellations-toolbar';
-import { DecideActions } from '@/components/cancellations/decide-actions';
 import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { formatCalendarDate, formatDateRange } from '@/lib/bookings-view';
-import type { DecideAction } from '@/lib/cancellations-decide';
-import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
+import {
+  type CancellationsQuery,
+  cancellationDetailHref,
+  cancellationsHref,
+} from '@/lib/cancellations-query';
 import { type CancellationRowVM, cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 
@@ -66,12 +69,14 @@ const COLUMN_ICONS = {
 };
 
 /**
- * Cột nhận `decide` qua tham số (không đọc từ module) để cụm nút giữ đúng
- * luật F2: client component KHÔNG tự import server action, nó nhận vào. Gọi
- * trong `useMemo` khoá theo `decide` — `columns` là đầu vào của row model,
- * đổi tham chiếu mỗi render sẽ khiến table dựng lại model liên tục.
+ * Cột nhận `query` qua tham số để cột Decision dựng được href mang bộ lọc
+ * đang xem. Gọi trong `useMemo` khoá theo `query` — `columns` là đầu vào của
+ * row model, đổi tham chiếu mỗi render sẽ khiến table dựng lại model liên tục.
+ *
+ * Không còn nhận `decide`: từ 04/09 bảng KHÔNG phát lệnh ghi nào nữa, mọi
+ * quyết định diễn ra ở `/cancellations/[code]`.
  */
-function buildColumns(decide: DecideAction) {
+function buildColumns(query: CancellationsQuery) {
   return columnHelper.columns([
     columnHelper.accessor('bookingCode', {
       header: t.columns.booking,
@@ -130,29 +135,35 @@ function buildColumns(decide: DecideAction) {
     columnHelper.display({
       id: 'decision',
       header: t.columns.decision,
-      cell: ({ row }) => <DecisionCell row={row.original} decide={decide} />,
+      cell: ({ row }) => <DecisionCell row={row.original} query={query} />,
       enableHiding: false,
     }),
   ]);
 }
 
-/** Còn mở → hai nút quyết định; đã quyết → dấu vết (mốc + ghi chú). */
-function DecisionCell({ row, decide }: { row: CancellationRowVM; decide: DecideAction }) {
+/**
+ * Còn mở → MỘT nút dẫn sang màn quyết định; đã quyết → dấu vết (mốc + ghi chú).
+ *
+ * Hai nút Approve/Deny rời khỏi đây ở 04/09 (user chốt). Approve là lệnh vừa
+ * hoàn tiền vừa nhả ghế, và quyết nó từ một hàng bảng là quá mỏng: hàng không
+ * mang sổ hoàn tiền, không mang lịch sử xin huỷ. Nay hàng chỉ đưa người ta tới
+ * `/cancellations/[code]`, nơi có đủ ngữ cảnh.
+ *
+ * Nút mang theo bộ lọc đang xem để lượt quay về không nhả filter — cùng luật
+ * vòng đi–về của `/bookings`.
+ */
+function DecisionCell({ row, query }: { row: CancellationRowVM; query: CancellationsQuery }) {
   if (row.pending) {
     return (
-      <DecideActions
-        request={{
-          id: row.id,
-          bookingCode: row.bookingCode,
-          tourTitle: row.tourTitle,
-          customerName: row.customerName,
-          reason: row.reason,
-          totalAmount: row.totalAmount,
-          refundedTotal: row.refundedTotal,
-          currency: row.currency,
-        }}
-        decide={decide}
-      />
+      <ButtonLink
+        variant="outline"
+        size="sm"
+        href={cancellationDetailHref(query, row.bookingCode)}
+        aria-label={t.reviewFor(row.bookingCode)}
+      >
+        {t.review}
+        <ChevronRightIcon data-icon="inline-end" aria-hidden="true" />
+      </ButtonLink>
     );
   }
   return (
@@ -177,19 +188,11 @@ export interface CancellationsTableProps {
   query: CancellationsQuery;
   total: number;
   totalPages: number;
-  /** Server action `decideCancellationAction`, truyền xuống từ trang. */
-  decide: DecideAction;
 }
 
-export function CancellationsTable({
-  rows,
-  query,
-  total,
-  totalPages,
-  decide,
-}: CancellationsTableProps) {
+export function CancellationsTable({ rows, query, total, totalPages }: CancellationsTableProps) {
   const [columnVisibility, setColumnVisibility] = React.useState<ColumnVisibilityState>({});
-  const columns = React.useMemo(() => buildColumns(decide), [decide]);
+  const columns = React.useMemo(() => buildColumns(query), [query]);
 
   const table = useTable({
     features: serverTableFeatures,

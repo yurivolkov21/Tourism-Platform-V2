@@ -96,10 +96,60 @@ export function cancellationsHref(
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
-  if (status) params.set('status', status);
-  if (from) params.set('from', from);
-  if (to) params.set('to', to);
+  appendCancellationFilters(params, { status, from, to });
   appendPaging(params, paging);
 
   return tableHref('/cancellations', params);
 }
+
+/** Ghi ba filter của vùng vào query — thứ tự cố định để href ổn định. */
+function appendCancellationFilters(
+  params: URLSearchParams,
+  filters: { status?: string; from?: string; to?: string },
+): void {
+  if (filters.status) params.set('status', filters.status);
+  if (filters.from) params.set('from', filters.from);
+  if (filters.to) params.set('to', filters.to);
+}
+
+/**
+ * Link sang trang chi tiết RIÊNG của vùng huỷ, mang theo trạng thái hàng đợi
+ * đang xem — cùng luật vòng đi–về đã dựng cho `/bookings` (user báo 04/09):
+ * nút quay về phải dựng lại ĐÚNG bộ lọc vừa rời.
+ *
+ * Định danh bằng MÃ BOOKING chứ không phải id của request. Lý do: một booking
+ * có nhiều nhất một request đang mở (partial unique index), còn các dòng
+ * DENIED là lịch sử của CÙNG booking ấy — nên trang chi tiết kể trọn câu
+ * chuyện huỷ của một booking thay vì chỉ một mảnh. Hai hàng DENIED cùng mã
+ * trong hàng đợi vì thế trỏ về cùng một trang, và đó là điều đúng.
+ */
+export function cancellationDetailHref(current: CancellationsQuery, code: string): string {
+  const params = new URLSearchParams();
+  appendCancellationFilters(params, current);
+  appendPaging(params, current);
+  return tableHref(`/cancellations/${code}`, params);
+}
+
+/**
+ * URL quay về hàng đợi, dựng từ query mà `cancellationDetailHref` đã gắn.
+ *
+ * Đi qua `parseCancellationsSearchParams` rồi dựng lại chứ KHÔNG chuyển tiếp
+ * chuỗi thô — URL trang chi tiết cũng là thứ người gõ được, và một href dựng
+ * từ rác là một cú click chết.
+ *
+ * Không có tham số nào = vào thẳng URL. Trả `/cancellations` TRẦN, tức mặc
+ * định của vùng: KHÔNG lọc ngày, thấy đủ hàng đợi (ADR-0028 §AMEND).
+ */
+export function cancellationsBackHref(raw: RawSearchParams): string {
+  const carried = LIST_PARAMS.some((key) => firstParam(raw[key]) !== undefined);
+  return carried ? cancellationsHref(parseCancellationsSearchParams(raw), {}) : '/cancellations';
+}
+
+/**
+ * Các tham số làm nên trạng thái hàng đợi. Có MỘT trong số này trên URL trang
+ * chi tiết nghĩa là người ta tới từ bảng, và bộ lọc ấy phải được giữ.
+ *
+ * KHÔNG có `dates` như `/bookings`: vùng này không có sentinel nào vì URL trần
+ * chính là "xem tất cả".
+ */
+const LIST_PARAMS = ['status', 'from', 'to', 'page', 'limit'] as const;

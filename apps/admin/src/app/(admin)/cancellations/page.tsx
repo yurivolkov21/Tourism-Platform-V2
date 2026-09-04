@@ -11,7 +11,6 @@ import { cancellationsHref, parseCancellationsSearchParams } from '@/lib/cancell
 import { toCancellationRow } from '@/lib/cancellations-view';
 import { statsPeriodLabel, toCancellationsStatCards } from '@/lib/stats-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
-import { decideCancellationAction } from './actions';
 
 /**
  * `/cancellations` — hàng đợi request của khách (spec P4b §3-F3).
@@ -73,7 +72,6 @@ export default async function CancellationsPage({
         query={query}
         total={paged.total}
         totalPages={paged.totalPages}
-        decide={decideCancellationAction}
       />
     </AdminShell>
   );

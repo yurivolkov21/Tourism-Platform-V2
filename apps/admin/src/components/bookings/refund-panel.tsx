@@ -16,21 +16,14 @@ import {
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { RadioGroup, RadioGroupItem } from '@tourism/ui/components/radio-group';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@tourism/ui/components/table';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { RefundLedgerTable } from '@/components/bookings/booking-detail-sections';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { LabelValueRow } from '@/components/kit/label-value-row';
-import { formatAmount, formatDateTime } from '@/lib/bookings-view';
+import { formatAmount } from '@/lib/bookings-view';
 import {
   canRefund,
   normalizeAmountInput,
@@ -105,7 +98,7 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
       <CardContent className="grid gap-3 text-sm">
         {refundable ? null : <p className="text-muted-foreground">{t.unavailable}</p>}
         {booking.refunds.length > 0 ? (
-          <LedgerTable
+          <RefundLedgerTable
             refunds={booking.refunds}
             refundedTotal={booking.refundedTotal}
             currency={booking.currency}
@@ -115,51 +108,6 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
         )}
       </CardContent>
     </Card>
-  );
-}
-
-/** Sổ cái refund append-only — row và tổng đều là số THẬT server trả. */
-function LedgerTable({
-  refunds,
-  refundedTotal,
-  currency,
-}: {
-  refunds: Refund[];
-  refundedTotal: string;
-  currency: string;
-}) {
-  return (
-    <div className="grid gap-2">
-      <div className="overflow-hidden rounded-lg border">
-        <Table aria-label={t.ledger.heading}>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{t.ledger.amount}</TableHead>
-              <TableHead>{t.ledger.issued}</TableHead>
-              <TableHead>{t.ledger.reference}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {refunds.map((refund) => (
-              <TableRow key={refund.id}>
-                <TableCell className="tabular-nums">
-                  {formatAmount(refund.amount, refund.currency)}
-                </TableCell>
-                <TableCell>{formatDateTime(refund.createdAt)}</TableCell>
-                <TableCell className="font-mono text-xs">
-                  {refund.providerRefundId ?? messages.admin.bookings.detail.empty}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
-      {/* Tổng là `refundedTotal` server aggregate — không cộng lại phía client
-          (hai công thức tiền là hai công thức sẽ lệch, review 31/08). */}
-      <p className="font-medium tabular-nums">
-        {t.ledger.total(formatAmount(refundedTotal, currency))}
-      </p>
-    </div>
   );
 }
 

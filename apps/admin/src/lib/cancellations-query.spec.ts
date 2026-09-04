@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { cancellationsHref, parseCancellationsSearchParams } from './cancellations-query';
+import {
+  cancellationDetailHref,
+  cancellationsBackHref,
+  cancellationsHref,
+  parseCancellationsSearchParams,
+} from './cancellations-query';
 
 /**
  * Trạng thái hàng đợi `/cancellations` sống TRÊN URL như vùng bookings (spec
@@ -134,3 +139,73 @@ describe('cancellations — bộ lọc khoảng ngày', () => {
     );
   });
 });
+
+/**
+ * Vòng đi–về hàng đợi ↔ trang chi tiết RIÊNG của vùng huỷ (user chốt 04/09:
+ * hai vùng hai route). Cùng luật với `/bookings`, khác đúng một chỗ: không có
+ * sentinel `?dates=all` vì URL trần chính là "xem tất cả".
+ */
+describe('vòng đi–về hàng đợi ↔ /cancellations/[code]', () => {
+  describe('cancellationDetailHref', () => {
+    it('mang trọn bộ lọc và trang hiện tại sang link chi tiết', () => {
+      const query = parseCancellationsSearchParams({
+        status: 'REQUESTED',
+        from: '2026-05-01',
+        to: '2026-05-31',
+        page: '3',
+        limit: '50',
+      });
+      const href = cancellationDetailHref(query, 'BK-J8F2AIOG');
+
+      expect(href.startsWith('/cancellations/BK-J8F2AIOG?')).toBe(true);
+      expect(searchParamsOf(href)).toEqual({
+        status: 'REQUESTED',
+        from: '2026-05-01',
+        to: '2026-05-31',
+        page: '3',
+        limit: '50',
+      });
+    });
+
+    it('hàng đợi chưa lọc gì → link chi tiết TRẦN, không độn tham số nào', () => {
+      // Khác `/bookings`: ở đó mặc định tháng này được viết ra tường minh.
+      expect(cancellationDetailHref(parseCancellationsSearchParams({}), 'BK-1')).toBe(
+        '/cancellations/BK-1',
+      );
+    });
+  });
+
+  describe('cancellationsBackHref', () => {
+    it('dựng lại ĐÚNG URL hàng đợi đã rời', () => {
+      const query = parseCancellationsSearchParams({
+        status: 'REQUESTED',
+        from: '2026-05-01',
+        page: '2',
+      });
+      const back = cancellationsBackHref(searchParamsOf(cancellationDetailHref(query, 'BK-1')));
+
+      expect(searchParamsOf(back)).toEqual({
+        status: 'REQUESTED',
+        from: '2026-05-01',
+        page: '2',
+      });
+    });
+
+    it('vào thẳng URL chi tiết → hàng đợi TRẦN, tức thấy đủ mọi request', () => {
+      // Mặc định của vùng là KHÔNG lọc ngày — hàng đợi việc phải làm thì phải
+      // thấy đủ, kể cả request tháng trước còn đang mở (ADR-0028 §AMEND).
+      expect(cancellationsBackHref({})).toBe('/cancellations');
+    });
+
+    it('tham số rác không đẻ ra một href hỏng', () => {
+      const back = cancellationsBackHref({ status: 'NOPE', from: '2026-02-31', page: '-2' });
+      expect(back).toBe('/cancellations');
+    });
+  });
+});
+
+/** `?a=1&b=2` của một href → shape mà hàm parse nhận. */
+function searchParamsOf(href: string): Record<string, string> {
+  const query = href.includes('?') ? href.slice(href.indexOf('?') + 1) : '';
+  return Object.fromEntries(new URLSearchParams(query));
+}

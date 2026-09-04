@@ -1,28 +1,18 @@
-import type { CancellationRequest } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { Badge } from '@tourism/ui/components/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@tourism/ui/components/card';
-import { ChevronLeftIcon } from 'lucide-react';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
+import {
+  BookingDetailBackLink,
+  BookingDetailHeader,
+  BookingSummaryCards,
+  CancellationHistoryCard,
+} from '@/components/bookings/booking-detail-sections';
 import { RefundPanel } from '@/components/bookings/refund-panel';
-import { LabelValueRow } from '@/components/kit/label-value-row';
-import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminBookingByCode } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { bookingsBackHref } from '@/lib/bookings-query';
-import {
-  formatAmount,
-  formatDateRange,
-  formatDateTime,
-  formatGuests,
-  statusBadgeVariant,
-  statusLabel,
-} from '@/lib/bookings-view';
-import { cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
 import type { RawSearchParams } from '@/lib/table-query';
 import { refundBookingAction } from './actions';
 
@@ -35,6 +25,11 @@ import { refundBookingAction } from './actions';
  * (`refunds` + `refundedTotal` aggregate từ DB) — `RefundPanel` in ledger
  * ngay khi mở trang và dùng phần-còn-hoàn-được làm trần validate; sau mỗi
  * refund client `router.refresh()` kéo sự thật mới về.
+ *
+ * Từ 04/09 các khối trình bày nằm ở `booking-detail-sections.tsx` — dùng
+ * chung với `/cancellations/[code]`, trang chi tiết RIÊNG của vùng huỷ (user
+ * chốt: hai vùng hai route, chung kiểu thiết kế). Thứ KHÁC nhau giữa hai
+ * trang là phần GHI: ở đây là `RefundPanel`, bên kia là cụm quyết định.
  */
 const t = messages.admin.bookings.detail;
 
@@ -72,78 +67,9 @@ export default async function BookingDetailPage({
   return (
     <AdminShell user={session}>
       <div className="flex flex-col gap-4 px-4 lg:px-6">
-        <Link
-          // Quay về ĐÚNG bộ lọc vừa rời (user báo 04/09). Thay cho `?dates=all`
-          // cứng của vòng vá polish 2: cái đó tồn tại vì `/bookings` trần độn
-          // tháng này nên booking vừa xem có thể biến mất — nay không xảy ra
-          // được, vì bấm được vào một hàng nghĩa là nó NẰM TRONG bộ lọc.
-          href={backHref}
-          className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-        >
-          <ChevronLeftIcon className="size-4" />
-          {t.back}
-        </Link>
-
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="font-mono text-2xl font-semibold tracking-tight">{booking.code}</h2>
-          <Badge variant={statusBadgeVariant(booking.status)}>{statusLabel(booking.status)}</Badge>
-          <span className="text-sm text-muted-foreground">
-            {t.booked} {formatDateTime(booking.createdAt)}
-          </span>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.customer.heading}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-2 text-sm">
-                <Row label={t.customer.name} value={booking.contactName} />
-                <Row label={t.customer.email} value={booking.contactEmail} />
-                <Row label={t.customer.phone} value={booking.contactPhone} />
-                <Row label={t.customer.requests} value={booking.specialRequests} />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.departure.heading}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-2 text-sm">
-                <Row label={t.departure.tour} value={booking.tourTitle} />
-                <Row
-                  label={t.departure.dates}
-                  value={formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-                />
-                <Row label={t.departure.guests} value={formatGuests(booking)} />
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>{t.payment.heading}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="grid gap-2 text-sm">
-                <Row label={t.payment.provider} value={booking.paymentProvider} />
-                <Row
-                  label={t.payment.unitPrice}
-                  value={formatAmount(booking.unitPrice, booking.currency)}
-                />
-                <Row
-                  label={t.payment.total}
-                  value={formatAmount(booking.totalAmount, booking.currency)}
-                />
-                <Row label={t.payment.paidAt} value={formatDateTime(booking.paidAt)} />
-                <Row label={t.payment.cancelledAt} value={formatDateTime(booking.cancelledAt)} />
-              </dl>
-            </CardContent>
-          </Card>
-        </div>
+        <BookingDetailBackLink href={backHref} label={t.back} />
+        <BookingDetailHeader booking={booking} />
+        <BookingSummaryCards booking={booking} />
 
         {/* Ô refund đứng TRƯỚC lịch sử huỷ: nó là hành động, phần dưới là
             dấu vết. Server action truyền xuống như một prop — client
@@ -164,60 +90,8 @@ export default async function BookingDetailPage({
           refund={refundBookingAction}
         />
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t.cancellations.heading}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {/* Lịch sử append-only (D1-B): cũ nhất trước, các dòng DENIED sống
-                sót qua mọi lần khách xin lại — đó là dấu vết, không phải rác.
-                Khung là kit `Timeline` (vòng vá review F9). */}
-            <Timeline empty={t.cancellations.empty}>
-              {booking.cancellationRequests.map((request) => (
-                <CancellationRow key={request.id} request={request} />
-              ))}
-            </Timeline>
-          </CardContent>
-        </Card>
+        <CancellationHistoryCard requests={booking.cancellationRequests} />
       </div>
     </AdminShell>
-  );
-}
-
-/** Một dòng `<dt>/<dd>`; giá trị trống hiện gạch ngang thay vì ô rỗng khó hiểu. */
-function Row({ label, value }: { label: string; value: string | null }) {
-  // Cột nhãn 9rem — nhãn của khối này dài hơn một nhịp so với mặc định kit.
-  return <LabelValueRow label={label} width="md" value={value || t.empty} />;
-}
-
-function CancellationRow({ request }: { request: CancellationRequest }) {
-  return (
-    <TimelineItem>
-      <div className="flex flex-wrap items-center gap-2">
-        {/* Cùng luật màu với hàng đợi /cancellations (review F3 31/08) — một
-            trạng thái một màu ở mọi màn. */}
-        <Badge variant={cancellationStatusBadgeVariant(request.status)}>
-          {t.cancellations.status[request.status]}
-        </Badge>
-        <span className="text-muted-foreground">
-          {t.cancellations.requested} {formatDateTime(request.createdAt)}
-        </span>
-        {request.decidedAt ? (
-          <span className="text-muted-foreground">
-            · {t.cancellations.decided} {formatDateTime(request.decidedAt)}
-          </span>
-        ) : null}
-      </div>
-      <p>
-        <span className="text-muted-foreground">{t.cancellations.reason}: </span>
-        {request.reason}
-      </p>
-      {request.decisionNote ? (
-        <p>
-          <span className="text-muted-foreground">{t.cancellations.note}: </span>
-          {request.decisionNote}
-        </p>
-      ) : null}
-    </TimelineItem>
   );
 }
