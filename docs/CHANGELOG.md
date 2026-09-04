@@ -165,21 +165,47 @@ vừa lùi một phiên bản.
 một endpoint mà consumer deploy riêng đều mở đúng cửa sổ ấy. Field mới nên có
 đường ngả an toàn ở phía đọc, hoặc phải deploy API trước rồi mới đẩy consumer.
 
+### Vòng đi–về bảng ↔ chi tiết giữ bộ lọc (user báo lúc kiểm bằng mắt)
+
+Bấm một mã booking rồi bấm "Back to bookings" thì mất bộ lọc — nút ấy trỏ CỨNG
+`?dates=all`. Hàng của bảng nay mang trạng thái danh sách sang link chi tiết
+(`bookingDetailHref`: status · q · from · to · dates · page · limit) và nút
+quay về dựng lại đúng URL đó (`bookingsBackHref`). Mang cả page/limit: về đúng
+trang vừa cuộn tới.
+
+**Điều này THAY quyết định `?dates=all` của vòng vá polish 2**, và thay được vì
+lý do sinh ra nó đã hết: cái đó tồn tại để booking vừa xem không biến khỏi bảng
+khi `/bookings` trần độn tháng hiện tại — nhưng bấm được vào một hàng nghĩa là
+booking ấy NẰM TRONG bộ lọc, nên quay về đúng bộ lọc ấy luôn thấy nó.
+
+Ngày mặc định được viết RA tường minh trên link chi tiết thay vì để URL trần:
+bấm lúc 23:59 ngày cuối tháng rồi bấm Back lúc 00:01 vẫn về đúng tháng đã xem.
+`bookingsBackHref` đi qua `parseBookingsSearchParams` rồi dựng lại chứ không
+chuyển tiếp chuỗi thô — URL trang chi tiết cũng là thứ người gõ được.
+
+⚠️ **Ca còn lại, có ghi:** tới trang chi tiết KHÔNG qua bảng — vào thẳng URL,
+hoặc từ `BookingLink` của `/payment-events` và `/cancellations` — thì không có
+bộ lọc nào để giữ, nút quay về cho `/bookings` trần tức tháng hiện tại. Nếu
+booking ấy tạo tháng khác thì nó không nằm trong danh sách vừa mở. Chấp nhận:
+ở ca đó "Back to bookings" là "sang danh sách bookings", không phải "quay lại
+chỗ tôi vừa đứng".
+
 ### Nghiệm thu
 
 `pnpm gate:int` xanh, chạy trên API dev đang sống ở `:3001` (không dựng API
 tạm). Chưa qua review 8 mũi — session gốc nghiệm thu bằng `git diff` rồi mới
 merge.
 
-Tests after: 1417 web · 311 api · 322 api-int · 190 contract · 707 admin ·
-22 ui · 10 tokens · 2 i18n. Thêm 46 so với entry trước: 11 api (`statsWindowFromRange`
+Tests after: 1417 web · 311 api · 322 api-int · 190 contract · 714 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 53 so với entry trước: 11 api (`statsWindowFromRange`
 bốn nhánh, hai kỳ bằng nhau ở khoảng lẻ, tháng nhuận, một ngày, không sửa Date
 của caller, `windowDays` đo từ cửa sổ và sàn 1), 6 api-int (cắt đúng khoảng kể
 cả row `23:59:59.500`, kỳ trước lùi liền kề, `currentTo` tách `generatedAt`,
 không tham số rơi về 28 ngày, 400 cho khoảng ngược và ngày rác), 4 contract
 (hai đầu optional, khoảng ngược, từ chối mốc có giờ, ngày không tồn tại), 22
 admin (9 `stats-view`, 3 `stats-view` cho ca lệch phiên bản, 2 kit
-`stat-card`, 5 kit `toolbar-filter-menu`, 6 kit `label-value-row`).
+`stat-card`, 5 kit `toolbar-filter-menu`, 6 kit `label-value-row`, 7
+`bookings-query`/`bookings-view` cho vòng đi–về).
 
 ## 2026-09-04 — Vòng chỉnh UI admin sau P4c: bốn ô lọc thành MỘT menu kit theo `dropdown-menu-10`, vá tràn chữ ở dialog ghi, drawer Details đổi vỏ + hai chế độ xem payload + nhãn và giá trị payload đọc được, `/bookings` mặc định lọc theo tháng (nhánh `fix/p4c-ui-polish`, 1 commit `b2eb60b`, ~46 file, không migration)
 
