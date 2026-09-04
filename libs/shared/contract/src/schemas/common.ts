@@ -72,3 +72,28 @@ export const EmailSchema = z.email().max(200);
 export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;
 export const PasswordSchema = z.string().min(PASSWORD_MIN_LENGTH).max(PASSWORD_MAX_LENGTH);
+
+/**
+ * Chuyển từ `bookings.ts` sang đây 04/09: từ khi `/reviews` cũng lọc theo
+ * khoảng ngày (ADR-0028 §AMEND 2), BA vùng query dùng chung kiểu này —
+ * nó không còn là khái niệm của riêng bookings, và để nguyên chỗ cũ thì
+ * schema review phải import từ schema booking, một cạnh phụ thuộc không có
+ * lý do nghiệp vụ nào.
+ */
+/**
+ * Ngày lịch `YYYY-MM-DD` cho bộ lọc admin — `z.iso.date()` (loại cả ngày
+ * không tồn tại kiểu `2026-02-30`) CỘNG trần năm 1900–2099 (vòng vá review
+ * F6): API cộng `to` thêm một ngày để dựng biên nửa-mở, và `9999-12-31 + 1d`
+ * là một `Date` năm 10000 mà `toISOString()` in thành `+010000-…` — thứ rơi
+ * thẳng xuống driver Postgres không qua schema nào chặn. Cùng trần với
+ * `ReportMonthSchema` bên `reports.ts`; so sánh chuỗi dùng được vì ISO date
+ * sắp thứ tự từ điển đúng bằng thứ tự thời gian.
+ *
+ * EXPORT để admin (`bookings-query.ts`) dùng ĐÚNG bản này — không có bản
+ * thứ hai để trôi lệch: cái gì lọt qua client thì server cũng nhận.
+ */
+export const CalendarDateSchema = z.iso
+  .date()
+  .refine((value) => value >= '1900-01-01' && value <= '2099-12-31', {
+    message: 'date must be between 1900 and 2099',
+  });

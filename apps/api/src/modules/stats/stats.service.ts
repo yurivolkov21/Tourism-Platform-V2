@@ -346,19 +346,24 @@ export class StatsService {
     };
   }
 
-  /** Bộ số vùng `/reviews`. */
-  async adminReviews(): Promise<AdminReviewsStats> {
-    const window = statsWindow(new Date());
-    const [pendingNow, pendingThen, current, previous] = await Promise.all([
-      prisma.review.count({ where: { isApproved: false } }),
+  /** Bộ số vùng `/reviews` — ăn theo khoảng ngày của bảng (ADR-0028 §AMEND 2). */
+  async adminReviews(query?: AdminStatsRangeQuery): Promise<AdminReviewsStats> {
+    const window = statsWindowFromRange(query?.from, query?.to, new Date());
+    const [pendingEnd, pendingStart, current, previous] = await Promise.all([
+      // Ảnh chụp tại CUỐI kỳ, không phải "bây giờ" (luật AMEND 1 §3): lọc
+      // tháng 7 mà card nói hàng đợi hôm nay thì hai vùng trên một màn hình
+      // đang đo hai kỳ khác nhau. Chưa lọc thì `currentTo` chính là bây giờ,
+      // nên con số vẫn khớp đúng số hàng `/reviews?status=pending`.
+      this.pendingReviewsAt(window.currentTo),
       this.pendingReviewsAt(window.currentFrom),
-      this.reviewsSlice(window.currentFrom, window.generatedAt),
+      this.reviewsSlice(window.currentFrom, window.currentTo),
       this.reviewsSlice(window.previousFrom, window.currentFrom),
     ]);
 
     return {
       period: statsPeriod(window),
-      pending: { current: pendingNow, previous: pendingThen },
+      pending: { current: pendingEnd, previous: pendingStart },
+      submitted: { current: current.submitted, previous: previous.submitted },
       approved: { current: current.approved, previous: previous.approved },
       averageRating: { current: current.rating, previous: previous.rating },
     };
@@ -493,7 +498,13 @@ export class StatsService {
     });
   }
 
-  /** Hai con số review của MỘT kỳ `[from, to)`. */
+  /**
+   * Ba con số review của MỘT kỳ `[from, to)`.
+   *
+   * `submitted` và `rating` ra từ CÙNG một aggregate: hai card ấy nói về cùng
+   * một tập (review gửi trong kỳ) nên đọc hai lần là vừa tốn một query vừa mở
+   * cửa cho hai `where` trôi lệch nhau.
+   */
   private async reviewsSlice(from: Date, to: Date) {
     const [approved, submitted] = await Promise.all([
       // Đếm LƯỢT duyệt trên audit trail, không đếm trạng thái hiện tại —
@@ -502,8 +513,13 @@ export class StatsService {
       prisma.review.aggregate({
         where: { createdAt: { gte: from, lt: to } },
         _avg: { rating: true },
+        _count: { _all: true },
       }),
     ]);
-    return { approved, rating: average(submitted._avg.rating) };
+    return {
+      approved,
+      submitted: submitted._count._all,
+      rating: average(submitted._avg.rating),
+    };
   }
 }

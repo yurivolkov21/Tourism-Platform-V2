@@ -46,7 +46,9 @@ export default async function ReviewsPage({
     fetchAdminReviews(cookie, query),
     // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
     // một RTT vào MỌI click phân trang/lọc chỉ để vẽ lại hàng card.
-    fetchAdminReviewsStats(cookie),
+    // Card ăn theo ĐÚNG khoảng ngày bảng đang lọc (ADR-0028 §AMEND 2) —
+    // không thì hai vùng trên một màn hình đo hai kỳ khác nhau.
+    fetchAdminReviewsStats(cookie, { from: query.from, to: query.to }),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp hai trang kia).

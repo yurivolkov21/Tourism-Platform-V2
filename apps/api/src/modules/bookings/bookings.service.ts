@@ -12,6 +12,7 @@ import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
+import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { pickCover } from '../catalog/catalog.service.js';
@@ -23,7 +24,6 @@ import {
   resolveGateway,
 } from '../payments/gateway.js';
 import { mintBookingCode } from './booking-code.js';
-import { createdAtRange } from './bookings-date-range.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 
 /** Departure không tồn tại / không OPEN / đã departed / tour unpublished — cố
@@ -531,7 +531,7 @@ export class BookingsService {
    *
    * F6 thêm khoảng ngày `from`/`to` theo `createdAt` — biên NỬA-MỞ, cả hai
    * đầu tính vào khoảng ngày lịch; phép đổi ngày → mốc và lý do dùng `lt`
-   * thay vì `lte 23:59:59` nằm ở `bookings-date-range.ts`. Ba bộ lọc CỘNG
+   * thay vì `lte 23:59:59` nằm ở `created-at-range.ts`. Ba bộ lọc CỘNG
    * dồn (AND), không cái nào thay thế cái nào.
    */
   async adminList(query: AdminBookingsListQuery): Promise<Paged<Booking>> {

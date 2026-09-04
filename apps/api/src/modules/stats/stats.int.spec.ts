@@ -837,6 +837,133 @@ describe('admin stats integration (F5)', () => {
       // Kỳ trước: 3 + 4 + 2 + 5 = 14 / 4 → 3.50.
       expect(stats.averageRating.previous).toBe('3.50');
     });
+
+    it('submitted đếm ĐÚNG tập mà averageRating tính trên — cùng cột, cùng kỳ', async () => {
+      // ADR-0028 §AMEND 2 §4: hai card này là một cặp. Nếu chúng trôi lệch
+      // (một cái lọc trạng thái duyệt, một cái không) thì "4.50 sao trên 2
+      // review" thành một câu không kiểm chứng được.
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      // Kỳ này: review 2 và 5. Kỳ trước: bốn review của phép tính 3.50 ở trên.
+      expect(stats.submitted).toEqual({ current: 2, previous: 4 });
+    });
+  });
+
+  /**
+   * ADR-0028 §AMEND 2 — kỳ do admin chọn ở vùng thứ ba. Fixture neo ngày lịch
+   * cố định vì chính khoảng ngày là thứ đang kiểm.
+   *
+   * Điểm phải canh riêng của vùng này: `submitted`/`averageRating` neo
+   * `review.created_at` còn `approved` neo `event.created_at`, nên một review
+   * gửi TRƯỚC kỳ mà duyệt TRONG kỳ phải đếm vào `approved` mà KHÔNG đếm vào
+   * `submitted`. Đó là lệch cột đã chấp nhận có ý thức, không phải bug.
+   */
+  describe('stats.reviews — khoảng ngày do admin chọn', () => {
+    const at = (date: string) => new Date(`${date}T12:00:00.000Z`);
+    /** Lọc trọn tháng 5 → kỳ này [01/05, 01/06), kỳ trước [31/03, 01/05). */
+    const MAY = '?from=2026-05-01&to=2026-05-31';
+
+    beforeEach(async () => {
+      await prisma.review.createMany({
+        data: [
+          // Gửi TRƯỚC kỳ, chưa ai duyệt: đứng trong CẢ hai ảnh chụp hàng đợi.
+          review(21, {
+            rating: 3,
+            isApproved: false,
+            createdAt: at('2026-04-10'),
+            moderatedAt: null,
+            curated: true,
+          }),
+          // Gửi TRONG kỳ, còn chờ: chỉ ở ảnh chụp CUỐI kỳ.
+          review(22, {
+            rating: 5,
+            isApproved: false,
+            createdAt: at('2026-05-10'),
+            moderatedAt: null,
+            curated: true,
+          }),
+          // Gửi TRƯỚC kỳ, duyệt TRONG kỳ: vào `approved` kỳ này, KHÔNG vào
+          // `submitted` kỳ này — đây là chỗ hai cột neo tách nhau.
+          review(23, {
+            rating: 4,
+            isApproved: true,
+            createdAt: at('2026-04-05'),
+            moderatedAt: at('2026-05-20'),
+            curated: true,
+          }),
+          // Gửi TRONG kỳ và duyệt luôn trong kỳ.
+          review(24, {
+            rating: 2,
+            isApproved: true,
+            createdAt: at('2026-05-15'),
+            moderatedAt: at('2026-05-16'),
+            curated: true,
+          }),
+        ],
+      });
+      const event = (
+        n: number,
+        toApproved: boolean,
+        createdAt: Date,
+      ): Prisma.ReviewModerationEventCreateManyInput => ({
+        id: `e9500006-0000-4000-8000-${String(n).padStart(12, '0')}`,
+        reviewId: `e9500004-0000-4000-8000-${String(n).padStart(12, '0')}`,
+        fromApproved: !toApproved,
+        toApproved,
+        createdAt,
+      });
+      await prisma.reviewModerationEvent.createMany({
+        data: [event(23, true, at('2026-05-20')), event(24, true, at('2026-05-16'))],
+      });
+    });
+
+    it('submitted cắt theo review.created_at — review duyệt-trong-kỳ mà gửi trước KHÔNG tính', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie, MAY)).json());
+      // Kỳ này: 22 và 24. Kỳ trước [31/03, 01/05): 21 và 23.
+      expect(stats.submitted).toEqual({ current: 2, previous: 2 });
+    });
+
+    it('approved cắt theo event.created_at — hai lượt duyệt đều nằm trong kỳ', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie, MAY)).json());
+      // 23 gửi tháng 4 nhưng duyệt 20/05: vào kỳ này dù không có mặt trong
+      // `submitted` của kỳ này. Đó là lệch cột đã ghi ở ADR.
+      expect(stats.approved).toEqual({ current: 2, previous: 0 });
+    });
+
+    it('pending là hàng đợi CUỐI kỳ so với ĐẦU kỳ, không phải "bây giờ"', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie, MAY)).json());
+      // Cuối kỳ (01/06): 21 và 22 còn chờ. Đầu kỳ (01/05): 21 còn chờ, và 23
+      // lúc ấy chưa bị duyệt (moderatedAt 20/05 >= 01/05).
+      expect(stats.pending).toEqual({ current: 2, previous: 2 });
+    });
+
+    it('averageRating tính trên ĐÚNG tập submitted của kỳ', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie, MAY)).json());
+      // Kỳ này: 22 (5 sao) + 24 (2 sao) → 3.50.
+      expect(stats.averageRating.current).toBe('3.50');
+    });
+
+    it('period: currentTo là 00:00 ngày sau `to`, kỳ trước dài bằng kỳ này', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie, MAY)).json());
+      expect(stats.period.currentFrom).toBe('2026-05-01T00:00:00.000Z');
+      expect(stats.period.currentTo).toBe('2026-06-01T00:00:00.000Z');
+      expect(stats.period.previousFrom).toBe('2026-03-31T00:00:00.000Z');
+      expect(stats.period.windowDays).toBe(31);
+    });
+
+    it('không tham số: rơi về cửa sổ TRƯỢT 28 ngày như trước ADR-0028', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      expect(stats.period.windowDays).toBe(28);
+      expect(stats.period.currentTo).toBe(stats.period.generatedAt);
+      // Fixture toàn tháng 4–5 năm 2026, nằm ngoài 56 ngày gần nhất của đồng
+      // hồ thật, nên hai lát kỳ rỗng; hàng đợi thì vẫn đếm được.
+      expect(stats.submitted).toEqual({ current: 0, previous: 0 });
+    });
+
+    it('khoảng ngược bị contract từ chối — 400', async () => {
+      expect((await get('reviews', adminCookie, '?from=2026-05-31&to=2026-05-01')).statusCode).toBe(
+        400,
+      );
+    });
   });
 
   /**

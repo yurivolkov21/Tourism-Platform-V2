@@ -1194,6 +1194,67 @@ describe('reviews (int)', () => {
         .items.find((r: { id: string }) => r.id === twoStar.id);
       expect(moderated.moderatedBy).toBe(adminRow.name);
     });
+
+    it('adminList: lọc theo khoảng ngày GỬI, trọn ngày `to`, review chưa duyệt KHÔNG bị loại', async () => {
+      // ADR-0028 §AMEND 2: cột lọc là `created_at`. Điểm phải canh là biên
+      // NỬA-MỞ — một review gửi lúc 23:59 ngày `to` vẫn phải nằm trong khoảng,
+      // và một review CHƯA duyệt (`moderated_at` null) không được rơi ra
+      // ngoài, vì đó chính là hàng đợi mà trang tồn tại để dọn.
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const category = await prisma.tourCategory.create({
+        data: { slug: 'range-cat', name: 'Range', order: 1 },
+      });
+      const tour = await prisma.tour.create({
+        data: {
+          slug: 'range-tour',
+          title: 'Range Tour',
+          categoryId: category.id,
+          durationDays: 1,
+          basePrice: '39.00',
+          currency: 'USD',
+          isPublished: true,
+        },
+      });
+      const at = async (iso: string, body: string) =>
+        prisma.review.create({
+          data: {
+            tourId: tour.id,
+            source: ReviewSource.CURATED,
+            rating: 4,
+            body,
+            authorName: 'Range Author',
+            isApproved: false,
+            createdAt: new Date(iso),
+          },
+        });
+      const before = await at('2026-04-30T23:59:59.000Z', 'Truoc khoang mot giay');
+      const first = await at('2026-05-01T00:00:00.000Z', 'Dau khoang dung nua dem');
+      const lastMinute = await at('2026-05-31T23:59:00.000Z', 'Cuoi khoang sat nua dem');
+      const after = await at('2026-06-01T00:00:00.000Z', 'Sau khoang mot giay');
+
+      const ids = async (qs: string) => {
+        const res = await app.inject({
+          method: 'GET',
+          url: `/api/admin/reviews${qs}`,
+          headers: { cookie: admin.cookie },
+        });
+        return (res.json().items as { id: string }[]).map((r) => r.id);
+      };
+
+      const inRange = await ids('?from=2026-05-01&to=2026-05-31');
+      expect(inRange).toContain(first.id);
+      expect(inRange).toContain(lastMinute.id);
+      expect(inRange).not.toContain(before.id);
+      expect(inRange).not.toContain(after.id);
+      // Chưa duyệt vẫn nằm trong kết quả — cùng bộ lọc, cộng dồn với trạng thái.
+      expect(await ids('?from=2026-05-01&to=2026-05-31&isApproved=false')).toEqual(
+        expect.arrayContaining([first.id, lastMinute.id]),
+      );
+      // Một đầu: `from` không có `to` là "từ ngày ấy trở đi".
+      const openEnded = await ids('?from=2026-05-01');
+      expect(openEnded).toContain(after.id);
+      expect(openEnded).not.toContain(before.id);
+    });
   });
 
   describe('moderate: bust cache web SAU commit (Task 3, ADR-0016 §3)', () => {

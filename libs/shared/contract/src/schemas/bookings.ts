@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { DecimalStringSchema, DestinationLinkSchema } from './catalog.js';
-import { AdminPageQuerySchema, BookingCodeSchema, EmailSchema } from './common.js';
+import {
+  AdminPageQuerySchema,
+  BookingCodeSchema,
+  CalendarDateSchema,
+  EmailSchema,
+} from './common.js';
 import { MediaItemSchema } from './media.js';
 
 // Re-export để mọi chỗ import `BookingCodeSchema` từ `'./bookings.js'` (nguồn
@@ -235,24 +240,6 @@ export type AdminRefundResult = z.output<typeof AdminRefundResultSchema>;
  * không bao giờ gửi được khoảng ngược (`parseBookingsSearchParams` bỏ `to` khi
  * nó đứng trước `from`) — luật này canh cho mọi caller khác.
  */
-
-/**
- * Ngày lịch `YYYY-MM-DD` cho bộ lọc admin — `z.iso.date()` (loại cả ngày
- * không tồn tại kiểu `2026-02-30`) CỘNG trần năm 1900–2099 (vòng vá review
- * F6): API cộng `to` thêm một ngày để dựng biên nửa-mở, và `9999-12-31 + 1d`
- * là một `Date` năm 10000 mà `toISOString()` in thành `+010000-…` — thứ rơi
- * thẳng xuống driver Postgres không qua schema nào chặn. Cùng trần với
- * `ReportMonthSchema` bên `reports.ts`; so sánh chuỗi dùng được vì ISO date
- * sắp thứ tự từ điển đúng bằng thứ tự thời gian.
- *
- * EXPORT để admin (`bookings-query.ts`) dùng ĐÚNG bản này — không có bản
- * thứ hai để trôi lệch: cái gì lọt qua client thì server cũng nhận.
- */
-export const CalendarDateSchema = z.iso
-  .date()
-  .refine((value) => value >= '1900-01-01' && value <= '2099-12-31', {
-    message: 'date must be between 1900 and 2099',
-  });
 
 export const AdminBookingsListQuerySchema = AdminPageQuerySchema.extend({
   status: BookingStatusSchema.optional(),

@@ -2813,8 +2813,17 @@ export const messages = {
       },
       reviews: {
         pending: 'Pending',
+        /**
+         * MẪU SỐ của hàng đợi (ADR-0028 §AMEND 2 §4): không có nó thì
+         * "Approved 12" không đọc được — 12 trên 12 hay 12 trên 300 là hai
+         * tình trạng khác hẳn. Cùng tập, cùng cột neo với `averageRating`.
+         */
+        submitted: (days: number) => `Submitted ${days}d`,
         approved: (days: number) => `Approved ${days}d`,
         averageRating: 'Average rating',
+        /** Nhãn khi kỳ do ADMIN chọn — BỎ hậu tố "Nd" (cùng luật cancellations). */
+        submittedInPeriod: 'Submitted',
+        approvedInPeriod: 'Approved',
       },
       /**
        * Vùng outbox (spec P4c §3-F7). Chỉ `sent` đếm trong kỳ; hai card còn
@@ -4123,6 +4132,28 @@ export const messages = {
         searchPlaceholder: 'Text, title or author',
         clear: 'Clear',
         empty: 'No reviews match these filters.',
+        /**
+         * Bộ lọc khoảng ngày (ADR-0028 §AMEND 2) — theo ngày review được GỬI,
+         * nên chữ nói "submitted". KHÔNG phải ngày duyệt: review chưa duyệt có
+         * `moderatedAt` null, lọc cột ấy là quét sạch hàng đợi khỏi bảng.
+         */
+        dateFilterLabel: 'Filter by submitted date',
+        dateFrom: 'Submitted from',
+        dateTo: 'Submitted to',
+        clearDates: 'Clear dates',
+        datePlaceholder: 'January 01, 2026',
+        pickDateFrom: 'Open calendar to pick the start date',
+        pickDateTo: 'Open calendar to pick the end date',
+        /**
+         * Ô rỗng KHI ĐANG lọc ngày — nói thẳng khoảng đang lọc và mở sẵn lối
+         * thoát, cùng nếp hai vùng trước. Ở hàng đợi kiểm duyệt chuyện này
+         * đáng nói hơn: một bảng rỗng dễ bị đọc thành "đã dọn sạch", trong khi
+         * thủ phạm chỉ là hai ô ngày đặt từ lúc trước.
+         */
+        emptyInRange: (range: string) => `No reviews were submitted between ${range}.`,
+        emptyFrom: (date: string) => `No reviews were submitted on or after ${date}.`,
+        emptyTo: (date: string) => `No reviews were submitted on or before ${date}.`,
+        showAllDates: 'Show reviews from all dates',
         columns: {
           review: REVIEW_CONTEXT_COPY.review,
           rating: REVIEW_CONTEXT_COPY.rating,

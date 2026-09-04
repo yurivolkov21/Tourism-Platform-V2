@@ -163,3 +163,71 @@ describe('toReviewsListInput', () => {
     });
   });
 });
+
+/**
+ * Bộ lọc khoảng ngày của `/reviews` (ADR-0028 §AMEND 2). Cùng luật khoan dung
+ * và cùng mặc định với `/cancellations`: đây là hàng đợi việc phải làm, nên URL
+ * trần CHÍNH LÀ "xem tất cả" và không có sentinel `?dates=all` nào.
+ */
+describe('reviews — bộ lọc khoảng ngày', () => {
+  it('URL trần KHÔNG mang ngày nào: mặc định là xem tất cả', () => {
+    const query = parseReviewsSearchParams({});
+    expect(query.from).toBeUndefined();
+    expect(query.to).toBeUndefined();
+  });
+
+  it('đọc đúng hai ngày trên URL', () => {
+    expect(parseReviewsSearchParams({ from: '2026-05-01', to: '2026-05-31' })).toMatchObject({
+      from: '2026-05-01',
+      to: '2026-05-31',
+    });
+  });
+
+  it('ngày rác rơi im lặng, không ném lên API', () => {
+    expect(parseReviewsSearchParams({ from: '2026-02-31' }).from).toBeUndefined();
+    expect(parseReviewsSearchParams({ to: '31-05-2026' }).to).toBeUndefined();
+    expect(parseReviewsSearchParams({ from: '9999-12-31' }).from).toBeUndefined();
+  });
+
+  it('khoảng NGƯỢC giữ `from`, bỏ `to` — người gõ thấy ngay cái vừa bị vứt', () => {
+    const query = parseReviewsSearchParams({ from: '2026-05-31', to: '2026-05-01' });
+    expect(query.from).toBe('2026-05-31');
+    expect(query.to).toBeUndefined();
+  });
+
+  it('href mang ngày, và đổi ngày ĐẶT LẠI trang về 1', () => {
+    expect(reviewsHref({ page: 4, limit: 20, from: '2026-05-01' }, { to: '2026-05-31' })).toBe(
+      '/reviews?from=2026-05-01&to=2026-05-31',
+    );
+  });
+
+  it('xoá trắng ô ngày là XOÁ đầu đó — `null` và chuỗi rỗng như nhau', () => {
+    const current = { page: 1, limit: 20, from: '2026-05-01', to: '2026-05-31' };
+    expect(reviewsHref(current, { from: null, to: null })).toBe('/reviews');
+    expect(reviewsHref(current, { from: '', to: '' })).toBe('/reviews');
+  });
+
+  it('ngày cộng dồn với status và search, không cái nào thay cái nào', () => {
+    expect(
+      reviewsHref(
+        { page: 1, limit: 20, state: 'pending', search: 'guide' },
+        { from: '2026-05-01' },
+      ),
+    ).toBe('/reviews?status=pending&q=guide&from=2026-05-01');
+  });
+
+  it('ngày rác từ patch bị vứt ở đây, không ném lên URL', () => {
+    // Một href sinh ra 400 là một cú click chết; luật khoan dung phải giống
+    // hệt đường đọc.
+    expect(reviewsHref({ page: 1, limit: 20 }, { from: '2026-02-31' })).toBe('/reviews');
+  });
+
+  it('input contract mang from/to — không lọc thì KHÔNG gửi key nào', () => {
+    // Cùng cái bẫy đã ghi ở `toReviewsListInput`: field trôi lệch thì Zod
+    // strip im lặng và bộ lọc thành nút chết mà không lỗi nào đỏ.
+    expect(
+      toReviewsListInput({ page: 1, limit: 20, from: '2026-05-01', to: '2026-05-31' }),
+    ).toEqual({ page: 1, pageSize: 20, from: '2026-05-01', to: '2026-05-31' });
+    expect(toReviewsListInput({ page: 1, limit: 20 })).toEqual({ page: 1, pageSize: 20 });
+  });
+});

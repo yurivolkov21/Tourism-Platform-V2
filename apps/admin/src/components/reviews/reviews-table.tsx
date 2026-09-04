@@ -3,14 +3,27 @@
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
-import { CalendarIcon, MapPinIcon, StarIcon, TagIcon, UserIcon } from 'lucide-react';
+import { ButtonLink } from '@tourism/ui/components/button-link';
+import {
+  CalendarIcon,
+  CalendarOffIcon,
+  MapPinIcon,
+  StarIcon,
+  TagIcon,
+  UserIcon,
+} from 'lucide-react';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { ModerateActions } from '@/components/reviews/moderate-actions';
-import { ReviewsSearch, ReviewsStateTabs } from '@/components/reviews/reviews-toolbar';
+import {
+  ReviewsDateRange,
+  ReviewsSearch,
+  ReviewsStateTabs,
+} from '@/components/reviews/reviews-toolbar';
+import { formatCalendarDate, formatDateRange } from '@/lib/bookings-view';
 import type { ModerateAction } from '@/lib/reviews-moderate';
 import { type ReviewsQuery, reviewsHref } from '@/lib/reviews-query';
 import { type ReviewRowVM, reviewStateBadgeVariant } from '@/lib/reviews-view';
@@ -217,6 +230,7 @@ export function ReviewsTable({ rows, query, total, totalPages, moderate }: Revie
       views={<ReviewsStateTabs query={query} />}
       actions={
         <>
+          <ReviewsDateRange query={query} />
           <ReviewsSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
@@ -233,7 +247,40 @@ export function ReviewsTable({ rows, query, total, totalPages, moderate }: Revie
         />
       }
     >
-      <DataTableBody table={table} empty={t.empty} />
+      <DataTableBody table={table} empty={<ReviewsEmpty query={query} />} />
     </DataTableFrame>
+  );
+}
+
+/**
+ * Ô rỗng của bảng. Đang lọc ngày thì nói THẲNG khoảng đang lọc và mở sẵn một
+ * lối thoát — cùng lưới an toàn với `/bookings` và `/cancellations`.
+ *
+ * Ở hàng đợi kiểm duyệt câu này đáng giá hơn hai vùng kia: một bảng rỗng rất
+ * dễ bị đọc thành "đã dọn sạch hàng đợi", trong khi thủ phạm chỉ là hai ô ngày
+ * đặt từ lúc trước.
+ */
+function ReviewsEmpty({ query }: { query: ReviewsQuery }) {
+  if (!query.from && !query.to) return <>{t.empty}</>;
+
+  // Ba dạng câu cho ba hình dạng khoảng — 'between X.' cho khoảng một đầu là
+  // câu cụt và đọc thành 'đúng ngày X'.
+  const message =
+    query.from && query.to
+      ? t.emptyInRange(formatDateRange(query.from, query.to))
+      : query.from
+        ? t.emptyFrom(formatCalendarDate(query.from))
+        : t.emptyTo(formatCalendarDate(query.to as string));
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p>{message}</p>
+      {/* Link chứ không nút: đổi bộ lọc là ĐIỀU HƯỚNG ở vùng này (spec P4b
+          §2.2), và một link thì mở tab mới / copy được như mọi filter khác. */}
+      <ButtonLink variant="outline" size="sm" href={reviewsHref(query, { from: null, to: null })}>
+        <CalendarOffIcon data-icon="inline-start" aria-hidden="true" />
+        {t.showAllDates}
+      </ButtonLink>
+    </div>
   );
 }

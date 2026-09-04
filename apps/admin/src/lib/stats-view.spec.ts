@@ -58,6 +58,7 @@ const CANCELLATIONS: AdminCancellationsStats = {
 const REVIEWS: AdminReviewsStats = {
   period,
   pending: { current: 3, previous: 7 },
+  submitted: { current: 15, previous: 11 },
   approved: { current: 9, previous: 4 },
   averageRating: { current: '4.60', previous: '4.20' },
 };
@@ -275,12 +276,36 @@ describe('toReviewsStatCards', () => {
     expect(rating.caption).toBe(t.comparison(t.noValue, 28));
   });
 
-  it('ba card theo đúng thứ tự spec §3-F5', () => {
+  it('BỐN card theo đúng thứ tự — mẫu số đứng ngay sau hàng đợi', () => {
+    // `submitted` thêm ở ADR-0028 §AMEND 2 §4: không có nó thì "Approved 9"
+    // không đọc được. Vị trí là một phần của ý nghĩa — nhận về · xử · còn
+    // tồn · chất lượng, và `submitted` cùng tập với `averageRating`.
     expect(toReviewsStatCards(REVIEWS).map((c) => c.key)).toEqual([
       'pending',
+      'submitted',
       'approved',
       'averageRating',
     ]);
+  });
+
+  it('submitted TRUNG TÍNH: nhiều review gửi về không tự thân là tốt hay xấu', () => {
+    const submitted = card(toReviewsStatCards(REVIEWS), 'submitted');
+    expect(submitted.value).toBe('15');
+    expect(submitted.delta?.direction).toBe('up');
+    expect(submitted.deltaGood).toBeUndefined();
+  });
+
+  it('kỳ do ADMIN chọn: nhãn BỎ hậu tố "Nd", caption in ngày thật', () => {
+    // "Submitted 31d" đọc thành "31 ngày gần nhất", tức một cửa sổ TRƯỢT;
+    // nhưng lọc tháng 5 là một kỳ đứng yên (cùng luật đã chốt ở cancellations).
+    const picked = toReviewsStatCards({
+      ...REVIEWS,
+      period: { ...period, generatedAt: '2026-09-20T10:30:00.000Z' },
+    });
+
+    expect(card(picked, 'submitted').label).toBe(t.reviews.submittedInPeriod);
+    expect(card(picked, 'approved').label).toBe(t.reviews.approvedInPeriod);
+    expect(card(picked, 'submitted').caption).not.toContain('28 days ago');
   });
 });
 

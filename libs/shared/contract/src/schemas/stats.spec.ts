@@ -139,13 +139,28 @@ describe('area stat schemas', () => {
     expect(parsed.pendingQueue).toEqual({ current: 3, previous: 5 });
   });
 
-  it('reviews carries the queue, approvals and an average that may be absent', () => {
+  it('reviews carries the queue, submissions, approvals and an average that may be absent', () => {
     const parsed = AdminReviewsStatsSchema.parse({
       period,
       pending: { current: 7, previous: 2 },
+      submitted: { current: 11, previous: 9 },
       approved: { current: 5, previous: 6 },
       averageRating: { current: '4.60', previous: null },
     });
     expect(parsed.averageRating).toEqual({ current: '4.60', previous: null });
+    expect(parsed.submitted).toEqual({ current: 11, previous: 9 });
+  });
+
+  it('reviews REJECTS a payload without submitted — mẫu số là bắt buộc', () => {
+    // ADR-0028 §AMEND 2 §4: thiếu nó thì "Approved 5" không đọc được. Để
+    // `.optional()` là mở đường cho một endpoint quên điền mà không ai biết.
+    expect(() =>
+      AdminReviewsStatsSchema.parse({
+        period,
+        pending: { current: 7, previous: 2 },
+        approved: { current: 5, previous: 6 },
+        averageRating: { current: '4.60', previous: '4.20' },
+      }),
+    ).toThrow();
   });
 });

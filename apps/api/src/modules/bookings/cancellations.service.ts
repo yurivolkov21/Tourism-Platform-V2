@@ -10,10 +10,10 @@ import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
+import { createdAtRange } from '../../lib/created-at-range.js';
 import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
-import { createdAtRange } from './bookings-date-range.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount } from './refund-math.js';
 import {
@@ -238,7 +238,7 @@ export class CancellationsService {
     // Khoảng ngày theo `createdAt` — ngày khách GỬI yêu cầu (ADR-0028 §AMEND).
     // KHÔNG theo `decidedAt`: hàng REQUESTED có `decidedAt` null nên lọc theo
     // cột ấy sẽ quét sạch hàng đợi đang mở khỏi bảng. Phép đổi ngày → mốc và
-    // lý do dùng biên nửa-mở nằm ở `bookings-date-range.ts`, dùng CHUNG với
+    // lý do dùng biên nửa-mở nằm ở `created-at-range.ts`, dùng CHUNG với
     // `/bookings` nên hai vùng cắt cùng một nhát.
     const createdAt = createdAtRange(from, to);
     const where: Prisma.CancellationRequestWhereInput = {

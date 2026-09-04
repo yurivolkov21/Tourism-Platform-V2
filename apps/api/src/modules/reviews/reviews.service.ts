@@ -19,6 +19,7 @@ import {
   MediaType,
   ReviewSource,
 } from '../../generated/prisma/enums.js';
+import { createdAtRange } from '../../lib/created-at-range.js';
 import { uploadFolderFor } from '../../lib/upload-signing.js';
 import { MediaService } from '../media/media.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
@@ -638,6 +639,8 @@ export class ReviewsService {
     source?: ReviewSource;
     rating?: number;
     search?: string;
+    from?: string;
+    to?: string;
   }): Promise<{
     items: AdminReview[];
     page: number;
@@ -647,8 +650,15 @@ export class ReviewsService {
   }> {
     // R2: cộng dồn các filter tùy chọn — source + rating khớp chính xác, search
     // là free-text không phân biệt hoa thường trên body/title/tên tác giả.
+    //
+    // ADR-0028 §AMEND 2 thêm khoảng ngày theo `createdAt` — ngày review được
+    // GỬI, cùng cột `orderBy` bên dưới. Biên NỬA-MỞ (lý do đầy đủ ở
+    // `created-at-range.ts`), dùng CHUNG hàm với bảng bookings và bảng
+    // cancellations nên ba vùng không thể hiểu "trọn ngày `to`" khác nhau.
+    const createdAt = createdAtRange(query.from, query.to);
     const where: Prisma.ReviewWhereInput = {
       ...(query.isApproved === undefined ? {} : { isApproved: query.isApproved }),
+      ...(createdAt ? { createdAt } : {}),
       ...(query.source ? { source: query.source } : {}),
       ...(query.rating ? { rating: query.rating } : {}),
       ...(query.search

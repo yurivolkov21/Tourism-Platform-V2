@@ -81,8 +81,16 @@ export async function fetchAdminCancellationsStats(
   return api.admin.stats.cancellations(range ?? {}, { context: statsContext(cookie) });
 }
 
-export async function fetchAdminReviewsStats(cookie: string): Promise<AdminReviewsStats> {
-  return api.admin.stats.reviews(undefined, { context: statsContext(cookie) });
+/**
+ * Bộ số `/reviews` — endpoint stats thứ BA nhận khoảng ngày (ADR-0028
+ * §AMEND 2). Cùng nếp `/cancellations`: vùng này mặc định KHÔNG lọc ngày nên
+ * `{}` là ca thường gặp, và lúc đó server dùng cửa sổ trượt 28 ngày như trước.
+ */
+export async function fetchAdminReviewsStats(
+  cookie: string,
+  range?: { from?: string; to?: string },
+): Promise<AdminReviewsStats> {
+  return api.admin.stats.reviews(range ?? {}, { context: statsContext(cookie) });
 }
 
 /**

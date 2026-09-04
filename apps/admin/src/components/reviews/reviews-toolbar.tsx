@@ -5,6 +5,7 @@ import { CircleCheckIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
+import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
 import { parseReviewState, type ReviewsQuery, reviewsHref } from '@/lib/reviews-query';
 
 /**
@@ -63,6 +64,41 @@ export function ReviewsSearch({ query }: { query: ReviewsQuery }) {
       value={query.search}
       onSearch={(term) => router.push(reviewsHref(query, { search: term }))}
       onClear={() => router.push(reviewsHref(query, { search: null }))}
+    />
+  );
+}
+
+/**
+ * Khoảng ngày GỬI review (ADR-0028 §AMEND 2) — vỏ mỏng quanh kit
+ * `ToolbarDateRange`, consumer thứ ba sau `/bookings` và `/cancellations`.
+ *
+ * Lọc theo `createdAt`, nên chữ nói "Submitted from/to". KHÔNG lọc theo
+ * `moderatedAt` dù nó khớp tuyệt đối với card Approved: review chưa duyệt có
+ * `moderatedAt` null, nên lọc cột ấy sẽ quét sạch hàng đợi khỏi bảng — tức
+ * xoá mất lý do tồn tại của trang.
+ *
+ * Vùng này mặc định KHÔNG lọc ngày (hai ô trống), giống `/cancellations`:
+ * hàng đợi việc phải làm thì mở ra phải thấy đủ, kể cả review gửi tháng trước.
+ */
+export function ReviewsDateRange({ query }: { query: ReviewsQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarDateRange
+      idPrefix="reviews"
+      label={t.dateFilterLabel}
+      labels={{
+        from: t.dateFrom,
+        to: t.dateTo,
+        openFrom: t.pickDateFrom,
+        openTo: t.pickDateTo,
+        placeholder: t.datePlaceholder,
+        clear: t.clearDates,
+      }}
+      from={query.from}
+      to={query.to}
+      hrefFor={(patch) => reviewsHref(query, patch)}
+      onNavigate={router.push}
     />
   );
 }

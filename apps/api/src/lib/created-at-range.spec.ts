@@ -1,4 +1,4 @@
-import { createdAtRange } from './bookings-date-range.js';
+import { createdAtRange } from './created-at-range.js';
 
 /**
  * Biên của bộ lọc ngày `/bookings` (spec P4b §3-F6). Đây là chỗ một lỗi lệch

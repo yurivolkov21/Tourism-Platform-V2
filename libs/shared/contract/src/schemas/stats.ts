@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { CalendarDateSchema } from './bookings.js';
 import { DecimalStringSchema } from './catalog.js';
+import { CalendarDateSchema } from './common.js';
 
 /**
  * Số liệu vùng admin (spec P4b §3-F5) — nguồn cho hàng stat card đứng TRÊN
@@ -182,7 +182,20 @@ export const AdminReviewsStatsSchema = z.object({
   period: StatsPeriodSchema,
   /** Ảnh chụp hàng đợi chờ duyệt: BÂY GIỜ so với ĐẦU kỳ này. */
   pending: CountMetricSchema,
-  /** Review được duyệt trong kỳ. */
+  /**
+   * Review GỬI trong kỳ (`created_at`) — MẪU SỐ của cả hàng đợi (ADR-0028
+   * §AMEND 2 §4). Không có nó thì "duyệt 12" không đọc được: 12 trên 12 hay
+   * 12 trên 300 là hai tình trạng khác hẳn. Cùng tập, cùng cột neo với
+   * `averageRating`.
+   */
+  submitted: CountMetricSchema,
+  /**
+   * Review được duyệt trong kỳ — đếm LƯỢT DUYỆT trên audit trail, neo
+   * `event.created_at`. ⚠️ Cột neo KHÁC `submitted`/bảng (`review.created_at`):
+   * một review gửi tháng 6 duyệt tháng 9 đếm vào Approved tháng 9 mà không
+   * xuất hiện trong bảng lọc tháng 6. Cố ý — nó đo CÔNG VIỆC ĐÃ LÀM trong kỳ,
+   * không đo lô hàng nào được xử (ADR-0028 §AMEND 2 §1).
+   */
   approved: CountMetricSchema,
   /** Điểm trung bình 1..5 ('4.60'). null = kỳ không có review nào. */
   averageRating: DecimalMetricSchema,

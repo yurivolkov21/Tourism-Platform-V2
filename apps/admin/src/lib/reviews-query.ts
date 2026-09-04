@@ -4,6 +4,7 @@ import {
   appendPaging,
   clampSearch,
   firstParam,
+  parseDateRange,
   parsePaging,
   pickPatch,
   type RawSearchParams,
@@ -59,6 +60,10 @@ export interface ReviewsQuery {
   limit: number;
   state?: ReviewState;
   search?: string;
+  /** Ngày lịch `YYYY-MM-DD` theo `createdAt` — ngày review được GỬI, TÍNH VÀO. */
+  from?: string;
+  /** Ngày lịch `YYYY-MM-DD`, cũng TÍNH VÀO — trọn ngày đó. */
+  to?: string;
 }
 
 /**
@@ -74,6 +79,9 @@ export function parseReviewsSearchParams(raw: RawSearchParams): ReviewsQuery {
     ...parsePaging(raw),
     ...(state ? { state } : {}),
     ...(search ? { search } : {}),
+    // Luật ngày (rác rơi im lặng, khoảng ngược giữ `from`) nằm ở kit — ba vùng
+    // lọc ngày phải khoan dung y hệt nhau.
+    ...parseDateRange(firstParam(raw.from), firstParam(raw.to)),
   };
 }
 
@@ -87,6 +95,9 @@ export interface ReviewsHrefPatch {
   limit?: number;
   state?: ReviewState | null;
   search?: string | null;
+  /** `null` hoặc chuỗi rỗng (ô date bị xoá trắng) đều là XOÁ đầu đó. */
+  from?: string | null;
+  to?: string | null;
 }
 
 /**
@@ -96,14 +107,26 @@ export interface ReviewsHrefPatch {
 export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): string {
   const state = pickPatch(patch.state, current.state);
   const search = clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH);
+  // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
+  // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
+  const { from, to } = parseDateRange(
+    pickPatch(patch.from, current.from),
+    pickPatch(patch.to, current.to),
+  );
 
   const scopeChanged =
-    patch.state !== undefined || patch.search !== undefined || patch.limit !== undefined;
+    patch.state !== undefined ||
+    patch.search !== undefined ||
+    patch.limit !== undefined ||
+    patch.from !== undefined ||
+    patch.to !== undefined;
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
   const params = new URLSearchParams();
   if (state) params.set('status', state);
   if (search) params.set('q', search);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
   appendPaging(params, paging);
 
   return tableHref('/reviews', params);
@@ -129,5 +152,7 @@ export function toReviewsListInput(query: ReviewsQuery): ReviewsListInput {
     pageSize: query.limit,
     ...(query.state ? { isApproved: query.state === 'approved' } : {}),
     ...(query.search ? { search: query.search } : {}),
+    ...(query.from ? { from: query.from } : {}),
+    ...(query.to ? { to: query.to } : {}),
   };
 }

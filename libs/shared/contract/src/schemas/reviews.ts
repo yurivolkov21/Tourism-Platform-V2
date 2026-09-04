@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { BookingCodeSchema, PageQuerySchema } from './common.js';
+import { BookingCodeSchema, CalendarDateSchema, PageQuerySchema } from './common.js';
 import { MediaItemSchema, REVIEW_PHOTOS_MAX } from './media.js';
 
 export const RatingSchema = z.int().min(1).max(5);
@@ -98,7 +98,28 @@ export const AdminReviewsQuerySchema = PageQuerySchema.extend({
   source: z.enum(['VERIFIED', 'CURATED']).optional(),
   rating: RatingSchema.optional(),
   search: z.string().min(1).max(100).optional(),
-});
+  /**
+   * Khoảng ngày lọc theo `created_at` — ngày review được GỬI (ADR-0028
+   * §AMEND 2), cùng cột bảng đang sắp xếp.
+   *
+   * KHÔNG lọc theo `moderated_at` dù nó khớp tuyệt đối với card Approved:
+   * review chưa duyệt có `moderated_at` null, nên lọc cột ấy sẽ quét sạch
+   * hàng đợi khỏi bảng — tức xoá mất lý do tồn tại của trang.
+   *
+   * Bỏ trống cả hai = KHÔNG lọc ngày, và đó là MẶC ĐỊNH của vùng (giống
+   * `/cancellations`, khác `/bookings`): đây là hàng đợi việc phải làm, mở
+   * trang ra phải thấy đủ mọi review đang chờ kể cả cái gửi từ tháng trước.
+   * Vì URL trần chính là "xem tất cả" nên ở đây KHÔNG có sentinel `?dates=all`.
+   */
+  from: CalendarDateSchema.optional(),
+  to: CalendarDateSchema.optional(),
+})
+  // `.refine` giữ nguyên `.shape` của ZodObject (điều kiện sống còn của
+  // `ZodSmartCoercionPlugin` bên API) — xem ghi chú ở `AdminBookingsListQuerySchema`.
+  .refine(({ from, to }) => !(from && to) || from <= to, {
+    message: 'from must be on or before to',
+    path: ['to'],
+  });
 
 export type AdminReview = z.infer<typeof AdminReviewSchema>;
 

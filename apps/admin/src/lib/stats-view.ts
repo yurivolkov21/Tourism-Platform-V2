@@ -385,12 +385,46 @@ export function toCancellationsStatCards(stats: AdminCancellationsStats): StatCa
 /** Ba card của `/reviews`. */
 export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
   const days = stats.period.windowDays;
+  const picked = isPickedPeriod(stats.period);
+  const caption = comparisonCaption(stats.period);
 
   return [
-    countCard('pending', t.reviews.pending, stats.pending, 'up-bad', days, t.snapshotComparison),
+    // Hàng đợi là ẢNH CHỤP một mốc, không phải số đếm trong kỳ (ADR-0028
+    // §AMEND 1 §3) — caption phải nói đúng chuyện đó.
+    countCard(
+      'pending',
+      t.reviews.pending,
+      stats.pending,
+      'up-bad',
+      days,
+      snapshotCaption(stats.period),
+    ),
+    // MẪU SỐ, đứng ngay sau hàng đợi: nhận về bao nhiêu. Hướng TRUNG TÍNH —
+    // nhiều review gửi về không tự thân là tốt hay xấu, nó chỉ là khối lượng.
+    countCard(
+      'submitted',
+      picked ? t.reviews.submittedInPeriod : t.reviews.submitted(days),
+      stats.submitted,
+      'neutral',
+      days,
+      caption,
+    ),
     // Duyệt được nhiều hơn là hàng đợi được làm — khác cancellations (ở đó
     // "duyệt" là tiền đi ra), nên chỗ này có hướng tốt còn chỗ kia trung tính.
-    countCard('approved', t.reviews.approved(days), stats.approved, 'up-good', days),
+    //
+    // ⚠️ Card này neo `event.created_at`, còn bảng và hai card kia neo
+    // `review.created_at` (ADR-0028 §AMEND 2 §1) — nó đo CÔNG VIỆC ĐÃ LÀM
+    // trong kỳ, không đo lô hàng nào được xử. Chỗ đọc ra điều đó là cặp nhãn
+    // `Submitted` / `Approved` đứng cạnh nhau, KHÔNG phải caption: caption là
+    // khe của phép so sánh, nhét câu cảnh báo vào đó là đổi mất con số kỳ trước.
+    countCard(
+      'approved',
+      picked ? t.reviews.approvedInPeriod : t.reviews.approved(days),
+      stats.approved,
+      'up-good',
+      days,
+      caption,
+    ),
     decimalCard(
       'averageRating',
       t.reviews.averageRating,
@@ -400,6 +434,9 @@ export function toReviewsStatCards(stats: AdminReviewsStats): StatCardVM[] {
       formatRating,
       // Thang sao chặn hai đầu → delta là hiệu số thô (0.23), không phải %.
       'points',
+      // Cùng caption với `submitted` vì cùng tập, cùng cột neo — kỳ do admin
+      // chọn thì in ngày thật thay vì "28 days ago".
+      caption,
     ),
   ];
 }

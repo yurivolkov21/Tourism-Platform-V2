@@ -701,8 +701,9 @@ export const contract = {
         .route({
           method: 'GET',
           path: '/api/admin/stats/reviews',
-          summary: 'Moderation queue + ratings for the last 28 days and the 28 before that',
+          summary: 'Moderation queue + ratings for a date range, against an equally long one',
         })
+        .input(AdminStatsRangeQuerySchema)
         .output(AdminReviewsStatsSchema),
       // F7 (spec P4c): sent là đếm trong kỳ; queued/failed là ảnh chụp một số đơn.
       outbox: oc

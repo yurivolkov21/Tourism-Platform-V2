@@ -43,7 +43,9 @@ export class AdminStatsController {
 
   @Implement(contract.admin.stats.reviews)
   reviews() {
-    return implement(contract.admin.stats.reviews).handler(() => this.stats.adminReviews());
+    return implement(contract.admin.stats.reviews).handler(({ input }) =>
+      this.stats.adminReviews(input),
+    );
   }
 
   @Implement(contract.admin.stats.outbox)
