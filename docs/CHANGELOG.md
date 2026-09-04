@@ -8,6 +8,102 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Approve trở thành quy trình bốn bước, và ba lỗ làm rò ghế được bịt (nhánh `fix/p4c-backend-logic`, 4 commit `31b9dfe..8a64d25`, ~20 file, KHÔNG migration)
+
+Đợt này thi công ADR-0029 rồi phát hiện thêm hai ca nữa của **đúng một bug**:
+ghế không bao giờ được nhả vì approve từ chối chạy.
+
+### B1 — approve nhận số tiền, chịu được dư 0, và chặn ca chồng lấn
+
+`decide` nhận `refundAmount`; approve trên booking đã hoàn đủ không còn ăn 422
+mà vẫn đóng request, huỷ booking, nhả ghế; gate W3 nới cho booking `CANCELLED`
+còn dư nhưng KHÔNG ghi đè `CANCELLED` bằng trạng thái derive từ sổ; nút
+`Issue refund` tự ẩn khi booking đang có yêu cầu huỷ chờ xử lý (ADR-0029
+§AMEND) — suy từ TRẠNG THÁI, không từ trang nào dẫn tới.
+
+Hai record kẹt của user tự lành khi bấm Approve, không cần SQL tay. User đã
+nghiệm thu: ghế nhả đúng.
+
+### Dialog xin huỷ của khách: rộng gấp đôi, chia hai nửa
+
+Dialog cũ rộng 24rem và chỉ nói MỘT nửa câu chuyện — in ước tính hoàn tiền mà
+không hề nói con số ấy thuộc booking nào. Nay chia hai nửa: trái là thứ đang
+huỷ (tour, đợt, số khách, mã), phải là con số hoàn làm neo thị giác cùng căn cứ
+sinh ra nó. Thêm khối "What happens next" (duyệt ~2 ngày làm việc · hoàn về
+đúng phương thức đã trả · 5–10 ngày làm việc lên sao kê).
+
+Ba thứ phải làm cho đúng chứ không chỉ cho đẹp:
+
+- `formatMoneyExact` mới giữ đủ hai số lẻ. `formatMoney` của trang tour cắt
+  phần lẻ (giá tour tròn trăm, chuyện biên tập); dùng nó cho tiền hoàn là in
+  "$600" trong khi khách nhận $599.50 — con số họ đối chiếu được với sao kê.
+- Lớp mở rộng phải là `data-[size=default]:sm:max-w-2xl`. Một `sm:max-w-2xl`
+  trần thua luật gốc về specificity và tailwind-merge không gộp hai lớp khác
+  tập biến thể, nên nó sẽ nằm im trong DOM còn dialog vẫn 24rem. Đo bằng
+  `twMerge` trước khi viết.
+- `max-h` + `overflow-y-auto`: `AlertDialogContent` neo `top-1/2` mà không có
+  trần chiều cao — nội dung dài trên màn thấp tràn ra cả hai đầu không cuộn
+  được, tức mất luôn nút gửi.
+
+Khối ước tính hoàn tiền trước nay **chưa có test nào**; bổ sung 9 ca.
+
+### Stepper approve bốn bước (user chốt: hoàn tiền không nên bấm một hai nút là xong)
+
+Request → Policy → Amount → Confirm, mỗi bước mang MỘT thứ mới: nguyên văn lý
+do khách viết · căn cứ ra con số (mấy ngày, bậc nào, ân hạn hay badge có nâng
+không, đã hoàn bao nhiêu) · quyết định duy nhất của luồng cùng câu cảnh báo
+approve chỉ chạy một lần · ba hệ quả và ô ghi lý do bắt buộc khi lệch bậc.
+
+Phần trăm đi qua `refundPercentForRequest` — ĐÚNG hàm mà dialog xin huỷ bên web
+gọi — nên khách và admin không thể nhìn hai con số khác nhau.
+
+Dùng `Stepper` sẵn có của `@tourism/ui` thay vì port `stepper-03` của Shadcn
+Space: bộ ấy đã tokens-only, đã có điều hướng bàn phím và `role="tablist"`, và
+đang nằm không dùng. Bản stepper-03 hardcode `text-teal-400` (phạm luật
+tokens-only), ghim hình học cho đúng bốn bước, và cho **nhảy cóc sang bất kỳ
+bước nào** — thứ tuyệt đối không được có ở một lệnh tiền.
+
+### Ba phát hiện khi thi công
+
+1. **`refundAmount` chưa từng rời client.** B1 mở contract nhưng type
+   `DecideAction` không theo, nên approve vẫn âm thầm hoàn trọn phần dư — đúng
+   hành vi mà ADR-0029 §1 định thay. Contract xanh, test xanh, và không có gì
+   báo.
+2. **Mức hoàn BẰNG 0 không approve được** (ADR-0029 §AMEND 3). Bậc cho 0% ở ca
+   huỷ sát ngày khởi hành; con số ấy rơi vào `classifyRefundAmount` và ăn 422
+   `ZERO_OR_NEGATIVE`, tức **ca thường gặp nhất** kẹt ở `REQUESTED` và GHẾ
+   KHÔNG BAO GIỜ ĐƯỢC NHẢ. Cùng bug với §2, khác đường vào. Nay gộp thành một
+   điều kiện `noMoneyToMove`: không đồng nào phải chuyển thì bỏ gate, không
+   gọi gateway, không ghi sổ, nhưng vẫn đóng request, huỷ booking và nhả ghế.
+3. **Hoàn một phần là MỘT LẦN ở back-office** (§AMEND 2). Sau approve booking
+   thành `CANCELLED`, `canRefund` ẩn nút Issue refund, nên phần dư hết đường
+   hoàn. Giữ nguyên — nới ra là dựng lại hai cửa cùng chuyển tiền — nhưng bước
+   Amount phải NÓI THẲNG, vì một giới hạn không công bố là một cái bẫy.
+
+### Review findings vá trong đợt
+
+- `refund-panel.spec.tsx` dùng khoá i18n `t.issue` (không tồn tại; đúng là
+  `t.cta`), nên `getByRole('button', { name: undefined })` khớp BẤT KỲ nút nào
+  — cả 11 assertion về nhãn nút đều rỗng nghĩa, gồm hai ca mới của ADR-0029
+  §AMEND. Test vẫn xanh; typecheck bị cache Turbo che, chỉ lộ khi `@tourism/i18n`
+  đổi làm hash admin đổi.
+- `consequences.refund` còn nói *"the full remaining balance"* trong khi
+  approve nay hoàn theo bậc — sai ở mọi ca hoàn một phần; nay nhận số tiền
+  thật làm tham số.
+- jsdom không cài `window.matchMedia`, `Stepper` đọc breakpoint bằng media
+  query nên ném ngay lúc mount; thêm shim vào `vitest.setup.ts` của admin.
+
+### Sổ nợ mở
+
+- Mail `CANCELLATION_APPROVED` sẽ nói `amount: 0.00` ở ca duyệt không hoàn
+  đồng nào — mẫu mail cần một câu riêng, chưa làm.
+- Chốt chặn 3 ngày trước khởi hành cho đặt tour: tách đợt sau, cần ADR riêng
+  (đổi luật ĐẶT, không phải luật hoàn).
+
+Tests after: 2.751 unit (10 tokens · 217 contract · 22 ui · 2 i18n · 311 api ·
+762 admin · 1.427 web) và 336 integration. Build web/admin KHÔNG chạy được
+trong đợt (dev server của user đang giữ `.next`, guard chặn đúng như thiết kế).
+
 ## 2026-09-04 — Ân hạn 24 giờ, và gỡ BỐN lời hứa "48 giờ" chỏi chính sách (nhánh `fix/p4c-backend-logic`, 3 commit, ~15 file, KHÔNG migration)
 
 Đợt này sinh ra từ một câu hỏi của user lúc nghiệm thu, rồi lộ thêm một lỗ
