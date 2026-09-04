@@ -11,10 +11,9 @@ import {
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 
 /**
- * Lọc theo nguồn đăng ký của `/subscribers` — kit `ToolbarFilterMenu` (khuôn
- * `dropdown-menu-10`, user chốt 03/09 đợt 2). Trước 03/09 là `ToolbarSelect`.
+ * Lọc theo nguồn đăng ký của `/subscribers` — kit `ToolbarFilterMenu`.
  *
- * BA quyết định của F10 phải sống qua lần đổi control này:
+ * BA quyết định RIÊNG của vùng:
  *
  * 1. Danh sách mục đến từ CHÍNH response của list (`sources` distinct toàn
  *    bảng), không phải mảng viết cứng: `source` là chuỗi tự do do đường ghi
@@ -24,11 +23,12 @@ import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query'
  *    đầu gửi `source`, nút tự xuất hiện.
  * 3. Nguồn đang lọc mà không nằm trong danh sách (gõ tay `?source=`, hoặc
  *    hàng cuối cùng của nguồn đó vừa bị lọc mất) vẫn được thêm một mục TẠM —
- *    không có nó thì nút hiện "All sources" trong khi bảng đang lọc thật.
+ *    không có nó thì nút hiện "All sources" trong khi bảng đang lọc thật. Chỗ
+ *    đứng của mục ấy là việc của kit (`unknownItem`).
  *
- * Tiền tố `v:` của kit (vòng vá review F10) là bắt buộc ở đây chứ không phải
- * cẩn tắc: đường subscribe là CÔNG KHAI, nên một hàng `source = 'ALL'` trùng
- * sentinel là thứ người ngoài tạo ra được.
+ * Tiền tố `v:` của kit là bắt buộc ở đây chứ không phải cẩn tắc: đường
+ * subscribe là CÔNG KHAI, nên một hàng `source = 'ALL'` trùng sentinel là thứ
+ * người ngoài tạo ra được.
  *
  * Icon: `TagIcon` cho mỗi nguồn — đúng icon mà menu Columns của chính bảng
  * này đã dùng cho cột Source, nên nó mang sẵn nghĩa "nguồn" chứ không phải

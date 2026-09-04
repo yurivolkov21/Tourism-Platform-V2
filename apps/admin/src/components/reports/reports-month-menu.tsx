@@ -11,21 +11,19 @@ import {
 import { groupMonthOptions, reportsHref } from '@/lib/reports-query';
 
 /**
- * Ô chọn tháng của `/reports` — kit `ToolbarFilterMenu` (khuôn
- * `dropdown-menu-10`, user chốt 03/09 đợt 3). Trước 03/09 là `ToolbarSelect`.
+ * Ô chọn tháng của `/reports` — kit `ToolbarFilterMenu`.
  *
- * Đây là consumer DUY NHẤT bỏ `allItem`: một báo cáo luôn thuộc đúng một
- * tháng, không có trạng thái "mọi tháng" nào để bày — bày thêm là mời bấm vào
- * một báo cáo không tồn tại. Chính ca này là lý do prop ấy được nới thành tuỳ
- * chọn ở kit.
+ * Đây là consumer DUY NHẤT bỏ `allItem`, và chính nó là lý do prop ấy tuỳ
+ * chọn: một báo cáo luôn thuộc đúng một tháng, không có trạng thái "mọi
+ * tháng" nào để bày — bày thêm là mời bấm vào một báo cáo không tồn tại.
  *
  * Separator cắt ở mỗi lần ĐỔI NĂM (`groupMonthOptions`, logic thuần có test):
  * trong một danh sách 12 tháng, năm là mốc duy nhất mắt cần để bám.
  *
- * Bề rộng: bản Select cũ ghim `w-48`, bản này để nút tự co theo nhãn như ba
- * nút menu kia — bốn nút phải đọc ra là MỘT control. Ở đây gần như không thấy:
- * thanh `/reports` là `justify-between`, ô tháng đứng một mình bên trái nên nó
- * co giãn vào khoảng trống, không đẩy nút Print/Export nào.
+ * Bề rộng: nút tự co theo nhãn như ba nút menu kia — bốn nút phải đọc ra là
+ * MỘT control. Ở đây gần như không thấy: thanh `/reports` là
+ * `justify-between`, ô tháng đứng một mình bên trái nên nó co giãn vào khoảng
+ * trống, không đẩy nút Print/Export nào.
  */
 const t = messages.admin.reports;
 

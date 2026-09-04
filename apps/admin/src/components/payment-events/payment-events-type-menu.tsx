@@ -19,17 +19,15 @@ import {
 import { type PaymentEventsQuery, paymentEventsHref } from '@/lib/payment-events-query';
 
 /**
- * Lọc theo type của `/payment-events` — kit `ToolbarFilterMenu` (khuôn
- * `dropdown-menu-10`, user chốt 03/09 đợt 2). Trước 03/09 là `ToolbarSelect`;
- * đổi để nút này đọc ra cùng một kiểu với `/outbox` và `/subscribers`.
+ * Lọc theo type của `/payment-events` — kit `ToolbarFilterMenu`.
  *
- * HAI thứ của vùng phải sống qua lần đổi control này:
+ * HAI thứ RIÊNG của vùng, kit không lo hộ:
  *
- * 1. Tiền tố `v:` (`toFreeValue`, vòng vá review F10) — cột DB là chuỗi tự do
- *    nên một hàng `type = 'ALL'` sẽ trùng sentinel của kit nếu đi thẳng.
- * 2. Mục TẠM cho type ngoài tuple (vòng vá review F8) — một `?type=` lạ vẫn
- *    lọc thật ở API, nên menu phải HIỆN đúng giá trị đó thay vì rơi về "All
- *    types" trong khi bảng đang lọc theo thứ khác.
+ * 1. Tiền tố `v:` (`toFreeValue`) — cột DB là chuỗi tự do nên một hàng
+ *    `type = 'ALL'` sẽ trùng sentinel của kit nếu đi thẳng.
+ * 2. Mục TẠM cho type ngoài tuple — một `?type=` lạ vẫn lọc thật ở API, nên
+ *    menu phải HIỆN đúng giá trị đó thay vì rơi về "All types" trong khi bảng
+ *    đang lọc theo thứ khác. Kit quyết chỗ đứng của nó (`unknownItem`).
  *
  * Icon né hết bộ đang có trên trang này: tab provider (list/credit-card/
  * wallet), toggle Unprocessed (circle-dashed) và menu Columns (tag/banknote/

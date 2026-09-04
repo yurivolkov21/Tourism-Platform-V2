@@ -16,23 +16,21 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
 /**
  * Menu lọc của hàng điều khiển bảng admin — khuôn `dropdown-menu-10` của
- * Shadcn Studio (user chốt 03/09): `align="end"`, rộng `w-66`,
- * `DropdownMenuSeparator` chia nhóm, mỗi mục một icon.
+ * Shadcn Studio (user chốt qua bản demo
+ * `docs/design/mockups/outbox-type-menu.src.html`): `align="end"`, rộng
+ * `w-66`, `DropdownMenuSeparator` chia nhóm, mỗi mục một icon.
  *
- * Ở KIT chứ không ở từng vùng vì có BỐN consumer thật — vượt ngưỡng ≥2 của
- * luật kit (spec P4c §2.6), và vì user chốt 31/08 "muốn đổi dáng thì đổi ở
- * kit để các vùng cùng đổi". Đợt 1 (03/09) dựng bản đầu nằm trong
- * `components/outbox/`; đợt 2 cùng ngày, khi `/payment-events` và
- * `/subscribers` dùng cùng hình dạng, nó lên đây và ba vùng tiêu thụ lại —
- * đúng đường mà `ToolbarSelect` đã đi ở vòng vá review F7. Đợt 3 thêm ô tháng
- * `/reports`, và chính nó buộc `allItem` phải nới thành tuỳ chọn.
+ * Ở KIT vì có BỐN consumer — `/outbox` (loại email), `/payment-events` (type),
+ * `/subscribers` (source), `/reports` (tháng) — vượt ngưỡng ≥2 của luật kit
+ * (spec P4c §2.6), và vì user chốt 31/08 "muốn đổi dáng thì đổi ở kit để các
+ * vùng cùng đổi".
  *
  * KHÔNG thay `ToolbarSelect`: hai nơi còn lại của Select (nhánh mobile của
  * `StatusFilterTabs`, ô đổi trạng thái `/enquiries`) là danh sách phẳng ngắn,
  * và ô `/enquiries` là control GHI chứ không phải lọc. Hai control cùng sống,
  * mỗi cái một việc.
  *
- * BA CHỖ bản registry không lo hộ, vá ở đây một lần cho cả ba vùng:
+ * BA CHỖ bản registry không lo hộ, vá ở đây một lần cho mọi vùng:
  *
  * 1. dm-10 dùng `DropdownMenuItem` trơn — không có trạng thái chọn. Đây là bộ
  *    LỌC nên phải `RadioGroup`: chép y nguyên là mất dấu hiệu "đang lọc cái
@@ -94,12 +92,11 @@ export function ToolbarFilterMenu({
    *
    * Luôn đứng **CUỐI**, trong nhóm riêng dưới một separator: thứ tự đọc là
    * "tất cả → tập chính quy → ngoại lệ". Vị trí do KIT chốt chứ không phải
-   * vùng chọn — trước khi lên đây, `/payment-events` đặt nó sau còn
-   * `/subscribers` đặt nó trước, và hai menu cùng hình dạng mà xếp khác nhau
-   * là hai thói quen đọc.
+   * vùng chọn — hai menu cùng hình dạng mà xếp khác nhau là hai thói quen đọc.
    *
    * Vùng vẫn tự quyết KHI NÀO có mục lạ (nó biết tập hợp lệ của mình) và tự
-   * chọn icon; kit chỉ lo chỗ đứng.
+   * chọn icon; kit chỉ lo chỗ đứng — trước khi lên kit, hai vùng đặt nó ở hai
+   * đầu khác nhau của cùng một menu.
    */
   unknownItem?: ToolbarFilterMenuItem;
   /** Các nhóm, mỗi nhóm cách nhau một separator. Một nhóm cũng hợp lệ. */

@@ -27,13 +27,12 @@ import {
 import { type OutboxQuery, outboxHref } from '@/lib/outbox-query';
 
 /**
- * Lọc theo loại email của `/outbox` — kit `ToolbarFilterMenu` (khuôn
- * `dropdown-menu-10`, user chốt 03/09).
+ * Lọc theo loại email của `/outbox` — kit `ToolbarFilterMenu`.
  *
- * Vì sao vùng này rời kit `ToolbarSelect`: 13 loại email + mục "All" là danh
- * sách DÀI NHẤT trong cả admin, và chúng chia đúng năm họ — thứ một Select
- * phẳng không nói ra được. Vùng chỉ giữ phần kiến thức RIÊNG của nó (loại nào
- * thuộc họ nào, icon gì); hình dạng menu nằm ở kit để ba vùng cùng đổi.
+ * Vì sao là menu có nhóm chứ không phải một Select phẳng: 13 loại email + mục
+ * "All" là danh sách DÀI NHẤT trong cả admin, và chúng chia đúng năm họ — thứ
+ * một danh sách phẳng không nói ra được. Vùng chỉ giữ phần kiến thức RIÊNG
+ * của nó (loại nào thuộc họ nào, icon gì); hình dạng menu nằm ở kit.
  */
 const t = messages.admin.outbox;
 
