@@ -11,7 +11,11 @@ import {
   CancellationRequestNotFoundError,
   CancellationsService,
 } from './cancellations.service.js';
-import { RefundNothingLeftError } from './refund-math.js';
+import {
+  RefundNothingLeftError,
+  RefundOverTotalError,
+  RefundZeroOrNegativeError,
+} from './refund-math.js';
 import { BookingNotRefundableError, ProviderRefundFailedError } from './refunds.service.js';
 
 /**
@@ -39,17 +43,28 @@ export class AdminCancellationsController {
         return await this.cancellations.decide(user.id, input.id, {
           approve: input.approve,
           ...(input.decisionNote !== undefined ? { decisionNote: input.decisionNote } : {}),
+          // ADR-0029 §1 — vắng thì service hoàn TRỌN phần dư như trước.
+          ...(input.refundAmount !== undefined ? { refundAmount: input.refundAmount } : {}),
         });
       } catch (error) {
         if (error instanceof CancellationRequestNotFoundError) throw errors.NOT_FOUND();
         if (error instanceof CancellationAlreadyDecidedError) {
           throw errors.ALREADY_DECIDED({ message: error.message });
         }
-        // Các gate chỉ áp khi approve: không còn phần refund được / payment đã
-        // capture (kể cả booking đã được settle qua W3 trong khi request còn
-        // treo — khi đó admin từ chối request thay vì duyệt).
+        // Các gate chỉ áp khi approve và CHỈ khi còn tiền phải chuyển: payment
+        // chưa capture, hoặc số tiền gửi lên vượt phần dư. Booking đã settle
+        // qua W3 trong lúc request còn treo thì KHÔNG còn rơi vào đây nữa —
+        // approve chịu được phần dư 0 (ADR-0029 §2) và vẫn đóng request, huỷ
+        // booking, nhả ghế.
         if (error instanceof BookingNotRefundableError || error instanceof RefundNothingLeftError) {
           throw errors.NOT_REFUNDABLE({ message: error.message });
+        }
+        // Hai lỗi tiền chỉ với tới được từ ADR-0029 §1 (decide nhận số tiền).
+        if (error instanceof RefundOverTotalError) {
+          throw errors.OVER_TOTAL({ message: error.message });
+        }
+        if (error instanceof RefundZeroOrNegativeError) {
+          throw errors.ZERO_OR_NEGATIVE({ message: error.message });
         }
         if (error instanceof ProviderRefundFailedError) {
           throw errors.REFUND_FAILED({ message: error.message });

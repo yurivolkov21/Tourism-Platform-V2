@@ -28,6 +28,7 @@ const PAID: RefundTarget = {
   status: 'PAID',
   totalAmount: '120.00',
   refundedTotal: '0.00',
+  hasOpenCancellation: false,
   currency: 'USD',
   contactName: 'Ada Lovelace',
   refunds: [],
@@ -300,5 +301,25 @@ describe('RefundPanel — kết quả server', () => {
     // Kết quả về: câu lỗi hiện trong dialog vẫn đang mở.
     resolveRefund({ ok: false, code: 'NOT_REFUNDABLE' });
     expect(await screen.findByRole('alert')).toHaveTextContent(t.errors.NOT_REFUNDABLE);
+  });
+});
+
+/**
+ * ADR-0029 §AMEND — chặn ca chồng lấn tại nguồn: booking đang có yêu cầu huỷ
+ * chờ xử lý thì nút refund ẨN, vì đường đúng là Approve (chỉ nó nhả ghế).
+ */
+describe('RefundPanel — booking có yêu cầu huỷ đang mở', () => {
+  it('KHÔNG hiện nút refund, và nói rõ đường đúng thay vì im lặng tắt', () => {
+    render(<RefundPanel booking={{ ...PAID, hasOpenCancellation: true }} refund={vi.fn()} />);
+
+    expect(screen.queryByRole('button', { name: t.issue })).toBeNull();
+    // Một nút biến mất không lý do là một admin đi tìm cách khác — mà cách
+    // khác ở đây chính là cái bẫy làm rò ghế.
+    expect(screen.getByText(messages.admin.bookings.refund.openCancellation)).toBeInTheDocument();
+  });
+
+  it('không có request mở thì nút vẫn hiện như cũ', () => {
+    render(<RefundPanel booking={PAID} refund={vi.fn()} />);
+    expect(screen.getByRole('button', { name: t.issue })).toBeInTheDocument();
   });
 });

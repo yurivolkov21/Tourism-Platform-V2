@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DECIDE_CONTRACT_CODES } from '@/lib/cancellations-decide';
+import { DECIDE_CONTRACT_CODES, isStaleStateCode } from '@/lib/cancellations-decide';
 import { DecideActions, type DecideTarget } from './decide-actions';
 
 const t = messages.admin.cancellations.decide;
@@ -176,7 +176,9 @@ describe('DecideActions — kết quả server', () => {
   it('lỗi TRẠNG-THÁI-CŨ (NOT_FOUND/ALREADY_DECIDED/NOT_REFUNDABLE): đóng + toast đúng câu + refresh', async () => {
     // Khoá chống tái hiện (review F3): copy hứa "the queue has been refreshed"
     // mà bản đầu không refresh — admin B bấm lặp vô hạn trên hàng đã quyết.
-    for (const code of [...DECIDE_CONTRACT_CODES].filter((c) => c !== 'REFUND_FAILED')) {
+    // Hỏi CODEC thay vì lọc cứng theo tên (ADR-0029 §1 thêm hai mã tiền, và
+    // chúng KHÔNG phải trạng-thái-cũ): danh sách stale chỉ có một nguồn.
+    for (const code of [...DECIDE_CONTRACT_CODES].filter(isStaleStateCode)) {
       const user = userEvent.setup();
       const decide = vi.fn().mockResolvedValue({ ok: false, code });
       const view = render(<DecideActions request={REQUEST} decide={decide} />);

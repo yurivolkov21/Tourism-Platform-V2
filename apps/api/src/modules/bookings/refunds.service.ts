@@ -118,9 +118,19 @@ export class RefundsService {
       // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
       // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
       if (booking.status === BookingStatus.REFUNDED) throw new RefundNothingLeftError();
+      // `CANCELLED` NẰM TRONG danh sách hoàn được (ADR-0029 §3): approve với
+      // mức hoàn một phần để lại một booking đã huỷ mà sổ còn dư, và phần dư
+      // ấy vẫn là tiền mình đang nợ khách. Trước ADR-0029 trạng thái đó là ngõ
+      // cụt — 422, không đường nào hoàn nốt ngoài dashboard provider.
+      //
+      // An toàn vì bất biến tiền do TRIGGER của ADR-0009 canh
+      // (`SUM(refunds) <= total_amount`), không phải do gate này; sổ vẫn
+      // append-only, vẫn qua cùng advisory lock. Gate chỉ đang nói "booking
+      // này còn nợ khách bao nhiêu".
       const refundableStatus =
         booking.status === BookingStatus.PAID ||
-        booking.status === BookingStatus.PARTIALLY_REFUNDED;
+        booking.status === BookingStatus.PARTIALLY_REFUNDED ||
+        booking.status === BookingStatus.CANCELLED;
       if (!refundableStatus || !booking.providerPaymentId) {
         throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
       }
@@ -145,7 +155,16 @@ export class RefundsService {
         `refund:${booking.id}:${alreadyRefunded.toFixed(2)}`,
       );
 
-      const nextStatus = deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
+      // ⚠️ Booking đã CANCELLED thì GIỮ NGUYÊN CANCELLED (ADR-0029 §3).
+      // `deriveStatusAfterRefund` chỉ biết kể chuyện TIỀN; áp nó lên một
+      // booking đã huỷ là ghi đè travel story bằng money story — khách hết
+      // huỷ, `cancelled_at` mồ côi, và ghế đã nhả thì không ai biết nữa.
+      // `CANCELLED` là trạng thái TƯỜNG MINH, không phải projection của sổ
+      // (docs/conventions/booking-states.md).
+      const nextStatus =
+        booking.status === BookingStatus.CANCELLED
+          ? BookingStatus.CANCELLED
+          : deriveStatusAfterRefund(alreadyRefunded.add(amount), booking.totalAmount);
       const refundRow = await tx.refund.create({
         data: {
           bookingId: booking.id,

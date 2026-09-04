@@ -3180,6 +3180,13 @@ export const messages = {
         heading: 'Refunds',
         cta: 'Issue refund',
         /** Trạng thái ngoài PAID/PARTIALLY_REFUNDED — nút không hiện, câu này thay chỗ. */
+        /**
+         * Nút refund bị ẩn vì đang có yêu cầu huỷ chờ xử lý (ADR-0029 §AMEND).
+         * Nói RÕ đường đúng thay vì chỉ tắt nút — một nút biến mất không lý do
+         * là một admin đi tìm cách khác, và cách khác ở đây là cái bẫy.
+         */
+        openCancellation:
+          'This booking has a cancellation request awaiting review. Approve it from Cancellations instead — that refunds, cancels the booking and releases the seats in one step.',
         unavailable: 'Only a paid or partially refunded booking can be refunded.',
         form: {
           title: 'Issue a refund',
@@ -3392,8 +3399,24 @@ export const messages = {
             'This cancellation request no longer exists. The queue below has been refreshed.',
           ALREADY_DECIDED:
             'This request was already decided — a decision is final. The queue below has been refreshed with the outcome.',
+          /**
+           * ADR-0029 §2 đã gỡ ca "đã hoàn đủ" khỏi mã này — approve nay CHẠY
+           * ĐƯỢC trên booking đã settle. Câu cũ dặn admin "deny nó thay vào
+           * đó", lời dặn ấy nay sai và đã bỏ. Còn lại đúng nghĩa hẹp: payment
+           * chưa capture, tức không có gì để hoàn qua provider.
+           */
           NOT_REFUNDABLE:
-            'The booking has no refundable balance left, so it cannot be approved — it may already have been refunded. The queue has been refreshed; open the booking to check, or deny the request instead.',
+            'This booking has no captured payment to refund against, so it cannot be approved. The queue has been refreshed — open the booking to check what happened.',
+          /**
+           * Hai mã tiền, chỉ với tới được từ ADR-0029 §1 khi approve bắt đầu
+           * nhận số tiền. Chúng nói về CON SỐ vừa gửi chứ không về trạng thái
+           * booking, nên request vẫn còn nguyên và sửa tại chỗ được — khác
+           * nhóm "trạng thái cũ" phải refresh hàng đợi.
+           */
+          OVER_TOTAL:
+            'That amount is more than this booking still has left to refund. Check the refund ledger and try a smaller amount.',
+          ZERO_OR_NEGATIVE:
+            'A refund has to be greater than zero. To approve without moving any money, the booking must already be fully refunded.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing changed and the request is still awaiting review. Check the provider dashboard before trying again.',
         },

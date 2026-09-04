@@ -63,6 +63,8 @@ export interface RefundTarget {
   status: BookingStatusValue;
   totalAmount: string;
   refundedTotal: string;
+  /** Có yêu cầu huỷ nào đang `REQUESTED` không — quyết định nút refund có hiện. */
+  hasOpenCancellation: boolean;
   currency: string;
   contactName: string;
   refunds: Refund[];
@@ -71,7 +73,11 @@ export interface RefundTarget {
 export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund: RefundAction }) {
   const router = useRouter();
   const [isRefreshing, startRefresh] = useTransition();
-  const refundable = canRefund(booking.status);
+  // ADR-0029 §AMEND: booking đang có yêu cầu huỷ chờ xử lý thì ĐƯỜNG ĐÚNG là
+  // Approve ở `/cancellations/[code]` — chỉ nó mới đóng request, huỷ booking
+  // và NHẢ GHẾ. Hoàn đủ tiền bằng nút này để lại request mở và ghế rò vĩnh
+  // viễn; đó là bug đã đo được, và ẩn nút là chỗ CHẶN nó tại nguồn.
+  const refundable = canRefund(booking.status) && !booking.hasOpenCancellation;
   const remaining = remainingRefundable(booking.totalAmount, booking.refundedTotal);
 
   /** Sau MỌI kết cục đã-chạm-server: kéo sự thật mới về (ledger, status, trần). */
@@ -96,7 +102,11 @@ export function RefundPanel({ booking, refund }: { booking: RefundTarget; refund
         ) : null}
       </CardHeader>
       <CardContent className="grid gap-3 text-sm">
-        {refundable ? null : <p className="text-muted-foreground">{t.unavailable}</p>}
+        {refundable ? null : (
+          <p className="text-muted-foreground">
+            {booking.hasOpenCancellation ? t.openCancellation : t.unavailable}
+          </p>
+        )}
         {booking.refunds.length > 0 ? (
           <RefundLedgerTable
             refunds={booking.refunds}

@@ -278,7 +278,7 @@ export class CancellationsService {
   async decide(
     adminUserId: string,
     requestId: string,
-    input: { approve: boolean; decisionNote?: string },
+    input: { approve: boolean; decisionNote?: string; refundAmount?: string },
   ): Promise<DecideCancellationResult> {
     const request = await prisma.cancellationRequest.findUnique({
       where: { id: requestId },
@@ -290,7 +290,7 @@ export class CancellationsService {
     }
     const note = input.decisionNote?.trim() || null;
     return input.approve
-      ? this.approve(adminUserId, request, note)
+      ? this.approve(adminUserId, request, note, input.refundAmount)
       : this.deny(adminUserId, request, note);
   }
 
@@ -361,11 +361,16 @@ export class CancellationsService {
    * không double-refund ở gateway. Gate + ledger đọc TƯƠI trong lock (không xài
    * `request.booking` đã cũ lúc `decide`).
    *
-   *  1. Gate (TƯƠI, trong lock): booking phải refundable (PAID /
-   *     PARTIALLY_REFUNDED có captured payment) và ledger phải còn dư một
-   *     remainder — một booking đã fully refund qua W3 trong lúc request còn mở
-   *     thì không approve được (NOT_REFUNDABLE 422; admin deny nó thay vào đó).
-   *  2. Provider refund FULL REMAINDER (không bao giờ ledger thứ chưa xảy ra).
+   *  1. Gate (TƯƠI, trong lock) — CHỈ áp khi còn tiền phải chuyển (ADR-0029
+   *     §2): booking phải refundable (PAID / PARTIALLY_REFUNDED có captured
+   *     payment). Sổ ĐÃ settle thì bỏ qua gate: "chấp thuận yêu cầu huỷ" là
+   *     một quyết định, và tiền đã hoàn hết từ trước chỉ nghĩa là bước tiền
+   *     không còn việc. Đây là đường chữa cho booking đã hoàn đủ qua W3 trong
+   *     lúc request còn mở — trước ADR-0029 chúng kẹt vĩnh viễn ở 422 và GHẾ
+   *     KHÔNG BAO GIỜ ĐƯỢC NHẢ.
+   *  2. Provider refund `refundAmount` (vắng → FULL REMAINDER; ADR-0029 §1),
+   *     không bao giờ ledger thứ chưa xảy ra. Sổ đã settle thì KHÔNG gọi
+   *     gateway và KHÔNG ghi row nào — sổ append-only chỉ kể tiền thật sự đi.
    *     Chạy TRONG tx của lock — ngoại lệ có chủ đích của "gateway ngoài tx"
    *     (ADR-0009), chỉ cho đường refund hiếm; lock giữ suốt read→gateway→ledger.
    *     `adminId` = admin đang quyết định.
@@ -375,7 +380,9 @@ export class CancellationsService {
    *       req_flip     — REQUESTED → REFUNDED (giá trị resolved-by-refund của
    *                      model) + decidedBy/decidedAt/note; qual quyết-định-race
    *                      trên UPDATE target.
-   *       refund_insert— append Refund ledger row (money story).
+   *       refund_insert— append Refund ledger row (money story). BỎ QUA khi
+   *                      amount = 0: một row 0.00 không có provider_refund_id
+   *                      là một dòng sổ kể về việc không xảy ra.
    *       cancel       — booking → CANCELLED + cancelledAt: travel story.
    *                      CANCELLED TƯỜNG MINH, không phải REFUNDED derive từ
    *                      ledger — khách ngừng du lịch và seat được trả lại;
@@ -400,6 +407,7 @@ export class CancellationsService {
     adminUserId: string,
     request: CancellationRow & { booking: Prisma.BookingModel },
     note: string | null,
+    refundAmount?: string,
   ): Promise<DecideCancellationResult> {
     const bookingId = request.booking.id;
 
@@ -408,33 +416,53 @@ export class CancellationsService {
     // cùng booking. Đọc booking TƯƠI trong lock (không xài request.booking cũ).
     const result = await withBookingRefundLock(bookingId, async (tx) => {
       const booking = await tx.booking.findUniqueOrThrow({ where: { id: bookingId } });
-      const refundableStatus =
-        booking.status === BookingStatus.PAID ||
-        booking.status === BookingStatus.PARTIALLY_REFUNDED;
-      if (!refundableStatus || !booking.providerPaymentId) {
-        throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
-      }
       const ledger = await tx.refund.aggregate({
         where: { bookingId: booking.id },
         _sum: { amount: true },
       });
-      // requested:null → full remainder; ném RefundNothingLeftError trên một
-      // ledger đã settle (được controller map sang NOT_REFUNDABLE).
-      const { amount } = classifyRefundAmount({
-        requested: null,
-        total: booking.totalAmount,
-        alreadyRefunded: ledger._sum.amount ?? new Prisma.Decimal(0),
-      });
+      const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
+      // Sổ đã settle: KHÔNG còn gì để chuyển (ADR-0029 §2). Approve vẫn chạy —
+      // "chấp thuận yêu cầu huỷ" là một quyết định, và tiền đã hoàn hết từ
+      // trước chỉ nghĩa là bước tiền không còn việc, chứ không phải lý do từ
+      // chối cả lệnh. Đây là đường chữa cho booking đã hoàn đủ qua W3 trong
+      // lúc request còn mở — trước ADR-0029 chúng kẹt vĩnh viễn ở 422 và ghế
+      // không bao giờ được nhả.
+      const settled = booking.totalAmount.sub(alreadyRefunded).lessThanOrEqualTo(0);
+
+      // Gate CHỈ áp khi thật sự phải chuyển tiền: hết tiền để chuyển thì trạng
+      // thái booking không còn là điều kiện của việc đóng request + nhả ghế.
+      if (!settled) {
+        const refundableStatus =
+          booking.status === BookingStatus.PAID ||
+          booking.status === BookingStatus.PARTIALLY_REFUNDED;
+        if (!refundableStatus || !booking.providerPaymentId) {
+          throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
+        }
+      }
+
+      // `refundAmount` vắng → hoàn TRỌN phần dư (hành vi trước ADR-0029).
+      // Mọi lỗi tiền vẫn do `classifyRefundAmount` canh: ≤ 0, vượt phần dư,
+      // hay sổ đã settle — server không tin con số client gửi.
+      const amount = settled
+        ? new Prisma.Decimal(0)
+        : classifyRefundAmount({
+            requested: refundAmount ?? null,
+            total: booking.totalAmount,
+            alreadyRefunded,
+          }).amount;
 
       // Provider idempotency key `cancel-refund:<requestId>`: một request được
       // approve nhiều nhất một lần (append-only, flip gate trên REQUESTED), nên
       // request id đặt tên cho refund attempt này một cách deterministic (W5).
       // Gọi TRONG tx của lock (ngoại lệ ADR-0009) để lock giữ suốt read→gateway→ledger.
-      const providerRefundId = await this.refunds.executeGatewayRefund(
-        { ...booking, providerPaymentId: booking.providerPaymentId },
-        amount,
-        `cancel-refund:${request.id}`,
-      );
+      // Sổ đã settle thì KHÔNG gọi gateway: không có đồng nào để chuyển.
+      const providerRefundId = settled
+        ? null
+        : await this.refunds.executeGatewayRefund(
+            { ...booking, providerPaymentId: booking.providerPaymentId as string },
+            amount,
+            `cancel-refund:${request.id}`,
+          );
 
       const flipped = await tx.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`
         WITH req_flip AS (
@@ -449,10 +477,14 @@ export class CancellationsService {
           RETURNING cr.id, cr.booking_id
         ),
         refund_insert AS (
+          -- Amount 0 KHÔNG ghi row nào: sổ refund là append-only cho tiền THẬT
+          -- SỰ chuyển đi (ADR-0002). Một row 0.00 không có provider_refund_id
+          -- là một dòng sổ kể về việc không xảy ra.
           INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id, admin_id)
           SELECT gen_random_uuid(), r.booking_id, ${amount.toFixed(2)}::numeric,
                  ${booking.currency}::text, ${providerRefundId}::text, ${adminUserId}::uuid
           FROM req_flip r
+          WHERE ${amount.toFixed(2)}::numeric > 0
           RETURNING id
         ),
         cancel AS (

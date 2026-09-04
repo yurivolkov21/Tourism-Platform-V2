@@ -364,6 +364,19 @@ export const DecideCancellationInputSchema = z.object({
   id: z.uuid(),
   approve: z.boolean(),
   decisionNote: z.string().min(1).max(500).optional(),
+  /**
+   * Số tiền hoàn khi `approve: true` — ADR-0029 §1.
+   *
+   * VẮNG = hoàn TRỌN phần dư, tức hành vi trước ADR-0029 y nguyên, nên mọi
+   * caller cũ không phải đổi gì. KHÔNG có nghĩa gì khi `approve: false`: deny
+   * không đụng tiền.
+   *
+   * Đây KHÔNG phải con số admin gõ tự do (ADR-0029 §4 + ADR-0030): bảng bậc
+   * chính sách tính ra nó và khoá trên màn hình; muốn khác thì phải bật công
+   * tắc vượt bậc và ghi lý do. Server vẫn canh lại bằng
+   * `classifyRefundAmount` — ≤ 0, vượt phần dư, hay sổ đã settle đều là 422.
+   */
+  refundAmount: DecimalStringSchema.optional(),
 });
 
 export type DecideCancellationInput = z.output<typeof DecideCancellationInputSchema>;

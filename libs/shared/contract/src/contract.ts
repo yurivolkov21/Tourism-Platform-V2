@@ -614,6 +614,18 @@ export const contract = {
             status: 422,
             message: 'Booking has no refundable remainder to approve against',
           },
+          // Hai mã dưới CHỈ với tới được từ ADR-0029 §1, khi `decide` bắt đầu
+          // nhận `refundAmount`. Trước đó approve luôn hoàn trọn phần dư nên
+          // không có con số nào để mà sai. Cùng tên với `admin.bookings.refund`
+          // — một loại lỗi tiền thì một tên gọi, dù đi qua endpoint nào.
+          OVER_TOTAL: {
+            status: 422,
+            message: 'Refund amount exceeds the refundable remainder',
+          },
+          ZERO_OR_NEGATIVE: {
+            status: 422,
+            message: 'Refund amount must be greater than zero',
+          },
           // Chỉ ở nhánh approve: provider từ chối/lỗi khi gọi refund — chưa ghi
           // gì vào ledger và request vẫn ở REQUESTED.
           REFUND_FAILED: {

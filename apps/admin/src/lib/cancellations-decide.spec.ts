@@ -1,7 +1,7 @@
 import { contract } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { DECIDE_CONTRACT_CODES, decideErrorCopy } from './cancellations-decide';
+import { DECIDE_CONTRACT_CODES, decideErrorCopy, isStaleStateCode } from './cancellations-decide';
 
 /**
  * Bất biến spec §2.4: mã lỗi contract hiện NGUYÊN NGHĨA, mỗi mã một câu. Tập
@@ -19,13 +19,25 @@ describe('DECIDE_CONTRACT_CODES', () => {
     expect([...DECIDE_CONTRACT_CODES].sort()).toEqual(declared.sort());
   });
 
-  it('bốn mã: NOT_FOUND · ALREADY_DECIDED · NOT_REFUNDABLE · REFUND_FAILED', () => {
+  it('sáu mã — hai mã tiền thêm ở ADR-0029 §1 khi decide bắt đầu nhận số tiền', () => {
     expect([...DECIDE_CONTRACT_CODES].sort()).toEqual([
       'ALREADY_DECIDED',
       'NOT_FOUND',
       'NOT_REFUNDABLE',
+      'OVER_TOTAL',
       'REFUND_FAILED',
+      'ZERO_OR_NEGATIVE',
     ]);
+  });
+
+  it('hai mã tiền KHÔNG thuộc nhóm trạng-thái-cũ — sửa tại chỗ được', () => {
+    // Chúng nói về CON SỐ vừa gửi, không về thế giới đã đổi dưới chân dialog:
+    // request còn nguyên REQUESTED, admin nhập lại là xong. Xếp nhầm vào nhóm
+    // stale thì dialog đóng và bắt admin mở lại từ đầu.
+    expect(isStaleStateCode('OVER_TOTAL')).toBe(false);
+    expect(isStaleStateCode('ZERO_OR_NEGATIVE')).toBe(false);
+    expect(isStaleStateCode('REFUND_FAILED')).toBe(false);
+    expect(isStaleStateCode('NOT_REFUNDABLE')).toBe(true);
   });
 });
 

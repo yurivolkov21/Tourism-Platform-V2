@@ -84,6 +84,11 @@ export default async function BookingDetailPage({
             totalAmount: booking.totalAmount,
             refundedTotal: booking.refundedTotal,
             currency: booking.currency,
+            // Suy từ TRẠNG THÁI, không từ trang nào dẫn tới (ADR-0029 §AMEND):
+            // một tham số URL thì ai cũng gõ được, còn cái này thì không.
+            hasOpenCancellation: booking.cancellationRequests.some(
+              (request) => request.status === 'REQUESTED',
+            ),
             contactName: booking.contactName,
             refunds: booking.refunds,
           }}

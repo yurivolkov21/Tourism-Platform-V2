@@ -478,6 +478,138 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     ).toBe(CancellationRequestStatus.REQUESTED);
   });
 
+  /**
+   * ADR-0029 — ba nới của money-path. Đây là số admin đem so sổ và là ghế thật
+   * của một chuyến, nên mỗi nới có test riêng chạy trên Postgres thật.
+   */
+  describe('ADR-0029 — approve với mức hoàn theo chính sách', () => {
+    it('§1 approve MỘT PHẦN: hoàn đúng số đã gửi, request đóng, booking CANCELLED, ghế NHẢ', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-partial@example.com', 'Alice');
+      const booking = await createPaidBooking(alice); // 117.00, 3 ghế
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      expect(await seatsBooked()).toBe(3);
+
+      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
+      expect(res.statusCode).toBe(200);
+
+      const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+      expect(rows.map((r) => r.amount.toFixed(2))).toEqual(['50.00']);
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      expect(after.status).toBe('CANCELLED');
+      expect(after.cancelledAt).not.toBeNull();
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REFUNDED);
+      // Ghế nhả BẤT KỂ hoàn bao nhiêu — khách ngừng đi là ngừng đi.
+      expect(await seatsBooked()).toBe(0);
+    });
+
+    it('§1 vắng refundAmount vẫn hoàn TRỌN phần dư — hành vi trước ADR không đổi', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-full@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+
+      expect((await postDecide(admin, request.id, { approve: true })).statusCode).toBe(200);
+      const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+      expect(rows.map((r) => r.amount.toFixed(2))).toEqual(['117.00']);
+    });
+
+    it('§1 số tiền VƯỢT phần dư bị server chặn — không tin con số client gửi', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-over@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+
+      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '999.00' });
+      expect(res.statusCode).toBe(422);
+      expect(fake.refunds).toHaveLength(0);
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REQUESTED);
+    });
+
+    it('§2 booking ĐÃ hoàn đủ qua W3: approve vẫn chạy, KHÔNG gọi gateway, ghế được NHẢ', async () => {
+      // Đây là ca từng kẹt vĩnh viễn ở 422 và làm rò ghế — lý do ADR-0029 ra đời.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-settled@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      expect((await postRefund(admin, booking.code, {})).statusCode).toBe(200);
+      expect(fake.refunds).toHaveLength(1);
+      expect(await seatsBooked()).toBe(3);
+
+      const res = await postDecide(admin, request.id, { approve: true });
+      expect(res.statusCode).toBe(200);
+
+      // Không gọi gateway lần hai, và KHÔNG ghi row 0.00 vào sổ.
+      expect(fake.refunds).toHaveLength(1);
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      expect(after.status).toBe('CANCELLED');
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REFUNDED);
+      // Chính là thứ đã rò trước ADR-0029.
+      expect(await seatsBooked()).toBe(0);
+    });
+
+    it('§3 booking CANCELLED còn dư: W3 hoàn nốt được, và KHÔNG ghi đè CANCELLED', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-remainder@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      // Approve một phần → CANCELLED nhưng sổ còn dư 67.00.
+      expect(
+        (await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' })).statusCode,
+      ).toBe(200);
+
+      const res = await postRefund(admin, booking.code, { amount: '17.00' });
+      expect(res.statusCode).toBe(200);
+
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      // Travel story KHÔNG bị money story ghi đè — đây là bẫy ADR-0029 §3 nêu.
+      expect(after.status).toBe('CANCELLED');
+      expect(after.cancelledAt).not.toBeNull();
+      const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+      expect(rows.map((r) => r.amount.toFixed(2)).sort()).toEqual(['17.00', '50.00']);
+      // Ghế KHÔNG nhả lần hai — approve đã nhả rồi.
+      expect(await seatsBooked()).toBe(0);
+    });
+
+    it('§3 hoàn nốt tới đủ total thì dừng — trigger ADR-0009 vẫn là trần', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-cap@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      expect(
+        (await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' })).statusCode,
+      ).toBe(200);
+      expect((await postRefund(admin, booking.code, {})).statusCode).toBe(200);
+
+      // Hoàn thêm nữa là 422 — sổ đã settle.
+      expect((await postRefund(admin, booking.code, { amount: '1.00' })).statusCode).toBe(422);
+      const total = await prisma.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      expect(total._sum.amount?.toFixed(2)).toBe('117.00');
+    });
+  });
+
   it('BK-R1 cross-path: admin refund ‖ cancel-approve ĐỒNG THỜI → đúng 1 refund + 1 lần gọi gateway (advisory lock)', async () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('cross-path@example.com', 'Alice');
@@ -492,12 +624,17 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const codes = [a, b]
       .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))
       .sort((x, y) => x - y);
-    // Một path thắng lock (200); path chạy sau đọc ledger đã settle / booking không
-    // còn refundable → 422 (NOTHING_LEFT hoặc NOT_REFUNDABLE tùy thứ tự).
-    expect(codes).toEqual([200, 422]);
+    // Path chạy sau đọc ledger ĐÃ settle. Kết cục tuỳ thứ tự, và từ ADR-0029
+    // §2 nó không còn luôn là 422:
+    // - W3 thắng trước → approve thấy sổ settle → CHẠY với 0đ (200), vẫn đóng
+    //   request + huỷ booking + nhả ghế. Đây chính là nới của §2.
+    // - approve thắng trước → W3 thấy remainder 0 → NOTHING_LEFT (422).
+    expect(codes[0]).toBe(200);
+    expect([200, 422]).toContain(codes[1]);
 
-    // Bất biến money cross-path: gateway ĐÚNG một lần, ledger đúng một row, không
-    // vượt total — hai đường refund khác nhau vẫn serialize trên cùng advisory lock.
+    // Bất biến money cross-path KHÔNG đổi dù kết cục mã trạng thái có đổi:
+    // gateway ĐÚNG một lần, ledger đúng một row, không vượt total — hai đường
+    // refund khác nhau vẫn serialize trên cùng advisory lock.
     expect(fake.refunds).toHaveLength(1);
     const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
     expect(refunds).toHaveLength(1);
