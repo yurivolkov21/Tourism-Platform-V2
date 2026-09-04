@@ -13,6 +13,7 @@ import { LabelValueRow } from '@/components/kit/label-value-row';
 import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminBookingByCode } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
+import { bookingsBackHref } from '@/lib/bookings-query';
 import {
   formatAmount,
   formatDateRange,
@@ -22,6 +23,7 @@ import {
   statusLabel,
 } from '@/lib/bookings-view';
 import { cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
+import type { RawSearchParams } from '@/lib/table-query';
 import { refundBookingAction } from './actions';
 
 /**
@@ -45,8 +47,18 @@ export async function generateMetadata({
   return { title: `${code} — Bookings` };
 }
 
-export default async function BookingDetailPage({ params }: { params: Promise<{ code: string }> }) {
+export default async function BookingDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ code: string }>;
+  searchParams: Promise<RawSearchParams>;
+}) {
   const { code } = await params;
+  // Bộ lọc của bảng đi kèm trên URL (do `bookingDetailHref` gắn), nên nút quay
+  // về dựng lại đúng danh sách vừa rời. `now` truyền vào chứ không đọc trong
+  // hàm — cùng lý do với trang danh sách.
+  const backHref = bookingsBackHref(await searchParams, new Date());
   const cookie = (await cookies()).toString();
   // Session (nav-user) và chi tiết booking độc lập nhau — song song cho khỏi
   // tốn 2 RTT nối tiếp (review 31/08, cùng nếp trang danh sách).
@@ -61,9 +73,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     <AdminShell user={session}>
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         <Link
-          // `dates=all` (vòng vá review polish 2): /bookings trần độn tháng
-          // hiện tại, booking vừa xem (tạo tháng trước) sẽ biến khỏi bảng.
-          href="/bookings?dates=all"
+          // Quay về ĐÚNG bộ lọc vừa rời (user báo 04/09). Thay cho `?dates=all`
+          // cứng của vòng vá polish 2: cái đó tồn tại vì `/bookings` trần độn
+          // tháng này nên booking vừa xem có thể biến mất — nay không xảy ra
+          // được, vì bấm được vào một hàng nghĩa là nó NẰM TRONG bộ lọc.
+          href={backHref}
           className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ChevronLeftIcon className="size-4" />

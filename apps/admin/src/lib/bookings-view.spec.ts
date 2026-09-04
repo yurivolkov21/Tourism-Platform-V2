@@ -1,5 +1,6 @@
 import type { Booking } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
+import { parseBookingsSearchParams } from './bookings-query';
 import {
   formatAmount,
   formatCalendarDate,
@@ -108,8 +109,14 @@ describe('formatGuests', () => {
 });
 
 describe('toBookingRow', () => {
+  /** Bộ lọc đang xem — hàng phải mang nó sang link chi tiết (user báo 04/09). */
+  const QUERY = parseBookingsSearchParams(
+    { status: 'PAID', from: '2026-07-01', to: '2026-07-31', page: '2' },
+    new Date('2026-09-04T10:00:00.000Z'),
+  );
+
   it('gói đúng 6 cột của bảng — mọi thứ đã format sẵn, bảng không tự tính', () => {
-    expect(toBookingRow(makeBooking())).toEqual({
+    expect(toBookingRow(makeBooking(), QUERY)).toEqual({
       code: 'NX-ABC123',
       tourTitle: 'Ha Long Bay Cruise',
       status: 'PAID',
@@ -120,15 +127,15 @@ describe('toBookingRow', () => {
       customerName: 'Ann Nguyen',
       customerEmail: 'ann@example.com',
       departure: '14 Sep 2026 – 20 Sep 2026',
-      href: '/bookings/NX-ABC123',
+      href: '/bookings/NX-ABC123?status=PAID&from=2026-07-01&to=2026-07-31&page=2',
     });
   });
 
   it('nhãn trạng thái lấy từ i18n cho mọi giá trị enum', () => {
-    expect(toBookingRow(makeBooking({ status: 'PARTIALLY_REFUNDED' })).statusLabel).toBe(
+    expect(toBookingRow(makeBooking({ status: 'PARTIALLY_REFUNDED' }), QUERY).statusLabel).toBe(
       'Partially refunded',
     );
-    expect(toBookingRow(makeBooking({ status: 'PENDING' })).statusLabel).toBe('Pending');
+    expect(toBookingRow(makeBooking({ status: 'PENDING' }), QUERY).statusLabel).toBe('Pending');
   });
 });
 

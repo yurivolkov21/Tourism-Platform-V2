@@ -224,6 +224,60 @@ function appendFilters(
 }
 
 /**
+ * Link sang trang chi tiết, MANG THEO trạng thái danh sách đang xem.
+ *
+ * Vì sao mang cả query chứ không chỉ `/bookings/{code}` (user báo 04/09): nút
+ * "Back to bookings" ở trang chi tiết phải quay về ĐÚNG bộ lọc vừa rời. Không
+ * mang gì thì chỗ duy nhất còn nhớ bộ lọc là lịch sử trình duyệt, mà nút Back
+ * của trang là một `<Link>` chứ không phải `history.back()` — nó phải tự dựng
+ * được đích đến.
+ *
+ * Mang cả `page`/`limit`: quay về trang 3 của bộ lọc chứ không phải trang 1 —
+ * người vừa cuộn tới đó.
+ *
+ * Ngày mặc định (tháng này) được viết RA tường minh thay vì để URL trần: lượt
+ * quay về nhờ vậy không phụ thuộc vào việc đọc lúc nào. Bấm một booking lúc
+ * 23:59 ngày cuối tháng rồi bấm Back lúc 00:01 vẫn về đúng tháng đã xem.
+ *
+ * Đây là thứ THAY cho `?dates=all` cứng ở nút Back (vòng vá review polish 2).
+ * Cái đó tồn tại vì `/bookings` trần độn tháng này, nên booking vừa xem — tạo
+ * tháng trước — sẽ biến khỏi bảng. Nay không xảy ra được nữa: đã bấm được vào
+ * một hàng thì booking ấy NẰM TRONG bộ lọc, nên quay về đúng bộ lọc ấy luôn
+ * thấy nó.
+ */
+export function bookingDetailHref(current: BookingsQuery, code: string): string {
+  const params = new URLSearchParams();
+  appendFilters(params, current);
+  appendPaging(params, current);
+  return tableHref(`/bookings/${code}`, params);
+}
+
+/**
+ * URL quay về danh sách, dựng từ query mà `bookingDetailHref` đã gắn lên URL
+ * trang chi tiết.
+ *
+ * Đi qua `parseBookingsSearchParams` rồi dựng lại chứ KHÔNG chuyển tiếp chuỗi
+ * thô: URL trang chi tiết cũng là thứ người gõ được, và một href dựng từ rác
+ * là một cú click chết (400 ở server). Luật khoan dung vì thế giống hệt đường
+ * đọc của bảng.
+ *
+ * KHÔNG có tham số nào = vào thẳng URL chi tiết, hoặc tới từ `BookingLink` của
+ * `/payment-events` và `/cancellations`. Lúc ấy không có bộ lọc nào để giữ,
+ * nên trả `/bookings` TRẦN và để lượt parse kế độn tháng hiện tại — mặc định
+ * của vùng.
+ */
+export function bookingsBackHref(raw: RawSearchParams, now: Date): string {
+  const carried = LIST_PARAMS.some((key) => firstParam(raw[key]) !== undefined);
+  return carried ? bookingsHref(parseBookingsSearchParams(raw, now), {}) : '/bookings';
+}
+
+/**
+ * Các tham số làm nên trạng thái danh sách. Có MỘT trong số này trên URL
+ * trang chi tiết nghĩa là người ta tới từ bảng, và bộ lọc ấy phải được giữ.
+ */
+const LIST_PARAMS = ['status', 'q', 'from', 'to', 'dates', 'page', 'limit'] as const;
+
+/**
  * Tên tham số mang danh sách mã đã tích. Khai ở đây để route export và bên
  * dựng URL đọc CÙNG MỘT chuỗi — gõ tay hai lần là hai bản trôi lệch trong im
  * lặng, và triệu chứng sẽ là "bấm Export mà vẫn ra cả tập".

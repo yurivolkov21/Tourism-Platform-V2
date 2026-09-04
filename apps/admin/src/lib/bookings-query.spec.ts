@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { bookingsExportHref, bookingsHref, parseBookingsSearchParams } from './bookings-query';
+import {
+  bookingDetailHref,
+  bookingsBackHref,
+  bookingsExportHref,
+  bookingsHref,
+  parseBookingsSearchParams,
+} from './bookings-query';
 
 /**
  * Trạng thái danh sách bookings nằm TRÊN URL (spec P4b §2.2): searchParams là
@@ -470,6 +476,81 @@ describe('bookingsExportHref — file phải khớp cái đang thấy', () => {
     const href = bookingsExportHref(parseBookingsSearchParams({ dates: 'all' }, SEP));
 
     expect(href).toContain('dates=all');
+  });
+});
+
+/**
+ * Vòng đi–về giữa bảng và trang chi tiết (user báo 04/09): bấm một mã booking
+ * rồi bấm "Back to bookings" phải quay lại ĐÚNG bộ lọc vừa rời, không nhả
+ * filter.
+ */
+describe('vòng đi–về bảng ↔ chi tiết', () => {
+  const SEP = new Date('2026-09-04T10:00:00.000Z');
+
+  describe('bookingDetailHref', () => {
+    it('mang trọn bộ lọc và trang hiện tại sang link chi tiết', () => {
+      const query = parseBookingsSearchParams(
+        { status: 'PAID', q: 'ada', from: '2026-07-01', to: '2026-07-31', page: '3', limit: '50' },
+        SEP,
+      );
+      const href = bookingDetailHref(query, 'BK-4RTG57J3');
+
+      expect(href.startsWith('/bookings/BK-4RTG57J3?')).toBe(true);
+      expect(searchParamsOf(href)).toEqual({
+        status: 'PAID',
+        q: 'ada',
+        from: '2026-07-01',
+        to: '2026-07-31',
+        page: '3',
+        limit: '50',
+      });
+    });
+
+    it('mặc định tháng này cũng được viết RA — link chi tiết không dựa vào phép độn', () => {
+      const href = bookingDetailHref(parseBookingsSearchParams({}, SEP), 'BK-1');
+      expect(searchParamsOf(href)).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+    });
+
+    it('chế độ All mang `dates=all` để lượt quay về không bị độn lại tháng này', () => {
+      const href = bookingDetailHref(parseBookingsSearchParams({ dates: 'all' }, SEP), 'BK-1');
+      expect(searchParamsOf(href)).toEqual({ dates: 'all' });
+    });
+  });
+
+  describe('bookingsBackHref', () => {
+    it('dựng lại ĐÚNG URL danh sách đã rời', () => {
+      const query = parseBookingsSearchParams(
+        { status: 'PAID', from: '2026-07-01', to: '2026-07-31', page: '3' },
+        SEP,
+      );
+      const back = bookingsBackHref(searchParamsOf(bookingDetailHref(query, 'BK-1')), SEP);
+
+      expect(searchParamsOf(back)).toEqual({
+        status: 'PAID',
+        from: '2026-07-01',
+        to: '2026-07-31',
+        page: '3',
+      });
+    });
+
+    it('giữ chế độ All khi đó là thứ vừa rời', () => {
+      const query = parseBookingsSearchParams({ dates: 'all' }, SEP);
+      const back = bookingsBackHref(searchParamsOf(bookingDetailHref(query, 'BK-1')), SEP);
+      expect(searchParamsOf(back)).toEqual({ dates: 'all' });
+    });
+
+    it('vào thẳng URL chi tiết (không qua bảng) → danh sách MẶC ĐỊNH tháng này', () => {
+      // Không có bộ lọc nào để giữ, nên URL trần: lượt parse kế độn tháng
+      // hiện tại — đúng thứ user chốt là mặc định của vùng.
+      expect(bookingsBackHref({}, SEP)).toBe('/bookings');
+    });
+
+    it('tham số rác trên URL chi tiết không đẻ ra một href hỏng', () => {
+      // Cùng luật khoan dung với đường đọc: rác rơi về mặc định, không ném
+      // lên URL để rồi 400 ở server.
+      const back = bookingsBackHref({ status: 'NOPE', from: '2026-02-31', page: '-2' }, SEP);
+      expect(searchParamsOf(back)).toEqual({ from: '2026-09-01', to: '2026-09-30' });
+    });
   });
 });
 

@@ -1,5 +1,6 @@
 import type { Booking, BookingStatusValue } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
+import { type BookingsQuery, bookingDetailHref } from './bookings-query';
 
 /**
  * Mapper hiển thị vùng bookings (spec P4b §3-F1) — THUẦN, nằm ngoài React nên
@@ -137,7 +138,7 @@ export interface BookingRowVM {
 }
 
 /** Booking của contract → hàng bảng đã format sẵn (server component gọi). */
-export function toBookingRow(booking: Booking): BookingRowVM {
+export function toBookingRow(booking: Booking, query: BookingsQuery): BookingRowVM {
   return {
     code: booking.code,
     tourTitle: booking.tourTitle,
@@ -149,6 +150,9 @@ export function toBookingRow(booking: Booking): BookingRowVM {
     customerName: booking.contactName,
     customerEmail: booking.contactEmail,
     departure: formatDateRange(booking.departureStartDate, booking.departureEndDate),
-    href: `/bookings/${booking.code}`,
+    // MANG THEO bộ lọc đang xem (user báo 04/09): nút "Back to bookings" ở
+    // trang chi tiết dựng đích đến từ chính query này, nên vòng đi–về không
+    // nhả filter. Chi tiết luật ở `bookingDetailHref`.
+    href: bookingDetailHref(query, booking.code),
   };
 }

@@ -64,7 +64,7 @@ export default async function BookingsPage({
     <AdminShell user={session}>
       <StatCardRow cards={toBookingsStatCards(stats)} period={statsPeriodLabel(stats.period)} />
       <BookingsTable
-        rows={paged.items.map(toBookingRow)}
+        rows={paged.items.map((booking) => toBookingRow(booking, query))}
         query={query}
         total={paged.total}
         totalPages={paged.totalPages}
