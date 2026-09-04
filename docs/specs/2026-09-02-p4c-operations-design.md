@@ -30,6 +30,15 @@ nhất), query dùng chung `stats-aggregates.ts`. Metric nào là ẢNH CHỤP (
 có mốc thời gian để so hai kỳ) thì contract khai một số đơn, card không có
 delta — cùng luật F5.
 
+*AMEND 04/09 (nhánh `fix/p4c-backend-logic`, đợt điều chỉnh backend #1):* bốn
+endpoint `admin.stats.*` của P4c (F7–F10) **giữ nguyên** cửa sổ 28 ngày cố
+định — trang của chúng chưa có bộ lọc ngày nào. Chỉ `admin.stats.bookings`
+(P4b-F5) mọc `.input({ from?, to? })` để ăn theo hai ô ngày của `/bookings`;
+xem [AMEND ở P4b §3-F5](2026-08-31-p4b-admin-ready-areas-design.md) và
+[ADR-0028](../adr/0028-bookings-stats-follow-filter.md). Ngày một vùng P4c
+mọc bộ lọc ngày thì lặp lại đúng khuôn ấy (`statsWindowFromRange` +
+`currentTo` đã dùng chung sẵn), đừng dựng cửa sổ thứ hai.
+
 Ngoài phạm vi P4c: dashboard `/` (P4d — sẽ ăn lại các số "cần chú ý" của
 P4c: review chờ, enquiry NEW, outbox FAILED), catalog CRUD (P4e), media/users
 (P4f).

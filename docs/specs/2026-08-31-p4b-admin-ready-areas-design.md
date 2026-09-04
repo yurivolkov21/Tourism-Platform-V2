@@ -103,6 +103,20 @@ merge rebase+ff, docs sweep.
 Mẫu user chốt (ảnh 31/08): nhãn · số lớn · pill delta ↑/↓ · "vs X prior
 28 days". Kỳ so sánh mặc định: 28 ngày gần nhất vs 28 ngày liền trước.
 
+*AMEND 04/09 (nhánh `fix/p4c-backend-logic`, đợt điều chỉnh backend #1) — chỉ
+vùng `/bookings`:* cửa sổ 28 ngày ở đây thôi là **hằng số**, nó trở thành
+**mặc định**. `admin.stats.bookings` nhận `.input({ from?, to? })` (cùng
+`CalendarDateSchema`, cùng tên field với `admin.bookings.list`), nên hàng card
+tính đúng khoảng ngày admin đang lọc ở bảng bên dưới; thiếu cả hai field thì
+giữ nguyên cửa sổ trượt 28 ngày mô tả trên. Kỳ trước là cửa sổ **dài bằng
+đúng kỳ này, lùi liền kề** — không phải tháng lịch liền trước, vì bất biến
+"hai kỳ bằng nhau" mới là thứ khiến pill delta nói thật với một khoảng lẻ.
+`StatsPeriod` thêm `currentTo`; caption in ngày thật (`vs $12,400 · Aug 2 –
+Aug 31`) thay vì "prior 28 days" khi có lọc. Sáu endpoint `admin.stats.*` còn
+lại KHÔNG đổi — trang của chúng chưa có bộ lọc ngày. Lý do đầy đủ, bảng biên
+nửa-mở (vì sao không `23:59:59`) và chốt giữ cột `createdAt` ở
+[ADR-0028](../adr/0028-bookings-stats-follow-filter.md).
+
 - Contract: namespace `admin.stats` MỚI — một endpoint mỗi vùng
   (`admin.stats.bookings` / `cancellations` / `reviews`), mỗi cái trả bộ
   metric của vùng kèm giá trị kỳ trước (đủ để client tính delta, KHÔNG tính
