@@ -124,6 +124,57 @@ Việc thứ hai dùng lại đúng `refundPercentForBooking` + `daysBeforeDepar
 màn admin dùng, nên khách và admin **không thể** nhìn hai con số khác nhau.
 Đây cũng là lý do §6 đặt bảng bậc ở contract chứ không ở i18n.
 
+### 3c. AMEND 04/09 — cửa sổ ÂN HẠN 24 giờ sau khi thanh toán
+
+**Lỗ user phát hiện lúc nghiệm thu:** người đặt muộn không bao giờ với tới bậc
+100%.
+
+| Đặt | Khởi hành | Huỷ | Hoàn |
+| --- | --- | --- | --- |
+| 1/7 | 19/9 | 2/7 | **100%** |
+| 4/9 | 19/9 | 5/9 | **50%** |
+
+Cùng một hành vi — đổi ý ngay hôm sau — khác nhau 50 điểm, và khách **không
+làm gì sai**: họ chỉ tình cờ đặt gần ngày khởi hành hơn. Với tour khởi hành
+trong 15 ngày thì bậc 100% là **bất khả** với mọi khách, kể cả người đổi ý sau
+một phút.
+
+Gốc rễ: bảng bậc chỉ đo MỘT chiều — còn bao xa tới khởi hành. Nó không đo
+**khách đã giữ chỗ bao lâu**, mà đó mới là thứ nói lên họ có làm mình thiệt hay
+không. Người giữ chỗ mười phút rồi trả lại không gây tổn thất cho ai.
+
+**Luật thêm:** huỷ trong vòng **24 giờ** kể từ `paidAt` → hoàn **100%**, bất kể
+còn bao nhiêu ngày tới khởi hành.
+
+Ba điều làm nó đứng vững:
+
+- **Trong 24 giờ đầu chưa có gì được cam kết.** Mà "chi phí đã cam kết với nhà
+  cung cấp" chính là lý do bảng bậc tồn tại. Không tổn thất thì không có cơ sở
+  giữ tiền.
+- **Ghế trả lại ngay** khi approve (ADR-0029), nên chỗ không bị treo.
+- **Chỉ có LỢI cho khách.** Ân hạn trả về 100%, tức trần của bảng bậc — nó
+  không bao giờ hạ kết quả xuống. Bất biến này có test quét mọi tổ hợp.
+
+Neo vào `paidAt` chứ không `createdAt`: booking PENDING chưa trả tiền thì không
+có gì để hoàn, và đồng hồ chỉ nên chạy từ lúc tiền thật sự rời tay khách.
+
+**KHÔNG chặn ân hạn theo ngày khởi hành.** Bản bàn đầu định chặn "chỉ áp khi
+còn ≥ 7 ngày" để tránh ca đặt-rồi-huỷ sát ngày. Bỏ vế ấy vì đợt sau sẽ có
+**chốt chặn đặt chỗ 3 ngày** (ADR riêng, user chốt tách): khách lọt vào vùng
+4–6 ngày là người CỐ Ý đặt sát, và cho họ 24 giờ đổi ý là hợp lý khi ghế trả
+lại ngay.
+
+### Vì sao KHÔNG chuyển hẳn sang neo theo lúc thanh toán
+
+Đã cân nhắc và loại. Thử mô hình thuần-neo-thanh-toán: đặt 1/1, khởi hành
+1/12, huỷ 1/6 → quá 24 giờ → **0%**, trong khi mô hình hiện tại cho 100% vì
+còn sáu tháng. Khách báo sớm thừa thãi thời gian bán lại chỗ mà không được
+đồng nào — mô hình mới **khắc nghiệt hơn**, chỉ là với nhóm khách khác.
+
+Hai mô hình đo hai thứ: neo khởi hành đo **tổn thất thật của mình**, neo thanh
+toán đo **thời gian khách đã giữ chỗ** — thứ không liên quan tới tổn thất. Ân
+hạn vì thế là **lớp phủ chỉ có lợi**, không phải vật thay thế.
+
 ### 4. Đếm ngày từ lúc KHÁCH GỬI yêu cầu, theo NGÀY LỊCH
 
 **Mốc đếm là `CancellationRequest.createdAt`, không phải lúc admin quyết.**
