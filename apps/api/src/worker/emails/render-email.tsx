@@ -78,12 +78,29 @@ function buildEmail(
   const subjectCode = s('code') ?? 'your booking';
   const name = f('name');
   const title = f('title');
-  const money = f('amount') && f('currency') ? `${f('amount')} ${f('currency')}` : undefined;
+  /**
+   * Số tiền để IN — `undefined` khi không có đồng nào thật sự chuyển.
+   *
+   * `'0.00'` là chuỗi TRUTHY, nên bản cũ biến một khoản hoàn bằng không thành
+   * dòng "Refund issued 0.00 USD" cộng câu "your refund is on its way". Ca ấy
+   * hiếm khi ADR-0029 §2 mới ra (chỉ booking đã hoàn đủ từ trước), nhưng
+   * §AMEND 3 làm nó thành ĐƯỜNG THƯỜNG: mọi yêu cầu huỷ sát ngày khởi hành đều
+   * duyệt với mức 0% theo bậc chính sách.
+   *
+   * Không email nào được phép loan báo một khoản tiền bằng không, nên chặn ở
+   * ĐÂY, một chỗ cho mọi loại mail.
+   */
+  const amountRaw = f('amount');
+  const money =
+    amountRaw && f('currency') && Number(amountRaw) > 0
+      ? `${amountRaw} ${f('currency')}`
+      : undefined;
   // URL nút bấm derive từ frontendUrl — route THẬT của web v2, không bịa.
   const manageUrl = frontendUrl ? `${frontendUrl}/account/bookings` : undefined;
   const browseUrl = frontendUrl ? `${frontendUrl}/tours` : undefined;
   const blogUrl = frontendUrl ? `${frontendUrl}/blog` : undefined;
   const supportUrl = frontendUrl ? `${frontendUrl}/contact` : undefined;
+  const policyUrl = frontendUrl ? `${frontendUrl}/cancellation-policy` : undefined;
   const bookingReason = "You're receiving this because of a booking made at Nexora.";
 
   switch (type) {
@@ -299,11 +316,23 @@ function buildEmail(
             preview={`Your cancellation of booking ${code} has been approved.`}
             heading="Your cancellation is approved"
             note={
+              // Ca KHÔNG hoàn đồng nào không được im lặng: một mail báo "đã
+              // duyệt huỷ" mà không nhắc gì tới tiền để khách tự đoán, rồi ngồi
+              // đợi một khoản không bao giờ tới.
               money ? (
                 <NoteParagraph>
                   The refund typically appears within 5–10 business days, depending on your bank.
                 </NoteParagraph>
-              ) : undefined
+              ) : (
+                <NoteParagraph>
+                  No further refund is due on this booking.{' '}
+                  {policyUrl ? (
+                    <a href={policyUrl}>See our refund schedule</a>
+                  ) : (
+                    'See our refund schedule for how cancellations are refunded.'
+                  )}
+                </NoteParagraph>
+              )
             }
             footerReason={bookingReason}
           >

@@ -90,6 +90,51 @@ describe('renderEmail type → subject mapping', () => {
   });
 });
 
+describe('renderEmail — duyệt huỷ mà KHÔNG hoàn đồng nào (ADR-0029 §AMEND 3)', () => {
+  const ZERO_PAYLOAD = { ...BOOKING_PAYLOAD, amount: '0.00' };
+
+  it('KHÔNG hứa tiền: không có dòng "Refund issued", không có "on its way"', async () => {
+    // `'0.00'` là chuỗi TRUTHY, nên bản cũ in "Refund issued 0.00 USD" kèm câu
+    // "your refund is on its way". Từ §AMEND 3 đây là ĐƯỜNG THƯỜNG — mọi yêu
+    // cầu huỷ sát ngày khởi hành đều duyệt ở mức 0%.
+    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, ZERO_PAYLOAD);
+
+    expect(html).not.toContain('Refund issued');
+    expect(html).not.toContain('on its way');
+    expect(html).not.toContain('0.00');
+  });
+
+  it('NÓI RA rằng không còn gì để hoàn, kèm đường tới bảng bậc', async () => {
+    // Im lặng còn tệ hơn: khách đọc "đã duyệt huỷ" rồi ngồi đợi một khoản
+    // không bao giờ tới. `frontendUrl` truyền vào vì link chỉ dựng được khi
+    // biết gốc site — worker lấy từ options, ở đây phải đưa tay.
+    const { html } = await renderEmail(
+      EmailType.CANCELLATION_APPROVED,
+      ZERO_PAYLOAD,
+      OPTS.frontendUrl,
+    );
+
+    expect(html).toContain('No further refund is due');
+    expect(html).toContain('/cancellation-policy');
+  });
+
+  it('không có frontendUrl thì vẫn nói đủ ý, chỉ mất cái link', async () => {
+    // Env thiếu biến không được biến câu giải thích thành một câu cụt.
+    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, ZERO_PAYLOAD);
+
+    expect(html).toContain('No further refund is due');
+    expect(html).toContain('See our refund schedule');
+  });
+
+  it('có tiền thật thì vẫn in số và vẫn hứa như cũ', async () => {
+    const { html } = await renderEmail(EmailType.CANCELLATION_APPROVED, BOOKING_PAYLOAD);
+
+    expect(html).toContain('117.00');
+    expect(html).toContain('on its way');
+    expect(html).not.toContain('No further refund is due');
+  });
+});
+
 describe('renderEmail payload rendering', () => {
   it('renders name, tour title and money fields into the confirmation html', async () => {
     const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
