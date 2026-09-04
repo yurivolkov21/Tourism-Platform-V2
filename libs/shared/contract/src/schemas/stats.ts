@@ -68,14 +68,36 @@ export type DecimalMetric = z.output<typeof DecimalMetricSchema>;
  * sổ — có `currentFrom`/`previousFrom`/`generatedAt` thì dựng lại đúng câu
  * query đã sinh ra con số là chuyện làm được, không phải đoán.
  *
- * Mọi mốc là ISO UTC. Hai kỳ dài BẰNG NHAU và khít nhau:
- * `[previousFrom, currentFrom)` là kỳ trước, `[currentFrom, generatedAt)` là
- * kỳ này.
+ * Mọi mốc là ISO UTC. Hai kỳ dài BẰNG NHAU và khít nhau: kỳ này
+ * `[currentFrom, currentTo)`, kỳ trước `[previousFrom, currentFrom)`.
  */
 export const StatsPeriodSchema = z.object({
+  /**
+   * Độ dài cửa sổ, đơn vị ngày. Với cửa sổ trượt mặc định đây đúng bằng
+   * `STATS_WINDOW_DAYS`; với kỳ do admin chọn (ADR-0028) đây là span thật đã
+   * LÀM TRÒN, tối thiểu 1 — vẫn dùng được cho câu "prior N days" nhưng KHÔNG
+   * còn là nguồn chính xác của câu chữ. Kỳ có ngày cụ thể thì caption đọc
+   * thẳng `currentFrom`/`currentTo`.
+   */
   windowDays: z.int().positive(),
+  /** Đầu kỳ NÀY — TÍNH VÀO (`>=`). */
   currentFrom: z.iso.datetime(),
+  /**
+   * Cuối kỳ NÀY — KHÔNG tính vào (`<`).
+   *
+   * Tách khỏi `generatedAt` từ ADR-0028: trước đó cửa sổ luôn TRƯỢT theo đồng
+   * hồ nên cuối kỳ đúng bằng lúc chốt sổ, một field là đủ. Có bộ lọc thì hai
+   * mốc rời nhau — đọc thống kê tháng 7 vào ngày 4/9 thì kỳ kết ở
+   * `2026-08-01T00:00:00Z` còn sổ chốt lúc `2026-09-04T…`.
+   *
+   * Hai mốc TRÙNG nhau chính là dấu hiệu "cửa sổ đang trượt", và client dùng
+   * đúng dấu hiệu ấy để chọn giữa caption "prior N days" (kỳ trôi từng phút,
+   * in ngày cụ thể sẽ cũ đi) và caption in ngày thật.
+   */
+  currentTo: z.iso.datetime(),
+  /** Đầu kỳ TRƯỚC. Kỳ trước là `[previousFrom, currentFrom)`, dài bằng kỳ này. */
   previousFrom: z.iso.datetime(),
+  /** Lúc chốt sổ — mọi query của MỘT response dùng chung một mốc. */
   generatedAt: z.iso.datetime(),
 });
 export type StatsPeriod = z.output<typeof StatsPeriodSchema>;

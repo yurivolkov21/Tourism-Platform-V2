@@ -45,9 +45,18 @@ describe('statsPeriod', () => {
     expect(statsPeriod(statsWindow(NOW))).toEqual({
       windowDays: 28,
       currentFrom: '2026-08-04T10:30:00.000Z',
+      currentTo: '2026-09-01T10:30:00.000Z',
       previousFrom: '2026-07-07T10:30:00.000Z',
       generatedAt: '2026-09-01T10:30:00.000Z',
     });
+  });
+
+  // Cửa sổ TRƯỢT kết đúng lúc chốt sổ, nên hai mốc trùng nhau — chính điều
+  // kiện mà client dùng để chọn giữa caption "prior N days" và caption in
+  // ngày thật (ADR-0028 §4).
+  it('a sliding window ends exactly when the books were closed', () => {
+    const period = statsPeriod(statsWindow(NOW));
+    expect(period.currentTo).toBe(period.generatedAt);
   });
 });
 

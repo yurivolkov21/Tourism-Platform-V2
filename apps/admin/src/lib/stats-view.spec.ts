@@ -32,6 +32,7 @@ const t = messages.admin.stats;
 const period = {
   windowDays: 28,
   currentFrom: '2026-08-04T10:30:00.000Z',
+  currentTo: '2026-09-01T10:30:00.000Z',
   previousFrom: '2026-07-07T10:30:00.000Z',
   generatedAt: '2026-09-01T10:30:00.000Z',
 };

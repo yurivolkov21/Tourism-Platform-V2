@@ -9,11 +9,19 @@ import type { Prisma } from '../../generated/prisma/client.js';
 
 const DAY_MS = 86_400_000;
 
-/** Hai mốc cắt + thời điểm chốt sổ, đơn vị `Date` để đưa thẳng vào Prisma. */
+/** Ba mốc cắt + thời điểm chốt sổ, đơn vị `Date` để đưa thẳng vào Prisma. */
 export interface StatsWindow {
-  /** Đầu kỳ NÀY. Kỳ này là `[currentFrom, generatedAt]`. */
+  /** Đầu kỳ NÀY — TÍNH VÀO. Kỳ này là `[currentFrom, currentTo)`. */
   currentFrom: Date;
-  /** Đầu kỳ TRƯỚC. Kỳ trước là `[previousFrom, currentFrom)`. */
+  /**
+   * Cuối kỳ NÀY — KHÔNG tính vào. Với cửa sổ TRƯỢT nó đúng bằng `generatedAt`;
+   * với kỳ do admin chọn (`statsWindowFromRange`) nó là mốc chặn của khoảng
+   * ngày, có thể nằm sâu trong quá khứ hoặc ở tương lai gần. Query phải dùng
+   * mốc này chứ KHÔNG dùng `generatedAt` — nhầm hai cái là kỳ tháng 7 âm thầm
+   * kéo dài tới hôm nay.
+   */
+  currentTo: Date;
+  /** Đầu kỳ TRƯỚC. Kỳ trước là `[previousFrom, currentFrom)`, dài bằng kỳ này. */
   previousFrom: Date;
   /** Thời điểm chốt sổ — mọi query của MỘT response dùng chung một mốc. */
   generatedAt: Date;
@@ -40,6 +48,9 @@ export function statsWindow(now: Date): StatsWindow {
     // `new Date(now)` chứ không dùng lại tham chiếu: caller giữ Date của họ,
     // hàm này không được phép sửa nó.
     generatedAt: new Date(end),
+    // Cửa sổ TRƯỢT kết đúng lúc chốt sổ — hai mốc trùng nhau, và chính sự
+    // trùng ấy là dấu hiệu client đọc để biết kỳ này đang trôi (ADR-0028 §4).
+    currentTo: new Date(end),
     currentFrom: new Date(end - span),
     previousFrom: new Date(end - 2 * span),
   };
@@ -48,11 +59,29 @@ export function statsWindow(now: Date): StatsWindow {
 /** Cửa sổ → khối `period` của contract (ISO UTC, kèm độ dài cửa sổ). */
 export function statsPeriod(window: StatsWindow): StatsPeriod {
   return {
-    windowDays: STATS_WINDOW_DAYS,
+    windowDays: windowDays(window),
     currentFrom: window.currentFrom.toISOString(),
+    currentTo: window.currentTo.toISOString(),
     previousFrom: window.previousFrom.toISOString(),
     generatedAt: window.generatedAt.toISOString(),
   };
+}
+
+/**
+ * Độ dài kỳ này theo NGÀY, làm tròn, tối thiểu 1.
+ *
+ * Đo từ chính cửa sổ chứ không trả hằng `STATS_WINDOW_DAYS`: kỳ do admin chọn
+ * dài bao nhiêu là do hai ô ngày quyết (ADR-0028). Cửa sổ trượt mặc định vẫn
+ * ra đúng 28 vì span của nó đúng bằng hằng số ấy.
+ *
+ * Sàn 1 là bắt buộc chứ không phải cẩn tắc: contract khai `z.int().positive()`,
+ * mà lọc `?from=` bằng ngày HÔM NAY cho một span vài giờ → làm tròn thành 0 →
+ * response tự nó không parse nổi. Kỳ ngắn hơn một ngày vẫn là "một ngày" khi
+ * đếm bằng đơn vị ngày.
+ */
+function windowDays(window: StatsWindow): number {
+  const span = window.currentTo.getTime() - window.currentFrom.getTime();
+  return Math.max(1, Math.round(span / DAY_MS));
 }
 
 /**

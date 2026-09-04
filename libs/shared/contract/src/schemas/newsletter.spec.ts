@@ -155,6 +155,7 @@ describe('AdminSubscribersStatsSchema', () => {
   const period = {
     windowDays: STATS_WINDOW_DAYS,
     currentFrom: '2026-08-06T00:00:00.000Z',
+    currentTo: '2026-09-03T00:00:00.000Z',
     previousFrom: '2026-07-09T00:00:00.000Z',
     generatedAt: '2026-09-03T00:00:00.000Z',
   };

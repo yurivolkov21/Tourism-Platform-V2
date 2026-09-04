@@ -216,6 +216,7 @@ describe('AdminEnquiriesStatsSchema', () => {
     period: {
       windowDays: STATS_WINDOW_DAYS,
       currentFrom: '2026-08-04T10:30:00.000Z',
+      currentTo: '2026-09-01T10:30:00.000Z',
       previousFrom: '2026-07-07T10:30:00.000Z',
       generatedAt: '2026-09-01T10:30:00.000Z',
     },
