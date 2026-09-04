@@ -44,7 +44,11 @@ export default async function BookingsPage({
     fetchAdminBookings(cookie, query),
     // F5: hàng stat card fetch CÙNG ĐỢT với list — nối tiếp sẽ thêm nguyên
     // một RTT vào MỌI click phân trang/lọc chỉ để vẽ lại hàng card.
-    fetchAdminBookingsStats(cookie),
+    //
+    // ADR-0028: card ăn CHÍNH khoảng ngày mà bảng đang lọc. `query` đã qua
+    // parse nên nó mang mặc định tháng này, hoặc không mang ngày nào khi admin
+    // chọn `?dates=all` — lúc đó server rơi về cửa sổ trượt 28 ngày.
+    fetchAdminBookingsStats(cookie, { from: query.from, to: query.to }),
   ]);
   // Null chỉ xảy ra khi phiên hết hạn ngay giữa hai request — layout xử lý ở
   // lần điều hướng kế (cùng nếp trang dashboard).

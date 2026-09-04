@@ -29,9 +29,9 @@ import { api, withAdminAuth } from './client';
  * cache giữa admin: stats là số nền tảng, không theo phiên (xem cảnh báo
  * `cacheFor` ở client.ts).
  *
- * `undefined` ở vị trí input là ĐÚNG chữ ký: bảy procedure này không khai
- * `.input()` (cửa sổ 28 ngày là hằng của sản phẩm, không phải tham số) — cùng
- * cách gọi `catalog.destinations.list` bên web.
+ * `undefined` ở vị trí input là ĐÚNG chữ ký với SÁU procedure không khai
+ * `.input()` — cùng cách gọi `catalog.destinations.list` bên web. Ngoại lệ là
+ * `bookings`: từ ADR-0028 nó nhận khoảng ngày của bộ lọc.
  *
  * KHÔNG nuốt lỗi ở đây: trang gọi fetcher stats cùng `Promise.all` với list,
  * nên một endpoint stats hỏng sẽ rơi vào `app/error.tsx` y như khi list hỏng.
@@ -48,8 +48,24 @@ function statsContext(cookie: string) {
   return { cookie, cacheFor: { seconds: STATS_CACHE_SECONDS, tags: [ADMIN_STATS_TAG] } };
 }
 
-export async function fetchAdminBookingsStats(cookie: string): Promise<AdminBookingsStats> {
-  return api.admin.stats.bookings(undefined, { context: statsContext(cookie) });
+/**
+ * Bộ số `/bookings` — endpoint stats DUY NHẤT nhận khoảng ngày (ADR-0028):
+ * hàng card tính đúng kỳ mà bảng ngay dưới nó đang lọc.
+ *
+ * Truyền `{}` khi không lọc (`?dates=all`) chứ không phải `undefined`: schema
+ * khai hai field optional nên object rỗng là input hợp lệ, và server rơi về
+ * cửa sổ trượt 28 ngày.
+ *
+ * Cache VẪN dùng được dù có tham số: Data Cache của Next key theo URL, mà
+ * `from`/`to` nằm trên query string — mỗi khoảng một entry, và
+ * `ADMIN_STATS_TAG` vẫn `updateTag` được cả cụm sau mỗi lệnh ghi. Mặc định là
+ * tháng hiện tại nên đại đa số lượt truy cập chung một key.
+ */
+export async function fetchAdminBookingsStats(
+  cookie: string,
+  range?: { from?: string; to?: string },
+): Promise<AdminBookingsStats> {
+  return api.admin.stats.bookings(range ?? {}, { context: statsContext(cookie) });
 }
 
 export async function fetchAdminCancellationsStats(

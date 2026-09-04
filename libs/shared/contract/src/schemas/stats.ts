@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { CalendarDateSchema } from './bookings.js';
 import { DecimalStringSchema } from './catalog.js';
 
 /**
@@ -101,6 +102,38 @@ export const StatsPeriodSchema = z.object({
   generatedAt: z.iso.datetime(),
 });
 export type StatsPeriod = z.output<typeof StatsPeriodSchema>;
+
+/**
+ * Input `admin.stats.bookings` (ADR-0028) — khoảng ngày mà hàng stat card
+ * tính trên đó, ĐÚNG hai ô ngày của bảng ngay bên dưới.
+ *
+ * Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field của
+ * `AdminBookingsListQuerySchema` chứ không khai bộ thứ hai: `?from=`/`?to=`
+ * trên URL nuôi cả bảng lẫn card, nên hai bên phải nhận đúng một chữ. Một bản
+ * khai lại là một luật khoan dung thứ hai sẽ trôi lệch trong im lặng.
+ *
+ * CẢ HAI OPTIONAL, và thiếu cả hai là ca có thật chứ không phải ca lười: đó
+ * là `?dates=all` (admin cố ý bỏ lọc) và mọi caller chưa có bộ lọc ngày —
+ * lúc đó service rơi về cửa sổ TRƯỢT 28 ngày như trước ADR-0028. Thêm field
+ * optional là thay đổi tương thích ngược; bỏ nó đi thì không.
+ *
+ * KHÔNG nhận giờ giấc: hợp đồng chỉ có ngày lịch, còn phép đổi ngày → mốc
+ * (nửa-mở `[00:00:00.000, +1 ngày)`) là chuyện của tầng API. Lý do không dùng
+ * `00:00:01`/`23:59:59` ở ADR-0028 §3.
+ */
+export const AdminBookingsStatsQuerySchema = z
+  .object({
+    from: CalendarDateSchema.optional(),
+    to: CalendarDateSchema.optional(),
+  })
+  // Cùng luật `AdminBookingsListQuerySchema`: khoảng ngược là 400, không phải
+  // một cửa sổ âm mà service phải đoán ý.
+  .refine(({ from, to }) => !(from && to) || from <= to, {
+    message: 'from must be on or before to',
+    path: ['to'],
+  });
+
+export type AdminBookingsStatsQuery = z.output<typeof AdminBookingsStatsQuerySchema>;
 
 /**
  * Bộ số vùng `/bookings`. Định nghĩa TỪNG metric nằm ở JSDoc của

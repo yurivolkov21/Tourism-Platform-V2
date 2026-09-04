@@ -169,9 +169,13 @@ describe('admin stats integration (F5)', () => {
     };
   }
 
-  /** GET một endpoint stats với cookie cho sẵn. */
-  async function get(path: string, cookie: string) {
-    return app.inject({ method: 'GET', url: `/api/admin/stats/${path}`, headers: { cookie } });
+  /** GET một endpoint stats với cookie cho sẵn; `query` là query-string đã ghép. */
+  async function get(path: string, cookie: string, query = '') {
+    return app.inject({
+      method: 'GET',
+      url: `/api/admin/stats/${path}${query}`,
+      headers: { cookie },
+    });
   }
 
   beforeAll(async () => {
@@ -361,6 +365,127 @@ describe('admin stats integration (F5)', () => {
       const previous = Date.parse(stats.period.previousFrom);
       expect(Date.parse(stats.period.generatedAt) - current).toBe(28 * DAY);
       expect(current - previous).toBe(28 * DAY);
+    });
+  });
+
+  /**
+   * ADR-0028 — hàng card ăn theo bộ lọc ngày của bảng. Fixture ở đây neo vào
+   * NGÀY LỊCH CỐ ĐỊNH (không phải `daysAgo`) vì chính khoảng ngày là thứ đang
+   * được kiểm: một fixture trôi theo đồng hồ sẽ rời khỏi khoảng đã hỏi.
+   */
+  describe('stats.bookings — khoảng ngày do admin chọn', () => {
+    /** 12:00 UTC: xa cả hai biên nửa đêm, nên không ca nào rung vì lệch giờ. */
+    const at = (date: string) => new Date(`${date}T12:00:00.000Z`);
+
+    beforeEach(async () => {
+      await prisma.booking.createMany({
+        data: [
+          // ── Trong khoảng hỏi (tháng 5/2026) ──
+          booking(101, {
+            status: BookingStatus.PAID,
+            total: '100.00',
+            createdAt: at('2026-05-10'),
+            paidAt: at('2026-05-10'),
+          }),
+          // Biên ĐẦU kỳ, tính vào: nửa đêm ngày 1 là `gte`.
+          booking(102, {
+            status: BookingStatus.PAID,
+            total: '10.00',
+            createdAt: new Date('2026-05-01T00:00:00.000Z'),
+            paidAt: new Date('2026-05-01T00:00:00.000Z'),
+          }),
+          // Biên CUỐI kỳ, VẪN tính vào: giây áp chót của ngày 31 — đây là ca
+          // mà mốc `23:59:59` sẽ bỏ rơi (ADR-0028 §3).
+          booking(103, {
+            status: BookingStatus.PAID,
+            total: '1.00',
+            createdAt: new Date('2026-05-31T23:59:59.500Z'),
+            paidAt: new Date('2026-05-31T23:59:59.500Z'),
+          }),
+          // ── Kỳ TRƯỚC (31 ngày liền trước 01/05 → bắt đầu 31/03) ──
+          booking(104, {
+            status: BookingStatus.PAID,
+            total: '50.00',
+            createdAt: at('2026-04-15'),
+            paidAt: at('2026-04-15'),
+          }),
+          // ── NGOÀI cả hai kỳ: ngay sau kỳ này, và trước cả kỳ trước ──
+          booking(105, {
+            status: BookingStatus.PAID,
+            total: '999.00',
+            createdAt: new Date('2026-06-01T00:00:00.000Z'),
+            paidAt: new Date('2026-06-01T00:00:00.000Z'),
+          }),
+          booking(106, {
+            status: BookingStatus.PAID,
+            total: '888.00',
+            createdAt: at('2026-02-01'),
+            paidAt: at('2026-02-01'),
+          }),
+        ],
+      });
+    });
+
+    it('cắt ĐÚNG khoảng đã hỏi — trọn ngày cuối, và không lấn sang ngày kế', async () => {
+      const res = await get('bookings', adminCookie, '?from=2026-05-01&to=2026-05-31');
+      expect(res.statusCode).toBe(200);
+      const stats = AdminBookingsStatsSchema.parse(res.json());
+
+      // 100 + 10 + 1 — booking 103 lúc 23:59:59.500 VẪN vào (biên nửa-mở);
+      // booking 105 lúc 00:00 ngày 1/6 thì KHÔNG.
+      expect(stats.revenue.current).toBe('111.00');
+      expect(stats.paidBookings.current).toBe(3);
+      expect(stats.newBookings.current).toBe(3);
+    });
+
+    it('kỳ trước dài ĐÚNG BẰNG kỳ này và lùi liền kề — không phải tháng lịch trước', async () => {
+      const stats = AdminBookingsStatsSchema.parse(
+        (await get('bookings', adminCookie, '?from=2026-05-01&to=2026-05-31')).json(),
+      );
+      // Kỳ này 31 ngày → kỳ trước là [31/03, 01/05): booking 104 (15/04) vào,
+      // booking 106 (01/02) thì không. Tháng 4 có 30 ngày nên "tháng lịch
+      // trước" sẽ là một cửa sổ KHÁC — đây là chỗ hai cách hiểu tách nhau.
+      expect(stats.revenue.previous).toBe('50.00');
+      expect(stats.paidBookings.previous).toBe(1);
+
+      const currentFrom = Date.parse(stats.period.currentFrom);
+      const currentTo = Date.parse(stats.period.currentTo);
+      const previousFrom = Date.parse(stats.period.previousFrom);
+      expect(currentTo - currentFrom).toBe(currentFrom - previousFrom);
+      expect(stats.period.windowDays).toBe(31);
+    });
+
+    it('period.currentTo là 00:00 ngày SAU `to`, và tách khỏi generatedAt', async () => {
+      const stats = AdminBookingsStatsSchema.parse(
+        (await get('bookings', adminCookie, '?from=2026-05-01&to=2026-05-31')).json(),
+      );
+      expect(stats.period.currentFrom).toBe('2026-05-01T00:00:00.000Z');
+      expect(stats.period.currentTo).toBe('2026-06-01T00:00:00.000Z');
+      expect(stats.period.previousFrom).toBe('2026-03-31T00:00:00.000Z');
+      // Sổ chốt lúc gọi, không phải cuối kỳ — kỳ tháng 5 đọc hôm nay vẫn là
+      // kỳ tháng 5.
+      expect(stats.period.currentTo).not.toBe(stats.period.generatedAt);
+      expect(Date.parse(stats.period.generatedAt)).toBeGreaterThan(
+        Date.parse(stats.period.currentTo),
+      );
+    });
+
+    it('không tham số: rơi về cửa sổ TRƯỢT 28 ngày như trước ADR-0028', async () => {
+      const stats = AdminBookingsStatsSchema.parse((await get('bookings', adminCookie)).json());
+      expect(stats.period.windowDays).toBe(28);
+      expect(stats.period.currentTo).toBe(stats.period.generatedAt);
+      // Mọi fixture trên đều nằm ngoài 56 ngày gần nhất của đồng hồ thật.
+      expect(stats.revenue).toEqual({ current: '0.00', previous: '0.00' });
+    });
+
+    it('khoảng NGƯỢC bị contract từ chối — 400, không phải một cửa sổ âm', async () => {
+      const res = await get('bookings', adminCookie, '?from=2026-05-31&to=2026-05-01');
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('ngày không tồn tại cũng là 400 — hợp đồng chỉ nhận ngày lịch thật', async () => {
+      expect((await get('bookings', adminCookie, '?from=2026-02-31')).statusCode).toBe(400);
+      expect((await get('bookings', adminCookie, '?to=2026-05-31T00:00:00Z')).statusCode).toBe(400);
     });
   });
 

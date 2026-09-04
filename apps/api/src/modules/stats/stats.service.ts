@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import {
   type AdminBookingsStats,
+  type AdminBookingsStatsQuery,
   type AdminCancellationsStats,
   type AdminEnquiriesStats,
   type AdminOutboxStats,
@@ -24,7 +25,14 @@ import {
   reviewApprovals,
   subscribersStats,
 } from './stats-aggregates.js';
-import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './stats-math.js';
+import {
+  average,
+  grossAmount,
+  ratePercent,
+  statsPeriod,
+  statsWindow,
+  statsWindowFromRange,
+} from './stats-math.js';
 
 /**
  * Số liệu vùng admin (spec P4b §3-F5) — ba bộ metric cho ba trang vùng.
@@ -45,9 +53,23 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  *
  * ## Định nghĩa TỪNG metric (đây là số admin đem so sổ — đọc kỹ trước khi sửa)
  *
- * Cửa sổ: kỳ này `[now − 28d, now)`, kỳ trước `[now − 56d, now − 28d)`. Hai kỳ
- * DÀI BẰNG NHAU, khít nhau, mốc UTC (xem `statsWindow`). Mọi khoảng đều
- * nửa-mở `gte … lt` nên không hàng nào bị đếm hai lần ở chỗ giáp ranh.
+ * Cửa sổ MẶC ĐỊNH: kỳ này `[now − 28d, now)`, kỳ trước `[now − 56d, now −
+ * 28d)`. Hai kỳ DÀI BẰNG NHAU, khít nhau, mốc UTC (xem `statsWindow`). Mọi
+ * khoảng đều nửa-mở `gte … lt` nên không hàng nào bị đếm hai lần ở chỗ giáp
+ * ranh.
+ *
+ * **Riêng `bookings` cửa sổ do ADMIN chọn** (ADR-0028): `adminBookings` nhận
+ * `{from, to}` — đúng hai ô ngày của bảng `/bookings` — và cắt bằng
+ * `statsWindowFromRange`. Kỳ trước vẫn dài BẰNG kỳ này, chỉ lùi liền kề, nên
+ * bất biến trên không bị nới. Thiếu tham số thì rơi về đúng cửa sổ mặc định.
+ * Sáu bộ số còn lại KHÔNG nhận tham số: trang của chúng chưa có bộ lọc ngày.
+ *
+ * ⚠️ Ăn theo bộ lọc KHÔNG có nghĩa bốn con số cùng đếm trên MỘT cột. Neo của
+ * từng metric giữ nguyên: `revenue`/`paidBookings`/`cancellationRate` theo
+ * `paid_at`, `newBookings` theo `created_at` (cột mà bảng cũng dùng). Nên
+ * booking tạo 28/08 mà trả tiền 02/09 VÀO `revenue` của tháng 9 nhưng KHÔNG
+ * có trong bảng tháng 9 — đúng, vì doanh thu là ngày tiền về. Ba trong bốn
+ * card cố ý không khớp bảng, và luôn như vậy kể từ F5 (ADR-0028 §6).
  *
  * **bookings**
  * - `revenue` — `SUM(total_amount)` của booking có `paid_at` TRONG kỳ. Neo
@@ -252,17 +274,24 @@ import { average, grossAmount, ratePercent, statsPeriod, statsWindow } from './s
  */
 @Injectable()
 export class StatsService {
-  /** Bộ số vùng `/bookings`. Mọi aggregate PHÁT song song (Promise.all —
-   *  5 query độc lập trên pool sau vòng gộp groupBy, không phải một
-   *  round-trip). */
-  async adminBookings(): Promise<AdminBookingsStats> {
-    const window = statsWindow(new Date());
+  /**
+   * Bộ số vùng `/bookings`, tính trên khoảng ngày admin đang lọc (ADR-0028).
+   * Mọi aggregate PHÁT song song (Promise.all — 5 query độc lập trên pool sau
+   * vòng gộp groupBy, không phải một round-trip).
+   *
+   * Mốc chặn của kỳ này là `window.currentTo`, KHÔNG phải `window.generatedAt`
+   * — hai cái chỉ trùng nhau khi cửa sổ đang trượt; nhầm chúng là kỳ tháng 7
+   * âm thầm kéo dài tới hôm nay.
+   */
+  async adminBookings(query?: AdminBookingsStatsQuery): Promise<AdminBookingsStats> {
+    const window = statsWindowFromRange(query?.from, query?.to, new Date());
     const [current, previous, createdNow, createdBefore, currency] = await Promise.all([
-      paidBookingsSlice(window.currentFrom, window.generatedAt),
+      paidBookingsSlice(window.currentFrom, window.currentTo),
       paidBookingsSlice(window.previousFrom, window.currentFrom),
-      bookingsCreatedCount(window.currentFrom, window.generatedAt),
+      bookingsCreatedCount(window.currentFrom, window.currentTo),
       bookingsCreatedCount(window.previousFrom, window.currentFrom),
-      revenueCurrency(window.previousFrom, window.generatedAt),
+      // Đồng tiền lấy trên CẢ HAI kỳ: card in một nhãn tiền cho cả hai con số.
+      revenueCurrency(window.previousFrom, window.currentTo),
     ]);
 
     return {

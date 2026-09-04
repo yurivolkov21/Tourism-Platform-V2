@@ -1,4 +1,5 @@
 import {
+  AdminBookingsStatsQuerySchema,
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
   AdminReviewsStatsSchema,
@@ -61,6 +62,41 @@ describe('StatsPeriodSchema', () => {
   it('rejects a period missing the previous edge — the caption needs it', () => {
     const { previousFrom: _dropped, ...partial } = period;
     expect(StatsPeriodSchema.safeParse(partial).success).toBe(false);
+  });
+});
+
+describe('AdminBookingsStatsQuerySchema', () => {
+  // ADR-0028: card ăn theo bộ lọc ngày của bảng, dùng ĐÚNG hai tên và đúng
+  // schema mà `admin.bookings.list` đã dùng — một chữ trên URL nuôi cả hai
+  // vùng, không có bản dịch thứ hai để trôi lệch.
+  it('accepts a calendar-date range, both ends optional', () => {
+    expect(AdminBookingsStatsQuerySchema.parse({})).toEqual({});
+    expect(AdminBookingsStatsQuerySchema.parse({ from: '2026-09-01', to: '2026-09-30' })).toEqual({
+      from: '2026-09-01',
+      to: '2026-09-30',
+    });
+    expect(AdminBookingsStatsQuerySchema.parse({ from: '2026-09-01' })).toEqual({
+      from: '2026-09-01',
+    });
+  });
+
+  it('rejects a reversed range — same rule as admin.bookings.list', () => {
+    expect(
+      AdminBookingsStatsQuerySchema.safeParse({ from: '2026-09-30', to: '2026-09-01' }).success,
+    ).toBe(false);
+  });
+
+  it('rejects an instant: the contract only ever takes calendar dates', () => {
+    // Phép đổi ngày → mốc (nửa-mở, 00:00:00.000) là chuyện của tầng API; giờ
+    // giấc không bao giờ đi qua hợp đồng (ADR-0028 §3).
+    expect(
+      AdminBookingsStatsQuerySchema.safeParse({ from: '2026-09-01T00:00:00.000Z' }).success,
+    ).toBe(false);
+  });
+
+  it('rejects a date that does not exist, and a year outside 1900-2099', () => {
+    expect(AdminBookingsStatsQuerySchema.safeParse({ from: '2026-02-31' }).success).toBe(false);
+    expect(AdminBookingsStatsQuerySchema.safeParse({ to: '0050-06-01' }).success).toBe(false);
   });
 });
 

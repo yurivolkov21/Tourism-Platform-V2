@@ -82,6 +82,7 @@ import {
 } from './schemas/reviews.js';
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
+  AdminBookingsStatsQuerySchema,
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
   AdminEnquiriesStatsSchema,
@@ -654,9 +655,12 @@ export const contract = {
      * — gộp làm một sẽ bắt `/reviews` chờ luôn cả aggregate tiền của
      * bookings. P4d dashboard cần nhiều bộ thì gọi song song ba cái.
      *
-     * KHÔNG có input: cửa sổ 28-ngày là hằng của sản phẩm (mẫu card user chốt
-     * 31/08), không phải tham số. Ngày nào cần chọn kỳ thì thêm input optional
-     * — thêm field optional là thay đổi tương thích ngược, bỏ nó thì không.
+     * Input: CHỈ `bookings` có, và optional (ADR-0028) — hàng card của
+     * `/bookings` ăn theo hai ô ngày của bảng ngay dưới nó, thiếu tham số thì
+     * rơi về cửa sổ trượt 28 ngày như cũ. Sáu endpoint còn lại KHÔNG có
+     * input: trang của chúng chưa có bộ lọc ngày nào, và thêm một tham số
+     * không ai gửi là thêm một nhánh không ai test. Ngày một vùng mọc bộ lọc
+     * ngày thì lặp lại đúng khuôn ấy, đừng dựng cửa sổ thứ hai.
      *
      * KHÔNG khai lỗi nghiệp vụ: đọc thuần, không phán quyết gì. Guard
      * `AuthGuard` + `@Roles(ADMIN)` ở controller cho 401/403 như bảy endpoint
@@ -667,8 +671,9 @@ export const contract = {
         .route({
           method: 'GET',
           path: '/api/admin/stats/bookings',
-          summary: 'Bookings KPIs for the last 28 days and the 28 before that',
+          summary: 'Bookings KPIs for a date range, against an equally long preceding one',
         })
+        .input(AdminBookingsStatsQuerySchema)
         .output(AdminBookingsStatsSchema),
       cancellations: oc
         .route({

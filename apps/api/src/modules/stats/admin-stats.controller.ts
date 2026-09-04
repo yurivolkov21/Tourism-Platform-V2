@@ -12,9 +12,10 @@ import { StatsService } from './stats.service.js';
  * (getAllAndOverride handler→class), nên ẩn danh → 401, không phải admin →
  * 403 — cả hai TRƯỚC khi oRPC chạm tới bất cứ thứ gì.
  *
- * Bảy handler mỏng đúng nghĩa: không input để parse, không lỗi nghiệp vụ để
- * dịch (contract không khai mã nào — đọc thuần thì không có phán quyết nào để
- * báo). Toàn bộ định nghĩa metric nằm ở JSDoc `StatsService`.
+ * Bảy handler mỏng đúng nghĩa: không lỗi nghiệp vụ để dịch (contract không
+ * khai mã nào — đọc thuần thì không có phán quyết nào để báo). Chỉ `bookings`
+ * có input, và nó cũng chỉ chuyển tiếp (ADR-0028). Toàn bộ định nghĩa metric
+ * nằm ở JSDoc `StatsService`.
  */
 @Controller()
 @UseGuards(AuthGuard)
@@ -24,7 +25,12 @@ export class AdminStatsController {
 
   @Implement(contract.admin.stats.bookings)
   bookings() {
-    return implement(contract.admin.stats.bookings).handler(() => this.stats.adminBookings());
+    // Endpoint DUY NHẤT của nhóm có input (ADR-0028): khoảng ngày đi thẳng
+    // xuống service, không diễn giải gì thêm ở đây — contract đã canh định
+    // dạng và luật `from <= to`.
+    return implement(contract.admin.stats.bookings).handler(({ input }) =>
+      this.stats.adminBookings(input),
+    );
   }
 
   @Implement(contract.admin.stats.cancellations)

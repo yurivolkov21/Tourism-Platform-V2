@@ -6,16 +6,22 @@ import { DecimalStringSchema } from './catalog.js';
  * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn cho trang `/reports`, nút
  * CSV của nó và bản in ra PDF bằng chính trình duyệt.
  *
- * ## Vì sao một endpoint RIÊNG chứ không thêm `{from,to}` vào `admin.stats.*`
+ * ## Vì sao một endpoint RIÊNG chứ không chỉ dùng `admin.stats.*`
+ *
+ * ⚠️ Từ ADR-0028, `admin.stats.bookings` CÓ nhận `{from,to}` — nên vế "stats
+ * không nhận khoảng ngày" của đoạn dưới đã hết đúng. Vế thật sự biện minh cho
+ * hai endpoint thì còn nguyên, và chính ADR-0028 giữ nó bằng cửa sổ kỳ-trước
+ * dài BẰNG NHAU lùi liền kề (không phải tháng lịch trước).
  *
  * Hai bề mặt trả lời hai câu hỏi khác nhau, và hình dạng response nói rõ điều
  * đó:
  *
  * - `admin.stats.*` là "kỳ này SO VỚI kỳ trước": mỗi metric là một CẶP số, và
  *   pill delta chỉ nói thật khi hai kỳ DÀI BẰNG NHAU (xem `stats.ts` +
- *   `stats-math.ts`). Tháng thì không: so tháng 2 (28 ngày) với tháng 1 (31
- *   ngày) là bịa ra một cú sụt 10% từ hư không. Nhét tháng vào cửa sổ đôi ấy
- *   nghĩa là phá đúng bất biến khiến nó đáng tin.
+ *   `stats-math.ts`). Tháng LỊCH thì không: so tháng 2 (28 ngày) với tháng 1
+ *   (31 ngày) là bịa ra một cú sụt 10% từ hư không. Đây là lý do khoảng ngày
+ *   của ADR-0028 so với một cửa sổ dài bằng nó lùi liền kề, KHÔNG so với
+ *   tháng lịch liền trước — bất biến giữ nguyên, chỉ độ dài cửa sổ là đổi.
  * - Báo cáo tháng là TỔNG TUYỆT ĐỐI của một kỳ đóng, cộng những con số mà stat
  *   card không có (phân rã theo trạng thái, tổng hoàn tiền) và không cần
  *   những con số mà stat card có (ảnh chụp hàng đợi "bây giờ" — vô nghĩa
