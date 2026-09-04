@@ -312,7 +312,7 @@ describe('RefundPanel — booking có yêu cầu huỷ đang mở', () => {
   it('KHÔNG hiện nút refund, và nói rõ đường đúng thay vì im lặng tắt', () => {
     render(<RefundPanel booking={{ ...PAID, hasOpenCancellation: true }} refund={vi.fn()} />);
 
-    expect(screen.queryByRole('button', { name: t.issue })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.cta })).toBeNull();
     // Một nút biến mất không lý do là một admin đi tìm cách khác — mà cách
     // khác ở đây chính là cái bẫy làm rò ghế.
     expect(screen.getByText(messages.admin.bookings.refund.openCancellation)).toBeInTheDocument();
@@ -320,6 +320,6 @@ describe('RefundPanel — booking có yêu cầu huỷ đang mở', () => {
 
   it('không có request mở thì nút vẫn hiện như cũ', () => {
     render(<RefundPanel booking={PAID} refund={vi.fn()} />);
-    expect(screen.getByRole('button', { name: t.issue })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.cta })).toBeInTheDocument();
   });
 });
