@@ -8,6 +8,151 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Chính sách hoàn tiền thành bậc CƯỠNG CHẾ: một nguồn cho cả văn bản công khai lẫn phép tính (nhánh `fix/p4c-backend-logic`, 2 commit `f3d0da5..ad1c43f`, ~20 file, KHÔNG migration)
+
+Đợt **A** của [ADR-0030](adr/0030-refund-policy-tiers.md); phần API tính tiền +
+stepper để đợt B (user chốt tách — văn bản pháp lý đáng được đọc riêng, không
+trộn vào một diễn biến kỹ thuật). Kèm [ADR-0029](adr/0029-cancellation-approve-partial-refund.md)
+đi trước cho cơ chế approve.
+
+### Bốn lỗ tìm được khi rà chính sách
+
+Site ĐÃ công bố bậc hoàn tiền ở `/cancellation-policy` và `/terms` — tiền đề
+"chưa nói rõ" là sai. Nhưng:
+
+1. **Mất hẳn ngày 14.** Cả hai văn bản viết "15–29 ngày" rồi "dưới 14 ngày",
+   bỏ rơi đúng ngày 14 chẵn.
+2. **Công cụ admin mù chính sách.** Bậc chỉ sống dưới dạng văn xuôi trong
+   i18n, không có dạng máy đọc được — hai admin xử hai ca giống hệt nhau ra
+   hai con số khác nhau.
+3. **Badge tour dừng nửa chừng.** "Free until 5 days out" không nói sau hạn
+   thì sao, nên khách lỡ một ngày bị bất ngờ.
+4. **Quyết định không lưu căn cứ.**
+
+### Bậc mới 100 / 50 / 25 / 0
+
+`≥30` · `15–29` · `7–14` · `<7`. Dải 25% là MỚI, và nó làm ba việc: vá lỗ ngày
+14, hạ vực từ 50 xuống 25 điểm, và **chỉ nới rộng hơn** — ngày 7–14 đi từ 0%
+lên 25%, các mốc khác giữ nguyên, nên **không booking nào đã đặt bị thiệt** so
+với điều khoản khách đã đọc lúc mua. Đó chính là điều kiện để sửa được văn bản
+công khai mà không phải xử lý riêng cho booking cũ.
+
+Hằng `REFUND_POLICY_TIERS` đặt ở **contract** chứ không i18n: nó vừa là copy
+khách đọc vừa là **luật tiền** server tính. Ở i18n thì API phải import một gói
+copy để tính tiền, và một sửa đổi "chỉ đổi chữ" có thể âm thầm đổi số tiền trả
+cho khách. Nay `/cancellation-policy`, `/terms` và (đợt B) màn quyết định của
+admin đọc chung một bảng — gạch đầu dòng SINH ra từ hằng, biên trên của mỗi bậc
+suy từ biên dưới của bậc trước nên lỗ ngày 14 không thể tái sinh.
+
+### Hai câu bị bỏ khỏi văn bản công khai
+
+- *"general guidelines rather than fixed rules"* — máy đã quyết thì đừng bảo
+  khách rằng đó là gợi ý.
+- *"less any non-recoverable supplier costs"* — **điều khoản bất khả thi
+  hành**: hệ thống không biết chi phí nhà cung cấp, nên câu ấy chỉ làm con số
+  công bố mập mờ mà không ai trừ được thật.
+
+Thêm mục **"How we count the days"**: đếm theo NGÀY LỊCH (giờ trong ngày không
+đổi kết quả) và tính từ lúc khách GỬI yêu cầu, không phải lúc ta xử xong.
+
+### ⚠️ Test bác bỏ chính ADR — ghi lại vì đây là bài học, không phải sự cố
+
+ADR-0030 bản đầu khai một sàn `MIN_FREE_CANCELLATION_DAYS = 7` và bắt sửa 5
+tour trong seed, lý do "chặn vực 100 điểm". Viết test thì nó đỏ ngay, và lộ
+HAI lỗi:
+
+- **Sàn 7 không xoá được vực.** Đo thật: badge 7 thì ngày 6 vẫn rơi bậc `<7` =
+  0%. Phải từ **8** trở lên ngày trước hạn mới chạm dải 25%.
+- **Nâng sàn là SIẾT quyền khách.** `freeCancellationDays` là số ngày TỐI
+  THIỂU để được miễn phí, nên nâng 5 → 8 lấy mất quyền huỷ miễn phí ở ngày 5,
+  6, 7 trên 8 tour — trái thẳng luật "chỉ nới, không siết" của chính ADR ấy.
+
+Và cái gọi là "vực" hoá ra **không phải mâu thuẫn với chính sách** — nó là
+**hạn chót**. Khách lỡ hạn rơi về đúng bậc chuẩn của ngày hôm đó, tức bằng
+đúng thứ một tour KHÔNG có badge sẽ trả; họ chỉ mất phần thưởng thêm. Áp tư
+duy "thang bậc" lên một lời hứa vốn nhị phân là chỗ suy luận đã trượt.
+
+Kết quả: **seed không đụng một dòng**, hằng sàn bị gỡ, thay bằng bất biến có
+test — *badge chỉ NÂNG, không bao giờ HẠ* (quét mọi mốc × mọi ngày). Và một
+test mới **đo** độ cao vực bằng số thay vì để người viết phỏng đoán.
+
+### Chữa cái BẤT NGỜ thay vì vặn con số
+
+Rủi ro thật không nằm ở mức %, mà ở chỗ khách không biết trước. Hai chỗ, không
+đổi một con số nào:
+
+- **Badge trang tour nói nốt vế sau** — thêm "After that, our standard refund
+  schedule applies" kèm link về bảng bậc (tour không có badge giữ nguyên đường
+  cũ về policy riêng của tour).
+- **Dialog xin huỷ của khách hiện luôn kết quả**: còn bao nhiêu ngày, hoàn bao
+  nhiêu phần trăm, bao nhiêu tiền — TRƯỚC khi bấm gửi, và trừ sẵn phần đã hoàn.
+
+Cả hai dùng ĐÚNG hàm mà màn quyết định của admin sẽ dùng ở đợt B, nên khách và
+admin **không thể** nhìn hai con số khác nhau. `BookingSchema` vì thế mang thêm
+`freeCancellationDays` (join sống như `tourSlug`, không phải snapshot): thiếu
+nó thì ước tính nói THẤP hơn thực tế ở 15 tour có badge — mà nói thấp còn tệ
+hơn không nói.
+
+### Còn treo sau đợt này
+
+**Người đặt muộn không bao giờ với tới bậc 100%** (user phát hiện lúc nghiệm
+thu): đặt 4/9 cho chuyến 19/9 thì dù huỷ ngay hôm sau cũng chỉ 50%, trong khi
+người đặt từ tháng 7 huỷ cùng ngày được 100%. Cùng một hành vi, khác 50 điểm,
+và khách không làm gì sai — bảng bậc chỉ đo "còn bao xa tới khởi hành", không
+đo "đã giữ chỗ bao lâu". Hướng chữa đã thống nhất: **cửa sổ ân hạn sau khi
+đặt**, chi tiết ở kế hoạch đợt kế.
+
+Tests after: 1417 web · 311 api · 329 api-int · 210 contract · 733 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 16 contract cho `refund-policy`.
+
+⚠️ Build `apps/web` KHÔNG chạy trong đợt này: máy dev đang giữ `.next` (repo
+cấm `next build` song song dev server). Toàn bộ test đã chạy; cần `gate:int`
+đầy đủ trước khi merge.
+
+## 2026-09-04 — Điều chỉnh backend #3: tách route chi tiết cho `/cancellations`, quyết định rời khỏi bảng (nhánh `fix/p4c-backend-logic`, 2 commit `829f340..cce9d90`, ~10 file, KHÔNG migration)
+
+User chốt: hai vùng phải có trang chi tiết RIÊNG, dùng chung kiểu thiết kế chứ
+không chung route. Trước đó cả `/bookings` lẫn `/cancellations` đều trỏ về
+`/bookings/[code]`, nên nút quyết định buộc phải nằm trong bảng — và một lệnh
+vừa hoàn tiền vừa nhả ghế được bấm từ một hàng.
+
+**Khối trình bày tách sang `booking-detail-sections.tsx`** (server component
+thuần): back link · header · ba card ngữ cảnh · sổ hoàn tiền · lịch sử huỷ.
+Cắt theo KHỐI MÀN HÌNH chứ không theo từng thẻ — hai trang phải nhìn ra là một
+hệ, chia nhỏ hơn thì mỗi trang tự ghép một kiểu rồi lại trôi lệch. Ở
+`components/bookings/` chứ không phải kit: chúng biết `AdminBookingDetail` từ
+đầu tới cuối, tức là trình bày của MIỀN booking. `LedgerTable` cũng rời
+`refund-panel.tsx` (`'use client'`) sang đây — người dùng thứ hai chỉ đọc,
+không cần một byte JavaScript nào để in một cái bảng.
+
+**Route mới `/cancellations/[code]`** định danh bằng MÃ BOOKING chứ không phải
+id request: một booking có nhiều nhất một request đang mở, còn các dòng DENIED
+là lịch sử của cùng booking ấy — trang kể trọn câu chuyện thay vì một mảnh.
+Dùng lại `admin.bookings.byCode` (đã trả `cancellationRequests` + `refunds` +
+`refundedTotal` thật) nên **không thêm endpoint nào**. Khác `/bookings/[code]`
+ở phần GHI: nơi kia là `RefundPanel`, nơi này là cụm quyết định, còn sổ hoàn
+tiền hiện THUẦN ĐỌC — nó là bằng chứng để quyết, không phải chỗ phát lệnh tiền.
+
+**Cột Decision bỏ hai nút**, thay bằng một nút "Review request" mang theo bộ
+lọc đang xem để lượt quay về không nhả filter (cùng luật vòng đi–về của
+`/bookings`). Bảng từ nay **không phát lệnh ghi nào** — `CancellationsTable`
+hết nhận prop `decide`.
+
+**Nút dựng theo `@shadcn-space/button-06`** (viền gradient xoay). Ba chỗ bản
+registry không dùng thẳng được: nó hardcode `#2b7fff` (luật 6 là tokens-only →
+đổi sang `--primary`, nhờ vậy đi theo cả chế độ tối); animation VÔ HẠN không
+có guard (thêm `motion-reduce:animate-none` — đúng thứ `prefers-reduced-motion`
+sinh ra để tắt, và tắt rồi vẫn còn viền gradient tĩnh); và bản gốc là
+`<Button>` trong khi đây là ĐIỀU HƯỚNG nên dùng `ButtonLink` để giữ role
+`link`.
+
+**Trang chi tiết huỷ chia hai cột**: BẰNG CHỨNG bên trái (2/3 — sổ hoàn tiền
+và lịch sử, hai bảng cần bề ngang và KHÔNG gộp vì một cái là sổ tiền, một cái
+là dấu vết quyết định), VIỆC PHẢI LÀM bên phải (1/3 — khối Decision,
+`lg:sticky` để không trôi khỏi tầm mắt khi cột trái dài ra).
+
+Tests after: 733 admin (thêm 5 cho vòng đi–về `/cancellations/[code]`).
+
 ## 2026-09-04 — Điều chỉnh backend #2: `/cancellations` có bộ lọc ngày, stat card ăn theo bộ lọc, hai control lên kit (nhánh `fix/p4c-backend-logic`, 4 commit `917a08a..1cda886`, ~20 file, KHÔNG migration)
 
 Đợt thứ hai, cùng nhánh và cùng ngày với đợt #1. Khác đợt #1 ở một điểm quyết
