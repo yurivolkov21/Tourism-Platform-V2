@@ -104,15 +104,37 @@ Continue — bản gốc không lộ vì demo có `min-h-20` cố định.
 - jsdom không cài `window.matchMedia`, `Stepper` đọc breakpoint bằng media
   query nên ném ngay lúc mount; thêm shim vào `vitest.setup.ts` của admin.
 
+### Vòng rà cuối: hai chỗ khách bị bỏ trong bóng tối
+
+**Mail duyệt huỷ hứa một khoản tiền bằng không.** `'0.00'` là chuỗi TRUTHY, nên
+mail in *"Refund issued 0.00 USD"* kèm *"your refund is on its way"*. Trước
+§AMEND 3 ca ấy hiếm; sau nó thì mọi yêu cầu huỷ sát ngày khởi hành đều duyệt ở
+mức 0%, tức khách huỷ muộn nhận một mail hứa tiền đang trên đường tới. Chặn ở
+chỗ dựng `money` — một nơi cho MỌI loại mail — và ca không hoàn đồng nào nay
+nói thẳng *"No further refund is due on this booking"* kèm link bảng bậc.
+
+**Trang booking của khách không nói số tiền đã hoàn.** Sau một lần duyệt huỷ
+hoàn một phần, khách thấy đúng chữ "Cancelled"; con số chỉ nằm trong hộp mail.
+`refundSummary` mới kể ba ca — hoàn đủ, hoàn một phần (in CẢ hai số, vì một số
+lẻ loi dễ bị đọc thành toàn bộ), và huỷ-không-hoàn (vẫn kể, kèm link bảng bậc).
+Cổng đầu tiên là `paidAt` chứ không phải status: booking chưa từng thu tiền là
+"chưa bao giờ có giao dịch", nói về hoàn tiền ở đó là bịa ra một giao dịch chưa
+từng có.
+
+Cùng đợt rà: báo cáo và stat card đọc SỔ CÁI thật (`refundsSlice` cộng từng
+dòng) nên hoàn một phần và duyệt 0 đồng vào sổ đúng, không chỗ nào giả định
+approve = hoàn trọn.
+
 ### Sổ nợ mở
 
-- Mail `CANCELLATION_APPROVED` sẽ nói `amount: 0.00` ở ca duyệt không hoàn
-  đồng nào — mẫu mail cần một câu riêng, chưa làm.
+- Chính sách chỉ cưỡng chế ở UI: server nhận bất kỳ số nào ≤ phần dư, và luật
+  "lệch bậc phải ghi lý do" nằm hoàn toàn ở client. Một phần là chủ ý
+  (ADR-0030 §5 cho phép vượt bậc), nhưng ràng buộc lý do thì chưa có gì gác.
 - Chốt chặn 3 ngày trước khởi hành cho đặt tour: tách đợt sau, cần ADR riêng
   (đổi luật ĐẶT, không phải luật hoàn).
 
-Tests after: 2.758 unit (10 tokens · 217 contract · 22 ui · 2 i18n · 311 api ·
-769 admin · 1.427 web) và 336 integration. Build web/admin KHÔNG chạy được
+Tests after: 2.769 unit (10 tokens · 217 contract · 22 ui · 2 i18n · 315 api ·
+769 admin · 1.434 web) và 336 integration. Build web/admin KHÔNG chạy được
 trong đợt (dev server của user đang giữ `.next`, guard chặn đúng như thiết kế).
 
 ## 2026-09-04 — Ân hạn 24 giờ, và gỡ BỐN lời hứa "48 giờ" chỏi chính sách (nhánh `fix/p4c-backend-logic`, 3 commit, ~15 file, KHÔNG migration)
