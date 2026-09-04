@@ -14,6 +14,7 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import type * as React from 'react';
 import { useState } from 'react';
+import { LabelValueRow } from '@/components/kit/label-value-row';
 import type { TransportFailureCode } from '@/lib/api/write-error';
 import { useConfirmWrite } from '@/lib/use-confirm-write';
 
@@ -191,10 +192,7 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
             vẫn phình y như cũ. */}
         <dl className="grid gap-2 text-sm">
           {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
-              <dt className="text-muted-foreground">{row.label}</dt>
-              <dd className="wrap-anywhere">{row.value}</dd>
-            </div>
+            <LabelValueRow key={row.label} label={row.label} value={row.value} />
           ))}
         </dl>
 

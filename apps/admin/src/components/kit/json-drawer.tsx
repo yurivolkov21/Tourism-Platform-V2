@@ -14,6 +14,7 @@ import { ScrollArea } from '@tourism/ui/components/scroll-area';
 import { ToggleGroup, ToggleGroupItem } from '@tourism/ui/components/toggle-group';
 import { BracesIcon, ListIcon, XIcon } from 'lucide-react';
 import * as React from 'react';
+import { LabelValueRow } from '@/components/kit/label-value-row';
 import { type PayloadField, type PayloadHints, toPayloadFields } from '@/lib/payload-fields';
 
 /**
@@ -291,28 +292,38 @@ function PayloadBlock({
   );
 }
 
-/** Một dòng của chế độ Simple. */
+/**
+ * Một dòng của chế độ Simple. Cột nhãn rộng hơn `JsonDrawerField` (10rem so
+ * với 8rem) và nhãn tự ngắt dòng: nhãn ở đây mang cả đường dẫn ("Data › Object
+ * › Metadata › Booking code"), dài hơn hẳn nhãn một từ của field vùng.
+ *
+ * Tông mờ và số thô đi vào chính `value` (kit nhận `ReactNode`) chứ không
+ * thành hai prop của kit — hai thứ ấy chỉ có MỘT consumer là chỗ này.
+ */
 function PayloadRow({ field }: { field: PayloadField }) {
   return (
-    // Cột nhãn rộng hơn `JsonDrawerField` (10rem so với 8rem): nhãn ở đây mang
-    // cả đường dẫn ("Data › Object › Metadata › Booking code"), dài hơn hẳn
-    // nhãn một từ của field vùng.
-    <div className="grid grid-cols-[10rem_minmax(0,1fr)] gap-2">
-      {/* `wrap-anywhere` ở CẢ cột nhãn: đường dẫn sâu tràn ra ngoài cũng là tràn. */}
-      <dt className="wrap-anywhere text-muted-foreground">{field.label}</dt>
-      <dd className={field.muted ? 'wrap-anywhere text-muted-foreground' : 'wrap-anywhere'}>
-        {field.value}
-        {/* Số THÔ đi kèm khi giá trị đã được diễn giải (user chốt 03/09): đây
-            là bề mặt đối soát, người đọc phải kiểm được con số gốc provider
-            gửi — `$117.00` mà không có `11700` bên cạnh là bắt người ta tin
-            phép đổi của ta. */}
-        {field.raw === undefined ? null : (
-          <span data-testid="payload-raw" className="ml-2 font-mono text-xs text-muted-foreground">
-            {field.raw}
-          </span>
-        )}
-      </dd>
-    </div>
+    <LabelValueRow
+      label={field.label}
+      width="lg"
+      wrapLabel
+      value={
+        <span className={field.muted ? 'text-muted-foreground' : undefined}>
+          {field.value}
+          {/* Số THÔ đi kèm khi giá trị đã được diễn giải (user chốt 03/09): đây
+              là bề mặt đối soát, người đọc phải kiểm được con số gốc provider
+              gửi — `$117.00` mà không có `11700` bên cạnh là bắt người ta tin
+              phép đổi của ta. */}
+          {field.raw === undefined ? null : (
+            <span
+              data-testid="payload-raw"
+              className="ml-2 font-mono text-xs text-muted-foreground"
+            >
+              {field.raw}
+            </span>
+          )}
+        </span>
+      }
+    />
   );
 }
 
@@ -326,19 +337,15 @@ export function JsonDrawerFields({ children }: { children: React.ReactNode }) {
   return <dl className="grid gap-2 text-sm">{children}</dl>;
 }
 
-/** Một dòng nhãn · giá trị. `value` là node để vùng đặt badge/link khi cần. */
+/**
+ * Một dòng nhãn · giá trị. `value` là node để vùng đặt badge/link khi cần.
+ *
+ * Giữ tên riêng dù ruột là `LabelValueRow`: bốn vùng đang import nó theo cụm
+ * `JsonDrawer*`, và tên ấy nói "dòng của drawer" chứ không bắt người đọc phải
+ * biết kit nào nằm dưới.
+ */
 export function JsonDrawerField({ label, value }: { label: string; value: React.ReactNode }) {
-  // `minmax(0,1fr)` + `wrap-anywhere` (vá 03/09, cùng lỗi user báo ở dialog
-  // Retry): `1fr` trần là `minmax(auto,1fr)` và `auto` lấy min-content, nên
-  // một token không dấu cách (JSON lỗi provider, email dài) làm phình cột rồi
-  // đẩy chữ ra ngoài mép panel. `break-words` cũ KHÔNG đủ —
-  // `overflow-wrap: break-word` không tính vào min-content.
-  return (
-    <div className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="wrap-anywhere">{value}</dd>
-    </div>
-  );
+  return <LabelValueRow label={label} value={value} />;
 }
 
 /**

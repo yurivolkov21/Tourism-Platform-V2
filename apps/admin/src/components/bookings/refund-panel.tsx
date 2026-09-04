@@ -29,6 +29,7 @@ import { cn } from '@tourism/ui/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
+import { LabelValueRow } from '@/components/kit/label-value-row';
 import { formatAmount, formatDateTime } from '@/lib/bookings-view';
 import {
   canRefund,
@@ -420,10 +421,5 @@ function RefundDialog({
 
 /** Một dòng tóm tắt ở bước xác nhận. */
 function ConfirmRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="wrap-anywhere">{value}</dd>
-    </div>
-  );
+  return <LabelValueRow label={label} value={value} />;
 }

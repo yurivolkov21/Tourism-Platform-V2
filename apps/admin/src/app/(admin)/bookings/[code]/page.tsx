@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { AdminShell } from '@/components/admin-shell';
 import { RefundPanel } from '@/components/bookings/refund-panel';
+import { LabelValueRow } from '@/components/kit/label-value-row';
 import { Timeline, TimelineItem } from '@/components/kit/timeline';
 import { fetchAdminBookingByCode } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
@@ -171,14 +172,8 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 
 /** Một dòng `<dt>/<dd>`; giá trị trống hiện gạch ngang thay vì ô rỗng khó hiểu. */
 function Row({ label, value }: { label: string; value: string | null }) {
-  return (
-    // `minmax(0,1fr)` + `wrap-anywhere`: cùng bản vá tràn chữ với kit dialog/
-    // drawer (bản chép thứ 5 bị bỏ sót ở vòng chỉnh UI, vòng vá review).
-    <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-2">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="wrap-anywhere">{value || t.empty}</dd>
-    </div>
-  );
+  // Cột nhãn 9rem — nhãn của khối này dài hơn một nhịp so với mặc định kit.
+  return <LabelValueRow label={label} width="md" value={value || t.empty} />;
 }
 
 function CancellationRow({ request }: { request: CancellationRequest }) {
