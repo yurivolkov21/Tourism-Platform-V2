@@ -8,6 +8,105 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — Điều chỉnh backend #2: `/cancellations` có bộ lọc ngày, stat card ăn theo bộ lọc, hai control lên kit (nhánh `fix/p4c-backend-logic`, 4 commit `917a08a..1cda886`, ~20 file, KHÔNG migration)
+
+Đợt thứ hai, cùng nhánh và cùng ngày với đợt #1. Khác đợt #1 ở một điểm quyết
+định phạm vi: `/bookings` đã sẵn hai ô ngày nên chỉ việc nối card vào, còn
+`/cancellations` **chưa có bộ lọc ngày nào** — nên đợt này là "thêm bộ lọc cho
+vùng, rồi mới nối card", đụng cả contract lẫn UI.
+
+Quyết định ở [ADR-0028 §AMEND](adr/0028-bookings-stats-follow-filter.md) (đi
+TRƯỚC code), AMEND [spec P4b §3-F3](specs/2026-08-31-p4b-admin-ready-areas-design.md).
+
+### Ba chỗ khuôn của đợt #1 KHÔNG phủ
+
+ADR gốc hẹn "vùng nào mọc bộ lọc ngày thì lặp lại đúng khuôn này". Lần đầu áp
+dụng thì lộ ra ba chỗ phải quyết mới:
+
+**1. Cột lọc là `createdAt`, không phải `decidedAt`.** Ngày khách GỬI yêu cầu,
+cùng cột bảng đang sắp xếp. `decidedAt` khớp tuyệt đối với hai card
+Approved/Denied nhưng hàng `REQUESTED` có `decidedAt` **null**, nên lọc theo
+cột ấy sẽ **quét sạch hàng đợi đang mở khỏi bảng** ngay khi admin bật bộ lọc —
+tức xoá mất lý do tồn tại của trang.
+
+**2. Mặc định KHÔNG lọc ngày — cố ý khác `/bookings`.** Hai trang không đối
+xứng, và đó là chủ đích: `/bookings` là **sổ**, người ta đọc theo kỳ nên "tháng
+này" là mặc định đúng; `/cancellations` là **hàng đợi việc phải làm**, nó tồn
+tại để được dọn sạch. Mặc định lọc tháng hiện tại sẽ giấu mất một request khách
+gửi tháng 8 mà tới giờ vẫn `REQUESTED` — không ai xoá nó, nhưng cũng không ai
+còn thấy nó. Hệ quả dễ chịu: **không cần sentinel `?dates=all`**, vì URL trần
+CHÍNH LÀ xem tất cả và xoá trắng hai ô ngày là đường về hiển nhiên.
+
+**3. Metric ẢNH CHỤP dưới một kỳ đã chọn = cuối kỳ vs đầu kỳ.** Khuôn đợt #1
+chỉ nói về metric đếm-trong-kỳ (cả bốn card `/bookings` đều vậy).
+`pendingQueue` là ảnh chụp: lọc tháng 7 mà card vẫn nói "hàng đợi bây giờ" thì
+nó tái lập đúng nghịch lý đợt #1 sinh ra để dẹp. Nay `current` là ảnh chụp tại
+`currentTo`, `previous` tại `currentFrom` — card đọc thành "hàng đợi đã dịch
+chuyển thế nào trong kỳ bạn đang xem".
+
+Ba điều khiến luật ấy không tốn gì: `pendingRequestsAt` **đã tồn tại** và dựng
+lại được hàng đợi tại bất kỳ mốc nào; nó dựng **chính xác** chứ không xấp xỉ
+(quyết định cancellation là chung cuộc, `decided_at` ghi một lần — thứ reviews
+F5 và enquiries F9 phải thêm bảng audit mới có); và với cửa sổ trượt thì
+`currentTo === now` nên hành vi chưa lọc **không đổi một con số nào**.
+
+⚠️ Lời hứa `pendingQueue.current` "khớp đúng số hàng `?status=REQUESTED`" nay
+chỉ còn đúng **khi chưa lọc ngày** — và đó chính là lúc nó có nghĩa. Có một int
+test khoá riêng điều này.
+
+### Chữ trên card phải đổi theo kỳ, không chỉ con số
+
+Hai chỗ sai nghĩa nếu để nguyên:
+
+- Card ảnh chụp nói **"vs 2 28 days ago"** — nhưng "28 ngày trước" tính từ hôm
+  nay sẽ trỏ vào một mốc chẳng liên quan gì tới tháng 5. Kỳ đã chọn thì đứng
+  yên nên **gọi được tên nó**: "vs 2 on May 1, 2026".
+- Nhãn **"Approved 31d"** đọc thành "31 ngày gần nhất", tức một cửa sổ TRƯỢT.
+  Lọc tháng 5 là một kỳ đứng yên, và khoảng ngày đã nói ở dòng ngay trên hàng
+  card — nên nhãn bỏ hậu tố, còn "Approved".
+
+### Hai control lên kit — vì có consumer thứ hai
+
+- **`parseDateRange`** (ngày rác rơi im lặng, khoảng ngược giữ `from` bỏ `to`)
+  rời `bookings-query.ts` sang `table-query.ts`. Hai vùng phải khoan dung y
+  hệt nhau, và hai bản chép là hai bản sẽ trôi lệch.
+- **`ToolbarDateRange`** — nâng CẢ control, không chỉ hai cái ô. Thứ đáng dùng
+  chung không phải `DatePickerField` (nó vốn đã tổng quát, chỉ đổi đường
+  import) mà là **guard "patch bị vứt"**: khi giá trị vừa chốt bị luật
+  khoảng-ngược loại thì URL đích trùng URL hiện tại nên không có điều hướng
+  nào, và ô đứng đó khoe một bộ lọc không tồn tại. Cơ chế ấy học được qua hai
+  vòng review F6; chép sang vùng thứ hai là chép đúng thứ khó nhất.
+  `BookingsDateRange` thành vỏ mỏng và **spec 12 test của nó không đổi một
+  dòng** — đó là bằng chứng lần nâng này không đổi hành vi.
+
+Input stats cũng gộp: `AdminBookingsStatsQuerySchema` đổi tên thành
+**`AdminStatsRangeQuerySchema`** dùng chung cho cả hai vùng.
+
+### Ô rỗng có lưới an toàn như `/bookings`
+
+Nói thẳng khoảng đang lọc kèm link "xem tất cả". Rủi ro nhẹ hơn `/bookings`
+(vùng này mặc định không lọc) nhưng vẫn thật: admin đặt khoảng rồi đổi tab
+trạng thái, bảng rỗng, và thủ phạm là hai ô ngày họ đặt từ lúc trước.
+
+### Chưa làm, cố ý
+
+`search` cho `/cancellations`: contract chưa có và đợt này không thêm. Tra theo
+mã booking là nhu cầu thật nhưng là một tính năng riêng, không phải hệ quả của
+việc cho card ăn theo bộ lọc.
+
+Năm vùng stats còn lại (reviews · outbox · payment events · enquiries ·
+subscribers) giữ nguyên cửa sổ 28 ngày cố định — trang của chúng chưa có bộ
+lọc ngày.
+
+Tests after: 1417 web · 311 api · 329 api-int · 194 contract · 726 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 26 so với đợt #1: 4 contract (mặc định không
+lọc, cùng schema và trần năm với /bookings, khoảng ngược 400, refine không
+nuốt shape), 7 api-int (1 cho list — cắt đúng khoảng kể cả row 23:59:59.500 và
+hàng REQUESTED không bị loại; 6 cho stats — ảnh chụp hai đầu kỳ,
+approved/denied theo decidedAt, period.currentTo, không tham số rơi về 28
+ngày, khoảng ngược 400, và lời hứa khớp `?status=REQUESTED` khi chưa lọc), 12
+admin (8 `cancellations-query`, 4 `stats-view`).
+
 ## 2026-09-04 — Điều chỉnh backend #1: stat card `/bookings` ăn theo bộ lọc ngày, chốt cột lọc, trả 3 mục kit còn treo (nhánh `fix/p4c-backend-logic`, 9 commit `9f89886..ab1da85`, ~25 file, KHÔNG migration)
 
 Đợt điều chỉnh backend ĐẦU TIÊN sau vòng chỉnh UI — user báo trước là sẽ còn
