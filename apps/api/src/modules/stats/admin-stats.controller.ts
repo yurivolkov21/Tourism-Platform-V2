@@ -13,8 +13,9 @@ import { StatsService } from './stats.service.js';
  * 403 — cả hai TRƯỚC khi oRPC chạm tới bất cứ thứ gì.
  *
  * Bảy handler mỏng đúng nghĩa: không lỗi nghiệp vụ để dịch (contract không
- * khai mã nào — đọc thuần thì không có phán quyết nào để báo). Chỉ `bookings`
- * có input, và nó cũng chỉ chuyển tiếp (ADR-0028). Toàn bộ định nghĩa metric
+ * khai mã nào — đọc thuần thì không có phán quyết nào để báo). Hai vùng có bộ
+ * lọc ngày (`bookings`, `cancellations`) thì có input, và cũng chỉ chuyển
+ * tiếp (ADR-0028). Toàn bộ định nghĩa metric
  * nằm ở JSDoc `StatsService`.
  */
 @Controller()
@@ -35,8 +36,8 @@ export class AdminStatsController {
 
   @Implement(contract.admin.stats.cancellations)
   cancellations() {
-    return implement(contract.admin.stats.cancellations).handler(() =>
-      this.stats.adminCancellations(),
+    return implement(contract.admin.stats.cancellations).handler(({ input }) =>
+      this.stats.adminCancellations(input),
     );
   }
 

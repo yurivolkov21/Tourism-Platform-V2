@@ -104,24 +104,28 @@ export const StatsPeriodSchema = z.object({
 export type StatsPeriod = z.output<typeof StatsPeriodSchema>;
 
 /**
- * Input `admin.stats.bookings` (ADR-0028) — khoảng ngày mà hàng stat card
- * tính trên đó, ĐÚNG hai ô ngày của bảng ngay bên dưới.
+ * Input khoảng ngày của một endpoint `admin.stats.*` (ADR-0028) — kỳ mà hàng
+ * stat card tính trên đó, ĐÚNG hai ô ngày của bảng ngay bên dưới nó.
  *
- * Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field của
- * `AdminBookingsListQuerySchema` chứ không khai bộ thứ hai: `?from=`/`?to=`
- * trên URL nuôi cả bảng lẫn card, nên hai bên phải nhận đúng một chữ. Một bản
- * khai lại là một luật khoan dung thứ hai sẽ trôi lệch trong im lặng.
+ * MỘT schema cho mọi vùng chứ không mỗi vùng một bản: hình dạng y hệt nhau, và
+ * hai bản khai lại là hai luật khoan dung sẽ trôi lệch trong im lặng. Hiện có
+ * hai consumer — `admin.stats.bookings` và `admin.stats.cancellations`.
  *
- * CẢ HAI OPTIONAL, và thiếu cả hai là ca có thật chứ không phải ca lười: đó
- * là `?dates=all` (admin cố ý bỏ lọc) và mọi caller chưa có bộ lọc ngày —
- * lúc đó service rơi về cửa sổ TRƯỢT 28 ngày như trước ADR-0028. Thêm field
- * optional là thay đổi tương thích ngược; bỏ nó đi thì không.
+ * Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field mà `*ListQuerySchema`
+ * của cùng vùng đang dùng: `?from=`/`?to=` trên URL nuôi cả bảng lẫn card, nên
+ * hai bên phải nhận đúng một chữ.
+ *
+ * CẢ HAI OPTIONAL, và thiếu cả hai là ca có thật chứ không phải ca lười:
+ * `/bookings` gửi rỗng khi admin chọn `?dates=all`, còn `/cancellations` thì
+ * rỗng CHÍNH LÀ mặc định của vùng. Lúc đó service rơi về cửa sổ TRƯỢT 28 ngày
+ * như trước ADR-0028. Thêm field optional là thay đổi tương thích ngược; bỏ nó
+ * đi thì không.
  *
  * KHÔNG nhận giờ giấc: hợp đồng chỉ có ngày lịch, còn phép đổi ngày → mốc
  * (nửa-mở `[00:00:00.000, +1 ngày)`) là chuyện của tầng API. Lý do không dùng
  * `00:00:01`/`23:59:59` ở ADR-0028 §3.
  */
-export const AdminBookingsStatsQuerySchema = z
+export const AdminStatsRangeQuerySchema = z
   .object({
     from: CalendarDateSchema.optional(),
     to: CalendarDateSchema.optional(),
@@ -133,7 +137,7 @@ export const AdminBookingsStatsQuerySchema = z
     path: ['to'],
   });
 
-export type AdminBookingsStatsQuery = z.output<typeof AdminBookingsStatsQuerySchema>;
+export type AdminStatsRangeQuery = z.output<typeof AdminStatsRangeQuerySchema>;
 
 /**
  * Bộ số vùng `/bookings`. Định nghĩa TỪNG metric nằm ở JSDoc của

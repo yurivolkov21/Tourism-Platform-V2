@@ -1,18 +1,18 @@
 import { Injectable } from '@nestjs/common';
 import {
   type AdminBookingsStats,
-  type AdminBookingsStatsQuery,
   type AdminCancellationsStats,
   type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
   type AdminReviewsStats,
+  type AdminStatsRangeQuery,
   type AdminSubscribersStats,
   OPEN_ENQUIRY_STATUSES,
   PAYMENT_EVENT_STUCK_MINUTES,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import { CancellationRequestStatus, OutboxStatus } from '../../generated/prisma/enums.js';
+import { OutboxStatus } from '../../generated/prisma/enums.js';
 import {
   bookingsCreatedCount,
   decisionsSlice,
@@ -58,11 +58,12 @@ import {
  * khoảng đều nửa-mở `gte … lt` nên không hàng nào bị đếm hai lần ở chỗ giáp
  * ranh.
  *
- * **Riêng `bookings` cửa sổ do ADMIN chọn** (ADR-0028): `adminBookings` nhận
- * `{from, to}` — đúng hai ô ngày của bảng `/bookings` — và cắt bằng
- * `statsWindowFromRange`. Kỳ trước vẫn dài BẰNG kỳ này, chỉ lùi liền kề, nên
- * bất biến trên không bị nới. Thiếu tham số thì rơi về đúng cửa sổ mặc định.
- * Sáu bộ số còn lại KHÔNG nhận tham số: trang của chúng chưa có bộ lọc ngày.
+ * **`bookings` và `cancellations` có cửa sổ do ADMIN chọn** (ADR-0028 và
+ * §AMEND của nó): hai method ấy nhận `{from, to}` — đúng hai ô ngày của bảng
+ * cùng vùng — và cắt bằng `statsWindowFromRange`. Kỳ trước vẫn dài BẰNG kỳ
+ * này, chỉ lùi liền kề, nên bất biến trên không bị nới. Thiếu tham số thì rơi
+ * về đúng cửa sổ mặc định. Năm bộ số còn lại KHÔNG nhận tham số: trang của
+ * chúng chưa có bộ lọc ngày.
  *
  * ⚠️ Ăn theo bộ lọc KHÔNG có nghĩa bốn con số cùng đếm trên MỘT cột. Neo của
  * từng metric giữ nguyên: `revenue`/`paidBookings`/`cancellationRate` theo
@@ -98,15 +99,23 @@ import {
  *   trả tiền hôm qua chưa kịp bị huỷ, nên kỳ này thường thấp hơn kỳ trước
  *   một chút vì lý do thuần thời gian.
  *
- * **cancellations**
- * - `pendingQueue` — ẢNH CHỤP hàng đợi đang mở, KHÔNG phải đếm trong kỳ:
- *   `current` = số request `REQUESTED` ngay bây giờ (đúng bằng số hàng
- *   `/cancellations?status=REQUESTED` hiện ra), `previous` = hàng đợi tại
- *   mốc đầu kỳ, dựng lại bằng "đã mở trước mốc đó VÀ chưa quyết tính đến mốc
- *   đó". Dựng lại được CHÍNH XÁC vì quyết định cancellation là chung cuộc
- *   (history append-only, `decided_at` ghi một lần — spec P2 D1-B).
+ * **cancellations** (cửa sổ do admin chọn được — ADR-0028 §AMEND)
+ * - `pendingQueue` — ẢNH CHỤP hàng đợi đang mở ở HAI ĐẦU kỳ, KHÔNG phải đếm
+ *   trong kỳ: `current` = hàng đợi tại `currentTo`, `previous` = tại
+ *   `currentFrom`. Cả hai dựng bằng "đã mở trước mốc đó VÀ chưa quyết tính
+ *   đến mốc đó" (`pendingRequestsAt`), và dựng lại được CHÍNH XÁC vì quyết
+ *   định cancellation là chung cuộc (history append-only, `decided_at` ghi
+ *   một lần — spec P2 D1-B). Đây là thứ reviews (F5) và enquiries (F9) phải
+ *   thêm bảng audit mới có.
+ *   Khi CHƯA lọc ngày, `currentTo` chính là lúc chốt sổ nên `current` bằng
+ *   đúng `COUNT(*) WHERE status = 'REQUESTED'`, tức khớp ĐÚNG số hàng của
+ *   `/cancellations?status=REQUESTED` như lời hứa cũ. Đang lọc tháng 7 thì
+ *   nó là hàng đợi CUỐI THÁNG 7 — và đó mới là con số đúng, vì bảng bên dưới
+ *   lúc ấy cũng đang nói về tháng 7.
  * - `approved` / `denied` — đếm theo `decided_at` trong kỳ (approve ⇒ trạng
- *   thái `REFUNDED`, xem booking-states.md).
+ *   thái `REFUNDED`, xem booking-states.md). ⚠️ Neo `decided_at` còn bảng lọc
+ *   theo `created_at`: cùng loại lệch "một khoảng, hai cột" đã ghi ở phần
+ *   bookings, nhưng nhỏ hơn nhiều vì vòng đời một request rất ngắn.
  *
  * **reviews**
  * - `pending` — ẢNH CHỤP như trên: `current` = số review `is_approved =
@@ -283,7 +292,7 @@ export class StatsService {
    * — hai cái chỉ trùng nhau khi cửa sổ đang trượt; nhầm chúng là kỳ tháng 7
    * âm thầm kéo dài tới hôm nay.
    */
-  async adminBookings(query?: AdminBookingsStatsQuery): Promise<AdminBookingsStats> {
+  async adminBookings(query?: AdminStatsRangeQuery): Promise<AdminBookingsStats> {
     const window = statsWindowFromRange(query?.from, query?.to, new Date());
     const [current, previous, createdNow, createdBefore, currency] = await Promise.all([
       paidBookingsSlice(window.currentFrom, window.currentTo),
@@ -310,21 +319,28 @@ export class StatsService {
     };
   }
 
-  /** Bộ số vùng `/cancellations`. */
-  async adminCancellations(): Promise<AdminCancellationsStats> {
-    const window = statsWindow(new Date());
-    const [pendingNow, pendingThen, current, previous] = await Promise.all([
-      // "Bây giờ" đọc thẳng trạng thái, không dựng lại: card phải khớp ĐÚNG
-      // số hàng của `/cancellations?status=REQUESTED`.
-      prisma.cancellationRequest.count({ where: { status: CancellationRequestStatus.REQUESTED } }),
+  /**
+   * Bộ số vùng `/cancellations`, tính trên khoảng ngày admin đang lọc
+   * (ADR-0028 §AMEND).
+   *
+   * `pendingQueue` là metric ẢNH CHỤP nên không "đếm trong kỳ" được như ba
+   * card của `/bookings`; nó lấy ảnh chụp ở HAI ĐẦU kỳ — cuối kỳ so với đầu
+   * kỳ — nên card đọc thành "hàng đợi đã dịch chuyển thế nào trong kỳ bạn
+   * đang xem". Với cửa sổ TRƯỢT thì `currentTo === generatedAt === now`, tức
+   * hành vi trước ADR không đổi một con số nào.
+   */
+  async adminCancellations(query?: AdminStatsRangeQuery): Promise<AdminCancellationsStats> {
+    const window = statsWindowFromRange(query?.from, query?.to, new Date());
+    const [pendingEnd, pendingStart, current, previous] = await Promise.all([
+      this.pendingRequestsAt(window.currentTo),
       this.pendingRequestsAt(window.currentFrom),
-      decisionsSlice(window.currentFrom, window.generatedAt),
+      decisionsSlice(window.currentFrom, window.currentTo),
       decisionsSlice(window.previousFrom, window.currentFrom),
     ]);
 
     return {
       period: statsPeriod(window),
-      pendingQueue: { current: pendingNow, previous: pendingThen },
+      pendingQueue: { current: pendingEnd, previous: pendingStart },
       approved: { current: current.approved, previous: previous.approved },
       denied: { current: current.denied, previous: previous.denied },
     };

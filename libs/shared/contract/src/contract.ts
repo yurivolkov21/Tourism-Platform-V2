@@ -82,13 +82,13 @@ import {
 } from './schemas/reviews.js';
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
-  AdminBookingsStatsQuerySchema,
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
   AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
   AdminReviewsStatsSchema,
+  AdminStatsRangeQuerySchema,
   AdminSubscribersStatsSchema,
 } from './schemas/stats.js';
 import {
@@ -655,12 +655,14 @@ export const contract = {
      * — gộp làm một sẽ bắt `/reviews` chờ luôn cả aggregate tiền của
      * bookings. P4d dashboard cần nhiều bộ thì gọi song song ba cái.
      *
-     * Input: CHỈ `bookings` có, và optional (ADR-0028) — hàng card của
-     * `/bookings` ăn theo hai ô ngày của bảng ngay dưới nó, thiếu tham số thì
-     * rơi về cửa sổ trượt 28 ngày như cũ. Sáu endpoint còn lại KHÔNG có
-     * input: trang của chúng chưa có bộ lọc ngày nào, và thêm một tham số
-     * không ai gửi là thêm một nhánh không ai test. Ngày một vùng mọc bộ lọc
-     * ngày thì lặp lại đúng khuôn ấy, đừng dựng cửa sổ thứ hai.
+     * Input: chỉ vùng NÀO CÓ bộ lọc ngày trên trang mới có, và luôn optional
+     * (ADR-0028) — hàng card ăn theo hai ô ngày của bảng ngay dưới nó, thiếu
+     * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings` và
+     * `cancellations`, cùng dùng `AdminStatsRangeQuerySchema` chứ không mỗi
+     * vùng một bản. Năm endpoint còn lại KHÔNG có input: trang của chúng chưa
+     * có bộ lọc ngày nào, và thêm một tham số không ai gửi là thêm một nhánh
+     * không ai test. Vùng nào mọc bộ lọc ngày thì lặp lại đúng khuôn ấy, đừng
+     * dựng cửa sổ thứ hai.
      *
      * KHÔNG khai lỗi nghiệp vụ: đọc thuần, không phán quyết gì. Guard
      * `AuthGuard` + `@Roles(ADMIN)` ở controller cho 401/403 như bảy endpoint
@@ -673,14 +675,15 @@ export const contract = {
           path: '/api/admin/stats/bookings',
           summary: 'Bookings KPIs for a date range, against an equally long preceding one',
         })
-        .input(AdminBookingsStatsQuerySchema)
+        .input(AdminStatsRangeQuerySchema)
         .output(AdminBookingsStatsSchema),
       cancellations: oc
         .route({
           method: 'GET',
           path: '/api/admin/stats/cancellations',
-          summary: 'Cancellation queue + decisions for the last 28 days and the 28 before that',
+          summary: 'Cancellation queue + decisions for a date range, against an equally long one',
         })
+        .input(AdminStatsRangeQuerySchema)
         .output(AdminCancellationsStatsSchema),
       reviews: oc
         .route({
