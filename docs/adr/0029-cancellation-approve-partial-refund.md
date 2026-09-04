@@ -178,6 +178,56 @@ ai cũng gõ được, không phải một ranh giới thật.
 Đường đúng ở ca ấy là **Approve** trên `/cancellations/[code]` — vì chỉ nó mới
 đóng request, huỷ booking và nhả ghế.
 
+### AMEND 2 04/09 — approve một phần là MỘT LẦN, và UI phải nói ra điều đó
+
+§3 mở cho `refundByAdmin` chạy trên booking `CANCELLED` còn dư. Nhưng client
+admin gác nút `Issue refund` bằng `canRefund(status)` = `PAID |
+PARTIALLY_REFUNDED`, nên sau một approve một phần booking thành `CANCELLED` và
+**nút biến mất**: phần dư không còn đường hoàn từ back-office.
+
+Chốt: **giữ nguyên như vậy, và nói thẳng ra ở bước chọn số tiền.**
+
+Vì sao giữ chứ không nới `canRefund`: nới ra là dựng lại hai cửa cùng chuyển
+tiền trên một booking — đúng thứ §AMEND vừa đóng lại. Còn ở phía nghiệp vụ,
+approve *là* quyết định cuối cùng về yêu cầu huỷ ấy: nó đóng request, huỷ
+booking và nhả ghế. Một con số "tạm" cho một quyết định chung cuộc là mâu thuẫn
+tự thân.
+
+Vì sao phải NÓI RA chứ không để im: một giới hạn không được công bố là một cái
+bẫy. Bước Amount của stepper vì thế mang đúng một câu — *"Approving happens
+once… the rest cannot be refunded from the back office afterwards"* — và đó là
+câu quan trọng nhất của cả dialog.
+
+Đường thoát khi thật sự cần hoàn thêm: server **vẫn cho** (§3), nên ca ngoại lệ
+xử được bằng công cụ vận hành mà không phải nới UI. Đó là chủ ý: dễ ở đường
+ngoại lệ, khó ở đường thường ngày.
+
+### AMEND 3 04/09 — approve với mức hoàn BẰNG 0 phải chạy được
+
+Phát hiện khi thi công stepper. Bậc chính sách (ADR-0030) trả **0%** cho yêu
+cầu gửi dưới 7 ngày trước khởi hành. Con số 0 ấy đi vào `classifyRefundAmount`
+và ăn `RefundZeroOrNegativeError` → 422, tức **ca huỷ muộn — ca thường gặp nhất
+— không approve được**, request kẹt ở `REQUESTED` và ghế không bao giờ được
+nhả.
+
+Đây đúng là bug mà cả ADR này sinh ra để chữa, chỉ khác đường vào: §2 chữa ca
+"sổ đã settle", còn ca này là "chính sách quyết không hoàn đồng nào". Hai ca
+khác nguyên nhân nhưng cùng một sự thật — **không có đồng nào phải chuyển** —
+nên phải cùng một cách xử.
+
+Quyết định: gộp hai ca thành một điều kiện `noMoneyToMove = settled ||
+approvedZero`. Khi nó đúng thì bỏ qua gate trạng thái thanh toán, KHÔNG gọi
+gateway, KHÔNG ghi row sổ (CTE đã có `WHERE amount > 0`), nhưng **vẫn** flip
+request → `REFUNDED`, booking → `CANCELLED`, **nhả ghế**, gửi mail.
+
+`classifyRefundAmount` KHÔNG đổi: ở đường W3 (`Issue refund` trực tiếp) một
+lệnh hoàn 0 đồng vẫn vô nghĩa và vẫn phải bị từ chối. Chỉ `approve` mới có
+khái niệm "duyệt với mức hoàn bằng không", vì chỉ nó còn ba việc khác để làm.
+
+⚠️ Hệ quả cho email: `CANCELLATION_APPROVED` sẽ nói `amount: 0.00`. Mẫu mail
+cần một câu riêng cho ca không hoàn đồng nào — ghi vào sổ nợ, chưa làm trong
+đợt này.
+
 ## Phương án đã cân nhắc rồi loại
 
 | Phương án | Vì sao loại |

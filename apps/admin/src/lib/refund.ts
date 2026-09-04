@@ -70,6 +70,21 @@ export function remainingRefundable(totalAmount: string, refundedTotal: string):
   return fromCents(Math.max(0, toCents(totalAmount) - toCents(refundedTotal)));
 }
 
+/**
+ * `percent` phần trăm của một số tiền, trả về decimal string 2dp.
+ *
+ * Ở ĐÂY chứ không ở `approve-refund.ts` vì đây là chỗ duy nhất của repo làm số
+ * học trên chuỗi thập phân tiền — `toCents`/`fromCents` không rời file này, và
+ * bản chép thứ hai của phép quy đổi ấy là bản chép sẽ lệch.
+ *
+ * Làm tròn về cent gần nhất, hoà thì LÊN (`Math.round`): 25% của $100.01 là
+ * 25,0025 → $25.00, còn 50% của $1,199 là đúng $599.50 không cần tròn. Chọn
+ * hướng lên vì nửa cent tranh chấp thì phần thắng thuộc về khách.
+ */
+export function percentOfAmount(amount: string, percent: number): string {
+  return fromCents(Math.round((toCents(amount) * percent) / 100));
+}
+
 export type RefundMode = 'full' | 'partial';
 
 export interface RefundAmountInput {

@@ -121,6 +121,12 @@ export default async function CancellationDetailPage({
                     totalAmount: booking.totalAmount,
                     refundedTotal: booking.refundedTotal,
                     currency: booking.currency,
+                    // Dữ kiện để TÍNH mức hoàn theo chính sách (ADR-0030):
+                    // mốc đếm là lúc KHÁCH gửi, không phải lúc admin mở dialog.
+                    requestedAt: open.createdAt,
+                    paidAt: booking.paidAt,
+                    departureStartDate: booking.departureStartDate,
+                    freeCancellationDays: booking.freeCancellationDays,
                   }}
                   decide={decideCancellationAction}
                 />

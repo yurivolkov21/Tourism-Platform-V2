@@ -7,3 +7,24 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+/**
+ * jsdom KHÔNG cài `window.matchMedia` — nó là một API của trình duyệt thật, và
+ * mọi component đọc breakpoint bằng media query sẽ ném `is not a function`
+ * ngay lúc mount. `Stepper` của `@tourism/ui` (dùng ở dialog approve) là chỗ
+ * đầu tiên chạm phải.
+ *
+ * Shim này trả về "KHÔNG khớp" cho mọi query, tức test chạy ở nhánh hẹp —
+ * chọn thế vì đó là nhánh khắt khe hơn: layout nào vừa màn hẹp thì cũng vừa
+ * màn rộng. Test nào cần nhánh còn lại thì tự stub `matchMedia` của nó.
+ */
+window.matchMedia ??= ((query: string) => ({
+  matches: false,
+  media: query,
+  onchange: null,
+  addListener: () => {},
+  removeListener: () => {},
+  addEventListener: () => {},
+  removeEventListener: () => {},
+  dispatchEvent: () => false,
+})) as typeof window.matchMedia;

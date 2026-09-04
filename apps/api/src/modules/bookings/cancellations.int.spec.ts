@@ -536,6 +536,35 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       ).toBe(CancellationRequestStatus.REQUESTED);
     });
 
+    it('§AMEND 3 approve với mức hoàn BẰNG 0: không gọi gateway, không ghi sổ, GHẾ VẪN NHẢ', async () => {
+      // Ca huỷ sát ngày khởi hành — bậc chính sách cho 0%. Trước AMEND 3 con
+      // số 0 rơi vào `classifyRefundAmount` và ăn 422 ZERO_OR_NEGATIVE, tức
+      // chính ca thường gặp nhất KHÔNG approve được và ghế rò y như bug cũ.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-zero@example.com', 'Alice');
+      const booking = await createPaidBooking(alice); // 117.00, 3 ghế
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      expect(await seatsBooked()).toBe(3);
+
+      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '0.00' });
+      expect(res.statusCode).toBe(200);
+
+      // Không đồng nào chuyển, nên gateway không được gọi và sổ append-only
+      // không có dòng nào — sổ chỉ kể tiền thật sự đi.
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      // Ba hệ quả còn lại VẪN xảy ra: đóng request, huỷ booking, nhả ghế.
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REFUNDED);
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      expect(after.status).toBe('CANCELLED');
+      expect(after.cancelledAt).not.toBeNull();
+      expect(await seatsBooked()).toBe(0);
+    });
+
     it('§2 booking ĐÃ hoàn đủ qua W3: approve vẫn chạy, KHÔNG gọi gateway, ghế được NHẢ', async () => {
       // Đây là ca từng kẹt vĩnh viễn ở 422 và làm rò ghế — lý do ADR-0029 ra đời.
       const admin = await signUpAdmin();

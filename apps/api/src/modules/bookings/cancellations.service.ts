@@ -362,15 +362,16 @@ export class CancellationsService {
    * `request.booking` đã cũ lúc `decide`).
    *
    *  1. Gate (TƯƠI, trong lock) — CHỈ áp khi còn tiền phải chuyển (ADR-0029
-   *     §2): booking phải refundable (PAID / PARTIALLY_REFUNDED có captured
-   *     payment). Sổ ĐÃ settle thì bỏ qua gate: "chấp thuận yêu cầu huỷ" là
-   *     một quyết định, và tiền đã hoàn hết từ trước chỉ nghĩa là bước tiền
-   *     không còn việc. Đây là đường chữa cho booking đã hoàn đủ qua W3 trong
-   *     lúc request còn mở — trước ADR-0029 chúng kẹt vĩnh viễn ở 422 và GHẾ
-   *     KHÔNG BAO GIỜ ĐƯỢC NHẢ.
+   *     §2 và §AMEND 3): booking phải refundable (PAID / PARTIALLY_REFUNDED có
+   *     captured payment). HAI ca bỏ qua gate, cùng một lý do — không đồng nào
+   *     phải chuyển nên trạng thái thanh toán không còn là điều kiện của việc
+   *     đóng request + nhả ghế: sổ ĐÃ settle (tiền hoàn hết từ trước), và mức
+   *     hoàn được duyệt BẰNG 0 (bậc chính sách cho 0% ở ca huỷ sát ngày).
+   *     Cả hai đều từng kẹt ở 422 với GHẾ KHÔNG BAO GIỜ ĐƯỢC NHẢ.
    *  2. Provider refund `refundAmount` (vắng → FULL REMAINDER; ADR-0029 §1),
-   *     không bao giờ ledger thứ chưa xảy ra. Sổ đã settle thì KHÔNG gọi
-   *     gateway và KHÔNG ghi row nào — sổ append-only chỉ kể tiền thật sự đi.
+   *     không bao giờ ledger thứ chưa xảy ra. Không có gì để chuyển (settle
+   *     hoặc duyệt 0) thì KHÔNG gọi gateway và KHÔNG ghi row nào — sổ
+   *     append-only chỉ kể tiền thật sự đi.
    *     Chạy TRONG tx của lock — ngoại lệ có chủ đích của "gateway ngoài tx"
    *     (ADR-0009), chỉ cho đường refund hiếm; lock giữ suốt read→gateway→ledger.
    *     `adminId` = admin đang quyết định.
@@ -428,10 +429,19 @@ export class CancellationsService {
       // lúc request còn mở — trước ADR-0029 chúng kẹt vĩnh viễn ở 422 và ghế
       // không bao giờ được nhả.
       const settled = booking.totalAmount.sub(alreadyRefunded).lessThanOrEqualTo(0);
+      // Duyệt với mức hoàn BẰNG 0 (ADR-0029 §AMEND 3): bậc chính sách trả 0%
+      // cho yêu cầu gửi sát ngày khởi hành, và đó là kết cục HỢP LỆ chứ không
+      // phải lỗi. Trước AMEND này con số 0 rơi vào `classifyRefundAmount` và ăn
+      // 422 ZERO_OR_NEGATIVE, tức chính ca huỷ muộn — ca thường gặp nhất —
+      // không approve được, và GHẾ KHÔNG BAO GIỜ ĐƯỢC NHẢ. Đúng cái bug mà
+      // §2 vừa chữa cho một ca khác.
+      const approvedZero = refundAmount !== undefined && new Prisma.Decimal(refundAmount).isZero();
+      /** Không có đồng nào phải chuyển — dù vì sổ đã settle hay vì bậc cho 0%. */
+      const noMoneyToMove = settled || approvedZero;
 
       // Gate CHỈ áp khi thật sự phải chuyển tiền: hết tiền để chuyển thì trạng
       // thái booking không còn là điều kiện của việc đóng request + nhả ghế.
-      if (!settled) {
+      if (!noMoneyToMove) {
         const refundableStatus =
           booking.status === BookingStatus.PAID ||
           booking.status === BookingStatus.PARTIALLY_REFUNDED;
@@ -443,7 +453,7 @@ export class CancellationsService {
       // `refundAmount` vắng → hoàn TRỌN phần dư (hành vi trước ADR-0029).
       // Mọi lỗi tiền vẫn do `classifyRefundAmount` canh: ≤ 0, vượt phần dư,
       // hay sổ đã settle — server không tin con số client gửi.
-      const amount = settled
+      const amount = noMoneyToMove
         ? new Prisma.Decimal(0)
         : classifyRefundAmount({
             requested: refundAmount ?? null,
@@ -456,7 +466,7 @@ export class CancellationsService {
       // request id đặt tên cho refund attempt này một cách deterministic (W5).
       // Gọi TRONG tx của lock (ngoại lệ ADR-0009) để lock giữ suốt read→gateway→ledger.
       // Sổ đã settle thì KHÔNG gọi gateway: không có đồng nào để chuyển.
-      const providerRefundId = settled
+      const providerRefundId = noMoneyToMove
         ? null
         : await this.refunds.executeGatewayRefund(
             { ...booking, providerPaymentId: booking.providerPaymentId as string },

@@ -3375,18 +3375,100 @@ export const messages = {
         reason: 'Customer reason',
         /** Dòng số tiền trong dialog approve — con số THẬT từ queue (review F3). */
         refundAmount: 'Refund amount',
-        /** Phần còn lại sẽ hoàn = total − đã hoàn, cả hai server trả. */
-        refundAmountValue: (remaining: string) => `${remaining} (the full remaining balance)`,
         noteLabel: 'Decision note (optional)',
         notePlaceholder: 'Included in the email to the customer.',
         cancel: 'Cancel',
+        /**
+         * Stepper approve (ADR-0029 §5): xem yêu cầu → đối chiếu chính sách →
+         * chốt số tiền → xác nhận hệ quả. Bốn bước tồn tại vì approve là lệnh
+         * MỘT LẦN và không đảo ngược được — mỗi bước phải nói ra một thứ mà
+         * người bấm cần biết, chứ không phải bốn lần bấm Next.
+         */
+        approveWizard: {
+          /** Nhãn trên thanh bước — một từ, đủ để biết mình đang đứng đâu. */
+          steps: {
+            request: 'Request',
+            policy: 'Policy',
+            amount: 'Amount',
+            confirm: 'Confirm',
+          },
+          progress: (current: number, total: number) => `Step ${current} of ${total}`,
+          back: 'Back',
+          next: 'Continue',
+          request: {
+            heading: 'What the customer asked for',
+            body: 'This is everything they sent. Read it before you decide.',
+            requestedAt: 'Requested',
+            departure: 'Departure',
+            /** Bao lâu rồi chưa ai quyết — hàng đợi cũ là một lời hứa đang trễ. */
+            waiting: (days: number) =>
+              days <= 0
+                ? 'Sent today.'
+                : `Waiting ${days} ${days === 1 ? 'day' : 'days'} for a decision.`,
+          },
+          policy: {
+            heading: 'What the refund schedule says',
+            body: 'The schedule is fixed, and the customer saw this same figure when they sent the request.',
+            daysLine: (days: number) =>
+              days < 0
+                ? 'The tour had already started when the request was sent.'
+                : days === 0
+                  ? 'The request was sent on the departure date.'
+                  : `Sent ${days} ${days === 1 ? 'day' : 'days'} before departure.`,
+            /** Bậc nào đang áp — nói ra để con số không trông như tuỳ hứng. */
+            band: (percent: number) =>
+              percent === 0
+                ? 'That falls outside the refundable window.'
+                : `That band refunds ${percent}% of what the customer paid.`,
+            countedFrom: 'Days are counted from the date the request was sent, not today.',
+            grace:
+              'Sent within 24 hours of payment, so the full amount is refundable whatever the schedule would otherwise say.',
+            badge: (days: number) =>
+              `This tour advertises free cancellation up to ${days} days before departure, which raises the refund to the full amount.`,
+            alreadyRefunded: (amount: string) =>
+              `${amount} has already been refunded on this booking, and is deducted from the figure below.`,
+            result: 'Policy refund',
+            resultValue: (percent: number, amount: string) =>
+              `${amount} · ${percent}% of the total`,
+          },
+          amount: {
+            heading: 'How much to refund',
+            policyOption: 'Refund the policy amount',
+            overrideOption: 'Refund a different amount',
+            overrideHint: 'You will have to record why on the next step.',
+            overrideLabel: 'Amount to refund',
+            remainingHint: (amount: string) => `Up to ${amount} can still be refunded.`,
+            /**
+             * Câu quan trọng nhất của cả dialog. Approve chạy MỘT lần: nó đóng
+             * request, huỷ booking và nhả ghế, và sau đó back-office không còn
+             * đường hoàn nốt phần dư (ADR-0029 §AMEND 2).
+             */
+            onceWarning:
+              'Approving happens once. Whatever you set here is the whole refund for this booking — the rest cannot be refunded from the back office afterwards.',
+            zeroNotice:
+              'There is nothing left to refund. Approving still closes the request, cancels the booking and releases the seats.',
+          },
+          confirm: {
+            heading: 'Approve this cancellation',
+            refundLine: 'Refund now',
+            /** Số tiền khác bậc — nhãn để người duyệt sau đọc hồ sơ hiểu ngay. */
+            overrideBadge: (amount: string) => `Off-policy — the schedule gives ${amount}.`,
+            noteLabelRequired: 'Why this amount',
+            noteRequired: 'Record why you are refunding an off-policy amount.',
+          },
+        },
         approveDialog: {
           title: 'Approve this cancellation?',
           body: 'Approving runs all three changes below in one go, straight away.',
           /** Ba hệ quả của nhánh approve — đọc từ summary contract + service. */
           consequences: {
-            refund:
-              'Refunds the full remaining balance to the customer through the payment provider.',
+            /**
+             * Nói SỐ TIỀN THẬT sắp chuyển, không phải "phần còn lại": từ
+             * ADR-0029 §1 approve hoàn theo bậc chính sách, nên câu cũ
+             * ("the full remaining balance") sai ở mọi ca hoàn một phần.
+             */
+            refund: (amount: string) =>
+              `Refunds ${amount} to the customer through the payment provider.`,
             cancelled: 'Marks the booking as cancelled.',
             seats: 'Releases the seats back to the departure.',
           },
