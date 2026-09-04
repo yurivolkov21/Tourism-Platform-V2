@@ -159,7 +159,11 @@ describe('BookingsDateRange', () => {
     rerender(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
     await user.click(screen.getByRole('button', { name: t.clearDates }));
 
-    expect(push).toHaveBeenCalledWith('/bookings');
+    // `dates=all` chứ KHÔNG phải `/bookings` trần (đổi 04/09): URL trần nay
+    // được parse độn lại khoảng ngày mặc định — tức hai ô sẽ nảy về đúng cái
+    // vừa xoá. Sentinel này là đường DUY NHẤT về lại "xem tất cả", và nó
+    // bookmark được lẫn truyền sang route export được.
+    expect(push).toHaveBeenCalledWith('/bookings?dates=all');
   });
 
   it('nút xoá vẫn hiện khi mới có một đầu', () => {

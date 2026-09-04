@@ -2632,6 +2632,41 @@ export const messages = {
       pagination: 'Pagination',
     },
     /**
+     * Khối payload trong drawer chi tiết (kit `JsonDrawer` — `/outbox` và
+     * `/payment-events` dùng chung). User chốt 03/09: back-office này không
+     * phải ai cũng đọc được JSON, nên payload có HAI chế độ xem và chế độ dễ
+     * đọc là mặc định.
+     */
+    payload: {
+      /** aria-label cụm chuyển chế độ — hai nút đã tự nói tên chế độ. */
+      viewLabel: 'Payload view',
+      /** Danh sách nhãn · giá trị, PHẲNG (user chốt: không lồng vào nhau). */
+      simple: 'Simple',
+      /** JSON nguyên văn, thụt lề — thứ vốn là mặc định trước 03/09. */
+      developer: 'Developer',
+      /**
+       * Chuỗi rỗng, object rỗng, mảng rỗng. Khác `bookings.detail.empty` ('—',
+       * dùng cho giá trị VẮNG): ở đây khoá có tồn tại và giá trị đúng là rỗng —
+       * hai chuyện khác nhau, và một bề mặt vận hành phải phân biệt được.
+       */
+      emptyValue: '(empty)',
+      /** Boolean đọc thành lời — `true`/`false` là chữ của lập trình viên. */
+      yes: 'Yes',
+      no: 'No',
+      /** Phần tử mảng: đánh số TỪ 1 cho người đọc, không phải index từ 0. */
+      item: (index: number) => `Item ${index}`,
+      /** Payload không phải object (chuỗi/số trần) — một dòng duy nhất. */
+      scalar: 'Value',
+      /** Payload là `{}` — nói thẳng thay vì hiện một khoảng trắng. */
+      none: 'This payload has no fields.',
+      /**
+       * Nhãn đọc-màn-hình của nút đóng drawer. Trước 03/09 chuỗi này nằm CỨNG
+       * trong `SheetContent` của `@tourism/ui`; drawer mới tự dựng nút đóng
+       * nên nó về đúng chỗ của copy user-facing (luật 7).
+       */
+      close: 'Close',
+    },
+    /**
      * Hàng stat card đứng TRÊN bảng của ba trang vùng (spec P4b §3-F5 — mẫu
      * user chốt 31/08: nhãn · số lớn · pill delta ↑/↓ · "vs X prior 28 days").
      * Copy DÙNG CHUNG ở đây vì cả ba vùng in cùng một hình dạng card; nhãn
@@ -2914,6 +2949,18 @@ export const messages = {
         searchPlaceholder: 'Code, name or email',
         clear: 'Clear',
         empty: 'No bookings match these filters.',
+        /**
+         * Bảng rỗng khi ĐANG lọc theo ngày (mặc định là tháng hiện tại, user
+         * chốt 04/09). Nói thẳng khoảng ngày ra: "không có kết quả" mà không
+         * nói vì sao là cách nhanh nhất để người tra một booking cũ kết luận
+         * nhầm rằng booking đó không tồn tại.
+         */
+        emptyInRange: (range: string) => `No bookings were created between ${range}.`,
+        /** Khoảng MỘT đầu (xoá riêng một ô, hoặc khoảng ngược làm rớt `to`). */
+        emptyFrom: (date: string) => `No bookings were created on or after ${date}.`,
+        emptyTo: (date: string) => `No bookings were created on or before ${date}.`,
+        /** Nút thoát ngay trong ô rỗng — một cú bấm về xem toàn bộ. */
+        showAllDates: 'Show bookings from all dates',
         columns: {
           code: 'Code',
           tour: 'Tour',
@@ -3602,7 +3649,8 @@ export const messages = {
         processed: 'Processed',
         lastError: 'Last error',
         noError: 'No error recorded.',
-        payload: 'Payload (JSON)',
+        /** Cùng lý do "Provider payload" đổi tên (user báo 03/09). */
+        payload: 'Email contents',
       },
       retry: {
         action: 'Retry',
@@ -3712,8 +3760,76 @@ export const messages = {
         booking: 'Booking',
         received: 'Received',
         processed: 'Processed',
-        payload: 'Provider payload (JSON)',
+        /**
+         * Tiêu đề khối payload. "Provider payload" cũ là chữ kỹ thuật — user
+         * báo 03/09 là người không đọc code không hiểu; câu này nói thẳng nó
+         * là cái gì.
+         */
+        payload: 'What the payment provider sent',
         loading: 'Loading payload…',
+        /**
+         * Tên đời thường cho trường của Stripe/PayPal, dùng ở chế độ xem
+         * Simple (user chốt 03/09, phương án B sau bản demo). Payload ở vùng
+         * này là NGUYÊN VĂN webhook, nên cột trái vốn là tên trường do provider
+         * đặt — `amount_total`, `client_reference_id` — thứ chỉ người biết code
+         * mới đọc ra.
+         *
+         * Vì sao ở đây LÀ từ điển được, trong khi payload của `/outbox` cố ý
+         * KHÔNG có: tên trường này do người khác sở hữu, ta không thêm bớt, và
+         * nó chỉ đổi khi provider đổi API — không mục theo tính năng của mình.
+         * Trường lạ vẫn rơi êm về cách đọc bằng máy nên bảng này thiếu cũng
+         * không gãy gì.
+         *
+         * Khoá có DẤU CHẤM là đường dẫn đầy đủ và được tra TRƯỚC (xem
+         * `PayloadHints`): cần thế vì sau khi cắt khúc bao bì `data.object`
+         * thì `id` của sự kiện và `id` của phiên checkout đọc ra cùng một chữ.
+         */
+        payloadFields: {
+          // KHOÁ LÀ ĐƯỜNG DẪN ĐẦY ĐỦ (vòng vá review polish 2): khoá trần áp ở
+          // mọi độ sâu nên nhãn sai loại đối tượng — mỗi dòng ở đây kiểm được
+          // bằng mắt trên một webhook mẫu. Nhãn trung lập cho `data.object`: nó
+          // là Session ở checkout.session.* nhưng là PaymentIntent/Charge ở
+          // event khác — sổ webhook nhận gì ghi nấy.
+          // ── Stripe: tầng ngoài của event ──
+          id: 'Event reference',
+          object: 'Kind',
+          type: 'Event',
+          created: 'Received at',
+          livemode: 'Live mode',
+          api_version: 'Provider API version',
+          pending_webhooks: 'Deliveries still queued',
+          // ── Stripe: `data.object` (sau khi cắt bao bì) ──
+          'data.object.id': 'Object reference',
+          'data.object.object': 'Kind',
+          'data.object.status': 'Status',
+          'data.object.amount_total': 'Amount charged',
+          'data.object.currency': 'Currency',
+          'data.object.payment_status': 'Payment status',
+          'data.object.payment_intent': 'Payment reference',
+          'data.object.client_reference_id': 'Our reference',
+          'data.object.expires_at': 'Link expires',
+          'data.object.customer_details': 'Customer',
+          'data.object.customer_details.email': 'Email',
+          'data.object.metadata': 'Our notes',
+          'data.object.metadata.bookingId': 'Booking id',
+          'data.object.metadata.bookingCode': 'Booking code',
+          // ── PayPal: tầng ngoài ──
+          event_type: 'Event',
+          create_time: 'Received at',
+          resource_type: 'Kind',
+          summary: 'Summary',
+          // ── PayPal: `resource` (sau khi cắt bao bì) ──
+          'resource.id': 'Object reference',
+          'resource.status': 'Status',
+          'resource.custom_id': 'Booking id',
+          'resource.purchase_units': 'Items paid for',
+          'resource.amount': 'Amount charged',
+          'resource.amount.value': 'Amount',
+          'resource.amount.currency_code': 'Currency',
+          'resource.payer': 'Customer',
+          'resource.payer.email_address': 'Email',
+          links: 'Provider links',
+        },
         /**
          * Mã CONTRACT của `admin.paymentEvents.byId` — CHỈ mã contract ở
          * khối này (codec derive tập mã từ khoá, test đối chiếu `errorMap`).

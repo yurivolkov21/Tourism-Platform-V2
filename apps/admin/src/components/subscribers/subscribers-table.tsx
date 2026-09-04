@@ -9,9 +9,9 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { SubscribersExportLink } from '@/components/subscribers/subscribers-export-link';
+import { SubscribersSourceMenu } from '@/components/subscribers/subscribers-source-menu';
 import {
   SubscribersSearch,
-  SubscribersSourceSelect,
   SubscribersStatusTabs,
 } from '@/components/subscribers/subscribers-toolbar';
 import { UnsubscribeAction } from '@/components/subscribers/unsubscribe-action';
@@ -174,7 +174,7 @@ export function SubscribersTable({
       views={<SubscribersStatusTabs query={query} />}
       actions={
         <>
-          <SubscribersSourceSelect query={query} sources={sources} />
+          <SubscribersSourceMenu query={query} sources={sources} />
           <SubscribersSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>

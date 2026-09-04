@@ -98,3 +98,38 @@ export function monthOptions(
   if (selected && !values.includes(selected)) values.unshift(selected);
   return values.map((value) => ({ value, label: formatMonthLabel(value) }));
 }
+
+/** Một đoạn liên tiếp cùng năm trong danh sách tháng. */
+export interface MonthOptionGroup {
+  /**
+   * Khoá React. Là tháng ĐẦU đoạn, không phải năm: `monthOptions` chèn tháng
+   * đang xem lên đầu nên cùng một năm có thể thành hai đoạn rời nhau, và hai
+   * `key` trùng là lỗi React thật.
+   */
+  key: string;
+  year: string;
+  months: Array<{ value: string; label: string }>;
+}
+
+/**
+ * Cắt danh sách tháng thành các đoạn cùng năm, cho menu tháng của `/reports`
+ * (khuôn `dropdown-menu-10`, user chốt 03/09) đặt separator giữa các năm.
+ *
+ * Gom theo ĐOẠN LIÊN TIẾP chứ không gom theo khoá: danh sách vào đã sắp
+ * mới-nhất-trước và có thể mở đầu bằng một tháng ngoài dải; gom-theo-khoá sẽ
+ * kéo tháng ấy xuống dưới, làm menu không còn mở ra ở đúng tháng đang đọc.
+ */
+export function groupMonthOptions(
+  options: Array<{ value: string; label: string }>,
+): MonthOptionGroup[] {
+  const groups: MonthOptionGroup[] = [];
+
+  for (const month of options) {
+    const year = month.value.slice(0, 4);
+    const last = groups.at(-1);
+    if (last && last.year === year) last.months.push(month);
+    else groups.push({ key: month.value, year, months: [month] });
+  }
+
+  return groups;
+}

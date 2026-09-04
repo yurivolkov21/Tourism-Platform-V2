@@ -40,13 +40,22 @@ export async function GET(request: NextRequest) {
   if (!gate.ok) return gate.response;
   const adminId = gate.session.id;
 
-  const query = parseBookingsSearchParams(rawSearchParamsFrom(request.nextUrl.searchParams));
+  // CÙNG hàm parse với trang, nên file tải về luôn khớp cái đang thấy — kể cả
+  // khoảng ngày mặc định (bài học F10: đặt mặc định ở tầng điều hướng thì hai
+  // đường này lệch nhau trong im lặng).
+  const query = parseBookingsSearchParams(
+    rawSearchParamsFrom(request.nextUrl.searchParams),
+    new Date(),
+  );
   const cookie = (await cookies()).toString();
   const filters = {
     status: query.status ?? null,
     search: query.search ? '<set>' : null,
     from: query.from ?? null,
     to: query.to ?? null,
+    // Cố ý xuất TOÀN BỘ lịch sử khác với URL trần độn tháng — vết phải nói
+    // được (vòng vá review polish 2).
+    dates: query.allDates ? 'all' : 'range',
   };
 
   // Mã các hàng admin đã tích trên trang đang xem (spec 01/09). Có nó thì đây

@@ -25,8 +25,10 @@ import {
   TableRow,
 } from '@tourism/ui/components/table';
 import { Textarea } from '@tourism/ui/components/textarea';
+import { cn } from '@tourism/ui/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
+import { DIALOG_FRAME } from '@/components/kit/confirm-write-dialog';
 import { formatAmount, formatDateTime } from '@/lib/bookings-view';
 import {
   canRefund,
@@ -276,7 +278,9 @@ function RefundDialog({
       >
         {t.cta}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
+      {/* Cùng trần chiều cao với kit `ConfirmWriteDialog` (vòng vá review polish
+          2 — dialog cao nhất admin từng trôi nút Confirm khỏi viewport). */}
+      <DialogContent className={cn(DIALOG_FRAME, 'sm:max-w-md')} showCloseButton={false}>
         {step === 'form' ? (
           <>
             <DialogHeader>
@@ -417,9 +421,9 @@ function RefundDialog({
 /** Một dòng tóm tắt ở bước xác nhận. */
 function ConfirmRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="grid grid-cols-[8rem_1fr] gap-2">
+    <div className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="break-words">{value}</dd>
+      <dd className="wrap-anywhere">{value}</dd>
     </div>
   );
 }

@@ -175,7 +175,6 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
         // là đường kéo về cho ca URL-không-đổi (xem `go`).
         key={`from-${query.from ?? ''}-${resetNonce}`}
         value={query.from ?? ''}
-        max={query.to}
         onCommit={(iso) => go({ from: iso || null })}
       />
       <span aria-hidden="true" className="text-muted-foreground">
@@ -187,8 +186,10 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
         openLabel={t.pickDateTo}
         placeholder={t.datePlaceholder}
         key={`to-${query.to ?? ''}-${resetNonce}`}
+        // KHÔNG `min`/`max` chéo nhau (vòng vá review polish 2): mặc định tháng
+        // hiện tại làm ô kia luôn có giá trị, nên lùi tháng bằng ô 'đến ngày'
+        // bị lịch xám chặn; khoảng ngược đã có `dateRange` lo.
         value={query.to ?? ''}
-        min={query.from}
         onCommit={(iso) => go({ to: iso || null })}
       />
       {/* Xoá cả hai đầu trong một cú bấm — nếp `TableSearchForm`. Không có nó

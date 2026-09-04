@@ -5,15 +5,17 @@ import { CircleSlashIcon, ListIcon, MailCheckIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { fromFreeValue, ToolbarSelect, toFreeValue } from '@/components/kit/toolbar-select';
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 
 /**
- * Ba mẩu điều khiển của `/subscribers` (spec P4c §3-F10): tab Active/
- * Unsubscribed/All (khe trái — kit `StatusFilterTabs`), Select lọc theo nguồn
- * và ô tìm email (khe phải). Cả ba chỉ làm một việc: đổi URL; server component
- * đọc lại `searchParams` rồi fetch (spec P4b §2.2), không có state danh sách
- * nào ở client.
+ * Hai mẩu điều khiển của `/subscribers` (spec P4c §3-F10): tab Active/
+ * Unsubscribed/All (khe trái — kit `StatusFilterTabs`) và ô tìm email (khe
+ * phải). Cả hai chỉ làm một việc: đổi URL; server component đọc lại
+ * `searchParams` rồi fetch (spec P4b §2.2), không có state danh sách nào ở
+ * client.
+ *
+ * Mẩu thứ ba — lọc theo nguồn — tách sang `subscribers-source-menu.tsx` ngày
+ * 03/09: nó thôi là Select và thành menu theo khuôn `dropdown-menu-10`.
  */
 const t = messages.admin.subscribers.list;
 
@@ -51,58 +53,6 @@ export function SubscribersStatusTabs({ query }: { query: SubscribersQuery }) {
       label={t.filterLabel}
       selectId="subscribers-status-selector"
       onSelect={go}
-    />
-  );
-}
-
-/**
- * Lọc theo nguồn đăng ký. Danh sách mục đến từ CHÍNH response của list
- * (`sources` distinct toàn bảng) chứ không phải một mảng viết cứng ở đây
- * (quyết định tự chọn F10): `source` là chuỗi tự do do đường ghi tự khai, và
- * hôm nay KHÔNG đường nào khai cả — một Select viết cứng sẽ là danh sách mà
- * mọi mục đều trả 0 hàng.
- *
- * Bảng chưa có nguồn nào thì KHÔNG render gì: một control chỉ có mục "All
- * sources" là một ô chiếm chỗ mà không lọc được gì. Ngày một landing page bắt
- * đầu gửi `source`, nó tự xuất hiện.
- *
- * Giá trị đang lọc mà không nằm trong danh sách (gõ tay `?source=`, hoặc hàng
- * cuối cùng của nguồn đó vừa bị lọc mất) vẫn được thêm một mục TẠM — cùng
- * cách filter `type` của payment events xử, để ô không hiện nhầm "All sources"
- * trong khi bảng đang lọc thật.
- *
- * Giá trị thật đi qua `toFreeValue`/`fromFreeValue` của kit (vòng vá review
- * F10): `source` là chuỗi tự do mà đường subscribe CÔNG KHAI ghi được, nên
- * một hàng `source = 'ALL'` từng trùng sentinel của kit — mục đó xoá filter
- * và ô hiện nhầm "All sources" trong khi bảng đang lọc thật.
- */
-export function SubscribersSourceSelect({
-  query,
-  sources,
-}: {
-  query: SubscribersQuery;
-  sources: readonly string[];
-}) {
-  const router = useRouter();
-  const current = query.source;
-  const unknown = current !== undefined && !sources.includes(current);
-
-  // Bảng chưa có nguồn nào VÀ không đang lọc theo nguồn lạ: không vẽ gì.
-  if (sources.length === 0 && !unknown) return null;
-
-  const items = [
-    { label: t.sourceAll, value: ALL },
-    ...(unknown ? [{ label: current, value: toFreeValue(current) }] : []),
-    ...sources.map((source) => ({ label: source, value: toFreeValue(source) })),
-  ];
-
-  return (
-    <ToolbarSelect
-      id="subscribers-source-selector"
-      label={t.sourceLabel}
-      value={current === undefined ? ALL : toFreeValue(current)}
-      items={items}
-      onSelect={(next) => router.push(subscribersHref(query, { source: fromFreeValue(next) }))}
     />
   );
 }

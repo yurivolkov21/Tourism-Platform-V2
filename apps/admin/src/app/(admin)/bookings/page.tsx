@@ -32,7 +32,9 @@ export default async function BookingsPage({
 }: {
   searchParams: Promise<RawSearchParams>;
 }) {
-  const query = parseBookingsSearchParams(await searchParams);
+  // `now` truyền vào chứ không đọc trong hàm: mặc định khoảng ngày là THÁNG
+  // HIỆN TẠI (user chốt 04/09) và một hàm thuần thì test được mọi tháng.
+  const query = parseBookingsSearchParams(await searchParams, new Date());
   const cookie = (await cookies()).toString();
   // Session (chỉ để đổ vào nav-user — layout đã gác role) và trang dữ liệu
   // là hai request độc lập: chạy song song kẻo TTFB thành 2 RTT nối tiếp

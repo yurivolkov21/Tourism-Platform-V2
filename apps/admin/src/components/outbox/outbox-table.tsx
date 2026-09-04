@@ -19,11 +19,8 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { OutboxDetailSheet } from '@/components/outbox/outbox-detail-sheet';
-import {
-  OutboxSearch,
-  OutboxStatusTabs,
-  OutboxTypeSelect,
-} from '@/components/outbox/outbox-toolbar';
+import { OutboxSearch, OutboxStatusTabs } from '@/components/outbox/outbox-toolbar';
+import { OutboxTypeMenu } from '@/components/outbox/outbox-type-menu';
 import { RetryAction } from '@/components/outbox/retry-action';
 import { type OutboxQuery, outboxHref } from '@/lib/outbox-query';
 import type { RetryAction as RetryActionFn } from '@/lib/outbox-retry';
@@ -200,7 +197,7 @@ export function OutboxTable({ rows, query, total, totalPages, retry }: OutboxTab
       views={<OutboxStatusTabs query={query} />}
       actions={
         <>
-          <OutboxTypeSelect query={query} />
+          <OutboxTypeMenu query={query} />
           <OutboxSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>

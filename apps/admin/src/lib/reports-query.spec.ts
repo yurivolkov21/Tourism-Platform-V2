@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   currentMonth,
   formatMonthLabel,
+  groupMonthOptions,
   monthOptions,
   parseReportsSearchParams,
   reportsExportHref,
@@ -107,5 +108,54 @@ describe('monthOptions', () => {
     const options = monthOptions(NOW, 12, '2026-08');
     expect(options.filter((o) => o.value === '2026-08')).toHaveLength(1);
     expect(options).toHaveLength(12);
+  });
+});
+
+describe('groupMonthOptions', () => {
+  /**
+   * Menu tháng của `/reports` (khuôn `dropdown-menu-10`, user chốt 03/09) chia
+   * nhóm bằng separator. Trục chia là NĂM — thứ duy nhất trong một danh sách
+   * tháng mà mắt cần mốc để bám.
+   *
+   * Gom theo ĐOẠN LIÊN TIẾP chứ không gom theo khoá: `monthOptions` chèn tháng
+   * đang xem lên đầu, nên cùng một năm có thể xuất hiện ở hai đoạn rời nhau —
+   * sắp xếp lại là làm hỏng thứ tự mới-nhất-trước mà danh sách vốn có.
+   */
+  it('cắt nhóm ở mỗi lần đổi năm, giữ nguyên thứ tự vào', () => {
+    const groups = groupMonthOptions(monthOptions(NOW, 12));
+
+    expect(groups.map((g) => g.year)).toEqual(['2026', '2025']);
+    expect(groups[0]?.months.map((m) => m.value)).toEqual([
+      '2026-09',
+      '2026-08',
+      '2026-07',
+      '2026-06',
+      '2026-05',
+      '2026-04',
+      '2026-03',
+      '2026-02',
+      '2026-01',
+    ]);
+    expect(groups[1]?.months.map((m) => m.value)).toEqual(['2025-12', '2025-11', '2025-10']);
+  });
+
+  it('cùng một năm ở hai đoạn rời nhau thì thành HAI nhóm, không gộp lại', () => {
+    // Tháng đang xem `2025-03` được chèn lên đầu, nên 2025 xuất hiện cả ở đầu
+    // lẫn ở cuối. Gộp chúng lại là kéo `2025-03` xuống dưới 2026 — ô chọn sẽ
+    // không còn mở ra ở đúng tháng đang đọc.
+    const groups = groupMonthOptions(monthOptions(NOW, 12, '2025-03'));
+
+    expect(groups.map((g) => g.year)).toEqual(['2025', '2026', '2025']);
+    expect(groups[0]?.months.map((m) => m.value)).toEqual(['2025-03']);
+  });
+
+  it('khoá nhóm là duy nhất kể cả khi năm lặp lại — React cần thế', () => {
+    const groups = groupMonthOptions(monthOptions(NOW, 12, '2025-03'));
+
+    expect(new Set(groups.map((g) => g.key)).size).toBe(groups.length);
+  });
+
+  it('danh sách rỗng thì không nhóm nào', () => {
+    expect(groupMonthOptions([])).toEqual([]);
   });
 });

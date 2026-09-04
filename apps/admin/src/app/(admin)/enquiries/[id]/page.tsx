@@ -110,9 +110,9 @@ export default async function EnquiryDetailPage({
                   bảy sẽ che mất đúng hai dòng có chữ. */}
               <dl className="grid gap-2 text-sm">
                 {vm.leadFields.map((field) => (
-                  <div key={field.label} className="grid grid-cols-[8rem_1fr] gap-2">
+                  <div key={field.label} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
                     <dt className="text-muted-foreground">{field.label}</dt>
-                    <dd className="break-words">{field.value}</dd>
+                    <dd className="wrap-anywhere">{field.value}</dd>
                   </div>
                 ))}
               </dl>

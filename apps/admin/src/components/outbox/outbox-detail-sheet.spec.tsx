@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { OutboxRowVM } from '@/lib/outbox-view';
@@ -42,23 +42,37 @@ describe('OutboxDetailSheet', () => {
     expect(screen.getByText(t.detail.title)).toBeInTheDocument();
     expect(screen.getByText(t.detail.description(ROW.dedupeKey))).toBeInTheDocument();
     expect(screen.getByText(t.type.BOOKING_CONFIRMATION)).toBeInTheDocument();
-    expect(screen.getByText('ada@example.com')).toBeInTheDocument();
+    // Từ 03/09 payload cũng in ra chữ (chế độ Simple), nên `ada@example.com`
+    // xuất hiện HAI chỗ: field Recipient và giá trị `email` của payload. Neo
+    // vào đúng ô giá trị của field thay vì tìm khắp panel.
+    expect(screen.getByText(t.detail.recipient).nextElementSibling).toHaveTextContent(
+      'ada@example.com',
+    );
     expect(screen.getByText(t.status.FAILED)).toBeInTheDocument();
     expect(screen.getByText(messages.admin.bookings.detail.empty)).toBeInTheDocument();
     expect(screen.getByText('Resend: 401 invalid api key')).toBeInTheDocument();
-    expect(screen.getByTestId('json-drawer-json').textContent).toBe(
-      JSON.stringify(ROW.payload, null, 2),
-    );
+    // Mặc định là chế độ Simple (kit đổi 03/09): payload hiện ra thành
+    // nhãn · giá trị, không phải khối JSON.
+    const payload = within(screen.getByTestId('json-drawer-simple'));
+    expect(payload.getByText('Code')).toBeInTheDocument();
+    expect(payload.getByText('BK-ABCD1234')).toBeInTheDocument();
+    expect(payload.getByText('Email')).toBeInTheDocument();
   });
 
-  it('payload null là GIÁ TRỊ JSON, không phải "đang tải"; lastError null in câu "không lỗi"', () => {
+  it('payload null là GIÁ TRỊ, không phải "đang tải"; lastError null in câu "không lỗi"', () => {
     render(
       <OutboxDetailSheet
         row={{ ...ROW, payload: null, lastError: null, status: 'SENT', statusLabel: t.status.SENT }}
         onClose={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('json-drawer-json').textContent).toBe('null');
+    // `null` là một giá trị JSON hợp lệ — drawer phải HIỆN nó, không được
+    // nhầm thành `undefined` rồi treo ở "đang tải".
+    const payload = within(screen.getByTestId('json-drawer-simple'));
+    expect(payload.getByText(messages.admin.payload.scalar)).toBeInTheDocument();
+    expect(payload.getByText(messages.admin.bookings.detail.empty)).toBeInTheDocument();
+    // Có khối payload nghĩa là KHÔNG ở trạng thái tải: kit chỉ render nó khi
+    // `json !== undefined`, mà `null` thì khác `undefined`.
     expect(screen.getByText(t.detail.noError)).toBeInTheDocument();
   });
 });

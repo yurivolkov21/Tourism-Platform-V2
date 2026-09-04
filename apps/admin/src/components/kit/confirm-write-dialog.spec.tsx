@@ -54,12 +54,18 @@ beforeEach(() => {
   onSettled.mockReset();
 });
 
-/** Dựng máy với một `onSubmit` cho sẵn — mọi prop khác giữ nguyên. */
-function renderDialog(onSubmit: (note: string) => Promise<unknown>) {
+/**
+ * Dựng máy với một `onSubmit` cho sẵn — mọi prop khác giữ nguyên. `rows` mở
+ * ra để hai test tràn chữ bơm được một giá trị dài; mặc định vẫn là `ROWS`.
+ */
+function renderDialog(
+  onSubmit: (note: string) => Promise<unknown>,
+  rows: Array<{ label: string; value: string }> = ROWS,
+) {
   return render(
     <ConfirmWriteDialog<TestCode>
       copy={COPY}
-      rows={ROWS}
+      rows={rows}
       extra={<p>Consequences go here.</p>}
       noteId="test-note"
       onSubmit={onSubmit as never}
@@ -231,5 +237,37 @@ describe('ConfirmWriteDialog — khoá trong lúc bắn', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Do it' }));
     // Kiểu props (vòng vá review F7) ép: không noteId ⇒ onSubmit không nhận note.
     expect(onSubmit).toHaveBeenCalledWith();
+  });
+
+  it('giá trị dài KHÔNG có dấu cách vẫn nằm gọn trong dialog', () => {
+    // Lỗi thật từ `/outbox` (user báo 03/09): `lastError` là JSON nguyên văn
+    // của provider, không dấu cách nào trong ~60 ký tự đầu.
+    //
+    // Vì sao đo bằng CLASS chứ không bằng hình học: jsdom không có layout
+    // engine, `offsetWidth` luôn là 0 nên không assert tràn được. Class chính
+    // LÀ hợp đồng ở đây, và cái bẫy đủ tinh vi để đáng khoá lại — bản cũ có
+    // `break-words` (`overflow-wrap: break-word`) trông như đã lo chuyện này,
+    // nhưng nó KHÔNG đổi min-content, nên cột `1fr` của grid vẫn phình theo
+    // token dài rồi đẩy chữ ra ngoài mép dialog. Hai thứ cùng phải có:
+    // cột được co dưới min-content, và chuỗi được ngắt ở bất kỳ đâu.
+    const longError =
+      'Resend API failed (HTTP 401): {"statusCode":401,"name":"validation_error","message":"API key is invalid"}';
+    renderDialog(vi.fn(), [{ label: 'Last error', value: longError }]);
+
+    const value = screen.getByText(longError);
+    expect(value).toHaveClass('wrap-anywhere');
+    expect(value.parentElement).toHaveClass('grid-cols-[8rem_minmax(0,1fr)]');
+  });
+
+  it('nội dung cao quá màn hình thì dialog cuộn, không đẩy nút ra ngoài', () => {
+    // Vá tràn NGANG mà không chặn chiều CAO là đổi một lỗi lấy một lỗi khác:
+    // `lastError` trần 1000 ký tự, ngắt dòng xong thành một khối cao, mà
+    // `DialogContent` căn giữa bằng `-translate-y-1/2` và KHÔNG có trần cao —
+    // nút Cancel/Confirm sẽ trôi khỏi màn hình, không cuộn tới được.
+    renderDialog(vi.fn());
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveClass('max-h-[85dvh]');
+    expect(dialog).toHaveClass('overflow-y-auto');
   });
 });

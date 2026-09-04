@@ -21,9 +21,9 @@ import { PaymentEventDetailSheet } from '@/components/payment-events/payment-eve
 import {
   PaymentEventsProviderTabs,
   PaymentEventsSearch,
-  PaymentEventsTypeSelect,
   PaymentEventsUnprocessedToggle,
 } from '@/components/payment-events/payment-events-toolbar';
+import { PaymentEventsTypeMenu } from '@/components/payment-events/payment-events-type-menu';
 import { UnprocessedBadge } from '@/components/payment-events/unprocessed-badge';
 import type { PaymentEventLoader } from '@/lib/payment-events-detail';
 import { type PaymentEventsQuery, paymentEventsHref } from '@/lib/payment-events-query';
@@ -181,7 +181,7 @@ export function PaymentEventsTable({
       views={<PaymentEventsProviderTabs query={query} />}
       actions={
         <>
-          <PaymentEventsTypeSelect query={query} />
+          <PaymentEventsTypeMenu query={query} />
           <PaymentEventsUnprocessedToggle query={query} />
           <PaymentEventsSearch query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />

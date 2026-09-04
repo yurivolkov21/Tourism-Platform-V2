@@ -60,7 +60,9 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
     <AdminShell user={session}>
       <div className="flex flex-col gap-4 px-4 lg:px-6">
         <Link
-          href="/bookings"
+          // `dates=all` (vòng vá review polish 2): /bookings trần độn tháng
+          // hiện tại, booking vừa xem (tạo tháng trước) sẽ biến khỏi bảng.
+          href="/bookings?dates=all"
           className="inline-flex w-fit items-center gap-1 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
         >
           <ChevronLeftIcon className="size-4" />
@@ -170,9 +172,11 @@ export default async function BookingDetailPage({ params }: { params: Promise<{ 
 /** Một dòng `<dt>/<dd>`; giá trị trống hiện gạch ngang thay vì ô rỗng khó hiểu. */
 function Row({ label, value }: { label: string; value: string | null }) {
   return (
-    <div className="grid grid-cols-[9rem_1fr] gap-2">
+    // `minmax(0,1fr)` + `wrap-anywhere`: cùng bản vá tràn chữ với kit dialog/
+    // drawer (bản chép thứ 5 bị bỏ sót ở vòng chỉnh UI, vòng vá review).
+    <div className="grid grid-cols-[9rem_minmax(0,1fr)] gap-2">
       <dt className="text-muted-foreground">{label}</dt>
-      <dd className="break-words">{value || t.empty}</dd>
+      <dd className="wrap-anywhere">{value || t.empty}</dd>
     </div>
   );
 }

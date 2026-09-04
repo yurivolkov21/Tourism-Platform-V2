@@ -8,8 +8,16 @@ import {
 } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
+import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Checkbox } from '@tourism/ui/components/checkbox';
-import { BanknoteIcon, MapPinIcon, TagIcon, UserIcon, UsersIcon } from 'lucide-react';
+import {
+  BanknoteIcon,
+  CalendarOffIcon,
+  MapPinIcon,
+  TagIcon,
+  UserIcon,
+  UsersIcon,
+} from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
 import {
@@ -23,7 +31,12 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { selectableTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
-import { type BookingRowVM, statusBadgeVariant } from '@/lib/bookings-view';
+import {
+  type BookingRowVM,
+  formatCalendarDate,
+  formatDateRange,
+  statusBadgeVariant,
+} from '@/lib/bookings-view';
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 
 /**
@@ -273,7 +286,43 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
       }
     >
       {/* Thân bảng + empty state nằm ở kit (`DataTableBody`, review F3 31/08). */}
-      <DataTableBody table={table} empty={t.empty} />
+      <DataTableBody table={table} empty={<BookingsEmpty query={query} />} />
     </DataTableFrame>
+  );
+}
+
+/**
+ * Ô rỗng của bảng. Khi ĐANG lọc theo ngày thì nói thẳng khoảng ngày ra và mở
+ * sẵn một lối thoát — vì từ 04/09 khoảng ngày MẶC ĐỊNH là tháng hiện tại, nên
+ * "không có kết quả" thường là do khoảng ngày chứ không phải do không có dữ
+ * liệu.
+ *
+ * Đây là lưới an toàn cho ca tra cứu: khách gọi báo mã booking, người trực gõ
+ * vào ô tìm kiếm, mà booking ấy tạo từ tháng trước. Ba bộ lọc CỘNG DỒN nên
+ * kết quả là bảng rỗng — không có câu này thì người trực kết luận "không có
+ * booking đó", trong khi thủ phạm là hai ô ngày họ chưa từng đụng vào.
+ */
+function BookingsEmpty({ query }: { query: BookingsQuery }) {
+  if (!query.from && !query.to) return <>{t.empty}</>;
+
+  // Ba dạng câu cho ba hình dạng khoảng — 'between X.' cho khoảng một đầu là
+  // câu cụt và đọc thành 'đúng ngày X' (vòng vá review polish 2).
+  const message =
+    query.from && query.to
+      ? t.emptyInRange(formatDateRange(query.from, query.to))
+      : query.from
+        ? t.emptyFrom(formatCalendarDate(query.from))
+        : t.emptyTo(formatCalendarDate(query.to as string));
+
+  return (
+    <div className="flex flex-col items-center gap-2">
+      <p>{message}</p>
+      {/* Link chứ không nút: đổi bộ lọc là ĐIỀU HƯỚNG ở vùng này (spec P4b
+          §2.2), và một link thì mở tab mới / copy được như mọi filter khác. */}
+      <ButtonLink variant="outline" size="sm" href={bookingsHref(query, { from: null, to: null })}>
+        <CalendarOffIcon data-icon="inline-start" aria-hidden="true" />
+        {t.showAllDates}
+      </ButtonLink>
+    </div>
   );
 }

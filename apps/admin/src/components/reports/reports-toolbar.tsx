@@ -1,14 +1,12 @@
 'use client';
 
-import { ReportMonthSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { DownloadIcon, PrinterIcon } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
-import { reportsExportHref, reportsHref } from '@/lib/reports-query';
+import { ReportsMonthMenu } from '@/components/reports/reports-month-menu';
+import { reportsExportHref } from '@/lib/reports-query';
 
 /**
  * Thanh điều khiển của `/reports` (spec P4b §3-F6): chọn tháng · tải CSV · in.
@@ -19,6 +17,10 @@ import { reportsExportHref, reportsHref } from '@/lib/reports-query';
  *
  * Cả thanh mang `print:hidden`: bản in không có chỗ cho ba nút bấm, và một tờ
  * giấy in hình cái nút "Print" là thứ ai cũng nhận ra là lỗi.
+ *
+ * Ô tháng tách sang `reports-month-menu.tsx` ngày 03/09: nó thôi là Select và
+ * thành menu theo khuôn `dropdown-menu-10`, cùng kiểu với ba nút lọc của
+ * `/outbox`, `/payment-events`, `/subscribers`.
  */
 const t = messages.admin.reports;
 
@@ -28,24 +30,10 @@ export interface ReportsToolbarProps {
 }
 
 export function ReportsToolbar({ month, options }: ReportsToolbarProps) {
-  const router = useRouter();
-
   return (
     <div className="flex flex-wrap items-center justify-between gap-2 px-4 lg:px-6 print:hidden">
       <div className="flex items-center gap-2">
-        {/* Kit `ToolbarSelect` (vòng vá review F7); `safeParse` tháng ở đây chứ
-            không đẩy giá trị lạ lên URL (nếp bookings, review F1). */}
-        <ToolbarSelect
-          id="reports-month"
-          label={t.monthLabel}
-          value={month}
-          items={options}
-          className="w-48"
-          onSelect={(next) => {
-            const parsed = ReportMonthSchema.safeParse(next);
-            if (parsed.success) router.push(reportsHref(parsed.data));
-          }}
-        />
+        <ReportsMonthMenu month={month} options={options} />
       </div>
       <div className="flex flex-wrap items-center justify-end gap-2">
         {/* Nút in chỉ gọi hộp thoại in của trình duyệt — "xuất PDF" của F6 là

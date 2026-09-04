@@ -30,23 +30,9 @@ export interface ToolbarSelectItem {
   value: string;
 }
 
-/**
- * Đóng/mở giá trị TỰ DO (chuỗi từ DB: `source` của subscribers, `type` của
- * payment events) để nó không bao giờ đụng sentinel "All" của kit (vòng vá
- * review F10: một hàng `source = 'ALL'` từng làm mục đó xoá filter và ô
- * hiện nhầm "All sources"). Tiền tố `v:` — mọi giá trị thật đều đi qua nó,
- * nên sentinel `ALL_FILTER_VALUE` là chuỗi duy nhất KHÔNG mang tiền tố.
- */
-const FREE_VALUE_PREFIX = 'v:';
-
-export function toFreeValue(value: string): string {
-  return `${FREE_VALUE_PREFIX}${value}`;
-}
-
-/** Giá trị Select → chuỗi thật; `null` khi là mục "All" (không có tiền tố). */
-export function fromFreeValue(selected: string): string | null {
-  return selected.startsWith(FREE_VALUE_PREFIX) ? selected.slice(FREE_VALUE_PREFIX.length) : null;
-}
+// Giao ước giá trị (sentinel All + tiền tố `v:`) sống ở `kit/filter-value.ts`
+// từ vòng vá review polish 2 — re-export để consumer cũ không gãy.
+export { fromFreeValue, toFreeValue } from '@/components/kit/filter-value';
 
 export function ToolbarSelect({
   id,

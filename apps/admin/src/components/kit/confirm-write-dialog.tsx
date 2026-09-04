@@ -11,6 +11,7 @@ import {
 } from '@tourism/ui/components/dialog';
 import { Label } from '@tourism/ui/components/label';
 import { Textarea } from '@tourism/ui/components/textarea';
+import { cn } from '@tourism/ui/lib/utils';
 import type * as React from 'react';
 import { useState } from 'react';
 import type { TransportFailureCode } from '@/lib/api/write-error';
@@ -41,6 +42,23 @@ import { useConfirmWrite } from '@/lib/use-confirm-write';
  * - Note đi tới vùng đã TRIM sẵn; vùng tự quyết gửi hay bỏ hẳn field (contract
  *   của mỗi endpoint khác nhau: `min(1)` hay `optional`).
  */
+
+/**
+ * Trần chiều cao + cuộn của khung dialog (vá 03/09, user báo lỗi tràn ở nút
+ * Retry `/outbox`). Đắp ở KIT chứ không để vùng tự nhớ, và KHÔNG sửa
+ * `DialogContent` của `@tourism/ui` vì file đó dùng chung với `apps/web` đang
+ * chạy thật.
+ *
+ * Vì sao cần: `DialogContent` căn giữa bằng `-translate-y-1/2` và không có
+ * trần cao nào. Nội dung cao hơn màn hình sẽ trào ra CẢ HAI đầu và không cuộn
+ * tới được — nút Cancel/Confirm biến mất. Vá tràn ngang mà bỏ qua chiều cao
+ * chỉ là đổi một lỗi lấy một lỗi khác: `lastError` trần 1000 ký tự, ngắt dòng
+ * xong đúng là một khối cao.
+ *
+ * `dvh` chứ không `vh`: thanh địa chỉ trên mobile co ra co vào, `vh` đo theo
+ * lúc nó ẩn nên dialog vẫn hụt đúng phần thanh ấy.
+ */
+export const DIALOG_FRAME = 'max-h-[85dvh] overflow-y-auto';
 
 /** Câu chữ của một lần xác nhận — vùng lấy từ `@tourism/i18n`, kit không tự chế. */
 export interface ConfirmWriteCopy {
@@ -105,7 +123,11 @@ export type ConfirmWriteDialogProps<Code extends string> = ConfirmWriteNoteProps
   extra?: React.ReactNode;
   /** Nút xác nhận: `destructive` khi lệnh lấy đi thứ đang hiện ra ngoài. */
   submitVariant?: 'default' | 'destructive';
-  /** Bề ngang DialogContent — vùng nào in nguyên văn nội dung thì cần rộng hơn. */
+  /**
+   * Bề ngang DialogContent — vùng nào in nguyên văn nội dung thì cần rộng hơn.
+   * Đè lên mặc định `sm:max-w-md`; trần chiều cao + cuộn thì kit luôn tự đắp,
+   * vùng không phải nhớ (xem `DIALOG_FRAME`).
+   */
   contentClassName?: string;
   /** Mã nào là TRẠNG-THÁI-CŨ (thế giới đã đổi dưới chân dialog) — vùng khai. */
   isStale: (code: Code | TransportFailureCode) => boolean;
@@ -148,7 +170,10 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
 
   return (
     <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className={contentClassName}>
+      {/* `showCloseButton={false}` (vòng vá review polish 2): nút X của kit UI
+          là `absolute` trong chính phần tử cuộn nên trôi khuất khi cuộn; dialog
+          này luôn có nút Cancel nên bỏ X thay vì sửa `@tourism/ui` dùng chung. */}
+      <DialogContent className={cn(DIALOG_FRAME, contentClassName)} showCloseButton={false}>
         <DialogHeader>
           <DialogTitle>{copy.title}</DialogTitle>
           <DialogDescription>{copy.body}</DialogDescription>
@@ -156,11 +181,19 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
 
         {/* Ngữ cảnh của hàng đi THEO dialog: quyết định một chuyện hệ trọng mà
             phải nhớ xem vừa bấm ở hàng nào là công thức bấm nhầm hàng. */}
+        {/* HAI thứ cùng phải có thì giá trị dài mới nằm gọn (vá 03/09):
+            `minmax(0,1fr)` cho cột co được DƯỚI min-content — `1fr` trần là
+            `minmax(auto,1fr)` và `auto` lấy min-content, nên một token không
+            dấu cách (JSON lỗi của provider) làm phình cột rồi đẩy chữ ra
+            ngoài mép dialog; và `wrap-anywhere` (`overflow-wrap: anywhere`)
+            cho chuỗi ngắt ở bất kỳ đâu. `break-words` cũ KHÔNG đủ:
+            `overflow-wrap: break-word` không tính vào min-content, nên cột
+            vẫn phình y như cũ. */}
         <dl className="grid gap-2 text-sm">
           {rows.map((row) => (
-            <div key={row.label} className="grid grid-cols-[8rem_1fr] gap-2">
+            <div key={row.label} className="grid grid-cols-[8rem_minmax(0,1fr)] gap-2">
               <dt className="text-muted-foreground">{row.label}</dt>
-              <dd className="break-words">{row.value}</dd>
+              <dd className="wrap-anywhere">{row.value}</dd>
             </div>
           ))}
         </dl>

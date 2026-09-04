@@ -33,6 +33,44 @@ import type { PaymentEventRowVM } from '@/lib/payment-events-view';
  */
 const t = messages.admin.paymentEvents;
 
+/**
+ * Vá nhãn cho chế độ xem Simple (user chốt 03/09, phương án B). Payload ở vùng
+ * này là NGUYÊN VĂN webhook nên cột trái vốn là tên trường của Stripe/PayPal.
+ *
+ * `envelopes`: mọi dòng Stripe mở đầu bằng `data.object` (PayPal là
+ * `resource`) — vỏ bọc của webhook, không mang nghĩa nào, cắt khỏi nhãn cho
+ * ngắn. `path` vẫn giữ nguyên nên khoá React không đổi.
+ *
+ * Hằng ở NGOÀI component: nó bất biến, mà `toPayloadFields` chạy trong
+ * `useMemo` khoá theo `hints` — dựng lại mỗi lần render là mỗi lần render lại
+ * trải phẳng cả webhook.
+ */
+const PAYLOAD_HINTS = {
+  envelopes: [['data', 'object'], ['resource']],
+  labels: t.detail.payloadFields,
+  /**
+   * Trường tiền của Stripe ở ĐƠN VỊ NHỎ NHẤT (`amount_total: 11700` là 117,00
+   * USD). Khai tường minh từng cái chứ không đoán theo tên: `resource…amount`
+   * của PayPal là một OBJECT chứa `value` dạng chuỗi decimal — đã đọc được
+   * sẵn, "đổi" nó là làm hỏng. (An toàn kép: phép diễn giải chỉ chạy trên số.)
+   */
+  minorUnitAmounts: [
+    'amount',
+    'amount_total',
+    'amount_subtotal',
+    'amount_received',
+    'amount_capturable',
+    'amount_discount',
+    'amount_shipping',
+    'amount_tax',
+  ],
+  /**
+   * Mốc thời gian dạng GIÂY Unix của Stripe. PayPal dùng `create_time` chuỗi
+   * ISO nên không khai — nó vốn đã đọc được.
+   */
+  unixSeconds: ['created', 'expires_at', 'canceled_at'],
+} as const;
+
 type LoadState =
   | { id: string; status: 'loading' }
   | { id: string; status: 'ready'; payload: unknown }
@@ -85,6 +123,7 @@ export function PaymentEventDetailSheet({
       json={view?.status === 'ready' ? view.payload : undefined}
       loadingLabel={t.detail.loading}
       error={view?.status === 'error' ? view.message : null}
+      payloadHints={PAYLOAD_HINTS}
     >
       {row ? (
         <JsonDrawerFields>

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it, vi } from 'vitest';
 import type { PaymentEventLoadResult } from '@/lib/payment-events-detail';
@@ -70,11 +70,17 @@ describe('PaymentEventDetailSheet', () => {
     );
     expect(screen.getByText(t.detail.loading)).toBeInTheDocument();
 
-    await waitFor(() =>
-      expect(screen.getByTestId('json-drawer-json').textContent).toBe(
-        JSON.stringify(PAYLOAD, null, 2),
-      ),
-    );
+    // Mặc định là chế độ Simple (kit đổi 03/09) — payload lồng bị trải phẳng,
+    // đường dẫn nằm trong nhãn.
+    await waitFor(() => expect(screen.getByTestId('json-drawer-simple')).toBeInTheDocument());
+    // Nhãn đi qua từ điển provider (user chốt 03/09, phương án B): tên trường
+    // Stripe thành chữ đời thường, và khúc bao bì `data › object` bị cắt.
+    const payload = within(screen.getByTestId('json-drawer-simple'));
+    expect(payload.getByText(t.detail.payloadFields.id)).toBeInTheDocument();
+    expect(payload.getByText('evt_1Pabc123')).toBeInTheDocument();
+    expect(
+      payload.getByText(t.detail.payloadFields['data.object.amount_total']),
+    ).toBeInTheDocument();
     expect(load).toHaveBeenCalledTimes(1);
     expect(load).toHaveBeenCalledWith({ id: ROW.id });
   });
@@ -84,6 +90,7 @@ describe('PaymentEventDetailSheet', () => {
     render(<PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(t.detail.errors.NOT_FOUND);
     expect(screen.queryByTestId('json-drawer-json')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('json-drawer-simple')).not.toBeInTheDocument();
   });
 
   it('hàng chưa xử lý: cột Processed trong drawer là badge "Unprocessed", không phải gạch trống', async () => {
@@ -137,15 +144,16 @@ describe('PaymentEventDetailSheet', () => {
       />,
     );
     await waitFor(() =>
-      expect(screen.getByTestId('json-drawer-json').textContent).toBe(
-        JSON.stringify({ marker: 'second' }, null, 2),
-      ),
+      expect(
+        within(screen.getByTestId('json-drawer-simple')).getByText('Marker'),
+      ).toBeInTheDocument(),
     );
     releaseFirst();
     await new Promise((resolve) => setTimeout(resolve, 0));
-    expect(screen.getByTestId('json-drawer-json').textContent).toBe(
-      JSON.stringify({ marker: 'second' }, null, 2),
-    );
+    // Kết quả hàng CŨ về muộn không được ghi đè hàng đang mở.
+    expect(
+      within(screen.getByTestId('json-drawer-simple')).getByText('second'),
+    ).toBeInTheDocument();
     expect(load).toHaveBeenCalledTimes(2);
   });
 
@@ -171,7 +179,9 @@ describe('PaymentEventDetailSheet', () => {
       <PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />,
     );
     await waitFor(() =>
-      expect(screen.getByTestId('json-drawer-json').textContent).toContain(ROW.id),
+      expect(
+        within(screen.getByTestId('json-drawer-simple')).getByText(ROW.id),
+      ).toBeInTheDocument(),
     );
     const secondId = '22222222-2222-4222-8222-222222222222';
     rerender(
@@ -183,9 +193,11 @@ describe('PaymentEventDetailSheet', () => {
     );
     // Đồng bộ ngay sau rerender — effect chưa chạy — đã phải là nhãn chờ.
     expect(screen.getByText(t.detail.loading)).toBeInTheDocument();
-    expect(screen.queryByTestId('json-drawer-json')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('json-drawer-simple')).not.toBeInTheDocument();
     await waitFor(() =>
-      expect(screen.getByTestId('json-drawer-json').textContent).toContain(secondId),
+      expect(
+        within(screen.getByTestId('json-drawer-simple')).getByText(secondId),
+      ).toBeInTheDocument(),
     );
   });
 
@@ -196,5 +208,59 @@ describe('PaymentEventDetailSheet', () => {
     render(<PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />);
     expect(await screen.findByRole('alert')).toHaveTextContent(t.detail.transportErrors.GENERIC);
     expect(screen.queryByText(t.detail.loading)).not.toBeInTheDocument();
+  });
+
+  it('nhãn payload đọc được cho người không biết code (user chốt 03/09, phương án B)', async () => {
+    const load = loader({
+      ok: true,
+      event: {
+        ...ROW,
+        payload: {
+          id: 'evt_1Pabc123',
+          livemode: false,
+          data: { object: { id: 'cs_test_1', amount_total: 11700, payment_intent: 'pi_1' } },
+        },
+      } as never,
+    });
+    render(<PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />);
+
+    const payload = within(await screen.findByTestId('json-drawer-simple'));
+    const t2 = t.detail.payloadFields;
+
+    // 1. Khúc bao bì `data › object` bị cắt khỏi nhãn.
+    expect(payload.queryByText(/Data › Object/)).toBeNull();
+    // 2. Trường đã biết gọi bằng tên đời thường.
+    expect(payload.getByText(t2['data.object.amount_total'])).toBeInTheDocument();
+    expect(payload.getByText(t2['data.object.payment_intent'])).toBeInTheDocument();
+    expect(payload.getByText(t2.livemode)).toBeInTheDocument();
+    // 3. Hai `id` khác tầng KHÔNG trùng nhãn — nếu trùng thì hai dòng cùng tên
+    //    mà khác giá trị, đúng thứ khoá-theo-đường-dẫn sinh ra để chặn.
+    expect(payload.getByText(t2.id)).toBeInTheDocument();
+    expect(payload.getByText(t2['data.object.id'])).toBeInTheDocument();
+    // 4. Không bỏ sót: 5 lá vào, 5 dòng ra.
+    expect(payload.getAllByRole('definition')).toHaveLength(5);
+  });
+
+  it('tiền và thời gian của webhook đọc được, số thô giữ nguyên bên cạnh', async () => {
+    const load = loader({
+      ok: true,
+      event: {
+        ...ROW,
+        payload: {
+          created: 1756876800,
+          data: { object: { amount_total: 11700, currency: 'usd' } },
+        },
+      } as never,
+    });
+    render(<PaymentEventDetailSheet row={ROW} onClose={vi.fn()} load={load} />);
+
+    const payload = within(await screen.findByTestId('json-drawer-simple'));
+
+    // `11700` là ĐƠN VỊ NHỎ NHẤT — người không đọc code sẽ hiểu là 11.700.
+    expect(payload.getByText('$117.00')).toBeInTheDocument();
+    expect(payload.getByText('3 Sep 2025, 05:20 UTC')).toBeInTheDocument();
+    // Cả hai đều giữ số gốc để đối soát.
+    const raws = payload.getAllByTestId('payload-raw').map((node) => node.textContent);
+    expect(raws).toEqual(['1756876800', '11700']);
   });
 });

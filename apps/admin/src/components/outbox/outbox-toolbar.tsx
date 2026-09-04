@@ -1,25 +1,27 @@
 'use client';
 
-import { EmailTypeSchema, OutboxStatusSchema } from '@tourism/contract';
+import { OutboxStatusSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { BanIcon, CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
-import { ToolbarSelect } from '@/components/kit/toolbar-select';
 import { type OutboxQuery, outboxHref } from '@/lib/outbox-query';
 
 /**
- * Ba mẩu điều khiển của `/outbox` (spec P4c §3-F7): tab trạng thái (khe trái
- * — kit `StatusFilterTabs`), Select loại email và ô tìm dedupeKey (khe phải).
- * Cả ba chỉ làm một việc: đổi URL; server component đọc lại `searchParams`
- * rồi fetch (spec P4b §2.2), không có state danh sách nào ở client.
+ * Hai mẩu điều khiển của `/outbox` (spec P4c §3-F7): tab trạng thái (khe trái
+ * — kit `StatusFilterTabs`) và ô tìm dedupeKey (khe phải). Cả hai chỉ làm một
+ * việc: đổi URL; server component đọc lại `searchParams` rồi fetch (spec P4b
+ * §2.2), không có state danh sách nào ở client.
+ *
+ * Mẩu thứ ba — lọc theo loại email — tách sang `outbox-type-menu.tsx` ngày
+ * 03/09: nó thôi là Select và thành menu theo khuôn `dropdown-menu-10`, đủ
+ * nặng để đứng riêng một file.
  */
 const t = messages.admin.outbox;
 
 /** Nguồn danh sách = enum contract, không chép tay lần hai. */
 const STATUSES = OutboxStatusSchema.options;
-const TYPES = EmailTypeSchema.options;
 
 /**
  * Icon theo trạng thái — `Record` trên enum để quên một member là đỏ ở
@@ -42,11 +44,6 @@ const TAB_ITEMS = [
   })),
 ];
 
-const TYPE_ITEMS = [
-  { label: t.list.typeAll, value: ALL },
-  ...TYPES.map((type) => ({ label: t.type[type], value: type })),
-];
-
 export function OutboxStatusTabs({ query }: { query: OutboxQuery }) {
   const router = useRouter();
   const value = query.status ?? ALL;
@@ -64,32 +61,6 @@ export function OutboxStatusTabs({ query }: { query: OutboxQuery }) {
       value={value}
       label={t.list.filterLabel}
       selectId="outbox-status-selector"
-      onSelect={go}
-    />
-  );
-}
-
-/**
- * Lọc theo loại email — Select (13 giá trị thì tab không vừa một hàng). Kit
- * `ToolbarSelect` (vòng vá review F7 — bản chép thứ ba của cùng khối Select
- * được nâng lên kit) nên đứng cạnh nhánh mobile của `StatusFilterTabs` là
- * cùng một control.
- */
-export function OutboxTypeSelect({ query }: { query: OutboxQuery }) {
-  const router = useRouter();
-  const value = query.type ?? ALL;
-
-  function go(next: string) {
-    const parsed = EmailTypeSchema.safeParse(next);
-    router.push(outboxHref(query, { type: parsed.success ? parsed.data : null }));
-  }
-
-  return (
-    <ToolbarSelect
-      id="outbox-type-selector"
-      label={t.list.typeLabel}
-      value={value}
-      items={TYPE_ITEMS}
       onSelect={go}
     />
   );

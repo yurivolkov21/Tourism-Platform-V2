@@ -49,7 +49,14 @@ export function DataTableBody<TData extends RowData>({
   empty,
 }: {
   table: AdminTable<TData>;
-  empty: string;
+  /**
+   * Câu cho bảng rỗng. `ReactNode` chứ không `string` (nới 04/09): `/bookings`
+   * cần đặt thêm một nút "bỏ lọc ngày" ngay trong ô rỗng — mặc định của nó là
+   * tháng hiện tại, nên "không có kết quả" thường là do khoảng ngày chứ không
+   * phải do không có dữ liệu. Chuỗi vẫn là `ReactNode` nên các vùng khác
+   * không phải đổi gì.
+   */
+  empty: React.ReactNode;
 }) {
   // Đọc qua kiểu của bộ RỘNG hơn: thân bảng chỉ gọi header group / row model /
   // visible cells — API mà cả hai bộ đều có, và bộ selectable là superset nên

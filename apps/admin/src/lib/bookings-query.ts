@@ -48,6 +48,38 @@ export interface BookingsQuery {
   from?: string;
   /** Ngày lịch `YYYY-MM-DD`, cũng TÍNH VÀO — trọn ngày đó. */
   to?: string;
+  /**
+   * `true` khi admin CỐ Ý bỏ lọc ngày (`?dates=all`). Khác hẳn "URL trần":
+   * URL trần được độn mặc định tháng này, còn cờ này nói "đừng độn".
+   *
+   * Thiếu nó thì không ai về lại được All: xoá trống hai ô ngày sẽ ra một URL
+   * trần, rồi bị parse độn lại đúng cái vừa xoá.
+   */
+  allDates?: boolean;
+}
+
+/**
+ * Giá trị `?dates=` duy nhất có nghĩa. Viết TƯỜNG MINH trên URL để trạng thái
+ * "xem tất cả" bookmark được và route export hiểu được — cùng cách F10
+ * subscribers viết `?active=all`.
+ */
+const ALL_DATES_PARAM = 'all';
+
+/**
+ * Khoảng ngày MẶC ĐỊNH: trọn tháng dương lịch của `now`, tính theo UTC (cùng
+ * khung giờ mà `formatDateTime` và sổ cái API dùng — xem `bookings-view`).
+ *
+ * Số ngày cuối tháng tính bằng lịch (`Date.UTC(y, m, 0)` = ngày 0 của tháng
+ * SAU = ngày cuối tháng này), không phải bảng chép tay — năm nhuận tự đúng.
+ */
+function currentMonthRange(now: Date): { from: string; to: string } {
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  const prefix = `${year}-${pad(month + 1)}`;
+
+  return { from: `${prefix}-01`, to: `${prefix}-${pad(lastDay)}` };
 }
 
 /** Ngày hợp lệ hoặc `undefined` — mọi thứ khác rơi im lặng như status rác. */
@@ -75,16 +107,38 @@ function dateRange(rawFrom: string | undefined, rawTo: string | undefined) {
  * không được ném lên tận API (400 vô nghĩa với admin). Page rác → 1, status
  * ngoài enum → bỏ filter, `q` rỗng → không lọc, `q` quá dài → cắt đúng trần.
  */
-export function parseBookingsSearchParams(raw: RawSearchParams): BookingsQuery {
+export function parseBookingsSearchParams(raw: RawSearchParams, now: Date): BookingsQuery {
   const status = BookingStatusSchema.safeParse(firstParam(raw.status));
   const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
+  const dates = dateRange(firstParam(raw.from), firstParam(raw.to));
 
   return {
     ...parsePaging(raw),
     ...(status.success ? { status: status.data } : {}),
     ...(search ? { search } : {}),
-    ...dateRange(firstParam(raw.from), firstParam(raw.to)),
+    ...resolveDates(dates, firstParam(raw.dates), now),
   };
+}
+
+/**
+ * Ba trạng thái của bộ lọc ngày, theo thứ tự ưu tiên "cái cụ thể hơn thắng":
+ *
+ * 1. Có ngày trên URL (dù chỉ một đầu) → dùng đúng thứ người ta viết. KHÔNG
+ *    độn nốt đầu còn lại: độn là lặng lẽ thu hẹp thứ vừa được yêu cầu.
+ * 2. `?dates=all` → không lọc, và ghi cờ để href sau đó đừng độn lại.
+ * 3. URL trần → tháng hiện tại (user chốt 04/09).
+ *
+ * `dates` rác rơi về (3) chứ không về (2): mở toang cả tập dữ liệu vì một ký
+ * tự gõ nhầm là đắt hơn nhiều so với hiện sai một tháng.
+ */
+function resolveDates(
+  dates: { from?: string; to?: string },
+  rawDates: string | undefined,
+  now: Date,
+): { from?: string; to?: string; allDates?: boolean } {
+  if (dates.from || dates.to) return dates;
+  if (rawDates === ALL_DATES_PARAM) return { allDates: true };
+  return currentMonthRange(now);
 }
 
 /**
@@ -120,8 +174,23 @@ export function bookingsHref(current: BookingsQuery, patch: BookingsHrefPatch): 
     patch.limit !== undefined;
   const paging = resolvePagePatch(current, patch, scopeChanged);
 
+  // `dates=all` chỉ phát khi CỐ Ý: đang ở chế độ All và không đặt ngày mới,
+  // hoặc patch vừa xoá trắng ô ngày. Suy nó ra từ "không có ngày nào" thì mọi
+  // href dựng từ một query chưa qua parse cũng dính — mà chỉ đường parse mới
+  // bảo đảm được cái bất biến "luôn có ngày HOẶC có cờ".
+  // `null` HOẶC chuỗi rỗng đều là xoá (đúng hợp đồng `BookingsHrefPatch`,
+  // vòng vá review polish 2 — bản đầu chỉ nhận `null` nên xoá bằng '' cho href
+  // trần và lượt parse kế độn lại đúng tháng vừa xoá).
+  const clearedDates =
+    patch.from === null || patch.from === '' || patch.to === null || patch.to === '';
   const params = new URLSearchParams();
-  appendFilters(params, { status, search, from, to });
+  appendFilters(params, {
+    status,
+    search,
+    from,
+    to,
+    allDates: current.allDates === true || clearedDates,
+  });
   appendPaging(params, paging);
 
   return tableHref('/bookings', params);
@@ -143,12 +212,15 @@ function resolveFilters(current: BookingsQuery, patch: BookingsHrefPatch) {
 /** Ghi bốn filter của vùng vào query — thứ tự cố định để href ổn định. */
 function appendFilters(
   params: URLSearchParams,
-  filters: { status?: string; search?: string; from?: string; to?: string },
+  filters: { status?: string; search?: string; from?: string; to?: string; allDates?: boolean },
 ): void {
   if (filters.status) params.set('status', filters.status);
   if (filters.search) params.set('q', filters.search);
   if (filters.from) params.set('from', filters.from);
   if (filters.to) params.set('to', filters.to);
+  // Không còn ngày nào thì phải NÓI RA là cố ý. Để URL trần thì lượt parse kế
+  // tiếp độn lại tháng này, và ô ngày nảy về đúng cái admin vừa xoá.
+  if (!filters.from && !filters.to && filters.allDates) params.set('dates', ALL_DATES_PARAM);
 }
 
 /**
