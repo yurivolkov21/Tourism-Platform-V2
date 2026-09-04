@@ -8,6 +8,99 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-04 — `/reviews` mọc bộ lọc ngày, stat card ăn theo, và card mẫu số còn thiếu (nhánh `fix/p4c-backend-logic`, 2 commit `36eb501..0f10d50`, ~25 file, KHÔNG migration)
+
+Vùng thứ ba áp ADR-0028, và là vùng đầu tiên **chưa có bộ lọc ngày nào cả** —
+hai lần trước chỉ phải nối card vào một ô đã tồn tại. Nên đợt này làm đủ hai
+vế: dựng bộ lọc, rồi cho card ăn theo.
+
+### Bốn card thay vì ba
+
+| Card | Trả lời | Kiểu |
+| --- | --- | --- |
+| Pending | còn tồn bao nhiêu | mực nước (ảnh chụp) |
+| **Submitted** (mới) | nhận về bao nhiêu | dòng vào |
+| Approved | xử được bao nhiêu | dòng ra |
+| Average rating | khách nói gì | chất lượng |
+
+`submitted` là **mẫu số đang thiếu**: không có nó thì "Approved 12" không đọc
+được — 12 trên 12 hay 12 trên 300 là hai tình trạng khác hẳn. Nó cũng làm lộ
+tập mà `averageRating` tính trên, vì hai card ấy cùng tập và cùng cột neo; một
+int test khoá đúng quan hệ đó lại.
+
+Không chọn "lượt GỠ duyệt" làm card thứ tư dù nó đối xứng với Approved và hiện
+đang vô hình: hành vi ấy hiếm nên card sẽ đứng yên ở 0 gần như mọi lúc.
+
+`pending` nay là ảnh chụp **cuối kỳ** so với **đầu kỳ** (luật AMEND 1 §3) thay
+vì "bây giờ vs đầu kỳ". Chưa lọc thì `currentTo` chính là bây giờ, nên con số
+vẫn khớp đúng số hàng `/reviews?status=pending` như lời hứa cũ.
+
+### Cột lọc, và chỗ khó nhất của vùng này
+
+Lọc theo `review.created_at` — ngày review được GỬI, cùng cột bảng đang sắp
+xếp. KHÔNG lọc theo `moderated_at` dù nó khớp tuyệt đối với card Approved:
+review chưa duyệt có `moderated_at` null, nên lọc cột ấy sẽ **quét sạch hàng
+đợi khỏi bảng**, đúng cái bẫy đã bác ở `/cancellations`.
+
+Mặc định **KHÔNG lọc**, theo `/cancellations` chứ không theo `/bookings`: hàng
+đợi việc phải làm thì mở ra phải thấy đủ, kể cả review gửi từ tháng trước. Vì
+URL trần chính là "xem tất cả" nên ở đây cũng không có sentinel `?dates=all`.
+
+⚠️ Độ lệch "một khoảng, hai cột" ở vùng này **sâu hơn hẳn hai vùng trước**:
+`Approved` neo `event.created_at`, còn bảng và hai card kia neo
+`review.created_at`. Một review gửi tháng 6 mà duyệt tháng 9 đếm vào Approved
+của tháng 9 nhưng không xuất hiện trong bảng lọc tháng 6. Ở `/cancellations`
+sai số nhỏ vì vòng đời một request chỉ vài ngày; một review nằm hàng đợi vô
+thời hạn nên độ lệch không có trần. Vẫn giữ `created_at` vì hai phương án kia
+hoặc phá bản chất card Approved (nó đo CÔNG VIỆC ĐÃ LÀM, không đo lô hàng nào
+được xử) hoặc quét sạch hàng đợi. Chỗ đọc ra điều đó là cặp nhãn
+Submitted/Approved đứng cạnh nhau, KHÔNG phải caption — caption là khe của
+phép so sánh, nhét câu cảnh báo vào đó là đổi mất con số kỳ trước.
+
+### Hai thứ chuyển nhà vì nay ba vùng dùng chung
+
+`CalendarDateSchema` từ `schemas/bookings.ts` sang `schemas/common.ts` — để
+nguyên chỗ cũ thì schema review phải import từ schema booking, một cạnh phụ
+thuộc không có lý do nghiệp vụ nào. `createdAtRange` từ `modules/bookings/`
+lên `lib/created-at-range.ts`, cùng lý do.
+
+### Phép dựng lại hàng đợi ở đây là XẤP XỈ, và nó xấu đi khi lọc lùi xa
+
+Khác `/cancellations` (quyết định là chung cuộc, `decided_at` ghi một lần),
+`moderated_at` của review chỉ giữ lần quyết định CUỐI. Đúng một ca cho sai:
+review hiện chưa duyệt mà sau mốc đã đi qua cả một lượt duyệt lẫn một lượt gỡ.
+Ca ấy đòi hai sự kiện moderation sau mốc trong đó có một lượt gỡ — hiếm, nên
+chấp nhận. Nhưng ghi rõ chiều xấu đi: trước đợt này `pendingReviewsAt` chỉ
+được gọi với mốc 28 ngày trước, từ nay `currentTo` lùi được hàng tháng.
+`review_moderation_events` có đủ lịch sử nếu ngày nào cần chính xác tuyệt đối.
+
+### Nghiệm thu lộ một khe deploy có thật
+
+User mở `/reviews` sau khi restart và ăn `TypeError: Cannot read properties of
+undefined (reading 'current')` ở `countCard`. Dựng lại bằng chứng: dist API có
+`submitted`, contract dist có `submitted`, tiến trình API khởi động sau cả hai
+— nên server trả đúng. Thủ phạm là **Data Cache của Next**: dev server admin
+lên trước API 14 giây, và trong khe ấy nó lưu body của API CŨ với
+`revalidate: 60`. Restart admin là sạch.
+
+Khe ấy **có thật ở production**: admin trên Vercel, API trên Render, hai bên
+lên độc lập — trong ≤60 giây sau một lần deploy đổi hình dạng stats, trang sẽ
+rơi vào error boundary. Tự lành, nhưng áp cho mọi lần thêm field vào stats về
+sau. Ghi vào sổ nợ, chưa vá.
+
+### Sổ nợ mở
+
+- Bộ lọc `source` (VERIFIED/CURATED) và `rating` đã được `adminList` lọc thật
+  nhưng chưa có đường nào từ UI tới — việc của toolbar, tách đợt sau. Nhớ kèm:
+  `averageRating` cố ý KHÔNG lọc theo nguồn, nên khi có bộ lọc ấy card này sẽ
+  không ăn theo nó.
+- Response stats chưa được parse bằng schema contract tại tầng fetch, nên lệch
+  hình dạng nổ ở một helper dùng chung thay vì báo đúng field thiếu.
+
+Tests after: 2.781 unit (10 tokens · 218 contract · 22 ui · 2 i18n · 315 api ·
+780 admin · 1.434 web) và 345 integration. Build web/admin vẫn KHÔNG chạy được
+trong đợt (dev server của user đang giữ `.next`, guard chặn đúng như thiết kế).
+
 ## 2026-09-04 — Approve trở thành quy trình bốn bước, và ba lỗ làm rò ghế được bịt (nhánh `fix/p4c-backend-logic`, 4 commit `31b9dfe..8a64d25`, ~20 file, KHÔNG migration)
 
 Đợt này thi công ADR-0029 rồi phát hiện thêm hai ca nữa của **đúng một bug**:
