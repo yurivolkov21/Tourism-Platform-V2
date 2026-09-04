@@ -138,21 +138,48 @@ row. Ghi ở ADR-0028 §Hệ quả để lần chạm ngưỡng đầu tiên bi�
 Sáu vùng stats còn lại nay không đối xứng với `bookings` (một cái có input, sáu
 cái không). Chấp nhận: thêm input không ai gửi là nợ, không phải tính năng.
 
+### Bẫy bắt được lúc user kiểm bằng mắt: lệch phiên bản khi deploy
+
+User mở `/bookings` gặp `RangeError: Invalid time value`. Nguyên nhân trực
+tiếp ở máy dev: script `dev` của `apps/api` là `pnpm build && node dist/main.js`
+— **không watch** — nên tiến trình khởi động lúc 12:33 vẫn phục vụ bản build
+cũ, trả `period` không có `currentTo`.
+
+Nhưng cùng tình huống ấy CÓ THẬT trên production, và đó mới là điều đáng ghi:
+theo [ADR-0024](adr/0024-deploy-targets.md) push lên main thì Vercel dựng admin
+và Render dựng API **độc lập, không nguyên tử**, mà Vercel gần như luôn xong
+trước. Vài phút liền bản admin MỚI đứng cạnh bản API CŨ. Client oRPC **không
+validate response theo output schema** (bằng chứng: field thiếu đi thẳng tới
+tầng hiển thị thay vì bị chặn ở link), nên `Date.parse(undefined)` cho NaN và
+`Intl.format` của một `Invalid Date` ném `RangeError` — 500 MỌI lượt vào
+`/bookings` trong cửa sổ đó.
+
+`isPickedPeriod` nay kiểm CẢ BA mốc có đọc được không, chứ không chỉ so hai
+chuỗi — `previousFrom`/`currentFrom` mới là cặp caption đọc, kiểm mỗi
+`currentTo` thì lỗi chỉ dời xuống một dòng. Thiếu mốc thì ngả về đúng hành vi
+TRƯỚC ADR-0028: caption "prior N days", không có dòng khoảng ngày. Vẫn là con
+số thật, chỉ kém cụ thể — đúng thứ một trang admin nên làm khi tầng dưới nó
+vừa lùi một phiên bản.
+
+**Bài học rộng hơn bề mặt này:** mọi lần thêm field BẮT BUỘC vào response của
+một endpoint mà consumer deploy riêng đều mở đúng cửa sổ ấy. Field mới nên có
+đường ngả an toàn ở phía đọc, hoặc phải deploy API trước rồi mới đẩy consumer.
+
 ### Nghiệm thu
 
 `pnpm gate:int` xanh, chạy trên API dev đang sống ở `:3001` (không dựng API
 tạm). Chưa qua review 8 mũi — session gốc nghiệm thu bằng `git diff` rồi mới
 merge.
 
-Tests after: 1417 web · 311 api · 322 api-int · 190 contract · 704 admin ·
-22 ui · 10 tokens · 2 i18n. Thêm 43 so với entry trước: 11 api (`statsWindowFromRange`
+Tests after: 1417 web · 311 api · 322 api-int · 190 contract · 707 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 46 so với entry trước: 11 api (`statsWindowFromRange`
 bốn nhánh, hai kỳ bằng nhau ở khoảng lẻ, tháng nhuận, một ngày, không sửa Date
 của caller, `windowDays` đo từ cửa sổ và sàn 1), 6 api-int (cắt đúng khoảng kể
 cả row `23:59:59.500`, kỳ trước lùi liền kề, `currentTo` tách `generatedAt`,
 không tham số rơi về 28 ngày, 400 cho khoảng ngược và ngày rác), 4 contract
 (hai đầu optional, khoảng ngược, từ chối mốc có giờ, ngày không tồn tại), 22
-admin (9 `stats-view`, 2 kit `stat-card`, 5 kit `toolbar-filter-menu`, 6 kit
-`label-value-row`).
+admin (9 `stats-view`, 3 `stats-view` cho ca lệch phiên bản, 2 kit
+`stat-card`, 5 kit `toolbar-filter-menu`, 6 kit `label-value-row`).
 
 ## 2026-09-04 — Vòng chỉnh UI admin sau P4c: bốn ô lọc thành MỘT menu kit theo `dropdown-menu-10`, vá tràn chữ ở dialog ghi, drawer Details đổi vỏ + hai chế độ xem payload + nhãn và giá trị payload đọc được, `/bookings` mặc định lọc theo tháng (nhánh `fix/p4c-ui-polish`, 1 commit `b2eb60b`, ~46 file, không migration)
 
