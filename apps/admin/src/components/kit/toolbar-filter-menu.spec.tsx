@@ -161,3 +161,60 @@ describe('ToolbarFilterMenu', () => {
     expect(screen.getByRole('button', { name: /Filter by type/ })).toHaveTextContent('2026-99');
   });
 });
+
+/**
+ * Mục LẠ — giá trị đang lọc không nằm trong tập mục biết trước (`?type=` gõ
+ * tay, hoặc hàng cuối cùng của một `source` vừa bị lọc mất). Lên kit ở đợt
+ * này (ADR-0028 kèm theo): hai vùng từng tự dựng nhóm ấy và đặt nó ở HAI vị
+ * trí khác nhau, nên kit chốt một chỗ — CUỐI CÙNG, dưới mọi nhóm thật.
+ */
+describe('ToolbarFilterMenu — mục lạ', () => {
+  const UNKNOWN = { value: 'v:mystery', label: 'mystery', icon: StubIcon };
+
+  it('đứng CUỐI, sau mọi nhóm thật — thứ tự đọc là tất cả → chính quy → ngoại lệ', async () => {
+    const user = userEvent.setup();
+    render(<ToolbarFilterMenu {...PROPS} value={ALL_FILTER_VALUE} unknownItem={UNKNOWN} />);
+    await openMenu(user);
+
+    const labels = screen
+      .getAllByRole('menuitemradio')
+      .map((item) => item.textContent?.trim() ?? '');
+    expect(labels).toEqual([
+      'All types',
+      'Booking confirmation',
+      'Booking refunded',
+      'footer',
+      'mystery',
+    ]);
+  });
+
+  it('nút đọc ra mục lạ khi CHÍNH nó đang lọc — không rơi về "All types"', () => {
+    // Bài học review F10: nút nói "All" trong khi bảng đang lọc thật là nói
+    // dối về đúng thứ người dùng vừa làm.
+    render(<ToolbarFilterMenu {...PROPS} value="v:mystery" unknownItem={UNKNOWN} />);
+    expect(screen.getByRole('button', { name: 'Filter by type: mystery' })).toBeInTheDocument();
+  });
+
+  it('chọn mục lạ vẫn phát chuỗi THÔ như mọi mục khác', async () => {
+    const user = userEvent.setup();
+    render(<ToolbarFilterMenu {...PROPS} value={ALL_FILTER_VALUE} unknownItem={UNKNOWN} />);
+    await openMenu(user);
+    await user.click(screen.getByRole('menuitemradio', { name: 'mystery' }));
+    expect(onSelect).toHaveBeenCalledWith('v:mystery');
+  });
+
+  it('vắng mục lạ thì KHÔNG mọc thêm mục hay vạch ngăn nào', async () => {
+    const user = userEvent.setup();
+    render(<ToolbarFilterMenu {...PROPS} value={ALL_FILTER_VALUE} />);
+    await openMenu(user);
+    expect(screen.getAllByRole('menuitemradio')).toHaveLength(4);
+    expect(screen.getAllByRole('separator')).toHaveLength(2);
+  });
+
+  it('có mục lạ thì thêm ĐÚNG một vạch ngăn nữa', async () => {
+    const user = userEvent.setup();
+    render(<ToolbarFilterMenu {...PROPS} value={ALL_FILTER_VALUE} unknownItem={UNKNOWN} />);
+    await openMenu(user);
+    expect(screen.getAllByRole('separator')).toHaveLength(3);
+  });
+});

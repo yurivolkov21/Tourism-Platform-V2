@@ -68,6 +68,7 @@ export function ToolbarFilterMenu({
   label,
   value,
   allItem,
+  unknownItem,
   groups,
   onSelect,
 }: {
@@ -86,6 +87,21 @@ export function ToolbarFilterMenu({
    * tồn tại.
    */
   allItem?: ToolbarFilterMenuItem;
+  /**
+   * Mục TẠM cho giá trị đang lọc mà KHÔNG nằm trong `groups` — `?type=` gõ
+   * tay, hoặc hàng cuối cùng của một `source` vừa bị lọc mất. Không có nó thì
+   * nút hiện "All types" trong khi bảng đang lọc thật (bài học review F10).
+   *
+   * Luôn đứng **CUỐI**, trong nhóm riêng dưới một separator: thứ tự đọc là
+   * "tất cả → tập chính quy → ngoại lệ". Vị trí do KIT chốt chứ không phải
+   * vùng chọn — trước khi lên đây, `/payment-events` đặt nó sau còn
+   * `/subscribers` đặt nó trước, và hai menu cùng hình dạng mà xếp khác nhau
+   * là hai thói quen đọc.
+   *
+   * Vùng vẫn tự quyết KHI NÀO có mục lạ (nó biết tập hợp lệ của mình) và tự
+   * chọn icon; kit chỉ lo chỗ đứng.
+   */
+  unknownItem?: ToolbarFilterMenuItem;
   /** Các nhóm, mỗi nhóm cách nhau một separator. Một nhóm cũng hợp lệ. */
   groups: readonly ToolbarFilterMenuGroup[];
   /** Nhận chuỗi THÔ; vùng tự `safeParse` hoặc giải tiền tố rồi đổi URL. */
@@ -97,7 +113,10 @@ export function ToolbarFilterMenu({
    * quên bơm mục tạm cho một giá trị lạ gõ tay trên URL (bài học review F10:
    * nút nói "All" trong khi bảng đang lọc thật là nói dối).
    */
-  const current = groups.flatMap((group) => group.items).find((item) => item.value === value);
+  const current = [
+    ...groups.flatMap((group) => group.items),
+    ...(unknownItem ? [unknownItem] : []),
+  ].find((item) => item.value === value);
   const shown = current ?? allItem;
   const CurrentIcon = shown?.icon;
   // Không mục nào khớp VÀ không có mục "tất cả": in thẳng value. Thà hiện
@@ -145,6 +164,14 @@ export function ToolbarFilterMenu({
               ))}
             </React.Fragment>
           ))}
+          {/* Mục lạ CUỐI CÙNG, luôn có vạch ngăn riêng — nó không thuộc tập
+              nào ở trên, và vạch nói đúng điều đó. */}
+          {unknownItem ? (
+            <>
+              <DropdownMenuSeparator />
+              <FilterMenuItem item={unknownItem} />
+            </>
+          ) : null}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
     </DropdownMenu>

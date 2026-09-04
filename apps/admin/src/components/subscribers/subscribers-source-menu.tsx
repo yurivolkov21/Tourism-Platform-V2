@@ -54,20 +54,8 @@ export function SubscribersSourceMenu({
   // Bảng chưa có nguồn nào VÀ không đang lọc theo nguồn lạ: không vẽ gì.
   if (sources.length === 0 && !unknown) return null;
 
-  /**
-   * Nguồn lạ đứng ở NHÓM RIÊNG, trên separator ngăn với danh sách thật: nó
-   * không nằm trong tập nguồn của bảng, và dấu chấm hỏi nói đúng điều đó.
-   */
-  const groups: ToolbarFilterMenuGroup[] = [
-    ...(unknown
-      ? [
-          {
-            key: 'unknown',
-            items: [{ label: current, value: toFreeValue(current), icon: CircleQuestionMarkIcon }],
-          },
-        ]
-      : []),
-    ...(sources.length > 0
+  const groups: ToolbarFilterMenuGroup[] =
+    sources.length > 0
       ? [
           {
             key: 'sources',
@@ -78,14 +66,20 @@ export function SubscribersSourceMenu({
             })),
           },
         ]
-      : []),
-  ];
+      : [];
 
   return (
     <ToolbarFilterMenu
       label={t.sourceLabel}
       value={current === undefined ? ALL : toFreeValue(current)}
       allItem={ALL_ITEM}
+      // Chỗ đứng của mục lạ là việc của kit (nay CUỐI danh sách, trước đây
+      // vùng này tự đặt nó lên đầu); vùng chỉ nói khi nào có một cái.
+      unknownItem={
+        unknown && current !== undefined
+          ? { label: current, value: toFreeValue(current), icon: CircleQuestionMarkIcon }
+          : undefined
+      }
       groups={groups}
       onSelect={(next) => router.push(subscribersHref(query, { source: fromFreeValue(next) }))}
     />

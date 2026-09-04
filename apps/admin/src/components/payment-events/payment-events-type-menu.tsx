@@ -68,27 +68,20 @@ export function PaymentEventsTypeMenu({ query }: { query: PaymentEventsQuery }) 
       ? query.type
       : null;
 
-  /**
-   * Type lạ đứng ở NHÓM RIÊNG, dưới một separator: nó không đến từ tập
-   * gateway biết, và dấu chấm hỏi nói đúng điều đó. Nhét chung nhóm với bốn
-   * type kia là ngụ ý nó cũng chính quy như chúng.
-   */
-  const groups = unknown
-    ? [
-        KNOWN_GROUP,
-        {
-          key: 'unknown',
-          items: [{ label: unknown, value: toFreeValue(unknown), icon: CircleQuestionMarkIcon }],
-        },
-      ]
-    : [KNOWN_GROUP];
-
   return (
     <ToolbarFilterMenu
       label={t.list.typeLabel}
       value={query.type === undefined ? ALL : toFreeValue(query.type)}
       allItem={ALL_ITEM}
-      groups={groups}
+      // Chỗ đứng của mục lạ (cuối, dưới một separator) là việc của kit; vùng
+      // chỉ nói KHI NÀO có một cái và dấu chấm hỏi cho nó — nó không đến từ
+      // tập gateway biết, và icon nói đúng điều đó.
+      unknownItem={
+        unknown
+          ? { label: unknown, value: toFreeValue(unknown), icon: CircleQuestionMarkIcon }
+          : undefined
+      }
+      groups={[KNOWN_GROUP]}
       onSelect={(next) => router.push(paymentEventsHref(query, { type: fromFreeValue(next) }))}
     />
   );
