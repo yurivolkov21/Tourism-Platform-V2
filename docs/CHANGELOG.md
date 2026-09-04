@@ -57,11 +57,22 @@ approve chỉ chạy một lần · ba hệ quả và ô ghi lý do bắt buộc
 Phần trăm đi qua `refundPercentForRequest` — ĐÚNG hàm mà dialog xin huỷ bên web
 gọi — nên khách và admin không thể nhìn hai con số khác nhau.
 
-Dùng `Stepper` sẵn có của `@tourism/ui` thay vì port `stepper-03` của Shadcn
-Space: bộ ấy đã tokens-only, đã có điều hướng bàn phím và `role="tablist"`, và
-đang nằm không dùng. Bản stepper-03 hardcode `text-teal-400` (phạm luật
-tokens-only), ghim hình học cho đúng bốn bước, và cho **nhảy cóc sang bất kỳ
-bước nào** — thứ tuyệt đối không được có ở một lệnh tiền.
+Thanh bước nằm ở kit `wizard-steps.tsx`, dựng theo `@shadcn-space/stepper-03`
+(dáng user chọn): đường ray liền tô dần bằng spring, chấm chạy theo tiến độ,
+vòng nhấp nháy ở bước hiện tại, dấu tích xoay vào khi bước xong.
+
+Vòng đầu mình dựng trên `Stepper` sẵn có của `@tourism/ui` và user nhận ra ngay
+là không giống — bộ ấy chia đường nối thành TỪNG ĐOẠN giữa hai vòng tròn, mà
+dáng stepper-03 cần một đường liền cho chấm chạy trên. Bốn chỗ không chép
+nguyên bản gốc: `text-teal-400` → `text-primary-foreground` (tokens-only, và
+dấu tích nằm trên nền `bg-primary`); hình học ghim `12.5%`/`75%` → suy từ
+`steps.length`; nhảy cóc sang bước bất kỳ → `reached` là trần cứng; và nút bước
+KHÔNG CÓ TÊN với trình đọc màn hình (nhãn nằm ngoài nút) → `aria-labelledby`
+trỏ vào nhãn đang hiện, cộng roving tabindex và mũi tên trái/phải.
+
+Bỏ `AnimatePresence mode="wait"` ở vùng nội dung: nó giữ khung rỗng suốt thời
+gian exit, mà bốn bước cao thấp khác nhau nên dialog sập rồi phình mỗi lần bấm
+Continue — bản gốc không lộ vì demo có `min-h-20` cố định.
 
 ### Ba phát hiện khi thi công
 
@@ -100,8 +111,8 @@ bước nào** — thứ tuyệt đối không được có ở một lệnh ti�
 - Chốt chặn 3 ngày trước khởi hành cho đặt tour: tách đợt sau, cần ADR riêng
   (đổi luật ĐẶT, không phải luật hoàn).
 
-Tests after: 2.751 unit (10 tokens · 217 contract · 22 ui · 2 i18n · 311 api ·
-762 admin · 1.427 web) và 336 integration. Build web/admin KHÔNG chạy được
+Tests after: 2.758 unit (10 tokens · 217 contract · 22 ui · 2 i18n · 311 api ·
+769 admin · 1.427 web) và 336 integration. Build web/admin KHÔNG chạy được
 trong đợt (dev server của user đang giữ `.next`, guard chặn đúng như thiết kế).
 
 ## 2026-09-04 — Ân hạn 24 giờ, và gỡ BỐN lời hứa "48 giờ" chỏi chính sách (nhánh `fix/p4c-backend-logic`, 3 commit, ~15 file, KHÔNG migration)
