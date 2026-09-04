@@ -1,0 +1,170 @@
+# ADR-0029 — Approve một yêu cầu huỷ với mức hoàn tiền theo chính sách
+
+- **Trạng thái:** Accepted (2026-09-04)
+- **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
+  CLAUDE.md #5
+- **Liên quan:** [ADR-0030](0030-refund-policy-tiers.md) (bảng bậc quyết SỐ TIỀN; ADR này quyết CƠ CHẾ) · [ADR-0009](0009-refund-correctness.md) (advisory lock + trigger
+  `SUM(refunds) ≤ total` — ADR này **dựa vào**, không nới) ·
+  [ADR-0002](0002-payment-gateway-refund-ledger.md) (sổ refund append-only) ·
+  spec P2 §4 W3/W4 · [docs/conventions/booking-states.md](../conventions/booking-states.md)
+  (ADR này **sửa một phần** — xem §3)
+
+## Bối cảnh
+
+Vòng rà refund 04/09 đo được ba sự thật, cả ba bằng probe chạy trên Postgres
+thật chứ không phải đọc code:
+
+**1. Hoàn đủ tiền bằng đường W3 (`Issue refund`) làm rò ghế vĩnh viễn.**
+
+| Bước | Đo được |
+| --- | --- |
+| Khách trả tiền | `seats_booked` = 3 |
+| W3 hoàn đủ | booking → `REFUNDED`, ghế **vẫn 3** |
+| Bấm Approve | **422 NOT_REFUNDABLE** |
+| Buộc phải Deny | request `DENIED`, `cancelled_at` **null**, ghế **vẫn 3** |
+
+Toàn API chỉ có **hai** chỗ ghi `seats_booked`: cộng khi trả tiền
+(`bookings.service.ts`) và trừ khi **approve** (`cancellations.service.ts`).
+Không cron, không reconciler. Nên approve là lối thoát DUY NHẤT của một chiếc
+ghế, và một booking đi vòng W3 rồi Deny thì ghế mất không đường lấy lại.
+
+**2. Approve luôn hoàn TRỌN phần dư.** `approve` gọi
+`classifyRefundAmount({ requested: null })`, tức không có cách nào duyệt một
+yêu cầu huỷ với mức hoàn 50% — dù `Tour.freeCancellationDays` tồn tại từ
+ADR-0023, tức khái niệm chính sách huỷ theo mốc thời gian là có thật.
+
+**3. Booking `CANCELLED` còn dư tiền là ngõ cụt.** Dựng thẳng trạng thái ấy
+rồi thử hoàn tiếp:
+
+```
+422 NOT_REFUNDABLE
+"Booking is CANCELLED; only a PAID or PARTIALLY_REFUNDED booking can be refunded"
+```
+
+Hôm nay trạng thái đó **bất khả** (approve luôn hoàn trọn), nên (3) chưa phải
+bug. Nhưng nó trở thành có thật ngay khi ta làm (2).
+
+## Quyết định
+
+### 1. `approve` nhận `refundAmount` tuỳ chọn
+
+`DecideCancellationInputSchema` thêm `refundAmount?: DecimalString`, chỉ có
+nghĩa khi `approve: true`. Vắng = hoàn trọn phần dư, tức **hành vi cũ y
+nguyên** — mọi caller hiện tại không phải đổi gì.
+
+Số tiền đi thẳng vào `classifyRefundAmount` — hàm đã nhận sẵn `requested` và
+đã canh đủ ba lỗi (≤ 0, vượt phần dư, sổ đã settle). Không có phép tính tiền
+MỚI nào ra đời; ADR này chỉ thôi ghim `requested` thành `null`.
+
+Vì sao đặt ở `decide` chứ không mở một endpoint riêng: hoàn tiền khi duyệt huỷ
+**không phải** một lệnh tiền độc lập — nó là một phần của quyết định, cùng
+transaction, cùng advisory lock, cùng lượt nhả ghế. Tách ra là tái lập đúng ca
+W3/W4 chồng lấn đã sinh ra bug ở trên.
+
+### 2. `approve` chịu được phần dư BẰNG 0
+
+Approve nghĩa là *"tôi chấp thuận yêu cầu huỷ"*. Hoàn tiền chỉ là một bước
+trong đó, và nếu tiền đã hoàn hết từ trước thì bước ấy **không còn gì để làm**
+— chứ không phải lý do từ chối cả lệnh.
+
+Phần dư = 0 thì: bỏ qua gateway, KHÔNG ghi row refund nào (sổ append-only chỉ
+ghi tiền thật sự chuyển), nhưng **vẫn** flip request → `REFUNDED`, booking →
+`CANCELLED`, **nhả ghế**, gửi mail.
+
+Đây là thứ chữa hai record đang kẹt của user: bấm Approve là chúng tự lành,
+không cần SQL tay. Và nó xoá luôn cái 422 khó hiểu mà JSDoc cũ phải dặn "admin
+deny nó thay vào đó" — lời dặn ấy nay sai và bị gỡ.
+
+### 3. Gate W3 nới cho booking `CANCELLED` còn dư — và KHÔNG được ghi đè `CANCELLED`
+
+Cho phép `refundByAdmin` chạy trên booking `CANCELLED` khi sổ còn dư.
+
+Vì sao an toàn: bất biến tiền do **trigger** của ADR-0009 canh
+(`SUM(refunds) ≤ total_amount`), không phải do cái gate này. Sổ vẫn
+append-only, vẫn qua cùng advisory lock, vẫn không thể over-refund. Gate chỉ
+đang nói "booking này còn nợ khách bao nhiêu" — và một booking đã huỷ mà chưa
+hoàn hết thì đúng là còn nợ.
+
+⚠️ **Bẫy phải chặn ngay từ ADR:** `refundByAdmin` kết thúc bằng
+`deriveStatusAfterRefund(...)` → `PARTIALLY_REFUNDED | REFUNDED`. Áp thẳng nó
+lên một booking `CANCELLED` là **ghi đè travel story bằng money story** —
+khách hết huỷ, `cancelled_at` mồ côi, và ghế đã nhả thì không ai biết nữa.
+Nên: booking đang `CANCELLED` thì **giữ nguyên `CANCELLED`**, không re-derive.
+Đúng luật đã ghi ở `booking-states.md` — `CANCELLED` là trạng thái TƯỜNG MINH,
+không phải projection của sổ.
+
+Ghế: `refundByAdmin` vốn không đụng `seats_booked` và ADR này không đổi điều
+đó. Ghế đã nhả lúc approve; nhả lần hai là hỏng bộ đếm.
+
+### 4. Số tiền hoàn do CHÍNH SÁCH quyết, không phải admin gõ
+
+Bản đầu của ADR này định để admin tự nhập số tiền và hệ thống chỉ bày dữ kiện.
+User bác (04/09), và bác đúng: một ô nhập tự do là một ô gõ nhầm được, mà tiền
+gõ nhầm thì khách chịu.
+
+Nên `refundAmount` mà `decide` nhận **không phải thứ admin gõ ra** — nó là số
+mà bảng bậc chính sách tính, khoá sẵn trên màn hình. Bảng bậc, cách đếm ngày,
+và luật vượt bậc nằm ở **[ADR-0030](0030-refund-policy-tiers.md)**; ADR này chỉ
+giữ phần cơ chế: `decide` nhận một số tiền, và mọi lỗi tiền vẫn do
+`classifyRefundAmount` canh như cũ.
+
+Ranh giới giữa hai ADR: 0030 quyết **hoàn bao nhiêu**, 0029 quyết **hoàn thì
+chuyện gì xảy ra** (đóng request, huỷ booking, nhả ghế, kể cả khi số tiền là
+0).
+
+### 5. Stepper là XÁC NHẬN CÓ Ý THỨC, không phải ô nhập
+
+Luồng approve chuyển thành dialog nhiều bước (user chốt 04/09): xem yêu cầu →
+đối chiếu chính sách → thấy số tiền chính sách đã tính → xác nhận ba hệ quả.
+
+Bước "chọn mức hoàn" vì thế KHÔNG phải một ô trống. Nó bày con số đã khoá cùng
+căn cứ sinh ra nó (còn bao nhiêu ngày tới khởi hành, bậc nào áp dụng), và
+đường vượt bậc là một công tắc riêng bắt buộc ghi lý do — xem ADR-0030 §5.
+
+Deny KHÔNG đi stepper: nó không đụng tiền, không đụng ghế. Một xác nhận có ô
+ghi chú là đủ — bắt bốn bước cho một lệnh vô hại là dạy người dùng bấm Next mà
+không đọc.
+
+## Hệ quả
+
+### Bất biến bị nới, và bất biến được giữ
+
+| Bất biến | Sau ADR này |
+| --- | --- |
+| `SUM(refunds) ≤ total_amount` (trigger ADR-0009) | **giữ nguyên** |
+| Sổ refund append-only | **giữ nguyên** |
+| Một advisory lock cho mọi đường refund của một booking | **giữ nguyên** |
+| Ghế chỉ nhả ở approve, đúng một lần | **giữ nguyên** |
+| `CANCELLED` là trạng thái tường minh, không derive từ sổ | **giữ nguyên**, và §3 phải chủ động bảo vệ |
+| "Approve luôn hoàn trọn phần dư" | **NỚI** (§1) |
+| "Booking đã hoàn đủ thì không approve được" | **NỚI** (§2) |
+| "Chỉ PAID/PARTIALLY_REFUNDED mới hoàn được" | **NỚI** cho `CANCELLED` còn dư (§3) |
+
+### Ba chỗ tài liệu nay đã sai, phải sửa cùng commit
+
+- JSDoc `approve` ở `cancellations.service.ts` — đoạn "một booking đã fully
+  refund qua W3 trong lúc request còn mở thì không approve được; admin deny nó
+  thay vào đó".
+- Copy i18n `decide.errors.NOT_REFUNDABLE` — nó đang dặn admin đi deny.
+- `booking-states.md` — thêm ca "CANCELLED còn dư tiền, hoàn tiếp được".
+
+### Điều KHÔNG được suy ra
+
+ADR này **không** cho hoàn tiền tự do trên booking đã huỷ vì bất kỳ lý do gì.
+Nó cho hoàn **phần dư** của chính booking ấy, trần vẫn là `total_amount`, vẫn
+do trigger canh. Không có đường nào ở đây trả cho khách nhiều hơn số họ đã trả.
+
+Và nó **không** đụng tới câu hỏi hoàn tiền THIỆN CHÍ (hoàn một phần cho booking
+không có yêu cầu huỷ, khách vẫn đi tour). Đó là đường W3 trên `/bookings`, một
+quyết định riêng chưa chốt.
+
+## Phương án đã cân nhắc rồi loại
+
+| Phương án | Vì sao loại |
+| --- | --- |
+| Giữ cửa một chiều, chặn bằng stepper nhiều bước | Chữ nghĩa không cứu được lỗi ngón tay. Gõ nhầm một chữ số là khoá vĩnh viễn tiền của khách, và đường sửa duy nhất là vào dashboard Stripe làm tay — tức ra ngoài mọi sổ sách của hệ thống. |
+| Không cho approve một phần, giữ nguyên hiện trạng | Ít việc nhất nhưng mất hẳn nhu cầu chính sách huỷ theo mốc thời gian, thứ `freeCancellationDays` đã ngụ ý từ ADR-0023. |
+| Cho `Issue refund` (W3) xuất hiện trên màn quyết định | Dựng lại đúng cái bẫy vừa đo, ở chỗ nguy hiểm nhất: hai nút cùng chuyển tiền đứng cạnh nhau, chỉ một cái đóng request và nhả ghế. |
+| Để Deny nhả ghế khi booking đã hoàn đủ | Deny nghĩa là "tôi từ chối yêu cầu huỷ" → khách vẫn đi → ghế phải giữ. Bắt nó nhả ghế là làm một từ mang hai nghĩa ngược nhau. |
+| Để admin tự gõ số tiền, hệ thống chỉ bày dữ kiện | Đây là bản ĐẦU của ADR này, user bác 04/09. Một ô nhập tự do là một ô gõ nhầm được; bảng bậc cố định (ADR-0030) vừa chặn gõ nhầm vừa cho hai admin xử hai ca giống nhau ra cùng con số. |
+| Endpoint riêng cho "refund khi duyệt huỷ" | Hoàn tiền khi duyệt không phải lệnh độc lập — cùng transaction, cùng lock, cùng lượt nhả ghế với quyết định. Tách ra là tái lập đúng ca W3/W4 chồng lấn đã sinh ra bug. |
