@@ -88,6 +88,18 @@ Nói thẳng khoảng đang lọc kèm link "xem tất cả". Rủi ro nhẹ hơ
 (vùng này mặc định không lọc) nhưng vẫn thật: admin đặt khoảng rồi đổi tab
 trạng thái, bảng rỗng, và thủ phạm là hai ô ngày họ đặt từ lúc trước.
 
+### Vá lúc user kiểm bằng mắt: hai con số dính nhau trong caption
+
+`vs 0 28 days ago` đọc thành "028". Đây là caption DUY NHẤT của cả bề mặt
+stats có hai con số đứng cạnh nhau chỉ cách một khoảng trắng — ba câu còn lại
+đều có chữ chen giữa (`prior`, `on`) hoặc dấu `·`. Nay là `vs 0 · 28 days ago`,
+dùng đúng dấu phân cách mà `comparisonRange` đã dùng. Ảnh hưởng HAI trang:
+`/cancellations` (Pending queue) và `/reviews` (Pending).
+
+Khoá bằng một test regex `\d\s+\d` áp cho CẢ BỐN caption, nên lần sau ai
+viết lại thành hai số dính nhau là đỏ ngay — rẻ hơn nhiều so với trông chờ mắt
+người bắt lại.
+
 ### Chưa làm, cố ý
 
 `search` cho `/cancellations`: contract chưa có và đợt này không thêm. Tra theo
@@ -98,14 +110,14 @@ Năm vùng stats còn lại (reviews · outbox · payment events · enquiries ·
 subscribers) giữ nguyên cửa sổ 28 ngày cố định — trang của chúng chưa có bộ
 lọc ngày.
 
-Tests after: 1417 web · 311 api · 329 api-int · 194 contract · 726 admin ·
-22 ui · 10 tokens · 2 i18n. Thêm 26 so với đợt #1: 4 contract (mặc định không
+Tests after: 1417 web · 311 api · 329 api-int · 194 contract · 728 admin ·
+22 ui · 10 tokens · 2 i18n. Thêm 28 so với đợt #1: 4 contract (mặc định không
 lọc, cùng schema và trần năm với /bookings, khoảng ngược 400, refine không
 nuốt shape), 7 api-int (1 cho list — cắt đúng khoảng kể cả row 23:59:59.500 và
 hàng REQUESTED không bị loại; 6 cho stats — ảnh chụp hai đầu kỳ,
 approved/denied theo decidedAt, period.currentTo, không tham số rơi về 28
-ngày, khoảng ngược 400, và lời hứa khớp `?status=REQUESTED` khi chưa lọc), 12
-admin (8 `cancellations-query`, 4 `stats-view`).
+ngày, khoảng ngược 400, và lời hứa khớp `?status=REQUESTED` khi chưa lọc), 14
+admin (8 `cancellations-query`, 4 `stats-view`, 2 bất biến caption).
 
 ## 2026-09-04 — Điều chỉnh backend #1: stat card `/bookings` ăn theo bộ lọc ngày, chốt cột lọc, trả 3 mục kit còn treo (nhánh `fix/p4c-backend-logic`, 9 commit `9f89886..ab1da85`, ~25 file, KHÔNG migration)
 
