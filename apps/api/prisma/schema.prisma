@@ -113,6 +113,29 @@ enum TourDifficulty {
   CHALLENGING
 }
 
+/// Một dòng giá vốn tính theo ĐẦU KHÁCH hay theo CHUYẾN (ADR-0033 §2).
+/// Chính cờ này khiến luật huỷ nói được thành câu: xe vẫn chạy khi khách huỷ,
+/// suất ăn của người ấy thì không ai gọi (§4). Một cột giá vốn gộp không diễn
+/// đạt được điều đó.
+enum TourCostBasis {
+  PER_PERSON
+  PER_DEPARTURE
+}
+
+/// Hạng mục giá vốn. Enum ĐÓNG chứ không chuỗi tự do: báo cáo sau này nhóm
+/// theo hạng mục, mà nhóm theo chữ người gõ thì "Meals"/"meals"/"Ăn uống" là
+/// ba nhóm.
+enum TourCostCategory {
+  TRANSPORT
+  ACCOMMODATION
+  MEALS
+  GUIDE
+  ACTIVITIES
+  PERMITS
+  INSURANCE
+  OTHER
+}
+
 /// VERIFIED = có từ booking thật; CURATED = testimonial do admin soạn.
 ///
 /// Bất biến THẬT do CHECK `reviews_source_shape` ép (migration p3a_customer):
@@ -326,54 +349,55 @@ model Destination {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model Tour {
-  id             String          @id @default(uuid()) @db.Uuid
-  slug           String          @unique @db.VarChar(120)
-  title          String          @db.VarChar(200)
-  summary        String?         @db.VarChar(500)
-  categoryId     String          @map("category_id") @db.Uuid
-  durationDays   Int             @map("duration_days")
-  maxGroupSize   Int             @default(20) @map("max_group_size")
-  basePrice      Decimal         @map("base_price") @db.Decimal(14, 2)
+  id                   String          @id @default(uuid()) @db.Uuid
+  slug                 String          @unique @db.VarChar(120)
+  title                String          @db.VarChar(200)
+  summary              String?         @db.VarChar(500)
+  categoryId           String          @map("category_id") @db.Uuid
+  durationDays         Int             @map("duration_days")
+  maxGroupSize         Int             @default(20) @map("max_group_size")
+  basePrice            Decimal         @map("base_price") @db.Decimal(14, 2)
   // Chi phí trên mỗi traveller theo currency của tour (margin analytics).
   // Null = chưa biết → tính 0 cost (margin đọc như một cận trên).
-  costPrice      Decimal?        @map("cost_price") @db.Decimal(14, 2)
+  costPrice            Decimal?        @map("cost_price") @db.Decimal(14, 2)
   // Price anchoring — giá "compare at" / gạch ngang, optional.
-  compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
-  currency       String          @default("USD") @db.VarChar(3)
-  difficulty     TourDifficulty?
-  isPublished    Boolean         @default(false) @map("is_published")
-  isFeatured     Boolean         @default(false) @map("is_featured")
+  compareAtPrice       Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
+  currency             String          @default("USD") @db.VarChar(3)
+  difficulty           TourDifficulty?
+  isPublished          Boolean         @default(false) @map("is_published")
+  isFeatured           Boolean         @default(false) @map("is_featured")
   // Rating denormalized (audit A9): Nexora aggregate live mỗi page load
   // (`summarize()` scan toàn bảng reviews). Ở đây cập nhật trong CÙNG
   // transaction duyệt review nên không bao giờ lệch — xem ReviewsService.
-  ratingAvg      Decimal?        @map("rating_avg") @db.Decimal(2, 1)
-  ratingCount    Int             @default(0) @map("rating_count")
+  ratingAvg            Decimal?        @map("rating_avg") @db.Decimal(2, 1)
+  ratingCount          Int             @default(0) @map("rating_count")
   // Merchandising — tour hợp với ai + badge trên card.
-  suitableFor    TravellerType[] @default([]) @map("suitable_for")
-  badges         TourBadge[]     @default([])
+  suitableFor          TravellerType[] @default([]) @map("suitable_for")
+  badges               TourBadge[]     @default([])
   // Array EN-only (ADR-0005) → Postgres text[].
-  included       String[]        @default([])
-  excluded       String[]        @default([])
-  highlights     String[]        @default([])
-  meetingPoint   String?         @map("meeting_point") @db.VarChar(300)
+  included             String[]        @default([])
+  excluded             String[]        @default([])
+  highlights           String[]        @default([])
+  meetingPoint         String?         @map("meeting_point") @db.VarChar(300)
   // ── Nội dung bán hàng cho trang chi tiết (ADR-0023) ──
   // Một câu mô tả dưới mỗi card dữ kiện ở tab Overview. Bốn cột rời chứ không
   // một cột JSON: bốn card là bốn ô CỐ ĐỊNH của một bố cục đã chốt, nên Zod
   // kiểm được từng trường và admin P4 dựng được bốn ô nhập bình thường.
   // Trần 280 là để card không cao vống lên làm lệch hàng bốn card.
-  factDurationNote   String? @map("fact_duration_note")   @db.VarChar(280)
-  factGroupSizeNote  String? @map("fact_group_size_note") @db.VarChar(280)
-  factDifficultyNote String? @map("fact_difficulty_note") @db.VarChar(280)
-  factGoodForNote    String? @map("fact_good_for_note")   @db.VarChar(280)
+  factDurationNote     String?         @map("fact_duration_note") @db.VarChar(280)
+  factGroupSizeNote    String?         @map("fact_group_size_note") @db.VarChar(280)
+  factDifficultyNote   String?         @map("fact_difficulty_note") @db.VarChar(280)
+  factGoodForNote      String?         @map("fact_good_for_note") @db.VarChar(280)
   // Cửa sổ huỷ miễn phí, ĐƠN VỊ NGÀY. `TourPolicy.body` vẫn giữ toàn văn; cột
   // này chỉ tách một con số để in thành nhãn ngắn. KHÔNG parse từ body: đã đếm
   // trên 29 policy, regex "up to N days" chỉ bắt được 12. Tour tính cửa sổ
   // bằng GIỜ (14/29) để null — ép 24 giờ thành "1 ngày" là nói sai.
-  freeCancellationDays Int? @map("free_cancellation_days")
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  freeCancellationDays Int?            @map("free_cancellation_days")
+  createdAt            DateTime        @default(now()) @map("created_at")
+  updatedAt            DateTime        @updatedAt @map("updated_at")
 
   category     TourCategory       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  costItems    TourCostItem[]
   destinations TourDestination[]
   itinerary    TourItineraryDay[]
   departures   TourDeparture[]
@@ -394,6 +418,34 @@ model Tour {
 // ─────────────────────────────────────────────────────────────────────────────
 // TourDestination — join M:N (ADR-0002), có cờ primary-destination
 // ─────────────────────────────────────────────────────────────────────────────
+
+/// Danh mục giá vốn của một tour (ADR-0033 §2) — thay cho một cột `cost_price`
+/// đơn lẻ vốn không nói được dòng nào là chi phí cố định của cả chuyến.
+///
+/// Tiền theo currency của TOUR, cố ý KHÔNG có cột currency riêng: thêm nó là
+/// mở cửa cho quy đổi ngoại tệ — một hệ khác hẳn, có tỉ giá và ngày hiệu lực.
+/// Nền tảng hiện một-đồng-tiền (xem cảnh báo group-by ở `schemas/stats.ts`);
+/// giới hạn này đi CÙNG giới hạn ấy chứ không mở rộng nó.
+///
+/// CHECK `amount >= 0` ở migration: giá vốn âm không có nghĩa nào, và một dấu
+/// trừ gõ nhầm sẽ làm lợi nhuận PHÌNH LÊN chứ không nổ ra — kiểu sai không ai
+/// soi thấy trên một tờ báo cáo.
+model TourCostItem {
+  id        String           @id @default(uuid()) @db.Uuid
+  tourId    String           @map("tour_id") @db.Uuid
+  category  TourCostCategory
+  label     String           @db.VarChar(120)
+  amount    Decimal          @db.Decimal(14, 2)
+  basis     TourCostBasis
+  sortOrder Int              @default(0) @map("sort_order")
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  tour Tour @relation(fields: [tourId], references: [id], onDelete: Cascade)
+
+  @@index([tourId, sortOrder])
+  @@map("tour_cost_items")
+}
 
 model TourDestination {
   tourId        String  @map("tour_id") @db.Uuid
@@ -430,18 +482,25 @@ model TourItineraryDay {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model TourDeparture {
-  id             String          @id @default(uuid()) @db.Uuid
-  tourId         String          @map("tour_id") @db.Uuid
-  startDate      DateTime        @map("start_date") @db.Date
-  endDate        DateTime        @map("end_date") @db.Date
-  priceOverride  Decimal?        @map("price_override") @db.Decimal(14, 2)
+  id              String          @id @default(uuid()) @db.Uuid
+  tourId          String          @map("tour_id") @db.Uuid
+  startDate       DateTime        @map("start_date") @db.Date
+  endDate         DateTime        @map("end_date") @db.Date
+  priceOverride   Decimal?        @map("price_override") @db.Decimal(14, 2)
+  /// Giá vốn CỐ ĐỊNH của chuyến này, đóng băng lúc tạo chuyến từ tổng các dòng
+  /// `PER_DEPARTURE` của tour; admin sửa đè được (mùa cao điểm xe đắt hơn).
+  ///
+  /// Ở cấp CHUYẾN chứ không cộng vào booking vì báo cáo tính nó MỘT lần cho
+  /// mỗi chuyến đã chạy, bất kể bán được bao nhiêu ghế (ADR-0033 §4) — xe vẫn
+  /// chạy dù một khách huỷ.
+  fixedCostAmount Decimal?        @map("fixed_cost_amount") @db.Decimal(14, 2)
   // Price anchor ở cấp departure.
-  compareAtPrice Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
-  seatsTotal     Int             @map("seats_total")
-  seatsBooked    Int             @default(0) @map("seats_booked")
-  status         DepartureStatus @default(OPEN)
-  createdAt      DateTime        @default(now()) @map("created_at")
-  updatedAt      DateTime        @updatedAt @map("updated_at")
+  compareAtPrice  Decimal?        @map("compare_at_price") @db.Decimal(14, 2)
+  seatsTotal      Int             @map("seats_total")
+  seatsBooked     Int             @default(0) @map("seats_booked")
+  status          DepartureStatus @default(OPEN)
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
 
   tour     Tour      @relation(fields: [tourId], references: [id], onDelete: Cascade)
   bookings Booking[]
@@ -511,6 +570,15 @@ model Booking {
   departureStartDate DateTime        @map("departure_start_date") @db.Date
   departureEndDate   DateTime        @map("departure_end_date") @db.Date
   unitPrice          Decimal         @map("unit_price") @db.Decimal(14, 2)
+  /// Giá vốn theo ĐẦU KHÁCH, đóng băng lúc tạo booking (ADR-0033 §3). Cùng lý
+  /// do với `unit_price` ngay trên: join sống thì sửa giá thuê xe hôm nay sẽ
+  /// VIẾT LẠI lợi nhuận của báo cáo tháng trước, và một báo cáo đọc lại ra số
+  /// khác là một báo cáo vô dụng.
+  ///
+  /// Null = tour chưa khai giá vốn lúc ấy. KHÔNG dùng 0: báo cáo đếm số
+  /// booking thiếu dữ liệu và NÓI RA (§6), còn `0.00` sẽ tự nhận là "tour này
+  /// không tốn gì" và biến một lỗ hổng dữ liệu thành lợi nhuận.
+  costPerPerson      Decimal?        @map("cost_per_person") @db.Decimal(14, 2)
   contactName        String          @map("contact_name") @db.VarChar(120)
   contactEmail       String          @map("contact_email") @db.VarChar(200)
   contactPhone       String?         @map("contact_phone") @db.VarChar(30)
