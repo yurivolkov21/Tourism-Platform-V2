@@ -192,12 +192,6 @@ export const messages = {
   },
   // Booking flow (book → pay → confirm). Login-required; Stripe + PayPal. EN-only (ADR-0005).
   booking: {
-    // Inline date-picker field (private-request / booking forms).
-    datePicker: {
-      placeholder: 'July 01, 2026',
-      enter: 'Enter a date',
-      select: 'Select date',
-    },
     // Tour-detail BookingBox CTA + inline departure picker.
     box: {
       selectDeparture: 'Select a departure',
@@ -683,41 +677,6 @@ export const messages = {
     menu: 'Menu',
     planTrip: 'Plan your trip',
     backToTop: 'Back to top',
-    toursMenu: {
-      label: 'Tours',
-      items: [
-        {
-          label: 'Cruises',
-          href: '/tours',
-          hint: 'Overnight bays & river journeys',
-        },
-        {
-          label: 'Trekking',
-          href: '/tours',
-          hint: 'Mountain trails & hill-tribe routes',
-        },
-        {
-          label: 'Cultural',
-          href: '/tours',
-          hint: 'Heritage towns, temples & history',
-        },
-        {
-          label: 'Culinary',
-          href: '/tours',
-          hint: 'Markets, street food & cooking',
-        },
-        {
-          label: 'Family',
-          href: '/tours',
-          hint: 'Easy-paced trips for all ages',
-        },
-        {
-          label: 'Beach & relax',
-          href: '/tours',
-          hint: 'Island escapes & coastal stays',
-        },
-      ],
-    },
     // Dropdown Destinations trên navbar. Nexora có đúng 4 dòng phẳng, mỗi dòng một
     // `hint` GÕ TAY ('Hạ Long, Sa Pa, Ninh Bình') — thêm/bớt địa điểm là chữ đó sai
     // mà không ai biết. v2 CỐ TÌNH không có `hint` ở đây: menu sinh hint và số tour

@@ -80,7 +80,7 @@ export function formatDateLabel(date: Date | undefined): string {
  * nút phải chứa được HAI ngày cạnh nhau; dạng dài của `formatDateLabel` thì
  * một mình đã gần bằng chiều rộng cả nút.
  */
-export function formatShortDateLabel(date: Date): string {
+function formatShortDateLabel(date: Date): string {
   return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
