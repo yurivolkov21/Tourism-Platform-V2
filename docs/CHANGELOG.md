@@ -8,6 +8,140 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — Vòng review 8 mũi cho cả nhánh backend, vá theo tầng (nhánh `fix/p4c-backend-logic`, 10 commit `6542fd5..f3dd78e`, ~90 file, KHÔNG migration mới)
+
+Session gốc review TOÀN BỘ nhánh (76 commit, 8 ADR, 210 file) trước khi merge,
+theo yêu cầu của user: không chỉ soi dòng code mà tách bạch **tầng chính
+sách** (trái CLAUDE.md/ADR không?), **tầng thiết kế** (hướng xử lý có lỗ
+hổng lý thuyết không?) và **tầng code**. Tám mũi finder chia theo miền (stats
+theo bộ lọc · huỷ + hoàn tiền bậc · review bác/sửa · mô hình tài chính · Excel
+· vòng đời media · kit admin + web · quy ước + docs + độ sâu) trả ~64 ứng
+viên; năm verifier xác nhận, gộp trùng còn 10 mục bảng và ~35 mục phụ. User
+duyệt vá tất cả theo thứ tự bảng → tầng 1 → tầng 2 → tầng 3, mỗi cụm một commit.
+
+### Mười mục bảng, và vì sao chúng đứng đầu
+
+1. **Seed giá vốn nhân đôi mỗi lượt chạy** (`6542fd5`). `tour_cost_items` là
+   fixture catalog DUY NHẤT không có id tĩnh, bảng không có `@@unique` nào,
+   nên `createMany({ skipDuplicates })` không có gì để bỏ qua — trên DB dùng
+   chung dev/prod, `db:seed` lần hai là 130 dòng mới và booking snapshot giá
+   vốn gấp đôi. Nay id uuid v5 từ `tourId` + `sortOrder`; bước 8 chỉ điền
+   `costPrice`/`fixedCostAmount` còn null (là snapshot, ADR-0033 §3). Kiểm trên
+   docker: seed hai lần cùng số dòng.
+2. **`ReviewsService.update()` không khoá row** (`7255a46`). Đọc `existing`
+   ngoài transaction rồi ghi không `FOR UPDATE`, trái hẳn khối "Ba điểm
+   concurrency" của `moderate()` ngay dưới: admin approve chen giữa là nội
+   dung mới đè lên review đang trên site, rating tour thừa một, cache web
+   không bust. Nay khoá và kiểm lại `canAuthorEdit` trong tx.
+3. **Bộ dọn ảnh xoá row còn dùng** (`bd3f6f3`, ADR-0035 AMEND 2). `sweep` xoá
+   hẳn row `media_garbage` khi asset còn tham chiếu — làm AMEND 1b ("avatar cũ
+   đã nằm sẵn trong hàng dọn, tuần sau tự tới lượt") tự mâu thuẫn: lượt quét
+   đầu thấy avatar đang dùng là mất dấu vĩnh viễn. Nay HOÃN (đặt lại
+   `created_at`); thêm `requeue` đặt lại đồng hồ lúc thật sự gỡ tham chiếu
+   (cửa sổ 7 ngày §2 hứa từng là `7 − tuổi ảnh`).
+4. **Range picker nối dài khoảng cũ** (`983d0f7`). Nháp gieo từ URL là khoảng
+   đủ hai đầu, và `addToRange` của react-day-picker khi ấy SỬA ĐUÔI thay vì mở
+   khoảng mới — bấm 10 rồi 20 trên 01–30 ra 01–20, thao tác thu hẹp phổ biến
+   nhất trên màn hình mặc định. Hai test guard cũ đi qua nhánh may mắn (chọn
+   lại đúng khoảng) nên không bắt được.
+5. **Sổ settle mà gửi số ≠ 0 vẫn 200** (`aa89d84`). `noMoneyToMove` ép
+   `amount = 0` bất kể client gửi gì — admin tin 50$ vừa đi trong khi sổ không
+   dòng nào. Nay `NOTHING_LEFT` (422).
+6. **Mail bác lần hai bị dedupe nuốt** (`7255a46`). `dedupeKey:
+   review-rejected:<id>` không có số lần, nên lần bác chung cuộc (ADR-0032)
+   không có thư. Nay `:<rejectionNo>`.
+7. **`moderationNote` rò ra tác giả** (`7255a46`). `toMyReview` trả note của
+   MỌI quyết định, kể cả ghi chú Unpublish mà i18n admin hứa "the author never
+   sees it" — nằm trong response `mine`/`byCode` và RSC payload trang booking.
+   Nay chỉ kéo event `toRejected` và chỉ trả khi `rejected`.
+8. **Khối P&L của kỳ đã đóng đổi số** (`51c11d2`, ADR-0033 AMEND 1 + Giới hạn
+   #5). Vế chuyến huỷ đã vá: khách còn PAID trên chuyến bị huỷ từng góp 500
+   doanh thu + 0 tiền xe (càng huỷ nhiều chuyến báo cáo càng đẹp) — nay JOIN
+   `tour_departures` cùng vế `status <> CANCELLED` với `fixedCostSlice`. Vế
+   "refund tháng 7 viết lại tháng 5" **cố ý chưa chữa**: cần cột snapshot theo
+   kỳ, ghi nợ ADR + JSDoc ⚠️.
+9. **Màn hình mặc định `/bookings` bịa cú sụt** (`605929d`, ADR-0028 AMEND 3).
+   Độn trọn tháng hiện tại rồi so 5 ngày đã trôi với 30 ngày trọn của kỳ trước
+   → pill "↓ ~83%" gần cả tháng, dòng Showing khẳng định một kỳ chưa xảy ra.
+   Nay `currentTo = min(to, now)`, kỳ trước dài bằng phần đã trôi; `from`
+   tương lai → kỳ rỗng thay vì span âm; `StatsPeriod.picked` tường minh thay
+   cho dấu hiệu `currentTo !== generatedAt` (sai ở nhánh chỉ-from).
+10. **Route Excel thiếu `maxDuration`, Detail trống im lặng** (`51c11d2`,
+    ADR-0034 AMEND 2). Route export duy nhất không khai trần 60s dù chạy đúng
+    vòng gom 45s; sheet Detail trống khi vượt `EXPORT_MAX_ROWS` mà file không
+    nói lý do. Nay có trần, một dòng lý do in trong sheet, autofilter phủ tới
+    hàng cuối (`ref` chỉ `A1:G1` — LibreOffice/Sheets lọc trên một hàng),
+    `columnCount` đọc một lần thay vì O(n²).
+
+### Tầng chính sách — ADR chốt guard ở client, server phải theo
+
+ADR-0029 §4 và ADR-0030 §5 đặt "vượt bậc phải ghi lý do" ở prop `noteRequired`
+của dialog; `apps/api` không import gì từ `refund-policy.ts`. Mọi caller cầm
+JWT admin approve được số bất kỳ ≤ phần dư mà không dấu vết. Nay server tính
+lại bậc từ dữ liệu tươi trong lock và đòi `decisionNote` khi số khác mức chính
+sách (`OFF_POLICY_NOTE_REQUIRED`) — **không khoá số**, chỉ đòi đúng thứ §5
+hứa (ADR-0030 §5b). Cùng hình dạng: W3 `Issue refund` chỉ ẩn ở client, server
+nay chặn khi có request mở (`CANCELLATION_OPEN`, ADR-0029 AMEND 4) — W3 hoàn đủ
+rồi Deny từng làm ghế rò vĩnh viễn. Reject review không lý do cũng qua được
+API → `superRefine` ở contract (ADR-0031 §7).
+
+Số học tiền (`toCents`/`percentOfAmount`/`policyRefundAmount`) dời lên
+`@tourism/contract`: web nhân float rồi `toFixed`, admin làm tròn cent — 50%
+của 1199.01 là 599.50 ở dialog khách và 599.51 ở màn admin; "một điểm vào duy
+nhất" §3b chỉ mới đúng cho phần trăm. Ân hạn 24 giờ gõ tay ở 5 câu nay sinh từ
+`REFUND_GRACE_HOURS`; văn bản nói rõ ngày lịch đo theo UTC.
+
+Dependency: `exceljs@4.4.0` kéo `uuid@8.3.2` dính GHSA-w5hq-g745-h8pq — advisory
+duy nhất trong cây, workflow audit thứ Hai sẽ đỏ. Ghim cứng exceljs, override
+`uuid@<11.1.1` (chỉ exceljs kéo uuid); `pnpm audit` sạch. `BRAND_SOFT` trong
+xlsx là hex duy nhất không có token gốc → thành hằng dẫn xuất có công thức.
+Hai AMEND ghi sau thi công (0034, 0035) đổi heading cho đúng thứ tự.
+
+### Tầng thiết kế — những chỗ còn lại đã vá
+
+Media: `not found` đếm riêng khỏi `ok` (lượt chạy đầu trên prod phân biệt được
+"xoá thật" với "publicId sai dạng"), `env.ts` từ chối `MEDIA_GC_ENABLED` ngoài
+production, publicId client có regex ở contract (nay là đối số của một lệnh
+destroy), queue pg-boss khai `retryLimit: 0`, `markFailed` dùng `increment`;
+ADR thôi hứa "co lại đáng kể lần đầu" — không có backfill (Giới hạn #6). Tài
+chính: nhãn tiền có nguồn thứ ba từ tập P&L (tháng không payment mà có chuyến
+chạy từng in `$` lên EUR), `departuresCostMissing` đếm chuyến thiếu tiền xe
+thay vì COALESCE về 0 (hôm nay chỉ seed ghi cột ấy). Kit: Back từ
+`BookingLink` về `?dates=all` (regression so với main), nút Clear trên
+`/bookings` đổi nhãn "Show bookings from all dates" khi chỉ còn tháng mặc định
+(kit JSDoc từng khẳng định nút tự ẩn — sai), `/reviews` có dòng Showing như
+hai vùng kia, `rejectionCount` lên dialog admin (ADR-0032 §8 chưa thi công).
+
+### Tầng code — vụn nhưng thật
+
+Tiebreak `id desc` cho `moderationEvents`; tab Rejected thêm `isApproved:
+false` để khớp prefix index; `OVER_TOTAL` vào nhóm trạng-thái-cũ (ở chế độ
+chính sách con số bị khoá, admin từng kẹt gửi lại số cũ); stepper đo
+`nothingLeft` bằng con số sắp gửi và nói "no money moves" ở ca 0đ;
+`daysBeforeDeparture` ném với ngày hỏng thay vì 0% im lặng; wizard kẹp
+`activeIndex` và panel có `aria-labelledby`; xoá `formatDateLabel`/
+`parseTypedDate` chết cùng ô gõ tay; "hai consumer" → ba ở contract/controller;
+`indent`/`emphasis` của bảng P&L lên VM có test.
+
+### Cố ý KHÔNG chữa, đã ghi nợ
+
+Khối P&L kỳ đã đóng đổi số khi hoàn tiền sau (ADR-0033 Giới hạn #5);
+`pendingReviewsAt` đọc `rejected_at` hiện tại nên tác giả sửa review làm kỳ đã
+đóng đổi số (ADR-0028 AMEND 3); ràng buộc dời lịch chuyến cho phase `/tours`
+(ADR-0033 AMEND 1); backfill ảnh mồ côi trước ngày deploy.
+
+### Nghiệm thu
+
+`pnpm gate:int` trọn ở session gốc với API tạm trên docker DB theo công thức
+CI: build web/admin/api · typecheck · unit (contract 241 · admin 846 · web 1439
+· api 372 · ui 22 · tokens 10 · i18n 2) · lint 973 file · **int 27 file / 390
+test** — xanh. Test mới: contract 9, admin 6, web 1, api unit 4, int 11. Hai
+commit test hygiene: fixture `StatsPeriod` mang `picked`; `bookings.int.spec`
+dọn `media_assets` của chính nó (một lần chạy dở lúc Postgres đang khởi động
+để lại row và mọi lần sau đụng unique ở `beforeAll`). Supabase đã có đủ 19
+migration từ session thi công — không deploy thêm; **chưa** `db:seed` giá vốn
+lên Supabase, đó là bước mở khoá riêng user quyết.
+
 ## 2026-09-05 — Mô hình tài chính, xuất Excel, và ba vòng phụ (nhánh `fix/p4c-backend-logic`, 24 commit `231a4c7..74b51c0`, 86 file, 2 migration)
 
 Đợt dài nhất từ đầu P4. Mở ra từ góp ý của giảng viên — *báo cáo nên xuất Excel
