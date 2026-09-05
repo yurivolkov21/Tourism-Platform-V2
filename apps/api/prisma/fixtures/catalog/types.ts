@@ -116,3 +116,28 @@ export interface TourReviewFixture {
   authorLocation?: string;
   createdAt: string; // ISO
 }
+
+/**
+ * Một dòng giá vốn của tour (ADR-0033 §2). `amount` là chuỗi decimal, cùng nếp
+ * với `basePrice` — tiền không đi qua float, kể cả trong fixture.
+ *
+ * KHÔNG có `id`: mỗi tour sinh ra 4–5 dòng theo một mô hình (xem
+ * `tour-costs.ts`), nên cấp UUID tĩnh cho 130+ dòng chỉ là 130 con số phải
+ * giữ đồng bộ bằng tay mà không ai đọc ngược từ log. Prisma tự sinh `id`.
+ */
+export interface TourCostItemFixture {
+  tourId: string;
+  category:
+    | 'TRANSPORT'
+    | 'ACCOMMODATION'
+    | 'MEALS'
+    | 'GUIDE'
+    | 'ACTIVITIES'
+    | 'PERMITS'
+    | 'INSURANCE'
+    | 'OTHER';
+  label: string;
+  amount: string;
+  basis: 'PER_PERSON' | 'PER_DEPARTURE';
+  sortOrder: number;
+}

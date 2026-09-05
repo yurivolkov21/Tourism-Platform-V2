@@ -13,11 +13,12 @@
 import { tourCategories } from './categories.js';
 import { destinations } from './destinations.js';
 import { tourReviews } from './reviews.js';
+import { tourCostItems } from './tour-costs.js';
 import * as toursCentral from './tours-central.js';
 import * as toursNorth from './tours-north.js';
 import * as toursSouth from './tours-south.js';
 
-export { destinations, tourCategories, tourReviews };
+export { destinations, tourCategories, tourCostItems, tourReviews };
 
 export const tours = [...toursNorth.tours, ...toursCentral.tours, ...toursSouth.tours];
 

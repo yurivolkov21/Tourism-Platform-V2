@@ -612,4 +612,99 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     );
     expect(afterReRequest.cancellationStatus).toBe('REQUESTED');
   });
+
+  /**
+   * Đóng băng giá vốn vào booking (ADR-0033 §3).
+   *
+   * Cùng lý do với `unit_price` ngay cạnh nó trong cùng khối snapshot (audit
+   * H3): join sống thì sửa giá thuê xe hôm nay sẽ VIẾT LẠI lợi nhuận của báo
+   * cáo tháng trước, và một báo cáo đọc lại ra số khác là một báo cáo vô dụng.
+   */
+  describe('snapshot giá vốn', () => {
+    const COST_IDS = [
+      'e9700001-0000-4000-8000-000000000001',
+      'e9700001-0000-4000-8000-000000000002',
+      'e9700001-0000-4000-8000-000000000003',
+    ];
+
+    async function giveTourCosts(): Promise<void> {
+      await prisma.tourCostItem.createMany({
+        data: [
+          {
+            id: COST_IDS[0] as string,
+            tourId: dayTour.id,
+            category: 'MEALS',
+            label: 'Meals and drinks',
+            amount: '30.00',
+            basis: 'PER_PERSON',
+          },
+          {
+            id: COST_IDS[1] as string,
+            tourId: dayTour.id,
+            category: 'ACTIVITIES',
+            label: 'Entrance tickets',
+            amount: '55.00',
+            basis: 'PER_PERSON',
+          },
+          // Vế theo CHUYẾN: KHÔNG được lọt vào snapshot của booking, nó sống ở
+          // `tour_departures.fixed_cost_amount`.
+          {
+            id: COST_IDS[2] as string,
+            tourId: dayTour.id,
+            category: 'TRANSPORT',
+            label: 'Vehicle hire',
+            amount: '400.00',
+            basis: 'PER_DEPARTURE',
+          },
+        ],
+      });
+    }
+
+    afterEach(async () => {
+      await prisma.tourCostItem.deleteMany({ where: { tourId: dayTour.id } });
+    });
+
+    it('chụp tổng dòng PER_PERSON, KHÔNG cộng vế theo chuyến', async () => {
+      await giveTourCosts();
+      const alice = await signUpUser('costs-a@tourism.test');
+      const created = BookingSchema.parse((await createBooking(alice)).json());
+
+      const row = await prisma.booking.findUniqueOrThrow({
+        where: { code: created.code },
+        select: { costPerPerson: true },
+      });
+      // 30.00 + 55.00 = 85.00. Tiền thuê xe 400.00 KHÔNG có mặt.
+      expect(row.costPerPerson?.toFixed(2)).toBe('85.00');
+    });
+
+    it('sửa giá vốn tour SAU khi đặt không đổi snapshot của booking cũ', async () => {
+      await giveTourCosts();
+      const alice = await signUpUser('costs-b@tourism.test');
+      const created = BookingSchema.parse((await createBooking(alice)).json());
+
+      await prisma.tourCostItem.updateMany({
+        where: { tourId: dayTour.id, basis: 'PER_PERSON' },
+        data: { amount: '999.00' },
+      });
+
+      const row = await prisma.booking.findUniqueOrThrow({
+        where: { code: created.code },
+        select: { costPerPerson: true },
+      });
+      expect(row.costPerPerson?.toFixed(2)).toBe('85.00');
+    });
+
+    it('tour chưa khai giá vốn thì snapshot NULL, không phải 0', async () => {
+      // `0.00` sẽ tự nhận là "tour này không tốn gì" và biến một lỗ hổng dữ
+      // liệu thành lợi nhuận; báo cáo đếm null rồi nói ra (ADR-0033 §6).
+      const alice = await signUpUser('costs-c@tourism.test');
+      const created = BookingSchema.parse((await createBooking(alice)).json());
+
+      const row = await prisma.booking.findUniqueOrThrow({
+        where: { code: created.code },
+        select: { costPerPerson: true },
+      });
+      expect(row.costPerPerson).toBeNull();
+    });
+  });
 });

@@ -17,6 +17,7 @@ import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { pickCover } from '../catalog/catalog.service.js';
+import { perPersonTotal } from '../catalog/tour-costs.js';
 import { MediaService } from '../media/media.service.js';
 import {
   type CheckoutSession,
@@ -265,6 +266,11 @@ export class BookingsService {
             // Cùng lý do với `bookingTourInclude` — khách phải biết trước mình
             // được hoàn bao nhiêu (ADR-0030 §3b).
             freeCancellationDays: true,
+            // Giá vốn theo ĐẦU KHÁCH, để đóng băng vào booking (ADR-0033 §3).
+            // Nạp ở ĐÂY chứ không query riêng: đường này vốn đã đọc `tour` cho
+            // `basePrice`, và một join thêm trên FK có index rẻ hơn một
+            // round-trip nữa bên trong transaction đang giữ advisory lock ghế.
+            costItems: { select: { amount: true, basis: true } },
             // Đích đến cho snapshot `tourDestinations` của booking vừa tạo —
             // cùng shape/orderBy với `bookingTourInclude` (primary đứng đầu).
             destinations: {
@@ -293,6 +299,15 @@ export class BookingsService {
 
     const unitPrice = effectiveUnitPrice(departure.tour.basePrice, departure.priceOverride);
     const total = totalAmount(unitPrice, seats);
+    // Tour chưa khai giá vốn → `null`, KHÔNG phải 0 (ADR-0033 §3). Báo cáo
+    // đếm số booking thiếu dữ liệu rồi NÓI RA; `0.00` thì tự nhận là "tour
+    // này không tốn gì" và biến một lỗ hổng dữ liệu thành lợi nhuận.
+    //
+    // Chỉ vế PER_PERSON vào đây. Vế PER_DEPARTURE ở cấp CHUYẾN
+    // (`tour_departures.fixed_cost_amount`) vì báo cáo tính nó một lần cho
+    // mỗi chuyến đã chạy, bất kể bán được bao nhiêu ghế (§4).
+    const costItems = departure.tour.costItems;
+    const costPerPerson = costItems.length > 0 ? perPersonTotal(costItems) : null;
 
     // Snapshot đóng băng lúc create (audit H3): thứ khách đã mua không bao giờ
     // render lại khi tour bị sửa. Code unique: mint + retry khi hiếm hoi đụng
@@ -315,6 +330,7 @@ export class BookingsService {
             departureStartDate: departure.startDate,
             departureEndDate: departure.endDate,
             unitPrice,
+            costPerPerson,
             contactName: input.contactName,
             contactEmail: input.contactEmail,
             contactPhone: input.contactPhone ?? null,

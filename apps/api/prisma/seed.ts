@@ -43,6 +43,7 @@ import {
   ReviewSource,
   UserRole,
 } from '../src/generated/prisma/enums.js';
+import { derivedCostPrice, perDepartureTotal } from '../src/modules/catalog/tour-costs.js';
 import * as catalog from './fixtures/catalog/index.js';
 import { posts as blogPosts } from './fixtures/posts.js';
 
@@ -258,6 +259,14 @@ async function insertCatalog(): Promise<number> {
           skipDuplicates: true,
         }),
     ],
+    [
+      'tourCostItems',
+      () =>
+        prisma.tourCostItem.createMany({
+          data: catalog.tourCostItems as unknown as Prisma.TourCostItemCreateManyInput[],
+          skipDuplicates: true,
+        }),
+    ],
   ];
 
   let total = 0;
@@ -461,6 +470,35 @@ async function main(): Promise<void> {
     `);
   }
   console.log(`[seed] recomputed ratingAvg/ratingCount for ${catalog.tours.length} tours.`);
+
+  // 8. Hai con số DẪN XUẤT của mô hình giá vốn (ADR-0033 §2, §3).
+  //
+  //    Tính ở đây chứ không khai trong fixture: chúng là hàm của
+  //    `tour_cost_items`, và một fixture khai sẵn con số dẫn xuất là hai nguồn
+  //    sự thật cho một phép tính — sửa một dòng giá vốn mà quên sửa nó là hai
+  //    thứ nói khác nhau, im lặng.
+  //
+  //    `costPrice` là số BÁN HÀNG (một con số mỗi khách, để đặt giá và xem
+  //    biên); `fixedCostAmount` là snapshot vế theo-chuyến, đóng băng lên
+  //    từng departure vì báo cáo tính nó một lần cho mỗi chuyến đã chạy.
+  //    Đây cũng đúng thứ mà form tạo chuyến trong admin sẽ làm khi phase
+  //    `/tours` tới.
+  for (const tour of catalog.tours) {
+    const items = catalog.tourCostItems
+      .filter((item) => item.tourId === tour.id)
+      .map((item) => ({ amount: new Prisma.Decimal(item.amount), basis: item.basis }));
+    if (items.length === 0) continue;
+
+    await prisma.tour.update({
+      where: { id: tour.id },
+      data: { costPrice: derivedCostPrice(items, tour.maxGroupSize) },
+    });
+    await prisma.tourDeparture.updateMany({
+      where: { tourId: tour.id },
+      data: { fixedCostAmount: perDepartureTotal(items) },
+    });
+  }
+  console.log(`[seed] derived costPrice + departure fixedCost for ${catalog.tours.length} tours.`);
 
   console.log('[seed] done.');
 }
