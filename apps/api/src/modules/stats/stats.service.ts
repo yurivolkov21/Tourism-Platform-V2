@@ -350,16 +350,14 @@ export class StatsService {
   }
 
   /**
-   * Chuỗi theo ngày cho biểu đồ dashboard `/` (ADR-0036). Hai query độc lập
-   * phát song song: hàng thưa theo ngày + đồng tiền của cả cửa sổ; điền 0 ở
-   * `fillDaySeries` để chuỗi luôn đủ `days` point.
+   * Chuỗi theo ngày cho biểu đồ dashboard `/` (ADR-0036). MỘT lượt quét trả
+   * cả hàng thưa theo ngày lẫn đồng tiền (AMEND 2 — bản đầu hỏi nhãn tiền
+   * bằng query thứ hai trên cùng cửa sổ không index); điền 0 ở `fillDaySeries`
+   * để chuỗi luôn đủ `days` point.
    */
   async adminDashboard(query: AdminDashboardQuery): Promise<AdminDashboardSeries> {
     const window = dashboardWindow(query.days, new Date());
-    const [rows, currency] = await Promise.all([
-      paidByDay(window.from, window.to),
-      revenueCurrency(window.from, window.to),
-    ]);
+    const rows = await paidByDay(window.from, window.to);
 
     return {
       period: {
@@ -368,8 +366,9 @@ export class StatsService {
         to: window.to.toISOString(),
         generatedAt: window.generatedAt.toISOString(),
       },
-      // Cùng fallback 'USD' và cùng giới hạn một-đồng-tiền với `adminBookings`.
-      currency: currency ?? 'USD',
+      // Nhãn tiền = đồng của ngày có tiền GẦN NHẤT trong cửa sổ, cùng giới hạn
+      // một-đồng-tiền với `adminBookings`; 'USD' chỉ khi cả cửa sổ trống.
+      currency: rows.at(-1)?.currency ?? 'USD',
       points: fillDaySeries(rows, window),
     };
   }

@@ -272,6 +272,8 @@ export interface DayRow {
   day: Date;
   revenue: Prisma.Decimal | null;
   bookings: number;
+  /** Đồng tiền của các đơn trong ngày — `null` chỉ khi row rỗng (không xảy ra với GROUP BY). */
+  currency: string | null;
 }
 
 /**

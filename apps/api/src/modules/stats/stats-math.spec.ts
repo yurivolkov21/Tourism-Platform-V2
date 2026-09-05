@@ -267,6 +267,7 @@ describe('fillDaySeries (ADR-0036)', () => {
     day: new Date(`${date}T00:00:00.000Z`),
     revenue: new Prisma.Decimal(revenue),
     bookings,
+    currency: 'USD',
   });
 
   it('emits exactly one point per calendar day, ascending, with zeros for empty days', () => {

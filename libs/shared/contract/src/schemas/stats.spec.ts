@@ -186,6 +186,12 @@ describe('AdminDashboardQuerySchema (ADR-0036)', () => {
 
 describe('AdminDashboardSeriesSchema (ADR-0036)', () => {
   const point = { date: '2026-09-04', revenue: '1240.50', bookings: 3 };
+  /** Bảy point kết ở 04/09 — contract đòi ĐÚNG `period.days` phần tử. */
+  const week = Array.from({ length: 7 }, (_, i) => ({
+    date: new Date(Date.UTC(2026, 7, 29 + i)).toISOString().slice(0, 10),
+    revenue: '0.00',
+    bookings: 0,
+  }));
   const series = {
     period: {
       days: 7,
@@ -194,7 +200,7 @@ describe('AdminDashboardSeriesSchema (ADR-0036)', () => {
       generatedAt: '2026-09-04T10:30:00.000Z',
     },
     currency: 'USD',
-    points: [point],
+    points: [...week.slice(0, 6), point],
   };
 
   it('carries the window, the currency and one point per calendar day', () => {
@@ -203,7 +209,10 @@ describe('AdminDashboardSeriesSchema (ADR-0036)', () => {
 
   it('points are calendar dates with money-as-string and integer counts', () => {
     const bad = (patch: Partial<typeof point>) =>
-      AdminDashboardSeriesSchema.safeParse({ ...series, points: [{ ...point, ...patch }] }).success;
+      AdminDashboardSeriesSchema.safeParse({
+        ...series,
+        points: [...week.slice(0, 6), { ...point, ...patch }],
+      }).success;
     // Ngày lịch, không phải mốc ISO: bucket là NGÀY, giờ giấc là chuyện của API.
     expect(bad({ date: '2026-09-04T00:00:00.000Z' })).toBe(false);
     expect(bad({ revenue: 1240.5 as unknown as string })).toBe(false);
@@ -211,7 +220,15 @@ describe('AdminDashboardSeriesSchema (ADR-0036)', () => {
     expect(bad({ bookings: -1 })).toBe(false);
   });
 
-  it('an empty window is still a well-formed series', () => {
-    expect(AdminDashboardSeriesSchema.parse({ ...series, points: [] }).points).toEqual([]);
+  it('points must have EXACTLY period.days entries — a short or empty series is rejected', () => {
+    // Bất biến ADR-0036 §2 do contract canh (vòng vá review 05/09): chuỗi
+    // thiếu point từng lọt qua rồi bị cắt đuôi im lặng ở client.
+    expect(AdminDashboardSeriesSchema.safeParse({ ...series, points: [] }).success).toBe(false);
+    expect(
+      AdminDashboardSeriesSchema.safeParse({ ...series, points: week.slice(0, 6) }).success,
+    ).toBe(false);
+    expect(
+      AdminDashboardSeriesSchema.safeParse({ ...series, points: [...week, point] }).success,
+    ).toBe(false);
   });
 });

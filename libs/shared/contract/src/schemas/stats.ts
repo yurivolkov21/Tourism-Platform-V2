@@ -372,7 +372,15 @@ export type DashboardRangeDays = (typeof DASHBOARD_RANGE_DAYS)[number];
  * object); nhánh `pipe` thì ép theo schema `in` — `"30"` trên query string
  * thành `30` rồi union literal mới xét. Output vẫn là `7 | 30 | 90`.
  */
-const DashboardRangeDaysSchema = z.union([z.literal(7), z.literal(30), z.literal(90)]);
+// Ba literal DẪN TỪ `DASHBOARD_RANGE_DAYS` (vòng vá review 05/09): bản đầu gõ
+// tay 7/30/90 lần thứ hai ở đây và lần thứ ba ở admin — thêm một dải là sửa ba
+// chỗ, sót một chỗ thì im lặng. Destructure giữ được kiểu literal của `as const`.
+const [DAYS_7, DAYS_30, DAYS_90] = DASHBOARD_RANGE_DAYS;
+const DashboardRangeDaysSchema = z.union([
+  z.literal(DAYS_7),
+  z.literal(DAYS_30),
+  z.literal(DAYS_90),
+]);
 const DashboardRangeDaysInputSchema = z.int().pipe(DashboardRangeDaysSchema);
 
 /**
@@ -411,20 +419,30 @@ export type DashboardPoint = z.output<typeof DashboardPointSchema>;
  * tăng dần, không lỗ, không trùng — ngày không có dữ liệu được API điền 0
  * (ADR-0036 §2) nên client không phải tự dựng trục thời gian.
  */
-export const AdminDashboardSeriesSchema = z.object({
-  period: z.object({
-    days: DashboardRangeDaysSchema,
-    /** 00:00 UTC của ngày đầu tiên trong chuỗi — TÍNH VÀO. */
-    from: z.iso.datetime(),
-    /**
-     * Mốc chặn — KHÔNG tính vào, và bằng `generatedAt`: cửa sổ kết ở lúc chốt
-     * sổ nên bucket cuối (hôm nay) là bucket ĐANG CHẠY, nửa ngày thì nửa số.
-     */
-    to: z.iso.datetime(),
-    generatedAt: z.iso.datetime(),
-  }),
-  /** Đồng tiền của `revenue` — cùng cách lấy và cùng giới hạn một-đồng-tiền với `AdminBookingsStatsSchema.currency`. */
-  currency: z.string().length(3),
-  points: z.array(DashboardPointSchema),
-});
+export const AdminDashboardSeriesSchema = z
+  .object({
+    period: z.object({
+      days: DashboardRangeDaysSchema,
+      /** 00:00 UTC của ngày đầu tiên trong chuỗi — TÍNH VÀO. */
+      from: z.iso.datetime(),
+      /**
+       * Mốc chặn — KHÔNG tính vào, và bằng `generatedAt` theo cấu tạo (giữ cả
+       * hai để `period` cùng hình dạng với `StatsPeriod` của bảy endpoint kia):
+       * cửa sổ kết ở lúc chốt sổ nên bucket cuối (hôm nay) là bucket ĐANG
+       * CHẠY, nửa ngày thì nửa số — client đọc `to` để nói điều đó ra.
+       */
+      to: z.iso.datetime(),
+      generatedAt: z.iso.datetime(),
+    }),
+    /** Đồng tiền của `revenue` — đọc từ CÙNG lượt quét với `points`, cùng giới hạn một-đồng-tiền với `AdminBookingsStatsSchema.currency`. */
+    currency: z.string().length(3),
+    points: z.array(DashboardPointSchema),
+  })
+  // Bất biến §2 do CONTRACT canh chứ không chỉ JSDoc hứa (vòng vá review
+  // 05/09): chuỗi thiếu point từng qua contract và bị `sliceSeries` cắt đuôi
+  // im lặng dưới tab "Last 3 months".
+  .refine((series) => series.points.length === series.period.days, {
+    message: 'points must have exactly period.days entries',
+    path: ['points'],
+  });
 export type AdminDashboardSeries = z.output<typeof AdminDashboardSeriesSchema>;

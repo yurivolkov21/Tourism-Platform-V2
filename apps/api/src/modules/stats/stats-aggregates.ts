@@ -419,13 +419,22 @@ export async function fixedCostSlice(from: Date, to: Date) {
  *
  * Trả về THƯA (chỉ ngày có row) — điền 0 là việc của `fillDaySeries`. `day`
  * về từ driver là `Date` 00:00 UTC; `COUNT` là bigint nên ép `Number` ở đây.
+ *
+ * `currency` đi CÙNG lượt quét (ADR-0036 AMEND 2): bản đầu hỏi nhãn tiền bằng
+ * một `findFirst` thứ hai trên cùng cửa sổ 90 ngày không index — vừa tốn một
+ * lượt quét, vừa không cùng khoảnh khắc với chính chuỗi. `MAX(currency)` mỗi
+ * ngày là đủ vì nền tảng một-đồng-tiền (cùng giới hạn `grossAmount`); ngày
+ * nào có hai đồng thì `SUM` đã sai trước khi nhãn kịp sai.
  */
 export async function paidByDay(from: Date, to: Date): Promise<DayRow[]> {
-  const rows = await prisma.$queryRaw<{ day: Date; revenue: Prisma.Decimal; bookings: bigint }[]>(
+  const rows = await prisma.$queryRaw<
+    { day: Date; revenue: Prisma.Decimal; bookings: bigint; currency: string | null }[]
+  >(
     Prisma.sql`
       SELECT date_trunc('day', paid_at) AS day,
              SUM(total_amount)          AS revenue,
-             COUNT(*)                   AS bookings
+             COUNT(*)                   AS bookings,
+             MAX(currency)              AS currency
       FROM bookings
       WHERE paid_at >= ${from} AND paid_at < ${to}
       GROUP BY 1
@@ -436,5 +445,6 @@ export async function paidByDay(from: Date, to: Date): Promise<DayRow[]> {
     day: row.day,
     revenue: row.revenue,
     bookings: Number(row.bookings),
+    currency: row.currency,
   }));
 }

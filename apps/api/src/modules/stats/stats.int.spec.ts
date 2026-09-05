@@ -504,8 +504,13 @@ describe('admin stats integration (F5)', () => {
   });
 
   describe('stats.dashboard (ADR-0036) — chuỗi theo ngày', () => {
-    /** 00:00.000 UTC của HÔM NAY — mốc mà mọi bucket ngày tính từ đó. */
-    const todayUtc = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+    /**
+     * 00:00.000 UTC của HÔM NAY — mốc mà mọi bucket ngày tính từ đó. Chụp
+     * trong `beforeEach`, KHÔNG ở tầng describe (vòng vá review 05/09): file
+     * này chạy sau nhiều spec khác, mốc chụp lúc load file mà request bắn
+     * sau nửa đêm UTC là "hôm nay" của fixture thành "hôm qua" của server.
+     */
+    let todayUtc = new Date(0);
     /** Mốc "N ngày trước, lúc 12:00 UTC" — xa cả hai biên nửa đêm. */
     const noonDaysAgo = (days: number) =>
       new Date(todayUtc.getTime() - days * DAY + 12 * 3_600_000);
@@ -513,6 +518,7 @@ describe('admin stats integration (F5)', () => {
       new Date(todayUtc.getTime() - days * DAY).toISOString().slice(0, 10);
 
     beforeEach(async () => {
+      todayUtc = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
       await prisma.booking.createMany({
         data: [
           // Hôm nay: ĐÚNG 00:00.000 — biên đầu ngày, tính vào bucket hôm nay.
@@ -557,11 +563,12 @@ describe('admin stats integration (F5)', () => {
             createdAt: noonDaysAgo(100),
             paidAt: noonDaysAgo(100),
           }),
-          // Tạo hôm nay nhưng CHƯA trả tiền: không có trong chuỗi (neo paid_at).
+          // Tạo hôm nay (một giây sau nửa đêm — không ở tương lai dù chạy
+          // lúc 00:00) nhưng CHƯA trả tiền: không có trong chuỗi (neo paid_at).
           booking(307, {
             status: BookingStatus.PENDING,
             total: '777.00',
-            createdAt: noonDaysAgo(0),
+            createdAt: new Date(todayUtc.getTime() + 1000),
             paidAt: null,
           }),
         ],
@@ -587,6 +594,12 @@ describe('admin stats integration (F5)', () => {
       // Booking 306 (100 ngày) không có mặt; ngày 50 ngày trước trống.
       expect(series.points[39]).toEqual({ date: dateDaysAgo(50), revenue: '0.00', bookings: 0 });
       expect(series.currency).toBe('USD');
+      // Đơn 307 (PENDING, tạo hôm nay, chưa trả) KHÔNG lọt vào bucket hôm nay.
+      expect(series.points.at(-1)).toEqual({
+        date: dateDaysAgo(0),
+        revenue: '100.00',
+        bookings: 1,
+      });
     });
 
     it('bucket cắt theo ngày lịch UTC, biên nửa-mở — 00:00.000 vào hôm nay, 23:59:59.5 ở lại hôm qua', async () => {
