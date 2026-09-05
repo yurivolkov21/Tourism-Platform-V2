@@ -76,6 +76,39 @@ export function formatDateLabel(date: Date | undefined): string {
 }
 
 /**
+ * `Date` → nhãn NGẮN cho nút khoảng ngày ("Sep 05, 2026"). Tháng viết tắt vì
+ * nút phải chứa được HAI ngày cạnh nhau; dạng dài của `formatDateLabel` thì
+ * một mình đã gần bằng chiều rộng cả nút.
+ */
+export function formatShortDateLabel(date: Date): string {
+  return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+/**
+ * Khoảng ngày → chữ trên nút. Cùng NĂM thì năm chỉ in một lần ở cuối
+ * ("Sep 05 – Sep 22, 2026") — một tờ báo cáo hay một bộ lọc lặp lại năm hai
+ * lần chỉ tổ làm nút dài ra mà không nói thêm gì.
+ *
+ * Ba dạng đầu vào, ba câu khác nhau; `null` khi không lọc gì để nơi dùng in
+ * nhãn "mọi ngày" của nó.
+ */
+export function formatDateRangeLabel(
+  from: Date | undefined,
+  to: Date | undefined,
+): { kind: 'range' | 'from' | 'to'; text: string } | null {
+  if (from && to) {
+    const sameYear = from.getFullYear() === to.getFullYear();
+    const start = sameYear
+      ? from.toLocaleDateString('en-US', { day: '2-digit', month: 'short' })
+      : formatShortDateLabel(from);
+    return { kind: 'range', text: `${start} – ${formatShortDateLabel(to)}` };
+  }
+  if (from) return { kind: 'from', text: formatShortDateLabel(from) };
+  if (to) return { kind: 'to', text: formatShortDateLabel(to) };
+  return null;
+}
+
+/**
  * Chuỗi người gõ trong ô → `Date`, hoặc `undefined` nếu chưa ra ngày.
  *
  * Khoan dung có giới hạn: nhận đúng dạng mình in ra, nhận cả ISO và các biến

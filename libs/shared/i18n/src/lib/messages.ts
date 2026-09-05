@@ -2726,6 +2726,16 @@ export const messages = {
        * nút xoá mọi bộ lọc ở hàng bên phải, không phải riêng ô đứng cạnh nó.
        */
       clearFilters: 'Clear filters',
+      /**
+       * Nhãn nút khoảng ngày khi CHƯA lọc (05/09, cùng đợt đổi hai ô ngày
+       * thành một range picker). Ở `admin.table` chứ không ở từng vùng: ba
+       * vùng dùng chung một câu, còn câu RIÊNG của mỗi vùng — ngày nào đang
+       * được lọc — vẫn nằm ở `dateFilterLabel` của vùng ấy.
+       */
+      dateAny: 'Any date',
+      /** Mới có một đầu — xảy ra khi URL gõ tay chỉ mang `from` hoặc `to`. */
+      dateFrom: (date: string) => `From ${date}`,
+      dateUntil: (date: string) => `Until ${date}`,
     },
     /**
      * Khối payload trong drawer chi tiết (kit `JsonDrawer` — `/outbox` và
@@ -3114,17 +3124,12 @@ export const messages = {
          * booking có thể là ngày đặt hoặc ngày khởi hành, hai thứ khác hẳn.
          */
         dateFilterLabel: 'Filter by booking date',
-        dateFrom: 'Booked from',
-        dateTo: 'Booked to',
         /**
          * Ô ngày là ô CHỮ (kiểu `date-picker-04`), nên gợi ý trong ô phải
          * làm luôn việc thứ hai: nói ra dạng ngày mà ô đọc được. Đổi nó thì
          * đổi cả `formatDateLabel` — hai thứ này là một lời hứa.
          */
-        datePlaceholder: 'January 01, 2026',
         /** Nút lịch nằm trong ô — không có chữ, chỉ máy đọc màn hình nghe. */
-        pickDateFrom: 'Open calendar to pick the start date',
-        pickDateTo: 'Open calendar to pick the end date',
         /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
         exportCsv: 'Export CSV',
         /**
@@ -3358,11 +3363,6 @@ export const messages = {
          * nên chữ phải nói "requested", không phải "booked" như `/bookings`.
          */
         dateFilterLabel: 'Filter by request date',
-        dateFrom: 'Requested from',
-        dateTo: 'Requested to',
-        datePlaceholder: 'January 01, 2026',
-        pickDateFrom: 'Open calendar to pick the start date',
-        pickDateTo: 'Open calendar to pick the end date',
         /**
          * Ô rỗng KHI ĐANG lọc ngày — nói thẳng khoảng đang lọc và mở sẵn lối
          * thoát. Ở đây rủi ro nhẹ hơn `/bookings` (vùng này mặc định không lọc
@@ -4180,11 +4180,6 @@ export const messages = {
         ratingAll: 'All ratings',
         ratingStars: (count: number) => `${count} ${count === 1 ? 'star' : 'stars'}`,
         dateFilterLabel: 'Filter by submitted date',
-        dateFrom: 'Submitted from',
-        dateTo: 'Submitted to',
-        datePlaceholder: 'January 01, 2026',
-        pickDateFrom: 'Open calendar to pick the start date',
-        pickDateTo: 'Open calendar to pick the end date',
         /**
          * Ô rỗng KHI ĐANG lọc ngày — nói thẳng khoảng đang lọc và mở sẵn lối
          * thoát, cùng nếp hai vùng trước. Ở hàng đợi kiểm duyệt chuyện này

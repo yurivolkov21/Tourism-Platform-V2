@@ -110,13 +110,6 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
     <ToolbarDateRange
       idPrefix="bookings"
       label={t.dateFilterLabel}
-      labels={{
-        from: t.dateFrom,
-        to: t.dateTo,
-        openFrom: t.pickDateFrom,
-        openTo: t.pickDateTo,
-        placeholder: t.datePlaceholder,
-      }}
       from={query.from}
       to={query.to}
       hrefFor={(patch) => bookingsHref(query, patch)}

@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,15 +6,25 @@ import type { BookingsQuery } from '@/lib/bookings-query';
 import { BookingsDateRange } from './bookings-toolbar';
 
 /**
- * Bộ lọc khoảng ngày của `/bookings` (spec P4b §3-F6), nay dựng bằng hai ô
- * `DatePickerField` kiểu `date-picker-04` (user chốt 01/09).
+ * Bộ lọc khoảng ngày của `/bookings` (spec P4b §3-F6), từ 05/09 là MỘT nút mở
+ * lịch hai tháng thay cho hai ô chữ (`@shadcn-space/date-picker-02`, user chốt
+ * qua bản demo `docs/design/mockups/admin-toolbar-sizing.src.html`).
  *
- * Nó chỉ điều hướng — nhưng có một ca mà "chỉ điều hướng" là chưa đủ: khi giá
- * trị vừa chốt bị luật khoảng-ngược vứt đi, URL đích TRÙNG URL hiện tại nên
- * không có điều hướng nào xảy ra, và ô sẽ đứng đó khoe một bộ lọc không tồn
- * tại (review F6). Ô chữ tự do còn mở thêm một cửa cho cùng bệnh đó: gõ rác.
+ * Bộ test cũ canh hành vi ô CHỮ — gõ dở, gõ rác, chốt lúc rời ô — và toàn bộ
+ * lớp ca đó biến mất cùng ô chữ. Cái Ở LẠI, và là thứ bộ này canh:
+ *
+ * 1. **Cú bấm thứ nhất không được điều hướng.** `mode="range"` chốt bằng hai
+ *    cú bấm; đẩy URL ngay cú đầu là một lần fetch cả trang cho một khoảng còn
+ *    dở dang.
+ * 2. **Chọn lại đúng khoảng đang lọc thì đứng yên** — và phép so phải GHIM
+ *    trang, bài học `go` của bản cũ (vòng vá review F6 lần 2): không ghim thì
+ *    từ trang 2 trở đi hai href khác nhau CHỈ VÌ `page`, guard trượt, và mỗi
+ *    cú bấm lại là một lần fetch thừa.
+ * 3. **Nút phải đọc ra thứ đang nằm trên URL**, kể cả ca `?to=` một mình —
+ *    lịch không bấm ra được ca ấy nhưng URL vẫn nhận nó.
  */
 const t = messages.admin.bookings.list;
+const shared = messages.admin.table;
 
 const push = vi.fn();
 vi.mock('next/navigation', () => ({
@@ -27,136 +37,112 @@ beforeEach(() => {
   push.mockReset();
 });
 
+/** Mở lịch và trả về chính popover, để `getByRole` không quét cả trang. */
+async function openCalendar(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(screen.getByRole('button', { name: new RegExp(t.dateFilterLabel) }));
+  return within(await screen.findByRole('dialog'));
+}
+
 describe('BookingsDateRange', () => {
-  it('hai ô mang đúng khoảng đang lọc trên URL, dạng người đọc được', () => {
+  it('nút mang đúng khoảng đang lọc, năm in MỘT lần khi hai đầu cùng năm', () => {
     render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
 
-    expect(screen.getByLabelText(t.dateFrom)).toHaveValue('September 01, 2026');
-    expect(screen.getByLabelText(t.dateTo)).toHaveValue('September 30, 2026');
+    expect(screen.getByRole('button')).toHaveTextContent('Sep 01 – Sep 30, 2026');
   });
 
-  it('gõ ngày rồi rời ô → điều hướng sang URL mang from (dạng ISO)', async () => {
-    const user = userEvent.setup();
+  it('hai đầu KHÁC năm thì in đủ cả hai năm', () => {
+    render(<BookingsDateRange query={{ ...BASE, from: '2025-12-20', to: '2026-01-05' }} />);
+
+    expect(screen.getByRole('button')).toHaveTextContent('Dec 20, 2025 – Jan 05, 2026');
+  });
+
+  it('chưa lọc gì thì nút nói "Any date", không để trống', () => {
     render(<BookingsDateRange query={BASE} />);
 
-    await user.type(screen.getByLabelText(t.dateFrom), 'September 01, 2026');
-    await user.tab();
-
-    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-01');
+    expect(screen.getByRole('button')).toHaveTextContent(shared.dateAny);
   });
 
-  it('CHỈ chốt một lần, lúc rời ô — không phải mỗi phím một lần điều hướng', async () => {
-    // Ô date native chỉ phát `change` khi đủ ba phần; ô chữ thì không có ranh
-    // giới ấy, nên mỗi phím gõ mà đẩy URL là mỗi phím một lần fetch cả trang.
-    const user = userEvent.setup();
+  it('chỉ có một đầu vẫn đọc ra được — URL gõ tay tới được ca này', () => {
+    const { rerender } = render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01' }} />);
+    expect(screen.getByRole('button')).toHaveTextContent('From Sep 01, 2026');
+
+    // `mode="range"` KHÔNG bấm ra được ca này, nhưng `?to=` một mình vẫn lọc
+    // thật ở API nên nút phải nói đúng thay vì rơi về "Any date".
+    rerender(<BookingsDateRange query={{ ...BASE, to: '2026-09-30' }} />);
+    expect(screen.getByRole('button')).toHaveTextContent('Until Sep 30, 2026');
+  });
+
+  it('nhãn đọc-màn-hình nói RÕ cột ngày nào đang bị lọc', () => {
     render(<BookingsDateRange query={BASE} />);
 
-    await user.type(screen.getByLabelText(t.dateFrom), 'September 01, 2026');
-    expect(push).not.toHaveBeenCalled();
-
-    await user.tab();
-    expect(push).toHaveBeenCalledTimes(1);
+    // Chữ trên nút là GIÁ TRỊ; mục đích phải nằm ở aria-label, kẻo người dùng
+    // trình đọc màn hình nghe "Any date" mà không biết ngày gì.
+    expect(screen.getByRole('button')).toHaveAccessibleName(
+      `${t.dateFilterLabel}: ${shared.dateAny}`,
+    );
   });
 
-  it('Enter cũng chốt, không phải chờ rời ô', async () => {
+  it('cú bấm THỨ NHẤT chưa điều hướng — khoảng còn dở dang', async () => {
     const user = userEvent.setup();
     render(<BookingsDateRange query={BASE} />);
+    const calendar = await openCalendar(user);
 
-    await user.type(screen.getByLabelText(t.dateFrom), 'September 01, 2026{Enter}');
-
-    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-01');
-  });
-
-  it('gõ rác: không điều hướng, và ô quay về đúng thứ đang lọc', async () => {
-    // Ô chữ nhận được mọi thứ. Không kéo về thì màn hình khoe "linh tinh"
-    // trong khi bảng vẫn lọc từ 01/09 — cùng bệnh "bộ lọc ma" của review F6.
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01' }} />);
-
-    const field = screen.getByLabelText(t.dateFrom);
-    await user.clear(field);
-    await user.type(field, 'linh tinh');
-    await user.tab();
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
 
     expect(push).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(t.dateFrom)).toHaveValue('September 01, 2026');
   });
 
-  it('quét trắng một ô là bỏ lọc đầu đó', async () => {
+  it('đủ hai đầu thì điều hướng sang URL mang cả khoảng, dạng ISO', async () => {
+    const user = userEvent.setup();
+    render(<BookingsDateRange query={BASE} />);
+    const calendar = await openCalendar(user);
+
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+
+    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
+  });
+
+  it('chọn lại ĐÚNG khoảng đang lọc thì đứng yên, không fetch lại cả trang', async () => {
+    const user = userEvent.setup();
+    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-10', to: '2026-09-20' }} />);
+    const calendar = await openCalendar(user);
+
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('từ TRANG 2 cũng vậy — phép so ghim trang nên guard không trượt', async () => {
+    // Không ghim `page: 1` ở cả hai vế thì href-patch mất `page` còn href-hiện
+    // tại giữ `page=2`, hai chuỗi khác nhau CHỈ VÌ page và guard hết tác dụng.
+    const user = userEvent.setup();
+    render(
+      <BookingsDateRange query={{ ...BASE, page: 2, from: '2026-09-10', to: '2026-09-20' }} />,
+    );
+    const calendar = await openCalendar(user);
+
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('lịch mở ra có dropdown tháng và năm — thứ bù cho việc mất ô gõ tay', async () => {
     const user = userEvent.setup();
     render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
+    const calendar = await openCalendar(user);
 
-    await user.clear(screen.getByLabelText(t.dateTo));
-    await user.tab();
-
-    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-01');
-  });
-
-  it('ngày kết thúc SỚM HƠN ngày bắt đầu: không điều hướng, và ô tự quay về rỗng', async () => {
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01' }} />);
-
-    await user.type(screen.getByLabelText(t.dateTo), 'August 15, 2026');
-    await user.tab();
-
-    // URL đích trùng URL hiện tại (`to` bị vứt) → push là vô nghĩa…
-    expect(push).not.toHaveBeenCalled();
-    // …nên chính component phải kéo ô về đúng thứ đang lọc, kẻo màn hình
-    // hiện "đến 15/08" trong khi bảng lọc từ 01/09 trở đi. Truy vấn LẠI: đổi
-    // `key` là unmount + mount, nên node cũ không còn nằm trong tài liệu.
-    expect(screen.getByLabelText(t.dateTo)).toHaveValue('');
-  });
-
-  it('khoảng ngược từ TRANG 2+ cũng vậy — không được nhảy về trang 1 mà chẳng lọc thêm gì', async () => {
-    // Vòng vá review F6 lần 2: guard bản đầu so `next` với href-hiện-tại
-    // trần, nhưng patch (dù bị vứt) vẫn reset page nên từ page>1 hai chuỗi
-    // khác nhau CHỈ VÌ page — push chạy thật (bảng nhảy trang, `to` vẫn bị
-    // vứt) và ô lại khoe bộ lọc ma. Guard giờ ghim page ở cả hai vế.
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={{ ...BASE, page: 3, from: '2026-09-01' }} />);
-
-    await user.type(screen.getByLabelText(t.dateTo), 'August 15, 2026');
-    await user.tab();
-
-    expect(push).not.toHaveBeenCalled();
-    expect(screen.getByLabelText(t.dateTo)).toHaveValue('');
-  });
-
-  it('gõ dở rồi bấm icon lịch: KHÔNG chốt bản nháp, lịch mở được ngay lần đầu', async () => {
-    // Vòng vá review 02/09: mousedown vào nút lịch làm ô blur; blur từng chốt
-    // bản nháp → điều hướng → `key` của ô đổi → ô remount với `open=false` →
-    // lịch đóng ngay khi vừa mở. Nay blur bỏ qua khi focus chỉ đi sang chính
-    // bộ chọn này.
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-10' }} />);
-
-    await user.clear(screen.getByLabelText(t.dateFrom));
-    await user.type(screen.getByLabelText(t.dateFrom), 'September 20, 2026');
-    await user.click(screen.getByRole('button', { name: t.pickDateFrom }));
-
-    expect(push).not.toHaveBeenCalled();
-    expect(
-      await screen.findByRole('button', { name: /September 15th, 2026/i }),
-    ).toBeInTheDocument();
-  });
-
-  it('chọn ngày trên lịch cũng chốt ngay, không cần rời ô', async () => {
-    const user = userEvent.setup();
-    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-10' }} />);
-
-    await user.click(screen.getByRole('button', { name: t.pickDateFrom }));
-    // Lịch mở đúng tháng đang lọc (09/2026), nên nhãn ngày là đủ để trỏ.
-    await user.click(await screen.findByRole('button', { name: /September 15th, 2026/i }));
-
-    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-15');
+    // Không có hai cái này thì lọc một tháng của năm ngoái là hơn chục cú bấm
+    // mũi tên, và đổi sang range picker thành một bước lùi.
+    expect(calendar.getAllByRole('combobox').length).toBeGreaterThanOrEqual(2);
   });
 
   it('KHÔNG còn nút xoá ngày riêng — nó đã gộp vào ToolbarClearFilters (05/09)', () => {
     render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
 
-    // Cụm này chỉ còn hai ô ngày, mỗi ô một nút mở lịch. Nút thứ ba xuất hiện
-    // ở đây nghĩa là nút xoá riêng đã mọc lại — thứ mà `?dates=all` của
-    // `BookingsClearFilters` nay lo (xem spec của nó).
-    expect(screen.getAllByRole('button')).toHaveLength(2);
+    // Cụm này chỉ còn ĐÚNG một nút: cái mở lịch.
+    expect(screen.getAllByRole('button')).toHaveLength(1);
   });
 });

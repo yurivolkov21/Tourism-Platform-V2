@@ -89,13 +89,6 @@ export function ReviewsDateRange({ query }: { query: ReviewsQuery }) {
     <ToolbarDateRange
       idPrefix="reviews"
       label={t.dateFilterLabel}
-      labels={{
-        from: t.dateFrom,
-        to: t.dateTo,
-        openFrom: t.pickDateFrom,
-        openTo: t.pickDateTo,
-        placeholder: t.datePlaceholder,
-      }}
       from={query.from}
       to={query.to}
       hrefFor={(patch) => reviewsHref(query, patch)}

@@ -82,13 +82,6 @@ export function CancellationsDateRange({ query }: { query: CancellationsQuery })
     <ToolbarDateRange
       idPrefix="cancellations"
       label={t.dateFilterLabel}
-      labels={{
-        from: t.dateFrom,
-        to: t.dateTo,
-        openFrom: t.pickDateFrom,
-        openTo: t.pickDateTo,
-        placeholder: t.datePlaceholder,
-      }}
       from={query.from}
       to={query.to}
       hrefFor={(patch) => cancellationsHref(query, patch)}
