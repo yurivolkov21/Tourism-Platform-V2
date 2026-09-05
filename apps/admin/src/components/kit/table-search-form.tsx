@@ -29,6 +29,31 @@ import { TOOLBAR_BUTTON, TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics'
  */
 
 /**
+ * ## Vì sao ô này KHÔNG dùng `--input` như mọi ô nhập khác (05/09)
+ *
+ * `--input` (L 0.66) được đặt cố ý ĐẬM hơn `--border` (L 0.902) để đạt ngưỡng
+ * tương phản phi-văn-bản 3:1 — viền thường là thứ duy nhất cho biết một ô nhập
+ * nằm ở đâu (lý do gốc ở `app/globals.css`). Đo lại cả dải ngày 05/09: 0.66 là
+ * mức sáng NHẤT còn đạt (3.06 trên nền); nhích lên 0.70 đã rớt còn 2.63. Không
+ * có mức trung gian nào.
+ *
+ * Ô này vẫn hạ về `--border`, và đó là một đánh đổi user chốt sau khi xem số
+ * đo (bản demo `docs/design/mockups/admin-toolbar-sizing.src.html`): trên hàng
+ * điều khiển nó đứng cạnh 4-5 cái nút viền nhạt, nên viền đậm làm nó nặng hơn
+ * hẳn hàng xóm.
+ *
+ * Phạm vi hẹp hết mức có thể — CHỈ ô tìm kiếm của toolbar, **không** đụng token
+ * `--input`. Đổi token là làm mọi ô nhập trong admin nhạt theo: form đăng nhập,
+ * ô ghi chú `/enquiries`, các dialog ghi — những chỗ mà ô nhập đứng một mình
+ * trên nền trắng và viền THẬT SỰ là dấu hiệu duy nhất. Ở đây thì không: ô mang
+ * sẵn nhãn nổi nhìn thấy được nằm trong lòng nó, và nó nằm giữa một hàng
+ * control có viền để so.
+ *
+ * Ô ngày của `ToolbarDateRange` không cần ngoại lệ này — từ 05/09 nó là một
+ * NÚT mở popover, nên nó vốn đã dùng `--border` như mọi nút khác.
+ */
+
+/**
  * Nhãn nổi, bê từ `input-24`. Hai điều kiện đẩy nhãn lên viền, và phải có ĐỦ
  * CẢ HAI vì mỗi cái bắt một ca: `group-focus-within` cho lúc ô đang được gõ,
  * `has-[+input:not(:placeholder-shown)]` cho lúc ô đã có chữ nhưng mất focus
@@ -100,7 +125,9 @@ function FloatingSearchInput({
         // `dark:bg-background` để nền span của nhãn khớp nền ô ở dark mode —
         // mặc định `Input` là `dark:bg-input/30`, lệch tông thì chỗ nhãn cắt
         // viền trông như một miếng vá. (Bản registry cũng đắp đúng class này.)
-        className={`w-40 dark:bg-background lg:w-56 ${TOOLBAR_FIELD}`}
+        // `border-border` ĐÈ `border-input` mặc định của `Input` (twMerge giữ
+        // cái sau — hai class cùng thuộc tính `border-color`). Xem `SEARCH_BORDER`.
+        className={`w-40 border-border dark:bg-background lg:w-56 ${TOOLBAR_FIELD}`}
       />
     </div>
   );

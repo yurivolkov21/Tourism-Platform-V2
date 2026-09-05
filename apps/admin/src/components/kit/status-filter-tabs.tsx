@@ -98,10 +98,11 @@ export function StatusFilterTabs({
         }}
         aria-label={label}
         spacing={0}
-        // Đúng số đo bản registry: `p-1` + item `h-9` = 44px (user chốt xem
-        // bản thoáng 01/09). Nó cao hơn ô tìm kiếm `h-8` 12px nên là thứ cao
-        // nhất hàng điều khiển — hàng `items-center` nên vẫn canh giữa, chỉ
-        // là cả hàng dày lên theo.
+        // `p-1` + item `h-7` = 36px — bằng đúng `TOOLBAR_FIELD`/`TOOLBAR_BUTTON`
+        // (user chốt 05/09 qua bản demo, hạ từ 44px). Đệm GIỮ NGUYÊN 4px và
+        // chỉ viên pill hạ xuống: bóp đệm về `p-0.5` cũng ra 36px nhưng pill
+        // khi ấy chiếm 89% khung thay vì 82% như trước, tức trông đặc hơn chứ
+        // không nhỏ đi — lý do đầy đủ ở `toolbar-metrics.ts`.
         className="hidden gap-1 rounded-xl border bg-muted/40 p-1 @4xl/main:flex"
       >
         {items.map((item) => {
@@ -115,7 +116,7 @@ export function StatusFilterTabs({
               // hẳn cho viên pill bên dưới — `toggleVariants` của repo mặc
               // định tô `aria-pressed:bg-muted`, để nguyên thì có HAI lớp nền
               // và viên pill trượt trên một vệt xám đứng im.
-              className="relative h-9 rounded-lg px-3.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground aria-pressed:bg-transparent! aria-pressed:text-primary-foreground!"
+              className="relative h-7 rounded-lg px-3 py-1 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground aria-pressed:bg-transparent! aria-pressed:text-primary-foreground!"
             >
               {/* `<span>` chứ không phải `<div>` như bản registry: cái này nằm
                   TRONG `<button>`, mà button chỉ chứa được phrasing content. */}
