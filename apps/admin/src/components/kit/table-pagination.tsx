@@ -23,7 +23,8 @@ import { useRouter } from 'next/navigation';
 
 /**
  * Thanh phân trang cho bảng đọc-từ-server (kit P4b §2.1). Bố cục + class giữ
- * ĐÚNG bản của block `dashboard-01` (`components/data-table.tsx`): câu tổng
+ * ĐÚNG bản của block `dashboard-01` (bản demo `data-table.tsx` đã xoá ở P4d,
+ * đây là nguồn duy nhất): câu tổng
  * bên trái, cụm "Rows per page" · "Page X of Y" · bốn nút nhảy trang bên
  * phải — để bảng vùng và bảng dashboard nhìn là một hệ (user chốt 31/08).
  *

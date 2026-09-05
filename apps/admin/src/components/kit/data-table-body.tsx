@@ -36,9 +36,10 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  * `TableFeatures` được: v9 dựng `getVisibleCells`/`getVisibleLeafColumns`
  * bằng conditional type theo bộ CỤ THỂ, generic mở là chúng biến mất.
  *
- * `ColumnVisibilityMenu` thì đi đường khác (nới ra 01/09): bảng dashboard `/`
- * có thêm sorting/pagination/selection nên không lọt qua kiểu hẹp, mà nó vẫn
- * cần đúng cái menu này — xem hợp đồng tối thiểu bên dưới.
+ * `ColumnVisibilityMenu` thì đi đường khác (nới ra 01/09 cho bản demo
+ * dashboard có sorting/pagination/selection — đã xoá ở P4d): hợp đồng tối
+ * thiểu bên dưới vẫn giữ vì nó không phụ thuộc bộ feature nào, và bảng nào
+ * mọc thêm feature sau này vẫn lọt.
  */
 type AdminTable<TData extends RowData> =
   | TanstackTable<typeof serverTableFeatures, TData>

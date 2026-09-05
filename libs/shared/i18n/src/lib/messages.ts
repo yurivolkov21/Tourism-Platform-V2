@@ -2627,7 +2627,6 @@ export const messages = {
     dashboard: {
       // Bốn card KHÔNG có copy riêng ở đây (P4d, ADR-0036 §1): trang `/` dùng
       // đúng kit `StatCardRow` + `toBookingsStatCards`, nhãn ở `admin.stats.bookings`.
-      awaiting: 'Awaiting live data',
       chart: {
         title: 'Revenue over time',
         /**

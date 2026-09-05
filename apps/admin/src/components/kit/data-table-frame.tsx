@@ -2,9 +2,10 @@ import type * as React from 'react';
 
 /**
  * KHUNG chung của mọi bảng admin — bê nguyên cấu trúc + class của block
- * `dashboard-01` đang chạy ở trang `/` (`components/data-table.tsx`): một
- * hàng điều khiển trên cùng (chọn view bên trái · hành động bên phải), thân
- * bảng bọc viền bo góc, thanh phân trang dưới cùng.
+ * `dashboard-01` (bản demo `components/data-table.tsx` đã xoá ở P4d, ADR-0036
+ * §3 — file này nay là NGUỒN DUY NHẤT của khung ấy): một hàng điều khiển trên
+ * cùng (chọn view bên trái · hành động bên phải), thân bảng bọc viền bo góc,
+ * thanh phân trang dưới cùng.
  *
  * Vì sao tách ra kit thay vì mỗi vùng tự dựng lại (user chốt 31/08 — "các
  * bảng phải đồng bộ, thống nhất một kiểu thiết kế"): copy-paste ba lần cho
@@ -12,8 +13,9 @@ import type * as React from 'react';
  * Ở đây khoảng cách (`gap-6` ngoài, `gap-4` trong) và padding (`px-4 lg:px-6`)
  * có ĐÚNG MỘT nguồn; vùng chỉ điền nội dung vào bốn khe.
  *
- * Trang `/` vẫn giữ nguyên bản demo của block (P4d mới nối số thật) — khi nó
- * đổi sang dữ liệu thật thì dùng lại chính khung này.
+ * Trang `/` từ P4d cũng lắp bảng "Recent bookings" vào chính khung này
+ * (`recent-bookings-table.tsx`) — footer của nó là một link thay vì thanh
+ * phân trang, khe `footer` nhận `ReactNode` nên không phải nới gì.
  */
 export interface DataTableFrameProps {
   /** Khe trái hàng điều khiển: tab lọc (desktop) + select tương đương (mobile). */
