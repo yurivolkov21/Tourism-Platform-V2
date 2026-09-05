@@ -6,15 +6,15 @@
 import { SidebarInset, SidebarProvider } from '@tourism/ui/components/sidebar';
 import { cookies } from 'next/headers';
 import { AppSidebar } from '@/components/app-sidebar';
+import { RecentBookingsTable } from '@/components/bookings/recent-bookings-table';
 import { ChartAreaInteractive } from '@/components/chart-area-interactive';
-import { DataTable } from '@/components/data-table';
 import { StatCardRow } from '@/components/kit/stat-card';
 import { SiteHeader } from '@/components/site-header';
+import { fetchRecentAdminBookings, RECENT_BOOKINGS_LIMIT } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
+import { toBookingRow } from '@/lib/bookings-view';
 import { toBookingsStatCards } from '@/lib/stats-view';
-
-import data from './data.json';
 
 export default async function Page() {
   const cookie = (await cookies()).toString();
@@ -29,10 +29,13 @@ export default async function Page() {
   //
   // Biểu đồ: chuỗi 90 ngày MỘT lần, không cache (ADR-0036 §2); bộ chọn 7/30
   // cắt đuôi ở client.
-  const [session, stats, series] = await Promise.all([
+  //
+  // Bảng: mười booking mới nhất qua `admin.bookings.list` (ADR-0036 §3).
+  const [session, stats, series, recent] = await Promise.all([
     getServerSession(),
     fetchAdminBookingsStats(cookie),
     fetchAdminDashboardSeries(cookie),
+    fetchRecentAdminBookings(cookie),
   ]);
   if (!session) return null;
   return (
@@ -54,7 +57,14 @@ export default async function Page() {
               <div className="px-4 lg:px-6">
                 <ChartAreaInteractive points={series.points} currency={series.currency} />
               </div>
-              <DataTable data={data} />
+              <RecentBookingsTable
+                // `toBookingRow` cần một query để dựng href mang bộ lọc; bảng
+                // này không đọc `href` (cột Code đi qua `BookingLink`, href
+                // trần) nên truyền query rỗng — không có bộ lọc nào để mang.
+                rows={recent.map((booking) =>
+                  toBookingRow(booking, { page: 1, limit: RECENT_BOOKINGS_LIMIT, allDates: true }),
+                )}
+              />
             </div>
           </div>
         </div>

@@ -32,6 +32,23 @@ export async function fetchAdminBookings(
   });
 }
 
+/** Số hàng của bảng "Recent bookings" trên dashboard (ADR-0036 §3). */
+export const RECENT_BOOKINGS_LIMIT = 10;
+
+/**
+ * Mười booking MỚI NHẤT cho dashboard `/` (ADR-0036 §3) — không lọc trạng
+ * thái, không lọc ngày ("gần nhất" là gần nhất tuyệt đối, KHÔNG độn tháng
+ * hiện tại như `/bookings`), server đã `orderBy createdAt desc`.
+ * `includeMedia: false` vì bảng không có cột ảnh — cùng lý do đường export.
+ */
+export async function fetchRecentAdminBookings(cookie: string): Promise<Booking[]> {
+  const paged = await api.admin.bookings.list(
+    { page: 1, limit: RECENT_BOOKINGS_LIMIT, includeMedia: false },
+    { context: withAdminAuth(cookie) },
+  );
+  return paged.items;
+}
+
 /**
  * TOÀN BỘ tập đang lọc, gom bằng cách lặp trang trên chính `admin.bookings.list`
  * (spec P4b §3-F6 — nguồn của nút Export CSV).

@@ -135,6 +135,13 @@ export interface BookingRowVM {
   customerEmail: string;
   departure: string;
   href: string;
+  /**
+   * Lúc booking được TẠO, đã format ("29 Aug 2026, 02:05 UTC"). Bảng "Recent
+   * bookings" của dashboard (ADR-0036 §3) in cột này vì "gần nhất" cần một
+   * con dấu thời gian mới đọc được; `/bookings` chưa hiện nó — thêm khi có
+   * nhu cầu, không phải ở đây.
+   */
+  createdAt: string;
 }
 
 /** Booking của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -154,5 +161,6 @@ export function toBookingRow(booking: Booking, query: BookingsQuery): BookingRow
     // trang chi tiết dựng đích đến từ chính query này, nên vòng đi–về không
     // nhả filter. Chi tiết luật ở `bookingDetailHref`.
     href: bookingDetailHref(query, booking.code),
+    createdAt: formatDateTime(booking.createdAt),
   };
 }

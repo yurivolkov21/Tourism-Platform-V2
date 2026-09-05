@@ -7,19 +7,21 @@ import {
   useTable,
 } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
-import { Badge } from '@tourism/ui/components/badge';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Checkbox } from '@tourism/ui/components/checkbox';
-import {
-  BanknoteIcon,
-  CalendarOffIcon,
-  MapPinIcon,
-  TagIcon,
-  UserIcon,
-  UsersIcon,
-} from 'lucide-react';
+import { CalendarOffIcon } from 'lucide-react';
 import Link from 'next/link';
 import * as React from 'react';
+import {
+  AmountCell,
+  BOOKING_COLUMN_ICONS,
+  BOOKING_COLUMN_LABELS,
+  CustomerCell,
+  GuestsCell,
+  RightHeader,
+  StatusCell,
+  TourCell,
+} from '@/components/bookings/booking-cells';
 import {
   BookingsClearFilters,
   BookingsDateRange,
@@ -32,12 +34,7 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { selectableTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { type BookingsQuery, bookingsHref } from '@/lib/bookings-query';
-import {
-  type BookingRowVM,
-  formatCalendarDate,
-  formatDateRange,
-  statusBadgeVariant,
-} from '@/lib/bookings-view';
+import { type BookingRowVM, formatCalendarDate, formatDateRange } from '@/lib/bookings-view';
 import { PAGE_SIZE_OPTIONS } from '@/lib/table-query';
 
 /**
@@ -60,27 +57,8 @@ const t = messages.admin.bookings.list;
 
 const columnHelper = createColumnHelper<typeof selectableTableFeatures, BookingRowVM>();
 
-/** Nhãn cho menu ẩn/hiện — chỉ cột ẩn ĐƯỢC mới cần entry (review F3). */
-const COLUMN_LABELS: Record<string, string> = {
-  tourTitle: t.columns.tour,
-  statusLabel: t.columns.status,
-  guests: t.columns.guests,
-  amount: t.columns.amount,
-  customerName: t.columns.customer,
-};
-
-/**
- * Icon đầu mỗi dòng trong menu Columns (khuôn `dropdown-menu-12`, user chốt
- * 01/09). Khoá theo ĐÚNG `column.id` của `COLUMN_LABELS` — cùng bộ khoá, để
- * đổi tên một cột là thấy ngay cả hai chỗ phải sửa.
- */
-const COLUMN_ICONS = {
-  tourTitle: MapPinIcon,
-  statusLabel: TagIcon,
-  guests: UsersIcon,
-  amount: BanknoteIcon,
-  customerName: UserIcon,
-};
+// Nhãn + icon của menu Columns và năm ô thân dùng CHUNG với bảng "Recent
+// bookings" của dashboard — xem `booking-cells.tsx` (ADR-0036 §3).
 
 /**
  * Cột nhận `query`/`total` qua tham số (không đọc từ module) vì nút Export nay
@@ -154,41 +132,23 @@ function buildColumns(query: BookingsQuery, total: number) {
     }),
     columnHelper.accessor('tourTitle', {
       header: t.columns.tour,
-      cell: ({ row }) => (
-        <div className="max-w-64">
-          <div className="truncate">{row.original.tourTitle}</div>
-          <div className="truncate text-xs text-muted-foreground">{row.original.departure}</div>
-        </div>
-      ),
+      cell: ({ row }) => <TourCell row={row.original} />,
     }),
     columnHelper.accessor('statusLabel', {
       header: t.columns.status,
-      cell: ({ row }) => (
-        <Badge variant={statusBadgeVariant(row.original.status)} className="px-1.5">
-          {row.original.statusLabel}
-        </Badge>
-      ),
+      cell: ({ row }) => <StatusCell row={row.original} />,
     }),
     columnHelper.accessor('guests', {
-      header: () => <div className="w-full text-right">{t.columns.guests}</div>,
-      cell: ({ row }) => (
-        <div className="text-right tabular-nums" title={row.original.guestsLabel}>
-          {row.original.guests}
-        </div>
-      ),
+      header: () => <RightHeader>{t.columns.guests}</RightHeader>,
+      cell: ({ row }) => <GuestsCell row={row.original} />,
     }),
     columnHelper.accessor('amount', {
-      header: () => <div className="w-full text-right">{t.columns.amount}</div>,
-      cell: ({ row }) => <div className="text-right tabular-nums">{row.original.amount}</div>,
+      header: () => <RightHeader>{t.columns.amount}</RightHeader>,
+      cell: ({ row }) => <AmountCell row={row.original} />,
     }),
     columnHelper.accessor('customerName', {
       header: t.columns.customer,
-      cell: ({ row }) => (
-        <div className="max-w-56">
-          <div className="truncate">{row.original.customerName}</div>
-          <div className="truncate text-xs text-muted-foreground">{row.original.customerEmail}</div>
-        </div>
-      ),
+      cell: ({ row }) => <CustomerCell row={row.original} />,
     }),
     columnHelper.display({
       id: 'export',
@@ -272,7 +232,11 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
               control lên 44px. Nút nay nằm trong ô tiêu đề cột `export` — xem
               `buildColumns`. */}
           <BookingsClearFilters query={query} />
-          <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
+          <ColumnVisibilityMenu
+            table={table}
+            labels={BOOKING_COLUMN_LABELS}
+            icons={BOOKING_COLUMN_ICONS}
+          />
         </>
       }
       footer={

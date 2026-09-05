@@ -116,7 +116,7 @@ describe('toBookingRow', () => {
     new Date('2026-09-04T10:00:00.000Z'),
   );
 
-  it('gói đúng 6 cột của bảng — mọi thứ đã format sẵn, bảng không tự tính', () => {
+  it('gói đủ cột của hai bảng (/bookings + Recent bookings) — mọi thứ đã format sẵn, bảng không tự tính', () => {
     expect(toBookingRow(makeBooking(), QUERY)).toEqual({
       code: 'NX-ABC123',
       tourTitle: 'Ha Long Bay Cruise',
@@ -129,6 +129,7 @@ describe('toBookingRow', () => {
       customerEmail: 'ann@example.com',
       departure: '14 Sep 2026 – 20 Sep 2026',
       href: '/bookings/NX-ABC123?status=PAID&from=2026-07-01&to=2026-07-31&page=2',
+      createdAt: '29 Aug 2026, 02:05 UTC',
     });
   });
 

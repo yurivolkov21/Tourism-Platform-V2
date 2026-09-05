@@ -2662,6 +2662,13 @@ export const messages = {
          * hình, kể cả khi nó mới có một lựa chọn.
          */
         viewLabel: 'Select a view',
+        /** Footer thay phân trang: mười hàng là cửa sổ nhìn, không phải tập để lật. */
+        viewAll: 'View all bookings',
+        empty: 'No bookings yet.',
+        columns: {
+          /** Cột riêng của bảng dashboard — các cột khác dùng `bookings.list.columns`. */
+          created: 'Created',
+        },
       },
     },
     // Copy DÙNG CHUNG của kit bảng admin (spec P4b §2.1 — kit mọc từ vùng
