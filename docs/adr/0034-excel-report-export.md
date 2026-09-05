@@ -143,7 +143,7 @@ Khối `@media print` và bố cục để-in của `/reports` **không đụng 
 giấy là hai đích khác nhau: giấy để đọc và ký, Excel để cộng lại và dán vào chỗ
 khác. Bỏ một cái để có cái kia là mất chứ không phải đổi.
 
-## AMEND 1 — hai chỗ thi công đã sửa lại thiết kế (05/09, cùng ngày)
+## AMEND 1 — hai chỗ thi công đã sửa lại thiết kế (05/09, ghi SAU thi công cùng ngày)
 
 **a. Sheet *Detail* là booking TẠO trong tháng, KHÔNG phải tập của khối P&L.**
 

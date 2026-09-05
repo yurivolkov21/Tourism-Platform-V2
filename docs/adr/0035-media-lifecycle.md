@@ -283,7 +283,11 @@ hạn vô thời hạn) và `requeue` lúc gỡ (đặt lại `created_at`, xoá
 **c. `not found` đếm RIÊNG khỏi `ok`.** Cả hai đều là xong, nhưng log lượt
 chạy đầu là thứ duy nhất nói bộ dọn có xoá thật không: publicId sai dạng
 (thiếu folder, sai resource type) làm MỌI row trả `not found`, hàng đợi sạch
-bong mà không byte nào bị xoá. `sweep` trả một `SweepReport` năm số.
+bong mà không byte nào bị xoá. `sweep` trả một `SweepReport` năm số. Giả định
+đang dựa vào: Cloudinary lưu asset ở `<folder>/<basename>` (fixed-folder mode —
+cùng giả định của `isOwnAvatarPublicId` và cổng folder của review); cloud bật
+*dynamic folders* thì publicId thật chỉ là `basename` và `absent` sẽ bằng tất
+cả — đó là dấu hiệu phải đọc ở lượt chạy đầu.
 
 **d. Lưới thứ hai cho cờ bật.** `env.ts` từ chối boot khi `MEDIA_GC_ENABLED`
 mà `NODE_ENV !== 'production'`: `.env.production` (có secret) nằm ngay trên

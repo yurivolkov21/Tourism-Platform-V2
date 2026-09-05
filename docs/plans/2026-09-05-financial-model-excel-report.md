@@ -1973,7 +1973,7 @@ sang phase `/tours`.
 
 | Món | Trạng thái |
 | --- | --- |
-| **`pnpm gate:int`** | Đã chạy typecheck · unit (2.923) · int (382) · lint — tất cả xanh. **`build` CHƯA chạy** vì dev server của user giữ `.next`. Luật CLAUDE.md #11 chưa thoả cho tới khi nó xanh. |
+| **`pnpm gate:int`** | Session thi công chạy typecheck · unit · int · lint xanh nhưng **`build` chưa chạy** (dev server giữ `.next`). Session review 05/09 chạy TRỌN `pnpm gate:int` (kể cả build web/admin/api, API tạm trên docker DB theo công thức CI) — xanh; luật CLAUDE.md #11 thoả. |
 | **Review ở session khác** | User chốt 05/09: commit thì được, merge phải qua một đợt review chạy ở session KHÁC. Không merge từ trong session thi công. |
 
 ### Cần user làm, không phải code
