@@ -1671,7 +1671,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 9: Xuất Excel
+### Task 9: Xuất Excel ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/admin/package.json` (thêm `exceljs`)
@@ -1907,7 +1907,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 10: Gate đầy đủ và docs sweep
+### Task 10: Gate đầy đủ và docs sweep 🔧 *(docs xong 05/09; `pnpm build` còn nợ — dev server giữ `.next`)*
 
 **Files:**
 - Modify: `docs/CHANGELOG.md`

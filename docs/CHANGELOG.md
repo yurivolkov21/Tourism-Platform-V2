@@ -8,6 +8,124 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — Mô hình tài chính, xuất Excel, và ba vòng phụ (nhánh `fix/p4c-backend-logic`, 22 commit `231a4c7..cfad451`, 85 file, 2 migration)
+
+Đợt dài nhất từ đầu P4. Mở ra từ góp ý của giảng viên — *báo cáo nên xuất Excel
+thay vì CSV* — nhưng mở file ra thì vấn đề nằm sâu hơn một tầng: **không có con
+số nào để mà xuất cho đẹp.**
+
+### Bốn sự thật đo được ở vòng rà, không phải đọc lướt
+
+`Tour.costPrice` nằm trong schema từ migration `init` với comment "margin
+analytics" và **không một dòng code nào đọc hay ghi nó**. `grep -in "tax|vat"`
+toàn `schema.prisma` trả về đúng hai kết quả, cả hai là chữ *taxonomy* trong
+comment bảng tag blog. `refundedTotal` cố ý KHÔNG trừ vào `revenue`. Và
+`revenue` neo `paid_at` — tức **tiền vào, không phải doanh thu**: ngành tour
+ghi nhận khi chuyến CHẠY, nên hệ đang gọi tiền đặt cọc của một chuyến tháng 12
+là doanh thu tháng 9.
+
+Bốn thứ cộng lại: bốn stat card của `/reports` không card nào nói được lãi lỗ,
+và không thể có chừng nào chưa có giá vốn.
+
+### Mô hình tài chính — [ADR-0033](adr/0033-financial-model.md)
+
+Chốt **THÊM một cách đọc, không đổi cách đọc cũ**: cột "Dòng tiền" (neo
+`paid_at`) đứng cạnh cột "Kết quả kinh doanh" (neo `departure_end_date`, cùng
+mốc mà `reviewSlot()` bên web đã dùng). Đổi nghĩa `revenue` là đổi ý nghĩa một
+pill delta đang hiển thị trên ba trang.
+
+Giá vốn khai ở bảng mới `tour_cost_items` với cờ `PER_PERSON`/`PER_DEPARTURE`.
+Chính cờ ấy mới diễn đạt được luật huỷ: **chi phí cố định ở lại (xe vẫn chạy),
+chi phí biến đổi đi theo khách**. Một cột giá vốn gộp không nói được điều đó.
+Đóng băng vào giao dịch (`bookings.cost_per_person`,
+`tour_departures.fixed_cost_amount`) vì join sống thì sửa giá thuê xe hôm nay
+sẽ VIẾT LẠI lợi nhuận của báo cáo tháng trước — cùng lý do bảng `bookings` đang
+snapshot `unit_price`. Cả hai nullable, và null KHÁC 0: báo cáo đếm số booking
+thiếu dữ liệu rồi nói ra, còn `0.00` tự nhận là "tour không tốn gì" và biến một
+lỗ hổng dữ liệu thành lợi nhuận.
+
+Thuế tính **trên MARGIN** kiểu Tour Operators' Margin Scheme: giá bán đã gồm
+thuế nên phải bóc bằng `rate/(1+rate)`, không nhân thẳng; margin âm thì không
+có thuế — luật của scheme, không phải làm tròn, và bỏ vế ấy là sinh ra thuế ÂM
+cộng vào lợi nhuận của tháng lỗ.
+
+### Xuất Excel — [ADR-0034](adr/0034-excel-report-export.md)
+
+**Đảo** quyết định 0-dependency chốt 31/08. Lý do thật không phải cái đuôi
+file: ô CSV chỉ mang được văn bản, nên `reportCsvRows` phải hy sinh cách trình
+bày để cứu tính toán — JSDoc của chính nó thú nhận điều đó. Với ExcelJS thì số
+là `number` kèm `numFmt`: file vừa đọc như tiền vừa SUM được. Năm sheet, và
+sheet *Detail* có autofilter — thứ biến báo cáo thành kiểm chéo được thay vì
+phải tin.
+
+Ranh giới chốt: **báo cáo thì Excel, dữ liệu thì CSV** — `/bookings` và
+`/subscribers` không đụng tới.
+
+### Vòng đời media — [ADR-0035](adr/0035-media-lifecycle.md)
+
+Rà ra hệ có **bốn đường tạo ảnh và không đường nào xoá**; bảng `media_garbage`
+đã được thiết kế sẵn làm hàng đợi xoá có retry từ migration `init` và chưa dòng
+code nào chạm vào — y hệt `costPrice`. Đây là lỗ NỘI DUNG chứ không phải hoá
+đơn lưu trữ: ảnh của review bị bác vẫn mở được bằng URL với bất kỳ ai có link.
+
+Xoá đi qua hàng đợi **độ trễ 7 ngày** (destroy của Cloudinary không hoàn tác
+được), và **chỉ xoá khi không còn tham chiếu, kiểm lúc XOÁ chứ không lúc xếp
+hàng** — `@@unique([ownerType, ownerId, publicId])` là per-owner CỐ Ý nên một
+publicId gắn được nhiều owner. Ký upload là *đăng ký theo dõi*: upload bỏ dở là
+nguồn mồ côi lớn nhất và là nguồn duy nhất DB không bao giờ có row để biết.
+Mặc định TẮT bằng cờ env vì dev/prod dùng chung một Cloudinary cloud.
+
+### Vòng chỉnh thanh lọc admin
+
+User chốt qua [bản demo](design/mockups/admin-toolbar-sizing.src.html): hàng
+điều khiển hạ 44px → **36px** (hạ CẢ dải tab, và giữ đệm `p-1` rồi hạ viên pill
+xuống `h-7` — bóp đệm cũng ra 36px nhưng pill khi ấy chiếm 89% khung thay vì
+82%, tức trông đặc hơn chứ không nhỏ đi); **một nút Clear** đỏ nhạt cho cả hàng
+thay bảy nút rời; bộ lọc ngày thành **range picker một nút** lịch hai tháng.
+Cộng trả nợ `/reviews`: hai ô lọc `source` và `rating` mà server đã lọc thật từ
+F4 nhưng chưa có ô nào để bấm.
+
+### Bốn thứ THI CÔNG mới lộ ra, ADR đã sai và phải sửa
+
+1. **Avatar không có row `media_assets` nào** — `setAvatar` chỉ ghi một URL vào
+   `User.image`. Phép kiểm tham chiếu chỉ hỏi `media_assets` sẽ destroy đúng
+   avatar khách đang dùng, bảy ngày sau khi họ đổi nó. Vá ở ADR-0035 §AMEND 1.
+2. **`dueBefore` với `graceDays` âm trả mốc ở TƯƠNG LAI** — mọi row đều quá hạn
+   kể cả row vừa ghi. Một dấu trừ xoá sạch lưới an toàn 7 ngày. Test bắt.
+3. **Sửa migration đã apply là drift** — plan tự viết bước ấy và người thi công
+   dẫm phải; Prisma đòi `migrate reset`. CHECK chuyển sang migration riêng, và
+   plan được sửa lại để không dạy ngược luật CLAUDE.md.
+4. **`WorkerModule` import `MediaModule` làm worker chết lúc bootstrap** —
+   module kia khai controller mang `ThrottlerGuard` mà worker không có tầng
+   HTTP. Ba int spec worker đỏ ngay lượt đầu; tách `MediaGarbageModule` không
+   controller.
+
+### Hai lỗ dữ liệu có từ trước, phát hiện lúc viết test
+
+**Catalogue chỉ có 29 tour, không phải 30** — Bắc 12 + Trung 9 + Nam 8, trong
+khi roster spec cấp cho miền Nam dải #22–30 và mọi doc đều nói "30 tour".
+**ADR-0007 là trích dẫn treo** — `schema.prisma` trỏ tới nó ở ba chỗ cho outbox
+mà `docs/adr/` nhảy thẳng 0006 → 0008.
+
+### Sự cố: `/reports` trả 500 sau Task 6
+
+`migrate dev` chỉ áp docker local; Supabase không nhận gì, nên hai câu raw SQL
+mới đọc `b.cost_per_person` trên một DB không có cột ấy. **Lần thứ hai dính
+đúng cơ chế này** (12/08 là enum `REVIEW`). Nguy hiểm hơn lần đầu vì `pnpm gate`
+VẪN XANH: unit chạy trên mock, int chạy trên `tourism_test` của docker đã
+migrate — không gì trong bộ test bắt được sự lệch giữa docker local và Supabase.
+Đã `migrate deploy` (user duyệt) và nghiệm thu bằng `information_schema` chứ
+không tin dòng "successfully applied".
+
+**Review findings:** hook pre-commit chặn một lỗi thật trong spec Excel
+(`valueOf` che global) cộng chín `!` — thay bằng một helper ném lỗi có kèm danh
+sách sheet đang có. Dọn kèm 24 khoá copy chết, `date-picker-field.tsx` mồ côi,
+và `reportCsvRows` cùng bộ máy chỉ nó cần.
+
+**Tests after:** 2.916 unit (10 tokens · 232 contract · 22 ui · 2 i18n · 370 api
+· 842 admin · 1.438 web) và 382 integration. `build` chưa chạy được vì dev
+server của user đang giữ `.next` — ghi nợ, phải xanh trước khi merge.
+
 ## 2026-09-05 — Review có trạng thái "đã bác", và tác giả có đường viết lại (nhánh `fix/p4c-backend-logic`, 7 commit `fbf0e09..d810a66`, ~40 file, 2 migration)
 
 Bước 2 và 3 của kế hoạch ba bước, cộng một mục vá chen giữa. Cả đợt sinh ra từ
