@@ -98,8 +98,6 @@ const DAY_FORMAT = new Intl.DateTimeFormat('en-US', {
 });
 const YEAR_FORMAT = new Intl.DateTimeFormat('en-US', { year: 'numeric', timeZone: 'UTC' });
 
-const DAY_MS = 86_400_000;
-
 /**
  * Nhãn khoảng ngày cho một kỳ `[fromIso, toIso)` — 'Sep 1 – Sep 30, 2026'.
  *
@@ -117,8 +115,10 @@ const DAY_MS = 86_400_000;
  */
 export function statsRangeLabel(fromIso: string, toIso: string): string {
   const from = new Date(fromIso);
-  // Ngày cuối TÍNH VÀO = mốc chặn lùi một ngày.
-  const to = new Date(Date.parse(toIso) - DAY_MS);
+  // Ngày cuối TÍNH VÀO = ngày lịch của mốc chặn lùi MỘT mili-giây: chặn ở
+  // 00:00 ngày 1/10 → 30/09; chặn ở 10:30 ngày 5/9 (kỳ bị cắt tại `now`,
+  // ADR-0028 AMEND 3) → 5/9 chứ không phải 4/9 như phép "lùi một ngày" cũ.
+  const to = new Date(Date.parse(toIso) - 1);
   const fromYear = YEAR_FORMAT.format(from);
   const toYear = YEAR_FORMAT.format(to);
 
@@ -152,12 +152,14 @@ const isInstant = (iso: string | undefined): boolean => !Number.isNaN(Date.parse
  * nên kiểm mỗi `currentTo` thì lỗi chỉ dời xuống một dòng.
  */
 function isPickedPeriod(period: StatsPeriod): boolean {
-  return (
-    isInstant(period.currentTo) &&
-    isInstant(period.currentFrom) &&
-    isInstant(period.previousFrom) &&
-    period.currentTo !== period.generatedAt
-  );
+  if (!isInstant(period.currentTo) || !isInstant(period.currentFrom)) return false;
+  if (!isInstant(period.previousFrom)) return false;
+  // Cờ tường minh từ ADR-0028 AMEND 3. API cũ (lệch phiên bản lúc deploy)
+  // không có field này → ngả về dấu hiệu cũ, cùng tinh thần "kém cụ thể hơn,
+  // không hỏng" ở trên.
+  const flag = (period as { picked?: unknown }).picked;
+  if (typeof flag === 'boolean') return flag;
+  return period.currentTo !== period.generatedAt;
 }
 
 /**

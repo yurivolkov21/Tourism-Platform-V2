@@ -430,3 +430,38 @@ Hệ quả cần nhớ khi làm đợt ấy: `averageRating` **cố ý** không 
 nên khi toolbar có bộ lọc source, card ấy sẽ không ăn theo nó. Hoặc chấp nhận
 và nói rõ trên nhãn, hoặc lúc đó mới quyết cho nó ăn theo.
 
+## AMEND 3 05/09 (vòng vá review) — kỳ hiện tại bị CẮT ở lúc chốt sổ, và cờ `picked` tường minh
+
+Review 8 mũi ở session gốc đo được trên màn hình MẶC ĐỊNH của `/bookings`:
+trang độn trọn tháng hiện tại, nên đọc ngày 05/09 là kỳ này `[01/09, 01/10)`
+mới trôi 5 ngày bị đem so với kỳ trước `[02/08, 01/09)` đã trọn 30 ngày —
+pill in `↓ ~83%` suốt gần cả tháng, và dòng "Showing Sep 1 – Sep 30, 2026"
+khẳng định một kỳ chưa xảy ra. §2 chốt HÌNH DẠNG cửa sổ nhưng không bàn ca kỳ
+chưa trọn; chính `statsWindow` đã tránh lỗi này cho cửa sổ trượt ("mọi metric
+sẽ trông như đang tụt") mà luật ấy không được áp cho nhánh có bộ lọc.
+
+**a. `currentTo = min(to + 1 ngày, now)`; kỳ trước dài đúng bằng phần đã trôi.**
+Bất biến "hai kỳ dài bằng nhau" nay đúng về LƯỢNG DỮ LIỆU chứ không chỉ về độ
+dài danh nghĩa. Bảng ở §2 vẫn đúng cho mọi khoảng nằm trọn trong quá khứ;
+khoảng lấn qua `now` bị cắt. Nhãn "Showing" in ngày lịch của `currentTo − 1ms`
+nên kỳ bị cắt đọc là "Sep 1 – Sep 5, 2026" — thật.
+
+**b. `StatsPeriod.picked: boolean`.** Client từng suy "kỳ đã chọn" từ
+`currentTo !== generatedAt`; nhánh chỉ-`from` (§2 cố ý cho hai mốc trùng) và
+nay cả kỳ bị cắt đều làm dấu hiệu ấy nói sai — mất dòng Showing, caption rơi
+về "prior N days". Server là nơi duy nhất biết có input hay không, nên nó nói
+thẳng. Admin cũ đứng cạnh API mới không sao (field thừa); admin mới đứng cạnh
+API cũ ngả về dấu hiệu cũ (cùng lưới lệch-phiên-bản đã có).
+
+**c. `from` ở tương lai → kỳ RỖNG, không kỳ ÂM.** Contract chỉ chặn
+`from > to` khi có cả hai; `?from=2027-01-01` một mình lọt qua và span âm làm
+`previousFrom > currentFrom > currentTo` — mọi query 0 mà không mã lỗi nào nói
+ra. Nay `currentFrom = min(from, currentTo)`.
+
+**Giới hạn ghi nhận, chưa chữa:** `pendingReviewsAt` và `averageRating` của
+`/reviews` đọc `rejected_at` HIỆN TẠI; ADR-0032 §4 cho tác giả sửa review bị
+bác và xoá `rejected_at` mà cố ý không ghi event, nên một kỳ đã đóng đổi số
+khi tác giả sửa bài hôm nay. Chữa đúng là suy trạng-thái-tại-mốc từ
+`review_moderation_events` cộng một dấu vết cho lần sửa — đáng một ADR riêng
+cùng câu hỏi "sửa review có phải sự kiện moderation không".
+

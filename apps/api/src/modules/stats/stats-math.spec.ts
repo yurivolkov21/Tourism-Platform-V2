@@ -44,19 +44,40 @@ describe('statsWindow', () => {
 describe('statsWindowFromRange', () => {
   // 04/09 lúc 10:30 — cùng mốc mà ví dụ của ADR-0028 §2 dùng.
   const NOW_SEP = new Date('2026-09-04T10:30:00.000Z');
+  // Mốc SAU mọi khoảng bên dưới — để test hình dạng cửa sổ không bị AMEND 3
+  // cắt ở `now` (ca cắt có test riêng).
+  const LATER = new Date('2026-10-04T10:30:00.000Z');
 
-  it('two ends: this period is the whole month, the previous one is EQUALLY long', () => {
-    const w = statsWindowFromRange('2026-09-01', '2026-09-30', NOW_SEP);
+  it('two ends in the PAST: this period is the whole month, the previous one is EQUALLY long', () => {
+    const w = statsWindowFromRange('2026-09-01', '2026-09-30', new Date('2026-10-04T10:30:00Z'));
     expect(w.currentFrom.toISOString()).toBe('2026-09-01T00:00:00.000Z');
     // Trọn ngày 30 → chặn ở 00:00 ngày 1 tháng sau, KHÔNG 23:59:59 (ADR-0028 §3).
     expect(w.currentTo.toISOString()).toBe('2026-10-01T00:00:00.000Z');
     // 30 ngày lùi liền kề, khít với currentFrom.
     expect(w.previousFrom.toISOString()).toBe('2026-08-02T00:00:00.000Z');
-    expect(w.generatedAt).toEqual(NOW_SEP);
+    expect(w.picked).toBe(true);
+  });
+
+  it('the CURRENT month is cut at now, and the previous period is only as long as what has elapsed', () => {
+    // ADR-0028 AMEND 3: /bookings độn trọn tháng hiện tại; đọc 04/09 mà so 5
+    // ngày đã trôi với 30 ngày trọn của kỳ trước là một cú sụt bịa.
+    const w = statsWindowFromRange('2026-09-01', '2026-09-30', NOW_SEP);
+    expect(w.currentFrom.toISOString()).toBe('2026-09-01T00:00:00.000Z');
+    expect(w.currentTo).toEqual(NOW_SEP);
+    // span = 3 ngày 10h30 → kỳ trước lùi đúng bấy nhiêu.
+    expect(w.previousFrom.toISOString()).toBe('2026-08-28T13:30:00.000Z');
+    expect(w.picked).toBe(true);
+  });
+
+  it('`from` in the future gives an EMPTY period, never a negative one', () => {
+    const w = statsWindowFromRange('2027-01-01', undefined, NOW_SEP);
+    expect(w.currentFrom).toEqual(NOW_SEP);
+    expect(w.currentTo).toEqual(NOW_SEP);
+    expect(w.previousFrom).toEqual(NOW_SEP);
   });
 
   it('keeps both windows the same length whatever range is picked', () => {
-    const w = statsWindowFromRange('2026-09-05', '2026-09-12', NOW_SEP);
+    const w = statsWindowFromRange('2026-09-05', '2026-09-12', LATER);
     const current = w.currentTo.getTime() - w.currentFrom.getTime();
     const previous = w.currentFrom.getTime() - w.previousFrom.getTime();
     // Bất biến của cả ADR: pill delta chỉ nói thật khi hai kỳ bằng nhau.
@@ -73,18 +94,19 @@ describe('statsWindowFromRange', () => {
   });
 
   it('to only: takes exactly STATS_WINDOW_DAYS ending at that date', () => {
-    const w = statsWindowFromRange(undefined, '2026-09-30', NOW_SEP);
+    const w = statsWindowFromRange(undefined, '2026-09-30', LATER);
     expect(w.currentTo.toISOString()).toBe('2026-10-01T00:00:00.000Z');
     expect(w.currentFrom.toISOString()).toBe('2026-09-03T00:00:00.000Z');
     expect(w.previousFrom.toISOString()).toBe('2026-08-06T00:00:00.000Z');
   });
 
-  it('neither end: identical to the sliding 28-day window', () => {
+  it('neither end: identical to the sliding 28-day window, and NOT picked', () => {
     expect(statsWindowFromRange(undefined, undefined, NOW_SEP)).toEqual(statsWindow(NOW_SEP));
+    expect(statsWindow(NOW_SEP).picked).toBe(false);
   });
 
   it('a single day: this period is that day, the previous one is the day before', () => {
-    const w = statsWindowFromRange('2026-09-04', '2026-09-04', NOW_SEP);
+    const w = statsWindowFromRange('2026-09-04', '2026-09-04', LATER);
     expect(w.currentFrom.toISOString()).toBe('2026-09-04T00:00:00.000Z');
     expect(w.currentTo.toISOString()).toBe('2026-09-05T00:00:00.000Z');
     expect(w.previousFrom.toISOString()).toBe('2026-09-03T00:00:00.000Z');
@@ -115,6 +137,7 @@ describe('statsPeriod', () => {
       currentTo: '2026-09-01T10:30:00.000Z',
       previousFrom: '2026-07-07T10:30:00.000Z',
       generatedAt: '2026-09-01T10:30:00.000Z',
+      picked: false,
     });
   });
 
@@ -127,8 +150,9 @@ describe('statsPeriod', () => {
   });
 
   it('measures windowDays from the window itself, not from the constant', () => {
-    const w = statsWindowFromRange('2026-09-01', '2026-09-30', NOW);
+    const w = statsWindowFromRange('2026-08-01', '2026-08-30', NOW);
     expect(statsPeriod(w).windowDays).toBe(30);
+    expect(statsPeriod(w).picked).toBe(true);
   });
 
   // Contract khai `z.int().positive()`: làm tròn xuống 0 thì chính response

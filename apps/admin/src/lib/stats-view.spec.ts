@@ -37,6 +37,7 @@ const period = {
   currentTo: '2026-09-01T10:30:00.000Z',
   previousFrom: '2026-07-07T10:30:00.000Z',
   generatedAt: '2026-09-01T10:30:00.000Z',
+  picked: false,
 };
 
 const BOOKINGS: AdminBookingsStats = {
@@ -295,12 +296,35 @@ describe('toReviewsStatCards', () => {
     expect(submitted.deltaGood).toBeUndefined();
   });
 
+  it('cờ `picked` của server thắng dấu hiệu cũ: kỳ bị cắt tại now vẫn là kỳ đã chọn', () => {
+    // ADR-0028 AMEND 3: tháng hiện tại bị cắt ở lúc chốt sổ nên currentTo ===
+    // generatedAt, y hệt cửa sổ trượt — chỉ cờ tường minh mới phân biệt được.
+    const cut = toReviewsStatCards({
+      ...REVIEWS,
+      period: {
+        ...period,
+        currentFrom: '2026-09-01T00:00:00.000Z',
+        currentTo: '2026-09-04T10:30:00.000Z',
+        previousFrom: '2026-08-28T13:30:00.000Z',
+        generatedAt: '2026-09-04T10:30:00.000Z',
+        picked: true,
+      },
+    });
+    expect(card(cut, 'submitted').label).toBe(t.reviews.submittedInPeriod);
+    // Và ngược lại: cờ false thì dù hai mốc khác nhau vẫn là cửa sổ trượt.
+    const sliding = toReviewsStatCards({
+      ...REVIEWS,
+      period: { ...period, generatedAt: '2026-09-20T10:30:00.000Z', picked: false },
+    });
+    expect(card(sliding, 'submitted').label).not.toBe(t.reviews.submittedInPeriod);
+  });
+
   it('kỳ do ADMIN chọn: nhãn BỎ hậu tố "Nd", caption in ngày thật', () => {
     // "Submitted 31d" đọc thành "31 ngày gần nhất", tức một cửa sổ TRƯỢT;
     // nhưng lọc tháng 5 là một kỳ đứng yên (cùng luật đã chốt ở cancellations).
     const picked = toReviewsStatCards({
       ...REVIEWS,
-      period: { ...period, generatedAt: '2026-09-20T10:30:00.000Z' },
+      period: { ...period, generatedAt: '2026-09-20T10:30:00.000Z', picked: true },
     });
 
     expect(card(picked, 'submitted').label).toBe(t.reviews.submittedInPeriod);
@@ -538,6 +562,7 @@ describe('kỳ do admin chọn (ADR-0028)', () => {
     currentTo: '2026-10-01T00:00:00.000Z',
     previousFrom: '2026-08-02T00:00:00.000Z',
     generatedAt: '2026-09-04T10:30:00.000Z',
+    picked: true,
   };
 
   describe('statsRangeLabel', () => {
@@ -644,6 +669,7 @@ describe('kỳ do admin chọn (ADR-0028)', () => {
       currentTo: '2026-06-01T00:00:00.000Z',
       previousFrom: '2026-03-31T00:00:00.000Z',
       generatedAt: '2026-09-04T10:30:00.000Z',
+      picked: true,
     };
 
     it('card ẢNH CHỤP nói tên NGÀY đầu kỳ, không nói "N days ago"', () => {

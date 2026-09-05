@@ -26,6 +26,13 @@ export interface StatsWindow {
   previousFrom: Date;
   /** Thời điểm chốt sổ — mọi query của MỘT response dùng chung một mốc. */
   generatedAt: Date;
+  /**
+   * Kỳ do ADMIN chọn (có ít nhất một ô ngày) hay cửa sổ TRƯỢT mặc định.
+   * Cờ TƯỜNG MINH từ ADR-0028 AMEND 3: client từng suy nó từ
+   * `currentTo !== generatedAt`, mà nhánh chỉ-`from` (và nay cả kỳ bị cắt ở
+   * `now`) cho hai mốc trùng nhau — dấu hiệu ấy nói sai.
+   */
+  picked: boolean;
 }
 
 /**
@@ -54,6 +61,7 @@ export function statsWindow(now: Date): StatsWindow {
     currentTo: new Date(end),
     currentFrom: new Date(end - span),
     previousFrom: new Date(end - 2 * span),
+    picked: false,
   };
 }
 
@@ -96,18 +104,32 @@ export function statsWindowFromRange(
 
   // Trọn ngày `to`: chặn ở 00:00 ngày kế tiếp. Không có `to` thì kỳ chạy tới
   // đúng lúc chốt sổ.
-  const currentTo = to ? new Date(startOfDayUtc(to).getTime() + DAY_MS) : new Date(now.getTime());
-  const currentFrom = from
-    ? startOfDayUtc(from)
-    : new Date(currentTo.getTime() - STATS_WINDOW_DAYS * DAY_MS);
-  const span = currentTo.getTime() - currentFrom.getTime();
+  //
+  // CẮT Ở `now` (ADR-0028 AMEND 3): `/bookings` độn trọn tháng hiện tại, nên
+  // đọc ngày 05/09 thì `to = 30/09` là một mốc ở TƯƠNG LAI. Để nguyên là kỳ
+  // này mới trôi 5 ngày bị đem so với kỳ trước ĐÃ HOÀN TẤT 30 ngày — pill in
+  // "↓ ~83%" trên màn hình mặc định gần trọn tháng, đúng cú sụt bịa mà §2 viện
+  // ra để bác phương án "tháng lịch liền trước". Kỳ này chỉ dài tới đâu đã
+  // trôi tới đó, và kỳ trước dài đúng bằng phần ấy — cùng luật với `statsWindow`
+  // ("hai cửa sổ bằng nhau là điều kiện để pill delta nói thật").
+  const requestedTo = to ? startOfDayUtc(to).getTime() + DAY_MS : now.getTime();
+  const currentToMs = Math.min(requestedTo, now.getTime());
+  const requestedFrom = from
+    ? startOfDayUtc(from).getTime()
+    : currentToMs - STATS_WINDOW_DAYS * DAY_MS;
+  // `from` ở tương lai (URL gõ tay, contract chỉ chặn `from > to`): kỳ RỖNG
+  // chứ không phải kỳ ÂM — span âm làm previousFrom nhảy ra sau currentFrom và
+  // mọi mốc tự mâu thuẫn mà không mã lỗi nào nói ra.
+  const currentFromMs = Math.min(requestedFrom, currentToMs);
+  const span = currentToMs - currentFromMs;
 
   return {
     // `new Date(now)` chứ không dùng lại tham chiếu — cùng lý do ở `statsWindow`.
     generatedAt: new Date(now.getTime()),
-    currentTo,
-    currentFrom,
-    previousFrom: new Date(currentFrom.getTime() - span),
+    currentTo: new Date(currentToMs),
+    currentFrom: new Date(currentFromMs),
+    previousFrom: new Date(currentFromMs - span),
+    picked: true,
   };
 }
 
@@ -119,6 +141,7 @@ export function statsPeriod(window: StatsWindow): StatsPeriod {
     currentTo: window.currentTo.toISOString(),
     previousFrom: window.previousFrom.toISOString(),
     generatedAt: window.generatedAt.toISOString(),
+    picked: window.picked,
   };
 }
 

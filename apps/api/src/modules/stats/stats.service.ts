@@ -491,9 +491,12 @@ export class StatsService {
    * - quyết định gần nhất SAU mốc ⇒ tại mốc nó chưa mang kết quả đó; đang
    *   duyệt bây giờ ⇒ lúc ấy còn chờ.
    *
-   * Vẫn là XẤP XỈ ở đúng một ca: review bị moderate NHIỀU LẦN sau mốc (duyệt
-   * rồi gỡ) — `moderated_at` chỉ giữ lần cuối. `review_moderation_events` có
-   * đủ lịch sử nếu ngày nào cần chính xác tuyệt đối.
+   * Vẫn là XẤP XỈ ở hai ca: (1) review bị moderate NHIỀU LẦN sau mốc (duyệt
+   * rồi gỡ) — `moderated_at` chỉ giữ lần cuối; (2) tác giả SỬA review bị bác
+   * (ADR-0032 §4) xoá `rejected_at` mà không ghi event, nên một review đã bị
+   * bác tại mốc đọc lại thành "đang chờ" — kỳ đã đóng đổi số khi tác giả sửa
+   * bài hôm nay. `review_moderation_events` có đủ lịch sử cho (1); (2) cần
+   * thêm một dấu vết cho lần sửa — ghi nợ ở ADR-0028 AMEND 3.
    */
   private pendingReviewsAt(at: Date): Promise<number> {
     return prisma.review.count({

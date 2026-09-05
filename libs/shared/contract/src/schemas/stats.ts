@@ -91,15 +91,23 @@ export const StatsPeriodSchema = z.object({
    * mốc rời nhau — đọc thống kê tháng 7 vào ngày 4/9 thì kỳ kết ở
    * `2026-08-01T00:00:00Z` còn sổ chốt lúc `2026-09-04T…`.
    *
-   * Hai mốc TRÙNG nhau chính là dấu hiệu "cửa sổ đang trượt", và client dùng
-   * đúng dấu hiệu ấy để chọn giữa caption "prior N days" (kỳ trôi từng phút,
-   * in ngày cụ thể sẽ cũ đi) và caption in ngày thật.
+   * Từ ADR-0028 AMEND 3 mốc này KHÔNG BAO GIỜ ở tương lai: kỳ chọn trọn tháng
+   * hiện tại bị cắt ở lúc chốt sổ, nên hai mốc lại trùng nhau ở kỳ đã chọn —
+   * dấu hiệu "trùng = đang trượt" vì thế không còn đáng tin, xem `picked`.
    */
   currentTo: z.iso.datetime(),
   /** Đầu kỳ TRƯỚC. Kỳ trước là `[previousFrom, currentFrom)`, dài bằng kỳ này. */
   previousFrom: z.iso.datetime(),
   /** Lúc chốt sổ — mọi query của MỘT response dùng chung một mốc. */
   generatedAt: z.iso.datetime(),
+  /**
+   * Kỳ do ADMIN chọn (`true`) hay cửa sổ trượt 28 ngày (`false`) — cờ TƯỜNG
+   * MINH, server là nơi duy nhất biết có input hay không (ADR-0028 AMEND 3).
+   * Client dùng nó để chọn giữa caption "prior N days" và caption in ngày
+   * thật; trước đây suy từ `currentTo !== generatedAt`, sai ở nhánh chỉ-`from`
+   * và ở kỳ bị cắt tại `now`.
+   */
+  picked: z.boolean(),
 });
 export type StatsPeriod = z.output<typeof StatsPeriodSchema>;
 
