@@ -720,10 +720,11 @@ export const contract = {
      * (ADR-0028) — hàng card ăn theo hai ô ngày của bảng ngay dưới nó, thiếu
      * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings`,
      * `cancellations` và `reviews`, cùng dùng `AdminStatsRangeQuerySchema` chứ
-     * không mỗi vùng một bản. Bốn endpoint còn lại KHÔNG có input: trang của chúng chưa
-     * có bộ lọc ngày nào, và thêm một tham số không ai gửi là thêm một nhánh
-     * không ai test. Vùng nào mọc bộ lọc ngày thì lặp lại đúng khuôn ấy, đừng
-     * dựng cửa sổ thứ hai.
+     * không mỗi vùng một bản. Bốn endpoint vùng còn lại KHÔNG có input: trang
+     * của chúng chưa có bộ lọc ngày nào, và thêm một tham số không ai gửi là
+     * thêm một nhánh không ai test. Vùng nào mọc bộ lọc ngày thì lặp lại đúng
+     * khuôn ấy, đừng dựng cửa sổ thứ hai. `dashboard` (ADR-0036) là loại khác
+     * hẳn — chuỗi theo ngày, input `?days=` — không phải một vùng.
      *
      * KHÔNG khai lỗi nghiệp vụ: đọc thuần, không phán quyết gì. Guard
      * `AuthGuard` + `@Roles(ADMIN)` ở controller cho 401/403 như bảy endpoint
