@@ -8,6 +8,84 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — P4d merge + vòng review 8 mũi cho dashboard (nhánh `feat/p4d-dashboard`, 12 commit `a68b309..bb61aaf` ff vào main, 38 file, KHÔNG migration)
+
+Entry ngay dưới ghi "chưa merge, chờ review ở session riêng" — đợt review ấy
+làm ở session gốc theo nếp "review theo tầng" của vòng backend 05/09: 8
+mũi finder theo miền (endpoint · contract · card · chart · bảng · ADR/docs ·
+altitude · conventions), 3 verifier, `gate:int` chạy trong worktree riêng
+`~/projects/tourism-v2-p4d` (API tạm cổng 3011 trên docker DB) để không chạm
+cây user đang làm W1. 10 finding bảng + 5 món verifier xác nhận thêm, vá trong
+4 commit rồi ff.
+
+### Findings và cách vá (theo tầng)
+
+**Tầng chính sách**
+
+1. **Một khối hỏng kéo sập cả trang `/`** (`779b50f`, ADR-0036 AMEND 2 §1).
+   `Promise.all` ba fetch: một endpoint 404 vài phút lúc lệch phiên bản deploy
+   (ADR-0024) là cả trang chủ rơi vào `error.tsx` không shell — admin mất
+   sidebar, tức mất đường sang các hàng đợi vẫn chạy tốt. Nay
+   `Promise.allSettled`, khối rơi vẽ kit mới `SectionError` (i18n
+   `admin.dashboard.loadError`) + `console.error`; luật "không nuốt lỗi" của
+   `lib/api/stats.ts` vẫn đúng cho trang vùng một-khối.
+2. **ADR bị sửa thân trong commit thi công** (`bb61aaf`). Quyết định "một
+   trục" được chèn vào giữa §2 như quyết định gốc trong khi CHANGELOG khai
+   "ghi thành AMEND" — vi phạm luật ADR đi trước code. Tách ra `AMEND 1 — ghi
+   SAU thi công`, và `AMEND 2` liệt kê bảy sửa của vòng này.
+
+**Tầng thiết kế**
+
+3. **`series.period` bị vứt** (`779b50f`, AMEND 2 §2). Chart chỉ nhận
+   `points`+`currency`; §2 nói bucket cuối là hôm nay ĐANG CHẠY nhưng UI không
+   nói ra — 9h sáng diện tích luôn kết bằng vách đổ đọc thành "doanh thu sụp".
+   Nay chart nhận cả `AdminDashboardSeries`: "today so far" khi `period.to`
+   rơi vào ngày của point cuối, tab khoá theo `period.days` server trả (consumer
+   xin 7 không được bày "Last 3 months"); hàng card nhận `period` như mọi vùng.
+4. **Đồng tiền hỏi bằng query thứ hai** (`1ee8a00`, AMEND 2 §3).
+   `revenueCurrency` quét lại cùng cửa sổ 90 ngày không index; nay
+   `paidByDay` trả `MAX(currency)` theo ngày trong chính `GROUP BY`, nhãn =
+   đồng của ngày có tiền gần nhất, 'USD' chỉ khi cửa sổ trống.
+5. **Contract không canh `points.length === period.days`** (`1ee8a00`, AMEND 2
+   §4). Chuỗi thiếu point từng qua contract rồi bị `sliceSeries` cắt đuôi im
+   lặng; spec còn chấp nhận `points: []`. Nay `.refine`, ba literal 7/30/90 dẫn
+   từ `DASHBOARD_RANGE_DAYS` (hết ba chỗ gõ tay: contract, admin `ChartRange`,
+   spec tautology).
+
+**Tầng code**
+
+6. `indicator="dot"` chết vì kit bỏ qua nó khi có `formatter` — chấm màu vẽ
+   trong formatter. 7. `formatChartDate` ném RangeError với ngày lạ,
+   `points.slice` ném khi field thiếu (client oRPC KHÔNG validate response) —
+   ngả về rỗng; effect mobile ép 7d mỗi lần đổi breakpoint kể cả sau khi người
+   dùng đã chọn — chỉ ép khi chưa chạm; `onSelect` kiểm `isDashboardRangeDays`
+   thay cast. 8. Ô Code của `/bookings` là bản chép của kit `BookingLink`
+   (`454b944`) — kit nhận `href` mang bộ lọc, `toBookingRow(booking, query?)`
+   hết dựng `BookingsQuery` giả. 9. Bảng Recent dựng `StatusFilterTabs` một
+   mục không icon + `onSelect` rỗng, ô rỗng dùng copy của `/bookings`, spec
+   phải stub `matchMedia` chỉ vì control chết — tiêu đề tĩnh, copy riêng, bỏ
+   stub. 10. Int spec chụp `todayUtc` ở tầng describe (đỏ khi vắt nửa đêm UTC
+   giữa load file và request), fixture PENDING hôm nay ở tương lai và không
+   được khẳng định — chụp trong `beforeEach`, khẳng định không lọt bucket.
+   Thêm: i18n comment "SẼ CÓ ở P4d" và `viewLabel` mồ côi, JSDoc `stat-card`
+   trỏ `section-cards.tsx` đã xoá.
+
+### Còn ghi, chưa chữa
+
+`apps/admin/src/hooks/use-mobile.ts` là bản chép byte-một của hook trong
+`@tourism/ui` (chart còn dùng để ép 7d) — dọn khi có vòng kit. Bốn card vẫn
+cache 60s theo quyết định F5 (ADR-0036 §2 ghi nhận).
+
+### Nghiệm thu
+
+`gate:int` trọn trong worktree, API tạm :3011 kill sau khi xong: build web
+73/73 · admin 16/16 · api; unit contract 247 · api 381 · admin 862 · web 1439 ·
+ui 22 · tokens 10 · i18n 2; lint 976 file; **int 27 file / 397 test** — xanh.
+Test đổi: contract 1 (từ chối chuỗi ngắn/rỗng/dư), admin dashboard-view 14
+(lưới phòng thủ, `rangeOptions`, `endsInRunningBucket`), recent table +1
+(tiêu đề tĩnh, không radiogroup). Không migration, Supabase không cần deploy.
+Chưa kiểm bằng mắt trên localhost.
+
 ## 2026-09-05 — P4d: dashboard `/` nối số THẬT, một endpoint chuỗi theo ngày (nhánh `feat/p4d-dashboard`, 7 commit `a68b309..7b99638`, 34 file, KHÔNG migration — **chưa merge, chờ review ở session riêng**)
 
 Trang `/` từ 20/08 là block `dashboard-01` tái hiện 1:1 rồi gọt sạch số demo
