@@ -838,10 +838,10 @@ describe('admin stats integration (F5)', () => {
       expect(stats.averageRating.previous).toBe('3.50');
     });
 
-    it('submitted đếm ĐÚNG tập mà averageRating tính trên — cùng cột, cùng kỳ', async () => {
-      // ADR-0028 §AMEND 2 §4: hai card này là một cặp. Nếu chúng trôi lệch
-      // (một cái lọc trạng thái duyệt, một cái không) thì "4.50 sao trên 2
-      // review" thành một câu không kiểm chứng được.
+    it('submitted đếm mọi review gửi trong kỳ — kể cả cái sẽ bị bác', async () => {
+      // `submitted` đo KHỐI LƯỢNG VIỆC: một review bị bác vẫn là một review có
+      // người phải đọc. Khi chưa có cái nào bị bác thì nó trùng tập với
+      // `averageRating`; ca chúng TÁCH nhau có test riêng bên dưới.
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
       // Kỳ này: review 2 và 5. Kỳ trước: bốn review của phép tính 3.50 ở trên.
       expect(stats.submitted).toEqual({ current: 2, previous: 4 });
@@ -1006,6 +1006,63 @@ describe('admin stats integration (F5)', () => {
       });
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
       expect(stats.pending).toEqual({ current: 1, previous: 1 });
+    });
+  });
+
+  /**
+   * Vòng 05/09 — review ĐÃ BỊ BÁC không còn tính vào `averageRating`.
+   *
+   * Một review 1 sao spam đã bị bác vẫn kéo tụt điểm trung bình dù không ai
+   * đăng nó lên. Đây cũng là chỗ `submitted` và `averageRating` CHÍNH THỨC
+   * tách tập: một cái đo khối lượng việc, một cái đo ý kiến.
+   */
+  describe('stats.reviews — review bị bác KHÔNG kéo điểm trung bình', () => {
+    beforeEach(async () => {
+      await prisma.review.createMany({
+        data: [
+          // Ý kiến thật, 5 sao.
+          review(41, {
+            rating: 5,
+            isApproved: true,
+            createdAt: daysAgo(3),
+            moderatedAt: daysAgo(2),
+            curated: true,
+          }),
+          // Spam 1 sao, đã bị bác — KHÔNG được vào phép trung bình.
+          review(42, {
+            rating: 1,
+            isApproved: false,
+            createdAt: daysAgo(3),
+            moderatedAt: daysAgo(2),
+            curated: true,
+          }),
+          // Đang chờ duyệt, 5 sao — VẪN là ý kiến thật, phải được tính.
+          review(43, {
+            rating: 5,
+            isApproved: false,
+            createdAt: daysAgo(3),
+            moderatedAt: null,
+            curated: true,
+          }),
+        ],
+      });
+      await prisma.review.update({
+        where: { id: 'e9500004-0000-4000-8000-000000000042' },
+        data: { rejectedAt: daysAgo(2) },
+      });
+    });
+
+    it('điểm trung bình bỏ review bị bác, GIỮ review đang chờ duyệt', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      // (5 + 5) / 2 = 5.00. Tính cả cái 1 sao bị bác thì ra 3.67 — và đó là
+      // con số bản cũ in ra.
+      expect(stats.averageRating.current).toBe('5.00');
+    });
+
+    it('nhưng `submitted` VẪN đếm nó — hai card đo hai thứ khác nhau', async () => {
+      // Đây là chỗ bất biến "cùng một tập" của bản đầu bị phá CÓ CHỦ ĐÍCH.
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      expect(stats.submitted.current).toBe(3);
     });
   });
 

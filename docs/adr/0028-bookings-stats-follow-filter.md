@@ -395,6 +395,25 @@ hẳn.
 mà `averageRating` đang tính trên: **cùng một tập**, cùng một cột neo. Hai card
 ấy vì thế đứng cạnh nhau.
 
+**AMEND 05/09 — hai card ấy nay TÁCH tập, có chủ đích.** Sau ADR-0031 tồn tại
+trạng thái "đã bị bác", và một review 1 sao spam đã bị bác **vẫn kéo tụt**
+`averageRating` dù không ai đăng nó lên. Nên `averageRating` bỏ review bị bác,
+còn `submitted` giữ nguyên.
+
+Chúng đo hai thứ khác nhau, và câu này là ranh giới: **`submitted` đo KHỐI
+LƯỢNG VIỆC** (một review bị bác vẫn là một review có người phải đọc), **còn
+`averageRating` đo Ý KIẾN** (nội dung đã bị phán quyết là không thật thì không
+phải ý kiến của ai).
+
+⚠️ KHÔNG suy ra được "vậy lọc luôn theo trạng thái duyệt": một review **đang
+chờ** vẫn là ý kiến thật, chỉ chưa ai kịp đọc — lọc nó ra sẽ làm một hàng đợi
+tồn đọng tự bóp méo con số mà chẳng khách nào đổi ý. Đó vẫn là lý do gốc của
+§4, và nó không đổi.
+
+Phép suy trạng thái + hai mệnh đề `where` chuyển sang
+`modules/reviews/review-state.ts` cùng đợt: `stats.service` nay cũng phải biết
+luật ấy, và một bản chép thứ hai là một bản sẽ trôi lệch.
+
 Không chọn "lượt GỠ duyệt" làm card thứ tư dù nó đối xứng với `approved` và
 hiện đang vô hình: đó là hành vi hiếm, nên card sẽ đứng yên ở 0 gần như mọi
 lúc — một ô màn hình không kể gì. Audit trail vẫn giữ đủ dữ liệu nếu ngày nào

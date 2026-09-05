@@ -27,6 +27,7 @@ import { MediaService } from '../media/media.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { checkReviewEligibility } from './review-eligibility.js';
+import { REVIEW_STATE_WHERE, reviewModerationState } from './review-state.js';
 
 /**
  * Lỗi domain — MỘT class cho MỖI lỗi, theo đúng pattern đã có ở
@@ -74,14 +75,6 @@ export function toPublicReview(
 
 /** Row + tour slug → shape admin. Admin thấy cả review chưa duyệt. */
 /**
- * Hai cột → MỘT trạng thái (ADR-0031 §1). Ở ĐÂY, một chỗ duy nhất: mỗi nơi tự
- * ghép `isApproved` với `rejectedAt` là một nơi có thể ghép sai, và cái sai ấy
- * im lặng (một review bị bác hiện ra như đang chờ duyệt).
- *
- * Ca "vừa đăng vừa bị bác" không cần xử ở đây — CHECK `reviews_verdict_shape`
- * của DB không cho nó tồn tại.
- */
-/**
  * Include cho MỌI đường đọc trả `AdminReview`. Ba chỗ từng chép tay cùng một
  * object; nay còn phải kèm sự kiện moderation gần nhất (lý do bác), nên chép
  * tay là chắc chắn sót một chỗ và ở đó lý do biến mất im lặng.
@@ -90,19 +83,6 @@ export function toPublicReview(
  * review moderate nhiều lần thì kéo hết về là tốn băng thông cho dữ liệu
  * không ai in ra.
  */
-/**
- * Ba trạng thái → mệnh đề `where`, khai MỘT chỗ (ADR-0031 §1).
- *
- * `pending` là chỗ dễ sai nhất và cũng là lý do ADR-0031 tồn tại: nó KHÔNG
- * phải "chưa đăng" mà là "chưa có phán quyết" — thiếu `rejectedAt: null` thì
- * hàng đợi lại nuốt cả những review đã bị bác, đúng bug vừa chữa.
- */
-const MODERATION_STATE_WHERE: Record<ReviewModerationState, Prisma.ReviewWhereInput> = {
-  pending: { isApproved: false, rejectedAt: null },
-  approved: { isApproved: true },
-  rejected: { rejectedAt: { not: null } },
-};
-
 export const REVIEW_ADMIN_INCLUDE = {
   tour: { select: { slug: true, title: true } },
   moderatedBy: { select: { name: true } },
@@ -112,14 +92,6 @@ export const REVIEW_ADMIN_INCLUDE = {
     select: { note: true },
   },
 } as const satisfies Prisma.ReviewInclude;
-
-export function reviewModerationState(row: {
-  isApproved: boolean;
-  rejectedAt: Date | null;
-}): ReviewModerationState {
-  if (row.isApproved) return 'approved';
-  return row.rejectedAt ? 'rejected' : 'pending';
-}
 
 /**
  * Ghi chú của lần quyết định GẦN NHẤT. Query gọi kèm
@@ -778,7 +750,7 @@ export class ReviewsService {
     // cancellations nên ba vùng không thể hiểu "trọn ngày `to`" khác nhau.
     const createdAt = createdAtRange(query.from, query.to);
     const where: Prisma.ReviewWhereInput = {
-      ...(query.state ? MODERATION_STATE_WHERE[query.state] : {}),
+      ...(query.state ? REVIEW_STATE_WHERE[query.state] : {}),
       ...(createdAt ? { createdAt } : {}),
       ...(query.source ? { source: query.source } : {}),
       ...(query.rating ? { rating: query.rating } : {}),

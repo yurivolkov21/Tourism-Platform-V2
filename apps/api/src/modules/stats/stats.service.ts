@@ -13,6 +13,7 @@ import {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { OutboxStatus } from '../../generated/prisma/enums.js';
+import { NOT_REJECTED } from '../reviews/review-state.js';
 import {
   bookingsCreatedCount,
   decisionsSlice,
@@ -135,7 +136,12 @@ import {
  *   hai số khác nhau. Event là bất biến append-only nên số này đứng yên;
  *   guard no-op (vòng vá F4) bảo đảm không có event from===to làm nhiễu.
  * - `averageRating` — `AVG(rating)` trên review GỬI trong kỳ (`created_at`),
- *   KHÔNG lọc theo trạng thái duyệt và KHÔNG lọc theo nguồn. Cố ý: lọc
+ *   BỎ review đã bị bác (vòng 05/09) nhưng KHÔNG lọc theo trạng thái duyệt và
+ *   KHÔNG lọc theo nguồn. Hai phép loại này khác hẳn nhau: review bị bác là
+ *   nội dung ta đã phán quyết KHÔNG phải ý kiến thật, còn review đang chờ
+ *   duyệt vẫn là ý kiến thật chỉ chưa ai kịp đọc. Vì thế nó KHÔNG cùng tập
+ *   với `submitted` nữa — `submitted` đo khối lượng việc, card này đo ý kiến.
+ *   Cố ý: lọc
  *   "đã duyệt" sẽ khiến một hàng đợi tồn đọng tự kéo tụt kỳ này so với kỳ
  *   trước dù không khách nào đổi ý. Đây KHÁC số sao trên trang tour (chỉ đếm
  *   review đã duyệt của tour đó — `Tour.ratingAvg`), và khác một cách có chủ
@@ -523,20 +529,18 @@ export class StatsService {
    * cửa cho hai `where` trôi lệch nhau.
    */
   private async reviewsSlice(from: Date, to: Date) {
-    const [approved, submitted] = await Promise.all([
+    const window = { createdAt: { gte: from, lt: to } };
+    const [approved, submitted, opinion] = await Promise.all([
       // Đếm LƯỢT duyệt trên audit trail, không đếm trạng thái hiện tại —
       // un-approve về sau không được xoá ngược lịch sử (định nghĩa đầu file).
       reviewApprovals(from, to),
-      prisma.review.aggregate({
-        where: { createdAt: { gte: from, lt: to } },
-        _avg: { rating: true },
-        _count: { _all: true },
-      }),
+      // KHỐI LƯỢNG VIỆC: mọi review gửi trong kỳ, kể cả cái đã bị bác — nó
+      // vẫn là một review có người phải đọc.
+      prisma.review.count({ where: window }),
+      // Ý KIẾN: bỏ review đã bị bác (vòng 05/09). Một review 1 sao spam đã bị
+      // bác vẫn kéo tụt điểm trung bình dù không ai đăng nó lên.
+      prisma.review.aggregate({ where: { ...window, ...NOT_REJECTED }, _avg: { rating: true } }),
     ]);
-    return {
-      approved,
-      submitted: submitted._count._all,
-      rating: average(submitted._avg.rating),
-    };
+    return { approved, submitted, rating: average(opinion._avg.rating) };
   }
 }
