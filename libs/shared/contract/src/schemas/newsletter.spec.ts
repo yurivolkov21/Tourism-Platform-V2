@@ -158,6 +158,7 @@ describe('AdminSubscribersStatsSchema', () => {
     currentTo: '2026-09-03T00:00:00.000Z',
     previousFrom: '2026-07-09T00:00:00.000Z',
     generatedAt: '2026-09-03T00:00:00.000Z',
+    picked: false,
   };
 
   it('hai metric neo mốc thời gian là CẶP hai kỳ, `active` là số ĐƠN', () => {

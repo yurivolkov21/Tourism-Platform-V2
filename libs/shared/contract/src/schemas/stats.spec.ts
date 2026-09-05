@@ -16,6 +16,7 @@ const period = {
   currentTo: '2026-09-01T00:00:00.000Z',
   previousFrom: '2026-07-07T00:00:00.000Z',
   generatedAt: '2026-09-01T00:00:00.000Z',
+  picked: false,
 };
 
 describe('metric pairs', () => {

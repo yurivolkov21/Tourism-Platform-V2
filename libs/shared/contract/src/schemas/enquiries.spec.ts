@@ -219,6 +219,7 @@ describe('AdminEnquiriesStatsSchema', () => {
       currentTo: '2026-09-01T10:30:00.000Z',
       previousFrom: '2026-07-07T10:30:00.000Z',
       generatedAt: '2026-09-01T10:30:00.000Z',
+      picked: false,
     },
     created: { current: 12, previous: 8 },
     won: { current: 3, previous: 5 },

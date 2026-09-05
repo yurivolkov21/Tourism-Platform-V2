@@ -40,8 +40,10 @@ describe('REVIEW_STATE_WHERE', () => {
     expect(REVIEW_STATE_WHERE.approved).toEqual({ isApproved: true });
   });
 
-  it('rejected chỉ hỏi trục PHÁN QUYẾT', () => {
-    expect(REVIEW_STATE_WHERE.rejected).toEqual({ rejectedAt: { not: null } });
+  it('rejected hỏi trục PHÁN QUYẾT, kèm `isApproved: false` để khớp prefix index', () => {
+    // CHECK `reviews_verdict_shape` đã bảo đảm bị bác ⇒ không đăng, nhưng
+    // planner không suy được — thiếu vế này tab Rejected seq scan (vòng vá 05/09).
+    expect(REVIEW_STATE_WHERE.rejected).toEqual({ isApproved: false, rejectedAt: { not: null } });
   });
 
   it('ba mệnh đề KHÔNG chồng lấn nhau — mỗi review rơi vào đúng một tab', () => {
