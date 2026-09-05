@@ -363,4 +363,25 @@ describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
     expect(() => parseEnv({ MEDIA_GC_GRACE_DAYS: '0' })).toThrow();
     expect(() => parseEnv({ MEDIA_GC_GRACE_DAYS: '-1' })).toThrow();
   });
+
+  it('tỉ lệ tài chính mặc định 0 — chưa khai thuế vẫn ra báo cáo đúng', () => {
+    const defaults = parseEnv({});
+    expect(defaults.MARGIN_TAX_RATE).toBe(0);
+    expect(defaults.PAYMENT_FEE_RATE).toBe(0);
+    expect(defaults.PAYMENT_FEE_FIXED).toBe(0);
+  });
+
+  it('chặn lỗi gõ "10" khi ý là "0.10" — suất 1000% nuốt trọn lợi nhuận', () => {
+    // Không lỗi nào đỏ nếu lọt, và người đọc báo cáo không có cách nào biết.
+    expect(parseEnv({ MARGIN_TAX_RATE: '0.1' }).MARGIN_TAX_RATE).toBeCloseTo(0.1, 10);
+    expect(() => parseEnv({ MARGIN_TAX_RATE: '10' })).toThrow();
+    expect(() => parseEnv({ MARGIN_TAX_RATE: '-0.1' })).toThrow();
+    expect(() => parseEnv({ PAYMENT_FEE_RATE: '2' })).toThrow();
+  });
+
+  it('phí cố định mỗi giao dịch là TIỀN, không phải tỉ lệ — không có trần 1', () => {
+    // 0.30 đô của Stripe hôm nay, nhưng một cổng khác có thể thu 2 đô.
+    expect(parseEnv({ PAYMENT_FEE_FIXED: '2.50' }).PAYMENT_FEE_FIXED).toBeCloseTo(2.5, 10);
+    expect(() => parseEnv({ PAYMENT_FEE_FIXED: '-1' })).toThrow();
+  });
 });

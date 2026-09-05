@@ -108,6 +108,26 @@ const EnvSchema = z
     // Thư mục đích trên Cloudinary. Có default để asset dev không rơi thẳng
     // vào thư mục gốc rồi lẫn với tài khoản khác đang dùng chung cloud.
     CLOUDINARY_UPLOAD_FOLDER: z.string().min(1).default('tourism'),
+    // ── Tỉ lệ tài chính cho báo cáo tháng (ADR-0033 §5, §6) ──
+    // Mặc định 0 = tắt sạch: một dự án chưa khai thuế vẫn cho ra báo cáo
+    // ĐÚNG, chỉ là dòng thuế bằng 0. Đây là mặc định an toàn duy nhất —
+    // đoán một thuế suất hộ người dùng là in ra một con số không ai chịu
+    // trách nhiệm.
+    //
+    // Trần 1 chặn lỗi gõ kinh điển "10" khi ý là "0.10": một suất 1000% sẽ
+    // nuốt trọn lợi nhuận mà không lỗi nào đỏ, và người đọc báo cáo không có
+    // cách nào biết.
+    //
+    // ⚠️ Không có ngày hiệu lực: đổi suất là đổi luôn số thuế của MỌI báo cáo
+    // cũ khi đọc lại. Vì thế `taxRate` đi kèm trong response và được IN lên
+    // chính tờ báo cáo (ADR-0033 §5) — tờ giấy tự khai nó được tính bằng mức
+    // nào. Ngày nào suất thật sự đổi thì đường đi đúng là một bảng tỉ lệ có
+    // ngày hiệu lực.
+    MARGIN_TAX_RATE: z.coerce.number().min(0).max(1).default(0),
+    // Phí cổng thanh toán, ước tính. Stripe hiện là 2.9% + $0.30/giao dịch;
+    // để 0 thì dòng phí trong báo cáo bằng 0 chứ không bịa.
+    PAYMENT_FEE_RATE: z.coerce.number().min(0).max(1).default(0),
+    PAYMENT_FEE_FIXED: z.coerce.number().min(0).default(0),
     // ── Bộ dọn ảnh mồ côi (ADR-0035) ──
     // ⚠️ MẶC ĐỊNH TẮT, và đây là lưới an toàn quan trọng nhất của cơ chế:
     // dev và prod dùng CHUNG một Cloudinary cloud (chỉ có một
