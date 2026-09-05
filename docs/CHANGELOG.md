@@ -8,6 +8,133 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — Review có trạng thái "đã bác", và tác giả có đường viết lại (nhánh `fix/p4c-backend-logic`, 7 commit `fbf0e09..d810a66`, ~40 file, 2 migration)
+
+Bước 2 và 3 của kế hoạch ba bước, cộng một mục vá chen giữa. Cả đợt sinh ra từ
+một câu hỏi của user khi nghiệm thu bước 1: *"reject xong thì khách làm gì?"*
+
+### Bước 2 — bác bỏ là một phán quyết, không phải một cái cờ
+
+Model chỉ có `isApproved: boolean`, nên card `Pending` (vừa dựng hôm trước)
+**đếm gộp** "chưa ai xem" với "đã xem và đã bác" — hàng đợi không bao giờ dọn
+sạch được. Tệ hơn, gỡ duyệt đưa review NGƯỢC về hàng đợi (đo ở int test cũ),
+tức nó tự bơm chính mình.
+
+Chốt **HAI TRỤC** ([ADR-0031](adr/0031-review-rejection.md)): `is_approved` giữ
+nguyên nghĩa "có đang trên site không", cột `rejected_at` mới trả lời "đã có
+phán quyết chung cuộc chưa". Ba trạng thái suy từ hai cột, bất biến "không thể
+vừa đăng vừa bị bác" do CHECK `reviews_verdict_shape` canh — có int test dựng
+thẳng trạng thái ấy để chứng minh DB chặn, không phải code nhớ.
+
+Loại phương án enum `ReviewStatus` dù sạch hơn: `is_approved` nằm trên đường
+đọc CÔNG KHAI của site đang chạy (`listByTour` ba chỗ, recompute rating, bản
+chép tay ở seed, ba index, 23 điểm đọc).
+
+`moderate` thành ba động từ — `approve` (xoá `rejected_at`, phán quyết đảo
+được) · `reject` (rời hàng đợi, gửi mail) · `unpublish` (gỡ xuống, Ở LẠI hàng
+đợi). Guard no-op nay so CẢ HAI trục: trước đó `unpublish` lên một review đang
+bị bác trông như no-op vì cùng `is_approved = false`, và review kẹt vĩnh viễn
+ngoài hàng đợi.
+
+`ReviewModerationEvent.note` — 500 ký tự, ghi mỗi lần moderate từ ngày đầu,
+**chưa ai từng đọc** — nay là lý do bác: hiện ở dialog chi tiết và đi vào mail
+`REVIEW_REJECTED` mới. Lý do là BẮT BUỘC (§7), gác ở kit `ConfirmWriteDialog`
+(`noteRequired`) chứ không ở từng vùng.
+
+### Vá lúc nghiệm thu: cột Moderation đọc thành "đã duyệt"
+
+User bác một review xong thấy cột Moderation hiện pill xanh "Approve" trong khi
+cột State nói Rejected. Không sai dữ liệu — đó là NÚT. Nhưng bốn thứ cộng lại
+làm nó đọc thành nhãn: cột tên "Moderation" (danh từ), nút đặt TRƯỚC dấu vết,
+tông approve trông y hệt badge `Approved` cột bên, và hàng đã bác chỉ có MỘT
+nút trong khi hàng khác có hai — một cặp đọc ra là lựa chọn, một pill xanh
+đứng một mình đọc ra là cái nhãn.
+
+Sửa: dấu vết lên trước nút; hàng đã bác có hai nút **Approve · Reopen**; và
+`Reopen` tách khỏi `Unpublish` vì cùng động từ nhìn từ chỗ khác thì phải khác
+tên — từ một review đã bác, "Unpublish" nói sai, nó vốn đã không ở trên site.
+Giao diện giữ `ModerateActionKind` (bốn việc bấm được) tách khỏi
+`ReviewVerdict` (ba động từ contract nhận).
+
+### Vá chen giữa: review bị bác thôi kéo tụt điểm trung bình
+
+User hỏi review bị bác giữ mãi thì sao. Rà ra: **spam không tràn được** —
+`checkReviewEligibility` đòi chủ booking + PAID + chuyến ĐÃ kết thúc, cộng
+`bookingId @unique`, nên muốn viết một review spam thì phải mua và đi trọn một
+tour.
+
+Nhưng `averageRating` tính `AVG(rating)` trên MỌI review gửi trong kỳ, không
+lọc trạng thái. Một review 1 sao spam ĐÃ BỊ BÁC vẫn kéo tụt card của admin dù
+không ai đăng nó lên. Nay bỏ review bị bác khỏi phép trung bình, `submitted`
+giữ nguyên — hai card chính thức tách tập, và ranh giới là: `submitted` đo
+KHỐI LƯỢNG VIỆC, `averageRating` đo Ý KIẾN. KHÔNG suy ra "vậy lọc luôn theo
+trạng thái duyệt": review đang CHỜ vẫn là ý kiến thật, chỉ chưa ai kịp đọc.
+
+Phép suy trạng thái + ba mệnh đề `where` chuyển sang
+`modules/reviews/review-state.ts` — `stats.service` nay cũng cần luật ấy.
+
+### Bước 3 — đường quay lại cho tác giả
+
+[ADR-0032](adr/0032-review-author-edit.md). Ngoài chuyện "không có route sửa",
+rà ra một lỗ nữa: **trang khách đang nói sai**. `reviewSlot()` chỉ đọc
+`booking.reviewedAt` — một mốc thời gian không mang phán quyết — nên khách bị
+bác quay lại đúng trang họ từng viết và đọc thấy *"bạn đã đánh giá chuyến này
+rồi"* kèm một lời **cảm ơn**. Email nói thật, sản phẩm thì im.
+
+`PATCH /api/reviews/{id}` cho tác giả viết lại; review quay về hàng đợi. Sửa
+được ở `pending` + `rejected`, KHÔNG ở `approved` — sửa nội dung đang hiển thị
+công khai là mở lớp rủi ro tráo-nội-dung sau lưng kiểm duyệt. Thay TRỌN nội
+dung KÈM ẢNH: bác vì một tấm ảnh mà tác giả không gỡ được thì đường quay lại
+là đồ giả.
+
+**Trần: hai lần bác là hết đường**, đếm trên audit trail sẵn có. Luật "còn sửa
+được không" là hàm THUẦN ở contract (`canAuthorEdit`), API dùng làm cổng còn
+web dùng để quyết hiện form — bài học đã trả giá ở chính `reviewSlot`, nơi
+JSDoc phải tự dặn *"web nói khác API thì khách gõ hết bài rồi mới bị từ chối"*.
+
+`moderated_at` GIỮ sau khi sửa (lần quyết định ấy ĐÃ xảy ra), và KHÔNG ghi
+`ReviewModerationEvent` — sổ ấy ghi hành vi người DUYỆT, nhét cú sửa của tác
+giả vào là làm hỏng nghĩa cả sổ, kể cả phép đếm dựng nên chính cái trần.
+
+### Một thiết kế phải sửa vì đo được
+
+Bản đầu nhét `review` thẳng vào `BookingSchema`, và worker chạy
+`contract.spec.ts` **hết bộ nhớ** (~24 giây, không stack JS).
+`ContractInputs`/`ContractOutputs` suy kiểu cho TOÀN BỘ router, mà
+`BookingSchema` có mặt ở khoảng mười route — mỗi route bỗng gánh thêm một
+review lồng mảng media. Chứng minh bằng `git stash`: bỏ ra thì 35 test của file
+ấy xanh lại.
+
+Nay `review` sống ở `BookingDetailSchema` dùng cho ĐÚNG `bookings.byCode`. Luật
+rút ra: **đừng thêm một schema LỒNG vào một schema NỀN dùng chung nhiều
+route** — mở rộng ở route cần nó.
+
+### Migration
+
+Hai file, CHỈ THÊM: `rejected_at` / `rejected_by` / `to_rejected` (có default),
+một index hàng đợi, hai CHECK, và một giá trị enum `REVIEW_REJECTED`. Cả hai
+CHECK đúng sẵn với mọi dòng đang có vì `rejected_at` vừa sinh ra và toàn NULL.
+Đã `migrate deploy` lên Supabase 05/09; không dòng dữ liệu nào bị đụng.
+
+### Sổ nợ mở
+
+- **Luồng khách chưa nghiệm thu bằng mắt.** Dữ liệu seed hiện không có tài
+  khoản nào sở hữu chuyến đã kết thúc, mà đó là điều kiện để viết review
+  (`checkReviewEligibility`). Luồng ĐƯỢC phủ bởi 8 int test trên Postgres thật
+  (bác → sửa → về hàng đợi, trần hai lần, 404 review người khác, 409 đã duyệt,
+  gỡ sạch ảnh, `byCode` trả trạng thái + lý do) — cái thiếu là một lượt nhìn.
+  User đã có kế hoạch seed lại với phân bố đều; khi làm, nhớ chừa ít nhất một
+  booking PAID có `departure_end_date` trong quá khứ cho MỖI trạng thái review.
+- **Không có trang "Đánh giá của tôi".** `reviews.mine` có endpoint và int test
+  nhưng không trang web nào gọi. Endpoint nay đã mang `moderationState` +
+  `moderationNote` + `rejectionCount`, sẵn cho ngày trang ấy ra đời.
+- **Dọn ảnh của review bị bác.** Giờ mới bàn được, vì ADR-0032 §1 vừa chốt xoá
+  DÒNG review là sai đòn bẩy. `MediaService` hiện KHÔNG có hàm xoá nào và
+  không chỗ nào gọi Cloudinary destroy — hệ thống chưa từng xoá một tấm ảnh.
+
+Tests after: 2.827 unit (10 tokens · 227 contract · 22 ui · 2 i18n · 329 api ·
+799 admin · 1.438 web) và 365 integration.
+
 ## 2026-09-05 — Đọc được review mà không phải mở nút quyết định (nhánh `fix/p4c-backend-logic`, 1 commit `3a4132c`, ~8 file, KHÔNG migration)
 
 User hỏi 05/09: trang `/reviews` chỉ có nút duyệt, không thấy đường nào xem kỹ

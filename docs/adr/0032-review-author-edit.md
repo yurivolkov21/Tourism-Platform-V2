@@ -154,6 +154,22 @@ phí kiểu trả một lần thay vì mười.
 Luật rút ra cho về sau: **đừng thêm một schema LỒNG vào một schema NỀN dùng
 chung nhiều route** — mở rộng ở route cần nó.
 
+### Ghi nợ 05/09: luồng khách chưa nghiệm thu bằng mắt
+
+Dữ liệu seed hiện KHÔNG có tài khoản nào sở hữu chuyến đã kết thúc, mà đó là
+điều kiện để viết review (`checkReviewEligibility` đòi PAID + chuyến đã xong).
+Nên không ai bấm thử được đường bác → sửa → gửi lại trên giao diện.
+
+Luồng ấy KHÔNG phải chưa test: 8 int test chạy trên Postgres thật phủ trọn
+(bác → sửa → về hàng đợi, trần hai lần, 404 với review người khác, 409 với
+review đã duyệt, gỡ sạch ảnh, `byCode` trả trạng thái + lý do). Cái thiếu là
+một lượt nhìn.
+
+Khi seed lại (user đã có kế hoạch), chừa sẵn ít nhất một booking `PAID` có
+`departure_end_date` trong quá khứ cho MỖI trạng thái review — chưa viết, đang
+chờ, bị bác một lần, bị bác hai lần, đã duyệt. Năm booking ấy làm mọi nhánh
+của `reviewSlot` bấm thử được mà không phải dựng tay lần nào.
+
 ### Điều KHÔNG được suy ra
 
 ADR này **không** cho khách xoá review của mình, và **không** cho sửa review đã
