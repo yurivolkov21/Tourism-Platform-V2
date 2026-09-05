@@ -145,7 +145,12 @@ export interface BookingRowVM {
 }
 
 /** Booking của contract → hàng bảng đã format sẵn (server component gọi). */
-export function toBookingRow(booking: Booking, query: BookingsQuery): BookingRowVM {
+/**
+ * `query` tuỳ chọn: bảng `/bookings` truyền để href MANG bộ lọc; dashboard
+ * (không bộ lọc) bỏ trống và nhận đường trần `/bookings/<code>` — hết cảnh
+ * dựng một `BookingsQuery` giả chỉ để thoả chữ ký (vòng vá review 05/09).
+ */
+export function toBookingRow(booking: Booking, query?: BookingsQuery): BookingRowVM {
   return {
     code: booking.code,
     tourTitle: booking.tourTitle,
@@ -160,7 +165,7 @@ export function toBookingRow(booking: Booking, query: BookingsQuery): BookingRow
     // MANG THEO bộ lọc đang xem (user báo 04/09): nút "Back to bookings" ở
     // trang chi tiết dựng đích đến từ chính query này, nên vòng đi–về không
     // nhả filter. Chi tiết luật ở `bookingDetailHref`.
-    href: bookingDetailHref(query, booking.code),
+    href: query ? bookingDetailHref(query, booking.code) : `/bookings/${booking.code}`,
     createdAt: formatDateTime(booking.createdAt),
   };
 }

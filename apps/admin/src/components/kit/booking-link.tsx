@@ -13,15 +13,22 @@ import Link from 'next/link';
 export function BookingLink({
   code,
   fallback,
+  href,
 }: {
   code: string | null;
   /** Chữ thay ô trống khi không có booking; bắt buộc để nơi gọi không quên ca null. */
   fallback: string;
+  /**
+   * Đích tuỳ chọn: bảng `/bookings` truyền href MANG bộ lọc đang xem (vòng
+   * đi–về không nhả filter); mặc định là đường trần từ `code`. Thêm ở vòng vá
+   * review 05/09 để ô Code của `/bookings` thôi là bản chép thứ hai của link này.
+   */
+  href?: string;
 }) {
   if (!code) return <span className="text-xs text-muted-foreground">{fallback}</span>;
   return (
     <Link
-      href={`/bookings/${code}`}
+      href={href ?? `/bookings/${code}`}
       className="font-medium text-foreground underline-offset-4 hover:underline"
     >
       {code}

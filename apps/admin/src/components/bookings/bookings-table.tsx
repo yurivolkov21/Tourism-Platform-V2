@@ -10,7 +10,6 @@ import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { CalendarOffIcon } from 'lucide-react';
-import Link from 'next/link';
 import * as React from 'react';
 import {
   AmountCell,
@@ -29,6 +28,7 @@ import {
   BookingsSearch,
   BookingsStatusTabs,
 } from '@/components/bookings/bookings-toolbar';
+import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { selectableTableFeatures } from '@/components/kit/table-features';
@@ -120,13 +120,10 @@ function buildColumns(query: BookingsQuery, total: number) {
     columnHelper.accessor('code', {
       header: t.columns.code,
       // Mã booking là đường vào trang chi tiết — cột duy nhất không ẩn được.
+      // Qua kit `BookingLink` (một cách vẽ mã booking cho mọi bảng), href
+      // MANG bộ lọc đang xem.
       cell: ({ row }) => (
-        <Link
-          href={row.original.href}
-          className="font-medium text-foreground underline-offset-4 hover:underline"
-        >
-          {row.original.code}
-        </Link>
+        <BookingLink code={row.original.code} href={row.original.href} fallback={t.empty} />
       ),
       enableHiding: false,
     }),
