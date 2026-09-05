@@ -28,8 +28,12 @@ import { formatMarginPct, reportPeriodLabel } from './reports-view';
  * | Definitions | Cách đọc mấy con số trên — file đi xa hơn giấy |
  */
 
-/** Âm trong ngoặc — quy ước báo cáo tài chính, không phải dấu trừ. */
-const MONEY_FMT = '#,##0.00;(#,##0.00)';
+/**
+ * Âm trong NGOẶC và tô ĐỎ — quy ước báo cáo tài chính. Dấu ngoặc là cách kế
+ * toán viết số âm; màu đỏ là để mắt bắt được một tháng lỗ mà không phải đọc
+ * từng ô.
+ */
+const MONEY_FMT = '#,##0.00;[Red](#,##0.00)';
 const PCT_FMT = '0.0%';
 const COUNT_FMT = '#,##0';
 const DATE_FMT = 'dd mmm yyyy';
@@ -37,8 +41,75 @@ const DATE_FMT = 'dd mmm yyyy';
 const t = messages.admin.reports;
 const x = t.xlsx;
 
-/** Viền trên mảnh — dấu hiệu "dòng này là tổng của mấy dòng trên". */
-const TOP_RULE = { top: { style: 'thin' as const } };
+/**
+ * Bảng màu — quy đổi từ CHÍNH token của dự án (`oklch` → ARGB hex), không bịa
+ * màu mới.
+ *
+ * NGOẠI LỆ CÓ CHỦ ĐÍCH với luật tokens-only (CLAUDE.md #6), cùng họ với khối
+ * `@media print` và lớp bề mặt admin ở `globals.css`: một file `.xlsx` không
+ * có CSS custom property nào để mà tham chiếu — ExcelJS đòi hex tuyệt đối.
+ * Nên đây là nơi TIÊU THỤ token dưới dạng đã quy đổi, và bảng dưới ghi kèm
+ * `oklch` gốc để đối chiếu được khi token đổi.
+ */
+const INK = 'FF1F252B'; // oklch(0.262 0.014 250) — --foreground của admin
+const DIM = 'FF5F646B'; // oklch(0.502 0.012 250) — --muted-foreground
+const RULE = 'FFDCDFE2'; // oklch(0.902 0.005 250) — --border
+const BAND = 'FFF0F3F5'; // oklch(0.962 0.004 250) — --muted
+const BRAND = 'FF2E6E66'; // oklch(0.494 0.067 184.3) — --primary
+const BRAND_SOFT = 'FFDAECE9'; // teal cùng hue, sáng — nền dải tiêu đề khối
+const PAPER = 'FFFFFFFF';
+
+/** Viền mảnh bốn cạnh — mỗi ô dữ liệu là một ô, không phải chữ trôi trên nền. */
+const CELL_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: 'thin' as const, color: { argb: RULE } },
+  left: { style: 'thin' as const, color: { argb: RULE } },
+  bottom: { style: 'thin' as const, color: { argb: RULE } },
+  right: { style: 'thin' as const, color: { argb: RULE } },
+};
+
+/** Viền trên ĐẬM — dấu hiệu "dòng này là tổng của mấy dòng trên". */
+const TOP_RULE: Partial<ExcelJS.Borders> = {
+  ...CELL_BORDER,
+  top: { style: 'medium', color: { argb: BRAND } },
+};
+
+const fill = (argb: string) => ({ type: 'pattern', pattern: 'solid', fgColor: { argb } }) as const;
+
+/** Kẻ viền + canh lề cho một dải ô của một dòng. */
+function dressRow(
+  row: ExcelJS.Row,
+  columns: number,
+  // `Partial<Borders>` của ExcelJS chứ không `typeof CELL_BORDER`: kiểu suy ra
+  // từ hằng ấy khoá cứng `style: 'thin'`, nên `TOP_RULE` (dùng `'medium'` ở
+  // cạnh trên) không lọt qua.
+  opts: { border?: Partial<ExcelJS.Borders>; band?: string } = {},
+): void {
+  for (let column = 1; column <= columns; column += 1) {
+    const cell = row.getCell(column);
+    cell.border = opts.border ?? CELL_BORDER;
+    if (opts.band) cell.fill = fill(opts.band);
+    // Nhãn canh trái, số canh phải — quy ước bảng tài chính, và cũng là thứ
+    // giúp mắt dò cột số mà không cần kẻ dọc đậm.
+    cell.alignment = {
+      ...cell.alignment,
+      horizontal: column === 1 ? 'left' : 'right',
+      vertical: 'middle',
+    };
+  }
+  row.height = 18;
+}
+
+/** Hàng tiêu đề bảng: nền thương hiệu, chữ trắng, đóng băng ở nơi dùng. */
+function dressHeader(row: ExcelJS.Row, columns: number): void {
+  for (let column = 1; column <= columns; column += 1) {
+    const cell = row.getCell(column);
+    cell.fill = fill(BRAND);
+    cell.font = { bold: true, color: { argb: PAPER } };
+    cell.border = CELL_BORDER;
+    cell.alignment = { horizontal: column === 1 ? 'left' : 'right', vertical: 'middle' };
+  }
+  row.height = 22;
+}
 
 /**
  * Chỗ `Number()` DUY NHẤT được phép cho tiền trong dự án (CLAUDE.md: tiền
@@ -65,11 +136,17 @@ function labelRow(
   opts: { indent?: boolean; total?: boolean } = {},
 ): ExcelJS.Row {
   const row = sheet.addRow([label]);
-  if (opts.indent) row.getCell(1).alignment = { indent: 1 };
+  dressRow(row, 2, opts.total ? { border: TOP_RULE, band: BAND } : {});
+
+  if (opts.indent) {
+    // Thụt một cấp: dòng này là THÀNH PHẦN của phép trừ ngay trên nó, không
+    // phải một con số ngang hàng.
+    row.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 2 };
+    row.getCell(1).font = { color: { argb: DIM } };
+  }
   if (opts.total) {
-    row.getCell(1).font = { bold: true };
-    row.getCell(2).font = { bold: true };
-    row.getCell(2).border = TOP_RULE;
+    row.getCell(1).font = { bold: true, color: { argb: INK } };
+    row.getCell(2).font = { bold: true, color: { argb: INK } };
   }
   return row;
 }
@@ -83,10 +160,14 @@ function labelRow(
  * (ADR-0033 §5). Không in suất thì không ai đối chiếu được.
  */
 function writeHeader(sheet: ExcelJS.Worksheet, report: AdminMonthlyReport): void {
+  // Dải tiêu đề chiếm trọn bề ngang bảng — thứ đầu tiên mắt chạm khi mở file.
   sheet.mergeCells('A1:B1');
   const title = sheet.getCell('A1');
   title.value = x.title;
-  title.font = { size: 14, bold: true };
+  title.font = { size: 15, bold: true, color: { argb: PAPER } };
+  title.fill = fill(BRAND);
+  title.alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  sheet.getRow(1).height = 30;
 
   for (const [label, value, fmt] of [
     [x.period, reportPeriodLabel(report)],
@@ -95,16 +176,25 @@ function writeHeader(sheet: ExcelJS.Worksheet, report: AdminMonthlyReport): void
     [x.taxRate, report.taxRate, PCT_FMT],
   ] as Array<[string, string | number, string?]>) {
     const row = sheet.addRow([label, value]);
-    row.getCell(1).font = { bold: true };
+    dressRow(row, 2, { band: BAND });
+    row.getCell(1).font = { bold: true, color: { argb: DIM } };
     if (fmt) row.getCell(2).numFmt = fmt;
   }
   sheet.addRow([]);
 }
 
-/** Tiêu đề một khối trong Summary. */
+/**
+ * Tiêu đề một khối trong Summary — dải teal nhạt chạy trọn bề ngang.
+ *
+ * Đây là thứ chia hai cách đọc tiền ra làm hai khối nhìn thấy được: người mở
+ * file phải biết ngay chỗ nào là dòng tiền, chỗ nào là kết quả kinh doanh, vì
+ * hai khối ấy KHÔNG cộng vào nhau được.
+ */
 function sectionRow(sheet: ExcelJS.Worksheet, label: string): void {
   const row = sheet.addRow([label]);
-  row.getCell(1).font = { bold: true, size: 12 };
+  dressRow(row, 2, { band: BRAND_SOFT });
+  row.getCell(1).font = { bold: true, size: 12, color: { argb: BRAND } };
+  row.height = 24;
 }
 
 function buildSummary(book: ExcelJS.Workbook, report: AdminMonthlyReport): void {
@@ -160,17 +250,20 @@ function buildBookings(book: ExcelJS.Workbook, report: AdminMonthlyReport): void
     { header: t.bookingsTable.status, key: 'status', width: 26 },
     { header: t.bookingsTable.count, key: 'count', width: 14 },
   ];
-  sheet.getRow(1).font = { bold: true };
+  dressHeader(sheet.getRow(1), 2);
 
-  for (const row of report.bookingsByStatus) {
+  report.bookingsByStatus.forEach((row, index) => {
     const added = sheet.addRow([statusLabel(row.status)]);
+    // Dải xen kẽ: mắt dò ngang một bảng nhiều hàng mà không lạc dòng.
+    dressRow(added, 2, index % 2 === 1 ? { band: BAND } : {});
     count(added.getCell(2), row.count);
-  }
+  });
+
   const total = sheet.addRow([t.bookingsTable.total]);
-  total.getCell(1).font = { bold: true };
+  dressRow(total, 2, { border: TOP_RULE, band: BRAND_SOFT });
+  total.getCell(1).font = { bold: true, color: { argb: INK } };
   count(total.getCell(2), report.newBookings);
-  total.getCell(2).font = { bold: true };
-  total.getCell(2).border = TOP_RULE;
+  total.getCell(2).font = { bold: true, color: { argb: INK } };
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
@@ -182,16 +275,23 @@ function buildOperations(book: ExcelJS.Workbook, report: AdminMonthlyReport): vo
     { header: t.operationsTable.metric, key: 'metric', width: 34 },
     { header: t.operationsTable.value, key: 'value', width: 18 },
   ];
-  sheet.getRow(1).font = { bold: true };
+  dressHeader(sheet.getRow(1), 2);
 
   const o = t.operationsTable;
-  money(sheet.addRow([o.refundedTotal]).getCell(2), report.refundedTotal);
-  count(sheet.addRow([o.refunds]).getCell(2), report.refunds);
-  count(sheet.addRow([o.paidBookings]).getCell(2), report.paidBookings);
-  count(sheet.addRow([o.newBookings]).getCell(2), report.newBookings);
-  count(sheet.addRow([o.cancellationsApproved]).getCell(2), report.cancellationsApproved);
-  count(sheet.addRow([o.cancellationsDenied]).getCell(2), report.cancellationsDenied);
-  count(sheet.addRow([o.reviewsApproved]).getCell(2), report.reviewsApproved);
+  const rows: Array<[string, (cell: ExcelJS.Cell) => void]> = [
+    [o.refundedTotal, (cell) => money(cell, report.refundedTotal)],
+    [o.refunds, (cell) => count(cell, report.refunds)],
+    [o.paidBookings, (cell) => count(cell, report.paidBookings)],
+    [o.newBookings, (cell) => count(cell, report.newBookings)],
+    [o.cancellationsApproved, (cell) => count(cell, report.cancellationsApproved)],
+    [o.cancellationsDenied, (cell) => count(cell, report.cancellationsDenied)],
+    [o.reviewsApproved, (cell) => count(cell, report.reviewsApproved)],
+  ];
+  rows.forEach(([label, write], index) => {
+    const row = sheet.addRow([label]);
+    dressRow(row, 2, index % 2 === 1 ? { band: BAND } : {});
+    write(row.getCell(2));
+  });
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0, printTitlesRow: '1:1' };
@@ -218,10 +318,14 @@ function buildDetail(book: ExcelJS.Workbook, bookings: readonly Booking[]): void
     { header: x.detail.refunded, key: 'refunded', width: 14 },
     { header: x.detail.status, key: 'status', width: 20 },
   ];
-  sheet.getRow(1).font = { bold: true };
+  dressHeader(sheet.getRow(1), sheet.columnCount);
 
-  for (const booking of bookings) {
+  bookings.forEach((booking, index) => {
     const row = sheet.addRow([booking.code, booking.tourTitle]);
+    dressRow(row, sheet.columnCount, index % 2 === 1 ? { band: BAND } : {});
+    // Hai cột chữ canh trái; `dressRow` mặc định canh phải từ cột 2 trở đi.
+    row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
+    row.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
     const ends = row.getCell(3);
     // Ô NGÀY thật, không phải chuỗi: người đọc lọc và sắp xếp được theo nó.
     ends.value = new Date(booking.departureEndDate);
@@ -230,7 +334,7 @@ function buildDetail(book: ExcelJS.Workbook, bookings: readonly Booking[]): void
     money(row.getCell(5), booking.totalAmount);
     money(row.getCell(6), booking.refundedTotal);
     row.getCell(7).value = statusLabel(booking.status);
-  }
+  });
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   // Bộ lọc trên hàng tiêu đề — thứ biến sheet này thành công cụ kiểm chéo
@@ -257,7 +361,10 @@ function buildDefinitions(book: ExcelJS.Workbook): void {
   sheet.getColumn(1).width = 110;
 
   const heading = sheet.addRow([t.definitions.heading]);
-  heading.font = { bold: true, size: 12 };
+  heading.getCell(1).font = { bold: true, size: 13, color: { argb: PAPER } };
+  heading.getCell(1).fill = fill(BRAND);
+  heading.getCell(1).alignment = { horizontal: 'left', vertical: 'middle', indent: 1 };
+  heading.height = 26;
   sheet.addRow([]);
 
   for (const line of [
@@ -269,8 +376,11 @@ function buildDefinitions(book: ExcelJS.Workbook): void {
     t.definitions.statuses,
   ]) {
     const row = sheet.addRow([line]);
-    row.getCell(1).alignment = { wrapText: true, vertical: 'top' };
-    row.height = 30;
+    const cell = row.getCell(1);
+    cell.alignment = { wrapText: true, vertical: 'top', indent: 1 };
+    cell.font = { color: { argb: INK } };
+    cell.border = { bottom: { style: 'hair', color: { argb: RULE } } };
+    row.height = 32;
   }
 }
 

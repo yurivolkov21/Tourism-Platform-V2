@@ -115,7 +115,9 @@ describe('buildReportWorkbook', () => {
 
     expect(typeof cell?.value).toBe('number');
     expect(cell?.value).toBe(2500);
-    expect(cell?.numFmt).toBe('#,##0.00;(#,##0.00)');
+    // Âm trong ngoặc VÀ tô đỏ: dấu ngoặc là cách kế toán viết số âm, màu đỏ
+    // để mắt bắt được một tháng lỗ mà không phải đọc từng ô.
+    expect(cell?.numFmt).toBe('#,##0.00;[Red](#,##0.00)');
   });
 
   it('tháng LỖ ghi số ÂM thật, không phải chuỗi có dấu trừ', async () => {
@@ -199,6 +201,86 @@ describe('buildReportWorkbook', () => {
       t.definitions.statuses,
     ]) {
       expect(text).toContain(line.slice(0, 40));
+    }
+  });
+});
+
+/**
+ * Phần TRÌNH BÀY (user chốt 05/09: file phải là một bảng hoàn chỉnh — có màu,
+ * canh lề, kẻ viền, phân khối rõ ràng).
+ *
+ * Bộ này canh những thứ mà mở file ra mới thấy thiếu, và không test nào khác
+ * bắt được: một hồi quy ở đây cho ra một file ĐÚNG SỐ nhưng trông như dữ liệu
+ * dán vào bảng tính — đúng thứ vòng này đi chữa.
+ */
+describe('trình bày', () => {
+  it('hàng tiêu đề bảng có nền thương hiệu và chữ trắng', async () => {
+    const cell = sheetNamed(await open(report), 'Bookings')
+      .getRow(1)
+      .getCell(1);
+
+    expect(cell.fill).toMatchObject({ type: 'pattern', fgColor: { argb: 'FF2E6E66' } });
+    expect(cell.font).toMatchObject({ bold: true, color: { argb: 'FFFFFFFF' } });
+  });
+
+  it('ô dữ liệu có viền bốn cạnh — mỗi ô là một ô, không phải chữ trôi trên nền', async () => {
+    const cell = sheetNamed(await open(report), 'Bookings')
+      .getRow(2)
+      .getCell(1);
+
+    expect(cell.border?.top).toBeTruthy();
+    expect(cell.border?.left).toBeTruthy();
+    expect(cell.border?.bottom).toBeTruthy();
+    expect(cell.border?.right).toBeTruthy();
+  });
+
+  it('nhãn canh TRÁI, số canh PHẢI', async () => {
+    const row = sheetNamed(await open(report), 'Bookings').getRow(2);
+
+    expect(row.getCell(1).alignment?.horizontal).toBe('left');
+    expect(row.getCell(2).alignment?.horizontal).toBe('right');
+  });
+
+  it('dòng TỔNG có viền trên đậm màu thương hiệu', async () => {
+    // Dấu hiệu "dòng này là tổng của mấy dòng trên" — thứ phân biệt một con số
+    // kết quả với một con số thành phần.
+    const cell = cellFor(sheetNamed(await open(report), 'Summary'), t.pnlTable.netProfit);
+
+    expect(cell?.border?.top).toMatchObject({ style: 'medium', color: { argb: 'FF2E6E66' } });
+  });
+
+  it('hai khối tiền trong Summary có dải tiêu đề riêng', async () => {
+    // Dòng tiền và kết quả kinh doanh KHÔNG cộng vào nhau được, nên người mở
+    // file phải thấy ngay chúng là hai khối.
+    const sheet = sheetNamed(await open(report), 'Summary');
+
+    expect(cellFor(sheet, t.xlsx.cashHeading)?.fill).toBeTruthy();
+    expect(cellFor(sheet, t.pnlTable.heading)?.fill).toBeTruthy();
+  });
+
+  it('dòng thành phần thụt lề, dòng kết quả thì không', async () => {
+    const sheet = sheetNamed(await open(report), 'Summary');
+
+    expect(cellFor(sheet, t.pnlTable.cogsVariable)).toBeTruthy();
+    let variableIndent: number | undefined;
+    let totalIndent: number | undefined;
+    sheet.eachRow((row) => {
+      if (row.getCell(1).value === t.pnlTable.cogsVariable) {
+        variableIndent = row.getCell(1).alignment?.indent;
+      }
+      if (row.getCell(1).value === t.pnlTable.cogsTotal) {
+        totalIndent = row.getCell(1).alignment?.indent;
+      }
+    });
+    expect(variableIndent).toBeGreaterThan(0);
+    expect(totalIndent ?? 0).toBe(0);
+  });
+
+  it('sheet Detail kẻ viền cả bảy cột, không chỉ hai cột đầu', async () => {
+    const row = sheetNamed(await open(report), 'Detail (created this month)').getRow(2);
+
+    for (let column = 1; column <= 7; column += 1) {
+      expect(row.getCell(column).border?.bottom, `cột ${column}`).toBeTruthy();
     }
   });
 });
