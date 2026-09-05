@@ -1967,11 +1967,43 @@ sang phase `/tours`.
 
 ## Nợ để lại sau plan này
 
+*Chốt sổ 05/09 cuối phiên. Task 0–9 xong; Task 10 xong phần docs, còn `build`.*
+
+### Chặn merge
+
+| Món | Trạng thái |
+| --- | --- |
+| **`pnpm gate:int`** | Đã chạy typecheck · unit (2.923) · int (382) · lint — tất cả xanh. **`build` CHƯA chạy** vì dev server của user giữ `.next`. Luật CLAUDE.md #11 chưa thoả cho tới khi nó xanh. |
+| **Review ở session khác** | User chốt 05/09: commit thì được, merge phải qua một đợt review chạy ở session KHÁC. Không merge từ trong session thi công. |
+
+### Cần user làm, không phải code
+
+| Món | Vì sao |
+| --- | --- |
+| **Seed lại dữ liệu** | Fixture giá vốn cho 29 tour đã sẵn sàng nhưng chưa đổ vào DB nào. Chưa seed thì `/reports` vẫn hiện `$0.00` và đếm booking thiếu giá vốn — ĐÚNG, nhưng trống. Đây là việc mở khoá nhiều thứ nhất. |
+| **Ba công tắc env** | `MARGIN_TAX_RATE`, `PAYMENT_FEE_RATE`, `PAYMENT_FEE_FIXED` đang 0 nên hai dòng thuế/phí trong báo cáo bằng 0. Mặc định an toàn, không phải lỗi. |
+| **`MEDIA_GC_ENABLED`** | Mặc định TẮT (dev/prod chung một Cloudinary cloud). Lần chạy đầu trên prod nên chạy tay và đọc log — nó sẽ dọn mọi upload bỏ dở tích từ 12/08. |
+
+### Việc còn lại, theo thứ tự đáng làm
+
 | Món | Vì sao hoãn |
 | --- | --- |
+| **P4d dashboard** | Trang `/` của admin vẫn là bản demo `dashboard-01` với `data.json = []` — trang ĐẦU TIÊN admin thấy. Hoãn tới sau đợt này vì nó là NGƯỜI TIÊU THỤ của mô hình tài chính: dựng trước là dựng hai lần. Nay đã có số để tiêu thụ. |
 | Màn nhập giá vốn trong admin | `/tours` đang `enabled: false` — dựng cả một vùng CRUD nằm ngoài đợt này. Dữ liệu tạm đến từ seed. |
-| Ghế hoà vốn (ADR-0033 §7) | Tính được miễn phí nhưng chưa có màn nào hiển thị. Đi cùng phase `/tours`. |
-| Vòng đời media / xoá Cloudinary | Bảng `media_garbage` có sẵn từ `init` và chưa ai chạm. ADR riêng — chạm cả tour/post/site media, và destroy là không hoàn tác. |
+| Ghế hoà vốn (ADR-0033 §7) | Tính được miễn phí từ cờ `basis` nhưng chưa có màn nào hiển thị. Đi cùng phase `/tours`. |
 | Trang "My reviews" của khách | `reviews.mine` chưa có consumer nào bên web. |
-| **Catalogue thiếu một tour** | Bắc 12 + Trung 9 + Nam 8 = **29**, trong khi roster spec cấp cho miền Nam dải #22–30 (9 tour) và mọi doc đều nói "30 tour". Lỗ dữ liệu CÓ TỪ TRƯỚC, phát hiện lúc viết test fixture giá vốn 05/09. |
-| Phí hoàn tiền, chi phí vận hành | Ghi ở "Giới hạn đã biết" của ADR-0033. |
+| Luồng sửa review của khách | Chưa nghiệm thu bằng mắt — chưa có tài khoản nào có chuyến đã chạy. Mở được sau khi seed. |
+| Phí hoàn tiền, chi phí vận hành | Ghi ở "Giới hạn đã biết" của ADR-0033: `netProfit` là lãi SAU giá vốn/thuế/phí cổng, KHÔNG phải lãi ròng doanh nghiệp. |
+
+### Lỗ dữ liệu có từ trước, phát hiện trong đợt này
+
+| Món | Chi tiết |
+| --- | --- |
+| **Catalogue thiếu một tour** | Bắc 12 + Trung 9 + Nam 8 = **29**, trong khi roster spec cấp cho miền Nam dải #22–30 (9 tour) và mọi doc đều nói "30 tour". Test fixture giá vốn khoá con số 29 lại — thêm tour thứ 30 là test đỏ và có người rà. |
+| **ADR-0007 là trích dẫn treo** | `schema.prisma` trỏ tới nó ở ba chỗ cho `Outbox`/`EmailType`/`OutboxStatus`; `docs/adr/` nhảy thẳng 0006 → 0008. Cơ chế có thật và đang chạy, chỉ là quyết định chưa bao giờ được ghi. |
+
+### Đã trả trong đợt này
+
+Vòng đời media (**ADR-0035**, thi công xong) · hai ô lọc `source`/`rating` của
+`/reviews` · `date-picker-field.tsx` mồ côi · 24 khoá copy chết ·
+`reportCsvRows` cùng bộ máy chỉ nó cần.

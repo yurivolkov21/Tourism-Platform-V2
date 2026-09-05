@@ -139,6 +139,13 @@ khoá phần trình bày lại.
 sách sheet đang có. Dọn kèm 24 khoá copy chết, `date-picker-field.tsx` mồ côi,
 và `reportCsvRows` cùng bộ máy chỉ nó cần.
 
+Rà cuối phiên còn tìm thêm **hai chỗ ADR-0034 nay nói sai** (đã AMEND): sheet
+*Detail* là booking TẠO trong tháng chứ không phải tập của khối P&L — hai tập
+khác nhau nên tên sheet phải nói thẳng, và lời hứa "chỉ ra booking NÀO thiếu
+giá vốn" bị gỡ vì cột ấy không có trong `BookingSchema` và thêm vào chỉ để phục
+vụ một sheet là nới một base schema dùng rộng (đường dẫn tới OOM đã đo được);
+§4 thì thiếu hẳn phần MÀU, tức thiếu một nửa yêu cầu gốc của giảng viên.
+
 **Tests after:** 2.923 unit (10 tokens · 232 contract · 22 ui · 2 i18n · 370 api
 · 849 admin · 1.438 web) và 382 integration. `build` chưa chạy được vì dev
 server của user đang giữ `.next` — ghi nợ, phải xanh trước khi merge.

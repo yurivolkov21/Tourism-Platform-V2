@@ -74,14 +74,16 @@ Năm sheet, mỗi sheet một việc:
 | **Summary** | Khối đầu (tên site · tên báo cáo · kỳ · lúc chốt sổ · đơn vị tiền · **thuế suất**), rồi hai khối số: Dòng tiền và Kết quả kinh doanh |
 | **Bookings** | Phân rã theo trạng thái + dòng Total |
 | **Operations** | Hoàn tiền · quyết định huỷ · duyệt review |
-| **Detail** | Từng booking của kỳ, có autofilter |
+| **Detail** | Từng booking TẠO trong tháng, có autofilter (xem §AMEND 1a) |
 | **Definitions** | Đúng khối *"How to read these numbers"* đang có trên trang |
 
 **Sheet Detail là điều kiện để báo cáo đáng tin.** Một tờ chỉ có tổng thì không
 kiểm được; có Detail thì người đọc chọn một cột, nhìn thanh trạng thái Excel, và
-đối chiếu với Summary. Đó là khác biệt giữa một báo cáo và một ảnh chụp màn
-hình dán vào bảng tính. Sheet này cũng là nơi `costDataMissing` (ADR-0033 §6)
-chỉ ra được **booking NÀO** thiếu giá vốn, không chỉ đếm bao nhiêu.
+đối chiếu với sheet *Bookings*. Đó là khác biệt giữa một báo cáo và một ảnh
+chụp màn hình dán vào bảng tính.
+
+⚠️ Câu *"sheet này cũng là nơi `costDataMissing` chỉ ra được booking NÀO thiếu
+giá vốn"* từng đứng ở đây đã bị GỠ — xem §AMEND 1a.
 
 **Sheet Definitions không phải phần phụ.** Nó đã đi kèm mọi bản in vì lý do đã
 ghi ở `page.tsx`: khi báo cáo rời khỏi màn hình thì không còn tooltip nào để
@@ -140,6 +142,45 @@ hai luôn tệ hơn.
 Khối `@media print` và bố cục để-in của `/reports` **không đụng tới**. Excel và
 giấy là hai đích khác nhau: giấy để đọc và ký, Excel để cộng lại và dán vào chỗ
 khác. Bỏ một cái để có cái kia là mất chứ không phải đổi.
+
+## AMEND 1 — hai chỗ thi công đã sửa lại thiết kế (05/09, cùng ngày)
+
+**a. Sheet *Detail* là booking TẠO trong tháng, KHÔNG phải tập của khối P&L.**
+
+§3 bản đầu viết "từng booking của kỳ" và hứa rằng sheet ấy chỉ ra được booking
+NÀO thiếu giá vốn. Cả hai sai, và thi công mới lộ ra:
+
+`admin.bookings.list` lọc khoảng ngày theo `created_at` — ADR-0028 chốt giữ cột
+ấy và cố ý KHÔNG thêm `dateField`. Trong khi khối P&L neo `departure_end_date`.
+**Hai tập khác nhau**, nên người đọc thử cộng cột `Total` của *Detail* để ra
+`Revenue recognised` sẽ không bao giờ khớp — một sheet mời hiểu nhầm còn tệ hơn
+một sheet vắng mặt.
+
+Chốt: *Detail* trở thành phần chi tiết của sheet **Bookings** (cùng tập
+created-in-month), và **tên sheet nói thẳng điều đó** — `Detail (created this
+month)`. Bỏ luôn lời hứa về `costDataMissing`: cột `cost_per_person` không có
+trong `BookingSchema` của contract, và thêm nó vào chỉ để phục vụ một sheet là
+nới một base schema dùng rộng — đúng đường dẫn tới OOM mà vòng review 05/09 đã
+đo được. Con số `costDataMissing` vẫn hiện ở *Summary* và trên màn hình; truy
+ra từng booking là việc của phase `/tours`.
+
+**b. §4 thiếu hẳn phần MÀU, và file đầu tiên trông như dữ liệu thô.**
+
+Bản đầu của §4 chỉ khai bố cục: không merge trong vùng dữ liệu, canh lề, đóng
+băng tiêu đề, autofilter, độ rộng cột, thiết lập in. User mở bản xuất đầu và
+chốt: đúng số nhưng **trông như dữ liệu dán vào bảng tính**. §4 vì thế thiếu
+một nửa yêu cầu gốc của giảng viên (*"rõ ràng + đẹp mắt"*).
+
+Bổ sung: dải tiêu đề nền thương hiệu chữ trắng; hai khối tiền trong *Summary*
+có dải riêng vì chúng KHÔNG cộng vào nhau được; viền bốn cạnh mọi ô dữ liệu;
+dải xen kẽ cho bảng nhiều hàng; dòng tổng có viền trên đậm; dòng thành phần
+thụt lề; số âm dùng `#,##0.00;[Red](#,##0.00)`.
+
+Bảng màu quy đổi từ CHÍNH token dự án (`oklch` → ARGB hex), mỗi hằng ghi kèm
+`oklch` gốc. **Ngoại lệ có chủ đích** với luật tokens-only (CLAUDE.md #6), cùng
+họ với khối `@media print` và lớp bề mặt admin ở `globals.css`: một file
+`.xlsx` không có CSS custom property nào để tham chiếu, ExcelJS đòi hex tuyệt
+đối.
 
 ## Phương án đã cân nhắc và bỏ
 
