@@ -102,6 +102,24 @@ nó nằm ở `ReviewModerationEvent`, append-only.
 việc nó làm. Nó hiếm (gỡ tạm để điều tra), nhưng gộp nó vào `reject` là ép
 người duyệt tuyên một phán quyết chung cuộc khi họ chỉ muốn tạm gỡ.
 
+**AMEND lúc nghiệm thu 05/09 — `unpublish` hiện ra ở hàng ĐÃ BỊ BÁC, dưới tên
+`Reopen`.** Bản đầu chỉ cho hàng ấy đúng một nút (`approve`), với lý do "một
+nút thứ ba trên MỌI hàng là cái giá sai". Lý do ấy đúng nhưng kết luận thì sai:
+nút thứ hai chỉ mọc ở **hàng đã bác**, không phải mọi hàng. Và user đọc nhầm
+ngay lần đầu — một pill xanh "Approve" đứng MỘT MÌNH trong cột tên
+"Moderation", trông hệt badge `Approved` ở cột State ngay bên, đọc ra như một
+lời khẳng định chứ không phải lời mời. Một CẶP nút thì đọc ra là một lựa chọn.
+
+Cùng lúc, thứ tự trong ô đổi: **dấu vết đứng TRƯỚC nút**. Cột tên là một danh
+từ, nên nó phải trả lời "chuyện gì đã xảy ra" trước, rồi mới tới "còn làm được
+gì".
+
+`Reopen` là CÙNG động từ `unpublish` (cùng đưa về `is_approved = false,
+rejected_at = null`), chỉ khác chỗ đứng nhìn — và vì thế phải khác tên: từ một
+review đã bị bác, "Unpublish" nói sai, review vốn đã không ở trên site. Giao
+diện giữ khái niệm `ModerateActionKind` (bốn việc bấm được) tách khỏi
+`ReviewVerdict` (ba động từ contract nhận).
+
 ### 4. Audit trail: thêm `to_rejected`, KHÔNG sửa dòng cũ
 
 `ReviewModerationEvent` có `from_approved`/`to_approved`. Thêm

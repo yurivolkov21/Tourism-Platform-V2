@@ -41,6 +41,27 @@ export const isStaleStateCode = codec.isStale;
  * `ReviewRowVM` (không truyền cả hàng: dialog không cần ngày gửi hay dấu vết
  * duyệt cũ, và cắt hẹp thì đọc code là biết dialog dựa vào gì để nói).
  */
+/**
+ * Việc admin BẤM, khác với động từ gửi lên server (vá 05/09, user báo).
+ *
+ * `reopen` và `unpublish` là CÙNG một động từ contract — cùng đưa review về
+ * `is_approved = false, rejected_at = null`. Nhưng nhìn từ hai chỗ khác nhau
+ * thì chúng là hai việc khác nhau, và gọi cả hai là "Unpublish" là nói sai một
+ * nửa: từ một review ĐÃ BỊ BÁC, review vốn đã không ở trên site, thứ thật sự
+ * xảy ra là nó QUAY LẠI hàng đợi.
+ *
+ * Tách hai khái niệm ở đây để mỗi cái giữ đúng một nghĩa: `ModerateActionKind`
+ * là thứ giao diện nói, `ReviewVerdict` là thứ server nhận.
+ */
+export type ModerateActionKind = 'approve' | 'reject' | 'unpublish' | 'reopen';
+
+export const VERDICT_OF: Record<ModerateActionKind, ReviewVerdict> = {
+  approve: 'approve',
+  reject: 'reject',
+  unpublish: 'unpublish',
+  reopen: 'unpublish',
+};
+
 export type ModerateTarget = Pick<
   ReviewRowVM,
   | 'id'
@@ -73,15 +94,20 @@ export type ModerateTarget = Pick<
  *   chỉ tombstone). Ca dữ liệu hiếm VERIFIED với userId null (import/backfill)
  *   sẽ không email được dù câu hứa có — chấp nhận, ghi ở đây làm dấu.
  */
-export function moderateConsequences(target: ModerateTarget, verdict: ReviewVerdict): string[] {
-  if (verdict === 'unpublish') {
+export function moderateConsequences(target: ModerateTarget, action: ModerateActionKind): string[] {
+  if (action === 'reopen') {
+    const c = t.reopenDialog.consequences;
+    return [c.queue, c.stillHidden, c.noEmail];
+  }
+
+  if (action === 'unpublish') {
     const c = t.unpublishDialog.consequences;
     const hide = target.tourTitle ? c.hide : c.hideNoTour;
     const rating = target.tourTitle ? c.rating(target.tourTitle) : c.noRating;
     return [hide, rating, c.noEmail];
   }
 
-  if (verdict === 'reject') {
+  if (action === 'reject') {
     const c = t.rejectDialog.consequences;
     // Câu ĐẦU là thứ phân biệt reject với unpublish — nó rời hàng đợi. Đặt
     // trước cả câu gỡ khỏi trang tour vì đó mới là điều người bấm cần cân

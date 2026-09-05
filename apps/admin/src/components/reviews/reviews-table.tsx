@@ -187,15 +187,20 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
 function ModerationCell({ row, moderate }: { row: ReviewRowVM; moderate: ModerateAction }) {
   return (
     <div className="grid gap-1">
+      {/* Dấu vết ĐỨNG TRƯỚC nút (vá 05/09, user báo). Cột này tên "Moderation"
+          — một danh từ, nên thứ nó phải trả lời đầu tiên là CHUYỆN ĐÃ XẢY RA,
+          rồi mới tới việc còn làm được. Đặt nút lên trước thì mắt gặp một pill
+          xanh "Approve" ngay dưới một hàng đang ở trạng thái Rejected, và đọc
+          nó thành lời khẳng định chứ không phải lời mời. */}
+      <div className="grid gap-0.5 text-xs text-muted-foreground">
+        <span className="whitespace-nowrap">{row.moderated ?? t.neverModerated}</span>
+        {row.moderatedBy ? <span className="truncate">{row.moderatedBy}</span> : null}
+      </div>
       {/* Truyền thẳng `row` (thoả cấu trúc ModerateTarget) — object literal
           11 field từng chép tay ở đây vừa tạo tham chiếu mới mỗi render (chặn
           memo về sau) vừa phải sửa tay mỗi khi Pick đổi (review F4 31/08).
           "Dialog dựa vào gì" đã do chính kiểu ModerateTarget diễn đạt. */}
       <ModerateActions review={row} moderate={moderate} />
-      <div className="grid gap-0.5 text-xs text-muted-foreground">
-        <span className="whitespace-nowrap">{row.moderated ?? t.neverModerated}</span>
-        {row.moderatedBy ? <span className="truncate">{row.moderatedBy}</span> : null}
-      </div>
     </div>
   );
 }

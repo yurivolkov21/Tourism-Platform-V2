@@ -4227,6 +4227,12 @@ export const messages = {
         unpublish: 'Unpublish',
         /** Phán quyết CHUNG CUỘC — khác `unpublish` (gỡ tạm, ở lại hàng đợi). */
         reject: 'Reject',
+        /**
+         * CÙNG động từ `unpublish`, nhìn từ một review ĐÃ BỊ BÁC (vá 05/09,
+         * user báo). "Unpublish" ở đó nói sai — review vốn đã không ở trên
+         * site; việc thật sự xảy ra là nó quay lại hàng đợi.
+         */
+        reopen: 'Reopen',
         /** Nhãn cụm nút của MỘT hàng — cả trang toàn nút "Approve" giống hệt
          *  nhau thì trình đọc màn hình không phân biệt nổi hàng nào. */
         actionsLabel: (author: string) => `Moderate the review by ${author}`,
@@ -4291,6 +4297,19 @@ export const messages = {
           warning: 'The review stays in this queue and can be approved again at any time.',
           submit: 'Unpublish review',
           submitting: 'Unpublishing…',
+        },
+        reopenDialog: {
+          title: 'Reopen this review?',
+          body: 'Reopening puts the review back in the moderation queue. Nothing is published.',
+          consequences: {
+            queue: 'Puts the review back in the moderation queue for another look.',
+            stillHidden: 'The review stays off the site until someone approves it.',
+            noEmail: 'The author is not told — no email goes out when a review is reopened.',
+          },
+          /** Sổ moderation là append-only: mở lại KHÔNG xoá lần bác khỏi lịch sử. */
+          warning: 'The rejection stays in the moderation history.',
+          submit: 'Reopen review',
+          submitting: 'Reopening…',
         },
         rejectDialog: {
           title: 'Reject this review?',

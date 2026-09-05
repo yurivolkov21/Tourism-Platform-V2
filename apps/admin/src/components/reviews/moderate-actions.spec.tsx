@@ -76,10 +76,39 @@ describe('ModerateActions — nút của hàng', () => {
     expect(screen.queryByRole('button', { name: t.approve })).toBeNull();
     approved.unmount();
 
+    // Đã bác: duyệt, hoặc mở lại. HAI nút chứ không một (vá 05/09, user báo)
+    // — một pill xanh đứng MỘT MÌNH trong cột "Moderation" đọc ra như cái nhãn
+    // "đã duyệt", nhất là khi nó trông y hệt badge `Approved` ngay cột bên.
     render(<ModerateActions review={REJECTED} moderate={vi.fn()} />);
     expect(screen.getByRole('button', { name: t.approve })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.reopen })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: t.reject })).toBeNull();
+    // Chữ "Unpublish" KHÔNG xuất hiện ở hàng đã bác: review vốn đã không trên
+    // site, nên câu ấy nói sai việc đang xảy ra.
     expect(screen.queryByRole('button', { name: t.unpublish })).toBeNull();
+  });
+
+  it('Reopen gửi ĐÚNG động từ `unpublish` — nhãn khác, lệnh vẫn là một', async () => {
+    // `reopen` là chuyện của giao diện; contract chỉ biết ba động từ.
+    const user = userEvent.setup();
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'pending' });
+    render(<ModerateActions review={REJECTED} moderate={moderate} />);
+
+    await user.click(screen.getByRole('button', { name: t.reopen }));
+    await user.click(await screen.findByRole('button', { name: t.reopenDialog.submit }));
+
+    expect(moderate).toHaveBeenCalledWith({ id: REJECTED.id, verdict: 'unpublish' });
+  });
+
+  it('dialog Reopen KHÔNG hứa gỡ khỏi trang tour — review vốn đã không ở đó', async () => {
+    const user = userEvent.setup();
+    render(<ModerateActions review={REJECTED} moderate={vi.fn()} />);
+    await user.click(screen.getByRole('button', { name: t.reopen }));
+
+    const dialog = await screen.findByRole('dialog');
+    expect(dialog).toHaveTextContent(t.reopenDialog.consequences.queue);
+    expect(dialog).toHaveTextContent(t.reopenDialog.consequences.stillHidden);
+    expect(dialog).not.toHaveTextContent(t.unpublishDialog.consequences.hide);
   });
 
   it('cụm nút có tên riêng theo tác giả — trình đọc màn hình phân biệt được hàng nào', () => {
