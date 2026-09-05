@@ -55,6 +55,41 @@ export function parseReviewState(value: string | undefined): ReviewState | null 
 }
 
 /**
+ * Nguồn của review — hai member enum của contract (`AdminReviewsQuerySchema.
+ * source`). Trả `null` cho mọi thứ khác, cùng khoan dung với `parseReviewState`.
+ *
+ * ⚠️ PHÂN BIỆT HOA THƯỜNG, khác `status` ngay bên trên. `status` mang chữ
+ * thường vì nó là khái niệm của UI và được dịch sang enum ở `toReviewsList
+ * Input`; `source` thì đi THẲNG sang contract nguyên văn, nên `?source=curated`
+ * lọt qua sẽ thành một 400 ném vào mặt admin cho một chữ gõ nhầm trên URL.
+ */
+export type ReviewSourceFilter = 'VERIFIED' | 'CURATED';
+
+const REVIEW_SOURCES: readonly ReviewSourceFilter[] = ['VERIFIED', 'CURATED'];
+
+export function parseReviewSource(value: string | undefined): ReviewSourceFilter | null {
+  return REVIEW_SOURCES.find((source) => source === value) ?? null;
+}
+
+/**
+ * Số sao — bộ lọc DUY NHẤT của vùng đổi KIỂU ở cả hai chiều: URL chỉ có chuỗi,
+ * contract muốn `z.int().min(1).max(5)`.
+ *
+ * Nhận cả `string` (đường URL) lẫn `number` (đường patch của `reviewsHref`)
+ * để luật chỉ có MỘT bản: hai hàm cho cùng một luật là hai bản sẽ trôi lệch,
+ * và bản trôi ở đây sinh ra href 400 — một cú click chết.
+ *
+ * Khoá đúng trần contract, không rộng hơn. Ba ca dễ lọt nếu chỉ so `>= 1 &&
+ * <= 5`: `'4.5'` (không nguyên), `'five'` (NaN), và `''` — `Number('')` là
+ * **0**, cái bẫy của `Number` chứ không phải của người gõ.
+ */
+export function parseReviewRating(value: string | number | undefined): number | null {
+  if (value === undefined || value === '') return null;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed >= 1 && parsed <= 5 ? parsed : null;
+}
+
+/**
  * Input của `admin.reviews.list`, khoá kiểu vào CHÍNH schema contract: đổi
  * tên field bên contract là typecheck đỏ ngay tại hàm map cuối file, không
  * đợi runtime nuốt im lặng.
@@ -66,6 +101,10 @@ export interface ReviewsQuery {
   page: number;
   limit: number;
   state?: ReviewState;
+  /** Nguồn review — enum nguyên văn contract, xem `parseReviewSource`. */
+  source?: ReviewSourceFilter;
+  /** Số sao 1–5; `undefined` = mọi mức. */
+  rating?: number;
   search?: string;
   /** Ngày lịch `YYYY-MM-DD` theo `createdAt` — ngày review được GỬI, TÍNH VÀO. */
   from?: string;
@@ -80,11 +119,15 @@ export interface ReviewsQuery {
  */
 export function parseReviewsSearchParams(raw: RawSearchParams): ReviewsQuery {
   const state = parseReviewState(firstParam(raw.status));
+  const source = parseReviewSource(firstParam(raw.source));
+  const rating = parseReviewRating(firstParam(raw.rating));
   const search = clampSearch(firstParam(raw.q), SEARCH_MAX_LENGTH);
 
   return {
     ...parsePaging(raw),
     ...(state ? { state } : {}),
+    ...(source ? { source } : {}),
+    ...(rating ? { rating } : {}),
     ...(search ? { search } : {}),
     // Luật ngày (rác rơi im lặng, khoảng ngược giữ `from`) nằm ở kit — ba vùng
     // lọc ngày phải khoan dung y hệt nhau.
@@ -101,6 +144,9 @@ export interface ReviewsHrefPatch {
   page?: number;
   limit?: number;
   state?: ReviewState | null;
+  source?: ReviewSourceFilter | null;
+  /** Số ngoài dải 1–5 bị vứt ở `reviewsHref`, không ném lên URL. */
+  rating?: number | null;
   search?: string | null;
   /** `null` hoặc chuỗi rỗng (ô date bị xoá trắng) đều là XOÁ đầu đó. */
   from?: string | null;
@@ -113,6 +159,10 @@ export interface ReviewsHrefPatch {
  */
 export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): string {
   const state = pickPatch(patch.state, current.state);
+  const source = pickPatch(patch.source, current.source);
+  // Đi qua parser LẦN NỮA dù đã có kiểu `number`: kiểu không chặn được số 9,
+  // và luật khoan dung phải giống hệt đường đọc (cùng lý do khối ngày dưới đây).
+  const rating = parseReviewRating(pickPatch(patch.rating, current.rating)) ?? undefined;
   const search = clampSearch(pickPatch(patch.search, current.search), SEARCH_MAX_LENGTH);
   // Ngày rác từ patch bị vứt ở ĐÂY chứ không ném lên URL: một href sinh ra
   // 400 là một cú click chết, và luật khoan dung phải giống hệt đường đọc.
@@ -123,6 +173,8 @@ export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): str
 
   const scopeChanged =
     patch.state !== undefined ||
+    patch.source !== undefined ||
+    patch.rating !== undefined ||
     patch.search !== undefined ||
     patch.limit !== undefined ||
     patch.from !== undefined ||
@@ -132,6 +184,8 @@ export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): str
   const params = new URLSearchParams();
   if (state) params.set('status', state);
   if (search) params.set('q', search);
+  if (source) params.set('source', source);
+  if (rating) params.set('rating', String(rating));
   if (from) params.set('from', from);
   if (to) params.set('to', to);
   appendPaging(params, paging);
@@ -158,6 +212,8 @@ export function toReviewsListInput(query: ReviewsQuery): ReviewsListInput {
     page: query.page,
     pageSize: query.limit,
     ...(query.state ? { state: query.state } : {}),
+    ...(query.source ? { source: query.source } : {}),
+    ...(query.rating ? { rating: query.rating } : {}),
     ...(query.search ? { search: query.search } : {}),
     ...(query.from ? { from: query.from } : {}),
     ...(query.to ? { to: query.to } : {}),

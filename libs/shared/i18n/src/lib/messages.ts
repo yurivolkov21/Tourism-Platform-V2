@@ -4165,6 +4165,22 @@ export const messages = {
          * nên chữ nói "submitted". KHÔNG phải ngày duyệt: review chưa duyệt có
          * `moderatedAt` null, lọc cột ấy là quét sạch hàng đợi khỏi bảng.
          */
+        /**
+         * Lọc theo NGUỒN (`AdminReviewsQuerySchema.source`). Nhãn từng mục
+         * KHÔNG khai ở đây — chúng mượn `admin.reviews.source` mà cột State
+         * của bảng đang dùng: một khái niệm thì một chữ, kẻo bộ lọc dạy admin
+         * một bảng chữ cái còn bảng dạy một bảng khác.
+         */
+        sourceLabel: 'Filter by source',
+        sourceAll: 'All sources',
+        /**
+         * Lọc theo SỐ SAO. Tên `ratingFilterLabel` chứ không `ratingLabel` —
+         * khoá ấy đã có ở khối này và mang câu cho trình đọc màn hình
+         * ("4 out of 5 stars"); hai thứ khác nhau, hai tên khác nhau.
+         */
+        ratingFilterLabel: 'Filter by rating',
+        ratingAll: 'All ratings',
+        ratingStars: (count: number) => `${count} ${count === 1 ? 'star' : 'stars'}`,
         dateFilterLabel: 'Filter by submitted date',
         dateFrom: 'Submitted from',
         dateTo: 'Submitted to',

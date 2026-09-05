@@ -231,3 +231,85 @@ describe('reviews — bộ lọc khoảng ngày', () => {
     expect(toReviewsListInput({ page: 1, limit: 20 })).toEqual({ page: 1, pageSize: 20 });
   });
 });
+
+/**
+ * Nguồn và số sao (trả nợ 05/09). Hai tham số này `AdminReviewsQuerySchema` đã
+ * khai và service đã lọc thật từ F4 — thiếu mỗi ô để bấm. Vì thế bộ test này
+ * canh đúng chỗ dễ hỏng của một bộ lọc lắp muộn: luật khoan dung của URL, và
+ * chỗ nối sang input contract.
+ *
+ * `rating` là số nguyên 1–5 ở contract (`RatingSchema`), nhưng URL chỉ có
+ * chuỗi — nên nó là bộ lọc DUY NHẤT của vùng phải đổi kiểu ở cả hai chiều.
+ */
+describe('reviews — bộ lọc nguồn và số sao', () => {
+  it('không lọc gì thì hai field vắng mặt, không phải null', () => {
+    const query = parseReviewsSearchParams({});
+    expect(query.source).toBeUndefined();
+    expect(query.rating).toBeUndefined();
+  });
+
+  it('source chỉ nhận đúng hai member enum, phân biệt hoa thường', () => {
+    expect(parseReviewsSearchParams({ source: 'VERIFIED' }).source).toBe('VERIFIED');
+    expect(parseReviewsSearchParams({ source: 'CURATED' }).source).toBe('CURATED');
+    // Khác `status` (chữ thường là quy ước của vùng), `source` đi THẲNG sang
+    // contract dưới dạng enum — chữ thường lọt lên API là 400.
+    expect(parseReviewsSearchParams({ source: 'curated' }).source).toBeUndefined();
+    expect(parseReviewsSearchParams({ source: 'NOPE' }).source).toBeUndefined();
+  });
+
+  it('rating chỉ nhận số nguyên 1..5', () => {
+    expect(parseReviewsSearchParams({ rating: '4' }).rating).toBe(4);
+    expect(parseReviewsSearchParams({ rating: '1' }).rating).toBe(1);
+    expect(parseReviewsSearchParams({ rating: '5' }).rating).toBe(5);
+    expect(parseReviewsSearchParams({ rating: '0' }).rating).toBeUndefined();
+    expect(parseReviewsSearchParams({ rating: '6' }).rating).toBeUndefined();
+    expect(parseReviewsSearchParams({ rating: '4.5' }).rating).toBeUndefined();
+    expect(parseReviewsSearchParams({ rating: 'five' }).rating).toBeUndefined();
+    // Chuỗi rỗng là `Number('') === 0` — cái bẫy của `Number`, không phải của
+    // người gõ. Nếu lọt thì nó thành `rating=0` và API trả 400.
+    expect(parseReviewsSearchParams({ rating: '' }).rating).toBeUndefined();
+  });
+
+  it('href mang cả hai, và đổi bộ lọc ĐẶT LẠI trang về 1', () => {
+    const href = reviewsHref({ page: 3, limit: 20, rating: 5 }, { source: 'VERIFIED' });
+    expect(href).toBe('/reviews?source=VERIFIED&rating=5');
+  });
+
+  it('null xoá filter khỏi URL', () => {
+    const current = { page: 1, limit: 20, source: 'CURATED' as const, rating: 2 };
+    expect(reviewsHref(current, { source: null, rating: null })).toBe('/reviews');
+  });
+
+  it('cộng dồn với trạng thái, tìm kiếm và ngày — không cái nào thay cái nào', () => {
+    expect(
+      reviewsHref(
+        { page: 1, limit: 20, state: 'pending', search: 'guide', from: '2026-05-01' },
+        { source: 'VERIFIED', rating: 1 },
+      ),
+    ).toBe('/reviews?status=pending&q=guide&source=VERIFIED&rating=1&from=2026-05-01');
+  });
+
+  it('giá trị rác từ patch bị vứt ở đây, không ném lên URL', () => {
+    // Cùng luật với ngày: một href sinh ra 400 là một cú click chết.
+    expect(reviewsHref({ page: 1, limit: 20 }, { rating: 9 })).toBe('/reviews');
+  });
+
+  it('input contract mang source/rating — không lọc thì KHÔNG gửi key nào', () => {
+    // Cái bẫy đã ghi ở `toReviewsListInput`: field trôi lệch thì Zod strip im
+    // lặng và bộ lọc thành nút chết mà không lỗi nào đỏ.
+    expect(toReviewsListInput({ page: 1, limit: 20, source: 'CURATED', rating: 3 })).toEqual({
+      page: 1,
+      pageSize: 20,
+      source: 'CURATED',
+      rating: 3,
+    });
+    expect(toReviewsListInput({ page: 1, limit: 20 })).toEqual({ page: 1, pageSize: 20 });
+  });
+
+  it('input đi qua ĐƯỢC chính schema contract', () => {
+    const parsed = AdminReviewsQuerySchema.safeParse(
+      toReviewsListInput({ page: 1, limit: 20, source: 'VERIFIED', rating: 5 }),
+    );
+    expect(parsed.success).toBe(true);
+  });
+});
