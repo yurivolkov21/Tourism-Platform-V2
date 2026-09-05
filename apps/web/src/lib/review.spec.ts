@@ -1,3 +1,4 @@
+import { type MyReview, REVIEW_REJECTION_LIMIT } from '@tourism/contract';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeBooking } from '@/test/fixtures/booking';
 import { reviewSlot } from './review';
@@ -15,11 +16,71 @@ afterEach(() => {
 const done = { status: 'PAID' as const, departureEndDate: '2026-08-01' };
 
 describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh giá', () => {
-  it('đã viết rồi → "done", KHÔNG hiện form nữa', () => {
+  /** Một review của khách ở trạng thái bất kỳ. */
+  function ownReview(over: Partial<MyReview> = {}): MyReview {
+    return {
+      id: '11111111-1111-4111-8111-111111111111',
+      rating: 5,
+      title: null,
+      body: 'Chuyến đi rất đáng nhớ và hướng dẫn viên nhiệt tình',
+      authorName: 'Ada Lovelace',
+      authorDeleted: false,
+      createdAt: '2026-08-02T00:00:00.000Z',
+      media: [],
+      isApproved: false,
+      moderationState: 'pending',
+      moderationNote: null,
+      rejectionCount: 0,
+      tourSlug: 'ha-long-bay-cruise',
+      tourTitle: 'Ha Long Bay Cruise',
+      ...over,
+    };
+  }
+
+  it('đã duyệt → "approved", KHÔNG hiện form nữa', () => {
     // Trước cụm B, cách duy nhất để biết là POST rồi ăn 409 — tức khách gõ
     // xong cả bài mới được báo là không viết được.
-    expect(reviewSlot(makeBooking({ ...done, reviewedAt: '2026-08-02T00:00:00.000Z' }))).toBe(
-      'done',
+    const review = ownReview({ isApproved: true, moderationState: 'approved' });
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'approved',
+    );
+  });
+
+  it('đang chờ duyệt → "pending", VẪN sửa được', () => {
+    const review = ownReview();
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'pending',
+    );
+  });
+
+  it('bị bác một lần → "rejected" (còn đường viết lại)', () => {
+    const review = ownReview({ moderationState: 'rejected', rejectionCount: 1 });
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'rejected',
+    );
+  });
+
+  it('bị bác đủ số lần → "rejectedFinal", KHÔNG hiện form nữa', () => {
+    // Ranh giới của ADR-0032 §5, và nó phải khớp với cổng phía API — cả hai
+    // gọi cùng `canAuthorEdit`.
+    const review = ownReview({
+      moderationState: 'rejected',
+      rejectionCount: REVIEW_REJECTION_LIMIT,
+    });
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'rejectedFinal',
+    );
+  });
+
+  it('bác đủ lần rồi admin Reopen → vẫn "rejectedFinal", không phải "pending"', () => {
+    // Trạng thái về `pending` nhưng lịch sử vẫn là hai lần bác. Đọc trạng thái
+    // mà quên lịch sử là mở lại một cánh cửa đã chốt.
+    const review = ownReview({
+      moderationState: 'pending',
+      rejectionCount: REVIEW_REJECTION_LIMIT,
+    });
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'rejectedFinal',
     );
   });
 

@@ -14,7 +14,7 @@ import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
 import { bookingView, refundSummary, toCancellationView } from '@/lib/booking-vm';
-import { reviewSlot } from '@/lib/review';
+import { type ReviewSlot, reviewSlot } from '@/lib/review';
 import { formatDate, formatMoney, formatMoneyExact } from '@/lib/tours';
 
 /** Nhãn provider — TÁI DÙNG copy `booking.form` như trước, không key mới. */
@@ -282,13 +282,13 @@ export default async function AccountBookingDetailPage({
                   thành một thẻ. State (publicIds đã upload + cờ busy) sống
                   trong `ReviewComposer` (client) vì page này là Server
                   Component. */}
-              {slot === 'form' ? (
-                <ReviewComposer bookingCode={booking.code} />
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  {slot === 'done' ? rv.alreadyReviewedBody : rv.tooEarlyBody}
-                </p>
-              )}
+              {/* Trạng thái NÓI TRƯỚC, form đứng sau (ADR-0032 §7). Trước đó
+                  mọi review đã gửi rơi vào một nhánh duy nhất, nên khách bị
+                  bác quay lại đọc thấy một lời cảm ơn. */}
+              <ReviewSlotNote slot={slot} reason={booking.review?.moderationNote ?? null} />
+              {slot === 'form' || slot === 'pending' || slot === 'rejected' ? (
+                <ReviewComposer bookingCode={booking.code} review={booking.review ?? undefined} />
+              ) : null}
             </div>
           </section>
         )}
@@ -336,6 +336,63 @@ function RefundLine({
           t.timing
         )}
       </p>
+    </div>
+  );
+}
+
+/**
+ * Câu nói trạng thái của chỗ đánh giá — mỗi slot một câu, không ternary lồng
+ * nhau trong JSX.
+ *
+ * `rejected` và `rejectedFinal` cùng in LÝ DO nhưng khác hẳn câu sau đó: một
+ * bên mời viết lại, một bên nói thẳng đã hết đường và mở lối liên hệ. Gộp
+ * chúng là để khách bấm vào một form không còn ở đó.
+ */
+function ReviewSlotNote({ slot, reason }: { slot: ReviewSlot; reason: string | null }) {
+  const rv = messages.reviews;
+  if (slot === 'form') return null;
+
+  if (slot === 'approved') {
+    return <SlotNote title={rv.alreadyReviewedTitle} body={rv.alreadyReviewedBody} />;
+  }
+  if (slot === 'tooEarly') {
+    return <SlotNote title={rv.tooEarlyTitle} body={rv.tooEarlyBody} />;
+  }
+  if (slot === 'pending') {
+    return <SlotNote title={rv.pendingTitle} body={rv.pendingBody} />;
+  }
+
+  const final = slot === 'rejectedFinal';
+  return (
+    <div className="mb-4 flex flex-col gap-2">
+      <SlotNote
+        title={final ? rv.rejectedFinalTitle : rv.rejectedTitle}
+        body={final ? rv.rejectedFinalBody : rv.rejectedBody}
+      />
+      {/* Nguyên văn lý do người duyệt viết — ĐÚNG câu khách đã nhận qua mail,
+          nên hai nguồn không thể nói khác nhau. */}
+      {reason ? (
+        <figure className="rounded-md border border-border/60 bg-muted/40 p-3">
+          <figcaption className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+            {rv.rejectedReason}
+          </figcaption>
+          <blockquote className="mt-1 text-sm whitespace-pre-wrap">{reason}</blockquote>
+        </figure>
+      ) : null}
+      {final ? (
+        <Link href="/contact" className="w-fit text-sm underline-offset-4 hover:underline">
+          {messages.nav.contact}
+        </Link>
+      ) : null}
+    </div>
+  );
+}
+
+function SlotNote({ title, body }: { title: string; body: string }) {
+  return (
+    <div>
+      <p className="font-medium">{title}</p>
+      <p className="text-sm text-muted-foreground">{body}</p>
     </div>
   );
 }

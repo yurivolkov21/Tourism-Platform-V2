@@ -61,15 +61,41 @@ interface PendingPhoto {
 
 export function ReviewPhotoUpload({
   bookingCode,
+  initialPhotos = [],
   onPhotosChange,
 }: {
   bookingCode: string;
+  /**
+   * Ảnh ĐÃ có trên review, cho chế độ SỬA (ADR-0032 §3). Chúng vào cùng một
+   * hàng với ảnh mới upload, nên gỡ và kéo thả hoạt động y hệt — không có
+   * "ảnh cũ" là một loại thứ hai với luật riêng.
+   *
+   * Không truyền thì đây là lần viết đầu, hàng bắt đầu rỗng.
+   */
+  initialPhotos?: { publicId: string; url: string }[];
   /** publicIds theo ĐÚNG thứ tự Sortable hiện tại (ảnh đầu = đại diện) +
    *  cờ busy khi còn ảnh đang upload — composer chảy thẳng xuống ReviewForm. */
   onPhotosChange: (s: { publicIds: string[]; busy: boolean }) => void;
 }) {
   const t = messages.reviews.photos;
-  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
+  // Khởi tạo MỘT LẦN (dạng hàm): `initialPhotos` là mảng mới mỗi render của
+  // cha, và đọc nó ở mỗi lần render sẽ dựng lại hàng ảnh, xoá sạch thứ khách
+  // vừa gỡ.
+  const [photos, setPhotos] = useState<PendingPhoto[]>(() =>
+    initialPhotos.map((photo) => ({
+      id: photo.publicId,
+      // Ảnh đã lên rồi nên không có File nào để lấy tên/cỡ — nhãn nói thẳng
+      // đây là ảnh sẵn có thay vì bịa một tên tệp.
+      name: messages.reviews.keptPhoto,
+      size: 0,
+      // URL thật của Cloudinary đứng đúng chỗ object URL của ảnh đang upload;
+      // thẻ ảnh không phân biệt, và không có object URL nào để revoke.
+      preview: photo.url,
+      progress: 100,
+      status: 'completed' as const,
+      publicId: photo.publicId,
+    })),
+  );
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);

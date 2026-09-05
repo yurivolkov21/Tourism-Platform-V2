@@ -1,6 +1,7 @@
 'use client';
 
 import { ORPCError } from '@orpc/client';
+import type { MyReview } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Field } from '@tourism/ui/components/field';
 import {
@@ -82,18 +83,28 @@ function RatingPicker({ value, onChange }: { value: number; onChange: (n: number
  */
 export function ReviewForm({
   bookingCode,
+  review,
   photos = [],
   photosBusy = false,
 }: {
   bookingCode: string;
+  /**
+   * Có = chế độ SỬA (ADR-0032): điền sẵn nội dung cũ và gọi `reviews.update`
+   * thay vì `create`. Vắng = lần viết đầu.
+   *
+   * Điền sẵn là bắt buộc chứ không phải tiện tay: bắt khách gõ lại từ đầu một
+   * bài họ đã viết, chỉ vì một câu bị bác, là một đường quay lại trên danh
+   * nghĩa.
+   */
+  review?: MyReview;
   photos?: string[];
   photosBusy?: boolean;
 }) {
   const t = messages.reviews;
   const router = useRouter();
-  const [rating, setRating] = useState(0);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [rating, setRating] = useState(review?.rating ?? 0);
+  const [title, setTitle] = useState(review?.title ?? '');
+  const [body, setBody] = useState(review?.body ?? '');
   const [touched, setTouched] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,16 +121,19 @@ export function ReviewForm({
     setError(null);
     setPending(true);
     try {
-      await api.reviews.create(
-        {
-          bookingCode,
-          rating,
-          ...(title.trim() ? { title: title.trim() } : {}),
-          body: body.trim(),
-          ...(photos.length > 0 ? { photos } : {}),
-        },
-        { context: withBrowserAuth() },
-      );
+      const content = {
+        rating,
+        ...(title.trim() ? { title: title.trim() } : {}),
+        body: body.trim(),
+        // `photos` VẮNG ở nhánh sửa nghĩa là gỡ hết (ADR-0032 §3) — cùng ý
+        // nghĩa với contract, nên không phải giữ lại danh sách cũ hộ ai.
+        ...(photos.length > 0 ? { photos } : {}),
+      };
+      if (review) {
+        await api.reviews.update({ id: review.id, ...content }, { context: withBrowserAuth() });
+      } else {
+        await api.reviews.create({ bookingCode, ...content }, { context: withBrowserAuth() });
+      }
       // Trang server đọc lại `reviewedAt` và tự đổi sang lời cảm ơn — không
       // giữ state "đã gửi" ở client, vì như vậy tải lại trang là mất.
       router.refresh();
@@ -187,7 +201,9 @@ export function ReviewForm({
               size="sm"
               disabled={pending || photosBusy}
             >
-              {pending ? t.submitting : t.submit}
+              {/* Nhãn theo VIỆC đang làm: gửi lần đầu và gửi lại sau khi bị
+                  bác là hai việc khác nhau với người bấm. */}
+              {review ? (pending ? t.resubmitting : t.resubmit) : pending ? t.submitting : t.submit}
             </InputGroupButton>
           </InputGroupAddon>
         </InputGroup>

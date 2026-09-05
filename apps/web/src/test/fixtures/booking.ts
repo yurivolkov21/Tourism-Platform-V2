@@ -1,7 +1,7 @@
-import type { Booking } from '@tourism/contract';
+import type { BookingDetail } from '@tourism/contract';
 
 /**
- * Fixture `Booking` dùng chung cho test tầng web.
+ * Fixture `BookingDetail` dùng chung cho test tầng web.
  *
  * Vì sao gom về một chỗ: trước cụm C có BA bản `makeBooking` chép tay
  * (`account-stats.spec`, `booking-card.spec`, `account-dashboard.spec`) khác
@@ -14,7 +14,7 @@ import type { Booking } from '@tourism/contract';
  * mốc thời gian riêng thì truyền `paidAt`/`createdAt` tường minh thay vì dựa
  * vào giá trị ở đây.
  */
-export function makeBooking(overrides: Partial<Booking> = {}): Booking {
+export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDetail {
   return {
     id: 'b0000000-0000-4000-8000-000000000000',
     code: 'BK-TESTAAAA',
@@ -50,6 +50,7 @@ export function makeBooking(overrides: Partial<Booking> = {}): Booking {
     refundedTotal: '0.00',
     // Cụm B: null = chưa viết đánh giá. Chỉ `byCode` điền giá trị thật.
     reviewedAt: null,
+    review: null,
     ...overrides,
   };
 }

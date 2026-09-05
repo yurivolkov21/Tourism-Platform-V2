@@ -1850,6 +1850,30 @@ export const messages = {
     tooEarlyBody: 'You’ll be able to rate this trip once it has finished.',
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
     alreadyReviewedBody: 'Thanks again for sharing your experience with other travellers.',
+    /**
+     * Ba trạng thái mới của chỗ đánh giá (ADR-0032 §7). Trước đó MỌI review đã
+     * gửi đều đọc chung câu `alreadyReviewedBody` — kể cả bài vừa bị bác, nên
+     * khách bị bác quay lại đọc thấy một lời cảm ơn.
+     */
+    pendingTitle: 'Your review is with our team',
+    pendingBody:
+      'We read every review before it goes live. You can still change it until someone does.',
+    rejectedTitle: 'Your review wasn’t published',
+    /** Nhãn cho nguyên văn lý do người duyệt viết — cùng câu khách nhận qua mail. */
+    rejectedReason: 'Why',
+    rejectedBody: 'Rewrite it below and we’ll take another look.',
+    /**
+     * Hết lượt. KHÔNG xin lỗi và KHÔNG mập mờ: nói đã xem mấy lần, rồi mở một
+     * cửa thật (liên hệ) thay vì để khách bấm vào một form không còn ở đó.
+     */
+    rejectedFinalTitle: 'We’ve looked at this review twice',
+    rejectedFinalBody:
+      'We can’t publish it, and it can’t be edited again. If you think we got this wrong, get in touch and a person will read it.',
+    /** Nút gửi ở chế độ SỬA — khác "Submit review" vì việc khác nhau. */
+    resubmit: 'Send for review again',
+    resubmitting: 'Sending…',
+    /** Ảnh cũ hiện sẵn ở chế độ sửa; gỡ được, vì bác vì ảnh là ca có thật. */
+    keptPhoto: 'Photo already on this review',
     // Friendly EN for each `POST /reviews` error code (+ generic fallback).
     errors: {
       USER_NOT_SYNCED: 'We couldn’t verify your account. Sign out and back in, then try again.',
@@ -1857,6 +1881,9 @@ export const messages = {
       BOOKING_FORBIDDEN: 'This booking doesn’t belong to your account.',
       BOOKING_NOT_FOUND: 'We couldn’t find that booking.',
       REVIEW_ALREADY_EXISTS: 'You’ve already reviewed this trip.',
+      REVIEW_NOT_FOUND: 'We couldn’t find that review.',
+      /** Đã duyệt (đang hiển thị) hoặc đã hết lượt — server là phán quyết cuối. */
+      REVIEW_NOT_EDITABLE: 'This review can’t be edited any more.',
       // Mã này CÓ trong contract nhưng thiếu ở bảng — mọi lần gửi review cho
       // chuyến chưa xong đều rơi vào `generic`, tức câu chung chung thay cho
       // câu nói đúng chuyện. (`USER_NOT_SYNCED` ở trên thì ngược lại: có ở

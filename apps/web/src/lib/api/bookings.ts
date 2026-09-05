@@ -1,5 +1,5 @@
 import { isDefinedError, safe } from '@orpc/client';
-import type { Booking, Paged } from '@tourism/contract';
+import type { Booking, BookingDetail, Paged } from '@tourism/contract';
 import { cache } from 'react';
 import { api, withAuthHeaders } from './client';
 
@@ -32,7 +32,7 @@ export async function fetchMyBookings(cookie: string, limit: number): Promise<Pa
  * (cùng lý do `fetchTourDetail`).
  */
 export const fetchBookingByCode = cache(
-  async (cookie: string, code: string): Promise<Booking | null> => {
+  async (cookie: string, code: string): Promise<BookingDetail | null> => {
     const [error, data] = await safe(
       api.bookings.byCode({ code }, { context: withAuthHeaders(cookie) }),
     );
