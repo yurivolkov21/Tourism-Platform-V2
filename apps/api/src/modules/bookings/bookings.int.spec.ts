@@ -82,7 +82,9 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
   const departures = [depOpen, depOverride, depClosed, depPast, depUnpublished];
 
   beforeAll(async () => {
-    await prisma.$executeRawUnsafe('TRUNCATE TABLE tour_categories, destinations, users CASCADE');
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE media_assets, tour_categories, destinations, users CASCADE',
+    );
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
     await prisma.destination.createMany({ data: catalog.destinations });
     await prisma.tour.createMany({
