@@ -344,4 +344,23 @@ describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
       '.nexora-travel.agency',
     );
   });
+
+  it('bộ dọn media MẶC ĐỊNH TẮT — lưới an toàn quan trọng nhất của ADR-0035', () => {
+    // Dev và prod dùng chung một Cloudinary cloud: bật nhầm ở máy dev là
+    // destroy ảnh của site đang sống.
+    expect(parseEnv({}).MEDIA_GC_ENABLED).toBe(false);
+    expect(parseEnv({ MEDIA_GC_ENABLED: 'true' }).MEDIA_GC_ENABLED).toBe(true);
+    // Chuỗi lạ KHÔNG được âm thầm hoá thành true — enum chặn ở boot.
+    expect(() => parseEnv({ MEDIA_GC_ENABLED: '1' })).toThrow();
+    expect(() => parseEnv({ MEDIA_GC_ENABLED: 'yes' })).toThrow();
+  });
+
+  it('hạn chờ mặc định 7 ngày, và KHÔNG cho khai 0', () => {
+    // 0 nghĩa là xoá-ngay-lập-tức, tức bỏ trọn lưới an toàn — muốn thế thì
+    // sửa code chứ không gõ một con số vào env.
+    expect(parseEnv({}).MEDIA_GC_GRACE_DAYS).toBe(7);
+    expect(parseEnv({ MEDIA_GC_GRACE_DAYS: '14' }).MEDIA_GC_GRACE_DAYS).toBe(14);
+    expect(() => parseEnv({ MEDIA_GC_GRACE_DAYS: '0' })).toThrow();
+    expect(() => parseEnv({ MEDIA_GC_GRACE_DAYS: '-1' })).toThrow();
+  });
 });

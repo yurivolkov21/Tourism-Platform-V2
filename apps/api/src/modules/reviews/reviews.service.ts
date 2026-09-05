@@ -26,6 +26,7 @@ import {
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { uploadFolderFor } from '../../lib/upload-signing.js';
 import { MediaService } from '../media/media.service.js';
+import { MediaGarbageService } from '../media/media-garbage.service.js';
 import { moderationRevalidationTags } from '../web-revalidation/revalidation-decision.js';
 import { WebRevalidationService } from '../web-revalidation/web-revalidation.service.js';
 import { checkReviewEligibility } from './review-eligibility.js';
@@ -186,6 +187,7 @@ export class ReviewsService {
   constructor(
     private readonly webRevalidation: WebRevalidationService,
     private readonly media: MediaService,
+    private readonly garbage: MediaGarbageService,
   ) {}
 
   async create(
@@ -357,11 +359,27 @@ export class ReviewsService {
         },
       });
       // Ảnh thay TRỌN (§3): xoá hết rồi ghi lại theo thứ tự mới. Hàng
-      // `MediaAsset` là con trỏ tới Cloudinary, nên xoá ở đây KHÔNG xoá file —
-      // dọn file là việc riêng, và hệ thống hiện chưa có đường xoá media nào.
+      // `MediaAsset` là con trỏ tới Cloudinary, nên xoá ở đây KHÔNG xoá file.
+      //
+      // Từ ADR-0035, mọi publicId bị `deleteMany` cuốn đi được xếp vào hàng
+      // dọn — CÙNG transaction này, vì nếu lệnh sửa review rollback thì ảnh
+      // vẫn còn được dùng và không được phép nằm trong hàng chờ xoá.
+      //
+      // Xếp CẢ những tấm sắp được ghi lại ngay dưới đây, không lọc ra. Hàng
+      // đợi không phán quyết gì; bảy ngày nữa `sweep` hỏi lại `media_assets`
+      // và thấy chúng vẫn còn tham chiếu thì tự bỏ hàng (ADR-0035 §2). Lọc ở
+      // đây là chép luật ra thành bản thứ hai để trôi lệch.
+      const dropped = await tx.mediaAsset.findMany({
+        where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
+        select: { publicId: true },
+      });
       await tx.mediaAsset.deleteMany({
         where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
       });
+      await this.garbage.enqueue(
+        tx,
+        dropped.map((asset) => asset.publicId),
+      );
       if (photos.length > 0) {
         await tx.mediaAsset.createMany({
           data: photos.map((publicId, idx) => ({

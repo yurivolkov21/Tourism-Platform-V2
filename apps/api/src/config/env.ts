@@ -108,6 +108,21 @@ const EnvSchema = z
     // Thư mục đích trên Cloudinary. Có default để asset dev không rơi thẳng
     // vào thư mục gốc rồi lẫn với tài khoản khác đang dùng chung cloud.
     CLOUDINARY_UPLOAD_FOLDER: z.string().min(1).default('tourism'),
+    // ── Bộ dọn ảnh mồ côi (ADR-0035) ──
+    // ⚠️ MẶC ĐỊNH TẮT, và đây là lưới an toàn quan trọng nhất của cơ chế:
+    // dev và prod dùng CHUNG một Cloudinary cloud (chỉ có một
+    // CLOUDINARY_CLOUD_NAME ở trên), nên một worker GC chạy trên máy dev sẽ
+    // destroy ảnh của www.nexora-travel.agency đang sống. Không có cờ thì
+    // `start-worker.ts` KHÔNG đăng ký queue — không phải đăng ký rồi bên
+    // trong return sớm. Chỉ bật trên worker production.
+    MEDIA_GC_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    // Số ngày chờ trước khi xoá. `.min(1)` chứ không `.min(0)`: 0 nghĩa là
+    // xoá-ngay-lập-tức, tức bỏ trọn lưới an toàn mà ADR-0035 §1 dựng ra —
+    // muốn thế thì sửa code chứ không gõ một con số vào env.
+    MEDIA_GC_GRACE_DAYS: z.coerce.number().int().min(1).max(90).default(7),
   })
   .superRefine((cfg, ctx) => {
     // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ

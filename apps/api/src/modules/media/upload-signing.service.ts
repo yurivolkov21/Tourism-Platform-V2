@@ -15,6 +15,7 @@ import {
   ReviewNotEligibleError,
   ReviewTripNotCompletedError,
 } from '../reviews/reviews.service.js';
+import { MediaGarbageService } from './media-garbage.service.js';
 
 /** Thiếu cặp CLOUDINARY_API_KEY/SECRET — trạng thái hợp lệ (ADR-0021 §6). */
 export class UploadsNotConfiguredError extends Error {}
@@ -26,6 +27,8 @@ export class UploadsNotConfiguredError extends Error {}
  */
 @Injectable()
 export class UploadSigningService {
+  constructor(private readonly garbage: MediaGarbageService) {}
+
   async signUpload(callerId: string, input: SignUploadInput): Promise<SignedUploadParams> {
     const cfg = resolveUploadConfig(env);
     if (!cfg) throw new UploadsNotConfiguredError();
@@ -59,6 +62,22 @@ export class UploadSigningService {
         : { purpose: 'REVIEW_PHOTO', bookingCode: input.bookingCode },
     );
     // publicId server sinh (ADR-0021 §1) — client không được đặt tên file.
-    return buildSignedUploadParams(cfg, folder, randomUUID(), Math.floor(Date.now() / 1000));
+    const basename = randomUUID();
+    const signed = buildSignedUploadParams(cfg, folder, basename, Math.floor(Date.now() / 1000));
+
+    // Ký là ĐĂNG KÝ THEO DÕI, không phải cấp phép rồi quên (ADR-0035 §3).
+    //
+    // Từ đây tới lúc client thật sự upload xong và gửi form, ta là nơi DUY
+    // NHẤT trên đời biết tên file này. Khách kéo ảnh vào rồi bỏ trang là
+    // nguồn ảnh mồ côi lớn nhất, và không ghi ở đây thì không gì tìm lại
+    // được nó — nó không có row `media_assets` nào để mà lần ra.
+    //
+    // ⚠️ Ghi `${folder}/${basename}` chứ KHÔNG phải mỗi `basename`:
+    // Cloudinary lưu asset ở `<folder>/<basename>` (xem `isOwnAvatarPublicId`)
+    // và `uploader.destroy` nhận đúng dạng đầy đủ ấy. Ghi thiếu folder thì bộ
+    // dọn không khớp được gì mà cũng không xoá được gì.
+    await this.garbage.enqueueQuietly([`${folder}/${basename}`]);
+
+    return signed;
   }
 }

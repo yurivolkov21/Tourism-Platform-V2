@@ -3,6 +3,7 @@ import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { env } from '../config/env.js';
+import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
 import { OutboxService } from './outbox.service.js';
 import { PENDING_TTL_MINUTES, PendingSweepService } from './pending-sweep.service.js';
 import { WorkerModule } from './worker.module.js';
@@ -29,6 +30,13 @@ const RETENTION_DAYS = 30;
 const BOOKING_SWEEP_QUEUE = 'booking-sweep';
 /** Mỗi 10′ — backstop WRK-1 khi webhook expired rớt. */
 const BOOKING_SWEEP_CRON = '*/10 * * * *';
+const MEDIA_GC_QUEUE = 'media-gc';
+/**
+ * Hằng ngày 04:00 UTC — sau `outbox-purge` một tiếng để hai job nặng không
+ * chồng nhau. Nhịp NGÀY chứ không phút: hàng đợi này không có ai chờ ở đầu
+ * kia, và mỗi lượt là một loạt lời gọi API ra ngoài (ADR-0035 §5).
+ */
+const MEDIA_GC_CRON = '0 4 * * *';
 
 export async function startWorker(logger: Logger): Promise<{ stop: () => Promise<void> }> {
   // Application context tối giản — không HTTP listener.
@@ -65,8 +73,28 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   });
   await boss.schedule(BOOKING_SWEEP_QUEUE, BOOKING_SWEEP_CRON);
 
+  // Dọn ảnh mồ côi trên Cloudinary (ADR-0035).
+  //
+  // ⚠️ Queue chỉ được ĐĂNG KÝ khi có cờ, chứ không phải đăng ký rồi bên trong
+  // return sớm — và khác biệt ấy là chủ đích, không phải văn phong. Dev và
+  // prod dùng CHUNG một Cloudinary cloud, nên một worker chạy trên máy dev mà
+  // lỡ có cờ sẽ destroy ảnh của site đang sống. Không tồn tại thì không có gì
+  // để lỡ bật nhầm, và `boss.schedule` cũng không ghi một lịch nào vào schema
+  // pgboss của DB dùng chung (ADR-0035 §6).
+  if (env.MEDIA_GC_ENABLED) {
+    const mediaGarbage = app.get(MediaGarbageService);
+    await boss.createQueue(MEDIA_GC_QUEUE, { policy: 'short' });
+    await boss.work(MEDIA_GC_QUEUE, async () => {
+      await mediaGarbage.sweep(new Date(), env.MEDIA_GC_GRACE_DAYS);
+    });
+    await boss.schedule(MEDIA_GC_QUEUE, MEDIA_GC_CRON);
+  }
+
   logger.log(
-    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON}`,
+    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON}` +
+      (env.MEDIA_GC_ENABLED
+        ? ` · media-gc ${MEDIA_GC_CRON} (chờ ${env.MEDIA_GC_GRACE_DAYS} ngày)`
+        : ' · media-gc TẮT'),
   );
 
   let stopped = false;

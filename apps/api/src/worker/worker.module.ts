@@ -1,5 +1,6 @@
 import { Module, type Provider } from '@nestjs/common';
 import { env } from '../config/env.js';
+import { MediaGarbageModule } from '../modules/media/media-garbage.module.js';
 import { ConsoleDeliverer, EMAIL_DELIVERER } from './deliverer.js';
 import { OutboxService } from './outbox.service.js';
 import { PendingSweepService } from './pending-sweep.service.js';
@@ -24,6 +25,11 @@ const delivererProvider: Provider = env.RESEND_API_KEY
   : { provide: EMAIL_DELIVERER, useClass: ConsoleDeliverer };
 
 @Module({
+  // ADR-0035: worker chạy cron dọn ảnh mồ côi. Import `MediaGarbageModule`
+  // chứ KHÔNG `MediaModule` — module kia khai `MediaController` mang
+  // ThrottlerGuard, mà worker không dựng tầng HTTP nên context chết ngay
+  // lúc bootstrap (đo được: ba int spec worker đỏ).
+  imports: [MediaGarbageModule],
   providers: [OutboxService, PendingSweepService, delivererProvider],
   exports: [OutboxService, PendingSweepService],
 })

@@ -40,6 +40,18 @@ export class AccountService {
     return url;
   }
 
+  // ADR-0035 §4 liệt `setAvatar` là một nơi enqueue, nhưng thi công thì hoá ra
+  // KHÔNG cần thêm gì ở đây, và lý do đáng ghi lại:
+  //
+  // Avatar cũ đã nằm sẵn trong hàng dọn từ lúc nó được KÝ (§3) — mọi publicId
+  // đường ký cấp ra đều được ghi. Chừng nào nó còn là avatar hiện tại thì
+  // `stillReferenced` thấy nó trong `users.image` và bỏ hàng; đổi avatar là
+  // vế ấy hết đúng và tuần sau nó tự tới lượt.
+  //
+  // Thêm một lượt enqueue ở đây sẽ là `skipDuplicates` không làm gì (row đã
+  // có), nhưng tệ hơn: nó dựng một đường thứ hai tới cùng một kết quả, để ai
+  // đó sau này sửa một đường mà quên đường kia.
+
   async deleteAccount(userId: string): Promise<void> {
     // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
     // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
