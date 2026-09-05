@@ -2936,10 +2936,47 @@ export const messages = {
       period: (from: string, to: string) => `${from} – ${to}`,
       generatedAt: (at: string) => `Generated ${at}`,
       cards: {
-        revenue: 'Revenue',
-        paidBookings: 'Paid bookings',
-        newBookings: 'New bookings',
-        refunded: 'Refunds paid out',
+        /**
+         * Cùng con số như trước (neo `paid_at`), tên đúng hơn từ 05/09: khi
+         * cạnh nó đã có "Revenue recognised" thì chữ "Revenue" trần thành mơ
+         * hồ — hai cái đều là doanh thu theo một nghĩa nào đó.
+         */
+        revenue: 'Cash collected',
+        recognizedRevenue: 'Revenue recognised',
+        grossProfit: 'Gross profit',
+        netProfit: 'Net profit',
+        /** Caption của card lợi nhuận gộp — biên % nói nhiều hơn kỳ báo cáo. */
+        marginCaption: (pct: string) => `Gross margin ${pct}`,
+      },
+      /**
+       * Bảng P&L (ADR-0033 §1) — khối số liệu neo NGÀY CHUYẾN CHẠY, đứng cạnh
+       * hai bảng cũ vốn neo ngày trả tiền.
+       */
+      pnlTable: {
+        heading: 'Profit and loss',
+        metric: 'Line',
+        value: 'Amount',
+        recognizedRevenue: 'Revenue recognised',
+        cogsVariable: 'Cost of sales — per traveller',
+        cogsFixed: 'Cost of sales — per departure',
+        cogsTotal: 'Total cost of sales',
+        grossProfit: 'Gross profit',
+        /** Nhãn mang CHÍNH thuế suất đã dùng — env không có ngày hiệu lực. */
+        taxAmount: (rate: string) => `Tax on margin (${rate})`,
+        paymentFees: 'Payment processing',
+        netProfit: 'Net profit',
+        /** Chú thích dưới dòng giá vốn cố định — mẫu số của nó. */
+        departuresRun: (count: string) =>
+          `${count} ${count === '1' ? 'departure' : 'departures'} ran this month`,
+        /**
+         * Không phải trang trí: một báo cáo in "Gross profit $8,400" trong khi
+         * 12 booking chưa khai giá vốn là một báo cáo NÓI DỐI. Có câu này thì
+         * nó chỉ là chưa đầy đủ.
+         */
+        costMissing: (count: string) =>
+          `${count} bookings have no cost data, so cost of sales is understated.`,
+        /** Biên gộp KHÔNG XÁC ĐỊNH — khác hẳn 0%. */
+        marginUnknown: '—',
       },
       bookingsTable: {
         heading: 'Bookings created this month',
@@ -2970,6 +3007,12 @@ export const messages = {
           'Refunds paid out is money that left this month; a refund may belong to a booking paid in an earlier month.',
         statuses:
           'The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.',
+        recognised:
+          'Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December.',
+        costs:
+          'Per-traveller costs follow the travellers who went; per-departure costs are charged once for each departure that ran, whether it sold out or not.',
+        netProfit:
+          'Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.',
       },
       /** Nhãn cột/hàng của file CSV báo cáo — hai cột Metric/Value. */
       csv: {

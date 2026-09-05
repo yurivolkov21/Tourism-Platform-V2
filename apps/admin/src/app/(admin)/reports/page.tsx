@@ -79,6 +79,9 @@ export default async function ReportsPage({
         <p>{t.definitions.revenue}</p>
         <p>{t.definitions.refunds}</p>
         <p>{t.definitions.statuses}</p>
+        <p>{t.definitions.recognised}</p>
+        <p>{t.definitions.costs}</p>
+        <p>{t.definitions.netProfit}</p>
       </section>
     </AdminShell>
   );

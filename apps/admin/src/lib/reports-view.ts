@@ -55,6 +55,7 @@ interface SummaryMetric {
 }
 
 const o = t.operationsTable;
+const p = t.pnlTable;
 const moneyMetric = (report: AdminMonthlyReport, amount: string) =>
   formatAmount(amount, report.currency);
 
@@ -135,21 +136,85 @@ export function toReportStatCards(report: AdminMonthlyReport): StatCardVM[] {
   const caption = reportPeriodLabel(report);
   const money = (amount: string) => formatAmount(amount, report.currency);
 
+  // Ba card KINH DOANH rồi một card DÒNG TIỀN làm mỏ neo (ADR-0033 §1). Giữ
+  // lại card cuối chứ không thay sạch: hai cách đọc đứng cạnh nhau thì người
+  // đọc học được sự khác nhau, còn thay hết là đổi nghĩa trong im lặng.
+  //
+  // Đếm booking rời khỏi hàng card (chúng vẫn còn ở bảng vận hành bên dưới):
+  // bốn ô đầu trang là chỗ đắt nhất của một tờ báo cáo, và "lãi bao nhiêu"
+  // đáng chỗ ấy hơn "bao nhiêu booking".
   return [
+    {
+      key: 'recognizedRevenue',
+      label: t.cards.recognizedRevenue,
+      value: money(report.recognizedRevenue),
+      caption,
+    },
+    {
+      key: 'grossProfit',
+      label: t.cards.grossProfit,
+      value: money(report.grossProfit),
+      // Caption mang biên % chứ không mang kỳ: một con số lãi mà không có biên
+      // thì không so được với tháng khác hay với tour khác.
+      caption: t.cards.marginCaption(formatMarginPct(report.grossMarginPct)),
+    },
+    { key: 'netProfit', label: t.cards.netProfit, value: money(report.netProfit), caption },
     { key: 'revenue', label: t.cards.revenue, value: money(report.revenue), caption },
+  ];
+}
+
+/**
+ * Biên gộp dạng tỉ lệ → phần trăm một chữ số.
+ *
+ * `null` là KHÔNG XÁC ĐỊNH (không có chuyến nào chạy trong kỳ), và nó in ra
+ * một dấu gạch. In '0.0%' ở đó là nói tháng ấy hoà vốn trắng — một câu khác
+ * hẳn, và sai.
+ */
+export function formatMarginPct(pct: number | null): string {
+  return pct === null ? p.marginUnknown : `${(pct * 100).toFixed(1)}%`;
+}
+
+/**
+ * Câu cảnh báo thiếu giá vốn, hoặc `null` khi dữ liệu đủ (ADR-0033 §6).
+ *
+ * Trả `null` chứ không trả chuỗi rỗng: nơi dùng phải quyết định KHÔNG render
+ * gì cả, không phải render một dòng trống.
+ */
+export function costWarning(report: AdminMonthlyReport): string | null {
+  return report.costDataMissing === 0 ? null : p.costMissing(formatCount(report.costDataMissing));
+}
+
+/**
+ * Tám hàng của bảng P&L.
+ *
+ * KHÔNG dùng khuôn `SummaryMetric` của hai bảng kia: nhãn dòng thuế phải mang
+ * CHÍNH thuế suất của báo cáo đang đọc, tức nó phụ thuộc DỮ LIỆU — mà
+ * `SummaryMetric.label` là một chuỗi hằng. Nhồi một hằng giả vào rồi thay ở
+ * vòng map là để lại một cái bẫy cho người sửa sau.
+ *
+ * Nhãn mang thuế suất không phải trang trí: env không có ngày hiệu lực, nên
+ * tờ báo cáo phải tự khai nó được tính bằng mức nào (ADR-0033 §5).
+ */
+export function toReportPnlRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
+  const money = (amount: string) => formatAmount(amount, report.currency);
+
+  return [
     {
-      key: 'paidBookings',
-      label: t.cards.paidBookings,
-      value: formatCount(report.paidBookings),
-      caption,
+      key: 'recognizedRevenue',
+      label: p.recognizedRevenue,
+      value: money(report.recognizedRevenue),
     },
+    { key: 'cogsVariable', label: p.cogsVariable, value: money(report.cogsVariable) },
+    { key: 'cogsFixed', label: p.cogsFixed, value: money(report.cogsFixed) },
+    { key: 'cogsTotal', label: p.cogsTotal, value: money(report.cogsTotal) },
+    { key: 'grossProfit', label: p.grossProfit, value: money(report.grossProfit) },
     {
-      key: 'newBookings',
-      label: t.cards.newBookings,
-      value: formatCount(report.newBookings),
-      caption,
+      key: 'taxAmount',
+      label: p.taxAmount(formatMarginPct(report.taxRate)),
+      value: money(report.taxAmount),
     },
-    { key: 'refunded', label: t.cards.refunded, value: money(report.refundedTotal), caption },
+    { key: 'paymentFees', label: p.paymentFees, value: money(report.paymentFees) },
+    { key: 'netProfit', label: p.netProfit, value: money(report.netProfit) },
   ];
 }
 

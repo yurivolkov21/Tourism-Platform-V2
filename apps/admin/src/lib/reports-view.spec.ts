@@ -2,9 +2,12 @@ import type { AdminMonthlyReport } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import {
+  costWarning,
+  formatMarginPct,
   reportBookingsTotal,
   reportCsvRows,
   reportPeriodLabel,
+  toReportPnlRows,
   toReportStatCards,
   toReportStatusRows,
   toReportSummaryRows,
@@ -78,15 +81,14 @@ describe('reportPeriodLabel', () => {
 
 describe('toReportStatCards', () => {
   it('bốn card đầu trang, tiền theo đồng tiền SERVER nói', () => {
+    // Bộ card đổi ở 05/09 (ADR-0033 §1): ba card kinh doanh cộng một card
+    // dòng tiền. Danh sách khoá ở `describe('P&L')` bên dưới; ở đây chỉ canh
+    // phép định dạng tiền.
     const cards = toReportStatCards(report);
-    expect(cards.map((card) => card.key)).toEqual([
-      'revenue',
-      'paidBookings',
-      'newBookings',
-      'refunded',
-    ]);
-    expect(cards[0]?.value).toBe('$1,240.50');
-    expect(cards[3]?.value).toBe('$120.00');
+
+    expect(cards).toHaveLength(4);
+    expect(cards[0]?.value).toBe('$2,500.00');
+    expect(cards[3]?.value).toBe('$1,240.50');
   });
 
   it('KHÔNG có pill delta — báo cáo tháng không so với kỳ nào', () => {
@@ -99,9 +101,14 @@ describe('toReportStatCards', () => {
     }
   });
 
-  it('caption của mọi card là chính kỳ báo cáo', () => {
+  it('caption là kỳ báo cáo — TRỪ card lợi nhuận gộp, nó mang biên %', () => {
+    // Ngoại lệ có chủ đích: một con số lãi mà không có biên thì không so được
+    // với tháng khác hay tour khác, còn kỳ báo cáo thì ba card kia đã nói rồi.
     const caption = messages.admin.reports.period('1 Sep 2026', '30 Sep 2026');
-    expect(toReportStatCards(report).every((card) => card.caption === caption)).toBe(true);
+    const cards = toReportStatCards(report);
+
+    expect(cards.filter((card) => card.caption === caption)).toHaveLength(3);
+    expect(cards.find((card) => card.key === 'grossProfit')?.caption).not.toBe(caption);
   });
 });
 
@@ -173,5 +180,81 @@ describe('reportCsvRows', () => {
 
   it('mọi hàng đúng hai ô — lệch một ô là cả file lệch cột', () => {
     expect(rows.every((row) => row.length === 2)).toBe(true);
+  });
+});
+
+/**
+ * Bảng P&L và bốn card kinh doanh (ADR-0033 §1, và bảng "Hình dạng câu trả
+ * lời" của nó).
+ *
+ * Ranh giới không đổi: server đã cộng xong, tầng này chỉ ĐỊNH DẠNG. Ba chỗ
+ * đáng canh là ba chỗ định dạng có thể nói dối — dấu gạch của biên không xác
+ * định, dấu trừ của một tháng lỗ, và thuế suất phải hiện trên nhãn.
+ */
+describe('P&L', () => {
+  it('biên gộp in thành phần trăm, và dấu gạch khi KHÔNG XÁC ĐỊNH', () => {
+    // `null` là "không có chuyến nào chạy", khác hẳn 0% vốn nói hoà vốn trắng.
+    expect(formatMarginPct(0.4)).toBe('40.0%');
+    expect(formatMarginPct(-0.15)).toBe('-15.0%');
+    expect(formatMarginPct(0)).toBe('0.0%');
+    expect(formatMarginPct(null)).toBe('—');
+  });
+
+  it('bốn card đổi sang cách đọc kinh doanh, GIỮ một card dòng tiền làm mỏ neo', () => {
+    expect(toReportStatCards(report).map((card) => card.key)).toEqual([
+      'recognizedRevenue',
+      'grossProfit',
+      'netProfit',
+      'revenue',
+    ]);
+  });
+
+  it('card lợi nhuận gộp mang biên % ở caption, không phải kỳ báo cáo', () => {
+    const card = toReportStatCards(report).find((c) => c.key === 'grossProfit');
+
+    expect(card?.caption).toContain('75.6%');
+  });
+
+  it('card dòng tiền đổi nhãn thành "Cash collected"', () => {
+    // Cùng con số như trước, tên đúng hơn khi đã có hai cách đọc cạnh nhau.
+    const card = toReportStatCards(report).find((c) => c.key === 'revenue');
+
+    expect(card?.label).toBe('Cash collected');
+  });
+
+  it('tám hàng P&L, đúng thứ tự người đọc dò một tờ báo cáo', () => {
+    expect(toReportPnlRows(report).map((row) => row.key)).toEqual([
+      'recognizedRevenue',
+      'cogsVariable',
+      'cogsFixed',
+      'cogsTotal',
+      'grossProfit',
+      'taxAmount',
+      'paymentFees',
+      'netProfit',
+    ]);
+  });
+
+  it('nhãn dòng thuế mang CHÍNH thuế suất của báo cáo đang đọc', () => {
+    // Env không có ngày hiệu lực, nên tờ báo cáo phải tự khai nó được tính
+    // bằng mức nào (ADR-0033 §5) — nếu không, hai lần đọc cùng một tháng ra
+    // hai con số mà không ai biết vì sao.
+    const rows = toReportPnlRows({ ...report, taxRate: 0.2 });
+
+    expect(rows.find((row) => row.key === 'taxAmount')?.label).toContain('20.0%');
+  });
+
+  it('tháng LỖ in số âm, không nuốt dấu trừ', () => {
+    const rows = toReportPnlRows({ ...report, grossProfit: '-150.00', netProfit: '-186.36' });
+
+    expect(rows.find((row) => row.key === 'grossProfit')?.value).toContain('-');
+    expect(rows.find((row) => row.key === 'netProfit')?.value).toContain('-');
+  });
+
+  it('cảnh báo thiếu giá vốn CHỈ hiện khi thật sự thiếu', () => {
+    // In "Lợi nhuận gộp $8,400" trong khi 12 booking chưa khai giá vốn là một
+    // báo cáo nói dối; in kèm con số thì nó chỉ là chưa đầy đủ.
+    expect(costWarning({ ...report, costDataMissing: 0 })).toBeNull();
+    expect(costWarning({ ...report, costDataMissing: 3 })).toContain('3');
   });
 });
