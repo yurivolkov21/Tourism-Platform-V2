@@ -438,7 +438,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 2: Contract — 12 field tài chính cho báo cáo tháng
+### Task 2: Contract — 12 field tài chính cho báo cáo tháng ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `libs/shared/contract/src/schemas/catalog.ts` (thêm `SignedDecimalStringSchema`)
@@ -964,7 +964,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 5: Hai câu aggregate mới
+### Task 5: Hai câu aggregate mới ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/api/src/modules/stats/stats-aggregates.ts`
@@ -1095,7 +1095,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 6: `ReportsService` ghép cột kết quả kinh doanh
+### Task 6: `ReportsService` ghép cột kết quả kinh doanh ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/api/src/modules/stats/reports.service.ts`
@@ -1217,6 +1217,12 @@ Rồi thêm vào object trả về:
       departuresRun: fixedCost.departures,
       costDataMissing: recognised.costMissing,
 ```
+
+*(Thi công 05/09: `grossAmount` hoá ra KHÔNG ép về không-âm — nó chỉ là
+`value ? value.toFixed(2) : '0.00'`. Vẫn dùng `.toFixed(2)` trực tiếp cho hai
+field này vì chúng không bao giờ null và cái tên nói về tiền gross, không về
+lợi nhuận. Ngoài ra Task 6 KHÔNG chạy được nếu chưa có Task 2 — thứ tự đánh số
+trong plan không phải thứ tự thi công.)*
 
 ⚠️ `grossProfit`/`netProfit` dùng `.toFixed(2)` **chứ không** `grossAmount()`
 — nếu `grossAmount` ép về không-âm hoặc trả `'0.00'` cho null thì nó sẽ nuốt
