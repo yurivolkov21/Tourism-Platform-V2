@@ -115,15 +115,6 @@ point cuối của chuỗi 90 ngày CHÍNH LÀ chuỗi 7 ngày, không phải x�
 `days` vì thế tồn tại cho endpoint tự mô tả và cho consumer sau (P5 mobile chỉ
 cần 7), không phải để trang này gọi ba lần.
 
-**MỘT trục, MỘT diện tích — số đơn chỉ ở tooltip** (chốt lúc thi công, theo
-skill dataviz: biểu đồ hai trục y là lỗi số một). Block gốc xếp chồng hai diện
-tích CÙNG đơn vị (desktop/mobile); `revenue` (tiền) và `bookings` (số đơn)
-thì không chung thang được, mà vẽ hai biểu đồ là phá dáng đã chốt. Nên doanh
-thu là diện tích duy nhất (token `--chart-1`), tiêu đề gọi tên nó nên không
-cần chú giải, còn "N paid bookings" là dòng phụ trong tooltip của từng ngày —
-đúng vai "bao nhiêu đơn mang tiền ấy". Endpoint vẫn trả cả hai số: P5 mobile
-hoặc một biểu đồ thứ hai sau này không phải mở lại contract.
-
 **KHÔNG cache** (khác ba vùng P4b, cùng luật F7–F10 ở `lib/api/stats.ts`):
 kẻ ghi `paid_at` là WEBHOOK của provider — `PaymentsService` gọi
 `claimSeatsForPaid` trong API, ngoài mọi server action của admin — nên không
@@ -195,7 +186,7 @@ là nguồn duy nhất — JSDoc của chúng sửa theo.
 - Admin: `lib/api/stats.ts` thêm fetcher KHÔNG cache; `lib/dashboard-view.ts`
   (thuần: cắt đuôi theo dải, format tooltip) có spec; bảng mới
   `components/bookings/recent-bookings-table.tsx`; `page.tsx` fetch ba thứ
-  trong một `Promise.all` cùng session.
+  song song cùng session, từng khối tự chịu lỗi (AMEND 2).
 - i18n `admin.dashboard`: bỏ bốn nhãn card (kit dùng `admin.stats.bookings.*`),
   đổi `chart.description` khỏi câu "chờ P4d", thêm copy bảng (View all,
   Created, ô rỗng).
@@ -215,3 +206,55 @@ là nguồn duy nhất — JSDoc của chúng sửa theo.
 | Cache 60s theo `ADMIN_STATS_TAG` như card | Kẻ ghi `paid_at` là webhook, ngoài `updateTag`; bucket hôm nay ở khung 7 ngày lộ độ trễ ngay. Luật F7–F10. |
 | Giữ `data-table.tsx` làm bảng dashboard (đã có TanStack, drawer, drag) | Là fork thứ hai của kit với drag/checkbox/drawer không mang nghĩa; user chốt 31/08 mọi bảng đi qua kit. |
 | Tái dùng nguyên `BookingsTable` cho 10 hàng | Nó mang toolbar lọc/tìm/xuất và phân trang URL — dashboard không có URL state nào để nuôi; tách ô thân dùng chung là đủ. |
+
+## AMEND 1 — ghi SAU thi công (commit `27cccc5`, 05/09/2026): một trục, một diện tích
+
+Điểm này được chốt LÚC thi công biểu đồ chứ không có trong bản ADR đi trước
+code; commit thi công đã chèn nó vào giữa §2 như thể quyết định gốc. Vòng vá
+review 05/09 tách ra đây để §2 giữ đúng là bản ghi trước-code, còn quyết định
+này đứng tên mốc của nó.
+
+**MỘT trục, MỘT diện tích — số đơn chỉ ở tooltip** (theo skill dataviz:
+biểu đồ hai trục y là lỗi số một). Block gốc xếp chồng hai diện tích CÙNG
+đơn vị (desktop/mobile); `revenue` (tiền) và `bookings` (số đơn)
+thì không chung thang được, mà vẽ hai biểu đồ là phá dáng đã chốt. Nên doanh
+thu là diện tích duy nhất (token `--chart-1`), tiêu đề gọi tên nó nên không
+cần chú giải, còn "N paid bookings" là dòng phụ trong tooltip của từng ngày —
+đúng vai "bao nhiêu đơn mang tiền ấy". Endpoint vẫn trả cả hai số: P5 mobile
+hoặc một biểu đồ thứ hai sau này không phải mở lại contract.
+
+## AMEND 2 — vòng vá review 05/09/2026 (8 mũi, nhánh `feat/p4d-dashboard`)
+
+1. **Một khối hỏng không kéo sập trang** — `page.tsx` chuyển ba fetch số liệu
+   sang `Promise.allSettled`; khối rơi vẽ `SectionError` (kit mới, i18n
+   `admin.dashboard.loadError`) và `console.error`, hai khối kia và sidebar
+   còn nguyên. Luật "không nuốt lỗi" của `lib/api/stats.ts` vẫn đúng cho trang
+   vùng (card đứng cạnh bảng của chính nó); `/` là trang đầu tiên có ba khối
+   ĐỘC LẬP chung một số phận, và `app/error.tsx` cố ý không dựng shell — một
+   endpoint 404 vài phút lúc lệch phiên bản deploy (ADR-0024) từng đủ để admin
+   mất đường sang các hàng đợi vẫn chạy tốt.
+2. **`period` đi xuống biểu đồ, không bị vứt** — `ChartAreaInteractive` nhận
+   cả `AdminDashboardSeries`: khoá bộ chọn theo `period.days` server trả (một
+   consumer xin 7 không được bày tab "Last 3 months"), và đọc `period.to` để in
+   "today so far" khi bucket cuối là hôm nay đang chạy — §2 đã nói bucket cuối
+   nửa ngày nửa số, nhưng UI chưa nói ra, nên diện tích luôn kết bằng một vách
+   đổ đọc thành "doanh thu sụp hôm nay". Hàng card nhận `period` như mọi vùng.
+3. **Đồng tiền cùng lượt quét** — `paidByDay` trả `MAX(currency)` theo ngày;
+   bỏ `revenueCurrency` thứ hai trên cùng cửa sổ 90 ngày không index. Nhãn =
+   đồng của ngày có tiền gần nhất; `'USD'` chỉ khi cửa sổ trống.
+4. **Contract canh bất biến §2** — `AdminDashboardSeriesSchema.refine`
+   `points.length === period.days`; ba literal của `days` dẫn từ
+   `DASHBOARD_RANGE_DAYS`, admin cũng đọc từ đó (hết ba chỗ gõ tay 7/30/90).
+5. **Bộ chọn dải** — đổi breakpoint sang mobile chỉ ép 7 ngày khi người dùng
+   CHƯA tự chọn; value từ kit được kiểm trước khi thành `slice`; chấm màu
+   tooltip vẽ trong `formatter` (kit bỏ qua `indicator` khi có formatter);
+   `formatChartDate`/`sliceSeries`/`chartRangeLabel` ngả về rỗng thay vì ném
+   khi response lệch phiên bản (client oRPC không validate response).
+6. **Bảng Recent bookings** — khe views là tiêu đề tĩnh (một khung nhìn thì
+   không dựng bộ chọn một mục); ô rỗng dùng copy của chính bảng; ô Code của
+   `/bookings` cũng đi qua kit `BookingLink` (thêm prop `href` mang bộ lọc) —
+   một cách vẽ mã booking cho mọi bảng; `toBookingRow(booking)` không cần
+   `BookingsQuery` giả.
+7. **Int spec** — `todayUtc` chụp trong `beforeEach` (không đỏ khi vắt nửa
+   đêm UTC giữa load file và request); fixture PENDING hôm nay không ở tương
+   lai và được khẳng định là KHÔNG lọt vào bucket.
