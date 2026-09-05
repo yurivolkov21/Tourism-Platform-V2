@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReviewModerationState, ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
@@ -13,6 +14,7 @@ import {
   moderateConsequences,
   moderateErrorCopy,
 } from '@/lib/reviews-moderate';
+import type { ReviewRowVM } from '@/lib/reviews-view';
 
 /**
  * Cụm duyệt/bỏ duyệt của MỘT hàng trong `/reviews` (spec P4b §3-F4) — hành vi
@@ -56,10 +58,23 @@ export function ModerateActions({
    * operator định là duyệt lại gửi lệnh gỡ (review F4 31/08). Nếu chiều đã
    * đóng băng thành ra cũ, server no-op guard đỡ nốt (không ghi gì).
    */
-  const [frozenApprove, setFrozenApprove] = useState<boolean | null>(null);
+  const [frozenVerdict, setFrozenVerdict] = useState<ReviewVerdict | null>(null);
 
-  // Một hàng chỉ có MỘT chiều đi tiếp: đang chờ thì duyệt, đang hiện thì gỡ.
-  const approve = !review.approved;
+  /**
+   * Nút nào hiện, theo TRẠNG THÁI (ADR-0031 §3) — dữ liệu, không phải ternary
+   * rải trong JSX:
+   *
+   * - `pending` — duyệt, hoặc bác.
+   * - `approved` — gỡ xuống (chưa quyết), hoặc bác luôn.
+   * - `rejected` — chỉ còn đường duyệt. Muốn trả nó về hàng đợi thì duyệt rồi
+   *   gỡ; ca ấy hiếm tới mức một nút thứ ba trên MỌI hàng là cái giá sai.
+   */
+  const VERDICTS: Record<ReviewRowVM['state'], ReviewVerdict[]> = {
+    pending: ['approve', 'reject'],
+    approved: ['unpublish', 'reject'],
+    rejected: ['approve'],
+  };
+  const verdicts = VERDICTS[review.state];
 
   /** Sau MỌI kết cục đã-chạm-server: kéo queue tươi về, khoá nút tới khi xong. */
   function refreshQueue() {
@@ -71,22 +86,25 @@ export function ModerateActions({
     // có nghĩa trên một role thật, và cả trang toàn nút "Approve" giống hệt
     // nhau thì trình đọc màn hình không phân biệt nổi hàng nào.
     <fieldset aria-label={t.actionsLabel(review.authorLabel)} className="flex items-center gap-2">
-      {/* Khuôn `button-23` (kit `DecisionButton`, user chốt 01/09). Unapprove
-          lấy tông `deny`: gỡ một review đang hiện là cú CHẶN LẠI, dù nó không
-          phải một lời từ chối — khiên gạch nói đúng điều đó. */}
-      <DecisionButton
-        tone={approve ? 'approve' : 'deny'}
-        disabled={isRefreshing}
-        onClick={() => setFrozenApprove(approve)}
-      >
-        {approve ? t.approve : t.unapprove}
-      </DecisionButton>
-      {frozenApprove !== null ? (
+      {/* Khuôn `button-23` (kit `DecisionButton`, user chốt 01/09). Chỉ
+          `approve` lấy tông xanh; gỡ và bác đều là cú CHẶN LẠI — khiên gạch
+          nói đúng điều đó. */}
+      {verdicts.map((verdict) => (
+        <DecisionButton
+          key={verdict}
+          tone={verdict === 'approve' ? 'approve' : 'deny'}
+          disabled={isRefreshing}
+          onClick={() => setFrozenVerdict(verdict)}
+        >
+          {BUTTON_LABEL[verdict]}
+        </DecisionButton>
+      ))}
+      {frozenVerdict !== null ? (
         <ModerateDialog
           review={review}
           moderate={moderate}
-          approve={frozenApprove}
-          onClose={() => setFrozenApprove(null)}
+          verdict={frozenVerdict}
+          onClose={() => setFrozenVerdict(null)}
           onSettled={refreshQueue}
         />
       ) : null}
@@ -94,23 +112,61 @@ export function ModerateActions({
   );
 }
 
+/**
+ * Trạng thái server trả về → toast. Tra theo KẾT CỤC chứ không theo nút vừa
+ * bấm: một lệnh no-op (hàng đã bị người khác quyết) phải kể đúng thứ đang có.
+ */
+const TOAST: Record<
+  ReviewModerationState,
+  (author: string) => { title: string; description: string }
+> = {
+  approved: (author) => ({
+    title: t.toast.approvedTitle,
+    description: t.toast.approvedBody(author),
+  }),
+  pending: (author) => ({
+    title: t.toast.unpublishedTitle,
+    description: t.toast.unpublishedBody(author),
+  }),
+  rejected: (author) => ({
+    title: t.toast.rejectedTitle,
+    description: t.toast.rejectedBody(author),
+  }),
+};
+
+/** Ba động từ → nhãn nút và bộ copy, tra bảng chứ không ternary lồng nhau. */
+const BUTTON_LABEL: Record<ReviewVerdict, string> = {
+  approve: t.approve,
+  reject: t.reject,
+  unpublish: t.unpublish,
+};
+
+const DIALOG_COPY = {
+  approve: t.approveDialog,
+  reject: t.rejectDialog,
+  unpublish: t.unpublishDialog,
+} as const;
+
 function ModerateDialog({
   review,
   moderate,
-  approve,
+  verdict,
   onClose,
   onSettled,
 }: {
   review: ModerateTarget;
   moderate: ModerateAction;
-  approve: boolean;
+  verdict: ReviewVerdict;
   onClose: () => void;
   /** Gọi sau mọi kết cục đã chạm server — cha refresh + khoá nút. */
   onSettled: () => void;
 }) {
-  // Nhánh approve/unapprove là DỮ LIỆU, không phải ternary rải trong JSX.
-  const copy = approve ? t.approveDialog : t.unapproveDialog;
-  const consequences = moderateConsequences(review, approve);
+  const copy = DIALOG_COPY[verdict];
+  const consequences = moderateConsequences(review, verdict);
+  // Bác bỏ thì ghi chú là LÝ DO và đi thẳng vào email cho khách (ADR-0031 §6),
+  // nên nó BẮT BUỘC — và hai chuỗi nhãn/gợi ý của nhánh kia ("the author never
+  // sees it") nói ngược hẳn sự thật ở đây.
+  const rejecting = verdict === 'reject';
 
   return (
     <ConfirmWriteDialog<ModerateContractCode>
@@ -121,9 +177,10 @@ function ModerateDialog({
         submit: copy.submit,
         submitting: copy.submitting,
         cancel: t.cancel,
-        noteLabel: t.noteLabel,
-        notePlaceholder: t.notePlaceholder,
+        noteLabel: rejecting ? t.reasonLabel : t.noteLabel,
+        notePlaceholder: rejecting ? t.reasonPlaceholder : t.notePlaceholder,
       }}
+      {...(rejecting ? { noteRequired: t.reasonRequired } : {})}
       // Nguồn review (VERIFIED/CURATED) KHÔNG có dòng riêng ở đây: nó đã nói
       // ra qua câu hệ quả email bên dưới ("a curated review has no customer
       // account behind it"), và cột Author của bảng có badge.
@@ -177,12 +234,12 @@ function ModerateDialog({
       // Gỡ duyệt tô destructive dù nó ĐẢO NGƯỢC được: nó lấy đi một thứ đang
       // hiện ngoài site công khai, và làm rating tour tụt ngay lập tức — hệ
       // quả ra tới người ngoài, không chỉ trong back office.
-      submitVariant={approve ? 'default' : 'destructive'}
+      submitVariant={verdict === 'approve' ? 'default' : 'destructive'}
       contentClassName="sm:max-w-lg"
       onSubmit={async (note) => {
         const result = await moderate({
           id: review.id,
-          approve,
+          verdict,
           // Note rỗng thì BỎ HẲN field: contract cho `optional` nên gửi chuỗi
           // trắng chỉ để lại một dòng audit `note: ""` vô nghĩa trong
           // ReviewModerationEvent.
@@ -191,15 +248,7 @@ function ModerateDialog({
         if (!result.ok) return { ok: false, code: result.code };
         // Chiều đọc từ RESPONSE của server, không từ nút vừa bấm: trạng thái
         // cuối cùng là chuyện của server, client chỉ kể lại.
-        return {
-          ok: true,
-          toast: {
-            title: result.approved ? t.toast.approvedTitle : t.toast.unapprovedTitle,
-            description: result.approved
-              ? t.toast.approvedBody(review.authorLabel)
-              : t.toast.unapprovedBody(review.authorLabel),
-          },
-        };
+        return { ok: true, toast: TOAST[result.state](review.authorLabel) };
       }}
       isStale={isStaleStateCode}
       errorCopy={moderateErrorCopy}

@@ -3886,6 +3886,7 @@ export const messages = {
         BOOKING_CONFIRMATION: 'Booking confirmation',
         BOOKING_REFUNDED: 'Booking refunded',
         REVIEW_APPROVED: 'Review approved',
+        REVIEW_REJECTED: 'Review rejected',
         ENQUIRY_RECEIVED: 'Enquiry received',
         ENQUIRY_ADMIN_ALERT: 'Enquiry alert (team)',
         CANCELLATION_REQUESTED: 'Cancellation requested',
@@ -4112,7 +4113,7 @@ export const messages = {
     },
     /**
      * Vùng reviews (spec P4b §3-F4) — hàng đợi moderation cộng MỘT hành vi
-     * ghi: `admin.reviews.moderate` (approve/unapprove một cửa).
+     * ghi: `admin.reviews.moderate` (approve/reject/unpublish một cửa).
      *
      * Moderate là transaction 4-TRONG-1 (`ReviewsService.moderate`): flip
      * trạng thái + audit trail + recompute rating tour + enqueue email cho
@@ -4182,6 +4183,11 @@ export const messages = {
       state: {
         approved: 'Approved',
         pending: 'Pending',
+        /**
+         * ADR-0031: khác `pending` ở chỗ ĐÃ CÓ người quyết. Chữ "Rejected" chứ
+         * không "Removed" — nó là một phán quyết, không phải một thao tác.
+         */
+        rejected: 'Rejected',
       },
       /** `AdminReviewSchema.source` — VERIFIED có booking thật sau lưng,
        *  CURATED là nội dung biên tập (không tài khoản, nên không email). */
@@ -4218,7 +4224,9 @@ export const messages = {
       },
       moderate: {
         approve: 'Approve',
-        unapprove: 'Unapprove',
+        unpublish: 'Unpublish',
+        /** Phán quyết CHUNG CUỘC — khác `unpublish` (gỡ tạm, ở lại hàng đợi). */
+        reject: 'Reject',
         /** Nhãn cụm nút của MỘT hàng — cả trang toàn nút "Approve" giống hệt
          *  nhau thì trình đọc màn hình không phân biệt nổi hàng nào. */
         actionsLabel: (author: string) => `Moderate the review by ${author}`,
@@ -4233,6 +4241,15 @@ export const messages = {
         /** Note đi vào `ReviewModerationEvent` (audit A8), KHÔNG vào email —
          *  nói rõ để operator không viết lời nhắn cho khách vào ô này. */
         notePlaceholder: 'Kept in the moderation history — the author never sees it.',
+        /**
+         * Ở nhánh REJECT thì hai chuỗi trên nói SAI: note là LÝ DO, và nó đi
+         * thẳng vào email cho khách (ADR-0031 §6). Bắt buộc nhập — một mail
+         * "review của bạn không được đăng" mà không nói vì sao là đúng thứ §6
+         * sinh ra để chặn.
+         */
+        reasonLabel: 'Why it was rejected',
+        reasonPlaceholder: 'The author reads this in the email we send them.',
+        reasonRequired: 'Tell the author why. This goes into the email they receive.',
         cancel: 'Cancel',
         approveDialog: {
           title: 'Approve this review?',
@@ -4255,9 +4272,9 @@ export const messages = {
           submit: 'Approve review',
           submitting: 'Approving…',
         },
-        unapproveDialog: {
-          title: 'Unapprove this review?',
-          body: 'Unapproving takes the review off the public site and runs everything below in one go, straight away.',
+        unpublishDialog: {
+          title: 'Unpublish this review?',
+          body: 'Unpublishing takes the review off the public site and runs everything below in one go, straight away.',
           consequences: {
             hide: 'Removes the review from the tour page.',
             /** Không gắn tour thì vốn không hiện ở đâu — gỡ duyệt chỉ đổi cờ. */
@@ -4272,8 +4289,37 @@ export const messages = {
             noEmail: 'The author is not told — no email goes out when a review is taken down.',
           },
           warning: 'The review stays in this queue and can be approved again at any time.',
-          submit: 'Unapprove review',
-          submitting: 'Unapproving…',
+          submit: 'Unpublish review',
+          submitting: 'Unpublishing…',
+        },
+        rejectDialog: {
+          title: 'Reject this review?',
+          body: 'Rejecting closes the review for good and runs everything below in one go, straight away.',
+          consequences: {
+            /** Khác `unpublish` ở đúng chỗ này: RỜI hàng đợi. */
+            queue: 'Takes the review out of the moderation queue for good.',
+            hide: 'Removes the review from the tour page.',
+            hideNoTour: 'The review was not shown anywhere on the site.',
+            rating: (tour: string) =>
+              `Recalculates the star rating of ${tour} without this review — if it was the only approved review, the tour loses its star rating until another one is approved.`,
+            noRating: 'No tour rating changes — this review is not attached to a tour.',
+            /** Khác `unpublish`: bác bỏ thì khách ĐƯỢC báo (ADR-0031 §6). */
+            email:
+              'Emails the author to tell them their review was not published, with your reason.',
+            noEmailCurated:
+              'No email goes out — a curated review has no customer account behind it.',
+            noEmailDeleted: 'No email goes out — the author has deleted their account.',
+          },
+          /**
+           * Câu quan trọng nhất của dialog, và nó nói đúng sự thật hôm nay:
+           * `booking_id` là UNIQUE và hệ thống KHÔNG có route sửa hay xoá
+           * review, nên khách không viết lại được cho chuyến đi ấy. Đường quay
+           * lại là bước 3, chưa làm.
+           */
+          warning:
+            'The author cannot rewrite this review — one review per booking, and there is no way to edit it. Unapprove instead if you are unsure.',
+          submit: 'Reject review',
+          submitting: 'Rejecting…',
         },
         /** Mã TRẠNG-THÁI-CŨ duy nhất của vùng: review đã biến mất dưới chân
          *  dialog (tài khoản tác giả bị xoá, tour bị xoá — cả hai cascade).
@@ -4285,8 +4331,13 @@ export const messages = {
         toast: {
           approvedTitle: 'Review approved',
           approvedBody: (author: string) => `The review by ${author} is live on the site.`,
-          unapprovedTitle: 'Review unapproved',
-          unapprovedBody: (author: string) => `The review by ${author} is off the site.`,
+          unpublishedTitle: 'Review unpublished',
+          unpublishedBody: (author: string) =>
+            `The review by ${author} is off the site and back in the queue.`,
+          rejectedTitle: 'Review rejected',
+          /** Nói luôn là khách đã được báo — đó là điểm khác `unpublish`. */
+          rejectedBody: (author: string) =>
+            `The review by ${author} is closed, and they have been emailed.`,
         },
       },
     },

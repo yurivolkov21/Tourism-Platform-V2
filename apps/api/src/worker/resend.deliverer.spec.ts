@@ -36,6 +36,7 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.BOOKING_CONFIRMATION, /Booking confirmed — BK-1 · Ha Long Bay Cruise/],
     [EmailType.BOOKING_REFUNDED, /Refund on its way — BK-1/],
     [EmailType.REVIEW_APPROVED, /review/i],
+    [EmailType.REVIEW_REJECTED, /About your review/],
     [EmailType.ENQUIRY_RECEIVED, /enquiry/i],
     [EmailType.ENQUIRY_ADMIN_ALERT, /New enquiry from/],
     [EmailType.CANCELLATION_REQUESTED, /reviewing your cancellation request — BK-1/],
@@ -87,6 +88,31 @@ describe('renderEmail type → subject mapping', () => {
     const { text } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     expect(text).toContain('BK-1');
     expect(text).not.toContain('<');
+  });
+});
+
+describe('renderEmail — bác bỏ review (ADR-0031 §6)', () => {
+  const REJECTED = { ...BOOKING_PAYLOAD, note: 'Nội dung không nói về chuyến đi.' };
+
+  it('NÓI vì sao, bằng đúng lời người duyệt viết', async () => {
+    // Cả điểm của §6 nằm ở đây: một mail "review của bạn không được đăng" mà
+    // không nói vì sao là đúng thứ ADR sinh ra để chặn.
+    const { html } = await renderEmail(EmailType.REVIEW_REJECTED, REJECTED);
+
+    expect(html).toContain('will not appear on the site');
+    expect(html).toContain('Nội dung không nói về chuyến đi.');
+  });
+
+  it('thiếu lý do thì BỎ HẲN khối trích dẫn, không để một ô trống có nhãn "vì sao"', async () => {
+    const { html } = await renderEmail(EmailType.REVIEW_REJECTED, BOOKING_PAYLOAD);
+
+    expect(html).toContain('will not appear on the site');
+    expect(html).not.toContain('WHY');
+  });
+
+  it('mở một cửa để hỏi lại — bác bỏ không phải một cánh cửa đóng sập', async () => {
+    const { html } = await renderEmail(EmailType.REVIEW_REJECTED, REJECTED);
+    expect(html).toContain('take another look');
   });
 });
 

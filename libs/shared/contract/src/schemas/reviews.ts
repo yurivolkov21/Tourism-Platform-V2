@@ -4,6 +4,25 @@ import { MediaItemSchema, REVIEW_PHOTOS_MAX } from './media.js';
 
 export const RatingSchema = z.int().min(1).max(5);
 
+/**
+ * Ba động từ moderation (ADR-0031 §3). Trước đó là một boolean `approve`, và
+ * boolean ấy không phân biệt được HAI ý định khác hẳn nhau:
+ *
+ * - `unpublish` — gỡ xuống, CHƯA quyết. Review Ở LẠI hàng đợi.
+ * - `reject` — bác bỏ, CHUNG CUỘC. Review RỜI hàng đợi, và khách được báo.
+ *
+ * Gộp chúng là ép người duyệt tuyên một phán quyết chung cuộc khi họ chỉ muốn
+ * gỡ tạm để điều tra.
+ */
+export const ReviewVerdictSchema = z.enum(['approve', 'reject', 'unpublish']);
+
+export type ReviewVerdict = z.output<typeof ReviewVerdictSchema>;
+
+/** Ba trạng thái của một review, SUY từ hai cột (ADR-0031 §1). */
+export const ReviewModerationStateSchema = z.enum(['pending', 'approved', 'rejected']);
+
+export type ReviewModerationState = z.output<typeof ReviewModerationStateSchema>;
+
 /** Review hiển thị công khai. KHÔNG có userId/bookingId — Zod strip field
  * không khai báo nên không thể rò rỉ, khác Nexora trả nguyên row Prisma. */
 export const PublicReviewSchema = z.object({
@@ -64,6 +83,13 @@ export type PublicReview = z.infer<typeof PublicReviewSchema>;
  * `REVIEW_ALREADY_EXISTS` vì tưởng nhầm là gửi chưa thành công. */
 export const MyReviewSchema = PublicReviewSchema.extend({
   isApproved: z.boolean(),
+  /**
+   * ADR-0031 §6: trước đây khách bị bác vẫn thấy "đang chờ duyệt" VĨNH VIỄN,
+   * vì `isApproved: false` phủ cả hai ca. Nay nói thật.
+   */
+  moderationState: ReviewModerationStateSchema,
+  /** Lý do bác, do người duyệt viết. `null` ở mọi trạng thái khác. */
+  moderationNote: z.string().nullable(),
   // R1: danh tính tour để trang "Đánh giá của tôi" hiện tên + link được.
   // nullable — FK tour trên schema là nullable (review curated có thể không tour).
   tourSlug: z.string().nullable(),
@@ -72,16 +98,33 @@ export const MyReviewSchema = PublicReviewSchema.extend({
 
 export type MyReview = z.infer<typeof MyReviewSchema>;
 
-/** Input duyệt/bỏ duyệt một review (admin). */
+/** Input duyệt / bác / gỡ đăng một review (admin). */
 export const ModerateReviewInputSchema = z.object({
   id: z.uuid(),
-  approve: z.boolean(),
+  verdict: ReviewVerdictSchema,
+  /**
+   * Ghi chú của người duyệt. Ở nhánh `reject` nó là **LÝ DO BÁC** và đi thẳng
+   * vào email cho khách (ADR-0031 §6) — trước ADR này `note` được ghi vào audit
+   * trail rồi không nơi nào đọc.
+   */
   note: z.string().trim().max(500).optional(),
 });
 
 /** Review nhìn từ phía admin — thêm trạng thái duyệt + nguồn + dấu vết. */
 export const AdminReviewSchema = PublicReviewSchema.extend({
   isApproved: z.boolean(),
+  /**
+   * Trạng thái ĐÃ SUY SẴN từ hai cột (ADR-0031 §1) — client không tự ghép
+   * `isApproved` với `rejectedAt` lần thứ hai, và không thể ghép sai.
+   */
+  moderationState: ReviewModerationStateSchema,
+  /** Lúc bị bác; `null` khi chưa từng bị bác. */
+  rejectedAt: z.iso.datetime().nullable(),
+  /**
+   * Ghi chú của lần quyết định GẦN NHẤT, đọc từ audit trail. Ở review bị bác
+   * đây là lý do — thứ dialog chi tiết hiện ra và khách nhận trong email.
+   */
+  moderationNote: z.string().nullable(),
   source: z.enum(['VERIFIED', 'CURATED']),
   tourSlug: z.string().nullable(),
   // R2: tên tour (không chỉ slug) để admin nhận diện; ai duyệt lần cuối
@@ -94,7 +137,12 @@ export const AdminReviewSchema = PublicReviewSchema.extend({
 /** R2: ngoài `isApproved`, admin lọc thêm theo nguồn + số sao + free-text
  * search (body/title/tên tác giả) để soi hàng đợi moderation. */
 export const AdminReviewsQuerySchema = PageQuerySchema.extend({
-  isApproved: z.boolean().optional(),
+  /**
+   * Lọc theo TRẠNG THÁI (ADR-0031 §1), thay cho `isApproved` boolean cũ: một
+   * boolean chỉ chia được hai phần, mà từ nay có ba — và "chờ duyệt" giờ
+   * nghĩa là CHƯA CÓ PHÁN QUYẾT, không còn là "chưa đăng".
+   */
+  state: ReviewModerationStateSchema.optional(),
   source: z.enum(['VERIFIED', 'CURATED']).optional(),
   rating: RatingSchema.optional(),
   search: z.string().min(1).max(100).optional(),

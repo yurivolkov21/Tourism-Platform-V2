@@ -1,7 +1,7 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
-import { CircleCheckIcon, ClockIcon, ListIcon } from 'lucide-react';
+import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
@@ -29,6 +29,9 @@ const TAB_ITEMS = [
   // thì cùng một glyph, kẻo mỗi bảng dạy lại admin một bảng chữ cái.
   { label: messages.admin.reviews.state.pending, value: 'pending', icon: ClockIcon },
   { label: messages.admin.reviews.state.approved, value: 'approved', icon: CircleCheckIcon },
+  // ADR-0031: tab thứ ba mới có nghĩa — trước đó "đã bác" không tồn tại như
+  // một trạng thái, nó lẫn vào "chờ duyệt" và không lọc ra được.
+  { label: messages.admin.reviews.state.rejected, value: 'rejected', icon: CircleXIcon },
 ];
 
 export function ReviewsStateTabs({ query }: { query: ReviewsQuery }) {

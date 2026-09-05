@@ -220,6 +220,43 @@ function buildEmail(
           </EmailShell>
         ),
       };
+    /**
+     * ADR-0031 §6 — bác bỏ mà im lặng là để khách đợi một thứ không bao giờ
+     * tới, đúng thứ vừa vá ở mail duyệt huỷ. Mail này KHÔNG xin lỗi và KHÔNG
+     * vòng vo: nói điều đã xảy ra, nói lý do người duyệt viết, và mở một cửa
+     * để hỏi lại.
+     *
+     * `note` là LÝ DO do admin gõ. Vắng thì bỏ hẳn khối trích dẫn — một ô
+     * trống có nhãn "vì sao" còn tệ hơn không có nhãn nào.
+     */
+    case EmailType.REVIEW_REJECTED:
+      return {
+        subject: `About your review${s('title') ? ` — ${s('title')}` : ''}`,
+        node: (
+          <EmailShell
+            preview={`Your review${title ? ` of ${title}` : ''} was not published.`}
+            heading="Your review was not published"
+            note={
+              <NoteParagraph>
+                Think we got this wrong? Reply to this email and a person will take another look.
+              </NoteParagraph>
+            }
+            footerReason="You're receiving this because you reviewed a Nexora tour."
+          >
+            <BodyParagraph>
+              {name ? `Hi ${name}, thanks for writing. ` : 'Thanks for writing. '}Your review
+              {title ? (
+                <>
+                  {' '}
+                  of <strong>{title}</strong>
+                </>
+              ) : null}{' '}
+              will not appear on the site.
+            </BodyParagraph>
+            {f('note') ? <QuoteCard label="WHY">&quot;{f('note')}&quot;</QuoteCard> : null}
+          </EmailShell>
+        ),
+      };
     case EmailType.ENQUIRY_RECEIVED:
       return {
         subject: `We received your enquiry${s('tourTitle') ? ` — ${s('tourTitle')}` : ''}`,

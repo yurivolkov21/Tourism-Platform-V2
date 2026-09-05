@@ -1009,6 +1009,55 @@ describe('admin stats integration (F5)', () => {
     });
   });
 
+  /**
+   * ADR-0031 §5 — card `Pending` đổi nghĩa: nó đếm review CHƯA CÓ PHÁN QUYẾT,
+   * không còn là "chưa đăng". Đây là lý do chính ADR ấy tồn tại, nên nó phải
+   * có test riêng chứ không nấp trong một assert phụ.
+   */
+  describe('stats.reviews — review bị bác RỜI hàng đợi', () => {
+    beforeEach(async () => {
+      await prisma.review.createMany({
+        data: [
+          // Gửi TRƯỚC đầu kỳ để cả hai đều tồn tại ở mốc dựng lại.
+          review(31, {
+            rating: 4,
+            isApproved: false,
+            createdAt: daysAgo(40),
+            moderatedAt: null,
+            curated: true,
+          }),
+          // Đã bị bác — KHÔNG được đếm ở hiện tại, dù `is_approved` vẫn false.
+          review(32, {
+            rating: 2,
+            isApproved: false,
+            createdAt: daysAgo(40),
+            moderatedAt: daysAgo(1),
+            curated: true,
+          }),
+        ],
+      });
+      await prisma.review.update({
+        where: { id: 'e9500004-0000-4000-8000-000000000032' },
+        data: { rejectedAt: daysAgo(1) },
+      });
+    });
+
+    it('pending BÂY GIỜ chỉ đếm review chưa có phán quyết', async () => {
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      // Trước ADR-0031 con số này là 2 — hàng đợi nuốt cả review đã bác, tức
+      // một số chỉ có thể phình ra.
+      expect(stats.pending.current).toBe(1);
+    });
+
+    it('dựng lại quá khứ: review bị bác SAU mốc thì tại mốc nó VẪN đang chờ', async () => {
+      // Bác ở ngày thứ 1, mốc đầu kỳ là 28 ngày trước → tại mốc ấy cả hai còn
+      // chờ. Thiếu nhánh này thì hàng đợi quá khứ bị đếm hụt và card vẽ ra một
+      // cú "dọn sạch" chưa từng xảy ra.
+      const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());
+      expect(stats.pending.previous).toBe(2);
+    });
+  });
+
   describe('stats.reviews — kỳ rỗng', () => {
     it('không có review nào: đếm 0 và điểm trung bình null (không phải 0 sao)', async () => {
       const stats = AdminReviewsStatsSchema.parse((await get('reviews', adminCookie)).json());

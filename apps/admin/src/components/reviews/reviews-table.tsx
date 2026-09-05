@@ -125,7 +125,7 @@ function buildColumns(moderate: ModerateAction) {
     columnHelper.accessor('stateLabel', {
       header: t.columns.state,
       cell: ({ row }) => (
-        <Badge variant={reviewStateBadgeVariant(row.original.approved)} className="px-1.5">
+        <Badge variant={reviewStateBadgeVariant(row.original.state)} className="px-1.5">
           {row.original.stateLabel}
         </Badge>
       ),

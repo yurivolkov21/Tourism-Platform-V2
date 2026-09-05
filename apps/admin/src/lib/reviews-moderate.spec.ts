@@ -75,11 +75,12 @@ const PENDING: ModerateTarget = {
   source: 'VERIFIED',
   tourTitle: 'Ha Long Bay Cruise',
   approved: false,
+  state: 'pending',
 };
 
 describe('moderateConsequences — nhánh approve', () => {
   it('review VERIFIED, còn tài khoản, có tour → đăng + tính lại rating tour + email cho tác giả', () => {
-    expect(moderateConsequences(PENDING, true)).toEqual([
+    expect(moderateConsequences(PENDING, 'approve')).toEqual([
       t.approveDialog.consequences.publish,
       t.approveDialog.consequences.rating('Ha Long Bay Cruise'),
       t.approveDialog.consequences.email,
@@ -87,19 +88,19 @@ describe('moderateConsequences — nhánh approve', () => {
   });
 
   it('review KHÔNG gắn tour → nói rõ KHÔNG rating nào đổi (gate ③ của service cần tourId)', () => {
-    const consequences = moderateConsequences({ ...PENDING, tourTitle: null }, true);
+    const consequences = moderateConsequences({ ...PENDING, tourTitle: null }, 'approve');
     expect(consequences).toContain(t.approveDialog.consequences.noRating);
     expect(consequences).not.toContain(t.approveDialog.consequences.rating('Ha Long Bay Cruise'));
   });
 
   it('review CURATED → KHÔNG hứa email: không có tài khoản khách nào sau lưng nó', () => {
-    const consequences = moderateConsequences({ ...PENDING, source: 'CURATED' }, true);
+    const consequences = moderateConsequences({ ...PENDING, source: 'CURATED' }, 'approve');
     expect(consequences).toContain(t.approveDialog.consequences.noEmailCurated);
     expect(consequences).not.toContain(t.approveDialog.consequences.email);
   });
 
   it('tác giả đã xoá tài khoản → KHÔNG hứa email: địa chỉ còn lại là tombstone, không tới ai', () => {
-    const consequences = moderateConsequences({ ...PENDING, authorDeleted: true }, true);
+    const consequences = moderateConsequences({ ...PENDING, authorDeleted: true }, 'approve');
     expect(consequences).toContain(t.approveDialog.consequences.noEmailDeleted);
     expect(consequences).not.toContain(t.approveDialog.consequences.email);
   });
@@ -109,29 +110,31 @@ describe('moderateConsequences — nhánh unapprove', () => {
   const APPROVED: ModerateTarget = { ...PENDING, approved: true };
 
   it('gỡ khỏi trang tour + tính lại rating KHÔNG có review này + nói rõ khách không được báo', () => {
-    expect(moderateConsequences(APPROVED, false)).toEqual([
-      t.unapproveDialog.consequences.hide,
-      t.unapproveDialog.consequences.rating('Ha Long Bay Cruise'),
-      t.unapproveDialog.consequences.noEmail,
+    expect(moderateConsequences(APPROVED, 'unpublish')).toEqual([
+      t.unpublishDialog.consequences.hide,
+      t.unpublishDialog.consequences.rating('Ha Long Bay Cruise'),
+      t.unpublishDialog.consequences.noEmail,
     ]);
   });
 
   it('không gắn tour → câu hide/publish KHÔNG hứa "trang tour", không rating đổi, không email', () => {
     // Khoá vòng vá review F4: review mồ côi không hiện ở đâu trên site —
     // "Removes the review from the tour page" là nói dối operator.
-    const consequences = moderateConsequences({ ...APPROVED, tourTitle: null }, false);
+    const consequences = moderateConsequences({ ...APPROVED, tourTitle: null }, 'unpublish');
     expect(consequences).toEqual([
-      t.unapproveDialog.consequences.hideNoTour,
-      t.unapproveDialog.consequences.noRating,
-      t.unapproveDialog.consequences.noEmail,
+      t.unpublishDialog.consequences.hideNoTour,
+      t.unpublishDialog.consequences.noRating,
+      t.unpublishDialog.consequences.noEmail,
     ]);
-    expect(moderateConsequences({ ...APPROVED, tourTitle: null, approved: false }, true)[0]).toBe(
-      t.approveDialog.consequences.publishNoTour,
-    );
+    expect(
+      moderateConsequences({ ...APPROVED, tourTitle: null, approved: false }, 'approve')[0],
+    ).toBe(t.approveDialog.consequences.publishNoTour);
   });
 
   it('bỏ duyệt KHÔNG bao giờ hứa email, kể cả với tác giả còn tài khoản', () => {
     // Service chỉ enqueue ở lần false→true — chiều ngược lại im lặng tuyệt đối.
-    expect(moderateConsequences(APPROVED, false)).not.toContain(t.approveDialog.consequences.email);
+    expect(moderateConsequences(APPROVED, 'unpublish')).not.toContain(
+      t.approveDialog.consequences.email,
+    );
   });
 });

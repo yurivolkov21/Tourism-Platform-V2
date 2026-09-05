@@ -36,7 +36,10 @@ describe('enums', () => {
   it('EmailType phủ mọi loại email mà worker biết gửi', () => {
     expect(EmailTypeSchema.options).toContain('BOOKING_CONFIRMATION');
     expect(EmailTypeSchema.options).toContain('EMAIL_OTP');
-    expect(EmailTypeSchema.options).toHaveLength(13);
+    // ADR-0031 §6 thêm `REVIEW_REJECTED` — bác một review mà im lặng là để
+    // khách đợi một thứ không bao giờ tới.
+    expect(EmailTypeSchema.options).toContain('REVIEW_REJECTED');
+    expect(EmailTypeSchema.options).toHaveLength(14);
   });
 });
 

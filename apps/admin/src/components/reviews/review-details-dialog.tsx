@@ -82,7 +82,7 @@ export function ReviewDetailsDialog({ row }: { row: ReviewRowVM }) {
             <article className="flex flex-col gap-2 rounded-lg border border-border p-4">
               <div className="flex flex-wrap items-center gap-2">
                 <Stars rating={row.rating} label={row.ratingLabel} />
-                <Badge variant={reviewStateBadgeVariant(row.approved)} className="px-1.5">
+                <Badge variant={reviewStateBadgeVariant(row.state)} className="px-1.5">
                   {row.stateLabel}
                 </Badge>
                 <Badge variant="outline" className="px-1.5">
@@ -139,6 +139,13 @@ export function ReviewDetailsDialog({ row }: { row: ReviewRowVM }) {
                     : t.list.neverModerated
                 }
               />
+              {/* Lý do bác (ADR-0031 §6) — `note` của quyết định gần nhất, thứ
+                  từ ngày đầu được ghi vào audit trail rồi KHÔNG nơi nào đọc.
+                  Đây cũng đúng là câu khách nhận trong email, nên người duyệt
+                  sau đọc hồ sơ thấy chính xác thứ khách đã đọc. */}
+              {row.state === 'rejected' && row.moderationNote ? (
+                <LabelValueRow label={t.moderate.reasonLabel} value={row.moderationNote} />
+              ) : null}
             </dl>
 
             <DialogFooter>

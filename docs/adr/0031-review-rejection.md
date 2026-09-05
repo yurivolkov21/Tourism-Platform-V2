@@ -1,6 +1,6 @@
 # ADR-0031 — Từ chối một review là một quyết định CHUNG CUỘC, tách khỏi việc gỡ đăng
 
-- **Trạng thái:** Proposed (2026-09-05)
+- **Trạng thái:** Accepted (2026-09-05)
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0028](0028-bookings-stats-follow-filter.md) §AMEND 2
@@ -140,6 +140,21 @@ Thêm `REVIEW_REJECTED` vào outbox, mang `note` làm lý do. Và `MyReviewSchem
 `unpublish` thì KHÔNG gửi mail: nó chưa phải một phán quyết, và báo cho khách
 một thứ còn chưa quyết xong là gây hoang mang không vì gì.
 
+### 7. Lý do bác là BẮT BUỘC (chốt lúc thi công)
+
+§6 nói `note` thành lý do và đi vào email. Kéo theo một luật §6 chưa nói ra:
+**không có lý do thì không bác được.** Một mail "review của bạn không được
+đăng" với khối *WHY* trống là đúng thứ §6 sinh ra để chặn, chỉ khác ở chỗ nó
+trống vì người duyệt bỏ qua chứ vì hệ thống im lặng.
+
+Cùng khuôn với đường vượt bậc hoàn tiền (ADR-0030 §5 — muốn khác bậc thì phải
+ghi lý do). Ràng buộc gác ở kit `ConfirmWriteDialog` (`noteRequired`) chứ không
+ở từng vùng, vì lệnh ghi nào có ghi chú đi thẳng cho người ngoài đọc cũng cần
+đúng luật này.
+
+Hai chuỗi nhãn/gợi ý của ô ghi chú cũng đổi theo nhánh: bản mặc định nói *"the
+author never sees it"*, và ở nhánh bác thì câu ấy **nói ngược sự thật**.
+
 ## Hệ quả
 
 ### Việc phải làm cùng đợt
@@ -150,8 +165,19 @@ một thứ còn chưa quyết xong là gây hoang mang không vì gì.
 | Contract | `ModerateReviewInputSchema` đổi `approve: boolean` → động từ; `AdminReviewSchema` + `MyReviewSchema` mang trạng thái mới |
 | API | `moderate()` ba nhánh; `pendingReviewsAt` + `adminList` lọc theo trạng thái mới; outbox `REVIEW_REJECTED` |
 | Admin | nút thứ ba, bộ lọc tab thêm "Rejected", dialog chi tiết hiện lý do bác |
-| Web | trang "Đánh giá của tôi" nói rõ bị bác + lý do |
+| Web | *(không có gì để làm — xem ghi chú ngay dưới)* |
 | i18n | copy cho trạng thái, nút, mail |
+
+### Đo lúc thi công: KHÔNG có trang "Đánh giá của tôi"
+
+`reviews.mine` tồn tại như một endpoint và có int test, nhưng **không trang
+web nào gọi nó** — `apps/web` chỉ dùng `reviews.listByTour` và `reviews.create`.
+Nên vế "khách thấy trạng thái trong sản phẩm" của §6 không có bề mặt nào để
+đặt lên.
+
+Điều đó KHÔNG làm §6 hụt: lời hứa của nó là khách **được biết và biết vì sao**,
+và `REVIEW_REJECTED` giao đúng điều ấy. Endpoint nay đã mang `moderationState`
+và `moderationNote`, nên ngày nào trang ấy ra đời thì dữ liệu đã sẵn.
 
 ### Điều KHÔNG được suy ra
 

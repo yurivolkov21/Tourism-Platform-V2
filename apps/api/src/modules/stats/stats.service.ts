@@ -118,8 +118,11 @@ import {
  *   bookings, nhưng nhỏ hơn nhiều vì vòng đời một request rất ngắn.
  *
  * **reviews**
- * - `pending` — ẢNH CHỤP như trên: `current` = số review `is_approved =
- *   false` bây giờ (đúng bằng số hàng `/reviews?status=pending` hiện ra);
+ * - `pending` — ẢNH CHỤP như trên: `current` = số review CHƯA CÓ PHÁN QUYẾT
+ *   (`is_approved = false AND rejected_at IS NULL`, ADR-0031 §5) tại cuối kỳ,
+ *   đúng bằng số hàng `/reviews?status=pending` hiện ra. Trước ADR-0031 nó
+ *   chỉ đếm `is_approved = false`, tức gộp cả review ĐÃ BỊ BÁC — một con số
+ *   chỉ có thể phình ra, trong khi nó tồn tại để đo việc còn phải làm;
  *   `previous` = trạng thái duyệt suy ngược về mốc đầu kỳ. ⚠️ Khác
  *   cancellations, `moderated_at` KHÔNG phải dấu "đã có quyết định" — review
  *   ra đời đã duyệt sẵn thì nó vẫn null — nên phép dựng lại phải đọc cả
@@ -491,8 +494,22 @@ export class StatsService {
       where: {
         createdAt: { lt: at },
         OR: [
-          { isApproved: false, OR: [{ moderatedAt: null }, { moderatedAt: { lt: at } }] },
+          // Chưa đăng, CHƯA BỊ BÁC, và quyết định gần nhất nằm trước mốc (hoặc
+          // chưa từng có) ⇒ tại mốc nó cũng đang chờ. `rejectedAt: null` là
+          // phần ADR-0031 thêm vào: thiếu nó thì hàng đợi nuốt cả những review
+          // đã bị bác, tức con số không bao giờ vơi.
+          {
+            isApproved: false,
+            rejectedAt: null,
+            OR: [{ moderatedAt: null }, { moderatedAt: { lt: at } }],
+          },
+          // Đang đăng, nhưng quyết định ấy xảy ra SAU mốc ⇒ tại mốc còn chờ.
           { isApproved: true, moderatedAt: { gte: at } },
+          // Đã bị bác, nhưng bác SAU mốc ⇒ tại mốc còn chờ. Cùng hình dạng với
+          // nhánh trên, và cùng mức XẤP XỈ đã ghi ở JSDoc: `rejected_at` chỉ
+          // giữ lần bác cuối, nên chuỗi duyệt-rồi-bác sau mốc vẫn quy về "lúc
+          // ấy đang chờ".
+          { rejectedAt: { gte: at } },
         ],
       },
     });

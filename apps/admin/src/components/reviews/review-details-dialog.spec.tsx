@@ -38,6 +38,8 @@ function rowFor(overrides: Partial<ReviewRowVM> = {}): ReviewRowVM {
     sourceLabel: t.source.VERIFIED,
     tourTitle: 'Ha Long Bay Cruise',
     approved: false,
+    state: 'pending',
+    moderationNote: null,
     stateLabel: t.state.pending,
     submitted: '4 Sep 2026, 12:15 UTC',
     moderated: null,
@@ -116,6 +118,7 @@ describe('ReviewDetailsDialog', () => {
   it('đã duyệt: in cả mốc thời gian lẫn người duyệt', async () => {
     await openDialog({
       approved: true,
+      state: 'approved',
       stateLabel: t.state.approved,
       moderated: t.list.moderated('5 Sep 2026, 09:00 UTC'),
       moderatedBy: t.list.moderatedBy('Admin Nexora'),
@@ -144,7 +147,28 @@ describe('ReviewDetailsDialog', () => {
       .flatMap(() => Array.from(dialog.querySelectorAll('button')))
       .map((button) => button.textContent);
     expect(labels).not.toContain(t.moderate.approve);
-    expect(labels).not.toContain(t.moderate.unapprove);
+    expect(labels).not.toContain(t.moderate.unpublish);
+  });
+
+  it('review bị bác hiện LÝ DO — thứ audit trail vẫn ghi mà chưa ai từng đọc', async () => {
+    // Cùng câu khách nhận trong email (ADR-0031 §6), nên người duyệt sau đọc
+    // hồ sơ thấy chính xác thứ khách đã đọc.
+    await openDialog({
+      state: 'rejected',
+      stateLabel: t.state.rejected,
+      moderationNote: 'Nội dung không nói về chuyến đi.',
+      moderated: t.list.moderated('5 Sep 2026, 09:00 UTC'),
+    });
+
+    expect(screen.getByRole('dialog')).toHaveTextContent('Nội dung không nói về chuyến đi.');
+  });
+
+  it('review chưa bị bác thì KHÔNG có dòng lý do, dù ghi chú duyệt có tồn tại', async () => {
+    // `note` của một lần duyệt là ghi chú NỘI BỘ ("the author never sees it"),
+    // in nó dưới nhãn "vì sao bị bác" là nói sai cả hai chuyện.
+    await openDialog({ state: 'approved', moderationNote: 'Ghi chú nội bộ.' });
+
+    expect(screen.queryByText(t.moderate.reasonLabel)).toBeNull();
   });
 
   it('đóng lại được, và đóng rồi thì dialog biến mất', async () => {

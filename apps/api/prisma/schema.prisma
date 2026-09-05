@@ -142,6 +142,10 @@ enum EmailType {
   BOOKING_CONFIRMATION
   BOOKING_REFUNDED
   REVIEW_APPROVED
+  /// ADR-0031 §6: bác bỏ mà im lặng là để khách đợi một thứ không bao giờ
+  /// tới. Mang theo lý do người duyệt viết. `unpublish` KHÔNG gửi mail — nó
+  /// chưa phải một phán quyết.
+  REVIEW_REJECTED
   ENQUIRY_RECEIVED
   /// Alert nội bộ cho admin khi có lead mới (A13 — Nexora chỉ gửi ack cho
   /// khách nên lead mới không ai biết cho tới khi mở CRM).
@@ -212,6 +216,7 @@ model User {
   refunds               Refund[]                @relation("RefundAdmin")
   reviews               Review[]
   moderatedReviews      Review[]                @relation("ModeratedReviews")
+  rejectedReviews       Review[]                @relation("RejectedReviews")
   wishlist              Wishlist[]
   posts                 Post[]
   cancellationRequests  CancellationRequest[]   @relation("CancellationRequester")
@@ -627,7 +632,17 @@ model Review {
   featuredRank   Int?         @map("featured_rank")
   // Tên chuyến free-text cho row curated không có tourId.
   tripLabel      String?      @map("trip_label") @db.VarChar(160)
+  // TRỤC 1 (ADR-0031 §1): review có đang TRÊN SITE không. Đây KHÔNG phải một
+  // trạng thái của máy moderation — đường đọc công khai (`listByTour`, công
+  // thức recompute rating, bản chép tay ở seed) chỉ hỏi đúng câu này.
   isApproved     Boolean      @default(false) @map("is_approved")
+  // TRỤC 2 (ADR-0031 §1): đã có PHÁN QUYẾT CHUNG CUỘC chưa. `null` = chưa —
+  // nên "chưa ai xem" và "đã xem rồi bác" thôi trông giống hệt nhau, và hàng
+  // đợi moderation dọn sạch được. Ba trạng thái suy từ hai cột; bất biến
+  // "không thể vừa đăng vừa bị bác" do CHECK `reviews_verdict_shape` canh.
+  rejectedAt     DateTime?    @map("rejected_at")
+  // Ai bác. SetNull như `moderatedBy`: xoá admin không được xoá phán quyết.
+  rejectedById   String?      @map("rejected_by") @db.Uuid
   // Moderation audit: ai quyết định lần cuối + khi nào. Bị ghi đè khi
   // re-moderation — quyết định mới nhất thắng. SetNull giữ review nếu admin bị xóa.
   moderatedById  String?      @map("moderated_by") @db.Uuid
@@ -639,6 +654,7 @@ model Review {
   user             User?                   @relation(fields: [userId], references: [id], onDelete: Cascade)
   booking          Booking?                @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   moderatedBy      User?                   @relation("ModeratedReviews", fields: [moderatedById], references: [id], onDelete: SetNull)
+  rejectedBy       User?                   @relation("RejectedReviews", fields: [rejectedById], references: [id], onDelete: SetNull)
   moderationEvents ReviewModerationEvent[]
 
   @@index([tourId, isApproved, authorDeleted, createdAt(sort: Desc)])
@@ -649,6 +665,11 @@ model Review {
   // isFeatured] không phủ sort, mỗi lần đổi tab/phân trang là seq scan + sort.
   // Nhánh search (contains 3 cột) chưa index trgm — ghi sổ, chờ dữ liệu lớn.
   @@index([isApproved, createdAt(sort: Desc), id(sort: Desc)])
+  // Hàng đợi thật sau ADR-0031: `is_approved = false AND rejected_at IS NULL`.
+  // Index cũ ở trên không phủ cột mới, nên tab Pending (mặc định của sidebar)
+  // sẽ lọc `rejected_at` bằng filter sau khi đã quét — đúng loại hồi quy im
+  // lặng mà index kia sinh ra để chặn.
+  @@index([isApproved, rejectedAt, createdAt(sort: Desc), id(sort: Desc)])
   @@map("reviews")
 }
 
@@ -1047,6 +1068,10 @@ model ReviewModerationEvent {
   actorId      String?  @map("actor_id") @db.Uuid
   fromApproved Boolean  @map("from_approved")
   toApproved   Boolean  @map("to_approved")
+  // ADR-0031 §4: `to_approved = false` một mình KHÔNG phân biệt được "gỡ
+  // xuống, chưa quyết" với "bác bỏ, chung cuộc". Dòng lịch sử cũ mặc định
+  // `false` — đúng, vì trước ADR-0031 hành vi bác bỏ chưa tồn tại.
+  toRejected   Boolean  @default(false) @map("to_rejected")
   note         String?  @db.VarChar(500)
   createdAt    DateTime @default(now()) @map("created_at")
 

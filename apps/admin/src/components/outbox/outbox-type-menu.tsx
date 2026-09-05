@@ -68,6 +68,7 @@ const TYPE_META: Record<EmailTypeValue, { family: Family; icon: typeof MailIcon 
   // Thư duy nhất gửi cho ĐỘI, không cho khách — chuông chứ không phải bong bóng.
   ENQUIRY_ADMIN_ALERT: { family: 'enquiry', icon: BellRingIcon },
   REVIEW_APPROVED: { family: 'reach', icon: StarIcon },
+  REVIEW_REJECTED: { family: 'reach', icon: StarIcon },
   NEWSLETTER_WELCOME: { family: 'reach', icon: MegaphoneIcon },
   EMAIL_CHANGED: { family: 'account', icon: PenLineIcon },
   PASSWORD_RESET: { family: 'account', icon: KeyRoundIcon },

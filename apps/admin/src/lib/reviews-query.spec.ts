@@ -141,16 +141,16 @@ describe('toReviewsListInput', () => {
     expect(parsed.pageSize).toBe(50);
   });
 
-  it('state → isApproved boolean; không lọc thì KHÔNG gửi key nào (bỏ trống = tất cả)', () => {
+  it('state đi THẲNG sang contract (ADR-0031); không lọc thì KHÔNG gửi key nào', () => {
     expect(toReviewsListInput({ page: 1, limit: 20, state: 'pending' })).toEqual({
       page: 1,
       pageSize: 20,
-      isApproved: false,
+      state: 'pending',
     });
     expect(toReviewsListInput({ page: 1, limit: 20, state: 'approved' })).toEqual({
       page: 1,
       pageSize: 20,
-      isApproved: true,
+      state: 'approved',
     });
     expect('isApproved' in toReviewsListInput({ page: 1, limit: 20 })).toBe(false);
   });

@@ -41,6 +41,9 @@ const PENDING: AdminReview = {
   createdAt: '2026-08-30T09:30:00.000Z',
   media: [],
   isApproved: false,
+  moderationState: 'pending',
+  rejectedAt: null,
+  moderationNote: null,
   source: 'VERIFIED',
   tourSlug: 'ha-long-bay-cruise',
   tourTitle: 'Ha Long Bay Cruise',
@@ -58,6 +61,8 @@ describe('toReviewRow', () => {
       body: 'The guide knew every cove and the kayaking was the highlight.',
       photos: [],
       photosLabel: null,
+      state: 'pending',
+      moderationNote: null,
       authorLabel: 'Ada Lovelace',
       authorDeleted: false,
       source: 'VERIFIED',
@@ -75,6 +80,7 @@ describe('toReviewRow', () => {
     const row = toReviewRow({
       ...PENDING,
       isApproved: true,
+      moderationState: 'approved',
       moderatedAt: '2026-08-31T14:05:00.000Z',
       moderatedBy: 'Grace Hopper',
     });
@@ -151,7 +157,14 @@ describe('toReviewRow', () => {
 
 describe('reviewStateBadgeVariant', () => {
   it('đã duyệt nổi bật (đang hiện với công chúng), chờ duyệt nhạt — cùng giọng REQUESTED của cancellations', () => {
-    expect(reviewStateBadgeVariant(true)).toBe('default');
-    expect(reviewStateBadgeVariant(false)).toBe('secondary');
+    expect(reviewStateBadgeVariant('approved')).toBe('default');
+    expect(reviewStateBadgeVariant('pending')).toBe('secondary');
+  });
+
+  it('đã bác KHÔNG kêu đỏ — badge kể một kết cục đã rồi, không phải một cảnh báo', () => {
+    // Cùng lập luận đã ghi ở nút Deny của cancellations: nút thì đỏ (một hành
+    // động sắp xảy ra), badge thì trung tính (chuyện đã xong). Viền để nó
+    // tách khỏi `pending` mà không hét lên.
+    expect(reviewStateBadgeVariant('rejected')).toBe('outline');
   });
 });

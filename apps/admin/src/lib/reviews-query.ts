@@ -1,4 +1,8 @@
-import type { AdminReviewsQuerySchema } from '@tourism/contract';
+import {
+  type AdminReviewsQuerySchema,
+  type ReviewModerationState,
+  ReviewModerationStateSchema,
+} from '@tourism/contract';
 import type { z } from 'zod';
 import {
   appendPaging,
@@ -19,11 +23,11 @@ import {
  *
  * Khác hai vùng kia ở HAI chỗ, và cả hai đều là chỗ dễ sai ngầm:
  *
- * 1. Trạng thái duyệt là BOOLEAN ở contract (`isApproved`), không phải enum —
- *    nên URL mang chữ đọc được (`?status=pending|approved`) và `toReviewsList
- *    Input` mới dịch sang boolean. Chọn `status` làm tên param để ba vùng có
- *    cùng văn phạm URL; chữ thường vì đây là khái niệm của UI, không phải
- *    một enum contract (bookings/cancellations dùng CHỮ HOA đúng enum).
+ * 1. URL mang chữ THƯỜNG (`?status=pending|approved|rejected`) trong khi
+ *    bookings/cancellations dùng CHỮ HOA đúng enum contract. Giữ vậy sau
+ *    ADR-0031 dù contract nay cũng là enum: chữ hoa ở đây sẽ làm hỏng mọi URL
+ *    đã lưu, và `status=pending` đọc dễ hơn `status=PENDING` — nó là khái niệm
+ *    của UI, không phải một hằng của DB.
  * 2. Field số dòng của `AdminReviewsQuerySchema` tên `pageSize` (nó extend
  *    `PageQuerySchema`), trong khi kit gọi là `limit` — xem `toReviewsList
  *    Input` bên dưới.
@@ -32,16 +36,19 @@ import {
 /** Trần `search` của contract (`z.string().max(100)`) — bookings là 120. */
 const SEARCH_MAX_LENGTH = 100;
 
-/** Hai trạng thái duyệt nhìn từ URL/UI; bỏ trống = tất cả. */
-export type ReviewState = 'pending' | 'approved';
+/**
+ * BA trạng thái (ADR-0031 §1); bỏ trống = tất cả. Kiểu mượn thẳng contract để
+ * thêm một trạng thái ở đó mà quên ở đây là typecheck đỏ, không phải một tab
+ * thiếu im lặng.
+ */
+export type ReviewState = ReviewModerationState;
 
-const REVIEW_STATES: readonly ReviewState[] = ['pending', 'approved'];
+const REVIEW_STATES: readonly ReviewState[] = ReviewModerationStateSchema.options;
 
 /**
  * Chữ bất kỳ → trạng thái hợp lệ, hoặc `null`. Dùng ở CẢ hai đầu vào: URL
  * (người gõ được) và Tab/Select của toolbar (value lạ khi bị reset) — đúng
- * nếp `safeParse` của hai vùng trước, chỉ khác là ở đây không có enum Zod nào
- * để gọi vì contract khai `isApproved` là boolean.
+ * nếp `safeParse` của hai vùng trước.
  */
 export function parseReviewState(value: string | undefined): ReviewState | null {
   return REVIEW_STATES.find((state) => state === value) ?? null;
@@ -142,15 +149,15 @@ export function reviewsHref(current: ReviewsQuery, patch: ReviewsHrefPatch): str
  * không lỗi nào đỏ. Vì thế map TỪNG field một cách tường minh ở đây, và
  * `reviews-query.spec.ts` khoá lại bằng một test parse qua chính schema.
  *
- * Cũng ở đây `state` (chữ của URL) mới thành `isApproved` (boolean của
- * contract) — không lọc thì KHÔNG gửi key nào, đúng nghĩa "mặc định trả tất
- * cả" mà JSDoc contract mô tả.
+ * `state` đi thẳng sang contract từ ADR-0031 (trước đó phải dịch sang
+ * `isApproved` boolean) — không lọc thì KHÔNG gửi key nào, đúng nghĩa "mặc
+ * định trả tất cả" mà JSDoc contract mô tả.
  */
 export function toReviewsListInput(query: ReviewsQuery): ReviewsListInput {
   return {
     page: query.page,
     pageSize: query.limit,
-    ...(query.state ? { isApproved: query.state === 'approved' } : {}),
+    ...(query.state ? { state: query.state } : {}),
     ...(query.search ? { search: query.search } : {}),
     ...(query.from ? { from: query.from } : {}),
     ...(query.to ? { to: query.to } : {}),

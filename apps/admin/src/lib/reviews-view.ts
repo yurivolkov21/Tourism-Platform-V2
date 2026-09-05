@@ -1,4 +1,4 @@
-import type { AdminReview } from '@tourism/contract';
+import type { AdminReview, ReviewModerationState } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { formatDateTime } from './bookings-view';
 
@@ -20,9 +20,13 @@ const t = messages.admin.reviews;
  * cancellations và PENDING của bookings).
  */
 export function reviewStateBadgeVariant(
-  approved: boolean,
+  state: ReviewModerationState,
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
-  return approved ? 'default' : 'secondary';
+  // `rejected` KHÔNG dùng `destructive`: badge kể một kết cục ĐÃ RỒI, trung
+  // tính — cùng lập luận đã ghi ở nút Deny của cancellations, nơi nút thì đỏ
+  // còn badge thì không. Viền cho nó tách khỏi `pending` mà không kêu đỏ.
+  if (state === 'approved') return 'default';
+  return state === 'rejected' ? 'outline' : 'secondary';
 }
 
 /** Một tấm ảnh khách đính kèm, đã sẵn sàng cho thẻ ảnh (ADR-0021). */
@@ -50,8 +54,13 @@ export interface ReviewRowVM {
   authorDeleted: boolean;
   source: AdminReview['source'];
   sourceLabel: string;
+  /** Ba trạng thái suy sẵn ở server (ADR-0031 §1) — client không ghép lại. */
+  state: ReviewModerationState;
+  /** Ghi chú của quyết định gần nhất; ở review bị bác đây là LÝ DO. */
+  moderationNote: string | null;
   /** `null` khi review không gắn tour (CURATED) — bảng tự chọn câu thay thế. */
   tourTitle: string | null;
+  /** Có đang TRÊN SITE không — trục riêng, không phải trạng thái moderation. */
   approved: boolean;
   stateLabel: string;
   submitted: string;
@@ -112,7 +121,9 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     sourceLabel: t.source[review.source],
     tourTitle: review.tourTitle,
     approved: review.isApproved,
-    stateLabel: review.isApproved ? t.state.approved : t.state.pending,
+    state: review.moderationState,
+    moderationNote: review.moderationNote,
+    stateLabel: t.state[review.moderationState],
     submitted: formatDateTime(review.createdAt),
     // Hai dấu vết TÁCH nhau: `moderatedBy` là FK SetNull nên có thể null
     // trong khi `moderatedAt` vẫn có — mất tên người duyệt không được phép

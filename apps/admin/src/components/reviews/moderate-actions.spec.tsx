@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ModerateTarget } from '@/lib/reviews-moderate';
@@ -40,9 +41,11 @@ const PENDING: ModerateTarget = {
   source: 'VERIFIED',
   tourTitle: 'Ha Long Bay Cruise',
   approved: false,
+  state: 'pending',
 };
 
-const APPROVED: ModerateTarget = { ...PENDING, approved: true };
+const APPROVED: ModerateTarget = { ...PENDING, approved: true, state: 'approved' };
+const REJECTED: ModerateTarget = { ...PENDING, approved: false, state: 'rejected' };
 
 beforeEach(() => {
   success.mockReset();
@@ -50,21 +53,33 @@ beforeEach(() => {
   refresh.mockReset();
 });
 
-/** Mở dialog từ nút của hàng — nhãn nút phụ thuộc trạng thái hiện tại. */
-async function open(user: ReturnType<typeof userEvent.setup>, approved: boolean) {
-  await user.click(screen.getByRole('button', { name: approved ? t.unapprove : t.approve }));
+/** Mở dialog bằng ĐÚNG nút của động từ ấy. */
+async function open(user: ReturnType<typeof userEvent.setup>, verdict: ReviewVerdict) {
+  const label = { approve: t.approve, reject: t.reject, unpublish: t.unpublish }[verdict];
+  await user.click(screen.getByRole('button', { name: label }));
 }
 
 describe('ModerateActions — nút của hàng', () => {
-  it('hàng chờ duyệt mang nút Approve; hàng đã duyệt mang nút Unapprove (một nút, đúng chiều còn lại)', () => {
+  it('mỗi trạng thái mang ĐÚNG bộ nút của nó (ADR-0031 §3)', () => {
+    // Chờ duyệt: duyệt hoặc bác. Đã đăng: gỡ xuống hoặc bác. Đã bác: chỉ còn
+    // đường duyệt — một nút "trả về hàng đợi" trên MỌI hàng là cái giá sai
+    // cho một ca hiếm.
     const { unmount } = render(<ModerateActions review={PENDING} moderate={vi.fn()} />);
     expect(screen.getByRole('button', { name: t.approve })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.unapprove })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.reject })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.unpublish })).toBeNull();
     unmount();
 
-    render(<ModerateActions review={APPROVED} moderate={vi.fn()} />);
-    expect(screen.getByRole('button', { name: t.unapprove })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: t.approve })).not.toBeInTheDocument();
+    const approved = render(<ModerateActions review={APPROVED} moderate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: t.unpublish })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: t.reject })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.approve })).toBeNull();
+    approved.unmount();
+
+    render(<ModerateActions review={REJECTED} moderate={vi.fn()} />);
+    expect(screen.getByRole('button', { name: t.approve })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: t.reject })).toBeNull();
+    expect(screen.queryByRole('button', { name: t.unpublish })).toBeNull();
   });
 
   it('cụm nút có tên riêng theo tác giả — trình đọc màn hình phân biệt được hàng nào', () => {
@@ -76,7 +91,7 @@ describe('ModerateActions — nút của hàng', () => {
     const user = userEvent.setup();
     const moderate = vi.fn();
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     expect(moderate).not.toHaveBeenCalled();
   });
 });
@@ -85,7 +100,7 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
   it('approve nói đủ ba việc: đăng công khai · tính lại rating tour · email cho tác giả', async () => {
     const user = userEvent.setup();
     render(<ModerateActions review={PENDING} moderate={vi.fn()} />);
-    await open(user, false);
+    await open(user, 'approve');
 
     expect(await screen.findByText(t.approveDialog.consequences.publish)).toBeInTheDocument();
     expect(
@@ -98,7 +113,7 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
   it('review CURATED: dialog nói KHÔNG có email nào — không hứa thứ service không làm', async () => {
     const user = userEvent.setup();
     render(<ModerateActions review={{ ...PENDING, source: 'CURATED' }} moderate={vi.fn()} />);
-    await open(user, false);
+    await open(user, 'approve');
 
     expect(
       await screen.findByText(t.approveDialog.consequences.noEmailCurated),
@@ -109,7 +124,7 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
   it('review không gắn tour: dialog nói KHÔNG rating nào đổi', async () => {
     const user = userEvent.setup();
     render(<ModerateActions review={{ ...PENDING, tourTitle: null }} moderate={vi.fn()} />);
-    await open(user, false);
+    await open(user, 'approve');
 
     expect(await screen.findByText(t.approveDialog.consequences.noRating)).toBeInTheDocument();
   });
@@ -117,13 +132,13 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
   it('unapprove nói gỡ khỏi trang tour + tính lại rating + khách KHÔNG được báo', async () => {
     const user = userEvent.setup();
     render(<ModerateActions review={APPROVED} moderate={vi.fn()} />);
-    await open(user, true);
+    await open(user, 'unpublish');
 
-    expect(await screen.findByText(t.unapproveDialog.consequences.hide)).toBeInTheDocument();
+    expect(await screen.findByText(t.unpublishDialog.consequences.hide)).toBeInTheDocument();
     expect(
-      screen.getByText(t.unapproveDialog.consequences.rating('Ha Long Bay Cruise')),
+      screen.getByText(t.unpublishDialog.consequences.rating('Ha Long Bay Cruise')),
     ).toBeInTheDocument();
-    expect(screen.getByText(t.unapproveDialog.consequences.noEmail)).toBeInTheDocument();
+    expect(screen.getByText(t.unpublishDialog.consequences.noEmail)).toBeInTheDocument();
     expect(screen.queryByText(t.approveDialog.consequences.email)).not.toBeInTheDocument();
   });
 
@@ -131,7 +146,7 @@ describe('ModerateActions — confirm nêu hệ quả THẬT (spec §3-F4)', () 
     // Duyệt một review là đăng nó ra site — không được bấm mù rồi mới đọc.
     const user = userEvent.setup();
     render(<ModerateActions review={PENDING} moderate={vi.fn()} />);
-    await open(user, false);
+    await open(user, 'approve');
 
     expect(await screen.findByText('Ada Lovelace')).toBeInTheDocument();
     expect(screen.getByText('Ha Long Bay Cruise')).toBeInTheDocument();
@@ -146,7 +161,7 @@ describe('ModerateActions — chiều lệnh đóng băng lúc mở dialog (revi
     // Khoá chống tái hiện: bản đầu derive `approve` mỗi render — dialog đang
     // mở tự biến thành Unapprove và cú click gửi lệnh ngược ý định.
     const user = userEvent.setup();
-    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: true });
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'approved' });
     const view = render(<ModerateActions review={PENDING} moderate={moderate} />);
     await user.click(screen.getByRole('button', { name: t.approve }));
     expect(await screen.findByText(t.approveDialog.title)).toBeInTheDocument();
@@ -154,35 +169,35 @@ describe('ModerateActions — chiều lệnh đóng băng lúc mở dialog (revi
     // Refresh mang bản approved về (admin khác vừa duyệt) — dialog KHÔNG lật.
     view.rerender(<ModerateActions review={APPROVED} moderate={moderate} />);
     expect(screen.getByText(t.approveDialog.title)).toBeInTheDocument();
-    expect(screen.queryByText(t.unapproveDialog.title)).not.toBeInTheDocument();
+    expect(screen.queryByText(t.unpublishDialog.title)).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: t.approveDialog.submit }));
-    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, approve: true });
+    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, verdict: 'approve' });
   });
 });
 
 describe('ModerateActions — input gửi đi', () => {
-  it('approve gửi approve: true, không kèm note khi admin bỏ trống (audit ghi null, không phải chuỗi rỗng)', async () => {
+  it('approve gửi verdict: approve, không kèm note khi admin bỏ trống (audit ghi null, không phải chuỗi rỗng)', async () => {
     const user = userEvent.setup();
-    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: true });
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'approved' });
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
-    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, approve: true });
+    expect(moderate).toHaveBeenCalledWith({ id: PENDING.id, verdict: 'approve' });
   });
 
-  it('unapprove gửi approve: false kèm note đã trim — note vào lịch sử moderation', async () => {
+  it('unpublish gửi verdict kèm note đã trim — note vào lịch sử moderation', async () => {
     const user = userEvent.setup();
-    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: false });
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'pending' });
     render(<ModerateActions review={APPROVED} moderate={moderate} />);
-    await open(user, true);
+    await open(user, 'unpublish');
     await user.type(await screen.findByLabelText(t.noteLabel), '  Spam link in the body.  ');
-    await user.click(screen.getByRole('button', { name: t.unapproveDialog.submit }));
+    await user.click(screen.getByRole('button', { name: t.unpublishDialog.submit }));
 
     expect(moderate).toHaveBeenCalledWith({
       id: PENDING.id,
-      approve: false,
+      verdict: 'unpublish',
       note: 'Spam link in the body.',
     });
   });
@@ -191,9 +206,9 @@ describe('ModerateActions — input gửi đi', () => {
 describe('ModerateActions — kết quả server', () => {
   it('thành công: toast kể đúng chiều vừa chạy + đóng dialog + refresh hàng đợi', async () => {
     const user = userEvent.setup();
-    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: true });
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'approved' });
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(success).toHaveBeenCalledWith(t.toast.approvedTitle, {
@@ -206,13 +221,13 @@ describe('ModerateActions — kết quả server', () => {
   it('toast đọc chiều từ RESPONSE, không từ nút đã bấm', async () => {
     // Server là nơi biết cuối cùng review đang ở trạng thái nào — client chỉ kể lại.
     const user = userEvent.setup();
-    const moderate = vi.fn().mockResolvedValue({ ok: true, approved: false });
+    const moderate = vi.fn().mockResolvedValue({ ok: true, state: 'pending' });
     render(<ModerateActions review={APPROVED} moderate={moderate} />);
-    await open(user, true);
-    await user.click(await screen.findByRole('button', { name: t.unapproveDialog.submit }));
+    await open(user, 'unpublish');
+    await user.click(await screen.findByRole('button', { name: t.unpublishDialog.submit }));
 
-    expect(success).toHaveBeenCalledWith(t.toast.unapprovedTitle, {
-      description: t.toast.unapprovedBody('Ada Lovelace'),
+    expect(success).toHaveBeenCalledWith(t.toast.unpublishedTitle, {
+      description: t.toast.unpublishedBody('Ada Lovelace'),
     });
   });
 
@@ -220,7 +235,7 @@ describe('ModerateActions — kết quả server', () => {
     const user = userEvent.setup();
     const moderate = vi.fn().mockResolvedValue({ ok: false, code: 'REVIEW_NOT_FOUND' });
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(errorToast).toHaveBeenCalledWith(t.errors.REVIEW_NOT_FOUND);
@@ -233,7 +248,7 @@ describe('ModerateActions — kết quả server', () => {
     const user = userEvent.setup();
     const moderate = vi.fn().mockResolvedValue({ ok: false, code: 'GENERIC' });
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(errorToast).toHaveBeenCalledWith(messages.admin.errors.write.GENERIC);
@@ -245,7 +260,7 @@ describe('ModerateActions — kết quả server', () => {
     const user = userEvent.setup();
     const moderate = vi.fn().mockRejectedValue(new Error('boom'));
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(errorToast).toHaveBeenCalled();
@@ -256,7 +271,7 @@ describe('ModerateActions — kết quả server', () => {
     const user = userEvent.setup();
     const moderate = vi.fn().mockResolvedValue({ ok: false, code: 'UNAUTHORIZED' });
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -276,7 +291,7 @@ describe('ModerateActions — kết quả server', () => {
         }),
     );
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     await user.click(await screen.findByRole('button', { name: t.approveDialog.submit }));
 
     await user.keyboard('{Escape}');
@@ -292,7 +307,7 @@ describe('ModerateActions — kết quả server', () => {
     const user = userEvent.setup();
     const moderate = vi.fn().mockImplementation(() => new Promise(() => {}));
     render(<ModerateActions review={PENDING} moderate={moderate} />);
-    await open(user, false);
+    await open(user, 'approve');
     const submit = await screen.findByRole('button', { name: t.approveDialog.submit });
     await user.click(submit);
     await user.click(submit);

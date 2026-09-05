@@ -106,6 +106,16 @@ type ConfirmWriteNoteProps<Code extends string> =
       /** `id` của ô note — mỗi hàng một id, tránh trùng khi nhiều dialog cùng DOM. */
       noteId: string;
       copy: ConfirmWriteCopy & { noteLabel: string };
+      /**
+       * Câu báo khi note BẮT BUỘC mà đang trống. Vắng = note tuỳ chọn (mặc
+       * định, và là ca của hầu hết lệnh ghi).
+       *
+       * Có mặt vì một lệnh mà ghi chú đi THẲNG cho người ngoài đọc thì ghi chú
+       * rỗng là một lỗ hổng, không phải một lựa chọn: bác một review rồi gửi
+       * cho khách một email không nói vì sao (ADR-0031 §6). Kit gác luôn để
+       * mỗi vùng khỏi tự dựng lại vòng touched/validate.
+       */
+      noteRequired?: string;
       /** Bắn lệnh. Nhận note ĐÃ trim (có thể rỗng). Ném ⇒ kit coi như `GENERIC`. */
       onSubmit: (note: string) => Promise<ConfirmWriteResult<Code>>;
     }
@@ -152,6 +162,10 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
     onSettled,
   } = props;
   const [note, setNote] = useState('');
+  /** Chỉ báo thiếu SAU khi người ta đã bấm gửi — không mắng ngay lúc mở. */
+  const [noteTouched, setNoteTouched] = useState(false);
+  const noteRequired = props.noteId !== undefined ? props.noteRequired : undefined;
+  const noteMissing = noteRequired !== undefined && note.trim().length === 0;
   // Vòng đời lệnh ghi nằm ở hook dùng chung (vòng vá review F5 — RefundDialog
   // hai-bước của F2 cũng chạy CÙNG máy này qua hook, hết bản chép thứ ba).
   const { pending, failure, onOpenChange, run } = useConfirmWrite<Code>({
@@ -162,6 +176,10 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
   });
 
   function submit() {
+    setNoteTouched(true);
+    // Note bắt buộc mà trống: KHÔNG bắn. Chặn ở đây chứ không disable nút —
+    // một nút mờ không nói vì sao nó mờ.
+    if (noteMissing) return;
     // Rẽ theo hình thái props: có ô note thì giao note đã trim, không thì
     // gọi trần — TS ép mỗi nhánh khớp đúng chữ ký của `onSubmit` nhánh ấy.
     // So `!== undefined` (không phải truthiness): discriminant của union là
@@ -207,8 +225,14 @@ export function ConfirmWriteDialog<Code extends string>(props: ConfirmWriteDialo
               maxLength={500}
               placeholder={copy.notePlaceholder}
               value={note}
+              aria-invalid={noteTouched && noteMissing}
               onChange={(event) => setNote(event.target.value)}
             />
+            {noteTouched && noteMissing && noteRequired ? (
+              <p role="alert" className="text-sm text-destructive-emphasis">
+                {noteRequired}
+              </p>
+            ) : null}
           </div>
         ) : null}
 

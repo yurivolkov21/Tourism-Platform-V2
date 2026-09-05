@@ -6,7 +6,9 @@ import type {
   MyReview,
   PublicReview,
   ReviewBreakdown,
+  ReviewModerationState,
   ReviewSortSchema,
+  ReviewVerdict,
 } from '@tourism/contract';
 import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
@@ -71,6 +73,63 @@ export function toPublicReview(
 }
 
 /** Row + tour slug → shape admin. Admin thấy cả review chưa duyệt. */
+/**
+ * Hai cột → MỘT trạng thái (ADR-0031 §1). Ở ĐÂY, một chỗ duy nhất: mỗi nơi tự
+ * ghép `isApproved` với `rejectedAt` là một nơi có thể ghép sai, và cái sai ấy
+ * im lặng (một review bị bác hiện ra như đang chờ duyệt).
+ *
+ * Ca "vừa đăng vừa bị bác" không cần xử ở đây — CHECK `reviews_verdict_shape`
+ * của DB không cho nó tồn tại.
+ */
+/**
+ * Include cho MỌI đường đọc trả `AdminReview`. Ba chỗ từng chép tay cùng một
+ * object; nay còn phải kèm sự kiện moderation gần nhất (lý do bác), nên chép
+ * tay là chắc chắn sót một chỗ và ở đó lý do biến mất im lặng.
+ *
+ * `take: 1` chứ không đọc cả lịch sử: cái cần là quyết định GẦN NHẤT, và một
+ * review moderate nhiều lần thì kéo hết về là tốn băng thông cho dữ liệu
+ * không ai in ra.
+ */
+/**
+ * Ba trạng thái → mệnh đề `where`, khai MỘT chỗ (ADR-0031 §1).
+ *
+ * `pending` là chỗ dễ sai nhất và cũng là lý do ADR-0031 tồn tại: nó KHÔNG
+ * phải "chưa đăng" mà là "chưa có phán quyết" — thiếu `rejectedAt: null` thì
+ * hàng đợi lại nuốt cả những review đã bị bác, đúng bug vừa chữa.
+ */
+const MODERATION_STATE_WHERE: Record<ReviewModerationState, Prisma.ReviewWhereInput> = {
+  pending: { isApproved: false, rejectedAt: null },
+  approved: { isApproved: true },
+  rejected: { rejectedAt: { not: null } },
+};
+
+export const REVIEW_ADMIN_INCLUDE = {
+  tour: { select: { slug: true, title: true } },
+  moderatedBy: { select: { name: true } },
+  moderationEvents: {
+    orderBy: { createdAt: 'desc' },
+    take: 1,
+    select: { note: true },
+  },
+} as const satisfies Prisma.ReviewInclude;
+
+export function reviewModerationState(row: {
+  isApproved: boolean;
+  rejectedAt: Date | null;
+}): ReviewModerationState {
+  if (row.isApproved) return 'approved';
+  return row.rejectedAt ? 'rejected' : 'pending';
+}
+
+/**
+ * Ghi chú của lần quyết định GẦN NHẤT. Query gọi kèm
+ * `moderationEvents: { orderBy desc, take: 1 }`, nên mảng có nhiều nhất một
+ * phần tử; ở review bị bác đây chính là LÝ DO.
+ */
+function latestNote(row: { moderationEvents?: { note: string | null }[] }): string | null {
+  return row.moderationEvents?.[0]?.note ?? null;
+}
+
 export function toAdminReview(
   row: {
     id: string;
@@ -81,16 +140,21 @@ export function toAdminReview(
     authorDeleted: boolean;
     createdAt: Date;
     isApproved: boolean;
+    rejectedAt: Date | null;
     source: ReviewSource;
     moderatedAt: Date | null;
     tour: { slug: string; title: string } | null;
     moderatedBy: { name: string | null } | null;
+    moderationEvents?: { note: string | null }[];
   },
   media: MediaItem[] = [],
 ): AdminReview {
   return {
     ...toPublicReview(row, media),
     isApproved: row.isApproved,
+    moderationState: reviewModerationState(row),
+    rejectedAt: row.rejectedAt?.toISOString() ?? null,
+    moderationNote: latestNote(row),
     source: row.source,
     tourSlug: row.tour?.slug ?? null,
     // R2: tên tour + ai duyệt lần cuối (null khi chưa duyệt).
@@ -108,13 +172,19 @@ export function toAdminReview(
 export function toMyReview(
   row: Parameters<typeof toPublicReview>[0] & {
     isApproved: boolean;
+    rejectedAt: Date | null;
     tour: { slug: string; title: string } | null;
+    moderationEvents?: { note: string | null }[];
   },
   media: MediaItem[] = [],
 ): MyReview {
   return {
     ...toPublicReview(row, media),
     isApproved: row.isApproved,
+    // ADR-0031 §6: `isApproved: false` phủ cả "đang chờ" lẫn "đã bị bác", nên
+    // trước đây khách bị bác vẫn đọc thấy "đang chờ duyệt" vĩnh viễn.
+    moderationState: reviewModerationState(row),
+    moderationNote: latestNote(row),
     // R1: danh tính tour (nullable — review curated có thể không gắn tour).
     tourSlug: row.tour?.slug ?? null,
     tourTitle: row.tour?.title ?? null,
@@ -266,8 +336,18 @@ export class ReviewsService {
    */
   async moderate(
     actorId: string,
-    input: { id: string; approve: boolean; note?: string },
+    input: { id: string; verdict: ReviewVerdict; note?: string },
   ): Promise<AdminReview> {
+    // Ba động từ → cặp trạng thái đích, khai thành DỮ LIỆU (ADR-0031 §3).
+    // Rải if/else theo verdict trong một transaction dài là cách chắc chắn để
+    // một nhánh quên xoá `rejected_at` — và ca ấy thì CHECK của DB bắt được,
+    // nhưng bắt bằng một lỗi 500 giữa money-path của người duyệt.
+    const TARGET = {
+      approve: { isApproved: true, rejected: false },
+      reject: { isApproved: false, rejected: true },
+      unpublish: { isApproved: false, rejected: false },
+    } as const;
+    const target = TARGET[input.verdict];
     const existing = await prisma.review.findUnique({
       where: { id: input.id },
       select: {
@@ -296,14 +376,21 @@ export class ReviewsService {
       // (không chỉ isApproved) để `tourId`/`source` dùng ở gate ③ cũng luôn
       // nhất quán với đúng review vừa bị khoá.
       const [locked] = await tx.$queryRaw<
-        { isApproved: boolean; tourId: string | null; source: ReviewSource }[]
+        {
+          isApproved: boolean;
+          rejectedAt: Date | null;
+          tourId: string | null;
+          source: ReviewSource;
+        }[]
       >(Prisma.sql`
-        SELECT is_approved AS "isApproved", tour_id AS "tourId", source AS "source"
+        SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt",
+               tour_id AS "tourId", source AS "source"
         FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new ReviewNotFoundError();
 
       const fromApproved = locked.isApproved;
+      const fromRejected = locked.rejectedAt !== null;
       fromApprovedForRevalidate = fromApproved;
 
       // Guard trạng-thái-trùng (review F4 31/08): tab cũ bấm approve lên
@@ -311,25 +398,32 @@ export class ReviewsService {
       // mang thông tin — no-op trả trạng thái hiện tại, KHÔNG ghi đè
       // moderatedBy thành người-không-quyết-gì, KHÔNG đẩy event from===to
       // vào audit trail append-only, không email, không đụng rating.
-      if (fromApproved === input.approve) {
+      // So CẢ HAI trục, không chỉ `isApproved` (ADR-0031 §1): trước đây
+      // `unpublish` lên một review ĐANG BỊ BÁC trông như no-op vì cả hai đều
+      // có `isApproved = false`, trong khi nó thật sự là một thay đổi — đưa
+      // review trở lại hàng đợi.
+      if (fromApproved === target.isApproved && fromRejected === target.rejected) {
         return await tx.review.findUniqueOrThrow({
           where: { id: input.id },
-          include: {
-            tour: { select: { slug: true, title: true } },
-            moderatedBy: { select: { name: true } },
-          },
+          include: REVIEW_ADMIN_INCLUDE,
         });
       }
 
-      const justApproved = !fromApproved && input.approve;
+      const justApproved = !fromApproved && target.isApproved;
+      const justRejected = !fromRejected && target.rejected;
+      const decidedAt = new Date();
 
-      // ① trạng thái + dấu vết
+      // ① trạng thái + dấu vết. `approve` XOÁ `rejected_at` (ADR-0031 §3):
+      // phán quyết đảo được, và lúc ấy review phải về một trạng thái sạch chứ
+      // không mang theo dấu vết mâu thuẫn — đó cũng là thứ CHECK của DB đòi.
       await tx.review.update({
         where: { id: input.id },
         data: {
-          isApproved: input.approve,
+          isApproved: target.isApproved,
+          rejectedAt: target.rejected ? decidedAt : null,
+          rejectedById: target.rejected ? actorId : null,
           moderatedById: actorId,
-          moderatedAt: new Date(),
+          moderatedAt: decidedAt,
         },
       });
 
@@ -339,7 +433,8 @@ export class ReviewsService {
           reviewId: input.id,
           actorId,
           fromApproved,
-          toApproved: input.approve,
+          toApproved: target.isApproved,
+          toRejected: target.rejected,
           note: input.note ?? null,
         },
       });
@@ -417,6 +512,30 @@ export class ReviewsService {
         });
       }
 
+      // ④b bác bỏ thì cũng phải BÁO (ADR-0031 §6) — im lặng là để khách đợi
+      // một thứ không bao giờ tới, đúng thứ vừa vá ở mail duyệt huỷ. Mang
+      // theo `note` làm lý do. `unpublish` KHÔNG gửi: nó chưa phải phán quyết.
+      // Cùng ba điều kiện bỏ qua với ④: không user thật (CURATED), hoặc tài
+      // khoản đã tự xoá (email đã tombstone hoá, gửi vào đó là bounce + retry).
+      if (justRejected && existing.user?.email && !existing.user.deletedAt) {
+        await tx.outbox.createMany({
+          data: [
+            {
+              type: EmailType.REVIEW_REJECTED,
+              payload: {
+                reviewId: input.id,
+                email: existing.user.email,
+                name: existing.user.name ?? null,
+                title: existing.tour?.title ?? null,
+                note: input.note ?? null,
+              },
+              dedupeKey: `review-rejected:${input.id}`,
+            },
+          ],
+          skipDuplicates: true,
+        });
+      }
+
       // Trả LUÔN row thô từ trong transaction — không gọi lại query ngoài tx
       // (tránh đọc trạng thái đã cũ và tránh một round-trip thừa). Dựng shape
       // AdminReview ở NGOÀI tx (sau dòng dưới) vì còn cần media, resolve bằng
@@ -424,10 +543,7 @@ export class ReviewsService {
       // atomic với phần ghi rating ở trên).
       return await tx.review.findUniqueOrThrow({
         where: { id: input.id },
-        include: {
-          tour: { select: { slug: true, title: true } },
-          moderatedBy: { select: { name: true } },
-        },
+        include: REVIEW_ADMIN_INCLUDE,
       });
     });
 
@@ -442,7 +558,7 @@ export class ReviewsService {
     const tags = moderationRevalidationTags({
       tourSlug: review.tourSlug,
       fromApproved: fromApprovedForRevalidate,
-      toApproved: input.approve,
+      toApproved: target.isApproved,
     });
     if (tags) void this.webRevalidation.revalidate(tags);
     return review;
@@ -599,8 +715,13 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        // R1: kèm danh tính tour cho trang "Đánh giá của tôi".
-        include: { tour: { select: { slug: true, title: true } } },
+        // R1: kèm danh tính tour cho trang "Đánh giá của tôi". Từ ADR-0031
+        // kèm cả ghi chú quyết định gần nhất — ở review bị bác đó là LÝ DO,
+        // và khách có quyền biết vì sao review của mình không lên site.
+        include: {
+          tour: { select: { slug: true, title: true } },
+          moderationEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { note: true } },
+        },
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -635,7 +756,7 @@ export class ReviewsService {
   async adminList(query: {
     page: number;
     pageSize: number;
-    isApproved?: boolean;
+    state?: ReviewModerationState;
     source?: ReviewSource;
     rating?: number;
     search?: string;
@@ -657,7 +778,7 @@ export class ReviewsService {
     // cancellations nên ba vùng không thể hiểu "trọn ngày `to`" khác nhau.
     const createdAt = createdAtRange(query.from, query.to);
     const where: Prisma.ReviewWhereInput = {
-      ...(query.isApproved === undefined ? {} : { isApproved: query.isApproved }),
+      ...(query.state ? MODERATION_STATE_WHERE[query.state] : {}),
       ...(createdAt ? { createdAt } : {}),
       ...(query.source ? { source: query.source } : {}),
       ...(query.rating ? { rating: query.rating } : {}),
@@ -674,10 +795,7 @@ export class ReviewsService {
     const [rows, total] = await Promise.all([
       prisma.review.findMany({
         where,
-        include: {
-          tour: { select: { slug: true, title: true } },
-          moderatedBy: { select: { name: true } },
-        },
+        include: REVIEW_ADMIN_INCLUDE,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (query.page - 1) * query.pageSize,
         take: query.pageSize,

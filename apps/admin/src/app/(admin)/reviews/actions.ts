@@ -45,9 +45,11 @@ export async function moderateReviewAction(
     // production thành digest trống) — phân loại tại đây, trả mã trần xuống.
     return { ok: false, code: classifyModerateError(error) };
   }
-  // Đọc kết cục từ RESPONSE của server (`review.isApproved`), không từ input
-  // đã gửi: trạng thái cuối cùng là chuyện của server, client chỉ kể lại.
+  // Đọc kết cục từ RESPONSE của server (`review.moderationState`), không từ
+  // input đã gửi: trạng thái cuối cùng là chuyện của server, client chỉ kể
+  // lại. Từ ADR-0031 là BA trạng thái, nên một boolean `approved` không còn
+  // diễn đủ — toast phải nói được cả "đã bác".
   // Số liệu stat card đổi theo lệnh ghi này (vòng vá review F5).
   updateTag(ADMIN_STATS_TAG);
-  return { ok: true, approved: review.isApproved };
+  return { ok: true, state: review.moderationState };
 }

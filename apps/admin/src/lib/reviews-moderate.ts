@@ -1,3 +1,4 @@
+import type { ReviewModerationState, ReviewVerdict } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import type { ReviewRowVM } from './reviews-view';
@@ -53,6 +54,7 @@ export type ModerateTarget = Pick<
   | 'source'
   | 'tourTitle'
   | 'approved'
+  | 'state'
 >;
 
 /**
@@ -64,34 +66,52 @@ export type ModerateTarget = Pick<
  *
  * - publish/hide: chỉ nói "trang tour" khi review GẮN tour — review mồ côi
  *   không hiện ở đâu trên site, hứa "lên trang tour" là nói dối (review F4).
- * - ③ recompute rating chỉ chạy khi review gắn tour; câu unapprove nói thẳng
+ * - ③ recompute rating chỉ chạy khi review gắn tour; câu unpublish nói thẳng
  *   ca review-duy-nhất: rating tour BIẾN MẤT, không chỉ "tính lại".
  * - ④ email chỉ enqueue ở lần false→true, có user thật và tài khoản CHƯA xoá
  *   (server gate `!deletedAt` từ vòng vá F4 — không còn thư nào bay tới địa
  *   chỉ tombstone). Ca dữ liệu hiếm VERIFIED với userId null (import/backfill)
  *   sẽ không email được dù câu hứa có — chấp nhận, ghi ở đây làm dấu.
  */
-export function moderateConsequences(target: ModerateTarget, approve: boolean): string[] {
-  const copy = approve ? t.approveDialog.consequences : t.unapproveDialog.consequences;
-  const rating = target.tourTitle ? copy.rating(target.tourTitle) : copy.noRating;
-
-  if (!approve) {
-    const hide = target.tourTitle
-      ? t.unapproveDialog.consequences.hide
-      : t.unapproveDialog.consequences.hideNoTour;
-    return [hide, rating, t.unapproveDialog.consequences.noEmail];
+export function moderateConsequences(target: ModerateTarget, verdict: ReviewVerdict): string[] {
+  if (verdict === 'unpublish') {
+    const c = t.unpublishDialog.consequences;
+    const hide = target.tourTitle ? c.hide : c.hideNoTour;
+    const rating = target.tourTitle ? c.rating(target.tourTitle) : c.noRating;
+    return [hide, rating, c.noEmail];
   }
 
-  const publish = target.tourTitle
-    ? t.approveDialog.consequences.publish
-    : t.approveDialog.consequences.publishNoTour;
-  const email = target.authorDeleted
-    ? t.approveDialog.consequences.noEmailDeleted
-    : target.source === 'CURATED'
-      ? t.approveDialog.consequences.noEmailCurated
-      : t.approveDialog.consequences.email;
+  if (verdict === 'reject') {
+    const c = t.rejectDialog.consequences;
+    // Câu ĐẦU là thứ phân biệt reject với unpublish — nó rời hàng đợi. Đặt
+    // trước cả câu gỡ khỏi trang tour vì đó mới là điều người bấm cần cân
+    // nhắc: gỡ thì đảo lại được, rời hàng đợi thì không có ai xem lại nữa.
+    const lines: string[] = [c.queue, target.tourTitle ? c.hide : c.hideNoTour];
+    // Rating chỉ đổi khi review ĐANG hiện — bác một review chưa từng duyệt
+    // không đụng tới sao của tour nào.
+    if (target.approved) lines.push(target.tourTitle ? c.rating(target.tourTitle) : c.noRating);
+    lines.push(emailLine(target, c));
+    return lines;
+  }
 
-  return [publish, rating, email];
+  const c = t.approveDialog.consequences;
+  const publish = target.tourTitle ? c.publish : c.publishNoTour;
+  const rating = target.tourTitle ? c.rating(target.tourTitle) : c.noRating;
+  return [publish, rating, emailLine(target, c)];
+}
+
+/**
+ * Ba nhánh email dùng chung cho approve và reject: cả hai đều gửi thư, và cả
+ * hai đều im lặng ở CÙNG hai ca — review CURATED (không có tài khoản nào sau
+ * lưng) và tác giả đã tự xoá tài khoản (email đã tombstone hoá, gửi vào đó là
+ * bounce vĩnh viễn + retry rác).
+ */
+function emailLine(
+  target: ModerateTarget,
+  copy: { email: string; noEmailCurated: string; noEmailDeleted: string },
+): string {
+  if (target.authorDeleted) return copy.noEmailDeleted;
+  return target.source === 'CURATED' ? copy.noEmailCurated : copy.email;
 }
 
 /**
@@ -99,17 +119,19 @@ export function moderateConsequences(target: ModerateTarget, approve: boolean): 
  * nó là hợp đồng vận chuyển giữa `actions.ts` (server) và dialog (client) —
  * tầng server không import từ tầng trình bày (review F2 31/08).
  *
- * Nhánh thành công chỉ trả `approved` — đọc từ RESPONSE của server, không từ
- * input đã gửi. Tên tác giả cho toast lấy từ chính hàng đang mở (cùng review
- * id nên cùng tác giả), không cần server nhắc lại; dữ liệu bảng thì
- * `router.refresh()` kéo về, client KHÔNG giữ bản sao trạng thái nào.
+ * Nhánh thành công trả TRẠNG THÁI cuối — đọc từ RESPONSE của server, không từ
+ * input đã gửi. Từ ADR-0031 là ba trạng thái, nên một boolean `approved` không
+ * còn diễn đủ: toast phải nói được cả "đã bác, và khách đã được báo". Tên tác
+ * giả cho toast lấy từ chính hàng đang mở (cùng review id nên cùng tác giả),
+ * không cần server nhắc lại; dữ liệu bảng thì `router.refresh()` kéo về,
+ * client KHÔNG giữ bản sao trạng thái nào.
  */
 export type ModerateActionResult =
-  | { ok: true; approved: boolean }
+  | { ok: true; state: ReviewModerationState }
   | { ok: false; code: ModerateFailureCode };
 
 export type ModerateAction = (input: {
   id: string;
-  approve: boolean;
+  verdict: ReviewVerdict;
   note?: string;
 }) => Promise<ModerateActionResult>;
