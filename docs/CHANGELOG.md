@@ -8,6 +8,75 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — P4d: dashboard `/` nối số THẬT, một endpoint chuỗi theo ngày (nhánh `feat/p4d-dashboard`, 7 commit `a68b309..7b99638`, 34 file, KHÔNG migration — **chưa merge, chờ review ở session riêng**)
+
+Trang `/` từ 20/08 là block `dashboard-01` tái hiện 1:1 rồi gọt sạch số demo
+(21/08): bốn card `—`, biểu đồ mảng rỗng, bảng xương TanStack ăn `data.json`.
+Đợt này CHỈ đổ dữ liệu vào ba khối, giữ nguyên dáng đã chốt — và chỉ thêm
+đúng một thứ còn thiếu: nguồn cho biểu đồ. Quyết định đi trước code ở
+[ADR-0036](adr/0036-dashboard-daily-series.md). Mỗi khối một commit theo thứ
+tự ADR → contract + API → card → chart → bảng → dọn demo → docs.
+
+### Ba khối
+
+1. **Bốn card** (`58581d5`) = `admin.stats.bookings()` KHÔNG tham số (cửa sổ
+   trượt 28 ngày — đúng cách gọi ADR-0028 §1 đã hẹn) qua kit `StatCardRow` +
+   `toBookingsStatCards` của `/bookings`. Xoá `section-cards.tsx`: kit
+   `StatCard` vốn bê nguyên kiểu dáng của nó, giữ hai bản là giữ một bản sẽ
+   trôi. Bốn nhãn cũ (`Reviews to moderate`, `New enquiries`) bỏ — muốn hàng
+   đợi review/enquiry là gọi thêm hai endpoint chỉ để lấy hai ảnh chụp; hàng
+   card `/bookings` là một bộ tự kiểm chéo (`revenue / paidBookings`, mẫu số
+   của `cancellationRate`).
+2. **Biểu đồ** (`4efffc9` API, `27cccc5` admin) = endpoint mới DUY NHẤT
+   `admin.stats.dashboard?days=7|30|90` → một point mỗi ngày lịch UTC
+   `{date, revenue, bookings}`, cả hai neo `paid_at` (gross) — là `revenue`/
+   `paidBookings` của card chia nhỏ theo ngày; int spec đối chứng tổng 30
+   point bằng `bookings?from&to` cùng khoảng. Cửa sổ `days` ngày TÍNH CẢ hôm
+   nay (bucket đang chạy), biên nửa-mở, `date_trunc('day', paid_at)` raw SQL
+   với `Prisma.sql`, ngày trống điền 0 ở tầng thuần `fillDaySeries` (9 spec).
+   Trang fetch 90 một lần, bộ chọn 7/30 cắt đuôi ở client (`dashboard-view.ts`,
+   8 spec) — giữ cả "admin không fetch từ browser" lẫn bộ chọn đổi tức thì.
+   **KHÔNG cache** (luật F7–F10): kẻ ghi `paid_at` là webhook
+   (`claimSeatsForPaid`), ngoài mọi `updateTag`. Theo skill dataviz, **MỘT
+   trục**: doanh thu là diện tích (token `--chart-1`), số đơn đã trả ở dòng phụ
+   tooltip — ghi thành AMEND trong ADR, endpoint vẫn trả cả hai số cho P5.
+3. **Bảng Recent bookings** (`8223a75`) = `admin.bookings.list` limit 10,
+   không lọc trạng thái/ngày, `includeMedia: false`, lắp vào
+   `DataTableFrame`/`DataTableBody` + `serverTableFeatures`; cột Code qua
+   `BookingLink` (href trần), thêm cột Created (`BookingRowVM.createdAt`),
+   footer là link "View all bookings" thay `TablePagination`. Năm ô thân +
+   nhãn/icon menu Columns tách ra `booking-cells.tsx` dùng CHUNG với
+   `/bookings` — không có bản chép nào để thành "fork rút gọn" (nếp 31/08).
+
+### Dọn demo (`9d32541`)
+
+Xoá `data-table.tsx` (798 dòng) + `data.json`, gỡ bốn gói `@dnd-kit/*` khỏi
+`apps/admin` (chỉ file ấy dùng; `@tourism/ui` vẫn giữ cho sortable của web),
+bỏ copy `Awaiting live data`. JSDoc kit (`data-table-frame`/`table-pagination`/
+`data-table-body`) từng trỏ "bê nguyên từ `data-table.tsx`" nay là nguồn duy nhất.
+
+### Hai chỗ lộ ra lúc thi công, đã ghi ở JSDoc
+
+- `z.literal([7, 30, 90])` (đa giá trị của Zod 4) làm `contract.spec` đỏ ngay
+  lúc import — đường duyệt schema của oRPC đọc `.value`. Và
+  `ZodSmartCoercionPlugin` KHÔNG ép chuỗi cho union của primitive (nhánh
+  `union` chỉ so `propValues` của object) — `?days=7` trả 400 dù có mặc định.
+  Chốt: `z.int().pipe(z.union([literal…]))` ở input; int spec khoá coercion
+  qua URL thật.
+- Bốn card trên `/` vẫn cache 60s theo `ADMIN_STATS_TAG` (quyết định vòng vá
+  F5 cho `admin.stats.bookings`) trong khi chart và bảng đọc tươi — ADR-0036
+  §2 ghi nhận, không sửa: hai khối không hứa khớp nhau (28 ngày trượt so với
+  N ngày lịch) và sửa cache card là sửa hành vi `/bookings`.
+
+### Nghiệm thu
+
+`pnpm gate:int` trọn với API tạm trên docker DB theo công thức CI (kill sau
+khi xong): build · typecheck · unit (contract 247 · api 381 · admin 858 · web
+1439 · ui 22 · tokens 10 · i18n 2) · lint · **int 27 file / 397 test** — xanh.
+Test mới: contract 6, api unit 9, int 7 (guard phủ cả tám path, biên ngày
+UTC nửa-mở, coercion `?days=`, 400 cho độ dài lạ, đối chứng tổng = card, kỳ
+rỗng), admin 12. Chưa kiểm bằng mắt trên localhost.
+
 ## 2026-09-05 — Vòng review 8 mũi cho cả nhánh backend, vá theo tầng (nhánh `fix/p4c-backend-logic`, 10 commit `6542fd5..f3dd78e`, ~90 file, KHÔNG migration mới)
 
 Session gốc review TOÀN BỘ nhánh (76 commit, 8 ADR, 210 file) trước khi merge,
