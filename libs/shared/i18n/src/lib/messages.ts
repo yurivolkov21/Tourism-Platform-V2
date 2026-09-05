@@ -2625,12 +2625,8 @@ export const messages = {
     // dashboard-01 giữ nguyên, label theo 4 metric SẼ CÓ ở P4d (map từ
     // admin-stats của Nexora cũ); demo số đã dọn — không bịa số.
     dashboard: {
-      cards: {
-        revenue: 'Total revenue',
-        paidBookings: 'Paid bookings',
-        pendingReviews: 'Reviews to moderate',
-        newEnquiries: 'New enquiries',
-      },
+      // Bốn card KHÔNG có copy riêng ở đây (P4d, ADR-0036 §1): trang `/` dùng
+      // đúng kit `StatCardRow` + `toBookingsStatCards`, nhãn ở `admin.stats.bookings`.
       awaiting: 'Awaiting live data',
       chart: {
         title: 'Revenue over time',
