@@ -92,7 +92,7 @@ hàm THUẦN trong `finance-math.ts`, test không cần DB; hai câu aggregate m
 
 ---
 
-### Task 0: Trả nợ `/reviews` — hai ô lọc `source` và `rating`
+### Task 0: Trả nợ `/reviews` — hai ô lọc `source` và `rating` ✅ *(xong 05/09)*
 
 Server đã lọc được cả hai (`AdminReviewsQuerySchema` khai `source`/`rating`,
 service lọc thật) nhưng toolbar không có ô nào bấm. Task này **chỉ đụng admin**
@@ -294,7 +294,7 @@ Kỳ vọng: grep không in gì. Có in thì `git commit --amend` bỏ dòng đ�
 
 ---
 
-### Task 1: Hàm thuần cộng giá vốn
+### Task 1: Hàm thuần cộng giá vốn ✅ *(xong 05/09)*
 
 **Files:**
 - Create: `apps/api/src/modules/catalog/tour-costs.ts`
@@ -595,7 +595,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 3: Schema Prisma + migration
+### Task 3: Schema Prisma + migration ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/api/prisma/schema.prisma`
@@ -689,9 +689,21 @@ Kỳ vọng: tạo thư mục migration mới và in "Your database is now in sy
 your schema." ⚠️ Lệnh này **chỉ chạm docker local** (`prisma.config.ts` đọc
 `.env`, không đọc `.env.local`) — Supabase KHÔNG tự nhận.
 
-- [ ] **Bước 4: thêm CHECK vào chính file migration vừa sinh**
+- [x] **Bước 4: CHECK đi một migration RIÊNG, KHÔNG nối vào file vừa sinh**
 
-Nối vào cuối `migration.sql`:
+⚠️ **Bản đầu của plan này viết "nối vào cuối `migration.sql`" — SAI, và người
+thi công đã dẫm phải.** `migrate dev` ở bước 3 đã APPLY file ấy, mà Prisma lưu
+checksum từng migration; thêm một dòng là drift và lệnh kế tiếp đòi
+`migrate reset` (mất sạch DB local). Đây đúng cái bẫy CLAUDE.md đã ghi thành
+luật — plan không được dạy ngược lại nó.
+
+Đường đúng:
+
+```bash
+cd apps/api && pnpm prisma migrate dev --create-only --name tour_cost_checks
+```
+
+rồi viết vào file MỚI ấy:
 
 ```sql
 -- Giá vốn âm không có nghĩa nào, và một dấu trừ gõ nhầm sẽ làm lợi nhuận
@@ -706,13 +718,18 @@ ALTER TABLE "tour_departures" ADD CONSTRAINT "tour_departures_fixed_cost_nonneg"
   CHECK (fixed_cost_amount IS NULL OR fixed_cost_amount >= 0);
 ```
 
-Rồi áp lại:
+Rồi áp:
 ```bash
 cd apps/api && pnpm prisma migrate dev
 ```
-Kỳ vọng: "Database schema is up to date!" hoặc apply phần vừa thêm.
+Kỳ vọng: apply `tour_cost_checks`, in "Your database is now in sync with your
+schema."
 
-⚠️ Sau bước này **KHÔNG bao giờ sửa file `migration.sql` nữa** — checksum.
+⚠️ Sau khi một migration đã apply thì **KHÔNG bao giờ sửa file `migration.sql`
+của nó nữa**, kể cả sửa comment — checksum. Muốn đổi gì thì viết migration MỚI.
+
+*(Đợt thi công 05/09 đã chạy xong hai bước này: `20260905054148_tour_cost_model`
+và `20260905054229_tour_cost_checks`.)*
 
 - [ ] **Bước 5: generate + test Task 1 xanh**
 
