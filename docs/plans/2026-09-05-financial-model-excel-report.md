@@ -1255,7 +1255,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 7: Snapshot giá vốn lúc tạo booking, và giá vốn trong seed
+### Task 7: Snapshot giá vốn lúc tạo booking, và giá vốn trong seed ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/api/src/modules/bookings/bookings.service.ts`
@@ -1973,4 +1973,5 @@ sang phase `/tours`.
 | Ghế hoà vốn (ADR-0033 §7) | Tính được miễn phí nhưng chưa có màn nào hiển thị. Đi cùng phase `/tours`. |
 | Vòng đời media / xoá Cloudinary | Bảng `media_garbage` có sẵn từ `init` và chưa ai chạm. ADR riêng — chạm cả tour/post/site media, và destroy là không hoàn tác. |
 | Trang "My reviews" của khách | `reviews.mine` chưa có consumer nào bên web. |
+| **Catalogue thiếu một tour** | Bắc 12 + Trung 9 + Nam 8 = **29**, trong khi roster spec cấp cho miền Nam dải #22–30 (9 tour) và mọi doc đều nói "30 tour". Lỗ dữ liệu CÓ TỪ TRƯỚC, phát hiện lúc viết test fixture giá vốn 05/09. |
 | Phí hoàn tiền, chi phí vận hành | Ghi ở "Giới hạn đã biết" của ADR-0033. |
