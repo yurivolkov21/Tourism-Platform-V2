@@ -8,6 +8,37 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-06 — Build web tự đánh thức API Render trước prerender (nhánh `fix/web-build-warm-api`, 1 commit `7f73317`, 4 file, KHÔNG migration)
+
+Deploy web trên Vercel cho commit `03eaef9` (docs sweep P4d) ERROR trong khi
+CI xanh và deploy admin READY. Log Vercel: `Collecting page data` 16:49:13 →
+`TimeoutError … Failed to collect page data for /blog/[slug]` 16:49:24 — đúng
+10s, là `AbortSignal.timeout(10_000)` của client oRPC (ADR-0016);
+`generateStaticParams` của /blog cố ý không `settle` (ADR-0016 §3 "build với
+API sống"). Nguyên nhân: Render free ngủ sau 15 phút, thức ~50s (spec deploy
+v1 đã ghi); lần build web trước đó cách 28 phút. Ca y hệt đã xảy ra 02/09
+(`233c559`). Site không sập — Vercel giữ deploy READY cũ — nhưng commit đó
+không lên web nếu không ai bấm Redeploy. ADR-0024 từng dự báo và đẩy
+mitigation sang spec (cron ping / plan trả phí); nay chốt bằng code.
+
+**Vá** (`7f73317`, [ADR-0024 AMEND 1](adr/0024-deploy-targets.md)):
+`apps/web/scripts/warm-api.mjs` chạy trước `next build` — poll `/api/health`
+của `API_URL|NEXT_PUBLIC_API_URL` (cùng thứ tự ưu tiên với `resolveApiOrigin`)
+tối đa 90s, mỗi 3s, timeout mỗi request 5s, rồi **luôn thoát 0**: thất bại thì
+mở như `guard-build.mjs`, API chết thật thì `next build` tự đỏ với lỗi thật.
+Log in mã lỗi trong `cause` (ECONNREFUSED…) để đọc được là ngủ hay sai host.
+Bỏ qua `SKIP_API_WARMUP=1`, rút hạn khi thử tay `API_WARMUP_DEADLINE_MS`.
+Ghi nhận không sửa: cảnh báo Vercel về `API_URL`/`REVALIDATE_SECRET` thiếu
+trong `turbo.json` — không phải nguyên nhân, việc riêng.
+
+**Nghiệm thu:** spec thuần 4 test (`warm-api.spec.ts`, đồng hồ giả tiêm
+`now`/`sleep`/`fetch`); chạy tay hai nhánh: cổng chết hạn 4s → cảnh báo rồi
+exit 0, `SKIP_API_WARMUP=1` → exit 0. `pnpm gate:int` trọn với API tạm :3001
+trên docker DB (kill sau khi xong) — build web đi qua chính script ("API trả
+lời sau 1 lần gọi"); unit web 116 file · admin 73 · api 40 · contract 15;
+lint 978 file; **int 27 file / 397 test** — xanh. Push này cũng là lần deploy
+web đầu tiên chạy qua script trên Vercel thật.
+
 ## 2026-09-05 — P4d merge + vòng review 8 mũi cho dashboard (nhánh `feat/p4d-dashboard`, 12 commit `a68b309..bb61aaf` ff vào main, 38 file, KHÔNG migration)
 
 Entry ngay dưới ghi "chưa merge, chờ review ở session riêng" — đợt review ấy
