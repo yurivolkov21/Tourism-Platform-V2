@@ -5,7 +5,6 @@ import {
   costWarning,
   formatMarginPct,
   reportBookingsTotal,
-  reportCsvRows,
   reportPeriodLabel,
   toReportPnlRows,
   toReportStatCards,
@@ -152,45 +151,6 @@ describe('toReportSummaryRows', () => {
   });
 });
 
-describe('reportCsvRows', () => {
-  const rows = reportCsvRows(report);
-  const value = (label: string) => rows.find((row) => row[0] === label)?.[1];
-
-  it('header hai cột Metric/Value từ i18n', () => {
-    expect(rows[0]).toEqual([messages.admin.reports.csv.metric, messages.admin.reports.csv.value]);
-  });
-
-  it('mang theo siêu dữ liệu kỳ — file rời khỏi màn hình phải tự nói nó là tháng nào', () => {
-    expect(value(messages.admin.reports.csv.month)).toBe('2026-09');
-    expect(value(messages.admin.reports.csv.periodFrom)).toBe('2026-09-01T00:00:00.000Z');
-    expect(value(messages.admin.reports.csv.periodTo)).toBe('2026-10-01T00:00:00.000Z');
-    expect(value(messages.admin.reports.csv.generatedAt)).toBe('2026-09-30T12:00:00.000Z');
-    expect(value(messages.admin.reports.csv.currency)).toBe('USD');
-  });
-
-  it('tiền trong CSV là số THÔ — Excel đọc "$1,240.50" thành text', () => {
-    expect(value(messages.admin.reports.operationsTable.revenue)).toBe('1240.50');
-    expect(value(messages.admin.reports.operationsTable.refundedTotal)).toBe('120.00');
-  });
-
-  it('phân rã trạng thái có hàng riêng cho từng trạng thái', () => {
-    expect(value(messages.admin.reports.csv.statusRow('PAID'))).toBe('6');
-    expect(value(messages.admin.reports.csv.statusRow('PARTIALLY_REFUNDED'))).toBe('1');
-  });
-
-  it('mọi hàng đúng hai ô — lệch một ô là cả file lệch cột', () => {
-    expect(rows.every((row) => row.length === 2)).toBe(true);
-  });
-});
-
-/**
- * Bảng P&L và bốn card kinh doanh (ADR-0033 §1, và bảng "Hình dạng câu trả
- * lời" của nó).
- *
- * Ranh giới không đổi: server đã cộng xong, tầng này chỉ ĐỊNH DẠNG. Ba chỗ
- * đáng canh là ba chỗ định dạng có thể nói dối — dấu gạch của biên không xác
- * định, dấu trừ của một tháng lỗ, và thuế suất phải hiện trên nhãn.
- */
 describe('P&L', () => {
   it('biên gộp in thành phần trăm, và dấu gạch khi KHÔNG XÁC ĐỊNH', () => {
     // `null` là "không có chuyến nào chạy", khác hẳn 0% vốn nói hoà vốn trắng.

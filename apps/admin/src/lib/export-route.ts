@@ -1,7 +1,7 @@
 import { messages } from '@tourism/i18n';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { lookupServerSession, type SessionUser } from '@/lib/api/session';
-import { csvAttachmentHeaders, csvDocument, csvFilename, isoDay } from '@/lib/csv';
+import { csvAttachmentHeaders, csvDocument, csvFilename, exportFilename, isoDay } from '@/lib/csv';
 
 /**
  * Phần CHUNG của mọi route export CSV — nâng lên ở vòng vá review F10 khi
@@ -77,5 +77,29 @@ export function logExportAudit(
 export function csvExportResponse(prefix: string, rows: readonly (readonly string[])[]): Response {
   return new Response(csvDocument(rows), {
     headers: csvAttachmentHeaders(csvFilename(prefix, isoDay(new Date()))),
+  });
+}
+
+/**
+ * Content-Type chuẩn của `.xlsx`. Thiếu nó thì trình duyệt phải đoán và Excel
+ * từ chối mở file — cùng loại hợp đồng với trình duyệt mà `csvAttachmentHeaders`
+ * đã ghi.
+ */
+export const XLSX_CONTENT_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+/**
+ * Response tải file Excel — ba dòng header y hệt đường CSV, chỉ khác kiểu nội
+ * dung: `content-disposition` để trình duyệt TẢI thay vì mở trong tab, và
+ * `no-store` để proxy không phát lại một ảnh chụp cũ cho lần bấm sau (mỗi lần
+ * bấm là một ảnh chụp KHÁC của dữ liệu back-office).
+ */
+export function xlsxExportResponse(prefix: string, body: ArrayBuffer): Response {
+  return new Response(body, {
+    headers: {
+      'content-type': XLSX_CONTENT_TYPE,
+      'content-disposition': `attachment; filename="${exportFilename(prefix, isoDay(new Date()), 'xlsx')}"`,
+      'cache-control': 'no-store',
+    },
   });
 }

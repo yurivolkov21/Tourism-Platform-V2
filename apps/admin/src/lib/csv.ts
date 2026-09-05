@@ -3,10 +3,14 @@
  * React, không đụng fetch — nên mọi nhánh escape được test mà không cần chạy
  * route handler nào.
  *
- * Đường 0-dependency là quyết định của user (31/08, freeze dep 15/10): không
- * thêm thư viện xlsx/PDF. CSV + trang in là đủ cho việc admin cần làm (mở
- * bằng Excel/Sheets, hoặc Print → PDF), và phần khó của CSV chỉ là escape —
- * viết đúng một lần ở đây, có test, rẻ hơn một dependency mới.
+ * ⚠️ Đoạn "đường 0-dependency, KHÔNG thêm thư viện xlsx/PDF" từng đứng ở đây
+ * nay đã SAI: ADR-0034 (05/09) đảo quyết định ấy cho `/reports` sau góp ý
+ * giảng viên — báo cáo tháng xuất `.xlsx` bằng ExcelJS (`lib/xlsx.ts`). Phần
+ * PDF thì KHÔNG bị đảo, vẫn là Print của trình duyệt.
+ *
+ * Ranh giới nay là: **báo cáo thì Excel, dữ liệu thì CSV**. Module này phục vụ
+ * `/bookings` và `/subscribers` — hai đường xuất *dữ liệu đổ ra*, nơi một bảng
+ * phẳng không có gì để định dạng và CSV thì mọi công cụ đều nuốt được.
  *
  * Hai lớp nguy hiểm được xử lý TÁCH BẠCH và theo đúng thứ tự:
  *
@@ -107,9 +111,21 @@ export function csvAttachmentHeaders(filename: string): Record<string, string> {
  * một lỗ header injection — không phải chỉ là tên xấu.
  */
 export function csvFilename(name: string, day: string): string {
+  return exportFilename(name, day, 'csv');
+}
+
+/**
+ * Bản tổng quát của `csvFilename` — tách ra ở ADR-0034 khi `/reports` cần đuôi
+ * `.xlsx`.
+ *
+ * MỘT hàm làm sạch chứ không hai: phần `name` đi thẳng vào header
+ * `Content-Disposition`, và hai nơi tự escape là hai luật chống header
+ * injection phải giữ đồng bộ bằng tay.
+ */
+export function exportFilename(name: string, day: string, extension: string): string {
   const safe = name
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-  return `${safe}-${day}.csv`;
+  return `${safe}-${day}.${extension}`;
 }

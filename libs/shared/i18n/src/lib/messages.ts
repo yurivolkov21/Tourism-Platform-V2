@@ -3014,17 +3014,44 @@ export const messages = {
         netProfit:
           'Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.',
       },
-      /** Nhãn cột/hàng của file CSV báo cáo — hai cột Metric/Value. */
-      csv: {
-        metric: 'Metric',
-        value: 'Value',
-        month: 'Month',
-        periodFrom: 'Period start (UTC)',
-        periodTo: 'Period end, exclusive (UTC)',
-        generatedAt: 'Generated at (UTC)',
+      /** Nút tải file — Excel từ 05/09 (ADR-0034), thay nút CSV cũ. */
+      exportExcel: 'Export Excel',
+      /**
+       * Chữ RIÊNG của file Excel (ADR-0034). Tách khỏi `csv` cũ vì file này có
+       * năm sheet chứ không phải hai cột, và tên sheet là thứ chỉ nó mới cần.
+       */
+      xlsx: {
+        title: 'Nexora — monthly report',
+        period: 'Period',
+        generatedAt: 'Generated',
         currency: 'Currency',
-        /** Tiền tố cho các hàng phân rã trạng thái: "Bookings — PAID". */
-        statusRow: (status: string) => `Bookings — ${status}`,
+        /**
+         * In thuế suất lên chính file: env không có ngày hiệu lực, nên hai
+         * file tải cùng một tháng ở hai thời điểm có thể mang hai số thuế khác
+         * nhau (ADR-0033 §5). Không in suất thì không ai đối chiếu được.
+         */
+        taxRate: 'Tax rate on margin',
+        cashHeading: 'Cash flow',
+        grossMargin: 'Gross margin',
+        departuresRun: 'Departures that ran',
+        costDataMissing: 'Bookings with no cost data',
+        sheets: {
+          summary: 'Summary',
+          bookings: 'Bookings',
+          operations: 'Operations',
+          /** Tiêu đề nói thẳng tập nào: người đọc sẽ thử cộng cột để kiểm chéo. */
+          detail: 'Detail (created this month)',
+          definitions: 'Definitions',
+        },
+        detail: {
+          code: 'Code',
+          tour: 'Tour',
+          departureEnds: 'Departure ends',
+          travellers: 'Travellers',
+          total: 'Total',
+          refunded: 'Refunded',
+          status: 'Status',
+        },
       },
     },
     /**

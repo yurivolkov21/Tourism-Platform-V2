@@ -12,9 +12,10 @@ import { formatCount, type StatCardVM } from './stats-view';
  * `newBookings` của server (contract bảo đảm hai con số bằng nhau, nên bảng in
  * cả hai và chúng kiểm chéo lẫn nhau ngay trên giấy).
  *
- * Hai đích, hai hàm: MÀN HÌNH/GIẤY nhận chữ đã định dạng ('$1,240.50'), FILE
- * nhận dữ liệu thô ('1240.50'). Cùng lý do đã ghi ở `bookings-csv.ts` — Excel
- * đọc '$1,240.50' thành text và mọi phép SUM chết.
+ * Từ ADR-0034 module này chỉ phục vụ MÀN HÌNH và GIẤY. Vế "FILE nhận dữ liệu
+ * thô" đã biến mất cùng `reportCsvRows`: file nay là `.xlsx` dựng ở
+ * `lib/xlsx.ts`, nơi số xuống ô dưới dạng `number` kèm `numFmt` nên không cần
+ * một chuỗi thô trung gian nào.
  */
 
 const t = messages.admin.reports;
@@ -34,23 +35,16 @@ export interface ReportSummaryRowVM {
 }
 
 /**
- * MỘT bảng mô tả cho danh sách metric của bảng vận hành — nguồn CHUNG của
- * `toReportSummaryRows` (màn hình/giấy) và `reportCsvRows` (file). Trước vòng
- * vá review F6 hai hàm khai hai danh sách rời phải giữ đồng bộ bằng tay:
- * thêm một metric vào bảng mà quên CSV thì màn hình có, file thiếu, và không
- * test nào đỏ. Giờ mỗi metric khai MỘT lần với hai cách đọc: `display` cho
- * mắt ('$1,240.50'), `raw` cho Excel ('1240.50' — lý do ở JSDoc
- * `reportCsvRows`).
+ * Một dòng của bảng "Money and operations".
  *
- * Tách hai nhóm vì CSV chèn bảng phân rã trạng thái vào GIỮA: nhóm bookings
- * (doanh thu + đếm booking) đứng trước phân rã, nhóm vận hành (hoàn tiền,
- * quyết định huỷ, duyệt review) đứng sau — đúng thứ tự người đọc dò một tờ
- * báo cáo.
+ * Trường `raw` (dữ liệu thô cho file) đã bị gỡ ở ADR-0034: `/reports` nay xuất
+ * `.xlsx` bằng `lib/xlsx.ts`, nơi số được ghi thành `number` kèm `numFmt` chứ
+ * không đi qua một chuỗi trung gian nào. Nhờ vậy tầng này chỉ còn ĐÚNG một
+ * việc — định dạng cho mắt người.
  */
 interface SummaryMetric {
   key: string;
   label: string;
-  raw: (report: AdminMonthlyReport) => string;
   display: (report: AdminMonthlyReport) => string;
 }
 
@@ -59,56 +53,48 @@ const p = t.pnlTable;
 const moneyMetric = (report: AdminMonthlyReport, amount: string) =>
   formatAmount(amount, report.currency);
 
-const BOOKINGS_METRICS: SummaryMetric[] = [
+const SUMMARY_METRICS: SummaryMetric[] = [
   {
     key: 'revenue',
     label: o.revenue,
-    raw: (r) => r.revenue,
     display: (r) => moneyMetric(r, r.revenue),
   },
   {
     key: 'paidBookings',
     label: o.paidBookings,
-    raw: (r) => String(r.paidBookings),
     display: (r) => formatCount(r.paidBookings),
   },
   {
     key: 'newBookings',
     label: o.newBookings,
-    raw: (r) => String(r.newBookings),
     display: (r) => formatCount(r.newBookings),
   },
-];
-
-const OPERATIONS_METRICS: SummaryMetric[] = [
+  // Nhóm vận hành nối thẳng vào nhóm tiền — trước ADR-0034 chúng là HAI mảng
+  // vì file CSV chèn bảng phân rã trạng thái vào giữa. File Excel có sheet
+  // riêng cho phân rã ấy, nên lý do tách biến mất cùng CSV.
   {
     key: 'refundedTotal',
     label: o.refundedTotal,
-    raw: (r) => r.refundedTotal,
     display: (r) => moneyMetric(r, r.refundedTotal),
   },
   {
     key: 'refunds',
     label: o.refunds,
-    raw: (r) => String(r.refunds),
     display: (r) => formatCount(r.refunds),
   },
   {
     key: 'cancellationsApproved',
     label: o.cancellationsApproved,
-    raw: (r) => String(r.cancellationsApproved),
     display: (r) => formatCount(r.cancellationsApproved),
   },
   {
     key: 'cancellationsDenied',
     label: o.cancellationsDenied,
-    raw: (r) => String(r.cancellationsDenied),
     display: (r) => formatCount(r.cancellationsDenied),
   },
   {
     key: 'reviewsApproved',
     label: o.reviewsApproved,
-    raw: (r) => String(r.reviewsApproved),
     display: (r) => formatCount(r.reviewsApproved),
   },
 ];
@@ -239,43 +225,9 @@ export function reportBookingsTotal(report: AdminMonthlyReport): string {
 
 /** Bảng metric/value: tiền + vận hành, đã định dạng cho mắt người. */
 export function toReportSummaryRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
-  return [...BOOKINGS_METRICS, ...OPERATIONS_METRICS].map(({ key, label, display }) => ({
+  return SUMMARY_METRICS.map(({ key, label, display }) => ({
     key,
     label,
     value: display(report),
   }));
-}
-
-/**
- * File CSV của báo cáo: hai cột `Metric,Value`.
- *
- * Hình dạng dọc (mỗi metric một hàng) chứ không phải một hàng rộng: người mở
- * file này đọc từng con số hoặc dán vài tháng cạnh nhau, và một header 15 cột
- * thì phải cuộn ngang mới biết mình đang nhìn ô nào.
- *
- * Bốn hàng đầu là SIÊU DỮ LIỆU kỳ. File rời khỏi màn hình rồi vẫn phải tự nói
- * được nó là tháng nào và chốt lúc nào — không có siêu dữ liệu thì hai file
- * tải ở hai tháng khác nhau trông y hệt nhau.
- *
- * Giá trị là DỮ LIỆU THÔ: tiền '1240.50' (không ký hiệu, không phân cách
- * nghìn), mốc thời gian ISO UTC, trạng thái là member enum.
- */
-export function reportCsvRows(report: AdminMonthlyReport): string[][] {
-  const c = t.csv;
-  const metricRow = ({ label, raw }: SummaryMetric): string[] => [label, raw(report)];
-
-  return [
-    [c.metric, c.value],
-    [c.month, report.month],
-    [c.periodFrom, report.from],
-    [c.periodTo, report.to],
-    [c.generatedAt, report.generatedAt],
-    [c.currency, report.currency],
-    ...BOOKINGS_METRICS.map(metricRow),
-    ...report.bookingsByStatus.map(({ status, count }): string[] => [
-      c.statusRow(status),
-      String(count),
-    ]),
-    ...OPERATIONS_METRICS.map(metricRow),
-  ];
 }

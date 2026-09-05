@@ -61,7 +61,7 @@ export function reportsHref(month: string): string {
   return tableHref('/reports', new URLSearchParams({ month }));
 }
 
-/** Link tải CSV của đúng tháng đang xem (route handler `/reports/export`). */
+/** Link tải file Excel của đúng tháng đang xem (route handler `/reports/export`). */
 export function reportsExportHref(month: string): string {
   return tableHref('/reports/export', new URLSearchParams({ month }));
 }

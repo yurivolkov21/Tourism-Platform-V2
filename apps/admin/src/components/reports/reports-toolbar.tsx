@@ -44,7 +44,7 @@ export function ReportsToolbar({ month, options }: ReportsToolbarProps) {
         </Button>
         <ButtonLink variant="outline" className={TOOLBAR_BUTTON} href={reportsExportHref(month)}>
           <DownloadIcon data-icon="inline-start" aria-hidden="true" />
-          {t.exportCsv}
+          {t.exportExcel}
         </ButtonLink>
       </div>
     </div>
