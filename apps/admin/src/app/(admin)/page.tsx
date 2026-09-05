@@ -11,7 +11,7 @@ import { DataTable } from '@/components/data-table';
 import { StatCardRow } from '@/components/kit/stat-card';
 import { SiteHeader } from '@/components/site-header';
 import { getServerSession } from '@/lib/api/session';
-import { fetchAdminBookingsStats } from '@/lib/api/stats';
+import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
 import { toBookingsStatCards } from '@/lib/stats-view';
 
 import data from './data.json';
@@ -26,7 +26,14 @@ export default async function Page() {
   // Card: `admin.stats.bookings` KHÔNG tham số → cửa sổ trượt 28 ngày, đúng
   // cách gọi ADR-0028 §1 đã hẹn cho dashboard; cùng kit `StatCardRow` +
   // `toBookingsStatCards` với `/bookings`, không có bản card thứ hai.
-  const [session, stats] = await Promise.all([getServerSession(), fetchAdminBookingsStats(cookie)]);
+  //
+  // Biểu đồ: chuỗi 90 ngày MỘT lần, không cache (ADR-0036 §2); bộ chọn 7/30
+  // cắt đuôi ở client.
+  const [session, stats, series] = await Promise.all([
+    getServerSession(),
+    fetchAdminBookingsStats(cookie),
+    fetchAdminDashboardSeries(cookie),
+  ]);
   if (!session) return null;
   return (
     <SidebarProvider
@@ -45,7 +52,7 @@ export default async function Page() {
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
               <StatCardRow cards={toBookingsStatCards(stats)} />
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive />
+                <ChartAreaInteractive points={series.points} currency={series.currency} />
               </div>
               <DataTable data={data} />
             </div>

@@ -115,6 +115,15 @@ point cuối của chuỗi 90 ngày CHÍNH LÀ chuỗi 7 ngày, không phải x�
 `days` vì thế tồn tại cho endpoint tự mô tả và cho consumer sau (P5 mobile chỉ
 cần 7), không phải để trang này gọi ba lần.
 
+**MỘT trục, MỘT diện tích — số đơn chỉ ở tooltip** (chốt lúc thi công, theo
+skill dataviz: biểu đồ hai trục y là lỗi số một). Block gốc xếp chồng hai diện
+tích CÙNG đơn vị (desktop/mobile); `revenue` (tiền) và `bookings` (số đơn)
+thì không chung thang được, mà vẽ hai biểu đồ là phá dáng đã chốt. Nên doanh
+thu là diện tích duy nhất (token `--chart-1`), tiêu đề gọi tên nó nên không
+cần chú giải, còn "N paid bookings" là dòng phụ trong tooltip của từng ngày —
+đúng vai "bao nhiêu đơn mang tiền ấy". Endpoint vẫn trả cả hai số: P5 mobile
+hoặc một biểu đồ thứ hai sau này không phải mở lại contract.
+
 **KHÔNG cache** (khác ba vùng P4b, cùng luật F7–F10 ở `lib/api/stats.ts`):
 kẻ ghi `paid_at` là WEBHOOK của provider — `PaymentsService` gọi
 `claimSeatsForPaid` trong API, ngoài mọi server action của admin — nên không

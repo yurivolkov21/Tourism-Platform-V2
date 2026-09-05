@@ -1,5 +1,6 @@
 'use client';
 
+import type { DashboardPoint } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   Card,
@@ -17,12 +18,23 @@ import {
 } from '@tourism/ui/components/chart';
 import * as React from 'react';
 import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
+import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { useIsMobile } from '@/hooks/use-mobile';
+import {
+  CHART_RANGE_DAYS,
+  type ChartRange,
+  type ChartRowVM,
+  chartRangeLabel,
+  formatChartDate,
+  sliceSeries,
+  toChartRows,
+} from '@/lib/dashboard-view';
 
 const t = messages.admin.dashboard;
 
 /**
  * Ba cửa sổ thời gian của biểu đồ. Value giữ nguyên `90d`/`30d`/`7d` — chúng
- * là khoá logic mà `filteredData` bên dưới đọc, không phải chuỗi hiển thị.
+ * là khoá logic mà `CHART_RANGE_DAYS` đọc, không phải chuỗi hiển thị.
  *
  * CỐ Ý không icon (`icon` là tuỳ chọn ở kit): ba mục chỉ khác nhau ở ĐỘ DÀI
  * của cùng một thứ, nên không có ba glyph nào tách được chúng — đắp cùng một
@@ -30,40 +42,38 @@ const t = messages.admin.dashboard;
  * icon ở bộ chọn dải này mà giữ ở bộ lọc trạng thái, nơi mỗi mục là một khái
  * niệm riêng.
  */
-const RANGE_ITEMS = [
+const RANGE_ITEMS: { label: string; value: ChartRange }[] = [
   { label: t.chart.range90d, value: '90d' },
   { label: t.chart.range30d, value: '30d' },
   { label: t.chart.range7d, value: '7d' },
 ];
 
-import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
-import { useIsMobile } from '@/hooks/use-mobile';
-
-export const description = 'An interactive area chart';
-
-// Vòng gọt bước 4 (21/08): data demo (90 ngày visitors giả) DỌN SẠCH theo
-// lệnh user — mảng rỗng chờ P4d nối admin-stats; khung chart + bộ chọn
-// khoảng ngày GIỮ NGUYÊN kiểu dashboard-01. "Total Visitors" đổi nghĩa thành
-// doanh thu theo ngày vì v2 KHÔNG có nguồn visitors (không bảng analytics).
-const chartData: { date: string; desktop: number; mobile: number }[] = [];
-
+/**
+ * MỘT chuỗi, MỘT trục (P4d, ADR-0036 §2). Block `dashboard-01` vẽ hai diện
+ * tích xếp chồng (desktop/mobile — cùng đơn vị); ở đây hai con số của một
+ * ngày khác ĐƠN VỊ (tiền và số đơn), mà biểu đồ hai trục y là lỗi số một của
+ * dataviz — nên doanh thu là diện tích, còn số đơn đã trả đứng trong tooltip
+ * làm dòng phụ. Tiêu đề đã gọi tên chuỗi nên không cần chú giải.
+ *
+ * Màu qua token `--chart-1` (bộ tokens có sẵn cặp sáng/tối), không hex.
+ */
 const chartConfig = {
-  visitors: {
-    label: 'Visitors',
-  },
-  desktop: {
-    label: 'Desktop',
-    color: 'var(--primary)',
-  },
-  mobile: {
-    label: 'Mobile',
-    color: 'var(--primary)',
+  revenue: {
+    label: t.chart.revenue,
+    color: 'var(--chart-1)',
   },
 } satisfies ChartConfig;
 
-export function ChartAreaInteractive() {
+export function ChartAreaInteractive({
+  points,
+  currency,
+}: {
+  /** Chuỗi 90 ngày từ `admin.stats.dashboard` — bộ chọn cắt đuôi ở client. */
+  points: DashboardPoint[];
+  currency: string;
+}) {
   const isMobile = useIsMobile();
-  const [timeRange, setTimeRange] = React.useState('90d');
+  const [timeRange, setTimeRange] = React.useState<ChartRange>('90d');
 
   React.useEffect(() => {
     if (isMobile) {
@@ -71,27 +81,26 @@ export function ChartAreaInteractive() {
     }
   }, [isMobile]);
 
-  const filteredData = chartData.filter((item) => {
-    const date = new Date(item.date);
-    const referenceDate = new Date('2024-06-30');
-    let daysToSubtract = 90;
-    if (timeRange === '30d') {
-      daysToSubtract = 30;
-    } else if (timeRange === '7d') {
-      daysToSubtract = 7;
-    }
-    const startDate = new Date(referenceDate);
-    startDate.setDate(startDate.getDate() - daysToSubtract);
-    return date >= startDate;
-  });
+  // Cắt đuôi theo dải rồi dựng hàng — hai phép thuần, có spec ở
+  // `dashboard-view.spec.ts`. Không có fetch nào khi đổi dải: 90 point đã tải.
+  const visible = React.useMemo(
+    () => sliceSeries(points, CHART_RANGE_DAYS[timeRange]),
+    [points, timeRange],
+  );
+  const rows = React.useMemo(() => toChartRows(visible, currency), [visible, currency]);
+  const range = chartRangeLabel(visible);
 
   return (
     <Card className="@container/card">
       <CardHeader>
         <CardTitle>{t.chart.title}</CardTitle>
         <CardDescription>
-          <span className="hidden @[540px]/card:block">{t.chart.description}</span>
-          <span className="@[540px]/card:hidden">{t.awaiting}</span>
+          <span className="hidden @[540px]/card:block">
+            {t.chart.description}
+            {range ? ` · ${t.chart.showing(range)}` : null}
+          </span>
+          {/* Màn hẹp: chỉ dải ngày — câu mô tả đầy đủ không có chỗ. */}
+          <span className="@[540px]/card:hidden">{range ? t.chart.showing(range) : null}</span>
         </CardDescription>
         <CardAction>
           {/* Dùng lại `StatusFilterTabs` của kit (01/09) thay cặp
@@ -108,21 +117,18 @@ export function ChartAreaInteractive() {
             value={timeRange}
             label={t.chart.rangeLabel}
             selectId="chart-range-selector"
-            onSelect={setTimeRange}
+            // Kit trả `string`; ba value đều là `ChartRange` nên thu hẹp ở đây.
+            onSelect={(value) => setTimeRange(value as ChartRange)}
           />
         </CardAction>
       </CardHeader>
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer config={chartConfig} className="aspect-auto h-[250px] w-full">
-          <AreaChart data={filteredData}>
+          <AreaChart data={rows}>
             <defs>
-              <linearGradient id="fillDesktop" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-desktop)" stopOpacity={1.0} />
-                <stop offset="95%" stopColor="var(--color-desktop)" stopOpacity={0.1} />
-              </linearGradient>
-              <linearGradient id="fillMobile" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="var(--color-mobile)" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="var(--color-mobile)" stopOpacity={0.1} />
+              <linearGradient id="fillRevenue" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="var(--color-revenue)" stopOpacity={1.0} />
+                <stop offset="95%" stopColor="var(--color-revenue)" stopOpacity={0.1} />
               </linearGradient>
             </defs>
             <CartesianGrid vertical={false} />
@@ -132,41 +138,41 @@ export function ChartAreaInteractive() {
               axisLine={false}
               tickMargin={8}
               minTickGap={32}
-              tickFormatter={(value) => {
-                const date = new Date(value);
-                return date.toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                });
-              }}
+              tickFormatter={(value: string) => formatChartDate(value)}
             />
             <ChartTooltip
               cursor={false}
               content={
                 <ChartTooltipContent
-                  labelFormatter={(value) => {
-                    return new Date(value).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                    });
-                  }}
+                  // Nhãn tooltip là `date` của hàng (chuỗi) — recharts khai
+                  // ReactNode nên thu hẹp trước khi format.
+                  labelFormatter={(value) => formatChartDate(String(value))}
                   indicator="dot"
+                  // Chữ in từ `revenueLabel` (chuỗi thập phân của contract đã
+                  // format) chứ không từ số `value` recharts đưa — tiền không
+                  // đi qua float ở bước in. Dòng phụ: số đơn mang tiền ấy.
+                  formatter={(_value, _name, item) => {
+                    const row = item.payload as ChartRowVM;
+                    return (
+                      <div className="flex flex-1 flex-col gap-1">
+                        <div className="flex items-center justify-between gap-4 leading-none">
+                          <span className="text-muted-foreground">{t.chart.revenue}</span>
+                          <span className="font-mono font-medium tabular-nums text-foreground">
+                            {row.revenueLabel}
+                          </span>
+                        </div>
+                        <span className="text-muted-foreground">{row.bookingsLabel}</span>
+                      </div>
+                    );
+                  }}
                 />
               }
             />
             <Area
-              dataKey="mobile"
+              dataKey="revenue"
               type="natural"
-              fill="url(#fillMobile)"
-              stroke="var(--color-mobile)"
-              stackId="a"
-            />
-            <Area
-              dataKey="desktop"
-              type="natural"
-              fill="url(#fillDesktop)"
-              stroke="var(--color-desktop)"
-              stackId="a"
+              fill="url(#fillRevenue)"
+              stroke="var(--color-revenue)"
             />
           </AreaChart>
         </ChartContainer>

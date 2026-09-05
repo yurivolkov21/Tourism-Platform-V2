@@ -1,6 +1,7 @@
 import type {
   AdminBookingsStats,
   AdminCancellationsStats,
+  AdminDashboardSeries,
   AdminEnquiriesStats,
   AdminOutboxStats,
   AdminPaymentEventsStats,
@@ -10,7 +11,7 @@ import type {
 import { api, withAdminAuth } from './client';
 
 /**
- * Bảy đường đọc số liệu vùng (spec P4b §3-F5) — bọc mỏng `admin.stats.*`.
+ * Tám đường đọc số liệu (spec P4b §3-F5 + dashboard ADR-0036) — bọc mỏng `admin.stats.*`.
  *
  * ## Vùng nào cache, vùng nào không — LUẬT CHUNG
  *
@@ -142,4 +143,20 @@ export async function fetchAdminEnquiriesStats(cookie: string): Promise<AdminEnq
  */
 export async function fetchAdminSubscribersStats(cookie: string): Promise<AdminSubscribersStats> {
   return api.admin.stats.subscribers(undefined, { context: withAdminAuth(cookie) });
+}
+
+/**
+ * Chuỗi theo ngày cho biểu đồ dashboard `/` (ADR-0036 §2) — KHÔNG cache,
+ * cùng luật F7–F10: kẻ ghi `paid_at` là WEBHOOK của provider
+ * (`PaymentsService` → `claimSeatsForPaid` trong API), ngoài mọi server
+ * action của admin, nên không ai gọi được `updateTag(ADMIN_STATS_TAG)` hộ nó.
+ * Ở đây cache 60s còn LỘ hơn mọi vùng khác: bucket hôm nay ở khung 7 ngày là
+ * con số người trực nhìn vào ngay sau khi khách trả tiền.
+ *
+ * Luôn xin `days: 90` — trang cắt đuôi 7/30 ở client (`dashboard-view.ts`),
+ * vì admin không fetch từ browser và bucket ngày lịch UTC cắt đuôi được chính
+ * xác. Tham số tồn tại cho endpoint tự mô tả và consumer sau (P5 mobile).
+ */
+export async function fetchAdminDashboardSeries(cookie: string): Promise<AdminDashboardSeries> {
+  return api.admin.stats.dashboard({ days: 90 }, { context: withAdminAuth(cookie) });
 }

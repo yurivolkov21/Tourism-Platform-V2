@@ -2630,7 +2630,18 @@ export const messages = {
       awaiting: 'Awaiting live data',
       chart: {
         title: 'Revenue over time',
-        description: 'Numbers arrive with the stats service (P4d).',
+        /**
+         * P4d (ADR-0036): MỘT trục — doanh thu là diện tích, số đơn đã trả chỉ
+         * đứng trong tooltip (hai thước đo khác đơn vị không được chung một
+         * biểu đồ hai trục). Câu mô tả nói đúng điều đó.
+         */
+        description: 'Gross revenue collected per day, by payment date',
+        /** Dòng thứ hai của mô tả: dải ngày đang hiện ("Aug 26 – Sep 1, 2026"). */
+        showing: (range: string) => `Showing ${range}`,
+        /** Tên chuỗi trong tooltip. */
+        revenue: 'Revenue',
+        /** Dòng phụ của tooltip — số đơn mang tiền của ngày đó. */
+        bookings: (count: number) => `${count} paid booking${count === 1 ? '' : 's'}`,
         /**
          * Cửa sổ thời gian của biểu đồ. Ba chuỗi này TRƯỚC 01/09 nằm cứng
          * trong `chart-area-interactive.tsx` (di sản block `dashboard-01`);
