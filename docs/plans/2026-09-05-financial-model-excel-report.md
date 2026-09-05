@@ -1477,7 +1477,7 @@ git log -1 --format=%B | grep -i "co-authored\|generated"
 
 ---
 
-### Task 8: Màn hình `/reports` — bảng P&L và stat card mới
+### Task 8: Màn hình `/reports` — bảng P&L và stat card mới ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `libs/shared/i18n/src/lib/messages.ts`
