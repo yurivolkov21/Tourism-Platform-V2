@@ -187,6 +187,19 @@ describe('policyRefund — phần đã hoàn và trần phần dư', () => {
     }
   });
 
+  it('làm tròn cent HALF_UP, cùng phép tính với web và API — 50% của 1199.01 là 599.51', () => {
+    // Trước vòng vá review 05/09 web ra 599.50 (float + toFixed) còn admin ra
+    // 599.51: khách chụp màn hình một con số, admin duyệt con số khác.
+    const result = policyRefund(
+      contextFor({
+        departureStartDate: isoDate(new Date(REQUESTED_AT), 20),
+        totalAmount: '1199.01',
+      }),
+    );
+
+    expect(result.amount).toBe('599.51');
+  });
+
   it('giữ đủ cent — 50% của 1199.00 là 599.50', () => {
     const result = policyRefund(
       contextFor({

@@ -1,3 +1,4 @@
+import { REFUND_GRACE_HOURS } from '@tourism/contract';
 import type { LegalDoc } from './legal-page.js';
 import { refundTierBullets } from './refund-tiers.js';
 
@@ -50,16 +51,16 @@ export const cancellationDoc: LegalDoc = {
       ],
     },
     {
-      heading: 'Changed your mind? The first 24 hours are free',
+      heading: `Changed your mind? The first ${REFUND_GRACE_HOURS} hours are free`,
       paragraphs: [
-        'If you cancel within 24 hours of paying, you get a full refund — whatever the schedule above would otherwise say, and however close your departure is.',
+        `If you cancel within ${REFUND_GRACE_HOURS} hours of paying, you get a full refund — whatever the schedule above would otherwise say, and however close your departure is.`,
         'This exists because the schedule measures one thing only: how close your departure is, which is what determines the costs we have already committed to guides, hotels and transport. It does not measure how long you have held the booking — and someone who books and changes their mind the same evening has cost us nothing. Without this window, booking a tour that leaves in two weeks would mean you could never get a full refund, no matter how quickly you told us.',
       ],
     },
     {
       heading: 'How we count the days',
       paragraphs: [
-        'We count whole calendar days between the date you send your cancellation request and your departure date. The time of day does not matter — a request sent late in the evening counts the same as one sent that morning.',
+        'We count whole calendar days, measured in UTC, between the date you send your cancellation request and your departure date. The time of day does not matter — a request sent late in the evening counts the same as one sent that morning — but note that around midnight UTC the calendar date can differ from the date on your own clock.',
         'What matters is when you tell us, not when we get round to processing it. If our team takes a few days to review your request, you keep the refund band that applied on the day you asked.',
       ],
     },

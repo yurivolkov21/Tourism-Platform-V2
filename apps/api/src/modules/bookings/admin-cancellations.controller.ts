@@ -10,6 +10,7 @@ import {
   CancellationAlreadyDecidedError,
   CancellationRequestNotFoundError,
   CancellationsService,
+  OffPolicyNoteRequiredError,
 } from './cancellations.service.js';
 import {
   RefundNothingLeftError,
@@ -65,6 +66,9 @@ export class AdminCancellationsController {
         }
         if (error instanceof RefundZeroOrNegativeError) {
           throw errors.ZERO_OR_NEGATIVE({ message: error.message });
+        }
+        if (error instanceof OffPolicyNoteRequiredError) {
+          throw errors.OFF_POLICY_NOTE_REQUIRED({ message: error.message });
         }
         if (error instanceof ProviderRefundFailedError) {
           throw errors.REFUND_FAILED({ message: error.message });

@@ -6,6 +6,7 @@ import type {
   DecideCancellationResult,
   Paged,
 } from '@tourism/contract';
+import { policyRefundAmount, refundPercentForRequest } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
@@ -15,7 +16,7 @@ import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
-import { classifyRefundAmount } from './refund-math.js';
+import { classifyRefundAmount, RefundNothingLeftError } from './refund-math.js';
 import {
   BookingNotFoundError,
   BookingNotRefundableError,
@@ -45,6 +46,18 @@ export class CancellationRequestNotFoundError extends Error {
 
 /** Request đã DENIED/REFUNDED — decision là chung cuộc (409). D1-B: history
  * row không bao giờ được tái dùng; khách re-request thay vào đó. */
+/**
+ * Số tiền hoàn khác mức chính sách mà không có `decisionNote` (ADR-0030 §5).
+ * Mang theo mức chính sách để câu lỗi nói được "bậc cho bao nhiêu".
+ */
+export class OffPolicyNoteRequiredError extends Error {
+  constructor(policyAmount: string) {
+    super(
+      `Refund amount differs from the policy amount (${policyAmount}); a decision note is required`,
+    );
+  }
+}
+
 export class CancellationAlreadyDecidedError extends Error {
   constructor(status: CancellationRequestStatus) {
     super(`Request is ${status}; only an open (REQUESTED) request can be decided`);
@@ -436,6 +449,13 @@ export class CancellationsService {
       // không approve được, và GHẾ KHÔNG BAO GIỜ ĐƯỢC NHẢ. Đúng cái bug mà
       // §2 vừa chữa cho một ca khác.
       const approvedZero = refundAmount !== undefined && new Prisma.Decimal(refundAmount).isZero();
+      // Sổ đã settle mà client vẫn gửi một số KHÁC 0 là hai bên đang nhìn hai
+      // sổ khác nhau (trang admin render trước khi W3 hoàn đủ). Nuốt con số ấy
+      // rồi trả 200 là để admin tin 50$ vừa đi trong khi sổ không có dòng nào
+      // (vòng vá review 05/09) — phải nói ra bằng NOTHING_LEFT.
+      if (settled && refundAmount !== undefined && !approvedZero) {
+        throw new RefundNothingLeftError();
+      }
       /** Không có đồng nào phải chuyển — dù vì sổ đã settle hay vì bậc cho 0%. */
       const noMoneyToMove = settled || approvedZero;
 
@@ -460,6 +480,34 @@ export class CancellationsService {
             total: booking.totalAmount,
             alreadyRefunded,
           }).amount;
+
+      // ADR-0030 §5 cưỡng chế ở SERVER (vòng vá review 05/09): con số client
+      // gửi khác mức CHÍNH SÁCH thì phải có lý do. Trước đây luật này chỉ là
+      // prop `noteRequired` của dialog admin — mọi caller khác cầm JWT admin
+      // approve được số bất kỳ ≤ phần dư mà không để lại dấu vết nào. Server
+      // KHÔNG khoá số (đường vượt bậc là hợp lệ: công ty huỷ chuyến, bất khả
+      // kháng); nó chỉ đòi đúng thứ §5 hứa. Tính bằng cùng `policyRefundAmount`
+      // mà admin và web dùng, nên "khớp bậc" ở ba nơi là cùng một phép tính.
+      if (refundAmount !== undefined && note === null) {
+        const tour = await tx.tour.findUnique({
+          where: { id: booking.tourId },
+          select: { freeCancellationDays: true },
+        });
+        const percent = refundPercentForRequest({
+          requestedAt: request.createdAt,
+          paidAt: booking.paidAt?.toISOString() ?? null,
+          departureStartDate: calendarDate(booking.departureStartDate),
+          freeCancellationDays: tour?.freeCancellationDays ?? null,
+        });
+        const policyAmount = policyRefundAmount({
+          percent,
+          totalAmount: booking.totalAmount.toFixed(2),
+          refundedTotal: alreadyRefunded.toFixed(2),
+        });
+        if (!amount.equals(new Prisma.Decimal(policyAmount))) {
+          throw new OffPolicyNoteRequiredError(policyAmount);
+        }
+      }
 
       // Provider idempotency key `cancel-refund:<requestId>`: một request được
       // approve nhiều nhất một lần (append-only, flip gate trên REQUESTED), nên

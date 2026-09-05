@@ -96,11 +96,13 @@ describe('validateRefundAmount', () => {
 });
 
 describe('REFUND_CONTRACT_CODES', () => {
-  it('derive từ keys khối i18n errors — một nguồn, đủ 6 mã contract', () => {
+  it('derive từ keys khối i18n errors — một nguồn, đủ 7 mã contract', () => {
     // Khoá chống tái hiện bug review 31/08: ba danh sách chép tay từng lệch
     // nhau ("NĂM mã" vs sáu). Giờ tập mã LÀ tập câu — thêm/bớt một bên là
-    // bên kia tự khớp, còn test này khoá đúng 6 mã của contract hiện tại.
+    // bên kia tự khớp, còn test này khoá đúng 7 mã của contract hiện tại
+    // (CANCELLATION_OPEN thêm ở ADR-0029 AMEND 4, vòng vá review 05/09).
     expect([...REFUND_CONTRACT_CODES].sort()).toEqual([
+      'CANCELLATION_OPEN',
       'NOTHING_LEFT',
       'NOT_FOUND',
       'NOT_REFUNDABLE',
@@ -112,7 +114,7 @@ describe('REFUND_CONTRACT_CODES', () => {
 });
 
 describe('classifyRefundError', () => {
-  it('giữ NGUYÊN 6 mã contract (defined error thật của oRPC), không nuốt thành GENERIC', () => {
+  it('giữ NGUYÊN 7 mã contract (defined error thật của oRPC), không nuốt thành GENERIC', () => {
     for (const code of REFUND_CONTRACT_CODES) {
       expect(classifyRefundError(new ORPCError(code, { defined: true }))).toBe(code);
     }

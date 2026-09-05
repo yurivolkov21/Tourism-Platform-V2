@@ -210,7 +210,11 @@ export function ApproveStepperDialog({
             <AmountStep
               policyAmount={money(policy.amount)}
               remaining={money(policy.remaining)}
-              nothingLeft={Number(policy.remaining) === 0}
+              // Đo CON SỐ SẮP GỬI, không đo phần dư của sổ: ca bậc 0% trên booking
+              // chưa hoàn gì (ca huỷ muộn thường gặp nhất) có remaining > 0 mà
+              // vẫn không chuyển đồng nào — câu "approving still closes the
+              // request…" phải hiện ở đó (vòng vá review 05/09).
+              nothingLeft={Number(chosenAmount) === 0}
               override={override}
               amountInput={amountInput}
               amountError={amountError}
@@ -227,6 +231,7 @@ export function ApproveStepperDialog({
           {step === 'confirm' ? (
             <ConfirmStep
               amount={money(chosenAmount)}
+              nothingToRefund={Number(chosenAmount) === 0}
               override={override}
               policyAmount={money(policy.amount)}
               note={note}
@@ -415,6 +420,7 @@ function AmountStep({
 /** Bước 4 — con số cuối, ba hệ quả, và ô ghi lý do khi số tiền lệch bậc. */
 function ConfirmStep({
   amount,
+  nothingToRefund,
   override,
   policyAmount,
   note,
@@ -423,6 +429,8 @@ function ConfirmStep({
   onNoteChange,
 }: {
   amount: string;
+  /** Mức 0 (ADR-0029 AMEND 3): KHÔNG gọi gateway — câu hệ quả phải nói thế. */
+  nothingToRefund: boolean;
   override: boolean;
   policyAmount: string;
   note: string;
@@ -446,7 +454,11 @@ function ConfirmStep({
       </div>
 
       <ul className="flex list-disc flex-col gap-1 pl-5 text-sm">
-        <li>{t.approveDialog.consequences.refund(amount)}</li>
+        <li>
+          {nothingToRefund
+            ? t.approveDialog.consequences.noRefund
+            : t.approveDialog.consequences.refund(amount)}
+        </li>
         <li>{t.approveDialog.consequences.cancelled}</li>
         <li>{t.approveDialog.consequences.seats}</li>
       </ul>

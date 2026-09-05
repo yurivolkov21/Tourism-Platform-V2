@@ -228,6 +228,35 @@ khái niệm "duyệt với mức hoàn bằng không", vì chỉ nó còn ba vi
 cần một câu riêng cho ca không hoàn đồng nào — ghi vào sổ nợ, chưa làm trong
 đợt này.
 
+### AMEND 4 05/09 (vòng vá review) — W3 bị SERVER chặn khi có yêu cầu huỷ mở; sổ settle mà gửi số ≠ 0 là lỗi
+
+Hai lỗ do review 8 mũi ở session gốc chỉ ra:
+
+**a. AMEND 04/09 "ẩn `Issue refund` khi có request mở" chỉ thi hành ở CLIENT.**
+`refundByAdmin` không hề đọc `cancellation_requests`, nên một tab cũ, một
+script, hay bất kỳ caller nào khác vẫn hoàn đủ tiền qua W3 trong lúc request
+còn `REQUESTED` — và admin sau đó bấm **Deny** (đúng nghiệp vụ: "khách đã được
+hoàn rồi") thì `cancelled_at` NULL, ghế rò vĩnh viễn, đúng bảng đo ở *Bối cảnh*.
+§2 chỉ chữa được nếu admin chọn Approve. Nay `refundByAdmin` đếm request
+`REQUESTED` của booking **trong cùng advisory lock** với `approve` và ném
+`CANCELLATION_OPEN` (422, mã mới ở `admin.bookings.refund`). Hệ quả: ca "sổ đã
+settle qua W3 trong lúc request còn mở" của §2 không còn tới được qua API —
+§2 vẫn đúng cho dữ liệu cũ và cho khoản đối soát ghi thẳng vào sổ, int spec mô
+phỏng bằng một row `refunds` chèn tay.
+
+**b. Sổ đã settle mà client gửi `refundAmount ≠ 0` thì phải là lỗi.** Bản đầu
+ép `amount = 0` bất kể con số client gửi và trả 200: admin mở trang lúc
+`refundedTotal = 0.00`, một khoản hoàn đủ đi sau đó, admin submit 50.00 → toast
+"Approved", sổ không có dòng nào, không log. Nay ném `NOTHING_LEFT` (map sang
+`NOT_REFUNDABLE` của `decide`, nhóm trạng-thái-cũ → dialog đóng + refresh).
+`refundAmount = 0.00` hoặc vắng trên sổ đã settle vẫn chạy như §2/§AMEND 3.
+
+Kèm hai chỗ UI: bước Amount đo `nothingLeft` bằng CON SỐ SẮP GỬI chứ không
+bằng phần dư (ca bậc 0% trên booking chưa hoàn gì — ca thường gặp nhất — từng
+mất câu giải thích và bước Confirm in "Refunds $0.00 … through the payment
+provider" trái AMEND 3); và `OVER_TOTAL` vào nhóm trạng-thái-cũ vì ở chế độ
+chính sách con số bị khoá, không "nhập lại" được.
+
 ## Phương án đã cân nhắc rồi loại
 
 | Phương án | Vì sao loại |

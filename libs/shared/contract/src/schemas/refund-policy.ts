@@ -122,7 +122,68 @@ export function daysBeforeDeparture(requestedAt: Date, departureStartDate: strin
     requestedAt.getUTCDate(),
   );
   const to = Date.parse(`${departureStartDate}T00:00:00.000Z`);
+  // Ngày hỏng → NaN → mọi phép so bậc đều false → `?? 0` → 0% IM LẶNG: một
+  // cột ngày lỗi biến thành "không hoàn đồng nào" thay vì một lỗi nhìn thấy
+  // được. Ném để 500 chứ không trả khách 0% (vòng vá review 05/09).
+  if (!Number.isFinite(to) || !Number.isFinite(from)) {
+    throw new RangeError(`Invalid date for refund policy: ${departureStartDate}`);
+  }
   return Math.round((to - from) / DAY_MS);
+}
+
+// ── Số học tiền trên chuỗi thập phân — MỘT bản cho cả web, admin và API ──
+//
+// Trước vòng vá review 05/09 web tính `total * percent / 100` bằng float rồi
+// `toFixed(2)`, còn admin làm tròn cent HALF_UP: 50% của 1199.01 là 599.50 ở
+// dialog khách và 599.51 ở màn admin — đúng cái lệch một cent mà "một điểm vào
+// duy nhất" (§3b) sinh ra để chặn, chỉ là ở phép nhân chứ không ở phần trăm.
+// Đặt cạnh bảng bậc để ba bên gọi cùng một hàm.
+
+/**
+ * Decimal string → số nguyên CENT, làm tròn HALF_UP ở 2dp đúng như
+ * `Prisma.Decimal.toDecimalPlaces(2, ROUND_HALF_UP)` phía server. Đi qua chuỗi
+ * chứ không qua float: `0.1 + 0.2` của JS là bài học vỡ lòng, và đây là tiền.
+ * Chỉ gọi với chuỗi đã qua `DecimalStringSchema` (không dấu, không âm).
+ */
+export function toCents(value: string): number {
+  const [whole = '0', fraction = ''] = value.split('.');
+  const cents = Number(`${whole}${`${fraction}00`.slice(0, 2)}`);
+  return Number(fraction[2] ?? '0') >= 5 ? cents + 1 : cents;
+}
+
+/** Cent → decimal string 2dp, dạng mà contract và sổ cái dùng ('15.50'). */
+export function fromCents(cents: number): string {
+  return (cents / 100).toFixed(2);
+}
+
+/** Phần CÒN HOÀN ĐƯỢC = total − đã hoàn, kẹp sàn 0. */
+export function remainingRefundable(totalAmount: string, refundedTotal: string): string {
+  return fromCents(Math.max(0, toCents(totalAmount) - toCents(refundedTotal)));
+}
+
+/**
+ * `percent` phần trăm của một số tiền, làm tròn về cent gần nhất, hoà thì LÊN
+ * (`Math.round`): nửa cent tranh chấp thì phần thắng thuộc về khách.
+ */
+export function percentOfAmount(amount: string, percent: number): string {
+  return fromCents(Math.round((toCents(amount) * percent) / 100));
+}
+
+/**
+ * Số tiền hoàn THEO CHÍNH SÁCH của một yêu cầu, từ phần trăm đã quyết (§7):
+ * phần trăm áp lên TỔNG, trừ phần đã hoàn, kẹp trong phần dư. Cùng một hàm
+ * cho màn admin (bày số), dialog khách (ước tính) và API (đối chiếu số client
+ * gửi để biết có vượt bậc không — §5).
+ */
+export function policyRefundAmount(input: {
+  percent: number;
+  totalAmount: string;
+  refundedTotal: string;
+}): string {
+  const gross = percentOfAmount(input.totalAmount, input.percent);
+  const net = remainingRefundable(gross, input.refundedTotal);
+  const remaining = remainingRefundable(input.totalAmount, input.refundedTotal);
+  return toCents(net) <= toCents(remaining) ? net : remaining;
 }
 
 /**

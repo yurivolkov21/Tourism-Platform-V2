@@ -16,8 +16,12 @@ const t = messages.admin.cancellations.decide;
  * F3 31/08.
  */
 // Mã trạng-thái-cũ khai NGAY trong codec (vòng vá review F7) — hết predicate tay.
+// OVER_TOTAL vào nhóm stale từ vòng vá review 05/09: ở chế độ chính sách con
+// số bị KHOÁ từ `refundedTotal` render lúc mở trang, nên "vượt phần dư" nghĩa
+// là sổ đã đổi dưới chân dialog — không sửa tại chỗ được, và lối thoát duy
+// nhất trước đó là bật công tắc vượt bậc rồi ghi một "lý do vượt bậc" giả.
 const codec = createWriteErrorCodec(t.errors, {
-  stale: ['NOT_FOUND', 'ALREADY_DECIDED', 'NOT_REFUNDABLE'],
+  stale: ['NOT_FOUND', 'ALREADY_DECIDED', 'NOT_REFUNDABLE', 'OVER_TOTAL'],
 });
 
 export const DECIDE_CONTRACT_CODES = codec.codes;

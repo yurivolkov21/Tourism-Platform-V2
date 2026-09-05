@@ -205,6 +205,33 @@ mà chính công ty huỷ. Bất khả kháng, lỗi vận hành, và ca supplie
 Lý do vượt bậc lưu vào `decisionNote` — trường đã có, đã hiện trên hàng đợi và
 trang chi tiết.
 
+### 5b. AMEND 05/09 (vòng vá review) — §5 cưỡng chế ở SERVER, và số học tiền là MỘT bản
+
+Bản đầu gác luật "vượt bậc phải ghi lý do" ở prop `noteRequired` của dialog
+admin; `decisionNote` ở contract vẫn `optional` và server không tính lại bậc.
+Nghĩa là mọi caller cầm JWT admin approve được số bất kỳ ≤ phần dư mà không để
+lại dấu vết vượt bậc nào — đúng trạng thái "hai admin xử hai ca giống nhau ra
+hai con số khác nhau" mà *Bối cảnh* (2) sinh ra để xoá. Nay `approve` tính
+lại `refundPercentForRequest` + `policyRefundAmount` từ dữ liệu TƯƠI trong
+lock (createdAt của request, `paidAt`, `departureStartDate` snapshot,
+`freeCancellationDays` của tour); con số client gửi khác mức chính sách mà
+không có `decisionNote` là `OFF_POLICY_NOTE_REQUIRED` (422, mã mới). Server
+**không khoá số** — đường vượt bậc vẫn hợp lệ, nó chỉ đòi đúng thứ §5 hứa.
+
+Cùng lúc, số học tiền (`toCents`/`fromCents`/`percentOfAmount`/
+`remainingRefundable`/`policyRefundAmount`) dời từ `apps/admin/src/lib/refund.ts`
+lên `@tourism/contract` cạnh bảng bậc: web từng nhân float rồi `toFixed(2)`,
+admin làm tròn cent HALF_UP — 50% của 1199.01 là 599.50 ở dialog khách và
+599.51 ở màn admin. §3b hứa "một điểm vào duy nhất" nhưng chỉ cho phần trăm;
+nay cả phép nhân cũng một.
+
+Ba chỗ văn bản đi kèm: ân hạn 24 giờ ở `/cancellation-policy`, `/terms`, hai
+câu i18n và FAQ nay sinh từ `REFUND_GRACE_HOURS` thay vì gõ tay (cùng bệnh
+"lỗ ngày 14" mà §6 vừa chữa cho bảng bậc); câu "how we count the days" nói rõ
+ngày lịch đo theo **UTC** (§4 đã chốt UTC nhưng văn bản không nói, khách ở
+UTC−5 gửi 20:00 có thể rớt bậc ở biên); và `daysBeforeDeparture` NÉM với ngày
+hỏng thay vì âm thầm trả 0%.
+
 ### 6. MỘT nguồn sinh cả văn bản lẫn phép tính
 
 Bảng bậc là **hằng máy đọc được trong `@tourism/contract`**, và nó sinh ra:

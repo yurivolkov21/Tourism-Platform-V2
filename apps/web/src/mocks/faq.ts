@@ -1,3 +1,4 @@
+import { REFUND_GRACE_HOURS } from '@tourism/contract';
 import type { MockFaqItem } from './types.js';
 
 // 5 câu FAQ pre-sales cho mini-FAQ trang Contact (rút gọn kiểu Nexora
@@ -15,8 +16,7 @@ export const FAQ_ITEMS: MockFaqItem[] = [
     // giờ (chính sách nói dưới 7 ngày là 0%) và "rebook you to a later date"
     // (KHÔNG có luồng đổi ngày nào tồn tại). Nay nói đúng thứ có thật, và trỏ
     // về bảng bậc thay vì nhắc lại một con số sẽ trôi lệch.
-    answer:
-      'Request it from your account and we handle it — no phone queue. How much you get back follows our published refund schedule: the earlier you tell us, the more comes back, and anything cancelled within 24 hours of paying is refunded in full. Want to move dates instead? Contact us and we will see what the tour allows.',
+    answer: `Request it from your account and we handle it — no phone queue. How much you get back follows our published refund schedule: the earlier you tell us, the more comes back, and anything cancelled within ${REFUND_GRACE_HOURS} hours of paying is refunded in full. Want to move dates instead? Contact us and we will see what the tour allows.`,
   },
   {
     question: 'How big are the groups, really?',

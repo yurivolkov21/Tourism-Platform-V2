@@ -19,23 +19,25 @@ describe('DECIDE_CONTRACT_CODES', () => {
     expect([...DECIDE_CONTRACT_CODES].sort()).toEqual(declared.sort());
   });
 
-  it('sáu mã — hai mã tiền thêm ở ADR-0029 §1 khi decide bắt đầu nhận số tiền', () => {
+  it('bảy mã — hai mã tiền ở ADR-0029 §1, và OFF_POLICY_NOTE_REQUIRED của ADR-0030 §5', () => {
     expect([...DECIDE_CONTRACT_CODES].sort()).toEqual([
       'ALREADY_DECIDED',
       'NOT_FOUND',
       'NOT_REFUNDABLE',
+      'OFF_POLICY_NOTE_REQUIRED',
       'OVER_TOTAL',
       'REFUND_FAILED',
       'ZERO_OR_NEGATIVE',
     ]);
   });
 
-  it('hai mã tiền KHÔNG thuộc nhóm trạng-thái-cũ — sửa tại chỗ được', () => {
-    // Chúng nói về CON SỐ vừa gửi, không về thế giới đã đổi dưới chân dialog:
-    // request còn nguyên REQUESTED, admin nhập lại là xong. Xếp nhầm vào nhóm
-    // stale thì dialog đóng và bắt admin mở lại từ đầu.
-    expect(isStaleStateCode('OVER_TOTAL')).toBe(false);
+  it('OVER_TOTAL là trạng-thái-cũ; ZERO_OR_NEGATIVE / OFF_POLICY_NOTE_REQUIRED sửa tại chỗ', () => {
+    // OVER_TOTAL ở chế độ chính sách = sổ đã đổi dưới chân dialog (con số bị
+    // khoá, không nhập lại được) → đóng và refresh (vòng vá review 05/09).
+    // Hai mã kia nói về form: đổi số / thêm lý do là xong, request còn nguyên.
+    expect(isStaleStateCode('OVER_TOTAL')).toBe(true);
     expect(isStaleStateCode('ZERO_OR_NEGATIVE')).toBe(false);
+    expect(isStaleStateCode('OFF_POLICY_NOTE_REQUIRED')).toBe(false);
     expect(isStaleStateCode('REFUND_FAILED')).toBe(false);
     expect(isStaleStateCode('NOT_REFUNDABLE')).toBe(true);
   });

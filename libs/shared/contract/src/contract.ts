@@ -603,6 +603,14 @@ export const contract = {
             status: 422,
             message: 'Booking is already fully refunded',
           },
+          // ADR-0029 §AMEND 4 (vòng vá review 05/09): có yêu cầu huỷ ĐANG MỞ
+          // thì tiền phải đi qua quyết định của nó — W3 hoàn đủ rồi Deny là
+          // ghế rò vĩnh viễn. Trước đây chỉ UI ẩn nút; server nay chặn.
+          CANCELLATION_OPEN: {
+            status: 422,
+            message:
+              'A cancellation request is open on this booking — decide it instead of refunding directly',
+          },
           // Provider từ chối/lỗi khi gọi refund — chưa ghi gì vào ledger.
           REFUND_FAILED: {
             status: 502,
@@ -657,6 +665,13 @@ export const contract = {
           ZERO_OR_NEGATIVE: {
             status: 422,
             message: 'Refund amount must be greater than zero',
+          },
+          // ADR-0030 §5 cưỡng chế ở SERVER (vòng vá review 05/09): số tiền
+          // khác mức chính sách thì phải có `decisionNote`. Trước đây luật này
+          // chỉ là một prop của dialog admin.
+          OFF_POLICY_NOTE_REQUIRED: {
+            status: 422,
+            message: 'A refund that differs from the policy amount needs a decision note',
           },
           // Chỉ ở nhánh approve: provider từ chối/lỗi khi gọi refund — chưa ghi
           // gì vào ledger và request vẫn ở REQUESTED.

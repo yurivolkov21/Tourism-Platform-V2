@@ -1,4 +1,9 @@
-import { type BookingStatusValue, DecimalStringSchema, type Refund } from '@tourism/contract';
+import {
+  type BookingStatusValue,
+  DecimalStringSchema,
+  type Refund,
+  toCents,
+} from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { createWriteErrorCodec, type TransportFailureCode } from './api/write-error';
 import { formatAmount } from './bookings-view';
@@ -42,48 +47,11 @@ export function normalizeAmountInput(raw: string): string {
   return trimmed;
 }
 
-/**
- * Decimal string → số nguyên CENT, làm tròn HALF_UP ở 2dp đúng như
- * `classifyRefundAmount` làm bằng `Prisma.Decimal` phía server. Đi qua chuỗi
- * chứ không qua float: `0.1 + 0.2` của JS là bài học vỡ lòng, và đây là tiền.
- *
- * Chỉ gọi sau khi chuỗi đã qua `DecimalStringSchema` (không dấu, không âm).
- */
-function toCents(value: string): number {
-  const [whole = '0', fraction = ''] = value.split('.');
-  const cents = Number(`${whole}${`${fraction}00`.slice(0, 2)}`);
-  // Chữ số thứ ba quyết định làm tròn: ≥ 5 lên một cent (HALF_UP).
-  return Number(fraction[2] ?? '0') >= 5 ? cents + 1 : cents;
-}
-
-/** Cent → decimal string 2dp, dạng mà contract và sổ cái dùng ('15.50'). */
-function fromCents(cents: number): string {
-  return (cents / 100).toFixed(2);
-}
-
-/**
- * Phần CÒN HOÀN ĐƯỢC = total − refundedTotal (cả hai là decimal string THẬT
- * từ server — `adminByCode` điền `refundedTotal` từ aggregate ledger, review
- * F2 31/08). Đây là trần validate và là số in ở hint ô amount.
- */
-export function remainingRefundable(totalAmount: string, refundedTotal: string): string {
-  return fromCents(Math.max(0, toCents(totalAmount) - toCents(refundedTotal)));
-}
-
-/**
- * `percent` phần trăm của một số tiền, trả về decimal string 2dp.
- *
- * Ở ĐÂY chứ không ở `approve-refund.ts` vì đây là chỗ duy nhất của repo làm số
- * học trên chuỗi thập phân tiền — `toCents`/`fromCents` không rời file này, và
- * bản chép thứ hai của phép quy đổi ấy là bản chép sẽ lệch.
- *
- * Làm tròn về cent gần nhất, hoà thì LÊN (`Math.round`): 25% của $100.01 là
- * 25,0025 → $25.00, còn 50% của $1,199 là đúng $599.50 không cần tròn. Chọn
- * hướng lên vì nửa cent tranh chấp thì phần thắng thuộc về khách.
- */
-export function percentOfAmount(amount: string, percent: number): string {
-  return fromCents(Math.round((toCents(amount) * percent) / 100));
-}
+// Số học tiền (`toCents`/`fromCents`/`remainingRefundable`/`percentOfAmount`)
+// nay sống ở `@tourism/contract` cạnh bảng bậc — cùng MỘT bản cho web, admin và
+// API (vòng vá review 05/09: web tính float, admin tính cent, lệch một cent ở
+// 1199.01). Re-export để chỗ gọi cũ trong admin không đổi.
+export { percentOfAmount, remainingRefundable } from '@tourism/contract';
 
 export type RefundMode = 'full' | 'partial';
 

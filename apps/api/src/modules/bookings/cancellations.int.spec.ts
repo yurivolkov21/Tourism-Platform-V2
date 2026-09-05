@@ -10,7 +10,7 @@ import {
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
-import type { Prisma } from '../../generated/prisma/client.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import {
   BookingStatus,
   CancellationRequestStatus,
@@ -492,7 +492,11 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       );
       expect(await seatsBooked()).toBe(3);
 
-      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
+      const res = await postDecide(admin, request.id, {
+        approve: true,
+        refundAmount: '50.00',
+        decisionNote: 'Off-policy split agreed with the customer.',
+      });
       expect(res.statusCode).toBe(200);
 
       const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
@@ -548,7 +552,11 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       );
       expect(await seatsBooked()).toBe(3);
 
-      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '0.00' });
+      const res = await postDecide(admin, request.id, {
+        approve: true,
+        refundAmount: '0.00',
+        decisionNote: 'Tour cancelled by us — no refund due, closing the request.',
+      });
       expect(res.statusCode).toBe(200);
 
       // Không đồng nào chuyển, nên gateway không được gọi và sổ append-only
@@ -565,7 +573,26 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       expect(await seatsBooked()).toBe(0);
     });
 
-    it('§2 booking ĐÃ hoàn đủ qua W3: approve vẫn chạy, KHÔNG gọi gateway, ghế được NHẢ', async () => {
+    /**
+     * Sổ đã settle TRONG LÚC request còn mở. Từ ADR-0029 AMEND 4 đường W3 bị
+     * server chặn khi có request mở, nên ca này chỉ còn tới được từ dữ liệu
+     * cũ (trước AMEND) hoặc một khoản đối soát ghi thẳng vào sổ — mô phỏng
+     * bằng một row `refunds` chèn tay, không qua gateway.
+     */
+    async function settleLedgerDirectly(bookingId: string) {
+      await prisma.refund.create({
+        data: {
+          bookingId,
+          amount: new Prisma.Decimal('117.00'),
+          currency: 'USD',
+          providerRefundId: 'reconciled-outside',
+          // `adminId` null: khoản đối soát ngoài hệ, không ai bấm nút.
+        },
+      });
+      await prisma.booking.update({ where: { id: bookingId }, data: { status: 'REFUNDED' } });
+    }
+
+    it('§2 booking ĐÃ hoàn đủ: approve vẫn chạy, KHÔNG gọi gateway, ghế được NHẢ', async () => {
       // Đây là ca từng kẹt vĩnh viễn ở 422 và làm rò ghế — lý do ADR-0029 ra đời.
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-settled@example.com', 'Alice');
@@ -573,15 +600,14 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const request = CancellationRequestSchema.parse(
         (await postCancel(alice, booking.code)).json(),
       );
-      expect((await postRefund(admin, booking.code, {})).statusCode).toBe(200);
-      expect(fake.refunds).toHaveLength(1);
+      await settleLedgerDirectly(booking.id);
       expect(await seatsBooked()).toBe(3);
 
       const res = await postDecide(admin, request.id, { approve: true });
       expect(res.statusCode).toBe(200);
 
-      // Không gọi gateway lần hai, và KHÔNG ghi row 0.00 vào sổ.
-      expect(fake.refunds).toHaveLength(1);
+      // Không gọi gateway, và KHÔNG ghi row 0.00 vào sổ.
+      expect(fake.refunds).toHaveLength(0);
       expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
       const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
       expect(after.status).toBe('CANCELLED');
@@ -590,6 +616,76 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       ).toBe(CancellationRequestStatus.REFUNDED);
       // Chính là thứ đã rò trước ADR-0029.
       expect(await seatsBooked()).toBe(0);
+    });
+
+    it('sổ đã settle mà client gửi một số KHÁC 0 → 422, không nuốt thành 200 (vòng vá 05/09)', async () => {
+      // Trang admin render `refundedTotal=0.00`, một khoản hoàn đủ đi sau đó;
+      // admin submit 50.00 → server phải nói NOT_REFUNDABLE (NOTHING_LEFT), không
+      // trả 200 rồi để admin tin 50$ vừa đi.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-settled-amount@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+      await settleLedgerDirectly(booking.id);
+
+      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('NOT_REFUNDABLE');
+      // Không đổi gì: request còn mở, booking còn ghế.
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REQUESTED);
+      expect(await seatsBooked()).toBe(3);
+    });
+
+    it('ADR-0030 §5 ở server: số KHÁC mức chính sách mà không có lý do → 422; có lý do → 200', async () => {
+      // Chuyến 45 ngày nữa, ngoài ân hạn → bậc 100% → mức chính sách = 117.00.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr30-offpolicy@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+
+      const noNote = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
+      expect(noNote.statusCode).toBe(422);
+      expect(noNote.json().code).toBe('OFF_POLICY_NOTE_REQUIRED');
+      expect(fake.refunds).toHaveLength(0);
+
+      const withNote = await postDecide(admin, request.id, {
+        approve: true,
+        refundAmount: '50.00',
+        decisionNote: 'Supplier refunded us only half — goodwill split.',
+      });
+      expect(withNote.statusCode).toBe(200);
+      expect(fake.refunds).toHaveLength(1);
+    });
+
+    it('ADR-0030 §5: số ĐÚNG mức chính sách thì không cần lý do', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr30-onpolicy@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+
+      const res = await postDecide(admin, request.id, { approve: true, refundAmount: '117.00' });
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('ADR-0029 AMEND 4: W3 `Issue refund` bị chặn khi có yêu cầu huỷ ĐANG MỞ', async () => {
+      // W3 hoàn đủ rồi Deny là ghế rò vĩnh viễn — trước đây chỉ UI ẩn nút.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-w3-blocked@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      await postCancel(alice, booking.code);
+
+      const res = await postRefund(admin, booking.code, {});
+      expect(res.statusCode).toBe(422);
+      expect(res.json().code).toBe('CANCELLATION_OPEN');
+      expect(fake.refunds).toHaveLength(0);
     });
 
     it('§3 booking CANCELLED còn dư: W3 hoàn nốt được, và KHÔNG ghi đè CANCELLED', async () => {
@@ -601,7 +697,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       );
       // Approve một phần → CANCELLED nhưng sổ còn dư 67.00.
       expect(
-        (await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' })).statusCode,
+        (
+          await postDecide(admin, request.id, {
+            approve: true,
+            refundAmount: '50.00',
+            decisionNote: 'Partial refund agreed with the customer.',
+          })
+        ).statusCode,
       ).toBe(200);
 
       const res = await postRefund(admin, booking.code, { amount: '17.00' });
@@ -625,7 +727,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         (await postCancel(alice, booking.code)).json(),
       );
       expect(
-        (await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' })).statusCode,
+        (
+          await postDecide(admin, request.id, {
+            approve: true,
+            refundAmount: '50.00',
+            decisionNote: 'Partial refund agreed with the customer.',
+          })
+        ).statusCode,
       ).toBe(200);
       expect((await postRefund(admin, booking.code, {})).statusCode).toBe(200);
 
@@ -653,13 +761,11 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const codes = [a, b]
       .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))
       .sort((x, y) => x - y);
-    // Path chạy sau đọc ledger ĐÃ settle. Kết cục tuỳ thứ tự, và từ ADR-0029
-    // §2 nó không còn luôn là 422:
-    // - W3 thắng trước → approve thấy sổ settle → CHẠY với 0đ (200), vẫn đóng
-    //   request + huỷ booking + nhả ghế. Đây chính là nới của §2.
-    // - approve thắng trước → W3 thấy remainder 0 → NOTHING_LEFT (422).
-    expect(codes[0]).toBe(200);
-    expect([200, 422]).toContain(codes[1]);
+    // Từ ADR-0029 AMEND 4 kết cục KHÔNG còn tuỳ thứ tự: W3 thắng lock trước
+    // thì thấy request đang mở → CANCELLATION_OPEN (422), approve chạy sau và
+    // hoàn đủ (200); approve thắng trước thì W3 thấy remainder 0 → NOTHING_LEFT
+    // (422). Đường nào cũng đúng một 200 và một 422.
+    expect(codes).toEqual([200, 422]);
 
     // Bất biến money cross-path KHÔNG đổi dù kết cục mã trạng thái có đổi:
     // gateway ĐÚNG một lần, ledger đúng một row, không vượt total — hai đường

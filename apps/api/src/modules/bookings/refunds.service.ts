@@ -2,7 +2,12 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { AdminRefundResult, Refund as RefundView } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  CancellationRequestStatus,
+  EmailType,
+  type PaymentProvider,
+} from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
@@ -33,6 +38,19 @@ export class BookingNotRefundableError extends Error {
       hasCapturedPayment
         ? `Booking is ${status}; only a PAID or PARTIALLY_REFUNDED booking can be refunded`
         : 'Booking has no captured payment to refund against',
+    );
+  }
+}
+
+/**
+ * Booking đang có yêu cầu huỷ MỞ (ADR-0029 §AMEND 4): tiền phải đi qua quyết
+ * định của yêu cầu ấy. W3 hoàn đủ rồi admin Deny là ghế rò vĩnh viễn — deny
+ * không đụng booking, và ADR đã loại phương án "để Deny nhả ghế".
+ */
+export class CancellationOpenError extends Error {
+  constructor() {
+    super(
+      'A cancellation request is open on this booking; decide it instead of refunding directly',
     );
   }
 }
@@ -134,6 +152,13 @@ export class RefundsService {
       if (!refundableStatus || !booking.providerPaymentId) {
         throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
       }
+      // Trong CÙNG advisory lock với `approve` — nên "đang mở" đọc ở đây là
+      // tươi: một approve chen giữa phải chờ lock này nhả. Trước vòng vá review
+      // 05/09 lưới duy nhất là UI ẩn nút `Issue refund` (refund-panel.tsx).
+      const openRequests = await tx.cancellationRequest.count({
+        where: { bookingId: booking.id, status: CancellationRequestStatus.REQUESTED },
+      });
+      if (openRequests > 0) throw new CancellationOpenError();
 
       const ledger = await tx.refund.aggregate({
         where: { bookingId: booking.id },

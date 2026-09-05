@@ -1,10 +1,11 @@
 import {
   daysBeforeDeparture,
   isWithinGracePeriod,
+  policyRefundAmount,
   refundPercentForDays,
   refundPercentForRequest,
+  remainingRefundable,
 } from '@tourism/contract';
-import { percentOfAmount, remainingRefundable } from './refund';
 
 /**
  * Logic THUẦN của bước "hoàn bao nhiêu" trong stepper approve (ADR-0029 §5 +
@@ -75,12 +76,16 @@ export function policyRefund(context: ApproveRefundContext): PolicyRefund {
   });
   const inGrace = isWithinGracePeriod(context.paidAt, requestedAt);
   const remaining = remainingRefundable(context.totalAmount, context.refundedTotal);
-  const gross = percentOfAmount(context.totalAmount, percent);
 
   return {
     percent,
-    // `remainingRefundable` đã kẹp sàn 0, nên gọi nó hai lần là vừa trừ vừa kẹp.
-    amount: minAmount(remainingRefundable(gross, context.refundedTotal), remaining),
+    // CÙNG hàm mà API dùng để đối chiếu "có vượt bậc không" (ADR-0030 §5) —
+    // con số khoá trên màn hình và con số server coi là chính sách là một.
+    amount: policyRefundAmount({
+      percent,
+      totalAmount: context.totalAmount,
+      refundedTotal: context.refundedTotal,
+    }),
     remaining,
     days,
     inGrace,
@@ -92,9 +97,4 @@ export function policyRefund(context: ApproveRefundContext): PolicyRefund {
       days >= context.freeCancellationDays &&
       refundPercentForDays(days) < 100,
   };
-}
-
-/** Số nhỏ hơn trong hai decimal string tiền. */
-function minAmount(a: string, b: string): string {
-  return Number(a) <= Number(b) ? a : b;
 }

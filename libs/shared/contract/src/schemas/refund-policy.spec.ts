@@ -1,12 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   daysBeforeDeparture,
+  fromCents,
   fullRefundThresholdDays,
+  percentOfAmount,
+  policyRefundAmount,
   REFUND_GRACE_HOURS,
   REFUND_POLICY_TIERS,
   refundPercentForBooking,
   refundPercentForDays,
   refundPercentForRequest,
+  toCents,
 } from './refund-policy.js';
 
 /**
@@ -221,5 +225,44 @@ describe('refundPercentForRequest — ân hạn 24 giờ', () => {
 
   it('REFUND_GRACE_HOURS là 24 — khoá con số đã công bố với khách', () => {
     expect(REFUND_GRACE_HOURS).toBe(24);
+  });
+});
+
+describe('số học tiền dùng chung (vòng vá review 05/09)', () => {
+  it('percentOfAmount làm tròn cent HALF_UP — 50% của 1199.01 là 599.51 ở MỌI bên', () => {
+    // Web từng tính bằng float rồi toFixed → 599.50, admin → 599.51: khách và
+    // admin nhìn hai con số khác nhau một cent. Nay chỉ có một phép tính.
+    expect(percentOfAmount('1199.01', 50)).toBe('599.51');
+    expect(percentOfAmount('499.95', 50)).toBe('249.98');
+    expect(percentOfAmount('1199.00', 50)).toBe('599.50');
+    expect(percentOfAmount('100.01', 25)).toBe('25.00');
+  });
+
+  it('toCents/fromCents khứ hồi, HALF_UP ở chữ số thứ ba', () => {
+    expect(toCents('12.345')).toBe(1235);
+    expect(toCents('12.344')).toBe(1234);
+    expect(fromCents(toCents('0.10'))).toBe('0.10');
+  });
+
+  it('policyRefundAmount: phần trăm trên TỔNG, trừ đã hoàn, kẹp trong phần dư', () => {
+    expect(policyRefundAmount({ percent: 50, totalAmount: '1000.00', refundedTotal: '0.00' })).toBe(
+      '500.00',
+    );
+    // Đã hoàn thiện chí 100 → 50% của 1000 trừ 100.
+    expect(
+      policyRefundAmount({ percent: 50, totalAmount: '1000.00', refundedTotal: '100.00' }),
+    ).toBe('400.00');
+    // Đã hoàn hơn cả bậc → 0, không âm.
+    expect(
+      policyRefundAmount({ percent: 25, totalAmount: '1000.00', refundedTotal: '300.00' }),
+    ).toBe('0.00');
+    // 100% trên booking đã hoàn một phần → đúng phần dư.
+    expect(
+      policyRefundAmount({ percent: 100, totalAmount: '1000.00', refundedTotal: '300.00' }),
+    ).toBe('700.00');
+  });
+
+  it('daysBeforeDeparture NÉM với ngày hỏng thay vì âm thầm ra 0%', () => {
+    expect(() => daysBeforeDeparture(new Date('2026-09-05T00:00:00Z'), 'bad')).toThrow(RangeError);
   });
 });

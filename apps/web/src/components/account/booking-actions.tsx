@@ -4,6 +4,7 @@ import { ORPCError } from '@orpc/client';
 import {
   daysBeforeDeparture,
   isWithinGracePeriod,
+  policyRefundAmount,
   refundPercentForRequest,
 } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
@@ -461,8 +462,13 @@ function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
   });
   const inGrace = isWithinGracePeriod(booking.paidAt, now);
   // Bậc tính trên TỔNG rồi trừ phần đã hoàn (ADR-0030 §7) — không thì hoàn đúp.
-  const already = Number(booking.refundedTotal);
-  const net = Math.max(0, (Number(booking.totalAmount) * percent) / 100 - already);
+  // CÙNG hàm với màn admin và API: trước vòng vá review 05/09 chỗ này nhân
+  // float rồi `toFixed`, lệch admin một cent ở 1199.01 (599.50 vs 599.51).
+  const net = policyRefundAmount({
+    percent,
+    totalAmount: booking.totalAmount,
+    refundedTotal: booking.refundedTotal,
+  });
 
   return (
     // Viền chia đôi, KHÔNG dùng nền để tách: dialog là `bg-popover`, và
@@ -488,7 +494,7 @@ function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
       <div className="flex flex-col gap-1 border-t border-border bg-muted/50 p-4 sm:border-t-0 sm:border-l">
         {/* Neo thị giác: con số đứng một mình, nhãn nhỏ ngay dưới. */}
         <p className="text-3xl font-semibold tabular-nums text-foreground">
-          {formatMoneyExact(net.toFixed(2), booking.currency)}
+          {formatMoneyExact(net, booking.currency)}
         </p>
         <p className="text-sm text-muted-foreground">{t.cancelSummaryGetBack}</p>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -496,9 +502,9 @@ function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
         </p>
         <p className="text-sm text-muted-foreground">{t.refundEstimateDays(days)}</p>
         {inGrace ? <p className="text-sm text-muted-foreground">{t.refundEstimateGrace}</p> : null}
-        {already > 0 ? (
+        {Number(booking.refundedTotal) > 0 ? (
           <p className="text-sm text-muted-foreground">
-            {t.cancelSummaryAlready(formatMoneyExact(already.toFixed(2), booking.currency))}
+            {t.cancelSummaryAlready(formatMoneyExact(booking.refundedTotal, booking.currency))}
           </p>
         ) : null}
         <Link

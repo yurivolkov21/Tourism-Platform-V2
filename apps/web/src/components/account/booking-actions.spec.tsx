@@ -495,6 +495,14 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
     expect(screen.queryByText('$600')).toBeNull();
   });
 
+  it('làm tròn cent như admin — 50% của $1,199.01 là $599.51, không phải $599.50', async () => {
+    // Một phép tính cho cả ba bên (vòng vá review 05/09): con số khách chụp
+    // màn hình là con số admin duyệt.
+    await openDialog({ departureStartDate: departureIn(20), totalAmount: '1199.01' });
+
+    expect(screen.getByText('$599.51')).toBeInTheDocument();
+  });
+
   it('trong 24 giờ đầu sau thanh toán → 100% dù khởi hành đã cận kề', async () => {
     // Bất biến của §3c: ân hạn là lớp phủ CHỈ CÓ LỢI, nó đè lên bậc theo ngày.
     await openDialog({

@@ -1,5 +1,6 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
+import { REFUND_GRACE_HOURS } from '@tourism/contract';
 import { resilience } from './resilience.js';
 
 // MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
@@ -549,8 +550,7 @@ export const messages = {
             : `Your tour departs in ${days} ${days === 1 ? 'day' : 'days'}.`,
       /** Đang trong cửa sổ ân hạn — nói rõ vì sao được 100%, kẻo con số trông
        *  như may mắn và khách không biết cửa sổ ấy sắp hết. */
-      refundEstimateGrace:
-        'You are still within 24 hours of paying, so this cancellation is refunded in full.',
+      refundEstimateGrace: `You are still within ${REFUND_GRACE_HOURS} hours of paying, so this cancellation is refunded in full.`,
       refundEstimateLink: 'See the full refund schedule',
       requestTitle: 'Need to cancel?',
       requestBody:
@@ -3337,6 +3337,9 @@ export const messages = {
             'This amount plus the refunds already issued would go over the booking total. Refund the full remaining balance instead, or enter a smaller amount.',
           ZERO_OR_NEGATIVE: REFUND_ZERO_COPY,
           NOTHING_LEFT: 'This booking is already fully refunded — nothing is left to send back.',
+          /** ADR-0029 §AMEND 4 — server chặn, không chỉ UI ẩn nút. */
+          CANCELLATION_OPEN:
+            'This booking has an open cancellation request. Decide that request instead — approving it handles the refund and releases the seats.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing was recorded. Check the provider dashboard before trying again.',
         },
@@ -3499,8 +3502,7 @@ export const messages = {
                 ? 'That falls outside the refundable window.'
                 : `That band refunds ${percent}% of what the customer paid.`,
             countedFrom: 'Days are counted from the date the request was sent, not today.',
-            grace:
-              'Sent within 24 hours of payment, so the full amount is refundable whatever the schedule would otherwise say.',
+            grace: `Sent within ${REFUND_GRACE_HOURS} hours of payment, so the full amount is refundable whatever the schedule would otherwise say.`,
             badge: (days: number) =>
               `This tour advertises free cancellation up to ${days} days before departure, which raises the refund to the full amount.`,
             alreadyRefunded: (amount: string) =>
@@ -3547,6 +3549,8 @@ export const messages = {
              */
             refund: (amount: string) =>
               `Refunds ${amount} to the customer through the payment provider.`,
+            /** Mức hoàn 0 (ADR-0029 AMEND 3): KHÔNG gọi gateway, KHÔNG ghi sổ. */
+            noRefund: 'No money moves — nothing is sent to the payment provider.',
             cancelled: 'Marks the booking as cancelled.',
             seats: 'Releases the seats back to the departure.',
           },
@@ -3580,15 +3584,19 @@ export const messages = {
           NOT_REFUNDABLE:
             'This booking has no captured payment to refund against, so it cannot be approved. The queue has been refreshed — open the booking to check what happened.',
           /**
-           * Hai mã tiền, chỉ với tới được từ ADR-0029 §1 khi approve bắt đầu
-           * nhận số tiền. Chúng nói về CON SỐ vừa gửi chứ không về trạng thái
-           * booking, nên request vẫn còn nguyên và sửa tại chỗ được — khác
-           * nhóm "trạng thái cũ" phải refresh hàng đợi.
+           * OVER_TOTAL ở chế độ chính sách nghĩa là SỔ ĐÃ ĐỔI dưới chân dialog
+           * (một khoản hoàn thiện chí vừa đi) — con số khoá trên màn hình không
+           * sửa tại chỗ được, nên nó thuộc nhóm trạng-thái-cũ: đóng dialog và
+           * refresh (vòng vá review 05/09; trước đó admin kẹt gửi lại mãi con
+           * số cũ). ZERO_OR_NEGATIVE thì vẫn sửa tại chỗ.
            */
           OVER_TOTAL:
-            'That amount is more than this booking still has left to refund. Check the refund ledger and try a smaller amount.',
+            'That amount is more than this booking still has left to refund — the ledger has changed since you opened this. The queue has been refreshed; open the request again to see the new figure.',
           ZERO_OR_NEGATIVE:
-            'A refund has to be greater than zero. To approve without moving any money, the booking must already be fully refunded.',
+            'A refund cannot be negative. To approve without moving any money, leave the amount at 0.00.',
+          /** ADR-0030 §5, cưỡng chế ở server từ vòng vá review 05/09. */
+          OFF_POLICY_NOTE_REQUIRED:
+            'This amount differs from what the refund schedule gives, so a note explaining why is required.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing changed and the request is still awaiting review. Check the provider dashboard before trying again.',
         },
