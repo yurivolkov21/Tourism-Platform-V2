@@ -40,6 +40,21 @@ const report: AdminMonthlyReport = {
   cancellationsApproved: 1,
   cancellationsDenied: 3,
   reviewsApproved: 5,
+  // Cột kết quả kinh doanh (ADR-0033) — thêm ở Task 6 để fixture khớp
+  // contract. Mapper hiển thị của chúng dựng ở Task 8; tới đó bộ test này
+  // mới có gì để nói về từng con số.
+  recognizedRevenue: '2500.00',
+  cogsVariable: '210.00',
+  cogsFixed: '400.00',
+  cogsTotal: '610.00',
+  grossProfit: '1890.00',
+  grossMarginPct: 0.756,
+  taxRate: 0,
+  taxAmount: '0.00',
+  paymentFees: '0.00',
+  netProfit: '1890.00',
+  departuresRun: 1,
+  costDataMissing: 1,
 };
 
 describe('reportPeriodLabel', () => {

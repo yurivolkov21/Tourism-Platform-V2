@@ -3,6 +3,7 @@ import { Prisma } from '../../generated/prisma/client.js';
 import {
   BookingStatus,
   CancellationRequestStatus,
+  DepartureStatus,
   EnquiryStatus,
   OutboxStatus,
 } from '../../generated/prisma/enums.js';
@@ -286,5 +287,90 @@ export async function subscribersStats(window: {
       previous: Number(row?.unsubscribed_previous ?? 0),
     },
     active: Number(row?.active ?? 0),
+  };
+}
+
+/**
+ * Cột KẾT QUẢ KINH DOANH của báo cáo (ADR-0033 §1) — neo `departure_end_date`,
+ * tức những chuyến KẾT THÚC trong kỳ, chứ không phải tiền vào trong kỳ.
+ *
+ * Chỉ đếm booking ĐÃ ĐI (`PAID` hoặc `PARTIALLY_REFUNDED`): khách huỷ thì
+ * không ăn suất ăn nào, nên cả doanh thu lẫn giá vốn biến đổi của họ đều biến
+ * mất (§4). Chi phí CỐ ĐỊNH của chuyến ấy thì không — nó ở `fixedCostSlice`.
+ *
+ * MỘT câu SQL trả năm con số vì chúng phải chụp CÙNG một khoảnh khắc: năm
+ * query rời sẽ cho `costMissing` thuộc một tập booking còn `revenue` thuộc tập
+ * khác, và hai con số in cạnh nhau trên giấy thì không kiểm chéo được nữa
+ * (cùng bài học đã ghi ở `subscribersStats`).
+ *
+ * `LEFT JOIN` gộp refund theo booking thay vì subquery tương quan trong `SUM`:
+ * một booking hoàn NHIỀU lần được (hoàn một phần nhiều lượt — ADR-0029), và
+ * join thẳng bảng `refunds` sẽ nhân đôi `total_amount` theo số dòng hoàn.
+ */
+export async function recognizedRevenueSlice(from: Date, to: Date) {
+  const [row] = await prisma.$queryRaw<
+    {
+      revenue: Prisma.Decimal | null;
+      cogs_variable: Prisma.Decimal | null;
+      gross_collected: Prisma.Decimal | null;
+      bookings: bigint;
+      cost_missing: bigint;
+    }[]
+  >(Prisma.sql`
+    SELECT
+      COALESCE(SUM(b.total_amount - COALESCE(r.refunded, 0)), 0) AS revenue,
+      COALESCE(SUM(COALESCE(b.cost_per_person, 0) * (b.num_adults + b.num_children)), 0)
+        AS cogs_variable,
+      COALESCE(SUM(b.total_amount), 0) AS gross_collected,
+      COUNT(*) AS bookings,
+      COUNT(*) FILTER (WHERE b.cost_per_person IS NULL) AS cost_missing
+    FROM bookings b
+    LEFT JOIN (
+      SELECT booking_id, SUM(amount) AS refunded FROM refunds GROUP BY booking_id
+    ) r ON r.booking_id = b.id
+    WHERE b.status IN (${BookingStatus.PAID}::"BookingStatus",
+                       ${BookingStatus.PARTIALLY_REFUNDED}::"BookingStatus")
+      AND b.departure_end_date >= ${from} AND b.departure_end_date < ${to}
+  `);
+
+  return {
+    revenue: row?.revenue ?? new Prisma.Decimal(0),
+    cogsVariable: row?.cogs_variable ?? new Prisma.Decimal(0),
+    // Tiền GỐC trước khi trừ hoàn — phí cổng đã trả trên toàn bộ số này, và
+    // provider không trả lại phí khi hoàn (ADR-0033 §Giới hạn #3).
+    grossCollected: row?.gross_collected ?? new Prisma.Decimal(0),
+    bookings: Number(row?.bookings ?? 0),
+    costMissing: Number(row?.cost_missing ?? 0),
+  };
+}
+
+/**
+ * Giá vốn CỐ ĐỊNH của các chuyến đã chạy trong kỳ (ADR-0033 §4) — cộng MỘT lần
+ * cho mỗi chuyến, bất kể bán được bao nhiêu ghế. Xe vẫn chạy.
+ *
+ * "Đã chạy" phải có ĐỦ hai vế: chuyến không bị huỷ, VÀ có ít nhất một khách
+ * thật sự đi. Thiếu vế `EXISTS` thì mọi chuyến ế trong lịch đều bị tính tiền
+ * xe — một tour đăng 52 chuyến cả năm mà bán được 6 sẽ báo lỗ nặng từ hư
+ * không.
+ */
+export async function fixedCostSlice(from: Date, to: Date) {
+  const [row] = await prisma.$queryRaw<{ total: Prisma.Decimal | null; departures: bigint }[]>(
+    Prisma.sql`
+      SELECT COALESCE(SUM(d.fixed_cost_amount), 0) AS total, COUNT(*) AS departures
+      FROM tour_departures d
+      WHERE d.status <> ${DepartureStatus.CANCELLED}::"DepartureStatus"
+        AND d.end_date >= ${from} AND d.end_date < ${to}
+        AND EXISTS (
+          SELECT 1 FROM bookings b
+          WHERE b.departure_id = d.id
+            AND b.status IN (${BookingStatus.PAID}::"BookingStatus",
+                             ${BookingStatus.PARTIALLY_REFUNDED}::"BookingStatus")
+        )
+    `,
+  );
+
+  return {
+    total: row?.total ?? new Prisma.Decimal(0),
+    departures: Number(row?.departures ?? 0),
   };
 }

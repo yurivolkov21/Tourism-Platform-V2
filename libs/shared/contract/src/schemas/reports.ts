@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { BookingStatusSchema } from './bookings.js';
-import { DecimalStringSchema } from './catalog.js';
+import { DecimalStringSchema, SignedDecimalStringSchema } from './catalog.js';
 
 /**
  * Báo cáo THÁNG của admin (spec P4b §3-F6) — nguồn cho trang `/reports`, nút
@@ -109,6 +109,60 @@ export const AdminMonthlyReportSchema = z.object({
   cancellationsDenied: z.int().nonnegative(),
   /** Lượt duyệt review trong tháng — đếm trên audit trail, xem `StatsService`. */
   reviewsApproved: z.int().nonnegative(),
+
+  // ── Kết quả kinh doanh (ADR-0033 §1) ──────────────────────────────────
+  // Mọi field dưới đây neo NGÀY CHUYẾN KẾT THÚC, khác hẳn mọi field ở trên
+  // (neo `paid_at`). Hai cách đọc đứng CẠNH nhau, không thay nhau — đọc §1
+  // của ADR trước khi sửa bất cứ field nào.
+  /** Σ (`totalAmount` − đã hoàn) của booking đã đi, chuyến KẾT THÚC trong kỳ. */
+  recognizedRevenue: DecimalStringSchema,
+  /** Giá vốn theo đầu khách của chính tập booking ấy — đi theo khách. */
+  cogsVariable: DecimalStringSchema,
+  /** Giá vốn theo chuyến — MỘT lần mỗi chuyến đã chạy, xe vẫn chạy khi khách huỷ. */
+  cogsFixed: DecimalStringSchema,
+  /** `cogsVariable + cogsFixed`. In cả ba để hai vế kiểm chéo được trên giấy. */
+  cogsTotal: DecimalStringSchema,
+  /** `recognizedRevenue − cogsTotal`. **ÂM được** — tháng lỗ là một tháng thật. */
+  grossProfit: SignedDecimalStringSchema,
+  /**
+   * `grossProfit ÷ recognizedRevenue`, dạng TỈ LỆ (0.4 = 40%).
+   *
+   * **`null` khi `recognizedRevenue` = 0**, không phải 0. Một tháng không có
+   * chuyến nào chạy có biên gộp KHÔNG XÁC ĐỊNH; in `0.0%` là nói tháng ấy hoà
+   * vốn trắng — một câu khác hẳn, và sai.
+   */
+  grossMarginPct: z.number().nullable(),
+  /**
+   * Thuế suất đã dùng để ra `taxAmount`, dạng tỉ lệ.
+   *
+   * Đi kèm response vì biến môi trường KHÔNG có ngày hiệu lực (ADR-0033 §5):
+   * đổi suất là đổi luôn số thuế của mọi báo cáo cũ khi đọc lại. Tờ báo cáo
+   * phải tự khai nó được tính bằng mức nào, kẻo hai lần đọc cùng một tháng ra
+   * hai con số mà không ai biết vì sao.
+   */
+  taxRate: z.number().nonnegative(),
+  /** Thuế trên MARGIN: `max(0, grossProfit) × rate/(1+rate)` — margin âm thì 0. */
+  taxAmount: DecimalStringSchema,
+  /** Phí cổng thanh toán ước tính trên chính tập booking được ghi nhận. */
+  paymentFees: DecimalStringSchema,
+  /**
+   * `grossProfit − taxAmount − paymentFees`. **ÂM được.**
+   *
+   * CHƯA trừ chi phí vận hành (lương, văn phòng, marketing) — hệ chưa có chỗ
+   * nào khai chúng. Nhãn trên màn hình và trong file phải nói đúng chừng ấy,
+   * không hơn (ADR-0033 §Giới hạn #4).
+   */
+  netProfit: SignedDecimalStringSchema,
+  /** Số chuyến ĐÃ CHẠY trong kỳ — mẫu số của `cogsFixed`, để kiểm chéo. */
+  departuresRun: z.int().nonnegative(),
+  /**
+   * Số booking trong kỳ KHÔNG có `cost_per_person`.
+   *
+   * Hiện trên màn hình và trong file: một báo cáo in "Lợi nhuận gộp $8,400"
+   * trong khi 12 booking chưa khai giá vốn là một báo cáo NÓI DỐI; in kèm con
+   * số này thì nó chỉ là chưa đầy đủ (ADR-0033 §6).
+   */
+  costDataMissing: z.int().nonnegative(),
 });
 
 export type AdminMonthlyReport = z.output<typeof AdminMonthlyReportSchema>;

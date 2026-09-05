@@ -18,6 +18,19 @@ export const DecimalStringSchema = z
   .string()
   .regex(/^\d+(\.\d+)?$/, 'expected a non-negative decimal string');
 
+/**
+ * Decimal chuỗi CÓ THỂ ÂM — cho những con số mà dấu trừ là một câu trả lời
+ * HỢP LỆ, không phải lỗi dữ liệu: lợi nhuận gộp và lợi nhuận ròng của một
+ * tháng lỗ (ADR-0033).
+ *
+ * Tách khỏi `DecimalStringSchema` chứ KHÔNG nới lỏng nó: tiền THU và giá VỐN
+ * âm là dữ liệu hỏng và phải bị chặn ở biên. Hai khái niệm, hai schema — nới
+ * cái cũ là mở đường cho một `revenue: '-500.00'` đi lọt tới tận màn hình.
+ */
+export const SignedDecimalStringSchema = z
+  .string()
+  .regex(/^-?\d+(\.\d+)?$/, 'expected a decimal string');
+
 /** Mirrors Prisma enum TourDifficulty (audit M4). */
 export const TourDifficultySchema = z.enum(['EASY', 'MODERATE', 'CHALLENGING']);
 

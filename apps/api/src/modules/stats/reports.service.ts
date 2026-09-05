@@ -1,10 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { type AdminMonthlyReport, BookingStatusSchema } from '@tourism/contract';
+import { env } from '../../config/env.js';
 import type { BookingStatus } from '../../generated/prisma/enums.js';
+import { grossMarginPct, paymentFees, taxOnMargin } from './finance-math.js';
 import {
   bookingsCreatedByStatus,
   decisionsSlice,
+  fixedCostSlice,
   paidBookingsSlice,
+  recognizedRevenueSlice,
   refundCurrency,
   refundsSlice,
   revenueCurrency,
@@ -41,6 +45,16 @@ import { grossAmount, monthWindow } from './stats-math.js';
  * - `generatedAt` — lúc chốt sổ. Là thứ DUY NHẤT trong response đổi giữa hai
  *   lần đọc cùng một tháng; mọi con số còn lại phải đứng yên.
  *
+ * ## Cột thứ hai — kết quả kinh doanh (ADR-0033 §1)
+ *
+ * Từ 05/09 response mang THÊM một cột số liệu neo `departure_end_date` (những
+ * chuyến KẾT THÚC trong kỳ), đứng CẠNH cột dòng tiền neo `paid_at` chứ không
+ * thay nó. Lý do không đổi nghĩa cột cũ: `revenue` đang nuôi stat card ba
+ * trang và chính bất biến "kỳ trước dài bằng kỳ này" của ADR-0028.
+ *
+ * Mọi phép TRỪ của báo cáo sống trong cột mới: giá vốn hai vế, thuế trên
+ * margin, phí cổng. `refundedTotal` vẫn KHÔNG trừ vào `revenue`.
+ *
  * ## Cửa sổ
  *
  * `[00:00 ngày 1, 00:00 ngày 1 tháng sau)` UTC, nửa-mở (`monthWindow`) — hai
@@ -51,16 +65,42 @@ import { grossAmount, monthWindow } from './stats-math.js';
 export class ReportsService {
   async monthly(month: string): Promise<AdminMonthlyReport> {
     const { from, to } = monthWindow(month);
-    const [paid, created, paidCurrency, refunds, refundsCurrency, decisions, reviewsApproved] =
-      await Promise.all([
-        paidBookingsSlice(from, to),
-        bookingsCreatedByStatus(from, to),
-        revenueCurrency(from, to),
-        refundsSlice(from, to),
-        refundCurrency(from, to),
-        decisionsSlice(from, to),
-        reviewApprovals(from, to),
-      ]);
+    const [
+      paid,
+      created,
+      paidCurrency,
+      refunds,
+      refundsCurrency,
+      decisions,
+      reviewsApproved,
+      recognised,
+      fixedCost,
+    ] = await Promise.all([
+      paidBookingsSlice(from, to),
+      bookingsCreatedByStatus(from, to),
+      revenueCurrency(from, to),
+      refundsSlice(from, to),
+      refundCurrency(from, to),
+      decisionsSlice(from, to),
+      reviewApprovals(from, to),
+      recognizedRevenueSlice(from, to),
+      fixedCostSlice(from, to),
+    ]);
+
+    // ── Cột KẾT QUẢ KINH DOANH (ADR-0033 §1) ──────────────────────────────
+    // Mọi phép TRỪ của báo cáo chỉ xảy ra ở đây. `revenue`/`refundedTotal`
+    // bên dưới vẫn là dòng tiền gross và không đụng gì tới khối này.
+    const cogsTotal = recognised.cogsVariable.add(fixedCost.total);
+    const grossProfit = recognised.revenue.sub(cogsTotal);
+    const taxAmount = taxOnMargin(grossProfit, env.MARGIN_TAX_RATE);
+    const fees = paymentFees(
+      // Phí trả trên tiền GỐC, trước khi trừ hoàn — provider không trả lại phí
+      // khi hoàn (ADR-0033 §Giới hạn #3).
+      recognised.grossCollected,
+      recognised.bookings,
+      env.PAYMENT_FEE_RATE,
+      env.PAYMENT_FEE_FIXED,
+    );
 
     // Điền 0 cho trạng thái vắng mặt: contract hứa ĐỦ mọi trạng thái, và thứ
     // tự theo enum để bảng/CSV có số hàng cố định giữa các tháng.
@@ -93,6 +133,22 @@ export class ReportsService {
       cancellationsApproved: decisions.approved,
       cancellationsDenied: decisions.denied,
       reviewsApproved,
+
+      recognizedRevenue: grossAmount(recognised.revenue),
+      cogsVariable: grossAmount(recognised.cogsVariable),
+      cogsFixed: grossAmount(fixedCost.total),
+      cogsTotal: grossAmount(cogsTotal),
+      // ⚠️ `toFixed(2)` chứ KHÔNG `grossAmount`: hai con số này ÂM được (tháng
+      // lỗ), và tên `grossAmount` nói về tiền gross chứ không về lợi nhuận.
+      // Chúng cũng không bao giờ null nên nhánh '0.00' của hàm kia là thừa.
+      grossProfit: grossProfit.toFixed(2),
+      grossMarginPct: grossMarginPct(grossProfit, recognised.revenue),
+      taxRate: env.MARGIN_TAX_RATE,
+      taxAmount: grossAmount(taxAmount),
+      paymentFees: grossAmount(fees),
+      netProfit: grossProfit.sub(taxAmount).sub(fees).toFixed(2),
+      departuresRun: fixedCost.departures,
+      costDataMissing: recognised.costMissing,
     };
   }
 }

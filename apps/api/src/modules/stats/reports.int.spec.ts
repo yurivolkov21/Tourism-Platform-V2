@@ -470,4 +470,212 @@ describe('admin monthly report integration (F6)', () => {
       expect(firstNumbers).toEqual(secondNumbers);
     });
   });
+
+  /**
+   * Cột KẾT QUẢ KINH DOANH (ADR-0033 §1) — neo `departure_end_date`, khác hẳn
+   * mọi con số ở trên (neo `paid_at`).
+   *
+   * Khối này dựng departure RIÊNG với `end_date` là ngày lịch cố định trong
+   * tháng 5/2026 (nếp của cả file), vì `dep` dùng chung ở trên kết thúc ở
+   * tương lai +46 ngày — nó phục vụ cột dòng tiền và không nói gì được về cột
+   * này.
+   *
+   * Giá vốn đọc từ hai cột SNAPSHOT (`bookings.cost_per_person`,
+   * `tour_departures.fixed_cost_amount`) chứ không từ `tour_cost_items`, nên
+   * test không cần dựng danh mục giá vốn nào — đúng như đường thật chạy
+   * (ADR-0033 §3).
+   */
+  describe('kết quả kinh doanh', () => {
+    const DEP_RAN = 'e9600004-0000-4000-8000-000000000001';
+    const DEP_EMPTY = 'e9600004-0000-4000-8000-000000000002';
+    const DEP_CANCELLED = 'e9600004-0000-4000-8000-000000000003';
+    const DEP_JUNE = 'e9600004-0000-4000-8000-000000000004';
+
+    const pnlBookingId = (n: number) => `e9600005-0000-4000-8000-${String(n).padStart(12, '0')}`;
+
+    function departure(
+      id: string,
+      endIso: string,
+      fixedCost: string | null,
+      status: DepartureStatus = DepartureStatus.OPEN,
+    ): Prisma.TourDepartureCreateManyInput {
+      return {
+        id,
+        tourId: tour.id,
+        startDate: at(endIso),
+        endDate: at(endIso),
+        seatsTotal: 20,
+        seatsBooked: 0,
+        status,
+        fixedCostAmount: fixedCost,
+      };
+    }
+
+    function pnlBooking(
+      n: number,
+      row: {
+        departureId: string;
+        endIso: string;
+        status: BookingStatus;
+        total: string;
+        pax: number;
+        costPerPerson: string | null;
+      },
+    ): Prisma.BookingCreateManyInput {
+      return {
+        id: pnlBookingId(n),
+        code: `BK-PNL${String(n).padStart(5, '0')}`,
+        userId: customerId,
+        tourId: tour.id,
+        departureId: row.departureId,
+        numAdults: row.pax,
+        numChildren: 0,
+        totalAmount: row.total,
+        unitPrice: row.total,
+        currency: 'USD',
+        status: row.status,
+        tourTitle: tour.title,
+        departureStartDate: at(row.endIso),
+        departureEndDate: at(row.endIso),
+        costPerPerson: row.costPerPerson,
+        contactName: 'Ada Lovelace',
+        contactEmail: CUSTOMER_EMAIL,
+        paymentProvider: PaymentProvider.STRIPE,
+        createdAt: at('2026-05-01T00:00:00.000Z'),
+        paidAt: at('2026-04-10T00:00:00.000Z'), // trả tiền THÁNG 4 — cố ý
+      };
+    }
+
+    beforeEach(async () => {
+      await prisma.$executeRawUnsafe(
+        `DELETE FROM tour_departures WHERE id IN ('${DEP_RAN}','${DEP_EMPTY}','${DEP_CANCELLED}','${DEP_JUNE}')`,
+      );
+      await prisma.tourDeparture.createMany({
+        data: [
+          departure(DEP_RAN, '2026-05-20T00:00:00.000Z', '400.00'),
+          // Chuyến ẾCH: có trong lịch, không ai đặt. KHÔNG được tính tiền xe.
+          departure(DEP_EMPTY, '2026-05-25T00:00:00.000Z', '999.00'),
+          // Chuyến HUỶ: có khách đã trả tiền nhưng chuyến không chạy.
+          departure(DEP_CANCELLED, '2026-05-28T00:00:00.000Z', '888.00', DepartureStatus.CANCELLED),
+          departure(DEP_JUNE, '2026-06-15T00:00:00.000Z', '111.00'),
+        ],
+      });
+      await prisma.booking.createMany({
+        data: [
+          pnlBooking(10, {
+            departureId: DEP_RAN,
+            endIso: '2026-05-20T00:00:00.000Z',
+            status: BookingStatus.PAID,
+            total: '900.00',
+            pax: 3,
+            costPerPerson: '30.00',
+          }),
+          pnlBooking(11, {
+            departureId: DEP_RAN,
+            endIso: '2026-05-20T00:00:00.000Z',
+            status: BookingStatus.PAID,
+            total: '900.00',
+            pax: 3,
+            costPerPerson: '30.00',
+          }),
+          // Khách huỷ: không đi, nên không góp doanh thu LẪN giá vốn biến đổi.
+          pnlBooking(12, {
+            departureId: DEP_RAN,
+            endIso: '2026-05-20T00:00:00.000Z',
+            status: BookingStatus.CANCELLED,
+            total: '600.00',
+            pax: 2,
+            costPerPerson: '30.00',
+          }),
+          // Tour chưa khai giá vốn lúc đặt → snapshot null, phải ĐẾM ra.
+          pnlBooking(13, {
+            departureId: DEP_RAN,
+            endIso: '2026-05-20T00:00:00.000Z',
+            status: BookingStatus.PAID,
+            total: '300.00',
+            pax: 1,
+            costPerPerson: null,
+          }),
+          pnlBooking(14, {
+            departureId: DEP_CANCELLED,
+            endIso: '2026-05-28T00:00:00.000Z',
+            status: BookingStatus.PAID,
+            total: '500.00',
+            pax: 1,
+            costPerPerson: '30.00',
+          }),
+        ],
+      });
+      await prisma.refund.create({
+        data: {
+          id: 'e9600006-0000-4000-8000-000000000001',
+          bookingId: pnlBookingId(10),
+          amount: '100.00',
+          currency: 'USD',
+          createdAt: at('2026-05-21T00:00:00.000Z'),
+        },
+      });
+    });
+
+    it('doanh thu ghi nhận neo NGÀY CHUYẾN KẾT THÚC, không ngày trả tiền', async () => {
+      // Cả năm booking trả tiền tháng 4; chuyến thì kết thúc tháng 5. Cột dòng
+      // tiền thấy tháng 4, cột kinh doanh thấy tháng 5 — hai cách đọc đứng
+      // cạnh nhau chứ không thay nhau.
+      const may = await report('2026-05');
+
+      expect(may.revenue).toBe('0.00'); // không payment nào TRONG tháng 5
+      // 900 + 900 + 300 (bỏ booking huỷ) + 500 (chuyến huỷ nhưng khách vẫn
+      // PAID) − 100 đã hoàn = 2500.00
+      expect(may.recognizedRevenue).toBe('2500.00');
+    });
+
+    it('booking đã huỷ không góp doanh thu lẫn giá vốn biến đổi', async () => {
+      // 30 × 3 + 30 × 3 + 0 × 1 (thiếu giá vốn) + 30 × 1 = 210.00.
+      // Booking 12 (huỷ, 2 khách × 30) KHÔNG có mặt.
+      expect((await report('2026-05')).cogsVariable).toBe('210.00');
+    });
+
+    it('giá vốn cố định tính MỘT lần cho chuyến ĐÃ CHẠY', async () => {
+      const may = await report('2026-05');
+
+      // Chỉ DEP_RAN: chuyến ế không ai đặt và chuyến bị huỷ đều không tính.
+      expect(may.cogsFixed).toBe('400.00');
+      expect(may.departuresRun).toBe(1);
+      expect(may.cogsTotal).toBe('610.00');
+    });
+
+    it('chuyến ế trong lịch KHÔNG bị tính tiền xe', async () => {
+      // Thiếu vế EXISTS thì một tour đăng 52 chuyến cả năm mà bán được 6 sẽ
+      // báo lỗ nặng từ hư không.
+      const may = await report('2026-05');
+
+      expect(Number(may.cogsFixed)).toBeLessThan(999);
+    });
+
+    it('đếm booking thiếu giá vốn thay vì im lặng coi bằng 0', async () => {
+      expect((await report('2026-05')).costDataMissing).toBe(1);
+    });
+
+    it('lợi nhuận gộp và biên khớp với ba con số ở trên', async () => {
+      const may = await report('2026-05');
+
+      // 2500.00 − 610.00 = 1890.00
+      expect(may.grossProfit).toBe('1890.00');
+      expect(may.grossMarginPct).toBeCloseTo(1890 / 2500, 6);
+      // Suất thuế và phí mặc định 0 ở môi trường test → ròng bằng gộp.
+      expect(may.taxRate).toBe(0);
+      expect(may.taxAmount).toBe('0.00');
+      expect(may.paymentFees).toBe('0.00');
+      expect(may.netProfit).toBe('1890.00');
+    });
+
+    it('tháng không có chuyến nào chạy: biên gộp NULL, không phải 0', async () => {
+      const june = await report('2026-06');
+
+      expect(june.recognizedRevenue).toBe('0.00');
+      expect(june.cogsFixed).toBe('0.00');
+      expect(june.departuresRun).toBe(0);
+      expect(june.grossMarginPct).toBeNull();
+    });
+  });
 });

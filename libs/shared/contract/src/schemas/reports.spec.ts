@@ -20,6 +20,19 @@ const validReport = {
   cancellationsApproved: 1,
   cancellationsDenied: 3,
   reviewsApproved: 5,
+  // Cột kết quả kinh doanh (ADR-0033 §1)
+  recognizedRevenue: '1000.00',
+  cogsVariable: '400.00',
+  cogsFixed: '200.00',
+  cogsTotal: '600.00',
+  grossProfit: '400.00',
+  grossMarginPct: 0.4,
+  taxRate: 0.1,
+  taxAmount: '36.36',
+  paymentFees: '30.20',
+  netProfit: '333.44',
+  departuresRun: 2,
+  costDataMissing: 0,
 };
 
 describe('ReportMonthSchema', () => {
@@ -93,6 +106,57 @@ describe('AdminMonthlyReportSchema', () => {
     );
     expect(
       AdminMonthlyReportSchema.safeParse({ ...validReport, reviewsApproved: 1.5 }).success,
+    ).toBe(false);
+  });
+});
+
+/**
+ * Cột kết quả kinh doanh (ADR-0033). Bộ này canh đúng ba chỗ mà một schema
+ * tiền hay nói sai: dấu trừ, mẫu số 0, và ranh giới giữa "âm được" với "âm là
+ * dữ liệu hỏng".
+ */
+describe('AdminMonthlyReportSchema — kết quả kinh doanh', () => {
+  it('nhận lợi nhuận ÂM — tháng lỗ là một tháng hợp lệ', () => {
+    // `DecimalStringSchema` là `/^\d+(\.\d+)?$/`, KHÔNG nhận dấu trừ. Dùng
+    // nhầm nó cho hai field này là runtime 500 ở tháng đầu tiên lỗ.
+    const parsed = AdminMonthlyReportSchema.safeParse({
+      ...validReport,
+      grossProfit: '-150.00',
+      netProfit: '-186.36',
+      grossMarginPct: -0.15,
+    });
+
+    expect(parsed.success).toBe(true);
+  });
+
+  it('doanh thu và giá vốn thì KHÔNG được âm — hai khái niệm, hai schema', () => {
+    for (const field of ['recognizedRevenue', 'cogsVariable', 'cogsFixed', 'cogsTotal'] as const) {
+      expect(AdminMonthlyReportSchema.safeParse({ ...validReport, [field]: '-1.00' }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('biên gộp null khi không có chuyến nào chạy', () => {
+    expect(
+      AdminMonthlyReportSchema.safeParse({ ...validReport, grossMarginPct: null }).success,
+    ).toBe(true);
+  });
+
+  it('thuế suất không âm, và luôn CÓ MẶT để tờ báo cáo tự khai', () => {
+    expect(AdminMonthlyReportSchema.safeParse({ ...validReport, taxRate: -0.1 }).success).toBe(
+      false,
+    );
+    const { taxRate: _omitted, ...withoutRate } = validReport;
+    expect(AdminMonthlyReportSchema.safeParse(withoutRate).success).toBe(false);
+  });
+
+  it('hai bộ đếm là số nguyên không âm', () => {
+    expect(AdminMonthlyReportSchema.safeParse({ ...validReport, departuresRun: -1 }).success).toBe(
+      false,
+    );
+    expect(
+      AdminMonthlyReportSchema.safeParse({ ...validReport, costDataMissing: 1.5 }).success,
     ).toBe(false);
   });
 });
