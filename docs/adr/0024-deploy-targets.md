@@ -62,3 +62,29 @@ cần vì đã có domain chung. Đây là lý do chọn tái dùng domain thay 
   đang dựa (Cache Components/ISR 300s), build Next trên Render chậm.
 - **`sameSite: 'none'`** để chạy hai domain rời: mất lớp CSRF của `lax`, chỉ là
   fallback khi không có domain.
+
+## AMEND 1 — 05/09/2026: build web tự đánh thức API trước khi prerender
+
+**Hệ quả** ở trên dự báo "Render free tier ngủ sau 15 phút → lần build web
+đầu có thể timeout" và trỏ mitigation sang spec (cron ping hoặc plan trả
+phí). Nó xảy ra thật hai lần — 02/09 (`233c559`) và 05/09 (`03eaef9`) — cùng
+một dạng: commit chỉ có docs, push sau hơn 15 phút không ai chạm site, Vercel
+build web chết `TimeoutError` ở "Collecting page data for /blog/[slug]" đúng
+10s sau khi bắt đầu (timeout của client oRPC, ADR-0016), trong khi CI xanh vì
+CI có API riêng trên localhost. Site không sập (Vercel giữ deploy READY cũ)
+nhưng commit đó không bao giờ lên web nếu không ai bấm Redeploy.
+
+**Chốt:** `apps/web/scripts/warm-api.mjs` chạy trước `next build` trong script
+`build` của web: poll `${API_URL|NEXT_PUBLIC_API_URL}/api/health` tối đa 90s
+(mỗi 3s, timeout mỗi request 5s), rồi **luôn thoát 0** — cùng nguyên tắc
+"thất bại thì mở" của `guard-build.mjs`: API chết thật thì `next build` tự đỏ
+với lỗi thật, không có nguồn sự thật thứ hai. Luật ADR-0016 §3 "build với
+API sống" giữ nguyên; script chỉ xoá đúng ca "API đang ngủ". Chọn cách này
+thay cron ping/plan trả phí vì nó nằm trong repo, không tốn tiền, và cũng che
+luôn CI/local khi API vừa mới bật. Bỏ qua: `SKIP_API_WARMUP=1`.
+
+Ghi nhận, không sửa ở đây: Vercel cảnh báo `API_URL`/`REVALIDATE_SECRET` không
+khai trong `turbo.json` nên bị strict env lọc lúc build — build vẫn đúng vì
+client rơi về `NEXT_PUBLIC_API_URL` (framework inference cho qua), còn
+`REVALIDATE_SECRET` chỉ dùng lúc runtime. Khai vào `turbo.json` là việc riêng.
+
