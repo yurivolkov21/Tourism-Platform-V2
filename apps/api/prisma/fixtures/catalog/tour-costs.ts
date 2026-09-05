@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { tours as centralTours } from './tours-central.js';
 import { tours as northTours } from './tours-north.js';
 import { tours as southTours } from './tours-south.js';
@@ -55,6 +56,23 @@ const FIXED_PER_SEAT = 6.5;
 /** Làm tròn về 2 chữ số, dạng chuỗi — khớp cột `Decimal(14,2)`. */
 const money = (value: number): string => value.toFixed(2);
 
+/**
+ * UUID v5 dẫn xuất từ `tourId` + `sortOrder` — id TĨNH mà không phải gõ tay.
+ *
+ * Seed chạy lại được nhờ `createMany({ skipDuplicates })`, và phép bỏ qua ấy
+ * chỉ có tác dụng khi có một khoá để đụng. `tour_cost_items` không có
+ * `@@unique` nào ngoài PK, nên PK phải ổn định qua các lượt seed; để Prisma tự
+ * sinh là mỗi lượt thêm 130 dòng mới trên DB dùng chung dev/prod.
+ */
+export function stableId(tourId: string, sortOrder: number): string {
+  const hex = createHash('sha1').update(`tour-cost:${tourId}:${sortOrder}`).digest('hex');
+  const bytes = hex.slice(0, 32).split('');
+  bytes[12] = '5';
+  bytes[16] = ['8', '9', 'a', 'b'][Number.parseInt(bytes[16] ?? '0', 16) & 0b11] ?? '8';
+  const h = bytes.join('');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+
 function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
   const price = Number(tour.basePrice);
   const multiDay = tour.durationDays > 1;
@@ -63,6 +81,7 @@ function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
 
   const rows: TourCostItemFixture[] = [
     {
+      id: stableId(tour.id, 0),
       tourId: tour.id,
       category: 'TRANSPORT',
       label: 'Vehicle hire and fuel',
@@ -71,6 +90,7 @@ function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
       sortOrder: 0,
     },
     {
+      id: stableId(tour.id, 1),
       tourId: tour.id,
       category: 'GUIDE',
       label: multiDay ? 'Guide fee for the whole trip' : 'Guide fee',
@@ -79,6 +99,7 @@ function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
       sortOrder: 1,
     },
     {
+      id: stableId(tour.id, 2),
       tourId: tour.id,
       category: 'MEALS',
       label: 'Meals and drinks',
@@ -87,6 +108,7 @@ function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
       sortOrder: 2,
     },
     {
+      id: stableId(tour.id, 3),
       tourId: tour.id,
       category: 'ACTIVITIES',
       label: 'Entrance and activity tickets',
@@ -100,6 +122,7 @@ function itemsForTour(tour: TourFixture): TourCostItemFixture[] {
   // sẽ là một dòng `0.00` mà người đọc phải tự hiểu là "không áp dụng".
   if (multiDay) {
     rows.push({
+      id: stableId(tour.id, 4),
       tourId: tour.id,
       category: 'ACCOMMODATION',
       label: `Hotel nights (${tour.durationDays - 1})`,

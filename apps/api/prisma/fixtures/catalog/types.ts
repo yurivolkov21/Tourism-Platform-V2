@@ -121,11 +121,14 @@ export interface TourReviewFixture {
  * Một dòng giá vốn của tour (ADR-0033 §2). `amount` là chuỗi decimal, cùng nếp
  * với `basePrice` — tiền không đi qua float, kể cả trong fixture.
  *
- * KHÔNG có `id`: mỗi tour sinh ra 4–5 dòng theo một mô hình (xem
- * `tour-costs.ts`), nên cấp UUID tĩnh cho 130+ dòng chỉ là 130 con số phải
- * giữ đồng bộ bằng tay mà không ai đọc ngược từ log. Prisma tự sinh `id`.
+ * `id` là UUID TĨNH nhưng không gõ tay: `tour-costs.ts` dẫn xuất nó từ
+ * `tourId` + `sortOrder` (uuid v5). Phải có id tĩnh vì seed dựa vào
+ * `createMany({ skipDuplicates })` để chạy lại được — bảng này không có
+ * `@@unique` nào khác, nên thiếu id là mỗi lượt seed nhân đôi 130 dòng trên
+ * DB dùng chung (vòng vá review 05/09).
  */
 export interface TourCostItemFixture {
+  id: string;
   tourId: string;
   category:
     | 'TRANSPORT'

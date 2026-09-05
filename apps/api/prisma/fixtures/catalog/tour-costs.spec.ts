@@ -6,7 +6,7 @@ import {
   perPersonTotal,
 } from '../../../src/modules/catalog/tour-costs.js';
 import { tours } from './index.js';
-import { tourCostItems } from './tour-costs.js';
+import { stableId, tourCostItems } from './tour-costs.js';
 
 /**
  * Giá vốn seed cho 30 tour — sinh từ một mô hình, nên phải có chỗ CHỨNG MINH
@@ -42,6 +42,22 @@ describe('fixture giá vốn', () => {
     // thật để nếu tour thứ 30 được thêm vào thì test đỏ và ai đó nhớ rà lại.
     expect(tours).toHaveLength(29);
     expect(covered.size).toBe(29);
+  });
+
+  it('id tĩnh: hợp lệ UUID, không trùng, và không đổi giữa hai lần dựng', () => {
+    // Seed chạy lại được nhờ `createMany({ skipDuplicates })` đụng đúng PK
+    // cũ. Bảng không có `@@unique` nào khác, nên id trôi giữa hai lượt seed
+    // là mỗi lượt nhân đôi 130 dòng trên DB dùng chung (vòng vá review 05/09).
+    const ids = tourCostItems.map((item) => item.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const id of ids) {
+      expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    }
+    // Cùng tour + cùng sortOrder phải cho cùng id — đó là toàn bộ ý nghĩa của
+    // "tĩnh"; đổi một trong hai là id khác.
+    expect(stableId('tour-a', 0)).toBe(stableId('tour-a', 0));
+    expect(stableId('tour-a', 0)).not.toBe(stableId('tour-a', 1));
+    expect(stableId('tour-a', 0)).not.toBe(stableId('tour-b', 0));
   });
 
   it('mỗi tour có ít nhất một dòng theo khách VÀ một dòng theo chuyến', () => {

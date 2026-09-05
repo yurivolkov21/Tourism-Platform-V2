@@ -489,16 +489,23 @@ async function main(): Promise<void> {
       .map((item) => ({ amount: new Prisma.Decimal(item.amount), basis: item.basis }));
     if (items.length === 0) continue;
 
-    await prisma.tour.update({
-      where: { id: tour.id },
+    // CHỈ điền chỗ còn trống. Hai cột này là SNAPSHOT (ADR-0033 §3: đóng
+    // băng lúc tạo chuyến, admin sửa đè được) — seed chạy lại trên DB dùng
+    // chung mà ghi đè `where: { tourId }` trần là viết lại giá vốn của chuyến
+    // đã lên báo cáo tháng trước và xoá giá admin đã đè tay (vòng vá review
+    // 05/09).
+    await prisma.tour.updateMany({
+      where: { id: tour.id, costPrice: null },
       data: { costPrice: derivedCostPrice(items, tour.maxGroupSize) },
     });
     await prisma.tourDeparture.updateMany({
-      where: { tourId: tour.id },
+      where: { tourId: tour.id, fixedCostAmount: null },
       data: { fixedCostAmount: perDepartureTotal(items) },
     });
   }
-  console.log(`[seed] derived costPrice + departure fixedCost for ${catalog.tours.length} tours.`);
+  console.log(
+    `[seed] derived costPrice + departure fixedCost (chỉ chỗ còn null) for ${catalog.tours.length} tours.`,
+  );
 
   console.log('[seed] done.');
 }
