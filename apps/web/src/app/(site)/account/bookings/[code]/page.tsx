@@ -95,7 +95,6 @@ export default async function AccountBookingDetailPage({
 
   const t = messages.accountBookingDetail;
   const tv = messages.passportVisa;
-  const rv = messages.reviews;
   const slot = reviewSlot(booking);
   const cancellation = toCancellationView(booking.cancellationStatus);
   const view = bookingView(booking, cancellation);
