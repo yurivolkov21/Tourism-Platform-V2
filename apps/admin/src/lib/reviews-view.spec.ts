@@ -44,6 +44,7 @@ const PENDING: AdminReview = {
   moderationState: 'pending',
   rejectedAt: null,
   moderationNote: null,
+  rejectionCount: 0,
   source: 'VERIFIED',
   tourSlug: 'ha-long-bay-cruise',
   tourTitle: 'Ha Long Bay Cruise',

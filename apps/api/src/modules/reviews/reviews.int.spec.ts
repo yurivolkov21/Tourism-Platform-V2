@@ -1417,6 +1417,183 @@ describe('reviews (int)', () => {
     });
   });
 
+  /**
+   * ADR-0032 — đường quay lại cho tác giả. Bốn cổng và một trần, và thứ đáng
+   * canh nhất là **cổng `approved`**: nó là ranh giới chặn việc tráo một bài
+   * đã duyệt thành spam sau lưng kiểm duyệt.
+   */
+  describe('reviews.update — tác giả viết lại (ADR-0032)', () => {
+    /** Booking đã đi xong + một review chờ duyệt của chính chủ. */
+    async function seedOwnReview(email: string) {
+      const { user, cookie } = await signUpAndSignIn(app, email);
+      await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: 'BK-TESTREV1', rating: 4, body: 'Bài viết đầu tiên của khách' },
+      });
+      return { user, cookie, reviewId: created.json().id as string };
+    }
+
+    const patch = (cookie: string, id: string, payload: Record<string, unknown>) =>
+      app.inject({ method: 'PATCH', url: `/api/reviews/${id}`, headers: { cookie }, payload });
+
+    it('sửa review ĐANG CHỜ: nội dung thay, vẫn ở hàng đợi', async () => {
+      const { cookie, reviewId } = await seedOwnReview('edit-pending@example.com');
+
+      const res = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 5,
+        body: 'Bài viết đã sửa lại cho rõ ràng hơn',
+      });
+
+      expect(res.statusCode).toBe(200);
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.rating).toBe(5);
+      expect(after.body).toBe('Bài viết đã sửa lại cho rõ ràng hơn');
+      expect(after.isApproved).toBe(false);
+      expect(after.rejectedAt).toBeNull();
+    });
+
+    it('sửa review ĐÃ BỊ BÁC: quay lại hàng đợi, nhưng dấu vết quyết định GIỮ', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('edit-rejected@example.com');
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Chưa nói về chuyến đi.',
+      });
+
+      await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Lần này viết về chuyến đi' });
+
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.rejectedAt).toBeNull();
+      expect(after.rejectedById).toBeNull();
+      // `moderatedAt` GIỮ: lần quyết định ấy ĐÃ xảy ra (ADR-0032 §4).
+      expect(after.moderatedAt).not.toBeNull();
+      // KHÔNG ghi sự kiện moderation — sổ ấy ghi hành vi người DUYỆT.
+      expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(1);
+    });
+
+    it('review của NGƯỜI KHÁC → 404, không phải 403', async () => {
+      // Id review của người khác thì họ chưa từng thấy; xác nhận nó tồn tại
+      // đã là rò rỉ.
+      const { reviewId } = await seedOwnReview('owner@example.com');
+      const intruder = await signUpAndSignIn(app, 'intruder@example.com');
+
+      const res = await patch(intruder.cookie, reviewId, {
+        id: reviewId,
+        rating: 1,
+        body: 'Tôi không phải chủ review này',
+      });
+
+      expect(res.statusCode).toBe(404);
+    });
+
+    it('review ĐÃ DUYỆT KHÔNG sửa được — chặn đường tráo nội dung đang hiển thị', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('edit-approved@example.com');
+      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+
+      const res = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 1,
+        body: 'Nội dung tráo vào sau khi đã được duyệt',
+      });
+
+      expect(res.statusCode).toBe(409);
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.body).toBe('Bài viết đầu tiên của khách');
+    });
+
+    it('bác đủ HAI lần thì đường sửa ĐÓNG', async () => {
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('edit-limit@example.com');
+
+      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'reject' });
+      expect(
+        (await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' }))
+          .statusCode,
+      ).toBe(200);
+
+      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'reject' });
+      const res = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 4,
+        body: 'Viết lại lần hai',
+      });
+
+      expect(res.statusCode).toBe(409);
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.body).toBe('Viết lại lần một');
+    });
+
+    it('ảnh KHÔNG thuộc folder của booking → 400', async () => {
+      const { cookie, reviewId } = await seedOwnReview('edit-photo@example.com');
+
+      const res = await patch(cookie, reviewId, {
+        id: reviewId,
+        rating: 4,
+        body: 'Có kèm một tấm ảnh lạ',
+        photos: ['reviews/BK-SOMEONEELSE/one'],
+      });
+
+      expect(res.statusCode).toBe(400);
+    });
+
+    it('`photos` VẮNG nghĩa là gỡ hết ảnh — thay TRỌN, không cộng thêm', async () => {
+      // Bác vì một tấm ảnh mà tác giả không gỡ được thì đường quay lại là đồ
+      // giả (ADR-0032 §3).
+      const { cookie, reviewId } = await seedOwnReview('edit-clear@example.com');
+      await prisma.mediaAsset.create({
+        data: {
+          publicId: 'reviews/BK-TESTREV1/old',
+          type: MediaType.IMAGE,
+          ownerType: MediaOwnerType.REVIEW,
+          ownerId: reviewId,
+          role: MediaRole.gallery,
+          sortOrder: 0,
+        },
+      });
+
+      await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Bỏ hết ảnh đi' });
+
+      expect(
+        await prisma.mediaAsset.count({
+          where: { ownerType: MediaOwnerType.REVIEW, ownerId: reviewId },
+        }),
+      ).toBe(0);
+    });
+
+    it('`bookings.byCode` trả kèm review với trạng thái + lý do bác', async () => {
+      // Trước ADR-0032 trang chi tiết chỉ có `reviewedAt` — một mốc thời gian
+      // không mang phán quyết, nên khách bị bác đọc thấy "bạn đã đánh giá rồi".
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('bycode@example.com');
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Ảnh có mặt người khác.',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/bookings/BK-TESTREV1',
+        headers: { cookie },
+      });
+      const review = res.json().review as {
+        moderationState: string;
+        moderationNote: string | null;
+        rejectionCount: number;
+      };
+
+      expect(review.moderationState).toBe('rejected');
+      expect(review.moderationNote).toBe('Ảnh có mặt người khác.');
+      expect(review.rejectionCount).toBe(1);
+    });
+  });
+
   describe('moderate: bust cache web SAU commit (Task 3, ADR-0016 §3)', () => {
     // Spy thay real fetch — service thật ($REVALIDATE_SECRET/$FRONTEND_URL
     // default dev vẫn hoạt động vì fire-and-forget nuốt lỗi network, nhưng

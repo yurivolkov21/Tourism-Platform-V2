@@ -55,6 +55,27 @@ export const CreateReviewInputSchema = z.object({
   photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
+/**
+ * Input SỬA một review của chính mình (ADR-0032 §3).
+ *
+ * Cùng hình dạng NỘI DUNG với `CreateReviewInputSchema` trừ `bookingCode` —
+ * booking đã cố định theo review, và cho đổi nó là cho chuyển một review sang
+ * chuyến khác.
+ *
+ * `photos` thay TRỌN danh sách chứ không cộng thêm: một review bị bác vì tấm
+ * ảnh có mặt người khác mà tác giả không gỡ được ảnh thì đường quay lại là đồ
+ * giả. Vắng `photos` = không còn ảnh nào, đúng nghĩa "thay trọn".
+ */
+export const UpdateReviewInputSchema = z.object({
+  id: z.uuid(),
+  rating: RatingSchema,
+  title: z.string().trim().max(120).optional(),
+  body: z.string().trim().min(10).max(2000),
+  photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
+});
+
+export type UpdateReviewInput = z.output<typeof UpdateReviewInputSchema>;
+
 /** Kiểu sắp xếp modal "xem tất cả review" — key đầu (`newest`) là mặc định. */
 export const ReviewSortSchema = z.enum(['newest', 'oldest', 'highest', 'lowest']);
 
@@ -90,6 +111,12 @@ export const MyReviewSchema = PublicReviewSchema.extend({
   moderationState: ReviewModerationStateSchema,
   /** Lý do bác, do người duyệt viết. `null` ở mọi trạng thái khác. */
   moderationNote: z.string().nullable(),
+  /**
+   * Số lần review này ĐÃ BỊ BÁC. Khách cần nó để biết còn sửa được không —
+   * luật ở `canAuthorEdit`, và web gọi ĐÚNG hàm ấy chứ không tự so số
+   * (ADR-0032 §6).
+   */
+  rejectionCount: z.int().nonnegative(),
   // R1: danh tính tour để trang "Đánh giá của tôi" hiện tên + link được.
   // nullable — FK tour trên schema là nullable (review curated có thể không tour).
   tourSlug: z.string().nullable(),
@@ -125,6 +152,12 @@ export const AdminReviewSchema = PublicReviewSchema.extend({
    * đây là lý do — thứ dialog chi tiết hiện ra và khách nhận trong email.
    */
   moderationNote: z.string().nullable(),
+  /**
+   * Số lần đã bị bác. Ở màn admin nó là NGỮ CẢNH: một review `pending` với
+   * `rejectionCount > 0` là bài đã bị bác rồi tác giả viết lại, và người duyệt
+   * cần biết điều đó trước khi đọc (ADR-0032 §8).
+   */
+  rejectionCount: z.int().nonnegative(),
   source: z.enum(['VERIFIED', 'CURATED']),
   tourSlug: z.string().nullable(),
   // R2: tên tour (không chỉ slug) để admin nhận diện; ai duyệt lần cuối

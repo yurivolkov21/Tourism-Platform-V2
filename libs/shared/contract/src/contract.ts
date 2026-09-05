@@ -8,6 +8,7 @@ import {
   AdminRefundInputSchema,
   AdminRefundResultSchema,
   BookingCodeSchema,
+  BookingDetailSchema,
   BookingSchema,
   BookingsListQuerySchema,
   CancelBookingInputSchema,
@@ -79,6 +80,7 @@ import {
   PublicReviewSchema,
   ReviewBreakdownSchema,
   ReviewsByTourQuerySchema,
+  UpdateReviewInputSchema,
 } from './schemas/reviews.js';
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
@@ -243,6 +245,33 @@ export const contract = {
         REVIEW_NOT_ELIGIBLE: { status: 400, message: 'Booking is not eligible for review' },
         REVIEW_TRIP_NOT_COMPLETED: { status: 400, message: 'Trip has not finished yet' },
         REVIEW_ALREADY_EXISTS: { status: 409, message: 'This booking already has a review' },
+        REVIEW_PHOTO_INVALID: { status: 400, message: 'A photo does not belong to this booking' },
+      }),
+
+    /**
+     * Sửa review của CHÍNH mình (ADR-0032). Thay TRỌN nội dung kèm ảnh, rồi
+     * review quay về hàng đợi kiểm duyệt.
+     *
+     * `PATCH` chứ không `PUT`: thân request chỉ mang phần NỘI DUNG, còn danh
+     * tính (booking, tác giả, trạng thái) thì server giữ — một `PUT` ngụ ý
+     * client gửi trọn tài nguyên và có quyền đặt cả những thứ ấy.
+     *
+     * `REVIEW_NOT_FOUND` cho cả ca không-phải-của-mình (khác `create`, nơi 403
+     * là đúng vì khách đã thấy mã booking trong danh sách của họ): id review
+     * của người khác thì họ chưa từng thấy, nên xác nhận nó tồn tại là rò rỉ.
+     */
+    update: oc
+      .route({
+        method: 'PATCH',
+        path: '/api/reviews/{id}',
+        summary: 'Rewrite your own review and send it back for moderation',
+      })
+      .input(UpdateReviewInputSchema)
+      .output(MyReviewSchema)
+      .errors({
+        REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' },
+        /** Đã duyệt (không sửa được), hoặc đã bác đủ số lần (hết đường). */
+        REVIEW_NOT_EDITABLE: { status: 409, message: 'This review can no longer be edited' },
         REVIEW_PHOTO_INVALID: { status: 400, message: 'A photo does not belong to this booking' },
       }),
   },
@@ -420,7 +449,10 @@ export const contract = {
         // Trả cả khi truy cập booking của user khác — owner-or-404.
         NOT_FOUND: { message: 'Booking not found' },
       })
-      .output(BookingSchema),
+      // `BookingDetailSchema` (không phải `BookingSchema`): CHỈ route này mang
+      // kèm review của khách — xem JSDoc ở schema, mở rộng cho mọi route dùng
+      // booking sẽ làm nổ suy kiểu của cả router.
+      .output(BookingDetailSchema),
     cancel: oc
       .route({
         method: 'POST',

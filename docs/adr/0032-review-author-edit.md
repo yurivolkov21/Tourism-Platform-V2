@@ -1,6 +1,6 @@
 # ADR-0032 — Đường quay lại cho tác giả: sửa review bị bác, và một trần cho vòng lặp
 
-- **Trạng thái:** Proposed (2026-09-05)
+- **Trạng thái:** Accepted (2026-09-05)
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0031](0031-review-rejection.md) (ADR này **hoàn tất** phần
@@ -136,6 +136,23 @@ một review `pending` từng bị bác — kèm lý do bác lần trước, th�
 | i18n | copy cho lý do, form sửa, và câu hết-lượt |
 
 KHÔNG migration: mọi thứ suy từ cột và bảng đã có.
+
+### Đo lúc thi công: `review` mở rộng ở ROUTE, không thêm vào `BookingSchema`
+
+Bản đầu nhét `review` thẳng vào `BookingSchema`, và worker chạy
+`contract.spec.ts` **hết bộ nhớ** (OOM, ~24 giây, không stack JS).
+
+Nguyên nhân: `ContractInputs`/`ContractOutputs` suy kiểu cho TOÀN BỘ router, mà
+`BookingSchema` xuất hiện ở khoảng mười route — mỗi route bỗng phải mang thêm
+một review lồng một mảng media, và phép nhân ấy làm nổ suy kiểu. Chứng minh
+bằng `git stash`: bỏ thay đổi ra thì 35 test của file ấy xanh trở lại.
+
+Nên `review` sống ở `BookingDetailSchema` — `BookingSchema.extend(...)` dùng
+cho ĐÚNG `bookings.byCode`, cùng khuôn `AdminBookingDetailSchema` đã có. Chi
+phí kiểu trả một lần thay vì mười.
+
+Luật rút ra cho về sau: **đừng thêm một schema LỒNG vào một schema NỀN dùng
+chung nhiều route** — mở rộng ở route cần nó.
 
 ### Điều KHÔNG được suy ra
 

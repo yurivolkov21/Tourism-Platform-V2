@@ -7,6 +7,7 @@ import {
   EmailSchema,
 } from './common.js';
 import { MediaItemSchema } from './media.js';
+import { MyReviewSchema } from './reviews.js';
 
 // Re-export để mọi chỗ import `BookingCodeSchema` từ `'./bookings.js'` (nguồn
 // gốc lịch sử) không phải đổi gì — định nghĩa thật giờ nằm ở `common.ts` để
@@ -167,6 +168,37 @@ export const BookingSchema = z.object({
 });
 
 export type Booking = z.output<typeof BookingSchema>;
+
+/**
+ * Output của `bookings.byCode` — booking kèm review của CHÍNH khách
+ * (ADR-0032 §7).
+ *
+ * ## Vì sao MỞ RỘNG ở đây chứ không thêm field vào `BookingSchema`
+ *
+ * Bản đầu nhét `review` thẳng vào `BookingSchema`, và đo được ngay: worker
+ * chạy `contract.spec.ts` **hết bộ nhớ**. `ContractInputs`/`ContractOutputs`
+ * suy kiểu cho TOÀN BỘ router, mà `BookingSchema` xuất hiện ở khoảng mười
+ * route — mỗi route bỗng phải mang thêm một review lồng một mảng media, và
+ * phép nhân ấy làm nổ suy kiểu.
+ *
+ * Mở rộng cho ĐÚNG route cần thì chi phí ấy chỉ trả một lần. Cùng khuôn
+ * `AdminBookingDetailSchema` ngay dưới đây, và cùng lý do đã ghi ở
+ * `reviewedAt`: đường đọc danh sách không gánh thứ chỉ trang chi tiết dùng.
+ */
+export const BookingDetailSchema = BookingSchema.extend({
+  /**
+   * `null` khi khách chưa viết review nào cho booking này.
+   *
+   * `reviewedAt` một mình KHÔNG đủ: nó là một mốc thời gian, không mang phán
+   * quyết nào. Trước ADR-0032 trang chi tiết booking chỉ có nó, nên khách bị
+   * bác quay lại đọc thấy "bạn đã đánh giá chuyến này rồi" — email nói thật,
+   * sản phẩm thì im. Ở đây mang trọn `MyReview` để trang vừa nói được trạng
+   * thái + lý do, vừa điền sẵn form sửa mà không tốn thêm một lượt gọi.
+   */
+  review: MyReviewSchema.nullable(),
+});
+
+export type BookingDetail = z.output<typeof BookingDetailSchema>;
 
 /**
  * Query cho `bookings.mine`. Cùng quy ước pagination như list catalog (field gõ

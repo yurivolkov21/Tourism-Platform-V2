@@ -9,7 +9,9 @@ import {
   BookingForbiddenError,
   BookingNotFoundError,
   ReviewAlreadyExistsError,
+  ReviewNotEditableError,
   ReviewNotEligibleError,
+  ReviewNotFoundError,
   ReviewPhotoInvalidError,
   ReviewsService,
   ReviewTripNotCompletedError,
@@ -60,6 +62,25 @@ export class ReviewsController {
         if (err instanceof ReviewTripNotCompletedError) throw errors.REVIEW_TRIP_NOT_COMPLETED();
         if (err instanceof ReviewNotEligibleError) throw errors.REVIEW_NOT_ELIGIBLE();
         if (err instanceof ReviewAlreadyExistsError) throw errors.REVIEW_ALREADY_EXISTS();
+        if (err instanceof ReviewPhotoInvalidError) throw errors.REVIEW_PHOTO_INVALID();
+        throw err;
+      }
+    });
+  }
+
+  /**
+   * Sửa review của chính mình (ADR-0032). `REVIEW_NOT_FOUND` phủ cả ca
+   * không-phải-của-mình — service gộp hai ca ấy có chủ đích, xem JSDoc ở đó.
+   */
+  @UseGuards(AuthGuard)
+  @Implement(contract.reviews.update)
+  update(@CurrentUser() user: SessionUser) {
+    return implement(contract.reviews.update).handler(async ({ input, errors }) => {
+      try {
+        return await this.reviews.update(user.id, input);
+      } catch (err) {
+        if (err instanceof ReviewNotFoundError) throw errors.REVIEW_NOT_FOUND();
+        if (err instanceof ReviewNotEditableError) throw errors.REVIEW_NOT_EDITABLE();
         if (err instanceof ReviewPhotoInvalidError) throw errors.REVIEW_PHOTO_INVALID();
         throw err;
       }

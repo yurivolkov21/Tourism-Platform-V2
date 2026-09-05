@@ -9,7 +9,9 @@ import type {
   ReviewModerationState,
   ReviewSortSchema,
   ReviewVerdict,
+  UpdateReviewInput,
 } from '@tourism/contract';
+import { canAuthorEdit } from '@tourism/contract';
 import type { z } from 'zod';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
@@ -41,6 +43,8 @@ export class ReviewNotEligibleError extends Error {}
 export class ReviewTripNotCompletedError extends Error {}
 export class ReviewAlreadyExistsError extends Error {}
 export class ReviewNotFoundError extends Error {}
+/** Đã duyệt (không sửa được), hoặc đã bác đủ số lần (ADR-0032 §2/§5). */
+export class ReviewNotEditableError extends Error {}
 export class TourNotFoundError extends Error {}
 /** Ảnh gửi kèm KHÔNG nằm trong folder booking đang review (ADR-0021 §4). */
 export class ReviewPhotoInvalidError extends Error {}
@@ -91,6 +95,16 @@ export const REVIEW_ADMIN_INCLUDE = {
     take: 1,
     select: { note: true },
   },
+  // Số lần BỊ BÁC (ADR-0032 §5) — đếm lọc trên chính audit trail, không cột
+  // mới. Prisma gộp vào cùng query, không phải N+1.
+  _count: { select: { moderationEvents: { where: { toRejected: true } } } },
+} as const satisfies Prisma.ReviewInclude;
+
+/** Cùng thứ cho đường đọc của KHÁCH — họ cần biết còn sửa được không. */
+export const REVIEW_MINE_INCLUDE = {
+  tour: { select: { slug: true, title: true } },
+  moderationEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { note: true } },
+  _count: { select: { moderationEvents: { where: { toRejected: true } } } },
 } as const satisfies Prisma.ReviewInclude;
 
 /**
@@ -118,6 +132,7 @@ export function toAdminReview(
     tour: { slug: string; title: string } | null;
     moderatedBy: { name: string | null } | null;
     moderationEvents?: { note: string | null }[];
+    _count?: { moderationEvents: number };
   },
   media: MediaItem[] = [],
 ): AdminReview {
@@ -127,6 +142,7 @@ export function toAdminReview(
     moderationState: reviewModerationState(row),
     rejectedAt: row.rejectedAt?.toISOString() ?? null,
     moderationNote: latestNote(row),
+    rejectionCount: row._count?.moderationEvents ?? 0,
     source: row.source,
     tourSlug: row.tour?.slug ?? null,
     // R2: tên tour + ai duyệt lần cuối (null khi chưa duyệt).
@@ -147,6 +163,7 @@ export function toMyReview(
     rejectedAt: Date | null;
     tour: { slug: string; title: string } | null;
     moderationEvents?: { note: string | null }[];
+    _count?: { moderationEvents: number };
   },
   media: MediaItem[] = [],
 ): MyReview {
@@ -157,6 +174,7 @@ export function toMyReview(
     // trước đây khách bị bác vẫn đọc thấy "đang chờ duyệt" vĩnh viễn.
     moderationState: reviewModerationState(row),
     moderationNote: latestNote(row),
+    rejectionCount: row._count?.moderationEvents ?? 0,
     // R1: danh tính tour (nullable — review curated có thể không gắn tour).
     tourSlug: row.tour?.slug ?? null,
     tourTitle: row.tour?.title ?? null,
@@ -263,6 +281,107 @@ export class ReviewsService {
       }
       throw err;
     }
+  }
+
+  /**
+   * Tác giả viết lại review của CHÍNH mình (ADR-0032).
+   *
+   * Bốn cổng, theo thứ tự CỐ Ý:
+   *
+   *  1. **Sở hữu** — không phải review của mình thì `REVIEW_NOT_FOUND`, KHÔNG
+   *     phải 403. Khác `create` (ở đó 403 đúng, vì khách đã thấy mã booking
+   *     trong danh sách của họ): id review của người khác thì họ chưa từng
+   *     thấy, nên xác nhận nó tồn tại đã là rò rỉ.
+   *  2. **Còn sửa được không** — `canAuthorEdit` của contract, ĐÚNG hàm mà web
+   *     gọi để quyết hiện form (§6). Không chép luật lần thứ hai.
+   *  3. **Ảnh thuộc đúng booking** — cùng phép kiểm folder với `create`
+   *     (ADR-0021 §4): ký cho booking nào thì chỉ đính được vào review của
+   *     booking đó.
+   *
+   * Rồi thay TRỌN nội dung và đưa review về hàng đợi: `rejected_at` /
+   * `rejected_by` xoá, `is_approved` vẫn false.
+   *
+   * ⚠️ `moderated_at`/`moderated_by` GIỮ NGUYÊN (§4): chúng ghi "lần quyết
+   * định gần nhất", và lần ấy ĐÃ xảy ra — xoá đi là giả vờ nó chưa từng có,
+   * và người duyệt mất đúng ngữ cảnh họ cần khi đọc lại.
+   *
+   * ⚠️ KHÔNG ghi `ReviewModerationEvent`: bảng ấy ghi hành vi của NGƯỜI DUYỆT
+   * (`actor_id` là admin). Nhét một cú sửa của tác giả vào đó làm hỏng nghĩa
+   * cả sổ, và mọi phép đếm dựa trên nó — kể cả chính cái trần ở cổng 2 — sẽ
+   * đếm nhầm. Dấu vết của tác giả là `updated_at`, cột đã có sẵn.
+   *
+   * KHÔNG bust cache web: review chưa từng ở trên site (chỉ `pending`/
+   * `rejected` mới sửa được), nên không trang công khai nào đang hiện nó.
+   */
+  async update(userId: string, input: UpdateReviewInput): Promise<MyReview> {
+    const existing = await prisma.review.findUnique({
+      where: { id: input.id },
+      include: REVIEW_MINE_INCLUDE,
+    });
+    // Gộp "không tồn tại" với "không phải của bạn" thành MỘT câu trả lời.
+    if (!existing || existing.userId !== userId) throw new ReviewNotFoundError();
+
+    if (!canAuthorEdit(toMyReview(existing))) throw new ReviewNotEditableError();
+
+    // Dedupe TRƯỚC insert, cùng lý do đã ghi ở `create`: `MediaAsset` có
+    // `@@unique([ownerType, ownerId, publicId])` nên publicId trùng ném P2002.
+    const photos = [...new Set(input.photos ?? [])];
+    if (existing.bookingId) {
+      const booking = await prisma.booking.findUnique({
+        where: { id: existing.bookingId },
+        select: { code: true },
+      });
+      const folder = `${uploadFolderFor(env.CLOUDINARY_UPLOAD_FOLDER, {
+        purpose: 'REVIEW_PHOTO',
+        bookingCode: booking?.code ?? '',
+      })}/`;
+      if (photos.some((publicId) => !publicId.startsWith(folder))) {
+        throw new ReviewPhotoInvalidError();
+      }
+    } else if (photos.length > 0) {
+      // Review không gắn booking (CURATED) không có folder nào để thuộc về.
+      throw new ReviewPhotoInvalidError();
+    }
+
+    const row = await prisma.$transaction(async (tx) => {
+      await tx.review.update({
+        where: { id: input.id },
+        data: {
+          rating: input.rating,
+          title: input.title ?? null,
+          body: input.body,
+          // Về hàng đợi: chưa đăng, và phán quyết cũ xoá đi.
+          isApproved: false,
+          rejectedAt: null,
+          rejectedById: null,
+        },
+      });
+      // Ảnh thay TRỌN (§3): xoá hết rồi ghi lại theo thứ tự mới. Hàng
+      // `MediaAsset` là con trỏ tới Cloudinary, nên xoá ở đây KHÔNG xoá file —
+      // dọn file là việc riêng, và hệ thống hiện chưa có đường xoá media nào.
+      await tx.mediaAsset.deleteMany({
+        where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
+      });
+      if (photos.length > 0) {
+        await tx.mediaAsset.createMany({
+          data: photos.map((publicId, idx) => ({
+            publicId,
+            type: MediaType.IMAGE,
+            ownerType: MediaOwnerType.REVIEW,
+            ownerId: input.id,
+            role: MediaRole.gallery,
+            sortOrder: idx,
+          })),
+        });
+      }
+      return await tx.review.findUniqueOrThrow({
+        where: { id: input.id },
+        include: REVIEW_MINE_INCLUDE,
+      });
+    });
+
+    const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(row.id);
+    return toMyReview(row, media ?? []);
   }
 
   /**
@@ -690,10 +809,7 @@ export class ReviewsService {
         // R1: kèm danh tính tour cho trang "Đánh giá của tôi". Từ ADR-0031
         // kèm cả ghi chú quyết định gần nhất — ở review bị bác đó là LÝ DO,
         // và khách có quyền biết vì sao review của mình không lên site.
-        include: {
-          tour: { select: { slug: true, title: true } },
-          moderationEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { note: true } },
-        },
+        include: REVIEW_MINE_INCLUDE,
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         skip: (page - 1) * pageSize,
         take: pageSize,

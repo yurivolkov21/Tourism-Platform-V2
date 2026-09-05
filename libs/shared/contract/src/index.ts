@@ -10,6 +10,7 @@ export * from './schemas/payment-events.js';
 export * from './schemas/posts.js';
 export * from './schemas/refund-policy.js';
 export * from './schemas/reports.js';
+export * from './schemas/review-policy.js';
 export * from './schemas/reviews.js';
 export * from './schemas/site-media.js';
 export * from './schemas/stats.js';

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type {
   AdminBookingsListQuery,
   Booking,
+  BookingDetail,
   BookingsListQuery,
   CreateBookingInput,
   MediaItem,
@@ -23,6 +24,7 @@ import {
   type PaymentGateway,
   resolveGateway,
 } from '../payments/gateway.js';
+import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
 import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 
@@ -489,7 +491,7 @@ export class BookingsService {
    * `byCode`) cần field này để biết có nên hiện nút "xin hủy" hay không; `mine`
    * (list) cố ý không trả (xem comment ở đó).
    */
-  async byCode(userId: string, code: string): Promise<Booking | null> {
+  async byCode(userId: string, code: string): Promise<BookingDetail | null> {
     const booking = await prisma.booking.findUnique({
       where: { code },
       include: { tour: bookingTourInclude },
@@ -506,21 +508,33 @@ export class BookingsService {
       where: { bookingId: booking.id },
       _sum: { amount: true },
     });
-    // Đã review chưa: `Review.bookingId` là @unique nên đây là một lookup khoá
-    // duy nhất, không phải quét. Đọc ở ĐÂY chứ không ở `mine` — cùng lý do
-    // tránh N+1 đã ghi ở trên.
+    // Review của khách: `Review.bookingId` là @unique nên đây là một lookup
+    // khoá duy nhất, không phải quét. Đọc ở ĐÂY chứ không ở `mine` — cùng lý
+    // do tránh N+1 đã ghi ở trên.
+    //
+    // Lấy TRỌN review chứ không chỉ `createdAt` (ADR-0032 §7): một mốc thời
+    // gian không mang phán quyết nào, nên trang chi tiết từng nói với khách bị
+    // bác rằng "bạn đã đánh giá chuyến này rồi". Nay nó nói được trạng thái +
+    // lý do, và điền sẵn được form sửa mà không tốn thêm một lượt gọi.
     const review = await prisma.review.findUnique({
       where: { bookingId: booking.id },
-      select: { createdAt: true },
+      include: REVIEW_MINE_INCLUDE,
     });
+    const reviewMedia = review
+      ? ((await this.media.resolveForOwners(MediaOwnerType.REVIEW, [review.id])).get(review.id) ??
+        [])
+      : [];
     const tourImage = await resolveTourCover(this.media, booking.tourId);
-    return toBooking(booking, null, tourImage, {
-      cancellationStatus: latestCancellation?.status ?? null,
-      cancellationRequestedAt: latestCancellation?.createdAt ?? null,
-      cancellationDecidedAt: latestCancellation?.decidedAt ?? null,
-      refundedTotal: refunded._sum.amount,
-      reviewedAt: review?.createdAt ?? null,
-    });
+    return {
+      ...toBooking(booking, null, tourImage, {
+        cancellationStatus: latestCancellation?.status ?? null,
+        cancellationRequestedAt: latestCancellation?.createdAt ?? null,
+        cancellationDecidedAt: latestCancellation?.decidedAt ?? null,
+        refundedTotal: refunded._sum.amount,
+        reviewedAt: review?.createdAt ?? null,
+      }),
+      review: review ? toMyReview(review, reviewMedia) : null,
+    };
   }
 
   /**
