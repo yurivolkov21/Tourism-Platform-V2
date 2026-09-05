@@ -1,0 +1,651 @@
+<title>Cỡ thanh lọc admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&family=Literata:opsz,wght@7..72,500;7..72,600&display=swap">
+
+<style>
+  :root {
+    --page-bg: oklch(0.965 0.004 250);
+    --page-panel: oklch(1 0 0);
+    --page-ink: oklch(0.28 0.015 250);
+    --page-dim: oklch(0.50 0.012 250);
+    --page-line: oklch(0.89 0.005 250);
+    --page-accent: oklch(0.494 0.067 184.3);
+    --page-accent-soft: oklch(0.494 0.067 184.3 / 0.10);
+    --page-warn: oklch(0.55 0.13 55);
+    --page-good: oklch(0.48 0.10 150);
+    --sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+    --display: "Literata", ui-serif, Georgia, serif;
+    --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", monospace;
+
+    /* Bề mặt admin THẬT (ADR-0027, hue 250) — cố định ở cả hai theme vì admin
+       chỉ có một diện mạo (user chốt 01/09). */
+    --a-bg: oklch(0.995 0.0015 250);
+    --a-card: oklch(1 0 0);
+    --a-ink: oklch(0.262 0.014 250);
+    --a-muted: oklch(0.962 0.004 250);
+    --a-dim: oklch(0.502 0.012 250);
+    --a-border: oklch(0.902 0.005 250);
+    --a-input: oklch(0.66 0.012 250);
+    --a-primary: oklch(0.494 0.067 184.3);
+    --a-destructive: oklch(0.516 0.136 27.3);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --page-bg: oklch(0.215 0.016 252);
+      --page-panel: oklch(0.262 0.018 252);
+      --page-ink: oklch(0.94 0.006 250);
+      --page-dim: oklch(0.72 0.010 250);
+      --page-line: oklch(0.36 0.020 252);
+      --page-accent: oklch(0.68 0.076 181.3);
+      --page-accent-soft: oklch(0.68 0.076 181.3 / 0.14);
+      --page-warn: oklch(0.74 0.12 62);
+      --page-good: oklch(0.72 0.11 152);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --page-bg: oklch(0.215 0.016 252);
+    --page-panel: oklch(0.262 0.018 252);
+    --page-ink: oklch(0.94 0.006 250);
+    --page-dim: oklch(0.72 0.010 250);
+    --page-line: oklch(0.36 0.020 252);
+    --page-accent: oklch(0.68 0.076 181.3);
+    --page-accent-soft: oklch(0.68 0.076 181.3 / 0.14);
+    --page-warn: oklch(0.74 0.12 62);
+    --page-good: oklch(0.72 0.11 152);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--page-bg);
+    color: var(--page-ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 40px 24px 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 46px;
+  }
+
+  .masthead { display: flex; flex-direction: column; gap: 10px; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+  }
+
+  h1 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: clamp(27px, 4vw, 36px);
+    line-height: 1.15;
+    margin: 0;
+    text-wrap: balance;
+  }
+
+  .lede { margin: 0; max-width: 64ch; color: var(--page-dim); }
+
+  .settled {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    align-self: flex-start;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    background: color-mix(in oklab, var(--page-good) 14%, transparent);
+    color: var(--page-good);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .settled::before { content: "✓"; font-size: 13px; }
+
+  section { display: flex; flex-direction: column; gap: 16px; }
+
+  h2 {
+    font-family: var(--display);
+    font-weight: 600;
+    font-size: 20px;
+    margin: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 11px;
+    flex-wrap: wrap;
+  }
+
+  h2 .tally {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--page-dim);
+  }
+
+  .note { margin: 0; max-width: 76ch; color: var(--page-dim); font-size: 14px; }
+  .note strong { color: var(--page-ink); font-weight: 600; }
+
+  code {
+    font-family: var(--mono);
+    font-size: 0.86em;
+    background: var(--page-accent-soft);
+    color: var(--page-accent);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+
+  /* ── Hàng lựa chọn: ba thẻ cho một quyết định ──────────────────────────── */
+  .options { display: grid; gap: 14px; grid-template-columns: 1fr; }
+  @media (min-width: 780px) { .options.three { grid-template-columns: repeat(3, 1fr); } }
+  @media (min-width: 700px) { .options.two { grid-template-columns: repeat(2, 1fr); } }
+
+  .opt {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--page-line);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--page-panel);
+    padding: 0;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+    cursor: pointer;
+    transition: border-color 130ms ease, box-shadow 130ms ease;
+  }
+
+  .opt:hover { border-color: color-mix(in oklab, var(--page-accent) 45%, var(--page-line)); }
+  .opt[aria-pressed="true"] { border-color: var(--page-accent); box-shadow: 0 0 0 1px var(--page-accent); }
+  .opt:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
+
+  .opt-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--page-line);
+  }
+
+  .opt-head h3 { margin: 0; font-size: 14.5px; font-weight: 600; }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .badge.now  { background: var(--page-accent-soft); color: var(--page-accent); }
+  .badge.warn { background: color-mix(in oklab, var(--page-warn) 16%, transparent); color: var(--page-warn); }
+  .badge.good { background: color-mix(in oklab, var(--page-good) 15%, transparent); color: var(--page-good); }
+
+  .opt-stage {
+    background: var(--a-bg);
+    padding: 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 92px;
+    overflow-x: auto;
+  }
+
+  .opt-foot {
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--page-dim);
+    border-top: 1px solid var(--page-line);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    margin-top: auto;
+  }
+
+  .measure {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .measure .pass { color: var(--page-good); }
+  .measure .fail { color: var(--page-warn); }
+
+  /* ── Điều khiển admin dựng lại 1:1 ─────────────────────────────────────── */
+  .ctl { --ctl-h: 36px; --tab-pad: 4px; --tab-h: 28px; --tab-px: 12px; --btn-px: 12px; }
+  .ctl[data-tab="naive"] { --tab-pad: 2px; --tab-h: 32px; --tab-px: 14px; }
+
+  .strip { display: flex; align-items: center; gap: 10px; min-width: max-content; }
+
+  .tabs {
+    display: flex;
+    gap: 4px;
+    padding: var(--tab-pad);
+    border: 1px solid var(--a-border);
+    border-radius: 12px;
+    background: color-mix(in oklab, var(--a-muted) 40%, transparent);
+  }
+
+  .tab {
+    height: var(--tab-h);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 var(--tab-px);
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--a-dim);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tab[aria-pressed="true"] { background: var(--a-primary); color: oklch(0.99 0 0); }
+  .tab svg { width: 15px; height: 15px; flex: none; }
+
+  .field {
+    height: var(--ctl-h);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 10px;
+    border: 1px solid var(--field-line, var(--a-input));
+    border-radius: 8px;
+    background: var(--field-fill, var(--a-card));
+    color: var(--a-ink);
+    font-size: 14px;
+    white-space: nowrap;
+    position: relative;
+  }
+
+  .field.w-search { width: 210px; }
+
+  .float-label {
+    position: absolute;
+    top: 50%;
+    left: 6px;
+    transform: translateY(-50%);
+    padding: 0 5px;
+    background: var(--field-fill, var(--a-card));
+    color: var(--a-dim);
+    font-size: 14px;
+  }
+
+  .btn {
+    height: var(--ctl-h);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 var(--btn-px);
+    border: 1px solid var(--a-border);
+    border-radius: 8px;
+    background: var(--a-card);
+    color: var(--a-ink);
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .btn svg { width: 15px; height: 15px; flex: none; opacity: 0.7; }
+  .btn .chev { margin-left: 2px; opacity: 0.5; }
+
+  .btn.ghost { border-color: transparent; background: transparent; }
+
+  .btn.soft {
+    border-color: transparent;
+    background: color-mix(in oklab, var(--a-destructive) 10%, transparent);
+    color: var(--a-destructive);
+  }
+  .btn.soft svg { opacity: 0.85; }
+
+  .btn.solid {
+    border-color: var(--a-destructive);
+    background: var(--a-destructive);
+    color: oklch(0.985 0 0);
+  }
+  .btn.solid svg { opacity: 0.9; }
+
+  /* ── Thanh kết quả ─────────────────────────────────────────────────────── */
+  .result {
+    border: 1px solid var(--page-accent);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--page-panel);
+  }
+
+  .result-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--page-line);
+  }
+
+  .result-head h3 { margin: 0; font-size: 15px; font-weight: 600; }
+  .result-head .pick { font-family: var(--mono); font-size: 11.5px; color: var(--page-dim); }
+  .result-stage { background: var(--a-bg); padding: 22px 16px; overflow-x: auto; }
+
+  .icon-row {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+  }
+
+  .icon-row-label {
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--page-dim);
+  }
+
+  .icon-row-note { font-size: 13px; color: var(--page-dim); }
+
+  .icon-pick {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px 5px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--page-line);
+    background: transparent;
+    color: var(--page-ink);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+
+  .icon-pick:hover { background: var(--page-accent-soft); }
+  .icon-pick[aria-pressed="true"] { border-color: var(--page-accent); color: var(--page-accent); }
+  .icon-pick:focus-visible { outline: 2px solid var(--page-accent); outline-offset: 2px; }
+  .icon-pick .icon-slot { display: inline-flex; }
+  .icon-pick svg { width: 15px; height: 15px; }
+
+  .flag {
+    border-left: 3px solid var(--page-warn);
+    padding: 12px 16px;
+    border-radius: 0 10px 10px 0;
+    background: color-mix(in oklab, var(--page-warn) 8%, transparent);
+    font-size: 14px;
+    max-width: 78ch;
+  }
+
+  .flag p { margin: 0; }
+  .flag p + p { margin-top: 8px; }
+  .flag strong { font-weight: 600; }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="eyebrow">Nexora back office · vòng chỉnh 05/09 · lượt 2</div>
+    <h1>Cỡ thanh lọc admin</h1>
+    <span class="settled">36px đã chốt — dải tab và các nút cùng hạ</span>
+    <p class="lede">
+      Ba chi tiết còn lại, mỗi mục một hàng thẻ bấm chọn được. Thanh ở cuối trang
+      ghép luôn lựa chọn đang bật để bạn xem tổng thể trước khi mình sửa vào kit.
+    </p>
+  </header>
+
+  <section>
+    <h2>1. Viên pill trong dải tab <span class="tally">bạn nói đúng — nó không hạ theo</span></h2>
+    <p class="note">
+      Ở lượt trước mình hạ khung bằng cách bóp <em>đệm</em> (<code>p-1</code> → <code>p-0.5</code>)
+      và giữ nguyên viên pill <code>h-8</code>. Khung mất 18% chiều cao còn pill chỉ mất 11%, nên
+      pill <strong>chiếm chỗ nhiều hơn trước</strong> — đúng cái cảm giác nặng bạn thấy.
+      Cách đúng là giữ đệm, hạ pill.
+    </p>
+
+    <div class="options two" data-group="tab">
+      <button type="button" class="opt" data-value="naive" aria-pressed="false">
+        <span class="opt-head"><h3>Bóp đệm, giữ pill</h3><span class="badge warn">lượt trước</span></span>
+        <span class="opt-stage"><span class="strip ctl" data-tab="naive" data-slot="tabs"></span></span>
+        <span class="opt-foot">
+          <span class="measure">đệm <b>2px</b> · pill <b>32px</b> · pill chiếm <b>89%</b> khung</span>
+          <span>Pill gần chạm mép khung, dải tab trông đặc lại.</span>
+        </span>
+      </button>
+
+      <button type="button" class="opt" data-value="fixed" aria-pressed="true">
+        <span class="opt-head"><h3>Giữ đệm, hạ pill</h3><span class="badge good">đề xuất</span></span>
+        <span class="opt-stage"><span class="strip ctl" data-tab="fixed" data-slot="tabs"></span></span>
+        <span class="opt-foot">
+          <span class="measure">đệm <b>4px</b> · pill <b>28px</b> · pill chiếm <b>78%</b> khung</span>
+          <span><code>p-1</code> + <code>h-7</code>, chữ <code>px-3</code>. Khe thở giữ nguyên như bản 44px.</span>
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. Nút Clear <span class="tally">ba mức to tiếng</span></h2>
+
+    <div class="options three" data-group="clear">
+      <button type="button" class="opt" data-value="ghost" aria-pressed="false">
+        <span class="opt-head"><h3>Ghost</h3><span class="badge now">hiện tại</span></span>
+        <span class="opt-stage"><span class="ctl"><span class="btn ghost" data-clear-btn>Clear filters</span></span></span>
+        <span class="opt-foot"><span>Gần như tàng hình khi chưa rê chuột — chính điều bạn muốn sửa.</span></span>
+      </button>
+
+      <button type="button" class="opt" data-value="soft" aria-pressed="true">
+        <span class="opt-head"><h3>Đỏ nhạt</h3><span class="badge good">đã có trong dự án</span></span>
+        <span class="opt-stage"><span class="ctl"><span class="btn soft" data-clear-btn>Clear filters</span></span></span>
+        <span class="opt-foot">
+          <span class="measure"><span class="pass">6.00 ✓</span> mực đỏ trên nền nhạt</span>
+          <span>Đúng khuôn nút <em>Deny</em> ở <code>/cancellations</code> đang dùng.</span>
+        </span>
+      </button>
+
+      <button type="button" class="opt" data-value="solid" aria-pressed="false">
+        <span class="opt-head"><h3>Đỏ đặc</h3><span class="badge warn">bạn yêu cầu</span></span>
+        <span class="opt-stage"><span class="ctl"><span class="btn solid" data-clear-btn>Clear filters</span></span></span>
+        <span class="opt-foot">
+          <span class="measure"><span class="pass">5.74 ✓</span> chữ trắng trên đỏ</span>
+          <span>Không lẫn vào đâu được. Nhưng xem ghi chú dưới.</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="icon-row" role="group" aria-label="Chọn icon cho nút Clear">
+      <span class="icon-row-label">Icon</span>
+      <button type="button" class="icon-pick" data-icon="broom" aria-pressed="true">
+        <span class="icon-slot"></span>brush-cleaning
+      </button>
+      <button type="button" class="icon-pick" data-icon="funnel" aria-pressed="false">
+        <span class="icon-slot"></span>funnel-x
+      </button>
+      <span class="icon-row-note">cả hai đều có sẵn trong <code>lucide-react</code> 1.25</span>
+    </div>
+
+    <div class="flag">
+      <p><strong>Hiện trong admin không có nút đỏ đặc nào cả.</strong> Nút to tiếng nhất đang là <em>Deny</em> — từ chối một yêu cầu huỷ, tức một quyết định về tiền — và nó chỉ dùng đỏ <em>nhạt</em> (<code>bg-destructive/10</code>).</p>
+      <p>Nên nếu Clear thành đỏ đặc, nó sẽ là nút gắt nhất toàn admin, gắt hơn cả nút từ chối hoàn tiền — trong khi việc nó làm là xoá vài bộ lọc, bấm nhầm thì bấm lại. Cả hai đều đọc rõ; mức đỏ nhạt được cái nó nằm sẵn trong bảng chữ cái mà admin đang dạy người dùng.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>3. Viền ô tìm kiếm <span class="tally">chỗ này có một con số chặn</span></h2>
+    <p class="note">
+      Viền ô nhập nặng hơn viền nút <strong>là cố ý</strong>: token <code>--input</code> được đặt ở
+      L&nbsp;0.66 để đạt ngưỡng tương phản phi-văn-bản 3:1 — viền là thứ duy nhất cho biết một ô
+      nhập nằm ở đâu. Mình vừa đo lại toàn dải: <strong>0.66 là mức sáng nhất còn đạt</strong>.
+      Nhích lên 0.70 đã rớt xuống 2.63.
+    </p>
+
+    <div class="options three" data-group="input">
+      <button type="button" class="opt" data-value="strong" aria-pressed="true">
+        <span class="opt-head"><h3>Giữ nguyên</h3><span class="badge now">hiện tại</span></span>
+        <span class="opt-stage"><span class="ctl" style="--field-line: oklch(0.66 0.012 250)"><span class="field w-search"><span class="float-label">Search reviews</span></span></span></span>
+        <span class="opt-foot">
+          <span class="measure">L 0.66 · <span class="pass">3.06 ✓</span> đạt 3:1</span>
+          <span>Nặng hơn viền nút thật, nhưng đúng chuẩn.</span>
+        </span>
+      </button>
+
+      <button type="button" class="opt" data-value="filled" aria-pressed="false">
+        <span class="opt-head"><h3>Viền nhạt + nền xám</h3><span class="badge good">lối giữa</span></span>
+        <span class="opt-stage"><span class="ctl" style="--field-line: oklch(0.902 0.005 250); --field-fill: oklch(0.962 0.004 250)"><span class="field w-search"><span class="float-label">Search reviews</span></span></span></span>
+        <span class="opt-foot">
+          <span class="measure">L 0.902 · <span class="fail">1.32</span> — nền xám thay viền làm dấu</span>
+          <span>Nhẹ bằng các nút, và vẫn phân biệt được nhờ khối nền.</span>
+        </span>
+      </button>
+
+      <button type="button" class="opt" data-value="light" aria-pressed="false">
+        <span class="opt-head"><h3>Nhạt bằng nút</h3><span class="badge warn">bạn yêu cầu</span></span>
+        <span class="opt-stage"><span class="ctl" style="--field-line: oklch(0.902 0.005 250)"><span class="field w-search"><span class="float-label">Search reviews</span></span></span></span>
+        <span class="opt-foot">
+          <span class="measure">L 0.902 · <span class="fail">1.32 ✗</span> dưới 3:1</span>
+          <span>Đồng nhất tuyệt đối. Ô nhập chỉ còn một nét mảnh làm dấu.</span>
+        </span>
+      </button>
+    </div>
+  </section>
+
+  <section>
+    <h2>4. Ghép lại</h2>
+    <div class="result">
+      <div class="result-head">
+        <h3>Thanh <code>/reviews</code> ở 36px</h3>
+        <span class="pick" id="pick-summary"></span>
+      </div>
+      <div class="result-stage"><div class="strip ctl" id="result-bar"></div></div>
+    </div>
+    <p class="note">
+      Thứ tự đã theo ý bạn: ngày → tìm kiếm → nguồn → số sao → clear → columns.
+      Bộ lọc ngày ở đây vẽ theo phương án range picker; nếu bạn chọn đường thứ ba
+      (giữ ô gõ tay <em>và</em> lịch hai tháng) thì nút này rộng thêm khoảng 40px.
+    </p>
+  </section>
+
+</div>
+
+<script>
+  const ICON = {
+    list:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m8.5 12.5 2.5 2.5 4.5-5"/></svg>',
+    cross: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></svg>',
+    cal:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 11h18"/></svg>',
+    shape: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="8" cy="16" r="5"/><path d="M14.5 3.5 21 14h-9z"/></svg>',
+    cols:  '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>',
+    /* Path lấy NGUYÊN VĂN từ lucide-react 1.25.0 đang cài trong repo — bản vẽ
+       tay ở lượt trước sai hình. Hai ứng viên cho nút Clear: */
+    broom: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 22-1-4"/><path d="M19 14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-3a1 1 0 0 1-1-1V4a2 2 0 0 0-4 0v5a1 1 0 0 1-1 1H6a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1"/><path d="M19 14H5l-1.973 6.767A1 1 0 0 0 4 22h16a1 1 0 0 0 .973-1.233z"/><path d="m8 22 1-4"/></svg>',
+    funnel: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.531 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14v6a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341l.427-.473"/><path d="m16.5 3.5 5 5"/><path d="m21.5 3.5-5 5"/></svg>',
+    chev:  '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m6 9 6 6 6-6"/></svg>',
+  };
+
+  const tabsHtml = `
+    <span class="tabs">
+      <span class="tab">${ICON.list}All</span>
+      <span class="tab" aria-pressed="true">${ICON.clock}Pending</span>
+      <span class="tab">${ICON.check}Approved</span>
+      <span class="tab">${ICON.cross}Rejected</span>
+    </span>`;
+
+  document.querySelectorAll('[data-slot="tabs"]').forEach((el) => { el.innerHTML = tabsHtml; });
+
+  /* Lựa chọn đang bật của ba quyết định */
+  const picked = { tab: 'fixed', clear: 'soft', input: 'strong', icon: 'broom' };
+
+  const LABELS = {
+    tab: { naive: 'pill 32px', fixed: 'pill 28px' },
+    clear: { ghost: 'Clear ghost', soft: 'Clear đỏ nhạt', solid: 'Clear đỏ đặc' },
+    input: { strong: 'viền 0.66', filled: 'viền nhạt + nền', light: 'viền 0.902' },
+  };
+
+  const FIELD_STYLE = {
+    strong: 'oklch(0.66 0.012 250)|',
+    filled: 'oklch(0.902 0.005 250)|oklch(0.962 0.004 250)',
+    light: 'oklch(0.902 0.005 250)|',
+  };
+
+  const bar = document.getElementById('result-bar');
+  const summary = document.getElementById('pick-summary');
+
+  function render() {
+    const glyph = ICON[picked.icon];
+
+    // Ba specimen Clear và nút trên thanh kết quả dùng CHUNG một icon — đổi ở
+    // một chỗ là cả trang đổi theo, đúng như khi sửa vào code.
+    document.querySelectorAll('[data-clear-btn]').forEach((el) => {
+      el.innerHTML = (el.classList.contains('ghost') ? '' : glyph) + 'Clear filters';
+    });
+    document.querySelectorAll('.icon-pick').forEach((el) => {
+      el.querySelector('.icon-slot').innerHTML = ICON[el.dataset.icon];
+    });
+
+    const [line, fill] = FIELD_STYLE[picked.input].split('|');
+    const fieldStyle = `--field-line: ${line};${fill ? ` --field-fill: ${fill};` : ''}`;
+
+    bar.setAttribute('data-tab', picked.tab);
+    bar.innerHTML = `
+      ${tabsHtml}
+      <span class="btn">${ICON.cal}Sep 05 – Sep 22, 2026${ICON.chev}</span>
+      <span class="field w-search" style="${fieldStyle}"><span class="float-label">Search reviews</span></span>
+      <span class="btn">${ICON.shape}All sources${ICON.chev}</span>
+      <span class="btn">All ratings${ICON.chev}</span>
+      <span class="btn ${picked.clear}">${picked.clear === 'ghost' ? '' : glyph}Clear filters</span>
+      <span class="btn">${ICON.cols}Columns${ICON.chev}</span>`;
+
+    summary.textContent = [
+      LABELS.tab[picked.tab],
+      LABELS.clear[picked.clear],
+      picked.icon === 'broom' ? 'brush-cleaning' : 'funnel-x',
+      LABELS.input[picked.input],
+    ].join('  ·  ');
+  }
+
+  document.querySelectorAll('.options').forEach((group) => {
+    group.addEventListener('click', (event) => {
+      const opt = event.target.closest('.opt');
+      if (!opt) return;
+      const key = group.dataset.group;
+      picked[key] = opt.dataset.value;
+      group.querySelectorAll('.opt').forEach((el) => {
+        el.setAttribute('aria-pressed', String(el === opt));
+      });
+      render();
+    });
+  });
+
+  document.querySelector('.icon-row').addEventListener('click', (event) => {
+    const button = event.target.closest('.icon-pick');
+    if (!button) return;
+    picked.icon = button.dataset.icon;
+    document.querySelectorAll('.icon-pick').forEach((el) => {
+      el.setAttribute('aria-pressed', String(el === button));
+    });
+    render();
+  });
+
+  render();
+</script>
