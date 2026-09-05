@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-05 — Mô hình tài chính, xuất Excel, và ba vòng phụ (nhánh `fix/p4c-backend-logic`, 22 commit `231a4c7..cfad451`, 85 file, 2 migration)
+## 2026-09-05 — Mô hình tài chính, xuất Excel, và ba vòng phụ (nhánh `fix/p4c-backend-logic`, 24 commit `231a4c7..74b51c0`, 86 file, 2 migration)
 
 Đợt dài nhất từ đầu P4. Mở ra từ góp ý của giảng viên — *báo cáo nên xuất Excel
 thay vì CSV* — nhưng mở file ra thì vấn đề nằm sâu hơn một tầng: **không có con
@@ -117,13 +117,30 @@ migrate — không gì trong bộ test bắt được sự lệch giữa docker 
 Đã `migrate deploy` (user duyệt) và nghiệm thu bằng `information_schema` chứ
 không tin dòng "successfully applied".
 
+### Vòng chỉnh trình bày file Excel
+
+User mở bản xuất đầu và chốt: đúng số nhưng **trông như dữ liệu dán vào bảng
+tính** — mới có đậm nhạt, một nét kẻ và định dạng số. Dựng lại phần trình bày:
+dải tiêu đề nền thương hiệu chữ trắng, hai khối tiền trong *Summary* có dải
+riêng (chúng KHÔNG cộng vào nhau được nên phải thấy ngay là hai khối), viền bốn
+cạnh mọi ô dữ liệu, dải xen kẽ, nhãn canh trái · số canh phải, dòng tổng có
+viền trên đậm, dòng thành phần thụt lề. Số âm đổi sang `[Red]` — ngoặc là cách
+kế toán viết số âm, đỏ để mắt bắt được tháng lỗ mà không phải đọc từng ô.
+
+Bảng màu quy đổi từ CHÍNH token dự án (`oklch` → ARGB hex), mỗi hằng ghi kèm
+`oklch` gốc. **Ngoại lệ có chủ đích** với luật tokens-only, cùng họ với khối
+`@media print`: một file `.xlsx` không có CSS custom property nào để tham
+chiếu. Nghiệm thu bằng một file mẫu dựng từ chính code ấy, user mở rồi chốt —
+không commit file mẫu vào repo vì nó tái tạo được từ code, và bảy test mới đã
+khoá phần trình bày lại.
+
 **Review findings:** hook pre-commit chặn một lỗi thật trong spec Excel
 (`valueOf` che global) cộng chín `!` — thay bằng một helper ném lỗi có kèm danh
 sách sheet đang có. Dọn kèm 24 khoá copy chết, `date-picker-field.tsx` mồ côi,
 và `reportCsvRows` cùng bộ máy chỉ nó cần.
 
-**Tests after:** 2.916 unit (10 tokens · 232 contract · 22 ui · 2 i18n · 370 api
-· 842 admin · 1.438 web) và 382 integration. `build` chưa chạy được vì dev
+**Tests after:** 2.923 unit (10 tokens · 232 contract · 22 ui · 2 i18n · 370 api
+· 849 admin · 1.438 web) và 382 integration. `build` chưa chạy được vì dev
 server của user đang giữ `.next` — ghi nợ, phải xanh trước khi merge.
 
 ## 2026-09-05 — Review có trạng thái "đã bác", và tác giả có đường viết lại (nhánh `fix/p4c-backend-logic`, 7 commit `fbf0e09..d810a66`, ~40 file, 2 migration)
