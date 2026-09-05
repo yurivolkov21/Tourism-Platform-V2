@@ -39,6 +39,7 @@ describe('contract routes', () => {
     [contract.admin.enquiries.setStatus, 'POST /api/admin/enquiries/{id}/status'],
     [contract.admin.enquiries.addNote, 'POST /api/admin/enquiries/{id}/notes'],
     [contract.admin.stats.enquiries, 'GET /api/admin/stats/enquiries'],
+    [contract.admin.stats.dashboard, 'GET /api/admin/stats/dashboard'],
   ];
 
   it.each(routes)('procedure %# is mounted at %s', (procedure, expected) => {

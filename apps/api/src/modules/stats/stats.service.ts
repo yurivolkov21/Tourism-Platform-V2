@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import {
   type AdminBookingsStats,
   type AdminCancellationsStats,
+  type AdminDashboardQuery,
+  type AdminDashboardSeries,
   type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
@@ -21,6 +23,7 @@ import {
   enquiryWonCount,
   outboxSentCount,
   paidBookingsSlice,
+  paidByDay,
   paymentEventsSlice,
   revenueCurrency,
   reviewApprovals,
@@ -28,6 +31,8 @@ import {
 } from './stats-aggregates.js';
 import {
   average,
+  dashboardWindow,
+  fillDaySeries,
   grossAmount,
   ratePercent,
   statsPeriod,
@@ -99,6 +104,22 @@ import {
  *   LƯU Ý ĐỌC SỐ: đây là tỉ lệ theo LỨA đo tại thời điểm đọc — booking mới
  *   trả tiền hôm qua chưa kịp bị huỷ, nên kỳ này thường thấp hơn kỳ trước
  *   một chút vì lý do thuần thời gian.
+ *
+ * **dashboard** (P4d, ADR-0036 — CHUỖI theo ngày, không phải cặp hai kỳ)
+ * - `points[i].revenue` — `SUM(total_amount)` của booking có `paid_at` TRONG
+ *   NGÀY LỊCH UTC `points[i].date`, GROSS — ĐÚNG định nghĩa `revenue` ở
+ *   trên, chỉ chia nhỏ theo ngày: cộng mọi point của một khoảng phải ra
+ *   `revenue.current` của `bookings?from&to` cùng khoảng. Query đối chứng:
+ *   `SELECT date_trunc('day', paid_at), SUM(total_amount) FROM bookings WHERE paid_at >= $from AND paid_at < $to GROUP BY 1`.
+ * - `points[i].bookings` — `COUNT(*)` của CHÍNH tập ấy (= `paidBookings` theo
+ *   ngày). KHÔNG neo `created_at`: hai chuỗi trên một biểu đồ mà neo hai cột
+ *   thì tooltip một ngày kể hai chuyện mà không chỗ nào nói ra; card đứng
+ *   ngay trên đã tách bạch hai con số đó.
+ * - Cửa sổ: `days` ngày lịch gần nhất TÍNH CẢ hôm nay, kết ở lúc chốt sổ —
+ *   bucket cuối là bucket ĐANG CHẠY (nửa ngày thì nửa số). Ngày trống điền
+ *   `'0.00'`/0 ở tầng thuần (`fillDaySeries`): `points.length === days`, ngày
+ *   tăng dần, không lỗ. Admin KHÔNG cache (cùng luật F7–F10): kẻ ghi `paid_at`
+ *   là webhook provider (`claimSeatsForPaid`), ngoài mọi `updateTag`.
  *
  * **cancellations** (cửa sổ do admin chọn được — ADR-0028 §AMEND)
  * - `pendingQueue` — ẢNH CHỤP hàng đợi đang mở ở HAI ĐẦU kỳ, KHÔNG phải đếm
@@ -325,6 +346,31 @@ export class StatsService {
         current: ratePercent(current.cancelledOfPaid, current.paid),
         previous: ratePercent(previous.cancelledOfPaid, previous.paid),
       },
+    };
+  }
+
+  /**
+   * Chuỗi theo ngày cho biểu đồ dashboard `/` (ADR-0036). Hai query độc lập
+   * phát song song: hàng thưa theo ngày + đồng tiền của cả cửa sổ; điền 0 ở
+   * `fillDaySeries` để chuỗi luôn đủ `days` point.
+   */
+  async adminDashboard(query: AdminDashboardQuery): Promise<AdminDashboardSeries> {
+    const window = dashboardWindow(query.days, new Date());
+    const [rows, currency] = await Promise.all([
+      paidByDay(window.from, window.to),
+      revenueCurrency(window.from, window.to),
+    ]);
+
+    return {
+      period: {
+        days: window.days,
+        from: window.from.toISOString(),
+        to: window.to.toISOString(),
+        generatedAt: window.generatedAt.toISOString(),
+      },
+      // Cùng fallback 'USD' và cùng giới hạn một-đồng-tiền với `adminBookings`.
+      currency: currency ?? 'USD',
+      points: fillDaySeries(rows, window),
     };
   }
 

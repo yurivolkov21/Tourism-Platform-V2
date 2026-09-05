@@ -86,6 +86,8 @@ import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminDashboardQuerySchema,
+  AdminDashboardSeriesSchema,
   AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
@@ -790,6 +792,17 @@ export const contract = {
             'Newsletter sign-ups and opt-outs in the last 28 days (and the 28 before) + active snapshot',
         })
         .output(AdminSubscribersStatsSchema),
+      // P4d (ADR-0036): endpoint DUY NHẤT trả CHUỖI thay vì cặp hai kỳ — một
+      // point mỗi ngày lịch UTC, đủ `days` point (ngày trống điền 0), cả hai
+      // số neo `paid_at` như `revenue`/`paidBookings` của `bookings`.
+      dashboard: oc
+        .route({
+          method: 'GET',
+          path: '/api/admin/stats/dashboard',
+          summary: 'Daily revenue + paid bookings for the last 7/30/90 days (today included)',
+        })
+        .input(AdminDashboardQuerySchema)
+        .output(AdminDashboardSeriesSchema),
     },
     /**
      * Outbox email (spec P4c §3-F7) — bề mặt triage cho hàng đợi email mà

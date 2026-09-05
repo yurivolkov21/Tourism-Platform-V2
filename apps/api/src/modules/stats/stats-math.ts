@@ -1,6 +1,11 @@
-import { STATS_WINDOW_DAYS, type StatsPeriod } from '@tourism/contract';
+import {
+  type DashboardPoint,
+  type DashboardRangeDays,
+  STATS_WINDOW_DAYS,
+  type StatsPeriod,
+} from '@tourism/contract';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { startOfDayUtc } from '../../lib/calendar-date.js';
+import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
 
 /**
  * Phần THUẦN của stats (spec P4b §3-F5): cắt cửa sổ hai kỳ và biến kết quả
@@ -223,4 +228,76 @@ export function monthWindow(month: string): MonthWindow {
     // Tháng 13 tự cuộn thành tháng 1 năm sau — đúng theo spec Date.UTC.
     to: new Date(Date.UTC(year, monthNumber, 1)),
   };
+}
+
+// ───────────────────────────────────────────────────
+// Dashboard `/` — chuỗi theo NGÀY (ADR-0036)
+// ───────────────────────────────────────────────────
+
+/** Cửa sổ của chuỗi ngày: `[from, to)` với `to` là lúc chốt sổ. */
+export interface DashboardWindow {
+  days: DashboardRangeDays;
+  /** 00:00.000 UTC của ngày ĐẦU TIÊN trong chuỗi — TÍNH VÀO. */
+  from: Date;
+  /** Mốc chặn = `generatedAt`: bucket cuối (hôm nay) là bucket ĐANG CHẠY. */
+  to: Date;
+  generatedAt: Date;
+}
+
+/**
+ * `days` ngày lịch UTC gần nhất TÍNH CẢ hôm nay, kết ở đúng `now`.
+ *
+ * Khác `statsWindow` có chủ đích (ADR-0036 §2): ở đó neo vào `now` để hai kỳ
+ * dài bằng nhau (điều kiện của pill delta); ở đây không có phép so sánh nào
+ * để bảo vệ, còn người trực mở dashboard là để xem HÔM NAY — cắt hôm nay ra
+ * là giấu đúng point họ đang tìm. Nửa ngày thì nửa số, và `to === generatedAt`
+ * nói ra bucket cuối đầy tới đâu.
+ *
+ * Đầu cửa sổ căn 00:00.000 UTC (qua `calendarDate` → `startOfDayUtc`, cùng
+ * cặp hàm mà `createdAtRange`/`statsWindowFromRange` dùng) — cùng thước với
+ * `date_trunc('day', …)` bên SQL, nên bucket đầu tiên là một ngày TRỌN.
+ */
+export function dashboardWindow(days: DashboardRangeDays, now: Date): DashboardWindow {
+  const today = startOfDayUtc(calendarDate(now)).getTime();
+  return {
+    days,
+    from: new Date(today - (days - 1) * DAY_MS),
+    to: new Date(now.getTime()),
+    generatedAt: new Date(now.getTime()),
+  };
+}
+
+/** Một hàng `GROUP BY date_trunc('day', paid_at)` — `day` là 00:00 UTC của ngày đó. */
+export interface DayRow {
+  day: Date;
+  revenue: Prisma.Decimal | null;
+  bookings: number;
+}
+
+/**
+ * Hàng thưa của SQL → chuỗi ĐỦ `days` point, ngày tăng dần, không lỗ, không
+ * trùng — bất biến mà contract hứa với client (ADR-0036 §2).
+ *
+ * Điền 0 ở đây chứ không bằng `generate_series` bên SQL: "0 là câu trả lời
+ * thật, không phải thiếu dữ liệu" là quyết định của tầng dựng response, và
+ * tầng thuần test được từng biên mà không cần Postgres — cùng nếp Map thưa
+ * của `bookingsCreatedByStatus`.
+ *
+ * Hàng nằm NGOÀI cửa sổ bị bỏ qua chứ không kéo dài trục: SQL đã cắt
+ * `[from, to)`, nhưng độ dài chuỗi là bất biến của contract nên hàm này không
+ * dựa vào câu query để giữ nó.
+ */
+export function fillDaySeries(rows: DayRow[], window: DashboardWindow): DashboardPoint[] {
+  const byDate = new Map(rows.map((row) => [calendarDate(row.day), row] as const));
+  const points: DashboardPoint[] = [];
+  for (let i = 0; i < window.days; i += 1) {
+    const date = calendarDate(new Date(window.from.getTime() + i * DAY_MS));
+    const row = byDate.get(date);
+    points.push({
+      date,
+      revenue: grossAmount(row?.revenue ?? null),
+      bookings: row?.bookings ?? 0,
+    });
+  }
+  return points;
 }

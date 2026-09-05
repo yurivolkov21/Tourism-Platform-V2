@@ -1,6 +1,8 @@
 import { Prisma } from '../../generated/prisma/client.js';
 import {
   average,
+  dashboardWindow,
+  fillDaySeries,
   grossAmount,
   monthWindow,
   ratePercent,
@@ -227,5 +229,89 @@ describe('monthWindow', () => {
 
   it('hai tháng liền kề khít nhau — không row nào bị đếm hai lần', () => {
     expect(monthWindow('2026-09').to).toEqual(monthWindow('2026-10').from);
+  });
+});
+
+describe('dashboardWindow (ADR-0036)', () => {
+  it('spans the last N calendar days INCLUDING today, ending at the instant asked', () => {
+    // 7 ngày tính cả hôm nay (01/09): từ 00:00 UTC ngày 26/08 tới đúng `now`.
+    // Khác `statsWindow`: không có hai kỳ để so, và người trực mở dashboard là
+    // để xem HÔM NAY — bucket cuối là bucket đang chạy.
+    const w = dashboardWindow(7, NOW);
+    expect(w.days).toBe(7);
+    expect(w.from.toISOString()).toBe('2026-08-26T00:00:00.000Z');
+    expect(w.to.toISOString()).toBe('2026-09-01T10:30:00.000Z');
+    expect(w.generatedAt.toISOString()).toBe('2026-09-01T10:30:00.000Z');
+  });
+
+  it('90 days crosses month boundaries by the calendar, not by 30-day blocks', () => {
+    const w = dashboardWindow(90, NOW);
+    expect(w.from.toISOString()).toBe('2026-06-04T00:00:00.000Z');
+  });
+
+  it('starts at 00:00.000 UTC even when now is just past midnight', () => {
+    const w = dashboardWindow(30, new Date('2026-09-01T00:00:00.400Z'));
+    expect(w.from.toISOString()).toBe('2026-08-03T00:00:00.000Z');
+  });
+
+  it('does not mutate the instant it was handed', () => {
+    const now = new Date(NOW);
+    dashboardWindow(7, now);
+    expect(now.toISOString()).toBe(NOW.toISOString());
+  });
+});
+
+describe('fillDaySeries (ADR-0036)', () => {
+  const window = dashboardWindow(7, NOW);
+  const row = (date: string, revenue: string, bookings: number) => ({
+    day: new Date(`${date}T00:00:00.000Z`),
+    revenue: new Prisma.Decimal(revenue),
+    bookings,
+  });
+
+  it('emits exactly one point per calendar day, ascending, with zeros for empty days', () => {
+    const points = fillDaySeries([row('2026-08-28', '120.50', 2)], window);
+    expect(points).toHaveLength(7);
+    expect(points.map((p) => p.date)).toEqual([
+      '2026-08-26',
+      '2026-08-27',
+      '2026-08-28',
+      '2026-08-29',
+      '2026-08-30',
+      '2026-08-31',
+      '2026-09-01',
+    ]);
+    expect(points[2]).toEqual({ date: '2026-08-28', revenue: '120.50', bookings: 2 });
+    // Ngày trống là '0.00'/0 — câu trả lời thật, không phải thiếu dữ liệu.
+    expect(points[0]).toEqual({ date: '2026-08-26', revenue: '0.00', bookings: 0 });
+    expect(points[6]).toEqual({ date: '2026-09-01', revenue: '0.00', bookings: 0 });
+  });
+
+  it('keeps money as a two-decimal string — never a float', () => {
+    const [first] = fillDaySeries([row('2026-08-26', '1000', 1)], window);
+    expect(first?.revenue).toBe('1000.00');
+  });
+
+  it('fills both edges of the window (first and last day carry their rows)', () => {
+    const points = fillDaySeries(
+      [row('2026-08-26', '1.00', 1), row('2026-09-01', '2.00', 1)],
+      window,
+    );
+    expect(points[0]?.revenue).toBe('1.00');
+    expect(points[6]?.revenue).toBe('2.00');
+  });
+
+  it('ignores rows outside the window instead of growing the series', () => {
+    // Phòng thủ: SQL đã cắt `[from, to)`, nhưng hàm thuần không được tin
+    // điều đó bằng cách kéo dài trục — độ dài chuỗi là bất biến của contract.
+    const points = fillDaySeries([row('2026-08-25', '999.00', 9)], window);
+    expect(points).toHaveLength(7);
+    expect(points.every((p) => p.revenue === '0.00' && p.bookings === 0)).toBe(true);
+  });
+
+  it('an empty window (no rows at all) is a full series of zeros', () => {
+    const points = fillDaySeries([], dashboardWindow(30, NOW));
+    expect(points).toHaveLength(30);
+    expect(points.at(-1)?.date).toBe('2026-09-01');
   });
 });

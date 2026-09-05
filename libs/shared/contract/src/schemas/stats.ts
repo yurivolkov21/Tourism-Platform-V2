@@ -348,3 +348,83 @@ export const AdminSubscribersStatsSchema = z.object({
   active: z.int().nonnegative(),
 });
 export type AdminSubscribersStats = z.output<typeof AdminSubscribersStatsSchema>;
+
+// ───────────────────────────────────────────────────
+// Dashboard `/` — chuỗi theo NGÀY cho biểu đồ (ADR-0036)
+// ───────────────────────────────────────────────────
+
+/**
+ * Ba độ dài mà bộ chọn 7/30/90 của biểu đồ dashboard có. Literal chứ không
+ * phải số tự do (ADR-0036 §2): "42 ngày" không có nút nào gọi ra, và một tham
+ * số mở là một trần phải nghĩ (10 năm = 3650 point). Ngày dashboard có ô ngày
+ * thật thì mở, kèm trần — không phải bây giờ.
+ */
+export const DASHBOARD_RANGE_DAYS = [7, 30, 90] as const;
+export type DashboardRangeDays = (typeof DASHBOARD_RANGE_DAYS)[number];
+
+/**
+ * `z.union` của ba literal đơn chứ KHÔNG `z.literal([7, 30, 90])`: bản đa
+ * giá trị của Zod 4 ném khi ai đó đọc `.value` (đường suy kiểu/duyệt schema
+ * của oRPC đụng đúng chỗ đó — `contract.spec` đỏ ngay lúc import).
+ *
+ * `z.int().pipe(...)` ở INPUT vì `ZodSmartCoercionPlugin` KHÔNG ép chuỗi
+ * cho union của primitive (nhánh `union` của nó chỉ so `propValues` của
+ * object); nhánh `pipe` thì ép theo schema `in` — `"30"` trên query string
+ * thành `30` rồi union literal mới xét. Output vẫn là `7 | 30 | 90`.
+ */
+const DashboardRangeDaysSchema = z.union([z.literal(7), z.literal(30), z.literal(90)]);
+const DashboardRangeDaysInputSchema = z.int().pipe(DashboardRangeDaysSchema);
+
+/**
+ * Input của `admin.stats.dashboard`. Mặc định 90 — trang `/` fetch MỘT lần ở
+ * độ dài lớn nhất rồi bộ chọn cắt đuôi ở client (bucket là ngày lịch UTC cố
+ * định nên 7 point cuối của chuỗi 90 CHÍNH LÀ chuỗi 7 ngày). Tham số tồn tại
+ * để endpoint tự mô tả và cho consumer sau (P5 mobile chỉ cần 7).
+ *
+ * Trên URL nó là `?days=30`; `ZodSmartCoercionPlugin` bên API ép chuỗi thành
+ * số theo shape — object PHẲNG, không `.refine`, để plugin đi được tới literal.
+ */
+export const AdminDashboardQuerySchema = z.object({
+  days: DashboardRangeDaysInputSchema.default(90),
+});
+export type AdminDashboardQuery = z.output<typeof AdminDashboardQuerySchema>;
+
+/**
+ * Một point = một NGÀY LỊCH UTC. Cả hai số neo `paid_at` — cùng tập với
+ * `revenue`/`paidBookings` của `AdminBookingsStatsSchema`, chỉ chia nhỏ theo
+ * ngày: cộng mọi point của một khoảng phải ra đúng `revenue.current` của
+ * `admin.stats.bookings?from&to` cùng khoảng. Định nghĩa đầy đủ ở JSDoc
+ * `StatsService`.
+ */
+export const DashboardPointSchema = z.object({
+  /** `YYYY-MM-DD` (UTC) — bucket là ngày, giờ giấc là chuyện của API. */
+  date: CalendarDateSchema,
+  /** Tiền THU trong ngày, gross — '0.00' cho ngày trống (là câu trả lời thật). */
+  revenue: DecimalStringSchema,
+  /** Số booking đã trả tiền trong ngày — cùng tập với `revenue`. */
+  bookings: z.int().nonnegative(),
+});
+export type DashboardPoint = z.output<typeof DashboardPointSchema>;
+
+/**
+ * Chuỗi cho biểu đồ dashboard. `points` LUÔN đủ `period.days` phần tử, ngày
+ * tăng dần, không lỗ, không trùng — ngày không có dữ liệu được API điền 0
+ * (ADR-0036 §2) nên client không phải tự dựng trục thời gian.
+ */
+export const AdminDashboardSeriesSchema = z.object({
+  period: z.object({
+    days: DashboardRangeDaysSchema,
+    /** 00:00 UTC của ngày đầu tiên trong chuỗi — TÍNH VÀO. */
+    from: z.iso.datetime(),
+    /**
+     * Mốc chặn — KHÔNG tính vào, và bằng `generatedAt`: cửa sổ kết ở lúc chốt
+     * sổ nên bucket cuối (hôm nay) là bucket ĐANG CHẠY, nửa ngày thì nửa số.
+     */
+    to: z.iso.datetime(),
+    generatedAt: z.iso.datetime(),
+  }),
+  /** Đồng tiền của `revenue` — cùng cách lấy và cùng giới hạn một-đồng-tiền với `AdminBookingsStatsSchema.currency`. */
+  currency: z.string().length(3),
+  points: z.array(DashboardPointSchema),
+});
+export type AdminDashboardSeries = z.output<typeof AdminDashboardSeriesSchema>;

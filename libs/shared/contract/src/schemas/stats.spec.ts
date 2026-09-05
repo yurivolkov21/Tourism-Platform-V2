@@ -1,6 +1,8 @@
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminDashboardQuerySchema,
+  AdminDashboardSeriesSchema,
   AdminReviewsStatsSchema,
   AdminStatsRangeQuerySchema,
   CountMetricSchema,
@@ -163,5 +165,53 @@ describe('area stat schemas', () => {
         averageRating: { current: '4.60', previous: '4.20' },
       }),
     ).toThrow();
+  });
+});
+
+describe('AdminDashboardQuerySchema (ADR-0036)', () => {
+  // Ba giá trị mà bộ chọn 7/30/90 của biểu đồ có — không phải số tự do:
+  // "42 ngày" không có nút nào gọi ra, và một tham số mở là một trần phải nghĩ.
+  it('accepts exactly the three chart ranges, defaulting to 90', () => {
+    expect(AdminDashboardQuerySchema.parse({})).toEqual({ days: 90 });
+    expect(AdminDashboardQuerySchema.parse({ days: 7 })).toEqual({ days: 7 });
+    expect(AdminDashboardQuerySchema.parse({ days: 30 })).toEqual({ days: 30 });
+  });
+
+  it('rejects any other length', () => {
+    expect(AdminDashboardQuerySchema.safeParse({ days: 42 }).success).toBe(false);
+    expect(AdminDashboardQuerySchema.safeParse({ days: 0 }).success).toBe(false);
+    expect(AdminDashboardQuerySchema.safeParse({ days: '7d' }).success).toBe(false);
+  });
+});
+
+describe('AdminDashboardSeriesSchema (ADR-0036)', () => {
+  const point = { date: '2026-09-04', revenue: '1240.50', bookings: 3 };
+  const series = {
+    period: {
+      days: 7,
+      from: '2026-08-29T00:00:00.000Z',
+      to: '2026-09-04T10:30:00.000Z',
+      generatedAt: '2026-09-04T10:30:00.000Z',
+    },
+    currency: 'USD',
+    points: [point],
+  };
+
+  it('carries the window, the currency and one point per calendar day', () => {
+    expect(AdminDashboardSeriesSchema.parse(series)).toEqual(series);
+  });
+
+  it('points are calendar dates with money-as-string and integer counts', () => {
+    const bad = (patch: Partial<typeof point>) =>
+      AdminDashboardSeriesSchema.safeParse({ ...series, points: [{ ...point, ...patch }] }).success;
+    // Ngày lịch, không phải mốc ISO: bucket là NGÀY, giờ giấc là chuyện của API.
+    expect(bad({ date: '2026-09-04T00:00:00.000Z' })).toBe(false);
+    expect(bad({ revenue: 1240.5 as unknown as string })).toBe(false);
+    expect(bad({ bookings: 1.5 })).toBe(false);
+    expect(bad({ bookings: -1 })).toBe(false);
+  });
+
+  it('an empty window is still a well-formed series', () => {
+    expect(AdminDashboardSeriesSchema.parse({ ...series, points: [] }).points).toEqual([]);
   });
 });

@@ -7,6 +7,7 @@ import {
   EnquiryStatus,
   OutboxStatus,
 } from '../../generated/prisma/enums.js';
+import type { DayRow } from './stats-math.js';
 
 /**
  * Các câu AGGREGATE dùng chung của bề mặt số liệu admin — một khoảng
@@ -402,4 +403,38 @@ export async function fixedCostSlice(from: Date, to: Date) {
     departures: Number(row?.departures ?? 0),
     costMissing: Number(row?.cost_missing ?? 0),
   };
+}
+
+/**
+ * Doanh thu + số đơn ĐÃ TRẢ TIỀN theo từng NGÀY trong `[from, to)` — nguồn
+ * của biểu đồ dashboard (ADR-0036 §2). Cùng tập, cùng cột neo (`paid_at`,
+ * gross) với `paidBookingsSlice`: cộng mọi hàng của một khoảng phải ra đúng
+ * `revenue`/`paid` của slice cùng khoảng — đó là phép đối chứng.
+ *
+ * Raw SQL vì Prisma `groupBy` không group theo BIỂU THỨC (`date_trunc`), và
+ * hai con số cùng một lượt quét chụp cùng một khoảnh khắc (cùng lý do
+ * `subscribersStats`). `date_trunc('day', …)` trên cột `timestamp` không tz
+ * mà mọi đường ghi đều UTC → ngày UTC, khớp `calendarDate()` bên response;
+ * không `AT TIME ZONE` nào chen vào.
+ *
+ * Trả về THƯA (chỉ ngày có row) — điền 0 là việc của `fillDaySeries`. `day`
+ * về từ driver là `Date` 00:00 UTC; `COUNT` là bigint nên ép `Number` ở đây.
+ */
+export async function paidByDay(from: Date, to: Date): Promise<DayRow[]> {
+  const rows = await prisma.$queryRaw<{ day: Date; revenue: Prisma.Decimal; bookings: bigint }[]>(
+    Prisma.sql`
+      SELECT date_trunc('day', paid_at) AS day,
+             SUM(total_amount)          AS revenue,
+             COUNT(*)                   AS bookings
+      FROM bookings
+      WHERE paid_at >= ${from} AND paid_at < ${to}
+      GROUP BY 1
+      ORDER BY 1
+    `,
+  );
+  return rows.map((row) => ({
+    day: row.day,
+    revenue: row.revenue,
+    bookings: Number(row.bookings),
+  }));
 }

@@ -3,6 +3,7 @@ import { Test } from '@nestjs/testing';
 import {
   AdminBookingsStatsSchema,
   AdminCancellationsStatsSchema,
+  AdminDashboardSeriesSchema,
   AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
   AdminPaymentEventsStatsSchema,
@@ -234,7 +235,7 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ BẢY path', () => {
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ TÁM path', () => {
     // Tham số hoá cả sáu (vòng vá review F5): guard đặt ở cấp class, nhưng
     // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
     for (const area of [
@@ -245,6 +246,7 @@ describe('admin stats integration (F5)', () => {
       'payment-events',
       'enquiries',
       'subscribers',
+      'dashboard',
     ] as const) {
       it(`${area}: ẩn danh → 401, khách thường → 403`, async () => {
         const anon = await app.inject({ method: 'GET', url: `/api/admin/stats/${area}` });
@@ -498,6 +500,167 @@ describe('admin stats integration (F5)', () => {
       expect(stats.revenue).toEqual({ current: '0.00', previous: '0.00' });
       expect(stats.paidBookings).toEqual({ current: 0, previous: 0 });
       expect(stats.cancellationRate).toEqual({ current: null, previous: null });
+    });
+  });
+
+  describe('stats.dashboard (ADR-0036) — chuỗi theo ngày', () => {
+    /** 00:00.000 UTC của HÔM NAY — mốc mà mọi bucket ngày tính từ đó. */
+    const todayUtc = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00.000Z`);
+    /** Mốc "N ngày trước, lúc 12:00 UTC" — xa cả hai biên nửa đêm. */
+    const noonDaysAgo = (days: number) =>
+      new Date(todayUtc.getTime() - days * DAY + 12 * 3_600_000);
+    const dateDaysAgo = (days: number) =>
+      new Date(todayUtc.getTime() - days * DAY).toISOString().slice(0, 10);
+
+    beforeEach(async () => {
+      await prisma.booking.createMany({
+        data: [
+          // Hôm nay: ĐÚNG 00:00.000 — biên đầu ngày, tính vào bucket hôm nay.
+          booking(301, {
+            status: BookingStatus.PAID,
+            total: '100.00',
+            createdAt: todayUtc,
+            paidAt: todayUtc,
+          }),
+          // Hôm qua: giây áp chót — vẫn là bucket HÔM QUA (nửa-mở, không lùi
+          // sang hôm nay và không bị `23:59:59` bỏ rơi).
+          booking(302, {
+            status: BookingStatus.PAID,
+            total: '10.00',
+            createdAt: new Date(todayUtc.getTime() - 500),
+            paidAt: new Date(todayUtc.getTime() - 500),
+          }),
+          // Hai đơn cùng một ngày (3 ngày trước) — một bucket cộng dồn.
+          booking(303, {
+            status: BookingStatus.PAID,
+            total: '20.00',
+            createdAt: noonDaysAgo(3),
+            paidAt: noonDaysAgo(3),
+          }),
+          booking(304, {
+            status: BookingStatus.CANCELLED,
+            total: '5.00',
+            createdAt: noonDaysAgo(3),
+            paidAt: noonDaysAgo(3),
+          }),
+          // 10 ngày trước: ngoài dải 7, trong dải 30/90.
+          booking(305, {
+            status: BookingStatus.PAID,
+            total: '1000.00',
+            createdAt: noonDaysAgo(10),
+            paidAt: noonDaysAgo(10),
+          }),
+          // 100 ngày trước: ngoài cả 90.
+          booking(306, {
+            status: BookingStatus.PAID,
+            total: '9999.00',
+            createdAt: noonDaysAgo(100),
+            paidAt: noonDaysAgo(100),
+          }),
+          // Tạo hôm nay nhưng CHƯA trả tiền: không có trong chuỗi (neo paid_at).
+          booking(307, {
+            status: BookingStatus.PENDING,
+            total: '777.00',
+            createdAt: noonDaysAgo(0),
+            paidAt: null,
+          }),
+        ],
+      });
+    });
+
+    it('mặc định 90 point, ngày tăng dần, kết ở HÔM NAY, ngày trống điền 0', async () => {
+      const res = await get('dashboard', adminCookie);
+      expect(res.statusCode).toBe(200);
+      const series = AdminDashboardSeriesSchema.parse(res.json());
+
+      expect(series.period.days).toBe(90);
+      expect(series.points).toHaveLength(90);
+      expect(series.points.at(-1)?.date).toBe(dateDaysAgo(0));
+      expect(series.points[0]?.date).toBe(dateDaysAgo(89));
+      expect(series.period.from).toBe(`${dateDaysAgo(89)}T00:00:00.000Z`);
+      // Cửa sổ kết ở lúc chốt sổ — bucket hôm nay là bucket đang chạy.
+      expect(series.period.to).toBe(series.period.generatedAt);
+      // Ngày tăng dần, không trùng.
+      const dates = series.points.map((p) => p.date);
+      expect([...dates].sort()).toEqual(dates);
+      expect(new Set(dates).size).toBe(dates.length);
+      // Booking 306 (100 ngày) không có mặt; ngày 50 ngày trước trống.
+      expect(series.points[39]).toEqual({ date: dateDaysAgo(50), revenue: '0.00', bookings: 0 });
+      expect(series.currency).toBe('USD');
+    });
+
+    it('bucket cắt theo ngày lịch UTC, biên nửa-mở — 00:00.000 vào hôm nay, 23:59:59.5 ở lại hôm qua', async () => {
+      const series = AdminDashboardSeriesSchema.parse(
+        (await get('dashboard', adminCookie, '?days=7')).json(),
+      );
+      const byDate = new Map(series.points.map((p) => [p.date, p]));
+      expect(byDate.get(dateDaysAgo(0))).toEqual({
+        date: dateDaysAgo(0),
+        revenue: '100.00',
+        bookings: 1,
+      });
+      expect(byDate.get(dateDaysAgo(1))).toEqual({
+        date: dateDaysAgo(1),
+        revenue: '10.00',
+        bookings: 1,
+      });
+      // Hai đơn cùng ngày cộng dồn — kể cả đơn đã CANCELLED sau khi trả (gross).
+      expect(byDate.get(dateDaysAgo(3))).toEqual({
+        date: dateDaysAgo(3),
+        revenue: '25.00',
+        bookings: 2,
+      });
+      expect(byDate.get(dateDaysAgo(2))).toEqual({
+        date: dateDaysAgo(2),
+        revenue: '0.00',
+        bookings: 0,
+      });
+    });
+
+    it('`?days=7` ép từ QUERY STRING thành số (ZodSmartCoercion) và cắt đúng 7 ngày', async () => {
+      const series = AdminDashboardSeriesSchema.parse(
+        (await get('dashboard', adminCookie, '?days=7')).json(),
+      );
+      expect(series.period.days).toBe(7);
+      expect(series.points).toHaveLength(7);
+      expect(series.points[0]?.date).toBe(dateDaysAgo(6));
+      // Booking 305 (10 ngày trước) nằm ngoài dải 7.
+      const total = series.points.reduce((sum, p) => sum + Number(p.revenue), 0);
+      expect(total).toBe(135);
+    });
+
+    it('cộng mọi point của dải 30 = revenue/paidBookings của `bookings?from&to` cùng khoảng', async () => {
+      // Phép đối chứng mà ADR-0036 §2 hứa: chuỗi là card chia nhỏ theo ngày.
+      const series = AdminDashboardSeriesSchema.parse(
+        (await get('dashboard', adminCookie, '?days=30')).json(),
+      );
+      const stats = AdminBookingsStatsSchema.parse(
+        (
+          await get('bookings', adminCookie, `?from=${dateDaysAgo(29)}&to=${dateDaysAgo(0)}`)
+        ).json(),
+      );
+      const revenue = series.points.reduce((sum, p) => sum + Number(p.revenue), 0);
+      const bookings = series.points.reduce((sum, p) => sum + p.bookings, 0);
+      expect(revenue.toFixed(2)).toBe(stats.revenue.current);
+      expect(bookings).toBe(stats.paidBookings.current);
+      expect(revenue).toBe(1135);
+    });
+
+    it('độ dài ngoài 7/30/90 bị contract từ chối — 400', async () => {
+      expect((await get('dashboard', adminCookie, '?days=42')).statusCode).toBe(400);
+      expect((await get('dashboard', adminCookie, '?days=abc')).statusCode).toBe(400);
+      expect((await get('dashboard', adminCookie, '?days=0')).statusCode).toBe(400);
+    });
+  });
+
+  describe('stats.dashboard — kỳ rỗng', () => {
+    it('không có booking nào: vẫn đủ point, toàn 0, currency mặc định', async () => {
+      const series = AdminDashboardSeriesSchema.parse(
+        (await get('dashboard', adminCookie, '?days=7')).json(),
+      );
+      expect(series.points).toHaveLength(7);
+      expect(series.points.every((p) => p.revenue === '0.00' && p.bookings === 0)).toBe(true);
+      expect(series.currency).toBe('USD');
     });
   });
 
