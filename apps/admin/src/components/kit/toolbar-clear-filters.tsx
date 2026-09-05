@@ -32,9 +32,13 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  * để tìm ra: không ghim trang thì từ trang 2 trở đi hai chuỗi khác nhau CHỈ
  * VÌ `page`, và phép so luôn nói "có gì đó để xoá".
  *
- * Nhờ vậy `/bookings` tự đúng mà không cần ca riêng: trang ấy độn sẵn khoảng
- * tháng hiện tại vào URL trần, nên "đang lọc tháng này, không tìm gì" cho ra
- * hai href bằng nhau và nút tự ẩn — thay vì bày ra một nút xoá không xoá gì.
+ * `/bookings` là NGOẠI LỆ có chủ đích, và nút KHÔNG tự ẩn ở đó: trang ấy độn
+ * sẵn tháng hiện tại vào URL trần, nên href-đã-xoá là `?dates=all` và luôn
+ * khác href-hiện-tại. Đó là đúng ý — `?dates=all` là đường DUY NHẤT về "xem
+ * tất cả" (spec polish 2) — nhưng lúc chỉ còn tháng mặc định thì nút phải
+ * ĐỔI NHÃN thành "show all dates" chứ không được nói "clear filters" cho một
+ * việc làm bảng RỘNG ra (vùng tự chọn nhãn; vòng vá review 05/09 — bản đầu
+ * của JSDoc này khẳng định nút tự ẩn, sai).
  */
 export function ToolbarClearFilters({
   label,

@@ -96,4 +96,10 @@ describe('WizardSteps', () => {
       expect(screen.getByRole('tab', { name })).toHaveAttribute('aria-controls', 'panel');
     }
   });
+
+  it('`active` lạ không làm cả thanh mất điểm vào bàn phím — kẹp về bước đầu', () => {
+    renderBar({ active: 'nope' });
+
+    expect(screen.getByRole('tab', { name: 'One' })).toHaveAttribute('tabindex', '0');
+  });
 });

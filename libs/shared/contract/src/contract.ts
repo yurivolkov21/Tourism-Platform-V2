@@ -701,9 +701,9 @@ export const contract = {
      *
      * Input: chỉ vùng NÀO CÓ bộ lọc ngày trên trang mới có, và luôn optional
      * (ADR-0028) — hàng card ăn theo hai ô ngày của bảng ngay dưới nó, thiếu
-     * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings` và
-     * `cancellations`, cùng dùng `AdminStatsRangeQuerySchema` chứ không mỗi
-     * vùng một bản. Năm endpoint còn lại KHÔNG có input: trang của chúng chưa
+     * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings`,
+     * `cancellations` và `reviews`, cùng dùng `AdminStatsRangeQuerySchema` chứ
+     * không mỗi vùng một bản. Bốn endpoint còn lại KHÔNG có input: trang của chúng chưa
      * có bộ lọc ngày nào, và thêm một tham số không ai gửi là thêm một nhánh
      * không ai test. Vùng nào mọc bộ lọc ngày thì lặp lại đúng khuôn ấy, đừng
      * dựng cửa sổ thứ hai.

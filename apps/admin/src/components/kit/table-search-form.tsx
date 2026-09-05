@@ -130,7 +130,8 @@ function FloatingSearchInput({
         // mặc định `Input` là `dark:bg-input/30`, lệch tông thì chỗ nhãn cắt
         // viền trông như một miếng vá. (Bản registry cũng đắp đúng class này.)
         // `border-border` ĐÈ `border-input` mặc định của `Input` (twMerge giữ
-        // cái sau — hai class cùng thuộc tính `border-color`). Xem `SEARCH_BORDER`.
+        // cái sau — hai class cùng thuộc tính `border-color`); lý do ở khối
+        // JSDoc phía trên (`--input` → `--border` chỉ cho ô tìm kiếm).
         className={`w-40 border-border dark:bg-background lg:w-56 ${TOOLBAR_FIELD}`}
       />
     </div>

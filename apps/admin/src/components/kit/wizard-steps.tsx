@@ -47,6 +47,11 @@ export interface WizardStep {
   icon: ReactNode;
 }
 
+/** `id` của nút tab một bước — thanh và panel cùng gọi để trỏ vào nhau. */
+function wizardTabId(panelId: string, stepId: string): string {
+  return `${panelId}-tab-${stepId}`;
+}
+
 export function WizardSteps({
   steps,
   active,
@@ -68,7 +73,12 @@ export function WizardSteps({
 }) {
   const reduced = useReducedMotion();
   const listRef = useRef<HTMLDivElement>(null);
-  const activeIndex = steps.findIndex((step) => step.id === active);
+  // Kẹp về 0 khi `active` không thuộc `steps` (kiểu mở — chuỗi bất kỳ): -1 làm
+  // `scaleX` âm và MỌI tab `tabIndex=-1`, tức cả thanh mất điểm vào bàn phím.
+  const activeIndex = Math.max(
+    0,
+    steps.findIndex((step) => step.id === active),
+  );
   const lastIndex = steps.length - 1;
   const progress = lastIndex > 0 ? activeIndex / lastIndex : 0;
 
@@ -131,6 +141,7 @@ export function WizardSteps({
               <button
                 type="button"
                 role="tab"
+                id={wizardTabId(panelId, step.id)}
                 aria-selected={isActive}
                 aria-controls={panelId}
                 // Tên của tab LÀ cái nhãn đang hiện dưới vòng tròn. Nhãn nằm
@@ -253,7 +264,9 @@ export function WizardPanel({
 }) {
   const reduced = useReducedMotion();
   return (
-    <div id={panelId} role="tabpanel">
+    // `aria-labelledby` trỏ ngược về tab đang mở — quan hệ tab ↔ panel phải
+    // hai chiều, `aria-controls` một mình chỉ là nửa.
+    <div id={panelId} role="tabpanel" aria-labelledby={wizardTabId(panelId, stepId)}>
       {/* KHÔNG bọc `AnimatePresence mode="wait"` như bản gốc: nó giữ khung RỖNG
           suốt thời gian exit của bước cũ, mà các bước ở đây cao thấp khác nhau
           nên dialog sập xuống rồi phình lại mỗi lần bấm Continue. Bản gốc

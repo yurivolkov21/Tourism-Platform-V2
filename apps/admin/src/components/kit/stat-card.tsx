@@ -70,8 +70,9 @@ export function StatCardRow({
     </div>
   );
 
-  // Không có khoảng: giữ NGUYÊN cây DOM cũ (section chính là lưới) để sáu vùng
-  // kia không đổi một pixel nào.
+  // Không có khoảng: section chỉ bọc lưới, không có dòng kỳ — bốn vùng không
+  // lọc ngày nhìn y như trước khi có `period` (lưới nằm trong `div` riêng ở
+  // cả hai nhánh, section không còn là lưới).
   return period ? (
     <section aria-label={t.regionLabel} className="grid gap-2 px-4 lg:px-6">
       <p data-testid="stat-period" className="text-sm text-muted-foreground">

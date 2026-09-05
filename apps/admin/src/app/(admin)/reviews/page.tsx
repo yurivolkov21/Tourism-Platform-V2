@@ -9,7 +9,7 @@ import { getServerSession } from '@/lib/api/session';
 import { fetchAdminReviewsStats } from '@/lib/api/stats';
 import { parseReviewsSearchParams, reviewsHref } from '@/lib/reviews-query';
 import { toReviewRow } from '@/lib/reviews-view';
-import { toReviewsStatCards } from '@/lib/stats-view';
+import { statsPeriodLabel, toReviewsStatCards } from '@/lib/stats-view';
 import { orphanPageHref, type RawSearchParams } from '@/lib/table-query';
 import { moderateReviewAction } from './actions';
 
@@ -63,7 +63,7 @@ export default async function ReviewsPage({
 
   return (
     <AdminShell user={session}>
-      <StatCardRow cards={toReviewsStatCards(stats)} />
+      <StatCardRow cards={toReviewsStatCards(stats)} period={statsPeriodLabel(stats.period)} />
       <ReviewsTable
         rows={paged.items.map(toReviewRow)}
         query={query}

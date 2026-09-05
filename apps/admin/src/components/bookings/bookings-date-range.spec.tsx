@@ -103,6 +103,32 @@ describe('BookingsDateRange', () => {
     expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
   });
 
+  it('THU HẸP một khoảng đang lọc: cú bấm đầu mở khoảng MỚI, không nối vào khoảng cũ', async () => {
+    // Vòng vá review 05/09: nháp gieo từ URL là một khoảng đủ hai đầu, và
+    // `addToRange` của react-day-picker khi ấy SỬA ĐUÔI khoảng cũ thay vì mở
+    // khoảng mới — bấm 10 rồi 20 trên 01–30 từng cho ra 01–20. Đây là thao
+    // tác thu hẹp phổ biến nhất trên màn hình mặc định (độn trọn tháng).
+    const user = userEvent.setup();
+    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
+    const calendar = await openCalendar(user);
+
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+
+    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
+  });
+
+  it('bấm mốc SAU rồi mốc TRƯỚC vẫn ra khoảng xuôi', async () => {
+    const user = userEvent.setup();
+    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
+    const calendar = await openCalendar(user);
+
+    await user.click(calendar.getByRole('button', { name: /September 20th, 2026/i }));
+    await user.click(calendar.getByRole('button', { name: /September 10th, 2026/i }));
+
+    expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-10&to=2026-09-20');
+  });
+
   it('chọn lại ĐÚNG khoảng đang lọc thì đứng yên, không fetch lại cả trang', async () => {
     const user = userEvent.setup();
     render(<BookingsDateRange query={{ ...BASE, from: '2026-09-10', to: '2026-09-20' }} />);

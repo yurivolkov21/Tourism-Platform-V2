@@ -165,7 +165,8 @@ export function ToolbarDateRange({
         // Mở ra là gieo lại nháp từ URL: đóng giữa chừng rồi mở lại phải thấy
         // khoảng ĐANG lọc, không phải nửa khoảng bỏ dở lần trước.
         // Mỗi lần mở là một khoảng mới bắt đầu từ đầu: cú bấm kế tiếp luôn là
-        // mốc ĐẦU, kể cả khi URL đang mang sẵn một khoảng.
+        // mốc ĐẦU, kể cả khi URL đang mang sẵn một khoảng — `onSelect` ép điều
+        // đó, vì DayPicker một mình thì không (xem ghi chú ở đó).
         if (next) {
           setDraft(applied);
           setAwaitingEnd(false);
@@ -204,17 +205,24 @@ export function ToolbarDateRange({
           endMonth={new Date(thisYear + FUTURE_YEARS, 11)}
           defaultMonth={parseIsoDate(from) ?? parseIsoDate(to)}
           selected={draft}
-          onSelect={(range) => {
-            setDraft(range);
-            if (!range?.from) {
-              setAwaitingEnd(false);
-              return;
-            }
+          // Nhận cả `day` (mốc vừa bấm) chứ không chỉ `range`: khi nháp đang
+          // là một khoảng ĐỦ HAI ĐẦU (gieo từ URL), `addToRange` của
+          // react-day-picker KHÔNG mở khoảng mới mà SỬA ĐUÔI khoảng cũ — bấm
+          // 10/09 rồi 20/09 trên URL 01–30/09 cho ra 01–20/09 (vòng vá review
+          // 05/09, tái hiện bằng test). Cú bấm đầu vì thế ép thẳng
+          // `{ from: day }` và bỏ qua thứ DayPicker vừa tính.
+          onSelect={(range, day) => {
             if (!awaitingEnd) {
+              setDraft({ from: day, to: undefined });
               setAwaitingEnd(true);
               return;
             }
             setAwaitingEnd(false);
+            if (!range?.from || !range.to) {
+              setDraft(range);
+              return;
+            }
+            setDraft(range);
             commit(range);
           }}
         />

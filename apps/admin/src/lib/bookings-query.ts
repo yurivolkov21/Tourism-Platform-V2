@@ -229,13 +229,19 @@ export function bookingDetailHref(current: BookingsQuery, code: string): string 
  * đọc của bảng.
  *
  * KHÔNG có tham số nào = vào thẳng URL chi tiết, hoặc tới từ `BookingLink` của
- * `/payment-events` và `/cancellations`. Lúc ấy không có bộ lọc nào để giữ,
- * nên trả `/bookings` TRẦN và để lượt parse kế độn tháng hiện tại — mặc định
- * của vùng.
+ * `/payment-events` và `/cancellations`. Lúc ấy KHÔNG biết booking này thuộc
+ * tháng nào, nên trả `?dates=all` chứ không phải `/bookings` trần: URL trần
+ * bị độn tháng hiện tại, và một booking tháng 7 mở từ payment event sẽ biến
+ * khỏi bảng ngay khi bấm Back — đúng lỗi mà `?dates=all` cứng ở nút Back (vòng
+ * vá review polish 2) sinh ra để chữa, và bản đầu của hàm này làm mất (vòng vá
+ * review 05/09). Lập luận "đã bấm được vào một hàng thì booking nằm trong bộ
+ * lọc" chỉ đúng cho đường đi từ chính bảng `/bookings`.
  */
 export function bookingsBackHref(raw: RawSearchParams, now: Date): string {
   const carried = LIST_PARAMS.some((key) => firstParam(raw[key]) !== undefined);
-  return carried ? bookingsHref(parseBookingsSearchParams(raw, now), {}) : '/bookings';
+  return carried
+    ? bookingsHref(parseBookingsSearchParams(raw, now), {})
+    : `/bookings?dates=${ALL_DATES_PARAM}`;
 }
 
 /**

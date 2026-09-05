@@ -109,7 +109,8 @@ export type StatsPeriod = z.output<typeof StatsPeriodSchema>;
  *
  * MỘT schema cho mọi vùng chứ không mỗi vùng một bản: hình dạng y hệt nhau, và
  * hai bản khai lại là hai luật khoan dung sẽ trôi lệch trong im lặng. Hiện có
- * hai consumer — `admin.stats.bookings` và `admin.stats.cancellations`.
+ * ba consumer — `admin.stats.bookings`, `admin.stats.cancellations` và
+ * `admin.stats.reviews` (ADR-0028 AMEND 2).
  *
  * Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field mà `*ListQuerySchema`
  * của cùng vùng đang dùng: `?from=`/`?to=` trên URL nuôi cả bảng lẫn card, nên

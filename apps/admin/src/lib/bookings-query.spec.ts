@@ -539,10 +539,11 @@ describe('vòng đi–về bảng ↔ chi tiết', () => {
       expect(searchParamsOf(back)).toEqual({ dates: 'all' });
     });
 
-    it('vào thẳng URL chi tiết (không qua bảng) → danh sách MẶC ĐỊNH tháng này', () => {
-      // Không có bộ lọc nào để giữ, nên URL trần: lượt parse kế độn tháng
-      // hiện tại — đúng thứ user chốt là mặc định của vùng.
-      expect(bookingsBackHref({}, SEP)).toBe('/bookings');
+    it('vào thẳng URL chi tiết (không qua bảng) → xem TẤT CẢ, không độn tháng này', () => {
+      // Tới từ `BookingLink` của /payment-events hay /cancellations thì không
+      // biết booking thuộc tháng nào; URL trần bị độn tháng hiện tại và
+      // booking tháng trước biến khỏi bảng ngay khi bấm Back (vòng vá 05/09).
+      expect(bookingsBackHref({}, SEP)).toBe('/bookings?dates=all');
     });
 
     it('tham số rác trên URL chi tiết không đẻ ra một href hỏng', () => {

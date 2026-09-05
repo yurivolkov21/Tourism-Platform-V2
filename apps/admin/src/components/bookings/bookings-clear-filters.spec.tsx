@@ -33,11 +33,16 @@ beforeEach(() => {
 });
 
 describe('BookingsClearFilters', () => {
-  it('xoá ngày ra `?dates=all`, KHÔNG ra URL trần', async () => {
+  it('chỉ còn tháng mặc định: nút nói "show all dates" và ra `?dates=all`, KHÔNG ra URL trần', async () => {
+    // Không có gì để "xoá" — cú bấm này NỚI bảng sang mọi ngày, nhãn phải nói
+    // đúng thế (vòng vá review 05/09).
     const user = userEvent.setup();
     render(<BookingsClearFilters query={BOOKINGS} />);
 
-    await user.click(screen.getByRole('button', { name: LABEL }));
+    expect(screen.queryByRole('button', { name: LABEL })).toBeNull();
+    await user.click(
+      screen.getByRole('button', { name: messages.admin.bookings.list.showAllDates }),
+    );
 
     // URL trần bị parse độn lại tháng hiện tại — tức hai ô ngày nảy về đúng
     // cái vừa xoá. Sentinel này bookmark được và route export cũng hiểu.

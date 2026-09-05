@@ -174,10 +174,13 @@ export function BookingsExportLink({
  */
 export function BookingsClearFilters({ query }: { query: BookingsQuery }) {
   const router = useRouter();
+  // Chỉ còn tháng mặc định (không tìm gì) thì cú bấm này KHÔNG xoá bộ lọc
+  // nào — nó nới bảng sang mọi ngày. Nhãn phải nói đúng việc ấy.
+  const onlyDefaultDates = !query.search && !query.allDates;
 
   return (
     <ToolbarClearFilters
-      label={messages.admin.table.clearFilters}
+      label={onlyDefaultDates ? t.showAllDates : messages.admin.table.clearFilters}
       href={clearFiltersHref(
         bookingsHref(query, { search: null, from: null, to: null, page: 1 }),
         bookingsHref(query, { page: 1 }),

@@ -3153,11 +3153,6 @@ export const messages = {
          * booking có thể là ngày đặt hoặc ngày khởi hành, hai thứ khác hẳn.
          */
         dateFilterLabel: 'Filter by booking date',
-        /**
-         * Ô ngày là ô CHỮ (kiểu `date-picker-04`), nên gợi ý trong ô phải
-         * làm luôn việc thứ hai: nói ra dạng ngày mà ô đọc được. Đổi nó thì
-         * đổi cả `formatDateLabel` — hai thứ này là một lời hứa.
-         */
         /** Nút lịch nằm trong ô — không có chữ, chỉ máy đọc màn hình nghe. */
         /** Xuất ĐÚNG tập đang lọc, không phải trang đang xem. */
         exportCsv: 'Export CSV',
