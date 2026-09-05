@@ -34,6 +34,14 @@ export interface ReportSummaryRowVM {
   value: string;
 }
 
+/** Dòng P&L: một dòng bảng cộng vị trí của nó trong phép trừ. */
+export interface ReportPnlRowVM extends ReportSummaryRowVM {
+  /** Thành phần của phép trừ ngay trên nó — thụt vào một cấp. */
+  indent?: boolean;
+  /** Dòng KẾT QUẢ (tổng vốn, lãi gộp, lãi ròng) — in đậm. */
+  emphasis?: boolean;
+}
+
 /**
  * Một dòng của bảng "Money and operations".
  *
@@ -108,8 +116,21 @@ const SUMMARY_METRICS: SummaryMetric[] = [
  * nhìn một tờ giấy. Lùi 1ms rồi lấy phần ngày.
  */
 export function reportPeriodLabel(report: AdminMonthlyReport): string {
-  const lastDay = new Date(new Date(report.to).getTime() - 1).toISOString().slice(0, 10);
-  return t.period(formatCalendarDate(report.from.slice(0, 10)), formatCalendarDate(lastDay));
+  const { from, to } = reportPeriodDays(report);
+  return t.period(formatCalendarDate(from), formatCalendarDate(to));
+}
+
+/**
+ * Hai ngày lịch `YYYY-MM-DD` của kỳ báo cáo, TÍNH VÀO cả hai đầu — thứ nhãn
+ * trên màn hình lẫn bộ lọc `created_at` của sheet Detail cùng dùng. Một chỗ
+ * lùi 1ms: bản chép thứ hai ở route export từng là logic thuần nằm trong
+ * route handler không test được (vòng vá review 05/09).
+ */
+export function reportPeriodDays(report: AdminMonthlyReport): { from: string; to: string } {
+  return {
+    from: report.from.slice(0, 10),
+    to: new Date(new Date(report.to).getTime() - 1).toISOString().slice(0, 10),
+  };
 }
 
 /**
@@ -167,7 +188,15 @@ export function formatMarginPct(pct: number | null): string {
  * gì cả, không phải render một dòng trống.
  */
 export function costWarning(report: AdminMonthlyReport): string | null {
-  return report.costDataMissing === 0 ? null : p.costMissing(formatCount(report.costDataMissing));
+  const parts = [
+    report.costDataMissing > 0 ? p.costMissing(formatCount(report.costDataMissing)) : null,
+    // Vế thứ hai (ADR-0033 AMEND 1c): chuyến chạy mà chưa khai tiền xe cũng
+    // là dữ liệu thiếu, và im lặng ở đây là phình lợi nhuận đúng bằng tiền xe.
+    report.departuresCostMissing > 0
+      ? p.departuresCostMissing(formatCount(report.departuresCostMissing))
+      : null,
+  ].filter((part): part is string => part !== null);
+  return parts.length === 0 ? null : parts.join(' ');
 }
 
 /**
@@ -181,26 +210,30 @@ export function costWarning(report: AdminMonthlyReport): string | null {
  * Nhãn mang thuế suất không phải trang trí: env không có ngày hiệu lực, nên
  * tờ báo cáo phải tự khai nó được tính bằng mức nào (ADR-0033 §5).
  */
-export function toReportPnlRows(report: AdminMonthlyReport): ReportSummaryRowVM[] {
+export function toReportPnlRows(report: AdminMonthlyReport): ReportPnlRowVM[] {
   const money = (amount: string) => formatAmount(amount, report.currency);
 
+  // `indent`/`emphasis` sống Ở ĐÂY cùng khoá dòng, không ở component dưới
+  // dạng hai `Set` chuỗi (vòng vá review 05/09): đổi tên một `key` mà quên
+  // bên kia là mất thụt/đậm trong im lặng, và tầng này có test còn JSX thì không.
   return [
     {
       key: 'recognizedRevenue',
       label: p.recognizedRevenue,
       value: money(report.recognizedRevenue),
     },
-    { key: 'cogsVariable', label: p.cogsVariable, value: money(report.cogsVariable) },
-    { key: 'cogsFixed', label: p.cogsFixed, value: money(report.cogsFixed) },
-    { key: 'cogsTotal', label: p.cogsTotal, value: money(report.cogsTotal) },
-    { key: 'grossProfit', label: p.grossProfit, value: money(report.grossProfit) },
+    { key: 'cogsVariable', label: p.cogsVariable, value: money(report.cogsVariable), indent: true },
+    { key: 'cogsFixed', label: p.cogsFixed, value: money(report.cogsFixed), indent: true },
+    { key: 'cogsTotal', label: p.cogsTotal, value: money(report.cogsTotal), emphasis: true },
+    { key: 'grossProfit', label: p.grossProfit, value: money(report.grossProfit), emphasis: true },
     {
       key: 'taxAmount',
       label: p.taxAmount(formatMarginPct(report.taxRate)),
       value: money(report.taxAmount),
+      indent: true,
     },
-    { key: 'paymentFees', label: p.paymentFees, value: money(report.paymentFees) },
-    { key: 'netProfit', label: p.netProfit, value: money(report.netProfit) },
+    { key: 'paymentFees', label: p.paymentFees, value: money(report.paymentFees), indent: true },
+    { key: 'netProfit', label: p.netProfit, value: money(report.netProfit), emphasis: true },
   ];
 }
 

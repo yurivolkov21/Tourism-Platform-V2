@@ -163,6 +163,13 @@ export const AdminMonthlyReportSchema = z.object({
    * số này thì nó chỉ là chưa đầy đủ (ADR-0033 §6).
    */
   costDataMissing: z.int().nonnegative(),
+  /**
+   * Số chuyến ĐÃ CHẠY trong kỳ mà chưa khai `fixed_cost_amount` — vế còn lại
+   * của "báo cáo phải nói ra là thiếu" (ADR-0033 §3, AMEND 1c). `cogsFixed`
+   * coi chúng bằng 0, nên số này > 0 là `netProfit` đang phình đúng bằng tiền
+   * xe của chừng ấy chuyến.
+   */
+  departuresCostMissing: z.int().nonnegative(),
 });
 
 export type AdminMonthlyReport = z.output<typeof AdminMonthlyReportSchema>;

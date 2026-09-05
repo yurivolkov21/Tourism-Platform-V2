@@ -56,7 +56,10 @@ const DIM = 'FF5F646B'; // oklch(0.502 0.012 250) — --muted-foreground
 const RULE = 'FFDCDFE2'; // oklch(0.902 0.005 250) — --border
 const BAND = 'FFF0F3F5'; // oklch(0.962 0.004 250) — --muted
 const BRAND = 'FF2E6E66'; // oklch(0.494 0.067 184.3) — --primary
-const BRAND_SOFT = 'FFDAECE9'; // teal cùng hue, sáng — nền dải tiêu đề khối
+// DẪN XUẤT, không phải token: `--primary` pha 15% trên nền trắng (sRGB blend,
+// ADR-0034 AMEND 2) — bảng token không có teal nhạt, và bịa một hex rời là
+// thứ AMEND 1b cấm. Đổi `--primary` thì tính lại từ công thức này.
+const BRAND_SOFT = 'FFDFE9E8'; // 0.85·#FFFFFF + 0.15·#2E6E66 — nền dải tiêu đề khối
 const PAPER = 'FFFFFFFF';
 
 /** Viền mảnh bốn cạnh — mỗi ô dữ liệu là một ô, không phải chữ trôi trên nền. */
@@ -240,6 +243,7 @@ function buildSummary(book: ExcelJS.Workbook, report: AdminMonthlyReport): void 
 
   count(labelRow(sheet, x.departuresRun).getCell(2), report.departuresRun);
   count(labelRow(sheet, x.costDataMissing).getCell(2), report.costDataMissing);
+  count(labelRow(sheet, x.departuresCostMissing).getCell(2), report.departuresCostMissing);
 
   sheet.pageSetup = { fitToPage: true, fitToWidth: 1, fitToHeight: 0 };
 }
@@ -307,7 +311,11 @@ function buildOperations(book: ExcelJS.Workbook, report: AdminMonthlyReport): vo
  * `Total` để ra `Revenue recognised` sẽ không bao giờ khớp, nên phải chặn hiểu
  * nhầm ấy ngay trên file.
  */
-function buildDetail(book: ExcelJS.Workbook, bookings: readonly Booking[]): void {
+function buildDetail(
+  book: ExcelJS.Workbook,
+  bookings: readonly Booking[],
+  note: string | undefined,
+): void {
   const sheet = book.addWorksheet(x.sheets.detail);
   sheet.columns = [
     { header: x.detail.code, key: 'code', width: 16 },
@@ -318,11 +326,25 @@ function buildDetail(book: ExcelJS.Workbook, bookings: readonly Booking[]): void
     { header: x.detail.refunded, key: 'refunded', width: 14 },
     { header: x.detail.status, key: 'status', width: 20 },
   ];
-  dressHeader(sheet.getRow(1), sheet.columnCount);
+  // `columnCount` là GETTER duyệt mọi hàng của sheet — gọi nó trong vòng lặp
+  // là O(n²) trên 2000 hàng (vòng vá review 05/09). Số cột là hằng do
+  // `sheet.columns` khai, đọc một lần.
+  const columns = sheet.columnCount;
+  dressHeader(sheet.getRow(1), columns);
+
+  // Lý do sheet thiếu hàng (hoặc lệch số) in NGAY DƯỚI tiêu đề, trong file —
+  // vết audit phía server là thứ người tải không bao giờ thấy.
+  if (note) {
+    const row = sheet.addRow([note]);
+    sheet.mergeCells(row.number, 1, row.number, columns);
+    row.getCell(1).font = { italic: true, color: { argb: DIM } };
+    row.getCell(1).alignment = { wrapText: true, vertical: 'middle' };
+    row.height = 30;
+  }
 
   bookings.forEach((booking, index) => {
     const row = sheet.addRow([booking.code, booking.tourTitle]);
-    dressRow(row, sheet.columnCount, index % 2 === 1 ? { band: BAND } : {});
+    dressRow(row, columns, index % 2 === 1 ? { band: BAND } : {});
     // Hai cột chữ canh trái; `dressRow` mặc định canh phải từ cột 2 trở đi.
     row.getCell(2).alignment = { horizontal: 'left', vertical: 'middle' };
     row.getCell(7).alignment = { horizontal: 'left', vertical: 'middle' };
@@ -338,8 +360,10 @@ function buildDetail(book: ExcelJS.Workbook, bookings: readonly Booking[]): void
 
   sheet.views = [{ state: 'frozen', ySplit: 1 }];
   // Bộ lọc trên hàng tiêu đề — thứ biến sheet này thành công cụ kiểm chéo
-  // thay vì một danh sách để nhìn.
-  sheet.autoFilter = { from: 'A1', to: { row: 1, column: sheet.columnCount } };
+  // thay vì một danh sách để nhìn. Vùng lọc phủ TỚI hàng cuối: `ref` chỉ có
+  // hàng 1 thì Excel desktop tự nới nhưng LibreOffice/Google Sheets tôn trọng
+  // `ref` và lọc trên đúng một hàng (vòng vá review 05/09).
+  sheet.autoFilter = { from: 'A1', to: { row: Math.max(1, sheet.rowCount), column: columns } };
   sheet.pageSetup = {
     fitToPage: true,
     fitToWidth: 1,
@@ -392,6 +416,8 @@ function buildDefinitions(book: ExcelJS.Workbook): void {
 export async function buildReportWorkbook(
   report: AdminMonthlyReport,
   bookings: readonly Booking[],
+  /** Câu ghi trong sheet Detail khi nó thiếu hàng hoặc lệch số với Summary. */
+  detailNote?: string,
 ): Promise<ArrayBuffer> {
   const book = new ExcelJS.Workbook();
   book.created = new Date(report.generatedAt);
@@ -399,7 +425,7 @@ export async function buildReportWorkbook(
   buildSummary(book, report);
   buildBookings(book, report);
   buildOperations(book, report);
-  buildDetail(book, bookings);
+  buildDetail(book, bookings, detailNote);
   buildDefinitions(book);
 
   // ExcelJS khai kiểu trả về là `Buffer` của RIÊNG nó

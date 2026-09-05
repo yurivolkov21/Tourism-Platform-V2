@@ -245,6 +245,39 @@ hiện chữ chứ không hiện `∞`.
 - Không có bảng deferred-revenue, không có bút toán, không có sổ cái kế toán.
   Hai cách đọc là hai câu SQL trên dữ liệu đang có — không phải một hệ kế toán.
 
+## AMEND 1 05/09 (vòng vá review) — ba chỗ §3/§4 chưa khép, và hai giới hạn mới
+
+**a. Chuyến bị HUỶ không góp doanh thu.** §4 định nghĩa "đã chạy" (`status !=
+CANCELLED` và có khách đã đi) cho vế giá vốn cố định nhưng vế doanh thu chỉ
+lọc theo trạng thái BOOKING. Khách còn `PAID` trên một chuyến bị huỷ (bão, huỷ
+ngày 28, tiền chưa kịp hoàn) vì thế góp 500 doanh thu + 30 giá vốn biến đổi
+mà 0 tiền xe — một chuyến không hề chạy đóng góp biên ~94%, và càng huỷ nhiều
+chuyến báo cáo càng đẹp. Nay `recognizedRevenueSlice` JOIN `tour_departures`
+với cùng vế `status <> CANCELLED`: **"chuyến đã chạy" chỉ có MỘT định nghĩa
+trong cả kỳ.** Tiền khách đã trả cho chuyến huỷ là khoản nợ khách, không phải
+doanh thu; nó ở lại cột dòng tiền (`revenue` theo `paid_at`) cho tới khi hoàn.
+
+**b. Nhãn tiền có nguồn thứ ba.** `currency` suy từ payment rồi refund trong
+kỳ — cả hai neo DÒNG TIỀN — rồi dán lên cả khối P&L vốn neo ngày chuyến kết
+thúc. Tháng không có payment/refund nào nhưng có chuyến chạy (đúng ca int spec
+dựng: trả tiền tháng 4, chuyến chạy tháng 5) in `$` lên số EUR. Nay
+`recognizedRevenueSlice` trả `currency` của chính tập nó, và 'USD' chỉ còn khi
+cả ba nguồn rỗng.
+
+**c. `departuresCostMissing`.** §3 nói "báo cáo phải nói ra là thiếu" nhưng §6
+chỉ định nghĩa `costDataMissing` cho booking; vế `tour_departures` rơi vào
+`COALESCE(…, 0)` im lặng — trong khi hôm nay không đường code nào ngoài seed
+ghi `fixed_cost_amount`, tức mọi chuyến tạo tay đều NULL và `netProfit` phình
+đúng bằng tiền xe mà `costWarning` không hiện. Thêm một field, một dòng
+Summary, một vế câu cảnh báo.
+
+**Ràng buộc cho phase `/tours`:** kỳ của khối P&L neo `bookings.departure_end_date`
+(snapshot lúc tạo) còn `cogsFixed`/`departuresRun` neo `tour_departures.end_date`
+(sống). Hai cột bằng nhau cho tới khi ai đó DỜI LỊCH một chuyến — lúc ấy doanh
+thu ở tháng cũ, tiền xe ở tháng mới. Form sửa chuyến, khi ra đời, **phải cập
+nhật `departure_end_date` của mọi booking trong cùng transaction**, hoặc cả
+hai vế cùng neo một cột. Ghi ở đây để không ai viết form ấy mà không biết.
+
 ## Hình dạng câu trả lời
 
 `AdminMonthlyReportSchema` mọc thêm (mọi tiền là `DecimalStringSchema`):
@@ -305,3 +338,12 @@ bảng; giới hạn đã ghi tường minh ở §5 kèm đường đi nếu ng�
    đâu cả. Nên `netProfit` ở đây là lợi nhuận **sau giá vốn, thuế và phí cổng**,
    KHÔNG phải lợi nhuận ròng của doanh nghiệp. Nhãn trên màn hình và trong file
    phải nói đúng chừng ấy, không hơn.
+5. **Khối P&L của một kỳ ĐÃ ĐÓNG vẫn đổi số** (vòng vá review 05/09).
+   `recognizedRevenue` trừ MỌI khoản hoàn của booking không kể tháng hoàn, và
+   lọc theo trạng thái booking HIỆN TẠI: một khoản hoàn tháng 7 viết lại báo
+   cáo tháng 5, hoàn đủ (→ `REFUNDED`) thì booking biến khỏi tháng 5 và nếu nó
+   là booking duy nhất của chuyến, `departuresRun`/`cogsFixed` tụt về 0. Trái
+   với chính câu "một báo cáo đọc lại ra số khác là một báo cáo vô dụng" ở
+   §3. Chữa thật cần cột snapshot theo kỳ (hoặc chốt số vào bảng `report_months`
+   lúc tháng đóng) — một ADR riêng. `subscribersStats` đã ghi cùng cảnh báo
+   cho `unsubscribed`; nay ghi ở đây.

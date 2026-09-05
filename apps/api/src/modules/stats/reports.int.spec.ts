@@ -624,15 +624,26 @@ describe('admin monthly report integration (F6)', () => {
       const may = await report('2026-05');
 
       expect(may.revenue).toBe('0.00'); // không payment nào TRONG tháng 5
-      // 900 + 900 + 300 (bỏ booking huỷ) + 500 (chuyến huỷ nhưng khách vẫn
-      // PAID) − 100 đã hoàn = 2500.00
-      expect(may.recognizedRevenue).toBe('2500.00');
+      // 900 + 900 + 300 (bỏ booking huỷ) − 100 đã hoàn = 2000.00. Booking 14
+      // (khách vẫn PAID trên CHUYẾN BỊ HUỶ) KHÔNG góp: tiền ấy đang nợ khách,
+      // không phải doanh thu (ADR-0033 AMEND 1a).
+      expect(may.recognizedRevenue).toBe('2000.00');
+      // Và nhãn tiền lấy từ chính tập này dù tháng không có payment nào.
+      expect(may.currency).toBe('USD');
+    });
+
+    it('chuyến bị HUỶ không góp doanh thu lẫn giá vốn, cùng định nghĩa với cogsFixed', async () => {
+      // Trước AMEND 1a chuyến huỷ góp 500 doanh thu + 30 giá vốn biến đổi mà 0
+      // tiền xe → càng huỷ nhiều chuyến báo cáo càng đẹp.
+      const may = await report('2026-05');
+      expect(may.cogsVariable).toBe('180.00');
+      expect(may.departuresRun).toBe(1);
     });
 
     it('booking đã huỷ không góp doanh thu lẫn giá vốn biến đổi', async () => {
-      // 30 × 3 + 30 × 3 + 0 × 1 (thiếu giá vốn) + 30 × 1 = 210.00.
-      // Booking 12 (huỷ, 2 khách × 30) KHÔNG có mặt.
-      expect((await report('2026-05')).cogsVariable).toBe('210.00');
+      // 30 × 3 + 30 × 3 + 0 × 1 (thiếu giá vốn) = 180.00.
+      // Booking 12 (huỷ, 2 khách × 30) và 14 (chuyến huỷ) KHÔNG có mặt.
+      expect((await report('2026-05')).cogsVariable).toBe('180.00');
     });
 
     it('giá vốn cố định tính MỘT lần cho chuyến ĐÃ CHẠY', async () => {
@@ -641,7 +652,9 @@ describe('admin monthly report integration (F6)', () => {
       // Chỉ DEP_RAN: chuyến ế không ai đặt và chuyến bị huỷ đều không tính.
       expect(may.cogsFixed).toBe('400.00');
       expect(may.departuresRun).toBe(1);
-      expect(may.cogsTotal).toBe('610.00');
+      expect(may.cogsTotal).toBe('580.00');
+      // Mọi chuyến trong fixture đều khai tiền xe.
+      expect(may.departuresCostMissing).toBe(0);
     });
 
     it('chuyến ế trong lịch KHÔNG bị tính tiền xe', async () => {
@@ -659,14 +672,14 @@ describe('admin monthly report integration (F6)', () => {
     it('lợi nhuận gộp và biên khớp với ba con số ở trên', async () => {
       const may = await report('2026-05');
 
-      // 2500.00 − 610.00 = 1890.00
-      expect(may.grossProfit).toBe('1890.00');
-      expect(may.grossMarginPct).toBeCloseTo(1890 / 2500, 6);
+      // 2000.00 − 580.00 = 1420.00
+      expect(may.grossProfit).toBe('1420.00');
+      expect(may.grossMarginPct).toBeCloseTo(1420 / 2000, 6);
       // Suất thuế và phí mặc định 0 ở môi trường test → ròng bằng gộp.
       expect(may.taxRate).toBe(0);
       expect(may.taxAmount).toBe('0.00');
       expect(may.paymentFees).toBe('0.00');
-      expect(may.netProfit).toBe('1890.00');
+      expect(may.netProfit).toBe('1420.00');
     });
 
     it('tháng không có chuyến nào chạy: biên gộp NULL, không phải 0', async () => {

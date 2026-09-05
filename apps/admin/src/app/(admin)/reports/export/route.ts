@@ -1,8 +1,10 @@
 import type { AdminMonthlyReport } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
 import { cookies } from 'next/headers';
 import type { NextRequest } from 'next/server';
 import { fetchAllAdminBookings } from '@/lib/api/bookings';
 import { fetchAdminMonthlyReport } from '@/lib/api/reports';
+import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
 import {
   exportFailedResponse,
   guardExportAccess,
@@ -10,6 +12,7 @@ import {
   xlsxExportResponse,
 } from '@/lib/export-route';
 import { parseReportsSearchParams } from '@/lib/reports-query';
+import { reportPeriodDays } from '@/lib/reports-view';
 import { rawSearchParamsFrom } from '@/lib/table-query';
 import { buildReportWorkbook } from '@/lib/xlsx';
 
@@ -23,6 +26,13 @@ import { buildReportWorkbook } from '@/lib/xlsx';
  * và vẫn trả 401/403/502 dạng text chứ không redirect — một cú tải file mà bị
  * đá sang `/login` chỉ để lại một file HTML mang đuôi `.xlsx`.
  */
+// Cùng trần với hai route export kia: `fetchAllAdminBookings` chạy đúng vòng
+// gom 45s (`EXPORT_TIME_BUDGET_MS`) mà comment ở `export-pages.ts` chốt là
+// "dưới `maxDuration = 60` mà MỌI route export khai" — thiếu dòng này là
+// platform giết function trước khi AbortSignal kịp bắn và nhánh 502-có-lời
+// không bao giờ chạy (vòng vá review 05/09).
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   const gate = await guardExportAccess('/reports/export');
   if (!gate.ok) return gate.response;
@@ -54,17 +64,14 @@ export async function GET(request: NextRequest) {
   // tập của khối P&L vốn neo ngày chuyến kết thúc. Tên sheet nói thẳng điều
   // đó; xem JSDoc `buildDetail`.
   //
-  // `report.to` là mốc NỬA-MỞ (00:00 ngày 1 tháng sau) nên phải lùi 1ms rồi
-  // cắt ngày — đúng phép `reportPeriodLabel` đang làm cho nhãn trên màn hình.
-  const lastDay = new Date(new Date(report.to).getTime() - 1).toISOString().slice(0, 10);
+  // Biên ngày lấy từ CHÍNH `reportPeriodDays` mà nhãn trên màn hình dùng —
+  // một phép lùi-1ms, không hai bản chép (vòng vá review 05/09).
+  const { from, to } = reportPeriodDays(report);
   let detail: Awaited<ReturnType<typeof fetchAllAdminBookings>>;
   try {
-    detail = await fetchAllAdminBookings(cookie, {
-      page: 1,
-      limit: 20,
-      from: report.from.slice(0, 10),
-      to: lastDay,
-    });
+    // `page`/`limit` bị `fetchAllAdminBookings` ghi đè bằng vòng phân trang
+    // của nó — hai giá trị dưới chỉ để thoả kiểu `BookingsQuery`.
+    detail = await fetchAllAdminBookings(cookie, { page: 1, limit: 1, from, to });
   } catch (error) {
     console.error('[admin] monthly report detail fetch failed', error);
     logExportAudit('reports', { adminId: gate.session.id, outcome: 'failed', filters: { month } });
@@ -87,6 +94,19 @@ export async function GET(request: NextRequest) {
       filters: { month },
     });
   }
+  // Câu ghi TRONG sheet Detail (vòng vá review 05/09): thiếu hàng, hoặc số
+  // hàng lệch với `newBookings` của Summary vì hai lần gọi API không cùng
+  // mốc — người đọc làm đúng việc ADR bảo họ làm (cộng chéo hai sheet) và sẽ
+  // thấy một sai lệch không có thật nếu không ai nói.
+  const d = messages.admin.reports.xlsx.detail;
+  const detailNote =
+    detail.kind === 'too-large'
+      ? d.omittedTooLarge(EXPORT_MAX_ROWS)
+      : detail.kind === 'changed'
+        ? d.omittedChanged
+        : rows.length !== report.newBookings
+          ? d.countMismatch(rows.length, report.newBookings)
+          : undefined;
 
   // Tên file mang CẢ tháng báo cáo lẫn ngày xuất: hai bản tải cùng một tháng ở
   // hai ngày khác nhau là hai ảnh chụp khác nhau (phân rã trạng thái đổi theo
@@ -99,6 +119,6 @@ export async function GET(request: NextRequest) {
   });
   return xlsxExportResponse(
     `nexora-report-${report.month}`,
-    await buildReportWorkbook(report, rows),
+    await buildReportWorkbook(report, rows, detailNote),
   );
 }

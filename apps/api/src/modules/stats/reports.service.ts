@@ -119,7 +119,11 @@ export class ReportsService {
       // tháng (vòng vá review F6 — tháng chỉ có refund cho booking trả tiền
       // từ tháng trước từng bị dán nhãn 'USD' cho tiền EUR). Cả hai rỗng —
       // tức mọi con số tiền đều 0.00 — thì 'USD' mới là mặc định vô hại.
-      currency: paidCurrency ?? refundsCurrency ?? 'USD',
+      // Nguồn thứ BA (vòng vá review 05/09): tập của khối P&L neo ngày chuyến
+      // kết thúc, không neo dòng tiền — tháng không có payment/refund nào mà
+      // có chuyến chạy từng in `$` lên số EUR. 'USD' chỉ còn khi cả ba rỗng,
+      // tức mọi con số tiền đều 0.00 thật.
+      currency: paidCurrency ?? refundsCurrency ?? recognised.currency ?? 'USD',
       revenue: grossAmount(paid.revenue),
       paidBookings: paid.paid,
       // Tổng của CHÍNH phân rã ở trên, không phải một COUNT thứ hai (vòng vá
@@ -149,6 +153,7 @@ export class ReportsService {
       netProfit: grossProfit.sub(taxAmount).sub(fees).toFixed(2),
       departuresRun: fixedCost.departures,
       costDataMissing: recognised.costMissing,
+      departuresCostMissing: fixedCost.costMissing,
     };
   }
 }

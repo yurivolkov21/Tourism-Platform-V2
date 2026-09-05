@@ -57,6 +57,7 @@ const report: AdminMonthlyReport = {
   netProfit: '1890.00',
   departuresRun: 1,
   costDataMissing: 1,
+  departuresCostMissing: 0,
 };
 
 describe('reportPeriodLabel', () => {
@@ -216,5 +217,9 @@ describe('P&L', () => {
     // báo cáo nói dối; in kèm con số thì nó chỉ là chưa đầy đủ.
     expect(costWarning({ ...report, costDataMissing: 0 })).toBeNull();
     expect(costWarning({ ...report, costDataMissing: 3 })).toContain('3');
+    // Vế chuyến (ADR-0033 AMEND 1c): thiếu tiền xe cũng phải nói ra.
+    expect(costWarning({ ...report, costDataMissing: 0, departuresCostMissing: 2 })).toContain(
+      '2 departure',
+    );
   });
 });

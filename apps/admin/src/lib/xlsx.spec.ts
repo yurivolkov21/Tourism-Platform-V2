@@ -50,6 +50,7 @@ const report: AdminMonthlyReport = {
   netProfit: '1687.98',
   departuresRun: 1,
   costDataMissing: 1,
+  departuresCostMissing: 0,
 };
 
 const booking = {
@@ -174,7 +175,11 @@ describe('buildReportWorkbook', () => {
     // để nhìn — bỏ chúng đi là bỏ lý do sheet tồn tại.
     const sheet = sheetNamed(await open(report), 'Detail (created this month)');
 
-    expect(sheet.autoFilter).toBeTruthy();
+    // Vùng lọc phải phủ TỚI hàng dữ liệu cuối: `ref` chỉ `A1:G1` thì LibreOffice
+    // và Google Sheets lọc trên đúng một hàng (vòng vá review 05/09).
+    // Đọc lại từ file, ExcelJS trả `ref` dạng chuỗi 'A1:G<n>'.
+    expect(sheet.rowCount).toBeGreaterThan(1);
+    expect(sheet.autoFilter).toBe(`A1:G${sheet.rowCount}`);
     expect(sheet.views[0]?.state).toBe('frozen');
   });
 

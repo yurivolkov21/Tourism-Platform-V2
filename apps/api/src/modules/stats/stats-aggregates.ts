@@ -306,6 +306,18 @@ export async function subscribersStats(window: {
  * `LEFT JOIN` gộp refund theo booking thay vì subquery tương quan trong `SUM`:
  * một booking hoàn NHIỀU lần được (hoàn một phần nhiều lượt — ADR-0029), và
  * join thẳng bảng `refunds` sẽ nhân đôi `total_amount` theo số dòng hoàn.
+ *
+ * Chuyến bị HUỶ không góp gì (ADR-0033 AMEND 1a): khách còn `PAID` trên một
+ * chuyến không chạy là tiền đang NỢ khách, không phải doanh thu — để nguyên
+ * thì càng huỷ nhiều chuyến báo cáo càng đẹp (500 doanh thu, 0 tiền xe). Cùng
+ * vế `d.status <> CANCELLED` với `fixedCostSlice`, nên "chuyến đã chạy" chỉ có
+ * MỘT định nghĩa trong cả kỳ.
+ *
+ * ⚠️ KHÔNG BẤT ĐỘNG theo kỳ (ADR-0033 *Giới hạn* #5): `refunded` gộp MỌI dòng
+ * hoàn của booking không kể `created_at`, và `b.status` là trạng thái HIỆN
+ * TẠI. Một khoản hoàn tháng 7 làm báo cáo tháng 5 đọc lại ra số khác; hoàn đủ
+ * (→ REFUNDED) thì booking biến khỏi tháng 5 luôn. Chữa thật cần cột snapshot
+ * theo kỳ — ghi nợ, chưa làm.
  */
 export async function recognizedRevenueSlice(from: Date, to: Date) {
   const [row] = await prisma.$queryRaw<
@@ -315,6 +327,7 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
       gross_collected: Prisma.Decimal | null;
       bookings: bigint;
       cost_missing: bigint;
+      currency: string | null;
     }[]
   >(Prisma.sql`
     SELECT
@@ -323,13 +336,19 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
         AS cogs_variable,
       COALESCE(SUM(b.total_amount), 0) AS gross_collected,
       COUNT(*) AS bookings,
-      COUNT(*) FILTER (WHERE b.cost_per_person IS NULL) AS cost_missing
+      COUNT(*) FILTER (WHERE b.cost_per_person IS NULL) AS cost_missing,
+      -- Nhãn tiền của TẬP NÀY (nền tảng một-đồng-tiền, xem grossAmount):
+      -- tháng không có payment/refund nào nhưng có chuyến chạy từng bị dán
+      -- 'USD' mặc định lên cả khối P&L (vòng vá review 05/09).
+      MAX(b.currency) AS currency
     FROM bookings b
+    JOIN tour_departures d ON d.id = b.departure_id
     LEFT JOIN (
       SELECT booking_id, SUM(amount) AS refunded FROM refunds GROUP BY booking_id
     ) r ON r.booking_id = b.id
     WHERE b.status IN (${BookingStatus.PAID}::"BookingStatus",
                        ${BookingStatus.PARTIALLY_REFUNDED}::"BookingStatus")
+      AND d.status <> ${DepartureStatus.CANCELLED}::"DepartureStatus"
       AND b.departure_end_date >= ${from} AND b.departure_end_date < ${to}
   `);
 
@@ -341,6 +360,7 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
     grossCollected: row?.gross_collected ?? new Prisma.Decimal(0),
     bookings: Number(row?.bookings ?? 0),
     costMissing: Number(row?.cost_missing ?? 0),
+    currency: row?.currency ?? null,
   };
 }
 
@@ -354,9 +374,17 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
  * không.
  */
 export async function fixedCostSlice(from: Date, to: Date) {
-  const [row] = await prisma.$queryRaw<{ total: Prisma.Decimal | null; departures: bigint }[]>(
+  const [row] = await prisma.$queryRaw<
+    { total: Prisma.Decimal | null; departures: bigint; cost_missing: bigint }[]
+  >(
+    // `cost_missing` ĐẾM chuyến chưa khai giá vốn cố định thay vì để COALESCE
+    // im lặng coi bằng 0 (ADR-0033 §3: "báo cáo phải nói ra là thiếu"). Bản
+    // đầu chỉ đếm vế booking, trong khi hôm nay không đường code nào ngoài
+    // seed ghi `fixed_cost_amount` — mọi chuyến tạo tay đều NULL và
+    // `cogsFixed` phình lợi nhuận đúng bằng tiền xe (vòng vá review 05/09).
     Prisma.sql`
-      SELECT COALESCE(SUM(d.fixed_cost_amount), 0) AS total, COUNT(*) AS departures
+      SELECT COALESCE(SUM(d.fixed_cost_amount), 0) AS total, COUNT(*) AS departures,
+             COUNT(*) FILTER (WHERE d.fixed_cost_amount IS NULL) AS cost_missing
       FROM tour_departures d
       WHERE d.status <> ${DepartureStatus.CANCELLED}::"DepartureStatus"
         AND d.end_date >= ${from} AND d.end_date < ${to}
@@ -372,5 +400,6 @@ export async function fixedCostSlice(from: Date, to: Date) {
   return {
     total: row?.total ?? new Prisma.Decimal(0),
     departures: Number(row?.departures ?? 0),
+    costMissing: Number(row?.cost_missing ?? 0),
   };
 }

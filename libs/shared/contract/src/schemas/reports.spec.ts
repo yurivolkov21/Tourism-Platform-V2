@@ -33,6 +33,7 @@ const validReport = {
   netProfit: '333.44',
   departuresRun: 2,
   costDataMissing: 0,
+  departuresCostMissing: 0,
 };
 
 describe('ReportMonthSchema', () => {

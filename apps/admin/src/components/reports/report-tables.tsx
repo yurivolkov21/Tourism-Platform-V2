@@ -31,12 +31,6 @@ import {
  */
 const t = messages.admin.reports;
 
-/** Dòng là THÀNH PHẦN của phép trừ ngay trên nó — thụt vào một cấp. */
-const INDENTED_PNL_ROWS = new Set(['cogsVariable', 'cogsFixed', 'taxAmount', 'paymentFees']);
-
-/** Dòng KẾT QUẢ — in đậm để mắt bám được ba mốc: tổng vốn, lãi gộp, lãi ròng. */
-const TOTAL_PNL_ROWS = new Set(['cogsTotal', 'grossProfit', 'netProfit']);
-
 export function ReportTables({ report }: { report: AdminMonthlyReport }) {
   const statusRows = toReportStatusRows(report);
   const summaryRows = toReportSummaryRows(report);
@@ -65,13 +59,9 @@ export function ReportTables({ report }: { report: AdminMonthlyReport }) {
                   {/* Bốn dòng giá vốn và hai dòng khấu trừ thụt vào một cấp:
                       chúng là thành phần của phép trừ ngay phía trên chúng,
                       không phải sáu con số ngang hàng nhau. */}
-                  <TableCell className={INDENTED_PNL_ROWS.has(row.key) ? 'pl-8' : undefined}>
-                    {row.label}
-                  </TableCell>
+                  <TableCell className={row.indent ? 'pl-8' : undefined}>{row.label}</TableCell>
                   <TableCell
-                    className={`text-right tabular-nums${
-                      TOTAL_PNL_ROWS.has(row.key) ? ' font-medium' : ''
-                    }`}
+                    className={`text-right tabular-nums${row.emphasis ? ' font-medium' : ''}`}
                   >
                     {row.value}
                   </TableCell>

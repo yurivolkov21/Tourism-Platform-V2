@@ -186,3 +186,9 @@ overrides:
   # override để sạch alert; better-auth chỉ khai peer optional ^3.0.0 nên
   # 3.22+ vẫn thoả.
   mysql2@<3.22.0: ^3.22.0
+  # 05/09 — exceljs 4.4.0 (ADR-0034) ghim `uuid@^8.3.2`, dính GHSA-w5hq-g745-h8pq
+  # (moderate: thiếu kiểm biên buffer ở v3/v5/v6 khi truyền `buf`). exceljs
+  # chỉ gọi `v4()` — API còn nguyên ở 11.x (có bản CJS) — và không gói nào
+  # khác trong lock kéo uuid, nên nâng thẳng thay vì đợi exceljs (4.4.0 phát
+  # hành 2023, không có bản mới). Bản 4.4.0 ghim cứng ở apps/admin.
+  uuid@<11.1.1: ^11.1.1

@@ -2931,7 +2931,6 @@ export const messages = {
       /** Nhãn ô chọn tháng (sr-only — chữ trong ô đã tự nói). */
       monthLabel: 'Report month',
       print: 'Print',
-      exportCsv: 'Export CSV',
       /** Dòng phụ đề: kỳ báo cáo, cả hai đầu là ngày TÍNH VÀO. */
       period: (from: string, to: string) => `${from} – ${to}`,
       generatedAt: (at: string) => `Generated ${at}`,
@@ -2973,6 +2972,8 @@ export const messages = {
          * 12 booking chưa khai giá vốn là một báo cáo NÓI DỐI. Có câu này thì
          * nó chỉ là chưa đầy đủ.
          */
+        departuresCostMissing: (count: string) =>
+          `${count} departure(s) that ran have no fixed-cost data — their transport and guide costs are counted as 0.`,
         costMissing: (count: string) =>
           `${count} bookings have no cost data, so cost of sales is understated.`,
         /** Biên gộp KHÔNG XÁC ĐỊNH — khác hẳn 0%. */
@@ -3035,6 +3036,7 @@ export const messages = {
         grossMargin: 'Gross margin',
         departuresRun: 'Departures that ran',
         costDataMissing: 'Bookings with no cost data',
+        departuresCostMissing: 'Departures with no fixed-cost data',
         sheets: {
           summary: 'Summary',
           bookings: 'Bookings',
@@ -3051,6 +3053,18 @@ export const messages = {
           total: 'Total',
           refunded: 'Refunded',
           status: 'Status',
+          /**
+           * Ghi NGAY TRONG FILE khi sheet này không đủ hàng (vòng vá review
+           * 05/09): vết audit phía server là thứ người tải file không bao giờ
+           * thấy, và một sheet trống mà Summary nói có 2,480 booking đọc ra
+           * như "tháng này không tạo booking nào" hoặc "file hỏng".
+           */
+          omittedTooLarge: (max: number) =>
+            `Detail rows left out: this month has more than ${max} bookings. Export from the Bookings page with a narrower filter to get the rows.`,
+          omittedChanged:
+            'Detail rows left out: the booking list changed while this file was being built. Export again to get the rows.',
+          countMismatch: (rows: number, expected: number) =>
+            `Note: ${rows} rows here, but the Bookings sheet counts ${expected} — the list changed between the two reads. Export again for a consistent snapshot.`,
         },
       },
     },

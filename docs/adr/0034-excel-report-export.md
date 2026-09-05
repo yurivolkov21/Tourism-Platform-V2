@@ -182,6 +182,48 @@ họ với khối `@media print` và lớp bề mặt admin ở `globals.css`: m
 `.xlsx` không có CSS custom property nào để tham chiếu, ExcelJS đòi hex tuyệt
 đối.
 
+## AMEND 2 05/09 (vòng vá review) — trần thời gian, lời ghi trong file, vùng lọc, một hex dẫn xuất, và dependency
+
+**a. Route thiếu `maxDuration = 60`.** Nó chạy đúng vòng gom 45s của
+`fetchAllAdminBookings` — thứ `export-pages.ts` chốt ngân sách "dưới
+`maxDuration = 60` mà mọi route export khai" — nhưng lại là route export duy
+nhất không khai. API Render lạnh là platform giết function trước khi
+`AbortSignal.timeout` bắn, và nhánh 502-có-lời không bao giờ chạy.
+
+**b. Sheet *Detail* thiếu hàng phải NÓI trong file.** Bản đầu ghi vết audit
+phía server rồi giao file với Detail trống — người tải không bao giờ thấy vết
+ấy, và một sheet trống cạnh Summary nói 2,480 booking đọc ra như "tháng này
+không tạo booking nào". Nay một dòng in nghiêng ngay dưới tiêu đề nói vì sao
+(vượt `EXPORT_MAX_ROWS`, hay tập đổi giữa chừng). Cùng cơ chế cho ca hai lần
+gọi API không cùng mốc: `rows.length ≠ newBookings` thì Detail tự khai lệch.
+
+**c. Vùng `autoFilter` phải phủ tới hàng cuối.** `ref="A1:G1"` chỉ phủ tiêu
+đề; Excel desktop tự nới nhưng LibreOffice và Google Sheets tôn trọng `ref` và
+lọc trên đúng một hàng — mất đúng lý do §3 cho sheet tồn tại. Spec nay kiểm
+`to.row`, không chỉ `toBeTruthy`. Kèm: `sheet.columnCount` là getter duyệt mọi
+hàng, gọi trong vòng lặp 2000 booking là O(n²) — đọc một lần.
+
+**d. `BRAND_SOFT` là hằng DẪN XUẤT, có công thức.** AMEND 1b nói "không bịa
+màu mới" nhưng `FFDAECE9` không ứng với token nào. Bảng token không có teal
+nhạt, nên thay vì bịa: `0.85·#FFFFFF + 0.15·#2E6E66` (sRGB blend của
+`--primary` trên nền trắng) = `FFDFE9E8`, ghi kèm công thức để đổi `--primary`
+thì tính lại được. Luật cho lần sau: hằng màu trong file này hoặc là token quy
+đổi, hoặc là dẫn xuất từ token với công thức ghi cạnh — không có loại thứ ba.
+
+**e. Dependency.** `exceljs@4.4.0` (2023, không có bản mới) ghim `uuid@^8.3.2`
+dính GHSA-w5hq-g745-h8pq (moderate) — advisory duy nhất trong cây, và workflow
+audit thứ Hai sẽ đỏ. Override `uuid@<11.1.1: ^11.1.1` ở `pnpm-workspace.yaml`
+(exceljs chỉ gọi `v4()`, không gói nào khác kéo uuid); ghim cứng `4.4.0` như
+`next`/`better-auth`. Câu "code base còn được bảo trì tích cực" ở §1 rút lại:
+cái được bảo trì là bề mặt API, không phải cây phụ thuộc (9 gói bắc cầu, có
+`unzipper@0.10` không còn bảo trì). Đổi lại, ADR ghi thẳng: phần ĐỌC file của
+exceljs là năng lực ta không dùng — cùng lời phê từng dành cho SheetJS.
+
+Kèm một mục nhỏ: key i18n `reports.exportCsv` chết từ khi toolbar dùng
+`exportExcel` — xoá. (`lib/xlsx.ts` KHÔNG khai `import 'server-only'`: gói ấy
+không có trong repo và thêm một dependency chỉ để canh một import là quá tay —
+route handler là consumer duy nhất, giữ bằng quy ước.)
+
 ## Phương án đã cân nhắc và bỏ
 
 **Giữ CSV, chỉ làm đẹp trang in.** Rẻ nhất, không dep. Bỏ vì nó không giải quyết
