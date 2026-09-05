@@ -145,6 +145,20 @@ const EnvSchema = z
     MEDIA_GC_GRACE_DAYS: z.coerce.number().int().min(1).max(90).default(7),
   })
   .superRefine((cfg, ctx) => {
+    // Lưới thứ hai cho bộ dọn ảnh (ADR-0035 §6): dev và prod dùng CHUNG một
+    // Cloudinary cloud, và `.env.production` (có secret) nằm ngay trên máy
+    // dev theo quy ước CLAUDE.md — một lần `--env-file .env.production` để
+    // debug worker là đủ để bật destroy lên ảnh của site đang sống. Cờ env
+    // một mình là lưới mỏng; ở đây đòi thêm NODE_ENV=production.
+    if (cfg.MEDIA_GC_ENABLED && cfg.NODE_ENV !== 'production') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MEDIA_GC_ENABLED'],
+        message:
+          'MEDIA_GC_ENABLED can only be true when NODE_ENV=production ' +
+          '(dev and prod share one Cloudinary cloud)',
+      });
+    }
     // ADMIN_EMAILS parse ra RỖNG (input toàn khoảng trắng/dấu phẩy, ví dụ
     // " " hoặc "," hoặc ",,") là misconfiguration nghiêm trọng ở MỌI môi
     // trường, không riêng production — `adminEmails[0]` là người nhận `to`

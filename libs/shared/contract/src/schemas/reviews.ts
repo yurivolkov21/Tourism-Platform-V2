@@ -38,6 +38,20 @@ export const PublicReviewSchema = z.object({
   media: z.array(MediaItemSchema),
 });
 
+/**
+ * publicId ảnh review do client gửi lên. Từ ADR-0035 chuỗi này không còn chỉ
+ * là "ảnh vỡ nếu sai": khi tác giả gỡ nó khỏi review, nó thành đối số của một
+ * lệnh `destroy` không hoàn tác. `startsWith(folder)` phía server không chặn
+ * được `..`, nên chặn ký tự ở đây theo đúng dạng Cloudinary tự sinh: chữ, số,
+ * `_ - . /`, không segment `..` (vòng vá review 05/09). `.max(300)` khớp
+ * varchar(300) của MediaAsset.publicId.
+ */
+export const ReviewPhotoPublicIdSchema = z
+  .string()
+  .min(1)
+  .max(300)
+  .regex(/^[A-Za-z0-9_-]+(?:[./][A-Za-z0-9_-]+)*$/, 'Invalid photo reference');
+
 export const CreateReviewInputSchema = z.object({
   // Tái dùng BookingCodeSchema (common.ts) thay vì lặp regex tại chỗ — nhất
   // quán với media.ts (SignUploadInputSchema nhánh REVIEW_PHOTO).
@@ -52,7 +66,7 @@ export const CreateReviewInputSchema = z.object({
    * varchar(300) của MediaAsset.publicId — thiếu trần này thì chuỗi dài chết
    * P2000 ở DB (500) thay vì 400 ở tầng validate.
    */
-  photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
+  photos: z.array(ReviewPhotoPublicIdSchema).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
 /**
@@ -71,7 +85,7 @@ export const UpdateReviewInputSchema = z.object({
   rating: RatingSchema,
   title: z.string().trim().max(120).optional(),
   body: z.string().trim().min(10).max(2000),
-  photos: z.array(z.string().min(1).max(300)).max(REVIEW_PHOTOS_MAX).optional(),
+  photos: z.array(ReviewPhotoPublicIdSchema).max(REVIEW_PHOTOS_MAX).optional(),
 });
 
 export type UpdateReviewInput = z.output<typeof UpdateReviewInputSchema>;

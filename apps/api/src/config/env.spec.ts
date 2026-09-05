@@ -349,7 +349,27 @@ describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
     // Dev và prod dùng chung một Cloudinary cloud: bật nhầm ở máy dev là
     // destroy ảnh của site đang sống.
     expect(parseEnv({}).MEDIA_GC_ENABLED).toBe(false);
-    expect(parseEnv({ MEDIA_GC_ENABLED: 'true' }).MEDIA_GC_ENABLED).toBe(true);
+    // Bật được, nhưng CHỈ ở production — lưới thứ hai (ADR-0035 §AMEND 2):
+    // dev/prod chung một Cloudinary cloud, và `.env.production` nằm ngay trên
+    // máy dev, nên cờ env một mình là lưới mỏng.
+    expect(
+      parseEnv({
+        MEDIA_GC_ENABLED: 'true',
+        NODE_ENV: 'production',
+        BETTER_AUTH_SECRET: 'real-secret',
+        DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+        STRIPE_SECRET_KEY: 'sk_test_x',
+        STRIPE_WEBHOOK_SECRET: 'whsec_x',
+        NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+        CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+        REVALIDATE_SECRET: 'real-revalidate-secret',
+        RESEND_API_KEY: 're_test_x',
+      }).MEDIA_GC_ENABLED,
+    ).toBe(true);
+    expect(() => parseEnv({ MEDIA_GC_ENABLED: 'true' })).toThrow(/NODE_ENV=production/);
+    expect(() => parseEnv({ MEDIA_GC_ENABLED: 'true', NODE_ENV: 'test' })).toThrow(
+      /NODE_ENV=production/,
+    );
     // Chuỗi lạ KHÔNG được âm thầm hoá thành true — enum chặn ở boot.
     expect(() => parseEnv({ MEDIA_GC_ENABLED: '1' })).toThrow();
     expect(() => parseEnv({ MEDIA_GC_ENABLED: 'yes' })).toThrow();

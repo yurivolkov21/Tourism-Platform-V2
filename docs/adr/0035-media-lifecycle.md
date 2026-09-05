@@ -180,9 +180,15 @@ một `INSERT` dọn rác ném ra tận mặt người dùng.
   với "chưa tới lượt" — hoặc xoá thẳng row khi xong, quyết lúc thi công.
 - Ảnh của review bị bác **và tác giả đã bỏ ra** biến mất khỏi CDN sau 7 ngày.
   Ảnh của review bị bác mà tác giả chưa đụng vào thì ở lại — đúng ý §4.
-- Thư viện Cloudinary sẽ có một lượt co lại đáng kể ở lần chạy đầu trên prod
-  (mọi upload bỏ dở tích từ 12/08 tới nay). Lần chạy đầu nên chạy tay và đọc
-  log trước khi để cron tự chạy.
+- Bộ dọn chỉ bắt được ảnh sinh ra **từ ngày deploy** trở đi: đường ghi duy nhất
+  vào `media_garbage` là lúc ký (§3) và lúc gỡ tham chiếu (§AMEND 2), còn upload
+  bỏ dở tích từ 12/08 tới trước deploy không có row nào và đường quét ngược đã
+  bị bỏ (xem *Phương án đã cân nhắc*). Muốn dọn lịch sử thì là một script
+  backfill riêng, một lần, có người đọc danh sách trước khi enqueue — ghi ở
+  *Giới hạn* #6. Lần chạy đầu trên prod vẫn nên chạy tay và đọc log: dòng log
+  in `destroyed` và `absent` TÁCH nhau, và `absent` bằng tất cả nghĩa là
+  publicId đang ghi sai dạng chứ không phải "đã dọn xong". (Bản đầu của mục
+  này hứa "một lượt co lại đáng kể" — sai, sửa ở vòng vá review 05/09.)
 - Đây là lời gọi **API ra ngoài** đầu tiên từ server tới Cloudinary; trước nay
   server chỉ dựng URL và ký chữ ký. Cần một module `cloudinary-destroy.ts`
   cạnh `upload-signing.ts`, dùng lại đúng cách ký `sha1(params + api_secret)`.
@@ -207,7 +213,7 @@ quay lại của ADR-0032 — xem §4.
 quen thuộc hơn. Bỏ vì nó không biểu diễn được nguồn mồ côi LỚN NHẤT: upload bỏ
 dở không có row `media_assets` nào để mà đánh dấu.
 
-## AMEND 1 — hai chỗ thi công đã sửa lại thiết kế (05/09, cùng ngày)
+## AMEND 1 — bốn chỗ thi công đã sửa lại thiết kế (05/09, ghi SAU thi công cùng ngày)
 
 **a. Phép kiểm tham chiếu phải hỏi CẢ `users.image`, không chỉ `media_assets`.**
 
@@ -249,6 +255,54 @@ chạy sai một chút — nó xoá lưới an toàn 7 ngày và biến bộ d�
 xoá-ngay-lập-tức. Env schema cũng khoá `.min(1)`, nhưng hàm thuần phải tự
 đứng vững.
 
+## AMEND 2 — vòng vá review 05/09: hàng đợi HOÃN thay vì bỏ, đồng hồ đặt lại lúc gỡ
+
+Review 8 mũi ở session gốc chỉ ra AMEND 1b tự mâu thuẫn với thi công của §2:
+"avatar cũ đã nằm sẵn trong hàng dọn từ lúc ký, tuần sau nó tự tới lượt" chỉ
+đúng nếu row còn sống — mà `sweep` bản đầu **xoá row** khi thấy asset còn tham
+chiếu (int spec khoá `count = 0`). Lượt quét đầu tiên thấy avatar đang dùng là
+mất dấu vĩnh viễn; đổi avatar 60 ngày sau không còn gì theo dõi publicId cũ.
+Bảng nguồn mồ côi ở *Bối cảnh* liệt "Đổi avatar" và "Xoá tài khoản" nhưng
+không nguồn nào thật sự được bắt.
+
+**a. Row còn tham chiếu thì HOÃN, không bỏ.** `sweep` đặt lại `created_at =
+now` và để row ở lại; kỳ sau hỏi lại. Mọi publicId từng được ký vì thế được
+hỏi mãi cho tới khi mồ côi thật — không đường gỡ-tham-chiếu nào có thể "quên"
+enqueue, và AMEND 1b trở lại đúng. Giá: mỗi ảnh đang sống tốn hai câu SELECT
+mỗi `graceDays` ngày, không lời gọi CDN nào; với quy mô capstone là không đáng
+kể, và batch 200 mỗi ngày dư sức.
+
+**b. Đồng hồ 7 ngày đặt lại lúc tham chiếu THẬT SỰ bị gỡ.** §2 hứa "gỡ rồi
+đổi ý gắn lại trong tuần" — nhưng `enqueue` (lúc ký, `skipDuplicates`) không
+làm mới `created_at`, nên ảnh ký ngày 0, gỡ khỏi review ngày 6 bị xoá ngày 7:
+cửa sổ thật là `7 − tuổi ảnh`, có thể bằng 0. Nay có hai động từ: `enqueue`
+lúc ký (giữ nguyên đồng hồ — vẫn đúng, đó là để upload bỏ dở không được gia
+hạn vô thời hạn) và `requeue` lúc gỡ (đặt lại `created_at`, xoá `attempts`/
+`lastError`). `ReviewsService.update` dùng `requeue`.
+
+**c. `not found` đếm RIÊNG khỏi `ok`.** Cả hai đều là xong, nhưng log lượt
+chạy đầu là thứ duy nhất nói bộ dọn có xoá thật không: publicId sai dạng
+(thiếu folder, sai resource type) làm MỌI row trả `not found`, hàng đợi sạch
+bong mà không byte nào bị xoá. `sweep` trả một `SweepReport` năm số.
+
+**d. Lưới thứ hai cho cờ bật.** `env.ts` từ chối boot khi `MEDIA_GC_ENABLED`
+mà `NODE_ENV !== 'production'`: `.env.production` (có secret) nằm ngay trên
+máy dev theo quy ước CLAUDE.md, một lần `--env-file .env.production` để debug
+worker là đủ để bật destroy lên ảnh của site đang sống.
+
+**e. publicId do client gửi có cổng ký tự ở contract.** Từ ADR này một chuỗi
+`photos` lạ không còn chỉ là ảnh vỡ — nó là đối số của một lệnh destroy 7 ngày
+sau. `ReviewPhotoPublicIdSchema` chỉ nhận `[A-Za-z0-9_-]` nối bằng `.`/`/`,
+không segment `..`.
+
+**f. Job pg-boss `media-gc` khai `retryLimit: 0` + `expireInSeconds: 3600`.**
+Không khai thì một lượt sweep chậm quá 15 phút bị coi là hết hạn và retry
+trong khi lượt cũ còn chạy; `markFailed` cũng đổi sang `increment` nguyên tử.
+
+**g. `GC_GRACE_DAYS` bỏ.** Hằng ấy không được dòng code chạy nào đọc (production
+đọc `env.MEDIA_GC_GRACE_DAYS`), nên test "khoá lưới an toàn" đang canh nhầm
+chỗ. Số 7 và lý do sống ở `env.ts`, khoá ở `env.spec.ts`.
+
 ## Giới hạn đã biết
 
 1. **Review hết lượt sửa vẫn giữ ảnh.** `rejectedFinal` là trạng thái cuối
@@ -268,3 +322,9 @@ xoá-ngay-lập-tức. Env schema cũng khoá `.min(1)`, nhưng hàm thuần ph�
 5. **Không có đường xoá thủ công cho admin.** Muốn gỡ một tấm ảnh cụ thể ngay
    thì vẫn phải vào dashboard Cloudinary. Màn media library của admin là phase
    `/media` (đang `enabled: false`).
+6. **Không có backfill cho ảnh mồ côi trước ngày deploy.** Upload bỏ dở tích từ
+   12/08 tới trước khi ADR này chạy không có row `media_garbage` nào và không
+   bao giờ tự được dọn. Đường đúng là một script một lần: liệt kê Cloudinary
+   theo folder, diff với `media_assets` + `users.image`, in danh sách cho người
+   đọc, rồi mới `enqueue` — KHÔNG phải quét ngược tự động (đã bỏ ở *Phương án*).
+   Ghi nợ, chưa làm.

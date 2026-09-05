@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  classifyDestroyResult,
-  dueBefore,
-  GC_GRACE_DAYS,
-  GC_MAX_ATTEMPTS,
-  shouldRetry,
-} from './media-garbage.js';
+import { classifyDestroyResult, dueBefore, GC_MAX_ATTEMPTS, shouldRetry } from './media-garbage.js';
 
 /**
  * Phần THUẦN của bộ dọn ảnh mồ côi (ADR-0035) — không đụng DB, không đụng
@@ -16,10 +10,8 @@ import {
  * lại thay vì để ai đó hạ xuống 0 trong một lần "tối ưu".
  */
 describe('hằng an toàn', () => {
-  it('độ trễ là BẢY ngày — đủ để người phát hiện, không phải để máy', () => {
-    expect(GC_GRACE_DAYS).toBe(7);
-  });
-
+  // Độ trễ 7 ngày sống ở env (`MEDIA_GC_GRACE_DAYS`) và được khoá ở
+  // `env.spec.ts` — nơi production thật sự đọc. Không khoá một hằng ở đây nữa.
   it('trần thử lại là 5 — hỏng mãi thì để lại làm vết, không quay vòng vô hạn', () => {
     expect(GC_MAX_ATTEMPTS).toBe(5);
   });
@@ -57,16 +49,17 @@ describe('dueBefore', () => {
 });
 
 describe('classifyDestroyResult', () => {
-  it('`ok` là xong', () => {
-    expect(classifyDestroyResult({ result: 'ok' })).toBe('done');
+  it('`ok` là xoá thật', () => {
+    expect(classifyDestroyResult({ result: 'ok' })).toBe('destroyed');
   });
 
-  it('`not found` CŨNG là xong, không phải lỗi', () => {
+  it('`not found` CŨNG là xong, không phải lỗi — nhưng phải PHÂN BIỆT được với xoá thật', () => {
     // Ca thường gặp nhất của ADR-0035 §3: publicId được ghi vào hàng đợi ngay
     // lúc KÝ, nên phần lớn row là những lần khách bỏ dở — file chưa bao giờ
     // lên CDN. Coi đó là lỗi thì hàng đợi tự bơm `attempts` và không bao giờ
-    // sạch.
-    expect(classifyDestroyResult({ result: 'not found' })).toBe('done');
+    // sạch. Nhưng gộp với `ok` thì log lượt chạy đầu không nói được bộ dọn có
+    // xoá THẬT không (publicId sai dạng → mọi row đều `not found`).
+    expect(classifyDestroyResult({ result: 'not found' })).toBe('absent');
   });
 
   it('mọi phán quyết khác là hỏng — để lại thử lần sau', () => {

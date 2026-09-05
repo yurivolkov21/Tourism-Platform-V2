@@ -8,19 +8,12 @@
 
 const DAY_MS = 86_400_000;
 
-/**
- * Số ngày một publicId phải nằm trong hàng đợi trước khi được phép xoá.
- *
- * `destroy` của Cloudinary **không hoàn tác được** — không thùng rác, không
- * undo — và phần lớn ảnh nguồn là CC BY / CC BY-SA lấy từ Commons (ADR-0020),
- * mất là phải đi xin lại và ghi công lại.
- *
- * Bảy ngày là con số dành cho CON NGƯỜI, không phải cho máy: một bug làm
- * enqueue nhầm cả gallery sẽ hiện ra ở trang tour trước rất lâu, và tuần ấy là
- * khoảng thời gian gỡ ngòi (dừng worker, xoá sạch bảng) trước khi mất gì. Xoá
- * ngay thì lần đầu ai đó biết là lúc ảnh đã không còn.
- */
-export const GC_GRACE_DAYS = 7;
+// Độ trễ 7 ngày KHÔNG còn là hằng ở đây: nó sống ở `env.ts`
+// (`MEDIA_GC_GRACE_DAYS`, mặc định 7, `.min(1)`) — nơi duy nhất production
+// đọc. Bản đầu có `GC_GRACE_DAYS` ở đây kèm test "khoá lưới an toàn", nhưng
+// không dòng code chạy nào đọc nó, tức test canh một hằng vô hiệu trong khi
+// số thật ở env có thể đổi (vòng vá review 05/09). Lý do vì sao là 7 ngày ghi
+// ở env.ts.
 
 /**
  * Thử lại tối đa bao nhiêu lượt trước khi bỏ cuộc với một row.
@@ -49,8 +42,15 @@ export function dueBefore(now: Date, graceDays: number): Date {
   return new Date(now.getTime() - Math.max(0, graceDays) * DAY_MS);
 }
 
-/** Phán quyết của một lượt destroy: xong hẳn, hay để lại thử lần sau. */
-export type DestroyOutcome = 'done' | 'failed';
+/**
+ * Phán quyết của một lượt destroy. `destroyed` và `absent` đều là XONG (row
+ * rời hàng đợi), nhưng phải phân biệt được vì log của lượt chạy đầu trên prod
+ * là thứ duy nhất nói cho người vận hành biết bộ dọn có xoá THẬT không: nếu
+ * publicId ghi sai dạng (thiếu folder, sai resource type), Cloudinary trả
+ * `not found` cho MỌI row và hàng đợi sạch bong mà không byte nào bị xoá —
+ * gộp hai ca thành một con số là che mất đúng lỗi ấy (vòng vá review 05/09).
+ */
+export type DestroyOutcome = 'destroyed' | 'absent' | 'failed';
 
 /**
  * Đọc phản hồi `uploader.destroy` của Cloudinary.
@@ -62,7 +62,9 @@ export type DestroyOutcome = 'done' | 'failed';
  * bao giờ sạch.
  */
 export function classifyDestroyResult(response: { result?: string }): DestroyOutcome {
-  return response.result === 'ok' || response.result === 'not found' ? 'done' : 'failed';
+  if (response.result === 'ok') return 'destroyed';
+  if (response.result === 'not found') return 'absent';
+  return 'failed';
 }
 
 /** Còn được thử nữa không. */

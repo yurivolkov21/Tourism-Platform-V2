@@ -1982,7 +1982,7 @@ sang phase `/tours`.
 | --- | --- |
 | **Seed lại dữ liệu** | Fixture giá vốn cho 29 tour đã sẵn sàng nhưng chưa đổ vào DB nào. Chưa seed thì `/reports` vẫn hiện `$0.00` và đếm booking thiếu giá vốn — ĐÚNG, nhưng trống. Đây là việc mở khoá nhiều thứ nhất. |
 | **Ba công tắc env** | `MARGIN_TAX_RATE`, `PAYMENT_FEE_RATE`, `PAYMENT_FEE_FIXED` đang 0 nên hai dòng thuế/phí trong báo cáo bằng 0. Mặc định an toàn, không phải lỗi. |
-| **`MEDIA_GC_ENABLED`** | Mặc định TẮT (dev/prod chung một Cloudinary cloud). Lần chạy đầu trên prod nên chạy tay và đọc log — nó sẽ dọn mọi upload bỏ dở tích từ 12/08. |
+| **`MEDIA_GC_ENABLED`** | Mặc định TẮT (dev/prod chung một Cloudinary cloud), và từ vòng vá review 05/09 chỉ bật được khi `NODE_ENV=production`. Lần chạy đầu trên prod nên chạy tay và đọc log (`destroyed`/`absent` in tách nhau). ⚠️ Nó KHÔNG dọn được upload bỏ dở trước ngày deploy — chưa có backfill (ADR-0035 *Giới hạn* #6). |
 
 ### Việc còn lại, theo thứ tự đáng làm
 

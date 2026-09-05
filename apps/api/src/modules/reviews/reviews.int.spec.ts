@@ -51,7 +51,7 @@ afterAll(async () => {
 beforeEach(async () => {
   // Thứ tự truncate theo chiều phụ thuộc FK.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE media_assets, review_moderation_events, reviews, outbox, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
+    'TRUNCATE media_garbage, media_assets, review_moderation_events, reviews, outbox, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
   );
 });
 
@@ -1617,6 +1617,12 @@ describe('reviews (int)', () => {
           where: { ownerType: MediaOwnerType.REVIEW, ownerId: reviewId },
         }),
       ).toBe(0);
+      // Ảnh vừa bị gỡ vào hàng dọn CÙNG transaction (ADR-0035 §7) với đồng hồ
+      // vừa đặt lại — lưới duy nhất chứng minh đường requeue thật sự ghi.
+      const queued = await prisma.mediaGarbage.findUniqueOrThrow({
+        where: { publicId: 'reviews/BK-TESTREV1/old' },
+      });
+      expect(Date.now() - queued.createdAt.getTime()).toBeLessThan(60_000);
     });
 
     it('`bookings.byCode` trả kèm review với trạng thái + lý do bác', async () => {

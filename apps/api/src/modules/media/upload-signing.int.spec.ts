@@ -37,9 +37,10 @@ afterAll(async () => {
 
 beforeEach(async () => {
   // Thứ tự truncate theo chiều phụ thuộc FK (khuôn reviews.int.spec.ts, rút
-  // gọn — media không có bảng riêng cần truncate thêm).
+  // gọn). `media_garbage` có mặt vì ký upload GHI vào đó (ADR-0035 §3) — thiếu
+  // là mỗi lượt ký để lại row rác cho spec chạy sau.
   await prisma.$executeRawUnsafe(
-    'TRUNCATE reviews, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
+    'TRUNCATE media_garbage, reviews, bookings, tour_departures, tours, tour_categories, destinations, users, sessions, accounts RESTART IDENTITY CASCADE',
   );
 });
 
@@ -174,6 +175,12 @@ describe('media.signUpload', () => {
         'int-test-secret',
       ),
     );
+    // Ký = đăng ký theo dõi (ADR-0035 §3): hàng dọn phải có ĐÚNG publicId đầy
+    // đủ `<folder>/<basename>` — dạng `uploader.destroy` nhận. Đây là lưới
+    // duy nhất chứng minh đường enqueue lớn nhất thật sự ghi (vòng vá 05/09).
+    expect(await prisma.mediaGarbage.findMany()).toMatchObject([
+      { publicId: `${body.folder}/${body.publicId}`, resourceType: 'image' },
+    ]);
   });
 
   it('REVIEW_PHOTO: booking đủ điều kiện → folder reviews/<code>', async () => {

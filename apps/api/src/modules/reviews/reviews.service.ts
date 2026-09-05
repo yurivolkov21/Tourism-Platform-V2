@@ -413,7 +413,9 @@ export class ReviewsService {
       await tx.mediaAsset.deleteMany({
         where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
       });
-      await this.garbage.enqueue(
+      // `requeue` chứ không `enqueue`: đây là lúc tham chiếu THẬT SỰ bị gỡ,
+      // đồng hồ 7 ngày phải bắt đầu từ đây (ADR-0035 §AMEND 2).
+      await this.garbage.requeue(
         tx,
         dropped.map((asset) => asset.publicId),
       );

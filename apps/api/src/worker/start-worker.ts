@@ -83,7 +83,16 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   // pgboss của DB dùng chung (ADR-0035 §6).
   if (env.MEDIA_GC_ENABLED) {
     const mediaGarbage = app.get(MediaGarbageService);
-    await boss.createQueue(MEDIA_GC_QUEUE, { policy: 'short' });
+    // `retryLimit: 0` + `expireInSeconds` tường minh: một lượt sweep chậm
+    // (Cloudinary rate-limit) vượt 15 phút mặc định sẽ bị pg-boss coi là hết
+    // hạn và RETRY trong khi lượt cũ còn chạy — hai sweep chồng lên cùng tập
+    // row. Lượt kế theo cron là đủ; không cần retry. `policy: 'short'` chỉ
+    // chặn xếp chồng lúc gửi, không chặn retry sau expire (vòng vá review 05/09).
+    await boss.createQueue(MEDIA_GC_QUEUE, {
+      policy: 'short',
+      retryLimit: 0,
+      expireInSeconds: 3600,
+    });
     await boss.work(MEDIA_GC_QUEUE, async () => {
       await mediaGarbage.sweep(new Date(), env.MEDIA_GC_GRACE_DAYS);
     });

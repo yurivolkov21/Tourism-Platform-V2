@@ -6,6 +6,20 @@ import { destroyAsset } from '../../lib/cloudinary-destroy.js';
 import { resolveUploadConfig } from '../../lib/upload-signing.js';
 import { classifyDestroyResult, dueBefore, GC_MAX_ATTEMPTS, shouldRetry } from './media-garbage.js';
 
+/** Kết quả một lượt quét — mỗi con số một ý nghĩa, không gộp (xem `sweep`). */
+export interface SweepReport {
+  /** Row rời hàng đợi: xoá thật + vốn không tồn tại trên CDN. */
+  resolved: number;
+  /** Cloudinary xác nhận đã xoá. */
+  destroyed: number;
+  /** Cloudinary trả `not found` — file chưa từng lên, HOẶC publicId sai dạng. */
+  absent: number;
+  /** Còn tham chiếu → hoãn thêm một kỳ, row Ở LẠI. */
+  deferred: number;
+  /** Hỏng, để lại thử lần sau. */
+  failed: number;
+}
+
 /**
  * Hàng đợi xoá ảnh mồ côi trên Cloudinary (ADR-0035).
  *
@@ -49,6 +63,28 @@ export class MediaGarbageService {
   }
 
   /**
+   * Xếp lại publicId vào hàng đợi khi một tham chiếu THẬT SỰ vừa bị gỡ —
+   * đặt lại đồng hồ (ADR-0035 §AMEND 2).
+   *
+   * Khác `enqueue` (lúc ký, giữ nguyên `created_at` cũ): ở đây `created_at`
+   * = bây giờ, vì cửa sổ 7 ngày mà §2 hứa là "7 ngày kể từ lúc ảnh mất chỗ
+   * dùng" — để đổi ý gắn lại — chứ không phải "7 ngày kể từ lúc ký". Bản đầu
+   * dùng `enqueue` cho cả hai nên ảnh ký ngày 0, gỡ ngày 6 bị xoá ngày 7
+   * (vòng vá review 05/09). `attempts`/`lastError` cũng về 0: một row hỏng cũ
+   * không được kéo theo tiền sử vào lần theo dõi mới.
+   */
+  async requeue(tx: Prisma.TransactionClient, publicIds: readonly string[]): Promise<void> {
+    const now = new Date();
+    for (const publicId of publicIds) {
+      await tx.mediaGarbage.upsert({
+        where: { publicId },
+        create: { publicId, resourceType: 'image', createdAt: now },
+        update: { createdAt: now, attempts: 0, lastError: null },
+      });
+    }
+  }
+
+  /**
    * Enqueue KHÔNG được phép làm hỏng việc chính (ADR-0035 §7).
    *
    * Ghi hàng đợi dọn rác là việc phụ; sửa review, đổi avatar và ký upload là
@@ -71,16 +107,23 @@ export class MediaGarbageService {
   /**
    * Một lượt quét: xử mọi row đã quá hạn chờ.
    *
-   * Trả về số row đã **giải quyết xong** (xoá thật hoặc bỏ hàng vì hoá ra vẫn
-   * còn người dùng) — không tính row hỏng phải để lại.
+   * Row còn tham chiếu thì **hoãn** (đặt lại `created_at`), KHÔNG xoá row
+   * (ADR-0035 §AMEND 2). Bản đầu xoá row ấy, và điều đó phá đúng lý lẽ của
+   * AMEND 1b ("avatar cũ đã nằm sẵn trong hàng dọn từ lúc ký"): lượt quét
+   * đầu tiên thấy avatar đang dùng là xoá row, nên khi khách đổi avatar 60
+   * ngày sau không còn gì theo dõi publicId cũ — nó nằm trên CDN vĩnh viễn.
+   * Hoãn thì mọi publicId từng được ký đều được hỏi lại mỗi kỳ, và không
+   * đường gỡ-tham-chiếu nào có thể "quên" enqueue. Giá: mỗi ảnh đang sống tốn
+   * hai câu SELECT mỗi `graceDays` ngày, không lời gọi CDN nào.
    */
-  async sweep(now: Date, graceDays: number, batchSize = 200): Promise<number> {
+  async sweep(now: Date, graceDays: number, batchSize = 200): Promise<SweepReport> {
+    const report: SweepReport = { resolved: 0, destroyed: 0, absent: 0, deferred: 0, failed: 0 };
     const cfg = resolveUploadConfig(env);
     if (!cfg) {
       // Không có secret thì không xoá được gì — và im lặng trả 0 sẽ khiến một
       // worker cấu hình thiếu trông y hệt một worker không có việc để làm.
       this.logger.warn('Bỏ qua lượt dọn media: chưa cấu hình Cloudinary API key/secret');
-      return 0;
+      return report;
     }
 
     const rows = await prisma.mediaGarbage.findMany({
@@ -88,11 +131,7 @@ export class MediaGarbageService {
       orderBy: { createdAt: 'asc' },
       take: batchSize,
     });
-    if (rows.length === 0) return 0;
-
-    let resolved = 0;
-    let destroyed = 0;
-    let stillInUse = 0;
+    if (rows.length === 0) return report;
 
     for (const row of rows) {
       // ⚠️ Kiểm tham chiếu ở LÚC XOÁ, không phải lúc xếp hàng (ADR-0035 §2).
@@ -101,9 +140,8 @@ export class MediaGarbageService {
       // Đây cũng là chỗ chữa ca tác giả gỡ ảnh ra rồi đổi ý gắn lại trong
       // tuần chờ.
       if (await this.stillReferenced(row.publicId)) {
-        await prisma.mediaGarbage.delete({ where: { id: row.id } });
-        resolved += 1;
-        stillInUse += 1;
+        await prisma.mediaGarbage.update({ where: { id: row.id }, data: { createdAt: now } });
+        report.deferred += 1;
         continue;
       }
 
@@ -111,27 +149,29 @@ export class MediaGarbageService {
         const outcome = classifyDestroyResult(
           await destroyAsset(cfg, row.publicId, row.resourceType),
         );
-        if (outcome === 'done') {
-          await prisma.mediaGarbage.delete({ where: { id: row.id } });
-          resolved += 1;
-          destroyed += 1;
+        if (outcome === 'failed') {
+          await this.markFailed(row.id, 'Cloudinary từ chối lệnh xoá');
+          report.failed += 1;
           continue;
         }
-        await this.markFailed(row.id, row.attempts, 'Cloudinary từ chối lệnh xoá');
+        await prisma.mediaGarbage.delete({ where: { id: row.id } });
+        report.resolved += 1;
+        if (outcome === 'destroyed') report.destroyed += 1;
+        else report.absent += 1;
       } catch (error) {
-        await this.markFailed(
-          row.id,
-          row.attempts,
-          error instanceof Error ? error.message : String(error),
-        );
+        await this.markFailed(row.id, error instanceof Error ? error.message : String(error));
+        report.failed += 1;
       }
     }
 
+    // `absent` in RIÊNG, và đây là dòng người vận hành đọc ở lượt chạy đầu
+    // trên prod: hàng đợi sạch mà `destroyed = 0` và `absent` = tất cả nghĩa
+    // là publicId đang ghi SAI dạng, không phải "đã dọn xong".
     this.logger.log(
-      `Dọn media: ${destroyed} xoá khỏi CDN, ${stillInUse} hoá ra vẫn còn dùng, ` +
-        `${rows.length - resolved} để lại thử lần sau`,
+      `Dọn media: ${report.destroyed} xoá khỏi CDN, ${report.absent} vốn không có trên CDN, ` +
+        `${report.deferred} còn dùng (hoãn ${graceDays} ngày), ${report.failed} hỏng để lại`,
     );
-    return resolved;
+    return report;
   }
 
   /**
@@ -171,14 +211,17 @@ export class MediaGarbageService {
    * triệu chứng (quyền API bị thu hồi? cloud name sai?), và xoá nó là xoá luôn
    * triệu chứng.
    */
-  private async markFailed(id: string, attempts: number, message: string): Promise<void> {
-    const next = attempts + 1;
-    await prisma.mediaGarbage.update({
+  private async markFailed(id: string, message: string): Promise<void> {
+    // `increment` nguyên tử thay vì `attempts + 1` từ giá trị đọc đầu batch:
+    // hai lượt sweep chồng nhau (job pg-boss hết hạn rồi retry trong khi lượt
+    // cũ còn chạy) sẽ mất update và row hỏng không bao giờ chạm trần.
+    const { attempts } = await prisma.mediaGarbage.update({
       where: { id },
-      data: { attempts: next, lastError: message.slice(0, 1000) },
+      data: { attempts: { increment: 1 }, lastError: message.slice(0, 1000) },
+      select: { attempts: true },
     });
-    if (!shouldRetry(next)) {
-      this.logger.error(`Bỏ cuộc với media_garbage ${id} sau ${next} lượt: ${message}`);
+    if (!shouldRetry(attempts)) {
+      this.logger.error(`Bỏ cuộc với media_garbage ${id} sau ${attempts} lượt: ${message}`);
     }
   }
 }
