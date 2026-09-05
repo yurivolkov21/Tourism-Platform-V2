@@ -154,6 +154,7 @@ nguyên, di chuyển nguyên văn 03/08) ·
 
 | Tài liệu | Dùng để |
 | --- | --- |
+| [**Rà bảo mật + thiết kế web theo cụm 05/09**](analysis/2026-09-05-web-security-audit.md) | **Đọc TRƯỚC khi mở bất kỳ đợt vá web nào** — 8 cụm tính năng nhìn từ kẻ tấn công, 27/27 khẳng định nặng verify chéo; ~55 phát hiện theo mức + "đã kiểm sạch" từng cụm; đề xuất 4 đợt vá W1 tiền → W2 phiên/hạ tầng → W3 vỏ Next → W4 kênh vào |
 | [Schema audit](analysis/2026-07-18-schema-audit-nexora.md) | Soi 27 model + quyết định tối ưu (H/M/LOW) |
 | [API parity + upgrade map](analysis/2026-07-19-api-parity-upgrade-map.md) | Kiểm kê ~64 endpoint còn thiếu + 14 nâng cấp + 10 delta schema |
 | [Infra parity](analysis/2026-07-19-infra-parity-nexora.md) | 8 lỗ hạ tầng xuyên suốt — thứ API parity map bỏ lọt |
