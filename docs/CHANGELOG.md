@@ -8,6 +8,67 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-05 — Đọc được review mà không phải mở nút quyết định (nhánh `fix/p4c-backend-logic`, 1 commit `3a4132c`, ~8 file, KHÔNG migration)
+
+User hỏi 05/09: trang `/reviews` chỉ có nút duyệt, không thấy đường nào xem kỹ
+khách viết gì.
+
+Rà lại thì nội dung đầy đủ và ảnh đính kèm **vốn đã hiện** — nhưng chỉ hiện bên
+trong dialog xác nhận Approve/Remove. Nghĩa là **cửa duy nhất để ĐỌC là một cái
+cửa ghi "làm đi"**: muốn đọc kỹ phải mở một hành động ghi rồi bấm huỷ. Đó là
+dạy người ta bấm nút quyết định khi chưa quyết. Ở bảng thì nội dung cắt còn hai
+dòng, bản đầy đủ nhét trong thuộc tính `title` — tooltip vô hình trên cảm ứng
+và không đọc nổi với 2000 ký tự.
+
+Nay chính đoạn chữ trong bảng là nút mở **dialog chỉ-đọc**: nguyên văn giữ cả
+chỗ xuống dòng, năm sao, badge trạng thái và nguồn, tour, dấu vết ai duyệt lúc
+nào, cùng ảnh ở cỡ đọc được.
+
+### Ba quyết định
+
+**Ảnh dùng bản `c_limit` mới, không phải thumbnail `c_fill` của bảng.** Ảnh
+review là BẰNG CHỨNG — khách chụp vết bẩn ở góc phòng hay tấm biển sai tên
+tour. Cắt vuông có thể xén mất đúng thứ họ đang phàn nàn, và người duyệt thì
+không biết mình vừa *không được nhìn* cái gì.
+
+**Dialog KHÔNG có nút duyệt.** Trộn đọc với ghi là dựng lại đúng vấn đề vừa gỡ,
+chỉ theo chiều ngược; hai nút quyết định vẫn nằm ngay cạnh trên cùng hàng.
+
+**Bỏ nút X góc trên** (`showCloseButton={false}`), cùng lý do đã ghi ở
+`ConfirmWriteDialog`: nó là `absolute` ngay trong phần tử cuộn nên trôi khuất,
+mà dialog này sinh ra để cuộn qua 2000 ký tự.
+
+Không đụng schema, không đụng contract, không tốn thêm request nào — mọi thứ
+dialog cần đã nằm trong `ReviewRowVM` mà server component dựng sẵn.
+
+### Đây mới là bước 1 trong ba
+
+Vòng rà cùng ngày trả lời ba câu hỏi khác của user, và cả ba đều dẫn tới một
+lỗ lớn hơn:
+
+- **Khách review lại được không?** Ràng buộc là `bookingId @unique` — một
+  review mỗi BOOKING, không phải mỗi tour. Đặt lại tour đó thì review lại
+  được; cùng một booking thì 409.
+- **Sửa review được không?** KHÔNG. Toàn hệ thống chỉ có ba route cho khách:
+  xem theo tour · xem của mình · tạo. Không update, không delete. Gửi xong là
+  đóng băng với cả khách lẫn admin.
+- **Có nên thêm Reject?** Nên, và lý do mạnh nhất nằm đúng ở đợt trước: model
+  chỉ có `isApproved: boolean`, không có trạng thái "đã xem và từ chối" — nên
+  **card `Pending` đang đếm gộp "chưa ai xem" với "đã xem và không duyệt"**,
+  tức hàng đợi không bao giờ dọn sạch được và con số vừa dựng đo một thứ chỉ
+  có thể phình ra.
+
+Hai phát hiện phụ, cùng loại "đã có nhưng không ai đọc": `ReviewModerationEvent.note`
+(500 ký tự) được ghi mỗi lần moderate nhưng KHÔNG nơi nào đọc — write-only từ
+đầu; và email `REVIEW_APPROVED` chỉ bắn khi `false→true`, nên gỡ duyệt hay từ
+chối thì khách không được báo gì cả.
+
+Bước 2 (Reject thành trạng thái chung cuộc — cần migration, ADR riêng, và đổi
+nghĩa card Pending) và bước 3 (đường quay lại cho khách) làm ở đợt sau.
+
+Tests after: 2.795 unit (10 tokens · 218 contract · 22 ui · 2 i18n · 315 api ·
+794 admin · 1.434 web) và 345 integration.
+
 ## 2026-09-04 — `/reviews` mọc bộ lọc ngày, stat card ăn theo, và card mẫu số còn thiếu (nhánh `fix/p4c-backend-logic`, 2 commit `36eb501..0f10d50`, ~25 file, KHÔNG migration)
 
 Vùng thứ ba áp ADR-0028, và là vùng đầu tiên **chưa có bộ lọc ngày nào cả** —
