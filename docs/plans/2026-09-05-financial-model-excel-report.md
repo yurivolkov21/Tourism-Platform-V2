@@ -757,7 +757,7 @@ Migration KHÔNG deploy lên Supabase ở bước này — chờ user yêu cầu
 
 ---
 
-### Task 4: Env + phép tính tài chính thuần
+### Task 4: Env + phép tính tài chính thuần ✅ *(xong 05/09)*
 
 **Files:**
 - Modify: `apps/api/src/config/env.ts`
