@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { ExportButton } from '@/components/kit/export-button';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
+import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
 import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
 import { type BookingsQuery, bookingsExportHref, bookingsHref } from '@/lib/bookings-query';
 import { EXPORT_MAX_ROWS } from '@/lib/export-pages';
@@ -90,10 +91,8 @@ export function BookingsSearch({ query }: { query: BookingsQuery }) {
       inputId="bookings-search"
       label={t.searchLabel}
       placeholder={t.searchPlaceholder}
-      clearLabel={t.clear}
       value={query.search}
       onSearch={(term) => router.push(bookingsHref(query, { search: term }))}
-      onClear={() => router.push(bookingsHref(query, { search: null }))}
     />
   );
 }
@@ -117,7 +116,6 @@ export function BookingsDateRange({ query }: { query: BookingsQuery }) {
         openFrom: t.pickDateFrom,
         openTo: t.pickDateTo,
         placeholder: t.datePlaceholder,
-        clear: t.clearDates,
       }}
       from={query.from}
       to={query.to}
@@ -167,6 +165,31 @@ export function BookingsExportLink({
       label={label}
       href={tooLarge ? undefined : bookingsExportHref(query, selected)}
       disabledReason={tooLarge ? t.exportTooLarge(total, EXPORT_MAX_ROWS) : undefined}
+    />
+  );
+}
+
+/**
+ * Nút xoá DUY NHẤT của hàng điều khiển `/bookings` (05/09) — vỏ mỏng quanh kit
+ * `ToolbarClearFilters`, xem JSDoc ở đó cho luật chung.
+ *
+ * Không đụng dải tab trạng thái (`status`): nó nằm ở khe `views`, tự đã có mục "All", và
+ * sidebar link thẳng vào những URL mang nó.
+ *
+ * Hai href đều GHIM `page: 1` — không ghim thì từ trang 2 trở đi chúng khác
+ * nhau chỉ vì `page` và nút không bao giờ tự ẩn.
+ */
+export function BookingsClearFilters({ query }: { query: BookingsQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarClearFilters
+      label={messages.admin.table.clearFilters}
+      href={clearFiltersHref(
+        bookingsHref(query, { search: null, from: null, to: null, page: 1 }),
+        bookingsHref(query, { page: 1 }),
+      )}
+      onNavigate={router.push}
     />
   );
 }

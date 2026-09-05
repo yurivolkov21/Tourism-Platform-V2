@@ -1,10 +1,9 @@
 'use client';
 
-import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
 import { cn } from '@tourism/ui/lib/utils';
 import * as React from 'react';
-import { TOOLBAR_BUTTON, TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics';
+import { TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics';
 
 /**
  * Ô tìm kiếm của bảng admin (kit P4b — nâng từ cặp bản chép VERBATIM
@@ -18,6 +17,11 @@ import { TOOLBAR_BUTTON, TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics'
  * Sửa ở KIT chứ không fork riêng cho `/bookings`: user chốt 31/08 mọi bảng
  * admin đi một kiểu, cấm bản rút gọn. Nên `/reviews` đổi theo cùng lúc — đó
  * là ý đồ, không phải tác dụng phụ.
+ *
+ * **Không còn nút Clear riêng** (05/09): mọi bộ lọc của hàng điều khiển nay
+ * chung một nút `ToolbarClearFilters` ở cuối hàng — đang lọc cả ngày lẫn chữ
+ * thì trước đây hàng mọc ra hai nút xoá cạnh nhau. Ô này vì thế chỉ còn đúng
+ * một việc: nhận chữ và bắn `onSearch`.
  *
  * Ranh giới: kit lo hình dạng + hành vi ô nhập, vùng lo URL. Chuỗi đi ra
  * NGUYÊN VĂN — trim và cắt trần là luật của `*Href` (một bản duy nhất cho cả
@@ -137,10 +141,8 @@ export function TableSearchForm({
   inputId,
   label,
   placeholder,
-  clearLabel,
   value,
   onSearch,
-  onClear,
 }: {
   /** `id` của ô — mỗi bảng một id, tránh trùng khi hai bảng cùng DOM. */
   inputId: string;
@@ -148,11 +150,9 @@ export function TableSearchForm({
   label: string;
   /** Gợi ý dạng dữ liệu; chỉ hiện khi ô được focus (xem `placeholder` dưới). */
   placeholder: string;
-  clearLabel: string;
   /** Từ khoá đang lọc (từ URL) — `undefined` là chưa lọc gì. */
   value: string | undefined;
   onSearch: (term: string) => void;
-  onClear: () => void;
 }) {
   function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -174,11 +174,6 @@ export function TableSearchForm({
         placeholder={placeholder}
         defaultValue={value ?? ''}
       />
-      {value ? (
-        <Button type="button" variant="ghost" className={TOOLBAR_BUTTON} onClick={onClear}>
-          {clearLabel}
-        </Button>
-      ) : null}
     </form>
   );
 }

@@ -15,6 +15,7 @@ import {
 import Link from 'next/link';
 import * as React from 'react';
 import {
+  EnquiriesClearFilters,
   EnquiriesSearch,
   EnquiriesStatusTabs,
   EnquiriesTourFilter,
@@ -178,6 +179,7 @@ export function EnquiriesTable({ rows, query, total, totalPages }: EnquiriesTabl
         <>
           <EnquiriesTourFilter query={query} />
           <EnquiriesSearch query={query} />
+          <EnquiriesClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }

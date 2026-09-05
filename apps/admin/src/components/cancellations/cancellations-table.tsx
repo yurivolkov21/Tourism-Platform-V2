@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import {
+  CancellationsClearFilters,
   CancellationsDateRange,
   CancellationsStatusTabs,
 } from '@/components/cancellations/cancellations-toolbar';
@@ -207,6 +208,7 @@ export function CancellationsTable({ rows, query, total, totalPages }: Cancellat
       actions={
         <>
           <CancellationsDateRange query={query} />
+          <CancellationsClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }

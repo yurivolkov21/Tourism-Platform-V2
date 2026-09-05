@@ -5,6 +5,7 @@ import { CircleSlashIcon, ListIcon, MailCheckIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
+import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
 import { type SubscribersQuery, subscribersHref } from '@/lib/subscribers-query';
 
 /**
@@ -65,10 +66,33 @@ export function SubscribersSearch({ query }: { query: SubscribersQuery }) {
       inputId="subscribers-search"
       label={t.searchLabel}
       placeholder={t.searchPlaceholder}
-      clearLabel={t.clear}
       value={query.search}
       onSearch={(term) => router.push(subscribersHref(query, { search: term }))}
-      onClear={() => router.push(subscribersHref(query, { search: null }))}
+    />
+  );
+}
+
+/**
+ * Nút xoá DUY NHẤT của hàng điều khiển `/subscribers` (05/09) — vỏ mỏng quanh kit
+ * `ToolbarClearFilters`, xem JSDoc ở đó cho luật chung.
+ *
+ * Không đụng dải tab trạng thái (`active`): nó nằm ở khe `views`, tự đã có mục "All", và
+ * sidebar link thẳng vào những URL mang nó.
+ *
+ * Hai href đều GHIM `page: 1` — không ghim thì từ trang 2 trở đi chúng khác
+ * nhau chỉ vì `page` và nút không bao giờ tự ẩn.
+ */
+export function SubscribersClearFilters({ query }: { query: SubscribersQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarClearFilters
+      label={messages.admin.table.clearFilters}
+      href={clearFiltersHref(
+        subscribersHref(query, { search: null, source: null, page: 1 }),
+        subscribersHref(query, { page: 1 }),
+      )}
+      onNavigate={router.push}
     />
   );
 }

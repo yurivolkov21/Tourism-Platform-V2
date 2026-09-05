@@ -1,9 +1,7 @@
 'use client';
 
-import { Button } from '@tourism/ui/components/button';
 import * as React from 'react';
 import { DatePickerField } from '@/components/kit/date-picker-field';
-import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
 
 /**
  * Bộ lọc KHOẢNG NGÀY của hàng điều khiển bảng admin — hai ô `DatePickerField`
@@ -20,6 +18,11 @@ import { TOOLBAR_BUTTON } from '@/components/kit/toolbar-metrics';
  * phím, vì ô chữ tự do không có sẵn ranh giới `change` mà ô date native cho
  * không. Chi tiết ở `DatePickerField`.
  *
+ * **Không còn nút Clear riêng** (05/09): nó chuyển sang `ToolbarClearFilters`
+ * chung ở cuối hàng, vì đang lọc cả ngày lẫn chữ thì hàng mọc ra hai nút xoá
+ * cạnh nhau. Guard "patch bị vứt" ở `go` KHÔNG mất theo — nó vẫn là lối kéo ô
+ * về khi giá trị vừa gõ bị luật khoảng-ngược loại.
+ *
  * Vùng giữ phần RIÊNG của nó: nhãn, tiền tố id, và `hrefFor` (nó biết hàm
  * href cùng query của mình). Kit không biết vùng nào đang dùng.
  */
@@ -34,7 +37,6 @@ export interface ToolbarDateRangeProps {
     openFrom: string;
     openTo: string;
     placeholder: string;
-    clear: string;
   };
   /** Ngày đang lọc, ISO `YYYY-MM-DD`; `undefined` là không lọc đầu đó. */
   from?: string | undefined;
@@ -123,19 +125,6 @@ export function ToolbarDateRange({
         value={to ?? ''}
         onCommit={(iso) => go({ to: iso || null })}
       />
-      {/* Xoá cả hai đầu trong một cú bấm — nếp `TableSearchForm`. Không có nó
-          thì bỏ lọc nghĩa là quét trắng từng ô rồi rời ô, và nó cũng là lối
-          thoát cho ca ô bị kéo về ở `go` (review F6). */}
-      {from || to ? (
-        <Button
-          type="button"
-          variant="ghost"
-          className={TOOLBAR_BUTTON}
-          onClick={() => go({ from: null, to: null })}
-        >
-          {labels.clear}
-        </Button>
-      ) : null}
     </fieldset>
   );
 }

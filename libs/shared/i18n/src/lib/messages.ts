@@ -2720,6 +2720,12 @@ export const messages = {
       columnsMenuLabel: 'Show or hide columns',
       /** aria-label cho landmark `<nav>` bọc cụm nút phân trang. */
       pagination: 'Pagination',
+      /**
+       * MỘT nhãn cho nút xoá của cả hàng điều khiển (05/09), thay bảy cặp
+       * `clear`/`clearDates` rời trước đây. Chữ số nhiều "filters" là cố ý:
+       * nút xoá mọi bộ lọc ở hàng bên phải, không phải riêng ô đứng cạnh nó.
+       */
+      clearFilters: 'Clear filters',
     },
     /**
      * Khối payload trong drawer chi tiết (kit `JsonDrawer` — `/outbox` và
@@ -3081,7 +3087,6 @@ export const messages = {
          */
         searchLabel: 'Search bookings',
         searchPlaceholder: 'Code, name or email',
-        clear: 'Clear',
         empty: 'No bookings match these filters.',
         /**
          * Bảng rỗng khi ĐANG lọc theo ngày (mặc định là tháng hiện tại, user
@@ -3111,7 +3116,6 @@ export const messages = {
         dateFilterLabel: 'Filter by booking date',
         dateFrom: 'Booked from',
         dateTo: 'Booked to',
-        clearDates: 'Clear dates',
         /**
          * Ô ngày là ô CHỮ (kiểu `date-picker-04`), nên gợi ý trong ô phải
          * làm luôn việc thứ hai: nói ra dạng ngày mà ô đọc được. Đổi nó thì
@@ -3356,7 +3360,6 @@ export const messages = {
         dateFilterLabel: 'Filter by request date',
         dateFrom: 'Requested from',
         dateTo: 'Requested to',
-        clearDates: 'Clear dates',
         datePlaceholder: 'January 01, 2026',
         pickDateFrom: 'Open calendar to pick the start date',
         pickDateTo: 'Open calendar to pick the end date',
@@ -3596,7 +3599,6 @@ export const messages = {
         searchLabel: 'Search enquiries',
         /** Khớp `name` HOẶC `email` — hai thứ operator cầm khi khách gọi lại. */
         searchPlaceholder: 'Name or email',
-        clear: 'Clear search',
         empty: 'No enquiries match this filter.',
         columns: {
           name: 'Name',
@@ -3759,7 +3761,6 @@ export const messages = {
         searchLabel: 'Search subscribers',
         /** Chỉ khớp email — bảng này không có cột chữ nào khác để tìm. */
         searchPlaceholder: 'Email address',
-        clear: 'Clear search',
         empty: 'No subscribers match this filter.',
         columns: {
           email: 'Email',
@@ -3869,7 +3870,6 @@ export const messages = {
          * operator đang cầm nằm trong payload).
          */
         searchPlaceholder: 'Booking code, email or dedupe key',
-        clear: 'Clear search',
         empty: 'No outbox rows match this filter.',
         columns: {
           type: 'Type',
@@ -3992,7 +3992,6 @@ export const messages = {
         searchLabel: 'Search payment events',
         /** Khớp `eventId` — thứ operator dán từ dashboard Stripe/PayPal. */
         searchPlaceholder: 'Provider event id',
-        clear: 'Clear search',
         /** Toggle URL `?unprocessed=true` — "chỉ hàng chưa xong", không phải "trạng thái". */
         unprocessedOnly: 'Unprocessed only',
         empty: 'No payment events match this filter.',
@@ -4158,7 +4157,6 @@ export const messages = {
         /** Nhãn nổi + gợi ý-khi-focus — cùng luật với `bookings.list`. */
         searchLabel: 'Search reviews',
         searchPlaceholder: 'Text, title or author',
-        clear: 'Clear',
         empty: 'No reviews match these filters.',
         /**
          * Bộ lọc khoảng ngày (ADR-0028 §AMEND 2) — theo ngày review được GỬI,
@@ -4184,7 +4182,6 @@ export const messages = {
         dateFilterLabel: 'Filter by submitted date',
         dateFrom: 'Submitted from',
         dateTo: 'Submitted to',
-        clearDates: 'Clear dates',
         datePlaceholder: 'January 01, 2026',
         pickDateFrom: 'Open calendar to pick the start date',
         pickDateTo: 'Open calendar to pick the end date',

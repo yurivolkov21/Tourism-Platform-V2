@@ -11,6 +11,7 @@ import { TablePagination } from '@/components/kit/table-pagination';
 import { SubscribersExportLink } from '@/components/subscribers/subscribers-export-link';
 import { SubscribersSourceMenu } from '@/components/subscribers/subscribers-source-menu';
 import {
+  SubscribersClearFilters,
   SubscribersSearch,
   SubscribersStatusTabs,
 } from '@/components/subscribers/subscribers-toolbar';
@@ -176,6 +177,7 @@ export function SubscribersTable({
         <>
           <SubscribersSourceMenu query={query} sources={sources} />
           <SubscribersSearch query={query} />
+          <SubscribersClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }

@@ -151,24 +151,12 @@ describe('BookingsDateRange', () => {
     expect(push).toHaveBeenCalledWith('/bookings?from=2026-09-15');
   });
 
-  it('nút xoá chỉ hiện khi có ngày, và xoá CẢ HAI đầu trong một cú bấm', async () => {
-    const user = userEvent.setup();
-    const { rerender } = render(<BookingsDateRange query={BASE} />);
-    expect(screen.queryByRole('button', { name: t.clearDates })).not.toBeInTheDocument();
+  it('KHÔNG còn nút xoá ngày riêng — nó đã gộp vào ToolbarClearFilters (05/09)', () => {
+    render(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
 
-    rerender(<BookingsDateRange query={{ ...BASE, from: '2026-09-01', to: '2026-09-30' }} />);
-    await user.click(screen.getByRole('button', { name: t.clearDates }));
-
-    // `dates=all` chứ KHÔNG phải `/bookings` trần (đổi 04/09): URL trần nay
-    // được parse độn lại khoảng ngày mặc định — tức hai ô sẽ nảy về đúng cái
-    // vừa xoá. Sentinel này là đường DUY NHẤT về lại "xem tất cả", và nó
-    // bookmark được lẫn truyền sang route export được.
-    expect(push).toHaveBeenCalledWith('/bookings?dates=all');
-  });
-
-  it('nút xoá vẫn hiện khi mới có một đầu', () => {
-    render(<BookingsDateRange query={{ ...BASE, to: '2026-09-30' }} />);
-
-    expect(screen.getByRole('button', { name: t.clearDates })).toBeInTheDocument();
+    // Cụm này chỉ còn hai ô ngày, mỗi ô một nút mở lịch. Nút thứ ba xuất hiện
+    // ở đây nghĩa là nút xoá riêng đã mọc lại — thứ mà `?dates=all` của
+    // `BookingsClearFilters` nay lo (xem spec của nó).
+    expect(screen.getAllByRole('button')).toHaveLength(2);
   });
 });

@@ -21,6 +21,7 @@ import {
 import Link from 'next/link';
 import * as React from 'react';
 import {
+  BookingsClearFilters,
   BookingsDateRange,
   BookingsExportLink,
   BookingsSearch,
@@ -270,6 +271,7 @@ export function BookingsTable({ rows, query, total, totalPages }: BookingsTableP
           {/* Export KHÔNG còn ở đây (01/09): hàng điều khiển tràn sau khi mọi
               control lên 44px. Nút nay nằm trong ô tiêu đề cột `export` — xem
               `buildColumns`. */}
+          <BookingsClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }

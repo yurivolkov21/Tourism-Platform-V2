@@ -5,6 +5,7 @@ import { messages } from '@tourism/i18n';
 import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
+import { clearFiltersHref, ToolbarClearFilters } from '@/components/kit/toolbar-clear-filters';
 import { ToolbarDateRange } from '@/components/kit/toolbar-date-range';
 import { type CancellationsQuery, cancellationsHref } from '@/lib/cancellations-query';
 
@@ -87,11 +88,36 @@ export function CancellationsDateRange({ query }: { query: CancellationsQuery })
         openFrom: t.pickDateFrom,
         openTo: t.pickDateTo,
         placeholder: t.datePlaceholder,
-        clear: t.clearDates,
       }}
       from={query.from}
       to={query.to}
       hrefFor={(patch) => cancellationsHref(query, patch)}
+      onNavigate={router.push}
+    />
+  );
+}
+
+/**
+ * Nút xoá DUY NHẤT của hàng điều khiển `/cancellations` (05/09) — vỏ mỏng
+ * quanh kit `ToolbarClearFilters`, xem JSDoc ở đó cho luật chung.
+ *
+ * Vùng này chỉ có MỘT bộ lọc ở khe `actions` (khoảng ngày) vì
+ * `AdminCancellationsListQuerySchema` không khai `search`. Vẫn dùng nút chung
+ * chứ không giữ nút "Clear dates" riêng: bảy bảng admin đi một kiểu, và ngày
+ * mai vùng này mọc thêm bộ lọc thứ hai thì không phải sửa lại gì.
+ *
+ * Không đụng dải tab trạng thái — nó ở khe `views`.
+ */
+export function CancellationsClearFilters({ query }: { query: CancellationsQuery }) {
+  const router = useRouter();
+
+  return (
+    <ToolbarClearFilters
+      label={messages.admin.table.clearFilters}
+      href={clearFiltersHref(
+        cancellationsHref(query, { from: null, to: null, page: 1 }),
+        cancellationsHref(query, { page: 1 }),
+      )}
       onNavigate={router.push}
     />
   );

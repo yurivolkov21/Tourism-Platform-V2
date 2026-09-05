@@ -12,20 +12,16 @@ import { TableSearchForm } from './table-search-form';
  */
 
 const onSearch = vi.fn();
-const onClear = vi.fn();
 
 const PROPS = {
   inputId: 'test-search',
   label: 'Search bookings',
   placeholder: 'Code, name or email',
-  clearLabel: 'Clear',
   onSearch,
-  onClear,
 };
 
 beforeEach(() => {
   onSearch.mockReset();
-  onClear.mockReset();
 });
 
 describe('TableSearchForm', () => {
@@ -63,18 +59,12 @@ describe('TableSearchForm', () => {
     expect(onSearch).toHaveBeenCalledWith('  BK-ABCD  ');
   });
 
-  it('chưa lọc gì thì KHÔNG có nút Clear — không mời bỏ một bộ lọc không tồn tại', () => {
-    render(<TableSearchForm {...PROPS} value={undefined} />);
-
-    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
-  });
-
-  it('đang lọc thì nút Clear gọi onClear', async () => {
-    const user = userEvent.setup();
+  it('KHÔNG còn nút xoá nào trong ô — nó đã dời sang ToolbarClearFilters (05/09)', () => {
+    // Canh sự VẮNG MẶT, không phải xoá test đi: hai bộ lọc mỗi cái một nút xoá
+    // là đúng thứ đợt 05/09 gỡ bỏ, nên nếu ai đó dựng lại nút ở đây thì phải đỏ.
     render(<TableSearchForm {...PROPS} value="ada" />);
-    await user.click(screen.getByRole('button', { name: 'Clear' }));
 
-    expect(onClear).toHaveBeenCalled();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
   /**

@@ -19,6 +19,7 @@ import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { PaymentEventDetailSheet } from '@/components/payment-events/payment-event-detail-sheet';
 import {
+  PaymentEventsClearFilters,
   PaymentEventsProviderTabs,
   PaymentEventsSearch,
   PaymentEventsUnprocessedToggle,
@@ -184,6 +185,7 @@ export function PaymentEventsTable({
           <PaymentEventsTypeMenu query={query} />
           <PaymentEventsUnprocessedToggle query={query} />
           <PaymentEventsSearch query={query} />
+          <PaymentEventsClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }

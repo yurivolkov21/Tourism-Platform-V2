@@ -22,6 +22,7 @@ import { ReviewDetailsDialog } from '@/components/reviews/review-details-dialog'
 import { ReviewsRatingMenu } from '@/components/reviews/reviews-rating-menu';
 import { ReviewsSourceMenu } from '@/components/reviews/reviews-source-menu';
 import {
+  ReviewsClearFilters,
   ReviewsDateRange,
   ReviewsSearch,
   ReviewsStateTabs,
@@ -237,13 +238,15 @@ export function ReviewsTable({ rows, query, total, totalPages, moderate }: Revie
       views={<ReviewsStateTabs query={query} />}
       actions={
         <>
-          {/* Thứ tự đọc của hàng điều khiển: LOẠI review (nguồn, số sao) →
-              KHI NÀO (khoảng ngày) → tìm chữ → chọn cột. Hai menu đầu là bộ
-              lọc mới của đợt trả nợ 05/09; server đã lọc cả hai từ F4. */}
-          <ReviewsSourceMenu query={query} />
-          <ReviewsRatingMenu query={query} />
+          {/* Thứ tự user chốt 05/09: KHI NÀO (khoảng ngày) → tìm chữ →
+              LOẠI review (nguồn, số sao) → xoá lọc → chọn cột. Hai menu nguồn
+              và số sao là bộ lọc mới của đợt trả nợ cùng ngày; server đã lọc
+              cả hai từ F4 mà chưa có ô nào để bấm. */}
           <ReviewsDateRange query={query} />
           <ReviewsSearch query={query} />
+          <ReviewsSourceMenu query={query} />
+          <ReviewsRatingMenu query={query} />
+          <ReviewsClearFilters query={query} />
           <ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />
         </>
       }
