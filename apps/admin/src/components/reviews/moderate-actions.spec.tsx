@@ -27,7 +27,13 @@ const PENDING: ModerateTarget = {
   ratingLabel: messages.admin.reviews.list.ratingLabel(5),
   title: 'Trip of a lifetime',
   body: 'The guide knew every cove and the kayaking was the highlight.',
-  photos: [{ url: 'https://res.cloudinary.com/demo/image/upload/one.jpg', alt: 'Sunrise' }],
+  photos: [
+    {
+      thumb: 'https://res.cloudinary.com/demo/image/upload/one.jpg',
+      large: 'https://res.cloudinary.com/demo/image/upload/one.jpg',
+      alt: 'Sunrise',
+    },
+  ],
   photosLabel: messages.admin.reviews.list.photos(1),
   authorLabel: 'Ada Lovelace',
   authorDeleted: false,

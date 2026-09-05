@@ -152,8 +152,8 @@ function ModerateDialog({
                   // hàng dữ liệu như vậy sẽ giết cả hàng đợi moderation.
                   // biome-ignore lint/performance/noImgElement: thumbnail 64px, tránh next/image ném khi host lạ
                   <img
-                    key={photo.url}
-                    src={photo.url}
+                    key={photo.thumb}
+                    src={photo.thumb}
                     alt={photo.alt}
                     width={64}
                     height={64}

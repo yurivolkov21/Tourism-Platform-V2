@@ -27,7 +27,10 @@ export function reviewStateBadgeVariant(
 
 /** Một tấm ảnh khách đính kèm, đã sẵn sàng cho thẻ ảnh (ADR-0021). */
 export interface ReviewPhotoVM {
-  url: string;
+  /** Thumbnail vuông 128px — cỡ của ô 32px trong bảng, kể cả màn retina. */
+  thumb: string;
+  /** Bản ĐỌC ĐƯỢC cho dialog chi tiết: vừa trong 800px, KHÔNG cắt cúp. */
+  large: string;
   alt: string;
 }
 
@@ -73,6 +76,20 @@ export function reviewPhotoThumb(url: string): string {
     : url;
 }
 
+/**
+ * Bản cho dialog chi tiết — `c_limit` chứ KHÔNG `c_fill` như thumbnail.
+ *
+ * Ảnh review là BẰNG CHỨNG: khách chụp vết bẩn ở góc phòng, hay tấm biển sai
+ * tên tour. Cắt vuông có thể xén mất đúng thứ họ đang phàn nàn, và người duyệt
+ * thì không biết mình vừa không được nhìn cái gì. `c_limit` thu nhỏ vừa 800px,
+ * giữ nguyên khung hình, và không phóng to ảnh vốn đã nhỏ.
+ */
+export function reviewPhotoLarge(url: string): string {
+  return url.includes(CLOUDINARY_UPLOAD_MARKER)
+    ? url.replace(CLOUDINARY_UPLOAD_MARKER, '/upload/f_auto,q_auto,w_800,c_limit/')
+    : url;
+}
+
 /** Review của contract → hàng bảng đã format sẵn (server component gọi). */
 export function toReviewRow(review: AdminReview): ReviewRowVM {
   return {
@@ -82,7 +99,8 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     title: review.title,
     body: review.body,
     photos: review.media.map((photo) => ({
-      url: reviewPhotoThumb(photo.url),
+      thumb: reviewPhotoThumb(photo.url),
+      large: reviewPhotoLarge(photo.url),
       alt: photo.alt ?? '',
     })),
     photosLabel: review.media.length > 0 ? t.list.photos(review.media.length) : null,

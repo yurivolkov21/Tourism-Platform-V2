@@ -1,7 +1,12 @@
 import type { AdminReview, MediaItem } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
-import { reviewStateBadgeVariant, toReviewRow } from './reviews-view';
+import {
+  reviewPhotoLarge,
+  reviewPhotoThumb,
+  reviewStateBadgeVariant,
+  toReviewRow,
+} from './reviews-view';
 
 /**
  * Mapper hiển thị hàng đợi moderation (spec P4b §3-F4) — THUẦN, ngoài React:
@@ -93,13 +98,35 @@ describe('toReviewRow', () => {
     expect(row.authorDeleted).toBe(true);
   });
 
-  it('ảnh khách đính kèm → thumbnail có url + alt; alt null thành chuỗi rỗng', () => {
+  it('ảnh khách đính kèm → HAI cỡ + alt; alt null thành chuỗi rỗng', () => {
+    // Bảng cần thumbnail, dialog chi tiết cần bản đọc được — hàng mang sẵn cả
+    // hai để dialog không phải biết luật biến đổi URL của Cloudinary.
     const row = toReviewRow({ ...PENDING, media: [PHOTO, { ...PHOTO, alt: null }] });
     expect(row.photos).toEqual([
-      { url: PHOTO.url, alt: 'Sunrise over the bay' },
-      { url: PHOTO.url, alt: '' },
+      {
+        thumb: reviewPhotoThumb(PHOTO.url),
+        large: reviewPhotoLarge(PHOTO.url),
+        alt: 'Sunrise over the bay',
+      },
+      { thumb: reviewPhotoThumb(PHOTO.url), large: reviewPhotoLarge(PHOTO.url), alt: '' },
     ]);
     expect(row.photosLabel).toBe(t.photos(2));
+  });
+
+  it('bản cho dialog KHÔNG cắt cúp — ảnh review là bằng chứng', () => {
+    // `c_fill` vuông của thumbnail có thể xén mất đúng thứ khách đang phàn nàn,
+    // và người duyệt thì không biết mình vừa không được nhìn cái gì.
+    const large = reviewPhotoLarge(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/one.jpg',
+    );
+    expect(large).toContain('c_limit');
+    expect(large).not.toContain('c_fill');
+  });
+
+  it('URL không theo khuôn Cloudinary trả NGUYÊN VẸN — thà nặng còn hơn vỡ ảnh', () => {
+    const foreign = 'https://cdn.example.com/one.jpg';
+    expect(reviewPhotoLarge(foreign)).toBe(foreign);
+    expect(reviewPhotoThumb(foreign)).toBe(foreign);
   });
 
   it('một ảnh dùng số ít, không ảnh thì KHÔNG có nhãn nào', () => {

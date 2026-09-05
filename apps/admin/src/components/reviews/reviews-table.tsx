@@ -18,6 +18,7 @@ import { DataTableFrame } from '@/components/kit/data-table-frame';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import { TablePagination } from '@/components/kit/table-pagination';
 import { ModerateActions } from '@/components/reviews/moderate-actions';
+import { ReviewDetailsDialog } from '@/components/reviews/review-details-dialog';
 import {
   ReviewsDateRange,
   ReviewsSearch,
@@ -144,16 +145,15 @@ function buildColumns(moderate: ModerateAction) {
   ]);
 }
 
-/** Tiêu đề + nội dung cắt gọn + thumbnail ảnh đính kèm. */
+/** Tiêu đề + nội dung cắt gọn (bấm được để mở bản đầy đủ) + thumbnail ảnh. */
 function ReviewCell({ row }: { row: ReviewRowVM }) {
   return (
     <div className="grid max-w-96 gap-1">
-      {row.title ? <div className="truncate font-medium">{row.title}</div> : null}
-      {/* Cắt bằng CSS nhưng giữ NGUYÊN VĂN trong `title`; bản đầy đủ nằm
-          trong dialog xác nhận — chỗ admin thật sự đọc trước khi quyết. */}
-      <div className="line-clamp-2 text-muted-foreground" title={row.body}>
-        {row.body}
-      </div>
+      {/* Chữ cắt gọn nay là NÚT mở dialog chỉ-đọc (vòng chỉnh 05/09). Trước đó
+          bản đầy đủ chỉ nằm trong thuộc tính `title` — một tooltip vô hình
+          trên cảm ứng và không đọc nổi với 2000 ký tự — hoặc trong dialog xác
+          nhận Approve, tức phải mở một hành động GHI mới đọc được. */}
+      <ReviewDetailsDialog row={row} />
       {row.photos.length > 0 ? (
         <div className="flex items-center gap-1">
           {row.photos.map((photo) => (
@@ -162,8 +162,8 @@ function ReviewCell({ row }: { row: ReviewRowVM }) {
             // một hàng dữ liệu như thế sẽ giết cả hàng đợi moderation.
             // biome-ignore lint/performance/noImgElement: thumbnail 32px, tránh next/image ném khi host lạ
             <img
-              key={photo.url}
-              src={photo.url}
+              key={photo.thumb}
+              src={photo.thumb}
               alt={photo.alt}
               width={32}
               height={32}

@@ -4197,6 +4197,25 @@ export const messages = {
        * — nếp F2/F3). Mã tầng vận chuyển (401/403/input hỏng/lỗi lạ) KHÔNG
        * ở đây: chúng dùng chung `admin.errors.write`.
        */
+      /**
+       * Dialog CHỈ ĐỌC (vòng chỉnh 05/09). Trước đó cửa duy nhất để đọc trọn
+       * một review là dialog xác nhận Approve — tức muốn đọc thì phải mở một
+       * hành động GHI rồi bấm huỷ, và đó là dạy người ta bấm nút quyết định
+       * khi chưa quyết.
+       */
+      details: {
+        /** Nhãn của nút mở — nút chính là nội dung review trong bảng. */
+        open: (author: string) => `Read the full review from ${author}`,
+        title: 'Review',
+        /** Ai viết, lúc nào — hai thứ định vị review trước khi đọc nó. */
+        subtitle: (author: string, submitted: string) => `${author} · ${submitted}`,
+        /** Review không có tiêu đề: nói ra thay vì chừa một khoảng trống. */
+        noTitle: 'No title',
+        /** Ảnh cỡ đọc được, không phải thumbnail của bảng. */
+        photosHeading: 'Photos from the customer',
+        source: 'Source',
+        close: 'Close',
+      },
       moderate: {
         approve: 'Approve',
         unapprove: 'Unapprove',
