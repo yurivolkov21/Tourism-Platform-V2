@@ -207,6 +207,48 @@ quay lại của ADR-0032 — xem §4.
 quen thuộc hơn. Bỏ vì nó không biểu diễn được nguồn mồ côi LỚN NHẤT: upload bỏ
 dở không có row `media_assets` nào để mà đánh dấu.
 
+## AMEND 1 — hai chỗ thi công đã sửa lại thiết kế (05/09, cùng ngày)
+
+**a. Phép kiểm tham chiếu phải hỏi CẢ `users.image`, không chỉ `media_assets`.**
+
+§2 viết phép kiểm là một câu `SELECT 1 FROM media_assets WHERE public_id = $1`.
+Sai — và sai theo hướng nguy hiểm nhất: **avatar không có row `media_assets`
+nào.** `AccountService.setAvatar` chỉ ghi một URL delivery vào `User.image`.
+Mà §3 thì enqueue MỌI publicId đường ký cấp ra, kể cả avatar. Ghép hai điều ấy
+lại: bộ dọn sẽ destroy đúng cái avatar khách đang dùng, bảy ngày sau khi họ
+đổi nó.
+
+Phép kiểm nay hỏi hai nơi, và dùng `contains` cho vế thứ hai vì cột lưu URL
+đầy đủ. Dương tính giả ở đây là **vô hại** — nó chỉ khiến ta không xoá; phép
+kiểm này phải luôn nghiêng về phía không xoá.
+
+Hình dạng đúng về lâu dài là avatar cũng có row `media_assets`
+(`MediaOwnerType.USER` + `MediaRole.avatar` đã nằm sẵn trong enum từ ngày đầu
+— schema vốn định thế). Đổi đường ghi avatar nằm ngoài ADR này.
+
+**b. `setAvatar` KHÔNG cần enqueue, khác với bảng ở §4.**
+
+Avatar cũ đã nằm trong hàng đợi từ lúc nó được KÝ. Chừng nào còn là avatar
+hiện tại thì §2 (đã sửa) thấy nó và bỏ hàng; đổi avatar là vế ấy hết đúng và
+tuần sau nó tự tới lượt. Thêm một lượt enqueue ở đây chỉ dựng một đường thứ
+hai tới cùng kết quả, để ai đó sau này sửa một đường mà quên đường kia.
+
+**c. `MediaGarbageModule` tách riêng, không controller.**
+
+`WorkerModule` import `MediaModule` làm worker chết ngay lúc dựng context:
+module ấy khai `MediaController`, controller mang `ThrottlerGuard`, mà worker
+không dựng tầng HTTP nên không có `THROTTLER:MODULE_OPTIONS`. Đo được — ba int
+spec của worker đỏ ở lượt chạy đầu. Service không trạng thái thì đáng một
+module không controller; cả hai bên cùng import nó.
+
+**d. `dueBefore` kẹp `graceDays` âm về 0.**
+
+Test bắt: `now − (−3 ngày)` là một mốc ở **tương lai**, tức mọi row đều quá hạn
+kể cả row vừa ghi một giây trước. Một dấu trừ lọt vào đó không làm hàng đợi
+chạy sai một chút — nó xoá lưới an toàn 7 ngày và biến bộ dọn thành
+xoá-ngay-lập-tức. Env schema cũng khoá `.min(1)`, nhưng hàm thuần phải tự
+đứng vững.
+
 ## Giới hạn đã biết
 
 1. **Review hết lượt sửa vẫn giữ ảnh.** `rejectedFinal` là trạng thái cuối
