@@ -58,6 +58,12 @@ export interface ReviewRowVM {
   state: ReviewModerationState;
   /** Ghi chú của quyết định gần nhất; ở review bị bác đây là LÝ DO. */
   moderationNote: string | null;
+  /**
+   * Số lần đã bị bác (ADR-0032 §8) — NGỮ CẢNH cho người duyệt: một review
+   * `pending` với số này > 0 là bài đã bị bác rồi tác giả viết lại, và lần
+   * bác kế tiếp là lần chung cuộc.
+   */
+  rejectionCount: number;
   /** `null` khi review không gắn tour (CURATED) — bảng tự chọn câu thay thế. */
   tourTitle: string | null;
   /** Có đang TRÊN SITE không — trục riêng, không phải trạng thái moderation. */
@@ -123,6 +129,7 @@ export function toReviewRow(review: AdminReview): ReviewRowVM {
     approved: review.isApproved,
     state: review.moderationState,
     moderationNote: review.moderationNote,
+    rejectionCount: review.rejectionCount,
     stateLabel: t.state[review.moderationState],
     submitted: formatDateTime(review.createdAt),
     // Hai dấu vết TÁCH nhau: `moderatedBy` là FK SetNull nên có thể null

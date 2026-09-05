@@ -126,16 +126,31 @@ export const MyReviewSchema = PublicReviewSchema.extend({
 export type MyReview = z.infer<typeof MyReviewSchema>;
 
 /** Input duyệt / bác / gỡ đăng một review (admin). */
-export const ModerateReviewInputSchema = z.object({
-  id: z.uuid(),
-  verdict: ReviewVerdictSchema,
-  /**
-   * Ghi chú của người duyệt. Ở nhánh `reject` nó là **LÝ DO BÁC** và đi thẳng
-   * vào email cho khách (ADR-0031 §6) — trước ADR này `note` được ghi vào audit
-   * trail rồi không nơi nào đọc.
-   */
-  note: z.string().trim().max(500).optional(),
-});
+export const ModerateReviewInputSchema = z
+  .object({
+    id: z.uuid(),
+    verdict: ReviewVerdictSchema,
+    /**
+     * Ghi chú của người duyệt. Ở nhánh `reject` nó là **LÝ DO BÁC** và đi thẳng
+     * vào email cho khách (ADR-0031 §6) — trước ADR này `note` được ghi vào audit
+     * trail rồi không nơi nào đọc.
+     */
+    note: z.string().trim().max(500).optional(),
+  })
+  .superRefine((input, ctx) => {
+    // ADR-0031 §7: "không có lý do thì không bác được". Bản đầu gác luật này
+    // ở dialog admin (`noteRequired`) — tức mọi caller khác của endpoint bác
+    // được mà không lý do, và khách nhận đúng cái mail "not published" trống
+    // khối WHY mà §7 sinh ra để chặn. Gác ở contract thì admin lẫn API cùng
+    // đọc một chỗ (vòng vá review 05/09).
+    if (input.verdict === 'reject' && !input.note) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['note'],
+        message: 'A rejection needs a reason — the author reads it in the email',
+      });
+    }
+  });
 
 /** Review nhìn từ phía admin — thêm trạng thái duyệt + nguồn + dấu vết. */
 export const AdminReviewSchema = PublicReviewSchema.extend({

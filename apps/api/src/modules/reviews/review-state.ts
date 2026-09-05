@@ -37,7 +37,11 @@ export function reviewModerationState(row: {
 export const REVIEW_STATE_WHERE: Record<ReviewModerationState, Prisma.ReviewWhereInput> = {
   pending: { isApproved: false, rejectedAt: null },
   approved: { isApproved: true },
-  rejected: { rejectedAt: { not: null } },
+  // `isApproved: false` KHÔNG thừa: CHECK `reviews_verdict_shape` đã bảo đảm
+  // bị bác ⇒ không đăng, nhưng planner không suy được điều đó — thiếu vế này
+  // tab Rejected không khớp prefix index `(is_approved, rejected_at, …)` và
+  // rơi về seq scan + sort (vòng vá review 05/09).
+  rejected: { isApproved: false, rejectedAt: { not: null } },
 };
 
 /**

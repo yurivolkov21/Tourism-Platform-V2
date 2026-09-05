@@ -64,6 +64,7 @@ describe('toReviewRow', () => {
       photosLabel: null,
       state: 'pending',
       moderationNote: null,
+      rejectionCount: 0,
       authorLabel: 'Ada Lovelace',
       authorDeleted: false,
       source: 'VERIFIED',

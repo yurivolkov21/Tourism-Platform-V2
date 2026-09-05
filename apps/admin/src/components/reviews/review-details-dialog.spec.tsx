@@ -40,6 +40,7 @@ function rowFor(overrides: Partial<ReviewRowVM> = {}): ReviewRowVM {
     approved: false,
     state: 'pending',
     moderationNote: null,
+    rejectionCount: 0,
     stateLabel: t.state.pending,
     submitted: '4 Sep 2026, 12:15 UTC',
     moderated: null,
@@ -168,6 +169,18 @@ describe('ReviewDetailsDialog', () => {
     // in nó dưới nhãn "vì sao bị bác" là nói sai cả hai chuyện.
     await openDialog({ state: 'approved', moderationNote: 'Ghi chú nội bộ.' });
 
+    expect(screen.queryByText(t.moderate.reasonLabel)).toBeNull();
+  });
+
+  it('review pending TỪNG BỊ BÁC: nói số lần và lý do lần trước (ADR-0032 §8)', async () => {
+    // Người duyệt đang đọc bản viết lại; với trần 2 lần, lần bác kế tiếp là
+    // lần đóng cửa — họ phải biết điều đó TRƯỚC khi đọc.
+    await openDialog({ rejectionCount: 1, moderationNote: 'Chưa nói về chuyến đi.' });
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).toHaveTextContent(t.details.rejectedBefore(1));
+    expect(dialog).toHaveTextContent('Chưa nói về chuyến đi.');
+    // Vẫn KHÔNG phải nhãn "vì sao bị bác" — review này đang chờ, không bị bác.
     expect(screen.queryByText(t.moderate.reasonLabel)).toBeNull();
   });
 

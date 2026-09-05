@@ -146,6 +146,21 @@ export function ReviewDetailsDialog({ row }: { row: ReviewRowVM }) {
               {row.state === 'rejected' && row.moderationNote ? (
                 <LabelValueRow label={t.moderate.reasonLabel} value={row.moderationNote} />
               ) : null}
+              {/* ADR-0032 §8: review `pending` từng bị bác là bài tác giả đã
+                  viết lại — người duyệt cần biết mình đang đọc lần thứ mấy, và
+                  lần bác kế tiếp có phải là lần chung cuộc không, TRƯỚC khi
+                  đọc. Kèm lý do lần trước để họ so được đã sửa đúng chỗ chưa.
+                  (Vòng vá review 05/09: contract đã trả field, admin đánh rơi.) */}
+              {row.state !== 'rejected' && row.rejectionCount > 0 ? (
+                <LabelValueRow
+                  label={t.details.rejectionHistory}
+                  value={
+                    row.moderationNote
+                      ? `${t.details.rejectedBefore(row.rejectionCount)} · ${t.details.lastReason(row.moderationNote)}`
+                      : t.details.rejectedBefore(row.rejectionCount)
+                  }
+                />
+              ) : null}
             </dl>
 
             <DialogFooter>

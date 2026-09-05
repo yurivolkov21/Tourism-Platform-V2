@@ -91,8 +91,11 @@ export function toPublicReview(
 export const REVIEW_ADMIN_INCLUDE = {
   tour: { select: { slug: true, title: true } },
   moderatedBy: { select: { name: true } },
+  // Tiebreak `id` (uuid v7, đơn điệu theo thời gian): `createdAt` chỉ chính
+  // xác tới mili-giây, hai event cùng ms thì Postgres trả thứ tự tuỳ ý và
+  // `latestNote` có thể lấy nhầm lý do của quyết định CŨ (vòng vá review 05/09).
   moderationEvents: {
-    orderBy: { createdAt: 'desc' },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
     take: 1,
     select: { note: true },
   },
@@ -101,10 +104,22 @@ export const REVIEW_ADMIN_INCLUDE = {
   _count: { select: { moderationEvents: { where: { toRejected: true } } } },
 } as const satisfies Prisma.ReviewInclude;
 
-/** Cùng thứ cho đường đọc của KHÁCH — họ cần biết còn sửa được không. */
+/**
+ * Cùng thứ cho đường đọc của KHÁCH — họ cần biết còn sửa được không.
+ *
+ * `moderationEvents` ở đây LỌC `toRejected: true`: khách chỉ được đọc LÝ DO
+ * BÁC (ADR-0031 §6). Ghi chú của lần approve/unpublish là sổ nội bộ — i18n
+ * admin hứa nguyên văn "the author never sees it" — mà bản đầu kéo cả về rồi
+ * trông vào việc UI không vẽ (vòng vá review 05/09: không vẽ ≠ không gửi).
+ */
 export const REVIEW_MINE_INCLUDE = {
   tour: { select: { slug: true, title: true } },
-  moderationEvents: { orderBy: { createdAt: 'desc' }, take: 1, select: { note: true } },
+  moderationEvents: {
+    where: { toRejected: true },
+    orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    take: 1,
+    select: { note: true },
+  },
   _count: { select: { moderationEvents: { where: { toRejected: true } } } },
 } as const satisfies Prisma.ReviewInclude;
 
@@ -174,7 +189,9 @@ export function toMyReview(
     // ADR-0031 §6: `isApproved: false` phủ cả "đang chờ" lẫn "đã bị bác", nên
     // trước đây khách bị bác vẫn đọc thấy "đang chờ duyệt" vĩnh viễn.
     moderationState: reviewModerationState(row),
-    moderationNote: latestNote(row),
+    // Contract hứa "null ở mọi trạng thái khác": sau khi tác giả sửa, review
+    // về `pending` và lý do bác cũ không còn là chuyện của họ nữa.
+    moderationNote: reviewModerationState(row) === 'rejected' ? latestNote(row) : null,
     rejectionCount: row._count?.moderationEvents ?? 0,
     // R1: danh tính tour (nullable — review curated có thể không gắn tour).
     tourSlug: row.tour?.slug ?? null,
@@ -346,6 +363,26 @@ export class ReviewsService {
     }
 
     const row = await prisma.$transaction(async (tx) => {
+      // Khoá row rồi KIỂM LẠI cổng bằng giá trị vừa khoá — cùng lý do với
+      // "Ba điểm concurrency" ở `moderate()`: `existing` đọc ngoài tx là một
+      // snapshot, và giữa nó với dòng UPDATE dưới đây admin có thể vừa
+      // approve. Không khoá thì lệnh sửa ghi đè `is_approved=false` + nội
+      // dung mới lên một review ĐANG ở trên site, rating tour thừa một, cache
+      // web không bust — ranh giới ADR-0032 §2 bị vượt (vòng vá review 05/09).
+      const [locked] = await tx.$queryRaw<{ isApproved: boolean; rejectedAt: Date | null }[]>(
+        Prisma.sql`
+          SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt"
+          FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
+        `,
+      );
+      if (!locked) throw new ReviewNotFoundError();
+      const rejectionCount = await tx.reviewModerationEvent.count({
+        where: { reviewId: input.id, toRejected: true },
+      });
+      if (!canAuthorEdit({ moderationState: reviewModerationState(locked), rejectionCount })) {
+        throw new ReviewNotEditableError();
+      }
+
       await tx.review.update({
         where: { id: input.id },
         data: {
@@ -627,6 +664,14 @@ export class ReviewsService {
       // Cùng ba điều kiện bỏ qua với ④: không user thật (CURATED), hoặc tài
       // khoản đã tự xoá (email đã tombstone hoá, gửi vào đó là bounce + retry).
       if (justRejected && existing.user?.email && !existing.user.deletedAt) {
+        // Dedupe theo LẦN PHÁN QUYẾT, không theo review: ADR-0032 hợp thức hoá
+        // vòng bác → sửa → bác lần hai (chung cuộc), mà key chỉ có id thì lần
+        // hai bị `skipDuplicates` nuốt và khách không nhận thư nào cho đúng
+        // quyết định đóng cửa (vòng vá review 05/09). Đếm TRONG tx, sau khi
+        // event ② đã ghi, nên con số là lần bác này.
+        const rejectionNo = await tx.reviewModerationEvent.count({
+          where: { reviewId: input.id, toRejected: true },
+        });
         await tx.outbox.createMany({
           data: [
             {
@@ -638,7 +683,7 @@ export class ReviewsService {
                 title: existing.tour?.title ?? null,
                 note: input.note ?? null,
               },
-              dedupeKey: `review-rejected:${input.id}`,
+              dedupeKey: `review-rejected:${input.id}:${rejectionNo}`,
             },
           ],
           skipDuplicates: true,

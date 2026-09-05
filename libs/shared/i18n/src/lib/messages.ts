@@ -4284,6 +4284,17 @@ export const messages = {
         /** Ảnh cỡ đọc được, không phải thumbnail của bảng. */
         photosHeading: 'Photos from the customer',
         source: 'Source',
+        /**
+         * ADR-0032 §8 — ngữ cảnh cho review `pending` từng bị bác: người duyệt
+         * đang đọc bản viết lại, và với trần 2 lần thì lần bác kế tiếp là
+         * lần đóng cửa. Lý do lần trước đi kèm để so bài đã sửa đúng chỗ chưa.
+         */
+        rejectionHistory: 'History',
+        rejectedBefore: (count: number) =>
+          count === 1
+            ? 'Rejected once before — this is a rewrite'
+            : `Rejected ${count} times before`,
+        lastReason: (reason: string) => `last reason: “${reason}”`,
         close: 'Close',
       },
       moderate: {

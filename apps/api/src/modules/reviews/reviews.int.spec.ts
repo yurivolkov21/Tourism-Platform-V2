@@ -1507,6 +1507,59 @@ describe('reviews (int)', () => {
       expect(after.body).toBe('Bài viết đầu tiên của khách');
     });
 
+    it('bác lần THỨ HAI vẫn gửi mail — dedupe theo lần phán quyết, không theo review', async () => {
+      // Vòng vá review 05/09: key `review-rejected:<id>` làm lần bác chung
+      // cuộc bị `skipDuplicates` nuốt, khách không nhận thư nào cho đúng quyết
+      // định đóng cửa (ADR-0031 §6).
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('two-mails@example.com');
+
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Lần một.',
+      });
+      await patch(cookie, reviewId, { id: reviewId, rating: 4, body: 'Viết lại lần một' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'reject',
+        note: 'Lần hai — chung cuộc.',
+      });
+
+      const mails = await prisma.outbox.findMany({
+        where: { type: EmailType.REVIEW_REJECTED },
+        orderBy: { createdAt: 'asc' },
+      });
+      expect(mails).toHaveLength(2);
+      expect(mails[1]?.payload).toMatchObject({ note: 'Lần hai — chung cuộc.' });
+    });
+
+    it('ghi chú nội bộ của lần unpublish KHÔNG rò ra tác giả qua `mine`', async () => {
+      // i18n admin hứa "the author never sees it" cho note ở approve/unpublish;
+      // contract hứa `moderationNote` null ở mọi trạng thái khác `rejected`.
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      const { cookie, reviewId } = await seedOwnReview('no-leak@example.com');
+      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      await reviewsService.moderate(admin.user.id, {
+        id: reviewId,
+        verdict: 'unpublish',
+        note: 'Nghi review giả — đang điều tra.',
+      });
+
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/reviews/mine',
+        headers: { cookie },
+      });
+      const [item] = res.json().items as {
+        moderationState: string;
+        moderationNote: string | null;
+      }[];
+      expect(item?.moderationState).toBe('pending');
+      expect(item?.moderationNote).toBeNull();
+      expect(JSON.stringify(res.json())).not.toContain('đang điều tra');
+    });
+
     it('bác đủ HAI lần thì đường sửa ĐÓNG', async () => {
       const admin = await signUpAdmin(app, ADMIN_EMAIL);
       const { cookie, reviewId } = await seedOwnReview('edit-limit@example.com');
