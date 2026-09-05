@@ -3,7 +3,7 @@
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
-import { ArrowRightIcon, CalendarClockIcon } from 'lucide-react';
+import { ArrowRightIcon, CalendarClockIcon, ListIcon } from 'lucide-react';
 import * as React from 'react';
 import {
   AmountCell,
@@ -18,7 +18,6 @@ import {
 import { BookingLink } from '@/components/kit/booking-link';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
-import { StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { serverTableFeatures } from '@/components/kit/table-features';
 import type { BookingRowVM } from '@/lib/bookings-view';
 
@@ -29,8 +28,8 @@ import type { BookingRowVM } from '@/lib/bookings-view';
  * `data-table.tsx` + `data.json`.
  *
  * Khác `/bookings` ở phần RIÊNG, không ở ô thân (dùng chung `booking-cells`):
- * - khe views: MỘT khung nhìn "Recent bookings" — cụm vẫn tự giới thiệu cho
- *   trình đọc màn hình dù chỉ có một lựa chọn (copy sẵn từ 01/09);
+ * - khe views: MỘT tiêu đề tĩnh "Recent bookings" (vòng vá review 05/09 —
+ *   bản đầu dựng `StatusFilterTabs` một mục, một control bấm-được-không-làm-gì);
  * - không checkbox/export: dashboard không có hành vi hàng loạt nào;
  * - footer: link "View all bookings" thay `TablePagination` — mười hàng là
  *   một cửa sổ nhìn, không phải một tập để lật;
@@ -48,12 +47,10 @@ const COLUMN_LABELS: Record<string, string> = {
 };
 const COLUMN_ICONS = { ...BOOKING_COLUMN_ICONS, createdAt: CalendarClockIcon };
 
-const VIEW_ITEMS = [{ label: t.tab, value: 'recent' }];
-
 const columns = columnHelper.columns([
   columnHelper.accessor('code', {
     header: tb.columns.code,
-    cell: ({ row }) => <BookingLink code={row.original.code} fallback={tb.empty} />,
+    cell: ({ row }) => <BookingLink code={row.original.code} fallback={t.empty} />,
     enableHiding: false,
   }),
   columnHelper.accessor('tourTitle', {
@@ -99,14 +96,12 @@ export function RecentBookingsTable({ rows }: { rows: BookingRowVM[] }) {
   return (
     <DataTableFrame
       views={
-        <StatusFilterTabs
-          items={VIEW_ITEMS}
-          value="recent"
-          label={t.viewLabel}
-          selectId="dashboard-view-selector"
-          // Một khung nhìn duy nhất: không có gì để chuyển sang.
-          onSelect={() => undefined}
-        />
+        // Cùng glyph với mục "tất cả" của bốn vùng (ListIcon) để cụm nhìn là
+        // một hệ, nhưng là chữ tĩnh: không có gì để chọn thì không có bộ chọn.
+        <h2 className="flex items-center gap-2 text-sm font-medium">
+          <ListIcon className="size-4 text-muted-foreground" aria-hidden="true" />
+          {t.tab}
+        </h2>
       }
       actions={<ColumnVisibilityMenu table={table} labels={COLUMN_LABELS} icons={COLUMN_ICONS} />}
       footer={

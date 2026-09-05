@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react';
 import { messages } from '@tourism/i18n';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { BookingRowVM } from '@/lib/bookings-view';
 import { RecentBookingsTable } from './recent-bookings-table';
 
@@ -9,14 +9,6 @@ import { RecentBookingsTable } from './recent-bookings-table';
  * link trần sang chi tiết, có lối "View all" về `/bookings`, cột Created hiện,
  * và ô rỗng nói đúng câu. Ô thân dùng chung đã có `toBookingRow` canh chữ.
  */
-
-// `StatusFilterTabs` của kit đọc `useReducedMotion` (motion) và
-// `matchMedia` — jsdom không có cái sau.
-vi.stubGlobal('matchMedia', () => ({
-  matches: false,
-  addEventListener: () => undefined,
-  removeEventListener: () => undefined,
-}));
 
 const t = messages.admin.dashboard.table;
 
@@ -49,6 +41,12 @@ describe('RecentBookingsTable', () => {
     expect(screen.getByText('29 Aug 2026, 02:05 UTC')).toBeInTheDocument();
     expect(screen.getByText('Ha Long Bay Cruise')).toBeInTheDocument();
     expect(screen.getByText('$1,497.00')).toBeInTheDocument();
+  });
+
+  it('khe views là tiêu đề TĨNH, không phải một bộ chọn một mục', () => {
+    render(<RecentBookingsTable rows={[ROW]} />);
+    expect(screen.getByRole('heading', { name: t.tab })).toBeInTheDocument();
+    expect(screen.queryByRole('radiogroup')).toBeNull();
   });
 
   it('footer là lối về /bookings thay cho phân trang', () => {

@@ -2621,10 +2621,16 @@ export const messages = {
       signOut: 'Sign out',
       viewSite: 'View site',
     },
-    // Dashboard chờ số thật (vòng gọt bước 4, 21/08): khung card/chart của
-    // dashboard-01 giữ nguyên, label theo 4 metric SẼ CÓ ở P4d (map từ
-    // admin-stats của Nexora cũ); demo số đã dọn — không bịa số.
+    // Dashboard `/` (P4d, ADR-0036): ba khối đổ số thật vào khung dashboard-01.
     dashboard: {
+      /**
+       * Một khối hỏng KHÔNG kéo sập cả trang chủ (ADR-0036 AMEND 2): card,
+       * biểu đồ, bảng là ba request độc lập, khối lỗi tự nói lỗi tại chỗ để
+       * sidebar — đường duy nhất sang các hàng đợi đang chạy tốt — còn nguyên.
+       */
+      loadError: (block: string) =>
+        `${block} could not be loaded — the API did not answer. Reload to try again.`,
+      blocks: { cards: 'Key figures', chart: 'The revenue chart', recent: 'Recent bookings' },
       // Bốn card KHÔNG có copy riêng ở đây (P4d, ADR-0036 §1): trang `/` dùng
       // đúng kit `StatCardRow` + `toBookingsStatCards`, nhãn ở `admin.stats.bookings`.
       chart: {
@@ -2637,6 +2643,12 @@ export const messages = {
         description: 'Gross revenue collected per day, by payment date',
         /** Dòng thứ hai của mô tả: dải ngày đang hiện ("Aug 26 – Sep 1, 2026"). */
         showing: (range: string) => `Showing ${range}`,
+        /**
+         * Bucket cuối là HÔM NAY đang chạy (ADR-0036 §2 + AMEND 2): nửa ngày
+         * thì nửa số, và không nói ra thì diện tích luôn kết bằng một vách đổ
+         * đọc thành "doanh thu sụp hôm nay".
+         */
+        todayRunning: 'today so far',
         /** Tên chuỗi trong tooltip. */
         revenue: 'Revenue',
         /** Dòng phụ của tooltip — số đơn mang tiền của ngày đó. */
@@ -2653,14 +2665,8 @@ export const messages = {
         range7d: 'Last 7 days',
       },
       table: {
+        /** Tiêu đề TĨNH ở khe views — một khung nhìn thì không dựng bộ chọn (AMEND 2). */
         tab: 'Recent bookings',
-        /**
-         * Nhãn cả cụm chọn khung nhìn (01/09 — bảng dashboard dùng lại
-         * `StatusFilterTabs` của kit). Hiện chỉ có MỘT khung nhìn; câu này
-         * tồn tại vì cụm điều khiển phải tự giới thiệu cho trình đọc màn
-         * hình, kể cả khi nó mới có một lựa chọn.
-         */
-        viewLabel: 'Select a view',
         /** Footer thay phân trang: mười hàng là cửa sổ nhìn, không phải tập để lật. */
         viewAll: 'View all bookings',
         empty: 'No bookings yet.',

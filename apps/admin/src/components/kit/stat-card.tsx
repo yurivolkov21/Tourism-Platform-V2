@@ -16,11 +16,12 @@ import type { StatCardVM } from '@/lib/stats-view';
  * Stat card của kit admin (spec P4b §3-F5 — mẫu user chốt 31/08: nhãn · số
  * lớn · pill delta ↑/↓ · caption "vs X prior 28 days").
  *
- * Kiểu dáng bê nguyên `section-cards.tsx` của block dashboard-01 đang chạy ở
- * trang `/` (gradient `from-primary/5`, container query `@[250px]/card` cho cỡ
- * chữ, `CardFooter` override `border-t-0` vì Card nova có gạch) — cùng lý do
- * đã ghi ở `DataTableFrame`: ba vùng phải nhìn là MỘT hệ, và P4d nối dashboard
- * vào chính component này thay vì giữ bản demo riêng.
+ * Kiểu dáng bê nguyên khối `section-cards` của block dashboard-01 (gradient
+ * `from-primary/5`, container query `@[250px]/card` cho cỡ chữ, `CardFooter`
+ * override `border-t-0` vì Card nova có gạch) — cùng lý do đã ghi ở
+ * `DataTableFrame`: ba vùng phải nhìn là MỘT hệ. Từ P4d (ADR-0036 §1) chính
+ * component này chạy ở trang `/`; bản demo `section-cards.tsx` đã xoá, đây
+ * là nguồn duy nhất của kiểu dáng ấy.
  *
  * Card KHÔNG tính gì. Chiều mũi tên, độ lớn %, hướng tốt/xấu và caption đều do
  * `stats-view.ts` (thuần, có test) nấu sẵn từ HAI con số server trả.

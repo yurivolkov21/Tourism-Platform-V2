@@ -3,18 +3,36 @@
 // cổng gác (admin)/layout. P4d (ADR-0036) chỉ ĐỔ SỐ THẬT vào ba khối, giữ
 // nguyên dáng đã chốt 1:1.
 
+import { messages } from '@tourism/i18n';
 import { SidebarInset, SidebarProvider } from '@tourism/ui/components/sidebar';
 import { cookies } from 'next/headers';
 import { AppSidebar } from '@/components/app-sidebar';
 import { RecentBookingsTable } from '@/components/bookings/recent-bookings-table';
 import { ChartAreaInteractive } from '@/components/chart-area-interactive';
+import { SectionError } from '@/components/kit/section-error';
 import { StatCardRow } from '@/components/kit/stat-card';
 import { SiteHeader } from '@/components/site-header';
-import { fetchRecentAdminBookings, RECENT_BOOKINGS_LIMIT } from '@/lib/api/bookings';
+import { fetchRecentAdminBookings } from '@/lib/api/bookings';
 import { getServerSession } from '@/lib/api/session';
 import { fetchAdminBookingsStats, fetchAdminDashboardSeries } from '@/lib/api/stats';
 import { toBookingRow } from '@/lib/bookings-view';
-import { toBookingsStatCards } from '@/lib/stats-view';
+import { statsPeriodLabel, toBookingsStatCards } from '@/lib/stats-view';
+
+const t = messages.admin.dashboard;
+
+/**
+ * Một khối hỏng KHÔNG kéo sập cả trang (ADR-0036 AMEND 2). Trang vùng theo
+ * luật "không nuốt lỗi" ở `lib/api/stats.ts` vì card đứng cạnh bảng của
+ * chính nó; `/` là trang đầu tiên có BA khối độc lập chung một số phận, và
+ * `app/error.tsx` cố ý không dựng shell — một endpoint 404 vài phút lúc lệch
+ * phiên bản deploy (ADR-0024) từng đủ để admin mất sidebar, tức mất đường
+ * sang các hàng đợi vẫn đang chạy tốt. Lỗi vẫn được log, không im lặng.
+ */
+function settled<T>(result: PromiseSettledResult<T>, block: string): T | null {
+  if (result.status === 'fulfilled') return result.value;
+  console.error(`[admin] dashboard block "${block}" failed`, result.reason);
+  return null;
+}
 
 export default async function Page() {
   const cookie = (await cookies()).toString();
@@ -31,13 +49,18 @@ export default async function Page() {
   // cắt đuôi ở client.
   //
   // Bảng: mười booking mới nhất qua `admin.bookings.list` (ADR-0036 §3).
-  const [session, stats, series, recent] = await Promise.all([
+  const [session, statsResult, seriesResult, recentResult] = await Promise.all([
     getServerSession(),
-    fetchAdminBookingsStats(cookie),
-    fetchAdminDashboardSeries(cookie),
-    fetchRecentAdminBookings(cookie),
+    ...(await Promise.allSettled([
+      fetchAdminBookingsStats(cookie),
+      fetchAdminDashboardSeries(cookie),
+      fetchRecentAdminBookings(cookie),
+    ])),
   ]);
   if (!session) return null;
+  const stats = settled(statsResult, 'cards');
+  const series = settled(seriesResult, 'chart');
+  const recent = settled(recentResult, 'recent');
   return (
     <SidebarProvider
       style={
@@ -53,18 +76,35 @@ export default async function Page() {
         <div className="flex flex-1 flex-col">
           <div className="@container/main flex flex-1 flex-col gap-2">
             <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
-              <StatCardRow cards={toBookingsStatCards(stats)} />
+              {stats ? (
+                // `period` như mọi vùng khác: hôm nay cửa sổ trượt nên nhãn
+                // undefined (ADR-0028 §4), nhưng ngày dashboard có kỳ chọn thì
+                // dòng Showing mọc — không phải sửa trang.
+                <StatCardRow
+                  cards={toBookingsStatCards(stats)}
+                  period={statsPeriodLabel(stats.period)}
+                />
+              ) : (
+                <div className="px-4 lg:px-6">
+                  <SectionError message={t.loadError(t.blocks.cards)} />
+                </div>
+              )}
               <div className="px-4 lg:px-6">
-                <ChartAreaInteractive points={series.points} currency={series.currency} />
-              </div>
-              <RecentBookingsTable
-                // `toBookingRow` cần một query để dựng href mang bộ lọc; bảng
-                // này không đọc `href` (cột Code đi qua `BookingLink`, href
-                // trần) nên truyền query rỗng — không có bộ lọc nào để mang.
-                rows={recent.map((booking) =>
-                  toBookingRow(booking, { page: 1, limit: RECENT_BOOKINGS_LIMIT, allDates: true }),
+                {series ? (
+                  <ChartAreaInteractive series={series} />
+                ) : (
+                  <SectionError message={t.loadError(t.blocks.chart)} />
                 )}
-              />
+              </div>
+              {recent ? (
+                // Không query: bảng này không mang bộ lọc nào, `href` là đường
+                // trần `/bookings/<code>` (cùng thứ `BookingLink` dựng).
+                <RecentBookingsTable rows={recent.map((booking) => toBookingRow(booking))} />
+              ) : (
+                <div className="px-4 lg:px-6">
+                  <SectionError message={t.loadError(t.blocks.recent)} />
+                </div>
+              )}
             </div>
           </div>
         </div>
