@@ -39,6 +39,10 @@ describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1)', () => 
   });
 
   afterAll(async () => {
+    // Dọn user/session của file này — spec sau không được thừa hưởng (vòng vá 06/09).
+    await prisma.$executeRawUnsafe(
+      'TRUNCATE TABLE users, sessions, accounts, verifications, bookings, media_garbage CASCADE',
+    );
     await app.close();
     await prisma.$disconnect();
   });
@@ -85,20 +89,18 @@ describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1)', () => 
   it('đường ghi booking cũng có trần: spam checkout → 429 (bucket riêng theo route)', async () => {
     const carol = await signUpUser('throttle-c@example.com');
     // Code không tồn tại → bình thường là 404; guard chạy TRƯỚC handler nên
-    // vẫn đếm — vượt trần là 429 bất kể handler nói gì.
-    let saw429 = false;
-    for (let i = 0; i < AUTHED_WRITE_THROTTLE.limit + 1; i++) {
-      const res = await app.inject({
+    // vẫn đếm — vượt trần là 429 bất kể handler nói gì. ĐỦ `limit` lượt đầu
+    // phải là 404 (bucket riêng theo route: Alice đã đốt bucket avatar ở test
+    // trên mà Carol vẫn còn nguyên quota checkout) rồi lượt limit+1 mới 429.
+    const post = () =>
+      app.inject({
         method: 'POST',
         url: '/api/bookings/BK-NOSUCH00/checkout',
         headers: { cookie: carol },
       });
-      if (res.statusCode === 429) {
-        saw429 = true;
-        break;
-      }
-      expect(res.statusCode).toBe(404);
+    for (let i = 0; i < AUTHED_WRITE_THROTTLE.limit; i++) {
+      expect((await post()).statusCode).toBe(404);
     }
-    expect(saw429).toBe(true);
+    expect((await post()).statusCode).toBe(429);
   });
 });

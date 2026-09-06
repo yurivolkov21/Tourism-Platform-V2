@@ -193,6 +193,10 @@ export function SavedGrid({ initialItems }: { initialItems: WishlistItem[] }) {
         setExpired(true);
         return;
       }
+      if (error instanceof ORPCError && error.status === 429) {
+        toast.error(messages.accountActionErrors.throttle);
+        return;
+      }
       toast.error(t.removeErrorToast.title, { description: t.removeErrorToast.body });
     }
   }

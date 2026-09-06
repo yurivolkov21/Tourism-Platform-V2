@@ -138,6 +138,10 @@ export function ReviewForm({
       // giữ state "đã gửi" ở client, vì như vậy tải lại trang là mất.
       router.refresh();
     } catch (err) {
+      if (err instanceof ORPCError && err.status === 429) {
+        setError(messages.accountActionErrors.throttle);
+        return;
+      }
       const code = err instanceof ORPCError ? err.code : '';
       setError(t.errors[code] ?? t.errors.generic);
     } finally {

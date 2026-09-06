@@ -1,5 +1,6 @@
 'use client';
 
+import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useState } from 'react';
@@ -92,9 +93,15 @@ export function WishlistProvider({
         .then(() => {
           toast.success(nextWished ? messages.wishlist.saved : messages.wishlist.removed);
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           setWished((current) => toggleWished(current, tourId));
-          toast.error(messages.wishlist.error);
+          // 429 (AUTHED_WRITE_THROTTLE) có câu riêng: "thử lại" ngay là nạp
+          // thêm vào cửa sổ trượt — phải nói "chờ một phút" (vòng vá review 06/09).
+          toast.error(
+            error instanceof ORPCError && error.status === 429
+              ? messages.accountActionErrors.throttle
+              : messages.wishlist.error,
+          );
         });
     },
     [signedIn, wished, router, pathname, searchParams],

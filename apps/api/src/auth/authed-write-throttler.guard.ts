@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ThrottlerGuard } from '@nestjs/throttler';
 import type { AuthenticatedRequest } from './auth.guard.js';
 
@@ -8,9 +8,11 @@ import type { AuthenticatedRequest } from './auth.guard.js';
  * chung IP bị khoá oan theo nhau, còn một tài khoản đi qua pool IP xoay vòng
  * không bao giờ chạm trần.
  *
- * Xếp SAU AuthGuard trong chuỗi guard (`sessionUser` do AuthGuard gắn); request
- * chưa có session (route lọt vào đây trước khi auth chạy — không nên xảy ra)
- * rơi về IP để guard vẫn fail-closed thay vì gom tất cả vào một bucket chung.
+ * Xếp SAU AuthGuard trong chuỗi guard (`sessionUser` do AuthGuard gắn). Request
+ * chưa có session (route gắn nhầm guard này mà không có auth, hoặc `@Public()`
+ * đợt sau) bị TỪ CHỐI 401 — fail-closed thật (vòng vá review 06/09): rơi về IP
+ * là âm thầm đổi trần theo-user thành theo-IP, còn một bucket 'unknown' chung
+ * là để 20 request của một kẻ bất kỳ khoá route cho cả thế giới.
  * Trần cụ thể khai per-route qua `@Throttle({ default: AUTHED_WRITE_THROTTLE })`.
  */
 @Injectable()
@@ -18,7 +20,6 @@ export class AuthedWriteThrottlerGuard extends ThrottlerGuard {
   protected override async getTracker(req: Record<string, unknown>): Promise<string> {
     const user = (req as Partial<AuthenticatedRequest>).sessionUser;
     if (user?.id) return `user:${user.id}`;
-    const ip = (req as { ip?: string }).ip;
-    return ip ?? 'unknown';
+    throw new UnauthorizedException('AuthedWriteThrottlerGuard requires an authenticated session');
   }
 }

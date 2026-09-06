@@ -30,9 +30,15 @@ export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 export const AUTHED_WRITE_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 
 /**
- * Route webhook provider (W1, audit 05/09 cụm 2): trần RỘNG TAY theo IP —
- * Stripe/PayPal retry burst hợp lệ không bao giờ chạm 120/phút cho một shop
- * cỡ này, nhưng trần phải TỒN TẠI: webhook PayPal verify bằng một round-trip
- * mạng tới PayPal, không trần là ai cũng đốt được quota đó ẩn danh miễn phí.
+ * Route webhook provider (W1, audit 05/09 cụm 2): trần RỘNG TAY theo IP — trần
+ * phải TỒN TẠI vì webhook PayPal verify bằng một round-trip mạng tới PayPal,
+ * không trần là ai cũng đốt được quota đó ẩn danh miễn phí. Nhưng delivery
+ * THẬT của provider dùng chung bucket với kẻ dò (chữ ký chỉ kiểm được sau khi
+ * guard đã đếm), và 429 là non-2xx → provider coi là fail rồi retry chồng.
+ * Ca nguy hiểm là burst redeliver khi API Render vừa thức sau khi ngủ (mọi
+ * event dồn trong lúc ngủ về cùng lúc từ dải IP egress hẹp của Stripe): 600/phút
+ * (vòng vá review 06/09, bản đầu 120) đủ cho cả ngày event dồn lại, vẫn chặn
+ * được kẻ đốt quota verify — mỗi request rác ở PayPal nay bị kiểm rẻ chặn
+ * trước round-trip nên 600 request/phút không đáng kể.
  */
-export const WEBHOOK_THROTTLE = { limit: 120, ttl: 60_000 } as const;
+export const WEBHOOK_THROTTLE = { limit: 600, ttl: 60_000 } as const;

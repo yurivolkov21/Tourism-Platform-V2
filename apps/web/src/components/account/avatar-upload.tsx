@@ -1,5 +1,6 @@
 'use client';
 
+import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { Alert, AlertDescription, AlertTitle } from '@tourism/ui/components/alert';
 import { Button } from '@tourism/ui/components/button';
@@ -100,11 +101,16 @@ export function AvatarUpload({
       router.refresh();
       // Giữ nguyên preview — không revoke ở đây: `image` mới chỉ về sau khi
       // `refresh()` render lại từ server, xoá ngay sẽ nháy về chữ cái đầu.
-    } catch {
+    } catch (error) {
       // Mọi lỗi (ORPCError của signUpload/setAvatar, hay lỗi mạng của
       // uploadToCloudinary) đều gộp về một thông báo chung — bảng mã lỗi chi
       // tiết (AVATAR_PUBLIC_ID_INVALID…) không đáng phơi ra người dùng cuối.
-      setErrors([t.errUpload]);
+      // Trừ 429: "chờ một phút" là hành động khác hẳn "thử lại".
+      setErrors([
+        error instanceof ORPCError && error.status === 429
+          ? messages.accountActionErrors.throttle
+          : t.errUpload,
+      ]);
       setPreview((prev) => {
         if (prev) URL.revokeObjectURL(prev);
         return null;

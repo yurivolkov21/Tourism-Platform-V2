@@ -1,10 +1,13 @@
 import { Controller, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
+import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
+import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import {
   CancellationAlreadyDecidedError,
@@ -37,6 +40,10 @@ export class AdminCancellationsController {
     );
   }
 
+  // Đường ghi TIỀN của admin cũng có trần (vòng vá review 06/09): phiên admin
+  // bị chiếm hay UI double-submit không được bắn refund vô hạn tới provider.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.admin.cancellations.decide)
   decide(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.cancellations.decide).handler(async ({ input, errors }) => {
@@ -44,7 +51,7 @@ export class AdminCancellationsController {
         return await this.cancellations.decide(user.id, input.id, {
           approve: input.approve,
           ...(input.decisionNote !== undefined ? { decisionNote: input.decisionNote } : {}),
-          // ADR-0029 §1 — vắng thì service hoàn TRỌN phần dư như trước.
+          // ADR-0029 AMEND 5 — vắng thì service hoàn theo MỨC CHÍNH SÁCH.
           ...(input.refundAmount !== undefined ? { refundAmount: input.refundAmount } : {}),
         });
       } catch (error) {

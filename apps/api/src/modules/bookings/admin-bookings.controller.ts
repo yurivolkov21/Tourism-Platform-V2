@@ -1,10 +1,13 @@
 import { Controller, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
+import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
+import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { BookingsService } from './bookings.service.js';
 import { CancellationsService } from './cancellations.service.js';
@@ -61,6 +64,10 @@ export class AdminBookingsController {
     });
   }
 
+  // Đường ghi TIỀN của admin cũng có trần (vòng vá review 06/09) — xem
+  // AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.admin.bookings.refund)
   refund(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.bookings.refund).handler(async ({ input, errors }) => {
