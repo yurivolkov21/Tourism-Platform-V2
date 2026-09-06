@@ -8,6 +8,79 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-06 — W1 khép money-path: một session sống mỗi booking, capture thừa không bị nuốt, approve theo chính sách (nhánh `fix/web-money-path`, 12 commit `f4c791c..f7ea657`, 41 file, 1 migration — **chưa merge, chờ review ở session riêng; migration CHƯA deploy Supabase**)
+
+Đợt vá đầu trong bốn đợt của [audit web 05/09](analysis/2026-09-05-web-security-audit.md)
+— trọn cụm 2 (money-path) cộng ba mục cụm 3 (lý do huỷ, cửa hậu
+`refundAmount`, throttle ghi đã-auth) và mục 11 tuỳ chọn. Ba AMEND ADR đi
+TRƯỚC code trong commit đầu: [ADR-0006 AMEND 1](adr/0006-pending-lifecycle.md)
+(vòng đời checkout session, 4 tiểu mục), [ADR-0009 AMEND 1](adr/0009-refund-correctness.md)
+(gate chuyến ở claim), [ADR-0029 AMEND 5](adr/0029-cancellation-approve-partial-refund.md)
+(vắng `refundAmount` = mức chính sách). Mỗi mục một commit, TDD test-đỏ-trước.
+
+**Tiền vào** (`f6f409a..1c2b174`): booking lưu `checkout_session_url` +
+`checkout_session_expires_at` — `reCheckout` trả LẠI session còn sống (hết
+mint chồng, đúng lời hứa gốc của ADR-0006), hết sống thì
+`PaymentGateway.expireSession?.()` (Stripe có API; PayPal không — ghi rõ trong
+AMEND) rồi mới mint. `handleEvent` outcome `already-paid` mà capture KHÁC →
+auto-refund thẳng ở provider key `dup-capture:<capture>`, KHÔNG ghi sổ (tiền
+NGOÀI total — ghi là phá trigger `SUM ≤ total`), log ERROR; guard
+`issueFullAutoRefund` đổi từ "đã có Refund row" sang theo capture (cột mới
+`refunds.provider_payment_id`, mọi đường ghi sổ đều điền). `VerifiedEvent`
+mang `sessionId` — expired của session CŨ đến muộn không huỷ booking đã
+re-mint (gate `provider_session_id`), sweep bỏ qua PENDING có session còn
+sống. Event lệch `amount`/`currency` với booking → không PAID, lý do vào cột
+mới `payment_events.note`, event vẫn processed.
+
+**Bề mặt** (`016880f..6be1db4`): PayPal webhook kiểm đủ 5 header
+`paypal-transmission-*` cộng parse body TRƯỚC round-trip verify (DoS ẩn danh
+hết đốt quota); `WEBHOOK_THROTTLE` 120/60s theo IP; body 400 cố định
+`'Webhook rejected'`. `PARTY_TOO_LARGE` (422, mã mới + i18n web): party vượt
+`maxGroupSize` bị chặn ở server, contract trần sanity `.max(99)`.
+`AUTHED_WRITE_THROTTLE` 20/60s bucket theo `user.id`
+(`AuthedWriteThrottlerGuard`) cho 9 đường ghi đã-auth. `resolveGateway` dời
+lên TRƯỚC insert — provider chưa cấu hình là 502 typed, hết PENDING mồ côi.
+
+**Tiền ra** (`aae31d7..f7ea657`): CTE claim PAID gate thêm chuyến
+`OPEN AND start_date >= current_date` → outcome mới `departure-closed` đi
+chung đường auto-refund với overbook (`refundUnclaimablePending`). `approve`
+tính `policyRefundAmount` VÔ ĐIỀU KIỆN: vắng `refundAmount` = mức chính sách
+(bậc 0% → hoàn 0 mà vẫn đóng request + huỷ + nhả ghế — đóng cửa hậu "vắng =
+trọn phần dư"), MỌI lệch với chính sách đòi `decisionNote`
+(`OFF_POLICY_NOTE_REQUIRED` áp cả khi không gửi số); UI stepper không đổi.
+Free-text trim MỘT chỗ ở contract (`reason`/`decisionNote`/refund `reason` →
+`.trim().min(1)`, service bỏ trim) — đứt chuỗi reason-toàn-khoảng-trắng →
+row rỗng → 500 output validation khoá `admin.cancellations.list`. Mục 11:
+`bookings.byCode` trả `refundEstimate` tính bằng đồng hồ SERVER, web
+`CancelSummary` chỉ in — hết lệch bậc/ân hạn theo múi giờ trình duyệt.
+
+**Nghiệm thu:** đủ 9/9 int test bắt buộc của brief; `pnpm gate:int` trọn xanh
+với API tạm :3001 trên docker DB theo công thức CI (kill sạch sau khi xong) —
+**int 28 file / 414 test** (401 → 414), api unit 384, contract 249, web 1441;
+lint 978 file. Không commit nào mang trailer AI.
+
+**Còn treo (đọc ở session review/merge — đừng bỏ quên):**
+
+- ⚠️ **Migration `20260906014052_w1_checkout_session_lifecycle` mới apply
+  docker local + `tourism_test`, CHƯA deploy Supabase.** Bốn cột đều nullable
+  (thêm-không-phá) nên site đang chạy không vỡ, nhưng PHẢI
+  `pnpm prisma migrate deploy` (export DATABASE_URL từ `.env.local` của
+  `apps/api` — gotcha `prisma.config.ts` chỉ đọc `.env`) TRƯỚC khi push main,
+  vì Render tự deploy code mới cần cột.
+- Cách ly int test theo thứ tự file: `refunds.int.spec` giả định
+  `media_assets` sạch nhưng `bookings.int.spec` seed mà không dọn — chạy
+  SUBSET sai thứ tự sẽ đỏ giả (dính 2 lần trong đợt này, dọn tay bằng
+  `TRUNCATE media_assets` trên `tourism_test`; full suite không ảnh hưởng).
+  Đáng một vá nhỏ đợt sau.
+- PayPal không có API expire order → cửa sổ hai-order-sống chỉ còn lề đồng hồ
+  (hạn khai bảo thủ 3h); lưới cuối là dup-capture backstop — chấp nhận, ghi ở
+  ADR-0006 AMEND 1a.
+- `refundEstimate` là ảnh chụp lúc fetch trang; tab để lâu có thể cũ (refresh
+  là tươi) — chấp nhận, vẫn đúng hơn đồng hồ client.
+- W2/W3/W4 của audit chưa mở; các món audit cụm 2 "hardening đáng làm" ngoài
+  phạm vi W1 (ThrottlerGuard toàn cục + `@SkipThrottle` vùng đọc, catalog công
+  bố provider khả dụng) chưa làm.
+
 ## 2026-09-06 — Build web tự đánh thức API Render trước prerender (nhánh `fix/web-build-warm-api`, 1 commit `7f73317`, 4 file, KHÔNG migration)
 
 Deploy web trên Vercel cho commit `03eaef9` (docs sweep P4d) ERROR trong khi
