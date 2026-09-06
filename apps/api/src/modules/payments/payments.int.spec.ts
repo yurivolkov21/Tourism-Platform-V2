@@ -488,6 +488,46 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     });
   });
 
+  it('ADR-0006 AMEND 1d: amount/currency của event LỆCH booking → KHÔNG PAID, note ghi lý do, event vẫn processed', async () => {
+    const cookie = await signUpUser('mismatch@example.com');
+    const booking = await createBooking(cookie); // 117.00 USD
+
+    // Provider báo capture 1.00 cho booking 117.00 — flip PAID lúc này là tự
+    // nhận doanh thu chưa từng thu. Booking ở lại PENDING cho operator.
+    const short = fake.emitPaymentCompleted(booking.id, { amount: '1.00' });
+    const res = await postWebhook(short);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'processed' });
+    expect(res.json()).not.toHaveProperty('outcome');
+
+    let row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.PENDING);
+    expect(await seatsOf(depMain.id)).toBe(3);
+    const pe = await prisma.paymentEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: 'STRIPE', eventId: short.eventId } },
+    });
+    expect(pe.processedAt).not.toBeNull(); // provider không retry được gì hữu ích
+    expect(pe.note).toMatch(/1\.00/);
+    expect(pe.note).toMatch(/117\.00/);
+
+    // Currency lệch cũng chặn — cùng đường.
+    const wrongCurrency = fake.emitPaymentCompleted(booking.id, { currency: 'EUR' });
+    expect((await postWebhook(wrongCurrency)).statusCode).toBe(200);
+    row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.PENDING);
+
+    // Không outbox nào được enqueue cho hai event lệch.
+    expect(
+      await prisma.outbox.count({
+        where: { type: { notIn: [EmailType.EMAIL_VERIFICATION, EmailType.EMAIL_OTP] } },
+      }),
+    ).toBe(0);
+
+    // Đúng tiền thì claim bình thường — booking không bị khoá chết.
+    const ok = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(ok.json()).toMatchObject({ status: 'processed', outcome: 'claimed' });
+  });
+
   it('bad signature → 400, NO PaymentEvent row, nothing processed', async () => {
     const cookie = await signUpUser('sig@example.com');
     const booking = await createBooking(cookie);

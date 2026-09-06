@@ -129,6 +129,22 @@ export class PaymentsService {
           );
           break;
         }
+        // ADR-0006 AMEND 1d: đối chiếu tiền của event với booking TRƯỚC khi
+        // flip PAID — flip trên số lệch là tự nhận doanh thu chưa từng thu.
+        const mismatch = await this.detectAmountMismatch(verified);
+        if (mismatch) {
+          this.logger.error(
+            `${provider} event ${verified.eventId} REJECTED before claim: ${mismatch}`,
+          );
+          // Ghi lý do vào chính audit row (beginEvent đã tạo) rồi vẫn
+          // finishEvent phía dưới: provider retry không đổi được gì hữu ích,
+          // booking ở lại PENDING cho operator.
+          await prisma.paymentEvent.update({
+            where: { provider_eventId: { provider, eventId: verified.eventId } },
+            data: { note: mismatch.slice(0, 500) },
+          });
+          break;
+        }
         outcome = await this.bookings.claimSeatsForPaid(
           verified.bookingId,
           verified.providerPaymentId ?? null,
@@ -492,6 +508,30 @@ export class PaymentsService {
       });
       return 'refunded';
     });
+  }
+
+  /**
+   * ADR-0006 AMEND 1d — lý do từ chối một `payment.completed` có tiền LỆCH với
+   * booking, hoặc null khi khớp/không so được. Event không mang amount/currency
+   * (PayPal APPROVED, payload malformed-nhưng-đã-ký) thì bỏ qua bước so — các
+   * cột audit H4 vẫn nullable đúng như beginEvent đã ghi.
+   */
+  private async detectAmountMismatch(verified: VerifiedEvent): Promise<string | null> {
+    if (!verified.bookingId || !verified.amount || !verified.currency) return null;
+    const booking = await prisma.booking.findUnique({
+      where: { id: verified.bookingId },
+      select: { code: true, totalAmount: true, currency: true },
+    });
+    // Booking lạ → để claimSeatsForPaid trả 'not-found' như cũ (log-and-skip).
+    if (!booking) return null;
+    const eventAmount = new Prisma.Decimal(verified.amount);
+    if (!eventAmount.equals(booking.totalAmount) || verified.currency !== booking.currency) {
+      return (
+        `amount mismatch: event says ${verified.amount} ${verified.currency}, ` +
+        `booking ${booking.code} expects ${booking.totalAmount.toFixed(2)} ${booking.currency} — not claimed`
+      );
+    }
+    return null;
   }
 
   /**
