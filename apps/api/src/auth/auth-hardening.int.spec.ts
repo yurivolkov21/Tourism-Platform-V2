@@ -65,22 +65,38 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     expect(missing.body).not.toContain('USER_NOT_FOUND');
   });
 
-  it('2. trần AuthController: non-GET vượt AUTH_THROTTLE → 429; GET get-session KHÔNG bị đếm', async () => {
+  it('2. trần AuthController: non-GET từ IP công khai vượt AUTH_THROTTLE → 429; GET và loopback KHÔNG bị đếm', async () => {
     // 60 lượt POST đầu trong cửa sổ được đi qua (status gì cũng được — sai
-    // mật khẩu là 401 của BA); lượt 61 phải chạm trần Nest.
+    // mật khẩu là 401 của BA); lượt 61 phải chạm trần Nest. remoteAddress
+    // công khai: loopback được miễn có chủ đích (int/e2e/smoke chạy cùng
+    // máy — xem WriteOnlyThrottlerGuard).
     let throttled = 0;
     for (let i = 0; i < 61; i++) {
       const res = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-in/email',
+        remoteAddress: '203.0.113.9',
         payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
       });
       if (res.statusCode === 429) throttled += 1;
     }
     expect(throttled).toBeGreaterThanOrEqual(1);
 
-    // GET không đếm và không bị bucket POST đã đầy làm liên luỵ.
-    const session = await app.inject({ method: 'GET', url: '/api/auth/get-session' });
+    // GET không đếm và không bị bucket POST đã đầy làm liên luỵ — cùng IP.
+    const session = await app.inject({
+      method: 'GET',
+      url: '/api/auth/get-session',
+      remoteAddress: '203.0.113.9',
+    });
     expect(session.statusCode).toBe(200);
+
+    // Loopback (mặc định của inject) không bị đếm — bucket công khai đã đầy
+    // nhưng máy-nhà vẫn POST được.
+    const local = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
+    });
+    expect(local.statusCode).not.toBe(429);
   });
 });
