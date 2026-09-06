@@ -31,7 +31,7 @@ describe('ChangePasswordForm', () => {
     vi.clearAllMocks();
   });
 
-  it('điền đủ 3 field khớp nhau → gọi authClient.changePassword({currentPassword, newPassword}) đúng payload', async () => {
+  it('điền đủ 3 field khớp nhau → gọi authClient.changePassword đúng payload, KÈM revokeOtherSessions (ADR-0017 §7a)', async () => {
     changePassword.mockResolvedValueOnce({ error: null });
     const user = userEvent.setup();
     render(<ChangePasswordForm />);
@@ -42,6 +42,9 @@ describe('ChangePasswordForm', () => {
       expect(changePassword).toHaveBeenCalledWith({
         currentPassword: 'OldPassw0rd!',
         newPassword: 'NewPassw0rd!23',
+        // Mật khẩu mới = phiên khác chết — thiếu cờ này là kẻ cầm cookie
+        // trộm được sống sót qua hành vi tự vệ của nạn nhân.
+        revokeOtherSessions: true,
       }),
     );
   });

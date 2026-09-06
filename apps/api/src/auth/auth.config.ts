@@ -56,6 +56,10 @@ export const auth = betterAuth({
     // tự đăng nhập → web đưa về /login sau verify.
     requireEmailVerification: true,
     autoSignIn: false,
+    // ADR-0017 §7a (W2): reset mật khẩu = thu hồi TOÀN BỘ phiên. Cookie tự
+    // gia hạn (updateAge 1 ngày) nên thiếu dòng này thì kẻ trộm cookie giữ
+    // quyền vô thời hạn, đổi mật khẩu không đuổi được hắn ra.
+    revokeSessionsOnPasswordReset: true,
     sendResetPassword: async ({ user, url }) => {
       // AUTH-2: ghi outbox thay console.log. dedupeKey bounded theo VarChar(200).
       await prisma.outbox.create({

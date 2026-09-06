@@ -55,7 +55,13 @@ export function ChangePasswordForm({ onDone }: { onDone?: () => void } = {}) {
     // @better-fetch reject promise khi fetch throw thật — KHÁC error envelope
     // ({error}) ở nhánh dưới (bài học pending-kẹt cụm auth).
     try {
-      const { error } = await authClient.changePassword({ currentPassword, newPassword });
+      // ADR-0017 §7a (W2): mật khẩu mới = mọi phiên KHÁC chết; phiên đang
+      // thao tác giữ nguyên (BA rotate cookie ngay trong response này).
+      const { error } = await authClient.changePassword({
+        currentPassword,
+        newPassword,
+        revokeOtherSessions: true,
+      });
       if (error) {
         if (error.status === 401) {
           setErrorKind('sessionExpired');
