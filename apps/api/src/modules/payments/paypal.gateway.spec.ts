@@ -236,6 +236,33 @@ describe('PayPalGateway.verifyWebhook', () => {
     expect(payload.webhook_event).toEqual(JSON.parse(body));
   });
 
+  it('W1: thiếu BẤT KỲ header paypal-transmission-* nào → ném TRƯỚC mọi lời gọi mạng', async () => {
+    // DoS ẩn danh rẻ nhất là POST rác không header: mỗi request cũ tốn một
+    // round-trip verify tới PayPal (đốt quota). Kiểm đủ 5 header trước I/O.
+    for (const name of Object.keys(TRANSMISSION_HEADERS)) {
+      const http = verifyRoutes('SUCCESS');
+      const gateway = new PayPalGateway(OPTS, http.post);
+      const headers: Record<string, string> = { ...TRANSMISSION_HEADERS };
+      delete headers[name];
+      await expect(gateway.verifyWebhook(JSON.stringify(captureEvent()), headers)).rejects.toThrow(
+        /transmission|header/i,
+      );
+      expect(http.calls).toHaveLength(0); // không OAuth, không verify
+    }
+  });
+
+  it('W1: body không phải JSON / thiếu id, event_type → ném trước mọi lời gọi mạng', async () => {
+    const http = verifyRoutes('SUCCESS');
+    const gateway = new PayPalGateway(OPTS, http.post);
+    await expect(gateway.verifyWebhook('not-json{{', TRANSMISSION_HEADERS)).rejects.toThrow(
+      /JSON/i,
+    );
+    await expect(
+      gateway.verifyWebhook(JSON.stringify({ hello: 'world' }), TRANSMISSION_HEADERS),
+    ).rejects.toThrow(/id|type/i);
+    expect(http.calls).toHaveLength(0);
+  });
+
   it('throws when PayPal answers anything but SUCCESS', async () => {
     const http = verifyRoutes('FAILURE');
     const gateway = new PayPalGateway(OPTS, http.post);

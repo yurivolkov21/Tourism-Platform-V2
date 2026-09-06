@@ -8,9 +8,12 @@ import {
   Post,
   type RawBodyRequest,
   Req,
+  UseGuards,
 } from '@nestjs/common';
+import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
 import type { FastifyRequest } from 'fastify';
 import { Public } from '../../auth/public.decorator.js';
+import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
 import { PaymentProvider } from '../../generated/prisma/enums.js';
 import {
   PAYMENT_GATEWAYS,
@@ -42,7 +45,12 @@ import { PaymentsService } from './payments.service.js';
 // Stripe/PayPal gọi vào — xác thực bằng CHỮ KÝ HMAC, không phải session.
 // Quên @Public() ở đây = provider nhận 401, webhook retry rồi bỏ cuộc,
 // booking kẹt PENDING dù tiền đã trừ. Có int test canh nhánh này.
+//
+// Throttle theo IP, trần rộng tay (W1 — xem WEBHOOK_THROTTLE): route public
+// mà verify PayPal tốn một round-trip mạng, không trần là DoS ẩn danh rẻ tiền.
 @Public()
+@UseGuards(ThrottlerGuard)
+@Throttle({ default: WEBHOOK_THROTTLE })
 @Controller('api/webhooks')
 export class WebhooksController {
   private readonly logger = new Logger(WebhooksController.name);
@@ -83,9 +91,11 @@ export class WebhooksController {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown';
       this.logger.warn(`Rejected ${provider} webhook (signature invalid): ${message}`);
+      // Body 400 là MÃ CỐ ĐỊNH (W1): chi tiết chỉ vào log — không phát miễn
+      // phí cho kẻ dò webhook biết nó fail ở bước nào (header, parse, chữ ký).
       throw new BadRequestException({
         code: 'WEBHOOK_SIGNATURE_INVALID',
-        message: `Signature verification failed: ${message}`,
+        message: 'Webhook rejected',
       });
     }
 

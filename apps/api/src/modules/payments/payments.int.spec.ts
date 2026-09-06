@@ -4,6 +4,7 @@ import { BookingSchema } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
+import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, EmailType } from '../../generated/prisma/enums.js';
 import { BookingsService } from '../bookings/bookings.service.js';
@@ -534,7 +535,12 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
 
     const res = await postWebhook(fake.emitPaymentCompleted(booking.id), 'totally-wrong');
     expect(res.statusCode).toBe(400);
-    expect(res.json()).toMatchObject({ code: 'WEBHOOK_SIGNATURE_INVALID' });
+    // Body 400 là MÃ CỐ ĐỊNH (W1): chi tiết verify chỉ vào log, không phát
+    // miễn phí cho kẻ dò webhook biết nó fail ở bước nào.
+    expect(res.json()).toMatchObject({
+      code: 'WEBHOOK_SIGNATURE_INVALID',
+      message: 'Webhook rejected',
+    });
 
     expect(await prisma.paymentEvent.count()).toBe(0);
     expect(await seatsOf(depMain.id)).toBe(3);
@@ -789,5 +795,25 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       expect(res.statusCode).toBe(400);
       expect(fake.followUpCalls).toHaveLength(0);
     });
+  });
+
+  // ĐỂ CUỐI FILE có chủ đích: test này đốt trọn ngân sách throttle của IP
+  // inject — đặt sớm hơn sẽ 429 lây sang các test webhook khác.
+  it('W1: route webhook có trần tần suất — vượt WEBHOOK_THROTTLE → 429', async () => {
+    // Trần rộng tay (provider retry burst hợp lệ) nhưng PHẢI tồn tại: webhook
+    // PayPal từng gọi verify (network) cho mọi request ẩn danh không giới hạn.
+    let saw429 = false;
+    for (let i = 0; i < WEBHOOK_THROTTLE.limit + 5; i++) {
+      const res = await postWebhook(
+        fake.emitPaymentCompleted('e9200001-dead-4000-8000-000000000000'),
+        'totally-wrong',
+      );
+      if (res.statusCode === 429) {
+        saw429 = true;
+        break;
+      }
+      expect(res.statusCode).toBe(400); // dưới trần: vẫn là 400 chữ-ký-sai
+    }
+    expect(saw429).toBe(true);
   });
 });

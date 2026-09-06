@@ -24,6 +24,15 @@ const TOKEN_REFRESH_MARGIN_MS = 60_000;
  * đời thật sẽ trả cho khách một link chết.
  */
 export const PAYPAL_SESSION_EXPIRY_SECONDS = 3 * 60 * 60;
+/** Đủ bộ 5 header mà verify-webhook-signature cần — thiếu cái nào request
+ *  cũng KHÔNG THỂ verify được, nên kiểm trước khi tốn một lời gọi mạng (W1). */
+const REQUIRED_TRANSMISSION_HEADERS = [
+  'paypal-auth-algo',
+  'paypal-cert-url',
+  'paypal-transmission-id',
+  'paypal-transmission-sig',
+  'paypal-transmission-time',
+] as const;
 
 export interface PayPalGatewayOptions {
   clientId: string;
@@ -120,12 +129,23 @@ export class PayPalGateway implements PaymentGateway {
     rawBody: Buffer | string,
     headers: Record<string, string | string[] | undefined>,
   ): Promise<VerifiedEvent> {
+    // W1 (audit 05/09 cụm 2): MỌI kiểm RẺ chạy trước round-trip verify tới
+    // PayPal — POST rác ẩn danh không được đốt quota verify của mình.
+    const missing = REQUIRED_TRANSMISSION_HEADERS.filter((name) => !headerValue(headers, name));
+    if (missing.length > 0) {
+      throw new Error(`missing PayPal transmission header(s): ${missing.join(', ')}`);
+    }
+
     const payload = typeof rawBody === 'string' ? rawBody : rawBody.toString('utf8');
     let event: PayPalEventShape;
     try {
       event = JSON.parse(payload) as PayPalEventShape;
     } catch {
       throw new Error('PayPal webhook body is not JSON');
+    }
+    // Cùng điều kiện mà mapPayPalEvent đòi SAU verify — kéo lên trước I/O.
+    if (typeof event.id !== 'string' || typeof event.event_type !== 'string') {
+      throw new Error('PayPal webhook payload has no event id/type');
     }
 
     const verification = await this.post<{ verification_status?: string }>(

@@ -17,3 +17,11 @@ export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
  *  trần public 5/60s vừa khít mức dùng hợp lệ nên phải có headroom riêng.
  *  Endpoint đã authed; 20/60s vẫn chặn được spam ký hàng loạt. */
 export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
+
+/**
+ * Route webhook provider (W1, audit 05/09 cụm 2): trần RỘNG TAY theo IP —
+ * Stripe/PayPal retry burst hợp lệ không bao giờ chạm 120/phút cho một shop
+ * cỡ này, nhưng trần phải TỒN TẠI: webhook PayPal verify bằng một round-trip
+ * mạng tới PayPal, không trần là ai cũng đốt được quota đó ẩn danh miễn phí.
+ */
+export const WEBHOOK_THROTTLE = { limit: 120, ttl: 60_000 } as const;
