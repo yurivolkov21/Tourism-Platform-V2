@@ -389,14 +389,19 @@ export const DecideCancellationInputSchema = z.object({
   /**
    * Số tiền hoàn khi `approve: true` — ADR-0029 §1.
    *
-   * VẮNG = hoàn TRỌN phần dư, tức hành vi trước ADR-0029 y nguyên, nên mọi
-   * caller cũ không phải đổi gì. KHÔNG có nghĩa gì khi `approve: false`: deny
-   * không đụng tiền.
+   * VẮNG = **mức CHÍNH SÁCH** (ADR-0029 AMEND 5): server tự tính
+   * `refundPercentForRequest` + `policyRefundAmount` từ dữ liệu tươi — bậc 0%
+   * nghĩa là hoàn 0 đồng (đóng request, huỷ booking, nhả ghế, không gateway).
+   * KHÔNG còn ngữ nghĩa cũ "vắng = hoàn trọn phần dư" — đó là cửa hậu để một
+   * caller bỏ trống trường này mà được 100% trên yêu cầu thuộc bậc 0%. KHÔNG
+   * có nghĩa gì khi `approve: false`: deny không đụng tiền.
    *
    * Đây KHÔNG phải con số admin gõ tự do (ADR-0029 §4 + ADR-0030): bảng bậc
    * chính sách tính ra nó và khoá trên màn hình; muốn khác thì phải bật công
-   * tắc vượt bậc và ghi lý do. Server vẫn canh lại bằng
-   * `classifyRefundAmount` — ≤ 0, vượt phần dư, hay sổ đã settle đều là 422.
+   * tắc vượt bậc và ghi lý do — MỌI lệch với mức chính sách (kể cả khi trường
+   * này vắng) đòi `decisionNote`, server trả `OFF_POLICY_NOTE_REQUIRED` nếu
+   * thiếu. Server vẫn canh lại bằng `classifyRefundAmount` — ≤ 0, vượt phần
+   * dư, hay sổ đã settle đều là 422.
    */
   refundAmount: DecimalStringSchema.optional(),
 });

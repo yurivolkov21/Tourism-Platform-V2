@@ -68,6 +68,15 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     seatsBooked: 0,
     status: DepartureStatus.OPEN,
   } satisfies Prisma.TourDepartureCreateManyInput;
+  // Chuyến khởi hành +3 ngày — cho ca bậc 0% của ADR-0029 AMEND 5 (tour
+  // fixture không có freeCancellationDays nên <7 ngày rơi thẳng vào bậc 0%).
+  const future3 = new Date(Date.now() + 3 * 86_400_000);
+  const depSoon = {
+    ...dep,
+    id: 'e9400001-0000-4000-8000-000000000002',
+    startDate: future3,
+    endDate: new Date(future3.getTime() + 86_400_000),
+  } satisfies Prisma.TourDepartureCreateManyInput;
 
   beforeAll(async () => {
     await prisma.$executeRawUnsafe(
@@ -95,7 +104,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       'TRUNCATE TABLE users, sessions, accounts, verifications, bookings, refunds, cancellation_requests, payment_events, outbox CASCADE',
     );
     await prisma.tourDeparture.deleteMany();
-    await prisma.tourDeparture.createMany({ data: [dep] });
+    await prisma.tourDeparture.createMany({ data: [dep, depSoon] });
     fake.reset();
   });
 
@@ -511,7 +520,10 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       expect(await seatsBooked()).toBe(0);
     });
 
-    it('§1 vắng refundAmount vẫn hoàn TRỌN phần dư — hành vi trước ADR không đổi', async () => {
+    it('AMEND 5: vắng refundAmount = MỨC CHÍNH SÁCH — trong ân hạn 24h là 100%, tức trọn phần dư', async () => {
+      // Flow tạo-rồi-huỷ-ngay nằm trong cửa sổ ân hạn (ADR-0030 §3c) → chính
+      // sách 100% → mức mặc định trùng "trọn phần dư" cũ. Cái ĐÃ đổi là căn
+      // cứ của con số: nó đến từ bảng bậc, không còn là mặc-định-vô-điều-kiện.
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-full@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
@@ -522,6 +534,56 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       expect((await postDecide(admin, request.id, { approve: true })).statusCode).toBe(200);
       const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
       expect(rows.map((r) => r.amount.toFixed(2))).toEqual(['117.00']);
+    });
+
+    it('AMEND 5: vắng refundAmount trên bậc 0% → hoàn 0 (KHÔNG 100%), không gateway, ghế vẫn nhả', async () => {
+      // Cửa hậu audit 05/09 (cụm 3, Cao): yêu cầu gửi 3 ngày trước khởi hành
+      // (bậc 0%) mà caller BỎ TRỐNG refundAmount thì trước AMEND 5 được hoàn
+      // TRỌN 117.00 không cần lý do, không dấu vết.
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-policy-zero@example.com', 'Alice');
+      const createRes = await app.inject({
+        method: 'POST',
+        url: '/api/bookings',
+        headers: { cookie: alice },
+        payload: {
+          departureId: depSoon.id,
+          numAdults: 2,
+          numChildren: 1,
+          contactName: 'Alice Nguyen',
+          contactEmail: 'alice@example.com',
+          paymentProvider: 'STRIPE',
+        },
+      });
+      expect(createRes.statusCode).toBe(200);
+      const booking = createRes.json() as { id: string; code: string };
+      await payBooking(booking.id);
+      // Ra khỏi cửa sổ ân hạn 24h — không thì grace phủ 100% lên bậc.
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { paidAt: new Date(Date.now() - 2 * 86_400_000) },
+      });
+      const request = CancellationRequestSchema.parse(
+        (await postCancel(alice, booking.code)).json(),
+      );
+
+      const res = await postDecide(admin, request.id, { approve: true });
+      expect(res.statusCode).toBe(200);
+
+      // Chính sách 0% → không đồng nào chuyển: không gateway, không dòng sổ.
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      // Ba hệ quả còn lại vẫn chạy (đường noMoneyToMove của AMEND 3).
+      expect(
+        (await prisma.cancellationRequest.findUniqueOrThrow({ where: { id: request.id } })).status,
+      ).toBe(CancellationRequestStatus.REFUNDED);
+      const after = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      expect(after.status).toBe('CANCELLED');
+      const soon = await prisma.tourDeparture.findUniqueOrThrow({
+        where: { id: depSoon.id },
+        select: { seatsBooked: true },
+      });
+      expect(soon.seatsBooked).toBe(0);
     });
 
     it('§1 số tiền VƯỢT phần dư bị server chặn — không tin con số client gửi', async () => {

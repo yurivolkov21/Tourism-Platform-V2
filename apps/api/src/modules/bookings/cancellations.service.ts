@@ -381,8 +381,9 @@ export class CancellationsService {
    *     đóng request + nhả ghế: sổ ĐÃ settle (tiền hoàn hết từ trước), và mức
    *     hoàn được duyệt BẰNG 0 (bậc chính sách cho 0% ở ca huỷ sát ngày).
    *     Cả hai đều từng kẹt ở 422 với GHẾ KHÔNG BAO GIỜ ĐƯỢC NHẢ.
-   *  2. Provider refund `refundAmount` (vắng → FULL REMAINDER; ADR-0029 §1),
-   *     không bao giờ ledger thứ chưa xảy ra. Không có gì để chuyển (settle
+   *  2. Provider refund `refundAmount` (vắng → MỨC CHÍNH SÁCH, ADR-0029
+   *     AMEND 5 — bậc 0% nghĩa là hoàn 0, KHÔNG còn "trọn phần dư"), không
+   *     bao giờ ledger thứ chưa xảy ra. Không có gì để chuyển (settle
    *     hoặc duyệt 0) thì KHÔNG gọi gateway và KHÔNG ghi row nào — sổ
    *     append-only chỉ kể tiền thật sự đi.
    *     Chạy TRONG tx của lock — ngoại lệ có chủ đích của "gateway ngoài tx"
@@ -435,6 +436,28 @@ export class CancellationsService {
         _sum: { amount: true },
       });
       const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
+
+      // Mức CHÍNH SÁCH tính VÔ ĐIỀU KIỆN từ dữ liệu tươi trong lock (ADR-0029
+      // AMEND 5 + ADR-0030 §5b): nó vừa là mặc định khi client bỏ trống
+      // `refundAmount`, vừa là mốc so cho luật vượt-bậc-phải-ghi-lý-do. Cùng
+      // `policyRefundAmount` mà admin và web dùng — "khớp bậc" ở ba nơi là
+      // cùng một phép tính.
+      const tour = await tx.tour.findUnique({
+        where: { id: booking.tourId },
+        select: { freeCancellationDays: true },
+      });
+      const percent = refundPercentForRequest({
+        requestedAt: request.createdAt,
+        paidAt: booking.paidAt?.toISOString() ?? null,
+        departureStartDate: calendarDate(booking.departureStartDate),
+        freeCancellationDays: tour?.freeCancellationDays ?? null,
+      });
+      const policyAmount = policyRefundAmount({
+        percent,
+        totalAmount: booking.totalAmount.toFixed(2),
+        refundedTotal: alreadyRefunded.toFixed(2),
+      });
+
       // Sổ đã settle: KHÔNG còn gì để chuyển (ADR-0029 §2). Approve vẫn chạy —
       // "chấp thuận yêu cầu huỷ" là một quyết định, và tiền đã hoàn hết từ
       // trước chỉ nghĩa là bước tiền không còn việc, chứ không phải lý do từ
@@ -442,13 +465,18 @@ export class CancellationsService {
       // lúc request còn mở — trước ADR-0029 chúng kẹt vĩnh viễn ở 422 và ghế
       // không bao giờ được nhả.
       const settled = booking.totalAmount.sub(alreadyRefunded).lessThanOrEqualTo(0);
+      // AMEND 5: vắng `refundAmount` = MỨC CHÍNH SÁCH — không còn "trọn phần
+      // dư" (cửa hậu audit 05/09: bậc 0% mà bỏ trống trường này là được hoàn
+      // 100% không dấu vết). policyRefundAmount đã kẹp theo phần dư nên sổ
+      // settle cho ra 0.
+      const requested = refundAmount ?? policyAmount;
       // Duyệt với mức hoàn BẰNG 0 (ADR-0029 §AMEND 3): bậc chính sách trả 0%
       // cho yêu cầu gửi sát ngày khởi hành, và đó là kết cục HỢP LỆ chứ không
       // phải lỗi. Trước AMEND này con số 0 rơi vào `classifyRefundAmount` và ăn
       // 422 ZERO_OR_NEGATIVE, tức chính ca huỷ muộn — ca thường gặp nhất —
       // không approve được, và GHẾ KHÔNG BAO GIỜ ĐƯỢC NHẢ. Đúng cái bug mà
       // §2 vừa chữa cho một ca khác.
-      const approvedZero = refundAmount !== undefined && new Prisma.Decimal(refundAmount).isZero();
+      const approvedZero = new Prisma.Decimal(requested).isZero();
       // Sổ đã settle mà client vẫn gửi một số KHÁC 0 là hai bên đang nhìn hai
       // sổ khác nhau (trang admin render trước khi W3 hoàn đủ). Nuốt con số ấy
       // rồi trả 200 là để admin tin 50$ vừa đi trong khi sổ không có dòng nào
@@ -470,43 +498,23 @@ export class CancellationsService {
         }
       }
 
-      // `refundAmount` vắng → hoàn TRỌN phần dư (hành vi trước ADR-0029).
       // Mọi lỗi tiền vẫn do `classifyRefundAmount` canh: ≤ 0, vượt phần dư,
       // hay sổ đã settle — server không tin con số client gửi.
       const amount = noMoneyToMove
         ? new Prisma.Decimal(0)
         : classifyRefundAmount({
-            requested: refundAmount ?? null,
+            requested,
             total: booking.totalAmount,
             alreadyRefunded,
           }).amount;
 
-      // ADR-0030 §5 cưỡng chế ở SERVER (vòng vá review 05/09): con số client
-      // gửi khác mức CHÍNH SÁCH thì phải có lý do. Trước đây luật này chỉ là
-      // prop `noteRequired` của dialog admin — mọi caller khác cầm JWT admin
-      // approve được số bất kỳ ≤ phần dư mà không để lại dấu vết nào. Server
-      // KHÔNG khoá số (đường vượt bậc là hợp lệ: công ty huỷ chuyến, bất khả
-      // kháng); nó chỉ đòi đúng thứ §5 hứa. Tính bằng cùng `policyRefundAmount`
-      // mà admin và web dùng, nên "khớp bậc" ở ba nơi là cùng một phép tính.
-      if (refundAmount !== undefined && note === null) {
-        const tour = await tx.tour.findUnique({
-          where: { id: booking.tourId },
-          select: { freeCancellationDays: true },
-        });
-        const percent = refundPercentForRequest({
-          requestedAt: request.createdAt,
-          paidAt: booking.paidAt?.toISOString() ?? null,
-          departureStartDate: calendarDate(booking.departureStartDate),
-          freeCancellationDays: tour?.freeCancellationDays ?? null,
-        });
-        const policyAmount = policyRefundAmount({
-          percent,
-          totalAmount: booking.totalAmount.toFixed(2),
-          refundedTotal: alreadyRefunded.toFixed(2),
-        });
-        if (!amount.equals(new Prisma.Decimal(policyAmount))) {
-          throw new OffPolicyNoteRequiredError(policyAmount);
-        }
+      // ADR-0030 §5 cưỡng chế ở SERVER, mở rộng bởi ADR-0029 AMEND 5: MỌI lệch
+      // giữa số sẽ hoàn và mức chính sách đòi lý do — bất kể client có gửi số
+      // hay không (vắng thì bằng nhau theo cách dựng, tự qua). Server KHÔNG
+      // khoá số (đường vượt bậc là hợp lệ: công ty huỷ chuyến, bất khả kháng);
+      // nó chỉ đòi đúng thứ §5 hứa.
+      if (note === null && !amount.equals(new Prisma.Decimal(policyAmount))) {
+        throw new OffPolicyNoteRequiredError(policyAmount);
       }
 
       // Provider idempotency key `cancel-refund:<requestId>`: một request được
