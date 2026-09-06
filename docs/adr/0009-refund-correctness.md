@@ -119,6 +119,26 @@ lại phía nào thì hoặc booking PAID trên chuyến vừa đóng — xử t
 AMEND — hoặc refund một booking lẽ ra vào được, nghiêng về phía khách). Race
 quyết-định-tiền (double claim) vẫn gate trên `b.status` như cũ.
 
+## AMEND 2 06/09 (vòng vá review W1) — gate chuyến ở cả `reCheckout`, MỘT thước ngày UTC, lý do hoàn qua copy
+
+- **`reCheckout` cũng gate chuyến** (cùng điều kiện với `create` và claim):
+  bản AMEND 1 chỉ gate ở claim, nên booking PENDING trên chuyến vừa CLOSED vẫn
+  mint được trang thanh toán — hệ thống chủ động mời khách trả một khoản nó
+  đã quyết từ chối, rồi auto-refund. Nay 400 `DEPARTURE_NOT_AVAILABLE` (route
+  `bookings.checkout` khai mã này), không mint.
+- **Múi giờ, chốt tường minh:** `start_date` là `@db.Date` ngày lịch của điểm
+  khởi hành (VN, UTC+7); mọi gate "đã đi chưa" so theo NGÀY UTC — SQL dùng
+  `(now() AT TIME ZONE 'UTC')::date` (không phụ thuộc TZ session của DB), Node
+  dùng một helper `todayUtc()` cho `create`/`reCheckout`/phân loại
+  claim/`estimateRefund`. Hệ quả chấp nhận: chuyến chạy 06:00 VN vẫn nhận
+  capture tới 07:00 VN hôm sau — cùng lề với luật walk-in cùng ngày của
+  `create`; một thước cho cả hai tầng đáng hơn một thước chính xác hơn ở một
+  tầng.
+- **`reason` của email BOOKING_REFUNDED** là mã nội bộ (`overbooked` /
+  `departure-closed` / `orphaned capture`); template dịch sang câu cho khách,
+  mã lạ in nguyên. Khách từng nhận "Reason: departure-closed".
+- Lock: xem ADR-0006 AMEND 2c — claim và auto-refund cùng advisory lock.
+
 ## Đã cân nhắc và loại
 
 - **Two-phase reservation** (TX1 `FOR UPDATE` + placeholder reserve → gateway → TX2 finalize):

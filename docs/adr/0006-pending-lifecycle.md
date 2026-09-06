@@ -173,5 +173,80 @@ không retry được gì hữu ích), booking ở lại PENDING cho operator. K
 EmailType mới. Event không mang tiền (PayPal APPROVED, malformed-nhưng-đã-ký)
 thì bỏ qua bước so — hành vi cũ.
 
-Bất biến CŨ giữ nguyên: PENDING không giữ ghế; TTL sweep > hạn session dài
-nhất của mọi gateway (unit test sẵn có vẫn canh).
+Bất biến CŨ giữ nguyên: PENDING không giữ ghế. ~~TTL sweep > hạn session dài
+nhất của mọi gateway (unit test sẵn có vẫn canh)~~ — câu này SAI ngay lúc viết
+(PayPal khai 3h > 65′, unit spec chỉ so Stripe); AMEND 2d chốt lại.
+
+## AMEND 2 06/09 — vòng vá review W1 (8 mũi, cùng ngày): tiền lệch vẫn là tiền thật, một dấu vết DB cho mọi khoản ngoài sổ, session dưới lock, trần cứng cho PENDING
+
+Review 8 mũi ở session gốc chỉ ra AMEND 1 đóng đúng ba cửa lớn nhưng chính
+hai cơ chế mới (gate tiền, sweep neo session) mở ra hai đường mất tiền/kẹt
+mới. Bốn sửa, mỗi cái một mục:
+
+### a. Capture LỆCH tiền: không claim, nhưng HOÀN NGAY — và mọi khoản ngoài sổ ghi `payment_events.note`
+
+AMEND 1d để booking "ở lại PENDING cho operator" trong khi sweep WRK-1 là một
+tác nhân tự động khác đang chờ đúng booking ấy: 65′ sau nó huỷ, không refund,
+không email — khách mất tiền, bằng chứng duy nhất là một dòng log. Cột `note`
+mới thì không được map lên admin (write-only). Nay:
+
+- Gate tiền CHỈ áp khi booking còn PENDING (booking đã settle thì claim trả
+  `already-paid` và capture lệch đi đường dup-capture — bản đầu gate đứng
+  trước claim nên nhánh ấy không bao giờ tới).
+- Lệch → hoàn NGAY đúng số event khai ở provider, key
+  `mismatch-refund:<capture>`, KHÔNG ghi sổ (booking chưa từng PAID, sổ của
+  nó chưa có gì để đo); booking ở lại PENDING — trả lại đúng tiền thì claim
+  bình thường, bỏ thì sweep dọn. Thiếu capture id/số tiền → không hoàn, note
+  "operator must refund manually".
+- **Mọi khoản tiền đi qua handler mà không thành Refund row** — hoàn vì lệch,
+  hoàn dup-capture, hoàn ngoài sổ trên booking đã settle, hoàn THẤT BẠI, thiếu
+  capture id — đều ghi `payment_events.note` (mã hoàn của provider nằm trong
+  đó). `note` lên contract `PaymentEventRowSchema` + drawer admin. Đây là bề
+  mặt operator duy nhất của những khoản ấy; câu "audit nằm ở payment_events"
+  của AMEND 1b nay mới đúng.
+- Dup-capture hoàn ĐÚNG số event khai — không đoán bằng total của booking;
+  booking settle mà không mang capture → note, không im lặng.
+- Currency so không phân biệt hoa/thường (cột booking không có CHECK chữ hoa).
+
+### b. Session dưới advisory lock; ghi session mới TRƯỚC, expire session cũ SAU; huỷ là vô hiệu session
+
+`reCheckout` là check-then-act không lock: hai "Pay again" song song cùng
+mint, `update` giữ cái ghi sau, session trước sống mồ côi — đúng cửa AMEND 1a
+hứa đóng. Và `expireSession(S1)` chạy TRƯỚC khi DB đổi sang S2: webhook
+expired của S1 khớp gate 1c (S1 vẫn là hiện tại) và huỷ đúng booking đang
+re-mint; `update` không gate PENDING nên ghi S2 lên booking đã CANCELLED và
+trả URL cho khách. Nay `reCheckout` chạy trọn trong `withBookingRefundLock`
+(cùng lock với đường refund; provider HTTP trong tx là ngoại lệ có chủ đích
+như ADR-0009): mint S2 → `updateMany` gate `status = PENDING` (0 row → expire
+S2 best-effort, 422) → rồi mới expire S1 best-effort. `cancelPending` xoá
+URL/hạn và expire session ở provider. Guard theo capture của
+`issueFullAutoRefund` coi row sổ null là "đã hoàn capture này" cả khi booking
+CHƯA mang capture (đường orphan/unclaimable không set cột — nay set qua
+COALESCE) — row null của một booking chỉ có thể là khoản hoàn cho capture duy
+nhất nó từng nhận.
+
+### c. Claim dưới cùng lock; CTE cancel đọc rowcount; idempotency theo CAPTURE
+
+`refundUnclaimablePending` vứt kết quả CTE cancel và log "CANCELLED" vô điều
+kiện; claim không lấy lock nên delivery #2 claim được PAID vào khe giữa lúc #1
+đã hoàn và lúc flip CANCELLED (admin mở lại chuyến giữa hai delivery) → booking
+PAID kèm Refund row full. Nay `claimSeatsForPaid` chạy trong
+`withBookingRefundLock`; đường auto-refund làm refund→ledger→cancel trong MỘT
+lock (callback `finalize`); CTE khớp 0 row → log ERROR + note. Key gửi
+provider là `auto-refund:<capture>` (không còn `overbook-refund:` /
+`departure-closed-refund:` — hai cause cho cùng một capture phải dedupe thành
+một lệnh); outbox dedupe key vẫn theo booking + cause.
+
+### d. Sweep: TTL mềm theo session + TRẦN CỨNG 24h; nói thật về PayPal
+
+AMEND 1c AND hạn session vào TTL 65′ mà không có trần nào khác, tức
+`created_at` hết là trần tuyệt đối: một tài khoản gọi reCheckout mỗi ~55′ giữ
+PENDING sống vô hạn (hàng đợi, thống kê, và vẫn thanh toán được bất kỳ lúc
+nào). Nay thêm `PENDING_HARD_TTL_HOURS = 24`: quá tuổi này sweep huỷ bất kể
+session (session sống bị bỏ rơi chỉ dẫn tới orphan refund, lưới có sẵn). Về
+PayPal: không có expire API lẫn webhook hết hạn (Quyết định 2 từng hứa
+"PayPal voided → payment.expired" — chưa bao giờ thi hành, `mapPayPalEvent`
+không có case ấy), nên PENDING PayPal sống tới hạn khai 3h — CÓ CHỦ ĐÍCH, huỷ
+sớm hơn là huỷ một order còn thu được tiền. Unit spec canh cả ba số: TTL mềm >
+Stripe, PayPal > TTL mềm (để ai đổi phải đọc câu này), trần cứng > PayPal.
+

@@ -284,6 +284,41 @@ sửa test theo ngữ nghĩa mới. Trong cửa sổ ân hạn 24h (ADR-0030 §3
 sách là 100% nên vắng vẫn ra trọn phần dư — các flow test tạo-rồi-huỷ-ngay
 không đổi kết quả.
 
+### AMEND 6 06/09 (vòng vá review W1) — badge `freeCancellationDays` CHỤP lúc khách gửi; backfill reason rỗng; hết JSDoc cũ
+
+- **Snapshot:** AMEND 5 tính mức chính sách "từ dữ liệu tươi" — trong đó
+  `tour.freeCancellationDays` là join sống, trong khi `Booking` snapshot mọi
+  input tiền khác. Content-admin sửa badge sau khi khách gửi yêu cầu là bậc
+  đổi, và vì số mới BẰNG mức chính sách mới nên duyệt không cần
+  `decisionNote` — khách mất tiền không dấu vết, trái ADR-0030 §2 "không
+  booking nào đã đặt bị thiệt". Nay `cancellation_requests.free_cancellation_days`
+  (migration `20260906120000_w1_review_cancellation_snapshot`, nullable) chụp
+  badge lúc `request`; `approve` đọc từ đó (row cũ null → badge hiện tại);
+  contract `CancellationRequestSchema.freeCancellationDays`, admin nạp stepper
+  từ request chứ không từ booking. `refundEstimate` (trước khi có request) vẫn
+  đọc badge hiện tại — đó là lời hứa; snapshot đóng băng nó lúc gửi.
+- **Backfill:** trim dời lên contract chặn row MỚI, nhưng row `reason = ''`
+  ghi trước W1 (service trim rồi ghi) vẫn làm `admin.cancellations.list` 500
+  output validation — cùng migration `UPDATE … SET reason = 'No reason given'
+  WHERE btrim(reason) = ''`.
+- **JSDoc:** 5 chỗ còn nói "vắng = hoàn trọn phần dư" (contract header
+  `DecideCancellationInputSchema` và enum status, JSDoc lớp
+  `CancellationsService`, stepper, `DecideAction` của admin) — deliverable
+  của AMEND 5 mà bản thi công bỏ sót — nay sửa.
+- **Stepper:** `submit()` chặn cả `amountError` (thanh bước cho nhảy thẳng
+  tới Confirm sau khi đã đi qua, ô trống ở chế độ vượt bậc từng in "không
+  hoàn đồng nào" rồi gửi chuỗi rỗng).
+- **Ghi nợ, không sửa:** `admin.bookings.refund` (W3) vẫn "vắng `amount` =
+  trọn phần dư, không kiểm bậc, không đòi lý do" — ADR-0030 ghi đây là quyết
+  định riêng chưa chốt; nó là cửa hậu cùng hình dạng, xếp cho đợt W2.
+- **Throttle (kèm theo, ADR-0006 không có chỗ hợp hơn):** hai đường ghi tiền
+  của admin (`admin.bookings.refund`, `admin.cancellations.decide`) nay có
+  `AUTHED_WRITE_THROTTLE`; `AuthedWriteThrottlerGuard` không có session là 401
+  (fail-closed thật, thay vì rơi về IP/bucket chung); `WEBHOOK_THROTTLE` nâng
+  120 → 600/phút vì delivery thật dùng chung bucket với kẻ dò và burst
+  redeliver sau khi Render thức từng đủ chạm trần; web map 429 ở wishlist,
+  saved-grid, review-form, avatar-upload.
+
 ## Phương án đã cân nhắc rồi loại
 
 | Phương án | Vì sao loại |
