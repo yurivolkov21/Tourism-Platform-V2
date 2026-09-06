@@ -1,6 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
+import { APIError } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { adminEmails, env, trustedOrigins, trustedProxyCidrs } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
@@ -86,6 +87,29 @@ export const auth = betterAuth({
       if (isBootstrapAdmin(user.email, adminEmails)) {
         await prisma.user.update({ where: { id: user.id }, data: { role: UserRole.ADMIN } });
       }
+    },
+  },
+  databaseHooks: {
+    user: {
+      update: {
+        // W2 mục 4 (audit cụm 1): updateUser({image}) nhận CHUỖI BẤT KỲ trong
+        // khi đường avatar chính danh là account.setAvatar (ký + kiểm chủ
+        // quyền publicId — ADR-0021 §3). Hook này đóng nốt cửa BA: image mới
+        // phải nằm trong cloud Cloudinary của MÌNH; null (gỡ avatar) vẫn qua.
+        before: async (data) => {
+          const image = (data as { image?: unknown }).image;
+          if (typeof image === 'string') {
+            const allowedPrefix = `https://res.cloudinary.com/${env.CLOUDINARY_CLOUD_NAME}/`;
+            if (!image.startsWith(allowedPrefix)) {
+              throw new APIError('BAD_REQUEST', {
+                code: 'AVATAR_URL_NOT_ALLOWED',
+                message: 'Avatar image must be served from our media CDN',
+              });
+            }
+          }
+          return { data };
+        },
+      },
     },
   },
   user: {
