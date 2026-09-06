@@ -45,6 +45,14 @@ export class SeatsUnavailableError extends Error {
   }
 }
 
+/** Party vượt `maxGroupSize` của tour (W1 — luật tour, kiểm TRƯỚC seat check;
+ * trước đây chỉ ép ở trình duyệt) → 422 PARTY_TOO_LARGE. */
+export class PartyTooLargeError extends Error {
+  constructor(maxGroupSize: number, requested: number) {
+    super(`This tour takes at most ${maxGroupSize} traveller(s) per group, requested ${requested}`);
+  }
+}
+
 /** BK-1: gateway lỗi lúc mint checkout session (create/re-checkout) → 502
  * retry-able. Booking ở lại PENDING không session; khách retry qua re-checkout. */
 export class CheckoutFailedError extends Error {
@@ -270,6 +278,9 @@ export class BookingsService {
             currency: true,
             basePrice: true,
             isPublished: true,
+            // Trần party theo TOUR (W1) — luật thật của PARTY_TOO_LARGE,
+            // contract chỉ giữ trần sanity 99.
+            maxGroupSize: true,
             // Cùng lý do với `bookingTourInclude` — khách phải biết trước mình
             // được hoàn bao nhiêu (ADR-0030 §3b).
             freeCancellationDays: true,
@@ -299,6 +310,11 @@ export class BookingsService {
     }
 
     const seats = input.numAdults + input.numChildren;
+    // Luật tour TRƯỚC soft seat check: "tour này nhận tối đa N người một nhóm"
+    // đúng bất kể departure còn bao nhiêu ghế.
+    if (seats > departure.tour.maxGroupSize) {
+      throw new PartyTooLargeError(departure.tour.maxGroupSize, seats);
+    }
     const seatsLeft = departure.seatsTotal - departure.seatsBooked;
     if (seatsLeft < seats) {
       throw new SeatsUnavailableError(seatsLeft, seats);

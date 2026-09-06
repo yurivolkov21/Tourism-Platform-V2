@@ -427,6 +427,31 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(fake.sessions).toHaveLength(0);
   });
 
+  it('W1: party vượt maxGroupSize của tour → 422 PARTY_TOO_LARGE (trước cả soft seat check)', async () => {
+    // dayTour.maxGroupSize = 16 (fixture). Trước W1 trần này chỉ ép ở trình
+    // duyệt — một POST thẳng book được cả đoàn 30 người lên tour 16 chỗ nếu
+    // departure còn ghế.
+    const cookie = await signUpUser('party-too-large@example.com');
+    const res = await createBooking(cookie, {
+      ...createPayload,
+      numAdults: 17,
+      numChildren: 0,
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json()).toMatchObject({ code: 'PARTY_TOO_LARGE' });
+    expect(await prisma.booking.count()).toBe(0); // không PENDING mồ côi
+
+    // Đúng trần (16) thì không bị luật này chặn — nó rơi tiếp xuống seat
+    // check (departure chỉ còn 5 ghế → SEATS_UNAVAILABLE, không phải 422).
+    const atCap = await createBooking(cookie, {
+      ...createPayload,
+      numAdults: 16,
+      numChildren: 0,
+    });
+    expect(atCap.statusCode).toBe(409);
+    expect(atCap.json()).toMatchObject({ code: 'SEATS_UNAVAILABLE' });
+  });
+
   it('party larger than seats left → 409 SEATS_UNAVAILABLE (soft check)', async () => {
     const cookie = await signUpUser('greedy@example.com');
     const res = await createBooking(cookie, {

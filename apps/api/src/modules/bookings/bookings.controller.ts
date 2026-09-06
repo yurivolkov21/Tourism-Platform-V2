@@ -9,6 +9,7 @@ import {
   BookingsService,
   CheckoutFailedError,
   DepartureNotAvailableError,
+  PartyTooLargeError,
   SeatsUnavailableError,
 } from './bookings.service.js';
 import {
@@ -49,6 +50,9 @@ export class BookingsController {
         }
         if (error instanceof SeatsUnavailableError) {
           throw errors.SEATS_UNAVAILABLE({ message: error.message });
+        }
+        if (error instanceof PartyTooLargeError) {
+          throw errors.PARTY_TOO_LARGE({ message: error.message });
         }
         if (error instanceof CheckoutFailedError) {
           throw errors.CHECKOUT_FAILED({ message: error.message });

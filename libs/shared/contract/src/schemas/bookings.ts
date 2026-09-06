@@ -45,8 +45,11 @@ export type BookingStatusValue = z.output<typeof BookingStatusSchema>;
  */
 export const CreateBookingInputSchema = z.object({
   departureId: z.uuid(),
-  numAdults: z.int().min(1),
-  numChildren: z.int().min(0).default(0),
+  // `.max(99)` là trần SANITY tuyệt đối (W1 — audit 05/09 cụm 2): trần thật
+  // là `maxGroupSize` của tour, server kiểm sau khi join tour → PARTY_TOO_LARGE
+  // (422). Contract chỉ chặn số vô nghĩa để phép cộng party không bao giờ tràn.
+  numAdults: z.int().min(1).max(99),
+  numChildren: z.int().min(0).max(99).default(0),
   contactName: z.string().min(1).max(120),
   contactEmail: EmailSchema,
   // min 6: parity Nexora `@Length(6,30)` — chặn số điện thoại 1–5 ký tự.

@@ -411,6 +411,12 @@ export const contract = {
           status: 409,
           message: 'Not enough seats left on this departure',
         },
+        // W1 (audit 05/09 cụm 2): party vượt `maxGroupSize` của tour — trước
+        // đây trần này chỉ ép ở trình duyệt, POST thẳng lách được.
+        PARTY_TOO_LARGE: {
+          status: 422,
+          message: 'Party size exceeds the maximum group size for this tour',
+        },
         // BK-1: gateway lỗi lúc mint checkout — booking ĐÃ tạo (PENDING), khách
         // retry qua `checkout`. Typed để FE phân biệt với hết-ghế/không-available.
         CHECKOUT_FAILED: {

@@ -182,6 +182,7 @@ export function bookingSubmitErrorCopy(error: unknown): string {
     if (error.status === 401) return t.UNAUTHORIZED;
     if (error.status === 429) return messages.accountActionErrors.throttle;
     if (error.code === 'SEATS_UNAVAILABLE') return t.SEATS_NOT_AVAILABLE;
+    if (error.code === 'PARTY_TOO_LARGE') return t.PARTY_TOO_LARGE;
     if (error.code === 'DEPARTURE_NOT_AVAILABLE') return t.DEPARTURE_NOT_OPEN;
   }
   return t.CHECKOUT_FAILED;

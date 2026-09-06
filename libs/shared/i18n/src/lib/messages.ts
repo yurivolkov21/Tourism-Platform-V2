@@ -359,6 +359,8 @@ export const messages = {
       INVALID_PARTY_SIZE: 'Please enter 1–20 adults and up to 20 children.',
       INVALID_PROVIDER: 'Please choose a payment method.',
       SEATS_NOT_AVAILABLE: 'Sorry — those seats just sold out. Try a different departure.',
+      PARTY_TOO_LARGE:
+        'Your group is larger than this tour allows. Reduce the party size or ask us about a private trip.',
       DEPARTURE_NOT_OPEN: 'That departure is no longer open for booking.',
       DEPARTURE_DEPARTED: 'That departure has already started.',
       CHECKOUT_FAILED: 'We couldn’t start the payment session. Please try again.',

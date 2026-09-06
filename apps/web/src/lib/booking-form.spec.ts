@@ -213,6 +213,11 @@ describe('bookingSubmitErrorCopy — lỗi API khi tạo booking', () => {
     expect(bookingSubmitErrorCopy(err)).toBe(t.DEPARTURE_NOT_OPEN);
   });
 
+  it('PARTY_TOO_LARGE (422) → câu nhóm quá trần tour (W1)', () => {
+    const err = new ORPCError('PARTY_TOO_LARGE', { status: 422 });
+    expect(bookingSubmitErrorCopy(err)).toBe(t.PARTY_TOO_LARGE);
+  });
+
   it('401 → hết phiên; 429 → throttle', () => {
     expect(bookingSubmitErrorCopy(new ORPCError('UNAUTHORIZED', { status: 401 }))).toBe(
       t.UNAUTHORIZED,

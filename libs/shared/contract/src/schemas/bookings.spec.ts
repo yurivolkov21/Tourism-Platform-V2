@@ -59,6 +59,20 @@ describe('CreateBookingInputSchema', () => {
     );
   });
 
+  it('trần sanity tuyệt đối cho party (W1): numAdults/numChildren ≤ 99', () => {
+    // Trần THẬT là maxGroupSize của tour (server kiểm → PARTY_TOO_LARGE);
+    // contract chỉ chặn số vô nghĩa để phép cộng party không bao giờ tràn.
+    expect(CreateBookingInputSchema.safeParse({ ...validCreate, numAdults: 100 }).success).toBe(
+      false,
+    );
+    expect(CreateBookingInputSchema.safeParse({ ...validCreate, numChildren: 100 }).success).toBe(
+      false,
+    );
+    expect(CreateBookingInputSchema.safeParse({ ...validCreate, numAdults: 99 }).success).toBe(
+      true,
+    );
+  });
+
   it('rejects an unknown payment provider', () => {
     expect(
       CreateBookingInputSchema.safeParse({
