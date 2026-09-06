@@ -1,8 +1,11 @@
 import { Controller, Delete, Get, HttpCode, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
+import { AUTHED_WRITE_THROTTLE } from '../config/throttle.js';
 // NB: AccountService phải là VALUE import (DI qua decorator metadata).
 import { AccountService } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
 import { AuthGuard } from './auth.guard.js';
+import { AuthedWriteThrottlerGuard } from './authed-write-throttler.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 
 @Controller('api/account')
@@ -17,6 +20,9 @@ export class AccountController {
   }
 
   /** Tombstone delete tài khoản của CHÍNH MÌNH (xem AccountService). */
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Delete()
   @HttpCode(204)
   async deleteOwnAccount(@CurrentUser() user: SessionUser): Promise<void> {

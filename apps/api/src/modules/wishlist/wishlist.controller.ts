@@ -1,8 +1,11 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
+import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
+import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import { TourNotFoundError, WishlistService } from './wishlist.service.js';
 
 // KHÔNG có @Public(): AuthGuard toàn cục (ADR-0003) sẽ chặn khách ẩn danh.
@@ -11,6 +14,10 @@ import { TourNotFoundError, WishlistService } from './wishlist.service.js';
 export class WishlistController {
   constructor(private readonly wishlist: WishlistService) {}
 
+  // Đường GHI (W1): trần theo user (AuthGuard toàn cục đã gắn sessionUser
+  // trước khi guard method chạy) — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.wishlist.set)
   set(@CurrentUser() user: SessionUser) {
     return implement(contract.wishlist.set).handler(async ({ input, errors }) => {

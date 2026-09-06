@@ -19,6 +19,17 @@ export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 
 /**
+ * Endpoint GHI ĐÃ-AUTH (W1, audit 05/09 cụm 2 — khuôn SIGN_UPLOAD_THROTTLE):
+ * bookings.create/checkout/cancel/cancelPending (mỗi create/checkout = một
+ * session provider thật), reviews.create/update, wishlist.set, avatar, xoá tài
+ * khoản. Bucket theo `user.id` qua {@link AuthedWriteThrottlerGuard} — theo IP
+ * thì NAT chung IP bị khoá oan theo nhau còn pool IP xoay vòng lách được.
+ * 20/60s: người thật không ghi 21 lần một phút; mỗi route một bucket riêng
+ * (generateKey theo handler) nên trần không cộng dồn chéo endpoint.
+ */
+export const AUTHED_WRITE_THROTTLE = { limit: 20, ttl: 60_000 } as const;
+
+/**
  * Route webhook provider (W1, audit 05/09 cụm 2): trần RỘNG TAY theo IP —
  * Stripe/PayPal retry burst hợp lệ không bao giờ chạm 120/phút cho một shop
  * cỡ này, nhưng trần phải TỒN TẠI: webhook PayPal verify bằng một round-trip

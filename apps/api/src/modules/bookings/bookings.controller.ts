@@ -1,9 +1,12 @@
 import { Controller, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
+import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
+import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import {
   BookingNotPendingError,
   BookingsService,
@@ -39,6 +42,9 @@ export class BookingsController {
     private readonly cancellations: CancellationsService,
   ) {}
 
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.bookings.create)
   create(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.create).handler(async ({ input, errors }) => {
@@ -62,6 +68,9 @@ export class BookingsController {
     });
   }
 
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.bookings.checkout)
   checkout(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.checkout).handler(async ({ input, errors }) => {
@@ -97,6 +106,9 @@ export class BookingsController {
     });
   }
 
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.bookings.cancel)
   cancel(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.cancel).handler(async ({ input, errors }) => {
@@ -116,6 +128,9 @@ export class BookingsController {
     });
   }
 
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.bookings.cancelPending)
   cancelPending(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.cancelPending).handler(async ({ input, errors }) => {

@@ -1,10 +1,13 @@
 import { Controller, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { AuthGuard } from '../../auth/auth.guard.js';
+import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Public } from '../../auth/public.decorator.js';
+import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import {
   BookingForbiddenError,
   BookingNotFoundError,
@@ -48,7 +51,9 @@ export class ReviewsController {
     );
   }
 
-  @UseGuards(AuthGuard)
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthGuard, AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.reviews.create)
   create(@CurrentUser() user: SessionUser) {
     return implement(contract.reviews.create).handler(async ({ input, errors }) => {
@@ -72,7 +77,9 @@ export class ReviewsController {
    * Sửa review của chính mình (ADR-0032). `REVIEW_NOT_FOUND` phủ cả ca
    * không-phải-của-mình — service gộp hai ca ấy có chủ đích, xem JSDoc ở đó.
    */
-  @UseGuards(AuthGuard)
+  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
+  @UseGuards(AuthGuard, AuthedWriteThrottlerGuard)
+  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.reviews.update)
   update(@CurrentUser() user: SessionUser) {
     return implement(contract.reviews.update).handler(async ({ input, errors }) => {
