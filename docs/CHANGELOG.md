@@ -8,6 +8,112 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-06 — W1 merge + vòng review 8 mũi cho money-path (nhánh `fix/web-money-path`, 18 commit `f4c791c..96789bf` ff vào main, 64 file, 2 migration đã deploy Supabase)
+
+Entry ngay dưới ghi "chưa merge, chờ review ở session riêng; migration CHƯA
+deploy Supabase" — đợt review ấy làm ở session gốc theo nếp review theo tầng:
+8 finder theo miền (vòng đời session · webhook/tiền vào · bề mặt webhook +
+throttle · tạo booking + claim · huỷ/hoàn · tầng test · dữ liệu/docs/altitude
+· lần vết chéo), 3 verifier (33 mục: 26 CONFIRMED, 6 PLAUSIBLE, 1 REFUTED),
+`gate:int` trọn trong cây chính với API tạm :3001. Kết luận: W1 đóng đúng ba
+cửa lớn của audit, nhưng chính hai cơ chế mới (gate tiền, sweep neo session) mở
+ra hai đường mất tiền/kẹt mới, và một cặp số vốn "trơ" (PayPal 3h so với TTL
+65′) thành đang hoạt động. 10 finding bảng + ~12 món verifier thêm, vá trong 5
+commit (`67b531d..96789bf`) rồi ff.
+
+### Findings và cách vá (theo tầng)
+
+**Tầng chính sách**
+
+1. **Event lệch tiền = tiền vào hố** (`67b531d`, [ADR-0006 AMEND 2a](adr/0006-pending-lifecycle.md)).
+   AMEND 1d để booking "ở lại PENDING cho operator" trong khi sweep là tác nhân
+   tự động khác đang chờ đúng booking ấy: 65′ sau huỷ, không refund, không email.
+   Gate đứng TRƯỚC claim nên capture thứ hai lệch amount trên booking PAID cũng
+   không tới nhánh dup-capture. Nay gate chỉ áp khi booking còn PENDING; lệch →
+   hoàn NGAY đúng số event khai (`mismatch-refund:<capture>`, ngoài sổ), booking
+   ở lại PENDING; capture lệch trên booking đã settle đi đường dup-capture.
+2. **"Audit ở payment_events" không tồn tại** (`67b531d`, AMEND 2a). Dup-capture
+   và hoàn ngoài sổ chuyển tiền thật không ghi hàng DB nào; cột `note` không map
+   lên admin (write-only). Nay MỌI khoản không thành Refund row — lệch, dup,
+   ngoài sổ, hoàn thất bại, thiếu capture id — ghi `note` kèm mã hoàn provider;
+   `note` lên `PaymentEventRowSchema` + drawer admin. Dup-capture hoàn đúng số
+   event khai, không đoán bằng total; booking settle không mang capture → note.
+3. **Bất biến "TTL sweep > hạn session dài nhất" sai ngay lúc viết**
+   (`b036bc6`, AMEND 2d): PayPal khai 3h > 65′, spec chỉ so Stripe; và sweep AND
+   hạn session nên `created_at` hết là trần cứng — reCheckout mỗi ~55′ giữ
+   PENDING sống vô hạn. Nay `PENDING_HARD_TTL_HOURS = 24`; PayPal PENDING sống
+   tới 3h là CÓ CHỦ ĐÍCH (không expire API, không webhook hết hạn — Quyết định 2
+   từng hứa "PayPal voided → expired" chưa bao giờ thi hành); unit spec canh
+   cả ba số; câu sai trong ADR gạch bỏ.
+4. **`freeCancellationDays` join sống** (`dbbd5f4`, [ADR-0029 AMEND 6](adr/0029-cancellation-approve-partial-refund.md)):
+   sửa tour sau khi khách gửi yêu cầu là khách rớt bậc không cần `decisionNote`
+   (số mới bằng mức chính sách mới) — trái ADR-0030 §2. Migration
+   `20260906120000_w1_review_cancellation_snapshot` chụp badge lên
+   `cancellation_requests.free_cancellation_days`; `approve` đọc snapshot (row cũ
+   rơi về badge hiện tại); contract + admin nạp stepper từ request.
+
+**Tầng thiết kế**
+
+5. **`reCheckout` không lock, expire S1 trước khi ghi S2** (`b036bc6`, AMEND 2b):
+   hai "Pay again" song song cùng mint, session ghi trước sống mồ côi; webhook
+   expired của S1 khớp gate 1c (S1 vẫn là hiện tại) và huỷ booking đang re-mint,
+   `update` không gate PENDING ghi S2 lên booking đã CANCELLED. Nay trọn trong
+   `withBookingRefundLock`: mint S2 → `updateMany` gate PENDING (0 row → expire
+   S2, 422) → mới expire S1. `cancelPending` xoá URL/hạn + expire session.
+6. **CTE cancel không đọc rowcount, key theo nguyên nhân** (`67b531d`, AMEND 2c):
+   log "CANCELLED" vô điều kiện; claim không lấy lock nên delivery #2 claim PAID
+   vào khe giữa hoàn và cancel (admin mở lại chuyến) → PAID kèm Refund row full.
+   Nay claim + auto-refund cùng advisory lock, refund→sổ→cancel trong một lock
+   (`finalize`), 0 row → ERROR + note; key `auto-refund:<capture>`; guard theo
+   capture nhận row sổ null của booking chưa mang capture (đường orphan nay set
+   `provider_payment_id` qua COALESCE) — đóng ca hoàn lần hai trên dữ liệu cũ.
+7. **Gate chuyến** (`b036bc6`, [ADR-0009 AMEND 2](adr/0009-refund-correctness.md)):
+   `reCheckout` không gate, web hiện Pay now cho mọi PENDING → mời khách trả
+   khoản chắc chắn bị từ chối; `current_date` theo TZ session DB so với ngày
+   lịch VN, phân loại dùng đồng hồ Node riêng; email in "Reason:
+   departure-closed" thô. Nay `reCheckout` gate (400 DEPARTURE_NOT_AVAILABLE trên
+   route checkout), SQL `(now() AT TIME ZONE 'UTC')::date` + helper `todayUtc()`
+   — chốt tường minh "đã đi" theo UTC (rộng hơn đời thật 7 giờ, cùng lề với
+   walk-in cùng ngày); email dịch mã lý do sang câu cho khách.
+8. **Throttle** (`3d0b226`): hai đường ghi tiền của admin không trần → có; guard
+   không session → 401 (fail-closed thật, thay vì rơi về IP/bucket 'unknown');
+   `WEBHOOK_THROTTLE` 120 → 600/phút vì delivery thật chung bucket với kẻ dò và
+   burst redeliver sau khi Render thức đủ chạm trần; web map 429 ở wishlist,
+   saved-grid, review-form, avatar-upload; stepper `submit()` chặn `amountError`.
+   Guard toàn cục + `@SkipThrottle` để đợt sau (ghi nợ).
+
+**Tầng dữ liệu và code**
+
+9. `reason = ''` cũ không backfill → hàng đợi duyệt huỷ vẫn có thể 500 sau
+   merge — cùng migration `UPDATE … 'No reason given'`. 5 JSDoc còn hứa "vắng =
+   trọn phần dư" (contract ×2, service, stepper, `DecideAction`) — dọn.
+   `admin.bookings.refund` vắng `amount` = trọn phần dư không kiểm bậc: ADR-0030
+   ghi "chưa chốt", xếp W2. Web: server trả `refundEstimate` null (chuyến đã
+   đi) → không bày nút xin huỷ, nói thẳng không huỷ online được (bản đầu mở
+   dialog nửa tiền trống rồi ăn 422). Currency so không phân biệt hoa/thường.
+10. **Tầng test**: thêm lề 5′, `expireSession` ném (fake `failExpireSession`),
+    PARTY tính trẻ em, estimate null chuyến đã đi, reCheckout chuyến CLOSED,
+    cancelPending expire session, trần cứng sweep, snapshot badge, cột
+    `provider_payment_id` trên sổ, dup-capture không amount, mismatch hoàn ngay;
+    spec throttle route đủ `limit` lượt 404 rồi mới 429 (test cũ pass kể cả khi
+    request đầu 429), payments spec reset `ThrottlerStorage` mỗi test (test trần
+    hết phụ thuộc cuối file), dọn `media_assets` và user rác giữa file.
+
+### Vận hành lúc merge
+
+Hai migration (`20260906014052_w1_checkout_session_lifecycle`,
+`20260906120000_w1_review_cancellation_snapshot`) deploy Supabase TRƯỚC push
+(cột đều nullable, code cũ đang chạy không vỡ; chiều ngược lại — code mới trên
+DB thiếu cột — là mọi `bookings.*` và cả `beginEvent` webhook 500, nên thứ tự
+này là bắt buộc). Không có backfill nào khác.
+
+### Nghiệm thu
+
+`pnpm gate:int` trọn trong cây chính với API tạm :3001 trên docker DB (kill sau
+khi xong): build 21/21 task · unit contract 15 · api 40 · admin 73 · web 116
+file (1441 test) · lint 980 file · **int 28 file / 420 test** (414 → 420) —
+xanh. Không commit nào mang trailer AI. Chưa kiểm bằng mắt trên localhost.
+
 ## 2026-09-06 — W1 khép money-path: một session sống mỗi booking, capture thừa không bị nuốt, approve theo chính sách (nhánh `fix/web-money-path`, 12 commit `f4c791c..f7ea657`, 41 file, 1 migration — **chưa merge, chờ review ở session riêng; migration CHƯA deploy Supabase**)
 
 Đợt vá đầu trong bốn đợt của [audit web 05/09](analysis/2026-09-05-web-security-audit.md)
