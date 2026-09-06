@@ -27,7 +27,31 @@ import { authClient } from '@/lib/auth-client';
  *  phải copy hiển thị tự do — đổi ngôn ngữ không được đổi chữ khách phải gõ. */
 const CONFIRM_WORD = 'DELETE';
 
-type DeleteAccountErrorKind = 'sessionExpired' | 'generic';
+type DeleteAccountErrorKind =
+  | 'sessionExpired'
+  | 'wrongPassword'
+  | 'paidBookings'
+  | 'openCancellation'
+  | 'noPassword'
+  | 'generic';
+
+/** Map mã lỗi API (ADR-0017 §7b) → kind hiển thị; mã lạ rơi về generic. */
+function kindOfDeleteError(error: unknown): DeleteAccountErrorKind {
+  if (!(error instanceof AccountDeleteError)) return 'generic';
+  if (error.status === 401) return 'sessionExpired';
+  switch (error.code) {
+    case 'INVALID_PASSWORD':
+      return 'wrongPassword';
+    case 'ACCOUNT_HAS_PAID_BOOKINGS':
+      return 'paidBookings';
+    case 'ACCOUNT_HAS_OPEN_CANCELLATION':
+      return 'openCancellation';
+    case 'CREDENTIAL_ACCOUNT_NOT_FOUND':
+      return 'noPassword';
+    default:
+      return 'generic';
+  }
+}
 
 /**
  * Xoá tài khoản — Task 8: không còn là một MỤC riêng (`AccountSection`
@@ -57,25 +81,26 @@ export function DeleteAccount() {
   const t = messages.accountProfile.danger;
   const router = useRouter();
   const [confirmText, setConfirmText] = useState('');
+  const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
   const [errorKind, setErrorKind] = useState<DeleteAccountErrorKind | null>(null);
-  const isUnlocked = confirmText === CONFIRM_WORD;
+  // ADR-0017 §7b: chữ xác nhận là gate chống bấm-nhầm; mật khẩu là gate xác
+  // thực lại phía SERVER — cả hai phải có mới mở nút.
+  const isUnlocked = confirmText === CONFIRM_WORD && password.length > 0;
 
   async function handleConfirm() {
     if (!isUnlocked || pending) return;
     setPending(true);
     setErrorKind(null);
     try {
-      await deleteAccount();
+      await deleteAccount(password);
       await authClient.signOut();
       toast.success(messages.accountProfile.toast.accountDeletedTitle, {
         description: messages.accountProfile.toast.accountDeletedBody,
       });
       router.push('/');
     } catch (error) {
-      setErrorKind(
-        error instanceof AccountDeleteError && error.status === 401 ? 'sessionExpired' : 'generic',
-      );
+      setErrorKind(kindOfDeleteError(error));
     } finally {
       setPending(false);
     }
@@ -91,6 +116,7 @@ export function DeleteAccount() {
           onOpenChange={(open) => {
             if (!open) {
               setConfirmText('');
+              setPassword('');
               setErrorKind(null);
             }
           }}
@@ -122,11 +148,26 @@ export function DeleteAccount() {
               />
             </div>
 
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="delete-account-password">{t.passwordLabel}</Label>
+              <Input
+                id="delete-account-password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+
             {errorKind ? (
               <AccountActionError
                 expired={errorKind === 'sessionExpired'}
                 redirectTo="/account/profile"
-                fallback={messages.accountActionErrors.generic}
+                fallback={
+                  errorKind === 'sessionExpired' || errorKind === 'generic'
+                    ? messages.accountActionErrors.generic
+                    : t.errors[errorKind]
+                }
               />
             ) : null}
 

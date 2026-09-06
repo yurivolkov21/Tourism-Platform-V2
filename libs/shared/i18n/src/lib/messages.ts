@@ -2534,8 +2534,22 @@ export const messages = {
       dialogBody:
         'This permanently removes your account and all your data. This action cannot be undone.',
       typeToConfirm: (word: string) => `Type ${word} to confirm`,
+      // ADR-0017 §7b: xoá là bất khả hoàn tác nên đòi mật khẩu (bằng chứng
+      // sở hữu), không chỉ một cookie đang đăng nhập.
+      passwordLabel: 'Your password',
       confirmCta: 'Yes, delete my account',
       cancel: 'Cancel',
+      // Mã lỗi riêng của DELETE /api/account — mỗi kết cục nói được khách
+      // nên làm gì tiếp, không gộp về "something went wrong".
+      errors: {
+        wrongPassword: 'Incorrect password.',
+        paidBookings:
+          'You still have a paid upcoming booking. Cancel or complete it before deleting your account.',
+        openCancellation:
+          'You have a cancellation request in progress. Please wait for it to be resolved first.',
+        noPassword:
+          'This account has no password set, so it cannot be deleted here yet. Please contact support.',
+      },
     },
     // Toast SAU khi hành động ghi thành công (Task 7/A2).
     toast: {

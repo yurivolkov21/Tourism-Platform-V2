@@ -39,6 +39,9 @@ vi.mock('sonner', () => ({ toast: { success: toastSuccess } }));
 async function openDialogAndUnlock(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: 'Delete account' }));
   await user.type(screen.getByRole('textbox'), 'DELETE');
+  // ADR-0017 §7b: dialog nay đòi thêm mật khẩu — input type=password không
+  // có role textbox nên query theo label.
+  await user.type(screen.getByLabelText(messages.accountProfile.danger.passwordLabel), 'pw-123');
 }
 
 describe('DeleteAccount', () => {
@@ -80,11 +83,18 @@ describe('DeleteAccount', () => {
     expect(confirmBtn).toBeDisabled();
   });
 
-  it('gõ đúng chữ "DELETE" → nút xác nhận bật (không còn disabled)', async () => {
+  it('gõ đúng chữ "DELETE" nhưng CHƯA nhập mật khẩu → nút vẫn khoá', async () => {
     const user = userEvent.setup();
     render(<DeleteAccount />);
     await user.click(screen.getByRole('button', { name: 'Delete account' }));
     await user.type(screen.getByRole('textbox'), 'DELETE');
+    expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeDisabled();
+  });
+
+  it('gõ đúng chữ "DELETE" + có mật khẩu → nút xác nhận bật', async () => {
+    const user = userEvent.setup();
+    render(<DeleteAccount />);
+    await openDialogAndUnlock(user);
     expect(screen.getByRole('button', { name: 'Yes, delete my account' })).toBeEnabled();
   });
 });
@@ -103,10 +113,53 @@ describe('DeleteAccount — xoá tài khoản thật (Task 7/A2)', () => {
     await openDialogAndUnlock(user);
     await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
 
-    await waitFor(() => expect(deleteAccount).toHaveBeenCalledTimes(1));
+    // Mật khẩu khách gõ phải đi theo request (server xác thực lại).
+    await waitFor(() => expect(deleteAccount).toHaveBeenCalledWith('pw-123'));
     await waitFor(() => expect(signOut).toHaveBeenCalledTimes(1));
     expect(push).toHaveBeenCalledWith('/');
     expect(toastSuccess).toHaveBeenCalledTimes(1);
+  });
+
+  it('403 INVALID_PASSWORD → copy "Incorrect password.", không signOut', async () => {
+    deleteAccount.mockRejectedValueOnce(new AccountDeleteError(403, 'INVALID_PASSWORD'));
+    const user = userEvent.setup();
+    render(<DeleteAccount />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect(
+      await screen.findByText(messages.accountProfile.danger.errors.wrongPassword),
+    ).toBeInTheDocument();
+    expect(signOut).not.toHaveBeenCalled();
+  });
+
+  it('409 ACCOUNT_HAS_PAID_BOOKINGS → copy riêng nói khách xử booking trước', async () => {
+    deleteAccount.mockRejectedValueOnce(new AccountDeleteError(409, 'ACCOUNT_HAS_PAID_BOOKINGS'));
+    const user = userEvent.setup();
+    render(<DeleteAccount />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect(
+      await screen.findByText(messages.accountProfile.danger.errors.paidBookings),
+    ).toBeInTheDocument();
+  });
+
+  it('409 ACCOUNT_HAS_OPEN_CANCELLATION → copy riêng bảo chờ xử lý xong', async () => {
+    deleteAccount.mockRejectedValueOnce(
+      new AccountDeleteError(409, 'ACCOUNT_HAS_OPEN_CANCELLATION'),
+    );
+    const user = userEvent.setup();
+    render(<DeleteAccount />);
+
+    await openDialogAndUnlock(user);
+    await user.click(screen.getByRole('button', { name: 'Yes, delete my account' }));
+
+    expect(
+      await screen.findByText(messages.accountProfile.danger.errors.openCancellation),
+    ).toBeInTheDocument();
   });
 
   it('deleteAccount lỗi chung → message inline, KHÔNG signOut/push, nút hết pending', async () => {

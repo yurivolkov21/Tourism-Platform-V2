@@ -60,6 +60,9 @@ export const auth = betterAuth({
     // gia hạn (updateAge 1 ngày) nên thiếu dòng này thì kẻ trộm cookie giữ
     // quyền vô thời hạn, đổi mật khẩu không đuổi được hắn ra.
     revokeSessionsOnPasswordReset: true,
+    // ADR-0017 §7b: copy web đã hứa "expires in 30 minutes" trong khi default
+    // BA là 3600s — sửa máy theo lời (token sống ngắn hơn là chiều an toàn).
+    resetPasswordTokenExpiresIn: 1800,
     sendResetPassword: async ({ user, url }) => {
       // AUTH-2: ghi outbox thay console.log. dedupeKey bounded theo VarChar(200).
       await prisma.outbox.create({

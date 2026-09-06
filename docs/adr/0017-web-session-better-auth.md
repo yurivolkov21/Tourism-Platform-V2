@@ -149,9 +149,12 @@ chính mình. Chốt:
   đo được "fresh" đáng tin khi cookie tự gia hạn. Tài khoản CHỈ có Google
   OAuth (không credential) chưa có đường xoá self-service — trả mã lỗi riêng,
   chấp nhận nợ này (Google OAuth prod chưa bật).
-- Còn booking `PAID`/`PARTIALLY_REFUNDED` hoặc cancellation request đang
-  `REQUESTED` → chặn với mã lỗi RIÊNG (không gộp 400 chung — web phải nói
-  được cho khách vì sao và làm gì tiếp).
+- Còn booking `PAID`/`PARTIALLY_REFUNDED` **chưa khởi hành** hoặc
+  cancellation request đang `REQUESTED` → chặn với mã lỗi RIÊNG (không gộp
+  400 chung — web phải nói được cho khách vì sao và làm gì tiếp). Chỉ đếm
+  chuyến chưa đi (phát hiện khi viết test): chặn MỌI booking PAID là cấm
+  quyền-được-xoá vĩnh viễn với mọi khách từng mua — booking đã đi xong là
+  lịch sử đã tất toán, tombstone giữ nó nguyên vẹn.
 - `verification.deleteMany` theo identifier của email trong CÙNG tx — link
   reset đang treo của user đã xoá không được phép tạo lại Account mồ côi.
 - `resetPasswordTokenExpiresIn: 1800` — copy các trang auth nói "30

@@ -1,13 +1,25 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { env } from '../config/env.js';
-import { MediaType } from '../generated/prisma/enums.js';
+import { BookingStatus, CancellationRequestStatus, MediaType } from '../generated/prisma/enums.js';
+import { calendarDate, startOfDayUtc } from '../lib/calendar-date.js';
 import { buildCloudinaryUrl } from '../lib/cloudinary-url.js';
 import { isOwnAvatarPublicId } from '../lib/upload-signing.js';
-import { prisma } from './auth.config.js';
+import { auth, prisma } from './auth.config.js';
 
 /** publicId không nằm trong folder avatar của CHÍNH user (ADR-0021 §3). */
 export class AvatarPublicIdInvalidError extends Error {}
+
+// ── Lỗi domain của DELETE /api/account (ADR-0017 §7b) — controller map sang
+// mã lỗi HTTP riêng để web nói được cho khách vì sao và làm gì tiếp. ──
+/** Mật khẩu gửi lên không khớp credential Better Auth. */
+export class AccountPasswordInvalidError extends Error {}
+/** Tài khoản chỉ có OAuth (không row credential) — chưa có đường xoá self-service. */
+export class AccountCredentialMissingError extends Error {}
+/** Còn booking PAID/PARTIALLY_REFUNDED chưa khởi hành — tiền/dịch vụ còn treo. */
+export class AccountHasPaidBookingsError extends Error {}
+/** Còn cancellation request đang REQUESTED — đường hoàn tiền chạy dở. */
+export class AccountHasOpenCancellationError extends Error {}
 
 /**
  * Tombstone account deletion (spec §5, audit H5b) — flow CỦA TA, cố ý KHÔNG
@@ -52,13 +64,43 @@ export class AccountService {
   // có), nhưng tệ hơn: nó dựng một đường thứ hai tới cùng một kết quả, để ai
   // đó sau này sửa một đường mà quên đường kia.
 
-  async deleteAccount(userId: string): Promise<void> {
+  async deleteAccount(userId: string, password: string): Promise<void> {
     // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
     // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
     const { email } = await prisma.user.findUniqueOrThrow({
       where: { id: userId },
       select: { email: true },
     });
+
+    // XÁC THỰC LẠI (ADR-0017 §7b): tombstone là bất khả hoàn tác — một cookie
+    // (trộm được, tự gia hạn) không đủ; mật khẩu là bằng chứng SỞ HỮU. Verify
+    // qua chính hash trong Account credential của Better Auth ($context.password
+    // — cùng scrypt BA dùng lúc đăng nhập, không tự chế so sánh).
+    const credential = await prisma.account.findFirst({
+      where: { userId, providerId: 'credential' },
+      select: { password: true },
+    });
+    if (!credential?.password) throw new AccountCredentialMissingError();
+    const ctx = await auth.$context;
+    const valid = await ctx.password.verify({ hash: credential.password, password });
+    if (!valid) throw new AccountPasswordInvalidError();
+
+    // GATE nghiệp vụ (ADR-0017 §7b): chặn khi còn tiền/nghĩa vụ treo. Chỉ đếm
+    // chuyến CHƯA khởi hành — booking PAID đã đi xong là lịch sử đã tất toán,
+    // chặn nó là cấm quyền-được-xoá vĩnh viễn với mọi khách từng mua.
+    const today = startOfDayUtc(calendarDate(new Date()));
+    const paidUpcoming = await prisma.booking.count({
+      where: {
+        userId,
+        status: { in: [BookingStatus.PAID, BookingStatus.PARTIALLY_REFUNDED] },
+        departureStartDate: { gte: today },
+      },
+    });
+    if (paidUpcoming > 0) throw new AccountHasPaidBookingsError();
+    const openCancellations = await prisma.cancellationRequest.count({
+      where: { userId, status: CancellationRequestStatus.REQUESTED },
+    });
+    if (openCancellations > 0) throw new AccountHasOpenCancellationError();
     // Email tombstone unique-per-delete → email gốc được GIẢI PHÓNG (citext
     // unique) cho người khác (hoặc chính chủ) đăng ký lại.
     const tombstoneEmail = `deleted+${randomUUID()}@tombstone.local`;
@@ -93,6 +135,13 @@ export class AccountService {
       // quyền-được-xoá — mạnh hơn soft-unsubscribe của flow công khai; để lại thì
       // vẫn gửi marketing tới email của user đã xoá VÀ giữ PII email trong DB.
       prisma.subscriber.deleteMany({ where: { email } }),
+      // Verification treo (ADR-0017 §7b): reset token của BA lưu value=userId,
+      // OTP lưu identifier `<type>-otp-<email>` — dọn CẢ HAI dạng trong cùng
+      // tx, không thì link reset cũ tạo lại Account credential cho user đã
+      // tombstone (và giữ PII email trong identifier).
+      prisma.verification.deleteMany({
+        where: { OR: [{ value: userId }, { identifier: { endsWith: `-otp-${email}` } }] },
+      }),
     ]);
   }
 }

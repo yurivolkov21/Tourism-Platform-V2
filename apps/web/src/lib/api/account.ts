@@ -60,7 +60,13 @@ export async function fetchAccountMe(cookie: string): Promise<SessionUser> {
  * field này.
  */
 export class AccountDeleteError extends Error {
-  constructor(public readonly status: number) {
+  constructor(
+    public readonly status: number,
+    /** Mã trong envelope lỗi API (ADR-0017 §7b) — INVALID_PASSWORD /
+     *  ACCOUNT_HAS_PAID_BOOKINGS / ACCOUNT_HAS_OPEN_CANCELLATION /
+     *  CREDENTIAL_ACCOUNT_NOT_FOUND…; thiếu body parse được thì undefined. */
+    public readonly code?: string,
+  ) {
     super(`DELETE /api/account failed with status ${status}`);
   }
 }
@@ -70,15 +76,28 @@ export class AccountDeleteError extends Error {
  * /api/account` REST thuần (KHÔNG phải oRPC, cùng lý do `fetchAccountMe` ở
  * trên), gọi TỪ BROWSER nên dùng `credentials: 'include'` (cookie httpOnly
  * tự gửi, ADR-0017 §1) thay vì forward cookie tay như bản server-fetch.
- * `AccountController.deleteOwnAccount` trả `204` rỗng — không có body để
- * parse; caller tự `authClient.signOut()` sau khi promise này resolve.
+ * ADR-0017 §7b: body mang `password` — server xác thực lại trước khi
+ * tombstone. `AccountController.deleteOwnAccount` trả `204` rỗng — không có
+ * body để parse; caller tự `authClient.signOut()` sau khi promise resolve.
  */
-export async function deleteAccount(): Promise<void> {
+export async function deleteAccount(password: string): Promise<void> {
   const response = await fetch(`${apiOrigin()}/api/account`, {
     method: 'DELETE',
     credentials: 'include',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ password }),
   });
   if (!response.ok) {
-    throw new AccountDeleteError(response.status);
+    // Envelope lỗi chung của API {defined, code, status, message} — code là
+    // phần web cần; body không phải JSON (proxy chen giữa…) thì bỏ qua.
+    const code = await response
+      .json()
+      .then((body: unknown) =>
+        typeof body === 'object' && body !== null && 'code' in body
+          ? String((body as { code: unknown }).code)
+          : undefined,
+      )
+      .catch(() => undefined);
+    throw new AccountDeleteError(response.status, code);
   }
 }

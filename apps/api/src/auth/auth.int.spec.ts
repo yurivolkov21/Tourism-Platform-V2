@@ -255,7 +255,14 @@ describe('auth integration (Better Auth + tombstone)', () => {
       },
     });
 
-    const del = await app.inject({ method: 'DELETE', url: '/api/account', headers: { cookie } });
+    // ADR-0017 §7b: xoá tài khoản đòi mật khẩu (xác thực lại) — các nhánh
+    // thiếu/sai mật khẩu + gate nghiệp vụ có spec riêng (account-delete.int).
+    const del = await app.inject({
+      method: 'DELETE',
+      url: '/api/account',
+      headers: { cookie, 'content-type': 'application/json' },
+      payload: JSON.stringify({ password: PASSWORD }),
+    });
     expect(del.statusCode).toBe(204);
 
     // User row: tombstoned + scrubbed, KHÔNG bị hard-delete.
