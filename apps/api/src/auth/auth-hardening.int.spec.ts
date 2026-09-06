@@ -98,5 +98,16 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
       payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
     });
     expect(local.statusCode).not.toBe(429);
+
+    // XFF tự xưng loopback từ IP công khai KHÔNG lách được: miễn-loopback đo
+    // bằng địa chỉ SOCKET thô, header không có tiếng nói (review 06/09).
+    const spoofed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      remoteAddress: '203.0.113.9',
+      headers: { 'x-forwarded-for': '127.0.0.1' },
+      payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
+    });
+    expect(spoofed.statusCode).toBe(429);
   });
 });
