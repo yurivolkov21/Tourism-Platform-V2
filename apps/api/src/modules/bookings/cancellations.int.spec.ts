@@ -424,6 +424,33 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
   });
 
+  it('W1: reason toàn khoảng trắng → 400 (contract trim), reason mép trắng được trim, admin list không 500', async () => {
+    // Audit 05/09 cụm 3 (Cao): input min(1) không trim, service trim rồi ghi
+    // '' → output min(1) nổ 'Output validation failed' (500) ở CHÍNH
+    // bookings.cancel, admin.cancellations.list (cả trang) — một khách khoá
+    // hàng đợi duyệt huỷ. Luật trim nay nằm MỘT chỗ: contract.
+    const admin = await signUpAdmin();
+    const alice = await signUpUser('trim-reason@example.com', 'Alice');
+    const booking = await createPaidBooking(alice);
+
+    const blank = await postCancel(alice, booking.code, '   ');
+    expect(blank.statusCode).toBe(400);
+    expect(await prisma.cancellationRequest.count()).toBe(0); // KHÔNG row nào insert
+
+    const padded = await postCancel(alice, booking.code, '  need to cancel  ');
+    expect(padded.statusCode).toBe(200);
+    const row = await prisma.cancellationRequest.findFirstOrThrow();
+    expect(row.reason).toBe('need to cancel'); // trim ở CONTRACT — service không trim nữa
+
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/admin/cancellations',
+      headers: { cookie: admin },
+    });
+    expect(list.statusCode).toBe(200);
+    PagedSchema(AdminCancellationRequestSchema).parse(list.json());
+  });
+
   it('decide on an already-decided request → 409 ALREADY_DECIDED; unknown id → 404', async () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('alice6@example.com');

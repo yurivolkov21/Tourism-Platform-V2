@@ -1,9 +1,12 @@
 import {
   AdminBookingsListQuerySchema,
   AdminCancellationsListQuerySchema,
+  AdminRefundInputSchema,
   BookingSchema,
   BookingsListQuerySchema,
+  CancelBookingInputSchema,
   CreateBookingInputSchema,
+  DecideCancellationInputSchema,
   PaymentProviderSchema,
 } from './bookings.js';
 
@@ -57,6 +60,42 @@ describe('CreateBookingInputSchema', () => {
     expect(CreateBookingInputSchema.safeParse({ ...validCreate, numChildren: -1 }).success).toBe(
       false,
     );
+  });
+
+  it('W1: free-text trim ở CONTRACT — reason/decisionNote/refund reason, một luật một chỗ', () => {
+    // reason toàn khoảng trắng phải chết ở 400, không được lọt vào service để
+    // bị trim thành '' rồi nổ output validation (500) ở admin list.
+    expect(CancelBookingInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: '   ' }).success).toBe(
+      false,
+    );
+    const cancel = CancelBookingInputSchema.parse({
+      code: 'BK-ABCDEFGH',
+      reason: '  need to cancel  ',
+    });
+    expect(cancel.reason).toBe('need to cancel');
+
+    const decideId = '4f2a1b3c-0000-4000-8000-000000000001';
+    expect(
+      DecideCancellationInputSchema.safeParse({
+        id: decideId,
+        approve: false,
+        decisionNote: '   ',
+      }).success,
+    ).toBe(false);
+    expect(
+      DecideCancellationInputSchema.parse({
+        id: decideId,
+        approve: false,
+        decisionNote: '  too late  ',
+      }).decisionNote,
+    ).toBe('too late');
+
+    expect(AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: '   ' }).success).toBe(
+      false,
+    );
+    expect(
+      AdminRefundInputSchema.parse({ code: 'BK-ABCDEFGH', reason: '  goodwill  ' }).reason,
+    ).toBe('goodwill');
   });
 
   it('trần sanity tuyệt đối cho party (W1): numAdults/numChildren ≤ 99', () => {

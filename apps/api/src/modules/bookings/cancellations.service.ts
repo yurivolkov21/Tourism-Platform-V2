@@ -180,13 +180,15 @@ export class CancellationsService {
       throw new BookingNotCancellableError('the departure has already started');
     }
 
-    const trimmed = reason.trim();
+    // KHÔNG trim ở đây (W1): contract đã trim + min(1) — luật một chỗ. Trim
+    // lần hai từng là nguồn của row reason rỗng (input '   ' qua min(1) không
+    // trim, service trim thành '' rồi ghi) → 500 output validation ở admin list.
     let inserted: { id: string }[];
     try {
       inserted = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
         WITH req AS (
           INSERT INTO cancellation_requests (id, booking_id, user_id, reason, updated_at)
-          VALUES (gen_random_uuid(), ${booking.id}::uuid, ${userId}::uuid, ${trimmed}, now())
+          VALUES (gen_random_uuid(), ${booking.id}::uuid, ${userId}::uuid, ${reason}, now())
           RETURNING id
         ),
         outbox_insert AS (
@@ -199,7 +201,7 @@ export class CancellationsService {
                    'email', ${booking.contactEmail}::text,
                    'name', ${booking.contactName}::text,
                    'title', ${booking.tourTitle}::text,
-                   'reason', ${trimmed}::text
+                   'reason', ${reason}::text
                  ),
                  'cancellation-requested:' || r.id::text
           FROM req r
@@ -301,7 +303,8 @@ export class CancellationsService {
     if (request.status !== CancellationRequestStatus.REQUESTED) {
       throw new CancellationAlreadyDecidedError(request.status);
     }
-    const note = input.decisionNote?.trim() || null;
+    // Contract đã trim + min(1) (W1) — ở đây chỉ còn đổi vắng → null.
+    const note = input.decisionNote ?? null;
     return input.approve
       ? this.approve(adminUserId, request, note, input.refundAmount)
       : this.deny(adminUserId, request, note);

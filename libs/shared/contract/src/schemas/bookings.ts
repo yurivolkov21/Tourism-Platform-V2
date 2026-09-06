@@ -245,7 +245,8 @@ export type Refund = z.output<typeof RefundSchema>;
 export const AdminRefundInputSchema = z.object({
   code: BookingCodeSchema,
   amount: DecimalStringSchema.optional(),
-  reason: z.string().min(1).max(500).optional(),
+  // `.trim()` ở contract (W1) — cùng luật với các free-text khác của miền này.
+  reason: z.string().trim().min(1).max(500).optional(),
 });
 
 export type AdminRefundInput = z.output<typeof AdminRefundInputSchema>;
@@ -303,10 +304,15 @@ export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchem
 // Cancellation (spec P2 §3, W4 — lịch sử append-only D1-B)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Input cho `bookings.cancel` — lý do của khách được chuyển tới queue admin. */
+/** Input cho `bookings.cancel` — lý do của khách được chuyển tới queue admin.
+ *
+ * `.trim()` ở CONTRACT (W1, khuôn `reviews.ts`): luật một chỗ. Trước đây input
+ * `min(1)` không trim còn service trim rồi ghi `''` — row lọt qua rồi nổ
+ * output validation (500) ở chính `bookings.cancel` và `admin.cancellations.list`
+ * (cả trang): một khách khoá được hàng đợi duyệt huỷ. */
 export const CancelBookingInputSchema = z.object({
   code: BookingCodeSchema,
-  reason: z.string().min(1).max(1000),
+  reason: z.string().trim().min(1).max(1000),
 });
 
 export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;
@@ -385,7 +391,9 @@ export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsList
 export const DecideCancellationInputSchema = z.object({
   id: z.uuid(),
   approve: z.boolean(),
-  decisionNote: z.string().min(1).max(500).optional(),
+  // `.trim()` ở contract (W1) — cùng luật với `CancelBookingInputSchema.reason`;
+  // ghi chú toàn khoảng trắng là 400, service không trim nữa.
+  decisionNote: z.string().trim().min(1).max(500).optional(),
   /**
    * Số tiền hoàn khi `approve: true` — ADR-0029 §1.
    *
