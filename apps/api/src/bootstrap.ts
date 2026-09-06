@@ -1,5 +1,5 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
-import { trustedOrigins, trustProxy } from './config/env.js';
+import { corsOrigins, trustProxy } from './config/env.js';
 
 /**
  * Adapter Fastify dùng chung cho `main.ts` VÀ test — một nguồn sự thật.
@@ -49,10 +49,15 @@ export function createFastifyAdapter(): FastifyAdapter {
  * cả suite vẫn xanh.
  */
 export async function configureHttp(app: NestFastifyApplication): Promise<void> {
-  // `TRUSTED_ORIGINS` trước đây CHỈ nuôi CSRF check nội bộ của Better Auth —
-  // nó không hề set `Access-Control-Allow-Origin`, nên trình duyệt chặn mọi
-  // call từ web/admin sang API. Dùng lại đúng danh sách origin đó để không
-  // phải bảo trì hai nguồn sự thật cho cùng một tập origin.
+  // W2 (ADR-0026 AMEND 1 §B): danh sách origin cho CORS nay là `corsOrigins`
+  // (env CORS_ORIGINS, không set thì rơi về TRUSTED_ORIGINS) — TÁCH khỏi câu
+  // hỏi CSRF của Better Auth. Và /api/admin/* KHÔNG phát CORS cho origin
+  // NÀO: admin app gọi API hoàn toàn từ phía server (client oRPC của admin
+  // chỉ có đường server, cookie forward — spec P4b §2.3), browser admin chỉ
+  // chạm /api/auth/* lúc đăng nhập; CORS cho vùng admin là cửa mở không ai
+  // đi, chỉ một XSS ở www (cookie cha) muốn dùng. Giới hạn thành thật: CORS
+  // chỉ chặn ĐỌC response + preflight của JSON write; nhát cắt gốc là CSP
+  // phía web (W3).
   //
   // `credentials: true` bắt buộc: session Better Auth đi bằng cookie, thiếu
   // nó thì trình duyệt không gửi cookie kèm request cross-origin.
@@ -75,10 +80,21 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
   // verb mới đều vô hình với int/e2e test vì `app.inject()` không enforce
   // CORS; chỉ trình duyệt thật (hoặc case preflight tường minh) mới thấy.
   await app.register(import('@fastify/cors'), {
-    // Spread: `trustedOrigins` là readonly, @fastify/cors nhận mảng thường.
-    origin: [...trustedOrigins],
-    credentials: true,
-    methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+    // Delegator per-request (API chính chủ @fastify/cors — `opts.delegator`):
+    // đường admin trả `origin: false` = không một header CORS nào được phát.
+    delegator: (
+      req: { url?: string },
+      callback: (err: Error | null, options: Record<string, unknown>) => void,
+    ) => {
+      const url = req.url ?? '';
+      const isAdminSurface = url === '/api/admin' || url.startsWith('/api/admin/');
+      callback(null, {
+        // Spread: `corsOrigins` là readonly, @fastify/cors nhận mảng thường.
+        origin: isAdminSurface ? false : [...corsOrigins],
+        credentials: true,
+        methods: ['GET', 'HEAD', 'POST', 'PATCH', 'DELETE'],
+      });
+    },
   });
 
   // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ

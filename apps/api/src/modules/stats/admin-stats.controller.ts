@@ -1,7 +1,6 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { StatsService } from './stats.service.js';
@@ -19,7 +18,6 @@ import { StatsService } from './stats.service.js';
  * Toàn bộ định nghĩa metric nằm ở JSDoc `StatsService`.
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminStatsController {
   constructor(private readonly stats: StatsService) {}

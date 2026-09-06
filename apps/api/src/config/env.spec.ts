@@ -521,6 +521,17 @@ describe('superRefine production — nhóm env deploy (ADR-0024 AMEND 2)', () =>
     expect(() => parseEnv({ ...base, TRUSTED_ORIGINS: 'not a url' })).toThrow(/TRUSTED_ORIGINS/);
   });
 
+  it('CORS_ORIGINS: optional (không set → undefined, bootstrap rơi về TRUSTED_ORIGINS); set ở prod thì từng entry cùng luật https', () => {
+    expect(parseEnv({}).CORS_ORIGINS).toBeUndefined();
+    expect(parseEnv(base).CORS_ORIGINS).toBeUndefined();
+    expect(() => parseEnv({ ...base, CORS_ORIGINS: 'http://www.example.com' })).toThrow(
+      /CORS_ORIGINS/,
+    );
+    expect(parseEnv({ ...base, CORS_ORIGINS: 'https://www.example.com' }).CORS_ORIGINS).toBe(
+      'https://www.example.com',
+    );
+  });
+
   it('COOKIE_DOMAIN: bắt buộc ở production — thiếu là www không gửi được cookie sang api', () => {
     const { COOKIE_DOMAIN: omitted, ...rest } = base;
     expect(() => parseEnv(rest)).toThrow(/COOKIE_DOMAIN/);

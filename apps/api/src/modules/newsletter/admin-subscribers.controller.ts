@@ -1,8 +1,7 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
@@ -27,7 +26,6 @@ import {
  * địa chỉ khỏi danh sách là chuyện của PHIÊN, không phải của body.
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminSubscribersController {
   constructor(private readonly subscribers: AdminSubscribersService) {}

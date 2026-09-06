@@ -3,7 +3,6 @@ import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
@@ -35,7 +34,6 @@ import { BookingNotFoundError } from './refunds.service.js';
  * handler trả về.
  */
 @Controller()
-@UseGuards(AuthGuard)
 export class BookingsController {
   constructor(
     private readonly bookings: BookingsService,

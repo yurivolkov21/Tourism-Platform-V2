@@ -3,7 +3,6 @@ import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -31,7 +30,6 @@ import {
  * cả hai đều trước khi oRPC parse bất kỳ input nào.
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminBookingsController {
   constructor(

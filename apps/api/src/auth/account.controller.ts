@@ -11,7 +11,6 @@ import {
   AccountService,
 } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
-import { AuthGuard } from './auth.guard.js';
 import { AuthedWriteThrottlerGuard } from './authed-write-throttler.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 
@@ -20,7 +19,6 @@ import { CurrentUser } from './current-user.decorator.js';
 const DeleteAccountBodySchema = z.object({ password: z.string().min(1) });
 
 @Controller('api/account')
-@UseGuards(AuthGuard)
 export class AccountController {
   constructor(private readonly accountService: AccountService) {}
 

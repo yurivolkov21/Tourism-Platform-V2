@@ -44,6 +44,12 @@ const EnvSchema = z
     ADMIN_EMAILS: z.string().default('admin@tourism.test'),
     // Origin được phép gọi Better Auth (CSRF) — mặc định web (3000) + admin (3002).
     TRUSTED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:3002'),
+    // W2 (ADR-0026 AMEND 1 §B): origin được browser gọi API cross-origin
+    // (CORS) — TÁCH khỏi TRUSTED_ORIGINS (câu hỏi CSRF của Better Auth).
+    // Không set thì rơi về TRUSTED_ORIGINS (deploy hiện tại không đổi hành
+    // vi); /api/admin/* thì KHÔNG phát CORS cho origin nào bất kể danh sách
+    // này — xem configureHttp.
+    CORS_ORIGINS: z.string().min(1).optional(),
     // Proxy nào được tin `X-Forwarded-*` (03/09, fastify 5.12.1 bỏ dạng
     // hop-count vì spoof được — GHSA-3m5p-2c4r-xxw2). Danh sách IP/CIDR hoặc
     // tên dải của @fastify/proxy-addr: mặc định tin MỌI hop từ địa chỉ NỘI
@@ -217,6 +223,11 @@ const EnvSchema = z
     for (const origin of parseCommaList(cfg.TRUSTED_ORIGINS)) {
       requireRealHttpsUrl('TRUSTED_ORIGINS', origin);
     }
+    if (cfg.CORS_ORIGINS) {
+      for (const origin of parseCommaList(cfg.CORS_ORIGINS)) {
+        requireRealHttpsUrl('CORS_ORIGINS', origin);
+      }
+    }
     if (!cfg.COOKIE_DOMAIN) {
       ctx.addIssue({
         code: 'custom',
@@ -323,6 +334,11 @@ export const adminEmails: readonly string[] = parseCommaList(env.ADMIN_EMAILS).m
 
 /** TRUSTED_ORIGINS đã parse cho Better Auth. */
 export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIGINS);
+
+/** CORS_ORIGINS đã parse cho @fastify/cors — không set thì dùng TRUSTED_ORIGINS. */
+export const corsOrigins: readonly string[] = parseCommaList(
+  env.CORS_ORIGINS ?? env.TRUSTED_ORIGINS,
+);
 
 /** Luật `trustProxy` của Fastify — chuỗi IP/CIDR/tên dải, xem `TRUST_PROXY`. */
 export const trustProxy: string = env.TRUST_PROXY;

@@ -1,7 +1,6 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import { ReportsService } from './reports.service.js';
@@ -17,7 +16,6 @@ import { ReportsService } from './reports.service.js';
  * cáo toàn số 0, không phải 404).
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminReportsController {
   constructor(private readonly reports: ReportsService) {}

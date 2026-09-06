@@ -3,7 +3,6 @@ import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Public } from '../../auth/public.decorator.js';
@@ -43,7 +42,6 @@ export class ReviewsController {
   }
 
   /** Authed — review của chính user gọi API, kể cả chưa duyệt. */
-  @UseGuards(AuthGuard)
   @Implement(contract.reviews.mine)
   mine(@CurrentUser() user: SessionUser) {
     return implement(contract.reviews.mine).handler(({ input }) =>
@@ -52,7 +50,7 @@ export class ReviewsController {
   }
 
   // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
-  @UseGuards(AuthGuard, AuthedWriteThrottlerGuard)
+  @UseGuards(AuthedWriteThrottlerGuard)
   @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.reviews.create)
   create(@CurrentUser() user: SessionUser) {
@@ -78,7 +76,7 @@ export class ReviewsController {
    * không-phải-của-mình — service gộp hai ca ấy có chủ đích, xem JSDoc ở đó.
    */
   // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
-  @UseGuards(AuthGuard, AuthedWriteThrottlerGuard)
+  @UseGuards(AuthedWriteThrottlerGuard)
   @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.reviews.update)
   update(@CurrentUser() user: SessionUser) {

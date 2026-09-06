@@ -3,7 +3,6 @@ import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
@@ -28,7 +27,6 @@ import { BookingNotRefundableError, ProviderRefundFailedError } from './refunds.
  * ẩn danh → 401, không phải admin → 403, cả hai đều trước khi oRPC parse input.
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminCancellationsController {
   constructor(private readonly cancellations: CancellationsService) {}

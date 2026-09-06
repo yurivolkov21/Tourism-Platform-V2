@@ -108,6 +108,40 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
     expect(res.headers['access-control-allow-methods']).toContain('PATCH');
   });
 
+  /**
+   * W2 (ADR-0026 AMEND 1 §B): /api/admin/* KHÔNG phát CORS cho BẤT KỲ origin
+   * nào — admin app gọi API hoàn toàn từ phía server (cookie forward), nên
+   * không tồn tại client browser hợp lệ nào cần CORS ở vùng này; giữ nó mở
+   * là để một XSS ở www (cookie cha) gọi trọn 25 endpoint admin bằng cookie
+   * của nạn nhân. Đây là nhát cắt tầng CORS; CSP ở web là việc W3.
+   */
+  it('KHÔNG phát CORS cho /api/admin/* — kể cả với origin nằm trong danh sách', async () => {
+    const preflight = await app.inject({
+      method: 'OPTIONS',
+      url: '/api/admin/bookings',
+      headers: {
+        origin: allowedOrigin,
+        'access-control-request-method': 'GET',
+      },
+    });
+    expect(preflight.headers['access-control-allow-origin']).toBeUndefined();
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/admin/bookings',
+      headers: { origin: allowedOrigin },
+    });
+    expect(read.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('đường KHÔNG-admin vẫn phát CORS bình thường sau khi tách (không vỡ web)', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/account/me',
+      headers: { origin: allowedOrigin },
+    });
+    expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
+  });
+
   // ── Helmet (ADR-0010) ────────────────────────────────────────────────────
   it('gắn security header cơ bản (helmet) trên response', async () => {
     const res = await app.inject({ method: 'GET', url: '/health' });

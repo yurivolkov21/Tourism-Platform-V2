@@ -5,7 +5,6 @@ import { contract } from '@tourism/contract';
 import { AUTHED_WRITE_THROTTLE } from '../config/throttle.js';
 import { AccountService, AvatarPublicIdInvalidError } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
-import { AuthGuard } from './auth.guard.js';
 import { AuthedWriteThrottlerGuard } from './authed-write-throttler.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 
@@ -19,7 +18,7 @@ export class AccountAvatarController {
   constructor(private readonly account: AccountService) {}
 
   // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
-  @UseGuards(AuthGuard, AuthedWriteThrottlerGuard)
+  @UseGuards(AuthedWriteThrottlerGuard)
   @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.account.setAvatar)
   setAvatar(@CurrentUser() user: SessionUser) {

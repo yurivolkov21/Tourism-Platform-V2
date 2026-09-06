@@ -1,7 +1,6 @@
-import { Controller, UseGuards } from '@nestjs/common';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
-import { AuthGuard } from '../../auth/auth.guard.js';
 import { Roles } from '../../auth/roles.decorator.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import {
@@ -19,7 +18,6 @@ import {
  * guard vào đó là để hai mô hình auth ngược nhau sống chung một class.
  */
 @Controller()
-@UseGuards(AuthGuard)
 @Roles(UserRole.ADMIN)
 export class AdminPaymentEventsController {
   constructor(private readonly events: AdminPaymentEventsService) {}
