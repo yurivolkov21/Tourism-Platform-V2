@@ -68,6 +68,13 @@ jobs:
       # bước tạo db/migrate trong YAML này. (CI đỏ 21→23/07 vì thiếu điều này.)
       - run: pnpm test:int
 
+      # RLS backstop (W2, audit 05/09 cụm 6): chạy NGAY SAU test:int vì đó là
+      # lúc db tourism_test chắc chắn đã migrate đầy đủ (globalSetup). Hai
+      # bảng mới từng lọt lưới migration hardening 18/07 — script canh bảng
+      # thứ N+1 không lọt được nữa.
+      - name: RLS bật trên mọi bảng public (scripts/check-rls.sh)
+        run: ./scripts/check-rls.sh
+
       # Build web cần API SỐNG (ADR-0016, chốt 31/07: "build với API sống +
       # settle() làm lưới" — SSG fetch catalogue lúc prerender). Thiếu khối
       # này CI đỏ ÂM THẦM từ 31/07 tới 04/08: test:int phía trên vẫn xanh,
