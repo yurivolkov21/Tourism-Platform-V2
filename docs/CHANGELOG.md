@@ -8,6 +8,75 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-06 — W2 phiên & hạ tầng (nhánh `fix/auth-infra-hardening`, 16 commit `4787bd4..d16c718`, CHƯA merge — chờ review ở session riêng)
+
+Đợt vá thứ hai theo bản rà 05/09 (cụm 1 Auth & tài khoản, cụm 6 Hạ tầng API,
+cụm 8 ranh giới admin↔web) cộng hai nợ W1 ghi ở ADR-0029 AMEND 6. ADR đi
+trước code (`4787bd4`): AMEND ADR-0017 §7 / ADR-0024 AMEND 2 / ADR-0026
+AMEND 1 / ADR-0030 AMEND 1, và ADR-0037 mới (trần ghi mặc định). Mỗi mục một
+commit, TDD test-đỏ-trước.
+
+### Nội dung chính
+
+1. **Phiên** (`7a58d5f`, `2e54786`): đổi/đặt lại mật khẩu thu hồi phiên cũ
+   (`revokeSessionsOnPasswordReset` và web gửi `revokeOtherSessions`); `DELETE
+   /api/account` đòi mật khẩu, chặn khi còn booking PAID chưa khởi hành hoặc
+   cancellation request mở (4 mã lỗi riêng, copy i18n mới), dọn `verification`
+   treo trong cùng tx, token reset 1800s khớp copy "30 minutes".
+2. **Better Auth biết hạ tầng** (`416dccf`, `7802dc8`): `ipAddress.
+   trustedProxies` dịch từ TRUST_PROXY (tên dải → CIDR, một nguồn cho Fastify
+   lẫn BA); `rateLimit.enabled` tường minh theo môi trường; trần Nest riêng cho
+   `/api/auth/*` (60/60s, chỉ non-GET); ẩn enumeration ở `check-verification-
+   otp` (mọi 400 cùng body INVALID_OTP); hook `user.update.before` bác image
+   ngoài cloud Cloudinary.
+3. **Env & bootstrap** (`7d199f2`, `6757e4d`): superRefine production cho
+   BETTER_AUTH_URL/FRONTEND_URL/TRUSTED_ORIGINS/COOKIE_DOMAIN (https bắt buộc,
+   cấm localhost) và `useSecureCookies`; Fastify requestTimeout 30s /
+   connectionTimeout 60s; onError oRPC log một dòng (hết dump PII trong cause),
+   4xx nghiệp vụ không đẩy Sentry; ConsoleDeliverer redactDeep; Dockerfile
+   `USER node`.
+4. **RLS + CI** (`e0f2f6b`): migration MỚI `20260906150000` bật RLS cho
+   `enquiry_status_events` và `tour_cost_items` — **đã apply docker local
+   (tourism, tourism_test), CHƯA deploy Supabase**; `scripts/check-rls.sh`
+   đối chiếu `pg_class.relrowsecurity` chạy trong CI ngay sau test:int (đã
+   mutation-test).
+5. **Ranh giới admin** (`de6aa0d`, `7968958`): env `CORS_ORIGINS` tách khỏi
+   TRUSTED_ORIGINS (fallback giữ hành vi cũ), `/api/admin/*` không phát CORS
+   cho origin nào (admin gọi API thuần server-side); gỡ `@UseGuards(AuthGuard)`
+   thừa ở 12 controller (đọc session hai lần/request); export-route.spec 4 ca
+   gác quyền, mỗi route xuất một test không-chạm-data, adminList reviews có cặp
+   401/403.
+6. **Hai nợ W1** (`8d6e84f`, `2469fb0`): `admin.bookings.refund` đòi ĐỦ
+   `amount` và `reason` (xoá nhánh vắng-là-trọn-phần-dư; RefundPanel bỏ radio
+   full/partial, thêm nút điền nhanh phần dư); ADR-0037 guard toàn cục — route
+   ghi mới không khai gì vẫn có trần (authed theo user, public theo IP, GET
+   không đếm), gỡ 11 cặp decorator lặp, probe int test canh cái lưới.
+7. **Deploy** (`c445903`, `d16c718`): render.yaml khai đủ khoá env còn thiếu
+   (TRUST_PROXY, CORS_ORIGINS, MEDIA_GC_*, MARGIN_TAX_RATE, PAYMENT_FEE_* —
+   chỉ key) và ghim `numInstances: 1`; .env.example thêm CORS_ORIGINS.
+
+Review giữa đợt: security-review nền bắt guard miễn-loopback dùng `req.ip` —
+vá sang địa chỉ socket thô, chỉ miễn ngoài production, kèm test XFF giả
+loopback vẫn 429 (`ffc7e76`).
+
+Tests after: 441 api-int và 403 api-unit và 250 contract và 871 admin và 1445
+web và 10 tokens và 22 ui và 2 i18n — `pnpm gate:int` trọn, API tạm :3001
+trên docker DB theo công thức CI (kill sau khi xong), lint 0 lỗi.
+
+### CÒN TREO (cố ý, không phải sót)
+
+- Migration RLS `20260906150000` chưa `migrate deploy` lên Supabase — làm lúc
+  merge (cùng nếp W1); `check-rls.sh` sẽ đỏ nếu chạy trỏ Supabase trước đó.
+- Tài khoản Google-OAuth-only chưa có đường xoá self-service (mã
+  CREDENTIAL_ACCOUNT_NOT_FOUND + copy hướng dẫn liên hệ) — Google OAuth prod
+  chưa bật, ghi ở ADR-0017 §7b.
+- Better Auth rate limit nay BẬT ở dev (3/10s cho /sign-in theo path) — dev
+  thấy đúng hành vi prod; nếu vướng khi test tay thì đó là chủ đích.
+- CSP phía web (nhát cắt gốc cho blast radius XSS→admin) thuộc W3; runbook SQL
+  thu hồi phiên admin nằm trong ADR-0026 AMEND 1 chờ P4f dựng UI.
+- Copy "30 minutes" của forgot-password vẫn hard-code trong form (nợ i18n W3
+  đã ghi ở audit cụm 7); W2 chỉ sửa máy theo lời.
+
 ## 2026-09-06 — W1 merge + vòng review 8 mũi cho money-path (nhánh `fix/web-money-path`, 18 commit `f4c791c..96789bf` ff vào main, 64 file, 2 migration đã deploy Supabase)
 
 Entry ngay dưới ghi "chưa merge, chờ review ở session riêng; migration CHƯA
