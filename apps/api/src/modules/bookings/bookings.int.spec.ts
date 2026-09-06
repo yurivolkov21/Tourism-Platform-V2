@@ -228,6 +228,17 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(after?.seatsBooked).toBe(3);
   });
 
+  it('W1: provider chưa cấu hình → 502 CHECKOUT_FAILED, KHÔNG có PENDING mồ côi', async () => {
+    // Env test chỉ đăng ký FakeGateway STRIPE — PAYPAL là provider "chưa cấu
+    // hình". Trước W1 resolveGateway đứng SAU insert: khách nhận 500 mù và một
+    // booking PENDING mồ côi nằm lại DB.
+    const cookie = await signUpUser('no-paypal@example.com');
+    const res = await createBooking(cookie, { ...createPayload, paymentProvider: 'PAYPAL' });
+    expect(res.statusCode).toBe(502);
+    expect(res.json()).toMatchObject({ code: 'CHECKOUT_FAILED' });
+    expect(await prisma.booking.count()).toBe(0);
+  });
+
   it('BK-1: gateway lỗi lúc create → 502 CHECKOUT_FAILED, booking PENDING; re-checkout mint session', async () => {
     const cookie = await signUpUser('bk1@example.com');
     fake.failCheckout = true;

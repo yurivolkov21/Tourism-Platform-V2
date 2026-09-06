@@ -332,6 +332,19 @@ export class BookingsService {
     const costItems = departure.tour.costItems;
     const costPerPerson = costItems.length > 0 ? perPersonTotal(costItems) : null;
 
+    // Resolve gateway TRƯỚC khi insert (W1 — audit 05/09 cụm 2, mục Thấp):
+    // provider chưa cấu hình phải là 502 CHECKOUT_FAILED typed NGAY, không phải
+    // 500 mù cộng một PENDING mồ côi nằm lại DB.
+    let gateway: PaymentGateway;
+    try {
+      gateway = resolveGateway(this.gateways, input.paymentProvider);
+    } catch (err) {
+      this.logger.error(
+        `Checkout rejected before insert: ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+      throw new CheckoutFailedError();
+    }
+
     // Snapshot đóng băng lúc create (audit H3): thứ khách đã mua không bao giờ
     // render lại khi tour bị sửa. Code unique: mint + retry khi hiếm hoi đụng
     // UNIQUE collision (P2002) thay vì SELECT pre-flight (TOCTOU).
@@ -373,7 +386,6 @@ export class BookingsService {
     // BK-1 (ADR-0006): gateway lỗi → ném CheckoutFailedError (502 typed) thay vì
     // 500 opaque; booking ở lại PENDING không session — vô hại (không giữ seat),
     // khách phục hồi qua `reCheckout`, và cron sweep (WRK-1) dọn nếu bỏ luôn.
-    const gateway = resolveGateway(this.gateways, input.paymentProvider);
     let session: CheckoutSession;
     try {
       session = await gateway.createCheckoutSession({
