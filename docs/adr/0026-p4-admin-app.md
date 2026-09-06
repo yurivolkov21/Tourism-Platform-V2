@@ -101,3 +101,91 @@ ngoài contract. Vùng nào đụng schema mới (ví dụ ghi catalog) thì mig
 - **Template admin dựng sẵn (shadcn admin kit, refine.dev…)**: kéo hệ quản
   lý state/data riêng vào monorepo đang thuần oRPC + fetch; kit cũ của
   Nexora đã chứng minh đủ và ta có nó làm tham chiếu chi tiết.
+
+## AMEND 1 — 06/09/2026 (W2, audit 05/09 cụm 8): rủi ro cookie cha, blast radius XSS, tách CORS khỏi TRUSTED_ORIGINS, SEC-1 tường minh, runbook thu hồi admin
+
+§2 ở trên chỉ ghi LỢI của cookie cha `.nexora-travel.agency`. Đợt rà 05/09
+đo được cái giá, và ADR phải ghi cả hai mặt:
+
+### A. Rủi ro cookie cha — subdomain mồ côi
+
+Cookie `domain=.nexora-travel.agency` được browser gửi tới MỌI subdomain,
+kể cả cái ta không kiểm soát: một record DNS mồ côi (CNAME trỏ dịch vụ đã
+trả — đúng kịch bản Nexora cũ pause trên chính domain này) là kẻ chiếm được
+subdomain đó hứng nguyên cookie session, và ngược lại có thể GHI đè cookie
+(cookie tossing) để fixation. Hệ quả thêm: không dùng được tiền tố
+`__Host-` (đòi không có Domain attribute). Chấp nhận có điều kiện:
+
+- **Kỷ luật DNS là một phần của kiến trúc**: chỉ ba record `www`/`api`/
+  `admin` được tồn tại; record hết dùng phải GỠ ngay trong cùng thao tác
+  gỡ dịch vụ. Kiểm kê DNS thuộc checklist deploy.
+- `advanced.useSecureCookies: true` (W2, xem ADR-0024 AMEND 2) cho tiền tố
+  `__Secure-` — không bằng `__Host-` nhưng chặn ghi đè từ kênh không HTTPS.
+- Phương án thay thế (token bearer riêng cho admin, hoặc domain admin tách
+  hẳn) bị loại: phá §2 "dùng chung hệ Better Auth, không dựng gì mới" với
+  chi phí lớn hơn rủi ro còn lại sau hai lớp trên.
+
+### B. Blast radius: một XSS ở www = 25 endpoint admin
+
+Ba mảnh cộng hưởng: cookie cha (browser gửi cookie cho `api.` bất kể script
+chạy ở origin nào trong domain) + `TRUSTED_ORIGINS` kiêm luôn CORS allowlist
+(www được phép gọi MỌI path của API, kể cả `/api/admin/*`) + web chưa có CSP
+(việc của W3). Nghĩa là MỘT XSS trên site khách, khi nạn nhân là admin, gọi
+được trọn 25 procedure admin — kể cả refund — bằng chính cookie của nạn
+nhân. Cắt tầng CORS ngay ở W2 (CSP là nhát cắt gốc, W3):
+
+- **Tách `CORS_ORIGINS` khỏi `TRUSTED_ORIGINS`.** Hai biến này trả lời hai
+  câu hỏi khác nhau — "origin nào được Better Auth tin ở bước CSRF check"
+  (TRUSTED_ORIGINS, cần cả www lẫn admin vì cả hai đăng nhập qua
+  authClient) và "origin nào được browser gọi API cross-origin" (CORS) —
+  từng dùng chung một danh sách chỉ vì tiện. `CORS_ORIGINS` mới, optional,
+  **default = TRUSTED_ORIGINS** để deploy hiện tại không đổi hành vi.
+- **`/api/admin/*` KHÔNG phát CORS cho bất kỳ origin nào.** Đo được: admin
+  app gọi API HOÀN TOÀN từ phía server (client oRPC của admin chỉ có đường
+  server, cookie forward qua `next/headers` — spec P4b §2.3), browser của
+  admin chỉ chạm `/api/auth/*` lúc đăng nhập. Tức KHÔNG tồn tại client
+  browser hợp lệ nào gọi `/api/admin/*` cross-origin — CORS cho vùng đó là
+  cửa mở không ai đi, chỉ kẻ tấn công dùng. @fastify/cors nhận delegator
+  theo request: path `/api/admin` → `origin: false`. Giới hạn thành thật:
+  CORS chặn ĐỌC response và preflight của JSON write; một simple-request
+  không preflight vẫn THI HÀNH tới server (side effect) — nhưng mọi write
+  admin là oRPC JSON (content-type application/json → có preflight), nên
+  nhát cắt này phủ đúng bề mặt thật. CSP ở W3 mới là gốc.
+
+### C. SEC-1 thành mục tường minh — bốn điều kiện chấp nhận
+
+`ADMIN_EMAILS` auto-promote (§Hệ quả nhắc tên nhưng chưa từng ghi điều
+kiện) được chấp nhận là đường LÊN admin duy nhất khi và chỉ khi cả bốn vế
+sau còn đúng — vế nào gãy thì phải mở lại quyết định:
+
+1. Promote CHỈ chạy sau `emailVerified` (hook `afterEmailVerification` +
+   reconcile lúc boot) — sở hữu email được chứng minh, không phải khai.
+2. `requireEmailVerification: true` + `autoSignIn: false` còn hiệu lực
+   (AMEND §6 của ADR-0017) — chưa verify thì thậm chí không có session.
+3. `role` là field `input: false` — không đường nào từ client set được.
+4. Hộp thư trong `ADMIN_EMAILS` do người vận hành kiểm soát thật; biến này
+   chỉ sống trong env server (Render dashboard), không log, không client.
+
+Nếu bật Google OAuth ở prod: phải kèm `disableImplicitLinking` và xét
+promote ở hook social — điều kiện 1 hiện chỉ đo đường OTP.
+
+### D. Runbook thu hồi quyền/phiên admin (SQL — chưa có UI)
+
+Đường HẠ quyền chưa tồn tại (chỉ promote; vùng users là P4f) mà cookie sống
+7 ngày không cookieCache — nghĩa là "admin nghỉ việc/lộ máy" hiện xử bằng
+tay. Ghi runbook ở đây để nó là THỦ TỤC chứ không phải ứng biến; chạy trên
+Supabase SQL editor (dev/prod chung khuôn):
+
+```sql
+-- 1. Hạ quyền (thay email; giữ nguyên nếu chỉ cần đá phiên):
+UPDATE users SET role = 'CUSTOMER' WHERE email = 'ai-do@example.com';
+-- 2. Thu hồi MỌI phiên của user đó — cookie đang cầm chết ngay lượt request sau:
+DELETE FROM sessions WHERE user_id = (
+  SELECT id FROM users WHERE email = 'ai-do@example.com'
+);
+-- 3. Nếu hạ quyền: gỡ email khỏi ADMIN_EMAILS trên Render TRƯỚC khi chạy (1),
+--    không thì lần verify/reconcile sau promote lại.
+```
+
+Bất biến phải giữ khi P4f dựng UI: không tự hạ chính mình, không hạ admin
+cuối cùng, hạ quyền luôn kèm thu hồi phiên.

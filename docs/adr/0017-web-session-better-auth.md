@@ -117,6 +117,63 @@ của ADR-0016 và tạo nghịch lý khách-ẩn-danh-xem-được):
 - SEC-1 GIỮ NGUYÊN (promote sau verify) — giờ còn được cộng hưởng: chưa
   verify thì thậm chí không đăng nhập được.
 
+### 7. AMEND 06/09/2026 — W2 (audit 05/09 cụm 1): mật khẩu đổi là phiên cũ chết; xoá tài khoản đòi xác thực lại; chính sách user-enumeration
+
+Ba quyết định vá của đợt W2 `fix/auth-infra-hardening`, đều thuộc vòng đời
+session mà ADR này sở hữu:
+
+**(a) Đổi/đặt lại mật khẩu THU HỒI mọi phiên khác.** Hiện trạng đo được:
+reset mật khẩu xong, cookie cũ vẫn sống — và vì cookie tự gia hạn
+(updateAge 1 ngày) nên kẻ đã trộm được cookie giữ quyền VÔ THỜI HẠN, đổi
+mật khẩu — hành vi tự vệ chuẩn của nạn nhân — không đuổi được hắn ra. Vá
+hai đầu, cùng một nguyên tắc "mật khẩu mới = chỉ mình tôi còn ở lại":
+
+- API: `emailAndPassword.revokeSessionsOnPasswordReset: true` — reset qua
+  link/token thu hồi TOÀN BỘ phiên.
+- Web: `changePassword` gọi với `revokeOtherSessions: true` — đổi mật khẩu
+  khi đang đăng nhập giữ phiên HIỆN TẠI (người dùng không bị đá ra khỏi
+  chính thao tác của mình), mọi phiên khác chết.
+
+Đo bằng int test: reset xong, cookie phát trước đó → 401.
+
+**(b) `DELETE /api/account` đòi XÁC THỰC LẠI và nhìn sổ tiền trước khi xoá.**
+Tombstone là bất khả hoàn tác (email scrub thành `deleted+<uuid>`), mà hiện
+chỉ cần MỘT cookie — tức một cookie bị trộm đủ để phá huỷ tài khoản vĩnh
+viễn, và một khách còn booking PAID tự cắt đứt đường refund/liên lạc của
+chính mình. Chốt:
+
+- Body mang `password` bắt buộc; server verify qua chính credential
+  Better Auth trước khi chạy tx. Chọn mật-khẩu-tường-minh thay vì
+  fresh-session ≤5 phút vì (i) nó là bằng chứng SỞ HỮU chứ không phải bằng
+  chứng "cookie còn mới" — đúng thứ cần cho hành vi huỷ diệt; (ii) BA không
+  đo được "fresh" đáng tin khi cookie tự gia hạn. Tài khoản CHỈ có Google
+  OAuth (không credential) chưa có đường xoá self-service — trả mã lỗi riêng,
+  chấp nhận nợ này (Google OAuth prod chưa bật).
+- Còn booking `PAID`/`PARTIALLY_REFUNDED` hoặc cancellation request đang
+  `REQUESTED` → chặn với mã lỗi RIÊNG (không gộp 400 chung — web phải nói
+  được cho khách vì sao và làm gì tiếp).
+- `verification.deleteMany` theo identifier của email trong CÙNG tx — link
+  reset đang treo của user đã xoá không được phép tạo lại Account mồ côi.
+- `resetPasswordTokenExpiresIn: 1800` — copy các trang auth nói "30
+  minutes" trong khi default BA là 3600; sửa MÁY theo LỜI đã hứa chứ không
+  sửa lời theo máy (token sống ngắn hơn là chiều an toàn).
+
+**(c) User-enumeration: chấp nhận ở sign-up, ẨN ở `check-verification-otp`.**
+Ba bề mặt hiện trả lời khác nhau — forgot-password ẩn (chuẩn), sign-up lộ
+(`EMAIL_EXISTS`), `check-verification-otp` lộ (`USER_NOT_FOUND` ≠
+`INVALID_OTP`, đo trong routes.mjs của BA 1.6.23). Chốt:
+
+- **Sign-up GIỮ lộ** — chuẩn ngành: form đăng ký phải nói "email đã có tài
+  khoản" để người quên mình từng đăng ký đi sang /login thay vì bế tắc;
+  che ở đây đổi UX thật lấy một bí mật đằng nào cũng lộ qua timing/luồng
+  quên-mật-khẩu-có-gửi-mail. Rate limit BA trên đường sign-up là lưới đủ
+  cho việc dò HÀNG LOẠT.
+- **`check-verification-otp` ẨN** — route này web/admin KHÔNG hề gọi (grep
+  0 chỗ dùng), tức nó lộ thông tin mà không đổi lại một lợi ích UX nào.
+  BA không cho tắt từng route, nên chuẩn hoá tại mount `AuthController`:
+  response 400 của đúng path này bị thay body thành `INVALID_OTP` chung —
+  kẻ dò không phân biệt được "email không tồn tại" với "mã sai".
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

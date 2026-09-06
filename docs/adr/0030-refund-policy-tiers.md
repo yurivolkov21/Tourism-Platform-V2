@@ -304,3 +304,32 @@ huỷ — đường W3 ở `/bookings`, một quyết định riêng chưa chố
 | Đặt sàn cho `freeCancellationDays` (bản đầu ADR này khai sàn 7) | Loại sau khi ĐO: sàn 7 không xoá được vực (ngày 6 vẫn 0%), và nâng sàn là SIẾT quyền khách trên 8 tour — trái thẳng luật "chỉ nới, không siết" của §2. Xem §3. |
 | Ép badge trùng biên bậc `{7, 15, 30}` | Cùng bệnh: mọi lần dịch badge đều siết quyền của khách ở ít nhất một tour, để đổi lấy một sự gọn gàng mà khách không nhìn thấy. |
 | Đếm ngày từ lúc admin QUYẾT | Khách chịu hậu quả của việc mình xử chậm. Trái thẳng lời hứa "báo sớm thì hoàn nhiều" đã in trên chính trang chính sách. |
+
+## AMEND 1 — 06/09/2026 (W2): hoàn tiền THIỆN CHÍ `admin.bookings.refund` — `amount` và `reason` thành BẮT BUỘC
+
+§«Điều KHÔNG được suy ra» để ngỏ đường W3 (refund trên booking không có yêu
+cầu huỷ); ADR-0029 AMEND 6 gọi thẳng tên nó: *"cửa hậu cùng hình dạng"* với
+lỗ `refundAmount`-vắng mà AMEND 5 vừa vá bên approve — vắng `amount` là hoàn
+TRỌN phần dư, không kiểm bậc, không đòi lý do, không dấu vết. Nay chốt:
+
+- **`amount` BẮT BUỘC.** Nhánh "vắng = trọn phần dư" bị xoá khỏi contract
+  (`AdminRefundInputSchema`), controller và service. Một cú bấm nhầm chế độ
+  "full" không còn là lệnh chuyển trọn số dư — admin muốn hoàn đủ thì nhìn
+  con số phần-dư trên panel và GÕ nó, tức xác nhận bằng chính con số. UI
+  RefundPanel bỏ radio full/partial, chỉ còn ô số tiền (kèm nút điền nhanh
+  phần dư — điền vào Ô, admin vẫn thấy và sửa được trước khi review).
+- **`reason` BẮT BUỘC.** Refund thiện chí ĐỊNH NGHĨA là nằm ngoài chính
+  sách (booking không có request huỷ nào), nên nó chính là ca "vượt bậc"
+  của §5 — mà §5 đã chốt: vượt là phải ghi lý do. Reason vẫn chỉ sống trong
+  payload outbox (Refund model không thêm cột — giữ nguyên quyết định
+  ledger-chỉ-money-fact), đủ cho dấu vết email; audit-log DB là việc riêng
+  (đợt "Sau" của bản rà 05/09).
+- **Server GIỮ `classifyRefundAmount`** trên ledger trong advisory lock
+  (trần phần-dư, chặn 0/âm/vượt tổng) — bắt buộc `amount` là siết INPUT,
+  không thay được bất biến tiền; trigger SUM(refunds) ≤ total của ADR-0009
+  vẫn là đáy cuối.
+- **KHÔNG áp bảng bậc ở đây.** Khác approve: đường này không có
+  CancellationRequest nên không có mốc "khách gửi yêu cầu" để đếm ngày
+  (§4); ép bậc theo ngày-hiện-tại là bịa ra một chính sách chưa từng công
+  bố. Chính `reason` bắt buộc là lưới thay thế: mọi lần dùng đường này đều
+  tự khai nó là ngoại lệ có tên.

@@ -88,3 +88,47 @@ khai trong `turbo.json` nên bị strict env lọc lúc build — build vẫn đ
 client rơi về `NEXT_PUBLIC_API_URL` (framework inference cho qua), còn
 `REVALIDATE_SECRET` chỉ dùng lúc runtime. Khai vào `turbo.json` là việc riêng.
 
+## AMEND 2 — 06/09/2026 (W2, audit 05/09 cụm 6): env production phải qua superRefine, Fastify phải có timeout, container không chạy root
+
+Bốn lỗ cùng một dạng — "prod dựa vào việc AI/người vận hành nhớ điền đúng":
+
+**(a) superRefine production cho nhóm env deploy.** Đo được:
+`BETTER_AUTH_URL`/`FRONTEND_URL`/`TRUSTED_ORIGINS`/`COOKIE_DOMAIN` không có
+mặt trong superRefine — Render gửi CHUỖI RỖNG khi ô bị bỏ trống, `parseEnv`
+strip rỗng nên default `http://localhost:…` kích hoạt, boot XANH với origin
+localhost trên máy prod. Tệ nhất là chuỗi hệ quả cookie: Better Auth suy cờ
+`Secure` CHỈ từ `baseURL.startsWith('https://')` (đo trong
+`cookies/index.mjs` của BA 1.6.23) — `BETTER_AUTH_URL` rơi về default http
+là cookie prod mất `Secure` + `__Secure-`. Chốt, với `NODE_ENV=production`:
+
+- `BETTER_AUTH_URL`, `FRONTEND_URL`, mọi entry của `TRUSTED_ORIGINS` (và
+  `CORS_ORIGINS` nếu set): BẮT BUỘC `https://`, CẤM localhost/127.0.0.1.
+- `COOKIE_DOMAIN`: BẮT BUỘC có giá trị — thiếu nó thì cookie không có
+  domain cha, www không gửi cookie sang api, đăng nhập hỏng ÂM THẦM đúng
+  kiểu chỉ lộ khi user thật bấm.
+- Lưới hai độc lập với env: `advanced.useSecureCookies: true` khi
+  `NODE_ENV=production` — cờ Secure không còn treo vào một biến URL.
+
+**(b) Fastify timeout.** `FastifyAdapter` của Nest ghi đè
+`requestTimeout`/`connectionTimeout` về 0 (tắt luôn default 300s của Node)
+— một client giữ body chậm chiếm socket VÔ HẠN trên instance free vốn kiêm
+worker inline. Chốt: `requestTimeout: 30_000`, `connectionTimeout: 60_000`
+trong `createFastifyAdapter()` (đủ rộng cho refund gọi provider ~10s và
+webhook verify; 300s của Node mới là quá đà), assert ở `bootstrap.spec.ts`
+— cùng bài học "một nguồn sự thật" của chính file đó.
+
+**(c) Container `USER node`.** Image chạy root không vì lý do gì — Node
+không cần bind port <1024. Một dòng trong Dockerfile, thu hẹp thiệt hại nếu
+tiến trình bị chiếm.
+
+**(d) `render.yaml` khai THIẾU khoá.** Blueprint là nguồn khai env duy nhất
+có version control, mà `TRUST_PROXY` (không khai = default nội bộ, đúng
+hiện tại nhưng ngầm), `MEDIA_GC_ENABLED`/`MEDIA_GC_GRACE_DAYS` (không khai
+= bộ dọn ảnh ĐANG TẮT ở prod mà không ai quyết điều đó), `MARGIN_TAX_RATE`/
+`PAYMENT_FEE_RATE`/`PAYMENT_FEE_FIXED` (báo cáo tài chính đang tính thuế/phí
+= 0 ngầm định) vắng mặt. Khai đủ KEY (`sync: false`, không giá trị) để
+dashboard hiện ô trống tường minh thay vì biến tàng hình. Kèm
+`numInstances: 1` ghim tường minh: throttler đang in-memory per-process —
+scale ngang là NHÂN trần rate-limit lên theo số instance mà không ai đổi
+một dòng code; ngày nào cần >1 instance thì điều kiện tiên quyết là dời
+throttle sang store chung (Redis), và dòng ghim này là chỗ nhắc.
