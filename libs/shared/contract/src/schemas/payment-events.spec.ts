@@ -31,6 +31,7 @@ const validRow = {
   bookingCode: 'BK-ABCD1234',
   receivedAt: '2026-09-01T10:00:00.000Z',
   processedAt: '2026-09-01T10:00:01.000Z',
+  note: null,
 };
 
 describe('PaymentEventTypeSchema', () => {
@@ -117,6 +118,7 @@ describe('PaymentEventRowSchema', () => {
       currency: null,
       bookingCode: null,
       processedAt: null,
+      note: null,
     };
     expect(PaymentEventRowSchema.parse(bare)).toEqual(bare);
   });

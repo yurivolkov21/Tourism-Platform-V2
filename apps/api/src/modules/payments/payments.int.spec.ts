@@ -1,5 +1,6 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { ThrottlerStorage, type ThrottlerStorageService } from '@nestjs/throttler';
 import { BookingSchema } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
@@ -98,6 +99,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     await prisma.tourDeparture.deleteMany();
     await prisma.tourDeparture.createMany({ data: departures });
     fake.reset();
+    // Bộ đếm throttle in-memory dùng chung cả file (IP inject cố định): reset
+    // mỗi test để test trần không phụ thuộc vị trí trong file (vòng vá 06/09).
+    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear();
   });
 
   afterAll(async () => {
@@ -283,9 +287,8 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     // Session thứ hai (tab thứ hai) thu tiền lần nữa → capture MỚI trên booking
     // đã settle. Trước AMEND 1b nhánh already-paid nuốt im lặng — khách mất
     // tiền hai lần không ai biết.
-    const second = await postWebhook(
-      fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_dup_B' }),
-    );
+    const secondEvent = fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_dup_B' });
+    const second = await postWebhook(secondEvent);
     expect(second.statusCode).toBe(200);
     expect(second.json()).toMatchObject({ status: 'processed', outcome: 'already-paid' });
 
@@ -304,6 +307,31 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.status).toBe(BookingStatus.PAID);
     expect(row.providerPaymentId).toBe('pay_dup_A'); // capture gốc giữ nguyên
     expect(await seatsOf(depMain.id)).toBe(6); // không claim lần hai
+    // AMEND 2a: khoản hoàn ngoài sổ để lại dấu vết ở `note` của chính event —
+    // không chỉ ở log.
+    const pe = await prisma.paymentEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: 'STRIPE', eventId: secondEvent.eventId } },
+    });
+    expect(pe.note).toMatch(/pay_dup_B/);
+    expect(pe.note).toMatch(/fake_re_/);
+  });
+
+  it('AMEND 2a: capture thứ hai KHÔNG mang amount → không đoán bằng total, note cho operator', async () => {
+    const cookie = await signUpUser('dup-noamount@example.com');
+    const booking = await createBooking(cookie);
+    expect(
+      (await postWebhook(fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_x_A' })))
+        .statusCode,
+    ).toBe(200);
+    const second = fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_x_B' });
+    // Event đã ký nhưng thiếu tiền (PayPal payload thiếu amount) — xoá đúng hai field.
+    const { amount: _a, currency: _c, ...noMoney } = second;
+    expect((await postWebhook(noMoney as VerifiedEvent)).statusCode).toBe(200);
+    expect(fake.refunds).toHaveLength(0); // KHÔNG hoàn 117.00 cho một capture không rõ trị giá
+    const pe = await prisma.paymentEvent.findUniqueOrThrow({
+      where: { provider_eventId: { provider: 'STRIPE', eventId: second.eventId } },
+    });
+    expect(pe.note).toMatch(/operator must refund manually/);
   });
 
   it('overbook: seats no longer fit at claim time → auto-refund + CANCELLED (invariant #3)', async () => {
@@ -342,7 +370,9 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
       providerPaymentId: event.providerPaymentId,
       amount: '234.00', // 39.00 × 6
       currency: 'USD',
-      idempotencyKey: `overbook-refund:${booking.id}`, // idempotency provider W5
+      // AMEND 2c: key theo CAPTURE, không theo nguyên nhân — cùng capture mà
+      // hai delivery gọi tên hai cause khác nhau vẫn dedupe ở provider.
+      idempotencyKey: `auto-refund:${event.providerPaymentId}`,
     });
     const refunds = await prisma.refund.findMany({
       where: { bookingId: booking.id },
@@ -462,7 +492,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(fake.refunds).toHaveLength(1);
     expect(fake.refunds[0]).toMatchObject({
       amount: '117.00',
-      idempotencyKey: `departure-closed-refund:${booking.id}`,
+      idempotencyKey: `auto-refund:${fake.refunds[0]?.providerPaymentId}`,
     });
     expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
     const outbox = await prisma.outbox.findMany({
@@ -515,7 +545,12 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(row.status).toBe(BookingStatus.REFUNDED);
     expect(fake.refunds).toHaveLength(1);
     // Key idempotency provider W5 cho luồng auto-refund orphan.
-    expect(fake.refunds[0]?.idempotencyKey).toBe(`orphan-refund:${booking.id}`);
+    expect(fake.refunds[0]?.idempotencyKey).toBe(
+      `auto-refund:${fake.refunds[0]?.providerPaymentId}`,
+    );
+    // AMEND 2b: capture được ghi lên booking kể cả ở đường orphan — guard theo
+    // capture cần nó để nhận ra row sổ của chính booking này lần sau.
+    expect(row.providerPaymentId).toBe(fake.refunds[0]?.providerPaymentId);
     const refunds = await prisma.refund.findMany({
       where: { bookingId: booking.id },
     });
@@ -541,12 +576,14 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     });
   });
 
-  it('ADR-0006 AMEND 1d: amount/currency của event LỆCH booking → KHÔNG PAID, note ghi lý do, event vẫn processed', async () => {
+  it('ADR-0006 AMEND 1d + 2a: amount/currency của event LỆCH booking → KHÔNG PAID, hoàn NGAY đúng số event khai, note ghi lý do + refund, event vẫn processed', async () => {
     const cookie = await signUpUser('mismatch@example.com');
     const booking = await createBooking(cookie); // 117.00 USD
 
     // Provider báo capture 1.00 cho booking 117.00 — flip PAID lúc này là tự
-    // nhận doanh thu chưa từng thu. Booking ở lại PENDING cho operator.
+    // nhận doanh thu chưa từng thu. Nhưng 1.00 ấy là tiền THẬT của khách:
+    // hoàn ngay (vòng vá 06/09 — bản đầu để booking PENDING rồi sweep huỷ,
+    // khách mất 1.00 không ai hay). Booking ở lại PENDING, không ghi sổ.
     const short = fake.emitPaymentCompleted(booking.id, { amount: '1.00' });
     const res = await postWebhook(short);
     expect(res.statusCode).toBe(200);
@@ -562,12 +599,22 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     expect(pe.processedAt).not.toBeNull(); // provider không retry được gì hữu ích
     expect(pe.note).toMatch(/1\.00/);
     expect(pe.note).toMatch(/117\.00/);
+    expect(pe.note).toMatch(/auto-refunded as fake_re_/);
+    expect(fake.refunds).toHaveLength(1);
+    expect(fake.refunds[0]).toMatchObject({
+      providerPaymentId: short.providerPaymentId,
+      amount: '1.00', // đúng số event khai — không phải total của booking
+      currency: 'USD',
+      idempotencyKey: `mismatch-refund:${short.providerPaymentId}`,
+    });
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0); // ngoài sổ
 
-    // Currency lệch cũng chặn — cùng đường.
+    // Currency lệch cũng chặn — cùng đường (và so KHÔNG phân biệt hoa/thường).
     const wrongCurrency = fake.emitPaymentCompleted(booking.id, { currency: 'EUR' });
     expect((await postWebhook(wrongCurrency)).statusCode).toBe(200);
     row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
     expect(row.status).toBe(BookingStatus.PENDING);
+    expect(fake.refunds).toHaveLength(2);
 
     // Không outbox nào được enqueue cho hai event lệch.
     expect(

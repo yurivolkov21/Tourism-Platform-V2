@@ -142,6 +142,15 @@ export function PaymentEventDetailSheet({
             label={t.detail.processed}
             value={row.processed ?? <UnprocessedBadge />}
           />
+          {row.note ? (
+            // Bề mặt operator DUY NHẤT của tiền không thành Refund row (ADR-0006
+            // AMEND 2a): event bị từ chối vì lệch tiền, capture thừa đã hoàn
+            // ngoài sổ, hay hoàn thất bại cần tay người.
+            <JsonDrawerField
+              label={t.detail.note}
+              value={<span className="text-destructive">{row.note}</span>}
+            />
+          ) : null}
         </JsonDrawerFields>
       ) : null}
     </JsonDrawer>

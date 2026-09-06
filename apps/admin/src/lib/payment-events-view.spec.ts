@@ -20,6 +20,7 @@ const COMPLETED: PaymentEventRow = {
   bookingCode: 'BK-ABCD1234',
   receivedAt: '2026-09-01T10:00:00.000Z',
   processedAt: '2026-09-01T10:00:01.000Z',
+  note: null,
 };
 
 describe('toPaymentEventRowVM', () => {
@@ -35,6 +36,7 @@ describe('toPaymentEventRowVM', () => {
       bookingCode: 'BK-ABCD1234',
       received: '1 Sep 2026, 10:00 UTC',
       processed: '1 Sep 2026, 10:00 UTC',
+      note: null,
     });
   });
 
@@ -46,12 +48,14 @@ describe('toPaymentEventRowVM', () => {
       currency: null,
       bookingCode: null,
       processedAt: null,
+      note: null,
     });
     expect(vm).toMatchObject({
       typeLabel: t.type.other,
       amount: null,
       bookingCode: null,
       processed: null,
+      note: null,
     });
   });
 

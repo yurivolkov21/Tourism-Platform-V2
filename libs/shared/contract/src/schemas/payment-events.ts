@@ -89,6 +89,13 @@ export const PaymentEventRowSchema = z.object({
    * booking) — xem `PaymentsService.beginEvent`.
    */
   processedAt: z.iso.datetime().nullable(),
+  /**
+   * Ghi chú của handler (ADR-0006 AMEND 2a): lý do một event đã ký hợp lệ bị
+   * từ chối (tiền lệch), hay dấu vết của một khoản hoàn NGOÀI sổ (capture
+   * thừa/lệch, hoàn thất bại cần operator). null = xử lý bình thường. Đây là
+   * bề mặt operator DUY NHẤT của những khoản tiền không thành Refund row.
+   */
+  note: z.string().max(500).nullable(),
 });
 export type PaymentEventRow = z.output<typeof PaymentEventRowSchema>;
 

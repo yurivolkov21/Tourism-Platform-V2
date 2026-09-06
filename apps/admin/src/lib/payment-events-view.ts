@@ -47,6 +47,8 @@ export interface PaymentEventRowVM {
   received: string;
   /** null = `processedAt` null: đã nhận, handler chưa xong (badge + tooltip). */
   processed: string | null;
+  /** Ghi chú handler (ADR-0006 AMEND 2a) — lý do từ chối / khoản hoàn ngoài sổ; null = bình thường. */
+  note: string | null;
 }
 
 /** Row của contract → hàng bảng đã format sẵn (server component gọi). */
@@ -62,5 +64,6 @@ export function toPaymentEventRowVM(row: PaymentEventRow): PaymentEventRowVM {
     bookingCode: row.bookingCode,
     received: formatDateTime(row.receivedAt),
     processed: row.processedAt ? formatDateTime(row.processedAt) : null,
+    note: row.note,
   };
 }

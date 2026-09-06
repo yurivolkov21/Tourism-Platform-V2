@@ -56,6 +56,9 @@ export function toPaymentEventRow(
     bookingCode,
     receivedAt: row.receivedAt.toISOString(),
     processedAt: row.processedAt ? row.processedAt.toISOString() : null,
+    // AMEND 2a: bề mặt operator của tiền không thành Refund row — map ra, không
+    // để cột write-only.
+    note: row.note,
   };
 }
 

@@ -59,6 +59,7 @@ describe('toPaymentEventRow', () => {
       bookingCode: 'BK-ABCD1234',
       receivedAt: '2026-09-01T10:00:00.000Z',
       processedAt: '2026-09-01T10:00:01.000Z',
+      note: null,
     });
   });
 

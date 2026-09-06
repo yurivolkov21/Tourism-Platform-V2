@@ -24,6 +24,7 @@ const ROW: PaymentEventRowVM = {
   bookingCode: 'BK-ABCD1234',
   received: '1 Sep 2026, 10:00 UTC',
   processed: '1 Sep 2026, 10:00 UTC',
+  note: null,
 };
 
 const PAYLOAD = { id: 'evt_1Pabc123', data: { object: { amount_total: 11700 } } };
@@ -54,6 +55,7 @@ describe('PaymentEventDetailSheet', () => {
         bookingCode: 'BK-ABCD1234',
         receivedAt: '2026-09-01T10:00:00.000Z',
         processedAt: '2026-09-01T10:00:01.000Z',
+        note: null,
         payload: PAYLOAD,
       },
     });
@@ -120,6 +122,7 @@ describe('PaymentEventDetailSheet', () => {
         bookingCode: null,
         receivedAt: '2026-09-01T10:00:00.000Z',
         processedAt: null,
+        note: null,
         payload: { marker },
       },
     });
@@ -171,6 +174,7 @@ describe('PaymentEventDetailSheet', () => {
           bookingCode: null,
           receivedAt: '2026-09-01T10:00:00.000Z',
           processedAt: null,
+          note: null,
           payload: { marker: input.id },
         },
       }),

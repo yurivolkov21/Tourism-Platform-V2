@@ -4114,6 +4114,8 @@ export const messages = {
         booking: 'Booking',
         received: 'Received',
         processed: 'Processed',
+        /** Ghi chú handler (ADR-0006 AMEND 2a) — chỉ hiện khi có. */
+        note: 'Handler note',
         /**
          * Tiêu đề khối payload. "Provider payload" cũ là chữ kỹ thuật — user
          * báo 03/09 là người không đọc code không hiểu; câu này nói thẳng nó
