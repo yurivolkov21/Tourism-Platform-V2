@@ -206,6 +206,9 @@ export function toBooking(
  *                     capture, invariant #4) → caller auto-refund.
  * - `already-paid`  — PAID / REFUNDED / PARTIALLY_REFUNDED: một retry hoặc một
  *                     provider event thứ hai cho booking đã settle → no-op.
+ * - `departure-closed` — chuyến không còn OPEN hoặc đã khởi hành khi capture
+ *                     về (ADR-0009 AMEND 1) → caller auto-refund + cancel,
+ *                     cùng lý lẽ với `overbooked` (chưa từng là doanh thu).
  * - `not-found`     — không có booking id này (webhook tham chiếu thứ ta chưa
  *                     bao giờ mint) → log-and-skip.
  */
@@ -214,6 +217,7 @@ export type ClaimOutcome =
   | 'overbooked'
   | 'cancelled'
   | 'already-paid'
+  | 'departure-closed'
   | 'not-found'
   | 'expired';
 
@@ -754,6 +758,17 @@ export class BookingsService {
               provider_payment_id = ${providerPaymentId},
               updated_at = now()
           WHERE b.id = ${bookingId}::uuid AND b.status = 'PENDING'::"BookingStatus"
+            -- ADR-0009 AMEND 1: không xác nhận chỗ trên chuyến đã đóng/đã đi.
+            -- Qual trong subquery KHÔNG được EPQ re-check tươi như qual trên
+            -- UPDATE target — chấp nhận: race "đóng chuyến đúng lúc capture về"
+            -- là thao tác vận hành hiếm, không phải race tiền; race tiền
+            -- (double claim) vẫn gate trên b.status ở trên.
+            AND EXISTS (
+              SELECT 1 FROM tour_departures dep
+              WHERE dep.id = b.departure_id
+                AND dep.status = 'OPEN'::"DepartureStatus"
+                AND dep.start_date >= current_date
+            )
           RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
                     b.code, b.contact_email, b.contact_name, b.tour_title,
                     b.departure_start_date, b.departure_end_date, b.total_amount, b.currency
@@ -803,16 +818,31 @@ export class BookingsService {
     // Không có gì đổi — classify trên snapshot tươi (SELECT follow-up).
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { status: true },
+      select: { status: true, departureId: true },
     });
     let outcome: ClaimOutcome;
     if (!booking) outcome = 'not-found';
     else if (booking.status === BookingStatus.CANCELLED) outcome = 'cancelled';
     else if (booking.status === BookingStatus.PENDING) {
-      // Về lý thuyết là bất khả tới: không exception + zero claim row + vẫn
-      // PENDING. Map phòng thủ: coi như overbooked — đường handler của nó là
-      // đường an toàn cho một PENDING booking đang giữ tiền thật.
-      outcome = 'overbooked';
+      // ADR-0009 AMEND 1: PENDING mà claim không ăn — trước hết xem có phải vì
+      // gate chuyến không (không còn OPEN / đã khởi hành) → departure-closed.
+      const departure = await prisma.tourDeparture.findUnique({
+        where: { id: booking.departureId },
+        select: { status: true, startDate: true },
+      });
+      const todayUtc = new Date().toISOString().slice(0, 10);
+      if (
+        !departure ||
+        departure.status !== DepartureStatus.OPEN ||
+        calendarDate(departure.startDate) < todayUtc
+      ) {
+        outcome = 'departure-closed';
+      } else {
+        // Về lý thuyết là bất khả tới: không exception + zero claim row + vẫn
+        // PENDING + chuyến OPEN. Map phòng thủ: coi như overbooked — đường
+        // handler của nó là đường an toàn cho một PENDING đang giữ tiền thật.
+        outcome = 'overbooked';
+      }
     } else outcome = 'already-paid'; // PAID / REFUNDED / PARTIALLY_REFUNDED
     this.logger.log(`PAID claim for booking ${bookingId}: ${outcome}`);
     return outcome;

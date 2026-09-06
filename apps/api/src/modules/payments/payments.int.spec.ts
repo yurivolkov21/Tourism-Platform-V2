@@ -438,6 +438,58 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     );
   });
 
+  it('ADR-0009 AMEND 1: capture muộn trên chuyến đã CLOSED → departure-closed, auto-refund + CANCELLED', async () => {
+    const cookie = await signUpUser('closed-dep@example.com');
+    const booking = await createBooking(cookie); // party 3, 117.00, depMain OPEN
+    // Admin đóng chuyến trong lúc khách còn ngồi ở hosted checkout.
+    await prisma.tourDeparture.update({
+      where: { id: depMain.id },
+      data: { status: DepartureStatus.CLOSED },
+    });
+
+    const event = fake.emitPaymentCompleted(booking.id);
+    const res = await postWebhook(event);
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toMatchObject({ status: 'processed', outcome: 'departure-closed' });
+
+    // Không xác nhận chỗ trên chuyến đã đóng: booking CANCELLED, ghế nguyên.
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.paidAt).toBeNull();
+    expect(await seatsOf(depMain.id)).toBe(3);
+
+    // Đường auto-refund sẵn có: refund toàn phần + sổ + email, key theo cause.
+    expect(fake.refunds).toHaveLength(1);
+    expect(fake.refunds[0]).toMatchObject({
+      amount: '117.00',
+      idempotencyKey: `departure-closed-refund:${booking.id}`,
+    });
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+    const outbox = await prisma.outbox.findMany({
+      where: { type: EmailType.BOOKING_REFUNDED },
+    });
+    expect(outbox).toHaveLength(1);
+    expect(outbox[0]).toMatchObject({ dedupeKey: `departure-closed-refund:${booking.id}` });
+    expect(outbox[0]?.payload).toMatchObject({ reason: 'departure-closed' });
+  });
+
+  it('ADR-0009 AMEND 1: capture muộn khi chuyến ĐÃ KHỞI HÀNH (start_date quá khứ) → cùng đường departure-closed', async () => {
+    const cookie = await signUpUser('departed-dep@example.com');
+    const booking = await createBooking(cookie);
+    // Chuyến vẫn OPEN nhưng ngày khởi hành đã qua (webhook kẹt lâu / PayPal
+    // order sống ~3h + retry nhiều ngày).
+    await prisma.tourDeparture.update({
+      where: { id: depMain.id },
+      data: { startDate: new Date(Date.now() - 2 * 86_400_000) },
+    });
+
+    const res = await postWebhook(fake.emitPaymentCompleted(booking.id));
+    expect(res.json()).toMatchObject({ outcome: 'departure-closed' });
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(fake.refunds).toHaveLength(1);
+  });
+
   it('orphaned capture: completed AFTER cancel → auto-refund + ledger-derived REFUNDED (invariant #4)', async () => {
     const cookie = await signUpUser('orphan@example.com');
     const booking = await createBooking(cookie);

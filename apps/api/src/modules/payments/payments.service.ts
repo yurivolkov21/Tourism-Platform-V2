@@ -149,8 +149,13 @@ export class PaymentsService {
           verified.bookingId,
           verified.providerPaymentId ?? null,
         );
-        if (outcome === 'overbooked') {
-          await this.refundOverbooked(provider, verified.bookingId, verified.providerPaymentId);
+        if (outcome === 'overbooked' || outcome === 'departure-closed') {
+          await this.refundUnclaimablePending(
+            provider,
+            verified.bookingId,
+            verified.providerPaymentId,
+            outcome,
+          );
         } else if (outcome === 'cancelled') {
           await this.refundOrphanedCapture(
             provider,
@@ -220,33 +225,42 @@ export class PaymentsService {
   }
 
   /**
-   * Invariant #3 — buyer đã trả tiền nhưng thua cuộc đua giành seat khi còn ở
-   * trang hosted checkout (booking vẫn PENDING, seat không còn đủ). Refund
-   * provider TRƯỚC (HTTP outbound nằm ngoài mọi DB write — và ta không bao giờ
-   * ghi một refund chưa thực sự xảy ra), rồi MỘT CTE nguyên tử duy nhất:
-   * booking → CANCELLED + Refund ledger row (toàn bộ amount, `adminId` NULL =
-   * tự động) + outbox row BOOKING_REFUNDED. dedupeKey
-   * `overbook-refund:<bookingId>` — một overbook refund hợp lệ đúng một lần cho
-   * mỗi booking (quy ước `<event>:<entityId>`). EmailType: schema không có
-   * REFUND_ISSUED; BOOKING_REFUNDED là email type cho refund (ngang Nexora).
+   * Invariant #3 (+ ADR-0009 AMEND 1) — buyer đã trả tiền nhưng booking không
+   * claim được trong khi VẪN PENDING, vì một trong hai lẽ:
+   * - `overbooked`: thua cuộc đua giành seat khi còn ở trang hosted checkout;
+   * - `departure-closed`: chuyến không còn OPEN / đã khởi hành lúc capture về.
+   *
+   * Cùng một cách xử vì cùng một sự thật — booking chưa từng rời PENDING, chưa
+   * từng là doanh thu. Refund provider TRƯỚC (HTTP outbound nằm ngoài mọi DB
+   * write — và ta không bao giờ ghi một refund chưa thực sự xảy ra), rồi MỘT
+   * CTE nguyên tử duy nhất: booking → CANCELLED + Refund ledger row (toàn bộ
+   * amount, `adminId` NULL = tự động) + outbox row BOOKING_REFUNDED. dedupeKey
+   * `overbook-refund:<bookingId>` / `departure-closed-refund:<bookingId>` —
+   * hợp lệ đúng một lần cho mỗi booking (quy ước `<event>:<entityId>`).
+   * EmailType: schema không có REFUND_ISSUED; BOOKING_REFUNDED là email type
+   * cho refund (ngang Nexora).
    *
    * Trạng thái terminal giữ nguyên CANCELLED (KHÔNG re-derive thành REFUNDED,
-   * quyết định W3): một booking overbooked chưa từng giao seat và chưa từng
-   * tính là doanh thu — nó chưa từng rời PENDING — nên full refund + CANCELLED
-   * là trạng thái terminal đúng của nó. Đối lập với {@link refundOrphanedCapture},
-   * nơi tiền-PAID đã bị capture trên một booking đã cancelled và ledger
-   * derivation cho ra REFUNDED.
+   * quyết định W3): booking chưa từng giao seat và chưa từng tính là doanh thu
+   * — nên full refund + CANCELLED là trạng thái terminal đúng của nó. Đối lập
+   * với {@link refundOrphanedCapture}, nơi tiền-PAID đã bị capture trên một
+   * booking đã cancelled và ledger derivation cho ra REFUNDED.
    */
-  private async refundOverbooked(
+  private async refundUnclaimablePending(
     provider: PaymentProvider,
     bookingId: string,
     providerPaymentId: string | undefined,
+    cause: 'overbooked' | 'departure-closed',
   ): Promise<void> {
+    const dedupeKey =
+      cause === 'overbooked'
+        ? `overbook-refund:${bookingId}`
+        : `departure-closed-refund:${bookingId}`;
     const refund = await this.issueFullAutoRefund(provider, bookingId, providerPaymentId, {
-      cause: 'overbooked',
+      cause,
       // Hợp lệ đúng một lần cho mỗi booking → dùng booking id đặt tên cho lượt
       // thử (cùng quy ước với outbox dedupeKey bên dưới, ở phía provider).
-      idempotencyKey: `overbook-refund:${bookingId}`,
+      idempotencyKey: dedupeKey,
     });
     // 'failed' (thiếu payment id / provider lỗi) để booking ở PENDING cho
     // operator. 'already-refunded' vẫn chạy CTE cancel bên dưới — nó đóng lại
@@ -275,15 +289,15 @@ export class PaymentsService {
                  'title', c.tour_title,
                  'amount', c.total_amount::text,
                  'currency', c.currency,
-                 'reason', 'overbooked'
+                 'reason', ${cause}::text
                ),
-               'overbook-refund:' || c.id::text
+               ${dedupeKey}::text
         FROM cancelled c
         ON CONFLICT (dedupe_key) DO NOTHING
       )
       SELECT id FROM cancelled
     `);
-    this.logger.warn(`Auto-refunded overbooked booking ${bookingId} (${provider}) — CANCELLED`);
+    this.logger.warn(`Auto-refunded ${cause} booking ${bookingId} (${provider}) — CANCELLED`);
   }
 
   /**
