@@ -1050,6 +1050,24 @@ describe('reviews (int)', () => {
       expect(res.statusCode).toBe(401);
     });
 
+    // W2 mục 9 (audit cụm 8): adminList là nhóm duy nhất trong 9 nhóm admin
+    // chưa có cặp 401/403 riêng — moderate có mà list (đường ĐỌC cả hàng đợi,
+    // kèm note nội bộ) thì không; guard cấp class phải phủ cả hai.
+    it('adminList: ẩn danh (không cookie) → 401', async () => {
+      const res = await app.inject({ method: 'GET', url: '/api/admin/reviews' });
+      expect(res.statusCode).toBe(401);
+    });
+
+    it('adminList: customer đã đăng nhập (không phải admin) → 403', async () => {
+      const { cookie } = await signUpAndSignIn(app, 'not-admin-list@example.com');
+      const res = await app.inject({
+        method: 'GET',
+        url: '/api/admin/reviews',
+        headers: { cookie },
+      });
+      expect(res.statusCode).toBe(403);
+    });
+
     /**
      * ADR-0031 — ba động từ, và điều phân biệt chúng nằm ở HAI chỗ: hàng đợi
      * còn giữ review không, và khách có được báo không.
