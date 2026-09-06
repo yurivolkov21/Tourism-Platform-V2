@@ -1,12 +1,7 @@
 'use client';
 
 import { ORPCError } from '@orpc/client';
-import {
-  daysBeforeDeparture,
-  isWithinGracePeriod,
-  policyRefundAmount,
-  refundPercentForRequest,
-} from '@tourism/contract';
+import type { RefundEstimate } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   AlertDialog,
@@ -446,29 +441,15 @@ export function BookingActions({
  * (bao nhiêu phần trăm, bậc nào, còn mấy ngày), nên không dòng nào được to
  * ngang nó.
  *
- * Phép tính đi qua `refundPercentForRequest` — ĐIỂM VÀO DUY NHẤT dùng chung
- * với màn quyết định của admin, nên khách và admin không thể nhìn hai con số
- * khác nhau.
+ * Con số đến từ SERVER (`bookings.byCode` trả `refundEstimate`, W1 — audit
+ * 05/09 cụm 3): client từng tự tính bằng `new Date()` của TRÌNH DUYỆT nên
+ * khách ở múi giờ lệch thấy sai bậc/ân hạn ở biên ngày. Ở đây chỉ IN — server
+ * dùng cùng hàm chính sách với màn quyết định của admin, nên khách và admin
+ * không thể nhìn hai con số khác nhau.
  */
 function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
   const t = messages.booking.detail;
-  const now = new Date();
-  const days = daysBeforeDeparture(now, booking.departureStartDate);
-  const percent = refundPercentForRequest({
-    requestedAt: now,
-    paidAt: booking.paidAt,
-    departureStartDate: booking.departureStartDate,
-    freeCancellationDays: booking.freeCancellationDays,
-  });
-  const inGrace = isWithinGracePeriod(booking.paidAt, now);
-  // Bậc tính trên TỔNG rồi trừ phần đã hoàn (ADR-0030 §7) — không thì hoàn đúp.
-  // CÙNG hàm với màn admin và API: trước vòng vá review 05/09 chỗ này nhân
-  // float rồi `toFixed`, lệch admin một cent ở 1199.01 (599.50 vs 599.51).
-  const net = policyRefundAmount({
-    percent,
-    totalAmount: booking.totalAmount,
-    refundedTotal: booking.refundedTotal,
-  });
+  const estimate = booking.estimate;
 
   return (
     // Viền chia đôi, KHÔNG dùng nền để tách: dialog là `bg-popover`, và
@@ -490,22 +471,35 @@ function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
       </div>
 
       {/* Nền nhạt chỉ ở nửa PHẢI — một chỗ nhấn duy nhất, và nó mã hoá đúng
-          thế đối lập của dialog: trái là thứ mất đi, phải là thứ nhận lại. */}
+          thế đối lập của dialog: trái là thứ mất đi, phải là thứ nhận lại.
+          Server không gửi ước tính (trang cũ cache / trạng thái lạ) thì vẫn
+          giữ khung + link chính sách, chỉ thiếu con số — không tự bịa. */}
       <div className="flex flex-col gap-1 border-t border-border bg-muted/50 p-4 sm:border-t-0 sm:border-l">
-        {/* Neo thị giác: con số đứng một mình, nhãn nhỏ ngay dưới. */}
-        <p className="text-3xl font-semibold tabular-nums text-foreground">
-          {formatMoneyExact(net, booking.currency)}
-        </p>
-        <p className="text-sm text-muted-foreground">{t.cancelSummaryGetBack}</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {t.cancelSummaryOfTotal(percent, formatMoneyExact(booking.totalAmount, booking.currency))}
-        </p>
-        <p className="text-sm text-muted-foreground">{t.refundEstimateDays(days)}</p>
-        {inGrace ? <p className="text-sm text-muted-foreground">{t.refundEstimateGrace}</p> : null}
-        {Number(booking.refundedTotal) > 0 ? (
-          <p className="text-sm text-muted-foreground">
-            {t.cancelSummaryAlready(formatMoneyExact(booking.refundedTotal, booking.currency))}
-          </p>
+        {estimate ? (
+          <>
+            {/* Neo thị giác: con số đứng một mình, nhãn nhỏ ngay dưới. */}
+            <p className="text-3xl font-semibold tabular-nums text-foreground">
+              {formatMoneyExact(estimate.amount, booking.currency)}
+            </p>
+            <p className="text-sm text-muted-foreground">{t.cancelSummaryGetBack}</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {t.cancelSummaryOfTotal(
+                estimate.percent,
+                formatMoneyExact(booking.totalAmount, booking.currency),
+              )}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t.refundEstimateDays(estimate.daysBeforeDeparture)}
+            </p>
+            {estimate.inGrace ? (
+              <p className="text-sm text-muted-foreground">{t.refundEstimateGrace}</p>
+            ) : null}
+            {Number(booking.refundedTotal) > 0 ? (
+              <p className="text-sm text-muted-foreground">
+                {t.cancelSummaryAlready(formatMoneyExact(booking.refundedTotal, booking.currency))}
+              </p>
+            ) : null}
+          </>
         ) : null}
         <Link
           href="/cancellation-policy"
@@ -534,7 +528,7 @@ function WhatHappensNext() {
   );
 }
 
-/** Phần booking mà ước tính cần — cắt đúng chừng này, không nhận cả entity. */
+/** Phần booking mà dialog huỷ cần — cắt đúng chừng này, không nhận cả entity. */
 export interface RefundEstimateInput {
   /** Mã + tên tour + đợt: người ta phải NHẬN RA thứ mình sắp huỷ. */
   code: string;
@@ -543,10 +537,13 @@ export interface RefundEstimateInput {
   departureEndDate: string;
   numAdults: number;
   numChildren: number;
-  /** ISO; `null` = chưa trả tiền, nên không có ân hạn. */
-  paidAt: string | null;
-  freeCancellationDays: number | null;
   totalAmount: string;
   refundedTotal: string;
   currency: string;
+  /**
+   * Ước tính do SERVER tính (`bookings.byCode.refundEstimate`, W1) — client
+   * chỉ in, KHÔNG tự tính lại bằng đồng hồ trình duyệt. `null` = server không
+   * gửi (trạng thái không huỷ được) → nửa tiền của dialog ẩn con số.
+   */
+  estimate: RefundEstimate | null;
 }

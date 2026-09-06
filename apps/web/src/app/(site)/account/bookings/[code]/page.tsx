@@ -249,8 +249,10 @@ export default async function AccountBookingDetailPage({
               view={view}
               code={booking.code}
               // Khách thấy mình được hoàn bao nhiêu TRƯỚC khi bấm gửi
-              // (ADR-0030 §3b) — cùng phép tính mà màn quyết định của admin
-              // dùng, nên hai bên không thể nói hai con số khác nhau.
+              // (ADR-0030 §3b) — con số do SERVER tính (`refundEstimate`, W1),
+              // cùng phép tính mà màn quyết định của admin dùng, nên hai bên
+              // không thể nói hai con số khác nhau kể cả khi đồng hồ máy khách
+              // lệch.
               refund={{
                 code: booking.code,
                 tourTitle: booking.tourTitle,
@@ -258,11 +260,10 @@ export default async function AccountBookingDetailPage({
                 departureEndDate: booking.departureEndDate,
                 numAdults: booking.numAdults,
                 numChildren: booking.numChildren,
-                paidAt: booking.paidAt,
-                freeCancellationDays: booking.freeCancellationDays,
                 totalAmount: booking.totalAmount,
                 refundedTotal: booking.refundedTotal,
                 currency: booking.currency,
+                estimate: booking.refundEstimate,
               }}
             />
           </div>

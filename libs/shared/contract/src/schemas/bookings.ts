@@ -188,6 +188,26 @@ export type Booking = z.output<typeof BookingSchema>;
  * `AdminBookingDetailSchema` ngay dưới đây, và cùng lý do đã ghi ở
  * `reviewedAt`: đường đọc danh sách không gánh thứ chỉ trang chi tiết dùng.
  */
+/**
+ * Ước tính hoàn tiền nếu khách xin huỷ NGAY BÂY GIỜ — SERVER tính lúc đọc
+ * `bookings.byCode` (W1, audit 05/09 cụm 3): trước đây web tính bằng đồng hồ
+ * TRÌNH DUYỆT, lệch bậc/ân hạn với server ở biên ngày (khách UTC−5 thấy 50%,
+ * admin duyệt 25%). Cùng `refundPercentForRequest`/`policyRefundAmount` mà
+ * approve dùng, nên con số khách thấy là con số admin sẽ duyệt.
+ */
+export const RefundEstimateSchema = z.object({
+  /** Phần trăm theo bậc chính sách (ân hạn 24h phủ 100% lên trên). */
+  percent: z.int().min(0).max(100),
+  /** Số tiền ước hoàn = percent × total − đã hoàn, kẹp trong phần dư. */
+  amount: DecimalStringSchema,
+  /** Số NGÀY LỊCH từ hôm nay (server, UTC) tới khởi hành — cho câu giải thích. */
+  daysBeforeDeparture: z.int(),
+  /** Còn trong cửa sổ ân hạn 24h sau thanh toán (ADR-0030 §3c). */
+  inGrace: z.boolean(),
+});
+
+export type RefundEstimate = z.output<typeof RefundEstimateSchema>;
+
 export const BookingDetailSchema = BookingSchema.extend({
   /**
    * `null` khi khách chưa viết review nào cho booking này.
@@ -199,6 +219,12 @@ export const BookingDetailSchema = BookingSchema.extend({
    * thái + lý do, vừa điền sẵn form sửa mà không tốn thêm một lượt gọi.
    */
   review: MyReviewSchema.nullable(),
+  /**
+   * Ước tính hoàn nếu huỷ ngay — CHỈ cho booking PAID với chuyến chưa khởi
+   * hành (những booking có nút xin huỷ); các trạng thái khác trả `null`.
+   * Web `CancelSummary` chỉ IN con số này, không tự tính lại.
+   */
+  refundEstimate: RefundEstimateSchema.nullable(),
 });
 
 export type BookingDetail = z.output<typeof BookingDetailSchema>;

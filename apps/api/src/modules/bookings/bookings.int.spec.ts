@@ -600,6 +600,42 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
 
   // Task 6a (A2, user duyệt 06/08): byCode trả kèm `cancellationStatus` —
   // request MỚI NHẤT theo booking, null nếu chưa từng xin.
+  it('W1: byCode trả refundEstimate tính phía SERVER — PAID có ước tính, PENDING null', async () => {
+    // Audit 05/09 cụm 3 (Thấp): ước tính hoàn tiền từng tính bằng đồng hồ
+    // TRÌNH DUYỆT — lệch bậc/ân hạn với server ở biên ngày. Nay server tính,
+    // web chỉ in.
+    const cookie = await signUpUser('estimate@example.com');
+    const code = (await createBooking(cookie)).json().code as string;
+
+    const pendingRes = await app.inject({
+      method: 'GET',
+      url: `/api/bookings/${code}`,
+      headers: { cookie },
+    });
+    expect(pendingRes.statusCode).toBe(200);
+    // PENDING: chưa trả tiền — không có gì để ước tính hoàn.
+    expect(pendingRes.json().refundEstimate).toBeNull();
+
+    // PAID vừa xong → trong cửa sổ ân hạn 24h → 100% của 117.00 (party 3 × 39).
+    await prisma.booking.update({
+      where: { code },
+      data: { status: BookingStatus.PAID, paidAt: new Date() },
+    });
+    const paidRes = await app.inject({
+      method: 'GET',
+      url: `/api/bookings/${code}`,
+      headers: { cookie },
+    });
+    expect(paidRes.statusCode).toBe(200);
+    expect(paidRes.json().refundEstimate).toMatchObject({
+      percent: 100,
+      amount: '117.00',
+      inGrace: true,
+    });
+    // depOpen khởi hành +60 ngày — số ngày do server đếm, không phải client.
+    expect(paidRes.json().refundEstimate.daysBeforeDeparture).toBeGreaterThanOrEqual(59);
+  });
+
   it('GET /api/bookings/{code}: cancellationStatus null trước khi xin hủy, REQUESTED sau khi xin', async () => {
     const alice = await signUpUser('alice-cancel-status@example.com', 'Alice');
     const created = (await createBooking(alice)).json();

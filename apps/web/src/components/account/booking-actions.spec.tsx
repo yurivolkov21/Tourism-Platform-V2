@@ -414,11 +414,10 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
  * Khối tóm tắt trong dialog xin huỷ (ADR-0030 §3b; thiết kế lại 04/09 — rộng
  * ra, chia hai nửa, thêm "what happens next").
  *
- * Trước vòng này khối ước tính hoàn tiền KHÔNG có test nào, nên nó bước vào
- * production chỉ với con mắt. Bậc hoàn tiền là LUẬT TIỀN: nó phải bị canh.
- *
- * Mọi ca dựng ngày khởi hành TƯƠNG ĐỐI so với hôm nay, vì bậc đo khoảng cách
- * tới khởi hành — ghim ngày cứng thì spec tự hỏng vào một sáng nào đó.
+ * Từ W1 (audit 05/09 cụm 3) con số đến từ SERVER (`bookings.byCode` trả
+ * `refundEstimate`) và component chỉ IN — luật tiền (bậc/ân hạn/làm tròn cent)
+ * được canh ở `refund-policy.spec.ts` của contract và int test API; ở đây canh
+ * phần trình bày: in đúng số server gửi, không tự tính, không tự bịa khi vắng.
  */
 describe('CancelRequestDialog — khối tóm tắt', () => {
   const PAID_VIEW: BookingView = {
@@ -427,7 +426,7 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
     actions: ['requestCancellation'],
   };
 
-  /** Ngày lịch UTC cách hôm nay đúng `days` ngày — cùng phép đếm của contract. */
+  /** Ngày lịch UTC cách hôm nay đúng `days` ngày — chỉ để hiển thị đợt. */
   function departureIn(days: number): string {
     const date = new Date();
     date.setUTCDate(date.getUTCDate() + days);
@@ -442,12 +441,11 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
       departureEndDate: departureIn(42),
       numAdults: 2,
       numChildren: 1,
-      // Ngoài cửa sổ ân hạn, để bậc theo ngày là thứ DUY NHẤT quyết con số.
-      paidAt: new Date(Date.now() - 10 * 86_400_000).toISOString(),
-      freeCancellationDays: null,
       totalAmount: '1000.00',
       refundedTotal: '0',
       currency: 'USD',
+      // Ước tính SERVER gửi — bậc 100% của ca mặc định.
+      estimate: { percent: 100, amount: '1000.00', daysBeforeDeparture: 40, inGrace: false },
       ...overrides,
     };
   }
@@ -470,45 +468,33 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
     expect(screen.getByText('2 adults, 1 child')).toBeInTheDocument();
   });
 
-  it.each([
-    [40, 100, '$1,000.00'],
-    [20, 50, '$500.00'],
-    [10, 25, '$250.00'],
-    [3, 0, '$0.00'],
-  ])('còn %i ngày → %i%% và số tiền %s', async (days, percent, amount) => {
+  it('in ĐÚNG con số server gửi — amount, percent, số ngày; giữ nguyên cent', async () => {
+    // 599.51 (không phải .50) canh luôn formatMoneyExact: con số khách chụp
+    // màn hình là con số admin duyệt, server đã làm tròn — client không đụng.
     await openDialog({
-      departureStartDate: departureIn(days),
-      departureEndDate: departureIn(days),
+      totalAmount: '1199.01',
+      estimate: { percent: 50, amount: '599.51', daysBeforeDeparture: 20, inGrace: false },
     });
 
-    expect(screen.getByText(amount)).toBeInTheDocument();
-    expect(screen.getByText(`${percent}% of $1,000.00`)).toBeInTheDocument();
-  });
-
-  it('KHÔNG làm tròn cent — 50% của $1,199 là $599.50, không phải $600', async () => {
-    // `formatMoney` của trang tour cắt phần lẻ (giá tour tròn trăm, chuyện biên
-    // tập). Dùng nhầm nó ở đây là hứa với khách một con số họ không nhận được,
-    // và họ đối chiếu được với sao kê.
-    await openDialog({ departureStartDate: departureIn(20), totalAmount: '1199.00' });
-
-    expect(screen.getByText('$599.50')).toBeInTheDocument();
+    expect(screen.getByText('$599.51')).toBeInTheDocument();
+    expect(screen.getByText('50% of $1,199.01')).toBeInTheDocument();
     expect(screen.queryByText('$600')).toBeNull();
   });
 
-  it('làm tròn cent như admin — 50% của $1,199.01 là $599.51, không phải $599.50', async () => {
-    // Một phép tính cho cả ba bên (vòng vá review 05/09): con số khách chụp
-    // màn hình là con số admin duyệt.
-    await openDialog({ departureStartDate: departureIn(20), totalAmount: '1199.01' });
-
-    expect(screen.getByText('$599.51')).toBeInTheDocument();
-  });
-
-  it('trong 24 giờ đầu sau thanh toán → 100% dù khởi hành đã cận kề', async () => {
-    // Bất biến của §3c: ân hạn là lớp phủ CHỈ CÓ LỢI, nó đè lên bậc theo ngày.
+  it('bậc 0%: in $0.00 — không nói dối con số dễ chịu hơn', async () => {
     await openDialog({
       departureStartDate: departureIn(3),
       departureEndDate: departureIn(3),
-      paidAt: new Date(Date.now() - 3_600_000).toISOString(),
+      estimate: { percent: 0, amount: '0.00', daysBeforeDeparture: 3, inGrace: false },
+    });
+
+    expect(screen.getByText('$0.00')).toBeInTheDocument();
+    expect(screen.getByText('0% of $1,000.00')).toBeInTheDocument();
+  });
+
+  it('server báo trong ân hạn → hiện câu 24 giờ; ngoài ân hạn thì không', async () => {
+    await openDialog({
+      estimate: { percent: 100, amount: '1000.00', daysBeforeDeparture: 3, inGrace: true },
     });
 
     expect(screen.getByText('$1,000.00')).toBeInTheDocument();
@@ -519,12 +505,21 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
     ).toBeInTheDocument();
   });
 
-  it('đã hoàn một phần → con số lớn là phần CÒN LẠI, và nói ra phần đã hoàn', async () => {
-    // Bậc tính trên TỔNG rồi trừ phần đã hoàn — không trừ là hoàn đúp.
-    await openDialog({ refundedTotal: '150.00' });
+  it('đã hoàn một phần → con số lớn là phần CÒN LẠI (server đã trừ), và nói ra phần đã hoàn', async () => {
+    await openDialog({
+      refundedTotal: '150.00',
+      estimate: { percent: 100, amount: '850.00', daysBeforeDeparture: 40, inGrace: false },
+    });
 
     expect(screen.getByText('$850.00')).toBeInTheDocument();
     expect(screen.getByText('$150.00 already refunded')).toBeInTheDocument();
+  });
+
+  it('server không gửi ước tính → KHÔNG tự tính, không bịa số — vẫn còn link chính sách', async () => {
+    await openDialog({ estimate: null });
+
+    expect(screen.queryByText(/of \$1,000\.00/)).toBeNull();
+    expect(screen.getByRole('link', { name: 'See the full refund schedule' })).toBeInTheDocument();
   });
 
   it('"what happens next" hiện cả khi trang chưa truyền ước tính', async () => {

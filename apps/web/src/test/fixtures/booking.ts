@@ -51,6 +51,9 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     // Cụm B: null = chưa viết đánh giá. Chỉ `byCode` điền giá trị thật.
     reviewedAt: null,
     review: null,
+    // W1: ước tính hoàn do SERVER tính (byCode). Mặc định null — test cần
+    // dialog huỷ có con số thì đè overrides.
+    refundEstimate: null,
     ...overrides,
   };
 }

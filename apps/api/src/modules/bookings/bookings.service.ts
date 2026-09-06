@@ -7,6 +7,13 @@ import type {
   CreateBookingInput,
   MediaItem,
   Paged,
+  RefundEstimate,
+} from '@tourism/contract';
+import {
+  daysBeforeDeparture,
+  isWithinGracePeriod,
+  policyRefundAmount,
+  refundPercentForRequest,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
@@ -194,6 +201,42 @@ export function toBooking(
     // chỉ dùng field này ở trang chi tiết nên null ở list là vô hại — và thà
     // ẩn form review còn hơn hiện nhầm cho một booking đã review.
     reviewedAt: extras.reviewedAt ? extras.reviewedAt.toISOString() : null,
+  };
+}
+
+/**
+ * Ước tính hoàn tiền nếu khách xin huỷ NGAY BÂY GIỜ (W1, audit 05/09 cụm 3
+ * mục Thấp) — tính bằng đồng hồ SERVER thay vì trình duyệt: web từng gọi
+ * `new Date()` phía client nên khách ở múi giờ lệch thấy sai bậc/ân hạn ở
+ * biên ngày. Chỉ có nghĩa cho booking PAID với chuyến chưa khởi hành (đúng
+ * tập có nút xin huỷ); các ca khác trả null. Cùng bộ hàm chính sách mà
+ * `cancellations.approve` dùng — con số khách thấy là con số admin sẽ duyệt.
+ */
+function estimateRefund(
+  booking: Pick<BookingRow, 'status' | 'paidAt' | 'departureStartDate' | 'totalAmount'> & {
+    tour: { freeCancellationDays: number | null };
+  },
+  refundedTotal: Prisma.Decimal | null,
+): RefundEstimate | null {
+  if (booking.status !== BookingStatus.PAID) return null;
+  const now = new Date();
+  const departureDay = calendarDate(booking.departureStartDate);
+  if (departureDay < now.toISOString().slice(0, 10)) return null; // chuyến đã đi
+  const percent = refundPercentForRequest({
+    requestedAt: now,
+    paidAt: booking.paidAt?.toISOString() ?? null,
+    departureStartDate: departureDay,
+    freeCancellationDays: booking.tour.freeCancellationDays,
+  });
+  return {
+    percent,
+    amount: policyRefundAmount({
+      percent,
+      totalAmount: booking.totalAmount.toFixed(2),
+      refundedTotal: (refundedTotal ?? new Prisma.Decimal(0)).toFixed(2),
+    }),
+    daysBeforeDeparture: daysBeforeDeparture(now, departureDay),
+    inGrace: isWithinGracePeriod(booking.paidAt?.toISOString() ?? null, now),
   };
 }
 
@@ -631,6 +674,7 @@ export class BookingsService {
         reviewedAt: review?.createdAt ?? null,
       }),
       review: review ? toMyReview(review, reviewMedia) : null,
+      refundEstimate: estimateRefund(booking, refunded._sum.amount),
     };
   }
 
