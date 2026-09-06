@@ -183,6 +183,7 @@ interface StripeEventShape {
   type?: string;
   data?: {
     object?: {
+      id?: string | null;
       payment_intent?: string | null;
       amount_total?: number | null;
       currency?: string | null;
@@ -217,11 +218,16 @@ function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
     eventId: string;
     raw: unknown;
   };
+  // `data.object.id` là session id CHỈ với event `checkout.session.*` — các
+  // event khác (payment_intent.*) mang id của object khác, không map bừa.
+  const sessionId =
+    event.type.startsWith('checkout.session.') && object.id ? { sessionId: object.id } : {};
   switch (event.type) {
     case 'checkout.session.completed':
       return {
         ...base,
         type: 'payment.completed',
+        ...sessionId,
         ...(bookingId ? { bookingId } : {}),
         ...(object.payment_intent ? { providerPaymentId: object.payment_intent } : {}),
         ...(typeof object.amount_total === 'number' && currency
@@ -230,9 +236,11 @@ function mapStripeEvent(event: StripeEventShape): VerifiedEvent {
       };
     case 'checkout.session.expired':
       // PAY-1: hết hạn checkout ≠ thanh toán thất bại — tách để hủy PENDING.
+      // AMEND 1c: mang sessionId để handler chỉ huỷ ĐÚNG session này.
       return {
         ...base,
         type: 'payment.expired',
+        ...sessionId,
         ...(bookingId ? { bookingId } : {}),
       };
     case 'payment_intent.payment_failed':

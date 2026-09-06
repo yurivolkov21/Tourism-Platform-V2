@@ -214,6 +214,9 @@ export class FakeGateway implements PaymentGateway {
       eventId: opts.eventId ?? `fake_evt_${++this.seq}`,
       type,
       bookingId,
+      // Mặc định là session GẦN NHẤT của booking; test ghim `opts.sessionId`
+      // để mô phỏng event của một session CŨ đến muộn (ADR-0006 AMEND 1c).
+      sessionId: opts.sessionId ?? session?.sessionId,
       providerPaymentId: opts.providerPaymentId ?? `fake_pay_${bookingId}`,
       amount: opts.amount ?? session?.input.amount,
       currency: opts.currency ?? session?.input.currency,
@@ -226,6 +229,9 @@ export class FakeGateway implements PaymentGateway {
 export interface FakeEmitOptions {
   /** Ghim event id để replay CÙNG một event (webhook delivery duplicate). */
   eventId?: string;
+  /** Ghim session id — mô phỏng event của một session CŨ (mặc định: session
+   *  gần nhất của booking). */
+  sessionId?: string;
   providerPaymentId?: string;
   /** Chuỗi decimal 2 chữ số thập phân; mặc định lấy amount của session đã ghi. */
   amount?: string;

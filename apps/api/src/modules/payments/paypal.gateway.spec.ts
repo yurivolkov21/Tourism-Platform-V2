@@ -69,6 +69,9 @@ function captureEvent(overrides: Record<string, unknown> = {}) {
       id: 'CAP-1',
       custom_id: 'b-1',
       amount: { value: '117.00', currency_code: 'USD' },
+      // Order gốc của capture — PayPal gửi trong supplementary_data; map ra
+      // VerifiedEvent.sessionId (ADR-0006 AMEND 1c).
+      supplementary_data: { related_ids: { order_id: 'ORDER-1' } },
       ...overrides,
     },
   };
@@ -217,6 +220,7 @@ describe('PayPalGateway.verifyWebhook', () => {
       providerPaymentId: 'CAP-1',
       amount: '117.00',
       currency: 'USD',
+      sessionId: 'ORDER-1', // ADR-0006 AMEND 1c — order id từ supplementary_data
     });
     const verifyCall = http.calls.find((c) => c.url.includes('verify-webhook-signature'));
     expect(verifyCall?.headers.authorization).toBe('Bearer token-1');

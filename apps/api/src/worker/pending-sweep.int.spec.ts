@@ -59,6 +59,8 @@ describe('pending-sweep worker integration (WRK-1)', () => {
     code: string;
     minutesAgo: number;
     status: BookingStatus;
+    /** Hạn session hiện tại (ADR-0006 AMEND 1c) — bỏ trống = null (booking cũ). */
+    sessionExpiresAt?: Date;
   }): Promise<string> {
     const dep = new Date(Date.now() + 45 * 86_400_000);
     const row = await prisma.booking.create({
@@ -79,6 +81,7 @@ describe('pending-sweep worker integration (WRK-1)', () => {
         contactEmail: 'test@example.com',
         paymentProvider: 'STRIPE',
         createdAt: new Date(Date.now() - opts.minutesAgo * 60_000),
+        checkoutSessionExpiresAt: opts.sessionExpiresAt ?? null,
       } satisfies Prisma.BookingUncheckedCreateInput,
     });
     return row.id;
@@ -115,5 +118,28 @@ describe('pending-sweep worker integration (WRK-1)', () => {
 
     // Idempotent: chạy lại không còn gì để hủy.
     expect(await sweep.sweepAbandoned(PENDING_TTL_MINUTES)).toBe(0);
+  });
+
+  it('ADR-0006 AMEND 1c: PENDING quá TTL nhưng session RE-MINT còn sống → KHÔNG sweep; session hết hạn → sweep', async () => {
+    // Khách bỏ dở 100′ rồi quay lại bấm re-checkout: created_at đã quá TTL
+    // nhưng session MỚI còn sống — sweep huỷ lúc này là huỷ booking đang được
+    // trả tiền (khách đang gõ số thẻ trên session mới).
+    const remintedAlive = await seedBooking({
+      code: 'BK-SWEEPLIVE',
+      minutesAgo: PENDING_TTL_MINUTES + 35,
+      status: BookingStatus.PENDING,
+      sessionExpiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+    const remintedDead = await seedBooking({
+      code: 'BK-SWEEPDEAD',
+      minutesAgo: PENDING_TTL_MINUTES + 35,
+      status: BookingStatus.PENDING,
+      sessionExpiresAt: new Date(Date.now() - 60_000),
+    });
+
+    const n = await sweep.sweepAbandoned(PENDING_TTL_MINUTES);
+    expect(n).toBe(1);
+    expect(await statusOf(remintedAlive)).toBe(BookingStatus.PENDING);
+    expect(await statusOf(remintedDead)).toBe(BookingStatus.CANCELLED);
   });
 });

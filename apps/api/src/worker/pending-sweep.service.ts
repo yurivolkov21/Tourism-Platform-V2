@@ -27,13 +27,21 @@ export const PENDING_TTL_MINUTES = 65;
 export class PendingSweepService {
   private readonly logger = new Logger(PendingSweepService.name);
 
-  /** Hủy PENDING cũ hơn `ttlMinutes`. Trả về số booking bị hủy. */
+  /** Hủy PENDING cũ hơn `ttlMinutes`. Trả về số booking bị hủy.
+   *
+   * ADR-0006 AMEND 1c: neo thêm theo LẦN MINT GẦN NHẤT — session hiện tại còn
+   * sống (checkout_session_expires_at ở tương lai) thì KHÔNG sweep, kể cả khi
+   * created_at đã quá TTL: khách bỏ dở rồi quay lại bấm re-checkout thì đồng
+   * hồ phải tính từ session mới, không phải từ lúc tạo booking. Cột null
+   * (booking cũ trước migration / chưa mint được session) giữ luật cũ theo
+   * created_at. */
   async sweepAbandoned(ttlMinutes: number): Promise<number> {
     const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
       UPDATE bookings
       SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now()
       WHERE status = 'PENDING'::"BookingStatus"
         AND created_at < now() - make_interval(mins => ${ttlMinutes})
+        AND (checkout_session_expires_at IS NULL OR checkout_session_expires_at < now())
       RETURNING id
     `);
     if (rows.length > 0) {

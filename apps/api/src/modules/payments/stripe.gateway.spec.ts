@@ -65,6 +65,7 @@ describe('StripeGateway.verifyWebhook', () => {
       providerPaymentId: 'pi_123',
       amount: '117.00',
       currency: 'USD',
+      sessionId: 'cs_test_1', // ADR-0006 AMEND 1c — id của checkout session
     });
     expect(event.raw).toEqual(JSON.parse(body));
   });
@@ -134,6 +135,7 @@ describe('StripeGateway.verifyWebhook', () => {
       eventId: 'evt_2',
       type: 'payment.expired',
       bookingId: 'b-1',
+      sessionId: 'cs_test_1', // AMEND 1c: expired chỉ được huỷ ĐÚNG session này
     });
   });
 
@@ -151,6 +153,8 @@ describe('StripeGateway.verifyWebhook', () => {
     });
     expect(event.type).toBe('payment.failed');
     expect(event.bookingId).toBeUndefined();
+    // data.object ở đây là PaymentIntent — id của nó KHÔNG phải session id.
+    expect(event.sessionId).toBeUndefined();
   });
 
   it("maps anything else to 'other'", async () => {

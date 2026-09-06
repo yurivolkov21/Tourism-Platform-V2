@@ -266,6 +266,8 @@ interface PayPalEventShape {
     id?: string;
     custom_id?: string;
     amount?: { value?: string; currency_code?: string };
+    /** Order gốc của một capture — nguồn cho `VerifiedEvent.sessionId` (AMEND 1c). */
+    supplementary_data?: { related_ids?: { order_id?: string } };
   };
 }
 
@@ -296,11 +298,15 @@ function mapPayPalEvent(event: PayPalEventShape): VerifiedEvent {
       : {};
 
   const base = { eventId: event.id, raw: event };
+  // Order (= session của money-path) mà capture này thuộc về — AMEND 1c.
+  const orderId = resource.supplementary_data?.related_ids?.order_id;
+  const sessionId = orderId ? { sessionId: orderId } : {};
   switch (event.event_type) {
     case 'PAYMENT.CAPTURE.COMPLETED':
       return {
         ...base,
         type: 'payment.completed',
+        ...sessionId,
         ...(resource.custom_id ? { bookingId: resource.custom_id } : {}),
         ...(resource.id ? { providerPaymentId: resource.id } : {}),
         ...money,
@@ -309,6 +315,7 @@ function mapPayPalEvent(event: PayPalEventShape): VerifiedEvent {
       return {
         ...base,
         type: 'payment.failed',
+        ...sessionId,
         ...(resource.custom_id ? { bookingId: resource.custom_id } : {}),
         ...(resource.id ? { providerPaymentId: resource.id } : {}),
       };

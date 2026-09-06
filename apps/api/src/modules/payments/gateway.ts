@@ -113,6 +113,14 @@ export interface VerifiedEvent {
   eventId: string;
   type: 'payment.completed' | 'payment.failed' | 'payment.expired' | 'other';
   bookingId?: string;
+  /**
+   * Checkout session mà event này nói về (ADR-0006 AMEND 1c) — Stripe:
+   * `data.object.id` của event `checkout.session.*`; PayPal: order id từ
+   * `resource.supplementary_data.related_ids.order_id`. `payment.expired` chỉ
+   * được huỷ booking khi session này VẪN là session hiện tại của nó — expired
+   * của session cũ đến muộn không huỷ booking đã re-mint.
+   */
+  sessionId?: string;
   /** Handle của payment đã capture (cần về sau để refund). */
   providerPaymentId?: string;
   /** Chuỗi decimal 2 chữ số thập phân như provider báo về (forensics audit H4). */

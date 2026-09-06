@@ -557,6 +557,44 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     );
   });
 
+  it('ADR-0006 AMEND 1c: expired của session CŨ đến muộn KHÔNG huỷ booking đã re-mint sang session mới', async () => {
+    const cookie = await signUpUser('expired-gate@example.com');
+    const booking = await createBooking(cookie); // PENDING trên session S1
+    const s1 = fake.sessions[0];
+    // S1 hết hạn → khách bấm re-checkout → mint S2 (booking giờ neo vào S2).
+    await prisma.booking.update({
+      where: { id: booking.id },
+      data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+    });
+    const retry = await app.inject({
+      method: 'POST',
+      url: `/api/bookings/${booking.code}/checkout`,
+      headers: { cookie },
+    });
+    expect(retry.statusCode).toBe(200);
+    const s2 = fake.sessions[1];
+    expect(s2).toBeDefined();
+
+    // checkout.session.expired của S1 giờ mới tới (Stripe bắn ~lúc hết hạn,
+    // delivery có thể trễ) — gate theo provider_session_id phải chặn nó.
+    const stale = await postWebhook(
+      fake.emitCheckoutExpired(booking.id, { sessionId: s1?.sessionId }),
+    );
+    expect(stale.statusCode).toBe(200);
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+      BookingStatus.PENDING,
+    );
+
+    // expired của ĐÚNG session hiện tại (S2) → huỷ như PAY-1 bình thường.
+    const current = await postWebhook(
+      fake.emitCheckoutExpired(booking.id, { sessionId: s2?.sessionId }),
+    );
+    expect(current.statusCode).toBe(200);
+    expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+      BookingStatus.CANCELLED,
+    );
+  });
+
   it('unknown bookingId in a signed event → 200 not-found (log-and-skip, provider stops retrying)', async () => {
     const event = fake.emitPaymentCompleted('e9200001-dead-4000-8000-000000000000');
     const res = await postWebhook(event);
