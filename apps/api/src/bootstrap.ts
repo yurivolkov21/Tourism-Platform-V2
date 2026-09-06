@@ -28,7 +28,15 @@ import { trustedOrigins, trustProxy } from './config/env.js';
  * chữa tận gốc.
  */
 export function createFastifyAdapter(): FastifyAdapter {
-  return new FastifyAdapter({ trustProxy });
+  // Timeout (W2, ADR-0024 AMEND 2): Nest FastifyAdapter mặc định ghi đè
+  // requestTimeout/connectionTimeout về 0 — tắt luôn default 300s của Node —
+  // nên một client gửi body nhỏ giọt giữ socket VÔ HẠN. 30s cho cả request
+  // (đủ rộng cho refund gọi provider ~10s), 60s cho socket rảnh chờ headers.
+  return new FastifyAdapter({
+    trustProxy,
+    requestTimeout: 30_000,
+    connectionTimeout: 60_000,
+  });
 }
 
 /**

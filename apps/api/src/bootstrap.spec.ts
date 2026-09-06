@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { createFastifyAdapter } from './bootstrap.js';
 import { trustProxy } from './config/env.js';
 
 /**
@@ -46,5 +47,20 @@ describe('trustProxy (bootstrap)', () => {
 
   it('client nối THẲNG từ IP công khai tự gửi X-Forwarded-For → bị bỏ qua, req.ip là socket', async () => {
     expect(await ipSeenBy('203.0.113.9', '198.51.100.7')).toBe('203.0.113.9');
+  });
+});
+
+// ── Timeout tầng HTTP (W2, ADR-0024 AMEND 2): Nest FastifyAdapter ghi đè
+// requestTimeout/connectionTimeout về 0 — tắt luôn default 300s của Node —
+// nên một client giữ body chậm chiếm socket VÔ HẠN trên instance free kiêm
+// worker inline. Pin bằng initialConfig của chính adapter dùng chung. ──
+describe('createFastifyAdapter — timeout (bootstrap)', () => {
+  it('requestTimeout 30s / connectionTimeout 60s nằm trong initialConfig của adapter', () => {
+    const config = createFastifyAdapter().getInstance().initialConfig as {
+      requestTimeout?: number;
+      connectionTimeout?: number;
+    };
+    expect(config.requestTimeout).toBe(30_000);
+    expect(config.connectionTimeout).toBe(60_000);
   });
 });

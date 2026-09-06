@@ -28,5 +28,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 COPY --from=build /out .
 EXPOSE 3001
+# W2 (ADR-0024 AMEND 2): không chạy root — Node không cần bind port <1024,
+# và tiến trình bị chiếm thì thiệt hại dừng ở user thường. `node` có sẵn
+# trong image chính chủ; /out copy từ build là world-readable nên đọc được.
+USER node
 # Worker dùng chung image: override command thành `node dist/worker.js`
 CMD ["node", "dist/main.js"]

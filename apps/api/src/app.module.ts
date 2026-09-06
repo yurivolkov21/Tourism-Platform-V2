@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ORPCModule, onError } from '@orpc/nest';
@@ -7,6 +7,8 @@ import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { AllExceptionsFilter } from './lib/all-exceptions.filter.js';
+import { captureException } from './lib/observability.js';
+import { describeOrpcError, isUnexpectedOrpcError } from './lib/orpc-error-log.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
@@ -27,14 +29,22 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
      * integrations/implement-contract-in-nest). ZodSmartCoercionPlugin biến
      * query string HTTP ("2", "true") thành number/boolean của schema để các
      * schema contract giữ đúng bản chất (không cần z.coerce) cho typed client.
-     * Lỗi ngoài dự kiến (không phải ORPCError) được log qua onError; oRPC vẫn
-     * trả về theo shape JSON INTERNAL_SERVER_ERROR của nó.
+     * Lỗi rơi vào onError được log MỘT DÒNG code/message (W2 mục 6 — dump
+     * nguyên object là chép `cause` của OUTPUT_VALIDATION_FAILED, tức PII
+     * response bị từ chối, ra stdout platform) + đẩy Sentry seam khi bất ngờ
+     * (5xx / không phải ORPCError); oRPC vẫn trả envelope JSON của nó.
      */
     ORPCModule.forRoot({
       plugins: [new ZodSmartCoercionPlugin()],
       interceptors: [
         onError((error) => {
-          console.error('[orpc]', error);
+          const logger = new Logger('oRPC');
+          if (isUnexpectedOrpcError(error)) {
+            logger.error(describeOrpcError(error));
+            captureException(error);
+          } else {
+            logger.warn(describeOrpcError(error));
+          }
         }),
       ],
     }),
