@@ -153,6 +153,8 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     return app.inject({
       method: 'POST',
       url: '/api/webhooks/stripe',
+      // IP công khai: guard toàn cục ADR-0037 miễn loopback ngoài production.
+      remoteAddress: '203.0.113.70',
       headers: {
         'content-type': 'application/json',
         [FAKE_SIGNATURE_HEADER]: signature,

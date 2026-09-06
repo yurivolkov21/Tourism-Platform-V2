@@ -203,13 +203,15 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
   }
 
-  /** Admin refund trực tiếp (W3) — dùng cho test cross-path BK-R1. */
+  /** Admin refund trực tiếp (W3) — dùng cho test cross-path BK-R1. W2
+   *  (ADR-0030 AMEND 1): reason bắt buộc ở contract — helper điền mặc định,
+   *  amount thì từng test khai tường minh (hết nhánh vắng-là-trọn-phần-dư). */
   function postRefund(cookie: string, code: string, payload: Record<string, unknown> = {}) {
     return app.inject({
       method: 'POST',
       url: `/api/admin/bookings/${code}/refund`,
       headers: { cookie },
-      payload,
+      payload: { reason: 'int test', ...payload },
     });
   }
 
@@ -801,7 +803,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const booking = await createPaidBooking(alice);
       await postCancel(alice, booking.code);
 
-      const res = await postRefund(admin, booking.code, {});
+      const res = await postRefund(admin, booking.code, { amount: '117.00' });
       expect(res.statusCode).toBe(422);
       expect(res.json().code).toBe('CANCELLATION_OPEN');
       expect(fake.refunds).toHaveLength(0);
@@ -854,7 +856,8 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
           })
         ).statusCode,
       ).toBe(200);
-      expect((await postRefund(admin, booking.code, {})).statusCode).toBe(200);
+      // Hoàn nốt = GÕ đúng phần dư 67.00 (W2: hết nhánh vắng-amount).
+      expect((await postRefund(admin, booking.code, { amount: '67.00' })).statusCode).toBe(200);
 
       // Hoàn thêm nữa là 422 — sổ đã settle.
       expect((await postRefund(admin, booking.code, { amount: '1.00' })).statusCode).toBe(422);
@@ -874,7 +877,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
 
     fake.refundDelayMs = 100; // ép hai path cùng đọc ledger=0 trước khi bên nào ghi
     const [a, b] = await Promise.allSettled([
-      postRefund(admin, booking.code, {}), // W3 admin full refund
+      postRefund(admin, booking.code, { amount: '117.00' }), // W3 refund trọn 117
       postDecide(admin, request.id, { approve: true }), // W4 cancel-approve full refund
     ]);
     const codes = [a, b]

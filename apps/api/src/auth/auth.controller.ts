@@ -1,11 +1,10 @@
-import { All, Controller, Req, Res, UseGuards } from '@nestjs/common';
+import { All, Controller, Req, Res } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { AUTH_THROTTLE } from '../config/throttle.js';
 import { auth } from './auth.config.js';
 import { Public } from './public.decorator.js';
-import { WriteOnlyThrottlerGuard } from './write-only-throttler.guard.js';
 
 /**
  * Route BA lộ user-enumeration mà không app nào của ta gọi (ADR-0017 §7c):
@@ -24,8 +23,8 @@ const OTP_CHECK_GENERIC_400 = JSON.stringify({ code: 'INVALID_OTP', message: 'In
  */
 // Mount Better Auth — chính là nơi đăng nhập, không thể đòi đã đăng nhập.
 @Public()
-// Trần Nest cho cụm auth (W2 mục 3): chỉ đếm non-GET, xem AUTH_THROTTLE.
-@UseGuards(WriteOnlyThrottlerGuard)
+// Trần Nest cho cụm auth (W2 mục 3): AUTH_THROTTLE đè default của guard
+// toàn cục ADR-0037 (không cần @UseGuards riêng — đếm đôi cùng key).
 @Throttle({ default: AUTH_THROTTLE })
 @Controller()
 export class AuthController {

@@ -8,9 +8,8 @@ import {
   Post,
   type RawBodyRequest,
   Req,
-  UseGuards,
 } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import type { FastifyRequest } from 'fastify';
 import { Public } from '../../auth/public.decorator.js';
 import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
@@ -49,7 +48,6 @@ import { PaymentsService } from './payments.service.js';
 // Throttle theo IP, trần rộng tay (W1 — xem WEBHOOK_THROTTLE): route public
 // mà verify PayPal tốn một round-trip mạng, không trần là DoS ẩn danh rẻ tiền.
 @Public()
-@UseGuards(ThrottlerGuard)
 @Throttle({ default: WEBHOOK_THROTTLE })
 @Controller('api/webhooks')
 export class WebhooksController {

@@ -76,6 +76,9 @@ function postEnquiry(
   return app.inject({
     method: 'POST',
     url: '/api/enquiries',
+    // remoteAddress THẬT (W2/ADR-0037): guard toàn cục miễn loopback ngoài
+    // production và đo bằng địa chỉ socket — XFF không có tiếng nói ở đây.
+    remoteAddress: fakeIp,
     headers: { 'x-forwarded-for': fakeIp },
     payload,
   });

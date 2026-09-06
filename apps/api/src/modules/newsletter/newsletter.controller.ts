@@ -1,5 +1,4 @@
-import { Controller, Logger, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Controller, Logger } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
@@ -20,7 +19,6 @@ export class NewsletterController {
   // spam — gắn ở METHOD (không phải class) vì chỉ áp cho endpoint GHI công
   // khai, cùng khuôn với EnquiriesController. `unsubscribeConfirm` (GET) bên
   // dưới cố ý KHÔNG có guard này — đọc thuần, không cần trần tần suất.
-  @UseGuards(ThrottlerGuard)
   @Implement(contract.newsletter.subscribe)
   subscribe() {
     return implement(contract.newsletter.subscribe).handler(async ({ input }) => {
@@ -61,7 +59,6 @@ export class NewsletterController {
   }
 
   /** POST — thực thi huỷ đăng ký thật. Idempotent: gọi lại lần hai vẫn 200. */
-  @UseGuards(ThrottlerGuard)
   @Implement(contract.newsletter.unsubscribe)
   unsubscribe() {
     return implement(contract.newsletter.unsubscribe).handler(async ({ input, errors }) => {
@@ -87,7 +84,6 @@ export class NewsletterController {
    * người VỪA huỷ, y hệt cái bẫy mà việc tách GET/POST của `unsubscribe` ở
    * trên sinh ra để tránh. Idempotent: gọi lại lần hai vẫn 200.
    */
-  @UseGuards(ThrottlerGuard)
   @Implement(contract.newsletter.resubscribe)
   resubscribe() {
     return implement(contract.newsletter.resubscribe).handler(async ({ input, errors }) => {

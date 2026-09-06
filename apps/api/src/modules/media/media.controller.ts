@@ -1,5 +1,5 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { Throttle, ThrottlerGuard } from '@nestjs/throttler';
+import { Controller } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
@@ -26,7 +26,6 @@ export class MediaController {
   // chung IP (xem config/throttle.ts). `@Throttle({ default: ... })` ghi đè
   // throttler tên "default" đăng ký ở ThrottlerModule.forRoot() chỉ cho
   // route này.
-  @UseGuards(ThrottlerGuard)
   @Throttle({ default: SIGN_UPLOAD_THROTTLE })
   @Implement(contract.media.signUpload)
   signUpload(@CurrentUser() user: SessionUser) {

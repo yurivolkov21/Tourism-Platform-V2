@@ -1,12 +1,9 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
-import { AuthedWriteThrottlerGuard } from '../../auth/authed-write-throttler.guard.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Roles } from '../../auth/roles.decorator.js';
-import { AUTHED_WRITE_THROTTLE } from '../../config/throttle.js';
 import { UserRole } from '../../generated/prisma/enums.js';
 import {
   CancellationAlreadyDecidedError,
@@ -38,10 +35,6 @@ export class AdminCancellationsController {
     );
   }
 
-  // Đường ghi TIỀN của admin cũng có trần (vòng vá review 06/09): phiên admin
-  // bị chiếm hay UI double-submit không được bắn refund vô hạn tới provider.
-  @UseGuards(AuthedWriteThrottlerGuard)
-  @Throttle({ default: AUTHED_WRITE_THROTTLE })
   @Implement(contract.admin.cancellations.decide)
   decide(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.cancellations.decide).handler(async ({ input, errors }) => {

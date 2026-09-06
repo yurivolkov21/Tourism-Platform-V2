@@ -1,11 +1,8 @@
-import { Controller, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Controller } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
-import { AUTHED_WRITE_THROTTLE } from '../config/throttle.js';
 import { AccountService, AvatarPublicIdInvalidError } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
-import { AuthedWriteThrottlerGuard } from './authed-write-throttler.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 
 /**
@@ -17,9 +14,7 @@ import { CurrentUser } from './current-user.decorator.js';
 export class AccountAvatarController {
   constructor(private readonly account: AccountService) {}
 
-  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
-  @UseGuards(AuthedWriteThrottlerGuard)
-  @Throttle({ default: AUTHED_WRITE_THROTTLE })
+  // Đường GHI: trần mặc định toàn cục lo (ADR-0037 — authed theo user).
   @Implement(contract.account.setAvatar)
   setAvatar(@CurrentUser() user: SessionUser) {
     return implement(contract.account.setAvatar).handler(async ({ input, errors }) => {

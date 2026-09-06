@@ -19,13 +19,12 @@ export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
 export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 
 /**
- * Endpoint GHI ĐÃ-AUTH (W1, audit 05/09 cụm 2 — khuôn SIGN_UPLOAD_THROTTLE):
- * bookings.create/checkout/cancel/cancelPending (mỗi create/checkout = một
- * session provider thật), reviews.create/update, wishlist.set, avatar, xoá tài
- * khoản. Bucket theo `user.id` qua {@link AuthedWriteThrottlerGuard} — theo IP
- * thì NAT chung IP bị khoá oan theo nhau còn pool IP xoay vòng lách được.
- * 20/60s: người thật không ghi 21 lần một phút; mỗi route một bucket riêng
- * (generateKey theo handler) nên trần không cộng dồn chéo endpoint.
+ * Trần MẶC ĐỊNH cho endpoint GHI ĐÃ-AUTH (W1 khai sinh, W2/ADR-0037 thành
+ * mặc định toàn cục qua DefaultWriteThrottlerGuard — không còn khai từng
+ * route). Bucket theo `user.id` — theo IP thì NAT chung IP bị khoá oan theo
+ * nhau còn pool IP xoay vòng lách được. 20/60s: người thật không ghi 21 lần
+ * một phút; mỗi route một bucket riêng (generateKey theo handler) nên trần
+ * không cộng dồn chéo endpoint.
  */
 export const AUTHED_WRITE_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 

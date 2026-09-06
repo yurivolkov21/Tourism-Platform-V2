@@ -5,6 +5,7 @@ import { ORPCModule, onError } from '@orpc/nest';
 import { experimental_ZodSmartCoercionPlugin as ZodSmartCoercionPlugin } from '@orpc/zod/zod4';
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
+import { DefaultWriteThrottlerGuard } from './config/default-write-throttler.guard.js';
 import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { AllExceptionsFilter } from './lib/all-exceptions.filter.js';
 import { captureException } from './lib/observability.js';
@@ -49,13 +50,13 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
       ],
     }),
     /**
-     * Rate limiting (lỗ #5 trong infra-parity). Đăng ký module ở đây nhưng
-     * KHÔNG gắn ThrottlerGuard toàn cục — từng controller công khai tự gắn
-     * `@UseGuards(ThrottlerGuard)`, xem `config/throttle.ts`.
+     * Rate limiting — từ W2 là guard TOÀN CỤC (ADR-0037, đảo mô hình opt-in
+     * của ADR-0010): default module vẫn là PUBLIC_WRITE_THROTTLE, logic chọn
+     * trần authed/public sống trong DefaultWriteThrottlerGuard bên dưới.
      *
-     * Đếm theo `req.ip`, mà `trustProxy` (danh sách proxy được tin, xem
-     * `bootstrap.ts`) đã bật ở adapter — thiếu nó thì mọi client dùng chung
-     * IP của proxy và trần này khoá sạch cả site.
+     * Đếm theo `req.ip` cho public, mà `trustProxy` (danh sách proxy được
+     * tin, xem `bootstrap.ts`) đã bật ở adapter — thiếu nó thì mọi client
+     * dùng chung IP của proxy và trần này khoá sạch cả site.
      */
     ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE]),
     HealthModule,
@@ -89,6 +90,12 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
      * compiler/lint/test nào bắt được.
      */
     { provide: APP_GUARD, useClass: AuthGuard },
+    /**
+     * ADR-0037: trần ghi MẶC ĐỊNH — đứng SAU AuthGuard (guard toàn cục chạy
+     * theo thứ tự đăng ký) để đọc được `sessionUser`. GET không đếm; route
+     * ghi mới không khai gì vẫn có trần; `@Throttle` per-route thắng.
+     */
+    { provide: APP_GUARD, useClass: DefaultWriteThrottlerGuard },
     /**
      * ADR-0010: chuẩn hoá mọi lỗi rơi vào pipeline Nest (guard 401/403, route
      * Nest thuần, lỗi bất ngờ) về envelope oRPC `{defined, code, status,

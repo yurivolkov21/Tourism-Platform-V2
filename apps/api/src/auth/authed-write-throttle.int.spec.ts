@@ -5,10 +5,12 @@ import { AUTHED_WRITE_THROTTLE } from '../config/throttle.js';
 import { prisma } from './auth.config.js';
 
 /**
- * Integration (Docker PG, db tourism_test) — W1 (audit 05/09 cụm 2, mục Vừa):
- * trần tần suất cho endpoint GHI ĐÃ-AUTH, bucket theo `user.id` chứ KHÔNG theo
- * IP. Theo IP thì (a) cả một NAT/proxy chung IP bị khoá oan theo nhau, và (b)
- * một tài khoản đi qua pool IP xoay vòng không bao giờ chạm trần.
+ * Integration (Docker PG, db tourism_test) — W1 khai sinh, từ W2 trần này do
+ * guard TOÀN CỤC ADR-0037 áp (route không còn khai decorator): endpoint GHI
+ * ĐÃ-AUTH bucket theo `user.id` chứ KHÔNG theo IP. Theo IP thì (a) cả một
+ * NAT/proxy chung IP bị khoá oan theo nhau, và (b) một tài khoản đi qua pool
+ * IP xoay vòng không bao giờ chạm trần. remoteAddress công khai vì loopback
+ * được miễn ngoài production (xem WriteOnlyThrottlerGuard).
  */
 
 const PASSWORD = 'password-123';
@@ -25,7 +27,7 @@ function sessionCookie(res: { headers: Record<string, unknown> }): string {
   return pair;
 }
 
-describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1)', () => {
+describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1, guard toàn cục từ W2)', () => {
   let app: NestFastifyApplication;
 
   beforeAll(async () => {
@@ -68,6 +70,7 @@ describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1)', () => 
     app.inject({
       method: 'PATCH',
       url: '/api/account/avatar',
+      remoteAddress: '203.0.113.60',
       headers: { cookie },
       payload: { publicId: null },
     });
@@ -96,6 +99,7 @@ describe('AUTHED_WRITE_THROTTLE — trần ghi đã-auth theo user (W1)', () => 
       app.inject({
         method: 'POST',
         url: '/api/bookings/BK-NOSUCH00/checkout',
+        remoteAddress: '203.0.113.60',
         headers: { cookie: carol },
       });
     for (let i = 0; i < AUTHED_WRITE_THROTTLE.limit; i++) {

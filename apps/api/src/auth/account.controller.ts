@@ -1,7 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpException, UseGuards } from '@nestjs/common';
-import { Throttle } from '@nestjs/throttler';
+import { Body, Controller, Delete, Get, HttpCode, HttpException } from '@nestjs/common';
 import { z } from 'zod';
-import { AUTHED_WRITE_THROTTLE } from '../config/throttle.js';
 // NB: AccountService phải là VALUE import (DI qua decorator metadata).
 import {
   AccountCredentialMissingError,
@@ -11,7 +9,6 @@ import {
   AccountService,
 } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
-import { AuthedWriteThrottlerGuard } from './authed-write-throttler.guard.js';
 import { CurrentUser } from './current-user.decorator.js';
 
 /** Body của DELETE /api/account (ADR-0017 §7b) — route REST thuần (không qua
@@ -30,9 +27,7 @@ export class AccountController {
 
   /** Tombstone delete tài khoản của CHÍNH MÌNH (xem AccountService) — đòi
    *  mật khẩu + gate nghiệp vụ, mỗi kết cục một mã lỗi riêng cho web. */
-  // Đường GHI (W1): trần theo user — xem AUTHED_WRITE_THROTTLE.
-  @UseGuards(AuthedWriteThrottlerGuard)
-  @Throttle({ default: AUTHED_WRITE_THROTTLE })
+  // Đường GHI: trần mặc định toàn cục lo (ADR-0037 — authed theo user).
   @Delete()
   @HttpCode(204)
   async deleteOwnAccount(@CurrentUser() user: SessionUser, @Body() body: unknown): Promise<void> {

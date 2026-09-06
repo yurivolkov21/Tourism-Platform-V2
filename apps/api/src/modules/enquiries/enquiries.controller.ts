@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Controller, Logger, UseGuards } from '@nestjs/common';
-import { ThrottlerGuard } from '@nestjs/throttler';
+import { Controller, Logger } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
@@ -11,7 +10,6 @@ import { EnquiriesService, TourNotFoundError } from './enquiries.service.js';
 // ThrottlerGuard riêng (PUBLIC_WRITE_THROTTLE, config/throttle.ts) chống spam
 // vì endpoint này không có auth để dựa vào.
 @Public()
-@UseGuards(ThrottlerGuard)
 @Controller()
 export class EnquiriesController {
   private readonly logger = new Logger(EnquiriesController.name);
