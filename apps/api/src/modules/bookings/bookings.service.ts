@@ -35,6 +35,7 @@ import {
 import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
 import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
+import { withBookingRefundLock } from './refund-lock.js';
 
 /** Departure không tồn tại / không OPEN / đã departed / tour unpublished — cố
  * ý gộp thành một error (contract: một code DEPARTURE_NOT_AVAILABLE duy nhất,
@@ -221,7 +222,7 @@ function estimateRefund(
   if (booking.status !== BookingStatus.PAID) return null;
   const now = new Date();
   const departureDay = calendarDate(booking.departureStartDate);
-  if (departureDay < now.toISOString().slice(0, 10)) return null; // chuyến đã đi
+  if (departureDay < todayUtc()) return null; // chuyến đã đi
   const percent = refundPercentForRequest({
     requestedAt: now,
     paidAt: booking.paidAt?.toISOString() ?? null,
@@ -281,6 +282,16 @@ const CODE_MINT_ATTEMPTS = 3;
  * khách vào một trang thanh toán chết giữa chừng còn tệ hơn một session thừa.
  */
 const SESSION_REUSE_MIN_REMAINING_MS = 5 * 60_000;
+
+/**
+ * "Hôm nay" theo UTC — MỘT thước cho mọi gate "chuyến đã đi chưa" ở tầng Node
+ * (`create`, `reCheckout`, phân loại claim, `estimateRefund`), khớp với
+ * `(now() AT TIME ZONE 'UTC')::date` trong CTE claim (ADR-0009 AMEND 2).
+ * `start_date` là `@db.Date` ngày lịch của điểm khởi hành (VN, UTC+7), nên
+ * "đã đi" theo UTC rộng hơn đời thật đúng 7 giờ — cùng lề với luật walk-in
+ * cùng ngày của `create`, chấp nhận có chủ đích.
+ */
+const todayUtc = (): string => new Date().toISOString().slice(0, 10);
 
 /**
  * Các customer booking flow (spec P2 §3, W1) — logic create-PENDING port từ
@@ -347,11 +358,10 @@ export class BookingsService {
       },
     });
     if (!departure) throw new DepartureNotAvailableError();
-    const todayUtc = new Date().toISOString().slice(0, 10);
     if (
       !departure.tour.isPublished ||
       departure.status !== DepartureStatus.OPEN ||
-      calendarDate(departure.startDate) < todayUtc
+      calendarDate(departure.startDate) < todayUtc()
     ) {
       throw new DepartureNotAvailableError();
     }
@@ -494,67 +504,121 @@ export class BookingsService {
    * double charge: hai trang thanh toán cùng thu được tiền.
    */
   async reCheckout(userId: string, code: string): Promise<Booking | null> {
-    const booking = await prisma.booking.findUnique({
+    const probe = await prisma.booking.findUnique({
       where: { code },
-      include: { tour: bookingTourInclude },
+      select: { id: true, userId: true },
     });
-    if (!booking || booking.userId !== userId) return null;
-    if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
+    if (!probe || probe.userId !== userId) return null;
 
-    const sessionAlive =
-      booking.providerSessionId !== null &&
-      booking.checkoutSessionUrl !== null &&
-      booking.checkoutSessionExpiresAt !== null &&
-      booking.checkoutSessionExpiresAt.getTime() > Date.now() + SESSION_REUSE_MIN_REMAINING_MS;
-    if (sessionAlive) {
-      this.logger.log(
-        `Re-checkout for ${booking.code}: returning live session ${booking.providerSessionId}`,
-      );
-      const tourImage = await resolveTourCover(this.media, booking.tourId);
-      return toBooking(booking, booking.checkoutSessionUrl, tourImage);
-    }
-
-    const gateway = resolveGateway(this.gateways, booking.paymentProvider);
-    if (booking.providerSessionId && gateway.expireSession) {
-      try {
-        await gateway.expireSession(booking.providerSessionId);
-      } catch (err) {
-        // Best-effort: session thường đã tự expired ở provider (đó là lý do ta
-        // vào nhánh này) và API expire từ chối session không còn `open`.
-        this.logger.warn(
-          `Re-checkout for ${booking.code}: expireSession(${booking.providerSessionId}) failed — ${err instanceof Error ? err.message : 'unknown'}`,
-        );
-      }
-    }
-
-    let session: CheckoutSession;
-    try {
-      session = await gateway.createCheckoutSession({
-        bookingId: booking.id,
-        code: booking.code,
-        amount: booking.totalAmount.toFixed(2),
-        currency: booking.currency,
-        description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
-        successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
-        cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+    // TOÀN BỘ check→mint→ghi nằm trong advisory lock của booking (AMEND 2b):
+    // hai request "Pay again" song song từng cùng thấy session chết, cùng mint,
+    // và `update` chỉ giữ được session ghi sau — session ghi trước sống mồ côi
+    // ở provider, đúng cửa double charge mà AMEND 1a hứa đóng. Provider HTTP
+    // trong tx là ngoại lệ có chủ đích (cùng lẽ với đường refund, ADR-0009).
+    const { row, checkoutUrl } = await withBookingRefundLock(probe.id, async (tx) => {
+      const booking = await tx.booking.findUniqueOrThrow({
+        where: { id: probe.id },
+        include: { tour: bookingTourInclude },
       });
-    } catch (err) {
-      this.logger.error(
-        `Re-checkout mint failed for ${booking.code}: ${err instanceof Error ? err.message : 'unknown'}`,
-      );
-      throw new CheckoutFailedError();
-    }
-    const updated = await prisma.booking.update({
-      where: { id: booking.id },
-      data: {
-        providerSessionId: session.sessionId,
-        checkoutSessionUrl: session.checkoutUrl,
-        checkoutSessionExpiresAt: session.expiresAt,
-      },
-      include: { tour: bookingTourInclude },
+      if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
+
+      // Cùng gate chuyến với `create` và với claim (ADR-0009 AMEND 1/2): mint
+      // trang thanh toán cho một booking mà claim chắc chắn từ chối là mời
+      // khách trả một khoản sẽ bị auto-refund.
+      const departure = await tx.tourDeparture.findUnique({
+        where: { id: booking.departureId },
+        select: { status: true, startDate: true },
+      });
+      if (
+        !departure ||
+        departure.status !== DepartureStatus.OPEN ||
+        calendarDate(departure.startDate) < todayUtc()
+      ) {
+        throw new DepartureNotAvailableError();
+      }
+
+      const sessionAlive =
+        booking.providerSessionId !== null &&
+        booking.checkoutSessionUrl !== null &&
+        booking.checkoutSessionExpiresAt !== null &&
+        booking.checkoutSessionExpiresAt.getTime() > Date.now() + SESSION_REUSE_MIN_REMAINING_MS;
+      if (sessionAlive) {
+        this.logger.log(
+          `Re-checkout for ${booking.code}: returning live session ${booking.providerSessionId}`,
+        );
+        return { row: booking, checkoutUrl: booking.checkoutSessionUrl as string };
+      }
+
+      const gateway = resolveGateway(this.gateways, booking.paymentProvider);
+      let session: CheckoutSession;
+      try {
+        session = await gateway.createCheckoutSession({
+          bookingId: booking.id,
+          code: booking.code,
+          amount: booking.totalAmount.toFixed(2),
+          currency: booking.currency,
+          description: `${booking.tourTitle} (${calendarDate(booking.departureStartDate)} – ${calendarDate(booking.departureEndDate)})`,
+          successUrl: `${env.FRONTEND_URL}/checkout/success?code=${booking.code}`,
+          cancelUrl: `${env.FRONTEND_URL}/checkout/cancel?code=${booking.code}`,
+        });
+      } catch (err) {
+        this.logger.error(
+          `Re-checkout mint failed for ${booking.code}: ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+        throw new CheckoutFailedError();
+      }
+
+      // Ghi session MỚI trước, expire session CŨ sau (AMEND 2b): expire trước
+      // là tự bắn một `checkout.session.expired` cho session vẫn đang là hiện
+      // tại của booking — gate AMEND 1c khớp và huỷ đúng booking đang re-mint.
+      // Gate `status = PENDING` ở đây vì trong lock vẫn có kẻ ghi ngoài lock
+      // (webhook expired, sweep): 0 row là booking đã đổi trạng thái → thu hồi
+      // session vừa mint rồi báo 422, không trả cho khách một URL thanh toán
+      // của booking đã huỷ.
+      const written = await tx.booking.updateMany({
+        where: { id: booking.id, status: BookingStatus.PENDING },
+        data: {
+          providerSessionId: session.sessionId,
+          checkoutSessionUrl: session.checkoutUrl,
+          checkoutSessionExpiresAt: session.expiresAt,
+        },
+      });
+      if (written.count === 0) {
+        await this.expireSessionBestEffort(gateway, booking.code, session.sessionId);
+        throw new BookingNotPendingError();
+      }
+      if (booking.providerSessionId) {
+        await this.expireSessionBestEffort(gateway, booking.code, booking.providerSessionId);
+      }
+      const updated = await tx.booking.findUniqueOrThrow({
+        where: { id: booking.id },
+        include: { tour: bookingTourInclude },
+      });
+      return { row: updated, checkoutUrl: session.checkoutUrl };
     });
-    const tourImage = await resolveTourCover(this.media, booking.tourId);
-    return toBooking(updated, session.checkoutUrl, tourImage);
+    const tourImage = await resolveTourCover(this.media, row.tourId);
+    return toBooking(row, checkoutUrl, tourImage);
+  }
+
+  /**
+   * Vô hiệu một session ở provider, best-effort: session thường đã tự expired
+   * ở provider (đó là lý do ta mint lại) và API expire từ chối session không
+   * còn `open`; provider không có API (PayPal) thì bỏ qua. Lỗi chỉ log — lưới
+   * cuối là auto-refund dup-capture ở PaymentsService.
+   */
+  private async expireSessionBestEffort(
+    gateway: PaymentGateway,
+    code: string,
+    sessionId: string,
+  ): Promise<void> {
+    if (!gateway.expireSession) return;
+    try {
+      await gateway.expireSession(sessionId);
+    } catch (err) {
+      this.logger.warn(
+        `expireSession(${sessionId}) for ${code} failed — ${err instanceof Error ? err.message : 'unknown'}`,
+      );
+    }
   }
 
   /**
@@ -566,13 +630,27 @@ export class BookingsService {
   async cancelPending(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({ where: { code } });
     if (!booking || booking.userId !== userId) return null;
+    // Xoá luôn URL/hạn session (AMEND 2b): booking đã huỷ không được giữ một
+    // trang thanh toán còn sống — và vô hiệu nó ở provider ngay bên dưới.
     const rows = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
       UPDATE bookings
-      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now()
+      SET status = 'CANCELLED'::"BookingStatus", cancelled_at = now(), updated_at = now(),
+          checkout_session_url = NULL, checkout_session_expires_at = NULL
       WHERE id = ${booking.id}::uuid AND status = 'PENDING'::"BookingStatus"
       RETURNING id
     `);
     if (rows.length === 0) throw new BookingNotPendingError();
+    if (booking.providerSessionId) {
+      // Khách bấm Huỷ trong lúc tab Stripe còn mở: không expire thì tab đó vẫn
+      // thu được tiền → orphan refund + event rác. Best-effort, sau khi đã
+      // CANCELLED (thứ tự ngược với reCheckout — ở đây không còn session nào
+      // là "hiện tại" để webhook expired huỷ nhầm).
+      await this.expireSessionBestEffort(
+        resolveGateway(this.gateways, booking.paymentProvider),
+        booking.code,
+        booking.providerSessionId,
+      );
+    }
     const updated = await prisma.booking.findUniqueOrThrow({
       where: { id: booking.id },
       include: { tour: bookingTourInclude },
@@ -794,7 +872,12 @@ export class BookingsService {
   ): Promise<ClaimOutcome> {
     let claimed: { id: string }[];
     try {
-      claimed = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
+      // Trong advisory lock của booking (ADR-0006 AMEND 2c): đường auto-refund
+      // giữ lock suốt refund→ledger→cancel, nên một delivery thứ hai không
+      // claim được PAID vào đúng khe giữa lúc tiền đã hoàn và lúc booking
+      // được flip CANCELLED (admin mở lại chuyến giữa hai delivery).
+      claimed = await withBookingRefundLock(bookingId, (tx) =>
+        tx.$queryRaw<{ id: string }[]>(Prisma.sql`
         WITH claim AS (
           UPDATE bookings b
           SET status = 'PAID'::"BookingStatus",
@@ -807,11 +890,13 @@ export class BookingsService {
             -- UPDATE target — chấp nhận: race "đóng chuyến đúng lúc capture về"
             -- là thao tác vận hành hiếm, không phải race tiền; race tiền
             -- (double claim) vẫn gate trên b.status ở trên.
+            -- Ngày so theo UTC TƯỜNG MINH (ADR-0009 AMEND 2), cùng thước với
+            -- todayUtc() phía Node — không phụ thuộc TZ session của DB.
             AND EXISTS (
               SELECT 1 FROM tour_departures dep
               WHERE dep.id = b.departure_id
                 AND dep.status = 'OPEN'::"DepartureStatus"
-                AND dep.start_date >= current_date
+                AND dep.start_date >= (now() AT TIME ZONE 'UTC')::date
             )
           RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
                     b.code, b.contact_email, b.contact_name, b.tour_title,
@@ -844,7 +929,8 @@ export class BookingsService {
           ON CONFLICT (dedupe_key) DO NOTHING
         )
         SELECT id FROM claim
-      `);
+      `),
+      );
     } catch (err) {
       if (isSeatsCheckViolation(err)) {
         // CHECK đã abort cả statement: không PAID flip, không seat, không
@@ -874,11 +960,10 @@ export class BookingsService {
         where: { id: booking.departureId },
         select: { status: true, startDate: true },
       });
-      const todayUtc = new Date().toISOString().slice(0, 10);
       if (
         !departure ||
         departure.status !== DepartureStatus.OPEN ||
-        calendarDate(departure.startDate) < todayUtc
+        calendarDate(departure.startDate) < todayUtc()
       ) {
         outcome = 'departure-closed';
       } else {

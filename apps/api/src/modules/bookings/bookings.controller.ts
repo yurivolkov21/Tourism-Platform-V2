@@ -82,6 +82,9 @@ export class BookingsController {
         if (error instanceof BookingNotPendingError) {
           throw errors.NOT_PENDING({ message: error.message });
         }
+        if (error instanceof DepartureNotAvailableError) {
+          throw errors.DEPARTURE_NOT_AVAILABLE({ message: error.message });
+        }
         if (error instanceof CheckoutFailedError) {
           throw errors.CHECKOUT_FAILED({ message: error.message });
         }

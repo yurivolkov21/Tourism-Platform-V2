@@ -15,6 +15,13 @@ import {
   QuoteCard,
 } from './layout.js';
 
+/** Câu cho khách theo mã lý do auto-refund của PaymentsService (copy email). */
+const REFUND_REASON_COPY: Record<string, string> = {
+  overbooked: 'The departure sold out before your payment was confirmed',
+  'departure-closed': 'The departure was closed or had already started when your payment arrived',
+  'orphaned capture': 'The booking had already been cancelled when your payment arrived',
+};
+
 /**
  * Render email theo từng type (ADR-0025, vòng 2): copy + cấu trúc port từ
  * `email.templates.ts` của Nexora tiền nhiệm (hệ Barebone user duyệt 13/07),
@@ -102,6 +109,11 @@ function buildEmail(
   const supportUrl = frontendUrl ? `${frontendUrl}/contact` : undefined;
   const policyUrl = frontendUrl ? `${frontendUrl}/cancellation-policy` : undefined;
   const bookingReason = "You're receiving this because of a booking made at Nexora.";
+  // `reason` trong payload BOOKING_REFUNDED là mã nội bộ của PaymentsService
+  // (`overbooked` / `departure-closed` / `orphaned capture`) — dịch sang câu
+  // cho khách ở đây (vòng vá review 06/09: khách từng nhận
+  // "Reason: departure-closed"). Mã lạ thì in nguyên, còn hơn im.
+  const refundReason = (raw: string): string => REFUND_REASON_COPY[raw] ?? raw;
 
   switch (type) {
     case EmailType.BOOKING_CONFIRMATION: {
@@ -156,7 +168,8 @@ function buildEmail(
         ),
       };
     }
-    case EmailType.BOOKING_REFUNDED:
+    case EmailType.BOOKING_REFUNDED: {
+      const reason = f('reason');
       return {
         subject: `Refund on its way — ${subjectCode}`,
         node: (
@@ -182,8 +195,8 @@ function buildEmail(
                       [string, ReactNode]
                     >)
                   : []),
-                ...(f('reason')
-                  ? ([['Reason', <PlainValue key="v">{f('reason')}</PlainValue>]] as Array<
+                ...(reason
+                  ? ([['Reason', <PlainValue key="v">{refundReason(reason)}</PlainValue>]] as Array<
                       [string, ReactNode]
                     >)
                   : []),
@@ -193,6 +206,7 @@ function buildEmail(
           </EmailShell>
         ),
       };
+    }
     case EmailType.REVIEW_APPROVED:
       return {
         subject: `Your review is live${s('title') ? ` — ${s('title')}` : ''}`,

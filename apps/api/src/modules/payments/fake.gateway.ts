@@ -69,6 +69,14 @@ export class FakeGateway implements PaymentGateway {
   failCheckout = false;
 
   /**
+   * Test toggle: bật để `expireSession` NÉM lỗi — mô phỏng Stripe từ chối
+   * expire một session không còn `open`. reCheckout phải coi đó là best-effort:
+   * log rồi VẪN mint (vòng vá review 06/09 — nhánh catch chưa từng có test).
+   * Reset về false trong `reset()`.
+   */
+  failExpireSession = false;
+
+  /**
    * Test toggle: trễ nhân tạo (ms) trong `refund()` — dùng để ÉP race concurrent
    * (hai refund cùng đọc ledger trước khi bên nào ghi), canh advisory lock BK-R1.
    * Reset về 0 trong `reset()`.
@@ -106,6 +114,9 @@ export class FakeGateway implements PaymentGateway {
 
   /** Ghi nhận session bị vô hiệu — int test assert reCheckout expire đúng cái cũ. */
   async expireSession(sessionId: string): Promise<void> {
+    if (this.failExpireSession) {
+      throw new Error('FakeGateway: forced expireSession failure');
+    }
     this.expiredSessions.push(sessionId);
   }
 
@@ -201,6 +212,7 @@ export class FakeGateway implements PaymentGateway {
     this.failRefunds = false;
     this.refundDelayMs = 0;
     this.failCheckout = false;
+    this.failExpireSession = false;
     this.followUpError = undefined;
   }
 

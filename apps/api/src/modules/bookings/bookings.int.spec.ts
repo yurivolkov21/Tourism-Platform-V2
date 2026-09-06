@@ -124,6 +124,10 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
   });
 
   afterAll(async () => {
+    // Ảnh bìa seed ở beforeAll không nằm trong TRUNCATE của file khác
+    // (`ownerId` đa hình, không FK) — dọn ở đây để thứ tự file không ảnh
+    // hưởng spec chạy sau (vòng vá review 06/09).
+    await prisma.$executeRawUnsafe('TRUNCATE TABLE media_assets CASCADE');
     await app.close();
     await prisma.$disconnect();
   });
@@ -337,6 +341,60 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       expect(row.checkoutSessionExpiresAt?.getTime()).toBeGreaterThan(Date.now());
     });
 
+    it('session còn dưới lề 5′ → coi như hết sống: mint mới, không trả một trang thanh toán sắp chết', async () => {
+      const cookie = await signUpUser('session-margin@example.com');
+      const body = (await createBooking(cookie)).json();
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() + 2 * 60_000) },
+      });
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(200);
+      expect(fake.sessions).toHaveLength(2);
+      expect(retry.json().checkoutUrl).toBe(fake.sessions[1]?.checkoutUrl);
+    });
+
+    it('expireSession NÉM (Stripe từ chối session không còn open) → vẫn mint, best-effort đúng nghĩa', async () => {
+      const cookie = await signUpUser('session-expire-fails@example.com');
+      const body = (await createBooking(cookie)).json();
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+      });
+      fake.failExpireSession = true;
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(200);
+      expect(fake.sessions).toHaveLength(2);
+      const row = await prisma.booking.findUniqueOrThrow({ where: { code: body.code } });
+      expect(row.providerSessionId).toBe(fake.sessions[1]?.sessionId);
+    });
+
+    it('ADR-0009 AMEND 2: reCheckout trên chuyến đã CLOSED → 400 DEPARTURE_NOT_AVAILABLE, không mint', async () => {
+      // Mint trang thanh toán cho booking mà claim chắc chắn từ chối là mời
+      // khách trả một khoản sẽ bị auto-refund.
+      const cookie = await signUpUser('session-closed-dep@example.com');
+      const body = (await createBooking(cookie)).json();
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+      });
+      await prisma.tourDeparture.update({
+        where: { id: depOpen.id },
+        data: { status: DepartureStatus.CLOSED },
+      });
+      try {
+        const retry = await postCheckout(cookie, body.code);
+        expect(retry.statusCode).toBe(400);
+        expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+        expect(fake.sessions).toHaveLength(1);
+      } finally {
+        await prisma.tourDeparture.update({
+          where: { id: depOpen.id },
+          data: { status: DepartureStatus.OPEN },
+        });
+      }
+    });
+
     it('booking cũ trước migration (không có URL/hạn) → coi như hết sống: expire best-effort + mint mới', async () => {
       const cookie = await signUpUser('session-legacy@example.com');
       const body = (await createBooking(cookie)).json();
@@ -366,6 +424,12 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(res.statusCode).toBe(200);
     expect(res.json().status).toBe('CANCELLED');
     expect(res.json().cancelledAt).not.toBeNull();
+    // AMEND 2b: huỷ là vô hiệu luôn session ở provider và xoá URL — tab Stripe
+    // còn mở không được thu tiền của một booking đã huỷ.
+    expect(fake.expiredSessions).toEqual([fake.sessions[0]?.sessionId]);
+    const cancelledRow = await prisma.booking.findUniqueOrThrow({ where: { code } });
+    expect(cancelledRow.checkoutSessionUrl).toBeNull();
+    expect(cancelledRow.checkoutSessionExpiresAt).toBeNull();
 
     // Hủy lại (đã CANCELLED) → 422 NOT_PENDING.
     const again = await app.inject({
@@ -451,6 +515,14 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(res.statusCode).toBe(422);
     expect(res.json()).toMatchObject({ code: 'PARTY_TOO_LARGE' });
     expect(await prisma.booking.count()).toBe(0); // không PENDING mồ côi
+    // Trẻ em TÍNH VÀO trần nhóm: 10 + 7 = 17 > 16.
+    const withChildren = await createBooking(cookie, {
+      ...createPayload,
+      numAdults: 10,
+      numChildren: 7,
+    });
+    expect(withChildren.statusCode).toBe(422);
+    expect(withChildren.json()).toMatchObject({ code: 'PARTY_TOO_LARGE' });
 
     // Đúng trần (16) thì không bị luật này chặn — nó rơi tiếp xuống seat
     // check (departure chỉ còn 5 ghế → SEATS_UNAVAILABLE, không phải 422).
@@ -634,6 +706,18 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     });
     // depOpen khởi hành +60 ngày — số ngày do server đếm, không phải client.
     expect(paidRes.json().refundEstimate.daysBeforeDeparture).toBeGreaterThanOrEqual(59);
+
+    // Chuyến ĐÃ ĐI: không còn gì để ước tính (không có nút xin huỷ) → null.
+    await prisma.booking.update({
+      where: { code },
+      data: { departureStartDate: new Date(Date.now() - 3 * 86_400_000) },
+    });
+    const goneRes = await app.inject({
+      method: 'GET',
+      url: `/api/bookings/${code}`,
+      headers: { cookie },
+    });
+    expect(goneRes.json().refundEstimate).toBeNull();
   });
 
   it('GET /api/bookings/{code}: cancellationStatus null trước khi xin hủy, REQUESTED sau khi xin', async () => {

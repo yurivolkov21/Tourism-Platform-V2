@@ -2,7 +2,11 @@ import { Test } from '@nestjs/testing';
 import { prisma } from '../auth/auth.config.js';
 import type { Prisma } from '../generated/prisma/client.js';
 import { BookingStatus } from '../generated/prisma/enums.js';
-import { PENDING_TTL_MINUTES, PendingSweepService } from './pending-sweep.service.js';
+import {
+  PENDING_HARD_TTL_HOURS,
+  PENDING_TTL_MINUTES,
+  PendingSweepService,
+} from './pending-sweep.service.js';
 import { WorkerModule } from './worker.module.js';
 
 /**
@@ -141,5 +145,25 @@ describe('pending-sweep worker integration (WRK-1)', () => {
     expect(n).toBe(1);
     expect(await statusOf(remintedAlive)).toBe(BookingStatus.PENDING);
     expect(await statusOf(remintedDead)).toBe(BookingStatus.CANCELLED);
+  });
+
+  it('ADR-0006 AMEND 2d: trần CỨNG — PENDING quá PENDING_HARD_TTL_HOURS bị sweep dù session còn sống', async () => {
+    // Re-mint liên tục (mỗi ~55′ một lần) từng giữ PENDING sống vô hạn vì
+    // `created_at` không còn là trần tuyệt đối sau AMEND 1c.
+    const immortal = await seedBooking({
+      code: 'BK-SWEEPHARD',
+      minutesAgo: PENDING_HARD_TTL_HOURS * 60 + 5,
+      status: BookingStatus.PENDING,
+      sessionExpiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+    const youngAlive = await seedBooking({
+      code: 'BK-SWEEPYOUNG',
+      minutesAgo: PENDING_TTL_MINUTES + 5,
+      status: BookingStatus.PENDING,
+      sessionExpiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+    expect(await sweep.sweepAbandoned(PENDING_TTL_MINUTES)).toBe(1);
+    expect(await statusOf(immortal)).toBe(BookingStatus.CANCELLED);
+    expect(await statusOf(youngAlive)).toBe(BookingStatus.PENDING);
   });
 });

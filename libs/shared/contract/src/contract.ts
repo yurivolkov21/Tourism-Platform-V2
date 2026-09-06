@@ -435,6 +435,12 @@ export const contract = {
       .errors({
         NOT_FOUND: { message: 'Booking not found' },
         NOT_PENDING: { status: 422, message: 'Only a PENDING booking can be checked out' },
+        // ADR-0009 AMEND 2: cùng gate chuyến với `create` — không mint trang
+        // thanh toán cho chuyến mà claim chắc chắn từ chối.
+        DEPARTURE_NOT_AVAILABLE: {
+          status: 400,
+          message: 'This departure is not available for booking',
+        },
         CHECKOUT_FAILED: { status: 502, message: 'Checkout could not be started, please retry' },
       })
       .output(BookingSchema),

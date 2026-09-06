@@ -198,9 +198,10 @@ interface StripeEventShape {
  * - `checkout.session.completed` → `payment.completed` — bookingId lấy từ
  *   metadata session do ta tự đặt, providerPaymentId = `payment_intent` (handle
  *   chuẩn để refund), amount/currency lấy từ `amount_total`.
- * - `checkout.session.expired` / `payment_intent.payment_failed` →
- *   `payment.failed` (PaymentIntent không mang metadata của session nên
- *   bookingId có thể vắng — handler log-and-skip).
+ * - `checkout.session.expired` → `payment.expired` (PAY-1: hết hạn ≠ thất bại,
+ *   mang `sessionId` để handler chỉ huỷ đúng session — AMEND 1c).
+ * - `payment_intent.payment_failed` → `payment.failed` (PaymentIntent không
+ *   mang metadata của session nên bookingId có thể vắng — handler log-and-skip).
  * - còn lại → `other` (chỉ ghi nhận, bỏ qua).
  */
 function mapStripeEvent(event: StripeEventShape): VerifiedEvent {

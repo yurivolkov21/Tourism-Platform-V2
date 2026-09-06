@@ -176,7 +176,15 @@ describe('renderEmail payload rendering', () => {
       ...BOOKING_PAYLOAD,
       reason: 'overbooked',
     });
-    expect(html).toContain('overbooked');
+    // Mã nội bộ được dịch sang câu cho khách (vòng vá review 06/09) — không in
+    // "Reason: overbooked" thô; mã lạ thì mới in nguyên.
+    expect(html).toContain('sold out before your payment was confirmed');
+    expect(html).not.toContain('Reason: overbooked');
+    const { html: unknownReason } = await renderEmail(EmailType.BOOKING_REFUNDED, {
+      ...BOOKING_PAYLOAD,
+      reason: 'some-new-cause',
+    });
+    expect(unknownReason).toContain('some-new-cause');
   });
 
   it('renders the denial note when present', async () => {
