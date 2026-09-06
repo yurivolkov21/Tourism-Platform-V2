@@ -99,6 +99,7 @@ function toCancellationRequest(row: CancellationRow, bookingCode: string): Cance
     bookingCode,
     reason: row.reason,
     status: row.status,
+    freeCancellationDays: row.freeCancellationDays,
     decisionNote: row.decisionNote,
     decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
@@ -124,8 +125,8 @@ function toAdminCancellationRequest(
 
 /**
  * Cancellation flow (spec P2 §3 W4, D1 chốt là B): một khách PAID xin hủy;
- * admin deny (booking để nguyên) hoặc approve (refund full-remainder + booking
- * CANCELLED + release seat). Request là history APPEND-ONLY — mỗi request
+ * admin deny (booking để nguyên) hoặc approve (hoàn theo mức chính sách hoặc
+ * số admin ghi lý do — ADR-0029/0030 — + booking CANCELLED + release seat). Request là history APPEND-ONLY — mỗi request
  * INSERT một row mới, DENIED row không bao giờ tái dùng (Nexora upsert đè lên
  * chúng, làm mất audit trail của denial — audit M7); "một live request mỗi
  * booking" là việc của DB qua partial unique index
@@ -179,6 +180,14 @@ export class CancellationsService {
     if (calendarDate(booking.departureStartDate) < calendarDate(new Date())) {
       throw new BookingNotCancellableError('the departure has already started');
     }
+    // Chụp badge của tour NGAY LÚC GỬI (ADR-0029 AMEND 6): mức chính sách khách
+    // vừa thấy ở `refundEstimate` là mức admin sẽ duyệt — content-admin sửa
+    // tour ngày mai không làm khách hôm nay rớt bậc (ADR-0030 §2).
+    const tour = await prisma.tour.findUnique({
+      where: { id: booking.tourId },
+      select: { freeCancellationDays: true },
+    });
+    const freeCancellationDays = tour?.freeCancellationDays ?? null;
 
     // KHÔNG trim ở đây (W1): contract đã trim + min(1) — luật một chỗ. Trim
     // lần hai từng là nguồn của row reason rỗng (input '   ' qua min(1) không
@@ -187,8 +196,8 @@ export class CancellationsService {
     try {
       inserted = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
         WITH req AS (
-          INSERT INTO cancellation_requests (id, booking_id, user_id, reason, updated_at)
-          VALUES (gen_random_uuid(), ${booking.id}::uuid, ${userId}::uuid, ${reason}, now())
+          INSERT INTO cancellation_requests (id, booking_id, user_id, reason, free_cancellation_days, updated_at)
+          VALUES (gen_random_uuid(), ${booking.id}::uuid, ${userId}::uuid, ${reason}, ${freeCancellationDays}::int, now())
           RETURNING id
         ),
         outbox_insert AS (
@@ -445,15 +454,22 @@ export class CancellationsService {
       // `refundAmount`, vừa là mốc so cho luật vượt-bậc-phải-ghi-lý-do. Cùng
       // `policyRefundAmount` mà admin và web dùng — "khớp bậc" ở ba nơi là
       // cùng một phép tính.
-      const tour = await tx.tour.findUnique({
-        where: { id: booking.tourId },
-        select: { freeCancellationDays: true },
-      });
+      // Badge đọc từ SNAPSHOT trên request (ADR-0029 AMEND 6); chỉ row cũ
+      // trước migration (null) mới rơi về badge hiện tại của tour.
+      const freeCancellationDays =
+        request.freeCancellationDays ??
+        (
+          await tx.tour.findUnique({
+            where: { id: booking.tourId },
+            select: { freeCancellationDays: true },
+          })
+        )?.freeCancellationDays ??
+        null;
       const percent = refundPercentForRequest({
         requestedAt: request.createdAt,
         paidAt: booking.paidAt?.toISOString() ?? null,
         departureStartDate: calendarDate(booking.departureStartDate),
-        freeCancellationDays: tour?.freeCancellationDays ?? null,
+        freeCancellationDays,
       });
       const policyAmount = policyRefundAmount({
         percent,

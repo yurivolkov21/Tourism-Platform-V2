@@ -665,6 +665,10 @@ model CancellationRequest {
   bookingId    String                    @map("booking_id") @db.Uuid
   userId       String                    @map("user_id") @db.Uuid
   reason       String                    @db.VarChar(1000)
+  /// Badge `tours.free_cancellation_days` CHỤP lúc khách gửi (ADR-0029 AMEND 6):
+  /// approve và ước tính đọc từ đây, không join sống — sửa tour sau đó không
+  /// đổi mức hoàn đã hứa. Null = row cũ trước migration (rơi về badge hiện tại).
+  freeCancellationDays Int?              @map("free_cancellation_days")
   status       CancellationRequestStatus @default(REQUESTED)
   decisionNote String?                   @map("decision_note") @db.VarChar(500)
   decidedById  String?                   @map("decided_by") @db.Uuid

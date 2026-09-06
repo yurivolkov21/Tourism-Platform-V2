@@ -63,8 +63,8 @@ export type CreateBookingInput = z.output<typeof CreateBookingInputSchema>;
 /**
  * Mirror enum Prisma CancellationRequestStatus. REQUESTED = đang mở (nhiều nhất
  * một cái mỗi booking — partial unique index), DENIED = admin từ chối (booking
- * vẫn PAID), REFUNDED = đã duyệt → refund toàn phần còn lại + booking CANCELLED
- * (docs/conventions/booking-states.md). Đặt TRƯỚC `BookingSchema` (thay vì ở
+ * vẫn PAID), REFUNDED = đã duyệt → hoàn theo mức chính sách (hoặc số admin
+ * ghi lý do, ADR-0029/0030) + booking CANCELLED (docs/conventions/booking-states.md). Đặt TRƯỚC `BookingSchema` (thay vì ở
  * cụm Cancellation phía dưới) vì `BookingSchema.cancellationStatus` cần tham
  * chiếu nó — const khai sau không dùng được do temporal dead zone.
  */
@@ -353,6 +353,13 @@ export const CancellationRequestSchema = z.object({
   bookingCode: BookingCodeSchema,
   reason: z.string().min(1).max(1000),
   status: CancellationRequestStatusSchema,
+  /**
+   * Badge `freeCancellationDays` của tour CHỤP LÚC KHÁCH GỬI (ADR-0029 AMEND 6):
+   * mức chính sách mà khách thấy khi xin huỷ là mức admin sẽ duyệt — sửa tour
+   * sau đó không làm khách rớt bậc. null = tour không có badge lúc ấy, hoặc
+   * row cũ trước migration (server rơi về badge hiện tại của tour).
+   */
+  freeCancellationDays: z.int().nonnegative().nullable(),
   decisionNote: z.string().max(500).nullable(),
   decidedAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),
@@ -411,8 +418,9 @@ export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsList
 
 /**
  * Input cho `admin.cancellations.decide` — một endpoint cho cả hai phán quyết.
- * `approve: true` → refund toàn phần còn lại + booking CANCELLED + trả lại seat
- * + request REFUNDED; `approve: false` → request DENIED, booking giữ nguyên.
+ * `approve: true` → hoàn theo `refundAmount` (vắng = mức chính sách, ADR-0029
+ * AMEND 5) + booking CANCELLED + trả lại seat + request REFUNDED;
+ * `approve: false` → request DENIED, booking giữ nguyên.
  */
 export const DecideCancellationInputSchema = z.object({
   id: z.uuid(),

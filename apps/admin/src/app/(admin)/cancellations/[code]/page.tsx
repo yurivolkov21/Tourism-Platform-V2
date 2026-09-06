@@ -126,7 +126,9 @@ export default async function CancellationDetailPage({
                     requestedAt: open.createdAt,
                     paidAt: booking.paidAt,
                     departureStartDate: booking.departureStartDate,
-                    freeCancellationDays: booking.freeCancellationDays,
+                    // SNAPSHOT lúc khách gửi (ADR-0029 AMEND 6), không phải badge
+                    // hiện tại của tour — server duyệt theo đúng con số này.
+                    freeCancellationDays: open.freeCancellationDays,
                   }}
                   decide={decideCancellationAction}
                 />

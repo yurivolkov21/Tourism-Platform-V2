@@ -515,11 +515,21 @@ describe('CancelRequestDialog — khối tóm tắt', () => {
     expect(screen.getByText('$150.00 already refunded')).toBeInTheDocument();
   });
 
-  it('server không gửi ước tính → KHÔNG tự tính, không bịa số — vẫn còn link chính sách', async () => {
-    await openDialog({ estimate: null });
-
-    expect(screen.queryByText(/of \$1,000\.00/)).toBeNull();
-    expect(screen.getByRole('link', { name: 'See the full refund schedule' })).toBeInTheDocument();
+  it('server trả ước tính null (chuyến đã đi) → KHÔNG có nút xin huỷ, nói thẳng không huỷ online được', () => {
+    // Trước vòng vá 06/09: nút vẫn hiện, dialog mở ra với nửa tiền trống, gửi
+    // xong ăn 422 NOT_CANCELLABLE. Server đã nói "không có gì để ước tính" thì
+    // client không bày một hành động sẽ thất bại.
+    render(
+      <BookingActions
+        view={PAID_VIEW}
+        code="BK-20260904-WXYZ"
+        refund={refundFor({ estimate: null })}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: 'Request cancellation' })).toBeNull();
+    expect(
+      screen.getByText('This booking can’t be cancelled online. Contact us for help.'),
+    ).toBeInTheDocument();
   });
 
   it('"what happens next" hiện cả khi trang chưa truyền ước tính', async () => {

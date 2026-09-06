@@ -152,15 +152,18 @@ export function ApproveStepperDialog({
 
   function submit() {
     setNoteTouched(true);
-    if (noteMissing) return;
+    // Thanh bước cho nhảy thẳng tới Confirm sau khi đã đi qua một lần, nên
+    // Confirm phải tự canh lại con số (vòng vá review 06/09): ô trống ở chế
+    // độ vượt bậc từng in "không hoàn đồng nào" rồi gửi chuỗi rỗng.
+    if (noteMissing || amountError !== undefined) return;
     void run(async () => {
       const trimmed = note.trim();
       const result = await decide({
         id: request.id,
         approve: true,
-        // LUÔN gửi con số, kể cả khi nó bằng phần dư: bỏ trống nghĩa là "hoàn
-        // trọn phần dư" (ADR-0029 §1), tức server sẽ tự quyết một lần nữa thay
-        // vì làm đúng thứ admin vừa nhìn thấy.
+        // LUÔN gửi con số, kể cả khi nó bằng mức chính sách: bỏ trống là để
+        // server tự tính lại (ADR-0029 AMEND 5) thay vì làm đúng thứ admin
+        // vừa nhìn thấy trên màn hình.
         refundAmount: chosenAmount,
         // Contract đòi `min(1)` — note rỗng thì BỎ HẲN field, đừng gửi chuỗi
         // trắng rồi ăn 400 ở lớp validate.

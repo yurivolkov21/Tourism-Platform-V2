@@ -390,6 +390,17 @@ export function BookingActions({
                 </div>
               );
             case 'requestCancellation':
+              // Server nói KHÔNG có ước tính (chuyến đã đi — booking ở lại PAID
+              // vĩnh viễn, không có trạng thái "đã đi"): không bày nút xin huỷ
+              // để rồi ăn 422, và không mở một dialog với nửa tiền trống (vòng
+              // vá review 06/09). `refund` vắng hẳn = trang chưa truyền → giữ nút.
+              if (refund && refund.estimate === null) {
+                return (
+                  <p key={action} className="text-sm text-muted-foreground">
+                    {messages.accountActionErrors.notCancellable}
+                  </p>
+                );
+              }
               return (
                 <CancelRequestDialog
                   key={action}

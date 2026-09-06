@@ -395,6 +395,9 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
     expect(refunds[0]?.adminId).toBe(adminRow.id);
     expect(refunds[0]?.providerRefundId).toMatch(/^fake_re_/);
+    // ADR-0006 AMEND 1b: mọi đường ghi sổ điền capture được hoàn vào — nguồn
+    // cho guard dup-capture của auto-refund.
+    expect(refunds[0]?.providerPaymentId).toBe(fake.refunds[0]?.providerPaymentId);
 
     // (c) Booking CANCELLED + cancelledAt; seat được RELEASE trả lại pool.
     const dbBooking = await prisma.booking.findUniqueOrThrow({
@@ -611,6 +614,33 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         select: { seatsBooked: true },
       });
       expect(soon.seatsBooked).toBe(0);
+    });
+
+    it('AMEND 6: badge freeCancellationDays CHỤP lúc khách gửi — sửa tour sau đó không làm khách rớt bậc', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('adr29-snapshot@example.com', 'Alice');
+      // Tour có badge 60 ngày → yêu cầu gửi 45 ngày trước khởi hành là 100%.
+      await prisma.tour.update({ where: { id: tour.id }, data: { freeCancellationDays: 60 } });
+      try {
+        const booking = await createPaidBooking(alice);
+        await prisma.booking.update({
+          where: { id: booking.id },
+          data: { paidAt: new Date(Date.now() - 2 * 86_400_000) }, // ra khỏi ân hạn
+        });
+        const request = CancellationRequestSchema.parse(
+          (await postCancel(alice, booking.code)).json(),
+        );
+        expect(request.freeCancellationDays).toBe(60);
+        // Content-admin gỡ badge NGAY SAU khi khách gửi.
+        await prisma.tour.update({ where: { id: tour.id }, data: { freeCancellationDays: null } });
+        // Vắng refundAmount = mức chính sách — tính theo SNAPSHOT 60 ngày → 100%,
+        // không phải bậc theo ngày (45 ngày → 75%) của tour vừa sửa.
+        expect((await postDecide(admin, request.id, { approve: true })).statusCode).toBe(200);
+        const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+        expect(rows.map((r) => r.amount.toFixed(2))).toEqual(['117.00']);
+      } finally {
+        await prisma.tour.update({ where: { id: tour.id }, data: { freeCancellationDays: null } });
+      }
     });
 
     it('§1 số tiền VƯỢT phần dư bị server chặn — không tin con số client gửi', async () => {

@@ -60,10 +60,10 @@ export type DecideAction = (input: {
   approve: boolean;
   decisionNote?: string;
   /**
-   * Số tiền hoàn, chỉ có nghĩa khi `approve: true` (ADR-0029 §1). Contract mở
-   * field này từ B1 nhưng type ở đây chưa theo, nên stepper approve không có
-   * đường gửi con số nó vừa bày ra — approve vẫn âm thầm hoàn trọn phần dư.
-   * VẮNG = hoàn trọn phần dư, tức hành vi trước ADR-0029.
+   * Số tiền hoàn, chỉ có nghĩa khi `approve: true` (ADR-0029 §1). Stepper LUÔN
+   * gửi con số nó vừa bày ra. VẮNG = server hoàn theo MỨC CHÍNH SÁCH (ADR-0029
+   * AMEND 5) — không còn "trọn phần dư"; lệch chính sách mà không có
+   * `decisionNote` là 422 OFF_POLICY_NOTE_REQUIRED.
    */
   refundAmount?: string;
 }) => Promise<DecideActionResult>;

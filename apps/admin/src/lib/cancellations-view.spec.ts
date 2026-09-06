@@ -14,6 +14,7 @@ const REQUESTED: AdminCancellationRequest = {
   reason: 'Family emergency — cannot travel.',
   status: 'REQUESTED',
   decisionNote: null,
+  freeCancellationDays: null,
   decidedAt: null,
   createdAt: '2026-08-30T09:30:00.000Z',
   tourTitle: 'Ha Long Bay Cruise',
@@ -53,6 +54,7 @@ describe('toCancellationRow', () => {
       ...REQUESTED,
       status: 'DENIED',
       decisionNote: 'Departure is in 3 days.',
+      freeCancellationDays: null,
       decidedAt: '2026-08-31T14:05:00.000Z',
     });
     expect(row.decided).toBe('31 Aug 2026, 14:05 UTC');
