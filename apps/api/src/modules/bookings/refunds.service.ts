@@ -196,6 +196,9 @@ export class RefundsService {
           amount,
           currency: booking.currency,
           providerRefundId,
+          // Capture được hoàn vào (ADR-0006 AMEND 1b) — guard dup-capture của
+          // auto-refund đối chiếu theo cột này.
+          providerPaymentId: booking.providerPaymentId,
           adminId: adminUserId,
         },
       });

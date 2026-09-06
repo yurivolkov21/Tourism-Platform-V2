@@ -274,6 +274,75 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(foreign.statusCode).toBe(404);
   });
 
+  /**
+   * ADR-0006 AMEND 1a — reCheckout không mint chồng session: mỗi booking chỉ
+   * một session SỐNG. Hai session sống là cửa double charge (khách mở hai tab,
+   * cả hai trang thanh toán cùng thu được tiền).
+   */
+  describe('vòng đời checkout session (ADR-0006 AMEND 1a)', () => {
+    const postCheckout = (cookie: string, code: string) =>
+      app.inject({ method: 'POST', url: `/api/bookings/${code}/checkout`, headers: { cookie } });
+
+    it('create lưu URL + hạn session; reCheckout khi session còn sống → trả LẠI session hiện có, không mint', async () => {
+      const cookie = await signUpUser('session-reuse@example.com');
+      const body = (await createBooking(cookie)).json();
+      expect(fake.sessions).toHaveLength(1);
+      const s1 = fake.sessions[0];
+
+      // Mint lúc create phải persist đủ bộ url + hạn — không lưu thì "trả
+      // session hiện có" là bất khả thi hành.
+      const created = await prisma.booking.findUniqueOrThrow({ where: { code: body.code } });
+      expect(created.checkoutSessionUrl).toBe(s1?.checkoutUrl);
+      expect(created.checkoutSessionExpiresAt?.getTime()).toBeGreaterThan(Date.now());
+
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(200);
+      expect(retry.json().checkoutUrl).toBe(s1?.checkoutUrl);
+      expect(fake.sessions).toHaveLength(1); // KHÔNG mint session thứ hai
+      expect(fake.expiredSessions).toHaveLength(0);
+      const row = await prisma.booking.findUniqueOrThrow({ where: { code: body.code } });
+      expect(row.providerSessionId).toBe(s1?.sessionId);
+    });
+
+    it('session HẾT HẠN → expireSession session cũ ở provider rồi mới mint session mới', async () => {
+      const cookie = await signUpUser('session-expired@example.com');
+      const body = (await createBooking(cookie)).json();
+      const s1 = fake.sessions[0];
+      // Lùi hạn về quá khứ — như thể khách quay lại sau 61 phút.
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionExpiresAt: new Date(Date.now() - 1000) },
+      });
+
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(200);
+      expect(fake.expiredSessions).toEqual([s1?.sessionId]);
+      expect(fake.sessions).toHaveLength(2);
+      const s2 = fake.sessions[1];
+      expect(retry.json().checkoutUrl).toBe(s2?.checkoutUrl);
+      const row = await prisma.booking.findUniqueOrThrow({ where: { code: body.code } });
+      expect(row.providerSessionId).toBe(s2?.sessionId);
+      expect(row.checkoutSessionUrl).toBe(s2?.checkoutUrl);
+      expect(row.checkoutSessionExpiresAt?.getTime()).toBeGreaterThan(Date.now());
+    });
+
+    it('booking cũ trước migration (không có URL/hạn) → coi như hết sống: expire best-effort + mint mới', async () => {
+      const cookie = await signUpUser('session-legacy@example.com');
+      const body = (await createBooking(cookie)).json();
+      const s1 = fake.sessions[0];
+      await prisma.booking.update({
+        where: { code: body.code },
+        data: { checkoutSessionUrl: null, checkoutSessionExpiresAt: null },
+      });
+
+      const retry = await postCheckout(cookie, body.code);
+      expect(retry.statusCode).toBe(200);
+      expect(fake.expiredSessions).toEqual([s1?.sessionId]);
+      expect(fake.sessions).toHaveLength(2);
+      expect(retry.json().checkoutUrl).toBe(fake.sessions[1]?.checkoutUrl);
+    });
+  });
+
   it('BK-2: chủ tự hủy PENDING → CANCELLED (không refund); lặp lại/PAID → 422; non-owner → 404', async () => {
     const alice = await signUpUser('bk2@example.com');
     const code = (await createBooking(alice)).json().code;

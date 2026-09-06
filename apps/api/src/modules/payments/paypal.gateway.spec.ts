@@ -143,10 +143,13 @@ describe('PayPalGateway.createCheckoutSession', () => {
 
     const session = await gateway.createCheckoutSession(CHECKOUT_INPUT);
 
-    expect(session).toEqual({
+    expect(session).toMatchObject({
       sessionId: 'ORDER-1',
       checkoutUrl: 'https://www.sandbox.paypal.com/checkoutnow?token=ORDER-1',
     });
+    // Hạn khai bảo thủ ~3h (ADR-0006 AMEND 1a) — PayPal không trả hạn nào.
+    expect(session.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(session.expiresAt.getTime()).toBeLessThanOrEqual(Date.now() + 3 * 3_600_000);
     const orderCall = http.calls.find((c) => c.url.endsWith('/v2/checkout/orders'));
     expect(orderCall?.headers.authorization).toBe('Bearer token-1');
     expect(orderCall?.headers['content-type']).toBe('application/json');

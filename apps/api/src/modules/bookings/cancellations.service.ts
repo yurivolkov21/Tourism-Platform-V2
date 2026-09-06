@@ -537,10 +537,14 @@ export class CancellationsService {
         refund_insert AS (
           -- Amount 0 KHÔNG ghi row nào: sổ refund là append-only cho tiền THẬT
           -- SỰ chuyển đi (ADR-0002). Một row 0.00 không có provider_refund_id
-          -- là một dòng sổ kể về việc không xảy ra.
-          INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id, admin_id)
+          -- là một dòng sổ kể về việc không xảy ra. provider_payment_id =
+          -- capture được hoàn vào (ADR-0006 AMEND 1b — nguồn cho guard
+          -- dup-capture của auto-refund).
+          INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id,
+                               provider_payment_id, admin_id)
           SELECT gen_random_uuid(), r.booking_id, ${amount.toFixed(2)}::numeric,
-                 ${booking.currency}::text, ${providerRefundId}::text, ${adminUserId}::uuid
+                 ${booking.currency}::text, ${providerRefundId}::text,
+                 ${booking.providerPaymentId}::text, ${adminUserId}::uuid
           FROM req_flip r
           WHERE ${amount.toFixed(2)}::numeric > 0
           RETURNING id

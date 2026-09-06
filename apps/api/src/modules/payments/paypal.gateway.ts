@@ -16,6 +16,14 @@ import { toAmountValue } from './money.js';
 const SANDBOX_BASE_URL = 'https://api-m.sandbox.paypal.com';
 /** Refresh OAuth token đang cache sớm bấy nhiêu trước thời điểm expiry ghi trên token. */
 const TOKEN_REFRESH_MARGIN_MS = 60_000;
+/**
+ * Hạn dùng lại một order PayPal (ADR-0006 AMEND 1a). PayPal không trả hạn
+ * trong response tạo order; approve link thực tế sống ~3h. Khai BẢO THỦ theo
+ * mốc đó: hạn ngắn hơn đời thật chỉ khiến reCheckout mint sớm hơn (vô hại —
+ * PayPal không có expire API nhưng dup-capture backstop đỡ), còn khai dài hơn
+ * đời thật sẽ trả cho khách một link chết.
+ */
+export const PAYPAL_SESSION_EXPIRY_SECONDS = 3 * 60 * 60;
 
 export interface PayPalGatewayOptions {
   clientId: string;
@@ -96,8 +104,17 @@ export class PayPalGateway implements PaymentGateway {
       throw new Error(`PayPal order ${order.id ?? '<no id>'} has no approval link`);
     }
     this.logger.log(`Created PayPal order ${order.id} for booking ${input.code}`);
-    return { sessionId: order.id, checkoutUrl: approveUrl };
+    return {
+      sessionId: order.id,
+      checkoutUrl: approveUrl,
+      expiresAt: new Date(Date.now() + PAYPAL_SESSION_EXPIRY_SECONDS * 1000),
+    };
   }
+
+  // CỐ Ý không có `expireSession` (ADR-0006 AMEND 1a): Orders v2 không có
+  // endpoint void/cancel cho order chưa capture — order cũ tự chết theo hạn.
+  // Session còn sống thì reCheckout đã trả lại nó thay vì mint, nên cửa sổ
+  // hai-order-sống chỉ còn là lề đồng hồ; lưới cuối là dup-capture backstop.
 
   async verifyWebhook(
     rawBody: Buffer | string,

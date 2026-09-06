@@ -43,6 +43,12 @@ export class FakeGateway implements PaymentGateway {
   readonly refunds: Array<RefundInput & { providerRefundId: string }> = [];
   /** Ghi lại mọi event mà controller đã gọi `followUp` (W1 nền cho Task 2). */
   readonly followUpCalls: VerifiedEvent[] = [];
+  /** Ghi lại mọi session đã bị `expireSession` vô hiệu (ADR-0006 AMEND 1a). */
+  readonly expiredSessions: string[] = [];
+
+  /** TTL session mà fake khai trong `CheckoutSession.expiresAt` — test chỉnh
+   * được để mô phỏng session sống ngắn/dài. Reset về 60′ trong `reset()`. */
+  sessionTtlMs = 60 * 60_000;
 
   private seq = 0;
 
@@ -87,10 +93,20 @@ export class FakeGateway implements PaymentGateway {
     const session: FakeCheckoutSession = {
       sessionId,
       checkoutUrl: `https://checkout.fake.local/pay/${sessionId}`,
+      expiresAt: new Date(Date.now() + this.sessionTtlMs),
       input,
     };
     this.sessions.push(session);
-    return { sessionId: session.sessionId, checkoutUrl: session.checkoutUrl };
+    return {
+      sessionId: session.sessionId,
+      checkoutUrl: session.checkoutUrl,
+      expiresAt: session.expiresAt,
+    };
+  }
+
+  /** Ghi nhận session bị vô hiệu — int test assert reCheckout expire đúng cái cũ. */
+  async expireSession(sessionId: string): Promise<void> {
+    this.expiredSessions.push(sessionId);
   }
 
   /**
@@ -179,7 +195,9 @@ export class FakeGateway implements PaymentGateway {
     this.sessions.length = 0;
     this.refunds.length = 0;
     this.followUpCalls.length = 0;
+    this.expiredSessions.length = 0;
     this.seq = 0;
+    this.sessionTtlMs = 60 * 60_000;
     this.failRefunds = false;
     this.refundDelayMs = 0;
     this.failCheckout = false;

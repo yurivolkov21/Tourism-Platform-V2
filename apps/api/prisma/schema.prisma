@@ -587,6 +587,13 @@ model Booking {
   // của Checkout session; `providerPaymentId` là payment đã capture.
   paymentProvider    PaymentProvider @map("payment_provider")
   providerSessionId  String?         @unique @map("provider_session_id") @db.VarChar(255)
+  /// URL hosted checkout của session HIỆN TẠI (ADR-0006 AMEND 1a): chỉ lúc mint
+  /// provider mới trả URL về, nên phải lưu thì `reCheckout` mới "trả session
+  /// hiện có" được thay vì mint chồng — hai session sống là cửa double charge.
+  checkoutSessionUrl String?         @map("checkout_session_url") @db.VarChar(2048)
+  /// Hạn của session hiện tại (gateway tự khai). Null = booking cũ trước
+  /// migration / chưa mint — coi như "không rõ, hết sống".
+  checkoutSessionExpiresAt DateTime? @map("checkout_session_expires_at")
   providerPaymentId  String?         @map("provider_payment_id") @db.VarChar(255)
   paidAt             DateTime?       @map("paid_at")
   cancelledAt        DateTime?       @map("cancelled_at")
@@ -623,6 +630,11 @@ model Refund {
   // Refund id phía provider (Stripe re_…, PayPal capture refund id). Unique để
   // một webhook retry không double-insert cùng một provider refund.
   providerRefundId String?  @unique @map("provider_refund_id") @db.VarChar(255)
+  /// Capture mà khoản hoàn này hoàn VÀO (ADR-0006 AMEND 1b): guard idempotency
+  /// của auto-refund đối chiếu theo cột này thay vì "booking đã có Refund row
+  /// bất kỳ" — một capture THỨ HAI trên cùng booking không còn bị nuốt im lặng.
+  /// Null = row cũ trước migration.
+  providerPaymentId String? @map("provider_payment_id") @db.VarChar(255)
   adminId          String?  @map("admin_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at")
 
@@ -776,6 +788,9 @@ model PaymentEvent {
   amount      Decimal?        @db.Decimal(14, 2)
   currency    String?         @db.VarChar(3)
   bookingId   String?         @map("booking_id") @db.Uuid
+  /// Lý do event bị TỪ CHỐI xử lý dù chữ ký hợp lệ (ADR-0006 AMEND 1d — hiện
+  /// chỉ nhánh amount/currency lệch với booking). Null = xử lý bình thường.
+  note        String?         @db.VarChar(500)
   // NULL = đã nhận nhưng xử lý chưa xong → một provider retry phải CHẠY LẠI
   // handler (handler idempotent ở cấp booking).
   processedAt DateTime?       @map("processed_at")

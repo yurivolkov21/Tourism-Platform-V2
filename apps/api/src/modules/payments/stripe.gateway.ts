@@ -59,6 +59,9 @@ export class StripeGateway implements PaymentGateway {
   ) {}
 
   async createCheckoutSession(input: CreateCheckoutSessionInput): Promise<CheckoutSession> {
+    // Hạn tính MỘT lần rồi dùng cho cả provider lẫn `expiresAt` trả về — hai
+    // bên không được lệch nhau (reCheckout so hạn này để quyết mint hay không).
+    const expiresAt = new Date(Date.now() + SESSION_EXPIRY_SECONDS * 1000);
     const params = new URLSearchParams({
       mode: 'payment',
       success_url: input.successUrl,
@@ -69,7 +72,7 @@ export class StripeGateway implements PaymentGateway {
       'line_items[0][price_data][product_data][name]': input.description,
       'metadata[bookingId]': input.bookingId,
       'metadata[bookingCode]': input.code,
-      expires_at: String(Math.floor(Date.now() / 1000) + SESSION_EXPIRY_SECONDS),
+      expires_at: String(Math.floor(expiresAt.getTime() / 1000)),
     });
 
     const session = await this.post<{ id: string; url: string | null }>(
@@ -80,7 +83,17 @@ export class StripeGateway implements PaymentGateway {
       throw new Error(`Stripe Checkout session ${session.id} has no redirect url`);
     }
     this.logger.log(`Created Stripe Checkout session ${session.id} for booking ${input.code}`);
-    return { sessionId: session.id, checkoutUrl: session.url };
+    return { sessionId: session.id, checkoutUrl: session.url, expiresAt };
+  }
+
+  /**
+   * ADR-0006 AMEND 1a: vô hiệu session cũ TRƯỚC khi mint session mới — chặn
+   * hai session cùng sống. Stripe chỉ expire được session `status=open`;
+   * session đã expired/completed thì API trả lỗi — caller coi là best-effort.
+   */
+  async expireSession(sessionId: string): Promise<void> {
+    await this.post(`/v1/checkout/sessions/${sessionId}/expire`, new URLSearchParams());
+    this.logger.log(`Expired Stripe Checkout session ${sessionId}`);
   }
 
   async verifyWebhook(

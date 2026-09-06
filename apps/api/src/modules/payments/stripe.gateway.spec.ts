@@ -191,10 +191,13 @@ describe('StripeGateway.createCheckoutSession', () => {
     const session = await gateway.createCheckoutSession(input);
     const after = Math.floor(Date.now() / 1000);
 
-    expect(session).toEqual({
+    expect(session).toMatchObject({
       sessionId: 'cs_test_9',
       checkoutUrl: 'https://checkout.stripe.com/c/pay/cs_test_9',
     });
+    // Hạn trả về (ADR-0006 AMEND 1a) phải khớp đúng expires_at đã gửi provider.
+    expect(Math.floor(session.expiresAt.getTime() / 1000)).toBeGreaterThanOrEqual(before + 3600);
+    expect(Math.floor(session.expiresAt.getTime() / 1000)).toBeLessThanOrEqual(after + 3600);
     expect(calls).toHaveLength(1);
     const call = calls[0];
     expect(call?.url).toBe('https://api.stripe.com/v1/checkout/sessions');
@@ -242,6 +245,25 @@ describe('StripeGateway.createCheckoutSession', () => {
       body: JSON.stringify({ error: { message: 'Invalid currency: xxx' } }),
     });
     await expect(gateway.createCheckoutSession(input)).rejects.toThrow(/Invalid currency/);
+  });
+});
+
+describe('StripeGateway.expireSession', () => {
+  it('POSTs /v1/checkout/sessions/{id}/expire (ADR-0006 AMEND 1a)', async () => {
+    const { gateway, calls } = makeGateway({
+      status: 200,
+      body: JSON.stringify({ id: 'cs_test_9', status: 'expired' }),
+    });
+    await gateway.expireSession('cs_test_9');
+    expect(calls[0]?.url).toBe('https://api.stripe.com/v1/checkout/sessions/cs_test_9/expire');
+  });
+
+  it('ném khi Stripe từ chối (session không còn open) — caller coi là best-effort', async () => {
+    const { gateway } = makeGateway({
+      status: 400,
+      body: JSON.stringify({ error: { message: 'Session is already expired' } }),
+    });
+    await expect(gateway.expireSession('cs_dead')).rejects.toThrow(/already expired/);
   });
 });
 

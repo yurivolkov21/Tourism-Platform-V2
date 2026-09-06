@@ -28,12 +28,22 @@ describe('FakeGateway', () => {
 
   it('mints deterministic sessions and records them for inspection', async () => {
     const session = await fake.createCheckoutSession(checkoutInput);
-    expect(session).toEqual({
+    expect(session).toMatchObject({
       sessionId: 'fake_cs_1',
       checkoutUrl: 'https://checkout.fake.local/pay/fake_cs_1',
     });
+    // Hạn theo `sessionTtlMs` (mặc định 60′) — test chỉnh được để mô phỏng.
+    expect(session.expiresAt.getTime()).toBeGreaterThan(Date.now());
     expect(fake.sessionFor('b-1')?.input).toEqual(checkoutInput);
     expect(fake.sessionFor('b-2')).toBeUndefined();
+  });
+
+  it('expireSession ghi lại session bị vô hiệu (ADR-0006 AMEND 1a)', async () => {
+    await fake.createCheckoutSession(checkoutInput);
+    await fake.expireSession('fake_cs_1');
+    expect(fake.expiredSessions).toEqual(['fake_cs_1']);
+    fake.reset();
+    expect(fake.expiredSessions).toHaveLength(0);
   });
 
   it('emits payment.completed defaulting amount/currency from the recorded session', async () => {

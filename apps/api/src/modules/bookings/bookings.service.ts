@@ -221,6 +221,13 @@ function isCodeCollision(error: unknown): boolean {
 const CODE_MINT_ATTEMPTS = 3;
 
 /**
+ * Lề tối thiểu để một session được coi là ĐÁNG trả lại ở reCheckout (ADR-0006
+ * AMEND 1a): session sắp hết hạn trong ít phút tới thì mint mới luôn — đưa
+ * khách vào một trang thanh toán chết giữa chừng còn tệ hơn một session thừa.
+ */
+const SESSION_REUSE_MIN_REMAINING_MS = 5 * 60_000;
+
+/**
  * Các customer booking flow (spec P2 §3, W1) — logic create-PENDING port từ
  * bookings.service của Nexora (thứ tự validation đã dày dạn), nâng lên
  * interface `PaymentGateway` (không branch theo provider) và checkout ngay lúc
@@ -370,7 +377,13 @@ export class BookingsService {
     }
     const withSession = await prisma.booking.update({
       where: { id: booking.id },
-      data: { providerSessionId: session.sessionId },
+      // Lưu đủ BỘ session (id + url + hạn, ADR-0006 AMEND 1a): url chỉ có ở
+      // lúc mint, không lưu thì reCheckout không "trả session hiện có" được.
+      data: {
+        providerSessionId: session.sessionId,
+        checkoutSessionUrl: session.checkoutUrl,
+        checkoutSessionExpiresAt: session.expiresAt,
+      },
     });
 
     this.logger.log(
@@ -392,11 +405,18 @@ export class BookingsService {
   }
 
   /**
-   * BK-1 (ADR-0006): mint LẠI checkout session cho một PENDING của CHÍNH CHỦ —
-   * phục hồi sau khi `create` gặp gateway lỗi, hoặc thanh toán lại trước khi
-   * hết hạn. Owner-or-404 (trả null → controller map NOT_FOUND, không lộ tồn
-   * tại); chỉ PENDING (BookingNotPendingError → 422); gateway lỗi →
-   * CheckoutFailedError (502). Idempotent: mỗi lần mint một session mới hợp lệ.
+   * BK-1 (ADR-0006, AMEND 1a): checkout lại một PENDING của CHÍNH CHỦ —
+   * phục hồi sau khi `create` gặp gateway lỗi, hoặc thanh toán lại. Owner-or-404
+   * (trả null → controller map NOT_FOUND, không lộ tồn tại); chỉ PENDING
+   * (BookingNotPendingError → 422); gateway lỗi → CheckoutFailedError (502).
+   *
+   * MỘT session sống mỗi booking: session hiện tại còn hạn (≥ lề
+   * {@link SESSION_REUSE_MIN_REMAINING_MS}) thì trả LẠI nó — không mint, không
+   * gọi provider; hết hạn/không rõ (booking cũ trước migration) thì vô hiệu
+   * session cũ ở provider (`expireSession`, best-effort — provider không có
+   * API hoặc lỗi thì log rồi vẫn mint, lưới cuối là auto-refund dup-capture)
+   * rồi mới mint session mới. Mint chồng khi session cũ còn sống là cửa
+   * double charge: hai trang thanh toán cùng thu được tiền.
    */
   async reCheckout(userId: string, code: string): Promise<Booking | null> {
     const booking = await prisma.booking.findUnique({
@@ -406,7 +426,32 @@ export class BookingsService {
     if (!booking || booking.userId !== userId) return null;
     if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
 
+    const sessionAlive =
+      booking.providerSessionId !== null &&
+      booking.checkoutSessionUrl !== null &&
+      booking.checkoutSessionExpiresAt !== null &&
+      booking.checkoutSessionExpiresAt.getTime() > Date.now() + SESSION_REUSE_MIN_REMAINING_MS;
+    if (sessionAlive) {
+      this.logger.log(
+        `Re-checkout for ${booking.code}: returning live session ${booking.providerSessionId}`,
+      );
+      const tourImage = await resolveTourCover(this.media, booking.tourId);
+      return toBooking(booking, booking.checkoutSessionUrl, tourImage);
+    }
+
     const gateway = resolveGateway(this.gateways, booking.paymentProvider);
+    if (booking.providerSessionId && gateway.expireSession) {
+      try {
+        await gateway.expireSession(booking.providerSessionId);
+      } catch (err) {
+        // Best-effort: session thường đã tự expired ở provider (đó là lý do ta
+        // vào nhánh này) và API expire từ chối session không còn `open`.
+        this.logger.warn(
+          `Re-checkout for ${booking.code}: expireSession(${booking.providerSessionId}) failed — ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+      }
+    }
+
     let session: CheckoutSession;
     try {
       session = await gateway.createCheckoutSession({
@@ -426,7 +471,11 @@ export class BookingsService {
     }
     const updated = await prisma.booking.update({
       where: { id: booking.id },
-      data: { providerSessionId: session.sessionId },
+      data: {
+        providerSessionId: session.sessionId,
+        checkoutSessionUrl: session.checkoutUrl,
+        checkoutSessionExpiresAt: session.expiresAt,
+      },
       include: { tour: bookingTourInclude },
     });
     const tourImage = await resolveTourCover(this.media, booking.tourId);

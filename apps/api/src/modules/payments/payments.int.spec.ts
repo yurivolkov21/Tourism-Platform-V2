@@ -267,6 +267,42 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     const events = await prisma.paymentEvent.findMany();
     expect(events).toHaveLength(2);
     expect(events.every((e) => e.processedAt !== null)).toBe(true);
+    // CÙNG capture (providerPaymentId mặc định của fake không đổi) → retry
+    // vô hại, KHÔNG phải dup-capture → không refund gì (ADR-0006 AMEND 1b).
+    expect(fake.refunds).toHaveLength(0);
+  });
+
+  it('ADR-0006 AMEND 1b: capture THỨ HAI (providerPaymentId KHÁC) trên booking PAID → auto-refund dup-capture, KHÔNG ghi sổ', async () => {
+    const cookie = await signUpUser('dup-capture@example.com');
+    const booking = await createBooking(cookie); // party 3 → 117.00 USD
+
+    const first = fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_dup_A' });
+    expect((await postWebhook(first)).statusCode).toBe(200);
+
+    // Session thứ hai (tab thứ hai) thu tiền lần nữa → capture MỚI trên booking
+    // đã settle. Trước AMEND 1b nhánh already-paid nuốt im lặng — khách mất
+    // tiền hai lần không ai biết.
+    const second = await postWebhook(
+      fake.emitPaymentCompleted(booking.id, { providerPaymentId: 'pay_dup_B' }),
+    );
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toMatchObject({ status: 'processed', outcome: 'already-paid' });
+
+    // Capture thừa được hoàn NGAY ở provider, idempotency key theo capture.
+    expect(fake.refunds).toHaveLength(1);
+    expect(fake.refunds[0]).toMatchObject({
+      providerPaymentId: 'pay_dup_B',
+      amount: '117.00',
+      currency: 'USD',
+      idempotencyKey: 'dup-capture:pay_dup_B',
+    });
+    // KHÔNG ghi sổ `refunds`: tiền này NGOÀI total của booking — ghi vào là
+    // phá trigger SUM ≤ total và chặn refund hợp lệ về sau.
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.PAID);
+    expect(row.providerPaymentId).toBe('pay_dup_A'); // capture gốc giữ nguyên
+    expect(await seatsOf(depMain.id)).toBe(6); // không claim lần hai
   });
 
   it('overbook: seats no longer fit at claim time → auto-refund + CANCELLED (invariant #3)', async () => {

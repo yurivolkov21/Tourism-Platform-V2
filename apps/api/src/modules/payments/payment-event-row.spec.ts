@@ -26,6 +26,7 @@ const base: PaymentEvent = {
   amount: new Prisma.Decimal('117.00'),
   currency: 'USD',
   bookingId: '9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
+  note: null,
   processedAt: new Date('2026-09-01T10:00:01.000Z'),
   receivedAt: new Date('2026-09-01T10:00:00.000Z'),
 };

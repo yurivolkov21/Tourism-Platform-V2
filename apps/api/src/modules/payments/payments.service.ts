@@ -141,6 +141,10 @@ export class PaymentsService {
             verified.bookingId,
             verified.providerPaymentId,
           );
+        } else if (outcome === 'already-paid') {
+          // ADR-0006 AMEND 1b: booking đã settle mà event mang capture KHÁC =
+          // khách bị trừ tiền HAI lần — không được nuốt im lặng.
+          await this.refundDuplicateCapture(provider, verified);
         }
         break;
       }
@@ -375,7 +379,7 @@ export class PaymentsService {
   ): Promise<'refunded' | 'already-refunded' | 'failed'> {
     const booking = await prisma.booking.findUnique({
       where: { id: bookingId },
-      select: { code: true, totalAmount: true, currency: true },
+      select: { code: true, totalAmount: true, currency: true, providerPaymentId: true },
     });
     if (!booking) return 'failed';
     if (!providerPaymentId) {
@@ -386,35 +390,63 @@ export class PaymentsService {
     }
 
     return withBookingRefundLock(bookingId, async (tx) => {
-      // Re-check existing-Refund TRONG lock — điểm serialize TOCTOU. Existing-refund
-      // là idempotency-signal tổng quát cho CẢ overbook (PENDING) lẫn orphan
-      // (CANCELLED); dùng nó thay cho re-check status vốn overbook-specific.
+      // Re-check TRONG lock — điểm serialize TOCTOU. Guard theo CAPTURE
+      // (ADR-0006 AMEND 1b), không theo "đã có Refund row bất kỳ": một retry
+      // của CHÍNH capture này skip, nhưng một capture KHÁC trên cùng booking
+      // không còn bị nuốt. Row cũ trước migration (`providerPaymentId` null)
+      // chỉ được tính là "đã hoàn capture này" khi capture của event trùng
+      // capture chính của booking — null nào cũng chỉ có thể là nó.
       const existing = await tx.refund.findFirst({
-        where: { bookingId },
+        where: {
+          bookingId,
+          OR: [
+            { providerPaymentId },
+            ...(booking.providerPaymentId === providerPaymentId
+              ? [{ providerPaymentId: null }]
+              : []),
+          ],
+        },
         select: { id: true },
       });
       if (existing) {
         this.logger.log(
-          `Booking ${booking.code} already has a Refund row — skipping ${opts.cause} auto-refund (retry)`,
+          `Booking ${booking.code} already refunded capture ${providerPaymentId} — skipping ${opts.cause} auto-refund (retry)`,
         );
         return 'already-refunded';
       }
+
+      // Sổ đã settle mà capture NÀY chưa từng được hoàn: tiền của capture nằm
+      // NGOÀI total (dup capture trên booking đã hoàn đủ qua đường khác) —
+      // refund thẳng ở provider, KHÔNG ghi sổ (ghi là phá trigger SUM ≤ total).
+      const ledger = await tx.refund.aggregate({
+        where: { bookingId },
+        _sum: { amount: true },
+      });
+      const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
+      const remainder = booking.totalAmount.sub(alreadyRefunded);
+      const offLedger = remainder.lessThanOrEqualTo(0);
 
       // Gọi provider TRƯỚC ghi ledger — không bao giờ ledger một refund chưa xảy
       // ra. Chạy TRONG tx của lock (ngoại lệ có chủ đích ADR-0009) để lock giữ
       // suốt check→gateway→ledger. Provider refund thất bại để booking y nguyên
       // cho operator (ngữ nghĩa refundOrphanedCapture của Nexora).
+      // Số hoàn kẹp trong phần dư của sổ khi ghi sổ (capture luôn = total ở
+      // money-path này; phần dư nhỏ hơn chỉ khi một đường khác đã hoàn trước).
+      const amount = offLedger
+        ? booking.totalAmount
+        : Prisma.Decimal.min(booking.totalAmount, remainder);
       let providerRefundId: string;
       try {
         const gateway = resolveGateway(this.gateways, provider);
         ({ providerRefundId } = await gateway.refund({
           providerPaymentId,
-          amount: booking.totalAmount.toFixed(2),
+          amount: amount.toFixed(2),
           currency: booking.currency,
           // W5: idempotency ở phía provider — một crash giữa lời gọi này và
           // finishEvent khiến provider retry quay lại; cùng một key khiến
-          // provider dedupe thay vì double-refund.
-          idempotencyKey: opts.idempotencyKey,
+          // provider dedupe thay vì double-refund. Nhánh off-ledger dùng key
+          // theo capture (một capture thừa hoàn đúng một lần).
+          idempotencyKey: offLedger ? `dup-capture:${providerPaymentId}` : opts.idempotencyKey,
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : 'unknown';
@@ -424,17 +456,79 @@ export class PaymentsService {
         return 'failed';
       }
 
+      if (offLedger) {
+        this.logger.error(
+          `DUPLICATE CAPTURE on settled booking ${booking.code}: ${providerPaymentId} ` +
+            `(${amount.toFixed(2)} ${booking.currency}, cause ${opts.cause}) auto-refunded as ${providerRefundId} — NOT ledgered (money outside the booking total)`,
+        );
+        // 'already-refunded' để caller giữ nguyên terminal hiện có: không
+        // re-derive (orphan path), không email refund lần hai.
+        return 'already-refunded';
+      }
+
       await tx.refund.create({
         data: {
           bookingId,
-          amount: booking.totalAmount,
+          amount,
           currency: booking.currency,
           providerRefundId,
+          providerPaymentId, // capture được hoàn — nguồn cho guard phía trên
           adminId: null, // đường tự động (schema: null = không phải admin phát hành)
         },
       });
       return 'refunded';
     });
+  }
+
+  /**
+   * ADR-0006 AMEND 1b — capture THỨ HAI trên một booking đã settle
+   * (claim outcome `already-paid`, event mang `providerPaymentId` KHÁC với
+   * capture đã ghi trên booking): auto-refund NGAY khoản thừa qua gateway.
+   *
+   * CỐ Ý KHÔNG ghi sổ `refunds`: sổ đo tiền hoàn so với `total_amount` của
+   * booking (trigger ADR-0009 `SUM ≤ total`); capture thừa là tiền NGOÀI total
+   * — ghi vào là vừa phá trigger vừa chặn refund hợp lệ về sau. Idempotency
+   * nằm ở provider key `dup-capture:<providerPaymentId>` (retry cùng capture →
+   * provider dedupe, không có DB write nào để đụng độ); audit là chính
+   * PaymentEvent + log ERROR cho operator.
+   */
+  private async refundDuplicateCapture(
+    provider: PaymentProvider,
+    verified: VerifiedEvent,
+  ): Promise<void> {
+    if (!verified.bookingId || !verified.providerPaymentId) return;
+    const booking = await prisma.booking.findUnique({
+      where: { id: verified.bookingId },
+      select: { code: true, providerPaymentId: true, totalAmount: true, currency: true },
+    });
+    if (!booking) return;
+    // Cùng capture = một retry vô hại của event đã settle → no-op. Booking
+    // không có capture (không tưởng ở nhánh already-paid) cũng bỏ qua — không
+    // có gì đối chiếu được thì không dám refund.
+    if (!booking.providerPaymentId || booking.providerPaymentId === verified.providerPaymentId) {
+      return;
+    }
+
+    const amount = verified.amount ?? booking.totalAmount.toFixed(2);
+    const currency = verified.currency ?? booking.currency;
+    try {
+      const gateway = resolveGateway(this.gateways, provider);
+      const { providerRefundId } = await gateway.refund({
+        providerPaymentId: verified.providerPaymentId,
+        amount,
+        currency,
+        idempotencyKey: `dup-capture:${verified.providerPaymentId}`,
+      });
+      this.logger.error(
+        `DUPLICATE CAPTURE on booking ${booking.code}: ${verified.providerPaymentId} (${amount} ${currency}) ` +
+          `captured on top of ${booking.providerPaymentId} — auto-refunded as ${providerRefundId} (${provider})`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `DUPLICATE CAPTURE on booking ${booking.code}: ${verified.providerPaymentId} (${amount} ${currency}) ` +
+          `and the auto-refund FAILED (${err instanceof Error ? err.message : 'unknown'}) — operator must refund manually`,
+      );
+    }
   }
 
   private isUniqueConstraintError(err: unknown): boolean {

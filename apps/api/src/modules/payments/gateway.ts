@@ -34,6 +34,16 @@ export interface PaymentGateway {
   refund(input: RefundInput): Promise<{ providerRefundId: string }>;
 
   /**
+   * Hook OPTIONAL (ADR-0006 AMEND 1a): vô hiệu một checkout session còn sống ở
+   * provider TRƯỚC khi mint session mới — chặn cửa hai session cùng thu được
+   * tiền. Stripe có API (`POST /v1/checkout/sessions/{id}/expire`); PayPal
+   * không có endpoint tương đương nên bỏ qua member (order cũ tự chết theo
+   * hạn). Caller (reCheckout) coi lỗi ở đây là best-effort: log rồi vẫn mint —
+   * lưới cuối là auto-refund dup-capture ở PaymentsService.
+   */
+  expireSession?(sessionId: string): Promise<void>;
+
+  /**
    * Hook OPTIONAL: side-effect riêng của provider chạy SAU khi event đã được
    * verify VÀ log (PaymentEvent đã ghi, `handleEvent` đã chạy xong) — ví dụ
    * PayPal cần tự capture order khi nhận CHECKOUT.ORDER.APPROVED (W2 spec
@@ -65,6 +75,12 @@ export interface CheckoutSession {
   sessionId: string;
   /** URL redirect đến hosted checkout, trả về cho client. */
   checkoutUrl: string;
+  /**
+   * Hạn của session (ADR-0006 AMEND 1a) — mỗi provider tự khai hạn của mình,
+   * lưu vào `Booking.checkoutSessionExpiresAt` để reCheckout biết session còn
+   * sống hay không mà "trả session hiện có" thay vì mint chồng.
+   */
+  expiresAt: Date;
 }
 
 export interface RefundInput {
