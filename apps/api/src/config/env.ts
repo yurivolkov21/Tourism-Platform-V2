@@ -190,6 +190,42 @@ const EnvSchema = z
       });
     }
     if (cfg.NODE_ENV !== 'production') return;
+    // ── Nhóm env DEPLOY (W2, ADR-0024 AMEND 2): Render gửi chuỗi rỗng khi ô
+    // bị bỏ trống → parseEnv strip → default localhost kích hoạt, boot XANH
+    // với origin localhost trên máy prod. Nguy hiểm nhất là BETTER_AUTH_URL:
+    // Better Auth suy cờ Secure của cookie CHỈ từ baseURL.startsWith(https).
+    const localHostnames = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+    const requireRealHttpsUrl = (path: string, value: string) => {
+      let parsed: URL | null;
+      try {
+        parsed = new URL(value);
+      } catch {
+        parsed = null;
+      }
+      const ok =
+        parsed !== null && parsed.protocol === 'https:' && !localHostnames.has(parsed.hostname);
+      if (!ok) {
+        ctx.addIssue({
+          code: 'custom',
+          path: [path],
+          message: `${path} must be an https:// URL on a real host in production (got: ${value})`,
+        });
+      }
+    };
+    requireRealHttpsUrl('BETTER_AUTH_URL', cfg.BETTER_AUTH_URL);
+    requireRealHttpsUrl('FRONTEND_URL', cfg.FRONTEND_URL);
+    for (const origin of parseCommaList(cfg.TRUSTED_ORIGINS)) {
+      requireRealHttpsUrl('TRUSTED_ORIGINS', origin);
+    }
+    if (!cfg.COOKIE_DOMAIN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['COOKIE_DOMAIN'],
+        message:
+          'COOKIE_DOMAIN must be set in production — without the parent domain, ' +
+          'www cannot send the session cookie to api (login silently breaks)',
+      });
+    }
     if (cfg.DATABASE_URL === LOCAL_COMPOSE_DATABASE_URL) {
       ctx.addIssue({
         code: 'custom',

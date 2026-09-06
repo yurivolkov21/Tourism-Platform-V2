@@ -146,6 +146,10 @@ export const auth = betterAuth({
     database: {
       generateId: false,
     },
+    // W2 (ADR-0024 AMEND 2): lưới HAI cho cờ Secure của cookie — mặc định BA
+    // suy nó CHỈ từ baseURL https (một biến env đặt sai là mất Secure +
+    // __Secure- im lặng). Prod ép tường minh, không treo vào URL nữa.
+    ...(env.NODE_ENV === 'production' ? { useSecureCookies: true } : {}),
     // W2 (audit cụm 1/6): BA tự tính IP từ x-forwarded-for, KHÔNG biết
     // `trustProxy` của Fastify — thiếu danh sách này thì XFF ≥2 hop resolve
     // ra null → MỌI người chung một bucket 3 req/10s cho /sign-in (một kẻ

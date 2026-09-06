@@ -1,5 +1,17 @@
 import { expandTrustProxyToCidrs, parseCommaList, parseEnv } from './env.js';
 
+/**
+ * Nhóm env deploy prod-hợp-lệ (W2, ADR-0024 AMEND 2) — dán vào các fixture
+ * production PASS sẵn có để mỗi test giữ nguyên trọng tâm của riêng nó;
+ * knock-out từng biến nằm ở describe superRefine cuối file.
+ */
+const PROD_DEPLOY_KEYS = {
+  BETTER_AUTH_URL: 'https://api.example.com',
+  FRONTEND_URL: 'https://www.example.com',
+  TRUSTED_ORIGINS: 'https://www.example.com,https://admin.example.com',
+  COOKIE_DOMAIN: '.example.com',
+};
+
 describe('parseEnv', () => {
   it('applies defaults on empty input', () => {
     const env = parseEnv({});
@@ -51,6 +63,7 @@ describe('parseEnv', () => {
         CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
         REVALIDATE_SECRET: 'real-revalidate-secret',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).BETTER_AUTH_SECRET,
     ).toBe('real-secret');
   });
@@ -78,6 +91,7 @@ describe('parseEnv', () => {
         ...base,
         DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).DATABASE_URL,
     ).toBe('postgresql://u:p@db.example.com:5432/app');
   });
@@ -132,6 +146,7 @@ describe('parseEnv', () => {
         ...base,
         NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).NEWSLETTER_UNSUBSCRIBE_SECRET,
     ).toBe('real-unsubscribe-secret');
   });
@@ -164,6 +179,7 @@ describe('parseEnv', () => {
         ...base,
         REVALIDATE_SECRET: 'real-revalidate-secret',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).REVALIDATE_SECRET,
     ).toBe('real-revalidate-secret');
   });
@@ -200,6 +216,7 @@ describe('parseEnv', () => {
         ...base,
         CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).CLOUDINARY_CLOUD_NAME,
     ).toBe('real-cloud-name');
   });
@@ -240,6 +257,7 @@ describe('parseEnv', () => {
         STRIPE_SECRET_KEY: 'sk_test_x',
         STRIPE_WEBHOOK_SECRET: 'whsec_x',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).STRIPE_SECRET_KEY,
     ).toBe('sk_test_x');
     // A full PayPal trio suffices.
@@ -250,6 +268,7 @@ describe('parseEnv', () => {
         PAYPAL_CLIENT_SECRET: 'secret',
         PAYPAL_WEBHOOK_ID: 'wh-1',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).PAYPAL_WEBHOOK_ID,
     ).toBe('wh-1');
   });
@@ -294,7 +313,9 @@ describe('parseEnv', () => {
     // Chuỗi rỗng (KEY=) bị strip về unset → cũng bị chặn.
     expect(() => parseEnv({ ...base, RESEND_API_KEY: '' })).toThrow(/RESEND_API_KEY/);
     // Có key thật → qua.
-    expect(parseEnv({ ...base, RESEND_API_KEY: 're_live_x' }).RESEND_API_KEY).toBe('re_live_x');
+    expect(
+      parseEnv({ ...base, RESEND_API_KEY: 're_live_x', ...PROD_DEPLOY_KEYS }).RESEND_API_KEY,
+    ).toBe('re_live_x');
   });
 
   it('rejects ADMIN_EMAILS that parses to an empty list, in ANY environment', () => {
@@ -364,6 +385,7 @@ describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
         CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
         REVALIDATE_SECRET: 'real-revalidate-secret',
         RESEND_API_KEY: 're_test_x',
+        ...PROD_DEPLOY_KEYS,
       }).MEDIA_GC_ENABLED,
     ).toBe(true);
     expect(() => parseEnv({ MEDIA_GC_ENABLED: 'true' })).toThrow(/NODE_ENV=production/);
@@ -432,5 +454,76 @@ describe('expandTrustProxyToCidrs', () => {
       '::1/128',
     ]);
     expect(expandTrustProxyToCidrs('10.1.2.0/24')).toEqual(['10.1.2.0/24']);
+  });
+});
+
+// ── superRefine production cho nhóm env DEPLOY (W2, ADR-0024 AMEND 2):
+// Render gửi CHUỖI RỖNG khi ô bị bỏ trống → default localhost kích hoạt và
+// boot XANH trên máy prod; tệ nhất là BETTER_AUTH_URL http làm cookie mất
+// Secure. Các guard dưới đây bắt chết ở boot. ──
+describe('superRefine production — nhóm env deploy (ADR-0024 AMEND 2)', () => {
+  // Fixture prod HỢP LỆ trọn vẹn; từng test knock-out đúng một biến.
+  const base = {
+    NODE_ENV: 'production',
+    BETTER_AUTH_SECRET: 'real-secret',
+    DATABASE_URL: 'postgresql://u:p@db.example.com:5432/app',
+    STRIPE_SECRET_KEY: 'sk_test_x',
+    STRIPE_WEBHOOK_SECRET: 'whsec_x',
+    NEWSLETTER_UNSUBSCRIBE_SECRET: 'real-unsubscribe-secret',
+    CLOUDINARY_CLOUD_NAME: 'real-cloud-name',
+    REVALIDATE_SECRET: 'real-revalidate-secret',
+    RESEND_API_KEY: 're_live_x',
+    BETTER_AUTH_URL: 'https://api.example.com',
+    FRONTEND_URL: 'https://www.example.com',
+    TRUSTED_ORIGINS: 'https://www.example.com,https://admin.example.com',
+    COOKIE_DOMAIN: '.example.com',
+  };
+
+  it('fixture đầy đủ đi qua — các test knock-out dưới cô lập đúng biến của mình', () => {
+    expect(parseEnv(base).BETTER_AUTH_URL).toBe('https://api.example.com');
+  });
+
+  it('BETTER_AUTH_URL: thiếu (default localhost), http://, hay https://localhost đều chặn', () => {
+    // Đây là biến NGUY HIỂM nhất: Better Auth suy cờ Secure của cookie CHỈ từ
+    // baseURL.startsWith('https://') — rơi về default http là cookie prod
+    // mất Secure mà không gì đỏ.
+    const { BETTER_AUTH_URL: omitted, ...rest } = base;
+    expect(() => parseEnv(rest)).toThrow(/BETTER_AUTH_URL/);
+    expect(() => parseEnv({ ...base, BETTER_AUTH_URL: 'http://api.example.com' })).toThrow(
+      /BETTER_AUTH_URL/,
+    );
+    expect(() => parseEnv({ ...base, BETTER_AUTH_URL: 'https://localhost:3001' })).toThrow(
+      /BETTER_AUTH_URL/,
+    );
+  });
+
+  it('FRONTEND_URL: cùng luật https + cấm localhost', () => {
+    const { FRONTEND_URL: omitted, ...rest } = base;
+    expect(() => parseEnv(rest)).toThrow(/FRONTEND_URL/);
+    expect(() => parseEnv({ ...base, FRONTEND_URL: 'http://www.example.com' })).toThrow(
+      /FRONTEND_URL/,
+    );
+    expect(() => parseEnv({ ...base, FRONTEND_URL: 'https://127.0.0.1:3000' })).toThrow(
+      /FRONTEND_URL/,
+    );
+  });
+
+  it('TRUSTED_ORIGINS: TỪNG entry phải https + không localhost — một entry hỏng là chặn', () => {
+    const { TRUSTED_ORIGINS: omitted, ...rest } = base;
+    // Thiếu → default localhost đôi → chặn.
+    expect(() => parseEnv(rest)).toThrow(/TRUSTED_ORIGINS/);
+    expect(() =>
+      parseEnv({
+        ...base,
+        TRUSTED_ORIGINS: 'https://www.example.com,http://admin.example.com',
+      }),
+    ).toThrow(/TRUSTED_ORIGINS/);
+    expect(() => parseEnv({ ...base, TRUSTED_ORIGINS: 'not a url' })).toThrow(/TRUSTED_ORIGINS/);
+  });
+
+  it('COOKIE_DOMAIN: bắt buộc ở production — thiếu là www không gửi được cookie sang api', () => {
+    const { COOKIE_DOMAIN: omitted, ...rest } = base;
+    expect(() => parseEnv(rest)).toThrow(/COOKIE_DOMAIN/);
+    expect(parseEnv(base).COOKIE_DOMAIN).toBe('.example.com');
   });
 });
