@@ -257,6 +257,33 @@ mất câu giải thích và bước Confirm in "Refunds $0.00 … through the p
 provider" trái AMEND 3); và `OVER_TOTAL` vào nhóm trạng-thái-cũ vì ở chế độ
 chính sách con số bị khoá, không "nhập lại" được.
 
+### AMEND 5 06/09 (đợt vá W1) — `refundAmount` VẮNG = MỨC CHÍNH SÁCH, không còn "trọn phần dư"
+
+Audit web 05/09 (cụm 3, mức Cao) chỉ ra cửa hậu của §1: nhánh đối chiếu chính
+sách (AMEND 4 của ADR-0030 §5b) chỉ chạy **khi client gửi `refundAmount`** —
+một caller cầm JWT admin bỏ trống trường ấy là được hoàn TRỌN phần dư không
+cần lý do, kể cả trên yêu cầu gửi 3 ngày trước khởi hành (bậc 0%). "Vắng =
+trọn phần dư" là hành vi giữ-tương-thích của §1 khi chưa có bảng bậc; từ khi
+ADR-0030 cưỡng chế ở server, nó trở thành đúng cái lỗ mà 0030 §5b vá cho
+trường hợp có gửi số.
+
+Quyết định:
+
+- `approve` tính `refundPercentForRequest` + `policyRefundAmount` **VÔ ĐIỀU
+  KIỆN** (dữ liệu tươi trong advisory lock, như 0030 §5b).
+- `refundAmount` vắng → **mặc định = mức chính sách** (bậc 0% ⇒ hoàn 0, đi
+  đường `noMoneyToMove` của §AMEND 3 — đóng request, huỷ booking, nhả ghế).
+- **MỌI lệch** giữa số sẽ hoàn và mức chính sách đòi `decisionNote`
+  (`OFF_POLICY_NOTE_REQUIRED`) — không còn phân biệt "client có gửi số hay
+  không". Số bằng chính sách thì như cũ, không cần lý do.
+- Stepper admin KHÔNG đổi UI (nó luôn gửi số đã khoá theo bậc); chỉ
+  contract/JSDoc phải thôi hứa "vắng = hoàn trọn phần dư".
+
+Tương thích: caller "cũ" duy nhất dựa vào vắng-=-trọn-phần-dư là int test —
+sửa test theo ngữ nghĩa mới. Trong cửa sổ ân hạn 24h (ADR-0030 §3c) chính
+sách là 100% nên vắng vẫn ra trọn phần dư — các flow test tạo-rồi-huỷ-ngay
+không đổi kết quả.
+
 ## Phương án đã cân nhắc rồi loại
 
 | Phương án | Vì sao loại |

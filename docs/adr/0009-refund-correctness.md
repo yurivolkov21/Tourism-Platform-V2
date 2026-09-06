@@ -93,6 +93,32 @@ hoặc raw-connection session-lock — chốt ở plan; cả hai đều serializ
   PAY-R1 overbook-cancelled + duplicate webhook → giữ CANCELLED (gỡ fresh-refund guard → REFUNDED ĐỎ) ·
   TOCTOU concurrent auto-refund → 1 refund. Không đụng đường claim/oversell (giữ nguyên).
 
+## AMEND 1 06/09 — claim PAID gate thêm trạng thái CHUYẾN: departure đóng/đã đi thì không xác nhận, đi đường auto-refund
+
+Đợt vá W1 (audit web 05/09, cụm 2 — mục Thấp "bẫy chờ phase /tours"): CTE claim
+chỉ gate `bookings.status='PENDING'`, không nhìn `tour_departures` — một capture
+đến muộn (webhook trễ, PayPal order sống ~3h) vẫn xác nhận được chỗ trên chuyến
+đã **CLOSED/CANCELLED** hoặc đã **khởi hành**. Nay `claim` thêm qual
+
+```sql
+EXISTS (SELECT 1 FROM tour_departures d
+        WHERE d.id = b.departure_id
+          AND d.status = 'OPEN' AND d.start_date >= current_date)
+```
+
+Zero row + booking vẫn PENDING + departure không còn OPEN/tương lai → outcome
+MỚI **`departure-closed`** → caller đi đúng đường auto-refund sẵn có của
+overbook (refund toàn phần, booking → CANCELLED, outbox
+`departure-closed-refund:<bookingId>`, email BOOKING_REFUNDED) — cùng lý lẽ:
+booking chưa từng rời PENDING, chưa từng là doanh thu.
+
+Ghi chú EPQ: qual này nằm trong subquery nên KHÔNG được re-evaluate tươi như
+qual trên UPDATE target — chấp nhận, vì race "admin đóng chuyến ĐÚNG lúc
+capture về" không phải race tiền (đóng chuyến là thao tác vận hành hiếm; kẹt
+lại phía nào thì hoặc booking PAID trên chuyến vừa đóng — xử tay như trước
+AMEND — hoặc refund một booking lẽ ra vào được, nghiêng về phía khách). Race
+quyết-định-tiền (double claim) vẫn gate trên `b.status` như cũ.
+
 ## Đã cân nhắc và loại
 
 - **Two-phase reservation** (TX1 `FOR UPDATE` + placeholder reserve → gateway → TX2 finalize):
