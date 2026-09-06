@@ -15,7 +15,6 @@ import {
 } from '@tourism/ui/components/dialog';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
-import { RadioGroup, RadioGroupItem } from '@tourism/ui/components/radio-group';
 import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { useRouter } from 'next/navigation';
@@ -29,10 +28,10 @@ import {
   normalizeAmountInput,
   type RefundAction,
   type RefundContractCode,
-  type RefundMode,
   refundErrorCopy,
   remainingRefundable,
   validateRefundAmount,
+  validateRefundReason,
 } from '@/lib/refund';
 import { useConfirmWrite } from '@/lib/use-confirm-write';
 
@@ -143,7 +142,8 @@ function RefundDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [step, setStep] = useState<'form' | 'confirm'>('form');
-  const [mode, setMode] = useState<RefundMode>('full');
+  // W2 (ADR-0030 AMEND 1): hết radio full/partial — amount là ô DUY NHẤT và
+  // bắt buộc; hoàn đủ = bấm nút điền nhanh phần dư rồi vẫn nhìn thấy con số.
   const [amount, setAmount] = useState('');
   const [reason, setReason] = useState('');
   /** Chỉ bật sau lần bấm "Review refund" đầu — lỗi validate là DERIVED từ
@@ -175,12 +175,13 @@ function RefundDialog({
 
   const normalized = normalizeAmountInput(amount);
   const fieldError = showValidation
-    ? validateRefundAmount({ mode, amount: normalized, remaining, currency })
+    ? validateRefundAmount({ amount: normalized, remaining, currency })
     : undefined;
+  // Reason bắt buộc (ADR-0030 AMEND 1) — cùng nếp derived như amount.
+  const reasonError = showValidation ? validateRefundReason(reason) : undefined;
 
   function reset() {
     setStep('form');
-    setMode('full');
     setAmount('');
     setReason('');
     setShowValidation(false);
@@ -199,21 +200,16 @@ function RefundDialog({
   /** Bước 1 → 2: validate bản sao luật contract; hỏng thì ở lại, không bắn. */
   function toConfirm() {
     setShowValidation(true);
-    const error = validateRefundAmount({ mode, amount: normalized, remaining, currency });
-    if (error) return;
+    const amountError = validateRefundAmount({ amount: normalized, remaining, currency });
+    if (amountError || validateRefundReason(reason)) return;
     clearFailure();
     setStep('confirm');
   }
 
   function submit() {
     void run(async () => {
-      const result = await refund({
-        code,
-        // Nhánh full cố ý KHÔNG gửi amount: server refund đúng phần còn lại
-        // theo ledger tại thời điểm xử lý — số cuối cùng là của server.
-        ...(mode === 'partial' ? { amount: normalized } : {}),
-        ...(reason.trim() ? { reason: reason.trim() } : {}),
-      });
+      // Contract (W2) đòi ĐỦ amount + reason — toConfirm đã chặn thiếu.
+      const result = await refund({ code, amount: normalized, reason: reason.trim() });
       if (!result.ok) return { ok: false, code: result.code };
       // Row cuối là row vừa append (`historyForBooking` sắp xếp createdAt
       // asc) — số tiền THẬT server vừa ghi, kể cả nhánh full.
@@ -248,32 +244,9 @@ function RefundDialog({
             </DialogHeader>
 
             <div className="grid gap-4">
-              <div className="grid gap-2">
-                <span className="text-sm font-medium">{t.form.modeLabel}</span>
-                <RadioGroup value={mode} onValueChange={(next) => setMode(next as RefundMode)}>
-                  {/* `id` của Label phải là `<radio-id>-label`: Base UI render
-                      radio thành <span role="radio"> và tự trỏ
-                      `aria-labelledby="<id>-label"`. Thiếu id đó là trỏ vào
-                      hư không — radio thành nút KHÔNG TÊN với trình đọc màn
-                      hình (đo được: query theo nhãn không thấy gì). */}
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="full" id="refund-mode-full" />
-                    <Label id="refund-mode-full-label" htmlFor="refund-mode-full">
-                      {t.form.modeFull}
-                    </Label>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <RadioGroupItem value="partial" id="refund-mode-partial" />
-                    <Label id="refund-mode-partial-label" htmlFor="refund-mode-partial">
-                      {t.form.modePartial}
-                    </Label>
-                  </div>
-                </RadioGroup>
-              </div>
-
-              {mode === 'partial' ? (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="refund-amount">{t.form.amountLabel}</Label>
+              <div className="grid gap-1.5">
+                <Label htmlFor="refund-amount">{t.form.amountLabel}</Label>
+                <div className="flex items-center gap-2">
                   <Input
                     id="refund-amount"
                     // `inputMode` chứ không `type="number"`: tiền là chuỗi thập
@@ -286,11 +259,21 @@ function RefundDialog({
                     aria-describedby={fieldError ? 'refund-amount-error' : undefined}
                     onChange={(event) => setAmount(event.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    {t.form.amountHint(currency, formatAmount(remaining, currency))}
-                  </p>
+                  {/* Điền vào Ô chứ không gửi ngầm — admin xác nhận bằng chính
+                      con số (ADR-0030 AMEND 1), sửa được trước khi review. */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setAmount(remaining)}
+                  >
+                    {t.form.fillRemaining}
+                  </Button>
                 </div>
-              ) : null}
+                <p className="text-xs text-muted-foreground">
+                  {t.form.amountHint(currency, formatAmount(remaining, currency))}
+                </p>
+              </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="refund-reason">{t.form.reasonLabel}</Label>
@@ -300,6 +283,8 @@ function RefundDialog({
                   maxLength={500}
                   placeholder={t.form.reasonPlaceholder}
                   value={reason}
+                  aria-invalid={reasonError != null}
+                  aria-describedby={reasonError ? 'refund-reason-error' : undefined}
                   onChange={(event) => setReason(event.target.value)}
                 />
               </div>
@@ -311,6 +296,15 @@ function RefundDialog({
                   className="text-sm text-destructive-emphasis"
                 >
                   {fieldError}
+                </p>
+              ) : null}
+              {reasonError ? (
+                <p
+                  id="refund-reason-error"
+                  role="alert"
+                  className="text-sm text-destructive-emphasis"
+                >
+                  {reasonError}
                 </p>
               ) : null}
             </div>
@@ -334,13 +328,8 @@ function RefundDialog({
             <dl className="grid gap-2 text-sm">
               <ConfirmRow label={t.confirm.booking} value={code} />
               <ConfirmRow label={t.confirm.customer} value={contactName} />
-              <ConfirmRow
-                label={t.confirm.amount}
-                value={
-                  mode === 'partial' ? formatAmount(normalized, currency) : t.confirm.amountFull
-                }
-              />
-              {reason.trim() ? <ConfirmRow label={t.confirm.reason} value={reason.trim()} /> : null}
+              <ConfirmRow label={t.confirm.amount} value={formatAmount(normalized, currency)} />
+              <ConfirmRow label={t.confirm.reason} value={reason.trim()} />
             </dl>
 
             <p className="text-sm text-destructive-emphasis">{t.confirm.warning}</p>

@@ -176,12 +176,15 @@ describe('refunds integration (admin refund ledger)', () => {
     return booking;
   }
 
+  // W2 (ADR-0030 AMEND 1): reason nay BẮT BUỘC ở contract — helper điền mặc
+  // định để các test về SỐ TIỀN giữ nguyên trọng tâm; test riêng bên dưới
+  // canh chuyện thiếu amount/reason → 400.
   function postRefund(cookie: string, code: string, payload: Record<string, unknown> = {}) {
     return app.inject({
       method: 'POST',
       url: `/api/admin/bookings/${code}/refund`,
       headers: { cookie },
-      payload,
+      payload: { reason: 'int test', ...payload },
     });
   }
 
@@ -324,12 +327,31 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(fake.refunds).toHaveLength(0);
   });
 
-  it('amount omitted → full remainder → REFUNDED (also after a prior partial)', async () => {
+  it('W2 (ADR-0030 AMEND 1): thiếu amount hoặc thiếu reason → 400, không một đồng nào rời két', async () => {
+    // Nhánh cũ "vắng amount = hoàn trọn phần dư" là cửa hậu cùng hình dạng
+    // với lỗ refundAmount-vắng của approve — nay contract từ chối từ cửa.
     const admin = await signUpAdmin();
     const booking = await createPaidBooking(await signUpUser('frank@example.com'));
+
+    const noAmount = await postRefund(admin, booking.code, {}); // helper vẫn kèm reason
+    expect(noAmount.statusCode).toBe(400);
+    const noReason = await app.inject({
+      method: 'POST',
+      url: `/api/admin/bookings/${booking.code}/refund`,
+      headers: { cookie: admin },
+      payload: { amount: '30.00' },
+    });
+    expect(noReason.statusCode).toBe(400);
+    expect(fake.refunds).toHaveLength(0);
+    expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+  });
+
+  it('hoàn đủ bằng cách GÕ đúng phần còn lại → REFUNDED (thay nhánh vắng-amount cũ)', async () => {
+    const admin = await signUpAdmin();
+    const booking = await createPaidBooking(await signUpUser('frank2@example.com'));
     expect((await postRefund(admin, booking.code, { amount: '30.00' })).statusCode).toBe(200);
 
-    const res = await postRefund(admin, booking.code, {}); // không amount: phần còn lại 87.00
+    const res = await postRefund(admin, booking.code, { amount: '87.00' }); // phần còn lại
     expect(res.statusCode).toBe(200);
     const body = AdminRefundResultSchema.parse(res.json());
     expect(body.booking.status).toBe('REFUNDED');
@@ -656,8 +678,8 @@ describe('refunds integration (admin refund ledger)', () => {
 
     fake.refundDelayMs = 100; // ép cả hai request cùng đọc ledger=0 trước khi ghi
     const [a, b] = await Promise.allSettled([
-      postRefund(admin, booking.code, {}), // full
-      postRefund(admin, booking.code, {}), // full — đồng thời
+      postRefund(admin, booking.code, { amount: '117.00' }), // trọn số dư
+      postRefund(admin, booking.code, { amount: '117.00' }), // đồng thời
     ]);
     const codes = [a, b]
       .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))

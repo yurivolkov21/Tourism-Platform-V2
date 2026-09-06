@@ -10,6 +10,7 @@ import {
   refundErrorCopy,
   remainingRefundable,
   validateRefundAmount,
+  validateRefundReason,
 } from './refund';
 
 const t = messages.admin.bookings.refund;
@@ -56,42 +57,35 @@ describe('validateRefundAmount', () => {
   // 20, trần 100: nhập số biết trước sẽ ăn OVER_TOTAL phải bị chặn TẠI form.
   const base = { remaining: '100.00', currency: 'USD' } as const;
 
-  it('mode full KHÔNG cần amount — server tự tính phần còn lại', () => {
-    expect(validateRefundAmount({ ...base, mode: 'full', amount: '' })).toBeUndefined();
-    expect(validateRefundAmount({ ...base, mode: 'full', amount: 'rác' })).toBeUndefined();
-  });
-
-  it('partial mà bỏ trống → đòi nhập, không bắn request rỗng', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '' })).toBe(
-      t.validation.required,
-    );
+  it('bỏ trống → đòi nhập — hết chế độ full ngầm (W2, ADR-0030 AMEND 1)', () => {
+    expect(validateRefundAmount({ ...base, amount: '' })).toBe(t.validation.required);
   });
 
   it('sai định dạng DecimalStringSchema → câu định dạng riêng', () => {
     for (const amount of ['abc', '1,200.50', '-5', '1.2.3', '$10']) {
-      expect(validateRefundAmount({ ...base, mode: 'partial', amount })).toBe(t.validation.format);
+      expect(validateRefundAmount({ ...base, amount })).toBe(t.validation.format);
     }
   });
 
   it('làm tròn HALF_UP 2dp về 0 → câu ZERO_OR_NEGATIVE của contract', () => {
     for (const amount of ['0', '0.00', '0.004']) {
-      expect(validateRefundAmount({ ...base, mode: 'partial', amount })).toBe(t.validation.zero);
+      expect(validateRefundAmount({ ...base, amount })).toBe(t.validation.zero);
     }
   });
 
   it('0.005 làm tròn lên 0.01 nên hợp lệ — mirror ROUND_HALF_UP của server', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '0.005' })).toBeUndefined();
+    expect(validateRefundAmount({ ...base, amount: '0.005' })).toBeUndefined();
   });
 
   it('vượt phần còn hoàn được → câu kèm đúng số trần (không phải total)', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '100.01' })).toBe(
+    expect(validateRefundAmount({ ...base, amount: '100.01' })).toBe(
       t.validation.overRemaining('$100.00'),
     );
   });
 
   it('đúng bằng trần hoặc dưới trần → hợp lệ; server vẫn là phán quyết cuối', () => {
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '100.00' })).toBeUndefined();
-    expect(validateRefundAmount({ ...base, mode: 'partial', amount: '99.99' })).toBeUndefined();
+    expect(validateRefundAmount({ ...base, amount: '100.00' })).toBeUndefined();
+    expect(validateRefundAmount({ ...base, amount: '99.99' })).toBeUndefined();
   });
 });
 
@@ -164,5 +158,18 @@ describe('refundErrorCopy', () => {
   it('INVALID_INPUT khẳng định request CHƯA từng rời lớp validate — khác hẳn GENERIC mập mờ', () => {
     expect(refundErrorCopy('INVALID_INPUT')).toMatch(/never reached/i);
     expect(refundErrorCopy('GENERIC')).toMatch(/may or may not/i);
+  });
+});
+
+// W2 (ADR-0030 AMEND 1): reason bắt buộc — refund thiện chí là ca "vượt bậc
+// phải ghi lý do" của ADR-0030 §5.
+describe('validateRefundReason', () => {
+  it('rỗng hoặc toàn khoảng trắng → câu đòi lý do', () => {
+    expect(validateRefundReason('')).toBe(t.validation.reasonRequired);
+    expect(validateRefundReason('   ')).toBe(t.validation.reasonRequired);
+  });
+
+  it('có chữ thật → hợp lệ', () => {
+    expect(validateRefundReason('goodwill — guide cancelled')).toBeUndefined();
   });
 });

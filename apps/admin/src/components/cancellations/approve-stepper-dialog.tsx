@@ -125,7 +125,6 @@ export function ApproveStepperDialog({
   const typed = normalizeAmountInput(amountInput);
   const amountError = override
     ? validateRefundAmount({
-        mode: 'partial',
         amount: typed,
         remaining: policy.remaining,
         currency: request.currency,

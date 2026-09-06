@@ -70,9 +70,10 @@ export class AdminBookingsController {
   refund(@CurrentUser() user: SessionUser) {
     return implement(contract.admin.bookings.refund).handler(async ({ input, errors }) => {
       try {
+        // W2 (ADR-0030 AMEND 1): contract đã ép amount + reason — truyền thẳng.
         return await this.refunds.refundByAdmin(user.id, input.code, {
-          ...(input.amount !== undefined ? { amount: input.amount } : {}),
-          ...(input.reason !== undefined ? { reason: input.reason } : {}),
+          amount: input.amount,
+          reason: input.reason,
         });
       } catch (error) {
         if (error instanceof BookingNotFoundError) throw errors.NOT_FOUND();

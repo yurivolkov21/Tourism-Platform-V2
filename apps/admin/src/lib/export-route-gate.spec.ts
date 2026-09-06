@@ -42,7 +42,7 @@ const { fetchAllAdminSubscribers } = vi.hoisted(() => ({
   }),
 }));
 vi.mock('@/lib/api/subscribers', () => ({ fetchAllAdminSubscribers }));
-vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: () => '' })) }));
+vi.mock('next/headers', () => ({ cookies: vi.fn(async () => ({ toString: (): string => '' })) }));
 
 function requestFor(path: string): NextRequest {
   return {

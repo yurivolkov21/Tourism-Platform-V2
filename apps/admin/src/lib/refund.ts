@@ -53,11 +53,8 @@ export function normalizeAmountInput(raw: string): string {
 // 1199.01). Re-export để chỗ gọi cũ trong admin không đổi.
 export { percentOfAmount, remainingRefundable } from '@tourism/contract';
 
-export type RefundMode = 'full' | 'partial';
-
 export interface RefundAmountInput {
-  mode: RefundMode;
-  /** Chuỗi ĐÃ qua `normalizeAmountInput` — chỉ có nghĩa ở mode 'partial'. */
+  /** Chuỗi ĐÃ qua `normalizeAmountInput`. */
   amount: string;
   /** Phần còn hoàn được (`remainingRefundable`) — trần thật, không phải total. */
   remaining: string;
@@ -67,14 +64,14 @@ export interface RefundAmountInput {
 /**
  * Validate amount trước khi bắn — trả câu lỗi i18n, `undefined` là hợp lệ.
  *
- * Mode `full` KHÔNG gửi amount: contract cho phép bỏ trống để server refund
- * đúng phần còn lại. Trần client là `remaining` (total − refundedTotal, cả
- * hai server trả) — hết cảnh cho nhập một số biết trước sẽ ăn OVER_TOTAL ở
- * booking đã hoàn một phần. Server vẫn là phán quyết cuối.
+ * W2 (ADR-0030 AMEND 1): amount BẮT BUỘC — chế độ "full" ngầm (bỏ trống để
+ * server hoàn trọn phần dư) đã xoá khỏi contract; hoàn đủ nghĩa là GÕ đúng
+ * con số phần dư (panel có nút điền nhanh). Trần client là `remaining`
+ * (total − refundedTotal, cả hai server trả) — hết cảnh cho nhập một số
+ * biết trước sẽ ăn OVER_TOTAL ở booking đã hoàn một phần. Server vẫn là
+ * phán quyết cuối.
  */
 export function validateRefundAmount(input: RefundAmountInput): string | undefined {
-  if (input.mode === 'full') return undefined;
-
   const amount = input.amount;
   if (amount.length === 0) return t.validation.required;
   // Dùng CHÍNH schema của contract, không chép lại regex lần thứ hai.
@@ -85,6 +82,16 @@ export function validateRefundAmount(input: RefundAmountInput): string | undefin
   if (cents > toCents(input.remaining)) {
     return t.validation.overRemaining(formatAmount(input.remaining, input.currency));
   }
+  return undefined;
+}
+
+/**
+ * Validate reason (W2, ADR-0030 AMEND 1): bắt buộc — refund thiện chí định
+ * nghĩa là ngoài chính sách, và §5 của ADR-0030 đã chốt "vượt là phải ghi lý
+ * do". Trả câu lỗi i18n, `undefined` là hợp lệ.
+ */
+export function validateRefundReason(reason: string): string | undefined {
+  if (reason.trim().length === 0) return t.validation.reasonRequired;
   return undefined;
 }
 
@@ -115,6 +122,6 @@ export type RefundActionResult =
 
 export type RefundAction = (input: {
   code: string;
-  amount?: string;
-  reason?: string;
+  amount: string;
+  reason: string;
 }) => Promise<RefundActionResult>;

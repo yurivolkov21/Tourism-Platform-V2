@@ -3335,16 +3335,17 @@ export const messages = {
         unavailable: 'Only a paid or partially refunded booking can be refunded.',
         form: {
           title: 'Issue a refund',
-          body: 'Step 1 of 2 — choose how much goes back to the customer.',
-          modeLabel: 'Amount',
-          modeFull: 'Full remaining balance',
-          modePartial: 'A specific amount',
+          body: 'Step 1 of 2 — enter how much goes back to the customer, and why.',
           amountLabel: 'Amount to refund',
+          /** W2 (ADR-0030 AMEND 1): hết nhánh "full" ngầm — muốn hoàn đủ thì
+           *  bấm nút này để Ô SỐ nhận đúng phần dư, admin vẫn thấy và sửa
+           *  được con số trước khi review. */
+          fillRemaining: 'Use remaining balance',
           /** Trần là phần CÒN HOÀN ĐƯỢC (total − đã hoàn) — `byCode` trả
            *  `refundedTotal` thật từ review F2 31/08, hết cảnh đoán theo total. */
           amountHint: (currency: string, remaining: string) =>
             `${currency} — up to the ${remaining} still refundable.`,
-          reasonLabel: 'Reason (optional)',
+          reasonLabel: 'Reason',
           reasonPlaceholder: 'Included in the refund email to the customer.',
           cancel: 'Cancel',
           next: 'Review refund',
@@ -3355,8 +3356,6 @@ export const messages = {
           booking: 'Booking',
           customer: 'Customer',
           amount: 'Amount',
-          /** Nhánh full: số tiền do server tính (total − đã hoàn), client không biết. */
-          amountFull: 'Full remaining balance',
           reason: 'Reason',
           warning:
             'This calls the payment provider straight away and cannot be undone from the back office.',
@@ -3370,6 +3369,9 @@ export const messages = {
          *  khối admin. */
         validation: {
           required: 'Enter an amount to refund.',
+          /** W2 (ADR-0030 AMEND 1): refund thiện chí là NGOÀI chính sách —
+           *  lý do là bắt buộc, không phải phép lịch sự. */
+          reasonRequired: 'Enter a reason — goodwill refunds are outside the policy.',
           format: 'Digits only, e.g. 120.50.',
           zero: REFUND_ZERO_COPY,
           overRemaining: (remaining: string) =>

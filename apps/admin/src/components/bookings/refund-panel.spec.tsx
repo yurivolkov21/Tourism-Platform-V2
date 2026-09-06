@@ -49,10 +49,13 @@ beforeEach(() => {
   refresh.mockReset();
 });
 
-/** Mở dialog và đi qua bước 1 (mặc định: full) tới bước 2. */
+/** Mở dialog, điền hợp lệ (nút điền nhanh phần dư + lý do) rồi sang bước 2 —
+ *  W2 (ADR-0030 AMEND 1): amount + reason đều bắt buộc, không còn "full" ngầm. */
 async function openConfirmStep(user: ReturnType<typeof userEvent.setup>) {
   await user.click(screen.getByRole('button', { name: t.cta }));
-  await user.click(await screen.findByRole('button', { name: t.form.next }));
+  await user.click(await screen.findByRole('button', { name: t.form.fillRemaining }));
+  await user.type(screen.getByLabelText(t.form.reasonLabel), 'int test reason');
+  await user.click(screen.getByRole('button', { name: t.form.next }));
 }
 
 describe('RefundPanel — cổng trạng thái', () => {
@@ -108,6 +111,8 @@ describe('RefundPanel — confirm 2 bước', () => {
 
     await user.click(screen.getByRole('button', { name: t.cta }));
     expect(await screen.findByText(t.form.body)).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: t.form.fillRemaining }));
+    await user.type(screen.getByLabelText(t.form.reasonLabel), 'int test reason');
     await user.click(screen.getByRole('button', { name: t.form.next }));
     expect(refund).not.toHaveBeenCalled();
 
@@ -127,17 +132,23 @@ describe('RefundPanel — confirm 2 bước', () => {
     expect(refund).not.toHaveBeenCalled();
   });
 
-  it('mode full gửi input KHÔNG có amount — server tự tính phần còn lại', async () => {
+  it('nút "Use remaining balance" điền phần dư vào Ô — gửi ĐỦ amount + reason (W2, ADR-0030 AMEND 1)', async () => {
     const user = userEvent.setup();
     const refund = vi.fn().mockResolvedValue({ ok: true, status: 'REFUNDED', refunds: [] });
     render(<RefundPanel booking={PAID} refund={refund} />);
     await openConfirmStep(user);
     await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
-    expect(refund).toHaveBeenCalledWith({ code: 'BK-ABCD1234' });
+    // Hết nhánh "vắng amount = trọn phần dư": muốn hoàn đủ thì con số phần dư
+    // NẰM TRONG Ô và đi theo request — admin xác nhận bằng chính con số.
+    expect(refund).toHaveBeenCalledWith({
+      code: 'BK-ABCD1234',
+      amount: '120.00',
+      reason: 'int test reason',
+    });
   });
 
-  it('mode partial gửi đúng amount + reason; dấu phẩy thập phân được chuẩn hoá', async () => {
+  it('gõ tay amount + reason; dấu phẩy thập phân được chuẩn hoá', async () => {
     const user = userEvent.setup();
     const refund = vi
       .fn()
@@ -145,9 +156,8 @@ describe('RefundPanel — confirm 2 bước', () => {
     render(<RefundPanel booking={PAID} refund={refund} />);
 
     await user.click(screen.getByRole('button', { name: t.cta }));
-    await user.click(await screen.findByRole('radio', { name: t.form.modePartial }));
     // Bàn phím decimal non-US phát dấu phẩy — form phải hiểu, không bắt học lại.
-    await user.type(screen.getByLabelText(t.form.amountLabel), '40,50');
+    await user.type(await screen.findByLabelText(t.form.amountLabel), '40,50');
     await user.type(screen.getByLabelText(t.form.reasonLabel), 'Guide cancelled a day');
     await user.click(screen.getByRole('button', { name: t.form.next }));
     await user.click(await screen.findByRole('button', { name: t.confirm.submit }));
@@ -161,16 +171,31 @@ describe('RefundPanel — confirm 2 bước', () => {
 });
 
 describe('RefundPanel — validate client (chặn trước khi bắn)', () => {
-  it('partial để trống → lỗi tại chỗ, KHÔNG sang bước 2', async () => {
+  it('để trống amount → lỗi tại chỗ, KHÔNG sang bước 2', async () => {
     const user = userEvent.setup();
     const refund = vi.fn();
     render(<RefundPanel booking={PAID} refund={refund} />);
 
     await user.click(screen.getByRole('button', { name: t.cta }));
-    await user.click(await screen.findByRole('radio', { name: t.form.modePartial }));
+    // Cô lập lỗi amount: reason điền hợp lệ.
+    await user.type(await screen.findByLabelText(t.form.reasonLabel), 'goodwill');
     await user.click(screen.getByRole('button', { name: t.form.next }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(t.validation.required);
+    expect(screen.queryByText(t.confirm.warning)).not.toBeInTheDocument();
+    expect(refund).not.toHaveBeenCalled();
+  });
+
+  it('để trống reason → lỗi đòi lý do, KHÔNG sang bước 2 (W2, ADR-0030 AMEND 1)', async () => {
+    const user = userEvent.setup();
+    const refund = vi.fn();
+    render(<RefundPanel booking={PAID} refund={refund} />);
+
+    await user.click(screen.getByRole('button', { name: t.cta }));
+    await user.click(await screen.findByRole('button', { name: t.form.fillRemaining }));
+    await user.click(screen.getByRole('button', { name: t.form.next }));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(t.validation.reasonRequired);
     expect(screen.queryByText(t.confirm.warning)).not.toBeInTheDocument();
     expect(refund).not.toHaveBeenCalled();
   });
@@ -186,10 +211,10 @@ describe('RefundPanel — validate client (chặn trước khi bắn)', () => {
     );
 
     await user.click(screen.getByRole('button', { name: t.cta }));
-    await user.click(await screen.findByRole('radio', { name: t.form.modePartial }));
     // 110 < total 120 nhưng > remaining 100 — bản cũ cho qua để server trả
     // OVER_TOTAL; giờ chặn ngay tại form (vòng vá review 31/08).
-    await user.type(screen.getByLabelText(t.form.amountLabel), '110');
+    await user.type(await screen.findByLabelText(t.form.amountLabel), '110');
+    await user.type(screen.getByLabelText(t.form.reasonLabel), 'goodwill');
     await user.click(screen.getByRole('button', { name: t.form.next }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -203,7 +228,7 @@ describe('RefundPanel — validate client (chặn trước khi bắn)', () => {
     render(<RefundPanel booking={PAID} refund={vi.fn()} />);
 
     await user.click(screen.getByRole('button', { name: t.cta }));
-    await user.click(await screen.findByRole('radio', { name: t.form.modePartial }));
+    await user.type(await screen.findByLabelText(t.form.reasonLabel), 'goodwill');
     await user.click(screen.getByRole('button', { name: t.form.next }));
     expect(await screen.findByRole('alert')).toHaveTextContent(t.validation.required);
 

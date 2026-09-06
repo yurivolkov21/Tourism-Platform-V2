@@ -90,12 +90,30 @@ describe('CreateBookingInputSchema', () => {
       }).decisionNote,
     ).toBe('too late');
 
-    expect(AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: '   ' }).success).toBe(
+    expect(
+      AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: '   ' })
+        .success,
+    ).toBe(false);
+    expect(
+      AdminRefundInputSchema.parse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: '  goodwill  ' })
+        .reason,
+    ).toBe('goodwill');
+  });
+
+  it('AdminRefundInputSchema (W2, ADR-0030 AMEND 1): amount VÀ reason bắt buộc — hết "vắng = trọn phần dư"', () => {
+    // Refund thiện chí định nghĩa là NGOÀI chính sách (không có request huỷ)
+    // — tức chính là ca "vượt bậc phải ghi lý do" của ADR-0030 §5; và số tiền
+    // phải do admin GÕ (xác nhận bằng chính con số), không suy từ sự vắng mặt.
+    expect(AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH' }).success).toBe(false);
+    expect(AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', amount: '10.00' }).success).toBe(
       false,
     );
     expect(
-      AdminRefundInputSchema.parse({ code: 'BK-ABCDEFGH', reason: '  goodwill  ' }).reason,
-    ).toBe('goodwill');
+      AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: 'goodwill' }).success,
+    ).toBe(false);
+    expect(
+      AdminRefundInputSchema.parse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: 'goodwill' }),
+    ).toEqual({ code: 'BK-ABCDEFGH', amount: '10.00', reason: 'goodwill' });
   });
 
   it('trần sanity tuyệt đối cho party (W1): numAdults/numChildren ≤ 99', () => {

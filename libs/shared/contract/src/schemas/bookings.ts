@@ -262,17 +262,23 @@ export const RefundSchema = z.object({
 export type Refund = z.output<typeof RefundSchema>;
 
 /**
- * Input cho `admin.bookings.refund`. Bỏ trống `amount` → refund phần còn lại
- * (total − SUM(refunds)); nó cố ý không mang currency — currency của booking đã
- * ngầm định, nên mismatch currency refund/booking (invariant #6) là bất khả biểu
- * diễn trên path này. `reason` chỉ lưu trong payload outbox của email refund
- * (model Refund cố ý không có cột reason — audit).
+ * Input cho `admin.bookings.refund` — W2 (ADR-0030 AMEND 1): `amount` VÀ
+ * `reason` đều BẮT BUỘC. Nhánh cũ "vắng amount = hoàn trọn phần dư" là cửa
+ * hậu cùng hình dạng với lỗ `refundAmount`-vắng mà ADR-0029 AMEND 5 vá bên
+ * approve: một cú bấm nhầm là lệnh chuyển trọn số dư không dấu vết. Admin
+ * muốn hoàn đủ thì GÕ đúng con số phần dư (panel có nút điền nhanh) — xác
+ * nhận bằng chính con số. `reason` bắt buộc vì refund thiện chí ĐỊNH NGHĨA
+ * là ngoài chính sách (không có request huỷ) — chính là ca "vượt bậc phải
+ * ghi lý do" của ADR-0030 §5; nó vẫn chỉ sống trong payload outbox (model
+ * Refund cố ý không có cột reason — ledger chỉ giữ money fact). Không mang
+ * currency — currency của booking đã ngầm định, nên mismatch currency
+ * refund/booking (invariant #6) là bất khả biểu diễn trên path này.
  */
 export const AdminRefundInputSchema = z.object({
   code: BookingCodeSchema,
-  amount: DecimalStringSchema.optional(),
+  amount: DecimalStringSchema,
   // `.trim()` ở contract (W1) — cùng luật với các free-text khác của miền này.
-  reason: z.string().trim().min(1).max(500).optional(),
+  reason: z.string().trim().min(1).max(500),
 });
 
 export type AdminRefundInput = z.output<typeof AdminRefundInputSchema>;

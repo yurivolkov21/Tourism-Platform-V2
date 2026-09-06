@@ -120,7 +120,9 @@ export class RefundsService {
   async refundByAdmin(
     adminUserId: string,
     bookingCode: string,
-    input: { amount?: string; reason?: string },
+    // W2 (ADR-0030 AMEND 1): amount + reason BẮT BUỘC — nhánh "vắng =
+    // trọn phần dư" đã xoá khỏi contract; server vẫn classify trên ledger.
+    input: { amount: string; reason: string },
   ): Promise<AdminRefundResult> {
     // Đọc id trước (ngoài lock) để có khoá; MỌI validation + read-ledger + gateway
     // + ghi-ledger nằm TRONG advisory lock (BK-R1, ADR-0009) — serialize refund/
@@ -166,7 +168,7 @@ export class RefundsService {
       });
       const alreadyRefunded = ledger._sum.amount ?? new Prisma.Decimal(0);
       const { kind, amount } = classifyRefundAmount({
-        requested: input.amount ?? null,
+        requested: input.amount,
         total: booking.totalAmount,
         alreadyRefunded,
       });
@@ -218,7 +220,7 @@ export class RefundsService {
             title: booking.tourTitle,
             amount: amount.toFixed(2),
             currency: booking.currency,
-            reason: input.reason ?? null,
+            reason: input.reason,
           },
           dedupeKey: `refund:${booking.id}:${refundRow.id}`,
         },
