@@ -1,4 +1,4 @@
-import { parseCommaList, parseEnv } from './env.js';
+import { expandTrustProxyToCidrs, parseCommaList, parseEnv } from './env.js';
 
 describe('parseEnv', () => {
   it('applies defaults on empty input', () => {
@@ -403,5 +403,34 @@ describe('COOKIE_DOMAIN / WORKER_INLINE', () => {
     // 0.30 đô của Stripe hôm nay, nhưng một cổng khác có thể thu 2 đô.
     expect(parseEnv({ PAYMENT_FEE_FIXED: '2.50' }).PAYMENT_FEE_FIXED).toBeCloseTo(2.5, 10);
     expect(() => parseEnv({ PAYMENT_FEE_FIXED: '-1' })).toThrow();
+  });
+});
+
+// ── expandTrustProxyToCidrs (W2, ADR-0017 §7 / audit cụm 6): Better Auth chỉ
+// nhận IP/CIDR trong advanced.ipAddress.trustedProxies, trong khi TRUST_PROXY
+// dùng tên dải của @fastify/proxy-addr — một biến env, hai người tiêu thụ,
+// nên phải có phép dịch thay vì bắt vận hành khai hai lần. ──
+describe('expandTrustProxyToCidrs', () => {
+  it('dịch ba tên dải mặc định thành CIDR (IPv4 + IPv6)', () => {
+    const cidrs = expandTrustProxyToCidrs('loopback,linklocal,uniquelocal');
+    expect(cidrs).toEqual([
+      '127.0.0.0/8',
+      '::1/128',
+      '169.254.0.0/16',
+      'fe80::/10',
+      '10.0.0.0/8',
+      '172.16.0.0/12',
+      '192.168.0.0/16',
+      'fc00::/7',
+    ]);
+  });
+
+  it('IP/CIDR tường minh đi qua nguyên vẹn, trộn được với tên dải', () => {
+    expect(expandTrustProxyToCidrs('203.0.113.7,loopback')).toEqual([
+      '203.0.113.7',
+      '127.0.0.0/8',
+      '::1/128',
+    ]);
+    expect(expandTrustProxyToCidrs('10.1.2.0/24')).toEqual(['10.1.2.0/24']);
   });
 });

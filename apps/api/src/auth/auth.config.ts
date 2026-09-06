@@ -2,7 +2,7 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { emailOTP } from 'better-auth/plugins/email-otp';
-import { adminEmails, env, trustedOrigins } from '../config/env.js';
+import { adminEmails, env, trustedOrigins, trustedProxyCidrs } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
 import { EmailType, UserRole } from '../generated/prisma/enums.js';
 import { isBootstrapAdmin } from './admin-bootstrap.js';
@@ -110,9 +110,25 @@ export const auth = betterAuth({
         },
       }
     : {}),
+  // W2 (audit cụm 1/6): chống brute-force của BA từng treo vào
+  // `enabled ?? isProduction` — một biến môi trường đặt sai là cả lớp này tắt
+  // im lặng. Khai TƯỜNG MINH: bật ở prod LẪN dev (dev thấy đúng hành vi prod);
+  // chỉ tắt ở test — storage RAM + mọi request test chung một IP, bật là các
+  // int spec tự khoá nhau qua trần 3/10s của /sign-in.
+  rateLimit: {
+    enabled: env.NODE_ENV !== 'test',
+  },
   advanced: {
     database: {
       generateId: false,
+    },
+    // W2 (audit cụm 1/6): BA tự tính IP từ x-forwarded-for, KHÔNG biết
+    // `trustProxy` của Fastify — thiếu danh sách này thì XFF ≥2 hop resolve
+    // ra null → MỌI người chung một bucket 3 req/10s cho /sign-in (một kẻ
+    // khoá được đăng nhập cả site). Dùng lại đúng nguồn TRUST_PROXY, dịch
+    // tên dải sang CIDR (BA chỉ nhận IP/CIDR — xem expandTrustProxyToCidrs).
+    ipAddress: {
+      trustedProxies: [...trustedProxyCidrs],
     },
     // Deploy v1 (ADR-0024 · ADR-0017 §4 đường CHUẨN): COOKIE_DOMAIN có giá trị
     // (vd `.nexora-travel.agency`) → cookie session mang domain cha để browser

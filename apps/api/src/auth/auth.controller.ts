@@ -1,8 +1,20 @@
-import { All, Controller, Req, Res } from '@nestjs/common';
+import { All, Controller, Req, Res, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { fromNodeHeaders } from 'better-auth/node';
 import type { FastifyReply, FastifyRequest } from 'fastify';
+import { AUTH_THROTTLE } from '../config/throttle.js';
 import { auth } from './auth.config.js';
 import { Public } from './public.decorator.js';
+import { WriteOnlyThrottlerGuard } from './write-only-throttler.guard.js';
+
+/**
+ * Route BA lộ user-enumeration mà không app nào của ta gọi (ADR-0017 §7c):
+ * USER_NOT_FOUND ≠ INVALID_OTP trên cùng path — kẻ dò không cần biết mã.
+ * BA không cho tắt từng route nên chuẩn hoá tại mount (xem handle()).
+ */
+const OTP_CHECK_PATH = '/api/auth/email-otp/check-verification-otp';
+/** Body 400 duy nhất của path trên — khớp shape lỗi INVALID_OTP thật của BA. */
+const OTP_CHECK_GENERIC_400 = JSON.stringify({ code: 'INVALID_OTP', message: 'Invalid OTP' });
 
 /**
  * Mount Better Auth handler tại /api/auth/* (pattern Fastify chính chủ của BA
@@ -12,6 +24,9 @@ import { Public } from './public.decorator.js';
  */
 // Mount Better Auth — chính là nơi đăng nhập, không thể đòi đã đăng nhập.
 @Public()
+// Trần Nest cho cụm auth (W2 mục 3): chỉ đếm non-GET, xem AUTH_THROTTLE.
+@UseGuards(WriteOnlyThrottlerGuard)
+@Throttle({ default: AUTH_THROTTLE })
 @Controller()
 export class AuthController {
   // NB: adapter Fastify (find-my-way) chỉ nhận wildcard `*` cuối route —
@@ -31,6 +46,13 @@ export class AuthController {
     });
 
     const response = await auth.handler(webRequest);
+
+    // ADR-0017 §7c: mọi 400 của check-verification-otp trả CÙNG một body —
+    // "email không tồn tại" và "mã sai" phải bất khả phân biệt từ ngoài.
+    if (url.pathname === OTP_CHECK_PATH && response.status === 400) {
+      reply.status(400).header('content-type', 'application/json').send(OTP_CHECK_GENERIC_400);
+      return;
+    }
 
     reply.status(response.status);
     response.headers.forEach((value, key) => {

@@ -42,3 +42,13 @@ export const AUTHED_WRITE_THROTTLE = { limit: 20, ttl: 60_000 } as const;
  * trước round-trip nên 600 request/phút không đáng kể.
  */
 export const WEBHOOK_THROTTLE = { limit: 600, ttl: 60_000 } as const;
+
+/**
+ * Trần Nest riêng cho AuthController (W2 mục 3, theo tinh thần ADR-0037):
+ * CHỈ đếm non-GET (guard bỏ qua GET/HEAD/OPTIONS — `get-session` đi từ SSR
+ * của web qua egress IP DÙNG CHUNG của Vercel, đếm nó theo IP là tự khoá
+ * site). 60/60s theo IP là ĐÁY chống flood cho cả cụm /api/auth/* (một
+ * handler wildcard = một bucket); lớp mịn theo-path (sign-in 3/10s…) là
+ * rate limiter của chính Better Auth, nay đã bật tường minh + biết proxy.
+ */
+export const AUTH_THROTTLE = { limit: 60, ttl: 60_000 } as const;

@@ -292,6 +292,31 @@ export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIG
 export const trustProxy: string = env.TRUST_PROXY;
 
 /**
+ * Bảng dịch tên dải của @fastify/proxy-addr sang CIDR — Better Auth
+ * (`advanced.ipAddress.trustedProxies`) chỉ nhận IP/CIDR và LẶNG LẼ bỏ entry
+ * không hợp lệ (đo trong create-context.mjs: chỉ warn), nên đưa thẳng
+ * 'loopback' vào là tự tắt lớp resolve IP của BA mà không lỗi nào đỏ.
+ */
+const PROXY_RANGE_CIDRS: Record<string, readonly string[]> = {
+  loopback: ['127.0.0.0/8', '::1/128'],
+  linklocal: ['169.254.0.0/16', 'fe80::/10'],
+  uniquelocal: ['10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', 'fc00::/7'],
+};
+
+/**
+ * Dịch `TRUST_PROXY` (một biến, HAI người tiêu thụ) sang dạng CIDR cho Better
+ * Auth: tên dải nở thành CIDR tương ứng, IP/CIDR tường minh đi qua nguyên vẹn.
+ * Một nguồn sự thật — khai proxy được tin ở đúng MỘT chỗ, Fastify lẫn BA cùng
+ * đọc, không bao giờ lệch nhau.
+ */
+export function expandTrustProxyToCidrs(raw: string): string[] {
+  return parseCommaList(raw).flatMap((entry) => PROXY_RANGE_CIDRS[entry.toLowerCase()] ?? [entry]);
+}
+
+/** `TRUST_PROXY` đã dịch sang CIDR cho Better Auth (xem hàm trên). */
+export const trustedProxyCidrs: readonly string[] = expandTrustProxyToCidrs(env.TRUST_PROXY);
+
+/**
  * Địa chỉ admin ĐẦU TIÊN — dùng làm người nhận (`to`) cho email nội bộ như
  * ENQUIRY_ADMIN_ALERT. Kiểu `string` THẬT, không `| undefined`:
  * `EnvSchema.superRefine` phía trên đã chặn ADMIN_EMAILS parse ra rỗng ngay
