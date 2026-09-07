@@ -175,10 +175,19 @@ describe('media.signUpload', () => {
     expect(body.uploadUrl).toContain('/image/upload');
     expect(body.signature).toBe(
       cloudinary.utils.api_sign_request(
-        { folder: body.folder, public_id: body.publicId, timestamp: body.timestamp },
+        {
+          folder: body.folder,
+          public_id: body.publicId,
+          timestamp: body.timestamp,
+          // W4 U1 (ADR-0021 AMEND 1): hai ràng buộc nằm TRONG chữ ký.
+          allowed_formats: body.allowedFormats,
+          transformation: body.transformation,
+        },
         'int-test-secret',
       ),
     );
+    expect(body.allowedFormats).toBe('jpg,jpeg,png,webp,heic,heif');
+    expect(body.transformation).toBe('c_limit,w_2400,h_2400');
     // Ký = đăng ký theo dõi (ADR-0035 §3): hàng dọn phải có ĐÚNG publicId đầy
     // đủ `<folder>/<basename>` — dạng `uploader.destroy` nhận. Đây là lưới
     // duy nhất chứng minh đường enqueue lớn nhất thật sự ghi (vòng vá 05/09).

@@ -45,10 +45,31 @@ export function uploadFolderFor(
 }
 
 /**
- * Ký bộ `{folder, public_id, timestamp}` bằng api_sign_request của SDK —
- * đúng thuật toán Cloudinary xác thực phía họ; api_secret chỉ đi vào hàm
- * này, không bao giờ nằm trong giá trị trả về. Cụm này chỉ ký ẢNH nên
- * uploadUrl cố định resource `image` (video là chuyện P4).
+ * Format Cloudinary được phép LƯU (W4 U1, ADR-0021 AMEND 1) — chuỗi phẩy
+ * đúng dạng tham số `allowed_formats`. Chữ ký không phủ endpoint
+ * `/<resource_type>/upload`, nên whitelist ĐUÔI ở contract chỉ chặn client
+ * ngoan; tham số này nằm TRONG chữ ký thì Cloudinary tự từ chối video/raw
+ * kể cả khi POST sang endpoint khác. KHÔNG 1:1 với whitelist đuôi
+ * (avif/gif client vẫn gửi được — Cloudinary nhận diện nội dung rồi từ
+ * chối; heic/heif cho ảnh iPhone, Cloudinary chuyển mã được).
+ */
+export const ALLOWED_UPLOAD_FORMATS = 'jpg,jpeg,png,webp,heic,heif';
+
+/**
+ * Incoming transformation (W4 U1): bản LƯU là bản đã transform — EXIF/GPS
+ * bị strip theo thiết kế (transform sinh ảnh mới, không chép metadata), khổ
+ * trần 2400px chặn ảnh trăm-megapixel. `c_limit` không cắt cúp (giữ luật
+ * cấm crop của ADR-0020) và không phóng to ảnh nhỏ hơn.
+ */
+export const INCOMING_TRANSFORMATION = 'c_limit,w_2400,h_2400';
+
+/**
+ * Ký bộ `{folder, public_id, timestamp, allowed_formats, transformation}`
+ * bằng api_sign_request của SDK — đúng thuật toán Cloudinary xác thực phía
+ * họ; api_secret chỉ đi vào hàm này, không bao giờ nằm trong giá trị trả
+ * về. MỌI ràng buộc phải là THAM SỐ ĐƯỢC KÝ (ADR-0021 AMEND 1) — client
+ * thiếu/sửa một cái là Cloudinary 401. Cụm này chỉ ký ẢNH nên uploadUrl cố
+ * định resource `image`.
  */
 export function buildSignedUploadParams(
   cfg: UploadSigningConfig,
@@ -57,7 +78,13 @@ export function buildSignedUploadParams(
   timestamp: number,
 ): SignedUploadParams {
   const signature = cloudinary.utils.api_sign_request(
-    { folder, public_id: publicId, timestamp },
+    {
+      folder,
+      public_id: publicId,
+      timestamp,
+      allowed_formats: ALLOWED_UPLOAD_FORMATS,
+      transformation: INCOMING_TRANSFORMATION,
+    },
     cfg.apiSecret,
   );
   return {
@@ -67,6 +94,8 @@ export function buildSignedUploadParams(
     cloudName: cfg.cloudName,
     folder,
     publicId,
+    allowedFormats: ALLOWED_UPLOAD_FORMATS,
+    transformation: INCOMING_TRANSFORMATION,
     uploadUrl: `https://api.cloudinary.com/v1_1/${cfg.cloudName}/image/upload`,
   };
 }

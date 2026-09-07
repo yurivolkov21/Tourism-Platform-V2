@@ -16,7 +16,9 @@ export function imageExtensionOf(filename: string): AllowedExt | null {
   return (ALLOWED_IMAGE_EXTENSIONS as readonly string[]).includes(ext) ? (ext as AllowedExt) : null;
 }
 
-/** Bộ field Cloudinary xác thực — khớp chữ ký {folder, public_id, timestamp}. */
+/** Bộ field Cloudinary xác thực — khớp TRỌN chữ ký {folder, public_id,
+ * timestamp, allowed_formats, transformation} (W4 U1): thiếu/thừa một tham
+ * số đã ký là Cloudinary 401. */
 export function buildUploadFormData(file: Blob, params: SignedUploadParams): FormData {
   const form = new FormData();
   form.set('file', file);
@@ -25,6 +27,8 @@ export function buildUploadFormData(file: Blob, params: SignedUploadParams): For
   form.set('signature', params.signature);
   form.set('folder', params.folder);
   form.set('public_id', params.publicId);
+  form.set('allowed_formats', params.allowedFormats);
+  form.set('transformation', params.transformation);
   return form;
 }
 

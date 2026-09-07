@@ -1,6 +1,8 @@
 import { v2 as cloudinary } from 'cloudinary';
 import {
+  ALLOWED_UPLOAD_FORMATS,
   buildSignedUploadParams,
+  INCOMING_TRANSFORMATION,
   isOwnAvatarPublicId,
   resolveUploadConfig,
   uploadFolderFor,
@@ -39,11 +41,17 @@ describe('uploadFolderFor', () => {
 });
 
 describe('buildSignedUploadParams', () => {
-  it('chữ ký khớp api_sign_request của SDK với cùng bộ {folder, public_id, timestamp}', () => {
+  it('W4 U1 (ADR-0021 AMEND 1): chữ ký phủ CẢ allowed_formats + transformation — khớp api_sign_request', () => {
     const params = buildSignedUploadParams(CFG, 'tourism/avatars/u-1', 'pid-1', 1_760_000_000);
     expect(params.signature).toBe(
       cloudinary.utils.api_sign_request(
-        { folder: 'tourism/avatars/u-1', public_id: 'pid-1', timestamp: 1_760_000_000 },
+        {
+          folder: 'tourism/avatars/u-1',
+          public_id: 'pid-1',
+          timestamp: 1_760_000_000,
+          allowed_formats: ALLOWED_UPLOAD_FORMATS,
+          transformation: INCOMING_TRANSFORMATION,
+        },
         CFG.apiSecret,
       ),
     );
@@ -54,7 +62,15 @@ describe('buildSignedUploadParams', () => {
       folder: 'tourism/avatars/u-1',
       publicId: 'pid-1',
       uploadUrl: 'https://api.cloudinary.com/v1_1/demo-cloud/image/upload',
+      // Hai ràng buộc NẰM TRONG chữ ký — client thiếu/sửa là Cloudinary 401.
+      allowedFormats: ALLOWED_UPLOAD_FORMATS,
+      transformation: INCOMING_TRANSFORMATION,
     });
+  });
+
+  it('W4 U1: hằng ràng buộc — format ảnh + incoming transformation strip EXIF/khổ trần 2400', () => {
+    expect(ALLOWED_UPLOAD_FORMATS).toBe('jpg,jpeg,png,webp,heic,heif');
+    expect(INCOMING_TRANSFORMATION).toBe('c_limit,w_2400,h_2400');
   });
 });
 

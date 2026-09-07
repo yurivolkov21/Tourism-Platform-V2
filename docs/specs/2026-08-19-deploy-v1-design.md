@@ -107,7 +107,15 @@ Lưu ý `guard-build.mjs` chỉ chặn khi có server cục bộ — không ản
 > đều `SENT`.
 
 Resend: Add domain `nexora-travel.agency` → thêm record SPF/DKIM/DMARC → verified →
-`EMAIL_FROM` trên Render. Stripe dashboard (test mode): webhook endpoint
+`EMAIL_FROM` trên Render. **W4 (07/09):** Resend dashboard → Webhooks → thêm
+endpoint `https://api.nexora-travel.agency/api/webhooks/resend` (event
+`email.bounced` + `email.complained`), copy signing secret (`whsec_…`) vào
+`RESEND_WEBHOOK_SECRET` trên Render. **Cloudinary dashboard (W4 U1, ADR-0021
+AMEND 1 — lớp HAI, không tự động hoá được):** Settings → Security → bật
+**Restricted media types** (chặn unsigned/raw ở cấp tài khoản) và
+**Restricted original access** (chặn truy cập bản gốc chưa transform) — lớp
+một là tham số đã ký (`allowed_formats` + incoming `transformation`), lớp
+này chặn nốt các đường ngoài chữ ký. Stripe dashboard (test mode): webhook endpoint
 `https://api.nexora-travel.agency/<route>` (lấy đường dẫn từ
 `payments.controller`), copy `STRIPE_WEBHOOK_SECRET` mới; PayPal sandbox tương
 tự (`PAYPAL_WEBHOOK_ID`). Chạy smoke §0, ghi kết quả vào CHANGELOG.
@@ -119,7 +127,8 @@ tự (`PAYPAL_WEBHOOK_ID`). Chạy smoke §0, ghi kết quả vào CHANGELOG.
 · `FRONTEND_URL=https://www.nexora-travel.agency` · `TRUSTED_ORIGINS=https://www.nexora-travel.agency,https://nexora-travel.agency`
 · `COOKIE_DOMAIN=.nexora-travel.agency` · `ADMIN_EMAILS` · `REVALIDATE_SECRET`
 · `NEWSLETTER_UNSUBSCRIBE_SECRET` · `RESEND_API_KEY` · `EMAIL_FROM` ·
-`CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` · `STRIPE_SECRET_KEY` +
+`CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` · `RESEND_WEBHOOK_SECRET` (W4) ·
+`ENQUIRY_RETENTION_MONTHS` (W4, bỏ trống = 18) · `STRIPE_SECRET_KEY` +
 `STRIPE_WEBHOOK_SECRET` (và/hoặc `PAYPAL_CLIENT_ID/SECRET/WEBHOOK_ID`) ·
 `WORKER_INLINE` (nếu không có worker riêng).
 **Web (Vercel):** `API_URL` · `NEXT_PUBLIC_API_URL` · `NEXT_PUBLIC_SITE_URL` ·

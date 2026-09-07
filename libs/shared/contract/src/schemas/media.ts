@@ -62,8 +62,9 @@ export const SignUploadInputSchema = z.discriminatedUnion('purpose', [
 
 /**
  * Bộ tham số browser cần để POST file thẳng lên Cloudinary. Chữ ký phủ
- * `{folder, public_id, timestamp}` — form phải gửi đúng các giá trị này,
- * đổi một ký tự là Cloudinary từ chối. KHÔNG BAO GIỜ chứa api_secret.
+ * `{folder, public_id, timestamp, allowed_formats, transformation}` (W4 U1,
+ * ADR-0021 AMEND 1) — form phải gửi đúng TỪNG giá trị này, đổi/thiếu một
+ * cái là Cloudinary từ chối. KHÔNG BAO GIỜ chứa api_secret.
  */
 export const SignedUploadParamsSchema = z.object({
   signature: z.string().min(1),
@@ -73,6 +74,17 @@ export const SignedUploadParamsSchema = z.object({
   folder: z.string().min(1),
   /** BASENAME server sinh (không kèm folder) — form gửi nguyên ở field `public_id`. */
   publicId: z.string().min(1),
+  /**
+   * Danh sách format Cloudinary nhận LƯU (chuỗi phẩy) — NẰM TRONG chữ ký:
+   * chặn video/raw kể cả khi POST sang endpoint khác (chữ ký không phủ
+   * endpoint). Form gửi nguyên ở field `allowed_formats`.
+   */
+  allowedFormats: z.string().min(1),
+  /**
+   * Incoming transformation (bản lưu đã strip EXIF/GPS, khổ trần 2400) —
+   * cũng nằm trong chữ ký; form gửi nguyên ở field `transformation`.
+   */
+  transformation: z.string().min(1),
   uploadUrl: z.url(),
 });
 
