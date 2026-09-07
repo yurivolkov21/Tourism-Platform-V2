@@ -48,9 +48,16 @@ export class EnquiriesService {
       // HAI outbox trong CÙNG transaction với insert: hoặc cả ba cùng có,
       // hoặc không gì cả (xem JSDoc phía trên).
       //
-      // dedupeKey chứa id vừa sinh nên duy nhất theo cấu tạo. Dùng
-      // `createMany` cho gọn; `skipDuplicates` ở đây không bao giờ skip gì —
-      // xem docs/conventions/outbox-dedupe-key.md.
+      // W4 E1 (ADR-0039 §1): dedupeKey của ACK theo <email>:<ngày UTC> — một
+      // ack mỗi địa chỉ mỗi ngày, spam N form không thành N email tới nạn
+      // nhân. Email phải NORMALIZE trước khi ghép key: cột `email` là citext
+      // nhưng `dedupe_key` là varchar thường — hai biến thể hoa/thường sẽ
+      // sinh hai key khác chuỗi (đúng bài học newsletter-welcome).
+      // `skipDuplicates` từ đây LOAD-BEARING cho row ack (key lặp hợp lệ
+      // trong ngày); key alert chứa id nên không bao giờ trùng — admin thấy
+      // đủ mọi lead. Xem docs/conventions/outbox-dedupe-key.md.
+      const normalizedEmail = input.email.trim().toLowerCase();
+      const utcDay = new Date().toISOString().slice(0, 10);
       const shared = {
         name: input.name,
         email: input.email,
@@ -61,9 +68,10 @@ export class EnquiriesService {
         data: [
           {
             type: EmailType.ENQUIRY_RECEIVED,
-            // Ack gửi cho khách → người nhận là `email` trong payload.
-            payload: shared,
-            dedupeKey: `enquiry-received:${enquiry.id}`,
+            // Ack gửi cho khách → người nhận là `email` trong payload; gửi
+            // tới bản đã normalize cho nhất quán với chính key dedupe.
+            payload: { ...shared, email: normalizedEmail },
+            dedupeKey: `enquiry-received:${normalizedEmail}:${utcDay}`,
           },
           {
             type: EmailType.ENQUIRY_ADMIN_ALERT,
@@ -78,6 +86,7 @@ export class EnquiriesService {
             dedupeKey: `enquiry-admin-alert:${enquiry.id}`,
           },
         ],
+        skipDuplicates: true,
       });
 
       return { id: enquiry.id };

@@ -298,9 +298,10 @@ function buildEmail(
               {name ? `Hi ${name}, a` : 'A'} local expert is reading it now and will get back to you
               within one business day.
             </BodyParagraph>
-            {f('message') ? (
-              <QuoteCard label="YOUR MESSAGE">&quot;{f('message')}&quot;</QuoteCard>
-            ) : null}
+            {/* W4 E1 (ADR-0039 §1): CỐ Ý không in lại `message` — khách viết
+                gì họ tự biết, còn in nguyên văn là trao cho kẻ lạ một máy gửi
+                thư có nội dung tự chọn tới địa chỉ tự chọn. Alert admin
+                (ENQUIRY_ADMIN_ALERT bên dưới) vẫn mang trọn message. */}
           </EmailShell>
         ),
       };

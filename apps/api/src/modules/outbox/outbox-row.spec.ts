@@ -20,6 +20,7 @@ const base: Outbox = {
   attempts: 5,
   dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
   lastError: 'Resend: 401 invalid api key',
+  nextAttemptAt: null,
   createdAt: new Date('2026-09-01T10:00:00.000Z'),
   processedAt: null,
 };

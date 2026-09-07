@@ -79,6 +79,32 @@ describe('renderEmail type → subject mapping', () => {
     expect(html).not.toContain('receiving this because');
   });
 
+  it('W4 E1 (ADR-0039 §1): ack ENQUIRY_RECEIVED KHÔNG lặp lại message của khách', async () => {
+    // Bỏ khối "YOUR MESSAGE": in nguyên message vào email gửi tới địa chỉ
+    // người lạ điền là trao cho kẻ lạ một máy gửi thư có nội dung tự chọn.
+    // Alert admin (test riêng dưới) VẪN phải mang message.
+    const marker = 'NOI-DUNG-KHACH-TU-CHON-abc123';
+    const { html, text } = await renderEmail(EmailType.ENQUIRY_RECEIVED, {
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: marker,
+      tourTitle: null,
+    });
+    expect(html).not.toContain(marker);
+    expect(text).not.toContain(marker);
+  });
+
+  it('W4 E1: alert admin ENQUIRY_ADMIN_ALERT VẪN mang trọn message của khách', async () => {
+    const marker = 'NOI-DUNG-CHO-ADMIN-doc-xyz789';
+    const { html } = await renderEmail(EmailType.ENQUIRY_ADMIN_ALERT, {
+      name: 'Jane',
+      email: 'jane@example.com',
+      message: marker,
+      tourTitle: null,
+    });
+    expect(html).toContain(marker);
+  });
+
   it('mail gửi khách có dòng "why you got this" ở footer (chuẩn hệ Barebone)', async () => {
     const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     expect(html).toContain('receiving this because of a booking');

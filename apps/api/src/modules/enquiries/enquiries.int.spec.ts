@@ -97,16 +97,19 @@ describe('enquiries (int)', () => {
     expect(enquiry.name).toBe(VALID_PAYLOAD.name);
 
     // ĐÚNG 2 outbox trong toàn bảng — beforeEach đã TRUNCATE nên count() trần
-    // là assertion mạnh hơn lọc theo `dedupeKey: { contains: body.id } }`:
-    // cách cũ không bắt được một row THỨ BA có dedupeKey không liên quan.
+    // là assertion mạnh hơn lọc theo dedupeKey: cách cũ không bắt được một
+    // row THỨ BA có dedupeKey không liên quan.
     expect(await prisma.outbox.count()).toBe(2);
 
-    // Gắn ĐÚNG dedupeKey theo quy ước <event>:<entityId>.
-    const outboxRows = await prisma.outbox.findMany({
-      where: { dedupeKey: { contains: body.id } },
+    // dedupeKey theo quy ước: ack theo <email>:<ngày UTC> (W4 E1, ADR-0039
+    // §1 — một ack/địa chỉ/ngày), alert theo <entityId> như cũ.
+    const today = new Date().toISOString().slice(0, 10);
+    const received = await prisma.outbox.findFirst({
+      where: { dedupeKey: `enquiry-received:${VALID_PAYLOAD.email}:${today}` },
     });
-    const received = outboxRows.find((r) => r.dedupeKey === `enquiry-received:${body.id}`);
-    const alert = outboxRows.find((r) => r.dedupeKey === `enquiry-admin-alert:${body.id}`);
+    const alert = await prisma.outbox.findFirst({
+      where: { dedupeKey: `enquiry-admin-alert:${body.id}` },
+    });
     expect(received?.type).toBe(EmailType.ENQUIRY_RECEIVED);
     expect(alert?.type).toBe(EmailType.ENQUIRY_ADMIN_ALERT);
     // Payload ACK khách KHÔNG được có `to` — nếu ai gộp nó vào object `shared`
@@ -288,9 +291,14 @@ describe('enquiries (int)', () => {
     expect(found?.tourId).toBe(tour.id);
 
     const received = await prisma.outbox.findFirstOrThrow({
-      where: { dedupeKey: `enquiry-received:${res.json().id}` },
+      where: { type: EmailType.ENQUIRY_RECEIVED },
     });
     expect((received.payload as Record<string, unknown>).tourTitle).toBe(tour.title);
+    // Ack gửi tới bản email đã normalize — nhất quán với chính key dedupe.
+    expect((received.payload as Record<string, unknown>).email).toBe('jane@x.com');
+    expect(received.dedupeKey).toBe(
+      `enquiry-received:jane@x.com:${new Date().toISOString().slice(0, 10)}`,
+    );
   });
 
   it('payload đủ 10/10 field → mỗi field trong row DB khớp đúng giá trị đã gửi', async () => {
@@ -330,6 +338,42 @@ describe('enquiries (int)', () => {
     expect(row.groupSize).toBe(fullPayload.groupSize);
     expect(row.budgetTier).toBe(fullPayload.budgetTier);
     expect(row.interests).toEqual(fullPayload.interests);
+  });
+
+  it('W4 E1 (ADR-0039 §1): hai enquiry cùng email cùng ngày → MỘT ack, HAI alert admin', async () => {
+    // dedupeKey của ack theo <email>:<yyyy-mm-dd> — spam N form một buổi
+    // không thành N email tới nạn nhân; alert admin giữ key theo id nên
+    // admin vẫn thấy đủ mọi lead. Email gõ KHÁC hoa/thường cố ý: dedupeKey
+    // là varchar thường (không citext) nên service phải normalize trước khi
+    // ghép key — đúng bài học của newsletter-welcome.
+    const first = await postEnquiry(
+      app,
+      { ...VALID_PAYLOAD, email: 'Dup@Example.com' },
+      '10.0.1.1',
+    );
+    const second = await postEnquiry(
+      app,
+      { ...VALID_PAYLOAD, email: 'dup@example.com' },
+      '10.0.1.2',
+    );
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+
+    // Cả HAI enquiry đều được lưu — dedupe chỉ áp cho EMAIL ack, không nuốt lead.
+    expect(await prisma.enquiry.count()).toBe(2);
+
+    const received = await prisma.outbox.findMany({
+      where: { type: EmailType.ENQUIRY_RECEIVED },
+    });
+    const alerts = await prisma.outbox.findMany({
+      where: { type: EmailType.ENQUIRY_ADMIN_ALERT },
+    });
+    expect(received).toHaveLength(1);
+    expect(alerts).toHaveLength(2);
+
+    // Khuôn key mới: enquiry-received:<email đã normalize>:<yyyy-mm-dd UTC>.
+    const today = new Date().toISOString().slice(0, 10);
+    expect(received[0]?.dedupeKey).toBe(`enquiry-received:dup@example.com:${today}`);
   });
 
   it('throttle: gửi 6 lần liên tiếp cùng IP → lần thứ 6 trả 429, DB chỉ có 5 row', async () => {
