@@ -113,7 +113,12 @@ export const BookingSchema = z.object({
   contactPhone: z.string().max(30).nullable(),
   specialRequests: z.string().max(1000).nullable(),
   paymentProvider: PaymentProviderSchema,
-  checkoutUrl: z.url().nullable(),
+  // CHỈ https (vòng vá review W3): `z.url()` trần cho `javascript:`/`data:`
+  // qua — sink `window.location.assign` ở web/mobile là XSS trọn gói nếu
+  // response bị nhiễm. Stripe/PayPal (kể cả sandbox) và FakeGateway test đều
+  // https; dev http localhost không bao giờ là checkoutUrl. Web còn guard
+  // `isCheckoutUrl` làm lớp hai.
+  checkoutUrl: z.url({ protocol: /^https$/ }).nullable(),
   paidAt: z.iso.datetime().nullable(),
   cancelledAt: z.iso.datetime().nullable(),
   createdAt: z.iso.datetime(),

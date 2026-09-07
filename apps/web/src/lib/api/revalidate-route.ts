@@ -6,6 +6,9 @@ import { timingSafeEqual } from 'node:crypto';
  * vitest của web không include src/app/**. Whitelist PHẢI gương đúng
  * taxonomy lib/api/tags.ts: 'posts' | 'tours' | 'site-media' | post:<slug>
  * | tour:<slug> ('site-media' bổ sung W3-O5 — whitelist từng lệch taxonomy).
+ * Gương taxonomy KHÔNG có nghĩa API đã bust đủ: hôm nay chỉ `reviews.moderate`
+ * gửi `tours`/`tour:<slug>`; `posts`/`site-media` chưa có producer phía API
+ * (CÒN TREO ở CHANGELOG W3 merge).
  */
 const TAG_RE = /^(posts|tours|site-media|post:[a-z0-9-]{1,100}|tour:[a-z0-9-]{1,100})$/;
 
