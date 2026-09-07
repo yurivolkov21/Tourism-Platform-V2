@@ -132,9 +132,28 @@ describe('thu hồi phiên khi đổi/đặt lại mật khẩu (ADR-0017 §7a)'
     expect(change.statusCode).toBe(200);
 
     expect(await probe(cookieB)).toBe(401);
-    // BA rotate session khi revoke — cookie mới (nếu có) nằm trong response;
-    // không có set-cookie mới thì cookie A phải còn dùng được.
-    const rotated = change.headers['set-cookie'] ? sessionCookie(change) : cookieA;
+    // BA xoá MỌI phiên rồi xoay phiên hiện tại: cookie mới PHẢI có trong
+    // response, cookie A cũ chết, cookie mới sống (assert cứng — vòng vá review
+    // W2: bản đầu rẽ nhánh theo chính hành vi đang test).
+    expect(change.headers['set-cookie']).toBeDefined();
+    const rotated = sessionCookie(change);
+    expect(rotated).not.toBe(cookieA);
+    expect(await probe(cookieA)).toBe(401);
     expect(await probe(rotated)).toBe(200);
+  });
+
+  it('3. change-password KHÔNG kèm cờ (client khác/quên) → server vẫn ép thu hồi phiên khác (ADR-0017 §7a, hooks.before)', async () => {
+    const email = 'change-forced@example.com';
+    const cookieA = await signUpVerifiedAndSignIn(email);
+    const cookieB = await signIn(email, PASSWORD);
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/auth/change-password',
+      headers: { cookie: cookieA, 'content-type': 'application/json' },
+      payload: JSON.stringify({ currentPassword: PASSWORD, newPassword: NEW_PASSWORD }),
+    });
+    expect(change.statusCode).toBe(200);
+    expect(await probe(cookieB)).toBe(401);
+    expect(await probe(sessionCookie(change))).toBe(200);
   });
 });

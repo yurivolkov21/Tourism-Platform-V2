@@ -46,7 +46,10 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     });
   }
 
-  it('1. check-verification-otp: email KHÔNG tồn tại và email CÓ thật + mã sai trả CÙNG status + body', async () => {
+  it('1. check-verification-otp bị TẮT (disabledPaths): email có thật hay không đều 404 — hết oracle ở cả 400 lẫn 403', async () => {
+    // Bản đầu chuẩn hoá body 400 tại mount; nhưng BA trả 403 TOO_MANY_ATTEMPTS
+    // CHỈ khi user tồn tại (5 mã sai) → oracle còn nguyên. Route không app
+    // nào gọi → tắt hẳn ở đúng tầng (ADR-0017 §7c, vòng vá review W2).
     // User có thật, có mã OTP đang chờ (signup phát OTP qua sendOnSignUp).
     const su = await app.inject({
       method: 'POST',
@@ -58,11 +61,22 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     const missing = await checkOtp('enum-ghost@example.com');
     const wrongOtp = await checkOtp('enum-real@example.com');
 
-    expect(missing.statusCode).toBe(wrongOtp.statusCode);
+    expect(missing.statusCode).toBe(404);
+    expect(wrongOtp.statusCode).toBe(404);
     // Body PHẢI giống hệt — khác một chữ là kẻ dò phân biệt được hai thế giới.
     expect(missing.body).toBe(wrongOtp.body);
-    expect(missing.body).toContain('INVALID_OTP');
     expect(missing.body).not.toContain('USER_NOT_FOUND');
+    // 5 mã sai liên tiếp trên email thật cũng KHÔNG mở ra 403 nào.
+    for (let i = 0; i < 6; i++)
+      expect((await checkOtp('enum-real@example.com')).statusCode).toBe(404);
+    // Đường web dùng (`verify-email`) vẫn sống.
+    const verify = await app.inject({
+      method: 'POST',
+      url: '/api/auth/email-otp/verify-email',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ email: 'enum-real@example.com', otp: '000000' }),
+    });
+    expect(verify.statusCode).not.toBe(404);
   });
 
   it('2. trần AuthController: non-GET từ IP công khai vượt AUTH_THROTTLE → 429; GET và loopback KHÔNG bị đếm', async () => {
@@ -70,17 +84,35 @@ describe('auth hardening: enumeration + trần riêng (W2 mục 3)', () => {
     // mật khẩu là 401 của BA); lượt 61 phải chạm trần Nest. remoteAddress
     // công khai: loopback được miễn có chủ đích (int/e2e/smoke chạy cùng
     // máy — xem WriteOnlyThrottlerGuard).
-    let throttled = 0;
-    for (let i = 0; i < 61; i++) {
+    // ĐỦ 60 lượt đầu KHÔNG 429 (canh đúng con số trần, không chỉ "có 429"),
+    // lượt 61 mới chạm.
+    for (let i = 0; i < 60; i++) {
       const res = await app.inject({
         method: 'POST',
         url: '/api/auth/sign-in/email',
         remoteAddress: '203.0.113.9',
         payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
       });
-      if (res.statusCode === 429) throttled += 1;
+      expect(res.statusCode).not.toBe(429);
     }
-    expect(throttled).toBeGreaterThanOrEqual(1);
+    const over = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      remoteAddress: '203.0.113.9',
+      payload: { email: 'nobody@example.com', password: 'x'.repeat(10) },
+    });
+    expect(over.statusCode).toBe(429);
+
+    // Bucket theo TỪNG PATH (ADR-0037 AMEND 1): sign-in đầy không kéo theo
+    // sign-out/sign-up của cùng IP — CGNAT không bị khoá cả cụm auth.
+    const otherPath = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-out',
+      remoteAddress: '203.0.113.9',
+      headers: { 'content-type': 'application/json' },
+      payload: '{}',
+    });
+    expect(otherPath.statusCode).not.toBe(429);
 
     // GET không đếm và không bị bucket POST đã đầy làm liên luỵ — cùng IP.
     const session = await app.inject({

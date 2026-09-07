@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { Metadata } from 'next';
 import { AuthScreen } from '@/components/auth/auth-screen';
 import { OtpForm } from '@/components/auth/otp-form';
@@ -44,6 +45,11 @@ export default async function VerifyEmailPage({ searchParams }: VerifyEmailPageP
         submitLabel="Stamp my ticket"
         email={email ?? null}
         redirect={redirect ?? null}
+        extra={
+          <p className="text-center text-xs text-muted-foreground">
+            {messages.authForms.verifyEmail.existingAccountHint}
+          </p>
+        }
       />
     </AuthScreen>
   );

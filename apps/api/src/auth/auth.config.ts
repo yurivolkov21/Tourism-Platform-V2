@@ -1,7 +1,7 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { APIError } from 'better-auth/api';
+import { APIError, createAuthMiddleware } from 'better-auth/api';
 import { emailOTP } from 'better-auth/plugins/email-otp';
 import { adminEmails, env, trustedOrigins, trustedProxyCidrs } from '../config/env.js';
 import { PrismaClient } from '../generated/prisma/client.js';
@@ -89,27 +89,34 @@ export const auth = betterAuth({
       }
     },
   },
+  // ADR-0017 §7c (vòng vá review W2): route `check-verification-otp` không
+  // app nào của ta gọi mà lộ enumeration ở CẢ 400 (USER_NOT_FOUND ≠
+  // INVALID_OTP) lẫn 403 (TOO_MANY_ATTEMPTS chỉ có khi user tồn tại) — bản
+  // đầu đè body 400 tại mount nên vẫn hở 403. BA có `disabledPaths` → 404
+  // cho mọi trạng thái, tắt hẳn ở đúng tầng. Web dùng `verifyEmail` (đường
+  // khác), không mất gì.
+  disabledPaths: ['/email-otp/check-verification-otp'],
+  hooks: {
+    // ADR-0017 §7a (vòng vá review W2): "đổi mật khẩu = phiên khác chết" phải
+    // được SERVER cưỡng chế — bản đầu chỉ có cờ `revokeOtherSessions` do web
+    // gửi, client khác (admin, mobile, script) quên cờ là cookie trộm sống
+    // tiếp. Before-hook ép cờ lên body của chính route BA; BA rồi tự xoá mọi
+    // phiên và xoay phiên hiện tại (cookie mới trong response).
+    before: createAuthMiddleware(async (ctx) => {
+      if (ctx.path !== '/change-password') return;
+      const body = (ctx.body ?? {}) as Record<string, unknown>;
+      return { context: { body: { ...body, revokeOtherSessions: true } } };
+    }),
+  },
   databaseHooks: {
     user: {
-      update: {
-        // W2 mục 4 (audit cụm 1): updateUser({image}) nhận CHUỖI BẤT KỲ trong
-        // khi đường avatar chính danh là account.setAvatar (ký + kiểm chủ
-        // quyền publicId — ADR-0021 §3). Hook này đóng nốt cửa BA: image mới
-        // phải nằm trong cloud Cloudinary của MÌNH; null (gỡ avatar) vẫn qua.
-        before: async (data) => {
-          const image = (data as { image?: unknown }).image;
-          if (typeof image === 'string') {
-            const allowedPrefix = `https://res.cloudinary.com/${env.CLOUDINARY_CLOUD_NAME}/`;
-            if (!image.startsWith(allowedPrefix)) {
-              throw new APIError('BAD_REQUEST', {
-                code: 'AVATAR_URL_NOT_ALLOWED',
-                message: 'Avatar image must be served from our media CDN',
-              });
-            }
-          }
-          return { data };
-        },
-      },
+      // W2 mục 4 (audit cụm 1): `image` của BA nhận CHUỖI BẤT KỲ cả lúc TẠO
+      // (sign-up/email, sign-in/email-otp lần đầu) lẫn lúc SỬA (update-user),
+      // trong khi đường avatar chính danh là account.setAvatar (ký + kiểm chủ
+      // quyền publicId — ADR-0021 §3). Bản đầu chỉ gác `update` — kẻ ẩn danh
+      // đặt được avatar bất kỳ bằng một request sign-up (vòng vá review W2).
+      create: { before: async (data) => guardAvatarImage(data) },
+      update: { before: async (data) => guardAvatarImage(data) },
     },
   },
   user: {
@@ -194,6 +201,41 @@ export const auth = betterAuth({
     }),
   ],
 });
+
+/**
+ * Hook chung cho `user.create.before` + `user.update.before`: `image` chỉ được
+ * nằm trong cloud Cloudinary của MÌNH — so trên URL ĐÃ CHUẨN HOÁ (`new URL`
+ * gấp `..`), không so chuỗi thô: bản đầu `startsWith(prefix)` để lọt
+ * `https://res.cloudinary.com/<cloud>/../<cloud-khac>/…` mà browser chuẩn hoá
+ * thành ảnh của cloud khác. `null`/`''` = gỡ avatar (lưu null); kiểu lạ → 400.
+ */
+function guardAvatarImage<T extends { image?: unknown }>(data: T): { data: T } {
+  const image = data.image;
+  if (image === undefined || image === null) return { data };
+  if (image === '') return { data: { ...data, image: null } };
+  if (typeof image !== 'string' || !isOwnCloudinaryUrl(image)) {
+    throw new APIError('BAD_REQUEST', {
+      code: 'AVATAR_URL_NOT_ALLOWED',
+      message: 'Avatar image must be served from our media CDN',
+    });
+  }
+  return { data };
+}
+
+/** `https://res.cloudinary.com/<cloud của mình>/…` sau khi URL đã chuẩn hoá. */
+export function isOwnCloudinaryUrl(value: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return false;
+  }
+  return (
+    url.protocol === 'https:' &&
+    url.hostname === 'res.cloudinary.com' &&
+    url.pathname.startsWith(`/${env.CLOUDINARY_CLOUD_NAME}/`)
+  );
+}
 
 /** User trong session Better Auth (kèm additionalFields: phone/role/deletedAt). */
 export type SessionUser = typeof auth.$Infer.Session.user;

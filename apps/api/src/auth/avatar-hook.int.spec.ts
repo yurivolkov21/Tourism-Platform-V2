@@ -72,11 +72,55 @@ describe('hook user.update.before bác image ngoài Cloudinary (W2 mục 4)', ()
     });
   }
 
+  it('4. cloud Cloudinary KHÁC, và `..` gấp về cloud khác → bị bác (so trên URL đã chuẩn hoá)', async () => {
+    const cookie = await signInFresh('avatar-other-cloud@example.com');
+    const other = await updateUser(cookie, {
+      image: 'https://res.cloudinary.com/not-mine/image/upload/x.jpg',
+    });
+    expect(other.statusCode).toBe(400);
+    const dotdot = await updateUser(cookie, {
+      image: 'https://res.cloudinary.com/demo/../not-mine/image/upload/x.jpg',
+    });
+    expect(dotdot.statusCode).toBe(400);
+    const user = await prisma.user.findUniqueOrThrow({
+      where: { email: 'avatar-other-cloud@example.com' },
+    });
+    expect(user.image).toBeNull();
+  });
+
+  it('5. `image: null` gỡ avatar; `image: ""` cũng thành null', async () => {
+    const cookie = await signInFresh('avatar-null@example.com');
+    const url = 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto/tourism/avatars/x/y';
+    expect((await updateUser(cookie, { image: url })).statusCode).toBe(200);
+    expect((await updateUser(cookie, { image: null })).statusCode).toBe(200);
+    let user = await prisma.user.findUniqueOrThrow({ where: { email: 'avatar-null@example.com' } });
+    expect(user.image).toBeNull();
+    expect((await updateUser(cookie, { image: url })).statusCode).toBe(200);
+    expect((await updateUser(cookie, { image: '' })).statusCode).toBe(200);
+    user = await prisma.user.findUniqueOrThrow({ where: { email: 'avatar-null@example.com' } });
+    expect(user.image).toBeNull();
+  });
+
+  it('6. sign-up mang `image` lạ → bị bác ngay lúc TẠO user (hook create.before — kẻ ẩn danh không đặt được avatar)', async () => {
+    const su = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-up/email',
+      payload: {
+        email: 'avatar-signup@example.com',
+        password: PASSWORD,
+        name: 'S',
+        image: 'https://evil.example/pixel.png',
+      },
+    });
+    expect(su.statusCode).toBe(400);
+    expect(await prisma.user.count({ where: { email: 'avatar-signup@example.com' } })).toBe(0);
+  });
+
   it('1. image trỏ host lạ → bị bác, DB không đổi', async () => {
     const email = 'evil-avatar@example.com';
     const cookie = await signInFresh(email);
     const res = await updateUser(cookie, { image: 'https://evil.example/pixel.png' });
-    expect(res.statusCode).toBeGreaterThanOrEqual(400);
+    expect(res.statusCode).toBe(400);
     const user = await prisma.user.findUniqueOrThrow({ where: { email } });
     expect(user.image).toBeNull();
   });

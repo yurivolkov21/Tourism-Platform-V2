@@ -38,7 +38,7 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
 
   beforeEach(async () => {
     await prisma.$executeRawUnsafe(
-      'TRUNCATE TABLE cancellation_requests, reviews, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers, outbox CASCADE',
+      'TRUNCATE TABLE cancellation_requests, reviews, media_assets, media_garbage, bookings, tour_departures, tours, tour_categories, users, sessions, accounts, verifications, subscribers, outbox CASCADE',
     );
   });
 
@@ -70,7 +70,12 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
   async function createBooking(
     userId: string,
     email: string,
-    opts: { status: 'PAID' | 'CANCELLED' | 'PARTIALLY_REFUNDED'; departureInDays: number },
+    opts: {
+      status: 'PAID' | 'CANCELLED' | 'PARTIALLY_REFUNDED' | 'PENDING';
+      departureInDays: number;
+      /** Hạn session thanh toán (PENDING) — mặc định null. */
+      checkoutSessionExpiresAt?: Date;
+    },
   ) {
     const category = await prisma.tourCategory.create({
       data: { slug: `cat-${Math.random().toString(36).slice(2, 8)}`, name: 'C', order: 1 },
@@ -107,6 +112,13 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
         contactName: 'D',
         contactEmail: email,
         paymentProvider: 'STRIPE',
+        ...(opts.checkoutSessionExpiresAt
+          ? {
+              providerSessionId: `cs_${Math.random().toString(36).slice(2, 10)}`,
+              checkoutSessionUrl: 'https://checkout.fake.local/x',
+              checkoutSessionExpiresAt: opts.checkoutSessionExpiresAt,
+            }
+          : {}),
       },
     });
   }
@@ -156,12 +168,103 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
     expect(res.json()).toMatchObject({ code: 'ACCOUNT_HAS_PAID_BOOKINGS' });
   });
 
-  it('4. booking PAID ĐÃ khởi hành (quá khứ) KHÔNG chặn → 204', async () => {
+  it('4. booking PAID chuyến ĐÃ KẾT THÚC (quá khứ) KHÔNG chặn → 204', async () => {
     const email = 'paid-past@example.com';
     const { cookie, userId } = await createUserAndSignIn(email);
     await createBooking(userId, email, { status: 'PAID', departureInDays: -30 });
     const res = await deleteAccount(cookie, { password: PASSWORD });
     expect(res.statusCode).toBe(204);
+  });
+
+  it('4b. PAID khởi hành HÔM NAY (chuyến đang chạy) và PARTIALLY_REFUNDED đã đi xong → đều 409 (ADR-0017 §7b, câu gốc)', async () => {
+    // Biên ngày: endDate = hôm nay >= hôm nay → chưa kết thúc → chặn.
+    const a = await createUserAndSignIn('paid-today@example.com');
+    await createBooking(a.userId, 'paid-today@example.com', { status: 'PAID', departureInDays: 0 });
+    expect((await deleteAccount(a.cookie, { password: PASSWORD })).statusCode).toBe(409);
+    // Hoàn một phần, chuyến đã đi: sổ còn phần dư phải hoàn → vẫn chặn, bất kể ngày.
+    const b = await createUserAndSignIn('partial-past@example.com');
+    await createBooking(b.userId, 'partial-past@example.com', {
+      status: 'PARTIALLY_REFUNDED',
+      departureInDays: -30,
+    });
+    const res = await deleteAccount(b.cookie, { password: PASSWORD });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'ACCOUNT_HAS_PAID_BOOKINGS' });
+  });
+
+  it('4c. PENDING còn session thanh toán SỐNG → 409 ACCOUNT_HAS_PENDING_CHECKOUT; session đã hết → 204', async () => {
+    const live = await createUserAndSignIn('pending-live@example.com');
+    await createBooking(live.userId, 'pending-live@example.com', {
+      status: 'PENDING',
+      departureInDays: 20,
+      checkoutSessionExpiresAt: new Date(Date.now() + 30 * 60_000),
+    });
+    const blocked = await deleteAccount(live.cookie, { password: PASSWORD });
+    expect(blocked.statusCode).toBe(409);
+    expect(blocked.json()).toMatchObject({ code: 'ACCOUNT_HAS_PENDING_CHECKOUT' });
+
+    const dead = await createUserAndSignIn('pending-dead@example.com');
+    await createBooking(dead.userId, 'pending-dead@example.com', {
+      status: 'PENDING',
+      departureInDays: 20,
+      checkoutSessionExpiresAt: new Date(Date.now() - 1000),
+    });
+    expect((await deleteAccount(dead.cookie, { password: PASSWORD })).statusCode).toBe(204);
+  });
+
+  it('2b. sai mật khẩu 5 lần → lần 6 là 429 TOO_MANY_ATTEMPTS kể cả khi gõ ĐÚNG (chống dò bằng cookie trộm)', async () => {
+    const { cookie, userId } = await createUserAndSignIn('lockout@example.com');
+    for (let i = 0; i < 5; i++) {
+      expect((await deleteAccount(cookie, { password: 'sai-be-bet-123' })).statusCode).toBe(403);
+    }
+    const locked = await deleteAccount(cookie, { password: PASSWORD });
+    expect(locked.statusCode).toBe(429);
+    expect(locked.json()).toMatchObject({ code: 'TOO_MANY_ATTEMPTS' });
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.deletedAt).toBeNull();
+  });
+
+  it('2c. tài khoản KHÔNG có credential (chỉ OAuth) → 409 CREDENTIAL_ACCOUNT_NOT_FOUND', async () => {
+    const { cookie, userId } = await createUserAndSignIn('oauth-only@example.com');
+    await prisma.account.deleteMany({ where: { userId, providerId: 'credential' } });
+    const res = await deleteAccount(cookie, { password: PASSWORD });
+    expect(res.statusCode).toBe(409);
+    expect(res.json()).toMatchObject({ code: 'CREDENTIAL_ACCOUNT_NOT_FOUND' });
+  });
+
+  it('6b. ảnh review của user đã xoá bị gỡ khỏi media_assets và vào hàng dọn (ADR-0017 §7b — erasure không dừng ở cái tên)', async () => {
+    const email = 'review-photos@example.com';
+    const { cookie, userId } = await createUserAndSignIn(email);
+    const booking = await createBooking(userId, email, { status: 'PAID', departureInDays: -30 });
+    const review = await prisma.review.create({
+      data: {
+        tourId: booking.tourId,
+        userId,
+        bookingId: booking.id,
+        rating: 5,
+        body: 'Great trip, photo attached',
+        authorName: 'Photo Person',
+        isApproved: true,
+      },
+    });
+    await prisma.mediaAsset.create({
+      data: {
+        publicId: 'tourism/reviews/x/face',
+        type: 'IMAGE',
+        ownerType: 'REVIEW',
+        ownerId: review.id,
+        role: 'gallery',
+      },
+    });
+    expect((await deleteAccount(cookie, { password: PASSWORD })).statusCode).toBe(204);
+    expect(await prisma.mediaAsset.count({ where: { ownerId: review.id } })).toBe(0);
+    const garbage = await prisma.mediaGarbage.findUnique({
+      where: { publicId: 'tourism/reviews/x/face' },
+    });
+    expect(garbage).not.toBeNull();
+    const after = await prisma.review.findUniqueOrThrow({ where: { id: review.id } });
+    expect(after.authorDeleted).toBe(true);
+    expect(after.authorName).toBe('');
   });
 
   it('5. còn cancellation request đang REQUESTED → 409 ACCOUNT_HAS_OPEN_CANCELLATION', async () => {

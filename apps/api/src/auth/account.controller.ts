@@ -5,8 +5,10 @@ import {
   AccountCredentialMissingError,
   AccountHasOpenCancellationError,
   AccountHasPaidBookingsError,
+  AccountHasPendingCheckoutError,
   AccountPasswordInvalidError,
   AccountService,
+  AccountTooManyAttemptsError,
 } from './account.service.js';
 import type { SessionUser } from './auth.config.js';
 import { CurrentUser } from './current-user.decorator.js';
@@ -44,6 +46,21 @@ export class AccountController {
       if (error instanceof AccountPasswordInvalidError) {
         throw new HttpException({ code: 'INVALID_PASSWORD', message: 'Incorrect password' }, 403);
       }
+      if (error instanceof AccountTooManyAttemptsError) {
+        throw new HttpException(
+          { code: 'TOO_MANY_ATTEMPTS', message: 'Too many wrong passwords — try again later' },
+          429,
+        );
+      }
+      if (error instanceof AccountHasPendingCheckoutError) {
+        throw new HttpException(
+          {
+            code: 'ACCOUNT_HAS_PENDING_CHECKOUT',
+            message: 'Account still has a booking with a live checkout session',
+          },
+          409,
+        );
+      }
       if (error instanceof AccountCredentialMissingError) {
         // Cùng tên mã với Better Auth (CREDENTIAL_ACCOUNT_NOT_FOUND) — web đã
         // có key map sẵn cho hoàn cảnh "tài khoản không có mật khẩu".
@@ -59,7 +76,7 @@ export class AccountController {
         throw new HttpException(
           {
             code: 'ACCOUNT_HAS_PAID_BOOKINGS',
-            message: 'Account still has paid upcoming bookings',
+            message: 'Account still has paid bookings that are not settled',
           },
           409,
         );

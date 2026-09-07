@@ -97,6 +97,14 @@ export const messages = {
     // Task 5 (auth-pages-api): verify-email OTP thật.
     verifyEmail: {
       submitting: 'Verifying…',
+      /**
+       * ADR-0017 §7c (vòng vá review W2): với `requireEmailVerification` +
+       * `autoSignIn: false`, đăng ký TRÙNG email trả 200 giả và KHÔNG gửi mã
+       * (Better Auth cố ý che enumeration). Nói ra ở đây để khách quên mình
+       * từng đăng ký không ngồi đợi một mã không bao giờ tới.
+       */
+      existingAccountHint:
+        'Already had an account with this email? No new code is sent — log in instead, or reset your password.',
       toast: {
         title: 'Email verified',
         // Siết 20/08: verify KHÔNG tự đăng nhập (đo int test) — nhắc bước kế.
@@ -2544,11 +2552,15 @@ export const messages = {
       errors: {
         wrongPassword: 'Incorrect password.',
         paidBookings:
-          'You still have a paid upcoming booking. Cancel or complete it before deleting your account.',
+          'You still have a paid booking that has not finished, or a refund that is still open. Cancel or complete it before deleting your account.',
         openCancellation:
           'You have a cancellation request in progress. Please wait for it to be resolved first.',
         noPassword:
           'This account has no password set, so it cannot be deleted here yet. Please contact support.',
+        pendingCheckout:
+          'You have a booking with a payment page still open. Cancel that booking first, then delete your account.',
+        tooManyAttempts:
+          'Too many incorrect passwords. Please wait 15 minutes before trying again.',
       },
     },
     // Toast SAU khi hành động ghi thành công (Task 7/A2).
@@ -3345,8 +3357,9 @@ export const messages = {
            *  `refundedTotal` thật từ review F2 31/08, hết cảnh đoán theo total. */
           amountHint: (currency: string, remaining: string) =>
             `${currency} — up to the ${remaining} still refundable.`,
-          reasonLabel: 'Reason',
-          reasonPlaceholder: 'Included in the refund email to the customer.',
+          reasonLabel: 'Internal reason',
+          /** ADR-0030 AMEND 2: lý do ở trên sổ, KHÔNG gửi khách — khách nhận câu chung "Goodwill refund". */
+          reasonPlaceholder: 'Kept on the refund ledger for audit — not sent to the customer.',
           cancel: 'Cancel',
           next: 'Review refund',
         },
@@ -3371,7 +3384,8 @@ export const messages = {
           required: 'Enter an amount to refund.',
           /** W2 (ADR-0030 AMEND 1): refund thiện chí là NGOÀI chính sách —
            *  lý do là bắt buộc, không phải phép lịch sự. */
-          reasonRequired: 'Enter a reason — goodwill refunds are outside the policy.',
+          reasonRequired:
+            'Enter the internal reason — goodwill refunds are outside the policy and must be explained on the ledger.',
           format: 'Digits only, e.g. 120.50.',
           zero: REFUND_ZERO_COPY,
           overRemaining: (remaining: string) =>
@@ -3409,6 +3423,8 @@ export const messages = {
           amount: 'Amount',
           issued: 'Issued',
           reference: 'Provider reference',
+          /** Lý do nội bộ của refund thiện chí (ADR-0030 AMEND 2); auto-refund để trống. */
+          reason: 'Internal reason',
           total: (amount: string) => `${amount} refunded in total`,
           /** Bảng refund của booking này thật sự rỗng — số từ DB, không phải đoán. */
           none: 'No refunds on this booking.',

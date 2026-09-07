@@ -31,8 +31,10 @@ type DeleteAccountErrorKind =
   | 'sessionExpired'
   | 'wrongPassword'
   | 'paidBookings'
+  | 'pendingCheckout'
   | 'openCancellation'
   | 'noPassword'
+  | 'tooManyAttempts'
   | 'generic';
 
 /** Map mã lỗi API (ADR-0017 §7b) → kind hiển thị; mã lạ rơi về generic. */
@@ -44,6 +46,10 @@ function kindOfDeleteError(error: unknown): DeleteAccountErrorKind {
       return 'wrongPassword';
     case 'ACCOUNT_HAS_PAID_BOOKINGS':
       return 'paidBookings';
+    case 'ACCOUNT_HAS_PENDING_CHECKOUT':
+      return 'pendingCheckout';
+    case 'TOO_MANY_ATTEMPTS':
+      return 'tooManyAttempts';
     case 'ACCOUNT_HAS_OPEN_CANCELLATION':
       return 'openCancellation';
     case 'CREDENTIAL_ACCOUNT_NOT_FOUND':
