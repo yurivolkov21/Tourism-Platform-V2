@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { Clock8Icon, MapPinIcon } from 'lucide-react';
 import { motion } from 'motion/react';
 import dynamic from 'next/dynamic';
@@ -64,7 +65,7 @@ export function ContactLocation() {
       />
       <div className="relative z-10 mx-auto max-w-7xl">
         <div className="mb-10 flex flex-col gap-4 md:mb-14">
-          <SectionEyebrow>Come say hello</SectionEyebrow>
+          <SectionEyebrow>{messages.contactLocation.eyebrow}</SectionEyebrow>
           <motion.h2
             className="max-w-md font-heading text-3xl leading-tight font-medium text-foreground md:text-4xl"
             initial={{ y: 50, opacity: 0 }}

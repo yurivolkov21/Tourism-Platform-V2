@@ -56,7 +56,7 @@ export function ForgotPasswordForm() {
               <span className="text-primary-emphasis italic"> — help is on the way.</span>
             </h1>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              A reset link is on its way — it expires in 30 minutes.
+              {messages.authForms.forgotPassword.sentBody}
             </p>
           </div>
           <button
@@ -112,7 +112,9 @@ export function ForgotPasswordForm() {
             disabled={pending}
             className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending ? messages.authForms.forgotPassword.submitting : 'Send the reset link'}
+            {pending
+              ? messages.authForms.forgotPassword.submitting
+              : messages.authForms.forgotPassword.submit}
           </button>
 
           <p className="text-center text-sm text-muted-foreground">

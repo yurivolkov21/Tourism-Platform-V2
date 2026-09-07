@@ -72,6 +72,9 @@ export const messages = {
   // (@/lib/auth-errors) nên mọi key lỗi map ra đúng MỘT câu tiếng Anh ổn định.
   authForms: {
     login: {
+      // W3-C1: hai chuỗi từng nằm cứng trong login-form.tsx (luật 7).
+      passwordLabel: 'Password',
+      submit: 'Board the trip',
       submitting: 'Signing in…',
     },
     register: {
@@ -79,7 +82,11 @@ export const messages = {
     },
     // Task 4 (auth-pages-api): forgot/reset password.
     forgotPassword: {
+      submit: 'Send the reset link',
       submitting: 'Sending the link…',
+      // "30 minutes" phải khớp token reset 1800s phía API (ADR-0017 §7) —
+      // nợ ghi ở CHANGELOG 06/09 W2 mục CÒN TREO, trả ở W3-C1.
+      sentBody: 'A reset link is on its way — it expires in 30 minutes.',
     },
     resetPassword: {
       submitting: 'Saving your password…',
@@ -127,6 +134,13 @@ export const messages = {
         body: 'This link didn’t carry an email address. Head back to log in and we’ll send a fresh code.',
         backLink: 'Back to log in',
       },
+    },
+    // Màn /two-factor (W3-C1 — copy từng nằm cứng trong two-factor-form.tsx;
+    // TOTP thật vẫn là nợ twoFactor plugin, PARK theo ADR-0017).
+    twoFactor: {
+      description: 'Open your authenticator app and enter the six-digit code.',
+      submit: 'Verify and continue',
+      recoveryLabel: 'Recovery code',
     },
     errors: {
       invalidCredentials: 'Invalid email or password.',
@@ -1758,6 +1772,14 @@ export const messages = {
     emptyFilteredBody: 'Nothing matches that filter yet - clear it to see every story.',
     clearFilters: 'Clear filters',
     updatedOn: (date: string) => `Updated ${date}`,
+    // Hàng chia sẻ cuối bài (W3-C1 — copy từng nằm cứng trong share-row.tsx).
+    share: {
+      label: 'Share',
+      copy: 'Copy link',
+      copied: 'Copied',
+      onX: 'Share on X',
+      onFacebook: 'Share on Facebook',
+    },
     shareLabel: 'Share this story',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
@@ -2091,6 +2113,11 @@ export const messages = {
   // (không phải toast — nếp đã ghi), khớp min length của
   // `CreateEnquiryInputSchema` (name ≥2, message ≥10) chạy được ở client.
   // Toast chỉ cho KẾT QUẢ thao tác (success/error/throttle).
+  // Section bản đồ hai văn phòng ở /contact (W3-C1 — eyebrow từng nằm cứng
+  // trong contact-location.tsx).
+  contactLocation: {
+    eyebrow: 'Come say hello',
+  },
   contactForm: {
     errors: {
       name: {

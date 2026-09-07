@@ -14,7 +14,7 @@ vi.mock('@/lib/auth-client', () => ({
 
 async function submitEmail(user: ReturnType<typeof userEvent.setup>, email: string) {
   await user.type(screen.getByLabelText('Email'), email);
-  await user.click(screen.getByRole('button', { name: 'Send the reset link' }));
+  await user.click(screen.getByRole('button', { name: messages.authForms.forgotPassword.submit }));
 }
 
 describe('ForgotPasswordForm — anti-enumeration', () => {
@@ -28,7 +28,9 @@ describe('ForgotPasswordForm — anti-enumeration', () => {
     const user = userEvent.setup();
     render(<ForgotPasswordForm />);
 
-    await user.click(screen.getByRole('button', { name: 'Send the reset link' }));
+    await user.click(
+      screen.getByRole('button', { name: messages.authForms.forgotPassword.submit }),
+    );
 
     expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
     expect(requestPasswordReset).not.toHaveBeenCalled();
@@ -40,7 +42,9 @@ describe('ForgotPasswordForm — anti-enumeration', () => {
     render(<ForgotPasswordForm />);
 
     await user.type(screen.getByLabelText('Email'), 'nope');
-    await user.click(screen.getByRole('button', { name: 'Send the reset link' }));
+    await user.click(
+      screen.getByRole('button', { name: messages.authForms.forgotPassword.submit }),
+    );
 
     expect(await screen.findByText(messages.formErrors.email.invalid)).toBeInTheDocument();
     expect(requestPasswordReset).not.toHaveBeenCalled();

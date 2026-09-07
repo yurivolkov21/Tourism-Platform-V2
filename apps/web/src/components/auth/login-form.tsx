@@ -153,7 +153,7 @@ export function LoginForm() {
           <FieldError id="login-email-error">{fieldErrors.email}</FieldError>
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="login-password">Password</Label>
+          <Label htmlFor="login-password">{messages.authForms.login.passwordLabel}</Label>
           <Input
             id="login-password"
             type="password"
@@ -192,7 +192,7 @@ export function LoginForm() {
           disabled={pending}
           className="w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {pending ? messages.authForms.login.submitting : 'Board the trip'}
+          {pending ? messages.authForms.login.submitting : messages.authForms.login.submit}
         </button>
 
         <p className="text-center text-sm text-muted-foreground">

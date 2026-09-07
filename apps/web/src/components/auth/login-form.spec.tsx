@@ -32,7 +32,7 @@ vi.mock('next/navigation', () => ({
 
 async function fillCredentials(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Email'), 'minh@example.com');
-  await user.type(screen.getByLabelText('Password'), 'Sup3r$ecret');
+  await user.type(screen.getByLabelText(messages.authForms.login.passwordLabel), 'Sup3r$ecret');
 }
 
 describe('LoginForm — submit', () => {
@@ -48,7 +48,7 @@ describe('LoginForm — submit', () => {
     const user = userEvent.setup();
     render(<LoginForm />);
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     await waitFor(() =>
       expect(push).toHaveBeenCalledWith(
@@ -66,7 +66,7 @@ describe('LoginForm — submit', () => {
     const user = userEvent.setup();
     render(<LoginForm />);
 
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
     expect(screen.getByText(messages.formErrors.password.required)).toBeInTheDocument();
@@ -84,8 +84,8 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await user.type(screen.getByLabelText('Email'), 'minh@');
-    await user.type(screen.getByLabelText('Password'), 'x');
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.type(screen.getByLabelText(messages.authForms.login.passwordLabel), 'x');
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     expect(await screen.findByText(messages.formErrors.email.invalid)).toBeInTheDocument();
     expect(signInEmail).not.toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe('LoginForm — submit', () => {
     const user = userEvent.setup();
     render(<LoginForm />);
 
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
     expect(await screen.findByText(messages.formErrors.email.required)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('Email'), 'm');
@@ -110,7 +110,7 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     await waitFor(() => expect(signInEmail).toHaveBeenCalledTimes(1));
     expect(signInEmail).toHaveBeenCalledWith({
@@ -127,7 +127,7 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/account'));
     expect(refresh).toHaveBeenCalledTimes(1);
@@ -140,7 +140,7 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     await waitFor(() => expect(push).toHaveBeenCalledWith('/'));
   });
@@ -151,7 +151,7 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     expect(
       await screen.findByText(messages.authForms.errors.invalidCredentials),
@@ -165,11 +165,11 @@ describe('LoginForm — submit', () => {
     render(<LoginForm />);
 
     await fillCredentials(user);
-    const submitButton = screen.getByRole('button', { name: 'Board the trip' });
+    const submitButton = screen.getByRole('button', { name: messages.authForms.login.submit });
     await user.click(submitButton);
 
     expect(await screen.findByText(messages.authForms.errors.generic)).toBeInTheDocument();
-    expect(submitButton).toHaveTextContent('Board the trip');
+    expect(submitButton).toHaveTextContent(messages.authForms.login.submit);
     expect(submitButton).not.toBeDisabled();
     expect(push).not.toHaveBeenCalled();
   });
@@ -181,7 +181,7 @@ describe('LoginForm — submit', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Remember me' }));
     await fillCredentials(user);
-    await user.click(screen.getByRole('button', { name: 'Board the trip' }));
+    await user.click(screen.getByRole('button', { name: messages.authForms.login.submit }));
 
     await waitFor(() =>
       expect(signInEmail).toHaveBeenCalledWith({

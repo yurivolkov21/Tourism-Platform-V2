@@ -1,5 +1,6 @@
 'use client';
 
+import { messages } from '@tourism/i18n';
 import { CheckIcon, LinkIcon } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
@@ -15,6 +16,8 @@ import { useEffect, useState } from 'react';
 // mismatch. Để state mặc định khớp SSR rồi set lại bằng effect thì lần render
 // đầu ở client vẫn khớp HTML server gửi xuống, không có gì để React phàn nàn.
 export function ShareRow({ title }: { title: string }) {
+  // W3-C1: copy của hàng chia sẻ dời vào @tourism/i18n (luật 7).
+  const t = messages.blog.share;
   const [copied, setCopied] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
 
@@ -39,7 +42,7 @@ export function ShareRow({ title }: { title: string }) {
   return (
     <div className="mt-12 flex flex-wrap items-center gap-3 border-t border-border pt-8">
       <span className="mr-1 font-mono text-xs tracking-widest text-muted-foreground uppercase">
-        Share
+        {t.label}
       </span>
 
       <button
@@ -54,7 +57,7 @@ export function ShareRow({ title }: { title: string }) {
         )}
         {/* aria-live: trình đọc màn hình cần được báo khi trạng thái đổi
             thành "Copied" — nút không tự nhiên nhận focus lại sau click */}
-        <span aria-live="polite">{copied ? 'Copied' : 'Copy link'}</span>
+        <span aria-live="polite">{copied ? t.copied : t.copy}</span>
       </button>
 
       <a
@@ -63,7 +66,7 @@ export function ShareRow({ title }: { title: string }) {
         rel="noreferrer"
         className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
       >
-        Share on X
+        {t.onX}
       </a>
       <a
         href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
@@ -71,7 +74,7 @@ export function ShareRow({ title }: { title: string }) {
         rel="noreferrer"
         className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm text-foreground transition-colors hover:bg-muted"
       >
-        Share on Facebook
+        {t.onFacebook}
       </a>
     </div>
   );
