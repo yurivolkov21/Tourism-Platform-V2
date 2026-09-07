@@ -73,12 +73,64 @@ export function secretMatches(provided: string | null, expected: string): boolea
  */
 const ROUTE_HEADERS = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } as const;
 
+/** Trần bust mỗi phút MỖI INSTANCE (W4 R4) — moderate thật bust 2 tag/lượt,
+ * 30 call/phút là ~15 phán quyết/phút, quá mức tay người. */
+export const REVALIDATE_BUDGET_LIMIT = 30;
+
+/**
+ * Bộ đếm in-memory theo INSTANCE (W4 R4 — nợ W3, ADR-0016 AMEND 3): route
+ * có secret nhưng không trần — ai cầm secret (hoặc một bug phía API gọi
+ * lặp) bust được cache toàn site liên tục, mỗi lượt là một cơn regenerate
+ * ISR đổ vào API Render free.
+ *
+ * Nói thẳng giới hạn: web chạy serverless nên trần thật là 30 × số instance
+ * đang ấm — đây là lớp GIẢM NHIỄU chống vòng lặp lỗi, KHÔNG phải rate-limit
+ * thật (thứ đó cần store chung, chưa cần cho một route server-to-server có
+ * secret). Cửa sổ cố định 60s, thuần để test không đợi đồng hồ thật.
+ */
+export class RevalidateBudget {
+  private windowStart = 0;
+  private used = 0;
+
+  constructor(
+    private readonly limit = REVALIDATE_BUDGET_LIMIT,
+    private readonly windowMs = 60_000,
+  ) {}
+
+  /** Còn quota → đếm và trả null; hết → trả SỐ GIÂY Retry-After (≥1). */
+  consume(now = Date.now()): number | null {
+    if (now - this.windowStart >= this.windowMs) {
+      this.windowStart = now;
+      this.used = 0;
+    }
+    if (this.used < this.limit) {
+      this.used += 1;
+      return null;
+    }
+    return Math.max(1, Math.ceil((this.windowStart + this.windowMs - now) / 1000));
+  }
+}
+
 export async function handleRevalidatePost(
   request: Request,
-  deps: { expectedSecret: string; revalidateTag: (tag: string) => void },
+  deps: {
+    expectedSecret: string;
+    revalidateTag: (tag: string) => void;
+    /** W4 R4 — route.ts truyền singleton cấp module; test truyền bản riêng. */
+    budget?: RevalidateBudget;
+  },
 ): Promise<Response> {
   if (!secretMatches(request.headers.get('x-revalidate-secret'), deps.expectedSecret)) {
     return Response.json({ error: 'unauthorized' }, { status: 401, headers: ROUTE_HEADERS });
+  }
+  // Đếm SAU bước secret: call không secret là 401 rẻ — đếm nó là cho kẻ lạ
+  // đốt quota của chính API thật (tự tay biến trần thành cửa DoS).
+  const retryAfter = deps.budget?.consume();
+  if (retryAfter != null) {
+    return Response.json(
+      { error: 'revalidate budget exhausted' },
+      { status: 429, headers: { ...ROUTE_HEADERS, 'Retry-After': String(retryAfter) } },
+    );
   }
   let raw: unknown;
   try {

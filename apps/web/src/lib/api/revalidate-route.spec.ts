@@ -3,6 +3,8 @@ import {
   DEV_REVALIDATE_SECRET,
   handleRevalidatePost,
   parseRevalidateBody,
+  REVALIDATE_BUDGET_LIMIT,
+  RevalidateBudget,
   resolveRevalidateSecret,
   secretMatches,
 } from './revalidate-route';
@@ -212,5 +214,71 @@ describe('handleRevalidatePost', () => {
       expect(res.headers.get('cache-control')).toBe('no-store');
       expect(res.headers.get('x-robots-tag')).toBe('noindex');
     }
+  });
+});
+
+// W4 R4 (ADR-0016 AMEND 3, nợ W3): bộ đếm in-memory theo INSTANCE — lớp
+// "giảm nhiễu" chống vòng lặp lỗi/lạm dụng thô, không phải rate-limit thật
+// (serverless nhân trần theo instance — nói thẳng, không giả vờ hơn).
+describe('RevalidateBudget (W4 R4)', () => {
+  const T0 = 1_757_000_000_000;
+
+  it('30 call trong một phút qua, call 31 bị chặn kèm số giây Retry-After', () => {
+    const budget = new RevalidateBudget();
+    for (let i = 0; i < REVALIDATE_BUDGET_LIMIT; i++) {
+      expect(budget.consume(T0 + i * 1000)).toBeNull();
+    }
+    const retryAfter = budget.consume(T0 + 30_000);
+    expect(retryAfter).not.toBeNull();
+    // Cửa sổ mở tại T0, đã trôi 30s → còn 30s.
+    expect(retryAfter).toBe(30);
+  });
+
+  it('Retry-After tối thiểu 1 giây — không bao giờ trả 0 mời retry ngay lập tức', () => {
+    const budget = new RevalidateBudget();
+    for (let i = 0; i < REVALIDATE_BUDGET_LIMIT; i++) budget.consume(T0);
+    expect(budget.consume(T0 + 59_900)).toBe(1);
+  });
+
+  it('sang cửa sổ mới thì quota tự hồi', () => {
+    const budget = new RevalidateBudget();
+    for (let i = 0; i <= REVALIDATE_BUDGET_LIMIT; i++) budget.consume(T0);
+    expect(budget.consume(T0 + 60_001)).toBeNull();
+  });
+});
+
+describe('handleRevalidatePost — budget 429 (W4 R4)', () => {
+  it('hết quota → 429 + Retry-After, revalidateTag KHÔNG được gọi', async () => {
+    const revalidateTag = vi.fn();
+    const budget = new RevalidateBudget();
+    const deps = { expectedSecret: DEV_REVALIDATE_SECRET, revalidateTag, budget };
+    for (let i = 0; i < REVALIDATE_BUDGET_LIMIT; i++) {
+      const ok = await handleRevalidatePost(
+        makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET),
+        deps,
+      );
+      expect(ok.status).toBe(200);
+    }
+    const res = await handleRevalidatePost(
+      makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET),
+      deps,
+    );
+    expect(res.status).toBe(429);
+    expect(Number(res.headers.get('retry-after'))).toBeGreaterThanOrEqual(1);
+    expect(revalidateTag).toHaveBeenCalledTimes(REVALIDATE_BUDGET_LIMIT);
+  });
+
+  it('call KHÔNG có secret không ăn quota — kẻ lạ không đốt được budget của API thật', async () => {
+    const revalidateTag = vi.fn();
+    const budget = new RevalidateBudget();
+    const deps = { expectedSecret: DEV_REVALIDATE_SECRET, revalidateTag, budget };
+    for (let i = 0; i < REVALIDATE_BUDGET_LIMIT + 10; i++) {
+      expect((await handleRevalidatePost(makeRequest({ tags: ['tours'] }), deps)).status).toBe(401);
+    }
+    // Quota còn nguyên cho lời gọi hợp lệ.
+    expect(
+      (await handleRevalidatePost(makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET), deps))
+        .status,
+    ).toBe(200);
   });
 });

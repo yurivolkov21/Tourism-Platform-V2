@@ -1,5 +1,14 @@
 import { revalidateTag as nextRevalidateTag } from 'next/cache';
-import { handleRevalidatePost, resolveRevalidateSecret } from '@/lib/api/revalidate-route';
+import {
+  handleRevalidatePost,
+  RevalidateBudget,
+  resolveRevalidateSecret,
+} from '@/lib/api/revalidate-route';
+
+// W4 R4 (ADR-0016 AMEND 3): bộ đếm cấp MODULE — sống theo instance
+// serverless, 30 call/phút mỗi instance, 429 + Retry-After khi vượt. Lớp
+// giảm nhiễu, không phải rate-limit thật (trần nhân theo số instance).
+const budget = new RevalidateBudget();
 
 /**
  * Bề mặt on-demand revalidation (ADR-0016 §3) — chỉ API NestJS gọi (server-
@@ -24,5 +33,6 @@ export async function POST(request: Request): Promise<Response> {
     revalidateTag: (tag) => {
       nextRevalidateTag(tag, { expire: 0 });
     },
+    budget,
   });
 }
