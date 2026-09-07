@@ -106,3 +106,33 @@ Một guard toàn cục (`APP_GUARD`, chạy SAU AuthGuard để đọc được
    chạy ở production — ghi nợ: xác minh hình dạng XFF của ingress Render bằng
    một request thật sau deploy (checklist runbook), không có test nào canh được.
 
+
+## AMEND 2 — 07/09/2026 (đợt W4): trần ĐỌC công khai `PUBLIC_READ_THROTTLE` — GET `@Public()` đếm bucket `read`
+
+Bản gốc cố ý để GET ngoài trần và trỏ sang W4 ("cache-control + PUBLIC_READ").
+Nay trả nợ đó:
+
+- **`PUBLIC_READ_THROTTLE = { limit: 300, ttl: 60_000 }` theo IP** cho GET
+  trên route `@Public()` — bucket throttler TÊN RIÊNG `read` (không đụng
+  bucket `default` của đường ghi; `KeyedThrottlerStorage` đã theo key nên
+  hai bucket sống cạnh nhau).
+- **GET có session KHÔNG đếm** — khách đã đăng nhập là đối tượng của trần
+  GHI theo user; SSR của web/admin gọi GET bằng cookie forward từ egress IP
+  dùng chung (Vercel), đếm theo IP là cả site chia nhau một bucket (đúng bài
+  học `AUTH_THROTTLE` W2). GET admin cũng không đếm (cùng lý do + đã có
+  RBAC).
+- **Con số 300/60s:** `/tours` + detail + related ≈ 6 call một trang view →
+  ~50 trang/phút một IP — người thật không tới, script cào tuần tự thì chạm.
+  Trần này là lưới chống cạn pool DB (10 connection), không phải chống đọc.
+- **Cách thi công:** MỞ RỘNG `DefaultWriteThrottlerGuard` thành
+  `DefaultThrottlerGuard` (đổi shouldSkip: GET public đi vào đếm với trần
+  `read`) — KHÔNG thêm guard thứ hai: hai guard cùng kế thừa ThrottlerGuard
+  là hai lượt đếm/hai storage cho một request, và thứ tự APP_GUARD thành
+  load-bearing vô hình. Non-GET giữ nguyên bảng luật gốc + AMEND 1; miễn
+  loopback ngoài production giữ nguyên (int suite tự gọi mình).
+- **`Cache-Control` cho đọc công khai là lớp GIẢM TẢI song song** (ADR-0016
+  phía web đã ISR; đây là lớp cho browser/proxy đứng trước Render):
+  interceptor `PublicCacheInterceptor` gắn `public, s-maxage=60,
+  stale-while-revalidate=300` CHỈ cho GET catalog/posts/site-media — KHÔNG
+  cho route mang session (`/api/auth`, `/api/account`, wishlist…), cache
+  công khai một response cá nhân hoá là rò dữ liệu qua proxy.

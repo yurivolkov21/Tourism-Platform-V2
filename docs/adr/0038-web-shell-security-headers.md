@@ -255,3 +255,28 @@ chuỗi con — thêm host lạ vào bất kỳ directive nào phải đỏ, đ�
 mới qua AMEND". Nonce admin phải đi qua chính parser của Next
 (`getScriptNonceFromHeader`) trong `proxy.spec.ts`: Next bỏ nonce sai định
 dạng **im lặng** rồi render HTML không nonce dưới CSP strict-dynamic.
+
+## AMEND 2 — 07/09/2026 (đợt W4): kênh nhận báo cáo CSP — `report-to` + `report-uri`, endpoint ở API
+
+Trả nợ AMEND 1 §d ("không có kênh nào báo khi CSP chặn ở production"):
+
+- **Endpoint MỘT nơi cho cả hai app:** `POST /api/webhooks/csp-report` ở API
+  (`@Public()`, `WEBHOOK_THROTTLE` theo IP). Đặt dưới `/api/webhooks/` để
+  hook 415 của W2 (ADR-0026 AMEND 2) miễn sẵn — báo cáo CSP tới bằng
+  `application/csp-report` (đường `report-uri`) và `application/reports+json`
+  (đường `report-to`), không phải JSON thường; nhận CẢ HAI content-type.
+- **Hành vi endpoint:** body cắt 8 KB (413 khi quá); log MỘT dòng cấu trúc
+  `csp-report {app, directive, blockedUri, documentUri, sample}` với dedupe
+  theo (directive, blockedUri) trong 10 phút per-process — một extension phổ
+  biến bị chặn không thành bão log; trả **204** và không gì khác; **không
+  lưu DB** tới khi thấy cần (log Render đủ cho tần suất hiện tại).
+- **Hai app phát ba thứ:** header `Reporting-Endpoints:
+  csp="<api>/api/webhooks/csp-report"` (Reporting API v1) + directive
+  `report-to csp` + directive `report-uri <api>/api/webhooks/csp-report`
+  (fallback cho browser chưa hiểu Reporting API). `security-headers.ts` hai
+  app nhận thêm `reportUri`; test map directive so bằng (`toEqual`) cập nhật
+  theo — vẫn đúng luật AMEND 1 §f.
+- **KHÔNG chuyển sang Report-Only:** CSP đã enforce từ W3 và đã nghiệm thu
+  tay; hạ xuống Report-Only để "quan sát trước" là mở lại đúng lỗ vừa đóng.
+  Kênh báo cáo ở đây phục vụ chiều ngược: biết khi enforce CHẶN NHẦM thứ
+  thật (hạ tầng đổi, thư viện mới) để AMEND kịp.

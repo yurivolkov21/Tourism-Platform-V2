@@ -105,3 +105,40 @@ Port mô hình signed direct upload của Nexora, thu hẹp quyền theo purpose
 
 Video · crop/xoay ảnh phía client · admin media library + cron dọn rác
 (P4) · avatar/ảnh trong email · đổi email (PARK riêng, không liên quan).
+
+## AMEND 1 — 07/09/2026 (đợt W4): chữ ký chỉ phủ THAM SỐ, không phủ endpoint — ràng buộc phải NẰM TRONG chữ ký
+
+Rà 05/09 (cụm 3, Cao) chỉ ra hai lỗ của bộ tham số ký `{folder, public_id,
+timestamp}`:
+
+1. **Chữ ký không phủ endpoint.** `api_sign_request` ký tham số, còn
+   `/<resource_type>/upload` nằm NGOÀI chữ ký — cầm một chữ ký hợp lệ của
+   `image/upload` vẫn POST được sang `video/upload`/`raw/upload` và đẩy file
+   bất kỳ (mp4, pdf, html) vào cloud của ta. Whitelist đuôi ở contract chỉ
+   chặn client ngoan.
+2. **Ảnh gốc giữ EXIF/GPS.** Cloudinary lưu nguyên bản upload; ảnh khách chụp
+   điện thoại mang toạ độ nhà họ, và URL gốc là công khai.
+
+Chốt: mọi ràng buộc phải là THAM SỐ ĐƯỢC KÝ — client thiếu/sửa là 401 từ
+chính Cloudinary:
+
+- `allowed_formats: 'jpg,jpeg,png,webp,heic,heif'` — chặn video/raw/file bất
+  kỳ kể cả khi POST sang endpoint khác (Cloudinary kiểm format sau khi nhận
+  file, theo tham số đã ký). Danh sách là format ĐÍCH Cloudinary nhận diện,
+  KHÔNG 1:1 với whitelist đuôi của contract (`avif`/`gif` client vẫn gửi
+  được — Cloudinary nhận diện và từ chối nếu ngoài danh sách; `heic/heif` cho
+  ảnh iPhone).
+- Incoming `transformation: 'c_limit,w_2400,h_2400'` — bản LƯU là bản đã
+  transform: EXIF/GPS bị strip theo thiết kế (transform sinh ảnh mới, không
+  chép metadata), khổ trần 2400px chặn ảnh trăm-megapixel đốt băng thông.
+  `c_limit` không cắt cúp (giữ luật cấm crop của ADR-0020) và không phóng to
+  ảnh nhỏ hơn.
+- `SignedUploadParamsSchema` mang hai field mới; web (`media-upload.ts`) gửi
+  đủ TỪNG tham số đã ký trong form — thiếu/thừa là 401 (hợp đồng
+  `api_sign_request`).
+
+**Hai thiết lập dashboard là lớp HAI, không tự động hoá được** (ghi runbook
+deploy, kiểm tay): Settings → Security → *Restricted media types* (chặn
+unsigned/raw ở cấp tài khoản) và *Restricted original access* (chặn truy cập
+bản gốc chưa transform). Lớp một (tham số ký) là thứ code canh được bằng
+test; ADR này KHÔNG coi dashboard là lưới chính.

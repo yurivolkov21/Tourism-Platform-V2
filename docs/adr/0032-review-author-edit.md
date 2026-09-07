@@ -186,3 +186,39 @@ việc riêng, và giờ mới bàn được, vì §1 vừa chốt rằng xoá d
 | Cho sửa cả review ĐÃ DUYỆT | Nội dung đang hiển thị công khai đổi sau lưng kiểm duyệt. Muốn mở thì phải kèm luật "sửa là gỡ xuống", và đó là một quyết định khác, không phải một dòng thêm vào ADR này. |
 | Trần đếm theo số lần SỬA thay vì số lần BỊ BÁC | Đếm sai thứ: một khách sửa ba lần rồi được duyệt là một câu chuyện tốt. Thứ tốn công người thật là số lần BỊ BÁC. |
 | Không có trần nào | Vòng bác–sửa–bác ép admin đọc lại vô hạn. Rẻ để chặn (dữ liệu đã có), và câu "đã xem hai lần" nói được thành lời với khách. |
+
+## AMEND 1 — 07/09/2026 (đợt W4): `reviews.retract` — tác giả RÚT được review đã duyệt
+
+Bản gốc §2 chốt "approved thì KHÔNG sửa" và ghi rõ ngày nào mở phải kèm luật
+"sửa là rời site". Rà 05/09 (cụm 3) chỉ ra vế còn thiếu: tác giả không có
+đường nào GỠ lời của chính mình khỏi site — tên thật của họ (snapshot
+`authorName`) đứng công khai vĩnh viễn trừ khi email nhờ admin. Đó là một
+quyền, không phải một tính năng: rút lời ≠ sửa lời.
+
+Chốt — thêm đúng MỘT động từ `reviews.retract`, không mở đường sửa approved:
+
+- **Chỉ tác giả, chỉ review ĐANG approved.** Review của người khác → 404
+  (cùng luật chống dò với `update`); review chưa/không còn approved → lỗi
+  trạng thái.
+- **Hiệu lực:** `is_approved = false` + cột mới `retracted_at` (migration
+  W4); ảnh của review gỡ khỏi `media_assets` và **requeue** vào hàng dọn
+  Cloudinary (ADR-0035 — đồng hồ 7 ngày tính từ lúc rút); recompute
+  `Tour.ratingAvg/ratingCount` trong CÙNG transaction (đúng khuôn
+  `moderate()`); bust cache `tour:<slug>` + `tours` SAU commit.
+- **Chung cuộc, không đảo được từ phía khách:** retracted không quay lại
+  hàng đợi, admin KHÔNG duyệt lại được (đây là ý chí của tác giả, không phải
+  một trạng thái moderation); queue admin hiện nhãn "retracted by author".
+  `retracted_at` là trục RIÊNG bên cạnh cặp `is_approved`/`rejected_at` —
+  không tái dùng `rejected_at` vì nghĩa khác nhau (một cái là phán quyết của
+  admin, một cái là ý chí của tác giả) và audit trail phải phân biệt được.
+- **KHÔNG ghi `ReviewModerationEvent`** — cùng lý do bản gốc §4: sổ đó ghi
+  hành vi người duyệt. Dấu vết của tác giả là chính `retracted_at`.
+- **Tên hiển thị:** giữ nguyên luật snapshot (tên tài khoản LÚC ĐĂNG);
+  `/terms` nói rõ điều đó và nói rõ quyền rút — khách biết trước khi đăng
+  tên mình sẽ đứng cạnh bài, và biết đường gỡ.
+
+Loại các phương án: cho SỬA approved (mở lớp rủi ro tráo nội dung mà bản gốc
+đã bác — rút là đủ cho nhu cầu thật); xoá hẳn row (mất bằng chứng moderation
++ phá unique một-review-mỗi-booking như bản gốc §1 đã phân tích); coi
+retract là `unpublish` của admin (nhập hai ý chí khác nhau vào một cột, admin
+sẽ "duyệt lại" thứ tác giả đã rút).

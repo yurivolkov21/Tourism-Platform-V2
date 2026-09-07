@@ -329,3 +329,23 @@ booking-receipt) chưa qua loader — nợ ghi CHANGELOG.
 `site-media` vào whitelist là đúng, nhưng phía API hôm nay chỉ
 `reviews.moderate` gửi `tours`/`tour:<slug>`; `posts`/`site-media` chưa có
 producer — ghi CÒN TREO, đừng đọc AMEND 1 thành "ảnh khe đã tươi ngay".
+
+## AMEND 3 — 07/09/2026 (đợt W4): throttle `/api/revalidate` theo instance — "giảm nhiễu", nói thẳng giới hạn
+
+Trả nợ W3 (CHANGELOG 07/09 mục CÒN TREO). Route `/api/revalidate` xác thực
+bằng secret nhưng không có trần: ai cầm secret (hoặc một bug phía API gọi
+lặp) bust được cache toàn site liên tục — mỗi lượt bust là một cơn regenerate
+ISR đổ vào API Render free.
+
+Chốt: bộ đếm in-memory **theo instance** trong `revalidate-route.ts` — hàm
+thuần `RevalidateBudget`, trần **30 call/phút**, vượt trả **429 kèm
+`Retry-After`** (giây còn lại của cửa sổ). API (`WebRevalidationService`) coi
+429 như lỗi tạm sẵn có: log warn, KHÔNG retry (giữ hành vi hiện tại — bust
+trượt thì ISR 300s tự chữa).
+
+**Giới hạn nói thẳng, không giả vờ hơn:** web chạy serverless (Vercel) nên
+mỗi instance một bộ đếm — trần thật là `30 × số instance đang ấm`, và một
+đợt scale-out làm trần nở theo. Đây là lớp GIẢM NHIỄU chống vòng lặp lỗi/lạm
+dụng thô, KHÔNG phải rate-limit thật; rate-limit thật cần store chung
+(Redis/KV) — chưa cần cho một route server-to-server có secret, và không
+đáng đổi hạ tầng sát freeze (cùng lập luận ADR-0037 gốc về store chung).
