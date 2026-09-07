@@ -5,18 +5,15 @@
  * newsletter. Người thật không bao giờ gửi form 6 lần trong một phút; bot
  * thì có.
  *
- * Cố ý KHÔNG gắn throttle toàn cục: endpoint đọc (catalogue) và endpoint đã
- * auth (booking, admin) có mô hình sử dụng khác hẳn, gắn chung một trần sẽ
- * chặn nhầm người dùng thật.
+ * Từ ADR-0037 đây là DEFAULT của `ThrottlerModule` — guard toàn cục
+ * `DefaultWriteThrottlerGuard` áp nó cho mọi route ghi `@Public()` không khai
+ * gì, và nâng lên `AUTHED_WRITE_THROTTLE`/`ADMIN_WRITE_THROTTLE` khi request
+ * có session (bản đầu của file này viết "cố ý KHÔNG gắn toàn cục" — câu đó
+ * lỗi thời từ 06/09, vòng vá review W2). GET không bao giờ bị đếm.
  *
  * ttl tính bằng MILLISECOND (@nestjs/throttler v6+), không phải giây.
  */
 export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
-
-/** Ký upload media (ADR-0021): 5 ảnh/review + đổi ảnh/retry + NAT chung IP —
- *  trần public 5/60s vừa khít mức dùng hợp lệ nên phải có headroom riêng.
- *  Endpoint đã authed; 20/60s vẫn chặn được spam ký hàng loạt. */
-export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
 
 /**
  * Trần MẶC ĐỊNH cho endpoint GHI ĐÃ-AUTH (W1 khai sinh, W2/ADR-0037 thành
@@ -27,6 +24,14 @@ export const SIGN_UPLOAD_THROTTLE = { limit: 20, ttl: 60_000 } as const;
  * không cộng dồn chéo endpoint.
  */
 export const AUTHED_WRITE_THROTTLE = { limit: 20, ttl: 60_000 } as const;
+
+/**
+ * Trần ghi cho ADMIN trên `/api/admin/*` (ADR-0037 AMEND 1): moderator dọn
+ * hàng đợi (duyệt 21 review/phút, retry cả loạt outbox) là mức dùng hợp lệ mà
+ * 20/60s của khách sẽ chặn oan rồi block thêm 60s. Vẫn theo `user.id`; 60/60s
+ * đủ cho tay người, vẫn chặn script chạy vòng.
+ */
+export const ADMIN_WRITE_THROTTLE = { limit: 60, ttl: 60_000 } as const;
 
 /**
  * Route webhook provider (W1, audit 05/09 cụm 2): trần RỘNG TAY theo IP — trần
@@ -46,8 +51,10 @@ export const WEBHOOK_THROTTLE = { limit: 600, ttl: 60_000 } as const;
  * Trần Nest riêng cho AuthController (W2 mục 3, theo tinh thần ADR-0037):
  * CHỈ đếm non-GET (guard bỏ qua GET/HEAD/OPTIONS — `get-session` đi từ SSR
  * của web qua egress IP DÙNG CHUNG của Vercel, đếm nó theo IP là tự khoá
- * site). 60/60s theo IP là ĐÁY chống flood cho cả cụm /api/auth/* (một
- * handler wildcard = một bucket); lớp mịn theo-path (sign-in 3/10s…) là
- * rate limiter của chính Better Auth, nay đã bật tường minh + biết proxy.
+ * site). 60/60s theo IP cho TỪNG PATH (ADR-0037 AMEND 1: guard nối pathname
+ * vào key khi handler là wildcard — bản đầu một bucket cho cả cụm
+ * sign-in/sign-up/OTP/sign-out, CGNAT chạm 60/phút là khoá đăng nhập cả
+ * pool); lớp mịn theo-path (sign-in 3/10s…) là rate limiter của chính
+ * Better Auth, nay đã bật tường minh + biết proxy.
  */
 export const AUTH_THROTTLE = { limit: 60, ttl: 60_000 } as const;

@@ -1,10 +1,11 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { ThrottlerStorage, type ThrottlerStorageService } from '@nestjs/throttler';
+import { ThrottlerStorage } from '@nestjs/throttler';
 import { BookingSchema } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
+import type { KeyedThrottlerStorage } from '../../config/keyed-throttler-storage.js';
 import { WEBHOOK_THROTTLE } from '../../config/throttle.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, DepartureStatus, EmailType } from '../../generated/prisma/enums.js';
@@ -101,7 +102,7 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     fake.reset();
     // Bộ đếm throttle in-memory dùng chung cả file (IP inject cố định): reset
     // mỗi test để test trần không phụ thuộc vị trí trong file (vòng vá 06/09).
-    app.get<ThrottlerStorageService>(ThrottlerStorage).storage.clear();
+    app.get<KeyedThrottlerStorage>(ThrottlerStorage).storage.clear();
   });
 
   afterAll(async () => {

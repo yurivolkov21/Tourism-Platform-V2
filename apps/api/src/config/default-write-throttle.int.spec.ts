@@ -1,10 +1,12 @@
 import { Controller, Get, Post } from '@nestjs/common';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { Throttle } from '@nestjs/throttler';
 import { AppModule } from '../app.module.js';
 import { prisma } from '../auth/auth.config.js';
 import { Public } from '../auth/public.decorator.js';
-import { AUTHED_WRITE_THROTTLE, PUBLIC_WRITE_THROTTLE } from './throttle.js';
+import { UserRole } from '../generated/prisma/enums.js';
+import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE, PUBLIC_WRITE_THROTTLE } from './throttle.js';
 
 /**
  * ADR-0037 — trần ghi MẶC ĐỊNH: test này canh cái LƯỚI, không canh route nào
@@ -37,6 +39,19 @@ class ProbeController {
   @Public()
   @Get('throttle-probe/read')
   read() {
+    return { ok: true };
+  }
+
+  /** Route ghi dưới /api/admin — ADMIN được carve-out 60/60s (AMEND 1), CUSTOMER vẫn 20/60s. */
+  @Post('api/admin/throttle-probe')
+  adminWrite() {
+    return { ok: true };
+  }
+
+  /** Route authed KHAI TƯỜNG MINH đúng cặp số public — phải giữ 5/60s, không bị nâng. */
+  @Throttle({ default: PUBLIC_WRITE_THROTTLE })
+  @Post('throttle-probe/pinned')
+  pinnedWrite() {
     return { ok: true };
   }
 }
@@ -136,6 +151,47 @@ describe('trần ghi mặc định toàn cục (ADR-0037)', () => {
       });
       expect(res.statusCode).toBe(200);
     }
+  });
+
+  it('5. ADMIN dưới /api/admin/* được ADMIN_WRITE_THROTTLE (60/60s); CUSTOMER cùng route vẫn 20/60s (AMEND 1)', async () => {
+    const adminCookie = await signUpAndSignIn('probe-admin@example.com');
+    await prisma.user.update({
+      where: { email: 'probe-admin@example.com' },
+      data: { role: UserRole.ADMIN },
+    });
+    const adminCookie2 = await signUpAndSignIn('probe-admin@example.com'); // phiên mới mang role mới
+    void adminCookie;
+    const customer = await signUpAndSignIn('probe-customer@example.com');
+    const post = (cookie: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/admin/throttle-probe',
+        remoteAddress: PUBLIC_IP,
+        headers: { cookie },
+      });
+    for (let i = 0; i < ADMIN_WRITE_THROTTLE.limit; i++) {
+      expect((await post(adminCookie2)).statusCode).toBe(201);
+    }
+    expect((await post(adminCookie2)).statusCode).toBe(429);
+    for (let i = 0; i < AUTHED_WRITE_THROTTLE.limit; i++) {
+      expect((await post(customer)).statusCode).toBe(201);
+    }
+    expect((await post(customer)).statusCode).toBe(429);
+  });
+
+  it('6. route khai @Throttle tường minh TRÙNG số public vẫn giữ 5/60s cho user có session — nhận diện bằng metadata, không so số (AMEND 1)', async () => {
+    const cookie = await signUpAndSignIn('probe-pinned@example.com');
+    const post = () =>
+      app.inject({
+        method: 'POST',
+        url: '/throttle-probe/pinned',
+        remoteAddress: PUBLIC_IP,
+        headers: { cookie },
+      });
+    for (let i = 0; i < PUBLIC_WRITE_THROTTLE.limit; i++) {
+      expect((await post()).statusCode).toBe(201);
+    }
+    expect((await post()).statusCode).toBe(429);
   });
 
   it('4. non-GET không session, không @Public → 401 từ AuthGuard (fail-closed, không rơi về bucket IP)', async () => {

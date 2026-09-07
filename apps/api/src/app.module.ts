@@ -6,10 +6,11 @@ import { experimental_ZodSmartCoercionPlugin as ZodSmartCoercionPlugin } from '@
 import { AuthGuard } from './auth/auth.guard.js';
 import { AuthModule } from './auth/auth.module.js';
 import { DefaultWriteThrottlerGuard } from './config/default-write-throttler.guard.js';
+import { KeyedThrottlerStorage } from './config/keyed-throttler-storage.js';
 import { PUBLIC_WRITE_THROTTLE } from './config/throttle.js';
 import { AllExceptionsFilter } from './lib/all-exceptions.filter.js';
 import { captureException } from './lib/observability.js';
-import { describeOrpcError, isUnexpectedOrpcError } from './lib/orpc-error-log.js';
+import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './lib/orpc-error-log.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
@@ -41,7 +42,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
         onError((error) => {
           const logger = new Logger('oRPC');
           if (isUnexpectedOrpcError(error)) {
-            logger.error(describeOrpcError(error));
+            logger.error(describeOrpcError(error), orpcErrorStack(error));
             captureException(error);
           } else {
             logger.warn(describeOrpcError(error));
@@ -58,7 +59,12 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
      * tin, xem `bootstrap.ts`) đã bật ở adapter — thiếu nó thì mọi client
      * dùng chung IP của proxy và trần này khoá sạch cả site.
      */
-    ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE]),
+    ThrottlerModule.forRoot({
+      throttlers: [PUBLIC_WRITE_THROTTLE],
+      // Storage keyed theo từng key (ADR-0037 AMEND 1): service mặc định của
+      // thư viện xoá timer giảm-hit của MỌI key khi một key hết block.
+      storage: new KeyedThrottlerStorage(),
+    }),
     HealthModule,
     AuthModule,
     CatalogModule,

@@ -150,6 +150,10 @@ function signUploadReq(fakeIp: string, payload: Record<string, unknown>, cookie?
   return app.inject({
     method: 'POST',
     url: '/api/media/upload-signatures',
+    // `remoteAddress` THẬT chứ không chỉ header (vòng vá review W2): guard toàn
+    // cục miễn loopback theo địa chỉ socket, header XFF không có tiếng nói —
+    // để inject mặc định 127.0.0.1 là mọi ca throttle trong file này vô nghĩa.
+    remoteAddress: fakeIp,
     headers: { 'x-forwarded-for': fakeIp, ...(cookie ? { cookie } : {}) },
     payload,
   });
@@ -259,10 +263,10 @@ describe('media.signUpload', () => {
     expect(res.json().code).toBe('BOOKING_NOT_FOUND');
   });
 
-  it('6 lần ký AVATAR liên tiếp CÙNG IP → cả 6 đều 200 (headroom SIGN_UPLOAD_THROTTLE, không dính trần public 5/60s)', async () => {
-    // signUpload là endpoint ĐÃ AUTH, không nên dùng chung trần PUBLIC_WRITE_
-    // THROTTLE (5/60s) — đúng khít mức dùng hợp lệ của MỘT review 5 ảnh, nên
-    // lần ký thứ 6 (đổi ảnh, retry, 2 khách chung NAT) ăn 429 oan.
+  it('6 lần ký AVATAR liên tiếp CÙNG IP → cả 6 đều 200 (trần AUTHED 20/60s theo user, không dính trần public 5/60s)', async () => {
+    // signUpload là endpoint ĐÃ AUTH: trần mặc định ADR-0037 theo user 20/60s
+    // (decorator SIGN_UPLOAD riêng đã gỡ vì trùng số) — 5/60s của public đúng
+    // khít mức dùng hợp lệ của MỘT review 5 ảnh, lần ký thứ 6 sẽ ăn 429 oan.
     const { cookie } = await signUpAndSignIn('sixsigns@example.com');
     const fakeIp = '10.2.0.9';
 

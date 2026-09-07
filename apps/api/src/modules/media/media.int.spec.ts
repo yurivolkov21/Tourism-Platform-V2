@@ -65,9 +65,11 @@ describe('media integration (MediaService.resolveForOwners)', () => {
       ],
     });
 
-    // MediaModule giờ mang MediaController có ThrottlerGuard (ADR-0021);
-    // guard resolve provider từ context module test nên phải đăng ký
-    // ThrottlerModule ở đây y như AppModule làm, không thì DI fail.
+    // Module test này KHÔNG dựng AppModule nên không có APP_GUARD nào
+    // (AuthGuard, DefaultWriteThrottlerGuard) — CHỈ gọi service trực tiếp,
+    // TUYỆT ĐỐI không `app.inject()` HTTP ở đây: route sẽ chạy không guard
+    // mà test vẫn xanh (vòng vá review W2). ThrottlerModule giữ để DI của
+    // MediaModule resolve được.
     const moduleRef = await Test.createTestingModule({
       imports: [MediaModule, ThrottlerModule.forRoot([PUBLIC_WRITE_THROTTLE])],
     }).compile();

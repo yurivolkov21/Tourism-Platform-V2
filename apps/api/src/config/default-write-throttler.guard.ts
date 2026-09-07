@@ -4,40 +4,67 @@ import type { ThrottlerRequest } from '@nestjs/throttler';
 import type { SessionUser } from '../auth/auth.config.js';
 import { IS_PUBLIC_KEY } from '../auth/public.decorator.js';
 import { WriteOnlyThrottlerGuard } from '../auth/write-only-throttler.guard.js';
-import { AUTHED_WRITE_THROTTLE, PUBLIC_WRITE_THROTTLE } from './throttle.js';
+import { UserRole } from '../generated/prisma/enums.js';
+import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE } from './throttle.js';
 
 /**
- * Trần ghi MẶC ĐỊNH toàn cục (ADR-0037) — APP_GUARD đứng SAU AuthGuard nên
- * đọc được `sessionUser`. Đảo mặc định của ADR-0010 (opt-in từng route):
- * route ghi mới KHÔNG khai gì vẫn có trần từ lúc sinh ra — cùng nguyên tắc
- * fail-closed mà ADR-0003 đã áp cho auth.
+ * Khoá metadata của `@Throttle({ default: … })` — @nestjs/throttler 6.5.0
+ * không re-export `throttler.constants`, nên chép đúng chuỗi (`THROTTLER:LIMIT`
+ * + tên throttler). Đọc metadata là cách duy nhất biết route "có khai gì
+ * không"; bản đầu đoán bằng so SỐ (`limit === 5 && ttl === 60000`), tức một
+ * route cố ý ghim đúng 5/60s cho cả người đã đăng nhập sẽ bị nâng nhầm.
+ */
+const THROTTLE_LIMIT_METADATA = 'THROTTLER:LIMITdefault';
+
+interface ThrottledRequest {
+  sessionUser?: SessionUser;
+  url?: string;
+  routeOptions?: { url?: string };
+}
+
+/**
+ * Trần ghi MẶC ĐỊNH toàn cục (ADR-0037 + AMEND 1) — APP_GUARD đứng SAU
+ * AuthGuard nên đọc được `sessionUser`. Đảo mặc định của ADR-0010 (opt-in
+ * từng route): route ghi mới KHÔNG khai gì vẫn có trần từ lúc sinh ra.
  *
  * Bảng luật (kế thừa skip GET/HEAD/OPTIONS + miễn loopback ngoài production
  * từ {@link WriteOnlyThrottlerGuard}):
- * - non-GET có session  → AUTHED_WRITE_THROTTLE, bucket `user:<id>`
- * - non-GET @Public()   → PUBLIC_WRITE_THROTTLE (default của module), bucket IP
- * - non-GET không session, không @Public → 401 (fail-closed — thực tế
- *   AuthGuard đã chặn trước, nhánh này chỉ là đáy nếu thứ tự guard đổi)
+ * - non-GET có session, dưới `/api/admin/*`, role ADMIN → ADMIN_WRITE_THROTTLE
+ * - non-GET có session → AUTHED_WRITE_THROTTLE, bucket `user:<id>`
+ * - non-GET `@Public()` → PUBLIC_WRITE_THROTTLE (default của module), bucket IP.
+ *   LƯU Ý: AuthGuard thoát sớm trên route `@Public()` TRƯỚC khi gắn
+ *   `sessionUser`, nên route public KHÔNG BAO GIỜ có user ở đây — kể cả khi
+ *   người gọi đang đăng nhập (sign-out, newsletter khi đã login). Đúng ý:
+ *   bề mặt public đếm theo IP.
  * - `@Throttle({ default: X })` per-route THẮNG mặc định (WEBHOOK_THROTTLE,
- *   SIGN_UPLOAD_THROTTLE, AUTH_THROTTLE); `@SkipThrottle()` miễn tường minh.
+ *   AUTH_THROTTLE); `@SkipThrottle()` miễn tường minh.
+ * - Handler wildcard (AuthController `api/auth/*`) → key nối thêm pathname:
+ *   sign-in, sign-up, OTP, sign-out mỗi cái một bucket, không chia chung.
+ * - non-GET không session, không `@Public()` → 401. AuthGuard đã chặn ca này
+ *   trước, nhánh chỉ là đáy nếu thứ tự guard đổi — không có test nào tới được.
  */
 @Injectable()
 export class DefaultWriteThrottlerGuard extends WriteOnlyThrottlerGuard {
   protected override async handleRequest(requestProps: ThrottlerRequest): Promise<boolean> {
-    const { context, limit, ttl } = requestProps;
-    // canActivate của base đã resolve limit/ttl: per-route @Throttle thắng,
-    // không có thì là default module (PUBLIC_WRITE_THROTTLE). Chỉ khi đang ở
-    // ĐÚNG default đó và request có session mới nâng sang trần authed —
-    // route tự khai trần riêng thì tôn trọng nguyên vẹn.
-    const isModuleDefault =
-      limit === PUBLIC_WRITE_THROTTLE.limit && ttl === PUBLIC_WRITE_THROTTLE.ttl;
-    const user = this.sessionUserOf(context);
-    if (isModuleDefault && user) {
+    const { context } = requestProps;
+    const req = this.requestOf(context);
+    const user = req.sessionUser;
+    // Route khai `@Throttle` riêng thì tôn trọng nguyên vẹn; chỉ route KHÔNG
+    // khai gì (metadata vắng ở cả handler lẫn class) mới được nâng theo session.
+    const declared = this.reflector.getAllAndOverride<number | undefined>(THROTTLE_LIMIT_METADATA, [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    if (declared === undefined && user) {
+      const tier =
+        user.role === UserRole.ADMIN && isAdminSurface(req.url)
+          ? ADMIN_WRITE_THROTTLE
+          : AUTHED_WRITE_THROTTLE;
       return super.handleRequest({
         ...requestProps,
-        limit: AUTHED_WRITE_THROTTLE.limit,
-        ttl: AUTHED_WRITE_THROTTLE.ttl,
-        blockDuration: AUTHED_WRITE_THROTTLE.ttl,
+        limit: tier.limit,
+        ttl: tier.ttl,
+        blockDuration: tier.ttl,
       });
     }
     return super.handleRequest(requestProps);
@@ -47,9 +74,9 @@ export class DefaultWriteThrottlerGuard extends WriteOnlyThrottlerGuard {
     req: Record<string, unknown>,
     context?: ExecutionContext,
   ): Promise<string> {
-    // Bucket theo user cho request đã auth (kể cả khi route khai trần riêng):
-    // theo IP thì NAT bị khoá oan còn pool IP xoay vòng lách được (W1).
-    const user = (req as { sessionUser?: SessionUser }).sessionUser;
+    // Bucket theo user cho request đã auth: theo IP thì NAT bị khoá oan còn
+    // pool IP xoay vòng lách được (W1).
+    const user = (req as ThrottledRequest).sessionUser;
     if (user?.id) return `user:${user.id}`;
     if (context) {
       const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -64,7 +91,23 @@ export class DefaultWriteThrottlerGuard extends WriteOnlyThrottlerGuard {
     throw new UnauthorizedException('DefaultWriteThrottlerGuard requires a session or @Public()');
   }
 
-  private sessionUserOf(context: ExecutionContext): SessionUser | undefined {
-    return context.switchToHttp().getRequest<{ sessionUser?: SessionUser }>().sessionUser;
+  protected override generateKey(context: ExecutionContext, suffix: string, name: string): string {
+    const req = this.requestOf(context);
+    const route = req.routeOptions?.url ?? '';
+    // Wildcard = một handler cho nhiều đường (Better Auth mount): tách bucket
+    // theo pathname thật, không thì sign-in/sign-up/OTP/sign-out chia nhau
+    // 60/phút của cả CGNAT (vòng vá review W2).
+    const pathname = route.includes('*') ? `:${(req.url ?? '').split('?')[0]}` : '';
+    return super.generateKey(context, `${suffix}${pathname}`, name);
   }
+
+  private requestOf(context: ExecutionContext): ThrottledRequest {
+    return context.switchToHttp().getRequest<ThrottledRequest>();
+  }
+}
+
+/** Đường admin — cùng phép so với CORS delegator ở `bootstrap.ts` (bỏ query). */
+function isAdminSurface(url: string | undefined): boolean {
+  const path = (url ?? '').split('?')[0] ?? '';
+  return path === '/api/admin' || path.startsWith('/api/admin/');
 }
