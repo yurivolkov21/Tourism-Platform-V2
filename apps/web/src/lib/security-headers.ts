@@ -14,6 +14,13 @@ export interface SecurityHeaderInput {
   apiOrigin: string;
   /** Dev cần 'unsafe-eval' (React eval dựng server stack) và không được ép https. */
   isDev: boolean;
+  /**
+   * URL đầy đủ của endpoint nhận báo cáo CSP ở API (W4 C2, ADR-0038 AMEND
+   * 2) — một nơi cho cả hai app. Đi vào CẢ ba chỗ: header
+   * `Reporting-Endpoints` (Reporting API v1), directive `report-to csp`, và
+   * directive `report-uri` (fallback browser chưa hiểu Reporting API).
+   */
+  reportUri: string;
 }
 
 export interface HeaderEntry {
@@ -26,7 +33,7 @@ export interface HeaderEntry {
  * (ADR-0038 §1 ghi trọn lý do + giá trị còn lại). Danh sách origin ngoài là
  * kết quả grep 07/09 đã phân loại ở ADR-0038 §2.
  */
-function buildCsp({ apiOrigin, isDev }: SecurityHeaderInput): string {
+function buildCsp({ apiOrigin, isDev, reportUri }: SecurityHeaderInput): string {
   const directives = [
     "default-src 'self'",
     // 'unsafe-inline': theme script + <noscript><style> ở root layout, style
@@ -58,6 +65,12 @@ function buildCsp({ apiOrigin, isDev }: SecurityHeaderInput): string {
     // <video><source src> — poster đi theo img-src nên thiếu host ở đây là
     // hỏng IM LẶNG (ADR-0038 AMEND 1).
     "media-src 'self' https://res.cloudinary.com",
+    // W4 C2 (ADR-0038 AMEND 2): CSP đã enforce từ W3 nhưng không ai biết khi
+    // nó chặn — hai directive dưới là cái tai. `report-to csp` trỏ endpoint
+    // khai ở header Reporting-Endpoints; `report-uri` giữ song song cho
+    // browser chưa hiểu Reporting API v1.
+    'report-to csp',
+    `report-uri ${reportUri}`,
   ];
   // Chỉ production — dev http://localhost bị tự nâng https là chết.
   if (!isDev) directives.push('upgrade-insecure-requests');
@@ -72,6 +85,9 @@ function buildCsp({ apiOrigin, isDev }: SecurityHeaderInput): string {
 export function buildSecurityHeaders(input: SecurityHeaderInput): HeaderEntry[] {
   return [
     { key: 'Content-Security-Policy', value: buildCsp(input) },
+    // W4 C2: khai endpoint tên `csp` cho Reporting API v1 — directive
+    // `report-to csp` ở trên trỏ vào tên này.
+    { key: 'Reporting-Endpoints', value: `csp="${input.reportUri}"` },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     // Cắt đường rò ?token= của /reset-password qua referrer sang origin khác.
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

@@ -5,8 +5,18 @@ import { buildSecurityHeaders } from './security-headers';
 // từng directive (map directive → sources) chứ không `toContain`: CSP sai là
 // prod hỏng NGAY sau push (spec W3 §6), và ADR bắt mọi origin mới phải qua
 // AMEND — test phải đỏ khi ai đó nhét thêm host lặng lẽ.
-const DEV = buildSecurityHeaders({ apiOrigin: 'http://localhost:3001', isDev: true });
-const PROD = buildSecurityHeaders({ apiOrigin: 'https://api.nexora-travel.agency', isDev: false });
+// W4 C2 (ADR-0038 AMEND 2): reportUri = endpoint nhận báo cáo ở API — hai
+// app cùng trỏ một nơi.
+const DEV = buildSecurityHeaders({
+  apiOrigin: 'http://localhost:3001',
+  isDev: true,
+  reportUri: 'http://localhost:3001/api/webhooks/csp-report',
+});
+const PROD = buildSecurityHeaders({
+  apiOrigin: 'https://api.nexora-travel.agency',
+  isDev: false,
+  reportUri: 'https://api.nexora-travel.agency/api/webhooks/csp-report',
+});
 
 function parseCsp(headers: { key: string; value: string }[]): Record<string, string> {
   const csp = headers.find((h) => h.key === 'Content-Security-Policy');
@@ -37,6 +47,10 @@ const PROD_EXPECTED: Record<string, string> = {
   'form-action': "'self'",
   'manifest-src': "'self'",
   'media-src': "'self' https://res.cloudinary.com",
+  // W4 C2: kênh báo cáo — report-to (Reporting API) + report-uri (fallback
+  // browser cũ), cùng trỏ endpoint ở API.
+  'report-to': 'csp',
+  'report-uri': 'https://api.nexora-travel.agency/api/webhooks/csp-report',
   'upgrade-insecure-requests': '',
 };
 
@@ -52,6 +66,7 @@ describe('buildSecurityHeaders (web)', () => {
       'script-src': "'self' 'unsafe-inline' 'unsafe-eval'",
       'connect-src':
         "'self' http://localhost:3001 https://tiles.openfreemap.org https://api.cloudinary.com",
+      'report-uri': 'http://localhost:3001/api/webhooks/csp-report',
       'upgrade-insecure-requests': undefined,
     });
     expect('upgrade-insecure-requests' in dev).toBe(false);
@@ -69,7 +84,14 @@ describe('buildSecurityHeaders (web)', () => {
     expect(map.get('Permissions-Policy')).toBe(
       'camera=(), microphone=(), geolocation=(), payment=()',
     );
-    expect(PROD.map((h) => h.key)).toHaveLength(5);
+    expect(PROD.map((h) => h.key)).toHaveLength(6);
+  });
+
+  it('W4 C2: phát Reporting-Endpoints trỏ endpoint csp-report của API', () => {
+    const map = new Map(PROD.map((h) => [h.key, h.value]));
+    expect(map.get('Reporting-Endpoints')).toBe(
+      'csp="https://api.nexora-travel.agency/api/webhooks/csp-report"',
+    );
   });
 
   it('KHÔNG tự gắn Strict-Transport-Security — Vercel đã gắn (ADR-0038 §1)', () => {

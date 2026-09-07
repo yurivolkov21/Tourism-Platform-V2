@@ -5,15 +5,19 @@ import { buildSecurityHeaders } from './security-headers';
 // web vì admin dynamic từng request và là đích giá trị nhất); allowlist HẸP
 // hơn web. So BẰNG từng directive để ai nhét thêm host lặng lẽ là đỏ.
 const NONCE = 'dGVzdC1ub25jZS0xMjM0';
+// W4 C2 (ADR-0038 AMEND 2): reportUri = endpoint nhận báo cáo ở API — cùng
+// một nơi với web.
 const DEV = buildSecurityHeaders({
   apiOrigin: 'http://localhost:3001',
   isDev: true,
   nonce: NONCE,
+  reportUri: 'http://localhost:3001/api/webhooks/csp-report',
 });
 const PROD = buildSecurityHeaders({
   apiOrigin: 'https://api.nexora-travel.agency',
   isDev: false,
   nonce: NONCE,
+  reportUri: 'https://api.nexora-travel.agency/api/webhooks/csp-report',
 });
 
 function parseCsp(headers: { key: string; value: string }[]): Record<string, string> {
@@ -41,6 +45,9 @@ const PROD_EXPECTED: Record<string, string> = {
   'form-action': "'self'",
   'manifest-src': "'self'",
   'media-src': "'self'",
+  // W4 C2: kênh báo cáo — report-to (Reporting API) + report-uri (fallback).
+  'report-to': 'csp',
+  'report-uri': 'https://api.nexora-travel.agency/api/webhooks/csp-report',
   'upgrade-insecure-requests': '',
 };
 
@@ -62,6 +69,7 @@ describe('buildSecurityHeaders (admin)', () => {
       ...PROD_EXPECTED,
       'script-src': `'self' 'nonce-${NONCE}' 'strict-dynamic' 'unsafe-eval'`,
       'connect-src': "'self' http://localhost:3001",
+      'report-uri': 'http://localhost:3001/api/webhooks/csp-report',
       'upgrade-insecure-requests': undefined,
     });
     expect('upgrade-insecure-requests' in dev).toBe(false);
@@ -76,8 +84,15 @@ describe('buildSecurityHeaders (admin)', () => {
       'camera=(), microphone=(), geolocation=(), payment=()',
     );
     expect(map.get('X-Robots-Tag')).toBe('noindex, nofollow');
-    expect(PROD.map((h) => h.key)).toHaveLength(6);
+    expect(PROD.map((h) => h.key)).toHaveLength(7);
     expect(PROD.some((h) => h.key.toLowerCase() === 'strict-transport-security')).toBe(false);
+  });
+
+  it('W4 C2: phát Reporting-Endpoints trỏ endpoint csp-report của API', () => {
+    const map = new Map(PROD.map((h) => [h.key, h.value]));
+    expect(map.get('Reporting-Endpoints')).toBe(
+      'csp="https://api.nexora-travel.agency/api/webhooks/csp-report"',
+    );
   });
 
   it('CSP là một dòng, không khoảng trắng đôi', () => {

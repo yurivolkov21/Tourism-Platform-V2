@@ -19,6 +19,12 @@ export interface SecurityHeaderInput {
   isDev: boolean;
   /** Nonce 16 byte base64 do proxy sinh MỚI mỗi request. */
   nonce: string;
+  /**
+   * URL đầy đủ endpoint nhận báo cáo CSP ở API (W4 C2, ADR-0038 AMEND 2) —
+   * một nơi cho cả hai app: header `Reporting-Endpoints`, directive
+   * `report-to csp` và `report-uri` (fallback browser cũ) cùng trỏ vào.
+   */
+  reportUri: string;
 }
 
 export interface HeaderEntry {
@@ -26,7 +32,7 @@ export interface HeaderEntry {
   value: string;
 }
 
-function buildCsp({ apiOrigin, isDev, nonce }: SecurityHeaderInput): string {
+function buildCsp({ apiOrigin, isDev, nonce, reportUri }: SecurityHeaderInput): string {
   const directives = [
     "default-src 'self'",
     // 'strict-dynamic': script mang nonce được quyền nạp tiếp chunk của Next;
@@ -48,6 +54,10 @@ function buildCsp({ apiOrigin, isDev, nonce }: SecurityHeaderInput): string {
     "form-action 'self'",
     "manifest-src 'self'",
     "media-src 'self'",
+    // W4 C2 (ADR-0038 AMEND 2): kênh báo cáo — CSP enforce từ W3 nhưng
+    // không ai biết khi nó chặn; report-uri giữ song song cho browser cũ.
+    'report-to csp',
+    `report-uri ${reportUri}`,
   ];
   if (!isDev) directives.push('upgrade-insecure-requests');
   return directives.join('; ');
@@ -60,6 +70,9 @@ function buildCsp({ apiOrigin, isDev, nonce }: SecurityHeaderInput): string {
 export function buildSecurityHeaders(input: SecurityHeaderInput): HeaderEntry[] {
   return [
     { key: 'Content-Security-Policy', value: buildCsp(input) },
+    // W4 C2: khai endpoint tên `csp` cho Reporting API v1 — directive
+    // `report-to csp` ở trên trỏ vào tên này.
+    { key: 'Reporting-Endpoints', value: `csp="${input.reportUri}"` },
     { key: 'X-Content-Type-Options', value: 'nosniff' },
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     { key: 'X-Frame-Options', value: 'DENY' },

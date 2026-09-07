@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
           // lấy API_URL (server-side, có thể là URL nội bộ).
           apiOrigin: browserApiOrigin(),
           isDev: process.env.NODE_ENV === 'development',
+          // W4 C2 (ADR-0038 AMEND 2): báo cáo CSP về API — một endpoint cho
+          // cả hai app, ghép từ cùng resolver với connect-src.
+          reportUri: `${browserApiOrigin()}/api/webhooks/csp-report`,
         }),
       },
     ];
