@@ -15,7 +15,7 @@ describe('ConsoleDeliverer', () => {
       lines.push(String(message));
     });
     try {
-      await new ConsoleDeliverer(false).deliver(EmailType.EMAIL_OTP, {
+      await Object.assign(new ConsoleDeliverer(), { redact: false }).deliver(EmailType.EMAIL_OTP, {
         email: 'khach@example.com',
         otp: '123456',
       });
@@ -31,11 +31,14 @@ describe('ConsoleDeliverer', () => {
       lines.push(String(message));
     });
     try {
-      await new ConsoleDeliverer(true).deliver(EmailType.PASSWORD_RESET, {
-        email: 'khach@example.com',
-        url: 'http://localhost:3001/reset-password/token-tuyet-mat',
-        otp: '123456',
-      });
+      await Object.assign(new ConsoleDeliverer(), { redact: true }).deliver(
+        EmailType.PASSWORD_RESET,
+        {
+          email: 'khach@example.com',
+          url: 'http://localhost:3001/reset-password/token-tuyet-mat',
+          otp: '123456',
+        },
+      );
     } finally {
       spy.mockRestore();
     }

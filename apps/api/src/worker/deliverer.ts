@@ -27,7 +27,8 @@ export const EMAIL_DELIVERER = Symbol('EMAIL_DELIVERER');
 export class ConsoleDeliverer implements EmailDeliverer {
   private readonly logger = new Logger(ConsoleDeliverer.name);
 
-  constructor(private readonly redact: boolean = env.NODE_ENV !== 'development') {}
+  /** Test đổi được; KHÔNG là tham số constructor — Nest DI sẽ đòi inject `Boolean`. */
+  redact: boolean = env.NODE_ENV !== 'development';
 
   async deliver(type: EmailType, payload: unknown): Promise<void> {
     const shown = this.redact ? redactDeep(payload) : payload;
