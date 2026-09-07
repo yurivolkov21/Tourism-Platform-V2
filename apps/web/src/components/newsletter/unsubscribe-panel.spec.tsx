@@ -22,6 +22,8 @@ vi.mock('@/lib/api/client', () => ({ api: { newsletter: { unsubscribe, resubscri
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const TOKEN = 'tok-abc';
+// W4 E4: token mục đích resubscribe do GET confirm phát — panel nhận qua prop riêng.
+const RESUB_TOKEN = 'v1.resubscribe.9999999999.deadbeef';
 const EMAIL = 'm***@example.com';
 const t = messages.unsubscribePage;
 
@@ -31,7 +33,15 @@ beforeEach(() => {
 
 describe('UnsubscribePanel — trạng thái confirm', () => {
   it('alreadyUnsubscribed=false → hiện heading/body/nút confirm', () => {
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={false} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={false}
+      />,
+    );
 
     expect(screen.getByRole('heading', { name: t.confirm.heading })).toBeInTheDocument();
     expect(screen.getByText(t.confirm.body(EMAIL))).toBeInTheDocument();
@@ -41,7 +51,15 @@ describe('UnsubscribePanel — trạng thái confirm', () => {
 
 describe('UnsubscribePanel — trạng thái alreadyUnsubscribed', () => {
   it('alreadyUnsubscribed=true → hiện copy riêng + nút Re-subscribe', () => {
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={true} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={true}
+      />,
+    );
 
     expect(
       screen.getByRole('heading', { name: t.alreadyUnsubscribed.heading }),
@@ -57,7 +75,15 @@ describe('UnsubscribePanel — POST unsubscribe thành công', () => {
   it('bấm "Unsubscribe me" → gọi api.newsletter.unsubscribe({id,token}), toast success, panel đổi sang trạng thái unsubscribed', async () => {
     unsubscribe.mockResolvedValueOnce({ unsubscribed: true });
     const user = userEvent.setup();
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={false} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={false}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.confirm.button }));
 
@@ -80,7 +106,15 @@ describe('UnsubscribePanel — POST resubscribe thành công', () => {
     unsubscribe.mockResolvedValueOnce({ unsubscribed: true });
     resubscribe.mockResolvedValueOnce({ subscribed: true });
     const user = userEvent.setup();
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={false} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={false}
+      />,
+    );
 
     // Bước 1: unsubscribe trước để vào trạng thái unsubscribed.
     await user.click(screen.getByRole('button', { name: t.confirm.button }));
@@ -90,7 +124,7 @@ describe('UnsubscribePanel — POST resubscribe thành công', () => {
     await user.click(screen.getByRole('button', { name: t.unsubscribed.resubscribeButton }));
 
     await waitFor(() => expect(resubscribe).toHaveBeenCalledTimes(1));
-    expect(resubscribe).toHaveBeenCalledWith({ id: ID, token: TOKEN });
+    expect(resubscribe).toHaveBeenCalledWith({ id: ID, token: RESUB_TOKEN });
     expect(unsubscribe).toHaveBeenCalledTimes(1); // vẫn 1 — KHÔNG gọi thêm lần nữa
     expect(success).toHaveBeenCalledWith(t.toast.resubscribed.title, {
       description: t.toast.resubscribed.body,
@@ -102,12 +136,20 @@ describe('UnsubscribePanel — POST resubscribe thành công', () => {
   it('từ trạng thái alreadyUnsubscribed, bấm Re-subscribe → gọi resubscribe, KHÔNG gọi unsubscribe, panel quay về confirm', async () => {
     resubscribe.mockResolvedValueOnce({ subscribed: true });
     const user = userEvent.setup();
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={true} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={true}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.alreadyUnsubscribed.resubscribeButton }));
 
     await waitFor(() => expect(resubscribe).toHaveBeenCalledTimes(1));
-    expect(resubscribe).toHaveBeenCalledWith({ id: ID, token: TOKEN });
+    expect(resubscribe).toHaveBeenCalledWith({ id: ID, token: RESUB_TOKEN });
     expect(unsubscribe).not.toHaveBeenCalled();
     expect(await screen.findByRole('heading', { name: t.confirm.heading })).toBeInTheDocument();
   });
@@ -117,7 +159,15 @@ describe('UnsubscribePanel — lỗi POST giữ nguyên panel', () => {
   it('lỗi mạng/5xx khi unsubscribe → toast error, panel GIỮ trạng thái confirm', async () => {
     unsubscribe.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={false} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={false}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.confirm.button }));
 
@@ -140,7 +190,15 @@ describe('UnsubscribePanel — lỗi POST giữ nguyên panel', () => {
       }),
     );
     const user = userEvent.setup();
-    render(<UnsubscribePanel id={ID} token={TOKEN} email={EMAIL} alreadyUnsubscribed={true} />);
+    render(
+      <UnsubscribePanel
+        id={ID}
+        token={TOKEN}
+        resubscribeToken={RESUB_TOKEN}
+        email={EMAIL}
+        alreadyUnsubscribed={true}
+      />,
+    );
 
     await user.click(screen.getByRole('button', { name: t.alreadyUnsubscribed.resubscribeButton }));
 

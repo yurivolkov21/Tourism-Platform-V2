@@ -8,7 +8,7 @@ import { EmailType, OutboxStatus } from '../../generated/prisma/enums.js';
 import { EMAIL_DELIVERER, type EmailDeliverer } from '../../worker/deliverer.js';
 import { OutboxService } from '../../worker/outbox.service.js';
 import { WorkerModule } from '../../worker/worker.module.js';
-import { makeUnsubscribeToken } from './unsubscribe-token.js';
+import { makeNewsletterToken, makeUnsubscribeToken } from './unsubscribe-token.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts).
@@ -293,7 +293,12 @@ describe('newsletter unsubscribe (int)', () => {
     });
 
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ email, alreadyUnsubscribed: false });
+    expect(res.json()).toEqual({
+      email,
+      alreadyUnsubscribed: false,
+      // W4 E4: GET còn phát token resubscribe (mint mới mỗi lượt) cho panel.
+      resubscribeToken: expect.stringMatching(/^v1\.resubscribe\./),
+    });
 
     // Oracle bắt lỗi thật: nếu GET vô tình cũng set unsubscribedAt (side
     // effect KHÔNG được phép — email client prefetch link này để quét virus,
@@ -451,6 +456,66 @@ describe('newsletter unsubscribe (int)', () => {
   });
 });
 
+// W4 E4 (ADR-0039 §3): token có MỤC ĐÍCH — một chuỗi không mở được mọi cửa.
+describe('newsletter token purpose (int)', () => {
+  it('token unsubscribe (v0 lẫn v1) KHÔNG resubscribe được — 400; resubscribeToken từ GET confirm thì được', async () => {
+    const email = 'purpose.bound@example.com';
+    const subscriber = await createSubscriber(email, '10.1.3.1');
+    const v0 = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    // Huỷ bằng token v0 (email cũ) — vẫn phải chạy (tương thích lùi).
+    const unsub = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/unsubscribe',
+      headers: { 'x-forwarded-for': '10.1.3.1' },
+      payload: { id: subscriber.id, token: v0 },
+    });
+    expect(unsub.statusCode).toBe(200);
+
+    // Cùng chuỗi đó KHÔNG resubscribe được nữa — trước W4 thì được (một
+    // token mở mọi cửa), đó chính là lỗ E4 vá.
+    const resubV0 = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.3.1' },
+      payload: { id: subscriber.id, token: v0 },
+    });
+    expect(resubV0.statusCode).toBe(400);
+    expect(resubV0.json().code).toBe('INVALID_UNSUBSCRIBE_TOKEN');
+
+    // Đường ĐÚNG: GET confirm (trang unsubscribe) phát resubscribeToken v1
+    // có hạn 30 ngày — panel web dùng nó cho nút "đăng ký lại".
+    const confirm = await app.inject({
+      method: 'GET',
+      url: `/api/newsletter/unsubscribe?id=${subscriber.id}&token=${v0}`,
+      headers: { 'x-forwarded-for': '10.1.3.1' },
+    });
+    expect(confirm.statusCode).toBe(200);
+    const resubscribeToken = confirm.json().resubscribeToken as string;
+    expect(resubscribeToken).toMatch(/^v1\.resubscribe\./);
+
+    const resub = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/resubscribe',
+      headers: { 'x-forwarded-for': '10.1.3.1' },
+      payload: { id: subscriber.id, token: resubscribeToken },
+    });
+    expect(resub.statusCode).toBe(200);
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.unsubscribedAt).toBeNull();
+  });
+
+  it('email mới enqueue mang unsubscribeToken v1 mục đích unsubscribe', async () => {
+    const email = 'v1.in.payload@example.com';
+    await createSubscriber(email, '10.1.3.2');
+    const row = await prisma.outbox.findFirstOrThrow({
+      where: { dedupeKey: `newsletter-welcome:${email}` },
+    });
+    const token = (row.payload as Record<string, unknown>).unsubscribeToken as string;
+    expect(token).toMatch(/^v1\.unsubscribe\./);
+  });
+});
+
 /**
  * Vá review Task 6 — Khoản 1: "đăng ký lại sau khi huỷ là ngõ cụt câm lặng".
  * Kịch bản gốc reviewer chạy: khách huỷ → đổi ý → tự điền lại form subscribe
@@ -473,11 +538,18 @@ describe('newsletter resubscribe (int)', () => {
     });
     expect(unsub.statusCode).toBe(200);
 
+    // W4 E4: cửa resubscribe chỉ nhận token mục đích `resubscribe` (thực tế
+    // panel lấy từ GET confirm; ở đây mint thẳng cho gọn — cùng hàm).
+    const resubToken = makeNewsletterToken(
+      subscriber.id,
+      'resubscribe',
+      env.NEWSLETTER_UNSUBSCRIBE_SECRET,
+    );
     const resub = await app.inject({
       method: 'POST',
       url: '/api/newsletter/resubscribe',
       headers: { 'x-forwarded-for': '10.1.2.1' },
-      payload: { id: subscriber.id, token },
+      payload: { id: subscriber.id, token: resubToken },
     });
     expect(resub.statusCode).toBe(200);
     expect(resub.json()).toEqual({ subscribed: true });
@@ -515,7 +587,11 @@ describe('newsletter resubscribe (int)', () => {
     // đang active mới có tác dụng quan sát được qua cột này.
     const email = 'resub.already-active@example.com';
     const subscriber = await createSubscriber(email, '10.1.2.5');
-    const token = makeUnsubscribeToken(subscriber.id, env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    const token = makeNewsletterToken(
+      subscriber.id,
+      'resubscribe',
+      env.NEWSLETTER_UNSUBSCRIBE_SECRET,
+    );
 
     // Sentinel thay vì so `updatedAt` với giá trị lúc tạo: đẩy updatedAt về
     // mốc quá khứ xa bằng raw SQL (đi vòng @updatedAt của Prisma) để biên phát
@@ -549,7 +625,10 @@ describe('newsletter resubscribe (int)', () => {
       payload: { id: subscriber.id, token },
     });
 
-    const payload = { id: subscriber.id, token };
+    const payload = {
+      id: subscriber.id,
+      token: makeNewsletterToken(subscriber.id, 'resubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET),
+    };
     const first = await app.inject({
       method: 'POST',
       url: '/api/newsletter/resubscribe',

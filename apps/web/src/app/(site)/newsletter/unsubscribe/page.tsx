@@ -94,6 +94,7 @@ export default async function UnsubscribePage({
           <UnsubscribePanel
             id={params.id}
             token={params.token}
+            resubscribeToken={confirmRes.data.resubscribeToken}
             email={confirmRes.data.email}
             alreadyUnsubscribed={confirmRes.data.alreadyUnsubscribed}
           />

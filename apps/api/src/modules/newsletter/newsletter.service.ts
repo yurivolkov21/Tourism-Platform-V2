@@ -3,7 +3,7 @@ import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { EmailType } from '../../generated/prisma/enums.js';
 import { claimUnsubscribe } from './unsubscribe-claim.js';
-import { makeUnsubscribeToken, verifyUnsubscribeToken } from './unsubscribe-token.js';
+import { makeNewsletterToken, verifyNewsletterToken } from './unsubscribe-token.js';
 
 /**
  * Token sai định dạng, secret không khớp, hoặc `id` không ứng với subscriber
@@ -60,8 +60,11 @@ export class NewsletterService {
       // Sinh sẵn token NGAY LÚC enqueue (không để deliverer tự tính lại) —
       // giữ một nguồn sự thật duy nhất cho bí mật ký, và deliverer chỉ cần đọc
       // payload để ghép URL, không cần biết `NEWSLETTER_UNSUBSCRIBE_SECRET`.
-      const unsubscribeToken = makeUnsubscribeToken(
+      // W4 E4: token v1 mục đích `unsubscribe` — email mới không in HMAC
+      // trần (thứ mở được mọi cửa) nữa; v0 chỉ còn được NHẬN, không SINH.
+      const unsubscribeToken = makeNewsletterToken(
         subscriber.id,
+        'unsubscribe',
         env.NEWSLETTER_UNSUBSCRIBE_SECRET,
       );
 
@@ -97,8 +100,8 @@ export class NewsletterService {
   async confirm(
     id: string,
     token: string,
-  ): Promise<{ email: string; alreadyUnsubscribed: boolean }> {
-    if (!verifyUnsubscribeToken(id, token, env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+  ): Promise<{ email: string; alreadyUnsubscribed: boolean; resubscribeToken: string }> {
+    if (!verifyNewsletterToken(id, token, 'unsubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
       throw new InvalidUnsubscribeTokenError();
     }
     const subscriber = await prisma.subscriber.findUnique({
@@ -106,7 +109,14 @@ export class NewsletterService {
       select: { email: true, unsubscribedAt: true },
     });
     if (!subscriber) throw new InvalidUnsubscribeTokenError();
-    return { email: subscriber.email, alreadyUnsubscribed: subscriber.unsubscribedAt !== null };
+    return {
+      email: subscriber.email,
+      alreadyUnsubscribed: subscriber.unsubscribedAt !== null,
+      // W4 E4: mint token resubscribe (hạn 30 ngày) cho nút "đăng ký lại"
+      // của panel — token unsubscribe trong URL không mở được cửa đó nữa,
+      // xem JSDoc `UnsubscribeConfirmResultSchema`.
+      resubscribeToken: makeNewsletterToken(id, 'resubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET),
+    };
   }
 
   /**
@@ -120,7 +130,7 @@ export class NewsletterService {
    * `id` không tồn tại (lỗi) — phân biệt bằng một query tồn tại riêng.
    */
   async unsubscribe(id: string, token: string): Promise<void> {
-    if (!verifyUnsubscribeToken(id, token, env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+    if (!verifyNewsletterToken(id, token, 'unsubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
       throw new InvalidUnsubscribeTokenError();
     }
     // Luật claim dùng chung với đường admin (`unsubscribe-claim.ts`, vòng vá
@@ -146,7 +156,10 @@ export class NewsletterService {
    * hành vi).
    */
   async resubscribe(id: string, token: string): Promise<void> {
-    if (!verifyUnsubscribeToken(id, token, env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+    // W4 E4: cửa này CHỈ nhận token mục đích `resubscribe` (mint ở
+    // `confirm()`, hạn 30 ngày) — token unsubscribe trong email không đảo
+    // ngược được consent, kể cả bản v0 cũ.
+    if (!verifyNewsletterToken(id, token, 'resubscribe', env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
       throw new InvalidUnsubscribeTokenError();
     }
     await prisma.subscriber.updateMany({

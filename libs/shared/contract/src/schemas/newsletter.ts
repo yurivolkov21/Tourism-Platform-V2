@@ -60,6 +60,14 @@ export type UnsubscribeInput = z.infer<typeof UnsubscribeInputSchema>;
 export const UnsubscribeConfirmResultSchema = z.object({
   email: z.string(),
   alreadyUnsubscribed: z.boolean(),
+  /**
+   * Token v1 mục đích `resubscribe` (W4 E4, ADR-0039 §3), hạn 30 ngày, server
+   * mint MỚI mỗi lượt GET. Vì sao phải phát ở đây: token trong URL email là
+   * mục đích `unsubscribe` — từ W4 nó KHÔNG mở được cửa resubscribe nữa (một
+   * chuỗi mở mọi cửa chính là lỗ E4 vá), nên nút "đăng ký lại" của panel cần
+   * một token riêng, và GET này là chỗ duy nhất người cầm link hợp lệ đi qua.
+   */
+  resubscribeToken: z.string().min(1),
 });
 
 export type UnsubscribeConfirmResult = z.infer<typeof UnsubscribeConfirmResultSchema>;

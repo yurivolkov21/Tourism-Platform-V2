@@ -14,11 +14,18 @@ import { nextPanelState, type PanelState } from '@/lib/unsubscribe';
 export function UnsubscribePanel({
   id,
   token,
+  resubscribeToken,
   email,
   alreadyUnsubscribed,
 }: {
   id: string;
+  /** Token từ URL email — mục đích `unsubscribe`, chỉ dùng cho nút huỷ. */
   token: string;
+  /**
+   * Token mục đích `resubscribe` (W4 E4) do GET confirm mint, hạn 30 ngày —
+   * token unsubscribe không còn mở được cửa đăng ký lại.
+   */
+  resubscribeToken: string;
   email: string;
   alreadyUnsubscribed: boolean;
 }) {
@@ -43,7 +50,7 @@ export function UnsubscribePanel({
           description: t.toast.unsubscribed.body,
         });
       } else {
-        await api.newsletter.resubscribe({ id, token });
+        await api.newsletter.resubscribe({ id, token: resubscribeToken });
         submitToast('success', {
           title: t.toast.resubscribed.title,
           description: t.toast.resubscribed.body,
