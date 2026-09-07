@@ -2200,6 +2200,59 @@ export const messages = {
         body: 'Give it about a minute and try again.',
       },
     },
+    // W4 E3 (ADR-0039 §2): double opt-in — form nói thẳng bước xác nhận và
+    // trỏ /privacy ngay dưới ô nhập (consent có đường đọc trước khi cho).
+    privacyNote: 'One confirmation email, no spam.',
+    privacyLinkLabel: 'Privacy policy',
+  },
+  // Thư XÁC NHẬN đăng ký (W4 E3 — thư đầu tiên sau subscribe, thay welcome
+  // trần; template worker/emails/render-email.tsx đọc từ đây theo luật 7).
+  newsletterConfirmEmail: {
+    subject: 'Confirm your subscription',
+    preview: 'One tap and the monthly travel letter is yours.',
+    heading: 'One more step',
+    body: 'You (or someone using this address) asked to receive our monthly travel letter. Confirm below and it starts arriving — do nothing and nothing happens.',
+    cta: 'Confirm subscription',
+    note: 'Didn’t sign up? You can safely ignore this email — we won’t send anything else.',
+    footerReason: 'You received this because this address was entered on nexora-travel.agency.',
+  },
+  // Trang /newsletter/confirm (W4 E3) — GET không side effect (mail client
+  // prefetch), khách phải BẤM mới confirm; 3 trạng thái panel + lỗi cấp trang.
+  newsletterConfirmPage: {
+    breadcrumbCurrent: 'Confirm subscription',
+    title: 'Confirm your subscription',
+    subtitle: 'One tap below and the monthly travel letter is yours.',
+    confirm: {
+      heading: 'Almost there…',
+      body: (email: string) => `Confirm ${email} to start receiving our travel letter.`,
+      button: 'Confirm subscription',
+      submitting: 'Confirming…',
+    },
+    confirmed: {
+      heading: 'You’re in',
+      body: 'Your subscription is confirmed — the next travel letter lands in your inbox soon.',
+      homeLink: 'Back to home',
+    },
+    alreadyConfirmed: {
+      heading: 'Already confirmed',
+      body: (email: string) => `${email} is already on the list — nothing more to do.`,
+      homeLink: 'Back to home',
+    },
+    invalidToken: {
+      heading: 'This link isn’t working',
+      body: 'The confirmation link looks incomplete. Subscribe again from the site footer and we’ll send a fresh one.',
+      homeLink: 'Back to home',
+    },
+    toast: {
+      confirmed: {
+        title: 'Subscription confirmed',
+        body: 'Welcome aboard — watch your inbox.',
+      },
+      error: {
+        title: 'Something went wrong',
+        body: 'Please try again in a moment.',
+      },
+    },
   },
   // Trang /newsletter/unsubscribe (spec §4) — 3 trạng thái panel + 1 trạng
   // thái lỗi cấp trang: `confirm` (token hợp lệ, chưa huỷ — GET
@@ -3887,9 +3940,13 @@ export const messages = {
           email: 'Email',
           source: 'Source',
           subscribed: 'Subscribed at',
+          confirmed: 'Confirmed at',
           unsubscribed: 'Unsubscribed at',
           actions: 'Actions',
         },
+        /** Hàng double opt-in chưa bấm link xác nhận (W4 E3) — cột
+         * "Confirmed at" chưa có mốc nào để in. */
+        awaitingConfirmation: 'Awaiting confirmation',
         /**
          * Hàng không khai nguồn — hình dạng của MỌI hàng thật hôm nay (form
          * footer gọi `subscribe({email})` không kèm `source`). Nói "Direct
@@ -3924,6 +3981,7 @@ export const messages = {
         email: 'Email',
         source: 'Source',
         subscribedAt: 'Subscribed at (UTC)',
+        confirmedAt: 'Confirmed at (UTC)',
         unsubscribedAt: 'Unsubscribed at (UTC)',
       },
       unsubscribe: {

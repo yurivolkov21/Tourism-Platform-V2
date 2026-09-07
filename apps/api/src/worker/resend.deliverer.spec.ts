@@ -105,6 +105,32 @@ describe('renderEmail type → subject mapping', () => {
     expect(html).toContain(marker);
   });
 
+  it('W4 E3: NEWSLETTER_WELCOME có confirmToken → thư XÁC NHẬN với CTA /newsletter/confirm', async () => {
+    const { subject, html } = await renderEmail(
+      EmailType.NEWSLETTER_WELCOME,
+      {
+        email: 'optin@example.com',
+        subscriberId: '01920000-0000-7000-8000-000000000009',
+        unsubscribeToken: 'v1.unsubscribe.aaaa',
+        confirmToken: 'v1.confirm.bbbb',
+      },
+      'https://www.example.test',
+    );
+    expect(subject.toLowerCase()).toContain('confirm');
+    expect(html).toContain(
+      'https://www.example.test/newsletter/confirm?id=01920000-0000-7000-8000-000000000009&amp;token=v1.confirm.bbbb',
+    );
+  });
+
+  it('W4 E3: NEWSLETTER_WELCOME KHÔNG có confirmToken (row cũ trước W4) → giữ welcome cũ', async () => {
+    const { subject } = await renderEmail(EmailType.NEWSLETTER_WELCOME, {
+      email: 'legacy@example.com',
+      subscriberId: '01920000-0000-7000-8000-000000000008',
+      unsubscribeToken: 'deadbeef',
+    });
+    expect(subject).toBe('Welcome to the Nexora newsletter');
+  });
+
   it('mail gửi khách có dòng "why you got this" ở footer (chuẩn hệ Barebone)', async () => {
     const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
     expect(html).toContain('receiving this because of a booking');

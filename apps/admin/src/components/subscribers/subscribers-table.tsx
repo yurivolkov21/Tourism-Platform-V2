@@ -2,7 +2,7 @@
 
 import { type ColumnVisibilityState, createColumnHelper, useTable } from '@tanstack/react-table';
 import { messages } from '@tourism/i18n';
-import { CalendarIcon, CalendarOffIcon, TagIcon } from 'lucide-react';
+import { CalendarCheckIcon, CalendarIcon, CalendarOffIcon, TagIcon } from 'lucide-react';
 import * as React from 'react';
 import { ColumnVisibilityMenu, DataTableBody } from '@/components/kit/data-table-body';
 import { DataTableFrame } from '@/components/kit/data-table-frame';
@@ -47,12 +47,14 @@ const columnHelper = createColumnHelper<typeof serverTableFeatures, SubscriberRo
 const COLUMN_LABELS: Record<string, string> = {
   source: t.columns.source,
   subscribed: t.columns.subscribed,
+  confirmed: t.columns.confirmed,
   unsubscribed: t.columns.unsubscribed,
 };
 
 const COLUMN_ICONS = {
   source: TagIcon,
   subscribed: CalendarIcon,
+  confirmed: CalendarCheckIcon,
   unsubscribed: CalendarOffIcon,
 };
 
@@ -85,6 +87,14 @@ function buildColumns(query: SubscribersQuery, total: number, unsubscribe: Unsub
       header: t.columns.subscribed,
       cell: ({ row }) => (
         <div className="whitespace-nowrap text-muted-foreground">{row.original.subscribed}</div>
+      ),
+    }),
+    columnHelper.accessor('confirmed', {
+      header: t.columns.confirmed,
+      // Cột double opt-in (W4 E3): hàng chưa bấm link in "Awaiting
+      // confirmation" (VM lo) — cùng luật "cột luôn có chữ" với unsubscribed.
+      cell: ({ row }) => (
+        <div className="whitespace-nowrap text-muted-foreground">{row.original.confirmed}</div>
       ),
     }),
     columnHelper.accessor('unsubscribed', {

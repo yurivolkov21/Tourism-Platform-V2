@@ -20,6 +20,7 @@ const row: SubscriberRow = {
   source: 'footer',
   createdAt: '2026-09-01T10:00:00.000Z',
   unsubscribedAt: null,
+  confirmedAt: '2026-09-01T10:05:00.000Z',
 };
 
 describe('toSubscriberRowVM', () => {
@@ -29,6 +30,7 @@ describe('toSubscriberRowVM', () => {
       email: 'ada@example.com',
       source: 'footer',
       subscribed: '1 Sep 2026, 10:00 UTC',
+      confirmed: '1 Sep 2026, 10:05 UTC',
       unsubscribed: t.stillSubscribed,
       isActive: true,
     });
@@ -38,6 +40,10 @@ describe('toSubscriberRowVM', () => {
     const vm = toSubscriberRowVM({ ...row, unsubscribedAt: '2026-09-02T08:30:00.000Z' });
     expect(vm.unsubscribed).toBe('2 Sep 2026, 08:30 UTC');
     expect(vm.isActive).toBe(false);
+  });
+
+  it('W4 E3: `confirmedAt` null → "Awaiting confirmation" (double opt-in chưa bấm)', () => {
+    expect(toSubscriberRowVM({ ...row, confirmedAt: null }).confirmed).toBe(t.awaitingConfirmation);
   });
 
   it('`source` null rơi về "Direct sign-up" — hình dạng của mọi hàng thật hôm nay', () => {

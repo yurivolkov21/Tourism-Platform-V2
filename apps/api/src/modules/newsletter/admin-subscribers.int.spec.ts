@@ -198,6 +198,25 @@ describe('admin subscribers integration (F10)', () => {
       expect((await listOk('')).total).toBe(7);
     });
 
+    it('W4 E3: `confirmed` ba trạng thái + row chở `confirmedAt` (cột double opt-in)', async () => {
+      // Fixture tạo thẳng bằng createMany nên confirmedAt đều null — set
+      // hai hàng thành đã-xác-nhận để lọc có cả hai phía.
+      const confirmedAt = new Date('2026-09-01T00:00:00.000Z');
+      await prisma.subscriber.updateMany({
+        where: { id: { in: [rowId(1), rowId(3)] } },
+        data: { confirmedAt },
+      });
+
+      expect(ids(await listOk('?confirmed=true'))).toEqual([1, 3].map(rowId));
+      expect(ids(await listOk('?confirmed=false'))).toEqual([2, 4, 5, 6, 7].map(rowId));
+      expect((await listOk('')).total).toBe(7);
+
+      const paged = await listOk('?confirmed=true');
+      expect(paged.items[0]?.confirmedAt).toBe(confirmedAt.toISOString());
+      const pending = await listOk('?confirmed=false');
+      expect(pending.items[0]?.confirmedAt).toBeNull();
+    });
+
     it('search khớp email contains, không phân biệt hoa/thường (cột citext + ILIKE)', async () => {
       expect(ids(await listOk('?search=ALAN'))).toEqual([rowId(3)]);
       expect(ids(await listOk('?search=grace@'))).toEqual([rowId(2)]);

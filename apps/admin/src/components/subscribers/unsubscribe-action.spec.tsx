@@ -37,6 +37,7 @@ const ROW: SubscriberRowVM = {
   email: 'ada@example.com',
   source: 'footer',
   subscribed: '1 Sep 2026, 10:00 UTC',
+  confirmed: '1 Sep 2026, 10:05 UTC',
   unsubscribed: messages.admin.subscribers.list.stillSubscribed,
   isActive: true,
 };

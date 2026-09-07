@@ -117,6 +117,17 @@ export function NewsletterForm() {
           {error}
         </p>
       )}
+
+      {/* W4 E3 (ADR-0039 §2): consent phải có đường đọc TRƯỚC khi cho — nói
+          thẳng bước xác nhận và trỏ /privacy ngay dưới ô nhập. Thẻ <a>
+          thường thay vì next/link: footer nằm trong mọi trang, không cần
+          prefetch một trang pháp lý. */}
+      <p className="mt-2 text-xs text-muted-foreground/80">
+        {messages.newsletterForm.privacyNote}{' '}
+        <a href="/privacy" className="underline underline-offset-2 hover:text-foreground">
+          {messages.newsletterForm.privacyLinkLabel}
+        </a>
+      </p>
     </form>
   );
 }

@@ -19,11 +19,18 @@ const row: SubscriberRow = {
   source: 'footer',
   createdAt: '2026-09-01T10:00:00.000Z',
   unsubscribedAt: '2026-09-02T08:30:00.000Z',
+  confirmedAt: '2026-09-01T10:05:00.000Z',
 };
 
 describe('SUBSCRIBERS_CSV_HEADER', () => {
-  it('ĐÚNG bốn cột theo spec, không thêm `id` hay cột nào khác', () => {
-    expect(SUBSCRIBERS_CSV_HEADER).toEqual([t.email, t.source, t.subscribedAt, t.unsubscribedAt]);
+  it('ĐÚNG năm cột (confirmed vào ở W4 E3), không thêm `id` hay cột nào khác', () => {
+    expect(SUBSCRIBERS_CSV_HEADER).toEqual([
+      t.email,
+      t.source,
+      t.subscribedAt,
+      t.confirmedAt,
+      t.unsubscribedAt,
+    ]);
   });
 });
 
@@ -33,12 +40,14 @@ describe('toSubscriberCsvRow', () => {
       'ada@example.com',
       'footer',
       '2026-09-01T10:00:00.000Z',
+      '2026-09-01T10:05:00.000Z',
       '2026-09-02T08:30:00.000Z',
     ]);
   });
 
   it('hàng còn nhận tin: ô Unsubscribed at RỖNG — "chưa có giá trị" với mọi công cụ', () => {
-    expect(toSubscriberCsvRow({ ...row, unsubscribedAt: null })[3]).toBe('');
+    expect(toSubscriberCsvRow({ ...row, unsubscribedAt: null })[4]).toBe('');
+    expect(toSubscriberCsvRow({ ...row, confirmedAt: null })[3]).toBe('');
   });
 
   it('không khai nguồn: ô Source RỖNG, không phải câu của bảng', () => {

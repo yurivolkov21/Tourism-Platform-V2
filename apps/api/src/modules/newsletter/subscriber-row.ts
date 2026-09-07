@@ -23,13 +23,14 @@ import type { Prisma } from '../../generated/prisma/client.js';
  *    phải ở đây.
  */
 
-/** Năm cột của một hàng bảng — xem luật 1 ở trên. */
+/** Sáu cột của một hàng bảng — xem luật 1 ở trên (confirmedAt vào ở W4 E3). */
 export const LIST_SELECT = {
   id: true,
   email: true,
   source: true,
   createdAt: true,
   unsubscribedAt: true,
+  confirmedAt: true,
 } satisfies Prisma.SubscriberSelect;
 
 export type SubscriberListRow = Prisma.SubscriberGetPayload<{ select: typeof LIST_SELECT }>;
@@ -41,5 +42,6 @@ export function toSubscriberRow(row: SubscriberListRow): SubscriberRow {
     source: row.source,
     createdAt: row.createdAt.toISOString(),
     unsubscribedAt: row.unsubscribedAt ? row.unsubscribedAt.toISOString() : null,
+    confirmedAt: row.confirmedAt ? row.confirmedAt.toISOString() : null,
   };
 }

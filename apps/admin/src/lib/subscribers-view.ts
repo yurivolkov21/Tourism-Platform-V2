@@ -26,6 +26,8 @@ export interface SubscriberRowVM {
   /** Đã rơi về "Direct sign-up" khi hàng không khai nguồn — bảng không rẽ nhánh. */
   source: string;
   subscribed: string;
+  /** Mốc xác nhận double opt-in (W4 E3), hoặc "Awaiting confirmation". */
+  confirmed: string;
   /** Mốc rút consent, hoặc "Still subscribed" — cột luôn có chữ. */
   unsubscribed: string;
   /**
@@ -44,6 +46,7 @@ export function toSubscriberRowVM(row: SubscriberRow): SubscriberRowVM {
     email: row.email,
     source: row.source ?? t.noSource,
     subscribed: formatDateTime(row.createdAt),
+    confirmed: row.confirmedAt ? formatDateTime(row.confirmedAt) : t.awaitingConfirmation,
     unsubscribed: row.unsubscribedAt ? formatDateTime(row.unsubscribedAt) : t.stillSubscribed,
     isActive: row.unsubscribedAt === null,
   };

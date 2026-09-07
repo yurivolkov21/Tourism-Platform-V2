@@ -15,6 +15,7 @@ const row: SubscriberListRow = {
   source: 'footer',
   createdAt: new Date('2026-09-01T10:00:00.000Z'),
   unsubscribedAt: new Date('2026-09-02T08:30:00.000Z'),
+  confirmedAt: new Date('2026-09-01T10:05:00.000Z'),
 };
 
 describe('toSubscriberRow', () => {
@@ -26,6 +27,7 @@ describe('toSubscriberRow', () => {
       source: 'footer',
       createdAt: '2026-09-01T10:00:00.000Z',
       unsubscribedAt: '2026-09-02T08:30:00.000Z',
+      confirmedAt: '2026-09-01T10:05:00.000Z',
     });
     expect(SubscriberRowSchema.parse(mapped)).toEqual(mapped);
   });
@@ -37,11 +39,16 @@ describe('toSubscriberRow', () => {
   it('`source` null — form footer của web không gửi nguồn nào', () => {
     expect(toSubscriberRow({ ...row, source: null }).source).toBeNull();
   });
+
+  it('`confirmedAt` null (W4 E3 — "đã xin", chưa đồng ý) đi thẳng qua', () => {
+    expect(toSubscriberRow({ ...row, confirmedAt: null }).confirmedAt).toBeNull();
+  });
 });
 
 describe('LIST_SELECT', () => {
-  it('chở ĐÚNG năm cột của contract — không có `updatedAt`', () => {
+  it('chở ĐÚNG sáu cột của contract — không có `updatedAt`', () => {
     expect(Object.keys(LIST_SELECT).sort()).toEqual([
+      'confirmedAt',
       'createdAt',
       'email',
       'id',

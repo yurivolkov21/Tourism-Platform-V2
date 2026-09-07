@@ -26,12 +26,19 @@ export const SUBSCRIBERS_CSV_HEADER: readonly string[] = [
   t.email,
   t.source,
   t.subscribedAt,
+  t.confirmedAt,
   t.unsubscribedAt,
 ];
 
 /** Một địa chỉ → một hàng, cùng thứ tự với `SUBSCRIBERS_CSV_HEADER`. */
 export function toSubscriberCsvRow(row: SubscriberRow): string[] {
-  return [row.email, row.source ?? '', row.createdAt, row.unsubscribedAt ?? ''];
+  return [
+    row.email,
+    row.source ?? '',
+    row.createdAt,
+    row.confirmedAt ?? '',
+    row.unsubscribedAt ?? '',
+  ];
 }
 
 /**

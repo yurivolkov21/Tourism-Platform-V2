@@ -103,6 +103,30 @@ export const ResubscribeResultSchema = SubscribeResultSchema;
 
 export type ResubscribeResult = z.infer<typeof ResubscribeResultSchema>;
 
+/**
+ * Double opt-in (W4 E3, ADR-0039 §2): xác nhận đăng ký bằng link trong thư
+ * đầu tiên (token v1 mục đích `confirm`). Input DÙNG LẠI shape `id` + `token`
+ * của unsubscribe — cùng lý do `ResubscribeInputSchema` ở trên; token thì
+ * KHÁC mục đích nên hai link không đổi chỗ cho nhau được.
+ */
+export const ConfirmSubscriptionInputSchema = UnsubscribeInputSchema;
+export type ConfirmSubscriptionInput = z.infer<typeof ConfirmSubscriptionInputSchema>;
+
+/**
+ * Output của GET — dữ liệu trang xác nhận, KHÔNG side effect (mail client
+ * prefetch link, cùng bài học với `unsubscribeConfirm`). `alreadyConfirmed`
+ * cho trang đổi copy khi khách bấm lại link cũ.
+ */
+export const ConfirmSubscriptionInfoSchema = z.object({
+  email: z.string(),
+  alreadyConfirmed: z.boolean(),
+});
+export type ConfirmSubscriptionInfo = z.output<typeof ConfirmSubscriptionInfoSchema>;
+
+/** Output của POST — luôn `true`, kể cả bấm lần hai (idempotent claim). */
+export const ConfirmSubscriptionResultSchema = z.object({ confirmed: z.literal(true) });
+export type ConfirmSubscriptionResult = z.output<typeof ConfirmSubscriptionResultSchema>;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Vùng subscribers cho ADMIN (spec P4c §3-F10) — bề mặt ĐỌC + MỘT hành vi ghi
 // trên chính bảng `subscribers` mà form footer CÔNG KHAI ở trên ghi vào. MỞ
@@ -154,6 +178,12 @@ export const SUBSCRIBER_SOURCE_MAX_LENGTH = 40;
  */
 export const AdminSubscribersListQuerySchema = AdminPageQuerySchema.extend({
   active: z.boolean().optional(),
+  /**
+   * Lọc theo consent double opt-in (W4 E3): `true` = đã xác nhận
+   * (`confirmedAt` khác null — tập được phép nhận campaign tương lai),
+   * `false` = mới "đã xin", VẮNG = mọi row. Ba trạng thái như `active`.
+   */
+  confirmed: z.boolean().optional(),
   search: z.string().min(1).max(120).optional(),
   source: z.string().min(1).max(SUBSCRIBER_SOURCE_MAX_LENGTH).optional(),
   /**
@@ -197,6 +227,13 @@ export const SubscriberRowSchema = z.object({
    * Nexora (xem comment trên cột ở `schema.prisma`).
    */
   unsubscribedAt: z.iso.datetime().nullable(),
+  /**
+   * Mốc khách XÁC NHẬN consent (double opt-in, W4 E3 — ADR-0039 §2). null =
+   * "đã xin, chưa đồng ý" — mọi campaign tương lai phải loại tập này. Người
+   * subscribe trước W4 được backfill = createdAt (quyết định một lần, ghi
+   * trong migration).
+   */
+  confirmedAt: z.iso.datetime().nullable(),
 });
 export type SubscriberRow = z.output<typeof SubscriberRowSchema>;
 

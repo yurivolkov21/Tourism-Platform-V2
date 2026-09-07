@@ -66,11 +66,15 @@ export class AdminSubscribersService {
    * review F10): vòng export gọi list 20 lượt mà không cần nó.
    */
   async list(query: AdminSubscribersListQuery): Promise<AdminSubscribersListResult> {
-    const { page, limit, active, search, source, includeSources } = query;
+    const { page, limit, active, confirmed, search, source, includeSources } = query;
     const term = search ? escapeLike(search) : undefined;
     const where: Prisma.SubscriberWhereInput = {
       ...(active === true ? { unsubscribedAt: null } : {}),
       ...(active === false ? { unsubscribedAt: { not: null } } : {}),
+      // `confirmed` ba trạng thái y hệt `active` (W4 E3): true = đã xác nhận
+      // double opt-in, false = mới "đã xin", vắng = mọi row.
+      ...(confirmed === true ? { confirmedAt: { not: null } } : {}),
+      ...(confirmed === false ? { confirmedAt: null } : {}),
       ...(source ? { source } : {}),
       ...(term ? { email: { contains: term, mode: 'insensitive' } } : {}),
     };

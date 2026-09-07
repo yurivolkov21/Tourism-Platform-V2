@@ -1,3 +1,4 @@
+import { messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
 import { render, toPlainText } from 'react-email';
 import { EmailType } from '../../generated/prisma/enums.js';
@@ -439,6 +440,28 @@ function buildEmail(
       // sẵn lúc enqueue; ở đây chỉ ghép URL — bản cũ chỉ có "reply to
       // unsubscribe", v2 có trang xác nhận thật nên link thẳng.
       const unsubscribeUrl = buildUnsubscribeUrl(frontendUrl, payload);
+      // W4 E3 (ADR-0039 §2): payload mang confirmToken → đây là thư XÁC NHẬN
+      // double opt-in (cùng khung, khác CTA). Row cũ trước W4 không có token
+      // thì rơi về welcome bên dưới — hàng đợi đang chờ không đổi nghĩa.
+      const confirmUrl = buildConfirmUrl(frontendUrl, payload);
+      if (confirmUrl) {
+        const t = messages.newsletterConfirmEmail;
+        return {
+          subject: t.subject,
+          node: (
+            <EmailShell
+              preview={t.preview}
+              heading={t.heading}
+              note={<NoteParagraph>{t.note}</NoteParagraph>}
+              footerReason={t.footerReason}
+              unsubscribeUrl={unsubscribeUrl}
+            >
+              <BodyParagraph>{t.body}</BodyParagraph>
+              <CtaButton href={confirmUrl}>{t.cta}</CtaButton>
+            </EmailShell>
+          ),
+        };
+      }
       return {
         subject: 'Welcome to the Nexora newsletter',
         node: (
@@ -574,4 +597,21 @@ export function buildUnsubscribeUrl(
   if (!frontendUrl || typeof id !== 'string' || typeof token !== 'string') return undefined;
   if (id.length === 0 || token.length === 0) return undefined;
   return `${frontendUrl}/newsletter/unsubscribe?id=${id}&token=${token}`;
+}
+
+/**
+ * Ghép URL trang xác nhận đăng ký (W4 E3) — cùng luật degrade với
+ * `buildUnsubscribeUrl`: thiếu frontendUrl hoặc cặp id/confirmToken thì trả
+ * undefined (row cũ trước W4 không mang confirmToken → template rơi về
+ * welcome, không lỗi).
+ */
+export function buildConfirmUrl(
+  frontendUrl: string | undefined,
+  payload: Record<string, unknown>,
+): string | undefined {
+  const id = payload.subscriberId;
+  const token = payload.confirmToken;
+  if (!frontendUrl || typeof id !== 'string' || typeof token !== 'string') return undefined;
+  if (id.length === 0 || token.length === 0) return undefined;
+  return `${frontendUrl}/newsletter/confirm?id=${id}&token=${token}`;
 }

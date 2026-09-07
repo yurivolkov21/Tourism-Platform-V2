@@ -516,6 +516,92 @@ describe('newsletter token purpose (int)', () => {
   });
 });
 
+// W4 E3 (ADR-0039 §2): double opt-in — row chưa confirm là "đã xin", chưa
+// phải "đã đồng ý"; thư đầu là thư XÁC NHẬN mang confirmToken.
+describe('newsletter double opt-in (int)', () => {
+  it('subscribe mới → confirmedAt null, thư đầu mang confirmToken v1 mục đích confirm', async () => {
+    const email = 'optin.pending@example.com';
+    const subscriber = await createSubscriber(email, '10.1.4.1');
+    expect(subscriber.confirmedAt).toBeNull();
+
+    const row = await prisma.outbox.findFirstOrThrow({
+      where: { dedupeKey: `newsletter-welcome:${email}` },
+    });
+    const payload = row.payload as Record<string, unknown>;
+    expect(payload.confirmToken as string).toMatch(/^v1\.confirm\./);
+  });
+
+  it('GET /api/newsletter/confirm token đúng → dữ liệu trang, KHÔNG side effect (mail client prefetch)', async () => {
+    const email = 'optin.get@example.com';
+    const subscriber = await createSubscriber(email, '10.1.4.2');
+    const token = makeNewsletterToken(subscriber.id, 'confirm', env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/newsletter/confirm?id=${subscriber.id}&token=${token}`,
+      headers: { 'x-forwarded-for': '10.1.4.2' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ email, alreadyConfirmed: false });
+
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.confirmedAt).toBeNull();
+  });
+
+  it('POST confirm token đúng → confirmedAt set; POST lần hai idempotent, mốc KHÔNG đổi', async () => {
+    const email = 'optin.claim@example.com';
+    const subscriber = await createSubscriber(email, '10.1.4.3');
+    const token = makeNewsletterToken(subscriber.id, 'confirm', env.NEWSLETTER_UNSUBSCRIBE_SECRET);
+    const payload = { id: subscriber.id, token };
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/confirm',
+      headers: { 'x-forwarded-for': '10.1.4.3' },
+      payload,
+    });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({ confirmed: true });
+    const afterFirst = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(afterFirst.confirmedAt).toBeInstanceOf(Date);
+
+    const second = await app.inject({
+      method: 'POST',
+      url: '/api/newsletter/confirm',
+      headers: { 'x-forwarded-for': '10.1.4.3' },
+      payload,
+    });
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual({ confirmed: true });
+    const afterSecond = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    // Mốc consent là bằng chứng — lần bấm thứ hai không được đè.
+    expect(afterSecond.confirmedAt).toEqual(afterFirst.confirmedAt);
+  });
+
+  it('token sai mục đích (unsubscribe) hoặc sai chữ ký → 400 INVALID_CONFIRM_TOKEN, confirmedAt không đổi', async () => {
+    const email = 'optin.badtoken@example.com';
+    const subscriber = await createSubscriber(email, '10.1.4.4');
+    const unsubToken = makeNewsletterToken(
+      subscriber.id,
+      'unsubscribe',
+      env.NEWSLETTER_UNSUBSCRIBE_SECRET,
+    );
+
+    for (const token of [unsubToken, 'v1.confirm.deadbeef', '']) {
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/newsletter/confirm',
+        headers: { 'x-forwarded-for': '10.1.4.4' },
+        payload: { id: subscriber.id, token },
+      });
+      // Chuỗi rỗng chết ở zod (min 1) cũng 400 — cùng mã ngoài là đủ.
+      expect(res.statusCode).toBe(400);
+    }
+    const after = await prisma.subscriber.findUniqueOrThrow({ where: { id: subscriber.id } });
+    expect(after.confirmedAt).toBeNull();
+  });
+});
+
 /**
  * Vá review Task 6 — Khoản 1: "đăng ký lại sau khi huỷ là ngõ cụt câm lặng".
  * Kịch bản gốc reviewer chạy: khách huỷ → đổi ý → tự điền lại form subscribe

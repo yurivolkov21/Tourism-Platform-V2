@@ -14,6 +14,10 @@ import { makeNewsletterToken, verifyNewsletterToken } from './unsubscribe-token.
  */
 export class InvalidUnsubscribeTokenError extends Error {}
 
+/** Token confirm sai/khác mục đích/id không tồn tại — một mã lỗi duy nhất
+ * `INVALID_CONFIRM_TOKEN`, cùng tinh thần chống-dò với unsubscribe ở trên. */
+export class InvalidConfirmTokenError extends Error {}
+
 @Injectable()
 export class NewsletterService {
   /**
@@ -68,6 +72,16 @@ export class NewsletterService {
         env.NEWSLETTER_UNSUBSCRIBE_SECRET,
       );
 
+      // W4 E3 (ADR-0039 §2): thư đầu là thư XÁC NHẬN — payload mang
+      // confirmToken (mục đích `confirm`, không hết hạn) để render-email
+      // dựng CTA "Confirm subscription" thay vì welcome trần. Row Subscriber
+      // chưa confirm là "đã xin", chưa phải "đã đồng ý".
+      const confirmToken = makeNewsletterToken(
+        subscriber.id,
+        'confirm',
+        env.NEWSLETTER_UNSUBSCRIBE_SECRET,
+      );
+
       // dedupeKey theo EMAIL (không phải id) → "một lần vĩnh viễn cho mỗi địa
       // chỉ" (xem docs/conventions/outbox-dedupe-key.md); từ W4 nó là lưới
       // THỨ HAI sau `welcomeSentAt` — vẫn giữ `skipDuplicates` cho ca hai
@@ -76,7 +90,12 @@ export class NewsletterService {
         data: [
           {
             type: EmailType.NEWSLETTER_WELCOME,
-            payload: { email: normalizedEmail, subscriberId: subscriber.id, unsubscribeToken },
+            payload: {
+              email: normalizedEmail,
+              subscriberId: subscriber.id,
+              unsubscribeToken,
+              confirmToken,
+            },
             dedupeKey: `newsletter-welcome:${normalizedEmail}`,
           },
         ],
@@ -155,6 +174,45 @@ export class NewsletterService {
    * được yêu cầu (gọi lại bao nhiêu lần cũng 200, không throw, không đổi
    * hành vi).
    */
+  /**
+   * Dữ liệu cho trang xác nhận đăng ký (GET /api/newsletter/confirm) — thuần
+   * đọc, KHÔNG side effect (mail client prefetch link, cùng bài học với
+   * `confirm()` của unsubscribe). Token mục đích `confirm` (W4 E3/E4).
+   */
+  async confirmInfo(
+    id: string,
+    token: string,
+  ): Promise<{ email: string; alreadyConfirmed: boolean }> {
+    if (!verifyNewsletterToken(id, token, 'confirm', env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+      throw new InvalidConfirmTokenError();
+    }
+    const subscriber = await prisma.subscriber.findUnique({
+      where: { id },
+      select: { email: true, confirmedAt: true },
+    });
+    if (!subscriber) throw new InvalidConfirmTokenError();
+    return { email: subscriber.email, alreadyConfirmed: subscriber.confirmedAt !== null };
+  }
+
+  /**
+   * Thực thi xác nhận (POST) — atomic claim đúng khuôn `claimUnsubscribe`:
+   * MỘT `updateMany` với guard `confirmedAt: null`; bấm lần hai là no-op
+   * idempotent (giữ nguyên MỐC consent đầu tiên — đó là bằng chứng), id
+   * không tồn tại mới là lỗi.
+   */
+  async confirmSubscription(id: string, token: string): Promise<void> {
+    if (!verifyNewsletterToken(id, token, 'confirm', env.NEWSLETTER_UNSUBSCRIBE_SECRET)) {
+      throw new InvalidConfirmTokenError();
+    }
+    const { count } = await prisma.subscriber.updateMany({
+      where: { id, confirmedAt: null },
+      data: { confirmedAt: new Date() },
+    });
+    if (count === 1) return;
+    const exists = await prisma.subscriber.findUnique({ where: { id }, select: { id: true } });
+    if (!exists) throw new InvalidConfirmTokenError();
+  }
+
   async resubscribe(id: string, token: string): Promise<void> {
     // W4 E4: cửa này CHỈ nhận token mục đích `resubscribe` (mint ở
     // `confirm()`, hạn 30 ngày) — token unsubscribe trong email không đảo

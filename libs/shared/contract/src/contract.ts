@@ -45,6 +45,9 @@ import {
   AdminSubscribersListResultSchema,
   AdminSubscriberUnsubscribeInputSchema,
   AdminSubscriberUnsubscribeResultSchema,
+  ConfirmSubscriptionInfoSchema,
+  ConfirmSubscriptionInputSchema,
+  ConfirmSubscriptionResultSchema,
   ResubscribeInputSchema,
   ResubscribeResultSchema,
   SubscribeInputSchema,
@@ -384,6 +387,31 @@ export const contract = {
       .input(ResubscribeInputSchema)
       .output(ResubscribeResultSchema)
       .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
+    /**
+     * Double opt-in (W4 E3, ADR-0039 §2) — xác nhận đăng ký từ link trong
+     * thư đầu. Tách GET/POST cùng lý do với `unsubscribeConfirm`: mail
+     * client prefetch link, GET tự confirm là bot của Gmail "đồng ý" hộ
+     * khách. Token mục đích `confirm` (E4) — link unsubscribe không đổi
+     * chỗ được.
+     */
+    confirmInfo: oc
+      .route({
+        method: 'GET',
+        path: '/api/newsletter/confirm',
+        summary: 'Confirm-subscription page data (read-only, no side effect)',
+      })
+      .input(ConfirmSubscriptionInputSchema)
+      .output(ConfirmSubscriptionInfoSchema)
+      .errors({ INVALID_CONFIRM_TOKEN: { status: 400, message: 'Invalid confirmation link' } }),
+    confirm: oc
+      .route({
+        method: 'POST',
+        path: '/api/newsletter/confirm',
+        summary: 'Execute subscription confirmation (idempotent claim)',
+      })
+      .input(ConfirmSubscriptionInputSchema)
+      .output(ConfirmSubscriptionResultSchema)
+      .errors({ INVALID_CONFIRM_TOKEN: { status: 400, message: 'Invalid confirmation link' } }),
   },
   /**
    * Booking phía khách (spec P2 §3, W1) — mọi procedure ở đây đều CẦN AUTH:

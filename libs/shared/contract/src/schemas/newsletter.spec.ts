@@ -21,6 +21,7 @@ const validRow = {
   source: 'footer',
   createdAt: '2026-09-01T10:00:00.000Z',
   unsubscribedAt: null,
+  confirmedAt: '2026-09-01T10:05:00.000Z',
 };
 
 describe('SUBSCRIBER_SOURCE_MAX_LENGTH', () => {
@@ -47,6 +48,13 @@ describe('AdminSubscribersListQuerySchema', () => {
     expect(AdminSubscribersListQuerySchema.parse({}).active).toBeUndefined();
   });
 
+  it('W4 E3: `confirmed` cũng BA trạng thái (double opt-in), từ chối chuỗi rác', () => {
+    expect(AdminSubscribersListQuerySchema.parse({ confirmed: true }).confirmed).toBe(true);
+    expect(AdminSubscribersListQuerySchema.parse({ confirmed: false }).confirmed).toBe(false);
+    expect(AdminSubscribersListQuerySchema.parse({}).confirmed).toBeUndefined();
+    expect(AdminSubscribersListQuerySchema.safeParse({ confirmed: 'yes' }).success).toBe(false);
+  });
+
   it('nhận search ≤120 và source ≤40, từ chối chuỗi rỗng/quá trần', () => {
     expect(
       AdminSubscribersListQuerySchema.parse({ search: 'ada@', source: 'footer' }),
@@ -71,6 +79,7 @@ describe('AdminSubscribersListQuerySchema', () => {
       'page',
       'limit',
       'active',
+      'confirmed',
       'search',
       'source',
       'includeSources',
@@ -87,6 +96,10 @@ describe('SubscriberRowSchema', () => {
     expect(
       SubscriberRowSchema.parse({ ...validRow, source: null, unsubscribedAt: null }),
     ).toMatchObject({ source: null, unsubscribedAt: null });
+  });
+
+  it('W4 E3: `confirmedAt` nullable — null là "đã xin, chưa đồng ý"', () => {
+    expect(SubscriberRowSchema.parse({ ...validRow, confirmedAt: null }).confirmedAt).toBeNull();
   });
 
   it('`unsubscribedAt` có giá trị là mốc ISO — dấu khách đã rút consent', () => {

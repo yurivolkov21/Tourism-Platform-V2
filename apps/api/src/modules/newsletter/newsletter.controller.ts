@@ -2,7 +2,11 @@ import { Controller, Logger } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
-import { InvalidUnsubscribeTokenError, NewsletterService } from './newsletter.service.js';
+import {
+  InvalidConfirmTokenError,
+  InvalidUnsubscribeTokenError,
+  NewsletterService,
+} from './newsletter.service.js';
 
 // Mọi endpoint trong controller này công khai: khách gọi subscribe() chưa
 // đăng nhập (ADR-0003), khách bấm link unsubscribe trong email cũng chưa
@@ -84,6 +88,36 @@ export class NewsletterController {
    * người VỪA huỷ, y hệt cái bẫy mà việc tách GET/POST của `unsubscribe` ở
    * trên sinh ra để tránh. Idempotent: gọi lại lần hai vẫn 200.
    */
+  /**
+   * W4 E3 — double opt-in. GET: dữ liệu trang xác nhận, KHÔNG side effect
+   * (mail client prefetch — cùng bài học với `unsubscribeConfirm`).
+   */
+  @Implement(contract.newsletter.confirmInfo)
+  confirmInfo() {
+    return implement(contract.newsletter.confirmInfo).handler(async ({ input, errors }) => {
+      try {
+        return await this.newsletter.confirmInfo(input.id, input.token);
+      } catch (err) {
+        if (err instanceof InvalidConfirmTokenError) throw errors.INVALID_CONFIRM_TOKEN();
+        throw err;
+      }
+    });
+  }
+
+  /** POST — claim xác nhận thật, idempotent (bấm lần hai vẫn 200). */
+  @Implement(contract.newsletter.confirm)
+  confirm() {
+    return implement(contract.newsletter.confirm).handler(async ({ input, errors }) => {
+      try {
+        await this.newsletter.confirmSubscription(input.id, input.token);
+        return { confirmed: true as const };
+      } catch (err) {
+        if (err instanceof InvalidConfirmTokenError) throw errors.INVALID_CONFIRM_TOKEN();
+        throw err;
+      }
+    });
+  }
+
   @Implement(contract.newsletter.resubscribe)
   resubscribe() {
     return implement(contract.newsletter.resubscribe).handler(async ({ input, errors }) => {
