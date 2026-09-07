@@ -1,3 +1,4 @@
+import { getScriptNonceFromHeader } from 'next/dist/server/app-render/get-script-nonce-from-header';
 import { NextRequest } from 'next/server';
 import { describe, expect, it } from 'vitest';
 import { proxy } from './proxy';
@@ -69,13 +70,54 @@ describe('proxy (admin)', () => {
     expect(response.headers.get('x-middleware-request-x-nonce')).toBe(nonce);
   });
 
-  it('forward x-pathname để layout gác biết path thật (W3-O6, ADR-0026 AMEND 3 §B)', () => {
+  it('forward x-pathname (kèm query) để layout gác biết path thật (W3-O6, ADR-0026 AMEND 3 §B)', () => {
     const response = proxy(
-      new NextRequest('https://admin.example.com/bookings/BK-1', {
+      new NextRequest('https://admin.example.com/bookings/BK-1?status=PAID', {
         headers: { cookie: 'better-auth.session_token=abc' },
       }),
     );
-    expect(response.headers.get('x-middleware-request-x-pathname')).toBe('/bookings/BK-1');
+    expect(response.headers.get('x-middleware-request-x-pathname')).toBe(
+      '/bookings/BK-1?status=PAID',
+    );
+  });
+
+  it('x-pathname client gửi lên bị GHI ĐÈ — tự khai /login để lách cổng gác là vô ích', () => {
+    // Next không xoá header lạ của client (nó nằm sẵn trong danh sách
+    // override dựng từ request.headers) — chốt chặn duy nhất là proxy `.set`.
+    const response = proxy(
+      new NextRequest('https://admin.example.com/bookings', {
+        headers: { cookie: 'better-auth.session_token=abc', 'x-pathname': '/login' },
+      }),
+    );
+    expect(response.headers.get('x-middleware-request-x-pathname')).toBe('/bookings');
+  });
+
+  it('nonce đúng định dạng Next PARSE được — Next bỏ nonce sai định dạng IM LẶNG (trắng script)', () => {
+    const response = proxy(
+      new NextRequest('https://admin.example.com/', {
+        headers: { cookie: 'better-auth.session_token=abc' },
+      }),
+    );
+    const csp = response.headers.get('content-security-policy') ?? '';
+    const nonce = response.headers.get('x-middleware-request-x-nonce');
+    // Cùng parser Next dùng lúc SSR (app-render đọc request header CSP).
+    expect(getScriptNonceFromHeader(csp)).toBe(nonce);
+    // 16 byte base64 = 24 ký tự, kết bằng "==".
+    expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+  });
+
+  it('connect-src lấy từ cùng resolver với authClient; ngoài dev có upgrade-insecure-requests, không unsafe-eval', () => {
+    // vitest chạy NODE_ENV=test, không khai NEXT_PUBLIC_API_URL → resolver
+    // rơi về localhost (không production nên không throw).
+    const response = proxy(
+      new NextRequest('https://admin.example.com/', {
+        headers: { cookie: 'better-auth.session_token=abc' },
+      }),
+    );
+    const csp = response.headers.get('content-security-policy') ?? '';
+    expect(csp).toContain("connect-src 'self' http://localhost:3001;");
+    expect(csp).toContain('upgrade-insecure-requests');
+    expect(csp).not.toContain("'unsafe-eval'");
   });
 
   it('nonce phải có mặt cả ở public path /login (matcher không chừa)', () => {

@@ -1,5 +1,6 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { decideAdminAccess } from '@/lib/admin-gate';
+import { browserApiOrigin } from '@/lib/api/env';
 import { buildSecurityHeaders } from '@/lib/security-headers';
 
 /**
@@ -39,8 +40,12 @@ export function proxy(request: NextRequest) {
   // btoa + getRandomValues: có mặt ở cả Node lẫn edge runtime.
   const nonce = btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(16))));
   const securityHeaders = buildSecurityHeaders({
-    // connect-src cho browser (Better Auth client) — origin public.
-    apiOrigin: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(/\/+$/, ''),
+    // connect-src cho browser (Better Auth client) — CÙNG resolver với
+    // authClient (vòng vá review W3): đọc env thô ở đây từng cho CSP nhận
+    // path thừa/localhost trong khi authClient gọi đúng origin; nay thiếu env
+    // hay không https ở production là throw → mọi request 500 ồn ào (đúng ý
+    // fail-closed ADR-0003) thay vì login chết im vì CSP.
+    apiOrigin: browserApiOrigin(),
     isDev: process.env.NODE_ENV === 'development',
     nonce,
   });
@@ -54,9 +59,14 @@ export function proxy(request: NextRequest) {
     // Forward CSP + nonce vào request để Next gắn nonce lên script của nó.
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
-    // Path thật cho layout gác (W3-O6): Next không cho layout đọc pathname,
-    // proxy là chỗ duy nhất biết — layout đọc x-pathname, fallback '/'.
-    requestHeaders.set('x-pathname', path);
+    // Path thật (kèm query để ?redirect= giữ được bộ lọc) cho layout gác
+    // (W3-O6): Next không cho layout đọc pathname, proxy là chỗ duy nhất biết
+    // — layout đọc x-pathname, fallback '/'. PHẢI là `.set` (ghi ĐÈ): Next
+    // KHÔNG xoá header client gửi lên, `has`-rồi-bỏ-qua là để kẻ tấn công
+    // tự khai path (proxy.spec canh ca này). Header proxy→app CHỈ mang dữ
+    // liệu định tuyến/hiển thị, không bao giờ mang phán quyết quyền
+    // (ADR-0026 AMEND 4).
+    requestHeaders.set('x-pathname', `${path}${request.nextUrl.search}`);
     for (const { key, value } of securityHeaders) {
       if (key === 'Content-Security-Policy') requestHeaders.set(key, value);
     }

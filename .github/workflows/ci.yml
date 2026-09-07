@@ -99,9 +99,18 @@ jobs:
       # API là THROW (ADR-0016 AMEND 1 §6), CI không còn được dựa vào fallback
       # localhost câm — biến qua được turbo strict nhờ framework inference
       # (NEXT_PUBLIC_* của app Next).
+      # NEXT_PUBLIC_SITE_URL: từ vòng vá review W3, metadataBase/siteUrl() cũng
+      # fail-fast ở production build (canonical từng có thể rơi về localhost).
       - run: pnpm turbo run build typecheck test
         env:
           NEXT_PUBLIC_API_URL: http://localhost:3001
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+
+      # CSP admin là nonce + strict-dynamic: HTML nào prerender TĨNH là trắng
+      # script ở production (dev không lộ). Bảng route Next in ra giấu
+      # /_global-error nên đọc thẳng prerender-manifest (ADR-0038 AMEND 1).
+      - name: Route admin không được prerender tĩnh (nonce CSP)
+        run: node scripts/check-admin-prerender.mjs
 
       - run: pnpm lint
 

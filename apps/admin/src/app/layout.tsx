@@ -22,6 +22,18 @@ const mono = IBM_Plex_Mono({
   weight: ['400', '500'],
 });
 
+/**
+ * Ép ĐỘNG mọi route (vòng vá review W3, ADR-0038 AMEND 1): CSP admin là nonce
+ * + 'strict-dynamic' — HTML nào bị prerender tĩnh là không có nonce, tức
+ * TRẮNG script ở production mà dev không lộ (đã dính ở /login,
+ * /not-authorized, not-found — ba trang đó vẫn giữ `await connection()` vì
+ * `/_not-found` đi qua entry builtin của Next, config ở layout không với tới).
+ * `/_global-error` là 500.html tĩnh Next dựng lúc build, KHÔNG ép được — chấp
+ * nhận mất hydrate (chỉ chữ). Lưới cuối: scripts/check-admin-prerender.mjs
+ * đọc prerender-manifest sau build trong CI.
+ */
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'Nexora back office',
   description: 'Internal back office for the Nexora travel platform',

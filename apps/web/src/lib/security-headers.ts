@@ -33,9 +33,11 @@ function buildCsp({ apiOrigin, isDev }: SecurityHeaderInput): string {
     // attr do motion render trong HTML SSR, <style> của chart.tsx.
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
     "style-src 'self' 'unsafe-inline'",
-    // data:/blob:: placeholder + preview upload; hai host: ảnh Cloudinary +
-    // tile/sprite bản đồ.
-    "img-src 'self' data: blob: https://res.cloudinary.com https://tiles.openfreemap.org",
+    // data:/blob:: placeholder + preview upload; ảnh Cloudinary; tile/sprite
+    // bản đồ; lh3.googleusercontent.com: avatar Better Auth ghi từ Google
+    // OAuth (`user.image`) — ADR-0038 AMEND 1. Escape-hatch "publicId là URL
+    // tuyệt đối" (ADR-0005 §2) và ảnh markdown thân bài CỐ Ý không nằm đây.
+    "img-src 'self' data: blob: https://res.cloudinary.com https://tiles.openfreemap.org https://lh3.googleusercontent.com",
     // next/font tự host — runtime không có fonts.googleapis.com.
     "font-src 'self'",
     // OpenFreeMap: style JSON kéo tiles/glyph/sprite cùng host qua fetch;
@@ -52,7 +54,10 @@ function buildCsp({ apiOrigin, isDev }: SecurityHeaderInput): string {
     "base-uri 'self'",
     "form-action 'self'",
     "manifest-src 'self'",
-    "media-src 'self'",
+    // Video khe site-media (about-cta-video) do Cloudinary phục vụ qua
+    // <video><source src> — poster đi theo img-src nên thiếu host ở đây là
+    // hỏng IM LẶNG (ADR-0038 AMEND 1).
+    "media-src 'self' https://res.cloudinary.com",
   ];
   // Chỉ production — dev http://localhost bị tự nâng https là chết.
   if (!isDev) directives.push('upgrade-insecure-requests');

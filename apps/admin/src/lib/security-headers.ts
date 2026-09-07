@@ -34,8 +34,10 @@ function buildCsp({ apiOrigin, isDev, nonce }: SecurityHeaderInput): string {
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${isDev ? " 'unsafe-eval'" : ''}`,
     // recharts/chart.tsx chèn <style> — đo được (ADR-0038 §3).
     "style-src 'self' 'unsafe-inline'",
-    // Avatar admin (nav-user) do Cloudinary phục vụ; data:/blob: cho preview.
-    "img-src 'self' data: blob: https://res.cloudinary.com",
+    // Avatar admin (nav-user) do Cloudinary phục vụ; data:/blob: cho preview;
+    // lh3.googleusercontent.com: avatar Better Auth ghi từ Google OAuth
+    // (`user.image`) — ADR-0038 AMEND 1.
+    "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
     "font-src 'self'",
     // Chỉ API: mọi ghi đi qua server action, browser chỉ còn Better Auth.
     `connect-src 'self' ${apiOrigin}`,
