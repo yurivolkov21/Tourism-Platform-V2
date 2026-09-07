@@ -53,6 +53,40 @@ describe('redactDeep', () => {
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
   });
 
+  // W4 E7 (ADR-0039 §5): khớp không phân biệt hoa/thường + hậu tố
+  // token/secret/password — loại email/provider mới mang `unsubscribeToken`,
+  // `clientSecret`… tự được che, không phải nhớ thêm vào danh sách.
+  it('W4 E7: khoá camelCase/hoa thường vẫn bị che (Token, URL, X-Api-Key kiểu thường)', () => {
+    expect(
+      redactDeep({ Token: 't', URL: 'https://x/reset?token=t', OTP: '123456', Password: 'p' }),
+    ).toEqual({ Token: REDACTED, URL: REDACTED, OTP: REDACTED, Password: REDACTED });
+  });
+
+  it('W4 E7: hậu tố token/secret/password — unsubscribeToken, confirmToken, clientSecret bị che', () => {
+    expect(
+      redactDeep({
+        unsubscribeToken: 'v1.unsubscribe.abc',
+        confirmToken: 'v1.confirm.def',
+        resubscribeToken: 'v1.resubscribe.9.g',
+        clientSecret: 'pi_secret',
+        webhookSecret: 'whsec_x',
+        userPassword: 'p',
+        // KHÔNG phải hậu tố — giữ nguyên (tiền tố/chuỗi giữa không tính).
+        tokenCount: 3,
+        secret_reason: 'visible',
+      }),
+    ).toEqual({
+      unsubscribeToken: REDACTED,
+      confirmToken: REDACTED,
+      resubscribeToken: REDACTED,
+      clientSecret: REDACTED,
+      webhookSecret: REDACTED,
+      userPassword: REDACTED,
+      tokenCount: 3,
+      secret_reason: 'visible',
+    });
+  });
+
   it('tập khoá tuỳ chọn thay được mặc định', () => {
     expect(redactDeep({ token: 't', custom: 'c' }, new Set(['custom']))).toEqual({
       token: 't',

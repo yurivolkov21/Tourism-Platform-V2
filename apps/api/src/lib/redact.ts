@@ -33,13 +33,35 @@ export const SECRET_KEYS: ReadonlySet<string> = new Set([
   'password',
 ]);
 
+/**
+ * Hậu tố khoá coi là bí mật (W4 E7, ADR-0039 §5) — CHỈ áp khi dùng tập khoá
+ * mặc định: `unsubscribeToken`, `confirmToken`, `clientSecret`,
+ * `webhookSecret`, `userPassword`… tự được che mà không phải nhớ thêm vào
+ * danh sách. Hậu tố chứ không chuỗi-con: `tokenCount`/`secret_reason` là dữ
+ * liệu thường, che nhầm là admin mất khả năng đọc payload.
+ */
+const SECRET_KEY_SUFFIXES = ['token', 'secret', 'password'] as const;
+
+/**
+ * Khoá này có phải bí mật không — so KHÔNG phân biệt hoa/thường (W4 E7:
+ * `Token`/`URL`/`clientSecret` cùng bị che như bản lowercase). Tập khoá tuỳ
+ * chọn (khác mặc định) là caller nhận toàn quyền: chỉ so bằng, KHÔNG áp luật
+ * hậu tố — test "tập khoá tuỳ chọn thay được mặc định" ghim hợp đồng đó.
+ */
+function isSecretKey(key: string, keys: ReadonlySet<string>): boolean {
+  const lowered = key.toLowerCase();
+  if (keys.has(lowered)) return true;
+  if (keys !== SECRET_KEYS) return false;
+  return SECRET_KEY_SUFFIXES.some((suffix) => lowered.endsWith(suffix));
+}
+
 /** Che đệ quy; vô hướng/null đi qua nguyên vẹn. `keys` mặc định `SECRET_KEYS`. */
 export function redactDeep(value: unknown, keys: ReadonlySet<string> = SECRET_KEYS): unknown {
   if (Array.isArray(value)) return value.map((item) => redactDeep(item, keys));
   if (value === null || typeof value !== 'object') return value;
   const out: Record<string, unknown> = Object.create(null);
   for (const [key, child] of Object.entries(value)) {
-    out[key] = keys.has(key) ? REDACTED : redactDeep(child, keys);
+    out[key] = isSecretKey(key, keys) ? REDACTED : redactDeep(child, keys);
   }
   return out;
 }
