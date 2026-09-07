@@ -16,7 +16,12 @@ import { apiOrigin } from '@/lib/api/env';
  * `profile-form.tsx`), khai sai ở đây chỉ lệch TYPE, không lệch RUNTIME.
  */
 export const authClient = createAuthClient({
-  baseURL: apiOrigin(),
+  // CHỈ tính origin trong browser (vòng vá review W3, cùng khuôn admin):
+  // module này bị evaluate cả lúc `next build` prerender (NODE_ENV=production)
+  // — apiOrigin() nay fail-fast nên gọi ở module scope phía server là giết
+  // build với env dev; client Better Auth chỉ được GỌI từ browser, baseURL
+  // phía server để undefined vô hại.
+  baseURL: typeof window === 'undefined' ? undefined : apiOrigin(),
   plugins: [
     emailOTPClient(),
     inferAdditionalFields({

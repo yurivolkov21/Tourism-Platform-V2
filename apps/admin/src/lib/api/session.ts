@@ -57,9 +57,14 @@ export type SessionLookup =
  * KHÔNG throw: mọi lỗi phân loại vào `SessionLookup` để tầng gọi tự quyết.
  */
 export const lookupServerSession = cache(async (): Promise<SessionLookup> => {
+  // Origin tính NGOÀI try (vòng vá review W3): apiOrigin() nay fail-fast
+  // (thiếu env / không https ở production / chuỗi rác) — nuốt nó thành
+  // `unreachable` là biến lỗi cấu hình thành vòng lặp redirect /login không
+  // lời giải thích. Để nó nổ lên error boundary với đúng message.
+  const origin = apiOrigin();
   try {
     const cookieHeader = (await cookies()).toString();
-    const response = await fetch(`${apiOrigin()}/api/auth/get-session`, {
+    const response = await fetch(`${origin}/api/auth/get-session`, {
       headers: { cookie: cookieHeader },
       cache: 'no-store',
     });

@@ -58,9 +58,11 @@ export function withAuthOptions(
 ): RequestInit {
   if (!context?.auth) return init;
   if ('credentials' in context.auth) {
-    // no-store CẢ nhánh browser (W3-O3, audit cụm 7): data per-user vào HTTP
-    // cache/bfcache là rò giữa các phiên trên cùng máy — JSDoc trên đã hứa
-    // từ đầu, nhánh server có mà nhánh này thiếu.
+    // no-store CẢ nhánh browser (W3-O3, audit cụm 7): response per-user vào
+    // HTTP cache (disk/shared cache của browser, proxy) là rò giữa các phiên
+    // trên cùng máy — JSDoc trên đã hứa từ đầu, nhánh server có mà nhánh này
+    // thiếu. (bfcache là chuyện của Cache-Control trên DOCUMENT, không phải
+    // của một fetch con — đừng trông vào dòng này cho việc đó.)
     return { ...init, credentials: context.auth.credentials, cache: 'no-store' };
   }
   const headers = new Headers(request.headers);
@@ -98,7 +100,12 @@ export function withNextOptions(
  * `withNextOptions` (kiểm bằng typecheck, không đoán).
  */
 const link = new OpenAPILink<ApiClientContext>(contract, {
-  url: apiOrigin(),
+  // LƯỜI có chủ đích (vòng vá review W3, cùng khuôn admin): apiOrigin() nay
+  // fail-fast (thiếu env/không https ở production) — gọi ở module scope là
+  // nổ lúc import: prerender chết với stack ở đây, chunk browser nổ khi
+  // hydrate ngoài cây render nên error.tsx không bắt. Dạng hàm thì phép kiểm
+  // chạy đúng "lúc gọi" đầu tiên, với env runtime thật.
+  url: () => apiOrigin(),
   fetch: (request, init, { context }) =>
     globalThis.fetch(request, {
       ...withAuthOptions(request, withNextOptions(init ?? {}, context), context),

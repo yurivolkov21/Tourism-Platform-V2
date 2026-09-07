@@ -18,12 +18,14 @@
  * "build với API sống", chỉ xoá đúng ca "API đang ngủ".
  *
  * Origin đọc giống `src/lib/api/env.ts` (`API_URL` → `NEXT_PUBLIC_API_URL` →
- * localhost:3001) để đánh thức ĐÚNG host mà build sẽ gọi. Trên Vercel turbo
- * chạy strict env nên `API_URL` bị lọc, `NEXT_PUBLIC_*` đi qua nhờ framework
- * inference — cùng lý do client build bằng biến public.
+ * localhost:3001) để đánh thức ĐÚNG host mà build sẽ gọi. Qua turbo (strict
+ * env): `API_URL` được khai ở `turbo.json` task build, `NEXT_PUBLIC_*` đi qua
+ * nhờ framework inference — cùng lý do client build bằng biến public.
  *
  * Bỏ qua có chủ đích: `SKIP_API_WARMUP=1`. Rút ngắn khi thử tay:
- * `API_WARMUP_DEADLINE_MS=5000`.
+ * `API_WARMUP_DEADLINE_MS=5000`. Hai cờ này (và `ALLOW_BUILD_WITH_SERVER`
+ * của guard-build) nằm trong `passThroughEnv` của `turbo.json` — không khai
+ * thì strict mode lọc mất khi chạy `pnpm build`/`pnpm gate` ở root.
  */
 import { pathToFileURL } from 'node:url';
 
