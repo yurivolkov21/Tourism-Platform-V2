@@ -16,6 +16,33 @@ export interface EmailDeliverer {
 export const EMAIL_DELIVERER = Symbol('EMAIL_DELIVERER');
 
 /**
+ * Lỗi giao email MANG status HTTP của provider (W4 E5, ADR-0039 §4) — drain
+ * đọc `status` để phân loại: 4xx (trừ 429) là vĩnh viễn, còn lại là tạm.
+ * Deliverer nào gọi HTTP thì ném lớp này thay Error trần; lỗi mạng (fetch
+ * ném trước khi có response) vẫn là Error thường → mặc định coi là tạm.
+ */
+export class DeliveryHttpError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = 'DeliveryHttpError';
+  }
+}
+
+/**
+ * Lỗi VĨNH VIỄN — gửi lại y nguyên chỉ ra y kết quả (thư sai địa chỉ,
+ * payload hỏng, API key bị thu hồi): 4xx trừ 429. Mọi thứ khác (429, 5xx,
+ * lỗi mạng, Error trần) là TẠM — giữ đường retry với backoff.
+ */
+export function isPermanentDeliveryError(err: unknown): boolean {
+  return (
+    err instanceof DeliveryHttpError && err.status >= 400 && err.status < 500 && err.status !== 429
+  );
+}
+
+/**
  * P1 skeleton: "gửi" = log ra stdout, không bao giờ throw.
  *
  * Che credential (W2 mục 6) TRỪ ở `development` (vòng vá review W2): máy dev

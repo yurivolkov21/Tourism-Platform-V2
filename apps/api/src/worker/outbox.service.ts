@@ -3,7 +3,7 @@ import { OUTBOX_MAX_ATTEMPTS } from '@tourism/contract';
 import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
-import { EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
+import { EMAIL_DELIVERER, type EmailDeliverer, isPermanentDeliveryError } from './deliverer.js';
 import { resolveRecipient } from './recipient.js';
 
 /** Mỗi lượt drain lấy tối đa bấy nhiêu row PENDING (oldest-first). */
@@ -43,17 +43,38 @@ export interface DrainResult {
 }
 
 /**
- * Logic thuần cho state-machine retry: attempts cũ → (attempts mới, status).
- * Tách khỏi service để unit-test không cần DB.
+ * Backoff luỹ thừa (W4 E5, ADR-0039 §4): 2^attempts PHÚT, trần 60 phút —
+ * một sự cố provider kéo dài không đẩy lịch hẹn ra vô tận, và hàng đợi
+ * không còn đốt sạch attempts trong 5 phút drain-mỗi-phút như trước.
  */
-export function nextAttemptState(prevAttempts: number): {
+export function backoffDelayMs(attempts: number): number {
+  return Math.min(2 ** attempts, 60) * 60_000;
+}
+
+/**
+ * Logic thuần cho state-machine retry: attempts cũ → (attempts mới, status,
+ * lịch hẹn lượt sau). Tách khỏi service để unit-test không cần DB.
+ *
+ * `permanent` (W4 E5): lỗi 4xx-không-phải-429 — FAILED NGAY, không xếp lịch
+ * (gửi lại y nguyên chỉ ra y kết quả); attempts vẫn +1 để triage thấy đã thử.
+ */
+export function nextAttemptState(
+  prevAttempts: number,
+  opts: { now?: Date; permanent?: boolean } = {},
+): {
   attempts: number;
   status: typeof OutboxStatus.PENDING | typeof OutboxStatus.FAILED;
+  nextAttemptAt: Date | null;
 } {
+  const now = opts.now ?? new Date();
   const attempts = prevAttempts + 1;
+  const status =
+    opts.permanent || attempts >= MAX_ATTEMPTS ? OutboxStatus.FAILED : OutboxStatus.PENDING;
   return {
     attempts,
-    status: attempts >= MAX_ATTEMPTS ? OutboxStatus.FAILED : OutboxStatus.PENDING,
+    status,
+    nextAttemptAt:
+      status === OutboxStatus.PENDING ? new Date(now.getTime() + backoffDelayMs(attempts)) : null,
   };
 }
 
@@ -82,7 +103,13 @@ export class OutboxService {
    */
   async drainOnce(batchSize = DRAIN_BATCH_SIZE): Promise<DrainResult> {
     const rows = await prisma.outbox.findMany({
-      where: { status: OutboxStatus.PENDING },
+      // W4 E5: chỉ lấy row ĐÃ TỚI GIỜ — null là tới hạn ngay (row mới hoặc
+      // trước W4), còn row đang backoff chờ đúng lịch của nó, không quay lại
+      // đầu batch mỗi phút đốt attempts.
+      where: {
+        status: OutboxStatus.PENDING,
+        OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: new Date() } }],
+      },
       orderBy: { createdAt: 'asc' },
       take: batchSize,
     });
@@ -117,11 +144,15 @@ export class OutboxService {
         });
         result.sent += 1;
       } catch (err) {
-        const { attempts, status } = nextAttemptState(row.attempts);
+        // W4 E5: 4xx (trừ 429) là lỗi VĨNH VIỄN → FAILED ngay; lỗi tạm xếp
+        // lịch backoff luỹ thừa thay vì quay lại đầu batch phút sau.
+        const { attempts, status, nextAttemptAt } = nextAttemptState(row.attempts, {
+          permanent: isPermanentDeliveryError(err),
+        });
         const lastError = trimError(err);
         await prisma.outbox.updateMany({
           where: { id: row.id, status: OutboxStatus.PENDING },
-          data: { attempts, status, lastError },
+          data: { attempts, status, lastError, nextAttemptAt },
         });
         if (status === OutboxStatus.FAILED) result.failed += 1;
         else result.retried += 1;

@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { prisma } from '../auth/auth.config.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
-import { EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
+import { DeliveryHttpError, EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
 import { MAX_ATTEMPTS, OutboxService } from './outbox.service.js';
 import { WorkerModule } from './worker.module.js';
 
@@ -13,18 +13,22 @@ import { WorkerModule } from './worker.module.js';
  */
 
 class FakeDeliverer implements EmailDeliverer {
-  mode: 'ok' | 'throw' = 'ok';
+  mode: 'ok' | 'throw' | 'throw-http' = 'ok';
   errorMessage = 'fake smtp boom';
+  /** Status cho mode 'throw-http' — mô phỏng DeliveryHttpError của Resend (W4 E5). */
+  httpStatus = 500;
   calls: Array<{ type: EmailType; payload: unknown }> = [];
 
   async deliver(type: EmailType, payload: unknown): Promise<void> {
     this.calls.push({ type, payload });
     if (this.mode === 'throw') throw new Error(this.errorMessage);
+    if (this.mode === 'throw-http') throw new DeliveryHttpError(this.errorMessage, this.httpStatus);
   }
 
   reset(): void {
     this.mode = 'ok';
     this.errorMessage = 'fake smtp boom';
+    this.httpStatus = 500;
     this.calls = [];
   }
 }
@@ -130,6 +134,13 @@ describe('outbox worker integration', () => {
       const row = await seed('enquiry-received:e-doomed');
 
       for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
+        // W4 E5: mỗi lượt lỗi tạm xếp lịch backoff — mô phỏng "đã tới giờ"
+        // bằng cách kéo lịch hẹn về quá khứ trước lượt drain kế (test không
+        // đợi 2^n phút thật).
+        await prisma.outbox.updateMany({
+          where: { id: row.id },
+          data: { nextAttemptAt: new Date(Date.now() - 1000) },
+        });
         const result = await outbox.drainOnce();
         const isLast = attempt === MAX_ATTEMPTS;
         expect(result).toEqual({
@@ -152,6 +163,71 @@ describe('outbox worker integration', () => {
       const after = await outbox.drainOnce();
       expect(after).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 });
       expect(deliverer.calls).toHaveLength(MAX_ATTEMPTS);
+    });
+  });
+
+  // W4 E5 (ADR-0039 §4): backoff luỹ thừa + phân loại 4xx/5xx/429.
+  describe('drainOnce — backoff + phân loại lỗi (W4 E5)', () => {
+    it('4xx (không phải 429) → FAILED NGAY ở lượt đầu, không hẹn giờ retry', async () => {
+      const row = await seed('enquiry-received:e-4xx');
+      deliverer.mode = 'throw-http';
+      deliverer.httpStatus = 422;
+
+      const result = await outbox.drainOnce();
+
+      expect(result.failed).toBe(1);
+      expect(result.retried).toBe(0);
+      const after = await prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
+      expect(after.status).toBe(OutboxStatus.FAILED);
+      expect(after.attempts).toBe(1);
+      expect(after.nextAttemptAt).toBeNull();
+    });
+
+    it('5xx → PENDING với nextAttemptAt tương lai; drain kế BỎ QUA row chưa tới giờ', async () => {
+      const row = await seed('enquiry-received:e-5xx');
+      deliverer.mode = 'throw-http';
+      deliverer.httpStatus = 503;
+
+      const before = Date.now();
+      const first = await outbox.drainOnce();
+      expect(first.retried).toBe(1);
+
+      const after = await prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
+      expect(after.status).toBe(OutboxStatus.PENDING);
+      expect(after.attempts).toBe(1);
+      // 2^1 = 2 phút — kiểm khoảng thay vì mốc chính xác (đồng hồ chạy).
+      expect(after.nextAttemptAt?.getTime()).toBeGreaterThan(before + 60_000);
+      expect(after.nextAttemptAt?.getTime()).toBeLessThanOrEqual(Date.now() + 2 * 60_000 + 1000);
+
+      // Row đang backoff KHÔNG bị lượt drain kế đụng tới — deliverer không
+      // được gọi thêm lần nào (trước W4 nó quay lại đầu batch mỗi phút).
+      deliverer.calls = [];
+      const second = await outbox.drainOnce();
+      expect(second).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 });
+      expect(deliverer.calls).toHaveLength(0);
+
+      // Đẩy lịch hẹn về quá khứ → row lại tới lượt bình thường.
+      await prisma.outbox.update({
+        where: { id: row.id },
+        data: { nextAttemptAt: new Date(Date.now() - 1000) },
+      });
+      deliverer.mode = 'ok';
+      const third = await outbox.drainOnce();
+      expect(third.sent).toBe(1);
+    });
+
+    it('429 là lỗi TẠM — vào backoff như 5xx, không FAILED ngay', async () => {
+      const row = await seed('enquiry-received:e-429');
+      deliverer.mode = 'throw-http';
+      deliverer.httpStatus = 429;
+
+      const result = await outbox.drainOnce();
+
+      expect(result.retried).toBe(1);
+      expect(result.failed).toBe(0);
+      const after = await prisma.outbox.findUniqueOrThrow({ where: { id: row.id } });
+      expect(after.status).toBe(OutboxStatus.PENDING);
+      expect(after.nextAttemptAt).toBeInstanceOf(Date);
     });
   });
 

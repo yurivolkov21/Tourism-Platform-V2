@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { EmailType } from '../generated/prisma/enums.js';
 import { defaultHttpPost, type HttpPost } from '../lib/provider-http.js';
-import type { EmailDeliverer } from './deliverer.js';
+import { DeliveryHttpError, type EmailDeliverer } from './deliverer.js';
 import { buildUnsubscribeUrl, renderEmail } from './emails/render-email.js';
 import { resolveRecipient } from './recipient.js';
 
@@ -99,8 +99,12 @@ export class ResendDeliverer implements EmailDeliverer {
       }),
     });
     if (response.status < 200 || response.status >= 300) {
-      throw new Error(
+      // W4 E5: ném lỗi MANG status để drain phân loại — 4xx (trừ 429) là
+      // FAILED ngay, 5xx/429 vào backoff. Lỗi mạng (httpPost tự ném) vẫn là
+      // Error trần → drain coi là tạm.
+      throw new DeliveryHttpError(
         `Resend API failed (HTTP ${response.status}): ${response.body.slice(0, 300)}`,
+        response.status,
       );
     }
     this.logger.log(`Delivered ${type} to ${to} via Resend`);

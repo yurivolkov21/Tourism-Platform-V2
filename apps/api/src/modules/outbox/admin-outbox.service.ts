@@ -100,7 +100,9 @@ export class AdminOutboxService {
     try {
       row = await prisma.outbox.update({
         where: { id, status: OutboxStatus.FAILED },
-        data: { status: OutboxStatus.PENDING, attempts: 0 },
+        // Reset CẢ nextAttemptAt (W4 E5): operator bấm retry là muốn gửi
+        // NGAY ở lượt drain kế, không phải xếp lại cuối lịch backoff cũ.
+        data: { status: OutboxStatus.PENDING, attempts: 0, nextAttemptAt: null },
       });
     } catch (error) {
       if (

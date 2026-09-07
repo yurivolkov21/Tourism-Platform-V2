@@ -278,6 +278,12 @@ describe('admin outbox integration (F7)', () => {
 
   describe('retry', () => {
     it('FAILED → PENDING, attempts 0, GIỮ lastError, processedAt vẫn null; trả row sau khi đặt lại', async () => {
+      // W4 E5: row FAILED có thể còn mang lịch backoff cũ — retry phải xoá
+      // để lượt drain kế gửi NGAY, không xếp lại cuối hàng.
+      await prisma.outbox.update({
+        where: { id: rowId(1) },
+        data: { nextAttemptAt: new Date(Date.now() + 3_600_000) },
+      });
       const res = await retry(rowId(1), adminCookie);
       expect(res.statusCode).toBe(200);
       const body = OutboxRowSchema.parse(res.json());
@@ -292,6 +298,7 @@ describe('admin outbox integration (F7)', () => {
       expect(db.status).toBe(OutboxStatus.PENDING);
       expect(db.attempts).toBe(0);
       expect(db.lastError).toBe('Resend: 401 invalid api key');
+      expect(db.nextAttemptAt).toBeNull();
     });
 
     it('hàng PENDING → 409 NOT_FAILED, không đổi gì', async () => {
