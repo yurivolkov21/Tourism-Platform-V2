@@ -8,6 +8,130 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-07 — W3 merge + vòng review 8 mũi cho vỏ Next (nhánh `fix/web-shell-headers`, 29 commit `57d302e..a1a45cc` ff vào main, 83 file, KHÔNG migration, không đụng API)
+
+Entry ngay dưới ghi "19 commit code `57d302e..66804c8` và 2 commit docs" — đếm
+lại là 18 code + 4 docs (kể cả spec `3c3c0e5` và `5660ccc` là docs);
+"security-headers 8" admin thật ra 7 `it(`; "41 spec web mới" thật ra +26
+(1445 → 1471, 18 ca login/forgot-password chỉ đổi assert); và "chỉ
+`/robots.txt` tĩnh" bỏ sót `/_global-error` vì bảng route Next in ra giấu nó.
+Đợt review làm ở session gốc theo nếp review theo tầng: 8 finder theo miền
+(CSP web thực thi · CSP admin nonce/proxy · origin/env · robots/metadata/ảnh ·
+revalidate/checkout/no-store · cổng gác 403 · tầng test · docs/altitude), 3
+verifier theo miền (38 mục: 24 CONFIRMED, 9 PLAUSIBLE, 5 REFUTED), `gate:int`
+trọn trong cây chính với API tạm :3001. Kết luận: hướng CSP đúng, nhưng phần
+vá nhiều nhất là những chỗ **giả định về Next hoặc về tài nguyên thật sai** —
+ba trong số đó là "hỏng prod im lặng". 10 findings, vá trong 8 commit
+(`992b633..a1a45cc`, 56 file) rồi ff.
+
+### Findings và cách vá (theo tầng)
+
+**Tầng chính sách**
+
+1. **CSP thiếu tài nguyên THẬT** (`545102a`, [ADR-0038 AMEND 1 §a](adr/0038-web-shell-security-headers.md)).
+   Bảng origin §2 dựng từ grep literal nên không thấy URL sinh lúc chạy:
+   `media-src 'self'` chặn video Cloudinary khe `about-cta-video` (poster đi
+   theo `img-src` nên mắt thường không thấy); `img-src` hai app không có
+   `lh3.googleusercontent.com` (avatar Google OAuth). Thêm hai host; ghi rõ
+   escape-hatch publicId-là-URL (ADR-0005 §2) và ảnh markdown thân bài CỐ Ý
+   không mở. Luật mới: mỗi lần thêm bề mặt media phải liệt kê URL sinh từ
+   API/DB, không chỉ grep source.
+2. **`loaderFile` làm `remotePatterns`/`minimumCacheTTL` thành cấu hình chết**
+   (`0db8576`, [ADR-0016 AMEND 2 §7](adr/0016-web-data-layer.md), [ADR-0020 AMEND 1](adr/0020-real-images-sourcing.md)).
+   Next 16.3 trả 404 cho `/_next/image` và thay nguyên module kiểm host khi có
+   loader custom — ADR-0020 đòi đồng thời hai thứ loại trừ nhau; mục CÒN TREO
+   "đặt `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` trên Vercel" là việc vô nghĩa.
+   Chốt giữ loader (Cloudinary co ảnh, không tiêu quota Vercel), xoá ba khoá
+   chết + env, sửa 5 chỗ docs/comment tả sai. Loader cũng sửa điều kiện nhận
+   diện segment transformation (`my_photo.jpg`, `ab_cd/` từng bị nuốt → 400;
+   URL ký `s--…--` trả nguyên), 4 ca test.
+3. **`/_global-error` admin tĩnh không nonce; vá từng trang không lưới**
+   (`545102a`, ADR-0038 AMEND 1 §c). Next giấu route này khỏi bảng in sau
+   build và cấm mọi segment config — chấp nhận 500.html chỉ chữ, ghi luật
+   "HTML admin cache/prerender = nonce lệch"; `force-dynamic` ở root layout
+   làm lưới hai, `scripts/check-admin-prerender.mjs` đọc prerender-manifest
+   trong CI làm lưới cuối (allowlist `/robots.txt` + `/_global-error`).
+4. **`metadataBase` rơi về localhost; robots nướng `VERCEL_ENV` lúc build**
+   (`b871176`, ADR-0016 AMEND 2 §7). `siteUrl()` nay fail-fast production
+   (CI khai `NEXT_PUBLIC_SITE_URL`); `/robots.txt` thành route ĐỘNG so host
+   request với host site — promote/rollback một build preview không còn đóng
+   prod khỏi index; `(site)/account/layout.tsx` noindex + nofollow cả khu.
+5. **Contract `checkoutUrl: z.url()` nhận `javascript:`** (`c93b851`): siết
+   `protocol: /^https$/` tại nguồn, guard client giữ làm lớp hai.
+
+**Tầng thiết kế / code**
+
+6. **`connect-src` bake từ chuỗi thô** (`545102a`, ADR-0038 AMEND 1 §b):
+   proxy admin đọc env thô inline lúc build (bundle chứa literal localhost),
+   web nhồi origin nguyên văn (path `/api` → CSP khớp-chính-xác chặn hết; `;`
+   cắt đôi). Nay nguồn duy nhất là `browserApiOrigin()` đã chuẩn hoá.
+7. **Origin API: web module-scope, admin nuốt lỗi cấu hình** (`992b633`,
+   ADR-0016 AMEND 2 §6, [ADR-0026 AMEND 4 §D](adr/0026-p4-admin-app.md)): cả
+   hai app `new URL().origin`, production thiếu biến throw nêu tên, https ép
+   trừ loopback (CI/gate/`next start` build được với localhost); web
+   `client.ts`/`auth-client.ts` lười như admin; admin `session.ts` tính
+   origin ngoài `try` (từng thành vòng lặp `/login` không lời giải thích);
+   admin `next.config` gọi resolver lúc build; `turbo.json` `passThroughEnv`
+   cho ba cờ warm-up/guard-build.
+8. **Cổng gác tin `x-pathname`** (`efa96f3`, ADR-0026 AMEND 4 §B/§C): gate trả
+   `allow` cho path public trước khi kiểm role, Next không xoá header client
+   gửi — layout ép `role === 'ADMIN'` tường minh, proxy.spec ca header thù
+   địch, `x-pathname` kèm query, luật "header proxy→app chỉ mang định tuyến".
+   Admin `robots.txt` bỏ disallow để crawler đọc được `X-Robots-Tag` (§A).
+9. **zod 4 thử `Function("")`** (`a1a45cc`, ADR-0038 AMEND 1 §e) — phát hiện
+   lúc quét admin `next start` bằng Chromium headless: một vi phạm `script-src
+   ← eval` ở mọi trang. zod tính `fastEnabled` ngay lúc DỰNG `z.object`, nên
+   `z.config({ jitless: true })` phải nằm ở module import ĐẦU TIÊN của contract
+   (đặt trong thân `index.ts` là quá muộn vì import bị hoist); spec spy
+   `Function` canh. Không nới CSP bằng `'unsafe-eval'`.
+
+**Tầng test / docs**
+
+10. Test CSP so BẰNG map directive→sources (thêm host lạ là đỏ); nonce qua
+    `getScriptNonceFromHeader` của Next; interceptor 403 test qua
+    `createAdminLink({ fetch })`; `routeForErrorDigest` tách lib có spec;
+    `proxy.spec` assert `connect-src`/`isDev`/độ dài nonce. Docs: ADR-0038
+    AMEND 1 (Report-Only cân nhắc → W4, preview CSP y prod, UIR localhost),
+    i18n gộp bộ chuỗi share trùng, `.env.example` hai app, comment
+    `warm-api.mjs`/bfcache, JSDoc revalidate ghi `site-media`/`posts` chưa có
+    producer (`2d1c863`, `c93b851`).
+
+### Nghiệm thu tay (lần đầu có Chromium headless từ session gốc)
+
+- Web dev server của user (:3000, DPR 1 và 2): `/`, `/tours`, `/destinations`,
+  `/about`, `/contact`, `/tours/[slug]`, `/blog/[slug]`, `/login`,
+  `/register` — 0 CSP violation, mọi response Cloudinary 200, ảnh chậm nhất
+  ~9s vì Cloudinary sinh biến thể `w_*` lần đầu. Báo "hầu hết ảnh mất" của
+  user truy ra là render cũ bị cache 300s lúc API dev chưa sẵn sàng (curl đầu
+  không có `<img>`, vài giây sau đủ 25) — có từ trước W3.
+- Admin `next build` + `next start` (:3002): nonce header khớp 18/18 script,
+  hydrate thật, 0 violation sau vá zod; `check-admin-prerender` OK. Còn
+  `favicon.ico` 404 (admin chưa có icon, có từ trước).
+- Env Vercel: cả hai project đã có `API_URL`, `NEXT_PUBLIC_API_URL`,
+  `NEXT_PUBLIC_SITE_URL` (web thêm `REVALIDATE_SECRET`), Production + Preview,
+  https không path — không phải bổ sung gì; `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`
+  không cần.
+
+Tests after: 454 api-int và 409 api-unit và 251 contract và 910 admin và 1480
+web và 22 ui và 10 tokens và 2 i18n — `pnpm gate:int` trọn với API tạm :3001
+trên docker DB theo công thức CI, lint 0 lỗi, `check-admin-prerender` OK.
+
+### CÒN TREO (cố ý)
+
+- CSP `report-to` cần endpoint nhận báo cáo ở API → W4, kèm một vòng
+  Report-Only trước khi siết thêm. Throttle `/api/revalidate` cũng W4.
+- `posts`/`site-media` có trong whitelist revalidate nhưng API chưa có
+  producer bust (chỉ `reviews.moderate` gửi `tours`/`tour:<slug>`).
+- Bốn bề mặt `<img>` trần (review-card, avatar-upload, passport-card,
+  booking-receipt) chưa qua loader Cloudinary — thumbnail vẫn tải bản đầy.
+- Spec DOM cho `two-factor-form`/`share-row`, assert eyebrow contact-location,
+  assert "30 minutes" ↔ 1800s của API — đợt copy riêng.
+- Booking PENDING được tạo trước khi guard `checkoutUrl` từ chối (có sẵn
+  trước W3): nhánh từ chối nên khoá nút + hiện mã booking thay vì mời bấm lại.
+- `/_global-error` admin là 500.html tĩnh chỉ chữ khi root layout ném.
+- Admin chưa có `favicon`; admin `remotePatterns` không đổi (không có loader).
+- Nợ W2 vẫn treo: TRUST_PROXY/XFF Render chưa đo, BA rate limit chưa có test.
+
 ## 2026-09-07 — W3 vỏ Next thi công xong — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/web-shell-headers`, 19 commit code `57d302e..66804c8` và 2 commit docs, 57 file, KHÔNG migration, không đụng API)
 
 Đợt vá thứ ba theo [bản rà 05/09](analysis/2026-09-05-web-security-audit.md)
