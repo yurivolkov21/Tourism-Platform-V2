@@ -70,6 +70,11 @@ describe('buildSecurityHeaders (admin)', () => {
     expect(PROD.some((h) => h.key.toLowerCase() === 'strict-transport-security')).toBe(false);
   });
 
+  it('X-Robots-Tag noindex toàn admin — back-office không có gì cho crawler (W3-H3)', () => {
+    const map = new Map(PROD.map((h) => [h.key, h.value]));
+    expect(map.get('X-Robots-Tag')).toBe('noindex, nofollow');
+  });
+
   it('CSP là một dòng, không khoảng trắng đôi', () => {
     expect(cspOf(PROD)).not.toMatch(/\s{2}|\n/);
   });

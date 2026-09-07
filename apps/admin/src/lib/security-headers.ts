@@ -62,5 +62,9 @@ export function buildSecurityHeaders(input: SecurityHeaderInput): HeaderEntry[] 
     { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
     { key: 'X-Frame-Options', value: 'DENY' },
     { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), payment=()' },
+    // Toàn admin noindex qua HEADER (phủ cả response không phải HTML — root
+    // layout chỉ noindex được metadata của trang) + robots.ts disallow '/'
+    // (ADR-0026 AMEND 3 §A).
+    { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
   ];
 }
