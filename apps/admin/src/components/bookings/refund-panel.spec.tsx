@@ -256,19 +256,22 @@ describe('RefundPanel — kết quả server', () => {
     expect(screen.queryByText(t.confirm.warning)).not.toBeInTheDocument();
   });
 
-  it('mỗi mã contract hiện ĐÚNG câu của nó, dialog Ở LẠI cho sửa tại chỗ (bất biến §2.4)', async () => {
-    for (const code of REFUND_CONTRACT_CODES) {
+  // Một ca mỗi mã (không gom vòng lặp vào một test): mỗi lần đi qua dialog 2
+  // bước tốn ~120ms ở máy dev nhưng ~800ms trên runner CI chung tải — gom 6 mã
+  // vào một test 5s từng làm main đỏ 07/09 (5033ms).
+  it.each([...REFUND_CONTRACT_CODES])(
+    'mã contract %s hiện ĐÚNG câu của nó, dialog Ở LẠI cho sửa tại chỗ (bất biến §2.4)',
+    async (code) => {
       const user = userEvent.setup();
       const refund = vi.fn().mockResolvedValue({ ok: false, code });
-      const view = render(<RefundPanel booking={PAID} refund={refund} />);
+      render(<RefundPanel booking={PAID} refund={refund} />);
       await openConfirmStep(user);
       await user.click(screen.getByRole('button', { name: t.confirm.submit }));
 
       expect(await screen.findByRole('alert')).toHaveTextContent(t.errors[code]);
       expect(success).not.toHaveBeenCalled();
-      view.unmount();
-    }
-  });
+    },
+  );
 
   it('câu lỗi contract VẪN hiện sau khi bấm Back về bước 1... rồi mới xoá khi đổi input', async () => {
     // Khoá chống tái hiện: bản đầu chỉ render lỗi ở bước confirm — bấm Back
