@@ -17,6 +17,7 @@ import {
   stepErrors,
 } from '@/lib/booking-form';
 import { computeBookingTotal } from '@/lib/checkout';
+import { isCheckoutUrl } from '@/lib/checkout-url';
 import { SPRING } from '@/lib/motion';
 import { formatMoney } from '@/lib/tours';
 import { CheckoutSummary, type CheckoutSummaryTour } from './checkout-summary';
@@ -120,7 +121,9 @@ export function BookingWizard({
       const booking = await api.bookings.create(buildBookingInput(state), {
         context: withBrowserAuth(),
       });
-      if (!booking.checkoutUrl) {
+      // isCheckoutUrl (W3-O4): URL không https (dev cho localhost) thì KHÔNG
+      // điều hướng — assign một chuỗi javascript: là XSS trọn gói.
+      if (!booking.checkoutUrl || !isCheckoutUrl(booking.checkoutUrl)) {
         setSubmitError(messages.booking.errors.CHECKOUT_FAILED);
         setSubmitting(false);
         return;

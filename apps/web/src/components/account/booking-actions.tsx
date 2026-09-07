@@ -25,6 +25,7 @@ import { AccountActionError } from '@/components/account/account-action-error';
 import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import type { BookingAction, BookingView } from '@/lib/booking-vm';
+import { isCheckoutUrl } from '@/lib/checkout-url';
 import { formatDateRange, formatMoneyExact } from '@/lib/tours';
 
 /** Trần `reason` của contract (`CancelBookingInputSchema.max(1000)`). */
@@ -269,7 +270,9 @@ export function BookingActions({
       switch (action) {
         case 'payNow': {
           const booking = await api.bookings.checkout({ code }, { context: withBrowserAuth() });
-          if (!booking.checkoutUrl) {
+          // isCheckoutUrl (W3-O4): URL không https (dev cho localhost) thì
+          // coi như hỏng — không assign chuỗi lạ vào location.
+          if (!booking.checkoutUrl || !isCheckoutUrl(booking.checkoutUrl)) {
             setErrorKind('generic');
             break;
           }
