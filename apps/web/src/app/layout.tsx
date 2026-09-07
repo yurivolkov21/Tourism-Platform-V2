@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Archivo, IBM_Plex_Mono, Literata } from 'next/font/google';
 import { LenisScroll } from '@/components/lenis-scroll';
 import { MotionProvider } from '@/components/motion/motion-provider';
+import { siteUrl } from '@/lib/site';
 import './globals.css';
 
 // Bộ font chốt qua 2 vòng specimen (ADR-0013 #6, cập nhật 22/07): Literata
@@ -28,6 +29,10 @@ const mono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
+  // Canonical/OG tuyệt đối phải trỏ NEXT_PUBLIC_SITE_URL, KHÔNG tự trỏ host
+  // đang phục vụ (preview *.vercel.app, apex) — thiếu metadataBase là Next
+  // resolve URL tương đối theo host request (ADR-0016 AMEND 1 §7).
+  metadataBase: new URL(siteUrl()),
   title: 'Nexora',
   description: 'Book tours across Vietnam',
 };
