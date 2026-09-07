@@ -1,7 +1,8 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
+import { PublicCacheInterceptor } from '../../lib/public-cache.interceptor.js';
 import { CatalogService } from './catalog.service.js';
 
 /**
@@ -15,6 +16,8 @@ import { CatalogService } from './catalog.service.js';
  */
 // Catalogue là nội dung marketing — khách chưa đăng nhập PHẢI xem được.
 @Public()
+// W4 R2 (ADR-0037 AMEND 2): đọc công khai thuần — cache được ở browser/proxy.
+@UseInterceptors(PublicCacheInterceptor)
 @Controller()
 export class CatalogController {
   private readonly startedAt = Date.now();

@@ -1,12 +1,15 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
+import { PublicCacheInterceptor } from '../../lib/public-cache.interceptor.js';
 import { PostsService } from './posts.service.js';
 
 // Blog công khai (spec §4.6): khách chưa đăng nhập đọc được. AuthGuard toàn
 // cục nên thiếu @Public() là 401 chết cả blog (ADR-0003).
 @Public()
+// W4 R2 (ADR-0037 AMEND 2): đọc công khai thuần — cache được ở browser/proxy.
+@UseInterceptors(PublicCacheInterceptor)
 @Controller()
 export class PostsController {
   constructor(private readonly posts: PostsService) {}

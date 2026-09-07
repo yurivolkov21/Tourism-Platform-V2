@@ -10,6 +10,7 @@ import {
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
+import { configureHttp } from '../../bootstrap.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus } from '../../generated/prisma/enums.js';
 
@@ -117,12 +118,41 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    // W4 R2: hook onSend gỡ cache-control public trên response LỖI sống ở
+    // configureHttp — test Cache-Control phải đi qua đúng tầng HTTP thật.
+    await configureHttp(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
   });
 
   afterAll(async () => {
     await app.close();
+  });
+
+  it('W4 R2: đọc catalog công khai mang Cache-Control public/s-maxage; đường auth và public-ngoài-catalog thì KHÔNG', async () => {
+    // Lớp giảm tải cho browser/proxy trước Render (ADR-0037 AMEND 2) — CHỈ
+    // catalog/posts/site-media: cache công khai một response cá nhân hoá là
+    // rò dữ liệu qua proxy.
+    const cached = await app.inject({ method: 'GET', url: '/api/tours' });
+    expect(cached.statusCode).toBe(200);
+    expect(cached.headers['cache-control']).toBe('public, s-maxage=60, stale-while-revalidate=300');
+
+    // Route auth (Better Auth mount) không bao giờ được cache công khai.
+    const session = await app.inject({ method: 'GET', url: '/api/auth/get-session' });
+    expect(session.headers['cache-control'] ?? '').not.toContain('public, s-maxage');
+
+    // Public NGOÀI catalog (trang unsubscribe per-token) cũng không.
+    const unsub = await app.inject({
+      method: 'GET',
+      url: '/api/newsletter/unsubscribe?id=01920000-0000-7000-8000-000000000001&token=x',
+    });
+    expect(unsub.headers['cache-control'] ?? '').not.toContain('public, s-maxage');
+
+    // Lỗi trên chính catalog (slug không tồn tại) KHÔNG mang header — một 404
+    // bị proxy cache 60s là một tour vừa publish bị 'mất' 60 giây.
+    const missing = await app.inject({ method: 'GET', url: '/api/tours/khong-ton-tai' });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.headers['cache-control'] ?? '').not.toContain('public, s-maxage');
   });
 
   it('GET /api/tours returns published cards conforming to TourCardSchema', async () => {

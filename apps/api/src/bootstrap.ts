@@ -141,6 +141,25 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       return;
     });
 
+  // W4 R2 (ADR-0037 AMEND 2): KHÔNG BAO GIỜ cache công khai một response
+  // LỖI. PublicCacheInterceptor đặt header TRƯỚC handler (oRPC gửi reply bên
+  // trong handler nên đặt sau là quá muộn), tức nhánh lỗi của oRPC (bySlug
+  // NOT_FOUND…) sẽ mang nhầm header — một 404 bị proxy giữ 60 giây là một
+  // tour vừa publish "mất" thêm một phút. Hook onSend là chốt cuối cùng nhìn
+  // thấy statusCode thật cho MỌI đường trả lời (Nest thuần lẫn oRPC).
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onSend', async (_req, reply, payload) => {
+      if (
+        reply.statusCode >= 400 &&
+        String(reply.getHeader('cache-control') ?? '').includes('public')
+      ) {
+        reply.removeHeader('cache-control');
+      }
+      return payload;
+    });
+
   // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ
   // được, đúng bài học mutation 19/07. CSP CỐ Ý tắt: API JSON không serve HTML,
   // CSP là hợp đồng của web P3b; bật mù dễ chặn nhầm asset. Các header còn lại
