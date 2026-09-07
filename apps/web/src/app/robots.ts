@@ -1,26 +1,12 @@
 import type { MetadataRoute } from 'next';
-import { absoluteUrl } from '@/lib/site';
+import { robotsFor } from '@/lib/robots';
 
 /**
- * Nexora có robots.txt + sitemap.xml, v2 thì chưa — trang catalogue vô hình với
- * crawler là một trong bảy thụt lùi "Quan trọng" ở
- * docs/analysis/2026-07-27-tours-parity-nexora.md. Đây là chỗ trả nó.
- *
- * Danh sách `disallow` ghi sẵn cả đường dẫn CHƯA tồn tại (`/account/`,
- * `/checkout/`): thêm bây giờ rẻ hơn nhớ ra sau khi trang đã lên và đã bị index.
- * `/api/` chặn luôn vì oRPC handler không có gì để index.
- *
- * KHÔNG chặn `/login` và các trang auth: chúng chỉ không có mặt trong sitemap.
- * Chặn hẳn thì crawler không đọc được `noindex` trên trang, và một trang bị chặn
- * vẫn có thể lên kết quả tìm kiếm nếu nơi khác trỏ tới nó.
+ * Nexora có robots.txt + sitemap.xml, v2 trả nợ parity ở đây; từ W3 rule
+ * theo MÔI TRƯỜNG (ADR-0016 AMEND 1 §7): preview/dev đóng hẳn, production
+ * mở như cũ. Toàn bộ luật + lý do nằm ở lib/robots.ts (thuần, có test) —
+ * file này chỉ đọc VERCEL_ENV rồi gọi.
  */
 export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: {
-      userAgent: '*',
-      allow: '/',
-      disallow: ['/account/', '/checkout/', '/api/'],
-    },
-    sitemap: absoluteUrl('/sitemap.xml'),
-  };
+  return robotsFor(process.env.VERCEL_ENV);
 }
