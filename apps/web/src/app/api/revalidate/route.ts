@@ -1,15 +1,19 @@
 import { revalidateTag as nextRevalidateTag } from 'next/cache';
-import { DEV_REVALIDATE_SECRET, handleRevalidatePost } from '@/lib/api/revalidate-route';
+import { handleRevalidatePost, resolveRevalidateSecret } from '@/lib/api/revalidate-route';
 
 /**
  * Bề mặt on-demand revalidation (ADR-0016 §3) — chỉ API NestJS gọi (server-
  * to-server, secret header), browser không bao giờ đụng. Chỉ export POST:
  * method khác Next tự trả 405. Route handler không vào sitemap.
- * `|| default`: chuỗi rỗng = "không khai" (gotcha CLAUDE.md §env).
+ * Secret theo môi trường: production thiếu là throw (W3-O5), dev fallback
+ * DEV_REVALIDATE_SECRET — luật + lý do ở lib/api/revalidate-route.ts.
  */
 export async function POST(request: Request): Promise<Response> {
   return handleRevalidatePost(request, {
-    expectedSecret: process.env.REVALIDATE_SECRET || DEV_REVALIDATE_SECRET,
+    expectedSecret: resolveRevalidateSecret({
+      REVALIDATE_SECRET: process.env.REVALIDATE_SECRET,
+      NODE_ENV: process.env.NODE_ENV,
+    }),
     // Next 16 đổi signature revalidateTag thành (tag, profile) — thiếu arg 2
     // vẫn chạy nhưng deprecated (xem node_modules/next .../revalidate.js).
     // { expire: 0 } = hard-bust (đường cacheLife.expire === 0 trong revalidate.js

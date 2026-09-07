@@ -3,6 +3,7 @@ import {
   DEV_REVALIDATE_SECRET,
   handleRevalidatePost,
   parseRevalidateBody,
+  resolveRevalidateSecret,
   secretMatches,
 } from './revalidate-route';
 
@@ -65,6 +66,13 @@ describe('parseRevalidateBody', () => {
     expect(res.ok).toBe(false);
   });
 
+  it('site-media qua whitelist — taxonomy tags.ts có nó từ trước, whitelist từng lệch (W3-O5)', () => {
+    expect(parseRevalidateBody({ tags: ['site-media'] })).toEqual({
+      ok: true,
+      tags: ['site-media'],
+    });
+  });
+
   it('tag lạ ngoài whitelist → rejected kể tên (users)', () => {
     const res = parseRevalidateBody({ tags: ['users'] });
     expect(res).toMatchObject({ ok: false, rejected: ['users'] });
@@ -103,6 +111,30 @@ describe('secretMatches', () => {
 
   it('provided null → false', () => {
     expect(secretMatches(null, 'correct-secret')).toBe(false);
+  });
+});
+
+// ADR-0016 AMEND 1 §3 — gương fail-fast của env.ts API: production không
+// được sống bằng secret dev hard-code (audit cụm 5, mức Cao).
+describe('resolveRevalidateSecret', () => {
+  it('có REVALIDATE_SECRET → dùng đúng nó, mọi môi trường', () => {
+    expect(
+      resolveRevalidateSecret({ REVALIDATE_SECRET: 'prod-secret', NODE_ENV: 'production' }),
+    ).toBe('prod-secret');
+  });
+
+  it('production thiếu/rỗng → throw nêu tên biến', () => {
+    expect(() => resolveRevalidateSecret({ NODE_ENV: 'production' })).toThrow(/REVALIDATE_SECRET/);
+    expect(() =>
+      resolveRevalidateSecret({ REVALIDATE_SECRET: '', NODE_ENV: 'production' }),
+    ).toThrow(/REVALIDATE_SECRET/);
+  });
+
+  it('ngoài production thiếu → fallback DEV_REVALIDATE_SECRET (khớp phía API)', () => {
+    expect(resolveRevalidateSecret({ NODE_ENV: 'development' })).toBe(DEV_REVALIDATE_SECRET);
+    expect(resolveRevalidateSecret({ REVALIDATE_SECRET: '', NODE_ENV: 'test' })).toBe(
+      DEV_REVALIDATE_SECRET,
+    );
   });
 });
 
