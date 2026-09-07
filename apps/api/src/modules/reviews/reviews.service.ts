@@ -409,14 +409,16 @@ export class ReviewsService {
       // Ảnh thay TRỌN (§3): xoá hết rồi ghi lại theo thứ tự mới. Hàng
       // `MediaAsset` là con trỏ tới Cloudinary, nên xoá ở đây KHÔNG xoá file.
       //
-      // Từ ADR-0035, mọi publicId bị `deleteMany` cuốn đi được xếp vào hàng
-      // dọn — CÙNG transaction này, vì nếu lệnh sửa review rollback thì ảnh
-      // vẫn còn được dùng và không được phép nằm trong hàng chờ xoá.
+      // Từ ADR-0035, publicId bị `deleteMany` cuốn đi được xếp vào hàng dọn
+      // — CÙNG transaction này, vì nếu lệnh sửa review rollback thì ảnh vẫn
+      // còn được dùng và không được phép nằm trong hàng chờ xoá.
       //
-      // Xếp CẢ những tấm sắp được ghi lại ngay dưới đây, không lọc ra. Hàng
-      // đợi không phán quyết gì; bảy ngày nữa `sweep` hỏi lại `media_assets`
-      // và thấy chúng vẫn còn tham chiếu thì tự bỏ hàng (ADR-0035 §2). Lọc ở
-      // đây là chép luật ra thành bản thứ hai để trôi lệch.
+      // CHỈ requeue tấm THẬT SỰ rời review (W4 U3 — bản đầu xếp cả tấm sắp
+      // ghi lại, trông vào sweep tự bỏ hàng; nhưng `requeue` ĐÈ `createdAt`
+      // nên một tấm được GIỮ vẫn bị đặt lại đồng hồ GC từ-lúc-ký — row hàng
+      // dọn của nó mang mốc sai, và ngữ nghĩa "đồng hồ 7 ngày bắt đầu lúc
+      // tham chiếu bị gỡ" của ADR-0035 §AMEND 2 bị nói dối cho đúng tấm
+      // không rời đi đâu cả).
       const dropped = await tx.mediaAsset.findMany({
         where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
         select: { publicId: true },
@@ -424,12 +426,13 @@ export class ReviewsService {
       await tx.mediaAsset.deleteMany({
         where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
       });
+      const kept = new Set(photos);
+      const removed = dropped.map((asset) => asset.publicId).filter((id) => !kept.has(id));
       // `requeue` chứ không `enqueue`: đây là lúc tham chiếu THẬT SỰ bị gỡ,
       // đồng hồ 7 ngày phải bắt đầu từ đây (ADR-0035 §AMEND 2).
-      await this.garbage.requeue(
-        tx,
-        dropped.map((asset) => asset.publicId),
-      );
+      if (removed.length > 0) {
+        await this.garbage.requeue(tx, removed);
+      }
       if (photos.length > 0) {
         await tx.mediaAsset.createMany({
           data: photos.map((publicId, idx) => ({

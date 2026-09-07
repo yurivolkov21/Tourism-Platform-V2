@@ -1922,4 +1922,56 @@ describe('reviews (int)', () => {
       expect(after.retractedAt).toBeInstanceOf(Date);
     });
   });
+
+  // W4 U3 (spec §2): requeue CHỈ publicId thật sự rời review — giữ ảnh thì
+  // đồng hồ GC không bị đặt lại, gỡ ảnh thì requeue đúng tấm đó.
+  describe('reviews.update — requeue đúng publicId (W4 U3)', () => {
+    it('update GIỮ p1, GỠ p2 → hàng dọn chỉ có p2; đồng hồ GC sẵn có của p1 KHÔNG bị đặt lại', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'requeue-precise@example.com');
+      await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+      const p1 = 'tourism/reviews/BK-TESTREV1/keep-1';
+      const p2 = 'tourism/reviews/BK-TESTREV1/drop-2';
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: {
+          bookingCode: 'BK-TESTREV1',
+          rating: 4,
+          body: 'Bài viết có hai tấm ảnh đính kèm',
+          photos: [p1, p2],
+        },
+      });
+      const reviewId = created.json().id as string;
+
+      // Mô phỏng row hàng dọn từ lúc KÝ (ADR-0035 §3) với mốc cũ — nếu update
+      // requeue cả tấm được GIỮ, mốc này bị đè bằng now và test đỏ.
+      const signedAt = new Date('2026-09-01T00:00:00.000Z');
+      await prisma.mediaGarbage.create({
+        data: { publicId: p1, resourceType: 'image', createdAt: signedAt },
+      });
+
+      const res = await app.inject({
+        method: 'PATCH',
+        url: `/api/reviews/${reviewId}`,
+        headers: { cookie },
+        payload: { id: reviewId, rating: 4, body: 'Sửa lại, giữ một tấm gỡ một tấm', photos: [p1] },
+      });
+      expect(res.statusCode).toBe(200);
+
+      // p2 (thật sự rời) vào hàng dọn với đồng hồ MỚI.
+      const droppedRow = await prisma.mediaGarbage.findUniqueOrThrow({ where: { publicId: p2 } });
+      expect(droppedRow.createdAt.getTime()).toBeGreaterThan(Date.now() - 60_000);
+
+      // p1 (được giữ) KHÔNG bị đụng — mốc từ lúc ký còn nguyên.
+      const keptRow = await prisma.mediaGarbage.findUniqueOrThrow({ where: { publicId: p1 } });
+      expect(keptRow.createdAt).toEqual(signedAt);
+
+      // Và ảnh giữ vẫn gắn vào review như thường.
+      const assets = await prisma.mediaAsset.findMany({
+        where: { ownerType: MediaOwnerType.REVIEW, ownerId: reviewId },
+      });
+      expect(assets.map((a) => a.publicId)).toEqual([p1]);
+    });
+  });
 });
