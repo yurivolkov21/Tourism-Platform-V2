@@ -1,4 +1,5 @@
 import type { NextConfig } from 'next';
+import { browserApiOrigin } from './src/lib/api/env';
 import { buildSecurityHeaders } from './src/lib/security-headers';
 
 /**
@@ -26,10 +27,7 @@ const nextConfig: NextConfig = {
         headers: buildSecurityHeaders({
           // connect-src là chuyện của BROWSER nên lấy origin public, không
           // lấy API_URL (server-side, có thể là URL nội bộ).
-          apiOrigin: (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001').replace(
-            /\/+$/,
-            '',
-          ),
+          apiOrigin: browserApiOrigin(),
           isDev: process.env.NODE_ENV === 'development',
         }),
       },

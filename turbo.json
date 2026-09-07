@@ -7,7 +7,8 @@
     },
     "build": {
       "dependsOn": ["^build", "db:generate"],
-      "outputs": ["dist/**", "generated/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**", "generated/**", ".next/**", "!.next/cache/**"],
+      "env": ["VERCEL_ENV", "API_URL"]
     },
     "typecheck": {
       "dependsOn": ["^build", "db:generate"]

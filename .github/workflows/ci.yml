@@ -95,7 +95,13 @@ jobs:
           done
           echo '::error::API không lên được trong 60s'; tail -50 /tmp/ci-api.log; exit 1
 
+      # NEXT_PUBLIC_API_URL tường minh từ W3-O1: production build thiếu origin
+      # API là THROW (ADR-0016 AMEND 1 §6), CI không còn được dựa vào fallback
+      # localhost câm — biến qua được turbo strict nhờ framework inference
+      # (NEXT_PUBLIC_* của app Next).
       - run: pnpm turbo run build typecheck test
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3001
 
       - run: pnpm lint
 
