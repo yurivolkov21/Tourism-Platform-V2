@@ -8,6 +8,137 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-07 — W2 merge + vòng review 8 mũi cho phiên & hạ tầng (nhánh `fix/auth-infra-hardening`, 23 commit `4787bd4..6689fdf` ff vào main, 92 file, 2 migration đã deploy Supabase)
+
+Entry ngay dưới ghi "16 commit `4787bd4..d16c718`, chưa merge, chờ review ở
+session riêng" — đếm lại là 17 (tính cả entry docs `17ea4e6`), và "12
+controller" gỡ AuthGuard thừa thực ra là 14. Đợt review làm ở session gốc theo
+nếp review theo tầng: 8 finder theo miền (phiên/tài khoản · Better Auth · throttle
+· ranh giới admin↔web/CORS · bootstrap/env/deploy · refund reason & W1 nợ · tầng
+test · docs/altitude), 3 verifier theo miền, `gate:int` trọn trong cây chính với
+API tạm :3001 trên docker DB. Kết luận: W2 đóng đúng ba cụm audit, nhưng câu
+"admin không phát CORS" chỉ giấu response chứ không chặn THI HÀNH, một lỗi thư
+viện throttler làm trần ghi lan sang khách thật, và bốn chỗ ADR/spec tả sai hành
+vi thật của Better Auth. 10 finding bảng, vá trong 6 commit (`3f487a5..6689fdf`,
+50 file) rồi ff.
+
+### Findings và cách vá (theo tầng)
+
+**Tầng chính sách**
+
+1. **Gate xoá tài khoản bị sửa thân trong commit code** (`1af3daf`,
+   [ADR-0017 §8a](adr/0017-web-session-better-auth.md)). Câu user duyệt
+   ("PAID/PARTIALLY_REFUNDED hoặc REQUESTED → chặn") bị đổi thành "chưa khởi
+   hành" trong `2e54786` — PARTIALLY_REFUNDED đã đi còn phần dư, PAID khởi hành
+   hôm qua xoá được. Về câu gốc theo `departureEndDate >= hôm nay`, thêm chặn
+   PENDING còn `checkoutSessionExpiresAt` sống (khách trả tiền qua tab Stripe cũ
+   sau khi tombstone), mã `ACCOUNT_HAS_PENDING_CHECKOUT` 409 + copy web.
+2. **§7c tả sai Better Auth** (`1af3daf`, §8b): với `requireEmailVerification`
+   + `autoSignIn:false`, sign-up trùng email trả 200 synthetic và KHÔNG gửi mail
+   (không hề lộ EMAIL_EXISTS), web đẩy sang /verify-email chờ mã không tới. Giữ
+   200 câm của BA, trang verify thêm hint "already have an account". Chuẩn hoá
+   400 ở `check-verification-otp` không đóng oracle vì TOO_MANY_ATTEMPTS 403 chỉ
+   phát khi user tồn tại — BA có `disabledPaths`, route tắt hẳn (404), web chỉ
+   dùng sign-in/email-otp.
+3. **Reason refund thiện chí: purge 30 ngày và gửi thẳng khách** (`1db5ea4`,
+   [ADR-0030 AMEND 2](adr/0030-refund-policy-tiers.md)). AMEND 1 lấy `reason`
+   làm lưới thay bảng bậc nhưng chỉ lưu trong payload outbox mà `purgeSent(30)`
+   xoá; template in free-text admin vào email khách. Migration
+   `20260907090000_w2_review_refund_reason` thêm cột nội bộ `refunds.reason`
+   (lên contract + cột sổ cái admin, placeholder nói rõ không gửi khách); email
+   in câu chung "Goodwill refund issued by our team" qua `REFUND_REASON_COPY`;
+   `refund-math` bỏ nhánh `requested == null → trọn phần dư` (cửa hậu chết còn
+   giữ nguyên hình + spec canh nó).
+4. **`revokeOtherSessions` chỉ là cờ client** (`1af3daf`, §8c): client khác
+   gọi change-password không cờ → cookie trộm sống. `hooks.before` của BA ép
+   `revokeOtherSessions: true` server-side; session-revoke spec assert cookie
+   xoay nghiêm, ca không-cờ vẫn thu hồi.
+
+**Tầng thiết kế**
+
+5. **POST admin nhận form-urlencoded — CORS không chặn thi hành** (`3f487a5`,
+   [ADR-0026 AMEND 2](adr/0026-p4-admin-app.md)). `rawBody: true` khiến
+   FastifyAdapter đăng ký parser `application/x-www-form-urlencoded` toàn cục,
+   oRPC đọc `req.body` đã parse, cookie lax + domain cha → mọi POST
+   `/api/admin/*` là simple request không preflight; `origin:false` chỉ giấu
+   response. Hook `onRequest` ở bootstrap: ghi non-JSON ngoài `/api/auth/` và
+   `/api/webhooks/` → 415 `UNSUPPORTED_MEDIA_TYPE`; `/api/admin*` kèm
+   `sec-fetch-site: cross-site` → 403 `CROSS_SITE_FORBIDDEN`; delegator CORS bỏ
+   query (`/api/admin?x` từng trượt). Đây vẫn là lưới thứ hai — nhát cắt gốc CSP
+   thuộc W3.
+6. **Lỗi thư viện throttler** (`f1e99db`, [ADR-0037 AMEND 1](adr/0037-default-write-throttle.md)):
+   `ThrottlerStorageService` 6.5.0 giữ `timeoutIds` theo TÊN throttler nên hết
+   block một key là `clearExpirationTimes('default')` xoá timer decay của MỌI
+   key → `totalHits` đóng băng, khách thật ghi rải rác vẫn chạm trần. Thay bằng
+   `KeyedThrottlerStorage` (sliding window theo key, unit spec riêng). Cùng
+   commit: guard nhận `@Throttle` per-route qua metadata thay vì so số (từng
+   không phân biệt SIGN_UPLOAD với AUTHED), bucket auth theo path (một handler
+   wildcard từng gom sign-in/sign-up/OTP/sign-out vào một bucket 60/phút theo
+   IP — CGNAT di động khoá cả pool), admin carve-out `ADMIN_WRITE_THROTTLE`
+   60/60s (moderator duyệt 21 review/phút từng bị 429), gỡ `SIGN_UPLOAD_THROTTLE`
+   trùng AUTHED.
+7. **DELETE account: oracle mật khẩu + tombstone rời rạc** (`1af3daf`, §8a):
+   route trả 403 phân biệt, lớp chống dò duy nhất là 20/60s theo user
+   (28.800 lần/ngày). Nay khoá 15′ sau 5 lần sai (`TOO_MANY_ATTEMPTS` 429);
+   gate + tombstone chạy trong MỘT `$transaction`; ảnh review của user vào
+   `media_garbage` (từng scrub tên mà ảnh mặt vẫn treo trên trang tour).
+8. **Hook avatar hở đường sign-up, `..` lách prefix** (`1af3daf`, §8d): không
+   có `user.create.before` nên sign-up/email và sign-in/email-otp lần đầu ghi
+   `image` client thẳng vào DB; so chuỗi thô nên
+   `res.cloudinary.com/<cloud>/../<cloud-khác>/` qua được; `image: ''` bị 400.
+   Nay `guardAvatarImage` gác cả create lẫn update, so trên URL đã chuẩn hoá
+   (`isOwnCloudinaryUrl`), `''` → null.
+
+**Tầng dữ liệu và code**
+
+9. **Timeout hiểu sai, redact che OTP dev, mất stack, env/deploy** (`3f487a5`,
+   [ADR-0024 AMEND 3](adr/0024-deploy-targets.md)): `requestTimeout` là thời
+   gian NHẬN request, `connectionTimeout` là socket bất động (60s <
+   keepAliveTimeout 72s → 502 lác đác) — nay request 30s / handler 60s /
+   connection 120s, e2e đi qua `createFastifyAdapter()`. `redactDeep` che
+   `otp`/`url` ở ConsoleDeliverer làm dev không đăng nhập được local → chỉ che
+   ngoài development. onError oRPC truyền stack cho 500 thật
+   (`orpcErrorStack`). `CORS_ORIGINS` phải chứa origin của FRONTEND_URL và mọi
+   TRUSTED_ORIGINS (superRefine). render.yaml bỏ `numInstances` (free plan
+   từ chối) và ghi định dạng từng khoá `sync:false` (`MEDIA_GC_ENABLED=TRUE`
+   từng làm boot đỏ). ConsoleDeliverer nhận cờ qua field, không constructor —
+   Nest DI đòi inject `Boolean` làm WorkerModule không dựng được (`6689fdf`,
+   bắt được ở `test:int` sau gate).
+10. **Tầng test + docs**: `upload-signing.int.spec` không set `remoteAddress`
+    nên guard skip loopback — "6 lần ký cùng IP → 200" xanh kể cả gỡ throttle;
+    account-delete thêm PARTIALLY_REFUNDED / PENDING sống / khởi hành hôm nay;
+    avatar-hook thêm cloud khác + `..` + `''`, assert `toBe(400)`;
+    auth-hardening đếm đủ 60 non-429 rồi 429, sign-out không đếm, route OTP tắt
+    404 kể cả lần thứ 6; default-write-throttle probe admin + `@Throttle` pinned;
+    `check-rls.int.spec` ca âm có bằng chứng; `keyed-throttler-storage.spec` mới.
+    Docs: JSDoc PUBLIC_WRITE, spec P4b F2, ADR-0029:316, ADR-0035, ADR-0037 dẫn
+    ADR-0010 sửa đúng (`51d93cc`).
+
+### Vận hành lúc merge
+
+- Hai migration `20260906150000_w2_rls_backstop_new_tables` và
+  `20260907090000_w2_review_refund_reason` đã `migrate deploy` lên Supabase
+  TRƯỚC khi push (23/23 applied).
+- Commit docs `51d93cc` từng stage nhầm 102 file `docs/navel/` (187 MB ảnh
+  thiết kế mobile, cố ý không track) — viết lại thành `73c6f9b` trước khi push,
+  thư mục giữ nguyên trên đĩa và vào `.git/info/exclude` máy dev.
+
+### Nghiệm thu
+
+Tests after: 454 api-int và 409 api-unit và 250 contract và 871 admin và 1445
+web và 10 tokens và 22 ui và 2 i18n — `gate:int` trọn với API tạm :3001 (web
+DOM test timeout khi chạy song song dưới tải, chạy riêng 1445/1445 xanh), lint 0
+lỗi, `check-rls` xanh.
+
+### CÒN TREO (cố ý)
+
+- TRUST_PROXY / hop XFF cuối của Render chưa đo trên prod — bucket IP của
+  Better Auth (`trustedProxies`) vẫn là giả định; dev/test BA luôn trả
+  LOCALHOST_IP nên rate limit nội bộ BA chưa có test.
+- CSP + header vỏ Next (nhát cắt gốc cho XSS→admin) thuộc W3; runbook thu hồi
+  phiên admin chờ P4f.
+- Tài khoản Google-OAuth-only chưa có đường xoá self-service (ADR-0017 §7b).
+
 ## 2026-09-06 — W2 phiên & hạ tầng (nhánh `fix/auth-infra-hardening`, 16 commit `4787bd4..d16c718`, CHƯA merge — chờ review ở session riêng)
 
 Đợt vá thứ hai theo bản rà 05/09 (cụm 1 Auth & tài khoản, cụm 6 Hạ tầng API,
