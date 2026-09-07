@@ -72,36 +72,45 @@ export function withAdminOptions(
 /**
  * Chữ ký `fetch` theo .d.ts của @orpc 1.14.8 đã pin (5 tham số, `options.context`
  * mang `AdminApiContext`) — KHÔNG theo mẫu 2 tham số của docs online.
+ *
+ * Tách thành factory nhận `fetchImpl` (vòng vá review W3): interceptor gắn
+ * digest 403 là mắt xích DUY NHẤT của đường "mất quyền → /not-authorized"
+ * mà trước đây không test nào chạm tới — client.spec bơm một fetch trả 403
+ * giả qua chính link này.
  */
-const link = new OpenAPILink<AdminApiContext>(contract, {
-  // LƯỜI có chủ đích (W3-O2): apiOrigin() ép https khi NODE_ENV=production,
-  // mà `next build` NÀO cũng chạy production — gọi ở module scope là giết
-  // build local/CI (env dev http). Để dạng hàm thì phép ép chạy đúng "lúc
-  // gọi" đầu tiên ở runtime, với env runtime thật.
-  url: () => apiOrigin(),
-  // MỘT chỗ cho mọi đường đọc/ghi (ADR-0026 AMEND 3 §B): lỗi 403 mang digest
-  // ADMIN_FORBIDDEN để error boundary đưa admin bị thu hồi quyền về
-  // /not-authorized; server action đã classify 403 riêng — digest không đổi
-  // hành vi các đường đó.
-  interceptors: [
-    async (options) => {
-      try {
-        return await options.next();
-      } catch (error) {
-        throw markAdminForbidden(error);
-      }
-    },
-  ],
-  fetch: (request, init, { context }) =>
-    globalThis.fetch(request, {
-      ...withAdminOptions(request, init ?? {}, context),
-      // Tôn trọng signal PER-CALL nếu caller đặt (qua context) — 10s chỉ là
-      // mặc định cho đường ĐỌC. Money-path ghi (refund gọi provider bên
-      // trong request) cần trần dài hơn: abort trong lúc API đã commit là
-      // hạt giống refund đúp (review F2 31/08).
-      signal: context?.signal ?? AbortSignal.timeout(10_000),
-    }),
-});
+export function createAdminLink(fetchImpl: typeof globalThis.fetch = globalThis.fetch) {
+  return new OpenAPILink<AdminApiContext>(contract, {
+    // LƯỜI có chủ đích (W3-O2): apiOrigin() fail-fast khi NODE_ENV=production
+    // (thiếu env / không https tới host thật), mà `next build` NÀO cũng chạy
+    // production — gọi ở module scope là giết build local/CI. Để dạng hàm thì
+    // phép kiểm chạy đúng "lúc gọi" đầu tiên ở runtime, với env runtime thật.
+    url: () => apiOrigin(),
+    // MỘT chỗ cho mọi đường đọc/ghi (ADR-0026 AMEND 3 §B): lỗi 403 mang digest
+    // ADMIN_FORBIDDEN để error boundary đưa admin bị thu hồi quyền về
+    // /not-authorized; server action đã classify 403 riêng — digest không đổi
+    // hành vi các đường đó.
+    interceptors: [
+      async (options) => {
+        try {
+          return await options.next();
+        } catch (error) {
+          throw markAdminForbidden(error);
+        }
+      },
+    ],
+    fetch: (request, init, { context }) =>
+      fetchImpl(request, {
+        ...withAdminOptions(request, init ?? {}, context),
+        // Tôn trọng signal PER-CALL nếu caller đặt (qua context) — 10s chỉ là
+        // mặc định cho đường ĐỌC. Money-path ghi (refund gọi provider bên
+        // trong request) cần trần dài hơn: abort trong lúc API đã commit là
+        // hạt giống refund đúp (review F2 31/08).
+        signal: context?.signal ?? AbortSignal.timeout(10_000),
+      }),
+  });
+}
+
+const link = createAdminLink();
 
 export const api: JsonifiedClient<ContractRouterClient<typeof contract, AdminApiContext>> =
   createORPCClient(link);

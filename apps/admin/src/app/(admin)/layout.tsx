@@ -23,8 +23,14 @@ export default async function AdminLayout({ children }: Readonly<{ children: Rea
   }
   if (decision.kind === 'deny') redirect('/not-authorized');
 
-  // decision.kind === 'allow' ⇒ session không null (path '/' không public).
+  // Ép quyền TƯỜNG MINH, không suy từ `decision.kind === 'allow'` (vòng vá
+  // review W3, ADR-0026 AMEND 4): nhánh public của `decideAdminAccess` trả
+  // allow TRƯỚC khi kiểm role, mà `path` ở đây đến từ header do proxy gắn —
+  // nếu một ngày proxy thôi ghi đè header, kẻ tấn công tự khai `/login` là
+  // qua cổng với role CUSTOMER. Mọi trang trong nhóm (admin) đều cần session
+  // ADMIN thật, bất kể path nói gì.
   if (!session) redirect('/login');
+  if (session.role !== 'ADMIN') redirect('/not-authorized');
   // Shell nằm trong từng trang (block dashboard-01 tự mang SidebarProvider) —
   // layout chỉ còn là CỔNG GÁC (AppShell P4a đã xoá ở vòng gọt 21/08).
   //

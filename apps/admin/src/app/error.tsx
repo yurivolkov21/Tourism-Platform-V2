@@ -5,7 +5,7 @@ import { Button, buttonVariants } from '@tourism/ui/components/button';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import { ADMIN_FORBIDDEN_DIGEST } from '@/lib/api/forbidden';
+import { routeForErrorDigest } from '@/lib/error-route';
 
 /**
  * Boundary lỗi runtime cho TOÀN admin (review F1 31/08 — trước đó không có
@@ -31,7 +31,8 @@ export default function AdminRouteError({
   // boundary kể cả production) là tín hiệu đưa về đúng cửa /not-authorized
   // thay vì mời "Try again" vô vọng.
   useEffect(() => {
-    if (error.digest === ADMIN_FORBIDDEN_DIGEST) router.replace('/not-authorized');
+    const target = routeForErrorDigest(error.digest);
+    if (target) router.replace(target);
   }, [error.digest, router]);
 
   return (
