@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-07 — W3 vỏ Next thi công xong — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/web-shell-headers`, 17 commit `57d302e..1479802`, 51 file, KHÔNG migration, không đụng API)
+## 2026-09-07 — W3 vỏ Next thi công xong — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/web-shell-headers`, 19 commit code `57d302e..66804c8` và 2 commit docs, 57 file, KHÔNG migration, không đụng API)
 
 Đợt vá thứ ba theo [bản rà 05/09](analysis/2026-09-05-web-security-audit.md)
 (cụm 7 trọn + cụm 5 mục revalidate/metadata/robots/ảnh + cụm 8 mục admin),
@@ -41,22 +41,58 @@ ADR-0026 AMEND 3. 12 mục, mỗi mục một commit, TDD trên phần thuần:
   contact-location, forgot-password — trả luôn nợ câu "expires in 30
   minutes" ghi CÒN TREO ở entry W2 06/09).
 
-Tests after: `pnpm gate:int` trọn với API tạm :3001 trên docker DB theo công
-thức CI — unit 250 contract, 1471 web, 409 api, 900 admin, 22 ui, 10 tokens,
-2 i18n; integration 454 api. Tổng web tăng thêm 41 spec mới của W3
-(security-headers 7, robots 3, cloudinary-loader 5, env 6, checkout-url 4…),
-admin thêm 23 (security-headers 8, proxy 8, env 5, forbidden 3, và các spec
-sửa).
+Vòng TỰ RÀ sau thi công bắt được hai lỗi lớp "hỏng prod im lặng", vá trong
+2 commit (`294a39f..66804c8`), cả hai đều test-đỏ-trước:
 
-CÒN TREO (chờ session gốc trước khi merge): nghiệm thu tay DevTools theo spec
-§6 — user mở localhost soát 0 dòng "Refused to …" trên các trang liệt kê
-(CSP sai là prod hỏng ngay sau push); đặt env Vercel TRƯỚC merge:
-`NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (web, thiếu chỉ warn + mở `/**`) và soát
-`NEXT_PUBLIC_API_URL` đã có ở CẢ hai project (giờ thiếu là build/runtime
-throw thay vì âm thầm trỏ localhost); sau merge `curl -sI` hai app phải thấy
-CSP + 5 header và VẪN còn HSTS của Vercel. Ngoài phạm vi (cố ý, spec §2):
-LazyMotion (P7), throttle + Cache-Control đường đọc API (W4), catalogue >50,
-AdminAuditLog + freshAge (P4f).
+1. **Admin `/robots.txt` bị proxy đá về `/login`** — matcher phủ path này mà
+   `decideAdminAccess` không coi nó public, crawler không cookie không bao
+   giờ đọc được disallow. Vá: thêm vào `PUBLIC_PATHS` (`admin-gate.ts`).
+2. **`/login`, `/not-authorized`, `not-found` admin bị prerender TĨNH** —
+   HTML tĩnh không có nonce trong khi CSP là nonce + `strict-dynamic`, tức
+   production chặn TRẮNG script trang login (form chết); dev không lộ vì dev
+   luôn render động. Vá: `await connection()` ép động cả ba (route table sau
+   build: mọi trang ƒ Dynamic, chỉ `/robots.txt` tĩnh — không script, vô
+   hại).
+
+Tests after: `pnpm gate:int` trọn (chạy LẠI sau hai bản vá) với API tạm
+:3001 trên docker DB theo công thức CI — unit 250 contract, 1471 web, 409
+api, 902 admin, 22 ui, 10 tokens, 2 i18n; integration 454 api. Tổng web tăng
+thêm 41 spec mới của W3 (security-headers 7, robots 3, cloudinary-loader 5,
+env 6, checkout-url 4…), admin thêm 25 (security-headers 8, proxy 9, env 5,
+forbidden 3, admin-gate +1, và các spec sửa).
+
+CÒN TREO (chờ session gốc trước khi merge):
+
+- **Nghiệm thu tay DevTools theo spec §6** — 0 dòng "Refused to …" trên các
+  trang liệt kê. Riêng admin PHẢI thử thêm trên `next start` (production
+  build) chứ không chỉ `next dev`: lỗi static-không-nonce ở mục 2 trên đúng
+  loại dev che mất, và nonce/`strict-dynamic` chỉ hành xử thật ở bản build.
+- **Đặt env Vercel TRƯỚC merge**: `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (web —
+  thiếu chỉ warn + mở `/**`); soát `NEXT_PUBLIC_API_URL` đã đặt ở CẢ hai
+  project (từ W3 thiếu là build/runtime THROW thay vì âm thầm trỏ localhost;
+  admin còn ép https).
+- **Sau merge**: `curl -sI` hai app phải thấy CSP + 5 header mới và VẪN còn
+  HSTS của Vercel; soát đèn CI main (luật 14).
+- **`digest ADMIN_FORBIDDEN` chưa đo sống trên production boundary** — unit
+  test phủ hàm thuần + interceptor, nhưng đường Next chuyển digest qua
+  client boundary ở production nên nghiệm thu bằng cách thu hồi role một
+  tài khoản thử trong lúc điều hướng mềm.
+- **Sổ nợ copy ngoài danh sách C1** (spec chỉ định danh sách hẹp):
+  `register-form` còn `Password` cứng, và cụm auth còn chuỗi heading/label
+  chưa vào i18n — quét trọn ở đợt copy riêng, không chặn W3.
+- **Admin chưa siết ảnh như web S4**: `remotePatterns` admin vẫn pathname
+  `/**`, không `loaderFile` (spec S4 chỉ áp web; avatar admin nhỏ) — xét
+  cùng đợt W4/P4f.
+- **CSP web bake lúc build**: `connect-src` lấy `NEXT_PUBLIC_API_URL` qua
+  `headers()` của `next.config.ts` — đổi origin API là phải rebuild web (nếp
+  Vercel bình thường, ghi để khỏi ngạc nhiên).
+- Hai diagnostic Biome CÓ SẴN ngoài phạm vi W3 (`wizard-steps.tsx`
+  useIndexOf, `date-field.ts` unused `isValidDate`) — dọn ở sweep lint sau.
+- Nợ W2 vẫn treo nguyên (không thuộc W3): TRUST_PROXY/XFF Render chưa đo,
+  BA rate limit chưa có test.
+
+Ngoài phạm vi (cố ý, spec §2): LazyMotion (P7), throttle + Cache-Control
+đường đọc API (W4), catalogue >50, AdminAuditLog + freshAge (P4f).
 
 ## 2026-09-07 — W2 merge + vòng review 8 mũi cho phiên & hạ tầng (nhánh `fix/auth-infra-hardening`, 23 commit `4787bd4..6689fdf` ff vào main, 92 file, 2 migration đã deploy Supabase)
 
