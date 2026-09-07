@@ -23,8 +23,8 @@ describe('MODERATE_CONTRACT_CODES', () => {
     expect([...MODERATE_CONTRACT_CODES].sort()).toEqual(declared.sort());
   });
 
-  it('đúng MỘT mã: REVIEW_NOT_FOUND (moderate không đụng tiền nên không có mã ledger)', () => {
-    expect([...MODERATE_CONTRACT_CODES]).toEqual(['REVIEW_NOT_FOUND']);
+  it('đúng HAI mã: REVIEW_NOT_FOUND + REVIEW_RETRACTED (W4 U2) — không có mã ledger vì moderate không đụng tiền', () => {
+    expect([...MODERATE_CONTRACT_CODES].sort()).toEqual(['REVIEW_NOT_FOUND', 'REVIEW_RETRACTED']);
   });
 });
 

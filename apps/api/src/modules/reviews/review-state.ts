@@ -12,9 +12,13 @@ import type { Prisma } from '../../generated/prisma/client.js';
  */
 
 /**
- * Hai cột → MỘT trạng thái. Mỗi nơi tự ghép `isApproved` với `rejectedAt` là
- * một nơi có thể ghép sai, và cái sai ấy im lặng (một review bị bác hiện ra
- * như đang chờ duyệt).
+ * Ba cột → MỘT trạng thái. Mỗi nơi tự ghép là một nơi có thể ghép sai, và
+ * cái sai ấy im lặng (một review bị bác/đã rút hiện ra như đang chờ duyệt).
+ *
+ * `retracted` (W4 U2, ADR-0032 AMEND 1) đứng ĐẦU: ý chí chung cuộc của tác
+ * giả thắng mọi phán quyết cũ — lệnh retract đã set `isApproved` false nên
+ * nhánh approved không tranh chấp, nhưng thứ tự vẫn khai tường minh để một
+ * row dị dạng không đọc nhầm thành pending.
  *
  * Ca "vừa đăng vừa bị bác" không cần xử ở đây — CHECK `reviews_verdict_shape`
  * của DB không cho nó tồn tại.
@@ -22,7 +26,9 @@ import type { Prisma } from '../../generated/prisma/client.js';
 export function reviewModerationState(row: {
   isApproved: boolean;
   rejectedAt: Date | null;
+  retractedAt: Date | null;
 }): ReviewModerationState {
+  if (row.retractedAt) return 'retracted';
   if (row.isApproved) return 'approved';
   return row.rejectedAt ? 'rejected' : 'pending';
 }
@@ -35,13 +41,17 @@ export function reviewModerationState(row: {
  * hàng đợi lại nuốt cả những review đã bị bác.
  */
 export const REVIEW_STATE_WHERE: Record<ReviewModerationState, Prisma.ReviewWhereInput> = {
-  pending: { isApproved: false, rejectedAt: null },
+  // `retractedAt: null` từ W4 U2: row đã rút có isApproved=false +
+  // rejectedAt null — thiếu vế này hàng đợi Pending nuốt cả review tác giả
+  // đã rút, và người duyệt đọc một bài không còn được phép duyệt.
+  pending: { isApproved: false, rejectedAt: null, retractedAt: null },
   approved: { isApproved: true },
   // `isApproved: false` KHÔNG thừa: CHECK `reviews_verdict_shape` đã bảo đảm
   // bị bác ⇒ không đăng, nhưng planner không suy được điều đó — thiếu vế này
   // tab Rejected không khớp prefix index `(is_approved, rejected_at, …)` và
   // rơi về seq scan + sort (vòng vá review 05/09).
   rejected: { isApproved: false, rejectedAt: { not: null } },
+  retracted: { retractedAt: { not: null } },
 };
 
 /**

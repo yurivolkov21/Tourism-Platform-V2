@@ -1836,6 +1836,29 @@ export const messages = {
     tooEarlyBody: 'You’ll be able to rate this trip once it has finished.',
     alreadyReviewedTitle: 'You’ve already reviewed this trip',
     alreadyReviewedBody: 'Thanks again for sharing your experience with other travellers.',
+    // W4 U2 (ADR-0032 AMEND 1): quyền RÚT review đã đăng — chung cuộc.
+    retract: {
+      button: 'Retract my review',
+      retracting: 'Retracting…',
+      cancel: 'Keep my review',
+      /** Câu xác nhận nói rõ tính CHUNG CUỘC trước khi bấm — không hoàn tác. */
+      confirm:
+        'Retract this review? It leaves the tour page for good — it can’t be edited, re-submitted or restored, and its photos are removed.',
+      toast: {
+        done: {
+          title: 'Review retracted',
+          body: 'Your review is off the site. Its photos will be deleted shortly.',
+        },
+        error: {
+          title: 'Couldn’t retract the review',
+          body: 'Please try again in a moment.',
+        },
+      },
+    },
+    /** Slot sau khi ĐÃ rút — nói kết cục, không mời làm gì thêm. */
+    retractedTitle: 'You retracted this review',
+    retractedBody:
+      'It’s no longer on the site and can’t be restored. Thanks for having shared your experience.',
     /**
      * Ba trạng thái mới của chỗ đánh giá (ADR-0032 §7). Trước đó MỌI review đã
      * gửi đều đọc chung câu `alreadyReviewedBody` — kể cả bài vừa bị bác, nên
@@ -1875,6 +1898,8 @@ export const messages = {
       // câu nói đúng chuyện. (`USER_NOT_SYNCED` ở trên thì ngược lại: có ở
       // bảng mà không có trong contract; để lại vì vô hại.)
       REVIEW_TRIP_NOT_COMPLETED: 'You can review this trip once it has finished.',
+      /** W4 U2: bấm rút trên bài không còn ở trạng thái đã-đăng. */
+      REVIEW_NOT_RETRACTABLE: 'Only a published review can be retracted.',
       // Task 9: một publicId trong `photos` không hợp lệ (đã xoá/không thuộc
       // booking này) — server từ chối cả review, khách cần gỡ ảnh rồi gửi lại.
       REVIEW_PHOTO_INVALID: 'One of the photos could not be attached. Remove them and try again.',
@@ -4404,6 +4429,9 @@ export const messages = {
          * không "Removed" — nó là một phán quyết, không phải một thao tác.
          */
         rejected: 'Rejected',
+        /** W4 U2 (ADR-0032 AMEND 1): tác giả tự rút — nói RÕ AI làm, vì
+         *  người duyệt sẽ hỏi "ai gỡ bài này" và câu trả lời không phải admin. */
+        retracted: 'Retracted by author',
       },
       /** `AdminReviewSchema.source` — VERIFIED có booking thật sau lưng,
        *  CURATED là nội dung biên tập (không tài khoản, nên không email). */
@@ -4573,6 +4601,9 @@ export const messages = {
          *  (bài học review F3 31/08). */
         errors: {
           REVIEW_NOT_FOUND: 'This review no longer exists. The queue below has been refreshed.',
+          /** W4 U2: tác giả rút giữa chừng — như NOT_FOUND, refresh là câu trả lời. */
+          REVIEW_RETRACTED:
+            'The author retracted this review — it can no longer be moderated. The queue below has been refreshed.',
         },
         toast: {
           approvedTitle: 'Review approved',
@@ -4584,6 +4615,10 @@ export const messages = {
           /** Nói luôn là khách đã được báo — đó là điểm khác `unpublish`. */
           rejectedBody: (author: string) =>
             `The review by ${author} is closed, and they have been emailed.`,
+          /** W4 U2: kết cục hiếm — tác giả rút đúng lúc admin đang thao tác. */
+          retractedTitle: 'Retracted by author',
+          retractedBody: (author: string) =>
+            `${author} retracted this review — it can no longer be moderated.`,
         },
       },
     },

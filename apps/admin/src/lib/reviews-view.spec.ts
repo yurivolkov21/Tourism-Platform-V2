@@ -43,6 +43,7 @@ const PENDING: AdminReview = {
   isApproved: false,
   moderationState: 'pending',
   rejectedAt: null,
+  retractedAt: null,
   moderationNote: null,
   rejectionCount: 0,
   source: 'VERIFIED',

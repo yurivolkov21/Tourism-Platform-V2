@@ -18,8 +18,12 @@ export const ReviewVerdictSchema = z.enum(['approve', 'reject', 'unpublish']);
 
 export type ReviewVerdict = z.output<typeof ReviewVerdictSchema>;
 
-/** Ba trạng thái của một review, SUY từ hai cột (ADR-0031 §1). */
-export const ReviewModerationStateSchema = z.enum(['pending', 'approved', 'rejected']);
+/**
+ * Bốn trạng thái của một review, SUY từ ba cột (ADR-0031 §1 + ADR-0032
+ * AMEND 1). `retracted` là ý chí của TÁC GIẢ (trục riêng `retractedAt`, W4
+ * U2): chung cuộc — admin không duyệt lại, tác giả không sửa tiếp.
+ */
+export const ReviewModerationStateSchema = z.enum(['pending', 'approved', 'rejected', 'retracted']);
 
 export type ReviewModerationState = z.output<typeof ReviewModerationStateSchema>;
 
@@ -135,9 +139,18 @@ export const MyReviewSchema = PublicReviewSchema.extend({
   // nullable — FK tour trên schema là nullable (review curated có thể không tour).
   tourSlug: z.string().nullable(),
   tourTitle: z.string().nullable(),
+  /** Mốc tác giả RÚT review (W4 U2) — null khi chưa từng rút. */
+  retractedAt: z.iso.datetime().nullable(),
 });
 
 export type MyReview = z.infer<typeof MyReviewSchema>;
+
+/**
+ * Input rút review của CHÍNH mình (W4 U2, ADR-0032 AMEND 1) — chỉ id: không
+ * có gì để "sửa", đây là một động từ chung cuộc.
+ */
+export const RetractReviewInputSchema = z.object({ id: z.uuid() });
+export type RetractReviewInput = z.output<typeof RetractReviewInputSchema>;
 
 /** Input duyệt / bác / gỡ đăng một review (admin). */
 export const ModerateReviewInputSchema = z
@@ -187,6 +200,9 @@ export const AdminReviewSchema = PublicReviewSchema.extend({
    * cần biết điều đó trước khi đọc (ADR-0032 §8).
    */
   rejectionCount: z.int().nonnegative(),
+  /** Mốc tác giả RÚT review (W4 U2, ADR-0032 AMEND 1) — với admin đây là
+   * ngữ cảnh "retracted by author", và hàng này KHÔNG duyệt lại được. */
+  retractedAt: z.iso.datetime().nullable(),
   source: z.enum(['VERIFIED', 'CURATED']),
   tourSlug: z.string().nullable(),
   // R2: tên tour (không chỉ slug) để admin nhận diện; ai duyệt lần cuối

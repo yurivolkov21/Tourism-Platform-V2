@@ -33,6 +33,7 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
       rejectionCount: 0,
       tourSlug: 'ha-long-bay-cruise',
       tourTitle: 'Ha Long Bay Cruise',
+      retractedAt: null,
       ...over,
     };
   }
@@ -43,6 +44,19 @@ describe('reviewSlot — trang chi tiết booking hiện gì ở chỗ đánh gi
     const review = ownReview({ isApproved: true, moderationState: 'approved' });
     expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
       'approved',
+    );
+  });
+
+  it('W4 U2: đã RÚT → "retracted", thắng mọi nhánh khác (kể cả hết-lượt-sửa)', () => {
+    // rejectionCount chạm trần cố ý: câu cho khách phải là "bạn đã rút",
+    // không phải "chúng tôi đã xem hai lần" — thứ tự nhánh là load-bearing.
+    const review = ownReview({
+      moderationState: 'retracted',
+      retractedAt: '2026-08-03T00:00:00.000Z',
+      rejectionCount: REVIEW_REJECTION_LIMIT,
+    });
+    expect(reviewSlot(makeBooking({ ...done, reviewedAt: review.createdAt, review }))).toBe(
+      'retracted',
     );
   });
 

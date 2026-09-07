@@ -81,6 +81,7 @@ import {
   ModerateReviewInputSchema,
   MyReviewSchema,
   PublicReviewSchema,
+  RetractReviewInputSchema,
   ReviewBreakdownSchema,
   ReviewsByTourQuerySchema,
   UpdateReviewInputSchema,
@@ -278,6 +279,29 @@ export const contract = {
         /** Đã duyệt (không sửa được), hoặc đã bác đủ số lần (hết đường). */
         REVIEW_NOT_EDITABLE: { status: 409, message: 'This review can no longer be edited' },
         REVIEW_PHOTO_INVALID: { status: 400, message: 'A photo does not belong to this booking' },
+      }),
+    /**
+     * W4 U2 (ADR-0032 AMEND 1): tác giả RÚT review ĐÃ DUYỆT khỏi site —
+     * chung cuộc (admin không duyệt lại, tác giả không sửa tiếp). Ảnh
+     * requeue GC, rating recompute, cache trang tour bust — như một lượt
+     * unpublish nhưng do CHÍNH CHỦ và không đảo được. Cùng luật 404 chống dò
+     * với `update`.
+     */
+    retract: oc
+      .route({
+        method: 'POST',
+        path: '/api/reviews/{id}/retract',
+        summary: 'Retract your own published review (final)',
+      })
+      .input(RetractReviewInputSchema)
+      .output(MyReviewSchema)
+      .errors({
+        REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' },
+        /** Chưa/không còn ở trạng thái đã-duyệt (pending/rejected/đã rút). */
+        REVIEW_NOT_RETRACTABLE: {
+          status: 409,
+          message: 'Only a published review can be retracted',
+        },
       }),
   },
   /**
@@ -744,7 +768,15 @@ export const contract = {
         })
         .input(ModerateReviewInputSchema)
         .output(AdminReviewSchema)
-        .errors({ REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' } }),
+        .errors({
+          REVIEW_NOT_FOUND: { status: 404, message: 'Review not found' },
+          /** W4 U2: review tác giả đã rút — ý chí chung cuộc của CHÍNH CHỦ,
+           * mọi động từ moderation đều bị chặn (kể cả approve lại). */
+          REVIEW_RETRACTED: {
+            status: 409,
+            message: 'The author retracted this review — it cannot be moderated',
+          },
+        }),
     },
     /**
      * Số liệu vùng (spec P4b §3-F5) — MỘT endpoint cho mỗi trang vùng, mỗi

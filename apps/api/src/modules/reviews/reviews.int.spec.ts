@@ -1804,4 +1804,122 @@ describe('reviews (int)', () => {
       expect(sum).toBe(all.total);
     });
   });
+
+  // W4 U2 (ADR-0032 AMEND 1): tác giả RÚT review đã duyệt — chung cuộc.
+  describe('reviews.retract — tác giả rút review đã duyệt (W4 U2)', () => {
+    /** Booking đã đi xong + review CÓ ẢNH đã được duyệt của chính chủ. */
+    async function seedApprovedWithPhoto(email: string) {
+      const { user, cookie } = await signUpAndSignIn(app, email);
+      const { tour } = await seedCompletedBooking({
+        endDate: new Date(Date.now() - 864e5),
+        userId: user.id,
+      });
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: {
+          bookingCode: 'BK-TESTREV1',
+          rating: 5,
+          body: 'Chuyến đi tuyệt vời, sẽ quay lại lần nữa',
+          photos: ['tourism/reviews/BK-TESTREV1/pic-1'],
+        },
+      });
+      const reviewId = created.json().id as string;
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      await reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' });
+      return { user, cookie, reviewId, tour, admin };
+    }
+
+    const retract = (cookie: string, id: string) =>
+      app.inject({
+        method: 'POST',
+        url: `/api/reviews/${id}/retract`,
+        headers: { cookie },
+        payload: { id },
+      });
+
+    it('rút review đã duyệt → isApproved false + retractedAt, ảnh requeue GC, rating recompute, bust tour:<slug>', async () => {
+      const { cookie, reviewId, tour } = await seedApprovedWithPhoto('retract-happy@example.com');
+      const before = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
+      expect(before.ratingCount).toBe(1);
+
+      const spy = vi.spyOn(webRevalidationService, 'revalidate').mockResolvedValue(undefined);
+      try {
+        const res = await retract(cookie, reviewId);
+        expect(res.statusCode).toBe(200);
+        expect(res.json()).toMatchObject({ moderationState: 'retracted', isApproved: false });
+
+        const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+        expect(after.isApproved).toBe(false);
+        expect(after.retractedAt).toBeInstanceOf(Date);
+        // KHÔNG ghi sổ moderation — sổ ấy ghi hành vi NGƯỜI DUYỆT; 1 event
+        // là lần approve của admin trong seed.
+        expect(await prisma.reviewModerationEvent.count({ where: { reviewId } })).toBe(1);
+
+        // Ảnh gỡ khỏi media_assets và requeue GC với ĐÚNG publicId đầy đủ.
+        expect(
+          await prisma.mediaAsset.count({
+            where: { ownerType: MediaOwnerType.REVIEW, ownerId: reviewId },
+          }),
+        ).toBe(0);
+        const garbage = await prisma.mediaGarbage.findMany();
+        expect(garbage.map((g) => g.publicId)).toContain('tourism/reviews/BK-TESTREV1/pic-1');
+
+        // Rating recompute trong CÙNG tx: tour không còn review đăng nào.
+        const tourAfter = await prisma.tour.findUniqueOrThrow({ where: { id: tour.id } });
+        expect(tourAfter.ratingCount).toBe(0);
+
+        // Bust cache SAU commit — đúng tag của trang tour.
+        expect(spy).toHaveBeenCalledWith(['tours', `tour:${tour.slug}`]);
+      } finally {
+        spy.mockRestore();
+      }
+    });
+
+    it('review của NGƯỜI KHÁC → 404 (không phải 403 — id họ chưa từng thấy)', async () => {
+      const { reviewId } = await seedApprovedWithPhoto('retract-owner@example.com');
+      const intruder = await signUpAndSignIn(app, 'retract-intruder@example.com');
+      const res = await retract(intruder.cookie, reviewId);
+      expect(res.statusCode).toBe(404);
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.isApproved).toBe(true);
+      expect(after.retractedAt).toBeNull();
+    });
+
+    it('review CHƯA duyệt → 409 REVIEW_NOT_RETRACTABLE; rút hai lần → lần hai cũng 409', async () => {
+      const { user, cookie } = await signUpAndSignIn(app, 'retract-pending@example.com');
+      await seedCompletedBooking({ endDate: new Date(Date.now() - 864e5), userId: user.id });
+      const created = await app.inject({
+        method: 'POST',
+        url: '/api/reviews',
+        headers: { cookie },
+        payload: { bookingCode: 'BK-TESTREV1', rating: 3, body: 'Bài đang chờ duyệt của khách' },
+      });
+      const pendingId = created.json().id as string;
+
+      const res = await retract(cookie, pendingId);
+      expect(res.statusCode).toBe(409);
+      expect(res.json().code).toBe('REVIEW_NOT_RETRACTABLE');
+
+      // Đường đã duyệt: rút lần một OK, lần hai 409 (chung cuộc, không lặp).
+      const admin = await signUpAdmin(app, ADMIN_EMAIL);
+      await reviewsService.moderate(admin.user.id, { id: pendingId, verdict: 'approve' });
+      expect((await retract(cookie, pendingId)).statusCode).toBe(200);
+      expect((await retract(cookie, pendingId)).statusCode).toBe(409);
+    });
+
+    it('admin KHÔNG duyệt lại được review đã rút — moderate ném REVIEW_RETRACTED, DB không đổi', async () => {
+      const { cookie, reviewId, admin } = await seedApprovedWithPhoto('retract-lock@example.com');
+      await retract(cookie, reviewId);
+
+      await expect(
+        reviewsService.moderate(admin.user.id, { id: reviewId, verdict: 'approve' }),
+      ).rejects.toThrow();
+
+      const after = await prisma.review.findUniqueOrThrow({ where: { id: reviewId } });
+      expect(after.isApproved).toBe(false);
+      expect(after.retractedAt).toBeInstanceOf(Date);
+    });
+  });
 });

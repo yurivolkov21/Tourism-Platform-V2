@@ -104,6 +104,15 @@ export const termsDoc: LegalDoc = {
       ],
     },
     {
+      // W4 U2 (ADR-0032 AMEND 1): tên hiển thị là SNAPSHOT lúc đăng + quyền
+      // rút — khách phải đọc được cả hai TRƯỚC khi đăng, và biết đường gỡ.
+      heading: 'Reviews you publish',
+      paragraphs: [
+        'When a review you wrote is published, it appears on the tour page under the display name on your account at the time you submitted it. Changing your account name later does not change the name shown on reviews you have already published.',
+        'You can retract a published review at any time from the booking page in your account. Retracting is final: the review leaves the site, its photos are deleted, and it cannot be edited, re-submitted or restored.',
+      ],
+    },
+    {
       heading: 'Intellectual property',
       paragraphs: [
         'The content of this website — including text, images, logos, and design — belongs to us or our licensors and is protected by intellectual-property laws. You may not copy or reuse it without our permission, except as allowed by law.',

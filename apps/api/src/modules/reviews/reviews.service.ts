@@ -47,6 +47,10 @@ export class ReviewNotFoundError extends Error {}
 /** Đã duyệt (không sửa được), hoặc đã bác đủ số lần (ADR-0032 §2/§5). */
 export class ReviewNotEditableError extends Error {}
 export class TourNotFoundError extends Error {}
+/** Chưa/không còn ở trạng thái đã-duyệt — không có gì để rút (W4 U2). */
+export class ReviewNotRetractableError extends Error {}
+/** Review tác giả đã rút — mọi động từ moderation bị chặn (W4 U2). */
+export class ReviewRetractedError extends Error {}
 /** Ảnh gửi kèm KHÔNG nằm trong folder booking đang review (ADR-0021 §4). */
 export class ReviewPhotoInvalidError extends Error {}
 
@@ -143,6 +147,7 @@ export function toAdminReview(
     createdAt: Date;
     isApproved: boolean;
     rejectedAt: Date | null;
+    retractedAt: Date | null;
     source: ReviewSource;
     moderatedAt: Date | null;
     tour: { slug: string; title: string } | null;
@@ -157,6 +162,7 @@ export function toAdminReview(
     isApproved: row.isApproved,
     moderationState: reviewModerationState(row),
     rejectedAt: row.rejectedAt?.toISOString() ?? null,
+    retractedAt: row.retractedAt?.toISOString() ?? null,
     moderationNote: latestNote(row),
     rejectionCount: row._count?.moderationEvents ?? 0,
     source: row.source,
@@ -177,6 +183,7 @@ export function toMyReview(
   row: Parameters<typeof toPublicReview>[0] & {
     isApproved: boolean;
     rejectedAt: Date | null;
+    retractedAt: Date | null;
     tour: { slug: string; title: string } | null;
     moderationEvents?: { note: string | null }[];
     _count?: { moderationEvents: number };
@@ -196,6 +203,7 @@ export function toMyReview(
     // R1: danh tính tour (nullable — review curated có thể không gắn tour).
     tourSlug: row.tour?.slug ?? null,
     tourTitle: row.tour?.title ?? null,
+    retractedAt: row.retractedAt?.toISOString() ?? null,
   };
 }
 
@@ -369,9 +377,12 @@ export class ReviewsService {
       // approve. Không khoá thì lệnh sửa ghi đè `is_approved=false` + nội
       // dung mới lên một review ĐANG ở trên site, rating tour thừa một, cache
       // web không bust — ranh giới ADR-0032 §2 bị vượt (vòng vá review 05/09).
-      const [locked] = await tx.$queryRaw<{ isApproved: boolean; rejectedAt: Date | null }[]>(
+      const [locked] = await tx.$queryRaw<
+        { isApproved: boolean; rejectedAt: Date | null; retractedAt: Date | null }[]
+      >(
         Prisma.sql`
-          SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt"
+          SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt",
+                 retracted_at AS "retractedAt"
           FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
         `,
       );
@@ -439,6 +450,111 @@ export class ReviewsService {
 
     const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(row.id);
     return toMyReview(row, media ?? []);
+  }
+
+  /**
+   * Tác giả RÚT review ĐÃ DUYỆT của chính mình (W4 U2, ADR-0032 AMEND 1) —
+   * chung cuộc: admin không duyệt lại (moderate() chặn `retractedAt`), tác
+   * giả không sửa tiếp (`canAuthorEdit` trả false cho `retracted`).
+   *
+   * Cùng khuôn transaction với `moderate()`: khoá row bằng FOR UPDATE rồi
+   * kiểm lại trạng thái bằng giá trị vừa khoá (một admin có thể vừa
+   * unpublish giữa hai câu lệnh), gỡ ảnh + requeue GC trong CÙNG tx (khuôn
+   * `update()` — rollback thì ảnh còn dùng không được nằm trong hàng xoá),
+   * recompute rating trong tx, bust cache SAU commit.
+   *
+   * KHÔNG ghi `ReviewModerationEvent` — sổ ấy ghi hành vi NGƯỜI DUYỆT; dấu
+   * vết của tác giả là chính `retractedAt`. KHÔNG gửi email — người rút là
+   * người bấm nút, không có ai để báo.
+   */
+  async retract(userId: string, input: { id: string }): Promise<MyReview> {
+    const existing = await prisma.review.findUnique({
+      where: { id: input.id },
+      select: { userId: true },
+    });
+    // Gộp "không tồn tại" với "không phải của bạn" — cùng luật 404 chống dò
+    // với `update()`: id review của người khác thì họ chưa từng thấy.
+    if (!existing || existing.userId !== userId) throw new ReviewNotFoundError();
+
+    const row = await prisma.$transaction(async (tx) => {
+      const [locked] = await tx.$queryRaw<
+        { isApproved: boolean; retractedAt: Date | null; tourId: string | null }[]
+      >(Prisma.sql`
+        SELECT is_approved AS "isApproved", retracted_at AS "retractedAt",
+               tour_id AS "tourId"
+        FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
+      `);
+      if (!locked) throw new ReviewNotFoundError();
+      // Chỉ review ĐANG đăng mới có gì để rút; đã rút rồi thì lần hai là 409
+      // (chung cuộc, không idempotent-200 — khách phải biết nút này hết tác
+      // dụng chứ không tưởng vừa rút thêm một lần).
+      if (!locked.isApproved || locked.retractedAt) throw new ReviewNotRetractableError();
+
+      await tx.review.update({
+        where: { id: input.id },
+        data: { isApproved: false, retractedAt: new Date() },
+      });
+
+      // Ảnh rời site cùng bài viết: gỡ row media_assets và requeue publicId
+      // vào hàng dọn Cloudinary — đồng hồ 7 ngày tính từ lúc rút
+      // (ADR-0035 §AMEND 2, cùng khuôn `update()`).
+      const dropped = await tx.mediaAsset.findMany({
+        where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
+        select: { publicId: true },
+      });
+      if (dropped.length > 0) {
+        await tx.mediaAsset.deleteMany({
+          where: { ownerType: MediaOwnerType.REVIEW, ownerId: input.id },
+        });
+        await this.garbage.requeue(
+          tx,
+          dropped.map((asset) => asset.publicId),
+        );
+      }
+
+      // Recompute rating của đúng tour — NGUYÊN VĂN khuôn ③ của moderate()
+      // (khoá row tour bằng statement riêng rồi UPDATE...FROM statement mới,
+      // lý do concurrency ghi trọn ở doc-comment moderate()).
+      if (locked.tourId) {
+        const [lockedTour] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`
+          SELECT id FROM tours WHERE id = ${locked.tourId}::uuid FOR UPDATE
+        `);
+        if (lockedTour) {
+          await tx.$executeRaw(Prisma.sql`
+            UPDATE tours t
+            SET rating_avg = s.avg_rating,
+                rating_count = s.cnt,
+                updated_at = now()
+            FROM (
+              SELECT AVG(rating)::numeric(2,1) AS avg_rating, COUNT(*)::int AS cnt
+              FROM reviews
+              WHERE tour_id = ${locked.tourId}::uuid
+                AND is_approved = true
+            ) s
+            WHERE t.id = ${locked.tourId}::uuid
+          `);
+        }
+      }
+
+      return await tx.review.findUniqueOrThrow({
+        where: { id: input.id },
+        include: REVIEW_MINE_INCLUDE,
+      });
+    });
+
+    const media = (await this.media.resolveForOwners(MediaOwnerType.REVIEW, [row.id])).get(row.id);
+    const review = toMyReview(row, media ?? []);
+
+    // Bust cache SAU commit (cùng lý do moderate()): review vừa rời site,
+    // trang tour phải thôi hiện nó. Luôn là chiều approved → không-đăng nên
+    // tags không bao giờ null, nhưng vẫn đi qua MỘT nguồn quyết định chung.
+    const tags = moderationRevalidationTags({
+      tourSlug: review.tourSlug,
+      fromApproved: true,
+      toApproved: false,
+    });
+    if (tags) void this.webRevalidation.revalidate(tags);
+    return review;
   }
 
   /**
@@ -527,15 +643,19 @@ export class ReviewsService {
         {
           isApproved: boolean;
           rejectedAt: Date | null;
+          retractedAt: Date | null;
           tourId: string | null;
           source: ReviewSource;
         }[]
       >(Prisma.sql`
         SELECT is_approved AS "isApproved", rejected_at AS "rejectedAt",
-               tour_id AS "tourId", source AS "source"
+               retracted_at AS "retractedAt", tour_id AS "tourId", source AS "source"
         FROM reviews WHERE id = ${input.id}::uuid FOR UPDATE
       `);
       if (!locked) throw new ReviewNotFoundError();
+      // W4 U2 (ADR-0032 AMEND 1): review tác giả đã RÚT là ý chí chung cuộc
+      // của chính chủ — mọi động từ moderation (kể cả approve lại) bị chặn.
+      if (locked.retractedAt) throw new ReviewRetractedError();
 
       const fromApproved = locked.isApproved;
       const fromRejected = locked.rejectedAt !== null;

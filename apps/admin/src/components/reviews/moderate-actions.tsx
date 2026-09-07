@@ -80,6 +80,9 @@ export function ModerateActions({
     // đọc ra là một lựa chọn. `reopen` cũng là đường lùi thật sự cần: bác
     // nhầm thì trả review về hàng đợi mà không phải đăng nó lên.
     rejected: ['approve', 'reopen'],
+    // W4 U2 (ADR-0032 AMEND 1): tác giả đã RÚT — ý chí chung cuộc của chính
+    // chủ, KHÔNG có nút nào; API cũng chặn (REVIEW_RETRACTED 409).
+    retracted: [],
   };
   const actions = ACTIONS[review.state];
 
@@ -138,6 +141,12 @@ const TOAST: Record<
   rejected: (author) => ({
     title: t.toast.rejectedTitle,
     description: t.toast.rejectedBody(author),
+  }),
+  // Không nút nào dẫn tới kết cục này, nhưng bảng tra theo KẾT CỤC server trả
+  // — một lệnh đua với chính tác giả (rút ngay giữa dialog) vẫn phải kể đúng.
+  retracted: (author) => ({
+    title: t.toast.retractedTitle,
+    description: t.toast.retractedBody(author),
   }),
 };
 

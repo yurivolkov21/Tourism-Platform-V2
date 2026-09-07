@@ -15,7 +15,9 @@ const t = messages.admin.reviews.moderate;
  * — test đối chiếu với `errorMap` thật của contract).
  */
 // Mã trạng-thái-cũ khai NGAY trong codec (vòng vá review F7) — hết predicate tay.
-const codec = createWriteErrorCodec(t.errors, { stale: ['REVIEW_NOT_FOUND'] });
+// REVIEW_RETRACTED (W4 U2) cùng họ stale với NOT_FOUND: hàng dưới chân
+// dialog đã đổi số phận ngoài tầm admin — đóng dialog, toast, refresh queue.
+const codec = createWriteErrorCodec(t.errors, { stale: ['REVIEW_NOT_FOUND', 'REVIEW_RETRACTED'] });
 
 export const MODERATE_CONTRACT_CODES = codec.codes;
 

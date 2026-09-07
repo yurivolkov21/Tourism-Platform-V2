@@ -11,6 +11,7 @@ import {
   ReviewNotEditableError,
   ReviewNotEligibleError,
   ReviewNotFoundError,
+  ReviewNotRetractableError,
   ReviewPhotoInvalidError,
   ReviewsService,
   ReviewTripNotCompletedError,
@@ -80,6 +81,24 @@ export class ReviewsController {
         if (err instanceof ReviewNotFoundError) throw errors.REVIEW_NOT_FOUND();
         if (err instanceof ReviewNotEditableError) throw errors.REVIEW_NOT_EDITABLE();
         if (err instanceof ReviewPhotoInvalidError) throw errors.REVIEW_PHOTO_INVALID();
+        throw err;
+      }
+    });
+  }
+
+  /**
+   * W4 U2 (ADR-0032 AMEND 1): tác giả rút review đã duyệt — chung cuộc.
+   * Cùng luật 404 chống dò với `update`.
+   */
+  // Đường GHI: trần mặc định toàn cục lo (ADR-0037 — authed theo user).
+  @Implement(contract.reviews.retract)
+  retract(@CurrentUser() user: SessionUser) {
+    return implement(contract.reviews.retract).handler(async ({ input, errors }) => {
+      try {
+        return await this.reviews.retract(user.id, input);
+      } catch (err) {
+        if (err instanceof ReviewNotFoundError) throw errors.REVIEW_NOT_FOUND();
+        if (err instanceof ReviewNotRetractableError) throw errors.REVIEW_NOT_RETRACTABLE();
         throw err;
       }
     });

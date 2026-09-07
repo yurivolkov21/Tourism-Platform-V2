@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BookingActions } from '@/components/account/booking-actions';
+import { RetractReviewButton } from '@/components/account/retract-review-button';
 import { ReviewComposer } from '@/components/account/review-composer';
 import { ContentHero } from '@/components/content/content-hero';
 import { RevealItem } from '@/components/motion/reveal-item';
@@ -285,6 +286,13 @@ export default async function AccountBookingDetailPage({
                   mọi review đã gửi rơi vào một nhánh duy nhất, nên khách bị
                   bác quay lại đọc thấy một lời cảm ơn. */}
               <ReviewSlotNote slot={slot} reason={booking.review?.moderationNote ?? null} />
+              {/* W4 U2 (ADR-0032 AMEND 1): review ĐANG đăng có đường rút —
+                  chung cuộc, xác nhận hai bước trong chính nút. */}
+              {slot === 'approved' && booking.review ? (
+                <div className="mt-2">
+                  <RetractReviewButton reviewId={booking.review.id} />
+                </div>
+              ) : null}
               {slot === 'form' || slot === 'pending' || slot === 'rejected' ? (
                 <ReviewComposer bookingCode={booking.code} review={booking.review ?? undefined} />
               ) : null}
@@ -353,6 +361,10 @@ function ReviewSlotNote({ slot, reason }: { slot: ReviewSlot; reason: string | n
 
   if (slot === 'approved') {
     return <SlotNote title={rv.alreadyReviewedTitle} body={rv.alreadyReviewedBody} />;
+  }
+  if (slot === 'retracted') {
+    // W4 U2: kết cục đóng — nói rõ, không mời làm gì thêm.
+    return <SlotNote title={rv.retractedTitle} body={rv.retractedBody} />;
   }
   if (slot === 'tooEarly') {
     return <SlotNote title={rv.tooEarlyTitle} body={rv.tooEarlyBody} />;

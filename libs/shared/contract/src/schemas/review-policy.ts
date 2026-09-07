@@ -53,6 +53,10 @@ export interface ReviewEditContext {
  */
 export function canAuthorEdit(review: ReviewEditContext): boolean {
   if (review.moderationState === 'approved') return false;
+  // `retracted` (W4 U2, ADR-0032 AMEND 1): rút là CHUNG CUỘC — tự rút rồi
+  // "sửa" để quay lại hàng đợi là biến động từ rút thành đường sửa approved
+  // vòng vèo, đúng thứ ranh giới §2 chặn.
+  if (review.moderationState === 'retracted') return false;
   return review.rejectionCount < REVIEW_REJECTION_LIMIT;
 }
 

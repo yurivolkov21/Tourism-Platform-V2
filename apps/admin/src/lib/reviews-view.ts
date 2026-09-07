@@ -22,11 +22,12 @@ const t = messages.admin.reviews;
 export function reviewStateBadgeVariant(
   state: ReviewModerationState,
 ): 'default' | 'secondary' | 'destructive' | 'outline' {
-  // `rejected` KHÔNG dùng `destructive`: badge kể một kết cục ĐÃ RỒI, trung
-  // tính — cùng lập luận đã ghi ở nút Deny của cancellations, nơi nút thì đỏ
-  // còn badge thì không. Viền cho nó tách khỏi `pending` mà không kêu đỏ.
+  // `rejected` và `retracted` (W4 U2) KHÔNG dùng `destructive`: badge kể một
+  // kết cục ĐÃ RỒI, trung tính — cùng lập luận đã ghi ở nút Deny của
+  // cancellations, nơi nút thì đỏ còn badge thì không. Viền cho cả hai kết
+  // cục đóng tách khỏi `pending` mà không kêu đỏ.
   if (state === 'approved') return 'default';
-  return state === 'rejected' ? 'outline' : 'secondary';
+  return state === 'pending' ? 'secondary' : 'outline';
 }
 
 /** Một tấm ảnh khách đính kèm, đã sẵn sàng cho thẻ ảnh (ADR-0021). */

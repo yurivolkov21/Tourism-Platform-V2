@@ -38,12 +38,17 @@ export type ReviewSlot =
   | 'rejected'
   | 'rejectedFinal'
   | 'approved'
+  | 'retracted'
   | 'tooEarly'
   | 'hidden';
 
 export function reviewSlot(booking: BookingDetail): ReviewSlot {
   const review = booking.review;
   if (review) {
+    // W4 U2 (ADR-0032 AMEND 1): tác giả đã RÚT — kết cục đóng, đứng TRƯỚC
+    // mọi nhánh khác (canAuthorEdit cũng trả false cho trạng thái này, nhưng
+    // câu cho khách phải là "bạn đã rút" chứ không phải "hết lượt sửa").
+    if (review.moderationState === 'retracted') return 'retracted';
     if (review.moderationState === 'approved') return 'approved';
     if (isEditLimitReached(review)) return 'rejectedFinal';
     // Còn sửa được: `pending` và `rejected` cần hai câu khác nhau, nên tách
