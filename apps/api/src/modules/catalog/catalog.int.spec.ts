@@ -229,6 +229,18 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     expect(none.items).toEqual([]);
   });
 
+  it('W4 R3: search `%`/`_` là ký tự THƯỜNG, không phải wildcard (escapeLike)', async () => {
+    // Không escape thì `%` trả TOÀN BỘ bảng trong khi ô tìm nói đang lọc —
+    // cùng bẫy đã vá ở admin (vòng F9), nay tới đường đọc công khai.
+    const percent = await app.inject({ method: 'GET', url: '/api/tours?search=%25' });
+    expect(percent.statusCode).toBe(200);
+    expect(percent.json().total).toBe(0);
+
+    const underscore = await app.inject({ method: 'GET', url: '/api/tours?search=a_a' });
+    expect(underscore.statusCode).toBe(200);
+    expect(underscore.json().total).toBe(0);
+  });
+
   it('filters by destination slug (any linked destination, not just primary)', async () => {
     // Cruise nối Hà Nội qua join test-only (non-primary, đắp ở beforeAll);
     // unpublishedTour cũng nối Hà Nội thật (primary) nhưng unpublished nên bị

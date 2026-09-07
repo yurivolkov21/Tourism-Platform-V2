@@ -242,7 +242,9 @@ export const SortOrderSchema = z.enum(['asc', 'desc']);
  * types stay honest (`page?: number`, `featured?: boolean`).
  */
 export const ToursListQuerySchema = z.object({
-  page: z.int().min(1).default(1),
+  // Trần page (W4 R3) — cùng lý do PageQuerySchema bên common.ts: offset
+  // không trần là một seq scan theo yêu cầu của người lạ.
+  page: z.int().min(1).max(10_000).default(1),
   limit: z.int().min(1).max(50).default(12),
   /** Category slug. */
   category: z.string().min(1).max(60).optional(),

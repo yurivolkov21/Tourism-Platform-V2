@@ -6,7 +6,11 @@ import { z } from 'zod';
  * chỉ phải học một hình dạng.
  */
 export const PageQuerySchema = z.object({
-  page: z.int().min(1).default(1),
+  // Trần page (W4 R3): `page` không trần là `skip = (page-1)*pageSize` tuỳ ý
+  // — Postgres vẫn phải ĐẾM QUA từng row bị skip, một URL ?page=10^9 là một
+  // seq scan miễn phí cho kẻ lạ. 10 000 trang × 20 dòng vượt xa mọi dữ liệu
+  // thật của nền tảng.
+  page: z.int().min(1).max(10_000).default(1),
   pageSize: z.int().min(1).max(100).default(20),
 });
 
@@ -22,7 +26,9 @@ export const PageQuerySchema = z.object({
  * `ZodSmartCoercionPlugin` bên API vẫn ép được "2" → 2 cho page/limit.
  */
 export const AdminPageQuerySchema = z.object({
-  page: z.int().min(1).default(1),
+  // Cùng trần page với PageQuerySchema (W4 R3) — admin có RBAC nhưng offset
+  // khổng lồ vẫn là một câu SQL đắt vô cớ.
+  page: z.int().min(1).max(10_000).default(1),
   limit: z.int().min(1).max(100).default(20),
 });
 

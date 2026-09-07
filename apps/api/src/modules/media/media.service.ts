@@ -2,8 +2,33 @@ import { Injectable } from '@nestjs/common';
 import type { MediaItem } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
-import type { MediaOwnerType } from '../../generated/prisma/enums.js';
+import type { Prisma } from '../../generated/prisma/client.js';
+import type { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { buildCloudinaryUrl } from '../../lib/cloudinary-url.js';
+
+/**
+ * Select HẸP đúng các cột mapper bên dưới đọc (W4 R3) — bản cũ kéo trọn row
+ * (kể cả bytes/duration/format/timestamps không ai dùng); danh sách 12 tour ×
+ * cả gallery là băng thông DB trả cho dữ liệu bị vứt. Kiểu asset derive từ
+ * chính select (nếp F9) — thêm cột vào mapper mà quên select là lỗi compile,
+ * không phải undefined lúc chạy.
+ */
+const RESOLVE_SELECT = {
+  ownerId: true,
+  publicId: true,
+  type: true,
+  role: true,
+  posterId: true,
+  version: true,
+  width: true,
+  height: true,
+  alt: true,
+  sortOrder: true,
+  author: true,
+  license: true,
+  licenseUrl: true,
+  sourceUrl: true,
+} satisfies Prisma.MediaAssetSelect;
 
 @Injectable()
 export class MediaService {
@@ -14,16 +39,26 @@ export class MediaService {
    * schema.prisma (hero, gallery, avatar, body) nên hero luôn đứng trước khi
    * sortOrder bằng nhau (ví dụ nhiều asset cùng dùng default 0). Owner không
    * có asset không xuất hiện trong Map.
+   *
+   * `roles` (W4 R3): lọc NGAY Ở QUERY cho caller chỉ cần một vai — trang
+   * list 12 tour chỉ cần cover mà kéo cả gallery về rồi `pickCover` vứt đi là
+   * N×(bộ ảnh) băng thông vô ích. Vắng = trọn bộ (hợp đồng cũ giữ nguyên).
    */
   async resolveForOwners(
     ownerType: MediaOwnerType,
     ownerIds: string[],
+    roles?: readonly MediaRole[],
   ): Promise<Map<string, MediaItem[]>> {
     const map = new Map<string, MediaItem[]>();
     if (ownerIds.length === 0) return map;
 
     const assets = await prisma.mediaAsset.findMany({
-      where: { ownerType, ownerId: { in: ownerIds } },
+      where: {
+        ownerType,
+        ownerId: { in: ownerIds },
+        ...(roles && roles.length > 0 ? { role: { in: [...roles] } } : {}),
+      },
+      select: RESOLVE_SELECT,
       orderBy: [{ sortOrder: 'asc' }, { role: 'asc' }],
     });
 

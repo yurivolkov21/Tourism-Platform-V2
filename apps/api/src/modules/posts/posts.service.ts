@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { Paged, PostCard, PostDetail, PostsListQuery, PostTag } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { MediaOwnerType } from '../../generated/prisma/enums.js';
+import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { toTourCard, cardInclude as tourCardInclude } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 import { publishedPostWhere } from './published-post.where.js';
@@ -52,6 +52,8 @@ export class PostsService {
     const coverMap = await this.media.resolveForOwners(
       MediaOwnerType.POST,
       posts.map((p) => p.id),
+      // Card bài viết chỉ vẽ cover (W4 R3) — lọc hero ngay ở query.
+      [MediaRole.hero],
     );
 
     const items = posts.map((p): PostCard => {
@@ -114,7 +116,9 @@ export class PostsService {
     // bìa — nên resolve luôn ở đây, một query cho cả lô related. Không làm thì
     // tour dưới bài viết hiện ô giữ chỗ trong khi `/tours` đã có ảnh thật.
     const relatedIds = post.relatedTours.map((rt) => rt.tour.id);
-    const tourCovers = await this.media.resolveForOwners(MediaOwnerType.TOUR, relatedIds);
+    const tourCovers = await this.media.resolveForOwners(MediaOwnerType.TOUR, relatedIds, [
+      MediaRole.hero,
+    ]);
     const relatedTours = post.relatedTours.map((rt) =>
       toTourCard(rt.tour, tourCovers.get(rt.tour.id)?.find((m) => m.role === 'hero') ?? null),
     );

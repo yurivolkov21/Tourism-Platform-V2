@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { WishlistItem } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
-import { MediaOwnerType } from '../../generated/prisma/enums.js';
+import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { pickCover } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 
@@ -80,6 +80,8 @@ export class WishlistService {
     const coverMap = await this.media.resolveForOwners(
       MediaOwnerType.TOUR,
       rows.map((row) => row.tourId),
+      // Card wishlist chỉ vẽ cover (W4 R3) — lọc hero ngay ở query.
+      [MediaRole.hero],
     );
 
     const items: WishlistItem[] = rows.map((row) => ({

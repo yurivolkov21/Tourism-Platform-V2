@@ -18,7 +18,12 @@ import {
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { BookingStatus, DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import {
+  BookingStatus,
+  DepartureStatus,
+  MediaOwnerType,
+  MediaRole,
+} from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
@@ -138,7 +143,8 @@ export async function resolveTourCover(
   media: MediaService,
   tourId: string,
 ): Promise<MediaItem | null> {
-  const map = await media.resolveForOwners(MediaOwnerType.TOUR, [tourId]);
+  // Chỉ cần cover (W4 R3) — lọc hero ngay ở query.
+  const map = await media.resolveForOwners(MediaOwnerType.TOUR, [tourId], [MediaRole.hero]);
   return pickCover(map.get(tourId));
 }
 
@@ -687,6 +693,8 @@ export class BookingsService {
     const coverMap = await this.media.resolveForOwners(
       MediaOwnerType.TOUR,
       rows.map((row) => row.tourId),
+      // Chỉ cần cover cho hàng bảng (W4 R3).
+      [MediaRole.hero],
     );
 
     return {
@@ -804,6 +812,8 @@ export class BookingsService {
       ? await this.media.resolveForOwners(
           MediaOwnerType.TOUR,
           rows.map((row) => row.tourId),
+          // Chỉ cần cover cho hàng bảng (W4 R3).
+          [MediaRole.hero],
         )
       : null;
 

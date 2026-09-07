@@ -99,6 +99,16 @@ describe('media integration (MediaService.resolveForOwners)', () => {
     expect(map.size).toBe(0);
   });
 
+  it('W4 R3: `roles` lọc ngay ở query — list chỉ cần cover không kéo cả gallery về', async () => {
+    const svc = app.get(MediaService);
+    const map = await svc.resolveForOwners(MediaOwnerType.POST, [OWNER, OWNER_TIE], ['hero']);
+    expect((map.get(OWNER) ?? []).map((i) => i.role)).toEqual(['hero']);
+    expect((map.get(OWNER_TIE) ?? []).map((i) => i.role)).toEqual(['hero']);
+    // Vắng roles giữ nguyên hợp đồng cũ — trả trọn bộ.
+    const full = await svc.resolveForOwners(MediaOwnerType.POST, [OWNER]);
+    expect(full.get(OWNER) ?? []).toHaveLength(2);
+  });
+
   it('sortOrder bằng nhau → sort phụ theo role, hero đứng trước gallery', async () => {
     const svc = app.get(MediaService);
     const map = await svc.resolveForOwners(MediaOwnerType.POST, [OWNER_TIE]);

@@ -10,8 +10,9 @@ import type {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
-import { DepartureStatus, MediaOwnerType } from '../../generated/prisma/enums.js';
+import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
 import { calendarDate } from '../../lib/calendar-date.js';
+import { escapeLike } from '../../lib/like.js';
 import { MediaService } from '../media/media.service.js';
 
 /**
@@ -131,9 +132,12 @@ export class CatalogService {
       ...(featured === undefined ? {} : { isFeatured: featured }),
       ...(search
         ? {
+            // escapeLike (W4 R3, cùng bài học F9 phía admin): Prisma
+            // `contains` không tự escape `%`/`_` — gõ `%` là kéo TOÀN BỘ
+            // bảng trong khi ô tìm nói đang lọc.
             OR: [
-              { title: { contains: search, mode: 'insensitive' } },
-              { summary: { contains: search, mode: 'insensitive' } },
+              { title: { contains: escapeLike(search), mode: 'insensitive' } },
+              { summary: { contains: escapeLike(search), mode: 'insensitive' } },
             ],
           }
         : {}),
@@ -154,7 +158,8 @@ export class CatalogService {
     // MỘT query media cho cả trang (chống N+1) — không gọi trong `map()`.
     const ids = tours.map((t) => t.id);
     const [coverMap, upcoming] = await Promise.all([
-      this.media.resolveForOwners(MediaOwnerType.TOUR, ids),
+      // Chỉ cần cover cho card — lọc hero ngay ở query (W4 R3).
+      this.media.resolveForOwners(MediaOwnerType.TOUR, ids, [MediaRole.hero]),
       // MỘT query đợt cho cả trang → `priceFrom` (giá "from" thật). Chỉ lấy hai
       // cột cần, lọc đúng như detail (OPEN + chưa khởi hành).
       prisma.tourDeparture.findMany({
@@ -274,6 +279,8 @@ export class CatalogService {
     const coverMap = await this.media.resolveForOwners(
       MediaOwnerType.DESTINATION,
       destinations.map((d) => d.id),
+      // Card destination chỉ vẽ cover (W4 R3).
+      [MediaRole.hero],
     );
 
     return destinations.map((destination) => ({

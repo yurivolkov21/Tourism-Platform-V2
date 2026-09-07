@@ -216,6 +216,13 @@ describe('ToursListQuerySchema', () => {
   });
 });
 
+describe('ToursListQuerySchema — trần page (W4 R3)', () => {
+  it('page 10 000 qua, 10 001 chết ở validate — không cho skip*limit phi lý xuống DB', () => {
+    expect(ToursListQuerySchema.parse({ page: 10_000 }).page).toBe(10_000);
+    expect(ToursListQuerySchema.safeParse({ page: 10_001 }).success).toBe(false);
+  });
+});
+
 describe('TourSortKeySchema', () => {
   it('accepts updatedAt (parity Nexora sort whitelist)', () => {
     expect(TourSortKeySchema.safeParse('updatedAt').success).toBe(true);

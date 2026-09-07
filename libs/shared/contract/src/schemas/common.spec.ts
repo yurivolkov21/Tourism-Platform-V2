@@ -1,4 +1,9 @@
-import { PageQuerySchema, SearchQuerySchema, sortQuerySchema } from './common.js';
+import {
+  AdminPageQuerySchema,
+  PageQuerySchema,
+  SearchQuerySchema,
+  sortQuerySchema,
+} from './common.js';
 
 describe('PageQuerySchema', () => {
   it('applies defaults', () => {
@@ -11,6 +16,15 @@ describe('PageQuerySchema', () => {
 
   it('rejects pageSize above 100', () => {
     expect(PageQuerySchema.safeParse({ pageSize: 101 }).success).toBe(false);
+  });
+});
+
+describe('PageQuerySchema / AdminPageQuerySchema — trần page (W4 R3)', () => {
+  it('page vượt 10 000 → 400 ở validate; 10 000 vẫn hợp lệ', () => {
+    expect(PageQuerySchema.parse({ page: 10_000 }).page).toBe(10_000);
+    expect(PageQuerySchema.safeParse({ page: 10_001 }).success).toBe(false);
+    expect(AdminPageQuerySchema.parse({ page: 10_000 }).page).toBe(10_000);
+    expect(AdminPageQuerySchema.safeParse({ page: 10_001 }).success).toBe(false);
   });
 });
 
