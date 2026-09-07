@@ -28,14 +28,22 @@ import { corsOrigins, trustProxy } from './config/env.js';
  * chữa tận gốc.
  */
 export function createFastifyAdapter(): FastifyAdapter {
-  // Timeout (W2, ADR-0024 AMEND 2): Nest FastifyAdapter mặc định ghi đè
-  // requestTimeout/connectionTimeout về 0 — tắt luôn default 300s của Node —
-  // nên một client gửi body nhỏ giọt giữ socket VÔ HẠN. 30s cho cả request
-  // (đủ rộng cho refund gọi provider ~10s), 60s cho socket rảnh chờ headers.
+  // Timeout (ADR-0024 AMEND 2 + AMEND 3 — đọc đúng nghĩa từng option theo
+  // docs Fastify 5.12.1 `Reference/Server.md`):
+  // - `requestTimeout` 30s = thời gian NHẬN TRỌN request (headers + body) —
+  //   chặn slow-body/slowloris; KHÔNG giới hạn handler.
+  // - `handlerTimeout` 60s = trần cho cả vòng đời route (routing → handler →
+  //   serialize), đúng lớp application-level, sống chung với keep-alive; quá
+  //   thì 503 (refund giữ advisory lock 20s + provider 15s vẫn dưới trần).
+  // - `connectionTimeout` = `server.timeout` của Node (socket BẤT ĐỘNG), phải
+  //   LỚN HƠN `keepAliveTimeout` (Fastify mặc định 72s) — bản đầu đặt 60s
+  //   nhỏ hơn 72s nên socket keep-alive rảnh bị đóng trước khi LB kịp tái
+  //   dùng → 502 lác đác.
   return new FastifyAdapter({
     trustProxy,
     requestTimeout: 30_000,
-    connectionTimeout: 60_000,
+    handlerTimeout: 60_000,
+    connectionTimeout: 120_000,
   });
 }
 
@@ -86,7 +94,8 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       req: { url?: string },
       callback: (err: Error | null, options: Record<string, unknown>) => void,
     ) => {
-      const url = req.url ?? '';
+      // Bỏ query trước khi so (vòng vá review W2): `/api/admin?x` từng trượt.
+      const url = (req.url ?? '').split('?')[0] ?? '';
       const isAdminSurface = url === '/api/admin' || url.startsWith('/api/admin/');
       callback(null, {
         // Spread: `corsOrigins` là readonly, @fastify/cors nhận mảng thường.
@@ -96,6 +105,41 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       });
     },
   });
+
+  // ADR-0026 AMEND 2 (vòng vá review W2): CORS `origin: false` chỉ giấu
+  // RESPONSE. `rawBody: true` làm Nest đăng ký parser form-urlencoded toàn
+  // cục, oRPC nhận `req.body` đã parse, contract nhận chuỗi — nên một POST
+  // `application/x-www-form-urlencoded` từ XSS ở www là simple request không
+  // preflight và VẪN THI HÀNH (refund thật) bằng cookie cha của nạn nhân. Chặn
+  // ở tầng request: mọi request ghi ngoài /api/auth (Better Auth tự CSRF) và
+  // /api/webhooks (provider gửi JSON) phải là `application/json` — JSON luôn
+  // bị preflight, và preflight vùng admin đã bị `origin: false` chặn. Kèm
+  // `Sec-Fetch-Site: cross-site` → 403 cho vùng admin (browser hiện đại gửi
+  // header này, script cross-origin không xoá được).
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onRequest', async (req, reply) => {
+      if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
+      const path = req.url.split('?')[0] ?? '';
+      if (path.startsWith('/api/auth/') || path.startsWith('/api/webhooks/')) return;
+      const contentType = String(req.headers['content-type'] ?? '')
+        .split(';')[0]
+        ?.trim()
+        .toLowerCase();
+      if (contentType && contentType !== 'application/json') {
+        await reply
+          .status(415)
+          .send({ code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Send application/json' });
+        return reply;
+      }
+      const isAdminSurface = path === '/api/admin' || path.startsWith('/api/admin/');
+      if (isAdminSurface && req.headers['sec-fetch-site'] === 'cross-site') {
+        await reply.status(403).send({ code: 'CROSS_SITE_FORBIDDEN', message: 'Forbidden' });
+        return reply;
+      }
+      return;
+    });
 
   // Security headers (ADR-0010) — đặt ở đây (không main.ts) để test e2e phủ
   // được, đúng bài học mutation 19/07. CSP CỐ Ý tắt: API JSON không serve HTML,

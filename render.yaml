@@ -16,10 +16,6 @@ services:
     dockerfilePath: apps/api/Dockerfile
     # Build context là ROOT repo — Dockerfile copy pnpm-workspace + libs/shared.
     dockerContext: .
-    # ADR-0024 AMEND 2 + ADR-0037: throttle đang in-memory per-process — scale
-    # ngang là NHÂN trần rate-limit theo số instance mà không ai đổi một dòng
-    # code. Ghim 1; muốn >1 thì điều kiện tiên quyết là store chung (Redis).
-    numInstances: 1
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
@@ -74,6 +70,11 @@ services:
         sync: false
       - key: CORS_ORIGINS
         sync: false
+      # Định dạng phải ĐÚNG kiểu zod của env.ts, gõ sai là API không boot:
+      # MEDIA_GC_ENABLED chỉ nhận `true`/`false` (chữ thường); GRACE_DAYS số
+      # nguyên; MARGIN_TAX_RATE/PAYMENT_FEE_RATE là tỉ lệ 0..1 (0.1 = 10%, KHÔNG
+      # phải "10%"); PAYMENT_FEE_FIXED số thập phân. Trần rate-limit đang
+      # in-memory per-process — KHÔNG scale ngang (ADR-0024 AMEND 3).
       - key: MEDIA_GC_ENABLED
         sync: false
       - key: MEDIA_GC_GRACE_DAYS

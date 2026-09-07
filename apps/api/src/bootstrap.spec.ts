@@ -54,13 +54,18 @@ describe('trustProxy (bootstrap)', () => {
 // requestTimeout/connectionTimeout về 0 — tắt luôn default 300s của Node —
 // nên một client giữ body chậm chiếm socket VÔ HẠN trên instance free kiêm
 // worker inline. Pin bằng initialConfig của chính adapter dùng chung. ──
-describe('createFastifyAdapter — timeout (bootstrap)', () => {
-  it('requestTimeout 30s / connectionTimeout 60s nằm trong initialConfig của adapter', () => {
+describe('createFastifyAdapter — timeout (bootstrap, ADR-0024 AMEND 3)', () => {
+  it('requestTimeout 30s (nhận request) · handlerTimeout 60s (vòng đời route) · connectionTimeout > keepAliveTimeout', () => {
     const config = createFastifyAdapter().getInstance().initialConfig as {
       requestTimeout?: number;
+      handlerTimeout?: number;
       connectionTimeout?: number;
+      keepAliveTimeout?: number;
     };
     expect(config.requestTimeout).toBe(30_000);
-    expect(config.connectionTimeout).toBe(60_000);
+    expect(config.handlerTimeout).toBe(60_000);
+    // Socket keep-alive rảnh bị đóng TRƯỚC LB tái dùng là 502 lác đác —
+    // connectionTimeout phải lớn hơn keepAliveTimeout (Fastify mặc định 72s).
+    expect(config.connectionTimeout).toBeGreaterThan(config.keepAliveTimeout ?? 72_000);
   });
 });

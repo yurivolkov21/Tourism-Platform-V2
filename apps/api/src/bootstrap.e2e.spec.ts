@@ -1,7 +1,7 @@
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
 import { AppModule } from './app.module.js';
-import { configureHttp } from './bootstrap.js';
+import { configureHttp, createFastifyAdapter } from './bootstrap.js';
 
 /**
  * CORS là bề mặt bảo mật: thiếu nó thì web/admin bị trình duyệt chặn sạch;
@@ -15,7 +15,9 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
 
   beforeAll(async () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleRef.createNestApplication<NestFastifyApplication>(new FastifyAdapter());
+    // Adapter CHUNG với main.ts (vòng vá review W2) — bản đầu tự dựng
+    // `new FastifyAdapter()` nên trustProxy/timeout của prod không được e2e chạm.
+    app = moduleRef.createNestApplication<NestFastifyApplication>(createFastifyAdapter());
     await configureHttp(app);
     await app.init();
     await app.getHttpAdapter().getInstance().ready();
@@ -131,6 +133,54 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
       headers: { origin: allowedOrigin },
     });
     expect(read.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  it('/api/admin?x (có query) cũng KHÔNG phát CORS — so path đã bỏ query', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/admin?x=1',
+      headers: { origin: allowedOrigin },
+    });
+    expect(res.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
+  /**
+   * ADR-0026 AMEND 2: CORS chỉ giấu response. Form-urlencoded là simple request
+   * không preflight và từng THI HÀNH tới handler (parser toàn cục của
+   * rawBody). Nay 415 trước cả AuthGuard; JSON vẫn đi tới guard (401 vì không
+   * cookie); Sec-Fetch-Site cross-site vào vùng admin là 403.
+   */
+  it('POST form-urlencoded vào route ghi (ngoài /api/auth, /api/webhooks) → 415 trước handler', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/admin/bookings/BK-X/refund',
+      headers: { 'content-type': 'application/x-www-form-urlencoded', origin: allowedOrigin },
+      payload: 'amount=1200&reason=x',
+    });
+    expect(res.statusCode).toBe(415);
+    expect(res.json()).toMatchObject({ code: 'UNSUPPORTED_MEDIA_TYPE' });
+    const json = await app.inject({
+      method: 'POST',
+      url: '/api/admin/bookings/BK-X/refund',
+      headers: { 'content-type': 'application/json' },
+      payload: JSON.stringify({ amount: '1.00', reason: 'x' }),
+    });
+    expect(json.statusCode).toBe(401); // qua gate, tới AuthGuard
+    const crossSite = await app.inject({
+      method: 'POST',
+      url: '/api/admin/bookings/BK-X/refund',
+      headers: { 'content-type': 'application/json', 'sec-fetch-site': 'cross-site' },
+      payload: JSON.stringify({ amount: '1.00', reason: 'x' }),
+    });
+    expect(crossSite.statusCode).toBe(403);
+    // /api/auth/* (Better Auth tự CSRF) và webhook (provider gửi JSON) không bị gate này chạm.
+    const auth = await app.inject({
+      method: 'POST',
+      url: '/api/auth/sign-in/email',
+      headers: { 'content-type': 'application/x-www-form-urlencoded' },
+      payload: 'email=a%40b.c&password=x',
+    });
+    expect(auth.statusCode).not.toBe(415);
   });
 
   it('đường KHÔNG-admin vẫn phát CORS bình thường sau khi tách (không vỡ web)', async () => {

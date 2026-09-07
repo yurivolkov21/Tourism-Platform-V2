@@ -1,5 +1,5 @@
 import { ORPCError } from '@orpc/server';
-import { describeOrpcError, isUnexpectedOrpcError } from './orpc-error-log.js';
+import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './orpc-error-log.js';
 
 /**
  * W2 mục 6 (audit cụm 6 — Thấp): onError của oRPC từng `console.error` dump
@@ -24,6 +24,14 @@ describe('describeOrpcError', () => {
   it('Error thường → tên + message; không phải Error → String()', () => {
     expect(describeOrpcError(new RangeError('boom'))).toContain('boom');
     expect(describeOrpcError('vỡ')).toContain('vỡ');
+  });
+});
+
+describe('orpcErrorStack', () => {
+  it('lỗi thường (500 thật) mang stack để log; ORPCError nghiệp vụ thì không', () => {
+    expect(orpcErrorStack(new TypeError('boom'))).toContain('TypeError: boom');
+    expect(orpcErrorStack(new ORPCError('NOT_FOUND', { status: 404 }))).toBeUndefined();
+    expect(orpcErrorStack('vỡ')).toBeUndefined();
   });
 });
 

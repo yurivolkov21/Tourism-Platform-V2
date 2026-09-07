@@ -9,13 +9,29 @@ import { ConsoleDeliverer } from './deliverer.js';
  * redactDeep trước khi stringify — cùng máy che của bề mặt admin.
  */
 describe('ConsoleDeliverer', () => {
-  it('che url/otp trong payload trước khi log', async () => {
+  it('ở development KHÔNG che — đó là đường duy nhất lấy OTP/link reset khi không có RESEND_API_KEY', async () => {
     const lines: string[] = [];
     const spy = vi.spyOn(Logger.prototype, 'log').mockImplementation((message: unknown) => {
       lines.push(String(message));
     });
     try {
-      await new ConsoleDeliverer().deliver(EmailType.PASSWORD_RESET, {
+      await new ConsoleDeliverer(false).deliver(EmailType.EMAIL_OTP, {
+        email: 'khach@example.com',
+        otp: '123456',
+      });
+    } finally {
+      spy.mockRestore();
+    }
+    expect(lines.join('\n')).toContain('123456');
+  });
+
+  it('che url/otp trong payload trước khi log (ngoài development)', async () => {
+    const lines: string[] = [];
+    const spy = vi.spyOn(Logger.prototype, 'log').mockImplementation((message: unknown) => {
+      lines.push(String(message));
+    });
+    try {
+      await new ConsoleDeliverer(true).deliver(EmailType.PASSWORD_RESET, {
         email: 'khach@example.com',
         url: 'http://localhost:3001/reset-password/token-tuyet-mat',
         otp: '123456',

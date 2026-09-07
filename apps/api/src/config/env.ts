@@ -224,8 +224,28 @@ const EnvSchema = z
       requireRealHttpsUrl('TRUSTED_ORIGINS', origin);
     }
     if (cfg.CORS_ORIGINS) {
-      for (const origin of parseCommaList(cfg.CORS_ORIGINS)) {
+      const cors = parseCommaList(cfg.CORS_ORIGINS);
+      for (const origin of cors) {
         requireRealHttpsUrl('CORS_ORIGINS', origin);
+      }
+      // Web (FRONTEND_URL) là client browser bắt buộc phải gọi được API; admin
+      // gọi /api/auth/* từ browser lúc đăng nhập nên mọi origin của
+      // TRUSTED_ORIGINS cũng phải có mặt (vòng vá review W2: ô CORS_ORIGINS
+      // trống trên Render mời điền mỗi www → admin không đăng nhập được, lỗi
+      // chỉ hiện ở console browser).
+      const must = new Set([
+        originOf(cfg.FRONTEND_URL),
+        ...parseCommaList(cfg.TRUSTED_ORIGINS).map(originOf),
+      ]);
+      const have = new Set(cors.map(originOf));
+      for (const origin of must) {
+        if (origin && !have.has(origin)) {
+          ctx.addIssue({
+            code: 'custom',
+            path: ['CORS_ORIGINS'],
+            message: `CORS_ORIGINS must include ${origin} (FRONTEND_URL and every TRUSTED_ORIGINS entry sign in from the browser)`,
+          });
+        }
       }
     }
     if (!cfg.COOKIE_DOMAIN) {
@@ -334,6 +354,15 @@ export const adminEmails: readonly string[] = parseCommaList(env.ADMIN_EMAILS).m
 
 /** TRUSTED_ORIGINS đã parse cho Better Auth. */
 export const trustedOrigins: readonly string[] = parseCommaList(env.TRUSTED_ORIGINS);
+
+/** Origin chuẩn hoá (scheme + host + port) của một URL; chuỗi hỏng → ''. */
+function originOf(value: string): string {
+  try {
+    return new URL(value).origin;
+  } catch {
+    return '';
+  }
+}
 
 /** CORS_ORIGINS đã parse cho @fastify/cors — không set thì dùng TRUSTED_ORIGINS. */
 export const corsOrigins: readonly string[] = parseCommaList(

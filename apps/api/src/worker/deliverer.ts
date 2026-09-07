@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { env } from '../config/env.js';
 import type { EmailType } from '../generated/prisma/enums.js';
 import { redactDeep } from '../lib/redact.js';
 
@@ -14,15 +15,22 @@ export interface EmailDeliverer {
 /** Injection token cho {@link EmailDeliverer} (interface không tồn tại lúc runtime). */
 export const EMAIL_DELIVERER = Symbol('EMAIL_DELIVERER');
 
-/** P1 skeleton: "gửi" = log ra stdout, không bao giờ throw. */
+/**
+ * P1 skeleton: "gửi" = log ra stdout, không bao giờ throw.
+ *
+ * Che credential (W2 mục 6) TRỪ ở `development` (vòng vá review W2): máy dev
+ * không có RESEND_API_KEY thì dòng log này là đường DUY NHẤT lấy OTP/link
+ * reset — che ở đó là dev mới clone repo không đăng nhập được local. Ngoài
+ * dev (prod lỡ thiếu key, test) vẫn che.
+ */
 @Injectable()
 export class ConsoleDeliverer implements EmailDeliverer {
   private readonly logger = new Logger(ConsoleDeliverer.name);
 
+  constructor(private readonly redact: boolean = env.NODE_ENV !== 'development') {}
+
   async deliver(type: EmailType, payload: unknown): Promise<void> {
-    // W2 mục 6: payload mang url reset (token) + otp — che trước khi ra
-    // stdout, cùng máy redactDeep của bề mặt admin. Email nhận vẫn hiện
-    // (dev cần biết "gửi cho ai"), credential thì không.
-    this.logger.log(`deliver ${type}: ${JSON.stringify(redactDeep(payload))}`);
+    const shown = this.redact ? redactDeep(payload) : payload;
+    this.logger.log(`deliver ${type}: ${JSON.stringify(shown)}`);
   }
 }

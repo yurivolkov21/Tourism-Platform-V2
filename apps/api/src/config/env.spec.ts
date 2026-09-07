@@ -527,9 +527,13 @@ describe('superRefine production — nhóm env deploy (ADR-0024 AMEND 2)', () =>
     expect(() => parseEnv({ ...base, CORS_ORIGINS: 'http://www.example.com' })).toThrow(
       /CORS_ORIGINS/,
     );
-    expect(parseEnv({ ...base, CORS_ORIGINS: 'https://www.example.com' }).CORS_ORIGINS).toBe(
-      'https://www.example.com',
+    // Phải chứa origin của FRONTEND_URL và MỌI entry của TRUSTED_ORIGINS
+    // (vòng vá review W2): điền mỗi www là admin không đăng nhập được.
+    expect(() => parseEnv({ ...base, CORS_ORIGINS: 'https://other.example.com' })).toThrow(
+      /CORS_ORIGINS must include/,
     );
+    const full = `${new URL(base.FRONTEND_URL).origin},${base.TRUSTED_ORIGINS}`;
+    expect(parseEnv({ ...base, CORS_ORIGINS: full }).CORS_ORIGINS).toBe(full);
   });
 
   it('COOKIE_DOMAIN: bắt buộc ở production — thiếu là www không gửi được cookie sang api', () => {
