@@ -1,5 +1,6 @@
 import { messages } from '@tourism/i18n';
 import { ButtonLink } from '@tourism/ui/components/button-link';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { LoginForm } from '@/components/auth/login-form';
 import { LoginWaves } from '@/components/auth/login-waves';
@@ -19,7 +20,14 @@ const SITE_URL = 'https://www.nexora-travel.agency';
  * bỏ social login + "Create an account" (admin không có hai flow đó) — pill
  * header + footer card thay bằng đường về site khách.
  */
-export default function LoginPage() {
+export default async function LoginPage() {
+  // Ép render ĐỘNG (W3-H2, guide CSP của Next §Forcing dynamic rendering):
+  // trang này vốn bị prerender TĨNH lúc build — HTML tĩnh không có nonce
+  // trong khi CSP admin là nonce + strict-dynamic, tức MỌI script của trang
+  // login bị chặn ở production (form chết, WebGL waves chết). Dev không lộ
+  // vì dev luôn render động — đúng lớp "hỏng prod im lặng" spec W3 §6 cảnh
+  // báo. Admin không có gì để mất từ SSG.
+  await connection();
   return (
     <main className="relative flex min-h-svh w-full flex-col overflow-hidden bg-background">
       {/* Nền GradientWaves (React Bits, WebGL) — màu token, mức BOLD user chấm. */}
