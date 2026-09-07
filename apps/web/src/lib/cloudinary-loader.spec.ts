@@ -46,6 +46,41 @@ describe('cloudinaryLoader', () => {
     ).toBe('https://res.cloudinary.com/demo/image/upload/f_auto,q_80,w_640/v1/tourism/hero');
   });
 
+  // Vòng vá review W3: regex cũ `^[a-z]{1,3}_[^/]+$` khớp cả publicId thật.
+  it('publicId phẳng có gạch dưới (my_photo.jpg) KHÔNG bị nuốt vào segment transform', () => {
+    expect(
+      cloudinaryLoader({
+        src: 'https://res.cloudinary.com/demo/image/upload/my_photo.jpg',
+        width: 640,
+      }),
+    ).toBe('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/my_photo.jpg');
+  });
+
+  it('thư mục đầu kiểu ab_cd/ giữ nguyên, chèn segment MỚI trước nó', () => {
+    expect(
+      cloudinaryLoader({
+        src: 'https://res.cloudinary.com/demo/image/upload/ab_cd/folder/pic.jpg',
+        width: 640,
+      }),
+    ).toBe('https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640/ab_cd/folder/pic.jpg');
+  });
+
+  it('URL ký (s--…--) trả NGUYÊN — chèn gì cũng làm chữ ký sai (401)', () => {
+    const signed = 'https://res.cloudinary.com/demo/image/upload/s--AbCdEf12--/v1/tourism/hero';
+    expect(cloudinaryLoader({ src: signed, width: 640 })).toBe(signed);
+  });
+
+  it('giữ tham số khác (c_limit) ở đuôi khi merge — hợp đồng JSDoc', () => {
+    expect(
+      cloudinaryLoader({
+        src: 'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_1600,c_limit/v1/tourism/hero',
+        width: 640,
+      }),
+    ).toBe(
+      'https://res.cloudinary.com/demo/image/upload/f_auto,q_auto,w_640,c_limit/v1/tourism/hero',
+    );
+  });
+
   it('URL ngoài Cloudinary trả NGUYÊN — escape-hatch của buildCloudinaryUrl (ADR-0005 §2)', () => {
     for (const src of [
       'https://images.example.com/photo.jpg',

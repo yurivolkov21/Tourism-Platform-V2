@@ -42,8 +42,8 @@ export function SlotImage({
   priority?: boolean;
   sizes?: string;
 }) {
-  // Host mà `next.config.ts` khai trong `images.remotePatterns`. Giữ đồng bộ
-  // với file đó — nới ở một nơi mà quên nơi kia thì ảnh biến mất im lặng.
+  // Host mà `lib/cloudinary-loader.ts` xử lý — giữ đồng bộ với điều kiện đầu
+  // tiên của loader; URL host khác được loader trả NGUYÊN.
   const OPTIMISABLE_HOST = 'https://res.cloudinary.com/';
 
   // `relative overflow-hidden` KHÔNG phải trang trí — nó là hợp đồng của
@@ -57,17 +57,16 @@ export function SlotImage({
   if (!image) return <ImagePlaceholder label={label} className={className} corner={corner} />;
 
   // `buildCloudinaryUrl` có escape-hatch CỐ Ý (ADR-0005 §2): `publicId` là URL
-  // tuyệt đối thì trả nguyên, không bọc transform. Nhưng `next/image` chỉ nhận
-  // host đã khai trong `remotePatterns`, nên một URL ngoài đi thẳng vào đây sẽ
-  // ném `Invalid src prop … hostname is not configured` — trang chết lúc
-  // prerender (build đỏ) hoặc 500 khi ISR, chỉ vì MỘT row dữ liệu.
-  //
-  // Rơi về `<img>` thường thay vì để nổ: ảnh vẫn hiện, chỉ mất tối ưu của Next.
-  // Mất tối ưu là phiền; sập trang vì một row là hỏng.
+  // tuyệt đối thì trả nguyên, không bọc transform. Với loader custom (W3),
+  // `next/image` KHÔNG kiểm host nữa và loader trả URL ngoài NGUYÊN — nên
+  // `<Image>` không nổ, nhưng sẽ dựng một srcSet toàn URL giống hệt nhau, vô
+  // nghĩa. Rơi về `<img>` thường cho thẳng thắn: ảnh hiện đúng một URL. Lưu ý
+  // CSP `img-src` (ADR-0038 AMEND 1) CỐ Ý không mở host ngoài — row dùng
+  // escape-hatch ở production sẽ trắng ảnh, đó là quyết định đã ghi.
   if (!image.url.startsWith(OPTIMISABLE_HOST)) {
     return (
       <div className={cn('relative overflow-hidden', className)}>
-        {/** biome-ignore lint/performance/noImgElement: host ngoài remotePatterns, next/image sẽ ném lỗi */}
+        {/** biome-ignore lint/performance/noImgElement: host ngoài Cloudinary — loader trả nguyên, next/image chỉ thêm srcSet vô nghĩa */}
         <img src={image.url} alt={image.alt ?? ''} className="size-full object-cover" />
       </div>
     );

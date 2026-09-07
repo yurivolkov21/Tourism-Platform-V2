@@ -89,7 +89,7 @@ export function PassportCard({
             className="flex size-28 flex-none items-center justify-center overflow-hidden rounded-2xl border border-border bg-muted ring-2 ring-ink/10 ring-offset-2 ring-offset-card"
           >
             {image ? (
-              // biome-ignore lint/performance/noImgElement: URL Cloudinary ngoài — next/image chưa khai remotePatterns (nợ ADR-0020).
+              // biome-ignore lint/performance/noImgElement: avatar 112px — chưa chuyển sang next/image + loader Cloudinary (nợ ghi ở CHANGELOG W3 merge).
               <img src={image} alt="" className="size-full rounded-2xl object-cover" />
             ) : (
               <span className="font-heading text-5xl font-semibold text-ink/70">
