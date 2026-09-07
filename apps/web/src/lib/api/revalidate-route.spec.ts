@@ -165,4 +165,20 @@ describe('handleRevalidatePost', () => {
     expect(revalidateTag).toHaveBeenNthCalledWith(2, 'post:ha-noi');
     expect(revalidateTag).toHaveBeenCalledTimes(2);
   });
+
+  it('mọi response (200 lẫn 401) mang Cache-Control no-store + X-Robots-Tag noindex (W3-H4)', async () => {
+    const revalidateTag = vi.fn();
+    const ok = await handleRevalidatePost(makeRequest({ tags: ['tours'] }, DEV_REVALIDATE_SECRET), {
+      expectedSecret: DEV_REVALIDATE_SECRET,
+      revalidateTag,
+    });
+    const denied = await handleRevalidatePost(makeRequest({ tags: ['tours'] }), {
+      expectedSecret: DEV_REVALIDATE_SECRET,
+      revalidateTag,
+    });
+    for (const res of [ok, denied]) {
+      expect(res.headers.get('cache-control')).toBe('no-store');
+      expect(res.headers.get('x-robots-tag')).toBe('noindex');
+    }
+  });
 });

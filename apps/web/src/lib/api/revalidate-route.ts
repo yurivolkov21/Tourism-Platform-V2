@@ -44,23 +44,32 @@ export function secretMatches(provided: string | null, expected: string): boolea
   return timingSafeEqual(a, b);
 }
 
+/**
+ * Header gắn lên MỌI response của route (W3-H4, ADR-0016 AMEND 1 §3): route
+ * server-to-server không có gì để cache/index — header rẻ, cắt luôn.
+ */
+const ROUTE_HEADERS = { 'Cache-Control': 'no-store', 'X-Robots-Tag': 'noindex' } as const;
+
 export async function handleRevalidatePost(
   request: Request,
   deps: { expectedSecret: string; revalidateTag: (tag: string) => void },
 ): Promise<Response> {
   if (!secretMatches(request.headers.get('x-revalidate-secret'), deps.expectedSecret)) {
-    return Response.json({ error: 'unauthorized' }, { status: 401 });
+    return Response.json({ error: 'unauthorized' }, { status: 401, headers: ROUTE_HEADERS });
   }
   let raw: unknown;
   try {
     raw = await request.json();
   } catch {
-    return Response.json({ error: 'invalid JSON body' }, { status: 400 });
+    return Response.json({ error: 'invalid JSON body' }, { status: 400, headers: ROUTE_HEADERS });
   }
   const parsed = parseRevalidateBody(raw);
   if (!parsed.ok) {
-    return Response.json({ error: parsed.error, rejected: parsed.rejected ?? [] }, { status: 400 });
+    return Response.json(
+      { error: parsed.error, rejected: parsed.rejected ?? [] },
+      { status: 400, headers: ROUTE_HEADERS },
+    );
   }
   for (const tag of parsed.tags) deps.revalidateTag(tag);
-  return Response.json({ revalidated: parsed.tags.length });
+  return Response.json({ revalidated: parsed.tags.length }, { headers: ROUTE_HEADERS });
 }
