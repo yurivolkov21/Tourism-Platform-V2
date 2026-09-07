@@ -132,3 +132,28 @@ dashboard hiện ô trống tường minh thay vì biến tàng hình. Kèm
 scale ngang là NHÂN trần rate-limit lên theo số instance mà không ai đổi
 một dòng code; ngày nào cần >1 instance thì điều kiện tiên quyết là dời
 throttle sang store chung (Redis), và dòng ghim này là chỗ nhắc.
+
+## AMEND 3 — 07/09/2026 (vòng vá review W2): sửa (b) và (d) của AMEND 2
+
+- **(b) Timeout — đọc lại đúng nghĩa từng option** (docs Fastify 5.12.1
+  `Reference/Server.md`): `requestTimeout` là thời gian NHẬN trọn request
+  (chặn slow-body), KHÔNG giới hạn handler — câu "đủ rộng cho refund gọi
+  provider ~10s" ở AMEND 2 mô tả sai; `connectionTimeout` là `server.timeout`
+  socket bất động, và 60s NHỎ HƠN `keepAliveTimeout` 72s mặc định → socket
+  keep-alive rảnh bị đóng trước khi LB tái dùng = 502 lác đác. Chốt:
+  `requestTimeout: 30_000`, `handlerTimeout: 60_000` (trần application-level
+  cho cả vòng đời route, sống chung keep-alive, 503 khi quá), `connectionTimeout:
+  120_000` (> keepAlive). `bootstrap.spec` canh cả ba; e2e dựng bằng
+  `createFastifyAdapter()` chung với main.
+- **(d) `numInstances: 1` GỠ khỏi `render.yaml`**: là khoá của scaling trả
+  phí, trên instance free blueprint sync có thể từ chối; ràng buộc "throttle
+  in-memory → không scale ngang" ghi bằng comment cạnh các khoá env. Bảy ô
+  `sync: false` kèm comment ĐỊNH DẠNG (`true`/`false` chữ thường, tỉ lệ 0..1)
+  — ô trống mời gõ `TRUE`/`10%` là zod fail → API không boot.
+- **`CORS_ORIGINS`** phải chứa origin `FRONTEND_URL` + mọi entry
+  `TRUSTED_ORIGINS` (xem ADR-0026 AMEND 2).
+- **ConsoleDeliverer** KHÔNG che ở `development`: đó là đường duy nhất lấy
+  OTP/link reset khi không có `RESEND_API_KEY`; ngoài dev vẫn che.
+- onError của oRPC log kèm STACK cho lỗi không phải ORPCError (500 thật) —
+  bản AMEND 2 rút về một dòng làm mất file/line.
+

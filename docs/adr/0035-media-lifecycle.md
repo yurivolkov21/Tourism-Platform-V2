@@ -242,7 +242,7 @@ hai tới cùng kết quả, để ai đó sau này sửa một đường mà qu
 **c. `MediaGarbageModule` tách riêng, không controller.**
 
 `WorkerModule` import `MediaModule` làm worker chết ngay lúc dựng context:
-module ấy khai `MediaController`, controller mang `ThrottlerGuard`, mà worker
+module ấy khai `MediaController` (khi đó mang `ThrottlerGuard` riêng — từ ADR-0037 W2 trần là guard toàn cục, decorator riêng đã gỡ), mà worker
 không dựng tầng HTTP nên không có `THROTTLER:MODULE_OPTIONS`. Đo được — ba int
 spec của worker đỏ ở lượt chạy đầu. Service không trạng thái thì đáng một
 module không controller; cả hai bên cùng import nó.

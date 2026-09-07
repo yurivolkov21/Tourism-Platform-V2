@@ -78,7 +78,7 @@ merge rebase+ff, docs sweep.
 
 ### F2 — Refund (branch `feat/p4b-bookings-refund`)
 
-- Nút + dialog refund trên `/bookings/[code]`: amount (partial/full) + note,
+- ⚠️ AMEND (ADR-0030 AMEND 1/2, 06–07/09): `amount` VÀ `reason` BẮT BUỘC — không còn chế độ "full" ngầm; reason là nội bộ, ở trên sổ. Bản gốc: Nút + dialog refund trên `/bookings/[code]`: amount (partial/full) + note,
   confirm 2 bước, map ĐỦ 5 lỗi contract (NOT_REFUNDABLE · OVER_TOTAL ·
   ZERO_OR_NEGATIVE · NOTHING_LEFT · REFUND_FAILED) thành copy i18n riêng.
 - Hiện ledger refund đã có trên trang chi tiết (data từ byCode).

@@ -177,6 +177,50 @@ Ba bề mặt hiện trả lời khác nhau — forgot-password ẩn (chuẩn), 
   response 400 của đúng path này bị thay body thành `INVALID_OTP` chung —
   kẻ dò không phân biệt được "email không tồn tại" với "mã sai".
 
+### 8. AMEND 07/09/2026 — vòng vá review W2: §7 sửa lại theo hành vi ĐO ĐƯỢC của Better Auth 1.6.23
+
+Review 8 mũi ở session gốc chỉ ra ba chỗ §7 nói không đúng với thư viện hoặc
+bị nới lặng trong commit code; ghi lại ở đây, §7 giữ nguyên làm bản ghi.
+
+**(a) Đổi mật khẩu — server cưỡng chế, không phải cờ client.** §7a để web gửi
+`revokeOtherSessions: true`; client khác (admin, mobile, script) quên cờ là
+cookie trộm sống tiếp. Nay `hooks.before` của BA ép cờ lên body của chính
+route `/change-password` — BA tự xoá mọi phiên và XOAY phiên hiện tại (cookie
+mới trong response; test canh cứng: cookie cũ 401, cookie mới 200, cả khi
+client không gửi cờ).
+
+**(b) Gate xoá tài khoản — QUAY VỀ câu gốc, và chặn thêm PENDING sống.** Bản
+thi công sửa thân §7b thành "chỉ chặn PAID chưa khởi hành" ngay trong commit
+code (không AMEND, chưa qua mắt user) — mở ca PARTIALLY_REFUNDED đã đi còn
+phần dư và PAID đang chạy dở (mốc startDate). Chốt lại: chặn `PAID` khi
+`departureEndDate >= hôm nay` (chuyến chưa KẾT THÚC), chặn `PARTIALLY_REFUNDED`
+bất kể ngày (sổ còn nợ), chặn cancellation `REQUESTED`, và chặn `PENDING` còn
+session thanh toán sống (tab Stripe cũ vẫn thu được tiền cho một chủ nhân đã
+tombstone — khách phải `cancelPending`, đường đó có expireSession). Mọi gate
+chạy TRONG cùng transaction với tombstone (đếm ngoài tx từng hở khe cho webhook
+chen giữa). Thêm: DELETE nhận mật khẩu là một oracle dò mật khẩu cho kẻ cầm
+cookie (trần ghi 20/60s = 28.800 lần/ngày im lặng) → khoá 15 phút sau 5 lần
+sai theo user (`TOO_MANY_ATTEMPTS` 429) + log WARN. Erasure không dừng ở cái
+tên: ảnh review của user đã xoá bị gỡ khỏi `media_assets` và vào hàng dọn
+ADR-0035 (mặt người, giấy tờ chụp nhầm không được tiếp tục phục vụ công khai).
+
+**(c) Enumeration — §7c viết sai hành vi thật.** Với `requireEmailVerification`
++ `autoSignIn: false`, BA 1.6.23 (`sign-up.mjs` `shouldReturnGenericDuplicateResponse`)
+trả **200 giả** cho sign-up trùng email và KHÔNG gửi mail — không hề "giữ lộ
+EMAIL_EXISTS" như §7c chốt; nhánh `emailExists` của web là code chết. Chấp nhận
+hành vi che của BA (chuẩn hơn lộ), và nói ra ở trang verify: "đã có tài khoản
+thì không có mã mới — đăng nhập hoặc đặt lại mật khẩu". Còn
+`check-verification-otp`: vá body 400 tại mount KHÔNG đủ — BA ném 403
+`TOO_MANY_ATTEMPTS` chỉ khi user tồn tại, oracle còn nguyên; BA có
+`disabledPaths` (comment "không tắt được từng route" sai) → tắt hẳn, 404 cho
+mọi trạng thái, web không dùng route này.
+
+**(d) Avatar hook gác cả `create`.** §7 không nhắc, nhưng cùng đợt: BA nhận
+`image` từ client lúc TẠO user (sign-up/email, sign-in/email-otp lần đầu),
+hook `update.before` không chạm — kẻ ẩn danh đặt được avatar bất kỳ bằng một
+request sign-up; và prefix so chuỗi thô để lọt `/..` sang cloud khác. Nay một
+hàm gác cho cả `create.before` lẫn `update.before`, so trên URL đã chuẩn hoá.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API

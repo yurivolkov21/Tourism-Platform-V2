@@ -333,3 +333,25 @@ TRỌN phần dư, không kiểm bậc, không đòi lý do, không dấu vết.
   (§4); ép bậc theo ngày-hiện-tại là bịa ra một chính sách chưa từng công
   bố. Chính `reason` bắt buộc là lưới thay thế: mọi lần dùng đường này đều
   tự khai nó là ngoại lệ có tên.
+
+## AMEND 2 — 07/09/2026 (vòng vá review W2): lý do refund thiện chí lên SỔ, không gửi khách; nhánh "vắng amount" xoá cả ở math
+
+AMEND 1 lấy `reason` làm lưới thay bảng bậc nhưng để nó sống trong payload
+outbox — `purgeSent(30)` xoá sau 30 ngày (tháng 11 chargeback hỏi vì sao hoàn
+117$ bậc 0% hồi tháng 9 thì không còn gì), và template email in nguyên
+free-text của admin cho khách ("VIP, doạ chargeback"). Chốt:
+
+- Cột `refunds.reason` (migration `20260907090000_w2_review_refund_reason`,
+  nullable — auto-refund/row cũ không có): lý do NỘI BỘ ở trên chính dòng sổ,
+  không purge, admin thấy ở bảng ledger. Quyết định "ledger chỉ money fact"
+  của ADR-0009 nhường chỗ cho audit ở đúng đây.
+- Email khách nhận mã `goodwill` → câu chung "Goodwill refund issued by our
+  team"; copy admin đổi thành "Internal reason — kept on the ledger, not sent
+  to the customer".
+- `classifyRefundAmount` bỏ hẳn nhánh `requested == null → full remainder`
+  (`requested` bắt buộc) — bản AMEND 1 xoá ở contract/service nhưng math dùng
+  chung vẫn giữ nguyên hình cửa hậu cho một caller tương lai quên truyền.
+- Reason vẫn `trim().min(1)` — ADR không ép độ dài; một ký tự là hợp lệ về
+  kỹ thuật và vô nghĩa về audit, chấp nhận (cùng quyết định với
+  `decisionNote` của approve, ADR-0029).
+

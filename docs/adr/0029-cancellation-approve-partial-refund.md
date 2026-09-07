@@ -313,7 +313,8 @@ không đổi kết quả.
   định riêng chưa chốt; nó là cửa hậu cùng hình dạng, xếp cho đợt W2.
 - **Throttle (kèm theo, ADR-0006 không có chỗ hợp hơn):** hai đường ghi tiền
   của admin (`admin.bookings.refund`, `admin.cancellations.decide`) nay có
-  `AUTHED_WRITE_THROTTLE`; `AuthedWriteThrottlerGuard` không có session là 401
+  `AUTHED_WRITE_THROTTLE` (từ W2/ADR-0037 là guard TOÀN CỤC `DefaultWriteThrottlerGuard`;
+  `AuthedWriteThrottlerGuard` đã xoá); guard không có session là 401
   (fail-closed thật, thay vì rơi về IP/bucket chung); `WEBHOOK_THROTTLE` nâng
   120 → 600/phút vì delivery thật dùng chung bucket với kẻ dò và burst
   redeliver sau khi Render thức từng đủ chạm trần; web map 429 ở wishlist,

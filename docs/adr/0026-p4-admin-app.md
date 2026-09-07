@@ -189,3 +189,29 @@ DELETE FROM sessions WHERE user_id = (
 
 Bất biến phải giữ khi P4f dựng UI: không tự hạ chính mình, không hạ admin
 cuối cùng, hạ quyền luôn kèm thu hồi phiên.
+
+## AMEND 2 — 07/09/2026 (vòng vá review W2): CORS chỉ giấu response — chặn THI HÀNH ở tầng request
+
+AMEND 1 §B viết "mọi write admin là oRPC JSON → có preflight, nên nhát cắt CORS
+phủ đúng bề mặt thật" — **nói quá**: content-type do KẺ GỬI chọn, không do app.
+`rawBody: true` làm Nest đăng ký parser `application/x-www-form-urlencoded`
+toàn cục, oRPC đọc `req.body` đã parse, contract nhận chuỗi → một XSS ở www
+gửi `fetch(..., { mode: 'no-cors', credentials: 'include', body:
+'amount=1200&reason=x' })` là simple request KHÔNG preflight và refund CHẠY
+THẬT bằng cookie cha của nạn nhân; `origin: false` chỉ giấu response. Chốt:
+
+- Hook `onRequest` ở `configureHttp`: mọi request GHI (non-GET) ngoài
+  `/api/auth/*` (Better Auth tự CSRF) và `/api/webhooks/*` (provider gửi JSON)
+  có content-type ≠ `application/json` → **415** trước cả AuthGuard. JSON luôn
+  bị preflight, và preflight vùng admin đã bị `origin: false` chặn — hai lớp
+  mới khép kín.
+- Vùng admin thêm: `Sec-Fetch-Site: cross-site` → **403** (browser hiện đại
+  gửi header này, script không xoá được).
+- So path bỏ query (`/api/admin?x` từng trượt).
+- `CORS_ORIGINS` (nếu set) phải chứa origin của `FRONTEND_URL` và mọi entry
+  của `TRUSTED_ORIGINS` — superRefine canh, vì ô trống trên Render mời điền
+  mỗi www → admin không đăng nhập được, lỗi chỉ hiện ở console browser.
+
+CSP phía web (W3) vẫn là nhát cắt gốc cho XSS; hai lớp trên là để một XSS
+không còn gọi được đường ghi admin dù có cookie.
+
