@@ -8,6 +8,77 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-07 — W4 kênh vào & email đi ra — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/inbound-channels`, 19 commit `6b3c4da..0499d2d`, 1 migration MỚI)
+
+Đợt vá thứ tư (cuối) theo bản rà 05/09 — cụm 4 trọn, cụm 3 (upload/retract),
+cụm 5 (đường đọc) và hai nợ W3. ADR đi trước code: **ADR-0039 mới** (kênh
+vào & email đi ra) và AMEND ADR-0021/0032/0037/0038/0016 (`6b3c4da`). Một
+migration `20260907115144_w4_inbound_channels` (`9ab97fe`) gom mọi cột/bảng:
+`subscribers.welcome_sent_at` và `confirmed_at` (backfill người cũ =
+`created_at`, quyết định một lần), `outbox.next_attempt_at`, bảng
+`email_suppressions` (bật RLS cùng migration, check-rls xanh),
+`enquiries.user_id` cộng `anonymized_at`, `reviews.retracted_at` — đã apply
+docker `tourism` và `tourism_test`, **CHƯA deploy Supabase** (deploy lúc
+merge, nếp W1/W2). 16 mục, mỗi mục một commit, TDD test-đỏ-trước:
+
+- **E — email đi ra & outbox:** ack liên hệ bỏ khối YOUR MESSAGE + dedupe
+  một-ack/địa-chỉ/ngày UTC (`fbbe6b2`); `welcomeSentAt` trong cùng tx — purge
+  outbox 30 ngày hết làm welcome lặp (`682cf0d`); token
+  `v1.<purpose>.<hmac>`, resubscribe mang exp 30 ngày, v0 chỉ còn nhận cho
+  unsubscribe tới 31/12/2026, GET confirm phát `resubscribeToken` cho panel
+  (`9d1473d`); double opt-in — thư đầu là thư XÁC NHẬN, endpoint GET/POST
+  `/api/newsletter/confirm`, trang web `/newsletter/confirm`, admin cột
+  Confirmed cộng filter cộng CSV, link `/privacy` dưới form footer
+  (`aa93f63`); outbox backoff luỹ thừa trần 60 phút, 4xx-không-retry,
+  deliverer ném lỗi mang status, admin retry reset lịch (`7b45b19`);
+  suppression từ Resend — webhook svix tự cài, `email.bounced` cứng và
+  `email.complained` upsert, drain SKIP mọi loại email kèm lý do vào
+  lastError, thiếu env thì 503 và một dòng log boot (`1a5ce93`); redactDeep
+  không phân biệt hoa/thường và hậu tố token/secret/password (`37ab587`);
+  retention enquiry 18 tháng anonymize, `user_id` ghi lúc có session, nối
+  vào deleteAccount cùng tx (`e55aa5e`).
+- **U — upload & review:** chữ ký Cloudinary ký thêm `allowed_formats` và
+  incoming `transformation c_limit,w_2400,h_2400` (strip EXIF/GPS), web gửi
+  đủ, runbook dashboard hai thiết lập (`a2e1181`); `reviews.retract` trọn
+  bốn tầng — trạng thái thứ tư `retracted`, requeue ảnh, recompute rating,
+  bust `tour:<slug>`, admin "Retracted by author" không duyệt lại, `/terms`
+  nói rõ tên hiển thị snapshot (`c6985b3`); int test U3 lộ đúng lỗ —
+  `reviews.update` từng đặt lại đồng hồ GC của ảnh được GIỮ, nay chỉ requeue
+  publicId thật sự rời (`e6f1557`).
+- **R — đường đọc & revalidate:** GET `@Public()` đếm bucket `read` 300/60s
+  theo IP, một bucket cho cả trang, GET có session và route khai `@Throttle`
+  riêng không đếm — guard đổi tên `DefaultThrottlerGuard`, không guard thứ
+  hai (`2ca24b0`); `PublicCacheInterceptor` gắn `public, s-maxage=60, SWR
+  300` cho catalog/posts/site-media, hook onSend gỡ cache công khai khỏi mọi
+  response lỗi (`0b8c74c`); `page.max(10000)`, escapeLike search catalog,
+  `resolveForOwners` lọc role ngay ở query cộng select hẹp — mọi call site
+  chỉ-cần-cover truyền `[hero]` (`2708ba1`); `RevalidateBudget` in-memory
+  30/phút mỗi instance, 429 kèm Retry-After, đếm sau bước secret (`be7a721`).
+- **C — CSP report (nợ W3):** `POST /api/webhooks/csp-report` nhận cả
+  `application/csp-report` lẫn `application/reports+json`, parser giữ raw
+  cộng trần 8 KB → 413, log một dòng cấu trúc dedupe (directive, blockedUri)
+  10 phút, trả 204 (`88f990b`); hai app phát `Reporting-Endpoints` cộng
+  directive `report-to csp` cộng `report-uri`, test map directive so bằng
+  cập nhật (`0499d2d`).
+
+`pnpm gate:int` trọn trong cây chính (API tạm :3001 trên docker `tourism`
+theo công thức CI, kill theo PID sau khi kiểm cwd), `check-rls.sh` và
+`check-admin-prerender.mjs` xanh; smoke curl: csp-report 204 kèm một dòng
+log, resend webhook thiếu env 503. Tests after: 3139 unit (451 api, 255
+contract, 1487 web, 912 admin, 2 i18n, 10 tokens, 22 ui) và 487 int.
+`render.yaml` cộng `.env.example` thêm khoá `RESEND_WEBHOOK_SECRET`,
+`ENQUIRY_RETENTION_MONTHS`.
+
+**CÒN TREO (cố ý, ghi để reviewer khỏi đi tìm):** deploy migration lên
+Supabase cộng đặt env Render cộng hai thiết lập dashboard Cloudinary —
+việc của session gốc lúc merge; trần đọc R1 có thể chạm bởi build
+Vercel/ISR production (một IP build prerender nhiều trang — chưa đo, cần
+theo dõi sau deploy); Turnstile/captcha, catalogue lớn hơn 50, AdminAuditLog,
+throttler store chung, LazyMotion, producer bust posts/site-media — giữ
+nguyên danh sách "không làm ở W4" của spec; suppression chưa có UI gỡ tay
+(operator dùng SQL); ngày ngừng nhận token v0 31/12/2026 là một lần gỡ mã
+có chủ đích sau này.
+
 ## 2026-09-07 — W3 merge + vòng review 8 mũi cho vỏ Next (nhánh `fix/web-shell-headers`, 29 commit `57d302e..a1a45cc` ff vào main, 83 file, KHÔNG migration, không đụng API)
 
 Entry ngay dưới ghi "19 commit code `57d302e..66804c8` và 2 commit docs" — đếm
