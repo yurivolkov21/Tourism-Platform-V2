@@ -47,6 +47,12 @@ describe('proxy (admin)', () => {
     }
   });
 
+  it('/robots.txt cho qua KHÔNG cần cookie — crawler bị đá về /login là robots chết (W3-H3)', () => {
+    const response = proxy(new NextRequest('https://admin.example.com/robots.txt'));
+    expect(response.status).toBe(200);
+    expect(response.headers.get('location')).toBeNull();
+  });
+
   it('response mang CSP có nonce + strict-dynamic, và request header cũng mang đúng CSP đó', () => {
     const response = proxy(
       new NextRequest('https://admin.example.com/', {

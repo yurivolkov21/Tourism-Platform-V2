@@ -36,4 +36,8 @@ describe('decideAdminAccess', () => {
   it('path con của /login vẫn public (query/segment phụ)', () => {
     expect(decideAdminAccess(null, '/login/anything')).toEqual({ kind: 'allow' });
   });
+
+  it('/robots.txt public — crawler không cookie phải đọc được disallow (W3-H3)', () => {
+    expect(decideAdminAccess(null, '/robots.txt')).toEqual({ kind: 'allow' });
+  });
 });

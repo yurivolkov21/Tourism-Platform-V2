@@ -15,8 +15,12 @@ export type GateDecision =
   | { kind: 'login'; redirectTo: string }
   | { kind: 'deny' };
 
-/** Path không cần session: trang login và màn từ chối quyền. */
-const PUBLIC_PATHS = ['/login', '/not-authorized'] as const;
+/**
+ * Path không cần session: trang login, màn từ chối quyền, và `/robots.txt`
+ * (W3-H3 — crawler không có cookie; bị đá về /login là file disallow không
+ * bao giờ được đọc, noindex chỉ còn mỗi lớp X-Robots-Tag).
+ */
+const PUBLIC_PATHS = ['/login', '/not-authorized', '/robots.txt'] as const;
 
 export function decideAdminAccess(session: GateSession | null, path: string): GateDecision {
   const isPublic = PUBLIC_PATHS.some((p) => path === p || path.startsWith(`${p}/`));
