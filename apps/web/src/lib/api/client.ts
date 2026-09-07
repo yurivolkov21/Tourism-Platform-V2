@@ -58,7 +58,10 @@ export function withAuthOptions(
 ): RequestInit {
   if (!context?.auth) return init;
   if ('credentials' in context.auth) {
-    return { ...init, credentials: context.auth.credentials };
+    // no-store CẢ nhánh browser (W3-O3, audit cụm 7): data per-user vào HTTP
+    // cache/bfcache là rò giữa các phiên trên cùng máy — JSDoc trên đã hứa
+    // từ đầu, nhánh server có mà nhánh này thiếu.
+    return { ...init, credentials: context.auth.credentials, cache: 'no-store' };
   }
   const headers = new Headers(request.headers);
   headers.set('cookie', context.auth.cookie);

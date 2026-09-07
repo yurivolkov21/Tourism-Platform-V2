@@ -26,11 +26,10 @@ describe('withAuthOptions', () => {
     expect(withAuthOptions(request, { method: 'GET' }, undefined)).toEqual({ method: 'GET' });
   });
 
-  it('browser (credentials include) → gắn credentials, KHÔNG ép cache', () => {
+  it('browser (credentials include) → gắn credentials VÀ ép cache no-store (W3-O3: dữ liệu per-user không được vào HTTP cache/bfcache)', () => {
     const request = new Request('http://api.test/x');
     const init = withAuthOptions(request, { method: 'GET' }, { auth: { credentials: 'include' } });
-    expect(init).toMatchObject({ method: 'GET', credentials: 'include' });
-    expect(init.cache).toBeUndefined();
+    expect(init).toMatchObject({ method: 'GET', credentials: 'include', cache: 'no-store' });
   });
 
   it('server (forward cookie) → gắn header cookie + ép cache no-store, GIỮ header gốc của request', () => {
