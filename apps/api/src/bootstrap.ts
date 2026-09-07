@@ -141,6 +141,23 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
       return;
     });
 
+  // W4 C1 (ADR-0038 AMEND 2): browser gửi báo cáo CSP bằng hai MIME riêng —
+  // `application/csp-report` (report-uri) và `application/reports+json`
+  // (report-to). Fastify không có parser cho chúng thì POST chết 415 ở TẦNG
+  // FASTIFY trước khi tới controller (hook 415 của W2 chỉ miễn được thứ
+  // Fastify chịu nhận). Giữ RAW buffer (controller tự JSON.parse phòng thủ)
+  // + trần 8 KB — quá là Fastify tự trả 413, đúng spec C1.
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addContentTypeParser(
+      ['application/csp-report', 'application/reports+json'],
+      { parseAs: 'buffer', bodyLimit: 8 * 1024 },
+      (_req, body, done) => {
+        done(null, body);
+      },
+    );
+
   // W4 R2 (ADR-0037 AMEND 2): KHÔNG BAO GIỜ cache công khai một response
   // LỖI. PublicCacheInterceptor đặt header TRƯỚC handler (oRPC gửi reply bên
   // trong handler nên đặt sau là quá muộn), tức nhánh lỗi của oRPC (bySlug

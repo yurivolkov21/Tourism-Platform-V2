@@ -13,6 +13,7 @@ import { captureException } from './lib/observability.js';
 import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './lib/orpc-error-log.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { CspReportModule } from './modules/csp-report/csp-report.module.js';
 import { EmailWebhooksModule } from './modules/email-webhooks/email-webhooks.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
 import { HealthModule } from './modules/health/health.module.js';
@@ -89,6 +90,8 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     OutboxModule,
     // W4 E6: webhook Resend ghi email_suppressions (bounce cứng/complaint).
     EmailWebhooksModule,
+    // W4 C1: POST /api/webhooks/csp-report — kênh báo cáo CSP hai app.
+    CspReportModule,
   ],
   providers: [
     /**
