@@ -248,6 +248,7 @@ model User {
   chatConversations     ChatConversation[]
   moderationEvents      ReviewModerationEvent[]
   enquiryStatusEvents   EnquiryStatusEvent[]
+  enquiries             Enquiry[]
 
   @@index([role])
   @@map("users")
@@ -734,6 +735,11 @@ model Review {
   // re-moderation — quyết định mới nhất thắng. SetNull giữ review nếu admin bị xóa.
   moderatedById  String?      @map("moderated_by") @db.Uuid
   moderatedAt    DateTime?    @map("moderated_at")
+  // TRỤC 3 (ADR-0032 AMEND 1, W4 U2): tác giả RÚT review đã duyệt — ý chí
+  // của TÁC GIẢ, tách khỏi cặp phán quyết admin (isApproved/rejectedAt).
+  // Chung cuộc: admin không duyệt lại, tác giả không sửa tiếp. Đi kèm
+  // isApproved=false trong cùng lệnh retract.
+  retractedAt    DateTime?    @map("retracted_at")
   createdAt      DateTime     @default(now()) @map("created_at")
   updatedAt      DateTime     @updatedAt @map("updated_at")
 
@@ -831,16 +837,27 @@ model Enquiry {
   budgetTier  String?       @map("budget_tier") @db.VarChar(40)
   interests   String[]      @default([])
   status      EnquiryStatus @default(NEW)
+  /// Chủ tài khoản LÚC GỬI form (W4 E8, ADR-0039 §6) — chỉ ghi khi request
+  /// mang session; enquiry ẩn danh giữ null (email form tự do KHÔNG chứng
+  /// minh sở hữu nên không truy ngược theo email). deleteAccount anonymize
+  /// ngay mọi enquiry theo cột này. SetNull vì row user là tombstone bất tử —
+  /// nhánh này chỉ chạy nếu một ngày user bị hard-delete thật.
+  userId      String?       @map("user_id") @db.Uuid
+  /// Mốc job retention (hoặc deleteAccount) đã xoá PII của row — null = còn
+  /// nguyên. Job đếm theo ngưỡng ENQUIRY_RETENTION_MONTHS trên createdAt.
+  anonymizedAt DateTime?    @map("anonymized_at")
   createdAt   DateTime      @default(now()) @map("created_at")
   updatedAt   DateTime      @updatedAt @map("updated_at")
 
   tour         Tour?                @relation(fields: [tourId], references: [id], onDelete: SetNull)
+  user         User?                @relation(fields: [userId], references: [id], onDelete: SetNull)
   notes        EnquiryNote[]
   statusEvents EnquiryStatusEvent[]
 
   @@index([status, createdAt])
   @@index([tourId])
   @@index([email])
+  @@index([userId])
   @@map("enquiries")
 }
 
@@ -907,10 +924,39 @@ model Subscriber {
   // pháp lý GDPR/CAN-SPAM. Soft-unsubscribe giữ được bằng chứng consent,
   // khác hẳn hard-delete của Nexora.
   unsubscribedAt DateTime? @map("unsubscribed_at")
+  /// Mốc email đầu tiên (xác nhận/welcome) ĐÃ được enqueue — W4 E2 (ADR-0039).
+  /// Set trong CÙNG tx subscribe; null = chưa từng. Cột này mới là bằng chứng
+  /// "đã gửi một lần", KHÔNG phải row outbox — outbox bị purge 30 ngày.
+  welcomeSentAt  DateTime? @map("welcome_sent_at")
+  /// Consent hai bước (ADR-0039 §2): null = "đã xin", CHƯA đồng ý. Mọi đợt
+  /// gửi hàng loạt tương lai chỉ tới row có giá trị. Backfill một lần cho
+  /// người trước W4: confirmed_at = created_at (ghi trong migration).
+  confirmedAt    DateTime? @map("confirmed_at")
   updatedAt      DateTime  @updatedAt @map("updated_at")
   createdAt      DateTime  @default(now()) @map("created_at")
 
   @@map("subscribers")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EmailSuppression — nguồn sự thật THỨ HAI bên cạnh Subscriber.unsubscribedAt
+// (ADR-0039 §4): địa chỉ mà Resend báo bounce cứng/complaint qua webhook.
+// Drain SKIP mọi outbox row gửi tới đây. KHÔNG tự xoá — operator gỡ tay khi
+// khách xác nhận địa chỉ sống lại. PK là chính email (citext — một hàng mỗi
+// địa chỉ, không phân biệt hoa/thường, upsert tự nhiên theo PK).
+// ─────────────────────────────────────────────────────────────────────────────
+
+model EmailSuppression {
+  email     String   @id @db.Citext
+  /// Vì sao bị chặn — 'bounced' | 'complained' (chuỗi từ event Resend, không
+  /// enum: provider thêm loại mới thì vẫn ghi được, drain không cần phân biệt).
+  reason    String   @db.VarChar(40)
+  /// Nguồn ghi — hiện chỉ 'resend' (webhook); để cột cho ngày có nguồn thứ hai
+  /// (operator nhập tay chẳng hạn) vẫn truy được ai ghi.
+  source    String   @db.VarChar(40)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("email_suppressions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1080,6 +1126,10 @@ model Outbox {
   attempts    Int          @default(0)
   dedupeKey   String       @unique @map("dedupe_key") @db.VarChar(200)
   lastError   String?      @map("last_error") @db.VarChar(1000)
+  /// Backoff luỹ thừa (ADR-0039 §4, W4 E5): drain chỉ lấy row PENDING có
+  /// next_attempt_at <= now (null = tới hạn ngay — row mới hoặc trước W4).
+  /// Lỗi tạm set now + 2^attempts phút, trần 60′; admin retry reset về null.
+  nextAttemptAt DateTime?  @map("next_attempt_at")
   createdAt   DateTime     @default(now()) @map("created_at")
   processedAt DateTime?    @map("processed_at")
 
