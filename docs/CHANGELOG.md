@@ -8,6 +8,56 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-07 — W3 vỏ Next thi công xong — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/web-shell-headers`, 17 commit `57d302e..1479802`, 51 file, KHÔNG migration, không đụng API)
+
+Đợt vá thứ ba theo [bản rà 05/09](analysis/2026-09-05-web-security-audit.md)
+(cụm 7 trọn + cụm 5 mục revalidate/metadata/robots/ảnh + cụm 8 mục admin),
+theo [spec W3 07/09](specs/2026-09-07-w3-web-shell-headers-design.md). ADR đi
+trước code: [ADR-0038 mới](adr/0038-web-shell-security-headers.md) (CSP hai
+app, HSTS để Vercel, hai file security-headers riêng) + ADR-0016 AMEND 1 +
+ADR-0026 AMEND 3. 12 mục, mỗi mục một commit, TDD trên phần thuần:
+
+- **H**: web CSP không nonce qua `headers()` (`security-headers.ts` thuần);
+  admin CSP nonce 16 byte + `'strict-dynamic'` qua proxy (CSP vào cả request
+  lẫn response), admin thêm `X-Robots-Tag` noindex + `robots.ts` disallow;
+  `/api/revalidate` trả `no-store` + noindex.
+- **S**: `metadataBase` từ `NEXT_PUBLIC_SITE_URL`; robots đóng ngoài
+  production theo `VERCEL_ENV` (`robotsFor` thuần); `(auth)/layout.tsx`
+  noindex 6 trang auth; `remotePatterns` siết theo
+  `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` + `minimumCacheTTL` 86400 + loader
+  Cloudinary chèn `w_<width>` idempotent (trả nợ ADR-0020 từ 14/08).
+- **O**: web tách `serverApiOrigin`/`browserApiOrigin`, production thiếu →
+  throw nêu tên biến (CI khai `NEXT_PUBLIC_API_URL` tường minh, `turbo.json`
+  khai `VERCEL_ENV` và `API_URL` cho task build); admin `resolveApiOrigin`
+  parse `new URL()` + production ép https — kèm bản vá phát hiện khi chạy
+  gate: `next build` nào cũng NODE_ENV=production nên hai chỗ gọi
+  `apiOrigin()` ở module scope phải thành lười (`url: () => …`, authClient
+  chỉ tính origin trong browser); `withAuthOptions` nhánh browser `no-store`;
+  `isCheckoutUrl` gác hai chỗ `location.assign`; `resolveRevalidateSecret`
+  fail-fast production + whitelist thêm `site-media`; admin 403 mang digest
+  `ADMIN_FORBIDDEN` → `error.tsx` về `/not-authorized`, layout gác đọc
+  `x-pathname` do proxy gắn, admin có `proxy.spec.ts`.
+- **C**: copy sót về `@tourism/i18n` (login, two-factor, share-row,
+  contact-location, forgot-password — trả luôn nợ câu "expires in 30
+  minutes" ghi CÒN TREO ở entry W2 06/09).
+
+Tests after: `pnpm gate:int` trọn với API tạm :3001 trên docker DB theo công
+thức CI — unit 250 contract, 1471 web, 409 api, 900 admin, 22 ui, 10 tokens,
+2 i18n; integration 454 api. Tổng web tăng thêm 41 spec mới của W3
+(security-headers 7, robots 3, cloudinary-loader 5, env 6, checkout-url 4…),
+admin thêm 23 (security-headers 8, proxy 8, env 5, forbidden 3, và các spec
+sửa).
+
+CÒN TREO (chờ session gốc trước khi merge): nghiệm thu tay DevTools theo spec
+§6 — user mở localhost soát 0 dòng "Refused to …" trên các trang liệt kê
+(CSP sai là prod hỏng ngay sau push); đặt env Vercel TRƯỚC merge:
+`NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (web, thiếu chỉ warn + mở `/**`) và soát
+`NEXT_PUBLIC_API_URL` đã có ở CẢ hai project (giờ thiếu là build/runtime
+throw thay vì âm thầm trỏ localhost); sau merge `curl -sI` hai app phải thấy
+CSP + 5 header và VẪN còn HSTS của Vercel. Ngoài phạm vi (cố ý, spec §2):
+LazyMotion (P7), throttle + Cache-Control đường đọc API (W4), catalogue >50,
+AdminAuditLog + freshAge (P4f).
+
 ## 2026-09-07 — W2 merge + vòng review 8 mũi cho phiên & hạ tầng (nhánh `fix/auth-infra-hardening`, 23 commit `4787bd4..6689fdf` ff vào main, 92 file, 2 migration đã deploy Supabase)
 
 Entry ngay dưới ghi "16 commit `4787bd4..d16c718`, chưa merge, chờ review ở
