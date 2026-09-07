@@ -139,6 +139,11 @@ const EnvSchema = z
     // để 0 thì dòng phí trong báo cáo bằng 0 chứ không bịa.
     PAYMENT_FEE_RATE: z.coerce.number().min(0).max(1).default(0),
     PAYMENT_FEE_FIXED: z.coerce.number().min(0).default(0),
+    // ── Retention enquiry (W4 E8, ADR-0039 §6) ──
+    // Enquiry cũ hơn N THÁNG bị job hằng ngày anonymize (giữ thống kê lead,
+    // xoá PII). Mặc định 18; .min(1) vì 0 là "anonymize mọi lead ngay khi
+    // gửi" — muốn thế thì đừng có form.
+    ENQUIRY_RETENTION_MONTHS: z.coerce.number().int().min(1).max(120).default(18),
     // ── Bộ dọn ảnh mồ côi (ADR-0035) ──
     // ⚠️ MẶC ĐỊNH TẮT, và đây là lưới an toàn quan trọng nhất của cơ chế:
     // dev và prod dùng CHUNG một Cloudinary cloud (chỉ có một

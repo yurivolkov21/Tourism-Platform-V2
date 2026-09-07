@@ -81,6 +81,10 @@ services:
       # in-memory per-process — KHÔNG scale ngang (ADR-0024 AMEND 3).
       - key: MEDIA_GC_ENABLED
         sync: false
+      # W4 E8: số THÁNG giữ PII enquiry trước khi job hằng ngày anonymize
+      # (số nguyên 1..120; bỏ trống = 18).
+      - key: ENQUIRY_RETENTION_MONTHS
+        sync: false
       - key: MEDIA_GC_GRACE_DAYS
         sync: false
       - key: MARGIN_TAX_RATE

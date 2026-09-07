@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { PgBoss } from 'pg-boss';
 import { env } from '../config/env.js';
 import { MediaGarbageService } from '../modules/media/media-garbage.service.js';
+import { EnquiryRetentionService } from './enquiry-retention.service.js';
 import { OutboxService } from './outbox.service.js';
 import { PENDING_TTL_MINUTES, PendingSweepService } from './pending-sweep.service.js';
 import { WorkerModule } from './worker.module.js';
@@ -30,6 +31,13 @@ const RETENTION_DAYS = 30;
 const BOOKING_SWEEP_QUEUE = 'booking-sweep';
 /** Mỗi 10′ — backstop WRK-1 khi webhook expired rớt. */
 const BOOKING_SWEEP_CRON = '*/10 * * * *';
+const ENQUIRY_RETENTION_QUEUE = 'enquiry-retention';
+/**
+ * Hằng ngày 03:30 UTC — giữa outbox-purge (03:00) và media-gc (04:00), cùng
+ * họ job dọn dẹp nhẹ (W4 E8, ADR-0039 §6). Idempotent nên retryLimit mặc
+ * định là thừa — một câu UPDATE, lượt kế theo cron tự bù.
+ */
+const ENQUIRY_RETENTION_CRON = '30 3 * * *';
 const MEDIA_GC_QUEUE = 'media-gc';
 /**
  * Hằng ngày 04:00 UTC — sau `outbox-purge` một tiếng để hai job nặng không
@@ -43,6 +51,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   const app = await NestFactory.createApplicationContext(WorkerModule);
   const outbox = app.get(OutboxService);
   const pendingSweep = app.get(PendingSweepService);
+  const enquiryRetention = app.get(EnquiryRetentionService);
 
   const boss = new PgBoss({
     connectionString: env.DATABASE_URL,
@@ -73,6 +82,13 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   });
   await boss.schedule(BOOKING_SWEEP_QUEUE, BOOKING_SWEEP_CRON);
 
+  // Retention enquiry (W4 E8): anonymize lead quá ENQUIRY_RETENTION_MONTHS.
+  await boss.createQueue(ENQUIRY_RETENTION_QUEUE, { policy: 'short', retryLimit: 0 });
+  await boss.work(ENQUIRY_RETENTION_QUEUE, async () => {
+    await enquiryRetention.sweep(new Date(), env.ENQUIRY_RETENTION_MONTHS);
+  });
+  await boss.schedule(ENQUIRY_RETENTION_QUEUE, ENQUIRY_RETENTION_CRON);
+
   // Dọn ảnh mồ côi trên Cloudinary (ADR-0035).
   //
   // ⚠️ Queue chỉ được ĐĂNG KÝ khi có cờ, chứ không phải đăng ký rồi bên trong
@@ -100,7 +116,7 @@ export async function startWorker(logger: Logger): Promise<{ stop: () => Promise
   }
 
   logger.log(
-    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON}` +
+    `worker loops started (${env.NODE_ENV}) — outbox-drain ${OUTBOX_DRAIN_CRON} · outbox-purge ${OUTBOX_PURGE_CRON} · booking-sweep ${BOOKING_SWEEP_CRON} · enquiry-retention ${ENQUIRY_RETENTION_CRON}` +
       (env.MEDIA_GC_ENABLED
         ? ` · media-gc ${MEDIA_GC_CRON} (chờ ${env.MEDIA_GC_GRACE_DAYS} ngày)`
         : ' · media-gc TẮT'),

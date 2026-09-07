@@ -9,6 +9,7 @@ import {
 } from '../generated/prisma/enums.js';
 import { calendarDate, startOfDayUtc } from '../lib/calendar-date.js';
 import { buildCloudinaryUrl } from '../lib/cloudinary-url.js';
+import { anonymizeEnquiriesOfUser } from '../lib/enquiry-anonymize.js';
 import { isOwnAvatarPublicId } from '../lib/upload-signing.js';
 import { auth, prisma } from './auth.config.js';
 
@@ -214,6 +215,11 @@ export class AccountService {
           }
         }
       }
+      // W4 E8 (ADR-0039 §6): anonymize NGAY mọi enquiry user này gửi lúc
+      // đang đăng nhập — quyền được xoá mạnh hơn lịch retention 18 tháng.
+      // Cùng máy anonymize với job hằng ngày (một nguồn sự thật), chạy trong
+      // CÙNG tx tombstone.
+      await anonymizeEnquiriesOfUser(tx, userId);
       // GDPR erasure (NL-R1): xoá HẲN Subscriber trùng email. Account deletion là
       // quyền-được-xoá — mạnh hơn soft-unsubscribe của flow công khai; để lại thì
       // vẫn gửi marketing tới email của user đã xoá VÀ giữ PII email trong DB.

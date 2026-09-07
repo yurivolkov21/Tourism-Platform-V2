@@ -15,7 +15,7 @@ export class EnquiriesService {
    * enquiry đã lưu nhưng email không bao giờ được xếp hàng (crash/lỗi giữa
    * hai lệnh ghi rời).
    */
-  async create(input: CreateEnquiryInput): Promise<{ id: string }> {
+  async create(input: CreateEnquiryInput, userId: string | null = null): Promise<{ id: string }> {
     // Tour tuỳ chọn; nếu có thì phải là tour đang publish — check TRƯỚC
     // transaction để tránh mở transaction cho một request chắc chắn fail.
     let tourTitle: string | null = null;
@@ -41,6 +41,9 @@ export class EnquiriesService {
           groupSize: input.groupSize ?? null,
           budgetTier: input.budgetTier ?? null,
           interests: input.interests,
+          // W4 E8: chủ tài khoản LÚC GỬI (controller đọc session) — null cho
+          // khách ẩn danh; deleteAccount anonymize theo cột này.
+          userId,
         },
         select: { id: true },
       });
