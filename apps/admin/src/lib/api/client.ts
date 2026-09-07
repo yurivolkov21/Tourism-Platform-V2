@@ -74,7 +74,11 @@ export function withAdminOptions(
  * mang `AdminApiContext`) — KHÔNG theo mẫu 2 tham số của docs online.
  */
 const link = new OpenAPILink<AdminApiContext>(contract, {
-  url: apiOrigin(),
+  // LƯỜI có chủ đích (W3-O2): apiOrigin() ép https khi NODE_ENV=production,
+  // mà `next build` NÀO cũng chạy production — gọi ở module scope là giết
+  // build local/CI (env dev http). Để dạng hàm thì phép ép chạy đúng "lúc
+  // gọi" đầu tiên ở runtime, với env runtime thật.
+  url: () => apiOrigin(),
   // MỘT chỗ cho mọi đường đọc/ghi (ADR-0026 AMEND 3 §B): lỗi 403 mang digest
   // ADMIN_FORBIDDEN để error boundary đưa admin bị thu hồi quyền về
   // /not-authorized; server action đã classify 403 riêng — digest không đổi

@@ -8,5 +8,10 @@ import { apiOrigin } from '@/lib/api/env';
  * hay additionalFields (đăng ký/quên mật khẩu là việc của www).
  */
 export const authClient = createAuthClient({
-  baseURL: apiOrigin(),
+  // CHỈ tính origin trong browser (W3-O2): authClient chỉ được GỌI từ
+  // handler client-side, còn lúc `next build` (NODE_ENV=production, env dev
+  // http) module này vẫn bị evaluate khi prerender /login — gọi apiOrigin()
+  // ở đây là phép ép https giết build. Server không bao giờ dùng client này
+  // nên baseURL phía server để undefined vô hại.
+  baseURL: typeof window === 'undefined' ? undefined : apiOrigin(),
 });
