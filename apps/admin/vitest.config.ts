@@ -17,7 +17,9 @@ export default defineConfig({
         test: {
           name: 'node',
           environment: 'node',
-          include: ['src/lib/**/*.spec.ts'],
+          // `src/proxy.spec.ts`: glob riêng vì proxy.ts nằm ở gốc src/ —
+          // cùng nếp apps/web (I-1).
+          include: ['src/lib/**/*.spec.ts', 'src/proxy.spec.ts'],
         },
       },
       {
