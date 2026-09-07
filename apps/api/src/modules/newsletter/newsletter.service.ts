@@ -50,6 +50,12 @@ export class NewsletterService {
         update: {},
       });
 
+      // W4 E2 (ADR-0039): bằng chứng "đã gửi thư đầu" là `welcomeSentAt`
+      // trên CHÍNH subscriber, không phải row outbox — outbox purge SENT
+      // sau 30 ngày, nên dedupeKey một mình chỉ chặn lặp trong 30 ngày rồi
+      // welcome quay lại mỗi tháng cho ai điền lại form.
+      if (subscriber.welcomeSentAt !== null) return;
+
       // Vá review Task 6 — Khoản 2: "chưa email nào chứa link huỷ đăng ký".
       // Sinh sẵn token NGAY LÚC enqueue (không để deliverer tự tính lại) —
       // giữ một nguồn sự thật duy nhất cho bí mật ký, và deliverer chỉ cần đọc
@@ -60,11 +66,9 @@ export class NewsletterService {
       );
 
       // dedupeKey theo EMAIL (không phải id) → "một lần vĩnh viễn cho mỗi địa
-      // chỉ". Đây là ngoại lệ hợp lệ DUY NHẤT của quy ước dedupe-key (xem
-      // docs/conventions/outbox-dedupe-key.md) — spec §4.4 ghi rõ: xoá
-      // subscriber rồi đăng ký lại sẽ KHÔNG nhận welcome lần hai.
-      // `skipDuplicates` ở đây LOAD-BEARING thật sự (key ổn định, khác hẳn
-      // enquiry — key đó chứa uuid nên duy nhất theo cấu tạo).
+      // chỉ" (xem docs/conventions/outbox-dedupe-key.md); từ W4 nó là lưới
+      // THỨ HAI sau `welcomeSentAt` — vẫn giữ `skipDuplicates` cho ca hai
+      // request đồng thời cùng thấy welcomeSentAt null.
       await tx.outbox.createMany({
         data: [
           {
@@ -74,6 +78,12 @@ export class NewsletterService {
           },
         ],
         skipDuplicates: true,
+      });
+      // CÙNG transaction với enqueue: outbox lỗi thì mốc này rollback theo —
+      // không ai bị đánh dấu "đã gửi" mà thư thì không bao giờ được xếp hàng.
+      await tx.subscriber.update({
+        where: { id: subscriber.id },
+        data: { welcomeSentAt: new Date() },
       });
     });
   }

@@ -232,6 +232,33 @@ describe('newsletter (int)', () => {
     expect(await prisma.outbox.count()).toBe(0);
   });
 
+  it('W4 E2 (ADR-0039): subscribe → drain → purge outbox → subscribe lại → KHÔNG welcome mới (welcomeSentAt là bằng chứng, không phải row outbox)', async () => {
+    // Lỗ trước W4: "một lần vĩnh viễn" dựa hoàn toàn vào dedupeKey @unique,
+    // nhưng row SENT bị purge sau 30 ngày — sau đó subscribe lại là welcome
+    // lặp. Bằng chứng "đã gửi" phải sống ở subscriber, set trong CÙNG tx.
+    const email = 'welcome.once.forever@example.com';
+    const first = await postSubscribe(app, { email }, '10.1.0.10');
+    expect(first.statusCode).toBe(200);
+
+    const afterFirst = await prisma.subscriber.findUniqueOrThrow({ where: { email } });
+    expect(afterFirst.welcomeSentAt).toBeInstanceOf(Date);
+
+    // Mô phỏng trọn vòng đời: gửi thật (drain) rồi purge hết row đã xử lý.
+    await outbox.drainOnce();
+    await outbox.purgeSent(0);
+    expect(await prisma.outbox.count()).toBe(0);
+
+    const second = await postSubscribe(app, { email }, '10.1.0.11');
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual({ subscribed: true });
+
+    // Điểm mấu chốt: KHÔNG row welcome mới dù dedupeKey cũ đã bị purge.
+    expect(await prisma.outbox.count({ where: { type: EmailType.NEWSLETTER_WELCOME } })).toBe(0);
+    // Mốc lần đầu giữ nguyên — subscribe lại không "làm mới" bằng chứng.
+    const afterSecond = await prisma.subscriber.findUniqueOrThrow({ where: { email } });
+    expect(afterSecond.welcomeSentAt).toEqual(afterFirst.welcomeSentAt);
+  });
+
   it('throttle: gửi 6 lần liên tiếp cùng IP → lần thứ 6 trả 429', async () => {
     const ip = '10.1.0.5';
     for (let i = 1; i <= 5; i++) {
