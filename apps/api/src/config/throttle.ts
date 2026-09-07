@@ -6,14 +6,25 @@
  * thì có.
  *
  * Từ ADR-0037 đây là DEFAULT của `ThrottlerModule` — guard toàn cục
- * `DefaultWriteThrottlerGuard` áp nó cho mọi route ghi `@Public()` không khai
+ * `DefaultThrottlerGuard` áp nó cho mọi route ghi `@Public()` không khai
  * gì, và nâng lên `AUTHED_WRITE_THROTTLE`/`ADMIN_WRITE_THROTTLE` khi request
  * có session (bản đầu của file này viết "cố ý KHÔNG gắn toàn cục" — câu đó
- * lỗi thời từ 06/09, vòng vá review W2). GET không bao giờ bị đếm.
+ * lỗi thời từ 06/09, vòng vá review W2). GET public từ W4 đếm bucket `read`
+ * riêng (PUBLIC_READ_THROTTLE bên dưới); GET có session không đếm.
  *
  * ttl tính bằng MILLISECOND (@nestjs/throttler v6+), không phải giây.
  */
 export const PUBLIC_WRITE_THROTTLE = { limit: 5, ttl: 60_000 } as const;
+
+/**
+ * Trần ĐỌC công khai (W4 R1, ADR-0037 AMEND 2): GET trên route `@Public()`
+ * đếm bucket TÊN RIÊNG `read` theo IP, MỘT bucket cho mọi route đọc —
+ * `/tours` + detail + related ≈ 6 call/trang nên 300/phút là ~50 trang/phút
+ * một IP: người thật không tới, script cào tuần tự thì chạm. Đây là lưới
+ * chống cạn pool DB (~10 connection), không phải chống đọc; GET có session
+ * và admin GET KHÔNG đếm (đối tượng của trần ghi theo user).
+ */
+export const PUBLIC_READ_THROTTLE = { limit: 300, ttl: 60_000 } as const;
 
 /**
  * Trần MẶC ĐỊNH cho endpoint GHI ĐÃ-AUTH (W1 khai sinh, W2/ADR-0037 thành

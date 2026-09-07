@@ -6,7 +6,12 @@ import { AppModule } from '../app.module.js';
 import { prisma } from '../auth/auth.config.js';
 import { Public } from '../auth/public.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
-import { ADMIN_WRITE_THROTTLE, AUTHED_WRITE_THROTTLE, PUBLIC_WRITE_THROTTLE } from './throttle.js';
+import {
+  ADMIN_WRITE_THROTTLE,
+  AUTHED_WRITE_THROTTLE,
+  PUBLIC_READ_THROTTLE,
+  PUBLIC_WRITE_THROTTLE,
+} from './throttle.js';
 
 /**
  * ADR-0037 — trần ghi MẶC ĐỊNH: test này canh cái LƯỚI, không canh route nào
@@ -35,10 +40,32 @@ class ProbeController {
     return { ok: true };
   }
 
-  /** Đường đọc — KHÔNG bao giờ bị đếm. */
+  /** Đường đọc CÔNG KHAI — từ W4 R1 đếm bucket `read` 300/60s theo IP. */
   @Public()
   @Get('throttle-probe/read')
   read() {
+    return { ok: true };
+  }
+
+  /** Đường đọc công khai THỨ HAI — bucket read là MỘT cho cả IP, không per-route. */
+  @Public()
+  @Get('throttle-probe/read-2')
+  readTwo() {
+    return { ok: true };
+  }
+
+  /** Đường đọc ĐÃ-AUTH — GET có session KHÔNG đếm (ADR-0037 AMEND 2). */
+  @Get('throttle-probe/authed-read')
+  authedRead() {
+    return { ok: true };
+  }
+
+  /** GET public trên route KHAI @Throttle riêng — chính sách riêng thắng,
+   * KHÔNG rơi vào bucket read (ca get-session của AuthController). */
+  @Public()
+  @Throttle({ default: PUBLIC_WRITE_THROTTLE })
+  @Get('throttle-probe/declared-read')
+  declaredRead() {
     return { ok: true };
   }
 
@@ -138,7 +165,62 @@ describe('trần ghi mặc định toàn cục (ADR-0037)', () => {
     expect((await post(bob)).statusCode).toBe(201);
   });
 
-  it('3. GET không bị đếm — kể cả khi bucket write của cùng IP đã đầy', async () => {
+  it('7. W4 R1: GET public đếm bucket `read` 300/60s theo IP, CHUNG cho mọi route đọc; IP khác không vạ lây', async () => {
+    const ip = '203.0.113.140';
+    const get = (url: string, from = ip) => app.inject({ method: 'GET', url, remoteAddress: from });
+    // Chia hạn mức qua HAI route — bucket read là MỘT theo IP (ADR-0037
+    // AMEND 2: '6 call/trang' đếm trên cả trang, per-route là nhân trần).
+    const half = PUBLIC_READ_THROTTLE.limit / 2;
+    for (let i = 0; i < half; i++) {
+      expect((await get('/throttle-probe/read')).statusCode).toBe(200);
+      expect((await get('/throttle-probe/read-2')).statusCode).toBe(200);
+    }
+    expect((await get('/throttle-probe/read')).statusCode).toBe(429);
+    expect((await get('/throttle-probe/read-2')).statusCode).toBe(429);
+    expect((await get('/throttle-probe/read', '203.0.113.141')).statusCode).toBe(200);
+  });
+
+  it('8. W4 R1: GET có session KHÔNG đếm — bucket read của IP đầy, authed GET vẫn chạy; và bucket read KHÔNG đụng bucket ghi', async () => {
+    const ip = '203.0.113.150';
+    const cookie = await signUpAndSignIn('probe-reader@example.com');
+    for (let i = 0; i < PUBLIC_READ_THROTTLE.limit + 1; i++) {
+      await app.inject({ method: 'GET', url: '/throttle-probe/read', remoteAddress: ip });
+    }
+    // Đọc public của IP này đã 429...
+    expect(
+      (await app.inject({ method: 'GET', url: '/throttle-probe/read', remoteAddress: ip }))
+        .statusCode,
+    ).toBe(429);
+    // ...nhưng GET đã-auth (khách đăng nhập là đối tượng của trần GHI) vẫn qua.
+    for (let i = 0; i < 5; i++) {
+      const res = await app.inject({
+        method: 'GET',
+        url: '/throttle-probe/authed-read',
+        remoteAddress: ip,
+        headers: { cookie },
+      });
+      expect(res.statusCode).toBe(200);
+    }
+    // Và bucket GHI public của cùng IP còn nguyên — hai bucket tách tên.
+    expect(
+      (await app.inject({ method: 'POST', url: '/throttle-probe/public', remoteAddress: ip }))
+        .statusCode,
+    ).toBe(201);
+    // GET public trên route KHAI @Throttle riêng cũng KHÔNG bị bucket read
+    // chặn — chính sách tường minh thắng mặc định (ca get-session: đếm nó
+    // theo IP là cả SSR Vercel chia một bucket).
+    expect(
+      (
+        await app.inject({
+          method: 'GET',
+          url: '/throttle-probe/declared-read',
+          remoteAddress: ip,
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
+
+  it('3. GET không ăn bucket GHI — bucket write của cùng IP đã đầy, GET vẫn chạy', async () => {
     const ip = '203.0.113.99';
     for (let i = 0; i < PUBLIC_WRITE_THROTTLE.limit + 1; i++) {
       await app.inject({ method: 'POST', url: '/throttle-probe/public', remoteAddress: ip });
