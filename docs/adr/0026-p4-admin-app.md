@@ -215,3 +215,49 @@ THẬT bằng cookie cha của nạn nhân; `origin: false` chỉ giấu respons
 CSP phía web (W3) vẫn là nhát cắt gốc cho XSS; hai lớp trên là để một XSS
 không còn gọi được đường ghi admin dù có cookie.
 
+## AMEND 3 — 07/09/2026 (đợt W3, audit 05/09 cụm 8): CSP nonce, noindex, boundary 403, luật proxy, origin https
+
+### A. CSP nonce + `'strict-dynamic'` qua proxy — admin nhận bản nghiêm nhất
+
+Admin đã dynamic từng request và là đích giá trị nhất → CSP nonce khả thi và
+đáng làm (khác web SSG/ISR — so sánh và danh sách directive đầy đủ ở
+[ADR-0038 §3](0038-web-shell-security-headers.md)). `proxy.ts` sinh nonce
+16 byte base64 mỗi request, đặt CSP vào CẢ request header lẫn response (nếp
+guide Next: Next đọc nonce từ request header để gắn vào script của chính nó).
+Kèm `X-Robots-Tag: noindex, nofollow` toàn admin + `app/robots.ts` disallow
+`/` — back-office không có gì cho crawler, root layout đã `robots.index:false`
+nhưng header + robots.txt phủ cả response không phải HTML metadata.
+
+### B. `error.tsx` nhận 403 — admin bị thu hồi quyền thấy đúng cửa
+
+Audit cụm 8 (Thấp): layout gác không re-render khi điều hướng MỀM → admin bị
+thu hồi role giữa phiên thấy `error.tsx` chung ("Try again" vô vọng) thay vì
+`/not-authorized`. Chốt: tầng client oRPC của admin gắn
+`digest = 'ADMIN_FORBIDDEN'` lên lỗi HTTP 403 (interceptor của link — MỘT
+chỗ cho mọi đường đọc/ghi; Next chuyển `digest` sang client boundary kể cả
+production), `error.tsx` thấy digest ấy → `router.replace('/not-authorized')`.
+Server action ghi đã classify 403 thành copy riêng từ trước — digest không
+đổi hành vi các đường đó.
+
+`(admin)/layout.tsx` thôi hard-code path `'/'`: proxy gắn `x-pathname` vào
+request header (đằng nào cũng đã sửa request header cho nonce), layout đọc
+qua `headers()` để nhánh login redirect mang đúng path — fallback `'/'` khi
+header vắng (gọi không qua proxy).
+
+### C. Luật: proxy KHÔNG phải biên quyền
+
+Ghi thành luật ở cả hai `proxy.ts` (web + admin): proxy chỉ chặn sớm cho đỡ
+round-trip; mọi quyết định quyền thật nằm ở layout gác + API guard. Audit đã
+chỉ: POST `Next-Action` tới path public `/login` vẫn chạy action (API trả
+401, không leo thang được) — chấp nhận, vì biên quyền thật không nằm ở proxy.
+Đổi lại, admin có `proxy.spec.ts` (chép khuôn web) canh redirect thiếu cookie,
+public path, và CSP nonce ở cả request lẫn response.
+
+### D. `resolveApiOrigin` admin: parse `new URL()`, production ÉP `https:`
+
+Audit cụm 8 (Thấp): `API_URL` sai trên Vercel (http, host lạ) = mọi request
+server-side admin forward cookie phiên sang origin đó — exfiltrate cookie
+admin. Chốt: `resolveApiOrigin` parse bằng `new URL()` (chuỗi rác → throw
+ngay lúc boot thay vì fetch lỗi khó hiểu), production mà scheme khác
+`https:` → throw. Hệ quả tự nhiên: production quên khai env → fallback
+`http://localhost:3001` cũng chết ở phép ép https — fail-fast trọn gói.

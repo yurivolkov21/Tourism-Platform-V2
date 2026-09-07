@@ -220,3 +220,52 @@ trong `apps/web/.env.local` theo quy ước tên file env 19/07; mẫu vào
   cần Server Actions vì token Supabase nằm ở server, tiền đề đó không còn.
 - **On-demand revalidation ngay từ bước 1:** cần module mới phía API — phình
   phạm vi bước đầu tiên; tag đã cắm sẵn nên hoãn không tốn chi phí cắm lại.
+
+## AMEND 1 — 07/09/2026 (đợt W3, audit 05/09 cụm 5 + 7): env origin hai phía, revalidate fail-fast, metadata theo môi trường
+
+### §6 Env — `API_URL` CHỈ có nghĩa phía server; production thiếu là THROW
+
+Audit cụm 7 (Vừa): `apiOrigin()` cũ chạy trong CẢ bundle browser với nhánh
+`API_URL` không bao giờ tồn tại ở đó (Next chỉ inline `NEXT_PUBLIC_*`) — cấu
+hình "`API_URL` riêng cho server" như `.env.example` mô tả làm SSR xanh nhưng
+MỌI nút ghi từ browser bắn về fallback `http://localhost:3001`. Chốt:
+
+- Tách `serverApiOrigin()` (`API_URL || NEXT_PUBLIC_API_URL`) và
+  `browserApiOrigin()` (CHỈ `NEXT_PUBLIC_API_URL`); `client.ts` chọn theo
+  `typeof window`.
+- **Production mà thiếu giá trị → throw lúc gọi, message nêu tên biến**
+  (gương `parseEnv` fail-fast của API) — KHÔNG rơi về `localhost:3001`;
+  dev/test giữ fallback localhost cho tiện.
+- Lõi thuần `resolveApiOrigin({ side, env, nodeEnv })` để test đủ 4 ca × 2
+  phía; chuỗi rỗng vẫn là "không khai" (gotcha nền tảng deploy gửi `""`).
+
+### §3 — `/api/revalidate` fail-fast production + whitelist GƯƠNG `tags.ts`
+
+- `resolveRevalidateSecret({ REVALIDATE_SECRET, NODE_ENV })`: production
+  thiếu/rỗng → **throw** (trước đây rơi về `DEV_REVALIDATE_SECRET` hard-code
+  — audit cụm 5 mức Cao); dev giữ fallback dev-secret khớp phía API.
+- `TAG_RE` thêm `site-media`: whitelist phải gương ĐỦ taxonomy `lib/api/tags.ts`
+  (tag này có trong `TAGS` từ trước mà whitelist bỏ sót — lệch taxonomy).
+- Route trả thêm `Cache-Control: no-store` + `X-Robots-Tag: noindex` (header
+  rẻ, cắt luôn dù route handler vốn không vào sitemap).
+
+### §7 (MỚI) — Metadata theo môi trường
+
+- Root layout khai `metadataBase: new URL(siteUrl())` — canonical/OG tuyệt
+  đối trỏ `NEXT_PUBLIC_SITE_URL`, không tự trỏ host đang phục vụ (preview
+  Vercel, apex).
+- `robots.ts`: ngoài production (`VERCEL_ENV !== 'production'`) →
+  `disallow: '/'`, không `sitemap`; production giữ rule hiện tại. Lõi thuần
+  `robotsFor(env)` có spec.
+- `(auth)/layout.tsx` chỉ export `metadata.robots = { index: false,
+  follow: false }` — sáu trang auth hết index (`/reset-password?token=…`);
+  KHÔNG thêm `disallow` vào robots.txt (comment sẵn trong `robots.ts` giải
+  thích: chặn crawl thì crawler không đọc được noindex).
+- `images`: `remotePatterns` pathname siết `/<cloud>/**` theo
+  `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (thiếu → fallback `/**` + `console.warn`
+  lúc build); `minimumCacheTTL: 86400`; `loaderFile` chèn
+  `f_auto,q_auto,w_<width>` như ADR-0020 §Hệ quả đã đòi từ 14/08 — loader
+  thuần, idempotent với URL đã có transformation, URL ngoài Cloudinary trả
+  nguyên.
+
+Security header + CSP của vỏ web nằm ở [ADR-0038](0038-web-shell-security-headers.md).
