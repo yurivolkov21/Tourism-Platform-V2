@@ -191,3 +191,13 @@ thật.
   việc P4. Escape-hatch `publicId`-là-URL-tuyệt-đối (ADR-0005 §2) đủ cho seed;
   nhưng ADR này chọn upload THẬT lên Cloudinary bằng script một lần, vì
   escape-hatch mất `f_auto,q_auto` và ta cần biến thể `w_` cho `next/image`.
+
+## AMEND 1 — 07/09/2026 (vòng vá review W3): `remotePatterns` và custom loader loại trừ nhau
+
+§Hệ quả đòi `next.config.ts` khai `remotePatterns` cho `res.cloudinary.com`
+**và** custom loader chèn `w_<width>`. Tiền đề sai: trong Next (đo trên 16.3),
+`images.loaderFile` thay nguyên module loader mặc định — nơi duy nhất kiểm
+`remotePatterns` — và `/_next/image` trả 404, nên có loader là `remotePatterns`
+không còn được thực thi. Chốt: **loader** (Cloudinary co ảnh, không nén hai
+lần, không tiêu quota Vercel), bỏ `remotePatterns`; chi tiết và bề mặt `<img>`
+chưa qua loader ở [ADR-0016 AMEND 2 §7](0016-web-data-layer.md).

@@ -163,3 +163,83 @@ giá trị `script-src` sụp).
 - **Gom security-headers vào `libs/shared`:** xem §4.
 - **`Permissions-Policy` liệt kê đầy đủ ~30 feature:** bốn feature nhạy nhất
   đủ giá trị; danh sách dài là chi phí bảo trì không lãi.
+
+## AMEND 1 — 07/09/2026 (vòng vá review W3 ở session gốc)
+
+Vòng review 8 mũi + 3 verifier bắt được những giả định sai của bản gốc; sửa
+ở đây, code theo sau trong cùng đợt vá.
+
+### a. Allowlist thiếu tài nguyên THẬT (bảng §2 dựng từ grep literal)
+
+Grep `https?://` chỉ thấy chuỗi trong source, không thấy URL sinh lúc chạy từ
+dữ liệu. Hai bề mặt bị chặn thật:
+
+- **Video Cloudinary** khe `about-cta-video` (`slot-video.tsx` `<video><source
+  src>`, API dựng `…/video/upload/…`): `media-src 'self'` chặn, poster đi theo
+  `img-src` nên mắt thường không thấy — đúng loại hỏng im lặng ADR sợ. Web:
+  `media-src 'self' https://res.cloudinary.com`.
+- **Avatar Google OAuth** (`user.image = https://lh3.googleusercontent.com/…`
+  do Better Auth ghi khi `socialProviders.google` bật): `img-src` cả hai app
+  thêm `https://lh3.googleusercontent.com`.
+
+Hệ quả ĐÃ BIẾT và cố ý không mở: escape-hatch "publicId là URL tuyệt đối"
+(ADR-0005 §2) và ảnh markdown thân bài blog (host bất kỳ) — CSP sẽ trắng
+ảnh đó ở production. Hôm nay không row/nội dung nào dùng; ngày nào cần thì
+là AMEND, không phải sửa lặng. Luật mới cho §2: mỗi lần thêm bề mặt media,
+liệt kê URL SINH LÚC CHẠY (từ API/DB), không chỉ grep source.
+
+### b. `connect-src` từ CÙNG resolver với client, không đọc env thô
+
+Proxy admin từng tính `connect-src` từ `process.env.NEXT_PUBLIC_API_URL ||
+'http://localhost:3001'` — Next inline lúc build (bundle chứa literal), không
+`.origin`, không throw: thiếu env là CSP prod `connect-src http://localhost:
+3001` vĩnh viễn, login chết im; env có path `/api` là CSP khớp-chính-xác chặn
+Better Auth trong khi authClient (dùng `.origin`) gọi đúng. Web cùng bệnh ở
+`next.config.ts` (nhồi chuỗi thô, `;` cắt đôi CSP). Chốt: **nguồn duy nhất
+cho `connect-src` là `browserApiOrigin()`** của từng app — chuẩn hoá
+`new URL().origin`, production thiếu → throw nêu tên biến, http chỉ cho
+loopback (ADR-0016 AMEND 2 §6, ADR-0026 AMEND 4 §D). Proxy throw = 500 mọi
+request ngay sau deploy sai — ồn ào đúng ý fail-closed (ADR-0003).
+
+### c. HTML admin nào tĩnh là nonce lệch — luật + hai lưới
+
+Bảng route Next in sau build **giấu** `/_global-error` (`build/utils.js`
+"Hide static /_global-error from build output"); manifest thật có nó: 500.html
+tĩnh Next tự dựng, 9 script/0 nonce, và Next **cấm** mọi segment config cho
+route này (`utils.js` `appConfig = … ? {} : reduceAppConfig`) — không ép động
+được. **Chấp nhận**: khi root layout ném, admin thấy trang lỗi chỉ có chữ
+(không hydrate, nút reset chết) — nội dung là text thuần, đủ để đọc lỗi.
+Luật ghi vào §3: *bất kỳ HTML admin nào được prerender/`use cache`/ISR là
+nonce trong body lệch nonce trong header → trắng script; danh sách route tĩnh
+cho phép phải khai tường minh.* Hai lưới: `export const dynamic =
+'force-dynamic'` ở root layout (lan xuống page con; `/_not-found` đi entry
+builtin nên ba `await connection()` hiện có vẫn giữ) và
+`scripts/check-admin-prerender.mjs` chạy trong CI sau build — đọc
+`prerender-manifest.json`, allowlist `/robots.txt` + `/_global-error`, đỏ nếu
+dư. Đây là thứ duy nhất bắt được cả lớp lỗi: mắt người lẫn bảng route của
+Next đều đã trượt trong chính đợt này.
+
+### d. Đã cân nhắc thêm
+
+- **`Content-Security-Policy-Report-Only` / `report-to`:** không có kênh nào
+  báo khi CSP chặn ở production (chỉ console của người dùng). Chưa làm ở W3 vì
+  endpoint nhận báo cáo nằm ở API (W3 không đụng API) → **CÒN TREO W4**: route
+  `POST /api/csp-report` + một vòng Report-Only trước khi siết thêm. Bù tạm:
+  spec §6 thêm `/about` (bề mặt video) và admin phải thử bằng `next build` +
+  `next start`.
+- **Preview deployment:** CSP y hệt production, cố ý — nghiệm thu trên preview
+  mới có nghĩa. Vercel Live/toolbar (`vercel.live` script/iframe/websocket) vì
+  thế bị chặn trên preview; repo không có `vercel.json`, đội không dùng toolbar.
+  Nếu cần thì allowlist có điều kiện `VERCEL_ENV === 'preview'` qua AMEND, và
+  phải ghi rõ "CSP preview KHÁC prod".
+- **`upgrade-insecure-requests` với `next start` local:** không vỡ —
+  `localhost`/`127.0.0.1` là *potentially trustworthy* (Secure Contexts §3.2),
+  Chromium bỏ qua nâng cấp cho chúng; luồng nghiệm thu chuẩn vẫn là `next dev`.
+
+### e. Hợp đồng test
+
+Test CSP so **bằng** map directive→sources (`toEqual`), không `toContain`
+chuỗi con — thêm host lạ vào bất kỳ directive nào phải đỏ, đúng luật "origin
+mới qua AMEND". Nonce admin phải đi qua chính parser của Next
+(`getScriptNonceFromHeader`) trong `proxy.spec.ts`: Next bỏ nonce sai định
+dạng **im lặng** rồi render HTML không nonce dưới CSP strict-dynamic.

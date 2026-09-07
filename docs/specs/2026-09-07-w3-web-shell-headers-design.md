@@ -218,3 +218,35 @@ entry CHANGELOG "W3 vỏ Next — CHƯA merge, chờ review session riêng" (ng�
 hash · nội dung · test · CÒN TREO), README trạng thái W3 ở dòng "Rà bảo mật
 05/09". `.env.example` web thêm `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` (chỉ key);
 báo cáo ghi rõ **env nào user phải đặt thêm trên Vercel** trước khi merge.
+
+## AMEND 07/09/2026 — vòng vá review W3 ở session gốc
+
+Review 8 mũi + 3 verifier trên nhánh `fix/web-shell-headers`: 10 findings, vá
+trong cùng đợt trước khi merge. Những chỗ spec này nay KHÁC code (code là
+nguồn sự thật; chi tiết ở ADR-0038 AMEND 1, ADR-0016 AMEND 2, ADR-0026 AMEND
+4, ADR-0020 AMEND 1):
+
+- **§3.1 / §3.2 CSP**: web `media-src` thêm `https://res.cloudinary.com` (video
+  khe `about-cta-video`), `img-src` hai app thêm `https://lh3.googleusercontent.com`
+  (avatar Google OAuth). `connect-src` lấy từ `browserApiOrigin()` đã chuẩn
+  hoá, không đọc env thô.
+- **S2**: robots KHÔNG theo `VERCEL_ENV` lúc build nữa — route động so host
+  request với host `NEXT_PUBLIC_SITE_URL`.
+- **S4**: chỉ `loaderFile`; `remotePatterns` theo cloud + `minimumCacheTTL` +
+  env `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME` bị BỎ (cấu hình chết khi có loader).
+  §7 câu ".env.example web thêm NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME" hết hiệu lực.
+- **O1/O2**: cả hai app `new URL().origin`, production thiếu → throw nêu tên
+  biến, https ép trừ loopback; mọi caller lười (web `client.ts`/`auth-client.ts`
+  cũng vậy, không chỉ admin). S1 `siteUrl()` cũng fail-fast production.
+- **H3**: admin `robots.txt` = `allow` (không disallow), giữ `X-Robots-Tag`.
+- **O6**: layout gác ép `role === 'ADMIN'` tường minh; `x-pathname` kèm query;
+  `error.tsx` đọc `routeForErrorDigest` ở lib.
+- **§5 test**: CSP so bằng map directive→sources; nonce qua
+  `getScriptNonceFromHeader` của Next; interceptor 403 test qua
+  `createAdminLink({ fetch })`; thêm `scripts/check-admin-prerender.mjs` trong CI.
+- **§6 nghiệm thu**: thêm `/about` (video phải chạy, không chỉ poster); admin
+  thử bằng `next build` + `next start` (không chỉ `next dev`); `/_global-error`
+  admin là 500.html tĩnh — chấp nhận chỉ chữ.
+- **O4**: contract `checkoutUrl` siết `https` tại nguồn (`z.url({ protocol })`),
+  guard client giữ làm lớp hai.
+

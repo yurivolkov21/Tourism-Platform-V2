@@ -261,3 +261,44 @@ admin. Chốt: `resolveApiOrigin` parse bằng `new URL()` (chuỗi rác → thr
 ngay lúc boot thay vì fetch lỗi khó hiểu), production mà scheme khác
 `https:` → throw. Hệ quả tự nhiên: production quên khai env → fallback
 `http://localhost:3001` cũng chết ở phép ép https — fail-fast trọn gói.
+
+## AMEND 4 — 07/09/2026 (vòng vá review W3): robots admin mở crawl, header proxy→app chỉ định tuyến, cổng gác ép role, origin theo phía
+
+### A. `robots.txt` admin KHÔNG disallow — để crawler đọc được `X-Robots-Tag`
+
+AMEND 3 §A viết "header + robots.txt phủ cả response" — hai lớp không cộng
+dồn mà **loại trừ nhau**: crawler tuân `Disallow: /` không bao giờ gửi
+request nên không bao giờ thấy `noindex`; URL bị chặn vẫn lên SERP dạng
+title-only nếu có backlink (Google ghi rõ). Đúng lý lẽ `apps/web/src/lib/
+robots.ts` cùng đợt. Chốt: admin `robots.txt` = `allow: '/'`, giữ
+`X-Robots-Tag: noindex, nofollow` trên mọi response qua proxy; crawler gõ
+`/bookings` → 307 `/login` (mang noindex) → thật sự bị loại khỏi chỉ mục.
+
+### B/C. Header proxy→app CHỈ mang dữ liệu định tuyến; cổng gác ép role tường minh
+
+- `decideAdminAccess` trả `allow` cho path public TRƯỚC khi kiểm role; layout
+  gác nay đưa `x-pathname` từ header vào — Next **không** xoá header client
+  gửi (danh sách override dựng từ toàn bộ `request.headers`), chốt chặn duy
+  nhất là proxy `.set()` ghi đè. Chốt: (1) luật viết cho §C — *header
+  proxy→app chỉ mang dữ liệu định tuyến/hiển thị (`x-pathname`, `x-nonce`);
+  mọi phán quyết quyền tính lại ở layout từ session thật*; (2) layout ép
+  `session.role === 'ADMIN'` tường minh, không suy từ `decision.kind`;
+  (3) `proxy.spec.ts` có ca header `x-pathname` thù địch bị ghi đè;
+  (4) `x-pathname` kèm query để `?redirect=` giữ bộ lọc.
+- Đường 403 → `/not-authorized`: interceptor gắn digest được test qua chính
+  link (`createAdminLink({ fetch })` bơm 403 giả); nhánh digest→route tách
+  thành `lib/error-route.ts` thuần có spec (vitest không quét `src/app/**`).
+
+### D. `resolveApiOrigin` theo PHÍA, message nêu tên biến, loopback miễn https, kiểm lúc build
+
+- Tách `serverApiOrigin`/`browserApiOrigin` như web: `connect-src` của CSP
+  (proxy) và Better Auth client dùng `browserApiOrigin()` — một nguồn.
+- Production thiếu biến → throw **nêu tên biến** trước, rồi mới ép https
+  (câu "must use https… got http://" của AMEND 3 che mất nguyên nhân thật là
+  thiếu biến). Http chỉ được cho loopback (CI/gate/`next start` thử tay) —
+  câu "fallback localhost cũng chết ở phép ép https" của §D không còn đúng.
+- "Chết ngay lúc boot" của §D đã sai từ khi các caller thành lười (`14798024`):
+  nay `next.config.ts` gọi `browserApiOrigin()` một lần lúc **build** để lỗi
+  env nổ ồn ào ở build; `lookupServerSession` tính origin NGOÀI `try` — nuốt
+  lỗi cấu hình thành `unreachable` từng biến sai env thành vòng lặp `/login`
+  không lời giải thích.

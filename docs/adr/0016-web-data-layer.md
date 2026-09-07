@@ -269,3 +269,63 @@ MỌI nút ghi từ browser bắn về fallback `http://localhost:3001`. Chốt:
   nguyên.
 
 Security header + CSP của vỏ web nằm ở [ADR-0038](0038-web-shell-security-headers.md).
+
+## AMEND 2 — 07/09/2026 (vòng vá review W3): origin chuẩn hoá, ảnh chỉ loader, metadata fail-fast, robots theo host
+
+### §6 Env — `resolveApiOrigin` chuẩn hoá `new URL().origin`, ép https trừ loopback, gọi LƯỜI
+
+- Web forward cookie phiên server-side tới `API_URL` (session.ts, account.ts,
+  `withAuthOptions`) — lý lẽ "origin sai = exfiltrate cookie" của ADR-0026 §D
+  áp nguyên cho web; và giá trị này chảy thẳng vào `connect-src` của CSP, nơi
+  path thừa (`/api`) là CSP khớp-chính-xác chặn mọi call, dấu `;` cắt đôi
+  header. Chốt: parse `new URL()` (chuỗi rác → throw nêu tên biến), trả
+  `.origin`, **production ép `https:` TRỪ loopback** (`localhost`/`127.0.0.1`
+  — `next build` nào cũng NODE_ENV=production mà CI/gate build với API tạm
+  http localhost, `next start` thử tay cũng vậy). Cùng hợp đồng cho admin.
+- **Gọi lười, không ở module scope**: `client.ts` `url: () => apiOrigin()`,
+  `auth-client.ts` chỉ tính trong browser (`typeof window`). Bản gốc W3 vá điều
+  này cho admin mà bỏ sót web: production thiếu env là throw lúc IMPORT —
+  prerender chết với stack ở client.ts, chunk browser nổ khi hydrate ngoài cây
+  render nên error.tsx không bắt — trái câu "throw lúc gọi" của AMEND 1.
+- `next.config.ts` (`headers()`) gọi `browserApiOrigin()` một lần lúc build là
+  fail-fast ồn ào đúng tầng; CI khai `NEXT_PUBLIC_API_URL` tường minh.
+
+### §7 — `images`: CHỈ loader; `remotePatterns`/`minimumCacheTTL` là cấu hình chết
+
+AMEND 1 khai `remotePatterns` siết theo cloud + `minimumCacheTTL` + `loaderFile`
+như một bộ. Sai tiền đề: với `loaderFile`, Next 16.3 trả 404 cho `/_next/image`
+(`next-server.js` `loader !== 'default' → render404`) và thay nguyên module
+chứa `hasRemoteMatch` (`create-compiler-aliases.js`) — không còn optimizer,
+không còn kiểm host, `minimumCacheTTL` không ai đọc. Chốt: **giữ loader** (ảnh
+co ở Cloudinary, không tiêu quota Image Optimization của Vercel, đúng ý
+ADR-0020 §Hệ quả), **xoá** `remotePatterns`/`minimumCacheTTL`/`console.warn`/
+env `NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME`. Không còn optimizer nên bề mặt "proxy
+ảnh cho cloud lạ" (audit cụm 5) tự đóng; URL đến từ API của mình. Loader sửa
+điều kiện nhận diện segment transformation (publicId phẳng `my_photo.jpg`,
+thư mục `ab_cd/` từng bị nuốt thành URL 400; URL ký `s--…--` trả nguyên).
+Bốn bề mặt `<img>` trần còn lại (review-card, avatar-upload, passport-card,
+booking-receipt) chưa qua loader — nợ ghi CHANGELOG.
+
+### §7 — `metadataBase` fail-fast; robots theo HOST request; `/account` noindex ở layout
+
+- `siteUrl()` từng rơi im lặng về `http://localhost:3000`; nay là
+  `metadataBase` nên Next ưu tiên nó hơn chuỗi fallback Vercel — thiếu env ở
+  production là canonical/OG `http://localhost:3000/...` toàn site (hồi quy so
+  với trước W3). Chốt: `resolveSiteUrl` production thiếu → throw nêu tên biến;
+  CI khai `NEXT_PUBLIC_SITE_URL`.
+- `robots.txt` từng là route TĨNH đọc `VERCEL_ENV` lúc build: "Promote to
+  Production"/rollback một build preview là nướng `disallow: /` lên prod không
+  log, build ngoài Vercel cũng đóng. Chốt: route **động** (`headers()`), mở
+  crawl chỉ khi host request trùng host của `NEXT_PUBLIC_SITE_URL`; preview/
+  apex/dev/`next start` đóng. Đúng-theo-kiến-tạo với mọi cách deploy, không cần
+  `VERCEL_ENV` (gỡ khỏi `turbo.json`).
+- `(site)/account/layout.tsx` mang `robots: { index: false, follow: false }`
+  cho cả khu (5/7 trang từng tự khai thiếu `follow`, `profile`/`security` không
+  khai) — robots.txt disallow mà không noindex là đúng anti-pattern §7 đã lên án
+  cho trang auth.
+
+### §3 — whitelist gương taxonomy ≠ API đã bust
+
+`site-media` vào whitelist là đúng, nhưng phía API hôm nay chỉ
+`reviews.moderate` gửi `tours`/`tour:<slug>`; `posts`/`site-media` chưa có
+producer — ghi CÒN TREO, đừng đọc AMEND 1 thành "ảnh khe đã tươi ngay".
