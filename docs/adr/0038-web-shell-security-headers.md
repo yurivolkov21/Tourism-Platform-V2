@@ -236,7 +236,19 @@ Next đều đã trượt trong chính đợt này.
   `localhost`/`127.0.0.1` là *potentially trustworthy* (Secure Contexts §3.2),
   Chromium bỏ qua nâng cấp cho chúng; luồng nghiệm thu chuẩn vẫn là `next dev`.
 
-### e. Hợp đồng test
+### e. zod 4 thử `Function("")` — tắt JIT tại contract, không nới CSP
+
+Đo trên admin `next build` + `next start` (07/09): mọi trang một vi phạm
+`script-src ← eval` từ chunk chứa zod. zod 4 thử `Function("")` ở lần parse
+đầu để bật fast-path JIT; dưới CSP không `'unsafe-eval'` phép thử ném và zod
+tự rơi về jitless — chức năng đúng, nhưng vi phạm được ghi ở mọi trang (và sẽ
+làm nhiễu `report-to` khi có). Web production y hệt (dev cho `'unsafe-eval'`
+nên không thấy). Chốt: `z.config({ jitless: true })` ở điểm vào
+`@tourism/contract` (mọi app import zod qua đó, kể cả API — body nhỏ, chi phí
+không đáng kể), có spec canh. KHÔNG thêm `'unsafe-eval'` vào production cho
+một probe.
+
+### f. Hợp đồng test
 
 Test CSP so **bằng** map directive→sources (`toEqual`), không `toContain`
 chuỗi con — thêm host lạ vào bất kỳ directive nào phải đỏ, đúng luật "origin

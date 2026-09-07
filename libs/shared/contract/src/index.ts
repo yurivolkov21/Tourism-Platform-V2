@@ -1,3 +1,6 @@
+// Thứ tự import CÓ Ý NGHĨA: zod-config phải chạy trước mọi schema (xem file đó).
+import './zod-config.js';
+
 export * from './contract.js';
 export * from './schemas/bookings.js';
 export * from './schemas/catalog.js';
