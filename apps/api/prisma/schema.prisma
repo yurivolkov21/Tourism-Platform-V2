@@ -635,6 +635,9 @@ model Refund {
   /// bất kỳ" — một capture THỨ HAI trên cùng booking không còn bị nuốt im lặng.
   /// Null = row cũ trước migration.
   providerPaymentId String? @map("provider_payment_id") @db.VarChar(255)
+  /// Lý do NỘI BỘ của refund thiện chí (ADR-0030 AMEND 2) — ở trên sổ để không
+  /// bị purge cùng outbox và không đi vào email khách. Null = auto-refund/row cũ.
+  reason           String?  @db.VarChar(500)
   adminId          String?  @map("admin_id") @db.Uuid
   createdAt        DateTime @default(now()) @map("created_at")
 

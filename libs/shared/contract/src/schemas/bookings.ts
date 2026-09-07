@@ -256,6 +256,8 @@ export const RefundSchema = z.object({
   currency: z.string().length(3),
   providerRefundId: z.string().max(255).nullable(),
   adminId: z.uuid().nullable(),
+  /** Lý do NỘI BỘ của refund thiện chí (ADR-0030 AMEND 2); null = auto-refund/row cũ. Chỉ admin thấy. */
+  reason: z.string().max(500).nullable(),
   createdAt: z.iso.datetime(),
 });
 

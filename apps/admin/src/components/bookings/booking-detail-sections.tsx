@@ -249,6 +249,7 @@ export function RefundLedgerTable({
               <TableHead>{tRefunds.ledger.amount}</TableHead>
               <TableHead>{tRefunds.ledger.issued}</TableHead>
               <TableHead>{tRefunds.ledger.reference}</TableHead>
+              <TableHead>{tRefunds.ledger.reason}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -260,6 +261,11 @@ export function RefundLedgerTable({
                 <TableCell>{formatDateTime(refund.createdAt)}</TableCell>
                 <TableCell className="font-mono text-xs">
                   {refund.providerRefundId ?? t.empty}
+                </TableCell>
+                {/* Lý do NỘI BỘ của refund thiện chí (ADR-0030 AMEND 2) — trống
+                    với auto-refund và approve theo chính sách. */}
+                <TableCell className="max-w-64 truncate text-muted-foreground">
+                  {refund.reason ?? t.empty}
                 </TableCell>
               </TableRow>
             ))}

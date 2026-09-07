@@ -20,6 +20,7 @@ const REFUND_REASON_COPY: Record<string, string> = {
   overbooked: 'The departure sold out before your payment was confirmed',
   'departure-closed': 'The departure was closed or had already started when your payment arrived',
   'orphaned capture': 'The booking had already been cancelled when your payment arrived',
+  goodwill: 'Goodwill refund issued by our team',
 };
 
 /**

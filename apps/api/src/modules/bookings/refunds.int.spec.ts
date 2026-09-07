@@ -202,6 +202,9 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(Number(body.refunds[0]?.amount)).toBe(30);
     expect(body.refunds[0]?.currency).toBe('USD');
     expect(body.refunds[0]?.providerRefundId).toMatch(/^fake_re_/);
+    // ADR-0030 AMEND 2: lý do NỘI BỘ nằm trên chính dòng sổ (contract + DB),
+    // không purge cùng outbox.
+    expect(body.refunds[0]?.reason).toBe('goodwill');
 
     // DB: projection status + ledger row append-only có set adminId.
     const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
@@ -211,6 +214,7 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(refunds).toHaveLength(1);
     expect(refunds[0]?.amount.toFixed(2)).toBe('30.00');
     expect(refunds[0]?.adminId).toBe(admins.id);
+    expect(refunds[0]?.reason).toBe('goodwill');
 
     // Gateway refund TRƯỚC, theo currency của booking (invariant #6), kèm
     // idempotency key của provider W5 (attempt state = tổng ledger TRƯỚC lần
@@ -230,7 +234,7 @@ describe('refunds integration (admin refund ledger)', () => {
       code: booking.code,
       amount: '30.00',
       currency: 'USD',
-      reason: 'goodwill', // reason CHỈ nằm ở đây — model Refund không có cột reason
+      reason: 'goodwill', // MÃ, không phải free-text (ADR-0030 AMEND 2) — khách nhận câu chung
     });
   });
 

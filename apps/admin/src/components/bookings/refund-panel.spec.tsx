@@ -39,6 +39,7 @@ const REFUND_ROW = {
   amount: '40.50',
   currency: 'USD',
   providerRefundId: 're_test_1',
+  reason: null,
   adminId: '22222222-2222-4222-8222-222222222222',
   createdAt: '2026-08-30T09:30:00.000Z',
 };

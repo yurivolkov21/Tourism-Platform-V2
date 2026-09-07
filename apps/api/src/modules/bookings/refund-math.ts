@@ -43,7 +43,8 @@ export class RefundNothingLeftError extends Error {
 
 export interface ClassifyRefundInput {
   /** Amount yêu cầu dạng decimal string; null/absent → refund phần remainder. */
-  requested?: string | null;
+  /** Số tiền xin hoàn — BẮT BUỘC (ADR-0030 AMEND 1/2): nhánh 'vắng = trọn phần dư' đã xoá cả ở đây, không chỉ ở contract. */
+  requested: string;
   /** Booking.totalAmount. */
   total: Prisma.Decimal;
   /** SUM(refunds.amount) đã ledger cho booking. */
@@ -66,11 +67,6 @@ export function classifyRefundAmount(input: ClassifyRefundInput): RefundClassifi
   // NOTHING_LEFT trước: trên một booking đã settle thì request là invalid bất
   // kể amount nói gì (đồng thời phòng thủ luôn cho ledger bị over-refund).
   if (remainder.lessThanOrEqualTo(0)) throw new RefundNothingLeftError();
-
-  if (input.requested == null) {
-    // Bỏ trống amount = "refund phần còn lại" — theo định nghĩa là settle.
-    return { kind: 'full', amount: remainder };
-  }
 
   const amount = new Prisma.Decimal(input.requested).toDecimalPlaces(
     2,

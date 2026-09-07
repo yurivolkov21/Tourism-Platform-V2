@@ -72,6 +72,7 @@ function toRefund(row: RefundRow): RefundView {
     currency: row.currency,
     providerRefundId: row.providerRefundId,
     adminId: row.adminId,
+    reason: row.reason,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -108,9 +109,10 @@ export class RefundsService {
    *     refund, thỏa quy tắc repeat-event của quy ước
    *     (docs/conventions/outbox-dedupe-key.md).
    *
-   * `reason` CHỈ được mang trong outbox payload — Refund model cố ý không có
-   * cột reason (audit: ledger lưu money fact; context free-text thuộc về
-   * notification, schema giữ đúng như đã audit).
+   * `reason` (ADR-0030 AMEND 2, vòng vá review W2) là lý do NỘI BỘ: ghi lên
+   * chính dòng sổ (`refunds.reason`) để không bị purge cùng outbox sau 30
+   * ngày; email khách chỉ nhận mã `goodwill` (dịch thành câu chung ở
+   * template), KHÔNG nhận free-text của admin.
    *
    * Khác với Nexora, một FULL admin refund ở đây KHÔNG release seat hay set
    * cancelledAt: seat release thuộc về cancellation flow (W4 approve →
@@ -202,6 +204,7 @@ export class RefundsService {
           // auto-refund đối chiếu theo cột này.
           providerPaymentId: booking.providerPaymentId,
           adminId: adminUserId,
+          reason: input.reason,
         },
       });
       const row = await tx.booking.update({
@@ -220,7 +223,9 @@ export class RefundsService {
             title: booking.tourTitle,
             amount: amount.toFixed(2),
             currency: booking.currency,
-            reason: input.reason,
+            // Mã, không phải free-text: khách đọc "Goodwill refund", lý do
+            // nội bộ ở trên sổ (ADR-0030 AMEND 2).
+            reason: 'goodwill',
           },
           dedupeKey: `refund:${booking.id}:${refundRow.id}`,
         },

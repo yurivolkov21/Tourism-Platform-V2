@@ -18,26 +18,32 @@ describe('classifyRefundAmount', () => {
   const total = D('117.00');
   const none = D('0');
 
-  describe('requested omitted → remainder', () => {
-    it('fresh booking: refunds the full total, kind full', () => {
-      const result = classifyRefundAmount({ total, alreadyRefunded: none });
+  describe('requested là BẮT BUỘC (ADR-0030 AMEND 2) — không còn "vắng = trọn phần dư"', () => {
+    // Nhánh cũ `requested == null → full remainder` bị xoá cả ở math dùng chung
+    // (vòng vá review W2): contract đã bắt buộc amount, còn giữ nhánh ở đây là
+    // giữ nguyên hình cửa hậu cho một caller tương lai quên truyền.
+    it('gõ đúng phần dư → kind full, settle', () => {
+      const result = classifyRefundAmount({ requested: '117.00', total, alreadyRefunded: none });
       expect(result.kind).toBe('full');
       expect(result.amount.toFixed(2)).toBe('117.00');
     });
 
-    it('null behaves like absent (contract optional field)', () => {
-      const result = classifyRefundAmount({ requested: null, total, alreadyRefunded: none });
-      expect(result).toMatchObject({ kind: 'full' });
-    });
-
-    it('after a 30.00 partial: refunds the 87.00 remainder and settles (kind full)', () => {
-      const result = classifyRefundAmount({ total, alreadyRefunded: D('30.00') });
+    it('sau một partial 30.00: gõ đúng 87.00 → settle (kind full)', () => {
+      const result = classifyRefundAmount({
+        requested: '87.00',
+        total,
+        alreadyRefunded: D('30.00'),
+      });
       expect(result.kind).toBe('full');
       expect(result.amount.toFixed(2)).toBe('87.00');
     });
 
-    it('0.01 remainder edge: refunds exactly 0.01, kind full', () => {
-      const result = classifyRefundAmount({ total: D('100.00'), alreadyRefunded: D('99.99') });
+    it('biên 0.01: phần dư 0.01 gõ đúng 0.01 → kind full', () => {
+      const result = classifyRefundAmount({
+        requested: '0.01',
+        total: D('100.00'),
+        alreadyRefunded: D('99.99'),
+      });
       expect(result.kind).toBe('full');
       expect(result.amount.toFixed(2)).toBe('0.01');
     });
@@ -131,19 +137,16 @@ describe('classifyRefundAmount', () => {
       ).toThrow(RefundOverTotalError);
     });
 
-    it('NOTHING_LEFT: ledger already sums to the total (with and without an amount)', () => {
+    it('NOTHING_LEFT: ledger already sums to the total', () => {
       expect(() =>
         classifyRefundAmount({ requested: '1.00', total, alreadyRefunded: D('117.00') }),
       ).toThrow(RefundNothingLeftError);
-      expect(() => classifyRefundAmount({ total, alreadyRefunded: D('117.00') })).toThrow(
-        RefundNothingLeftError,
-      );
     });
 
     it('NOTHING_LEFT: defensive on an over-refunded ledger (should be impossible)', () => {
-      expect(() => classifyRefundAmount({ total, alreadyRefunded: D('117.01') })).toThrow(
-        RefundNothingLeftError,
-      );
+      expect(() =>
+        classifyRefundAmount({ requested: '1.00', total, alreadyRefunded: D('117.01') }),
+      ).toThrow(RefundNothingLeftError);
     });
 
     it('NOTHING_LEFT wins over amount validation (checked before the requested value)', () => {
