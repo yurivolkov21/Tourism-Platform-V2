@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { absoluteUrl, escapeXml, siteUrl } from './site.js';
+import { absoluteUrl, escapeXml, resolveSiteUrl, siteUrl } from './site.js';
 
 // Trả env về nguyên trạng sau mỗi test — siteUrl() đọc process.env lúc GỌI
 // (không phải lúc nạp module) nên stub được, nhưng phải dọn kẻo rò sang test khác.
@@ -28,9 +28,21 @@ describe('siteUrl', () => {
     expect(absoluteUrl('/blog')).toBe('https://example.com/blog');
   });
 
-  it('biến env rỗng thì rơi về fallback localhost', () => {
+  it('biến env rỗng thì rơi về fallback localhost (ngoài production)', () => {
     vi.stubEnv('NEXT_PUBLIC_SITE_URL', '   ');
     expect(siteUrl()).toBe('http://localhost:3000');
+  });
+
+  // Vòng vá review W3 (ADR-0016 AMEND 2): siteUrl() nay là metadataBase —
+  // production thiếu env là canonical localhost toàn site, phải nổ ở build.
+  it('production thiếu/rỗng NEXT_PUBLIC_SITE_URL → throw nêu tên biến', () => {
+    expect(() => resolveSiteUrl({ NODE_ENV: 'production' })).toThrow(/NEXT_PUBLIC_SITE_URL/);
+    expect(() => resolveSiteUrl({ NEXT_PUBLIC_SITE_URL: '', NODE_ENV: 'production' })).toThrow(
+      /NEXT_PUBLIC_SITE_URL/,
+    );
+    expect(
+      resolveSiteUrl({ NEXT_PUBLIC_SITE_URL: 'https://www.example.com/', NODE_ENV: 'production' }),
+    ).toBe('https://www.example.com');
   });
 });
 

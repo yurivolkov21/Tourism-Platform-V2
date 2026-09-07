@@ -25,7 +25,6 @@ import { mrzLines, passportNo, passportStats, travelLog } from '@/lib/passport';
  */
 export const metadata: Metadata = {
   title: 'Traveler passport — Nexora',
-  robots: { index: false },
 };
 
 export default async function AccountPassportPage() {

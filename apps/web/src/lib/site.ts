@@ -17,15 +17,31 @@
 export const EMAIL = 'tourism.platform.online@gmail.com';
 export const PHONE = '+84 24 3826 0126';
 
-// Gốc URL công khai của web. Cần cho RSS (feed bắt buộc URL tuyệt đối) và
-// sau này cho sitemap/robots. Đọc từ env; khi dev chưa đặt thì rơi về
-// localhost để feed vẫn hợp lệ thay vì sinh link gãy.
+// Gốc URL công khai của web: RSS, sitemap, robots (so host để mở crawl) và
+// từ W3 là `metadataBase` — canonical/OG của MỌI trang. Dev chưa đặt thì rơi
+// về localhost; production THIẾU là throw (vòng vá review W3, ADR-0016
+// AMEND 2): trước W3 canonical tương đối vô hại, sau W3 thiếu env là
+// canonical `http://localhost:3000/...` toàn site — Google hạ cả catalogue mà
+// không đèn nào đỏ. Gương `resolveApiOrigin`: nêu tên biến trong message.
 const FALLBACK = 'http://localhost:3000';
 
+/** Thuần để test: production thiếu → throw; còn lại cắt / cuối, rỗng → fallback. */
+export function resolveSiteUrl(env: { NEXT_PUBLIC_SITE_URL?: string; NODE_ENV?: string }): string {
+  const raw = env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (raw && raw.length > 0) return raw.replace(/\/+$/, '');
+  if (env.NODE_ENV === 'production') {
+    throw new Error(
+      'Missing NEXT_PUBLIC_SITE_URL in production — metadataBase/canonical would point at localhost',
+    );
+  }
+  return FALLBACK;
+}
+
 export function siteUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  const base = raw && raw.length > 0 ? raw : FALLBACK;
-  return base.replace(/\/+$/, '');
+  return resolveSiteUrl({
+    NEXT_PUBLIC_SITE_URL: process.env.NEXT_PUBLIC_SITE_URL,
+    NODE_ENV: process.env.NODE_ENV,
+  });
 }
 
 /** Ghép thành URL tuyệt đối; chấp nhận đường dẫn có hoặc không có `/` đầu. */

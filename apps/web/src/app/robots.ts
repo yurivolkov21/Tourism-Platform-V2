@@ -1,12 +1,15 @@
 import type { MetadataRoute } from 'next';
-import { robotsFor } from '@/lib/robots';
+import { headers } from 'next/headers';
+import { canonicalSiteHost, robotsFor } from '@/lib/robots';
 
 /**
  * Nexora có robots.txt + sitemap.xml, v2 trả nợ parity ở đây; từ W3 rule
- * theo MÔI TRƯỜNG (ADR-0016 AMEND 1 §7): preview/dev đóng hẳn, production
- * mở như cũ. Toàn bộ luật + lý do nằm ở lib/robots.ts (thuần, có test) —
- * file này chỉ đọc VERCEL_ENV rồi gọi.
+ * theo HOST của request (ADR-0016 AMEND 2): chỉ www thật mở crawl, preview/
+ * apex/dev đóng hẳn. Route ĐỘNG có chủ đích (đọc `headers()`) — bản tĩnh
+ * từng nướng môi trường lúc build, promote/rollback một build preview là
+ * đóng site khỏi index. Toàn bộ luật + lý do ở lib/robots.ts (thuần, có test).
  */
-export default function robots(): MetadataRoute.Robots {
-  return robotsFor(process.env.VERCEL_ENV);
+export default async function robots(): Promise<MetadataRoute.Robots> {
+  const requestHost = (await headers()).get('host');
+  return robotsFor({ requestHost, siteHost: canonicalSiteHost() });
 }

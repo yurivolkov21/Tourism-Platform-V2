@@ -21,7 +21,6 @@ import { requireSession } from '@/lib/api/session';
  */
 export const metadata: Metadata = {
   title: 'My bookings — Nexora',
-  robots: { index: false },
 };
 
 export default async function AccountBookingsPage({

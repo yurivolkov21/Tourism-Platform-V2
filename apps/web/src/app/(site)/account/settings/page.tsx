@@ -26,7 +26,6 @@ import { requireSession } from '@/lib/api/session';
 export const metadata: Metadata = {
   title: `${messages.passportSettings.title} — Nexora`,
   description: messages.passportSettings.subtitle,
-  robots: { index: false },
 };
 
 export default async function AccountSettingsPage() {

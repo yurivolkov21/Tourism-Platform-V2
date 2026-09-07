@@ -16,7 +16,6 @@ import { fetchMyWishlist } from '@/lib/api/wishlist';
 export const metadata: Metadata = {
   title: `${messages.accountSaved.title} — Nexora`,
   description: messages.accountSaved.subtitle,
-  robots: { index: false },
 };
 
 export default async function AccountSavedPage() {

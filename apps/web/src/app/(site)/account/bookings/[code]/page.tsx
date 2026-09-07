@@ -71,7 +71,6 @@ export async function generateMetadata({
   if (!booking) return { title: 'Booking not found — Nexora' };
   return {
     title: `${booking.tourTitle} — ${booking.code} — Nexora`,
-    robots: { index: false },
   };
 }
 
