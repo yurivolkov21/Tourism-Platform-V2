@@ -27,6 +27,9 @@ export default defineConfig({
       // không gọi mạng thật nên giá trị giả vẫn ký/verify được trong test.
       CLOUDINARY_API_KEY: 'int-test-key',
       CLOUDINARY_API_SECRET: 'int-test-secret',
+      // W4 E6: secret svix GIẢ đúng dạng whsec_<base64> — verify là HMAC cục
+      // bộ, không gọi Resend thật.
+      RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('int-test-webhook-secret-32bytes!').toString('base64')}`,
     },
     // Một DB test dùng chung + truncate giữa các test → tuần tự hoá.
     fileParallelism: false,

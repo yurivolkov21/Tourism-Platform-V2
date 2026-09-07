@@ -40,6 +40,13 @@ export interface DrainResult {
    * thay vì gộp vào `sent`: gộp chung sẽ nói dối số email THẬT SỰ đã gửi.
    */
   skippedUnsubscribed: number;
+  /**
+   * Người nhận nằm trong `email_suppressions` (bounce cứng/complaint từ
+   * Resend — W4 E6, ADR-0039 §4) — SKIPPED với lý do trong `lastError`.
+   * Khác `skippedUnsubscribed` ở PHẠM VI: suppression chặn MỌI loại email
+   * (địa chỉ chết là chết với cả email giao dịch), không riêng bản tin.
+   */
+  skippedSuppressed: number;
 }
 
 /**
@@ -114,8 +121,31 @@ export class OutboxService {
       take: batchSize,
     });
 
-    const result: DrainResult = { sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 };
+    const result: DrainResult = {
+      sent: 0,
+      failed: 0,
+      retried: 0,
+      skippedUnsubscribed: 0,
+      skippedSuppressed: 0,
+    };
     for (const row of rows) {
+      // W4 E6: suppression kiểm TRƯỚC và cho MỌI loại email — bounce cứng/
+      // complaint nghĩa là địa chỉ chết/đã nói "đừng", bất kể nội dung.
+      const suppression = await this.suppressionOfRecipient(row.payload);
+      if (suppression) {
+        await prisma.outbox.updateMany({
+          where: { id: row.id, status: OutboxStatus.PENDING },
+          data: {
+            status: OutboxStatus.SKIPPED,
+            processedAt: new Date(),
+            // Lý do vào lastError cho admin outbox đọc được vì sao thư này
+            // không bao giờ đi (spec E6).
+            lastError: `suppressed: ${suppression.reason} (${suppression.source})`,
+          },
+        });
+        result.skippedSuppressed += 1;
+        continue;
+      }
       if (
         NEWSLETTER_EMAIL_TYPES.has(row.type) &&
         (await this.isUnsubscribedRecipient(row.payload))
@@ -162,13 +192,37 @@ export class OutboxService {
       }
     }
 
-    if (result.sent || result.failed || result.retried || result.skippedUnsubscribed) {
+    if (
+      result.sent ||
+      result.failed ||
+      result.retried ||
+      result.skippedUnsubscribed ||
+      result.skippedSuppressed
+    ) {
       this.logger.log(
         `Outbox drain: ${result.sent} sent, ${result.failed} failed, ${result.retried} retried, ` +
-          `${result.skippedUnsubscribed} skipped (unsubscribed)`,
+          `${result.skippedUnsubscribed} skipped (unsubscribed), ` +
+          `${result.skippedSuppressed} skipped (suppressed)`,
       );
     }
     return result;
+  }
+
+  /**
+   * Suppression ứng với người nhận thật của row (W4 E6) — cùng
+   * `resolveRecipient` với deliverer nên không có chuyện kiểm một địa chỉ
+   * mà gửi địa chỉ khác. Cột `email` là citext — DB tự so không phân biệt
+   * hoa/thường.
+   */
+  private async suppressionOfRecipient(
+    payload: Prisma.JsonValue,
+  ): Promise<{ reason: string; source: string } | null> {
+    const email = resolveRecipient(payload);
+    if (!email) return null;
+    return prisma.emailSuppression.findUnique({
+      where: { email },
+      select: { reason: true, source: true },
+    });
   }
 
   /**

@@ -13,6 +13,7 @@ import { captureException } from './lib/observability.js';
 import { describeOrpcError, isUnexpectedOrpcError, orpcErrorStack } from './lib/orpc-error-log.js';
 import { BookingsModule } from './modules/bookings/bookings.module.js';
 import { CatalogModule } from './modules/catalog/catalog.module.js';
+import { EmailWebhooksModule } from './modules/email-webhooks/email-webhooks.module.js';
 import { EnquiriesModule } from './modules/enquiries/enquiries.module.js';
 import { HealthModule } from './modules/health/health.module.js';
 import { MediaModule } from './modules/media/media.module.js';
@@ -86,6 +87,8 @@ import { WishlistModule } from './modules/wishlist/wishlist.module.js';
     // F7 (spec P4c): vùng outbox admin — list + retry, KHÔNG kéo WorkerModule
     // (retry chỉ đưa hàng về PENDING, worker tự nhặt ở lượt drain kế).
     OutboxModule,
+    // W4 E6: webhook Resend ghi email_suppressions (bounce cứng/complaint).
+    EmailWebhooksModule,
   ],
   providers: [
     /**

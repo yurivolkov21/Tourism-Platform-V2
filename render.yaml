@@ -44,6 +44,10 @@ services:
         sync: false
       - key: RESEND_API_KEY
         sync: false
+      # W4 E6: secret svix của webhook Resend (whsec_…) — thiếu là endpoint
+      # /api/webhooks/resend 503 và suppression không được ghi.
+      - key: RESEND_WEBHOOK_SECRET
+        sync: false
       - key: EMAIL_FROM
         sync: false
       - key: CLOUDINARY_CLOUD_NAME

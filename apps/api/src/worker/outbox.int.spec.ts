@@ -75,7 +75,13 @@ describe('outbox worker integration', () => {
 
       const result = await outbox.drainOnce();
 
-      expect(result).toEqual({ sent: 2, failed: 0, retried: 0, skippedUnsubscribed: 0 });
+      expect(result).toEqual({
+        sent: 2,
+        failed: 0,
+        retried: 0,
+        skippedUnsubscribed: 0,
+        skippedSuppressed: 0,
+      });
       expect(deliverer.calls.map((c) => c.payload)).toEqual([
         { enquiryId: 'enquiry-received:e-older' },
         { enquiryId: 'enquiry-received:e-newer' },
@@ -104,7 +110,13 @@ describe('outbox worker integration', () => {
 
       const result = await outbox.drainOnce();
 
-      expect(result).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 1 });
+      expect(result).toEqual({
+        sent: 0,
+        failed: 0,
+        retried: 0,
+        skippedUnsubscribed: 1,
+        skippedSuppressed: 0,
+      });
       expect(deliverer.calls).toEqual([]);
       const row = await prisma.outbox.findUniqueOrThrow({ where: { id: skipped.id } });
       expect(row.status).toBe(OutboxStatus.SKIPPED);
@@ -148,6 +160,7 @@ describe('outbox worker integration', () => {
           failed: isLast ? 1 : 0,
           retried: isLast ? 0 : 1,
           skippedUnsubscribed: 0,
+          skippedSuppressed: 0,
         });
 
         const updated = await prisma.outbox.findUniqueOrThrow({
@@ -161,7 +174,13 @@ describe('outbox worker integration', () => {
 
       // FAILED là trạng thái đỗ — drain tiếp theo không đụng nữa.
       const after = await outbox.drainOnce();
-      expect(after).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 });
+      expect(after).toEqual({
+        sent: 0,
+        failed: 0,
+        retried: 0,
+        skippedUnsubscribed: 0,
+        skippedSuppressed: 0,
+      });
       expect(deliverer.calls).toHaveLength(MAX_ATTEMPTS);
     });
   });
@@ -203,7 +222,13 @@ describe('outbox worker integration', () => {
       // được gọi thêm lần nào (trước W4 nó quay lại đầu batch mỗi phút).
       deliverer.calls = [];
       const second = await outbox.drainOnce();
-      expect(second).toEqual({ sent: 0, failed: 0, retried: 0, skippedUnsubscribed: 0 });
+      expect(second).toEqual({
+        sent: 0,
+        failed: 0,
+        retried: 0,
+        skippedUnsubscribed: 0,
+        skippedSuppressed: 0,
+      });
       expect(deliverer.calls).toHaveLength(0);
 
       // Đẩy lịch hẹn về quá khứ → row lại tới lượt bình thường.

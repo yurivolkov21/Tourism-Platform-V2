@@ -87,6 +87,11 @@ const EnvSchema = z
     // Email (P2 W5) — RESEND_API_KEY set → worker bind ResendDeliverer, không
     // set → giữ ConsoleDeliverer (dev boots không cần email, pattern Nexora).
     RESEND_API_KEY: z.string().min(1).optional(),
+    // W4 E6 (ADR-0039 §4): secret verify webhook Resend (svix, dạng
+    // `whsec_…`). Optional MỌI môi trường — thiếu thì endpoint
+    // /api/webhooks/resend trả 503 + một dòng log lúc boot, KHÔNG chặn boot
+    // (dev không cần tài khoản Resend; suppression khi đó không được ghi).
+    RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).default('Nexora <noreply@tourism.test>'),
     // Observability (ADR-0010) — SENTRY_DSN set → captureException đẩy lỗi 500
     // lên Sentry; không set → no-op (interim: Logger.error → platform stdout).
