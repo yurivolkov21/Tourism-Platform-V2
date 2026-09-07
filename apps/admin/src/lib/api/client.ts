@@ -4,6 +4,7 @@ import type { JsonifiedClient } from '@orpc/openapi-client';
 import { OpenAPILink } from '@orpc/openapi-client/fetch';
 import { contract } from '@tourism/contract';
 import { apiOrigin } from './env';
+import { markAdminForbidden } from './forbidden';
 
 /**
  * Client oRPC của admin — port từ `apps/web/src/lib/api/client.ts` và RÚT GỌN
@@ -74,6 +75,19 @@ export function withAdminOptions(
  */
 const link = new OpenAPILink<AdminApiContext>(contract, {
   url: apiOrigin(),
+  // MỘT chỗ cho mọi đường đọc/ghi (ADR-0026 AMEND 3 §B): lỗi 403 mang digest
+  // ADMIN_FORBIDDEN để error boundary đưa admin bị thu hồi quyền về
+  // /not-authorized; server action đã classify 403 riêng — digest không đổi
+  // hành vi các đường đó.
+  interceptors: [
+    async (options) => {
+      try {
+        return await options.next();
+      } catch (error) {
+        throw markAdminForbidden(error);
+      }
+    },
+  ],
   fetch: (request, init, { context }) =>
     globalThis.fetch(request, {
       ...withAdminOptions(request, init ?? {}, context),

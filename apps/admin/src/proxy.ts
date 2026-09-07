@@ -54,6 +54,9 @@ export function proxy(request: NextRequest) {
     // Forward CSP + nonce vào request để Next gắn nonce lên script của nó.
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-nonce', nonce);
+    // Path thật cho layout gác (W3-O6): Next không cho layout đọc pathname,
+    // proxy là chỗ duy nhất biết — layout đọc x-pathname, fallback '/'.
+    requestHeaders.set('x-pathname', path);
     for (const { key, value } of securityHeaders) {
       if (key === 'Content-Security-Policy') requestHeaders.set(key, value);
     }

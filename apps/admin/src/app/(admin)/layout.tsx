@@ -1,3 +1,4 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { decideAdminAccess } from '@/lib/admin-gate';
 import { getServerSession } from '@/lib/api/session';
@@ -10,11 +11,16 @@ import { getServerSession } from '@/lib/api/session';
  */
 export default async function AdminLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const session = await getServerSession();
-  // Path thật nằm ở proxy; ở tầng layout Next không cho đọc pathname trực
-  // tiếp — nhánh `login` ở đây chỉ xảy ra khi cookie có mà session chết
-  // (hết hạn/tombstone), quay về "/" sau đăng nhập là đủ.
-  const decision = decideAdminAccess(session ? { role: session.role } : null, '/');
-  if (decision.kind === 'login') redirect('/login');
+  // Path thật do proxy gắn vào `x-pathname` (W3-O6, ADR-0026 AMEND 3 §B) —
+  // Next không cho layout đọc pathname trực tiếp. Nhánh `login` ở đây xảy ra
+  // khi cookie có mà session chết (hết hạn/tombstone); mang đúng path vào
+  // ?redirect= để sau đăng nhập quay lại chỗ đứng. Fallback '/' cho lối gọi
+  // không qua proxy (render nội bộ) — an toàn, chỉ kém tiện.
+  const path = (await headers()).get('x-pathname') ?? '/';
+  const decision = decideAdminAccess(session ? { role: session.role } : null, path);
+  if (decision.kind === 'login') {
+    redirect(`/login?redirect=${encodeURIComponent(decision.redirectTo)}`);
+  }
   if (decision.kind === 'deny') redirect('/not-authorized');
 
   // decision.kind === 'allow' ⇒ session không null (path '/' không public).

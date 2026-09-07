@@ -3,6 +3,9 @@
 import { messages } from '@tourism/i18n';
 import { Button, buttonVariants } from '@tourism/ui/components/button';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { ADMIN_FORBIDDEN_DIGEST } from '@/lib/api/forbidden';
 
 /**
  * Boundary lỗi runtime cho TOÀN admin (review F1 31/08 — trước đó không có
@@ -15,11 +18,22 @@ const t = messages.admin.errors;
 
 // Không đặt tên `Error`: che mất global Error mà annotation bên dưới cần.
 export default function AdminRouteError({
+  error,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
+  const router = useRouter();
+  // Mất quyền admin giữa phiên (ADR-0026 AMEND 3 §B): layout gác không
+  // re-render khi điều hướng MỀM, nên 403 nổ ở page/fetch rơi vào boundary
+  // này — digest ADMIN_FORBIDDEN (tầng client oRPC gắn, Next chuyển qua
+  // boundary kể cả production) là tín hiệu đưa về đúng cửa /not-authorized
+  // thay vì mời "Try again" vô vọng.
+  useEffect(() => {
+    if (error.digest === ADMIN_FORBIDDEN_DIGEST) router.replace('/not-authorized');
+  }, [error.digest, router]);
+
   return (
     <main className="flex min-h-svh flex-col items-center justify-center gap-4 px-6 text-center">
       <h1 className="text-2xl font-semibold tracking-tight">{t.title}</h1>

@@ -6,6 +6,10 @@ import { type NextRequest, NextResponse } from 'next/server';
  * từng page (requireSession, defense-in-depth). Đây KHÔNG phải tầng bảo mật;
  * đừng thêm logic gì vào đây. `/tours/:slug/book` sẽ thêm ở cụm C.
  *
+ * ⚠️ LUẬT (ADR-0026 AMEND 3 §C, áp cho CẢ HAI app): proxy KHÔNG phải biên
+ * quyền — nó chỉ tiết kiệm một round-trip. POST `Next-Action` tới path ngoài
+ * matcher vẫn chạy tới tầng sau; biên quyền thật là page/layout + API guard.
+ *
  * Tên cookie đối chiếu THẬT (`node_modules/better-auth/dist/cookies/index.mjs`
  * bản 1.6.23, hàm `createCookieGetter`): `${secureCookiePrefix}${prefix}.
  * session_token` với `prefix` mặc định `better-auth` — API chưa khai

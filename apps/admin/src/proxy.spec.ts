@@ -63,6 +63,15 @@ describe('proxy (admin)', () => {
     expect(response.headers.get('x-middleware-request-x-nonce')).toBe(nonce);
   });
 
+  it('forward x-pathname để layout gác biết path thật (W3-O6, ADR-0026 AMEND 3 §B)', () => {
+    const response = proxy(
+      new NextRequest('https://admin.example.com/bookings/BK-1', {
+        headers: { cookie: 'better-auth.session_token=abc' },
+      }),
+    );
+    expect(response.headers.get('x-middleware-request-x-pathname')).toBe('/bookings/BK-1');
+  });
+
   it('nonce phải có mặt cả ở public path /login (matcher không chừa)', () => {
     const response = proxy(new NextRequest('https://admin.example.com/login'));
     nonceOf(response.headers.get('content-security-policy'));
