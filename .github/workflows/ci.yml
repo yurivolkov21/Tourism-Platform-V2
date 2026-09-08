@@ -106,6 +106,19 @@ jobs:
           NEXT_PUBLIC_API_URL: http://localhost:3001
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
 
+      # `pnpm gate` KHÔNG chạy Metro bundle. Task turbo của mobile cố ý tên
+      # `bundle` chứ không phải `build` (ADR-0040 §5) vì `gate` là vòng lặp
+      # TDD, mà `expo export` tốn ~1–2 phút và chạy lại mỗi lần BẤT KỲ package
+      # chung nào đổi. Đánh đổi ấy chỉ chấp nhận được khi CI là lưới — step
+      # này chính là lưới đó, và "gate xanh" một mình KHÔNG còn bảo chứng
+      # mobile bundle được. Không cần Postgres hay API sống: app mobile chưa
+      # gọi endpoint nào (P5a là template).
+      - name: App mobile bundle được (gate không chạy Metro — ADR-0040 §5)
+        env:
+          EXPO_PUBLIC_API_URL: http://localhost:3001
+          EXPO_PUBLIC_WEB_URL: http://localhost:3000
+        run: pnpm turbo run bundle --filter=@tourism/mobile
+
       # CSP admin là nonce + strict-dynamic: HTML nào prerender TĨNH là trắng
       # script ở production (dev không lộ). Bảng route Next in ra giấu
       # /_global-error nên đọc thẳng prerender-manifest (ADR-0038 AMEND 1).

@@ -8,6 +8,106 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-08 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, 6 commit `ecc62bcf..515920f6`) — **CHƯA merge, chờ review session riêng**
+
+Session thi công theo [spec P5a](specs/2026-09-08-p5a-mobile-template-design.md)
+và [ADR-0040](adr/0040-mobile-app-expo.md). Mở phase P5. Không migration,
+không chạm `apps/api`/`apps/web`/`apps/admin`, không chạm hạ tầng sống
+(CLAUDE.md §15). Bảy task của spec ra sáu commit — T7 (CI + runbook + docs
+sweep) đi cùng chính entry này.
+
+**CỔNG tsgo × React Native (spec §4.1): XANH.** TypeScript 7.0.2 (tsgo)
+typecheck được codebase RN sau khi khai `types` tường minh trong tsconfig —
+đúng gotcha 04/08 mà spec đoán trước. Không đo bằng "chạy không báo lỗi": chèn
+một lỗi prop RN thật (`numberOfLines` trên `View`) thì tsgo báo TS2769 đúng
+dòng, gỡ ra thì xanh lại. Dùng `types: ["jest", "expo/types"]` chứ KHÔNG
+`@types/node` — `expo/types/metro-require.d.ts` đã khai `process.env`, và Node
+type trong app RN là sai bản chất. Vì cổng xanh nên **không cần AMEND
+ADR-0040 §7**, và `apps/mobile` KHÔNG được cấp compiler riêng.
+
+- **T1 `ecc62bcf` — scaffold + toolchain.** `@tourism/mobile` với expo
+  57.0.20 · expo-router 57.0.19 · RN 0.86.3, `.env.example`/`.env.local` +
+  `src/lib/env.ts` fail-fast (chuỗi rỗng coi như THIẾU, đúng gotcha env của
+  repo), task turbo `bundle` (cố ý không tên `build`). `pnpm-workspace.yaml`
+  KHÔNG đổi một dòng; không có `metro.config.js` nào và `expo export` vẫn
+  bundle được cả hai nền tảng — đúng dự đoán ADR-0040 §6.
+- **T2 `65dab998` — `@tourism/mobile-ui` + ThemeProvider.** Package mới ở
+  `libs/mobile/ui`, cấm phụ thuộc `@tourism/ui`. `theme-provider.tsx` là chỗ
+  DUY NHẤT import `@tourism/tokens/theme`. `MOBILE_COLOR_KEYS` là danh sách
+  màu curated — đổi tên token thì `buildTheme()` ném lỗi nêu đúng tên khoá.
+  Spec canh tokens-only bằng máy: quét `#[0-9a-fA-F]{3,8}` trong `src/lib` và
+  assert rỗng, kèm một test tự-kiểm để cái quét không thành test rỗng luôn xanh.
+- **T3 `f3e6d8b1` · T4 `9840d606` — sáu primitive.** `Screen` · `AppText`
+  (6 bậc chữ theo vai trò) · `Button` (3 vai, `disabled` CHẶN `onPress` thật,
+  `accessibilityRole`) · `Card` · `EmptyState`. Không `fontSize` hay hex viết
+  tay ở đâu; test duyệt từng bậc/từng vai và đối chiếu thẳng với cầu token.
+- **T5 `20a4c467` — copy vào `@tourism/i18n`.** Khối `mobile.appShell`: 11
+  tiêu đề màn, ô giữ chỗ, copy `+not-found`. Năm nhãn tab tách hằng
+  `MOBILE_TAB_COPY` dùng chung cho cả thanh tab lẫn tiêu đề màn.
+- **T6 `515920f6` — cây route.** Đúng cây spec §3: `(tabs)` 5 màn, `(auth)` 3
+  màn mở dạng modal, `tours/[slug]`, `bookings/[code]`, `+not-found` có nút
+  quay về. Mọi màn là ô giữ chỗ — không mock data, không gọi API, không auth
+  thật, không bố cục theo `docs/navel/`. Test dựng cây THẬT bằng
+  `renderRouter('src/app')`.
+- **T7 (entry này) — CI + runbook + docs.** `.github/workflows/ci.yml` thêm
+  step *"App mobile bundle được"* (không cần Postgres/API); runbook mới
+  [conventions/mobile-dev-loop](conventions/mobile-dev-loop.md).
+
+**Một chỗ lệch phạm vi spec, nêu thẳng để review cân.** Spec §"Đụng" không
+liệt kê `libs/shared/tokens`, nhưng cầu `rn-convert` từ P0 chỉ mang màu và bo
+góc — không mang type scale. Mà spec §5 đòi *"AppText lấy đúng số từ token,
+không hardcode fontSize"* và ADR-0013 hứa *"đổi brand = sửa MỘT file"* nay phủ
+cả mobile. Nên thêm `toRnScale()` đọc `themeExtras`/`rootExtras` (vốn đã có
+`--text-*`, `--font-weight-*`, `--spacing`, `--touch-target-min`) và phát ra
+`type`/`weight`/`spacing`/`touchTargetMin` theo dp. Bán kính nổ bằng không, đo
+chứ không đoán: `generated/tokens.css` giữ nguyên TỪNG BYTE (diff trước/sau),
+nên web và admin không đụng gì.
+
+**Bảy thứ phải chạy thật mới biết** (chi tiết ở runbook §6): `newArchEnabled`
+đã bị gỡ khỏi schema app config SDK 57 nên để lại là expo-doctor đỏ · `jest`
+phải là `~29.7.0` vì jest-expo@57 khai dependency ở `^29.2.1` (với Jest 30,
+runtime winter của expo ném *"import a file outside of the scope of the test
+code"*, thông báo không nhắc gì tới phiên bản) · RNTL 14 chuyển API sang bất
+đồng bộ, chưa `await render()` thì `screen` rỗng · `renderRouter` gắn
+`getPathname()` lên chính Promise đó nên `await` là mất, và `return app` trong
+hàm `async` cũng tự await thenable · `@orpc/*` chỉ có ESM và app kéo vào gián
+tiếp qua i18n → contract, phải nới CẢ `transformIgnorePatterns` lẫn `transform`
+(mẫu `\.[jt]sx?$` không khớp `.mjs`) · expo-router KHÔNG bỏ qua `.spec.tsx`
+nên spec cây route phải nằm ngoài `src/app` · alias `@/*` của tsconfig chạy
+thẳng ở Metro, không cần cấu hình thêm.
+
+**Nghiệm thu đã chạy (dán từ máy, không nói suông):** `pnpm gate:int` trọn với
+API tạm :3001 trên docker theo công thức CI — 25/25 task, lint sạch, int
+496/496 · `pnpm turbo run bundle --filter=@tourism/mobile` xanh (iOS 1254
+module / Android 1380 module) · `pnpm exec expo-doctor` 21/21 ·
+`./scripts/check-rls.sh` xanh · `grep -rn "eslint\|prettier" apps/mobile
+libs/mobile` rỗng · `git status --short docs/navel` rỗng.
+
+**CÒN TREO — việc cho session gốc / review:**
+
+1. **`react` là 19.2.4 chứ không phải 19.2.3 như ADR-0040 §7 dự tính.**
+   `overrides` trong `pnpm-workspace.yaml` (chốt 27/07, chữa bug hai bản React
+   ở Vitest) áp cho CẢ workspace. Không sửa overrides để chiều mobile — thay
+   vào đó khai `expo.install.exclude` cho `react` và `typescript`, đúng đường
+   Expo mở sẵn. **Review chốt: giữ vậy và AMEND ADR-0040 §7, hay đổi cách
+   khác.**
+2. **Mở rộng cầu token (`toRnScale`) nằm ngoài phạm vi spec §"Đụng"** — xem
+   đoạn trên; review xác nhận hoặc yêu cầu tách.
+3. **Chưa có icon tab, chưa có icon app / ảnh splash.** `app.json` cố ý không
+   trỏ tới asset nào để không commit ảnh ngoài phạm vi spec. P5b.
+4. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040 (Expo Go không cần
+   EAS; E2E chờ có màn hình thật).
+5. **Nghiệm thu cuối chưa làm: user cầm điện thoại quét QR Expo Go.** Agent
+   không bật dev server (user giữ), nên bước này còn nguyên. Lệnh và bẫy ở
+   runbook.
+6. **`EXPO_PUBLIC_API_URL` trong `.env.local` đang là `http://localhost:3001`**
+   — điện thoại không hiểu địa chỉ đó. Từ P5b (gọi API thật) phải trỏ API đã
+   deploy hoặc mở thêm tunnel cho cổng 3001.
+
+Tests after: **3.236 unit** (913 admin và 1.499 web và 463 api và 255 contract
+và 44 mobile-ui và 22 ui và 17 tokens và 17 mobile và 6 i18n) cộng **496 int**.
+Nhánh này thêm 71 test mới: 17 mobile · 44 mobile-ui · 7 tokens · 3 i18n.
+
 ## 2026-09-08 — W4 merge + vòng vá review 8 mũi (nhánh `fix/inbound-channels`, 33 commit `6b3c4da..27af99b9` ff vào main: 19 thi công + 8 vá `721250f0..e513dde9` + 2 test + docs; 2 migration — `20260907115144` deploy Supabase 08/09 sớm, `20260908120000_w4_review_fixups` deploy Supabase 08/09 lúc merge, 25/25 up to date)
 
 Review ở session gốc theo nếp review theo tầng: 8 finder theo miền (trần
