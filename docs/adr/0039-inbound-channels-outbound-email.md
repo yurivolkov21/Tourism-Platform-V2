@@ -137,3 +137,61 @@ phải nhớ thêm vào danh sách — đúng lý do tồn tại của máy che 
 | Xoá hẳn enquiry quá hạn thay vì anonymize | Mất thống kê lead của chính mình; anonymize đạt cùng mục tiêu PII |
 | Token JWT thay HMAC tự chế | Kéo thêm dependency + bề mặt parse phức tạp cho ba purpose cố định; HMAC có purpose trong phần ký là đủ và giữ tương thích v0 dễ |
 | Suppression tự hết hạn | Gửi lại vào hộp thư đã bounce cứng là đốt reputation domain — gỡ phải là hành vi có người chịu trách nhiệm |
+
+## AMEND 1 — 08/09/2026 (vòng vá review W4): consent theo thế hệ, token đổi ý chỉ từ POST huỷ, suppression theo lý do, lỗi 4xx của TA là tạm
+
+Review 8 mũi ở session gốc (10 findings) chỉ ra bản gốc §2–§4 để hở ba chỗ và
+tả sai một chỗ; chốt lại như sau — code là nguồn sự thật, ADR ghi lý do:
+
+- **§2 — `confirmedAt` không đứng một mình.** Bản gốc `confirmSubscription`
+  chỉ guard `confirmedAt: null` nên sinh được row "đã xác nhận × đã huỷ" — tập
+  mà một campaign lọc `confirmedAt` sẽ gửi tới người đã rút; backfill
+  `confirmed_at = created_at` cũng không loại người đã unsubscribe và **đã
+  chạy trên Supabase** trước review. Nay: predicate mailable là MỘT
+  (`MAILABLE_SUBSCRIBER_WHERE` = `unsubscribedAt null ∧ confirmedAt ≠ null`,
+  `newsletter/mailable.ts`) cho worker (mọi bản tin ngoài thư xác nhận) và
+  campaign tương lai; confirm là compare-and-set ghi `confirmedAt = now` VÀ
+  xoá `unsubscribedAt`; migration mới `20260908120000_w4_review_fixups` bỏ
+  `confirmed_at` của đúng những row backfill đang huỷ.
+- **§3 — token `confirm` khoá vào THẾ HỆ consent.** Token confirm không hết
+  hạn (bản gốc: hết hạn chỉ tạo ngõ cụt), nên một thư xác nhận cũ bị forward
+  mà còn mở lại được consent SAU khi khách đã huỷ là lỗ. Payload ký thêm
+  `consentGeneration` = mốc `unsubscribedAt` hiện tại (`initial` khi chưa
+  huỷ): huỷ là mọi thư cũ chết, thư gửi sau lần huỷ mang thế hệ mới và mở
+  được. Verifier phải đọc row trước khi verify — chấp nhận lệch nếp "verify
+  trước DB" vì id là uuid v7 tra theo PK.
+- **§3 — token `resubscribe` CHỈ phát từ POST huỷ vừa claim được.** Bản thi
+  công cho GET `unsubscribeConfirm` mint nó từ token huỷ không hết hạn (nhận
+  cả v0) — hạn 30 ngày và việc khoá v0 thành hư cấu, ai cầm link huỷ cũ cũng
+  bật lại consent mãi. Nay `resubscribe` là nút "đổi ý" trong 30 ngày sau
+  lần huỷ; bấm lại link cũ không có nút đăng ký lại; đường quay lại sau cửa
+  sổ đó là form footer → thư xác nhận mới (double opt-in thật). Ngày ngừng
+  nhận v0 là hằng máy thi hành `V0_ACCEPT_UNTIL = 2027-01-01`.
+- **§2 — thư xác nhận gửi LẠI được.** `welcomeSentAt` set lúc enqueue và
+  chặn tuyệt đối → thư FAILED/SKIPPED là khách kẹt `confirmedAt` null vĩnh
+  viễn. Nay `subscribe()` gửi lại khi chưa mailable và lần trước đã hơn 24
+  giờ, dedupeKey `newsletter-confirm:<email>:<yyyy-mm-dd>` (một thư/địa
+  chỉ/ngày — quy ước dedupe-key thêm hàng `<event>:<email>:<ngày>`).
+- **§4 — suppression theo LÝ DO, và payload Resend thật.** Resend gửi
+  `bounce.type ∈ Permanent | Transient | Undetermined` (bản thi công lọc
+  `'hard'` — giá trị không tồn tại — nên hard bounce thật không bao giờ được
+  ghi). `Permanent`/`Undetermined` → ghi, `Transient` → bỏ. Phạm vi:
+  `bounced` chặn MỌI loại (địa chỉ chết), `complained` CHỈ chặn bản tin —
+  bấm spam một welcome không làm mất reset mật khẩu/OTP/xác nhận đơn của
+  chính họ; bounce trên email auth ghi WARN để operator gỡ (SQL, như §4 đã
+  chốt). `RESEND_WEBHOOK_SECRET` ép regex `whsec_<base64>` lúc boot.
+- **§4 — 401/403/408 là lỗi TẠM.** "4xx-không-retry" bản gốc coi credential
+  của TA hỏng (xoay key) là lỗi của thư: park FAILED cả batch, retry tay từng
+  id. Nay chỉ 4xx còn lại là vĩnh viễn. Row FAILED không giữ vĩnh viễn nữa:
+  purge sau 180 ngày theo `createdAt` (payload mang PII, không vượt retention
+  §6). Admin thấy `nextAttemptAt` để phân biệt "chờ backoff" với "worker
+  chết".
+- **§1 — ack không CHỞ `message`.** Template đã bỏ khối in lại nhưng payload
+  vẫn mang message — outbox (bảng admin, log deliverer) giữ một bản PII thừa
+  30 ngày cho một thư không dùng tới. Payload ack nay `{name, email,
+  tourTitle}`; alert admin giữ đủ.
+- **§6 — sửa lời tả:** cột `enquiries.message` NOT NULL nên anonymize ghi
+  `message → ''` (không phải null như bản gốc viết); `user_id` chỉ ghi được
+  khi web GỬI cookie — ba form web nay gọi `enquiries.create` kèm
+  `withBrowserAuth()` (route vẫn `@Public`, throttle theo IP); controller đọc
+  session trong try/catch riêng, lỗi session không thành 500 cho form công khai.

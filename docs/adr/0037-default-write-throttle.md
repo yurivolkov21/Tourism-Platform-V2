@@ -136,3 +136,41 @@ Nay trả nợ đó:
   stale-while-revalidate=300` CHỈ cho GET catalog/posts/site-media — KHÔNG
   cho route mang session (`/api/auth`, `/api/account`, wishlist…), cache
   công khai một response cá nhân hoá là rò dữ liệu qua proxy.
+
+## AMEND 3 — 08/09/2026 (vòng vá review W4): chế độ `log` cho trần đọc, miễn qua khoá nội bộ, bucket đọc tách bằng KEY
+
+AMEND 2 giả định "GET có session không đếm" phủ được SSR của web — sai ở đúng
+đường quan trọng nhất: web KHÔNG forward cookie cho GET catalog (`tours.ts`,
+`posts.ts`, `site-media.ts` là fetch ISR không session), nên build Vercel (61
+route prerender × 2–6 call từ MỘT egress IP) rơi trọn vào bucket 300/60s và
+`generateStaticParams` không settle → 429 là build đỏ. Thêm nữa TRUST_PROXY
+trên Render chưa ai đo (nợ W2): nếu `req.ip` là IP proxy thì cả internet chia
+một bucket. Chốt:
+
+- **`PUBLIC_READ_THROTTLE_MODE` (env) — mặc định `log`:** đếm như thường,
+  chạm trần thì WARN một dòng mỗi IP mỗi cửa sổ và CHO QUA; `enforce` mới
+  trả 429. Chuyển bằng env sau khi đo, không sửa code. Int test chạy `enforce`
+  để probe thấy 429 thật.
+- **Phép đo trước khi `enforce`:** `GET /health` trả thêm `clientIp` (`req.ip`
+  sau `trustProxy`) và `forwardedFor` (XFF thô). Gọi từ hai mạng khác nhau
+  phải ra hai `clientIp` khác nhau và bằng IP công khai của mình; trùng nhau
+  (= IP proxy) là TRUST_PROXY sai và không được bật enforce.
+- **`INTERNAL_READ_KEY` + header `x-internal-read-key`:** web SSR/build/ISR
+  gắn header CHỈ phía server (`withInternalReadKey`, không NEXT_PUBLIC —
+  key lộ ra là mọi người đều "nội bộ"); API so timing-safe và miễn bucket
+  ĐỌC (không miễn ghi). Khai key ở render.yaml, turbo build env, hai
+  `.env.example`; giá trị phải trùng hai bên. Thiếu env → không ai được miễn.
+- **Bucket đọc tách bằng KEY (`throttler:read:<ip>`), tên throttler GIỮ
+  `default`:** thư viện đặt tên header theo tên throttler — bucket tên `read`
+  từng phát `Retry-After-read` thay vì `Retry-After`; key vẫn một cho mọi
+  route đọc theo IP (AMEND 2 tính con số theo TRANG).
+- **GET public trên route KHAI `@Throttle`** (AuthController wildcard,
+  `get-session`) được MIỄN hẳn — không thi hành trần đã khai cho GET (AUTH_THROTTLE
+  cố ý chỉ đếm non-GET); comment "chính sách riêng thắng" của bản thi công
+  tả sai hành vi này.
+- **`KeyedThrottlerStorage` có trần:** quét bucket rỗng/hết block mỗi 1 000
+  lượt, trần 50 000 bucket, hết chỗ đuổi 10% cũ nhất — bản AMEND 1 không bao
+  giờ xoá key (mỗi IP lạ một entry vĩnh viễn).
+- **`PublicCacheInterceptor`:** `@SkipPublicCache()` cho `catalog.health`
+  (probe cache 60 giây là probe mù); `reviews.listByTour` cũng mang
+  Cache-Control công khai như catalog.

@@ -216,3 +216,34 @@ test · CÒN TREO), README trạng thái W4, `render.yaml` + `.env.example` API
 thêm KEY `RESEND_WEBHOOK_SECRET`, `ENQUIRY_RETENTION_MONTHS` (chỉ key). Báo
 cáo ghi rõ **env nào user phải đặt trên Render** và **hai thiết lập dashboard
 Cloudinary** trước khi merge.
+
+## 8. AMEND — 08/09/2026, vòng vá review 8 mũi ở session gốc
+
+Thi công bám spec 16/16 mục; review ra 10 findings (39 mục verify: 30
+CONFIRMED · 6 PLAUSIBLE · 3 REFUTED), vá trong 8 commit trên chính nhánh.
+Chỗ spec nói SAI hoặc nói THIẾU, ghi lại để đọc spec không bị dẫn lạc:
+
+- **U1:** `allowed_formats` KHÔNG phải `'jpg,jpeg,png,webp,heic,heif'` mà là
+  chính whitelist đuôi contract (`jpg,jpeg,png,webp,avif,gif`); transformation
+  phải có `fl_force_strip` (c_limit không strip EXIF); ký thêm
+  `overwrite:false`. Runbook: Cloudinary **không có** mục "Restricted original
+  access" — bỏ khỏi §3.2; Strict transformations giữ Disabled. → ADR-0021 AMEND 2.
+- **E3/E4:** token `confirm` khoá vào thế hệ consent; `resubscribeToken` chỉ
+  từ POST huỷ vừa claim (không phải GET); thư xác nhận gửi lại sau 24h;
+  `V0_ACCEPT_UNTIL` là hằng; migration mới sửa backfill người đã huỷ.
+  → ADR-0039 AMEND 1.
+- **E5/E6:** bounce Resend là `Permanent/Transient/Undetermined`; `complained`
+  chỉ chặn bản tin; 401/403/408 là tạm; FAILED purge 180 ngày; admin thấy
+  `nextAttemptAt`. → ADR-0039 AMEND 1.
+- **E1/E8:** ack không chở `message`; ba form web gửi cookie để `user_id`
+  ghi được. → ADR-0039 AMEND 1.
+- **R1:** chạy `log` tới khi đo TRUST_PROXY qua `/health.clientIp`; web
+  build/ISR miễn bằng `INTERNAL_READ_KEY`; bucket đọc tách bằng key, header
+  `Retry-After` chuẩn. → ADR-0037 AMEND 3.
+- **C1:** chỉ hai MIME, allowlist host, bỏ query, dedupe có trần. → ADR-0038 AMEND 3.
+- **U2:** card Pending + trung bình sao admin loại review đã rút; CHECK + index. → ADR-0032 AMEND 2.
+- **§7 "ghi CHƯA deploy Supabase":** session thi công đã deploy migration,
+  tạo webhook Resend, set env Render và đổi Cloudinary TRƯỚC review. Rủi ro
+  kỹ thuật thấp (migration thuần cộng thêm) nhưng trái nếp — nay là luật §15
+  CLAUDE.md: session thi công không chạm hạ tầng sống; và comment trong
+  `migration.sql` không được khai trạng thái deploy (checksum khoá nó vĩnh viễn).

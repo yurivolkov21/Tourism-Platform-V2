@@ -79,6 +79,16 @@ freeze 15/10.
     thường, nhưng bypass ≠ miễn nhìn. Luật này áp cho cả agent lẫn
     người; brief subagent nào có bước push phải nhắc.
 
+15. **Session thi công KHÔNG chạm hạ tầng sống** (chốt 08/09, sau W4):
+    nhánh chưa qua review thì KHÔNG deploy migration lên Supabase, không
+    tạo/sửa webhook ở Resend/Stripe/PayPal, không set env hay redeploy
+    Render/Vercel, không đổi thiết lập Cloudinary. Mọi việc đó thuộc bước
+    merge ở session gốc, SAU review — vì review có thể đổi chính migration
+    (W4: backfill sai phải sửa bằng migration thứ hai vì migration đầu đã
+    chạy prod) và vì hạ tầng đổi trước code là một khoảng "lệch pha" không
+    ai canh. Prompt cho session thi công phải nhắc luật này; việc cần hạ
+    tầng thì ghi thành checklist trong CHANGELOG mục CÒN TREO cho session gốc.
+
 ## Toolchain thống nhất (MỘT tool cho mỗi việc — không có ngoại lệ)
 
 | Việc | Tool DUY NHẤT | Chạy ở đâu |
@@ -157,7 +167,11 @@ pnpm lint:fix                    # biome tự sửa format + lint
   `migrate dev` từ chối chạy tiếp. Đã dính 19/07 khi đợt dịch comment sang
   tiếng Việt quét cả `prisma/migrations/`. Migration đã chạy là **bản ghi lịch
   sử bất biến**; muốn đổi gì thì viết migration MỚI. (Khi chạy công cụ sửa
-  hàng loạt, luôn loại trừ `apps/api/prisma/migrations/`.)
+  hàng loạt, luôn loại trừ `apps/api/prisma/migrations/`.) Hệ quả (dính
+  08/09, W4): **comment trong `migration.sql` KHÔNG được khai trạng thái
+  deploy** ("CHƯA deploy Supabase") — trạng thái đổi theo thời gian còn
+  comment thì khoá vĩnh viễn bằng checksum, thành lời nói sai không sửa được;
+  trạng thái deploy sống ở `docs/CHANGELOG.md`.
 - **`docs/CHANGELOG.md` có dòng bắt đầu bằng `+` là PHÉP CỘNG, không phải bullet**
   — ví dụ một tổng số test bị ngắt dòng thành `… + 5 ui + 76 web` / `+ 188 api)`.
   Mọi formatter markdown (MD004 ul-style) sẽ đổi `+` đầu dòng thành `-`, biến

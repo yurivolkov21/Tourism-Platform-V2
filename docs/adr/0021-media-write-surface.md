@@ -161,3 +161,28 @@ cũ — bản đồ sang UI mới:
 
 Lớp một (tham số ký) là thứ code canh được bằng test; ADR này KHÔNG coi
 dashboard là lưới chính.
+
+## AMEND 2 — 08/09/2026 (vòng vá review W4): format MỘT nguồn, `fl_force_strip`, `overwrite:false`; runbook theo console thật
+
+AMEND 1 sai ba chỗ, đo được:
+
+- **`allowed_formats` lệch whitelist đuôi của contract.** Bản thi công tự
+  liệt kê `jpg,jpeg,png,webp,heic,heif`: `avif`/`gif` contract cho ký thì
+  Cloudinary 400 (regression so với trước W4), còn `heic/heif` client chặn từ
+  đuôi nên không bao giờ tới chữ ký. Nay `ALLOWED_UPLOAD_FORMATS =
+  ALLOWED_IMAGE_EXTENSIONS.join(',')` — thêm/bớt đuôi sửa MỘT chỗ ở contract;
+  heic/heif cố ý không có (browser không decode để preview/đo kích thước).
+- **`c_limit` KHÔNG strip metadata.** Cloudinary giữ EXIF/GPS khi chỉ resize;
+  incoming transformation nay `c_limit,w_2400,h_2400,fl_force_strip` — cờ này
+  mới thật sự bỏ toàn bộ metadata (kể cả ICC — chấp nhận).
+- **Signed upload mặc định `overwrite=true`.** Ai cầm chữ ký còn hạn (10′)
+  POST lại cùng `public_id` là tráo được ảnh review SAU khi admin duyệt. Nay
+  ký `overwrite: false` (nằm trong chữ ký, form gửi `false`);
+  `SignedUploadParamsSchema.overwrite: literal(false)`.
+- **Runbook theo console THẬT** (`2c52289`): Cloudinary KHÔNG có mục
+  "Restricted original access"; "Strict transformations" phải GIỮ Disabled vì
+  delivery là transform động không ký. Lớp hai chỉ còn: bỏ tick Unsigned
+  actions + Restricted media types.
+- **Nợ ghi:** chưa lưu `version` Cloudinary về `media_assets` nên URL đọc
+  chưa bất biến theo bản upload — `overwrite:false` đã chặn tráo bằng chữ ký,
+  version là lớp hai khi có nhu cầu.

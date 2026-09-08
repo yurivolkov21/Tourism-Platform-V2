@@ -280,3 +280,29 @@ Trả nợ AMEND 1 §d ("không có kênh nào báo khi CSP chặn ở productio
   tay; hạ xuống Report-Only để "quan sát trước" là mở lại đúng lỗ vừa đóng.
   Kênh báo cáo ở đây phục vụ chiều ngược: biết khi enforce CHẶN NHẦM thứ
   thật (hạ tầng đổi, thư viện mới) để AMEND kịp.
+
+## AMEND 3 — 08/09/2026 (vòng vá review W4): endpoint CSP report — chỉ hai MIME, lọc host, bỏ query, dedupe có trần
+
+Endpoint AMEND 2 là bề mặt KHÔNG auth, và bản thi công để nó thành máy đốt CPU
+và máy đầu độc log. Đo được: `reports+json` là mảng ~154 report/8 KB × 600
+request/phút/IP, `shouldLog` quét toàn Map mỗi lượt → 19 giây CPU/phút từ
+một IP; `application/json` tới path được hook 415 miễn chung với webhook nên
+đi qua parser JSON toàn cục 1 MiB (JSON bọc chuỗi → ~16k report/request);
+dedupe không khoá theo app và không kiểm host `documentUri` → gửi trước là
+nuốt im lặng report thật; `documentUri` giữ query → `/reset-password?token=`
+vào log Render; và một byte NUL thô trong source khiến git coi file là binary.
+Chốt:
+
+- **Chỉ hai MIME của browser** (`application/csp-report`,
+  `application/reports+json`) qua hook 415 ở bootstrap — path này KHÔNG
+  hưởng miễn trừ chung của `/api/webhooks/`.
+- **Allowlist host document:** `documentUri` phải thuộc host của
+  `CORS_ORIGINS ∪ FRONTEND_URL`; report bịa từ host lạ bị bỏ, không log,
+  không chiếm chỗ dedupe.
+- **`documentUri`/`blockedUri` chỉ giữ origin + pathname** — query (token
+  reset, mã OTP trong link) không bao giờ vào log.
+- **Trần 32 report/request; dedupe O(1) hết hạn lười, khoá gồm app, trần
+  5 000 khoá (hết chỗ đuổi 10% cũ nhất), mỗi cửa sổ 10′ một dòng
+  `csp-report-suppressed {n}`** — dedupe không được im lặng tuyệt đối.
+- **Preflight:** e2e ghim `OPTIONS /api/webhooks/csp-report` cho CẢ web lẫn
+  admin origin (endpoint không ở vùng `/api/admin` nên CORS bình thường).

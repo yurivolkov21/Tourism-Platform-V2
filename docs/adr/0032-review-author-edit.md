@@ -222,3 +222,24 @@ Loại các phương án: cho SỬA approved (mở lớp rủi ro tráo nội du
 + phá unique một-review-mỗi-booking như bản gốc §1 đã phân tích); coi
 retract là `unpublish` của admin (nhập hai ý chí khác nhau vào một cột, admin
 sẽ "duyệt lại" thứ tác giả đã rút).
+
+## AMEND 2 — 08/09/2026 (vòng vá review W4): review đã rút rời MỌI phép đo — chính sách A
+
+AMEND 1 thêm trục `retracted_at` nhưng ba chỗ đọc vẫn chỉ nhìn hai trục cũ:
+
+- **Card Pending admin (`pendingReviewsAt`)** đếm cả review đã rút
+  (`isApproved=false`, `rejectedAt=null`) — người duyệt thấy một hàng đợi
+  không bao giờ vơi vì bài không còn được phép duyệt. Nay thêm
+  `retractedAt: null` (cùng vế với `REVIEW_STATE_WHERE.pending`).
+- **Trung bình sao admin (`NOT_REJECTED`)** vẫn tính review đã rút, trong khi
+  con số công khai của tour (recompute lúc retract) đã loại nó. **Chính sách
+  A:** rút là rút lại ý kiến — `NOT_REJECTED = {rejectedAt null, retractedAt
+  null}`, tên hằng giữ nguyên, nghĩa là "ý kiến còn đứng".
+- **Bất biến DB:** CHECK `reviews_retracted_shape` (`NOT (is_approved AND
+  retracted_at IS NOT NULL)`) cùng khuôn `reviews_verdict_shape`, và index
+  `(retracted_at, created_at desc, id desc)` cho tab Retracted — migration
+  `20260908120000_w4_review_fixups`.
+- **Admin/web:** tab lọc dựng từ `ReviewModerationStateSchema.options` (thêm
+  trạng thái mà quên tab là typecheck đỏ); nút rút của khách đọc mã
+  `REVIEW_NOT_RETRACTABLE`/`REVIEW_NOT_FOUND` → toast theo mã và
+  `router.refresh()` thay vì mời bấm lại.

@@ -8,6 +8,85 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-08 — W4 vòng vá review 8 mũi (nhánh `fix/inbound-channels`, 8 commit `721250f0..e513dde9` + docs, 1 migration MỚI `20260908120000_w4_review_fixups` **CHƯA deploy Supabase — deploy lúc merge**) — **CHƯA merge, chờ duyệt**
+
+Review ở session gốc theo nếp review theo tầng: 8 finder theo miền (trần
+đọc/cache · CSP report · consent newsletter · suppression/outbox · ký upload ·
+retract/stats · R3/enquiry · test/docs), 3 verifier theo miền (39 mục: 30
+CONFIRMED, 6 PLAUSIBLE, 3 REFUTED), `gate:int` trọn trong cây chính với API
+tạm :3001. Khác W3, lần này có **ba lỗi nổ ngay lần deploy đầu** (trần đọc
+nuốt build Vercel, endpoint CSP report đốt CPU không auth, suppression Resend
+no-op vì lọc `'hard'`) và **một việc đi trước quy trình** (session thi công
+tự deploy migration/webhook/env/Cloudinary → luật §15 CLAUDE.md). 10
+findings, vá trong 8 commit:
+
+- **Trần đọc (`0a165dc1`, ADR-0037 AMEND 3):** web không forward cookie cho
+  GET catalog nên carve-out "GET có session" không phủ build/ISR — 61 route
+  prerender × 2–6 call từ một egress IP sát trần 300/phút, `generateStaticParams`
+  không settle → 429 là build đỏ; TRUST_PROXY Render chưa đo. Vá:
+  `PUBLIC_READ_THROTTLE_MODE=log` mặc định (đếm + warn, không 429) tới khi đo
+  `GET /health.clientIp`/`forwardedFor` từ hai mạng; `INTERNAL_READ_KEY` +
+  header `x-internal-read-key` chỉ phía server web → miễn bucket đọc; bucket
+  tách bằng key, tên throttler giữ `default` (header `Retry-After` chuẩn thay
+  `Retry-After-read`); GET public khai `@Throttle` được miễn hẳn (comment tả
+  sai); `KeyedThrottlerStorage` quét + trần 50 000 bucket (trước không bao giờ
+  xoá key); `@SkipPublicCache` cho `catalog.health`; `reviews.listByTour` có
+  Cache-Control. Khai key ở render.yaml, turbo, hai `.env.example`.
+- **CSP report (`721250f0`, ADR-0038 AMEND 3):** dedupe quét toàn Map mỗi lượt
+  không trần — đo 19 giây CPU/phút từ một IP không auth; `application/json`
+  lách trần 8 KB qua parser 1 MiB (~16k report/request); dedupe đầu độc được,
+  không kiểm host; `documentUri` giữ query → token reset vào log; byte NUL thô
+  trong source (git coi file là binary). Vá: chỉ hai MIME qua hook 415,
+  allowlist host `CORS_ORIGINS ∪ FRONTEND_URL`, bỏ query, trần 32 report/request,
+  dedupe O(1) khoá gồm app + trần 5 000 + dòng `csp-report-suppressed`.
+- **Consent newsletter (`1d03f6b9`, ADR-0039 AMEND 1):** GET trang huỷ mint
+  `resubscribeToken` từ token huỷ không hết hạn (nhận cả v0) → hạn 30 ngày và
+  khoá v0 là hư cấu; confirm không nhìn `unsubscribedAt`; `welcomeSentAt` chặn
+  tuyệt đối → thư hỏng là kẹt vĩnh viễn; backfill `confirmed_at = created_at`
+  không loại người đã huỷ và ĐÃ chạy prod. Vá: token đổi ý chỉ từ POST huỷ vừa
+  claim; token confirm ký thêm thế hệ consent (`consentGeneration`); confirm
+  compare-and-set ghi confirmedAt + xoá unsubscribedAt; predicate mailable
+  chung (`mailable.ts`); gửi lại thư xác nhận sau 24h (dedupeKey theo ngày);
+  `V0_ACCEPT_UNTIL` hằng; migration mới sửa backfill; panel web bỏ nút đăng
+  ký lại ở trạng thái "bấm link cũ".
+- **Suppression (`7f6b377e`):** payload Resend thật là `Permanent/Transient/
+  Undetermined`, không `hard` → hard bounce thật không bao giờ ghi; chặn cả
+  reset mật khẩu/OTP khi khách bấm spam một welcome. Vá: map đúng loại,
+  `complained` chỉ chặn bản tin, bounce trên email auth WARN, secret ép
+  `whsec_`; FAILED purge 180 ngày.
+- **Ký upload (`d7df62e5`, ADR-0021 AMEND 2):** format ký lệch contract
+  (avif/gif 400 — regression; heic chết ở client), `c_limit` không strip EXIF,
+  signed upload mặc định `overwrite=true` (tráo ảnh review sau duyệt trong 10′
+  chữ ký). Vá: format một nguồn, `fl_force_strip`, `overwrite:false` trong chữ ký.
+- **Retract/stats (`ad90fd07`, ADR-0032 AMEND 2):** card Pending và trung bình
+  sao admin đếm cả review đã rút; thiếu CHECK/index; không tab Retracted; nút
+  rút không đọc mã 409. Vá: `retractedAt: null` ở `pendingReviewsAt` +
+  `NOT_REJECTED` (chính sách A), CHECK `reviews_retracted_shape` + index (cùng
+  migration mới), tab dựng từ enum contract, nút rút toast theo mã + refresh.
+- **Outbox/R3 (`53550e9d`):** 401/403 = vĩnh viễn nên xoay key park cả batch
+  FAILED; FAILED giữ PII vĩnh viễn; `user_id` enquiry không bao giờ ghi vì
+  form web không gửi cookie; ack chở `message` thừa; `escapeLike` thiếu ở
+  posts/reviews/payment events; `bookings.mine` `page` không trần. Vá đủ; admin
+  thấy `nextAttemptAt`; controller enquiry đọc session trong try/catch riêng.
+- **Test (`e513dde9`):** deliverer thật assert `DeliveryHttpError` có status;
+  `X-Api-Key`/`Authorization` vào bộ che; Cache-Control cho posts/site-media/
+  reviews + `/api/health` không cache; preflight csp-report hai origin; spec
+  `ConfirmPanel` và `RetractReviewButton` (hai island chưa có spec).
+- **Docs/luật:** ADR-0039 AMEND 1 · 0037 AMEND 3 · 0038 AMEND 3 · 0021 AMEND 2 ·
+  0032 AMEND 2, spec W4 §8 AMEND, README, CLAUDE.md §15 "session thi công
+  không chạm hạ tầng sống" + gotcha "comment migration không khai trạng thái
+  deploy"; quy ước dedupe-key thêm hàng `<event>:<email>:<ngày>`.
+
+Tests after: `pnpm gate:int` trọn trong cây chính (API tạm :3001 trên docker `tourism`, kill theo PID), `check-rls.sh` xanh, migration mới apply docker `tourism`/`tourism_test` và `prisma migrate diff` không drift. Tests after: 3164 unit (463 api, 255 contract, 1499 web, 913 admin, 2 i18n, 10 tokens, 22 ui) và 496 int — so bàn giao: cộng 12 api, cộng 12 web, cộng 1 admin, cộng 9 int. Một lần gate đỏ ở `register-form.spec` web (timeout 5 s dưới tải, chạy riêng 8/8 xanh, cả suite web chạy lại 1499/1499).
+
+**CÒN TREO (cố ý):** bật `PUBLIC_READ_THROTTLE_MODE=enforce` chỉ sau khi đo
+`clientIp` trên Render; đặt `INTERNAL_READ_KEY` ở CẢ Render lẫn Vercel web
+(production + preview) trước lần build đầu sau merge — chưa đặt thì web vẫn
+chạy, chỉ không được miễn (và ở chế độ `log` thì không 429); đường quay lại
+newsletter sau cửa sổ đổi ý 30 ngày là form footer + thư xác nhận mới (không
+có đường admin — consent phải từ chủ hộp thư); chưa lưu `version` Cloudinary;
+suppression gỡ bằng SQL; danh sách "không làm ở W4" giữ nguyên.
+
 ## 2026-09-07 — W4 kênh vào & email đi ra — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/inbound-channels`, 19 commit `6b3c4da..0499d2d`, 1 migration MỚI)
 
 Đợt vá thứ tư (cuối) theo bản rà 05/09 — cụm 4 trọn, cụm 3 (upload/retract),
@@ -18,8 +97,10 @@ migration `20260907115144_w4_inbound_channels` (`9ab97fe`) gom mọi cột/bản
 `created_at`, quyết định một lần), `outbox.next_attempt_at`, bảng
 `email_suppressions` (bật RLS cùng migration, check-rls xanh),
 `enquiries.user_id` cộng `anonymized_at`, `reviews.retracted_at` — đã apply
-docker `tourism` và `tourism_test`, **CHƯA deploy Supabase** (deploy lúc
-merge, nếp W1/W2). 16 mục, mỗi mục một commit, TDD test-đỏ-trước:
+docker `tourism` và `tourism_test`, và **đã deploy Supabase sớm 08/09** (xem
+khối "Hạ tầng đã làm SỚM" bên dưới; bản đầu của entry này ghi "CHƯA deploy",
+sửa lại cho khớp vì entry chưa merge). 16 mục, mỗi mục một commit, TDD
+test-đỏ-trước:
 
 - **E — email đi ra & outbox:** ack liên hệ bỏ khối YOUR MESSAGE + dedupe
   một-ack/địa-chỉ/ngày UTC (`fbbe6b2`); `welcomeSentAt` trong cùng tx — purge
