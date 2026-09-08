@@ -137,8 +137,27 @@ chính Cloudinary:
   đủ TỪNG tham số đã ký trong form — thiếu/thừa là 401 (hợp đồng
   `api_sign_request`).
 
-**Hai thiết lập dashboard là lớp HAI, không tự động hoá được** (ghi runbook
-deploy, kiểm tay): Settings → Security → *Restricted media types* (chặn
-unsigned/raw ở cấp tài khoản) và *Restricted original access* (chặn truy cập
-bản gốc chưa transform). Lớp một (tham số ký) là thứ code canh được bằng
-test; ADR này KHÔNG coi dashboard là lưới chính.
+**Thiết lập dashboard là lớp HAI, không tự động hoá được** (ghi runbook
+deploy, kiểm tay). Đo trên console thật 08/09: layout hiện tại KHÔNG còn
+mục tên "Restricted media types"/"Restricted original access" như tài liệu
+cũ — bản đồ sang UI mới:
+
+- *Restricted image types* / *Restricted video types* (Settings → Security):
+  tick các delivery type KHÔNG dùng (Fetched URL, Resource list, Sprite,
+  Fetch video, các adapter mạng xã hội…). **TUYỆT ĐỐI không tick
+  `Uploaded`** — đó là delivery type của chính ảnh site, tick là mọi URL
+  chưa ký vỡ sạch.
+- *PDF and ZIP files delivery*: GIỮ bỏ tick (mặc định) — chính là vế "chặn
+  raw" ở cấp tài khoản.
+- *Unsigned actions allowed*: BỎ tick cả ba (auto chaptering/transcription/
+  video details) — ta ký mọi upload, hành vi unsigned chỉ để người lạ đốt
+  quota.
+- *Strict transformations*: **GIỮ Disabled.** Đây là thứ gần nhất với
+  "restricted original access" của tài liệu cũ, nhưng bật lên là chặn mọi
+  transform động chưa ký — mà delivery của ta là `f_auto,q_auto,w_…` KHÔNG
+  ký (buildCloudinaryUrl + loader web), tức toàn bộ ảnh site 401. Vế "bản
+  gốc không còn EXIF" đã do lớp MỘT lo: incoming transformation làm bản LƯU
+  chính là bản đã strip.
+
+Lớp một (tham số ký) là thứ code canh được bằng test; ADR này KHÔNG coi
+dashboard là lưới chính.

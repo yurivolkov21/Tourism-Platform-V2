@@ -111,11 +111,14 @@ Resend: Add domain `nexora-travel.agency` → thêm record SPF/DKIM/DMARC → ve
 endpoint `https://api.nexora-travel.agency/api/webhooks/resend` (event
 `email.bounced` + `email.complained`), copy signing secret (`whsec_…`) vào
 `RESEND_WEBHOOK_SECRET` trên Render. **Cloudinary dashboard (W4 U1, ADR-0021
-AMEND 1 — lớp HAI, không tự động hoá được):** Settings → Security → bật
-**Restricted media types** (chặn unsigned/raw ở cấp tài khoản) và
-**Restricted original access** (chặn truy cập bản gốc chưa transform) — lớp
-một là tham số đã ký (`allowed_formats` + incoming `transformation`), lớp
-này chặn nốt các đường ngoài chữ ký. Stripe dashboard (test mode): webhook endpoint
+AMEND 1 — lớp HAI, không tự động hoá được; tên mục theo console MỚI, đo
+08/09):** Settings → Security → (a) *Restricted image/video types*: tick
+các type không dùng, **không tick `Uploaded`** (delivery type của chính ảnh
+site); (b) *PDF and ZIP files delivery* giữ BỎ tick; (c) *Unsigned actions
+allowed* bỏ tick cả ba; (d) *Strict transformations* **GIỮ Disabled** —
+delivery của ta là transform động KHÔNG ký, bật là toàn site 401 ảnh (vế
+strip EXIF đã do incoming transformation của lớp một lo). Lớp một là tham
+số đã ký (`allowed_formats` + incoming `transformation`). Stripe dashboard (test mode): webhook endpoint
 `https://api.nexora-travel.agency/<route>` (lấy đường dẫn từ
 `payments.controller`), copy `STRIPE_WEBHOOK_SECRET` mới; PayPal sandbox tương
 tự (`PAYPAL_WEBHOOK_ID`). Chạy smoke §0, ghi kết quả vào CHANGELOG.
