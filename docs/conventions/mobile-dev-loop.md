@@ -37,6 +37,22 @@ là client công khai, cùng hạng browser: không secret nào ở đây, kể 
 
 ## 2. Chạy — tunnel là mặc định, không phải phương án dự phòng
 
+**Cửa ải trước tiên, làm MỘT lần cho cả máy:** `--tunnel` đòi `@expo/ngrok`,
+gói này không nằm trong repo và Expo CLI không tự cài ngầm — nó **dừng lại hỏi
+y/n** rồi chạy `npm install --global`. Chạy lệnh dev rồi bỏ đi chờ QR là ngồi
+nhìn màn hình đứng im mà không có lỗi nào. Cài trước cho khỏi vấp (ở thư mục
+nào cũng được, nhưng phải trong WSL — CLI chạy trong WSL nên chỉ tìm ở prefix
+npm của WSL; không cần `sudo`, không đụng `pnpm-lock.yaml`):
+
+```bash
+npm install --global '@expo/ngrok@^4.1.0'
+```
+
+Kiểm bằng `npm ls -g --depth=0 @expo/ngrok`. **Đừng kiểm bằng `which ngrok`** —
+gói này không khai trường `bin` nên lệnh đó vẫn rỗng sau khi cài.
+
+Rồi mới:
+
 ```bash
 pnpm --filter @tourism/mobile dev
 ```

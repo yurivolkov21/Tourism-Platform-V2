@@ -97,9 +97,14 @@ libs/mobile` rỗng · `git status --short docs/navel` rỗng.
    trỏ tới asset nào để không commit ảnh ngoài phạm vi spec. P5b.
 4. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040 (Expo Go không cần
    EAS; E2E chờ có màn hình thật).
-5. **Nghiệm thu cuối chưa làm: user cầm điện thoại quét QR Expo Go.** Agent
-   không bật dev server (user giữ), nên bước này còn nguyên. Lệnh và bẫy ở
-   runbook.
+5. **Nghiệm thu trên máy thật: ĐÃ XONG 08/09** — user chạy dev server, quét QR
+   bằng Expo Go trên ASUS ROG Phone 7 (Android), vào được app, bấm đủ 5 tab,
+   các chuỗi hiện ra khớp danh sách đối chiếu. Còn **một mục chưa kiểm: đổi
+   dark/light** (chưa gạt chế độ màu của máy) — tức nhánh `ThemeProvider` theo
+   `useColorScheme` mới có test đơn vị chứ chưa có mắt người xác nhận.
+   Cửa ải bất ngờ của bước này: `@expo/ngrok` không có sẵn nên `expo start
+   --tunnel` DỪNG ở prompt hỏi cài global mà không báo lỗi gì — ai chạy lần đầu
+   cũng vấp, đã ghi vào runbook.
 6. **`EXPO_PUBLIC_API_URL` trong `.env.local` đang là `http://localhost:3001`**
    — điện thoại không hiểu địa chỉ đó. Từ P5b (gọi API thật) phải trỏ API đã
    deploy hoặc mở thêm tunnel cho cổng 3001.
