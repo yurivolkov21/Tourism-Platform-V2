@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-08 — W4 vòng vá review 8 mũi (nhánh `fix/inbound-channels`, 8 commit `721250f0..e513dde9` + docs, 1 migration MỚI `20260908120000_w4_review_fixups` **CHƯA deploy Supabase — deploy lúc merge**) — **CHƯA merge, chờ duyệt**
+## 2026-09-08 — W4 merge + vòng vá review 8 mũi (nhánh `fix/inbound-channels`, 33 commit `6b3c4da..27af99b9` ff vào main: 19 thi công + 8 vá `721250f0..e513dde9` + 2 test + docs; 2 migration — `20260907115144` deploy Supabase 08/09 sớm, `20260908120000_w4_review_fixups` deploy Supabase 08/09 lúc merge, 25/25 up to date)
 
 Review ở session gốc theo nếp review theo tầng: 8 finder theo miền (trần
 đọc/cache · CSP report · consent newsletter · suppression/outbox · ký upload ·
@@ -87,7 +87,7 @@ newsletter sau cửa sổ đổi ý 30 ngày là form footer + thư xác nhận 
 có đường admin — consent phải từ chủ hộp thư); chưa lưu `version` Cloudinary;
 suppression gỡ bằng SQL; danh sách "không làm ở W4" giữ nguyên.
 
-## 2026-09-07 — W4 kênh vào & email đi ra — **CHƯA merge, chờ review ở session riêng** (nhánh `fix/inbound-channels`, 19 commit `6b3c4da..0499d2d`, 1 migration MỚI)
+## 2026-09-07 — W4 kênh vào & email đi ra — bàn giao từ session thi công (merged 08/09 cùng vòng review, xem entry trên) (nhánh `fix/inbound-channels`, 19 commit `6b3c4da..0499d2d`, 1 migration MỚI)
 
 Đợt vá thứ tư (cuối) theo bản rà 05/09 — cụm 4 trọn, cụm 3 (upload/retract),
 cụm 5 (đường đọc) và hai nợ W3. ADR đi trước code: **ADR-0039 mới** (kênh
