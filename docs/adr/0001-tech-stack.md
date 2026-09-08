@@ -102,3 +102,25 @@ thì bọc/extend ở tầng của mình, không edit bản gốc.
 - **Neon** — pg-boss polling phá scale-to-zero: trái kinh tế serverless.
 - **Microservices** — money-path cần ACID; modular monolith + outbox events,
   tách worker riêng, ranh giới sẵn để tách sau.
+
+## AMEND 1 — 08/09/2026 (P5a): SDK 56→57, Expo Go thay dev build
+
+Mở phase P5 thì hàng "Mobile" của bảng quyết định gặp thực tế. Hai nửa của nó
+đổi, **quyết định gốc "Expo" không đổi** — chi tiết và lý lẽ đầy đủ ở
+[ADR-0040](0040-mobile-app-expo.md), đây là bản ghi nhận để bảng trên không nói
+sai.
+
+| Bảng gốc ghi | Nay là | Vì sao |
+| --- | --- | --- |
+| Expo **SDK 56** | **SDK 57** (`expo@57.0.20`, `expo-router@57.0.19`, RN 0.86.3) | Ngày chốt 18/07 thì 56 là bản mới; ngày dựng 08/09 thì `latest` đã là 57 còn 56 lùi một bậc. Dựng mới mà nhận bản cũ là hẹn thêm một lần nâng cấp trước freeze 15/10. |
+| **New Arch, dev builds** | New Arch giữ nguyên; **Expo Go** thay dev build | Dev build đòi Mac (iOS) hoặc Android Studio (Android) hoặc hạn mức EAS — máy dev là WSL, không có cái nào. Expo Go quét QR là chạy. |
+| **+ Stripe PaymentSheet** | **hosted checkout** qua `expo-web-browser` | Hệ quả thẳng của Expo Go: không nạp được native module ngoài danh sách dựng sẵn. Đúng cách Nexora làm — phân loại parity là *tương đương*, không phải thụt lùi. |
+
+Điều **không** đổi, và là lý do đánh đổi này chấp nhận được: dev build và Expo
+Go dùng **chung một codebase**. Ngày nào PaymentSheet thật sự tới lượt, việc
+phải làm là thêm `eas.json` và chạy build — không viết lại route, theme hay test
+nào.
+
+Hàng "Test | Vitest (mobile giữ jest-expo)" **không đổi** — ADR-0040 §4 thi
+hành đúng ngoại lệ đã cấp ở đây, kèm ranh giới để nó không lan ra khỏi
+`apps/mobile` và `libs/mobile/ui`.

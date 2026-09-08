@@ -221,6 +221,43 @@ hook `update.before` không chạm — kẻ ẩn danh đặt được avatar b�
 request sign-up; và prefix so chuỗi thô để lọt `/..` sang cloud khác. Nay một
 hàm gác cho cả `create.before` lẫn `update.before`, so trên URL đã chuẩn hoá.
 
+### 9. AMEND 08/09/2026 — P5a: mobile dùng `@better-auth/expo` (SecureStore + bearer), cố ý khác web
+
+§1 chốt **"không proxy, không Bearer"** và mục 2 của *Đã cân nhắc và loại* gạch
+thẳng Bearer token. Cả hai đứng nguyên **cho web**. Mobile là tiền đề khác, nên
+ghi ở đây trước khi có dòng code nào ([ADR-0040](0040-mobile-app-expo.md) mở
+phase; thi công ở nhánh P5 sau, template P5a chỉ dựng route rỗng).
+
+**Vì sao web không kéo sang được.** Lý lẽ của §1 là cookie `httpOnly` do API
+phát thì **JS không bao giờ chạm token** — hơn hẳn Bearer trong storage. Lý lẽ
+ấy dựa vào một thứ React Native **không có**: cookie jar `httpOnly` của trình
+duyệt. Trên RN, `fetch` không có kho cookie mà mã ứng dụng bị cấm đọc, nên
+"cookie" và "token trong storage" **hội tụ về cùng một mô hình rủi ro** — giữ
+hình thức cookie ở đó chỉ đổi được cái tên, không đổi được bề mặt.
+
+**Chốt:** mobile dùng plugin chính chủ `@better-auth/expo` — bản `1.6.23`, khớp
+đúng `better-auth` mà `apps/api` và `apps/web` đang ghim (đã kiểm npm 08/09).
+Plugin lưu cookie phiên trong **`expo-secure-store`** (Keychain iOS /
+EncryptedSharedPreferences Android — kho của HĐH, không phải `AsyncStorage`) và
+đính vào request. Phân loại parity so Nexora: **v2 tốt hơn** — Nexora mang
+Bearer từ session Supabase kèm cả lớp `syncUser` / `USER_NOT_SYNCED`; ở v2 API
+chính là auth server nên lớp bug đó không tồn tại (§1 đã lập luận điều này cho
+web, mobile thừa hưởng nguyên).
+
+**Ba việc phía API, thuộc nhánh thi công auth mobile — KHÔNG phải template:**
+
+1. Bật plugin `expo()` phía server trong cấu hình Better Auth của `apps/api`.
+2. Thêm scheme `nexora://` vào `trustedOrigins` — thiếu nó thì callback OAuth
+   và deep link sau xác minh email rơi vào khoảng không.
+3. Rà lại ADR-0037/0038 cho origin mới: mobile là **client công khai** (mọi
+   biến `EXPO_PUBLIC_*` đọc được bằng tay — ADR-0040 §9), nên nó đứng cùng
+   hạng browser ở mọi bảng trần, và **không** được cấp `INTERNAL_READ_KEY`.
+
+Nợ phải nhớ khi thi công: cờ `revokeOtherSessions` mà §7a ép lên `/change-password`
+là luật **cho mọi client**. Client mobile quên gửi cờ thì BA vẫn xoay phiên vì
+hook nằm ở API — nhưng test canh cứng của §7a mới chỉ chạy qua đường web; nhánh
+auth mobile phải mở rộng nó, đừng cho rằng "API lo rồi" là đã đo.
+
 ## Hệ quả
 
 - `apps/web` thêm dep `better-auth` (client-only import) — bám version API
