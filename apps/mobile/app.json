@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Nexora Travel",
+    "slug": "nexora-travel",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "nexora",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "agency.nexoratravel.app"
+    },
+    "android": {
+      "package": "agency.nexoratravel.app",
+      "predictiveBackGestureEnabled": false
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

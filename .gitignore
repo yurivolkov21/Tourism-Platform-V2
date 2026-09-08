@@ -28,6 +28,13 @@ generated/
 # bao giờ thêm ngoại lệ cho nó, kể cả khi tool của Next.js gợi ý.
 !.env.example
 
+# expo / react native (apps/mobile) — artifact sinh bởi Expo CLI.
+# `.expo/` và `dist/` đã bị hai luật ở trên che; hai dòng này là phần còn lại:
+# `expo-env.d.ts` do `expo start`/`expo export` sinh lại mỗi lần, và file dấu
+# vết health-check của Metro.
+expo-env.d.ts
+.metro-health-check*
+
 # test / coverage
 coverage/
 

@@ -18,6 +18,11 @@
       "dependsOn": ["^build", "db:generate"],
       "env": ["DATABASE_URL"]
     },
+    "bundle": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"],
+      "env": ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_WEB_URL"]
+    },
     "test:int": {
       "dependsOn": ["^build", "db:generate"],
       "cache": false
