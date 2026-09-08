@@ -45,6 +45,17 @@ const DELETED_ACCOUNT_COPY = 'Deleted account';
 // lẫn web.
 const RATING_LABEL_COPY = (rating: number) => `${rating} out of 5 stars`;
 
+// MỘT bộ nhãn cho 5 tab của app mobile, dùng ở CẢ thanh tab lẫn tiêu đề màn
+// tương ứng (P5a). Hai bản chép tay là hai bản sẽ trôi lệch — cùng bài học
+// travellers đã dạy ở CANCELLATION_STATUS_COPY phía trên.
+const MOBILE_TAB_COPY = {
+  home: 'Home',
+  explore: 'Explore',
+  saved: 'Saved',
+  trips: 'Trips',
+  account: 'Account',
+} as const;
+
 export const messages = {
   // Dọn 19/08 (sổ nợ B1 mở rộng): 21 khối cấp-1 KHÔNG consumer nào trên web —
   // bản nháp static-first/port Nexora đã bị thay bằng copy trong component hoặc
@@ -1914,12 +1925,30 @@ export const messages = {
   },
   // Mobile app (P5, customer-facing Expo app).
   mobile: {
-    tabs: {
-      home: 'Home',
-      explore: 'Explore',
-      trips: 'Trips',
-      saved: 'Saved',
-      account: 'Account',
+    tabs: MOBILE_TAB_COPY,
+    /** Copy của VỎ điều hướng (P5a) — tiêu đề từng màn trong cây route và câu
+        giữ chỗ dùng chung. Tách khỏi các khối nội dung bên dưới vì đây là chữ
+        của KHUNG, không phải của màn nào cụ thể. */
+    appShell: {
+      titles: {
+        ...MOBILE_TAB_COPY,
+        login: 'Sign in',
+        register: 'Create account',
+        forgotPassword: 'Reset password',
+        tourDetail: 'Tour details',
+        bookingDetail: 'Your booking',
+        notFound: 'Page not found',
+      },
+      /** Ô giữ chỗ của màn chưa có nội dung — P5b thay dần từng màn. */
+      placeholder: {
+        title: 'Coming soon',
+        body: 'This screen is part of the app shell. Its content arrives in a later release.',
+      },
+      notFound: {
+        title: "We couldn't find that page",
+        body: 'The link may be broken, or the page may have moved.',
+        back: 'Back to home',
+      },
     },
     legal: {
       updated: (date: string) => `Last updated ${date}`,
