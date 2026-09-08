@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@tourism/i18n": "workspace:*",
+    "@tourism/mobile-ui": "workspace:*",
     "expo": "~57.0.20",
     "expo-constants": "~57.0.17",
     "expo-linking": "~57.0.9",

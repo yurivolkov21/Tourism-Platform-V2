@@ -1,4 +1,9 @@
-import { remToDp, toRnColor } from '../../style-dictionary/rn-convert.js';
+import {
+  lineHeightToDp,
+  remToDp,
+  toRnColor,
+  toRnScale,
+} from '../../style-dictionary/rn-convert.js';
 
 describe('toRnColor', () => {
   it('converts pure black and white exactly', () => {
@@ -37,5 +42,56 @@ describe('remToDp', () => {
 
   it('throws on non-rem input', () => {
     expect(() => remToDp('12px')).toThrow(/expected rem/);
+  });
+});
+
+describe('lineHeightToDp', () => {
+  it('đọc dạng calc(A / B) của Tailwind — tử số CHÍNH LÀ line-height theo rem', () => {
+    // '--text-sm--line-height': 'calc(1.25 / 0.875)' → 1.25rem → 20dp.
+    expect(lineHeightToDp('calc(1.25 / 0.875)', 14)).toBe(20);
+    expect(lineHeightToDp('calc(1.5 / 1)', 16)).toBe(24);
+  });
+
+  it('đọc dạng bội số trần (5xl trở lên) bằng cách nhân với fontSize', () => {
+    expect(lineHeightToDp('1', 48)).toBe(48);
+    expect(lineHeightToDp('1.25', 16)).toBe(20);
+  });
+
+  it('ném lỗi khi gặp dạng lạ', () => {
+    expect(() => lineHeightToDp('normal', 16)).toThrow(/line-height/);
+  });
+});
+
+describe('toRnScale', () => {
+  const themeExtras = [
+    ['--text-sm', '0.875rem'],
+    ['--text-sm--line-height', 'calc(1.25 / 0.875)'],
+    ['--text-5xl', '3rem'],
+    ['--text-5xl--line-height', '1'],
+    ['--font-weight-medium', '500'],
+    ['--font-weight-bold', '700'],
+    ['--spacing', '0.25rem'],
+  ];
+  const rootExtras = [['--touch-target-min', '44px']];
+
+  it('gom type scale thành fontSize + lineHeight theo dp', () => {
+    expect(toRnScale(themeExtras, rootExtras).type).toEqual({
+      sm: { fontSize: 14, lineHeight: 20 },
+      '5xl': { fontSize: 48, lineHeight: 48 },
+    });
+  });
+
+  it('giữ font-weight ở dạng chuỗi mà RN nhận', () => {
+    expect(toRnScale(themeExtras, rootExtras).weight).toEqual({ medium: '500', bold: '700' });
+  });
+
+  it('đưa spacing base và touch target tối thiểu sang dp', () => {
+    const scale = toRnScale(themeExtras, rootExtras);
+    expect(scale.spacing).toBe(4);
+    expect(scale.touchTargetMin).toBe(44);
+  });
+
+  it('ném lỗi khi một bậc type thiếu line-height ghép đôi', () => {
+    expect(() => toRnScale([['--text-lg', '1.125rem']], rootExtras)).toThrow(/--text-lg/);
   });
 });

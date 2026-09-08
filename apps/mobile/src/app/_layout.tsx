@@ -1,3 +1,4 @@
+import { ThemeProvider } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -11,16 +12,18 @@ void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   useEffect(() => {
-    // Đọc `env` ở đây để lỗi THIẾU biến nổ ngay màn đầu tiên (ADR-0040 §9)
+    // Chạm `env` ở đây để lỗi THIẾU biến nổ ngay màn đầu tiên (ADR-0040 §9)
     // thay vì im lặng tới lúc có màn nào đó gọi API.
     void env.apiUrl;
     void SplashScreen.hideAsync();
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <StatusBar style="auto" />
-      <Stack />
-    </SafeAreaProvider>
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <StatusBar style="auto" />
+        <Stack />
+      </SafeAreaProvider>
+    </ThemeProvider>
   );
 }
