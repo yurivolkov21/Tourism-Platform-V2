@@ -1,7 +1,15 @@
 'use client';
 
+import { type ReviewModerationState, ReviewModerationStateSchema } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
-import { CircleCheckIcon, CircleXIcon, ClockIcon, ListIcon } from 'lucide-react';
+import {
+  CircleCheckIcon,
+  CircleXIcon,
+  ClockIcon,
+  ListIcon,
+  type LucideIcon,
+  Undo2Icon,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL, StatusFilterTabs } from '@/components/kit/status-filter-tabs';
 import { TableSearchForm } from '@/components/kit/table-search-form';
@@ -22,17 +30,29 @@ import { parseReviewState, type ReviewsQuery, reviewsHref } from '@/lib/reviews-
  */
 const t = messages.admin.reviews.list;
 
+/**
+ * Icon theo trạng thái — `Record` trên CHÍNH enum contract (vòng vá review
+ * W4): thêm trạng thái vào contract mà quên tab là typecheck đỏ, không phải
+ * một tab âm thầm thiếu (W4 U2 thêm `retracted` mà bản đầu không có tab —
+ * review tác giả đã rút không lọc ra được từ URL). Icon dùng CHUNG bộ với
+ * hai bảng kia (user chốt 01/09): cùng một khái niệm thì cùng một glyph.
+ */
+const STATE_ICONS: Record<ReviewModerationState, LucideIcon> = {
+  pending: ClockIcon,
+  approved: CircleCheckIcon,
+  rejected: CircleXIcon,
+  retracted: Undo2Icon,
+};
+
 const TAB_ITEMS = [
   { label: t.all, value: ALL, icon: ListIcon },
-  // Chờ duyệt đứng TRƯỚC đã duyệt: đó là việc cần làm, và cũng là thứ mục
-  // sidebar mở thẳng vào (`/reviews?status=pending`).
-  // Icon dùng CHUNG bộ với hai bảng kia (user chốt 01/09): cùng một khái niệm
-  // thì cùng một glyph, kẻo mỗi bảng dạy lại admin một bảng chữ cái.
-  { label: messages.admin.reviews.state.pending, value: 'pending', icon: ClockIcon },
-  { label: messages.admin.reviews.state.approved, value: 'approved', icon: CircleCheckIcon },
-  // ADR-0031: tab thứ ba mới có nghĩa — trước đó "đã bác" không tồn tại như
-  // một trạng thái, nó lẫn vào "chờ duyệt" và không lọc ra được.
-  { label: messages.admin.reviews.state.rejected, value: 'rejected', icon: CircleXIcon },
+  // Thứ tự theo enum contract: chờ duyệt đứng TRƯỚC đã duyệt — đó là việc
+  // cần làm, và cũng là thứ mục sidebar mở thẳng vào (`/reviews?status=pending`).
+  ...ReviewModerationStateSchema.options.map((state) => ({
+    label: messages.admin.reviews.state[state],
+    value: state,
+    icon: STATE_ICONS[state],
+  })),
 ];
 
 export function ReviewsStateTabs({ query }: { query: ReviewsQuery }) {

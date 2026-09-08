@@ -1854,6 +1854,12 @@ export const messages = {
           body: 'Please try again in a moment.',
         },
       },
+      /** Theo mã lỗi định danh của `reviews.retract` (vòng vá review W4). */
+      errors: {
+        REVIEW_NOT_RETRACTABLE:
+          'This review is no longer published, so there’s nothing to retract — refreshing the page.',
+        REVIEW_NOT_FOUND: 'We couldn’t find this review anymore — refreshing the page.',
+      },
     },
     /** Slot sau khi ĐÃ rút — nói kết cục, không mời làm gì thêm. */
     retractedTitle: 'You retracted this review',
@@ -4145,6 +4151,9 @@ export const messages = {
         attempts: 'Attempts',
         created: 'Created',
         processed: 'Processed',
+        /** Backoff (W4 E5): row PENDING hẹn giờ thử lại; không hẹn = lượt tới. */
+        nextAttempt: 'Next attempt',
+        nextAttemptNow: 'On the next worker run',
         lastError: 'Last error',
         noError: 'No error recorded.',
         /** Cùng lý do "Provider payload" đổi tên (user báo 03/09). */

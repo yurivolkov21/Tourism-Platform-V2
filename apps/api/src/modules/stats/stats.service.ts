@@ -552,9 +552,15 @@ export class StatsService {
           // chưa từng có) ⇒ tại mốc nó cũng đang chờ. `rejectedAt: null` là
           // phần ADR-0031 thêm vào: thiếu nó thì hàng đợi nuốt cả những review
           // đã bị bác, tức con số không bao giờ vơi.
+          // `retractedAt: null` (vòng vá review W4): row tác giả đã rút có
+          // isApproved=false + rejectedAt null — thiếu vế này card Pending
+          // đếm cả bài không còn được phép duyệt (cùng vế với
+          // REVIEW_STATE_WHERE.pending). Xấp xỉ cùng mức với rejected: chỉ
+          // giữ mốc rút cuối, bài rút SAU mốc không được cộng lại.
           {
             isApproved: false,
             rejectedAt: null,
+            retractedAt: null,
             OR: [{ moderatedAt: null }, { moderatedAt: { lt: at } }],
           },
           // Đang đăng, nhưng quyết định ấy xảy ra SAU mốc ⇒ tại mốc còn chờ.

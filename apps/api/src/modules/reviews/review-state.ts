@@ -70,5 +70,11 @@ export const REVIEW_STATE_WHERE: Record<ReviewModerationState, Prisma.ReviewWher
  * Và KHÁC hẳn việc lọc theo `isApproved`: một review đang chờ duyệt vẫn là ý
  * kiến thật của khách, chỉ là chưa ai kịp đọc. Lọc theo trạng thái duyệt sẽ
  * làm một hàng đợi tồn đọng tự bóp méo con số mà chẳng khách nào đổi ý.
+ *
+ * `retractedAt: null` từ vòng vá review W4 (chính sách A, ADR-0032 AMEND 1):
+ * tác giả RÚT là rút lại ý kiến — con số công khai của tour (recompute
+ * rating) đã loại nó, card admin đo cùng một tập thì mới khớp con số khách
+ * nhìn thấy. Tên hằng giữ nguyên (call site không đổi), nghĩa là "ý kiến còn
+ * đứng": chưa bị bác VÀ chưa bị chính chủ rút.
  */
-export const NOT_REJECTED: Prisma.ReviewWhereInput = { rejectedAt: null };
+export const NOT_REJECTED: Prisma.ReviewWhereInput = { rejectedAt: null, retractedAt: null };

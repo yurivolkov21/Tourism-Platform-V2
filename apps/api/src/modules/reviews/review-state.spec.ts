@@ -95,7 +95,8 @@ describe('NOT_REJECTED', () => {
     // Khác hẳn lọc theo `isApproved`: một review đang chờ vẫn là ý kiến thật
     // của khách, chỉ là chưa ai kịp đọc — lọc nó ra sẽ làm hàng đợi tồn đọng
     // tự bóp méo điểm trung bình.
-    expect(NOT_REJECTED).toEqual({ rejectedAt: null });
+    // Vòng vá review W4 (chính sách A): review tác giả đã rút cũng rời phép đo ý kiến.
+    expect(NOT_REJECTED).toEqual({ rejectedAt: null, retractedAt: null });
     expect(NOT_REJECTED).not.toHaveProperty('isApproved');
   });
 });

@@ -1,5 +1,6 @@
 'use client';
 
+import { ORPCError } from '@orpc/client';
 import { messages } from '@tourism/i18n';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -24,9 +25,20 @@ export function RetractReviewButton({ reviewId }: { reviewId: string }) {
       // Server component đọc lại booking → slot chuyển sang `retracted`.
       router.refresh();
     } catch (submitError) {
+      // Mã lỗi định danh của contract (vòng vá review W4): 409
+      // REVIEW_NOT_RETRACTABLE = review đã đổi trạng thái sau khi trang
+      // render (admin vừa gỡ/bác, hoặc bấm hai tab) — nói đúng chuyện, và
+      // kéo trang tươi để slot khớp thực tế thay vì mời bấm lại mãi.
+      const code =
+        submitError instanceof ORPCError && submitError.defined ? submitError.code : null;
+      const known = code ? t.errors[code as keyof typeof t.errors] : undefined;
       const kind = classifySubmitError(submitError);
-      submitToast(kind, { title: t.toast.error.title, description: t.toast.error.body });
+      submitToast(known ? 'error' : kind, {
+        title: t.toast.error.title,
+        description: known ?? t.toast.error.body,
+      });
       setConfirming(false);
+      if (code === 'REVIEW_NOT_RETRACTABLE' || code === 'REVIEW_NOT_FOUND') router.refresh();
     } finally {
       setPending(false);
     }

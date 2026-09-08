@@ -46,6 +46,7 @@ const PENDING: ModerateTarget = {
 
 const APPROVED: ModerateTarget = { ...PENDING, approved: true, state: 'approved' };
 const REJECTED: ModerateTarget = { ...PENDING, approved: false, state: 'rejected' };
+const RETRACTED: ModerateTarget = { ...PENDING, approved: false, state: 'retracted' };
 
 beforeEach(() => {
   success.mockReset();
@@ -86,6 +87,11 @@ describe('ModerateActions — nút của hàng', () => {
     // Chữ "Unpublish" KHÔNG xuất hiện ở hàng đã bác: review vốn đã không trên
     // site, nên câu ấy nói sai việc đang xảy ra.
     expect(screen.queryByRole('button', { name: t.unpublish })).toBeNull();
+  });
+
+  it('tác giả đã RÚT (W4 U2): KHÔNG có nút nào — ý chí chung cuộc của chính chủ, API cũng chặn 409', () => {
+    render(<ModerateActions review={RETRACTED} moderate={vi.fn()} />);
+    expect(screen.queryByRole('button')).toBeNull();
   });
 
   it('Reopen gửi ĐÚNG động từ `unpublish` — nhãn khác, lệnh vẫn là một', async () => {

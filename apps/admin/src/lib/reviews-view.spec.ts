@@ -169,5 +169,7 @@ describe('reviewStateBadgeVariant', () => {
     // động sắp xảy ra), badge thì trung tính (chuyện đã xong). Viền để nó
     // tách khỏi `pending` mà không hét lên.
     expect(reviewStateBadgeVariant('rejected')).toBe('outline');
+    // Tác giả rút (W4 U2) cũng là kết cục đã rồi — cùng viền, không đỏ.
+    expect(reviewStateBadgeVariant('retracted')).toBe('outline');
   });
 });
