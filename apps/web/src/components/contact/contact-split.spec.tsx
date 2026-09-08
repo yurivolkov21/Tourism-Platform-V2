@@ -42,7 +42,13 @@ beforeEach(() => useSessionMock.mockReturnValue({ data: null }));
 
 // Mock client API — spec chỉ kiểm submit gọi ĐÚNG payload, không gọi API thật.
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
-vi.mock('@/lib/api/client', () => ({ api: { enquiries: { create } } }));
+// `withBrowserAuth` (W4 E8, vòng vá review): form gửi cookie kèm để API ghi
+// `enquiries.user_id` — mock trả đúng context thật để assert nó đi tới call.
+const BROWSER_AUTH = { auth: { credentials: 'include' as const } };
+vi.mock('@/lib/api/client', () => ({
+  api: { enquiries: { create } },
+  withBrowserAuth: () => BROWSER_AUTH,
+}));
 
 async function fillValidLetter(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText('Where do we write back?'), 'minh@example.com');
@@ -117,7 +123,8 @@ describe('ContactSplit — submit', () => {
     await user.click(screen.getByRole('button', { name: 'Send the letter' }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create).toHaveBeenCalledWith({
+    expect(create.mock.calls[0]?.[1]).toEqual({ context: BROWSER_AUTH });
+    expect(create.mock.calls[0]?.[0]).toEqual({
       name: 'Minh Anh',
       email: 'minh@example.com',
       message: 'Slow mornings, street food, and a boat ride at sunset.',
@@ -185,7 +192,8 @@ describe('ContactSplit — submit', () => {
     await user.click(screen.getByRole('button', { name: 'Send the letter' }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create).toHaveBeenCalledWith({
+    expect(create.mock.calls[0]?.[1]).toEqual({ context: BROWSER_AUTH });
+    expect(create.mock.calls[0]?.[0]).toEqual({
       name: 'Minh Anh',
       email: 'minh@example.com',
       message: 'Slow mornings, street food, and a boat ride at sunset.',

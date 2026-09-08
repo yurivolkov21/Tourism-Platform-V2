@@ -30,7 +30,13 @@ vi.mock('@/lib/auth-client', () => ({ useSession: useSessionMock }));
 beforeEach(() => useSessionMock.mockReturnValue({ data: null }));
 
 const { create } = vi.hoisted(() => ({ create: vi.fn() }));
-vi.mock('@/lib/api/client', () => ({ api: { enquiries: { create } } }));
+// `withBrowserAuth` (W4 E8, vòng vá review): form gửi cookie kèm để API ghi
+// `enquiries.user_id` — mock trả đúng context thật để assert nó đi tới call.
+const BROWSER_AUTH = { auth: { credentials: 'include' as const } };
+vi.mock('@/lib/api/client', () => ({
+  api: { enquiries: { create } },
+  withBrowserAuth: () => BROWSER_AUTH,
+}));
 
 const SUBMIT = /Get my itineraries/i;
 
@@ -94,7 +100,8 @@ describe('Home Contact — nối enquiries.create (19/08, cùng khuôn contact-s
     await user.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
-    expect(create).toHaveBeenCalledWith({
+    expect(create.mock.calls[0]?.[1]).toEqual({ context: BROWSER_AUTH });
+    expect(create.mock.calls[0]?.[0]).toEqual({
       name: 'Minh Anh',
       email: 'minh@example.com',
       message: 'Two of us, easy pace, love food markets.\n\nPreferred dates: Oct 12 – Oct 18',
@@ -115,6 +122,7 @@ describe('Home Contact — nối enquiries.create (19/08, cùng khuôn contact-s
     await user.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0]?.[1]).toEqual({ context: BROWSER_AUTH });
     expect(create.mock.calls[0]?.[0]).toMatchObject({ interests: [] });
   });
 
