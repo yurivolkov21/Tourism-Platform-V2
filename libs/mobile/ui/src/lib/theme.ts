@@ -11,24 +11,22 @@ import type { TextStyle } from 'react-native';
 export type ColorScheme = 'light' | 'dark';
 
 /**
- * Những khoá màu mà bộ primitive hiện tại thật sự dùng. Cố ý là danh sách
- * CURATED chứ không phải cả bảng token: nó biến "token bị đổi tên" từ một lỗi
- * chạy mới biết thành một lỗi ném ngay lúc dựng theme, và bắt người thêm màu
- * mới phải khai tường minh.
+ * Những khoá màu mà bộ primitive hiện tại thật sự dùng — ĐÚNG bằng số đang
+ * dùng, không thêm khoá "để dành". Cố ý là danh sách CURATED chứ không phải cả
+ * bảng token: nó biến "token bị đổi tên" từ một lỗi chạy mới biết thành một
+ * lỗi ném ngay lúc dựng theme, và bắt người thêm màu mới phải khai tường minh.
+ * P5b thêm màn hình thật thì bổ sung khoá vào đây.
  */
 export const MOBILE_COLOR_KEYS = [
   'background',
   'foreground',
   'card',
-  'card-foreground',
   'muted',
   'muted-foreground',
   'primary',
   'primary-foreground',
   'secondary',
   'secondary-foreground',
-  'accent',
-  'accent-foreground',
   'border',
 ] as const;
 
