@@ -175,4 +175,53 @@ describe('drain SKIP theo suppression (int)', () => {
     const sent = await prisma.outbox.findUniqueOrThrow({ where: { id: alive.id } });
     expect(sent.status).toBe(OutboxStatus.SENT);
   });
+
+  it('vòng vá review W4: `complained` chỉ chặn BẢN TIN — email giao dịch/auth tới cùng địa chỉ vẫn đi', async () => {
+    await prisma.emailSuppression.create({
+      data: { email: 'spam.clicker@example.com', reason: 'complained', source: 'resend' },
+    });
+    const newsletter = await prisma.outbox.create({
+      data: {
+        type: EmailType.NEWSLETTER_WELCOME,
+        payload: { email: 'spam.clicker@example.com', subscriberId: 'x' },
+        dedupeKey: 'newsletter-welcome:complained-int',
+      },
+    });
+    const reset = await prisma.outbox.create({
+      data: {
+        type: EmailType.PASSWORD_RESET,
+        payload: { email: 'spam.clicker@example.com', url: 'https://example.test/reset' },
+        dedupeKey: 'password-reset:complained-int',
+      },
+    });
+
+    const result = await outbox.drainOnce();
+
+    expect(result.skippedSuppressed).toBe(1);
+    expect(result.sent).toBe(1);
+    expect((await prisma.outbox.findUniqueOrThrow({ where: { id: newsletter.id } })).status).toBe(
+      OutboxStatus.SKIPPED,
+    );
+    expect((await prisma.outbox.findUniqueOrThrow({ where: { id: reset.id } })).status).toBe(
+      OutboxStatus.SENT,
+    );
+  });
+
+  it('webhook bounce payload THẬT của Resend (type Permanent) → suppression được ghi; Transient → không', async () => {
+    const send = (type: string, to: string) =>
+      postResendWebhook(
+        JSON.stringify({
+          type: 'email.bounced',
+          data: { to: [to], bounce: { message: 'x', subType: 'General', type } },
+        }),
+      );
+    expect((await send('Permanent', 'perm@example.com')).statusCode).toBe(200);
+    expect((await send('Transient', 'temp@example.com')).statusCode).toBe(200);
+    expect(
+      await prisma.emailSuppression.findUnique({ where: { email: 'perm@example.com' } }),
+    ).not.toBeNull();
+    expect(
+      await prisma.emailSuppression.findUnique({ where: { email: 'temp@example.com' } }),
+    ).toBeNull();
+  });
 });

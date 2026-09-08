@@ -17,6 +17,8 @@ const DRAIN_BATCH_SIZE = 50;
 export const MAX_ATTEMPTS = OUTBOX_MAX_ATTEMPTS;
 /** Trần cột `last_error` (VarChar(1000)). */
 const LAST_ERROR_MAX = 1000;
+/** Row FAILED giữ để triage tối đa bấy nhiêu ngày rồi purge (vòng vá review W4). */
+export const FAILED_RETENTION_DAYS = 180;
 
 /**
  * Loại email coi là "bản tin" — chịu chi phối bởi `unsubscribedAt` của
@@ -27,6 +29,19 @@ const LAST_ERROR_MAX = 1000;
  * email xác nhận đơn hàng của chính họ.
  */
 const NEWSLETTER_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([EmailType.NEWSLETTER_WELCOME]);
+
+/**
+ * Email AUTH — đường duy nhất để chủ tài khoản lấy lại quyền vào tài khoản
+ * (vòng vá review W4, ADR-0039 AMEND 1). Bounce vĩnh viễn vẫn chặn (địa chỉ
+ * chết là chết), nhưng ghi WARN riêng: đây là ca operator cần nhìn — người
+ * đó mất reset mật khẩu cho tới khi suppression được gỡ bằng SQL.
+ */
+const AUTH_EMAIL_TYPES: ReadonlySet<EmailType> = new Set([
+  EmailType.PASSWORD_RESET,
+  EmailType.EMAIL_VERIFICATION,
+  EmailType.EMAIL_OTP,
+  EmailType.EMAIL_CHANGED,
+]);
 
 export interface DrainResult {
   /** Row giao thành công → SENT. */
@@ -48,6 +63,16 @@ export interface DrainResult {
    * (địa chỉ chết là chết với cả email giao dịch), không riêng bản tin.
    */
   skippedSuppressed: number;
+}
+
+/**
+ * Suppression có áp cho loại email này không (thuần, ADR-0039 AMEND 1):
+ * `bounced` → mọi loại; `complained` → chỉ bản tin; lý do lạ (nguồn khác
+ * ghi tay) → coi như bounced (phía an toàn).
+ */
+export function suppressionApplies(reason: string, type: EmailType): boolean {
+  if (reason === 'complained') return NEWSLETTER_EMAIL_TYPES.has(type);
+  return true;
 }
 
 /**
@@ -130,10 +155,18 @@ export class OutboxService {
       skippedSuppressed: 0,
     };
     for (const row of rows) {
-      // W4 E6: suppression kiểm TRƯỚC và cho MỌI loại email — bounce cứng/
-      // complaint nghĩa là địa chỉ chết/đã nói "đừng", bất kể nội dung.
+      // W4 E6 (+ vòng vá review W4, ADR-0039 AMEND 1): suppression kiểm TRƯỚC.
+      // Phạm vi theo LÝ DO: `bounced` (địa chỉ chết) chặn MỌI loại — gửi
+      // tiếp là đốt uy tín domain; `complained` (bấm spam một bản tin) chỉ
+      // chặn BẢN TIN — khách bấm spam một welcome không được vì thế mất
+      // reset mật khẩu hay xác nhận đơn của chính họ.
       const suppression = await this.suppressionOfRecipient(row.payload);
-      if (suppression) {
+      if (suppression && suppressionApplies(suppression.reason, row.type)) {
+        if (suppression.reason === 'bounced' && AUTH_EMAIL_TYPES.has(row.type)) {
+          this.logger.warn(
+            `Outbox: auth email ${row.type} skipped — recipient suppressed (${suppression.source}); lift the suppression by SQL if the address is alive`,
+          );
+        }
         await prisma.outbox.updateMany({
           where: { id: row.id, status: OutboxStatus.PENDING },
           data: {
@@ -253,8 +286,11 @@ export class OutboxService {
   /**
    * Retention (audit M5): xóa row SENT/SKIPPED có processedAt cũ hơn
    * `olderThanDays` — SKIPPED cùng lịch với SENT (vòng vá review F7: đó là
-   * "đã xử lý xong, không có gì để triage"). FAILED giữ vĩnh viễn cho triage.
-   * Trả về số row đã xóa.
+   * "đã xử lý xong, không có gì để triage"). FAILED giữ cho triage nhưng
+   * KHÔNG vĩnh viễn (vòng vá review W4): payload mang PII (tên, email, nội
+   * dung enquiry) — giữ mãi là vượt retention 18 tháng của chính enquiry
+   * (ADR-0039 §6); trần `FAILED_RETENTION_DAYS` tính theo `createdAt` (row
+   * FAILED không có processedAt). Trả về tổng số row đã xóa.
    */
   async purgeSent(olderThanDays = 30): Promise<number> {
     const cutoff = new Date(Date.now() - olderThanDays * 86_400_000);
@@ -267,7 +303,14 @@ export class OutboxService {
     if (count > 0) {
       this.logger.log(`Outbox purge: removed ${count} SENT/SKIPPED rows > ${olderThanDays}d`);
     }
-    return count;
+    const failedCutoff = new Date(Date.now() - FAILED_RETENTION_DAYS * 86_400_000);
+    const { count: failed } = await prisma.outbox.deleteMany({
+      where: { status: OutboxStatus.FAILED, createdAt: { lt: failedCutoff } },
+    });
+    if (failed > 0) {
+      this.logger.log(`Outbox purge: removed ${failed} FAILED rows > ${FAILED_RETENTION_DAYS}d`);
+    }
+    return count + failed;
   }
 
   /**

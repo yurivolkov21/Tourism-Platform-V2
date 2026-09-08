@@ -102,7 +102,14 @@ const EnvSchema = z
     // `whsec_…`). Optional MỌI môi trường — thiếu thì endpoint
     // /api/webhooks/resend trả 503 + một dòng log lúc boot, KHÔNG chặn boot
     // (dev không cần tài khoản Resend; suppression khi đó không được ghi).
-    RESEND_WEBHOOK_SECRET: z.string().min(1).optional(),
+    // Định dạng ép ở đây (vòng vá review W4): svix.ts trả null cho secret
+    // không phải `whsec_<base64>` → MỌI event 400 im lặng; fail-fast lúc boot
+    // là chỗ duy nhất người deploy nhìn thấy lỗi gõ sai.
+    RESEND_WEBHOOK_SECRET: z
+      .string()
+      .trim()
+      .regex(/^whsec_[A-Za-z0-9+/=]+$/, 'must look like whsec_<base64>')
+      .optional(),
     EMAIL_FROM: z.string().min(1).default('Nexora <noreply@tourism.test>'),
     // Observability (ADR-0010) — SENTRY_DSN set → captureException đẩy lỗi 500
     // lên Sentry; không set → no-op (interim: Logger.error → platform stdout).
