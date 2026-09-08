@@ -28,8 +28,14 @@ interface Bucket {
   blockedUntil: number;
 }
 
+/** Trần số bucket sống — chạm là quét dọn, vẫn quá thì đuổi cũ nhất (vòng vá review W4). */
+export const MAX_BUCKETS = 50_000;
+/** Mỗi N lần increment quét dọn bucket rỗng/hết block một lượt (khấu hao). */
+const SWEEP_EVERY = 1_000;
+
 export class KeyedThrottlerStorage implements ThrottlerStorage {
   private readonly buckets = new Map<string, Bucket>();
+  private increments = 0;
 
   /** Cho test reset giữa các ca (cùng tên `storage` với service mặc định). */
   get storage(): Map<string, Bucket> {
@@ -44,6 +50,12 @@ export class KeyedThrottlerStorage implements ThrottlerStorage {
     _throttlerName: string,
   ): Promise<ThrottlerStorageRecord> {
     const now = Date.now();
+    // Dọn khấu hao (vòng vá review W4): từ W4 mỗi IP ĐỌC là một key — không
+    // xoá thì Map phình đơn điệu suốt vòng đời process (Render 512 MB, worker
+    // inline chung tiến trình).
+    if (++this.increments % SWEEP_EVERY === 0 || this.buckets.size >= MAX_BUCKETS) {
+      this.sweep(now, ttl);
+    }
     const bucket = this.buckets.get(key) ?? { hits: [], blockedUntil: 0 };
     bucket.hits = bucket.hits.filter((at) => at > now - ttl);
 
@@ -67,6 +79,20 @@ export class KeyedThrottlerStorage implements ThrottlerStorage {
       isBlocked,
       timeToBlockExpire: isBlocked ? Math.ceil(blockDuration / 1000) : 0,
     };
+  }
+
+  /** Xoá bucket không còn hit trong cửa sổ và hết block; vẫn quá trần → đuổi cũ nhất. */
+  private sweep(now: number, ttl: number): void {
+    for (const [key, bucket] of this.buckets) {
+      const alive = bucket.hits.some((at) => at > now - ttl);
+      if (!alive && bucket.blockedUntil <= now) this.buckets.delete(key);
+    }
+    if (this.buckets.size < MAX_BUCKETS) return;
+    let n = Math.floor(MAX_BUCKETS / 10);
+    for (const key of this.buckets.keys()) {
+      this.buckets.delete(key);
+      if (--n === 0) break;
+    }
   }
 }
 

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { withAuthHeaders, withAuthOptions, withNextOptions } from './client';
+import {
+  INTERNAL_READ_KEY_HEADER,
+  withAuthHeaders,
+  withAuthOptions,
+  withInternalReadKey,
+  withNextOptions,
+} from './client';
 
 describe('withNextOptions', () => {
   it('gắn next.revalidate + tags từ client context vào RequestInit', () => {
@@ -43,5 +49,41 @@ describe('withAuthOptions', () => {
     const headers = init.headers as Headers;
     expect(headers.get('cookie')).toBe('better-auth.session_token=abc');
     expect(headers.get('accept')).toBe('application/json');
+  });
+});
+
+// ADR-0037 AMEND 2 (vòng vá review W4) — web SSR/build miễn bucket đọc bằng header nội bộ.
+describe('withInternalReadKey', () => {
+  const request = new Request('http://api.test/x', { headers: { accept: 'application/json' } });
+
+  it('server + có key → gắn header, GIỮ header gốc (accept của oRPC) và header cookie đã forward', () => {
+    const withCookie = withAuthOptions(
+      request,
+      { method: 'GET' },
+      { auth: { cookie: 'better-auth.session_token=abc' } },
+    );
+    const init = withInternalReadKey(request, withCookie, 'internal-key-0123456789', 'server');
+    const headers = new Headers(init.headers);
+    expect(headers.get(INTERNAL_READ_KEY_HEADER)).toBe('internal-key-0123456789');
+    expect(headers.get('accept')).toBe('application/json');
+    expect(headers.get('cookie')).toBe('better-auth.session_token=abc');
+    expect(init.cache).toBe('no-store');
+  });
+
+  it('browser → KHÔNG BAO GIỜ gắn, kể cả khi key tồn tại (key lộ là mọi người đều nội bộ)', () => {
+    expect(
+      withInternalReadKey(request, { method: 'GET' }, 'internal-key-0123456789', 'browser'),
+    ).toEqual({
+      method: 'GET',
+    });
+  });
+
+  it('server nhưng env trống/undefined → trả init nguyên vẹn', () => {
+    expect(withInternalReadKey(request, { method: 'GET' }, undefined, 'server')).toEqual({
+      method: 'GET',
+    });
+    expect(withInternalReadKey(request, { method: 'GET' }, '', 'server')).toEqual({
+      method: 'GET',
+    });
   });
 });

@@ -8,7 +8,7 @@
     "build": {
       "dependsOn": ["^build", "db:generate"],
       "outputs": ["dist/**", "generated/**", ".next/**", "!.next/cache/**"],
-      "env": ["API_URL"],
+      "env": ["API_URL", "INTERNAL_READ_KEY"],
       "passThroughEnv": ["SKIP_API_WARMUP", "API_WARMUP_DEADLINE_MS", "ALLOW_BUILD_WITH_SERVER"]
     },
     "typecheck": {

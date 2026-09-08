@@ -85,6 +85,31 @@ export function withNextOptions(
   return context?.next ? { ...init, next: context.next } : init;
 }
 
+/** Header server-to-server miễn bucket đọc công khai của API (ADR-0037 AMEND 2, vòng vá review W4). */
+export const INTERNAL_READ_KEY_HEADER = 'x-internal-read-key';
+
+/**
+ * Thuần để test: gắn `x-internal-read-key` cho call phát TỪ SERVER (SSR /
+ * build / ISR / route handler) khi env `INTERNAL_READ_KEY` có mặt — API so
+ * khớp và miễn trần đọc 300/60s theo IP cho đường này (vòng vá review W4:
+ * 61 route prerender × 2–6 call đi từ MỘT egress IP dùng chung của Vercel, và
+ * 429 lúc build là build đỏ). KHÔNG BAO GIỜ gắn ở browser: env này không có
+ * tiền tố NEXT_PUBLIC nên bundle client không thấy, và có thấy cũng không
+ * được gửi — key lộ ra là mọi người đều "nội bộ". Gọi SAU `withAuthOptions`
+ * để giữ header cookie nhánh server đã đặt.
+ */
+export function withInternalReadKey(
+  request: Request,
+  init: RequestInit,
+  key: string | undefined,
+  side: 'server' | 'browser',
+): RequestInit {
+  if (side !== 'server' || !key) return init;
+  const headers = new Headers(init.headers ?? request.headers);
+  headers.set(INTERNAL_READ_KEY_HEADER, key);
+  return { ...init, headers };
+}
+
 /**
  * Link OpenAPI (KHÔNG phải RPCLink): API mount contract theo path REST qua
  * @orpc/nest nên client phải nói chuyện bằng đúng các path đó (ADR-0016 §1).
@@ -108,7 +133,12 @@ const link = new OpenAPILink<ApiClientContext>(contract, {
   url: () => apiOrigin(),
   fetch: (request, init, { context }) =>
     globalThis.fetch(request, {
-      ...withAuthOptions(request, withNextOptions(init ?? {}, context), context),
+      ...withInternalReadKey(
+        request,
+        withAuthOptions(request, withNextOptions(init ?? {}, context), context),
+        process.env.INTERNAL_READ_KEY,
+        typeof window === 'undefined' ? 'server' : 'browser',
+      ),
       signal: AbortSignal.timeout(10_000),
     }),
 });

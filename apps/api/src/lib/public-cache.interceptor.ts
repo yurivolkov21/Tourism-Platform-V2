@@ -3,7 +3,9 @@ import {
   type ExecutionContext,
   Injectable,
   type NestInterceptor,
+  SetMetadata,
 } from '@nestjs/common';
+import { Reflector } from '@nestjs/core';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
@@ -24,12 +26,24 @@ import { tap } from 'rxjs/operators';
  */
 export const PUBLIC_READ_CACHE_CONTROL = 'public, s-maxage=60, stale-while-revalidate=300';
 
+const SKIP_PUBLIC_CACHE = 'publicCache:skip';
+
+/**
+ * Miễn cache cho một method trong controller đã gắn interceptor ở cấp class
+ * (vòng vá review W4): `health.check` nằm trong CatalogController từng nhận
+ * `s-maxage=60` — một probe liveness bị proxy giữ 60 giây là probe nói dối.
+ */
+export const SkipPublicCache = () => SetMetadata(SKIP_PUBLIC_CACHE, true);
+
 @Injectable()
 export class PublicCacheInterceptor implements NestInterceptor {
+  constructor(private readonly reflector: Reflector) {}
+
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const http = context.switchToHttp();
     const method = http.getRequest<FastifyRequest>().method?.toUpperCase();
     if (method !== 'GET' && method !== 'HEAD') return next.handle();
+    if (this.reflector.get<boolean>(SKIP_PUBLIC_CACHE, context.getHandler())) return next.handle();
     http.getResponse<FastifyReply>().header('cache-control', PUBLIC_READ_CACHE_CONTROL);
     return next.handle().pipe(
       tap({

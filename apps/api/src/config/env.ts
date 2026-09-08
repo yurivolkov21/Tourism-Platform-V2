@@ -57,6 +57,17 @@ const EnvSchema = z
     // nối vào service qua mạng riêng) và dừng ở địa chỉ công khai đầu tiên
     // = IP khách thật. Nền tảng nào proxy nối từ IP công khai thì set IP đó.
     TRUST_PROXY: z.string().min(1).default('loopback,linklocal,uniquelocal'),
+    // W4 R1 (vòng vá review W4, ADR-0037 AMEND 2): trần ĐỌC công khai theo IP
+    // chạy ở chế độ `log` (đếm + warn, KHÔNG 429) cho tới khi `req.ip` trên
+    // Render được ĐO thật (TRUST_PROXY/XFF — nợ W2): sai một cái là cả
+    // internet chung một bucket 300/phút, và build Vercel gọi ~100–300 GET
+    // từ một IP. Chuyển `enforce` bằng env sau khi đo, không sửa code.
+    PUBLIC_READ_THROTTLE_MODE: z.enum(['log', 'enforce']).default('log'),
+    // Khoá server-to-server cho đường ĐỌC của web SSR/build (header
+    // `x-internal-read-key`): khớp là miễn bucket đọc theo IP — prerender
+    // 61 route × 2–6 call từ một egress IP không phải là "một khách". Chỉ
+    // miễn ĐỌC, không miễn ghi. Optional: thiếu thì không ai được miễn.
+    INTERNAL_READ_KEY: z.string().min(16).optional(),
     // Base URL của web app (P3) — đích redirect success/cancel cho checkout
     // session (P2 W1). Prod PHẢI set domain thật.
     FRONTEND_URL: z.url().default('http://localhost:3000'),
@@ -378,6 +389,9 @@ function originOf(value: string): string {
 export const corsOrigins: readonly string[] = parseCommaList(
   env.CORS_ORIGINS ?? env.TRUSTED_ORIGINS,
 );
+
+/** Chế độ trần đọc công khai (W4 R1): `log` tới khi đo TRUST_PROXY thật. */
+export const publicReadThrottleMode: 'log' | 'enforce' = env.PUBLIC_READ_THROTTLE_MODE;
 
 /** Luật `trustProxy` của Fastify — chuỗi IP/CIDR/tên dải, xem `TRUST_PROXY`. */
 export const trustProxy: string = env.TRUST_PROXY;

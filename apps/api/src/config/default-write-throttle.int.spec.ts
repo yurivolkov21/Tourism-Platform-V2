@@ -6,6 +6,7 @@ import { AppModule } from '../app.module.js';
 import { prisma } from '../auth/auth.config.js';
 import { Public } from '../auth/public.decorator.js';
 import { UserRole } from '../generated/prisma/enums.js';
+import { INTERNAL_READ_KEY_HEADER } from './default-throttler.guard.js';
 import {
   ADMIN_WRITE_THROTTLE,
   AUTHED_WRITE_THROTTLE,
@@ -175,12 +176,36 @@ describe('trần ghi mặc định toàn cục (ADR-0037)', () => {
       expect((await get('/throttle-probe/read')).statusCode).toBe(200);
       expect((await get('/throttle-probe/read-2')).statusCode).toBe(200);
     }
-    expect((await get('/throttle-probe/read')).statusCode).toBe(429);
+    const blocked = await get('/throttle-probe/read');
+    expect(blocked.statusCode).toBe(429);
+    // Header CHUẨN `Retry-After` (không phải `Retry-After-read`): bucket đọc
+    // tách bằng KEY, tên throttler giữ `default` — thư viện đặt tên header
+    // theo tên throttler (vòng vá review W4).
+    expect(blocked.headers['retry-after']).toMatch(/^\d+$/);
+    expect(blocked.headers['retry-after-read']).toBeUndefined();
     expect((await get('/throttle-probe/read-2')).statusCode).toBe(429);
     expect((await get('/throttle-probe/read', '203.0.113.141')).statusCode).toBe(200);
   });
 
-  it('8. W4 R1: GET có session KHÔNG đếm — bucket read của IP đầy, authed GET vẫn chạy; và bucket read KHÔNG đụng bucket ghi', async () => {
+  it('9. W4 R1 (vòng vá review): header x-internal-read-key KHỚP env → miễn bucket đọc; sai key → vẫn đếm', async () => {
+    const ip = '203.0.113.160';
+    const get = (headers?: Record<string, string>) =>
+      app.inject({ method: 'GET', url: '/throttle-probe/read', remoteAddress: ip, headers });
+    // Đầy bucket đọc của IP bằng request KHÔNG key (key sai cũng đếm như thường).
+    for (let i = 0; i < PUBLIC_READ_THROTTLE.limit + 1; i++) {
+      await get({ [INTERNAL_READ_KEY_HEADER]: 'wrong-key-wrong-key-wrong' });
+    }
+    expect((await get()).statusCode).toBe(429);
+    // Cùng IP, key đúng (vitest.int.config đặt INTERNAL_READ_KEY) → qua — đây
+    // là đường web SSR/build/ISR từ egress IP dùng chung của Vercel.
+    for (let i = 0; i < 5; i++) {
+      expect(
+        (await get({ [INTERNAL_READ_KEY_HEADER]: 'int-test-internal-read-key' })).statusCode,
+      ).toBe(200);
+    }
+  });
+
+  it('8. W4 R1: GET có session KHÔNG đếm — bucket read của IP đầy, authed GET vẫn chạy; bucket read KHÔNG đụng bucket ghi; GET public khai @Throttle riêng được MIỄN', async () => {
     const ip = '203.0.113.150';
     const cookie = await signUpAndSignIn('probe-reader@example.com');
     for (let i = 0; i < PUBLIC_READ_THROTTLE.limit + 1; i++) {
@@ -206,9 +231,9 @@ describe('trần ghi mặc định toàn cục (ADR-0037)', () => {
       (await app.inject({ method: 'POST', url: '/throttle-probe/public', remoteAddress: ip }))
         .statusCode,
     ).toBe(201);
-    // GET public trên route KHAI @Throttle riêng cũng KHÔNG bị bucket read
-    // chặn — chính sách tường minh thắng mặc định (ca get-session: đếm nó
-    // theo IP là cả SSR Vercel chia một bucket).
+    // GET public trên route KHAI @Throttle riêng được MIỄN hẳn (không thi
+    // hành trần đã khai cho GET — AUTH_THROTTLE cố ý chỉ đếm non-GET; ca
+    // get-session: đếm nó theo IP là cả SSR Vercel chia một bucket).
     expect(
       (
         await app.inject({

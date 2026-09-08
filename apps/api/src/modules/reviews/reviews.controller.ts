@@ -1,9 +1,10 @@
-import { Controller } from '@nestjs/common';
+import { Controller, UseInterceptors } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import type { SessionUser } from '../../auth/auth.config.js';
 import { CurrentUser } from '../../auth/current-user.decorator.js';
 import { Public } from '../../auth/public.decorator.js';
+import { PublicCacheInterceptor } from '../../lib/public-cache.interceptor.js';
 import {
   BookingForbiddenError,
   BookingNotFoundError,
@@ -27,6 +28,9 @@ export class ReviewsController {
   // ngay bên dưới KHÔNG có @Public() nên vẫn cần auth — decorator ở method
   // thắng class, đó là lý do đánh dấu từng method thay vì cả controller.
   @Public()
+  // Đọc công khai thuần, gọi từ browser lẫn lúc build — cùng lớp cache với
+  // catalog (W4 R2, vòng vá review W4 bổ sung: từng sót).
+  @UseInterceptors(PublicCacheInterceptor)
   @Implement(contract.reviews.listByTour)
   listByTour() {
     return implement(contract.reviews.listByTour).handler(async ({ input, errors }) => {

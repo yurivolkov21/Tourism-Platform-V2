@@ -81,6 +81,16 @@ services:
       # in-memory per-process — KHÔNG scale ngang (ADR-0024 AMEND 3).
       - key: MEDIA_GC_ENABLED
         sync: false
+      # W4 R1 (ADR-0037 AMEND 2): trần đọc công khai 300/60s theo IP. Chế độ
+      # `log` (mặc định khi bỏ trống — đếm và warn, KHÔNG 429) cho tới khi
+      # đo được `clientIp` ở GET /health từ hai mạng khác nhau là hai IP khác
+      # nhau; đo xong mới đặt `enforce`. INTERNAL_READ_KEY (≥16 ký tự, sinh:
+      # openssl rand -base64 24) phải TRÙNG giá trị đặt ở Vercel web —
+      # web SSR/build gửi header x-internal-read-key để được miễn trần đọc.
+      - key: PUBLIC_READ_THROTTLE_MODE
+        sync: false
+      - key: INTERNAL_READ_KEY
+        sync: false
       # W4 E8: số THÁNG giữ PII enquiry trước khi job hằng ngày anonymize
       # (số nguyên 1..120; bỏ trống = 18).
       - key: ENQUIRY_RETENTION_MONTHS

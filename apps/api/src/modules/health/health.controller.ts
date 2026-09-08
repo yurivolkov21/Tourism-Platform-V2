@@ -1,5 +1,5 @@
-import { Controller, Get, HttpStatus, Res } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import { Controller, Get, HttpStatus, Req, Res } from '@nestjs/common';
+import type { FastifyReply, FastifyRequest } from 'fastify';
 import { prisma } from '../../auth/auth.config.js';
 import { Public } from '../../auth/public.decorator.js';
 
@@ -23,18 +23,34 @@ export class HealthController {
   private readonly startedAt = Date.now();
 
   @Get()
-  async check(@Res({ passthrough: true }) reply: FastifyReply) {
+  async check(@Req() req: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
     const uptimeSec = Math.round((Date.now() - this.startedAt) / 1000);
     const timestamp = new Date().toISOString();
+    // Phép đo TRUST_PROXY (vòng vá review W4, nợ W2): `clientIp` là `req.ip`
+    // SAU khi Fastify áp `trustProxy`, `forwardedFor` là chuỗi XFF thô. Gọi từ
+    // hai mạng khác nhau: clientIp phải KHÁC nhau và bằng IP công khai của
+    // mình — nếu trùng nhau (= IP proxy) thì trần theo IP đang gộp cả
+    // internet vào một bucket. Chỉ lộ IP của chính người gọi.
+    const forwardedFor = req.headers['x-forwarded-for'];
+    const network = {
+      clientIp: req.ip,
+      forwardedFor: Array.isArray(forwardedFor) ? forwardedFor.join(', ') : (forwardedFor ?? null),
+    };
     try {
       await prisma.$queryRaw`SELECT 1`;
-      return { status: 'ok' as const, database: 'up' as const, uptimeSec, timestamp };
+      return { status: 'ok' as const, database: 'up' as const, uptimeSec, timestamp, ...network };
     } catch {
       // 503 chứ không 500: nền tảng phân biệt "chưa sẵn sàng, đừng gửi
       // traffic vào" với "lỗi ứng dụng". Cố ý KHÔNG trả chi tiết lỗi ra
       // ngoài — endpoint này public, thông điệp lỗi DB có thể lộ host/user.
       reply.status(HttpStatus.SERVICE_UNAVAILABLE);
-      return { status: 'degraded' as const, database: 'down' as const, uptimeSec, timestamp };
+      return {
+        status: 'degraded' as const,
+        database: 'down' as const,
+        uptimeSec,
+        timestamp,
+        ...network,
+      };
     }
   }
 }

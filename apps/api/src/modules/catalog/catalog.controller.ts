@@ -2,7 +2,7 @@ import { Controller, UseInterceptors } from '@nestjs/common';
 import { Implement, implement } from '@orpc/nest';
 import { contract } from '@tourism/contract';
 import { Public } from '../../auth/public.decorator.js';
-import { PublicCacheInterceptor } from '../../lib/public-cache.interceptor.js';
+import { PublicCacheInterceptor, SkipPublicCache } from '../../lib/public-cache.interceptor.js';
 import { CatalogService } from './catalog.service.js';
 
 /**
@@ -25,6 +25,8 @@ export class CatalogController {
   constructor(private readonly catalog: CatalogService) {}
 
   /** Bản contract của health probe (REST /health vẫn giữ cho infra). */
+  // Liveness KHÔNG được cache công khai (vòng vá review W4).
+  @SkipPublicCache()
   @Implement(contract.health.check)
   health() {
     return implement(contract.health.check).handler(() => ({

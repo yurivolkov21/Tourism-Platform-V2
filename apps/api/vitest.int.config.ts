@@ -30,6 +30,12 @@ export default defineConfig({
       // W4 E6: secret svix GIẢ đúng dạng whsec_<base64> — verify là HMAC cục
       // bộ, không gọi Resend thật.
       RESEND_WEBHOOK_SECRET: `whsec_${Buffer.from('int-test-webhook-secret-32bytes!').toString('base64')}`,
+      // W4 R1 (vòng vá review): trần đọc công khai chạy `enforce` trong int
+      // test để probe thấy 429 thật; production mặc định `log` cho tới khi
+      // req.ip trên Render được đo (ADR-0037 AMEND 2). Key nội bộ giả để
+      // probe đường miễn cho web SSR/build.
+      PUBLIC_READ_THROTTLE_MODE: 'enforce',
+      INTERNAL_READ_KEY: 'int-test-internal-read-key',
     },
     // Một DB test dùng chung + truncate giữa các test → tuần tự hoá.
     fileParallelism: false,
