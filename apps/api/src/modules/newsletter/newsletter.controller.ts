@@ -62,13 +62,17 @@ export class NewsletterController {
     });
   }
 
-  /** POST — thực thi huỷ đăng ký thật. Idempotent: gọi lại lần hai vẫn 200. */
+  /**
+   * POST — thực thi huỷ đăng ký thật. Idempotent: gọi lại lần hai vẫn 200.
+   * `resubscribeToken` CHỈ có ở lượt vừa claim được (nút "đổi ý" 30 ngày của
+   * panel) — lượt sau không phát lại (vòng vá review W4).
+   */
   @Implement(contract.newsletter.unsubscribe)
   unsubscribe() {
     return implement(contract.newsletter.unsubscribe).handler(async ({ input, errors }) => {
       try {
-        await this.newsletter.unsubscribe(input.id, input.token);
-        return { unsubscribed: true as const };
+        const { resubscribeToken } = await this.newsletter.unsubscribe(input.id, input.token);
+        return { unsubscribed: true as const, ...(resubscribeToken ? { resubscribeToken } : {}) };
       } catch (err) {
         if (err instanceof InvalidUnsubscribeTokenError) throw errors.INVALID_UNSUBSCRIBE_TOKEN();
         throw err;
@@ -76,18 +80,6 @@ export class NewsletterController {
     });
   }
 
-  /**
-   * Vá review Task 6 — Khoản 1. POST — đăng ký lại sau khi đã huỷ, dùng LẠI
-   * chính token unsubscribe làm bằng chứng "chính chủ" (chưa có double
-   * opt-in nên không thể cho `subscribe()` tự reset `unsubscribedAt` —
-   * ai cũng đăng ký hộ người lạ được).
-   *
-   * BẮT BUỘC POST, TUYỆT ĐỐI KHÔNG được thêm biến thể GET (xem JSDoc route
-   * trong contract.ts): email client (Gmail, Outlook) prefetch mọi link
-   * trong thư để quét virus — một GET resubscribe sẽ tự đăng ký lại đúng
-   * người VỪA huỷ, y hệt cái bẫy mà việc tách GET/POST của `unsubscribe` ở
-   * trên sinh ra để tránh. Idempotent: gọi lại lần hai vẫn 200.
-   */
   /**
    * W4 E3 — double opt-in. GET: dữ liệu trang xác nhận, KHÔNG side effect
    * (mail client prefetch — cùng bài học với `unsubscribeConfirm`).
@@ -118,6 +110,18 @@ export class NewsletterController {
     });
   }
 
+  /**
+   * Vá review Task 6 — Khoản 1, siết W4 E4 + vòng vá review W4. POST — đăng
+   * ký lại NGAY sau khi huỷ bằng token mục đích `resubscribe` (phát duy nhất
+   * ở POST huỷ vừa thành công, hạn 30 ngày); token unsubscribe trong email
+   * KHÔNG mở được cửa này.
+   *
+   * BẮT BUỘC POST, TUYỆT ĐỐI KHÔNG được thêm biến thể GET (xem JSDoc route
+   * trong contract.ts): email client (Gmail, Outlook) prefetch mọi link
+   * trong thư để quét virus — một GET resubscribe sẽ tự đăng ký lại đúng
+   * người VỪA huỷ, y hệt cái bẫy mà việc tách GET/POST của `unsubscribe` ở
+   * trên sinh ra để tránh. Idempotent: gọi lại lần hai vẫn 200.
+   */
   @Implement(contract.newsletter.resubscribe)
   resubscribe() {
     return implement(contract.newsletter.resubscribe).handler(async ({ input, errors }) => {

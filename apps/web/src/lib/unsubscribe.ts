@@ -33,9 +33,11 @@ export type PanelAction = 'unsubscribe-success' | 'resubscribe-success';
  * State machine thuần cho `UnsubscribePanel` — tách khỏi component để TDD
  * không cần render. POST unsubscribe thành công → `unsubscribed`. POST
  * resubscribe thành công → QUAY VỀ `confirm` (không có copy "resubscribed"
- * riêng, chỉ `toast.resubscribed`) — token dùng lại được (contract thiết kế
- * idempotent), nên khách resubscribe xong lại thấy nút "Unsubscribe me" y
- * như lần đầu, toast "Welcome back" đủ báo hiệu khoảnh khắc vừa xảy ra.
+ * riêng, chỉ `toast.resubscribed`) — token huỷ trong URL vẫn hợp lệ, nên
+ * khách đổi ý xong lại thấy nút "Unsubscribe me" y như lần đầu, toast
+ * "Welcome back" đủ báo hiệu khoảnh khắc vừa xảy ra. Nút đổi ý chỉ hiện khi
+ * POST huỷ vừa trả `resubscribeToken` (vòng vá review W4) — state machine
+ * này không cần biết điều đó, panel tự giữ token.
  * `current` giữ tham số để đọc code rõ ý, bản thân không rẽ nhánh theo nó.
  */
 export function nextPanelState(_current: PanelState, action: PanelAction): PanelState {

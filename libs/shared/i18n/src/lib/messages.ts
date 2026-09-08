@@ -2212,9 +2212,11 @@ export const messages = {
     },
     toast: {
       // Một kiểu DUY NHẤT cho mọi email hợp lệ — kể cả email đã subscribe rồi.
+      // Double opt-in (W4 E3): thư đầu là thư XÁC NHẬN — nói thẳng bước
+      // bấm, đừng hứa "on the list" khi consent chưa có.
       success: {
         title: 'Check your inbox',
-        body: 'You’re on the list — the next travel letter lands in your inbox soon.',
+        body: 'We’ve sent a confirmation email — tap the link inside and the travel letter is yours.',
       },
       error: {
         title: "Couldn't subscribe",
@@ -2265,7 +2267,7 @@ export const messages = {
     },
     invalidToken: {
       heading: 'This link isn’t working',
-      body: 'The confirmation link looks incomplete. Subscribe again from the site footer and we’ll send a fresh one.',
+      body: 'The confirmation link looks incomplete or is no longer valid. Subscribe again from the site footer and we’ll send a fresh one (at most one a day).',
       homeLink: 'Back to home',
     },
     toast: {
@@ -2300,15 +2302,19 @@ export const messages = {
     unsubscribed: {
       heading: 'You’re unsubscribed',
       body: 'You won’t receive our travel letter anymore. Changed your mind?',
+      // Không có token đổi ý (POST lặp lại trên địa chỉ đã huỷ) — chỉ đường về.
+      bodyNoUndo:
+        'You won’t receive our travel letter anymore. To hear from us again, subscribe from the site footer and confirm the email we send.',
       resubscribeButton: 'Re-subscribe',
       resubscribing: 'Re-subscribing…',
     },
+    // Bấm lại link huỷ cũ: KHÔNG có nút đăng ký lại (vòng vá review W4 — link
+    // huỷ không phải quyền đăng ký lại vĩnh viễn); đường về là form footer.
     alreadyUnsubscribed: {
       heading: 'Already unsubscribed',
       body: (email: string) =>
-        `${email} isn’t receiving our travel letter — you unsubscribed already.`,
-      resubscribeButton: 'Re-subscribe',
-      resubscribing: 'Re-subscribing…',
+        `${email} isn’t receiving our travel letter — you unsubscribed already. To hear from us again, subscribe from the site footer and confirm the email we send.`,
+      homeLink: 'Back to home',
     },
     invalidToken: {
       heading: 'This link isn’t working',

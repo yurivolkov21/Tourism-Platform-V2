@@ -1,6 +1,7 @@
 'use client';
 
 import { messages } from '@tourism/i18n';
+import Link from 'next/link';
 import { useState } from 'react';
 import { api } from '@/lib/api/client';
 import { classifySubmitError, submitToast } from '@/lib/api/submit';
@@ -14,24 +15,24 @@ import { nextPanelState, type PanelState } from '@/lib/unsubscribe';
 export function UnsubscribePanel({
   id,
   token,
-  resubscribeToken,
   email,
   alreadyUnsubscribed,
 }: {
   id: string;
   /** Token từ URL email — mục đích `unsubscribe`, chỉ dùng cho nút huỷ. */
   token: string;
-  /**
-   * Token mục đích `resubscribe` (W4 E4) do GET confirm mint, hạn 30 ngày —
-   * token unsubscribe không còn mở được cửa đăng ký lại.
-   */
-  resubscribeToken: string;
   email: string;
   alreadyUnsubscribed: boolean;
 }) {
   const [state, setState] = useState<PanelState>(
     alreadyUnsubscribed ? 'alreadyUnsubscribed' : 'confirm',
   );
+  // Token mục đích `resubscribe` (W4 E4, vòng vá review W4): API phát nó
+  // DUY NHẤT trong response của POST huỷ vừa thành công (hạn 30 ngày) — sống
+  // trong state của phiên này cho nút "đổi ý", không đến từ URL hay GET.
+  // Trạng thái `alreadyUnsubscribed` (bấm lại link cũ) vì thế KHÔNG có nút
+  // đăng ký lại: đường quay lại là form footer (thư xác nhận mới).
+  const [resubscribeToken, setResubscribeToken] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const t = messages.unsubscribePage;
 
@@ -44,13 +45,17 @@ export function UnsubscribePanel({
     setPending(true);
     try {
       if (action === 'unsubscribe-success') {
-        await api.newsletter.unsubscribe({ id, token });
+        const result = await api.newsletter.unsubscribe({ id, token });
+        setResubscribeToken(result.resubscribeToken ?? null);
         submitToast('success', {
           title: t.toast.unsubscribed.title,
           description: t.toast.unsubscribed.body,
         });
       } else {
+        // Nút chỉ render khi có token — guard cho TypeScript, không phải nhánh thật.
+        if (!resubscribeToken) return;
         await api.newsletter.resubscribe({ id, token: resubscribeToken });
+        setResubscribeToken(null);
         submitToast('success', {
           title: t.toast.resubscribed.title,
           description: t.toast.resubscribed.body,
@@ -92,16 +97,12 @@ export function UnsubscribePanel({
           <p className="mt-3 text-pretty text-muted-foreground">
             {t.alreadyUnsubscribed.body(email)}
           </p>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submitAction('resubscribe-success')}
-            className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-7 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+          <Link
+            href="/"
+            className="mt-6 inline-flex items-center gap-2 rounded-full border border-border px-7 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted"
           >
-            {pending
-              ? t.alreadyUnsubscribed.resubscribing
-              : t.alreadyUnsubscribed.resubscribeButton}
-          </button>
+            {t.alreadyUnsubscribed.homeLink}
+          </Link>
         </>
       )}
 
@@ -110,15 +111,19 @@ export function UnsubscribePanel({
           <h2 className="font-heading text-2xl font-medium text-balance text-foreground">
             {t.unsubscribed.heading}
           </h2>
-          <p className="mt-3 text-pretty text-muted-foreground">{t.unsubscribed.body}</p>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => submitAction('resubscribe-success')}
-            className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-7 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {pending ? t.unsubscribed.resubscribing : t.unsubscribed.resubscribeButton}
-          </button>
+          <p className="mt-3 text-pretty text-muted-foreground">
+            {resubscribeToken ? t.unsubscribed.body : t.unsubscribed.bodyNoUndo}
+          </p>
+          {resubscribeToken && (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => submitAction('resubscribe-success')}
+              className="mt-6 inline-flex cursor-pointer items-center gap-2 rounded-full border border-border px-7 py-3 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {pending ? t.unsubscribed.resubscribing : t.unsubscribed.resubscribeButton}
+            </button>
+          )}
         </>
       )}
     </div>

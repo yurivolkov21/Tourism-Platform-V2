@@ -3,6 +3,7 @@ import { OUTBOX_MAX_ATTEMPTS } from '@tourism/contract';
 import { prisma } from '../auth/auth.config.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
+import { isMailableSubscriber } from '../modules/newsletter/mailable.js';
 import { EMAIL_DELIVERER, type EmailDeliverer, isPermanentDeliveryError } from './deliverer.js';
 import { resolveRecipient } from './recipient.js';
 
@@ -148,7 +149,7 @@ export class OutboxService {
       }
       if (
         NEWSLETTER_EMAIL_TYPES.has(row.type) &&
-        (await this.isUnsubscribedRecipient(row.payload))
+        (await this.isBlockedNewsletterRecipient(row.type, row.payload))
       ) {
         // Bỏ qua NGAY, không gọi deliverer — đánh dấu SKIPPED (trạng thái
         // riêng, vòng vá review F7: trước là SENT nên card "Sent" của admin đếm
@@ -226,19 +227,27 @@ export class OutboxService {
   }
 
   /**
-   * Subscriber ứng với `payload.email` của row (nếu có) đã huỷ đăng ký hay
-   * chưa. `findUnique` trên `email` chạy trên cột `@db.Citext` nên không cần
-   * tự lowercase ở đây — DB tự so khớp không phân biệt hoa/thường (cùng bài
-   * học citext ở `NewsletterService.subscribe()`).
+   * Bản tin tới người nhận này có bị chặn không. Thư XÁC NHẬN
+   * (NEWSLETTER_WELCOME) chỉ tránh row đã huỷ — nó là thư đi xin consent nên
+   * gửi tới row chưa xác nhận là đúng. Mọi loại bản tin KHÁC (campaign tương
+   * lai) phải qua predicate mailable chung (`isMailableSubscriber`, ADR-0039
+   * §2): chưa xác nhận hoặc đã huỷ đều chặn. `findUnique` trên `email` chạy
+   * trên cột `@db.Citext` nên không cần tự lowercase — DB tự so khớp không
+   * phân biệt hoa/thường (cùng bài học citext ở `NewsletterService.subscribe()`).
    */
-  private async isUnsubscribedRecipient(payload: Prisma.JsonValue): Promise<boolean> {
+  private async isBlockedNewsletterRecipient(
+    type: EmailType,
+    payload: Prisma.JsonValue,
+  ): Promise<boolean> {
     const email = resolveRecipient(payload);
     if (!email) return false;
     const subscriber = await prisma.subscriber.findUnique({
       where: { email },
-      select: { unsubscribedAt: true },
+      select: { unsubscribedAt: true, confirmedAt: true },
     });
-    return subscriber?.unsubscribedAt != null;
+    if (!subscriber) return false;
+    if (type === EmailType.NEWSLETTER_WELCOME) return subscriber.unsubscribedAt !== null;
+    return !isMailableSubscriber(subscriber);
   }
 
   /**

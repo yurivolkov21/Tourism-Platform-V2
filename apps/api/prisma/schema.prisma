@@ -758,6 +758,10 @@ model Review {
   // isFeatured] không phủ sort, mỗi lần đổi tab/phân trang là seq scan + sort.
   // Nhánh search (contains 3 cột) chưa index trgm — ghi sổ, chờ dữ liệu lớn.
   @@index([isApproved, createdAt(sort: Desc), id(sort: Desc)])
+  // Tab Retracted (W4 U2, vòng vá review): lọc retractedAt IS NOT NULL + cùng
+  // sort với tab Pending/Approved. CHECK `reviews_retracted_shape` (không
+  // vừa đăng vừa rút) nằm ở migration 20260908120000 — Prisma không tả CHECK.
+  @@index([retractedAt, createdAt(sort: Desc), id(sort: Desc)])
   // Hàng đợi thật sau ADR-0031: `is_approved = false AND rejected_at IS NULL`.
   // Index cũ ở trên không phủ cột mới, nên tab Pending (mặc định của sidebar)
   // sẽ lọc `rejected_at` bằng filter sau khi đã quét — đúng loại hồi quy im

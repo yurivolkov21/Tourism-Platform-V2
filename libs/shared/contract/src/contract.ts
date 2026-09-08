@@ -391,9 +391,9 @@ export const contract = {
       .output(UnsubscribeResultSchema)
       .errors({ INVALID_UNSUBSCRIBE_TOKEN: { status: 400, message: 'Invalid unsubscribe link' } }),
     /**
-     * Đăng ký LẠI sau khi đã huỷ (vá review Task 6 — Khoản 1). Dùng lại
-     * chính token HMAC của unsubscribe làm bằng chứng "chính chủ" (xem JSDoc
-     * `ResubscribeInputSchema`).
+     * Đăng ký LẠI NGAY sau khi huỷ (vá review Task 6 — Khoản 1, siết W4 E4):
+     * token mục đích `resubscribe` phát duy nhất ở POST `unsubscribe` vừa
+     * thành công, hạn 30 ngày (xem JSDoc `ResubscribeInputSchema`).
      *
      * BẮT BUỘC `method: 'POST'`, TUYỆT ĐỐI KHÔNG được thêm biến thể GET:
      * email client (Gmail, Outlook) prefetch mọi link trong thư để quét
@@ -406,7 +406,7 @@ export const contract = {
       .route({
         method: 'POST',
         path: '/api/newsletter/resubscribe',
-        summary: 'Re-subscribe after unsubscribing, reusing the unsubscribe token (POST only)',
+        summary: 'Undo a just-completed unsubscribe with the resubscribe token (POST only)',
       })
       .input(ResubscribeInputSchema)
       .output(ResubscribeResultSchema)

@@ -1,7 +1,9 @@
 import {
+  consentGeneration,
   makeNewsletterToken,
   makeUnsubscribeToken,
   RESUBSCRIBE_TOKEN_TTL_MS,
+  V0_ACCEPT_UNTIL,
   verifyNewsletterToken,
   verifyUnsubscribeToken,
 } from './unsubscribe-token.js';
@@ -88,11 +90,19 @@ describe('newsletter token v1 (purpose + version)', () => {
     );
   });
 
-  it('v0 (HMAC trần) CHỈ được nhận cho unsubscribe — email cũ còn chạy tới 31/12/2026', () => {
+  it('v0 (HMAC trần) CHỈ được nhận cho unsubscribe — email cũ còn chạy tới V0_ACCEPT_UNTIL, sau mốc là false', () => {
     const v0 = makeUnsubscribeToken(id, secret);
     expect(verifyNewsletterToken(id, v0, 'unsubscribe', secret)).toBe(true);
     expect(verifyNewsletterToken(id, v0, 'confirm', secret)).toBe(false);
     expect(verifyNewsletterToken(id, v0, 'resubscribe', secret)).toBe(false);
+    // Ngày ngừng nhận là thứ MÁY thi hành (vòng vá review W4), không chỉ JSDoc.
+    const before = new Date(V0_ACCEPT_UNTIL.getTime() - 1000);
+    const after = new Date(V0_ACCEPT_UNTIL.getTime());
+    expect(verifyNewsletterToken(id, v0, 'unsubscribe', secret, before)).toBe(true);
+    expect(verifyNewsletterToken(id, v0, 'unsubscribe', secret, after)).toBe(false);
+    // v1 không bị mốc này ảnh hưởng.
+    const v1 = makeNewsletterToken(id, 'unsubscribe', secret);
+    expect(verifyNewsletterToken(id, v1, 'unsubscribe', secret, after)).toBe(true);
   });
 
   it('token rác/rỗng/version lạ không ném lỗi, chỉ false', () => {
@@ -103,5 +113,30 @@ describe('newsletter token v1 (purpose + version)', () => {
     expect(verifyNewsletterToken(id, 'v1.resubscribe.NaN.deadbeef', 'resubscribe', secret)).toBe(
       false,
     );
+  });
+
+  // Vòng vá review W4: token confirm khoá vào THẾ HỆ consent — huỷ là mọi thư
+  // xác nhận cũ chết, thư gửi sau lần huỷ mới mở được.
+  describe('generation (confirm)', () => {
+    it('consentGeneration: chưa huỷ → initial; đã huỷ → epoch ms của unsubscribedAt', () => {
+      expect(consentGeneration({ unsubscribedAt: null })).toBe('initial');
+      expect(consentGeneration({ unsubscribedAt: new Date(1_700_000_000_000) })).toBe(
+        '1700000000000',
+      );
+    });
+
+    it('token mint với thế hệ A chỉ verify với A — thế hệ khác/thiếu thế hệ → false', () => {
+      const now = new Date();
+      const tokenA = makeNewsletterToken(id, 'confirm', secret, now, 'initial');
+      expect(verifyNewsletterToken(id, tokenA, 'confirm', secret, now, 'initial')).toBe(true);
+      expect(verifyNewsletterToken(id, tokenA, 'confirm', secret, now, '1700000000000')).toBe(
+        false,
+      );
+      expect(verifyNewsletterToken(id, tokenA, 'confirm', secret, now)).toBe(false);
+      // Token của thế hệ sau lần huỷ mở được đúng thế hệ đó.
+      const tokenB = makeNewsletterToken(id, 'confirm', secret, now, '1700000000000');
+      expect(verifyNewsletterToken(id, tokenB, 'confirm', secret, now, '1700000000000')).toBe(true);
+      expect(verifyNewsletterToken(id, tokenB, 'confirm', secret, now, 'initial')).toBe(false);
+    });
   });
 });

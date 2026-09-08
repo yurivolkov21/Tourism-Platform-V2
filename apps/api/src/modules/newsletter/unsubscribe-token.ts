@@ -42,6 +42,26 @@ export type NewsletterTokenPurpose = 'unsubscribe' | 'confirm' | 'resubscribe';
  */
 export const RESUBSCRIBE_TOKEN_TTL_MS = 30 * 86_400_000;
 
+/**
+ * Ngày NGỪNG NHẬN token v0 (ADR-0039 §3, vòng vá review W4): từ mốc này nhánh
+ * v0 trong `verifyNewsletterToken` trả false — hằng số sống trong code chứ
+ * không chỉ ở JSDoc, để "ngày ngừng nhận" là thứ máy thi hành. Sau mốc, gỡ
+ * hẳn nhánh v0 bằng một commit có chủ đích.
+ */
+export const V0_ACCEPT_UNTIL = new Date('2027-01-01T00:00:00Z');
+
+/**
+ * "Thế hệ consent" dùng để KHOÁ token `confirm` vào đúng lượt xin đăng ký
+ * (vòng vá review W4): token confirm không hết hạn, nên một thư xác nhận cũ
+ * (forward đi nơi khác) mà còn bật lại được consent SAU khi khách đã huỷ là
+ * lỗ — ký thêm mốc `unsubscribedAt` hiện tại vào payload thì mọi token mint
+ * trước lần huỷ chết ngay lúc huỷ, còn thư xác nhận mới (gửi khi khách tự
+ * điền lại form) mang thế hệ mới và mở được. Row chưa từng huỷ → `initial`.
+ */
+export function consentGeneration(subscriber: { unsubscribedAt: Date | null }): string {
+  return subscriber.unsubscribedAt ? String(subscriber.unsubscribedAt.getTime()) : 'initial';
+}
+
 /** HMAC-SHA256 hex của một chuỗi payload bất kỳ, ký bằng `secret`. */
 function hmacOf(payload: string, secret: string): string {
   return createHmac('sha256', secret).update(payload).digest('hex');
@@ -51,18 +71,28 @@ function hmacOf(payload: string, secret: string): string {
  * Sinh token v1: `v1.<purpose>.<hmac>`; riêng resubscribe chèn exp (epoch
  * GIÂY) thành `v1.resubscribe.<exp>.<hmac>` — exp nằm TRONG phần ký nên sửa
  * tay là chữ ký lệch. `now` nhận qua tham số để test không đợi 30 ngày.
+ * `generation` (chỉ có nghĩa cho `confirm`, xem {@link consentGeneration})
+ * nằm trong phần ký nhưng KHÔNG in ra token — verifier lấy nó từ row DB.
  */
 export function makeNewsletterToken(
   subscriberId: string,
   purpose: NewsletterTokenPurpose,
   secret: string,
   now: Date = new Date(),
+  generation = '',
 ): string {
   if (purpose === 'resubscribe') {
     const exp = Math.floor((now.getTime() + RESUBSCRIBE_TOKEN_TTL_MS) / 1000);
     return `v1.resubscribe.${exp}.${hmacOf(`${subscriberId}.resubscribe.${exp}`, secret)}`;
   }
-  return `v1.${purpose}.${hmacOf(`${subscriberId}.${purpose}`, secret)}`;
+  return `v1.${purpose}.${hmacOf(signedPayload(subscriberId, purpose, generation), secret)}`;
+}
+
+/** Payload ký của token không-exp: thêm `.<generation>` khi có. */
+function signedPayload(subscriberId: string, purpose: string, generation: string): string {
+  return generation === ''
+    ? `${subscriberId}.${purpose}`
+    : `${subscriberId}.${purpose}.${generation}`;
 }
 
 /**
@@ -71,8 +101,8 @@ export function makeNewsletterToken(
  *
  * Tương thích lùi: token KHÔNG có tiền tố `v1.` được coi là v0 và CHỈ được
  * nhận cho `unsubscribe` — mọi email đã gửi trước W4 in token dạng đó, link
- * huỷ trong hộp thư khách phải còn chạy. Ngày ngừng nhận: 31/12/2026
- * (ADR-0039 §3) — sau đó gỡ nhánh này bằng một commit có chủ đích.
+ * huỷ trong hộp thư khách phải còn chạy. Ngừng nhận từ {@link V0_ACCEPT_UNTIL}
+ * (ADR-0039 §3) — máy thi hành, sau đó gỡ nhánh này bằng một commit có chủ đích.
  */
 export function verifyNewsletterToken(
   subscriberId: string,
@@ -80,10 +110,15 @@ export function verifyNewsletterToken(
   purpose: NewsletterTokenPurpose,
   secret: string,
   now: Date = new Date(),
+  generation = '',
 ): boolean {
   if (!token.startsWith('v1.')) {
-    // Nhánh v0 — xem JSDoc: chỉ unsubscribe, tới 31/12/2026.
-    return purpose === 'unsubscribe' && verifyUnsubscribeToken(subscriberId, token, secret);
+    // Nhánh v0 — xem JSDoc: chỉ unsubscribe, chỉ trước V0_ACCEPT_UNTIL.
+    return (
+      purpose === 'unsubscribe' &&
+      now < V0_ACCEPT_UNTIL &&
+      verifyUnsubscribeToken(subscriberId, token, secret)
+    );
   }
   const parts = token.split('.');
   if (purpose === 'resubscribe') {
@@ -97,7 +132,7 @@ export function verifyNewsletterToken(
     return exp * 1000 > now.getTime();
   }
   if (parts.length !== 3 || parts[1] !== purpose) return false;
-  const expected = `v1.${purpose}.${hmacOf(`${subscriberId}.${purpose}`, secret)}`;
+  const expected = `v1.${purpose}.${hmacOf(signedPayload(subscriberId, purpose, generation), secret)}`;
   return timingSafeCompare(expected, token);
 }
 

@@ -15,6 +15,7 @@ Chọn dạng key theo đúng ngữ nghĩa lặp của event:
 | `<event>:<entityId>` | Event chỉ được phép xảy ra **một lần cho mỗi entity** | `enquiry-admin-alert:${enquiry.id}` |
 | `<event>:<entityId>:<state>` | Một lần cho mỗi **bước chuyển trạng thái** của entity | `booking-paid:${booking.id}`, `cancellation-denied:${req.id}:${decidedAt}` |
 | `<event>:<email>` | Một lần **vĩnh viễn cho mỗi địa chỉ** — chỉ hợp lệ khi đó đúng là ý định (rất hiếm) | `newsletter-welcome:${email}` (chủ đích: welcome chỉ gửi 1 lần/địa chỉ) |
+| `<event>:<email>:<yyyy-mm-dd>` | Tối đa **một lần mỗi địa chỉ mỗi ngày UTC** — cho thư có thể gửi LẠI có chủ đích nhưng không được thành máy gửi thư | `newsletter-confirm:${email}:${day}` (gửi lại thư xác nhận khi chưa confirm sau 24h, vòng vá review W4) · `enquiry-received:${email}:${day}` (W4 E1) |
 | `<event>:<email>:<yyyy-mm-dd>` | Một lần **mỗi địa chỉ mỗi ngày UTC** — chặn spam email nhưng vẫn cho event lặp qua ngày khác (W4 E1, ADR-0039 §1) | `enquiry-received:${email}:${utcDay}` (email PHẢI normalize lowercase — dedupe_key là varchar thường, không citext) |
 | `<event>:<entityId>:${randomUUID()}` | Event **hợp lệ khi lặp lại** — mỗi lần xảy ra là một thông báo mới | `email-changed:${user.id}:${randomUUID()}` |
 

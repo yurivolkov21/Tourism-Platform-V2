@@ -60,35 +60,38 @@ export type UnsubscribeInput = z.infer<typeof UnsubscribeInputSchema>;
 export const UnsubscribeConfirmResultSchema = z.object({
   email: z.string(),
   alreadyUnsubscribed: z.boolean(),
-  /**
-   * Token v1 mục đích `resubscribe` (W4 E4, ADR-0039 §3), hạn 30 ngày, server
-   * mint MỚI mỗi lượt GET. Vì sao phải phát ở đây: token trong URL email là
-   * mục đích `unsubscribe` — từ W4 nó KHÔNG mở được cửa resubscribe nữa (một
-   * chuỗi mở mọi cửa chính là lỗ E4 vá), nên nút "đăng ký lại" của panel cần
-   * một token riêng, và GET này là chỗ duy nhất người cầm link hợp lệ đi qua.
-   */
-  resubscribeToken: z.string().min(1),
+  // Cố ý KHÔNG có `resubscribeToken` (vòng vá review W4): GET này mở bằng
+  // token unsubscribe không hết hạn (nhận cả v0) — phát quyền đăng ký lại
+  // từ nó là ai cầm link huỷ cũ cũng bật lại consent được mãi. Token đó chỉ
+  // đi ra từ POST huỷ vừa thành công (`UnsubscribeResultSchema`).
 });
 
 export type UnsubscribeConfirmResult = z.infer<typeof UnsubscribeConfirmResultSchema>;
 
-/** Output của POST — luôn `true` khi thành công, kể cả gọi lần hai (idempotent). */
-export const UnsubscribeResultSchema = z.object({ unsubscribed: z.literal(true) });
+/**
+ * Output của POST — luôn `true` khi thành công, kể cả gọi lần hai (idempotent).
+ * `resubscribeToken` (v1 mục đích `resubscribe`, ADR-0039 §3, hạn 30 ngày)
+ * CHỈ xuất hiện ở lượt VỪA claim được — nút "đổi ý" của panel ngay sau khi
+ * huỷ; lượt POST lặp lại (đã huỷ từ trước) không mang nó. Đây là chỗ DUY
+ * NHẤT token này được phát: người đã huỷ từ lâu muốn quay lại thì điền lại
+ * form footer — thư xác nhận mới mang token thế hệ mới (double opt-in thật).
+ */
+export const UnsubscribeResultSchema = z.object({
+  unsubscribed: z.literal(true),
+  resubscribeToken: z.string().min(1).optional(),
+});
 
 export type UnsubscribeResult = z.infer<typeof UnsubscribeResultSchema>;
 
 /**
- * Đăng ký LẠI sau khi đã huỷ (vá review Task 6 — Khoản 1: "đăng ký lại sau
- * khi huỷ là ngõ cụt câm lặng"). Kịch bản: khách huỷ → đổi ý → tự điền lại
- * form subscribe → `subscribe()` cố tình KHÔNG reset `unsubscribedAt` (chống
- * đăng ký hộ người lạ khi hệ thống chưa có double opt-in, xem JSDoc
- * `NewsletterService.subscribe`) → khách không bao giờ nhận gì và không có
- * đường tự sửa.
- *
- * Input DÙNG LẠI NGUYÊN `UnsubscribeInputSchema` (không tạo schema mới trùng
- * shape): chính token HMAC của unsubscribe (`id` + `token`) chứng minh người
- * bấm thật sự cầm link gửi tới hộp thư đó — thay thế cho double opt-in mà v2
- * chưa xây.
+ * Đăng ký LẠI NGAY sau khi huỷ — nút "đổi ý" (vá review Task 6 — Khoản 1,
+ * siết ở W4 E4 + vòng vá review W4). Input DÙNG LẠI NGUYÊN
+ * `UnsubscribeInputSchema` (không tạo schema mới trùng shape) nhưng `token`
+ * phải là token mục đích `resubscribe` lấy từ `UnsubscribeResultSchema` của
+ * POST huỷ vừa thành công (hạn 30 ngày) — token unsubscribe trong email
+ * KHÔNG mở được cửa này. Người đã huỷ lâu hơn cửa sổ đó quay lại bằng form
+ * footer: `subscribe()` gửi thư xác nhận mới (token thế hệ mới), chính chủ
+ * hộp thư bấm confirm mới mở lại consent.
  */
 export const ResubscribeInputSchema = UnsubscribeInputSchema;
 
@@ -105,9 +108,10 @@ export type ResubscribeResult = z.infer<typeof ResubscribeResultSchema>;
 
 /**
  * Double opt-in (W4 E3, ADR-0039 §2): xác nhận đăng ký bằng link trong thư
- * đầu tiên (token v1 mục đích `confirm`). Input DÙNG LẠI shape `id` + `token`
- * của unsubscribe — cùng lý do `ResubscribeInputSchema` ở trên; token thì
- * KHÁC mục đích nên hai link không đổi chỗ cho nhau được.
+ * đầu tiên (token v1 mục đích `confirm`, khoá vào THẾ HỆ consent của row —
+ * khách huỷ là mọi thư xác nhận cũ chết, vòng vá review W4). Input DÙNG LẠI
+ * shape `id` + `token` của unsubscribe — cùng lý do `ResubscribeInputSchema`
+ * ở trên; token thì KHÁC mục đích nên hai link không đổi chỗ cho nhau được.
  */
 export const ConfirmSubscriptionInputSchema = UnsubscribeInputSchema;
 export type ConfirmSubscriptionInput = z.infer<typeof ConfirmSubscriptionInputSchema>;
