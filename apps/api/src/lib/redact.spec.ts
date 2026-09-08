@@ -60,6 +60,15 @@ describe('redactDeep', () => {
     expect(
       redactDeep({ Token: 't', URL: 'https://x/reset?token=t', OTP: '123456', Password: 'p' }),
     ).toEqual({ Token: REDACTED, URL: REDACTED, OTP: REDACTED, Password: REDACTED });
+    // Header credential (vòng vá review W4): dạng gạch ngang, ApiKey, Authorization.
+    expect(
+      redactDeep({ 'X-Api-Key': 'k', apiKey: 'k', Authorization: 'Bearer x', 'api-key': 'k' }),
+    ).toEqual({
+      'X-Api-Key': REDACTED,
+      apiKey: REDACTED,
+      Authorization: REDACTED,
+      'api-key': REDACTED,
+    });
   });
 
   it('W4 E7: hậu tố token/secret/password — unsubscribeToken, confirmToken, clientSecret bị che', () => {

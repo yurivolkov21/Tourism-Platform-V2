@@ -31,6 +31,14 @@ export const SECRET_KEYS: ReadonlySet<string> = new Set([
   'refresh_token',
   'api_key',
   'password',
+  // Header credential khi payload/log chở nguyên request (vòng vá review W4
+  // — đo thật: `X-Api-Key` KHÔNG bị che vì `-` không khớp `_`, và hậu tố
+  // `key` không thuộc bộ suffix). Khai cả hai dạng gạch để khỏi normalize.
+  'x-api-key',
+  'x_api_key',
+  'api-key',
+  'apikey',
+  'authorization',
 ]);
 
 /**

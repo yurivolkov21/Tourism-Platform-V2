@@ -4,6 +4,7 @@ import {
   makeUnsubscribeToken,
   verifyUnsubscribeToken,
 } from '../modules/newsletter/unsubscribe-token.js';
+import { DeliveryHttpError } from './deliverer.js';
 import { ResendDeliverer, renderEmail } from './resend.deliverer.js';
 
 const OPTS = {
@@ -308,14 +309,20 @@ describe('ResendDeliverer.deliver', () => {
     expect(body.html).toContain('Alice');
   });
 
-  it('propagates an API error so the outbox drain retries', async () => {
+  it('ném DeliveryHttpError MANG status (W4 E5) — drain phân loại 4xx/5xx/429 từ đây', async () => {
     const { deliverer } = stub({
       status: 422,
       body: '{"message":"Invalid `to`"}',
     });
-    await expect(
-      deliverer.deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD),
-    ).rejects.toThrow(/Resend/);
+    // Ghim CẢ lớp lỗi lẫn status (vòng vá review W4): bản đầu chỉ assert
+    // /Resend/ — deliverer ném Error trần cũng xanh, và khi đó mọi 4xx thành
+    // "tạm" ở drain, retry 5 lượt cho một thư sai địa chỉ.
+    const err = await deliverer
+      .deliver(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD)
+      .catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(DeliveryHttpError);
+    expect((err as DeliveryHttpError).status).toBe(422);
+    expect((err as Error).message).toMatch(/Resend/);
   });
 
   it('throws when the payload has no recipient email', async () => {

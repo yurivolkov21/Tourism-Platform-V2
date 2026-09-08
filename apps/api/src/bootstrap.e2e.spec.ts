@@ -63,6 +63,27 @@ describe('configureHttp + AppModule infra (e2e — CORS · helmet · exception f
     expect(res.headers['access-control-allow-origin']).toBe(allowedOrigin);
   });
 
+  it('preflight OPTIONS /api/webhooks/csp-report cho CẢ web lẫn admin origin (vòng vá review W4)', async () => {
+    // Browser gửi report-to/report-uri bằng POST cross-origin với MIME riêng
+    // (`application/csp-report`, `application/reports+json`) — trình duyệt
+    // preflight (Chromium gửi OPTIONS cho report-uri cross-origin). Admin
+    // origin nằm trong TRUSTED_ORIGINS mặc định (localhost:3002) nhưng vùng
+    // /api/admin thì `origin: false` — endpoint CSP KHÔNG ở vùng đó.
+    for (const origin of ['http://localhost:3000', 'http://localhost:3002']) {
+      const res = await app.inject({
+        method: 'OPTIONS',
+        url: '/api/webhooks/csp-report',
+        headers: {
+          origin,
+          'access-control-request-method': 'POST',
+          'access-control-request-headers': 'content-type',
+        },
+      });
+      expect(res.statusCode, origin).toBeLessThan(300);
+      expect(res.headers['access-control-allow-origin'], origin).toBe(origin);
+    }
+  });
+
   /**
    * Đo sống (Task 7/A2, `DangerZone` gọi `DELETE /api/account` từ browser):
    * `@fastify/cors` 11.x mặc định `methods: 'GET,HEAD,POST'` (đối chiếu

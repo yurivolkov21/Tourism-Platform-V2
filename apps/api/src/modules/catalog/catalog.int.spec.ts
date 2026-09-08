@@ -136,6 +136,20 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     const cached = await app.inject({ method: 'GET', url: '/api/tours' });
     expect(cached.statusCode).toBe(200);
     expect(cached.headers['cache-control']).toBe('public, s-maxage=60, stale-while-revalidate=300');
+    // Vòng vá review W4: posts / site-media / reviews của tour cũng là đọc
+    // công khai → cùng header (bản đầu chỉ ghim catalog, ba đường kia trôi).
+    for (const url of ['/api/posts', '/api/site-media', `/api/tours/${cruiseTour.slug}/reviews`]) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(200);
+      expect(res.headers['cache-control'], url).toBe(
+        'public, s-maxage=60, stale-while-revalidate=300',
+      );
+    }
+    // Liveness của contract (`/api/health`) nằm trong CatalogController nhưng
+    // KHÔNG được cache — @SkipPublicCache: một probe cache 60 giây là probe mù.
+    const health = await app.inject({ method: 'GET', url: '/api/health' });
+    expect(health.statusCode).toBe(200);
+    expect(health.headers['cache-control'] ?? '').not.toContain('public, s-maxage');
 
     // Route auth (Better Auth mount) không bao giờ được cache công khai.
     const session = await app.inject({ method: 'GET', url: '/api/auth/get-session' });
