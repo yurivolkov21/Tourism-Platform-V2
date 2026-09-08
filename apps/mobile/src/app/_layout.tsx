@@ -1,4 +1,5 @@
-import { ThemeProvider } from '@tourism/mobile-ui';
+import { messages } from '@tourism/i18n';
+import { ThemeProvider, useTheme } from '@tourism/mobile-ui';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -9,6 +10,32 @@ import { env } from '@/lib/env';
 // Giữ splash cho tới khi vỏ điều hướng dựng xong — tránh một nháy nền trắng
 // trước khi màn đầu tiên kịp vẽ.
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * Stack gốc. Tách khỏi `RootLayout` vì `useTheme()` chỉ gọi được BÊN TRONG
+ * `<ThemeProvider>` — cùng component thì hook chạy trước khi provider dựng.
+ */
+function RootStack() {
+  const theme = useTheme();
+  const { titles } = messages.mobile.appShell;
+
+  return (
+    <Stack
+      screenOptions={{
+        headerStyle: { backgroundColor: theme.colors.card },
+        headerTintColor: theme.colors.foreground,
+        contentStyle: { backgroundColor: theme.colors.background },
+      }}
+    >
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      {/* Nhóm auth mở dạng modal; header do stack bên trong nó vẽ. */}
+      <Stack.Screen name="(auth)" options={{ presentation: 'modal', headerShown: false }} />
+      <Stack.Screen name="tours/[slug]" options={{ title: titles.tourDetail }} />
+      <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
+      <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   useEffect(() => {
@@ -22,7 +49,7 @@ export default function RootLayout() {
     <ThemeProvider>
       <SafeAreaProvider>
         <StatusBar style="auto" />
-        <Stack />
+        <RootStack />
       </SafeAreaProvider>
     </ThemeProvider>
   );
