@@ -182,12 +182,16 @@ describe('media.signUpload', () => {
           // W4 U1 (ADR-0021 AMEND 1): hai ràng buộc nằm TRONG chữ ký.
           allowed_formats: body.allowedFormats,
           transformation: body.transformation,
+          overwrite: false,
         },
         'int-test-secret',
       ),
     );
-    expect(body.allowedFormats).toBe('jpg,jpeg,png,webp,heic,heif');
-    expect(body.transformation).toBe('c_limit,w_2400,h_2400');
+    // Vòng vá review W4: format = whitelist đuôi contract (một nguồn),
+    // fl_force_strip mới thật sự bỏ EXIF/GPS, overwrite ký false.
+    expect(body.allowedFormats).toBe('jpg,jpeg,png,webp,avif,gif');
+    expect(body.transformation).toBe('c_limit,w_2400,h_2400,fl_force_strip');
+    expect(body.overwrite).toBe(false);
     // Ký = đăng ký theo dõi (ADR-0035 §3): hàng dọn phải có ĐÚNG publicId đầy
     // đủ `<folder>/<basename>` — dạng `uploader.destroy` nhận. Đây là lưới
     // duy nhất chứng minh đường enqueue lớn nhất thật sự ghi (vòng vá 05/09).

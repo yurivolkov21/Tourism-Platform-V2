@@ -37,6 +37,10 @@ export type MediaItem = z.output<typeof MediaItemSchema>;
  * sai đuôi chết ngay tầng validate, server không cần luật riêng.
  */
 export const ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif'] as const;
+// Danh sách này CŨNG là `allowed_formats` Cloudinary ký (vòng vá review W4 —
+// API `ALLOWED_UPLOAD_FORMATS = ALLOWED_IMAGE_EXTENSIONS.join(',')`): thêm
+// đuôi ở đây là thêm format được lưu, không có danh sách thứ hai để lệch.
+// heic/heif cố ý KHÔNG có: browser không decode để preview/đo kích thước.
 
 /**
  * Trần dung lượng/số lượng dùng CHUNG client + server (ADR-0021 §2). Bytes
@@ -85,6 +89,12 @@ export const SignedUploadParamsSchema = z.object({
    * cũng nằm trong chữ ký; form gửi nguyên ở field `transformation`.
    */
   transformation: z.string().min(1),
+  /**
+   * Nằm trong chữ ký (vòng vá review W4): signed upload mặc định overwrite,
+   * ký `false` để POST lại cùng public_id trong hạn chữ ký không tráo được
+   * ảnh đã duyệt. Form gửi chuỗi `false` ở field `overwrite`.
+   */
+  overwrite: z.literal(false),
   uploadUrl: z.url(),
 });
 

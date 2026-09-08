@@ -1,3 +1,4 @@
+import { ALLOWED_IMAGE_EXTENSIONS } from '@tourism/contract';
 import { v2 as cloudinary } from 'cloudinary';
 import {
   ALLOWED_UPLOAD_FORMATS,
@@ -51,6 +52,7 @@ describe('buildSignedUploadParams', () => {
           timestamp: 1_760_000_000,
           allowed_formats: ALLOWED_UPLOAD_FORMATS,
           transformation: INCOMING_TRANSFORMATION,
+          overwrite: false,
         },
         CFG.apiSecret,
       ),
@@ -65,12 +67,16 @@ describe('buildSignedUploadParams', () => {
       // Hai ràng buộc NẰM TRONG chữ ký — client thiếu/sửa là Cloudinary 401.
       allowedFormats: ALLOWED_UPLOAD_FORMATS,
       transformation: INCOMING_TRANSFORMATION,
+      // Vòng vá review W4: overwrite=false NẰM TRONG chữ ký — POST lại cùng
+      // public_id trong 10′ chữ ký còn hạn không tráo được ảnh đã duyệt.
+      overwrite: false,
     });
   });
 
-  it('W4 U1: hằng ràng buộc — format ảnh + incoming transformation strip EXIF/khổ trần 2400', () => {
-    expect(ALLOWED_UPLOAD_FORMATS).toBe('jpg,jpeg,png,webp,heic,heif');
-    expect(INCOMING_TRANSFORMATION).toBe('c_limit,w_2400,h_2400');
+  it('W4 U1 (+ vòng vá review): format ký = MỘT nguồn với whitelist đuôi contract; transformation có fl_force_strip', () => {
+    expect(ALLOWED_UPLOAD_FORMATS).toBe(ALLOWED_IMAGE_EXTENSIONS.join(','));
+    expect(ALLOWED_UPLOAD_FORMATS).toBe('jpg,jpeg,png,webp,avif,gif');
+    expect(INCOMING_TRANSFORMATION).toBe('c_limit,w_2400,h_2400,fl_force_strip');
   });
 });
 

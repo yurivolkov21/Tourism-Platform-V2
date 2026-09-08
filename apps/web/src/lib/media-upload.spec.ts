@@ -8,8 +8,9 @@ const PARAMS = {
   cloudName: 'demo',
   folder: 'tourism/avatars/u-1',
   publicId: 'pid-1',
-  allowedFormats: 'jpg,jpeg,png,webp,heic,heif',
-  transformation: 'c_limit,w_2400,h_2400',
+  allowedFormats: 'jpg,jpeg,png,webp,avif,gif',
+  transformation: 'c_limit,w_2400,h_2400,fl_force_strip',
+  overwrite: false as const,
   uploadUrl: 'https://api.cloudinary.com/v1_1/demo/image/upload',
 };
 
@@ -35,8 +36,9 @@ describe('buildUploadFormData', () => {
     expect(form.get('public_id')).toBe('pid-1');
     // W4 U1 (ADR-0021 AMEND 1): hai tham số ràng buộc NẰM TRONG chữ ký —
     // form thiếu là Cloudinary 401, và thiếu tức là mất luôn lớp strip EXIF.
-    expect(form.get('allowed_formats')).toBe('jpg,jpeg,png,webp,heic,heif');
-    expect(form.get('transformation')).toBe('c_limit,w_2400,h_2400');
+    expect(form.get('allowed_formats')).toBe('jpg,jpeg,png,webp,avif,gif');
+    expect(form.get('transformation')).toBe('c_limit,w_2400,h_2400,fl_force_strip');
+    expect(form.get('overwrite')).toBe('false');
     expect(form.get('file')).toBeTruthy();
   });
 });

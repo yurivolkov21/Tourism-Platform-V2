@@ -17,8 +17,8 @@ export function imageExtensionOf(filename: string): AllowedExt | null {
 }
 
 /** Bộ field Cloudinary xác thực — khớp TRỌN chữ ký {folder, public_id,
- * timestamp, allowed_formats, transformation} (W4 U1): thiếu/thừa một tham
- * số đã ký là Cloudinary 401. */
+ * timestamp, allowed_formats, transformation, overwrite} (W4 U1 + vòng vá
+ * review): thiếu/thừa một tham số đã ký là Cloudinary 401. */
 export function buildUploadFormData(file: Blob, params: SignedUploadParams): FormData {
   const form = new FormData();
   form.set('file', file);
@@ -29,6 +29,7 @@ export function buildUploadFormData(file: Blob, params: SignedUploadParams): For
   form.set('public_id', params.publicId);
   form.set('allowed_formats', params.allowedFormats);
   form.set('transformation', params.transformation);
+  form.set('overwrite', String(params.overwrite));
   return form;
 }
 
