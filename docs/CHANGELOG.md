@@ -69,15 +69,35 @@ contract, 1487 web, 912 admin, 2 i18n, 10 tokens, 22 ui) và 487 int.
 `render.yaml` cộng `.env.example` thêm khoá `RESEND_WEBHOOK_SECRET`,
 `ENQUIRY_RETENTION_MONTHS`.
 
-**CÒN TREO (cố ý, ghi để reviewer khỏi đi tìm):** deploy migration lên
-Supabase cộng đặt env Render cộng hai thiết lập dashboard Cloudinary —
-việc của session gốc lúc merge; trần đọc R1 có thể chạm bởi build
-Vercel/ISR production (một IP build prerender nhiều trang — chưa đo, cần
-theo dõi sau deploy); Turnstile/captcha, catalogue lớn hơn 50, AdminAuditLog,
-throttler store chung, LazyMotion, producer bust posts/site-media — giữ
-nguyên danh sách "không làm ở W4" của spec; suppression chưa có UI gỡ tay
-(operator dùng SQL); ngày ngừng nhận token v0 31/12/2026 là một lần gỡ mã
-có chủ đích sau này.
+**Hạ tầng đã làm SỚM 08/09 (trước merge — an toàn vì migration thuần cộng
+thêm, code main cũ không đọc cột mới):** migration đã deploy Supabase và
+verify đường đọc 8/8 (sổ `_prisma_migrations` khớp, 6 cột mới, RLS
+`email_suppressions` bật, backfill 2/2 subscriber); webhook Resend đã tạo
+(ID `00fa02da…`, event bounced+complained — sẽ 404 tới khi merge, vô hại vì
+event hiếm) và `RESEND_WEBHOOK_SECRET` đã set trên Render (service redeploy,
+health 200); Cloudinary đã bỏ 3 tick Unsigned actions — runbook chỉnh theo
+console THẬT ở `2c52289` (KHÔNG có mục "Restricted original access", Strict
+transformations phải GIỮ Disabled vì delivery là transform động không ký).
+Session review chỉ còn: review code, nghiệm thu tay spec §6, quét headless
+header sau merge, liếc đèn CI.
+
+**Chỗ session thi công TỰ QUYẾT, đáng soi kỹ nhất:** GET
+`newsletter.unsubscribeConfirm` phát thêm `resubscribeToken` (mở rộng
+contract ngoài chữ spec E4 — cách duy nhất giữ nút "đăng ký lại" của panel
+khi token đã tách mục đích; lý do ở JSDoc `UnsubscribeConfirmResultSchema`);
+GET public của người ĐANG đăng nhập vẫn đếm bucket read theo IP (AuthGuard
+thoát sớm trên `@Public()` nên không có session để nhìn — đọc session cho
+mọi GET công khai là trả một round-trip DB cho chính đường trần này bảo vệ,
+JSDoc `DefaultThrottlerGuard`); thứ tự commit E4 TRƯỚC E3 khác spec (E3
+dùng token mục đích `confirm` của E4).
+
+**CÒN TREO (cố ý, ghi để reviewer khỏi đi tìm):** trần đọc R1 có thể chạm
+bởi build Vercel/ISR production (một IP build prerender nhiều trang — chưa
+đo, theo dõi lần deploy đầu sau merge); Turnstile/captcha, catalogue lớn
+hơn 50, AdminAuditLog, throttler store chung, LazyMotion, producer bust
+posts/site-media — giữ nguyên danh sách "không làm ở W4" của spec;
+suppression chưa có UI gỡ tay (operator dùng SQL); ngày ngừng nhận token v0
+31/12/2026 là một lần gỡ mã có chủ đích sau này.
 
 ## 2026-09-07 — W3 merge + vòng review 8 mũi cho vỏ Next (nhánh `fix/web-shell-headers`, 29 commit `57d302e..a1a45cc` ff vào main, 83 file, KHÔNG migration, không đụng API)
 
