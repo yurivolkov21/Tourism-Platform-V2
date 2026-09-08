@@ -35,6 +35,14 @@ describe('buildTheme', () => {
     expect(t.spacing(4)).toBe(tokens.spacing * 4);
   });
 
+  it('mọi font-weight từ cầu token là chuỗi số mà React Native nhận', () => {
+    // `theme.weight` được thu hẹp về union `fontWeight` của RN bằng một phép
+    // ép kiểu — test này là thứ canh cho phép ép đó không thành lời nói dối.
+    for (const value of Object.values(buildTheme('light').weight)) {
+      expect(value).toMatch(/^[1-9]00$/);
+    }
+  });
+
   it('ném lỗi NÊU TÊN khoá khi cầu token không còn khoá màu đang khai', () => {
     const broken = { background: '#000000' };
 

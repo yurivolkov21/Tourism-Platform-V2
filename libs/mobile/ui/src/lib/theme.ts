@@ -1,4 +1,5 @@
 import { type RnTheme, theme as tokens } from '@tourism/tokens/theme';
+import type { TextStyle } from 'react-native';
 
 /**
  * Cầu token → giá trị React Native. Đây là chỗ DUY NHẤT trong `@tourism/mobile-ui`
@@ -33,6 +34,9 @@ export const MOBILE_COLOR_KEYS = [
 
 export type MobileColorKey = (typeof MOBILE_COLOR_KEYS)[number];
 
+/** Union `fontWeight` mà React Native chấp nhận. */
+export type FontWeight = NonNullable<TextStyle['fontWeight']>;
+
 export interface MobileTheme {
   /** Chế độ đang dùng — hữu ích cho component cần rẽ nhánh (vd bóng đổ). */
   scheme: ColorScheme;
@@ -41,7 +45,7 @@ export interface MobileTheme {
   /** Type scale theo dp, khoá là bậc Tailwind (`xs`, `sm`, `base`, `lg`, …). */
   type: RnTheme['type'];
   /** Font weight dạng chuỗi mà React Native nhận (`'400'`, `'600'`, …). */
-  weight: RnTheme['weight'];
+  weight: Record<string, FontWeight>;
   /** `spacing(4)` = 4 bước gốc — cùng bội số mà Tailwind dùng cho `p-4`. */
   spacing: (steps: number) => number;
   /** Cạnh tối thiểu của vùng chạm theo dp (a11y). */
@@ -73,7 +77,10 @@ export function buildTheme(scheme: ColorScheme, source: Partial<RnTheme> = {}): 
     colors,
     radius: source.radius ?? tokens.radius,
     type: source.type ?? tokens.type,
-    weight: source.weight ?? tokens.weight,
+    // Cầu token phát font-weight dạng '400'…'700' — đều nằm trong union
+    // `fontWeight` của RN, nhưng `.d.ts` sinh ra chỉ khai `Record<string,
+    // string>`. Ép ở ĐÂY, một chỗ, và để spec canh rằng lời ép đó đúng.
+    weight: (source.weight ?? tokens.weight) as Record<string, FontWeight>,
     spacing: (steps: number) => spacingBase * steps,
     touchTargetMin: source.touchTargetMin ?? tokens.touchTargetMin,
   };
