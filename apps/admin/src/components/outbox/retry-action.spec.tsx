@@ -42,6 +42,7 @@ const ROW: OutboxRowVM = {
   lastError: 'Resend: 401 invalid api key',
   created: '1 Sep 2026, 10:00 UTC',
   processed: null,
+  nextAttempt: null,
   dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
   payload: { code: 'BK-ABCD1234', email: 'ada@example.com' },
   retried: false,

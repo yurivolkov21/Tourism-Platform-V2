@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { prisma } from '../auth/auth.config.js';
 import { EmailType, OutboxStatus } from '../generated/prisma/enums.js';
 import { DeliveryHttpError, EMAIL_DELIVERER, type EmailDeliverer } from './deliverer.js';
-import { MAX_ATTEMPTS, OutboxService } from './outbox.service.js';
+import { FAILED_RETENTION_DAYS, MAX_ATTEMPTS, OutboxService } from './outbox.service.js';
 import { WorkerModule } from './worker.module.js';
 
 /**
@@ -328,6 +328,34 @@ describe('outbox worker integration', () => {
       expect(await prisma.outbox.findUnique({ where: { id: oldSkipped.id } })).toBeNull();
       expect(await prisma.outbox.findUnique({ where: { id: recentSent.id } })).not.toBeNull();
       expect(await prisma.outbox.findUnique({ where: { id: oldFailed.id } })).not.toBeNull();
+    });
+
+    it('FAILED không vĩnh viễn (vòng vá review W4): quá FAILED_RETENTION_DAYS theo createdAt thì purge — payload mang PII', async () => {
+      const days = (n: number) => new Date(Date.now() - n * 86_400_000);
+      const ancientFailed = await prisma.outbox.create({
+        data: {
+          type: EmailType.ENQUIRY_RECEIVED,
+          payload: { name: 'PII', email: 'pii@example.com' },
+          dedupeKey: 'purge:ancient-failed',
+          status: OutboxStatus.FAILED,
+          attempts: MAX_ATTEMPTS,
+          createdAt: days(FAILED_RETENTION_DAYS + 1),
+        },
+      });
+      const youngFailed = await prisma.outbox.create({
+        data: {
+          type: EmailType.ENQUIRY_RECEIVED,
+          payload: {},
+          dedupeKey: 'purge:young-failed',
+          status: OutboxStatus.FAILED,
+          attempts: MAX_ATTEMPTS,
+          createdAt: days(FAILED_RETENTION_DAYS - 1),
+        },
+      });
+
+      expect(await outbox.purgeSent(30)).toBe(1);
+      expect(await prisma.outbox.findUnique({ where: { id: ancientFailed.id } })).toBeNull();
+      expect(await prisma.outbox.findUnique({ where: { id: youngFailed.id } })).not.toBeNull();
     });
   });
 });

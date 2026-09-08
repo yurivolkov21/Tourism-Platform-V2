@@ -15,8 +15,8 @@ export const metadata: Metadata = {
  * Hỏi báo giá cho chuyến riêng — nhánh tách khỏi `/book` ngày 19/08.
  *
  * **Trang này CÔNG KHAI, và đó là chủ đích chứ không phải sót.**
- * `PrivateTripForm` gọi `enquiries.create` browser-direct KHÔNG kèm auth
- * context (ADR-0016 §2), tức là luồng này vốn chưa bao giờ cần đăng nhập. Nó bị
+ * `PrivateTripForm` gọi `enquiries.create` browser-direct — cookie đi kèm nếu
+ * có (W4 E8) nhưng route vẫn @Public, tức là luồng này vốn chưa bao giờ cần đăng nhập. Nó bị
  * chặn suốt thời gian qua chỉ vì tình cờ nằm chung trang với `/book` — trang có
  * `requireSession`. Tách route ra là trả lại đúng quyền vào cho nó.
  *

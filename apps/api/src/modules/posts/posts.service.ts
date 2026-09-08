@@ -3,6 +3,7 @@ import type { Paged, PostCard, PostDetail, PostsListQuery, PostTag } from '@tour
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
+import { escapeLike } from '../../lib/like.js';
 import { toTourCard, cardInclude as tourCardInclude } from '../catalog/catalog.service.js';
 import { MediaService } from '../media/media.service.js';
 import { publishedPostWhere } from './published-post.where.js';
@@ -33,7 +34,8 @@ export class PostsService {
     const where: Prisma.PostWhereInput = {
       ...publishedPostWhere(),
       ...(tag ? { tags: { some: { tag: { slug: tag } } } } : {}),
-      ...(search ? { title: { contains: search, mode: 'insensitive' } } : {}),
+      // escapeLike (vòng vá review W4, cùng luật catalog/admin F9): `%`/`_` gõ vào ô tìm là wildcard.
+      ...(search ? { title: { contains: escapeLike(search), mode: 'insensitive' } } : {}),
     };
 
     const [total, posts] = await Promise.all([

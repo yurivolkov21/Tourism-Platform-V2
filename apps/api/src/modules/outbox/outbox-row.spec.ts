@@ -36,6 +36,7 @@ describe('toOutboxRow', () => {
       lastError: 'Resend: 401 invalid api key',
       createdAt: '2026-09-01T10:00:00.000Z',
       processedAt: null,
+      nextAttemptAt: null,
       recipient: 'ada@example.com',
       payload: { code: 'BK-ABCD1234', email: 'ada@example.com' },
     });

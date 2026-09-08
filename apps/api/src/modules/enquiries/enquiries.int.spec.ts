@@ -296,6 +296,13 @@ describe('enquiries (int)', () => {
     expect((received.payload as Record<string, unknown>).tourTitle).toBe(tour.title);
     // Ack gửi tới bản email đã normalize — nhất quán với chính key dedupe.
     expect((received.payload as Record<string, unknown>).email).toBe('jane@x.com');
+    // Ack KHÔNG chở `message` (vòng vá review W4): template đã bỏ khối in
+    // lại, payload không giữ PII thừa; alert admin vẫn có.
+    expect(received.payload).not.toHaveProperty('message');
+    const alert = await prisma.outbox.findFirstOrThrow({
+      where: { type: EmailType.ENQUIRY_ADMIN_ALERT },
+    });
+    expect((alert.payload as Record<string, unknown>).message).toBe(VALID_PAYLOAD.message);
     expect(received.dedupeKey).toBe(
       `enquiry-received:jane@x.com:${new Date().toISOString().slice(0, 10)}`,
     );

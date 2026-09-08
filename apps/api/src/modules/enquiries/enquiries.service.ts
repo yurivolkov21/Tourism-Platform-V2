@@ -61,19 +61,17 @@ export class EnquiriesService {
       // đủ mọi lead. Xem docs/conventions/outbox-dedupe-key.md.
       const normalizedEmail = input.email.trim().toLowerCase();
       const utcDay = new Date().toISOString().slice(0, 10);
-      const shared = {
-        name: input.name,
-        email: input.email,
-        message: input.message,
-        tourTitle,
-      };
       await tx.outbox.createMany({
         data: [
           {
             type: EmailType.ENQUIRY_RECEIVED,
             // Ack gửi cho khách → người nhận là `email` trong payload; gửi
             // tới bản đã normalize cho nhất quán với chính key dedupe.
-            payload: { ...shared, email: normalizedEmail },
+            // KHÔNG mang `message` (vòng vá review W4, ADR-0039 §1): template
+            // đã bỏ khối in lại nội dung — payload mà vẫn chở nó thì outbox
+            // (bảng admin, log deliverer) giữ một bản PII thừa 30 ngày cho
+            // một thư không dùng tới.
+            payload: { name: input.name, email: normalizedEmail, tourTitle },
             dedupeKey: `enquiry-received:${normalizedEmail}:${utcDay}`,
           },
           {
@@ -85,7 +83,13 @@ export class EnquiriesService {
             // đúng thứ A13 sinh ra để sửa. `to` THẮNG `email` trong deliver().
             // `primaryAdminEmail` là `string` thật (không `| undefined`) —
             // env.ts đã chặn ADMIN_EMAILS rỗng ngay lúc boot.
-            payload: { ...shared, to: primaryAdminEmail },
+            payload: {
+              name: input.name,
+              email: input.email,
+              message: input.message,
+              tourTitle,
+              to: primaryAdminEmail,
+            },
             dedupeKey: `enquiry-admin-alert:${enquiry.id}`,
           },
         ],

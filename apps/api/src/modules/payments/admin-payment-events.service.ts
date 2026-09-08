@@ -7,6 +7,7 @@ import type {
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
+import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
 import { toPaymentEventDetail, toPaymentEventRow } from './payment-event-row.js';
 
@@ -58,7 +59,7 @@ export class AdminPaymentEventsService {
     const where: Prisma.PaymentEventWhereInput = {
       ...(provider ? { provider } : {}),
       ...(type ? { type } : {}),
-      ...(search ? { eventId: { contains: search, mode: 'insensitive' } } : {}),
+      ...(search ? { eventId: { contains: escapeLike(search), mode: 'insensitive' } } : {}),
       ...(unprocessed ? { processedAt: null } : {}),
     };
     const [total, rows] = await Promise.all([

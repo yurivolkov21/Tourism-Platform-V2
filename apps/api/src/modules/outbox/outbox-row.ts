@@ -56,6 +56,7 @@ export function toOutboxRow(row: Outbox): OutboxRow {
     lastError: row.lastError,
     createdAt: row.createdAt.toISOString(),
     processedAt: row.processedAt ? row.processedAt.toISOString() : null,
+    nextAttemptAt: row.nextAttemptAt ? row.nextAttemptAt.toISOString() : null,
     recipient: resolveRecipient(row.payload) ?? null,
     // Cùng một tập giá trị JSON, hai cách gõ: máy che trả `unknown`, contract
     // khai union đệ quy `JSONType` của `z.json()`. Cast là khớp DANH NGHĨA.

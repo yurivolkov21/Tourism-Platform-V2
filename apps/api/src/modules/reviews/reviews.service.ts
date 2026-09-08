@@ -24,6 +24,7 @@ import {
   ReviewSource,
 } from '../../generated/prisma/enums.js';
 import { createdAtRange } from '../../lib/created-at-range.js';
+import { escapeLike } from '../../lib/like.js';
 import { uploadFolderFor } from '../../lib/upload-signing.js';
 import { MediaService } from '../media/media.service.js';
 import { MediaGarbageService } from '../media/media-garbage.service.js';
@@ -1061,9 +1062,9 @@ export class ReviewsService {
       ...(query.search
         ? {
             OR: [
-              { body: { contains: query.search, mode: 'insensitive' } },
-              { title: { contains: query.search, mode: 'insensitive' } },
-              { authorName: { contains: query.search, mode: 'insensitive' } },
+              { body: { contains: escapeLike(query.search), mode: 'insensitive' } },
+              { title: { contains: escapeLike(query.search), mode: 'insensitive' } },
+              { authorName: { contains: escapeLike(query.search), mode: 'insensitive' } },
             ],
           }
         : {}),

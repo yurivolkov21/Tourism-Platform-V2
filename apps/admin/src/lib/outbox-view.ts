@@ -94,6 +94,8 @@ export interface OutboxRowVM {
   lastError: string | null;
   created: string;
   processed: string | null;
+  /** Lịch hẹn lượt giao kế (backoff W4 E5) — null = lượt drain tới. */
+  nextAttempt: string | null;
   dedupeKey: string;
   /**
    * Payload THÔ (đã redact ở API) — drawer tự thụt lề khi mở. Không nấu sẵn
@@ -120,6 +122,7 @@ export function toOutboxRowVM(row: OutboxRow): OutboxRowVM {
     lastError: row.lastError,
     created: formatDateTime(row.createdAt),
     processed: row.processedAt ? formatDateTime(row.processedAt) : null,
+    nextAttempt: row.nextAttemptAt ? formatDateTime(row.nextAttemptAt) : null,
     dedupeKey: row.dedupeKey,
     payload: row.payload,
     retried: wasRetried(row),

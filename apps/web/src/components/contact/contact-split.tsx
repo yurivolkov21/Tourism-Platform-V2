@@ -6,7 +6,7 @@ import { CheckIcon, ClockIcon, CompassIcon, MailIcon, MapPinIcon, PhoneIcon } fr
 import { motion } from 'motion/react';
 import { type FormEvent, useEffect, useRef, useState } from 'react';
 import { SlotImage } from '@/components/slot-image';
-import { api } from '@/lib/api/client';
+import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError, submitToast } from '@/lib/api/submit';
 import { useSession } from '@/lib/auth-client';
 import { buildEnquiryPayload, type ContactFormState, validateEnquiry } from '@/lib/enquiry-form';
@@ -22,7 +22,7 @@ import { REGIONS } from '@/mocks/regions';
 // + MỚI: Select "Region of interest" — Nexora lấy option từ API categories
 // (ISR 1h), đây mock từ REGIONS, ghi nợ API khi wire (option list, KHÔNG phải
 // mapping — mapping đã wire spec 2026-08-03 §2). Submit gọi thẳng
-// `api.enquiries.create` (browser-direct, KHÔNG context — ADR-0016 §2), validate
+// `api.enquiries.create` (browser-direct, kèm cookie nếu có — W4 E8), validate
 // bằng CHÍNH `CreateEnquiryInputSchema` qua `buildEnquiryPayload`/`validateEnquiry`
 // (`lib/enquiry-form.ts`, TDD riêng) + honeypot ẩn field "website".
 
@@ -88,7 +88,10 @@ export function ContactSplit({ panelImage = null }: { panelImage?: MediaItem | n
 
     setPending(true);
     try {
-      await api.enquiries.create(buildEnquiryPayload(state));
+      // `withBrowserAuth()` (vòng vá review W4, W4 E8): route vẫn @Public và
+      // throttle theo IP — cookie đi kèm CHỈ để API ghi `enquiries.user_id`
+      // khi khách đang đăng nhập, để xoá tài khoản kéo theo anonymize lead.
+      await api.enquiries.create(buildEnquiryPayload(state), { context: withBrowserAuth() });
       submitToast('success', {
         title: messages.contactForm.toast.success.title,
         description: messages.contactForm.toast.success.body,

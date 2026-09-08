@@ -32,13 +32,24 @@ export class DeliveryHttpError extends Error {
 }
 
 /**
+ * Status 4xx vẫn coi là TẠM (vòng vá review W4): 401/403 là CREDENTIAL của
+ * TA hỏng (xoay RESEND_API_KEY, key bị thu hồi) — lỗi đó ở ta chứ không ở
+ * thư, sửa env xong là cả batch phải đi tiếp; park FAILED thì mỗi row phải
+ * retry tay từng id. 408 là timeout phía provider, cùng bản chất với 5xx.
+ */
+const TEMPORARY_4XX: ReadonlySet<number> = new Set([401, 403, 408, 429]);
+
+/**
  * Lỗi VĨNH VIỄN — gửi lại y nguyên chỉ ra y kết quả (thư sai địa chỉ,
- * payload hỏng, API key bị thu hồi): 4xx trừ 429. Mọi thứ khác (429, 5xx,
- * lỗi mạng, Error trần) là TẠM — giữ đường retry với backoff.
+ * payload hỏng): 4xx trừ {@link TEMPORARY_4XX}. Mọi thứ khác (429, 5xx, lỗi
+ * mạng, Error trần) là TẠM — giữ đường retry với backoff.
  */
 export function isPermanentDeliveryError(err: unknown): boolean {
   return (
-    err instanceof DeliveryHttpError && err.status >= 400 && err.status < 500 && err.status !== 429
+    err instanceof DeliveryHttpError &&
+    err.status >= 400 &&
+    err.status < 500 &&
+    !TEMPORARY_4XX.has(err.status)
   );
 }
 

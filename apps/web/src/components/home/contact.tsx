@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { api } from '@/lib/api/client';
+import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError, submitToast } from '@/lib/api/submit';
 import { useSession } from '@/lib/auth-client';
 import { buildEnquiryPayload, type ContactFormState, validateEnquiry } from '@/lib/enquiry-form';
@@ -158,7 +158,10 @@ export function Contact() {
 
     setPending(true);
     try {
-      await api.enquiries.create(buildEnquiryPayload(state));
+      // `withBrowserAuth()` (vòng vá review W4, W4 E8): route vẫn @Public và
+      // throttle theo IP — cookie đi kèm CHỈ để API ghi `enquiries.user_id`
+      // khi khách đang đăng nhập, để xoá tài khoản kéo theo anonymize lead.
+      await api.enquiries.create(buildEnquiryPayload(state), { context: withBrowserAuth() });
       submitToast('success', {
         title: messages.homeContact.toast.success.title,
         description: messages.homeContact.toast.success.body,

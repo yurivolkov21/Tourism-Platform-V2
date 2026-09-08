@@ -66,6 +66,11 @@ export function OutboxDetailSheet({
               label={t.processed}
               value={row.processed ?? messages.admin.bookings.detail.empty}
             />
+            {/* Row PENDING đang chờ backoff: nói rõ lúc nào thử lại, kẻo đọc
+                thành "worker chết" (vòng vá review W4). */}
+            {row.status === 'PENDING' && (
+              <JsonDrawerField label={t.nextAttempt} value={row.nextAttempt ?? t.nextAttemptNow} />
+            )}
           </JsonDrawerFields>
           {/* Nguyên văn, KHÔNG cắt — bảng đã cắt bằng CSS, đây là chỗ đọc đủ. */}
           <JsonDrawerText label={t.lastError} text={row.lastError ?? t.noError} />

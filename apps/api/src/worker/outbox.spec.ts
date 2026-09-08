@@ -54,10 +54,16 @@ describe('backoffDelayMs (W4 E5 — luỹ thừa trần 60 phút)', () => {
 });
 
 describe('isPermanentDeliveryError (W4 E5 — phân loại 4xx/5xx/429)', () => {
-  it('4xx (trừ 429) là vĩnh viễn — thư sai địa chỉ gửi lại y nguyên ra y kết quả', () => {
+  it('4xx là vĩnh viễn — thư sai địa chỉ gửi lại y nguyên ra y kết quả', () => {
     expect(isPermanentDeliveryError(new DeliveryHttpError('bad request', 400))).toBe(true);
-    expect(isPermanentDeliveryError(new DeliveryHttpError('unauthorized', 401))).toBe(true);
+    expect(isPermanentDeliveryError(new DeliveryHttpError('not found', 404))).toBe(true);
     expect(isPermanentDeliveryError(new DeliveryHttpError('unprocessable', 422))).toBe(true);
+  });
+
+  it('401/403/408 là TẠM (vòng vá review W4): credential CỦA TA hỏng hay provider timeout — sửa env xong cả batch phải đi tiếp, không park FAILED', () => {
+    expect(isPermanentDeliveryError(new DeliveryHttpError('unauthorized', 401))).toBe(false);
+    expect(isPermanentDeliveryError(new DeliveryHttpError('forbidden', 403))).toBe(false);
+    expect(isPermanentDeliveryError(new DeliveryHttpError('timeout', 408))).toBe(false);
   });
 
   it('429/5xx/lỗi mạng là TẠM — giữ đường retry với backoff', () => {

@@ -19,6 +19,7 @@ const FAILED: OutboxRow = {
   lastError: 'Resend: 401 invalid api key',
   createdAt: '2026-09-01T10:00:00.000Z',
   processedAt: null,
+  nextAttemptAt: null,
   recipient: 'ada@example.com',
   payload: { code: 'BK-ABCD1234', email: 'ada@example.com', nested: { n: 1 } },
 };
@@ -37,6 +38,7 @@ describe('toOutboxRowVM', () => {
       lastError: 'Resend: 401 invalid api key',
       created: '1 Sep 2026, 10:00 UTC',
       processed: null,
+      nextAttempt: null,
       dedupeKey: 'booking-confirmed:9b1deb4d-3b7d-4bad-9bdd-2b0d7b3dcb6d',
       payload: FAILED.payload,
       retried: false,

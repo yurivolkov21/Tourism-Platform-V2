@@ -105,6 +105,13 @@ export const OutboxRowSchema = z.object({
   createdAt: z.iso.datetime(),
   /** Mốc SENT; null khi chưa giao xong (PENDING/FAILED). */
   processedAt: z.iso.datetime().nullable(),
+  /**
+   * Lịch hẹn lượt giao kế (W4 E5 backoff, lộ ra admin ở vòng vá review W4):
+   * row PENDING có mốc này ở tương lai là "đang chờ backoff", không phải
+   * "worker chết" — trước đó admin nhìn một row PENDING attempts 3 mà không
+   * biết nó sẽ được thử lại lúc nào. null = giao ngay lượt drain tới.
+   */
+  nextAttemptAt: z.iso.datetime().nullable(),
   recipient: z.string().nullable(),
   payload: z.json(),
 });

@@ -239,7 +239,9 @@ export type BookingDetail = z.output<typeof BookingDetailSchema>;
  * kiểu thuần — ZodSmartCoercionPlugin lo coerce query string ở server).
  */
 export const BookingsListQuerySchema = z.object({
-  page: z.int().min(1).default(1),
+  // Cùng trần với PageQuerySchema (W4 R3, vòng vá review): offset tuỳ ý là
+  // Postgres đếm qua từng row bị skip — kể cả trên list đã lọc theo user.
+  page: z.int().min(1).max(10_000).default(1),
   limit: z.int().min(1).max(50).default(12),
   status: BookingStatusSchema.optional(),
 });

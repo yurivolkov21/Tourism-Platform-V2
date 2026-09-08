@@ -9,7 +9,7 @@ import { Textarea } from '@tourism/ui/components/textarea';
 import { cn } from '@tourism/ui/lib/utils';
 import { CalendarIcon } from 'lucide-react';
 import { useState } from 'react';
-import { api } from '@/lib/api/client';
+import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import {
   buildPrivateTripPayload,
@@ -44,9 +44,10 @@ function toDateInputValue(date: Date): string {
  * Ba điều phải nói thẳng với khách, vì đây là chỗ dễ hiểu nhầm nhất của cả
  * luồng: không giữ chỗ nào, không thanh toán bây giờ, và giá sẽ báo sau.
  *
- * Gọi API browser-direct KHÔNG kèm auth context (ADR-0016 §2): `enquiries.create`
- * throttle theo IP, giống hệt form contact. Trang này có session vì `proxy.ts`
- * chặn, nhưng bản thân lời gọi không cần.
+ * Gọi API browser-direct, cookie đi kèm nhưng KHÔNG bắt buộc (W4 E8):
+ * `enquiries.create` vẫn @Public và throttle theo IP, giống hệt form contact;
+ * session chỉ để API ghi `enquiries.user_id`. Trang này có session vì
+ * `proxy.ts` chặn, nhưng bản thân lời gọi không cần.
  */
 export function PrivateTripForm({
   tourId,
@@ -112,7 +113,12 @@ export function PrivateTripForm({
 
     setSubmitting(true);
     try {
-      await api.enquiries.create(buildPrivateTripPayload(state, tourId));
+      // `withBrowserAuth()` (vòng vá review W4, W4 E8): route vẫn @Public và
+      // throttle theo IP — cookie đi kèm CHỈ để API ghi `enquiries.user_id`
+      // khi khách đang đăng nhập, để xoá tài khoản kéo theo anonymize lead.
+      await api.enquiries.create(buildPrivateTripPayload(state, tourId), {
+        context: withBrowserAuth(),
+      });
       setSent(true);
     } catch (error) {
       // Giữ NGUYÊN dữ liệu đã nhập. Throttle và lỗi thật cần hai câu khác nhau:

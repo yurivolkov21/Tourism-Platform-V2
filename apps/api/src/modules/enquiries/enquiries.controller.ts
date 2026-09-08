@@ -45,14 +45,26 @@ export class EnquiriesController {
         // sessionUser — tự đọc session (nếu có) để ghi `enquiries.user_id`:
         // deleteAccount anonymize được ngay lead của chính chủ. Khách ẩn
         // danh giữ null — email form tự do không chứng minh sở hữu.
-        const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
-        const userId =
-          session && session.user.deletedAt == null ? (session.user.id as string) : null;
+        // Đọc session trong try/catch RIÊNG (vòng vá review W4): cookie
+        // hỏng/hết hạn hay Better Auth ném là chuyện của tầng nhận diện,
+        // không được biến một form công khai thành 500 — rơi về ẩn danh.
+        const userId = await this.optionalUserId(req);
         return await this.enquiries.create(input, userId);
       } catch (err) {
         if (err instanceof TourNotFoundError) throw errors.TOUR_NOT_FOUND();
         throw err;
       }
     });
+  }
+
+  /** userId của session hợp lệ (chưa xoá tài khoản) nếu có; mọi lỗi đọc session → null. */
+  private async optionalUserId(req: FastifyRequest): Promise<string | null> {
+    try {
+      const session = await auth.api.getSession({ headers: fromNodeHeaders(req.headers) });
+      return session && session.user.deletedAt == null ? (session.user.id as string) : null;
+    } catch (err) {
+      this.logger.warn(`Enquiry: could not read session, treating as anonymous — ${String(err)}`);
+      return null;
+    }
   }
 }
