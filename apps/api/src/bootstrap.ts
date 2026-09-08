@@ -56,6 +56,12 @@ export function createFastifyAdapter(): FastifyAdapter {
  * đúng là kiểu lỗ mà đợt mutation-test 19/07 đã vạch ra: xoá guard đi mà
  * cả suite vẫn xanh.
  */
+/** Hai MIME browser dùng để gửi báo cáo CSP (report-uri / report-to). */
+const CSP_REPORT_MIME: ReadonlySet<string> = new Set([
+  'application/csp-report',
+  'application/reports+json',
+]);
+
 export async function configureHttp(app: NestFastifyApplication): Promise<void> {
   // W2 (ADR-0026 AMEND 1 §B): danh sách origin cho CORS nay là `corsOrigins`
   // (env CORS_ORIGINS, không set thì rơi về TRUSTED_ORIGINS) — TÁCH khỏi câu
@@ -122,11 +128,26 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
     .addHook('onRequest', async (req, reply) => {
       if (req.method === 'GET' || req.method === 'HEAD' || req.method === 'OPTIONS') return;
       const path = req.url.split('?')[0] ?? '';
+      const contentType =
+        String(req.headers['content-type'] ?? '')
+          .split(';')[0]
+          ?.trim()
+          .toLowerCase() ?? '';
+      // csp-report (W4 C1, vòng vá review W4): CHỈ hai MIME của browser được
+      // vào — parser 8 KB đăng ký cho đúng hai MIME đó; `application/json`
+      // từng lách trần qua parser JSON toàn cục 1 MiB (JSON bọc chuỗi →
+      // ~16k report/request). Path này KHÔNG hưởng miễn trừ chung của
+      // /api/webhooks/.
+      if (path === '/api/webhooks/csp-report') {
+        if (!CSP_REPORT_MIME.has(contentType)) {
+          await reply
+            .status(415)
+            .send({ code: 'UNSUPPORTED_MEDIA_TYPE', message: 'Send a CSP report media type' });
+          return reply;
+        }
+        return;
+      }
       if (path.startsWith('/api/auth/') || path.startsWith('/api/webhooks/')) return;
-      const contentType = String(req.headers['content-type'] ?? '')
-        .split(';')[0]
-        ?.trim()
-        .toLowerCase();
       if (contentType && contentType !== 'application/json') {
         await reply
           .status(415)
@@ -151,7 +172,7 @@ export async function configureHttp(app: NestFastifyApplication): Promise<void> 
     .getHttpAdapter()
     .getInstance()
     .addContentTypeParser(
-      ['application/csp-report', 'application/reports+json'],
+      [...CSP_REPORT_MIME],
       { parseAs: 'buffer', bodyLimit: 8 * 1024 },
       (_req, body, done) => {
         done(null, body);
