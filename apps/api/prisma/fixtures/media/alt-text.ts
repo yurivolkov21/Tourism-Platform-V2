@@ -77,4 +77,64 @@ export const altText: Record<string, string> = {
     'Tiered temple roofs and a golden pagoda standing above a sea of cloud at the summit of Fansipan, a broad stone stairway climbing toward them.',
   'tourism/catalog/destination/vung-tau/hero':
     "Vũng Tàu's rooftops and palms running down to the bay, the green headland of Small Mountain curving out into the sea under a clear sky.",
+
+  // ── Ảnh bìa tour (29) ─────────────────────────────────────────────────────
+  'tourism/catalog/tour/bana-hills-golden-bridge-day/hero':
+    'The Golden Bridge curving away from a forested hillside on two giant weathered stone hands, visitors walking its full length under a blue sky.',
+  'tourism/catalog/tour/ben-tre-coconut-day/hero':
+    'A wooden sampan poled by women in conical hats down a narrow brown canal roofed over by water-coconut fronds.',
+  'tourism/catalog/tour/central-heritage-4d/hero':
+    'Turquoise sea meeting a thin strip of sand and dense green forest, a coast road winding through the trees, seen from directly above.',
+  'tourism/catalog/tour/central-honeymoon-5d/hero':
+    'The Hội An riverfront at dawn, a row of mustard-yellow shophouses and palms mirrored in water still enough to double a violet and gold sky.',
+  'tourism/catalog/tour/da-lat-highlands-3d/hero':
+    'Đà Lạt at sunrise, vegetable plots in the foreground giving way to gabled villas stepping up the slope with hills fading behind.',
+  'tourism/catalog/tour/ha-giang-loop-4d/hero':
+    'A mountain road switchbacking down a steep green valley, a single car on one of the bends and ridges receding into haze.',
+  'tourism/catalog/tour/halong-bay-overnight-cruise/hero':
+    'Kayakers paddling out through the mouth of a low sea cave, the rock ceiling framing daylight and a karst wall beyond.',
+  'tourism/catalog/tour/hanoi-heritage-day/hero':
+    'The Hồ Chí Minh Mausoleum seen across the lawns of Ba Đình Square, the Vietnamese flag flying from a tall mast in front of it.',
+  'tourism/catalog/tour/hanoi-old-quarter-food-night/hero':
+    'A packed Old Quarter lane at night, diners crowded onto low plastic stools while a vendor carries a tray of food past glowing shop signs.',
+  'tourism/catalog/tour/hoi-an-countryside-cooking-day/hero':
+    'A guide in a conical hat spinning a brightly painted round basket boat in the water, more boats of visitors waiting among the water-coconut palms.',
+  'tourism/catalog/tour/hoi-an-lantern-evening/hero':
+    'A Hội An shopfront hung with lit silk lanterns at dusk, the quiet street running past it and a cyclist in the distance.',
+  'tourism/catalog/tour/hue-imperial-day/hero':
+    'The tiered pavilion of the Huế citadel gate riding its stone rampart, glazed roof tiles catching the light and potted chrysanthemums lining the ramps below.',
+  'tourism/catalog/tour/lan-ha-kayak-cruise-3d/hero':
+    'A wooden cruise junk anchored close under a wall of forested limestone cliffs in flat green water.',
+  'tourism/catalog/tour/mai-chau-cycling-2d/hero':
+    'A bicycle propped on a concrete lane beside young rice fields fringed with yellow wildflowers under a soft overcast sky.',
+  'tourism/catalog/tour/mekong-can-tho-2d/hero':
+    'A trader poling a boat piled with produce through the rafted-up boats of Cái Răng floating market in late afternoon light.',
+  'tourism/catalog/tour/my-son-sunrise-halfday/hero':
+    'A weathered brick Chăm tower at Mỹ Sơn standing above low ruined walls, jungle closing in and a cloud-topped mountain behind.',
+  'tourism/catalog/tour/ninh-binh-trang-an-day/hero':
+    'Rowing boats leaving a low water cave at Tràng An, the dark cave mouth framing karst cliffs and more boats on the green river ahead.',
+  'tourism/catalog/tour/northern-highlights-5d/hero':
+    'Forested karst islands enclosing a turquoise lagoon and two empty crescents of sand, seen from the air.',
+  'tourism/catalog/tour/phong-nha-paradise-cave-day/hero':
+    'A boat moored on jade-green water at the mouth of a river cave, bare branches in the foreground and visitors on the sand at the entrance.',
+  'tourism/catalog/tour/phu-quoc-honeymoon-4d/hero':
+    'A palm-lined beach at sunset from the air, loungers and umbrellas along the sand and a speedboat on water streaked pink and orange by the sky.',
+  'tourism/catalog/tour/phu-quoc-island-hopping-day/hero':
+    'Three kayaks drawn up on white sand between palm shadows and turquoise shallows, seen from directly above.',
+  'tourism/catalog/tour/quy-nhon-coastal-3d/hero':
+    'A paved path with a red railing winding down a headland of dry grass and cactus toward the rocks and sea, one walker on it.',
+  'tourism/catalog/tour/red-river-craft-villages-day/hero':
+    'A dim pottery workshop lined with heavy wooden shelves of unglazed bowls, plates and jars waiting to be fired.',
+  'tourism/catalog/tour/saigon-after-dark-vespa/hero':
+    'A Sài Gòn café apartment block lit up at night, every balcony a different neon sign, with motorbikes and crowds on the street below.',
+  'tourism/catalog/tour/saigon-cu-chi-day/hero':
+    'The Independence Palace behind its wide lawn, the national flag on the roof and rows of flagpoles down both sides of the drive.',
+  'tourism/catalog/tour/sapa-fansipan-summit-3d/hero':
+    'The red funicular carriage climbing the last ridge to the Fansipan summit at sunrise, a bronze Buddha and clock tower standing above a sea of cloud.',
+  'tourism/catalog/tour/sapa-terraces-homestay-2d/hero':
+    'Rice terraces at harvest colour curving up a hillside in strong sun, a bamboo fence running along the path in the foreground.',
+  'tourism/catalog/tour/vietnam-grand-journey-12d/hero':
+    'A road folding back on itself in tight hairpins down a misted green mountainside, two motorbikes small on the bends.',
+  'tourism/catalog/tour/vung-tau-coastal-2d/hero':
+    'The Vũng Tàu shoreline curving away beneath a green headland, fishing boats anchored in the shallows and treetops in the foreground.',
 };
