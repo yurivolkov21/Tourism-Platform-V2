@@ -1,6 +1,9 @@
 'use client';
 
-import MapLibreGL from 'maplibre-gl';
+// Namespace import, KHÔNG phải default: maplibre 6 là ESM thuần và đã bỏ hẳn
+// default export (tsc báo TS1192 nếu viết sai — lỗi ồn ào, gate bắt được).
+// Đường import CSS thì giữ nguyên: `exports` map của 6.x có nhánh "./dist/*".
+import * as MapLibreGL from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { MapPinIcon, MinusIcon, PlusIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -19,6 +22,12 @@ import { MapAttribution } from './map-attribution';
 // ngoại lệ luật tokens-only đã ghi trong ADR-0018 — URL style là JSON host
 // ngoài, không biểu diễn được bằng @tourism/tokens. Mọi thứ ta vẽ đè lên
 // (marker, nút zoom) vẫn dùng token tuyệt đối.
+// Worker của maplibre PHẢI được tự phục vụ từ `public/` — xem
+// `scripts/copy-maplibre-worker.mjs` để biết vì sao (Turbopack không phát ra
+// file anh em `maplibre-gl-shared.mjs`, worker chết ở lần import đầu và bản đồ
+// TRẮNG IM LẶNG). Gọi một lần ở module scope, trước mọi `new Map`.
+MapLibreGL.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
+
 const STYLES = {
   light: 'https://tiles.openfreemap.org/styles/positron',
   dark: 'https://tiles.openfreemap.org/styles/dark',
@@ -70,33 +79,44 @@ export default function ContactMap() {
     const initialStyle = STYLES[resolveThemeNow()];
     appliedStyleRef.current = initialStyle;
 
-    const instance = new MapLibreGL.Map({
-      container,
-      style: initialStyle,
-      bounds: officeBounds(),
-      fitBoundsOptions: { padding: 64 },
-      // Không cướp cuộn trang: lăn chuột vẫn cuộn trang, muốn zoom thì bấm nút.
-      scrollZoom: false,
-      dragRotate: false,
-      touchZoomRotate: false,
-      // TẮT AttributionControl, KHÔNG phải bỏ attribution — nó được render lại
-      // bằng React ở cuối component này (ràng buộc licence ADR-0018 vẫn giữ
-      // nguyên, cùng 3 link).
-      //
-      // Lý do bảo mật (GHSA-jrc7-96c5-q579, CVSS 10.0, công bố 08/09/2026):
-      // `DOM.sanitize()` của maplibre 5.24 duyệt live NamedNodeMap trong lúc
-      // xoá thuộc tính nên bỏ sót — bypass sanitizer. Trong toàn bộ 5.24 nó có
-      // ĐÚNG MỘT call site sản phẩm là `attribution_control.ts:177`
-      // (`innerHTML = DOM.sanitize(attribHTML)`), và chuỗi attribHTML là HTML
-      // THÔ tải runtime từ TileJSON của `tiles.openfreemap.org` — host thứ ba
-      // ta không kiểm soát. Dòng 5.x không có bản vá (5.24.0 là bản cuối), bản
-      // vá duy nhất là 6.4.1 tức nhảy major + ESM-only + đổi cách nạp worker.
-      // `map.ts:826` chỉ `addControl` khi option truthy, nên `false` làm call
-      // site đó không tồn tại — cắt đường thực thi mà không đụng dependency.
-      //
-      // Nếu ngày nào lên maplibre 6.x thì cân nhắc trả lại control gốc.
-      attributionControl: false,
-    });
+    // Bọc try/catch: từ maplibre 6.7 constructor NÉM `GPUInitializationError`
+    // khi không tạo được WebGL2, thay vì bắn event `error`. Ta đang ghim 6.4.1
+    // (còn bắn event) nhưng throw trong effect sẽ leo lên `app/error.tsx` và
+    // nuốt NGUYÊN trang /contact — form liên hệ, địa chỉ, tất cả — chỉ vì một ô
+    // trang trí. Hỏng bản đồ thì để trống chỗ bản đồ, không đánh sập trang.
+    let instance: MapLibreGL.Map;
+    try {
+      instance = new MapLibreGL.Map({
+        container,
+        style: initialStyle,
+        bounds: officeBounds(),
+        fitBoundsOptions: { padding: 64 },
+        // Không cướp cuộn trang: lăn chuột vẫn cuộn trang, muốn zoom thì bấm nút.
+        scrollZoom: false,
+        dragRotate: false,
+        touchZoomRotate: false,
+        // TẮT AttributionControl, KHÔNG phải bỏ attribution — nó được render lại
+        // bằng React ở cuối component này (ràng buộc licence ADR-0018 vẫn giữ
+        // nguyên, cùng 3 link).
+        //
+        // Lý do bảo mật (GHSA-jrc7-96c5-q579, CVSS 10.0, công bố 08/09/2026):
+        // `DOM.sanitize()` của maplibre 5.24 duyệt live NamedNodeMap trong lúc
+        // xoá thuộc tính nên bỏ sót — bypass sanitizer. Trong toàn bộ 5.24 nó có
+        // ĐÚNG MỘT call site sản phẩm là `attribution_control.ts:177`
+        // (`innerHTML = DOM.sanitize(attribHTML)`), và chuỗi attribHTML là HTML
+        // THÔ tải runtime từ TileJSON của `tiles.openfreemap.org` — host thứ ba
+        // ta không kiểm soát. Dòng 5.x không có bản vá (5.24.0 là bản cuối), bản
+        // vá duy nhất là 6.4.1 tức nhảy major + ESM-only + đổi cách nạp worker.
+        // `map.ts:826` chỉ `addControl` khi option truthy, nên `false` làm call
+        // site đó không tồn tại — cắt đường thực thi mà không đụng dependency.
+        //
+        // Nếu ngày nào lên maplibre 6.x thì cân nhắc trả lại control gốc.
+        attributionControl: false,
+      });
+    } catch {
+      // Không có WebGL2 (hoặc GPU từ chối): giữ nguyên khung rỗng, trang sống.
+      return;
+    }
 
     setMap(instance);
 

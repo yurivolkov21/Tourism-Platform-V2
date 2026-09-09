@@ -50,10 +50,18 @@ function buildCsp({ apiOrigin, isDev, reportUri }: SecurityHeaderInput): string 
     // OpenFreeMap: style JSON kéo tiles/glyph/sprite cùng host qua fetch;
     // api.cloudinary.com: browser POST thẳng file đã ký (media-upload.ts).
     `connect-src 'self' ${apiOrigin} https://tiles.openfreemap.org https://api.cloudinary.com`,
-    // MapLibre 5.24 tạo Web Worker từ blob: — thiếu là bản đồ /contact trắng
-    // im lặng; child-src là fallback cho browser chưa hiểu worker-src.
+    // Bản đồ /contact nạp Web Worker của maplibre — thiếu directive là bản đồ
+    // trắng IM LẶNG (không exception, không đỏ build). Từ maplibre 6 worker
+    // không còn dựng từ `blob:` nữa mà nạp từ URL same-origin
+    // `/maplibre/maplibre-gl-worker.mjs`, nên `'self'` mới là vế có tác dụng;
+    // `blob:` giữ lại vì vô hại và siết nó là việc riêng, phải đo trước.
+    //
+    // `child-src` là fallback cho browser chưa hiểu `worker-src` — nó TỪNG
+    // thiếu `'self'`, nghĩa là đúng những browser đó sẽ chặn worker same-origin
+    // và chỉ ở đó bản đồ mới trắng. Bẫy này không lộ khi tự kiểm bằng Chrome
+    // mới, nên đừng rút `'self'` ra lần nữa.
     "worker-src 'self' blob:",
-    'child-src blob:',
+    "child-src 'self' blob:",
     // Stripe/PayPal là điều hướng top-level, không iframe nào trong app.
     "frame-src 'none'",
     "frame-ancestors 'none'",

@@ -283,3 +283,79 @@ và chế độ hỏng là bản đồ trắng im lặng trên site đang chạy
 **6.4.1 hoặc 6.6.0**, KHÔNG nhắm bản `latest` mới vài ngày tuổi — trước freeze
 15/10 thì thứ cần là bản có nhiều thời gian ngoài đời nhất trong số các bản đã
 vá.
+
+## AMEND 2 — 09/09/2026: lên `maplibre-gl` 6.4.1, tự phục vụ worker, và vì sao KHÔNG chọn bản mới nhất
+
+AMEND (cùng ngày) cắt đường thực thi của `GHSA-jrc7-96c5-q579` bằng
+`attributionControl: false`. Nhưng lỗ hổng vẫn nằm trong cây phụ thuộc và
+Dependabot vẫn đếm hai alert critical. Dòng 5.x **không bao giờ có bản vá**
+(5.24.0 là bản cuối), nên đóng chúng bắt buộc phải nhảy major.
+
+### Chọn 6.4.1, KHÔNG phải 6.8.0
+
+Cả hai đều vá. Ba lý do chọn bản cũ hơn:
+
+1. **Từ 6.7.0, `new Map()` NÉM `GPUInitializationError`** khi không tạo được
+   WebGL2, thay vì bắn event `error`. Constructor của ta nằm trong `useEffect`,
+   nên throw sẽ leo lên `app/error.tsx` và nuốt **nguyên trang `/contact`** —
+   form liên hệ, địa chỉ, tất cả — chỉ vì một ô trang trí. Ở 6.4.1 hành vi vẫn
+   như hôm nay: mất ô bản đồ, trang sống.
+2. **Ngấm lâu nhất trong các bản đã vá**: 21,8 ngày, so với 18,9 / 15,7 / 6,8 /
+   1,4 ngày của 6.5.0 → 6.8.0. Trước freeze 15/10 thì thứ cần là bản có nhiều
+   thời gian ngoài đời, không phải bản `latest`.
+3. **Delta nhỏ nhất**: 6.4.1 chỉ có hai mục changelog — chính bản vá và một fix
+   globe cho custom layer (ta không có custom layer).
+
+Dù vậy vẫn bọc `try/catch` quanh constructor: rẻ, và nếu sau này có ai nâng lên
+6.7+ thì cái bẫy trên đã được chặn sẵn.
+
+### Bốn thay đổi bắt buộc, và cái thứ ba là thứ suýt giết cả đợt
+
+1. **Default export bị bỏ** (6.x là ESM thuần): `import MapLibreGL from …` →
+   `import * as MapLibreGL from …`. Hỏng ỒN ÀO — `tsc` báo TS1192, `pnpm gate`
+   bắt được. Hai chỗ dùng ở vị trí KIỂU (`MapLibreGL.Map`,
+   `MapLibreGL.LngLatBounds`) chạy nguyên qua namespace import, không phải sửa.
+2. **Đường import CSS giữ nguyên** — `exports` map của 6.x có nhánh `"./dist/*"`.
+3. **Worker phải TỰ PHỤC VỤ từ `public/`.** Đây là chỗ nguy hiểm nhất. Từ 6.x,
+   worker không còn dựng từ `blob:` mà nạp từ URL thật, và nó `import` file anh
+   em `maplibre-gl-shared.mjs` bằng đường dẫn tương đối. Tài liệu maplibre nói
+   thẳng về Next.js: Turbopack biến `new URL(…, import.meta.url)` thành một
+   asset băm mà **không phát ra file anh em**, và hậu quả nguyên văn là *"the map
+   mounts but never requests a tile"*. Tức bản đồ trắng IM LẶNG: không
+   exception, build xanh, gate xanh. Nên có `scripts/copy-maplibre-worker.mjs`
+   chép hai file vào `public/maplibre/`, nối vào đầu chuỗi `build` và `dev`, cộng
+   `setWorkerUrl('/maplibre/maplibre-gl-worker.mjs')` ở module scope. Bước này là
+   SCRIPT chạy được chứ không phải lời dặn trong doc — cùng tinh thần
+   `guard-build.mjs`.
+4. **`turbo.json` phải khai `public/maplibre/**` trong `outputs` của task
+   `build`.** Thiếu nó thì một lần cache HIT sẽ khôi phục `.next` mà không tạo
+   lại `public/maplibre/` → deploy thiếu worker → bản đồ trắng. Đây là chế độ
+   hỏng im lặng **thứ hai**, đến từ chính lời giải của chế độ hỏng thứ nhất.
+   Thư mục đó là artifact nên vào `.gitignore`.
+
+### Một lỗ CSP có sẵn, lộ ra nhờ đợt này
+
+`child-src` đang là `blob:` — **thiếu `'self'`**. `child-src` là fallback cho
+browser chưa hiểu `worker-src`, nên đúng những browser đó sẽ chặn worker
+same-origin mới và chỉ ở đó bản đồ mới trắng. Bẫy này không lộ khi tự kiểm bằng
+Chrome mới. Đã sửa thành `child-src 'self' blob:`. Giữ `blob:` ở cả hai
+directive: siết bỏ là việc riêng, phải đo trước.
+
+### Nghiệm thu — vì sao `gate:int` xanh vẫn chưa đủ
+
+`gate` mù với bản đồ (jsdom không có WebGL nên spec luôn mock `./contact-map`),
+và cả hai chế độ hỏng ở trên đều KHÔNG sinh lỗi. Nên phép đo quyết định không
+phải "có canvas không" mà là **đếm request tile**. Quét bằng chromium thật trên
+`next start`, đo được: worker và file anh em đều HTTP 200, **36 tile tải về**,
+2 marker, 3 link attribution, form liên hệ còn sống, 0 CSP violation, 0 lỗi
+console. Pixel canvas stdev 30,8/28,6/27,3 — gần trùng khít bản 5.24
+(30,9/28,6/27,3).
+
+Ai đụng lại vùng này phải lặp đúng phép đo đó. "Trang trả 200" không chứng minh
+được gì.
+
+### Giữ nguyên, cố ý
+
+`attributionControl: false` và `MapAttribution` tự render **ở lại**. Không trả
+lại control gốc của MapLibre trong cùng đợt: nó thêm bề mặt, và
+`map-attribution.spec.tsx` đang ghim đủ ba href. Nghĩa vụ ODbL vẫn do React lo.

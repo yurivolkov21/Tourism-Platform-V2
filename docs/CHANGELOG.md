@@ -8,6 +8,68 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-09 — Đóng nốt hai alert cuối: `maplibre-gl` 5.24.0 → 6.4.1, tự phục vụ worker, và cấu hình Dependabot (nhánh `fix/maplibre-v6`, **CHƯA merge**)
+
+Sau đợt trước còn đúng **hai alert** — cùng MỘT lỗ hổng `GHSA-jrc7-96c5-q579`
+(CVE-2026-85061, CVSS 10.0) bị GitHub đếm hai lần vì khớp ở hai manifest. Dòng
+5.x **không bao giờ có bản vá** (5.24.0 là bản cuối), nên đóng chúng bắt buộc
+nhảy major. Lần trước đã cắt đường thực thi bằng `attributionControl: false`,
+nên đợt này không gấp theo giờ — có quyền chọn bản ngấm lâu thay vì bản mới nhất.
+
+**Chọn 6.4.1 chứ không phải 6.8.0.** Từ **6.7.0**, `new Map()` NÉM
+`GPUInitializationError` khi không tạo được WebGL2 thay vì bắn event `error` —
+mà constructor của ta nằm trong `useEffect`, nên throw sẽ leo lên `app/error.tsx`
+và nuốt NGUYÊN trang `/contact` (form liên hệ, địa chỉ, tất cả) chỉ vì một ô
+trang trí. 6.4.1 giữ đúng hành vi hôm nay, lại ngấm lâu nhất trong các bản đã vá
+(21,8 ngày so với 1,4 ngày của 6.8.0) và có delta nhỏ nhất — đúng tiêu chí trước
+freeze 15/10. Vẫn bọc `try/catch` quanh constructor làm bảo hiểm rẻ.
+
+**Cái suýt giết cả đợt, và `pnpm gate` không bao giờ thấy nó.** Từ 6.x worker
+không còn dựng từ `blob:` mà nạp từ URL thật, và nó `import` file anh em
+`maplibre-gl-shared.mjs` bằng đường dẫn tương đối. Tài liệu maplibre nói thẳng về
+Next.js: Turbopack biến `new URL(…, import.meta.url)` thành asset băm mà **không
+phát ra file anh em**, hậu quả nguyên văn là *"the map mounts but never requests
+a tile"*. Không exception, build xanh, gate xanh, bản đồ prod trắng. Lời giải:
+`apps/web/scripts/copy-maplibre-worker.mjs` chép hai file vào `public/maplibre/`,
+nối vào đầu chuỗi `build` và `dev`, cộng `setWorkerUrl(…)` ở module scope.
+
+Rồi chính lời giải đó đẻ ra chế độ hỏng im lặng **thứ hai**: một lần Turborepo
+cache HIT sẽ khôi phục `.next` mà không tạo lại `public/maplibre/`. Nên
+`turbo.json` phải khai `public/maplibre/**` trong `outputs` của task `build`, và
+thư mục đó vào `.gitignore` vì là artifact.
+
+**Một lỗ CSP có sẵn, lộ ra nhờ đợt này:** `child-src` đang là `blob:` — thiếu
+`'self'`. `child-src` là fallback cho browser chưa hiểu `worker-src`, nên đúng
+những browser đó sẽ chặn worker same-origin mới, và chỉ ở đó bản đồ mới trắng.
+Bẫy này không lộ khi tự kiểm bằng Chrome mới. Đã sửa thành `child-src 'self' blob:`.
+
+**Nghiệm thu — `gate:int` xanh không đủ, phép đo quyết định là ĐẾM TILE.** Cả hai
+chế độ hỏng trên đều không sinh lỗi, còn spec thì luôn mock `./contact-map` (jsdom
+không có WebGL). Quét bằng chromium thật trên `next start`: worker và file anh em
+đều HTTP 200, **36 tile tải về**, 2 marker, 3 link attribution, form liên hệ còn
+sống, 0 CSP violation, 0 lỗi console, 0 request hỏng. Pixel canvas stdev
+30,8/28,6/27,3 — gần trùng khít bản 5.24 (30,9/28,6/27,3). Lý do và cách lặp lại
+phép đo ở [ADR-0018 AMEND 2](adr/0018-web-map-library.md).
+
+**PR Dependabot #3 bị đóng, và có `.github/dependabot.yml` mới.** PR #3 mang nhãn
+"1 update" nhưng diff còn nâng `vitest` 4.1.11 → **5.0.0** ở cả 8 `package.json` —
+một cú nhảy MAJOR mà không advisory nào đòi (mọi alert vitest đã vá ở 4.1.11 cùng
+ngày), và Vitest 5 đổi mặc định `extends` trong `test.projects` từ `false` sang
+`true`, đúng thứ cấu hình `testTimeout` vừa thêm đang dựa vào. Repo trước đó
+KHÔNG có cấu hình Dependabot nào. File mới khai tường minh lập trường: nhận bản vá
+bảo mật, KHÔNG nhận version update (`open-pull-requests-limit: 0`), phủ đủ 10
+manifest bằng `directories` số nhiều, và ghi rõ hai thứ cố ý không dùng
+(`target-branch` sẽ TẮT security update; `cooldown` chỉ chạm version update).
+
+Ghi để khỏi ảo tưởng: `ignore` với `version-update:semver-major` KHÔNG chặn được
+ca đã xảy ra — vitest 5.0.0 đi kèm một PR *security*, không phải PR version-update.
+Phanh thật nằm ở nếp vận hành: đọc `gh pr diff` trước, không merge thẳng PR
+Dependabot bao giờ.
+
+Tests after: gate:int xanh — web 122 file · admin 80 · api 47 unit và 37 int ·
+contract 16 · ui 5 · i18n 2 · tokens 2. Không thêm test mới; lớp canh cho đợt này
+là bộ quét chromium, không phải spec.
+
 ## 2026-09-09 — Đợt Dependabot 26 alert: đóng `/_next/image` admin, cắt đường sanitize maplibre, nâng next/vitest/js-yaml/hono, nâng trần test (5 nhánh, rebase thành chuỗi tuyến tính rồi ff vào `main`)
 
 Sáng 09/09 GitHub mở 26 Dependabot alert (8 critical, 4 high, 14 medium) đúng

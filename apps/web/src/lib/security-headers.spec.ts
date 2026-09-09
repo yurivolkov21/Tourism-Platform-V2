@@ -39,7 +39,12 @@ const PROD_EXPECTED: Record<string, string> = {
   'connect-src':
     "'self' https://api.nexora-travel.agency https://tiles.openfreemap.org https://api.cloudinary.com",
   'worker-src': "'self' blob:",
-  'child-src': 'blob:',
+  // `'self'` trong child-src là BẮT BUỘC, không phải thừa: child-src là fallback
+  // cho browser chưa hiểu worker-src, và từ maplibre 6 worker nạp từ URL
+  // same-origin `/maplibre/maplibre-gl-worker.mjs` chứ không còn từ `blob:`.
+  // Thiếu `'self'` thì đúng những browser đó chặn worker và bản đồ /contact
+  // trắng IM LẶNG — bẫy không lộ khi tự kiểm bằng Chrome mới (ADR-0018 AMEND 2).
+  'child-src': "'self' blob:",
   'frame-src': "'none'",
   'frame-ancestors': "'none'",
   'object-src': "'none'",

@@ -1,0 +1,63 @@
+# Dependabot — tourism-v2
+#
+# Vì sao có file này (sự cố 09/09/2026): repo trước đó KHÔNG có cấu hình nào,
+# nên Dependabot chạy mặc định và tự gom nhóm. PR #3 mang nhãn "1 update"
+# (maplibre-gl) nhưng diff còn nâng `vitest` 4.1.11 → 5.0.0 ở cả 8
+# `package.json` — một cú nhảy MAJOR mà KHÔNG advisory nào đòi (mọi alert vitest
+# đã vá ở 4.1.11, merge cùng ngày). File này khai tường minh lập trường của dự
+# án: NHẬN bản vá bảo mật, KHÔNG nhận version update.
+#
+# Đọc kèm: CLAUDE.md mục "Chính sách theo lịch" — freeze dependency 15/10/2026.
+
+version: 2
+
+updates:
+  # ── npm/pnpm workspace ──────────────────────────────────────────────────────
+  - package-ecosystem: npm
+    # `directories` (SỐ NHIỀU) là bắt buộc với monorepo nhiều manifest. Tài liệu
+    # GitHub: security update chỉ áp cấu hình này nếu đường dẫn (hoặc glob) khớp
+    # đúng nơi có manifest. Hai alert maplibre hôm nay nằm ở
+    # `apps/web/package.json` và `pnpm-lock.yaml` — khai mỗi "/" là rơi mất phủ
+    # sóng cho `apps/*`. Bốn glob dưới phủ trọn 10/10 manifest hiện có.
+    directories:
+      - '/'
+      - '/apps/*'
+      - '/libs/shared/*'
+      - '/libs/mobile/*'
+    schedule:
+      interval: weekly
+
+    # CÔNG TẮC CHÍNH. `0` tắt hẳn luồng version-update (PR nâng phiên bản định
+    # kỳ) nhưng KHÔNG đụng tới security update — loại đó không bị trần này ràng
+    # buộc. Đạt cùng lúc hai điều dự án cần trước freeze: vẫn nhận bản vá lỗ
+    # hổng, mà không có PR nâng cấp nào tự mọc ra.
+    #
+    # Đã cân nhắc và LOẠI: giữ version-update rồi thêm
+    # `ignore: [update-types: version-update:semver-major]`. Nó KHÔNG chặn được
+    # ca đã xảy ra — vitest 5.0.0 đi kèm một PR *security*, không phải PR
+    # version-update, nên `ignore` không với tới. Đổi lại nó vẫn đẻ PR
+    # minor/patch hằng tuần, ngược chính sách freeze. Tức là chỉ tốn nhiễu mà
+    # không mua thêm được lớp bảo vệ nào.
+    open-pull-requests-limit: 0
+
+    commit-message:
+      prefix: chore
+      include: scope
+
+    # KHÔNG đặt `target-branch`: với Dependabot, khai khoá đó sẽ TẮT security
+    # update cho ecosystem này (chúng chỉ chạy trên nhánh mặc định). Đừng thêm
+    # vào cho "gọn" — sẽ mất đúng thứ file này sinh ra để giữ.
+    #
+    # KHÔNG dùng `cooldown`: nó chỉ chạm version update (đã tắt), còn cổng tuổi
+    # gói cho bản vá bảo mật đã do `minimumReleaseAge` của pnpm giữ ở tầng
+    # install — chính cổng đó đã chặn `@maplibre/maplibre-gl-style-spec@26.4.2`
+    # hôm nay và tự lùi về 26.4.1.
+
+  # ── GitHub Actions ──────────────────────────────────────────────────────────
+  # Cùng lập trường: nhận bản vá bảo mật cho action, không nhận PR nâng phiên
+  # bản định kỳ. `.github/workflows/` là nơi duy nhất có action.
+  - package-ecosystem: github-actions
+    directory: '/'
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
