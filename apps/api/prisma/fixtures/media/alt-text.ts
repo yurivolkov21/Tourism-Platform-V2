@@ -295,4 +295,38 @@ export const altText: Record<string, string> = {
     'The skyline at blue hour across the river, seen from a rocky bank where old wooden pilings stand out of the water.',
   'tourism/catalog/destination/ho-chi-minh-city/gallery-17':
     'A café balcony of bar stools looking straight across at the pink church, monstera leaves framing one side of the view.',
+  'tourism/catalog/destination/hoi-an/gallery-01':
+    'Wooden boats moored along the river with big round lanterns on their prows, the yellow shophouse waterfront and its crowds behind them.',
+  'tourism/catalog/destination/hoi-an/gallery-02':
+    'A canopy of lit silk lanterns in every colour and shape hanging close together under leaves.',
+  'tourism/catalog/destination/hoi-an/gallery-03':
+    'An Old Town street with bolts of fabric hung outside the tailor shops, bougainvillea overhead and people strolling and cycling down the middle.',
+  'tourism/catalog/destination/hoi-an/gallery-04':
+    'A mustard-yellow shophouse with blue shutters smothered in flowering vine, red lanterns strung under the awning and a cyclist blurring past.',
+  'tourism/catalog/destination/hoi-an/gallery-05':
+    'A wooden footbridge over a canal at the edge of town, a painted signboard on its rail and a café under a big tree on the far bank.',
+  'tourism/catalog/destination/hoi-an/gallery-06':
+    'Rows of wooden boats packed along the river in low sun, their bows loaded with paper lanterns and the yellow waterfront standing behind.',
+  'tourism/catalog/destination/hoi-an/gallery-07':
+    'Silk lanterns of many shapes hung close together in a lit courtyard, red envelopes and ribbons dangling among them.',
+  'tourism/catalog/destination/hoi-an/gallery-08':
+    'Cyclos and cyclists moving down an Old Town street at dusk between shopfronts hung with glowing lanterns.',
+  'tourism/catalog/destination/hoi-an/gallery-09':
+    'The waterfront seen from across the river, a terrace of old tiled-roof houses with people walking the quay and boats moored below.',
+  'tourism/catalog/destination/hoi-an/gallery-10':
+    'A huge bougainvillea in full pink flower spilling over the front of a yellow café, people posing beneath it while motorbikes blur past.',
+  'tourism/catalog/destination/hoi-an/gallery-11':
+    'A pink bicycle propped against a yellow wall beside a wooden shop doorway, bamboo and a small lantern hanging above it.',
+  'tourism/catalog/destination/hoi-an/gallery-12':
+    'Three green cyclos parked under a spreading tree on a quiet corner of yellow houses in early light.',
+  'tourism/catalog/destination/hoi-an/gallery-13':
+    'A crowd filling a narrow Old Town street with a Vietnamese flag hanging from a balcony, woven palm-leaf figures in the foreground.',
+  'tourism/catalog/destination/hoi-an/gallery-14':
+    'A tour boat moored in front of a two-storey yellow assembly hall with a tiled roof and red banners, seen from the water.',
+  'tourism/catalog/destination/hoi-an/gallery-15':
+    'Round basket boats crowded into a village creek, ferrymen paddling among them and thatched stalls lining the bank.',
+  'tourism/catalog/destination/hoi-an/gallery-16':
+    'A plank walkway zigzagging across a marsh toward jungle and a mountain half-covered in cloud.',
+  'tourism/catalog/destination/hoi-an/gallery-17':
+    'A long weathered brick wall of a Chăm temple with carved pilasters and lattice windows, fallen columns lying in front of it.',
 };
