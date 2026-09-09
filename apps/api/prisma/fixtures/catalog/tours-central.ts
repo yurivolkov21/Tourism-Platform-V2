@@ -1064,6 +1064,77 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       "We reschedule to the next available evening at no extra cost, or refund that activity pro-rata if your dates don't allow a reschedule.",
   },
+
+  // ── Câu thứ 5, thêm 09/09/2026 (đợt làm giàu nội dung, bước 3) ────────────
+  // Trước đợt này FAQ rải 3–5 câu/tour (trung bình 4,1). Nay đều 5 câu cho cả 29
+  // tour. Mỗi câu neo vào một DỮ KIỆN THẬT của chính tour đó — cỡ đoàn, số ngày
+  // huỷ miễn phí, điểm hẹn, hoặc một mục trong `excluded` — chứ không phải câu
+  // chung chung. Các góc đã dùng nhiều (thời tiết, trẻ em, mang gì, ăn chay,
+  // phụ thu lẻ, mùa đẹp) cố ý tránh lặp lại trong cùng một tour.
+  {
+    id: 'd2000002-0000-4000-8000-000000000500',
+    tourId: 'd0000002-0000-4000-8000-000000000017', // bana-hills-golden-bridge-day
+    order: 5,
+    question: 'Is Fantasy Park included, or do I pay inside?',
+    answer:
+      'The cable car and Fantasy Park entry are covered. Individual ride tickets inside the park are not — pay only for the ones you actually want.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000503',
+    tourId: 'd0000002-0000-4000-8000-000000000021', // central-honeymoon-5d
+    order: 5,
+    question: 'How late can we move or cancel the dates?',
+    answer:
+      'Free cancellation up to 21 days before departure — the longest window we offer, because this itinerary books private guides and rooms well ahead.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000507',
+    tourId: 'd0000002-0000-4000-8000-000000000016', // hoi-an-countryside-cooking-day
+    order: 5,
+    question: 'Do we each cook, or share a station?',
+    answer:
+      'Each guest gets their own station and their own plate. The class caps at twelve so the kitchen never turns into a queue.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000508',
+    tourId: 'd0000002-0000-4000-8000-000000000015', // hoi-an-lantern-evening
+    order: 5,
+    question: 'Where do we meet — is there hotel pickup?',
+    answer:
+      'Meet at the Ancient Town ticket booth on Nguyễn Thái Học street. The Old Town closes to cars in the evening, so a hotel pickup would drop you at the same barrier anyway.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000509',
+    tourId: 'd0000002-0000-4000-8000-000000000013', // hue-imperial-day
+    order: 5,
+    question: 'Is the cơm hến tasting included?',
+    answer:
+      'No — it is a pay-as-you-go stop, usually a couple of dollars. We leave it out of the price so you can skip it if the morning has already fed you.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000513',
+    tourId: 'd0000002-0000-4000-8000-000000000018', // my-son-sunrise-halfday
+    order: 5,
+    question: 'What time are we back, and why is lunch not included?',
+    answer:
+      'Back in Hội An before midday. It is a half-day by design — you get the ruins before the tour buses and the heat, and your afternoon stays free.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000515',
+    tourId: 'd0000002-0000-4000-8000-000000000014', // phong-nha-paradise-cave-day
+    order: 5,
+    question: 'Is there a camera fee inside Paradise Cave?',
+    answer:
+      'Yes — the cave charges a personal photography fee at the entrance, paid on site. It is small, but it is not included in the tour price.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000518',
+    tourId: 'd0000002-0000-4000-8000-000000000020', // quy-nhon-coastal-3d
+    order: 5,
+    question: 'Does the trip start at the airport?',
+    answer:
+      'Yes — we meet your arrival at Phù Cát Airport on day one. The domestic flight itself is not included, so book it to land before early afternoon.',
+  },
 ];
 
 export const tourPolicies: TourPolicyFixture[] = [

@@ -935,6 +935,85 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'Yes — mention the occasion at booking and we arrange a welcome cake and flowers in the room ahead of your arrival.',
   },
+
+  // ── Câu thứ 5, thêm 09/09/2026 (đợt làm giàu nội dung, bước 3) ────────────
+  // Trước đợt này FAQ rải 3–5 câu/tour (trung bình 4,1). Nay đều 5 câu cho cả 29
+  // tour. Mỗi câu neo vào một DỮ KIỆN THẬT của chính tour đó — cỡ đoàn, số ngày
+  // huỷ miễn phí, điểm hẹn, hoặc một mục trong `excluded` — chứ không phải câu
+  // chung chung. Các góc đã dùng nhiều (thời tiết, trẻ em, mang gì, ăn chay,
+  // phụ thu lẻ, mùa đẹp) cố ý tránh lặp lại trong cùng một tour.
+  {
+    id: 'd2000002-0000-4000-8000-000000000501',
+    tourId: 'd0000002-0000-4000-8000-000000000026', // ben-tre-coconut-day
+    order: 5,
+    question: 'How large is the group?',
+    answer:
+      'Fourteen guests at most, and the sampan that threads the coconut canals splits smaller than that — you are never in a convoy.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000502',
+    tourId: 'd0000002-0000-4000-8000-000000000026', // ben-tre-coconut-day
+    order: 5,
+    question: 'Am I expected to buy something at the coconut workshop?',
+    answer:
+      'No. The workshop visit is a demonstration, not a sales stop; anything you buy there is your own choice and not part of the price.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000504',
+    tourId: 'd0000002-0000-4000-8000-000000000027', // da-lat-highlands-3d
+    order: 5,
+    question: 'Are lunches and dinners included?',
+    answer:
+      'No, and deliberately so. Your guide recommends places at each stop and you choose — Đà Lạt eats well at every budget, and fixing the menu three days ahead would waste that.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000512',
+    tourId: 'd0000002-0000-4000-8000-000000000025', // mekong-can-tho-2d
+    order: 5,
+    question: 'Are drinks included with meals?',
+    answer:
+      'Meals are included; drinks beyond them are not. Bottled water is on the boat all day at no charge.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000516',
+    tourId: 'd0000002-0000-4000-8000-000000000029', // phu-quoc-honeymoon-4d
+    order: 5,
+    question: 'Are the flights to Phú Quốc included?',
+    answer:
+      'No. Domestic flights are yours to book; we meet you at Phú Quốc International Airport whenever you land and the itinerary starts from there.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000517',
+    tourId: 'd0000002-0000-4000-8000-000000000028', // phu-quoc-island-hopping-day
+    order: 5,
+    question: 'I am a certified diver — can I dive instead of snorkel?',
+    answer:
+      'Yes. Bring your certification card and tell us when booking; the dive upgrade is arranged with the boat crew and charged separately.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000520',
+    tourId: 'd0000002-0000-4000-8000-000000000024', // saigon-after-dark-vespa
+    order: 5,
+    question: 'Where does the evening start?',
+    answer:
+      'At our Vespa garage on Nguyễn Huệ walking street in District 1 — not at your hotel. Riders leave from the garage together so the group stays in formation through traffic.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000521',
+    tourId: 'd0000002-0000-4000-8000-000000000023', // saigon-cu-chi-day
+    order: 5,
+    question: 'Is the shooting range included?',
+    answer:
+      'The range is on the route and you are free to watch. Ammunition is optional and paid on site — nobody is pushed to shoot.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000524',
+    tourId: 'd0000002-0000-4000-8000-000000000022', // vung-tau-coastal-2d
+    order: 5,
+    question: 'Are meals included?',
+    answer:
+      'No. Your guide books the tables and you pick from the menu — Vũng Tàu is a seafood town and half the pleasure is choosing your own catch.',
+  },
 ];
 
 export const tourPolicies: TourPolicyFixture[] = [

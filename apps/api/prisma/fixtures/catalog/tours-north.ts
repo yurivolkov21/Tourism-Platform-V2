@@ -1697,6 +1697,77 @@ export const tourFaqs: TourFaqFixture[] = [
     answer:
       'Domestic flights on this itinerary allow 20kg checked — pack accordingly, as the tour van also has limited trunk space for two flight transfers.',
   },
+
+  // ── Câu thứ 5, thêm 09/09/2026 (đợt làm giàu nội dung, bước 3) ────────────
+  // Trước đợt này FAQ rải 3–5 câu/tour (trung bình 4,1). Nay đều 5 câu cho cả 29
+  // tour. Mỗi câu neo vào một DỮ KIỆN THẬT của chính tour đó — cỡ đoàn, số ngày
+  // huỷ miễn phí, điểm hẹn, hoặc một mục trong `excluded` — chứ không phải câu
+  // chung chung. Các góc đã dùng nhiều (thời tiết, trẻ em, mang gì, ăn chay,
+  // phụ thu lẻ, mùa đẹp) cố ý tránh lặp lại trong cùng một tour.
+  {
+    id: 'd2000002-0000-4000-8000-000000000505',
+    tourId: 'd0000002-0000-4000-8000-000000000002', // hanoi-heritage-day
+    order: 5,
+    question: 'Which hotels do you pick up from?',
+    answer:
+      'Hoàn Kiếm, Ba Đình and Tây Hồ districts. If you are staying further out, meet us at the first stop instead — tell us when booking.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000506',
+    tourId: 'd0000002-0000-4000-8000-000000000001', // hanoi-old-quarter-food-night
+    order: 5,
+    question: 'Is there hotel pickup?',
+    answer:
+      'The walk starts at Đông Kinh Nghĩa Thục Square on the north edge of Hoàn Kiếm Lake. Pickup from hotels outside the Old Quarter and French Quarter is possible for a surcharge.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000510',
+    tourId: 'd0000002-0000-4000-8000-000000000006', // lan-ha-kayak-cruise-3d
+    order: 5,
+    question: 'How many guests are on the boat?',
+    answer:
+      'Up to twenty, which is a full but not crowded deck. Kayaks go out in staggered groups so the bay never has all twenty paddling the same cave mouth.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000511',
+    tourId: 'd0000002-0000-4000-8000-000000000010', // mai-chau-cycling-2d
+    order: 5,
+    question: 'How late can I cancel?',
+    answer:
+      'Free cancellation up to 3 days before departure. It is a short window because the stilt-house rooms in Bản Lác are held for you individually.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000514',
+    tourId: 'd0000002-0000-4000-8000-000000000004', // ninh-binh-trang-an-day
+    order: 5,
+    question: 'Can we do the Tam Cốc route instead of Tràng An?',
+    answer:
+      'Not on this tour. The Tam Cốc boat route is a separate ticket and a different pier; this day is built around the Tràng An loop and the Múa Cave climb.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000519',
+    tourId: 'd0000002-0000-4000-8000-000000000003', // red-river-craft-villages-day
+    order: 5,
+    question: 'My piece needs firing — can you ship it to me?',
+    answer:
+      'The Bát Tràng kiln can fire and glaze it after you leave, and the workshop arranges shipping at your cost. Allow about two weeks.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000522',
+    tourId: 'd0000002-0000-4000-8000-000000000008', // sapa-fansipan-summit-3d
+    order: 5,
+    question: 'Do I need travel insurance?',
+    answer:
+      'It is not included and we strongly recommend it. The summit day puts you above 3,000 m and weather can turn a plan into an evacuation.',
+  },
+  {
+    id: 'd2000002-0000-4000-8000-000000000523',
+    tourId: 'd0000002-0000-4000-8000-000000000007', // sapa-terraces-homestay-2d
+    order: 5,
+    question: 'How late can I cancel?',
+    answer:
+      'Free cancellation up to 5 days before departure — the homestay family shops for your meals ahead of time.',
+  },
 ];
 
 export const tourPolicies: TourPolicyFixture[] = [
