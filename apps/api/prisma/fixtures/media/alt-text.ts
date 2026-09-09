@@ -329,4 +329,40 @@ export const altText: Record<string, string> = {
     'A plank walkway zigzagging across a marsh toward jungle and a mountain half-covered in cloud.',
   'tourism/catalog/destination/hoi-an/gallery-17':
     'A long weathered brick wall of a Chăm temple with carved pilasters and lattice windows, fallen columns lying in front of it.',
+  'tourism/catalog/destination/hue/gallery-01':
+    'The tiered pavilion of the Huế citadel gate riding its stone rampart, glazed roof tiles catching the light and potted chrysanthemums lining the ramps below.',
+  'tourism/catalog/destination/mai-chau/gallery-01':
+    'A bicycle parked at the edge of a vivid green paddy, a farmer in a conical hat working among the maize rows behind.',
+  'tourism/catalog/destination/mai-chau/gallery-02':
+    'Rice fields at sunset with mountains fading behind, a farmer walking the bund and part of the crop already cut.',
+  'tourism/catalog/destination/mai-chau/gallery-03':
+    'A wooden deck with tree-stump stools looking out across a green paddy toward a wall of forested karst peaks.',
+  'tourism/catalog/destination/ninh-binh/gallery-01':
+    'A brown river winding between forested karst peaks with paddy fields along both banks, seen from high above.',
+  'tourism/catalog/destination/ninh-binh/gallery-02':
+    'A dark tiled temple pavilion standing on stilts in a green river below a jungle cliff, a rowing boat passing in front of it.',
+  'tourism/catalog/destination/ninh-binh/gallery-03':
+    'The stone stairway at Mua Cave climbing a jagged peak to a small pagoda at the top, rice fields spreading to the horizon in evening light.',
+  'tourism/catalog/destination/ninh-binh/gallery-04':
+    'A boatman poling a bamboo raft at sunrise, karst peaks in silhouette and the sun laying a bright track across the water.',
+  'tourism/catalog/destination/ninh-binh/gallery-05':
+    'A rounded scrub-covered karst hill standing alone in ripe golden rice fields with a farmhouse at its foot.',
+  'tourism/catalog/destination/ninh-binh/gallery-06':
+    'Rowing boats setting out from under a low cave mouth, passengers in orange life jackets and daylight and reeds beyond.',
+  'tourism/catalog/destination/ninh-binh/gallery-07':
+    'A canal running along the foot of a limestone cliff between bright green paddies, a white path on the bund and karst peaks in the distance.',
+  'tourism/catalog/destination/ninh-binh/gallery-08':
+    'The bow of a boat with a small red flag heading up a river between steep jungle-covered karst.',
+  'tourism/catalog/destination/ninh-binh/gallery-09':
+    'Seen over the shoulder of a woman in a conical hat, a boat moving up a still river toward a tall karst peak.',
+  'tourism/catalog/destination/ninh-binh/gallery-10':
+    'Rowing boats crossing a lake in front of a stone temple pavilion on stilts, the view framed by overhanging leaves.',
+  'tourism/catalog/destination/ninh-binh/gallery-11':
+    'A river curving through a valley of paddy and karst peaks under a clear sky, seen from a hilltop.',
+  'tourism/catalog/destination/ninh-binh/gallery-12':
+    'The Mua Cave stairway and its peak in heavy rain haze, flooded paddies and village roofs spread out grey below.',
+  'tourism/catalog/destination/ninh-binh/gallery-13':
+    'A stone pagoda tower lit gold at dusk on a rocky summit, safety chains strung along the rock and dark karst behind.',
+  'tourism/catalog/destination/ninh-binh/gallery-14':
+    'A rowing boat carrying passengers up a green river toward a sunlit gap between jungle cliffs, leaves framing the top of the view.',
 };
