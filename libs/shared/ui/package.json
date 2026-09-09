@@ -18,7 +18,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19.2.3",
     "typescript": "7.0.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "peerDependencies": {
     "react": "^19",
