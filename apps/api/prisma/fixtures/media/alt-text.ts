@@ -39,4 +39,42 @@ export const altText: Record<string, string> = {
     'Sa Pa town half-swallowed by cloud, a hotel façade and pine tops rising out of the mist with mountains behind.',
   'tourism/catalog/post/when-to-come-and-when-not-to/hero':
     'Terraced paddies stepping down a northern valley under low cloud, ridge behind ridge fading into rain light.',
+
+  // ── Ảnh bìa địa danh (18) ─────────────────────────────────────────────────
+  'tourism/catalog/destination/ben-tre/hero':
+    'Painted wooden basket boats rafted together in a narrow channel walled by dense water-coconut palms, seen from directly above.',
+  'tourism/catalog/destination/can-tho/hero':
+    "Cần Thơ Bridge's single tall pylon and its fan of cables rising over the deck, motorbikes crossing beneath a bank of white cloud.",
+  'tourism/catalog/destination/cat-ba/hero':
+    'A row of thatched bungalows on a small sandy cove wedged between forested limestone cliffs, pale green water lapping the shore.',
+  'tourism/catalog/destination/da-lat/hero':
+    "Đà Lạt railway station's yellow art-deco façade with three pointed gables, a clock above the entrance and Vietnamese flags out front.",
+  'tourism/catalog/destination/da-nang/hero':
+    "The Dragon Bridge's head lit orange against a night sky, its body arching away over the roadway while motorbikes ride the deck under a full moon.",
+  'tourism/catalog/destination/ha-giang/hero':
+    'The Nho Quế river running turquoise along the floor of a deep gorge, steep green limestone walls on both sides and terraced slopes in the foreground.',
+  'tourism/catalog/destination/ha-long/hero':
+    'Rowing boats of visitors in orange life jackets gliding beneath a huge grey limestone cliff that drops straight into jade water.',
+  'tourism/catalog/destination/hanoi/hero':
+    'The red wooden Húc Bridge seen across Hoàn Kiếm Lake, framed by leaning trees and doubled in the still green water.',
+  'tourism/catalog/destination/ho-chi-minh-city/hero':
+    "The People's Committee building's cream colonial façade and clock tower flying the Vietnamese flag, seen along the lawns of Nguyễn Huệ under piled cumulus.",
+  'tourism/catalog/destination/hoi-an/hero':
+    'The Japanese Covered Bridge arching over a narrow canal in Hội An, its tiled roof and carved gable beside an ochre wall where visitors stop to pose.',
+  'tourism/catalog/destination/hue/hero':
+    'An ornate gate of the Huế citadel with three arched doorways, its porcelain-mosaic panels and tiled roof framed by overhanging branches.',
+  'tourism/catalog/destination/mai-chau/hero':
+    'A lane of wooden stilt houses in a Mai Châu village, a Vietnamese flag hanging from each veranda and a forested hillside rising behind.',
+  'tourism/catalog/destination/ninh-binh/hero':
+    'The stone stairway at Mua Cave winding up a jagged karst peak to a small pagoda tower, green rice fields spreading to the horizon below.',
+  'tourism/catalog/destination/phong-nha/hero':
+    'A river curving between karst mountains and paddy fields, villages strung along both banks under towering cloud.',
+  'tourism/catalog/destination/phu-quoc/hero':
+    'Four coconut palms leaning far out over white sand toward a pastel sunset, a rope swing hung from one and two boats on the flat sea.',
+  'tourism/catalog/destination/quy-nhon/hero':
+    'Dozens of small boats moored over turquoise shallows, coral and seagrass showing dark through the clear water, seen from directly above.',
+  'tourism/catalog/destination/sa-pa/hero':
+    'Tiered temple roofs and a golden pagoda standing above a sea of cloud at the summit of Fansipan, a broad stone stairway climbing toward them.',
+  'tourism/catalog/destination/vung-tau/hero':
+    "Vũng Tàu's rooftops and palms running down to the bay, the green headland of Small Mountain curving out into the sea under a clear sky.",
 };
