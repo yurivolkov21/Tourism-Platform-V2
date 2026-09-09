@@ -1,0 +1,65 @@
+[
+  {
+    "id": "019fdf0b-0936-733e-bd5f-2130b9c40d1d",
+    "slug": "bridges-beaches-and-bun-cha-ca",
+    "title": "Bridges, beaches and bún chả cá",
+    "status": "PUBLISHED",
+    "published_at": "2026-05-02T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-067b-77a8-826b-12c620613662",
+    "slug": "crossing-hanoi-on-foot",
+    "title": "Crossing Hanoi on foot",
+    "status": "PUBLISHED",
+    "published_at": "2026-05-20T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-00c2-7299-8efb-b295bf3838d2",
+    "slug": "eating-your-way-through-hoi-an",
+    "title": "Eating your way through Hoi An",
+    "status": "PUBLISHED",
+    "published_at": "2026-07-08T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-0234-75d3-99b8-bab99c3d359d",
+    "slug": "floating-markets-before-sunrise",
+    "title": "Floating markets before sunrise",
+    "status": "PUBLISHED",
+    "published_at": "2026-06-25T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-03a1-758e-86a0-915b85594db7",
+    "slug": "reading-a-hue-royal-tomb",
+    "title": "Reading a Huế royal tomb",
+    "status": "PUBLISHED",
+    "published_at": "2026-03-27T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-07eb-73aa-b76e-98ee925a21df",
+    "slug": "the-bay-without-the-crowds",
+    "title": "The bay without the crowds",
+    "status": "PUBLISHED",
+    "published_at": "2026-04-14T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-050e-753c-8dfb-aa7afb46fdb0",
+    "slug": "two-days-among-the-karsts",
+    "title": "Two days among the karsts",
+    "status": "PUBLISHED",
+    "published_at": "2026-03-10T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0a-ff4a-754b-be46-5572386277f7",
+    "slug": "what-to-pack-for-the-mist-season",
+    "title": "What to pack for the mist season",
+    "status": "PUBLISHED",
+    "published_at": "2026-07-22T01:00:00.000Z"
+  },
+  {
+    "id": "019fdf0b-0a81-71af-a01b-cb478e3d0134",
+    "slug": "when-to-come-and-when-not-to",
+    "title": "When to come, and when not to",
+    "status": "PUBLISHED",
+    "published_at": "2026-06-08T01:00:00.000Z"
+  }
+]
