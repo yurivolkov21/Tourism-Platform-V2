@@ -113,6 +113,12 @@ i18n · test xanh giả · tài liệu), 10 phát hiện, tất cả CONFIRMED. 
   `ErrorBoundary` gốc GỠ SPLASH (không có nó thì mọi lỗi render là splash đứng
   vĩnh viễn); bỏ tiêu đề vẽ hai lần trên 6 màn có header.
 
+Cùng đợt, **nâng `expo` 57.0.20 → 57.0.21 và `expo-router` 57.0.19 → 57.0.20**:
+hai patch upstream ra sau khi nhánh dựng làm `expo-doctor` tụt xuống 20/21. Vẫn
+trong SDK 57 và trong cửa sổ trước freeze 15/10; pnpm tự thêm 9 mục vào
+`minimumReleaseAgeExclude` (2 gói đích và 7 dependency bắc cầu) theo đúng nếp
+các đợt Next trước. Sau khi nâng: `expo-doctor` **21/21**.
+
 **Hai phát hiện của vòng review bị BÁC sau khi đo lại:** (a) "`{...rest}` xoá
 `accessibilityState` của Button" — `Pressable` của React Native ép lại `disabled`
 mỗi khi prop `disabled` khác null, đã thêm test ghim lời bảo đảm đi mượn đó;
@@ -121,27 +127,24 @@ trong cây (jest-expo 57 dùng `test-renderer`, resolve đúng 19.2.4).
 
 **CÒN TREO — việc cho merge / P5b:**
 
-1. **`expo-doctor` 20/21** — `expo` và `expo-router` có patch mới ở upstream
-   (57.0.21 / 57.0.20) sau khi nhánh dựng. KHÔNG phải do vòng vá; nâng hay
-   không là quyết định riêng vì đụng dependency trước freeze 15/10.
-2. **`react` 19.2.4 thay vì 19.2.3 theo ma trận Expo** — do `overrides` toàn
+1. **`react` 19.2.4 thay vì 19.2.3 theo ma trận Expo** — do `overrides` toàn
    workspace (chốt 27/07, vá bug hai bản React ở Vitest), không sửa được từ
    phía mobile. Manifest đã sửa cho đúng sự thật. `expo.install.exclude` giữ
    react VÀ typescript, nghĩa là expo-doctor KHÔNG canh hai gói đó — ADR-0040
    §7 cần AMEND cả con số lẫn câu lập luận "pnpm cô lập nên hai bản React sống
    cạnh nhau không đụng" (sai với repo này).
-3. **Chưa có icon tab, icon app, ảnh splash** — `app.json` cố ý không trỏ asset
+2. **Chưa có icon tab, icon app, ảnh splash** — `app.json` cố ý không trỏ asset
    nào. P5b.
-4. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040.
-5. **Tiêu đề header đọc từ i18n chưa có test** — prop native của
+3. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040.
+4. **Tiêu đề header đọc từ i18n chưa có test** — prop native của
    `RNSScreenStackHeaderConfig` không truy được, RNTL 14 bỏ nhóm `UNSAFE_*`.
    Lớp canh i18n còn ở 5 tab và nhãn thanh tab.
-6. **`bookings/[code]` chưa có gác đăng nhập** và tham số deep link chưa được
+5. **`bookings/[code]` chưa có gác đăng nhập** và tham số deep link chưa được
    kẹp — nợ đã ghi thành comment tại chỗ, P5b phải trả trước khi nối API.
-7. **`EXPO_PUBLIC_API_URL` trong `.env.local` là `http://localhost:3001`** —
+6. **`EXPO_PUBLIC_API_URL` trong `.env.local` là `http://localhost:3001`** —
    điện thoại không hiểu địa chỉ đó. Từ P5b phải trỏ API đã deploy (nay bắt
    buộc `https` với host thật) hoặc mở thêm tunnel cho cổng 3001.
-8. **Đổi dark/light chưa có mắt người xác nhận** — nhánh `useColorScheme` mới
+7. **Đổi dark/light chưa có mắt người xác nhận** — nhánh `useColorScheme` mới
    có test đơn vị.
 
 Tests after: **3.257 unit** (913 admin và 1.499 web và 463 api và 255 contract

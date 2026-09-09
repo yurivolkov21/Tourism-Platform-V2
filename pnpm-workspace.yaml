@@ -13,31 +13,22 @@ allowBuilds:
   # sharp: Next.js image optimization (next/image) — cần build native binary.
   sharp: true
 
-# Next 16.2.11 vừa release: pnpm supply-chain gate (minimumReleaseAge) tự loại
-# trừ để cài ngay. Giữ nguyên — đúng phiên bản đã chốt.
+# Cổng supply-chain của pnpm (minimumReleaseAge) chặn gói vừa phát hành; mục ở
+# đây là những bản CỐ Ý cài ngay. Hai đợt Next: 16.2.11 (bản đã chốt) và 16.3.0
+# (GA 03/08/2026, nâng trong cửa sổ trước freeze vì hỗ trợ TS7 chính thức cho
+# `next build`). pnpm tự gộp hai đợt thành dạng `||` khi ghi lại file — nội dung
+# không đổi, chỉ là cách trình bày của nó.
 minimumReleaseAgeExclude:
-  - '@next/env@16.2.11'
-  - '@next/swc-darwin-arm64@16.2.11'
-  - '@next/swc-darwin-x64@16.2.11'
-  - '@next/swc-linux-arm64-gnu@16.2.11'
-  - '@next/swc-linux-arm64-musl@16.2.11'
-  - '@next/swc-linux-x64-gnu@16.2.11'
-  - '@next/swc-linux-x64-musl@16.2.11'
-  - '@next/swc-win32-arm64-msvc@16.2.11'
-  - '@next/swc-win32-x64-msvc@16.2.11'
-  - next@16.2.11
-  # Next 16.3.0 GA 03/08/2026 — nâng ngay trong cửa sổ trước freeze (hỗ trợ
-  # TS7 chính thức cho next build); cùng nếp exclude như đợt 16.2.11.
-  - '@next/env@16.3.0'
-  - '@next/swc-darwin-arm64@16.3.0'
-  - '@next/swc-darwin-x64@16.3.0'
-  - '@next/swc-linux-arm64-gnu@16.3.0'
-  - '@next/swc-linux-arm64-musl@16.3.0'
-  - '@next/swc-linux-x64-gnu@16.3.0'
-  - '@next/swc-linux-x64-musl@16.3.0'
-  - '@next/swc-win32-arm64-msvc@16.3.0'
-  - '@next/swc-win32-x64-msvc@16.3.0'
-  - next@16.3.0
+  - '@next/env@16.2.11 || 16.3.0'
+  - '@next/swc-darwin-arm64@16.2.11 || 16.3.0'
+  - '@next/swc-darwin-x64@16.2.11 || 16.3.0'
+  - '@next/swc-linux-arm64-gnu@16.2.11 || 16.3.0'
+  - '@next/swc-linux-arm64-musl@16.2.11 || 16.3.0'
+  - '@next/swc-linux-x64-gnu@16.2.11 || 16.3.0'
+  - '@next/swc-linux-x64-musl@16.2.11 || 16.3.0'
+  - '@next/swc-win32-arm64-msvc@16.2.11 || 16.3.0'
+  - '@next/swc-win32-x64-msvc@16.2.11 || 16.3.0'
+  - next@16.2.11 || 16.3.0
   - postcss@8.5.23
   - undici@7.29.0
   - fast-uri@3.1.7 || 4.1.3
@@ -48,6 +39,19 @@ minimumReleaseAgeExclude:
   - ip-address@10.2.1 || 10.2.2 || 10.3.1
   - hono@4.12.34
   - brace-expansion@5.0.9
+  # Đợt 09/09 (vòng vá review P5a): expo 57.0.20 → 57.0.21 và expo-router
+  # 57.0.19 → 57.0.20 để `expo-doctor` xanh trở lại — hai patch upstream ra sau
+  # khi nhánh dựng. Bảy mục còn lại là dependency bắc cầu bị kéo theo. Vẫn
+  # trong SDK 57 và trong cửa sổ trước freeze 15/10.
+  - '@expo/cli@57.0.23'
+  - '@expo/metro-file-map@57.0.3'
+  - '@expo/ui@57.0.17'
+  - babel-preset-expo@57.0.11
+  - expo-glass-effect@57.0.2
+  - expo-modules-core@57.0.17
+  - expo-modules-jsi@57.1.0
+  - expo-router@57.0.20
+  - expo@57.0.21
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
