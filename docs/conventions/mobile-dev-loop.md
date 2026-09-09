@@ -97,14 +97,16 @@ Hệ quả phải nhớ: **"gate xanh" một mình không còn bảo chứng mob
 
 ## 4. Hai phiên bản cố ý lệch ma trận Expo
 
-`expo-doctor` xanh 21/21, nhưng chỉ vì `package.json` của `apps/mobile` khai
-`expo.install.exclude` cho hai gói. Đây là đường Expo mở sẵn cho lệch phiên
-bản có chủ đích — không phải cách giấu lỗi:
+`package.json` của `apps/mobile` khai `expo.install.exclude` cho hai gói. Đây
+là đường Expo mở sẵn cho lệch phiên bản có chủ đích — nhưng phải hiểu đúng nó
+làm gì: **`exclude` không đổi resolution, nó chỉ gỡ gói khỏi tầm kiểm của
+`expo-doctor`.** Nghĩa là con số "xanh N/N" KHÔNG nói gì về hai gói dưới đây;
+chúng được canh bằng chính bảng này chứ không bằng máy.
 
 | Gói | Ma trận SDK 57 | Repo dùng | Vì sao |
 | --- | --- | --- | --- |
 | `typescript` | `~6.0.3` | **7.0.2** | Toolchain repo bắt tsgo (CLAUDE.md). Đã đo: tsgo typecheck được codebase RN, và bắt đúng lỗi prop RN. |
-| `react` | `19.2.3` | **19.2.4** | `overrides` trong `pnpm-workspace.yaml` (chốt 27/07, chữa bug hai bản React ở Vitest) áp cho CẢ workspace. Sửa overrides để chiều mobile là mở lại đúng lớp bug đó. |
+| `react` | `19.2.3` | **19.2.4** | `overrides` trong `pnpm-workspace.yaml` (chốt 27/07, chữa bug hai bản React ở Vitest) áp cho CẢ workspace. Sửa overrides để chiều mobile là mở lại đúng lớp bug đó. Manifest hai package mobile khai **19.2.4** — đúng bản thực cài; khai 19.2.3 cho khớp ma trận là một lời nói dối trong file mà người ta tra đầu tiên. |
 
 Nếu `expo-doctor` báo đỏ về gói khác, **đừng thêm vào `exclude` theo phản xạ**
 — `expo-doctor` là trọng tài cho dependency của `apps/mobile` (ADR-0040 §7),
@@ -147,4 +149,13 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
 - **tsgo đòi khai `types` tường minh** trong `tsconfig.json`, đúng gotcha
   04/08. Dùng `types: ["jest", "expo/types"]` — `expo/types/metro-require.d.ts`
   khai `process.env`, nên **không** cần `@types/node` (type Node trong app RN
-  là sai bản chất).
+  là sai bản chất). Hệ quả: spec nào cần API Node (đọc cây file) thì phải đổi
+  cách, không phải mở `types` — xem `routes.spec.tsx` đọc cây route qua
+  `getMockConfig` của expo-router thay vì `node:fs`.
+- **Alias `@/*` của `tsconfig.json` chạy thẳng ở Metro**, không cần khai thêm
+  trong `metro.config.js` (vốn không tồn tại) hay `babel.config.js`.
+- **`react-native-safe-area-context` `SafeAreaView` mặc định `additive` cả 4
+  cạnh** và không thấy phần navigator đã trừ. Màn dưới header hay trong tab
+  PHẢI khai `edges` (dùng `SCREEN_EDGES_UNDER_HEADER` / `SCREEN_EDGES_UNDER_TABS`
+  của `@tourism/mobile-ui`) — khai sai là dải trắng chết hoặc chữ chui xuống
+  thanh cử chỉ, và spec component không bắt được vì test dựng ngoài navigator.

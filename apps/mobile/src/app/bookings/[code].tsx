@@ -1,4 +1,3 @@
-import { messages } from '@tourism/i18n';
 import { SCREEN_EDGES_UNDER_HEADER } from '@tourism/mobile-ui';
 import { useLocalSearchParams } from 'expo-router';
 import { PlaceholderScreen } from '@/components/placeholder-screen';
@@ -19,13 +18,6 @@ import { PlaceholderScreen } from '@/components/placeholder-screen';
  */
 export default function BookingDetailScreen() {
   const { code } = useLocalSearchParams<{ code: string }>();
-  const { titles } = messages.mobile.appShell;
 
-  return (
-    <PlaceholderScreen
-      edges={SCREEN_EDGES_UNDER_HEADER}
-      title={titles.bookingDetail}
-      detail={code}
-    />
-  );
+  return <PlaceholderScreen edges={SCREEN_EDGES_UNDER_HEADER} detail={code} />;
 }

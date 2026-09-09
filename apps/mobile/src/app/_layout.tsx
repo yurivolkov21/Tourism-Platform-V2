@@ -1,6 +1,6 @@
 import { messages } from '@tourism/i18n';
-import { ThemeProvider, useTheme } from '@tourism/mobile-ui';
-import { Stack } from 'expo-router';
+import { AppText, Button, EmptyState, Screen, ThemeProvider, useTheme } from '@tourism/mobile-ui';
+import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -46,11 +46,42 @@ function RootStack() {
   );
 }
 
-export default function RootLayout() {
+/**
+ * Màn lỗi cuối cùng. Hai việc, và việc thứ hai mới là việc quan trọng:
+ * 1. Cho người dùng một câu đọc được thay vì app tắt ngóm.
+ * 2. GỠ SPLASH. `preventAutoHideAsync()` chạy vô điều kiện lúc nạp module, còn
+ *    `hideAsync()` chỉ nằm trong effect của `RootLayout` — mà effect không bao
+ *    giờ chạy nếu render ném. Không có dòng này thì mọi lỗi render là một màn
+ *    splash đứng vĩnh viễn trong bản phát hành.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  const { crash } = messages.mobile.appShell;
+
   useEffect(() => {
-    // Chạm `env` ở đây để lỗi THIẾU biến nổ ngay màn đầu tiên (ADR-0040 §9)
-    // thay vì im lặng tới lúc có màn nào đó gọi API.
-    void env.apiUrl;
+    void SplashScreen.hideAsync();
+  }, []);
+
+  return (
+    <ThemeProvider>
+      <SafeAreaProvider>
+        <Screen>
+          <AppText variant="title">{crash.title}</AppText>
+          <EmptyState title={crash.body} body={error.message}>
+            <Button label={crash.retry} onPress={() => void retry()} />
+          </EmptyState>
+        </Screen>
+      </SafeAreaProvider>
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  // Gọi `env()` TRONG thân render (không phải trong effect): env nay ném lười,
+  // và ném ở đây thì `ErrorBoundary` phía trên bắt được — người dùng thấy một
+  // màn lỗi có chữ, thay vì app đóng ngay lúc mở như khi nó ném lúc nạp module.
+  env();
+
+  useEffect(() => {
     void SplashScreen.hideAsync();
   }, []);
 

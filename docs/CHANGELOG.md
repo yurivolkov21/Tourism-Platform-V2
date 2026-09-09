@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-08 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, 6 commit `ecc62bcf..515920f6`) — **CHƯA merge, chờ review session riêng**
+## 2026-09-08 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, 10 commit thi công `ecc62bcf..3401ce53` và 4 commit vá review `37ce65b1..`) — **CHƯA merge, chờ duyệt**
 
 Session thi công theo [spec P5a](specs/2026-09-08-p5a-mobile-template-design.md)
 và [ADR-0040](adr/0040-mobile-app-expo.md). Mở phase P5. Không migration,
@@ -63,7 +63,7 @@ cả mobile. Nên thêm `toRnScale()` đọc `themeExtras`/`rootExtras` (vốn �
 chứ không đoán: `generated/tokens.css` giữ nguyên TỪNG BYTE (diff trước/sau),
 nên web và admin không đụng gì.
 
-**Bảy thứ phải chạy thật mới biết** (chi tiết ở runbook §6): `newArchEnabled`
+**Bảy thứ phải chạy thật mới biết** (chi tiết ở runbook §5–6): `newArchEnabled`
 đã bị gỡ khỏi schema app config SDK 57 nên để lại là expo-doctor đỏ · `jest`
 phải là `~29.7.0` vì jest-expo@57 khai dependency ở `^29.2.1` (với Jest 30,
 runtime winter của expo ném *"import a file outside of the scope of the test
@@ -80,38 +80,73 @@ thẳng ở Metro, không cần cấu hình thêm.
 API tạm :3001 trên docker theo công thức CI — 25/25 task, lint sạch, int
 496/496 · `pnpm turbo run bundle --filter=@tourism/mobile` xanh (iOS 1254
 module / Android 1380 module) · `pnpm exec expo-doctor` 21/21 ·
-`./scripts/check-rls.sh` xanh · `grep -rn "eslint\|prettier" apps/mobile
-libs/mobile` rỗng · `git status --short docs/navel` rỗng.
+`./scripts/check-rls.sh` xanh · `grep -rn --exclude-dir=.expo "eslint\|prettier"
+apps/mobile libs/mobile` rỗng · `git status --short docs/navel` rỗng.
+(Cổng grep phải loại `.expo/`: `expo start` sinh `.expo/types/router.d.ts` mang
+`/* eslint-disable */`, nên bản không loại KHÔNG BAO GIỜ xanh trên máy đã chạy
+dev server — kể cả chính máy vừa nghiệm thu. Thư mục đó gitignore, không có
+ESLint nào vào repo.)
 
-**CÒN TREO — việc cho session gốc / review:**
+**Vòng vá review ở session gốc (4 commit `37ce65b1..704f5266`).** Review 8 mũi
+theo miền (toolchain · cầu token · primitive a11y · route/deep-link · env/bí mật ·
+i18n · test xanh giả · tài liệu), 10 phát hiện, tất cả CONFIRMED. Vá theo bốn cụm:
 
-1. **`react` là 19.2.4 chứ không phải 19.2.3 như ADR-0040 §7 dự tính.**
-   `overrides` trong `pnpm-workspace.yaml` (chốt 27/07, chữa bug hai bản React
-   ở Vitest) áp cho CẢ workspace. Không sửa overrides để chiều mobile — thay
-   vào đó khai `expo.install.exclude` cho `react` và `typescript`, đúng đường
-   Expo mở sẵn. **Review chốt: giữ vậy và AMEND ADR-0040 §7, hay đổi cách
-   khác.**
-2. **Mở rộng cầu token (`toRnScale`) nằm ngoài phạm vi spec §"Đụng"** — xem
-   đoạn trên; review xác nhận hoặc yêu cầu tách.
-3. **Chưa có icon tab, chưa có icon app / ảnh splash.** `app.json` cố ý không
-   trỏ tới asset nào để không commit ảnh ngoài phạm vi spec. P5b.
-4. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040 (Expo Go không cần
-   EAS; E2E chờ có màn hình thật).
-5. **Nghiệm thu trên máy thật: ĐÃ XONG 08/09** — user chạy dev server, quét QR
-   bằng Expo Go trên ASUS ROG Phone 7 (Android), vào được app, bấm đủ 5 tab,
-   các chuỗi hiện ra khớp danh sách đối chiếu. Còn **một mục chưa kiểm: đổi
-   dark/light** (chưa gạt chế độ màu của máy) — tức nhánh `ThemeProvider` theo
-   `useColorScheme` mới có test đơn vị chứ chưa có mắt người xác nhận.
-   Cửa ải bất ngờ của bước này: `@expo/ngrok` không có sẵn nên `expo start
-   --tunnel` DỪNG ở prompt hỏi cài global mà không báo lỗi gì — ai chạy lần đầu
-   cũng vấp, đã ghi vào runbook.
-6. **`EXPO_PUBLIC_API_URL` trong `.env.local` đang là `http://localhost:3001`**
-   — điện thoại không hiểu địa chỉ đó. Từ P5b (gọi API thật) phải trỏ API đã
-   deploy hoặc mở thêm tunnel cho cổng 3001.
+- **Điều hướng** (`37ce65b1`): thiếu `unstable_settings.anchor` nên mọi deep
+  link là ngõ cụt một chiều — không back, không đường tới tab; nhóm `(auth)`
+  không có nút đóng nào (comment khẳng định ngược lại) nên vào bằng
+  `nexora://login` là kẹt cứng, phải tắt app; `extra.router.sitemap: false` vì
+  expo-router mặc định bật và không có guard `__DEV__` nên `nexora://_sitemap`
+  mở được trong bản phát hành, in cả cây route lẫn phiên bản Hermes/SDK.
+- **Primitive** (`2799c04e`): `Screen` không truyền `edges` nên cộng inset
+  CHỒNG với header của navigator (~63dp dải trắng chết trên 6/12 route), và
+  không cuộn/không tránh bàn phím nên màn có ô nhập thì nút gửi không chạm tới
+  được. Nay `edges` tường minh kèm hai hằng `SCREEN_EDGES_UNDER_TABS`/
+  `SCREEN_EDGES_UNDER_HEADER`, mặc định cuộn được, đệm vào `contentContainerStyle`.
+- **Lưới nói dối** (`704f5266`): task `bundle` thiếu `inputs` nên `.env.local`
+  ngoài hash và cache trả dist cũ mang localhost; đường type scale không có cổng
+  chặn còn ba lớp test canh nó đều là tautology; lưới tokens-only không quét
+  `apps/mobile` và bỏ sót màu không-hex; `typedRoutes` chỉ sống trên máy dev.
+- **Env và bản ghi** (commit này): `env` ném ở module scope — trước cả khi cây
+  React tồn tại, nên `ErrorBoundary` không bắt được và bản phát hành thiếu biến
+  crash câm lúc mở; thêm kiểm dạng URL và ép `https` trừ loopback (Android chặn
+  cleartext, thiếu chốt này là 100% request chết không cảnh báo); thêm
+  `ErrorBoundary` gốc GỠ SPLASH (không có nó thì mọi lỗi render là splash đứng
+  vĩnh viễn); bỏ tiêu đề vẽ hai lần trên 6 màn có header.
 
-Tests after: **3.236 unit** (913 admin và 1.499 web và 463 api và 255 contract
-và 44 mobile-ui và 22 ui và 17 tokens và 17 mobile và 6 i18n) cộng **496 int**.
-Nhánh này thêm 71 test mới: 17 mobile · 44 mobile-ui · 7 tokens · 3 i18n.
+**Hai phát hiện của vòng review bị BÁC sau khi đo lại:** (a) "`{...rest}` xoá
+`accessibilityState` của Button" — `Pressable` của React Native ép lại `disabled`
+mỗi khi prop `disabled` khác null, đã thêm test ghim lời bảo đảm đi mượn đó;
+(b) "`react-test-renderer@19.2.3` lệch với react 19.2.4" — gói đó không có
+trong cây (jest-expo 57 dùng `test-renderer`, resolve đúng 19.2.4).
+
+**CÒN TREO — việc cho merge / P5b:**
+
+1. **`expo-doctor` 20/21** — `expo` và `expo-router` có patch mới ở upstream
+   (57.0.21 / 57.0.20) sau khi nhánh dựng. KHÔNG phải do vòng vá; nâng hay
+   không là quyết định riêng vì đụng dependency trước freeze 15/10.
+2. **`react` 19.2.4 thay vì 19.2.3 theo ma trận Expo** — do `overrides` toàn
+   workspace (chốt 27/07, vá bug hai bản React ở Vitest), không sửa được từ
+   phía mobile. Manifest đã sửa cho đúng sự thật. `expo.install.exclude` giữ
+   react VÀ typescript, nghĩa là expo-doctor KHÔNG canh hai gói đó — ADR-0040
+   §7 cần AMEND cả con số lẫn câu lập luận "pnpm cô lập nên hai bản React sống
+   cạnh nhau không đụng" (sai với repo này).
+3. **Chưa có icon tab, icon app, ảnh splash** — `app.json` cố ý không trỏ asset
+   nào. P5b.
+4. **`eas.json` và Maestro chưa có** — cố ý theo ADR-0040.
+5. **Tiêu đề header đọc từ i18n chưa có test** — prop native của
+   `RNSScreenStackHeaderConfig` không truy được, RNTL 14 bỏ nhóm `UNSAFE_*`.
+   Lớp canh i18n còn ở 5 tab và nhãn thanh tab.
+6. **`bookings/[code]` chưa có gác đăng nhập** và tham số deep link chưa được
+   kẹp — nợ đã ghi thành comment tại chỗ, P5b phải trả trước khi nối API.
+7. **`EXPO_PUBLIC_API_URL` trong `.env.local` là `http://localhost:3001`** —
+   điện thoại không hiểu địa chỉ đó. Từ P5b phải trỏ API đã deploy (nay bắt
+   buộc `https` với host thật) hoặc mở thêm tunnel cho cổng 3001.
+8. **Đổi dark/light chưa có mắt người xác nhận** — nhánh `useColorScheme` mới
+   có test đơn vị.
+
+Tests after: **3.257 unit** (913 admin và 1.499 web và 463 api và 255 contract
+và 52 mobile-ui và 29 mobile và 22 ui và 18 tokens và 6 i18n) cộng **496 int**.
+Nhánh này thêm 93 test mới: 29 mobile · 52 mobile-ui · 8 tokens · 4 i18n.
 
 ## 2026-09-08 — W4 merge + vòng vá review 8 mũi (nhánh `fix/inbound-channels`, 33 commit `6b3c4da..27af99b9` ff vào main: 19 thi công + 8 vá `721250f0..e513dde9` + 2 test + docs; 2 migration — `20260907115144` deploy Supabase 08/09 sớm, `20260908120000_w4_review_fixups` deploy Supabase 08/09 lúc merge, 25/25 up to date)
 

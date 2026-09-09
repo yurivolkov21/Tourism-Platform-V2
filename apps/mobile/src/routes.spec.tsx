@@ -116,22 +116,28 @@ describe('vỏ điều hướng', () => {
     expect(screen.getByText(placeholder)).toBeTruthy();
   });
 
-  it.each([
-    ['/login', shell.titles.login],
-    ['/register', shell.titles.register],
-    ['/forgot-password', shell.titles.forgotPassword],
-  ])('màn auth %s render được', async (url, title) => {
-    const app = await openApp(url);
+  // Sáu màn có header KHÔNG in lại tiêu đề ở thân nữa (navigator đã vẽ) — nên
+  // ở đây chỉ khẳng định được đường dẫn và nội dung thân.
+  //
+  // GHI RÕ CHỖ HỤT: tiêu đề header là prop native của `RNSScreenStackHeaderConfig`,
+  // không phải text truy được; RNTL 14 lại bỏ nhóm query `UNSAFE_*` và
+  // `screen.root` không có `findAll`. Nên "tiêu đề header đọc từ @tourism/i18n"
+  // hiện KHÔNG có test — sai tiêu đề là lỗi thấy ngay bằng mắt trên máy, và
+  // lớp canh i18n vẫn còn ở 5 tab (tiêu đề thân) cùng test nhãn thanh tab.
+  it.each([['/login'], ['/register'], ['/forgot-password']])(
+    'màn auth %s render được',
+    async (url) => {
+      const app = await openApp(url);
 
-    expect(app.pathname()).toBe(url);
-    expect(screen.getAllByText(title).length).toBeGreaterThan(0);
-  });
+      expect(app.pathname()).toBe(url);
+      expect(screen.getByText(placeholder)).toBeTruthy();
+    },
+  );
 
   it('tours/[slug] render được và đọc được slug từ URL', async () => {
     const app = await openApp('/tours/ha-giang-loop');
 
     expect(app.pathname()).toBe('/tours/ha-giang-loop');
-    expect(screen.getAllByText(shell.titles.tourDetail).length).toBeGreaterThan(0);
     expect(screen.getByText('ha-giang-loop')).toBeTruthy();
   });
 
@@ -139,7 +145,6 @@ describe('vỏ điều hướng', () => {
     const app = await openApp('/bookings/NX-2026-0001');
 
     expect(app.pathname()).toBe('/bookings/NX-2026-0001');
-    expect(screen.getAllByText(shell.titles.bookingDetail).length).toBeGreaterThan(0);
     expect(screen.getByText('NX-2026-0001')).toBeTruthy();
   });
 

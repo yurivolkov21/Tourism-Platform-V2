@@ -5,8 +5,13 @@ import { AppText, EmptyState, Screen, type ScreenEdge } from '@tourism/mobile-ui
 // chỗ này — P5b thay dần từng màn bằng nội dung thật, và mỗi lần thay chỉ đổi
 // một file route chứ không đụng tới vỏ điều hướng.
 export interface PlaceholderScreenProps {
-  /** Tiêu đề màn, lấy từ `messages.mobile.appShell.titles` (luật 7). */
-  title: string;
+  /**
+   * Tiêu đề in trong THÂN màn — chỉ truyền cho màn KHÔNG có header (5 tab, vì
+   * `(tabs)/_layout` đặt `headerShown: false`). Màn có header thì tiêu đề đã do
+   * navigator vẽ; in lại ở thân là hai dòng chữ y hệt chồng nhau, nặng nhất ở
+   * `+not-found` nơi thành ba câu nói cùng một chuyện.
+   */
+  title?: string;
   /**
    * Tham số động của route (slug tour, mã booking) — in ra để cây route được
    * nghiệm thu cả phần tham số, không phải chữ user-facing nên không qua i18n.
@@ -25,7 +30,7 @@ export function PlaceholderScreen({ title, detail, edges }: PlaceholderScreenPro
 
   return (
     <Screen edges={edges}>
-      <AppText variant="title">{title}</AppText>
+      {title === undefined ? null : <AppText variant="title">{title}</AppText>}
       {detail === undefined ? null : (
         <AppText tone="muted" variant="caption">
           {detail}

@@ -1934,7 +1934,7 @@ export const messages = {
         ...MOBILE_TAB_COPY,
         login: 'Sign in',
         register: 'Create account',
-        forgotPassword: 'Reset password',
+        forgotPassword: 'Forgot password',
         tourDetail: 'Tour details',
         bookingDetail: 'Your booking',
         notFound: 'Page not found',
@@ -1949,7 +1949,17 @@ export const messages = {
       /** Ô giữ chỗ của màn chưa có nội dung — P5b thay dần từng màn. */
       placeholder: {
         title: 'Coming soon',
-        body: 'This screen is part of the app shell. Its content arrives in a later release.',
+        body: "We're still building this part of the app. Check back in a future update.",
+      },
+      /**
+       * Màn lỗi cuối cùng của app (ErrorBoundary gốc). Hiếm khi thấy, nhưng khi
+       * thấy thì đây là thứ DUY NHẤT người dùng đọc được — nên nó phải là chữ
+       * user-facing thật, không phải stack trace.
+       */
+      crash: {
+        title: 'Something went wrong',
+        body: 'The app ran into an unexpected problem. Try again, and reinstall if it keeps happening.',
+        retry: 'Try again',
       },
       notFound: {
         title: "We couldn't find that page",
