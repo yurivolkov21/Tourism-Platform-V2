@@ -152,6 +152,72 @@ vì 5s, và mỗi `waitFor` thất bại tốn 5s thay vì 1s.
 Tests after (gate:int nhánh 4, lượt xanh): web 122 file · admin 80 · api 47 unit
 và 37 int · contract 16 · ui 5 · i18n 2, tổng 25/25 task turbo cộng 5/5 của
 test:int. Thêm `map-attribution.spec.tsx` (2 test) là lớp canh mới duy nhất.
+## 2026-09-09 — Đóng bề mặt Supabase: tắt Data API và Supabase Auth (thay đổi HẠ TẦNG sống, không có commit code)
+
+Xuất phát từ mail advisor Supabase 08/09 báo CRITICAL `rls_disabled_in_public`
+"as of 06 Sep". Cảnh báo đó **đã hết hạn khi mail tới**: hai bảng thiếu RLS
+(`enquiry_status_events` deploy 03/09, `tour_cost_items` deploy 05/09) đã được
+migration `20260906150000_w2_rls_backstop_new_tables` vá, chạy trên Supabase lúc
+07/09 00:43 UTC — tức sau lượt quét 06/09. Không phải sự cố.
+
+Rà tiếp thì lộ bề mặt thật: `anon` và `authenticated` có đủ 7 quyền trên cả 36
+bảng `public`, PostgREST mở chúng ra Internet, chỉ RLS đứng giữa. User đã đóng
+lúc 08:33–08:37 giờ máy (01:33–01:37 UTC), dựng lại được từ log nền tảng:
+
+1. **Data API tắt** (Integrations → Data API), kèm workaround SQL của Supabase để
+   log khỏi kêu `pg_pgrst_no_exposed_schemas`: tạo một schema rỗng và
+   `alter role authenticator set pgrst.db_schemas = 'pgrst_no_exposed_schemas'`.
+2. **Supabase Auth**: tắt provider Email (mọi provider nay `false`), xoá dòng
+   `auth.users` duy nhất (`user_deleted` lúc 01:37:04Z, do service_role qua mgmt-api).
+
+**Nghiệm thu** — 6 agent đo song song rồi một lượt critic bới lại: REST trả 404
+`PGRST205` với **cả hai** khóa đang bật (anon legacy và `sb_publishable_…`),
+GraphQL 406 `PGRST106`, OpenAPI root 401, RPC 404. Kèm đối chứng SQL rằng dữ liệu
+vẫn còn (`tours` 29 dòng, `users` 63, `bookings` 159, `payment_events` 197) nên 404
+là **bị chặn** chứ không phải bảng rỗng. Chính PostgREST tự khai trong log:
+*"Schema cache loaded 0 Relations, 0 Relationships, 0 Functions"*. Prod không gãy:
+51/51 URL trong sitemap trả 200, `/health` trả `{"status":"ok","database":"up"}`,
+uptime cộng khớp từng giây qua hai lần đo nên không có restart âm thầm. Advisor
+còn **0 error, 7 warning** (giảm từ 8 — lint leaked-password tự rút sau khi tắt
+provider Email) và 36 cộng 31 suggestion, tất cả đã xét và ghi lý do.
+
+Chi tiết, cách kiểm lại, thứ tự hoàn tác và danh sách cố ý bỏ qua nằm ở convention
+mới [supabase-data-api-surface](conventions/supabase-data-api-surface.md).
+
+**Hai phát hiện ngoài phạm vi, nêu để khỏi rơi:**
+
+- Trang `/privacy` đang sống nói *"Sign-in is handled by our authentication provider
+  (Supabase); we never see or store your password."* — sai: xác thực là Better Auth,
+  và `public.accounts` đang giữ **60/63 hash mật khẩu** trong DB của chính dự án.
+  Từ 09/09 câu đó sai gấp đôi vì Supabase Auth đã tắt hẳn. Nguồn
+  `libs/shared/i18n/src/lib/legal/privacy.ts` dòng 25 và 55. Đây là văn bản pháp lý
+  công khai, sẽ bị hỏi khi bảo vệ.
+- `TRUST_PROXY` vẫn chưa đặt, nay đo được bằng chính `/health`: hai lần gọi trả
+  `clientIp` khác nhau (`162.159.98.183` rồi `172.71.81.2`, đều là edge Cloudflare)
+  trong khi `forwardedFor` cho thấy IP thật nằm ở phần tử trái nhất. Rate limit theo
+  IP đang gộp cả Internet vào vài bucket và còn nhảy bucket giữa các request.
+
+**CÒN TREO:**
+
+1. `ALTER FUNCTION public.refunds_sum_within_total() SET search_path = public, pg_temp;`
+   — migration MỚI, kẹp vào lần migration kế tiếp (user dự tính reset và seed lại dữ
+   liệu, làm luôn ở đó).
+2. Sửa hai dòng `privacy.ts` nói trên.
+3. Đặt `TRUST_PROXY` rồi mới bật `PUBLIC_READ_THROTTLE_MODE=enforce` (nợ từ W4).
+4. `disable_signup` vẫn `false` — hiện vô hại vì mọi provider đã tắt, nhưng bật lại
+   một provider là signup mở ngay, không còn lớp thứ hai. Bật "Allow new users to
+   sign up" = OFF nếu muốn phòng hai lớp.
+5. Cân nhắc revoke bớt quyền ghi của `anon`/`authenticated` trên 36 bảng — hiện vẫn
+   đủ 7 quyền, chỉ bị chặn bởi RLS deny-all và việc Data API đã tắt.
+
+**Một vết do chính đợt nghiệm thu để lại, đã kiểm:** phép đo Realtime bằng WebSocket
+thật đánh thức tenant, khiến Supabase tự chạy DDL — partition `realtime.messages`,
+publication `supabase_realtime_messages_publication`, và một logical replication
+slot. Slot đã tự biến mất khi tenant ngủ lại (`pg_replication_slots` rỗng lúc 02:0x
+UTC), publication ở lại và vô hại. Bài học đã ghi vào convention: đó là phép đo
+GHI, không được dùng trong session thi công (CLAUDE.md §15).
+
+Tests after: không đổi — entry này không kèm commit code.
 
 ## 2026-09-09 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, **16 commit ff vào main**: 10 thi công `ecc62bcf..3401ce53`, 4 vá review `37ce65b1..1beab567`, 1 nâng dep `97df1611`, cộng commit docs này — không migration)
 

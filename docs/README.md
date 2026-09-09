@@ -194,6 +194,7 @@ nguyên, di chuyển nguyên văn 03/08) ·
 | [read-then-write-races](conventions/read-then-write-races.md) | Bẫy EvalPlanQual — đã cắn dự án 2 lần, kèm cách sai đã thử |
 | [color-system](conventions/color-system.md) | Hệ màu brand Wuling + 3 vùng: nguồn cảm hứng (Endfield — codename nội bộ), số đo raw → giá trị chốt, tint vùng (đã rút — xem ADR-0015), pháp lý |
 | [mobile-dev-loop](conventions/mobile-dev-loop.md) | Chạy thử app mobile: build tokens TRƯỚC (Metro không tự lo), `--tunnel` là mặc định vì WSL ở NAT, lối LAN khi bật mirrored networking; nghiệm thu bằng `bundle` (gate KHÔNG chạy Metro); hai phiên bản cố ý lệch ma trận Expo; 6 bẫy đã cắn |
+| [supabase-data-api-surface](conventions/supabase-data-api-surface.md) | Bề mặt Supabase sau khi tắt Data API + Auth (09/09): bốn lớp chắn, ba bề mặt CÒN mở (Realtime · Storage · GoTrue), thứ tự hoàn tác, cách kiểm lại bằng cả hai khóa, 7 cảnh báo advisor cố ý bỏ qua và lý do |
 | [soft-404-loading-tsx](conventions/soft-404-loading-tsx.md) | `loading.tsx` trên route động + `notFound()` → HTTP 200 kèm UI 404; luật, cách đo, tách từ plan cụm Tours |
 
 ## Quy tắc viết
