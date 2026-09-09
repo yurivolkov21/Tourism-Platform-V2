@@ -415,4 +415,104 @@ export const altText: Record<string, string> = {
     'Surf breaking white over black boulders below a stone sea wall, a drainage pipe set into the wall above.',
   'tourism/catalog/destination/vung-tau/gallery-06':
     'The town seen from a hillside through the red flowers of a flame tree, towers along the shore and a lagoon behind them.',
+
+  // ── Slot brand-chrome của site (48) ───────────────────────────────────────
+  // Nhiều slot dùng lại đúng tấm ảnh của gallery địa danh (upload thành asset
+  // riêng nên publicId khác); alt giữ NGUYÊN câu, vì cùng ảnh thì cùng nội dung.
+  'tourism/catalog/site/about-cta-video':
+    'A natural rock arch high in a cliff framing a green karst valley, the camera drifting slowly toward the opening.',
+  'tourism/catalog/site/about-gallery-all':
+    'A turquoise bay ringed with forested karst towers, a curved beach along one side and boats moored off it, seen from a cliff path.',
+  'tourism/catalog/site/about-gallery-central':
+    'A long crescent bay with a palm-backed beach seen from a forested headland, sun glinting off the open sea beyond.',
+  'tourism/catalog/site/about-gallery-north':
+    'Ripe rice fields in front of a row of dark stilt houses, cloud pouring over the mountain rising behind them.',
+  'tourism/catalog/site/about-gallery-south':
+    'Round basket boats crowded along a river channel beside thatched huts, a bank of nipa palms on the far side.',
+  'tourism/catalog/site/about-hero':
+    'A valley of rice terraces at sunrise with mist between the ridges and a hamlet on the slope below.',
+  'tourism/catalog/site/about-story':
+    'A vintage blue camper van with its roof tent raised, parked alone on a headland above the sea at sunset.',
+  'tourism/catalog/site/about-team-ceo':
+    'A blocky pixel-art robot in green on a pale background, standing in for a portrait photograph.',
+  'tourism/catalog/site/about-team-guides':
+    'A blocky pixel-art robot in lilac on a pale background, standing in for a portrait photograph.',
+  'tourism/catalog/site/about-team-ops':
+    'A blocky pixel-art robot in mint green with a yellow heart on its chest, standing in for a portrait photograph.',
+  'tourism/catalog/site/about-team-routes':
+    'A blocky pixel-art robot in pink on a pale background, standing in for a portrait photograph.',
+  'tourism/catalog/site/about-timeline-2014':
+    'Terraced fields curving down a hillside in early sun, two figures walking a bund and mist rising off the ridge behind.',
+  'tourism/catalog/site/about-timeline-2017':
+    'Two filled baguettes on a board with coriander, pickled carrot and cucumber, a dish of mustard beside them and an iced green drink behind.',
+  'tourism/catalog/site/about-timeline-2021':
+    'A resort bay at sunset from the air, low villas following a curved beach with islands strung along the horizon.',
+  'tourism/catalog/site/about-timeline-2026':
+    'Visitors walking a dirt path between lotus ponds toward a karst peak, the one in front wearing a conical hat.',
+  'tourism/catalog/site/auth-panel':
+    'The red funicular carriage climbing the last ridge to the Fansipan summit at sunrise, a bronze Buddha and clock tower standing above a sea of cloud.',
+  'tourism/catalog/site/contact-panel':
+    'Travel things laid out on a map and shot from above: leather boots, two cameras, a magnifying glass, a pipe, a notebook and a cup of coffee.',
+  'tourism/catalog/site/cta-band':
+    'A wooden deck with tree-stump stools looking out across a green paddy toward a wall of forested karst peaks.',
+  'tourism/catalog/site/home-hero':
+    'A city at sunrise from the air, one tall tower standing black against the sun with the river and low haze spreading around it.',
+  'tourism/catalog/site/home-why-choose':
+    'A river curving between karst mountains and paddy fields, villages strung along both banks under towering cloud.',
+  'tourism/catalog/site/moment-bentre-canal':
+    'The bow of a wooden sampan with its coiled rope, pointing down a green channel that nipa palms close over from both sides.',
+  'tourism/catalog/site/moment-hagiang-valley':
+    'A road switchbacking down a green mountainside, white and yellow wildflowers close in the foreground and karst ranges receding behind.',
+  'tourism/catalog/site/moment-hoian-river':
+    'Wooden boats moored along the river with big round lanterns on their prows, the yellow shophouse waterfront and its crowds behind them.',
+  'tourism/catalog/site/moment-lanha-kayak':
+    'The orange bow of a kayak on flat emerald water in front of a limestone cliff furred with jungle.',
+  'tourism/catalog/site/moment-myson-towers':
+    'A long weathered brick wall of a Chăm temple with carved pilasters and lattice windows, fallen columns lying in front of it.',
+  'tourism/catalog/site/region-gallery-central-1':
+    'Wooden boats moored along the river with big round lanterns on their prows, the yellow shophouse waterfront and its crowds behind them.',
+  'tourism/catalog/site/region-gallery-central-2':
+    'Rows of wooden boats packed along the river in low sun, their bows loaded with paper lanterns and the yellow waterfront standing behind.',
+  'tourism/catalog/site/region-gallery-central-3':
+    'The Golden Bridge curving round the hilltop at dawn, the giant hands holding it above forested slopes with cloud lying over the plain below.',
+  'tourism/catalog/site/region-gallery-central-4':
+    'The white Lady Buddha statue standing above an altar crowded with bundles of incense sticks and red gladioli.',
+  'tourism/catalog/site/region-gallery-central-5':
+    'Basket boats and a wooden boat on the sand under a heavy storm sky, a small Vietnamese flag planted among them and a fishing fleet offshore.',
+  'tourism/catalog/site/region-gallery-central-6':
+    'Looking out from inside a huge cave mouth toward daylight, a sandy floor and shallow pool below jungle-covered cliffs.',
+  'tourism/catalog/site/region-gallery-north-1':
+    'A yellow-hulled tour boat and two smaller boats on flat water beneath a cluster of forested karst islands.',
+  'tourism/catalog/site/region-gallery-north-2':
+    'Rowing boats setting out from under a low cave mouth, passengers in orange life jackets and daylight and reeds beyond.',
+  'tourism/catalog/site/region-gallery-north-3':
+    'The stone stairway at Mua Cave climbing a jagged peak to a small pagoda at the top, rice fields spreading to the horizon in evening light.',
+  'tourism/catalog/site/region-gallery-north-4':
+    'Terraced fields curving around green hills in morning sun, a river running along the valley floor and farmhouses scattered among the paddies.',
+  'tourism/catalog/site/region-gallery-north-5':
+    'Hanoi Train Street at dusk, paper lanterns strung overhead and café tables crowding right up to both sides of the track.',
+  'tourism/catalog/site/region-gallery-north-6':
+    'Rice fields at sunset with mountains fading behind, a farmer walking the bund and part of the crop already cut.',
+  'tourism/catalog/site/region-gallery-south-1':
+    'A fishing town from the air with hundreds of blue boats packed into the harbour, a green headland and islands beyond.',
+  'tourism/catalog/site/region-gallery-south-2':
+    'The skyline at blue hour across the river, seen from a rocky bank where old wooden pilings stand out of the water.',
+  'tourism/catalog/site/region-gallery-south-3':
+    'Wooden sampans painted blue and red waiting in a muddy Mekong canal, rowers in conical hats sitting at the oars, seen from the bank above.',
+  'tourism/catalog/site/region-signature-south-1':
+    'Wooden rowing boats moored in a narrow channel under a shade net, two women in conical hats sitting in one of them.',
+  'tourism/catalog/site/region-signature-south-2':
+    'The pink church from above, its spire and long tiled nave hemmed in by dense city blocks with traffic passing on the street below.',
+  'tourism/catalog/site/region-signature-south-3':
+    'A resort quarter at sunset gathered around an orange clock tower, a curved footbridge reaching out over a calm gold sea.',
+  'tourism/catalog/site/why-evening':
+    'A canopy of lit silk lanterns in every colour and shape hanging close together under leaves.',
+  'tourism/catalog/site/why-food':
+    'A bowl of rice vermicelli with grilled beef, bean sprouts, fried shallots and herbs on a bamboo mat, a wooden spoon and a dish of peanuts beside it.',
+  'tourism/catalog/site/why-guide':
+    'Three hikers standing on a rock above a blue bay, one with an arm raised, a curved beach and moored boats below them.',
+  'tourism/catalog/site/why-heritage':
+    'An ornate pagoda tower with gilded dragon-tipped eaves against a dramatic cloudy sky, a pine and red lanterns below it.',
+  'tourism/catalog/site/why-river':
+    'Cruise boats scattered across a bay of forested karst islands under a clear blue sky, seen from a hilltop.',
 };
