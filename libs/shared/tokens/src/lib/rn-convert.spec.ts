@@ -60,6 +60,14 @@ describe('lineHeightToDp', () => {
   it('ném lỗi khi gặp dạng lạ', () => {
     expect(() => lineHeightToDp('normal', 16)).toThrow(/line-height/);
   });
+
+  // Dạng `calc(A / B)` chỉ dịch đúng khi B là fontSize của CHÍNH bậc đó tính
+  // theo rem: web nhân tỉ lệ ấy với fontSize thật, còn ở đây ta lấy thẳng tử
+  // số. Đổi `--text-*` mà quên sửa `--line-height` ghép đôi là web và mobile
+  // lệch nhau im lặng — nên mẫu số lệch phải NỔ, không được im.
+  it('ném lỗi khi mẫu số của calc không khớp fontSize của bậc', () => {
+    expect(() => lineHeightToDp('calc(1.5 / 1)', 18)).toThrow(/mẫu số 16dp.*18dp/s);
+  });
 });
 
 describe('toRnScale', () => {

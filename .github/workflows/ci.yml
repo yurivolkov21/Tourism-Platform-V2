@@ -127,6 +127,11 @@ jobs:
 
       - run: pnpm lint
 
+      # Luật tokens-only (CLAUDE.md #6) phủ CẢ `libs/mobile/ui` lẫn
+      # `apps/mobile`; một spec nằm trong package không với sang package kia.
+      - name: Mobile không có màu viết tay (CLAUDE.md #6)
+        run: node scripts/check-mobile-tokens-only.mjs
+
       # Luật 13 (docs sweep) tồn tại từ P0 mà vẫn bị bỏ qua 8 merge liên tiếp
       # ngày 19/07 — nên kiểm bằng máy thay vì trông vào trí nhớ. CHỈ chạy
       # trên main: nhánh feature đang làm dở thì CHANGELOG lạc hậu là bình

@@ -19,9 +19,6 @@
       "router": {
         "sitemap": false
       }
-    },
-    "experiments": {
-      "typedRoutes": true
     }
   }
 }

@@ -23,10 +23,24 @@ export function remToDp(remString) {
  * Line-height của Tailwind → dp. Hai dạng trong `themeExtras`:
  *   'calc(1.25 / 0.875)'  tử số CHÍNH LÀ line-height theo rem → 1.25rem = 20dp
  *   '1'                   bội số trần (5xl trở lên) → nhân với fontSize
+ *
+ * Dạng `calc` chỉ đúng khi MẪU SỐ bằng đúng fontSize của bậc đó (tính theo
+ * rem) — vì trên web trình duyệt nhân tỉ lệ không-đơn-vị ấy với fontSize thật,
+ * còn ở đây ta lấy thẳng tử số. Bất biến đó hiện đúng cho mọi bậc, nhưng nếu
+ * ai đổi `--text-*` mà quên sửa `--line-height` ghép đôi thì web và mobile
+ * lệch nhau IM LẶNG. Nên kiểm ngay tại đây thay vì để lệch trôi ra thiết bị.
  */
 export function lineHeightToDp(value, fontSizeDp) {
-  const calc = /^calc\(\s*(-?\d*\.?\d+)\s*\/\s*-?\d*\.?\d+\s*\)$/.exec(value.trim());
+  const calc = /^calc\(\s*(-?\d*\.?\d+)\s*\/\s*(-?\d*\.?\d+)\s*\)$/.exec(value.trim());
   if (calc) {
+    const denominatorDp = Math.round(parseFloat(calc[2]) * 16);
+    if (denominatorDp !== fontSizeDp) {
+      throw new Error(
+        `@tourism/tokens rn-theme: line-height "${value}" có mẫu số ${denominatorDp}dp ` +
+          `nhưng bậc này là ${fontSizeDp}dp — web nhân tỉ lệ với fontSize thật còn mobile ` +
+          'lấy tử số, nên hai bên sẽ lệch. Sửa --line-height cho khớp --text-* của cùng bậc.',
+      );
+    }
     return Math.round(parseFloat(calc[1]) * 16);
   }
   const multiplier = /^(-?\d*\.?\d+)$/.exec(value.trim());

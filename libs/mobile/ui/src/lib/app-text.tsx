@@ -1,5 +1,5 @@
 import { Text, type TextProps } from 'react-native';
-import type { MobileTheme } from './theme';
+import type { MobileFontWeightKey, MobileTheme, MobileTypeStep } from './theme';
 import { useTheme } from './theme-provider';
 
 /**
@@ -14,7 +14,7 @@ export const APP_TEXT_VARIANTS = {
   body: { step: 'base', weight: 'normal' },
   label: { step: 'sm', weight: 'medium' },
   caption: { step: 'xs', weight: 'normal' },
-} as const;
+} as const satisfies Record<string, { step: MobileTypeStep; weight: MobileFontWeightKey }>;
 
 export type AppTextVariant = keyof typeof APP_TEXT_VARIANTS;
 
@@ -36,14 +36,18 @@ export interface AppTextProps extends TextProps {
 export function AppText({ variant = 'body', tone = 'default', style, ...rest }: AppTextProps) {
   const theme = useTheme();
   const { step, weight } = APP_TEXT_VARIANTS[variant];
+  // KHÔNG optional-chaining: `buildTheme` đã bảo đảm mọi bậc trong
+  // `MOBILE_TYPE_STEPS` có mặt (ném lỗi nêu tên khoá nếu thiếu). Dùng `?.` ở
+  // đây là biến một lỗi ném-ngay thành `undefined` lặng lẽ → RN rơi về 14dp và
+  // cả app sai cỡ chữ mà không gì đỏ.
   const scale = theme.type[step];
 
   return (
     <Text
       style={[
         {
-          fontSize: scale?.fontSize,
-          lineHeight: scale?.lineHeight,
+          fontSize: scale.fontSize,
+          lineHeight: scale.lineHeight,
           fontWeight: theme.weight[weight],
           color: theme.colors[TONE_COLOR[tone]],
         },

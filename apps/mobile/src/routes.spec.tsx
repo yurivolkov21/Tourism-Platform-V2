@@ -1,5 +1,11 @@
 import { messages } from '@tourism/i18n';
-import { fireEvent, renderRouter, screen, testRouter } from 'expo-router/testing-library';
+import {
+  fireEvent,
+  getMockConfig,
+  renderRouter,
+  screen,
+  testRouter,
+} from 'expo-router/testing-library';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
 // `.tsx` dưới thư mục app là một route (ignore list của nó chỉ có `+html`,
@@ -21,6 +27,64 @@ async function openApp(initialUrl: string) {
   await app;
   return { pathname: () => app.getPathname() };
 }
+
+/**
+ * Kiểm kê cây route BẰNG MÁY, đọc từ chính cấu hình mà router dựng ra.
+ *
+ * Thay cho `experiments.typedRoutes`, vốn đã bị gỡ: type của nó chỉ do DEV
+ * SERVER sinh vào `.expo/types` (gitignore) nên CI không bao giờ có — typecheck
+ * ở CI yếu hơn hẳn ở máy dev, còn bản local lạc hậu thì làm dev đỏ oan trong
+ * khi CI xanh. Một lưới chỉ tồn tại trên một máy không phải là lưới. SDK 57
+ * không có lệnh sinh type độc lập (`expo export` cũng không sinh), và dựng lại
+ * bộ quét route của Expo ngay trước freeze là rủi ro lớn hơn lợi ích.
+ *
+ * Danh sách dưới đây chạy ở CẢ gate lẫn CI và bắt được cả THÊM lẫn XOÁ route.
+ */
+type ScreenTree = string | { path?: string; screens?: Record<string, ScreenTree> };
+
+/** Gom mọi lá của cây thành `nhóm/màn` để so bằng một danh sách phẳng. */
+function flatten(tree: Record<string, ScreenTree>, prefix = ''): string[] {
+  return Object.entries(tree)
+    .flatMap(([name, node]) =>
+      typeof node === 'string' || node.screens === undefined
+        ? [`${prefix}${name}`]
+        : flatten(node.screens, `${prefix}${name}/`),
+    )
+    .sort();
+}
+
+const EXPECTED_ROUTES = [
+  '(auth)/forgot-password',
+  '(auth)/login',
+  '(auth)/register',
+  '(tabs)/account',
+  '(tabs)/explore',
+  '(tabs)/index',
+  '(tabs)/saved',
+  '(tabs)/trips',
+  '+not-found',
+  'bookings/[code]',
+  'tours/[slug]',
+];
+
+describe('kiểm kê cây route', () => {
+  it('đúng bằng danh sách đã khai — thêm hay xoá route đều phải đi qua đây', () => {
+    const root = getMockConfig('src/app').screens.__root as {
+      screens: Record<string, ScreenTree>;
+    };
+
+    expect(flatten(root.screens)).toEqual(EXPECTED_ROUTES);
+  });
+
+  // Neo của stack gốc: mất nó là mọi deep link thành ngõ cụt một chiều. Test
+  // deep-link phía dưới canh HÀNH VI, còn dòng này canh chính cấu hình — hai
+  // tầng khác nhau vì đây là thứ dễ bị xoá nhầm khi refactor layout.
+  it('stack gốc neo vào nhóm (tabs)', () => {
+    const root = getMockConfig('src/app').screens.__root as { initialRouteName?: string };
+
+    expect(root.initialRouteName).toBe('(tabs)');
+  });
+});
 
 describe('vỏ điều hướng', () => {
   it('mở app là vào tab Home', async () => {
