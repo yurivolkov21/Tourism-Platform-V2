@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 import { afterEach } from 'vitest';
 
 // Repo KHÔNG bật `globals: true` (test import describe/it/expect tường minh),
@@ -7,6 +7,14 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// Trần `asyncUtilTimeout` của testing-library mặc định 1000ms và nằm BÊN TRONG
+// `testTimeout` của Vitest — nâng mỗi testTimeout thì runner chậm chỉ ĐỔI KIỂU
+// đỏ, từ "Test timed out" sang "Unable to find role=…", trông y hệt lỗi sản
+// phẩm thật và tốn công điều tra sai hướng (đã dính 09/09 ở admin
+// decide-actions.spec.tsx:326 — nạn nhân dây chuyền của một test chạm trần).
+// Nâng cùng nhịp để hai cái van không lệch nhau.
+configure({ asyncUtilTimeout: 5000 });
 
 /**
  * jsdom KHÔNG cài `window.matchMedia` — nó là một API của trình duyệt thật, và

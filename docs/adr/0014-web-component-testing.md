@@ -132,3 +132,52 @@ không lỗi · toàn gate 8,0s với 15/18 task cached.
 `Button`, `Accordion`, `Sheet` (có portal), cộng `userEvent`, mock
 `next/navigation`, và đọc `messages` từ `@tourism/i18n` trong jsdom. Tất cả
 chạy. Nếu về sau chúng vỡ thì là lỗi mới, không phải hạ tầng.
+
+## AMEND — 09/09/2026: trần thời gian của test DOM, và ai mới là phanh chống treo
+
+Quyết định gốc không nói gì về trần thời gian nên `apps/web` (và `apps/admin`,
+vốn bê nguyên khuôn này) chạy ở mặc định **5000ms** của Vitest. Ngày 09/09 trần
+đó làm đỏ **bốn lần trong một ngày, ba package** — hai lần ở máy dev 16 core,
+một lần trên CI, cộng một lần ở mobile (jest, đã vá riêng ở `fbb945af`).
+
+**Vì sao 5000ms là quá sát.** `pnpm gate` chạy `turbo run build typecheck test`
+trong MỘT đồ thị với concurrency mặc định 10, và `#test` không loại trừ `#build`
+của chính package mình — nên vitest jsdom của web chạy đúng lúc Turbopack đang
+biên dịch web. Đo được: test chậm nhất lúc máy rảnh 1115ms, dưới tải gate
+3096ms, tức chỉ còn **1,6x biên**. Đỏ là hệ quả số học, không phải xui. Chỉnh
+`maxWorkers` của Vitest không phải câu trả lời: quá tải đến từ tích (số task
+turbo song song × số worker nội bộ mỗi task), không từ riêng cái nào.
+
+**Chốt ba con số, và một điều chỉnh quan trọng về đâu mới là phanh.**
+
+1. `testTimeout` và `hookTimeout` = **30_000**, đặt ở cấp gốc `test:` của
+   `apps/web/vitest.config.ts` và `apps/admin/vitest.config.ts`. Đủ cho cả hai
+   project vì cả hai khai `extends: true` — lưu ý Vitest 4.x mặc định `extends`
+   là **false** (chỉ từ 5.0 mới true), nên dòng đó là load-bearing, đừng gỡ.
+   30s = 27x cái chậm nhất lúc rảnh, ~10x cái chậm nhất đo được dưới tải.
+2. `asyncUtilTimeout` của testing-library = **5000**, đặt trong hai file setup.
+   Đây là chỗ dễ bỏ sót nhất: trần này mặc định 1000ms và nằm **bên trong**
+   `testTimeout`, nên nâng mỗi `testTimeout` chỉ ĐỔI KIỂU đỏ — từ
+   `Test timed out` sang `Unable to find role=…`, trông y hệt lỗi sản phẩm thật.
+3. `timeout-minutes: 25` ở cấp job trong `ci.yml`. **`testTimeout` chưa bao giờ
+   là phanh chống treo** và repo trước đó không có phanh nào: mặc định của
+   GitHub là 360 phút, nên một promise không bao giờ resolve sẽ ngốn 6 giờ
+   runner. Nâng trần test càng làm điều đó rõ, nên phanh phải chuyển lên cấp job.
+
+**Con số 30s khác 60s của mobile là CỐ Ý.** Ở mobile đo được `renderRouter` cold
+9,2s (chi phí dựng cả cây route qua babel-jest); phía Vitest không có chi phí
+tương đương nên không cần biên rộng bằng.
+
+**Cái giá, ghi thẳng ra:** một test treo thật nay ngốn 30s thay vì 5s, và mỗi
+`waitFor` thất bại tốn 5s thay vì 1s. Đổi lại là `timeout-minutes` chặn hậu.
+Tác dụng phụ đáng canh: nâng trần làm MẤT tín hiệu test phình dần — hôm nay đã
+có 141 test vượt 1000ms dưới tải gate, và sau khi lên 30s thì một test bò từ 1s
+lên 8s sẽ im lặng trôi qua.
+
+**Trần không thay được việc sửa gốc.** Cùng đợt này `otp-form.spec.tsx` được sửa
+bằng `act()` từng nhịp thay vì `advanceTimersByTimeAsync(5000)` trần — ca
+"Expected 59s, Received 58s" là React commit dở dang, KHÔNG phải chạm trần, và
+không con số trần nào chữa được nó. Còn treo: tách
+`decide-actions.spec.tsx` thành `it.each` theo tiền lệ `refund-panel` (07/09),
+vì chi phí test đó tăng theo số mã stale của contract nên nâng trần chỉ dời ngày
+đội trần.

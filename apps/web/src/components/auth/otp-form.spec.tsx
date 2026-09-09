@@ -136,7 +136,18 @@ describe('OtpForm — verify-email (có email)', () => {
 
     // Cho đồng hồ chạy vài giây trước khi submit lỗi — chỉ cần < 60s, không
     // phụ thuộc số giây chính xác input-otp polling tiêu tốn bao nhiêu tick.
-    await vi.advanceTimersByTimeAsync(5000);
+    //
+    // PHẢI bọc `act` từng nhịp, đúng mẫu hai test resend ở dưới. Gọi trần
+    // `advanceTimersByTimeAsync(5000)` để React commit DỞ DANG: `countdownBefore`
+    // chụp DOM giữa chuỗi setState đang xếp hàng, số nhịp đã commit tuỳ tải máy,
+    // rồi phần còn lại commit tiếp trong lúc `findByText` bơm React — nên tới
+    // assertion cuối con số đã tụt thêm một nấc. Đó chính là lần CI đỏ 09/09
+    // (Expected "59s", Received "58s"). Nâng testTimeout KHÔNG chữa được ca này.
+    for (let i = 0; i < 5; i += 1) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1000);
+      });
+    }
     const countdownBefore = screen.getByText(/^\d+s$/).textContent;
 
     // Chuyển VỀ real timers TRƯỚC khi submit — `waitFor`/promise resolution

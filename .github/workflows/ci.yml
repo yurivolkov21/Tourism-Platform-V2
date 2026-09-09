@@ -16,6 +16,13 @@ concurrency:
 jobs:
   gate:
     runs-on: ubuntu-latest
+    # Phanh chống treo THẬT SỰ của repo. Trước đây không có dòng này nên mặc
+    # định của GitHub là 360 phút — một test treo (promise không bao giờ resolve)
+    # sẽ ngốn 6 GIỜ runner trước khi bị giết. Từ đợt 09/09 trần testTimeout của
+    # web/admin lên 30s nên `testTimeout` càng không còn là phanh; phanh nằm ở
+    # đây. 25 phút = ~2,5x run xanh dài nhất đo được (10,1 phút) — rà lại con số
+    # này mỗi khi thêm bước vào file.
+    timeout-minutes: 25
     # Postgres cho integration test (apps/api/src/**/*.int.spec.ts, 9 file /
     # 72 test — TOÀN BỘ luồng tiền P2 + bề mặt bảo mật P3a). Trước đây
     # `test:int` chỉ là script rời trong apps/api/package.json, không nối vào

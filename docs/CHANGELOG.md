@@ -59,6 +59,7 @@ cùng sửa `pnpm-lock.yaml`.
    nào nằm trên đường phục vụ request thật.
 4. **`fix/next-sharp` `90c3ce91`** — next 16.3.0 → **16.3.4** và override sharp
    `>=0.35.0` → `^0.35.4`, hai thứ KHÔNG tách rời được (xem dưới).
+5. **`fix/test-timeout-web-admin`** — trần test của web/admin, xem mục riêng dưới.
 
 **Cái bẫy im lặng của đợt này, ghi kỹ vì nó sẽ quay lại.** PR Dependabot #2 nhắm
 `next@16.3.3`; đi theo nó là sai. 16.3.3 vá bằng cách TẮT hẳn tối ưu AVIF, còn
@@ -88,16 +89,46 @@ một cú push mà push main là Vercel tự deploy.
   consumer `query-string@7.1.3` là CJS khai `^0.2.2`, override sẽ vỡ. Chỉ chạm
   `apps/mobile` (parse deep link).
 
-**Một rủi ro thi công phải nói trước.** `apps/web/vitest.config.ts` KHÔNG khai
-`testTimeout` nên đang dùng mặc định 5000ms, trong khi 122 file test của web
-chạy song song với build của 5 package khác. Trong đợt này gate đỏ hai lần rồi
-xanh lại ở đúng cùng một commit: `register-form.spec.tsx` báo
-`Test timed out in 5000ms` và `otp-form.spec.tsx` lệch đếm ngược một giây
-(`Expected "59s", Received "58s"`). Đây là flake do tải, cùng họ với thứ session
-P5a vừa vá sáng nay bằng `testTimeout: 60_000` cho hai package mobile
-(`fbb945af`). Runner CI yếu hơn máy dev nên nhiều khả năng gặp lại — nếu CI đỏ ở
-đúng hai spec đó thì đừng đi điều tra `next 16.3.4`, hãy nâng `testTimeout` của
-web.
+**Trần test 5000ms: bốn lần đỏ trong một ngày, ba package — và nhánh 5 chữa
+nó.** `apps/web` và `apps/admin` không khai `testTimeout` nên dùng mặc định
+5000ms, trong khi `pnpm gate` chạy `turbo run build typecheck test` trong MỘT
+đồ thị (concurrency mặc định 10) — vitest jsdom chen chỗ với `next build` của
+chính package mình và của 4 package khác. Đo 09/09: test chậm nhất lúc máy rảnh
+1115ms, dưới tải gate 3096ms, tức chỉ còn **1,6x biên**. Sự cố trong ngày:
+mobile đỏ CI (session P5a vá bằng `testTimeout: 60_000` cho jest, `fbb945af`),
+`apps/web` đỏ 2 lần ở máy dev rồi xanh lại ở đúng cùng commit
+(`register-form.spec.tsx` timeout 5s, `otp-form.spec.tsx` lệch đếm ngược 1
+giây), và `apps/admin` đỏ trên CI ở `decide-actions.spec.tsx` rồi **xanh khi
+rerun mà không đổi một dòng code nào**.
+
+Ba điều rút ra, vì "nâng trần" một mình là lời giải sai:
+
+- **`otp-form` 59s/58s KHÔNG phải lỗi trần.** Gốc là
+  `advanceTimersByTimeAsync(5000)` không bọc `act`, nên React commit dở dang:
+  `countdownBefore` chụp DOM giữa chuỗi setState đang xếp hàng, phần còn lại
+  commit tiếp trong lúc `findByText` bơm React. Nâng trần không chạm tới phép so
+  sánh này, thậm chí cho chuỗi tồn đọng thêm thời gian trôi. Đã sửa gốc bằng
+  vòng `act` từng nhịp — đúng mẫu mà CHÍNH FILE ĐÓ đã dùng ở hai test resend.
+- **Nâng `testTimeout` mà quên `asyncUtilTimeout` là che bệnh có hại.** Trần
+  async của testing-library là 1000ms và nằm BÊN TRONG trần Vitest, nên runner
+  chậm chỉ ĐỔI KIỂU đỏ: từ `Test timed out` sang `Unable to find role=…` —
+  trông y hệt lỗi sản phẩm thật. Đó chính là dòng 326 của `decide-actions`, một
+  **nạn nhân dây chuyền** chứ không phải lỗi độc lập (Vitest hết giờ thì đánh
+  dấu hỏng nhưng không huỷ được chuỗi async đang chạy, userEvent bỏ dở lái DOM
+  sang test sau trong khi RTL đã cleanup). Đừng đi chữa dòng 326.
+- **`testTimeout` chưa bao giờ là phanh chống treo, và repo đang không có
+  phanh.** `ci.yml` không đặt `timeout-minutes` nên mặc định GitHub là **360
+  phút**: một promise không bao giờ resolve sẽ ngốn 6 giờ runner. Nay đặt
+  `timeout-minutes: 25` (~2,5x run xanh dài nhất đo được, 10,1 phút).
+
+Nhánh 5 vì thế gồm bốn thay đổi: `testTimeout`/`hookTimeout` 30s ở cấp gốc
+`test:` của web và admin (đủ cho cả hai project vì cả hai khai `extends: true`
+— Vitest 4.x mặc định `extends` là FALSE, dòng đó là load-bearing), 
+`configure({ asyncUtilTimeout: 5000 })` trong hai file setup, sửa gốc `act` ở
+`otp-form.spec.tsx`, và `timeout-minutes` trong `ci.yml`. Con số 30s khác 60s
+của mobile là CỐ Ý: ở mobile đo được `renderRouter` cold 9,2s, vitest không có
+chi phí tương đương. Cái giá ghi thẳng ra: một test treo thật nay ngốn 30s thay
+vì 5s, và mỗi `waitFor` thất bại tốn 5s thay vì 1s.
 
 **CÒN TREO:**
 
@@ -106,7 +137,11 @@ web.
    mock nguyên module vì jsdom không có WebGL. `map-attribution.spec.tsx` mới chỉ
    canh phần ghi công. Một bản đồ trắng đi qua được cả gate lẫn build Vercel.
 2. **Đóng PR Dependabot #2** và dismiss 3 alert cố ý bỏ qua kèm lý do.
-3. **`testTimeout` cho `apps/web`** — nhánh riêng nếu CI đỏ lại.
+3. **Tách `decide-actions.spec.tsx:298` thành `it.each`.** Một `it()` đang ôm
+   bốn luồng wizard và chi phí tăng theo SỐ MÃ stale của contract (`aa89d844`
+   vừa thêm `OVER_TOTAL`, +33%), nên nâng trần chỉ dời ngày đội trần chứ không
+   xoá. Repo đã có tiền lệ chữa đúng bệnh này ở `refund-panel` (07/09) — mỗi mã
+   một ngân sách riêng, cleanup riêng, và khi đỏ thì báo đúng mã nào.
 4. **maplibre 5→6** là nhánh TUỲ CHỌN, chưa làm: ESM-only, phải gọi
    `setWorkerUrl`, chế độ hỏng là bản đồ trắng im lặng. Nếu làm thì nhắm 6.4.1
    hoặc 6.6.0, KHÔNG nhắm bản `latest` mới vài ngày tuổi — trước freeze 15/10 thì
