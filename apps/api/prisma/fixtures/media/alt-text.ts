@@ -261,4 +261,38 @@ export const altText: Record<string, string> = {
     'The weathered stone gate of an old temple seen from below, moss along its curved roof and carved characters running down the pillar beside it.',
   'tourism/catalog/destination/hanoi/gallery-12':
     'A worker in a conical hat pouring dried yellow beans into a wide flat basket, standing among rows of big earthenware fermentation jars.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-01':
+    'Riverside towers lit up under a sky full of stars, the tallest tapering to a lit crown, with a bridge under construction on the near bank.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-02':
+    'A dense crowd of motorbikes filling a street at night under strings of light, riders in helmets packed shoulder to shoulder.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-03':
+    'The pink church at Tân Định seen from below, its rose window, spires and lace-white trim standing against a cloudy sky.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-04':
+    'A lit street-food stall at night with the cook behind the counter and plastic stools out front, a motorbike blurring past in the foreground.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-05':
+    'The pale yellow façade of the Central Post Office with its white stucco scrollwork and a clock set into the great arched window.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-06':
+    'The downtown skyline at dusk seen across the river, lit towers against a pink and blue sky with the promenade glowing below.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-07':
+    'A street strung end to end with rows of small red flags, restaurant fronts under red banners and motorbikes parked along the kerb.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-08':
+    'A café apartment block at night, every balcony in the grid holding a different lit sign and string of bulbs, people on the pavement below.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-09':
+    'The pink church from below against a bright blue sky, a palm frond leaning into the frame beside its spires.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-10':
+    'Skewers of pork and sweetcorn cooking over charcoal on a street grill, smoke drifting up through the racks.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-11':
+    'The skyline at night from across the river, each tower picked out in a different colour of light.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-12':
+    'Motorbikes riding a palm-lined boulevard past a bed of red flowers, a colonial building with green shutters along the right.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-13':
+    'The Central Post Office seen from below, the flag on its roof and the clock in the arched window sharp against a clear sky.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-14':
+    'The pink church from above, its spire and long tiled nave hemmed in by dense city blocks with traffic passing on the street below.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-15':
+    "A bronze statue with one hand raised on a plinth in front of the People's Committee building, flowers laid at its base.",
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-16':
+    'The skyline at blue hour across the river, seen from a rocky bank where old wooden pilings stand out of the water.',
+  'tourism/catalog/destination/ho-chi-minh-city/gallery-17':
+    'A café balcony of bar stools looking straight across at the pink church, monstera leaves framing one side of the view.',
 };
