@@ -3,4 +3,7 @@
 // Vitest. Không có config Jest nào ở root repo.
 module.exports = {
   preset: 'jest-expo',
+  // Cùng lý do như `apps/mobile`: render component RN lần đầu trên runner CI
+  // (cache jest nguội) vượt trần 5s mặc định của Jest.
+  testTimeout: 60_000,
 };

@@ -119,6 +119,15 @@ trong SDK 57 và trong cửa sổ trước freeze 15/10; pnpm tự thêm 9 mục
 `minimumReleaseAgeExclude` (2 gói đích và 7 dependency bắc cầu) theo đúng nếp
 các đợt Next trước. Sau khi nâng: `expo-doctor` **21/21**.
 
+**Vá nóng sau merge (`main` đỏ một lần, 09/09).** Suite `apps/mobile` xanh ở
+máy nhưng ĐỎ trên CI: `renderRouter` lần đầu nạp cả cây route qua babel-jest,
+và trên runner CI (chậm hơn, cache jest nguội) riêng test đầu tiên vượt trần
+5s mặc định của Jest — cả suite 126s trên CI so với ~3s ở máy, đúng MỘT test
+hỏng còn 28 cái sau xanh vì cache đã ấm. Đặt `testTimeout: 60_000` cho cả hai
+package mobile. **Bài học quy trình:** nhánh này chưa từng được push nên CI
+chưa từng chạy trên nó trước khi merge — nếp "session thi công không push" để
+lại đúng khoảng mù đó; lần sau đẩy nhánh lên để CI soi trước khi ff vào main.
+
 **Hai phát hiện của vòng review bị BÁC sau khi đo lại:** (a) "`{...rest}` xoá
 `accessibilityState` của Button" — `Pressable` của React Native ép lại `disabled`
 mỗi khi prop `disabled` khác null, đã thêm test ghim lời bảo đảm đi mượn đó;

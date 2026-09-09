@@ -27,4 +27,10 @@ module.exports = {
   setupFiles: ['<rootDir>/jest.setup.js'],
   transformIgnorePatterns,
   transform,
+  // Trần 5s mặc định của Jest KHÔNG đủ cho `renderRouter`: lần gọi đầu nạp cả
+  // cây route qua babel-jest, và trên runner CI (chậm hơn, cache jest nguội)
+  // riêng test đầu tiên đã vượt 5s — đo được 09/09: cả suite 126s trên CI so
+  // với ~3s ở máy dev, và ĐÚNG một test hỏng, 28 cái sau xanh vì cache đã ấm.
+  // Đây là chi phí thật của việc dựng navigator, không phải test treo.
+  testTimeout: 60_000,
 };
