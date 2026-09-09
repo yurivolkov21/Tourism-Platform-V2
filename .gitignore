@@ -61,3 +61,7 @@ media-inbox/
 # Worker maplibre chép vào lúc build (apps/web/scripts/copy-maplibre-worker.mjs).
 # Là artifact, không phải nguồn — xem ADR-0018 AMEND 2.
 apps/web/public/maplibre/
+
+# Bản sao dữ liệu prod có PII — repo này PUBLIC, tuyệt đối không commit.
+# Bản đồ ảnh KHÔNG có PII nằm ở docs/snapshots/ và ĐƯỢC commit.
+backups/

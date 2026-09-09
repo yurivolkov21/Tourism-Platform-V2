@@ -17,6 +17,9 @@
 Ngoài ra: [`CHANGELOG.md`](CHANGELOG.md) — lịch sử mỗi merge (phase đang
 chạy; entry cũ hơn 30/07 ở [`changelog/`](changelog/) — 2 archive theo kỷ
 nguyên, di chuyển nguyên văn 03/08) ·
+[`snapshots/`](snapshots/) — bản đồ ảnh + danh sách id được giữ, xuất trước mỗi
+đợt làm mới dữ liệu (`pnpm --filter @tourism/api snapshot:export`); KHÔNG chứa
+PII vì repo này public — dữ liệu người dùng đi vào `backups/` đã gitignore ·
 [`skills.md`](skills.md) — skill đã cài & dùng khi nào ·
 [`../CLAUDE.md`](../CLAUDE.md) — hợp đồng vận hành.
 

@@ -1,0 +1,485 @@
+{
+  "ghi_chu": "Danh sách ID được GIỮ trong đợt làm mới dữ liệu 09/09/2026. Script reset phải xoá theo kiểu \"mọi thứ TRỪ đây\", không phải liệt kê thứ cần xoá — liệt kê thứ cần xoá là sót một bảng thì mất dữ liệu.",
+  "ly_do_giu_uuid": "media_assets trỏ chủ sở hữu bằng (owner_type, owner_id) và KHÔNG có khoá ngoại nào. Đổi UUID của tour/destination/post/site_slot là 517 ảnh mồ côi trong im lặng.",
+  "admin_duy_nhat": {
+    "id": "60b92d84-b84d-48dd-bfb8-8654768b7cd4",
+    "email_rut_gon": "tour….online@gmail.com",
+    "name": "Admin Nexora",
+    "ghi_chu": "Giữ đúng một admin này. ADMIN_EMAILS trên Render phải khớp. Tài khoản Seed Admin @tourism.test bị xoá, nhưng nó đang giữ 9 bài blog qua FK RESTRICT nên phải trỏ tác giả sang đây TRƯỚC khi xoá."
+  },
+  "tours": [
+    {
+      "id": "d0000002-0000-4000-8000-000000000017",
+      "slug": "bana-hills-golden-bridge-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000026",
+      "slug": "ben-tre-coconut-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000019",
+      "slug": "central-heritage-4d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000021",
+      "slug": "central-honeymoon-5d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000027",
+      "slug": "da-lat-highlands-3d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000009",
+      "slug": "ha-giang-loop-4d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000005",
+      "slug": "halong-bay-overnight-cruise"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000002",
+      "slug": "hanoi-heritage-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000001",
+      "slug": "hanoi-old-quarter-food-night"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000016",
+      "slug": "hoi-an-countryside-cooking-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000015",
+      "slug": "hoi-an-lantern-evening"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000013",
+      "slug": "hue-imperial-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000006",
+      "slug": "lan-ha-kayak-cruise-3d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000010",
+      "slug": "mai-chau-cycling-2d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000025",
+      "slug": "mekong-can-tho-2d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000018",
+      "slug": "my-son-sunrise-halfday"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000004",
+      "slug": "ninh-binh-trang-an-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000011",
+      "slug": "northern-highlights-5d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000014",
+      "slug": "phong-nha-paradise-cave-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000029",
+      "slug": "phu-quoc-honeymoon-4d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000028",
+      "slug": "phu-quoc-island-hopping-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000020",
+      "slug": "quy-nhon-coastal-3d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000003",
+      "slug": "red-river-craft-villages-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000024",
+      "slug": "saigon-after-dark-vespa"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000023",
+      "slug": "saigon-cu-chi-day"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000008",
+      "slug": "sapa-fansipan-summit-3d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000007",
+      "slug": "sapa-terraces-homestay-2d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000012",
+      "slug": "vietnam-grand-journey-12d"
+    },
+    {
+      "id": "d0000002-0000-4000-8000-000000000022",
+      "slug": "vung-tau-coastal-2d"
+    }
+  ],
+  "destinations": [
+    {
+      "id": "c0000002-0000-4000-8000-000000000016",
+      "slug": "ben-tre"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000015",
+      "slug": "can-tho"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000003",
+      "slug": "cat-ba"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000017",
+      "slug": "da-lat"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000010",
+      "slug": "da-nang"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000006",
+      "slug": "ha-giang"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000002",
+      "slug": "ha-long"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000001",
+      "slug": "hanoi"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000013",
+      "slug": "ho-chi-minh-city"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000009",
+      "slug": "hoi-an"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000008",
+      "slug": "hue"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000007",
+      "slug": "mai-chau"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000005",
+      "slug": "ninh-binh"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000011",
+      "slug": "phong-nha"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000018",
+      "slug": "phu-quoc"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000012",
+      "slug": "quy-nhon"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000004",
+      "slug": "sa-pa"
+    },
+    {
+      "id": "c0000002-0000-4000-8000-000000000014",
+      "slug": "vung-tau"
+    }
+  ],
+  "tour_categories": [
+    {
+      "id": "b0000001-0000-4000-8000-000000000003",
+      "slug": "cruise"
+    },
+    {
+      "id": "b0000001-0000-4000-8000-000000000001",
+      "slug": "day"
+    },
+    {
+      "id": "b0000001-0000-4000-8000-000000000005",
+      "slug": "honeymoon"
+    },
+    {
+      "id": "b0000001-0000-4000-8000-000000000002",
+      "slug": "package"
+    },
+    {
+      "id": "b0000001-0000-4000-8000-000000000006",
+      "slug": "seasonal-classics"
+    },
+    {
+      "id": "b0000001-0000-4000-8000-000000000004",
+      "slug": "trekking"
+    }
+  ],
+  "posts": [
+    {
+      "id": "019fdf0b-0936-733e-bd5f-2130b9c40d1d",
+      "slug": "bridges-beaches-and-bun-cha-ca",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-067b-77a8-826b-12c620613662",
+      "slug": "crossing-hanoi-on-foot",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-00c2-7299-8efb-b295bf3838d2",
+      "slug": "eating-your-way-through-hoi-an",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-0234-75d3-99b8-bab99c3d359d",
+      "slug": "floating-markets-before-sunrise",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-03a1-758e-86a0-915b85594db7",
+      "slug": "reading-a-hue-royal-tomb",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-07eb-73aa-b76e-98ee925a21df",
+      "slug": "the-bay-without-the-crowds",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-050e-753c-8dfb-aa7afb46fdb0",
+      "slug": "two-days-among-the-karsts",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0a-ff4a-754b-be46-5572386277f7",
+      "slug": "what-to-pack-for-the-mist-season",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    },
+    {
+      "id": "019fdf0b-0a81-71af-a01b-cb478e3d0134",
+      "slug": "when-to-come-and-when-not-to",
+      "ghi_chu": "blog mới DÙNG LẠI slug này để 9 ảnh hero nối lại được"
+    }
+  ],
+  "site_media_slots": [
+    {
+      "id": "34e7e6cc-fe78-410c-8a2a-3a3ceb9f0bc5",
+      "key": "about-cta-video"
+    },
+    {
+      "id": "1855042d-f28d-4b67-a06c-245c5a1ca89a",
+      "key": "about-gallery-all"
+    },
+    {
+      "id": "081436c0-ee3b-4569-b7ff-cacdd9a5cb02",
+      "key": "about-gallery-central"
+    },
+    {
+      "id": "022df8c1-894b-4806-8e79-26cd03443236",
+      "key": "about-gallery-north"
+    },
+    {
+      "id": "30a94064-962a-43fa-bfdf-d68ed7d0e34f",
+      "key": "about-gallery-south"
+    },
+    {
+      "id": "73ca3c76-0383-4452-8ddc-c0c5005b4126",
+      "key": "about-hero"
+    },
+    {
+      "id": "0c753995-d86a-416c-94a9-f1c42dd93e4a",
+      "key": "about-story"
+    },
+    {
+      "id": "9fd12301-d83d-44ff-8cf5-de4a84fa9375",
+      "key": "about-team-ceo"
+    },
+    {
+      "id": "a5b04c67-13d9-42f6-878d-561cc047ab01",
+      "key": "about-team-guides"
+    },
+    {
+      "id": "9868fb02-00c6-4b3c-ac17-92c5df41c7ed",
+      "key": "about-team-ops"
+    },
+    {
+      "id": "e8f58777-e531-4515-8778-9d59316d213d",
+      "key": "about-team-routes"
+    },
+    {
+      "id": "77f70dce-b8e6-42bb-b317-a134d9803f84",
+      "key": "about-timeline-2014"
+    },
+    {
+      "id": "257e5822-ff2a-4f07-891c-33465d7e6077",
+      "key": "about-timeline-2017"
+    },
+    {
+      "id": "24be3069-943b-4937-a7d4-657f31b2f6ed",
+      "key": "about-timeline-2021"
+    },
+    {
+      "id": "db45c943-f6c5-4219-8934-d9dd5919bb71",
+      "key": "about-timeline-2026"
+    },
+    {
+      "id": "ab6c3405-752e-4727-bb83-c733f512ae67",
+      "key": "auth-panel"
+    },
+    {
+      "id": "8bb3011b-fa42-4998-a97f-f4ecdfe316d5",
+      "key": "contact-panel"
+    },
+    {
+      "id": "7ce0023a-00af-412a-a68c-0f1465d6857f",
+      "key": "content-hero"
+    },
+    {
+      "id": "1594851e-a646-4478-b35b-4c8dbe6c176f",
+      "key": "cta-band"
+    },
+    {
+      "id": "5e0d5672-bf81-40a9-b5da-6f76ca82a89e",
+      "key": "destinations-hero"
+    },
+    {
+      "id": "b07406b4-f630-4fba-9121-3536c5287864",
+      "key": "home-experiences"
+    },
+    {
+      "id": "c2291a78-c734-45b2-a3b7-e38a92408fd4",
+      "key": "home-hero"
+    },
+    {
+      "id": "06adfa46-664c-40ed-85f0-e7ef65ae2827",
+      "key": "home-trust"
+    },
+    {
+      "id": "7c8ca463-66d8-4321-b838-5b1dfd052476",
+      "key": "home-why-choose"
+    },
+    {
+      "id": "a26a6356-48f8-44a4-b48e-5f383ab4c6e8",
+      "key": "moment-bentre-canal"
+    },
+    {
+      "id": "de5a85fc-acad-468b-a80b-f854bf4e0f4c",
+      "key": "moment-hagiang-valley"
+    },
+    {
+      "id": "68125f38-4159-4288-8569-71938152bbc7",
+      "key": "moment-hoian-river"
+    },
+    {
+      "id": "86c604ae-323e-41dc-8361-b717e6cb82c0",
+      "key": "moment-lanha-kayak"
+    },
+    {
+      "id": "7eb7d559-835b-49e2-b142-86a785be1f15",
+      "key": "moment-myson-towers"
+    },
+    {
+      "id": "eff604f3-cc14-4270-848c-f2e3de317ec9",
+      "key": "region-gallery-central-1"
+    },
+    {
+      "id": "3b2982eb-558b-421b-9b93-efcb079a9911",
+      "key": "region-gallery-central-2"
+    },
+    {
+      "id": "2f302621-aa7e-4e2f-8e97-f8c91a39f2eb",
+      "key": "region-gallery-central-3"
+    },
+    {
+      "id": "2cfc863e-83dc-4df3-b64b-bdeb35c93cfe",
+      "key": "region-gallery-central-4"
+    },
+    {
+      "id": "401c542a-6df0-48c4-804e-522633569eea",
+      "key": "region-gallery-central-5"
+    },
+    {
+      "id": "43fa04b1-0d7b-46ed-b086-d65cd18fcbae",
+      "key": "region-gallery-central-6"
+    },
+    {
+      "id": "1a36aee9-0395-404a-8ec6-673e000ca186",
+      "key": "region-gallery-north-1"
+    },
+    {
+      "id": "c86ac826-7db5-4833-9295-f64e3440c9cd",
+      "key": "region-gallery-north-2"
+    },
+    {
+      "id": "bb93cd44-1e5d-4a00-8368-2b9e5e541301",
+      "key": "region-gallery-north-3"
+    },
+    {
+      "id": "5a217d30-a3a6-444c-b8ad-4d77ecb1b2c5",
+      "key": "region-gallery-north-4"
+    },
+    {
+      "id": "fb529409-c0ac-41af-ad11-470219386b29",
+      "key": "region-gallery-north-5"
+    },
+    {
+      "id": "7525cd11-fcc4-410f-b667-88ac0bdb3cb4",
+      "key": "region-gallery-north-6"
+    },
+    {
+      "id": "5b76829a-e9a0-413c-8633-c87faeca9332",
+      "key": "region-gallery-south-1"
+    },
+    {
+      "id": "916404c1-8b77-4e21-a687-2b47a823fe63",
+      "key": "region-gallery-south-2"
+    },
+    {
+      "id": "a4742253-f865-49a8-ba51-e055777314b7",
+      "key": "region-gallery-south-3"
+    },
+    {
+      "id": "05bf2964-78cb-406a-98e5-4aefc3b0e833",
+      "key": "region-signature-south-1"
+    },
+    {
+      "id": "4f3c82f4-58eb-436e-8a24-332c8390877b",
+      "key": "region-signature-south-2"
+    },
+    {
+      "id": "048b4190-693b-490e-85da-3e10654372ae",
+      "key": "region-signature-south-3"
+    },
+    {
+      "id": "e6eb3c42-fe75-4b72-9ae7-fc3ffccd10cc",
+      "key": "why-evening"
+    },
+    {
+      "id": "27b2263f-182d-452e-8088-cf2b84e9e253",
+      "key": "why-food"
+    },
+    {
+      "id": "ca38d210-6327-439b-88b3-a5974b695857",
+      "key": "why-guide"
+    },
+    {
+      "id": "036b88cf-dcdb-42be-89ac-5083aca6d1b0",
+      "key": "why-heritage"
+    },
+    {
+      "id": "7777f1af-85bd-48da-b425-c90b2c0b1748",
+      "key": "why-river"
+    }
+  ]
+}
