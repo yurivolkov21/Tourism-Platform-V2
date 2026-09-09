@@ -79,7 +79,19 @@ overrides:
   # Alert #6 (high, libvips CVE 2026-33327/28 + 35590/91): sharp là optional dep
   # của Next (image optimization, CÓ chạy ở prod) nhưng Next khai báo ^0.34 —
   # ép qua override lên dòng đã vá.
-  sharp: '>=0.35.0'
+  #
+  # 09/09 SIẾT từ '>=0.35.0' lên '^0.35.4' (GHSA-rgj7-g3m4-5g8c, high — lỗ ở
+  # libheif khi decode AVIF/HEIF). Đây KHÔNG phải chỉ đổi số cho đẹp: override
+  # của pnpm THAY THẾ version spec ở MỌI tầng, nên dải rộng '>=0.35.0' nuốt mất
+  # chính ràng buộc '^0.35.4' mà next@16.3.4 khai để tự kéo sharp lên bản vá —
+  # `--frozen-lockfile` sẽ vui vẻ giữ 0.35.3 vì nó vẫn thoả dải cũ.
+  #
+  # Vì sao nguy: next@16.3.3 vá bằng cách TẮT tối ưu AVIF, còn next@16.3.4 BẬT
+  # LẠI (đo: optionalDependencies.sharp của 16.3.3 là ^0.35.3, của 16.3.4 là
+  # ^0.35.4). Nên tổ hợp next 16.3.4 + sharp 0.35.3 là AVIF chạy trên libheif
+  # còn lỗ — TỆ HƠN đứng yên ở 16.3.0, và nó xảy ra không một tiếng động.
+  # Đổi số next mà quên dòng này là tự tạo ra đúng tổ hợp đó.
+  sharp: '^0.35.4'
   # Alert #5 (medium, XSS qua </style> trong stringify): Next pin CỨNG postcss
   # 8.4.31 nội bộ cho styled-jsx — override kéo mọi bản 8.x về dòng đã vá.
   postcss: '>=8.5.10'
