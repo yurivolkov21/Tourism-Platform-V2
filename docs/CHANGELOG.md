@@ -8,6 +8,116 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-09 — Đợt Dependabot 26 alert: đóng `/_next/image` admin, cắt đường sanitize maplibre, nâng next/vitest/js-yaml/hono (4 nhánh, **CHƯA merge — chờ duyệt**)
+
+Sáng 09/09 GitHub mở 26 Dependabot alert (8 critical, 4 high, 14 medium) đúng
+**7 giây sau** cú push merge P5a — nên thoạt nhìn như hệ quả của nó. Không phải:
+đối chiếu `published_at` từng advisory thì **23/26 là advisory công bố tối
+08/09** (một đêm dày: Next, MapLibre, Vitest, Hono, js-yaml, sharp cùng nổ), và
+độ trễ advisory→alert đo trên chính repo này qua 34 alert đã đóng là 1,3–11,8
+giờ; hai lô lịch sử (04/08, 02/09) nổ khi KHÔNG có push nào. P5a thật sự tạo ra
+đúng **3 alert** — `image-size` ×2 và `decode-uri-component`, đều vào qua
+metro/expo-router, không cái nào chạm web/api/admin đang chạy.
+
+26 alert thực chất là **8 gói**: GitHub đếm lặp mỗi gói một lần cho từng manifest.
+Riêng `vitest` chiếm 10 alert và chỉ chạy ở máy dev với CI.
+
+**Phát hiện quan trọng nhất lại không phải một bản nâng version.** Trong cả 26
+alert chỉ có MỘT chỗ mà code của dự án đang phục vụ một đường dính, không cần
+đăng nhập: `/_next/image` của admin. Ba dữ kiện cộng lại mới thành vấn đề —
+`next.config.ts` khai `remotePatterns` `res.cloudinary.com` `pathname: '/**'`
+với loader mặc định (optimizer BẬT); `proxy.ts` matcher cố ý loại `_next/image`
+khỏi cổng gác (optimizer chạy VÔ DANH); và admin không import `next/image` ở
+đâu cả, nên khối cấu hình đó chỉ có tác dụng mở endpoint. Host
+`res.cloudinary.com` đa-tenant nên `'/**'` khớp tài khoản của bất kỳ ai. Đây
+đúng bề mặt mà audit 05/09 cụm 5 nêu và ADR-0016 AMEND 2 §7 đã đóng cho
+`apps/web` — admin bị sót trong chính đợt đó.
+
+Bốn nhánh, **thứ tự merge 1→2→3→4**; nhánh 4 xếp chồng lên nhánh 3 vì cả hai
+cùng sửa `pnpm-lock.yaml`.
+
+1. **`fix/admin-image-endpoint` `1da928e1`** — `images: { unoptimized: true }`,
+   xoá `remotePatterns` chết. Chọn đóng hẳn thay vì siết `pathname` vì không có
+   consumer nên mọi hàng rào đều là cấu hình chết. Lý do đầy đủ ở
+   [ADR-0026 AMEND 5](adr/0026-p4-admin-app.md), kể cả điều KHÔNG chứng minh
+   được: chưa xác minh được trên Vercel thì `/_next/image` do optimizer nền
+   tảng hay bundle của mình phục vụ — nên chọn hành động đúng dưới CẢ HAI giả
+   thuyết, còn nâng `next` thì chỉ đúng dưới một.
+2. **`fix/maplibre-attribution` `2ce4d93e`** — `GHSA-jrc7-96c5-q579` (CVSS
+   10.0): `DOM.sanitize()` của maplibre 5.24 duyệt live `NamedNodeMap` trong lúc
+   xoá thuộc tính nên bỏ sót. Đọc source bản đang cài: `sanitize(` có ĐÚNG MỘT
+   call site sản phẩm (`attribution_control.ts:177`), và chuỗi vào là HTML THÔ
+   tải runtime từ TileJSON của `tiles.openfreemap.org` — host thứ ba; web lại cố
+   ý không dùng nonce nên CSP có `'unsafe-inline'`, không đỡ. Dòng 5.x không có
+   bản vá (5.24.0 là bản cuối), bản vá duy nhất là 6.4.1 tức nhảy major kèm
+   ESM-only. Nên cắt đường thực thi: `attributionControl: false` (map.ts:826 chỉ
+   `addControl` khi option truthy). Nghĩa vụ ODbL giữ nguyên — attribution render
+   lại bằng React đủ ba nguồn. [ADR-0018 AMEND](adr/0018-web-map-library.md)
+   tách rành mạch NGHĨA VỤ khỏi CƠ CHẾ, thứ mà §7 cũ gộp làm một.
+3. **`fix/deps-cheap` `fed1d041`** — vitest 4.1.10 → 4.1.11 ở 8 `package.json`
+   (đóng 10 alert), override js-yaml → 4.3.2, override hono → 4.13.5. Không món
+   nào nằm trên đường phục vụ request thật.
+4. **`fix/next-sharp` `90c3ce91`** — next 16.3.0 → **16.3.4** và override sharp
+   `>=0.35.0` → `^0.35.4`, hai thứ KHÔNG tách rời được (xem dưới).
+
+**Cái bẫy im lặng của đợt này, ghi kỹ vì nó sẽ quay lại.** PR Dependabot #2 nhắm
+`next@16.3.3`; đi theo nó là sai. 16.3.3 vá bằng cách TẮT hẳn tối ưu AVIF, còn
+16.3.4 BẬT LẠI vì sharp 0.35.4 đã mang libheif đã vá — đo được ở
+`optionalDependencies.sharp`: 16.3.3 khai `^0.35.3`, 16.3.4 khai `^0.35.4`. Mà
+override của pnpm THAY THẾ version spec ở mọi tầng, nên dải rộng `'>=0.35.0'` cũ
+nuốt mất đúng ràng buộc `^0.35.4` đó và `--frozen-lockfile` sẽ vui vẻ giữ
+0.35.3. Tổ hợp **next 16.3.4 cộng sharp 0.35.3 tệ hơn đứng yên ở 16.3.0**. Vì
+vậy có một cổng bắt buộc, đã chạy chứ không suy đoán: sau install lockfile phải
+ra `sharp@0.35.4` (đạt), và `pnpm install --frozen-lockfile` — đúng lệnh CI —
+exit 0 nên không cần thêm mục `minimumReleaseAgeExclude` nào.
+
+**PR Dependabot #2 không merge được và cũng không nên.** `mergeStateStatus:
+BLOCKED`, `gate` đỏ ngay ở `pnpm install --frozen-lockfile` với
+`ERR_PNPM_MINIMUM_RELEASE_AGE_VIOLATION` do hai gói bắc cầu chưa đủ 24 giờ tuổi
+(`@maplibre/maplibre-gl-style-spec@26.4.2`, `electron-to-chromium@1.5.425`).
+Ngoài ra nó gộp một major bump (maplibre 5→6) chung với bản vá critical trong
+một cú push mà push main là Vercel tự deploy.
+
+**Cố ý bỏ qua, có lý do đo được:**
+
+- `image-size` ×2 (high, `#52` `#53`) — **không tồn tại bản vá ở bất kỳ phiên bản
+  nào**: `dist-tags` cho `latest: 2.0.2` (04/2025) mà advisory ghi phạm vi
+  `<= 2.0.2` với `first_patched_version: null`. Đường sống là metro lúc bundle,
+  đọc asset của chính repo; app mobile chưa phát hành.
+- `decode-uri-component` (medium, `#54`) — bản vá duy nhất 0.5.0 là ESM-only còn
+  consumer `query-string@7.1.3` là CJS khai `^0.2.2`, override sẽ vỡ. Chỉ chạm
+  `apps/mobile` (parse deep link).
+
+**Một rủi ro thi công phải nói trước.** `apps/web/vitest.config.ts` KHÔNG khai
+`testTimeout` nên đang dùng mặc định 5000ms, trong khi 122 file test của web
+chạy song song với build của 5 package khác. Trong đợt này gate đỏ hai lần rồi
+xanh lại ở đúng cùng một commit: `register-form.spec.tsx` báo
+`Test timed out in 5000ms` và `otp-form.spec.tsx` lệch đếm ngược một giây
+(`Expected "59s", Received "58s"`). Đây là flake do tải, cùng họ với thứ session
+P5a vừa vá sáng nay bằng `testTimeout: 60_000` cho hai package mobile
+(`fbb945af`). Runner CI yếu hơn máy dev nên nhiều khả năng gặp lại — nếu CI đỏ ở
+đúng hai spec đó thì đừng đi điều tra `next 16.3.4`, hãy nâng `testTimeout` của
+web.
+
+**CÒN TREO:**
+
+1. **Nghiệm thu `/contact` bằng mắt.** `gate:int` xanh KHÔNG chứng minh bản đồ
+   còn vẽ được: không có `contact-map.spec.tsx`, và `contact-location.spec.tsx`
+   mock nguyên module vì jsdom không có WebGL. `map-attribution.spec.tsx` mới chỉ
+   canh phần ghi công. Một bản đồ trắng đi qua được cả gate lẫn build Vercel.
+2. **Đóng PR Dependabot #2** và dismiss 3 alert cố ý bỏ qua kèm lý do.
+3. **`testTimeout` cho `apps/web`** — nhánh riêng nếu CI đỏ lại.
+4. **maplibre 5→6** là nhánh TUỲ CHỌN, chưa làm: ESM-only, phải gọi
+   `setWorkerUrl`, chế độ hỏng là bản đồ trắng im lặng. Nếu làm thì nhắm 6.4.1
+   hoặc 6.6.0, KHÔNG nhắm bản `latest` mới vài ngày tuổi — trước freeze 15/10 thì
+   thứ cần là bản có nhiều thời gian ngoài đời nhất.
+5. Alert `maplibre-gl` VẪN MỞ sau nhánh 2: bản vá cắt đường thực thi chứ không gỡ
+   lỗ hổng khỏi cây phụ thuộc.
+
+Tests after (gate:int nhánh 4, lượt xanh): web 122 file · admin 80 · api 47 unit
+và 37 int · contract 16 · ui 5 · i18n 2, tổng 25/25 task turbo cộng 5/5 của
+test:int. Thêm `map-attribution.spec.tsx` (2 test) là lớp canh mới duy nhất.
+
 ## 2026-09-09 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, **16 commit ff vào main**: 10 thi công `ecc62bcf..3401ce53`, 4 vá review `37ce65b1..1beab567`, 1 nâng dep `97df1611`, cộng commit docs này — không migration)
 
 Session thi công theo [spec P5a](specs/2026-09-08-p5a-mobile-template-design.md)
