@@ -302,3 +302,59 @@ robots.ts` cùng đợt. Chốt: admin `robots.txt` = `allow: '/'`, giữ
   env nổ ồn ào ở build; `lookupServerSession` tính origin NGOÀI `try` — nuốt
   lỗi cấu hình thành `unreachable` từng biến sai env thành vòng lặp `/login`
   không lời giải thích.
+
+## AMEND 5 — 09/09/2026 (đợt Dependabot 26 alert): `/_next/image` của admin đóng hẳn — cùng lỗ mà ADR-0016 AMEND 2 §7 đã đóng cho web
+
+### Bối cảnh: advisory Next AVIF làm lộ một bề mặt có sẵn
+
+Đêm 08/09 Next công bố `GHSA-2xp9-vwfh-vxw4` (CVSS 9.5) — RCE trong Image
+Optimization API khi xử lý AVIF, gốc ở libheif mà `sharp` dùng. Rà theo
+advisory thì thấy `apps/web` an toàn (loader custom → `/_next/image` trả 404,
+đúng AMEND 2 §7 của ADR-0016), nhưng **`apps/admin` thì không** — và đó là bề
+mặt duy nhất trong cả 26 alert mà code của dự án thật sự phục vụ một đường
+dính.
+
+Ba dữ kiện đo được, cộng lại mới thành vấn đề:
+
+1. `next.config.ts` khai `remotePatterns` với `hostname: 'res.cloudinary.com'`,
+   `pathname: '/**'` và để `loader` mặc định → optimizer BẬT.
+2. `proxy.ts` matcher `'/((?!_next/static|_next/image|favicon.ico).*)'` **cố ý**
+   loại `_next/image` khỏi cổng gác → optimizer chạy **vô danh**, không đăng nhập.
+3. Admin **không import `next/image` ở bất kỳ đâu**: avatar nav-user là
+   `AvatarImage` của `@tourism/ui`, thumbnail review cố ý `<img>` trần vì
+   next/image ném khi src ở host lạ. Nghĩa là toàn bộ khối `images` chỉ có đúng
+   một tác dụng: mở endpoint.
+
+`pathname: '/**'` trên một host dùng chung là điểm đau riêng: `res.cloudinary.com`
+đa-tenant nên tài khoản Cloudinary của **bất kỳ ai** cũng khớp — chính docs
+Vercel khuyên thêm account id vào pathname khi không sở hữu hostname.
+
+### `formats: ['image/webp']` không phải hàng rào
+
+Dễ kết luận sai ở đây. Đọc `image-optimizer.js`: `BYPASS_TYPES` gồm SVG, ICO,
+ICNS, BMP, JXL, HEIC — **không có AVIF**; và nhánh chọn `contentType` đưa
+nguyên buffer AVIF vào `optimizeImage()`. `formats` điều khiển định dạng **RA**,
+không chặn giải mã AVIF **VÀO**.
+
+### Quyết định: `unoptimized: true`, xoá `remotePatterns`
+
+Không siết `pathname` theo cloud name, vì với admin thì mọi hàng rào đều là cấu
+hình chết — không có consumer. Đóng hẳn là lời giải đúng bản chất, cùng tinh
+thần "không còn optimizer nên không còn bề mặt" của ADR-0016 AMEND 2 §7.
+
+**Điều KHÔNG chứng minh được, ghi thẳng ra:** chưa xác minh được trên Vercel thì
+`/_next/image` do optimizer của nền tảng phục vụ hay do `image-optimizer.js` +
+`sharp` trong bundle của mình. Docs Vercel gợi ý vế đầu, nhưng đó là hợp đồng
+nền tảng chứ không phải quan sát deployment. Chính vì thế mà chọn sửa cấu hình
+thay vì chỉ nâng `next`: **nâng version chỉ đúng dưới một giả thuyết, còn
+`unoptimized` đúng dưới cả hai** — Next trả 404 (`next-server.js`:
+`loader !== 'default' || unoptimized → render404`) và khối `images` không được
+ghi vào build output nên `/_vercel/image` cũng 404.
+
+### Hệ quả
+
+- Ngày nào admin thật sự cần `next/image`, phải mở lại **có chủ đích**: bỏ
+  `unoptimized`, khai `remotePatterns` kèm `pathname` theo cloud name của dự án,
+  và cân lại việc `proxy.ts` đang miễn cổng gác cho `_next/image`.
+- Bản vá này độc lập với việc nâng `next` (đợt cùng ngày): hai thứ đúng dưới hai
+  giả thuyết khác nhau và **không thay thế nhau**.

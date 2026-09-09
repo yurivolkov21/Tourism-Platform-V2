@@ -14,8 +14,22 @@ const nextConfig: NextConfig = {
   // cùng nếp apps/web.
   transpilePackages: ['@tourism/ui'],
   images: {
-    // Avatar admin trong nav-user do Cloudinary phục vụ (ADR-0005/0021).
-    remotePatterns: [{ protocol: 'https', hostname: 'res.cloudinary.com', pathname: '/**' }],
+    // Admin KHÔNG dùng `next/image` ở bất kỳ đâu: avatar nav-user là
+    // `AvatarImage` (`<img>` của @tourism/ui), thumbnail review cố ý `<img>`
+    // trần vì next/image NÉM khi src ở host lạ. Nên `remotePatterns` cũ là cấu
+    // hình CHẾT mà vẫn mở sẵn `/_next/image` — trong khi `proxy.ts` cố ý loại
+    // đường đó khỏi cổng gác đăng nhập, tức optimizer chạy VÔ DANH; và
+    // `pathname: '/**'` trên host dùng chung nghĩa là tài khoản Cloudinary của
+    // BẤT KỲ ai cũng khớp. Đúng bề mặt "proxy ảnh cho cloud lạ" mà audit 05/09
+    // cụm 5 nêu và ADR-0016 AMEND 2 §7 đã đóng cho apps/web — admin bị sót
+    // trong chính đợt đó (ADR-0026 AMEND 5).
+    //
+    // `unoptimized` đóng cả hai phía: Next trả 404 cho `/_next/image`
+    // (`next-server.js`: `loader !== 'default' || unoptimized → render404`), và
+    // khối images không được ghi vào build output nên `/_vercel/image` của
+    // Vercel cũng 404. Đúng dưới CẢ HAI giả thuyết về việc ai phục vụ đường ảnh
+    // — không phụ thuộc vào việc optimizer nào đang chạy ở prod.
+    unoptimized: true,
   },
 };
 
