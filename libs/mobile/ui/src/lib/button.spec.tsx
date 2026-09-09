@@ -65,4 +65,22 @@ describe('Button', () => {
     expect(textStyle.color).toBe(theme.colors['muted-foreground']);
     expect(button.props.accessibilityState).toMatchObject({ disabled: true });
   });
+
+  // `{...rest}` của Button trải SAU `accessibilityState`, nên về hình thức một
+  // caller viết `accessibilityState={{ busy: true }}` có vẻ xoá mất `disabled`.
+  // Thực tế KHÔNG: `Pressable` của React Native ép lại `disabled` vào
+  // accessibilityState mỗi khi prop `disabled` khác null (Pressable.js —
+  // `disabled != null ? {..._accessibilityState, disabled} : …`), mà Button
+  // luôn truyền boolean thật. Test này ghim đúng lời bảo đảm đi mượn đó: ngày
+  // React Native đổi hành vi, đây là chỗ báo — chứ không phải người dùng dùng
+  // trình đọc màn hình.
+  it('cờ a11y của caller cộng vào mà `disabled` vẫn đúng', async () => {
+    await renderWithTheme(
+      <Button label="Book now" disabled accessibilityState={{ busy: true }} onPress={() => {}} />,
+    );
+
+    const state = screen.getByRole('button').props.accessibilityState;
+    expect(state.busy).toBe(true);
+    expect(state.disabled).toBe(true);
+  });
 });

@@ -1,5 +1,5 @@
 import { messages } from '@tourism/i18n';
-import { AppText, Button, EmptyState, Screen } from '@tourism/mobile-ui';
+import { AppText, Button, EmptyState, SCREEN_EDGES_UNDER_HEADER, Screen } from '@tourism/mobile-ui';
 import { router } from 'expo-router';
 
 /**
@@ -10,7 +10,7 @@ export default function NotFoundScreen() {
   const { notFound, titles } = messages.mobile.appShell;
 
   return (
-    <Screen>
+    <Screen edges={SCREEN_EDGES_UNDER_HEADER}>
       <AppText variant="title">{titles.notFound}</AppText>
       <EmptyState title={notFound.title} body={notFound.body}>
         <Button label={notFound.back} onPress={() => router.replace('/')} />
