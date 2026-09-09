@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-08 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, 10 commit thi công `ecc62bcf..3401ce53` và 4 commit vá review `37ce65b1..`) — **CHƯA merge, chờ duyệt**
+## 2026-09-09 — P5a template mobile: khung Expo SDK 57 + `@tourism/mobile-ui` (nhánh `feat/p5a-mobile-template`, **16 commit ff vào main**: 10 thi công `ecc62bcf..3401ce53`, 4 vá review `37ce65b1..1beab567`, 1 nâng dep `97df1611`, cộng commit docs này — không migration)
 
 Session thi công theo [spec P5a](specs/2026-09-08-p5a-mobile-template-design.md)
 và [ADR-0040](adr/0040-mobile-app-expo.md). Mở phase P5. Không migration,
