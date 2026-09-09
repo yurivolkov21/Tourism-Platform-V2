@@ -137,4 +137,96 @@ export const altText: Record<string, string> = {
     'A road folding back on itself in tight hairpins down a misted green mountainside, two motorbikes small on the bends.',
   'tourism/catalog/tour/vung-tau-coastal-2d/hero':
     'The Vũng Tàu shoreline curving away beneath a green headland, fishing boats anchored in the shallows and treetops in the foreground.',
+
+  // ── Gallery địa danh (137) ────────────────────────────────────────────────
+  // Gallery tour mượn lại đúng những publicId này, nên mỗi dòng ở đây phủ thêm
+  // khoảng hai dòng tour nữa.
+  'tourism/catalog/destination/ben-tre/gallery-01':
+    'Wooden sampans painted blue and red waiting in a muddy Mekong canal, rowers in conical hats sitting at the oars, seen from the bank above.',
+  'tourism/catalog/destination/ben-tre/gallery-02':
+    'A pale river winding between dense mats of water-coconut palm, a line of round basket boats moored along one bank, seen from the air.',
+  'tourism/catalog/destination/ben-tre/gallery-03':
+    'The bow of a wooden sampan with its coiled rope, pointing down a green channel that nipa palms close over from both sides.',
+  'tourism/catalog/destination/ben-tre/gallery-04':
+    'A still dark creek walled in by tangled jungle, one coconut frond catching the sun above the water.',
+  'tourism/catalog/destination/ben-tre/gallery-05':
+    'A thick stand of coconut palms behind a wide grey sandbank with a shallow stream cutting across it.',
+  'tourism/catalog/destination/ben-tre/gallery-06':
+    'Wooden rowing boats moored in a narrow channel under a shade net, two women in conical hats sitting in one of them.',
+  'tourism/catalog/destination/ben-tre/gallery-07':
+    'A green waterway roofed on both sides by tall nipa palms leaning right over the surface.',
+  'tourism/catalog/destination/ben-tre/gallery-08':
+    'Nipa palms mirrored in a glassy creek, a single boat barely visible in the shade at the far end.',
+  'tourism/catalog/destination/ben-tre/gallery-09':
+    'Coconut palms leaning over a flooded field, banana leaves and rough grass in the foreground under a white sky.',
+  'tourism/catalog/destination/can-tho/gallery-01':
+    'A trader poling a boat piled with produce through the rafted-up boats of Cái Răng floating market in late afternoon light.',
+  'tourism/catalog/destination/cat-ba/gallery-01':
+    'The orange bow of a kayak on flat emerald water in front of a limestone cliff furred with jungle.',
+  'tourism/catalog/destination/cat-ba/gallery-02':
+    'Sunset over the harbour, a long pier and moored fishing boats in silhouette with islands strung across the horizon.',
+  'tourism/catalog/destination/cat-ba/gallery-03':
+    'Rank after rank of forested karst peaks fading into blue haze, seen over the leaves of a hilltop.',
+  'tourism/catalog/destination/cat-ba/gallery-04':
+    'Floating fish farms scattered across a bay at dusk with their lights coming on, karst islands dark against an orange sky.',
+  'tourism/catalog/destination/cat-ba/gallery-05':
+    'A macaque and its young sitting together on a sandy beach, a limestone islet rising out of the water behind them.',
+  'tourism/catalog/destination/cat-ba/gallery-06':
+    'A macaque perched on jagged weathered limestone high above a bay, forested hills behind.',
+  'tourism/catalog/destination/cat-ba/gallery-07':
+    'The sun low and hazy over the harbour, boats scattered across the water and one crossing its reflection.',
+  'tourism/catalog/destination/cat-ba/gallery-08':
+    'A yellow-hulled tour boat and two smaller boats on flat water beneath a cluster of forested karst islands.',
+  'tourism/catalog/destination/da-lat/gallery-01':
+    'Tall pines on a slope with a stone path running down through them, a bench and a signpost beside it and hazy hills beyond.',
+  'tourism/catalog/destination/da-lat/gallery-02':
+    'Pines on a red-earth bank above a still lake, low sun raking across the trunks and lighting the needle-strewn ground.',
+  'tourism/catalog/destination/da-lat/gallery-03':
+    'A pine-covered spur reaching out into a wide lake, forested hills standing behind it in flat morning light.',
+  'tourism/catalog/destination/da-lat/gallery-04':
+    'Friends around a table on a hillside terrace at night, lamps strung above them and the lights of the town spread out in the valley below.',
+  'tourism/catalog/destination/da-lat/gallery-05':
+    "Đà Lạt's cathedral at the end of an empty street, its tall spire and clock tower rising above pines on both kerbs.",
+  'tourism/catalog/destination/da-lat/gallery-06':
+    'Scattered pines on a grassy ridge at dawn, mist lying along the valley below and a serrated mountain on the horizon.',
+  'tourism/catalog/destination/da-lat/gallery-07':
+    'A sea of mist filling the valleys at sunrise, one conical hill standing clear above it and greenhouses catching the light.',
+  'tourism/catalog/destination/da-lat/gallery-08':
+    'A brick path through a flower garden lined with ornate lamp posts, sun flaring behind one of them and beds of lavender and roses on both sides.',
+  'tourism/catalog/destination/da-lat/gallery-09':
+    'Swan pedal boats moored in a row along a jetty, a wide lake and a rounded forested hill beyond them.',
+  'tourism/catalog/destination/da-nang/gallery-01':
+    'The Dragon Bridge stretched across the Hàn River in early light, its yellow steel body arching over flat water with palms along the promenade.',
+  'tourism/catalog/destination/da-nang/gallery-02':
+    'The Golden Bridge from below, its deck packed with visitors and held up by two giant weathered stone hands, fir tops in the foreground.',
+  'tourism/catalog/destination/da-nang/gallery-03':
+    "Round basket boats drawn up on a beach with a fleet of fishing boats anchored offshore and the city's towers along the far end of the bay.",
+  'tourism/catalog/destination/da-nang/gallery-04':
+    'The white Lady Buddha statue standing above an altar crowded with bundles of incense sticks and red gladioli.',
+  'tourism/catalog/destination/da-nang/gallery-05':
+    'A dark carved-wood shrine standing inside a cave, its tiled roof and lit doorways glowing against the rock walls.',
+  'tourism/catalog/destination/da-nang/gallery-06':
+    'A line of round basket boats on wet sand at the edge of breaking surf, seen from directly above.',
+  'tourism/catalog/destination/da-nang/gallery-07':
+    'The Golden Bridge curving round the hilltop at dawn, the giant hands holding it above forested slopes with cloud lying over the plain below.',
+  'tourism/catalog/destination/da-nang/gallery-08':
+    'A vendor handing over a paper tray of grilled snacks at a night market stall, skewers laid out on the grill in front.',
+  'tourism/catalog/destination/da-nang/gallery-09':
+    'The Hàn River at dusk with the Dragon Bridge in the foreground and a cable-stayed bridge beyond, the city skyline along both banks.',
+  'tourism/catalog/destination/da-nang/gallery-10':
+    'A pagoda with a green tiled roof and sweeping eaves lit at dusk, bonsai and a limestone rockery filling the courtyard in front.',
+  'tourism/catalog/destination/da-nang/gallery-11':
+    'Surf running up a pale beach beside a fringe of coconut palms and a single white parasol, seen from directly above.',
+  'tourism/catalog/destination/da-nang/gallery-12':
+    'A seven-tiered stone pagoda with a carved dharma wheel on each level, shrubs and potted chrysanthemums around its base.',
+  'tourism/catalog/destination/da-nang/gallery-13':
+    'A road threading through a deep green mountain valley under heavy cloud, steep ridges closing in on both sides.',
+  'tourism/catalog/destination/da-nang/gallery-14':
+    'A stone laughing Buddha seated in front of a temple with an orange tiled roof and painted murals along its walls.',
+  'tourism/catalog/destination/da-nang/gallery-15':
+    'Basket boats and a wooden boat on the sand under a heavy storm sky, a small Vietnamese flag planted among them and a fishing fleet offshore.',
+  'tourism/catalog/destination/da-nang/gallery-16':
+    'A gilded shrine deep inside a cave, lit warm against wet mossy rock that rises out of the frame.',
+  'tourism/catalog/destination/da-nang/gallery-17':
+    'A wide empty beach between a dense line of coconut palms and turquoise surf, seen from directly above.',
 };
