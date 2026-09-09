@@ -8,7 +8,7 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-09 — Đợt Dependabot 26 alert: đóng `/_next/image` admin, cắt đường sanitize maplibre, nâng next/vitest/js-yaml/hono (4 nhánh, **CHƯA merge — chờ duyệt**)
+## 2026-09-09 — Đợt Dependabot 26 alert: đóng `/_next/image` admin, cắt đường sanitize maplibre, nâng next/vitest/js-yaml/hono, nâng trần test (5 nhánh, rebase thành chuỗi tuyến tính rồi ff vào `main`)
 
 Sáng 09/09 GitHub mở 26 Dependabot alert (8 critical, 4 high, 14 medium) đúng
 **7 giây sau** cú push merge P5a — nên thoạt nhìn như hệ quả của nó. Không phải:
@@ -33,8 +33,13 @@ khỏi cổng gác (optimizer chạy VÔ DANH); và admin không import `next/im
 đúng bề mặt mà audit 05/09 cụm 5 nêu và ADR-0016 AMEND 2 §7 đã đóng cho
 `apps/web` — admin bị sót trong chính đợt đó.
 
-Bốn nhánh, **thứ tự merge 1→2→3→4**; nhánh 4 xếp chồng lên nhánh 3 vì cả hai
-cùng sửa `pnpm-lock.yaml`.
+Năm nhánh, **thứ tự merge 1→2→3→4→5**; nhánh 4 xếp chồng lên nhánh 3 vì cả hai
+cùng sửa `pnpm-lock.yaml`, nhánh 5 chồng lên nhánh 4 vì entry này nằm ở đó.
+
+Lúc merge, cả năm được rebase thành MỘT chuỗi tuyến tính rồi đẩy lên và **chờ CI
+xanh trên đúng commit cuối** trước khi `--ff-only` vào `main` — vì rebase đổi
+hash nên đèn xanh của từng nhánh trước đó không còn áp cho commit mới. Bỏ bước
+đó chính là cách `main` đỏ âm thầm sáng nay.
 
 1. **`fix/admin-image-endpoint` `1da928e1`** — `images: { unoptimized: true }`,
    xoá `remotePatterns` chết. Chọn đóng hẳn thay vì siết `pathname` vì không có
@@ -43,7 +48,7 @@ cùng sửa `pnpm-lock.yaml`.
    được: chưa xác minh được trên Vercel thì `/_next/image` do optimizer nền
    tảng hay bundle của mình phục vụ — nên chọn hành động đúng dưới CẢ HAI giả
    thuyết, còn nâng `next` thì chỉ đúng dưới một.
-2. **`fix/maplibre-attribution` `2ce4d93e`** — `GHSA-jrc7-96c5-q579` (CVSS
+2. **`fix/maplibre-attribution` `fcebfbbe`** — `GHSA-jrc7-96c5-q579` (CVSS
    10.0): `DOM.sanitize()` của maplibre 5.24 duyệt live `NamedNodeMap` trong lúc
    xoá thuộc tính nên bỏ sót. Đọc source bản đang cài: `sanitize(` có ĐÚNG MỘT
    call site sản phẩm (`attribution_control.ts:177`), và chuỗi vào là HTML THÔ
@@ -54,12 +59,12 @@ cùng sửa `pnpm-lock.yaml`.
    `addControl` khi option truthy). Nghĩa vụ ODbL giữ nguyên — attribution render
    lại bằng React đủ ba nguồn. [ADR-0018 AMEND](adr/0018-web-map-library.md)
    tách rành mạch NGHĨA VỤ khỏi CƠ CHẾ, thứ mà §7 cũ gộp làm một.
-3. **`fix/deps-cheap` `fed1d041`** — vitest 4.1.10 → 4.1.11 ở 8 `package.json`
+3. **`fix/deps-cheap` `1c15d2ab`** — vitest 4.1.10 → 4.1.11 ở 8 `package.json`
    (đóng 10 alert), override js-yaml → 4.3.2, override hono → 4.13.5. Không món
    nào nằm trên đường phục vụ request thật.
-4. **`fix/next-sharp` `90c3ce91`** — next 16.3.0 → **16.3.4** và override sharp
+4. **`fix/next-sharp` `f15f2b1d`** — next 16.3.0 → **16.3.4** và override sharp
    `>=0.35.0` → `^0.35.4`, hai thứ KHÔNG tách rời được (xem dưới).
-5. **`fix/test-timeout-web-admin`** — trần test của web/admin, xem mục riêng dưới.
+5. **`fix/test-timeout-web-admin` `26c7f846`** — trần test của web/admin, xem mục riêng dưới.
 
 **Cái bẫy im lặng của đợt này, ghi kỹ vì nó sẽ quay lại.** PR Dependabot #2 nhắm
 `next@16.3.3`; đi theo nó là sai. 16.3.3 vá bằng cách TẮT hẳn tối ưu AVIF, còn
