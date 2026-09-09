@@ -365,4 +365,54 @@ export const altText: Record<string, string> = {
     'A stone pagoda tower lit gold at dusk on a rocky summit, safety chains strung along the rock and dark karst behind.',
   'tourism/catalog/destination/ninh-binh/gallery-14':
     'A rowing boat carrying passengers up a green river toward a sunlit gap between jungle cliffs, leaves framing the top of the view.',
+  'tourism/catalog/destination/phong-nha/gallery-01':
+    'Looking out from inside a huge cave mouth toward daylight, a sandy floor and shallow pool below jungle-covered cliffs.',
+  'tourism/catalog/destination/phong-nha/gallery-02':
+    'A camp of small tents on a sand bank deep inside a cave, turquoise water beside them and daylight pouring in through the far entrance.',
+  'tourism/catalog/destination/phong-nha/gallery-03':
+    'A brown river curving past a town of tiled roofs with blue tour boats moored along the bank and karst ridges standing behind, seen from above.',
+  'tourism/catalog/destination/phong-nha/gallery-04':
+    'A wide green valley running between karst ridges under a big cloudy sky, seen from a forested ridge.',
+  'tourism/catalog/destination/phong-nha/gallery-05':
+    'A line of blue tour boats moored along a stone quay under a tree, jungle-covered karst rising across the green river.',
+  'tourism/catalog/destination/phong-nha/gallery-06':
+    'A blue tour boat of passengers in orange life jackets in front of a cave entrance set into a cliff face, a second boat waiting behind.',
+  'tourism/catalog/destination/phong-nha/gallery-07':
+    'The low arched ceiling of a river cave lit dim gold, folds of rock overhead and black water below.',
+  'tourism/catalog/destination/phong-nha/gallery-08':
+    'A lit cave chamber with a massive stalagmite column, rippled formations covering the walls and ceiling and a walkway running below.',
+  'tourism/catalog/destination/phu-quoc/gallery-01':
+    'A canal lined with pastel arcaded buildings in Venetian style, gondola-shaped boats moored along the near bank.',
+  'tourism/catalog/destination/phu-quoc/gallery-02':
+    'The same pastel canal seen from a bridge, colourful buildings down both banks with young trees and café umbrellas along the water.',
+  'tourism/catalog/destination/phu-quoc/gallery-03':
+    'Fireworks bursting over the water beside a lit clock tower, palms in silhouette along the shore below.',
+  'tourism/catalog/destination/phu-quoc/gallery-04':
+    'A resort quarter at sunset gathered around an orange clock tower, a curved footbridge reaching out over a calm gold sea.',
+  'tourism/catalog/destination/phu-quoc/gallery-05':
+    'A fishing town from the air with hundreds of blue boats packed into the harbour, a green headland and islands beyond.',
+  'tourism/catalog/destination/quy-nhon/gallery-01':
+    'A long crescent beach with basket boats drawn up on the sand, a mountain headland behind and wind turbines along its ridge.',
+  'tourism/catalog/destination/quy-nhon/gallery-02':
+    'A long low wooden pier running out to a jungle-covered hillside above clear green water.',
+  'tourism/catalog/destination/quy-nhon/gallery-03':
+    'Waves washing over rocks below a steep headland, a long exposure blurring the surf to white mist.',
+  'tourism/catalog/destination/quy-nhon/gallery-04':
+    'Sun-loungers beside a pool ringed with coconut palms and shade sails, the open sea just beyond the terrace.',
+  'tourism/catalog/destination/quy-nhon/gallery-05':
+    'A grey-blue evening at the beach with swimmers in the shallows, mountains along the far shore and town buildings at the end of the bay.',
+  'tourism/catalog/destination/sa-pa/gallery-01':
+    'Rice terraces at harvest colour curving up a hillside in strong sun, a bamboo fence running along the path in the foreground.',
+  'tourism/catalog/destination/vung-tau/gallery-01':
+    'A spread of dishes on banana leaves: fried soft-shell crab, a clay pot of clam soup, raw vegetables with dipping sauce and a tall glass of sugarcane juice.',
+  'tourism/catalog/destination/vung-tau/gallery-02':
+    'A customer using tongs to pick shellfish from trays of clams, mussels and oysters laid out on ice at a seafood counter.',
+  'tourism/catalog/destination/vung-tau/gallery-03':
+    'Two thin casuarina trees in silhouette against a sea lit by low sun, a rocky shore in the foreground.',
+  'tourism/catalog/destination/vung-tau/gallery-04':
+    'Raw tiger prawns on a grill basket on a rough wooden table, with scallops on the half shell and cooked crabs on side plates.',
+  'tourism/catalog/destination/vung-tau/gallery-05':
+    'Surf breaking white over black boulders below a stone sea wall, a drainage pipe set into the wall above.',
+  'tourism/catalog/destination/vung-tau/gallery-06':
+    'The town seen from a hillside through the red flowers of a flame tree, towers along the shore and a lagoon behind them.',
 };
