@@ -129,7 +129,13 @@ overrides:
   # qs/body-parser. API không dùng express (adapter Fastify) nên qs là code
   # chết trong store, vá để sạch audit.
   qs@<6.16.0: ^6.16.0
-  hono@<4.12.34: ^4.12.34
+  # Đợt Dependabot 09/09 (3 alert medium): GHSA-crvj-82cr-hjcx (query parser đọc
+  # tham số SAU fragment → lệch cache-key/proxy), GHSA-g6gw-c38x-mqfc
+  # (parseBody() lồng nhau dấu chấm không giới hạn), GHSA-gqvv-2mrq-wpjv
+  # (toSSG() ghi ra ngoài thư mục đích). Đường kéo vẫn là dev-tooling: shadcn →
+  # @modelcontextprotocol/sdk, và prisma CLI → @prisma/dev. API là NestJS +
+  # Fastify nên hono KHÔNG phục vụ request nào — vá để sạch audit, ở lại 4.x.
+  hono@<4.13.5: ^4.13.5
   ip-address@<=10.3.0: ^10.3.1
   ip-address@>=10.1.1 <=10.2.0: ^10.2.1
   ip-address@>=10.1.1 <=10.2.1: ^10.2.2
@@ -143,9 +149,15 @@ overrides:
   # là 3.3.16, ghim trong dòng 3.x vì mọi parent đang thấy đều là CJS, không
   # có bản 5.x nào trong cây (đã kiểm `pnpm why nanoid` — chỉ 1 version).
   nanoid@<3.3.17: ^3.3.17
-  # js-yaml >=4.0.0 <4.3.1: kéo về qua cosmiconfig (shadcn CLI) →
-  # libs/shared/ui. Bản trước override là 4.3.0.
-  js-yaml@>=4.0.0 <4.3.1: ^4.3.1
+  # js-yaml: kéo về qua cosmiconfig (shadcn CLI) → libs/shared/ui, và qua
+  # @expo/xcpretty → @expo/cli. Bản trước override là 4.3.0, rồi 4.3.1.
+  # 09/09 nới lên 4.3.2 (GHSA-2883-xcg3-v3hh, high — maxTotalMergeKeys không
+  # chặn CPU với merge source rỗng). CHỈ dòng 4.x: advisory này có HAI dải và
+  # 3.15.2 CHÍNH LÀ bản vá của dòng 3.x, nên bản 3.15.2 trong cây đã sạch —
+  # đừng ép nó lên 4/5, @istanbuljs/load-nyc-config khai ^3.13.1 sẽ vỡ.
+  # Giữ dạng scoped: viết `js-yaml: '>=4.3.2'` là cho phép nhảy 5.x (đã có
+  # 5.4.1 trên registry) và cosmiconfig@9 khai ^4.1.0 sẽ vỡ peer.
+  js-yaml@>=4.0.0 <4.3.2: ^4.3.2
   # Đợt vá Dependabot 18/08 (1 alert high) — dep bắc cầu, scoped như các batch trên.
   # deepmerge-ts < 8.0.0 (GHSA-ggr8-5vv4-36mx — stack exhaustion khi merge object
   # đệ quy): đường vào là prisma CLI → @prisma/config, bị GHIM CỨNG '7.1.5' (không
