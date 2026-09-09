@@ -1,5 +1,5 @@
 import { messages } from '@tourism/i18n';
-import { renderRouter, screen } from 'expo-router/testing-library';
+import { fireEvent, renderRouter, screen, testRouter } from 'expo-router/testing-library';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
 // `.tsx` dưới thư mục app là một route (ignore list của nó chỉ có `+html`,
@@ -78,6 +78,33 @@ describe('vỏ điều hướng', () => {
     expect(screen.getAllByText(shell.titles.bookingDetail).length).toBeGreaterThan(0);
     expect(screen.getByText('NX-2026-0001')).toBeTruthy();
   });
+
+  // Vào app bằng deep link thì stack chỉ có ĐÚNG màn được trỏ tới nếu root
+  // layout không khai anchor — không nút back, back cứng Android thoát thẳng
+  // app. `unstable_settings.anchor` là thứ chèn `(tabs)` xuống dưới; test này
+  // canh chính nó, vì mất anchor là mất đường về mà không có gì đỏ.
+  it.each([['/tours/ha-giang-loop'], ['/bookings/NX-2026-0001'], ['/login']])(
+    'deep link thẳng vào %s vẫn còn đường quay lại',
+    async (url) => {
+      await openApp(url);
+
+      expect(testRouter.canGoBack()).toBe(true);
+    },
+  );
+
+  it.each([['/login'], ['/register'], ['/forgot-password']])(
+    'màn auth %s có nút đóng đưa về tab',
+    async (url) => {
+      const app = await openApp(url);
+
+      // `fireEvent.press` của RNTL 14 là BẤT ĐỒNG BỘ — thiếu `await` thì
+      // assertion chạy trước khi router kịp đổi và test đỏ oan (hoặc tệ hơn:
+      // xanh oan ở một assertion lỏng hơn).
+      await fireEvent.press(screen.getByLabelText(shell.close));
+
+      expect(app.pathname()).toBe('/');
+    },
+  );
 
   it('URL lạ rơi vào +not-found chứ không phải màn trắng', async () => {
     await openApp('/khong-ton-tai');

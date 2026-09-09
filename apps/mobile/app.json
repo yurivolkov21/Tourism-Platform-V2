@@ -15,6 +15,11 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": ["expo-router"],
+    "extra": {
+      "router": {
+        "sitemap": false
+      }
+    },
     "experiments": {
       "typedRoutes": true
     }

@@ -1939,6 +1939,13 @@ export const messages = {
         bookingDetail: 'Your booking',
         notFound: 'Page not found',
       },
+      /**
+       * Nhãn nút đóng của nhóm auth (trình bày dạng modal). Màn ĐẦU của một
+       * Stack không có nút back mặc định, nên thiếu nhãn này là người dùng vào
+       * bằng deep link sẽ kẹt cứng — dùng làm `accessibilityLabel`, không phải
+       * chữ hiển thị.
+       */
+      close: 'Close',
       /** Ô giữ chỗ của màn chưa có nội dung — P5b thay dần từng màn. */
       placeholder: {
         title: 'Coming soon',
