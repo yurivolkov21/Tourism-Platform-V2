@@ -432,6 +432,36 @@ export const tourDestinations: TourDestinationFixture[] = [
     destinationId: 'c0000002-0000-4000-8000-000000000018',
     isPrimary: true,
   },
+
+  // ── Địa danh PHỤ, thêm 09/09/2026 (đợt làm giàu nội dung, bước 3) ──────────
+  // Trước đợt này 23/29 tour chỉ gắn đúng MỘT địa danh, nên trang /destinations
+  // nghèo và bộ lọc theo vùng gần như vô dụng. Chín liên kết dưới đây đều là
+  // quan hệ "thành phố khởi hành → điểm đến" mà CHÍNH lộ trình của tour nói ra
+  // (mục `meetingPoint` và mô tả từng ngày), không phải suy diễn thương mại.
+  //
+  // Cách tìm: khớp tên địa danh theo BIÊN TỪ cộng bảng bí danh (Saigon/HCMC/Củ
+  // Chi → ho-chi-minh-city, Lan Hạ → cat-ba, Mỹ Sơn → hoi-an…). Đừng dùng ILIKE
+  // trần — đã đo, nó cho dương tính giả: `%Sa Pa%` khớp một chuỗi con nằm lọt
+  // giữa từ khác trong tour Quy Nhơn.
+  //
+  // ĐÃ LOẠI, đừng thêm lại: hanoi-heritage-day → ho-chi-minh-city. Văn bản có
+  // chuỗi "Hồ Chí Minh" nhưng đó là "Hồ Chí Minh Mausoleum" ở Ba Đình — tên
+  // NGƯỜI trong một địa danh Hà Nội, không phải thành phố.
+  {
+    tourId: 'd0000002-0000-4000-8000-000000000026',
+    destinationId: 'c0000002-0000-4000-8000-000000000013',
+    isPrimary: false, // ben-tre-coconut-day → ho-chi-minh-city
+  },
+  {
+    tourId: 'd0000002-0000-4000-8000-000000000027',
+    destinationId: 'c0000002-0000-4000-8000-000000000013',
+    isPrimary: false, // da-lat-highlands-3d → ho-chi-minh-city
+  },
+  {
+    tourId: 'd0000002-0000-4000-8000-000000000025',
+    destinationId: 'c0000002-0000-4000-8000-000000000013',
+    isPrimary: false, // mekong-can-tho-2d → ho-chi-minh-city
+  },
 ];
 
 export const tourItineraryDays: TourItineraryDayFixture[] = [
