@@ -229,4 +229,36 @@ export const altText: Record<string, string> = {
     'A gilded shrine deep inside a cave, lit warm against wet mossy rock that rises out of the frame.',
   'tourism/catalog/destination/da-nang/gallery-17':
     'A wide empty beach between a dense line of coconut palms and turquoise surf, seen from directly above.',
+  'tourism/catalog/destination/ha-giang/gallery-01':
+    'Terraced fields curving around green hills in morning sun, a river running along the valley floor and farmhouses scattered among the paddies.',
+  'tourism/catalog/destination/ha-giang/gallery-02':
+    'A road switchbacking down a green mountainside, white and yellow wildflowers close in the foreground and karst ranges receding behind.',
+  'tourism/catalog/destination/ha-giang/gallery-03':
+    'A tin-roofed farmhouse on a spur above a valley of maize plots and a small lake, mountains stacked behind in evening light.',
+  'tourism/catalog/destination/ha-long/gallery-01':
+    'Rowing boats of visitors in orange life jackets gliding beneath a huge grey limestone cliff that drops straight into jade water.',
+  'tourism/catalog/destination/hanoi/gallery-01':
+    'Hanoi Train Street at dusk, paper lanterns strung overhead and café tables crowding right up to both sides of the track.',
+  'tourism/catalog/destination/hanoi/gallery-02':
+    'The gate of the Temple of Literature at the end of a shaded path, its grey tiered pavilion standing between old trees with red poinsettias beside the walk.',
+  'tourism/catalog/destination/hanoi/gallery-03':
+    'The Hồ Chí Minh Mausoleum under a heavy gold-lit sky, the national flag flying beside its stone colonnade and clipped hedges around the base.',
+  'tourism/catalog/destination/hanoi/gallery-04':
+    'The Hanoi Opera House lit up at night beneath a full moon, headlight trails streaking across the road in front of it.',
+  'tourism/catalog/destination/hanoi/gallery-05':
+    'The red tiered tower of Trấn Quốc Pagoda rising above trees on the lakeshore, seen across flat green water.',
+  'tourism/catalog/destination/hanoi/gallery-06':
+    'The red Húc Bridge on its slender pillars over Hoàn Kiếm Lake, framed by overhanging branches and doubled in the water below.',
+  'tourism/catalog/destination/hanoi/gallery-07':
+    'A train pushing slowly down Hanoi Train Street at night with its headlights on, crowds pressed back against the lantern-hung cafés on both sides.',
+  'tourism/catalog/destination/hanoi/gallery-08':
+    'A red lacquered pavilion raised on a white stone base, its round windows and carved balustrade under a tiled roof, seen from below.',
+  'tourism/catalog/destination/hanoi/gallery-09':
+    'The front of the Hồ Chí Minh Mausoleum with two honour guards in white standing at the doorway and rows of yellow flower wreaths along the terrace.',
+  'tourism/catalog/destination/hanoi/gallery-10':
+    'The Hanoi Opera House floodlit at night, its reflection and the light trails of passing traffic laid out across the wet ground in front.',
+  'tourism/catalog/destination/hanoi/gallery-11':
+    'The weathered stone gate of an old temple seen from below, moss along its curved roof and carved characters running down the pillar beside it.',
+  'tourism/catalog/destination/hanoi/gallery-12':
+    'A worker in a conical hat pouring dried yellow beans into a wide flat basket, standing among rows of big earthenware fermentation jars.',
 };
