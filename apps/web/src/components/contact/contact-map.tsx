@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { resolveThemeNow, useResolvedTheme } from '@/lib/use-resolved-theme';
 import { OFFICES } from '@/mocks/offices';
+import { MapAttribution } from './map-attribution';
 
 // Bản đồ §Location của /contact — thay ô ImagePlaceholder (ADR-0018).
 // Viết riêng dùng thẳng maplibre-gl thay vì port lớp primitive mapcn của
@@ -78,8 +79,23 @@ export default function ContactMap() {
       scrollZoom: false,
       dragRotate: false,
       touchZoomRotate: false,
-      // Attribution OpenStreetMap là ràng buộc licence (ADR-0018) — GIỮ, đừng tắt.
-      attributionControl: { compact: true },
+      // TẮT AttributionControl, KHÔNG phải bỏ attribution — nó được render lại
+      // bằng React ở cuối component này (ràng buộc licence ADR-0018 vẫn giữ
+      // nguyên, cùng 3 link).
+      //
+      // Lý do bảo mật (GHSA-jrc7-96c5-q579, CVSS 10.0, công bố 08/09/2026):
+      // `DOM.sanitize()` của maplibre 5.24 duyệt live NamedNodeMap trong lúc
+      // xoá thuộc tính nên bỏ sót — bypass sanitizer. Trong toàn bộ 5.24 nó có
+      // ĐÚNG MỘT call site sản phẩm là `attribution_control.ts:177`
+      // (`innerHTML = DOM.sanitize(attribHTML)`), và chuỗi attribHTML là HTML
+      // THÔ tải runtime từ TileJSON của `tiles.openfreemap.org` — host thứ ba
+      // ta không kiểm soát. Dòng 5.x không có bản vá (5.24.0 là bản cuối), bản
+      // vá duy nhất là 6.4.1 tức nhảy major + ESM-only + đổi cách nạp worker.
+      // `map.ts:826` chỉ `addControl` khi option truthy, nên `false` làm call
+      // site đó không tồn tại — cắt đường thực thi mà không đụng dependency.
+      //
+      // Nếu ngày nào lên maplibre 6.x thì cân nhắc trả lại control gốc.
+      attributionControl: false,
     });
 
     setMap(instance);
@@ -120,6 +136,11 @@ export default function ContactMap() {
       <div ref={containerRef} className="size-full" />
 
       {markerHosts.map(({ city, el }) => createPortal(<MarkerPin />, el, city))}
+
+      {/* Attribution tự render thay AttributionControl của MapLibre — xem lý do
+          bảo mật ở option `attributionControl` phía trên. Ở file riêng để test
+          được (jsdom không nạp nổi maplibre-gl). */}
+      <MapAttribution />
 
       {/* Nút zoom tự vẽ thay NavigationControl mặc định — control của MapLibre
           có style riêng, không theo token được. */}

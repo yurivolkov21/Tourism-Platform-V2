@@ -215,3 +215,71 @@ trường build/deploy thật, trước khi cửa sổ nâng cấp đóng lại.
   làm loãng độ chính xác của test các component khác (xem mục 6).
 - **Tắt `AttributionControl` để UI gọn hơn** — vi phạm licence ODbL của dữ
   liệu OSM, không đánh đổi được (xem mục 7).
+
+## AMEND — 09/09/2026 (đợt Dependabot 26 alert): tách NGHĨA VỤ attribution khỏi CƠ CHẾ `AttributionControl`
+
+### Vì sao phải sửa đúng câu chữ của §7
+
+Ngày 08/09/2026 MapLibre công bố `GHSA-jrc7-96c5-q579` (CVE-2026-85061,
+**CVSS 10.0**): `DOM.sanitize()` duyệt live `NamedNodeMap` trong lúc xoá thuộc
+tính nên bỏ sót phần tử — bypass sanitizer. Đọc thẳng `maplibre-gl@5.24.0`
+trong store:
+
+- `src/util/dom.ts:92` định nghĩa `sanitize`, `:133` là vòng lặp có lỗi.
+- Trong TOÀN BỘ source, `sanitize(` chỉ có **đúng một call site sản phẩm**:
+  `src/ui/control/attribution_control.ts:177` — `innerHTML = DOM.sanitize(attribHTML)`.
+- Chuỗi `attribHTML` là **HTML thô tải runtime** từ TileJSON của
+  `tiles.openfreemap.org` (đã curl, có `<a href target>` thật) — host thứ ba
+  ta không kiểm soát.
+- Nặng thêm: `apps/web` cố ý **không dùng nonce** (`security-headers.ts` ghi rõ
+  lý do: mọi trang là SSG/ISR nên nonce đòi bỏ ISR toàn site), `script-src` có
+  `'unsafe-inline'` — CSP không đỡ được đường này.
+
+Dòng 5.x **không có bản vá**: 5.24.0 là bản cuối cùng, bản vá duy nhất là
+6.4.1, tức nhảy major kèm ESM-only và đổi cách nạp worker.
+
+### Chốt: §7 giữ nguyên NGHĨA VỤ, đổi CƠ CHẾ
+
+§7 viết *"Giữ nguyên `AttributionControl` mặc định của MapLibre … không truyền
+`attributionControl: false`"* và mục "Đã cân nhắc và loại" xếp việc tắt control
+là vi phạm ODbL. Câu đó gộp hai thứ khác nhau vào làm một:
+
+- **Nghĩa vụ** (ODbL của OpenStreetMap): phải HIỆN attribution. Không đổi, không
+  đánh đổi — đúng như §7 nói.
+- **Cơ chế** (`AttributionControl` của MapLibre): chỉ là một cách render, và nay
+  là cách DUY NHẤT dẫn tới lỗ hổng.
+
+Nay truyền `attributionControl: false` (`map.ts:826` chỉ `addControl` khi option
+truthy nên call site lỗi không tồn tại; `map.ts:120` đã khai kiểu
+`false | AttributionControlOptions` nên type-safe) và **tự render attribution
+bằng React** với đúng ba nguồn TileJSON khai: OpenFreeMap, © OpenMapTiles, và
+Data from OpenStreetMap. Nghĩa vụ ODbL được giữ nguyên vẹn; chỉ đường HTML thô
+từ host thứ ba vào `innerHTML` là bị cắt.
+
+Mục "Đã cân nhắc và loại" vẫn đúng theo tinh thần: *tắt attribution* vẫn bị
+loại. Cái được phép là *tắt control mà vẫn hiện attribution*.
+
+### Lớp canh mới, vì gate mù chỗ này
+
+`contact-map.tsx` import `maplibre-gl` mà jsdom không có WebGL, nên mọi spec
+chạm nó đều phải mock cả module (`contact-location.spec.tsx`) — ba link licence
+trước giờ **không có gì canh**, và một bản đồ chết trắng vẫn đi qua `gate:int`
+lẫn build Vercel. Vì vậy attribution tách ra `map-attribution.tsx` và có
+`map-attribution.spec.tsx` ghim đủ ba href cùng `target`/`rel`. Đây là lớp canh
+cho phần ghi công, KHÔNG phải cho việc bản đồ còn vẽ được — thứ đó vẫn phải mở
+mắt xem thật.
+
+### Hệ quả cho quyết định pin `5.24.0`
+
+Tiêu đề ADR này chốt pin `5.24.0`. Nay bản pin đó mang một lỗ hổng CVSS 10.0
+**vĩnh viễn không có bản vá trong dòng 5.x**. Bản vá này cắt đường thực thi chứ
+không gỡ lỗ hổng khỏi cây phụ thuộc: alert Dependabot cho `maplibre-gl` vẫn mở,
+và mọi lần dùng thêm API mới của maplibre phải kiểm lại xem có chạm `sanitize`
+không (hôm nay: popup và marker của ta không chạm — marker dùng `element` tự
+dựng, không có popup nào).
+
+Việc lên 6.x là **nhánh tuỳ chọn, chưa làm**: ESM-only, phải gọi `setWorkerUrl`,
+và chế độ hỏng là bản đồ trắng im lặng trên site đang chạy. Nếu làm thì nhắm
+**6.4.1 hoặc 6.6.0**, KHÔNG nhắm bản `latest` mới vài ngày tuổi — trước freeze
+15/10 thì thứ cần là bản có nhiều thời gian ngoài đời nhất trong số các bản đã
+vá.
