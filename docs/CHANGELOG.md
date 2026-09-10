@@ -8,6 +8,60 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-10 — Alt text cho toàn bộ 517 ảnh, đã ÁP LÊN SUPABASE PROD (nhánh `chore/seed-buoc1-snapshot`, **CHƯA merge**)
+
+Trước đợt này cả **517 dòng `media_assets` đều có `alt = NULL`**. Web có đường
+rơi-về `alt={image.alt ?? ''}` nên trang không vỡ, nhưng trình đọc màn hình chỉ
+nghe được tiêu đề cạnh ảnh chứ không biết trong ảnh có gì — và Google cũng vậy.
+
+**Nguồn sự thật là fixture, không phải DB.**
+`apps/api/prisma/fixtures/media/alt-text.ts` giữ **241 câu khoá theo `publicId`**.
+Khoá theo publicId chứ không theo id dòng vì gallery tour MƯỢN ảnh địa danh: 276
+dòng tour dùng chung 137 publicId với gallery địa danh. Alt tả NỘI DUNG ảnh, mà
+nội dung giống nhau dù treo ở trang tour hay trang địa danh — nên 241 câu phủ
+trọn 517 dòng, và không bao giờ lệch nhau giữa hai chỗ.
+
+**Mỗi câu viết sau khi NHÌN ảnh thật**, tải từ Cloudinary ở `w_500,q_auto,f_jpg`
+rồi mở ra xem, không suy từ slug hay tiêu đề tour. Đây không phải câu nệ: ba hero
+tour nói một đằng ảnh một nẻo — `vietnam-grand-journey-12d` là đường đèo cua tay
+áo trong sương, `red-river-craft-villages-day` là gian xưởng gốm tối đầy kệ mộc
+chưa nung, `saigon-cu-chi-day` là Dinh Độc Lập chứ không phải địa đạo. Alt suy từ
+tiêu đề sẽ nói sai cả ba, mà người dùng trình đọc màn hình không có cách nào
+kiểm chứng. Alt đoán mò hại hơn alt trống.
+
+**Script áp: `apps/api/scripts/apply-alt-text.mjs`** (`pnpm --filter @tourism/api
+media:alt`). Chạy khô là mặc định. Bốn chốt chặn: alt ngắn dưới 20 hoặc dài quá
+300 thì dừng; key không khớp dòng nào trong `media_assets` thì dừng (fixture lệch
+DB thì thà không áp còn hơn áp nửa vời); đích Supabase đòi cờ tường minh
+`--toi-biet-day-la-production`; số dòng có alt mà GIẢM sau khi chạy thì rollback.
+`alt IS DISTINCT FROM` nên chạy lại ghi 0 dòng.
+
+**Đã deploy Supabase 10/09.** User chủ động yêu cầu bỏ qua §15 cho bước này —
+§15 nằm trong nhóm "bất di bất dịch trừ khi user nói khác", và đây là UPDATE một
+cột đang toàn NULL, có transaction, có đường lùi một câu `SET alt = NULL`.
+Đo trên prod: chạy khô 517 → áp 517 → chạy lại 0. Đối chiếu lại từng dòng với
+fixture: **0/517 lệch**, 0 publicId có alt không đồng nhất giữa các dòng.
+
+**Trang thật đã ăn mà KHÔNG cần redeploy** — các trang catalogue khai
+`revalidate = 300` nên ISR tự sinh lại. Bẫy đo: stale-while-revalidate trả bản
+CŨ ở lần gọi đầu sau khi hết hạn rồi mới sinh lại ở nền, nên lần gọi thứ nhất
+vẫn thấy `alt=""` và tưởng hỏng; lần thứ hai mới ra bản mới. Quét 13 trang sau
+khi ổn định: **145 thẻ alt có chữ, 0 thẻ rỗng**.
+
+Hai thứ chỉ lộ ra khi ngồi xem hết ảnh, ghi lại để quyết sau chứ đợt này không sửa:
+bốn slot `about-team-*` là avatar robot pixel-art chứ không phải ảnh người (trang
+About đang giới thiệu đội ngũ bằng robot), và `about-story` là ảnh xe camper van
+cổ bên bờ biển hoàng hôn, không có chi tiết nào của Việt Nam.
+
+**CÒN TREO:** nhánh `chore/seed-buoc1-snapshot` chưa merge, nên prod hiện mang dữ
+liệu mà nguồn của nó còn nằm ngoài `main` — đúng khoảng "lệch pha" §15 cảnh báo.
+Merge sớm để đóng lại. Các bước seed còn lại (xoá tầng vận hành, người dùng giả,
+`ADMIN_EMAILS`) vẫn chưa chạy.
+
+Tests after: gate xanh 25/25 task (build + typecheck + unit + lint, có API tạm
+trên docker cho build web); script áp đo 5 kịch bản trên docker gồm 2 test âm
+(đích Supabase không cờ, key không khớp DB) đều chặn đúng.
+
 ## 2026-09-09 — Đóng nốt hai alert cuối: `maplibre-gl` 5.24.0 → 6.4.1, tự phục vụ worker, và cấu hình Dependabot (nhánh `fix/maplibre-v6`, **CHƯA merge**)
 
 Sau đợt trước còn đúng **hai alert** — cùng MỘT lỗ hổng `GHSA-jrc7-96c5-q579`
