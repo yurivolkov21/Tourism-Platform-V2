@@ -8,6 +8,54 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-10 — Dọn sạch tầng vận hành trên Supabase PROD (nhánh `chore/seed-buoc1-snapshot`, **CHƯA merge**)
+
+**ĐÃ CHẠY THẬT TRÊN PROD.** User chốt dọn trước rồi seed lại, không seed chồng
+lên nền cũ — vì seed chồng thì không phân biệt được dòng nào mới, dòng nào là
+tàn dư, và khách hàng cũ dễ bị dùng lại một cách vô tình.
+
+Xoá **1010 dòng / 19 bảng** trong MỘT transaction, thứ tự con-trước-cha suy từ
+`pg_constraint`: payment_events 197 · outbox 137 · bookings 159 · tour_departures
+144 · reviews 85 · sessions 74 · users 62 · accounts 61 · wishlist 51 ·
+cancellation_requests 16 · refunds 13 · review_moderation_events 5 · enquiries 3
+· subscribers 2 · verifications 1. Không xoá `users` đầu tiên được: ba khoá
+RESTRICT `bookings.user_id`, `cancellation_requests.user_id`, `posts.author_id`
+chặn — nên 9 bài blog được `UPDATE author_id` sang admin giữ lại TRƯỚC, giữ
+nguyên uuid để 9 ảnh hero không mồ côi.
+
+Giữ nguyên **982 dòng / 16 bảng**: 517 media_assets (alt còn đủ 517/517), 29
+tour và 8 bảng con, 9 bài blog, 52 khe site media. Sau khi xoá: 0 ảnh mồ côi ·
+1 admin · 9 bài blog cùng một tác giả · 0 tour còn rating mồ côi.
+
+**Hai bản vá công cụ đi kèm** (`736d1a68`). `export-snapshot.mjs` chưa bao giờ
+sinh `keep-list.json` — file ấy viết tay một lần hồi 09/09 — trong khi
+`reset-operational-data.mjs` trỏ CỨNG vào thư mục `2026-09-09/`. Ghép hai lỗi:
+xuất snapshot mới bao nhiêu lần thì bước xoá vẫn im lặng đọc bản cũ. Nay export
+sinh keep-list, reset đọc thư mục mới nhất.
+
+Bản nháp đầu của khối chọn admin dùng heuristic "ADMIN cũ nhất" và chọn NHẦM
+`admin@tourism.test` (rác của seed) thay vì tài khoản gmail thật — chạy reset
+với nó là xoá đúng tài khoản đang dùng, và không có lỗi nào được ném ra. Thay
+bằng chuỗi quyết định tường minh: `GIU_ADMIN_EMAIL` → `ADMIN_EMAILS[0]` →
+keep-list lần trước nếu admin đó còn → đúng một ADMIN thì lấy nó → không thì
+DỪNG và in danh sách để người chọn.
+
+Backup trước khi xoá: `docs/snapshots/2026-09-10/` (631 dòng, commit được) và
+`backups/2026-09-10/` (1065 dòng có PII, gitignored). 84 review curated không
+mất chữ nào — prose đã nằm sẵn trong `prisma/fixtures/catalog/reviews.ts`.
+
+**Trạng thái site sau khi dọn:** mọi trang HTTP 200, alt đủ, trang tour hiện
+"No departures" đúng kiểu trạng thái rỗng có xử lý. Site KHÔNG đặt được tour và
+không có sao đánh giá cho tới khi seed xong — đây là cái giá đã ghi ở spec §9.
+
+**CÒN TREO:** `ADMIN_EMAILS` trên Render phải khớp email admin trong keep-list
+TRƯỚC khi chạy seed, nếu không seed đẻ ra admin thứ hai. Thứ tự seed ở
+[spec §6.2](specs/2026-09-10-seed-lich-van-hanh-2026-design.md): giá vốn → khách
+giả → chuyến → booking + payment → refund + huỷ → reviews.
+
+Tests after: không chạy test (thao tác dữ liệu, không đổi code sản phẩm); script
+reset đã đo 5 kịch bản trên docker trước đó, kèm 2 test âm.
+
 ## 2026-09-10 — Alt text cho toàn bộ 517 ảnh, đã ÁP LÊN SUPABASE PROD (nhánh `chore/seed-buoc1-snapshot`, **CHƯA merge**)
 
 Trước đợt này cả **517 dòng `media_assets` đều có `alt = NULL`**. Web có đường
