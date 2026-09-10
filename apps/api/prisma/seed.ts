@@ -9,12 +9,12 @@
  *      chạy lại được nhiều lần.
  *   2. Site media slot — 9 slot key brand-chrome (Nexora seed chúng bằng
  *      migration; ở đây seed upsert chúng).
- *   3. Một CUSTOMER đăng nhập được (`customer@tourism.test`) + một ADMIN (entry
- *      đầu của `ADMIN_EMAILS`, mặc định `admin@tourism.test`) — chỉ là User row
- *      thường; Better Auth đọc cùng bảng, đăng ký cùng email để link vào.
- *   4. Một PAID booking tự ký (`BK-SEEDPAID`) thuộc về customer đó, kèm các cột
- *      snapshot v2 (tourTitle/ngày departure/unitPrice), để các luồng review /
- *      "my bookings" thử được mà không cần payment thật.
+ *   3. Một ADMIN (entry đầu của `ADMIN_EMAILS`) + 120 KHÁCH GIẢ đăng nhập được
+ *      (`fixtures/people/customers.ts`), mật khẩu chung băm bằng chính hàm của
+ *      Better Auth.
+ *   4. TẦNG VẬN HÀNH đầy đủ (`fixtures/operations/bookings.ts`): ~570 booking
+ *      trải 12 tháng theo `paidAt`, payment event, refund và yêu cầu huỷ cho
+ *      các chuyến bị công ty huỷ, rồi đặt lại `seatsBooked` từ booking thật.
  *   5. 9 bài blog port từ mock journal đã duyệt của web (`./fixtures/posts.ts`)
  *      — upsert theo slug, tag connectOrCreate theo slug, authorId = admin.
  *   6. 84 review CURATED cho 24/30 tour (`./fixtures/catalog/reviews.ts`, spec
@@ -38,31 +38,29 @@ import { auth } from '../src/auth/auth.config.js';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
   BookingStatus,
+  CancellationRequestStatus,
   DepartureStatus,
   PaymentProvider,
   PostStatus,
   ReviewSource,
   UserRole,
 } from '../src/generated/prisma/enums.js';
-import { derivedCostPrice, perDepartureTotal } from '../src/modules/catalog/tour-costs.js';
+import {
+  derivedCostPrice,
+  perDepartureTotal,
+  perPersonTotal,
+} from '../src/modules/catalog/tour-costs.js';
 import * as catalog from './fixtures/catalog/index.js';
+import {
+  bookingsGia,
+  cancellationRequestsGia,
+  gheDaDat,
+  paymentEventsGia,
+  refundsGia,
+} from './fixtures/operations/bookings.js';
 import { khachGia } from './fixtures/people/customers.js';
 import { posts as blogPosts } from './fixtures/posts.js';
 import { idTinh } from './fixtures/stable-id.js';
-
-/** Code của PAID booking tự ký (thuộc về customer trong overlay). */
-const PAID_BOOKING_CODE = 'BK-SEEDPAID';
-/**
- * Gắn PAID booking vào tour này nếu nó đủ điều kiện; nếu không thì departure
- * đủ điều kiện gần nhất (`pickPaidDeparture` có fallback nên KHÔNG throw nếu
- * slug này không khớp). Chọn lại 31/07 theo roster mới (spec
- * 2026-07-31-tours-catalogue-api-design.md §3): `hoi-an-lantern-evening` —
- * day tour rẻ, published, nhiều departure OPEN tương lai còn đủ chỗ trống
- * (vd Aug 2026), hợp cho luồng "my bookings"/review thử mà không cần payment
- * thật.
- */
-const PREFERRED_PAID_TOUR_SLUG = 'hoi-an-lantern-evening';
-const PAID_SEATS = 2;
 
 /** Các slot key brand-chrome — bản sao của slot catalog phía API (site-media). */
 const SITE_SLOT_KEYS = [
@@ -281,31 +279,6 @@ async function insertCatalog(): Promise<number> {
   return total;
 }
 
-/**
- * Chọn một departure OPEN (trên tour đã publish) còn trống ít nhất `seats` chỗ.
- * Ưu tiên {@link PREFERRED_PAID_TOUR_SLUG} nếu nó đủ điều kiện, nếu không thì
- * departure đủ điều kiện gần nhất. Prisma không so sánh hai cột trong `where`
- * được nên số seat trống được filter ở JS.
- */
-async function pickPaidDeparture(seats: number) {
-  const candidates = await prisma.tourDeparture.findMany({
-    where: { status: DepartureStatus.OPEN, tour: { isPublished: true } },
-    orderBy: { startDate: 'asc' },
-    select: {
-      id: true,
-      tourId: true,
-      startDate: true,
-      endDate: true,
-      seatsTotal: true,
-      seatsBooked: true,
-      priceOverride: true,
-      tour: { select: { slug: true, title: true, basePrice: true, currency: true } },
-    },
-  });
-  const free = candidates.filter((d) => d.seatsTotal - d.seatsBooked >= seats);
-  return free.find((d) => d.tour.slug === PREFERRED_PAID_TOUR_SLUG) ?? free[0] ?? null;
-}
-
 async function main(): Promise<void> {
   // 1. Fixtures catalog.
   console.log('[seed] loading catalog fixtures...');
@@ -323,17 +296,6 @@ async function main(): Promise<void> {
   //    Auth: đăng ký qua Better Auth cùng email sẽ link vào row đó (v2 không có
   //    supabaseId).
   const adminEmail = process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@tourism.test';
-  const customer = await prisma.user.upsert({
-    where: { email: 'customer@tourism.test' },
-    create: {
-      email: 'customer@tourism.test',
-      name: 'Seed Customer',
-      emailVerified: true,
-      phone: '+84900000001',
-      role: UserRole.CUSTOMER,
-    },
-    update: { name: 'Seed Customer', role: UserRole.CUSTOMER },
-  });
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     create: {
@@ -344,7 +306,7 @@ async function main(): Promise<void> {
     },
     update: { role: UserRole.ADMIN },
   });
-  console.log(`[seed] overlay users: customer=${customer.email} admin=${admin.email}`);
+  console.log(`[seed] admin: ${admin.email}`);
 
   // 3b. KHÁCH GIẢ (120, xem SO_KHACH) (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
   //     ≈400 booking và ≈116 review sắp seed. Không có họ thì không seed được
@@ -406,56 +368,133 @@ async function main(): Promise<void> {
     `[seed] khách giả: +${soKhach} user, +${soTaiKhoan} credential account (mật khẩu chung từ SEED_CUSTOMER_PASSWORD)`,
   );
 
-  // 4. PAID booking tự ký với các snapshot lúc create của v2 (audit H3):
-  //    tourTitle + ngày departure + unitPrice được đóng băng trên row. Tạo một
-  //    lần; seat được claim nguyên tử nên không thể overbook.
-  const existing = await prisma.booking.findUnique({
-    where: { code: PAID_BOOKING_CODE },
-    select: { id: true, tourTitle: true },
-  });
-  if (existing) {
-    console.log(`[seed] PAID booking ${PAID_BOOKING_CODE} already exists — skipped`);
-  } else {
-    const departure = await pickPaidDeparture(PAID_SEATS);
-    if (!departure) {
-      throw new Error('[seed] no OPEN fixture departure with free seats for the PAID booking');
-    }
-    const unitPrice = departure.priceOverride ?? departure.tour.basePrice; // Prisma.Decimal
-    await prisma.$transaction(async (tx) => {
-      await tx.booking.create({
-        data: {
-          code: PAID_BOOKING_CODE,
-          userId: customer.id,
-          tourId: departure.tourId,
-          departureId: departure.id,
-          numAdults: PAID_SEATS,
-          numChildren: 0,
-          totalAmount: unitPrice.mul(PAID_SEATS),
-          currency: departure.tour.currency,
-          status: BookingStatus.PAID,
-          // snapshot v2 (audit H3)
-          tourTitle: departure.tour.title,
-          departureStartDate: departure.startDate,
-          departureEndDate: departure.endDate,
-          unitPrice,
-          contactName: 'Seed Customer',
-          contactEmail: customer.email,
-          contactPhone: '+84900000001',
-          paymentProvider: PaymentProvider.STRIPE,
-          providerSessionId: 'cs_seed_paid_1',
-          providerPaymentId: 'pi_seed_paid_1',
-          paidAt: new Date(),
-        },
-      });
-      await tx.tourDeparture.update({
-        where: { id: departure.id },
-        data: { seatsBooked: { increment: PAID_SEATS } },
-      });
-    });
-    console.log(
-      `[seed] created PAID booking ${PAID_BOOKING_CODE} on ${departure.tour.slug} (${PAID_SEATS} seats)`,
-    );
+  // 4. TẦNG VẬN HÀNH — booking + payment event + refund + yêu cầu huỷ.
+  //
+  //    Thay cho booking demo `BK-SEEDPAID` đơn lẻ và tài khoản
+  //    `customer@tourism.test`: cả hai bị gỡ ngày 10/09/2026 vì đợt làm mới
+  //    dựng một tầng vận hành đầy đủ, và một dòng demo lạc loài giữa 570 dòng
+  //    thật chỉ làm bẩn số liệu báo cáo.
+  //
+  //    `costPerPerson` tính TẠI ĐÂY chứ không khai trong fixture: nó là
+  //    SNAPSHOT, và phải sinh ra từ cùng một hàm mà `bookings.service.ts` dùng
+  //    (`perPersonTotal`), nếu không số lịch sử và số tương lai sẽ nói khác
+  //    nhau mà không test nào bắt được.
+  const giaVonTheoTour = new Map<string, Prisma.Decimal | null>();
+  for (const tour of catalog.tours) {
+    // Ép `Decimal` giống hệt bước 8 bên dưới: fixture giữ tiền dạng chuỗi để
+    // khớp cột `Decimal(14,2)`, còn `perPersonTotal` nhận `Prisma.Decimal`.
+    const items = catalog.tourCostItems
+      .filter((c) => c.tourId === tour.id)
+      .map((c) => ({ amount: new Prisma.Decimal(c.amount), basis: c.basis }));
+    giaVonTheoTour.set(tour.id, items.length > 0 ? perPersonTotal(items) : null);
   }
+
+  const { count: soBooking } = await prisma.booking.createMany({
+    data: bookingsGia.map((b) => ({
+      id: b.id,
+      code: b.code,
+      userId: b.userId,
+      tourId: b.tourId,
+      departureId: b.departureId,
+      numAdults: b.numAdults,
+      numChildren: b.numChildren,
+      totalAmount: b.totalAmount,
+      currency: b.currency,
+      status: b.status as BookingStatus,
+      tourTitle: b.tourTitle,
+      departureStartDate: toDate(b.departureStartDate),
+      departureEndDate: toDate(b.departureEndDate),
+      unitPrice: b.unitPrice,
+      costPerPerson: giaVonTheoTour.get(b.tourId) ?? null,
+      contactName: b.contactName,
+      contactEmail: b.contactEmail,
+      contactPhone: b.contactPhone,
+      specialRequests: b.specialRequests,
+      paymentProvider: b.paymentProvider as PaymentProvider,
+      providerSessionId: b.providerSessionId,
+      providerPaymentId: b.providerPaymentId,
+      paidAt: new Date(b.paidAt),
+      cancelledAt: b.cancelledAt ? new Date(b.cancelledAt) : null,
+      createdAt: new Date(b.createdAt),
+    })) as unknown as Prisma.BookingCreateManyInput[],
+    skipDuplicates: true,
+  });
+
+  const { count: soSuKien } = await prisma.paymentEvent.createMany({
+    data: paymentEventsGia.map((e) => ({
+      id: e.id,
+      provider: e.provider as PaymentProvider,
+      eventId: e.eventId,
+      type: e.type,
+      payload: e.payload,
+      amount: e.amount,
+      currency: e.currency,
+      bookingId: e.bookingId,
+      processedAt: new Date(e.processedAt),
+      receivedAt: new Date(e.receivedAt),
+    })) as unknown as Prisma.PaymentEventCreateManyInput[],
+    skipDuplicates: true,
+  });
+
+  // `skipDuplicates` KHÔNG cứu được bảng `refunds`: nó biên dịch thành
+  // `ON CONFLICT DO NOTHING`, mà trigger `refunds_sum_within_total` là
+  // BEFORE INSERT — nó chạy TRƯỚC lúc Postgres kịp bỏ qua dòng trùng, thấy
+  // tổng hoàn đã bằng tổng tiền booking rồi nên ném check_violation. Lượt seed
+  // thứ hai vì thế đổ sập. Phải tự lọc dòng đã có trước khi chèn.
+  const refundDaCo = new Set(
+    (
+      await prisma.refund.findMany({
+        where: { id: { in: refundsGia.map((r) => r.id) } },
+        select: { id: true },
+      })
+    ).map((r) => r.id),
+  );
+  const { count: soHoanTien } = await prisma.refund.createMany({
+    data: refundsGia
+      .filter((r) => !refundDaCo.has(r.id))
+      .map((r) => ({
+        id: r.id,
+        bookingId: r.bookingId,
+        amount: r.amount,
+        currency: r.currency,
+        providerRefundId: r.providerRefundId,
+        providerPaymentId: r.providerPaymentId,
+        reason: r.reason,
+        adminId: admin.id,
+        createdAt: new Date(r.createdAt),
+      })) as unknown as Prisma.RefundCreateManyInput[],
+    skipDuplicates: true,
+  });
+
+  const { count: soYeuCau } = await prisma.cancellationRequest.createMany({
+    data: cancellationRequestsGia.map((c) => ({
+      id: c.id,
+      bookingId: c.bookingId,
+      userId: c.userId,
+      reason: c.reason,
+      freeCancellationDays: c.freeCancellationDays,
+      status: c.status as CancellationRequestStatus,
+      decisionNote: c.decisionNote,
+      decidedById: admin.id,
+      decidedAt: new Date(c.decidedAt),
+      createdAt: new Date(c.createdAt),
+    })) as unknown as Prisma.CancellationRequestCreateManyInput[],
+    skipDuplicates: true,
+  });
+
+  // Ghế đã đặt là số DẪN XUẤT — đặt lại từ booking thật, KHÔNG cộng dồn.
+  // `increment` sẽ nhân đôi ở lượt seed thứ hai; `set` thì chạy lại bao nhiêu
+  // lần cũng ra cùng một con số. Bộ cũ khai tay 438 ghế mà chỉ 2 booking đứng
+  // sau — đúng kiểu sai mà một phép cộng dồn tạo ra.
+  for (const [departureId, ghe] of gheDaDat) {
+    await prisma.tourDeparture.updateMany({
+      where: { id: departureId },
+      data: { seatsBooked: ghe },
+    });
+  }
+  console.log(
+    `[seed] vận hành: +${soBooking} booking, +${soSuKien} payment event, +${soHoanTien} refund, +${soYeuCau} yêu cầu huỷ; ghế đặt lại cho ${gheDaDat.size} chuyến`,
+  );
 
   // 5. Blog posts — 9 bài port từ mock journal đã duyệt của web (spec
   //    2026-07-31-blog-api-design §2B). Upsert theo slug; tag connectOrCreate
