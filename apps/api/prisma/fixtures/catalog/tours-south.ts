@@ -1,5 +1,4 @@
 import type {
-  TourDepartureFixture,
   TourDestinationFixture,
   TourFaqFixture,
   TourFixture,
