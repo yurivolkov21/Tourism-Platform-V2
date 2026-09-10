@@ -97,7 +97,7 @@ export interface CancellationRequestFixture {
 }
 
 const NGAY = 86400000;
-const ISO = (t: number): string => new Date(t).toISOString().slice(0, 10);
+
 const ISOT = (t: number): string => new Date(t).toISOString();
 const tien = (n: number): string => n.toFixed(2);
 
