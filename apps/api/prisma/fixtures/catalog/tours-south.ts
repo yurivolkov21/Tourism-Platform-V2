@@ -1034,8 +1034,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000022',
     kind: 'BOOKING',
     order: 2,
-    title: '20% deposit holds your seat',
-    body: 'A 20% deposit holds your seat online; full payment is due at least 7 days before departure.',
+    title: 'Ferry seat and room in one payment',
+    body: 'The full fare is charged online at booking, which confirms both your seat on the ferry and your room for the night in a single step.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000203',
@@ -1106,8 +1106,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000025',
     kind: 'BOOKING',
     order: 2,
-    title: '30% deposit confirms your seats',
-    body: 'A 30% deposit confirms your seats; the balance is due 5 days before departure.',
+    title: 'Sampan seats and homestay in one step',
+    body: 'The full fare is charged online at booking and confirms your seats on the sampan and your homestay bed together.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000212',
@@ -1154,8 +1154,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000027',
     kind: 'BOOKING',
     order: 2,
-    title: '30% deposit secures your room',
-    body: 'A 30% deposit secures your room block; full payment is due 5 days before departure.',
+    title: 'Room held from a small block',
+    body: 'Rooms come from a small block that fills early, so the full fare is charged online at booking and your room is confirmed immediately.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000218',
@@ -1202,8 +1202,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000029',
     kind: 'BOOKING',
     order: 2,
-    title: '30% deposit reserves your bungalow',
-    body: 'A 30% deposit reserves your bungalow category; the balance is due 14 days before arrival.',
+    title: 'Bungalow category held on payment',
+    body: 'Your bungalow category is reserved as soon as payment clears, and the full fare is charged online in a single step rather than across two payments.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000224',

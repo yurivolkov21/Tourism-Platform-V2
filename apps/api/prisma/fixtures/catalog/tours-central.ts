@@ -1302,8 +1302,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000019',
     kind: 'BOOKING',
     order: 2,
-    title: '30% deposit secures your place',
-    body: 'A 30% deposit secures your place; the balance is due 14 days before departure.',
+    title: 'One payment, nothing collected en route',
+    body: 'The full fare is charged online at booking and covers every hotel night, transfer and site ticket on the route — nothing is collected along the way.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000121',
@@ -1327,8 +1327,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000020',
     kind: 'BOOKING',
     order: 2,
-    title: '20% deposit holds your place',
-    body: 'A 20% deposit holds your place; the balance is due 7 days before departure.',
+    title: 'Boat and hotel confirmed together',
+    body: 'The full fare is charged online and your place on the boat and your room at the hotel are both confirmed the moment it clears.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000124',
@@ -1352,8 +1352,8 @@ export const tourPolicies: TourPolicyFixture[] = [
     tourId: 'd0000002-0000-4000-8000-000000000021',
     kind: 'BOOKING',
     order: 2,
-    title: '30% deposit secures your dates',
-    body: 'A 30% deposit secures your dates; the balance is due 21 days before departure.',
+    title: 'Dates and room held on payment',
+    body: 'Your dates and room category are held the moment payment clears, and the full fare is charged online rather than split across two payments.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000127',
