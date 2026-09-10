@@ -107,11 +107,13 @@ Better Auth. Booking rải trên cả 40 để báo cáo "khách quay lại" có
 
 | Chuyến | Số booking | Trạng thái | Ghi chú |
 | --- | --- | --- | --- |
-| `CLOSED` (~88) | 1–5, trung bình 3 | `PAID` | `paidAt` = ngày khởi hành − 7…60 ngày |
+| `CLOSED` (~88) | 2–6, trung bình 4 | `PAID` | `paidAt` = ngày khởi hành − 7…60 ngày; con số 4 do §8.1 quyết, không phải chọn bừa |
 | `CANCELLED` (~13) | 1–3 | `REFUNDED` | kèm refund + yêu cầu huỷ |
 | `OPEN` tương lai | ~15 chuyến có 1–2 | `PAID` | để khu account và màn "chuyến sắp tới" có dữ liệu |
 
-Tổng ≈ **310 booking**, trong đó ≈ 284 `PAID` trải đều 12 tháng theo `paidAt`.
+Tổng ≈ **400 booking**, trong đó ≈ 372 `PAID` trải đều 12 tháng theo `paidAt`.
+Con số nhích lên từ 310 vì §8.1: cần ~352 booking đã hoàn thành để ~116 review
+rơi vào tỉ lệ ~33% thay vì 44%.
 
 Mỗi booking:
 - `code` khớp `^BK-[A-Z0-9]{8}$`, sinh tất định từ hash của `departureId` + chỉ số.
@@ -206,6 +208,22 @@ Mỗi dòng dưới đây là một `expect`, không phải một lời hứa:
 11. ≥1 tour có chuyến giảm giá với `startDate ≥ 15/11/2026`.
 12. Seed chạy hai lần cho ra cùng số dòng (id tất định + `skipDuplicates`).
 
+Bảy cái nữa cho bước review (§8):
+
+13. **29/29 tour có `ratingAvg` khác null** — mỗi tour ≥3 review ĐÃ DUYỆT.
+14. Mọi review có `userId` bằng đúng `userId` của booking nó neo vào — người
+    review phải là người đã đi.
+15. Mọi review có `tourId` bằng đúng `tourId` của booking đó.
+16. Mọi review có `createdAt > booking.departureEndDate` — không ai review
+    chuyến chưa đi.
+17. Không review nào là `CURATED`; mọi dòng đều `VERIFIED` và có đủ bộ ba
+    `tourId` + `userId` + `bookingId` (nếu thiếu, CHECK `reviews_source_shape`
+    của DB sẽ chặn — bất biến này chỉ để hỏng SỚM ở test thay vì lúc INSERT).
+18. Hàng đợi moderation có ≥5 dòng chờ duyệt, và ≥1 dòng bị bác — hai màn admin
+    không được rỗng.
+19. Trung bình sao toàn site ∈ [4,1 ; 4,6] và ≥50% review là 5★ — canh phân bố
+    hình chữ J, không để nó trôi về phân bố đều.
+
 ## 8. Reviews — bước 6, và ràng buộc định hình nó
 
 User xếp reviews vào cuối chuỗi ưu tiên. Đó là chỗ đúng, vì DB **bắt buộc** vậy:
@@ -227,10 +245,77 @@ booking đã đi có review — con số thật của ngành, và đủ để 29
 `ratingAvg`/`ratingCount` vẫn để seed tính lại ở bước 6b bằng câu SQL sẵn có,
 không khai trong fixture.
 
-**Quyết định còn treo:** giữ lại bao nhiêu trong 84 review `CURATED` hiện có?
-Chúng không có user, viết tay, chất lượng tốt. Ba đường: bỏ hết và thay bằng
-`VERIFIED`; giữ cả hai loại song song; hoặc giữ `CURATED` cho tour ít booking.
-Cần user chốt trước khi dựng bước 6.
+**User chốt 10/09: thay TRỌN — bỏ hết 84 review `CURATED`, mọi review mới đều
+`VERIFIED` đứng tên khách giả.** Lý do: đồng bộ, cũ xoá hết thì mới cũng thay hết.
+
+Kiểm trước khi làm, và cả hai đều thuận:
+
+- **Card review chỉ đọc `authorName` + `authorDeleted`** (`review-card.tsx:50`) —
+  không đọc `authorLocation`, `tripLabel` hay `source`. Ba cột chỉ-dành-cho-curated
+  ấy không xuất hiện ở đâu trên web, nên bỏ `CURATED` **không mất gì về hiển thị**.
+- `bookingId` là `@unique` → DB tự ép **một review cho một booking**. Fixture chỉ
+  cần không cố tạo trùng; không cần bất biến tay.
+
+### 8.1 Thiết kế: lái từ ĐÍCH, không lái từ tỉ lệ
+
+Cách hiển nhiên là "cho x% booking đã đi để lại review". Cách đó sai ở chỗ:
+booking không rải đều giữa 29 tour, nên tour ít khách sẽ rơi về 0 review và mất
+sao — đúng vấn đề hiện tại (5 tour đang 0 review).
+
+Nên đi ngược: **chốt số review mỗi tour trước (3–6, trung bình 4 → ~116 review),
+rồi mới bảo đảm đủ booking đã hoàn thành để chứa chúng.** Kéo theo một điều
+chỉnh ở §5.2: mỗi chuyến `CLOSED` mang trung bình **4** booking thay vì 3
+(88 × 4 ≈ 352), để tỉ lệ review/booking-đã-đi rơi vào **~33%** — sát thực tế
+ngành, thay vì 44% nếu giữ con số cũ.
+
+### 8.2 Phân bố sao — hình chữ J, không phải đều
+
+| 5★ | 4★ | 3★ | 2★ | 1★ | ⌀ |
+| --- | --- | --- | --- | --- | --- |
+| 55% | 30% | 10% | 4% | 1% | ≈ 4,34 |
+
+Phân bố đều cho trung bình bám quanh 3,0 và trông giả ngay. Hình chữ J là dạng
+thật của review du lịch, và cho ra trung bình khớp con số 4,5 prod đang có.
+
+### 8.3 Thời điểm
+
+`createdAt` ∈ [`departureEndDate` + 1 ngày, + 21 ngày]. Không ai review chuyến
+chưa đi. Ràng buộc này tự rải review khắp 12 tháng — màn moderation và mọi widget
+"review gần đây" đều có dữ liệu quanh năm mà không cần luật riêng.
+
+### 8.4 Trạng thái duyệt — lấp luôn hàng đợi đang trống
+
+Review có ba trục (ADR-0031/0032): `isApproved` · `rejectedAt` · `retractedAt`.
+Seed hiện tại để cả 84 dòng `isApproved=true, moderatedAt=null` — hàng đợi
+moderation của admin vì thế trống trơn. Chia lại trên ~116 review:
+
+| Trạng thái | Số | Tác dụng |
+| --- | --- | --- |
+| Đã duyệt (`moderatedAt` + `moderatedById` = admin) | ~104 | Tính vào `ratingAvg` |
+| Chờ duyệt (`isApproved=false`, `moderatedAt=null`) | ~8 | **Lấp hàng đợi moderation** |
+| Bị bác (`rejectedAt` + `rejectedById`) | ~3 | Phủ nhánh phán quyết |
+| Tác giả rút (`retractedAt`) | ~1 | Phủ đường W4 U2 |
+
+Kèm `review_moderation_events` cho các dòng đã có phán quyết — lấp nốt một màn
+admin nữa. Chỉ ~104 dòng đã duyệt vào `ratingAvg`, đúng công thức sẵn có.
+
+### 8.5 Đề xuất tối ưu: giữ CHỮ, thay NGƯỜI
+
+84 review curated hiện tại viết tay riêng cho từng tour, chất lượng tốt — vứt đi
+là mất công viết lại 84 đoạn văn có chi tiết thật của từng chuyến.
+
+Đề xuất: **giữ nguyên phần chữ và số sao, gắn lại vào một khách giả + một booking
+đã hoàn thành của CHÍNH tour đó**, rồi viết thêm ~32 đoạn nữa cho đủ ~116. Mọi
+dòng vẫn là dòng MỚI (id mới, tác giả mới, booking mới, `VERIFIED`) nên vẫn đúng
+tinh thần "cũ xoá hết, mới thay hết" — chỉ là không đốt phần chữ.
+
+Nếu user muốn thay cả chữ thì bỏ khối này, chi phí là viết mới 116 đoạn.
+
+### 8.6 Lỗ riêng, không thuộc phạm vi
+
+**Testimonial trang chủ đọc `@/mocks/testimonials`, không đọc DB**
+(`testimonials.tsx:7`). Thay toàn bộ review trong DB **không đổi một chữ nào**
+trên trang chủ. Đây là việc riêng, ghi lại để không ai tưởng đã xong.
 
 ## 8b. Ngoài phạm vi
 
