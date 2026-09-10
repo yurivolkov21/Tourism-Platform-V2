@@ -57,6 +57,7 @@ import {
   paymentEventsGia,
   refundsGia,
 } from './fixtures/operations/bookings.js';
+import { reviewModerationEventsGia, reviewsGia } from './fixtures/operations/reviews-verified.js';
 import { khachGia } from './fixtures/people/customers.js';
 import { posts as blogPosts } from './fixtures/posts.js';
 import { idTinh } from './fixtures/stable-id.js';
@@ -525,19 +526,51 @@ async function main(): Promise<void> {
   }
   console.log(`[seed] blog posts: ${blogPosts.length} upserted.`);
 
-  // 6. Reviews CURATED cho tour (spec 2026-07-31-tours-catalogue-api §4) —
-  //    row curated không cần booking/user (FK nullable có chủ đích trong
-  //    schema). Idempotent nhờ id tĩnh + skipDuplicates.
+  // 6. Reviews VERIFIED — thay TRỌN 84 review CURATED cũ (quyết định user
+  //    10/09/2026). CHECK `reviews_source_shape` của DB cấm review CURATED
+  //    mang `user_id`, nên muốn review đứng tên khách giả thì buộc phải là
+  //    VERIFIED, mà VERIFIED đòi cả `booking_id` — đó là lý do bước này đứng
+  //    SAU booking chứ không phải sở thích sắp xếp.
+  //
+  //    Giữ CHỮ, thay NGƯỜI: 84 đoạn văn cũ viết tay cho từng tour được gắn lại
+  //    vào khách giả + booking đã hoàn thành của chính tour đó, cộng 35 đoạn
+  //    mới cho những tour phủ chưa đủ.
   const { count: reviewCount } = await prisma.review.createMany({
-    data: catalog.tourReviews.map((review) => ({
-      ...review,
-      createdAt: new Date(review.createdAt),
-      source: ReviewSource.CURATED,
-      isApproved: true,
-    })),
+    data: reviewsGia.map((r) => ({
+      id: r.id,
+      tourId: r.tourId,
+      userId: r.userId,
+      bookingId: r.bookingId,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      authorName: r.authorName,
+      source: ReviewSource.VERIFIED,
+      isApproved: r.isApproved,
+      rejectedAt: r.rejectedAt ? new Date(r.rejectedAt) : null,
+      rejectedById: r.rejectedAt ? admin.id : null,
+      moderatedAt: r.moderatedAt ? new Date(r.moderatedAt) : null,
+      moderatedById: r.moderatedAt ? admin.id : null,
+      retractedAt: r.retractedAt ? new Date(r.retractedAt) : null,
+      createdAt: new Date(r.createdAt),
+    })) as unknown as Prisma.ReviewCreateManyInput[],
     skipDuplicates: true,
   });
-  console.log(`[seed] tour reviews: +${reviewCount}`);
+
+  const { count: soSuKienDuyet } = await prisma.reviewModerationEvent.createMany({
+    data: reviewModerationEventsGia.map((e) => ({
+      id: e.id,
+      reviewId: e.reviewId,
+      actorId: admin.id,
+      fromApproved: e.fromApproved,
+      toApproved: e.toApproved,
+      toRejected: e.toRejected,
+      note: e.note,
+      createdAt: new Date(e.createdAt),
+    })) as unknown as Prisma.ReviewModerationEventCreateManyInput[],
+    skipDuplicates: true,
+  });
+  console.log(`[seed] reviews: +${reviewCount} VERIFIED, +${soSuKienDuyet} sự kiện duyệt`);
 
   // 6b. Recompute ratingAvg/ratingCount cho MỌI tour (kể cả 0 review → null/0)
   //     — CÙNG MỘT công thức với `ReviewsService.moderate` ③
