@@ -945,7 +945,11 @@ export const tourFaqs: TourFaqFixture[] = [
   {
     id: 'd2000002-0000-4000-8000-000000000501',
     tourId: 'd0000002-0000-4000-8000-000000000026', // ben-tre-coconut-day
-    order: 5,
+    // Tour này gốc chỉ có 3 FAQ nên hai câu thêm vào phải là 4 và 5, không
+    // phải 5 và 5 như các tour vốn đã có 4 câu. `TourFaq` không có @@unique
+    // trên (tourId, order) và service sắp xếp không tiebreaker, nên hai dòng
+    // cùng order cho ra thứ tự hiển thị KHÔNG xác định giữa hai lần chạy.
+    order: 4,
     question: 'How large is the group?',
     answer:
       'Fourteen guests at most, and the sampan that threads the coconut canals splits smaller than that — you are never in a convoy.',
