@@ -231,11 +231,35 @@ try {
     console.log(`  −${String(rowCount).padStart(5)}  ${bang}`);
   }
 
+  // Xoá sạch reviews mà để nguyên `tours.rating_avg`/`rating_count` là để lại
+  // một lời nói dối có thể đọc được: card tour vẫn hô "4.5 · 12 đánh giá"
+  // trong khi bảng reviews đã trống trơn. Bất biến bên dưới chỉ đếm SỐ DÒNG
+  // của các bảng phải-còn, mà đây là sai ở mức GIÁ TRỊ trong một bảng không
+  // hề mất dòng nào — nó không bao giờ bắt được, nên phải dọn tường minh.
+  //
+  // null/0 chứ không phải 0/0: đó đúng là nhánh "tour không có review" của
+  // seed bước 6b và `ReviewsService.moderate` ③ (tri-state null ≠ 0 — web
+  // phân biệt "chưa có đánh giá" với "có đánh giá, điểm 0"). Nhờ vậy chạy
+  // seed ngay sau đây sẽ tính lại ra đúng cùng một thứ.
+  const { rowCount: raRating } = await client.query(
+    'update tours set rating_avg = null, rating_count = 0 where rating_avg is not null or rating_count <> 0',
+  );
+  console.log(`  ~${String(raRating).padStart(5)}  tours.rating_avg/rating_count → null/0`);
+
   for (const bang of PHAI_CON) {
     const sau = await dem(bang, null);
     if (sau !== truoc.get(bang)) {
       throw new Error(`Bất biến vỡ: ${bang} có ${truoc.get(bang)} dòng trước, còn ${sau} sau`);
     }
+  }
+
+  // Bất biến GIÁ TRỊ, khác họ với ba bất biến đếm dòng ở trên: không tour nào
+  // được phép còn mang điểm đánh giá sau khi bảng reviews đã bị xoá trắng.
+  const { rows: conRating } = await client.query(
+    'select count(*)::int as n from tours where rating_avg is not null or rating_count <> 0',
+  );
+  if (conRating[0].n !== 0) {
+    throw new Error(`${conRating[0].n} tour còn rating trong khi reviews đã trống`);
   }
   const moCoi = await demMoCoi();
   if (moCoi !== 0) throw new Error(`${moCoi} ảnh mồ côi — chủ sở hữu đã biến mất`);
