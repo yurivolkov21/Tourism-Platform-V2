@@ -151,6 +151,27 @@ const SITE_SLOT_KEYS = [
 
 const connectionString =
   process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
+
+// ── Chốt chặn production ────────────────────────────────────────────────────
+// `db:seed` chạy qua `--env-file-if-exists=.env.local`, mà file đó trỏ Session
+// pooler của Supabase PROD. Nghĩa là gõ `pnpm db:seed` không kèm gì thì đích
+// MẶC ĐỊNH LÀ PRODUCTION — ngược hẳn trực giác, và khác hẳn hai script anh em
+// (`data:reset`, `media:alt`) vốn đòi cờ tường minh. Đợt rà 10/09 xếp đây là
+// phát hiện NẶNG: seed ghi đè nội dung biên tập của 29 tour và 87 policy.
+const LA_PROD = /supabase\.(com|co)$/i.test(new URL(connectionString).hostname);
+if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
+  console.error(`
+✖ TỪ CHỐI: ${new URL(connectionString).hostname} là Supabase production.
+
+  Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour và 87 policy (cả hai dùng
+  upsert), và chèn toàn bộ tầng vận hành. Muốn chạy thật thì thêm cờ:
+
+      pnpm --filter @tourism/api db:seed -- --toi-biet-day-la-production
+
+  Chạy ở docker: đặt DATABASE_URL tường minh (biến môi trường thắng --env-file).
+`);
+  process.exit(1);
+}
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
@@ -413,7 +434,7 @@ async function main(): Promise<void> {
       paymentProvider: b.paymentProvider as PaymentProvider,
       providerSessionId: b.providerSessionId,
       providerPaymentId: b.providerPaymentId,
-      paidAt: new Date(b.paidAt),
+      paidAt: b.paidAt ? new Date(b.paidAt) : null,
       cancelledAt: b.cancelledAt ? new Date(b.cancelledAt) : null,
       createdAt: new Date(b.createdAt),
     })) as unknown as Prisma.BookingCreateManyInput[],
@@ -474,9 +495,11 @@ async function main(): Promise<void> {
       reason: c.reason,
       freeCancellationDays: c.freeCancellationDays,
       status: c.status as CancellationRequestStatus,
-      decisionNote: c.decisionNote,
-      decidedById: admin.id,
-      decidedAt: new Date(c.decidedAt),
+      decisionNote: c.decisionNote || null,
+      // Yêu cầu đang CHỜ chưa có ai quyết — hai cột này phải là null, không
+      // phải "quyết định lúc 1970". Fixture để chuỗi rỗng cho nhánh REQUESTED.
+      decidedById: c.decidedAt ? admin.id : null,
+      decidedAt: c.decidedAt ? new Date(c.decidedAt) : null,
       createdAt: new Date(c.createdAt),
     })) as unknown as Prisma.CancellationRequestCreateManyInput[],
     skipDuplicates: true,
