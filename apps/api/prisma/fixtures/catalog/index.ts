@@ -42,8 +42,7 @@ export const tourPolicies = [
   ...toursSouth.tourPolicies,
 ];
 
-export const tourDepartures = [
-  ...toursNorth.tourDepartures,
-  ...toursCentral.tourDepartures,
-  ...toursSouth.tourDepartures,
-];
+// Lịch khởi hành KHÔNG còn nằm trong ba file miền: từ 10/09/2026 nó được SINH
+// cho trọn năm 2026 bởi `departures-2026.ts`. Xem doc-comment ở đó để biết ba
+// phân rã của bộ 134 ngày gõ tay cũ mà mô hình này vá.
+export { tourDepartures } from './departures-2026.js';
