@@ -39,7 +39,6 @@ import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
   BookingStatus,
   CancellationRequestStatus,
-  DepartureStatus,
   PaymentProvider,
   PostStatus,
   ReviewSource,
