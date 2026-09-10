@@ -41,7 +41,7 @@
  * cancellation_requests→users, cancellation_requests→bookings, posts→users,
  * refunds→bookings, tours→tour_categories.
  */
-import { readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
 
@@ -62,9 +62,23 @@ if (LA_PROD && APPLY && !CHO_PHEP_PROD) {
   process.exit(1);
 }
 
+// Đọc keep-list ở thư mục snapshot MỚI NHẤT, không trỏ cứng vào một ngày.
+// Bản trước trỏ cứng '2026-09-09' — nghĩa là xuất snapshot mới bao nhiêu lần thì
+// bước xoá vẫn im lặng đọc bản cũ, và ngày nào admin đổi là xoá nhầm người.
+const THU_MUC_SNAPSHOT = join(ROOT, 'docs', 'snapshots');
+const NGAY_MOI_NHAT = readdirSync(THU_MUC_SNAPSHOT)
+  .filter((d) => existsSync(join(THU_MUC_SNAPSHOT, d, 'keep-list.json')))
+  .sort()
+  .at(-1);
+if (!NGAY_MOI_NHAT) {
+  console.error('\n✗ Không có snapshot nào chứa keep-list.json.');
+  console.error('  Chạy `pnpm --filter @tourism/api snapshot:export` trước.\n');
+  process.exit(1);
+}
 const keep = JSON.parse(
-  readFileSync(join(ROOT, 'docs', 'snapshots', '2026-09-09', 'keep-list.json'), 'utf8'),
+  readFileSync(join(THU_MUC_SNAPSHOT, NGAY_MOI_NHAT, 'keep-list.json'), 'utf8'),
 );
+console.log(`keep-list: docs/snapshots/${NGAY_MOI_NHAT}/keep-list.json`);
 const ADMIN_ID = keep.admin_duy_nhat.id;
 
 /** Thứ tự BẮT BUỘC — con trước cha. Đảo là gãy ở khoá RESTRICT. */

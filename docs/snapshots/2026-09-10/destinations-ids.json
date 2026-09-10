@@ -1,0 +1,110 @@
+[
+  {
+    "id": "c0000002-0000-4000-8000-000000000016",
+    "slug": "ben-tre",
+    "name": "Bến Tre",
+    "region": "Southern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000015",
+    "slug": "can-tho",
+    "name": "Cần Thơ",
+    "region": "Southern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000003",
+    "slug": "cat-ba",
+    "name": "Cát Bà",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000017",
+    "slug": "da-lat",
+    "name": "Đà Lạt",
+    "region": "Southern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000010",
+    "slug": "da-nang",
+    "name": "Đà Nẵng",
+    "region": "Central Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000006",
+    "slug": "ha-giang",
+    "name": "Hà Giang",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000002",
+    "slug": "ha-long",
+    "name": "Hạ Long",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000001",
+    "slug": "hanoi",
+    "name": "Hà Nội",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000013",
+    "slug": "ho-chi-minh-city",
+    "name": "TP. Hồ Chí Minh",
+    "region": "Southern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000009",
+    "slug": "hoi-an",
+    "name": "Hội An",
+    "region": "Central Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000008",
+    "slug": "hue",
+    "name": "Huế",
+    "region": "Central Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000007",
+    "slug": "mai-chau",
+    "name": "Mai Châu",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000005",
+    "slug": "ninh-binh",
+    "name": "Ninh Bình",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000011",
+    "slug": "phong-nha",
+    "name": "Phong Nha",
+    "region": "Central Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000018",
+    "slug": "phu-quoc",
+    "name": "Phú Quốc",
+    "region": "Southern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000012",
+    "slug": "quy-nhon",
+    "name": "Quy Nhơn",
+    "region": "Central Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000004",
+    "slug": "sa-pa",
+    "name": "Sa Pa",
+    "region": "Northern Vietnam"
+  },
+  {
+    "id": "c0000002-0000-4000-8000-000000000014",
+    "slug": "vung-tau",
+    "name": "Vũng Tàu",
+    "region": "Southern Vietnam"
+  }
+]

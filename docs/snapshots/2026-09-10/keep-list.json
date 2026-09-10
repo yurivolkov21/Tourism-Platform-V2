@@ -1,0 +1,12 @@
+{
+  "ghi_chu": "Sinh tự động bởi export-snapshot.mjs. reset-operational-data.mjs đọc file này ở thư mục snapshot MỚI NHẤT để biết admin nào được giữ lại.",
+  "ly_do_giu_uuid": "Giữ nguyên uuid admin thay vì tạo mới: 9 bài blog trỏ vào nó qua FK RESTRICT, và ADMIN_EMAILS trên Render phải khớp email này.",
+  "admin_duy_nhat": {
+    "id": "60b92d84-b84d-48dd-bfb8-8654768b7cd4",
+    "email_rut_gon": "tour….online@gmail.com",
+    "name": "Admin Nexora",
+    "created_at": "2026-08-19T21:21:15.196Z",
+    "ghi_chu": "Prod có 2 ADMIN lúc xuất; giữ bản này, 1 bản còn lại sẽ bị xoá khi reset."
+  },
+  "so_admin_luc_xuat": 2
+}
