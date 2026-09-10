@@ -136,20 +136,57 @@ không vướng bậc `30/15/7/0`. Mỗi booking trên chuyến bị huỷ sinh 
 
 Chuyến `PAID` bình thường sinh một `PaymentEvent` thu tiền.
 
-## 6. Thứ tự bắt buộc
+## 6. Dọn sạch TRƯỚC, rồi seed theo thứ tự ưu tiên
 
-Sai thứ tự là phải xoá làm lại, không vá được:
+Quyết định của user (10/09): **dọn dữ liệu cũ đi trước, rồi seed lại rõ ràng** —
+không seed chồng lên nền cũ. Lý do đúng: seed chồng lên thì không ai phân biệt
+được dòng nào là mới, dòng nào là tàn dư của lượt seed trước, và khách hàng cũ
+dễ bị dùng lại một cách vô tình.
+
+### 6.1 Bước 0 — dọn (`reset-operational-data.mjs`)
+
+Đo trên prod ngày 10/09: **xoá 1025 dòng / 19 bảng · giữ 982 dòng / 16 bảng**.
+
+| Xoá | Dòng | | Giữ | Dòng |
+| --- | --- | --- | --- | --- |
+| `users` · `accounts` · `sessions` | 63 · 63 · 86 | | `tours` + 8 bảng con | 373 |
+| `bookings` · `tour_departures` | 159 · 144 | | `media_assets` · `site_media_slots` | 517 · 52 |
+| `payment_events` · `refunds` | 197 · 13 | | `posts` + 3 bảng blog | 40 |
+| `reviews` · `review_moderation_events` | 85 · 5 | | `email_suppressions` · `media_garbage` | 0 · 0 |
+| `cancellation_requests` · `wishlist` | 16 · 51 | | | |
+| `outbox` · `enquiries` · `subscribers` · `verifications` | 137 · 3 · 2 · 1 | | | |
+
+Giữ đúng **một admin** (email trong `keep-list.json`); `posts.author_id` của cả
+9 bài chuyển về admin đó trước khi xoá user, nếu không khoá ngoại `RESTRICT` chặn.
+
+**Điều kiện bắt buộc trước khi bấm:** xuất snapshot + backup MỚI. Bản 09/09 đã
+cũ — prod từ đó đã nhận alt text cho 517 ảnh và có thêm booking.
+
+### 6.2 Thứ tự seed — sai thứ tự là xoá làm lại
 
 ```
-1. giá vốn (tour_cost_items)     ← phải có TRƯỚC, không thì cost_per_person = NULL vĩnh viễn
-2. khách giả (users + accounts)  ← booking cần userId
-3. chuyến khởi hành
-4. booking + payment events
-5. refund + cancellation requests
+1. giá vốn (tour_cost_items)      ← 131 dòng; PHẢI trước booking,
+                                     không thì cost_per_person = NULL vĩnh viễn
+2. khách giả (users + accounts)   ← 40 tài khoản, chung một mật khẩu; booking cần userId
+3. chuyến khởi hành                ← 144 dòng theo mô hình §4
+4. booking + payment events        ← ~310 + ~310
+5. refund + cancellation requests  ← ~26 + ~26, cho các chuyến bị huỷ
+6. reviews                         ← xem §8, làm SAU cùng vì cần booking có sẵn
 ```
 
-Trước cả năm bước: user sửa `ADMIN_EMAILS` trên Render, vì seed upsert admin
+Giá vốn không nằm trong thứ tự user nêu, nhưng phải chèn vào vị trí số 1: nó là
+ràng buộc đã đo ở §3, không phải sở thích.
+
+Trước cả sáu bước: user sửa `ADMIN_EMAILS` trên Render, vì seed upsert admin
 theo `ADMIN_EMAILS[0]` và sẽ đẻ admin thứ hai nếu biến chưa đúng.
+
+### 6.3 Vì sao dọn được mà không mất nội dung tour vừa sửa
+
+Bước dọn giữ nguyên `tours` và `tour_policies`, còn seed dùng **upsert** cho hai
+bảng ấy — nên 15 chính sách đặt cọc, 15 chính sách huỷ và 15 giá trị
+`freeCancellationDays` vừa sửa đều tới được DB. `tour_faqs` và
+`tour_destinations` dùng `createMany({ skipDuplicates })` nhưng 25 FAQ + 9 link
+mới đều mang id mới nên vẫn vào. Không mục nào trong đợt làm giàu nội dung bị kẹt.
 
 ## 7. Bất biến phải kiểm được bằng test
 
@@ -169,13 +206,36 @@ Mỗi dòng dưới đây là một `expect`, không phải một lời hứa:
 11. ≥1 tour có chuyến giảm giá với `startDate ≥ 15/11/2026`.
 12. Seed chạy hai lần cho ra cùng số dòng (id tất định + `skipDuplicates`).
 
-## 8. Ngoài phạm vi
+## 8. Reviews — bước 6, và ràng buộc định hình nó
 
-- **Review bằng user giả.** CHECK `reviews_source_shape` cấm `CURATED` mang
-  `user_id`; muốn gắn user phải chuyển sang `VERIFIED`, mà `VERIFIED` đòi cả
-  `booking_id`. Sau spec này thì 284 booking `PAID` mới **mở khoá** được việc đó
-  — nhưng nó là một đợt riêng.
-- Enquiries, subscribers, chat, wishlist — bốn màn admin còn lại vẫn trống sau spec này.
+User xếp reviews vào cuối chuỗi ưu tiên. Đó là chỗ đúng, vì DB **bắt buộc** vậy:
+
+```
+CHECK reviews_source_shape:
+  VERIFIED ⇒ tour_id, user_id, booking_id đều NOT NULL
+  CURATED  ⇒ booking_id IS NULL AND user_id IS NULL
+```
+
+Review **không thể vừa mang user vừa là `CURATED`**. Muốn review đứng tên khách
+giả thì phải là `VERIFIED`, mà `VERIFIED` đòi một booking thật phía sau. Nên
+reviews chỉ làm được SAU khi có ~284 booking `PAID` từ bước 4.
+
+Hình dạng đề xuất: mỗi review `VERIFIED` neo vào một booking đã `PAID` trên một
+chuyến **đã khởi hành**, `createdAt` sau `departureEndDate`. Tỉ lệ ~25–30%
+booking đã đi có review — con số thật của ngành, và đủ để 29/29 tour có sao.
+
+`ratingAvg`/`ratingCount` vẫn để seed tính lại ở bước 6b bằng câu SQL sẵn có,
+không khai trong fixture.
+
+**Quyết định còn treo:** giữ lại bao nhiêu trong 84 review `CURATED` hiện có?
+Chúng không có user, viết tay, chất lượng tốt. Ba đường: bỏ hết và thay bằng
+`VERIFIED`; giữ cả hai loại song song; hoặc giữ `CURATED` cho tour ít booking.
+Cần user chốt trước khi dựng bước 6.
+
+## 8b. Ngoài phạm vi
+
+- Enquiries, subscribers, chat, wishlist — bốn màn admin này vẫn trống sau spec
+  này. Chúng bị xoá ở bước 0 và không có bước seed nào dựng lại.
 - Ảnh: `media_assets` không nằm trong seed, đợt này không chạm.
 
 ## 9. Rủi ro đã biết
@@ -189,6 +249,20 @@ người sau không tưởng là bỏ sót.
 ~310 payment event ≈ 800 dòng mới. Không nặng với Postgres, nhưng seed sẽ lâu hơn
 rõ rệt — cần đo lại thời gian chạy sau khi dựng.
 
-**Cửa sổ site trống.** Giữa `reset` và `seed` không có chuyến nào để đặt. Phải
-chạy liền một mạch, và xuất snapshot mới trước khi reset (bản 09/09 đã cũ: prod
-đã đổi alt và có thêm booking).
+**Cửa sổ site suy giảm — dài hơn hẳn khi dọn trước.** Đây là cái giá thật của
+quyết định ở §6. Từ lúc reset tới lúc seed xong, `www.nexora-travel.agency`:
+
+| Còn nguyên | Mất tạm thời |
+| --- | --- |
+| 29 tour đủ nội dung + 517 ảnh | Không chuyến nào để đặt — nút Reserve vô dụng |
+| 9 bài blog + toàn bộ ảnh site | Không sao đánh giá (rating về null) |
+| Trang chủ, /tours, /destinations, /about | Không đăng nhập được trừ admin |
+
+Chấp nhận được vì đây là site capstone, không có khách thật. Nhưng nó KHÔNG phải
+vài phút như phương án gộp — nó kéo dài suốt quá trình dựng và thử fixture.
+Hai cách rút ngắn nếu user muốn: dựng xong fixture rồi mới reset (mất lợi ích
+"nền sạch" mà user đang nhắm), hoặc reset rồi seed ngay bằng bộ hiện có để site
+sống, chấp nhận phải xoá lần hai.
+
+**Backup phải mới.** Bản 09/09 đã cũ: prod từ đó đã nhận alt text cho 517 ảnh và
+có thêm booking. Xuất snapshot + backup mới ngay trước khi reset, không tái dùng.
