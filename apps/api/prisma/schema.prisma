@@ -390,9 +390,27 @@ model Tour {
   factDifficultyNote   String?         @map("fact_difficulty_note") @db.VarChar(280)
   factGoodForNote      String?         @map("fact_good_for_note") @db.VarChar(280)
   // Cửa sổ huỷ miễn phí, ĐƠN VỊ NGÀY. `TourPolicy.body` vẫn giữ toàn văn; cột
-  // này chỉ tách một con số để in thành nhãn ngắn. KHÔNG parse từ body: đã đếm
-  // trên 29 policy, regex "up to N days" chỉ bắt được 12. Tour tính cửa sổ
-  // bằng GIỜ (14/29) để null — ép 24 giờ thành "1 ngày" là nói sai.
+  // này tách một con số để in thành nhãn ngắn. KHÔNG parse từ body: đã đếm
+  // trên 29 policy, regex "up to N days" chỉ bắt được 12.
+  //
+  // SỬA 10/09/2026 — cột này KHÔNG chỉ là nhãn. `refundPercentForBooking`
+  // (libs/shared/contract/src/schemas/refund-policy.ts) đọc chính nó để quyết
+  // số tiền hoàn: `days >= freeCancellationDays` thì 100%, dưới đó rơi vào bậc
+  // site {30:100, 15:50, 7:25, 0:0}. Bản comment cũ nói tour tính cửa sổ bằng
+  // GIỜ thì để null vì "ép 24 giờ thành 1 ngày là nói sai" — nhưng để null có
+  // hậu quả nặng hơn nhiều: 15 tour hứa "free cancellation up to 24 hours"
+  // trên trang, còn máy áp ngưỡng mặc định 30 ngày rồi trả 0%. Lời hứa và số
+  // tiền do CÙNG một hệ thống in ra, lệch nhau ở hai trang cạnh nhau.
+  //
+  // Nay 15 tour đó khai 1/2/3 (24/48/72 giờ). Phép ánh xạ khít vì `days` là số
+  // ngày nguyên: huỷ trước 30 giờ → 1 ngày → 100%; huỷ trước 20 giờ → 0 ngày →
+  // 0%, đúng câu "inside 24 hours non-refundable". Cái mất là nhãn ngắn in
+  // "1 day" cho cửa sổ 24 giờ — chấp nhận được, vì 24 giờ ĐÚNG là một ngày.
+  //
+  // Bất biến đi kèm: mọi `TourPolicy` kind CANCELLATION phải mô tả ĐÚNG bậc mà
+  // `refundPercentForBooking` cho ra với `freeCancellationDays` của chính tour
+  // đó. Đợt 10/09 sửa 15 tour hứa theo giờ và 13 tour hứa nấc 50% mà máy không
+  // có ở khoảng ngày ấy. Sửa cột này thì phải sửa câu chữ theo, và ngược lại.
   freeCancellationDays Int?            @map("free_cancellation_days")
   createdAt            DateTime        @default(now()) @map("created_at")
   updatedAt            DateTime        @updatedAt @map("updated_at")

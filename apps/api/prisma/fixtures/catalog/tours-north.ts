@@ -76,7 +76,7 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Flat pavement the whole way; the only effort is pacing yourself across the stops.',
     factGoodForNote: 'Built for people who eat first and sightsee second.',
-    freeCancellationDays: null,
+    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -125,7 +125,7 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Level ground and short walks between stops, with the coach doing the distance.',
     factGoodForNote: 'Works for a first day in Hà Nội, whatever the shape of your group.',
-    freeCancellationDays: null,
+    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -174,7 +174,7 @@ export const tours: TourFixture[] = [
     factDifficultyNote:
       'Standing and hands-on work rather than walking — comfortable for most ages.',
     factGoodForNote: "Hands-on enough for children, calm enough for a couple's day out.",
-    freeCancellationDays: null,
+    freeCancellationDays: 1,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -216,7 +216,7 @@ export const tours: TourFixture[] = [
     factGroupSizeNote: 'Sixteen seats, though the sampans split the group into pairs on the water.',
     factDifficultyNote: 'The Múa Cave steps are the one real climb; the boat leg is all sitting.',
     factGoodForNote: 'A good compromise when the group wants scenery without an overnight.',
-    freeCancellationDays: null,
+    freeCancellationDays: 2,
     createdAt: '2026-07-31T09:00:00.000Z',
     updatedAt: '2026-07-31T09:00:00.000Z',
   },
@@ -1878,7 +1878,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 7 days out',
-    body: 'Free cancellation up to 7 days before departure; 50% refund within 3-7 days; no refund inside 72 hours or no-show, matching the cabin-lock the boat operator requires.',
+    body: 'Free cancellation up to 7 days before departure; inside 7 days, or a no-show, the fare is non-refundable, matching the cabin-lock the boat operator requires.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000014',
@@ -1903,7 +1903,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 7 days out',
-    body: 'Free cancellation up to 7 days before departure; 50% refund within 3-7 days; no refund inside 72 hours or no-show, matching cabin and bungalow bookings.',
+    body: 'Free cancellation up to 7 days before departure; inside 7 days, or a no-show, the fare is non-refundable, matching the cabin and bungalow bookings we hold for you.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000017',
@@ -1928,7 +1928,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; 50% refund within 2-5 days; no refund inside 48 hours or no-show, as the homestay is booked ahead by headcount.',
+    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as the homestay is booked ahead by headcount.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000020',
@@ -1953,7 +1953,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 5 days out',
-    body: 'Free cancellation up to 5 days before departure; 50% refund within 2-5 days; no refund inside 48 hours or no-show.',
+    body: 'Free cancellation up to 5 days before departure; inside 5 days, or a no-show, the fare is non-refundable, as the cable car ticket is bought ahead in your name.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000023',
@@ -1978,7 +1978,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 10 days out',
-    body: 'Free cancellation up to 10 days before departure; 50% refund within 5-10 days; no refund inside 5 days or no-show, as easyrider drivers are booked and paid ahead per passenger.',
+    body: 'Free cancellation up to 10 days before departure; 25% is refunded from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as your driver is committed to the route.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000026',
@@ -2003,7 +2003,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 3 days out',
-    body: 'Free cancellation up to 3 days before departure; 50% refund within 24-72 hours; no refund inside 24 hours or no-show.',
+    body: 'Free cancellation up to 3 days before departure; inside 3 days, or a no-show, the fare is non-refundable, as the stilt-house beds are booked by headcount.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000029',
@@ -2028,7 +2028,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 14 days out',
-    body: 'Free cancellation up to 14 days before departure; 50% refund within 7-14 days; no refund inside 7 days or no-show, as hotels and the cruise cabin are pre-booked.',
+    body: 'Free cancellation up to 14 days before departure; 25% is refunded from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as hotels along the route are pre-booked.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000032',
@@ -2053,7 +2053,7 @@ export const tourPolicies: TourPolicyFixture[] = [
     kind: 'CANCELLATION',
     order: 1,
     title: 'Free until 30 days out',
-    body: 'Free cancellation up to 30 days before departure; 50% refund within 15-30 days; no refund inside 15 days or no-show, as domestic flights and hotels across three regions are ticketed at booking.',
+    body: 'Free cancellation up to 30 days before departure; 50% is refunded 15–29 days out and 25% from 7 days out; inside 7 days, or a no-show, the fare is forfeited, as domestic flights and hotels across three regions are ticketed at booking.',
   },
   {
     id: 'd3000002-0000-4000-8000-000000000035',
