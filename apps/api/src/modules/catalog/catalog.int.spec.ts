@@ -92,6 +92,12 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
         ...catalog.tourDestinations.filter((row) => tourIds.has(row.tourId)),
         { tourId: cruiseTour.id, destinationId: hanoiId, isPrimary: false },
       ],
+      // `skipDuplicates` từ 10/09/2026: đợt gắn 9 địa danh phụ (`195d585d`) đã
+      // đưa đúng cặp (halong-bay-overnight-cruise, hanoi) vào fixture DÙNG
+      // CHUNG, nên dòng test-only ngay trên nay trùng khoá chính
+      // `@@id([tourId, destinationId])` và làm cả file đỏ. Giữ lại dòng ấy để
+      // test tự đủ nếu fixture bỏ link đi, nhưng cho phép nó là no-op.
+      skipDuplicates: true,
     });
     await prisma.tourItineraryDay.createMany({
       data: catalog.tourItineraryDays.filter((row) => tourIds.has(row.tourId)),
