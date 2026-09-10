@@ -8,6 +8,67 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-10 — Seed toàn bộ dữ liệu mới lên Supabase PROD (nhánh `chore/seed-buoc1-snapshot`, **CHƯA merge**)
+
+**ĐÃ CHẠY THẬT TRÊN PROD**, 132 giây, exit 0. Nối tiếp đợt dọn cùng ngày.
+
+Chèn **1.864 dòng**: 120 khách giả + 120 credential account · 261 chuyến khởi
+hành · 567 booking · 582 payment event · 31 refund · 45 yêu cầu huỷ · 120 review
+`VERIFIED` · 111 sự kiện duyệt · 131 dòng giá vốn. Cộng 25 FAQ và 9 link địa
+danh mà bản prod cũ còn thiếu (120→145, 43→52).
+
+**Thứ tự bắt buộc, không phải sở thích:** giá vốn → khách → chuyến → booking +
+thanh toán → hoàn tiền/huỷ → review. `cost_per_person` là SNAPSHOT chụp lúc tạo
+booking; seed booking trước khi có giá vốn thì cả 567 dòng mang NULL vĩnh viễn
+và không tự lành. Review đứng cuối vì CHECK `reviews_source_shape` cấm review
+`CURATED` mang `user_id`, nên review đứng tên khách phải là `VERIFIED`, mà
+`VERIFIED` đòi một booking thật phía sau.
+
+**Đợt rà 8 chiều trước khi đẩy** (8 agent song song trên docker, 69 phát hiện,
+13 nặng). Hai agent phản biện chết vì hết hạn mức phiên nên từng khẳng định nặng
+được kiểm chứng lại bằng SQL tay: 6 đúng, 1 sai (byline blog — seed chỉ
+`update: { role }` nên không ghi đè tên tác giả). Bảy lỗ hổng đã vá trước khi
+chạy prod, trong đó ba cái sẽ hỏng đúng buổi bảo vệ nếu để nguyên:
+
+- Dữ liệu tiền dừng ở 03/09, cách "hôm nay" đúng 7 ngày — sàn lead time 7 ngày
+  cộng trần HOM_NAY. Cửa sổ 7 ngày của dashboard rỗng ngay hôm nay, và tới
+  11/11 thì cửa sổ 28 ngày về 0 ở mọi ô.
+- 4 booking huỷ và hoàn tiền TRƯỚC khi trả tiền; sổ webhook hiện sự kiện hoàn
+  nằm trên sự kiện thu của cùng một đơn.
+- 5 booking trùng y hệt (cùng khách, cùng chuyến, cùng ngày, cả hai PAID) và 20
+  cặp khách đi hai tour ở hai đầu đất nước cùng một hôm.
+- `phu-quoc-honeymoon-4d` rao "from $480.57, −26%" trong khi chuyến đó đã 6/6;
+  giá mua được thật là $579.
+- Chỉ 2/5 trạng thái booking và hàng đợi huỷ trống (0 REQUESTED, 0 DENIED).
+- `db:seed` ghi thẳng lên prod không chốt chặn, khác hẳn `data:reset` và
+  `media:alt`. Nay đòi cờ `--toi-biet-day-la-production`.
+
+**Nghiệm thu trên chính prod sau khi seed — 14/14 bất biến bằng 0:** booking
+thiếu `cost_per_person` · `total` lệch đơn-giá×ghế · huỷ trước khi trả tiền ·
+trả tiền sau ngày đi · trả tiền ở tương lai · booking trùng khách+chuyến · khách
+chồng lịch · overbooking · ghế lệch booking PAID · chuyến quá khứ còn OPEN ·
+review CURATED còn lại · review thiếu user/booking · review viết trước khi chuyến
+xong · tour không có rating.
+
+`tour_cost_items` trên prod đúng **131** — 131 dòng rác chỉ có trên docker không
+lan sang. Đúng một admin còn lại. P&L có đủ 12 tháng liên tục, biên gộp 38–42%.
+29/29 tour còn chuyến bán được. Rating 3,6–4,8 (trung bình 4,39).
+
+**Rò rỉ review chưa duyệt: KHÔNG.** Đối chiếu API với DB trên cả 9 tour có review
+chưa duyệt — API trả đúng số đã duyệt ở từng tour, 11 dòng chưa duyệt không lọt
+ra ngoài dòng nào.
+
+**Trang thật:** 10/10 trang HTTP 200, alt còn đủ, "No departures" biến mất. ISR
+`revalidate = 300` tự sinh lại, không cần redeploy — nhưng phải gọi mỗi URL hai
+lần vì stale-while-revalidate trả bản cũ ở lần đầu.
+
+**CÒN TREO:** nhánh `chore/seed-buoc1-snapshot` vẫn chưa merge, nên prod đang
+mang dữ liệu mà nguồn của nó còn nằm ngoài `main`. Mật khẩu chung của 120 khách
+giả đọc từ `SEED_CUSTOMER_PASSWORD`. Bốn màn admin vẫn trống (enquiries,
+subscribers, wishlist, chat) vì không bước seed nào dựng lại chúng.
+
+Tests after: typecheck + test api 6/6 xanh; seed chạy lại trên docker +0 mọi bảng.
+
 ## 2026-09-10 — Dọn sạch tầng vận hành trên Supabase PROD (nhánh `chore/seed-buoc1-snapshot`, **CHƯA merge**)
 
 **ĐÃ CHẠY THẬT TRÊN PROD.** User chốt dọn trước rồi seed lại, không seed chồng
