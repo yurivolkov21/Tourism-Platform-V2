@@ -356,7 +356,7 @@ function sinh(): Ket {
   // = 0%), nên có `cancelledAt` mà KHÔNG có dòng refund nào. Đây là nhánh mà
   // `refunds_sum_within_total` không đụng tới và báo cáo phải xử lý được.
   for (const b of tuongLai.slice(16, 26)) {
-    const rnd = boSinh('tuhuy:' + b.id);
+    const rnd = boSinh(`tuhuy:${b.id}`);
     b.status = 'CANCELLED';
     b.cancelledAt = ISOT(
       Math.min(Date.parse(b.departureStartDate) - NGAY, +HOM_NAY - nguyen(rnd, 1, 20) * NGAY),
@@ -373,7 +373,7 @@ function sinh(): Ket {
     'We have decided to change dates and would like to rebook instead.',
   ];
   for (const [i, b] of tuongLai.slice(26, 40).entries()) {
-    const rnd = boSinh('yc:' + b.id);
+    const rnd = boSinh(`yc:${b.id}`);
     const tao = +HOM_NAY - nguyen(rnd, 1, 25) * NGAY;
     const bacBo = i >= 9;
     cancellationRequests.push({
