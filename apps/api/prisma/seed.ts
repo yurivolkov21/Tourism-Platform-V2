@@ -34,6 +34,7 @@
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';
+import { auth } from '../src/auth/auth.config.js';
 import { Prisma, PrismaClient } from '../src/generated/prisma/client.js';
 import {
   BookingStatus,
@@ -45,7 +46,9 @@ import {
 } from '../src/generated/prisma/enums.js';
 import { derivedCostPrice, perDepartureTotal } from '../src/modules/catalog/tour-costs.js';
 import * as catalog from './fixtures/catalog/index.js';
+import { khachGia } from './fixtures/people/customers.js';
 import { posts as blogPosts } from './fixtures/posts.js';
+import { idTinh } from './fixtures/stable-id.js';
 
 /** Code của PAID booking tự ký (thuộc về customer trong overlay). */
 const PAID_BOOKING_CODE = 'BK-SEEDPAID';
@@ -342,6 +345,66 @@ async function main(): Promise<void> {
     update: { role: UserRole.ADMIN },
   });
   console.log(`[seed] overlay users: customer=${customer.email} admin=${admin.email}`);
+
+  // 3b. 40 KHÁCH GIẢ (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
+  //     ≈400 booking và ≈116 review sắp seed. Không có họ thì không seed được
+  //     hai bảng đó: `bookings.user_id` là FK RESTRICT, và review `VERIFIED`
+  //     bị CHECK `reviews_source_shape` bắt buộc có `user_id` + `booking_id`.
+  //
+  //     Mật khẩu băm bằng CHÍNH hàm của Better Auth (`auth.$context.password`)
+  //     chứ không phải bcrypt tự chọn: định dạng hash phải khớp cái mà đường
+  //     đăng nhập dùng để verify, sai là cả 40 tài khoản không vào được mà
+  //     KHÔNG có lỗi nào báo ra — chỉ là "sai mật khẩu" ở màn login.
+  //
+  //     Hash KHÔNG nằm trong fixture: repo này public. Mật khẩu đọc từ env,
+  //     mặc định là chuỗi demo ghi trong `.env.example`.
+  const matKhau = process.env.SEED_CUSTOMER_PASSWORD?.trim() || 'Nexora!Demo2026';
+  const { count: soKhach } = await prisma.user.createMany({
+    data: khachGia.map((k) => ({
+      id: k.id,
+      email: k.email,
+      name: k.name,
+      phone: k.phone,
+      emailVerified: true,
+      role: UserRole.CUSTOMER,
+      createdAt: k.createdAt,
+    })),
+    skipDuplicates: true,
+  });
+
+  // Chỉ băm cho tài khoản CHƯA có: scrypt cố ý chậm, băm lại 40 lần mỗi lượt
+  // seed là vài giây đốt không lý do.
+  const daCo = new Set(
+    (
+      await prisma.account.findMany({
+        where: { providerId: 'credential', userId: { in: khachGia.map((k) => k.id) } },
+        select: { userId: true },
+      })
+    ).map((a) => a.userId),
+  );
+  const canTao = khachGia.filter((k) => !daCo.has(k.id));
+  let soTaiKhoan = 0;
+  if (canTao.length > 0) {
+    const ctx = await auth.$context;
+    const duLieu = [];
+    for (const k of canTao) {
+      duLieu.push({
+        id: idTinh('seed-account', k.email),
+        userId: k.id,
+        // Better Auth đặt `accountId = userId` cho provider `credential` —
+        // đọc ra từ chính dòng account của admin trên prod, không phải đoán.
+        accountId: k.id,
+        providerId: 'credential',
+        password: await ctx.password.hash(matKhau),
+        createdAt: k.createdAt,
+      });
+    }
+    const r = await prisma.account.createMany({ data: duLieu, skipDuplicates: true });
+    soTaiKhoan = r.count;
+  }
+  console.log(
+    `[seed] khách giả: +${soKhach} user, +${soTaiKhoan} credential account (mật khẩu chung từ SEED_CUSTOMER_PASSWORD)`,
+  );
 
   // 4. PAID booking tự ký với các snapshot lúc create của v2 (audit H3):
   //    tourTitle + ngày departure + unitPrice được đóng băng trên row. Tạo một
