@@ -346,14 +346,14 @@ async function main(): Promise<void> {
   });
   console.log(`[seed] overlay users: customer=${customer.email} admin=${admin.email}`);
 
-  // 3b. 40 KHÁCH GIẢ (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
+  // 3b. KHÁCH GIẢ (120, xem SO_KHACH) (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
   //     ≈400 booking và ≈116 review sắp seed. Không có họ thì không seed được
   //     hai bảng đó: `bookings.user_id` là FK RESTRICT, và review `VERIFIED`
   //     bị CHECK `reviews_source_shape` bắt buộc có `user_id` + `booking_id`.
   //
   //     Mật khẩu băm bằng CHÍNH hàm của Better Auth (`auth.$context.password`)
   //     chứ không phải bcrypt tự chọn: định dạng hash phải khớp cái mà đường
-  //     đăng nhập dùng để verify, sai là cả 40 tài khoản không vào được mà
+  //     đăng nhập dùng để verify, sai là cả bộ tài khoản không vào được mà
   //     KHÔNG có lỗi nào báo ra — chỉ là "sai mật khẩu" ở màn login.
   //
   //     Hash KHÔNG nằm trong fixture: repo này public. Mật khẩu đọc từ env,
@@ -372,7 +372,7 @@ async function main(): Promise<void> {
     skipDuplicates: true,
   });
 
-  // Chỉ băm cho tài khoản CHƯA có: scrypt cố ý chậm, băm lại 40 lần mỗi lượt
+  // Chỉ băm cho tài khoản CHƯA có: scrypt cố ý chậm, băm lại 120 lần mỗi lượt
   // seed là vài giây đốt không lý do.
   const daCo = new Set(
     (
