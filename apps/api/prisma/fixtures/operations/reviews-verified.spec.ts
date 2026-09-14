@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { sinhLich } from '../catalog/departures-2026.js';
 import { tours } from '../catalog/index.js';
-import { docMocHomNay } from '../khung-thoi-gian.js';
+import { docMocHomNay, isoGio, NGAY_MS } from '../khung-thoi-gian.js';
 import { sinhKhach } from '../people/customers.js';
 import { sinhVanHanh } from './bookings.js';
-import { sinhReview } from './reviews-verified.js';
+import { baoDamHangDoi, type ReviewFixture, sinhReview } from './reviews-verified.js';
 
 /** Hai mốc cố định cho các bất biến tổng: sàn mỗi tour, hàng đợi admin, phân bố sao. */
 const MOC = ['2026-09-20', '2026-11-03'] as const;
@@ -125,5 +125,55 @@ describe.each(MOC)('review tổng với H = %s', (giaTri) => {
   it('hụt sàn review thì ném lỗi, không âm thầm để tour mất sao', () => {
     // Không có booking nào để chứa review: bước 3 không thể đủ sàn.
     expect(() => sinhReview(homNay, lich, [])).toThrow(/sàn review/);
+  });
+});
+
+describe('baoDamHangDoi khi hàng đợi tự nhiên hụt sàn', () => {
+  const H = Date.UTC(2026, 8, 20);
+  const mau = (() => {
+    const r = chuanBi('2026-09-20').ket.reviews[0];
+    if (!r) throw new Error('bộ sinh không ra review nào');
+    return r;
+  })();
+  const idTour = (i: number): string => {
+    const t = tours[i];
+    if (!t) throw new Error(`catalog thiếu tour thứ ${i}`);
+    return t.id;
+  };
+  const tourA = idTour(0);
+  const tourB = idTour(1);
+  const duyetLuc = isoGio(H - 60 * NGAY_MS);
+  /** Review đã duyệt tổng hợp: clone review thật, đổi id, booking, tour và các mốc. */
+  const daDuyet = (tourId: string, nhan: string, i: number): ReviewFixture => ({
+    ...mau,
+    id: `syn-c5-${nhan}-${i}`,
+    bookingId: `syn-c5-booking-${nhan}-${i}`,
+    tourId,
+    isApproved: true,
+    rejectedAt: null,
+    retractedAt: null,
+    moderatedAt: duyetLuc,
+    createdAt: isoGio(H - 61 * NGAY_MS),
+    updatedAt: duyetLuc,
+  });
+
+  it('tour A 10 review đã duyệt, tour B đúng 3, chưa có hàng đợi nào → bù đủ ba hàng đợi mà tour B không mất review nào', () => {
+    // Chưa review nào chờ, bị bác hay bị rút, nên vòng bù chờ duyệt và hai nhánh bù đều phải chạy;
+    // duyệt ở H − 60 ngày nên mốc rút (duyệt + 20 ngày) vẫn trước H.
+    const reviews = [
+      ...Array.from({ length: 10 }, (_, i) => daDuyet(tourA, 'a', i)),
+      ...Array.from({ length: 3 }, (_, i) => daDuyet(tourB, 'b', i)),
+    ];
+    baoDamHangDoi(reviews, H);
+    const soDuyet = (tourId: string): number =>
+      reviews.filter((r) => r.tourId === tourId && r.isApproved).length;
+    const choDuyet = reviews.filter(
+      (r) => !r.isApproved && r.rejectedAt === null && r.retractedAt === null,
+    );
+    expect(choDuyet.length).toBeGreaterThanOrEqual(5);
+    expect(reviews.filter((r) => r.rejectedAt !== null).length).toBeGreaterThanOrEqual(1);
+    expect(reviews.filter((r) => r.retractedAt !== null).length).toBeGreaterThanOrEqual(1);
+    expect(soDuyet(tourB)).toBe(3);
+    expect(soDuyet(tourA)).toBeGreaterThanOrEqual(3);
   });
 });

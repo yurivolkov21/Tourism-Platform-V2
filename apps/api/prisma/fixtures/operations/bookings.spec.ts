@@ -4,13 +4,24 @@ import { Prisma } from '../../../src/generated/prisma/client.js';
 import { effectiveUnitPrice, totalAmount } from '../../../src/modules/bookings/pricing.js';
 import { sinhLich } from '../catalog/departures-2026.js';
 import { tours } from '../catalog/index.js';
-import { DAU_KHUNG, docMocHomNay, GIO_MS, NGAY_MS, PHUT_MS } from '../khung-thoi-gian.js';
+import type { TourDepartureFixture } from '../catalog/types.js';
+import {
+  DAU_KHUNG,
+  docMocHomNay,
+  GIO_MS,
+  isoGio,
+  isoNgay,
+  NGAY_MS,
+  PHUT_MS,
+} from '../khung-thoi-gian.js';
 import { sinhKhach } from '../people/customers.js';
 import {
+  apDungYeuCauHuy,
   type BookingFixture,
   baoDamBookingDaDi,
   type DuLieuVanHanh,
   sinhVanHanh,
+  themGioBoDo,
 } from './bookings.js';
 
 const MOC = ['2026-09-20', '2026-11-03'] as const;
@@ -374,5 +385,152 @@ describe.each(['2026-06-01', '2026-09-20'] as const)('bù booking đã đi với
     };
     // Không có khách nào để bốc: mọi lượt bù đều bỏ lượt.
     expect(() => baoDamBookingDaDi(kq, H, lich, [])).toThrow(/sàn booking đã đi/);
+  });
+});
+
+describe('apDungYeuCauHuy trên sổ một booking tổng hợp', () => {
+  const homNay = docMocHomNay('2026-09-20');
+  const H = Date.UTC(2026, 8, 20);
+  const tuNhien = sinhVanHanh(homNay, sinhLich(homNay), sinhKhach(homNay));
+  const nguongCua = new Map(tours.map((t) => [t.id, t.freeCancellationDays]));
+  // Mẫu là booking PAID thật trên tour có ngưỡng huỷ miễn phí 2–30 ngày: bậc 100% gửi trước khởi
+  // hành từ 2 tới 50 ngày, nên ở ca đối chứng mốc quyết không bao giờ chạm ngày khởi hành.
+  const mau = (() => {
+    const b = tuNhien.bookings.find((x) => {
+      const nguong = nguongCua.get(x.tourId) ?? null;
+      return x.status === 'PAID' && nguong !== null && nguong >= 2 && nguong <= 30;
+    });
+    if (!b) throw new Error('bộ sinh không có booking PAID trên tour ngưỡng 2–30 ngày');
+    return b;
+  })();
+  const soNgayDi = ngay(mau.departureEndDate) - ngay(mau.departureStartDate);
+
+  /** Sổ chỉ chứa đúng một booking PAID, clone từ `mau` rồi đổi id, ngày khởi hành và mốc trả tiền. */
+  const soMotBooking = (id: string, khoiHanh: number, traLuc: number): DuLieuVanHanh => ({
+    bookings: [
+      {
+        ...mau,
+        id,
+        status: 'PAID',
+        cancelledAt: null,
+        departureStartDate: isoNgay(khoiHanh),
+        departureEndDate: isoNgay(khoiHanh + soNgayDi),
+        paidAt: isoGio(traLuc),
+      },
+    ],
+    paymentEvents: [],
+    refunds: [],
+    cancellationRequests: [],
+  });
+
+  it('(a) ân hạn, (b) cửa sổ từ chối rỗng: khởi hành H − 5 ngày, trả tiền trước đó 23 giờ → không có yêu cầu nào', () => {
+    // Vòng duyệt: mốc gửi của mọi bậc ≤ khởi hành − 1 ngày + 15 giờ, luôn ≤ paidAt + 25 giờ (tức
+    // khởi hành + 2 giờ). Vòng từ chối: den = khởi hành − 4 ngày, tu = paidAt + 2 ngày, nên den < tu.
+    // Vòng đang chờ: chuyến khởi hành trước H.
+    const khoiHanh = H - 5 * NGAY_MS;
+    const kq = soMotBooking('syn-c3-an-han', khoiHanh, khoiHanh - NGAY_MS + GIO_MS);
+    apDungYeuCauHuy(kq, H);
+    expect(kq.cancellationRequests).toEqual([]);
+    expect(kq.refunds).toEqual([]);
+    expect(kq.bookings[0]?.status).toBe('PAID');
+  });
+
+  it('(c) cửa sổ đang chờ rỗng: khởi hành H + 10 ngày, trả tiền H − 1 giờ → không có yêu cầu REQUESTED', () => {
+    // Vòng đang chờ: tu = paidAt + 1 ngày = H + 23 giờ, den = H − 2 giờ. Hai vòng trước cũng bỏ qua:
+    // mốc gửi hoặc ≤ paidAt + 25 giờ hoặc ≥ H; vòng từ chối có den = H − 4 ngày < tu = H + 47 giờ.
+    const kq = soMotBooking('syn-c3-dang-cho', H + 10 * NGAY_MS, H - GIO_MS);
+    apDungYeuCauHuy(kq, H);
+    expect(kq.cancellationRequests).toEqual([]);
+    expect(kq.bookings[0]?.status).toBe('PAID');
+  });
+
+  it('(d) đối chứng: khởi hành H − 10 ngày, trả tiền trước 120 ngày → đúng một yêu cầu REFUNDED, booking CANCELLED', () => {
+    // Bậc 100%: gửi trước khởi hành [ngưỡng, ngưỡng + 20] ⊂ [2, 50] ngày — sau paidAt ≥ 70 ngày và
+    // trước H; mốc quyết ≤ khởi hành − 3 giờ; số ngày lịch ≥ ngưỡng nên phần trăm đúng 100.
+    const khoiHanh = H - 10 * NGAY_MS;
+    const kq = soMotBooking('syn-c3-doi-chung', khoiHanh, khoiHanh - 120 * NGAY_MS);
+    apDungYeuCauHuy(kq, H);
+    expect(kq.cancellationRequests).toHaveLength(1);
+    expect(kq.cancellationRequests[0]).toMatchObject({
+      bookingId: 'syn-c3-doi-chung',
+      status: 'REFUNDED',
+    });
+    expect(kq.bookings[0]?.status).toBe('CANCELLED');
+  });
+});
+
+describe('themGioBoDo trên lịch một chuyến tổng hợp', () => {
+  const homNay = docMocHomNay('2026-09-20');
+  const H = homNay.getTime();
+  const mauChuyen = (() => {
+    const d = sinhLich(homNay)[0];
+    if (!d) throw new Error('bộ sinh không ra chuyến nào');
+    return d;
+  })();
+  // Khách thật đăng ký sớm nhất (đợt ra mắt đầu tháng 1): đầu cửa sổ tạo giỏ luôn là lúc chuyến mở bán.
+  const khachSom = [...sinhKhach(homNay)]
+    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    .slice(0, 1);
+  const soNgayDi = ngay(mauChuyen.endDate) - ngay(mauChuyen.startDate);
+  const soRong = (): DuLieuVanHanh => ({
+    bookings: [],
+    paymentEvents: [],
+    refunds: [],
+    cancellationRequests: [],
+  });
+  /** Clone chuyến thật, đổi id, trạng thái, ngày khởi hành và lúc mở bán. */
+  const chuyenTongHop = (
+    id: string,
+    status: TourDepartureFixture['status'],
+    khoiHanh: number,
+    moBan: number,
+  ): TourDepartureFixture => ({
+    ...mauChuyen,
+    id,
+    status,
+    startDate: isoNgay(khoiHanh),
+    endDate: isoNgay(khoiHanh + soNgayDi),
+    createdAt: isoGio(moBan),
+  });
+
+  it('(a) trùng cặp: một khách, một chuyến OPEN → đúng một giỏ bỏ dở, mọi lượt sau lượt đầu bỏ qua vì cặp đã có', () => {
+    const kq = soRong();
+    const chuyen = chuyenTongHop(
+      'syn-c4-trung-cap',
+      'OPEN',
+      H + 40 * NGAY_MS,
+      Date.UTC(2026, 2, 1),
+    );
+    themGioBoDo(kq, H, [chuyen], khachSom);
+    expect(kq.bookings).toHaveLength(1);
+    const cap = kq.bookings.map((b) => `${b.userId}:${b.departureId}`);
+    expect(new Set(cap).size).toBe(cap.length);
+  });
+
+  // Chuyến khởi hành H − 40 ngày, mở bán 10 ngày trước đó: cửa sổ tạo giỏ là [mở bán, khởi hành − đệm].
+  const khoiHanhCu = H - 40 * NGAY_MS;
+
+  it('(b) chuyến công ty huỷ: đệm 15 ngày làm cửa sổ rỗng → 0 giỏ bỏ dở', () => {
+    const kq = soRong();
+    const chuyen = chuyenTongHop(
+      'syn-c4-chuyen-cu',
+      'CANCELLED',
+      khoiHanhCu,
+      khoiHanhCu - 10 * NGAY_MS,
+    );
+    themGioBoDo(kq, H, [chuyen], khachSom);
+    expect(kq.bookings).toEqual([]);
+  });
+
+  it('(c) đối chứng của (b): cùng chuyến nhưng CLOSED, đệm chỉ 2 ngày → có giỏ bỏ dở', () => {
+    const kq = soRong();
+    const chuyen = chuyenTongHop(
+      'syn-c4-chuyen-cu',
+      'CLOSED',
+      khoiHanhCu,
+      khoiHanhCu - 10 * NGAY_MS,
+    );
+    themGioBoDo(kq, H, [chuyen], khachSom);
+    expect(kq.bookings.length).toBeGreaterThanOrEqual(1);
   });
 });

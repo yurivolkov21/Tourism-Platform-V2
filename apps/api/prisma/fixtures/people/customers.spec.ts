@@ -47,3 +47,21 @@ it('taoDanhTinh không trả lại tên đã dùng, kể cả khi dò 400 danh t
   for (let i = 0; i < 400; i++) taoDanhTinh(i, daDung);
   expect(daDung.size).toBe(400);
 });
+
+describe('taoDanhTinh dò mãi một chỉ số', () => {
+  // chiSo = 0 rơi vào nhóm Anh · Ireland · Úc (12 tên × 10 họ). Pha 1 của chiSo = 0 chỉ chạm 4 cặp:
+  // chỉ số tên 3k mod 12 ∈ {0, 3, 6, 9}, chỉ số họ 5k mod 10 ∈ {0, 5}, lặp theo chu kỳ 4 — nên từ
+  // lượt thứ 5 trở đi chỉ Pha 2 còn tìm được tên chưa dùng.
+  it('Pha 1 cạn sau 4 danh tính thì Pha 2 quét bảng tên × họ, mỗi lượt vẫn ra một tên mới', () => {
+    const daDung = new Set<string>();
+    for (let i = 0; i < 10; i++) taoDanhTinh(0, daDung);
+    expect(daDung.size).toBe(10);
+  });
+
+  it('cạn cả bảng tên × họ của nhóm thì ném lỗi thay vì trả lại tên đã dùng', () => {
+    const daDung = new Set<string>();
+    expect(() => {
+      for (let i = 0; i < 10_000; i++) taoDanhTinh(0, daDung);
+    }).toThrow(new Error('Không còn tên chưa dùng trong nhóm của chỉ số #0'));
+  });
+});

@@ -154,3 +154,21 @@ describe.each(MOC)('enquiries với H = %s', (giaTri) => {
     }
   });
 });
+
+describe('enquiry khi chưa có khách giả nào đăng ký', () => {
+  it('gửi trước người đăng ký sớm nhất thì là khách vãng lai; có người đăng ký rồi mới có enquiry đứng tên khách', () => {
+    const homNay = docMocHomNay('2026-09-20');
+    // Chỉ giữ khách đăng ký từ 01/05: mọi enquiry tháng 1–4 gửi lúc chưa ai có tài khoản.
+    const khachMuon = sinhKhach(homNay).filter(
+      (k) => k.createdAt.getTime() >= Date.UTC(2026, 4, 1),
+    );
+    const somNhat = Math.min(...khachMuon.map((k) => k.createdAt.getTime()));
+    const kq = sinhEnquiry(homNay, khachMuon);
+
+    const truoc = kq.enquiries.filter((e) => ms(e.createdAt) < somNhat);
+    expect(truoc.length).toBeGreaterThan(0);
+    for (const e of truoc) expect(e.userId, e.id).toBeNull();
+    // Đối chứng cùng bộ khách: khi đã có người đăng ký thì nhánh đăng nhập vẫn ra enquiry đứng tên khách.
+    expect(kq.enquiries.some((e) => e.userId !== null)).toBe(true);
+  });
+});

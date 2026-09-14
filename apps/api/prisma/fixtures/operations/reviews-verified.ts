@@ -480,8 +480,9 @@ export function sinhReview(
  * Sàn của ba hàng đợi (chờ duyệt, bị bác, bị rút) phải là ràng buộc cấu trúc: với một
  * H cụ thể, tỉ lệ ngẫu nhiên có thể trượt dưới sàn. Chỉ chuyển review của tour đang có
  * NHIỀU HƠN 3 review đã duyệt để không tour nào mất sao; chọn review mới nhất trước.
+ * Export để test nhánh (review cuối 14/09).
  */
-function baoDamHangDoi(reviews: ReviewFixture[], H: number): void {
+export function baoDamHangDoi(reviews: ReviewFixture[], H: number): void {
   const soDuyet = (tourId: string): number =>
     reviews.filter((r) => r.tourId === tourId && r.isApproved).length;
   const coTheChuyen = (): ReviewFixture[] =>

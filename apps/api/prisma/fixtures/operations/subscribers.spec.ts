@@ -87,3 +87,20 @@ describe.each(MOC)('subscribers với H = %s', (giaTri) => {
     }
   });
 });
+
+describe('subscriber khi cạn khách giả chưa đăng ký', () => {
+  it('chỉ 5 khách giả: hết khách thì đăng ký tiếp bằng khách vãng lai, không ném lỗi, không trùng email', () => {
+    const homNay = docMocHomNay('2026-09-20');
+    const khach = sinhKhach(homNay).slice(0, 5);
+    let ds: ReturnType<typeof sinhSubscriber> = [];
+    expect(() => {
+      ds = sinhSubscriber(homNay, khach);
+    }).not.toThrow();
+    expect(new Set(ds.map((s) => s.email.toLowerCase())).size).toBe(ds.length);
+    const emailKhach = new Set(khach.map((k) => k.email));
+    const soMangEmailKhach = ds.filter((s) => emailKhach.has(s.email)).length;
+    // Đối chứng: nhánh dùng email khách giả có chạy, nên "≤ 5" không xanh vì chưa từng bốc khách nào.
+    expect(soMangEmailKhach).toBeGreaterThan(0);
+    expect(soMangEmailKhach).toBeLessThanOrEqual(5);
+  });
+});

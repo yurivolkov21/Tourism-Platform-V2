@@ -35,12 +35,20 @@ describe('khung thời gian', () => {
     expect(docMocHomNay('2026-12-01').toISOString()).toBe('2026-12-01T00:00:00.000Z');
   });
 
-  it.each(['2026-9-20', '20/09/2026', '', '2026-02-31', '2026-05-31', '2026-12-02', '2025-09-20'])(
-    'docMocHomNay từ chối %j',
-    (giaTri) => {
-      expect(() => docMocHomNay(giaTri)).toThrow();
-    },
-  );
+  // '2026-02-31' được engine cuộn sang tháng 3 nên bị phép so khứ hồi bắt; '2026-13-01' qua được
+  // regex nhưng Date.parse trả NaN — nhánh Number.isNaN.
+  it.each([
+    '2026-9-20',
+    '20/09/2026',
+    '',
+    '2026-02-31',
+    '2026-13-01',
+    '2026-05-31',
+    '2026-12-02',
+    '2025-09-20',
+  ])('docMocHomNay từ chối %j', (giaTri) => {
+    expect(() => docMocHomNay(giaTri)).toThrow();
+  });
 
   it('HOM_NAY đọc SEED_HOM_NAY; chuỗi rỗng rơi về ngày ghim', async () => {
     vi.stubEnv('SEED_HOM_NAY', '2026-11-03');

@@ -489,8 +489,9 @@ function soNgayChoBac(
 /**
  * Yêu cầu huỷ của khách trên booking đã trả: duyệt theo bậc, từ chối, và đang chờ.
  * Mỗi booking dính tối đa một yêu cầu, chọn theo thứ tự id cho tất định.
+ * Export để test nhánh (review cuối 14/09).
  */
-function apDungYeuCauHuy(kq: DuLieuVanHanh, H: number): void {
+export function apDungYeuCauHuy(kq: DuLieuVanHanh, H: number): void {
   const ungVien = kq.bookings
     .filter((b) => b.status === 'PAID')
     .sort((a, b) => a.id.localeCompare(b.id));
@@ -626,8 +627,9 @@ function apDungYeuCauHuy(kq: DuLieuVanHanh, H: number): void {
  * phút, nên seed ghi thẳng hình dạng mà job để lại — CANCELLED, chưa trả, không capture,
  * `cancelledAt` = lúc tạo + 65–80 phút. Ghi PENDING thì 65 phút sau khi seed job quét cả
  * loạt trong cùng một mili-giây (đã dính trên prod ngày 10/09).
+ * Export để test nhánh (review cuối 14/09).
  */
-function themGioBoDo(
+export function themGioBoDo(
   kq: DuLieuVanHanh,
   H: number,
   lich: TourDepartureFixture[],
