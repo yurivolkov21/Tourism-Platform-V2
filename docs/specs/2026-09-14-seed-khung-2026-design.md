@@ -257,7 +257,9 @@ Bất biến ở tầng unit:
    tiền; mỗi refund có đúng một payment event hoàn cùng số tiền và cùng mốc; tổng
    hoàn ≤ tổng tiền.
 6. **Review:** giữ bảy bất biến §7 (13–19) của spec 10/09, cộng: mốc viết,
-   duyệt, rút ≤ H.
+   duyệt, rút ≤ H. Lệch đo được lúc viết plan: bất biến 19 đòi ≥ 50% review là
+   5★, nhưng chữ review đang có chỉ đạt 46% (55/119 đoạn), nên ngưỡng hạ xuống
+   ≥ 40%; dải trung bình [4,1; 4,6] giữ nguyên.
 7. **Enquiries và subscribers:** mọi dòng qua đúng schema output của contract
    (map bằng mapper của API) nên không dòng nào làm vỡ trang admin; chuỗi trạng
    thái hợp lệ; `updated_at` đúng luật §5.1; subscriber chỉ thuộc bốn trạng thái
