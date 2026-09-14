@@ -1,5 +1,11 @@
 # Boot cả hệ một lệnh: docker compose up -d --build
 # (dev hằng ngày chỉ cần: docker compose up -d postgres)
+
+# Ghim tên project: không ghim thì Compose lấy tên THƯ MỤC clone làm tiền tố, nên
+# container đổi tên theo máy (clone `Tourism-Platform-V2` → tourism-platform-v2-postgres-1)
+# và mọi chỗ gọi `tourism-v2-postgres-1` (scripts/check-rls.sh, plan/spec) gãy — dính 14/09.
+name: tourism-v2
+
 services:
   postgres:
     image: postgres:17-alpine
