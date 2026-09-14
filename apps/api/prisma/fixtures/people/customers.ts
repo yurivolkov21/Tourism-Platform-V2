@@ -1,3 +1,4 @@
+import { DAU_KHUNG, gioTrongNgay, HOM_NAY, NGAY_MS, ngayUTC } from '../khung-thoi-gian.js';
 import { boSinh, idTinh, nguyen } from '../stable-id.js';
 
 /**
@@ -244,72 +245,104 @@ function phanEmail(ten: string): string {
     .join('.');
 }
 
-/**
- * `createdAt`: **60% khách có mặt từ 09–12/2025**, 40% còn lại rải đều 01–08/2026.
- *
- * Khách không thể đặt chuyến trước ngày họ có tài khoản, mà booking bắt đầu ngay
- * từ 01/2026. Dồn phần lớn khách về trước 2026 giữ cho tháng đầu năm có đủ người
- * đặt, mà vẫn còn một dòng khách mới chảy suốt năm cho biểu đồ dashboard.
- *
- * Bộ sinh booking PHẢI tôn trọng `paidAt >= khach.createdAt`.
- */
-const TY_LE_CU = 0.6;
-const CU_DAU = Date.UTC(2025, 8, 1);
-const CU_CUOI = Date.UTC(2025, 11, 28);
-const MOI_DAU = Date.UTC(2026, 0, 3);
-const MOI_CUOI = Date.UTC(2026, 7, 31);
-
 /** Bảng tra nhóm theo trọng số — dựng một lần, rồi đọc bằng chỉ số. */
 const VE: number[] = NHOM.flatMap((n, i) => Array.from({ length: n.trong_so }, () => i));
 
-function sinh(): KhachFixture[] {
-  const ra: KhachFixture[] = [];
+/** Một danh tính giả: tên hiển thị, phần trước `@` của email và mã vùng điện thoại của nhóm. */
+export interface DanhTinh {
+  ten: string;
+  /** Phần trước `@` của email, đã bỏ dấu và nháy. */
+  phanEmail: string;
+  /** Mã điện thoại quốc tế của chính nhóm ngôn ngữ ấy. */
+  maVung: number[];
+}
+
+/**
+ * Ghép một danh tính theo NHÓM ngôn ngữ mà không trùng tập `daDung`.
+ *
+ * `chiSo` quyết định nhóm (theo trọng số) và điểm xuất phát của phép dò. Khách
+ * giả dùng chỉ số 0–119; khách vãng lai của enquiry dùng 1000+, subscriber dùng
+ * 2000+, để ba tập không bắt đầu từ cùng một tên.
+ */
+export function taoDanhTinh(chiSo: number, daDung: Set<string>): DanhTinh {
+  const nhom = NHOM[VE[chiSo % VE.length] as number] as Nhom;
+  const thu = (ten: string, ho: string): DanhTinh | null => {
+    const phan = phanEmail(`${ten} ${ho}`);
+    if (daDung.has(phan)) return null;
+    daDung.add(phan);
+    return { ten: `${ten} ${ho}`, phanEmail: phan, maVung: nhom.ma };
+  };
+
+  // Pha 1 — đúng phép dò của bản 120 khách trước đây, để tên khách giả không đổi.
+  // Bước nhảy nguyên tố khác nhau cho tên và họ: cùng bước thì hai danh sách chạy
+  // song song và chỉ sinh ra `len` cặp thay vì `len * len`.
+  for (let k = 0; k < 200; k++) {
+    const kq = thu(
+      nhom.ten[(chiSo * 7 + k * 3) % nhom.ten.length] as string,
+      nhom.ho[(chiSo * 11 + k * 5) % nhom.ho.length] as string,
+    );
+    if (kq) return kq;
+  }
+
+  // Pha 2 — quét trọn bảng tên × họ. Pha 1 chỉ chạm vài cặp cho mỗi chỉ số, nên
+  // khi dò hàng trăm danh tính nó có thể cạn trong khi nhóm vẫn còn cặp chưa dùng.
+  for (let a = 0; a < nhom.ten.length; a++) {
+    for (let b = 0; b < nhom.ho.length; b++) {
+      const kq = thu(
+        nhom.ten[(chiSo + a) % nhom.ten.length] as string,
+        nhom.ho[(chiSo + b) % nhom.ho.length] as string,
+      );
+      if (kq) return kq;
+    }
+  }
+  throw new Error(`Không còn tên chưa dùng trong nhóm của chỉ số #${chiSo}`);
+}
+
+/**
+ * `createdAt` (spec 2026-09-14 §4.1): 30% khách đăng ký trong đợt ra mắt 01–07/01,
+ * 70% còn lại rải đều từ 08/01 tới H − 7 ngày.
+ *
+ * Booking đầu năm đòi người đặt đã có tài khoản, nên đợt ra mắt đứng đầu tháng 1;
+ * phần rải đều giữ một dòng khách mới chảy suốt năm cho biểu đồ. Bộ sinh booking
+ * PHẢI tôn trọng `paidAt ≥ createdAt + 1 ngày`.
+ */
+const TY_LE_RA_MAT = 0.3;
+const SO_NGAY_RA_MAT = 7;
+
+export function sinhKhach(homNay: Date): KhachFixture[] {
   const daDung = new Set<string>();
-  const soCu = Math.round(SO_KHACH * TY_LE_CU);
+  const soRaMat = Math.round(SO_KHACH * TY_LE_RA_MAT);
+  const dauRaiDeu = DAU_KHUNG + SO_NGAY_RA_MAT * NGAY_MS;
+  // H − 8 ngày chứ không phải H − 7: cộng thêm giờ trong ngày (tối đa 15 giờ) mốc
+  // vẫn phải không muộn hơn H − 7 ngày.
+  const cuoiRaiDeu = ngayUTC(homNay.getTime() - 8 * NGAY_MS);
+  const soNgayRaiDeu = Math.round((cuoiRaiDeu - dauRaiDeu) / NGAY_MS) + 1;
+  const ra: KhachFixture[] = [];
 
   for (let i = 0; i < SO_KHACH; i++) {
     const rnd = boSinh(`khach-v2:${i}`);
-    const nhom = NHOM[VE[i % VE.length] as number] as Nhom;
-
-    // Bước nhảy nguyên tố khác nhau cho tên và họ: cùng bước thì hai danh sách
-    // chạy song song và chỉ sinh ra `len` cặp thay vì `len * len`.
-    let ten = '';
-    let phan = '';
-    for (let k = 0; k < 200; k++) {
-      const t = nhom.ten[(i * 7 + k * 3) % nhom.ten.length] as string;
-      const h = nhom.ho[(i * 11 + k * 5) % nhom.ho.length] as string;
-      const p = phanEmail(`${t} ${h}`);
-      if (!daDung.has(p)) {
-        daDung.add(p);
-        ten = `${t} ${h}`;
-        phan = p;
-        break;
-      }
-    }
-    if (!ten) throw new Error(`Không tìm được tên chưa dùng cho khách #${i}`);
-
+    const { ten, phanEmail: phan, maVung } = taoDanhTinh(i, daDung);
     const email = `${phan}@example.com`;
-    const cu = i < soCu;
-    const moc = cu
-      ? CU_DAU + Math.floor((CU_CUOI - CU_DAU) * ((i + 0.5) / soCu))
-      : MOI_DAU + Math.floor((MOI_CUOI - MOI_DAU) * ((i - soCu + 0.5) / (SO_KHACH - soCu)));
+    const ngay =
+      i < soRaMat
+        ? DAU_KHUNG + Math.floor(((i + 0.5) / soRaMat) * SO_NGAY_RA_MAT) * NGAY_MS
+        : dauRaiDeu +
+          Math.floor(((i - soRaMat + 0.5) / (SO_KHACH - soRaMat)) * soNgayRaiDeu) * NGAY_MS;
 
     ra.push({
       id: idTinh('seed-customer', email),
       email,
       name: ten,
-      // ~60% có số điện thoại: hồ sơ thật cũng không ai điền đủ, và màn admin
-      // cần cả hai nhánh để lộ ra chỗ nào chưa xử lý giá trị rỗng. Mã vùng lấy
-      // từ CHÍNH nhóm của cái tên — một "Ingrid Solberg" mang số +91 là thứ
-      // không ai viết ra có chủ ý.
+      // ~60% có số điện thoại, mã vùng lấy từ CHÍNH nhóm của cái tên. Bộ sinh giờ
+      // trong ngày dùng hạt riêng để không xê dịch dãy số điện thoại đã có.
       phone:
         rnd() < 0.6
-          ? `+${nhom.ma[nguyen(rnd, 0, nhom.ma.length - 1)]}${nguyen(rnd, 100000000, 999999999)}`
+          ? `+${maVung[nguyen(rnd, 0, maVung.length - 1)]}${nguyen(rnd, 100000000, 999999999)}`
           : null,
-      createdAt: new Date(moc),
+      createdAt: new Date(ngay + gioTrongNgay(boSinh(`khach-gio:${i}`))),
     });
   }
   return ra;
 }
 
-export const khachGia: KhachFixture[] = sinh();
+export const khachGia: KhachFixture[] = sinhKhach(HOM_NAY);
