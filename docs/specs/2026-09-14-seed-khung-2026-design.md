@@ -122,6 +122,11 @@ review) đổi theo H, nên đổi H thì BẮT BUỘC reset trước khi seed �
   CANCELLED ~13%. Số chuyến mỗi tour = max(3, làm tròn(0,6 × số tháng lịch sử))
   — khoảng 5 với H = 20/09, khoảng 6 với H = 03/11. Rải theo khe thời gian đều
   nhau, lệch pha giữa các tour để tổng theo tháng phẳng.
+- **Sàn chuyến đã chạy** (ruling 14/09 khi thi công): mỗi tour giữ ≥ 3 chuyến
+  lịch sử CLOSED — chuyến bị huỷ chỉ lấy phần vượt 3, nên với H sớm (tour có đúng
+  3 chuyến lịch sử) không chuyến nào bị huỷ. Các chuyến của một tour cách nhau
+  hơn 28 ngày, nên tối đa một chuyến kết thúc trong 3 ngày sát H và luôn còn ≥ 2
+  chuyến cho sàn booking đã đi (§4.3).
 - **Còn bán:** `start_date` ≥ H + 2 ngày; `end_date` ≤ 31/12. OPEN, 4 chuyến mỗi
   tour.
 - **Mở bán** (`created_at`) = khởi hành − 120…240 ngày, kẹp vào [01/01, H].
@@ -134,7 +139,8 @@ review) đổi theo H, nên đổi H thì BẮT BUỘC reset trước khi seed �
 ### 4.3 Booking và thanh toán
 
 - `paid_at` ∈ [max(`created_at` của khách + 1 ngày, `created_at` của chuyến),
-  min(khởi hành − 1 ngày, H)]. Khoảng rỗng thì bỏ booking đó.
+  min(khởi hành − 1 ngày, H)]. Khách có khoảng này rỗng bị loại ngay lúc bốc
+  khách; bốc không ra ai thì bỏ lượt đặt đó.
 - Đặt trước 0–90 ngày, **co theo khoảng khả dụng**:
   `muộn nhất − u × min(90 ngày, muộn nhất − sớm nhất)` với `u` ∈ [0, 1), thay
   cho `max(sớm nhất, …)` hiện nay — không dồn về ngày sớm nhất, không có đỉnh
@@ -143,6 +149,9 @@ review) đổi theo H, nên đổi H thì BẮT BUỘC reset trước khi seed �
 - Giữ nguyên các luật đã có: không khách nào chồng lịch, một khách một booking
   trên mỗi chuyến, chừa ghế cho chuyến khuyến mãi còn bán, giá theo `pricing.ts`,
   `cost_per_person` do seed tính bằng `perPersonTotal`.
+- **Sàn booking đã đi** (ruling 14/09 khi thi công): sau bước duyệt huỷ (§4.4),
+  mỗi tour ≥ 3 booking PAID trên chuyến CLOSED kết thúc ≤ H − 3 ngày — đúng loại
+  booking bước bù review (§4.5) nhận. Thiếu thì đặt bù bằng chính các luật trên.
 - **Không seed booking PENDING:** job `pending-sweep` huỷ chúng trong 65 phút.
 - **Không seed `outbox`.**
 
