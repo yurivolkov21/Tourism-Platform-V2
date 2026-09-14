@@ -69,6 +69,12 @@ const BAT_BIEN = [
     `select abs(count(*) - 120)::int as n from users where email like '%@example.com'`,
     false,
   ],
+  // User chốt 14/09: giữ đúng một tài khoản admin — seed không bao giờ được sinh admin thứ hai.
+  [
+    'số tài khoản ADMIN khác 1',
+    `select abs(count(*) - 1)::int as n from users where role = 'ADMIN'`,
+    false,
+  ],
   // ── 14 bất biến nghiệm thu của đợt 10/09 ──
   [
     'booking đã trả thiếu cost_per_person',
@@ -140,6 +146,12 @@ const BAT_BIEN = [
     `select count(*)::int as n from tours where is_published and rating_avg is null`,
     false,
   ],
+  // Cùng công thức bước 6b của seed.ts: đếm và trung bình review đã duyệt, không lọc `source`.
+  [
+    'rating tour lệch review đã duyệt',
+    `select count(*)::int as n from tours t where t.rating_count <> (select count(*) from reviews r where r.tour_id = t.id and r.is_approved) or t.rating_avg is distinct from (select avg(r.rating)::numeric(2,1) from reviews r where r.tour_id = t.id and r.is_approved)`,
+    false,
+  ],
   // ── Hình dạng huỷ và hoàn (spec §4.4) ──
   ['booking PENDING', `select count(*)::int as n from bookings where status = 'PENDING'`, false],
   [
@@ -172,6 +184,21 @@ const BAT_BIEN = [
     `select count(*)::int as n from cancellation_requests where status = 'REQUESTED' and (decided_at is not null or decided_by is not null)`,
     false,
   ],
+  [
+    'yêu cầu DENIED/REQUESTED trỏ booking không còn PAID',
+    `select count(*)::int as n from cancellation_requests c join bookings b on b.id = c.booking_id where c.status in ('DENIED', 'REQUESTED') and b.status <> 'PAID'`,
+    false,
+  ],
+  [
+    'booking REFUNDED có tổng refund khác tổng tiền',
+    `select count(*)::int as n from bookings b where b.status = 'REFUNDED' and (select coalesce(sum(r.amount), 0) from refunds r where r.booking_id = b.id) <> b.total_amount`,
+    false,
+  ],
+  [
+    'yêu cầu DENIED/REFUNDED thiếu người hoặc mốc quyết',
+    `select count(*)::int as n from cancellation_requests where status in ('DENIED', 'REFUNDED') and (decided_at is null or decided_by is null)`,
+    false,
+  ],
   // ── Enquiries và subscribers (spec §5) ──
   [
     'chuỗi trạng thái enquiry đứt',
@@ -198,6 +225,11 @@ const BAT_BIEN = [
     `select count(*)::int as n from subscribers where welcome_sent_at is null or source is not null or confirmed_at < created_at or (unsubscribed_at is not null and unsubscribed_at < coalesce(confirmed_at, welcome_sent_at))`,
     false,
   ],
+  [
+    'subscriber lệch updated_at (phải là mốc mới nhất)',
+    `select count(*)::int as n from subscribers where updated_at <> greatest(created_at, welcome_sent_at, confirmed_at, unsubscribed_at)`,
+    false,
+  ],
   // ── Tác dụng phụ ──
   [
     'outbox còn dòng PENDING (mail sẽ bị gửi thật)',
@@ -208,6 +240,9 @@ const BAT_BIEN = [
 
 const client = new pg.Client({ connectionString: url });
 await client.connect();
+// Phòng thủ thêm một lớp khi chạy trên prod: cả phiên chỉ đọc. Dùng lệnh SET chứ không dùng tham
+// số khởi động `options`, vì session pooler của Supabase có thể không nhận tham số đó.
+await client.query('SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY');
 console.log(`Nối tới: ${new URL(url).host} · H = ${homNay}\n`);
 
 const kiemTra = [];
