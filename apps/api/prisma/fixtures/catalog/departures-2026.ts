@@ -117,12 +117,19 @@ export function sinhLich(homNay: Date): TourDepartureFixture[] {
       if (chon) khuyenMai.add(chon.batDau);
     }
 
+    let soHuy = 0;
     for (const m of moc) {
       const rnd = boSinh(`chuyen-tt:${tour.slug}:${isoNgay(m.batDau)}`);
       const coKM = khuyenMai.has(m.batDau);
       // Giảm 10–20%: đủ để chip "% OFF" đáng tin, không tới mức trông như xả hàng.
       const mucGiam = coKM ? nguyen(rnd, 10, 20) / 100 : 0;
-      const status = m.banDuoc ? 'OPEN' : rnd() < TY_LE_HUY ? 'CANCELLED' : 'CLOSED';
+      // Mỗi tour giữ ít nhất ba chuyến lịch sử KHÔNG bị huỷ. Các chuyến của một tour cách nhau
+      // hơn 28 ngày nên tối đa một chuyến kết thúc trong 3 ngày sát H — còn ≥ 2 chuyến cho sàn
+      // booking đã đi (`operations/bookings.ts`). Với mốc H sớm tour chỉ có ba chuyến lịch sử,
+      // nên khi đó không chuyến nào bị huỷ.
+      const huyDuoc = !m.banDuoc && soHuy < soLichSu - 3 && rnd() < TY_LE_HUY;
+      if (huyDuoc) soHuy++;
+      const status = m.banDuoc ? 'OPEN' : huyDuoc ? 'CANCELLED' : 'CLOSED';
       // Mở bán trước ngày đi 4–8 tháng, kẹp vào [01/01, H − 1 ngày] rồi gắn giờ trong
       // ngày — nên luôn trước H và trước ngày khởi hành.
       const moBan =
