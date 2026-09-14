@@ -58,12 +58,17 @@ const TI_LE_VANG = 0.6180339887498949;
 
 const tien = (n: number): string => n.toFixed(2);
 
-/** Rải `n` ngày khởi hành (nửa đêm UTC) vào [tu, den]: mỗi chuyến một khe bằng nhau. */
+/**
+ * Rải `n` ngày khởi hành (nửa đêm UTC) vào [tu, den]: mỗi chuyến một khe bằng nhau.
+ * Vị trí trong khe = `pha` của tour co vào 65% đầu khe, cộng phần lệch ngẫu nhiên tối
+ * đa 35%. KHÔNG dùng `% 1`: phép cuộn đẩy chuyến cuối khe k sát chuyến đầu khe k+1,
+ * hai chuyến rơi cùng ngày và trùng id.
+ */
 function raiDeu(tu: number, den: number, n: number, pha: number, rnd: () => number): number[] {
   const doDai = den - tu;
   const ra: number[] = [];
   for (let k = 0; k < n; k++) {
-    const viTri = (pha + LECH_TRONG_KHE * rnd()) % 1;
+    const viTri = pha * (1 - LECH_TRONG_KHE) + LECH_TRONG_KHE * rnd();
     ra.push(ngayUTC(tu + ((k + viTri) / n) * doDai));
   }
   return ra;
