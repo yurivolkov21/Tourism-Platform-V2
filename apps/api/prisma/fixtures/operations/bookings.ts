@@ -1,7 +1,8 @@
-import { HOM_NAY, tourDepartures } from '../catalog/departures-2026.js';
+import { tourDepartures } from '../catalog/departures-2026.js';
 import { tours as toursCentral } from '../catalog/tours-central.js';
 import { tours as toursNorth } from '../catalog/tours-north.js';
 import { tours as toursSouth } from '../catalog/tours-south.js';
+import { HOM_NAY } from '../khung-thoi-gian.js';
 import { khachGia } from '../people/customers.js';
 import { boSinh, idTinh, nguyen } from '../stable-id.js';
 
