@@ -8,6 +8,31 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-14 — Luật 9 bỏ viện dẫn hook nhắc-skill đã mất
+
+Đợt dọn plugin (entry dưới) để lại một chỗ doc lệch thực tế: **CLAUDE.md luật 9**
+vẫn viện dẫn "hook nhắc-skill chỉ chạy khi user gửi tin" — hook đó mất theo
+`~/.claude/settings.json` cũ khi reset máy. User chọn sửa luật thay vì dựng lại
+hook: lời nhắc tự động hiện có là hook SessionStart của plugin `superpowers` (bơm
+`using-superpowers`), mà skill đó có khối `SUBAGENT-STOP` dặn subagent bỏ qua, nên
+vế "brief subagent phải nhắc" vẫn giữ nguyên lý do.
+
+Soát thêm doc còn trỏ tới plugin đã gỡ: chỉ prompt P5a
+(`docs/plans/2026-09-08-p5a-prompt-thi-cong.md`) dặn dùng skill `expo:*`, nhưng P5a
+đã merge 09/09 nên để nguyên như bản ghi; phần P5 còn lại cài `expo` theo bảng
+"Cài theo phase" của `docs/skills.md`.
+
+**Đóng từ entry dưới:** hook nhắc-skill của luật 9 (sửa luật); `superpowers` đã nạp
+(session hiện tại liệt kê đủ 14 skill kèm mô tả; danh sách skill còn 54 mục, không
+mục nào mất mô tả).
+
+**Vẫn CÒN TREO:** tắt auto-update marketplace trước freeze 15/10 · xung đột
+connector #1 và #2 · plugin Desktop "Plugin Management" còn sót · các mục chưa đóng
+của entry "Dựng lại máy dev" (doc Nexora và luật 10, dev loop WSL ở
+`docs/conventions/mobile-dev-loop.md` và ADR-0040, workflow Audit đỏ).
+
+Tests after: chỉ đổi file `.md`; `docs-freshness` xanh.
+
 ## 2026-09-14 — Dọn sạch plugin/skill rồi cài lại có chọn lọc (nhánh cloud `claude/tender-heisenberg-4tdw2k` vào `main` thành `a1eb1e68`)
 
 Rà tại máy (không phải từ session remote) cho thấy máy nạp 39 plugin: 32 cài qua

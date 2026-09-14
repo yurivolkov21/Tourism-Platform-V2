@@ -41,8 +41,11 @@ freeze 15/10.
 9. **Ưu tiên skill có sẵn hơn tự chế.** Trước khi bắt tay, rà danh sách skill
    xem có cái nào phủ đúng việc này không (xem [docs/skills.md](docs/skills.md)
    để biết có gì và dùng khi nào). Có thì gọi qua Skill tool; đừng dựng lại thứ
-   đã có. Brief cho subagent cũng phải nhắc điều này — hook nhắc-skill chỉ chạy
-   khi user gửi tin, KHÔNG áp cho subagent.
+   đã có. Brief cho subagent cũng phải nhắc điều này: lời nhắc tự động hiện có
+   là hook SessionStart của plugin `superpowers` (bơm `using-superpowers` vào
+   session chính; plugin cài global nên máy chưa cài thì không có), mà skill đó
+   có khối `SUBAGENT-STOP` dặn subagent bỏ qua. Hook nhắc-skill riêng trước đây
+   mất theo `~/.claude/settings.json` cũ khi reset máy (14/09), không dựng lại.
 10. **Đối chiếu Nexora TRƯỚC mỗi phase — chủ động, không đợi được nhắc.**
     v2 là bản *nâng cấp*; thứ gì Nexora có mà đây thiếu là thụt lùi. Rà ở
     CẢ HAI tầng: (a) endpoint/feature, (b) **hạ tầng xuyên suốt** —
