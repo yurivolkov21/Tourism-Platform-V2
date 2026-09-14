@@ -4,11 +4,10 @@
  *   pnpm --filter @tourism/api data:reset              # DRY RUN — chỉ in kế hoạch
  *   DATABASE_URL=<docker> … data:reset -- --apply      # xoá thật ở local
  *
- * CẢNH BÁO về mặc định: `data:reset` chạy qua `--env-file-if-exists=.env.local`,
- * mà `.env.local` của repo này trỏ Session pooler của Supabase PROD. Nghĩa là
- * không truyền gì thì đích MẶC ĐỊNH LÀ PRODUCTION — ngược hẳn trực giác. Muốn
- * chạy ở docker thì phải đặt DATABASE_URL tường minh (biến môi trường thắng
- * --env-file, đã đo).
+ * Đích: `data:reset` chạy qua `--env-file-if-exists=.env.local`, mà từ 14/09/2026
+ * `.env.local` trỏ Postgres Docker. Muốn nhắm Supabase thì ghi đè DATABASE_URL bằng
+ * chuỗi của `.env.production` (biến môi trường thắng --env-file, đã đo) và thêm
+ * `--apply --toi-biet-day-la-production`.
  *
  * ── Nó GIỮ gì ──
  * Toàn bộ tầng nội dung và ảnh: tours, destinations, tour_categories và các bảng

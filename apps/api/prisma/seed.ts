@@ -1,36 +1,30 @@
 /**
  * Database seed — bản port v2 của seed Nexora, chỉnh cho schema v2.
  *
- * Seed những gì (catalog cốt lõi + functional overlay):
- *   1. Catalog fixtures (`./fixtures/catalog/index.ts`, tách theo miền Bắc/
- *      Trung/Nam từ 2026-07-31 — trước đó một file `catalog.ts` port từ
- *      Nexora, đã xoá): tour category, destination, tour (+ M:N destination,
- *      itinerary, FAQ, policy, departure). `createMany({ skipDuplicates })` →
- *      chạy lại được nhiều lần.
- *   2. Site media slot — 9 slot key brand-chrome (Nexora seed chúng bằng
- *      migration; ở đây seed upsert chúng).
+ * Mốc thời gian: mọi dòng seed nằm trong năm 2026 và mọi giao dịch có mốc trước H —
+ * "hôm nay" của bộ dữ liệu, đọc từ `SEED_HOM_NAY` (xem `fixtures/khung-thoi-gian.ts`,
+ * spec `docs/specs/2026-09-14-seed-khung-2026-design.md`). Đổi H là đổi id của chuyến,
+ * booking, review: luôn reset tầng vận hành trước khi seed lại với một H khác.
+ *
+ * Seed những gì:
+ *   1. Catalog (`./fixtures/catalog/index.ts`): tour category, destination, tour
+ *      (+ M:N destination, itinerary, FAQ, policy), lịch khởi hành sinh theo H, giá vốn.
+ *   2. Site media slot.
  *   3. Một ADMIN (entry đầu của `ADMIN_EMAILS`) + 120 KHÁCH GIẢ đăng nhập được
- *      (`fixtures/people/customers.ts`), mật khẩu chung băm bằng chính hàm của
- *      Better Auth.
- *   4. TẦNG VẬN HÀNH đầy đủ (`fixtures/operations/bookings.ts`): ~570 booking
- *      trải 12 tháng theo `paidAt`, payment event, refund và yêu cầu huỷ cho
- *      các chuyến bị công ty huỷ, rồi đặt lại `seatsBooked` từ booking thật.
- *   5. 9 bài blog port từ mock journal đã duyệt của web (`./fixtures/posts.ts`)
- *      — upsert theo slug, tag connectOrCreate theo slug, authorId = admin.
- *   6. 84 review CURATED cho 24/30 tour (`./fixtures/catalog/reviews.ts`, spec
- *      2026-07-31-tours-catalogue-api §4/§5) — `createMany({ skipDuplicates })`
- *      với `source: CURATED`, `isApproved: true`, không userId/bookingId.
- *   6b. Recompute `ratingAvg`/`ratingCount` cho MỌI tour ngay sau bước 6 —
- *      CÙNG một công thức với `ReviewsService.moderate` ③ (quyết định 31/07:
- *      mọi review approved có tourId đều tính, kể cả CURATED): chỉ lọc
- *      `isApproved = true` + `tourId` khớp, KHÔNG lọc theo `source`
- *      (`AVG(rating)::numeric(2,1)`) — xem doc-comment tại chỗ gọi bên dưới.
+ *      (`fixtures/people/customers.ts`), mật khẩu chung băm bằng chính hàm của Better Auth.
+ *   4. TẦNG VẬN HÀNH (`fixtures/operations/bookings.ts`): booking, payment event, refund,
+ *      yêu cầu huỷ theo đúng các luồng của app, rồi đặt lại `seatsBooked` từ booking PAID.
+ *   5. 9 bài blog (`./fixtures/posts.ts`) — upsert theo slug.
+ *   6. Review VERIFIED + sự kiện duyệt (`fixtures/operations/reviews-verified.ts`);
+ *   6b. tính lại `ratingAvg`/`ratingCount` cho mọi tour.
+ *   7. Enquiries + ghi chú + lịch sử trạng thái (`fixtures/operations/enquiries.ts`).
+ *   8. Subscribers (`fixtures/operations/subscribers.ts`).
+ *   9. Hai con số dẫn xuất của mô hình giá vốn.
  *
- * KHÔNG port từ Nexora (các fixture phụ thuộc user, vốn giả định identity
- * Supabase): user mẫu, booking, payment event, wishlist, enquiry, outbox,
- * media asset/rác.
+ * KHÔNG seed: outbox (worker gửi mail thật cho mọi dòng PENDING), wishlist, chat,
+ * media asset.
  *
- * Chạy: pnpm --filter @tourism/api db:seed  (compile qua swc, xem package.json)
+ * Chạy (Git Bash): SEED_HOM_NAY=YYYY-MM-DD pnpm --filter @tourism/api db:seed
  */
 
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -49,7 +43,9 @@ import {
   perDepartureTotal,
   perPersonTotal,
 } from '../src/modules/catalog/tour-costs.js';
+import { accountDisplayName } from '../src/modules/enquiries/enquiry-row.js';
 import * as catalog from './fixtures/catalog/index.js';
+import { HOM_NAY, isoNgay, kiemTraMocChoProd } from './fixtures/khung-thoi-gian.js';
 import {
   bookingsGia,
   cancellationRequestsGia,
@@ -57,7 +53,13 @@ import {
   paymentEventsGia,
   refundsGia,
 } from './fixtures/operations/bookings.js';
+import {
+  enquiriesGia,
+  enquiryNotesGia,
+  enquiryStatusEventsGia,
+} from './fixtures/operations/enquiries.js';
 import { reviewModerationEventsGia, reviewsGia } from './fixtures/operations/reviews-verified.js';
+import { subscribersGia } from './fixtures/operations/subscribers.js';
 import { khachGia } from './fixtures/people/customers.js';
 import { posts as blogPosts } from './fixtures/posts.js';
 import { idTinh } from './fixtures/stable-id.js';
@@ -153,11 +155,11 @@ const connectionString =
   process.env.DATABASE_URL ?? 'postgresql://tourism:tourism@localhost:5432/tourism';
 
 // ── Chốt chặn production ────────────────────────────────────────────────────
-// `db:seed` chạy qua `--env-file-if-exists=.env.local`, mà file đó trỏ Session
-// pooler của Supabase PROD. Nghĩa là gõ `pnpm db:seed` không kèm gì thì đích
-// MẶC ĐỊNH LÀ PRODUCTION — ngược hẳn trực giác, và khác hẳn hai script anh em
-// (`data:reset`, `media:alt`) vốn đòi cờ tường minh. Đợt rà 10/09 xếp đây là
-// phát hiện NẶNG: seed ghi đè nội dung biên tập của 29 tour và 87 policy.
+// `db:seed` nạp `.env.local`, mà từ 14/09/2026 file đó trỏ Postgres Docker. Muốn
+// nhắm Supabase phải ghi đè DATABASE_URL bằng chuỗi của `.env.production` — biến môi
+// trường thắng `--env-file` — và thêm cờ tường minh bên dưới. Seed ghi đè nội dung
+// biên tập của 29 tour và 87 policy (upsert), nên prod không bao giờ được là đích
+// mặc định.
 const LA_PROD = /supabase\.(com|co)$/i.test(new URL(connectionString).hostname);
 if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
   console.error(`
@@ -172,6 +174,22 @@ if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
 `);
   process.exit(1);
 }
+// ── Chốt chặn mốc H ─────────────────────────────────────────────────────────
+// Fixture đã sinh xong lúc import, theo `SEED_HOM_NAY` hoặc ngày ghim; ở đây chỉ
+// quyết có được phép ghi bộ dữ liệu ấy lên đích này không.
+const kiemTraMoc = kiemTraMocChoProd({
+  laProd: LA_PROD,
+  coEnv: Boolean(process.env.SEED_HOM_NAY?.trim()),
+  homNay: HOM_NAY,
+  homNayThat: new Date(),
+});
+if (kiemTraMoc.ketQua === 'tu-choi') {
+  console.error(`\n✖ TỪ CHỐI: ${kiemTraMoc.thongDiep}\n`);
+  process.exit(1);
+}
+if (kiemTraMoc.ketQua === 'canh-bao') console.warn(`⚠ ${kiemTraMoc.thongDiep}`);
+console.log(`[seed] mốc hôm nay H = ${isoNgay(HOM_NAY.getTime())}`);
+
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
 });
@@ -351,6 +369,7 @@ async function main(): Promise<void> {
       emailVerified: true,
       role: UserRole.CUSTOMER,
       createdAt: k.createdAt,
+      updatedAt: k.createdAt,
     })),
     skipDuplicates: true,
   });
@@ -380,6 +399,7 @@ async function main(): Promise<void> {
         providerId: 'credential',
         password: await ctx.password.hash(matKhau),
         createdAt: k.createdAt,
+        updatedAt: k.createdAt,
       });
     }
     const r = await prisma.account.createMany({ data: duLieu, skipDuplicates: true });
@@ -437,6 +457,7 @@ async function main(): Promise<void> {
       paidAt: b.paidAt ? new Date(b.paidAt) : null,
       cancelledAt: b.cancelledAt ? new Date(b.cancelledAt) : null,
       createdAt: new Date(b.createdAt),
+      updatedAt: new Date(b.updatedAt),
     })) as unknown as Prisma.BookingCreateManyInput[],
     skipDuplicates: true,
   });
@@ -495,12 +516,12 @@ async function main(): Promise<void> {
       reason: c.reason,
       freeCancellationDays: c.freeCancellationDays,
       status: c.status as CancellationRequestStatus,
-      decisionNote: c.decisionNote || null,
-      // Yêu cầu đang CHỜ chưa có ai quyết — hai cột này phải là null, không
-      // phải "quyết định lúc 1970". Fixture để chuỗi rỗng cho nhánh REQUESTED.
+      decisionNote: c.decisionNote,
+      // Yêu cầu đang CHỜ chưa có ai quyết — người quyết và mốc quyết đều null.
       decidedById: c.decidedAt ? admin.id : null,
       decidedAt: c.decidedAt ? new Date(c.decidedAt) : null,
       createdAt: new Date(c.createdAt),
+      updatedAt: new Date(c.updatedAt),
     })) as unknown as Prisma.CancellationRequestCreateManyInput[],
     skipDuplicates: true,
   });
@@ -576,6 +597,7 @@ async function main(): Promise<void> {
       moderatedById: r.moderatedAt ? admin.id : null,
       retractedAt: r.retractedAt ? new Date(r.retractedAt) : null,
       createdAt: new Date(r.createdAt),
+      updatedAt: new Date(r.updatedAt),
     })) as unknown as Prisma.ReviewCreateManyInput[],
     skipDuplicates: true,
   });
@@ -628,7 +650,73 @@ async function main(): Promise<void> {
   }
   console.log(`[seed] recomputed ratingAvg/ratingCount for ${catalog.tours.length} tours.`);
 
-  // 8. Hai con số DẪN XUẤT của mô hình giá vốn (ADR-0033 §2, §3).
+  // 7. Enquiries — mô phỏng hai form web. Ghi chú và lịch sử trạng thái đứng tên admin
+  //    thật: `authorName` là SNAPSHOT như service ghi (cùng hàm `accountDisplayName`),
+  //    còn tên người đổi trạng thái admin đọc qua JOIN nên chỉ cần `adminId`.
+  const { count: soEnquiry } = await prisma.enquiry.createMany({
+    data: enquiriesGia.map((e) => ({
+      id: e.id,
+      name: e.name,
+      email: e.email,
+      phone: e.phone,
+      message: e.message,
+      tourId: e.tourId,
+      nationality: e.nationality,
+      travelDate: e.travelDate ? toDate(e.travelDate) : null,
+      groupSize: e.groupSize,
+      budgetTier: e.budgetTier,
+      interests: e.interests,
+      status: e.status,
+      userId: e.userId,
+      createdAt: new Date(e.createdAt),
+      updatedAt: new Date(e.updatedAt),
+    })) as unknown as Prisma.EnquiryCreateManyInput[],
+    skipDuplicates: true,
+  });
+  const tenAdmin = accountDisplayName(admin);
+  const { count: soGhiChu } = await prisma.enquiryNote.createMany({
+    data: enquiryNotesGia.map((n) => ({
+      id: n.id,
+      enquiryId: n.enquiryId,
+      authorId: admin.id,
+      authorName: tenAdmin,
+      body: n.body,
+      createdAt: new Date(n.createdAt),
+    })),
+    skipDuplicates: true,
+  });
+  const { count: soSuKienEnquiry } = await prisma.enquiryStatusEvent.createMany({
+    data: enquiryStatusEventsGia.map((s) => ({
+      id: s.id,
+      enquiryId: s.enquiryId,
+      adminId: admin.id,
+      fromStatus: s.fromStatus,
+      toStatus: s.toStatus,
+      createdAt: new Date(s.createdAt),
+    })) as unknown as Prisma.EnquiryStatusEventCreateManyInput[],
+    skipDuplicates: true,
+  });
+  console.log(
+    `[seed] enquiries: +${soEnquiry} lead, +${soGhiChu} ghi chú, +${soSuKienEnquiry} sự kiện trạng thái`,
+  );
+
+  // 8. Subscribers — KHÔNG chèn outbox: worker gửi mail thật cho mọi dòng PENDING.
+  const { count: soSubscriber } = await prisma.subscriber.createMany({
+    data: subscribersGia.map((s) => ({
+      id: s.id,
+      email: s.email,
+      source: s.source,
+      createdAt: new Date(s.createdAt),
+      welcomeSentAt: new Date(s.welcomeSentAt),
+      confirmedAt: s.confirmedAt ? new Date(s.confirmedAt) : null,
+      unsubscribedAt: s.unsubscribedAt ? new Date(s.unsubscribedAt) : null,
+      updatedAt: new Date(s.updatedAt),
+    })),
+    skipDuplicates: true,
+  });
+  console.log(`[seed] subscribers: +${soSubscriber}`);
+
+  // 9. Hai con số DẪN XUẤT của mô hình giá vốn (ADR-0033 §2, §3).
   //
   //    Tính ở đây chứ không khai trong fixture: chúng là hàm của
   //    `tour_cost_items`, và một fixture khai sẵn con số dẫn xuất là hai nguồn
