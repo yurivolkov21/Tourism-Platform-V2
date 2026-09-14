@@ -93,7 +93,7 @@ freeze 15/10.
 
 | Việc | Tool DUY NHẤT | Chạy ở đâu |
 | --- | --- | --- |
-| Format + lint (ts/tsx/js/jsx/json) | **Biome** | editor save · `pnpm lint:fix` · pre-commit · CI |
+| Format + lint (ts/tsx/js/jsx/json/css) | **Biome** | editor save · `pnpm lint:fix` · pre-commit · CI |
 | Typecheck | **tsc (TypeScript 7)** | `pnpm typecheck` · CI |
 | Test | **Vitest** (mobile sau này: jest-expo) | `pnpm test` · CI |
 | Build/orchestrate | **Turborepo** | `pnpm build` |
@@ -108,7 +108,10 @@ Ba lớp bảo vệ chống lệch chuẩn (đã dựng, đừng gỡ):
 1. **`.vscode/settings.json` pin formatter theo TỪNG ngôn ngữ.** Bắt buộc vì
    setting theo-ngôn-ngữ ở settings global của máy **thắng** setting chung của
    workspace — từng khiến Prettier âm thầm format lại 39 file (nháy kép/80 cột)
-   và làm `biome check` fail.
+   và làm `biome check` fail. Ngôn ngữ nào chưa pin là hở: máy dựng lại 14/09
+   có settings global pin Prettier cho `[html]` và formatter built-in cho
+   `[css]`, nên workspace thêm `[css]` → Biome và tắt format-on-save cho
+   `[html]` (HTML duy nhất trong repo là mockup bất biến).
 2. **`.githooks/pre-commit`** chạy `biome check --staged` — chặn ngay tại máy,
    tự bật qua script `prepare` khi `pnpm install`. Bỏ qua: `--no-verify`.
 3. **CI** chạy `gate` + `test:int` (có service Postgres) — lưới cuối.
@@ -129,9 +132,29 @@ pnpm lint:fix                    # biome tự sửa format + lint
 
 ## Gotchas
 
-- Repo phải nằm trong WSL ext4 (`~/projects/tourism-v2`) — không bao giờ làm
-  việc qua `/mnt/c`.
-- `.gitattributes` ép LF toàn repo — bài học 797-file CRLF churn của Nexora.
+- **Máy dev chạy Windows native từ 14/09/2026** (dựng lại sau reset máy; trước
+  đó repo nằm trong WSL ext4 `~/projects/tourism-v2`). Repo ở
+  `C:\Programming\Devs\Projects\Tourism-Platform-V2`, Node **24** LTS ở
+  `C:\Programming\Node.JS` — khớp `node-version: 24` của CI và `node:24-alpine`
+  của Dockerfile. Quay lại WSL thì luật cũ vẫn giữ: repo trên ext4, không bao
+  giờ làm việc qua `/mnt/c`. Bốn bẫy riêng của Windows:
+  1. **pnpm phải chạy script bằng Git Bash:**
+     `pnpm config set script-shell "C:\Programming\Git\bin\bash.exe"` — cấu hình
+     cấp user, KHÔNG đặt trong repo (CI là Linux). Mặc định pnpm dùng cmd.exe:
+     không có `sh` trên PATH nên `ci:wait` chết, và cmd không bóc quote đơn nên
+     `--ignore '**/*.spec.ts'` ở `build`/`db:seed` của api mất tác dụng.
+  2. **`bash` gõ trong PowerShell là launcher WSL** (`C:\Windows\system32\bash.exe`),
+     không phải Git Bash — `scripts/*.sh` và lệnh `export …` ở gotcha Prisma
+     bên dưới phải chạy từ Git Bash.
+  3. **PATH là bản chụp lúc app mở:** cài/đổi Node xong phải khởi động lại
+     Claude Desktop và VS Code, không thì tiến trình con vẫn báo
+     `node: command not found` (dính 14/09).
+  4. **`apps/web/scripts/guard-build.mjs` dò `/proc` nên trên Windows tự bỏ
+     qua** — lớp chặn build-khi-đang-serve không còn; tắt `next dev`/`next start`
+     trước khi build web.
+- `.gitattributes` ép LF toàn repo — bài học 797-file CRLF churn của Nexora. Git
+  for Windows cài sẵn `core.autocrlf=true` ở cấp system nhưng `.gitattributes`
+  vẫn thắng (đo 14/09: 0 file CRLF sau clone).
 - tsconfig bật `noUncheckedIndexedAccess` (nghiêm hơn Nexora) — code port từ
   Nexora có thể cần chỉnh nhỏ kiểu destructure-with-default.
 - `libs/shared/tokens/generated/` là build artifact (gitignored) — build bằng
@@ -151,10 +174,13 @@ pnpm lint:fix                    # biome tự sửa format + lint
   rỗng khi ô bị bỏ trống, nên đừng gỡ bước strip này.
 - **`prisma.config.ts` chỉ đọc `.env` (qua `dotenv/config`) — KHÔNG đọc
   `.env.local`.** Vì repo không có `.env` nên mọi lệnh `prisma migrate/status`
-  rơi về Postgres docker local; DB dev thật (Supabase trong `.env.local`)
-  KHÔNG tự nhận migration. Đã dính 12/08: enum `REVIEW` thiếu trên Supabase →
-  web build SSG chết 500. Sau mỗi migration mới, deploy tường minh từ
-  `apps/api`: `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.local | cut -d= -f2-)" && pnpm prisma migrate deploy`.
+  rơi về Postgres docker local; Supabase KHÔNG tự nhận migration. Đã dính
+  12/08: enum `REVIEW` thiếu trên Supabase → web build SSG chết 500. Sau mỗi
+  migration mới, deploy tường minh từ `apps/api` (Git Bash):
+  `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" && pnpm prisma migrate deploy`.
+  Từ 14/09 `.env.local` trỏ Postgres Docker đúng như `.env.example` dặn; chuỗi
+  Supabase CHỈ nằm ở `.env.production`. Trước reset máy `.env.local` từng trỏ
+  thẳng Supabase prod, nên `pnpm dev`/`db:seed`/`db:migrate` ở máy đều chạm prod.
 - **`docs/design/mockups/*.src.html` bị loại khỏi Biome** (`biome.json` →
   `files.includes`). Đó là BẢN GHI NGUYÊN VĂN của một vòng thiết kế user đã
   duyệt — cùng luật bất biến với `migration.sql` và entry CHANGELOG cũ, không

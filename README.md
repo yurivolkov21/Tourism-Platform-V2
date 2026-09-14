@@ -1,7 +1,7 @@
 # tourism-v2
 
 Nền tảng đặt tour du lịch — **capstone project**, rebuild nâng cấp từ Nexora
-(`tourism-platform`). Monorepo **pnpm + Turborepo**, chạy trong WSL.
+(`tourism-platform`). Monorepo **pnpm + Turborepo**, máy dev Windows native (từ 14/09/2026).
 
 > Tên/brand chính thức: chưa chốt — scope `@tourism/*` là codename tạm,
 > đổi một lần bằng find-replace trước khi deploy public.
@@ -19,7 +19,13 @@ Nền tảng đặt tour du lịch — **capstone project**, rebuild nâng cấp
 
 ## Yêu cầu
 
-- **Node ≥ 24** · **pnpm 11** (`corepack enable`) · chạy trong **WSL** (repo nằm trên ext4, không phải `/mnt/c`)
+- **Node 24 LTS** (khớp CI + Dockerfile) · **pnpm 11.9** (ghim ở `packageManager`) ·
+  **Docker Desktop** (Postgres cho `test:int`) · **GitHub CLI** đã `gh auth login`
+  (luật 14 CLAUDE.md)
+- Windows: `pnpm config set script-shell "C:\Programming\Git\bin\bash.exe"` — lý do
+  và các bẫy còn lại ở CLAUDE.md → Gotchas
+- 8 file env KHÔNG nằm trong git: `.env.local` + `.env.production` của `apps/api`,
+  `apps/web`, `apps/admin`, `apps/mobile` — dựng lại từ `.env.example` hoặc bản sao lưu
 
 ## Lệnh thường dùng (từ repo root)
 

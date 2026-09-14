@@ -8,6 +8,71 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-14 — Dựng lại máy dev sau reset: Windows native, `.env.local` về Docker, ghim tên project compose
+
+Máy dev bị reset (~12/09) nên cài lại từ đầu; clone mới nằm ở
+`C:\Programming\Devs\Projects\Tourism-Platform-V2`, KHÔNG còn trong WSL. User chốt
+ở lại Windows native và Node 24 LTS (khớp CI và Dockerfile). Đợt này chỉ làm
+setup, chưa đụng việc seed. Trước đó một session cloud chạy nhầm đã đẩy
+`11b49d6d` (rà soát skill/connector) và để nhánh `claude/tender-heisenberg-4tdw2k`
+gỡ 5 skill, chờ review.
+
+**Công việc seed tuần trước KHÔNG mất:** `origin/chore/seed-buoc1-snapshot` còn đủ
+35 commit (09/09 → 10/09 15:44) và vẫn chưa merge; các mục CÒN TREO trong ba entry
+10/09 của nhánh đó giữ nguyên.
+
+**Sửa trong repo:**
+
+- `compose.yaml` ghim `name: tourism-v2`. Compose lấy tên THƯ MỤC clone làm tiền
+  tố, nên clone `Tourism-Platform-V2` sinh container `tourism-platform-v2-postgres-1`,
+  và `scripts/check-rls.sh` (máy không có `psql` thì `docker exec tourism-v2-postgres-1`)
+  làm đỏ 2 test của `check-rls.int.spec.ts`. Ghim ở gốc giữ đúng tên mà script và
+  7 plan/spec đang gọi; spec chạy lại 2/2 xanh.
+- `.vscode/settings.json` pin thêm `[css]` → Biome và tắt format-on-save cho
+  `[html]`: settings global của máy mới pin Prettier cho html (mockup `*.src.html`
+  là bản ghi bất biến) và formatter built-in cho css (lệch `biome check`).
+  `.vscode/extensions.json` bỏ `remote-wsl`, gợi ý đủ bốn extension mà settings
+  đang pin, khai Prettier và ESLint là không mong muốn.
+- CLAUDE.md: gotcha WSL thành gotcha Windows native kèm bốn bẫy đo được
+  (script-shell Git Bash, `bash` trong PowerShell là launcher WSL, PATH chụp lúc
+  app mở, `guard-build.mjs` tự bỏ qua ngoài Linux); gotcha Prisma trỏ
+  `.env.production` thay cho `.env.local`. README cập nhật mục Yêu cầu.
+
+**Ngoài repo (máy):** `pnpm config set script-shell` sang Git Bash;
+`apps/api/.env.local` đổi `DATABASE_URL` về Postgres Docker đúng như `.env.example`
+dặn. Bản khôi phục đang trỏ thẳng Supabase prod, tức `pnpm dev`, `db:seed`,
+`db:migrate` ở máy đều chạm prod; chuỗi Supabase nay chỉ còn ở `.env.production`.
+
+**Tài nguyên:** user báo máy từng phình RAM và ổ đĩa khi chạy gate:int. Máy 31,6 GB
+RAM nhưng commit trống lúc thường chỉ ~7–10 GB, pagefile để Windows tự quản. Lượt
+gate:int dưới đây chạy theo thứ tự CI, API tạm cho build web trỏ Postgres Docker
+(không nạp `.env.local`), hãm song song (build 1, typecheck 3, test 2 với
+`--maxWorkers=4`) và có watchdog: xanh sau 8,5 phút, commit trống thấp nhất
+4,48 GB, pagefile đứng yên 5120 MB, ổ C giảm 0,6 GB.
+
+**Ba phát hiện ngoài phạm vi, nêu để khỏi rơi:**
+
+- Workflow **Audit** (lịch thứ Hai) đỏ 14/09 trên `11b49d6d`: 2 high `image-size`
+  ≤2.0.2 (GHSA-w3rx-r6r6-pgpr, GHSA-5p2g-fcmc-qvqq) và 1 moderate
+  `decode-uri-component` ≤0.4.2 (GHSA-vcc3-ghjq-m6fr), đều bắc cầu qua
+  `apps/mobile` và `libs/mobile/ui`. CI của `11b49d6d` xanh.
+- `biome check` còn 3 chẩn đoán không chặn (1 warning, 2 info) có từ trước:
+  `isValidDate` không dùng ở `apps/admin/src/lib/date-field.ts`, `useIndexOf` ở
+  `wizard-steps.tsx`, một khoá deprecated ở `biome.json:39`.
+- `gh` chưa đăng nhập trên máy mới; đèn CI của đợt này đọc qua API công khai của
+  GitHub.
+
+**CÒN TREO:** `gh auth login` · khởi động lại Claude Desktop và VS Code để nhận PATH
+có Node 24 · review nhánh `claude/tender-heisenberg-4tdw2k` · chỉnh doc Nexora
+(luật 10, đường dẫn `/mnt/c/...`) vì user chốt không clone lại repo tham chiếu ·
+hook nhắc-skill của luật 9 mất theo `~/.claude/settings.json` cũ ·
+`docs/conventions/mobile-dev-loop.md` và ADR-0040 vẫn mô tả dev loop trong WSL.
+
+Tests after (Node 24.21.0): test:int 5/5 task, api 496 int · build 7/7 · typecheck
+13/13 · test 13/13 gồm web 1501, admin 913, api 463 unit, contract 255, mobile-ui
+52, mobile 29, ui 22, tokens 18, i18n 6 · biome 1085 file · tokens-only và
+admin-prerender xanh. Mobile `bundle` không nằm trong gate, chưa chạy.
+
 ## 2026-09-09 — Đóng nốt hai alert cuối: `maplibre-gl` 5.24.0 → 6.4.1, tự phục vụ worker, và cấu hình Dependabot (nhánh `fix/maplibre-v6`, **CHƯA merge**)
 
 Sau đợt trước còn đúng **hai alert** — cùng MỘT lỗ hổng `GHSA-jrc7-96c5-q579`
