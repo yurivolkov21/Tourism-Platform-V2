@@ -124,7 +124,7 @@ export function sinhLich(homNay: Date): TourDepartureFixture[] {
       // Giảm 10–20%: đủ để chip "% OFF" đáng tin, không tới mức trông như xả hàng.
       const mucGiam = coKM ? nguyen(rnd, 10, 20) / 100 : 0;
       // Mỗi tour giữ ít nhất ba chuyến lịch sử KHÔNG bị huỷ. Các chuyến của một tour cách nhau
-      // hơn 28 ngày nên tối đa một chuyến kết thúc trong 3 ngày sát H — còn ≥ 2 chuyến cho sàn
+      // ít nhất 28 ngày nên tối đa một chuyến kết thúc trong 3 ngày sát H — còn ≥ 2 chuyến cho sàn
       // booking đã đi (`operations/bookings.ts`). Với mốc H sớm tour chỉ có ba chuyến lịch sử,
       // nên khi đó không chuyến nào bị huỷ.
       const huyDuoc = !m.banDuoc && soHuy < soLichSu - 3 && rnd() < TY_LE_HUY;

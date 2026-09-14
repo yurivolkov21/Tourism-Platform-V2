@@ -89,6 +89,14 @@ File mới `apps/api/prisma/fixtures/khung-thoi-gian.ts`:
   - H cũ hơn hôm nay thật quá 3 ngày → cảnh báo, vẫn chạy.
 - `seed.ts` gọi chốt chặn này ngay sau chốt `--toi-biet-day-la-production` và
   in ra H đã dùng.
+- **Hai chốt chặn đọc DB** (review cuối nhánh 14/09) trong
+  `apps/api/prisma/fixtures/chot-chan-seed.ts`; `seed.ts` gọi ở đầu `main()`,
+  trước mọi lệnh ghi:
+  - `kiemTraAdminChoProd` — đích prod phải có đúng MỘT admin và
+    `ADMIN_EMAILS[0]` phải là admin đó; seed không bao giờ tạo thêm admin trên
+    prod (user chốt 14/09 chỉ giữ một tài khoản admin).
+  - `kiemTraTheHeLich` — `tour_departures` đã có chuyến không thuộc bộ fixture
+    của H hiện tại (dữ liệu của một H khác) thì từ chối, bắt reset trước.
 
 Bộ sinh thành hàm thuần nhận H: `sinhKhach(homNay)`, `sinhLich(homNay)`,
 `sinhVanHanh(homNay, lich, khach)`, `sinhReview(homNay, lich, vanHanh)`, và hai
@@ -125,7 +133,7 @@ review) đổi theo H, nên đổi H thì BẮT BUỘC reset trước khi seed �
 - **Sàn chuyến đã chạy** (ruling 14/09 khi thi công): mỗi tour giữ ≥ 3 chuyến
   lịch sử CLOSED — chuyến bị huỷ chỉ lấy phần vượt 3, nên với H sớm (tour có đúng
   3 chuyến lịch sử) không chuyến nào bị huỷ. Các chuyến của một tour cách nhau
-  hơn 28 ngày, nên tối đa một chuyến kết thúc trong 3 ngày sát H và luôn còn ≥ 2
+  ít nhất 28 ngày, nên tối đa một chuyến kết thúc trong 3 ngày sát H và luôn còn ≥ 2
   chuyến cho sàn booking đã đi (§4.3).
 - **Còn bán:** `start_date` ≥ H + 2 ngày; `end_date` ≤ 31/12. OPEN, 4 chuyến mỗi
   tour.
@@ -238,7 +246,7 @@ Script reset đã xoá sẵn cả bốn bảng này — không phải sửa.
 
 | Tầng | Chạy ở đâu | Vai trò |
 | --- | --- | --- |
-| Unit fixture — `apps/api/prisma/fixtures/**/*.spec.ts` | `pnpm gate` (vitest unit đã quét thư mục này) | Mọi bất biến chạy lặp cho hai mốc 20/09 và 03/11. Viết TRƯỚC, phải đỏ trên bộ sinh hiện tại |
+| Unit fixture — `apps/api/prisma/fixtures/**/*.spec.ts` | `pnpm gate` (vitest unit đã quét thư mục này) | Bất biến chi tiết chạy ở hai mốc 20/09 và 03/11; `khung-ngay.spec.ts` quét thêm 30 mốc (mỗi 7 ngày từ 01/06 tới 01/12) cho khung ngày và các sàn cấu trúc. Sàn booking đã đi và sàn review ném lỗi lúc import nếu hụt, nên seed dừng trước mọi lệnh ghi. Viết TRƯỚC, phải đỏ trên bộ sinh hiện tại |
 | Nghiệm thu SQL — `apps/api/scripts/verify-seed.mjs` (chỉ đọc, §7) | Docker sau khi seed; prod sau mỗi lượt chạy | Bất biến trên dữ liệu thật trong DB, gồm cả thứ seed tính lúc chèn (`cost_per_person`, `seats_booked`, rating) |
 | Smoke giao diện | Admin và web local trỏ Docker | `/enquiries`, `/subscribers`, `/cancellations`, `/payment-events`, `/reports`, `/account` tải được, không lỗi validate |
 
@@ -304,6 +312,11 @@ exit 1 nếu có vi phạm. Script mới `seed:verify` trong `apps/api/package.j
   tổng tiền; mỗi refund một payment event hoàn.
 - **Enquiries và subscribers:** chuỗi trạng thái hợp lệ; `updated_at` đúng luật;
   subscriber thuộc bốn trạng thái cho phép.
+- **Tiền đề và bổ sung (review cuối 14/09):** đúng 120 khách giả; đúng 1 ADMIN;
+  yêu cầu DENIED/REQUESTED trỏ booking PAID; booking REFUNDED có tổng refund
+  bằng tổng tiền; yêu cầu DENIED/REFUNDED có người và mốc quyết;
+  `subscribers.updated_at` là mốc mới nhất; `rating_avg`/`rating_count` khớp
+  review đã duyệt. Script đặt phiên READ ONLY ngay sau khi kết nối.
 - **Tác dụng phụ:** `outbox` có 0 dòng PENDING.
 
 ## 8. Vận hành
@@ -327,15 +340,24 @@ exit 1 nếu có vi phạm. Script mới `seed:verify` trong `apps/api/package.j
 
 ### 8.3 Lượt prod 1 — session gốc, sau review
 
-Điều kiện: review xong và đã sửa hết phát hiện; `ADMIN_EMAILS` (hoặc
-`GIU_ADMIN_EMAIL`) trong `apps/api/.env.local` khớp email admin của keep-list;
-chạy vào giờ vắng — site mất lịch khởi hành và sao đánh giá khoảng 5–10 phút tới
-khi ISR sinh lại.
+Điều kiện: review xong và đã sửa hết phát hiện; user đã quyết
+`SEED_CUSTOMER_PASSWORD` cho lượt prod (giá trị mặc định trong `.env.example` là
+công khai — ai cũng đăng nhập được 120 khách giả trên site sống); chạy vào giờ
+vắng — site mất lịch khởi hành và sao đánh giá khoảng 5–10 phút tới khi ISR sinh
+lại.
 
-Từ `apps/api`, trong Git Bash:
+**Bước 0 — tập dượt Docker với ĐÚNG H của lượt prod** (cùng ngày chạy):
+`prisma migrate reset` → `db:seed` → `seed:verify` 0 vi phạm. Tuỳ chọn: thử chốt
+chặn mà không tốn I/O mạng bằng host giả, ví dụ
+`DATABASE_URL=postgresql://u:p@guard-check.supabase.co:5432/x`, cho ba ca: thiếu
+cờ; có cờ mà thiếu `SEED_HOM_NAY`; H = hôm nay + 2 ngày. Cả ba phải dừng trước
+khi Prisma kết nối.
+
+Từ `apps/api`, trong Git Bash, TRONG MỘT shell duy nhất:
 
 ```bash
 export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)"
+export ADMIN_EMAILS="$(grep '^ADMIN_EMAILS=' .env.production | cut -d= -f2-)"
 export SEED_HOM_NAY="$(date -u +%F)"
 pnpm snapshot:export
 pnpm data:reset
@@ -345,12 +367,19 @@ pnpm seed:verify
 ```
 
 1. `snapshot:export` sinh `docs/snapshots/<ngày>/` (commit được, không PII) và
-   `backups/<ngày>/` (gitignored).
+   `backups/<ngày>/` (gitignored). `ADMIN_EMAILS` export ở trên quyết định admin
+   được giữ trong keep-list.
 2. `data:reset` chạy khô trước; soát số dòng rồi mới chạy thật.
-3. Sau seed: `seed:verify` 0 vi phạm; đo lại truy vấn khung ngày của §1 (0 dòng
-   trước 2026, 0 dòng sau 31/12); `outbox` 0 PENDING.
+3. Sau seed: `seed:verify` 0 vi phạm (gồm "số tài khoản ADMIN khác 1"); đo lại
+   truy vấn khung ngày của §1 (0 dòng trước 2026, 0 dòng sau 31/12); `outbox` 0
+   PENDING.
 4. Trang web và admin trả 200 — gọi mỗi URL hai lần vì stale-while-revalidate
-   trả bản cũ ở lần đầu.
+   trả bản cũ ở lần đầu. User tự đăng nhập admin kiểm các trang admin (quyết định
+   14/09: smoke admin làm trên prod, không nâng thêm tài khoản nào lên admin).
+5. Chạy lại khi có sự cố: dùng lại đúng `SEED_HOM_NAY` đã export, không gõ lại
+   `date`. Seed dừng với `sàn booking đã đi` hoặc `sàn review` thì chưa có dòng nào
+   bị ghi — chạy lại với H = hôm qua (chốt chặn mốc vẫn nhận). Seed từ chối vì
+   admin hoặc vì thế hệ H thì làm theo thông điệp, không tìm cách vượt chốt.
 
 ### 8.4 Merge
 
@@ -389,3 +418,7 @@ pnpm seed:verify
 - **2 phiên admin mang `created_at` 10/10/2026** — không do seed, reset giữ phiên
   admin; hết hạn 17/10.
 - **Nếu ngày bảo vệ dời muộn:** H hợp lệ tới 01/12; muộn hơn phải nới khung ở §3.
+- **Demo trên dữ liệu seed:** duyệt một yêu cầu huỷ REQUESTED có bậc hoàn > 0%
+  hoặc phát hành hoàn tiền goodwill sẽ lỗi `ProviderRefundFailedError` ở gateway
+  vì provider id là giả; giao dịch rollback sạch. Từ chối (DENY) và bậc 0% chạy
+  được. Tránh hai luồng đó khi demo bảo vệ.
