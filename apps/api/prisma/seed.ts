@@ -166,11 +166,13 @@ if (LA_PROD && !process.argv.includes('--toi-biet-day-la-production')) {
 ✖ TỪ CHỐI: ${new URL(connectionString).hostname} là Supabase production.
 
   Seed sẽ GHI ĐÈ nội dung biên tập của 29 tour và 87 policy (cả hai dùng
-  upsert), và chèn toàn bộ tầng vận hành. Muốn chạy thật thì thêm cờ:
+  upsert), và chèn toàn bộ tầng vận hành. Muốn chạy thật thì cần CẢ cờ lẫn mốc
+  ngày chạy (thiếu SEED_HOM_NAY thì chốt chặn mốc H bên dưới từ chối tiếp):
 
-      pnpm --filter @tourism/api db:seed -- --toi-biet-day-la-production
+      SEED_HOM_NAY=YYYY-MM-DD pnpm --filter @tourism/api db:seed -- --toi-biet-day-la-production
 
-  Chạy ở docker: đặt DATABASE_URL tường minh (biến môi trường thắng --env-file).
+  Định chạy Docker mà gặp dòng này: môi trường đang có DATABASE_URL trỏ Supabase
+  — bỏ biến đó đi, .env.local đã trỏ Postgres Docker.
 `);
   process.exit(1);
 }
@@ -670,7 +672,7 @@ async function main(): Promise<void> {
       userId: e.userId,
       createdAt: new Date(e.createdAt),
       updatedAt: new Date(e.updatedAt),
-    })) as unknown as Prisma.EnquiryCreateManyInput[],
+    })),
     skipDuplicates: true,
   });
   const tenAdmin = accountDisplayName(admin);
@@ -693,7 +695,7 @@ async function main(): Promise<void> {
       fromStatus: s.fromStatus,
       toStatus: s.toStatus,
       createdAt: new Date(s.createdAt),
-    })) as unknown as Prisma.EnquiryStatusEventCreateManyInput[],
+    })),
     skipDuplicates: true,
   });
   console.log(
