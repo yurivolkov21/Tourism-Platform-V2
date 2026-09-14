@@ -330,15 +330,16 @@ function baoDamThongKe(kq: KetQuaEnquiry, H: number): void {
     }
   }
 
+  // Lead mới nhất là lead chưa ai sờ tới: lùi về NEW các lead tạo trong 30 ngày trước H, mới
+  // nhất trước, dù đã tới CONTACTED hay QUOTED — trừ lead đã WON (có thể vừa được bước trên
+  // chọn cho thẻ "Won 28d").
   let soNew = kq.enquiries.filter((e) => e.status === 'NEW').length;
   const coTheLui = kq.enquiries
     .filter(
       (e) =>
-        e.status === 'CONTACTED' &&
-        soSuKien(e.id) === 1 &&
-        Date.parse(e.createdAt) >= H - 30 * NGAY_MS,
+        e.status !== 'NEW' && e.status !== 'WON' && Date.parse(e.createdAt) >= H - 30 * NGAY_MS,
     )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
   for (const e of coTheLui) {
     if (soNew >= TOI_THIEU_NEW) break;
     // Lead quay về trạng thái chưa ai sờ tới: gỡ sự kiện và ghi chú của nó.
