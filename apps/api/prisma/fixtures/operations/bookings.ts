@@ -3,7 +3,7 @@ import { tourDepartures } from '../catalog/departures-2026.js';
 import { tours as toursCentral } from '../catalog/tours-central.js';
 import { tours as toursNorth } from '../catalog/tours-north.js';
 import { tours as toursSouth } from '../catalog/tours-south.js';
-import type { TourDepartureFixture } from '../catalog/types.js';
+import type { TourDepartureFixture, TourFixture } from '../catalog/types.js';
 import {
   GIO_MS,
   gioTrongNgay,
@@ -129,7 +129,8 @@ export interface KetQuaVanHanh {
 }
 
 type NhaCungCap = BookingFixture['paymentProvider'];
-type DuLieuVanHanh = Omit<KetQuaVanHanh, 'gheDaDat'>;
+/** Kết quả tầng vận hành trước bước đếm ghế. */
+export type DuLieuVanHanh = Omit<KetQuaVanHanh, 'gheDaDat'>;
 
 /** Số booking trên một chuyến, theo trạng thái chuyến. */
 const SO_BOOKING = { CLOSED: [2, 5], CANCELLED: [1, 3], OPEN: [1, 4] } as const;
@@ -137,6 +138,14 @@ const SO_BOOKING = { CLOSED: [2, 5], CANCELLED: [1, 3], OPEN: [1, 4] } as const;
 const TY_LE_OPEN_CO_KHACH = 0.75;
 const DAT_TRUOC_TOI_DA_NGAY = 90;
 const LY_DO_CONG_TY_HUY = 'Departure cancelled by the operator — full refund issued.';
+
+/**
+ * Sàn booking ĐÃ ĐI mỗi tour: booking PAID trên chuyến CLOSED kết thúc trước H ít nhất 3 ngày
+ * — đúng loại booking bước bù review nhận (`reviews-verified.ts`, sàn ≥ 3 review đã duyệt).
+ */
+const SAN_BOOKING_DA_DI = 3;
+/** Số lượt đặt bù tối đa cho một tour — mỗi lượt là một chỉ số booking mới. */
+const LUOT_BU_TOI_DA = 60;
 
 /** Vài yêu cầu đặc biệt thật, để cột `special_requests` không trống trơn. */
 const YEU_CAU = [
@@ -225,6 +234,136 @@ export function demGhe(bookings: BookingFixture[]): Map<string, number> {
   return ra;
 }
 
+/** Kết quả một lượt đặt chỗ: đặt được, chuyến hết ghế, hoặc bỏ lượt vì không bốc được khách hợp lệ. */
+type KetQuaDat = 'da-dat' | 'het-ghe' | 'bo-qua';
+
+/** Trạng thái chung của mọi lượt đặt chỗ — lượt tự nhiên và lượt bù đi qua CÙNG một luật. */
+interface SoDatCho {
+  kq: DuLieuVanHanh;
+  H: number;
+  khach: KhachFixture[];
+  /** Lịch đã kín của từng khách — [bắt đầu, kết thúc] tính bằng mốc ms. */
+  lichKhach: Map<string, [number, number][]>;
+  /** `userId:departureId` đã có booking — một khách chỉ đặt MỘT lần trên cùng một chuyến. */
+  daDat: Set<string>;
+  /** Ghế booking đang giữ trên từng chuyến. */
+  ghe: Map<string, number>;
+}
+
+/**
+ * Một lượt đặt chỗ trên chuyến `dep`. Chỉ số `k` quyết định id, mã booking và hạt ngẫu nhiên,
+ * nên cùng `k` luôn ra cùng một booking.
+ */
+function datMotBooking(
+  so: SoDatCho,
+  dep: TourDepartureFixture,
+  tour: TourFixture,
+  k: number | string,
+): KetQuaDat {
+  const rnd = boSinh(`bk:${dep.id}:${k}`);
+  const donGia = Number(dep.priceOverride ?? tour.basePrice);
+  const batDau = ngayCua(dep.startDate);
+  const ketThuc = ngayCua(dep.endDate);
+  const moBan = Date.parse(dep.createdAt);
+  const congTyHuy = dep.status === 'CANCELLED';
+  // Ngày trả tiền muộn nhất (nửa đêm UTC): trước khởi hành 1 ngày — 2 ngày với chuyến
+  // công ty sẽ huỷ, để mốc hoàn vẫn rơi trước ngày khởi hành — và trước ngày H.
+  const ngayMuonNhat = Math.min(batDau - (congTyHuy ? 2 : 1) * NGAY_MS, so.H - NGAY_MS);
+  const somNhatCua = (ung: KhachFixture): number =>
+    Math.max(ung.createdAt.getTime() + NGAY_MS, moBan);
+
+  // ── Khách ── chọn trước, vì `paidAt` phải nằm sau ngày họ có tài khoản. Thử vài người:
+  // người bốc được có thể đã đặt chuyến này, đang đi chuyến khác trùng ngày, hoặc đăng ký
+  // quá muộn để kịp trả tiền. Khách đăng ký muộn phải bị loại NGAY lúc bốc: bản trước bốc
+  // xong mới loại rồi bỏ cả lượt, nên chuyến tháng 1–4 chỉ còn ~1,7 booking so với ~3 ở
+  // tháng 6–9 (đo 14/09 với H = 20/09).
+  let nguoi: KhachFixture | null = null;
+  for (let lan = 0; lan < 12; lan++) {
+    const ung = so.khach[nguyen(rnd, 0, so.khach.length - 1)];
+    if (!ung || so.daDat.has(`${ung.id}:${dep.id}`)) continue;
+    if (ngayUTC(somNhatCua(ung)) > ngayMuonNhat) continue;
+    if ((so.lichKhach.get(ung.id) ?? []).some(([a, b]) => batDau <= b && a <= ketThuc)) continue;
+    nguoi = ung;
+    break;
+  }
+  if (!nguoi) return 'bo-qua';
+
+  // ── Ngày trả tiền ── đặt trước 0–90 ngày, CO theo khoảng khả dụng thay vì dồn về
+  // ngày sớm nhất: khách mới hay chuyến vừa mở bán vẫn ra ngày rải đều, không đẻ
+  // đỉnh giả ở đầu khoảng (đầu tháng 1 là chỗ dễ dính nhất).
+  const somNhat = somNhatCua(nguoi);
+  const soNgayKhaDung = Math.round((ngayMuonNhat - ngayUTC(somNhat)) / NGAY_MS);
+  const ngayTra =
+    ngayMuonNhat - nguyen(rnd, 0, Math.min(DAT_TRUOC_TOI_DA_NGAY, soNgayKhaDung)) * NGAY_MS;
+  const paidAt = Math.max(somNhat, ngayTra + gioTrongNgay(rnd));
+
+  // ── Ghế ── không bao giờ vượt sức chứa còn lại. Chuyến CÒN MỞ mang giá khuyến mãi
+  // luôn chừa ít nhất một ghế: card trên /tours in giá rẻ nhất, chuyến giảm giá kín
+  // chỗ là trang rao một mức giá không ai mua được.
+  const giuLai = dep.status === 'OPEN' && dep.priceOverride ? 1 : 0;
+  const conLai = dep.seatsTotal - (so.ghe.get(dep.id) ?? 0) - giuLai;
+  if (conLai < 1) return 'het-ghe';
+  const nguoiLon = Math.min(nguyen(rnd, 1, 3), conLai);
+  const treEm = Math.min(rnd() < 0.28 ? nguyen(rnd, 1, 2) : 0, conLai - nguoiLon);
+  so.ghe.set(dep.id, (so.ghe.get(dep.id) ?? 0) + nguoiLon + treEm);
+  so.daDat.add(`${nguoi.id}:${dep.id}`);
+  so.lichKhach.set(nguoi.id, [...(so.lichKhach.get(nguoi.id) ?? []), [batDau, ketThuc]]);
+
+  const id = idTinh('booking', dep.id, k);
+  const nhaCC: NhaCungCap = rnd() < 0.7 ? 'STRIPE' : 'PAYPAL';
+  const tongTien = tien(donGia * (nguoiLon + treEm));
+  // Đơn được tạo vài phút trước khi thanh toán xong, không sớm hơn lúc chuyến mở bán.
+  const taoLuc = Math.max(moBan, paidAt - nguyen(rnd, 5, 40) * PHUT_MS);
+
+  const booking: BookingFixture = {
+    id,
+    code: maBooking(`${dep.id}:${k}`),
+    userId: nguoi.id,
+    tourId: tour.id,
+    departureId: dep.id,
+    numAdults: nguoiLon,
+    numChildren: treEm,
+    totalAmount: tongTien,
+    currency: tour.currency,
+    status: congTyHuy ? 'REFUNDED' : 'PAID',
+    tourTitle: tour.title,
+    departureStartDate: dep.startDate,
+    departureEndDate: dep.endDate,
+    unitPrice: tien(donGia),
+    contactName: nguoi.name,
+    contactEmail: nguoi.email,
+    contactPhone: nguoi.phone,
+    specialRequests: rnd() < 0.18 ? chonMot(rnd, YEU_CAU) : null,
+    paymentProvider: nhaCC,
+    providerSessionId: maPhien(nhaCC, id),
+    providerPaymentId: maThanhToan(nhaCC, id),
+    paidAt: isoGio(paidAt),
+    cancelledAt: null,
+    createdAt: isoGio(taoLuc),
+    updatedAt: isoGio(paidAt),
+  };
+  so.kq.bookings.push(booking);
+  so.kq.paymentEvents.push(suKienThu(booking, paidAt));
+  if (!congTyHuy) return 'da-dat';
+
+  // ── Công ty huỷ chuyến ── admin hoàn đủ khoảng 14 ngày trước ngày đi, luôn sau lúc
+  // trả tiền. Luồng hoàn tiền của admin KHÔNG tạo yêu cầu huỷ và KHÔNG đặt `cancelledAt`.
+  const hoanLuc = Math.max(paidAt + NGAY_MS, batDau - 14 * NGAY_MS + gioTrongNgay(rnd));
+  so.kq.refunds.push({
+    id: idTinh('refund', id),
+    bookingId: id,
+    amount: tongTien,
+    currency: tour.currency,
+    providerRefundId: maHoan(nhaCC, id),
+    providerPaymentId: maThanhToan(nhaCC, id),
+    reason: LY_DO_CONG_TY_HUY,
+    createdAt: isoGio(hoanLuc),
+  });
+  so.kq.paymentEvents.push(suKienHoan(booking, tongTien, hoanLuc));
+  booking.updatedAt = isoGio(hoanLuc);
+  return 'da-dat';
+}
+
 /** Booking đã trả tiền và chuyến công ty huỷ — phần lõi của tầng vận hành. */
 function sinhDatCho(H: number, lich: TourDepartureFixture[], khach: KhachFixture[]): DuLieuVanHanh {
   const kq: DuLieuVanHanh = {
@@ -233,123 +372,69 @@ function sinhDatCho(H: number, lich: TourDepartureFixture[], khach: KhachFixture
     refunds: [],
     cancellationRequests: [],
   };
-  // Lịch đã kín của từng khách — [bắt đầu, kết thúc] tính bằng mốc ms.
-  const lichKhach = new Map<string, [number, number][]>();
-  const trungLich = (userId: string, batDau: number, ketThuc: number): boolean =>
-    (lichKhach.get(userId) ?? []).some(([a, b]) => batDau <= b && a <= ketThuc);
-
+  const so: SoDatCho = { kq, H, khach, lichKhach: new Map(), daDat: new Set(), ghe: new Map() };
   for (const dep of lich) {
     const tour = bangTour.get(dep.tourId);
     if (!tour) continue;
     const rndDep = boSinh(`bk-dep:${dep.id}`);
     if (dep.status === 'OPEN' && rndDep() >= TY_LE_OPEN_CO_KHACH) continue;
-
     const [min, max] = SO_BOOKING[dep.status];
     const muon = nguyen(rndDep, min, max);
-    const donGia = Number(dep.priceOverride ?? tour.basePrice);
-    const batDau = ngayCua(dep.startDate);
-    const ketThuc = ngayCua(dep.endDate);
-    const moBan = Date.parse(dep.createdAt);
-    const congTyHuy = dep.status === 'CANCELLED';
-    // Ngày trả tiền muộn nhất (nửa đêm UTC): trước khởi hành 1 ngày — 2 ngày với chuyến
-    // công ty sẽ huỷ, để mốc hoàn vẫn rơi trước ngày khởi hành — và trước ngày H.
-    const ngayMuonNhat = Math.min(batDau - (congTyHuy ? 2 : 1) * NGAY_MS, H - NGAY_MS);
-    let gheDaDung = 0;
-    // Một khách chỉ đặt MỘT lần trên cùng một chuyến.
-    const khachTrenChuyen = new Set<string>();
-
     for (let k = 0; k < muon; k++) {
-      const rnd = boSinh(`bk:${dep.id}:${k}`);
-
-      // ── Khách ── chọn trước, vì `paidAt` phải nằm sau ngày họ có tài khoản. Thử vài
-      // người: người bốc được có thể đã đặt chuyến này, hoặc đang đi chuyến khác trùng ngày.
-      let nguoi: KhachFixture | null = null;
-      for (let lan = 0; lan < 12; lan++) {
-        const ung = khach[nguyen(rnd, 0, khach.length - 1)];
-        if (!ung || khachTrenChuyen.has(ung.id) || trungLich(ung.id, batDau, ketThuc)) continue;
-        nguoi = ung;
-        break;
-      }
-      if (!nguoi) continue;
-
-      // ── Ngày trả tiền ── đặt trước 0–90 ngày, CO theo khoảng khả dụng thay vì dồn về
-      // ngày sớm nhất: khách mới hay chuyến vừa mở bán vẫn ra ngày rải đều, không đẻ
-      // đỉnh giả ở đầu khoảng (đầu tháng 1 là chỗ dễ dính nhất).
-      const somNhat = Math.max(nguoi.createdAt.getTime() + NGAY_MS, moBan);
-      if (ngayUTC(somNhat) > ngayMuonNhat) continue;
-      const soNgayKhaDung = Math.round((ngayMuonNhat - ngayUTC(somNhat)) / NGAY_MS);
-      const ngayTra =
-        ngayMuonNhat - nguyen(rnd, 0, Math.min(DAT_TRUOC_TOI_DA_NGAY, soNgayKhaDung)) * NGAY_MS;
-      const paidAt = Math.max(somNhat, ngayTra + gioTrongNgay(rnd));
-
-      // ── Ghế ── không bao giờ vượt sức chứa còn lại. Chuyến CÒN MỞ mang giá khuyến mãi
-      // luôn chừa ít nhất một ghế: card trên /tours in giá rẻ nhất, chuyến giảm giá kín
-      // chỗ là trang rao một mức giá không ai mua được.
-      const giuLai = dep.status === 'OPEN' && dep.priceOverride ? 1 : 0;
-      const conLai = dep.seatsTotal - gheDaDung - giuLai;
-      if (conLai < 1) break;
-      const nguoiLon = Math.min(nguyen(rnd, 1, 3), conLai);
-      const treEm = Math.min(rnd() < 0.28 ? nguyen(rnd, 1, 2) : 0, conLai - nguoiLon);
-      gheDaDung += nguoiLon + treEm;
-      khachTrenChuyen.add(nguoi.id);
-      lichKhach.set(nguoi.id, [...(lichKhach.get(nguoi.id) ?? []), [batDau, ketThuc]]);
-
-      const id = idTinh('booking', dep.id, k);
-      const nhaCC: NhaCungCap = rnd() < 0.7 ? 'STRIPE' : 'PAYPAL';
-      const tongTien = tien(donGia * (nguoiLon + treEm));
-      // Đơn được tạo vài phút trước khi thanh toán xong, không sớm hơn lúc chuyến mở bán.
-      const taoLuc = Math.max(moBan, paidAt - nguyen(rnd, 5, 40) * PHUT_MS);
-
-      const booking: BookingFixture = {
-        id,
-        code: maBooking(`${dep.id}:${k}`),
-        userId: nguoi.id,
-        tourId: tour.id,
-        departureId: dep.id,
-        numAdults: nguoiLon,
-        numChildren: treEm,
-        totalAmount: tongTien,
-        currency: tour.currency,
-        status: congTyHuy ? 'REFUNDED' : 'PAID',
-        tourTitle: tour.title,
-        departureStartDate: dep.startDate,
-        departureEndDate: dep.endDate,
-        unitPrice: tien(donGia),
-        contactName: nguoi.name,
-        contactEmail: nguoi.email,
-        contactPhone: nguoi.phone,
-        specialRequests: rnd() < 0.18 ? chonMot(rnd, YEU_CAU) : null,
-        paymentProvider: nhaCC,
-        providerSessionId: maPhien(nhaCC, id),
-        providerPaymentId: maThanhToan(nhaCC, id),
-        paidAt: isoGio(paidAt),
-        cancelledAt: null,
-        createdAt: isoGio(taoLuc),
-        updatedAt: isoGio(paidAt),
-      };
-      kq.bookings.push(booking);
-      kq.paymentEvents.push(suKienThu(booking, paidAt));
-
-      if (!congTyHuy) continue;
-
-      // ── Công ty huỷ chuyến ── admin hoàn đủ khoảng 14 ngày trước ngày đi, luôn sau lúc
-      // trả tiền. Luồng hoàn tiền của admin KHÔNG tạo yêu cầu huỷ và KHÔNG đặt `cancelledAt`.
-      const hoanLuc = Math.max(paidAt + NGAY_MS, batDau - 14 * NGAY_MS + gioTrongNgay(rnd));
-      kq.refunds.push({
-        id: idTinh('refund', id),
-        bookingId: id,
-        amount: tongTien,
-        currency: tour.currency,
-        providerRefundId: maHoan(nhaCC, id),
-        providerPaymentId: maThanhToan(nhaCC, id),
-        reason: LY_DO_CONG_TY_HUY,
-        createdAt: isoGio(hoanLuc),
-      });
-      kq.paymentEvents.push(suKienHoan(booking, tongTien, hoanLuc));
-      booking.updatedAt = isoGio(hoanLuc);
+      if (datMotBooking(so, dep, tour, k) === 'het-ghe') break;
     }
   }
   return kq;
+}
+
+/**
+ * Sàn booking ĐÃ ĐI: mỗi tour ≥ `SAN_BOOKING_DA_DI` booking PAID trên chuyến CLOSED kết thúc
+ * trước H ít nhất 3 ngày — đúng loại booking bước bù review nhận (`reviews-verified.ts`), để
+ * sàn "≥ 3 review đã duyệt mỗi tour" là ràng buộc cấu trúc chứ không phải may rủi. Với H sớm
+ * một tour chỉ có vài chuyến lịch sử, và bước duyệt huỷ có thể lấy đúng booking của tour ấy.
+ *
+ * Chạy SAU bước duyệt huỷ. Bù bằng chính `datMotBooking` trên chỉ số `bu-<n>`, nên id không
+ * đụng booking tự nhiên và mọi luật đặt chỗ vẫn giữ. Luôn còn ghế: `departures-2026.ts` giữ
+ * ≥ 3 chuyến CLOSED mỗi tour và tối đa một chuyến kết thúc trong 3 ngày sát H, nên có ≥ 2
+ * chuyến hợp lệ; còn dưới sàn thì một chuyến trong đó giữ ≤ 1 booking, tức ≤ 5 ghế, trong
+ * khi sức chứa nhỏ nhất của catalog là 6.
+ */
+export function baoDamBookingDaDi(
+  kq: DuLieuVanHanh,
+  H: number,
+  lich: TourDepartureFixture[],
+  khach: KhachFixture[],
+): void {
+  const so: SoDatCho = {
+    kq,
+    H,
+    khach,
+    lichKhach: new Map(),
+    daDat: new Set(),
+    ghe: demGhe(kq.bookings),
+  };
+  // Lịch kín và cặp khách–chuyến dựng lại từ MỌI booking đang có, kể cả booking đã huỷ.
+  for (const b of kq.bookings) {
+    so.daDat.add(`${b.userId}:${b.departureId}`);
+    const chuyenCu = so.lichKhach.get(b.userId) ?? [];
+    so.lichKhach.set(b.userId, [
+      ...chuyenCu,
+      [ngayCua(b.departureStartDate), ngayCua(b.departureEndDate)],
+    ]);
+  }
+  for (const tour of tours) {
+    const chuyen = lich.filter(
+      (d) => d.tourId === tour.id && d.status === 'CLOSED' && ngayCua(d.endDate) <= H - 3 * NGAY_MS,
+    );
+    const hopLe = new Set(chuyen.map((d) => d.id));
+    const soDaDi = (): number =>
+      kq.bookings.filter((b) => b.status === 'PAID' && hopLe.has(b.departureId)).length;
+    for (let n = 0; n < LUOT_BU_TOI_DA && soDaDi() < SAN_BOOKING_DA_DI; n++) {
+      const dep = chuyen[n % chuyen.length];
+      if (!dep) break;
+      datMotBooking(so, dep, tour, `bu-${n}`);
+    }
+  }
 }
 
 const LY_DO_KHACH_HUY = [
@@ -599,6 +684,8 @@ export function sinhVanHanh(
   const H = homNay.getTime();
   const duLieu = sinhDatCho(H, lich, khach);
   apDungYeuCauHuy(duLieu, H);
+  // Sau bước duyệt huỷ: bước đó có thể lấy mất booking đã đi của một tour ít chuyến.
+  baoDamBookingDaDi(duLieu, H, lich, khach);
   themGioBoDo(duLieu, H, lich, khach);
   // Đếm ghế SAU khi huỷ: booking huỷ đã duyệt trả ghế về, giỏ bỏ dở chưa từng giữ ghế.
   return { ...duLieu, gheDaDat: demGhe(duLieu.bookings) };

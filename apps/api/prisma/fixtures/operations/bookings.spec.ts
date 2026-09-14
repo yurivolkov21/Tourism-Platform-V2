@@ -6,7 +6,12 @@ import { sinhLich } from '../catalog/departures-2026.js';
 import { tours } from '../catalog/index.js';
 import { DAU_KHUNG, docMocHomNay, GIO_MS, NGAY_MS, PHUT_MS } from '../khung-thoi-gian.js';
 import { sinhKhach } from '../people/customers.js';
-import { sinhVanHanh } from './bookings.js';
+import {
+  type BookingFixture,
+  baoDamBookingDaDi,
+  type DuLieuVanHanh,
+  sinhVanHanh,
+} from './bookings.js';
 
 const MOC = ['2026-09-20', '2026-11-03'] as const;
 const ngay = (s: string): number => Date.parse(`${s}T00:00:00.000Z`);
@@ -269,5 +274,94 @@ describe.each(MOC)('huỷ và hoàn với H = %s', (giaTri) => {
     const ma = kq.bookings.map((b) => b.code);
     expect(new Set(ma).size).toBe(ma.length);
     for (const m of ma) expect(m).toMatch(/^BK-[A-Z0-9]{8}$/);
+  });
+});
+
+describe.each(['2026-06-01', '2026-09-20'] as const)('bù booking đã đi với H = %s', (giaTri) => {
+  const homNay = docMocHomNay(giaTri);
+  const H = homNay.getTime();
+  const khach = sinhKhach(homNay);
+  const lich = sinhLich(homNay);
+  const bangKhach = new Map(khach.map((k) => [k.id, k]));
+  const bangChuyen = new Map(lich.map((d) => [d.id, d]));
+  /** Booking đã đi: PAID trên chuyến CLOSED kết thúc trước H ít nhất 3 ngày. */
+  const daDi = (b: BookingFixture): boolean =>
+    b.status === 'PAID' &&
+    bangChuyen.get(b.departureId)?.status === 'CLOSED' &&
+    ngay(b.departureEndDate) <= H - 3 * NGAY_MS;
+
+  /** Luật đặt chỗ trên cả sổ: khoảng paid_at, không chồng lịch, không trùng chuyến, không vượt ghế. */
+  function kiemLuatDatCho(bookings: BookingFixture[]): void {
+    const theoKhach = new Map<string, BookingFixture[]>();
+    for (const b of bookings) {
+      if (b.paidAt === null) continue;
+      const nguoi = bangKhach.get(b.userId);
+      const chuyen = bangChuyen.get(b.departureId);
+      if (!nguoi || !chuyen) throw new Error(`booking ${b.id} trỏ khách/chuyến không có thật`);
+      const paid = ms(b.paidAt);
+      expect(paid, b.id).toBeGreaterThanOrEqual(nguoi.createdAt.getTime() + NGAY_MS);
+      expect(paid, b.id).toBeGreaterThanOrEqual(Date.parse(chuyen.createdAt));
+      expect(paid, b.id).toBeLessThan(ngay(b.departureStartDate));
+      expect(paid, b.id).toBeLessThan(H);
+      theoKhach.set(b.userId, [...(theoKhach.get(b.userId) ?? []), b]);
+    }
+    for (const ds of theoKhach.values()) {
+      for (const [i, a] of ds.entries()) {
+        for (const c of ds.slice(i + 1)) {
+          const chong =
+            ngay(a.departureStartDate) <= ngay(c.departureEndDate) &&
+            ngay(c.departureStartDate) <= ngay(a.departureEndDate);
+          expect(chong, `${a.id} chồng ${c.id}`).toBe(false);
+        }
+      }
+    }
+    const cap = bookings.map((b) => `${b.userId}:${b.departureId}`);
+    expect(new Set(cap).size).toBe(cap.length);
+    const ghe = new Map<string, number>();
+    for (const b of bookings) {
+      if (b.status !== 'PAID') continue;
+      ghe.set(b.departureId, (ghe.get(b.departureId) ?? 0) + b.numAdults + b.numChildren);
+    }
+    for (const [depId, soGhe] of ghe) {
+      expect(soGhe, depId).toBeLessThanOrEqual(bangChuyen.get(depId)?.seatsTotal ?? 0);
+    }
+  }
+
+  it('sổ trống: mỗi tour vừa đủ 3 booking đã đi, mỗi booking một sự kiện thu, chạy lại không thêm gì', () => {
+    const kq: DuLieuVanHanh = {
+      bookings: [],
+      paymentEvents: [],
+      refunds: [],
+      cancellationRequests: [],
+    };
+    baoDamBookingDaDi(kq, H, lich, khach);
+    for (const tour of tours) {
+      const cua = kq.bookings.filter((b) => b.tourId === tour.id);
+      expect(cua, tour.slug).toHaveLength(3);
+      for (const b of cua) expect(daDi(b), b.id).toBe(true);
+    }
+    expect(kq.paymentEvents).toHaveLength(kq.bookings.length);
+    expect(kq.refunds).toEqual([]);
+    kiemLuatDatCho(kq.bookings);
+    baoDamBookingDaDi(kq, H, lich, khach);
+    expect(kq.bookings).toHaveLength(3 * tours.length);
+  });
+
+  it('sổ đã có booking: bù lại đúng phần bị lấy mất mà không đụng lịch kín sẵn có', () => {
+    const tuNhien = sinhVanHanh(homNay, lich, khach);
+    const kq: DuLieuVanHanh = {
+      bookings: tuNhien.bookings.filter((b) => !daDi(b)),
+      paymentEvents: [...tuNhien.paymentEvents],
+      refunds: [...tuNhien.refunds],
+      cancellationRequests: [...tuNhien.cancellationRequests],
+    };
+    const truoc = kq.bookings.length;
+    baoDamBookingDaDi(kq, H, lich, khach);
+    expect(kq.bookings).toHaveLength(truoc + 3 * tours.length);
+    for (const tour of tours) {
+      const cua = kq.bookings.filter((b) => b.tourId === tour.id && daDi(b));
+      expect(cua, tour.slug).toHaveLength(3);
+    }
+    kiemLuatDatCho(kq.bookings);
   });
 });
