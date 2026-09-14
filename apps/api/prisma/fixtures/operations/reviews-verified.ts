@@ -4,7 +4,7 @@ import { tours as toursCentral } from '../catalog/tours-central.js';
 import { tours as toursNorth } from '../catalog/tours-north.js';
 import { tours as toursSouth } from '../catalog/tours-south.js';
 import type { TourDepartureFixture } from '../catalog/types.js';
-import { gioTrongNgay, HOM_NAY, isoGio, NGAY_MS } from '../khung-thoi-gian.js';
+import { GIO_MS, gioTrongNgay, HOM_NAY, isoGio, NGAY_MS } from '../khung-thoi-gian.js';
 import { boSinh, chonTheoTrongSo, idTinh, nguyen } from '../stable-id.js';
 import { type BookingFixture, bookingsGia } from './bookings.js';
 
@@ -375,8 +375,9 @@ export function sinhReview(
     hat: string,
     epDuyet: boolean,
   ): void => {
-    // Bước bù phải chắc chắn duyệt kịp trước H nên chỉ nhận chuyến kết thúc trước H ≥ 5 ngày.
-    const bk = layBooking(tourId, H - (epDuyet ? 5 : 2) * NGAY_MS);
+    // Bước bù phải chắc chắn duyệt kịp trước H: chuyến kết thúc trước H ≥ 3 ngày thì viết
+    // sau 1 ngày, duyệt sau 1 ngày nữa, cộng giờ trong ngày vẫn còn trước H.
+    const bk = layBooking(tourId, H - (epDuyet ? 3 : 2) * NGAY_MS);
     if (!bk) return;
     const rnd = boSinh(`rv:${hat}`);
     const ketThuc = cuoiChuyen(bk);
@@ -437,13 +438,30 @@ export function sinhReview(
     if (tourId) them(tourId, t.rating, t.title, t.body, `moi:${i}`, false);
   }
 
-  // 3) Bù cho đủ ≥ 3 review ĐÃ DUYỆT mỗi tour — không để "29/29 tour có sao" là điều cầu may.
+  // 3) Nâng lên đủ ≥ 3 review ĐÃ DUYỆT mỗi tour — không để "29/29 tour có sao" là điều cầu may.
+  //    Trước hết duyệt lại chính review chưa được duyệt của tour (chờ, bị bác, bị rút) khi mốc
+  //    duyệt còn kịp trước H — không tốn thêm booking; còn thiếu mới bù review mới trên booking
+  //    còn trống, tới khi đủ hoặc hết booking.
   for (const tour of tours) {
-    for (let vong = 0; vong < 6; vong++) {
-      const daDuyet = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
-      if (daDuyet >= TOI_THIEU_DUYET) break;
+    const soDuyet = (): number =>
+      reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
+    const chuaDuyet = reviews
+      .filter((r) => r.tourId === tour.id && !r.isApproved && Date.parse(r.createdAt) + GIO_MS < H)
+      .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+    for (const r of chuaDuyet) {
+      if (soDuyet() >= TOI_THIEU_DUYET) break;
+      const duyet = isoGio(Math.min(Date.parse(r.createdAt) + NGAY_MS, H - GIO_MS));
+      r.isApproved = true;
+      r.rejectedAt = null;
+      r.retractedAt = null;
+      r.moderatedAt = duyet;
+      r.updatedAt = duyet;
+    }
+    for (let vong = 0; soDuyet() < TOI_THIEU_DUYET; vong++) {
       const hat = `bu:${tour.slug}:${vong}`;
+      const truoc = reviews.length;
       them(tour.id, chonTheoTrongSo(boSinh(hat), PHAN_BO_SAO), null, THAN_BO_SUNG, hat, true);
+      if (reviews.length === truoc) break;
     }
   }
 
