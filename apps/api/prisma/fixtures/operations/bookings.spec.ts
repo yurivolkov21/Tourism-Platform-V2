@@ -1,9 +1,10 @@
+import { policyRefundAmount, refundPercentForRequest } from '@tourism/contract';
 import { describe, expect, it } from 'vitest';
 import { Prisma } from '../../../src/generated/prisma/client.js';
 import { effectiveUnitPrice, totalAmount } from '../../../src/modules/bookings/pricing.js';
 import { sinhLich } from '../catalog/departures-2026.js';
 import { tours } from '../catalog/index.js';
-import { DAU_KHUNG, docMocHomNay, NGAY_MS } from '../khung-thoi-gian.js';
+import { DAU_KHUNG, docMocHomNay, GIO_MS, NGAY_MS, PHUT_MS } from '../khung-thoi-gian.js';
 import { sinhKhach } from '../people/customers.js';
 import { sinhVanHanh } from './bookings.js';
 
@@ -152,5 +153,118 @@ describe.each(MOC)('tầng vận hành với H = %s', (giaTri) => {
     }
     expect(daTra.some((b) => ms(b.paidAt) >= H - 7 * NGAY_MS)).toBe(true);
     expect(daTra.filter((b) => ms(b.paidAt) >= H - 28 * NGAY_MS).length).toBeGreaterThanOrEqual(10);
+  });
+});
+
+describe.each(MOC)('huỷ và hoàn với H = %s', (giaTri) => {
+  const homNay = docMocHomNay(giaTri);
+  const H = homNay.getTime();
+  const khach = sinhKhach(homNay);
+  const lich = sinhLich(homNay);
+  const kq = sinhVanHanh(homNay, lich, khach);
+  const bangTour = new Map(tours.map((t) => [t.id, t]));
+  const bangBooking = new Map(kq.bookings.map((b) => [b.id, b]));
+
+  it('giỏ bỏ dở: CANCELLED, chưa trả, huỷ sau khi tạo 65–80 phút, không sự kiện, không refund', () => {
+    const gio = kq.bookings.filter((b) => b.paidAt === null);
+    expect(gio.length).toBeGreaterThanOrEqual(12);
+    for (const b of gio) {
+      expect(b.status, b.id).toBe('CANCELLED');
+      expect(b.providerPaymentId, b.id).toBeNull();
+      const lech = ms(b.cancelledAt) - ms(b.createdAt);
+      expect(lech, b.id).toBeGreaterThanOrEqual(65 * PHUT_MS);
+      expect(lech, b.id).toBeLessThanOrEqual(80 * PHUT_MS);
+      expect(ms(b.cancelledAt), b.id).toBeLessThan(H);
+      expect(ms(b.createdAt), b.id).toBeLessThan(ngay(b.departureStartDate) - NGAY_MS);
+      expect(b.updatedAt).toBe(b.cancelledAt);
+      expect(kq.paymentEvents.some((e) => e.bookingId === b.id)).toBe(false);
+      expect(kq.refunds.some((r) => r.bookingId === b.id)).toBe(false);
+      expect(kq.cancellationRequests.some((c) => c.bookingId === b.id)).toBe(false);
+    }
+  });
+
+  it('huỷ đã duyệt: đúng một yêu cầu REFUNDED, số hoàn theo chính sách, phủ đủ bốn bậc', () => {
+    const huyDaTra = kq.bookings.filter((b) => b.status === 'CANCELLED' && b.paidAt !== null);
+    const demBac = new Map<number, number>();
+    for (const b of huyDaTra) {
+      const yeuCau = kq.cancellationRequests.filter((c) => c.bookingId === b.id);
+      expect(yeuCau, b.id).toHaveLength(1);
+      const c = yeuCau[0];
+      if (!c) continue;
+      expect(c.status).toBe('REFUNDED');
+      expect(c.decisionNote).toBeNull();
+      expect(b.cancelledAt).toBe(c.decidedAt);
+      expect(b.updatedAt).toBe(c.decidedAt);
+      expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt) + 24 * GIO_MS);
+      expect(ms(c.decidedAt), c.id).toBeGreaterThan(ms(c.createdAt));
+      expect(ms(c.decidedAt), c.id).toBeLessThan(Math.min(ngay(b.departureStartDate), H));
+      expect(c.freeCancellationDays).toBe(bangTour.get(b.tourId)?.freeCancellationDays ?? null);
+      const phanTram = refundPercentForRequest({
+        requestedAt: new Date(ms(c.createdAt)),
+        paidAt: b.paidAt,
+        departureStartDate: b.departureStartDate,
+        freeCancellationDays: c.freeCancellationDays,
+      });
+      const soTien = policyRefundAmount({
+        percent: phanTram,
+        totalAmount: b.totalAmount,
+        refundedTotal: '0.00',
+      });
+      const hoan = kq.refunds.filter((r) => r.bookingId === b.id);
+      if (Number(soTien) > 0) {
+        expect(hoan, b.id).toHaveLength(1);
+        expect(hoan[0]?.amount).toBe(soTien);
+        expect(hoan[0]?.reason).toBeNull();
+        expect(hoan[0]?.createdAt).toBe(c.decidedAt);
+      } else {
+        expect(hoan, b.id).toHaveLength(0);
+      }
+      demBac.set(phanTram, (demBac.get(phanTram) ?? 0) + 1);
+    }
+    for (const bac of [100, 50, 25, 0]) {
+      expect(demBac.get(bac) ?? 0, `bậc ${bac}%`).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('yêu cầu bị từ chối giữ booking PAID và có ghi chú; yêu cầu đang chờ nằm trong 25 ngày trước H', () => {
+    const tuChoi = kq.cancellationRequests.filter((c) => c.status === 'DENIED');
+    const dangCho = kq.cancellationRequests.filter((c) => c.status === 'REQUESTED');
+    expect(tuChoi.length).toBeGreaterThanOrEqual(3);
+    expect(dangCho.length).toBeGreaterThanOrEqual(5);
+    for (const c of tuChoi) {
+      const b = bangBooking.get(c.bookingId);
+      if (!b) throw new Error(`yêu cầu ${c.id} trỏ booking không có thật`);
+      expect(b.status).toBe('PAID');
+      expect(c.decisionNote).toBeTruthy();
+      expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt));
+      expect(ms(c.decidedAt), c.id).toBeGreaterThan(ms(c.createdAt));
+      expect(ms(c.decidedAt), c.id).toBeLessThan(Math.min(H, ngay(b.departureStartDate)));
+    }
+    for (const c of dangCho) {
+      const b = bangBooking.get(c.bookingId);
+      if (!b) throw new Error(`yêu cầu ${c.id} trỏ booking không có thật`);
+      expect(b.status).toBe('PAID');
+      expect(c.decidedAt).toBeNull();
+      expect(c.decisionNote).toBeNull();
+      expect(ngay(b.departureStartDate)).toBeGreaterThan(H);
+      expect(ms(c.createdAt), c.id).toBeGreaterThanOrEqual(H - 25 * NGAY_MS);
+      expect(ms(c.createdAt), c.id).toBeLessThan(H);
+      expect(c.updatedAt).toBe(c.createdAt);
+    }
+    const dangChoTheoBooking = dangCho.map((c) => c.bookingId);
+    expect(new Set(dangChoTheoBooking).size).toBe(dangChoTheoBooking.length);
+  });
+
+  it('booking REFUNDED không có yêu cầu huỷ; mọi yêu cầu trỏ booking có thật; mã booking không trùng', () => {
+    for (const b of kq.bookings.filter((x) => x.status === 'REFUNDED')) {
+      expect(
+        kq.cancellationRequests.some((c) => c.bookingId === b.id),
+        b.id,
+      ).toBe(false);
+    }
+    for (const c of kq.cancellationRequests) expect(bangBooking.has(c.bookingId), c.id).toBe(true);
+    const ma = kq.bookings.map((b) => b.code);
+    expect(new Set(ma).size).toBe(ma.length);
+    for (const m of ma) expect(m).toMatch(/^BK-[A-Z0-9]{8}$/);
   });
 });

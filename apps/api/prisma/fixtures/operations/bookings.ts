@@ -1,9 +1,19 @@
+import { policyRefundAmount, refundPercentForRequest } from '@tourism/contract';
 import { tourDepartures } from '../catalog/departures-2026.js';
 import { tours as toursCentral } from '../catalog/tours-central.js';
 import { tours as toursNorth } from '../catalog/tours-north.js';
 import { tours as toursSouth } from '../catalog/tours-south.js';
 import type { TourDepartureFixture } from '../catalog/types.js';
-import { gioTrongNgay, HOM_NAY, isoGio, NGAY_MS, ngayUTC, PHUT_MS } from '../khung-thoi-gian.js';
+import {
+  GIO_MS,
+  gioTrongNgay,
+  HOM_NAY,
+  isoGio,
+  mocTrongKhoang,
+  NGAY_MS,
+  ngayUTC,
+  PHUT_MS,
+} from '../khung-thoi-gian.js';
 import { type KhachFixture, khachGia } from '../people/customers.js';
 import { boSinh, chonMot, idTinh, nguyen } from '../stable-id.js';
 
@@ -29,8 +39,15 @@ import { boSinh, chonMot, idTinh, nguyen } from '../stable-id.js';
  * < H. Không mốc giao dịch nào chạm H.
  *
  * ── Hình dạng khớp luồng thật (`docs/conventions/booking-states.md`) ──
- * PAID là thanh toán thành công. REFUNDED là admin hoàn đủ cho chuyến công ty huỷ:
- * có refund kèm lý do, KHÔNG có yêu cầu huỷ, KHÔNG có `cancelledAt`.
+ * Mỗi hình dạng ứng với đúng một luồng của app; tổ hợp nào app không tạo ra được
+ * thì seed cũng không được tạo (bản 10/09 từng có bốn tổ hợp như vậy trên prod):
+ *   PAID       thanh toán thành công.
+ *   REFUNDED   admin hoàn đủ cho chuyến công ty huỷ — refund kèm lý do, KHÔNG yêu cầu
+ *              huỷ, KHÔNG `cancelledAt`.
+ *   CANCELLED  (a) giỏ bỏ dở: chưa trả, job `pending-sweep` huỷ sau 65 phút;
+ *              (b) khách xin huỷ và admin duyệt: yêu cầu REFUNDED, hoàn theo bậc chính
+ *              sách, bậc 0% thì không có refund.
+ * Yêu cầu DENIED và REQUESTED giữ booking ở PAID.
  */
 
 export interface BookingFixture {
@@ -335,12 +352,253 @@ function sinhDatCho(H: number, lich: TourDepartureFixture[], khach: KhachFixture
   return kq;
 }
 
+const LY_DO_KHACH_HUY = [
+  'Our connecting flight was rescheduled and we can no longer make the start time.',
+  'One of the party is unwell and we would rather not travel.',
+  'A work commitment came up that we cannot move.',
+  'A family matter means we have to stay home that week.',
+] as const;
+const LY_DO_DOI_NGAY = [
+  'We would like to move to a later departure instead of cancelling.',
+  'Could we change to a date next month rather than lose the booking?',
+] as const;
+const GHI_CHU_TU_CHOI =
+  'Date changes are handled as a rebooking by our team — this request was closed without cancelling, and we have emailed you the available dates.';
+
+/** Bốn bậc của `REFUND_POLICY_TIERS` — mỗi bậc vài ca để màn quyết định có đủ nhánh. */
+const BAC_HOAN = [100, 50, 25, 0] as const;
+const MOI_BAC = 3;
+const SO_TU_CHOI = 5;
+const SO_DANG_CHO = 9;
+const SO_GIO_BO_DO = 16;
+
+/**
+ * Số ngày trước khởi hành để một yêu cầu rơi đúng bậc (ADR-0030): từ ngưỡng của tour
+ * trở lên là 100%; dưới ngưỡng thì bảng bậc site 15–29 → 50%, 7–14 → 25%, dưới 7 →
+ * 0%. Null khi ngưỡng của tour không cho bậc ấy tồn tại — tour ngưỡng 1 ngày chẳng
+ * hạn không bao giờ ra 50%.
+ */
+function soNgayChoBac(
+  bac: (typeof BAC_HOAN)[number],
+  freeCancellationDays: number | null,
+  rnd: () => number,
+): number | null {
+  const nguong = freeCancellationDays ?? 30;
+  const khoang = (tu: number, den: number): number | null =>
+    den < tu ? null : nguyen(rnd, tu, den);
+  if (bac === 100) return khoang(nguong, nguong + 20);
+  if (bac === 50) return khoang(15, Math.min(29, nguong - 1));
+  if (bac === 25) return khoang(7, Math.min(14, nguong - 1));
+  return khoang(1, Math.min(6, nguong - 1));
+}
+
+/**
+ * Yêu cầu huỷ của khách trên booking đã trả: duyệt theo bậc, từ chối, và đang chờ.
+ * Mỗi booking dính tối đa một yêu cầu, chọn theo thứ tự id cho tất định.
+ */
+function apDungYeuCauHuy(kq: DuLieuVanHanh, H: number): void {
+  const ungVien = kq.bookings
+    .filter((b) => b.status === 'PAID')
+    .sort((a, b) => a.id.localeCompare(b.id));
+  const daDung = new Set<string>();
+
+  // ── Duyệt theo bậc ── booking CANCELLED, yêu cầu REFUNDED, hoàn đúng mức chính sách.
+  for (const bac of BAC_HOAN) {
+    let soDaChon = 0;
+    for (const b of ungVien) {
+      if (soDaChon >= MOI_BAC) break;
+      if (daDung.has(b.id) || b.paidAt === null) continue;
+      const tour = bangTour.get(b.tourId);
+      if (!tour) continue;
+      const rnd = boSinh(`yc-duyet:${bac}:${b.id}`);
+      const soNgay = soNgayChoBac(bac, tour.freeCancellationDays, rnd);
+      if (soNgay === null) continue;
+      const batDau = ngayCua(b.departureStartDate);
+      const paidAt = Date.parse(b.paidAt);
+      const guiLuc = batDau - soNgay * NGAY_MS + gioTrongNgay(rnd);
+      // Ngoài 24 giờ ân hạn (ân hạn luôn cho 100% và sẽ che mất bậc), và trước H.
+      if (guiLuc <= paidAt + 25 * GIO_MS || guiLuc >= H) continue;
+      const quyetLuc = guiLuc + nguyen(rnd, 2, 30) * GIO_MS;
+      if (quyetLuc >= Math.min(batDau, H)) continue;
+      // Tính bằng CHÍNH hàm của contract mà admin và API dùng — số seed và số trên màn
+      // quyết định không bao giờ nói hai chuyện khác nhau.
+      const phanTram = refundPercentForRequest({
+        requestedAt: new Date(guiLuc),
+        paidAt: b.paidAt,
+        departureStartDate: b.departureStartDate,
+        freeCancellationDays: tour.freeCancellationDays,
+      });
+      if (phanTram !== bac) continue;
+      const soTien = policyRefundAmount({
+        percent: phanTram,
+        totalAmount: b.totalAmount,
+        refundedTotal: '0.00',
+      });
+
+      kq.cancellationRequests.push({
+        id: idTinh('huy-duyet', b.id),
+        bookingId: b.id,
+        userId: b.userId,
+        reason: chonMot(rnd, LY_DO_KHACH_HUY),
+        freeCancellationDays: tour.freeCancellationDays,
+        status: 'REFUNDED',
+        decisionNote: null,
+        decidedAt: isoGio(quyetLuc),
+        createdAt: isoGio(guiLuc),
+        updatedAt: isoGio(quyetLuc),
+      });
+      b.status = 'CANCELLED';
+      b.cancelledAt = isoGio(quyetLuc);
+      b.updatedAt = isoGio(quyetLuc);
+      // Bậc 0% KHÔNG ghi dòng refund nào: sổ refund chỉ kể tiền thật sự đi ra.
+      if (Number(soTien) > 0) {
+        kq.refunds.push({
+          id: idTinh('refund', b.id),
+          bookingId: b.id,
+          amount: soTien,
+          currency: b.currency,
+          providerRefundId: maHoan(b.paymentProvider, b.id),
+          providerPaymentId: b.providerPaymentId,
+          reason: null,
+          createdAt: isoGio(quyetLuc),
+        });
+        kq.paymentEvents.push(suKienHoan(b, soTien, quyetLuc));
+      }
+      daDung.add(b.id);
+      soDaChon++;
+    }
+  }
+
+  // ── Từ chối ── khách xin đổi ngày chứ không phải huỷ; booking giữ PAID.
+  let soTuChoi = 0;
+  for (const b of ungVien) {
+    if (soTuChoi >= SO_TU_CHOI) break;
+    if (daDung.has(b.id) || b.status !== 'PAID' || b.paidAt === null) continue;
+    const rnd = boSinh(`yc-tuchoi:${b.id}`);
+    const batDau = ngayCua(b.departureStartDate);
+    const tu = Date.parse(b.paidAt) + 2 * NGAY_MS;
+    const den = Math.min(batDau - 2 * NGAY_MS, H - 4 * NGAY_MS);
+    if (den <= tu) continue;
+    const guiLuc = mocTrongKhoang(rnd, tu, den);
+    const quyetLuc = guiLuc + nguyen(rnd, 4, 30) * GIO_MS;
+    kq.cancellationRequests.push({
+      id: idTinh('huy-tuchoi', b.id),
+      bookingId: b.id,
+      userId: b.userId,
+      reason: chonMot(rnd, LY_DO_DOI_NGAY),
+      freeCancellationDays: bangTour.get(b.tourId)?.freeCancellationDays ?? null,
+      status: 'DENIED',
+      decisionNote: GHI_CHU_TU_CHOI,
+      decidedAt: isoGio(quyetLuc),
+      createdAt: isoGio(guiLuc),
+      updatedAt: isoGio(quyetLuc),
+    });
+    daDung.add(b.id);
+    soTuChoi++;
+  }
+
+  // ── Đang chờ ── gửi trong 25 ngày trước H cho chuyến chưa khởi hành; chưa ai quyết.
+  let soDangCho = 0;
+  for (const b of ungVien) {
+    if (soDangCho >= SO_DANG_CHO) break;
+    if (daDung.has(b.id) || b.status !== 'PAID' || b.paidAt === null) continue;
+    if (ngayCua(b.departureStartDate) <= H) continue;
+    const rnd = boSinh(`yc-cho:${b.id}`);
+    const tu = Math.max(Date.parse(b.paidAt) + NGAY_MS, H - 25 * NGAY_MS);
+    const den = H - 2 * GIO_MS;
+    if (den <= tu) continue;
+    const guiLuc = mocTrongKhoang(rnd, tu, den);
+    kq.cancellationRequests.push({
+      id: idTinh('huy-cho', b.id),
+      bookingId: b.id,
+      userId: b.userId,
+      reason: chonMot(rnd, LY_DO_KHACH_HUY),
+      freeCancellationDays: bangTour.get(b.tourId)?.freeCancellationDays ?? null,
+      status: 'REQUESTED',
+      decisionNote: null,
+      decidedAt: null,
+      createdAt: isoGio(guiLuc),
+      updatedAt: isoGio(guiLuc),
+    });
+    daDung.add(b.id);
+    soDangCho++;
+  }
+}
+
+/**
+ * Giỏ bỏ dở: khách mở checkout rồi bỏ đi. Job `pending-sweep` huỷ mọi PENDING quá 65
+ * phút, nên seed ghi thẳng hình dạng mà job để lại — CANCELLED, chưa trả, không capture,
+ * `cancelledAt` = lúc tạo + 65–80 phút. Ghi PENDING thì 65 phút sau khi seed job quét cả
+ * loạt trong cùng một mili-giây (đã dính trên prod ngày 10/09).
+ */
+function themGioBoDo(
+  kq: DuLieuVanHanh,
+  H: number,
+  lich: TourDepartureFixture[],
+  khach: KhachFixture[],
+): void {
+  const daCo = new Set(kq.bookings.map((b) => `${b.userId}:${b.departureId}`));
+  let soDaTao = 0;
+  for (let i = 0; soDaTao < SO_GIO_BO_DO && i < 400; i++) {
+    const rnd = boSinh(`gio-bo-do:${i}`);
+    const dep = chonMot(rnd, lich);
+    const nguoi = chonMot(rnd, khach);
+    const tour = bangTour.get(dep.tourId);
+    if (!tour || daCo.has(`${nguoi.id}:${dep.id}`)) continue;
+    const batDau = ngayCua(dep.startDate);
+    const tu = Math.max(Date.parse(dep.createdAt), nguoi.createdAt.getTime() + NGAY_MS);
+    // Chuyến sẽ bị công ty huỷ thì không ai mở checkout trong hai tuần cuối trước ngày đi.
+    const den = Math.min(batDau - (dep.status === 'CANCELLED' ? 15 : 2) * NGAY_MS, H - 2 * GIO_MS);
+    if (den <= tu) continue;
+    const taoLuc = mocTrongKhoang(rnd, tu, den);
+    const huyLuc = taoLuc + nguyen(rnd, 65, 80) * PHUT_MS;
+    const id = idTinh('booking-bo-do', i);
+    const nhaCC: NhaCungCap = rnd() < 0.7 ? 'STRIPE' : 'PAYPAL';
+    const donGia = Number(dep.priceOverride ?? tour.basePrice);
+    const nguoiLon = nguyen(rnd, 1, Math.min(3, dep.seatsTotal));
+
+    kq.bookings.push({
+      id,
+      code: maBooking(`bo-do:${i}`),
+      userId: nguoi.id,
+      tourId: tour.id,
+      departureId: dep.id,
+      numAdults: nguoiLon,
+      numChildren: 0,
+      totalAmount: tien(donGia * nguoiLon),
+      currency: tour.currency,
+      status: 'CANCELLED',
+      tourTitle: tour.title,
+      departureStartDate: dep.startDate,
+      departureEndDate: dep.endDate,
+      unitPrice: tien(donGia),
+      contactName: nguoi.name,
+      contactEmail: nguoi.email,
+      contactPhone: nguoi.phone,
+      specialRequests: null,
+      paymentProvider: nhaCC,
+      providerSessionId: maPhien(nhaCC, id),
+      providerPaymentId: null,
+      paidAt: null,
+      cancelledAt: isoGio(huyLuc),
+      createdAt: isoGio(taoLuc),
+      updatedAt: isoGio(huyLuc),
+    });
+    daCo.add(`${nguoi.id}:${dep.id}`);
+    soDaTao++;
+  }
+}
+
 export function sinhVanHanh(
   homNay: Date,
   lich: TourDepartureFixture[],
   khach: KhachFixture[],
 ): KetQuaVanHanh {
-  const duLieu = sinhDatCho(homNay.getTime(), lich, khach);
+  const H = homNay.getTime();
+  const duLieu = sinhDatCho(H, lich, khach);
+  apDungYeuCauHuy(duLieu, H);
+  themGioBoDo(duLieu, H, lich, khach);
+  // Đếm ghế SAU khi huỷ: booking huỷ đã duyệt trả ghế về, giỏ bỏ dở chưa từng giữ ghế.
   return { ...duLieu, gheDaDat: demGhe(duLieu.bookings) };
 }
 
