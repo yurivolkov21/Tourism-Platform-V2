@@ -364,4 +364,15 @@ describe.each(['2026-06-01', '2026-09-20'] as const)('bù booking đã đi với
     }
     kiemLuatDatCho(kq.bookings);
   });
+
+  it('hụt sàn thì ném lỗi, không âm thầm để tour thiếu booking đã đi', () => {
+    const kq: DuLieuVanHanh = {
+      bookings: [],
+      paymentEvents: [],
+      refunds: [],
+      cancellationRequests: [],
+    };
+    // Không có khách nào để bốc: mọi lượt bù đều bỏ lượt.
+    expect(() => baoDamBookingDaDi(kq, H, lich, [])).toThrow(/sàn booking đã đi/);
+  });
 });

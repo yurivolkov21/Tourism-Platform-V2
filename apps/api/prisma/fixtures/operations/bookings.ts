@@ -252,7 +252,8 @@ interface SoDatCho {
 
 /**
  * Một lượt đặt chỗ trên chuyến `dep`. Chỉ số `k` quyết định id, mã booking và hạt ngẫu nhiên,
- * nên cùng `k` luôn ra cùng một booking.
+ * nên hai lượt khác `k` trên cùng chuyến không bao giờ trùng id; còn khách được bốc và số ghế
+ * phụ thuộc trạng thái chung `so` lúc gọi.
  */
 function datMotBooking(
   so: SoDatCho,
@@ -433,6 +434,14 @@ export function baoDamBookingDaDi(
       const dep = chuyen[n % chuyen.length];
       if (!dep) break;
       datMotBooking(so, dep, tour, `bu-${n}`);
+    }
+    // JSDoc trên chỉ chứng minh luôn còn ghế; bốc khách vẫn có thể hụt. Hụt thì dừng hẳn:
+    // fixture sinh lúc import, trước mọi lệnh ghi, nên seed không bao giờ ghi một bộ dữ liệu
+    // có tour thiếu booking đã đi.
+    if (soDaDi() < SAN_BOOKING_DA_DI) {
+      throw new Error(
+        `sàn booking đã đi: tour ${tour.slug} chỉ có ${soDaDi()}/${SAN_BOOKING_DA_DI} booking với H = ${isoGio(H)}`,
+      );
     }
   }
 }

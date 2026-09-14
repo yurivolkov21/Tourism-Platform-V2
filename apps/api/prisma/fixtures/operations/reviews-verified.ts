@@ -463,6 +463,13 @@ export function sinhReview(
       them(tour.id, chonTheoTrongSo(boSinh(hat), PHAN_BO_SAO), null, THAN_BO_SUNG, hat, true);
       if (reviews.length === truoc) break;
     }
+    // Hụt sàn chỉ xảy ra khi tầng booking vi phạm sàn booking đã đi — dừng hẳn thay vì ghi
+    // một tour không có sao; fixture sinh lúc import, trước mọi lệnh ghi.
+    if (soDuyet() < TOI_THIEU_DUYET) {
+      throw new Error(
+        `sàn review: tour ${tour.slug} chỉ có ${soDuyet()}/${TOI_THIEU_DUYET} review đã duyệt với H = ${isoGio(H)}`,
+      );
+    }
   }
 
   baoDamHangDoi(reviews, H);

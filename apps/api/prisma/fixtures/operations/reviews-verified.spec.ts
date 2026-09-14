@@ -6,28 +6,38 @@ import { sinhKhach } from '../people/customers.js';
 import { sinhVanHanh } from './bookings.js';
 import { sinhReview } from './reviews-verified.js';
 
+/** Hai mốc cố định cho các bất biến tổng: sàn mỗi tour, hàng đợi admin, phân bố sao. */
 const MOC = ['2026-09-20', '2026-11-03'] as const;
+/**
+ * Bất biến TỪNG DÒNG chạy thêm mốc sớm 2026-06-01: ở đó bước 3 của `sinhReview` (duyệt lại
+ * review chưa duyệt cho đủ sàn) mới thực sự chạy, còn hai mốc cố định có thể không chạm tới.
+ */
+const MOC_TUNG_DONG = ['2026-06-01', ...MOC] as const;
 const ms = (s: string | null): number => (s === null ? Number.NaN : Date.parse(s));
 
-describe.each(MOC)('review với H = %s', (giaTri) => {
+/** Dựng dữ liệu review cho một mốc H — dùng chung cho hai khối test. */
+function chuanBi(giaTri: string) {
   const homNay = docMocHomNay(giaTri);
-  const H = homNay.getTime();
   const lich = sinhLich(homNay);
   const vanHanh = sinhVanHanh(homNay, lich, sinhKhach(homNay));
   const ket = sinhReview(homNay, lich, vanHanh.bookings);
+  return {
+    homNay,
+    H: homNay.getTime(),
+    lich,
+    vanHanh,
+    ket,
+    bangBooking: new Map(vanHanh.bookings.map((b) => [b.id, b])),
+    bangChuyen: new Map(lich.map((d) => [d.id, d])),
+  };
+}
+
+describe.each(MOC_TUNG_DONG)('review từng dòng với H = %s', (giaTri) => {
+  const { homNay, H, lich, vanHanh, ket, bangBooking, bangChuyen } = chuanBi(giaTri);
   const { reviews, moderationEvents } = ket;
-  const bangBooking = new Map(vanHanh.bookings.map((b) => [b.id, b]));
-  const bangChuyen = new Map(lich.map((d) => [d.id, d]));
 
   it('tất định: cùng H sinh hai lần ra y hệt', () => {
     expect(sinhReview(homNay, lich, vanHanh.bookings)).toEqual(ket);
-  });
-
-  it('29/29 tour có ít nhất 3 review đã duyệt', () => {
-    for (const tour of tours) {
-      const daDuyet = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
-      expect(daDuyet, tour.slug).toBeGreaterThanOrEqual(3);
-    }
   });
 
   it('người review là người đã đi: khớp booking PAID trên chuyến CLOSED; một review một booking', () => {
@@ -69,6 +79,30 @@ describe.each(MOC)('review với H = %s', (giaTri) => {
     }
   });
 
+  it('mỗi review đã có phán quyết có đúng một sự kiện duyệt cùng mốc', () => {
+    const coPhanQuyet = reviews.filter((r) => r.moderatedAt !== null);
+    expect(moderationEvents).toHaveLength(coPhanQuyet.length);
+    for (const r of coPhanQuyet) {
+      const suKien = moderationEvents.filter((e) => e.reviewId === r.id);
+      expect(suKien, r.id).toHaveLength(1);
+      expect(suKien[0]?.createdAt).toBe(r.moderatedAt);
+      expect(suKien[0]?.toRejected).toBe(r.rejectedAt !== null);
+      expect(suKien[0]?.toApproved).toBe(r.rejectedAt === null);
+    }
+  });
+});
+
+describe.each(MOC)('review tổng với H = %s', (giaTri) => {
+  const { homNay, lich, ket } = chuanBi(giaTri);
+  const { reviews } = ket;
+
+  it('29/29 tour có ít nhất 3 review đã duyệt', () => {
+    for (const tour of tours) {
+      const daDuyet = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
+      expect(daDuyet, tour.slug).toBeGreaterThanOrEqual(3);
+    }
+  });
+
   it('hàng đợi admin có việc: ≥ 5 chờ duyệt, ≥ 1 bị bác, ≥ 1 bị rút', () => {
     const choDuyet = reviews.filter(
       (r) => !r.isApproved && r.rejectedAt === null && r.retractedAt === null,
@@ -88,15 +122,8 @@ describe.each(MOC)('review với H = %s', (giaTri) => {
     );
   });
 
-  it('mỗi review đã có phán quyết có đúng một sự kiện duyệt cùng mốc', () => {
-    const coPhanQuyet = reviews.filter((r) => r.moderatedAt !== null);
-    expect(moderationEvents).toHaveLength(coPhanQuyet.length);
-    for (const r of coPhanQuyet) {
-      const suKien = moderationEvents.filter((e) => e.reviewId === r.id);
-      expect(suKien, r.id).toHaveLength(1);
-      expect(suKien[0]?.createdAt).toBe(r.moderatedAt);
-      expect(suKien[0]?.toRejected).toBe(r.rejectedAt !== null);
-      expect(suKien[0]?.toApproved).toBe(r.rejectedAt === null);
-    }
+  it('hụt sàn review thì ném lỗi, không âm thầm để tour mất sao', () => {
+    // Không có booking nào để chứa review: bước 3 không thể đủ sàn.
+    expect(() => sinhReview(homNay, lich, [])).toThrow(/sàn review/);
   });
 });
