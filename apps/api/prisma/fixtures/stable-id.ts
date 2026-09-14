@@ -62,3 +62,10 @@ export function chonTheoTrongSo<T>(rnd: () => number, cap: [T, number][]): T {
   }
   return cap[cap.length - 1]?.[0] as T;
 }
+
+/** Chọn một phần tử bằng bộ sinh tất định; danh sách rỗng thì ném lỗi chứ không trả `undefined`. */
+export function chonMot<T>(rnd: () => number, ds: readonly T[]): T {
+  const phanTu = ds[nguyen(rnd, 0, ds.length - 1)];
+  if (phanTu === undefined) throw new Error('chonMot: danh sách rỗng');
+  return phanTu;
+}
