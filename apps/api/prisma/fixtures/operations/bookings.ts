@@ -477,10 +477,12 @@ function apDungYeuCauHuy(kq: DuLieuVanHanh, H: number): void {
     const rnd = boSinh(`yc-tuchoi:${b.id}`);
     const batDau = ngayCua(b.departureStartDate);
     const tu = Date.parse(b.paidAt) + 2 * NGAY_MS;
-    const den = Math.min(batDau - 2 * NGAY_MS, H - 4 * NGAY_MS);
+    const den = Math.min(batDau - 4 * NGAY_MS, H - 4 * NGAY_MS);
     if (den <= tu) continue;
     const guiLuc = mocTrongKhoang(rnd, tu, den);
-    const quyetLuc = guiLuc + nguyen(rnd, 4, 30) * GIO_MS;
+    // Admin trả lời sau 1–3 ngày (spec §4.4); `den` lùi 4 ngày trước khởi hành và trước H
+    // nên mốc quyết vẫn rơi trước cả hai.
+    const quyetLuc = guiLuc + nguyen(rnd, 24, 72) * GIO_MS;
     kq.cancellationRequests.push({
       id: idTinh('huy-tuchoi', b.id),
       bookingId: b.id,

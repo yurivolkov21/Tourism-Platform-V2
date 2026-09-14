@@ -239,6 +239,9 @@ describe.each(MOC)('huỷ và hoàn với H = %s', (giaTri) => {
       expect(ms(c.createdAt), c.id).toBeGreaterThan(ms(b.paidAt));
       expect(ms(c.decidedAt), c.id).toBeGreaterThan(ms(c.createdAt));
       expect(ms(c.decidedAt), c.id).toBeLessThan(Math.min(H, ngay(b.departureStartDate)));
+      const lechQuyet = ms(c.decidedAt) - ms(c.createdAt);
+      expect(lechQuyet, c.id).toBeGreaterThanOrEqual(24 * GIO_MS);
+      expect(lechQuyet, c.id).toBeLessThanOrEqual(72 * GIO_MS);
     }
     for (const c of dangCho) {
       const b = bangBooking.get(c.bookingId);
