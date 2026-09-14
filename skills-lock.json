@@ -19,6 +19,18 @@
       "skillPath": "skills/engineering/domain-modeling/SKILL.md",
       "computedHash": "363cb0f53b0b431e7c00086ad1f823500b7e1b70b5616ee969c979f0934e9e6e"
     },
+    "next-cache-components": {
+      "source": "vercel/vercel-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/next-cache-components/SKILL.md",
+      "computedHash": "1758460975e9f9b4c7042536a5ce04fc46d5907abca9b898bb8ecc278b6fe753"
+    },
+    "nextjs": {
+      "source": "vercel/vercel-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/nextjs/SKILL.md",
+      "computedHash": "044a0bc722b018b636c9bd23f3dd4e4410fd8b0815d79b1fa1ba3fa7dc5f4d88"
+    },
     "prisma-cli": {
       "source": "prisma/skills",
       "sourceType": "github",
@@ -36,6 +48,12 @@
       "sourceType": "github",
       "skillPath": "prisma-database-setup/SKILL.md",
       "computedHash": "6a991a2530a6da7131e3fc71c353e8278702d0146b8b6e1d2fdfc2d3d0a21bd2"
+    },
+    "react-best-practices": {
+      "source": "vercel/vercel-plugin",
+      "sourceType": "github",
+      "skillPath": "skills/react-best-practices/SKILL.md",
+      "computedHash": "93ac57773ae23a5ea4c75dcd119b0f4def98a63084388be18231824d6980ad99"
     },
     "shadcn": {
       "source": "shadcn/ui",

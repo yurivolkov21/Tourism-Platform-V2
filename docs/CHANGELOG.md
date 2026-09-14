@@ -8,6 +8,50 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-14 — Dọn sạch plugin/skill rồi cài lại có chọn lọc (nhánh cloud `claude/tender-heisenberg-4tdw2k` vào `main` thành `a1eb1e68`)
+
+Rà tại máy (không phải từ session remote) cho thấy máy nạp 39 plugin: 32 cài qua
+CLI và 7 cài từ Desktop App. Danh sách skill mỗi session có 302 mục, vượt ngân
+sách listing (1% context), nên 211 mục chỉ còn tên, mất mô tả — gồm cả 14 skill
+`superpowers` mà quy trình dựa vào. `remember` và `security-guidance` fail âm thầm
+vì máy chưa có Python thật (`remember` hỏng 71/71 lần save); MCP của 11 dịch vụ bị
+trùng giữa plugin và connector claude.ai. User chốt gỡ sạch rồi cài lại chỉ thứ dự
+án cần, đi từng bước có xác nhận.
+
+**Ngoài repo (máy):** gỡ 32 plugin CLI; user gỡ 6 plugin Desktop (còn Plugin
+Management) và tắt 11 skill tài khoản (còn `docx`, `pptx`, `xlsx`, `pdf`,
+`skill-creator`, `doc-coauthoring`); dọn tay cache plugin, thư mục data và
+`.remember/`; khởi động lại Claude Desktop để nhận PATH có Node 24; cài lại đúng
+một plugin là `superpowers` 6.3.0.
+
+**Trong repo:**
+
+- `a1eb1e68` — commit của session cloud trên nhánh `claude/tender-heisenberg-4tdw2k`
+  (mục CÒN TREO của entry dưới), rebase lên `main` rồi `--ff-only`: gỡ 5 skill hết
+  việc và 2 entry rác trong lockfile.
+- Commit này: thêm `nextjs`, `next-cache-components`, `react-best-practices` lấy lẻ
+  từ `vercel/vercel-plugin` bằng `npx skills@1.5.26 add … -a claude-code --copy`,
+  repo còn 11 skill. Không cài plugin `vercel` vì 33 skill tốn khoảng 2,3K token mỗi
+  session và bundle một `shadcn` không có patch monorepo. `docs/skills.md` ghi lại
+  bốn kênh phân phối, plugin còn lại, lịch cài theo phase và kết quả đánh giá 10
+  repo user đề xuất.
+
+**Review findings:** `docs/skills.md` cũ ghi Sentry "nối thật" nhưng
+`observability.ts` mới là seam, chưa cài `@sentry/node` — đã sửa. Repo nguồn có bản
+`upstream/` của `next-cache-components` trùng tên; CLI chọn bản chính (487 dòng),
+đã đối chiếu. Auto mode chặn việc chuyển cache vào Thùng rác nên user xoá tay.
+
+**Đóng từ entry dưới:** review nhánh cloud (merge `a1eb1e68`), `gh` đã đăng nhập,
+Claude Desktop đã khởi động lại.
+
+**CÒN TREO:** tắt auto-update marketplace `claude-plugins-official` trước freeze
+15/10 · xung đột #1 và #2 trong `docs/skills.md` (write-tool của connector
+Supabase, Render, Vercel, Resend ở chat thi công) vẫn mở · hook nhắc-skill của
+luật 9 vẫn chưa có lại · mở session mới để xác nhận `superpowers` nạp.
+
+Tests after: không đụng `apps/` hay `libs/` nên không chạy gate:int; `biome check`
+lockfile sạch, `docs-freshness` xanh, lockfile khớp 11 thư mục skill.
+
 ## 2026-09-14 — Dựng lại máy dev sau reset: Windows native, `.env.local` về Docker, ghim tên project compose
 
 Máy dev bị reset (~12/09) nên cài lại từ đầu; clone mới nằm ở
