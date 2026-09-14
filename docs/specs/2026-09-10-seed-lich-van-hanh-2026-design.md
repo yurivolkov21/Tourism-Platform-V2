@@ -1,5 +1,10 @@
 # Spec — Dựng lại lịch khởi hành + tầng vận hành cho trọn năm 2026
 
+> **Đã được bổ sung bởi [spec 14/09](2026-09-14-seed-khung-2026-design.md)** —
+> khung 01–12/2026, mốc "hôm nay" qua `SEED_HOM_NAY`, vá hình dạng huỷ/hoàn,
+> thêm enquiries và subscribers. §4.1, §5.2, §5.3 và mục "Ngày viết cứng" ở §9
+> dưới đây đã bị thay; đọc spec 14/09 trước.
+
 10/09/2026 · nối tiếp đợt làm mới dữ liệu seed (bước 1 snapshot `fd738d68`,
 bước 2 script reset `642e3add`, bước 3 làm giàu nội dung tour). Đầu vào là đợt
 rà soát 9 agent ngày 10/09 (76 phát hiện) và hai quyết định user đã chốt trong
