@@ -45,6 +45,7 @@ import {
 } from '../src/modules/catalog/tour-costs.js';
 import { accountDisplayName } from '../src/modules/enquiries/enquiry-row.js';
 import * as catalog from './fixtures/catalog/index.js';
+import { kiemTraAdminChoProd, kiemTraTheHeLich } from './fixtures/chot-chan-seed.js';
 import { HOM_NAY, isoNgay, kiemTraMocChoProd } from './fixtures/khung-thoi-gian.js';
 import {
   bookingsGia,
@@ -321,6 +322,34 @@ async function insertCatalog(): Promise<number> {
 }
 
 async function main(): Promise<void> {
+  // 0. Chốt chặn ĐỌC DB, trước mọi lệnh ghi (review cuối nhánh 14/09): prod chỉ được có đúng
+  //    một admin trùng ADMIN_EMAILS[0], và DB không được đang mang lịch của một mốc H khác.
+  const adminEmail = process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@tourism.test';
+  const adminHienCo = await prisma.user.findMany({
+    where: { role: UserRole.ADMIN },
+    select: { email: true },
+  });
+  const kiemAdmin = kiemTraAdminChoProd({
+    laProd: LA_PROD,
+    adminEmail,
+    emailAdminHienCo: adminHienCo.map((a) => a.email),
+  });
+  if (kiemAdmin.ketQua === 'tu-choi') {
+    console.error(`\n✖ TỪ CHỐI: ${kiemAdmin.thongDiep}\n`);
+    process.exitCode = 1;
+    return;
+  }
+  const chuyenHienCo = await prisma.tourDeparture.findMany({ select: { id: true } });
+  const kiemTheHe = kiemTraTheHeLich({
+    idChuyenHienCo: chuyenHienCo.map((d) => d.id),
+    idChuyenFixture: new Set(catalog.tourDepartures.map((d) => d.id)),
+  });
+  if (kiemTheHe.ketQua === 'tu-choi') {
+    console.error(`\n✖ TỪ CHỐI: ${kiemTheHe.thongDiep}\n`);
+    process.exitCode = 1;
+    return;
+  }
+
   // 1. Fixtures catalog.
   console.log('[seed] loading catalog fixtures...');
   const inserted = await insertCatalog();
@@ -336,7 +365,6 @@ async function main(): Promise<void> {
   //    unique kiểu citext). Chỉ là row thường trong bảng `users` của Better
   //    Auth: đăng ký qua Better Auth cùng email sẽ link vào row đó (v2 không có
   //    supabaseId).
-  const adminEmail = process.env.ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@tourism.test';
   const admin = await prisma.user.upsert({
     where: { email: adminEmail },
     create: {
