@@ -10,20 +10,29 @@ Ba kênh phân phối khác nhau — đừng lẫn:
 
 Cài lại toàn bộ skill trong repo sau khi clone: `npx skills experimental_install`.
 
-## Skill trong repo (13 — kênh skills.sh)
+## Skill trong repo (8 — kênh skills.sh)
 
 | Skill | Nguồn | Dùng khi |
 | --- | --- | --- |
 | `turborepo` | vercel/turborepo (chính chủ) | Sửa `turbo.json`, task deps/outputs, caching, `--filter`, `--affected`, CI |
 | `shadcn` | shadcn-ui/ui (chính chủ) | Thêm/sửa component UI, styling, form, registry. **Đã vá local 22/07**: khối context `info --json` thêm `-c apps/web` + `-c libs/shared/ui` (bản gốc fail `monorepo_root` khi chạy từ root — nếu cập nhật skill từ upstream, giữ lại patch, xem comment trong SKILL.md). Rà 14/09: plugin `vercel` cũng bundle một skill tên `shadcn` — xem xung đột #4 |
-| `migrate-radix-to-base` | shadcn-ui/ui | Chuyển component Radix → **Base UI** (ta đã chọn Base UI). **Hết việc (rà 14/09)**: `grep @radix-ui` toàn repo = 0 kết quả, `libs/shared/ui` đã ở `@base-ui/react` ^1.6.0. Chỉ còn ích nếu port thêm component Radix từ Nexora; không thì gỡ được |
-| `prisma-upgrade-v7` | prisma/skills (chính chủ) | Breaking change Prisma 7: ESM config, driver adapter bắt buộc, `prisma.config.ts`. **Hết việc (rà 14/09)**: `apps/api` đã ở `prisma@7.8.0` và `@prisma/client@7.8.0`, cuộc nâng cấp đã xong — bỏ dấu ⭐, gỡ được |
-| `prisma-cli` · `prisma-client-api` · `prisma-database-setup` | prisma/skills | Migration, query API, cấu hình DB — ba cái này **giữ** |
-| `prisma-postgres-setup` · `prisma-postgres` · `prisma-driver-adapter-implementation` | prisma/skills | **Gỡ được (rà 14/09)**: hai cái đầu nói về **Prisma Postgres hosted** — sản phẩm DB riêng của Prisma, còn ta chạy **Supabase**; chúng không chỉ thừa mà còn dễ dẫn sai hướng (gợi provision một DB khác). Cái thứ ba chỉ cần khi TỰ VIẾT driver adapter, ta chỉ tiêu thụ adapter có sẵn |
-| `prisma-compute` · `prisma-mongodb-upgrade` | prisma/skills | **Không nằm trong 13 skill trên đĩa** — chỉ còn rác trong `skills-lock.json` (bundle `prisma/skills` khai cả hai, nhưng không có thư mục nào ở `.claude/skills/`). Serverless compute + Mongo không thuộc stack Postgres của ta; prune entry lockfile nếu muốn gọn |
+| `prisma-cli` · `prisma-client-api` · `prisma-database-setup` | prisma/skills | Migration, query API, cấu hình DB |
 | `api-and-interface-design` | addyosmani | Thiết kế contract oRPC, ranh giới module, hợp đồng type FE↔BE |
 | `documentation-and-adrs` | addyosmani | ⭐ Viết ADR — thứ hội đồng capstone chấm |
 | `domain-modeling` | mattpocock | Ubiquitous language cho domain tourism (booking/tour/departure) |
+
+### Đã gỡ 14/09/2026 — ghi lý do để khỏi cài lại nhầm
+
+| Skill đã gỡ | Lý do |
+| --- | --- |
+| `prisma-upgrade-v7` | Hết việc: `apps/api` đã ở `prisma@7.8.0` và `@prisma/client@7.8.0`, cuộc nâng cấp v6 → v7 đã xong |
+| `migrate-radix-to-base` | Hết việc: 0 kết quả `@radix-ui` trong toàn bộ source, `libs/shared/ui` đã ở `@base-ui/react` ^1.6.0. Cài lại nếu sau này port thêm component Radix từ Nexora |
+| `prisma-postgres` · `prisma-postgres-setup` | Nói về **Prisma Postgres hosted** — sản phẩm DB riêng của Prisma, còn ta chạy **Supabase**. Không chỉ thừa mà còn dễ dẫn sai hướng (gợi provision một DB khác) |
+| `prisma-driver-adapter-implementation` | Chỉ cần khi **tự viết** driver adapter. Ta tiêu thụ `@prisma/adapter-pg` có sẵn; chỗ duy nhất chạm tới hình dạng lỗi adapter (`bookings.service.ts` đọc `meta.driverAdapterError.cause.code`) được xác định bằng thực nghiệm chứ không nhờ skill này |
+| `prisma-compute` · `prisma-mongodb-upgrade` | Entry rác trong `skills-lock.json` — chưa bao giờ có thư mục trên đĩa. Serverless compute và Mongo nằm ngoài stack Postgres |
+
+Gỡ bằng `npx skills remove <tên> -y` — CLI dọn cả thư mục lẫn entry lockfile,
+đừng sửa tay `skills-lock.json`. Cài lại: `npx skills add <owner>/<repo>`.
 
 ## Plugin global (14)
 
@@ -72,10 +81,8 @@ web) · `Render` (deploy API) · `Cloudinary` (ảnh tour) · `Resend` (email) �
 
 ### Dư thừa — hết việc hoặc không liên quan
 
-Skill repo (chi tiết ở bảng "Skill trong repo"): `prisma-upgrade-v7` ·
-`migrate-radix-to-base` · `prisma-postgres` · `prisma-postgres-setup` ·
-`prisma-driver-adapter-implementation`, cộng hai entry rác trong
-`skills-lock.json` đã biết từ trước.
+Skill repo: **đã xử lý xong 14/09** — gỡ 5 skill (13 còn 8) và dọn nốt hai entry
+rác trong `skills-lock.json`. Lý do từng cái ở bảng "Đã gỡ 14/09/2026" phía trên.
 
 Connector: `Higgsfield` và `Topviews` trùng gần 100% (cả hai đều là AI sinh
 ảnh/video/audio, cộng lại khoảng 190 tool) và không cái nào dính capstone ·
