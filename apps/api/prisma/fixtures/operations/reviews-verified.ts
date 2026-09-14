@@ -3,8 +3,10 @@ import { tourReviews as reviewCu } from '../catalog/reviews.js';
 import { tours as toursCentral } from '../catalog/tours-central.js';
 import { tours as toursNorth } from '../catalog/tours-north.js';
 import { tours as toursSouth } from '../catalog/tours-south.js';
+import type { TourDepartureFixture } from '../catalog/types.js';
+import { gioTrongNgay, HOM_NAY, isoGio, NGAY_MS } from '../khung-thoi-gian.js';
 import { boSinh, chonTheoTrongSo, idTinh, nguyen } from '../stable-id.js';
-import { bookingsGia } from './bookings.js';
+import { type BookingFixture, bookingsGia } from './bookings.js';
 
 /**
  * Review `VERIFIED` — thay TRỌN 84 review `CURATED` cũ.
@@ -34,6 +36,11 @@ import { bookingsGia } from './bookings.js';
  * ── `bookingId` là @unique ──
  * DB tự ép một review cho một booking. Bộ sinh chỉ cần không cấp phát một
  * booking hai lần.
+ *
+ * ── Mọi mốc trước H (spec 2026-09-14 §4.5) ──
+ * Viết 1–21 ngày sau khi chuyến kết thúc, co về trước H. Mốc duyệt dự kiến rơi sau
+ * H thì review nằm ở hàng chờ duyệt — review mới nhất tự vào hàng đợi, đúng như
+ * một site đang chạy. Mốc rút lại không vừa trước H thì review không bị rút.
  */
 
 export interface ReviewFixture {
@@ -50,6 +57,8 @@ export interface ReviewFixture {
   moderatedAt: string | null;
   retractedAt: string | null;
   createdAt: string;
+  /** Mốc thay đổi cuối: rút > duyệt/bác > viết. Seed ghi tường minh. */
+  updatedAt: string;
 }
 
 export interface ModerationEventFixture {
@@ -62,8 +71,10 @@ export interface ModerationEventFixture {
   createdAt: string;
 }
 
-const NGAY = 86400000;
-const ISOT = (t: number): string => new Date(t).toISOString();
+export interface KetQuaReview {
+  reviews: ReviewFixture[];
+  moderationEvents: ModerationEventFixture[];
+}
 
 const tours = [...toursNorth, ...toursCentral, ...toursSouth];
 const bangSlug = new Map(tours.map((t) => [t.slug, t.id]));
@@ -316,36 +327,44 @@ const PHAN_BO_SAO: [number, number][] = [
   [1, 1],
 ];
 
-interface Ket {
-  reviews: ReviewFixture[];
-  moderationEvents: ModerationEventFixture[];
-}
+/** Mỗi tour phải có ngần này review đã duyệt để có sao trên site. */
+const TOI_THIEU_DUYET = 3;
+/** Sàn của ba hàng đợi admin (spec 10/09 §7 mục 18). */
+const TOI_THIEU_CHO = 5;
+const TOI_THIEU_BAC = 1;
+const TOI_THIEU_RUT = 1;
+const GHI_CHU_BAC = 'Off-topic: the review discusses a different tour.';
+const THAN_BO_SUNG =
+  'Everything ran to time and the guide was excellent — we would book with them again.';
 
-function sinh(): Ket {
-  const depTheoId = new Map(tourDepartures.map((d) => [d.id, d]));
-  // Chỉ booking ĐÃ HOÀN THÀNH mới được review: không ai đánh giá chuyến chưa đi.
-  const ungVien = new Map<string, typeof bookingsGia>();
-  for (const b of bookingsGia) {
-    if (b.status !== 'PAID') continue;
-    if (depTheoId.get(b.departureId)?.status !== 'CLOSED') continue;
-    const ds = ungVien.get(b.tourId) ?? [];
-    ds.push(b);
-    ungVien.set(b.tourId, ds);
+const cuoiChuyen = (b: BookingFixture): number => Date.parse(`${b.departureEndDate}T00:00:00.000Z`);
+
+export function sinhReview(
+  homNay: Date,
+  lich: TourDepartureFixture[],
+  bookings: BookingFixture[],
+): KetQuaReview {
+  const H = homNay.getTime();
+  const depTheoId = new Map(lich.map((d) => [d.id, d]));
+  // Chỉ booking ĐÃ HOÀN THÀNH mới được review: PAID trên chuyến CLOSED.
+  const ungVien = new Map<string, BookingFixture[]>();
+  for (const b of bookings) {
+    if (b.status !== 'PAID' || depTheoId.get(b.departureId)?.status !== 'CLOSED') continue;
+    ungVien.set(b.tourId, [...(ungVien.get(b.tourId) ?? []), b]);
   }
   for (const ds of ungVien.values()) ds.sort((a, b) => a.id.localeCompare(b.id));
 
-  const daDung = new Map<string, number>();
+  const daDung = new Set<string>();
   const reviews: ReviewFixture[] = [];
-  const moderationEvents: ModerationEventFixture[] = [];
 
-  /** Cấp một booking chưa ai review của tour này. */
-  const layBooking = (tourId: string) => {
-    const ds = ungVien.get(tourId);
-    if (!ds) return null;
-    const k = daDung.get(tourId) ?? 0;
-    if (k >= ds.length) return null;
-    daDung.set(tourId, k + 1);
-    return ds[k] ?? null;
+  /** Cấp một booking chưa ai review của tour, chuyến kết thúc không muộn hơn `ketThucMuonNhat`. */
+  const layBooking = (tourId: string, ketThucMuonNhat: number): BookingFixture | null => {
+    for (const b of ungVien.get(tourId) ?? []) {
+      if (daDung.has(b.id) || cuoiChuyen(b) > ketThucMuonNhat) continue;
+      daDung.add(b.id);
+      return b;
+    }
+    return null;
   };
 
   const them = (
@@ -354,39 +373,44 @@ function sinh(): Ket {
     title: string | null,
     body: string,
     hat: string,
-  ) => {
-    const bk = layBooking(tourId);
+    epDuyet: boolean,
+  ): void => {
+    // Bước bù phải chắc chắn duyệt kịp trước H nên chỉ nhận chuyến kết thúc trước H ≥ 5 ngày.
+    const bk = layBooking(tourId, H - (epDuyet ? 5 : 2) * NGAY_MS);
     if (!bk) return;
     const rnd = boSinh(`rv:${hat}`);
-    const ketThuc = Date.parse(`${bk.departureEndDate}T00:00:00.000Z`);
-    // Viết review 1–21 ngày sau khi chuyến kết thúc. Ràng buộc này tự rải
-    // review khắp 12 tháng mà không cần luật riêng.
-    const viet = ketThuc + nguyen(rnd, 1, 21) * NGAY;
-    const id = idTinh('review', bk.id);
-
-    // ── Trạng thái duyệt ──
-    // Bộ cũ để cả 84 dòng `isApproved=true, moderatedAt=null`, nên hàng đợi
-    // moderation của admin trống trơn. Chia lại để hai màn ấy có việc.
+    const ketThuc = cuoiChuyen(bk);
+    const ngayViet = epDuyet
+      ? ketThuc + NGAY_MS
+      : Math.min(ketThuc + nguyen(rnd, 1, 21) * NGAY_MS, H - NGAY_MS);
+    const viet = ngayViet + gioTrongNgay(rnd);
+    const duyet = viet + (epDuyet ? 1 : nguyen(rnd, 1, 3)) * NGAY_MS;
     const boc = rnd();
+
     let isApproved = true;
+    let moderatedAt: string | null = isoGio(duyet);
     let rejectedAt: string | null = null;
-    let moderatedAt: string | null = ISOT(viet + nguyen(rnd, 1, 3) * NGAY);
     let retractedAt: string | null = null;
-    if (boc < 0.07) {
-      // chờ duyệt — chưa ai xem
-      isApproved = false;
-      moderatedAt = null;
-    } else if (boc < 0.1) {
-      isApproved = false;
-      rejectedAt = moderatedAt;
-    } else if (boc < 0.11) {
-      // tác giả rút lại review đã duyệt (đường W4 U2)
-      isApproved = false;
-      retractedAt = ISOT(viet + nguyen(rnd, 20, 60) * NGAY);
+    if (!epDuyet) {
+      if (boc < 0.07 || duyet >= H) {
+        // Chờ duyệt: chưa ai xem, hoặc mốc duyệt dự kiến rơi sau H.
+        isApproved = false;
+        moderatedAt = null;
+      } else if (boc < 0.1) {
+        isApproved = false;
+        rejectedAt = moderatedAt;
+      } else if (boc < 0.11) {
+        // Tác giả rút review đã duyệt (W4 U2) — chỉ khi mốc rút còn trước H.
+        const rut = viet + nguyen(rnd, 20, 60) * NGAY_MS;
+        if (rut < H) {
+          isApproved = false;
+          retractedAt = isoGio(rut);
+        }
+      }
     }
 
     reviews.push({
-      id,
+      id: idTinh('review', bk.id),
       tourId,
       userId: bk.userId,
       bookingId: bk.id,
@@ -399,66 +423,99 @@ function sinh(): Ket {
       rejectedAt,
       moderatedAt,
       retractedAt,
-      createdAt: ISOT(viet),
+      createdAt: isoGio(viet),
+      updatedAt: retractedAt ?? moderatedAt ?? isoGio(viet),
     });
-
-    if (moderatedAt) {
-      moderationEvents.push({
-        id: idTinh('rv-event', id),
-        reviewId: id,
-        fromApproved: false,
-        toApproved: isApproved,
-        toRejected: rejectedAt !== null,
-        note: rejectedAt ? 'Off-topic: the review discusses a different tour.' : null,
-        createdAt: moderatedAt,
-      });
-    }
   };
 
   // 1) 84 đoạn văn cũ — giữ chữ và số sao, gắn lại vào khách giả + booking thật.
-  for (const r of reviewCu) them(r.tourId, r.rating, r.title ?? null, r.body, `cu:${r.id}`);
+  for (const r of reviewCu) them(r.tourId, r.rating, r.title ?? null, r.body, `cu:${r.id}`, false);
 
-  // 2) 32 đoạn bổ sung cho những tour phủ chưa đủ.
+  // 2) Đoạn bổ sung cho những tour phủ chưa đủ.
   for (const [i, t] of THEM.entries()) {
     const tourId = bangSlug.get(t.slug);
-    if (tourId) them(tourId, t.rating, t.title, t.body, `moi:${i}`);
+    if (tourId) them(tourId, t.rating, t.title, t.body, `moi:${i}`, false);
   }
 
-  // 3) Nâng mọi tour lên tối thiểu ba review ĐÃ DUYỆT — nếu bước 1+2 chưa đủ
-  //    (ví dụ vì một dòng rơi vào nhánh chờ duyệt/bị bác), thêm cho đủ. Không
-  //    có bước này thì "29/29 tour có sao" là điều cầu may chứ không phải
-  //    ràng buộc.
-  const TOI_THIEU = 3;
+  // 3) Bù cho đủ ≥ 3 review ĐÃ DUYỆT mỗi tour — không để "29/29 tour có sao" là điều cầu may.
   for (const tour of tours) {
-    let coSao = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
-    let vong = 0;
-    while (coSao < TOI_THIEU && vong < 6) {
-      const rnd = boSinh(`bu:${tour.slug}:${vong}`);
-      const truoc = reviews.length;
-      them(
-        tour.id,
-        chonTheoTrongSo(rnd, PHAN_BO_SAO),
-        null,
-        'Everything ran to time and the guide was excellent — we would book with them again.',
-        `bu:${tour.slug}:${vong}`,
-      );
-      // `them` có thể rơi vào nhánh chưa duyệt; đếm lại thay vì giả định.
-      if (reviews.length > truoc) {
-        const moi = reviews[reviews.length - 1];
-        if (moi) {
-          moi.isApproved = true;
-          moi.rejectedAt = null;
-          moi.retractedAt = null;
-        }
-      }
-      coSao = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
-      vong++;
+    for (let vong = 0; vong < 6; vong++) {
+      const daDuyet = reviews.filter((r) => r.tourId === tour.id && r.isApproved).length;
+      if (daDuyet >= TOI_THIEU_DUYET) break;
+      const hat = `bu:${tour.slug}:${vong}`;
+      them(tour.id, chonTheoTrongSo(boSinh(hat), PHAN_BO_SAO), null, THAN_BO_SUNG, hat, true);
     }
   }
 
-  return { reviews, moderationEvents };
+  baoDamHangDoi(reviews, H);
+  return { reviews, moderationEvents: suKienDuyet(reviews) };
 }
 
-const ket = sinh();
+/**
+ * Sàn của ba hàng đợi (chờ duyệt, bị bác, bị rút) phải là ràng buộc cấu trúc: với một
+ * H cụ thể, tỉ lệ ngẫu nhiên có thể trượt dưới sàn. Chỉ chuyển review của tour đang có
+ * NHIỀU HƠN 3 review đã duyệt để không tour nào mất sao; chọn review mới nhất trước.
+ */
+function baoDamHangDoi(reviews: ReviewFixture[], H: number): void {
+  const soDuyet = (tourId: string): number =>
+    reviews.filter((r) => r.tourId === tourId && r.isApproved).length;
+  const coTheChuyen = (): ReviewFixture[] =>
+    reviews
+      .filter((r) => r.isApproved && soDuyet(r.tourId) > TOI_THIEU_DUYET)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
+  const soChoDuyet = (): number =>
+    reviews.filter((r) => !r.isApproved && r.rejectedAt === null && r.retractedAt === null).length;
+
+  while (soChoDuyet() < TOI_THIEU_CHO) {
+    const r = coTheChuyen()[0];
+    if (!r) break;
+    r.isApproved = false;
+    r.moderatedAt = null;
+    r.updatedAt = r.createdAt;
+  }
+
+  if (reviews.filter((r) => r.rejectedAt !== null).length < TOI_THIEU_BAC) {
+    const r = coTheChuyen()[0];
+    if (r?.moderatedAt) {
+      r.isApproved = false;
+      r.rejectedAt = r.moderatedAt;
+      r.updatedAt = r.moderatedAt;
+    }
+  }
+
+  if (reviews.filter((r) => r.retractedAt !== null).length < TOI_THIEU_RUT) {
+    const r = coTheChuyen().find(
+      (x) => x.moderatedAt !== null && Date.parse(x.moderatedAt) + 20 * NGAY_MS < H,
+    );
+    if (r?.moderatedAt) {
+      const rut = isoGio(Date.parse(r.moderatedAt) + 20 * NGAY_MS);
+      r.isApproved = false;
+      r.retractedAt = rut;
+      r.updatedAt = rut;
+    }
+  }
+}
+
+/** Sự kiện duyệt dựng từ trạng thái CUỐI của review, nên không lệch sau bước bảo đảm sàn. */
+function suKienDuyet(reviews: ReviewFixture[]): ModerationEventFixture[] {
+  const ra: ModerationEventFixture[] = [];
+  for (const r of reviews) {
+    if (r.moderatedAt === null) continue;
+    ra.push({
+      id: idTinh('rv-event', r.id),
+      reviewId: r.id,
+      fromApproved: false,
+      // Phán quyết của admin lúc duyệt: đăng, trừ khi bị bác. Review bị tác giả rút về
+      // sau vẫn từng được duyệt đăng.
+      toApproved: r.rejectedAt === null,
+      toRejected: r.rejectedAt !== null,
+      note: r.rejectedAt !== null ? GHI_CHU_BAC : null,
+      createdAt: r.moderatedAt,
+    });
+  }
+  return ra;
+}
+
+const ket = sinhReview(HOM_NAY, tourDepartures, bookingsGia);
 export const reviewsGia = ket.reviews;
 export const reviewModerationEventsGia = ket.moderationEvents;
