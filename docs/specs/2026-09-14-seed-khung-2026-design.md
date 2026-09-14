@@ -288,8 +288,10 @@ exit 1 nếu có vi phạm. Script mới `seed:verify` trong `apps/api/package.j
 - **Khung ngày:** quét `information_schema` — mọi cột timestamp/date của các bảng
   seed nằm trong [01/01/2026, H]; ngày khởi hành của chuyến còn bán ≤ 31/12.
   Ngoại lệ có chủ đích: `tours.updated_at` và `tour_departures.updated_at` được
-  phép tới giờ chạy seed (bước tính rating và giá vốn ghi `now()`); bảng giữ lại
-  chỉ kiểm nằm trong 2026, trừ `tour_categories` (Q8); bỏ qua `sessions`,
+  phép tới giờ chạy seed (bước tính rating và giá vốn ghi `now()`); `users` và
+  `accounts` chỉ kiểm dòng của khách giả (`@example.com`) — admin là tài khoản
+  giữ lại, seed upsert nó nên `updated_at` của admin mang giờ chạy seed; bảng giữ
+  lại chỉ kiểm nằm trong 2026, trừ `tour_categories` (Q8); bỏ qua `sessions`,
   `verifications`, `_prisma_migrations`.
 - **14 bất biến nghiệm thu của đợt 10/09:** booking thiếu `cost_per_person` ·
   `total_amount` lệch đơn giá × ghế · huỷ trước khi trả tiền · trả tiền sau
