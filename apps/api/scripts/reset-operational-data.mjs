@@ -183,6 +183,28 @@ if (adminRows[0].role !== 'ADMIN') {
 }
 console.log(`✓ Cổng admin: tìm thấy, role ${adminRows[0].role}\n`);
 
+// ── Cổng 3 (review cuối 14/09): trên prod, admin được giữ phải là admin mà seed sẽ dùng ─
+// `db:seed` chỉ chạy tiếp khi prod có đúng một admin trùng ADMIN_EMAILS[0]
+// (`prisma/fixtures/chot-chan-seed.ts`), nhưng chốt đó chạy SAU bước xoá này. Giữ nhầm
+// admin thì seed từ chối khi admin thật đã bị xoá. Chạy cả ở dry run, để lộ ra trước
+// `--apply`. Không in email: log lượt prod có thể được chép vào CHANGELOG.
+if (LA_PROD) {
+  const emailSeed = process.env.ADMIN_EMAILS?.split(',')[0]?.trim().toLowerCase() ?? '';
+  if (!emailSeed || adminRows[0].email.trim().toLowerCase() !== emailSeed) {
+    console.error(
+      '\n✖ DỪNG: admin trong keep-list không trùng ADMIN_EMAILS[0] (hoặc ADMIN_EMAILS trống).',
+    );
+    console.error(
+      '  Export ADMIN_EMAILS từ .env.production rồi chạy lại snapshot:export trước khi reset:',
+    );
+    console.error(
+      `    export ADMIN_EMAILS="$(grep '^ADMIN_EMAILS=' .env.production | cut -d= -f2-)"`,
+    );
+    process.exit(1);
+  }
+  console.log('✓ Cổng admin prod: keep-list trùng ADMIN_EMAILS[0]\n');
+}
+
 // ── Bất biến THAM CHIẾU: ảnh mồ côi ─────────────────────────────────────────
 // Đếm số dòng là VÔ NGHĨA với media_assets: nó không có khoá ngoại nào, nên xoá
 // chủ sở hữu không đụng tới số dòng — 517 vẫn là 517 trong khi ảnh đã mồ côi.

@@ -375,7 +375,8 @@ async function main(): Promise<void> {
     },
     update: { role: UserRole.ADMIN },
   });
-  console.log(`[seed] admin: ${admin.email}`);
+  // Không in email: log lượt prod có thể được chép vào CHANGELOG của repo công khai.
+  console.log(`[seed] admin: đã upsert (id ${admin.id})`);
 
   // 3b. KHÁCH GIẢ (120, xem SO_KHACH) (đợt làm mới dữ liệu 10/09/2026) — người đứng tên cho
   //     ≈400 booking và ≈116 review sắp seed. Không có họ thì không seed được
