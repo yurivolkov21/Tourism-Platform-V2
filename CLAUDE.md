@@ -180,7 +180,9 @@ pnpm lint:fix                    # biome tự sửa format + lint
   rơi về Postgres docker local; Supabase KHÔNG tự nhận migration. Đã dính
   12/08: enum `REVIEW` thiếu trên Supabase → web build SSG chết 500. Sau mỗi
   migration mới, deploy tường minh từ `apps/api` (Git Bash):
-  `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" && pnpm prisma migrate deploy`.
+  `export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')" && pnpm prisma migrate deploy`.
+  (`tr -d '\r'`: `.env.production` sửa trên Windows có thể mang CRLF — đo 15/09;
+  thiếu nó thì giá trị export dính `\r` ở cuối.)
   Từ 14/09 `.env.local` trỏ Postgres Docker đúng như `.env.example` dặn; chuỗi
   Supabase CHỈ nằm ở `.env.production`. Trước reset máy `.env.local` từng trỏ
   thẳng Supabase prod, nên `pnpm dev`/`db:seed`/`db:migrate` ở máy đều chạm prod.

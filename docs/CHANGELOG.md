@@ -8,6 +8,76 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-15 — Seed trọn năm 2026 xong và lượt prod 1 (nhánh `chore/seed-buoc1-snapshot`, ff vào `main`)
+
+Thi công đủ 11 task của [plan 14/09](plans/2026-09-14-seed-khung-2026.md) theo
+[spec 14/09](specs/2026-09-14-seed-khung-2026-design.md). Mọi dòng seed nằm trong
+01/01–31/12/2026 và trước mốc "hôm nay" H (`SEED_HOM_NAY`). Bộ sinh là hàm thuần
+nhận H. Hình dạng huỷ và hoàn tiền khớp luồng thật của app. Có thêm enquiries và
+subscribers.
+
+**Chốt chặn trước khi ghi:**
+
+- mốc H hợp lệ;
+- sàn booking đã đi và sàn review, ném lỗi lúc import;
+- prod có đúng một admin trùng `ADMIN_EMAILS[0]`;
+- không seed chồng thế hệ H khác;
+- mật khẩu khách giả trên prod phải là giá trị riêng, đặt trong `.env.production`.
+
+`data:reset` kiểm admin prod trước khi xoá. `seed:verify` là script chỉ đọc, kiểm
+100 bất biến.
+
+**Lượt prod 1 (H = 2026-09-15), user xác nhận từng bước:**
+
+- Tập dượt trên database Docker tạm với đúng H.
+- `snapshot:export` sinh `docs/snapshots/2026-09-15/`; bản sao có PII nằm ở
+  `backups/`, gitignored.
+- `data:reset --apply` xoá 1992 dòng trong một transaction, 01:05:29–01:05:39
+  UTC; không ảnh mồ côi, giữ nguyên admin.
+- `db:seed` chạy 01:05:39–01:07:53 UTC, ghi:
+  - 120 khách giả, 689 booking, 709 payment event, 36 refund, 26 yêu cầu huỷ;
+  - 119 review, 66 enquiry kèm 93 ghi chú và 141 sự kiện trạng thái;
+  - 174 subscriber.
+- `seed:verify` báo 0 vi phạm trên 100 bất biến.
+- Truy vấn chỉ đọc: 1 admin, outbox 0 PENDING, 0 dòng lệch khung năm.
+- Web và api trả 200; admin trả 307 sang trang đăng nhập.
+- User tự kiểm các trang admin trên prod: ổn.
+
+**Review findings:**
+
+- Review từng task, kèm ba phần bổ sung cho Task 9. Sàn review và sàn booking đỏ
+  ở các mốc H sớm; nguyên nhân gốc là bốc khách không loại người đăng ký muộn.
+- Review cuối cả nhánh báo 1 Critical: admin ma trên prod, vì `db:seed` đọc
+  `ADMIN_EMAILS` của `.env.local`. Kèm 2 Important: seed chồng thế hệ H, và tài
+  liệu vận hành chưa ghi hành vi fail-closed.
+- Rà độ phủ nhánh được 90,3%, sau đó thêm test cho các nhánh ép được. Còn 5 vặt
+  ở vòng dư (R1–R5), trong đó runbook phải tách shell tập dượt Docker khỏi shell
+  prod.
+- Tất cả đã vá, kèm re-review.
+- Sau lượt prod, user bắt được menu tháng `/reports` còn bày 10–12/2025. Đã vá bằng
+  sàn cố định 01/2026 (`REPORTS_FIRST_MONTH`, spec Q10); `?month=` trước mốc rơi
+  về tháng hiện tại.
+- `.env.production` mang CRLF, nên lệnh export trong runbook và `CLAUDE.md` thêm
+  `tr -d '\r'`.
+- Hash `736d1a68` trong entry 10/09 là bản trước rebase, nay là `1e000074`.
+
+**Ngoài phạm vi, đã tách task:** `seed-demo-visits.ts` còn cửa sổ 11–12/2025;
+hydration mismatch ở `UserMenu` khi đã đăng nhập. Badge "−32%" trên card tour là
+do `tours.compare_at_price` của catalog chồng lên khuyến mãi của chuyến, để user
+quyết định.
+
+**CÒN TREO:**
+
+- Lượt prod 2 khoảng 03/11 theo spec §8.5, entry riêng.
+- Menu `/reports` trên prod đổi sau khi Vercel deploy `main`.
+- Mật khẩu demo mặc định cũ vẫn nằm trong lịch sử git, nhưng prod đã dùng mật
+  khẩu riêng.
+
+Tests after: `gate:int` xanh ở `ce576894` dưới watchdog, commit trống thấp nhất
+13,74 GB. Unit 3610 test (api 809 · web 1501 · admin 918 · contract 255 · mobile-ui
+52 · mobile 29 · ui 22 · tokens 18 · i18n 6), cùng test:int 496. Build 7/7 ·
+typecheck 13/13 · Biome 1129 file · RLS ✓ · tokens-only ✓.
+
 ## 2026-09-14 — Luật 9 bỏ viện dẫn hook nhắc-skill đã mất
 
 Đợt dọn plugin (entry dưới) để lại một chỗ doc lệch thực tế: **CLAUDE.md luật 9**
@@ -222,7 +292,7 @@ Giữ nguyên **982 dòng / 16 bảng**: 517 media_assets (alt còn đủ 517/51
 tour và 8 bảng con, 9 bài blog, 52 khe site media. Sau khi xoá: 0 ảnh mồ côi ·
 1 admin · 9 bài blog cùng một tác giả · 0 tour còn rating mồ côi.
 
-**Hai bản vá công cụ đi kèm** (`736d1a68`). `export-snapshot.mjs` chưa bao giờ
+**Hai bản vá công cụ đi kèm** (`1e000074`). `export-snapshot.mjs` chưa bao giờ
 sinh `keep-list.json` — file ấy viết tay một lần hồi 09/09 — trong khi
 `reset-operational-data.mjs` trỏ CỨNG vào thư mục `2026-09-09/`. Ghép hai lỗi:
 xuất snapshot mới bao nhiêu lần thì bước xoá vẫn im lặng đọc bản cũ. Nay export
