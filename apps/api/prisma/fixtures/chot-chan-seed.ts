@@ -1,11 +1,45 @@
 /**
- * Hai chốt chặn ĐỌC DB của `seed.ts`, viết thành hàm thuần để test được mà không cần DB (review
- * cuối nhánh 14/09/2026). `seed.ts` gọi cả hai ở đầu `main()`, TRƯỚC mọi lệnh ghi.
+ * Chốt chặn của `seed.ts`, viết thành hàm thuần để test được mà không cần DB (review cuối nhánh
+ * 14/09/2026). Hai chốt ĐỌC DB (`kiemTraAdminChoProd`, `kiemTraTheHeLich`) chạy ở đầu `main()`,
+ * TRƯỚC mọi lệnh ghi; chốt mật khẩu (`kiemTraMatKhauKhachChoProd`) chạy trước cả khi Prisma kết nối.
  */
 
 export interface KetQuaChotChan {
   ketQua: 'ok' | 'tu-choi';
   thongDiep: string;
+}
+
+/**
+ * Mật khẩu chung mặc định của khách giả — CHỈ cho Docker. Chuỗi này đã lộ trên GitHub (nhánh remote,
+ * từ 10/09/2026) nên prod không bao giờ được dùng nó.
+ */
+export const MAT_KHAU_KHACH_MAC_DINH = 'Nexora!Demo2026';
+
+/**
+ * Prod phải dùng mật khẩu khách giả RIÊNG: `db:seed` chỉ tự đọc `.env.local`, nên quên export
+ * `SEED_CUSTOMER_PASSWORD` từ `.env.production` là seed lặng lẽ rơi về mặc định công khai — ai cũng
+ * đăng nhập được 120 khách giả trên site sống. So sánh sau `trim()`, đúng như `seed.ts` băm mật khẩu.
+ *
+ * Thông điệp không in mật khẩu nào: log của lượt prod có thể bị chép vào CHANGELOG.
+ */
+export function kiemTraMatKhauKhachChoProd(input: {
+  laProd: boolean;
+  matKhau: string;
+}): KetQuaChotChan {
+  if (!input.laProd) {
+    return { ketQua: 'ok', thongDiep: 'Không phải prod — trống thì dùng mật khẩu mặc định.' };
+  }
+  const matKhau = input.matKhau.trim();
+  if (matKhau !== '' && matKhau !== MAT_KHAU_KHACH_MAC_DINH) {
+    return { ketQua: 'ok', thongDiep: 'Prod dùng mật khẩu khách giả riêng.' };
+  }
+  return {
+    ketQua: 'tu-choi',
+    thongDiep:
+      `SEED_CUSTOMER_PASSWORD ${matKhau === '' ? 'trống' : 'trùng mật khẩu mặc định công khai'} — prod phải ` +
+      'dùng mật khẩu riêng, chỉ đặt trong .env.production (gitignored): ' +
+      `export SEED_CUSTOMER_PASSWORD="$(grep '^SEED_CUSTOMER_PASSWORD=' .env.production | cut -d= -f2-)"`,
+  };
 }
 
 /**

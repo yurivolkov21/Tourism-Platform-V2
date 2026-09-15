@@ -45,7 +45,12 @@ import {
 } from '../src/modules/catalog/tour-costs.js';
 import { accountDisplayName } from '../src/modules/enquiries/enquiry-row.js';
 import * as catalog from './fixtures/catalog/index.js';
-import { kiemTraAdminChoProd, kiemTraTheHeLich } from './fixtures/chot-chan-seed.js';
+import {
+  kiemTraAdminChoProd,
+  kiemTraMatKhauKhachChoProd,
+  kiemTraTheHeLich,
+  MAT_KHAU_KHACH_MAC_DINH,
+} from './fixtures/chot-chan-seed.js';
 import { HOM_NAY, isoNgay, kiemTraMocChoProd } from './fixtures/khung-thoi-gian.js';
 import {
   bookingsGia,
@@ -192,6 +197,17 @@ if (kiemTraMoc.ketQua === 'tu-choi') {
 }
 if (kiemTraMoc.ketQua === 'canh-bao') console.warn(`⚠ ${kiemTraMoc.thongDiep}`);
 console.log(`[seed] mốc hôm nay H = ${isoNgay(HOM_NAY.getTime())}`);
+// ── Chốt chặn mật khẩu khách giả ────────────────────────────────────────────
+// Mặc định trong code đã lộ trên GitHub: prod phải export mật khẩu riêng từ
+// `.env.production`, không thì dừng ở đây — trước khi Prisma kết nối.
+const kiemTraMatKhau = kiemTraMatKhauKhachChoProd({
+  laProd: LA_PROD,
+  matKhau: process.env.SEED_CUSTOMER_PASSWORD ?? '',
+});
+if (kiemTraMatKhau.ketQua === 'tu-choi') {
+  console.error(`\n✖ TỪ CHỐI: ${kiemTraMatKhau.thongDiep}\n`);
+  process.exit(1);
+}
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString }),
@@ -388,9 +404,10 @@ async function main(): Promise<void> {
   //     đăng nhập dùng để verify, sai là cả bộ tài khoản không vào được mà
   //     KHÔNG có lỗi nào báo ra — chỉ là "sai mật khẩu" ở màn login.
   //
-  //     Hash KHÔNG nằm trong fixture: repo này public. Mật khẩu đọc từ env,
-  //     mặc định là chuỗi demo ghi trong `.env.example`.
-  const matKhau = process.env.SEED_CUSTOMER_PASSWORD?.trim() || 'Nexora!Demo2026';
+  //     Hash KHÔNG nằm trong fixture: repo này public. Mật khẩu đọc từ env; trống thì
+  //     rơi về mặc định công khai `MAT_KHAU_KHACH_MAC_DINH` — chỉ Docker tới được dòng
+  //     này với env trống, vì prod đã bị chốt chặn mật khẩu ở đầu file từ chối.
+  const matKhau = process.env.SEED_CUSTOMER_PASSWORD?.trim() || MAT_KHAU_KHACH_MAC_DINH;
   const { count: soKhach } = await prisma.user.createMany({
     data: khachGia.map((k) => ({
       id: k.id,

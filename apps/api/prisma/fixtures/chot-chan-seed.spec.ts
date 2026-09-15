@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { sinhLich } from './catalog/departures-2026.js';
-import { kiemTraAdminChoProd, kiemTraTheHeLich } from './chot-chan-seed.js';
+import {
+  kiemTraAdminChoProd,
+  kiemTraMatKhauKhachChoProd,
+  kiemTraTheHeLich,
+  MAT_KHAU_KHACH_MAC_DINH,
+} from './chot-chan-seed.js';
 import { docMocHomNay } from './khung-thoi-gian.js';
 
 describe('kiemTraAdminChoProd', () => {
@@ -86,5 +91,36 @@ describe('kiemTraTheHeLich', () => {
     const kq = kiemTraTheHeLich({ idChuyenHienCo: cu, idChuyenFixture: moi });
     expect(kq.ketQua).toBe('tu-choi');
     expect(kq.soLa).toBeGreaterThan(0);
+  });
+});
+
+describe('kiemTraMatKhauKhachChoProd', () => {
+  const rieng = 'mat-khau-rieng-cho-prod';
+
+  it('không phải prod → ok, kể cả khi mật khẩu trống (Docker dùng mặc định)', () => {
+    expect(kiemTraMatKhauKhachChoProd({ laProd: false, matKhau: '' }).ketQua).toBe('ok');
+  });
+
+  it('prod mà SEED_CUSTOMER_PASSWORD trống hoặc chỉ có khoảng trắng → từ chối', () => {
+    expect(kiemTraMatKhauKhachChoProd({ laProd: true, matKhau: '' }).ketQua).toBe('tu-choi');
+    expect(kiemTraMatKhauKhachChoProd({ laProd: true, matKhau: '   ' }).ketQua).toBe('tu-choi');
+  });
+
+  it('prod mà mật khẩu trùng mặc định công khai (kể cả có khoảng trắng hai đầu) → từ chối', () => {
+    expect(
+      kiemTraMatKhauKhachChoProd({ laProd: true, matKhau: ` ${MAT_KHAU_KHACH_MAC_DINH} ` }).ketQua,
+    ).toBe('tu-choi');
+  });
+
+  it('prod với mật khẩu riêng → ok', () => {
+    expect(kiemTraMatKhauKhachChoProd({ laProd: true, matKhau: rieng }).ketQua).toBe('ok');
+  });
+
+  it('thông điệp không in mật khẩu nào ra log', () => {
+    for (const matKhau of ['', MAT_KHAU_KHACH_MAC_DINH, rieng]) {
+      const { thongDiep } = kiemTraMatKhauKhachChoProd({ laProd: true, matKhau });
+      expect(thongDiep).not.toContain(MAT_KHAU_KHACH_MAC_DINH);
+      expect(thongDiep).not.toContain(rieng);
+    }
   });
 });
