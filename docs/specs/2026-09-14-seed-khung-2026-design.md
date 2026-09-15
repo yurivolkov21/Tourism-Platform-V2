@@ -246,7 +246,7 @@ Script reset đã xoá sẵn cả bốn bảng này — không phải sửa.
 
 | Tầng | Chạy ở đâu | Vai trò |
 | --- | --- | --- |
-| Unit fixture — `apps/api/prisma/fixtures/**/*.spec.ts` | `pnpm gate` (vitest unit đã quét thư mục này) | Bất biến chi tiết chạy ở hai mốc 20/09 và 03/11; `khung-ngay.spec.ts` quét thêm 30 mốc (mỗi 7 ngày từ 01/06 tới 01/12) cho khung ngày và các sàn cấu trúc. Sàn booking đã đi và sàn review ném lỗi lúc import nếu hụt, nên seed dừng trước mọi lệnh ghi. Viết TRƯỚC, phải đỏ trên bộ sinh hiện tại |
+| Unit fixture — `apps/api/prisma/fixtures/**/*.spec.ts` | `pnpm gate` (vitest unit đã quét thư mục này) | Bất biến chi tiết chạy ở hai mốc 20/09 và 03/11; `khung-ngay.spec.ts` quét 30 mốc (mỗi 7 ngày từ 01/06 tới 01/12, gồm cả hai mốc cố định) cho khung ngày và các sàn cấu trúc. Sàn booking đã đi và sàn review ném lỗi lúc import nếu hụt, nên seed dừng trước mọi lệnh ghi. Viết TRƯỚC, phải đỏ trên bộ sinh hiện tại |
 | Nghiệm thu SQL — `apps/api/scripts/verify-seed.mjs` (chỉ đọc, §7) | Docker sau khi seed; prod sau mỗi lượt chạy | Bất biến trên dữ liệu thật trong DB, gồm cả thứ seed tính lúc chèn (`cost_per_person`, `seats_booked`, rating) |
 | Smoke giao diện | Admin và web local trỏ Docker | `/enquiries`, `/subscribers`, `/cancellations`, `/payment-events`, `/reports`, `/account` tải được, không lỗi validate |
 
@@ -346,14 +346,18 @@ công khai — ai cũng đăng nhập được 120 khách giả trên site sốn
 vắng — site mất lịch khởi hành và sao đánh giá khoảng 5–10 phút tới khi ISR sinh
 lại.
 
-**Bước 0 — tập dượt Docker với ĐÚNG H của lượt prod** (cùng ngày chạy):
-`prisma migrate reset` → `db:seed` → `seed:verify` 0 vi phạm. Tuỳ chọn: thử chốt
-chặn mà không tốn I/O mạng bằng host giả, ví dụ
-`DATABASE_URL=postgresql://u:p@guard-check.supabase.co:5432/x`, cho ba ca: thiếu
-cờ; có cờ mà thiếu `SEED_HOM_NAY`; H = hôm nay + 2 ngày. Cả ba phải dừng trước
-khi Prisma kết nối.
+**Bước 0 — tập dượt Docker với ĐÚNG H của lượt prod** (cùng ngày chạy), trong một
+shell RIÊNG mở trước và KHÔNG BAO GIỜ export `DATABASE_URL` của Supabase —
+`prisma.config.ts` lấy `DATABASE_URL ?? localhost`, nên chạy `prisma migrate reset`
+trong shell prod là reset nhầm prod. Trình tự: `prisma migrate reset` → `db:seed`
+→ `seed:verify` 0 vi phạm. Tuỳ chọn: thử chốt chặn mà không tốn I/O mạng bằng host
+giả, ví dụ `DATABASE_URL=postgresql://u:p@guard-check.supabase.co:5432/x` đặt ngay
+trước lệnh (không export), cho ba ca: thiếu cờ; có cờ mà thiếu `SEED_HOM_NAY`;
+H = hôm nay + 2 ngày. Cả ba phải dừng trước khi Prisma kết nối. Xong thì đóng shell
+tập dượt.
 
-Từ `apps/api`, trong Git Bash, TRONG MỘT shell duy nhất:
+Từ `apps/api`, trong Git Bash, ở MỘT shell prod mới — dùng suốt lượt chạy, không
+chạy lệnh Docker hay `prisma migrate` nào trong shell này:
 
 ```bash
 export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)"
@@ -369,17 +373,22 @@ pnpm seed:verify
 1. `snapshot:export` sinh `docs/snapshots/<ngày>/` (commit được, không PII) và
    `backups/<ngày>/` (gitignored). `ADMIN_EMAILS` export ở trên quyết định admin
    được giữ trong keep-list.
-2. `data:reset` chạy khô trước; soát số dòng rồi mới chạy thật.
+2. `data:reset` chạy khô trước; soát số dòng rồi mới chạy thật. Trên prod cả hai
+   lượt đều dừng nếu admin trong keep-list không trùng `ADMIN_EMAILS[0]` — kiểm
+   trước khi xoá bất cứ gì.
 3. Sau seed: `seed:verify` 0 vi phạm (gồm "số tài khoản ADMIN khác 1"); đo lại
    truy vấn khung ngày của §1 (0 dòng trước 2026, 0 dòng sau 31/12); `outbox` 0
    PENDING.
 4. Trang web và admin trả 200 — gọi mỗi URL hai lần vì stale-while-revalidate
    trả bản cũ ở lần đầu. User tự đăng nhập admin kiểm các trang admin (quyết định
    14/09: smoke admin làm trên prod, không nâng thêm tài khoản nào lên admin).
-5. Chạy lại khi có sự cố: dùng lại đúng `SEED_HOM_NAY` đã export, không gõ lại
-   `date`. Seed dừng với `sàn booking đã đi` hoặc `sàn review` thì chưa có dòng nào
-   bị ghi — chạy lại với H = hôm qua (chốt chặn mốc vẫn nhận). Seed từ chối vì
-   admin hoặc vì thế hệ H thì làm theo thông điệp, không tìm cách vượt chốt.
+5. Chạy lại khi có sự cố: vẫn trong shell prod, dùng lại đúng `SEED_HOM_NAY` đã
+   export, không gõ lại `date`. Seed dừng với `sàn booking đã đi` hoặc `sàn review`
+   thì chưa có dòng nào bị ghi — chỉ `export SEED_HOM_NAY=<hôm qua>` rồi chạy lại
+   `pnpm db:seed -- --toi-biet-day-la-production` và `pnpm seed:verify` (chốt chặn
+   mốc vẫn nhận H = hôm qua). Muốn tập dượt lại với H mới thì làm ở shell tập dượt
+   riêng, không bao giờ trong shell prod. Seed từ chối vì admin hoặc vì thế hệ H thì
+   làm theo thông điệp, không tìm cách vượt chốt.
 
 ### 8.4 Merge
 
