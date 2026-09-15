@@ -50,6 +50,11 @@ describe('khung thời gian', () => {
     expect(() => docMocHomNay(giaTri)).toThrow();
   });
 
+  it('ngày không có thật báo đúng thông điệp cho người vận hành, không phải RangeError trần', () => {
+    expect(() => docMocHomNay('2026-13-01')).toThrow(/không phải một ngày có thật/);
+    expect(() => docMocHomNay('2026-09-00')).toThrow(/không phải một ngày có thật/);
+  });
+
   it('HOM_NAY đọc SEED_HOM_NAY; chuỗi rỗng rơi về ngày ghim', async () => {
     vi.stubEnv('SEED_HOM_NAY', '2026-11-03');
     vi.resetModules();
