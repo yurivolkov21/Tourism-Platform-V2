@@ -1,5 +1,6 @@
 import { emailOTPClient, inferAdditionalFields } from 'better-auth/client/plugins';
 import { createAuthClient } from 'better-auth/react';
+import { useSyncExternalStore } from 'react';
 import { apiOrigin } from '@/lib/api/env';
 
 /**
@@ -30,4 +31,37 @@ export const authClient = createAuthClient({
   ],
 });
 
-export const { useSession } = authClient;
+type SessionState = ReturnType<typeof authClient.useSession>;
+
+// Ba hàm ở module scope để identity ổn định (cùng khuôn `sortable.tsx` của
+// @tourism/ui): subscription không bao giờ báo đổi nên `useSyncExternalStore` trả
+// snapshot server (`false`) lúc render ở server VÀ lúc hydrate, rồi `true` từ đó về sau.
+const subscribeToNothing = () => () => {};
+const getIsHydrated = () => true;
+const getIsHydratedOnServer = () => false;
+
+/**
+ * `useSession` an toàn cho hydrate — mọi island session (ADR-0017 §2) đọc QUA ĐÂY,
+ * đừng gọi thẳng `authClient.useSession()`.
+ *
+ * Lỗi 15/09 (navbar ở /account): server không bao giờ biết session (§2 cấm đọc session
+ * ở layout public), atom session của Better Auth phía server luôn là `{ data: null,
+ * isPending: true }` nên HTML luôn là nhánh "Log in". Nhưng `useStore` của
+ * `better-auth/react` 1.6.23 (`dist/client/react/react-store.mjs`) đưa CÙNG một getter
+ * sống làm cả `getSnapshot` lẫn `getServerSnapshot`, nên lượt hydrate đọc giá trị atom
+ * đang có ở client chứ không phải giá trị server đã render. Atom tự mount ở lần
+ * `store.get()` đầu tiên trong render (nanostores) và bắn `/get-session`; Next hydrate
+ * trong `startTransition` (nhường luồng, chờ chunk), nên island nào hydrate SAU khi
+ * request đó về sẽ render avatar đè lên HTML "Log in" → "Hydration failed…".
+ *
+ * Chữa: lượt render ở server và lượt hydrate trả đúng trạng thái khởi tạo của atom
+ * (thứ server đã render), hydrate xong React tự render lại với session thật. Island
+ * mount SAU hydrate (điều hướng client) đọc `getSnapshot` nên thấy session ngay —
+ * vì vậy KHÔNG dùng `useEffect` + state, cách đó chớp "Log in" ở mọi lần mount.
+ */
+export function useSession(): SessionState {
+  const session = authClient.useSession();
+  const hydrated = useSyncExternalStore(subscribeToNothing, getIsHydrated, getIsHydratedOnServer);
+  if (hydrated) return session;
+  return { ...session, data: null, error: null, isPending: true, isRefetching: false };
+}
