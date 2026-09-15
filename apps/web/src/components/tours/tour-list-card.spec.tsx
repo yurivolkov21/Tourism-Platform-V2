@@ -80,8 +80,9 @@ describe('hợp đồng số dòng — thẻ không bao giờ giãn theo độ d
 });
 
 describe('hai nhánh huy hiệu', () => {
-  it('có giá gạch → hiện phần trăm giảm', () => {
-    render(<TourListCard tour={card({ compareAtPrice: '3000000.00' })} />);
+  it('khuyến mãi thật (priceFrom dưới basePrice) → hiện phần trăm giảm', () => {
+    // priceFrom 2.400.000 trên basePrice 3.000.000 → giảm đúng 20%.
+    render(<TourListCard tour={card({ basePrice: '3000000.00' })} />);
     expect(screen.getByText('−20%')).toBeInTheDocument();
     expect(screen.queryByText('Featured')).not.toBeInTheDocument();
   });
@@ -92,7 +93,7 @@ describe('hai nhánh huy hiệu', () => {
   });
 
   it('vừa giảm giá vừa isFeatured → CHỈ hiện giảm giá, sự thật về giá thắng nhãn tiếp thị', () => {
-    render(<TourListCard tour={card({ compareAtPrice: '3000000.00', isFeatured: true })} />);
+    render(<TourListCard tour={card({ basePrice: '3000000.00', isFeatured: true })} />);
     expect(screen.getByText('−20%')).toBeInTheDocument();
     expect(screen.queryByText('Featured')).not.toBeInTheDocument();
   });
@@ -101,6 +102,35 @@ describe('hai nhánh huy hiệu', () => {
     render(<TourListCard tour={card()} />);
     expect(screen.queryByText('Featured')).not.toBeInTheDocument();
     expect(screen.queryByText(/%$/)).not.toBeInTheDocument();
+  });
+
+  /**
+   * Ca user báo 15/09/2026 trên /tours: thẻ "Hanoi Old Quarter Street Food by
+   * Night" in "$28 was $42 −32%". $42 là giá niêm yết cấp tour — không ai trả —
+   * bị sweep 19/08 chồng lên; khuyến mãi thật chỉ là $28.35 trên giá gốc $35.
+   */
+  it('giá niêm yết của tour KHÔNG còn là giá gạch: gạch basePrice, % theo khuyến mãi thật', () => {
+    render(
+      <TourListCard
+        tour={card({
+          currency: 'USD',
+          basePrice: '35.00',
+          priceFrom: '28.35',
+          compareAtPrice: '42.00',
+        })}
+      />,
+    );
+    expect(screen.getByText('$28')).toBeInTheDocument();
+    expect(screen.getByText('$35')).toBeInTheDocument();
+    expect(screen.getByText('−19%')).toBeInTheDocument();
+    expect(screen.queryByText('$42')).toBeNull();
+    expect(screen.queryByText('−32%')).toBeNull();
+  });
+
+  it('chỉ có giá niêm yết, không khuyến mãi thật → không gạch, huy hiệu trả về Featured', () => {
+    render(<TourListCard tour={card({ compareAtPrice: '3000000.00', isFeatured: true })} />);
+    expect(screen.getByText('Featured')).toBeInTheDocument();
+    expect(screen.queryByText(/−\d+%/)).toBeNull();
   });
 });
 

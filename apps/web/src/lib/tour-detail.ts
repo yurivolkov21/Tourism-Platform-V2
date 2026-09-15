@@ -1,4 +1,4 @@
-import { departureStatus } from './tours';
+import { departureStatus, strikePrice } from './tours';
 
 /** Trần thumb: 7×64 + 6×8 = 496 ≤ 541 (cạnh ảnh vuông). Ô thứ 8 thành 568 > 541. */
 export const GALLERY_THUMB_SLOTS = 7;
@@ -304,49 +304,54 @@ export function monthSeason(
 }
 
 /**
- * Giá gạch DUY NHẤT của một đợt — sweep giá 19/08.
+ * Giá gạch DUY NHẤT của một đợt — áp `strikePrice` (`lib/tours.ts`) cho từng đợt.
  *
- * Dữ liệu có HAI neo chồng nhau: `tour.compareAtPrice` (giá niêm yết, vd 149
- * trên base 129) và `departure.compareAtPrice` (seed đặt = base cho đợt thấp
- * điểm: 119 neo 129). Trước sweep, hero gạch theo neo tour ("from $129 was $149
- * −13%") còn khối chọn ngày/rail/bảng gạch theo neo đợt ("$119 was $129 −7%")
- * — cùng một tour mà hai "giá gốc", và đợt rẻ hơn lại hiện % giảm nhỏ hơn.
+ * Luật hiện hành là quyết định user 15/09/2026: **chỉ gạch khi có khuyến mãi
+ * thật** — gạch `basePrice` khi đợt rẻ hơn nó, hoặc neo riêng của đợt khi neo cao
+ * hơn giá trả; lấy số cao nhất, không có thì không gạch. `tour.compareAtPrice`
+ * (giá niêm yết) BỊ BỎ QUA.
  *
- * Quy tắc: mỗi đợt có ĐÚNG MỘT giá gạch = **neo cao nhất áp được** cho nó,
- * `max(neo đợt, neo tour)`, và chỉ giữ khi thật sự cao hơn giá khách trả
- * (không có chuyện gạch "giảm 0%"). Neo tour là giá niêm yết đã công bố nên
- * áp cho mọi đợt là trung thực; đợt cao điểm có neo riêng cao hơn thì giữ neo
- * riêng. Áp MỘT LẦN ở `fetchTourDetail` để hero, panel ảnh, rail, strip, bảng
- * Departures và modal All dates cùng đọc một con số — không sửa lẻ từng chỗ.
+ * Nó THAY luật "neo cao nhất" của sweep giá 19/08 — `max(neo đợt, neo tour)`, áp
+ * giá niêm yết cho mọi đợt với lý lẽ "giá đã công bố nên trung thực". Thực tế giá
+ * niêm yết là con số không ai trả: chồng nó lên đợt khuyến mãi làm chip phóng đại
+ * mức giảm (card /tours in "$28 was $42 −32%" cho đợt $28.35 trên base $35, mức
+ * thật −19%), và gạch cả những đợt đúng giá gốc vốn chẳng giảm gì.
+ *
+ * Phần còn đúng của sweep 19/08 giữ nguyên: mỗi đợt ĐÚNG MỘT giá gạch, áp MỘT LẦN
+ * ở `fetchTourDetail` để hero, panel ảnh, rail, strip, bảng Departures, modal All
+ * dates và bước chọn ngày của `/book` cùng đọc một con số — không sửa lẻ từng chỗ.
+ * Sau hàm này `departure.compareAtPrice` là GIÁ GẠCH ĐỂ HIỂN THỊ, không còn là neo
+ * thô từ API.
  */
 export function resolveDepartureAnchors<
   D extends { effectivePrice: string; compareAtPrice: string | null },
-  T extends { compareAtPrice: string | null; departures: readonly D[] },
+  T extends { basePrice: string; departures: readonly D[] },
 >(tour: T): T {
-  const tourAnchor = tour.compareAtPrice === null ? null : Number(tour.compareAtPrice);
   return {
     ...tour,
-    departures: tour.departures.map((d) => {
-      const own = d.compareAtPrice === null ? null : Number(d.compareAtPrice);
-      const candidates = [own, tourAnchor].filter((v): v is number => v !== null);
-      const anchor = candidates.length > 0 ? Math.max(...candidates) : null;
-      const compareAtPrice =
-        anchor !== null && anchor > Number(d.effectivePrice) ? anchor.toFixed(2) : null;
-      return { ...d, compareAtPrice };
-    }),
+    departures: tour.departures.map((d) => ({
+      ...d,
+      compareAtPrice: strikePrice({
+        price: d.effectivePrice,
+        basePrice: tour.basePrice,
+        anchor: d.compareAtPrice,
+      }),
+    })),
   };
 }
 
 /**
  * Giá "from" ở hero = đợt RẺ NHẤT còn chỗ (hoà thì đợt sớm hơn — thứ tự mảng),
- * kèm giá gạch của CHÍNH đợt đó — nên hero nói đúng con số khách sẽ thấy khi
- * chọn đợt rẻ nhất. Không có đợt (hoặc toàn hết chỗ) → `basePrice` + neo tour.
- * Trước sweep hero in `basePrice` (129) dù có đợt 119: "from" mà không phải
- * giá thấp nhất là nói sai.
+ * kèm giá gạch của CHÍNH đợt đó (đã qua `resolveDepartureAnchors`) — nên hero nói
+ * đúng con số khách sẽ thấy khi chọn đợt rẻ nhất. Trước sweep 19/08 hero in
+ * `basePrice` (129) dù có đợt 119: "from" mà không phải giá thấp nhất là nói sai.
+ *
+ * Không có đợt nào còn chỗ → `basePrice` và KHÔNG gạch (luật 15/09/2026). Bản 19/08
+ * rơi về neo tour ở nhánh này, tức in giá niêm yết cạnh một tour chẳng có khuyến
+ * mãi nào để mà giảm.
  */
 export function heroPrice(tour: {
   basePrice: string;
-  compareAtPrice: string | null;
   departures: readonly {
     effectivePrice: string;
     compareAtPrice: string | null;
@@ -361,9 +366,5 @@ export function heroPrice(tour: {
     }
   }
   if (cheapest) return { price: cheapest.effectivePrice, compareAtPrice: cheapest.compareAtPrice };
-  const anchor =
-    tour.compareAtPrice !== null && Number(tour.compareAtPrice) > Number(tour.basePrice)
-      ? tour.compareAtPrice
-      : null;
-  return { price: tour.basePrice, compareAtPrice: anchor };
+  return { price: tour.basePrice, compareAtPrice: null };
 }

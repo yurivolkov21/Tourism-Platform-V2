@@ -10,16 +10,18 @@ import { TourHero } from './tour-hero';
 
 // Sweep giá 19/08 (user chốt): hero BÁM ĐỢT ĐANG CHỌN — cùng một con số với khối
 // chọn ngày bên dưới; không có provider (`/book`, `/enquire`) thì rơi về "from"
-// đợt rẻ nhất còn chỗ. Fixture đã qua `resolveDepartureAnchors` (một giá gạch
-// duy nhất 149 cho mọi đợt) như dữ liệu thật ra khỏi `fetchTourDetail`.
-const dep = (id: string, price: string, seatsLeft = 10): DepartureVM =>
+// đợt rẻ nhất còn chỗ. Fixture đã qua `resolveDepartureAnchors` như dữ liệu thật
+// ra khỏi `fetchTourDetail`, theo luật giá gạch 15/09/2026 (chỉ gạch khi có
+// khuyến mãi thật): đợt đúng base 129 KHÔNG gạch, đợt 119 gạch base 129 — còn
+// giá niêm yết 149 của tour không hiện ở nhánh nào.
+const dep = (id: string, price: string, compareAtPrice: string | null = null): DepartureVM =>
   ({
     id,
     startDate: '2026-09-19',
     endDate: '2026-09-20',
     effectivePrice: price,
-    compareAtPrice: '149.00',
-    seatsLeft,
+    compareAtPrice,
+    seatsLeft: 10,
     status: 'OPEN',
   }) as unknown as DepartureVM;
 
@@ -38,7 +40,7 @@ const TOUR = {
   basePrice: '129.00',
   compareAtPrice: '149.00',
   badges: [],
-  departures: [dep('sep', '129.00'), dep('oct', '119.00'), dep('nov', '129.00')],
+  departures: [dep('sep', '129.00'), dep('oct', '119.00', '129.00'), dep('nov', '129.00')],
 } as unknown as TourDetailVM;
 
 /** Nút chọn đợt tối giản — thay cho DepartureStrip để test không kéo cả strip. */
@@ -64,7 +66,8 @@ describe('TourHero — giá bám đợt đang chọn', () => {
     );
     expect(screen.getByText('$129')).toBeInTheDocument();
     expect(screen.queryByText('from')).toBeNull();
-    expect(screen.getByText('−13%')).toBeInTheDocument();
+    // Đợt đúng giá gốc: không có khuyến mãi thật nên không có chip giảm giá.
+    expect(screen.queryByText(/−\d+%/)).toBeNull();
   });
 
   it('chọn đợt khác → hero đổi theo đúng giá + % giảm của đợt đó', async () => {
@@ -77,20 +80,21 @@ describe('TourHero — giá bám đợt đang chọn', () => {
     );
     await user.click(screen.getByRole('button', { name: 'pick oct' }));
     expect(screen.getByText('$119')).toBeInTheDocument();
-    expect(screen.getByText('−20%')).toBeInTheDocument();
+    // floor((129 − 119) / 129 × 100) = 7
+    expect(screen.getByText('−7%')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'pick sep' }));
     expect(screen.getByText('$129')).toBeInTheDocument();
-    expect(screen.getByText('−13%')).toBeInTheDocument();
+    expect(screen.queryByText(/−\d+%/)).toBeNull();
   });
 
   it('không có provider (/book, /enquire) → "from" + đợt rẻ nhất còn chỗ', () => {
     render(<TourHero tour={TOUR} />);
     expect(screen.getByText('from')).toBeInTheDocument();
     expect(screen.getByText('$119')).toBeInTheDocument();
-    expect(screen.getByText('−20%')).toBeInTheDocument();
+    expect(screen.getByText('−7%')).toBeInTheDocument();
   });
 
-  it('mọi đợt hết chỗ → không chọn được đợt nào → "from" + basePrice', () => {
+  it('mọi đợt hết chỗ → "from" + basePrice, KHÔNG gạch giá niêm yết của tour', () => {
     const soldOut = {
       ...TOUR,
       departures: TOUR.departures.map((d) => ({ ...d, seatsLeft: 0 })),
@@ -102,5 +106,7 @@ describe('TourHero — giá bám đợt đang chọn', () => {
     );
     expect(screen.getByText('from')).toBeInTheDocument();
     expect(screen.getByText('$129')).toBeInTheDocument();
+    expect(screen.queryByText('$149')).toBeNull();
+    expect(screen.queryByText(/−\d+%/)).toBeNull();
   });
 });

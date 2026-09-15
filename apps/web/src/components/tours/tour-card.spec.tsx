@@ -81,12 +81,20 @@ describe('TourCard — một vùng bấm duy nhất', () => {
 });
 
 describe('TourCard — giá và rating ở các nhánh nullable', () => {
-  it('có giá gạch thì hiện cả hai giá và chip phần trăm giảm', () => {
-    render(<TourCard tour={make({ compareAtPrice: '160.00' })} />);
+  it('khuyến mãi thật (priceFrom dưới basePrice) → gạch basePrice và hiện chip phần trăm giảm', () => {
+    render(<TourCard tour={make({ basePrice: '160.00', priceFrom: '129.00' })} />);
     expect(screen.getByText('$129')).toBeInTheDocument();
     expect(screen.getByText('$160')).toBeInTheDocument();
     // (160-129)/160 = 19,3% → làm tròn xuống 19.
     expect(screen.getByText('−19%')).toBeInTheDocument();
+  });
+
+  it('chỉ có giá niêm yết của tour, không khuyến mãi thật → không gạch, không chip', () => {
+    // Luật giá gạch 15/09/2026: giá niêm yết không ai trả nên không phải "giá cũ".
+    render(<TourCard tour={make({ compareAtPrice: '160.00' })} />);
+    expect(screen.queryByText('$160')).toBeNull();
+    expect(screen.queryByText(/−\d+%/)).toBeNull();
+    expect(screen.getByText('per person')).toBeInTheDocument();
   });
 
   it('không giá gạch thì hiện đơn vị "per person" thay vào chỗ đó', () => {
@@ -157,16 +165,19 @@ describe('TourCard — dải chặng khi tour đi nhiều nơi', () => {
 });
 
 // 19/08: card in `priceFrom` (giá đợt rẻ nhất, API tính) chứ không `basePrice`.
+// 15/09/2026: giá gạch là `basePrice` khi priceFrom thấp hơn nó — giá niêm yết của
+// tour (`compareAtPrice`) không còn hiện.
 describe('TourCard — giá "from" là priceFrom', () => {
-  it('priceFrom thấp hơn basePrice → in priceFrom và % giảm tính trên priceFrom', () => {
+  it('priceFrom thấp hơn basePrice → in priceFrom, gạch basePrice, % tính trên hai số đó', () => {
     render(
       <TourCard
         tour={make({ basePrice: '129.00', priceFrom: '119.00', compareAtPrice: '149.00' })}
       />,
     );
     expect(screen.getByText('$119')).toBeInTheDocument();
-    expect(screen.queryByText('$129')).toBeNull();
-    // floor((149-119)/149*100) = 20
-    expect(screen.getByText(/−20%/)).toBeInTheDocument();
+    expect(screen.getByText('$129')).toBeInTheDocument();
+    expect(screen.queryByText('$149')).toBeNull();
+    // floor((129-119)/129*100) = floor(7,75) = 7
+    expect(screen.getByText('−7%')).toBeInTheDocument();
   });
 });

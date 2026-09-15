@@ -331,11 +331,12 @@ describe('policyEyebrow', () => {
   });
 });
 
-// Sweep giá 19/08 — hai neo giá chồng nhau (tour 149 → base 129 → đợt thấp điểm
-// 119 neo 129) khiến hero nói "from $129 was $149 −13%" còn khối chọn ngày nói
-// "$119 was $129 7% off". Quy tắc thống nhất: mỗi đợt có ĐÚNG MỘT giá gạch =
-// neo cao nhất áp cho nó (max của neo đợt và neo tour); hero "from" = đợt rẻ
-// nhất còn chỗ, kèm neo của chính đợt đó.
+// Giá gạch — quyết định user 15/09/2026, THAY luật "neo cao nhất" của sweep giá
+// 19/08 (max của neo đợt và neo tour): CHỈ gạch khi có khuyến mãi THẬT. Giá niêm
+// yết cấp tour (149 trên base 129) không ai trả nên không còn chồng lên đợt nào —
+// đợt đúng base không gạch, đợt thấp điểm 119 gạch base 129, đợt có neo riêng cao
+// hơn giá của nó giữ neo riêng. Hero "from" = đợt rẻ nhất còn chỗ, kèm giá gạch
+// của chính đợt đó; không còn đợt nào thì basePrice, không gạch.
 const PRICED_TOUR = {
   basePrice: '129.00',
   compareAtPrice: '149.00',
@@ -365,42 +366,63 @@ const PRICED_TOUR = {
 };
 
 describe('resolveDepartureAnchors', () => {
-  it('đợt không có neo riêng → nhận neo tour; đợt có neo riêng thấp hơn neo tour → lấy neo tour (cao nhất)', () => {
+  it('đợt đúng giá gốc → KHÔNG gạch dù tour có giá niêm yết; đợt thấp điểm → gạch basePrice', () => {
     const t = resolveDepartureAnchors(PRICED_TOUR);
-    expect(t.departures.map((d) => d.compareAtPrice)).toEqual(['149.00', '149.00', '149.00']);
+    expect(t.departures.map((d) => d.compareAtPrice)).toEqual([null, '129.00', null]);
+    // DTO giữ nguyên: web chỉ thôi HIỂN THỊ giá niêm yết, không xoá nó khỏi dữ liệu.
+    expect(t.compareAtPrice).toBe('149.00');
+    expect(t.basePrice).toBe('129.00');
   });
 
-  it('neo đợt CAO HƠN neo tour (đợt cao điểm) → giữ neo đợt', () => {
+  it('đợt dưới giá gốc mà KHÔNG có neo riêng → vẫn gạch basePrice (khuyến mãi thật)', () => {
+    // Ca user báo 15/09/2026: đợt khuyến mãi $28.35 trên base $35, tour niêm yết $42.
+    const t = resolveDepartureAnchors({
+      basePrice: '35.00',
+      compareAtPrice: '42.00',
+      departures: [
+        {
+          id: 'promo',
+          startDate: '2026-10-03',
+          effectivePrice: '28.35',
+          compareAtPrice: null,
+          seatsLeft: 8,
+        },
+      ],
+    });
+    expect(t.departures[0]?.compareAtPrice).toBe('35.00');
+  });
+
+  it('đợt có neo riêng CAO HƠN giá của nó → giữ neo riêng, kể cả khi giá niêm yết tour cao hơn nữa', () => {
+    // Đợt cao điểm 139 (trên base 129) mang neo riêng 145; tour niêm yết 149.
     const t = resolveDepartureAnchors({
       ...PRICED_TOUR,
       departures: [
         {
           id: 'peak',
           startDate: '2026-12-30',
-          effectivePrice: '199.00',
-          compareAtPrice: '229.00',
+          effectivePrice: '139.00',
+          compareAtPrice: '145.00',
           seatsLeft: 4,
         },
       ],
     });
-    expect(t.departures[0]?.compareAtPrice).toBe('229.00');
+    expect(t.departures[0]?.compareAtPrice).toBe('145.00');
   });
 
-  it('neo không cao hơn giá thật → null (không gạch giá "giảm 0%")', () => {
+  it('giá cao điểm trên base không có neo, hoặc neo không cao hơn giá trả → không gạch', () => {
     const t = resolveDepartureAnchors({
-      basePrice: '129.00',
-      compareAtPrice: '129.00',
+      ...PRICED_TOUR,
       departures: [
         {
           id: 'a',
-          startDate: '2026-09-19',
-          effectivePrice: '129.00',
+          startDate: '2026-12-24',
+          effectivePrice: '139.00',
           compareAtPrice: null,
           seatsLeft: 1,
         },
         {
           id: 'b',
-          startDate: '2026-09-20',
+          startDate: '2026-12-25',
           effectivePrice: '139.00',
           compareAtPrice: '139.00',
           seatsLeft: 1,
@@ -409,42 +431,59 @@ describe('resolveDepartureAnchors', () => {
     });
     expect(t.departures.map((d) => d.compareAtPrice)).toEqual([null, null]);
   });
-
-  it('tour không có neo, đợt không có neo → null; các field khác giữ nguyên', () => {
-    const t = resolveDepartureAnchors({ ...PRICED_TOUR, compareAtPrice: null });
-    expect(t.departures[0]?.compareAtPrice).toBeNull();
-    expect(t.departures[1]?.compareAtPrice).toBe('129.00');
-    expect(t.basePrice).toBe('129.00');
-  });
 });
 
 describe('heroPrice', () => {
-  it('"from" = đợt RẺ NHẤT còn chỗ, kèm neo của đợt đó (sau resolve)', () => {
+  it('"from" = đợt RẺ NHẤT còn chỗ, kèm giá gạch của chính đợt đó (sau resolve)', () => {
     expect(heroPrice(resolveDepartureAnchors(PRICED_TOUR))).toEqual({
       price: '119.00',
-      compareAtPrice: '149.00',
+      compareAtPrice: '129.00',
     });
   });
 
-  it('bỏ qua đợt hết chỗ khi tìm giá rẻ nhất', () => {
+  it('hoà giá thì đợt SỚM hơn (thứ tự mảng) thắng, mang giá gạch của chính nó', () => {
+    const t = resolveDepartureAnchors({
+      ...PRICED_TOUR,
+      departures: [
+        {
+          id: 'early',
+          startDate: '2026-10-03',
+          effectivePrice: '119.00',
+          compareAtPrice: '139.00',
+          seatsLeft: 5,
+        },
+        {
+          id: 'late',
+          startDate: '2026-10-17',
+          effectivePrice: '119.00',
+          compareAtPrice: null,
+          seatsLeft: 5,
+        },
+      ],
+    });
+    expect(heroPrice(t)).toEqual({ price: '119.00', compareAtPrice: '139.00' });
+  });
+
+  it('bỏ qua đợt hết chỗ; đợt rẻ nhất còn lại đúng giá gốc → không gạch', () => {
     const t = resolveDepartureAnchors({
       ...PRICED_TOUR,
       departures: PRICED_TOUR.departures.map((d) => (d.id === 'oct' ? { ...d, seatsLeft: 0 } : d)),
     });
-    expect(heroPrice(t).price).toBe('129.00');
+    expect(heroPrice(t)).toEqual({ price: '129.00', compareAtPrice: null });
   });
 
-  it('không có đợt nào (hoặc toàn hết chỗ) → rơi về basePrice + neo tour', () => {
+  it('không có đợt nào → basePrice và KHÔNG gạch, dù tour có giá niêm yết', () => {
     expect(heroPrice({ ...PRICED_TOUR, departures: [] })).toEqual({
-      price: '129.00',
-      compareAtPrice: '149.00',
-    });
-  });
-
-  it('neo tour không cao hơn base → compareAtPrice null', () => {
-    expect(heroPrice({ basePrice: '129.00', compareAtPrice: '120.00', departures: [] })).toEqual({
       price: '129.00',
       compareAtPrice: null,
     });
+  });
+
+  it('mọi đợt hết chỗ → basePrice và KHÔNG gạch', () => {
+    const t = resolveDepartureAnchors({
+      ...PRICED_TOUR,
+      departures: PRICED_TOUR.departures.map((d) => ({ ...d, seatsLeft: 0 })),
+    });
+    expect(heroPrice(t)).toEqual({ price: '129.00', compareAtPrice: null });
   });
 });

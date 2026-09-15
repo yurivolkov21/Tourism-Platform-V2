@@ -29,12 +29,13 @@ const MAX_CHIPS = 2;
 export function TourHero({ tour }: { tour: TourDetailVM }) {
   const t = messages.tourDetail;
   // Giá ở hero BÁM ĐỢT ĐANG CHỌN (user chốt 19/08 — "khách chỉ hiểu một giá":
-  // chọn 19 Sep thì hero lẫn khối chọn ngày cùng nói $129 −13%, chọn 17 Oct
-  // thì cùng $119 −20%; giữ giá rẻ nhất cố định trên hero trong khi bên dưới
-  // đổi theo đợt là hai con số cho một quyết định). Không có provider (`/book`,
-  // `/enquire` qua `TourHeroBoard`) hoặc chưa chọn được đợt nào → rơi về
-  // `heroPrice` = "from" đợt rẻ nhất còn chỗ. Nhãn "from" CHỈ hiện ở nhánh
-  // rơi về — bám đợt thì đó là giá của đúng ngày đó, không phải "từ".
+  // chọn 19 Sep thì hero lẫn khối chọn ngày cùng nói $129, chọn 17 Oct thì cùng
+  // $119 was $129 −7%; giữ giá rẻ nhất cố định trên hero trong khi bên dưới đổi
+  // theo đợt là hai con số cho một quyết định). Số ví dụ theo luật giá gạch
+  // 15/09/2026 — chỉ gạch khi có khuyến mãi thật, không còn giá niêm yết $149.
+  // Không có provider (`/book`, `/enquire` qua `TourHeroBoard`) hoặc chưa chọn
+  // được đợt nào → rơi về `heroPrice` = "from" đợt rẻ nhất còn chỗ. Nhãn "from"
+  // CHỈ hiện ở nhánh rơi về — bám đợt thì đó là giá của đúng ngày đó, không phải "từ".
   const selection = useOptionalDepartureSelection();
   const selected = selection?.departures.find((d) => d.id === selection.selectedId);
   const price = selected

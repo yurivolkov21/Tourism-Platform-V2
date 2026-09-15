@@ -4,7 +4,7 @@ import { ClockIcon, MapPinIcon, StarIcon, UsersIcon } from 'lucide-react';
 import { SlotImage } from '@/components/slot-image';
 import { WishlistHeart } from '@/components/tours/wishlist-heart';
 import type { TourCardVM } from '@/lib/api/tours';
-import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
+import { cardPrice, formatMoney, routeChain } from '@/lib/tours';
 
 /**
  * Thẻ tour của lưới /tours — dựng theo wireframe user chốt 17/08
@@ -85,11 +85,9 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
   const href = `/tours/${tour.slug}`;
   const chain = routeChain(tour.destinations);
   const primary = chain[0];
-  // `priceFrom` thay `basePrice` — xem ghi chú ở `tour-card.tsx` (19/08).
-  // `?? basePrice`: field mới (additive) — API deploy SAU web, hoặc API dev chạy
-  // bản build cũ, thì card vẫn ra số thay vì vỡ trang /tours vì một field.
-  const from = tour.priceFrom ?? tour.basePrice;
-  const discount = discountPercent(from, tour.compareAtPrice);
+  // `priceFrom` thay `basePrice` (19/08); giá gạch CHỈ khi có khuyến mãi thật
+  // (15/09/2026) — cùng `cardPrice` với `tour-card.tsx`, xem ghi chú ở đó.
+  const { price: from, compareAtPrice, discount } = cardPrice(tour);
 
   const chips = [
     tour.category.name,
@@ -209,9 +207,9 @@ export function TourListCard({ tour }: { tour: TourCardVM }) {
 
         <div className="mt-1 flex items-end justify-between gap-3 border-t pt-3">
           <span className="flex items-baseline gap-2">
-            {tour.compareAtPrice ? (
+            {compareAtPrice ? (
               <span className="text-sm text-price-compare tabular-nums line-through">
-                {formatMoney(tour.compareAtPrice, tour.currency)}
+                {formatMoney(compareAtPrice, tour.currency)}
               </span>
             ) : null}
             <span className="font-heading text-[22px] leading-7 font-semibold tabular-nums">

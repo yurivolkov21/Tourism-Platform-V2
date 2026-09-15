@@ -252,13 +252,83 @@ export function routeChain(destinations: readonly MockDestinationLink[]): MockDe
 }
 
 /** Phần trăm giảm giá, làm tròn xuống. Trả null khi không có giá gạch HOẶC giá
-    gạch không cao hơn giá gốc — dữ liệu lệch không được hiện "−0%" hay số âm. */
+    gạch không cao hơn giá gốc — dữ liệu lệch không được hiện "−0%" hay số âm.
+
+    Tính trên SỐ XU NGUYÊN (15/09/2026): chia thẳng hai số thực thì
+    `(35 − 28.35) / 35 × 100` ra 18.999999999999993 và làm tròn xuống thành 18,
+    trong khi mức giảm đúng là 19%. Quy về xu trước thì phép trừ và phép nhân đều
+    chính xác, `Math.floor` chỉ còn cắt phần lẻ THẬT. */
 export function discountPercent(basePrice: string, compareAtPrice: string | null): number | null {
   if (compareAtPrice === null) return null;
-  const base = Number(basePrice);
-  const compare = Number(compareAtPrice);
+  const base = Math.round(Number(basePrice) * 100);
+  const compare = Math.round(Number(compareAtPrice) * 100);
   if (!(compare > base)) return null;
-  return Math.floor(((compare - base) / compare) * 100);
+  return Math.floor(((compare - base) * 100) / compare);
+}
+
+/**
+ * Giá gạch của MỘT mức giá — luật DUY NHẤT cho mọi chỗ in giá gạch và chip −N%:
+ * card listing (qua `cardPrice`) lẫn mọi bề mặt trang chi tiết (qua
+ * `resolveDepartureAnchors` ở `lib/tour-detail.ts`).
+ *
+ * Quyết định user 15/09/2026: **chỉ gạch giá khi có khuyến mãi THẬT**. Tập ứng
+ * viên gồm `basePrice` nếu giá khách trả thấp hơn nó, và neo riêng của đợt
+ * (`anchor`) nếu neo cao hơn giá trả; lấy số cao nhất, tập rỗng thì không gạch.
+ *
+ * Luật này THAY luật "neo cao nhất" của sweep giá 19/08 — `max(neo đợt, neo tour)`,
+ * áp `tour.compareAtPrice` (giá niêm yết) cho MỌI đợt. Giá niêm yết là con số không
+ * ai trả, nên chồng nó lên làm chip phóng đại khuyến mãi thật: thẻ "Hanoi Old
+ * Quarter Street Food by Night" in "$28 was $42 −32%" trong khi đợt khuyến mãi chỉ
+ * là $28.35 trên giá gốc $35 (−19%). Vì vậy KHÔNG có tham số nào cho giá niêm yết:
+ * field đó vẫn nằm trong DTO, web chỉ thôi hiển thị nó.
+ *
+ * So sánh bằng `Number()` nhưng trả lại NGUYÊN chuỗi thập phân thắng cuộc — tiền
+ * vẫn là chuỗi, không đi vòng qua số thực rồi `toFixed`.
+ */
+export function strikePrice({
+  price,
+  basePrice,
+  anchor,
+}: {
+  /** Giá khách trả — `effectivePrice` của đợt, hoặc `priceFrom` ở card. */
+  price: string;
+  basePrice: string;
+  /** Neo riêng của đợt (`departure.compareAtPrice` thô từ API); card không có → `null`. */
+  anchor: string | null;
+}): string | null {
+  const paid = Number(price);
+  const candidates: string[] = [];
+  if (paid < Number(basePrice)) candidates.push(basePrice);
+  if (anchor !== null && Number(anchor) > paid) candidates.push(anchor);
+  let strike: string | null = null;
+  for (const candidate of candidates) {
+    if (strike === null || Number(candidate) > Number(strike)) strike = candidate;
+  }
+  return strike;
+}
+
+/**
+ * Giá trên card listing (`TourCard`, `TourListCard`). Card chỉ có `basePrice` và
+ * `priceFrom`, không có neo của đợt nào, nên đây là `strikePrice` với `anchor: null`:
+ * gạch `basePrice` và hiện chip CHỈ khi `priceFrom < basePrice`, phần trăm tính từ
+ * đúng hai số đó (cùng cách làm tròn của `discountPercent`).
+ *
+ * Khớp trang chi tiết mỗi khi đợt rẻ nhất lấy `basePrice` làm neo — đúng cách seed
+ * đặt mọi khuyến mãi (`compareAtPrice = basePrice`). Đợt rẻ nhất có neo riêng CAO
+ * HƠN base thì chi tiết gạch neo đó còn card vẫn gạch base: card không có dữ liệu
+ * để biết.
+ *
+ * `?? basePrice`: `priceFrom` là field additive (19/08) — API deploy SAU web, hoặc
+ * API dev chạy bản build cũ, thì card vẫn ra số thay vì vỡ trang /tours vì một field.
+ */
+export function cardPrice(tour: { basePrice: string; priceFrom?: string | null }): {
+  price: string;
+  compareAtPrice: string | null;
+  discount: number | null;
+} {
+  const price = tour.priceFrom ?? tour.basePrice;
+  const compareAtPrice = strikePrice({ price, basePrice: tour.basePrice, anchor: null });
+  return { price, compareAtPrice, discount: discountPercent(price, compareAtPrice) };
 }
 
 /** Tiền từ chuỗi thập phân sang chữ hiển thị. `Number()` chỉ dùng ở BƯỚC CUỐI

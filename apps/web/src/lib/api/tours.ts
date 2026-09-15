@@ -78,9 +78,10 @@ export const fetchTourDetail = cache(async (slug: string): Promise<TourDetailVM 
     if (isDefinedError(error) && error.code === 'NOT_FOUND') return null;
     throw error;
   }
-  // Một giá gạch duy nhất cho mỗi đợt (sweep giá 19/08) — áp Ở ĐÂY để mọi bề
-  // mặt của trang chi tiết (hero, panel ảnh, rail, strip, bảng, modal) cùng
-  // đọc một con số; lý do đầy đủ ở `resolveDepartureAnchors`.
+  // Một giá gạch duy nhất cho mỗi đợt (sweep giá 19/08), theo luật "chỉ gạch khi
+  // có khuyến mãi thật" (user chốt 15/09/2026) — áp Ở ĐÂY để mọi bề mặt của trang
+  // chi tiết (hero, panel ảnh, rail, strip, bảng, modal, bước chọn ngày của /book)
+  // cùng đọc một con số; lý do đầy đủ ở `resolveDepartureAnchors`.
   return resolveDepartureAnchors(data);
 });
 

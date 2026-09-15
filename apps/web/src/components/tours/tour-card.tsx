@@ -2,7 +2,7 @@ import { messages } from '@tourism/i18n';
 import { StarIcon } from 'lucide-react';
 import { SlotImage } from '@/components/slot-image';
 import type { TourCardVM } from '@/lib/api/tours';
-import { discountPercent, formatMoney, routeChain } from '@/lib/tours';
+import { cardPrice, formatMoney, routeChain } from '@/lib/tours';
 
 /**
  * Card tour DỌC cho lưới gợi ý "You might also like" ở cuối trang chi tiết.
@@ -61,11 +61,10 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
   const hiddenStops = chain.slice(VISIBLE_STOPS);
   // `priceFrom` (19/08): giá "from" THẬT = đợt rẻ nhất sắp tới (API tính), không
   // còn `basePrice` — card từng nói "from $129" trong khi chi tiết có đợt $119.
-  // Giá gạch vẫn là neo tour: cùng quy tắc `resolveDepartureAnchors` ở chi tiết.
-  // `?? basePrice`: field mới (additive) — API deploy SAU web, hoặc API dev chạy
-  // bản build cũ, thì card vẫn ra số thay vì vỡ trang /tours vì một field.
-  const from = tour.priceFrom ?? tour.basePrice;
-  const discount = discountPercent(from, tour.compareAtPrice);
+  // Giá gạch (15/09/2026): CHỈ khi có khuyến mãi thật — gạch `basePrice` khi
+  // `priceFrom` thấp hơn nó; giá niêm yết `tour.compareAtPrice` không còn hiện.
+  // Cùng luật `strikePrice` với mọi bề mặt chi tiết — xem `cardPrice`.
+  const { price: from, compareAtPrice, discount } = cardPrice(tour);
 
   return (
     // `data-tour-card` là móc cho luật transition-delay theo chặng trong
@@ -175,9 +174,9 @@ export function TourCard({ tour }: { tour: TourCardVM }) {
           <span className="font-heading text-xl font-semibold text-foreground tabular-nums">
             {formatMoney(from, tour.currency)}
           </span>
-          {tour.compareAtPrice ? (
+          {compareAtPrice ? (
             <span className="text-sm text-price-compare tabular-nums line-through">
-              {formatMoney(tour.compareAtPrice, tour.currency)}
+              {formatMoney(compareAtPrice, tour.currency)}
             </span>
           ) : (
             <span className="font-mono text-[0.6875rem] tracking-widest text-muted-foreground uppercase">

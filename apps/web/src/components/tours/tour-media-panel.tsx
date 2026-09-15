@@ -79,8 +79,8 @@ export function TourMediaPanel({ tour }: { tour: TourDetailVM }) {
   // (nó chỉ là mock), nhưng `effectivePrice = priceOverride ?? basePrice` là giá
   // khách thật sự trả và mỗi đợt một khác — `BookingRail` đã bám đúng từ đầu,
   // panel phải nói cùng con số với nó và với nhãn trên nút Reserve.
-  // Chưa chọn đợt (mọi đợt hết chỗ) → cùng con số với hero (`heroPrice`), không
-  // phải base/neo tour trần — sweep giá 19/08.
+  // Chưa chọn đợt (mọi đợt hết chỗ) → cùng con số với hero (`heroPrice`): basePrice
+  // và KHÔNG gạch — giá niêm yết của tour không hiện (luật giá gạch 15/09/2026).
   const fallback = heroPrice(tour);
   const shownPrice = departure?.effectivePrice ?? fallback.price;
   const shownCompareAt = departure ? departure.compareAtPrice : fallback.compareAtPrice;

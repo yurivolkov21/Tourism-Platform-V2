@@ -198,6 +198,18 @@ describe('TourMediaPanel — panel đặt chỗ', () => {
       '/tours/ha-giang-loop-4d/enquire',
     );
   });
+
+  it('tour không còn đợt nào: giá rơi về basePrice, KHÔNG gạch giá niêm yết của tour', () => {
+    // Luật giá gạch 15/09/2026: giá niêm yết 369 không ai trả nên không phải "giá cũ".
+    render(
+      <DepartureSelectionProvider departures={[]}>
+        <TourMediaPanel tour={tourWith(0, { departures: [] } as Partial<TourDetailVM>)} />
+      </DepartureSelectionProvider>,
+    );
+    expect(screen.getByText('$329')).toBeInTheDocument();
+    expect(screen.queryByText('$369')).toBeNull();
+    expect(screen.queryByText(/% OFF/)).toBeNull();
+  });
 });
 
 // 19/08: trang tour từng có HAI `<h1>` (hero + panel) — panel chỉ lặp tiêu đề

@@ -60,6 +60,9 @@ export interface MockTourDeparture {
   seatsLeft: number;
   /** = priceOverride của đợt ?? basePrice của tour. */
   effectivePrice: string;
+  /** Giá gạch ĐỂ HIỂN THỊ — dữ liệu tới đây đã qua `resolveDepartureAnchors`
+      (`fetchTourDetail`), không còn là neo thô từ API: chỉ khác null khi đợt có
+      khuyến mãi thật (luật giá gạch 15/09/2026). */
   compareAtPrice: string | null;
 }
 

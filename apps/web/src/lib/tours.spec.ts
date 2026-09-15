@@ -16,6 +16,7 @@ const EMPTY_FILTERS = {
 } as const;
 
 import {
+  cardPrice,
   countActiveFilters,
   departureStatus,
   discountPercent,
@@ -34,6 +35,7 @@ import {
   routeChain,
   searchTours,
   sortTours,
+  strikePrice,
   tourCategories,
   tourGallery,
 } from './tours';
@@ -306,6 +308,63 @@ describe('discountPercent', () => {
   it('giá gạch KHÔNG cao hơn giá gốc thì trả null — không hiện −0% hay số âm', () => {
     expect(discountPercent('189.00', '189.00')).toBeNull();
     expect(discountPercent('189.00', '100.00')).toBeNull();
+  });
+  it('tính trên số xu nguyên — sai số dấu phẩy động không được kéo 19% xuống 18%', () => {
+    // (35 − 28.35) / 35 đúng bằng 19%, nhưng tính bằng số thực ra 18.999999999999993
+    // rồi làm tròn xuống thành 18. Đây đúng là ca user báo 15/09/2026 trên /tours.
+    expect(discountPercent('28.35', '35.00')).toBe(19);
+  });
+});
+
+// Luật giá gạch — quyết định user 15/09/2026: CHỈ gạch khi có khuyến mãi THẬT.
+// Giá niêm yết cấp tour (`tour.compareAtPrice`) không ai trả nên không còn là giá
+// gạch ở đâu nữa: thẻ "Hanoi Old Quarter Street Food by Night" từng in
+// "$28 was $42 −32%" trong khi khuyến mãi thật chỉ là $28.35 trên giá gốc $35.
+describe('strikePrice', () => {
+  it('giá dưới giá gốc → gạch basePrice', () => {
+    expect(strikePrice({ price: '28.35', basePrice: '35.00', anchor: null })).toBe('35.00');
+  });
+
+  it('đợt có neo riêng cao hơn giá của nó → gạch neo riêng', () => {
+    // Đợt cao điểm 139 (trên base 129) mang neo riêng 145.
+    expect(strikePrice({ price: '139.00', basePrice: '129.00', anchor: '145.00' })).toBe('145.00');
+  });
+
+  it('dưới giá gốc VÀ có neo riêng → lấy giá cao nhất trong hai', () => {
+    expect(strikePrice({ price: '119.00', basePrice: '129.00', anchor: '139.00' })).toBe('139.00');
+    expect(strikePrice({ price: '119.00', basePrice: '129.00', anchor: '125.00' })).toBe('129.00');
+  });
+
+  it('đúng giá gốc, không neo → không gạch', () => {
+    expect(strikePrice({ price: '129.00', basePrice: '129.00', anchor: null })).toBeNull();
+  });
+
+  it('giá cao điểm trên base mà không có neo → không gạch', () => {
+    // basePrice THẤP hơn giá khách trả thì không phải "giá cũ" của ai cả.
+    expect(strikePrice({ price: '149.00', basePrice: '129.00', anchor: null })).toBeNull();
+  });
+
+  it('neo không cao hơn giá trả → không gạch, không có "giảm 0%"', () => {
+    expect(strikePrice({ price: '139.00', basePrice: '129.00', anchor: '139.00' })).toBeNull();
+    expect(strikePrice({ price: '139.00', basePrice: '129.00', anchor: '135.00' })).toBeNull();
+  });
+});
+
+describe('cardPrice', () => {
+  it('priceFrom dưới basePrice → gạch basePrice, % tính từ đúng hai số đó', () => {
+    // Giá niêm yết 42 có trong dữ liệu nhưng KHÔNG được tham gia.
+    const tour = { basePrice: '35.00', priceFrom: '28.35', compareAtPrice: '42.00' };
+    expect(cardPrice(tour)).toEqual({ price: '28.35', compareAtPrice: '35.00', discount: 19 });
+  });
+
+  it('priceFrom bằng basePrice, tour có giá niêm yết → không gạch, không badge', () => {
+    const tour = { basePrice: '129.00', priceFrom: '129.00', compareAtPrice: '149.00' };
+    expect(cardPrice(tour)).toEqual({ price: '129.00', compareAtPrice: null, discount: null });
+  });
+
+  it('API bản cũ chưa trả priceFrom → rơi về basePrice, không gạch', () => {
+    const tour = { basePrice: '129.00', compareAtPrice: '149.00' };
+    expect(cardPrice(tour)).toEqual({ price: '129.00', compareAtPrice: null, discount: null });
   });
 });
 
