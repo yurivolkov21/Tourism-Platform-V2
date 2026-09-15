@@ -16,7 +16,15 @@ export interface ReportsQuery {
   month: string;
 }
 
-/** Số tháng trong ô chọn — một năm gần nhất là khoảng người thật hay so. */
+/**
+ * Tháng đầu tiên có báo cáo. Dữ liệu vận hành bắt đầu từ 01/2026 (spec
+ * `docs/specs/2026-09-14-seed-khung-2026-design.md`), và user chốt 15/09/2026: ô chọn
+ * tháng lẫn `?month=` không bao giờ trỏ một tháng trước mốc này — kể cả khi báo cáo
+ * tháng đó chỉ toàn số 0, vì một lựa chọn trống vẫn là thứ tồn đọng trên màn hình.
+ */
+export const REPORTS_FIRST_MONTH = '2026-01';
+
+/** Số tháng tối đa trong ô chọn — một năm gần nhất là khoảng người thật hay so. */
 const MONTH_OPTION_COUNT = 12;
 
 /** Tên tháng đầy đủ (English, luật 7) — đọc bằng tay để KHÔNG qua `Intl`
@@ -45,10 +53,16 @@ export function currentMonth(now: Date): string {
  * `?month=` rác rơi về tháng hiện tại — cùng mức khoan dung với status/ngày
  * rác ở `/bookings`: URL là thứ người gõ, và một báo cáo 400 vì gõ nhầm là
  * quá đắt. Schema là CHÍNH cái contract dùng, không có bản regex thứ hai.
+ *
+ * Tháng trước `REPORTS_FIRST_MONTH` cũng tính là rác với trang này, nên link cũ
+ * hay gõ tay `?month=2025-10` không mở được báo cáo trước mốc dữ liệu. Chuỗi
+ * `YYYY-MM` đủ bốn chữ số năm nên so sánh chuỗi đúng thứ tự thời gian.
  */
 export function parseReportsSearchParams(raw: RawSearchParams, now: Date): ReportsQuery {
   const parsed = ReportMonthSchema.safeParse(firstParam(raw.month));
-  return { month: parsed.success ? parsed.data : currentMonth(now) };
+  return {
+    month: parsed.success && parsed.data >= REPORTS_FIRST_MONTH ? parsed.data : currentMonth(now),
+  };
 }
 
 /**
@@ -82,11 +96,13 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 /**
- * Các tháng trong ô chọn: `count` tháng gần nhất, mới nhất trước.
+ * Các tháng trong ô chọn: tối đa `count` tháng gần nhất, mới nhất trước, dừng ở
+ * `REPORTS_FIRST_MONTH` — không bao giờ bày một tháng trước mốc dữ liệu.
  *
  * `selected` (tháng đang xem) được CHÈN lên đầu nếu nó nằm ngoài dải — thiếu
  * bước này thì mở một link cũ sẽ thấy ô select hiện một tháng còn báo cáo nói
- * một tháng khác, hai thứ cãi nhau ngay trên cùng màn hình.
+ * một tháng khác, hai thứ cãi nhau ngay trên cùng màn hình. Tháng trước sàn thì
+ * không bao giờ được chèn (`parseReportsSearchParams` cũng không trả ra nó).
  */
 export function monthOptions(
   now: Date,
@@ -94,8 +110,15 @@ export function monthOptions(
   selected?: string,
 ): Array<{ value: string; label: string }> {
   const latest = currentMonth(now);
-  const values = Array.from({ length: count }, (_, index) => shiftMonth(latest, -index));
-  if (selected && !values.includes(selected)) values.unshift(selected);
+  const values: string[] = [];
+  for (let index = 0; index < count; index++) {
+    const month = shiftMonth(latest, -index);
+    if (month < REPORTS_FIRST_MONTH) break;
+    values.push(month);
+  }
+  if (selected && selected >= REPORTS_FIRST_MONTH && !values.includes(selected)) {
+    values.unshift(selected);
+  }
   return values.map((value) => ({ value, label: formatMonthLabel(value) }));
 }
 

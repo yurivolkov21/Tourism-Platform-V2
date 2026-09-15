@@ -18,7 +18,8 @@ import { groupMonthOptions, reportsHref } from '@/lib/reports-query';
  * tháng" nào để bày — bày thêm là mời bấm vào một báo cáo không tồn tại.
  *
  * Separator cắt ở mỗi lần ĐỔI NĂM (`groupMonthOptions`, logic thuần có test):
- * trong một danh sách 12 tháng, năm là mốc duy nhất mắt cần để bám.
+ * trong một danh sách tối đa 12 tháng, năm là mốc duy nhất mắt cần để bám. Danh
+ * sách không bao giờ có tháng trước 01/2026 (`REPORTS_FIRST_MONTH`).
  *
  * Bề rộng: nút tự co theo nhãn như ba nút menu kia — bốn nút phải đọc ra là
  * MỘT control. Ở đây gần như không thấy: thanh `/reports` là
