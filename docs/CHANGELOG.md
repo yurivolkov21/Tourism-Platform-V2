@@ -8,6 +8,90 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-15 — Web chỉ gạch giá khi có khuyến mãi thật, navbar hết lệch hydrate, seed-demo-visits trọn năm 2026 (ba nhánh, ff vào `main`)
+
+Ba việc tách ra từ lượt prod 1 (entry dưới). Mỗi việc một nhánh, gộp vào `main`
+bằng rebase và fast-forward:
+
+- `766e1889` chore(api): `seed-demo-visits.ts` dời ba cửa sổ ngày, gồm hai cửa sổ
+  11–12/2025 và một cửa sổ 01/2026 có `createdAt` (ngày đi − 21 ngày) rơi vào
+  12/2025. Nay mọi mốc nằm trong năm 2026: `createdAt` sớm nhất là 06/01/2026, và
+  không có hai cửa sổ nào chồng ngày nhau. Script chỉ dành cho dev.
+- `63c1fcef` fix(web): navbar ở `/account` hết lỗi "Hydration failed".
+  - Nguyên nhân: server không đọc session (ADR-0017 §2) nên HTML luôn là "Log in".
+    `useStore` của `better-auth/react` 1.6.23 lại dùng cùng một getter sống làm
+    snapshot server, nên island hydrate sau khi `/get-session` trả về sẽ render
+    avatar đè lên HTML đó.
+  - Cách sửa: `useSession` ở `lib/auth-client.ts` trả trạng thái khởi tạo trong
+    lượt render server và lượt hydrate (qua `useSyncExternalStore`), hydrate xong
+    mới trả session thật. Island mount khi điều hướng phía client vẫn thấy session
+    ngay.
+  - Mọi island dùng session đều được sửa theo: `UserMenu`, `VerifyEmailBanner`, hai
+    form liên hệ và wishlist.
+- `1c1f9251` fix(web): user chốt chỉ gạch giá khi có khuyến mãi thật, thay luật
+  "neo cao nhất" của sweep giá 19/08.
+  - Giá niêm yết cấp tour (`tour.compareAtPrice`) thôi hiển thị. API, contract và
+    dữ liệu giữ nguyên.
+  - Luật chung `strikePrice` (`lib/tours.ts`) gạch `basePrice` khi giá khách trả
+    thấp hơn nó, hoặc gạch neo riêng của chuyến khi neo cao hơn giá trả, và lấy số
+    cao nhất.
+  - Card dùng `cardPrice`: chỉ gạch khi `priceFrom < basePrice`. Trang chi tiết,
+    `/book` và `/enquire` áp luật qua `resolveDepartureAnchors` trong
+    `fetchTourDetail`.
+  - `discountPercent` tính trên số xu nguyên. Chia số thực làm (35 − 28,35)/35 ra
+    18,99…, làm tròn xuống thành 18% thay vì 19%.
+
+Commit docs kèm theo cho `.gitignore` bỏ qua `.claude/worktrees/`, nơi chứa
+worktree tạm của subagent. Biome đọc `.gitignore`, nên `pnpm lint` không quét
+trúng chúng nữa.
+
+**Tác động trên dữ liệu prod** (truy vấn chỉ đọc ngày 15/09): trong 29 tour đang
+bán, số tour có badge giảm giá từ 22 còn 14.
+
+- 12 tour mất badge vì chỉ có giá niêm yết.
+- 4 tour có khuyến mãi thật mà card cũ không hiện, nay có badge:
+  `ben-tre-coconut-day`, `hanoi-heritage-day`, `phong-nha-paradise-cave-day`,
+  `sapa-fansipan-summit-3d`.
+- Card "Hanoi Old Quarter Street Food by Night" trước in "$28 was $42 −32%"; theo
+  giá hôm đó sẽ in $29, gạch $35, −16%.
+
+**Review findings:**
+
+- Controller review cả hai nhánh web: không có lỗi nào chặn merge.
+- Đã rà năm chỗ gọi `useSession`, không có hồi quy. Form liên hệ điền tên qua
+  effect theo `session`, còn wishlist hỏi lại khi `signedIn` đổi, nên session về
+  sau lượt hydrate vẫn chạy đúng.
+- Card và trang chi tiết còn có thể lệch nhau ở ba ca, nhưng ngày 15/09 prod không
+  có ca nào:
+  - `priceFrom` của API tính cả chuyến OPEN đã hết chỗ, còn hero chỉ xét chuyến
+    còn chỗ.
+  - Chuyến rẻ nhất có neo riêng cao hơn `basePrice`.
+  - Mọi chuyến có giá trên `basePrice` và mang neo riêng.
+
+  Hai ca sau chỉ xảy ra khi admin sửa tay, seed không sinh ra.
+- `region-day-trips` in `basePrice` thay vì `priceFrom`. Lỗi này có từ trước,
+  chưa sửa.
+- Bản sửa hydration mới kiểm trên app chạy thật với `/get-session` giả lập, chưa
+  kiểm bằng đăng nhập thật.
+
+**CÒN TREO:**
+
+- Sau khi Vercel deploy, user đăng nhập, mở `/account` và xem Console không còn
+  "Hydration failed".
+- Tuỳ user quyết: sửa `priceFrom` của API để bỏ qua chuyến hết chỗ, cho card khớp
+  hero.
+- Còn từ entry dưới: lượt prod 2 khoảng 03/11 (nhắc việc đặt 02/11, 09:00).
+
+Tests after: `gate:int` xanh ở `1c1f9251` dưới watchdog, commit trống thấp nhất
+12,10 GB.
+
+- Unit 3627 test (web 1518 · api 809 · admin 918 · contract 255 · mobile-ui 52 ·
+  mobile 29 · ui 22 · tokens 18 · i18n 6), cùng test:int 496.
+- Build 7/7 · typecheck 13/13 · tokens-only ✓.
+- Biome kiểm 1130 file git theo dõi, không lỗi. Lượt `biome check .` đầu tiên đỏ,
+  không phải do code: Biome quét cả hai worktree tạm của agent trong
+  `.claude/worktrees/`, mỗi worktree có `biome.json` riêng.
+
 ## 2026-09-15 — Seed trọn năm 2026 xong và lượt prod 1 (nhánh `chore/seed-buoc1-snapshot`, ff vào `main`)
 
 Thi công đủ 11 task của [plan 14/09](plans/2026-09-14-seed-khung-2026.md) theo

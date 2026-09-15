@@ -65,3 +65,8 @@ apps/web/public/maplibre/
 # Bản sao dữ liệu prod có PII — repo này PUBLIC, tuyệt đối không commit.
 # Bản đồ ảnh KHÔNG có PII nằm ở docs/snapshots/ và ĐƯỢC commit.
 backups/
+
+# Worktree tạm Claude Code tạo cho subagent (isolation: worktree). Mỗi worktree là
+# một bản checkout đủ repo, có `biome.json` riêng; không ignore thì `biome check .`
+# (biome.json bật vcs.useIgnoreFile) quét trúng và báo "nested root configuration".
+.claude/worktrees/
