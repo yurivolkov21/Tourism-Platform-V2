@@ -97,6 +97,11 @@ File mới `apps/api/prisma/fixtures/khung-thoi-gian.ts`:
     prod (user chốt 14/09 chỉ giữ một tài khoản admin).
   - `kiemTraTheHeLich` — `tour_departures` đã có chuyến không thuộc bộ fixture
     của H hiện tại (dữ liệu của một H khác) thì từ chối, bắt reset trước.
+- **Chốt chặn mật khẩu khách giả** (15/09, cùng file): `kiemTraMatKhauKhachChoProd`
+  — đích prod mà `SEED_CUSTOMER_PASSWORD` trống hoặc trùng mật khẩu mặc định
+  công khai trong code thì từ chối, trước khi Prisma kết nối. Mặc định đó đã lộ
+  trên GitHub từ 10/09 nên chỉ dùng cho Docker; giá trị thật cho prod chỉ nằm
+  trong `apps/api/.env.production` (gitignored).
 
 Bộ sinh thành hàm thuần nhận H: `sinhKhach(homNay)`, `sinhLich(homNay)`,
 `sinhVanHanh(homNay, lich, khach)`, `sinhReview(homNay, lich, vanHanh)`, và hai
@@ -340,9 +345,11 @@ exit 1 nếu có vi phạm. Script mới `seed:verify` trong `apps/api/package.j
 
 ### 8.3 Lượt prod 1 — session gốc, sau review
 
-Điều kiện: review xong và đã sửa hết phát hiện; user đã quyết
-`SEED_CUSTOMER_PASSWORD` cho lượt prod (giá trị mặc định trong `.env.example` là
-công khai — ai cũng đăng nhập được 120 khách giả trên site sống); chạy vào giờ
+Điều kiện: review xong và đã sửa hết phát hiện; user đã đặt
+`SEED_CUSTOMER_PASSWORD` RIÊNG cho lượt prod trong `apps/api/.env.production`
+(gitignored — không bao giờ ghi vào `.env.example` hay commit; mặc định trong code
+đã lộ trên GitHub, seed nhắm prod mà trống hoặc trùng mặc định đó thì từ chối).
+Cần cho giám khảo đăng nhập khách giả thì gửi mật khẩu riêng tay. Chạy vào giờ
 vắng — site mất lịch khởi hành và sao đánh giá khoảng 5–10 phút tới khi ISR sinh
 lại.
 
@@ -352,9 +359,9 @@ shell RIÊNG mở trước và KHÔNG BAO GIỜ export `DATABASE_URL` của Supa
 trong shell prod là reset nhầm prod. Trình tự: `prisma migrate reset` → `db:seed`
 → `seed:verify` 0 vi phạm. Tuỳ chọn: thử chốt chặn mà không tốn I/O mạng bằng host
 giả, ví dụ `DATABASE_URL=postgresql://u:p@guard-check.supabase.co:5432/x` đặt ngay
-trước lệnh (không export), cho ba ca: thiếu cờ; có cờ mà thiếu `SEED_HOM_NAY`;
-H = hôm nay + 2 ngày. Cả ba phải dừng trước khi Prisma kết nối. Xong thì đóng shell
-tập dượt.
+trước lệnh (không export), cho bốn ca: thiếu cờ; có cờ mà thiếu `SEED_HOM_NAY`;
+H = hôm nay + 2 ngày; H hợp lệ nhưng `SEED_CUSTOMER_PASSWORD=` trống. Cả bốn phải
+dừng trước khi Prisma kết nối. Xong thì đóng shell tập dượt.
 
 Từ `apps/api`, trong Git Bash, ở MỘT shell prod mới — dùng suốt lượt chạy, không
 chạy lệnh Docker hay `prisma migrate` nào trong shell này:
@@ -362,6 +369,7 @@ chạy lệnh Docker hay `prisma migrate` nào trong shell này:
 ```bash
 export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)"
 export ADMIN_EMAILS="$(grep '^ADMIN_EMAILS=' .env.production | cut -d= -f2-)"
+export SEED_CUSTOMER_PASSWORD="$(grep '^SEED_CUSTOMER_PASSWORD=' .env.production | cut -d= -f2-)"
 export SEED_HOM_NAY="$(date -u +%F)"
 pnpm snapshot:export
 pnpm data:reset
