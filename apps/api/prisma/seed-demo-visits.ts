@@ -31,14 +31,19 @@ const DEMO_EMAILS = ['demo-1786424905268@tourism.test', 'demo-1786334962122@tour
 
 /**
  * Nơi × các cửa sổ ngày QUÁ KHỨ (trước 11/08/2026) cho từng lần đi — ngày
- * viết cứng cho deterministic, rải qua nhiều tháng/năm để stepper + tem có
- * nhịp thời gian thật.
+ * viết cứng cho deterministic, rải qua nhiều tháng để stepper + tem có nhịp
+ * thời gian thật.
+ *
+ * Mọi mốc phải nằm trong năm 2026 (user chốt 14/09/2026: không còn dữ liệu 2025),
+ * kể cả `createdAt` = ngày đi − 21 ngày ở bên dưới — nên chuyến sớm nhất khởi hành
+ * từ 22/01/2026. Hai tài khoản demo đi MỌI cửa sổ, nên các cửa sổ không được chồng
+ * ngày nhau.
  */
 const VISIT_PLAN: Array<{ slug: string; windows: Array<[string, string]> }> = [
   {
     slug: 'hoi-an',
     windows: [
-      ['2025-11-03', '2025-11-05'],
+      ['2026-01-27', '2026-01-29'],
       ['2026-02-14', '2026-02-16'],
       ['2026-06-20', '2026-06-21'],
     ],
@@ -46,14 +51,14 @@ const VISIT_PLAN: Array<{ slug: string; windows: Array<[string, string]> }> = [
   {
     slug: 'sa-pa',
     windows: [
-      ['2025-12-19', '2025-12-22'],
+      ['2026-03-20', '2026-03-23'],
       ['2026-04-10', '2026-04-13'],
     ],
   },
   {
     slug: 'hue',
     windows: [
-      ['2026-01-08', '2026-01-10'],
+      ['2026-02-02', '2026-02-04'],
       ['2026-05-01', '2026-05-03'],
       ['2026-07-28', '2026-07-30'],
     ],
