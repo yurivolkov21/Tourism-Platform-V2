@@ -67,9 +67,11 @@ Dữ liệu giữ lại (tours, destinations, blog, media, site slots) không c�
 | Q7 | Thêm enquiries và subscribers | Hai màn admin đang bật mà trống từ đợt dọn 10/09 |
 | Q8 | Không đụng dữ liệu giữ lại; `tour_categories.created_at` (2025) và `tours.created_at` (31/07) để nguyên | Không màn nào hiển thị hai cột này dưới dạng ngày; `tours.created_at` còn là khoá sắp xếp mặc định của `/tours` (`sort=createdAt`), đổi nó là đổi thứ tự trang |
 | Q9 | Ngoài phạm vi: chat (P6 chưa xây); bug enquiry ẩn danh làm vỡ `/enquiries` (task riêng) | Khác vùng code, không cần reset dữ liệu |
+| Q10 | (15/09, sau lượt prod 1) Menu tháng `/reports` có sàn cố định 01/2026: không bày tháng trước mốc, `?month=` trước mốc rơi về tháng hiện tại (`REPORTS_FIRST_MONTH` ở `apps/admin/src/lib/reports-query.ts`) | Bản cũ bày 12 tháng lùi từ hôm nay (10/2025 → 9/2026); tháng trống vẫn là lựa chọn tồn đọng, trái yêu cầu thống kê bắt đầu từ 01/2026 |
 
-Không cần ADR: thay đổi nằm trong công cụ seed, không đổi schema, contract hay
-hành vi sản phẩm; không có migration.
+Không cần ADR: thay đổi nằm trong công cụ seed, không đổi schema hay contract;
+không có migration. Hành vi sản phẩm chỉ đổi đúng một chỗ ở Q10 (dải tháng của
+menu `/reports` trong admin).
 
 ## 3. Khung thời gian và mốc H
 
@@ -367,9 +369,10 @@ Từ `apps/api`, trong Git Bash, ở MỘT shell prod mới — dùng suốt lư
 chạy lệnh Docker hay `prisma migrate` nào trong shell này:
 
 ```bash
-export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)"
-export ADMIN_EMAILS="$(grep '^ADMIN_EMAILS=' .env.production | cut -d= -f2-)"
-export SEED_CUSTOMER_PASSWORD="$(grep '^SEED_CUSTOMER_PASSWORD=' .env.production | cut -d= -f2-)"
+# `tr -d '\r'`: `.env.production` sửa trên Windows có thể mang CRLF (đo 15/09).
+export DATABASE_URL="$(grep '^DATABASE_URL=' .env.production | cut -d= -f2- | tr -d '\r')"
+export ADMIN_EMAILS="$(grep '^ADMIN_EMAILS=' .env.production | cut -d= -f2- | tr -d '\r')"
+export SEED_CUSTOMER_PASSWORD="$(grep '^SEED_CUSTOMER_PASSWORD=' .env.production | cut -d= -f2- | tr -d '\r')"
 export SEED_HOM_NAY="$(date -u +%F)"
 pnpm snapshot:export
 pnpm data:reset
