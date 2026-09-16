@@ -26,10 +26,9 @@ import { refundBookingAction } from './actions';
  * ngay khi mở trang và dùng phần-còn-hoàn-được làm trần validate; sau mỗi
  * refund client `router.refresh()` kéo sự thật mới về.
  *
- * Từ 04/09 các khối trình bày nằm ở `booking-detail-sections.tsx` — dùng
- * chung với `/cancellations/[code]`, trang chi tiết RIÊNG của vùng huỷ (user
- * chốt: hai vùng hai route, chung kiểu thiết kế). Thứ KHÁC nhau giữa hai
- * trang là phần GHI: ở đây là `RefundPanel`, bên kia là cụm quyết định.
+ * Các khối trình bày nằm ở `booking-detail-sections.tsx`. Từ ADR-0041 không
+ * còn vùng Cancellations: một lần huỷ xem ở khối lịch sử huỷ của trang này, và
+ * ngoại lệ hoàn tiền đi qua `RefundPanel`, kể cả trên booking đã huỷ.
  */
 const t = messages.admin.bookings.detail;
 
@@ -84,18 +83,13 @@ export default async function BookingDetailPage({
             totalAmount: booking.totalAmount,
             refundedTotal: booking.refundedTotal,
             currency: booking.currency,
-            // Suy từ TRẠNG THÁI, không từ trang nào dẫn tới (ADR-0029 §AMEND):
-            // một tham số URL thì ai cũng gõ được, còn cái này thì không.
-            hasOpenCancellation: booking.cancellationRequests.some(
-              (request) => request.status === 'REQUESTED',
-            ),
             contactName: booking.contactName,
             refunds: booking.refunds,
           }}
           refund={refundBookingAction}
         />
 
-        <CancellationHistoryCard requests={booking.cancellationRequests} />
+        <CancellationHistoryCard booking={booking} />
       </div>
     </AdminShell>
   );

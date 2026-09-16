@@ -13,7 +13,7 @@ import {
 
 /**
  * Bề mặt outbox cho admin (spec P4c §3-F7). Cùng cách ghép guard như
- * AdminCancellationsController: `@Roles(ADMIN)` ở cấp class được AuthGuard
+ * AdminBookingsController: `@Roles(ADMIN)` ở cấp class được AuthGuard
  * đọc — ẩn danh → 401, không phải admin → 403, cả hai TRƯỚC khi oRPC parse
  * input.
  */

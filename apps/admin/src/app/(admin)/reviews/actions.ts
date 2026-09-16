@@ -13,7 +13,7 @@ import { classifyModerateError, type ModerateActionResult } from '@/lib/reviews-
 
 /**
  * Hành vi GHI của vùng reviews (spec P4b §3-F4) — cùng khuôn đã chốt qua
- * review F2/F3 (`bookings/[code]/actions.ts`, `cancellations/actions.ts`):
+ * review F2/F3 (`bookings/[code]/actions.ts`):
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only: action là
  *   chỗ duy nhất vừa đọc được cookie phiên qua `next/headers` vừa được gọi

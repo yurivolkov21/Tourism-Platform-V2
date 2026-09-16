@@ -1,4 +1,4 @@
-import type { AdminBookingDetail, CancellationRequest, Refund } from '@tourism/contract';
+import type { AdminBookingDetail, Refund } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import { Badge } from '@tourism/ui/components/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@tourism/ui/components/card';
@@ -22,26 +22,22 @@ import {
   statusBadgeVariant,
   statusLabel,
 } from '@/lib/bookings-view';
-import { cancellationStatusBadgeVariant } from '@/lib/cancellations-view';
+import {
+  type CancellationHistoryRowVM,
+  toCancellationHistoryRow,
+} from '@/lib/cancellation-history';
 
 /**
- * Các khối trình bày của MỘT booking, tách khỏi `/bookings/[code]` ở 04/09 khi
- * `/cancellations/[code]` ra đời (user chốt: hai vùng có trang chi tiết RIÊNG,
- * dùng chung kiểu thiết kế chứ không chung route).
+ * Các khối trình bày của MỘT booking cho `/bookings/[code]` (tách khỏi trang ở
+ * 04/09). Vùng Cancellations từng dùng chung các khối này; ADR-0041 gỡ vùng ấy,
+ * nên trang chi tiết booking là nơi DUY NHẤT xem một lần huỷ.
  *
  * Vì sao ở `components/bookings/` chứ không phải `components/kit/`: kit là chỗ
  * của thứ KHÔNG biết miền nào (bảng, menu, dialog). Mấy khối này biết
- * `AdminBookingDetail` từ đầu tới cuối — chúng là trình bày của MIỀN booking,
- * và vùng bookings là chủ. `/cancellations` import sang, đúng như nó đã import
- * `formatCalendarDate` của `bookings-view`.
- *
- * Cắt theo KHỐI MÀN HÌNH chứ không theo từng thẻ nhỏ: hai trang phải nhìn ra
- * là một hệ, nên thứ dùng chung phải là cả cụm ba card, cả khung lịch sử —
- * chia nhỏ hơn thì mỗi trang tự ghép một kiểu và chúng lại trôi lệch.
+ * `AdminBookingDetail` từ đầu tới cuối — chúng là trình bày của MIỀN booking.
  *
  * Toàn bộ file là server component thuần: không state, không handler. Phần
- * GHI (RefundPanel, DecideActions) do TRANG lắp vào, nên mỗi vùng tự quyết
- * mình cho phép làm gì — đó chính là ranh giới user muốn có.
+ * GHI (RefundPanel) do TRANG lắp vào.
  */
 const t = messages.admin.bookings.detail;
 const tRefunds = messages.admin.bookings.refund;
@@ -131,14 +127,11 @@ export function BookingSummaryCards({ booking }: { booking: AdminBookingDetail }
 }
 
 /**
- * Lịch sử huỷ append-only (D1-B): cũ nhất trước, các dòng DENIED sống sót qua
- * mọi lần khách xin lại — đó là dấu vết, không phải rác.
+ * Lịch sử huỷ append-only, cũ nhất trước: ai huỷ, lúc nào, trong hay quá hạn
+ * chót, hoàn bao nhiêu, lý do (spec §6). Mọi câu dựng ở
+ * `lib/cancellation-history.ts`; ở đây chỉ bày ra.
  */
-export function CancellationHistoryCard({
-  requests,
-}: {
-  requests: readonly CancellationRequest[];
-}) {
+export function CancellationHistoryCard({ booking }: { booking: AdminBookingDetail }) {
   return (
     <Card>
       <CardHeader>
@@ -146,8 +139,11 @@ export function CancellationHistoryCard({
       </CardHeader>
       <CardContent>
         <Timeline empty={t.cancellations.empty}>
-          {requests.map((request) => (
-            <CancellationHistoryRow key={request.id} request={request} />
+          {booking.cancellationRequests.map((request) => (
+            <CancellationHistoryRow
+              key={request.id}
+              row={toCancellationHistoryRow(request, booking)}
+            />
           ))}
         </Timeline>
       </CardContent>
@@ -161,36 +157,34 @@ export function DetailRow({ label, value }: { label: string; value: string | nul
   return <LabelValueRow label={label} width="md" value={value || t.empty} />;
 }
 
-function CancellationHistoryRow({ request }: { request: CancellationRequest }) {
+function CancellationHistoryRow({ row }: { row: CancellationHistoryRowVM }) {
   return (
     <TimelineItem>
       <div className="flex flex-wrap items-center gap-2">
-        {/* Cùng luật màu với hàng đợi /cancellations (review F3 31/08) — một
-            trạng thái một màu ở mọi màn. */}
-        <Badge variant={cancellationStatusBadgeVariant(request.status)}>
-          {t.cancellations.status[request.status]}
-        </Badge>
+        <Badge variant={row.badgeVariant}>{row.statusLabel}</Badge>
+        {row.actor ? <span className="font-medium">{row.actor}</span> : null}
         <span className="text-muted-foreground">
-          {t.cancellations.requested} {formatDateTime(request.createdAt)}
+          {t.cancellations.requested} {row.requested}
         </span>
-        {request.decidedAt ? (
+        {row.decided ? (
           <span className="text-muted-foreground">
-            · {t.cancellations.decided} {formatDateTime(request.decidedAt)}
+            · {t.cancellations.decided} {row.decided}
           </span>
         ) : null}
       </div>
-      {/* Khách tự huỷ không bắt buộc ghi lý do (ADR-0041) — vắng thì bỏ hẳn
-          dòng, cùng nếp `decisionNote` ngay dưới. */}
-      {request.reason ? (
+      {row.deadline && row.refund ? (
         <p>
-          <span className="text-muted-foreground">{t.cancellations.reason}: </span>
-          {request.reason}
+          {row.deadline} · {row.refund}
         </p>
       ) : null}
-      {request.decisionNote ? (
+      <p>
+        <span className="text-muted-foreground">{t.cancellations.reason}: </span>
+        {row.reason}
+      </p>
+      {row.decisionNote ? (
         <p>
           <span className="text-muted-foreground">{t.cancellations.note}: </span>
-          {request.decisionNote}
+          {row.decisionNote}
         </p>
       ) : null}
     </TimelineItem>
@@ -198,42 +192,10 @@ function CancellationHistoryRow({ request }: { request: CancellationRequest }) {
 }
 
 /**
- * Sổ cái refund dạng CARD, thuần đọc — dùng ở `/cancellations/[code]`, nơi
- * sổ là BẰNG CHỨNG để quyết chứ không phải chỗ phát lệnh tiền. Đường hoàn
- * tiền của màn ấy là Approve, vì chỉ nó mới đóng request và nhả ghế.
- */
-export function RefundLedger({
-  refunds,
-  refundedTotal,
-  currency,
-}: {
-  refunds: Refund[];
-  refundedTotal: string;
-  currency: string;
-}) {
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{tRefunds.heading}</CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm">
-        {refunds.length > 0 ? (
-          <RefundLedgerTable refunds={refunds} refundedTotal={refundedTotal} currency={currency} />
-        ) : (
-          <p className="text-muted-foreground">{tRefunds.ledger.none}</p>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-/**
  * Sổ cái refund append-only — row và tổng đều là số THẬT server trả.
  *
- * Ở đây (server component) chứ không ở `refund-panel.tsx` ('use client') vì
- * từ 04/09 nó có HAI người dùng: panel phát refund của `/bookings/[code]`, và
- * khối thuần-đọc của `/cancellations/[code]`. Người thứ hai không cần một byte
- * JavaScript nào để in một cái bảng.
+ * Người dùng duy nhất là `RefundPanel`; bảng nằm ở file này vì là trình bày
+ * của miền booking, cùng họ với các khối trên.
  */
 export function RefundLedgerTable({
   refunds,

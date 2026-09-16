@@ -11,10 +11,10 @@ import { StatsService } from './stats.service.js';
  * (getAllAndOverride handler→class), nên ẩn danh → 401, không phải admin →
  * 403 — cả hai TRƯỚC khi oRPC chạm tới bất cứ thứ gì.
  *
- * Tám handler mỏng đúng nghĩa: không lỗi nghiệp vụ để dịch (contract không
- * khai mã nào — đọc thuần thì không có phán quyết nào để báo). Ba vùng có bộ
- * lọc ngày (`bookings`, `cancellations`, `reviews`) thì có input, và cũng chỉ
- * chuyển tiếp (ADR-0028 + AMEND 1, 2); `dashboard` nhận `?days=` (ADR-0036).
+ * Bảy handler mỏng đúng nghĩa: không lỗi nghiệp vụ để dịch (contract không
+ * khai mã nào — đọc thuần thì không có phán quyết nào để báo). Hai vùng có bộ
+ * lọc ngày (`bookings`, `reviews`) thì có input, và cũng chỉ chuyển tiếp
+ * (ADR-0028 + AMEND 2); `dashboard` nhận `?days=` (ADR-0036).
  * Toàn bộ định nghĩa metric nằm ở JSDoc `StatsService`.
  */
 @Controller()
@@ -28,13 +28,6 @@ export class AdminStatsController {
     // contract đã canh định dạng và luật `from <= to` (ADR-0028).
     return implement(contract.admin.stats.bookings).handler(({ input }) =>
       this.stats.adminBookings(input),
-    );
-  }
-
-  @Implement(contract.admin.stats.cancellations)
-  cancellations() {
-    return implement(contract.admin.stats.cancellations).handler(({ input }) =>
-      this.stats.adminCancellations(input),
     );
   }
 

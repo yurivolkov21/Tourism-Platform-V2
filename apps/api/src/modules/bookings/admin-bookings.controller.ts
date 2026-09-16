@@ -15,7 +15,6 @@ import {
 import {
   BookingNotFoundError,
   BookingNotRefundableError,
-  CancellationOpenError,
   ProviderRefundFailedError,
   RefundsService,
 } from './refunds.service.js';
@@ -81,9 +80,6 @@ export class AdminBookingsController {
         }
         if (error instanceof RefundNothingLeftError) {
           throw errors.NOTHING_LEFT({ message: error.message });
-        }
-        if (error instanceof CancellationOpenError) {
-          throw errors.CANCELLATION_OPEN({ message: error.message });
         }
         if (error instanceof ProviderRefundFailedError) {
           throw errors.REFUND_FAILED({ message: error.message });

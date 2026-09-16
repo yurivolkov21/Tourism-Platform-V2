@@ -1,6 +1,5 @@
 import {
   type AdminBookingsStats,
-  type AdminCancellationsStats,
   type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
@@ -339,46 +338,6 @@ export function toBookingsStatCards(stats: AdminBookingsStats): StatCardVM[] {
       formatPercent,
       // Metric VỐN là % → delta theo điểm phần trăm, không phải % của %.
       'percentage-points',
-      caption,
-    ),
-  ];
-}
-
-/** Ba card của `/cancellations`. */
-export function toCancellationsStatCards(stats: AdminCancellationsStats): StatCardVM[] {
-  const days = stats.period.windowDays;
-  const picked = isPickedPeriod(stats.period);
-  const caption = comparisonCaption(stats.period);
-
-  return [
-    // Hàng đợi là ẢNH CHỤP một mốc, không phải số đếm trong kỳ — caption phải
-    // nói đúng chuyện đó ("vs 2 28 days ago", hoặc "vs 12 on May 1, 2026" khi
-    // kỳ do admin chọn).
-    countCard(
-      'pendingQueue',
-      t.cancellations.pendingQueue,
-      stats.pendingQueue,
-      'up-bad',
-      days,
-      snapshotCaption(stats.period),
-    ),
-    // Nhãn BỎ hậu tố "Nd" khi kỳ do admin chọn: "Approved 31d" đọc thành "31
-    // ngày gần nhất", tức một cửa sổ trượt — nhưng lọc tháng 5 là một kỳ đứng
-    // yên, và dòng khoảng ngày trên hàng card đã nói rõ kỳ nào.
-    countCard(
-      'approved',
-      picked ? t.cancellations.approvedInPeriod : t.cancellations.approved(days),
-      stats.approved,
-      'neutral',
-      days,
-      caption,
-    ),
-    countCard(
-      'denied',
-      picked ? t.cancellations.deniedInPeriod : t.cancellations.denied(days),
-      stats.denied,
-      'neutral',
-      days,
       caption,
     ),
   ];

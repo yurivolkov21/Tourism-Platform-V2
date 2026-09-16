@@ -2,6 +2,7 @@ import type { ContractRouterClient } from '@orpc/contract';
 import { isContractProcedure } from '@orpc/contract';
 import { contract } from './contract.js';
 import type { ContractInputs, ContractOutputs } from './index.js';
+import * as contractIndex from './index.js';
 import type {
   Destination,
   Paged,
@@ -25,7 +26,6 @@ describe('contract routes', () => {
     [contract.media.signUpload, 'POST /api/media/upload-signatures'],
     [contract.account.setAvatar, 'PATCH /api/account/avatar'],
     [contract.admin.stats.bookings, 'GET /api/admin/stats/bookings'],
-    [contract.admin.stats.cancellations, 'GET /api/admin/stats/cancellations'],
     [contract.admin.stats.reviews, 'GET /api/admin/stats/reviews'],
     [contract.admin.reports.monthly, 'GET /api/admin/reports/monthly'],
     [contract.admin.outbox.list, 'GET /api/admin/outbox'],
@@ -101,6 +101,33 @@ describe('contract routes', () => {
   it('admin.stats procedures declare no business errors', () => {
     for (const procedure of Object.values(contract.admin.stats)) {
       expect(procedure['~orpc'].errorMap).toEqual({});
+    }
+  });
+
+  // ADR-0041 §4 (Task 8): khách tự huỷ ngay nên luồng duyệt huỷ không còn chỗ
+  // đứng — không route, không thẻ thống kê hàng đợi, không mã chặn hoàn tiền.
+  it('không còn luồng duyệt huỷ: admin.cancellations, admin.stats.cancellations, CANCELLATION_OPEN', () => {
+    expect('cancellations' in contract.admin).toBe(false);
+    expect('cancellations' in contract.admin.stats).toBe(false);
+    expect(Object.keys(contract.admin.bookings.refund['~orpc'].errorMap).sort()).toEqual([
+      'NOTHING_LEFT',
+      'NOT_FOUND',
+      'NOT_REFUNDABLE',
+      'OVER_TOTAL',
+      'REFUND_FAILED',
+      'ZERO_OR_NEGATIVE',
+    ]);
+  });
+
+  it('các schema chỉ luồng duyệt dùng đã rời barrel của contract', () => {
+    for (const name of [
+      'AdminCancellationRequestSchema',
+      'AdminCancellationsListQuerySchema',
+      'DecideCancellationInputSchema',
+      'DecideCancellationResultSchema',
+      'AdminCancellationsStatsSchema',
+    ]) {
+      expect(name in contractIndex).toBe(false);
     }
   });
 });

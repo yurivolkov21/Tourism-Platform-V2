@@ -1,6 +1,5 @@
 import {
   AdminBookingsListQuerySchema,
-  AdminCancellationsListQuerySchema,
   AdminRefundInputSchema,
   BookingCancellationSchema,
   BookingDetailSchema,
@@ -10,7 +9,6 @@ import {
   CancelBookingResultSchema,
   CancellationRequestSchema,
   CreateBookingInputSchema,
-  DecideCancellationInputSchema,
   PaymentProviderSchema,
 } from './bookings.js';
 
@@ -66,7 +64,7 @@ describe('CreateBookingInputSchema', () => {
     );
   });
 
-  it('W1: free-text trim ở CONTRACT — reason/decisionNote/refund reason, một luật một chỗ', () => {
+  it('W1: free-text trim ở CONTRACT — reason/refund reason, một luật một chỗ', () => {
     // reason toàn khoảng trắng phải chết ở 400, không được lọt vào service để
     // bị trim thành '' rồi nổ output validation (500) ở admin list.
     expect(CancelBookingInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: '   ' }).success).toBe(
@@ -81,22 +79,6 @@ describe('CreateBookingInputSchema', () => {
     expect(CancelBookingInputSchema.parse({ code: 'BK-ABCDEFGH' })).toEqual({
       code: 'BK-ABCDEFGH',
     });
-
-    const decideId = '4f2a1b3c-0000-4000-8000-000000000001';
-    expect(
-      DecideCancellationInputSchema.safeParse({
-        id: decideId,
-        approve: false,
-        decisionNote: '   ',
-      }).success,
-    ).toBe(false);
-    expect(
-      DecideCancellationInputSchema.parse({
-        id: decideId,
-        approve: false,
-        decisionNote: '  too late  ',
-      }).decisionNote,
-    ).toBe('too late');
 
     expect(
       AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: '   ' })
@@ -539,45 +521,6 @@ describe('AdminBookingsListQuerySchema — bộ lọc ngày F6', () => {
   });
 });
 
-describe('AdminCancellationsListQuerySchema — bộ lọc ngày (ADR-0028 §AMEND)', () => {
-  it('mặc định KHÔNG lọc ngày — khác /bookings, và đó là chủ đích', () => {
-    // Trang này là hàng đợi việc phải làm: mặc định phải thấy đủ mọi request
-    // đang mở, kể cả cái khách gửi từ tháng trước.
-    const parsed = AdminCancellationsListQuerySchema.parse({});
-    expect(parsed).toMatchObject({ page: 1, limit: 20 });
-    expect(parsed.from).toBeUndefined();
-    expect(parsed.to).toBeUndefined();
-  });
-
-  it('nhận ngày lịch, cùng schema và cùng trần năm với /bookings', () => {
-    expect(AdminCancellationsListQuerySchema.parse({ from: '2026-09-01' }).from).toBe('2026-09-01');
-    expect(
-      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-01T00:00:00.000Z' }).success,
-    ).toBe(false);
-    expect(AdminCancellationsListQuerySchema.safeParse({ from: '2026-02-31' }).success).toBe(false);
-    expect(AdminCancellationsListQuerySchema.safeParse({ to: '9999-12-31' }).success).toBe(false);
-  });
-
-  it('from > to là 400, y hệt /bookings', () => {
-    expect(
-      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-30', to: '2026-09-01' }).success,
-    ).toBe(false);
-    expect(
-      AdminCancellationsListQuerySchema.safeParse({ from: '2026-09-01', to: '2026-09-01' }).success,
-    ).toBe(true);
-  });
-
-  it('`.refine` KHÔNG nuốt shape — điều kiện sống của ZodSmartCoercionPlugin', () => {
-    // Plugin đi theo `.shape` để ép "2" thành number cho page/limit; bọc thêm
-    // một lớp là mọi query string của vùng này rơi xuống 400.
-    expect(AdminCancellationsListQuerySchema.shape.page).toBeDefined();
-    expect(AdminCancellationsListQuerySchema.shape.status).toBeDefined();
-    expect(
-      AdminCancellationsListQuerySchema.parse({ page: 2, status: 'REQUESTED', from: '2026-09-01' }),
-    ).toMatchObject({ page: 2, status: 'REQUESTED', from: '2026-09-01' });
-  });
-});
-
 /**
  * ADR-0041: khách tự huỷ không bắt buộc ghi lý do, nên dòng yêu cầu huỷ mang
  * `reason` null. Chỉ nới đúng chỗ này — chuỗi rỗng vẫn là dữ liệu hỏng.
@@ -591,6 +534,8 @@ describe('CancellationRequestSchema.reason — ADR-0041', () => {
     freeCancellationDays: null,
     decisionNote: null,
     decidedAt: '2026-09-15T03:00:00.000Z',
+    // Task 8: cờ bắt buộc — dòng này là một lần khách tự huỷ.
+    decidedByCustomer: true,
     createdAt: '2026-09-15T03:00:00.000Z',
   };
 
@@ -668,5 +613,29 @@ describe('CancelBookingResultSchema — ADR-0041', () => {
     expect(CancelBookingResultSchema.safeParse({ ...result, refundedAmount: 0 }).success).toBe(
       false,
     );
+  });
+});
+
+describe('CancellationRequestSchema — ai quyết (ADR-0041 §4)', () => {
+  /** Dòng yêu cầu của một lần khách tự huỷ: gửi và quyết cùng một mốc, không lý do. */
+  const selfCancel = {
+    id: '4f2a1b3c-0000-4000-8000-000000000002',
+    bookingCode: 'BK-ABCDEFGH',
+    reason: null,
+    status: 'REFUNDED',
+    freeCancellationDays: null,
+    decisionNote: null,
+    decidedAt: '2026-10-12T02:30:00.000Z',
+    createdAt: '2026-10-12T02:30:00.000Z',
+  };
+
+  it('decidedByCustomer là BẮT BUỘC — admin in "ai huỷ" từ cờ này', () => {
+    expect(CancellationRequestSchema.safeParse(selfCancel).success).toBe(false);
+    expect(
+      CancellationRequestSchema.parse({ ...selfCancel, decidedByCustomer: true }).decidedByCustomer,
+    ).toBe(true);
+    expect(
+      CancellationRequestSchema.safeParse({ ...selfCancel, decidedByCustomer: 'customer' }).success,
+    ).toBe(false);
   });
 });

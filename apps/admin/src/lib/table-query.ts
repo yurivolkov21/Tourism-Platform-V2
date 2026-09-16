@@ -7,7 +7,7 @@ import { CalendarDateSchema } from '@tourism/contract';
  *
  * Tách ra ở F3 theo đúng §2.1 ("kit mọc từ consumer đầu tiên, F3/F4 tiêu thụ
  * và ép tổng quát hoá"): `AdminBookingsListQuerySchema` và
- * `AdminCancellationsListQuerySchema` khai CÙNG một hình phân trang
+ * các query admin khác khai CÙNG một hình phân trang
  * (`page: z.int().min(1).default(1)`, `limit: z.int().min(1).max(100)
  * .default(20)`), nên luật clamp chỉ được có MỘT bản — hai bản là hai thứ sẽ
  * trôi lệch nhau. Phần RIÊNG của mỗi vùng (filter nào, đường dẫn nào) ở lại

@@ -19,7 +19,7 @@ function pageTitle(pathname: string): string {
   let bestLength = 0;
   for (const item of items) {
     // So theo PATHNAME thuần: href của nav có thể mang query (vd
-    // `/cancellations?status=REQUESTED` mở thẳng hàng đợi) nhưng
+    // `/reviews?status=pending` mở thẳng hàng chờ duyệt) nhưng
     // `usePathname()` không bao giờ chứa query — so cả chuỗi là trượt.
     const path = item.href.split('?')[0] ?? item.href;
     if (path !== '/' && pathname.startsWith(path) && path.length > bestLength) {

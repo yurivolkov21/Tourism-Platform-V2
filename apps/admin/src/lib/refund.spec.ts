@@ -15,16 +15,25 @@ import {
 
 const t = messages.admin.bookings.refund;
 
-describe('canRefund', () => {
-  it('chỉ PAID và PARTIALLY_REFUNDED mới còn tiền để hoàn (gate của RefundsService)', () => {
-    expect(canRefund('PAID')).toBe(true);
-    expect(canRefund('PARTIALLY_REFUNDED')).toBe(true);
+describe('canRefund (Hợp đồng E, ADR-0041 §5)', () => {
+  it('PAID, PARTIALLY_REFUNDED và CANCELLED còn tiền chưa hoàn → hiện nút', () => {
+    expect(canRefund('PAID', '117.00')).toBe(true);
+    expect(canRefund('PARTIALLY_REFUNDED', '87.00')).toBe(true);
+    // Khách huỷ quá hạn giữ nguyên tiền — ngoại lệ đi qua hoàn thiện chí.
+    expect(canRefund('CANCELLED', '117.00')).toBe(true);
+    expect(canRefund('CANCELLED', '0.01')).toBe(true);
   });
 
-  it('PENDING/CANCELLED/REFUNDED không hiện nút — chưa thu, hoặc đã settle', () => {
-    expect(canRefund('PENDING')).toBe(false);
-    expect(canRefund('CANCELLED')).toBe(false);
-    expect(canRefund('REFUNDED')).toBe(false);
+  it('hết tiền để hoàn thì ẩn nút, dù trạng thái nào', () => {
+    expect(canRefund('PAID', '0.00')).toBe(false);
+    expect(canRefund('PARTIALLY_REFUNDED', '0.00')).toBe(false);
+    // Huỷ trong hạn đã hoàn trọn phần dư.
+    expect(canRefund('CANCELLED', '0.00')).toBe(false);
+  });
+
+  it('PENDING và REFUNDED không bao giờ hiện nút — chưa thu, hoặc đã hoàn đủ', () => {
+    expect(canRefund('PENDING', '117.00')).toBe(false);
+    expect(canRefund('REFUNDED', '0.00')).toBe(false);
   });
 });
 
@@ -90,13 +99,12 @@ describe('validateRefundAmount', () => {
 });
 
 describe('REFUND_CONTRACT_CODES', () => {
-  it('derive từ keys khối i18n errors — một nguồn, đủ 7 mã contract', () => {
+  it('derive từ keys khối i18n errors — một nguồn, đủ 6 mã contract', () => {
     // Khoá chống tái hiện bug review 31/08: ba danh sách chép tay từng lệch
-    // nhau ("NĂM mã" vs sáu). Giờ tập mã LÀ tập câu — thêm/bớt một bên là
-    // bên kia tự khớp, còn test này khoá đúng 7 mã của contract hiện tại
-    // (CANCELLATION_OPEN thêm ở ADR-0029 AMEND 4, vòng vá review 05/09).
+    // nhau. Giờ tập mã LÀ tập câu — thêm/bớt một bên là bên kia tự khớp, còn
+    // test này khoá đúng 6 mã của contract hiện tại (CANCELLATION_OPEN bỏ cùng
+    // luồng duyệt huỷ, ADR-0041).
     expect([...REFUND_CONTRACT_CODES].sort()).toEqual([
-      'CANCELLATION_OPEN',
       'NOTHING_LEFT',
       'NOT_FOUND',
       'NOT_REFUNDABLE',
@@ -108,7 +116,7 @@ describe('REFUND_CONTRACT_CODES', () => {
 });
 
 describe('classifyRefundError', () => {
-  it('giữ NGUYÊN 7 mã contract (defined error thật của oRPC), không nuốt thành GENERIC', () => {
+  it('giữ NGUYÊN 6 mã contract (defined error thật của oRPC), không nuốt thành GENERIC', () => {
     for (const code of REFUND_CONTRACT_CODES) {
       expect(classifyRefundError(new ORPCError(code, { defined: true }))).toBe(code);
     }

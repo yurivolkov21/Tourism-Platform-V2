@@ -18,7 +18,7 @@ import {
 
 /**
  * Trạng thái hàng đợi `/reviews` sống TRÊN URL (spec P4b §2.2, §3-F4) — cùng
- * khuôn `bookings-query.ts`/`cancellations-query.ts`, phân trang dùng chung
+ * khuôn `bookings-query.ts`, phân trang dùng chung
  * kit `table-query.ts`.
  *
  * Khác hai vùng kia ở HAI chỗ, và cả hai đều là chỗ dễ sai ngầm:

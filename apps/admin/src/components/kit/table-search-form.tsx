@@ -27,9 +27,9 @@ import { TOOLBAR_FIELD } from '@/components/kit/toolbar-metrics';
  * NGUYÊN VĂN — trim và cắt trần là luật của `*Href` (một bản duy nhất cho cả
  * đường URL người gõ lẫn đường form), lặp lại ở đây là hai bản sẽ trôi lệch.
  *
- * Chỉ dựng ô này cho vùng mà server THẬT SỰ đọc tham số search — bảng
- * `/cancellations` cố ý không có, vì `AdminCancellationsListQuerySchema`
- * không khai `search` và một ô tìm kiếm không lọc gì là lời hứa suông.
+ * Chỉ dựng ô này cho vùng mà server THẬT SỰ đọc tham số search — schema query
+ * nào không khai `search` thì không có ô, vì một ô tìm kiếm không lọc gì là
+ * lời hứa suông.
  */
 
 /**

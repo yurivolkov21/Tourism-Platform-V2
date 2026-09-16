@@ -3,8 +3,6 @@ import { z } from 'zod';
 import {
   AdminBookingDetailSchema,
   AdminBookingsListQuerySchema,
-  AdminCancellationRequestSchema,
-  AdminCancellationsListQuerySchema,
   AdminRefundInputSchema,
   AdminRefundResultSchema,
   BookingCodeSchema,
@@ -14,8 +12,6 @@ import {
   CancelBookingInputSchema,
   CancelBookingResultSchema,
   CreateBookingInputSchema,
-  DecideCancellationInputSchema,
-  DecideCancellationResultSchema,
 } from './schemas/bookings.js';
 import {
   DestinationSchema,
@@ -89,7 +85,6 @@ import {
 import { SiteMediaEntrySchema } from './schemas/site-media.js';
 import {
   AdminBookingsStatsSchema,
-  AdminCancellationsStatsSchema,
   AdminDashboardQuerySchema,
   AdminDashboardSeriesSchema,
   AdminEnquiriesStatsSchema,
@@ -648,10 +643,12 @@ export const contract = {
         .errors({
           NOT_FOUND: { message: 'Booking not found' },
           // Các 422 bên dưới: request parse hợp lệ nhưng ledger/state từ chối.
+          // CANCELLED nằm trong tập hoàn được (ADR-0029 §3, ADR-0041 §5): khách
+          // huỷ quá hạn giữ nguyên tiền, ngoại lệ đi qua đúng lệnh này.
           NOT_REFUNDABLE: {
             status: 422,
             message:
-              'Only a PAID or PARTIALLY_REFUNDED booking with a captured payment is refundable',
+              'Only a PAID, PARTIALLY_REFUNDED or CANCELLED booking with a captured payment is refundable',
           },
           OVER_TOTAL: {
             status: 422,
@@ -665,14 +662,6 @@ export const contract = {
             status: 422,
             message: 'Booking is already fully refunded',
           },
-          // ADR-0029 §AMEND 4 (vòng vá review 05/09): có yêu cầu huỷ ĐANG MỞ
-          // thì tiền phải đi qua quyết định của nó — W3 hoàn đủ rồi Deny là
-          // ghế rò vĩnh viễn. Trước đây chỉ UI ẩn nút; server nay chặn.
-          CANCELLATION_OPEN: {
-            status: 422,
-            message:
-              'A cancellation request is open on this booking — decide it instead of refunding directly',
-          },
           // Provider từ chối/lỗi khi gọi refund — chưa ghi gì vào ledger.
           REFUND_FAILED: {
             status: 502,
@@ -680,69 +669,6 @@ export const contract = {
           },
         })
         .output(AdminRefundResultSchema),
-    },
-    /**
-     * Hàng đợi cancellation (spec P2 W4, D1-B). `decide` là một endpoint cho
-     * cả hai phán quyết: deny chỉ flip request; approve điều phối trọn gói
-     * refund phần còn lại + booking CANCELLED + nhả seat.
-     */
-    cancellations: {
-      list: oc
-        .route({
-          method: 'GET',
-          path: '/api/admin/cancellations',
-          summary: 'List cancellation requests (admin, paged, status filter)',
-        })
-        .input(AdminCancellationsListQuerySchema)
-        .output(PagedSchema(AdminCancellationRequestSchema)),
-      decide: oc
-        .route({
-          method: 'POST',
-          path: '/api/admin/cancellations/{id}/decide',
-          summary: 'Approve (refund + cancel + release seats) or deny a request',
-        })
-        .input(DecideCancellationInputSchema)
-        .errors({
-          NOT_FOUND: { message: 'Cancellation request not found' },
-          // Request đã DENIED/REFUNDED — quyết định là chung cuộc (history
-          // append-only: khách muốn nữa thì gửi request MỚI).
-          ALREADY_DECIDED: {
-            status: 409,
-            message: 'This cancellation request has already been decided',
-          },
-          // Chỉ ở nhánh approve: booking không còn phần refund được / không có
-          // payment đã capture (cùng lớp gate với admin.bookings.refund).
-          NOT_REFUNDABLE: {
-            status: 422,
-            message: 'Booking has no refundable remainder to approve against',
-          },
-          // Hai mã dưới CHỈ với tới được từ ADR-0029 §1, khi `decide` bắt đầu
-          // nhận `refundAmount`. Trước đó approve luôn hoàn trọn phần dư nên
-          // không có con số nào để mà sai. Cùng tên với `admin.bookings.refund`
-          // — một loại lỗi tiền thì một tên gọi, dù đi qua endpoint nào.
-          OVER_TOTAL: {
-            status: 422,
-            message: 'Refund amount exceeds the refundable remainder',
-          },
-          ZERO_OR_NEGATIVE: {
-            status: 422,
-            message: 'Refund amount must be greater than zero',
-          },
-          // ADR-0030 §5 cưỡng chế ở SERVER (vòng vá review 05/09): số tiền
-          // khác mức chính sách thì phải có `decisionNote`. Trước đây luật này
-          // chỉ là một prop của dialog admin.
-          OFF_POLICY_NOTE_REQUIRED: {
-            status: 422,
-            message: 'A refund that differs from the policy amount needs a decision note',
-          },
-          // Chỉ ở nhánh approve: provider từ chối/lỗi khi gọi refund — chưa ghi
-          // gì vào ledger và request vẫn ở REQUESTED.
-          REFUND_FAILED: {
-            status: 502,
-            message: 'Provider refund failed',
-          },
-        })
-        .output(DecideCancellationResultSchema),
     },
     /**
      * Hàng đợi moderation review (spec P3a-A W1). `list` mặc định trả TẤT CẢ
@@ -786,9 +712,9 @@ export const contract = {
      *
      * Input: chỉ vùng NÀO CÓ bộ lọc ngày trên trang mới có, và luôn optional
      * (ADR-0028) — hàng card ăn theo hai ô ngày của bảng ngay dưới nó, thiếu
-     * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings`,
-     * `cancellations` và `reviews`, cùng dùng `AdminStatsRangeQuerySchema` chứ
-     * không mỗi vùng một bản. Bốn endpoint vùng còn lại KHÔNG có input: trang
+     * tham số thì rơi về cửa sổ trượt 28 ngày như cũ. Hiện là `bookings` và
+     * `reviews`, cùng dùng `AdminStatsRangeQuerySchema` chứ không mỗi vùng một
+     * bản. Bốn endpoint vùng còn lại KHÔNG có input: trang
      * của chúng chưa có bộ lọc ngày nào, và thêm một tham số không ai gửi là
      * thêm một nhánh không ai test. Vùng nào mọc bộ lọc ngày thì lặp lại đúng
      * khuôn ấy, đừng dựng cửa sổ thứ hai. `dashboard` (ADR-0036) là loại khác
@@ -807,14 +733,6 @@ export const contract = {
         })
         .input(AdminStatsRangeQuerySchema)
         .output(AdminBookingsStatsSchema),
-      cancellations: oc
-        .route({
-          method: 'GET',
-          path: '/api/admin/stats/cancellations',
-          summary: 'Cancellation queue + decisions for a date range, against an equally long one',
-        })
-        .input(AdminStatsRangeQuerySchema)
-        .output(AdminCancellationsStatsSchema),
       reviews: oc
         .route({
           method: 'GET',

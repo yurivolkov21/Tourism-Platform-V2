@@ -11,7 +11,7 @@ import { classifyRetryError, type RetryActionResult } from '@/lib/outbox-retry';
 
 /**
  * Hành vi GHI của vùng outbox (spec P4c §3-F7) — cùng khuôn đã chốt ở
- * `cancellations/actions.ts`:
+ * `reviews/actions.ts`:
  *
  * - SERVER ACTION vì client oRPC của admin là đường server-only (đọc cookie
  *   phiên qua `next/headers`), được gọi từ một nút trong client component.

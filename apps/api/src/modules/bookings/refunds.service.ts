@@ -2,12 +2,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { AdminRefundResult, Refund as RefundView } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import {
-  BookingStatus,
-  CancellationRequestStatus,
-  EmailType,
-  type PaymentProvider,
-} from '../../generated/prisma/enums.js';
+import { BookingStatus, EmailType, type PaymentProvider } from '../../generated/prisma/enums.js';
 import { MediaService } from '../media/media.service.js';
 import { PAYMENT_GATEWAYS, type PaymentGateway, resolveGateway } from '../payments/gateway.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
@@ -26,7 +21,7 @@ export class BookingNotFoundError extends Error {
 }
 
 /**
- * Refund gate fail: status nằm ngoài PAID/PARTIALLY_REFUNDED, hoặc không có
+ * Refund gate fail: status nằm ngoài PAID/PARTIALLY_REFUNDED/CANCELLED, hoặc không có
  * captured payment nào để refund vào. Port từ gate `BOOKING_NOT_REFUNDABLE`
  * (chỉ PAID) của Nexora và MỞ RỘNG thêm PARTIALLY_REFUNDED — ledger cho phép
  * partial refund cộng dồn (spec P2 §4 invariant #5), nên một booking đã refund
@@ -36,21 +31,8 @@ export class BookingNotRefundableError extends Error {
   constructor(status: BookingStatus, hasCapturedPayment: boolean) {
     super(
       hasCapturedPayment
-        ? `Booking is ${status}; only a PAID or PARTIALLY_REFUNDED booking can be refunded`
+        ? `Booking is ${status}; only a PAID, PARTIALLY_REFUNDED or CANCELLED booking can be refunded`
         : 'Booking has no captured payment to refund against',
-    );
-  }
-}
-
-/**
- * Booking đang có yêu cầu huỷ MỞ (ADR-0029 §AMEND 4): tiền phải đi qua quyết
- * định của yêu cầu ấy. W3 hoàn đủ rồi admin Deny là ghế rò vĩnh viễn — deny
- * không đụng booking, và ADR đã loại phương án "để Deny nhả ghế".
- */
-export class CancellationOpenError extends Error {
-  constructor() {
-    super(
-      'A cancellation request is open on this booking; decide it instead of refunding directly',
     );
   }
 }
@@ -115,9 +97,9 @@ export class RefundsService {
    * template), KHÔNG nhận free-text của admin.
    *
    * Khác với Nexora, một FULL admin refund ở đây KHÔNG release seat hay set
-   * cancelledAt: seat release thuộc về cancellation flow (W4 approve →
-   * refund); một goodwill refund của admin trên booking vẫn đang du lịch không
-   * được giải phóng seat của nó.
+   * cancelledAt: seat release thuộc về lõi huỷ của `CancellationsService`
+   * (ADR-0041 §4); một goodwill refund của admin trên booking vẫn đang du lịch
+   * không được giải phóng seat của nó.
    */
   async refundByAdmin(
     adminUserId: string,
@@ -140,10 +122,9 @@ export class RefundsService {
       // REFUNDED nhận error chính xác (ledger đã settle), đặt trước generic
       // status gate — cùng lớp 422, nhưng tín hiệu cho operator tốt hơn.
       if (booking.status === BookingStatus.REFUNDED) throw new RefundNothingLeftError();
-      // `CANCELLED` NẰM TRONG danh sách hoàn được (ADR-0029 §3): approve với
-      // mức hoàn một phần để lại một booking đã huỷ mà sổ còn dư, và phần dư
-      // ấy vẫn là tiền mình đang nợ khách. Trước ADR-0029 trạng thái đó là ngõ
-      // cụt — 422, không đường nào hoàn nốt ngoài dashboard provider.
+      // `CANCELLED` NẰM TRONG danh sách hoàn được (ADR-0029 §3, ADR-0041 §5):
+      // khách huỷ quá hạn để lại một booking đã huỷ mà sổ còn nguyên tiền, và
+      // ngoại lệ (ốm đau, việc gấp) đi qua chính lệnh hoàn thiện chí này.
       //
       // An toàn vì bất biến tiền do TRIGGER của ADR-0009 canh
       // (`SUM(refunds) <= total_amount`), không phải do gate này; sổ vẫn
@@ -156,14 +137,6 @@ export class RefundsService {
       if (!refundableStatus || !booking.providerPaymentId) {
         throw new BookingNotRefundableError(booking.status, booking.providerPaymentId != null);
       }
-      // Trong CÙNG advisory lock với `approve` — nên "đang mở" đọc ở đây là
-      // tươi: một approve chen giữa phải chờ lock này nhả. Trước vòng vá review
-      // 05/09 lưới duy nhất là UI ẩn nút `Issue refund` (refund-panel.tsx).
-      const openRequests = await tx.cancellationRequest.count({
-        where: { bookingId: booking.id, status: CancellationRequestStatus.REQUESTED },
-      });
-      if (openRequests > 0) throw new CancellationOpenError();
-
       const ledger = await tx.refund.aggregate({
         where: { bookingId: booking.id },
         _sum: { amount: true },

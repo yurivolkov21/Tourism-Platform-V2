@@ -2,7 +2,6 @@ import { forwardRef, Module } from '@nestjs/common';
 import { MediaModule } from '../media/media.module.js';
 import { PaymentsModule } from '../payments/payments.module.js';
 import { AdminBookingsController } from './admin-bookings.controller.js';
-import { AdminCancellationsController } from './admin-cancellations.controller.js';
 import { BookingsController } from './bookings.controller.js';
 import { BookingsService } from './bookings.service.js';
 import { CancellationsService } from './cancellations.service.js';
@@ -18,7 +17,7 @@ import { RefundsService } from './refunds.service.js';
  */
 @Module({
   imports: [forwardRef(() => PaymentsModule), MediaModule],
-  controllers: [BookingsController, AdminBookingsController, AdminCancellationsController],
+  controllers: [BookingsController, AdminBookingsController],
   providers: [BookingsService, RefundsService, CancellationsService],
   exports: [BookingsService, RefundsService, CancellationsService],
 })

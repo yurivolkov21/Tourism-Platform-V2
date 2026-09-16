@@ -28,7 +28,6 @@ const PAID: RefundTarget = {
   status: 'PAID',
   totalAmount: '120.00',
   refundedTotal: '0.00',
-  hasOpenCancellation: false,
   currency: 'USD',
   contactName: 'Ada Lovelace',
   refunds: [],
@@ -334,21 +333,23 @@ describe('RefundPanel — kết quả server', () => {
 });
 
 /**
- * ADR-0029 §AMEND — chặn ca chồng lấn tại nguồn: booking đang có yêu cầu huỷ
- * chờ xử lý thì nút refund ẨN, vì đường đúng là Approve (chỉ nó nhả ghế).
+ * ADR-0041 §5 — khách huỷ quá hạn để lại booking CANCELLED còn nguyên tiền;
+ * ngoại lệ đi qua chính nút này. Hết tiền để hoàn thì nút ẩn, câu giải thích thay chỗ.
  */
-describe('RefundPanel — booking có yêu cầu huỷ đang mở', () => {
-  it('KHÔNG hiện nút refund, và nói rõ đường đúng thay vì im lặng tắt', () => {
-    render(<RefundPanel booking={{ ...PAID, hasOpenCancellation: true }} refund={vi.fn()} />);
-
-    expect(screen.queryByRole('button', { name: t.cta })).toBeNull();
-    // Một nút biến mất không lý do là một admin đi tìm cách khác — mà cách
-    // khác ở đây chính là cái bẫy làm rò ghế.
-    expect(screen.getByText(messages.admin.bookings.refund.openCancellation)).toBeInTheDocument();
+describe('RefundPanel — booking CANCELLED', () => {
+  it('còn tiền chưa hoàn → HIỆN nút refund', () => {
+    render(<RefundPanel booking={{ ...PAID, status: 'CANCELLED' }} refund={vi.fn()} />);
+    expect(screen.getByRole('button', { name: t.cta })).toBeInTheDocument();
   });
 
-  it('không có request mở thì nút vẫn hiện như cũ', () => {
-    render(<RefundPanel booking={PAID} refund={vi.fn()} />);
-    expect(screen.getByRole('button', { name: t.cta })).toBeInTheDocument();
+  it('đã hoàn trọn (huỷ trong hạn) → ẨN nút và nói rõ vì sao', () => {
+    render(
+      <RefundPanel
+        booking={{ ...PAID, status: 'CANCELLED', refundedTotal: '120.00' }}
+        refund={vi.fn()}
+      />,
+    );
+    expect(screen.queryByRole('button', { name: t.cta })).toBeNull();
+    expect(screen.getByText(t.unavailable)).toBeInTheDocument();
   });
 });

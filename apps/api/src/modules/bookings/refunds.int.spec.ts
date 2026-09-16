@@ -4,7 +4,9 @@ import {
   AdminBookingDetailSchema,
   AdminRefundResultSchema,
   BookingSchema,
+  CancelBookingResultSchema,
   PagedSchema,
+  vietnamToday,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
@@ -185,6 +187,46 @@ describe('refunds integration (admin refund ledger)', () => {
       url: `/api/admin/bookings/${code}/refund`,
       headers: { cookie },
       payload: { reason: 'int test', ...payload },
+    });
+  }
+
+  /** Khách tự huỷ qua route thật (ADR-0041 §4) — lý do để trống như đa số khách. */
+  function postCancel(cookie: string, code: string) {
+    return app.inject({
+      method: 'POST',
+      url: `/api/bookings/${code}/cancel`,
+      headers: { cookie },
+      payload: {},
+    });
+  }
+
+  async function seatsBooked(): Promise<number> {
+    const row = await prisma.tourDeparture.findUniqueOrThrow({
+      where: { id: dep.id },
+      select: { seatsBooked: true },
+    });
+    return row.seatsBooked;
+  }
+
+  /**
+   * Dời chuyến `dep` (và snapshot ngày trên booking) về khởi hành sau hôm nay 2
+   * ngày theo giờ Việt Nam, chuyến 2 ngày: N = 3 nên ngày chót là hôm qua, còn
+   * ngày khởi hành chưa tới — đúng ca "huỷ quá hạn, không hoàn". Dời SAU khi
+   * trả tiền vì `bookings.create` chặn đặt chỗ quá hạn (Task 4). Cách 2 ngày
+   * chứ không 1: test chạy vắt qua nửa đêm giờ Việt Nam vẫn còn trước ngày đi.
+   */
+  async function moveDeparturePastDeadline(bookingId: string) {
+    const start = new Date(
+      Date.parse(`${vietnamToday(new Date())}T00:00:00.000Z`) + 2 * 86_400_000,
+    );
+    const end = new Date(start.getTime() + 86_400_000);
+    await prisma.tourDeparture.update({
+      where: { id: dep.id },
+      data: { startDate: start, endDate: end },
+    });
+    await prisma.booking.update({
+      where: { id: bookingId },
+      data: { departureStartDate: start, departureEndDate: end },
     });
   }
 
@@ -691,6 +733,99 @@ describe('refunds integration (admin refund ledger)', () => {
     expect(codes).toEqual([200, 422]); // một thành công, một RefundNothingLeft
 
     // Bất biến money: gateway gọi ĐÚNG một lần, ledger đúng một row, không vượt total.
+    expect(fake.refunds).toHaveLength(1);
+    const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+    expect(refunds).toHaveLength(1);
+    expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
+  });
+
+  it('ADR-0041 §5: booking CANCELLED còn nguyên tiền (khách huỷ quá hạn) → admin hoàn thiện chí được, booking GIỮ CANCELLED', async () => {
+    const admin = await signUpAdmin();
+    const alice = await signUpUser('late-cancel@example.com', 'Alice');
+    const booking = await createPaidBooking(alice); // 117.00, 3 ghế
+    await moveDeparturePastDeadline(booking.id);
+
+    const cancelled = await postCancel(alice, booking.code);
+    expect(cancelled.statusCode).toBe(200);
+    const result = CancelBookingResultSchema.parse(cancelled.json());
+    // Quá hạn: không hoàn, không gọi cổng, nhưng ghế vẫn trả về chuyến.
+    expect(result.refundedAmount).toBe('0.00');
+    expect(result.booking.status).toBe('CANCELLED');
+    expect(fake.refunds).toHaveLength(0);
+    expect(await seatsBooked()).toBe(0);
+
+    // Ngoại lệ (ốm đau, việc gấp) đi qua hoàn thiện chí — con đường DUY NHẤT
+    // từ khi luồng duyệt huỷ bị gỡ.
+    const res = await postRefund(admin, booking.code, {
+      amount: '40.00',
+      reason: 'Medical emergency',
+    });
+    expect(res.statusCode).toBe(200);
+    const body = AdminRefundResultSchema.parse(res.json());
+    // Travel story KHÔNG bị money story ghi đè (docs/conventions/booking-states.md).
+    expect(body.booking.status).toBe('CANCELLED');
+    expect(body.refunds.map((r) => Number(r.amount))).toEqual([40]);
+    expect(fake.refunds).toHaveLength(1);
+    expect(fake.refunds[0]).toMatchObject({
+      amount: '40.00',
+      idempotencyKey: `refund:${booking.id}:0.00`,
+    });
+
+    const row = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+    expect(row.status).toBe(BookingStatus.CANCELLED);
+    expect(row.cancelledAt).not.toBeNull();
+    // Hoàn thiện chí KHÔNG nhả ghế lần hai — lõi huỷ đã nhả rồi.
+    expect(await seatsBooked()).toBe(0);
+  });
+
+  it('booking CANCELLED: hoàn nốt tới đủ total thì dừng, và byCode ghi yêu cầu do CHÍNH khách quyết', async () => {
+    const admin = await signUpAdmin();
+    const alice = await signUpUser('late-cancel-cap@example.com', 'Alice');
+    const booking = await createPaidBooking(alice);
+    await moveDeparturePastDeadline(booking.id);
+    expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
+
+    expect((await postRefund(admin, booking.code, { amount: '117.00' })).statusCode).toBe(200);
+    const again = await postRefund(admin, booking.code, { amount: '1.00' });
+    expect(again.statusCode).toBe(422);
+    // Sổ đã settle: classifyRefundAmount báo NOTHING_LEFT trước mọi phép so số tiền.
+    expect(again.json()).toMatchObject({ code: 'NOTHING_LEFT' });
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/admin/bookings/${booking.code}`,
+      headers: { cookie: admin },
+    });
+    expect(res.statusCode).toBe(200);
+    const detail = AdminBookingDetailSchema.parse(res.json());
+    expect(detail.status).toBe('CANCELLED');
+    expect(detail.refundedTotal).toBe('117.00');
+    expect(detail.cancellationRequests).toHaveLength(1);
+    expect(detail.cancellationRequests[0]).toMatchObject({
+      status: 'REFUNDED',
+      decidedByCustomer: true,
+    });
+  });
+
+  it('BK-R1 cross-path: admin hoàn thiện chí ‖ khách tự huỷ ĐỒNG THỜI → đúng 1 lệnh hoàn tới cổng, sổ không vượt total (advisory lock)', async () => {
+    const admin = await signUpAdmin();
+    const alice = await signUpUser('cross-path-cancel@example.com', 'Alice');
+    // Chuyến +45 ngày dài 2 ngày (N = 3): còn trong hạn, khách huỷ được hoàn đủ.
+    const booking = await createPaidBooking(alice); // 117.00
+
+    fake.refundDelayMs = 100; // ép hai đường cùng đọc sổ = 0 trước khi bên nào ghi
+    const [a, b] = await Promise.allSettled([
+      postRefund(admin, booking.code, { amount: '117.00' }),
+      postCancel(alice, booking.code),
+    ]);
+    const codes = [a, b]
+      .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))
+      .sort((x, y) => x - y);
+    // Admin thắng khoá: booking REFUNDED → khách nhận NOT_CANCELLABLE (422).
+    // Khách thắng khoá: lõi huỷ hoàn đủ 117.00 → admin nhận NOTHING_LEFT (422).
+    expect(codes).toEqual([200, 422]);
+
+    // Bất biến tiền không đổi dù bên nào thắng: cổng gọi ĐÚNG một lần, sổ một dòng.
     expect(fake.refunds).toHaveLength(1);
     const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
     expect(refunds).toHaveLength(1);

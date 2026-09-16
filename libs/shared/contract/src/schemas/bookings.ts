@@ -404,9 +404,9 @@ export const CancelBookingResultSchema = z.object({
 export type CancelBookingResult = z.output<typeof CancelBookingResultSchema>;
 
 /**
- * Một row cancellation request (lịch sử append-only theo D1-B — một booking có
- * thể mang nhiều cái: lịch sử DENIED + nhiều nhất một REQUESTED đang mở). Các
- * field quyết định là null cho tới khi admin quyết.
+ * Một dòng `cancellation_requests` (lịch sử append-only D1-B). Từ ADR-0041 mỗi
+ * lần khách tự huỷ ghi đúng MỘT dòng REFUNDED, gửi và quyết cùng lúc; REQUESTED
+ * và DENIED chỉ còn ở dữ liệu của luồng duyệt cũ, hiện dạng chỉ đọc.
  */
 export const CancellationRequestSchema = z.object({
   id: z.uuid(),
@@ -426,101 +426,17 @@ export const CancellationRequestSchema = z.object({
   freeCancellationDays: z.int().nonnegative().nullable(),
   decisionNote: z.string().max(500).nullable(),
   decidedAt: z.iso.datetime().nullable(),
+  /**
+   * `true` khi người quyết CHÍNH LÀ khách đã gửi yêu cầu (`decided_by = user_id`),
+   * tức khách tự huỷ (ADR-0041 §4). `false` khi chưa quyết, hoặc do nhân viên
+   * quyết (dữ liệu luồng duyệt cũ). Admin in "ai huỷ" từ cờ này, nhờ vậy
+   * contract không phải phơi id người dùng nào.
+   */
+  decidedByCustomer: z.boolean(),
   createdAt: z.iso.datetime(),
 });
 
 export type CancellationRequest = z.output<typeof CancellationRequestSchema>;
-
-/**
- * Row cho queue admin: request kèm đủ context booking để quyết mà không cần
- * lookup lần hai (port từ DTO cancellation admin của Nexora).
- */
-export const AdminCancellationRequestSchema = CancellationRequestSchema.extend({
-  tourTitle: z.string().min(1).max(160),
-  departureStartDate: z.iso.date(),
-  contactName: z.string().min(1).max(120),
-  contactEmail: EmailSchema,
-  // Tiền của booking (review F3 31/08): approve = refund PHẦN CÒN LẠI, mà
-  // trước đây queue không mang con số nào — admin bấm lệnh tiền mù. total +
-  // đã-hoàn đủ để client tính phần còn lại; currency đi kèm để format.
-  totalAmount: DecimalStringSchema,
-  refundedTotal: DecimalStringSchema,
-  currency: z.string().length(3),
-});
-
-export type AdminCancellationRequest = z.output<typeof AdminCancellationRequestSchema>;
-
-/**
- * Query cho `admin.cancellations.list`. Bỏ trống `status` → TẤT CẢ request (nhất
- * quán với `admin.bookings.list`; queue đang mở là `?status=REQUESTED`).
- *
- * `from`/`to` (ADR-0028 §AMEND) lọc theo `createdAt` — ngày khách GỬI yêu cầu,
- * cùng cột bảng đang sắp xếp. KHÔNG lọc theo `decidedAt` dù nó khớp tuyệt đối
- * với hai card Approved/Denied: hàng `REQUESTED` có `decidedAt` null, nên lọc
- * theo cột ấy sẽ quét sạch hàng đợi ĐANG MỞ khỏi bảng — tức xoá mất lý do tồn
- * tại của trang.
- *
- * Bỏ trống cả hai = KHÔNG lọc ngày, và đó là MẶC ĐỊNH của vùng — khác
- * `/bookings` (mặc định trọn tháng hiện tại). Trang này là hàng đợi việc phải
- * làm: mặc định phải thấy đủ mọi request đang mở, kể cả cái khách gửi từ tháng
- * trước. Vì URL trần chính là "xem tất cả" nên ở đây KHÔNG có sentinel
- * `?dates=all`.
- */
-export const AdminCancellationsListQuerySchema = AdminPageQuerySchema.extend({
-  status: CancellationRequestStatusSchema.optional(),
-  from: CalendarDateSchema.optional(),
-  to: CalendarDateSchema.optional(),
-})
-  // `.refine` giữ nguyên `.shape` của ZodObject (điều kiện sống còn của
-  // `ZodSmartCoercionPlugin` bên API) — xem ghi chú ở `AdminBookingsListQuerySchema`.
-  .refine(({ from, to }) => !(from && to) || from <= to, {
-    message: 'from must be on or before to',
-    path: ['to'],
-  });
-
-export type AdminCancellationsListQuery = z.output<typeof AdminCancellationsListQuerySchema>;
-
-/**
- * Input cho `admin.cancellations.decide` — một endpoint cho cả hai phán quyết.
- * `approve: true` → hoàn theo `refundAmount` (vắng = mức chính sách, ADR-0029
- * AMEND 5) + booking CANCELLED + trả lại seat + request REFUNDED;
- * `approve: false` → request DENIED, booking giữ nguyên.
- */
-export const DecideCancellationInputSchema = z.object({
-  id: z.uuid(),
-  approve: z.boolean(),
-  // `.trim()` ở contract (W1) — cùng luật với `CancelBookingInputSchema.reason`;
-  // ghi chú toàn khoảng trắng là 400, service không trim nữa.
-  decisionNote: z.string().trim().min(1).max(500).optional(),
-  /**
-   * Số tiền hoàn khi `approve: true` — ADR-0029 §1.
-   *
-   * VẮNG = **mức CHÍNH SÁCH** (ADR-0029 AMEND 5): server tự tính
-   * `refundPercentForRequest` + `policyRefundAmount` từ dữ liệu tươi — bậc 0%
-   * nghĩa là hoàn 0 đồng (đóng request, huỷ booking, nhả ghế, không gateway).
-   * KHÔNG còn ngữ nghĩa cũ "vắng = hoàn trọn phần dư" — đó là cửa hậu để một
-   * caller bỏ trống trường này mà được 100% trên yêu cầu thuộc bậc 0%. KHÔNG
-   * có nghĩa gì khi `approve: false`: deny không đụng tiền.
-   *
-   * Đây KHÔNG phải con số admin gõ tự do (ADR-0029 §4 + ADR-0030): bảng bậc
-   * chính sách tính ra nó và khoá trên màn hình; muốn khác thì phải bật công
-   * tắc vượt bậc và ghi lý do — MỌI lệch với mức chính sách (kể cả khi trường
-   * này vắng) đòi `decisionNote`, server trả `OFF_POLICY_NOTE_REQUIRED` nếu
-   * thiếu. Server vẫn canh lại bằng `classifyRefundAmount` — ≤ 0, vượt phần
-   * dư, hay sổ đã settle đều là 422.
-   */
-  refundAmount: DecimalStringSchema.optional(),
-});
-
-export type DecideCancellationInput = z.output<typeof DecideCancellationInputSchema>;
-
-/** Output của `admin.cancellations.decide`: request đã quyết + booking sau đó. */
-export const DecideCancellationResultSchema = z.object({
-  request: AdminCancellationRequestSchema,
-  booking: BookingSchema,
-});
-
-export type DecideCancellationResult = z.output<typeof DecideCancellationResultSchema>;
 
 /**
  * Output của `admin.bookings.byCode` (nâng cấp W4): booking kèm toàn bộ lịch sử

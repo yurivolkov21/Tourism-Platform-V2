@@ -1,6 +1,5 @@
 import type {
   AdminBookingsStats,
-  AdminCancellationsStats,
   AdminDashboardSeries,
   AdminEnquiriesStats,
   AdminOutboxStats,
@@ -15,8 +14,8 @@ import { api, withAdminAuth } from './client';
  *
  * ## Vùng nào cache, vùng nào không — LUẬT CHUNG
  *
- * Cache theo tag CHỈ khi MỌI kẻ ghi bảng đều là server action của admin. Ba
- * vùng của P4b (bookings/cancellations/reviews) đúng như vậy nên cache 60s
+ * Cache theo tag CHỈ khi MỌI kẻ ghi bảng đều là server action của admin. Hai
+ * vùng của P4b còn lại (bookings/reviews) đúng như vậy nên cache 60s
  * theo `ADMIN_STATS_TAG`; bốn vùng của P4c thì không, và mỗi cái ghi lý do
  * riêng ở JSDoc của mình (worker · webhook provider · form "Inquire Now" ·
  * form footer + link HMAC trong email khách).
@@ -24,7 +23,7 @@ import { api, withAdminAuth } from './client';
  * Vì sao ba vùng kia CÓ cache (vòng vá review F5): `no-store` từng bắt refetch
  * trọn bộ stats trên MỌI click phân trang/lọc/refresh-sau-ghi dù hàng card
  * không phụ thuộc searchParams — và vì refresh nằm trong `useTransition`, nó
- * kéo dài luôn thời gian khoá nút Approve/Deny. Cửa sổ đo là 28 ngày nên 60s
+ * kéo dài luôn thời gian khoá nút ghi của trang. Cửa sổ đo là 28 ngày nên 60s
  * staleness là số lẻ thứ năm sau dấu phẩy; còn "tươi ngay sau khi CHÍNH MÌNH
  * ghi" thì server action gọi `updateTag(ADMIN_STATS_TAG)`. An toàn chia sẻ
  * cache giữa admin: stats là số nền tảng, không theo phiên (xem cảnh báo
@@ -40,7 +39,7 @@ import { api, withAdminAuth } from './client';
  * có thể sống nhiều tuần mà không ai biết.
  */
 
-/** Tag Data Cache của ba endpoint stats CÓ cache — action ghi nào đổi số thì update. */
+/** Tag Data Cache của hai endpoint stats CÓ cache — action ghi nào đổi số thì update. */
 export const ADMIN_STATS_TAG = 'admin-stats';
 
 const STATS_CACHE_SECONDS = 60;
@@ -70,21 +69,8 @@ export async function fetchAdminBookingsStats(
 }
 
 /**
- * Bộ số `/cancellations` — endpoint stats thứ hai nhận khoảng ngày (ADR-0028
- * §AMEND). Khác `/bookings` ở chỗ vùng này mặc định KHÔNG lọc ngày, nên `{}`
- * là ca thường gặp chứ không phải ngoại lệ; lúc đó server dùng cửa sổ trượt
- * 28 ngày như trước.
- */
-export async function fetchAdminCancellationsStats(
-  cookie: string,
-  range?: { from?: string; to?: string },
-): Promise<AdminCancellationsStats> {
-  return api.admin.stats.cancellations(range ?? {}, { context: statsContext(cookie) });
-}
-
-/**
- * Bộ số `/reviews` — endpoint stats thứ BA nhận khoảng ngày (ADR-0028
- * §AMEND 2). Cùng nếp `/cancellations`: vùng này mặc định KHÔNG lọc ngày nên
+ * Bộ số `/reviews` — endpoint stats thứ HAI nhận khoảng ngày (ADR-0028
+ * §AMEND 2). Vùng này mặc định KHÔNG lọc ngày nên
  * `{}` là ca thường gặp, và lúc đó server dùng cửa sổ trượt 28 ngày như trước.
  */
 export async function fetchAdminReviewsStats(
@@ -95,7 +81,7 @@ export async function fetchAdminReviewsStats(
 }
 
 /**
- * F7 — KHÔNG cache (vòng vá review F7), khác ba vùng trên: hai ảnh chụp
+ * F7 — KHÔNG cache (vòng vá review F7), khác hai vùng trên: hai ảnh chụp
  * queued/failed hứa "đúng bằng số hàng của bảng bên dưới", mà kẻ đổi hàng đợi
  * là WORKER drain mỗi phút — không server action nào gọi được `updateTag` hộ
  * nó. Cache 60s ở đây là card cãi nhau với bảng ngay giữa lúc triage sự cố.

@@ -5,7 +5,7 @@ import type { ReviewRowVM } from './reviews-view';
 
 /**
  * Logic THUẦN của moderation review (spec P4b §3-F4) — đứng ngoài React và có
- * test riêng, đúng khuôn `refund.ts` (F2) và `cancellations-decide.ts` (F3).
+ * test riêng, đúng khuôn `refund.ts` (F2).
  */
 
 const t = messages.admin.reviews.moderate;

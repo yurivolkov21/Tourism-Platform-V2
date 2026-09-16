@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import {
   type AdminBookingsStats,
-  type AdminCancellationsStats,
   type AdminDashboardQuery,
   type AdminDashboardSeries,
   type AdminEnquiriesStats,
@@ -18,7 +17,6 @@ import { OutboxStatus } from '../../generated/prisma/enums.js';
 import { NOT_REJECTED } from '../reviews/review-state.js';
 import {
   bookingsCreatedCount,
-  decisionsSlice,
   enquiriesCreatedCount,
   enquiryWonCount,
   outboxSentCount,
@@ -64,12 +62,12 @@ import {
  * khoảng đều nửa-mở `gte … lt` nên không hàng nào bị đếm hai lần ở chỗ giáp
  * ranh.
  *
- * **`bookings` và `cancellations` có cửa sổ do ADMIN chọn** (ADR-0028 và
- * §AMEND của nó): hai method ấy nhận `{from, to}` — đúng hai ô ngày của bảng
- * cùng vùng — và cắt bằng `statsWindowFromRange`. Kỳ trước vẫn dài BẰNG kỳ
- * này, chỉ lùi liền kề, nên bất biến trên không bị nới. Thiếu tham số thì rơi
- * về đúng cửa sổ mặc định. Năm bộ số còn lại KHÔNG nhận tham số: trang của
- * chúng chưa có bộ lọc ngày.
+ * **`bookings` và `reviews` có cửa sổ do ADMIN chọn** (ADR-0028 và các AMEND
+ * của nó): hai method ấy nhận `{from, to}` — đúng hai ô ngày của bảng cùng
+ * vùng — và cắt bằng `statsWindowFromRange`. Kỳ trước vẫn dài BẰNG kỳ này, chỉ
+ * lùi liền kề, nên bất biến trên không bị nới. Thiếu tham số thì rơi về đúng
+ * cửa sổ mặc định. Bốn bộ số vùng còn lại KHÔNG nhận tham số: trang của chúng
+ * chưa có bộ lọc ngày.
  *
  * ⚠️ Ăn theo bộ lọc KHÔNG có nghĩa bốn con số cùng đếm trên MỘT cột. Neo của
  * từng metric giữ nguyên: `revenue`/`paidBookings`/`cancellationRate` theo
@@ -121,32 +119,14 @@ import {
  *   tăng dần, không lỗ. Admin KHÔNG cache (cùng luật F7–F10): kẻ ghi `paid_at`
  *   là webhook provider (`claimSeatsForPaid`), ngoài mọi `updateTag`.
  *
- * **cancellations** (cửa sổ do admin chọn được — ADR-0028 §AMEND)
- * - `pendingQueue` — ẢNH CHỤP hàng đợi đang mở ở HAI ĐẦU kỳ, KHÔNG phải đếm
- *   trong kỳ: `current` = hàng đợi tại `currentTo`, `previous` = tại
- *   `currentFrom`. Cả hai dựng bằng "đã mở trước mốc đó VÀ chưa quyết tính
- *   đến mốc đó" (`pendingRequestsAt`), và dựng lại được CHÍNH XÁC vì quyết
- *   định cancellation là chung cuộc (history append-only, `decided_at` ghi
- *   một lần — spec P2 D1-B). Đây là thứ reviews (F5) và enquiries (F9) phải
- *   thêm bảng audit mới có.
- *   Khi CHƯA lọc ngày, `currentTo` chính là lúc chốt sổ nên `current` bằng
- *   đúng `COUNT(*) WHERE status = 'REQUESTED'`, tức khớp ĐÚNG số hàng của
- *   `/cancellations?status=REQUESTED` như lời hứa cũ. Đang lọc tháng 7 thì
- *   nó là hàng đợi CUỐI THÁNG 7 — và đó mới là con số đúng, vì bảng bên dưới
- *   lúc ấy cũng đang nói về tháng 7.
- * - `approved` / `denied` — đếm theo `decided_at` trong kỳ (approve ⇒ trạng
- *   thái `REFUNDED`, xem booking-states.md). ⚠️ Neo `decided_at` còn bảng lọc
- *   theo `created_at`: cùng loại lệch "một khoảng, hai cột" đã ghi ở phần
- *   bookings, nhưng nhỏ hơn nhiều vì vòng đời một request rất ngắn.
- *
  * **reviews**
  * - `pending` — ẢNH CHỤP như trên: `current` = số review CHƯA CÓ PHÁN QUYẾT
  *   (`is_approved = false AND rejected_at IS NULL`, ADR-0031 §5) tại cuối kỳ,
  *   đúng bằng số hàng `/reviews?status=pending` hiện ra. Trước ADR-0031 nó
  *   chỉ đếm `is_approved = false`, tức gộp cả review ĐÃ BỊ BÁC — một con số
  *   chỉ có thể phình ra, trong khi nó tồn tại để đo việc còn phải làm;
- *   `previous` = trạng thái duyệt suy ngược về mốc đầu kỳ. ⚠️ Khác
- *   cancellations, `moderated_at` KHÔNG phải dấu "đã có quyết định" — review
+ *   `previous` = trạng thái duyệt suy ngược về mốc đầu kỳ. ⚠️
+ *   `moderated_at` KHÔNG phải dấu "đã có quyết định" — review
  *   ra đời đã duyệt sẵn thì nó vẫn null — nên phép dựng lại phải đọc cả
  *   `is_approved`; chi tiết + ca xấp xỉ còn lại ở `pendingReviewsAt`.
  * - `approved` — SỐ LƯỢT DUYỆT thực hiện trong kỳ, đếm trên audit trail
@@ -373,33 +353,6 @@ export class StatsService {
     };
   }
 
-  /**
-   * Bộ số vùng `/cancellations`, tính trên khoảng ngày admin đang lọc
-   * (ADR-0028 §AMEND).
-   *
-   * `pendingQueue` là metric ẢNH CHỤP nên không "đếm trong kỳ" được như ba
-   * card của `/bookings`; nó lấy ảnh chụp ở HAI ĐẦU kỳ — cuối kỳ so với đầu
-   * kỳ — nên card đọc thành "hàng đợi đã dịch chuyển thế nào trong kỳ bạn
-   * đang xem". Với cửa sổ TRƯỢT thì `currentTo === generatedAt === now`, tức
-   * hành vi trước ADR không đổi một con số nào.
-   */
-  async adminCancellations(query?: AdminStatsRangeQuery): Promise<AdminCancellationsStats> {
-    const window = statsWindowFromRange(query?.from, query?.to, new Date());
-    const [pendingEnd, pendingStart, current, previous] = await Promise.all([
-      this.pendingRequestsAt(window.currentTo),
-      this.pendingRequestsAt(window.currentFrom),
-      decisionsSlice(window.currentFrom, window.currentTo),
-      decisionsSlice(window.previousFrom, window.currentFrom),
-    ]);
-
-    return {
-      period: statsPeriod(window),
-      pendingQueue: { current: pendingEnd, previous: pendingStart },
-      approved: { current: current.approved, previous: previous.approved },
-      denied: { current: current.denied, previous: previous.denied },
-    };
-  }
-
   /** Bộ số vùng `/reviews` — ăn theo khoảng ngày của bảng (ADR-0028 §AMEND 2). */
   async adminReviews(query?: AdminStatsRangeQuery): Promise<AdminReviewsStats> {
     const window = statsWindowFromRange(query?.from, query?.to, new Date());
@@ -506,24 +459,8 @@ export class StatsService {
   }
 
   /**
-   * Hàng đợi cancellation ĐANG MỞ tại mốc `at` — dựng lại từ dấu vết thời
-   * gian: đã mở trước mốc đó, và tới mốc đó chưa ai quyết. `decidedAt: null`
-   * là các request còn sống; `decidedAt >= at` là các request bấy giờ còn mở
-   * nhưng đã được quyết sau đó.
-   */
-  private pendingRequestsAt(at: Date): Promise<number> {
-    return prisma.cancellationRequest.count({
-      where: {
-        createdAt: { lt: at },
-        OR: [{ decidedAt: null }, { decidedAt: { gte: at } }],
-      },
-    });
-  }
-
-  /**
    * Hàng đợi moderation tại mốc `at`. KHÔNG dựng lại được bằng riêng dấu thời
-   * gian như cancellations: ở đó `decided_at` được ghi ĐÚNG KHI có quyết
-   * định, còn `moderated_at` null chỉ nghĩa là "chưa ai bấm nút" — mà một
+   * gian: `moderated_at` null chỉ nghĩa là "chưa ai bấm nút" — mà một
    * review có thể ra đời ĐÃ DUYỆT SẴN (seed dựng 84 testimonial CURATED với
    * `is_approved = true`, `moderated_at` null). Bản đầu của F5 chỉ nhìn
    * `moderated_at` nên đếm cả 84 cái đó là hàng đợi của 28 ngày trước, và

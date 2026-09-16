@@ -1,6 +1,5 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
-import { REFUND_GRACE_HOURS } from '@tourism/contract';
 import { resilience } from './resilience.js';
 
 // MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
@@ -8,25 +7,8 @@ import { resilience } from './resilience.js';
 // (bài học F1: hai bản travellers lệch số nhiều ngay lúc viết).
 const REFUND_ZERO_COPY = 'Refund amount must be greater than zero.';
 
-// MỘT bộ nhãn cho enum CancellationRequestStatus, dùng ở CẢ hai chỗ in nó:
-// hàng đợi `/cancellations` (F3) và lịch sử append-only trên trang chi tiết
-// booking (F1). Hai bản chép tay là hai bản sẽ trôi lệch (bài học travellers).
-const CANCELLATION_STATUS_COPY = {
-  REQUESTED: 'Awaiting review',
-  DENIED: 'Denied',
-  REFUNDED: 'Approved — refunded',
-} as const;
-
-// Ba nhãn ngữ cảnh của vùng cancellations dùng ở CẢ header cột lẫn dialog
-// quyết định — một khái niệm một chữ (review F3 31/08, bài học travellers).
-const CANCELLATION_CONTEXT_COPY = {
-  booking: 'Booking',
-  tour: 'Tour',
-  customer: 'Customer',
-} as const;
-
 // Bốn nhãn ngữ cảnh của vùng reviews dùng ở CẢ header cột lẫn dialog duyệt —
-// cùng luật một-khái-niệm-một-chữ với CANCELLATION_CONTEXT_COPY ở trên.
+// một khái niệm một chữ (review F3 31/08, bài học travellers).
 // "Author" chứ không "Customer": review CURATED không có khách nào sau lưng,
 // và AdminReviewSchema cố ý KHÔNG phơi PII khách (email/tên booking).
 const REVIEW_CONTEXT_COPY = {
@@ -47,7 +29,7 @@ const RATING_LABEL_COPY = (rating: number) => `${rating} out of 5 stars`;
 
 // MỘT bộ nhãn cho 5 tab của app mobile, dùng ở CẢ thanh tab lẫn tiêu đề màn
 // tương ứng (P5a). Hai bản chép tay là hai bản sẽ trôi lệch — cùng bài học
-// travellers đã dạy ở CANCELLATION_STATUS_COPY phía trên.
+// travellers đã dạy ở REVIEW_CONTEXT_COPY phía trên.
 const MOBILE_TAB_COPY = {
   home: 'Home',
   explore: 'Explore',
@@ -2819,7 +2801,6 @@ export const messages = {
       soon: 'Soon',
       dashboard: 'Dashboard',
       bookings: 'Bookings',
-      cancellations: 'Cancellations',
       reviews: 'Reviews',
       enquiries: 'Enquiries',
       subscribers: 'Subscribers',
@@ -3035,19 +3016,6 @@ export const messages = {
         created: 'New bookings',
         cancellationRate: 'Cancellation rate',
       },
-      cancellations: {
-        pendingQueue: 'Pending queue',
-        approved: (days: number) => `Approved ${days}d`,
-        denied: (days: number) => `Denied ${days}d`,
-        /**
-         * Nhãn khi kỳ do ADMIN chọn — BỎ hậu tố "Nd" (ADR-0028 §AMEND).
-         * "Approved 31d" đọc thành "31 ngày gần nhất", tức một cửa sổ TRƯỢT;
-         * nhưng lọc tháng 5 là một kỳ đứng yên, và khoảng ngày đã nói ở dòng
-         * ngay trên hàng card rồi.
-         */
-        approvedInPeriod: 'Approved',
-        deniedInPeriod: 'Denied',
-      },
       reviews: {
         pending: 'Pending',
         /**
@@ -3058,7 +3026,7 @@ export const messages = {
         submitted: (days: number) => `Submitted ${days}d`,
         approved: (days: number) => `Approved ${days}d`,
         averageRating: 'Average rating',
-        /** Nhãn khi kỳ do ADMIN chọn — BỎ hậu tố "Nd" (cùng luật cancellations). */
+        /** Nhãn khi kỳ do ADMIN chọn — BỎ hậu tố "Nd" (ADR-0028 §AMEND): kỳ đứng yên, không phải cửa sổ trượt. */
         submittedInPeriod: 'Submitted',
         approvedInPeriod: 'Approved',
       },
@@ -3498,15 +3466,29 @@ export const messages = {
         },
         cancellations: {
           heading: 'Cancellation history',
-          empty: 'No cancellation requests for this booking.',
+          empty: 'This booking has not been cancelled.',
           reason: 'Reason',
+          /** Khách tự huỷ không bắt buộc ghi lý do (ADR-0041 §4) — `null` in câu này, không để trống. */
+          noReason: 'No reason given',
           note: 'Decision note',
           requested: 'Requested',
           decided: 'Decided',
-          // Enum CancellationRequestStatus — lịch sử append-only nên một
-          // booking có thể mang nhiều dòng DENIED trước dòng cuối. Nhãn dùng
-          // CHUNG với hàng đợi `/cancellations` (hằng trên đầu file).
-          status: CANCELLATION_STATUS_COPY,
+          /** Ai quyết — đọc cờ `decidedByCustomer` của contract. */
+          byCustomer: 'By the customer',
+          byStaff: 'By staff',
+          /** Xếp loại trên mốc KHÁCH gửi yêu cầu, không phải hôm nay; ngày chót in theo `formatCalendarDate`. */
+          withinDeadline: (deadline: string) =>
+            `Within the free-cancellation deadline (${deadline})`,
+          afterDeadline: (deadline: string) => `After the free-cancellation deadline (${deadline})`,
+          refunded: (amount: string) => `Refunded ${amount}`,
+          notRefunded: 'No refund',
+          // Enum CancellationRequestStatus. REQUESTED và DENIED chỉ còn ở dữ liệu
+          // của luồng duyệt cũ (ADR-0041 bỏ luồng này), hiện chỉ đọc tới lượt seed lại.
+          status: {
+            REQUESTED: 'Awaiting review',
+            DENIED: 'Denied',
+            REFUNDED: 'Cancelled',
+          },
         },
       },
       /**
@@ -3524,15 +3506,9 @@ export const messages = {
       refund: {
         heading: 'Refunds',
         cta: 'Issue refund',
-        /** Trạng thái ngoài PAID/PARTIALLY_REFUNDED — nút không hiện, câu này thay chỗ. */
-        /**
-         * Nút refund bị ẩn vì đang có yêu cầu huỷ chờ xử lý (ADR-0029 §AMEND).
-         * Nói RÕ đường đúng thay vì chỉ tắt nút — một nút biến mất không lý do
-         * là một admin đi tìm cách khác, và cách khác ở đây là cái bẫy.
-         */
-        openCancellation:
-          'This booking has a cancellation request awaiting review. Approve it from Cancellations instead — that refunds, cancels the booking and releases the seats in one step.',
-        unavailable: 'Only a paid or partially refunded booking can be refunded.',
+        /** Nút không hiện (Hợp đồng E: hết tiền để hoàn, hoặc PENDING/REFUNDED) — câu này thay chỗ. */
+        unavailable:
+          'Only a paid, partially refunded or cancelled booking with money left to refund can be refunded.',
         form: {
           title: 'Issue a refund',
           body: 'Step 1 of 2 — enter how much goes back to the customer, and why.',
@@ -3585,14 +3561,11 @@ export const messages = {
         errors: {
           NOT_FOUND: 'This booking no longer exists. Reload the list.',
           NOT_REFUNDABLE:
-            'This booking is not refundable — it needs a captured payment and a PAID or PARTIALLY REFUNDED status. Reload to see where it stands now.',
+            'This booking is not refundable — it needs a captured payment and a PAID, PARTIALLY REFUNDED or CANCELLED status. Reload to see where it stands now.',
           OVER_TOTAL:
             'This amount plus the refunds already issued would go over the booking total. Refund the full remaining balance instead, or enter a smaller amount.',
           ZERO_OR_NEGATIVE: REFUND_ZERO_COPY,
           NOTHING_LEFT: 'This booking is already fully refunded — nothing is left to send back.',
-          /** ADR-0029 §AMEND 4 — server chặn, không chỉ UI ẩn nút. */
-          CANCELLATION_OPEN:
-            'This booking has an open cancellation request. Decide that request instead — approving it handles the refund and releases the seats.',
           REFUND_FAILED:
             'The payment provider rejected the refund, so nothing was recorded. Check the provider dashboard before trying again.',
         },
@@ -3616,256 +3589,6 @@ export const messages = {
           total: (amount: string) => `${amount} refunded in total`,
           /** Bảng refund của booking này thật sự rỗng — số từ DB, không phải đoán. */
           none: 'No refunds on this booking.',
-        },
-      },
-    },
-    /**
-     * Vùng cancellations (spec P4b §3-F3) — hàng đợi request của khách cộng
-     * MỘT hành vi ghi: `admin.cancellations.decide` (approve/deny một cửa).
-     *
-     * Approve là money-path: refund phần còn lại + booking CANCELLED + nhả
-     * ghế, tất cả nguyên tử trong một advisory lock (CancellationsService
-     * .approve). Vì thế copy xác nhận phải NÓI ĐỦ ba hệ quả — admin bấm
-     * "Approve" không được phép ngạc nhiên vì tiền đã đi.
-     */
-    cancellations: {
-      list: {
-        filterLabel: 'Filter by status',
-        all: 'All',
-        empty: 'No cancellation requests match this filter.',
-        /**
-         * Cột Decision của hàng đợi không còn hai nút tiền (user chốt 04/09):
-         * một yêu cầu huỷ được quyết trên trang RIÊNG của nó, nơi nhìn đủ sổ
-         * hoàn tiền, ngày khởi hành và số tiền — không phải từ một hàng bảng.
-         */
-        review: 'Review request',
-        reviewFor: (code: string) => `Review the cancellation request for ${code}`,
-        /**
-         * Bộ lọc khoảng ngày (ADR-0028 §AMEND) — theo ngày khách GỬI yêu cầu,
-         * nên chữ phải nói "requested", không phải "booked" như `/bookings`.
-         */
-        dateFilterLabel: 'Filter by request date',
-        /**
-         * Ô rỗng KHI ĐANG lọc ngày — nói thẳng khoảng đang lọc và mở sẵn lối
-         * thoát. Ở đây rủi ro nhẹ hơn `/bookings` (vùng này mặc định không lọc
-         * ngày) nhưng vẫn có thật khi admin đã đặt khoảng rồi đổi tab trạng
-         * thái: bảng rỗng mà thủ phạm là hai ô ngày họ đặt từ lúc trước.
-         */
-        emptyInRange: (range: string) => `No cancellation requests were made between ${range}.`,
-        emptyFrom: (date: string) => `No cancellation requests were made on or after ${date}.`,
-        emptyTo: (date: string) => `No cancellation requests were made on or before ${date}.`,
-        showAllDates: 'Show requests from all dates',
-        columns: {
-          booking: CANCELLATION_CONTEXT_COPY.booking,
-          tour: CANCELLATION_CONTEXT_COPY.tour,
-          customer: CANCELLATION_CONTEXT_COPY.customer,
-          reason: 'Reason',
-          status: 'Status',
-          requested: 'Requested',
-          /** Cột cuối: nút quyết định khi còn mở, dấu vết quyết định khi đã đóng. */
-          decision: 'Decision',
-        },
-        decidedAt: (when: string) => `Decided ${when}`,
-        note: (note: string) => `Note: ${note}`,
-      },
-      /** Nhãn enum dùng CHUNG với lịch sử trên trang chi tiết booking. */
-      status: CANCELLATION_STATUS_COPY,
-      /**
-       * Khách tự huỷ không bắt buộc ghi lý do (ADR-0041) — hàng đợi và dialog
-       * in câu này thay cho một ô trống không rõ nghĩa.
-       */
-      noReason: 'No reason given',
-      /**
-       * Quyết định — hành vi GHI thứ hai của admin. BỐN mã contract dưới
-       * `errors` là NGUỒN duy nhất của tập mã phía admin
-       * (`cancellations-decide.ts` derive từ keys, không chép danh sách lần
-       * hai — nếp `REFUND_CONTRACT_CODES` của F2). Mã tầng vận chuyển
-       * (401/403/input hỏng/lỗi lạ) KHÔNG ở đây: chúng dùng chung
-       * `admin.errors.write`.
-       */
-      /**
-       * Trang chi tiết RIÊNG của vùng huỷ — `/cancellations/[code]` (user chốt
-       * 04/09: hai vùng hai route, dùng chung kiểu thiết kế). Các khối ngữ
-       * cảnh mượn nguyên chữ của `bookings.detail`; ở đây chỉ khai phần mà
-       * chỉ trang này có.
-       */
-      detail: {
-        back: 'Back to cancellations',
-        /** Khối quyết định — thay cho hai nút vốn nằm trong bảng. */
-        heading: 'Decision',
-        /** Còn mở: nói rõ đang chờ ai làm gì trước khi bày hai nút. */
-        open: 'This request is awaiting your decision.',
-        /**
-         * Đã quyết rồi: trang vẫn mở được (hàng đợi có tab Denied/Approved),
-         * nên phải nói rõ không còn gì để bấm — quyết định là chung cuộc.
-         */
-        closed: 'This request has already been decided — a decision is final.',
-        /** Booking chưa từng có yêu cầu huỷ nào (URL gõ tay). */
-        none: 'This booking has no cancellation request.',
-      },
-      decide: {
-        approve: 'Approve',
-        deny: 'Deny',
-        /** Nhãn cho cụm nút của một hàng — trình đọc màn hình cần biết hàng nào. */
-        actionsLabel: (code: string) => `Decide the cancellation request for ${code}`,
-        // Ba nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một chữ —
-        // bài học travellers F1); riêng reason đổi giọng có chủ ý.
-        booking: CANCELLATION_CONTEXT_COPY.booking,
-        tour: CANCELLATION_CONTEXT_COPY.tour,
-        customer: CANCELLATION_CONTEXT_COPY.customer,
-        reason: 'Customer reason',
-        /** Dòng số tiền trong dialog approve — con số THẬT từ queue (review F3). */
-        refundAmount: 'Refund amount',
-        noteLabel: 'Decision note (optional)',
-        notePlaceholder: 'Included in the email to the customer.',
-        cancel: 'Cancel',
-        /**
-         * Stepper approve (ADR-0029 §5): xem yêu cầu → đối chiếu chính sách →
-         * chốt số tiền → xác nhận hệ quả. Bốn bước tồn tại vì approve là lệnh
-         * MỘT LẦN và không đảo ngược được — mỗi bước phải nói ra một thứ mà
-         * người bấm cần biết, chứ không phải bốn lần bấm Next.
-         */
-        approveWizard: {
-          /** Nhãn trên thanh bước — một từ, đủ để biết mình đang đứng đâu. */
-          steps: {
-            request: 'Request',
-            policy: 'Policy',
-            amount: 'Amount',
-            confirm: 'Confirm',
-          },
-          progress: (current: number, total: number) => `Step ${current} of ${total}`,
-          back: 'Back',
-          next: 'Continue',
-          request: {
-            heading: 'What the customer asked for',
-            body: 'This is everything they sent. Read it before you decide.',
-            requestedAt: 'Requested',
-            departure: 'Departure',
-            /** Bao lâu rồi chưa ai quyết — hàng đợi cũ là một lời hứa đang trễ. */
-            waiting: (days: number) =>
-              days <= 0
-                ? 'Sent today.'
-                : `Waiting ${days} ${days === 1 ? 'day' : 'days'} for a decision.`,
-          },
-          policy: {
-            heading: 'What the refund schedule says',
-            body: 'The schedule is fixed, and the customer saw this same figure when they sent the request.',
-            daysLine: (days: number) =>
-              days < 0
-                ? 'The tour had already started when the request was sent.'
-                : days === 0
-                  ? 'The request was sent on the departure date.'
-                  : `Sent ${days} ${days === 1 ? 'day' : 'days'} before departure.`,
-            /** Bậc nào đang áp — nói ra để con số không trông như tuỳ hứng. */
-            band: (percent: number) =>
-              percent === 0
-                ? 'That falls outside the refundable window.'
-                : `That band refunds ${percent}% of what the customer paid.`,
-            countedFrom: 'Days are counted from the date the request was sent, not today.',
-            grace: `Sent within ${REFUND_GRACE_HOURS} hours of payment, so the full amount is refundable whatever the schedule would otherwise say.`,
-            badge: (days: number) =>
-              `This tour advertises free cancellation up to ${days} days before departure, which raises the refund to the full amount.`,
-            alreadyRefunded: (amount: string) =>
-              `${amount} has already been refunded on this booking, and is deducted from the figure below.`,
-            result: 'Policy refund',
-            resultValue: (percent: number, amount: string) =>
-              `${amount} · ${percent}% of the total`,
-          },
-          amount: {
-            heading: 'How much to refund',
-            policyOption: 'Refund the policy amount',
-            overrideOption: 'Refund a different amount',
-            overrideHint: 'You will have to record why on the next step.',
-            overrideLabel: 'Amount to refund',
-            remainingHint: (amount: string) => `Up to ${amount} can still be refunded.`,
-            /**
-             * Câu quan trọng nhất của cả dialog. Approve chạy MỘT lần: nó đóng
-             * request, huỷ booking và nhả ghế, và sau đó back-office không còn
-             * đường hoàn nốt phần dư (ADR-0029 §AMEND 2).
-             */
-            onceWarning:
-              'Approving happens once. Whatever you set here is the whole refund for this booking — the rest cannot be refunded from the back office afterwards.',
-            zeroNotice:
-              'There is nothing left to refund. Approving still closes the request, cancels the booking and releases the seats.',
-          },
-          confirm: {
-            heading: 'Approve this cancellation',
-            refundLine: 'Refund now',
-            /** Số tiền khác bậc — nhãn để người duyệt sau đọc hồ sơ hiểu ngay. */
-            overrideBadge: (amount: string) => `Off-policy — the schedule gives ${amount}.`,
-            noteLabelRequired: 'Why this amount',
-            noteRequired: 'Record why you are refunding an off-policy amount.',
-          },
-        },
-        approveDialog: {
-          title: 'Approve this cancellation?',
-          body: 'Approving runs all three changes below in one go, straight away.',
-          /** Ba hệ quả của nhánh approve — đọc từ summary contract + service. */
-          consequences: {
-            /**
-             * Nói SỐ TIỀN THẬT sắp chuyển, không phải "phần còn lại": từ
-             * ADR-0029 §1 approve hoàn theo bậc chính sách, nên câu cũ
-             * ("the full remaining balance") sai ở mọi ca hoàn một phần.
-             */
-            refund: (amount: string) =>
-              `Refunds ${amount} to the customer through the payment provider.`,
-            /** Mức hoàn 0 (ADR-0029 AMEND 3): KHÔNG gọi gateway, KHÔNG ghi sổ. */
-            noRefund: 'No money moves — nothing is sent to the payment provider.',
-            cancelled: 'Marks the booking as cancelled.',
-            seats: 'Releases the seats back to the departure.',
-          },
-          warning:
-            'The refund cannot be undone from the back office, and the decision is final — the customer would have to book again.',
-          submit: 'Approve and refund',
-          submitting: 'Approving…',
-        },
-        denyDialog: {
-          title: 'Deny this cancellation?',
-          body: 'Denying closes the request and emails the customer. The booking is left exactly as it is — no refund, no seats released.',
-          warning:
-            'The decision is final: the customer has to send a new request to be reviewed again.',
-          submit: 'Deny request',
-          submitting: 'Denying…',
-        },
-        /** Ba mã đầu là lỗi TRẠNG-THÁI-CŨ: UI đóng dialog + toast + tự refresh
-         *  queue (review F3 31/08 — copy từng bảo "reload" mà UI không làm);
-         *  REFUND_FAILED là lỗi retryable duy nhất nên ở lại dialog. */
-        errors: {
-          NOT_FOUND:
-            'This cancellation request no longer exists. The queue below has been refreshed.',
-          ALREADY_DECIDED:
-            'This request was already decided — a decision is final. The queue below has been refreshed with the outcome.',
-          /**
-           * ADR-0029 §2 đã gỡ ca "đã hoàn đủ" khỏi mã này — approve nay CHẠY
-           * ĐƯỢC trên booking đã settle. Câu cũ dặn admin "deny nó thay vào
-           * đó", lời dặn ấy nay sai và đã bỏ. Còn lại đúng nghĩa hẹp: payment
-           * chưa capture, tức không có gì để hoàn qua provider.
-           */
-          NOT_REFUNDABLE:
-            'This booking has no captured payment to refund against, so it cannot be approved. The queue has been refreshed — open the booking to check what happened.',
-          /**
-           * OVER_TOTAL ở chế độ chính sách nghĩa là SỔ ĐÃ ĐỔI dưới chân dialog
-           * (một khoản hoàn thiện chí vừa đi) — con số khoá trên màn hình không
-           * sửa tại chỗ được, nên nó thuộc nhóm trạng-thái-cũ: đóng dialog và
-           * refresh (vòng vá review 05/09; trước đó admin kẹt gửi lại mãi con
-           * số cũ). ZERO_OR_NEGATIVE thì vẫn sửa tại chỗ.
-           */
-          OVER_TOTAL:
-            'That amount is more than this booking still has left to refund — the ledger has changed since you opened this. The queue has been refreshed; open the request again to see the new figure.',
-          ZERO_OR_NEGATIVE:
-            'A refund cannot be negative. To approve without moving any money, leave the amount at 0.00.',
-          /** ADR-0030 §5, cưỡng chế ở server từ vòng vá review 05/09. */
-          OFF_POLICY_NOTE_REQUIRED:
-            'This amount differs from what the refund schedule gives, so a note explaining why is required.',
-          REFUND_FAILED:
-            'The payment provider rejected the refund, so nothing changed and the request is still awaiting review. Check the provider dashboard before trying again.',
-        },
-        toast: {
-          approvedTitle: 'Cancellation approved',
-          approvedBody: (code: string) =>
-            `${code} is cancelled and the remaining balance is on its way back.`,
-          deniedTitle: 'Cancellation denied',
-          deniedBody: (code: string) => `${code} is unchanged and the customer has been told.`,
         },
       },
     },
@@ -4589,7 +4312,7 @@ export const messages = {
          *  nhau thì trình đọc màn hình không phân biệt nổi hàng nào. */
         actionsLabel: (author: string) => `Moderate the review by ${author}`,
         // Nhãn ngữ cảnh dùng CHUNG với header cột (một khái niệm một chữ —
-        // bài học travellers F1, nếp CANCELLATION_CONTEXT_COPY). KHÔNG có
+        // bài học travellers F1). KHÔNG có
         // alias `review` ở đây: dialog in nguyên văn review, không có dòng
         // nhãn nào dùng nó (key chết bị dọn ở review F4 31/08).
         rating: REVIEW_CONTEXT_COPY.rating,

@@ -21,16 +21,21 @@ import { formatAmount } from './bookings-view';
 const t = messages.admin.bookings.refund;
 
 /**
- * Trạng thái còn refund được — khớp gate của `RefundsService.refundByAdmin`:
- * PAID hoặc PARTIALLY_REFUNDED (ledger cho partial cộng dồn). REFUNDED đã
- * settle, PENDING chưa thu tiền, CANCELLED không có gì để hoàn.
+ * Nút hoàn thiện chí hiện khi còn tiền chưa hoàn trên booking PAID,
+ * PARTIALLY_REFUNDED hoặc CANCELLED (Hợp đồng E, ADR-0041 §5) — khớp gate của
+ * `RefundsService.refundByAdmin`. CANCELLED nằm trong danh sách vì khách huỷ
+ * quá hạn giữ nguyên tiền, và ngoại lệ (ốm đau, việc gấp) đi qua đúng lệnh
+ * này. REFUNDED đã hoàn đủ, PENDING chưa thu tiền.
  *
- * Đây là điều kiện CẦN chứ chưa đủ: server còn đòi `providerPaymentId`
+ * `remaining` là `remainingRefundable(total, refundedTotal)` tính từ số server
+ * trả. Đây là điều kiện CẦN chứ chưa đủ: server còn đòi `providerPaymentId`
  * (captured payment) — thứ contract không phơi ra — nên nút vẫn có thể ăn
  * NOT_REFUNDABLE, và đó là lý do mã lỗi ấy có copy riêng.
  */
-export function canRefund(status: BookingStatusValue): boolean {
-  return status === 'PAID' || status === 'PARTIALLY_REFUNDED';
+export function canRefund(status: BookingStatusValue, remaining: string): boolean {
+  const refundableStatus =
+    status === 'PAID' || status === 'PARTIALLY_REFUNDED' || status === 'CANCELLED';
+  return refundableStatus && toCents(remaining) > 0;
 }
 
 /**

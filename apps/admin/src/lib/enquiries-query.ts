@@ -18,7 +18,7 @@ import {
  * KHÔNG fetch từ browser.
  *
  * Ba filter: `status` (tab năm trạng thái + All — nav trỏ `?status=NEW` vì đó
- * là việc cần làm, cùng nếp `/cancellations?status=REQUESTED`), `q` (tìm
+ * là việc cần làm, cùng nếp `/reviews?status=pending`), `q` (tìm
  * name/email) và `tourId`. `tourId` KHÔNG có control trên toolbar (quyết định
  * tự chọn F9: chưa có endpoint list tour cho admin tới P4e, nên một Select
  * sẽ phải hardcode danh sách tour) — nhưng nó phải parse thật để URL đi từ

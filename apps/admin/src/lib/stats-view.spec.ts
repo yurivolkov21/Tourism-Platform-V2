@@ -1,6 +1,5 @@
 import {
   type AdminBookingsStats,
-  type AdminCancellationsStats,
   type AdminEnquiriesStats,
   type AdminOutboxStats,
   type AdminPaymentEventsStats,
@@ -15,7 +14,6 @@ import {
   statsPeriodLabel,
   statsRangeLabel,
   toBookingsStatCards,
-  toCancellationsStatCards,
   toEnquiriesStatCards,
   toOutboxStatCards,
   toPaymentEventsStatCards,
@@ -47,13 +45,6 @@ const BOOKINGS: AdminBookingsStats = {
   paidBookings: { current: 12, previous: 9 },
   newBookings: { current: 20, previous: 20 },
   cancellationRate: { current: '8.3', previous: '5.0' },
-};
-
-const CANCELLATIONS: AdminCancellationsStats = {
-  period,
-  pendingQueue: { current: 5, previous: 2 },
-  approved: { current: 4, previous: 8 },
-  denied: { current: 1, previous: 0 },
 };
 
 const REVIEWS: AdminReviewsStats = {
@@ -208,44 +199,6 @@ describe('toBookingsStatCards', () => {
       'paid',
       'created',
       'cancellationRate',
-    ]);
-  });
-});
-
-describe('toCancellationsStatCards', () => {
-  it('hàng đợi là ẢNH CHỤP nên caption nói "N days ago", không phải "prior N days"', () => {
-    const queue = card(toCancellationsStatCards(CANCELLATIONS), 'pendingQueue');
-    expect(queue.caption).toBe(t.snapshotComparison('2', 28));
-  });
-
-  it('hàng đợi PHÌNH ra là xấu', () => {
-    const queue = card(toCancellationsStatCards(CANCELLATIONS), 'pendingQueue');
-    expect(queue.delta?.direction).toBe('up');
-    expect(queue.deltaGood).toBe(false);
-  });
-
-  it('approved/denied là thông lượng — không tô tốt/xấu', () => {
-    const cards = toCancellationsStatCards(CANCELLATIONS);
-    // Duyệt nhiều hơn = làm việc nhiều hơn NHƯNG cũng là tiền đi ra; từ chối
-    // nhiều hơn cũng vậy. Tô màu một chiều là đặt lời phán quyết vào chỗ
-    // không có phán quyết nào.
-    expect(card(cards, 'approved').deltaGood).toBeUndefined();
-    expect(card(cards, 'denied').deltaGood).toBeUndefined();
-  });
-
-  it('nhãn approved/denied mang số ngày của server, không viết cứng 28', () => {
-    const cards = toCancellationsStatCards({
-      ...CANCELLATIONS,
-      period: { ...period, windowDays: 7 },
-    });
-    expect(card(cards, 'approved').label).toBe(t.cancellations.approved(7));
-  });
-
-  it('ba card theo đúng thứ tự spec §3-F5', () => {
-    expect(toCancellationsStatCards(CANCELLATIONS).map((c) => c.key)).toEqual([
-      'pendingQueue',
-      'approved',
-      'denied',
     ]);
   });
 });
@@ -657,45 +610,6 @@ describe('kỳ do admin chọn (ADR-0028)', () => {
       const broken = { ...period, currentTo: '2026-10-01T00:00:00.000Z', previousFrom: 'nonsense' };
       expect(() => toBookingsStatCards({ ...BOOKINGS, period: broken })).not.toThrow();
       expect(statsPeriodLabel(broken)).toBeUndefined();
-    });
-  });
-
-  /** `/cancellations` là vùng thứ hai có bộ lọc ngày (ADR-0028 §AMEND). */
-  describe('toCancellationsStatCards', () => {
-    /** Lọc trọn tháng 5, đọc ngày 04/09 → kỳ ĐỨNG YÊN, không phải cửa sổ trượt. */
-    const may = {
-      windowDays: 31,
-      currentFrom: '2026-05-01T00:00:00.000Z',
-      currentTo: '2026-06-01T00:00:00.000Z',
-      previousFrom: '2026-03-31T00:00:00.000Z',
-      generatedAt: '2026-09-04T10:30:00.000Z',
-      picked: true,
-    };
-
-    it('card ẢNH CHỤP nói tên NGÀY đầu kỳ, không nói "N days ago"', () => {
-      // Kỳ đã chọn thì đứng yên nên gọi được tên nó; "31 days ago" tính từ
-      // hôm nay sẽ trỏ vào một mốc chẳng liên quan gì tới tháng 5.
-      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
-      expect(cards[0]?.caption).toBe(t.snapshotComparisonAt('2', 'May 1, 2026'));
-    });
-
-    it('bỏ hậu tố "Nd" khỏi nhãn khi kỳ do admin chọn', () => {
-      // "Approved 31d" đọc thành một cửa sổ TRƯỢT 31 ngày — sai hẳn nghĩa.
-      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
-      expect(cards[1]?.label).toBe(t.cancellations.approvedInPeriod);
-      expect(cards[2]?.label).toBe(t.cancellations.deniedInPeriod);
-    });
-
-    it('hai card đếm-trong-kỳ dùng caption khoảng ngày như /bookings', () => {
-      const cards = toCancellationsStatCards({ ...CANCELLATIONS, period: may });
-      expect(cards[1]?.caption).toBe(t.comparisonRange('8', 'Mar 31 – Apr 30, 2026'));
-    });
-
-    it('cửa sổ TRƯỢT giữ NGUYÊN chữ cũ — vùng này mặc định không lọc ngày', () => {
-      const cards = toCancellationsStatCards(CANCELLATIONS);
-      expect(cards[0]?.caption).toBe(t.snapshotComparison('2', 28));
-      expect(cards[1]?.label).toBe(t.cancellations.approved(28));
-      expect(cards[1]?.caption).toBe(t.comparison('8', 28));
     });
   });
 

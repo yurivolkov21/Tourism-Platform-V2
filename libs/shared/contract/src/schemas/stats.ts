@@ -4,7 +4,7 @@ import { CalendarDateSchema } from './common.js';
 
 /**
  * Số liệu vùng admin (spec P4b §3-F5) — nguồn cho hàng stat card đứng TRÊN
- * bảng của `/bookings`, `/cancellations`, `/reviews`. P4d nối dashboard vào
+ * bảng của `/bookings`, `/reviews`. P4d nối dashboard vào
  * đúng bộ schema này, không khai bộ thứ hai.
  *
  * Hai luật xuyên suốt, cả hai đều là quyết định có chủ đích:
@@ -117,16 +117,16 @@ export type StatsPeriod = z.output<typeof StatsPeriodSchema>;
  *
  * MỘT schema cho mọi vùng chứ không mỗi vùng một bản: hình dạng y hệt nhau, và
  * hai bản khai lại là hai luật khoan dung sẽ trôi lệch trong im lặng. Hiện có
- * ba consumer — `admin.stats.bookings`, `admin.stats.cancellations` và
- * `admin.stats.reviews` (ADR-0028 AMEND 2).
+ * hai consumer — `admin.stats.bookings` và `admin.stats.reviews` (ADR-0028
+ * AMEND 2).
  *
  * Dùng lại `CalendarDateSchema` và ĐÚNG hai tên field mà `*ListQuerySchema`
  * của cùng vùng đang dùng: `?from=`/`?to=` trên URL nuôi cả bảng lẫn card, nên
  * hai bên phải nhận đúng một chữ.
  *
  * CẢ HAI OPTIONAL, và thiếu cả hai là ca có thật chứ không phải ca lười:
- * `/bookings` gửi rỗng khi admin chọn `?dates=all`, còn `/cancellations` thì
- * rỗng CHÍNH LÀ mặc định của vùng. Lúc đó service rơi về cửa sổ TRƯỢT 28 ngày
+ * `/bookings` gửi rỗng khi admin chọn `?dates=all`, còn `/reviews` thì rỗng
+ * CHÍNH LÀ mặc định của vùng. Lúc đó service rơi về cửa sổ TRƯỢT 28 ngày
  * như trước ADR-0028. Thêm field optional là thay đổi tương thích ngược; bỏ nó
  * đi thì không.
  *
@@ -173,18 +173,6 @@ export const AdminBookingsStatsSchema = z.object({
   cancellationRate: DecimalMetricSchema,
 });
 export type AdminBookingsStats = z.output<typeof AdminBookingsStatsSchema>;
-
-/** Bộ số vùng `/cancellations`. */
-export const AdminCancellationsStatsSchema = z.object({
-  period: StatsPeriodSchema,
-  /** Ảnh chụp hàng đợi đang mở: BÂY GIỜ so với ĐẦU kỳ này (không phải đếm trong kỳ). */
-  pendingQueue: CountMetricSchema,
-  /** Request được duyệt (hoàn tiền) trong kỳ. */
-  approved: CountMetricSchema,
-  /** Request bị từ chối trong kỳ. */
-  denied: CountMetricSchema,
-});
-export type AdminCancellationsStats = z.output<typeof AdminCancellationsStatsSchema>;
 
 /** Bộ số vùng `/reviews`. */
 export const AdminReviewsStatsSchema = z.object({

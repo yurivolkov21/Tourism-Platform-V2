@@ -2,7 +2,6 @@ import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fa
 import { Test } from '@nestjs/testing';
 import {
   AdminBookingsStatsSchema,
-  AdminCancellationsStatsSchema,
   AdminDashboardSeriesSchema,
   AdminEnquiriesStatsSchema,
   AdminOutboxStatsSchema,
@@ -16,7 +15,6 @@ import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import {
   BookingStatus,
-  CancellationRequestStatus,
   DepartureStatus,
   EmailType,
   EnquiryStatus,
@@ -120,26 +118,6 @@ describe('admin stats integration (F5)', () => {
     };
   }
 
-  function cancellation(
-    n: number,
-    row: {
-      bookingId: string;
-      status: CancellationRequestStatus;
-      createdAt: Date;
-      decidedAt: Date | null;
-    },
-  ): Prisma.CancellationRequestCreateManyInput {
-    return {
-      id: `e9500003-0000-4000-8000-${String(n).padStart(12, '0')}`,
-      bookingId: row.bookingId,
-      userId: customerId,
-      reason: 'Family emergency — cannot travel.',
-      status: row.status,
-      createdAt: row.createdAt,
-      decidedAt: row.decidedAt,
-    };
-  }
-
   /**
    * Một review với mốc thời gian đặt tay. CHECK `reviews_source_shape` ép
    * hình dạng theo nguồn: VERIFIED phải đủ tour+user+booking, CURATED phải
@@ -235,12 +213,11 @@ describe('admin stats integration (F5)', () => {
     await prisma.$disconnect();
   });
 
-  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ TÁM path', () => {
-    // Tham số hoá cả sáu (vòng vá review F5): guard đặt ở cấp class, nhưng
-    // một refactor dời @Roles xuống từng handler mà sót 2/3 phải làm suite đỏ.
+  describe('guard — cùng lớp với mọi endpoint admin còn lại, phủ CẢ BẢY path', () => {
+    // Tham số hoá mọi path (vòng vá review F5): guard đặt ở cấp class, nhưng
+    // một refactor dời @Roles xuống từng handler mà sót một cái phải làm suite đỏ.
     for (const area of [
       'bookings',
-      'cancellations',
       'reviews',
       'outbox',
       'payment-events',
@@ -674,214 +651,6 @@ describe('admin stats integration (F5)', () => {
       expect(series.points).toHaveLength(7);
       expect(series.points.every((p) => p.revenue === '0.00' && p.bookings === 0)).toBe(true);
       expect(series.currency).toBe('USD');
-    });
-  });
-
-  describe('stats.cancellations', () => {
-    beforeEach(async () => {
-      await prisma.booking.createMany({
-        data: [1, 2, 3, 4, 5].map((n) =>
-          booking(n, {
-            status: BookingStatus.PAID,
-            total: '100.00',
-            createdAt: daysAgo(60),
-            paidAt: daysAgo(60),
-          }),
-        ),
-      });
-      await prisma.cancellationRequest.createMany({
-        data: [
-          // Mở từ trước đầu kỳ và vẫn mở: đứng trong CẢ hai ảnh chụp.
-          cancellation(1, {
-            bookingId: bookingId(1),
-            status: CancellationRequestStatus.REQUESTED,
-            createdAt: daysAgo(40),
-            decidedAt: null,
-          }),
-          // Mở TRONG kỳ này: có ở ảnh chụp bây giờ, chưa tồn tại ở ảnh chụp cũ.
-          cancellation(2, {
-            bookingId: bookingId(2),
-            status: CancellationRequestStatus.REQUESTED,
-            createdAt: daysAgo(10),
-            decidedAt: null,
-          }),
-          // Mở trước đầu kỳ, quyết TRONG kỳ này: hết mở bây giờ, nhưng đang
-          // mở ở thời điểm đầu kỳ.
-          cancellation(3, {
-            bookingId: bookingId(3),
-            status: CancellationRequestStatus.REFUNDED,
-            createdAt: daysAgo(40),
-            decidedAt: daysAgo(5),
-          }),
-          // Quyết TRONG kỳ trước.
-          cancellation(4, {
-            bookingId: bookingId(4),
-            status: CancellationRequestStatus.DENIED,
-            createdAt: daysAgo(50),
-            decidedAt: daysAgo(45),
-          }),
-          cancellation(5, {
-            bookingId: bookingId(4),
-            status: CancellationRequestStatus.REFUNDED,
-            createdAt: daysAgo(35),
-            decidedAt: daysAgo(33),
-          }),
-          // NGOÀI cả hai kỳ.
-          cancellation(6, {
-            bookingId: bookingId(5),
-            status: CancellationRequestStatus.REFUNDED,
-            createdAt: daysAgo(70),
-            decidedAt: daysAgo(65),
-          }),
-          // Mở trước đầu kỳ, từ chối trong kỳ này.
-          cancellation(7, {
-            bookingId: bookingId(5),
-            status: CancellationRequestStatus.DENIED,
-            createdAt: daysAgo(45),
-            decidedAt: daysAgo(2),
-          }),
-        ],
-      });
-    });
-
-    it('pendingQueue là ẢNH CHỤP: hàng đợi bây giờ so với hàng đợi lúc đầu kỳ', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie)).json(),
-      );
-      // Bây giờ: request 1, 2. Đầu kỳ: request 1, 3, 7 (đều đã mở và chưa
-      // quyết tại mốc ấy) — dựng lại từ createdAt + decidedAt, không phải
-      // đếm lại cùng một tập.
-      expect(stats.pendingQueue).toEqual({ current: 2, previous: 3 });
-    });
-
-    it('approved/denied đếm theo decidedAt trong từng kỳ', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie)).json(),
-      );
-      expect(stats.approved).toEqual({ current: 1, previous: 1 });
-      expect(stats.denied).toEqual({ current: 1, previous: 1 });
-    });
-
-    it('CHƯA lọc: ảnh chụp cuối kỳ khớp ĐÚNG số hàng `?status=REQUESTED`', async () => {
-      // Lời hứa cũ của contract. Nay `current` dựng bằng `pendingRequestsAt`
-      // tại `currentTo`, mà cửa sổ trượt có `currentTo === now` — nên con số
-      // phải bằng đúng phép đếm thẳng trạng thái.
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie)).json(),
-      );
-      const openNow = await prisma.cancellationRequest.count({
-        where: { status: CancellationRequestStatus.REQUESTED },
-      });
-      expect(stats.pendingQueue.current).toBe(openNow);
-    });
-  });
-
-  /**
-   * ADR-0028 §AMEND — kỳ do admin chọn. `pendingQueue` là metric ẢNH CHỤP nên
-   * lấy ở HAI ĐẦU kỳ (cuối kỳ vs đầu kỳ), không phải "bây giờ vs đầu kỳ".
-   * Fixture neo vào ngày lịch cố định vì chính khoảng ngày là thứ đang kiểm.
-   */
-  describe('stats.cancellations — khoảng ngày do admin chọn', () => {
-    const at = (date: string) => new Date(`${date}T12:00:00.000Z`);
-    /** Lọc trọn tháng 5 → kỳ này [01/05, 01/06), kỳ trước [31/03, 01/05). */
-    const MAY = '?from=2026-05-01&to=2026-05-31';
-
-    beforeEach(async () => {
-      await prisma.booking.createMany({
-        data: [1, 2, 3, 4, 5].map((n) =>
-          booking(n, {
-            status: BookingStatus.PAID,
-            total: '100.00',
-            createdAt: at('2026-03-01'),
-            paidAt: at('2026-03-01'),
-          }),
-        ),
-      });
-      await prisma.cancellationRequest.createMany({
-        data: [
-          // Mở trước kỳ và VẪN mở: đứng trong CẢ hai ảnh chụp.
-          cancellation(11, {
-            bookingId: bookingId(1),
-            status: CancellationRequestStatus.REQUESTED,
-            createdAt: at('2026-04-10'),
-            decidedAt: null,
-          }),
-          // Mở TRONG kỳ và còn mở: chỉ ở ảnh chụp cuối kỳ.
-          cancellation(12, {
-            bookingId: bookingId(2),
-            status: CancellationRequestStatus.REQUESTED,
-            createdAt: at('2026-05-10'),
-            decidedAt: null,
-          }),
-          // Mở trước kỳ, DUYỆT trong kỳ: chỉ ở ảnh chụp đầu kỳ, và tính vào
-          // `approved` của kỳ này.
-          cancellation(13, {
-            bookingId: bookingId(3),
-            status: CancellationRequestStatus.REFUNDED,
-            createdAt: at('2026-04-05'),
-            decidedAt: at('2026-05-20'),
-          }),
-          // Quyết XONG trước kỳ: không ở ảnh chụp nào, `denied` của kỳ TRƯỚC.
-          cancellation(14, {
-            bookingId: bookingId(4),
-            status: CancellationRequestStatus.DENIED,
-            createdAt: at('2026-04-02'),
-            decidedAt: at('2026-04-20'),
-          }),
-          // Mở VÀ quyết trọn trong kỳ: không ở ảnh chụp nào, `denied` kỳ này.
-          cancellation(15, {
-            bookingId: bookingId(5),
-            status: CancellationRequestStatus.DENIED,
-            createdAt: at('2026-05-15'),
-            decidedAt: at('2026-05-25'),
-          }),
-        ],
-      });
-    });
-
-    it('pendingQueue là hàng đợi CUỐI kỳ so với ĐẦU kỳ, không phải "bây giờ"', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie, MAY)).json(),
-      );
-      // Cuối kỳ (01/06): 11 và 12 còn mở. Đầu kỳ (01/05): 11 còn mở, và 13
-      // lúc ấy chưa bị quyết (decidedAt 20/05 >= 01/05).
-      expect(stats.pendingQueue).toEqual({ current: 2, previous: 2 });
-    });
-
-    it('approved/denied cắt đúng kỳ theo decidedAt', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie, MAY)).json(),
-      );
-      expect(stats.approved).toEqual({ current: 1, previous: 0 });
-      expect(stats.denied).toEqual({ current: 1, previous: 1 });
-    });
-
-    it('period: currentTo là 00:00 ngày sau `to`, kỳ trước dài bằng kỳ này', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie, MAY)).json(),
-      );
-      expect(stats.period.currentFrom).toBe('2026-05-01T00:00:00.000Z');
-      expect(stats.period.currentTo).toBe('2026-06-01T00:00:00.000Z');
-      expect(stats.period.previousFrom).toBe('2026-03-31T00:00:00.000Z');
-      expect(stats.period.windowDays).toBe(31);
-    });
-
-    it('không tham số: rơi về cửa sổ TRƯỢT 28 ngày như trước ADR-0028', async () => {
-      const stats = AdminCancellationsStatsSchema.parse(
-        (await get('cancellations', adminCookie)).json(),
-      );
-      expect(stats.period.windowDays).toBe(28);
-      expect(stats.period.currentTo).toBe(stats.period.generatedAt);
-      // Hai hàng còn mở vẫn đứng trong ảnh chụp "bây giờ"; mọi quyết định thì
-      // nằm ngoài 56 ngày gần nhất của đồng hồ thật.
-      expect(stats.pendingQueue.current).toBe(2);
-      expect(stats.approved).toEqual({ current: 0, previous: 0 });
-    });
-
-    it('khoảng ngược bị contract từ chối — 400', async () => {
-      expect(
-        (await get('cancellations', adminCookie, '?from=2026-05-31&to=2026-05-01')).statusCode,
-      ).toBe(400);
     });
   });
 

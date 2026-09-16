@@ -4,7 +4,7 @@ import { createWriteErrorCodec, type TransportFailureCode } from './api/write-er
 
 /**
  * Logic THUẦN của hành vi retry outbox (spec P4c §3-F7) — cùng khuôn
- * `cancellations-decide.ts`: codec lỗi derive từ khối i18n, luật trạng-thái-
+ * `reviews-moderate.ts`: codec lỗi derive từ khối i18n, luật trạng-thái-
  * cũ, hợp đồng vận chuyển của server action, và copy dialog dựng sẵn để
  * component không tự ghép chuỗi.
  */

@@ -1,6 +1,5 @@
 import {
   AdminBookingsStatsSchema,
-  AdminCancellationsStatsSchema,
   AdminDashboardQuerySchema,
   AdminDashboardSeriesSchema,
   AdminReviewsStatsSchema,
@@ -130,16 +129,6 @@ describe('area stat schemas', () => {
     };
     expect(AdminBookingsStatsSchema.safeParse(base).success).toBe(false);
     expect(AdminBookingsStatsSchema.parse({ ...base, currency: 'USD' }).currency).toBe('USD');
-  });
-
-  it('cancellations carries the live queue plus decisions of the window', () => {
-    const parsed = AdminCancellationsStatsSchema.parse({
-      period,
-      pendingQueue: { current: 3, previous: 5 },
-      approved: { current: 4, previous: 2 },
-      denied: { current: 1, previous: 0 },
-    });
-    expect(parsed.pendingQueue).toEqual({ current: 3, previous: 5 });
   });
 
   it('reviews carries the queue, submissions, approvals and an average that may be absent', () => {

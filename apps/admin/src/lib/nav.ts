@@ -1,7 +1,6 @@
 import { messages } from '@tourism/i18n';
 import type { LucideIcon } from 'lucide-react';
 import {
-  CalendarX2,
   Compass,
   CreditCard,
   FileBarChart,
@@ -52,24 +51,13 @@ export const NAV_GROUPS: NavGroup[] = [
       { key: 'dashboard', label: t.dashboard, href: '/', enabled: true, icon: LayoutDashboard },
       // Vùng thật đầu tiên đã có dữ liệu (P4b F1) — header tự đổi theo trang.
       { key: 'bookings', label: t.bookings, href: '/bookings', enabled: true, icon: Ticket },
-      // Vùng thật thứ hai (P4b F3) — hàng đợi cancellation + quyết định.
-      {
-        key: 'cancellations',
-        label: t.cancellations,
-        // Mở thẳng HÀNG ĐỢI (?status=REQUESTED — việc cần làm), không phải
-        // lịch sử trộn lẫn; tab "All" trong trang vẫn xem được tất cả (review
-        // F3 31/08). Header khớp tiêu đề theo PATHNAME, bỏ query khi so.
-        href: '/cancellations?status=REQUESTED',
-        enabled: true,
-        icon: CalendarX2,
-      },
       // Vùng thật thứ ba (P4b F4) — hàng đợi moderation + duyệt/bỏ duyệt.
       {
         key: 'reviews',
         label: t.reviews,
         // Mở thẳng phần CHỜ DUYỆT (việc cần làm), không phải cả kho review đã
         // duyệt từ đời nào; tab "All" trong trang vẫn xem được tất cả — cùng
-        // nếp `/cancellations?status=REQUESTED`. Header khớp tiêu đề theo
+        // nếp `/outbox?status=FAILED`. Header khớp tiêu đề theo
         // PATHNAME nên query ở đây không làm lệch chữ trên thanh trên cùng.
         href: '/reviews?status=pending',
         enabled: true,
@@ -80,7 +68,7 @@ export const NAV_GROUPS: NavGroup[] = [
       // tính lúc mở, còn một href cứng sẽ hoá cũ ngay đầu tháng sau.
       { key: 'reports', label: t.reports, href: '/reports', enabled: true, icon: FileBarChart },
       // Vùng thật thứ ba của P4c (F9) — CRM lead. Mở thẳng hàng NEW (việc
-      // cần làm: lead chưa ai chạm tới), cùng nếp `/cancellations?status=REQUESTED`
+      // cần làm: lead chưa ai chạm tới), cùng nếp `/reviews?status=pending`
       // và `/outbox?status=FAILED`; tab "All" trong trang vẫn xem được tất cả.
       {
         key: 'enquiries',
@@ -133,7 +121,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: t.groups.system,
     items: [
       // Vùng thật đầu tiên của P4c (F7) — mở thẳng hàng FAILED (việc cần
-      // người), cùng nếp `/cancellations?status=REQUESTED`; tab "All" trong
+      // người), cùng nếp `/reviews?status=pending`; tab "All" trong
       // trang vẫn xem được tất cả.
       {
         key: 'outbox',
