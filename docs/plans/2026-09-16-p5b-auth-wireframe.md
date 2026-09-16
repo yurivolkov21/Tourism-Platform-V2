@@ -1442,19 +1442,42 @@ nào viết thẳng: tất cả lấy từ `messages.mobile.auth` và `messages.
 
 - [ ] **Step 6: Đưa con trỏ về ô sai đầu tiên**
 
-Spec §5 đòi: kiểm ở máy thấy lỗi thì con trỏ nhảy về ô sai ĐẦU TIÊN. Thứ tự ô là
-thứ tự khai trong màn, nên tách thành một hàm thuần rồi test thẳng, thay vì đi dò
-focus trong cây render:
+Spec §5 đòi: kiểm ở máy thấy lỗi thì con trỏ nhảy về ô sai ĐẦU TIÊN. Thứ tự ô chính
+là thứ tự khai trong màn, nên tách thành một hàm thuần rồi test thẳng, thay vì đi dò
+focus trong cây render.
 
-:
+`apps/mobile/src/features/auth/first-invalid-field.ts`:
 
-\ref.focus()\
+```ts
+/**
+ * Ô sai đầu tiên theo thứ tự hiển thị — màn gọi `focus()` trên ref của ô này sau
+ * khi kiểm ở máy. Tách khỏi component để test được mà không phải dò focus.
+ */
+export function firstInvalidField<F extends string>(
+  errors: Partial<Record<F, string>>,
+  order: readonly F[],
+): F | null {
+  return order.find((field) => errors[field] !== undefined) ?? null;
+}
+```
 
-Test trước:
+Test viết trước:
 
-\
- chuyển sang  tới  để màn giữ được ref từng ô.
-Task 11 và Task 12 dùng lại chính hàm này cho ô mã OTP và hai ô mật khẩu.
+```ts
+it('trả ô sai đứng trước trong thứ tự hiển thị', () => {
+  expect(firstInvalidField({ password: 'sai' }, ['email', 'password'])).toBe('password');
+  expect(firstInvalidField({ email: 'sai', password: 'sai' }, ['email', 'password'])).toBe('email');
+});
+
+it('không có lỗi thì không nhảy đi đâu', () => {
+  expect(firstInvalidField({}, ['email', 'password'])).toBeNull();
+});
+```
+
+`TextField` chuyển sang `forwardRef` tới `TextInput` để màn giữ được ref từng ô; màn
+Sign in khai thứ tự `['email', 'password']`, màn Create account khai
+`['name', 'email', 'password']`. Task 11 và Task 12 dùng lại chính hàm này cho ô mã
+OTP và hai ô mật khẩu.
 
 - [ ] **Step 7: Nối vào route**
 
