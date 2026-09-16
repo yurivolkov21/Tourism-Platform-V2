@@ -485,6 +485,9 @@ importers:
         specifier: workspace:*
         version: link:../i18n
     devDependencies:
+      '@types/node':
+        specifier: 26.1.1
+        version: 26.1.1
       typescript:
         specifier: 7.0.2
         version: 7.0.2
