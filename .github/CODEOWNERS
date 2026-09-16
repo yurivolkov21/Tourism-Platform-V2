@@ -1,0 +1,9 @@
+# Chủ sở hữu mặc định cho toàn bộ repo: mọi PR tự động request review của owner.
+# File này là điều kiện để luật `pull_request` của ruleset `protect-main` có
+# hiệu lực thật — `require_code_owner_review` không chặn được gì nếu không có
+# CODEOWNERS. Kết hợp lại, contributor (role Write) không thể tự merge vào main
+# dù `gate` đã xanh.
+#
+# Owner giữ bypass qua RepositoryRole Admin nên quy ước rebase + ff-only ở luật 1
+# của CLAUDE.md vẫn chạy như cũ, không phải đi qua PR.
+* @yurivolkov21
