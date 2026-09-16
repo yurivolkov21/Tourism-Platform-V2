@@ -92,7 +92,7 @@ export function ResetPasswordScreen({
         <AppText variant="display" style={{ marginTop: theme.spacing(4) }}>
           {copy.title}
         </AppText>
-        <AppText tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
           {copy.body}
         </AppText>
 

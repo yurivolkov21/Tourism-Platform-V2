@@ -11,8 +11,12 @@ export const APP_TEXT_VARIANTS = {
   display: { step: '3xl', weight: 'bold' },
   title: { step: '2xl', weight: 'semibold' },
   heading: { step: 'lg', weight: 'semibold' },
+  /** Câu dẫn dưới một tiêu đề `display` — nhỏ hơn chữ thân để tiêu đề còn nổi. */
+  subtitle: { step: 'sm', weight: 'normal' },
   body: { step: 'base', weight: 'normal' },
-  label: { step: 'sm', weight: 'medium' },
+  // `semibold` chứ không `medium`: nhãn nút và chữ bấm được phải nặng hơn chữ
+  // thường quanh nó mới ra dáng bấm được (bản thiết kế 16/09 dùng Archivo 600).
+  label: { step: 'sm', weight: 'semibold' },
   caption: { step: 'xs', weight: 'normal' },
 } as const satisfies Record<string, { step: MobileTypeStep; weight: MobileFontWeightKey }>;
 

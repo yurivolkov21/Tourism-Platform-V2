@@ -8,9 +8,10 @@ import {
   useTheme,
   withAlpha,
 } from '@tourism/mobile-ui';
-import { View } from 'react-native';
+import { useWindowDimensions, View } from 'react-native';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
+import { fromMockup } from './auth-metrics';
 
 export interface ResultScreenProps {
   icon: FeatherIconName;
@@ -28,13 +29,21 @@ export interface ResultScreenProps {
  */
 export function ResultScreen({ icon, title, body, actionLabel, onAction }: ResultScreenProps) {
   const theme = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   const glow = theme.spacing(24);
 
   return (
-    <Screen edges={SCREEN_EDGES_UNDER_HEADER} scrollable={false}>
+    <Screen edges={SCREEN_EDGES_UNDER_HEADER} scrollable={false} padded={false}>
       <AuthHero image={AUTH_PHOTOS.result} />
 
-      <View style={{ flex: 1, alignItems: 'center', paddingTop: theme.spacing(49) }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          paddingHorizontal: theme.spacing(6),
+          paddingTop: fromMockup(196, screenHeight),
+        }}
+      >
         <View
           style={{
             width: glow,
@@ -56,6 +65,7 @@ export function ResultScreen({ icon, title, body, actionLabel, onAction }: Resul
           {title}
         </AppText>
         <AppText
+          variant="subtitle"
           tone="muted"
           style={{
             marginTop: theme.spacing(1.5),
@@ -67,7 +77,15 @@ export function ResultScreen({ icon, title, body, actionLabel, onAction }: Resul
         </AppText>
       </View>
 
-      <Button label={actionLabel} onPress={onAction} />
+      {/* Nút ghim đáy, bo tròn hết cỡ như mọi nút chính của cụm auth. */}
+      <View
+        style={{
+          paddingHorizontal: theme.spacing(6),
+          paddingBottom: fromMockup(34, screenHeight),
+        }}
+      >
+        <Button shape="pill" label={actionLabel} onPress={onAction} />
+      </View>
     </Screen>
   );
 }

@@ -76,7 +76,7 @@ export function InfoState({
         <AppText variant="display" style={{ marginTop: theme.spacing(5.5) }}>
           {title}
         </AppText>
-        <AppText tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
           {body}
         </AppText>
 

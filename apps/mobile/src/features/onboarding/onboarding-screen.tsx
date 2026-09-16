@@ -3,6 +3,7 @@ import { messages } from '@tourism/i18n';
 import { AppText, Button, IconButton, useTheme, withAlpha } from '@tourism/mobile-ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ImageBackground, Pressable, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AUTH_PHOTOS } from '@/features/auth/auth-media';
 
 export interface OnboardingScreenProps {
@@ -30,6 +31,7 @@ export function OnboardingScreen({
   onSignIn,
 }: OnboardingScreenProps) {
   const theme = useTheme();
+  const insets = useSafeAreaInsets();
   const copy = messages.mobile.onboarding;
   const page = PAGES[index] ?? PAGES[0];
   const isLast = index === PAGES.length - 1;
@@ -61,7 +63,9 @@ export function OnboardingScreen({
             <View
               style={{
                 position: 'absolute',
-                top: theme.spacing(11),
+                // Đo từ inset chứ không đặt cứng: bản vẽ có thanh trạng thái
+                // giả cao 40px, máy thật cao hơn.
+                top: insets.top + theme.spacing(3),
                 right: theme.spacing(4),
               }}
             >
@@ -76,7 +80,7 @@ export function OnboardingScreen({
           <View
             style={{
               paddingHorizontal: theme.spacing(6),
-              paddingBottom: theme.spacing(10),
+              paddingBottom: insets.bottom + theme.spacing(6),
             }}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: theme.spacing(1) }}>
@@ -89,7 +93,11 @@ export function OnboardingScreen({
             <AppText variant="display" tone="media" style={{ marginTop: theme.spacing(2) }}>
               {page.title}
             </AppText>
-            <AppText tone="media" style={{ marginTop: theme.spacing(1.5), opacity: 0.78 }}>
+            <AppText
+              variant="subtitle"
+              tone="media"
+              style={{ marginTop: theme.spacing(1.5), opacity: 0.78 }}
+            >
               {page.body}
             </AppText>
 

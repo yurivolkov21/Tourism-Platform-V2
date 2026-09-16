@@ -73,11 +73,11 @@ export function VerifyEmailScreen({
         <AppText variant="display" style={{ marginTop: theme.spacing(4) }}>
           {copy.title}
         </AppText>
-        <AppText tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
           {reason === 'blocked' ? copy.blockedBody : copy.body}{' '}
           {/* Email nổi lên bằng MÀU (tone mặc định trên nền chữ phụ) — bộ chữ chỉ
               có một độ đậm cho mỗi khuôn nên không tô đậm giữa câu được. */}
-          <AppText>{email}</AppText>
+          <AppText variant="subtitle">{email}</AppText>
         </AppText>
 
         <OtpInput

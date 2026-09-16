@@ -11,10 +11,11 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
-import { Linking, Pressable, type TextInput, View } from 'react-native';
+import { Linking, Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
 import { env } from '@/lib/env';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
+import { fromMockup } from './auth-metrics';
 import { firstInvalidField } from './first-invalid-field';
 import { OrDivider } from './or-divider';
 import { REGISTER_FIELDS } from './register-flow';
@@ -56,6 +57,7 @@ export function RegisterScreen({
   onBack,
 }: RegisterScreenProps) {
   const theme = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   const copy = messages.mobile.auth.register;
   const auth = messages.mobile.auth;
   const legal = messages.mobile.legal;
@@ -85,13 +87,13 @@ export function RegisterScreen({
 
       <View
         style={{
-          marginTop: theme.spacing(41),
+          marginTop: fromMockup(164, screenHeight),
           paddingHorizontal: theme.spacing(6),
           paddingBottom: theme.spacing(8),
         }}
       >
         <AppText variant="display">{copy.title}</AppText>
-        <AppText tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
           {copy.body}
         </AppText>
 

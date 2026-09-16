@@ -10,9 +10,10 @@ import {
   useTheme,
 } from '@tourism/mobile-ui';
 import { useEffect, useRef } from 'react';
-import { Pressable, type TextInput, View } from 'react-native';
+import { Pressable, type TextInput, useWindowDimensions, View } from 'react-native';
 import { AuthHero } from './auth-hero';
 import { AUTH_PHOTOS } from './auth-media';
+import { fromMockup } from './auth-metrics';
 import { firstInvalidField } from './first-invalid-field';
 import { OrDivider } from './or-divider';
 import { SIGN_IN_FIELDS } from './sign-in-flow';
@@ -49,6 +50,7 @@ export function SignInScreen({
   onClose,
 }: SignInScreenProps) {
   const theme = useTheme();
+  const { height: screenHeight } = useWindowDimensions();
   const copy = messages.mobile.auth.signIn;
   const auth = messages.mobile.auth;
   const emailRef = useRef<TextInput>(null);
@@ -72,13 +74,15 @@ export function SignInScreen({
 
       <View
         style={{
-          marginTop: theme.spacing(53),
+          // Chữ bắt đầu ở 3/4 chiều cao ảnh — tiêu đề nằm đè lên phần chân ảnh
+          // đã mờ về màu nền, đúng bản vẽ (ảnh 300, chữ bắt đầu ở 226).
+          marginTop: fromMockup(226, screenHeight),
           paddingHorizontal: theme.spacing(6),
           paddingBottom: theme.spacing(8),
         }}
       >
         <AppText variant="display">{copy.title}</AppText>
-        <AppText tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
+        <AppText variant="subtitle" tone="muted" style={{ marginTop: theme.spacing(1.5) }}>
           {copy.body}
         </AppText>
 

@@ -63,6 +63,10 @@ function RootStack() {
       <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
       {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
       <Stack.Screen name="onboarding" options={{ headerShown: false }} />
+      {/* Nhóm dev cũng vậy: thiếu dòng này thì stack gốc đội cho nó một header
+          tên "dev", và mọi khung trong gallery bị đo trong một khung ngắn hơn
+          màn thật. */}
+      <Stack.Screen name="dev" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
     </Stack>
   );
