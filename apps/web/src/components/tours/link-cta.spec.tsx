@@ -28,6 +28,10 @@ const DEPARTURE = {
   seatsLeft: 4,
   effectivePrice: '2400000.00',
   compareAtPrice: null,
+  // Chuyến 2 ngày: N = 3 (ADR-0041 §2). `BookingRail` nhận `DepartureVM` nên
+  // literal phải đủ field của contract.
+  bookingDeadline: '2026-08-18',
+  bookable: true,
 };
 
 const CARD = {

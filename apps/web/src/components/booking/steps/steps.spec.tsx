@@ -21,6 +21,9 @@ const DEPARTURE: DepartureVM = {
   seatsLeft: 9,
   effectivePrice: '1290.00',
   compareAtPrice: null,
+  // Chuyến 12 ngày: N = 7 (ADR-0041 §2) — fixture chỉ cần khớp kiểu contract.
+  bookingDeadline: '2026-09-05',
+  bookable: true,
 };
 
 const STATE: BookingFormState = {

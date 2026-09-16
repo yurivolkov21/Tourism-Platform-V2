@@ -30,6 +30,18 @@ const validCard = {
   cover: null,
 };
 
+/** Chuyến một ngày 31/07: N = 1 nên hạn chót đặt chỗ là 30/07 (ADR-0041 §2). */
+const validDeparture = {
+  id: 'e0000001-0000-4000-8000-000000000001',
+  startDate: '2026-07-31',
+  endDate: '2026-07-31',
+  seatsLeft: 8,
+  effectivePrice: '39.00',
+  compareAtPrice: null,
+  bookingDeadline: '2026-07-30',
+  bookable: true,
+};
+
 const validDetail = {
   ...validCard,
   media: [],
@@ -54,16 +66,7 @@ const validDetail = {
       body: 'Up to 48h before.',
     },
   ],
-  departures: [
-    {
-      id: 'e0000001-0000-4000-8000-000000000001',
-      startDate: '2026-07-31',
-      endDate: '2026-07-31',
-      seatsLeft: 8,
-      effectivePrice: '39.00',
-      compareAtPrice: null,
-    },
-  ],
+  departures: [validDeparture],
 };
 
 /** Một MediaItem đủ trường, dùng chung cho các ca ảnh bên dưới (ADR-0020). */
@@ -355,5 +358,35 @@ describe('TourDetailSchema — nội dung bán hàng (ADR-0023)', () => {
   it('KHÔNG lên card danh sách — thêm vào chỉ làm nặng payload /tours', () => {
     expect('factDurationNote' in TourCardSchema.shape).toBe(false);
     expect('freeCancellationDays' in TourCardSchema.shape).toBe(false);
+  });
+});
+
+describe('TourDepartureSchema — hạn chót đặt chỗ (ADR-0041 §3)', () => {
+  const withDeparture = (departure: object) => ({ ...validDetail, departures: [departure] });
+
+  it('mỗi chuyến mang bookingDeadline (ngày lịch) và bookable (server tính)', () => {
+    const parsed = TourDetailSchema.parse(withDeparture({ ...validDeparture, bookable: false }));
+    expect(parsed.departures[0]).toMatchObject({ bookingDeadline: '2026-07-30', bookable: false });
+  });
+
+  it('thiếu một trong hai field thì từ chối — client không được tự đoán hạn chót', () => {
+    const { bookable: _bookable, ...withoutBookable } = validDeparture;
+    const { bookingDeadline: _deadline, ...withoutDeadline } = validDeparture;
+    expect(() => TourDetailSchema.parse(withDeparture(withoutBookable))).toThrow();
+    expect(() => TourDetailSchema.parse(withDeparture(withoutDeadline))).toThrow();
+  });
+
+  it('bookingDeadline phải là ngày lịch YYYY-MM-DD, bookable phải là boolean', () => {
+    expect(() =>
+      TourDetailSchema.parse(withDeparture({ ...validDeparture, bookingDeadline: '30/07/2026' })),
+    ).toThrow();
+    expect(() =>
+      TourDetailSchema.parse(
+        withDeparture({ ...validDeparture, bookingDeadline: '2026-07-30T00:00:00Z' }),
+      ),
+    ).toThrow();
+    expect(() =>
+      TourDetailSchema.parse(withDeparture({ ...validDeparture, bookable: 'yes' })),
+    ).toThrow();
   });
 });

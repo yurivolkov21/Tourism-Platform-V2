@@ -19,6 +19,9 @@ const DEPARTURE: DepartureVM = {
   seatsLeft: 6,
   effectivePrice: '329.00',
   compareAtPrice: '369.00',
+  // Chuyến 4 ngày: N = 7 (ADR-0041 §2).
+  bookingDeadline: '2026-09-07',
+  bookable: true,
 };
 
 const BASE = {

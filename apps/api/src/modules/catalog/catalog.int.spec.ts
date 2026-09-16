@@ -6,6 +6,7 @@ import {
   TourCardSchema,
   TourCategorySchema,
   TourDetailSchema,
+  vietnamToday,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
@@ -47,8 +48,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   const fixtureTours = [dayTour, cruiseTour, unpublishedTour];
   const tourIds = new Set(fixtureTours.map((t) => t.id));
 
-  // Dynamic departures on the day tour: only `open60` + `openOverride90`
-  // should surface (upcoming + OPEN).
+  // Departures động trên day tour: detail trả `open60`, `openOverride90` và
+  // chuyến đã qua hạn đặt `closing` (upcoming + OPEN); chỉ hai chuyến đầu còn
+  // `bookable`.
   const dep = (id: string, start: Date, patch: Partial<Prisma.TourDepartureCreateManyInput>) => ({
     id: `e9000001-0000-4000-8000-00000000000${id}`,
     tourId: dayTour.id,
@@ -62,6 +64,9 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
   const future60 = new Date(Date.now() + 60 * 86_400_000);
   const future90 = new Date(Date.now() + 90 * 86_400_000);
   const past10 = new Date(Date.now() - 10 * 86_400_000);
+  // 00:00 UTC của ngày Việt Nam hôm nay — khuôn Prisma dùng cho cột `@db.Date`.
+  const vnToday = Date.parse(`${vietnamToday(new Date())}T00:00:00.000Z`);
+  const closingStart = new Date(vnToday + 86_400_000);
   const departures = [
     dep('1', future60, { seatsBooked: 3 }), // upcoming OPEN → seatsLeft 5
     dep('2', future90, {
@@ -71,6 +76,13 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     }),
     dep('3', past10, {}), // past → invisible
     dep('4', future60, { status: DepartureStatus.CLOSED }), // CLOSED → invisible
+    // ADR-0041 §3: chuyến 2 ngày khởi hành NGÀY MAI giờ VN → N = 3, hạn chót đã
+    // qua 2 ngày. Detail vẫn trả (`bookable: false`), còn giá RẺ NHẤT bộ này không
+    // được kéo giá "from" xuống. Vẫn đúng nếu file chạy vắt qua nửa đêm giờ VN.
+    dep('5', closingStart, {
+      endDate: new Date(vnToday + 2 * 86_400_000),
+      priceOverride: '19.00',
+    }),
   ];
 
   beforeAll(async () => {
@@ -206,9 +218,10 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
     // serializer money khác (bookings/refunds/money.ts đều .toFixed(2)). CAT-R1:
     // so-bằng-Number ở trên KHÔNG thấy được mất format này.
     expect(card?.basePrice).toMatch(/^\d+\.\d{2}$/);
-    // priceFrom (19/08): min effectivePrice trên đợt OPEN sắp tới. Day tour có
-    // `open60` (= basePrice 39) + `openOverride90` (59) + một đợt quá khứ → min là
-    // basePrice 39.00, đợt quá khứ/override đắt hơn không kéo con số đi đâu.
+    // priceFrom (19/08, lọc `bookable` từ ADR-0041 §3): min effectivePrice trên đợt
+    // OPEN còn nhận đặt. Day tour có `open60` (= basePrice 39) + `openOverride90`
+    // (59) + một đợt quá khứ + chuyến 19.00 đã qua hạn đặt → min vẫn là basePrice
+    // 39.00: chuyến không bán được nữa không kéo giá "from" xuống.
     expect(card?.priceFrom).toBe(Number(dayTour.basePrice).toFixed(2));
     expect(card?.priceFrom).toMatch(/^\d+\.\d{2}$/);
     // C1: card trả CẢ mảng destinations (primary đứng đầu), không còn field đơn.
@@ -331,23 +344,38 @@ describe('catalog integration (oRPC @Implement over Fastify)', () => {
       catalog.tourPolicies.filter((row) => row.tourId === dayTour.id).length,
     );
 
-    // Past + CLOSED filtered out; ordered by startDate asc.
-    expect(detail.departures).toHaveLength(2);
-    const [first, second] = detail.departures;
+    // Past + CLOSED bị lọc; chuyến đã qua hạn đặt nhưng chưa khởi hành VẪN trả
+    // về (spec §3.2); xếp theo startDate tăng dần.
+    expect(detail.departures).toHaveLength(3);
+    const [closing, first, second] = detail.departures;
+    const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+    expect(closing).toMatchObject({
+      id: departures[4]?.id,
+      startDate: isoDay(closingStart.getTime()),
+      // L = 2 → N = 3: hạn chót = ngày mai − 3 = hôm kia (giờ VN).
+      bookingDeadline: isoDay(vnToday - 2 * 86_400_000),
+      bookable: false,
+    });
     expect(first).toMatchObject({
       id: departures[0]?.id,
       startDate: future60.toISOString().slice(0, 10),
       seatsLeft: 5, // 8 total − 3 booked
       compareAtPrice: null,
+      // Chuyến một ngày: N = 1, hạn chót là hôm trước ngày khởi hành.
+      bookingDeadline: isoDay(future60.getTime() - 86_400_000),
+      bookable: true,
     });
     expect(Number(first?.effectivePrice)).toBe(Number(dayTour.basePrice)); // no override
     expect(second).toMatchObject({
       id: departures[1]?.id,
       startDate: future90.toISOString().slice(0, 10),
       seatsLeft: 10,
+      bookable: true,
     });
     expect(Number(second?.effectivePrice)).toBe(59); // priceOverride wins
     expect(Number(second?.compareAtPrice)).toBe(75);
+    // Giá "from" của detail lọc `bookable` y như list — không in hai giá khác nhau.
+    expect(detail.priceFrom).toBe(Number(dayTour.basePrice).toFixed(2));
   });
 
   it('unpublished tour is invisible via bySlug; missing slug → oRPC NOT_FOUND shape', async () => {

@@ -70,12 +70,15 @@ export const TourCardSchema = z.object({
   basePrice: DecimalStringSchema,
   compareAtPrice: DecimalStringSchema.nullable(),
   /**
-   * Giá "from" THẬT của tour = `min(effectivePrice)` trên các đợt OPEN sắp tới
-   * (`effectivePrice = priceOverride ?? basePrice`); không còn đợt nào thì rơi về
-   * `basePrice`. Thêm 19/08 (sổ nợ cùng ngày): thẻ /tours in `basePrice` "from
-   * $129" trong khi trang chi tiết có đợt thấp điểm $119 — card không biết đợt.
-   * Tính ở API (một query cho cả trang, không N+1) chứ không ở web, vì list
-   * không mang `departures`. Vẫn là DecimalString — tiền không bao giờ là số.
+   * Giá "from" THẬT của tour = `min(effectivePrice)` trên các đợt OPEN còn nhận
+   * đặt (`bookable`, ADR-0041 §3; `effectivePrice = priceOverride ?? basePrice`);
+   * không còn đợt nào đặt được thì rơi về `basePrice`. List và detail lọc cùng
+   * một luật để thẻ tour và trang tour không in hai giá khác nhau: chuyến đã qua
+   * hạn đặt không bán được nên không được kéo giá xuống. Thêm 19/08 (sổ nợ cùng
+   * ngày): thẻ /tours in `basePrice` "from $129" trong khi trang chi tiết có đợt
+   * thấp điểm $119 — card không biết đợt. Tính ở API (một query cho cả trang,
+   * không N+1) chứ không ở web, vì list không mang `departures`. Vẫn là
+   * DecimalString — tiền không bao giờ là số.
    */
   priceFrom: DecimalStringSchema,
   currency: z.string().length(3),
@@ -127,7 +130,13 @@ export const TourPolicySchema = z.object({
   body: z.string().min(1).max(4000),
 });
 
-/** Upcoming OPEN departure. `effectivePrice = priceOverride ?? tour.basePrice`. */
+/**
+ * Chuyến OPEN chưa khởi hành (so theo ngày Việt Nam). `effectivePrice =
+ * priceOverride ?? tour.basePrice`.
+ *
+ * Gồm cả chuyến ĐÃ QUA hạn đặt nhưng chưa khởi hành (`bookable: false`): trang
+ * tour vẫn hiện chúng với nhãn "Booking closed" và lối sang form hỏi (spec §3.2).
+ */
 export const TourDepartureSchema = z.object({
   id: z.uuid(),
   startDate: z.iso.date(),
@@ -135,6 +144,17 @@ export const TourDepartureSchema = z.object({
   seatsLeft: z.int().nonnegative(),
   effectivePrice: DecimalStringSchema,
   compareAtPrice: DecimalStringSchema.nullable(),
+  /**
+   * Ngày chót đặt chỗ, cũng là ngày chót huỷ miễn phí: `cancellationDeadline(startDate,
+   * endDate)` (ADR-0041 §2), hết lúc 23:59:59 giờ Việt Nam. Server tính để web in
+   * đúng một ngày cụ thể mà không tự dựng luật N.
+   */
+  bookingDeadline: z.iso.date(),
+  /**
+   * Server tính: chuyến còn trong hạn đặt. Còn chỗ hay không vẫn đọc `seatsLeft`.
+   * Web in theo cờ này, KHÔNG so ngày bằng giờ trình duyệt (spec Q7).
+   */
+  bookable: z.boolean(),
 });
 
 export const TourDetailSchema = TourCardSchema.extend({

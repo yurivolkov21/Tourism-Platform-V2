@@ -8,7 +8,7 @@ import type {
   TourDetail,
   ToursListQuery,
 } from '@tourism/contract';
-import { vietnamToday } from '@tourism/contract';
+import { cancellationDeadline, isWithinDeadline, vietnamToday } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
@@ -69,9 +69,10 @@ const SORT_COLUMN = {
  * "không có ảnh" một cách tường minh, thay vì thiếu khoá.
  */
 /**
- * Giá "from" thật — `min(priceOverride ?? basePrice)` trên các đợt OPEN sắp tới
- * của tour; không có đợt → `basePrice`. Nhận MẢNG priceOverride (đã lọc theo
- * tour) để list tính một lần cho cả trang và detail dùng lại departures đã load.
+ * Giá "from" thật — `min(priceOverride ?? basePrice)` trên các đợt OPEN còn nhận
+ * đặt (`bookable`, ADR-0041 §3) của tour; không có đợt → `basePrice`. Nhận MẢNG
+ * priceOverride ĐÃ LỌC (theo tour và theo hạn đặt) để list tính một lần cho cả
+ * trang và detail dùng lại departures đã load — hai bên lọc cùng một luật.
  */
 export function priceFrom(
   basePrice: Prisma.Decimal,
@@ -130,6 +131,9 @@ export class CatalogService {
 
   async listTours(query: ToursListQuery): Promise<Paged<TourCard>> {
     const { page, limit, category, destination, search, featured, sort, order } = query;
+    // MỘT mốc cho cả lượt đọc: lọc "chưa khởi hành" và luật "còn nhận đặt" nhìn
+    // cùng một khoảnh khắc.
+    const now = new Date();
 
     const where: Prisma.TourWhereInput = {
       isPublished: true,
@@ -166,19 +170,23 @@ export class CatalogService {
     const [coverMap, upcoming] = await Promise.all([
       // Chỉ cần cover cho card — lọc hero ngay ở query (W4 R3).
       this.media.resolveForOwners(MediaOwnerType.TOUR, ids, [MediaRole.hero]),
-      // MỘT query đợt cho cả trang → `priceFrom` (giá "from" thật). Chỉ lấy hai
-      // cột cần, lọc đúng như detail (OPEN + chưa khởi hành).
+      // MỘT query đợt cho cả trang → `priceFrom` (giá "from" thật). Lọc đúng như
+      // detail (OPEN + chưa khởi hành theo ngày Việt Nam); lấy thêm hai cột ngày vì
+      // luật hạn chót N chỉ sống ở Node (spec §4.1), không viết lại trong SQL.
       prisma.tourDeparture.findMany({
         where: {
           tourId: { in: ids },
           status: DepartureStatus.OPEN,
-          startDate: { gte: startOfVietnamToday(new Date()) },
+          startDate: { gte: startOfVietnamToday(now) },
         },
-        select: { tourId: true, priceOverride: true },
+        select: { tourId: true, priceOverride: true, startDate: true, endDate: true },
       }),
     ]);
     const overridesByTour = new Map<string, (Prisma.Decimal | null)[]>();
     for (const d of upcoming) {
+      // Chuyến đã qua hạn đặt không bán được nữa → không kéo giá "from" xuống
+      // (ADR-0041 §3) — cùng luật với cờ `bookable` của detail.
+      if (!isWithinDeadline(now, calendarDate(d.startDate), calendarDate(d.endDate))) continue;
       const list = overridesByTour.get(d.tourId) ?? [];
       list.push(d.priceOverride);
       overridesByTour.set(d.tourId, list);
@@ -201,6 +209,9 @@ export class CatalogService {
 
   /** Detail của tour đã published, hoặc null (controller dịch thành NOT_FOUND). */
   async getTourBySlug(slug: string): Promise<TourDetail | null> {
+    // MỘT mốc cho cả lượt đọc — lọc chuyến, `bookable` và giá "from" nhìn cùng
+    // một khoảnh khắc.
+    const now = new Date();
     const tour = await prisma.tour.findFirst({
       where: { slug, isPublished: true },
       include: {
@@ -209,9 +220,11 @@ export class CatalogService {
         faqs: { orderBy: { order: 'asc' } },
         policies: { orderBy: { order: 'asc' } },
         departures: {
+          // VẪN gồm chuyến đã qua hạn đặt nhưng chưa khởi hành: trang tour hiện
+          // chúng là "Booking closed" (spec §3.2), nên ở đây chỉ lọc "chưa khởi hành".
           where: {
             status: DepartureStatus.OPEN,
-            startDate: { gte: startOfVietnamToday(new Date()) },
+            startDate: { gte: startOfVietnamToday(now) },
           },
           orderBy: { startDate: 'asc' },
         },
@@ -222,13 +235,27 @@ export class CatalogService {
     // Detail cần CẢ BỘ ảnh (nuôi khảm gallery), khác list chỉ cần một tấm bìa.
     const media = (await this.media.resolveForOwners(MediaOwnerType.TOUR, [tour.id])).get(tour.id);
 
+    // Luật hạn chót tính MỘT lần mỗi chuyến: vừa in `bookingDeadline`/`bookable`,
+    // vừa lọc giá "from" — web không tự dựng luật N hay so giờ trình duyệt (Q7).
+    const departureViews = tour.departures.map((row) => {
+      const startDate = calendarDate(row.startDate);
+      const endDate = calendarDate(row.endDate);
+      return {
+        row,
+        startDate,
+        endDate,
+        bookingDeadline: cancellationDeadline(startDate, endDate),
+        bookable: isWithinDeadline(now, startDate, endDate),
+      };
+    });
+
     return {
       ...toTourCard(
         tour,
         pickCover(media),
         priceFrom(
           tour.basePrice,
-          tour.departures.map((d) => d.priceOverride),
+          departureViews.filter((view) => view.bookable).map((view) => view.row.priceOverride),
         ),
       ),
       media: media ?? [],
@@ -259,13 +286,15 @@ export class CatalogService {
         title: policy.title,
         body: policy.body,
       })),
-      departures: tour.departures.map((departure) => ({
-        id: departure.id,
-        startDate: calendarDate(departure.startDate),
-        endDate: calendarDate(departure.endDate),
-        seatsLeft: departure.seatsTotal - departure.seatsBooked,
-        effectivePrice: money(departure.priceOverride ?? tour.basePrice),
-        compareAtPrice: departure.compareAtPrice ? money(departure.compareAtPrice) : null,
+      departures: departureViews.map(({ row, startDate, endDate, bookingDeadline, bookable }) => ({
+        id: row.id,
+        startDate,
+        endDate,
+        seatsLeft: row.seatsTotal - row.seatsBooked,
+        effectivePrice: money(row.priceOverride ?? tour.basePrice),
+        compareAtPrice: row.compareAtPrice ? money(row.compareAtPrice) : null,
+        bookingDeadline,
+        bookable,
       })),
     };
   }
