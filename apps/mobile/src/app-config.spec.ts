@@ -8,13 +8,29 @@ import appConfig from '../app.json';
  *
  * Splash luôn dùng bảng TỐI, kể cả máy đang để sáng: ảnh mark chỉ có một bản, và
  * nền tối là nền mà cả hai viên kim cương đều đọc được.
+ *
+ * Cấu hình nằm trong plugin `expo-splash-screen` chứ không phải khoá `expo.splash`
+ * — SDK 57 đã bỏ khoá đó khỏi schema và `expo-doctor` báo đỏ nếu còn.
  */
+function splashOptions(): { image: string; backgroundColor: string } {
+  for (const plugin of appConfig.expo.plugins) {
+    if (!Array.isArray(plugin)) continue;
+
+    const [name, options] = plugin;
+    if (name !== 'expo-splash-screen' || typeof options !== 'object') continue;
+
+    return options;
+  }
+
+  throw new Error('app.json thiếu plugin expo-splash-screen');
+}
+
 describe('app.json', () => {
   it('nền splash đúng bằng màu background của chế độ tối', () => {
-    expect(appConfig.expo.splash.backgroundColor).toBe(buildTheme('dark').colors.background);
+    expect(splashOptions().backgroundColor).toBe(buildTheme('dark').colors.background);
   });
 
   it('splash trỏ đúng file mark đang có trong repo', () => {
-    expect(appConfig.expo.splash.image).toBe('./assets/splash-mark.png');
+    expect(splashOptions().image).toBe('./assets/splash-mark.png');
   });
 });

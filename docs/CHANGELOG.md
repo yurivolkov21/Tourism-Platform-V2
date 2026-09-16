@@ -8,6 +8,85 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-16 — P5b-1 cụm auth mobile: `@tourism/core` (đã merge) và 17 khung giao diện tĩnh (**CHƯA merge, chờ review**)
+
+Spec: [specs/2026-09-16-p5b-auth-wireframe-design.md](specs/2026-09-16-p5b-auth-wireframe-design.md) ·
+plan: [plans/2026-09-16-p5b-auth-wireframe.md](plans/2026-09-16-p5b-auth-wireframe.md) ·
+mockup user duyệt: `design/mockups/mobile-auth-screens.src.html` ·
+bàn giao: [conventions/mobile-auth-handoff.md](conventions/mobile-auth-handoff.md).
+
+### Nhánh 1 — `refactor/shared-auth-rules` ✅ đã ff vào `main`
+
+- `fc83a847` dựng `@tourism/core` tại `libs/shared/core` (đóng gói y hệt `@tourism/i18n`)
+  và chuyển NGUYÊN VĂN `auth-errors.ts` của web sang, kèm test.
+- `78146fa0` chuyển tiếp `auth-form.ts`; 7 file của web đổi đường import, không đổi
+  một dòng logic nào.
+- `15a8c838` hàng rào import canh bằng máy (`package-boundary.ts`): chỉ được import
+  tương đối, `@tourism/contract` và `@tourism/i18n` — cấm react/react-native/next/DOM/Node.
+- `1c86b5d4` khai type Node cho chính spec quét file đó (ADR-0042).
+- `AuthErrorField` thêm `'otp'` để mã xác minh sai rơi đúng kênh 1; web không đổi
+  hành vi vì web không có màn nào nhận field `otp`.
+
+### Nhánh 2 — `feat/p5b-auth-screens` ⏸ **CHƯA merge, chờ user review**
+
+13 commit, `2c06124d`…`37232ee7`. Dựng đủ **17 khung** của spec §4 dưới dạng giao
+diện TĨNH; không màn nào gọi API thật.
+
+- **Bộ primitive mới** (`@tourism/mobile-ui`): `TextField` (nhãn nổi, nút hiện/ẩn
+  mật khẩu), `FormMessage`, `OtpInput` (một ô nhập trong suốt phủ 6 ô vẽ — hệ điều
+  hành lo sẵn nhảy ô, xoá lùi và dán mã), `Checkbox`, `IconButton`. `AppText` thêm
+  tông `link` và `media`; `Button` thêm `shape="pill"`, `leading` và vai `media`.
+  Cầu font brand (Literata cho tiêu đề, Archivo cho thân) và `withAlpha` để suy dải
+  mờ TỪ token thay vì gõ màu tay.
+- **Seam hạ tầng**: `AuthActions` 7 method cùng bản giả lập chọn nhánh theo email và
+  mã nhập vào, và `OnboardingStore` nhớ trong RAM. Người làm hạ tầng đổi đúng hai
+  dòng ở `src/app/_layout.tsx`.
+- **Ba kênh lỗi, một hàm quyết kênh** (`placeAuthError`): dưới ô sai · khung ngay
+  trên nút chính · thay cả thân màn. Màn không tự chọn kênh nên hai màn không thể
+  nói khác nhau về cùng một mã lỗi.
+- **Cụm `(auth)` bỏ hẳn header**: mỗi màn tự vẽ đường thoát đè lên nội dung (X đóng
+  cả nhóm ở màn đầu, mũi tên lùi ở màn đi tiếp, màn kết quả không có đường lui).
+- **Splash và onboarding**: `assets/splash-mark.png` xuất từ chính mark SVG của web;
+  màu nền splash trong `app.json` có `app-config.spec.ts` canh cho khớp token chế độ
+  tối, vì lưới tokens-only không quét file JSON. Cấu hình splash nằm trong plugin
+  `expo-splash-screen`, KHÔNG phải khoá `expo.splash` như plan viết: SDK 57 đã bỏ
+  khoá đó khỏi schema và `expo-doctor` báo đỏ.
+- **`/dev/gallery`**: bảng tra 17 khung dựng bằng dữ liệu cứng, chỉ mở được ở bản
+  dev (`isDevBuild()` đẩy bản phát hành về Home).
+
+### Cổng đã đo
+
+- **jest-expo** (cổng nhánh 1, Task 3): mobile tiêu thụ được `@tourism/core` — xanh.
+- **Metro** (cổng Task 10): `pnpm turbo run bundle --filter=@tourism/mobile` xanh cho
+  cả iOS lẫn Android, không phải thêm `metro.config.js` nào.
+- **expo-doctor**: 21/21.
+- Runbook `mobile-dev-loop.md` đổi bước build sang `--filter=@tourism/mobile^...`:
+  Metro cần `dist` của cả `i18n` và `core`, bản cũ chỉ build `tokens` nên máy sạch
+  chết ở `@tourism/i18n`.
+
+### Bẫy ghi lại
+
+- **RNTL 14 bất đồng bộ**: `fireEvent.*`, `unmount()` và `render()` đều trả Promise.
+  Bốn cú `fireEvent.press` không `await` trong một test để lại phần việc treo và làm
+  MỌI test sau trong cùng file render ra cây RỖNG — lỗi hiện ở test khác chứ không ở
+  chỗ gây ra nó. Đã sửa cả 10 chỗ còn thiếu `await` trong spec mobile và mobile-ui.
+- **`rerender` của RNTL thay TOÀN BỘ cây** bằng đúng thứ được truyền vào, nên gọi
+  thẳng là rụng provider; `renderWithTheme` nay bọc lại nó.
+- **Bản giả lập `react-native-screens` trong jest vẫn render nội dung header đã ẩn**,
+  nên `headerShown: false` một mình vẫn để lại hai nút cùng nhãn trong cây test.
+
+Tests after: `gate:int` xanh lúc 16/09 (6/6 task, int 496 test ở 37 file). Unit 3786
+test: web 1477 · api 809 · admin 918 · contract 255 · mobile 147 · mobile-ui 84 ·
+core 46 · ui 22 · tokens 18 · i18n 10. So với 15/09 (3627): mobile thêm 118,
+mobile-ui thêm 32, i18n thêm 4, core 46 test mới trong đó 41 chuyển nguyên văn từ
+web (nên web giảm 41), còn lại là 5 test hàng rào import. `pnpm gate` 28/28 task
+xanh · tokens-only ✓ (64 file nguồn mobile) · Biome không lỗi.
+
+**CÒN TREO sau đợt này:** chặn tab khi chưa đăng nhập (cụm tabs) · icon app ·
+admin chuyển sang `@tourism/core` (bản chép thứ ba vẫn còn) · thêm dòng COPY trong
+`apps/api/Dockerfile` nếu API dùng tới `core` · nối API thật và thay
+`createMemoryOnboardingStore` (thành viên khác, theo tài liệu bàn giao).
+
 ## 2026-09-15 — Web chỉ gạch giá khi có khuyến mãi thật, navbar hết lệch hydrate, seed-demo-visits trọn năm 2026 (ba nhánh, ff vào `main`)
 
 Ba việc tách ra từ lượt prod 1 (entry dưới). Mỗi việc một nhánh, gộp vào `main`

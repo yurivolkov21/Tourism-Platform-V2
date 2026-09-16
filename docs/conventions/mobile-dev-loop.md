@@ -14,15 +14,21 @@ cầm điện thoại quét QR — là bước duy nhất không ai làm thay đ
 
 ```bash
 pnpm install
-pnpm turbo run build --filter=@tourism/tokens
+pnpm turbo run build --filter=@tourism/mobile^...
 cp apps/mobile/.env.example apps/mobile/.env.local
 ```
 
-Dòng build tokens **không bỏ được**. `@tourism/tokens/theme`
-(`generated/theme.js`) là build artifact và bị gitignore; Turbo tự lo thứ tự
+Dòng build **không bỏ được**, và phải là `@tourism/mobile^...` (mọi package mà
+app phụ thuộc) chứ không phải riêng `@tourism/tokens`: Metro cần `dist` của cả
+`@tourism/i18n`, `@tourism/core` và `@tourism/tokens`. Bản cũ chỉ build tokens
+nên máy sạch chết ở `@tourism/i18n` — sửa 16/09 khi cụm auth mobile kéo thêm
+`@tourism/core` vào cây import.
+
+Vì sao phải build tay: `@tourism/tokens/theme` (`generated/theme.js`) và `dist`
+của các package kia đều là build artifact và bị gitignore; Turbo tự lo thứ tự
 cho `typecheck`/`test` qua `dependsOn: ^build`, nhưng **Metro lúc `expo start`
-thì không** — máy chưa từng build tokens sẽ thấy Metro báo thiếu module chứ
-không báo "hãy build tokens".
+thì không** — máy chưa từng build sẽ thấy Metro báo thiếu module chứ không báo
+"hãy build trước".
 
 `.env.local` chỉ có hai biến, cả hai đều công khai:
 
@@ -123,6 +129,12 @@ mỗi lần loại một gói khỏi tầm mắt của nó là bớt đi một l
 - **Jest chứ không Vitest, và CHỈ ở hai package này.** Ngoại lệ đã được
   ADR-0001 + CLAUDE.md cấp từ P0; ranh giới ở ADR-0040 §4 là thứ giữ cho nó
   không lan. Không có config Jest nào ở root.
+- **`/dev/gallery` chỉ có ở bản dev.** Bảng tra 17 khung của cụm auth, dựng
+  bằng dữ liệu cứng nên soi được cả những trạng thái chỉ hiện sau một chuỗi
+  thao tác đúng (mã sai, link hết hạn, vừa gửi lại mã). Mở bằng
+  `nexora://dev/gallery`, hoặc gõ đường dẫn `/dev/gallery` trong Expo Go. Route
+  vẫn nằm trong bundle phát hành (Metro không bỏ file route theo điều kiện),
+  nhưng `isDevBuild()` đẩy thẳng về Home nên không có đường vào.
 - **Spec của cây route nằm ở `src/routes.spec.tsx`, ngoài `src/app`.**
   expo-router coi mọi file `.tsx` dưới thư mục app là một route (ignore list
   của nó chỉ có `+html`, `+native-intent`, `+api`, `+middleware`) — để

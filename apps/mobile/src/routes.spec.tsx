@@ -76,6 +76,7 @@ const EXPECTED_ROUTES = [
   '(tabs)/trips',
   '+not-found',
   'bookings/[code]',
+  'dev/gallery',
   'onboarding',
   'tours/[slug]',
 ];
