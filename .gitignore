@@ -70,3 +70,8 @@ backups/
 # một bản checkout đủ repo, có `biome.json` riêng; không ignore thì `biome check .`
 # (biome.json bật vcs.useIgnoreFile) quét trúng và báo "nested root configuration".
 .claude/worktrees/
+
+# Ảnh tham chiếu thiết kế của user (bộ Navel dùng cho các cụm màn mobile, ~98 MB).
+# Repo này PUBLIC và ảnh là tài sản riêng của user, nên không bao giờ commit —
+# trước đây phải nhớ bằng tay ở mỗi lần `git add`, nay để máy nhớ (user chốt 16/09).
+docs/screenshot/
