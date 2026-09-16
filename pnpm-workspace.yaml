@@ -39,19 +39,16 @@ minimumReleaseAgeExclude:
   - ip-address@10.2.1 || 10.2.2 || 10.3.1
   - hono@4.12.34
   - brace-expansion@5.0.9
-  # Đợt 09/09 (vòng vá review P5a): expo 57.0.20 → 57.0.21 và expo-router
-  # 57.0.19 → 57.0.20 để `expo-doctor` xanh trở lại — hai patch upstream ra sau
-  # khi nhánh dựng. Bảy mục còn lại là dependency bắc cầu bị kéo theo. Vẫn
-  # trong SDK 57 và trong cửa sổ trước freeze 15/10.
-  - '@expo/cli@57.0.23'
+  - '@expo/cli@57.0.23 || 57.0.25'
   - '@expo/metro-file-map@57.0.3'
   - '@expo/ui@57.0.17'
-  - babel-preset-expo@57.0.11
+  - babel-preset-expo@57.0.11 || 57.0.12
   - expo-glass-effect@57.0.2
   - expo-modules-core@57.0.17
   - expo-modules-jsi@57.1.0
   - expo-router@57.0.20
-  - expo@57.0.21
+  - expo@57.0.21 || 57.0.23
+  - '@expo/router-server@57.0.10'
 
 # Vá lỗ hổng bảo mật ở dependency bắc cầu (medium: middleware bypass qua
 # serveStatic). Đường đi: prisma CLI (devDep) → @prisma/dev → @hono/node-server.
