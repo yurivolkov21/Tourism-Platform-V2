@@ -258,6 +258,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@tourism/core':
+        specifier: workspace:*
+        version: link:../../libs/shared/core
       '@tourism/i18n':
         specifier: workspace:*
         version: link:../../libs/shared/i18n

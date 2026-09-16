@@ -12,6 +12,7 @@
     "doctor": "expo-doctor"
   },
   "dependencies": {
+    "@tourism/core": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/mobile-ui": "workspace:*",
     "expo": "~57.0.21",
