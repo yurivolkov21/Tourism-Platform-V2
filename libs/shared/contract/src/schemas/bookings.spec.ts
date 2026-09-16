@@ -5,6 +5,7 @@ import {
   BookingSchema,
   BookingsListQuerySchema,
   CancelBookingInputSchema,
+  CancellationRequestSchema,
   CreateBookingInputSchema,
   DecideCancellationInputSchema,
   PaymentProviderSchema,
@@ -562,5 +563,43 @@ describe('AdminCancellationsListQuerySchema — bộ lọc ngày (ADR-0028 §AME
     expect(
       AdminCancellationsListQuerySchema.parse({ page: 2, status: 'REQUESTED', from: '2026-09-01' }),
     ).toMatchObject({ page: 2, status: 'REQUESTED', from: '2026-09-01' });
+  });
+});
+
+/**
+ * ADR-0041: khách tự huỷ không bắt buộc ghi lý do, nên dòng yêu cầu huỷ mang
+ * `reason` null. Chỉ nới đúng chỗ này — chuỗi rỗng vẫn là dữ liệu hỏng.
+ */
+describe('CancellationRequestSchema.reason — ADR-0041', () => {
+  const selfCancelled = {
+    id: '4f2a1b3c-0000-4000-8000-000000000002',
+    bookingCode: 'BK-7Q2M9XKD',
+    reason: null,
+    status: 'REFUNDED',
+    freeCancellationDays: null,
+    decisionNote: null,
+    decidedAt: '2026-09-15T03:00:00.000Z',
+    createdAt: '2026-09-15T03:00:00.000Z',
+  };
+
+  it('null hợp lệ — khách huỷ mà không ghi lý do', () => {
+    expect(CancellationRequestSchema.parse(selfCancelled).reason).toBeNull();
+  });
+
+  it('vẫn nhận lý do thật, vẫn từ chối chuỗi rỗng và chuỗi quá 1000 ký tự', () => {
+    expect(
+      CancellationRequestSchema.parse({ ...selfCancelled, reason: 'Change of plans' }).reason,
+    ).toBe('Change of plans');
+    expect(CancellationRequestSchema.safeParse({ ...selfCancelled, reason: '' }).success).toBe(
+      false,
+    );
+    expect(
+      CancellationRequestSchema.safeParse({ ...selfCancelled, reason: 'x'.repeat(1001) }).success,
+    ).toBe(false);
+  });
+
+  it('khoá vẫn bắt buộc có mặt — nullable chứ không optional', () => {
+    const { reason: _drop, ...missing } = selfCancelled;
+    expect(CancellationRequestSchema.safeParse(missing).success).toBe(false);
   });
 });

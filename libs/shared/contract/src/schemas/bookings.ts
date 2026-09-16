@@ -366,7 +366,11 @@ export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;
 export const CancellationRequestSchema = z.object({
   id: z.uuid(),
   bookingCode: BookingCodeSchema,
-  reason: z.string().min(1).max(1000),
+  /**
+   * Lý do khách ghi. `null` = khách tự huỷ mà không ghi (ADR-0041 — lý do không
+   * bắt buộc); yêu cầu tạo trước đợt này luôn có lý do.
+   */
+  reason: z.string().min(1).max(1000).nullable(),
   status: CancellationRequestStatusSchema,
   /**
    * Badge `freeCancellationDays` của tour CHỤP LÚC KHÁCH GỬI (ADR-0029 AMEND 6):

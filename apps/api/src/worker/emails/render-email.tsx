@@ -435,6 +435,80 @@ function buildEmail(
           </EmailShell>
         ),
       };
+    /**
+     * Khách tự huỷ (ADR-0041 §4) — email đi SAU khi mọi thứ đã xong trong một
+     * giao dịch, nên không hứa "đang xem xét" gì. Hai biến thể:
+     *
+     * - Đã hoàn: cờ `refunded` VÀ `money` cùng có. `money` đã chặn số 0 cho mọi
+     *   loại mail (xem trên), nên payload lệch (cờ true, amount '0.00') rơi về
+     *   biến thể không hoàn thay vì loan báo một khoản tiền bằng không.
+     * - Không hoàn (quá hạn chót): nói rõ hạn chót đã qua, kèm ngày, và mở cửa
+     *   ngoại lệ qua đội hỗ trợ (§5 — hoàn thiện chí).
+     *
+     * P4e-1 thêm biến thể công ty huỷ chuyến theo `initiator`.
+     */
+    case EmailType.BOOKING_CANCELLED: {
+      const refunded = payload.refunded === true && money !== undefined;
+      const deadline = formatDate(f('deadline'));
+      return {
+        subject: `Booking cancelled — ${subjectCode}`,
+        node: (
+          <EmailShell
+            preview={
+              refunded
+                ? `Booking ${code} is cancelled and your refund is on its way.`
+                : `Booking ${code} is cancelled.`
+            }
+            heading="Your booking is cancelled"
+            note={
+              refunded ? (
+                <NoteParagraph>
+                  The refund typically appears within 5–10 business days, depending on your bank.
+                </NoteParagraph>
+              ) : (
+                <NoteParagraph>
+                  Something serious happened? Reply to this email and our team will review your
+                  case.{' '}
+                  {policyUrl ? (
+                    <a href={policyUrl} style={accentLink}>
+                      See our cancellation policy
+                    </a>
+                  ) : null}
+                </NoteParagraph>
+              )
+            }
+            footerReason={bookingReason}
+          >
+            <BodyParagraph>
+              {name ? `Hi ${name}, we` : 'We'}&#39;ve cancelled your booking <strong>{code}</strong>
+              {title ? ` (${title})` : ''}
+              {refunded ? ' and refunded your payment' : ''}.
+            </BodyParagraph>
+            <DataCard
+              rows={[
+                ['Status', <PillValue key="v">Cancelled</PillValue>],
+                ...(refunded
+                  ? ([
+                      ['Refund issued', <MoneyValue key="v">{money}</MoneyValue>],
+                      ['Returns to', <PlainValue key="v">Original payment method</PlainValue>],
+                    ] as Array<[string, ReactNode]>)
+                  : ([
+                      [
+                        'Refund',
+                        <PlainValue key="v">
+                          {deadline
+                            ? `None — the free-cancellation deadline (${deadline}) had passed`
+                            : 'None — the free-cancellation deadline had passed'}
+                        </PlainValue>,
+                      ],
+                    ] as Array<[string, ReactNode]>)),
+              ]}
+            />
+            {manageUrl ? <CtaButton href={manageUrl}>View my booking</CtaButton> : null}
+          </EmailShell>
+        ),
+      };
+    }
     case EmailType.NEWSLETTER_WELCOME: {
       // Link huỷ đăng ký (GDPR/CAN-SPAM): id/token do NewsletterService sinh
       // sẵn lúc enqueue; ở đây chỉ ghép URL — bản cũ chỉ có "reply to

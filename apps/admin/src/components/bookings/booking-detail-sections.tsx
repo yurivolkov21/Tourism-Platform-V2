@@ -179,10 +179,14 @@ function CancellationHistoryRow({ request }: { request: CancellationRequest }) {
           </span>
         ) : null}
       </div>
-      <p>
-        <span className="text-muted-foreground">{t.cancellations.reason}: </span>
-        {request.reason}
-      </p>
+      {/* Khách tự huỷ không bắt buộc ghi lý do (ADR-0041) — vắng thì bỏ hẳn
+          dòng, cùng nếp `decisionNote` ngay dưới. */}
+      {request.reason ? (
+        <p>
+          <span className="text-muted-foreground">{t.cancellations.reason}: </span>
+          {request.reason}
+        </p>
+      ) : null}
       {request.decisionNote ? (
         <p>
           <span className="text-muted-foreground">{t.cancellations.note}: </span>

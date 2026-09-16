@@ -3710,6 +3710,11 @@ export const messages = {
       /** Nhãn enum dùng CHUNG với lịch sử trên trang chi tiết booking. */
       status: CANCELLATION_STATUS_COPY,
       /**
+       * Khách tự huỷ không bắt buộc ghi lý do (ADR-0041) — hàng đợi và dialog
+       * in câu này thay cho một ô trống không rõ nghĩa.
+       */
+      noReason: 'No reason given',
+      /**
        * Quyết định — hành vi GHI thứ hai của admin. BỐN mã contract dưới
        * `errors` là NGUỒN duy nhất của tập mã phía admin
        * (`cancellations-decide.ts` derive từ keys, không chép danh sách lần
@@ -4255,6 +4260,7 @@ export const messages = {
         PASSWORD_RESET: 'Password reset',
         EMAIL_VERIFICATION: 'Email verification',
         EMAIL_OTP: 'Email verification code',
+        BOOKING_CANCELLED: 'Booking cancelled',
       },
       /** Drawer chi tiết một hàng: payload JSON nguyên văn + lỗi đầy đủ. */
       detail: {

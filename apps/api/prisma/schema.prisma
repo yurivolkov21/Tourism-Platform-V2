@@ -185,6 +185,10 @@ enum EmailType {
   /// Mã OTP verify email — ADR-0017 §5a (đè flow link mặc định bằng plugin
   /// `emailOTP`, giữ nguyên hook afterEmailVerification cho SEC-1).
   EMAIL_OTP
+  /// Khách tự huỷ booking đã trả (ADR-0041 §4): một email, hai biến thể — đã
+  /// hoàn hoặc không hoàn (quá hạn chót). Thêm ở CUỐI để thứ tự khớp
+  /// `EmailTypeSchema` của contract. Ba loại CANCELLATION_* ở lại cho dữ liệu cũ.
+  BOOKING_CANCELLED
 }
 
 /// Vòng đời row outbox (ADR-0007). PENDING → SENT, hoặc → FAILED sau khi retry.
@@ -686,7 +690,8 @@ model CancellationRequest {
   id           String                    @id @default(uuid()) @db.Uuid
   bookingId    String                    @map("booking_id") @db.Uuid
   userId       String                    @map("user_id") @db.Uuid
-  reason       String                    @db.VarChar(1000)
+  /// Null = khách tự huỷ mà không ghi lý do (ADR-0041); yêu cầu cũ luôn có.
+  reason       String?                   @db.VarChar(1000)
   /// Badge `tours.free_cancellation_days` CHỤP lúc khách gửi (ADR-0029 AMEND 6):
   /// approve và ước tính đọc từ đây, không join sống — sửa tour sau đó không
   /// đổi mức hoàn đã hứa. Null = row cũ trước migration (rơi về badge hiện tại).

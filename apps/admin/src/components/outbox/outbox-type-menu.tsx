@@ -17,6 +17,7 @@ import {
   ShieldXIcon,
   StarIcon,
   TicketIcon,
+  TicketXIcon,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { ALL_FILTER_VALUE as ALL } from '@/components/kit/filter-value';
@@ -64,6 +65,11 @@ const TYPE_META: Record<EmailTypeValue, { family: Family; icon: typeof MailIcon 
   CANCELLATION_REQUESTED: { family: 'cancellation', icon: CircleDashedIcon },
   CANCELLATION_APPROVED: { family: 'cancellation', icon: ShieldCheckIcon },
   CANCELLATION_DENIED: { family: 'cancellation', icon: ShieldXIcon },
+  // ADR-0041: email huỷ DUY NHẤT còn phát sinh (khách tự huỷ); ba loại trên ở
+  // lại để lọc dữ liệu cũ. Luật 1 không có glyph sẵn cho "booking đã huỷ" dùng
+  // được: `CircleXIcon` của tab CANCELLED bên /bookings trùng tab FAILED của
+  // chính toolbar này (luật 2). Nên lấy `ticket-x` — vé (booking) bị gạch.
+  BOOKING_CANCELLED: { family: 'cancellation', icon: TicketXIcon },
   ENQUIRY_RECEIVED: { family: 'enquiry', icon: MessageSquareIcon },
   // Thư duy nhất gửi cho ĐỘI, không cho khách — chuông chứ không phải bong bóng.
   ENQUIRY_ADMIN_ALERT: { family: 'enquiry', icon: BellRingIcon },

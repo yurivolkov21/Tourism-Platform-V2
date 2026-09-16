@@ -81,7 +81,9 @@ export function toCancellationRow(request: AdminCancellationRequest): Cancellati
     departure: formatCalendarDate(request.departureStartDate),
     customerName: request.contactName,
     customerEmail: request.contactEmail,
-    reason: request.reason,
+    // Khách tự huỷ không bắt buộc ghi lý do (ADR-0041): in câu thay thế thay vì
+    // ô trống — cột này và `title` của nó đều cần một chuỗi.
+    reason: request.reason ?? t.noReason,
     status: request.status,
     statusLabel: cancellationStatusLabel(request.status),
     requested: formatDateTime(request.createdAt),

@@ -48,6 +48,7 @@ describe('renderEmail type → subject mapping', () => {
     [EmailType.PASSWORD_RESET, /reset your password/i],
     [EmailType.EMAIL_VERIFICATION, /verify your email/i],
     [EmailType.EMAIL_OTP, /verification code/i],
+    [EmailType.BOOKING_CANCELLED, /Booking cancelled — BK-1/],
   ];
 
   it.each(cases)('%s has a dedicated subject', async (type, expected) => {
@@ -211,6 +212,56 @@ describe('renderEmail — duyệt huỷ mà KHÔNG hoàn đồng nào (ADR-0029 
     expect(html).toContain('117.00');
     expect(html).toContain('on its way');
     expect(html).not.toContain('No further refund is due');
+  });
+});
+
+describe('renderEmail — khách tự huỷ (BOOKING_CANCELLED, ADR-0041)', () => {
+  // Payload đúng Hợp đồng C của plan 15/09 — lõi huỷ (Task 6) ghi đúng bộ khoá này.
+  const REFUNDED = {
+    ...BOOKING_PAYLOAD,
+    amount: '117.00',
+    refunded: true,
+    deadline: '2026-10-17',
+    initiator: 'customer',
+  };
+  const NOT_REFUNDED = { ...REFUNDED, amount: '0.00', refunded: false };
+
+  it('trong hạn: in số tiền đã hoàn, nơi tiền về và thời gian tiền về', async () => {
+    const { subject, html } = await renderEmail(EmailType.BOOKING_CANCELLED, REFUNDED);
+
+    expect(subject).toBe('Booking cancelled — BK-1');
+    expect(html).toContain('Refund issued');
+    expect(html).toContain('117.00');
+    expect(html).toContain('Original payment method');
+    expect(html).toContain('business days');
+    // Biến thể đã hoàn không nhắc hạn chót — khách không cần biết luật khi đã được hoàn đủ.
+    expect(html).not.toContain('free-cancellation deadline');
+  });
+
+  it('quá hạn: KHÔNG in tiền, nói rõ hạn chót đã qua kèm ngày, mở cửa ngoại lệ', async () => {
+    const { subject, html } = await renderEmail(
+      EmailType.BOOKING_CANCELLED,
+      NOT_REFUNDED,
+      OPTS.frontendUrl,
+    );
+
+    expect(subject).toBe('Booking cancelled — BK-1');
+    expect(html).not.toContain('Refund issued');
+    expect(html).not.toContain('0.00');
+    expect(html).toContain('free-cancellation deadline');
+    expect(html).toContain('Oct 17, 2026');
+    // Ngoại lệ đi qua đội hỗ trợ (ADR-0041 §5) — mail phải chỉ đường tới chính sách.
+    expect(html).toContain('/cancellation-policy');
+  });
+
+  it('cờ refunded lệch với số tiền 0 → vẫn là biến thể không hoàn, không loan báo khoản bằng 0', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CANCELLED, {
+      ...REFUNDED,
+      amount: '0.00',
+    });
+
+    expect(html).not.toContain('Refund issued');
+    expect(html).not.toContain('0.00');
   });
 });
 

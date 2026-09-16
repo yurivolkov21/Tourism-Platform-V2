@@ -117,7 +117,9 @@ export default async function CancellationDetailPage({
                     bookingCode: booking.code,
                     tourTitle: booking.tourTitle,
                     customerName: booking.contactName,
-                    reason: open.reason,
+                    // Yêu cầu còn MỞ luôn do luồng cũ tạo nên có lý do; vế `??`
+                    // chỉ để kiểu `string | null` của contract (ADR-0041) qua được.
+                    reason: open.reason ?? messages.admin.cancellations.noReason,
                     totalAmount: booking.totalAmount,
                     refundedTotal: booking.refundedTotal,
                     currency: booking.currency,

@@ -40,7 +40,10 @@ describe('enums', () => {
     // ADR-0031 §6 thêm `REVIEW_REJECTED` — bác một review mà im lặng là để
     // khách đợi một thứ không bao giờ tới.
     expect(EmailTypeSchema.options).toContain('REVIEW_REJECTED');
-    expect(EmailTypeSchema.options).toHaveLength(14);
+    // ADR-0041 thêm `BOOKING_CANCELLED` ở CUỐI cho khớp enum Prisma — int test
+    // của API so hai mảng theo đúng thứ tự.
+    expect(EmailTypeSchema.options.at(-1)).toBe('BOOKING_CANCELLED');
+    expect(EmailTypeSchema.options).toHaveLength(15);
   });
 });
 

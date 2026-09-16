@@ -39,6 +39,8 @@ export const EmailTypeSchema = z.enum([
   'PASSWORD_RESET',
   'EMAIL_VERIFICATION',
   'EMAIL_OTP',
+  // ADR-0041: khách tự huỷ — thêm ở CUỐI, cùng vị trí với enum Prisma.
+  'BOOKING_CANCELLED',
 ]);
 export type EmailTypeValue = z.output<typeof EmailTypeSchema>;
 

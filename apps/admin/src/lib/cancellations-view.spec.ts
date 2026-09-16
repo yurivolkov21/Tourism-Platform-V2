@@ -68,6 +68,16 @@ describe('toCancellationRow', () => {
       '1 Jan 2026',
     );
   });
+
+  it('khách tự huỷ không ghi lý do (ADR-0041) → hàng in câu thay thế, không để ô trống', () => {
+    const row = toCancellationRow({
+      ...REQUESTED,
+      reason: null,
+      status: 'REFUNDED',
+      decidedAt: '2026-09-15T03:00:00.000Z',
+    });
+    expect(row.reason).toBe(messages.admin.cancellations.noReason);
+  });
 });
 
 describe('canDecide', () => {
