@@ -3,9 +3,11 @@ import { Test } from '@nestjs/testing';
 import {
   AdminBookingDetailSchema,
   AdminCancellationRequestSchema,
-  CancellationRequestSchema,
+  CancelBookingResultSchema,
+  cancellationDeadline,
   DecideCancellationResultSchema,
   PagedSchema,
+  vietnamToday,
 } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
@@ -17,6 +19,7 @@ import {
   DepartureStatus,
   EmailType,
 } from '../../generated/prisma/enums.js';
+import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
 import {
   FAKE_SIGNATURE_HEADER,
   FAKE_VALID_SIGNATURE,
@@ -25,13 +28,14 @@ import {
 import { CancellationsService } from './cancellations.service.js';
 
 /**
- * Integration (Docker PG, db tourism_test) — money-path W4: luồng cancellation
- * dưới D1-B (spec P2 §2): request là các history row APPEND-ONLY, "một request
- * sống mỗi booking" chính là PARTIAL unique index
- * `cancellation_requests_one_live_per_booking`, và một lần approve điều phối
- * gateway refund → [Refund row + booking CANCELLED + release seat + request
- * REFUNDED + outbox] một cách nguyên tử. Ngữ nghĩa terminal-state được test ở
- * đây là những gì ghi trong docs/conventions/booking-states.md.
+ * Integration (Docker PG, db tourism_test) — money-path huỷ booking.
+ *
+ * Từ ADR-0041 `bookings.cancel` là khách tự huỷ NGAY: trong một advisory lock,
+ * gọi cổng thanh toán trước rồi một CTE ghi booking CANCELLED + yêu cầu REFUNDED
+ * + dòng sổ (khi có tiền) + trả chỗ + outbox BOOKING_CANCELLED. Phần approve/deny
+ * của D1-B (spec P2 §2) còn sống tới plan 15/09 Task 8, nên test của nó dựng yêu
+ * cầu REQUESTED bằng `openRequest`. Ngữ nghĩa terminal-state được test ở đây là
+ * những gì ghi trong docs/conventions/booking-states.md.
  */
 
 const PUBLISHED_SLUG = 'hoi-an-lantern-evening'; // basePrice 39.00 USD (roster mới, spec 2026-07-31-tours-catalogue-api-design §3)
@@ -52,6 +56,11 @@ function sessionCookie(res: { headers: Record<string, unknown> }): string {
   const pair = session.split(';')[0];
   if (!pair) throw new Error('Malformed set-cookie');
   return pair;
+}
+
+/** Cộng `days` ngày lịch vào chuỗi `YYYY-MM-DD` — tính trên UTC, không dùng giờ máy. */
+function isoPlusDays(date: string, days: number): string {
+  return calendarDate(new Date(startOfDayUtc(date).getTime() + days * 86_400_000));
 }
 
 describe('cancellations integration (W4, D1-B append-only)', () => {
@@ -196,12 +205,35 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     return booking;
   }
 
-  function postCancel(cookie: string, code: string, reason = 'Change of plans') {
+  /** Khách tự huỷ qua route thật (ADR-0041). `payload` vắng = không ghi lý do. */
+  function postCancel(cookie: string, code: string, payload: Record<string, unknown> = {}) {
     return app.inject({
       method: 'POST',
       url: `/api/bookings/${code}/cancel`,
       headers: { cookie },
-      payload: { reason },
+      payload,
+    });
+  }
+
+  /**
+   * Mở một yêu cầu huỷ REQUESTED thẳng bằng Prisma. Từ ADR-0041 `bookings.cancel`
+   * huỷ ngay chứ không tạo dòng này nữa, nhưng approve/deny và vùng admin còn
+   * sống tới plan 15/09 Task 8 — test của chúng tự dựng dữ liệu kiểu cũ (prod vẫn
+   * còn loại dòng này tới lượt seed lại). Chụp badge `freeCancellationDays` của
+   * tour như `request()` cũ từng làm (ADR-0029 AMEND 6).
+   */
+  async function openRequest(bookingId: string, reason = 'Change of plans') {
+    const booking = await prisma.booking.findUniqueOrThrow({
+      where: { id: bookingId },
+      select: { userId: true, tour: { select: { freeCancellationDays: true } } },
+    });
+    return prisma.cancellationRequest.create({
+      data: {
+        bookingId,
+        userId: booking.userId,
+        reason,
+        freeCancellationDays: booking.tour.freeCancellationDays,
+      },
     });
   }
 
@@ -234,63 +266,296 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     return row.seatsBooked;
   }
 
-  it('request on own PAID booking → 200 REQUESTED + outbox row keyed by requestId', async () => {
-    const alice = await signUpUser('alice@example.com', 'Alice');
-    const booking = await createPaidBooking(alice);
+  /**
+   * ADR-0041 §4 — khách tự huỷ, xử lý ngay. Chuyến `dep` khởi hành +45 ngày, dài
+   * 2 ngày nên N = 3: booking tạo qua API luôn còn trong hạn. Ca quá hạn và ca
+   * đúng ngày khởi hành dời SNAPSHOT ngày trên booking (lõi huỷ đọc snapshot,
+   * không join chuyến), nên ghế vẫn nhả về `dep`.
+   */
+  describe('ADR-0041 — bookings.cancel huỷ ngay', () => {
+    it('trong hạn: hoàn đủ, booking CANCELLED, yêu cầu REFUNDED do chính khách, trả chỗ, email BOOKING_CANCELLED', async () => {
+      const alice = await signUpUser('self-cancel@example.com', 'Alice');
+      const booking = await createPaidBooking(alice); // 117.00, 3 ghế
+      expect(await seatsBooked()).toBe(3);
 
-    const res = await postCancel(alice, booking.code, 'Trip cancelled by employer');
-    expect(res.statusCode).toBe(200);
-    const request = CancellationRequestSchema.parse(res.json());
-    expect(request).toMatchObject({
-      bookingCode: booking.code,
-      status: 'REQUESTED',
-      reason: 'Trip cancelled by employer',
-      decisionNote: null,
-      decidedAt: null,
+      const res = await postCancel(alice, booking.code, { reason: '  Change of plans  ' });
+      expect(res.statusCode).toBe(200);
+      const body = CancelBookingResultSchema.parse(res.json());
+      expect(body.refundedAmount).toBe('117.00');
+      expect(body.booking).toMatchObject({
+        code: booking.code,
+        status: 'CANCELLED',
+        refundedTotal: '117.00',
+      });
+      expect(body.booking.cancelledAt).not.toBeNull();
+
+      // (a) Cổng: đúng một lệnh, trọn phần còn lại, khoá chống trùng theo booking.
+      expect(fake.refunds).toHaveLength(1);
+      expect(fake.refunds[0]).toMatchObject({
+        amount: '117.00',
+        currency: 'USD',
+        idempotencyKey: `cancel:${booking.id}`,
+      });
+
+      // (b) Sổ: một dòng, không admin nào bấm, capture được hoàn vào (ADR-0006 AMEND 1b).
+      const refunds = await prisma.refund.findMany({ where: { bookingId: booking.id } });
+      expect(refunds).toHaveLength(1);
+      expect(refunds[0]?.amount.toFixed(2)).toBe('117.00');
+      expect(refunds[0]?.adminId).toBeNull();
+      expect(refunds[0]?.providerRefundId).toBe(fake.refunds[0]?.providerRefundId);
+      expect(refunds[0]?.providerPaymentId).toBe(fake.refunds[0]?.providerPaymentId);
+
+      // (c) Một yêu cầu REFUNDED do CHÍNH khách quyết; lý do đã trim ở contract.
+      const aliceRow = await prisma.user.findUniqueOrThrow({
+        where: { email: 'self-cancel@example.com' },
+      });
+      const requests = await prisma.cancellationRequest.findMany({
+        where: { bookingId: booking.id },
+      });
+      expect(requests).toHaveLength(1);
+      expect(requests[0]).toMatchObject({
+        status: CancellationRequestStatus.REFUNDED,
+        userId: aliceRow.id,
+        decidedById: aliceRow.id,
+        reason: 'Change of plans',
+        decisionNote: null,
+      });
+      expect(requests[0]?.decidedAt).not.toBeNull();
+
+      // (d) Booking CANCELLED + ghế nhả về pool.
+      const dbBooking = await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } });
+      expect(dbBooking.status).toBe(BookingStatus.CANCELLED);
+      expect(dbBooking.cancelledAt).not.toBeNull();
+      expect(await seatsBooked()).toBe(0);
+
+      // (e) Email trong CÙNG câu SQL, payload đúng Hợp đồng C, dedupe theo booking.
+      const outbox = await prisma.outbox.findMany({
+        where: { type: EmailType.BOOKING_CANCELLED },
+      });
+      expect(outbox).toHaveLength(1);
+      expect(outbox[0]?.dedupeKey).toBe(`booking-cancelled:${booking.id}`);
+      expect(outbox[0]?.payload).toEqual({
+        bookingId: booking.id,
+        code: booking.code,
+        email: 'alice@example.com',
+        name: 'Alice Nguyen',
+        title: dbBooking.tourTitle,
+        amount: '117.00',
+        currency: 'USD',
+        refunded: true,
+        deadline: cancellationDeadline(
+          calendarDate(dbBooking.departureStartDate),
+          calendarDate(dbBooking.departureEndDate),
+        ),
+        initiator: 'customer',
+      });
     });
 
-    // Chỉ request thôi thì booking không đổi; seat vẫn được giữ.
-    const row = await prisma.booking.findUniqueOrThrow({
-      where: { id: booking.id },
-    });
-    expect(row.status).toBe(BookingStatus.PAID);
-    expect(await seatsBooked()).toBe(3);
+    it('W1 + ADR-0041: lý do toàn khoảng trắng → 400, không ghi gì; vắng lý do → reason NULL, admin list vẫn 200', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('no-reason@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
 
-    // Outbox được enqueue trong CÙNG statement (invariant #7), key theo requestId.
-    const outbox = await prisma.outbox.findMany({
-      where: { type: EmailType.CANCELLATION_REQUESTED },
-    });
-    expect(outbox).toHaveLength(1);
-    expect(outbox[0]?.dedupeKey).toBe(`cancellation-requested:${request.id}`);
-    expect(outbox[0]?.payload).toMatchObject({
-      requestId: request.id,
-      code: booking.code,
-      email: 'alice@example.com',
-      reason: 'Trip cancelled by employer',
-    });
-  });
+      // Có gửi lý do thì vẫn phải có chữ (trim ở CONTRACT, W1).
+      const blank = await postCancel(alice, booking.code, { reason: '   ' });
+      expect(blank.statusCode).toBe(400);
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.cancellationRequest.count()).toBe(0);
 
-  it('duplicate request while one is live → 409 ALREADY_REQUESTED (partial unique fires), no second row', async () => {
-    const alice = await signUpUser('alice2@example.com');
-    const booking = await createPaidBooking(alice);
-    expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
+      // Vắng hẳn là hợp lệ: dòng yêu cầu ghi NULL.
+      expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
+      const row = await prisma.cancellationRequest.findFirstOrThrow({
+        where: { bookingId: booking.id },
+      });
+      expect(row.reason).toBeNull();
 
-    const dup = await postCancel(alice, booking.code, 'asking again');
-    expect(dup.statusCode).toBe(409);
-    expect(dup.json()).toMatchObject({ code: 'ALREADY_REQUESTED' });
-    expect(await prisma.cancellationRequest.count()).toBe(1);
-    expect(
-      await prisma.outbox.count({
-        where: { type: EmailType.CANCELLATION_REQUESTED },
-      }),
-    ).toBe(1);
+      // Dòng lý do NULL không được làm nổ output validation của hàng đợi admin
+      // (Task 2 nới CancellationRequestSchema.reason).
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/admin/cancellations',
+        headers: { cookie: admin },
+      });
+      expect(list.statusCode).toBe(200);
+      expect(
+        PagedSchema(AdminCancellationRequestSchema).parse(list.json()).items[0]?.reason,
+      ).toBeNull();
+    });
+
+    it('quá hạn chót: vẫn huỷ, hoàn 0 — không gọi cổng, không dòng sổ, email biến thể không hoàn', async () => {
+      const alice = await signUpUser('late-cancel@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      // Khởi hành sau 2 ngày, chuyến 4 ngày → N = 7: hạn chót đã qua 5 ngày nhưng
+      // chưa tới ngày khởi hành, nên vẫn huỷ online được.
+      const start = isoPlusDays(vietnamToday(new Date()), 2);
+      const end = isoPlusDays(start, 3);
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { departureStartDate: startOfDayUtc(start), departureEndDate: startOfDayUtc(end) },
+      });
+
+      const res = await postCancel(alice, booking.code);
+      expect(res.statusCode).toBe(200);
+      const body = CancelBookingResultSchema.parse(res.json());
+      expect(body.refundedAmount).toBe('0.00');
+      expect(body.booking.status).toBe('CANCELLED');
+
+      // Không đồng nào phải chuyển: không gọi cổng, sổ không có dòng 0.00.
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      // Vẫn MỘT yêu cầu REFUNDED (nghĩa "đã giải quyết"), vẫn nhả ghế.
+      const request = await prisma.cancellationRequest.findFirstOrThrow({
+        where: { bookingId: booking.id },
+      });
+      expect(request.status).toBe(CancellationRequestStatus.REFUNDED);
+      expect(await seatsBooked()).toBe(0);
+
+      const outbox = await prisma.outbox.findFirstOrThrow({
+        where: { type: EmailType.BOOKING_CANCELLED },
+      });
+      expect(outbox.payload).toMatchObject({
+        amount: '0.00',
+        refunded: false,
+        deadline: cancellationDeadline(start, end),
+        initiator: 'customer',
+      });
+    });
+
+    it('PARTIALLY_REFUNDED: hoàn đúng phần còn lại của sổ', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('partial-then-cancel@example.com', 'Alice');
+      const booking = await createPaidBooking(alice); // 117.00
+      expect((await postRefund(admin, booking.code, { amount: '17.00' })).statusCode).toBe(200);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PARTIALLY_REFUNDED,
+      );
+
+      const res = await postCancel(alice, booking.code);
+      expect(res.statusCode).toBe(200);
+      expect(CancelBookingResultSchema.parse(res.json()).refundedAmount).toBe('100.00');
+
+      expect(fake.refunds.map((r) => r.amount)).toEqual(['17.00', '100.00']);
+      expect(fake.refunds[1]?.idempotencyKey).toBe(`cancel:${booking.id}`);
+      const total = await prisma.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      expect(total._sum.amount?.toFixed(2)).toBe('117.00');
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.CANCELLED,
+      );
+    });
+
+    it('bấm hai lần song song: một 200, một 422 NOT_CANCELLABLE — một lệnh cổng, một dòng sổ, một yêu cầu, một email', async () => {
+      const alice = await signUpUser('double-click@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+
+      fake.refundDelayMs = 100; // giữ khoá đủ lâu để lệnh thứ hai chắc chắn phải chờ
+      const results = await Promise.all([
+        postCancel(alice, booking.code),
+        postCancel(alice, booking.code),
+      ]);
+      expect(results.map((r) => r.statusCode).sort((x, y) => x - y)).toEqual([200, 422]);
+      expect(results.find((r) => r.statusCode === 422)?.json()).toMatchObject({
+        code: 'NOT_CANCELLABLE',
+      });
+
+      // Lệnh thứ hai chờ advisory lock rồi thấy CANCELLED — không chạm cổng lần hai.
+      expect(fake.refunds).toHaveLength(1);
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(1);
+      expect(await prisma.cancellationRequest.count({ where: { bookingId: booking.id } })).toBe(1);
+      expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_CANCELLED } })).toBe(1);
+      expect(await seatsBooked()).toBe(0);
+    });
+
+    it('cổng thanh toán lỗi → 502 REFUND_FAILED, không ghi gì; thử lại chạy trọn với cùng khoá chống trùng', async () => {
+      const alice = await signUpUser('gateway-down@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+
+      fake.failRefunds = true;
+      const res = await postCancel(alice, booking.code, { reason: 'Change of plans' });
+      expect(res.statusCode).toBe(502);
+      expect(res.json()).toMatchObject({ code: 'REFUND_FAILED' });
+
+      // Cổng TRƯỚC, sổ SAU: lỗi ở cổng thì booking nguyên vẹn, khách thử lại được.
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      expect(await prisma.cancellationRequest.count({ where: { bookingId: booking.id } })).toBe(0);
+      expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_CANCELLED } })).toBe(0);
+      expect(await seatsBooked()).toBe(3);
+
+      fake.failRefunds = false;
+      expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
+      expect(fake.refunds.map((r) => r.idempotencyKey)).toEqual([`cancel:${booking.id}`]);
+    });
+
+    it('đúng ngày khởi hành (giờ Việt Nam) → 422 NOT_CANCELLABLE, booking giữ nguyên', async () => {
+      const alice = await signUpUser('departure-day@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      const today = vietnamToday(new Date());
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { departureStartDate: startOfDayUtc(today), departureEndDate: startOfDayUtc(today) },
+      });
+
+      const res = await postCancel(alice, booking.code);
+      expect(res.statusCode).toBe(422);
+      expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.cancellationRequest.count()).toBe(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
+      expect(await seatsBooked()).toBe(3);
+    });
+
+    it('người khác huỷ → 404 (không lộ tồn tại); booking PENDING → 422 NOT_CANCELLABLE', async () => {
+      const alice = await signUpUser('owner@example.com');
+      const mallory = await signUpUser('mallory@example.com');
+      const paid = await createPaidBooking(alice);
+
+      const foreign = await postCancel(mallory, paid.code);
+      expect(foreign.statusCode).toBe(404);
+      expect(foreign.json()).toMatchObject({ code: 'NOT_FOUND' });
+
+      const pending = await createBooking(alice); // chưa từng trả tiền
+      const res = await postCancel(alice, pending.code);
+      expect(res.statusCode).toBe(422);
+      expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
+
+      expect(fake.refunds).toHaveLength(0);
+      expect(await prisma.cancellationRequest.count()).toBe(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: paid.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
+    });
+
+    it('booking REFUNDED (đã hoàn thiện chí toàn bộ) → 422, không huỷ online (spec §3.3)', async () => {
+      const admin = await signUpAdmin();
+      const alice = await signUpUser('fully-refunded@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      expect((await postRefund(admin, booking.code, { amount: '117.00' })).statusCode).toBe(200);
+
+      const res = await postCancel(alice, booking.code);
+      expect(res.statusCode).toBe(422);
+      expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
+
+      expect(fake.refunds).toHaveLength(1); // chỉ lệnh hoàn thiện chí trước đó
+      expect(await prisma.cancellationRequest.count()).toBe(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.REFUNDED,
+      );
+      expect(await seatsBooked()).toBe(3);
+    });
   });
 
   it('deny → DENIED + audit fields + outbox; booking stays PAID, seats stay held', async () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('alice3@example.com');
     const booking = await createPaidBooking(alice);
-    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+    const request = await openRequest(booking.id);
 
     const res = await postDecide(admin, request.id, {
       approve: false,
@@ -324,20 +589,16 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(outbox[0]?.dedupeKey).toBe(`cancellation-denied:${request.id}`);
   });
 
-  it('re-request after deny → NEW row; DENIED history preserved — 2 rows in DB (D1-B acceptance)', async () => {
+  it('admin detail: lịch sử yêu cầu append-only — dòng DENIED cũ còn nguyên cạnh dòng mở mới, cũ nhất trước', async () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('alice4@example.com');
     const booking = await createPaidBooking(alice);
 
-    const first = CancellationRequestSchema.parse(
-      (await postCancel(alice, booking.code, 'first ask')).json(),
-    );
+    const first = await openRequest(booking.id, 'first ask');
     expect((await postDecide(admin, first.id, { approve: false })).statusCode).toBe(200);
 
-    const second = await postCancel(alice, booking.code, 'second ask');
-    expect(second.statusCode).toBe(200);
-    const secondRequest = CancellationRequestSchema.parse(second.json());
-    expect(secondRequest.id).not.toBe(first.id); // append-only: một row MỚI, không tái dùng
+    const second = await openRequest(booking.id, 'second ask');
+    expect(second.id).not.toBe(first.id); // append-only: một row MỚI, không tái dùng
 
     const rows = await prisma.cancellationRequest.findMany({
       where: { booking: { code: booking.code } },
@@ -350,13 +611,6 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     ]);
     expect(rows[0]?.reason).toBe('first ask');
     expect(rows[1]?.reason).toBe('second ask');
-
-    // Mỗi request row có outbox email riêng (dedupe key theo id → 2 row).
-    expect(
-      await prisma.outbox.count({
-        where: { type: EmailType.CANCELLATION_REQUESTED },
-      }),
-    ).toBe(2);
 
     // View detail của admin phơi toàn bộ trail, cũ nhất trước.
     const detail = await app.inject({
@@ -374,7 +628,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const alice = await signUpUser('alice5@example.com');
     const booking = await createPaidBooking(alice);
     expect(await seatsBooked()).toBe(3); // claim PAID đã tính cả party vào
-    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+    const request = await openRequest(booking.id);
 
     const res = await postDecide(admin, request.id, {
       approve: true,
@@ -440,38 +694,11 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     });
   });
 
-  it('W1: reason toàn khoảng trắng → 400 (contract trim), reason mép trắng được trim, admin list không 500', async () => {
-    // Audit 05/09 cụm 3 (Cao): input min(1) không trim, service trim rồi ghi
-    // '' → output min(1) nổ 'Output validation failed' (500) ở CHÍNH
-    // bookings.cancel, admin.cancellations.list (cả trang) — một khách khoá
-    // hàng đợi duyệt huỷ. Luật trim nay nằm MỘT chỗ: contract.
-    const admin = await signUpAdmin();
-    const alice = await signUpUser('trim-reason@example.com', 'Alice');
-    const booking = await createPaidBooking(alice);
-
-    const blank = await postCancel(alice, booking.code, '   ');
-    expect(blank.statusCode).toBe(400);
-    expect(await prisma.cancellationRequest.count()).toBe(0); // KHÔNG row nào insert
-
-    const padded = await postCancel(alice, booking.code, '  need to cancel  ');
-    expect(padded.statusCode).toBe(200);
-    const row = await prisma.cancellationRequest.findFirstOrThrow();
-    expect(row.reason).toBe('need to cancel'); // trim ở CONTRACT — service không trim nữa
-
-    const list = await app.inject({
-      method: 'GET',
-      url: '/api/admin/cancellations',
-      headers: { cookie: admin },
-    });
-    expect(list.statusCode).toBe(200);
-    PagedSchema(AdminCancellationRequestSchema).parse(list.json());
-  });
-
   it('decide on an already-decided request → 409 ALREADY_DECIDED; unknown id → 404', async () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('alice6@example.com');
     const booking = await createPaidBooking(alice);
-    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+    const request = await openRequest(booking.id);
     expect((await postDecide(admin, request.id, { approve: false })).statusCode).toBe(200);
 
     const again = await postDecide(admin, request.id, { approve: true });
@@ -486,26 +713,10 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     expect(missing.json()).toMatchObject({ code: 'NOT_FOUND' });
   });
 
-  it('non-owner request → 404 (no existence leak); PENDING booking → 422 NOT_CANCELLABLE', async () => {
-    const alice = await signUpUser('alice7@example.com');
-    const mallory = await signUpUser('mallory@example.com');
-    const paid = await createPaidBooking(alice);
-
-    const foreign = await postCancel(mallory, paid.code);
-    expect(foreign.statusCode).toBe(404);
-    expect(foreign.json()).toMatchObject({ code: 'NOT_FOUND' });
-
-    const pending = await createBooking(alice); // chưa từng pay
-    const res = await postCancel(alice, pending.code);
-    expect(res.statusCode).toBe(422);
-    expect(res.json()).toMatchObject({ code: 'NOT_CANCELLABLE' });
-    expect(await prisma.cancellationRequest.count()).toBe(0);
-  });
-
   it('non-admin decide/list → 403; anonymous → 401', async () => {
     const alice = await signUpUser('alice8@example.com');
     const booking = await createPaidBooking(alice);
-    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+    const request = await openRequest(booking.id);
 
     expect((await postDecide(alice, request.id, { approve: true })).statusCode).toBe(403);
     expect(
@@ -539,9 +750,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-partial@example.com', 'Alice');
       const booking = await createPaidBooking(alice); // 117.00, 3 ghế
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       expect(await seatsBooked()).toBe(3);
 
       const res = await postDecide(admin, request.id, {
@@ -570,9 +779,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-full@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
 
       expect((await postDecide(admin, request.id, { approve: true })).statusCode).toBe(200);
       const rows = await prisma.refund.findMany({ where: { bookingId: booking.id } });
@@ -606,9 +813,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         where: { id: booking.id },
         data: { paidAt: new Date(Date.now() - 2 * 86_400_000) },
       });
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
 
       const res = await postDecide(admin, request.id, { approve: true });
       expect(res.statusCode).toBe(200);
@@ -640,9 +845,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
           where: { id: booking.id },
           data: { paidAt: new Date(Date.now() - 2 * 86_400_000) }, // ra khỏi ân hạn
         });
-        const request = CancellationRequestSchema.parse(
-          (await postCancel(alice, booking.code)).json(),
-        );
+        const request = await openRequest(booking.id);
         expect(request.freeCancellationDays).toBe(60);
         // Content-admin gỡ badge NGAY SAU khi khách gửi.
         await prisma.tour.update({ where: { id: tour.id }, data: { freeCancellationDays: null } });
@@ -660,9 +863,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-over@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
 
       const res = await postDecide(admin, request.id, { approve: true, refundAmount: '999.00' });
       expect(res.statusCode).toBe(422);
@@ -679,9 +880,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-zero@example.com', 'Alice');
       const booking = await createPaidBooking(alice); // 117.00, 3 ghế
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       expect(await seatsBooked()).toBe(3);
 
       const res = await postDecide(admin, request.id, {
@@ -729,9 +928,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-settled@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       await settleLedgerDirectly(booking.id);
       expect(await seatsBooked()).toBe(3);
 
@@ -757,9 +954,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-settled-amount@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       await settleLedgerDirectly(booking.id);
 
       const res = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
@@ -777,9 +972,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr30-offpolicy@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
 
       const noNote = await postDecide(admin, request.id, { approve: true, refundAmount: '50.00' });
       expect(noNote.statusCode).toBe(422);
@@ -799,9 +992,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr30-onpolicy@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
 
       const res = await postDecide(admin, request.id, { approve: true, refundAmount: '117.00' });
       expect(res.statusCode).toBe(200);
@@ -812,7 +1003,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-w3-blocked@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      await postCancel(alice, booking.code);
+      await openRequest(booking.id);
 
       const res = await postRefund(admin, booking.code, { amount: '117.00' });
       expect(res.statusCode).toBe(422);
@@ -824,9 +1015,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-remainder@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       // Approve một phần → CANCELLED nhưng sổ còn dư 67.00.
       expect(
         (
@@ -855,9 +1044,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       const admin = await signUpAdmin();
       const alice = await signUpUser('adr29-cap@example.com', 'Alice');
       const booking = await createPaidBooking(alice);
-      const request = CancellationRequestSchema.parse(
-        (await postCancel(alice, booking.code)).json(),
-      );
+      const request = await openRequest(booking.id);
       expect(
         (
           await postDecide(admin, request.id, {
@@ -884,7 +1071,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const admin = await signUpAdmin();
     const alice = await signUpUser('cross-path@example.com', 'Alice');
     const booking = await createPaidBooking(alice); // 117.00
-    const request = CancellationRequestSchema.parse((await postCancel(alice, booking.code)).json());
+    const request = await openRequest(booking.id);
 
     fake.refundDelayMs = 100; // ép hai path cùng đọc ledger=0 trước khi bên nào ghi
     const [a, b] = await Promise.allSettled([
@@ -916,10 +1103,8 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const aliceBooking = await createPaidBooking(alice);
     const bobBooking = await createPaidBooking(bob);
 
-    const aliceReq = CancellationRequestSchema.parse(
-      (await postCancel(alice, aliceBooking.code)).json(),
-    );
-    CancellationRequestSchema.parse((await postCancel(bob, bobBooking.code)).json());
+    const aliceReq = await openRequest(aliceBooking.id);
+    await openRequest(bobBooking.id);
     expect((await postDecide(admin, aliceReq.id, { approve: false })).statusCode).toBe(200);
 
     const all = await app.inject({
@@ -975,13 +1160,9 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     const juneBooking = await createPaidBooking(june);
     const openBooking = await createPaidBooking(openOld);
 
-    const mayReq = CancellationRequestSchema.parse((await postCancel(may, mayBooking.code)).json());
-    const juneReq = CancellationRequestSchema.parse(
-      (await postCancel(june, juneBooking.code)).json(),
-    );
-    const openReq = CancellationRequestSchema.parse(
-      (await postCancel(openOld, openBooking.code)).json(),
-    );
+    const mayReq = await openRequest(mayBooking.id);
+    const juneReq = await openRequest(juneBooking.id);
+    const openReq = await openRequest(openBooking.id);
     // Một cái đã quyết, một cái CÒN MỞ — cả hai cùng nằm trong tháng 5.
     expect((await postDecide(admin, mayReq.id, { approve: false })).statusCode).toBe(200);
 

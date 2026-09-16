@@ -11,12 +11,8 @@ import {
   PartyTooLargeError,
   SeatsUnavailableError,
 } from './bookings.service.js';
-import {
-  BookingNotCancellableError,
-  CancellationAlreadyRequestedError,
-  CancellationsService,
-} from './cancellations.service.js';
-import { BookingNotFoundError } from './refunds.service.js';
+import { BookingNotCancellableError, CancellationsService } from './cancellations.service.js';
+import { BookingNotFoundError, ProviderRefundFailedError } from './refunds.service.js';
 
 /**
  * Booking procedures cần auth (spec P2 W1), cùng pattern @Implement như catalog.
@@ -105,15 +101,17 @@ export class BookingsController {
   cancel(@CurrentUser() user: SessionUser) {
     return implement(contract.bookings.cancel).handler(async ({ input, errors }) => {
       try {
-        return await this.cancellations.request(user.id, input.code, input.reason);
+        // Contract đã trim; vắng lý do thì ghi null (ADR-0041 — lý do không bắt buộc).
+        return await this.cancellations.cancelByCustomer(user.id, input.code, input.reason ?? null);
       } catch (error) {
         // Owner-or-404, cùng chính sách với byCode (không lộ sự tồn tại).
         if (error instanceof BookingNotFoundError) throw errors.NOT_FOUND();
         if (error instanceof BookingNotCancellableError) {
           throw errors.NOT_CANCELLABLE({ message: error.message });
         }
-        if (error instanceof CancellationAlreadyRequestedError) {
-          throw errors.ALREADY_REQUESTED({ message: error.message });
+        // Cổng từ chối hoàn: chưa ghi gì, booking giữ nguyên — khách thử lại được.
+        if (error instanceof ProviderRefundFailedError) {
+          throw errors.REFUND_FAILED({ message: error.message });
         }
         throw error;
       }

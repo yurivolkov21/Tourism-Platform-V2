@@ -30,6 +30,7 @@ function makeBooking(overrides: Partial<Booking> = {}): Booking {
     tourDestinations: [],
     departureStartDate: '2026-09-14',
     departureEndDate: '2026-09-20',
+    cancellationDeadline: '2026-09-07',
     unitPrice: '499.00',
     totalAmount: '1497.00',
     currency: 'USD',

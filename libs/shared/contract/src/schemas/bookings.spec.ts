@@ -2,9 +2,12 @@ import {
   AdminBookingsListQuerySchema,
   AdminCancellationsListQuerySchema,
   AdminRefundInputSchema,
+  BookingCancellationSchema,
+  BookingDetailSchema,
   BookingSchema,
   BookingsListQuerySchema,
   CancelBookingInputSchema,
+  CancelBookingResultSchema,
   CancellationRequestSchema,
   CreateBookingInputSchema,
   DecideCancellationInputSchema,
@@ -74,6 +77,10 @@ describe('CreateBookingInputSchema', () => {
       reason: '  need to cancel  ',
     });
     expect(cancel.reason).toBe('need to cancel');
+    // ADR-0041: lý do không bắt buộc — vắng hẳn là hợp lệ; có gửi thì vẫn trim + min(1).
+    expect(CancelBookingInputSchema.parse({ code: 'BK-ABCDEFGH' })).toEqual({
+      code: 'BK-ABCDEFGH',
+    });
 
     const decideId = '4f2a1b3c-0000-4000-8000-000000000001';
     expect(
@@ -200,6 +207,7 @@ describe('BookingSchema', () => {
       tourDestinations: [],
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
+      cancellationDeadline: '2026-09-17',
       unitPrice: '39.00',
       totalAmount: '117.00',
       currency: 'USD',
@@ -255,6 +263,7 @@ describe('BookingSchema', () => {
       ],
       departureStartDate: '2026-09-18',
       departureEndDate: '2026-09-18',
+      cancellationDeadline: '2026-09-17',
       unitPrice: '39.00',
       totalAmount: '117.00',
       currency: 'USD',
@@ -298,6 +307,7 @@ describe('BookingSchema', () => {
       tourDestinations: [],
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
+      cancellationDeadline: '2026-09-05',
       unitPrice: '1290.00',
       totalAmount: '3870.00',
       currency: 'USD',
@@ -345,6 +355,7 @@ describe('BookingSchema', () => {
       tourDestinations: [],
       departureStartDate: '2026-09-12',
       departureEndDate: '2026-09-23',
+      cancellationDeadline: '2026-09-05',
       unitPrice: '1290.00',
       totalAmount: '3870.00',
       currency: 'USD',
@@ -395,6 +406,7 @@ const validBooking = {
   tourDestinations: [],
   departureStartDate: '2026-09-18',
   departureEndDate: '2026-09-18',
+  cancellationDeadline: '2026-09-17',
   unitPrice: '39.00',
   totalAmount: '117.00',
   currency: 'USD',
@@ -601,5 +613,60 @@ describe('CancellationRequestSchema.reason — ADR-0041', () => {
   it('khoá vẫn bắt buộc có mặt — nullable chứ không optional', () => {
     const { reason: _drop, ...missing } = selfCancelled;
     expect(CancellationRequestSchema.safeParse(missing).success).toBe(false);
+  });
+});
+
+/**
+ * ADR-0041 — hạn chót huỷ miễn phí do SERVER tính, web/admin chỉ in (Q7).
+ */
+describe('BookingSchema.cancellationDeadline — ADR-0041', () => {
+  it('là ngày lịch YYYY-MM-DD và bắt buộc có mặt', () => {
+    expect(BookingSchema.parse(validBooking).cancellationDeadline).toBe('2026-09-17');
+    expect(
+      BookingSchema.safeParse({ ...validBooking, cancellationDeadline: '2026-09-17T00:00:00.000Z' })
+        .success,
+    ).toBe(false);
+    const { cancellationDeadline: _drop, ...missing } = validBooking;
+    expect(BookingSchema.safeParse(missing).success).toBe(false);
+  });
+});
+
+describe('BookingCancellationSchema / BookingDetailSchema.cancellation — ADR-0041', () => {
+  const cancellation = {
+    deadline: '2026-09-17',
+    withinDeadline: true,
+    refundAmount: '117.00',
+    canCancel: true,
+  };
+
+  it('nhận đủ bốn trường; tiền là chuỗi thập phân, ngày là ngày lịch', () => {
+    expect(BookingCancellationSchema.parse(cancellation)).toEqual(cancellation);
+    expect(
+      BookingCancellationSchema.safeParse({ ...cancellation, refundAmount: 117 }).success,
+    ).toBe(false);
+    expect(
+      BookingCancellationSchema.safeParse({ ...cancellation, deadline: '17/09/2026' }).success,
+    ).toBe(false);
+  });
+
+  it('BookingDetailSchema mang cancellation nullable, không optional', () => {
+    const detail = { ...validBooking, review: null, refundEstimate: null, cancellation };
+    expect(BookingDetailSchema.parse(detail).cancellation).toEqual(cancellation);
+    expect(BookingDetailSchema.parse({ ...detail, cancellation: null }).cancellation).toBeNull();
+    const { cancellation: _drop, ...missing } = detail;
+    expect(BookingDetailSchema.safeParse(missing).success).toBe(false);
+  });
+});
+
+describe('CancelBookingResultSchema — ADR-0041', () => {
+  it('booking sau khi huỷ kèm số tiền lần huỷ này đã hoàn', () => {
+    const result = {
+      booking: { ...validBooking, status: 'CANCELLED', cancelledAt: '2026-09-15T03:00:00.000Z' },
+      refundedAmount: '0.00',
+    };
+    expect(CancelBookingResultSchema.parse(result).refundedAmount).toBe('0.00');
+    expect(CancelBookingResultSchema.safeParse({ ...result, refundedAmount: 0 }).success).toBe(
+      false,
+    );
   });
 });

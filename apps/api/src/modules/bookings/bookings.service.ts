@@ -10,6 +10,7 @@ import type {
   RefundEstimate,
 } from '@tourism/contract';
 import {
+  cancellationDeadline,
   daysBeforeDeparture,
   isWithinDeadline,
   isWithinGracePeriod,
@@ -41,6 +42,7 @@ import {
   resolveGateway,
 } from '../payments/gateway.js';
 import { REVIEW_MINE_INCLUDE, toMyReview } from '../reviews/reviews.service.js';
+import { bookingCancellation } from './booking-cancellation.js';
 import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
@@ -216,6 +218,12 @@ export function toBooking(
     })),
     departureStartDate: calendarDate(row.departureStartDate),
     departureEndDate: calendarDate(row.departureEndDate),
+    // ADR-0041: ngày chót huỷ miễn phí tính từ SNAPSHOT ngày đi/ngày về — rẻ,
+    // không query, nên có mặt ở mọi đường đọc booking chứ không riêng byCode.
+    cancellationDeadline: cancellationDeadline(
+      calendarDate(row.departureStartDate),
+      calendarDate(row.departureEndDate),
+    ),
     unitPrice: money(row.unitPrice),
     totalAmount: money(row.totalAmount),
     currency: row.currency,
@@ -787,6 +795,9 @@ export class BookingsService {
       }),
       review: review ? toMyReview(review, reviewMedia) : null,
       refundEstimate: estimateRefund(booking, refunded._sum.amount),
+      // ADR-0041: trạng thái huỷ theo hạn chót, cùng hàm luật với lõi huỷ — con
+      // số khách thấy là con số server hoàn. Web chỉ in (Q7).
+      cancellation: bookingCancellation(booking, refunded._sum.amount, new Date()),
     };
   }
 

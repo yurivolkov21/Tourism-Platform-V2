@@ -28,6 +28,8 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     tourDestinations: [{ slug: 'ha-long-bay', name: 'Hạ Long Bay', isPrimary: true }],
     departureStartDate: '2026-09-01',
     departureEndDate: '2026-09-02',
+    // ADR-0041: ngày chót do server tính — chuyến 2 ngày nên N = 3.
+    cancellationDeadline: '2026-08-29',
     unitPrice: '10.00',
     totalAmount: '10.00',
     currency: 'USD',
@@ -54,6 +56,9 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     // W1: ước tính hoàn do SERVER tính (byCode). Mặc định null — test cần
     // dialog huỷ có con số thì đè overrides.
     refundEstimate: null,
+    // ADR-0041: trạng thái huỷ theo hạn chót (byCode). Mặc định null — test cần
+    // hộp xác nhận huỷ thì đè overrides.
+    cancellation: null,
     ...overrides,
   };
 }

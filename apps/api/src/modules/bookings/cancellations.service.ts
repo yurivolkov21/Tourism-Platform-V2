@@ -2,11 +2,16 @@ import { Injectable, Logger } from '@nestjs/common';
 import type {
   AdminCancellationRequest,
   AdminCancellationsListQuery,
+  CancelBookingResult,
   CancellationRequest as CancellationRequestView,
   DecideCancellationResult,
   Paged,
 } from '@tourism/contract';
-import { policyRefundAmount, refundPercentForRequest } from '@tourism/contract';
+import {
+  cancellationDeadline,
+  policyRefundAmount,
+  refundPercentForRequest,
+} from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { BookingStatus, CancellationRequestStatus } from '../../generated/prisma/enums.js';
@@ -14,6 +19,7 @@ import { calendarDate } from '../../lib/calendar-date.js';
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { toPaged } from '../../lib/paged.js';
 import { MediaService } from '../media/media.service.js';
+import { cancellationBlocker, refundOnCancelForBooking } from './booking-cancellation.js';
 import { bookingTourInclude, resolveTourCover, toBooking } from './bookings.service.js';
 import { withBookingRefundLock } from './refund-lock.js';
 import { classifyRefundAmount, RefundNothingLeftError } from './refund-math.js';
@@ -23,18 +29,30 @@ import {
   RefundsService,
 } from './refunds.service.js';
 
-/** Booking không PAID, hoặc departure đã khởi hành — không vào flow được (422). */
+/**
+ * Booking không huỷ online được (422): trạng thái ngoài PAID/PARTIALLY_REFUNDED,
+ * không có capture để hoàn vào, hoặc đã tới ngày khởi hành theo giờ Việt Nam
+ * (ADR-0041 §4). Lệnh huỷ thứ hai của cùng booking cũng rơi vào đây.
+ */
 export class BookingNotCancellableError extends Error {
   constructor(detail: string) {
     super(`Booking cannot be cancelled: ${detail}`);
   }
 }
 
-/** Partial unique index đã fire — đã tồn tại một REQUESTED row còn sống (409). */
-export class CancellationAlreadyRequestedError extends Error {
-  constructor() {
-    super('A cancellation request is already open for this booking');
-  }
+/**
+ * Đầu vào lõi huỷ dùng chung (plan 15/09 Hợp đồng C). Người gọi đã giữ advisory
+ * lock của booking và tính `refundAmount` trên sổ đọc TRONG khoá. P4e-1 sẽ thêm
+ * initiator 'operator' (công ty huỷ chuyến, hoàn toàn bộ phần còn lại).
+ */
+export interface CancelInLockInput {
+  /** Người quyết: chính khách khi `initiator` là 'customer'. */
+  decidedById: string;
+  refundAmount: Prisma.Decimal;
+  reason: string | null;
+  initiator: 'customer';
+  /** Đồng hồ của lượt huỷ — dùng cho phép kiểm "chưa tới ngày khởi hành". */
+  now: Date;
 }
 
 /** Không có cancellation request với id này (admin surface: 404 trơn). */
@@ -124,9 +142,10 @@ function toAdminCancellationRequest(
 }
 
 /**
- * Cancellation flow (spec P2 §3 W4, D1 chốt là B): một khách PAID xin hủy;
- * admin deny (booking để nguyên) hoặc approve (hoàn theo mức chính sách hoặc
- * số admin ghi lý do — ADR-0029/0030 — + booking CANCELLED + release seat). Request là history APPEND-ONLY — mỗi request
+ * Huỷ booking đã trả. Từ ADR-0041 khách tự huỷ NGAY (`cancelByCustomer`, lõi
+ * `cancelInLock`); không còn luồng gửi yêu cầu chờ duyệt. Phần admin deny/approve
+ * yêu cầu REQUESTED cũ (spec P2 §3 W4, D1 chốt là B; ADR-0029/0030) còn sống tới
+ * plan 15/09 Task 8 cho dữ liệu cũ. Request là history APPEND-ONLY — mỗi request
  * INSERT một row mới, DENIED row không bao giờ tái dùng (Nexora upsert đè lên
  * chúng, làm mất audit trail của denial — audit M7); "một live request mỗi
  * booking" là việc của DB qua partial unique index
@@ -134,9 +153,9 @@ function toAdminCancellationRequest(
  *
  * Semantics của terminal-state nằm ở docs/conventions/booking-states.md:
  * Refund ledger ghi câu chuyện MONEY, Booking.status ghi câu chuyện
- * SEAT/TRAVEL — một cancellation được approve set CANCELLED tường minh (khách
- * ngừng du lịch, seat được trả lại), KHÔNG phải REFUNDED derive từ ledger, dù
- * ledger có cộng đủ total. Cancellation ≠ chỉ refund.
+ * SEAT/TRAVEL — một lần huỷ set CANCELLED tường minh (khách ngừng du lịch, seat
+ * được trả lại), KHÔNG phải REFUNDED derive từ ledger, dù ledger có cộng đủ
+ * total. Cancellation ≠ chỉ refund.
  */
 @Injectable()
 export class CancellationsService {
@@ -148,88 +167,197 @@ export class CancellationsService {
   ) {}
 
   /**
-   * Khách xin hủy một PAID booking của chính mình (gate Nexora, đã port):
-   * owner-hoặc-404 (không leak sự tồn tại), chỉ PAID, và departure chưa được
-   * khởi hành — v2 gộp DEPARTURE_ALREADY_STARTED của Nexora vào
-   * NOT_CANCELLABLE (422) và so sánh SNAPSHOT calendar date đúng cách create
-   * làm (strictly-past thì reject; departure cùng ngày vẫn xin được — nhất
-   * quán với rule walk-in booking cùng ngày).
+   * Khách tự huỷ booking của chính mình, xử lý NGAY (ADR-0041 §4): trong hạn chót
+   * hoàn toàn bộ phần chưa hoàn, quá hạn hoàn 0; cả hai đều huỷ booking, trả chỗ,
+   * ghi một yêu cầu REFUNDED do chính khách quyết và xếp email `BOOKING_CANCELLED`.
    *
-   * Đường ghi là MỘT statement nguyên tử (house CTE style, an toàn với pooler):
-   * INSERT REQUESTED row + enqueue CANCELLATION_REQUESTED (invariant #7),
-   * dedupeKey `cancellation-requested:<requestId>` — row append-only làm cho
-   * request id thành key once-per-entity tự nhiên (một re-request sau denial là
-   * một row MỚI → id mới → email mới, đúng semantics của quy ước). Một duplicate
-   * đồng thời sẽ thua ở partial unique index (23505 → 409), không phải ở một
-   * pre-SELECT dính race.
+   * Ném BookingNotFoundError (không phải chủ hoặc không tồn tại — 404, không lộ sự
+   * tồn tại), BookingNotCancellableError (trạng thái sai, không có capture, hoặc
+   * đã tới ngày khởi hành), ProviderRefundFailedError (cổng lỗi — không ghi gì,
+   * khách thử lại được).
+   *
+   * `now` là tham số để test tất định; route truyền đồng hồ thật.
    */
-  async request(
+  async cancelByCustomer(
     userId: string,
     bookingCode: string,
-    reason: string,
-  ): Promise<CancellationRequestView> {
-    const booking = await prisma.booking.findUnique({
+    reason: string | null,
+    now: Date = new Date(),
+  ): Promise<CancelBookingResult> {
+    const probe = await prisma.booking.findUnique({
       where: { code: bookingCode },
+      select: { id: true, userId: true },
     });
-    if (!booking || booking.userId !== userId) throw new BookingNotFoundError(bookingCode);
-    if (booking.status !== BookingStatus.PAID) {
-      throw new BookingNotCancellableError(
-        `booking is ${booking.status}; only a PAID booking can be cancelled by request`,
+    // Chủ booking không bao giờ đổi nên kiểm ngoài khoá là đủ; mọi thứ còn lại
+    // đọc TƯƠI trong khoá.
+    if (!probe || probe.userId !== userId) throw new BookingNotFoundError(bookingCode);
+
+    const refundedAmount = await withBookingRefundLock(probe.id, async (tx) => {
+      const booking = await tx.booking.findUniqueOrThrow({ where: { id: probe.id } });
+      const ledger = await tx.refund.aggregate({
+        where: { bookingId: booking.id },
+        _sum: { amount: true },
+      });
+      // Số tiền theo luật, trên sổ đọc TRONG khoá — cùng hàm với
+      // `bookings.byCode.cancellation`. Admin hoàn thiện chí chen giữa thì phải
+      // chờ cùng khoá, nên sổ đọc ở đây luôn là sổ mới nhất.
+      const refundAmount = new Prisma.Decimal(
+        refundOnCancelForBooking(booking, ledger._sum.amount, now),
+      );
+      await this.cancelInLock(tx, booking, {
+        decidedById: userId,
+        refundAmount,
+        reason,
+        initiator: 'customer',
+        now,
+      });
+      return refundAmount;
+    });
+
+    const [row, refunded] = await Promise.all([
+      prisma.booking.findUniqueOrThrow({
+        where: { id: probe.id },
+        include: { tour: bookingTourInclude },
+      }),
+      prisma.refund.aggregate({ where: { bookingId: probe.id }, _sum: { amount: true } }),
+    ]);
+    const tourImage = await resolveTourCover(this.media, row.tourId);
+    this.logger.log(
+      `Booking ${row.code} cancelled by its owner: refunded ${refundedAmount.toFixed(2)} ${row.currency}`,
+    );
+    return {
+      // `refundedTotal` THẬT (như adminByCode): khách vừa huỷ cần thấy tổng đã
+      // hoàn ngay trong kết quả, không phải '0.00' mặc định của toBooking.
+      booking: toBooking(row, null, tourImage, { refundedTotal: refunded._sum.amount }),
+      refundedAmount: refundedAmount.toFixed(2),
+    };
+  }
+
+  /**
+   * Lõi huỷ dùng chung (ADR-0041 §4, plan 15/09 Hợp đồng C) — CHẠY TRONG
+   * `withBookingRefundLock` mà người gọi đang giữ; `tx` là giao dịch của khoá ấy.
+   *
+   *  1. Kiểm lại booking vừa đọc trong khoá: trạng thái PAID/PARTIALLY_REFUNDED,
+   *     có capture, chưa tới ngày khởi hành (giờ Việt Nam). Lệnh huỷ thứ hai chờ
+   *     khoá rồi thấy CANCELLED → BookingNotCancellableError.
+   *  2. Tiền > 0 thì gọi cổng thanh toán TRƯỚC (ADR-0009: không ghi sổ thứ chưa
+   *     xảy ra), khoá chống trùng `cancel:<bookingId>` — một booking chỉ huỷ được
+   *     một lần nên khoá này ổn định qua mọi lần thử lại sau crash. Cổng lỗi thì
+   *     ProviderRefundFailedError bay ra, giao dịch rollback, không ghi gì.
+   *  3. MỘT câu SQL (CTE), mọi thứ dẫn từ lượt flip booking để guard trạng thái
+   *     thua thì cả câu thành no-op:
+   *       cancel        — booking → CANCELLED + cancelled_at (travel story,
+   *                       docs/conventions/booking-states.md).
+   *       req_insert    — một yêu cầu REFUNDED (giữ nghĩa "đã giải quyết" kể cả
+   *                       khi hoàn 0), decided_by/decided_at, lý do tuỳ chọn.
+   *       refund_insert — dòng sổ khi tiền > 0: admin_id NULL (không ai bấm nút
+   *                       admin), provider_payment_id = capture được hoàn vào
+   *                       (ADR-0006 AMEND 1b). Trigger `refunds_sum_within_total`
+   *                       vẫn là lưới cuối.
+   *       seat_release  — `seats_booked − party`, guard `seats_booked >= party`.
+   *       outbox_insert — BOOKING_CANCELLED, dedupe `booking-cancelled:<bookingId>`.
+   *
+   * Guard ghế không khớp: log cho người vận hành, giao dịch vẫn commit (tiền đã đi
+   * thì câu chuyện tiền phải được ghi) — giữ hành vi của approve.
+   */
+  private async cancelInLock(
+    tx: Prisma.TransactionClient,
+    booking: Prisma.BookingModel,
+    input: CancelInLockInput,
+  ): Promise<void> {
+    const blocker = cancellationBlocker(booking, input.now);
+    if (blocker) throw new BookingNotCancellableError(blocker);
+
+    const amount = input.refundAmount;
+    const amountText = amount.toFixed(2);
+    const deadline = cancellationDeadline(
+      calendarDate(booking.departureStartDate),
+      calendarDate(booking.departureEndDate),
+    );
+    // `cancellationBlocker` đã loại booking không có capture, nên ép kiểu an toàn.
+    const providerRefundId = amount.greaterThan(0)
+      ? await this.refunds.executeGatewayRefund(
+          { ...booking, providerPaymentId: booking.providerPaymentId as string },
+          amount,
+          `cancel:${booking.id}`,
+        )
+      : null;
+
+    const written = await tx.$queryRaw<{ id: string; released: bigint }[]>(Prisma.sql`
+      WITH cancel AS (
+        UPDATE bookings b
+        SET status = 'CANCELLED'::"BookingStatus",
+            cancelled_at = now(),
+            updated_at = now()
+        WHERE b.id = ${booking.id}::uuid
+          AND b.status IN ('PAID'::"BookingStatus", 'PARTIALLY_REFUNDED'::"BookingStatus")
+        RETURNING b.id, b.user_id, b.departure_id, (b.num_adults + b.num_children) AS seats,
+                  b.code, b.contact_email, b.contact_name, b.tour_title
+      ),
+      req_insert AS (
+        INSERT INTO cancellation_requests (id, booking_id, user_id, reason, status,
+                                           decided_by, decided_at, updated_at)
+        SELECT gen_random_uuid(), c.id, c.user_id, ${input.reason}::text,
+               'REFUNDED'::"CancellationRequestStatus", ${input.decidedById}::uuid, now(), now()
+        FROM cancel c
+        RETURNING id
+      ),
+      refund_insert AS (
+        INSERT INTO refunds (id, booking_id, amount, currency, provider_refund_id,
+                             provider_payment_id, admin_id)
+        SELECT gen_random_uuid(), c.id, ${amountText}::numeric, ${booking.currency}::text,
+               ${providerRefundId}::text, ${booking.providerPaymentId}::text, NULL
+        FROM cancel c
+        WHERE ${amountText}::numeric > 0
+        RETURNING id
+      ),
+      seat_release AS (
+        UPDATE tour_departures d
+        SET seats_booked = d.seats_booked - c.seats,
+            updated_at = now()
+        FROM cancel c
+        WHERE d.id = c.departure_id AND d.seats_booked >= c.seats
+        RETURNING d.id
+      ),
+      outbox_insert AS (
+        INSERT INTO outbox (type, payload, dedupe_key)
+        SELECT 'BOOKING_CANCELLED'::"EmailType",
+               jsonb_build_object(
+                 'bookingId', c.id,
+                 'code', c.code,
+                 'email', c.contact_email,
+                 'name', c.contact_name,
+                 'title', c.tour_title,
+                 'amount', ${amountText}::text,
+                 'currency', ${booking.currency}::text,
+                 'refunded', ${amountText}::numeric > 0,
+                 'deadline', ${deadline}::text,
+                 'initiator', ${input.initiator}::text
+               ),
+               'booking-cancelled:' || c.id::text
+        FROM cancel c
+        ON CONFLICT (dedupe_key) DO NOTHING
+      )
+      SELECT c.id, (SELECT count(*) FROM seat_release) AS released FROM cancel c
+    `);
+
+    const flip = written[0];
+    if (!flip) {
+      // Booking đổi trạng thái giữa lượt kiểm trong khoá và lượt flip — chỉ có thể
+      // do một đường ghi NGOÀI khoá. Tiền (nếu có) ĐÃ đi mà sổ không ghi: người vận
+      // hành phải đối soát.
+      this.logger.error(
+        `Cancel on booking ${booking.code}: status changed before the write; provider refund ` +
+          `${providerRefundId ?? 'none'} (${amountText} ${booking.currency}) NOT ledgered`,
+      );
+      throw new BookingNotCancellableError('the booking changed state while cancelling');
+    }
+    if (Number(flip.released) === 0) {
+      this.logger.error(
+        `Cancel on booking ${booking.code}: seats NOT released ` +
+          '(guard seats_booked >= party failed) — departure counter needs operator attention',
       );
     }
-    if (calendarDate(booking.departureStartDate) < calendarDate(new Date())) {
-      throw new BookingNotCancellableError('the departure has already started');
-    }
-    // Chụp badge của tour NGAY LÚC GỬI (ADR-0029 AMEND 6): mức chính sách khách
-    // vừa thấy ở `refundEstimate` là mức admin sẽ duyệt — content-admin sửa
-    // tour ngày mai không làm khách hôm nay rớt bậc (ADR-0030 §2).
-    const tour = await prisma.tour.findUnique({
-      where: { id: booking.tourId },
-      select: { freeCancellationDays: true },
-    });
-    const freeCancellationDays = tour?.freeCancellationDays ?? null;
-
-    // KHÔNG trim ở đây (W1): contract đã trim + min(1) — luật một chỗ. Trim
-    // lần hai từng là nguồn của row reason rỗng (input '   ' qua min(1) không
-    // trim, service trim thành '' rồi ghi) → 500 output validation ở admin list.
-    let inserted: { id: string }[];
-    try {
-      inserted = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`
-        WITH req AS (
-          INSERT INTO cancellation_requests (id, booking_id, user_id, reason, free_cancellation_days, updated_at)
-          VALUES (gen_random_uuid(), ${booking.id}::uuid, ${userId}::uuid, ${reason}, ${freeCancellationDays}::int, now())
-          RETURNING id
-        ),
-        outbox_insert AS (
-          INSERT INTO outbox (type, payload, dedupe_key)
-          SELECT 'CANCELLATION_REQUESTED'::"EmailType",
-                 jsonb_build_object(
-                   'requestId', r.id,
-                   'bookingId', ${booking.id}::text,
-                   'code', ${booking.code}::text,
-                   'email', ${booking.contactEmail}::text,
-                   'name', ${booking.contactName}::text,
-                   'title', ${booking.tourTitle}::text,
-                   'reason', ${reason}::text
-                 ),
-                 'cancellation-requested:' || r.id::text
-          FROM req r
-          ON CONFLICT (dedupe_key) DO NOTHING
-        )
-        SELECT id FROM req
-      `);
-    } catch (err) {
-      if (isOneLiveRequestViolation(err)) throw new CancellationAlreadyRequestedError();
-      throw err;
-    }
-    const requestId = inserted[0]?.id;
-    if (!requestId) throw new Error('unreachable: request INSERT returned no row');
-
-    const row = await prisma.cancellationRequest.findUniqueOrThrow({
-      where: { id: requestId },
-    });
-    this.logger.log(`Cancellation requested for booking ${booking.code} (request ${requestId})`);
-    return toCancellationRequest(row, booking.code);
   }
 
   /** Lịch sử request của chính khách, mới nhất trước — khách thấy mọi attempt. */
@@ -669,26 +797,4 @@ export class CancellationsService {
       booking: toBooking(row.booking, null, tourImage),
     };
   }
-}
-
-/**
- * UNIQUE violation (SQLSTATE 23505) trên partial index D1-B (một live
- * REQUESTED mỗi booking). Shape đã kiểm chứng thực nghiệm với Prisma 7.8.0 +
- * @prisma/adapter-pg trên một violation thật — KHÔNG lồng giống
- * isSeatsCheckViolation (bookings.service.ts): adapter NORMALIZE 23505 (khác
- * với 23514, vốn ở lại dạng cause generic có `code`) thành
- * `meta.driverAdapterError.cause = { kind: 'UniqueConstraintViolation',
- * constraint: { fields: ['booking_id'] } }` dưới P2010 bên ngoài; TÊN của index
- * chỉ còn sống trong message của error bên ngoài
- * (`… violates unique constraint "cancellation_requests_one_live_per_booking"`),
- * nên đó là chỗ được đem ra khớp.
- */
-function isOneLiveRequestViolation(err: unknown): boolean {
-  if (!(err instanceof Prisma.PrismaClientKnownRequestError) || err.code !== 'P2010') return false;
-  const cause = (err.meta as { driverAdapterError?: { cause?: { kind?: string } } } | undefined)
-    ?.driverAdapterError?.cause;
-  return (
-    cause?.kind === 'UniqueConstraintViolation' &&
-    err.message.includes('cancellation_requests_one_live_per_booking')
-  );
 }

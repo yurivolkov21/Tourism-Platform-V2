@@ -19,6 +19,7 @@ const booking: Booking = {
   tourDestinations: [],
   departureStartDate: '2026-09-18',
   departureEndDate: '2026-09-20',
+  cancellationDeadline: '2026-09-15',
   unitPrice: '39.00',
   totalAmount: '117.00',
   currency: 'USD',

@@ -12,7 +12,7 @@ import {
   BookingSchema,
   BookingsListQuerySchema,
   CancelBookingInputSchema,
-  CancellationRequestSchema,
+  CancelBookingResultSchema,
   CreateBookingInputSchema,
   DecideCancellationInputSchema,
   DecideCancellationResultSchema,
@@ -523,25 +523,21 @@ export const contract = {
       .route({
         method: 'POST',
         path: '/api/bookings/{code}/cancel',
-        summary: 'Request cancellation of an own PAID booking (authed, owner-only)',
+        summary:
+          'Cancel an own paid booking now; full refund before the cancellation deadline (authed, owner-only)',
       })
       .input(CancelBookingInputSchema)
       .errors({
         // Owner-or-404, cùng policy với byCode.
         NOT_FOUND: { message: 'Booking not found' },
-        // Partial unique index đã nổ — đang tồn tại một row REQUESTED còn sống.
-        ALREADY_REQUESTED: {
-          status: 409,
-          message: 'A cancellation request is already open for this booking',
-        },
-        // Booking chưa PAID, hoặc departure đã khởi hành — gộp một code: cách
-        // nào thì booking này cũng không vào được flow cancellation.
-        NOT_CANCELLABLE: {
-          status: 422,
-          message: 'Only a PAID booking with a future departure can be cancelled',
-        },
+        // ADR-0041: trạng thái ngoài PAID/PARTIALLY_REFUNDED, không có capture,
+        // đã tới ngày khởi hành (giờ Việt Nam), hoặc lệnh huỷ thứ hai — gộp một
+        // code: cách nào thì booking cũng không huỷ online được nữa.
+        NOT_CANCELLABLE: { status: 422, message: 'This booking can no longer be cancelled online' },
+        // Cổng thanh toán từ chối hoàn — không ghi gì, booking giữ nguyên, thử lại được.
+        REFUND_FAILED: { status: 502, message: 'Provider refund failed' },
       })
-      .output(CancellationRequestSchema),
+      .output(CancelBookingResultSchema),
     cancelPending: oc
       .route({
         method: 'POST',

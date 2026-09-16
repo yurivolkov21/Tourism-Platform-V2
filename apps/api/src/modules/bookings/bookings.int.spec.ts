@@ -1,6 +1,12 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { BookingSchema, PagedSchema, vietnamToday } from '@tourism/contract';
+import {
+  BookingDetailSchema,
+  BookingSchema,
+  cancellationDeadline,
+  PagedSchema,
+  vietnamToday,
+} from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -839,12 +845,23 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     expect(goneRes.json().refundEstimate).toBeNull();
   });
 
-  it('GET /api/bookings/{code}: cancellationStatus null trước khi xin hủy, REQUESTED sau khi xin', async () => {
+  it('GET /api/bookings/{code}: cancellationStatus null trước khi huỷ, REFUNDED sau khi khách tự huỷ (ADR-0041)', async () => {
     const alice = await signUpUser('alice-cancel-status@example.com', 'Alice');
     const created = (await createBooking(alice)).json();
+    // Mô phỏng claim PAID như webhook thật: có capture để hoàn vào (lõi huỷ chặn
+    // booking không có provider_payment_id) và ghế đã được đếm — để lượt nhả
+    // ghế khi huỷ trả depOpen về đúng 3 cho các test sau.
     await prisma.booking.update({
       where: { code: created.code },
-      data: { status: BookingStatus.PAID },
+      data: {
+        status: BookingStatus.PAID,
+        paidAt: new Date(),
+        providerPaymentId: 'fake_pi_cancel_status',
+      },
+    });
+    await prisma.tourDeparture.update({
+      where: { id: depOpen.id },
+      data: { seatsBooked: { increment: 3 } },
     });
 
     const before = BookingSchema.parse(
@@ -875,36 +892,35 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
         })
       ).json(),
     );
-    expect(after.cancellationStatus).toBe('REQUESTED');
+    expect(after.status).toBe('CANCELLED');
+    // Huỷ ngay vẫn ghi MỘT dòng yêu cầu đã giải quyết (REFUNDED), kể cả khi hoàn 0.
+    expect(after.cancellationStatus).toBe('REFUNDED');
+    const departure = await prisma.tourDeparture.findUniqueOrThrow({ where: { id: depOpen.id } });
+    expect(departure.seatsBooked).toBe(3);
   });
 
-  it('GET /api/bookings/{code}: cancellationStatus phản ánh request MỚI NHẤT (DENIED sau khi admin quyết)', async () => {
+  it('GET /api/bookings/{code}: cancellationStatus phản ánh request MỚI NHẤT (DENIED rồi REQUESTED)', async () => {
     const alice = await signUpUser('alice-cancel-denied@example.com', 'Alice');
     const created = (await createBooking(alice)).json();
     await prisma.booking.update({
       where: { code: created.code },
       data: { status: BookingStatus.PAID },
     });
-
-    const cancelRes = await app.inject({
-      method: 'POST',
-      url: `/api/bookings/${created.code}/cancel`,
-      headers: { cookie: alice },
-      payload: { reason: 'Change of plans' },
+    const aliceRow = await prisma.user.findUniqueOrThrow({
+      where: { email: 'alice-cancel-denied@example.com' },
     });
-    const requestId = cancelRes.json().id as string;
 
-    // Flip trực tiếp qua Prisma thay vì dựng lại toàn bộ admin sign-in + role
-    // ADMIN (đã có sẵn ở cancellations.int.spec.ts) chỉ để phủ một field mới.
-    // Đồng thời lùi createdAt về quá khứ để row này CHẮC CHẮN là row CŨ nhất —
-    // tránh flaky nếu hai lần tạo request rơi cùng mili-giây.
-    const oldCreatedAt = new Date(Date.now() - 60_000);
-    await prisma.cancellationRequest.update({
-      where: { id: requestId },
+    // `bookings.cancel` không còn tạo yêu cầu REQUESTED/DENIED (ADR-0041), nhưng
+    // dữ liệu cũ kiểu này vẫn nằm trên prod tới lượt seed lại — dựng thẳng bằng
+    // Prisma. Lùi createdAt để dòng DENIED CHẮC CHẮN là dòng cũ nhất.
+    const denied = await prisma.cancellationRequest.create({
       data: {
+        bookingId: created.id as string,
+        userId: aliceRow.id,
+        reason: 'Change of plans',
         status: CancellationRequestStatus.DENIED,
         decidedAt: new Date(),
-        createdAt: oldCreatedAt,
+        createdAt: new Date(Date.now() - 60_000),
       },
     });
 
@@ -919,29 +935,19 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     );
     expect(afterDeny.cancellationStatus).toBe('DENIED');
 
-    // D1-B: request đã DENIED không được tái dùng — khách re-request tạo THÊM
-    // một row MỚI (append-only, JSDoc `cancellations.service.ts` gần
-    // `CancellationAlreadyDecidedError`). Booking giờ có HAI row
-    // cancellation_request: row cũ DENIED (createdAt lùi ở trên) + row mới
-    // REQUESTED (createdAt = now, muộn hơn). Đây là bằng chứng khoá mệnh đề
-    // `orderBy createdAt desc` trong `bookings.service.ts#byCode` — nếu đảo
-    // thành `asc`, `findFirst` sẽ trả về row DENIED (đứng trước theo asc) thay
-    // vì row REQUESTED, và assertion `toBe('REQUESTED')` bên dưới phải ĐỎ.
-    const secondCancelRes = await app.inject({
-      method: 'POST',
-      url: `/api/bookings/${created.code}/cancel`,
-      headers: { cookie: alice },
-      payload: { reason: 'Asking again' },
+    // Booking giờ có HAI dòng: DENIED cũ + REQUESTED mới (createdAt = now). Đây là
+    // bằng chứng khoá mệnh đề `orderBy createdAt desc` trong
+    // `bookings.service.ts#byCode` — đảo thành `asc` thì `findFirst` trả dòng
+    // DENIED và assertion `toBe('REQUESTED')` bên dưới phải ĐỎ.
+    const reopened = await prisma.cancellationRequest.create({
+      data: { bookingId: created.id as string, userId: aliceRow.id, reason: 'Asking again' },
     });
-    expect(secondCancelRes.statusCode).toBe(200);
-    const secondRequestId = secondCancelRes.json().id as string;
-    expect(secondRequestId).not.toBe(requestId);
+    expect(reopened.id).not.toBe(denied.id);
 
     const rows = await prisma.cancellationRequest.findMany({
       where: { bookingId: created.id as string },
       orderBy: { createdAt: 'asc' },
     });
-    expect(rows).toHaveLength(2);
     expect(rows.map((r) => r.status)).toEqual([
       CancellationRequestStatus.DENIED,
       CancellationRequestStatus.REQUESTED,
@@ -957,6 +963,86 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       ).json(),
     );
     expect(afterReRequest.cancellationStatus).toBe('REQUESTED');
+  });
+
+  it('ADR-0041: byCode trả cancellation do SERVER tính — PENDING/CANCELLED null, trong hạn hoàn đủ, PARTIALLY_REFUNDED phần còn lại, ngày khởi hành hết huỷ', async () => {
+    const cookie = await signUpUser('cancellation-shape@example.com');
+    const created = (await createBooking(cookie)).json() as { id: string; code: string };
+    const read = async () =>
+      BookingDetailSchema.parse(
+        (
+          await app.inject({
+            method: 'GET',
+            url: `/api/bookings/${created.code}`,
+            headers: { cookie },
+          })
+        ).json(),
+      );
+
+    // Mọi booking mang ngày chót, tính từ snapshot ngày đi/ngày về.
+    const pending = await read();
+    expect(pending.cancellationDeadline).toBe(
+      cancellationDeadline(pending.departureStartDate, pending.departureEndDate),
+    );
+    // PENDING: chưa trả tiền → luật huỷ không áp dụng.
+    expect(pending.cancellation).toBeNull();
+
+    // PAID trên depOpen (+60 ngày) → còn trong hạn: hoàn đủ, có nút huỷ.
+    await prisma.booking.update({
+      where: { id: created.id },
+      data: { status: BookingStatus.PAID, paidAt: new Date(), providerPaymentId: 'fake_pi_shape' },
+    });
+    const paid = await read();
+    expect(paid.cancellation).toEqual({
+      deadline: paid.cancellationDeadline,
+      withinDeadline: true,
+      refundAmount: '117.00',
+      canCancel: true,
+    });
+
+    // PARTIALLY_REFUNDED: số hoàn là phần CÒN LẠI của sổ, không phải tổng tiền.
+    await prisma.refund.create({
+      data: {
+        bookingId: created.id,
+        amount: '17.00',
+        currency: 'USD',
+        providerRefundId: 'fake_re_shape',
+        providerPaymentId: 'fake_pi_shape',
+      },
+    });
+    await prisma.booking.update({
+      where: { id: created.id },
+      data: { status: BookingStatus.PARTIALLY_REFUNDED },
+    });
+    expect((await read()).cancellation?.refundAmount).toBe('100.00');
+
+    // Không có capture thì không có chỗ hoàn vào → không bày nút huỷ.
+    await prisma.booking.update({ where: { id: created.id }, data: { providerPaymentId: null } });
+    expect((await read()).cancellation?.canCancel).toBe(false);
+
+    // Đúng ngày khởi hành theo giờ Việt Nam: quá hạn, hoàn 0, hết huỷ online.
+    const today = vietnamToday(new Date());
+    await prisma.booking.update({
+      where: { id: created.id },
+      data: {
+        providerPaymentId: 'fake_pi_shape',
+        departureStartDate: new Date(`${today}T00:00:00.000Z`),
+        departureEndDate: new Date(`${today}T00:00:00.000Z`),
+      },
+    });
+    expect((await read()).cancellation).toEqual({
+      deadline: cancellationDeadline(today, today),
+      withinDeadline: false,
+      refundAmount: '0.00',
+      canCancel: false,
+    });
+
+    // CANCELLED: ngoài luật huỷ online → null.
+    await prisma.booking.update({
+      where: { id: created.id },
+      data: { status: BookingStatus.CANCELLED },
+    });
+    expect((await read()).cancellation).toBeNull();
   });
 
   /**

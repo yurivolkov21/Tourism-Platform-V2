@@ -103,6 +103,13 @@ export const BookingSchema = z.object({
   freeCancellationDays: z.int().nonnegative().nullable(),
   departureStartDate: z.iso.date(),
   departureEndDate: z.iso.date(),
+  /**
+   * Ngày chót huỷ miễn phí của chuyến đã mua (ADR-0041 §2): ngày khởi hành − N,
+   * N theo độ dài chuyến. SERVER tính từ snapshot ngày đi/ngày về bằng
+   * `cancellationDeadline` của contract; web/admin chỉ in (Q7). Có mặt ở MỌI
+   * route trả booking — một ngày lịch, không tốn query nào.
+   */
+  cancellationDeadline: z.iso.date(),
   unitPrice: DecimalStringSchema,
   totalAmount: DecimalStringSchema,
   currency: z.string().length(3),
@@ -213,6 +220,24 @@ export const RefundEstimateSchema = z.object({
 
 export type RefundEstimate = z.output<typeof RefundEstimateSchema>;
 
+/**
+ * Trạng thái huỷ của booking lúc ĐỌC `bookings.byCode` (ADR-0041 §4) — SERVER
+ * tính bằng bộ hàm luật của contract, cùng đường với lệnh huỷ thật, nên con số
+ * khách thấy là con số server hoàn. Web không so ngày bằng giờ trình duyệt (Q7).
+ */
+export const BookingCancellationSchema = z.object({
+  /** Ngày chót huỷ miễn phí, hết lúc 23:59:59 giờ Việt Nam. */
+  deadline: z.iso.date(),
+  /** Hôm nay (giờ Việt Nam) còn ≤ ngày chót. */
+  withinDeadline: z.boolean(),
+  /** Số sẽ hoàn nếu huỷ ngay: phần còn lại khi trong hạn, `'0.00'` khi quá hạn. */
+  refundAmount: DecimalStringSchema,
+  /** Còn nút huỷ: chưa tới ngày khởi hành và có capture để hoàn vào. */
+  canCancel: z.boolean(),
+});
+
+export type BookingCancellation = z.output<typeof BookingCancellationSchema>;
+
 export const BookingDetailSchema = BookingSchema.extend({
   /**
    * `null` khi khách chưa viết review nào cho booking này.
@@ -230,6 +255,12 @@ export const BookingDetailSchema = BookingSchema.extend({
    * Web `CancelSummary` chỉ IN con số này, không tự tính lại.
    */
   refundEstimate: RefundEstimateSchema.nullable(),
+  /**
+   * ADR-0041: trạng thái huỷ theo hạn chót — `null` khi booking không ở PAID
+   * hoặc PARTIALLY_REFUNDED. Thay `refundEstimate` (còn giữ tới khi web chuyển
+   * xong, plan 15/09 Task 13).
+   */
+  cancellation: BookingCancellationSchema.nullable(),
 });
 
 export type BookingDetail = z.output<typeof BookingDetailSchema>;
@@ -345,18 +376,32 @@ export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchem
 // Cancellation (spec P2 §3, W4 — lịch sử append-only D1-B)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Input cho `bookings.cancel` — lý do của khách được chuyển tới queue admin.
+/**
+ * Input cho `bookings.cancel` — khách huỷ NGAY (ADR-0041 §4). Lý do không bắt
+ * buộc: vắng thì dòng yêu cầu huỷ ghi `null`.
  *
  * `.trim()` ở CONTRACT (W1, khuôn `reviews.ts`): luật một chỗ. Trước đây input
- * `min(1)` không trim còn service trim rồi ghi `''` — row lọt qua rồi nổ
- * output validation (500) ở chính `bookings.cancel` và `admin.cancellations.list`
- * (cả trang): một khách khoá được hàng đợi duyệt huỷ. */
+ * `min(1)` không trim còn service trim rồi ghi `''` — row lọt qua rồi nổ output
+ * validation (500) ở chính `bookings.cancel` và `admin.cancellations.list` (cả
+ * trang). Có gửi thì vẫn phải có chữ: toàn khoảng trắng là 400.
+ */
 export const CancelBookingInputSchema = z.object({
   code: BookingCodeSchema,
-  reason: z.string().trim().min(1).max(1000),
+  reason: z.string().trim().min(1).max(1000).optional(),
 });
 
 export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;
+
+/**
+ * Output của `bookings.cancel`: booking sau khi huỷ kèm số tiền LẦN HUỶ NÀY đã
+ * hoàn (`'0.00'` khi quá hạn chót). `booking.refundedTotal` là tổng sổ sau huỷ.
+ */
+export const CancelBookingResultSchema = z.object({
+  booking: BookingSchema,
+  refundedAmount: DecimalStringSchema,
+});
+
+export type CancelBookingResult = z.output<typeof CancelBookingResultSchema>;
 
 /**
  * Một row cancellation request (lịch sử append-only theo D1-B — một booking có
