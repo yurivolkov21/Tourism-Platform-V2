@@ -1,6 +1,6 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
-import { BookingSchema, PagedSchema } from '@tourism/contract';
+import { BookingSchema, PagedSchema, vietnamToday } from '@tourism/contract';
 import * as catalog from '../../../prisma/fixtures/catalog/index.js';
 import { AppModule } from '../../app.module.js';
 import { prisma } from '../../auth/auth.config.js';
@@ -12,6 +12,7 @@ import {
   MediaOwnerType,
 } from '../../generated/prisma/enums.js';
 import { FakeGateway } from '../payments/fake.gateway.js';
+import { BookingsService } from './bookings.service.js';
 
 /**
  * Integration (Docker PG, db tourism_test — xem vitest.int.config.ts).
@@ -79,7 +80,28 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
   const depClosed = dep('3', future60, { status: DepartureStatus.CLOSED });
   const depPast = dep('4', past10);
   const depUnpublished = dep('5', future60, { tourId: unpublishedTour.id });
-  const departures = [depOpen, depOverride, depClosed, depPast, depUnpublished];
+  // Chốt chặn hạn chót (ADR-0041 §3). Ngày tính từ "hôm nay" GIỜ VIỆT NAM vì
+  // `start_date` là ngày lịch VN và server so bằng đúng thước ấy; `vnDay(n)` là
+  // 00:00 UTC của ngày VN hôm nay + n, khuôn Prisma dùng cho cột `@db.Date`.
+  // Ba ca dưới vẫn đúng nếu file chạy vắt qua nửa đêm giờ VN (mọi ngày lùi một).
+  const vnDay = (offset: number) =>
+    new Date(Date.parse(`${vietnamToday(new Date())}T00:00:00.000Z`) + offset * 86_400_000);
+  // L = 1 → N = 1: khởi hành hôm nay, hạn chót là hôm qua.
+  const depToday1d = dep('6', vnDay(0), { endDate: vnDay(0) });
+  // L = 4 → N = 7: khởi hành sau 5 ngày, hạn chót đã qua 2 ngày.
+  const depLong4d = dep('7', vnDay(5), { endDate: vnDay(8) });
+  // L = 2 → N = 3: khởi hành sau 4 ngày, hạn chót là ngày mai.
+  const depShort2d = dep('8', vnDay(4), { endDate: vnDay(5) });
+  const departures = [
+    depOpen,
+    depOverride,
+    depClosed,
+    depPast,
+    depUnpublished,
+    depToday1d,
+    depLong4d,
+    depShort2d,
+  ];
 
   beforeAll(async () => {
     await prisma.$executeRawUnsafe(
@@ -500,6 +522,103 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
     }
     expect(await prisma.booking.count()).toBe(0);
     expect(fake.sessions).toHaveLength(0);
+  });
+
+  describe('chốt chặn hạn chót đặt chỗ (ADR-0041 §3)', () => {
+    const postCheckout = (cookie: string, code: string) =>
+      app.inject({ method: 'POST', url: `/api/bookings/${code}/checkout`, headers: { cookie } });
+
+    it('create chặn chuyến đã qua hạn chót: tour 1 ngày khởi hành hôm nay, tour 4 ngày còn 5 ngày', async () => {
+      const cookie = await signUpUser('deadline-passed@example.com');
+      for (const departureId of [depToday1d.id, depLong4d.id]) {
+        const res = await createBooking(cookie, { ...createPayload, departureId });
+        expect(res.statusCode, departureId).toBe(400);
+        expect(res.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+      }
+      // Chặn TRƯỚC insert và trước khi gọi provider: không PENDING, không session.
+      expect(await prisma.booking.count()).toBe(0);
+      expect(fake.sessions).toHaveLength(0);
+    });
+
+    it('create vẫn nhận chuyến còn trong hạn: tour 2 ngày còn 4 ngày, hạn chót ngày mai', async () => {
+      const cookie = await signUpUser('deadline-open@example.com');
+      const res = await createBooking(cookie, { ...createPayload, departureId: depShort2d.id });
+      expect(res.statusCode).toBe(200);
+      expect(BookingSchema.parse(res.json()).status).toBe('PENDING');
+    });
+
+    it('"Pay again" trên PENDING khi chuyến đã qua hạn chót → 400, kể cả session cũ còn sống', async () => {
+      const cookie = await signUpUser('deadline-checkout@example.com');
+      const body = (
+        await createBooking(cookie, { ...createPayload, departureId: depShort2d.id })
+      ).json();
+      // Như thể hai ngày đã trôi: dời chuyến lại gần thay vì chỉnh đồng hồ —
+      // L = 2 → N = 3, khởi hành sau 2 ngày thì hạn chót là hôm qua.
+      await prisma.tourDeparture.update({
+        where: { id: depShort2d.id },
+        data: { startDate: vnDay(2), endDate: vnDay(3) },
+      });
+      try {
+        const retry = await postCheckout(cookie, body.code);
+        expect(retry.statusCode).toBe(400);
+        expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+        // Session của lần create chưa hết hạn, nhưng chốt chặn đứng TRƯỚC nhánh
+        // trả lại session: sau hạn chót không mở lại trang thanh toán nào.
+        expect(fake.sessions).toHaveLength(1);
+      } finally {
+        await prisma.tourDeparture.update({
+          where: { id: depShort2d.id },
+          data: { startDate: depShort2d.startDate, endDate: depShort2d.endDate },
+        });
+      }
+    });
+
+    it('"Pay again" cũng chặn khi tour đã gỡ publish — cùng một chốt chặn với create', async () => {
+      const cookie = await signUpUser('unpublished-checkout@example.com');
+      const body = (await createBooking(cookie)).json();
+      await prisma.tour.update({ where: { id: dayTour.id }, data: { isPublished: false } });
+      try {
+        const retry = await postCheckout(cookie, body.code);
+        expect(retry.statusCode).toBe(400);
+        expect(retry.json()).toMatchObject({ code: 'DEPARTURE_NOT_AVAILABLE' });
+        expect(fake.sessions).toHaveLength(1);
+      } finally {
+        await prisma.tour.update({ where: { id: dayTour.id }, data: { isPublished: true } });
+      }
+    });
+
+    it('claim vẫn nhận thanh toán của PENDING đã qua hạn chót khi chuyến chưa khởi hành (spec §3.2)', async () => {
+      // Chốt chặn chỉ đứng ở create/checkout. Thanh toán đang dở lúc hạn chót
+      // trôi qua vẫn được nhận — nới cho khách thay vì thu tiền rồi tự hoàn.
+      const cookie = await signUpUser('deadline-claim@example.com');
+      const body = (
+        await createBooking(cookie, { ...createPayload, departureId: depShort2d.id })
+      ).json();
+      await prisma.tourDeparture.update({
+        where: { id: depShort2d.id },
+        data: { startDate: vnDay(2), endDate: vnDay(3) },
+      });
+      try {
+        const outcome = await app
+          .get(BookingsService)
+          .claimSeatsForPaid(body.id, 'pi_after_deadline');
+        expect(outcome).toBe('claimed');
+        const row = await prisma.booking.findUniqueOrThrow({ where: { id: body.id } });
+        expect(row.status).toBe(BookingStatus.PAID);
+      } finally {
+        // Trả chuyến về nguyên trạng cho các test sau (ngày, ghế vừa claim) và gỡ
+        // dòng outbox xác nhận mà claim vừa xếp — file này không truncate outbox.
+        await prisma.tourDeparture.update({
+          where: { id: depShort2d.id },
+          data: {
+            startDate: depShort2d.startDate,
+            endDate: depShort2d.endDate,
+            seatsBooked: depShort2d.seatsBooked,
+          },
+        });
+        await prisma.outbox.deleteMany({ where: { dedupeKey: `booking-confirmed:${body.id}` } });
+      }
+    });
   });
 
   it('W1: party vượt maxGroupSize của tour → 422 PARTY_TOO_LARGE (trước cả soft seat check)', async () => {

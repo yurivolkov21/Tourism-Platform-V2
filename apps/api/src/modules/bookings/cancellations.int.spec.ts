@@ -70,12 +70,16 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
   } satisfies Prisma.TourDepartureCreateManyInput;
   // Chuyến khởi hành +3 ngày — cho ca bậc 0% của ADR-0029 AMEND 5 (tour
   // fixture không có freeCancellationDays nên <7 ngày rơi thẳng vào bậc 0%).
+  // Chuyến MỘT ngày (endDate = startDate) là có chủ đích: N = 1 nên hạn chót đặt
+  // chỗ là +2 ngày và `create` không bao giờ vướng chốt chặn ADR-0041 §3. Để 2
+  // ngày thì N = 3, hạn chót rơi đúng hôm nay theo UTC và `create` bị chặn trong
+  // khung 00:00–06:59 giờ Việt Nam. Viết lại file này (Task 6) phải giữ điều kiện đó.
   const future3 = new Date(Date.now() + 3 * 86_400_000);
   const depSoon = {
     ...dep,
     id: 'e9400001-0000-4000-8000-000000000002',
     startDate: future3,
-    endDate: new Date(future3.getTime() + 86_400_000),
+    endDate: future3,
   } satisfies Prisma.TourDepartureCreateManyInput;
 
   beforeAll(async () => {

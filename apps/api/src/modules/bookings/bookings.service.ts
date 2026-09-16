@@ -11,6 +11,7 @@ import type {
 } from '@tourism/contract';
 import {
   daysBeforeDeparture,
+  isWithinDeadline,
   isWithinGracePeriod,
   policyRefundAmount,
   refundPercentForRequest,
@@ -44,9 +45,9 @@ import { mintBookingCode } from './booking-code.js';
 import { effectiveUnitPrice, totalAmount } from './pricing.js';
 import { withBookingRefundLock } from './refund-lock.js';
 
-/** Departure không tồn tại / không OPEN / đã departed / tour unpublished — cố
- * ý gộp thành một error (contract: một code DEPARTURE_NOT_AVAILABLE duy nhất,
- * không leak sự tồn tại). */
+/** Departure không tồn tại / không OPEN / đã qua hạn chót đặt chỗ (ADR-0041 §3,
+ * gồm cả đã departed) / tour unpublished — cố ý gộp thành một error (contract:
+ * một code DEPARTURE_NOT_AVAILABLE duy nhất, không leak sự tồn tại). */
 export class DepartureNotAvailableError extends Error {
   constructor() {
     super('This departure is not available for booking');
@@ -81,6 +82,37 @@ export class CheckoutFailedError extends Error {
 export class BookingNotPendingError extends Error {
   constructor() {
     super('Only a PENDING booking is valid for this operation');
+  }
+}
+
+/** Phần tối thiểu của một chuyến mà chốt chặn đặt chỗ cần đọc. */
+export interface BookableDepartureRow {
+  status: DepartureStatus;
+  startDate: Date;
+  endDate: Date;
+  tour: { isPublished: boolean };
+}
+
+/**
+ * Chốt chặn đặt chỗ DÙNG CHUNG cho `create` và `reCheckout` (ADR-0041 §3, spec
+ * §3.2): tour đã published, chuyến OPEN, và hôm nay theo giờ Việt Nam chưa qua
+ * hạn chót của chuyến. Qua hạn chót thì chỗ trả về không bán lại được nữa, nên
+ * cũng không tạo hay mở lại trang thanh toán nào — kể cả trả lại session còn
+ * sống. Hạn chót luôn trước ngày khởi hành nên vế này bao luôn "chưa khởi hành".
+ *
+ * KHÔNG kiểm ghế: `create` soft-check riêng, còn claim mới là bên quyết định chỗ
+ * (bất biến #1). KHÔNG dùng ở claim webhook: thanh toán dở lúc hạn chót trôi qua
+ * vẫn được nhận (gate claim chỉ giữ "OPEN và chưa khởi hành").
+ *
+ * Mọi lý do gộp vào MỘT lỗi — contract chỉ có mã `DEPARTURE_NOT_AVAILABLE`.
+ */
+export function assertDepartureBookable(departure: BookableDepartureRow, now: Date): void {
+  if (
+    !departure.tour.isPublished ||
+    departure.status !== DepartureStatus.OPEN ||
+    !isWithinDeadline(now, calendarDate(departure.startDate), calendarDate(departure.endDate))
+  ) {
+    throw new DepartureNotAvailableError();
   }
 }
 
@@ -317,12 +349,11 @@ export class BookingsService {
   /**
    * Tạo một PENDING booking + gateway checkout session.
    *
-   * Validation (giữ nguyên semantics đã port): departure tồn tại, tour của nó
-   * đã published, status OPEN, và chưa DEPARTED — same-day vẫn book được
-   * (walk-in, rule Nexora); chỉ startDate strictly-past mới reject. "Hôm nay"
-   * là ngày Việt Nam (`vietnamToday`, ADR-0041 §7); `@db.Date` load thành nửa
-   * đêm UTC nên `calendarDate` ra đúng ngày lịch đã lưu, độc lập với timezone
-   * của server.
+   * Validation: departure tồn tại, rồi {@link assertDepartureBookable} — tour đã
+   * published, status OPEN, và hôm nay theo giờ Việt Nam chưa qua hạn chót đặt
+   * chỗ (ADR-0041 §3). Luật walk-in cùng ngày port từ Nexora hết hiệu lực: tour
+   * một ngày ngừng nhận đặt từ 00:00 ngày khởi hành, tour dài hơn thì sớm hơn
+   * N ngày.
    *
    * Seats: CHỈ soft check (`seatsTotal - seatsBooked >= party`) — KHÔNG phải
    * reservation. Invariant #1 (spec §4): một PENDING booking KHÔNG giữ seat
@@ -364,13 +395,7 @@ export class BookingsService {
       },
     });
     if (!departure) throw new DepartureNotAvailableError();
-    if (
-      !departure.tour.isPublished ||
-      departure.status !== DepartureStatus.OPEN ||
-      calendarDate(departure.startDate) < vietnamToday(new Date())
-    ) {
-      throw new DepartureNotAvailableError();
-    }
+    assertDepartureBookable(departure, new Date());
 
     const seats = input.numAdults + input.numChildren;
     // Luật tour TRƯỚC soft seat check: "tour này nhận tối đa N người một nhóm"
@@ -528,20 +553,21 @@ export class BookingsService {
       });
       if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
 
-      // Cùng gate chuyến với `create` và với claim (ADR-0009 AMEND 1, thước ngày
-      // Việt Nam của ADR-0041 §7): mint trang thanh toán cho một booking mà claim
-      // chắc chắn từ chối là mời khách trả một khoản sẽ bị auto-refund.
+      // Cùng chốt chặn với `create` (ADR-0041 §3): sau hạn chót không mint session
+      // mới và cũng không trả lại session còn sống, nên chốt chặn đứng TRƯỚC nhánh
+      // `sessionAlive`. Chặt hơn claim có chủ đích — trang thanh toán đã mở từ
+      // trước hạn vẫn được claim nhận. Không soft-check ghế ở đây: claim quyết chỗ.
       const departure = await tx.tourDeparture.findUnique({
         where: { id: booking.departureId },
-        select: { status: true, startDate: true },
+        select: {
+          status: true,
+          startDate: true,
+          endDate: true,
+          tour: { select: { isPublished: true } },
+        },
       });
-      if (
-        !departure ||
-        departure.status !== DepartureStatus.OPEN ||
-        calendarDate(departure.startDate) < vietnamToday(new Date())
-      ) {
-        throw new DepartureNotAvailableError();
-      }
+      if (!departure) throw new DepartureNotAvailableError();
+      assertDepartureBookable(departure, new Date());
 
       const sessionAlive =
         booking.providerSessionId !== null &&
