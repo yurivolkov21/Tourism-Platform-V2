@@ -57,6 +57,8 @@ const EXPECTED_ROUTES = [
   '(auth)/forgot-password',
   '(auth)/login',
   '(auth)/register',
+  '(auth)/reset-password',
+  '(auth)/success',
   '(auth)/verify-email',
   '(tabs)/account',
   '(tabs)/explore',
@@ -125,25 +127,40 @@ describe('vỏ điều hướng', () => {
   // `screen.root` không có `findAll`. Nên "tiêu đề header đọc từ @tourism/i18n"
   // hiện KHÔNG có test — sai tiêu đề là lỗi thấy ngay bằng mắt trên máy, và
   // lớp canh i18n vẫn còn ở 5 tab (tiêu đề thân) cùng test nhãn thanh tab.
-  it.each([['/forgot-password']])('màn auth %s render được', async (url) => {
-    const app = await openApp(url);
-
-    expect(app.pathname()).toBe(url);
-    expect(screen.getByText(placeholder)).toBeTruthy();
-  });
-
-  // Hai màn form đã có nội dung thật (P5b-1). Khẳng định bằng câu PHỤ ĐỀ chứ
+  // Cụm auth không còn chỗ giữ chỗ nào (P5b-1). Khẳng định bằng câu PHỤ ĐỀ chứ
   // không phải tiêu đề: "Create account" còn là nhãn nút và là đường dẫn ở chân
   // màn Sign in, nên tìm theo tiêu đề là tìm ra nhiều chỗ.
   it.each([
     ['/login', messages.mobile.auth.signIn.body],
     ['/register', messages.mobile.auth.register.body],
+    ['/forgot-password', messages.mobile.auth.forgotPassword.body],
+    ['/reset-password?token=abc', messages.mobile.auth.resetPassword.body],
   ])('màn auth %s render được màn thật, không còn chỗ giữ chỗ', async (url, body) => {
-    const app = await openApp(url);
+    await openApp(url);
 
-    expect(app.pathname()).toBe(url);
     expect(screen.getByText(body)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
+  });
+
+  // Link đặt lại mật khẩu không mang token thì không gọi action nào — vào thẳng
+  // kênh 3.
+  it('reset-password thiếu token thì vào thẳng trạng thái link hỏng', async () => {
+    await openApp('/reset-password');
+
+    expect(screen.getByText(messages.authForms.resetPassword.invalidToken.heading)).toBeTruthy();
+    expect(
+      screen.queryByPlaceholderText(messages.mobile.auth.resetPassword.newPassword),
+    ).toBeNull();
+  });
+
+  it.each([
+    ['verified', messages.authForms.verifyEmail.toast.title],
+    ['password-updated', messages.authForms.resetPassword.toast.title],
+  ])('màn kết quả đọc kind=%s từ URL', async (kind, title) => {
+    await openApp(`/success?kind=${kind}`);
+
+    expect(screen.getByText(title)).toBeTruthy();
+    expect(screen.getByText(messages.mobile.auth.success.signIn)).toBeTruthy();
   });
 
   it('verify-email đọc email từ URL và nhắc lại trong phụ đề', async () => {
@@ -190,28 +207,34 @@ describe('vỏ điều hướng', () => {
     },
   );
 
-  // Màn ĐẦU của modal dùng X đóng cả nhóm; `/login` vẽ X đè lên ảnh còn
-  // `/forgot-password` vẫn dùng nút của header — cùng nhãn, cùng đích.
-  it.each([['/login'], ['/forgot-password']])('màn auth %s có nút đóng đưa về tab', async (url) => {
-    const app = await openApp(url);
+  // Màn ĐẦU của nhóm dùng X đóng cả nhóm: Sign in, và Reset password vì nó mở
+  // từ link trong email nên phía sau không có màn nào.
+  it.each([['/login'], ['/reset-password?token=abc']])(
+    'màn auth %s có nút đóng đưa về tab',
+    async (url) => {
+      const app = await openApp(url);
 
-    // `fireEvent.press` của RNTL 14 là BẤT ĐỒNG BỘ — thiếu `await` thì
-    // assertion chạy trước khi router kịp đổi và test đỏ oan (hoặc tệ hơn:
-    // xanh oan ở một assertion lỏng hơn).
-    await fireEvent.press(screen.getByLabelText(shell.close));
+      // `fireEvent.press` của RNTL 14 là BẤT ĐỒNG BỘ — thiếu `await` thì
+      // assertion chạy trước khi router kịp đổi và test đỏ oan (hoặc tệ hơn:
+      // xanh oan ở một assertion lỏng hơn).
+      await fireEvent.press(screen.getByLabelText(shell.close));
 
-    expect(app.pathname()).toBe('/');
-  });
+      expect(app.pathname()).toBe('/');
+    },
+  );
 
-  // `/register` là màn ĐI TIẾP nên dùng mũi tên lùi một bước. Vào thẳng bằng
-  // deep link thì bước lùi đó rơi vào neo `(tabs)` — vẫn có đường về.
-  it('màn auth /register lùi một bước chứ không đóng cả nhóm', async () => {
-    const app = await openApp('/register');
+  // Màn ĐI TIẾP dùng mũi tên lùi một bước. Vào thẳng bằng deep link thì bước lùi
+  // đó rơi vào neo `(tabs)` — vẫn có đường về.
+  it.each([['/register'], ['/forgot-password'], ['/verify-email?email=lan%40example.com']])(
+    'màn auth %s lùi một bước chứ không đóng cả nhóm',
+    async (url) => {
+      const app = await openApp(url);
 
-    await fireEvent.press(screen.getByLabelText(messages.mobile.auth.back));
+      await fireEvent.press(screen.getByLabelText(messages.mobile.auth.back));
 
-    expect(app.pathname()).toBe('/');
-  });
+      expect(app.pathname()).toBe('/');
+    },
+  );
 
   it('URL lạ rơi vào +not-found chứ không phải màn trắng', async () => {
     await openApp('/khong-ton-tai');
