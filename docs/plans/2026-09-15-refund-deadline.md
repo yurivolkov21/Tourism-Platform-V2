@@ -48,6 +48,16 @@
   node scripts/check-mobile-tokens-only.mjs
   ```
 
+- **Trước bước `build` của cổng, API phải SỐNG ở `localhost:3001`** (đo 16/09 ở worktree: thiếu nó `@tourism/web:build` chết `Failed to collect page data for /blog/[slug]`, vì SSG fetch catalogue lúc prerender — cùng ca CI 31/07→04/08, xem `.github/workflows/ci.yml` khối "Migrate + seed db `tourism` rồi mở API nền cho build web"). Mở một lần cho cả nhánh, từ gốc worktree:
+
+  ```bash
+  pnpm --filter @tourism/api run build
+  (cd apps/api && node dist/main.js > /tmp/wt-api.log 2>&1 &)
+  for i in $(seq 1 30); do curl -sf http://localhost:3001/api/health > /dev/null && break; sleep 2; done
+  ```
+
+  API này đọc `apps/api/.env.local` → Postgres Docker `localhost:5432/tourism` (db dev đã seed), KHÔNG phải `tourism_test` của int test. Worktree không có `.env.local` (gitignored): chép từ checkout gốc cho `apps/{api,web,admin}`, và KHÔNG chép `.env.production`. Sau mỗi task có sửa mã API, dựng lại `dist` rồi khởi động lại tiến trình này trước khi chạy cổng.
+
 ## Thứ tự và ranh giới task
 
 | Task | Việc | Thêm | Gỡ |
