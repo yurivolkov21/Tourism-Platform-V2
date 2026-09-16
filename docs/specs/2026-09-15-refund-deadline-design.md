@@ -265,8 +265,8 @@ server tính, không dùng giờ trình duyệt (Q7).
 ### 5.2 Thanh toán
 
 - Bước xem lại và phần tóm tắt: "Free cancellation until 17 Oct, 11:59 pm
-  Vietnam time. No refund after that." Đúng ngày chót thì: "Free cancellation
-  until today, 11:59 pm Vietnam time."
+  Vietnam time. No refund after that." Luôn in ngày cụ thể, kể cả khi ngày chót
+  là hôm nay, để web không phải so với giờ trình duyệt (Q7).
 - Thay dòng "refund available until…" hiện tính bằng giờ máy khách.
 - "Pay now" gặp `DEPARTURE_NOT_AVAILABLE`: "Booking for this departure has
   closed."
@@ -498,6 +498,8 @@ trước rồi mới đẩy consumer".
   `admin.cancellations.*`; sau M2 không còn `freeCancellationDays`. Migration và
   entry CHANGELOG cũ là bản ghi lịch sử, không tính.
 - `seed:verify` 0 vi phạm trên Docker với H = 20/09 và H = 03/11.
-- Chạy thật trên sandbox: đặt → huỷ trong hạn → Stripe hoàn → sổ và email; huỷ
-  quá hạn; chuyến qua hạn hiện "Booking closed" và API chặn.
+- Kiểm tay ở máy (Docker, không gọi cổng thanh toán thật): chuyến đã qua hạn hiện
+  "Booking closed" và API chặn đặt; huỷ quá hạn không hoàn; cổng lỗi thì không ghi
+  gì. Lượt sandbox thật (đặt → huỷ trong hạn → Stripe hoàn → sổ và email) chạy ở
+  bước triển khai §10, sau khi API mới đã sống trên Render.
 - Tài liệu cập nhật như §9.
