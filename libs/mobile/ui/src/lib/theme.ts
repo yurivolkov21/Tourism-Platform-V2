@@ -33,6 +33,7 @@ export const MOBILE_COLOR_KEYS = [
   'destructive-emphasis',
   'input',
   'on-media',
+  'primary-emphasis',
   'scrim',
 ] as const;
 

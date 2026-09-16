@@ -115,7 +115,7 @@ describe('withAlpha', () => {
 });
 
 describe('bốn khoá màu thêm cho cụm auth', () => {
-  it.each(['destructive-emphasis', 'input', 'on-media', 'scrim'] as const)(
+  it.each(['destructive-emphasis', 'input', 'on-media', 'primary-emphasis', 'scrim'] as const)(
     'khoá "%s" có mặt ở cả hai chế độ và lấy đúng giá trị cầu token',
     (key) => {
       expect(buildTheme('light').colors[key]).toBe(tokens.colors.light[key]);

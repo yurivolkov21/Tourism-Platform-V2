@@ -22,12 +22,17 @@ export type AppTextVariant = keyof typeof APP_TEXT_VARIANTS;
 const HEADING_VARIANTS = new Set<AppTextVariant>(['display', 'title']);
 
 /** Vai màu của chữ. `muted` cho câu phụ, `inverse` cho chữ nằm trên nền brand. */
-export type AppTextTone = 'default' | 'muted' | 'inverse';
+export type AppTextTone = 'default' | 'muted' | 'inverse' | 'danger' | 'media';
 
 const TONE_COLOR: Record<AppTextTone, keyof MobileTheme['colors']> = {
   default: 'foreground',
   muted: 'muted-foreground',
   inverse: 'primary-foreground',
+  // P5b-1: `danger` cho câu lỗi của ô, `media` cho chữ nằm trên ảnh. Hai vai này
+  // đi qua tone thay vì `style={{ color }}` ở chỗ gọi — màu vẫn chỉ có một đường
+  // ra, và `check-mobile-tokens-only.mjs` vẫn là lưới cuối.
+  danger: 'destructive-emphasis',
+  media: 'on-media',
 };
 
 export interface AppTextProps extends TextProps {
