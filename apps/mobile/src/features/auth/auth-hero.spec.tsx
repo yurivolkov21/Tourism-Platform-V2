@@ -17,7 +17,7 @@ describe('AuthHero', () => {
     );
 
     expect(screen.getByText('Ha Giang, Vietnam')).toBeTruthy();
-    fireEvent.press(screen.getByLabelText('Close'));
+    await fireEvent.press(screen.getByLabelText('Close'));
     expect(onPress).toHaveBeenCalled();
   });
 
@@ -35,7 +35,7 @@ describe('AuthHero', () => {
     await renderWithTheme(<AuthHero image={image} height="short" />);
     const short = photoHeight();
 
-    screen.unmount();
+    await screen.unmount();
     await renderWithTheme(<AuthHero image={image} />);
 
     expect(short).toBeLessThan(photoHeight());

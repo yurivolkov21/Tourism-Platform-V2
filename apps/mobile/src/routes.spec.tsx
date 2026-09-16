@@ -124,15 +124,26 @@ describe('vỏ điều hướng', () => {
   // `screen.root` không có `findAll`. Nên "tiêu đề header đọc từ @tourism/i18n"
   // hiện KHÔNG có test — sai tiêu đề là lỗi thấy ngay bằng mắt trên máy, và
   // lớp canh i18n vẫn còn ở 5 tab (tiêu đề thân) cùng test nhãn thanh tab.
-  it.each([['/login'], ['/register'], ['/forgot-password']])(
-    'màn auth %s render được',
-    async (url) => {
-      const app = await openApp(url);
+  it.each([['/forgot-password']])('màn auth %s render được', async (url) => {
+    const app = await openApp(url);
 
-      expect(app.pathname()).toBe(url);
-      expect(screen.getByText(placeholder)).toBeTruthy();
-    },
-  );
+    expect(app.pathname()).toBe(url);
+    expect(screen.getByText(placeholder)).toBeTruthy();
+  });
+
+  // Hai màn form đã có nội dung thật (P5b-1). Khẳng định bằng câu PHỤ ĐỀ chứ
+  // không phải tiêu đề: "Create account" còn là nhãn nút và là đường dẫn ở chân
+  // màn Sign in, nên tìm theo tiêu đề là tìm ra nhiều chỗ.
+  it.each([
+    ['/login', messages.mobile.auth.signIn.body],
+    ['/register', messages.mobile.auth.register.body],
+  ])('màn auth %s render được màn thật, không còn chỗ giữ chỗ', async (url, body) => {
+    const app = await openApp(url);
+
+    expect(app.pathname()).toBe(url);
+    expect(screen.getByText(body)).toBeTruthy();
+    expect(screen.queryByText(placeholder)).toBeNull();
+  });
 
   it('tours/[slug] render được và đọc được slug từ URL', async () => {
     const app = await openApp('/tours/ha-giang-loop');
@@ -161,19 +172,28 @@ describe('vỏ điều hướng', () => {
     },
   );
 
-  it.each([['/login'], ['/register'], ['/forgot-password']])(
-    'màn auth %s có nút đóng đưa về tab',
-    async (url) => {
-      const app = await openApp(url);
+  // Màn ĐẦU của modal dùng X đóng cả nhóm; `/login` vẽ X đè lên ảnh còn
+  // `/forgot-password` vẫn dùng nút của header — cùng nhãn, cùng đích.
+  it.each([['/login'], ['/forgot-password']])('màn auth %s có nút đóng đưa về tab', async (url) => {
+    const app = await openApp(url);
 
-      // `fireEvent.press` của RNTL 14 là BẤT ĐỒNG BỘ — thiếu `await` thì
-      // assertion chạy trước khi router kịp đổi và test đỏ oan (hoặc tệ hơn:
-      // xanh oan ở một assertion lỏng hơn).
-      await fireEvent.press(screen.getByLabelText(shell.close));
+    // `fireEvent.press` của RNTL 14 là BẤT ĐỒNG BỘ — thiếu `await` thì
+    // assertion chạy trước khi router kịp đổi và test đỏ oan (hoặc tệ hơn:
+    // xanh oan ở một assertion lỏng hơn).
+    await fireEvent.press(screen.getByLabelText(shell.close));
 
-      expect(app.pathname()).toBe('/');
-    },
-  );
+    expect(app.pathname()).toBe('/');
+  });
+
+  // `/register` là màn ĐI TIẾP nên dùng mũi tên lùi một bước. Vào thẳng bằng
+  // deep link thì bước lùi đó rơi vào neo `(tabs)` — vẫn có đường về.
+  it('màn auth /register lùi một bước chứ không đóng cả nhóm', async () => {
+    const app = await openApp('/register');
+
+    await fireEvent.press(screen.getByLabelText(messages.mobile.auth.back));
+
+    expect(app.pathname()).toBe('/');
+  });
 
   it('URL lạ rơi vào +not-found chứ không phải màn trắng', async () => {
     await openApp('/khong-ton-tai');

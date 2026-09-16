@@ -53,8 +53,25 @@ export default function AuthLayout() {
         headerLeft: () => <HeaderCloseButton />,
       }}
     >
-      <Stack.Screen name="login" options={{ title: titles.login }} />
-      <Stack.Screen name="register" options={{ title: titles.register }} />
+      {/*
+        Hai màn form KHÔNG có header: ảnh đầu trang tràn lên tận mép trên, và
+        đường thoát đã nằm đè trên ảnh (X ở Sign in, mũi tên ở Create account).
+        Bật header ở đây là vừa cắt mất ảnh, vừa có HAI nút đóng cùng nhãn.
+        `title` giữ lại vì OS vẫn đọc nó khi liệt kê màn.
+
+        Phải gỡ luôn `headerLeft`, không chỉ `headerShown`: bản giả lập
+        `react-native-screens` trong jest vẫn render nội dung header kể cả khi
+        nó bị ẩn, nên ở test cây route sẽ có hai nút cùng nhãn "Close" trong khi
+        trên máy thật chỉ có một.
+      */}
+      <Stack.Screen
+        name="login"
+        options={{ title: titles.login, headerShown: false, headerLeft: () => null }}
+      />
+      <Stack.Screen
+        name="register"
+        options={{ title: titles.register, headerShown: false, headerLeft: () => null }}
+      />
       <Stack.Screen name="forgot-password" options={{ title: titles.forgotPassword }} />
     </Stack>
   );

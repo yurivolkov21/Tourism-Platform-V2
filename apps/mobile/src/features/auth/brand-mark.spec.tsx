@@ -17,7 +17,7 @@ describe('BrandMark', () => {
     await renderWithTheme(<BrandMark size="lg" />);
     const large = screen.getAllByTestId('brand-diamond')[0]?.props.style.width;
 
-    screen.unmount();
+    await screen.unmount();
     await renderWithTheme(<BrandMark />);
     const small = screen.getAllByTestId('brand-diamond')[0]?.props.style.width;
 

@@ -18,7 +18,7 @@ describe('ResultScreen', () => {
     expect(screen.getByText('Email verified')).toBeTruthy();
     expect(screen.getByText('Welcome aboard — log in to start travelling.')).toBeTruthy();
 
-    fireEvent.press(screen.getByText('Sign in'));
+    await fireEvent.press(screen.getByText('Sign in'));
 
     expect(onAction).toHaveBeenCalled();
   });
