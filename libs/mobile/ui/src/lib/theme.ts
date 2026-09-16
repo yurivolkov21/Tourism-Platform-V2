@@ -78,7 +78,7 @@ export const MOBILE_FONTS = {
 /**
  * Gắn alpha vào một màu token. Nhận cả hex 6 lẫn 8 ký tự vì token `scrim` đã mang
  * sẵn alpha. Nhờ hàm này mà dải mờ trên ảnh vẫn suy từ token — không ai phải gõ
- * `rgba()`, thứ mà `scripts/check-mobile-tokens-only.mjs` sẽ bắt.
+ * màu trong suốt bằng tay, thứ mà `scripts/check-mobile-tokens-only.mjs` sẽ bắt.
  */
 export function withAlpha(color: string, alpha: number): string {
   const base = color.slice(0, 7);
