@@ -17,7 +17,7 @@ describe('IconButton', () => {
     const onPress = jest.fn();
     await renderWithTheme(<IconButton icon="x" accessibilityLabel="Close" onPress={onPress} />);
 
-    fireEvent.press(screen.getByLabelText('Close'));
+    await fireEvent.press(screen.getByLabelText('Close'));
 
     expect(onPress).toHaveBeenCalled();
   });

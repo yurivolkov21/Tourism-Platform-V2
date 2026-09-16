@@ -15,7 +15,7 @@ describe('Checkbox', () => {
     const box = screen.getByLabelText('Agree to terms');
     expect(box.props.accessibilityState).toMatchObject({ checked: false });
 
-    fireEvent.press(box);
+    await fireEvent.press(box);
 
     expect(onValueChange).toHaveBeenCalledWith(true);
   });

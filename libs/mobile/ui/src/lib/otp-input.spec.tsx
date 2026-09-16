@@ -9,7 +9,7 @@ describe('OtpInput', () => {
       <OtpInput value="" accessibilityLabel="Verification code" onChangeText={onChangeText} />,
     );
 
-    fireEvent.changeText(screen.getByLabelText('Verification code'), '4a8-2 190999');
+    await fireEvent.changeText(screen.getByLabelText('Verification code'), '4a8-2 190999');
 
     expect(onChangeText).toHaveBeenCalledWith('482190');
   });

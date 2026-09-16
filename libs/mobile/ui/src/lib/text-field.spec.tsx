@@ -52,7 +52,7 @@ describe('TextField', () => {
     );
 
     expect(screen.getByDisplayValue('correct-horse').props.secureTextEntry).toBe(true);
-    fireEvent.press(screen.getByLabelText('Show password'));
+    await fireEvent.press(screen.getByLabelText('Show password'));
     // RNTL 14 render bất đồng bộ: phải đợi lần vẽ lại rồi mới soi prop, không thì
     // đọc trúng cây cũ (cùng bẫy đã ghi ở runbook mobile-dev-loop §6).
     await screen.findByLabelText('Hide password');
