@@ -2,6 +2,7 @@ import { fireEvent, screen } from '@testing-library/react-native';
 import { StyleSheet, Text } from 'react-native';
 import { renderWithTheme, themeFor } from '../test-utils';
 import { BUTTON_VARIANTS, Button, type ButtonVariant } from './button';
+import { withAlpha } from './theme';
 
 const variants = Object.keys(BUTTON_VARIANTS) as ButtonVariant[];
 
@@ -19,6 +20,15 @@ describe('Button', () => {
       background === null ? 'transparent' : theme.colors[background],
     );
     expect(textStyle.color).toBe(theme.colors[foreground]);
+  });
+
+  it('biến thể "media" viền bằng chính màu chữ-trên-ảnh, pha loãng', async () => {
+    const theme = themeFor('dark');
+    await renderWithTheme(<Button label="Đặt tour" variant="media" />, 'dark');
+
+    const style = StyleSheet.flatten(screen.getByRole('button').props.style);
+
+    expect(style.borderColor).toBe(withAlpha(theme.colors['on-media'], 0.35));
   });
 
   it('có accessibilityRole "button" để trình đọc màn hình gọi đúng tên', async () => {

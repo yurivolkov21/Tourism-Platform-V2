@@ -6,6 +6,7 @@ import {
   screen,
   testRouter,
 } from 'expo-router/testing-library';
+import { onboardingStore } from '@/features/onboarding/onboarding-store';
 
 // Spec của cây route đặt NGOÀI `src/app` là bắt buộc: expo-router coi mọi file
 // `.tsx` dưới thư mục app là một route (ignore list của nó chỉ có `+html`,
@@ -14,6 +15,14 @@ import {
 
 const shell = messages.mobile.appShell;
 const placeholder = shell.placeholder.title;
+
+// Mọi test trong file này mô phỏng người ĐÃ xem onboarding — nếu không, vỏ ứng
+// dụng sẽ thay màn sang `/onboarding` ngay lúc mở và mọi khẳng định về route
+// khác đều sai. Đường vào lần đầu có spec riêng ở `onboarding-entry.spec.tsx`,
+// đặt thành file riêng vì jest chỉ cấp sổ module mới cho từng FILE.
+beforeEach(async () => {
+  await onboardingStore.markSeen();
+});
 
 /**
  * `renderRouter` gắn `getPathname()` lên chính đối tượng Promise mà `render()`
@@ -67,6 +76,7 @@ const EXPECTED_ROUTES = [
   '(tabs)/trips',
   '+not-found',
   'bookings/[code]',
+  'onboarding',
   'tours/[slug]',
 ];
 

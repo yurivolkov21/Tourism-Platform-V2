@@ -1,20 +1,28 @@
 import type { ReactNode } from 'react';
-import { Pressable, type PressableProps, StyleSheet } from 'react-native';
+import { Pressable, type PressableProps } from 'react-native';
 import { AppText } from './app-text';
-import type { MobileColorKey } from './theme';
+import { type MobileColorKey, withAlpha } from './theme';
 import { useTheme } from './theme-provider';
 
 /**
- * Ba vai của nút, mỗi vai một cặp màu token. `background: null` nghĩa là nền
- * trong suốt — nút viền, không phải một màu token nào.
+ * Bốn vai của nút, mỗi vai một cặp màu token. `background: null` nghĩa là nền
+ * trong suốt — nút viền, không phải một màu token nào; `border` khai luôn màu và
+ * độ đậm của viền để không vai nào phải đặc cách trong thân component.
  */
 export const BUTTON_VARIANTS = {
-  primary: { background: 'primary', foreground: 'primary-foreground', bordered: false },
-  secondary: { background: 'secondary', foreground: 'secondary-foreground', bordered: false },
-  ghost: { background: null, foreground: 'primary', bordered: true },
+  primary: { background: 'primary', foreground: 'primary-foreground', border: null },
+  secondary: { background: 'secondary', foreground: 'secondary-foreground', border: null },
+  ghost: { background: null, foreground: 'primary', border: { color: 'border', alpha: 1 } },
+  // Nút phụ nằm TRÊN ẢNH (onboarding trang cuối): chữ lấy màu chữ-trên-ảnh, viền
+  // cùng màu nhưng pha loãng để không cắt ngang ảnh.
+  media: { background: null, foreground: 'on-media', border: { color: 'on-media', alpha: 0.35 } },
 } as const satisfies Record<
   string,
-  { background: MobileColorKey | null; foreground: MobileColorKey; bordered: boolean }
+  {
+    background: MobileColorKey | null;
+    foreground: MobileColorKey;
+    border: { color: MobileColorKey; alpha: number } | null;
+  }
 >;
 
 export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
@@ -41,7 +49,7 @@ export function Button({
   ...rest
 }: ButtonProps) {
   const theme = useTheme();
-  const { background, foreground, bordered } = BUTTON_VARIANTS[variant];
+  const { background, foreground, border } = BUTTON_VARIANTS[variant];
   // `PressableProps.disabled` cho phép cả `null`; quy về boolean thật một lần
   // để `accessibilityState` không bao giờ báo `null` cho trình đọc màn hình.
   const isDisabled = disabled === true;
@@ -71,9 +79,9 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
         },
-        bordered && {
-          borderWidth: StyleSheet.hairlineWidth,
-          borderColor: theme.colors.border,
+        border !== null && {
+          borderWidth: 1,
+          borderColor: withAlpha(theme.colors[border.color], border.alpha),
         },
         // Phản hồi khi ngón còn đặt trên nút — mờ đi thay vì đổi màu, để cùng
         // một cách với mọi biến thể mà không cần thêm khoá token.

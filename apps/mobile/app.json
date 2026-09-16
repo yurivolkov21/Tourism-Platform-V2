@@ -15,6 +15,11 @@
       "predictiveBackGestureEnabled": false
     },
     "plugins": ["expo-router", "expo-font", "expo-splash-screen"],
+    "splash": {
+      "image": "./assets/splash-mark.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#202a28"
+    },
     "extra": {
       "router": {
         "sitemap": false

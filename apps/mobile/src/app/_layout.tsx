@@ -8,13 +8,14 @@ import { Literata_700Bold } from '@expo-google-fonts/literata';
 import { messages } from '@tourism/i18n';
 import { AppText, Button, EmptyState, Screen, ThemeProvider, useTheme } from '@tourism/mobile-ui';
 import { useFonts } from 'expo-font';
-import { type ErrorBoundaryProps, Stack } from 'expo-router';
+import { type ErrorBoundaryProps, router, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthActionsProvider } from '@/features/auth/auth-actions';
 import { createMockAuthActions } from '@/features/auth/mock-auth-actions';
+import { OnboardingStoreProvider, onboardingStore } from '@/features/onboarding/onboarding-store';
 import { env } from '@/lib/env';
 
 // Giữ splash cho tới khi vỏ điều hướng dựng xong — tránh một nháy nền trắng
@@ -60,6 +61,8 @@ function RootStack() {
       <Stack.Screen name="(auth)" options={{ presentation: 'modal', headerShown: false }} />
       <Stack.Screen name="tours/[slug]" options={{ title: titles.tourDetail }} />
       <Stack.Screen name="bookings/[code]" options={{ title: titles.bookingDetail }} />
+      {/* Onboarding phủ toàn màn và tự vẽ mọi thứ của nó. */}
+      <Stack.Screen name="onboarding" options={{ headerShown: false }} />
       <Stack.Screen name="+not-found" options={{ title: titles.notFound }} />
     </Stack>
   );
@@ -111,19 +114,41 @@ export default function RootLayout() {
     Archivo_700Bold,
   });
 
-  // Splash giữ tới khi font xong, nhưng cây React vẫn render NGAY từ đầu — trả
-  // `null` trong lúc chờ là đổi một nháy chữ hệ thống lấy một màn trắng, và là
-  // thứ làm test cây route (`routes.spec.tsx`) thấy app rỗng.
+  // Cờ "đã xem onboarding" đọc MỘT lần lúc mở app. Chưa xem thì thay màn ngay,
+  // không đẩy thêm một bước vào stack: onboarding không phải chỗ để lùi về.
+  const [onboardingChecked, setOnboardingChecked] = useState(false);
+
   useEffect(() => {
-    if (fontsLoaded) void SplashScreen.hideAsync();
-  }, [fontsLoaded]);
+    let cancelled = false;
+
+    void onboardingStore.hasSeen().then((seen) => {
+      if (cancelled) return;
+      if (!seen) router.replace('/onboarding');
+      setOnboardingChecked(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Splash giữ tới khi font xong VÀ đọc xong cờ onboarding, nhưng cây React vẫn
+  // render NGAY từ đầu — trả `null` trong lúc chờ là đổi một nháy chữ hệ thống
+  // lấy một màn trắng, và là thứ làm test cây route (`routes.spec.tsx`) thấy app
+  // rỗng. Đợi cả hai để không ai kịp thấy một nháy Home trước khi nhảy sang
+  // onboarding.
+  useEffect(() => {
+    if (fontsLoaded && onboardingChecked) void SplashScreen.hideAsync();
+  }, [fontsLoaded, onboardingChecked]);
 
   return (
     <ThemeProvider>
       <SafeAreaProvider>
         <AuthActionsProvider value={authActions}>
-          <StatusBar style="auto" />
-          <RootStack />
+          <OnboardingStoreProvider value={onboardingStore}>
+            <StatusBar style="auto" />
+            <RootStack />
+          </OnboardingStoreProvider>
         </AuthActionsProvider>
       </SafeAreaProvider>
     </ThemeProvider>
