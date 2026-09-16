@@ -1,5 +1,6 @@
 'use client';
 
+import { type AuthErrorKey, mapAuthError } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
@@ -12,7 +13,6 @@ import { ChangePasswordForm } from '@/components/account/change-password-form';
 import { FieldError, invalidProps } from '@/components/auth/field-error';
 import type { SessionUser } from '@/lib/api/session';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
 import { validateProfileName, validateProfilePhone } from '@/lib/auth-form';
 
 type EditableField = 'name' | 'phone' | 'password';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fieldOfAuthError, mapAuthError } from './auth-errors';
+import { fieldOfAuthError, mapAuthError } from './auth-errors.js';
 
 describe('mapAuthError', () => {
   it('status 401 -> invalidCredentials', () => {

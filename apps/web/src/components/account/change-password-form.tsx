@@ -1,5 +1,6 @@
 'use client';
 
+import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { Button } from '@tourism/ui/components/button';
 import { Input } from '@tourism/ui/components/input';
@@ -10,7 +11,6 @@ import { AccountActionError } from '@/components/account/account-action-error';
 import { FieldError, invalidProps } from '@/components/auth/field-error';
 import { PasswordStrengthField } from '@/components/auth/password-strength-field';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@/lib/auth-errors';
 import { type ChangePasswordErrors, validateChangePassword } from '@/lib/auth-form';
 
 /** 401 giữa chừng có UI riêng (message + link đăng nhập lại, spec §5), tách

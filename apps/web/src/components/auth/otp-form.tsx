@@ -1,5 +1,6 @@
 'use client';
 
+import { type AuthErrorKey, mapAuthError } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import {
   InputOTP,
@@ -11,7 +12,6 @@ import { useRouter } from 'next/navigation';
 import { type FormEvent, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
-import { type AuthErrorKey, mapAuthError } from '@/lib/auth-errors';
 import { OTP_LENGTH, validateOtp } from '@/lib/auth-form';
 import { safeRedirect } from '@/lib/safe-redirect';
 import { FieldError } from './field-error';

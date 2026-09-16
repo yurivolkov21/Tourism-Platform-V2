@@ -14,6 +14,7 @@
     "@orpc/contract": "1.14.8",
     "@orpc/openapi-client": "1.14.8",
     "@tourism/contract": "workspace:*",
+    "@tourism/core": "workspace:*",
     "@tourism/i18n": "workspace:*",
     "@tourism/tokens": "workspace:*",
     "@tourism/ui": "workspace:*",
