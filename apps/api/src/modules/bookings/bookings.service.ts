@@ -14,6 +14,7 @@ import {
   isWithinGracePeriod,
   policyRefundAmount,
   refundPercentForRequest,
+  vietnamToday,
 } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
@@ -28,6 +29,7 @@ import { calendarDate } from '../../lib/calendar-date.js';
 import { createdAtRange } from '../../lib/created-at-range.js';
 import { escapeLike } from '../../lib/like.js';
 import { toPaged } from '../../lib/paged.js';
+import { vietnamDateSql } from '../../lib/vietnam-date-sql.js';
 import { pickCover } from '../catalog/catalog.service.js';
 import { perPersonTotal } from '../catalog/tour-costs.js';
 import { MediaService } from '../media/media.service.js';
@@ -228,7 +230,8 @@ function estimateRefund(
   if (booking.status !== BookingStatus.PAID) return null;
   const now = new Date();
   const departureDay = calendarDate(booking.departureStartDate);
-  if (departureDay < todayUtc()) return null; // chuyến đã đi
+  // "Đã đi" so với hôm nay theo giờ Việt Nam (ADR-0041 §7).
+  if (departureDay < vietnamToday(now)) return null; // chuyến đã đi
   const percent = refundPercentForRequest({
     requestedAt: now,
     paidAt: booking.paidAt?.toISOString() ?? null,
@@ -289,15 +292,11 @@ const CODE_MINT_ATTEMPTS = 3;
  */
 const SESSION_REUSE_MIN_REMAINING_MS = 5 * 60_000;
 
-/**
- * "Hôm nay" theo UTC — MỘT thước cho mọi gate "chuyến đã đi chưa" ở tầng Node
- * (`create`, `reCheckout`, phân loại claim, `estimateRefund`), khớp với
- * `(now() AT TIME ZONE 'UTC')::date` trong CTE claim (ADR-0009 AMEND 2).
- * `start_date` là `@db.Date` ngày lịch của điểm khởi hành (VN, UTC+7), nên
- * "đã đi" theo UTC rộng hơn đời thật đúng 7 giờ — cùng lề với luật walk-in
- * cùng ngày của `create`, chấp nhận có chủ đích.
- */
-const todayUtc = (): string => new Date().toISOString().slice(0, 10);
+// Thước ngày của mọi gate "chuyến đã đi chưa" (`create`, `reCheckout`, phân loại
+// claim, `estimateRefund`) là NGÀY VIỆT NAM (ADR-0041 §7, thay thước UTC của
+// ADR-0009 AMEND 2): `vietnamToday(now)` ở Node, `vietnamDateSql` trong CTE
+// claim. `start_date` là ngày lịch VN; thước UTC từng để tour một ngày còn
+// "chưa đi" tới 06:59 sáng hôm sau.
 
 /**
  * Các customer booking flow (spec P2 §3, W1) — logic create-PENDING port từ
@@ -320,9 +319,10 @@ export class BookingsService {
    *
    * Validation (giữ nguyên semantics đã port): departure tồn tại, tour của nó
    * đã published, status OPEN, và chưa DEPARTED — same-day vẫn book được
-   * (walk-in, rule Nexora); chỉ startDate strictly-past mới reject. So sánh
-   * calendar-date string kiểu UTC (`@db.Date` load thành nửa đêm UTC) độc lập
-   * với timezone của server.
+   * (walk-in, rule Nexora); chỉ startDate strictly-past mới reject. "Hôm nay"
+   * là ngày Việt Nam (`vietnamToday`, ADR-0041 §7); `@db.Date` load thành nửa
+   * đêm UTC nên `calendarDate` ra đúng ngày lịch đã lưu, độc lập với timezone
+   * của server.
    *
    * Seats: CHỈ soft check (`seatsTotal - seatsBooked >= party`) — KHÔNG phải
    * reservation. Invariant #1 (spec §4): một PENDING booking KHÔNG giữ seat
@@ -367,7 +367,7 @@ export class BookingsService {
     if (
       !departure.tour.isPublished ||
       departure.status !== DepartureStatus.OPEN ||
-      calendarDate(departure.startDate) < todayUtc()
+      calendarDate(departure.startDate) < vietnamToday(new Date())
     ) {
       throw new DepartureNotAvailableError();
     }
@@ -528,9 +528,9 @@ export class BookingsService {
       });
       if (booking.status !== BookingStatus.PENDING) throw new BookingNotPendingError();
 
-      // Cùng gate chuyến với `create` và với claim (ADR-0009 AMEND 1/2): mint
-      // trang thanh toán cho một booking mà claim chắc chắn từ chối là mời
-      // khách trả một khoản sẽ bị auto-refund.
+      // Cùng gate chuyến với `create` và với claim (ADR-0009 AMEND 1, thước ngày
+      // Việt Nam của ADR-0041 §7): mint trang thanh toán cho một booking mà claim
+      // chắc chắn từ chối là mời khách trả một khoản sẽ bị auto-refund.
       const departure = await tx.tourDeparture.findUnique({
         where: { id: booking.departureId },
         select: { status: true, startDate: true },
@@ -538,7 +538,7 @@ export class BookingsService {
       if (
         !departure ||
         departure.status !== DepartureStatus.OPEN ||
-        calendarDate(departure.startDate) < todayUtc()
+        calendarDate(departure.startDate) < vietnamToday(new Date())
       ) {
         throw new DepartureNotAvailableError();
       }
@@ -900,13 +900,15 @@ export class BookingsService {
             -- UPDATE target — chấp nhận: race "đóng chuyến đúng lúc capture về"
             -- là thao tác vận hành hiếm, không phải race tiền; race tiền
             -- (double claim) vẫn gate trên b.status ở trên.
-            -- Ngày so theo UTC TƯỜNG MINH (ADR-0009 AMEND 2), cùng thước với
-            -- todayUtc() phía Node — không phụ thuộc TZ session của DB.
+            -- Ngày so theo giờ Việt Nam (ADR-0041 §7, thay thước UTC của
+            -- ADR-0009 AMEND 2), cùng thước với vietnamToday() phía Node —
+            -- không phụ thuộc TZ session của DB. Gate này chỉ giữ "chưa khởi
+            -- hành": thanh toán dở lúc hạn chót đặt chỗ trôi qua vẫn được nhận.
             AND EXISTS (
               SELECT 1 FROM tour_departures dep
               WHERE dep.id = b.departure_id
                 AND dep.status = 'OPEN'::"DepartureStatus"
-                AND dep.start_date >= (now() AT TIME ZONE 'UTC')::date
+                AND dep.start_date >= ${vietnamDateSql(Prisma.sql`now()`)}
             )
           RETURNING b.id, b.departure_id, (b.num_adults + b.num_children) AS seats,
                     b.code, b.contact_email, b.contact_name, b.tour_title,
@@ -973,7 +975,7 @@ export class BookingsService {
       if (
         !departure ||
         departure.status !== DepartureStatus.OPEN ||
-        calendarDate(departure.startDate) < todayUtc()
+        calendarDate(departure.startDate) < vietnamToday(new Date())
       ) {
         outcome = 'departure-closed';
       } else {

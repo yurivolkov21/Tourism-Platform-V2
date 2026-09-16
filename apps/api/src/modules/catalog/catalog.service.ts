@@ -8,10 +8,11 @@ import type {
   TourDetail,
   ToursListQuery,
 } from '@tourism/contract';
+import { vietnamToday } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import type { Prisma } from '../../generated/prisma/client.js';
 import { DepartureStatus, MediaOwnerType, MediaRole } from '../../generated/prisma/enums.js';
-import { calendarDate } from '../../lib/calendar-date.js';
+import { calendarDate, startOfDayUtc } from '../../lib/calendar-date.js';
 import { escapeLike } from '../../lib/like.js';
 import { MediaService } from '../media/media.service.js';
 
@@ -29,8 +30,13 @@ export const pickCover = (media: MediaItem[] | undefined): MediaItem | null =>
  */
 const money = (value: Prisma.Decimal): string => value.toFixed(2);
 
-/** Nửa đêm UTC hôm nay — cận dưới cho departure "upcoming". */
-const startOfTodayUtc = (): Date => new Date(new Date().toISOString().slice(0, 10));
+/**
+ * Cận dưới cho chuyến "sắp tới" (chưa khởi hành): 00:00 UTC của ngày HÔM NAY
+ * THEO GIỜ VIỆT NAM (ADR-0041 §7). `start_date` là ngày lịch VN, và 00:00 UTC là
+ * khuôn Prisma dùng cho cột `@db.Date`. Thước UTC cũ để chuyến khởi hành hôm
+ * qua (giờ VN) còn hiện tới 06:59 sáng nay.
+ */
+const startOfVietnamToday = (now: Date): Date => startOfDayUtc(vietnamToday(now));
 
 /** Include cấp card: category + TẤT CẢ destination qua bảng join M:N (C1 —
  * primary đứng đầu, rồi theo tên). Trước đây lọc `isPrimary/take:1` làm mất
@@ -166,7 +172,7 @@ export class CatalogService {
         where: {
           tourId: { in: ids },
           status: DepartureStatus.OPEN,
-          startDate: { gte: startOfTodayUtc() },
+          startDate: { gte: startOfVietnamToday(new Date()) },
         },
         select: { tourId: true, priceOverride: true },
       }),
@@ -205,7 +211,7 @@ export class CatalogService {
         departures: {
           where: {
             status: DepartureStatus.OPEN,
-            startDate: { gte: startOfTodayUtc() },
+            startDate: { gte: startOfVietnamToday(new Date()) },
           },
           orderBy: { startDate: 'asc' },
         },

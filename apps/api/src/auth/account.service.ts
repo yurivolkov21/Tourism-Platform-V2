@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
+import { vietnamToday } from '@tourism/contract';
 import { env } from '../config/env.js';
 import {
   BookingStatus,
@@ -7,7 +8,7 @@ import {
   MediaOwnerType,
   MediaType,
 } from '../generated/prisma/enums.js';
-import { calendarDate, startOfDayUtc } from '../lib/calendar-date.js';
+import { startOfDayUtc } from '../lib/calendar-date.js';
 import { buildCloudinaryUrl } from '../lib/cloudinary-url.js';
 import { anonymizeEnquiriesOfUser } from '../lib/enquiry-anonymize.js';
 import { isOwnAvatarPublicId } from '../lib/upload-signing.js';
@@ -90,7 +91,12 @@ export class AccountService {
    */
   private readonly failedAttempts = new Map<string, { count: number; until: number }>();
 
-  async deleteAccount(userId: string, password: string): Promise<void> {
+  /**
+   * `now` là tham số để test gate ngày tất định (ADR-0041 §7). Controller không
+   * truyền nên production dùng đồng hồ server; mọi mốc của lần xoá (gate ngày,
+   * hạn session PENDING, `deletedAt`, hàng dọn media) đọc chung mốc này.
+   */
+  async deleteAccount(userId: string, password: string, now: Date = new Date()): Promise<void> {
     // Đọc email gốc TRƯỚC khi scrub — cần để dọn Subscriber trùng email (NL-R1).
     // TOCTOU không đáng lo: chỉ chính chủ xoá tài khoản mình, và email-change đang tắt.
     const { email } = await prisma.user.findUniqueOrThrow({
@@ -129,8 +135,10 @@ export class AccountService {
     // Email tombstone unique-per-delete → email gốc được GIẢI PHÓNG (citext
     // unique) cho người khác (hoặc chính chủ) đăng ký lại.
     const tombstoneEmail = `deleted+${randomUUID()}@tombstone.local`;
-    const today = startOfDayUtc(calendarDate(new Date()));
-    const now = new Date();
+    // "Chuyến chưa kết thúc" so theo NGÀY VIỆT NAM (ADR-0041 §7): `departure_end_date`
+    // là ngày lịch VN, thước UTC cũ giữ khách thêm tới 7 tiếng sau ngày về. 00:00
+    // UTC của ngày ấy là khuôn Prisma dùng cho cột `@db.Date`.
+    const today = startOfDayUtc(vietnamToday(now));
 
     // GATE nghiệp vụ TRONG cùng transaction với tombstone (ADR-0017 §7b, câu
     // gốc user duyệt — vòng vá review W2 trả lại sau khi bản thi công tự nới):

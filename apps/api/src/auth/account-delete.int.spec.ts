@@ -1,7 +1,10 @@
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { Test } from '@nestjs/testing';
+import { vietnamToday } from '@tourism/contract';
 import { AppModule } from '../app.module.js';
 import { EmailType } from '../generated/prisma/enums.js';
+import { startOfDayUtc } from '../lib/calendar-date.js';
+import { AccountHasPaidBookingsError, AccountService } from './account.service.js';
 import { prisma } from './auth.config.js';
 
 /**
@@ -73,6 +76,12 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
     opts: {
       status: 'PAID' | 'CANCELLED' | 'PARTIALLY_REFUNDED' | 'PENDING';
       departureInDays: number;
+      /**
+       * Ngày khởi hành cố định (00:00 UTC của một ngày lịch), THẮNG
+       * `departureInDays`. Dùng khi test cần đúng một ngày lịch Việt Nam thay vì
+       * "bây giờ + n ngày" cắt theo UTC.
+       */
+      startDate?: Date;
       /** Hạn session thanh toán (PENDING) — mặc định null. */
       checkoutSessionExpiresAt?: Date;
     },
@@ -91,7 +100,7 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
         isPublished: true,
       },
     });
-    const start = new Date(Date.now() + opts.departureInDays * 864e5);
+    const start = opts.startDate ?? new Date(Date.now() + opts.departureInDays * 864e5);
     const departure = await prisma.tourDeparture.create({
       data: { tourId: tour.id, startDate: start, endDate: start, seatsTotal: 10, seatsBooked: 1 },
     });
@@ -177,9 +186,15 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
   });
 
   it('4b. PAID khởi hành HÔM NAY (chuyến đang chạy) và PARTIALLY_REFUNDED đã đi xong → đều 409 (ADR-0017 §7b, câu gốc)', async () => {
-    // Biên ngày: endDate = hôm nay >= hôm nay → chưa kết thúc → chặn.
+    // Biên ngày: endDate = hôm nay >= hôm nay → chưa kết thúc → chặn. "Hôm nay"
+    // là ngày Việt Nam (ADR-0041 §7): `Date.now()` cắt UTC rơi vào HÔM QUA giờ
+    // VN trong khung 00:00–06:59, và test sẽ đỏ theo giờ chạy.
     const a = await createUserAndSignIn('paid-today@example.com');
-    await createBooking(a.userId, 'paid-today@example.com', { status: 'PAID', departureInDays: 0 });
+    await createBooking(a.userId, 'paid-today@example.com', {
+      status: 'PAID',
+      departureInDays: 0,
+      startDate: startOfDayUtc(vietnamToday(new Date())),
+    });
     expect((await deleteAccount(a.cookie, { password: PASSWORD })).statusCode).toBe(409);
     // Hoàn một phần, chuyến đã đi: sổ còn phần dư phải hoàn → vẫn chặn, bất kể ngày.
     const b = await createUserAndSignIn('partial-past@example.com');
@@ -210,6 +225,31 @@ describe('DELETE /api/account đòi xác thực lại + gate nghiệp vụ (ADR-
       checkoutSessionExpiresAt: new Date(Date.now() - 1000),
     });
     expect((await deleteAccount(dead.cookie, { password: PASSWORD })).statusCode).toBe(204);
+  });
+
+  it('4d. gate PAID so ngày về theo NGÀY VIỆT NAM, tất định qua tham số `now` (ADR-0041 §7)', async () => {
+    const email = 'vietnam-day@example.com';
+    const { userId } = await createUserAndSignIn(email);
+    // Chuyến một ngày 19/10/2026: ngày về cũng là 19/10.
+    await createBooking(userId, email, {
+      status: 'PAID',
+      departureInDays: 0,
+      startDate: new Date('2026-10-19T00:00:00.000Z'),
+    });
+    const account = app.get(AccountService);
+
+    // 16:30Z = 23:30 ngày 19/10 giờ VN: chuyến chưa hết ngày về → chặn.
+    await expect(
+      account.deleteAccount(userId, PASSWORD, new Date('2026-10-19T16:30:00.000Z')),
+    ).rejects.toBeInstanceOf(AccountHasPaidBookingsError);
+
+    // 17:30Z = 00:30 ngày 20/10 giờ VN: chuyến đã kết thúc → xoá được. Thước UTC
+    // cũ vẫn thấy 19/10 nên chặn nhầm thêm 7 tiếng.
+    await expect(
+      account.deleteAccount(userId, PASSWORD, new Date('2026-10-19T17:30:00.000Z')),
+    ).resolves.toBeUndefined();
+    const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    expect(user.deletedAt).not.toBeNull();
   });
 
   it('2b. sai mật khẩu 5 lần → lần 6 là 429 TOO_MANY_ATTEMPTS kể cả khi gõ ĐÚNG (chống dò bằng cookie trộm)', async () => {
