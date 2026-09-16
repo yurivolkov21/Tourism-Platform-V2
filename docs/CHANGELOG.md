@@ -8,28 +8,28 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
-## 2026-09-16 — P5b-1 cụm auth mobile: `@tourism/core` (đã merge) và 17 khung giao diện tĩnh (**CHƯA merge, chờ review**)
+## 2026-09-16 — P5b-1 cụm auth mobile: `@tourism/core` và 17 khung giao diện tĩnh (hai nhánh, ff vào `main`)
 
 Spec: [specs/2026-09-16-p5b-auth-wireframe-design.md](specs/2026-09-16-p5b-auth-wireframe-design.md) ·
 plan: [plans/2026-09-16-p5b-auth-wireframe.md](plans/2026-09-16-p5b-auth-wireframe.md) ·
 mockup user duyệt: `design/mockups/mobile-auth-screens.src.html` ·
 bàn giao: [conventions/mobile-auth-handoff.md](conventions/mobile-auth-handoff.md).
 
-### Nhánh 1 — `refactor/shared-auth-rules` ✅ đã ff vào `main`
+### Nhánh 1 — `refactor/shared-auth-rules` (4 commit, `d3a3c442`…`8fa89ff3`)
 
-- `fc83a847` dựng `@tourism/core` tại `libs/shared/core` (đóng gói y hệt `@tourism/i18n`)
+- `d3a3c442` dựng `@tourism/core` tại `libs/shared/core` (đóng gói y hệt `@tourism/i18n`)
   và chuyển NGUYÊN VĂN `auth-errors.ts` của web sang, kèm test.
-- `78146fa0` chuyển tiếp `auth-form.ts`; 7 file của web đổi đường import, không đổi
+- `7baeee14` chuyển tiếp `auth-form.ts`; 7 file của web đổi đường import, không đổi
   một dòng logic nào.
-- `15a8c838` hàng rào import canh bằng máy (`package-boundary.ts`): chỉ được import
+- `d4763519` hàng rào import canh bằng máy (`package-boundary.ts`): chỉ được import
   tương đối, `@tourism/contract` và `@tourism/i18n` — cấm react/react-native/next/DOM/Node.
-- `1c86b5d4` khai type Node cho chính spec quét file đó (ADR-0042).
+- `8fa89ff3` khai type Node cho chính spec quét file đó (ADR-0042).
 - `AuthErrorField` thêm `'otp'` để mã xác minh sai rơi đúng kênh 1; web không đổi
   hành vi vì web không có màn nào nhận field `otp`.
 
-### Nhánh 2 — `feat/p5b-auth-screens` ⏸ **CHƯA merge, chờ user review**
+### Nhánh 2 — `feat/p5b-auth-screens` (14 commit, `fcffded1`…`8504135a`)
 
-13 commit, `2c06124d`…`37232ee7`. Dựng đủ **17 khung** của spec §4 dưới dạng giao
+Dựng đủ **17 khung** của spec §4 dưới dạng giao
 diện TĨNH; không màn nào gọi API thật.
 
 - **Bộ primitive mới** (`@tourism/mobile-ui`): `TextField` (nhãn nổi, nút hiện/ẩn
@@ -75,7 +75,8 @@ diện TĨNH; không màn nào gọi API thật.
 - **Bản giả lập `react-native-screens` trong jest vẫn render nội dung header đã ẩn**,
   nên `headerShown: false` một mình vẫn để lại hai nút cùng nhãn trong cây test.
 
-Tests after: `gate:int` xanh lúc 16/09 (6/6 task, int 496 test ở 37 file). Unit 3786
+Tests after: `gate:int` xanh lúc 16/09 (6/6 task, int 496 test ở 37 file), đo lại sau
+khi rebase lên `main` thì `gate` vẫn 28/28. Unit 3786
 test: web 1477 · api 809 · admin 918 · contract 255 · mobile 147 · mobile-ui 84 ·
 core 46 · ui 22 · tokens 18 · i18n 10. So với 15/09 (3627): mobile thêm 118,
 mobile-ui thêm 32, i18n thêm 4, core 46 test mới trong đó 41 chuyển nguyên văn từ
