@@ -1935,6 +1935,9 @@ export const messages = {
         login: 'Sign in',
         register: 'Create account',
         forgotPassword: 'Forgot password',
+        verifyEmail: 'Verify email',
+        resetPassword: 'Reset password',
+        success: 'All set',
         tourDetail: 'Tour details',
         bookingDetail: 'Your booking',
         notFound: 'Page not found',
@@ -1974,25 +1977,35 @@ export const messages = {
       agreeAnd: ' and ',
       agreePrivacy: 'Privacy Policy',
     },
+    /**
+     * Ba trang onboarding, chữ lấy từ bản thiết kế user duyệt 16/09
+     * (`docs/design/mockups/mobile-auth-screens.src.html`, khung 1b–1d).
+     *
+     * Tên địa danh viết KHÔNG dấu: đây là chữ user-facing tiếng Anh (luật 7),
+     * cùng cách web gọi tên địa danh trong copy tiếng Anh.
+     */
     onboarding: {
       skip: 'Skip',
       next: 'Next page',
       pages: [
         {
-          title: 'Explore the wonders of Vietnam',
-          location: 'Hà Giang, Việt Nam',
+          place: 'Hoi An, Vietnam',
+          title: 'Discover Vietnam, north to south',
+          body: 'Small-group tours across all three regions, led by local guides.',
         },
         {
-          title: 'Journeys crafted around you',
-          location: 'Hạ Long Bay, Việt Nam',
+          place: 'Lan Ha Bay, Vietnam',
+          title: 'Book a real departure',
+          body: 'Pick a date, see how many seats are left, and pay securely.',
         },
         {
-          title: 'Travel with complete peace of mind',
-          location: 'Sa Pa, Việt Nam',
+          place: 'Ben Tre, Vietnam',
+          title: 'Your trips in your pocket',
+          body: 'Save the tours you love and keep every booking in one place.',
         },
       ],
-      signIn: 'Sign in',
-      guest: 'Explore as guest',
+      start: 'Get started',
+      haveAccount: 'I already have an account',
     },
     home: {
       greetings: {
@@ -2134,16 +2147,72 @@ export const messages = {
       createAccount: 'Create account',
       resetSentHint: 'Open the link on any device — you will set the new password on our website.',
     },
-    authErrors: {
-      invalidCredentials: 'Email or password is incorrect.',
-      emailTaken: 'An account with this email already exists.',
-      weakPassword: 'Password is too weak — use at least 8 characters.',
-      generic: 'Something went wrong. Please try again.',
-      nameRequired: 'Please enter your name.',
-      emailInvalid: 'Please enter a valid email address.',
-      passwordRequired: 'Please enter your password.',
-      passwordTooShort: 'Use at least 8 characters.',
-      confirmMismatch: 'Passwords do not match.',
+    /**
+     * Chữ của cụm màn auth (P5b-1). CHỈ chứa chữ RIÊNG của mobile: tiêu đề, phụ
+     * đề, nhãn ô, nhãn nút.
+     *
+     * Câu LỖI cố ý KHÔNG nằm ở đây — chúng dùng chung với web qua
+     * `authForms.errors` (lỗi server) và `formErrors` (lỗi kiểm ở máy), vì cùng
+     * một API và cùng một brand thì hai client không được nói hai kiểu. Khối
+     * `mobile.authErrors` cũ (bản chép thứ hai của đúng những câu ấy, chưa ai
+     * dùng) đã bị xoá cùng đợt này.
+     */
+    auth: {
+      splashTagline: 'Tours across Vietnam',
+      showPassword: 'Show password',
+      hidePassword: 'Hide password',
+      back: 'Back',
+      signIn: {
+        title: 'Welcome back',
+        body: 'Sign in to save tours and manage your trips.',
+        email: 'Email',
+        password: 'Password',
+        forgot: 'Forgot password?',
+        submit: 'Sign in',
+        or: 'or',
+        google: 'Continue with Google',
+        footer: 'New to Nexora?',
+        footerAction: 'Create account',
+        photoPlace: 'Ha Giang, Vietnam',
+      },
+      register: {
+        title: 'Create account',
+        body: 'Join to save tours and book in minutes.',
+        name: 'Full name',
+        submit: 'Create account',
+        footer: 'Already have an account?',
+        footerAction: 'Sign in',
+        photoPlace: 'Sa Pa, Vietnam',
+      },
+      verifyEmail: {
+        title: 'Check your email',
+        body: 'Enter the 6-digit code we sent to',
+        /** Phụ đề khi khách bị Sign in đẩy sang đây vì email chưa xác minh. */
+        blockedBody: "Your email isn't verified yet. We just sent a fresh code to",
+        codeLabel: 'Verification code',
+        resendIn: 'Resend code in',
+        resendPrompt: "Didn't get it?",
+        resendAction: 'Resend code',
+        resent: 'We sent a new code. It expires in 10 minutes.',
+        submit: 'Verify',
+      },
+      forgotPassword: {
+        title: 'Forgot password?',
+        body: "Enter the email you signed up with. We'll send you a link to reset your password.",
+        sentTitle: 'Check your inbox',
+        sentTo: 'Sent to',
+        backToSignIn: 'Back to sign in',
+      },
+      resetPassword: {
+        title: 'Set a new password',
+        body: "Use at least 8 characters. For your security, we'll sign you out on all devices.",
+        newPassword: 'New password',
+        confirmPassword: 'Confirm new password',
+        submit: 'Save password',
+      },
+      success: {
+        signIn: 'Sign in',
+      },
     },
     account: {
       editNameLabel: 'Display name',
