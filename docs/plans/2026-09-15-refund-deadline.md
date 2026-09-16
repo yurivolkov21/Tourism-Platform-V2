@@ -56,7 +56,7 @@
   for i in $(seq 1 30); do curl -sf http://localhost:3001/api/health > /dev/null && break; sleep 2; done
   ```
 
-  API này đọc `apps/api/.env.local` → Postgres Docker `localhost:5432/tourism` (db dev đã seed), KHÔNG phải `tourism_test` của int test. Worktree không có `.env.local` (gitignored): chép từ checkout gốc cho `apps/{api,web,admin}`, và KHÔNG chép `.env.production`. Sau mỗi task có sửa mã API, dựng lại `dist` rồi khởi động lại tiến trình này trước khi chạy cổng.
+  API này đọc `apps/api/.env.local` → Postgres Docker `localhost:5432/tourism` (db dev đã seed), KHÔNG phải `tourism_test` của int test. Worktree không có `.env.local` (gitignored): chép từ checkout gốc cho `apps/{api,web,admin}`, và KHÔNG chép `.env.production`. Sau mỗi task có sửa mã API, dựng lại `dist` rồi khởi động lại tiến trình này trước khi chạy cổng. Tiến trình API chết giữa chừng (đo 16/09: log `ECONNREFUSED` lúc khởi động) thì xem `docker ps -a` trước — container Postgres có thể đã tự tắt (`Exited (0)`); `docker start <tên container>` rồi bật lại API.
 
 ## Thứ tự và ranh giới task
 
