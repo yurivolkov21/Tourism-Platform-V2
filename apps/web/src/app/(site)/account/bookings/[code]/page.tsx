@@ -14,7 +14,12 @@ import { RevealItem } from '@/components/motion/reveal-item';
 import { VisaStamp } from '@/components/passport/visa-stamp';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
-import { bookingView, refundSummary, toCancellationView } from '@/lib/booking-vm';
+import {
+  bookingView,
+  cancellationDeadlineText,
+  legacyCancellationNote,
+  refundSummary,
+} from '@/lib/booking-vm';
 import { type ReviewSlot, reviewSlot } from '@/lib/review';
 import { formatDate, formatMoney, formatMoneyExact } from '@/lib/tours';
 
@@ -96,10 +101,14 @@ export default async function AccountBookingDetailPage({
   const t = messages.accountBookingDetail;
   const tv = messages.passportVisa;
   const slot = reviewSlot(booking);
-  const cancellation = toCancellationView(booking.cancellationStatus);
-  const view = bookingView(booking, cancellation);
+  // Nút huỷ và câu hạn chót chỉ theo cờ SERVER (`cancellation`, ADR-0041 §7) —
+  // trang không tự so ngày chót với giờ máy.
+  const view = bookingView(booking, booking.cancellation);
   const terminalNote = t.terminalNote[view.statusKey];
   const refund = refundSummary(booking);
+  const canCancel = view.actions.includes('cancelBooking');
+  const deadlineText = canCancel ? cancellationDeadlineText(booking.cancellation) : null;
+  const legacyNote = legacyCancellationNote(booking);
   const sec = t.sections;
 
   return (
@@ -230,40 +239,36 @@ export default async function AccountBookingDetailPage({
           </FramePanel>
         </Frame>
 
-        {/* ── Dưới giấy tờ: trạng thái terminal + hành động hủy (flow cũ) ── */}
+        {/* ── Dưới giấy tờ: trạng thái terminal, hạn chót huỷ, hành động ── */}
         <div className="mt-5">
           {terminalNote ? (
             <p className="mb-3 text-sm text-muted-foreground">{terminalNote}</p>
           ) : null}
-          {/* cancelLead ("Need to change plans?") chỉ có nghĩa khi còn HÀNH
-              ĐỘNG HỦY để câu dẫn tới — PENDING vừa có payNow vừa có
-              cancelPending; nút "Pay now" + "Cancel booking" bên dưới đã tự
-              nói đủ, câu dẫn hủy đứng riêng ở đây đọc lạc trọng tâm (khách
-              vừa mở trang, còn chưa chắc đã hủy). Chỉ ẩn khi payNow còn mặt
-              trong actions — mọi trạng thái PAID/khác vẫn giữ nguyên câu dẫn. */}
-          {!view.actions.includes('payNow') ? (
-            <p className="text-sm text-muted-foreground">{tv.cancelLead}</p>
+          {legacyNote ? <p className="mb-3 text-sm text-muted-foreground">{legacyNote}</p> : null}
+          {/* Câu dẫn và ngày chót chỉ đứng trước một nút huỷ THẬT. PENDING có
+              "Pay now" + "Cancel booking" tự nói đủ; booking PAID đã khởi hành
+              không còn hành động nào, câu dẫn đứng một mình là lơ lửng. */}
+          {canCancel ? <p className="text-sm text-muted-foreground">{tv.cancelLead}</p> : null}
+          {deadlineText ? (
+            <p className="mt-0.5 text-sm text-muted-foreground">{deadlineText}</p>
           ) : null}
           <div className="mt-1.5">
             <BookingActions
               view={view}
               code={booking.code}
-              // Khách thấy mình được hoàn bao nhiêu TRƯỚC khi bấm gửi
-              // (ADR-0030 §3b) — con số do SERVER tính (`refundEstimate`, W1),
-              // cùng phép tính mà màn quyết định của admin dùng, nên hai bên
-              // không thể nói hai con số khác nhau kể cả khi đồng hồ máy khách
-              // lệch.
-              refund={{
+              // Hộp xác nhận in số tiền và ngày chót do SERVER tính lúc đọc
+              // (`bookings.byCode.cancellation`) — cùng hàm luật mà lõi huỷ
+              // dùng, nên con số trong hộp là con số sẽ hoàn.
+              booking={{
                 code: booking.code,
                 tourTitle: booking.tourTitle,
+                tourSlug: booking.tourSlug,
                 departureStartDate: booking.departureStartDate,
                 departureEndDate: booking.departureEndDate,
                 numAdults: booking.numAdults,
                 numChildren: booking.numChildren,
-                totalAmount: booking.totalAmount,
-                refundedTotal: booking.refundedTotal,
                 currency: booking.currency,
-                estimate: booking.refundEstimate,
+                cancellation: booking.cancellation,
               }}
             />
           </div>
@@ -337,7 +342,7 @@ function RefundLine({
           // Không hoàn đồng nào thì câu tiếp theo phải là LÝ DO tra ở đâu,
           // không phải lời hứa về thời gian chờ.
           <Link href="/cancellation-policy" className="underline-offset-4 hover:underline">
-            {t.schedule}
+            {messages.cancellationDeadline.policyLink}
           </Link>
         ) : (
           t.timing

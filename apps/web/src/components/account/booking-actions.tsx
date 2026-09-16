@@ -1,7 +1,7 @@
 'use client';
 
 import { ORPCError } from '@orpc/client';
-import type { RefundEstimate } from '@tourism/contract';
+import type { BookingCancellation } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import {
   AlertDialog,
@@ -26,32 +26,35 @@ import { api, withBrowserAuth } from '@/lib/api/client';
 import { classifySubmitError } from '@/lib/api/submit';
 import type { BookingAction, BookingView } from '@/lib/booking-vm';
 import { isCheckoutUrl } from '@/lib/checkout-url';
-import { formatDateRange, formatMoneyExact } from '@/lib/tours';
+import { formatChipDate, formatDateRange, formatMoneyExact } from '@/lib/tours';
 
 /** Trần `reason` của contract (`CancelBookingInputSchema.max(1000)`). */
 const REASON_MAX = 1000;
 
 /**
- * Phân loại lỗi hành động (Task 7/A2, spec §5): 401 giữa chừng (session hết
- * hạn khi đang thao tác) có UI RIÊNG — message + link đăng nhập lại, KHÔNG
- * auto-signout — tách khỏi `classifySubmitError` (chỉ phân throttle/lỗi
- * chung cho đường oRPC, không biết về 401).
+ * Phân loại lỗi hành động. 401 giữa chừng (session hết hạn khi đang thao tác)
+ * có UI RIÊNG — message + link đăng nhập lại, KHÔNG auto-signout — tách khỏi
+ * `classifySubmitError` (chỉ phân throttle/lỗi chung, không biết về 401).
+ *
+ * Khớp theo `code` của lỗi contract chứ không theo status: 422 của
+ * `bookings.checkout` là `NOT_PENDING` còn 422 của `bookings.cancel` là
+ * `NOT_CANCELLABLE` — cùng status, hai chuyện khác nhau (cùng khuôn
+ * `bookingSubmitErrorCopy` ở `booking-form.ts`).
  */
 type ActionErrorKind =
   | 'sessionExpired'
   | 'throttle'
-  | 'alreadyRequested'
+  | 'refundFailed'
   | 'notCancellable'
+  | 'bookingClosed'
   | 'generic';
 
 function classifyActionError(error: unknown): ActionErrorKind {
   if (error instanceof ORPCError) {
     if (error.status === 401) return 'sessionExpired';
-    // 409/422 từ `bookings.cancel` có copy RIÊNG đã tồn tại sẵn; trước đây cả
-    // hai rơi vào 'generic', tức khách bị báo "có gì đó sai" trong khi hệ
-    // thống biết chính xác chuyện gì và nói được.
-    if (error.status === 409) return 'alreadyRequested';
-    if (error.status === 422) return 'notCancellable';
+    if (error.code === 'REFUND_FAILED') return 'refundFailed';
+    if (error.code === 'NOT_CANCELLABLE') return 'notCancellable';
+    if (error.code === 'DEPARTURE_NOT_AVAILABLE') return 'bookingClosed';
   }
   return classifySubmitError(error) === 'throttle' ? 'throttle' : 'generic';
 }
@@ -62,22 +65,21 @@ function errorCopy(kind: ActionErrorKind): string {
   switch (kind) {
     case 'throttle':
       return e.throttle;
-    case 'alreadyRequested':
-      return e.alreadyRequested;
+    case 'refundFailed':
+      return e.refundFailed;
     case 'notCancellable':
       return e.notCancellable;
+    case 'bookingClosed':
+      return e.bookingClosed;
     default:
       return e.generic;
   }
 }
 
 /**
- * Link chính sách hủy — Task 7: chuyển từ footer chung chung của trang (mọi
- * mục "Manage" đều thấy, kể cả khi không còn hành động hủy nào) sang đứng
- * NGAY CẠNH text-link hủy cụ thể, chuẩn Booking.com (policy gắn vào đúng
- * hành động). Chỉ ba case còn có gì để hủy (`cancelPending`/
- * `requestCancellation`/`resubmitCancellation`) mới render cạnh nó —
- * `payNow`/`viewCancellationPending` không có action hủy để gắn vào.
+ * Link chính sách huỷ — đứng NGAY CẠNH nút huỷ cụ thể (chuẩn Booking.com:
+ * policy gắn vào đúng hành động). Chỉ hai case có gì để huỷ (`cancelPending`,
+ * `cancelBooking`) mới render nó.
  */
 function PolicyLink() {
   return (
@@ -90,129 +92,145 @@ function PolicyLink() {
   );
 }
 
+/** Phần booking mà hộp xác nhận huỷ cần — cắt đúng chừng này, không nhận cả entity. */
+export interface CancelDialogBooking {
+  /** Mã + tên tour + đợt + số khách: người ta phải NHẬN RA thứ mình sắp huỷ. */
+  code: string;
+  tourTitle: string;
+  /** Dựng link `/tours/{slug}/enquire` cho ca quá hạn (ngoại lệ, spec §3.4). */
+  tourSlug: string;
+  departureStartDate: string;
+  departureEndDate: string;
+  numAdults: number;
+  numChildren: number;
+  currency: string;
+  /**
+   * Cờ, ngày chót và số tiền SERVER tính lúc đọc (`bookings.byCode.cancellation`)
+   * — client chỉ in, KHÔNG tự so ngày chót với giờ trình duyệt (ADR-0041 §7).
+   * `null` = booking không ở trạng thái huỷ online; khi đó không có nút huỷ.
+   */
+  cancellation: BookingCancellation | null;
+}
+
 /**
- * Dialog xin huỷ booking ĐÃ TRẢ TIỀN, có ô nhập lý do.
+ * Hộp xác nhận huỷ booking ĐÃ TRẢ TIỀN — hai dạng theo cờ `withinDeadline`
+ * server trả (spec §5.3):
  *
- * CHỈ dùng cho `requestCancellation`/`resubmitCancellation`. Tuyệt đối không
- * gắn vào `cancelPending`: nhánh đó nhận input chỉ `{code}`, không lý do,
- * không qua admin, không đụng ghế — hai luồng khác nhau về bản chất chứ không
- * chỉ khác nhãn nút.
+ * - Trong hạn: số tiền hoàn nằm ngay trong câu hỏi và trên nút — đó là thứ
+ *   người ta mở hộp này ra để biết.
+ * - Quá hạn: nói thẳng không hoàn, kèm lối sang form hỏi đáp của tour cho ca
+ *   đặc biệt (hoàn thiện chí do admin quyết, spec §3.4).
  *
- * Lý do là BẮT BUỘC vì contract khai `min(1)`, và vì nó đi thẳng vào hàng đợi
- * duyệt hoàn tiền — đơn không lý do thì người duyệt không có gì để quyết. Chặn
- * ở client trước khi gọi API để khách biết ngay, thay vì gõ xong rồi ăn 400.
+ * Lý do KHÔNG bắt buộc: huỷ không còn qua hàng đợi duyệt nên không ai cần nó để
+ * quyết. Ô trống (kể cả chỉ khoảng trắng) thì gửi `undefined` để input không
+ * mang `reason`.
  *
  * `AlertDialogAction` CỐ Ý không tự đóng dialog (xem `alert-dialog.tsx`): lỗi
- * hiện ngay trong dialog và khách không mất chữ đã gõ.
+ * hiện ngay trong hộp và khách không mất chữ đã gõ.
  */
-function CancelRequestDialog({
-  label,
+function CancelBookingDialog({
+  booking,
+  cancellation,
   pending,
   error,
-  refund,
   onSubmit,
 }: {
-  label: string;
+  booking: CancelDialogBooking;
+  cancellation: BookingCancellation;
   pending: boolean;
-  /** Ước tính hoàn tiền; vắng khi trang chưa truyền booking (spec jsdom cũ). */
-  refund?: RefundEstimateInput;
   /** Lỗi render BÊN TRONG dialog. Để ngoài thì nó nằm sau lớp modal: `getByText`
    *  vẫn thấy nhưng `getByRole` thì không, tức người dùng bàn phím và trình đọc
    *  màn hình KHÔNG với tới được — kể cả link "đăng nhập lại". */
   error?: ReactNode;
-  onSubmit: (reason: string) => void;
+  onSubmit: (reason: string | undefined) => void;
 }) {
-  const t = messages.booking.detail;
+  const t = messages.accountBookingDetail;
+  const d = t.cancelDialog;
   const [reason, setReason] = useState('');
-  const [touched, setTouched] = useState(false);
   const trimmed = reason.trim();
-  const invalid = touched && trimmed.length === 0;
+  const amount = formatMoneyExact(cancellation.refundAmount, booking.currency);
+  const within = cancellation.withinDeadline;
 
   return (
-    // Task 7: trigger + policy link đứng CHUNG một hàng — "gắn liền vào hành
-    // động", KHÔNG phải hai mẩu rời rạc trên trang.
+    // Trigger + policy link đứng CHUNG một hàng — "gắn liền vào hành động".
     <div className="inline-flex flex-wrap items-center gap-3">
       <AlertDialog>
         <AlertDialogTrigger
           render={
-            // Giáng cấp từ Button nổi (`variant="outline"`) xuống text-link —
-            // dialog/textarea/submit bên dưới GIỮ NGUYÊN, chỉ trình bày nút
-            // mở dialog đổi. `h-auto px-0` gỡ khung/đệm còn sót của size mặc
-            // định (tiền lệ `profile-summary.tsx`, nút "Change" cạnh field).
+            // Text-link chứ không phải Button nổi: huỷ là hành động phụ của
+            // trang. `h-auto px-0` gỡ khung/đệm của size mặc định.
             <Button
               type="button"
               variant="link"
               className="h-auto px-0 text-destructive-emphasis"
               disabled={pending}
             >
-              {label}
+              {t.actions.cancel}
             </Button>
           }
         />
-        {/* Rộng gấp đôi mặc định (`sm:max-w-sm` = 24rem): dialog này phải chứa
-            được cả thứ đang huỷ lẫn số tiền lấy lại, cạnh nhau. Nhồi hai khối
-            ấy vào một cột hẹp thì con số — thứ người ta mở dialog ra để xem —
-            bị đẩy xuống dưới màn hình.
-
-            Tiền tố `data-[size=default]:` là BẮT BUỘC, không phải trang trí:
-            luật gốc là `data-[size=default]:sm:max-w-sm`, và một `sm:max-w-2xl`
-            trần thua nó về specificity (attribute selector) — tailwind-merge
-            cũng không gộp hai lớp khác tập biến thể, nên lớp mới sẽ nằm im
-            trong DOM mà dialog vẫn 24rem. Đo được bằng `twMerge` trước khi
-            viết. Cùng tiền tố thì tailwind-merge thay thẳng luật cũ.
-
-            `max-h`+`overflow-y-auto`: `AlertDialogContent` neo `top-1/2` và
-            KHÔNG có trần chiều cao — nội dung dài trên laptop màn thấp sẽ tràn
-            ra cả hai đầu màn hình mà không cuộn được, tức mất luôn nút gửi. */}
-        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto data-[size=default]:sm:max-w-2xl">
+        {/* `max-h`+`overflow-y-auto`: `AlertDialogContent` neo `top-1/2` và KHÔNG
+            có trần chiều cao — trên laptop màn thấp nội dung tràn ra hai đầu mà
+            không cuộn được, tức mất luôn nút xác nhận. */}
+        <AlertDialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>{t.requestTitle}</AlertDialogTitle>
-            <AlertDialogDescription>{t.requestBody}</AlertDialogDescription>
+            <AlertDialogTitle>{t.actions.cancelConfirmTitle}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {/* Một chuỗi duy nhất (một text node) cho cả hai dạng. */}
+              {within
+                ? d.withinBody(amount)
+                : `${messages.cancellationDeadline.passed(formatChipDate(cancellation.deadline))} ${d.afterBody}`}
+            </AlertDialogDescription>
           </AlertDialogHeader>
 
-          {refund ? <CancelSummary booking={refund} /> : null}
+          {/* Viền chứ không nền để tách khối: dialog là `bg-popover`, và
+              `--card`/`--popover` trong bộ token có thể trùng nhau. */}
+          <div className="flex flex-col gap-1 rounded-lg border border-border p-4">
+            <p className="font-medium text-foreground">{booking.tourTitle}</p>
+            <p className="text-sm text-muted-foreground">
+              {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
+            </p>
+            <p className="pt-1 font-mono text-xs text-muted-foreground">{booking.code}</p>
+          </div>
+
+          {within ? null : (
+            <Link
+              href={`/tours/${booking.tourSlug}/enquire`}
+              className="w-fit text-sm text-primary-emphasis underline-offset-4 hover:underline"
+            >
+              {d.afterContact}
+            </Link>
+          )}
 
           <div className="flex flex-col gap-1.5">
             <div className="flex items-baseline justify-between gap-3">
-              <Label htmlFor="cancel-reason">{t.reasonLabel}</Label>
+              <Label htmlFor="cancel-reason">{d.reasonLabel}</Label>
               <span className="font-mono text-xs text-muted-foreground tabular-nums">
-                {t.reasonCounter(trimmed.length)}
+                {d.reasonCounter(trimmed.length)}
               </span>
             </div>
             <Textarea
               id="cancel-reason"
-              rows={4}
+              rows={3}
               maxLength={REASON_MAX}
-              placeholder={t.reasonPlaceholder}
+              placeholder={d.reasonPlaceholder}
               value={reason}
-              aria-invalid={invalid}
               onChange={(event) => setReason(event.target.value)}
-              onBlur={() => setTouched(true)}
             />
-            {invalid ? (
-              <p role="alert" className="text-sm text-destructive-emphasis">
-                {t.reasonRequired}
-              </p>
-            ) : null}
           </div>
-
-          <WhatHappensNext />
 
           {error}
 
           <AlertDialogFooter>
-            <AlertDialogCancel>
-              {messages.accountBookingDetail.actions.cancelDismiss}
-            </AlertDialogCancel>
+            <AlertDialogCancel>{t.actions.cancelDismiss}</AlertDialogCancel>
             <AlertDialogAction
               disabled={pending}
-              onClick={() => {
-                setTouched(true);
-                if (trimmed.length === 0) return;
-                onSubmit(trimmed);
-              }}
+              onClick={() => onSubmit(trimmed.length > 0 ? trimmed : undefined)}
             >
-              {pending ? t.submitting : t.submitRequest}
+              {pending ? d.submitting : within ? d.withinCta(amount) : d.afterCta}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -223,37 +241,33 @@ function CancelRequestDialog({
 }
 
 /**
- * Hành động trang `/account/bookings/[code]` (spec §3) — CHỈ render theo
- * `view.actions` (bảng quyết định `bookingView`, Task 2, map action→nút),
- * KHÔNG if/else theo status trong JSX (luật Task 4).
+ * Hành động trang `/account/bookings/[code]` — CHỈ render theo `view.actions`
+ * (bảng quyết định `bookingView`), KHÔNG if/else theo status trong JSX.
  *
- * Hai đường gọi handler (Task 7/A2):
+ * Hai đường gọi handler:
  * - `onAction` truyền tay (spec jsdom truyền `vi.fn()` để soi tham số, KHÔNG
  *   đụng API thật) — override, LUÔN ưu tiên nếu có.
- * - `code` (mã booking thật) mà KHÔNG có `onAction` → nút thật gọi thẳng oRPC
- *   qua client browser (`credentials: 'include'`, ADR-0017 §1). Đây là
- *   đường page `/account/bookings/[code]/page.tsx` (Server Component) dùng —
- *   Server Component KHÔNG truyền được một hàm client thật xuống Client
- *   Component, nên "truyền handler" ở đây là truyền DỮ LIỆU (`code`) để
- *   component TỰ dựng handler, không phải truyền function qua RSC boundary.
- * - Thiếu cả hai (chưa từng xảy ra ở A2, chỉ còn ở spec cũ) → bấm không làm
- *   gì, không throw.
+ * - `code` mà KHÔNG có `onAction` → nút thật gọi thẳng oRPC qua client browser
+ *   (`credentials: 'include'`, ADR-0017 §1). Đây là đường page (Server
+ *   Component) dùng — nó không truyền được hàm client qua ranh giới RSC, nên
+ *   truyền DỮ LIỆU (`code`, `booking`) để component tự dựng handler.
+ * - Thiếu cả hai → bấm không làm gì, không throw.
  */
 export function BookingActions({
   view,
   code,
-  refund,
+  booking,
   onAction,
 }: {
   view: BookingView;
-  /** Ước tính hoàn tiền cho dialog xin huỷ (ADR-0030 §3b). */
-  refund?: RefundEstimateInput;
   /** Mã booking — cần để hành động thật gọi đúng route. Optional vì spec
    *  jsdom truyền `onAction` giả lập, không cần mã thật. */
   code?: string;
+  /** Dữ liệu cho hộp xác nhận huỷ booking đã trả; vắng thì không bày nút huỷ đó. */
+  booking?: CancelDialogBooking;
   onAction?: (action: BookingAction, reason?: string) => void;
 }) {
-  const t = messages.accountBookingDetail.actions;
+  const t = messages.accountBookingDetail;
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [errorKind, setErrorKind] = useState<ActionErrorKind | null>(null);
@@ -269,51 +283,49 @@ export function BookingActions({
     try {
       switch (action) {
         case 'payNow': {
-          const booking = await api.bookings.checkout({ code }, { context: withBrowserAuth() });
+          const result = await api.bookings.checkout({ code }, { context: withBrowserAuth() });
           // isCheckoutUrl (W3-O4): URL không https (dev cho localhost) thì
           // coi như hỏng — không assign chuỗi lạ vào location.
-          if (!booking.checkoutUrl || !isCheckoutUrl(booking.checkoutUrl)) {
+          if (!result.checkoutUrl || !isCheckoutUrl(result.checkoutUrl)) {
             setErrorKind('generic');
             break;
           }
           // Rời trang ngay — KHÔNG router.refresh() (đích tiếp theo là cổng
           // thanh toán ngoài app, không phải một trang Next khác).
-          window.location.assign(booking.checkoutUrl);
+          window.location.assign(result.checkoutUrl);
           return;
         }
         case 'cancelPending': {
           await api.bookings.cancelPending({ code }, { context: withBrowserAuth() });
-          toast.success(messages.accountBookingDetail.toast.cancelPendingTitle, {
-            description: messages.accountBookingDetail.toast.cancelPendingBody,
+          toast.success(t.toast.cancelledTitle, { description: t.toast.cancelPendingBody });
+          router.refresh();
+          break;
+        }
+        case 'cancelBooking': {
+          // Lý do chỉ đi kèm khi khách có gõ: contract để `optional`, còn một
+          // chuỗi rỗng sẽ ăn 400 vì `min(1)`.
+          const result = await api.bookings.cancel(reason ? { code, reason } : { code }, {
+            context: withBrowserAuth(),
+          });
+          // Số tiền lấy từ KẾT QUẢ huỷ, không từ con số hộp xác nhận đã in: sổ
+          // có thể đổi giữa lúc mở hộp và lúc bấm (admin hoàn thiện chí cùng lúc).
+          const refunded = Number(result.refundedAmount) > 0;
+          toast.success(t.toast.cancelledTitle, {
+            description: refunded
+              ? t.refundLine.full(formatMoneyExact(result.refundedAmount, result.booking.currency))
+              : t.refundLine.none,
           });
           router.refresh();
           break;
         }
-        case 'requestCancellation':
-        case 'resubmitCancellation': {
-          await api.bookings.cancel(
-            // Lý do do KHÁCH gõ. Trước đây chỗ này gửi một hằng số cứng, và
-            // chuỗi đó còn được email NGƯỢC lại cho chính họ ("Your reason:
-            // Requested via account portal.") — copy sai đang sống, không phải
-            // nợ thẩm mỹ.
-            { code, reason: reason ?? '' },
-            { context: withBrowserAuth() },
-          );
-          toast.success(messages.accountBookingDetail.toast.cancelRequestedTitle, {
-            description: messages.accountBookingDetail.toast.cancelRequestedBody,
-          });
-          router.refresh();
-          break;
-        }
-        case 'viewCancellationPending':
-          // Nhánh này chỉ render text (xem JSX bên dưới) — không có nút nào
-          // gọi `performAction` với action này, giữ ở đây chỉ để switch cạn
-          // hết union (exhaustiveness), khỏi cần `default`.
-          break;
       }
     } catch (error) {
-      setErrorKind(classifyActionError(error));
+      const kind = classifyActionError(error);
+      setErrorKind(kind);
       setErrorAt(action);
+      // Server nói booking không còn huỷ online được (đã huỷ ở tab khác, đã tới
+      // ngày khởi hành): đọc lại trang để nút và trạng thái khớp sự thật.
+      if (kind === 'notCancellable') router.refresh();
     } finally {
       setPending(false);
     }
@@ -329,12 +341,8 @@ export function BookingActions({
       fallback={errorCopy(errorKind)}
     />
   ) : null;
-  /** Ba hành động này sống trong dialog — lỗi của chúng đi vào trong. */
-  const IN_DIALOG: BookingAction[] = [
-    'cancelPending',
-    'requestCancellation',
-    'resubmitCancellation',
-  ];
+  /** Hai hành động này sống trong dialog — lỗi của chúng đi vào trong. */
+  const IN_DIALOG: BookingAction[] = ['cancelPending', 'cancelBooking'];
   const errorInDialog = errorAt !== null && IN_DIALOG.includes(errorAt);
 
   if (view.actions.length === 0) return null;
@@ -352,13 +360,11 @@ export function BookingActions({
                   disabled={pending}
                   onClick={() => handleClick?.(action)}
                 >
-                  {t.payNow}
+                  {t.actions.payNow}
                 </Button>
               );
             case 'cancelPending':
               return (
-                // Task 7: cùng khuôn `PolicyLink` cạnh trigger như
-                // `CancelRequestDialog` — trigger + policy đứng chung hàng.
                 <div key={action} className="inline-flex flex-wrap items-center gap-3">
                   <AlertDialog>
                     <AlertDialogTrigger
@@ -369,22 +375,24 @@ export function BookingActions({
                           className="h-auto px-0 text-destructive-emphasis"
                           disabled={pending}
                         >
-                          {t.cancelPending}
+                          {t.actions.cancel}
                         </Button>
                       }
                     />
-                    {/* Giữ khổ hẹp mặc định: booking chưa trả tiền thì không có
-                        tiền để bày, dialog này chỉ là một câu hỏi có/không. */}
+                    {/* Khổ hẹp mặc định: booking chưa trả tiền thì không có tiền
+                        để bày, dialog này chỉ là một câu hỏi có/không. */}
                     <AlertDialogContent>
                       <AlertDialogHeader>
-                        <AlertDialogTitle>{t.cancelConfirmTitle}</AlertDialogTitle>
-                        <AlertDialogDescription>{t.cancelConfirmBody}</AlertDialogDescription>
+                        <AlertDialogTitle>{t.actions.cancelConfirmTitle}</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          {t.actions.cancelConfirmBody}
+                        </AlertDialogDescription>
                       </AlertDialogHeader>
                       {errorInDialog ? errorNode : null}
                       <AlertDialogFooter>
-                        <AlertDialogCancel>{t.cancelDismiss}</AlertDialogCancel>
+                        <AlertDialogCancel>{t.actions.cancelDismiss}</AlertDialogCancel>
                         <AlertDialogAction disabled={pending} onClick={() => handleClick?.(action)}>
-                          {t.cancelConfirmCta}
+                          {t.actions.cancelConfirmCta}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>
@@ -392,49 +400,23 @@ export function BookingActions({
                   <PolicyLink />
                 </div>
               );
-            case 'requestCancellation':
-              // Server nói KHÔNG có ước tính (chuyến đã đi — booking ở lại PAID
-              // vĩnh viễn, không có trạng thái "đã đi"): không bày nút xin huỷ
-              // để rồi ăn 422, và không mở một dialog với nửa tiền trống (vòng
-              // vá review 06/09). `refund` vắng hẳn = trang chưa truyền → giữ nút.
-              if (refund && refund.estimate === null) {
-                return (
-                  <p key={action} className="text-sm text-muted-foreground">
-                    {messages.accountActionErrors.notCancellable}
-                  </p>
-                );
-              }
+            case 'cancelBooking':
+              // Thiếu dữ liệu hộp xác nhận thì không bày nút: một nút huỷ đụng
+              // tiền thật mà không nói được số tiền là mời khách bấm mù.
+              if (!booking?.cancellation) return null;
               return (
-                <CancelRequestDialog
+                <CancelBookingDialog
                   key={action}
-                  label={t.requestCancellation}
+                  booking={booking}
+                  cancellation={booking.cancellation}
                   pending={pending}
-                  refund={refund}
-                  error={errorInDialog ? errorNode : null}
-                  onSubmit={(reason) => handleClick?.(action, reason)}
-                />
-              );
-            case 'viewCancellationPending':
-              return (
-                <p key={action} className="text-sm text-muted-foreground">
-                  {t.viewCancellationPending}
-                </p>
-              );
-            case 'resubmitCancellation':
-              return (
-                <CancelRequestDialog
-                  key={action}
-                  label={t.resubmitCancellation}
-                  pending={pending}
-                  refund={refund}
                   error={errorInDialog ? errorNode : null}
                   onSubmit={(reason) => handleClick?.(action, reason)}
                 />
               );
             default:
-              // `BookingAction` đã cạn hết 5 nhánh ở trên — case này không
-              // bao giờ chạy, chỉ để thoả `useIterableCallbackReturn` (Biome
-              // không suy ra được switch trên union đã exhaustive).
+              // `BookingAction` đã cạn ba nhánh ở trên — case này không bao giờ
+              // chạy, chỉ để thoả `useIterableCallbackReturn` của Biome.
               return null;
           }
         })}
@@ -442,122 +424,4 @@ export function BookingActions({
       {errorInDialog ? null : errorNode}
     </>
   );
-}
-
-/**
- * Tóm tắt trong dialog xin huỷ — CHIA HAI NỬA vì đó là hai câu hỏi khác nhau
- * người ta đang hỏi cùng lúc: *tôi đang huỷ đúng cái chưa* và *tôi lấy lại
- * được bao nhiêu*. Bản đầu (04/09) chỉ có nửa sau, và dialog không hề nói nó
- * đang nói về booking nào.
- *
- * Con số hoàn là NEO THỊ GIÁC của cả dialog: đó là thứ người ta mở nó ra để
- * biết. Mọi dòng quanh nó chỉ làm một việc — giải thích vì sao là con số đó
- * (bao nhiêu phần trăm, bậc nào, còn mấy ngày), nên không dòng nào được to
- * ngang nó.
- *
- * Con số đến từ SERVER (`bookings.byCode` trả `refundEstimate`, W1 — audit
- * 05/09 cụm 3): client từng tự tính bằng `new Date()` của TRÌNH DUYỆT nên
- * khách ở múi giờ lệch thấy sai bậc/ân hạn ở biên ngày. Ở đây chỉ IN — server
- * dùng cùng hàm chính sách với màn quyết định của admin, nên khách và admin
- * không thể nhìn hai con số khác nhau.
- */
-function CancelSummary({ booking }: { booking: RefundEstimateInput }) {
-  const t = messages.booking.detail;
-  const estimate = booking.estimate;
-
-  return (
-    // Viền chia đôi, KHÔNG dùng nền để tách: dialog là `bg-popover`, và
-    // `--card`/`--popover` trong bộ token này có thể trùng nhau — đường kẻ dựng
-    // bằng màu nền sẽ biến mất im lặng ở một trong hai theme.
-    <div className="grid overflow-hidden rounded-lg border border-border sm:grid-cols-2">
-      <div className="flex flex-col gap-1 p-4">
-        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-          {t.cancelSummaryBooking}
-        </p>
-        <p className="font-medium text-foreground">{booking.tourTitle}</p>
-        <p className="text-sm text-muted-foreground">
-          {formatDateRange(booking.departureStartDate, booking.departureEndDate)}
-        </p>
-        <p className="text-sm text-muted-foreground">
-          {messages.accountBookings.travellers(booking.numAdults, booking.numChildren)}
-        </p>
-        <p className="mt-auto pt-2 font-mono text-xs text-muted-foreground">{booking.code}</p>
-      </div>
-
-      {/* Nền nhạt chỉ ở nửa PHẢI — một chỗ nhấn duy nhất, và nó mã hoá đúng
-          thế đối lập của dialog: trái là thứ mất đi, phải là thứ nhận lại.
-          Server không gửi ước tính (trang cũ cache / trạng thái lạ) thì vẫn
-          giữ khung + link chính sách, chỉ thiếu con số — không tự bịa. */}
-      <div className="flex flex-col gap-1 border-t border-border bg-muted/50 p-4 sm:border-t-0 sm:border-l">
-        {estimate ? (
-          <>
-            {/* Neo thị giác: con số đứng một mình, nhãn nhỏ ngay dưới. */}
-            <p className="text-3xl font-semibold tabular-nums text-foreground">
-              {formatMoneyExact(estimate.amount, booking.currency)}
-            </p>
-            <p className="text-sm text-muted-foreground">{t.cancelSummaryGetBack}</p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t.cancelSummaryOfTotal(
-                estimate.percent,
-                formatMoneyExact(booking.totalAmount, booking.currency),
-              )}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              {t.refundEstimateDays(estimate.daysBeforeDeparture)}
-            </p>
-            {estimate.inGrace ? (
-              <p className="text-sm text-muted-foreground">{t.refundEstimateGrace}</p>
-            ) : null}
-            {Number(booking.refundedTotal) > 0 ? (
-              <p className="text-sm text-muted-foreground">
-                {t.cancelSummaryAlready(formatMoneyExact(booking.refundedTotal, booking.currency))}
-              </p>
-            ) : null}
-          </>
-        ) : null}
-        <Link
-          href="/cancellation-policy"
-          className="mt-auto w-fit pt-2 text-sm underline-offset-4 hover:underline"
-        >
-          {t.refundEstimateLink}
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Ba việc xảy ra SAU khi bấm gửi. Ở đây vì đây là lúc người ta cần biết —
- * không phải trong một trang chính sách họ sẽ không mở giữa lúc đang huỷ.
- */
-function WhatHappensNext() {
-  const t = messages.booking.detail;
-  return (
-    <div className="flex flex-col gap-1.5 text-sm text-muted-foreground">
-      <p className="font-medium text-foreground">{t.cancelNextHeading}</p>
-      <p>{t.cancelNextReview}</p>
-      <p>{t.cancelNextMethod}</p>
-      <p>{t.cancelNextTiming}</p>
-    </div>
-  );
-}
-
-/** Phần booking mà dialog huỷ cần — cắt đúng chừng này, không nhận cả entity. */
-export interface RefundEstimateInput {
-  /** Mã + tên tour + đợt: người ta phải NHẬN RA thứ mình sắp huỷ. */
-  code: string;
-  tourTitle: string;
-  departureStartDate: string;
-  departureEndDate: string;
-  numAdults: number;
-  numChildren: number;
-  totalAmount: string;
-  refundedTotal: string;
-  currency: string;
-  /**
-   * Ước tính do SERVER tính (`bookings.byCode.refundEstimate`, W1) — client
-   * chỉ in, KHÔNG tự tính lại bằng đồng hồ trình duyệt. `null` = server không
-   * gửi (trạng thái không huỷ được) → nửa tiền của dialog ẩn con số.
-   */
-  estimate: RefundEstimate | null;
 }

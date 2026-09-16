@@ -10,6 +10,7 @@ import { SuccessCelebration } from '@/components/checkout/success-celebration';
 import { ContentHero } from '@/components/content/content-hero';
 import { fetchBookingByCode } from '@/lib/api/bookings';
 import { requireSession } from '@/lib/api/session';
+import { cancellationDeadlineText } from '@/lib/booking-vm';
 import { checkoutMood } from '@/lib/checkout';
 
 export const metadata: Metadata = {
@@ -71,6 +72,9 @@ export default async function CheckoutSuccessPage({
   // khách đã chuyển hẳn vào `BookingReceipt` (nó cần cả ba để dựng pill, h1 và
   // dòng khách) — giữ lại ở đây là hai nguồn cho cùng một sự thật.
   const mood = checkoutMood(booking);
+  // Thay lời hứa "cancel anytime" bằng ngày chót thật (spec §5.2) — cờ và ngày
+  // do SERVER tính, trang chỉ in.
+  const deadlineText = cancellationDeadlineText(booking.cancellation);
 
   return (
     <div>
@@ -110,6 +114,7 @@ export default async function CheckoutSuccessPage({
               <ul className="mt-3 flex flex-col gap-2">
                 <NextStep text={t.nextEmail} />
                 <NextStep text={t.nextVoucher} />
+                {deadlineText ? <NextStep text={deadlineText} /> : null}
                 <NextStep text={t.nextManage} />
               </ul>
             </div>

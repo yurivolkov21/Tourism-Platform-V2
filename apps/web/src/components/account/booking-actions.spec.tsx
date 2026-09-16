@@ -1,26 +1,25 @@
-import { createORPCErrorFromJson } from '@orpc/client';
+import { createORPCErrorFromJson, ORPCError } from '@orpc/client';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { BookingCancellation } from '@tourism/contract';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingView } from '@/lib/booking-vm';
-import { BookingActions, type RefundEstimateInput } from './booking-actions';
+import { makeBooking } from '@/test/fixtures/booking';
+import { BookingActions, type CancelDialogBooking } from './booking-actions';
 
 /**
- * BookingActions CHỈ render theo `BookingView.actions` (bảng quyết định
- * `bookingView`, Task 2) — spec này phủ đủ 5 `BookingAction` + hai nhánh
- * rỗng (terminal, không action nào), CỘNG hành động THẬT khi có `code`
- * (Task 7/A2 — không truyền `onAction`, xem describe cuối file).
+ * BookingActions CHỈ render theo `BookingView.actions` — spec phủ đủ ba
+ * `BookingAction`, hai dạng hộp xác nhận huỷ (trong hạn / quá hạn, ADR-0041),
+ * CỘNG hành động THẬT khi có `code` (describe cuối file).
  */
 
-// Mock next/navigation — `router.refresh()` sau mutation thành công (spec
-// §5), cùng khuôn `user-menu.spec.tsx`.
+// Mock next/navigation — `router.refresh()` sau mutation thành công.
 const { refresh } = vi.hoisted(() => ({ refresh: vi.fn() }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh }),
 }));
 
-// Mock client oRPC — spec chỉ kiểm gọi ĐÚNG procedure/payload, không gọi API
-// thật (cùng khuôn `newsletter-form.spec.tsx`).
+// Mock client oRPC — spec chỉ kiểm gọi ĐÚNG procedure/payload, không gọi API thật.
 const { checkout, cancelPending, cancel } = vi.hoisted(() => ({
   checkout: vi.fn(),
   cancelPending: vi.fn(),
@@ -31,9 +30,53 @@ vi.mock('@/lib/api/client', () => ({
   withBrowserAuth: () => ({ auth: { credentials: 'include' } }),
 }));
 
-// Mock sonner — toast CHỈ cho kết quả thành công (spec §5).
+// Mock sonner — toast CHỈ cho kết quả thành công.
 const { toastSuccess } = vi.hoisted(() => ({ toastSuccess: vi.fn() }));
 vi.mock('sonner', () => ({ toast: { success: toastSuccess } }));
+
+const CODE = 'BK-20260904-WXYZ';
+
+const PAID_VIEW: BookingView = {
+  tone: 'success',
+  statusKey: 'PAID',
+  actions: ['cancelBooking'],
+};
+
+/** Cờ huỷ SERVER trả — mặc định còn hạn, hoàn 1200. */
+function cancellationOf(overrides: Partial<BookingCancellation> = {}): BookingCancellation {
+  return {
+    deadline: '2026-10-13',
+    withinDeadline: true,
+    refundAmount: '1200.00',
+    canCancel: true,
+    ...overrides,
+  };
+}
+
+/** Quá hạn chót nhưng chưa khởi hành — huỷ được, hoàn 0. */
+const AFTER_DEADLINE = cancellationOf({ withinDeadline: false, refundAmount: '0.00' });
+
+function dialogBooking(
+  cancellation: BookingCancellation | null = cancellationOf(),
+): CancelDialogBooking {
+  return {
+    code: CODE,
+    tourTitle: 'Ha Long Bay Overnight Cruise',
+    tourSlug: 'ha-long-bay-cruise',
+    departureStartDate: '2026-10-20',
+    departureEndDate: '2026-10-23',
+    numAdults: 2,
+    numChildren: 1,
+    currency: 'USD',
+    cancellation,
+  };
+}
+
+const POLICY_LINK = 'Read our cancellation & refund policy';
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe('BookingActions', () => {
   it('PENDING (payNow + cancelPending) → hai nút, bấm Pay now gọi onAction đúng tham số', async () => {
@@ -53,19 +96,12 @@ describe('BookingActions', () => {
     expect(onAction).toHaveBeenCalledWith('payNow');
   });
 
-  it('payNow-only (KHÔNG có action hủy) → KHÔNG render policy link', () => {
-    const view: BookingView = {
-      tone: 'warning',
-      statusKey: 'PENDING',
-      actions: ['payNow'],
-    };
+  it('payNow-only (KHÔNG có action huỷ) → KHÔNG render policy link', () => {
+    const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['payNow'] };
     render(<BookingActions view={view} />);
 
     expect(screen.getByRole('button', { name: 'Pay now' })).toBeInTheDocument();
-    // Policy link KHÔNG render ở nhánh này (chỉ render ở 3 nhánh có hành động hủy)
-    expect(
-      screen.queryByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: POLICY_LINK })).not.toBeInTheDocument();
   });
 
   it('cancelPending → mở dialog confirm, bấm "Yes, cancel it" gọi onAction("cancelPending")', async () => {
@@ -74,13 +110,10 @@ describe('BookingActions', () => {
     const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['cancelPending'] };
     render(<BookingActions view={view} onAction={onAction} />);
 
-    // Policy link phải hiện cạnh nút hủy (Task 7) — kiểm TRƯỚC mở dialog
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toHaveAttribute('href', '/cancellation-policy');
+    expect(screen.getByRole('link', { name: POLICY_LINK })).toHaveAttribute(
+      'href',
+      '/cancellation-policy',
+    );
 
     await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
     expect(screen.getByText('Cancel this booking?')).toBeInTheDocument();
@@ -89,112 +122,130 @@ describe('BookingActions', () => {
     expect(onAction).toHaveBeenCalledWith('cancelPending');
   });
 
-  it('requestCancellation (PAID, chưa từng yêu cầu hủy) → nút "Request cancellation"', () => {
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} />);
-    expect(screen.getByRole('button', { name: 'Request cancellation' })).toBeInTheDocument();
+  it('cancelBooking → nút "Cancel booking" cùng policy link ngay cạnh', () => {
+    render(<BookingActions view={PAID_VIEW} booking={dialogBooking()} />);
 
-    // Policy link phải hiện cạnh nút hủy (Task 7)
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toHaveAttribute('href', '/cancellation-policy');
+    expect(screen.getByRole('button', { name: 'Cancel booking' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: POLICY_LINK })).toHaveAttribute(
+      'href',
+      '/cancellation-policy',
+    );
   });
 
-  it('viewCancellationPending → text trạng thái, KHÔNG có nút, KHÔNG có policy link', () => {
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['viewCancellationPending'],
-    };
-    render(<BookingActions view={view} />);
-    expect(screen.getByText('Cancellation requested — pending review.')).toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-
-    // Policy link KHÔNG render ở nhánh này (chỉ render ở 3 nhánh có hành động hủy)
-    expect(
-      screen.queryByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).not.toBeInTheDocument();
+  it('cancelBooking mà trang không truyền dữ liệu hộp xác nhận → không bày nút huỷ', () => {
+    render(<BookingActions view={PAID_VIEW} />);
+    expect(screen.queryByRole('button', { name: 'Cancel booking' })).toBeNull();
   });
 
-  it('resubmitCancellation → mở dialog, gõ lý do rồi gửi mới gọi onAction KÈM lý do', async () => {
-    const user = userEvent.setup();
-    const onAction = vi.fn();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['resubmitCancellation'],
-    };
-    render(<BookingActions view={view} onAction={onAction} />);
-
-    // Policy link phải hiện cạnh nút hủy (Task 7) — kiểm TRƯỚC mở dialog
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('link', { name: 'Read our cancellation & refund policy' }),
-    ).toHaveAttribute('href', '/cancellation-policy');
-
-    await user.click(screen.getByRole('button', { name: 'Request cancellation again' }));
-    await user.type(screen.getByRole('textbox'), 'Plans changed');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
-    expect(onAction).toHaveBeenCalledWith('resubmitCancellation', 'Plans changed');
+  it('cancelBooking mà cờ huỷ null → không bày nút huỷ', () => {
+    render(<BookingActions view={PAID_VIEW} booking={dialogBooking(null)} />);
+    expect(screen.queryByRole('button', { name: 'Cancel booking' })).toBeNull();
   });
 
-  it('KHÔNG còn hiện lý do admin từ chối — prop đó LUÔN null, là code chết', () => {
-    // Contract khách cố ý không mang `decisionNote` (ghi chú nội bộ của admin).
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['resubmitCancellation'],
-    };
-    render(<BookingActions view={view} onAction={vi.fn()} />);
-    expect(screen.queryByText(/previous request was declined/i)).not.toBeInTheDocument();
+  it('không còn trạng thái "requested / pending / resubmit" nào', () => {
+    render(<BookingActions view={PAID_VIEW} booking={dialogBooking()} />);
+    expect(screen.queryByText(/pending review/i)).toBeNull();
+    expect(screen.queryByRole('button', { name: /request cancellation/i })).toBeNull();
   });
 
-  it('actions rỗng (terminal: CANCELLED/REFUNDED/PARTIALLY_REFUNDED) → không render gì', () => {
+  it('actions rỗng (terminal) → không render gì', () => {
     const view: BookingView = { tone: 'muted', statusKey: 'CANCELLED', actions: [] };
     const { container } = render(<BookingActions view={view} />);
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('KHÔNG truyền onAction lẫn code (page A1) → bấm nút không throw, không gọi API', async () => {
+  it('KHÔNG truyền onAction lẫn code → bấm xác nhận không throw, không gọi API', async () => {
     const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} />);
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    render(<BookingActions view={PAID_VIEW} booking={dialogBooking()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
     expect(cancel).not.toHaveBeenCalled();
   });
 });
 
 /**
- * Hành động THẬT (Task 7/A2) — page truyền `code`, KHÔNG truyền `onAction`
- * → component tự gọi oRPC (khuôn xử lý lỗi: try/catch/finally, 401 giữa
- * chừng → message + link đăng nhập, lỗi khác → generic, KHÔNG mất state).
+ * Hộp xác nhận hai dạng (spec §5.3). Câu, số tiền và ngày đều IN từ cờ server
+ * (`cancellation`) — component không tự so ngày chót với giờ trình duyệt.
  */
-describe('BookingActions — hành động thật (code, không có onAction)', () => {
-  const CODE = 'BK-20260805-ABCD';
+describe('BookingActions — hộp xác nhận huỷ', () => {
+  async function openDialog(booking: CancelDialogBooking, onAction = vi.fn()) {
+    const user = userEvent.setup();
+    render(<BookingActions view={PAID_VIEW} booking={booking} onAction={onAction} />);
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    return { user, onAction };
+  }
 
-  beforeEach(() => {
-    vi.clearAllMocks();
+  it('trong hạn → hỏi kèm số tiền hoàn đủ và thời gian tiền về; nút nói số tiền', async () => {
+    await openDialog(dialogBooking());
+
+    expect(
+      screen.getByText(
+        'Cancel and get a full refund of $1,200.00? It usually reaches your original payment method in 5–10 business days.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' })).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Something serious happened? Contact us' }),
+    ).toBeNull();
   });
 
+  it('quá hạn → nói ngày chót đã qua, không hoàn, kèm link hỏi đáp của tour', async () => {
+    await openDialog(dialogBooking(AFTER_DEADLINE));
+
+    expect(
+      screen.getByText(
+        'The free-cancellation deadline (13 Oct) has passed. If you cancel now, you won’t be refunded.',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Cancel without refund' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Something serious happened? Contact us' }),
+    ).toHaveAttribute('href', '/tours/ha-long-bay-cruise/enquire');
+  });
+
+  it('nói RÕ đang huỷ booking nào — tên tour, số khách, mã', async () => {
+    await openDialog(dialogBooking());
+
+    expect(screen.getByText('Ha Long Bay Overnight Cruise')).toBeInTheDocument();
+    expect(screen.getByText('2 adults, 1 child')).toBeInTheDocument();
+    expect(screen.getByText(CODE)).toBeInTheDocument();
+  });
+
+  it('bỏ hẳn ước tính theo phần trăm, số ngày, ân hạn và mục "What happens next"', async () => {
+    await openDialog(dialogBooking());
+
+    expect(screen.queryByText(/% of/)).toBeNull();
+    expect(screen.queryByText(/departs in/i)).toBeNull();
+    expect(screen.queryByText(/24 hours/)).toBeNull();
+    expect(screen.queryByText('What happens next')).toBeNull();
+  });
+
+  it('lý do không bắt buộc: bấm xác nhận khi ô trống → onAction nhận reason undefined', async () => {
+    const { user, onAction } = await openDialog(dialogBooking());
+
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
+    expect(onAction).toHaveBeenCalledWith('cancelBooking', undefined);
+  });
+
+  it('có gõ lý do → onAction nhận lý do đã trim', async () => {
+    const { user, onAction } = await openDialog(dialogBooking(AFTER_DEADLINE));
+
+    await user.type(screen.getByRole('textbox'), '  Plans changed  ');
+    await user.click(screen.getByRole('button', { name: 'Cancel without refund' }));
+    expect(onAction).toHaveBeenCalledWith('cancelBooking', 'Plans changed');
+  });
+});
+
+/**
+ * Hành động THẬT — page truyền `code`, KHÔNG truyền `onAction` → component tự
+ * gọi oRPC (try/catch/finally; 401 giữa chừng → message + link đăng nhập; lỗi
+ * khác → copy theo mã lỗi; KHÔNG mất state).
+ */
+describe('BookingActions — hành động thật (code, không có onAction)', () => {
   it('payNow → gọi bookings.checkout({code}), thành công → redirect tới checkoutUrl', async () => {
-    // jsdom `window.location.assign` throw "Not implemented" khi gọi thật
-    // (giới hạn jsdom, không phải bug) và property `assign` không
-    // configurable nên `vi.spyOn` không redefine được — thay hẳn object
-    // `location` bằng bản giả qua `vi.stubGlobal` (tự phục hồi bằng
-    // `vi.unstubAllGlobals()` ở cuối test, KHÔNG rò sang test khác).
+    // jsdom `window.location.assign` không implement và không configurable —
+    // thay cả object `location` qua `vi.stubGlobal`, phục hồi ở cuối test.
     const assign = vi.fn();
     vi.stubGlobal('location', { ...window.location, assign });
     checkout.mockResolvedValueOnce({ checkoutUrl: 'https://checkout.example/session/abc' });
@@ -211,7 +262,19 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     vi.unstubAllGlobals();
   });
 
-  it('cancelPending → confirm → gọi bookings.cancelPending({code}), thành công → toast + router.refresh()', async () => {
+  it('payNow gặp DEPARTURE_NOT_AVAILABLE (chuyến đã qua hạn đặt) → câu "đã ngừng nhận đặt"', async () => {
+    checkout.mockRejectedValueOnce(new ORPCError('DEPARTURE_NOT_AVAILABLE', { status: 400 }));
+    const user = userEvent.setup();
+    const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['payNow'] };
+    render(<BookingActions view={view} code={CODE} />);
+
+    await user.click(screen.getByRole('button', { name: 'Pay now' }));
+
+    expect(await screen.findByText('Booking for this departure has closed.')).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('cancelPending → confirm → gọi bookings.cancelPending({code}), thành công → toast + refresh', async () => {
     cancelPending.mockResolvedValueOnce({});
     const user = userEvent.setup();
     const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['cancelPending'] };
@@ -223,92 +286,90 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     await waitFor(() =>
       expect(cancelPending).toHaveBeenCalledWith({ code: CODE }, expect.anything()),
     );
-    expect(toastSuccess).toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith('Booking cancelled', {
+      description: 'Your pending reservation has been released.',
+    });
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('requestCancellation → gọi bookings.cancel({code, reason}), thành công → toast + router.refresh()', async () => {
-    cancel.mockResolvedValueOnce({});
+  it('cancelBooking có lý do → gọi bookings.cancel({code, reason}); toast nói số tiền ĐÃ hoàn + refresh', async () => {
+    cancel.mockResolvedValueOnce({
+      booking: makeBooking({ code: CODE, status: 'CANCELLED', currency: 'USD' }),
+      refundedAmount: '1200.00',
+    });
     const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
 
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
     await user.type(screen.getByRole('textbox'), 'Family emergency');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
 
     await waitFor(() =>
-      // Lý do KHÁCH GÕ, không phải hằng số cứng — chuỗi cũ còn được email
-      // ngược lại cho chính họ.
       expect(cancel).toHaveBeenCalledWith(
         { code: CODE, reason: 'Family emergency' },
         expect.anything(),
       ),
     );
-    expect(toastSuccess).toHaveBeenCalled();
+    expect(toastSuccess).toHaveBeenCalledWith('Booking cancelled', {
+      description: '$1,200.00 has been refunded to your original payment method.',
+    });
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('lý do RỖNG → chặn ngay ở client, KHÔNG gọi API', async () => {
+  it('cancelBooking ô lý do chỉ có khoảng trắng → input KHÔNG mang reason; hoàn 0 → toast "không hoàn"', async () => {
+    cancel.mockResolvedValueOnce({
+      booking: makeBooking({ code: CODE, status: 'CANCELLED', currency: 'USD' }),
+      refundedAmount: '0.00',
+    });
     const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking(AFTER_DEADLINE)} />);
 
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
-
-    expect(cancel).not.toHaveBeenCalled();
-    expect(
-      screen.getByText('Please tell us why — our team needs it to process a refund.'),
-    ).toBeInTheDocument();
-  });
-
-  it('lý do chỉ có khoảng trắng cũng bị chặn', async () => {
-    const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
-
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
     await user.type(screen.getByRole('textbox'), '   ');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
-    expect(cancel).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Cancel without refund' }));
+
+    await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
+    // `toHaveBeenCalledWith` coi `reason: undefined` bằng với vắng khoá — soi thẳng payload.
+    const input = cancel.mock.calls[0]?.[0];
+    expect(input).toEqual({ code: CODE });
+    expect(input).not.toHaveProperty('reason');
+    expect(toastSuccess).toHaveBeenCalledWith('Booking cancelled', {
+      description: 'No refund was due on this booking.',
+    });
   });
 
-  it('resubmitCancellation → gọi bookings.cancel({code, reason}) (cùng route với requestCancellation)', async () => {
-    cancel.mockResolvedValueOnce({});
+  it('REFUND_FAILED → câu "booking chưa đổi, thử lại" trong hộp; không refresh; nút bấm lại được', async () => {
+    cancel.mockRejectedValueOnce(new ORPCError('REFUND_FAILED', { status: 502 }));
     const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['resubmitCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
 
-    await user.click(screen.getByRole('button', { name: 'Request cancellation again' }));
-    await user.type(screen.getByRole('textbox'), 'Still need to cancel');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
 
-    await waitFor(() =>
-      expect(cancel).toHaveBeenCalledWith(
-        { code: CODE, reason: 'Still need to cancel' },
-        expect.anything(),
+    expect(
+      await screen.findByText(
+        'We couldn’t process your refund, so your booking hasn’t changed. Please try again.',
       ),
-    );
+    ).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+    expect(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' })).toBeEnabled();
   });
 
-  it('lỗi chung (network/5xx) → message lỗi inline, KHÔNG mất state (nút vẫn còn, hết pending)', async () => {
+  it('NOT_CANCELLABLE → câu "không huỷ online được" và làm mới trang', async () => {
+    cancel.mockRejectedValueOnce(new ORPCError('NOT_CANCELLABLE', { status: 422 }));
+    const user = userEvent.setup();
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
+
+    expect(
+      await screen.findByText('This booking can’t be cancelled online. Contact us for help.'),
+    ).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('lỗi chung (network/5xx) → message lỗi inline, KHÔNG mất state', async () => {
     cancelPending.mockRejectedValueOnce(new Error('network down'));
     const user = userEvent.setup();
     const view: BookingView = { tone: 'warning', statusKey: 'PENDING', actions: ['cancelPending'] };
@@ -319,13 +380,10 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
 
     expect(await screen.findByText('Something went wrong. Please try again.')).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
-    // Nút hết pending — `AlertDialogAction` không tự đóng dialog (khác
-    // `AlertDialogCancel`, xem `alert-dialog.tsx`) nên dialog vẫn mở, nút xác
-    // nhận vẫn còn NGUYÊN trên trang và bấm lại được (không kẹt disabled).
     expect(screen.getByRole('button', { name: 'Yes, cancel it' })).toBeEnabled();
   });
 
-  it('401 giữa chừng (session hết hạn) → message riêng + link /login?redirect=, KHÔNG auto-signout', async () => {
+  it('401 giữa chừng → message riêng + link /login?redirect=, KHÔNG auto-signout', async () => {
     cancel.mockRejectedValueOnce(
       createORPCErrorFromJson({
         defined: false,
@@ -336,212 +394,16 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
       }),
     );
     const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
 
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-    await user.type(screen.getByRole('textbox'), 'Session will die');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
 
     expect(await screen.findByText('Your session has expired.')).toBeInTheDocument();
-    const loginLink = screen.getByRole('link', { name: 'Log in again' });
-    expect(loginLink).toHaveAttribute('href', `/login?redirect=/account/bookings/${CODE}`);
+    expect(screen.getByRole('link', { name: 'Log in again' })).toHaveAttribute(
+      'href',
+      `/login?redirect=/account/bookings/${CODE}`,
+    );
     expect(refresh).not.toHaveBeenCalled();
-  });
-  it('409 → copy RIÊNG "đã gửi rồi", không phải câu lỗi chung', async () => {
-    // Trước cụm này, 409 và 422 đều rơi vào 'generic' dù i18n đã có copy riêng
-    // cho đúng hai tình huống đó — khách bị báo "có gì đó sai" trong khi hệ
-    // thống biết chính xác chuyện gì.
-    cancel.mockRejectedValueOnce(
-      createORPCErrorFromJson({
-        defined: false,
-        code: 'CONFLICT',
-        status: 409,
-        message: 'Already requested',
-        data: null,
-      }),
-    );
-    const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
-
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-    await user.type(screen.getByRole('textbox'), 'Duplicate');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
-
-    expect(
-      await screen.findByText('You’ve already sent a cancellation request for this booking.'),
-    ).toBeInTheDocument();
-  });
-
-  it('422 → copy RIÊNG "không huỷ online được"', async () => {
-    cancel.mockRejectedValueOnce(
-      createORPCErrorFromJson({
-        defined: false,
-        code: 'UNPROCESSABLE_CONTENT',
-        status: 422,
-        message: 'Not cancellable',
-        data: null,
-      }),
-    );
-    const user = userEvent.setup();
-    const view: BookingView = {
-      tone: 'success',
-      statusKey: 'PAID',
-      actions: ['requestCancellation'],
-    };
-    render(<BookingActions view={view} code={CODE} />);
-
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-    await user.type(screen.getByRole('textbox'), 'Too late');
-    await user.click(screen.getByRole('button', { name: 'Send request' }));
-
-    expect(
-      await screen.findByText('This booking can’t be cancelled online. Contact us for help.'),
-    ).toBeInTheDocument();
-  });
-});
-
-/**
- * Khối tóm tắt trong dialog xin huỷ (ADR-0030 §3b; thiết kế lại 04/09 — rộng
- * ra, chia hai nửa, thêm "what happens next").
- *
- * Từ W1 (audit 05/09 cụm 3) con số đến từ SERVER (`bookings.byCode` trả
- * `refundEstimate`) và component chỉ IN — luật tiền (bậc/ân hạn/làm tròn cent)
- * được canh ở `refund-policy.spec.ts` của contract và int test API; ở đây canh
- * phần trình bày: in đúng số server gửi, không tự tính, không tự bịa khi vắng.
- */
-describe('CancelRequestDialog — khối tóm tắt', () => {
-  const PAID_VIEW: BookingView = {
-    tone: 'success',
-    statusKey: 'PAID',
-    actions: ['requestCancellation'],
-  };
-
-  /** Ngày lịch UTC cách hôm nay đúng `days` ngày — chỉ để hiển thị đợt. */
-  function departureIn(days: number): string {
-    const date = new Date();
-    date.setUTCDate(date.getUTCDate() + days);
-    return date.toISOString().slice(0, 10);
-  }
-
-  function refundFor(overrides: Partial<RefundEstimateInput> = {}): RefundEstimateInput {
-    return {
-      code: 'BK-20260904-WXYZ',
-      tourTitle: 'Ha Long Bay Overnight Cruise',
-      departureStartDate: departureIn(40),
-      departureEndDate: departureIn(42),
-      numAdults: 2,
-      numChildren: 1,
-      totalAmount: '1000.00',
-      refundedTotal: '0',
-      currency: 'USD',
-      // Ước tính SERVER gửi — bậc 100% của ca mặc định.
-      estimate: { percent: 100, amount: '1000.00', daysBeforeDeparture: 40, inGrace: false },
-      ...overrides,
-    };
-  }
-
-  async function openDialog(overrides: Partial<RefundEstimateInput> = {}) {
-    const user = userEvent.setup();
-    render(
-      <BookingActions view={PAID_VIEW} code="BK-20260904-WXYZ" refund={refundFor(overrides)} />,
-    );
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-  }
-
-  it('nói RÕ đang huỷ booking nào — tên tour, đợt, số khách, mã', async () => {
-    // Bản đầu chỉ có con số hoàn mà không hề nói nó thuộc booking nào; khách
-    // có nhiều booking thì đó là một dialog không xác nhận được điều gì.
-    await openDialog();
-
-    expect(screen.getByText('Ha Long Bay Overnight Cruise')).toBeInTheDocument();
-    expect(screen.getByText('BK-20260904-WXYZ')).toBeInTheDocument();
-    expect(screen.getByText('2 adults, 1 child')).toBeInTheDocument();
-  });
-
-  it('in ĐÚNG con số server gửi — amount, percent, số ngày; giữ nguyên cent', async () => {
-    // 599.51 (không phải .50) canh luôn formatMoneyExact: con số khách chụp
-    // màn hình là con số admin duyệt, server đã làm tròn — client không đụng.
-    await openDialog({
-      totalAmount: '1199.01',
-      estimate: { percent: 50, amount: '599.51', daysBeforeDeparture: 20, inGrace: false },
-    });
-
-    expect(screen.getByText('$599.51')).toBeInTheDocument();
-    expect(screen.getByText('50% of $1,199.01')).toBeInTheDocument();
-    expect(screen.queryByText('$600')).toBeNull();
-  });
-
-  it('bậc 0%: in $0.00 — không nói dối con số dễ chịu hơn', async () => {
-    await openDialog({
-      departureStartDate: departureIn(3),
-      departureEndDate: departureIn(3),
-      estimate: { percent: 0, amount: '0.00', daysBeforeDeparture: 3, inGrace: false },
-    });
-
-    expect(screen.getByText('$0.00')).toBeInTheDocument();
-    expect(screen.getByText('0% of $1,000.00')).toBeInTheDocument();
-  });
-
-  it('server báo trong ân hạn → hiện câu 24 giờ; ngoài ân hạn thì không', async () => {
-    await openDialog({
-      estimate: { percent: 100, amount: '1000.00', daysBeforeDeparture: 3, inGrace: true },
-    });
-
-    expect(screen.getByText('$1,000.00')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'You are still within 24 hours of paying, so this cancellation is refunded in full.',
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it('đã hoàn một phần → con số lớn là phần CÒN LẠI (server đã trừ), và nói ra phần đã hoàn', async () => {
-    await openDialog({
-      refundedTotal: '150.00',
-      estimate: { percent: 100, amount: '850.00', daysBeforeDeparture: 40, inGrace: false },
-    });
-
-    expect(screen.getByText('$850.00')).toBeInTheDocument();
-    expect(screen.getByText('$150.00 already refunded')).toBeInTheDocument();
-  });
-
-  it('server trả ước tính null (chuyến đã đi) → KHÔNG có nút xin huỷ, nói thẳng không huỷ online được', () => {
-    // Trước vòng vá 06/09: nút vẫn hiện, dialog mở ra với nửa tiền trống, gửi
-    // xong ăn 422 NOT_CANCELLABLE. Server đã nói "không có gì để ước tính" thì
-    // client không bày một hành động sẽ thất bại.
-    render(
-      <BookingActions
-        view={PAID_VIEW}
-        code="BK-20260904-WXYZ"
-        refund={refundFor({ estimate: null })}
-      />,
-    );
-    expect(screen.queryByRole('button', { name: 'Request cancellation' })).toBeNull();
-    expect(
-      screen.getByText('This booking can’t be cancelled online. Contact us for help.'),
-    ).toBeInTheDocument();
-  });
-
-  it('"what happens next" hiện cả khi trang chưa truyền ước tính', async () => {
-    // Ba câu ấy đúng với MỌI yêu cầu huỷ đã trả tiền — chúng không phụ thuộc
-    // vào con số, nên không được biến mất cùng con số.
-    const user = userEvent.setup();
-    render(<BookingActions view={PAID_VIEW} code="BK-20260904-WXYZ" />);
-    await user.click(screen.getByRole('button', { name: 'Request cancellation' }));
-
-    expect(screen.getByText('What happens next')).toBeInTheDocument();
-    expect(
-      screen.getByText('Any refund goes back to the card or PayPal account you paid with.'),
-    ).toBeInTheDocument();
   });
 });

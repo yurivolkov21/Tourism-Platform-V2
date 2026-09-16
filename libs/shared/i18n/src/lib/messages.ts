@@ -481,7 +481,7 @@ export const messages = {
       nextHeading: 'What happens next',
       nextEmail: 'A confirmation email is on its way to your inbox.',
       nextVoucher: 'Your booking code is your voucher — show it at the meeting point.',
-      nextManage: 'View or cancel this trip anytime in Trips.',
+      nextManage: 'View or cancel this trip in Trips.',
       // Nhãn lặp lại HAI lần trên vé (`CheckoutShell`): dải header ngang +
       // cuống vé xoay dọc (`writing-mode: vertical-rl`) — cùng một chữ, hai tư
       // thế, đúng kiểu ấn phẩm vé thật lặp thông tin ở cuống.
@@ -534,84 +534,6 @@ export const messages = {
       } as Record<string, string>,
       viewDetails: 'View details',
     },
-    detail: {
-      back: 'Back to my bookings',
-      title: 'Booking details',
-      paymentLabel: 'Payment',
-      contactLabel: 'Contact',
-      requestsLabel: 'Special requests',
-      payNow: 'Pay now',
-      // PENDING self-cancel
-      cancel: 'Cancel booking',
-      cancelConfirmTitle: 'Cancel this booking?',
-      cancelConfirmBody: 'This releases your pending reservation. You can book again any time.',
-      cancelConfirmCta: 'Yes, cancel it',
-      keep: 'Keep booking',
-      cancelling: 'Cancelling…',
-      cancelled: 'Booking cancelled.',
-      requestToast: 'Cancellation requested — we’ll email you.',
-      // PAID cancellation/refund request (admin processes refunds)
-      /**
-       * Ước tính hoàn tiền hiện NGAY TRONG dialog xin huỷ (ADR-0030 §3b) —
-       * khách biết trước khi bấm, không phải chờ đội ngũ trả lời. Con số do
-       * chính bảng bậc ở contract tính, cùng hàm mà màn admin dùng, nên hai
-       * bên không thể nói hai số khác nhau.
-       */
-      /**
-       * Khối tóm tắt trong dialog xin huỷ. Chia hai nửa vì đó là hai câu hỏi
-       * khác nhau người ta đang hỏi cùng lúc: "tôi đang huỷ đúng cái chưa" và
-       * "tôi lấy lại được bao nhiêu". Nhãn viết theo thứ NGƯỜI nhận ra, không
-       * theo tên field.
-       */
-      cancelSummaryBooking: 'Booking',
-      cancelSummaryGetBack: 'back to you',
-      /** Đặt DƯỚI con số lớn: nó giải thích con số, không thay thế con số. */
-      cancelSummaryOfTotal: (percent: number, total: string) => `${percent}% of ${total}`,
-      /** Đã hoàn một phần từ trước — con số lớn là phần CÒN LẠI. */
-      cancelSummaryAlready: (amount: string) => `${amount} already refunded`,
-      /**
-       * Ba việc xảy ra SAU khi bấm gửi. Có ở đây vì đây là lúc người ta cần
-       * biết, chứ không phải trong một trang chính sách họ sẽ không mở.
-       */
-      cancelNextHeading: 'What happens next',
-      cancelNextReview: 'Our team reviews your request, usually within 2 business days.',
-      cancelNextMethod: 'Any refund goes back to the card or PayPal account you paid with.',
-      cancelNextTiming: 'It typically takes 5–10 business days to appear on your statement.',
-      refundEstimateDays: (days: number) =>
-        days === 0
-          ? 'Your tour departs today.'
-          : days < 0
-            ? 'Your tour has already started.'
-            : `Your tour departs in ${days} ${days === 1 ? 'day' : 'days'}.`,
-      /** Đang trong cửa sổ ân hạn — nói rõ vì sao được 100%, kẻo con số trông
-       *  như may mắn và khách không biết cửa sổ ấy sắp hết. */
-      refundEstimateGrace: `You are still within ${REFUND_GRACE_HOURS} hours of paying, so this cancellation is refunded in full.`,
-      refundEstimateLink: 'See the full refund schedule',
-      requestTitle: 'Need to cancel?',
-      requestBody:
-        'Paid bookings are cancelled by our team. Send a request and we’ll get back to you about a refund.',
-      requestCta: 'Request cancellation',
-      // BẮT BUỘC, không phải optional (user chốt 08/08). Contract khai
-      // `reason: z.string().min(1).max(1000)` và lý do này đi thẳng vào hàng
-      // đợi admin duyệt hoàn tiền — một đơn không lý do thì người duyệt không
-      // có gì để quyết. Nhãn cũ ghi "(optional)" là nói sai với hợp đồng thật.
-      reasonLabel: 'Why are you cancelling?',
-      reasonPlaceholder: 'A sentence is enough — it goes straight to our team.',
-      /** Trần 1000 là `max` của contract. Bộ đếm ở mockup booking-flow ghi 500
-       *  — đó là trần `decisionNote` của ADMIN, nhầm bề mặt. */
-      reasonCounter: (n: number) => `${n} / 1000`,
-      reasonRequired: 'Please tell us why — our team needs it to process a refund.',
-      submitRequest: 'Send request',
-      submitting: 'Sending…',
-      requestSent: 'Request sent — our team will follow up shortly.',
-      requestError: 'Couldn’t send your request. Please try again.',
-      policyLink: 'Read our cancellation & refund policy',
-      requestPending: 'Cancellation requested — we’ll email you about a refund.',
-      requestDenied: 'Your cancellation request was declined.',
-      requestResubmit: 'Request cancellation again',
-      refundedNote: (amount: string) => `Refunded ${amount}.`,
-      partiallyRefundedNote: (amount: string) => `Partially refunded ${amount}.`,
-    },
   },
   // Card tóm tắt đơn ở cột phải trang /tours/[slug]/book (checkout hướng B —
   // Task 2 cụm redesign checkout/account). Đặt cạnh `booking` cho dễ tìm.
@@ -643,6 +565,19 @@ export const messages = {
       closeWindow: 'This departure is close — review our',
       closeWindowSuffix: 'before booking.',
     },
+  },
+  /**
+   * Câu hạn chót huỷ miễn phí (ADR-0041) — MỘT nguồn cho mọi chỗ in ngày chót:
+   * trang booking, trang thanh toán thành công, checkout, trang tour. `date` đã
+   * định dạng sẵn ("17 Oct", `formatChipDate`). Luôn ghi "Vietnam time": hạn chót
+   * là ngày lịch Việt Nam, không phải ngày trên máy khách.
+   */
+  cancellationDeadline: {
+    full: (date: string) =>
+      `Free cancellation until ${date}, 11:59 pm Vietnam time. No refund after that.`,
+    passed: (date: string) => `The free-cancellation deadline (${date}) has passed.`,
+    /** Nhãn link sang `/cancellation-policy` đứng cạnh các câu hạn chót — không còn "refund schedule" theo bậc. */
+    policyLink: 'Read the cancellation policy',
   },
   common: {
     home: 'Home',
@@ -2633,7 +2568,8 @@ export const messages = {
       /** Huỷ mà không hoàn đồng nào cũng phải nói ra, kẻo khách ngồi đợi. */
       none: 'No refund was due on this booking.',
       timing: 'It can take 5–10 business days to appear on your statement.',
-      schedule: 'See the refund schedule',
+      // Nhãn link khi không hoàn đồng nào: dùng `cancellationDeadline.policyLink`
+      // (khoá `schedule` cũ nói "refund schedule" theo bậc — đã gỡ).
     },
     // Task 7 (redesign hướng A): link cạnh H1 sang trang tour công khai
     // (`/tours/{tourSlug}`) — riêng cho namespace này, KHÔNG tái dùng
@@ -2648,11 +2584,8 @@ export const messages = {
       reviewHeading: 'Your review',
       reviewBlurb: 'Tell other travellers how it went.',
     },
-    // Terminal (CANCELLED/REFUNDED/PARTIALLY_REFUNDED — `actions: []` ở
-    // `bookingView`) không có amount đã hoàn ở đây: `Booking` (contract
-    // khách, `BookingSchema`) KHÔNG mang field ledger đó — chỉ
-    // `AdminBookingDetailSchema`/`Refund` (admin-only) có. Ghi rõ để A2
-    // không tưởng lầm đây là thiếu sót UI có thể tự vá bằng mock.
+    // Terminal (CANCELLED/REFUNDED/PARTIALLY_REFUNDED không còn nút huỷ) — câu
+    // trạng thái; số tiền đã hoàn nằm ở `refundLine`.
     terminalNote: {
       CANCELLED: 'This booking was cancelled.',
       REFUNDED: 'This booking was refunded.',
@@ -2660,29 +2593,55 @@ export const messages = {
     } as Record<string, string>,
     actions: {
       payNow: 'Pay now',
-      cancelPending: 'Cancel booking',
+      /** Nhãn nút mở hộp huỷ — chung cho booking chưa trả (PENDING) và đã trả. */
+      cancel: 'Cancel booking',
       cancelConfirmTitle: 'Cancel this booking?',
       cancelConfirmBody: 'This releases your pending reservation. You can book again any time.',
       cancelConfirmCta: 'Yes, cancel it',
       cancelDismiss: 'Keep booking',
-      requestCancellation: 'Request cancellation',
-      viewCancellationPending: 'Cancellation requested — pending review.',
-      resubmitCancellation: 'Request cancellation again',
     },
-    deniedNote: (note: string) => `Your previous request was declined: ${note}`,
+    /**
+     * Hộp xác nhận huỷ booking ĐÃ TRẢ (ADR-0041 §4) — hai dạng theo cờ
+     * `withinDeadline` server trả. Quá hạn: câu đầu là
+     * `cancellationDeadline.passed(date)`, component nối `afterBody` phía sau
+     * (một câu một khoá). Số tiền định dạng bằng `formatMoneyExact` ở component.
+     */
+    cancelDialog: {
+      withinBody: (amount: string) =>
+        `Cancel and get a full refund of ${amount}? It usually reaches your original payment method in 5–10 business days.`,
+      withinCta: (amount: string) => `Cancel and refund ${amount}`,
+      afterBody: 'If you cancel now, you won’t be refunded.',
+      /** Lối cho ca đặc biệt — form hỏi đáp của tour; admin xem xét hoàn thiện chí (spec §3.4). */
+      afterContact: 'Something serious happened? Contact us',
+      afterCta: 'Cancel without refund',
+      // Không bắt buộc: huỷ không còn qua hàng đợi duyệt nên không ai cần lý do
+      // để quyết (contract `reason` optional).
+      reasonLabel: 'Why are you cancelling? (optional)',
+      reasonPlaceholder: 'Anything you’d like us to know.',
+      /** Trần 1000 là `max` của `CancelBookingInputSchema.reason`. */
+      reasonCounter: (n: number) => `${n} / 1000`,
+      submitting: 'Cancelling…',
+    },
+    /**
+     * Yêu cầu huỷ của luồng duyệt đã gỡ (REQUESTED/DENIED) còn trên dữ liệu trước
+     * lượt seed lại — chỉ kể lại sự việc, không hứa ai xem xét (spec §5.3).
+     */
+    legacyRequest: {
+      requested: (date: string) => `You sent a cancellation request on ${date}.`,
+      denied: (date: string) => `Your cancellation request of ${date} was declined.`,
+    },
     policyLink: 'Read our cancellation & refund policy',
     // Chừa chỗ cụm B (form review thật) — placeholder nhẹ, không dựng logic.
     review: {
       heading: 'Your review',
       body: 'Once your trip is done, you’ll be able to leave a review here.',
     },
-    // Toast SAU khi hành động ghi thành công (Task 7/A2) — trang tự
-    // `router.refresh()` để đọc lại trạng thái mới, toast chỉ báo kết quả.
+    // Toast SAU khi hành động ghi thành công — trang tự `router.refresh()` để
+    // đọc lại trạng thái mới, toast chỉ báo kết quả.
     toast: {
-      cancelPendingTitle: 'Booking cancelled',
+      /** Tiêu đề chung cho mọi lần huỷ thành công; phần mô tả nói chuyện tiền. */
+      cancelledTitle: 'Booking cancelled',
       cancelPendingBody: 'Your pending reservation has been released.',
-      cancelRequestedTitle: 'Cancellation requested',
-      cancelRequestedBody: "We'll review your request and follow up by email.",
     },
   },
   // Trang `/account/profile` hợp nhất (spec §3): tên/phone + đổi mật khẩu +
@@ -2807,11 +2766,13 @@ export const messages = {
   accountActionErrors: {
     generic: 'Something went wrong. Please try again.',
     throttle: 'Too many requests — please wait a minute and try again.',
-    /** 409 từ `bookings.cancel` — đã có một đơn đang mở cho booking này. Trước
-     *  đây rơi vào `generic` dù copy riêng đã tồn tại ở `booking.errors`. */
-    alreadyRequested: 'You’ve already sent a cancellation request for this booking.',
-    /** 422 — booking ở trạng thái không huỷ online được (đã đi, đã hoàn…). */
+    /** 422 `NOT_CANCELLABLE` — booking không còn huỷ online được (đã huỷ ở tab khác, đã tới ngày khởi hành…). */
     notCancellable: 'This booking can’t be cancelled online. Contact us for help.',
+    /** 502 `REFUND_FAILED` — cổng thanh toán lỗi nên server không ghi gì; nói rõ booking còn nguyên để khách thử lại. */
+    refundFailed:
+      'We couldn’t process your refund, so your booking hasn’t changed. Please try again.',
+    /** 400 `DEPARTURE_NOT_AVAILABLE` ở "Pay now" và ở wizard đặt chỗ — chuyến đã qua hạn đặt (ADR-0041 §3). */
+    bookingClosed: 'Booking for this departure has closed.',
     sessionExpired: 'Your session has expired.',
     loginLink: 'Log in again',
   },

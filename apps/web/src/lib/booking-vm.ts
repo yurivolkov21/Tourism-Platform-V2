@@ -1,39 +1,22 @@
-import type { Booking } from '@tourism/contract';
-
-/**
- * Trạng thái yêu cầu hủy phía KHÁCH — type WEB TỰ KHAI, KHÔNG trùng field
- * `Booking['cancellationStatus']` (Task 6a: `'REQUESTED'|'REFUNDED'|'DENIED'|
- * null`). Dựng từ field đó qua `toCancellationView` bên dưới (Task 6, A2) —
- * `decisionNote` LUÔN `null` khi dựng từ API thật: đối chiếu
- * `libs/shared/contract/src/contract.ts`, `bookings.byCode` (route khách gọi,
- * owner-only) output `BookingSchema` TRẦN, không mang lý do admin từ chối —
- * field đó (`cancellationRequests[].decisionNote`) chỉ có ở
- * `AdminBookingDetailSchema` (`admin.bookings.byCode`, admin-only). `null`
- * vẫn hiển thị đúng — `BookingActions` đã bọc nhánh `deniedNote ? … : null`.
- *
- * `REFUNDED` không xuất hiện ở đây: approve-cancellation chuyển `Booking`
- * sang `CANCELLED` ngay (docs/conventions/booking-states.md) nên một booking
- * còn đang `PAID` chỉ mang cancellation chưa-có/`REQUESTED`/`DENIED`.
- */
-export interface CancellationView {
-  status: 'REQUESTED' | 'DENIED';
-  decisionNote: string | null;
-}
+import type { Booking, BookingCancellation } from '@tourism/contract';
+import { messages } from '@tourism/i18n';
+import { formatChipDate, formatDate } from './tours';
 
 /** Tông màu badge — token-only (spec §3), map 1-1 theo nhóm status. */
 export type BookingViewTone = 'success' | 'warning' | 'muted' | 'destructive';
 
-/** Hành động khả dụng trên trang chi tiết booking (spec §3). */
-export type BookingAction =
-  | 'payNow'
-  | 'cancelPending'
-  | 'requestCancellation'
-  | 'viewCancellationPending'
-  | 'resubmitCancellation';
+/**
+ * Hành động khả dụng trên trang chi tiết booking.
+ *
+ * `cancelBooking` thay bộ ba `requestCancellation`/`viewCancellationPending`/
+ * `resubmitCancellation` của luồng khách xin huỷ, admin duyệt — luồng đó gỡ
+ * theo ADR-0041 §4: khách huỷ là huỷ ngay, không còn trạng thái "đang chờ".
+ */
+export type BookingAction = 'payNow' | 'cancelPending' | 'cancelBooking';
 
 /**
  * Kết quả bảng quyết định — component CHỈ render `BookingView`, KHÔNG
- * if/else theo status trong JSX ngoài map action→nút (plan Task 4).
+ * if/else theo status trong JSX ngoài map action→nút (plan Task 4 cụm cũ).
  */
 export interface BookingView {
   tone: BookingViewTone;
@@ -42,68 +25,80 @@ export interface BookingView {
 }
 
 /**
- * Bảng quyết định status → (tone, hành động) — hàm THUẦN (spec §3):
+ * Bảng quyết định status → (tone, hành động) — hàm THUẦN:
  *
  * - `PENDING` → warning + [payNow, cancelPending].
- * - `PAID` → success + đúng MỘT action cancellation, chọn theo
- *   `cancellation`: chưa có → requestCancellation · REQUESTED →
- *   viewCancellationPending · DENIED → resubmitCancellation.
- * - `CANCELLED` → muted + [] (terminal, không hành động gì thêm).
- * - `REFUNDED`/`PARTIALLY_REFUNDED` → destructive + [] (đọc số tiền đã hoàn
- *   từ ledger ở trang chi tiết, không phải từ VM này).
+ * - `PAID` → success; `PARTIALLY_REFUNDED` → destructive. Cả hai có
+ *   [cancelBooking] khi và chỉ khi SERVER nói `cancellation.canCancel`
+ *   (spec §5.3) — kể cả khi đã quá hạn chót: huỷ vẫn được, chỉ là hoàn 0.
+ * - `CANCELLED` → muted + [] (terminal).
+ * - `REFUNDED` → destructive + [] — đã hoàn thiện chí toàn bộ thì không huỷ
+ *   online, khách liên hệ (spec §3.3).
  *
- * `cancellation` chỉ có ý nghĩa khi `b.status === 'PAID'` — bị bỏ qua ở mọi
- * status khác vì máy trạng thái không cho phép cancellation request đang mở
- * trên booking không PAID (booking-states.md).
+ * Web KHÔNG tự so ngày để quyết có nút huỷ hay không (ADR-0041 §7): `cancellation`
+ * là cờ `bookings.byCode` trả. Vắng cờ (danh sách `mine`, hộ chiếu) thì không
+ * có nút huỷ, còn tone giữ nguyên nên `passport.ts` không bị ảnh hưởng.
  */
-/**
- * Task 6 (A2): map `Booking['cancellationStatus']` (đọc thẳng từ
- * `bookings.byCode` thật — Task 6a) sang `CancellationView` cho `bookingView`
- * bên dưới. `REFUNDED` map về `undefined` (KHÔNG map thẳng vào `CancellationView`
- * — kiểu đó cố ý chỉ có 'REQUESTED'|'DENIED', xem JSDoc trên) — theo
- * `docs/conventions/booking-states.md` một khi cancellation được duyệt thì
- * `Booking.status` đã chuyển `CANCELLED` ngay, nên một booking còn `PAID` không
- * bao giờ mang `cancellationStatus: 'REFUNDED'` thật; nhánh này chỉ là phòng thủ
- * (never null decisionNote vì contract khách không mang field đó — chỉ
- * `AdminBookingDetailSchema` admin-only mới có lịch sử `decisionNote`).
- */
-export function toCancellationView(
-  status: Booking['cancellationStatus'],
-): CancellationView | undefined {
-  if (status === 'REQUESTED' || status === 'DENIED') {
-    return { status, decisionNote: null };
-  }
-  return undefined;
-}
-
-export function bookingView(b: Booking, cancellation?: CancellationView): BookingView {
+export function bookingView(
+  b: Booking,
+  cancellation: BookingCancellation | null = null,
+): BookingView {
+  const cancel: BookingAction[] = cancellation?.canCancel ? ['cancelBooking'] : [];
   switch (b.status) {
     case 'PENDING':
       return { tone: 'warning', statusKey: b.status, actions: ['payNow', 'cancelPending'] };
-    case 'PAID': {
-      let action: BookingAction = 'requestCancellation';
-      if (cancellation?.status === 'REQUESTED') action = 'viewCancellationPending';
-      else if (cancellation?.status === 'DENIED') action = 'resubmitCancellation';
-      return { tone: 'success', statusKey: b.status, actions: [action] };
-    }
+    case 'PAID':
+      return { tone: 'success', statusKey: b.status, actions: cancel };
     case 'CANCELLED':
       return { tone: 'muted', statusKey: b.status, actions: [] };
     case 'REFUNDED':
-    case 'PARTIALLY_REFUNDED':
       return { tone: 'destructive', statusKey: b.status, actions: [] };
+    case 'PARTIALLY_REFUNDED':
+      return { tone: 'destructive', statusKey: b.status, actions: cancel };
   }
+}
+
+/**
+ * Câu hạn chót huỷ miễn phí cho trang booking và trang thanh toán thành công —
+ * `null` khi server không gửi `cancellation` (booking không ở PAID hoặc
+ * PARTIALLY_REFUNDED).
+ *
+ * Chỉ IN cờ `withinDeadline` và ngày `deadline` server tính: trang không so
+ * ngày chót với giờ trình duyệt, nên chỉnh đồng hồ máy không đổi được câu này
+ * (spec §2 Q7).
+ */
+export function cancellationDeadlineText(cancellation: BookingCancellation | null): string | null {
+  if (cancellation === null) return null;
+  const t = messages.cancellationDeadline;
+  const date = formatChipDate(cancellation.deadline);
+  return cancellation.withinDeadline ? t.full(date) : t.passed(date);
+}
+
+/**
+ * Yêu cầu huỷ của luồng duyệt đã gỡ (REQUESTED, DENIED) còn nằm trên dữ liệu
+ * trước lượt seed lại — in dạng chỉ đọc, chỉ kể lại sự việc (spec §5.3).
+ * REFUNDED là kết cục thường của mọi lần huỷ nên không có dòng riêng.
+ */
+export function legacyCancellationNote(b: Booking): string | null {
+  if (b.cancellationRequestedAt === null) return null;
+  const t = messages.accountBookingDetail.legacyRequest;
+  // Mốc ISO đầy đủ: cắt phần ngày trước khi đưa `formatDate` (hàm đó chỉ nhận
+  // `YYYY-MM-DD`, cùng lý do ở dòng "Booked …" của trang chi tiết).
+  const sentOn = formatDate(b.cancellationRequestedAt.slice(0, 10));
+  if (b.cancellationStatus === 'REQUESTED') return t.requested(sentOn);
+  if (b.cancellationStatus === 'DENIED') return t.denied(sentOn);
+  return null;
 }
 
 /**
  * Chuyện gì đã xảy ra với TIỀN của khách — `null` khi không có gì để kể.
  *
  * Có mặt vì tới 04/09 trang chi tiết booking của khách không hề nói số tiền
- * đã hoàn: sau một lần duyệt huỷ hoàn một phần, khách thấy đúng chữ
- * "Cancelled" và không gì khác, còn bằng chứng duy nhất nằm trong hộp mail.
+ * đã hoàn: khách thấy đúng chữ "Cancelled" và không gì khác, còn bằng chứng
+ * duy nhất nằm trong hộp mail.
  *
- * `none` (huỷ mà không hoàn đồng nào) CŨNG là một câu chuyện phải kể, cùng lý
- * do với mail duyệt huỷ: im lặng thì khách tự đoán rồi ngồi đợi một khoản
- * không bao giờ tới.
+ * `none` (huỷ mà không hoàn đồng nào) CŨNG là một câu chuyện phải kể: im lặng
+ * thì khách tự đoán rồi ngồi đợi một khoản không bao giờ tới.
  */
 export type RefundSummary =
   | { kind: 'full'; amount: string }
