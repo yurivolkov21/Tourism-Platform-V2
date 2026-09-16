@@ -217,3 +217,43 @@ Rà **cả hai tầng** như luật 10 đòi: (a) tính năng, (b) hạ tầng x
 | **Lấy bảng màu `docs/navel/` làm brand mobile** | Mở nhánh brand thứ hai (teal+amber vs Wuling) phải giải trình trước hội đồng, phá lời hứa một-nguồn của ADR-0013, đổi lấy đúng một thứ: giống ảnh mẫu. Mượn bố cục là đủ. |
 | **`@expo/ui`, `expo-glass-effect`, `expo-symbols`** (template mặc định có) | Chưa màn nào cần; mỗi dep thêm vào là một thứ phải đứng vững qua freeze. Thêm khi P5b thật sự dùng. |
 | **`nodeLinker: hoisted`** | Docs Expo nói SDK 54+ không cần; đổi cách link `node_modules` của **cả repo** để chiều một app là cái giá sai. |
+
+## AMEND 1 — 16/09/2026 (P5b-1, cụm auth): dependency, seam `AuthActions`, luật lỗi ba kênh
+
+Bối cảnh: [spec P5b-1](../specs/2026-09-16-p5b-auth-wireframe-design.md). Template
+P5a chỉ có màn giữ chỗ; đợt này dựng 17 khung TĨNH của cụm auth và CHƯA nối API —
+phần nối do một thành viên khác làm sau, nên ranh giới phải nằm trong code chứ
+không nằm trong lời dặn.
+
+1. **Năm dependency được cấp phép** — đúng nhánh "thêm khi P5b thật sự dùng" ở mục
+   *Đã cân nhắc và loại*: `expo-linear-gradient` (dải mờ dưới ảnh đầu trang; RN có
+   `experimental_backgroundImage` nhưng còn là API thử nghiệm), `@expo/vector-icons`
+   (bộ Feather — chính bộ mà lucide của web mọc ra, kèm chữ G của Google),
+   `expo-font` cùng `@expo-google-fonts/literata` và `@expo-google-fonts/archivo`
+   (chữ brand như web). Tất cả chạy trong Expo Go, không kéo native module ngoài
+   danh sách dựng sẵn; `expo-doctor` vẫn là trọng tài (§7).
+   **Vẫn KHÔNG cài:** `expo-image` (`Image` của RN đủ cho ảnh remote),
+   `expo-web-browser` (link pháp lý mở bằng `Linking`), `react-native-svg` +
+   `lucide-react-native` (Metro không lược icon thừa nên kéo cả bộ vào bundle),
+   thư viện form, toast hay pager.
+2. **Font không đi qua cầu token.** `rn-convert` chỉ mang màu, bo góc và type scale
+   (§3, ADR-0013), không mang font family — nên `@tourism/mobile-ui` khai map family
+   ngay tại theme (Literata cho tiêu đề, Archivo cho thân). Cỡ chữ vẫn đọc từ token,
+   và luật "không hex viết tay" của §3 giữ nguyên: màu dải mờ suy từ token qua hàm
+   `withAlpha`, không gõ chuỗi hex.
+3. **Màn tĩnh nối hạ tầng qua một interface.** Màn gọi `AuthActions` (7 method) lấy
+   từ provider ở layout gốc; đợt này cấp bản giả lập. Người làm hạ tầng viết bản
+   `@better-auth/expo` (ADR-0017 §9) rồi đổi provider, không sửa màn nào. Cờ "đã xem
+   onboarding" đi qua `OnboardingStore` cùng khuôn.
+4. **Lỗi hiển thị theo ba kênh, và một hàm quyết kênh:** dưới ô (lỗi gắn được vào
+   ô) · khung ngay trên nút chính (không gắn được nhưng vẫn thử lại được) · trạng
+   thái cả màn (màn hết dùng được). Kênh dựa trên `fieldOfAuthError` dùng chung ở
+   [ADR-0042](0042-shared-client-rules-core.md).
+5. **Route `/dev/gallery` chỉ sống khi `__DEV__`** — chỗ xem đủ các khung và trạng
+   thái trên máy thật mà không phải gõ dữ liệu; bản phát hành không có đường vào.
+6. **Vào app không cần đăng nhập:** splash → onboarding (chỉ lần đầu) → Home với tư
+   cách khách. Nhóm `(auth)` vẫn là modal như P5a, mở khi khách chạm việc cần tài khoản.
+
+**Hệ quả:** ranh giới gate giữ nguyên (§5 — `bundle` vẫn ngoài `pnpm gate`); runbook
+dev đổi bước build sang `pnpm turbo run build --filter=@tourism/mobile^...` vì Metro
+cần `dist` của `tokens`, `i18n` và `core`.

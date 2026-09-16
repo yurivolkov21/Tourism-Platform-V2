@@ -1,0 +1,534 @@
+<!--
+  BẢN GHI VÒNG THIẾT KẾ — cụm auth app mobile (P5b-1), user duyệt 15–16/09/2026.
+  Hướng A "ảnh đầu trang" thắng trong vòng so ba hướng; 17 khung dưới đây ĐÃ áp
+  hai chỉnh sửa của luật lỗi 3 kênh: khung lỗi cấp form nằm ngay trên nút chính
+  (2b), và lý do bị chuyển sang Verify nói bằng phụ đề thay vì dải riêng (4b).
+  Bản ghi bất biến như mọi mockup khác trong thư mục — đừng sửa để lint xanh;
+  muốn đổi thiết kế thì thêm file mới.
+  Màu lấy nguyên token Wuling nền tối (libs/shared/tokens/generated/theme.js);
+  ảnh lấy từ các khe site-media trên Cloudinary mà web đang dùng.
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Literata:opsz,wght@7..72,600;7..72,700&display=swap" rel="stylesheet">
+<style>
+  /* Biến của khung ngoài — mở lẻ file này thì rơi về các giá trị dự phòng đây. */
+  :root {
+    --bg-secondary: #ffffff; --border: #d1d1d6; --text-primary: #1d1d1f;
+    --text-secondary: #86868b; --accent: #0071e3;
+  }
+  body { font-family: system-ui, sans-serif; color: var(--text-primary); margin: 0; padding: 2rem; }
+  h2 { font-size: 1.5rem; margin: 0 0 .4rem; }
+  .subtitle { color: var(--text-secondary); margin: 0 0 1.25rem; }
+  .sec { margin: 2rem 0 .6rem; font-size: 1.05rem; }
+  .sec small { font-weight: 400; color: var(--text-secondary); font-size: .8rem; margin-left: .5rem; }
+  .legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: .9rem; max-width: 1150px; margin: .5rem 0 1.25rem; }
+  .legend .it { background: var(--bg-secondary); border: 1px solid var(--border); border-radius: 12px; padding: .8rem 1rem; }
+  .legend .it h3 { font-size: .95rem; margin: 0; display: flex; align-items: center; gap: .5rem; }
+  .legend .it p { font-size: .82rem; color: var(--text-secondary); margin: .3rem 0 0; }
+  .num { display: inline-flex; width: 20px; height: 20px; border-radius: 99px; background: var(--accent); color: #fff; font: 700 11px/20px system-ui; justify-content: center; flex-shrink: 0; }
+  .row { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: stretch; }
+  .shot { width: 352px; padding: 12px 12px 10px; border: 1px solid var(--border); border-radius: 18px; background: var(--bg-secondary); }
+  .cap { padding: 12px 4px 2px; }
+  .cap b { display: block; font-size: .9rem; margin-bottom: .2rem; }
+  .cap span { font-size: .8rem; color: var(--text-secondary); }
+
+  .phone {
+    --background: #202a28; --foreground: #dce8e4; --card: #243430;
+    --primary: #2f7a6e; --primary-foreground: #f2f8f6; --primary-emphasis: #78c1b4;
+    --on-media: #f5faf8; --muted: #2f443f; --muted-foreground: #9db3ac;
+    --secondary: #2f443f; --secondary-foreground: #a9cec6;
+    --border-token: #3a4d47; --input: #6b8079; --destructive-emphasis: #f37c71;
+    position: relative; width: 324px; height: 700px; margin: 6px auto 0;
+    border-radius: 40px; overflow: hidden;
+    background: var(--background); color: var(--foreground);
+    font-family: 'Archivo', system-ui, sans-serif; font-size: 13px; line-height: 1.4;
+    box-shadow: 0 0 0 7px #0d1211, 0 14px 32px rgba(0,0,0,.35);
+  }
+  .phone * { box-sizing: border-box; }
+  .phone svg { display: block; flex-shrink: 0; }
+  .sb { position: absolute; top: 0; left: 0; right: 0; height: 40px; padding: 14px 26px 0; display: flex; justify-content: space-between; font-size: 12px; font-weight: 600; z-index: 5; }
+  .sb .icons { display: flex; gap: 5px; align-items: center; }
+  .sb .icons i { display: block; background: currentColor; border-radius: 2px; }
+  .on-media { color: var(--on-media); }
+  .home { position: absolute; bottom: 8px; left: 50%; width: 110px; height: 4px; margin-left: -55px; border-radius: 99px; background: var(--foreground); opacity: .8; z-index: 5; }
+  .icon-btn { position: absolute; z-index: 6; width: 36px; height: 36px; border-radius: 999px; display: flex; align-items: center; justify-content: center; }
+  .icon-btn.glass { background: rgba(6,18,16,.45); color: var(--on-media); }
+  .icon-btn.plain { color: var(--foreground); }
+  .loc { position: absolute; z-index: 6; display: flex; gap: 4px; align-items: center; font-size: 10.5px; color: var(--on-media); opacity: .9; }
+  .title { font-family: 'Literata', Georgia, serif; font-weight: 700; font-size: 30px; line-height: 1.12; letter-spacing: -.01em; margin: 0; }
+  .sub { color: var(--muted-foreground); margin: 6px 0 0; font-size: 13px; }
+  .sub b.em { color: var(--foreground); font-weight: 600; }
+  .fields { margin-top: 6px; }
+  .link { color: var(--primary-emphasis); font-weight: 600; }
+  .row-end { display: flex; justify-content: flex-end; margin: 8px 0 12px; font-size: 12px; }
+  .btn { height: 46px; border-radius: 999px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 600; font-size: 14px; }
+  .btn.primary { background: var(--primary); color: var(--primary-foreground); }
+  .btn.primary.disabled { opacity: .45; }
+  .btn.outline { border: 1px solid var(--border-token); color: var(--foreground); }
+  .btn.ghost-media { border: 1px solid rgba(245,250,248,.35); color: var(--on-media); }
+  .or { display: flex; align-items: center; gap: 10px; margin: 10px 0; color: var(--muted-foreground); font-size: 11px; }
+  .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--border-token); }
+  .foot { text-align: center; color: var(--muted-foreground); font-size: 12px; margin: 12px 0 0; }
+  .ph { flex: 1; }
+  .u-field { display: flex; align-items: center; gap: 10px; height: 46px; border-bottom: 1px solid var(--border-token); color: var(--muted-foreground); margin-top: 10px; }
+  .u-field.invalid { border-bottom-color: var(--destructive-emphasis); }
+  .stack { display: flex; flex-direction: column; flex: 1; line-height: 1.25; }
+  .stack small { font-size: 10px; color: var(--muted-foreground); }
+  .stack span { color: var(--foreground); font-size: 13px; }
+  .err { color: var(--destructive-emphasis); font-size: 11.5px; margin: 5px 0 0; line-height: 1.35; }
+  .msg { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 14px; font-size: 12px; line-height: 1.35; margin-bottom: 10px; }
+  .msg.error { background: rgba(194,80,72,.16); border: 1px solid rgba(243,124,113,.45); color: var(--foreground); }
+  .msg.error svg { color: var(--destructive-emphasis); }
+  .msg.info { background: var(--secondary); color: var(--secondary-foreground); }
+  .msg.info svg { color: var(--primary-emphasis); }
+  .check { display: flex; gap: 10px; align-items: flex-start; font-size: 12px; color: var(--muted-foreground); margin: 14px 0 12px; }
+  .box { width: 18px; height: 18px; border-radius: 5px; border: 1.5px solid var(--input); flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center; }
+  .box.on { background: var(--primary); border-color: var(--primary); color: var(--primary-foreground); }
+  .mark { position: relative; display: inline-block; width: 28px; height: 20px; vertical-align: middle; }
+  .mark i { position: absolute; top: 3px; width: 13px; height: 13px; border-radius: 3px; transform: rotate(45deg); }
+  .mark i:first-child { left: 2px; background: var(--primary); }
+  .mark i:last-child { left: 11px; background: var(--foreground); }
+  .wm { font-family: 'Literata', Georgia, serif; font-weight: 600; font-size: 19px; vertical-align: middle; margin-left: 4px; }
+  .wm b { color: var(--primary-emphasis); font-weight: 600; }
+  .a-photo { position: absolute; top: 0; left: 0; right: 0; height: 300px; background-size: cover; background-position: center; }
+  .a-photo.short { height: 230px; }
+  .a-fade { position: absolute; top: 0; left: 0; right: 0; height: 302px; background: linear-gradient(180deg, rgba(1,10,8,.45) 0%, rgba(32,42,40,0) 30%, rgba(32,42,40,.55) 66%, #202a28 100%); }
+  .a-fade.short { height: 232px; }
+  .a-body { position: absolute; left: 24px; right: 24px; top: 226px; }
+  .a-body.reg { top: 164px; }
+  .plain-body { position: absolute; left: 24px; right: 24px; top: 104px; }
+  .pin-bottom { position: absolute; left: 24px; right: 24px; bottom: 34px; }
+  .big-icon { width: 64px; height: 64px; border-radius: 20px; background: var(--secondary); color: var(--primary-emphasis); display: flex; align-items: center; justify-content: center; }
+  .otp { display: flex; align-items: center; gap: 7px; margin-top: 26px; }
+  .otp .cell { width: 34px; height: 50px; border-bottom: 2px solid var(--border-token); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 600; }
+  .otp .cell.filled, .otp .cell.active { border-bottom-color: var(--primary-emphasis); }
+  .otp .cell.active::after { content: ''; width: 2px; height: 24px; background: var(--primary-emphasis); }
+  .otp.invalid .cell { border-bottom-color: var(--destructive-emphasis); }
+  .otp .dash { width: 10px; height: 2px; background: var(--border-token); margin: 0 3px; }
+  .resend { margin: 18px 0 0; font-size: 12px; color: var(--muted-foreground); }
+  .resend b { color: var(--foreground); }
+  .hint { margin: 14px 0 0; font-size: 11.5px; color: var(--muted-foreground); line-height: 1.45; }
+  .done { position: absolute; left: 24px; right: 24px; top: 196px; display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .done .title { margin-top: 38px; }
+  .done .sub { max-width: 250px; }
+  .glow { width: 96px; height: 96px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); display: flex; align-items: center; justify-content: center; box-shadow: 0 0 0 10px rgba(47,122,110,.28), 0 0 0 22px rgba(47,122,110,.12); }
+  .splash { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; }
+  .mark.lg { width: 78px; height: 54px; }
+  .mark.lg i { width: 34px; height: 34px; top: 10px; border-radius: 8px; }
+  .mark.lg i:first-child { left: 7px; }
+  .mark.lg i:last-child { left: 30px; }
+  .wm.lg { font-size: 30px; margin: 20px 0 0; }
+  .tag { position: absolute; bottom: 44px; left: 0; right: 0; text-align: center; font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted-foreground); margin: 0; }
+  .ob-photo { position: absolute; inset: 0; background-size: cover; background-position: center; }
+  .ob-scrim { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(1,10,8,.45) 0%, rgba(1,10,8,0) 22%, rgba(1,10,8,.15) 45%, rgba(1,10,8,.82) 72%, rgba(1,10,8,.94) 100%); }
+  .skip { position: absolute; top: 52px; right: 22px; z-index: 6; color: var(--on-media); font-size: 12px; font-weight: 600; }
+  .ob-body { position: absolute; left: 24px; right: 24px; bottom: 40px; color: var(--on-media); }
+  .ob-body .title { font-size: 31px; }
+  .ob-body .sub { color: rgba(245,250,248,.78); }
+  .loc-inline { display: flex; gap: 4px; align-items: center; font-size: 11px; opacity: .85; margin-bottom: 10px; }
+  .dots { display: flex; gap: 6px; align-items: center; }
+  .dots i { display: block; width: 6px; height: 6px; border-radius: 99px; background: rgba(245,250,248,.4); }
+  .dots i.on { width: 22px; background: var(--primary-emphasis); }
+  .ob-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 26px; }
+  .round { width: 54px; height: 54px; border-radius: 999px; background: var(--primary); color: var(--primary-foreground); display: flex; align-items: center; justify-content: center; }
+</style>
+
+<h2>Cụm auth app mobile — 17 khung (hướng A, duyệt 16/09/2026)</h2>
+<p class="subtitle">Màu từ token Wuling nền tối, chữ Literata và Archivo như web, ảnh từ kho Cloudinary của web.</p>
+
+<div class="legend">
+  <div class="it"><h3><span class="num">1</span>Lỗi của ô</h3><p>Nằm dưới đúng ô sai, gạch chân chuyển đỏ. Dùng cho lỗi chỉ ra được ô: trống, sai định dạng, quá ngắn, không khớp, mã OTP sai.</p></div>
+  <div class="it"><h3><span class="num">2</span>Khung thông báo của form</h3><p>Mỗi form một chỗ, ngay trên nút chính. Tông lỗi cho sai thông tin đăng nhập, thử quá nhiều lần, mất mạng; tông thông tin cho việc vừa gửi mã mới.</p></div>
+  <div class="it"><h3><span class="num">3</span>Trạng thái cả màn</h3><p>Khi màn không dùng tiếp được, hoặc khi đã xong việc. Luôn kèm một nút đi tiếp.</p></div>
+</div>
+
+<h3 class="sec">1 · Mở app <small>splash và onboarding lần đầu</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="splash"><span class="mark lg"><i></i><i></i></span><span class="wm lg">Nex<b>ora</b></span></div>
+      <p class="tag">Tours across Vietnam</p>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>1a · Splash</b><span>Splash native: nền token tối, logo hai viên kim cương như web.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="ob-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_1400,q_auto,f_auto/v1787055538/tourism/catalog/site/moment-hoian-river')"></div>
+      <div class="ob-scrim"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <span class="skip">Skip</span>
+      <div class="ob-body">
+        <div class="loc-inline"><i data-icon="pin" data-size="12" data-stroke="2"></i>Hoi An, Vietnam</div>
+        <h1 class="title">Discover Vietnam, north to south</h1>
+        <p class="sub">Small-group tours across all three regions, led by local guides.</p>
+        <div class="ob-nav"><span class="dots"><i class="on"></i><i></i><i></i></span><span class="round"><i data-icon="arrow" data-size="22" data-stroke="2"></i></span></div>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>1b · Onboarding 1/3</b><span>Chỉ hiện lần đầu mở app; Skip vào thẳng Home.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="ob-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_1400,q_auto,f_auto/v1787055544/tourism/catalog/site/moment-lanha-kayak')"></div>
+      <div class="ob-scrim"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <span class="skip">Skip</span>
+      <div class="ob-body">
+        <div class="loc-inline"><i data-icon="pin" data-size="12" data-stroke="2"></i>Lan Ha Bay, Vietnam</div>
+        <h1 class="title">Book a real departure</h1>
+        <p class="sub">Pick a date, see how many seats are left, and pay securely.</p>
+        <div class="ob-nav"><span class="dots"><i></i><i class="on"></i><i></i></span><span class="round"><i data-icon="arrow" data-size="22" data-stroke="2"></i></span></div>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>1c · Onboarding 2/3</b><span>Nói đúng thứ app có: đợt khởi hành thật, số ghế còn, thanh toán qua cổng.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="ob-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_1400,q_auto,f_auto/v1787055534/tourism/catalog/site/moment-bentre-canal')"></div>
+      <div class="ob-scrim"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="ob-body">
+        <div class="loc-inline"><i data-icon="pin" data-size="12" data-stroke="2"></i>Ben Tre, Vietnam</div>
+        <h1 class="title">Your trips in your pocket</h1>
+        <p class="sub">Save the tours you love and keep every booking in one place.</p>
+        <div class="dots" style="margin-top:22px"><i></i><i></i><i class="on"></i></div>
+        <div class="btn primary" style="margin-top:18px">Get started</div>
+        <div class="btn ghost-media" style="margin-top:8px">I already have an account</div>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>1d · Onboarding 3/3</b><span>Get started vào Home với tư cách khách; nút dưới mở modal Sign in.</span></div>
+  </div>
+
+</div>
+
+<h3 class="sec">2 · Sign in <small>màn đầu của modal auth</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_600,q_auto,f_auto/v1787055535/tourism/catalog/site/moment-hagiang-valley')"></div>
+      <div class="a-fade"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn glass" style="top:46px;left:16px"><i data-icon="x" data-stroke="2"></i></div>
+      <div class="loc" style="top:56px;right:18px"><i data-icon="pin" data-size="12" data-stroke="2"></i>Ha Giang, Vietnam</div>
+      <div class="a-body">
+        <h1 class="title">Welcome back</h1>
+        <p class="sub">Sign in to save tours and manage your trips.</p>
+        <div class="fields">
+          <div class="u-field"><i data-icon="mail"></i><span class="ph">Email</span></div>
+          <div class="u-field"><i data-icon="lock"></i><span class="ph">Password</span><i data-icon="eye"></i></div>
+        </div>
+        <div class="row-end"><span class="link">Forgot password?</span></div>
+        <div class="btn primary">Sign in</div>
+        <div class="or">or</div>
+        <div class="btn outline"><i data-icon="google" data-size="16"></i>Continue with Google</div>
+        <p class="foot">New to Nexora? <span class="link">Create account</span></p>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>2a · Sign in</b><span>Trống. Nút X đóng cả modal, trả khách về chỗ đang xem.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_600,q_auto,f_auto/v1787055535/tourism/catalog/site/moment-hagiang-valley')"></div>
+      <div class="a-fade"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn glass" style="top:46px;left:16px"><i data-icon="x" data-stroke="2"></i></div>
+      <div class="loc" style="top:56px;right:18px"><i data-icon="pin" data-size="12" data-stroke="2"></i>Ha Giang, Vietnam</div>
+      <div class="a-body">
+        <h1 class="title">Welcome back</h1>
+        <p class="sub">Sign in to save tours and manage your trips.</p>
+        <div class="fields">
+          <div class="u-field"><i data-icon="mail"></i><span class="stack"><small>Email</small><span>lan.nguyen@example.com</span></span></div>
+          <div class="u-field"><i data-icon="lock"></i><span class="stack"><small>Password</small><span>••••••••</span></span><i data-icon="eye"></i></div>
+        </div>
+        <div class="row-end"><span class="link">Forgot password?</span></div>
+        <div class="msg error"><i data-icon="alert"></i><span>Invalid email or password.</span></div>
+        <div class="btn primary">Sign in</div>
+        <div class="or">or</div>
+        <div class="btn outline"><i data-icon="google" data-size="16"></i>Continue with Google</div>
+        <p class="foot">New to Nexora? <span class="link">Create account</span></p>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>2b · Sign in — kênh 2, tông lỗi</b><span>Sai email hay sai mật khẩu đều gộp một câu và nằm trên nút, vì không gắn được vào ô nào.</span></div>
+  </div>
+
+</div>
+
+<h3 class="sec">3 · Create account</h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo short" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_460,q_auto,f_auto/v1786976718/tourism/catalog/site/auth-panel')"></div>
+      <div class="a-fade short"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn glass" style="top:46px;left:16px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="loc" style="top:56px;right:18px"><i data-icon="pin" data-size="12" data-stroke="2"></i>Sa Pa, Vietnam</div>
+      <div class="a-body reg">
+        <h1 class="title">Create account</h1>
+        <p class="sub">Join to save tours and book in minutes.</p>
+        <div class="fields">
+          <div class="u-field"><i data-icon="user"></i><span class="ph">Full name</span></div>
+          <div class="u-field"><i data-icon="mail"></i><span class="ph">Email</span></div>
+          <div class="u-field"><i data-icon="lock"></i><span class="ph">Password</span><i data-icon="eye"></i></div>
+        </div>
+        <div class="check"><span class="box"></span><span>I agree to the <span class="link">Terms</span> and <span class="link">Privacy Policy</span></span></div>
+        <div class="btn primary disabled">Create account</div>
+        <div class="or">or</div>
+        <div class="btn outline"><i data-icon="google" data-size="16"></i>Continue with Google</div>
+        <p class="foot">Already have an account? <span class="link">Sign in</span></p>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>3a · Create account</b><span>Nút khoá tới khi tick Terms, giống web. Link Terms và Privacy mở trang web.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo short" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_460,q_auto,f_auto/v1786976718/tourism/catalog/site/auth-panel')"></div>
+      <div class="a-fade short"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn glass" style="top:46px;left:16px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="loc" style="top:56px;right:18px"><i data-icon="pin" data-size="12" data-stroke="2"></i>Sa Pa, Vietnam</div>
+      <div class="a-body reg">
+        <h1 class="title">Create account</h1>
+        <p class="sub">Join to save tours and book in minutes.</p>
+        <div class="fields">
+          <div class="u-field"><i data-icon="user"></i><span class="stack"><small>Full name</small><span>Lan Nguyen</span></span></div>
+          <div class="u-field invalid"><i data-icon="mail"></i><span class="stack"><small>Email</small><span>lan.nguyen@</span></span></div>
+          <p class="err">Enter a valid email address, e.g. you@example.com.</p>
+          <div class="u-field invalid"><i data-icon="lock"></i><span class="stack"><small>Password</small><span>•••</span></span><i data-icon="eye"></i></div>
+          <p class="err">Use at least 8 characters.</p>
+        </div>
+        <div class="check"><span class="box on"><i data-icon="check" data-size="12" data-stroke="3"></i></span><span>I agree to the <span class="link">Terms</span> and <span class="link">Privacy Policy</span></span></div>
+        <div class="btn primary">Create account</div>
+        <div class="or">or</div>
+        <div class="btn outline"><i data-icon="google" data-size="16"></i>Continue with Google</div>
+        <p class="foot">Already have an account? <span class="link">Sign in</span></p>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>3b · Create account — kênh 1</b><span>Mỗi lỗi nằm dưới đúng ô sai; câu chữ lấy từ formErrors của web.</span></div>
+  </div>
+
+</div>
+
+<h3 class="sec">4 · Verify email <small>mã OTP 6 số</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <h1 class="title">Check your email</h1>
+        <p class="sub">Enter the 6-digit code we sent to <b class="em">lan.nguyen@example.com</b></p>
+        <div class="otp">
+          <span class="cell filled">4</span><span class="cell filled">8</span><span class="cell active"></span>
+          <span class="dash"></span>
+          <span class="cell"></span><span class="cell"></span><span class="cell"></span>
+        </div>
+        <p class="resend">Resend code in <b>0:42</b></p>
+        <p class="hint">Already had an account with this email? No new code is sent — log in instead, or reset your password.</p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary disabled">Verify</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>4a · Verify email — sau khi đăng ký</b><span>Mã chia 3+3, chờ 60 giây mới gửi lại được; có câu nhắc cho người đăng ký trùng email.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <h1 class="title">Check your email</h1>
+        <p class="sub">Your email isn't verified yet. We just sent a fresh code to <b class="em">lan.nguyen@example.com</b>.</p>
+        <div class="otp invalid">
+          <span class="cell">4</span><span class="cell">8</span><span class="cell">2</span>
+          <span class="dash"></span>
+          <span class="cell">1</span><span class="cell">9</span><span class="cell">0</span>
+        </div>
+        <p class="err" style="margin-top:8px">That code didn't match. Try again.</p>
+        <p class="resend">Didn't get it? <span class="link">Resend code</span></p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Verify</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>4b · Verify email — vào từ Sign in, sai mã</b><span>Lý do bị chuyển sang đây nằm trong phụ đề, không dùng dải riêng. Mã sai là lỗi của ô OTP.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <h1 class="title">Check your email</h1>
+        <p class="sub">Enter the 6-digit code we sent to <b class="em">lan.nguyen@example.com</b></p>
+        <div class="otp">
+          <span class="cell active"></span><span class="cell"></span><span class="cell"></span>
+          <span class="dash"></span>
+          <span class="cell"></span><span class="cell"></span><span class="cell"></span>
+        </div>
+        <p class="resend">Resend code in <b>0:59</b></p>
+      </div>
+      <div class="pin-bottom">
+        <div class="msg info"><i data-icon="mail"></i><span>We sent a new code. It expires in 10 minutes.</span></div>
+        <div class="btn primary disabled">Verify</div>
+      </div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>4c · Verify email — vừa gửi lại mã</b><span>Kênh 2 tông thông tin: cùng khung với lỗi Sign in, chỉ khác tông; màn có nút ghim thì khung nằm trên nút ghim.</span></div>
+  </div>
+
+</div>
+
+<h3 class="sec">5 · Quên và đặt lại mật khẩu <small>API gửi link, không dùng OTP</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <h1 class="title">Forgot password?</h1>
+        <p class="sub">Enter the email you signed up with. We'll send you a link to reset your password.</p>
+        <div class="fields" style="margin-top:16px">
+          <div class="u-field"><i data-icon="mail"></i><span class="ph">Email</span></div>
+        </div>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Send the reset link</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>5a · Forgot password</b><span>Chỉ một ô email; bỏ phần chọn kênh SĐT hay email phụ của bộ Navel.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="back" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <div class="big-icon"><i data-icon="mailOpen" data-size="28"></i></div>
+        <h1 class="title" style="margin-top:22px">Check your inbox</h1>
+        <p class="sub">A reset link is on its way — it expires in 30 minutes.</p>
+        <p class="hint">Sent to <b style="color:var(--foreground)">lan.nguyen@example.com</b></p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Back to sign in</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>5b · Forgot password — đã gửi</b><span>Luôn báo đã gửi, kể cả email chưa có tài khoản; API cố ý che chuyện đó.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="x" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <h1 class="title">Set a new password</h1>
+        <p class="sub">Use at least 8 characters. For your security, we'll sign you out on all devices.</p>
+        <div class="fields" style="margin-top:12px">
+          <div class="u-field"><i data-icon="lock"></i><span class="stack"><small>New password</small><span>••••••••••</span></span><i data-icon="eye"></i></div>
+          <div class="u-field invalid"><i data-icon="lock"></i><span class="stack"><small>Confirm new password</small><span>•••••••••</span></span><i data-icon="eye"></i></div>
+          <p class="err">New password and confirmation do not match.</p>
+        </div>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Save password</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>5c · Reset password — lệch xác nhận</b><span>Mở từ link trong email; đổi xong API đăng xuất mọi phiên.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="sb"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="icon-btn plain" style="top:46px;left:12px"><i data-icon="x" data-stroke="2"></i></div>
+      <div class="plain-body">
+        <div class="big-icon"><i data-icon="link" data-size="28"></i></div>
+        <h1 class="title" style="margin-top:22px">This link isn’t working</h1>
+        <p class="sub">The reset link looks incomplete or has expired. Request a fresh one and we’ll get you back on board.</p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Request a new link</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>5d · Reset password — kênh 3</b><span>Thiếu token hoặc token quá 30 phút: cả màn đổi trạng thái, kèm một nút đi tiếp.</span></div>
+  </div>
+
+</div>
+
+<h3 class="sec">6 · Kết quả <small>một component, đổi icon và chữ</small></h3>
+<div class="row">
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_600,q_auto,f_auto/v1786710835/tourism/catalog/site/cta-band')"></div>
+      <div class="a-fade"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="done">
+        <div class="glow"><i data-icon="check" data-size="40" data-stroke="2.4"></i></div>
+        <h1 class="title">Email verified</h1>
+        <p class="sub">Welcome aboard — log in to start travelling.</p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Sign in</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>6a · Kết quả — đã xác minh email</b><span>API không tự đăng nhập sau khi xác minh, nên nút dẫn về Sign in.</span></div>
+  </div>
+
+  <div class="shot">
+    <div class="phone">
+      <div class="a-photo" style="background-image:url('https://res.cloudinary.com/dbkgeehow/image/upload/c_fill,w_648,h_600,q_auto,f_auto/v1786710835/tourism/catalog/site/cta-band')"></div>
+      <div class="a-fade"></div>
+      <div class="sb on-media"><span>9:41</span><span class="icons"><i style="width:15px;height:8px"></i><i style="width:13px;height:8px;border-radius:6px"></i><i style="width:21px;height:9px"></i></span></div>
+      <div class="done">
+        <div class="glow"><i data-icon="key" data-size="38" data-stroke="2.2"></i></div>
+        <h1 class="title">Password updated</h1>
+        <p class="sub">Log in with your new password to continue.</p>
+      </div>
+      <div class="pin-bottom"><div class="btn primary">Sign in</div></div>
+      <div class="home"></div>
+    </div>
+    <div class="cap"><b>6b · Kết quả — đã đổi mật khẩu</b><span>Cùng component với 6a.</span></div>
+  </div>
+
+</div>
+
+<script>
+  // Thay thẻ <i data-icon> bằng SVG nét, cho bản ghi gọn và không lặp path.
+  (function () {
+    var P = {
+      x: '<path d="M18 6 6 18M6 6l12 12"/>',
+      back: '<path d="M19 12H5M12 19l-7-7 7-7"/>',
+      mail: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/>',
+      lock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+      eye: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>',
+      user: '<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>',
+      pin: '<path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/>',
+      arrow: '<path d="M5 12h14M13 5l7 7-7 7"/>',
+      alert: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5v5.5M12 16.5h.01"/>',
+      check: '<path d="M20 6 9 17l-5-5"/>',
+      mailOpen: '<path d="M3 9.5 12 3l9 6.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/><path d="m3 9.5 9 6 9-6"/>',
+      link: '<path d="M9 17H7A5 5 0 0 1 7 7h2M15 7h2a5 5 0 0 1 4 8M8 12h5M3 3l18 18"/>',
+      key: '<circle cx="7.5" cy="15.5" r="4.5"/><path d="m10.7 12.3 9.3-9.3M16 7l3 3M13 10l2 2"/>'
+    };
+    var G = '<path fill="currentColor" stroke="none" d="M21.8 10.2H12v3.9h5.6c-.5 2.5-2.6 4.1-5.6 4.1a6.2 6.2 0 1 1 0-12.4c1.6 0 3 .6 4.1 1.5l2.9-2.9A10.3 10.3 0 0 0 12 1.8a10.2 10.2 0 1 0 0 20.4c5.9 0 9.9-4.1 9.9-10 0-.7-.1-1.3-.1-2Z"/>';
+    document.querySelectorAll('i[data-icon]').forEach(function (el) {
+      var name = el.getAttribute('data-icon');
+      var size = el.getAttribute('data-size') || '18';
+      var stroke = el.getAttribute('data-stroke') || '1.8';
+      var body = name === 'google' ? G : P[name];
+      el.outerHTML = '<svg width="' + size + '" height="' + size + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + stroke + '" stroke-linecap="round" stroke-linejoin="round">' + body + '</svg>';
+    });
+  })();
+</script>
