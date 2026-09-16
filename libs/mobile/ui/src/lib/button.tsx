@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Pressable, type PressableProps, StyleSheet } from 'react-native';
 import { AppText } from './app-text';
 import type { MobileColorKey } from './theme';
@@ -21,10 +22,24 @@ export type ButtonVariant = keyof typeof BUTTON_VARIANTS;
 export interface ButtonProps extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
   variant?: ButtonVariant;
+  /**
+   * Icon đứng trước nhãn — nhận sẵn một node để nút không phải biết bộ icon nào
+   * (chữ G của Google chẳng hạn không nằm trong bộ Feather).
+   */
+  leading?: ReactNode;
+  /** `pill` cho nút bo tròn hết cỡ của cụm auth; mặc định bo theo token. */
+  shape?: 'rounded' | 'pill';
 }
 
 /** Nút bấm của app. Vùng chạm luôn ≥ ngưỡng a11y trong token. */
-export function Button({ label, variant = 'primary', disabled, ...rest }: ButtonProps) {
+export function Button({
+  label,
+  variant = 'primary',
+  leading,
+  shape = 'rounded',
+  disabled,
+  ...rest
+}: ButtonProps) {
   const theme = useTheme();
   const { background, foreground, bordered } = BUTTON_VARIANTS[variant];
   // `PressableProps.disabled` cho phép cả `null`; quy về boolean thật một lần
@@ -48,7 +63,9 @@ export function Button({ label, variant = 'primary', disabled, ...rest }: Button
       style={({ pressed }) => [
         {
           backgroundColor,
-          borderRadius: theme.radius.base,
+          borderRadius: shape === 'pill' ? theme.touchTargetMin : theme.radius.base,
+          flexDirection: 'row',
+          gap: theme.spacing(2),
           minHeight: theme.touchTargetMin,
           paddingHorizontal: theme.spacing(5),
           alignItems: 'center',
@@ -64,6 +81,7 @@ export function Button({ label, variant = 'primary', disabled, ...rest }: Button
       ]}
       {...rest}
     >
+      {leading}
       <AppText variant="label" style={{ color: textColor }}>
         {label}
       </AppText>

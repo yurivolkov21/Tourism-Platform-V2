@@ -1,5 +1,5 @@
 import { fireEvent, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { renderWithTheme, themeFor } from '../test-utils';
 import { BUTTON_VARIANTS, Button, type ButtonVariant } from './button';
 
@@ -84,3 +84,31 @@ describe('Button', () => {
     expect(state.disabled).toBe(true);
   });
 });
+
+describe('Button — icon và hình dáng (P5b-1)', () => {
+  it('vẽ icon đứng trước nhãn khi được truyền', async () => {
+    await renderWithTheme(
+      <Button label="Continue with Google" leading={<Text>G</Text>} onPress={() => {}} />,
+    );
+
+    expect(screen.getByText('G')).toBeTruthy();
+    expect(screen.getByText('Continue with Google')).toBeTruthy();
+  });
+
+  it('bản pill bo tròn hơn bản thường', async () => {
+    await renderWithTheme(<Button label="Sign in" shape="pill" onPress={() => {}} />);
+    const pill = flattenButtonStyle('Sign in');
+
+    await screen.unmount();
+    await renderWithTheme(<Button label="Sign in" onPress={() => {}} />);
+
+    expect(pill).toBeGreaterThan(flattenButtonStyle('Sign in'));
+  });
+});
+
+/** Bo góc thật của nút — `style` của Pressable là hàm, phải gọi rồi phẳng hoá. */
+function flattenButtonStyle(label: string): number {
+  const style = screen.getByText(label).parent?.props.style;
+  const resolved = typeof style === 'function' ? style({ pressed: false }) : style;
+  return StyleSheet.flatten(resolved)?.borderRadius ?? 0;
+}
