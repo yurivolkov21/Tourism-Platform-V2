@@ -119,6 +119,10 @@ export default function RootLayout() {
   const [onboardingChecked, setOnboardingChecked] = useState(false);
 
   useEffect(() => {
+    // Đợi có cây thật rồi mới đổi màn: `router.replace` gọi lúc cây còn `null`
+    // là gọi khi chưa có navigator nào mounted.
+    if (!fontsLoaded) return;
+
     let cancelled = false;
 
     void onboardingStore.hasSeen().then((seen) => {
@@ -130,16 +134,19 @@ export default function RootLayout() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [fontsLoaded]);
 
-  // Splash giữ tới khi font xong VÀ đọc xong cờ onboarding, nhưng cây React vẫn
-  // render NGAY từ đầu — trả `null` trong lúc chờ là đổi một nháy chữ hệ thống
-  // lấy một màn trắng, và là thứ làm test cây route (`routes.spec.tsx`) thấy app
-  // rỗng. Đợi cả hai để không ai kịp thấy một nháy Home trước khi nhảy sang
-  // onboarding.
+  // Splash chỉ gỡ khi xong CẢ font lẫn cờ onboarding — không ai kịp thấy một
+  // nháy Home trước khi nhảy sang onboarding.
   useEffect(() => {
     if (fontsLoaded && onboardingChecked) void SplashScreen.hideAsync();
   }, [fontsLoaded, onboardingChecked]);
+
+  // CHƯA có font thì chưa vẽ gì. Vẽ bằng chữ hệ thống rồi đổi sang chữ brand làm
+  // BỐ CỤC đo xong bằng khuôn cũ: đo trên máy 16/09, "Skip" ra "Ski" ở trang
+  // onboarding và chỉ đúng lại sau khi reload (lần hai font đã nằm trong cache).
+  // Splash vẫn đang che nên quãng chờ này không ai thấy.
+  if (!fontsLoaded) return null;
 
   return (
     <ThemeProvider>
