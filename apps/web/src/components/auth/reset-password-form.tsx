@@ -1,6 +1,12 @@
 'use client';
 
-import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@tourism/core';
+import {
+  type AuthErrorKey,
+  fieldOfAuthError,
+  mapAuthError,
+  type ResetPasswordErrors,
+  validateResetPassword,
+} from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
@@ -8,7 +14,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { toast } from 'sonner';
 import { authClient } from '@/lib/auth-client';
-import { type ResetPasswordErrors, validateResetPassword } from '@/lib/auth-form';
 import { FieldError, invalidProps } from './field-error';
 import { PasswordStrengthField } from './password-strength-field';
 import { TicketCard } from './ticket-card';

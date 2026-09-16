@@ -1,6 +1,12 @@
 'use client';
 
-import { type AuthErrorKey, fieldOfAuthError, mapAuthError } from '@tourism/core';
+import {
+  type AuthErrorKey,
+  fieldOfAuthError,
+  mapAuthError,
+  type RegisterErrors,
+  validateRegister,
+} from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { Checkbox } from '@tourism/ui/components/checkbox';
 import { Input } from '@tourism/ui/components/input';
@@ -9,7 +15,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { type FormEvent, useState } from 'react';
 import { GoogleIcon } from '@/components/icons/social';
 import { authClient } from '@/lib/auth-client';
-import { type RegisterErrors, validateRegister } from '@/lib/auth-form';
 import { safeRedirect } from '@/lib/safe-redirect';
 import { FieldError, invalidProps } from './field-error';
 import { PasswordStrengthField } from './password-strength-field';

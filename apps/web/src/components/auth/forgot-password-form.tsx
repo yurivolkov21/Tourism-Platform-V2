@@ -1,11 +1,11 @@
 'use client';
 
+import { validateForgotPassword } from '@tourism/core';
 import { messages } from '@tourism/i18n';
 import { Input } from '@tourism/ui/components/input';
 import { Label } from '@tourism/ui/components/label';
 import { type FormEvent, useState } from 'react';
 import { authClient } from '@/lib/auth-client';
-import { validateForgotPassword } from '@/lib/auth-form';
 import { FieldError, invalidProps } from './field-error';
 import { TicketCard } from './ticket-card';
 

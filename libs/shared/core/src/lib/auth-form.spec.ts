@@ -9,7 +9,7 @@ import {
   validateProfilePhone,
   validateRegister,
   validateResetPassword,
-} from './auth-form';
+} from './auth-form.js';
 
 const t = messages.formErrors;
 const LONG_PASSWORD = 'a'.repeat(129);
