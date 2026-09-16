@@ -14,7 +14,7 @@
       "package": "agency.nexoratravel.app",
       "predictiveBackGestureEnabled": false
     },
-    "plugins": ["expo-router"],
+    "plugins": ["expo-router", "expo-font", "expo-splash-screen"],
     "extra": {
       "router": {
         "sitemap": false

@@ -18,6 +18,9 @@ export const APP_TEXT_VARIANTS = {
 
 export type AppTextVariant = keyof typeof APP_TEXT_VARIANTS;
 
+/** Hai bậc lấy khuôn chữ tiêu đề (serif brand); các bậc còn lại dùng khuôn thân. */
+const HEADING_VARIANTS = new Set<AppTextVariant>(['display', 'title']);
+
 /** Vai màu của chữ. `muted` cho câu phụ, `inverse` cho chữ nằm trên nền brand. */
 export type AppTextTone = 'default' | 'muted' | 'inverse';
 
@@ -41,6 +44,10 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
   // đây là biến một lỗi ném-ngay thành `undefined` lặng lẽ → RN rơi về 14dp và
   // cả app sai cỡ chữ mà không gì đỏ.
   const scale = theme.type[step];
+  // Hai bậc tiêu đề dùng khuôn serif của brand; còn lại dùng khuôn thân theo
+  // đúng độ đậm của bậc. KHÔNG đặt `fontWeight` kèm theo: family đã mang sẵn độ
+  // đậm, đặt cả hai thì Android bôi đậm giả (xem `MOBILE_FONTS`).
+  const fontFamily = HEADING_VARIANTS.has(variant) ? theme.fonts.heading : theme.fonts[weight];
 
   return (
     <Text
@@ -48,7 +55,7 @@ export function AppText({ variant = 'body', tone = 'default', style, ...rest }: 
         {
           fontSize: scale.fontSize,
           lineHeight: scale.lineHeight,
-          fontWeight: theme.weight[weight],
+          fontFamily,
           color: theme.colors[TONE_COLOR[tone]],
         },
         style,

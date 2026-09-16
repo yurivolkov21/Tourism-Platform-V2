@@ -12,6 +12,6 @@ export { EmptyState } from './lib/empty-state';
 export type { ScreenEdge, ScreenProps } from './lib/screen';
 export { SCREEN_EDGES_UNDER_HEADER, SCREEN_EDGES_UNDER_TABS, Screen } from './lib/screen';
 export type { ColorScheme, FontWeight, MobileColorKey, MobileTheme } from './lib/theme';
-export { buildTheme, MOBILE_COLOR_KEYS } from './lib/theme';
+export { buildTheme, MOBILE_COLOR_KEYS, MOBILE_FONTS, withAlpha } from './lib/theme';
 export type { ThemeProviderProps } from './lib/theme-provider';
 export { ThemeProvider, useTheme } from './lib/theme-provider';

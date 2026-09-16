@@ -1,5 +1,13 @@
+import {
+  Archivo_400Regular,
+  Archivo_500Medium,
+  Archivo_600SemiBold,
+  Archivo_700Bold,
+} from '@expo-google-fonts/archivo';
+import { Literata_700Bold } from '@expo-google-fonts/literata';
 import { messages } from '@tourism/i18n';
 import { AppText, Button, EmptyState, Screen, ThemeProvider, useTheme } from '@tourism/mobile-ui';
+import { useFonts } from 'expo-font';
 import { type ErrorBoundaryProps, Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
@@ -81,9 +89,23 @@ export default function RootLayout() {
   // màn lỗi có chữ, thay vì app đóng ngay lúc mở như khi nó ném lúc nạp module.
   env();
 
+  // Bộ chữ brand giống web: Literata cho tiêu đề, Archivo cho chữ thân (ADR-0040
+  // §AMEND 1). Mỗi độ đậm là một khuôn riêng vì `AppText` chọn family thay vì đặt
+  // `fontWeight`.
+  const [fontsLoaded] = useFonts({
+    Literata_700Bold,
+    Archivo_400Regular,
+    Archivo_500Medium,
+    Archivo_600SemiBold,
+    Archivo_700Bold,
+  });
+
+  // Splash giữ tới khi font xong, nhưng cây React vẫn render NGAY từ đầu — trả
+  // `null` trong lúc chờ là đổi một nháy chữ hệ thống lấy một màn trắng, và là
+  // thứ làm test cây route (`routes.spec.tsx`) thấy app rỗng.
   useEffect(() => {
-    void SplashScreen.hideAsync();
-  }, []);
+    if (fontsLoaded) void SplashScreen.hideAsync();
+  }, [fontsLoaded]);
 
   return (
     <ThemeProvider>

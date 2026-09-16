@@ -28,6 +28,12 @@ export const MOBILE_COLOR_KEYS = [
   'secondary',
   'secondary-foreground',
   'border',
+  // P5b-1: bốn khoá cụm auth thật sự dùng — chữ nằm trên ảnh, câu lỗi, viền ô
+  // nhập, và màu phủ ảnh. Danh sách vẫn là CURATED theo đúng JSDoc phía trên.
+  'destructive-emphasis',
+  'input',
+  'on-media',
+  'scrim',
 ] as const;
 
 export type MobileColorKey = (typeof MOBILE_COLOR_KEYS)[number];
@@ -51,6 +57,37 @@ export type MobileFontWeightKey = (typeof MOBILE_FONT_WEIGHTS)[number];
 /** Union `fontWeight` mà React Native chấp nhận. */
 export type FontWeight = NonNullable<TextStyle['fontWeight']>;
 
+/**
+ * Tên family của từng khuôn chữ. Cầu token KHÔNG mang font family — ADR-0013 chỉ
+ * mang màu, bo góc và type scale — nên map này là chỗ DUY NHẤT khai tên, và khai
+ * đúng bộ chữ web đang dùng: Literata cho tiêu đề, Archivo cho chữ thân.
+ *
+ * Mỗi độ đậm là một family riêng (cách `@expo-google-fonts` đóng gói), nên
+ * component đặt `fontFamily` và KHÔNG đặt `fontWeight`: đặt cả hai thì Android
+ * bôi đậm giả lên một khuôn vốn đã đậm sẵn.
+ */
+export const MOBILE_FONTS = {
+  heading: 'Literata_700Bold',
+  normal: 'Archivo_400Regular',
+  medium: 'Archivo_500Medium',
+  semibold: 'Archivo_600SemiBold',
+  bold: 'Archivo_700Bold',
+} as const satisfies Record<'heading' | MobileFontWeightKey, string>;
+
+/**
+ * Gắn alpha vào một màu token. Nhận cả hex 6 lẫn 8 ký tự vì token `scrim` đã mang
+ * sẵn alpha. Nhờ hàm này mà dải mờ trên ảnh vẫn suy từ token — không ai phải gõ
+ * `rgba()`, thứ mà `scripts/check-mobile-tokens-only.mjs` sẽ bắt.
+ */
+export function withAlpha(color: string, alpha: number): string {
+  const base = color.slice(0, 7);
+  const clamped = Math.min(1, Math.max(0, alpha));
+  const hex = Math.round(clamped * 255)
+    .toString(16)
+    .padStart(2, '0');
+  return `${base}${hex}`;
+}
+
 export interface MobileTheme {
   /** Chế độ đang dùng — hữu ích cho component cần rẽ nhánh (vd bóng đổ). */
   scheme: ColorScheme;
@@ -62,6 +99,8 @@ export interface MobileTheme {
   weight: Record<MobileFontWeightKey, FontWeight>;
   /** `spacing(4)` = 4 bước gốc — cùng bội số mà Tailwind dùng cho `p-4`. */
   spacing: (steps: number) => number;
+  /** Family chữ theo vai trò — xem `MOBILE_FONTS`. */
+  fonts: Record<'heading' | MobileFontWeightKey, string>;
   /** Cạnh tối thiểu của vùng chạm theo dp (a11y). */
   touchTargetMin: number;
 }
@@ -119,6 +158,7 @@ export function buildTheme(scheme: ColorScheme, source: Partial<RnTheme> = {}): 
     scheme,
     colors,
     radius: source.radius ?? tokens.radius,
+    fonts: MOBILE_FONTS,
     type,
     weight,
     spacing: (steps: number) => spacingBase * steps,

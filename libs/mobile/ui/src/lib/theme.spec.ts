@@ -1,5 +1,12 @@
 import { theme as tokens } from '@tourism/tokens/theme';
-import { buildTheme, MOBILE_COLOR_KEYS, MOBILE_FONT_WEIGHTS, MOBILE_TYPE_STEPS } from './theme';
+import {
+  buildTheme,
+  MOBILE_COLOR_KEYS,
+  MOBILE_FONT_WEIGHTS,
+  MOBILE_FONTS,
+  MOBILE_TYPE_STEPS,
+  withAlpha,
+} from './theme';
 
 describe('buildTheme', () => {
   it('lấy màu ĐÚNG bằng giá trị trong cầu token, không phải bản chép tay', () => {
@@ -89,5 +96,53 @@ describe('buildTheme', () => {
     expect(() => buildTheme('light', { colors: { light: broken, dark: broken } })).toThrow(
       /foreground/,
     );
+  });
+});
+
+describe('withAlpha', () => {
+  it('gắn alpha vào hex 6 ký tự', () => {
+    expect(withAlpha('#202a28', 0.5)).toBe('#202a2880');
+  });
+
+  it('thay alpha có sẵn của hex 8 ký tự — token `scrim` vốn đã mang alpha', () => {
+    expect(withAlpha('#010a08cc', 0)).toBe('#010a0800');
+  });
+
+  it('kẹp alpha về khoảng 0–1 thay vì phát ra hex rác', () => {
+    expect(withAlpha('#202a28', 2)).toBe('#202a28ff');
+    expect(withAlpha('#202a28', -1)).toBe('#202a2800');
+  });
+});
+
+describe('bốn khoá màu thêm cho cụm auth', () => {
+  it.each(['destructive-emphasis', 'input', 'on-media', 'scrim'] as const)(
+    'khoá "%s" có mặt ở cả hai chế độ và lấy đúng giá trị cầu token',
+    (key) => {
+      expect(buildTheme('light').colors[key]).toBe(tokens.colors.light[key]);
+      expect(buildTheme('dark').colors[key]).toBe(tokens.colors.dark[key]);
+    },
+  );
+});
+
+describe('cầu font', () => {
+  // Cầu token KHÔNG mang font family (ADR-0013 chỉ mang màu, bo góc, type
+  // scale), nên tên khuôn chữ khai ở đây là hợp đồng — đổi nó phải là một
+  // quyết định, không phải hệ quả của một lần gõ nhầm.
+  it('phát ra family cho tiêu đề và cho từng độ đậm của chữ thân', () => {
+    const { fonts } = buildTheme('dark');
+
+    expect(fonts.heading).toBe('Literata_700Bold');
+    expect(fonts.normal).toBe('Archivo_400Regular');
+    expect(fonts.medium).toBe('Archivo_500Medium');
+    expect(fonts.semibold).toBe('Archivo_600SemiBold');
+    expect(fonts.bold).toBe('Archivo_700Bold');
+  });
+
+  it('mọi độ đậm đang khai đều có family, không bậc nào rơi về undefined', () => {
+    const { fonts } = buildTheme('light');
+
+    for (const weight of MOBILE_FONT_WEIGHTS) {
+      expect(fonts[weight]).toBe(MOBILE_FONTS[weight]);
+    }
   });
 });
