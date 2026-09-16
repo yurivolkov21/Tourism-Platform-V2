@@ -101,3 +101,9 @@ describe('fieldOfAuthError', () => {
     expect(fieldOfAuthError('noPasswordAccount')).toBeNull();
   });
 });
+
+describe('fieldOfAuthError — ô mã xác minh (P5b-1)', () => {
+  it('mã OTP sai thuộc về ô nhập mã, không phải lỗi cấp form', () => {
+    expect(fieldOfAuthError('invalidOtp')).toBe('otp');
+  });
+});

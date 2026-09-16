@@ -60,7 +60,7 @@ export function mapAuthError(
 
 /** Ô nhập mà một lỗi server "thuộc về" — để form hiện lỗi NGAY DƯỚI ô đó thay
  *  vì ở khối lỗi chung cuối form. */
-export type AuthErrorField = 'email' | 'password' | 'currentPassword';
+export type AuthErrorField = 'email' | 'password' | 'currentPassword' | 'otp';
 
 /**
  * Quy lỗi server về ô nhập (sweep 19/08). `password` nghĩa là ô mật khẩu
@@ -77,6 +77,11 @@ export function fieldOfAuthError(key: AuthErrorKey): AuthErrorField | null {
       return 'password';
     case 'wrongCurrentPassword':
       return 'currentPassword';
+    // Web có form OTP riêng nên trước đây mã sai đi đường lỗi-cấp-form. Mobile
+    // dùng CHUNG một hàm chọn kênh cho mọi màn, nên nó phải quy được về ô mã —
+    // web không đổi hành vi vì `otp-form.tsx` không gọi hàm này (P5b-1).
+    case 'invalidOtp':
+      return 'otp';
     default:
       return null;
   }

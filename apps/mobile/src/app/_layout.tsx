@@ -13,11 +13,22 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthActionsProvider } from '@/features/auth/auth-actions';
+import { createMockAuthActions } from '@/features/auth/mock-auth-actions';
 import { env } from '@/lib/env';
 
 // Giữ splash cho tới khi vỏ điều hướng dựng xong — tránh một nháy nền trắng
 // trước khi màn đầu tiên kịp vẽ.
 void SplashScreen.preventAutoHideAsync();
+
+/**
+ * Hạ tầng auth của đợt P5b-1: bản GIẢ LẬP. Dựng một lần ở module scope chứ không
+ * trong thân render — dựng lại mỗi lần render là mỗi lần đổi identity của
+ * context, kéo theo toàn bộ cây con vẽ lại.
+ *
+ * Người làm hạ tầng đổi đúng dòng này sang bản `@better-auth/expo` thật.
+ */
+const authActions = createMockAuthActions();
 
 /**
  * Neo của stack gốc. KHÔNG có nó thì mở app bằng deep link (`nexora://tours/…`,
@@ -110,8 +121,10 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SafeAreaProvider>
-        <StatusBar style="auto" />
-        <RootStack />
+        <AuthActionsProvider value={authActions}>
+          <StatusBar style="auto" />
+          <RootStack />
+        </AuthActionsProvider>
       </SafeAreaProvider>
     </ThemeProvider>
   );
