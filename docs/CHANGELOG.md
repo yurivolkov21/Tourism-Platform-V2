@@ -8,6 +8,48 @@ Một entry mỗi merge: ngày · hash · nội dung · review findings · "Test
 > Entry đã ghi là BẤT BIẾN (cùng luật `migration.sql`) — archive là di chuyển
 > nguyên văn, không sửa một ký tự.
 
+## 2026-09-16 — Vòng vá review 1 cụm auth mobile: chờ font rồi mới vẽ, dựng lại đúng tỉ lệ bản vẽ (`fix/p5b-auth-review-1`, ff vào `main`)
+
+User nghiệm thu bằng máy thật (Android, nền sáng) ngay sau entry dưới và bắt được
+ba chuyện. Hai chuyện đầu là lỗi; chuyện thứ ba là sai ở CÁCH chuyển bản vẽ sang
+code, không phải thiếu việc.
+
+- `4e3591e7` chữ "Skip" ở onboarding hiện ra "Ski", reload một lần thì đúng lại.
+  Vỏ ứng dụng vẽ ngay bằng chữ hệ thống rồi mới đổi sang chữ brand, mà BỐ CỤC đã
+  đo xong bằng khuôn cũ nên ký tự cuối bị cắt; lần hai font đã nằm trong cache nên
+  không thấy nữa. Nay chưa có font thì chưa vẽ gì — splash vẫn đang che nên quãng
+  chờ đó không ai thấy. Bước đọc cờ onboarding dời xuống sau khi có cây thật, vì
+  `router.replace` gọi lúc cây còn `null` là gọi khi chưa có navigator nào mounted.
+  Cùng commit: tab Account nay có nút Sign in (vỏ ứng dụng trước đó không có đường
+  nào tới cụm auth ngoài trang onboarding cuối) kèm đường tắt tới `/dev/gallery`
+  chỉ dựng ở bản dev.
+- `441ae969` **khung điện thoại trong mockup là 324×700 px — một hình minh hoạ thu
+  nhỏ, không phải khung máy** — mà đợt dựng chép thẳng số pixel đó thành dp. Ảnh bìa
+  300px là 42,9% khung vẽ nhưng chỉ còn 35,5% trên máy 844dp: ảnh thấp hơn thiết kế,
+  chữ dồn lên cao, đáy thừa khoảng trống. `fromMockup(px, screenHeight)` quy mọi số
+  DỌC về tỉ lệ chiều cao màn; đệm ngang và cỡ chữ vẫn theo token.
+  - Nút thoát, nhãn địa danh và Skip đo từ `insets.top` thay vì top cứng: bản vẽ có
+    thanh trạng thái giả cao 40px, máy thật có tai thỏ 47–59dp nên nút bị cắt.
+  - Màn kết quả: nút chính nay bo tròn hết cỡ và ghim đáy đúng lề 24dp.
+  - `AppText` thêm vai `subtitle` (bậc sm) cho câu dẫn dưới tiêu đề; vai `label` đổi
+    sang semibold theo Archivo 600 của bản vẽ.
+  - Stack gốc khai luôn nhóm `dev`. Thiếu dòng đó, expo-router đội cho gallery một
+    header tên "dev", khung ngắn lại và **gallery trông giống bản vẽ hơn màn thật** —
+    chính quan sát này của user là bằng chứng chốt chẩn đoán tỉ lệ.
+  - Bỏ `autoFocus` ở ô email màn quên mật khẩu: bàn phím bật ngay che mất nút gửi.
+
+Tests after: `gate:int` xanh (6/6 task, int 496 test ở 37 file), `gate` 28/28, mobile
+149 test (thêm 2 cho `fromMockup`), `bundle` xanh cả iOS lẫn Android, tokens-only ✓
+65 file nguồn mobile.
+
+**CÒN TREO — bàn giao phần vá giao diện cho thành viên khác (user chốt 16/09):**
+mới đối chiếu được 8 ảnh máy thật, TOÀN Ở NỀN SÁNG; chưa ai soi nền tối. Sáu khung
+chưa từng đối chiếu trên máy: verify email (4a, 4b, 4c), forgot đã gửi (5b), reset
+(5c, 5d). Cỡ nhãn nhỏ trong ô nhập, cỡ chữ dòng điều khoản và số đo ô OTP cũng chưa
+so với bản vẽ. Nợ cũ giữ nguyên: chặn tab khi chưa đăng nhập · icon app · admin
+chuyển sang `@tourism/core` · dòng COPY trong `apps/api/Dockerfile` nếu API dùng
+`core` · nối API thật.
+
 ## 2026-09-16 — P5b-1 cụm auth mobile: `@tourism/core` và 17 khung giao diện tĩnh (hai nhánh, ff vào `main`)
 
 Spec: [specs/2026-09-16-p5b-auth-wireframe-design.md](specs/2026-09-16-p5b-auth-wireframe-design.md) ·
