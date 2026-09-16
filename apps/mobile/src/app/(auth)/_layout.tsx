@@ -73,6 +73,10 @@ export default function AuthLayout() {
         options={{ title: titles.register, headerShown: false, headerLeft: () => null }}
       />
       <Stack.Screen name="forgot-password" options={{ title: titles.forgotPassword }} />
+      <Stack.Screen
+        name="verify-email"
+        options={{ title: titles.verifyEmail, headerShown: false, headerLeft: () => null }}
+      />
     </Stack>
   );
 }

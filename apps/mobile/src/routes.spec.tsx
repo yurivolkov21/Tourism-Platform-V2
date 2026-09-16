@@ -57,6 +57,7 @@ const EXPECTED_ROUTES = [
   '(auth)/forgot-password',
   '(auth)/login',
   '(auth)/register',
+  '(auth)/verify-email',
   '(tabs)/account',
   '(tabs)/explore',
   '(tabs)/index',
@@ -143,6 +144,23 @@ describe('vỏ điều hướng', () => {
     expect(app.pathname()).toBe(url);
     expect(screen.getByText(body)).toBeTruthy();
     expect(screen.queryByText(placeholder)).toBeNull();
+  });
+
+  it('verify-email đọc email từ URL và nhắc lại trong phụ đề', async () => {
+    const app = await openApp('/verify-email?email=lan%40example.com');
+
+    expect(app.pathname()).toBe('/verify-email');
+    expect(screen.getByText('lan@example.com')).toBeTruthy();
+  });
+
+  // Vào thẳng `/verify-email` mà không mang email (gõ tay, link cũ) thì màn
+  // không gửi mã cho ai được — kênh 3 thay cả thân màn thay vì để một ô nhập
+  // chạy không.
+  it('verify-email thiếu email thì đổi sang trạng thái kênh 3', async () => {
+    await openApp('/verify-email');
+
+    expect(screen.getByText(messages.authForms.verifyEmail.noEmail.heading)).toBeTruthy();
+    expect(screen.queryByLabelText(messages.mobile.auth.verifyEmail.codeLabel)).toBeNull();
   });
 
   it('tours/[slug] render được và đọc được slug từ URL', async () => {

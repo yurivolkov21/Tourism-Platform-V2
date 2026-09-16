@@ -21,19 +21,29 @@ export interface RenderOptions {
   actions?: AuthActions;
 }
 
-/** Render một component trong đúng bối cảnh mà app thật cho nó. */
-export function renderWithTheme(
+/**
+ * Render một component trong đúng bối cảnh mà app thật cho nó.
+ *
+ * `rerender` được bọc lại: bản của RNTL thay TOÀN BỘ cây bằng đúng thứ được
+ * truyền vào, nên gọi thẳng là rụng hết provider và lần render thứ hai chết ở
+ * `useTheme()`. Bọc ở đây để mọi spec đổi prop đều an toàn.
+ */
+export async function renderWithTheme(
   ui: ReactElement,
   scheme: ColorScheme = 'light',
   { actions = createMockAuthActions({ delayMs: 0 }) }: RenderOptions = {},
 ) {
-  return render(
+  const withProviders = (node: ReactElement) => (
     <SafeAreaProvider initialMetrics={METRICS}>
       <ThemeProvider scheme={scheme}>
-        <AuthActionsProvider value={actions}>{ui}</AuthActionsProvider>
+        <AuthActionsProvider value={actions}>{node}</AuthActionsProvider>
       </ThemeProvider>
-    </SafeAreaProvider>,
+    </SafeAreaProvider>
   );
+
+  const view = await render(withProviders(ui));
+
+  return { ...view, rerender: (next: ReactElement) => view.rerender(withProviders(next)) };
 }
 
 /** Theme mà `renderWithTheme` đang dùng — để spec đối chiếu giá trị token. */
