@@ -210,10 +210,13 @@ trong `withBookingRefundLock(bookingId)`:
 
 1. Đọc lại booking mới nhất và kiểm tra: đúng chủ (với khách), trạng thái PAID
    hoặc PARTIALLY_REFUNDED, có `provider_payment_id`, chưa tới ngày khởi hành.
-2. Tính số tiền bằng `refundOnCancel` trên sổ đọc trong khoá.
+2. Tính số tiền bằng `refundOnCancel` trên sổ đọc trong khoá. Khác
+   `expectedRefundAmount` khách gửi kèm (số hộp xác nhận đã in) thì dừng với 409
+   `REFUND_AMOUNT_CHANGED`, không ghi gì (bổ sung sau review nhánh, 17/09).
 3. Tiền lớn hơn 0 thì gọi `executeGatewayRefund` **trước**, khoá chống trùng
-   `cancel:<bookingId>`. Một booking chỉ huỷ được một lần nên khoá này ổn định
-   qua mọi lần thử lại.
+   `cancel:<bookingId>:<tổng đã hoàn>` (cùng khuôn với hoàn thiện chí). Cùng
+   trạng thái sổ thì cùng tham số, nên thử lại sau crash nhận lại kết quả cũ; sổ
+   đổi giữa hai lần thử thì khoá đổi theo số tiền mới.
 4. Một câu SQL (CTE): chuyển booking sang CANCELLED, ghi yêu cầu REFUNDED, ghi
    dòng `refunds` khi tiền lớn hơn 0, trả chỗ (`seats_booked − party`, guard
    `seats_booked >= party`), xếp outbox `BOOKING_CANCELLED` với dedupe
@@ -225,6 +228,8 @@ trong `withBookingRefundLock(bookingId)`:
 | Bấm hai lần, hai tab | Lần sau chờ khoá, thấy CANCELLED → 422 `NOT_CANCELLABLE` |
 | Crash sau khi cổng thanh toán đã hoàn, trước commit | Lần thử lại tính ra đúng số cũ, cùng khoá chống trùng, provider trả kết quả cũ rồi ghi sổ. Quá thời gian provider giữ khoá thì lỗi được log để đối soát (cùng loại rủi ro ADR-0009 đã chấp nhận) |
 | Admin hoàn thiện chí cùng lúc | Cùng khoá booking nên chạy tuần tự; số tiền tính lại từ sổ mới nhất |
+| Số tiền đã khác số hộp xác nhận in (qua hạn chót, admin vừa hoàn) | 409 `REFUND_AMOUNT_CHANGED`; không ghi gì; trang đọc lại và hỏi lại với số mới |
+| Event thanh toán của CHÍNH capture tới lại sau khi khách đã huỷ | Không hoàn gì (tiền đã thuộc booking, lõi huỷ đã quyết); capture KHÁC thì hoàn ngoài sổ như trả trùng |
 | Guard trả chỗ không khớp | Log cho người vận hành, giao dịch vẫn commit (giữ hành vi hiện nay) |
 | Tổng hoàn vượt tổng tiền | Trigger `refunds_sum_within_total` chặn, lưới cuối giữ nguyên |
 

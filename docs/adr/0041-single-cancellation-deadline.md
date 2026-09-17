@@ -60,9 +60,13 @@ không còn huỷ miễn phí. Khách cần đi gấp dùng form hỏi đáp c�
 - Áp cho booking PAID hoặc PARTIALLY_REFUNDED, tới hết ngày trước ngày khởi hành.
 - Trong hạn: hoàn toàn bộ phần chưa hoàn. Quá hạn: không hoàn.
 - Một giao dịch trong advisory lock của booking: gọi cổng thanh toán trước (khoá
-  chống trùng `cancel:<bookingId>`), rồi một CTE ghi booking CANCELLED, yêu cầu
-  REFUNDED do chính khách quyết, dòng sổ khi có tiền, trả chỗ, email
-  `BOOKING_CANCELLED`.
+  chống trùng `cancel:<bookingId>:<tổng đã hoàn>`), rồi một CTE ghi booking
+  CANCELLED, yêu cầu REFUNDED do chính khách quyết, dòng sổ khi có tiền, trả chỗ,
+  email `BOOKING_CANCELLED`.
+- Lệnh huỷ mang số tiền khách đã thấy trong hộp xác nhận; số server tính trong
+  khoá khác số đó thì trả `REFUND_AMOUNT_CHANGED` (409) và không ghi gì. Hạn chót
+  có thể trôi qua giữa lúc mở hộp và lúc bấm, và khách không được huỷ với một con
+  số chưa thấy (bổ sung sau review nhánh, 17/09).
 - Bỏ luồng khách gửi yêu cầu, admin duyệt. Trước hạn, quyết định là tất định nên
   duyệt tay chỉ thêm độ trễ, mà độ trễ làm chỗ nhả sau hạn. Sau hạn, phần cần con
   người chỉ là ngoại lệ.
