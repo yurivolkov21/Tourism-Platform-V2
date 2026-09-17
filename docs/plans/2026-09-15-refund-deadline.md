@@ -16885,6 +16885,10 @@ cột và ba loại email, dọn code, cổng đầy đủ, entry CHANGELOG riê
 Điều kiện vào của Phụ lục A chính là Bước 6 đã xong — chốt chặn `DO $$ … RAISE`
 trong migration M2 sẽ dừng nếu `outbox` còn dòng mang ba giá trị cũ.
 
+**Điều chỉnh 17/09 (điều 1 ở Bước 8):** không gộp M2 vào cùng lượt với Bước 6.
+Để bản mới chạy trên prod vài ngày và đạt đủ năm mục nghiệm thu của Bước 6 rồi
+mới vào bước này — sau M2 không còn đường lùi về code cũ (xem "Nếu phải lùi").
+
 - [ ] **Bước 7 xong:** `prisma migrate status` trên Supabase in "up to date" sau M2; site vẫn 200.
 
 ---
@@ -16892,12 +16896,36 @@ trong migration M2 sẽ dừng nếu `outbox` còn dòng mang ba giá trị cũ.
 ### Bước 8 — Lượt seed prod 2, khoảng 03/11
 
 Theo seed spec §8.5, **không sửa code**: chạy lại §8.3 với `SEED_HOM_NAY` = ngày
-chạy. Mốc 03/11 đã có test phủ (Task 15 Step 6 chạy `seed:verify` cho đúng mốc
-này trên Docker), và code seed lúc đó đã là bản ADR-0041 nên lượt này không phải
-dọn gì thêm.
+chạy. Code seed lúc đó đã là bản ADR-0041 nên lượt này không phải dọn gì thêm
+theo luật mới — phần đó xong ở Bước 6 và Bước 7.
 
-- Booking thử của Bước 6, enquiry và subscriber phát sinh giữa hai lượt sẽ bị xoá
-  — đó là chủ ý.
+**Vì sao KHÔNG huỷ lượt này, và KHÔNG đổi sang xoá sạch cả DB** (chốt 17/09, sau
+nghiệm thu Task 15). Lượt này làm tươi mốc H cho buổi bảo vệ: chuyến "đã đóng" và
+biểu đồ 28 ngày của lượt Bước 6 tới đầu tháng 11 đã cũ. Đổi schema không phải lý
+do để xoá dữ liệu: M1 chỉ thêm, M2 tự xoá hai cột và ba loại email. `data:reset`
+đã xoá sạch TẦNG VẬN HÀNH; tầng nội dung (tour, FAQ, policy, blog,
+`media_assets`, `email_suppressions`, `media_garbage`, một admin) được GIỮ có chủ
+đích — `media_assets` trỏ chủ bằng UUID không có khoá ngoại, seed lại blog sinh
+UUID mới là ảnh mồ côi im lặng — còn nội dung thì seed tự ghi đè (upsert tour,
+policy, FAQ; xoá policy `CANCELLATION`).
+
+**Điều chỉnh 17/09 — bắt buộc cho lượt này:**
+
+1. **Thứ tự:** deploy → Bước 6 → vài ngày nghiệm thu trên site thật → Bước 7
+   (M2) → lượt này. Không gộp M2 vào Bước 6 (ghi chú ở Bước 7).
+2. **Tập dượt lại trên schema SAU M2.** Lượt `seed:verify` mốc 03/11 của Task 15
+   (Step 6) chạy TRƯỚC M2 nên không phủ lượt này. Bước 0 của §8.3 là bắt buộc:
+   Docker, đúng H của lượt prod, DB rỗng + `prisma migrate deploy` (hoặc
+   `prisma migrate reset` do người chạy — Prisma chặn AI tự chạy lệnh này) →
+   `db:seed` → `seed:verify` 0 vi phạm.
+3. **Bảng mới phải được phân loại trước.** `data:reset` dừng ở cổng phân loại nếu
+   có bảng chưa nằm trong `KE_HOACH` (xoá) hay `PHAI_CON` (giữ) của
+   `apps/api/scripts/reset-operational-data.mjs`. Nhánh nào sau plan này thêm bảng
+   (P4e-1, P5, P6…) thì xếp nhóm cho bảng đó trước lượt này.
+4. **Dữ liệu phát sinh giữa hai lượt sẽ mất:** booking thử Stripe của Bước 6,
+   enquiry, subscriber — đó là chủ ý. Nếu trong khoảng đó có enquiry hay
+   subscriber THẬT (giáo viên, người ngoài) thì xuất CSV từ admin trước khi chạy.
+
 - Freeze 15/10 chỉ cấm nâng dependency và đổi nơi deploy, không cấm thao tác dữ
   liệu.
 - Entry `docs/CHANGELOG.md` riêng cho lượt này.
