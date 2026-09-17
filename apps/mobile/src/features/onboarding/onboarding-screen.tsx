@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { messages } from '@tourism/i18n';
-import { AppText, Button, IconButton, useTheme, withAlpha } from '@tourism/mobile-ui';
+import { AppText, Button, useTheme, withAlpha } from '@tourism/mobile-ui';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ImageBackground, Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -117,12 +117,25 @@ export function OnboardingScreen({
                 }}
               >
                 <Dots index={index} />
-                <IconButton
-                  icon="arrow-right"
+                <Pressable
+                  accessibilityRole="button"
                   accessibilityLabel={copy.next}
-                  variant="glass"
                   onPress={onNext}
-                />
+                  style={{
+                    width: theme.spacing(13.5),
+                    height: theme.spacing(13.5),
+                    borderRadius: theme.spacing(13.5) / 2,
+                    backgroundColor: theme.colors.primary,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Feather
+                    name="arrow-right"
+                    size={22}
+                    color={theme.colors['primary-foreground']}
+                  />
+                </Pressable>
               </View>
             )}
           </View>
