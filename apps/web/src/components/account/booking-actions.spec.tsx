@@ -339,7 +339,7 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     });
   });
 
-  it('REFUND_FAILED → câu "booking chưa đổi, thử lại" trong hộp; không refresh; nút bấm lại được', async () => {
+  it('REFUND_FAILED → câu "chưa xác nhận được hoàn tiền, booking chưa huỷ" trong hộp; không refresh; nút bấm lại được', async () => {
     cancel.mockRejectedValueOnce(new ORPCError('REFUND_FAILED', { status: 502 }));
     const user = userEvent.setup();
     render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
@@ -347,9 +347,11 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
     await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
 
+    // Không khẳng định "không có gì đổi": cổng hết giờ chờ vẫn có thể đã hoàn ở phía nó.
+    // Điều chắc chắn chỉ là booking CHƯA bị huỷ.
     expect(
       await screen.findByText(
-        'We couldn’t process your refund, so your booking hasn’t changed. Please try again.',
+        'We couldn’t confirm your refund with the payment provider, so your booking hasn’t been cancelled. Please try again later, or contact us if it keeps happening.',
       ),
     ).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();

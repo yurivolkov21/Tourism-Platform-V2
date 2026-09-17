@@ -51,6 +51,8 @@ export interface CancelInLockInput {
   /** Người quyết: chính khách khi `initiator` là 'customer'. */
   decidedById: string;
   refundAmount: Prisma.Decimal;
+  /** SUM(refunds) đọc TRONG khoá — trạng thái sổ mà `refundAmount` tính từ, vào khoá chống trùng. */
+  refundedTotal: Prisma.Decimal;
   /**
    * Số khách đã xác nhận. Lệch `refundAmount` thì lõi huỷ dừng TRƯỚC khi gọi cổng
    * ({@link RefundAmountChangedError}).
@@ -142,6 +144,7 @@ export class CancellationsService {
       await this.cancelInLock(tx, booking, {
         decidedById: userId,
         refundAmount,
+        refundedTotal: ledger._sum.amount ?? new Prisma.Decimal(0),
         expectedRefundAmount: new Prisma.Decimal(input.expectedRefundAmount),
         reason: input.reason,
         initiator: 'customer',
@@ -178,9 +181,13 @@ export class CancellationsService {
    *     khoá rồi thấy CANCELLED → BookingNotCancellableError. Rồi số tiền sắp hoàn
    *     phải đúng số người gọi đã xác nhận → không thì RefundAmountChangedError.
    *  2. Tiền > 0 thì gọi cổng thanh toán TRƯỚC (ADR-0009: không ghi sổ thứ chưa
-   *     xảy ra), khoá chống trùng `cancel:<bookingId>` — một booking chỉ huỷ được
-   *     một lần nên khoá này ổn định qua mọi lần thử lại sau crash. Cổng lỗi thì
-   *     ProviderRefundFailedError bay ra, giao dịch rollback, không ghi gì.
+   *     xảy ra), khoá chống trùng `cancel:<bookingId>:<tổng đã hoàn>` — cùng khuôn
+   *     `refund:<bookingId>:<tổng đã hoàn>` của hoàn thiện chí. Số tiền lần thử là
+   *     phần còn lại của sổ, nên hai lần thử cùng trạng thái sổ gửi cùng tham số và
+   *     cổng trả lại kết quả cũ (thử lại sau crash hay hết giờ chờ không hoàn hai
+   *     lần). Sổ đổi giữa hai lần thử (admin vừa hoàn thiện chí) thì số tiền đổi và
+   *     khoá đổi theo — giữ khoá cũ với tham số mới là cổng từ chối vì trùng khoá.
+   *     Cổng lỗi thì ProviderRefundFailedError bay ra, giao dịch rollback, không ghi gì.
    *  3. MỘT câu SQL (CTE), mọi thứ dẫn từ lượt flip booking để guard trạng thái
    *     thua thì cả câu thành no-op:
    *       cancel        — booking → CANCELLED + cancelled_at (travel story,
@@ -221,7 +228,7 @@ export class CancellationsService {
       ? await this.refunds.executeGatewayRefund(
           { ...booking, providerPaymentId: booking.providerPaymentId as string },
           amount,
-          `cancel:${booking.id}`,
+          `cancel:${booking.id}:${input.refundedTotal.toFixed(2)}`,
         )
       : null;
 

@@ -262,12 +262,13 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       });
       expect(body.booking.cancelledAt).not.toBeNull();
 
-      // (a) Cổng: đúng một lệnh, trọn phần còn lại, khoá chống trùng theo booking.
+      // (a) Cổng: đúng một lệnh, trọn phần còn lại, khoá chống trùng theo booking VÀ trạng
+      // thái sổ lúc gọi (chưa hoàn đồng nào → 0.00).
       expect(fake.refunds).toHaveLength(1);
       expect(fake.refunds[0]).toMatchObject({
         amount: '117.00',
         currency: 'USD',
-        idempotencyKey: `cancel:${booking.id}`,
+        idempotencyKey: `cancel:${booking.id}:0.00`,
       });
 
       // (b) Sổ: một dòng, không admin nào bấm, capture được hoàn vào (ADR-0006 AMEND 1b).
@@ -430,7 +431,9 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
       expect(CancelBookingResultSchema.parse(res.json()).refundedAmount).toBe('100.00');
 
       expect(fake.refunds.map((r) => r.amount)).toEqual(['17.00', '100.00']);
-      expect(fake.refunds[1]?.idempotencyKey).toBe(`cancel:${booking.id}`);
+      // Khoá mang tổng đã hoàn (17.00): số tiền lần thử này đổi theo sổ, nên khoá cũng đổi —
+      // thử lại sau một lần hoàn thiện chí không đụng khoá của lần thử trước với số khác.
+      expect(fake.refunds[1]?.idempotencyKey).toBe(`cancel:${booking.id}:17.00`);
       const total = await prisma.refund.aggregate({
         where: { bookingId: booking.id },
         _sum: { amount: true },
@@ -483,7 +486,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
 
       fake.failRefunds = false;
       expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
-      expect(fake.refunds.map((r) => r.idempotencyKey)).toEqual([`cancel:${booking.id}`]);
+      expect(fake.refunds.map((r) => r.idempotencyKey)).toEqual([`cancel:${booking.id}:0.00`]);
     });
 
     it('đúng ngày khởi hành (giờ Việt Nam) → 422 NOT_CANCELLABLE, booking giữ nguyên', async () => {

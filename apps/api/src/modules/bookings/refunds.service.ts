@@ -253,7 +253,12 @@ export class RefundsService {
       return providerRefundId;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'unknown';
-      this.logger.error(`Provider refund failed for booking ${booking.code}: ${message}`);
+      // Lỗi hết giờ chờ/mạng KHÔNG chứng minh cổng chưa hoàn: nói rõ để người vận hành đối
+      // soát dashboard cổng trước khi hoàn tay (khoá chống trùng chỉ cứu lần thử CÙNG tham số).
+      this.logger.error(
+        `Provider refund failed for booking ${booking.code} (key ${idempotencyKey}): ${message} — ` +
+          'if this was a timeout the provider may still have refunded; reconcile with the provider dashboard before refunding manually',
+      );
       throw new ProviderRefundFailedError(message);
     }
   }

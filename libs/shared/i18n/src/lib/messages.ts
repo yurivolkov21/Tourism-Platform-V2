@@ -2732,9 +2732,13 @@ export const messages = {
     throttle: 'Too many requests — please wait a minute and try again.',
     /** 422 `NOT_CANCELLABLE` — booking không còn huỷ online được (đã huỷ ở tab khác, đã tới ngày khởi hành…). */
     notCancellable: 'This booking can’t be cancelled online. Contact us for help.',
-    /** 502 `REFUND_FAILED` — cổng thanh toán lỗi nên server không ghi gì; nói rõ booking còn nguyên để khách thử lại. */
+    /**
+     * 502 `REFUND_FAILED` — cổng thanh toán lỗi nên server không ghi gì. Chỉ khẳng định điều
+     * chắc chắn là booking CHƯA huỷ: cổng hết giờ chờ vẫn có thể đã hoàn ở phía nó (review
+     * nhánh ADR-0041), nên không nói "không có gì thay đổi".
+     */
     refundFailed:
-      'We couldn’t process your refund, so your booking hasn’t changed. Please try again.',
+      'We couldn’t confirm your refund with the payment provider, so your booking hasn’t been cancelled. Please try again later, or contact us if it keeps happening.',
     /** 409 `REFUND_AMOUNT_CHANGED` — số hoàn đã khác số hộp xác nhận in (qua hạn chót, hoặc admin vừa hoàn); trang tự đọc lại. */
     refundChanged:
       'The refund for this booking has changed since you opened this page. Check the new amount and confirm again.',
