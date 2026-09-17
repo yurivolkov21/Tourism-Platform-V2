@@ -351,6 +351,13 @@ export type AdminBookingsListQuery = z.output<typeof AdminBookingsListQuerySchem
 export const CancelBookingInputSchema = z.object({
   code: BookingCodeSchema,
   reason: z.string().trim().min(1).max(1000).optional(),
+  /**
+   * Số tiền hoàn khách vừa đọc trong hộp xác nhận (`bookings.byCode.cancellation.refundAmount`).
+   * Server tính lại trong khoá; lệch số này thì trả `REFUND_AMOUNT_CHANGED` thay vì huỷ với
+   * con số khách chưa đồng ý — hạn chót có thể trôi qua, hoặc admin hoàn thiện chí, giữa lúc
+   * trang in hộp và lúc khách bấm (review nhánh ADR-0041).
+   */
+  expectedRefundAmount: DecimalStringSchema,
 });
 
 export type CancelBookingInput = z.output<typeof CancelBookingInputSchema>;

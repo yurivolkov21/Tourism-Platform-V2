@@ -184,7 +184,12 @@ describe('payments integration (webhooks + PAID atomic claim)', () => {
     );
     const result = await app
       .get(CancellationsService)
-      .cancelByCustomer(userId, booking.code, null, afterDeadline);
+      .cancelByCustomer(
+        userId,
+        booking.code,
+        { reason: null, expectedRefundAmount: '0.00' },
+        afterDeadline,
+      );
     expect(result.refundedAmount).toBe('0.00');
     return booking;
   }

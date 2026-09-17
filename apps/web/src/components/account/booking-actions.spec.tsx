@@ -292,7 +292,7 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     expect(refresh).toHaveBeenCalledTimes(1);
   });
 
-  it('cancelBooking có lý do → gọi bookings.cancel({code, reason}); toast nói số tiền ĐÃ hoàn + refresh', async () => {
+  it('cancelBooking có lý do → gọi bookings.cancel({code, reason, expectedRefundAmount}); toast nói số tiền ĐÃ hoàn + refresh', async () => {
     cancel.mockResolvedValueOnce({
       booking: makeBooking({ code: CODE, status: 'CANCELLED', currency: 'USD' }),
       refundedAmount: '1200.00',
@@ -304,9 +304,10 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     await user.type(screen.getByRole('textbox'), 'Family emergency');
     await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
 
+    // Kèm ĐÚNG số tiền hộp vừa in — server từ chối nếu số nó sắp hoàn đã khác.
     await waitFor(() =>
       expect(cancel).toHaveBeenCalledWith(
-        { code: CODE, reason: 'Family emergency' },
+        { code: CODE, reason: 'Family emergency', expectedRefundAmount: '1200.00' },
         expect.anything(),
       ),
     );
@@ -331,7 +332,7 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     await waitFor(() => expect(cancel).toHaveBeenCalledTimes(1));
     // `toHaveBeenCalledWith` coi `reason: undefined` bằng với vắng khoá — soi thẳng payload.
     const input = cancel.mock.calls[0]?.[0];
-    expect(input).toEqual({ code: CODE });
+    expect(input).toEqual({ code: CODE, expectedRefundAmount: '0.00' });
     expect(input).not.toHaveProperty('reason');
     expect(toastSuccess).toHaveBeenCalledWith('Booking cancelled', {
       description: 'No refund was due on this booking.',
@@ -353,6 +354,22 @@ describe('BookingActions — hành động thật (code, không có onAction)', 
     ).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
     expect(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' })).toBeEnabled();
+  });
+
+  it('REFUND_AMOUNT_CHANGED → câu "số tiền đã đổi, xác nhận lại" trong hộp và làm mới trang để hộp in số mới', async () => {
+    cancel.mockRejectedValueOnce(new ORPCError('REFUND_AMOUNT_CHANGED', { status: 409 }));
+    const user = userEvent.setup();
+    render(<BookingActions view={PAID_VIEW} code={CODE} booking={dialogBooking()} />);
+
+    await user.click(screen.getByRole('button', { name: 'Cancel booking' }));
+    await user.click(screen.getByRole('button', { name: 'Cancel and refund $1,200.00' }));
+
+    expect(
+      await screen.findByText(
+        'The refund for this booking has changed since you opened this page. Check the new amount and confirm again.',
+      ),
+    ).toBeInTheDocument();
+    expect(refresh).toHaveBeenCalledTimes(1);
   });
 
   it('NOT_CANCELLABLE → câu "không huỷ online được" và làm mới trang', async () => {

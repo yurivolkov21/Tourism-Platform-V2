@@ -67,18 +67,23 @@ describe('CreateBookingInputSchema', () => {
   it('W1: free-text trim ở CONTRACT — reason/refund reason, một luật một chỗ', () => {
     // reason toàn khoảng trắng phải chết ở 400, không được lọt vào service để
     // bị trim thành '' rồi nổ output validation (500) ở admin list.
-    expect(CancelBookingInputSchema.safeParse({ code: 'BK-ABCDEFGH', reason: '   ' }).success).toBe(
-      false,
-    );
+    expect(
+      CancelBookingInputSchema.safeParse({
+        code: 'BK-ABCDEFGH',
+        reason: '   ',
+        expectedRefundAmount: '0.00',
+      }).success,
+    ).toBe(false);
     const cancel = CancelBookingInputSchema.parse({
       code: 'BK-ABCDEFGH',
       reason: '  need to cancel  ',
+      expectedRefundAmount: '0.00',
     });
     expect(cancel.reason).toBe('need to cancel');
     // ADR-0041: lý do không bắt buộc — vắng hẳn là hợp lệ; có gửi thì vẫn trim + min(1).
-    expect(CancelBookingInputSchema.parse({ code: 'BK-ABCDEFGH' })).toEqual({
-      code: 'BK-ABCDEFGH',
-    });
+    expect(
+      CancelBookingInputSchema.parse({ code: 'BK-ABCDEFGH', expectedRefundAmount: '0.00' }),
+    ).toEqual({ code: 'BK-ABCDEFGH', expectedRefundAmount: '0.00' });
 
     expect(
       AdminRefundInputSchema.safeParse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: '   ' })
@@ -88,6 +93,20 @@ describe('CreateBookingInputSchema', () => {
       AdminRefundInputSchema.parse({ code: 'BK-ABCDEFGH', amount: '10.00', reason: '  goodwill  ' })
         .reason,
     ).toBe('goodwill');
+  });
+
+  it('CancelBookingInputSchema: số tiền hoàn khách đã xác nhận là BẮT BUỘC (review ADR-0041)', () => {
+    // Khách bấm theo con số hộp xác nhận in; thiếu nó thì server không biết khách đã
+    // đồng ý với số nào, và hạn chót trôi qua giữa lúc mở hộp và lúc bấm là huỷ 0 đồng.
+    expect(CancelBookingInputSchema.safeParse({ code: 'BK-ABCDEFGH' }).success).toBe(false);
+    expect(
+      CancelBookingInputSchema.safeParse({ code: 'BK-ABCDEFGH', expectedRefundAmount: '-1.00' })
+        .success,
+    ).toBe(false);
+    expect(
+      CancelBookingInputSchema.parse({ code: 'BK-ABCDEFGH', expectedRefundAmount: '117.00' })
+        .expectedRefundAmount,
+    ).toBe('117.00');
   });
 
   it('AdminRefundInputSchema (W2, ADR-0030 AMEND 1): amount VÀ reason bắt buộc — hết "vắng = trọn phần dư"', () => {

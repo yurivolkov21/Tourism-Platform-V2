@@ -190,13 +190,16 @@ describe('refunds integration (admin refund ledger)', () => {
     });
   }
 
-  /** Khách tự huỷ qua route thật (ADR-0041 §4) — lý do để trống như đa số khách. */
-  function postCancel(cookie: string, code: string) {
+  /**
+   * Khách tự huỷ qua route thật (ADR-0041 §4) — lý do để trống như đa số khách, kèm số
+   * tiền hộp xác nhận đã in (`expectedRefundAmount`).
+   */
+  function postCancel(cookie: string, code: string, expectedRefundAmount: string) {
     return app.inject({
       method: 'POST',
       url: `/api/bookings/${code}/cancel`,
       headers: { cookie },
-      payload: {},
+      payload: { expectedRefundAmount },
     });
   }
 
@@ -745,7 +748,7 @@ describe('refunds integration (admin refund ledger)', () => {
     const booking = await createPaidBooking(alice); // 117.00, 3 ghế
     await moveDeparturePastDeadline(booking.id);
 
-    const cancelled = await postCancel(alice, booking.code);
+    const cancelled = await postCancel(alice, booking.code, '0.00');
     expect(cancelled.statusCode).toBe(200);
     const result = CancelBookingResultSchema.parse(cancelled.json());
     // Quá hạn: không hoàn, không gọi cổng, nhưng ghế vẫn trả về chuyến.
@@ -783,7 +786,7 @@ describe('refunds integration (admin refund ledger)', () => {
     const alice = await signUpUser('late-cancel-cap@example.com', 'Alice');
     const booking = await createPaidBooking(alice);
     await moveDeparturePastDeadline(booking.id);
-    expect((await postCancel(alice, booking.code)).statusCode).toBe(200);
+    expect((await postCancel(alice, booking.code, '0.00')).statusCode).toBe(200);
 
     expect((await postRefund(admin, booking.code, { amount: '117.00' })).statusCode).toBe(200);
     const again = await postRefund(admin, booking.code, { amount: '1.00' });
@@ -816,7 +819,8 @@ describe('refunds integration (admin refund ledger)', () => {
     fake.refundDelayMs = 100; // ép hai đường cùng đọc sổ = 0 trước khi bên nào ghi
     const [a, b] = await Promise.allSettled([
       postRefund(admin, booking.code, { amount: '117.00' }),
-      postCancel(alice, booking.code),
+      // Hộp xác nhận của khách in trước khi admin bấm: hoàn đủ 117.00.
+      postCancel(alice, booking.code, '117.00'),
     ]);
     const codes = [a, b]
       .map((r) => (r.status === 'fulfilled' ? r.value.statusCode : 0))

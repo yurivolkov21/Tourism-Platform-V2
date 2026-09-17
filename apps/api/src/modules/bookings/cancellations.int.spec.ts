@@ -188,13 +188,34 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     return booking;
   }
 
-  /** Khách tự huỷ qua route thật (ADR-0041). `payload` vắng = không ghi lý do. */
-  function postCancel(cookie: string, code: string, payload: Record<string, unknown> = {}) {
+  /**
+   * Số tiền hộp xác nhận đang in — đọc đúng trường web đọc (`bookings.byCode.cancellation`).
+   * Booking không đọc được hoặc không có cờ huỷ thì hộp không mở, trả '0.00' cho đủ input.
+   */
+  async function shownRefundAmount(cookie: string, code: string): Promise<string> {
+    const res = await app.inject({
+      method: 'GET',
+      url: `/api/bookings/${code}`,
+      headers: { cookie },
+    });
+    if (res.statusCode !== 200) return '0.00';
+    const body = res.json() as { cancellation: { refundAmount: string } | null };
+    return body.cancellation?.refundAmount ?? '0.00';
+  }
+
+  /**
+   * Khách tự huỷ qua route thật (ADR-0041), gửi kèm số tiền vừa thấy trong hộp xác nhận —
+   * y như web. `payload` vắng = không ghi lý do; test tự ghim `expectedRefundAmount` khi
+   * cần mô phỏng hộp đã in từ trước.
+   */
+  async function postCancel(cookie: string, code: string, payload: Record<string, unknown> = {}) {
+    const expectedRefundAmount =
+      payload.expectedRefundAmount ?? (await shownRefundAmount(cookie, code));
     return app.inject({
       method: 'POST',
       url: `/api/bookings/${code}/cancel`,
       headers: { cookie },
-      payload,
+      payload: { ...payload, expectedRefundAmount },
     });
   }
 
@@ -358,6 +379,41 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
         deadline: cancellationDeadline(start, end),
         initiator: 'customer',
       });
+    });
+
+    it('hạn chót trôi qua giữa lúc mở hộp và lúc bấm → 409 REFUND_AMOUNT_CHANGED, không gọi cổng, không ghi gì', async () => {
+      const alice = await signUpUser('deadline-crossed@example.com', 'Alice');
+      const booking = await createPaidBooking(alice);
+      // Hộp xác nhận in lúc còn trong hạn: "Cancel and refund $117.00".
+      const shown = await shownRefundAmount(alice, booking.code);
+      expect(shown).toBe('117.00');
+
+      // Khách để tab qua hạn chót rồi mới bấm (dời snapshot ngày như ca quá hạn ở trên).
+      const start = isoPlusDays(vietnamToday(new Date()), 2);
+      const end = isoPlusDays(start, 3);
+      await prisma.booking.update({
+        where: { id: booking.id },
+        data: { departureStartDate: startOfDayUtc(start), departureEndDate: startOfDayUtc(end) },
+      });
+
+      const res = await postCancel(alice, booking.code, { expectedRefundAmount: shown });
+      expect(res.statusCode).toBe(409);
+      expect(res.json()).toMatchObject({ code: 'REFUND_AMOUNT_CHANGED' });
+
+      // Khách chưa đồng ý huỷ với 0 đồng: booking giữ nguyên, trang đọc lại số mới.
+      expect(fake.refunds).toHaveLength(0);
+      expect((await prisma.booking.findUniqueOrThrow({ where: { id: booking.id } })).status).toBe(
+        BookingStatus.PAID,
+      );
+      expect(await prisma.refund.count({ where: { bookingId: booking.id } })).toBe(0);
+      expect(await prisma.cancellationRequest.count()).toBe(0);
+      expect(await prisma.outbox.count({ where: { type: EmailType.BOOKING_CANCELLED } })).toBe(0);
+      expect(await seatsBooked()).toBe(3);
+
+      // Xác nhận lại đúng số mới thì huỷ được, hoàn 0.
+      const retry = await postCancel(alice, booking.code, { expectedRefundAmount: '0.00' });
+      expect(retry.statusCode).toBe(200);
+      expect(CancelBookingResultSchema.parse(retry.json()).refundedAmount).toBe('0.00');
     });
 
     it('PARTIALLY_REFUNDED: hoàn đúng phần còn lại của sổ', async () => {

@@ -45,6 +45,7 @@ type ActionErrorKind =
   | 'sessionExpired'
   | 'throttle'
   | 'refundFailed'
+  | 'refundChanged'
   | 'notCancellable'
   | 'bookingClosed'
   | 'generic';
@@ -53,6 +54,7 @@ function classifyActionError(error: unknown): ActionErrorKind {
   if (error instanceof ORPCError) {
     if (error.status === 401) return 'sessionExpired';
     if (error.code === 'REFUND_FAILED') return 'refundFailed';
+    if (error.code === 'REFUND_AMOUNT_CHANGED') return 'refundChanged';
     if (error.code === 'NOT_CANCELLABLE') return 'notCancellable';
     if (error.code === 'DEPARTURE_NOT_AVAILABLE') return 'bookingClosed';
   }
@@ -67,6 +69,8 @@ function errorCopy(kind: ActionErrorKind): string {
       return e.throttle;
     case 'refundFailed':
       return e.refundFailed;
+    case 'refundChanged':
+      return e.refundChanged;
     case 'notCancellable':
       return e.notCancellable;
     case 'bookingClosed':
@@ -302,11 +306,20 @@ export function BookingActions({
           break;
         }
         case 'cancelBooking': {
+          // Số tiền hộp xác nhận vừa in đi kèm lệnh huỷ: server từ chối nếu số nó sắp
+          // hoàn đã khác (qua hạn chót khi tab để lâu) thay vì huỷ với số khách chưa thấy.
+          const expectedRefundAmount = booking?.cancellation?.refundAmount;
+          if (expectedRefundAmount === undefined) {
+            setErrorKind('generic');
+            setErrorAt(action);
+            break;
+          }
           // Lý do chỉ đi kèm khi khách có gõ: contract để `optional`, còn một
           // chuỗi rỗng sẽ ăn 400 vì `min(1)`.
-          const result = await api.bookings.cancel(reason ? { code, reason } : { code }, {
-            context: withBrowserAuth(),
-          });
+          const result = await api.bookings.cancel(
+            reason ? { code, reason, expectedRefundAmount } : { code, expectedRefundAmount },
+            { context: withBrowserAuth() },
+          );
           // Số tiền lấy từ KẾT QUẢ huỷ, không từ con số hộp xác nhận đã in: sổ
           // có thể đổi giữa lúc mở hộp và lúc bấm (admin hoàn thiện chí cùng lúc).
           const refunded = Number(result.refundedAmount) > 0;
@@ -324,8 +337,9 @@ export function BookingActions({
       setErrorKind(kind);
       setErrorAt(action);
       // Server nói booking không còn huỷ online được (đã huỷ ở tab khác, đã tới
-      // ngày khởi hành): đọc lại trang để nút và trạng thái khớp sự thật.
-      if (kind === 'notCancellable') router.refresh();
+      // ngày khởi hành), hoặc số hoàn đã đổi: đọc lại trang để nút, trạng thái và
+      // con số trong hộp xác nhận khớp sự thật.
+      if (kind === 'notCancellable' || kind === 'refundChanged') router.refresh();
     } finally {
       setPending(false);
     }

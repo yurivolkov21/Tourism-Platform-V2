@@ -816,22 +816,25 @@ describe('bookings integration (create PENDING + FakeGateway)', () => {
       data: { seatsBooked: { increment: 3 } },
     });
 
-    const before = BookingSchema.parse(
-      (
-        await app.inject({
-          method: 'GET',
-          url: `/api/bookings/${created.code}`,
-          headers: { cookie: alice },
-        })
-      ).json(),
-    );
+    const beforeJson = (
+      await app.inject({
+        method: 'GET',
+        url: `/api/bookings/${created.code}`,
+        headers: { cookie: alice },
+      })
+    ).json() as { cancellation: { refundAmount: string } | null };
+    const before = BookingSchema.parse(beforeJson);
     expect(before.cancellationStatus).toBeNull();
 
     const cancelRes = await app.inject({
       method: 'POST',
       url: `/api/bookings/${created.code}/cancel`,
       headers: { cookie: alice },
-      payload: { reason: 'Change of plans' },
+      // Số hộp xác nhận in — y như web gửi kèm lệnh huỷ.
+      payload: {
+        reason: 'Change of plans',
+        expectedRefundAmount: beforeJson.cancellation?.refundAmount,
+      },
     });
     expect(cancelRes.statusCode).toBe(200);
 

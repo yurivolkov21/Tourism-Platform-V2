@@ -2735,6 +2735,9 @@ export const messages = {
     /** 502 `REFUND_FAILED` — cổng thanh toán lỗi nên server không ghi gì; nói rõ booking còn nguyên để khách thử lại. */
     refundFailed:
       'We couldn’t process your refund, so your booking hasn’t changed. Please try again.',
+    /** 409 `REFUND_AMOUNT_CHANGED` — số hoàn đã khác số hộp xác nhận in (qua hạn chót, hoặc admin vừa hoàn); trang tự đọc lại. */
+    refundChanged:
+      'The refund for this booking has changed since you opened this page. Check the new amount and confirm again.',
     /** 400 `DEPARTURE_NOT_AVAILABLE` ở "Pay now" và ở wizard đặt chỗ — chuyến đã qua hạn đặt (ADR-0041 §3). */
     bookingClosed: 'Booking for this departure has closed.',
     sessionExpired: 'Your session has expired.',

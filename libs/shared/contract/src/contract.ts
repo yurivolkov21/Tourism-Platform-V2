@@ -529,6 +529,12 @@ export const contract = {
         // đã tới ngày khởi hành (giờ Việt Nam), hoặc lệnh huỷ thứ hai — gộp một
         // code: cách nào thì booking cũng không huỷ online được nữa.
         NOT_CANCELLABLE: { status: 422, message: 'This booking can no longer be cancelled online' },
+        // Số server sắp hoàn khác `expectedRefundAmount` khách đã xác nhận — không huỷ gì;
+        // trang đọc lại cờ huỷ và hỏi lại với số mới.
+        REFUND_AMOUNT_CHANGED: {
+          status: 409,
+          message: 'The refund amount has changed; review it and confirm again',
+        },
         // Cổng thanh toán từ chối hoàn — không ghi gì, booking giữ nguyên, thử lại được.
         REFUND_FAILED: { status: 502, message: 'Provider refund failed' },
       })

@@ -25,6 +25,24 @@ export class BookingNotCancellableError extends Error {
 }
 
 /**
+ * Số server sắp hoàn khác số khách đã xác nhận (409): hạn chót trôi qua, hoặc sổ đổi
+ * (admin hoàn thiện chí), giữa lúc trang in hộp xác nhận và lúc khách bấm. Không huỷ
+ * với con số khách chưa đồng ý — web đọc lại trang và hỏi lại (review nhánh ADR-0041).
+ */
+export class RefundAmountChangedError extends Error {
+  constructor(expected: string, current: string) {
+    super(`Refund amount changed: confirmed ${expected}, the booking now refunds ${current}`);
+  }
+}
+
+/** Phần khách gửi kèm lệnh huỷ (contract `CancelBookingInputSchema`). */
+export interface CustomerCancelInput {
+  reason: string | null;
+  /** Số tiền hoàn khách vừa thấy trong hộp xác nhận. */
+  expectedRefundAmount: string;
+}
+
+/**
  * Đầu vào lõi huỷ dùng chung (plan 15/09 Hợp đồng C). Người gọi đã giữ advisory
  * lock của booking và tính `refundAmount` trên sổ đọc TRONG khoá. P4e-1 sẽ thêm
  * initiator 'operator' (công ty huỷ chuyến, hoàn toàn bộ phần còn lại).
@@ -33,6 +51,11 @@ export interface CancelInLockInput {
   /** Người quyết: chính khách khi `initiator` là 'customer'. */
   decidedById: string;
   refundAmount: Prisma.Decimal;
+  /**
+   * Số khách đã xác nhận. Lệch `refundAmount` thì lõi huỷ dừng TRƯỚC khi gọi cổng
+   * ({@link RefundAmountChangedError}).
+   */
+  expectedRefundAmount: Prisma.Decimal;
   reason: string | null;
   initiator: 'customer';
   /** Đồng hồ của lượt huỷ — dùng cho phép kiểm "chưa tới ngày khởi hành". */
@@ -84,7 +107,8 @@ export class CancellationsService {
    *
    * Ném BookingNotFoundError (không phải chủ hoặc không tồn tại — 404, không lộ sự
    * tồn tại), BookingNotCancellableError (trạng thái sai, không có capture, hoặc
-   * đã tới ngày khởi hành), ProviderRefundFailedError (cổng lỗi — không ghi gì,
+   * đã tới ngày khởi hành), RefundAmountChangedError (số hoàn đã khác số khách xác
+   * nhận — không ghi gì), ProviderRefundFailedError (cổng lỗi — không ghi gì,
    * khách thử lại được).
    *
    * `now` là tham số để test tất định; route truyền đồng hồ thật.
@@ -92,7 +116,7 @@ export class CancellationsService {
   async cancelByCustomer(
     userId: string,
     bookingCode: string,
-    reason: string | null,
+    input: CustomerCancelInput,
     now: Date = new Date(),
   ): Promise<CancelBookingResult> {
     const probe = await prisma.booking.findUnique({
@@ -118,7 +142,8 @@ export class CancellationsService {
       await this.cancelInLock(tx, booking, {
         decidedById: userId,
         refundAmount,
-        reason,
+        expectedRefundAmount: new Prisma.Decimal(input.expectedRefundAmount),
+        reason: input.reason,
         initiator: 'customer',
         now,
       });
@@ -150,7 +175,8 @@ export class CancellationsService {
    *
    *  1. Kiểm lại booking vừa đọc trong khoá: trạng thái PAID/PARTIALLY_REFUNDED,
    *     có capture, chưa tới ngày khởi hành (giờ Việt Nam). Lệnh huỷ thứ hai chờ
-   *     khoá rồi thấy CANCELLED → BookingNotCancellableError.
+   *     khoá rồi thấy CANCELLED → BookingNotCancellableError. Rồi số tiền sắp hoàn
+   *     phải đúng số người gọi đã xác nhận → không thì RefundAmountChangedError.
    *  2. Tiền > 0 thì gọi cổng thanh toán TRƯỚC (ADR-0009: không ghi sổ thứ chưa
    *     xảy ra), khoá chống trùng `cancel:<bookingId>` — một booking chỉ huỷ được
    *     một lần nên khoá này ổn định qua mọi lần thử lại sau crash. Cổng lỗi thì
@@ -181,6 +207,11 @@ export class CancellationsService {
 
     const amount = input.refundAmount;
     const amountText = amount.toFixed(2);
+    // Sau chốt trạng thái (booking không huỷ được thì lỗi đó đúng hơn), TRƯỚC cổng: khách
+    // chỉ đồng ý huỷ với đúng con số hộp xác nhận đã in.
+    if (!amount.equals(input.expectedRefundAmount)) {
+      throw new RefundAmountChangedError(input.expectedRefundAmount.toFixed(2), amountText);
+    }
     const deadline = cancellationDeadline(
       calendarDate(booking.departureStartDate),
       calendarDate(booking.departureEndDate),
