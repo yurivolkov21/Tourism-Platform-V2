@@ -1,4 +1,4 @@
-import { readEnv } from './env';
+import { deriveDevApiUrl, readEnv } from './env';
 
 describe('readEnv', () => {
   it('trả nguyên giá trị khi có đủ hai biến', () => {
@@ -74,5 +74,31 @@ describe('readEnv', () => {
       apiUrl: 'https://api.example.test',
       webUrl: 'https://www.example.test',
     });
+  });
+
+  it('cho phép http khi apiUrlRequireHttps=false (origin tự suy từ Metro, không phải input tự tay)', () => {
+    const env = readEnv(
+      {
+        EXPO_PUBLIC_API_URL: 'http://192.168.0.143:3001',
+        EXPO_PUBLIC_WEB_URL: 'https://www.example.test',
+      },
+      { apiUrlRequireHttps: false },
+    );
+
+    expect(env.apiUrl).toBe('http://192.168.0.143:3001');
+  });
+});
+
+describe('deriveDevApiUrl', () => {
+  it('lấy host từ hostUri của Metro, ghép cổng API cố định', () => {
+    expect(deriveDevApiUrl('192.168.0.143:8081')).toBe('http://192.168.0.143:3001');
+  });
+
+  it('trả undefined khi không có hostUri — build production không qua Metro dev', () => {
+    expect(deriveDevApiUrl(undefined)).toBeUndefined();
+  });
+
+  it('trả undefined khi hostUri rỗng', () => {
+    expect(deriveDevApiUrl('')).toBeUndefined();
   });
 });

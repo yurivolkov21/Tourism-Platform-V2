@@ -13,6 +13,8 @@
 // được bằng tay. Mobile là client công khai, cùng hạng browser — không bao giờ
 // thêm secret vào đây.
 
+import Constants from 'expo-constants';
+
 /** Hai origin mà app mobile cần biết. */
 export interface MobileEnv {
   /** Origin API oRPC — origin TRẦN, không kèm `/api`. */
@@ -48,14 +50,15 @@ function isLoopback(hostname: string): boolean {
  * 3. Trả `.origin` — bỏ path/query/dấu `/` cuối, nên `…/agency/` không thành
  *    `https://…//rpc/...` (nhiều reverse proxy trả 404 chứ không chuẩn hoá).
  */
-function readOrigin(raw: string, key: string): string {
+function readOrigin(raw: string, key: string, opts: { requireHttps?: boolean } = {}): string {
+  const requireHttps = opts.requireHttps ?? true;
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     throw new Error(`@tourism/mobile: ${key} không phải URL hợp lệ ("${raw}").`);
   }
-  if (url.protocol !== 'https:' && !isLoopback(url.hostname)) {
+  if (requireHttps && url.protocol !== 'https:' && !isLoopback(url.hostname)) {
     throw new Error(
       `@tourism/mobile: ${key} phải dùng https khi trỏ host thật, đang là "${url.protocol}//". ` +
         'Android chặn cleartext mặc định nên mọi request sẽ chết câm.',
@@ -64,7 +67,10 @@ function readOrigin(raw: string, key: string): string {
   return url.origin;
 }
 
-export function readEnv(source: Record<string, string | undefined>): MobileEnv {
+export function readEnv(
+  source: Record<string, string | undefined>,
+  opts: { apiUrlRequireHttps?: boolean } = {},
+): MobileEnv {
   const missing = KEYS.filter((key) => !source[key]?.trim());
   if (missing.length > 0) {
     throw new Error(
@@ -76,9 +82,28 @@ export function readEnv(source: Record<string, string | undefined>): MobileEnv {
   // `noUncheckedIndexedAccess` bật: đã lọc ở trên nên hai giá trị chắc chắn có,
   // nhưng kiểu vẫn là `string | undefined` — dùng `?? ''` cho tsgo yên tâm.
   return {
-    apiUrl: readOrigin(source.EXPO_PUBLIC_API_URL ?? '', 'EXPO_PUBLIC_API_URL'),
+    apiUrl: readOrigin(source.EXPO_PUBLIC_API_URL ?? '', 'EXPO_PUBLIC_API_URL', {
+      requireHttps: opts.apiUrlRequireHttps ?? true,
+    }),
     webUrl: readOrigin(source.EXPO_PUBLIC_WEB_URL ?? '', 'EXPO_PUBLIC_WEB_URL'),
   };
+}
+
+/** Cổng `@tourism/api` (PORT trong apps/api/.env.example) — khác cổng Metro (8081). */
+const DEV_API_PORT = '3001';
+
+/**
+ * Phiên Metro dev thật (Expo Go/dev client) tự lộ IP LAN nó đang bind qua
+ * `Constants.expoConfig.hostUri` (vd "192.168.0.143:8081") — chính là IP điện
+ * thoại vừa dùng để tải bundle. Suy origin API từ đó thay vì đọc
+ * EXPO_PUBLIC_API_URL tĩnh nên đổi wifi/địa điểm KHÔNG cần sửa `.env.local`,
+ * chỉ cần restart Metro (đằng nào cũng phải làm khi đổi mạng).
+ * Build production không qua Metro nên `hostUri` luôn `undefined` — env tĩnh
+ * vẫn là nguồn duy nhất, hàm này không có tác dụng ở đó.
+ */
+export function deriveDevApiUrl(hostUri: string | undefined): string | undefined {
+  const host = hostUri?.split(':')[0]?.trim();
+  return host ? `http://${host}:${DEV_API_PORT}` : undefined;
 }
 
 let cached: MobileEnv | undefined;
@@ -91,9 +116,15 @@ let cached: MobileEnv | undefined;
 export function env(): MobileEnv {
   // Metro nội tuyến `process.env.EXPO_PUBLIC_*` lúc bundle CHỈ khi truy cập
   // tĩnh — viết `process.env[key]` trong vòng lặp là bundle ra `undefined`.
-  cached ??= readEnv({
-    EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL,
-    EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
-  });
+  const derivedApiUrl = deriveDevApiUrl(Constants.expoConfig?.hostUri);
+  cached ??= readEnv(
+    {
+      EXPO_PUBLIC_API_URL: derivedApiUrl ?? process.env.EXPO_PUBLIC_API_URL,
+      EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
+    },
+    // http chấp nhận được ở đây: origin tự suy từ Metro, không phải chuỗi ai
+    // gõ tay — Expo Go vẫn cho cleartext trong dev.
+    { apiUrlRequireHttps: !derivedApiUrl },
+  );
   return cached;
 }
