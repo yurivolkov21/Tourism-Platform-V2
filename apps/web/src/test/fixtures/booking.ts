@@ -21,7 +21,6 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     status: 'PAID',
     tourTitle: 'Test Tour',
     tourSlug: 'test-tour',
-    freeCancellationDays: null,
     tourImage: null,
     // Passport (spec 11/08): snapshot đích đến — primary đứng đầu, nguồn cho
     // tem/stats/bản đồ. Test cần tour nhiều đích hoặc rỗng thì đè overrides.
@@ -53,9 +52,6 @@ export function makeBooking(overrides: Partial<BookingDetail> = {}): BookingDeta
     // Cụm B: null = chưa viết đánh giá. Chỉ `byCode` điền giá trị thật.
     reviewedAt: null,
     review: null,
-    // W1: ước tính hoàn do SERVER tính (byCode). Mặc định null — test cần
-    // dialog huỷ có con số thì đè overrides.
-    refundEstimate: null,
     // ADR-0041: trạng thái huỷ theo hạn chót (byCode). Mặc định null — test cần
     // hộp xác nhận huỷ thì đè overrides.
     cancellation: null,

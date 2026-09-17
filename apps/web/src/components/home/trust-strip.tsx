@@ -15,7 +15,7 @@ import { SPRING } from '@/lib/motion';
 // ── Ba câu này viết theo DỮ LIỆU, không theo khẩu hiệu ──
 //
 // 1. Huỷ miễn phí: bản 14/08 phải rào "on most departures" vì mốc huỷ khi ấy
-//    nằm rải rác trong dữ liệu từng tour (`freeCancellationDays` ở 15 tour, mốc
+//    nằm rải rác trong dữ liệu từng tour (mốc theo ngày ghim trên 15 tour, mốc
 //    viết bằng giờ trong policy ở 15 tour còn lại) — một con số chung là nói
 //    sai. ADR-0041 gỡ chính cái rải rác ấy: MỘT luật hạn chót cho mọi tour, dài
 //    1/3/7 ngày theo độ dài chuyến. Nên nay nói được "every tour" — nhưng vẫn

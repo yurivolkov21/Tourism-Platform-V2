@@ -91,16 +91,6 @@ export const BookingSchema = z.object({
    *  (spec 11/08 §3.1). Tái dùng DestinationLinkSchema của catalog, không
    *  khai schema mới; mảng rỗng hợp lệ khi tour chưa gắn destination. */
   tourDestinations: z.array(DestinationLinkSchema),
-  /**
-   * Cửa sổ huỷ miễn phí của TOUR, join sống từ quan hệ như `tourSlug` (không
-   * phải snapshot lúc mua — booking không có cột này).
-   *
-   * Có mặt để khách BIẾT TRƯỚC mình được hoàn bao nhiêu khi bấm xin huỷ
-   * (ADR-0030 §3b): badge nâng ngưỡng 100% của tour, nên thiếu nó thì ước tính
-   * sẽ nói THẤP hơn thực tế — mà nói thấp còn tệ hơn không nói. Cùng con số
-   * mà màn quyết định của admin dùng, nên hai bên không thể lệch.
-   */
-  freeCancellationDays: z.int().nonnegative().nullable(),
   departureStartDate: z.iso.date(),
   departureEndDate: z.iso.date(),
   /**
@@ -201,26 +191,6 @@ export type Booking = z.output<typeof BookingSchema>;
  * `reviewedAt`: đường đọc danh sách không gánh thứ chỉ trang chi tiết dùng.
  */
 /**
- * Ước tính hoàn tiền nếu khách xin huỷ NGAY BÂY GIỜ — SERVER tính lúc đọc
- * `bookings.byCode` (W1, audit 05/09 cụm 3): trước đây web tính bằng đồng hồ
- * TRÌNH DUYỆT, lệch bậc/ân hạn với server ở biên ngày (khách UTC−5 thấy 50%,
- * admin duyệt 25%). Cùng `refundPercentForRequest`/`policyRefundAmount` mà
- * approve dùng, nên con số khách thấy là con số admin sẽ duyệt.
- */
-export const RefundEstimateSchema = z.object({
-  /** Phần trăm theo bậc chính sách (ân hạn 24h phủ 100% lên trên). */
-  percent: z.int().min(0).max(100),
-  /** Số tiền ước hoàn = percent × total − đã hoàn, kẹp trong phần dư. */
-  amount: DecimalStringSchema,
-  /** Số NGÀY LỊCH từ hôm nay (server, UTC) tới khởi hành — cho câu giải thích. */
-  daysBeforeDeparture: z.int(),
-  /** Còn trong cửa sổ ân hạn 24h sau thanh toán (ADR-0030 §3c). */
-  inGrace: z.boolean(),
-});
-
-export type RefundEstimate = z.output<typeof RefundEstimateSchema>;
-
-/**
  * Trạng thái huỷ của booking lúc ĐỌC `bookings.byCode` (ADR-0041 §4) — SERVER
  * tính bằng bộ hàm luật của contract, cùng đường với lệnh huỷ thật, nên con số
  * khách thấy là con số server hoàn. Web không so ngày bằng giờ trình duyệt (Q7).
@@ -250,15 +220,8 @@ export const BookingDetailSchema = BookingSchema.extend({
    */
   review: MyReviewSchema.nullable(),
   /**
-   * Ước tính hoàn nếu huỷ ngay — CHỈ cho booking PAID với chuyến chưa khởi
-   * hành (những booking có nút xin huỷ); các trạng thái khác trả `null`.
-   * Web `CancelSummary` chỉ IN con số này, không tự tính lại.
-   */
-  refundEstimate: RefundEstimateSchema.nullable(),
-  /**
    * ADR-0041: trạng thái huỷ theo hạn chót — `null` khi booking không ở PAID
-   * hoặc PARTIALLY_REFUNDED. Thay `refundEstimate` (còn giữ tới khi web chuyển
-   * xong, plan 15/09 Task 13).
+   * hoặc PARTIALLY_REFUNDED. Web chỉ IN các con số này, không tự tính lại.
    */
   cancellation: BookingCancellationSchema.nullable(),
 });
@@ -417,13 +380,6 @@ export const CancellationRequestSchema = z.object({
    */
   reason: z.string().min(1).max(1000).nullable(),
   status: CancellationRequestStatusSchema,
-  /**
-   * Badge `freeCancellationDays` của tour CHỤP LÚC KHÁCH GỬI (ADR-0029 AMEND 6):
-   * mức chính sách mà khách thấy khi xin huỷ là mức admin sẽ duyệt — sửa tour
-   * sau đó không làm khách rớt bậc. null = tour không có badge lúc ấy, hoặc
-   * row cũ trước migration (server rơi về badge hiện tại của tour).
-   */
-  freeCancellationDays: z.int().nonnegative().nullable(),
   decisionNote: z.string().max(500).nullable(),
   decidedAt: z.iso.datetime().nullable(),
   /**

@@ -48,7 +48,6 @@ function toCancellationRequest(row: CancellationRow, bookingCode: string): Cance
     bookingCode,
     reason: row.reason,
     status: row.status,
-    freeCancellationDays: row.freeCancellationDays,
     decisionNote: row.decisionNote,
     decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
     // Khách tự huỷ ghi `decided_by` = chính khách (ADR-0041 §4); luồng duyệt cũ

@@ -68,8 +68,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     seatsBooked: 0,
     status: DepartureStatus.OPEN,
   } satisfies Prisma.TourDepartureCreateManyInput;
-  // Chuyến khởi hành +3 ngày — cho ca bậc 0% của ADR-0029 AMEND 5 (tour
-  // fixture không có freeCancellationDays nên <7 ngày rơi thẳng vào bậc 0%).
+  // Chuyến khởi hành +3 ngày.
   // Chuyến MỘT ngày (endDate = startDate) là có chủ đích: N = 1 nên hạn chót đặt
   // chỗ là +2 ngày và `create` không bao giờ vướng chốt chặn ADR-0041 §3. Để 2
   // ngày thì N = 3, hạn chót rơi đúng hôm nay theo UTC và `create` bị chặn trong
@@ -89,14 +88,7 @@ describe('cancellations integration (W4, D1-B append-only)', () => {
     await prisma.tourCategory.createMany({ data: catalog.tourCategories });
     await prisma.destination.createMany({ data: catalog.destinations });
     await prisma.tour.createMany({
-      // `freeCancellationDays: null` ép TẠI ĐÂY, không nhận theo fixture. Cả
-      // file này dựng trên tiền đề "tour không có cửa sổ huỷ miễn phí riêng
-      // nên dưới 7 ngày rơi thẳng vào bậc 0%" — mà tiền đề đó từng là một giá
-      // trị TÌNH CỜ của fixture. Ngày 10/09/2026 đợt khớp chính sách huỷ với
-      // `refundPercentForBooking` đặt `hoi-an-lantern-evening` thành 1 (cửa sổ
-      // 24 giờ), thế là ca "bậc 0%" hoàn 100% và test đỏ. Nay test tự khai
-      // điều kiện của nó, và không tour nào trong fixture còn để null nữa.
-      data: [{ ...tour, freeCancellationDays: null }] as unknown as Prisma.TourCreateManyInput[],
+      data: [tour] as unknown as Prisma.TourCreateManyInput[],
     });
 
     const moduleRef = await Test.createTestingModule({

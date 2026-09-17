@@ -7,17 +7,8 @@ import type {
   CreateBookingInput,
   MediaItem,
   Paged,
-  RefundEstimate,
 } from '@tourism/contract';
-import {
-  cancellationDeadline,
-  daysBeforeDeparture,
-  isWithinDeadline,
-  isWithinGracePeriod,
-  policyRefundAmount,
-  refundPercentForRequest,
-  vietnamToday,
-} from '@tourism/contract';
+import { cancellationDeadline, isWithinDeadline, vietnamToday } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { env } from '../../config/env.js';
 import { Prisma } from '../../generated/prisma/client.js';
@@ -133,9 +124,6 @@ type BookingRow = Prisma.BookingModel;
 export const bookingTourInclude = {
   select: {
     slug: true,
-    // Khách cần biết trước mình được hoàn bao nhiêu (ADR-0030 §3b) — badge
-    // nâng ngưỡng 100% nên thiếu nó thì ước tính nói thấp hơn thực tế.
-    freeCancellationDays: true,
     destinations: {
       select: { isPrimary: true, destination: { select: { slug: true, name: true } } },
       orderBy: [{ isPrimary: 'desc' }, { destination: { name: 'asc' } }],
@@ -146,7 +134,6 @@ export const bookingTourInclude = {
 /** Shape row `tour` sau join `bookingTourInclude` — nguồn kiểu cho `toBooking`. */
 export type BookingTourJoin = {
   slug: string;
-  freeCancellationDays: number | null;
   destinations: Array<{ isPrimary: boolean; destination: { slug: string; name: string } }>;
 };
 
@@ -207,7 +194,6 @@ export function toBooking(
     status: row.status,
     tourTitle: row.tourTitle,
     tourSlug: row.tour.slug,
-    freeCancellationDays: row.tour.freeCancellationDays,
     tourImage,
     // Snapshot đích đến lúc đọc (spec passport 11/08 §3.1) — primary đứng đầu
     // nhờ orderBy trong `bookingTourInclude`, map về đúng DestinationLinkSchema.
@@ -254,43 +240,6 @@ export function toBooking(
 }
 
 /**
- * Ước tính hoàn tiền nếu khách xin huỷ NGAY BÂY GIỜ (W1, audit 05/09 cụm 3
- * mục Thấp) — tính bằng đồng hồ SERVER thay vì trình duyệt: web từng gọi
- * `new Date()` phía client nên khách ở múi giờ lệch thấy sai bậc/ân hạn ở
- * biên ngày. Chỉ có nghĩa cho booking PAID với chuyến chưa khởi hành (đúng
- * tập có nút xin huỷ); các ca khác trả null. Cùng bộ hàm chính sách mà
- * `cancellations.approve` dùng — con số khách thấy là con số admin sẽ duyệt.
- */
-function estimateRefund(
-  booking: Pick<BookingRow, 'status' | 'paidAt' | 'departureStartDate' | 'totalAmount'> & {
-    tour: { freeCancellationDays: number | null };
-  },
-  refundedTotal: Prisma.Decimal | null,
-): RefundEstimate | null {
-  if (booking.status !== BookingStatus.PAID) return null;
-  const now = new Date();
-  const departureDay = calendarDate(booking.departureStartDate);
-  // "Đã đi" so với hôm nay theo giờ Việt Nam (ADR-0041 §7).
-  if (departureDay < vietnamToday(now)) return null; // chuyến đã đi
-  const percent = refundPercentForRequest({
-    requestedAt: now,
-    paidAt: booking.paidAt?.toISOString() ?? null,
-    departureStartDate: departureDay,
-    freeCancellationDays: booking.tour.freeCancellationDays,
-  });
-  return {
-    percent,
-    amount: policyRefundAmount({
-      percent,
-      totalAmount: booking.totalAmount.toFixed(2),
-      refundedTotal: (refundedTotal ?? new Prisma.Decimal(0)).toFixed(2),
-    }),
-    daysBeforeDeparture: daysBeforeDeparture(now, departureDay),
-    inGrace: isWithinGracePeriod(booking.paidAt?.toISOString() ?? null, now),
-  };
-}
-
-/**
  * Kết quả của {@link BookingsService.claimSeatsForPaid} (spec P2 §4, ADR-0009):
  * - `claimed`       — seat đã tăng, booking flip PAID, outbox đã enqueue.
  * - `overbooked`    — booking vẫn PENDING nhưng party không còn vừa chỗ →
@@ -333,7 +282,7 @@ const CODE_MINT_ATTEMPTS = 3;
 const SESSION_REUSE_MIN_REMAINING_MS = 5 * 60_000;
 
 // Thước ngày của mọi gate "chuyến đã đi chưa" (`create`, `reCheckout`, phân loại
-// claim, `estimateRefund`) là NGÀY VIỆT NAM (ADR-0041 §7, thay thước UTC của
+// claim) là NGÀY VIỆT NAM (ADR-0041 §7, thay thước UTC của
 // ADR-0009 AMEND 2): `vietnamToday(now)` ở Node, `vietnamDateSql` trong CTE
 // claim. `start_date` là ngày lịch VN; thước UTC từng để tour một ngày còn
 // "chưa đi" tới 06:59 sáng hôm sau.
@@ -384,9 +333,6 @@ export class BookingsService {
             // Trần party theo TOUR (W1) — luật thật của PARTY_TOO_LARGE,
             // contract chỉ giữ trần sanity 99.
             maxGroupSize: true,
-            // Cùng lý do với `bookingTourInclude` — khách phải biết trước mình
-            // được hoàn bao nhiêu (ADR-0030 §3b).
-            freeCancellationDays: true,
             // Giá vốn theo ĐẦU KHÁCH, để đóng băng vào booking (ADR-0033 §3).
             // Nạp ở ĐÂY chứ không query riêng: đường này vốn đã đọc `tour` cho
             // `basePrice`, và một join thêm trên FK có index rẻ hơn một
@@ -519,7 +465,6 @@ export class BookingsService {
         ...withSession,
         tour: {
           slug: departure.tour.slug,
-          freeCancellationDays: departure.tour.freeCancellationDays,
           destinations: departure.tour.destinations,
         },
       },
@@ -794,7 +739,6 @@ export class BookingsService {
         reviewedAt: review?.createdAt ?? null,
       }),
       review: review ? toMyReview(review, reviewMedia) : null,
-      refundEstimate: estimateRefund(booking, refunded._sum.amount),
       // ADR-0041: trạng thái huỷ theo hạn chót, cùng hàm luật với lõi huỷ — con
       // số khách thấy là con số server hoàn. Web chỉ in (Q7).
       cancellation: bookingCancellation(booking, refunded._sum.amount, new Date()),

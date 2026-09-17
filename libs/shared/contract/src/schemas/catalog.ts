@@ -180,18 +180,6 @@ export const TourDetailSchema = TourCardSchema.extend({
   factGroupSizeNote: z.string().max(280).nullable(),
   factDifficultyNote: z.string().max(280).nullable(),
   factGoodForNote: z.string().max(280).nullable(),
-  /**
-   * Cửa sổ huỷ miễn phí tính bằng NGÀY (ADR-0023 §2).
-   *
-   * `policies[]` vẫn giữ toàn văn chính sách; trường này chỉ tách MỘT con số để
-   * giao diện in thành nhãn ngắn ("Free until 10 days out"). Không suy ra từ
-   * `policy.body`: đã đếm trên 29 policy, regex `up to (\d+) days` chỉ bắt được
-   * 12 — 17 câu còn lại viết khác khuôn.
-   *
-   * `null` cho tour tính cửa sổ bằng GIỜ (14/29 tour hiện tại). Ép 24 giờ thành
-   * "1 ngày" là nói sai: mốc 24 giờ tính từ giờ khởi hành, không phải nửa đêm.
-   */
-  freeCancellationDays: z.int().nonnegative().nullable(),
   itinerary: z.array(TourItineraryDaySchema),
   faqs: z.array(TourFaqSchema),
   policies: z.array(TourPolicySchema),

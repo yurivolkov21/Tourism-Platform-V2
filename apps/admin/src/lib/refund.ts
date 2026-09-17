@@ -52,11 +52,11 @@ export function normalizeAmountInput(raw: string): string {
   return trimmed;
 }
 
-// Số học tiền (`toCents`/`fromCents`/`remainingRefundable`/`percentOfAmount`)
-// nay sống ở `@tourism/contract` cạnh bảng bậc — cùng MỘT bản cho web, admin và
-// API (vòng vá review 05/09: web tính float, admin tính cent, lệch một cent ở
-// 1199.01). Re-export để chỗ gọi cũ trong admin không đổi.
-export { percentOfAmount, remainingRefundable } from '@tourism/contract';
+// Số học tiền (`toCents`/`fromCents`/`remainingRefundable`) sống ở
+// `@tourism/contract` — cùng MỘT bản cho web, admin và API (vòng vá review 05/09:
+// web tính float, admin tính cent, lệch một cent ở 1199.01). Re-export để chỗ gọi
+// cũ trong admin không đổi.
+export { remainingRefundable } from '@tourism/contract';
 
 export interface RefundAmountInput {
   /** Chuỗi ĐÃ qua `normalizeAmountInput`. */

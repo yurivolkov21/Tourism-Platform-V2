@@ -184,7 +184,6 @@ describe('BookingSchema', () => {
       status: 'PENDING',
       tourTitle: 'Hội An Ancient Town Walking Tour',
       tourSlug: 'hoi-an-ancient-town-walking-tour',
-      freeCancellationDays: null,
       tourImage: sampleTourImage,
       tourDestinations: [],
       departureStartDate: '2026-09-18',
@@ -237,7 +236,6 @@ describe('BookingSchema', () => {
       status: 'PENDING',
       tourTitle: 'Hội An Ancient Town Walking Tour',
       tourSlug: 'hoi-an-ancient-town-walking-tour',
-      freeCancellationDays: null,
       tourImage: null,
       tourDestinations: [
         { slug: 'hoi-an', name: 'Hội An', isPrimary: true },
@@ -284,7 +282,6 @@ describe('BookingSchema', () => {
       status: 'PAID',
       tourTitle: 'North to South Classic',
       tourSlug: 'north-to-south-classic',
-      freeCancellationDays: null,
       tourImage: null,
       tourDestinations: [],
       departureStartDate: '2026-09-12',
@@ -332,7 +329,6 @@ describe('BookingSchema', () => {
       status: 'PARTIALLY_REFUNDED',
       tourTitle: 'North to South Classic',
       tourSlug: 'north-to-south-classic',
-      freeCancellationDays: null,
       tourImage: null,
       tourDestinations: [],
       departureStartDate: '2026-09-12',
@@ -383,7 +379,6 @@ const validBooking = {
   status: 'PENDING',
   tourTitle: 'Hội An Ancient Town Walking Tour',
   tourSlug: 'hoi-an-ancient-town-walking-tour',
-  freeCancellationDays: null,
   tourImage: null,
   tourDestinations: [],
   departureStartDate: '2026-09-18',
@@ -531,7 +526,6 @@ describe('CancellationRequestSchema.reason — ADR-0041', () => {
     bookingCode: 'BK-7Q2M9XKD',
     reason: null,
     status: 'REFUNDED',
-    freeCancellationDays: null,
     decisionNote: null,
     decidedAt: '2026-09-15T03:00:00.000Z',
     // Task 8: cờ bắt buộc — dòng này là một lần khách tự huỷ.
@@ -595,7 +589,7 @@ describe('BookingCancellationSchema / BookingDetailSchema.cancellation — ADR-0
   });
 
   it('BookingDetailSchema mang cancellation nullable, không optional', () => {
-    const detail = { ...validBooking, review: null, refundEstimate: null, cancellation };
+    const detail = { ...validBooking, review: null, cancellation };
     expect(BookingDetailSchema.parse(detail).cancellation).toEqual(cancellation);
     expect(BookingDetailSchema.parse({ ...detail, cancellation: null }).cancellation).toBeNull();
     const { cancellation: _drop, ...missing } = detail;
@@ -623,7 +617,6 @@ describe('CancellationRequestSchema — ai quyết (ADR-0041 §4)', () => {
     bookingCode: 'BK-ABCDEFGH',
     reason: null,
     status: 'REFUNDED',
-    freeCancellationDays: null,
     decisionNote: null,
     decidedAt: '2026-10-12T02:30:00.000Z',
     createdAt: '2026-10-12T02:30:00.000Z',

@@ -60,7 +60,6 @@ const TOUR = {
   basePrice: '329.00',
   durationDays: 4,
   maxGroupSize: 10,
-  freeCancellationDays: 10,
   factGroupSizeNote: 'Ten riders, one driver each.',
   policies: [
     {
