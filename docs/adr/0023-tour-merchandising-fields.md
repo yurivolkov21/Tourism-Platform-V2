@@ -128,3 +128,30 @@ trúc còn lại giữ `createMany`.
 - **Ba thẻ chính sách ở tab Departures dựng được.** Chúng đã bị bỏ sót ở vòng
   13/08 (bản duyệt có `fcard ×3` ở cuối pane, bản ship có 0) — thẻ giữa của
   chúng chính là chỗ tiêu thụ `freeCancellationDays`.
+
+## AMEND 1 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — cột `free_cancellation_days` bỏ
+
+ADR này thêm năm cột; cột thứ năm, `freeCancellationDays`, sinh ra để tách MỘT
+con số khỏi văn xuôi `TourPolicy` cho thẻ giữa trong cụm ba thẻ chính sách ở tab
+Departures. Hai tiền đề của nó đều không còn:
+
+- **Con số không còn thuộc về TOUR.** ADR-0041 tính hạn chót từ ĐỘ DÀI CHUYẾN
+  (1 ngày → 1, 2–3 ngày → 3, từ 4 ngày → 7), nên một tour bán cả chuyến 2 ngày
+  lẫn chuyến 5 ngày có hai mốc khác nhau. Một ô nhập cấp tour không diễn đạt
+  nổi điều đó, và một con số cấp tour đứng cạnh hai mốc chuyến khác nhau là nói
+  sai với khách.
+- **Lý do "không suy ra từ `policy.body`" mất đối tượng.** Từ ADR-0041 không còn
+  `TourPolicy` loại `CANCELLATION` nào để mà suy: chính sách huỷ sinh từ luật
+  chung ở `@tourism/contract`, giống nhau cho mọi tour.
+
+Vì vậy: `TourDetailSchema.freeCancellationDays`, `BookingSchema.freeCancellationDays`
+và `CancellationRequestSchema.freeCancellationDays` gỡ khỏi contract; hai cột DB
+`tours.free_cancellation_days` và `cancellation_requests.free_cancellation_days`
+xoá bằng migration chạy SAU khi code mới đã sống trên prod (thứ tự bắt buộc: API
+cũ còn phục vụ vài phút cạnh code mới lúc deploy).
+
+Thẻ giữa của cụm ba thẻ chính sách KHÔNG mất: nó in luật N ngày của tour, tính
+từ `durationDays` bằng `windowDaysForTripLength` của contract, còn ngày chót cụ
+thể in trên từng hàng chuyến của bảng. Bốn cột còn lại của ADR này
+(`factDurationNote`, `factGroupSizeNote`, `factDifficultyNote`,
+`factGoodForNote`) và kết luận "`TourCardSchema` KHÔNG nở" đều giữ nguyên.

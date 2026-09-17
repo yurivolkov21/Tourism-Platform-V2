@@ -73,6 +73,13 @@ Không cần ADR: thay đổi nằm trong công cụ seed, không đổi schema 
 không có migration. Hành vi sản phẩm chỉ đổi đúng một chỗ ở Q10 (dải tháng của
 menu `/reports` trong admin).
 
+> **Cập nhật 15/09 —** câu trên đúng cho đợt seed 14/09 và chỉ cho đợt ấy. Một
+> ngày sau, [ADR-0041](../adr/0041-single-cancellation-deadline.md) đổi luật
+> huỷ: có ADR, có hai migration (M1 mở rộng, M2 xoá hai cột), và contract đổi
+> hình dạng. Bộ sinh seed phải viết lại phần huỷ/hoàn theo
+> [spec 15/09 §7](2026-09-15-refund-deadline-design.md#7-seed); §4.4 và §6 mục 5
+> dưới đây đã cập nhật theo. Mọi quyết định Q1–Q10 giữ nguyên.
+
 ## 3. Khung thời gian và mốc H
 
 File mới `apps/api/prisma/fixtures/khung-thoi-gian.ts`:
@@ -175,12 +182,16 @@ review) đổi theo H, nên đổi H thì BẮT BUỘC reset trước khi seed �
 | Ca | Hình dạng seed | Mô phỏng luồng |
 | --- | --- | --- |
 | Giỏ bỏ dở (~16, rải khắp năm) | CANCELLED; `paid_at` null; không payment event, không refund; `cancelled_at` = `created_at` + 65–80′; chuyến còn mở tại lúc tạo | job `pending-sweep` |
-| Khách xin huỷ, admin duyệt (~12) | Yêu cầu huỷ REFUNDED: `created_at` sau `paid_at` và trước khởi hành; `decided_at` sau 0–3 ngày, ≤ khởi hành và ≤ H; `free_cancellation_days` chụp của tour. Booking CANCELLED, `cancelled_at` = `decided_at`. % hoàn = `refundPercentForRequest`, số tiền = `policyRefundAmount` (hàm của contract). Số tiền > 0 thì 1 refund (`admin_id`, `reason` null) và 1 payment event hoàn tại `decided_at`; bằng 0 thì không có. Phủ cả bốn bậc 100/50/25/0, mỗi bậc ≥ 2 — bậc 50% và 25% chỉ xảy ra khi số ngày còn lại nhỏ hơn `free_cancellation_days` của tour, nên phải chọn tour có ngưỡng lớn (10, 14, 21, 30) | `cancellations.service` approve |
-| Yêu cầu bị từ chối (~5) | DENIED; `created_at` sau `paid_at` và trước khởi hành; khách xin đổi ngày, `decision_note` nói rõ xử lý như đổi lịch; `decided_at` sau 1–3 ngày và ≤ H; booking giữ PAID | `cancellations.service` deny |
-| Yêu cầu đang chờ (~9) | REQUESTED; `created_at` trong 25 ngày trước H và sau `paid_at`; chuyến khởi hành sau H; booking PAID | khách gửi, chưa ai quyết |
+| Khách tự huỷ TRONG hạn (~9) | Yêu cầu huỷ `REFUNDED` ngay từ lúc sinh: `created_at` sau `paid_at`, ≤ hạn chót của chuyến và trước H; `decided_at` = `created_at`; `decided_by` = chính chủ booking; `reason` có hoặc `null`. Booking `CANCELLED`, `cancelled_at` = `decided_at`. Đúng **một** refund bằng `remainingRefundable(total_amount, đã hoàn)` với `admin_id` **NULL** và một payment event hoàn cùng mốc | lõi `cancelInLock`, `initiator: 'customer'` |
+| Khách tự huỷ QUÁ hạn (~6) | Như trên nhưng `created_at` nằm SAU hạn chót của chuyến và trước ngày khởi hành. **Không** dòng refund, **không** payment event hoàn — quá hạn hoàn `0.00` và lõi không gọi cổng thanh toán | lõi `cancelInLock`, nhánh `amount = 0` |
 | Công ty huỷ chuyến | Mọi booking đã trả trên chuyến CANCELLED thành REFUNDED; 1 refund = `total_amount` có `reason` và `admin_id`; 1 payment event hoàn cùng mốc; mốc hoàn = max(`paid_at` + 1 ngày, khởi hành − 14 ngày), ≤ khởi hành và ≤ H; **không** yêu cầu huỷ; `cancelled_at` null | hoàn tiền từ admin (booking-states.md, dòng goodwill refund full) |
 
-Mọi booking huỷ hoặc hoàn không giữ ghế, nên không vào `seats_booked`.
+Mọi booking huỷ hoặc hoàn không giữ ghế, nên không vào `seats_booked`. Không
+sinh yêu cầu `REQUESTED` hay `DENIED` nào nữa: từ
+[ADR-0041](../adr/0041-single-cancellation-deadline.md) app không tạo được hai
+loại ấy, và seed chỉ được sinh hình dạng app tạo ra được. `paid_at` cùng mốc bỏ
+dở giỏ cũng phải nằm TRƯỚC hạn chót của chuyến — sau hạn chót thì `create` và
+`checkout` đều bị chặn.
 
 ### 4.5 Review
 
@@ -274,12 +285,16 @@ Bất biến ở tầng unit:
    khởi hành và ≤ H; không khách nào chồng lịch; đơn giá và tổng tiền khớp hàm
    `pricing.ts`; không có PENDING; mỗi tháng từ 01 tới tháng của H có booking;
    cửa sổ 7 và 28 ngày trước H có booking.
-5. **Huỷ và hoàn (§4.4):** giỏ bỏ dở đúng hình dạng; mỗi booking CANCELLED đã trả
-   có đúng một yêu cầu huỷ REFUNDED và số hoàn = `policyRefundAmount(…)`; bậc 0%
-   thì không có refund; đủ bốn bậc; DENIED và REQUESTED giữ booking PAID;
-   REFUNDED không có yêu cầu huỷ, không có `cancelled_at`, refund bằng tổng
-   tiền; mỗi refund có đúng một payment event hoàn cùng số tiền và cùng mốc; tổng
-   hoàn ≤ tổng tiền.
+5. **Huỷ và hoàn (§4.4):** giỏ bỏ dở đúng hình dạng; mỗi booking `CANCELLED` đã
+   trả có đúng một yêu cầu huỷ `REFUNDED` do CHÍNH chủ booking quyết
+   (`decided_by` = `user_id`); huỷ TRONG hạn có đúng một dòng hoàn bằng
+   `remainingRefundable(…)` với `admin_id` NULL, huỷ QUÁ hạn không có dòng hoàn
+   nào; **không** dòng `REQUESTED` hay `DENIED` nào; có ít nhất 5 ca trong hạn và
+   3 ca quá hạn; `REFUNDED` không có yêu cầu huỷ, không có `cancelled_at`, refund
+   bằng tổng tiền; mỗi refund có đúng một payment event hoàn cùng số tiền và cùng
+   mốc; tổng hoàn ≤ tổng tiền; **không booking nào có `paid_at` sau hạn chót của
+   chuyến**; mỗi tour từ 4 ngày có chuyến `OPEN` đã qua hạn chót mà chưa khởi
+   hành, với ít nhất 3 booking `PAID` trên nhóm chuyến đó (ca demo huỷ quá hạn).
 6. **Review:** giữ bảy bất biến §7 (13–19) của spec 10/09, cộng: mốc viết,
    duyệt, rút ≤ H. Lệch đo được lúc viết plan: bất biến 19 đòi ≥ 50% review là
    5★, nhưng chữ review đang có chỉ đạt 46% (55/119 đoạn), nên ngưỡng hạ xuống
@@ -415,6 +430,10 @@ pnpm seed:verify
 
 ### 8.5 Lượt prod 2 — khoảng 03/11, trước bảo vệ
 
+- Chạy bằng **code seed sau ADR-0041** (bộ sinh viết lại ở plan 15/09 Task 12).
+  Lượt 1 ngày 15/09 chạy bằng bộ sinh cũ, nên prod còn dòng `REQUESTED`/`DENIED`
+  và còn `free_cancellation_days` đã chụp; lượt reset ở spec 15/09 §10 bước 6
+  dọn sạch chúng. Lượt này không phải làm lại việc đó.
 - Không sửa code: chạy lại §8.3 với `SEED_HOM_NAY` = ngày chạy. Mốc 03/11 đã có
   test phủ.
 - Booking thử, enquiry và subscriber phát sinh giữa hai lượt bị xoá.
@@ -430,9 +449,12 @@ pnpm seed:verify
   OPEN. Web ẩn chúng (`catalog.service.ts` lọc `start_date ≥ hôm nay`), admin chưa
   có màn departures; lượt 2 dọn lại.
 - **Cửa sổ suy giảm** giữa reset và seed xong, cộng thời gian ISR sinh lại.
-- **Lịch sử là hư cấu theo luật hiện tại của app** (ân hạn 24 giờ, luồng W4,
+- **Lịch sử là hư cấu theo luật hiện tại của app** (một hạn chót mỗi chuyến,
   double opt-in, `enquiry_status_events`) — không mô phỏng dữ liệu kiểu cũ trước
-  khi các tính năng ấy ra đời.
+  khi các tính năng ấy ra đời. Bản 14/09 của gạch này ghi "ân hạn 24 giờ, luồng
+  W4"; cả hai đã gỡ ở [ADR-0041](../adr/0041-single-cancellation-deadline.md),
+  nên booking seed nào sinh trước ngày ấy vẫn mang hình dạng cũ cho tới lượt
+  reset kế tiếp.
 - **Dữ liệu giữ lại lệch mốc:** `tours.created_at` (31/07) muộn hơn booking đầu
   tiên của tour; `tour_categories.created_at` ở 2025. Không màn nào hiển thị (Q8).
 - **2 phiên admin mang `created_at` 10/10/2026** — không do seed, reset giữ phiên
@@ -441,4 +463,7 @@ pnpm seed:verify
 - **Demo trên dữ liệu seed:** duyệt một yêu cầu huỷ REQUESTED có bậc hoàn > 0%
   hoặc phát hành hoàn tiền goodwill sẽ lỗi `ProviderRefundFailedError` ở gateway
   vì provider id là giả; giao dịch rollback sạch. Từ chối (DENY) và bậc 0% chạy
-  được. Tránh hai luồng đó khi demo bảo vệ.
+  được. Tránh hai luồng đó khi demo bảo vệ. Từ ADR-0041 (15/09) không còn yêu
+  cầu `REQUESTED` nào để duyệt: khách tự huỷ TRONG hạn trên booking seed lỗi ở
+  cổng thanh toán y như trên (booking giữ `PAID`), huỷ QUÁ hạn hoàn `0.00` nên
+  chạy được; demo hoàn tiền thật dùng booking đặt mới qua sandbox.

@@ -139,6 +139,35 @@ quyết-định-tiền (double claim) vẫn gate trên `b.status` như cũ.
   mã lạ in nguyên. Khách từng nhận "Reason: departure-closed".
 - Lock: xem ADR-0006 AMEND 2c — claim và auto-refund cùng advisory lock.
 
+## AMEND 3 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — thước ngày đổi từ UTC sang giờ Việt Nam
+
+AMEND 2 chốt "MỘT thước ngày UTC" cho mọi gate *chuyến đã đi chưa*, và ghi nhận
+lề bảy giờ: `start_date` là ngày lịch của điểm khởi hành (Việt Nam, UTC+7), nên
+trong khung 00:00–06:59 giờ Việt Nam thì UTC vẫn đang ở hôm trước. Lề ấy chấp
+nhận được khi nó chỉ NỚI RỘNG cửa walk-in cùng ngày.
+
+ADR-0041 dùng cùng một phép so ngày để quyết hai thứ không nới được: **còn nhận
+đặt chỗ không** và **hoàn bao nhiêu tiền**. Bảy giờ lệch thành một ngày hoàn
+tiền sai, và sai theo hướng khách được hoàn khi luật đã công bố là không —
+đúng loại lỗi mà bản thân ADR-0041 §Cái giá gọi tên là "sửa lỗi", không phải
+siết quyền.
+
+Đổi:
+
+- **Một thước duy nhất: ngày lịch Việt Nam.** Node gọi `vietnamToday(now)` của
+  `@tourism/contract`; SQL gọi `vietnamDateSql(…)`, tức
+  `(… AT TIME ZONE 'Asia/Ho_Chi_Minh')::date`. `todayUtc` (`bookings.service.ts`)
+  và `startOfTodayUtc` (`catalog.service.ts`, nay là `startOfVietnamToday`) đã gỡ.
+- **Áp cho:** `bookings.create`, `reCheckout`, phân loại claim, gate xoá tài
+  khoản, chốt chặn đặt chỗ `assertDepartureBookable`, và mọi phép so hạn chót
+  huỷ.
+- **Giữ UTC CÓ CHỦ ĐÍCH ở hai chỗ**, vì chúng không nói về ngày của chuyến đi:
+  chuỗi theo ngày của dashboard (ADR-0036) và `review-eligibility.ts`.
+
+KHÔNG đổi: advisory lock một khoá cho mọi đường hoàn của một booking, trigger
+`SUM(refunds) ≤ total_amount`, sổ `refunds` append-only, và gate claim theo
+trạng thái chuyến của AMEND 1.
+
 ## Đã cân nhắc và loại
 
 - **Two-phase reservation** (TX1 `FOR UPDATE` + placeholder reserve → gateway → TX2 finalize):

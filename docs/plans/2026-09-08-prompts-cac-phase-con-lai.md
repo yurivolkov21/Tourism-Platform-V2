@@ -74,9 +74,20 @@ cùng tx — nợ ghi cho phase này), ADR-0020/0021/0035 (media). Phạm vi c�
 với tôi: form tour (đủ field theo schema Tour + itinerary days + FAQ + cost items
 ADR-0033), trạng thái published/unpublished + bust cache tour:<slug>/tours qua
 WebRevalidationService, departures (tạo/sửa/dời lịch/đóng bán, ràng buộc ghế
-đã bán), media picker CHỈ chọn từ media_assets có sẵn (upload thư viện là
-P4f-1). Mọi route admin mới tự có trần (ADR-0037) và CSP nonce (ADR-0038) —
-không thêm decorator lặp. Đối chiếu Nexora trước khi spec.
+đã bán), nút "Cancel departure" — công ty huỷ chuyến, hoàn 100% cho mọi booking đã trả
+BẤT KỂ hạn chót (ADR-0041 §6): KHÔNG viết đường hoàn thứ hai, mà mở lõi
+`cancelInLock` của `apps/api/src/modules/bookings/cancellations.service.ts`
+(hiện `private`, chỉ nhận `initiator: 'customer'`) thành dùng chung và thêm
+`initiator: 'operator'`; đây là món nợ ADR-0041 để lại đúng cho phase này,
+kèm theo là chuyến CANCELLED phải ngừng hiện ở web, media picker CHỈ chọn từ
+media_assets có sẵn (upload thư viện là P4f-1). Nợ schema phải trả cùng đợt: DB
+chưa có CHECK `end_date >= start_date` trên `tour_departures`. Các hàm luật hạn
+chót (`tripLengthDays` và mọi hàm gọi nó) NÉM RangeError với dòng hỏng, nên một
+chuyến nhập ngược ngày làm trang tour, trang booking và báo cáo tháng trả 500
+chứ không chỉ hiện xấu. Form sửa chuyến phải chặn ở client, service phải chặn ở
+server, và migration phải thêm CHECK — cả ba, vì hai lớp đầu không bảo vệ được
+dữ liệu sửa tay. Mọi route admin mới tự có trần (ADR-0037) và CSP nonce
+(ADR-0038) — không thêm decorator lặp. Đối chiếu Nexora trước khi spec.
 ```
 
 ### 1b. Destinations + categories

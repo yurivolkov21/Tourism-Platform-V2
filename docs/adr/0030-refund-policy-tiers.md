@@ -1,6 +1,12 @@
 # ADR-0030 — Chính sách hoàn tiền thành bậc CƯỠNG CHẾ, một nguồn cho cả văn bản lẫn phép tính
 
-- **Trạng thái:** Accepted (2026-09-04)
+- **Trạng thái:** Accepted (2026-09-04) · **thay một phần bởi
+  [ADR-0041](0041-single-cancellation-deadline.md) (15/09)** — bảng bậc
+  100/50/25/0 (§2), ân hạn 24 giờ (§3c), badge `freeCancellationDays` nâng
+  ngưỡng (§3) và đường vượt bậc `OFF_POLICY_NOTE_REQUIRED` (§5, §5b) đã gỡ khỏi
+  code. GIỮ: luật "MỘT nguồn sinh cả văn bản lẫn phép tính" (§6) — nay là bộ hàm
+  hạn chót ở cùng file `refund-policy.ts`; và hoàn tiền thiện chí bắt buộc
+  `amount` + `reason` (AMEND 1, AMEND 2), nay là đường ngoại lệ duy nhất.
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0029](0029-cancellation-approve-partial-refund.md) (cơ chế

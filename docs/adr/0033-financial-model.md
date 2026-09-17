@@ -278,6 +278,54 @@ thu ở tháng cũ, tiền xe ở tháng mới. Form sửa chuyến, khi ra đ�
 nhật `departure_end_date` của mọi booking trong cùng transaction**, hoặc cả
 hai vế cùng neo một cột. Ghi ở đây để không ai viết form ấy mà không biết.
 
+## AMEND 2 15/09 ([ADR-0041](0041-single-cancellation-deadline.md)) — ba tập khác nhau, gọi tên từng tập
+
+§1 dựng cách đọc P&L trên "tập booking được ghi nhận trong kỳ"; §4 tách giá vốn
+cố định khỏi giá vốn biến đổi; §6 đặt phí cổng trên "đúng tập booking được ghi
+nhận". Luật một hạn chót sinh ra một loại dòng mà cả ba câu ấy chưa phân xử:
+**booking đã trả tiền, khách huỷ SAU hạn chót** — công ty giữ trọn số tiền, ghế
+đã nhả, và khách KHÔNG đi.
+
+Chốt bốn định nghĩa. Chúng KHÔNG đứng trên cùng một tập, và đó là chủ ý:
+
+1. **Doanh thu ghi nhận = tập ĐÃ TRẢ TIỀN.** `SUM(total_amount − đã hoàn)` của
+   mọi booking có `paid_at IS NOT NULL` trên chuyến không `CANCELLED`, quy về kỳ
+   theo `departure_end_date`. Booking huỷ quá hạn ở lại với đủ số tiền, vì đó là
+   tiền công ty thật sự giữ (ADR-0041 §9). Booking hoàn một phần chỉ góp phần
+   còn lại.
+2. **Giá vốn biến đổi và `costDataMissing` = tập KHÁCH THỰC ĐI:**
+   `paid_at IS NOT NULL` **và** `status <> 'CANCELLED'`. Khách không lên xe thì
+   không ai gọi suất ăn của họ — đúng câu §4, nay nói rõ tập.
+3. **Giá vốn cố định:** điều kiện EXISTS "chuyến ĐÃ CHẠY" đọc trên tập khách
+   thực đi. Một chuyến mà mọi booking đều huỷ thì không chạy, dù tiền giữ lại đã
+   vào doanh thu.
+4. **Phí cổng thanh toán = tập ĐÃ TRẢ TIỀN**, cả tiền gốc `gross_collected` lẫn
+   số giao dịch trong `paymentFees(grossCollected, bookings, rate, fixed)`. Cổng
+   thu phí lúc THANH TOÁN và không trả lại khi hoàn hay khi huỷ (§Giới hạn #3),
+   nên phí của một booking huỷ quá hạn là chi phí đã trả thật.
+
+Hệ quả phải biết trước khi đọc số: mục 4 là mục DUY NHẤT ngoài mục 1 đứng trên
+tập doanh thu, nên phí cổng và giá vốn biến đổi đếm hai nhóm giao dịch khác
+nhau. Đã cân nhắc đặt phí cổng lên tập khách thực đi cho "cùng một nhóm" và
+loại: làm vậy là khai THIẾU một khoản chi phí công ty đã trả, chỉ để hai công
+thức trông giống nhau. Khi `PAYMENT_FEE_RATE` và `PAYMENT_FEE_FIXED` để mặc định
+(`0`) thì khác biệt này bằng 0 — càng phải ghi ra, vì không test nào bắt được
+nó.
+
+**Hai cột của báo cáo tháng đổi tên theo nghĩa.** `cancellationsApproved` và
+`cancellationsDenied` không còn nghĩa khi không ai duyệt gì nữa. Thay bằng
+`cancellationsWithinDeadline` và `cancellationsAfterDeadline`, đếm các yêu cầu
+`REFUNDED` có `decided_at` trong kỳ và xếp loại bằng
+`isWithinDeadline(request.createdAt, departureStartDate, departureEndDate)`
+(hàm `cancellationOutcomesSlice`). Yêu cầu `REFUNDED` do luồng duyệt CŨ để lại
+cũng được xếp loại theo đúng định nghĩa ấy; sau lượt seed lại (spec 15/09 §10
+bước 6) không còn dòng loại đó trên prod.
+
+**Không chữa ở đây:** giới hạn "báo cáo đọc lại ra số khác" ở mục
+§Giới hạn đã biết còn nguyên — một khoản hoàn thiện chí phát hành muộn vẫn làm
+doanh thu của một tháng đã đóng tụt xuống. Chữa thật vẫn cần cột snapshot theo
+kỳ, vẫn là một ADR riêng.
+
 ## Hình dạng câu trả lời
 
 `AdminMonthlyReportSchema` mọc thêm (mọi tiền là `DecimalStringSchema`):

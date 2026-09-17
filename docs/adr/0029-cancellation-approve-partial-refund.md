@@ -1,6 +1,12 @@
 # ADR-0029 — Approve một yêu cầu huỷ với mức hoàn tiền theo chính sách
 
-- **Trạng thái:** Accepted (2026-09-04)
+- **Trạng thái:** Accepted (2026-09-04) · **thay một phần bởi
+  [ADR-0041](0041-single-cancellation-deadline.md) (15/09)** — luồng
+  request → approve/deny, stepper duyệt và chốt chặn `CANCELLATION_OPEN` đã gỡ;
+  khách tự huỷ và hệ thống xử lý ngay. GIỮ NGUYÊN và được lõi huỷ mới dùng lại:
+  gọi cổng thanh toán TRONG advisory lock rồi một CTE ghi sau, hoàn 0 vẫn huỷ và
+  vẫn trả ghế, gate `admin.bookings.refund` mở cho booking `CANCELLED` còn dư
+  (§3), và cấm `deriveStatusAfterRefund` ghi đè `CANCELLED`.
 - **Bối cảnh thi hành:** nhánh `fix/p4c-backend-logic`, đi trước code theo luật
   CLAUDE.md #5
 - **Liên quan:** [ADR-0030](0030-refund-policy-tiers.md) (bảng bậc quyết SỐ TIỀN; ADR này quyết CƠ CHẾ) · [ADR-0009](0009-refund-correctness.md) (advisory lock + trigger
