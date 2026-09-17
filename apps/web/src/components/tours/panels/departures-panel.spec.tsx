@@ -97,6 +97,18 @@ function rowFor(dateText: string): HTMLElement {
   return row;
 }
 
+/** Ô thống kê theo nhãn: nhãn, con số và dòng phụ là ba anh em trong cùng một thẻ. */
+function statCard(label: string): HTMLElement {
+  const card = screen.getByText(label).parentElement;
+  if (!card) throw new Error(`không tìm thấy ô thống kê "${label}"`);
+  return card;
+}
+
+/** Đợt đã qua hạn đặt dựng từ một đợt mẫu — server trả `bookable: false`. */
+function closedFrom(base: DepartureVM, overrides: Partial<DepartureVM> = {}): DepartureVM {
+  return { ...base, ...overrides, bookable: false } as DepartureVM;
+}
+
 describe('DeparturesPanel', () => {
   it('bốn ô thống kê đều DẪN XUẤT từ mảng departures, không có số bịa', () => {
     render(wrap());
@@ -115,6 +127,33 @@ describe('DeparturesPanel', () => {
       ]),
     );
     expect(screen.getByText('24 Sep')).toBeInTheDocument();
+  });
+
+  it('"Seats left" và "Price range" bỏ qua đợt đã qua hạn đặt', () => {
+    // Đợt đã đóng mang giá khuyến mãi $199 và 8 ghế: tính vào là quảng cáo một
+    // giá và những ghế không ai mua được — cùng luật với giá "from" (ADR-0041 §3).
+    const closedPromo = closedFrom(DEPARTURES[0] as DepartureVM, {
+      id: 'aug-promo',
+      startDate: '2026-08-28',
+      endDate: '2026-08-31',
+      seatsLeft: 8,
+      effectivePrice: '199.00',
+      bookingDeadline: '2026-08-21',
+    });
+    render(wrap([DEPARTURES[0] as DepartureVM, closedPromo, DEPARTURES[1] as DepartureVM]));
+    // Còn nhận đặt: 20/08 (2 ghế, $329) và 24/09 (10 ghế, $329).
+    expect(within(statCard('Seats left')).getByText('12')).toBeInTheDocument();
+    expect(within(statCard('Price range')).getByText('$329')).toBeInTheDocument();
+    // "Dates open" vẫn chia trên TỔNG số đợt: khách thấy có một ngày đã đóng.
+    expect(within(statCard('Dates open')).getByText('2 / 3')).toBeInTheDocument();
+  });
+
+  it('không còn đợt nào nhận đặt: "Next departure" nói Booking closed, "Price range" lùi về basePrice', () => {
+    // Đường lùi của giá trùng `heroPrice`: hero và ô thống kê không được nói hai giá.
+    render(wrap([closedFrom(DEPARTURES[2] as DepartureVM)]));
+    expect(within(statCard('Next departure')).getByText('Booking closed')).toBeInTheDocument();
+    expect(within(statCard('Price range')).getByText('$329')).toBeInTheDocument();
+    expect(within(statCard('Seats left')).getByText('0')).toBeInTheDocument();
   });
 
   it('mỗi tháng một hàng cha, dòng phụ ghi số đợt và dải ngày', () => {
@@ -199,6 +238,15 @@ describe('DeparturesPanel', () => {
     // Đợt còn 10/10 → hàng con là "Open"; hàng cha KHÔNG được có huy hiệu nào.
     const monthRow = screen.getByText('September 2026').closest('tr');
     expect(monthRow && within(monthRow).queryByText(/open|sold out|almost full/i)).toBeNull();
+  });
+
+  it('tháng chỉ có đợt đã qua hạn đặt: dòng tháng ghi "Booking closed", không phải "Almost full"', () => {
+    // Đợt 20/08 còn 2 ghế — trước bản vá, dòng tháng đọc ghế và báo "Almost full".
+    render(wrap([closedFrom(DEPARTURES[0] as DepartureVM), DEPARTURES[1] as DepartureVM]));
+    const monthRow = screen.getByText('August 2026').closest('tr');
+    if (!monthRow) throw new Error('không tìm thấy hàng tháng 8');
+    expect(within(monthRow).getByText('Booking closed')).toBeInTheDocument();
+    expect(within(monthRow).queryByText('Almost full')).toBeNull();
   });
 
   it('giảm giá hiện cả giá gạch lẫn số tiền tiết kiệm', async () => {

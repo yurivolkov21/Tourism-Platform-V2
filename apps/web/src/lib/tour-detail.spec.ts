@@ -173,7 +173,7 @@ describe('monthSeason', () => {
 });
 
 describe('monthNotice', () => {
-  const dep = (seatsLeft: number) => ({ seatsLeft });
+  const dep = (seatsLeft: number, bookable = true) => ({ seatsLeft, bookable });
 
   it('im lặng khi cả tháng còn rộng chỗ — huy hiệu hiện ở MỌI tháng là huy hiệu vô nghĩa', () => {
     expect(monthNotice([dep(10), dep(7)])).toBeNull();
@@ -198,6 +198,23 @@ describe('monthNotice', () => {
 
   it('tháng rỗng không bao giờ tới đây, nhưng không được ném lỗi', () => {
     expect(monthNotice([])).toBeNull();
+  });
+
+  it('đợt đã qua hạn đặt không kéo tháng thành "Almost full" dù còn ít ghế', () => {
+    // Ghế của đợt đã đóng không mua được: "Almost full" ở dòng tháng là mời khách
+    // mở tháng ra tìm một chỗ không tồn tại.
+    expect(monthNotice([dep(2, false), dep(10)])).toBeNull();
+  });
+
+  it('đợt đã qua hạn đặt không bị đếm vào số đợt hết chỗ', () => {
+    expect(monthNotice([dep(0, false), dep(0), dep(5)])).toEqual({
+      kind: 'some-sold-out',
+      count: 1,
+    });
+  });
+
+  it('tháng chỉ còn đợt đã qua hạn đặt thì nói "Booking closed", kể cả khi còn ghế', () => {
+    expect(monthNotice([dep(4, false), dep(0, false)])).toEqual({ kind: 'closed' });
   });
 });
 

@@ -142,10 +142,10 @@ function MonthBadge({ items }: { items: readonly DepartureVM[] }) {
   const t = messages.tourDetail.departuresTab;
   const notice = monthNotice(items);
   if (!notice) return null;
-  if (notice.kind === 'sold-out') {
+  if (notice.kind === 'closed' || notice.kind === 'sold-out') {
     return (
       <span className={cn(BADGE_BASE, 'border-border bg-muted text-muted-foreground')}>
-        {t.statusSoldOut}
+        {notice.kind === 'closed' ? messages.tourDetail.departures.closed : t.statusSoldOut}
       </span>
     );
   }
@@ -205,9 +205,21 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
   // "Dates open" và "Next departure" đếm theo ĐẶT ĐƯỢC, cùng vị từ với mọi nơi
   // chọn đợt khác — nếu không, ô thống kê hứa 5 ngày còn bảng chỉ cho bấm 3.
   const openTotal = departures.filter(isDepartureOpen).length;
-  const seatsTotal = departures.reduce((sum, d) => sum + d.seatsLeft, 0);
+  // Đợt đã qua hạn đặt vẫn là một HÀNG trong bảng, nhưng không vào "Seats left"
+  // hay "Price range": đó là ghế và giá không ai mua được nữa — cùng luật với giá
+  // "from" (ADR-0041 §3). Hết đợt nhận đặt thì giá lùi về `basePrice`, trùng
+  // đường lùi của `heroPrice` để hero và ô thống kê không nói hai giá.
+  const bookable = departures.filter((d) => d.bookable);
+  const seatsTotal = bookable.reduce((sum, d) => sum + d.seatsLeft, 0);
   const next = departures.find(isDepartureOpen) ?? departures[0];
-  const prices = departures.map((d) => Number(d.effectivePrice));
+  // `next` chỉ rơi vào đợt đã đóng khi không còn đợt nào đặt được — in số ghế
+  // ở đó là hứa những ghế không mua được.
+  const nextSub = next
+    ? next.bookable
+      ? t.nextDepartureSub(next.seatsLeft, capacity)
+      : messages.tourDetail.departures.closed
+    : '';
+  const prices = bookable.length > 0 ? bookable.map((d) => Number(d.effectivePrice)) : [basePrice];
   const lo = Math.min(...prices);
   const hi = Math.max(...prices);
 
@@ -224,7 +236,7 @@ export function DeparturesPanel({ tour }: { tour: TourDetailVM }) {
           // ("Thu, 20 Aug"): ô thống kê là con số liếc qua, mà thứ trong tuần
           // đã có đủ ở hàng đợt ngay dưới — in hai lần chỉ làm ô nặng thêm.
           value={next ? formatChipDate(next.startDate) : '—'}
-          sub={next ? t.nextDepartureSub(next.seatsLeft, capacity) : ''}
+          sub={nextSub}
         />
         <StatCard
           index={1}

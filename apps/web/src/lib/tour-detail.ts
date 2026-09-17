@@ -84,6 +84,7 @@ export function departureMonths<
 export const DEPARTURE_ROWS_PER_MONTH = 6;
 
 export type MonthNotice =
+  | { kind: 'closed' }
   | { kind: 'sold-out' }
   | { kind: 'some-sold-out'; count: number }
   | { kind: 'limited' }
@@ -100,15 +101,25 @@ export type MonthNotice =
  *    nhất của nó đang "Almost full".
  * 2. Trả `null` khi mọi đợt đều rộng chỗ. Bốn viên huy hiệu xanh giống hệt
  *    nhau xếp dọc không truyền tin gì, chỉ làm nhiễu cột.
+ *
+ * Đợt đã qua hạn đặt (`bookable = false`, ADR-0041) KHÔNG tham gia xét ghế: ghế
+ * của nó không mua được, nên "Almost full" hay "1 sold out" tính cả nó là mời
+ * khách mở tháng ra tìm một chỗ không tồn tại. Tháng chỉ còn đợt đã đóng thì
+ * nói thẳng "Booking closed" — cùng thứ tự với huy hiệu hàng đợt (hạn đặt xét
+ * trước ghế).
  */
-export function monthNotice(items: readonly { seatsLeft: number }[]): MonthNotice {
+export function monthNotice(
+  items: readonly { seatsLeft: number; bookable: boolean }[],
+): MonthNotice {
   if (items.length === 0) return null;
-  const soldOut = items.filter((d) => d.seatsLeft <= 0).length;
-  if (soldOut === items.length) return { kind: 'sold-out' };
+  const bookable = items.filter((d) => d.bookable);
+  if (bookable.length === 0) return { kind: 'closed' };
+  const soldOut = bookable.filter((d) => d.seatsLeft <= 0).length;
+  if (soldOut === bookable.length) return { kind: 'sold-out' };
   if (soldOut > 0) return { kind: 'some-sold-out', count: soldOut };
   // Ngưỡng "sắp hết" đi qua `departureStatus` để bảng và ô ngày dùng chung
   // đúng một con số — đổi ngưỡng ở đó là đổi cả hai nơi.
-  const fewest = Math.min(...items.map((d) => d.seatsLeft));
+  const fewest = Math.min(...bookable.map((d) => d.seatsLeft));
   return departureStatus(fewest) === 'limited' ? { kind: 'limited' } : null;
 }
 

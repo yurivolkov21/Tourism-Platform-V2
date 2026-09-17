@@ -41,7 +41,7 @@ export const TESTIMONIALS: MockTestimonial[] = [
     name: 'Lucas Moreau',
     location: 'Lyon, France',
     quote:
-      'Cancelled two days before because of work, refunded without a single question. Rebooked a month later, no regrets.',
+      'Cancelled a week before because of work and got every cent back, no questions asked. Rebooked a month later, no regrets.',
     rating: 4.5,
   },
   {
