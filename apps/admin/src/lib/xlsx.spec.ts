@@ -35,8 +35,8 @@ const report: AdminMonthlyReport = {
   ],
   refundedTotal: '120.00',
   refunds: 2,
-  cancellationsApproved: 1,
-  cancellationsDenied: 3,
+  cancellationsWithinDeadline: 1,
+  cancellationsAfterDeadline: 3,
   reviewsApproved: 5,
   recognizedRevenue: '2500.00',
   cogsVariable: '210.00',
@@ -160,6 +160,13 @@ describe('buildReportWorkbook', () => {
     expect(cell?.value).toBe(11);
   });
 
+  it('sheet Operations đếm hai loại huỷ theo hạn chót (ADR-0041 §9), là Ô SỐ', async () => {
+    const sheet = sheetNamed(await open(report), 'Operations');
+
+    expect(cellFor(sheet, t.operationsTable.cancellationsWithinDeadline)?.value).toBe(1);
+    expect(cellFor(sheet, t.operationsTable.cancellationsAfterDeadline)?.value).toBe(3);
+  });
+
   it('sheet Detail ghi ngày là Ô NGÀY thật, để lọc và sắp xếp được', async () => {
     const book = await open(report);
     const row = sheetNamed(book, 'Detail (created this month)').getRow(2);
@@ -193,7 +200,7 @@ describe('buildReportWorkbook', () => {
     expect(detail.getRow(1).getCell(1).value).toBe(t.xlsx.detail.code);
   });
 
-  it('sheet Definitions mang đủ sáu câu, kể cả ba câu của cột kinh doanh', async () => {
+  it('sheet Definitions mang đủ bảy câu, kể cả ba câu của cột kinh doanh và câu về huỷ', async () => {
     const sheet = sheetNamed(await open(report), 'Definitions');
     const text = JSON.stringify(sheet.getSheetValues());
 
@@ -204,6 +211,7 @@ describe('buildReportWorkbook', () => {
       t.definitions.netProfit,
       t.definitions.refunds,
       t.definitions.statuses,
+      t.definitions.cancellations,
     ]) {
       expect(text).toContain(line.slice(0, 40));
     }

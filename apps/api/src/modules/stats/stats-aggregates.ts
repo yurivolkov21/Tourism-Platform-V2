@@ -1,3 +1,4 @@
+import { isWithinDeadline } from '@tourism/contract';
 import { prisma } from '../../auth/auth.config.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import {
@@ -7,6 +8,7 @@ import {
   EnquiryStatus,
   OutboxStatus,
 } from '../../generated/prisma/enums.js';
+import { calendarDate } from '../../lib/calendar-date.js';
 import type { DayRow } from './stats-math.js';
 
 /**
@@ -129,19 +131,46 @@ export async function refundCurrency(from: Date, to: Date): Promise<string | nul
   return latest?.currency ?? null;
 }
 
-/** Hai con số quyết định cancellation của MỘT khoảng (theo `decidedAt`). */
-export async function decisionsSlice(from: Date, to: Date) {
-  const byStatus = await prisma.cancellationRequest.groupBy({
-    by: ['status'],
-    where: { decidedAt: { gte: from, lt: to } },
-    _count: { _all: true },
+/**
+ * Hai bộ đếm huỷ của MỘT khoảng (Hợp đồng D, ADR-0041 §9).
+ *
+ * Tập đếm là các yêu cầu `REFUNDED` có `decided_at` trong `[from, to)` — mỗi
+ * lần khách huỷ ghi đúng một dòng như vậy. Mỗi dòng được xếp loại trong hay
+ * quá hạn chót.
+ *
+ * Xếp loại ở NODE bằng `isWithinDeadline` của contract chứ không trong SQL:
+ * luật N chỉ sống ở một chỗ (spec §4.1). Mốc đem so là `created_at` của yêu
+ * cầu, tức lúc khách bấm huỷ, trên ngày đi, ngày về SNAPSHOT của booking. Dòng
+ * `REQUESTED`/`DENIED` của luồng duyệt cũ không huỷ booking nào nên không đếm.
+ *
+ * Kéo từng dòng về thay vì `groupBy`: một tháng chỉ vài chục lần huỷ, và
+ * `select` chỉ ba cột.
+ */
+export async function cancellationOutcomesSlice(
+  from: Date,
+  to: Date,
+): Promise<{ withinDeadline: number; afterDeadline: number }> {
+  const rows = await prisma.cancellationRequest.findMany({
+    where: {
+      status: CancellationRequestStatus.REFUNDED,
+      decidedAt: { gte: from, lt: to },
+    },
+    select: {
+      createdAt: true,
+      booking: { select: { departureStartDate: true, departureEndDate: true } },
+    },
   });
-  const countOf = (status: CancellationRequestStatus) =>
-    byStatus.find((group) => group.status === status)?._count._all ?? 0;
-  return {
-    approved: countOf(CancellationRequestStatus.REFUNDED),
-    denied: countOf(CancellationRequestStatus.DENIED),
-  };
+
+  let withinDeadline = 0;
+  for (const row of rows) {
+    const within = isWithinDeadline(
+      row.createdAt,
+      calendarDate(row.booking.departureStartDate),
+      calendarDate(row.booking.departureEndDate),
+    );
+    if (within) withinDeadline += 1;
+  }
+  return { withinDeadline, afterDeadline: rows.length - withinDeadline };
 }
 
 /**
@@ -295,30 +324,36 @@ export async function subscribersStats(window: {
  * Cột KẾT QUẢ KINH DOANH của báo cáo (ADR-0033 §1) — neo `departure_end_date`,
  * tức những chuyến KẾT THÚC trong kỳ, chứ không phải tiền vào trong kỳ.
  *
- * Chỉ đếm booking ĐÃ ĐI (`PAID` hoặc `PARTIALLY_REFUNDED`): khách huỷ thì
- * không ăn suất ăn nào, nên cả doanh thu lẫn giá vốn biến đổi của họ đều biến
- * mất (§4). Chi phí CỐ ĐỊNH của chuyến ấy thì không — nó ở `fixedCostSlice`.
+ * Hai tập, định nghĩa ở ADR-0041 §9 (sửa ADR-0033 §4):
+ * - **Doanh thu**: MỌI booking đã trả tiền (`paid_at IS NOT NULL`), kể cả booking
+ *   khách đã huỷ — tiền giữ lại của lần huỷ quá hạn là doanh thu, còn lần huỷ
+ *   trong hạn đã hoàn trọn nên tự góp 0.
+ * - **Khách thực đi** (cờ `travelled`): đã trả tiền VÀ trạng thái khác CANCELLED
+ *   — gồm cả REFUNDED do hoàn thiện chí toàn bộ mà vẫn đi. Giá vốn biến đổi và
+ *   `cost_missing` chỉ đếm tập này: khách huỷ không ăn suất ăn nào. Chi phí CỐ
+ *   ĐỊNH ở `fixedCostSlice`.
+ * - **Phí cổng** (`gross_collected`, `bookings`) tính trên tập DOANH THU: cổng
+ *   thu phí lúc thanh toán và không trả lại khi hoàn hay huỷ (ADR-0033 §Giới
+ *   hạn #3), nên booking đã huỷ vẫn phát sinh phí.
  *
- * MỘT câu SQL trả năm con số vì chúng phải chụp CÙNG một khoảnh khắc: năm
- * query rời sẽ cho `costMissing` thuộc một tập booking còn `revenue` thuộc tập
- * khác, và hai con số in cạnh nhau trên giấy thì không kiểm chéo được nữa
- * (cùng bài học đã ghi ở `subscribersStats`).
+ * MỘT câu SQL trả sáu con số vì chúng phải chụp CÙNG một khoảnh khắc: các câu
+ * rời sẽ cho `costMissing` thuộc một tập booking còn `revenue` thuộc tập khác
+ * (cùng bài học đã ghi ở `subscribersStats`). CTE `paid` dựng cờ `travelled`
+ * MỘT lần, nên định nghĩa "khách thực đi" không bị chép vào từng `FILTER`.
  *
- * `LEFT JOIN` gộp refund theo booking thay vì subquery tương quan trong `SUM`:
- * một booking hoàn NHIỀU lần được (hoàn một phần nhiều lượt — ADR-0029), và
- * join thẳng bảng `refunds` sẽ nhân đôi `total_amount` theo số dòng hoàn.
+ * `LEFT JOIN` gộp refund theo booking thay vì join thẳng bảng `refunds`: một
+ * booking hoàn NHIỀU lần được, và join thẳng sẽ nhân `total_amount` theo số
+ * dòng hoàn.
  *
- * Chuyến bị HUỶ không góp gì (ADR-0033 AMEND 1a): khách còn `PAID` trên một
- * chuyến không chạy là tiền đang NỢ khách, không phải doanh thu — để nguyên
- * thì càng huỷ nhiều chuyến báo cáo càng đẹp (500 doanh thu, 0 tiền xe). Cùng
- * vế `d.status <> CANCELLED` với `fixedCostSlice`, nên "chuyến đã chạy" chỉ có
- * MỘT định nghĩa trong cả kỳ.
+ * Chuyến bị HUỶ không góp gì (ADR-0033 AMEND 1a): tiền khách đã trả cho chuyến
+ * không chạy là tiền đang NỢ khách, không phải doanh thu. Cùng vế
+ * `d.status <> CANCELLED` với `fixedCostSlice`, nên "chuyến đã chạy" chỉ có MỘT
+ * định nghĩa trong cả kỳ.
  *
  * ⚠️ KHÔNG BẤT ĐỘNG theo kỳ (ADR-0033 *Giới hạn* #5): `refunded` gộp MỌI dòng
- * hoàn của booking không kể `created_at`, và `b.status` là trạng thái HIỆN
- * TẠI. Một khoản hoàn tháng 7 làm báo cáo tháng 5 đọc lại ra số khác; hoàn đủ
- * (→ REFUNDED) thì booking biến khỏi tháng 5 luôn. Chữa thật cần cột snapshot
- * theo kỳ — ghi nợ, chưa làm.
+ * hoàn của booking không kể `created_at`, và `status` là trạng thái HIỆN TẠI.
+ * Một khoản hoàn tháng 7 làm báo cáo tháng 5 đọc lại ra số khác. Chữa thật cần
+ * cột snapshot theo kỳ — ghi nợ, chưa làm.
  */
 export async function recognizedRevenueSlice(from: Date, to: Date) {
   const [row] = await prisma.$queryRaw<
@@ -331,33 +366,42 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
       currency: string | null;
     }[]
   >(Prisma.sql`
+    WITH paid AS (
+      SELECT b.total_amount - COALESCE(r.refunded, 0) AS kept,
+             b.total_amount,
+             b.cost_per_person,
+             b.num_adults + b.num_children AS pax,
+             b.currency,
+             -- Khách thực đi (Hợp đồng D): đã trả tiền và không huỷ.
+             b.status <> ${BookingStatus.CANCELLED}::"BookingStatus" AS travelled
+      FROM bookings b
+      JOIN tour_departures d ON d.id = b.departure_id
+      LEFT JOIN (
+        SELECT booking_id, SUM(amount) AS refunded FROM refunds GROUP BY booking_id
+      ) r ON r.booking_id = b.id
+      WHERE b.paid_at IS NOT NULL
+        AND d.status <> ${DepartureStatus.CANCELLED}::"DepartureStatus"
+        AND b.departure_end_date >= ${from} AND b.departure_end_date < ${to}
+    )
     SELECT
-      COALESCE(SUM(b.total_amount - COALESCE(r.refunded, 0)), 0) AS revenue,
-      COALESCE(SUM(COALESCE(b.cost_per_person, 0) * (b.num_adults + b.num_children)), 0)
+      COALESCE(SUM(kept), 0) AS revenue,
+      COALESCE(SUM(COALESCE(cost_per_person, 0) * pax) FILTER (WHERE travelled), 0)
         AS cogs_variable,
-      COALESCE(SUM(b.total_amount), 0) AS gross_collected,
+      COALESCE(SUM(total_amount), 0) AS gross_collected,
       COUNT(*) AS bookings,
-      COUNT(*) FILTER (WHERE b.cost_per_person IS NULL) AS cost_missing,
+      COUNT(*) FILTER (WHERE travelled AND cost_per_person IS NULL) AS cost_missing,
       -- Nhãn tiền của TẬP NÀY (nền tảng một-đồng-tiền, xem grossAmount):
       -- tháng không có payment/refund nào nhưng có chuyến chạy từng bị dán
       -- 'USD' mặc định lên cả khối P&L (vòng vá review 05/09).
-      MAX(b.currency) AS currency
-    FROM bookings b
-    JOIN tour_departures d ON d.id = b.departure_id
-    LEFT JOIN (
-      SELECT booking_id, SUM(amount) AS refunded FROM refunds GROUP BY booking_id
-    ) r ON r.booking_id = b.id
-    WHERE b.status IN (${BookingStatus.PAID}::"BookingStatus",
-                       ${BookingStatus.PARTIALLY_REFUNDED}::"BookingStatus")
-      AND d.status <> ${DepartureStatus.CANCELLED}::"DepartureStatus"
-      AND b.departure_end_date >= ${from} AND b.departure_end_date < ${to}
+      MAX(currency) AS currency
+    FROM paid
   `);
 
   return {
     revenue: row?.revenue ?? new Prisma.Decimal(0),
     cogsVariable: row?.cogs_variable ?? new Prisma.Decimal(0),
-    // Tiền GỐC trước khi trừ hoàn — phí cổng đã trả trên toàn bộ số này, và
-    // provider không trả lại phí khi hoàn (ADR-0033 §Giới hạn #3).
+    // Tiền GỐC của MỌI booking đã trả, trước khi trừ hoàn — phí cổng tính trên
+    // số này, và provider không trả lại phí khi hoàn hay huỷ (ADR-0033 §Giới hạn #3).
     grossCollected: row?.gross_collected ?? new Prisma.Decimal(0),
     bookings: Number(row?.bookings ?? 0),
     costMissing: Number(row?.cost_missing ?? 0),
@@ -370,19 +414,18 @@ export async function recognizedRevenueSlice(from: Date, to: Date) {
  * cho mỗi chuyến, bất kể bán được bao nhiêu ghế. Xe vẫn chạy.
  *
  * "Đã chạy" phải có ĐỦ hai vế: chuyến không bị huỷ, VÀ có ít nhất một khách
- * thật sự đi. Thiếu vế `EXISTS` thì mọi chuyến ế trong lịch đều bị tính tiền
- * xe — một tour đăng 52 chuyến cả năm mà bán được 6 sẽ báo lỗ nặng từ hư
- * không.
+ * THỰC ĐI — cùng tập `travelled` của `recognizedRevenueSlice` (đã trả tiền,
+ * trạng thái khác CANCELLED; ADR-0041 §9). Thiếu vế `EXISTS` thì mọi chuyến ế
+ * trong lịch đều bị tính tiền xe — một tour đăng 52 chuyến cả năm mà bán được
+ * 6 sẽ báo lỗ nặng từ hư không. Chuyến mà mọi khách đều đã huỷ thì không chạy,
+ * dù tiền giữ lại của họ vẫn vào doanh thu.
  */
 export async function fixedCostSlice(from: Date, to: Date) {
   const [row] = await prisma.$queryRaw<
     { total: Prisma.Decimal | null; departures: bigint; cost_missing: bigint }[]
   >(
     // `cost_missing` ĐẾM chuyến chưa khai giá vốn cố định thay vì để COALESCE
-    // im lặng coi bằng 0 (ADR-0033 §3: "báo cáo phải nói ra là thiếu"). Bản
-    // đầu chỉ đếm vế booking, trong khi hôm nay không đường code nào ngoài
-    // seed ghi `fixed_cost_amount` — mọi chuyến tạo tay đều NULL và
-    // `cogsFixed` phình lợi nhuận đúng bằng tiền xe (vòng vá review 05/09).
+    // im lặng coi bằng 0 (ADR-0033 §3: "báo cáo phải nói ra là thiếu").
     Prisma.sql`
       SELECT COALESCE(SUM(d.fixed_cost_amount), 0) AS total, COUNT(*) AS departures,
              COUNT(*) FILTER (WHERE d.fixed_cost_amount IS NULL) AS cost_missing
@@ -392,8 +435,8 @@ export async function fixedCostSlice(from: Date, to: Date) {
         AND EXISTS (
           SELECT 1 FROM bookings b
           WHERE b.departure_id = d.id
-            AND b.status IN (${BookingStatus.PAID}::"BookingStatus",
-                             ${BookingStatus.PARTIALLY_REFUNDED}::"BookingStatus")
+            AND b.paid_at IS NOT NULL
+            AND b.status <> ${BookingStatus.CANCELLED}::"BookingStatus"
         )
     `,
   );

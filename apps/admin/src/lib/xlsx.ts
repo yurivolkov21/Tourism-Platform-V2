@@ -287,8 +287,8 @@ function buildOperations(book: ExcelJS.Workbook, report: AdminMonthlyReport): vo
     [o.refunds, (cell) => count(cell, report.refunds)],
     [o.paidBookings, (cell) => count(cell, report.paidBookings)],
     [o.newBookings, (cell) => count(cell, report.newBookings)],
-    [o.cancellationsApproved, (cell) => count(cell, report.cancellationsApproved)],
-    [o.cancellationsDenied, (cell) => count(cell, report.cancellationsDenied)],
+    [o.cancellationsWithinDeadline, (cell) => count(cell, report.cancellationsWithinDeadline)],
+    [o.cancellationsAfterDeadline, (cell) => count(cell, report.cancellationsAfterDeadline)],
     [o.reviewsApproved, (cell) => count(cell, report.reviewsApproved)],
   ];
   rows.forEach(([label, write], index) => {
@@ -398,6 +398,7 @@ function buildDefinitions(book: ExcelJS.Workbook): void {
     t.definitions.netProfit,
     t.definitions.refunds,
     t.definitions.statuses,
+    t.definitions.cancellations,
   ]) {
     const row = sheet.addRow([line]);
     const cell = row.getCell(1);

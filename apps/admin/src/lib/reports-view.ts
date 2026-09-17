@@ -90,15 +90,16 @@ const SUMMARY_METRICS: SummaryMetric[] = [
     label: o.refunds,
     display: (r) => formatCount(r.refunds),
   },
+  // ADR-0041 §9: cặp approved/denied của luồng duyệt cũ thành huỷ trong/quá hạn chót.
   {
-    key: 'cancellationsApproved',
-    label: o.cancellationsApproved,
-    display: (r) => formatCount(r.cancellationsApproved),
+    key: 'cancellationsWithinDeadline',
+    label: o.cancellationsWithinDeadline,
+    display: (r) => formatCount(r.cancellationsWithinDeadline),
   },
   {
-    key: 'cancellationsDenied',
-    label: o.cancellationsDenied,
-    display: (r) => formatCount(r.cancellationsDenied),
+    key: 'cancellationsAfterDeadline',
+    label: o.cancellationsAfterDeadline,
+    display: (r) => formatCount(r.cancellationsAfterDeadline),
   },
   {
     key: 'reviewsApproved',

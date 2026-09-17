@@ -5,7 +5,7 @@ import type { BookingStatus } from '../../generated/prisma/enums.js';
 import { grossMarginPct, paymentFees, taxOnMargin } from './finance-math.js';
 import {
   bookingsCreatedByStatus,
-  decisionsSlice,
+  cancellationOutcomesSlice,
   fixedCostSlice,
   paidBookingsSlice,
   recognizedRevenueSlice,
@@ -71,7 +71,7 @@ export class ReportsService {
       paidCurrency,
       refunds,
       refundsCurrency,
-      decisions,
+      cancellations,
       reviewsApproved,
       recognised,
       fixedCost,
@@ -81,7 +81,7 @@ export class ReportsService {
       revenueCurrency(from, to),
       refundsSlice(from, to),
       refundCurrency(from, to),
-      decisionsSlice(from, to),
+      cancellationOutcomesSlice(from, to),
       reviewApprovals(from, to),
       recognizedRevenueSlice(from, to),
       fixedCostSlice(from, to),
@@ -95,7 +95,8 @@ export class ReportsService {
     const taxAmount = taxOnMargin(grossProfit, env.MARGIN_TAX_RATE);
     const fees = paymentFees(
       // Phí trả trên tiền GỐC, trước khi trừ hoàn — provider không trả lại phí
-      // khi hoàn (ADR-0033 §Giới hạn #3).
+      // khi hoàn hay huỷ (ADR-0033 §Giới hạn #3). Tiền gốc và số giao dịch cùng
+      // là tập doanh thu (mọi booking đã trả tiền), kể cả booking đã huỷ.
       recognised.grossCollected,
       recognised.bookings,
       env.PAYMENT_FEE_RATE,
@@ -134,8 +135,8 @@ export class ReportsService {
       bookingsByStatus,
       refundedTotal: grossAmount(refunds.total),
       refunds: refunds.count,
-      cancellationsApproved: decisions.approved,
-      cancellationsDenied: decisions.denied,
+      cancellationsWithinDeadline: cancellations.withinDeadline,
+      cancellationsAfterDeadline: cancellations.afterDeadline,
       reviewsApproved,
 
       recognizedRevenue: grossAmount(recognised.revenue),

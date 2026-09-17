@@ -17,8 +17,8 @@ const validReport = {
   bookingsByStatus: BookingStatusSchema.options.map((status) => ({ status, count: 0 })),
   refundedTotal: '120.00',
   refunds: 2,
-  cancellationsApproved: 1,
-  cancellationsDenied: 3,
+  cancellationsWithinDeadline: 1,
+  cancellationsAfterDeadline: 3,
   reviewsApproved: 5,
   // Cột kết quả kinh doanh (ADR-0033 §1)
   recognizedRevenue: '1000.00',
@@ -107,6 +107,23 @@ describe('AdminMonthlyReportSchema', () => {
     );
     expect(
       AdminMonthlyReportSchema.safeParse({ ...validReport, reviewsApproved: 1.5 }).success,
+    ).toBe(false);
+  });
+
+  it('ADR-0041 §9: hai bộ đếm huỷ theo hạn chót thay cặp approved/denied', () => {
+    expect(Object.keys(AdminMonthlyReportSchema.shape)).toEqual(
+      expect.arrayContaining(['cancellationsWithinDeadline', 'cancellationsAfterDeadline']),
+    );
+    // Luồng duyệt huỷ đã gỡ — không còn "được duyệt" hay "bị từ chối" để đếm.
+    expect('cancellationsApproved' in AdminMonthlyReportSchema.shape).toBe(false);
+    expect('cancellationsDenied' in AdminMonthlyReportSchema.shape).toBe(false);
+    expect(
+      AdminMonthlyReportSchema.safeParse({ ...validReport, cancellationsAfterDeadline: -1 })
+        .success,
+    ).toBe(false);
+    expect(
+      AdminMonthlyReportSchema.safeParse({ ...validReport, cancellationsWithinDeadline: 1.5 })
+        .success,
     ).toBe(false);
   });
 });

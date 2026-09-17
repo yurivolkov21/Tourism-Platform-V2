@@ -3199,8 +3199,9 @@ export const messages = {
         newBookings: 'New bookings',
         refundedTotal: 'Refunds paid out',
         refunds: 'Refund payments',
-        cancellationsApproved: 'Cancellations approved',
-        cancellationsDenied: 'Cancellations denied',
+        /** ADR-0041 §9: đếm theo ngày huỷ, xếp loại theo hạn chót của chuyến (giờ Việt Nam). */
+        cancellationsWithinDeadline: 'Cancelled within the deadline',
+        cancellationsAfterDeadline: 'Cancelled after the deadline',
         reviewsApproved: 'Reviews approved',
       },
       definitions: {
@@ -3212,11 +3213,14 @@ export const messages = {
         statuses:
           'The status table follows the bookings created this month and shows where each one stands today, so it can change after the month closes.',
         recognised:
-          'Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December.',
+          'Revenue recognised counts trips that finished this month, so it differs from cash collected — money for a December trip is taken today but earned in December. Money kept from a cancelled booking counts as revenue too.',
         costs:
-          'Per-traveller costs follow the travellers who went; per-departure costs are charged once for each departure that ran, whether it sold out or not.',
+          'Per-traveller costs follow the travellers who went, including anyone given a full goodwill refund; per-departure costs are charged once for each departure that ran with at least one traveller, whether it sold out or not.',
         netProfit:
           'Net profit is after cost of sales, tax and payment fees. It does not include salaries, rent or marketing.',
+        /** ADR-0041 §9 — câu cho cặp bộ đếm huỷ ở bảng vận hành. */
+        cancellations:
+          'Cancellations are counted on the day they were made. Within the deadline means on or before the free-cancellation deadline of the trip (Vietnam time), with the unrefunded balance returned; after the deadline means no automatic refund.',
       },
       /** Nút tải file — Excel từ 05/09 (ADR-0034), thay nút CSV cũ. */
       exportExcel: 'Export Excel',

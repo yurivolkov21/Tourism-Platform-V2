@@ -103,10 +103,15 @@ export const AdminMonthlyReportSchema = z.object({
   refundedTotal: DecimalStringSchema,
   /** Số LƯỢT hoàn trong tháng (một booking có thể hoàn nhiều lần). */
   refunds: z.int().nonnegative(),
-  /** Request huỷ được duyệt trong tháng (theo `decided_at`). */
-  cancellationsApproved: z.int().nonnegative(),
-  /** Request huỷ bị từ chối trong tháng (theo `decided_at`). */
-  cancellationsDenied: z.int().nonnegative(),
+  /**
+   * Lần huỷ TRONG hạn chót trong tháng (ADR-0041 §9): yêu cầu REFUNDED có
+   * `decided_at` trong kỳ, xếp loại bằng `isWithinDeadline` trên `created_at`
+   * của yêu cầu cùng ngày đi, ngày về của booking. Luật N chỉ sống ở Node nên
+   * phép xếp loại chạy ở API, không viết lại trong SQL.
+   */
+  cancellationsWithinDeadline: z.int().nonnegative(),
+  /** Lần huỷ QUÁ hạn chót trong tháng — cùng tập, vế còn lại của phép xếp loại. */
+  cancellationsAfterDeadline: z.int().nonnegative(),
   /** Lượt duyệt review trong tháng — đếm trên audit trail, xem `StatsService`. */
   reviewsApproved: z.int().nonnegative(),
 
@@ -114,9 +119,16 @@ export const AdminMonthlyReportSchema = z.object({
   // Mọi field dưới đây neo NGÀY CHUYẾN KẾT THÚC, khác hẳn mọi field ở trên
   // (neo `paid_at`). Hai cách đọc đứng CẠNH nhau, không thay nhau — đọc §1
   // của ADR trước khi sửa bất cứ field nào.
-  /** Σ (`totalAmount` − đã hoàn) của booking đã đi, chuyến KẾT THÚC trong kỳ. */
+  /**
+   * Σ (`totalAmount` − đã hoàn) của MỌI booking đã trả tiền trên chuyến không
+   * bị huỷ, chuyến KẾT THÚC trong kỳ — kể cả booking khách đã huỷ: tiền giữ lại
+   * là doanh thu (ADR-0041 §9, sửa ADR-0033).
+   */
   recognizedRevenue: DecimalStringSchema,
-  /** Giá vốn theo đầu khách của chính tập booking ấy — đi theo khách. */
+  /**
+   * Giá vốn theo đầu khách của KHÁCH THỰC ĐI: booking đã trả tiền, trạng thái
+   * khác CANCELLED — gồm cả REFUNDED do hoàn thiện chí toàn bộ mà vẫn đi.
+   */
   cogsVariable: DecimalStringSchema,
   /** Giá vốn theo chuyến — MỘT lần mỗi chuyến đã chạy, xe vẫn chạy khi khách huỷ. */
   cogsFixed: DecimalStringSchema,
@@ -156,7 +168,8 @@ export const AdminMonthlyReportSchema = z.object({
   /** Số chuyến ĐÃ CHẠY trong kỳ — mẫu số của `cogsFixed`, để kiểm chéo. */
   departuresRun: z.int().nonnegative(),
   /**
-   * Số booking trong kỳ KHÔNG có `cost_per_person`.
+   * Số booking của khách thực đi trong kỳ KHÔNG có `cost_per_person` — cùng tập
+   * với `cogsVariable`.
    *
    * Hiện trên màn hình và trong file: một báo cáo in "Lợi nhuận gộp $8,400"
    * trong khi 12 booking chưa khai giá vốn là một báo cáo NÓI DỐI; in kèm con

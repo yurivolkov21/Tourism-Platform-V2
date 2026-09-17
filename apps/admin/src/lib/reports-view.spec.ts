@@ -39,8 +39,8 @@ const report: AdminMonthlyReport = {
   ],
   refundedTotal: '120.00',
   refunds: 2,
-  cancellationsApproved: 1,
-  cancellationsDenied: 3,
+  cancellationsWithinDeadline: 1,
+  cancellationsAfterDeadline: 3,
   reviewsApproved: 5,
   // Cột kết quả kinh doanh (ADR-0033) — thêm ở Task 6 để fixture khớp
   // contract. Mapper hiển thị của chúng dựng ở Task 8; tới đó bộ test này
@@ -146,8 +146,8 @@ describe('toReportSummaryRows', () => {
     expect(byLabel[messages.admin.reports.operationsTable.revenue]).toBe('$1,240.50');
     expect(byLabel[messages.admin.reports.operationsTable.refundedTotal]).toBe('$120.00');
     expect(byLabel[messages.admin.reports.operationsTable.refunds]).toBe('2');
-    expect(byLabel[messages.admin.reports.operationsTable.cancellationsApproved]).toBe('1');
-    expect(byLabel[messages.admin.reports.operationsTable.cancellationsDenied]).toBe('3');
+    expect(byLabel[messages.admin.reports.operationsTable.cancellationsWithinDeadline]).toBe('1');
+    expect(byLabel[messages.admin.reports.operationsTable.cancellationsAfterDeadline]).toBe('3');
     expect(byLabel[messages.admin.reports.operationsTable.reviewsApproved]).toBe('5');
   });
 });
