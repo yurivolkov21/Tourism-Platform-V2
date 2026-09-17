@@ -14,8 +14,9 @@ import { SlotVideo } from '@/components/slot-video';
 const MARQUEE_ITEMS = [
   'Small groups',
   'Local guides only',
-  // Vá 04/09 cùng lý do `top-bar.tsx`: không mang con số giờ nào.
-  'Free cancellation on most tours',
+  // Vá 04/09 cùng lý do `top-bar.tsx`: không mang con số giờ nào. ADR-0041 bỏ
+  // nốt rào "most": một luật hạn chót cho mọi tour.
+  'Free cancellation on every tour',
   'Three regions, one country',
   'No scripts, no rush',
 ];

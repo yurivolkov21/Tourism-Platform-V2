@@ -1,4 +1,4 @@
-import { REFUND_GRACE_HOURS } from '@tourism/contract';
+import { cancellationWindowSentence } from '@tourism/i18n';
 import type { MockFaqItem } from './types.js';
 
 // 5 câu FAQ pre-sales cho mini-FAQ trang Contact (rút gọn kiểu Nexora
@@ -12,11 +12,12 @@ export const FAQ_ITEMS: MockFaqItem[] = [
   },
   {
     question: 'What if I need to cancel?',
-    // Vá 04/09 — câu cũ hứa HAI thứ site không làm được: hoàn 100% ở mốc 48
-    // giờ (chính sách nói dưới 7 ngày là 0%) và "rebook you to a later date"
-    // (KHÔNG có luồng đổi ngày nào tồn tại). Nay nói đúng thứ có thật, và trỏ
-    // về bảng bậc thay vì nhắc lại một con số sẽ trôi lệch.
-    answer: `Request it from your account and we handle it — no phone queue. How much you get back follows our published refund schedule: the earlier you tell us, the more comes back, and anything cancelled within ${REFUND_GRACE_HOURS} hours of paying is refunded in full. Want to move dates instead? Contact us and we will see what the tour allows.`,
+    // Vá 04/09 gỡ "48 giờ" và lời hứa đổi ngày; ADR-0041 gỡ nốt bảng bậc mà bản
+    // ấy trỏ về ("the earlier you tell us, the more comes back" — bảng đó không
+    // còn). Câu sinh từ `CANCELLATION_WINDOW_RULES` nên không thể trôi lệch khỏi
+    // trang chính sách. KHÔNG ghi "one click, no form": hộp huỷ cần bấm mở rồi
+    // bấm xác nhận, và có ô lý do (tuỳ chọn) — đúng loại hứa quá vá 04/09 đã gỡ.
+    answer: `Cancel from your account in a couple of clicks — no approval to wait for, no phone queue. ${cancellationWindowSentence()} Cancel on or before that deadline and the full amount goes back to the card or PayPal account you paid with, usually within 5–10 business days. After it, the booking is no longer refundable.`,
   },
   {
     question: 'How big are the groups, really?',

@@ -106,6 +106,11 @@ describe('mock contact page (offices + faq)', () => {
     for (const f of FAQ_ITEMS) {
       expect(f.answer.length).toBeGreaterThan(0);
     }
+    // ADR-0041: một luật cho mọi tour. Câu trả lời không được trỏ về bảng bậc
+    // đã gỡ, không được hứa ân hạn theo giờ, không được hứa đổi ngày.
+    const cancelItem = FAQ_ITEMS.find((f: { question: string }) => f.question.includes('cancel'));
+    expect(cancelItem?.answer).toMatch(/free to cancel/i);
+    expect(cancelItem?.answer).not.toMatch(/refund schedule|24 hours|move dates/i);
   });
 });
 

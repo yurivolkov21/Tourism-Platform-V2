@@ -1,6 +1,5 @@
-import { REFUND_GRACE_HOURS } from '@tourism/contract';
+import { cancellationWindowSentence } from './cancellation.js';
 import type { LegalDoc } from './legal-page.js';
-import { refundTierSentence } from './refund-tiers.js';
 
 /**
  * Terms & Conditions — điều khoản đặt tour bám đúng luồng thật của nền tảng
@@ -11,7 +10,8 @@ import { refundTierSentence } from './refund-tiers.js';
 export const termsDoc: LegalDoc = {
   title: 'Terms & Conditions',
   breadcrumb: 'Terms & Conditions',
-  updated: 'Last updated: 25 July 2026',
+  // Đổi ngày cùng đợt viết lại phần huỷ/hoàn theo ADR-0041.
+  updated: 'Last updated: 15 September 2026',
   reviewNote:
     'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
@@ -43,21 +43,21 @@ export const termsDoc: LegalDoc = {
     {
       heading: 'Changes by you',
       paragraphs: [
-        'If you wish to change a confirmed booking — such as dates, the itinerary, or party members — we will try to accommodate the request subject to availability. Changes may incur supplier charges and an amendment fee, which we will tell you about before any change is made.',
+        'We cannot move a confirmed booking to another departure or another party size. If your plans move, cancel the booking — free while it is still inside its deadline — and book the departure you want instead. Contact us first if that departure has already closed.',
       ],
     },
     {
       heading: 'Cancellations and refunds by you',
       paragraphs: [
-        'If you need to cancel, request it from your account (open the booking under “My bookings” and choose “Request cancellation”) or contact our team. Our team reviews each request and arranges any refund to your original payment method.',
-        `${refundTierSentence()} Cancel within ${REFUND_GRACE_HOURS} hours of paying and you get a full refund regardless of that schedule. Otherwise we count whole calendar days (in UTC) from the date you send the request to your departure date. Where a tour advertises free cancellation up to a set number of days before departure, that promise applies instead and can only improve on this schedule. Some payments — non-refundable deposits or third-party fees — may sit outside it; the full details are in our Cancellation & Refund Policy.`,
+        'If you need to cancel, open the booking under “My bookings” in your account and choose “Cancel booking”. The booking is cancelled at once and any refund is returned to the payment method you used at checkout.',
+        `${cancellationWindowSentence()} The deadline falls at 11:59 pm Vietnam time on the day shown with your booking. Cancel on or before it and you are refunded in full; cancel after it, or fail to travel, and no refund is due. A departure also stops accepting bookings once its deadline has passed. The full details are in our Cancellation & Refund Policy.`,
       ],
     },
     {
       heading: 'Changes or cancellation by us',
       paragraphs: [
         'We plan trips carefully, but occasionally we may need to change an itinerary — for example, for safety, weather, or operational reasons. We will tell you about any significant change as soon as possible.',
-        'If we have to cancel your tour for reasons within our control, you may choose an alternative departure of equivalent value or a full refund of what you have paid us. Except as required by law, we are not liable for incidental expenses you may have incurred (such as flights or visas).',
+        'If we have to cancel your tour, for any reason, we refund 100% of what you have paid us. Except as required by law, we are not liable for incidental expenses you may have incurred (such as flights or visas).',
       ],
     },
     {

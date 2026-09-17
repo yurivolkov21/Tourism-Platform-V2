@@ -342,6 +342,51 @@ describe('renderEmail payload rendering', () => {
   });
 });
 
+/**
+ * Mail xác nhận là tờ giấy khách giữ lại. Từ ADR-0041 nó phải mang cả hạn chót
+ * huỷ miễn phí — tính tại chỗ từ `startDate`/`endDate` đã có sẵn trong payload,
+ * không thêm field mới vào outbox (spec §5.4).
+ */
+describe('renderEmail — hạn chót huỷ trong mail xác nhận (ADR-0041)', () => {
+  const DATED = { ...BOOKING_PAYLOAD, startDate: '2026-10-12', endDate: '2026-10-15' };
+
+  it('chuyến 4 ngày → hạn chót 7 ngày trước ngày đi, kèm giờ Việt Nam', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, DATED);
+    expect(html).toContain('Free cancellation until');
+    expect(html).toContain('Oct 5, 2026');
+    expect(html).toMatch(/11:59 pm Vietnam time/);
+  });
+
+  it('chuyến 1 ngày → hạn chót 1 ngày trước, không dùng chung con số với chuyến dài', async () => {
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, {
+      ...BOOKING_PAYLOAD,
+      startDate: '2026-10-12',
+      endDate: '2026-10-12',
+    });
+    expect(html).toContain('Oct 11, 2026');
+  });
+
+  it('payload cũ KHÔNG có ngày chuyến → khuyết một dòng, mail vẫn gửi được', async () => {
+    // Dòng outbox ghi trước ADR-0041 vẫn nằm trong hàng đợi; một chuỗi thiếu
+    // không được phép giết cả mail.
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, BOOKING_PAYLOAD);
+    expect(html).not.toContain('Free cancellation until');
+    expect(html).toContain('BK-1');
+  });
+
+  it('ngày hỏng (ngày về trước ngày đi) → khuyết dòng chứ KHÔNG ném', async () => {
+    // `cancellationDeadline` ném RangeError với dòng hỏng; DB chưa có CHECK
+    // `end_date >= start_date` nên ca này vào được thật.
+    const { html } = await renderEmail(EmailType.BOOKING_CONFIRMATION, {
+      ...BOOKING_PAYLOAD,
+      startDate: '2026-10-12',
+      endDate: '2026-10-09',
+    });
+    expect(html).not.toContain('Free cancellation until');
+    expect(html).toContain('BK-1');
+  });
+});
+
 describe('ResendDeliverer.deliver', () => {
   it('POSTs the rendered email to the Resend API', async () => {
     const { calls, deliverer } = stub();

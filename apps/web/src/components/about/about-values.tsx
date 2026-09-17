@@ -47,12 +47,14 @@ const VALUES = [
   {
     icon: CalendarCheckIcon,
     title: 'Free cancellation',
-    // Vá 04/09: "48 hours" hứa hoàn 100% ở mốc mà chính sách trả 0%, và "no
-    // forms, no phone queue" nói sai luôn cả luồng thật — huỷ CÓ form bắt nhập
-    // lý do và CÓ đội ngũ xem xét. Nay nói đúng thứ mình làm được.
-    tag: 'Clear schedule',
+    // Vá 04/09 đã gỡ "48 hours" và "no forms, no phone queue" (khi ấy huỷ CÓ
+    // form bắt nhập lý do và CÓ đội ngũ xem xét). ADR-0041 gỡ chính hàng đợi
+    // duyệt ấy, nên "no queue" lại đúng — còn "published refund schedule" thì
+    // hết đối tượng: bảng bậc không còn, chỉ còn một hạn chót mỗi chuyến. Vẫn
+    // KHÔNG hứa "one click": hộp huỷ cần bấm mở rồi bấm xác nhận.
+    tag: 'Every tour',
     description:
-      'Plans change. Cancel from your account and get back what our published refund schedule says — no phone queue, no haggling.',
+      'Every tour, not a select few. Cancel from your account before your trip’s deadline and every dollar comes back — a couple of clicks, no queue, no haggling.',
   },
   {
     icon: BadgeDollarSignIcon,

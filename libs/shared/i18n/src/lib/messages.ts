@@ -1,5 +1,6 @@
 // Kho copy user-facing tập trung (chỉ tiếng Anh, luật #7). Mọi bề mặt đọc từ
 // đây — không rải chuỗi inline.
+import { cancellationWindowSentence } from './legal/cancellation.js';
 import { resilience } from './resilience.js';
 
 // MỘT câu cho luật "refund phải > 0" dù bị chặn ở client (validation.zero) hay
@@ -1050,22 +1051,24 @@ export const messages = {
         ],
       },
       {
-        title: 'Cancellations & changes',
+        // ADR-0041: "& changes" rời khỏi tiêu đề vì không còn luồng đổi ngày nào
+        // để hứa. Câu trả lời đầu SINH từ `CANCELLATION_WINDOW_RULES` — FAQ và
+        // trang chính sách không được phép nói hai con số khác nhau.
+        title: 'Cancellations & refunds',
         items: [
           {
             question: 'What is your cancellation policy?',
-            answer:
-              'Cancellation terms vary by tour and departure, and are shown on each tour page before you book. Our team is always happy to clarify the details.',
+            answer: `${cancellationWindowSentence()} Cancel on or before that deadline — 11:59 pm Vietnam time — and every dollar comes back; cancel after it and no refund is due. The exact date is shown on the tour page, at checkout, and on your booking.`,
           },
           {
             question: 'Can I change my travel dates?',
             answer:
-              'Date changes are usually possible subject to availability. Reach out as early as you can and we will do our best to re-arrange your trip.',
+              'Not directly — we cannot move a booking to another departure. While your booking is still inside its free-cancellation deadline, cancel it for a full refund and book the date you want instead. Past that deadline the departure is closed to new bookings anyway, so contact us and we will tell you what is possible.',
           },
           {
             question: 'What happens if you cancel a departure?',
             answer:
-              'If we ever cancel a departure, you can move to another date or receive a full refund of what you paid us.',
+              'If we cancel a departure, for any reason, you get 100% of what you paid back to your original payment method. The deadline binds you, not us.',
           },
         ],
       },

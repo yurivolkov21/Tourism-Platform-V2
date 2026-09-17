@@ -1,98 +1,134 @@
-import { REFUND_GRACE_HOURS } from '@tourism/contract';
+import { CANCELLATION_WINDOW_RULES } from '@tourism/contract';
 import type { LegalDoc } from './legal-page.js';
-import { refundTierBullets } from './refund-tiers.js';
 
 /**
- * Cancellation & Refund Policy — mô tả đúng luồng hoàn tiền thật: khách gửi
- * yêu cầu huỷ, đội ngũ xem xét rồi liên hệ lại, sau đó hoàn về đúng phương
- * thức đã thanh toán.
+ * `[1, 1]` → `'day trips'`; `[2, 3]` → `'trips of 2–3 days'`;
+ * `[4, null]` → `'trips of 4 days or more'`. Viết thường vì cụm này đứng GIỮA
+ * câu ở `/terms` và FAQ; chỗ cần chữ hoa thì `capitalise` lo.
+ */
+function tripLengthPhrase(minTripDays: number, maxTripDays: number | null): string {
+  if (maxTripDays === null) return `trips of ${minTripDays} days or more`;
+  if (minTripDays === maxTripDays)
+    return minTripDays === 1 ? 'day trips' : `${minTripDays}-day trips`;
+  return `trips of ${minTripDays}–${maxTripDays} days`;
+}
+
+/** `1` → `'1 day'`; `7` → `'7 days'` — số nhiều đúng, không "1 days". */
+function dayCount(days: number): string {
+  return days === 1 ? '1 day' : `${days} days`;
+}
+
+/** Viết hoa chữ cái đầu: gạch đầu dòng mở đầu bằng cụm độ dài chuyến. */
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * Ba gạch đầu dòng của bảng hạn chót, sinh từ CHÍNH hằng contract.
  *
- * Từ ADR-0030 các mốc là **CƯỠNG CHẾ, không phải hướng dẫn**: hệ thống tính số
- * tiền từ chính bảng bậc ở `@tourism/contract` và khoá nó trên màn hình admin.
- * Nên hai câu của bản cũ đã bị bỏ:
+ * Không gõ tay, cùng lý do đã khai tử bản bậc cũ: hai văn bản từng chép tay một
+ * bảng rồi cả hai cùng bỏ rơi ngày 14. Ở đây rủi ro còn lớn hơn — hạn chót vừa
+ * là câu chữ cho khách đọc vừa là mốc server dùng để khoá đặt chỗ và tính tiền
+ * hoàn, nên văn bản lệch hằng là văn bản nói dối.
+ */
+export function cancellationWindowBullets(): string[] {
+  return CANCELLATION_WINDOW_RULES.map(
+    (rule) =>
+      `${capitalise(tripLengthPhrase(rule.minTripDays, rule.maxTripDays))}: free cancellation up to ${dayCount(rule.windowDays)} before departure.`,
+  );
+}
+
+/**
+ * Cùng bảng ấy gói thành MỘT câu, cho `/terms` và FAQ — nơi luật huỷ chỉ là một
+ * đoạn trong tài liệu dài, không phải chương riêng.
+ */
+export function cancellationWindowSentence(): string {
+  const parts = CANCELLATION_WINDOW_RULES.map(
+    (rule) =>
+      `${tripLengthPhrase(rule.minTripDays, rule.maxTripDays)}, ${dayCount(rule.windowDays)} before departure`,
+  );
+  return `Every tour is free to cancel until its own deadline: ${parts.join('; ')}.`;
+}
+
+/**
+ * Cancellation & Refund Policy — bản ADR-0041: MỘT hạn chót mỗi chuyến, dài
+ * ngắn theo độ dài chuyến, tính theo ngày lịch Việt Nam.
  *
- * - *"general guidelines rather than fixed rules"* — máy đã quyết thì đừng bảo
- *   khách rằng đó là gợi ý.
- * - *"less any non-recoverable supplier costs"* — điều khoản BẤT KHẢ THI HÀNH:
- *   hệ thống không biết chi phí nhà cung cấp, nên câu ấy chỉ làm con số công bố
- *   mập mờ mà không ai trừ được thật.
+ * Bản trước (25/07) tả một luồng không còn tồn tại và ba thứ nay đã bị gỡ:
  *
- * Gạch đầu dòng bậc KHÔNG gõ tay — `refundTierBullets()` sinh từ hằng. Bản gõ
- * tay cũ đã bỏ rơi đúng ngày 14 ("15–29" rồi "dưới 14").
+ * - **Bảng bậc 100/50/25/0** — thay bằng nhị phân "trong hạn hoàn đủ / quá hạn
+ *   không hoàn". Bậc chỉ có nghĩa khi có người ngồi duyệt từng ca; khách tự huỷ
+ *   ngay thì một con số phải đúng ngay lúc bấm.
+ * - **Ân hạn 24 giờ** — sinh ra để vá đúng chỗ bậc làm khách thiệt (đặt hôm nay,
+ *   chuyến sau hai tuần, đổi ý ngay tối đó mà vẫn mất tiền). Bỏ bậc thì ân hạn
+ *   hết lý do tồn tại; giữ lại chỉ là chồng luật lên luật.
+ * - **"A cancellation request does not cancel the booking automatically"** kèm
+ *   hẹn "khoảng 2 ngày làm việc" — hàng đợi duyệt đã gỡ, huỷ là huỷ ngay.
+ *
+ * Cũng bỏ hai câu bất khả thi hành của bản cũ: lời hứa đổi ngày (KHÔNG có luồng
+ * nào làm việc đó) và vế "based on what we can recover from suppliers" (hệ thống
+ * không biết chi phí nhà cung cấp, nên câu ấy chỉ làm con số công bố mập mờ).
  */
 export const cancellationDoc: LegalDoc = {
   title: 'Cancellation & Refund Policy',
   breadcrumb: 'Cancellation & Refund Policy',
-  updated: 'Last updated: 25 July 2026',
+  updated: 'Last updated: 15 September 2026',
   reviewNote:
     'This document is sample content for a student capstone project, not legal advice. Nexora does not sell real trips here: payments run entirely in Stripe and PayPal test/sandbox mode, and no money changes hands.',
   intro: [
-    'We want you to book with confidence. This policy explains how to cancel a booking, what to expect, and how refunds are handled. It applies alongside our Terms & Conditions and any cancellation terms shown on the specific tour you booked.',
-    'Plans change — if you need to cancel, get in touch as early as you can. The sooner you tell us, the more you get back.',
+    'One deadline per trip, and the same rule on every tour we sell. Cancel on or before it and you get everything back; cancel after it and the booking is no longer refundable. Nothing here depends on which tour you picked or on anyone reviewing your case.',
+    'This policy applies alongside our Terms & Conditions. Where the two say anything about cancelling, this page is the detailed one.',
     'Because this site runs payments in test/sandbox mode, every refund described below is simulated: nothing was charged, so nothing is returned to a real account.',
   ],
   sections: [
     {
-      heading: 'How to request a cancellation',
+      heading: 'Your free-cancellation deadline',
       paragraphs: [
-        'You can request a cancellation at any time from your account: open the booking under “My bookings” and choose “Request cancellation”, or contact our team directly using the details in the site footer.',
-        'A cancellation request does not cancel the booking automatically. Our team reviews each request and contacts you — normally within about 2 business days — to confirm the details and arrange your refund. We handle every request personally so we can take your circumstances into account.',
+        'Every departure has one deadline, and how long the trip runs is the only thing that sets it. Longer trips need more notice because more is committed further ahead — rooms, boats, guides who turned other work down.',
+        'The deadline falls at 11:59 pm Vietnam time (GMT+7) on the day shown. That clock is the only one we use: your own time zone does not move the deadline, and neither does changing the time on your device.',
+        'You never have to work the date out yourself. We print it on the tour page, at checkout, in your confirmation email, and on the booking itself.',
+      ],
+      bullets: cancellationWindowBullets(),
+    },
+    {
+      heading: 'When bookings close',
+      paragraphs: [
+        'A departure stops taking new bookings at the same moment its deadline passes. We close it there on purpose: past that point a booking could never be cancelled for a refund, and we are not willing to sell a seat on terms we would not accept ourselves.',
+        'If you want to join a trip that has already closed, contact us with the departure date and party size. We will tell you honestly whether it can still be arranged.',
       ],
     },
     {
-      heading: 'Refund schedule',
+      heading: 'Cancelling your booking',
       paragraphs: [
-        'How much you get back depends on how far in advance you cancel. The schedule below is fixed — we apply it to every cancellation, so you can work out your refund before you ask for one.',
-        'Some tours are more generous than this: where a tour advertises free cancellation up to a certain number of days before departure, that promise applies instead and you receive a full refund up to that deadline. A tour-specific promise can only ever improve on the schedule below, never reduce it.',
-      ],
-      bullets: [
-        ...refundTierBullets(),
-        'No-shows, and cancellations made after the tour has started, are not refundable.',
-      ],
-    },
-    {
-      heading: `Changed your mind? The first ${REFUND_GRACE_HOURS} hours are free`,
-      paragraphs: [
-        `If you cancel within ${REFUND_GRACE_HOURS} hours of paying, you get a full refund — whatever the schedule above would otherwise say, and however close your departure is.`,
-        'This exists because the schedule measures one thing only: how close your departure is, which is what determines the costs we have already committed to guides, hotels and transport. It does not measure how long you have held the booking — and someone who books and changes their mind the same evening has cost us nothing. Without this window, booking a tour that leaves in two weeks would mean you could never get a full refund, no matter how quickly you told us.',
-      ],
-    },
-    {
-      heading: 'How we count the days',
-      paragraphs: [
-        'We count whole calendar days, measured in UTC, between the date you send your cancellation request and your departure date. The time of day does not matter — a request sent late in the evening counts the same as one sent that morning — but note that around midnight UTC the calendar date can differ from the date on your own clock.',
-        'What matters is when you tell us, not when we get round to processing it. If our team takes a few days to review your request, you keep the refund band that applied on the day you asked.',
+        'Open the booking under “My bookings” in your account and choose “Cancel booking”. It is cancelled immediately — there is no request to submit, no queue, and nobody to wait for.',
+        'Cancel on or before the deadline and you are refunded in full. Cancel after it, or simply not turn up on the day, and no refund is due: by then the guide, the rooms and the transport are already paid for on your behalf.',
+        'You can cancel online at any time before your departure date, even once the deadline has passed — you just will not be refunded. Once the trip has started, contact us instead.',
       ],
     },
     {
       heading: 'How refunds are processed',
       paragraphs: [
-        'Approved refunds are returned to your original payment method (the card or PayPal account used at checkout). We are not able to refund to a different method.',
-        'Once a refund is agreed, it is typically issued within about 5–10 business days, though the time for it to appear on your statement depends on your bank or card provider. Refunds are made in the currency of your original payment.',
+        'Refunds are returned to the payment method you used at checkout (the same card or PayPal account), in the currency you paid in. We are not able to send a refund anywhere else.',
+        'The refund is issued the moment you cancel. It then usually takes 5–10 business days to appear on your statement — that part is up to your bank or card provider, not to us.',
       ],
     },
     {
-      heading: 'Deposits and non-refundable amounts',
+      heading: 'If we cancel your departure',
       paragraphs: [
-        'Where a tour requires a deposit, that deposit may be non-refundable, as it secures supplier reservations on your behalf. Third-party charges (such as payment-processing fees, visa fees, or pre-purchased tickets) may also be non-refundable. Any such amounts will be made clear before you book wherever possible.',
+        'If we cancel a departure — for any reason at all, including weather, safety, or too few travellers — you get 100% of what you paid us back, whatever your deadline said. The deadline binds you, not us.',
+        'We are not responsible for costs you arranged elsewhere, such as flights, visas, or insurance, so we recommend travel insurance that covers them.',
       ],
     },
     {
       heading: 'Unpaid (pending) bookings',
       paragraphs: [
-        'If you start a booking but do not complete payment, no charge is taken and nothing is owed. Unpaid bookings are released automatically after a short time, so there is no need to cancel them — though you can do so from your account at any time.',
+        'If you start a booking but never complete payment, nothing is charged and nothing is owed. Unpaid bookings are released automatically after a short time, and you can release one yourself from your account at any moment.',
       ],
     },
     {
-      heading: 'Changing your booking',
+      heading: 'Special circumstances',
       paragraphs: [
-        'If you would like to change your travel dates or details rather than cancel, contact us as early as possible. Changes are subject to availability and any difference in price, and may be treated as a cancellation and re-booking depending on the tour and timing.',
-      ],
-    },
-    {
-      heading: 'If we cancel, or in the event of force majeure',
-      paragraphs: [
-        'If we cancel a confirmed tour for reasons within our control, you will be offered a full refund or the option to reschedule. Where a tour cannot run due to events beyond reasonable control (for example severe weather, natural events, strikes, or government restrictions), we will work with you on a refund or reschedule based on what we can recover from suppliers. We are not responsible for incidental costs such as flights, visas, or insurance, so we recommend appropriate travel insurance.',
+        'Illness, bereavement, a refused visa — life does not keep to a deadline. If something serious happened, contact us with your booking code and tell us what it was. We cannot promise an outcome, but a person will read it and decide.',
       ],
     },
   ],

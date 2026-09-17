@@ -1,7 +1,9 @@
 'use client';
 
-import { BadgeDollarSignIcon, HeadsetIcon, ShieldCheckIcon } from 'lucide-react';
+import { messages } from '@tourism/i18n';
+import { BadgeDollarSignIcon, HeadsetIcon, type LucideIcon, ShieldCheckIcon } from 'lucide-react';
 import { motion } from 'motion/react';
+import Link from 'next/link';
 import { SPRING } from '@/lib/motion';
 
 // Dải huy hiệu tin cậy — dựng 14/08 khi ba mục chính sách rời khỏi
@@ -12,10 +14,13 @@ import { SPRING } from '@/lib/motion';
 //
 // ── Ba câu này viết theo DỮ LIỆU, không theo khẩu hiệu ──
 //
-// 1. Huỷ miễn phí: KHÔNG ghi "48h". Đo trên 30 tour: 15 tour đặt mốc bằng NGÀY
-//    (`freeCancellationDays`), 15 tour còn lại viết mốc bằng GIỜ trong policy,
-//    và các mốc khác nhau. Một con số chung là nói sai, nên câu này trỏ người
-//    đọc về trang tour — nơi con số lấy thẳng từ dữ liệu của chính tour đó.
+// 1. Huỷ miễn phí: bản 14/08 phải rào "on most departures" vì mốc huỷ khi ấy
+//    nằm rải rác trong dữ liệu từng tour (`freeCancellationDays` ở 15 tour, mốc
+//    viết bằng giờ trong policy ở 15 tour còn lại) — một con số chung là nói
+//    sai. ADR-0041 gỡ chính cái rải rác ấy: MỘT luật hạn chót cho mọi tour, dài
+//    1/3/7 ngày theo độ dài chuyến. Nên nay nói được "every tour" — nhưng vẫn
+//    KHÔNG mang con số, vì con số đổi theo chuyến; ô này dẫn sang trang chính
+//    sách để đọc trọn bảng ba dòng.
 //
 // 2. Không phí ẩn: đây là câu MẠNH NHẤT vì đúng tuyệt đối — `computeBookingTotal`
 //    chỉ nhân giá với số khách, mô hình KHÔNG có dòng phí nào. Nói được là nói.
@@ -25,11 +30,18 @@ import { SPRING } from '@/lib/motion';
 //    "Mon–Fri · 8:00 am – 6:00 pm (GMT+7)", và `contact-hero.tsx` viết "a real
 //    person replies within the hour, Monday to Friday". Nên câu ở đây chép
 //    đúng giờ đã khai, thay vì hứa 24/7 rồi trang Contact nói ngược lại.
-const BADGES = [
+const BADGES: Array<{
+  icon: LucideIcon;
+  title: string;
+  detail: string;
+  /** Chỉ ô nào có văn bản đầy đủ để dẫn sang mới mang link. */
+  href?: string;
+}> = [
   {
     icon: ShieldCheckIcon,
     title: 'Free cancellation',
-    detail: 'On most departures. Every tour page shows its own window before you book.',
+    detail: 'On every tour. Each departure shows its own deadline before you book.',
+    href: '/cancellation-policy',
   },
   {
     icon: BadgeDollarSignIcon,
@@ -59,9 +71,17 @@ export function TrustStrip() {
             <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
               <badge.icon className="size-4.5 text-primary-emphasis" aria-hidden="true" />
             </span>
-            <span className="flex flex-col gap-1">
+            <span className="flex flex-col items-start gap-1">
               <span className="text-sm font-medium text-foreground">{badge.title}</span>
               <span className="text-xs leading-relaxed text-muted-foreground">{badge.detail}</span>
+              {badge.href ? (
+                <Link
+                  href={badge.href}
+                  className="text-xs text-primary-emphasis underline-offset-4 hover:underline"
+                >
+                  {messages.cancellationDeadline.policyLink}
+                </Link>
+              ) : null}
             </span>
           </motion.div>
         ))}

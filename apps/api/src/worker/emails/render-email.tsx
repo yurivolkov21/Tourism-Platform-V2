@@ -1,3 +1,4 @@
+import { cancellationDeadline } from '@tourism/contract';
 import { messages } from '@tourism/i18n';
 import type { ReactNode } from 'react';
 import { render, toPlainText } from 'react-email';
@@ -76,6 +77,27 @@ function formatDate(value: string | undefined): string | undefined {
   }).format(date);
 }
 
+/**
+ * Hạn chót huỷ miễn phí của chuyến, tính TẠI CHỖ từ hai ngày đã có trong payload
+ * (ADR-0041) — outbox không phải mang thêm field, và dòng cũ trong hàng đợi vẫn
+ * render được.
+ *
+ * `undefined` khi payload thiếu ngày hoặc ngày hỏng: `cancellationDeadline` ném
+ * RangeError với chuyến có ngày về trước ngày đi (DB chưa có CHECK chặn), và
+ * một mail khuyết một dòng còn hơn một dòng outbox chết vĩnh viễn.
+ */
+function deadlineText(
+  startDate: string | undefined,
+  endDate: string | undefined,
+): string | undefined {
+  if (!startDate || !endDate) return undefined;
+  try {
+    return formatDate(cancellationDeadline(startDate, endDate));
+  } catch {
+    return undefined;
+  }
+}
+
 function buildEmail(
   type: EmailType,
   payload: Record<string, unknown>,
@@ -123,6 +145,7 @@ function buildEmail(
         formatDate(f('startDate')) && formatDate(f('endDate'))
           ? `${formatDate(f('startDate'))} → ${formatDate(f('endDate'))}`
           : undefined;
+      const freeUntil = deadlineText(f('startDate'), f('endDate'));
       return {
         subject: `Booking confirmed — ${subjectCode}${s('title') ? ` · ${s('title')}` : ''}`,
         node: (
@@ -162,6 +185,14 @@ function buildEmail(
                   ? ([['Total paid', <MoneyValue key="v">{money}</MoneyValue>]] as Array<
                       [string, ReactNode]
                     >)
+                  : []),
+                ...(freeUntil
+                  ? ([
+                      [
+                        'Free cancellation until',
+                        <PlainValue key="v">{freeUntil}, 11:59 pm Vietnam time</PlainValue>,
+                      ],
+                    ] as Array<[string, ReactNode]>)
                   : []),
               ]}
             />

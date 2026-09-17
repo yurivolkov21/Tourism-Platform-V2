@@ -1,4 +1,4 @@
-import { cancellationDoc, privacyDoc, termsDoc } from '@tourism/i18n';
+import { cancellationDoc, cancellationWindowBullets, privacyDoc, termsDoc } from '@tourism/i18n';
 import { describe, expect, it } from 'vitest';
 import { slugify } from './slug.js';
 
@@ -7,9 +7,9 @@ import { slugify } from './slug.js';
 // không bắt chữ thường "tourism" nghĩa chung) mới là thứ không được sót; còn
 // slug trùng thì gãy anchor TOC rất âm thầm.
 const DOCS = [
-  ['terms', termsDoc],
-  ['privacy', privacyDoc],
-  ['cancellation', cancellationDoc],
+  ['terms', termsDoc, 'Last updated: 15 September 2026'],
+  ['privacy', privacyDoc, 'Last updated: 25 July 2026'],
+  ['cancellation', cancellationDoc, 'Last updated: 15 September 2026'],
 ] as const;
 
 describe('nội dung pháp lý', () => {
@@ -28,8 +28,8 @@ describe('nội dung pháp lý', () => {
     expect(doc.reviewNote).toBeTruthy();
   });
 
-  it.each(DOCS)('%s ghi ngày cập nhật thống nhất', (_name, doc) => {
-    expect(doc.updated).toBe('Last updated: 25 July 2026');
+  it.each(DOCS)('%s ghi đúng ngày cập nhật của chính nó', (_name, doc, updated) => {
+    expect(doc.updated).toBe(updated);
   });
 
   it('terms nói rõ thanh toán chạy test mode', () => {
@@ -40,5 +40,55 @@ describe('nội dung pháp lý', () => {
 
   it('cancellation nhắc lại chuyện không có tiền thật', () => {
     expect(JSON.stringify(cancellationDoc)).toMatch(/test\/sandbox mode/i);
+  });
+});
+
+/**
+ * ADR-0041 để lại đúng MỘT luật huỷ cho mọi tour. Hai văn bản pháp lý là nơi
+ * lời hứa cũ sống dai nhất (bảng bậc, ân hạn 24 giờ, hẹn "2 business days",
+ * đổi ngày, vế "recover from suppliers"), nên khoá cả hai chiều: ý mới phải có
+ * mặt, ý đã gỡ không được lẻn về.
+ */
+describe('chính sách huỷ một hạn chót (ADR-0041)', () => {
+  const both = JSON.stringify([cancellationDoc, termsDoc]);
+
+  it('bảng hạn chót của /cancellation-policy sinh từ luật chung, đúng ba dòng', () => {
+    const section = cancellationDoc.sections.find(
+      (s) => s.heading === 'Your free-cancellation deadline',
+    );
+    expect(section?.bullets).toEqual(cancellationWindowBullets());
+    expect(section?.bullets).toHaveLength(3);
+  });
+
+  it('nói rõ chuyến ngừng nhận đặt đúng lúc hạn chót hết, và lối liên hệ khi cần đi gấp', () => {
+    const section = cancellationDoc.sections.find((s) => s.heading === 'When bookings close');
+    expect(JSON.stringify(section)).toMatch(/contact us/i);
+  });
+
+  it('công ty huỷ chuyến thì hoàn 100%', () => {
+    expect(JSON.stringify(cancellationDoc)).toMatch(/100% of what you paid/);
+  });
+
+  it('nói thời gian tiền về và phương thức thanh toán ban đầu', () => {
+    expect(JSON.stringify(cancellationDoc)).toMatch(/5–10 business days/);
+    expect(JSON.stringify(cancellationDoc)).toMatch(/payment method you used at checkout/);
+  });
+
+  it('không còn bảng bậc, ân hạn 24 giờ, hẹn 2 ngày làm việc hay vế "recover from suppliers"', () => {
+    for (const pattern of [
+      /refund schedule/i,
+      /24 hours/i,
+      /2 business days/i,
+      /recover from suppliers/i,
+      /50% refund/i,
+    ]) {
+      expect(both).not.toMatch(pattern);
+    }
+  });
+
+  it('không hứa đổi ngày ở cả hai văn bản', () => {
+    for (const pattern of [/reschedule/i, /date change/i, /amendment fee/i, /re-arrange/i]) {
+      expect(both).not.toMatch(pattern);
+    }
   });
 });
